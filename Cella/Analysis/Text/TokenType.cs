@@ -138,7 +138,8 @@ public sealed class TokenType
 	public static readonly TokenType KeywordImpl = CreateKeyword("impl");
 	public static readonly TokenType KeywordPub = CreateKeyword("pub");
 	public static readonly TokenType KeywordVar = CreateKeyword("var");
-	public static readonly TokenType KeywordLet = CreateKeyword("let");
+	public static readonly TokenType KeywordVal = CreateKeyword("val");
+	public static readonly TokenType KeywordMut = CreateKeyword("mut");
 	public static readonly TokenType KeywordSelf = CreateKeyword("self");
 	public static readonly TokenType KeywordGet = CreateKeyword("get");
 	public static readonly TokenType KeywordSet = CreateKeyword("set");
@@ -156,6 +157,8 @@ public sealed class TokenType
 	public static readonly TokenType KeywordWhile = CreateKeyword("while");
 	public static readonly TokenType KeywordCont = CreateKeyword("cont");
 	public static readonly TokenType KeywordExit = CreateKeyword("exit");
+	public static readonly TokenType KeywordExt = CreateKeyword("ext");
+	public static readonly TokenType KeywordDll = CreateKeyword("dll");
 	
 	#endregion
 	#region Operators
