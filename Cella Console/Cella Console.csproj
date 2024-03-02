@@ -12,4 +12,8 @@
       <PackageReference Include="Mono.Options" Version="6.12.0.148" />
     </ItemGroup>
 
+    <ItemGroup>
+      <ProjectReference Include="..\Cella\Cella.csproj" />
+    </ItemGroup>
+
 </Project>

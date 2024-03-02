@@ -1,4 +1,6 @@
-﻿using System.Globalization;
+﻿// Todo: #define FIXED_POINT_SUPPORT
+
+using System.Globalization;
 using System.Text;
 using System.Collections;
 
@@ -537,10 +539,12 @@ public class Lexer : ILexer
 							end = ParseFloatSuffix(end, valueString, out value);
 							break;
 						
+#if FIXED_POINT_SUPPORT
 						case 'x':
 						case 'X':
 							end = ParseFixedSuffix(end, valueString, out value);
 							break;
+#endif
 						
 						// Todo: Invalid suffix
 						default:
@@ -651,10 +655,12 @@ public class Lexer : ILexer
 							end = ParseFloatSuffix(end, valueString, out value);
 							break;
 						
+#if FIXED_POINT_SUPPORT
 						case 'x':
 						case 'X':
 							end = ParseFixedSuffix(end, valueString, out value);
 							break;
+#endif
 						
 						// Todo: Invalid suffix
 						default:
@@ -810,6 +816,7 @@ public class Lexer : ILexer
 		return end;
 	}
 	
+#if FIXED_POINT_SUPPORT
 	private int ParseFixedSuffix(int end, string valueString, out object? value)
 	{
 		value = null;
@@ -857,6 +864,7 @@ public class Lexer : ILexer
 
 		return end;
 	}
+#endif
 
 	private ScanResult ScanHexadecimal(int position)
 	{
