@@ -162,6 +162,7 @@ public sealed class TokenType
 	
 	public static readonly TokenType OpComma = CreateOperator(",");
 	public static readonly TokenType OpDotDotEqual = CreateOperator("..=");
+	public static readonly TokenType OpEllipsis = CreateOperator("...");
 	public static readonly TokenType OpDotDot = CreateOperator("..");
 	public static readonly TokenType OpDot = CreateOperator(".");
 	public static readonly TokenType OpColon = CreateOperator(":");
