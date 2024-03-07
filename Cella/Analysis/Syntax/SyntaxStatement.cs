@@ -3,7 +3,7 @@ using Cella.Analysis.Text;
 
 namespace Cella.Analysis.Syntax;
 
-public abstract class SyntaxStatement : IAstNode
+public abstract class SyntaxStatement
 {
 	public interface IVisitor<out T>
 	{
