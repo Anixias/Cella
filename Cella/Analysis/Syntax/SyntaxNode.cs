@@ -34,14 +34,14 @@ public sealed class ProgramNode : SyntaxNode
 {
 	public readonly ModuleName moduleName;
 	public readonly ImmutableArray<ImportNode> imports;
-	public readonly ImmutableArray<SyntaxNode> topLevelStatements;
+	public readonly ImmutableArray<SyntaxNode> statements;
 
-	public ProgramNode(ModuleName moduleName, IEnumerable<ImportNode> imports,
-		IEnumerable<SyntaxNode> topLevelStatements, TextRange range) : base(range)
+	public ProgramNode(ModuleName moduleName, IEnumerable<ImportNode> imports, IEnumerable<SyntaxNode> statements,
+		TextRange range) : base(range)
 	{
 		this.moduleName = moduleName;
 		this.imports = imports.ToImmutableArray();
-		this.topLevelStatements = topLevelStatements.ToImmutableArray();
+		this.statements = statements.ToImmutableArray();
 	}
 
 	public override void Accept(IVisitor visitor)
