@@ -179,8 +179,6 @@ public sealed class TokenType
 	public static readonly TokenType OpEquals = CreateOperator("=");
 	public static readonly TokenType OpBangEquals = CreateOperator("!=");
 	public static readonly TokenType OpBang = CreateOperator("!");
-	public static readonly TokenType OpPosModEqual = CreateOperator("+%=");
-	public static readonly TokenType OpPosMod = CreateOperator("+%");
 	public static readonly TokenType OpPlusEqual = CreateOperator("+=");
 	public static readonly TokenType OpPlusPlus = CreateOperator("++");
 	public static readonly TokenType OpPlus = CreateOperator("+");
