@@ -147,8 +147,34 @@ public sealed class Parser
 
 	private IEnumerable<SyntaxNode> ParseTopLevelStatements()
 	{
-		// Todo: Call ParseTopLevelStatement() until EOF reached
-		throw new NotImplementedException();
+		var syncTokens = new[]
+		{
+			TokenType.EndOfFile,
+			TokenType.KeywordMod,
+			TokenType.KeywordUse,
+			TokenType.Identifier
+		};
+		
+		var statements = new List<SyntaxNode>();
+
+		while (Peek() != TokenType.EndOfFile)
+		{
+			try
+			{
+				statements.Add(ParseTopLevelStatement());
+			}
+			catch (ParseException e)
+			{
+				diagnostics.Add(e);
+
+				do
+				{
+					position++;
+				} while (!syncTokens.Contains(Peek()));
+			}
+		}
+		
+		return statements;
 	}
 
 	private SyntaxNode ParseTopLevelStatement()
