@@ -5,6 +5,8 @@ namespace Cella.Analysis.Syntax;
 
 public readonly struct ModuleName
 {
+	public static readonly ModuleName Error = new([]);
+	
 	public readonly ImmutableArray<Token> identifiers;
 	public readonly string text;
 

@@ -65,6 +65,28 @@ public sealed class Parser
 		return token;
 	}
 
+	private bool TryRequire(string? errorMessage, params TokenType[] types)
+	{
+		return TryRequire(out _, errorMessage, types);
+	}
+	
+	private bool TryRequire([NotNullWhen(true)] out Token? token, string? errorMessage, params TokenType[] types)
+	{
+		token = null;
+		var startPosition = position;
+		try
+		{
+			token = Require(errorMessage, types);
+			return true;
+		}
+		catch (ParseException e)
+		{
+			diagnostics.Add(e);
+			position = startPosition;
+			return false;
+		}
+	}
+
 	private bool TryMatch(params TokenType[] types)
 	{
 		return TryMatch(out _, types);
@@ -117,8 +139,9 @@ public sealed class Parser
 
 	private ProgramNode? ParseProgram()
 	{
-		Require("All Cella files must begin with a module name: 'mod <name>'", TokenType.KeywordMod);
-		var modName = ParseModuleName();
+		const string errorRequireModuleName = "All Cella files must begin with a module name: 'mod <name>'";
+		var hasModName = TryRequire(errorRequireModuleName, TokenType.KeywordMod);
+		var modName = hasModName ? ParseModuleName() : ModuleName.Error;
 		var statements = ParseTopLevelStatements();
 
 		if (TokenAt(position) is { } token)
@@ -126,7 +149,7 @@ public sealed class Parser
 			diagnostics.Add(new ParseException("Expected end of file", token));
 		}
 
-		if (diagnostics.ErrorCount > 0)
+		if (!hasModName || diagnostics.ErrorCount > 0)
 			return null;
 
 		return new ProgramNode(modName, [], statements, new TextRange(0, source.Length - 1));
