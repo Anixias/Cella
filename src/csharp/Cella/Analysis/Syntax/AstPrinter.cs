@@ -64,24 +64,9 @@ public sealed class AstPrinter : SyntaxNode.IVisitor
 	{
 		Write("Program");
 		
-		PushIndent(false);
-		Write($"Module: {programNode.moduleName}");
-
 		var statementCount = programNode.statements.Length;
-		var importCount = programNode.imports.Length;
-		if (importCount > 0)
-		{
-			IsLastChild = statementCount == 0;
-			Write("Imports:");
-			
-			PushIndent();
-			for (var i = 0; i < importCount; i++)
-			{
-				IsLastChild = i == importCount - 1;
-				programNode.imports[i].Accept(this);
-			}
-			PopIndent();
-		}
+		PushIndent(statementCount == 0);
+		Write($"Module: {programNode.moduleName}");
 
 		if (statementCount > 0)
 		{
@@ -102,14 +87,44 @@ public sealed class AstPrinter : SyntaxNode.IVisitor
 
 	public void Visit(ImportNode importNode)
 	{
-		if (importNode.alias is { } alias)
+		if (importNode.importToken.alias is { } alias)
 		{
-			Write($"{importNode.moduleName}::{importNode.identifier.Text} as {alias.Text}");
+			Write($"Import {importNode.moduleName}::{importNode.importToken.identifier.Text} as {alias.Text}");
 		}
 		else
 		{
-			Write($"{importNode.moduleName}::{importNode.identifier.Text}");
+			Write($"Import {importNode.moduleName}::{importNode.importToken.identifier.Text}");
 		}
+	}
+
+	public void Visit(AggregateImportNode aggregateImportNode)
+	{
+		if (aggregateImportNode.alias is { } aggregateAlias)
+		{
+			Write($"Import {aggregateImportNode.moduleName} as {aggregateAlias}");
+		}
+		else
+		{
+			Write($"Import {aggregateImportNode.moduleName}");
+		}
+		
+		PushIndent(false);
+		for (var i = 0; i < aggregateImportNode.importTokens.Length; i++)
+		{
+			IsLastChild = i == aggregateImportNode.importTokens.Length - 1;
+			
+			var importToken = aggregateImportNode.importTokens[i];
+			if (importToken.alias is { } alias)
+			{
+				Write($"{importToken.identifier.Text} as {alias.Text}");
+			}
+			else
+			{
+				Write($"{importToken.identifier.Text}");
+			}
+		}
+
+		PopIndent();
 	}
 
 	public void Visit(DeclarationNode declarationNode)

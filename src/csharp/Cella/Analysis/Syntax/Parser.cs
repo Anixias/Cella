@@ -1,4 +1,5 @@
-﻿using System.Diagnostics.CodeAnalysis;
+﻿using System.Collections.Immutable;
+using System.Diagnostics.CodeAnalysis;
 using System.Text;
 using Cella.Analysis.Text;
 using Cella.Diagnostics;
@@ -87,12 +88,12 @@ public sealed class Parser
 		}
 	}
 
-	private bool TryMatch(params TokenType[] types)
+	private bool Match(params TokenType[] types)
 	{
-		return TryMatch(out _, types);
+		return Match(out _, types);
 	}
 
-	private bool TryMatch([NotNullWhen(true)] out Token? token, params TokenType[] types)
+	private bool Match([NotNullWhen(true)] out Token? token, params TokenType[] types)
 	{
 		if (types.Contains(TokenType.EndOfFile))
 			throw new ArgumentException("Cannot match EndOfFile token", nameof(types));
@@ -152,7 +153,7 @@ public sealed class Parser
 		if (!hasModName || diagnostics.ErrorCount > 0)
 			return null;
 
-		return new ProgramNode(modName, [], statements, new TextRange(0, source.Length - 1));
+		return new ProgramNode(modName, statements, new TextRange(0, source.Length - 1));
 	}
 
 	private ModuleName ParseModuleName()
@@ -162,7 +163,7 @@ public sealed class Parser
 		{
 			var identifier = Require(null, TokenType.Identifier);
 			nameTokens.Add(identifier);
-		} while (TryMatch(TokenType.OpDot));
+		} while (Match(TokenType.OpDot));
 
 		return new ModuleName(nameTokens);
 	}
@@ -209,7 +210,7 @@ public sealed class Parser
 		
 		if (nextToken.Type == TokenType.KeywordUse)
 		{
-			// Todo: return ParseImport();
+			return ParseImport();
 		}
 		
 		if (nextToken.Type == TokenType.Identifier)
@@ -218,5 +219,72 @@ public sealed class Parser
 		}
 
 		throw new ParseException($"Expected top-level statement; Instead, got '{nextToken.Type}'", nextToken);
+	}
+
+	private SyntaxNode ParseImport()
+	{
+		var startToken = Require(null, TokenType.KeywordUse);
+		var identifierTokens = new List<Token>();
+		var importTokens = new List<ImportToken>();
+		var isAggregate = false;
+		var range = startToken.Range;
+		
+		do
+		{
+			if (Match(out var identifier, TokenType.Identifier, TokenType.OpStar))
+			{
+				identifierTokens.Add(identifier);
+				range = range.Join(identifier.Range);
+			}
+			else if (Match(TokenType.OpOpenBrace))
+			{
+				do
+				{
+					var identifierToken = Require(null, TokenType.Identifier);
+					Token? tokenAlias = null;
+					if (Match(TokenType.KeywordAs))
+					{
+						tokenAlias = Require(null, TokenType.Identifier);
+					}
+					
+					importTokens.Add(new ImportToken(identifierToken, tokenAlias));
+				} while (Match(TokenType.OpComma));
+				
+				var endToken = Require(null, TokenType.OpCloseBrace);
+				range = range.Join(endToken.Range);
+				isAggregate = true;
+				break;
+			}
+		} while (Match(TokenType.OpDot));
+
+		if (identifierTokens.Count < (isAggregate ? 1 : 2))
+		{
+			if (identifierTokens.LastOrDefault() is { } token)
+				throw new ParseException("Invalid import statement", token);
+			
+			throw new ParseException("Invalid import statement", source, TextRange.Empty);
+		}
+
+		var scope = identifierTokens.Take(identifierTokens.Count - 1).ToImmutableArray();
+		foreach (var token in scope)
+		{
+			if (token.Type != TokenType.Identifier)
+				throw new ParseException("Invalid import statement: Expected 'identifier'", token);
+		}
+
+		Token? alias = null;
+		if (Match(TokenType.KeywordAs))
+		{
+			alias = Require(null, TokenType.Identifier);
+			range = range.Join(alias.Range);
+		}
+
+		var moduleName = new ModuleName(scope);
+		if (!isAggregate)
+		{
+			return new ImportNode(moduleName, identifierTokens.Last(), alias, range);
+		}
+		
+		return new AggregateImportNode(moduleName, importTokens, alias, range);
 	}
 }

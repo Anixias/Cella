@@ -9,6 +9,7 @@ public abstract class SyntaxNode
 	{
 		T Visit(ProgramNode programNode);
 		T Visit(ImportNode importNode);
+		T Visit(AggregateImportNode aggregateImportNode);
 		T Visit(DeclarationNode declarationNode);
 	}
 
@@ -16,6 +17,7 @@ public abstract class SyntaxNode
 	{
 		void Visit(ProgramNode programNode);
 		void Visit(ImportNode importNode);
+		void Visit(AggregateImportNode aggregateImportNode);
 		void Visit(DeclarationNode declarationNode);
 	}
 	
@@ -33,14 +35,12 @@ public abstract class SyntaxNode
 public sealed class ProgramNode : SyntaxNode
 {
 	public readonly ModuleName moduleName;
-	public readonly ImmutableArray<ImportNode> imports;
 	public readonly ImmutableArray<SyntaxNode> statements;
 
-	public ProgramNode(ModuleName moduleName, IEnumerable<ImportNode> imports, IEnumerable<SyntaxNode> statements,
+	public ProgramNode(ModuleName moduleName, IEnumerable<SyntaxNode> statements,
 		TextRange range) : base(range)
 	{
 		this.moduleName = moduleName;
-		this.imports = imports.ToImmutableArray();
 		this.statements = statements.ToImmutableArray();
 	}
 
@@ -58,13 +58,41 @@ public sealed class ProgramNode : SyntaxNode
 public sealed class ImportNode : SyntaxNode
 {
 	public readonly ModuleName moduleName;
-	public readonly Token identifier;
-	public readonly Token? alias;
+	public readonly ImportToken importToken;
 
-	public ImportNode(ModuleName moduleName, Token identifier, Token? alias, TextRange range) : base(range)
+	public ImportNode(ModuleName moduleName, Token identifier, Token? alias, TextRange range)
+		: this(moduleName, new ImportToken(identifier, alias), range)
+	{
+	}
+
+	public ImportNode(ModuleName moduleName, ImportToken importToken, TextRange range) : base(range)
 	{
 		this.moduleName = moduleName;
-		this.identifier = identifier;
+		this.importToken = importToken;
+	}
+
+	public override void Accept(IVisitor visitor)
+	{
+		visitor.Visit(this);
+	}
+
+	public override T Accept<T>(IVisitor<T> visitor)
+	{
+		return visitor.Visit(this);
+	}
+}
+
+public sealed class AggregateImportNode : SyntaxNode
+{
+	public readonly ModuleName moduleName;
+	public readonly ImmutableArray<ImportToken> importTokens;
+	public readonly Token? alias;
+
+	public AggregateImportNode(ModuleName moduleName, IEnumerable<ImportToken> tokens, Token? alias, TextRange range)
+		: base(range)
+	{
+		this.moduleName = moduleName;
+		this.importTokens = tokens.ToImmutableArray();
 		this.alias = alias;
 	}
 
