@@ -1,4 +1,5 @@
 ﻿using System.Text;
+using Cella.Analysis.Text;
 
 namespace Cella.Analysis.Syntax;
 
@@ -127,17 +128,137 @@ public sealed class AstPrinter : SyntaxNode.IVisitor
 		PopIndent();
 	}
 
-	public void Visit(DeclarationNode declarationNode)
+	public void Visit(EntryNode entryNode)
 	{
-		Write("Declaration:");
+		Write("Entry:");
 		
 		PushIndent(false);
-		Write($"Name: {declarationNode.name.Text}");
-		
+		Write($"Name: {entryNode.name.Text}");
+		Write($"Return Type: {entryNode.returnType?.ToString() ?? "Void"}");
+
+		PrintParameters(entryNode.parameters.ToArray());
+		PrintEffects(entryNode.effects.ToArray());
+
 		IsLastChild = true;
-		Write("Type:");
-		declarationNode.type.Accept(this);
+		Write("Body:");
+		PushIndent();
+		entryNode.body.Accept(this);
+		PopIndent();
 		
+		PopIndent();
+	}
+
+	public void Visit(BlockNode blockNode)
+	{
+		if (blockNode.nodes.Length == 0)
+		{
+			Write("Block (empty)");
+			return;
+		}
+		
+		Write("Block:");
+		
+		PushIndent(false);
+		for (var i = 0; i < blockNode.nodes.Length; i++)
+		{
+			IsLastChild = i == blockNode.nodes.Length - 1;
+			blockNode.nodes[i].Accept(this);
+		}
+		PopIndent();
+	}
+
+	private void PrintParameters(SyntaxParameter[] parameters)
+	{
+		if (parameters.Length == 0)
+			return;
+		
+		Write("Parameters:");
+		
+		PushIndent(false);
+		for (var i = 0; i < parameters.Length; i++)
+		{
+			IsLastChild = i == parameters.Length - 1;
+			var parameter = parameters[i];
+			Write($"{parameter.identifier.Text}:");
+
+			switch (parameter)
+			{
+				case SyntaxParameter.Self self:
+				{
+					PushIndent();
+
+					if (self.modifiers.Length == 0)
+					{
+						Write("Modifiers: (none)");
+					}
+					else
+					{
+						Write("Modifiers:");
+						for (var j = 0; j < self.modifiers.Length; j++)
+						{
+							IsLastChild = j == self.modifiers.Length - 1;
+							Write($"{self.modifiers[i].Text}:");
+						}
+					}
+					
+					PopIndent();
+					break;
+				}
+
+				case SyntaxParameter.Variable variable:
+				{
+					PushIndent(false);
+					
+					Write($"Type: {variable.type}");
+					
+					if (variable.modifiers.Length == 0)
+					{
+						Write("Modifiers: (none)");
+					}
+					else
+					{
+						Write("Modifiers:");
+						for (var j = 0; j < variable.modifiers.Length; j++)
+						{
+							IsLastChild = j == variable.modifiers.Length - 1;
+							Write($"{variable.modifiers[i].Text}:");
+						}
+					}
+
+					IsLastChild = variable.defaultValue is null;
+					Write($"Variadic: {variable.isVariadic}");
+
+					if (variable.defaultValue is not null)
+					{
+						IsLastChild = true;
+						Write("Default Value: ");
+						
+						PushIndent();
+						variable.defaultValue.Accept(this);
+						PopIndent();
+					}
+
+					PopIndent();
+					break;
+				}
+			}
+		}
+		PopIndent();
+	}
+
+	private void PrintEffects(Token[] effects)
+	{
+		if (effects.Length == 0)
+			return;
+
+		Write("Effects:");
+		
+		PushIndent(false);
+		for (var i = 0; i < effects.Length; i++)
+		{
+			IsLastChild = i == effects.Length - 1;
+			Write(effects[i].Text);
+		}
 		PopIndent();
 	}
 }

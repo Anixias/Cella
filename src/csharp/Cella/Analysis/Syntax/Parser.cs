@@ -232,7 +232,7 @@ public sealed class Parser
 		
 		if (nextToken.Type == TokenType.Identifier)
 		{
-			// Todo: return ParseDeclaration();
+			return ParseDeclaration();
 		}
 
 		throw new ParseException($"Expected top-level statement; Instead, got '{nextToken.Type}'", nextToken);
@@ -303,5 +303,294 @@ public sealed class Parser
 		}
 		
 		return new AggregateImportNode(moduleName, importTokens, alias, range);
+	}
+
+	private SyntaxNode ParseDeclaration()
+	{
+		var identifier = Require(null, TokenType.Identifier);
+		Require(null, TokenType.OpColon);
+
+		var modifierTypes = TokenType.DeclarationModifiers.ToArray();
+		var modifiers = ParseModifiers(modifierTypes);
+		
+		var peek = Peek();
+		if (peek == TokenType.KeywordEntry)
+		{
+			return ParseEntry(identifier, modifiers);
+		}
+
+		if (peek == TokenType.KeywordFun)
+		{
+			// Todo: return ParseFunction(identifier, modifiers);
+		}
+
+		if (peek == TokenType.KeywordType)
+		{
+			// Todo: return ParseType(identifier, modifiers);
+		}
+
+		if (peek == TokenType.KeywordEnum)
+		{
+			// Todo: return ParseEnum(identifier, modifiers);
+		}
+
+		if (peek == TokenType.Identifier)
+		{
+			// Todo: return ParseVariable(identifier, modifiers);
+		}
+			
+		throw new ParseException("Excepted declaration type", Next()!);
+	}
+
+	private List<Token> ParseModifiers(TokenType[] modifierTypes)
+	{
+		var modifiers = new List<Token>();
+
+		while (true)
+		{
+			if (!Match(out var match, modifierTypes))
+				break;
+
+			if (modifiers.All(m => m.Type != match.Type))
+			{
+				modifiers.Add(match);
+				continue;
+			}
+
+			var duplicateError = new ParseException("Duplicate modifier specified", match);
+			diagnostics.Add(duplicateError);
+		}
+
+		return modifiers;
+	}
+
+	private EntryNode ParseEntry(Token identifier, List<Token> modifiers)
+	{
+		foreach (var modifier in modifiers)
+		{
+			// All modifiers invalid for entry
+			diagnostics.Add(new ParseException($"Modifier '{modifier.Text}' not valid for entry point", modifier));
+		}
+		
+		Require(null, TokenType.KeywordEntry);
+		Require(null, TokenType.OpOpenParen);
+		var parameters = ParseParameters();
+		Require(null, TokenType.OpCloseParen);
+		
+		var effects = new List<Token>();
+		SyntaxType? returnType = null;
+		if (Match(TokenType.OpColon))
+		{
+			if (Peek() == TokenType.OpBang)
+			{
+				effects.AddRange(ParseEffects());
+			}
+
+			returnType = ParseSyntaxType();
+		}
+
+		var body = ParseBlock();
+		return new EntryNode(identifier, parameters, returnType, effects, body, identifier.Range.Join(body.range));
+	}
+
+	private List<Token> ParseEffects()
+	{
+		var effects = new List<Token>();
+
+		Require(null, TokenType.OpBang);
+		Require(null, TokenType.OpOpenBrace);
+
+		do
+		{
+			var effect = Require(null, TokenType.Identifier);
+
+			if (effects.Find(e => e.Text == effect.Text) is not null)
+			{
+				diagnostics.Add(new ParseException($"Effect '{effect.Text}' already specified", effect));
+				continue;
+			}
+			
+			effects.Add(effect);
+		} while (Match(TokenType.OpComma));
+		
+		Require(null, TokenType.OpCloseBrace);
+
+		return effects;
+	}
+
+	private List<SyntaxParameter> ParseParameters()
+	{
+		var parameters = new List<SyntaxParameter>();
+		var allowSelf = true;
+		var requireDefaultValue = false;
+		Token? variadicParameter = null;
+		
+		var validSelfModifiers = new[]
+		{
+			TokenType.KeywordMut
+		};
+		
+		var validNonSelfModifiers = new[]
+		{
+			TokenType.KeywordVar
+		};
+		
+		var modifierTypes = TokenType.ParameterModifiers.ToArray();
+		do
+		{
+			var alreadyVariadic = variadicParameter is not null;
+			var isVariadic = Match(TokenType.OpEllipsis);
+			
+			var modifiers = ParseModifiers(modifierTypes);
+			var identifier = Require(null, TokenType.Identifier, TokenType.KeywordSelf);
+
+			if (isVariadic)
+				variadicParameter ??= identifier;
+
+			if (alreadyVariadic)
+			{
+				diagnostics.Add(new ParseException($"Variadic parameter '{variadicParameter!.Text}' must be the " +
+				                                   $"final parameter", identifier));
+			}
+			
+			// `mut` modifier only valid if identifier is `self`
+			// Similarly, `var` modifier only valid if identifier is not `self`
+			if (identifier.Type == TokenType.KeywordSelf)
+			{
+				if (isVariadic)
+				{
+					diagnostics.Add(new ParseException("Parameter 'self' cannot be variadic", identifier));
+				}
+				
+				if (!allowSelf)
+				{
+					diagnostics.Add(new ParseException("Parameter 'self' only valid as first parameter", identifier));
+				}
+
+				foreach (var modifier in modifiers)
+				{
+					if (modifier.Type == TokenType.KeywordVar)
+					{
+						diagnostics.Add(new ParseException($"Modifier '{modifier.Text}' not valid for 'self' " +
+						                                   $"parameters; Did you mean 'mut'?", identifier));
+					}
+					else if (!validSelfModifiers.Contains(modifier.Type))
+					{
+						diagnostics.Add(new ParseException($"Modifier '{modifier.Text}' not valid for 'self' " +
+						                                   $"parameters", identifier));
+					}
+				}
+				
+				allowSelf = false;
+				parameters.Add(new SyntaxParameter.Self(identifier, modifiers));
+				continue;
+			}
+			
+			foreach (var modifier in modifiers)
+			{
+				if (modifier.Type == TokenType.KeywordMut)
+				{
+					diagnostics.Add(new ParseException($"Modifier '{modifier.Text}' only valid for 'self' " +
+					                                   $"parameters; Did you mean 'var'?", identifier));
+				}
+				else if (!validNonSelfModifiers.Contains(modifier.Type))
+				{
+					diagnostics.Add(new ParseException($"Modifier '{modifier.Text}' only valid for 'self' " +
+					                                   $"parameters", identifier));
+				}
+			}
+			
+			Require(null, TokenType.OpColon);
+			var type = ParseSyntaxType();
+			var defaultValueRange = Next()?.Range ?? TextRange.Empty;
+
+			if (requireDefaultValue)
+			{
+				if (!TryRequire(
+					    $"Parameter '{identifier.Text}' requires default value because previous parameter has " +
+					    "default value", TokenType.OpEquals))
+				{
+					parameters.Add(new SyntaxParameter.Variable(identifier, type, modifiers, isVariadic));
+					continue;
+				}
+			}
+			else if (!Match(TokenType.OpEquals))
+			{
+				parameters.Add(new SyntaxParameter.Variable(identifier, type, modifiers, isVariadic));
+				continue;
+			}
+			
+			requireDefaultValue = true;
+			var defaultValue = ParseExpression();
+			defaultValueRange = defaultValueRange.Join(defaultValue.range);
+
+			if (isVariadic)
+			{
+				diagnostics.Add(new ParseException("Variadic parameters cannot have default value", source,
+					defaultValueRange));
+			}
+			
+			parameters.Add(new SyntaxParameter.Variable(identifier, type, modifiers, isVariadic, defaultValue));
+		} while (Match(TokenType.OpComma));
+
+		return parameters;
+	}
+
+	private SyntaxType ParseSyntaxType()
+	{
+		var modifierTypes = TokenType.SyntaxTypeModifiers.ToArray();
+		var modifiers = ParseModifiers(modifierTypes);
+
+		var mutIndex = modifiers.FindIndex(m => m.Type == TokenType.KeywordMut);
+		var refIndex = modifiers.FindIndex(m => m.Type == TokenType.KeywordRef);
+
+		// 'ref mut' should be 'mut ref'
+		if (refIndex >= 0 && mutIndex > refIndex)
+		{
+			var mutToken = modifiers[mutIndex];
+			var refToken = modifiers[refIndex];
+			var range = mutToken.Range.Join(refToken.Range);
+			diagnostics.Add(new ParseException("Invalid modifiers; Did you mean 'mut ref'?", source, range));
+		}
+		
+		var identifier = Require(null, TokenType.Identifier);
+		SyntaxType type = new SyntaxType.Base(identifier);
+
+		while (true)
+		{
+			if (Match(TokenType.OpOpenBracket))
+			{
+				var dimensions = 1;
+				while (Match(TokenType.OpComma))
+				{
+					dimensions++;
+				}
+				
+				Require(null, TokenType.OpCloseBracket);
+				type = new SyntaxType.Array(type, dimensions);
+				continue;
+			}
+			
+			// Todo: Nullable types '?'
+			// Todo: Generic types '<...>'
+
+			return type;
+		}
+	}
+
+	private BlockNode ParseBlock()
+	{
+		var nodes = new List<SyntaxNode>();
+		var startToken = Require(null, TokenType.OpOpenBrace);
+		
+		// Todo: Parse statements
+		
+		var endToken = Require(null, TokenType.OpCloseBrace);
+		return new BlockNode(nodes, startToken.Range.Join(endToken.Range));
+	}
+
+	private SyntaxNode ParseExpression()
+	{
+		throw new NotImplementedException();
 	}
 }

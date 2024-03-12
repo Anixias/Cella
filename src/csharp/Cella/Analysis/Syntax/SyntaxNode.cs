@@ -10,7 +10,8 @@ public abstract class SyntaxNode
 		T Visit(ProgramNode programNode);
 		T Visit(ImportNode importNode);
 		T Visit(AggregateImportNode aggregateImportNode);
-		T Visit(DeclarationNode declarationNode);
+		T Visit(EntryNode entryNode);
+		T Visit(BlockNode blockNode);
 	}
 
 	public interface IVisitor
@@ -18,7 +19,8 @@ public abstract class SyntaxNode
 		void Visit(ProgramNode programNode);
 		void Visit(ImportNode importNode);
 		void Visit(AggregateImportNode aggregateImportNode);
-		void Visit(DeclarationNode declarationNode);
+		void Visit(EntryNode entryNode);
+		void Visit(BlockNode blockNode);
 	}
 	
 	public readonly TextRange range;
@@ -107,15 +109,42 @@ public sealed class AggregateImportNode : SyntaxNode
 	}
 }
 
-public sealed class DeclarationNode : SyntaxNode
+public sealed class EntryNode : SyntaxNode
 {
 	public readonly Token name;
-	public readonly SyntaxNode type;
+	public readonly ImmutableArray<SyntaxParameter> parameters;
+	public readonly SyntaxType? returnType;
+	public readonly ImmutableArray<Token> effects;
+	public readonly BlockNode body;
 
-	public DeclarationNode(Token name, SyntaxNode type, TextRange range) : base(range)
+	public EntryNode(Token name, IEnumerable<SyntaxParameter> parameters, SyntaxType? returnType,
+		IEnumerable<Token> effects, BlockNode body, TextRange range) : base(range)
 	{
 		this.name = name;
-		this.type = type;
+		this.parameters = parameters.ToImmutableArray();
+		this.returnType = returnType;
+		this.body = body;
+		this.effects = effects.ToImmutableArray();
+	}
+
+	public override void Accept(IVisitor visitor)
+	{
+		visitor.Visit(this);
+	}
+
+	public override T Accept<T>(IVisitor<T> visitor)
+	{
+		return visitor.Visit(this);
+	}
+}
+
+public sealed class BlockNode : SyntaxNode
+{
+	public readonly ImmutableArray<SyntaxNode> nodes;
+
+	public BlockNode(IEnumerable<SyntaxNode> nodes, TextRange range) : base(range)
+	{
+		this.nodes = nodes.ToImmutableArray();
 	}
 
 	public override void Accept(IVisitor visitor)

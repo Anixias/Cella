@@ -1,4 +1,6 @@
-﻿namespace Cella.Analysis.Text;
+﻿using System.Collections.Immutable;
+
+namespace Cella.Analysis.Text;
 
 public sealed class TokenType
 {
@@ -11,6 +13,27 @@ public sealed class TokenType
 	
 	private static readonly Dictionary<string, TokenType> Keywords = new();
 	private static readonly Dictionary<string, TokenType> Operators = new();
+
+	public static ImmutableArray<TokenType> DeclarationModifiers => new[]
+	{
+		KeywordMut,
+		KeywordPub,
+		KeywordSelf,
+		KeywordVar
+	}.ToImmutableArray();
+
+	public static ImmutableArray<TokenType> ParameterModifiers => new[]
+	{
+		// Only valid for `self` param
+		KeywordMut,
+		KeywordVar
+	}.ToImmutableArray();
+
+	public static ImmutableArray<TokenType> SyntaxTypeModifiers => new[]
+	{
+		KeywordMut,
+		KeywordRef
+	}.ToImmutableArray();
 
 	private readonly string representation;
 	
