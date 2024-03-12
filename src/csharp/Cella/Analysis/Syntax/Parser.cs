@@ -168,7 +168,7 @@ public sealed class Parser
 		return new ModuleName(nameTokens);
 	}
 
-	private IEnumerable<SyntaxNode> ParseTopLevelStatements()
+	private List<SyntaxNode> ParseTopLevelStatements()
 	{
 		var syncTokens = new[]
 		{
