@@ -18,7 +18,7 @@ public sealed class Parser
 		this.tokens = tokens;
 	}
 
-	public static Ast? Parse(ILexer lexer)
+	public static (Ast? ast, DiagnosticList diagnostics) Parse(ILexer lexer)
 	{
 		var tokens = new List<Token>();
 		foreach (var token in lexer)
@@ -27,7 +27,7 @@ public sealed class Parser
 		}
 		
 		var parser = new Parser(lexer.Source, tokens);
-		return parser.Parse();
+		return (parser.Parse(), parser.diagnostics);
 	}
 	
 	private bool IsEndOfFile(int position) => position >= tokens.Count;
@@ -110,15 +110,14 @@ public sealed class Parser
 		}
 		catch (ParseException e)
 		{
-			// Todo: Better error reporting
-			Console.WriteLine($"Parse Error: {e.Message}");
+			diagnostics.Add(e);
 			return null;
 		}
 	}
 
 	private ProgramNode? ParseProgram()
 	{
-		Require("All Cella files must begin with a module name: mod <name>", TokenType.KeywordMod);
+		Require("All Cella files must begin with a module name: 'mod <name>'", TokenType.KeywordMod);
 		var modName = ParseModuleName();
 		var statements = ParseTopLevelStatements();
 

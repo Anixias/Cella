@@ -43,4 +43,9 @@ public sealed class DiagnosticList : IEnumerable<Diagnostic>
 	{
 		return GetEnumerator();
 	}
+
+	public DiagnosticList OfSeverity(DiagnosticSeverity severity)
+	{
+		return new DiagnosticList(diagnostics.Where(d => d.severity == severity));
+	}
 }
