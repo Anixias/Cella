@@ -6,6 +6,7 @@ namespace CellaConsole;
 
 public static class Program
 {
+	private static readonly object ReportLock = new();
 	private static readonly object ConsoleLock = new();
 	
 	public static int Main(string[] args)
@@ -35,9 +36,12 @@ public static class Program
 	{
 		if (diagnostics.Count <= 0)
 			return;
-		
-		PrintDiagnosticsOfSeverity(diagnostics, DiagnosticSeverity.Warning);
-		PrintDiagnosticsOfSeverity(diagnostics, DiagnosticSeverity.Error);
+
+		lock (ReportLock)
+		{
+			PrintDiagnosticsOfSeverity(diagnostics, DiagnosticSeverity.Warning);
+			PrintDiagnosticsOfSeverity(diagnostics, DiagnosticSeverity.Error);
+		}
 	}
 
 	private static void PrintDiagnosticsOfSeverity(DiagnosticList diagnostics, DiagnosticSeverity severity)
@@ -60,7 +64,7 @@ public static class Program
 			_ => ConsoleColor.White
 		};
 
-		foreach (var diagnostic in diagnostics)
+		foreach (var diagnostic in diagnostics.OrderBy(d => d.line))
 		{
 			const int maxLineNumberLength = 8;
 			const char lineBar = '\u2502';
