@@ -179,12 +179,29 @@ public sealed class Parser
 		};
 		
 		var statements = new List<SyntaxNode>();
+		var allowImports = true;
 
 		while (Peek() != TokenType.EndOfFile)
 		{
 			try
 			{
-				statements.Add(ParseTopLevelStatement());
+				var statement = ParseTopLevelStatement();
+				statements.Add(statement);
+
+				var statementIsImport = statement is ImportNode or AggregateImportNode;
+				if (!statementIsImport)
+				{
+					allowImports = false;
+					continue;
+				}
+
+				if (allowImports)
+					continue;
+				
+				const string errorImportsMustBeFirst =
+					"Top-level import statements must appear before any other statements";
+
+				diagnostics.Add(new ParseException(errorImportsMustBeFirst, source, statement.range));
 			}
 			catch (ParseException e)
 			{
