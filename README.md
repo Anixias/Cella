@@ -4,7 +4,19 @@
 
 ## Examples
 
-Coming soon!
+### Hello World:
+
+```cella
+mod helloWorld
+
+use std.io.Console
+
+main: entry(args: String[]): !{io} Int32
+{
+	Console.println("Hello, World!")
+	ret 0
+}
+```
 
 ## Key Features
 
