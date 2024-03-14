@@ -398,22 +398,29 @@ public sealed class Parser
 		var effects = new List<Token>();
 
 		Require(null, TokenType.OpBang);
-		Require(null, TokenType.OpOpenBrace);
 
-		do
+		if (Match(TokenType.OpOpenBrace))
+		{
+			do
+            {
+            	var effect = Require(null, TokenType.Identifier);
+    
+            	if (effects.Find(e => e.Text == effect.Text) is not null)
+            	{
+            		diagnostics.Add(new ParseException($"Effect '{effect.Text}' already specified", effect));
+            		continue;
+            	}
+            	
+            	effects.Add(effect);
+            } while (Match(TokenType.OpComma));
+            
+            Require(null, TokenType.OpCloseBrace);
+		}
+		else
 		{
 			var effect = Require(null, TokenType.Identifier);
-
-			if (effects.Find(e => e.Text == effect.Text) is not null)
-			{
-				diagnostics.Add(new ParseException($"Effect '{effect.Text}' already specified", effect));
-				continue;
-			}
-			
 			effects.Add(effect);
-		} while (Match(TokenType.OpComma));
-		
-		Require(null, TokenType.OpCloseBrace);
+		}
 
 		return effects;
 	}

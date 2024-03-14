@@ -14,7 +14,7 @@ public static class Program
 		// Todo: Parse args using OptionSet
 
 		var diagnostics = new DiagnosticList();
-		var source = new StringBuffer("mod helloWorld\n\nuse std.io.Console\n\nmain: entry(args: String[]): !{io} Int32\n{}");
+		var source = new StringBuffer("mod helloWorld\n\nuse std.io.Console\n\nmain: entry(args: String[]): !io Int32\n{}");
 		var lexer = new FilteredLexer(source);
 		var (ast, parserDiagnostics) = Parser.Parse(lexer);
 		diagnostics.Add(parserDiagnostics);
