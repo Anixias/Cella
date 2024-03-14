@@ -20,17 +20,13 @@ main: entry(args: String[]): !io Int32
 
 ## Key Features
 
-- **Value Semantics**: Cella embraces value semantics, ensuring that data is stored and copied in a predictable and efficient manner.
-- **Effect Systems**: The language incorporates an effect system to ensure purity by default and provide fine-grained control over side effects.
-- **Immutability by Default**: Variables are immutable by default, promoting a more functional programming style and reducing the risk of unintended mutations.
-- **Purity by Default**: Thanks to the effect system, Cella code is pure by default, making it easier to reason about and parallelize.
-- **Minimal Runtime Overhead**: Cella employs static memory analysis and a combination of compile-time and runtime garbage collection to minimize runtime overhead.
-- **LLVM Backend**: The language targets the LLVM compiler infrastructure, enabling efficient code generation and cross-platform support.
-- **Consistent Syntax**: Cella's syntax is designed to be clean, consistent, and easy to learn, reducing cognitive overhead for developers.
-- **Quality of Life**: Cella features numerous syntax sugar constructs and quality-of-life improvements to enhance developer productivity.
-- **Simple Build System**: Cella provides a simple and streamlined build system, making it easy to build and manage projects.
-- **Simple Package Management**: Managing dependencies and packages in Cella is straightforward, thanks to its simple package management system.
-- **Cross-Platform Support**: Cella is designed to run on a wide range of platforms, enabling developers to write code that can be easily ported and deployed.
+- **Value Semantics**: Embraces value semantics, ensuring that data is stored and copied in a predictable and efficient manner.
+- **Semantic Effects**: Ensures purity by default and provides compile-time safety over side effects.
+- **Immutability by Default**: Reduces the risk of unintended mutations by offering default immutability.
+- **Minimal Runtime Overhead**: Employs static memory analysis and a combination of compile-time and runtime garbage collection to minimize runtime overhead.
+- **LLVM Backend**: Targets the LLVM compiler infrastructure, enabling efficient code generation and cross-platform support.
+- **Quality of Life**: Features numerous syntax sugar constructs and quality-of-life improvements to enhance developer productivity.
+- **Simple Build System**: Provides a simple and streamlined build system, making it easy to build and manage projects.
 
 ## Getting Started
 
@@ -38,7 +34,7 @@ The Cella compiler is currently under active development, and a working implemen
 
 ## Contributing
 
-Contributions to Cella are welcome! If you're interested in getting involved, please check out the [Contributing Guidelines](CONTRIBUTING.md) for more information.
+Contributions to Cella are welcome! If you're interested in getting involved, please check out the [Contributing Guidelines](CONTRIBUTING.md) (coming soon) for more information.
 
 ## License
 
