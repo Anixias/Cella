@@ -216,10 +216,12 @@ public sealed class TokenType
 	public static readonly TokenType OpSlashEqual = CreateOperator("/=");
 	public static readonly TokenType OpSlash = CreateOperator("/");
 	public static readonly TokenType OpPercentEqual = CreateOperator("%=");
+	public static readonly TokenType OpPercentPercent = CreateOperator("%%");
 	public static readonly TokenType OpPercent = CreateOperator("%");
 	public static readonly TokenType OpAmpEqual = CreateOperator("&=");
 	public static readonly TokenType OpAmp = CreateOperator("&");
 	public static readonly TokenType OpBarEqual = CreateOperator("|=");
+	public static readonly TokenType OpPipe = CreateOperator("|>");
 	public static readonly TokenType OpBar = CreateOperator("|");
 	public static readonly TokenType OpHatEqual = CreateOperator("^=");
 	public static readonly TokenType OpHat = CreateOperator("^");
