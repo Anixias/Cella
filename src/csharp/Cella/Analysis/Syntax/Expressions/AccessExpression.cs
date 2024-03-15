@@ -5,10 +5,10 @@ namespace Cella.Analysis.Syntax;
 public sealed class AccessExpression : ExpressionNode
 {
 	public readonly ExpressionNode source;
-	public readonly Token target;
+	public readonly ExpressionNode target;
 	public readonly bool nullCheck;
 
-	public AccessExpression(ExpressionNode source, Token target, bool nullCheck, TextRange range) : base(range)
+	public AccessExpression(ExpressionNode source, ExpressionNode target, bool nullCheck, TextRange range) : base(range)
 	{
 		this.source = source;
 		this.target = target;

@@ -278,76 +278,252 @@ public sealed class AstPrinter : StatementNode.IVisitor, ExpressionNode.IVisitor
 
 	public void Visit(LambdaExpression lambdaExpression)
 	{
-		throw new NotImplementedException();
+		Write("Lambda Expression:");
+		PushIndent(false);
+
+		Write($"Return Type: {lambdaExpression.returnType?.ToString() ?? "Void"}");
+		PrintParameters(lambdaExpression.parameters.ToArray());
+
+		IsLastChild = true;
+		Write("Body:");
+		PushIndent();
+		lambdaExpression.body.Accept(this);
+		PopIndent();
+
+		PopIndent();
 	}
 
 	public void Visit(AssignmentExpression assignmentExpression)
 	{
-		throw new NotImplementedException();
+		Write($"Assignment Expression ({assignmentExpression.op.Text}):");
+		PushIndent(false);
+		assignmentExpression.left.Accept(this);
+		IsLastChild = true;
+		assignmentExpression.right.Accept(this);
+		PopIndent();
 	}
 
 	public void Visit(ConditionalExpression conditionalExpression)
 	{
-		throw new NotImplementedException();
+		Write("Conditional Expression:");
+		
+		PushIndent(false);
+		
+		Write("Condition:");
+		PushIndent();
+		conditionalExpression.condition.Accept(this);
+		PopIndent();
+
+		IsLastChild = conditionalExpression.falseExpression is null;
+		Write("True Value:");
+		PushIndent();
+		conditionalExpression.trueExpression.Accept(this);
+		PopIndent();
+
+		if (conditionalExpression.falseExpression is not null)
+		{
+			IsLastChild = true;
+			Write("False Value:");
+			PushIndent();
+			conditionalExpression.falseExpression.Accept(this);
+			PopIndent();
+		}
+
+		PopIndent();
 	}
 
 	public void Visit(BinaryExpression binaryExpression)
 	{
-		throw new NotImplementedException();
+		Write($"Binary Expression ({binaryExpression.operation}):");
+		PushIndent(false);
+		binaryExpression.left.Accept(this);
+		IsLastChild = true;
+		binaryExpression.right.Accept(this);
+		PopIndent();
 	}
 
 	public void Visit(UnaryExpression unaryExpression)
 	{
-		throw new NotImplementedException();
+		Write($"Unary Expression ({unaryExpression.operation}):");
+		PushIndent();
+		unaryExpression.operand.Accept(this);
+		PopIndent();
 	}
 
 	public void Visit(CastExpression castExpression)
 	{
-		throw new NotImplementedException();
+		Write($"Cast Expression ({castExpression.operation}):");
+		PushIndent(false);
+		
+		Write("Value:");
+		PushIndent();
+		castExpression.operand.Accept(this);
+		PopIndent();
+
+		IsLastChild = true;
+		Write($"Target Type: {castExpression.type}");
+		
+		PopIndent();
 	}
 
 	public void Visit(AccessExpression accessExpression)
 	{
-		throw new NotImplementedException();
+		Write("Access Expression:");
+		PushIndent(false);
+		
+		Write($"Check for Null: {accessExpression.nullCheck}");
+		
+		Write("Source:");
+		PushIndent();
+		accessExpression.source.Accept(this);
+		PopIndent();
+
+		IsLastChild = true;
+		Write("Target:");
+		PushIndent();
+		accessExpression.target.Accept(this);
+		PopIndent();
+		
+		PopIndent();
 	}
 
 	public void Visit(IndexExpression indexExpression)
 	{
-		throw new NotImplementedException();
+		Write("Index Expression:");
+		PushIndent(false);
+		
+		Write("Source:");
+		PushIndent();
+		indexExpression.source.Accept(this);
+		PopIndent();
+
+		IsLastChild = true;
+		Write("Index:");
+		PushIndent();
+		indexExpression.index.Accept(this);
+		PopIndent();
+		
+		PopIndent();
 	}
 
 	public void Visit(FunctionCallExpression functionCallExpression)
 	{
-		throw new NotImplementedException();
+		Write("Function Call Expression:");
+		
+		PushIndent(functionCallExpression.arguments.Length == 0);
+		
+		Write("Caller:");
+		PushIndent();
+		functionCallExpression.caller.Accept(this);
+		PopIndent();
+
+		IsLastChild = true;
+		if (functionCallExpression.arguments.Length > 0)
+		{
+			Write("Arguments:");
+			PushIndent();
+
+			for (var i = 0; i < functionCallExpression.arguments.Length; i++)
+			{
+				IsLastChild = i == functionCallExpression.arguments.Length - 1;
+				functionCallExpression.arguments[i].Accept(this);
+			}
+			
+			PopIndent();
+		}
+		
+		PopIndent();
 	}
 
 	public void Visit(TokenExpression tokenExpression)
 	{
+		if (tokenExpression.token.Type == TokenType.Identifier)
+		{
+			Write(tokenExpression.token.Text);
+			return;
+		}
+		
 		Write(tokenExpression.token.Value?.ToString() ?? "null");
 	}
 
 	public void Visit(TypeExpression typeExpression)
 	{
-		throw new NotImplementedException();
+		Write(typeExpression.type.ToString());
 	}
 
 	public void Visit(InterpolatedStringExpression interpolatedStringExpression)
 	{
-		throw new NotImplementedException();
+		Write("Interpolated String Expression:");
+		PushIndent();
+
+		for (var i = 0; i < interpolatedStringExpression.parts.Length; i++)
+		{
+			IsLastChild = i == interpolatedStringExpression.parts.Length - 1;
+			interpolatedStringExpression.parts[i].Accept(this);
+		}
+		
+		PopIndent();
 	}
 
 	public void Visit(TupleExpression tupleExpression)
 	{
-		throw new NotImplementedException();
+		Write("Tuple Expression:");
+
+		PushIndent();
+		var count = 0;
+		foreach (var expression in tupleExpression.expressions)
+		{
+			IsLastChild = count == tupleExpression.expressions.Length - 1;
+			count++;
+			
+			expression.Accept(this);
+		}
+		PopIndent();
 	}
 
 	public void Visit(ListExpression listExpression)
 	{
-		throw new NotImplementedException();
+		Write("List Expression:");
+
+		PushIndent();
+		var count = 0;
+		foreach (var expression in listExpression.expressions)
+		{
+			IsLastChild = count == listExpression.expressions.Length - 1;
+			count++;
+			
+			expression.Accept(this);
+		}
+		PopIndent();
 	}
 
 	public void Visit(MapExpression mapExpression)
 	{
-		throw new NotImplementedException();
+		Write("Map Expression:");
+
+		PushIndent();
+		var count = 0;
+		foreach (var (key, value) in mapExpression.keyValuePairs)
+		{
+			IsLastChild = count == mapExpression.keyValuePairs.Length - 1;
+			count++;
+			
+			Write("Entry:");
+			PushIndent(false);
+			
+			Write("Key:");
+			PushIndent();
+			key.Accept(this);
+			PopIndent();
+
+			IsLastChild = true;
+			Write("Value:");
+			PushIndent();
+			value.Accept(this);
+			PopIndent();
+			
+			PopIndent();
+		}
+		PopIndent();
 	}
 }

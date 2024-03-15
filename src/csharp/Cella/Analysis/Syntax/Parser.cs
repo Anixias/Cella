@@ -751,11 +751,13 @@ public sealed class Parser
 	{
 		var expression = ParseConditionalExpression();
 
-		if (!Match(TokenType.OpEquals))
+		if (!Match(out var op, TokenType.OpEquals, TokenType.OpPlusEqual, TokenType.OpMinusEqual, 
+			    TokenType.OpStarStarEqual, TokenType.OpStarEqual, TokenType.OpSlashEqual, TokenType.OpAmpEqual, 
+			    TokenType.OpBarEqual, TokenType.OpHatEqual, TokenType.OpPercentEqual))
 			return expression;
 		
 		var valueExpression = ParseExpression();
-		return new AssignmentExpression(expression, valueExpression, expression.range.Join(valueExpression.range));
+		return new AssignmentExpression(expression, op, valueExpression, expression.range.Join(valueExpression.range));
 	}
 	
 	private ExpressionNode ParseConditionalExpression()
@@ -1198,9 +1200,9 @@ public sealed class Parser
 	{
 		var accessOperator = Require(null, TokenType.OpQuestionDot, TokenType.OpDot);
 		var nullCheck = accessOperator.Type == TokenType.OpQuestionDot;
-		var target = Require(null, TokenType.Identifier);
+		var target = ParsePrimaryExpression();
 
-		return new AccessExpression(source, target, nullCheck, source.range.Join(target.Range));
+		return new AccessExpression(source, target, nullCheck, source.range.Join(target.range));
 	}
 
 	private IndexExpression ParseIndexExpression(ExpressionNode source)
@@ -1475,7 +1477,7 @@ public sealed class Parser
 				break;
 			
 			var keyExpression = ParseExpression();
-			Require(null, TokenType.OpEquals);
+			Require(null, TokenType.OpColon);
 			var valueExpression = ParseExpression();
 			
 			expressions.Add(new KeyValuePair<ExpressionNode, ExpressionNode>(keyExpression, valueExpression));
