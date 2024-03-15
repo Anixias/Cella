@@ -112,6 +112,33 @@ public sealed class Parser
 		return true;
 	}
 
+	private bool MatchSameLine(params TokenType[] types)
+	{
+		return MatchSameLine(out _, types);
+	}
+
+	private bool MatchSameLine([NotNullWhen(true)] out Token? token, params TokenType[] types)
+	{
+		if (types.Contains(TokenType.EndOfFile))
+			throw new ArgumentException("Cannot match EndOfFile token", nameof(types));
+		
+		token = null;
+		
+		if (IsEndOfFile())
+			return false;
+		
+		token = tokens[position];
+
+		if (token.IsAfterNewline)
+			return false;
+		
+		if (!types.Contains(token.Type))
+			return false;
+		
+		position++;
+		return true;
+	}
+
 	private TokenType Peek()
 	{
 		return TokenAt(position)?.Type ?? TokenType.EndOfFile;
@@ -123,6 +150,8 @@ public sealed class Parser
 	}
 
 	private Token? Next() => TokenAt(position);
+
+	private bool IsEndOfLine() => Next()?.IsAfterNewline ?? true;
 
 	private Ast? Parse()
 	{
