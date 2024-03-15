@@ -3,10 +3,10 @@ using Cella.Analysis.Text;
 
 namespace Cella.Analysis.Syntax;
 
-public sealed class AstPrinter : SyntaxNode.IVisitor
+public sealed class AstPrinter : StatementNode.IVisitor, ExpressionNode.IVisitor
 {
 	private readonly TextWriter textWriter;
-	private StringBuilder stringBuilder = new();
+	private readonly StringBuilder stringBuilder = new();
 	private int indent;
 	private readonly List<bool> finalChildIndents = [];
 
@@ -61,13 +61,13 @@ public sealed class AstPrinter : SyntaxNode.IVisitor
 		textWriter.WriteLine(stringBuilder.ToString());
 	}
 
-	public void Visit(ProgramNode programNode)
+	public void Visit(ProgramStatement programStatement)
 	{
 		Write("Program");
 		
-		var statementCount = programNode.statements.Length;
+		var statementCount = programStatement.statements.Length;
 		PushIndent(statementCount == 0);
-		Write($"Module: {programNode.moduleName}");
+		Write($"Module: {programStatement.moduleName}");
 
 		if (statementCount > 0)
 		{
@@ -78,7 +78,7 @@ public sealed class AstPrinter : SyntaxNode.IVisitor
 			for (var i = 0; i < statementCount; i++)
 			{
 				IsLastChild = i == statementCount - 1;
-				programNode.statements[i].Accept(this);
+				programStatement.statements[i].Accept(this);
 			}
 			PopIndent();
 		}
@@ -86,35 +86,35 @@ public sealed class AstPrinter : SyntaxNode.IVisitor
 		PopIndent();
 	}
 
-	public void Visit(ImportNode importNode)
+	public void Visit(ImportStatement importStatement)
 	{
-		if (importNode.importToken.alias is { } alias)
+		if (importStatement.importToken.alias is { } alias)
 		{
-			Write($"Import {importNode.moduleName}::{importNode.importToken.identifier.Text} as {alias.Text}");
+			Write($"Import {importStatement.moduleName}::{importStatement.importToken.identifier.Text} as {alias.Text}");
 		}
 		else
 		{
-			Write($"Import {importNode.moduleName}::{importNode.importToken.identifier.Text}");
+			Write($"Import {importStatement.moduleName}::{importStatement.importToken.identifier.Text}");
 		}
 	}
 
-	public void Visit(AggregateImportNode aggregateImportNode)
+	public void Visit(AggregateImportStatement aggregateImportStatement)
 	{
-		if (aggregateImportNode.alias is { } aggregateAlias)
+		if (aggregateImportStatement.alias is { } aggregateAlias)
 		{
-			Write($"Import {aggregateImportNode.moduleName} as {aggregateAlias}");
+			Write($"Import {aggregateImportStatement.moduleName} as {aggregateAlias}");
 		}
 		else
 		{
-			Write($"Import {aggregateImportNode.moduleName}");
+			Write($"Import {aggregateImportStatement.moduleName}");
 		}
 		
 		PushIndent(false);
-		for (var i = 0; i < aggregateImportNode.importTokens.Length; i++)
+		for (var i = 0; i < aggregateImportStatement.importTokens.Length; i++)
 		{
-			IsLastChild = i == aggregateImportNode.importTokens.Length - 1;
+			IsLastChild = i == aggregateImportStatement.importTokens.Length - 1;
 			
-			var importToken = aggregateImportNode.importTokens[i];
+			var importToken = aggregateImportStatement.importTokens[i];
 			if (importToken.alias is { } alias)
 			{
 				Write($"{importToken.identifier.Text} as {alias.Text}");
@@ -128,29 +128,29 @@ public sealed class AstPrinter : SyntaxNode.IVisitor
 		PopIndent();
 	}
 
-	public void Visit(EntryNode entryNode)
+	public void Visit(EntryStatement entryStatement)
 	{
 		Write("Entry:");
 		
 		PushIndent(false);
-		Write($"Name: {entryNode.name.Text}");
-		Write($"Return Type: {entryNode.returnType?.ToString() ?? "Void"}");
+		Write($"Name: {entryStatement.name.Text}");
+		Write($"Return Type: {entryStatement.returnType?.ToString() ?? "Void"}");
 
-		PrintParameters(entryNode.parameters.ToArray());
-		PrintEffects(entryNode.effects.ToArray());
+		PrintParameters(entryStatement.parameters.ToArray());
+		PrintEffects(entryStatement.effects.ToArray());
 
 		IsLastChild = true;
 		Write("Body:");
 		PushIndent();
-		entryNode.body.Accept(this);
+		entryStatement.body.Accept(this);
 		PopIndent();
 		
 		PopIndent();
 	}
 
-	public void Visit(BlockNode blockNode)
+	public void Visit(BlockStatement blockStatement)
 	{
-		if (blockNode.nodes.Length == 0)
+		if (blockStatement.nodes.Length == 0)
 		{
 			Write("Block (empty)");
 			return;
@@ -159,17 +159,17 @@ public sealed class AstPrinter : SyntaxNode.IVisitor
 		Write("Block:");
 		
 		PushIndent(false);
-		for (var i = 0; i < blockNode.nodes.Length; i++)
+		for (var i = 0; i < blockStatement.nodes.Length; i++)
 		{
-			IsLastChild = i == blockNode.nodes.Length - 1;
-			blockNode.nodes[i].Accept(this);
+			IsLastChild = i == blockStatement.nodes.Length - 1;
+			blockStatement.nodes[i].Accept(this);
 		}
 		PopIndent();
 	}
 
-	public void Visit(ReturnNode returnNode)
+	public void Visit(ReturnStatement returnStatement)
 	{
-		if (returnNode.expression is null)
+		if (returnStatement.expression is null)
 		{
 			Write("Return");
 			return;
@@ -177,7 +177,7 @@ public sealed class AstPrinter : SyntaxNode.IVisitor
 		
 		Write("Return:");
 		PushIndent();
-		returnNode.expression.Accept(this);
+		returnStatement.expression.Accept(this);
 		PopIndent();
 	}
 
@@ -274,5 +274,80 @@ public sealed class AstPrinter : SyntaxNode.IVisitor
 			Write(effects[i].Text);
 		}
 		PopIndent();
+	}
+
+	public void Visit(LambdaExpression lambdaExpression)
+	{
+		throw new NotImplementedException();
+	}
+
+	public void Visit(AssignmentExpression assignmentExpression)
+	{
+		throw new NotImplementedException();
+	}
+
+	public void Visit(ConditionalExpression conditionalExpression)
+	{
+		throw new NotImplementedException();
+	}
+
+	public void Visit(BinaryExpression binaryExpression)
+	{
+		throw new NotImplementedException();
+	}
+
+	public void Visit(UnaryExpression unaryExpression)
+	{
+		throw new NotImplementedException();
+	}
+
+	public void Visit(CastExpression castExpression)
+	{
+		throw new NotImplementedException();
+	}
+
+	public void Visit(AccessExpression accessExpression)
+	{
+		throw new NotImplementedException();
+	}
+
+	public void Visit(IndexExpression indexExpression)
+	{
+		throw new NotImplementedException();
+	}
+
+	public void Visit(FunctionCallExpression functionCallExpression)
+	{
+		throw new NotImplementedException();
+	}
+
+	public void Visit(TokenExpression tokenExpression)
+	{
+		Write(tokenExpression.token.Value?.ToString() ?? "null");
+	}
+
+	public void Visit(TypeExpression typeExpression)
+	{
+		throw new NotImplementedException();
+	}
+
+	public void Visit(InterpolatedStringExpression interpolatedStringExpression)
+	{
+		throw new NotImplementedException();
+	}
+
+	public void Visit(TupleExpression tupleExpression)
+	{
+		throw new NotImplementedException();
+	}
+
+	public void Visit(ListExpression listExpression)
+	{
+		throw new NotImplementedException();
+	}
+
+	public void Visit(MapExpression mapExpression)
+	{
+		throw new NotImplementedException();
 	}
 }

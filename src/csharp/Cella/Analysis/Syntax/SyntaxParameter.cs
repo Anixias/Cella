@@ -17,10 +17,10 @@ public abstract class SyntaxParameter
 		public readonly ImmutableArray<Token> modifiers;
 		public readonly SyntaxType type;
 		public readonly bool isVariadic;
-		public readonly SyntaxNode? defaultValue;
+		public readonly ExpressionNode? defaultValue;
 
 		public Variable(Token identifier, SyntaxType type, IEnumerable<Token> modifiers, bool isVariadic,
-			SyntaxNode? defaultValue = null) : base(identifier)
+			ExpressionNode? defaultValue = null) : base(identifier)
 		{
 			this.type = type;
 			this.modifiers = modifiers.ToImmutableArray();

@@ -54,6 +54,18 @@ public sealed class TokenType
 		Keywords.Add(text, type);
 		return type;
 	}
+
+	private static TokenType CreateKeywordLiteral(string text)
+	{
+		var type = new TokenType(text)
+		{
+			IsKeyword = true,
+			IsLiteral = true
+		};
+
+		Keywords.Add(text, type);
+		return type;
+	}
 	
 	private static TokenType CreateOperator(string text)
 	{
@@ -156,6 +168,10 @@ public sealed class TokenType
 	
 	#region Keywords
 	
+	public static readonly TokenType KeywordTrue = CreateKeywordLiteral("true");
+	public static readonly TokenType KeywordFalse = CreateKeywordLiteral("false");
+	public static readonly TokenType KeywordNull = CreateKeywordLiteral("null");
+	
 	public static readonly TokenType KeywordEntry = CreateKeyword("entry");
 	public static readonly TokenType KeywordUse = CreateKeyword("use");
 	public static readonly TokenType KeywordAs = CreateKeyword("as");
@@ -187,6 +203,7 @@ public sealed class TokenType
 	public static readonly TokenType KeywordExit = CreateKeyword("exit");
 	public static readonly TokenType KeywordExt = CreateKeyword("ext");
 	public static readonly TokenType KeywordDll = CreateKeyword("dll");
+	public static readonly TokenType KeywordVoid = CreateKeyword("void");
 	
 	#endregion
 	#region Operators
@@ -195,10 +212,12 @@ public sealed class TokenType
 	public static readonly TokenType OpDotDotEqual = CreateOperator("..=");
 	public static readonly TokenType OpEllipsis = CreateOperator("...");
 	public static readonly TokenType OpDotDot = CreateOperator("..");
+	public static readonly TokenType OpQuestionDot = CreateOperator("?.");
 	public static readonly TokenType OpDot = CreateOperator(".");
 	public static readonly TokenType OpColon = CreateOperator(":");
 	public static readonly TokenType OpOpenParen = CreateOperator("(");
 	public static readonly TokenType OpCloseParen = CreateOperator(")");
+	public static readonly TokenType OpQuestionOpenBracket = CreateOperator("?[");
 	public static readonly TokenType OpOpenBracket = CreateOperator("[");
 	public static readonly TokenType OpCloseBracket = CreateOperator("]");
 	public static readonly TokenType OpOpenBrace = CreateOperator("{");
@@ -211,7 +230,6 @@ public sealed class TokenType
 	public static readonly TokenType OpPlusPlus = CreateOperator("++");
 	public static readonly TokenType OpPlus = CreateOperator("+");
 	public static readonly TokenType OpMinusEqual = CreateOperator("-=");
-	public static readonly TokenType OpMinusMinus = CreateOperator("--");
 	public static readonly TokenType OpMinus = CreateOperator("-");
 	public static readonly TokenType OpTilde = CreateOperator("~");
 	public static readonly TokenType OpStarStarEqual = CreateOperator("**=");
@@ -230,6 +248,16 @@ public sealed class TokenType
 	public static readonly TokenType OpBar = CreateOperator("|");
 	public static readonly TokenType OpHatEqual = CreateOperator("^=");
 	public static readonly TokenType OpHat = CreateOperator("^");
+	public static readonly TokenType OpQuestionQuestion = CreateOperator("??");
+	public static readonly TokenType OpQuestion = CreateOperator("?");
+	public static readonly TokenType OpRotLeft = CreateOperator("<<<");
+	public static readonly TokenType OpLeftLeft = CreateOperator("<<");
+	public static readonly TokenType OpLessEqual = CreateOperator("<=");
+	public static readonly TokenType OpLess = CreateOperator("<");
+	public static readonly TokenType OpRotRight = CreateOperator(">>>");
+	public static readonly TokenType OpRightRight = CreateOperator(">>");
+	public static readonly TokenType OpGreaterEqual = CreateOperator(">=");
+	public static readonly TokenType OpGreater = CreateOperator(">");
 	
 	#endregion
 }

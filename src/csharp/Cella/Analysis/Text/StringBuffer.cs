@@ -47,6 +47,12 @@ public sealed class StringBuffer : IBuffer
 			}
 		}
 
+		// If the source doesn't end in a newline char, add last line
+		if (lineStart < text.Length)
+		{
+			lines.Add(new TextRange(lineStart, text.Length));
+		}
+
 		return lines.ToImmutableArray();
 	}
 
@@ -62,6 +68,12 @@ public sealed class StringBuffer : IBuffer
 
 	public string GetText(TextRange range)
 	{
+		if (range.Start < 0 || range.Start >= text.Length)
+			return "";
+		
+		if (range.Length < 0 || range.End > text.Length)
+			return "";
+		
 		return text.Substring(range.Start, range.Length);
 	}
 
@@ -105,7 +117,7 @@ public sealed class StringBuffer : IBuffer
 
 	public TextRange GetLineRange(int line)
 	{
-		if (line < 1)
+		if (line < 1 || line > lines.Length)
 			return TextRange.Empty;
 		
 		return lines[line - 1];
