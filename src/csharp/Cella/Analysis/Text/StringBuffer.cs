@@ -105,6 +105,9 @@ public sealed class StringBuffer : IBuffer
 
 	public TextRange GetLineRange(int line)
 	{
+		if (line < 1)
+			return TextRange.Empty;
+		
 		return lines[line - 1];
 	}
 }
