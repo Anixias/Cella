@@ -1,4 +1,5 @@
 ﻿using System.Collections.Immutable;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Text;
 using Cella.Analysis.Text;
@@ -163,6 +164,17 @@ public sealed class Parser
 		catch (ParseException e)
 		{
 			diagnostics.Add(e);
+			return null;
+		}
+		catch (Exception e)
+		{
+			var range = Next()?.Range;
+			var stackTrace = new StackTrace(e, true);
+			var stackFrame = stackTrace.GetFrame(0);
+			var method = e.TargetSite is null ? "Unknown method" : $"{e.TargetSite.Name}()";
+			var location = stackFrame is null ? "Unknown" : $"{method}, line {stackFrame.GetFileLineNumber()}";
+			var message = $"Parser failed with {e.GetType().Name} at {location}:\n\t{e.Message}";
+			diagnostics.Add(new Diagnostic(DiagnosticSeverity.Error, source, range, message));
 			return null;
 		}
 	}
