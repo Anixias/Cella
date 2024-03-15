@@ -96,6 +96,11 @@ public sealed class TokenType
 		IsFiltered = true
 	};
 	
+	public static readonly TokenType Newline = new("newline")
+	{
+		IsFiltered = true
+	};
+	
 	public static readonly TokenType LineComment = new("line comment")
 	{
 		IsFiltered = true

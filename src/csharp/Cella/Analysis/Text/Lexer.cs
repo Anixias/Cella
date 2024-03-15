@@ -455,12 +455,29 @@ public class Lexer : ILexer
 
 	private ScanResult ScanWhiteSpace(int position)
 	{
+		if (Source[position] is '\n' or '\r')
+			return ScanNewline(position);
+		
 		var end = position;
 		while (end < Source.Length && char.IsWhiteSpace(Source[end]))
 			end++;
 
 		var range = new TextRange(position, end);
 		var token = new Token(TokenType.Whitespace, range, Source);
+		return new ScanResult(token, end);
+	}
+
+	private ScanResult ScanNewline(int position)
+	{
+		var end = position;
+		if (Source[end] == '\r')
+			end++;
+		
+		if (Source[end] == '\n')
+			end++;
+		
+		var range = new TextRange(position, end);
+		var token = new Token(TokenType.Newline, range, Source);
 		return new ScanResult(token, end);
 	}
 	

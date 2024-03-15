@@ -16,11 +16,20 @@ public sealed class FilteredLexer : ILexer
 	public ScanResult? ScanToken(int position)
 	{
 		var result = lexer.ScanToken(position);
-		while (result is { Token.Type.IsFiltered: true } scanResult)
+		var hadNewline = false;
+		while (result is { Token.Type.IsFiltered: true } filteredScanResult)
 		{
-			result = lexer.ScanToken(scanResult.NextPosition);
+			if (filteredScanResult.Token.Type == TokenType.Newline)
+				hadNewline = true;
+			
+			result = lexer.ScanToken(filteredScanResult.NextPosition);
 		}
 
+		if (hadNewline && result is { } scanResult)
+		{
+			scanResult.Token.IsAfterNewline = true;
+		}
+		
 		return result;
 	}
 

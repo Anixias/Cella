@@ -10,6 +10,11 @@ public sealed class Token
 	public int Column { get; }
 	public string Text => Source.GetText(Range);
 	
+	/// <summary>
+	/// Only utilized by filtered lexer results
+	/// </summary>
+	public bool IsAfterNewline { get; set; }
+	
 	public Token(TokenType type, TextRange range, IBuffer source, object? value = null)
 	{
 		Source = source;
