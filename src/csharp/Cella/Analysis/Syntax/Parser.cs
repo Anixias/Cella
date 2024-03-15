@@ -1032,11 +1032,8 @@ public sealed class Parser
 		if (op == TokenType.OpMinus)
 			return UnaryExpression.Operation.Negate;
 		
-		if (op == TokenType.OpTilde)
-			return UnaryExpression.Operation.BitwiseNegate;
-		
 		if (op == TokenType.OpBang)
-			return UnaryExpression.Operation.LogicalNot;
+			return UnaryExpression.Operation.Not;
 		
 		/* Todo: Await
 		if (op == TokenType.KeywordAwait)
@@ -1130,7 +1127,7 @@ public sealed class Parser
 		}
 		else if (token.Type == TokenType.KeywordTrue || token.Type == TokenType.KeywordFalse)
 		{
-			if (token.Value is bool value && operation == UnaryExpression.Operation.LogicalNot)
+			if (token.Value is bool value && operation == UnaryExpression.Operation.Not)
 				return new TokenExpression(new Token(token.Type, token.Range, token.Source, !value));
 		}
 

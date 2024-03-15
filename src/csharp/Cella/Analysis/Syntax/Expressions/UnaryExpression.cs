@@ -12,8 +12,7 @@ public sealed class UnaryExpression : ExpressionNode
 		PostDecrement,
 		Identity,
 		Negate,
-		BitwiseNegate,
-		LogicalNot,
+		Not,
 		Await
 	}
 	

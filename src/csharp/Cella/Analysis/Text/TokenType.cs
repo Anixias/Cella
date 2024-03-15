@@ -231,7 +231,6 @@ public sealed class TokenType
 	public static readonly TokenType OpPlus = CreateOperator("+");
 	public static readonly TokenType OpMinusEqual = CreateOperator("-=");
 	public static readonly TokenType OpMinus = CreateOperator("-");
-	public static readonly TokenType OpTilde = CreateOperator("~");
 	public static readonly TokenType OpStarStarEqual = CreateOperator("**=");
 	public static readonly TokenType OpStarStar = CreateOperator("**");
 	public static readonly TokenType OpStarEqual = CreateOperator("*=");
