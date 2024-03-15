@@ -644,7 +644,11 @@ public sealed class Parser
 			TokenType.EndOfFile,
 			TokenType.KeywordMod,
 			TokenType.KeywordUse,
-			TokenType.Identifier
+			TokenType.KeywordIf,
+			TokenType.KeywordFor,
+			TokenType.KeywordWhile,
+			TokenType.KeywordVal,
+			TokenType.KeywordVar
 		};
 		
 		var statements = new List<StatementNode>();
