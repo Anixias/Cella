@@ -1,6 +1,6 @@
 # <img src="cella.png" alt="Cella icon" width="64px" style="vertical-align: bottom"/> Cella
 
-[Cella](https://anixias.github.io/Cella-Site/index.html) is a minimalistic, systems programming language inspired by Rust, focusing on value semantics, effect systems, immutability by default, and purity by default. It aims to provide a clean, consistent syntax with a strong emphasis on quality of life and developer productivity.
+[Cella](https://anixias.github.io/Cella-Site/index.html) is a minimalistic, systems programming language inspired by C# and Rust, focusing on value semantics, effect systems, immutability by default, and purity by default. It aims to provide a clean, consistent syntax with a strong emphasis on quality of life and developer productivity.
 
 ## Examples
 
