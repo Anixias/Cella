@@ -12,37 +12,72 @@ public static class Program
 	
 	public static int Main(string[] args)
 	{
-		// Todo: Parse args using OptionSet
-
-		var diagnostics = new DiagnosticList();
-		var source = new StringBuffer("mod helloWorld\n\nmain: entry(args: String[]): Int32\n{\n\tret 123\n}");
-		var lexer = new FilteredLexer(source);
-		var (ast, parserDiagnostics) = Parser.Parse(lexer);
-		diagnostics.Add(parserDiagnostics);
-		
-		if (ast is null)
+		if (Execute(args, out var elapsedTime))
 		{
-			PrintDiagnostics(diagnostics);
-			Console.ForegroundColor = ConsoleColor.Red;
-			Console.WriteLine("Failed to compile");
-			return 1;
+			Console.ForegroundColor = ConsoleColor.Cyan;
+			Console.WriteLine($"Compilation succeeded ({Format(elapsedTime)})");
+			return 0;
 		}
 
-		AstPrinter.Print(ast, Console.Out);
-		PrintDiagnostics(diagnostics);
-		return 0;
+		Console.ForegroundColor = ConsoleColor.Red;
+		Console.WriteLine("Failed to compile");
+		return 1;
+	}
+
+	private static string Format(TimeSpan time)
+	{
+		if (time < TimeSpan.FromMilliseconds(1.0))
+		{
+			return $"{time.TotalNanoseconds} ns";
+		}
+		
+		if (time < TimeSpan.FromSeconds(1.0))
+		{
+			return $"{time.TotalMilliseconds} ms";
+		}
+		
+		if (time < TimeSpan.FromMinutes(1.0))
+		{
+			return $"{time.TotalSeconds} s";
+		}
+		
+		if (time < TimeSpan.FromHours(1.0))
+		{
+			return $"{time.TotalMinutes} min";
+		}
+		
+		return $"{time.TotalHours} h";
+	}
+
+	private static bool Execute(string[] args, out TimeSpan elapsedTime)
+	{
+		// Todo: Parse args using OptionSet
+
+		var startTime = DateTime.UtcNow;
+		var result = TestHelloWorld();
+		var endTime = DateTime.UtcNow;
+
+		elapsedTime = endTime - startTime;
+		return result;
+	}
+
+	private static bool TestHelloWorld()
+	{
+		var result = CompileSource(new CompilationSource.RawText("mod helloWorld\n\n" +
+		                                                         "main: entry(args: String[]): Int32\n" +
+		                                                         "{\n\tret 123\n}"));
+
+		result.Wait();
+		return result.Result.IsSuccess;
 	}
 
 	private static void PrintDiagnostics(DiagnosticList diagnostics)
 	{
 		if (diagnostics.Count <= 0)
 			return;
-
-		lock (ReportLock)
-		{
-			PrintDiagnosticsOfSeverity(diagnostics, DiagnosticSeverity.Warning);
-			PrintDiagnosticsOfSeverity(diagnostics, DiagnosticSeverity.Error);
-		}
+		
+		PrintDiagnosticsOfSeverity(diagnostics, DiagnosticSeverity.Warning);
+		PrintDiagnosticsOfSeverity(diagnostics, DiagnosticSeverity.Error);
 	}
 
 	private static void PrintDiagnosticsOfSeverity(DiagnosticList diagnostics, DiagnosticSeverity severity)
@@ -141,5 +176,32 @@ public static class Program
 				Console.WriteLine();
 			}
 		}
+	}
+	
+	private static async Task<CompilationResult> CompileSource(CompilationSource source)
+	{
+		var diagnostics = new DiagnosticList();
+		var sourceBuffer = await source.GetBuffer();
+		var lexer = new FilteredLexer(sourceBuffer);
+		var (ast, parserDiagnostics) = Parser.Parse(lexer);
+		diagnostics.Add(parserDiagnostics);
+		
+		if (ast is null)
+		{
+			lock (ReportLock)
+			{
+				PrintDiagnostics(diagnostics);
+			}
+
+			return new CompilationResult(diagnostics);
+		}
+
+		lock (ReportLock)
+		{
+			AstPrinter.Print(ast, Console.Out);
+			PrintDiagnostics(diagnostics);
+		}
+		// Todo: Return IR ready for translation to LLVM IR
+		return new CompilationResult(diagnostics);
 	}
 }
