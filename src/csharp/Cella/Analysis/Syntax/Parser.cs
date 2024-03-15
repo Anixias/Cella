@@ -1095,7 +1095,7 @@ public sealed class Parser
 					}
 					break;
 					
-				case UnaryExpression.Operation.BitwiseNegate:
+				case UnaryExpression.Operation.Not:
 					switch (token.Value)
 					{
 						case sbyte value:
@@ -1121,6 +1121,9 @@ public sealed class Parser
 							
 						case ulong value:
 							return new TokenExpression(new Token(token.Type, token.Range, token.Source, ~value));
+							
+						case bool value:
+							return new TokenExpression(new Token(token.Type, token.Range, token.Source, !value));
 					}
 					break;
 			}
