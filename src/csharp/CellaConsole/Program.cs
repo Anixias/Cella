@@ -6,6 +6,7 @@ namespace CellaConsole;
 
 public static class Program
 {
+	private static readonly string[] NewlineSeparators = ["\r\n", "\n", "\r"];
 	private static readonly object ReportLock = new();
 	private static readonly object ConsoleLock = new();
 	
@@ -125,12 +126,17 @@ public static class Program
 					else
 						Console.WriteLine();
 				}
-
-				Console.ForegroundColor = ConsoleColor.DarkGray;
-				Console.Write(messageHeader);
-				Console.ForegroundColor = color;
-				Console.WriteLine(diagnostic.message);
 				
+				var messageParts = diagnostic.message.Split(NewlineSeparators, StringSplitOptions.None);
+
+				foreach (var message in messageParts)
+				{
+					Console.ForegroundColor = ConsoleColor.DarkGray;
+					Console.Write(messageHeader);
+					Console.ForegroundColor = color;
+					Console.WriteLine(message);
+				}
+
 				Console.ResetColor();
 				Console.WriteLine();
 			}
