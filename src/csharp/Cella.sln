@@ -2,7 +2,7 @@
 Microsoft Visual Studio Solution File, Format Version 12.00
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Cella", "Cella\Cella.csproj", "{45FF1999-3514-4FD2-9B3C-F443FAE33028}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Cella Console", "Cella Console\Cella Console.csproj", "{A156629B-02F7-47B1-907F-C00976EC5E18}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CellaConsole", "CellaConsole\CellaConsole.csproj", "{A156629B-02F7-47B1-907F-C00976EC5E18}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
