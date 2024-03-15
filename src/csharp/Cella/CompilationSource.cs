@@ -1,6 +1,6 @@
 ﻿using Cella.Analysis.Text;
 
-namespace CellaConsole;
+namespace Cella;
 
 public abstract class CompilationSource
 {

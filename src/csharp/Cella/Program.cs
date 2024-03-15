@@ -1,71 +1,159 @@
 ﻿using Cella.Analysis.Syntax;
 using Cella.Analysis.Text;
 using Cella.Diagnostics;
+using Mono.Options;
 
-namespace CellaConsole;
+namespace Cella;
 
 public static class Program
 {
 	private static readonly string[] NewlineSeparators = ["\r\n", "\n", "\r"];
 	private static readonly object ReportLock = new();
 	private static readonly object ConsoleLock = new();
-	
-	public static int Main(string[] args)
+
+	private class Options
 	{
-		if (Execute(args, out var elapsedTime))
+		public IReadOnlyList<string> InputPaths => inputPaths;
+		public IReadOnlyList<string> RawInputs => rawInputs;
+		public string? OutputPath { get; private set; }
+
+		private readonly List<string> inputPaths = new();
+		private readonly List<string> rawInputs = new();
+
+		private Options()
+		{
+			
+		}
+
+		public static Options? FromArgs(IEnumerable<string> args)
+		{
+			var options = new Options();
+			
+			var optionSet = new OptionSet
+			{
+				{ "o|output=", "the path to the file to output", o => options.OutputPath = o },
+				{ "r|raw=", "raw source code", r => options.rawInputs.Add(r)},
+				{ "<>", i => options.inputPaths.Add(i) }
+			};
+
+			try
+			{
+				var extras = optionSet.Parse(args);
+				return options;
+			}
+			catch (OptionException e)
+			{
+				Console.WriteLine(e);
+				Console.WriteLine("Try 'cella --help'");
+				return null;
+			}
+		}
+	}
+	
+	public static async Task<int> Main(string[] args)
+	{
+		if (Options.FromArgs(args) is not { } options)
+		{
+			return 1;
+		}
+
+		if (options.InputPaths.Count == 0 && options.RawInputs.Count == 0)
+		{
+			ReportExecutionError("No inputs provided. Specify a file, a folder, or a project, or use '-r' or '-raw' " +
+			                     "to input raw code directly");
+			return 1;
+		}
+		
+		var outputPath = options.OutputPath;
+		if (string.IsNullOrEmpty(outputPath))
+		{
+			if (options.InputPaths.Count != 1)
+			{
+				ReportExecutionError("No output path provided. Use '-o' or '--output'");
+				return 1;
+			}
+			
+			// Todo: Handle cross-platform default extensions
+			outputPath = Path.ChangeExtension(options.InputPaths[0], ".exe");
+		}
+		
+		var sources = new List<CompilationSource>();
+		foreach (var inputPath in options.InputPaths)
+		{
+			sources.Add(new CompilationSource.File(inputPath));
+		}
+
+		foreach (var rawInput in options.RawInputs)
+		{
+			sources.Add(new CompilationSource.RawText(rawInput));
+		}
+
+		var executionResult = await Execute(sources);
+		if (executionResult.IsSuccess)
 		{
 			Console.ForegroundColor = ConsoleColor.Cyan;
-			Console.WriteLine($"Compilation succeeded ({Format(elapsedTime)})");
+			Console.WriteLine($"Compilation succeeded ({Format(executionResult.ElapsedTime)})");
 			return 0;
 		}
 
-		Console.ForegroundColor = ConsoleColor.Red;
+		Console.ForegroundColor = ConsoleColor.DarkRed;
 		Console.WriteLine("Failed to compile");
 		return 1;
+	}
+
+	private static void ReportExecutionError(string message)
+	{
+		Console.ResetColor();
+		Console.ForegroundColor = ConsoleColor.DarkRed;
+		Console.Write("Error: ");
+		Console.ResetColor();
+		Console.WriteLine(message);
+		Console.ResetColor();
 	}
 
 	private static string Format(TimeSpan time)
 	{
 		if (time < TimeSpan.FromMilliseconds(1.0))
 		{
-			return $"{time.TotalNanoseconds} ns";
+			return $"{time.TotalNanoseconds:F2} ns";
 		}
 		
 		if (time < TimeSpan.FromSeconds(1.0))
 		{
-			return $"{time.TotalMilliseconds} ms";
+			return $"{time.TotalMilliseconds:F2} ms";
 		}
 		
 		if (time < TimeSpan.FromMinutes(1.0))
 		{
-			return $"{time.TotalSeconds} s";
+			return $"{time.TotalSeconds:F2} s";
 		}
 		
 		if (time < TimeSpan.FromHours(1.0))
 		{
-			return $"{time.TotalMinutes} min";
+			return $"{time.TotalMinutes:F2} min";
 		}
 		
-		return $"{time.TotalHours} h";
+		return $"{time.TotalHours:F2} h";
 	}
 
-	private static bool Execute(string[] args, out TimeSpan elapsedTime)
+	private static async Task<ExecutionResult> Execute(IEnumerable<CompilationSource> sources)
 	{
-		// Todo: Parse args using OptionSet
-
 		var startTime = DateTime.UtcNow;
-		var result = TestHelloWorld();
+		
+		var compilationTasks = sources.Select(CompileSource).ToArray();
+		var results = await Task.WhenAll(compilationTasks);
+		
 		var endTime = DateTime.UtcNow;
 
-		elapsedTime = endTime - startTime;
-		return result;
+		var isSuccess = results.All(r => r.IsSuccess);
+		var elapsedTime = endTime - startTime;
+
+		return new ExecutionResult(isSuccess, elapsedTime);
 	}
 
 	private static bool TestHelloWorld()
 	{
-		var result = CompileSource(new CompilationSource.RawText("mod helloWorld\n\n" +
-		                                                         "main: entry(args: String[]): Int32\n" +
-		                                                         "{\n\tret 123\n}"));
+		var result = CompileSource(new CompilationSource.RawText("mod helloWorld\n\nmain: entry(args: String[]): Int32\n{\n\tret 123\n}"));
 
 		result.Wait();
 		return result.Result.IsSuccess;
