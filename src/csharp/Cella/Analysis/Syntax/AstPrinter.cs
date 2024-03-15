@@ -167,6 +167,20 @@ public sealed class AstPrinter : SyntaxNode.IVisitor
 		PopIndent();
 	}
 
+	public void Visit(ReturnNode returnNode)
+	{
+		if (returnNode.expression is null)
+		{
+			Write("Return");
+			return;
+		}
+		
+		Write("Return:");
+		PushIndent();
+		returnNode.expression.Accept(this);
+		PopIndent();
+	}
+
 	private void PrintParameters(SyntaxParameter[] parameters)
 	{
 		if (parameters.Length == 0)

@@ -616,13 +616,82 @@ public sealed class Parser
 
 	private BlockNode ParseBlock()
 	{
-		var nodes = new List<SyntaxNode>();
 		var startToken = Require(null, TokenType.OpOpenBrace);
-		
-		// Todo: Parse statements
-		
+		var nodes = ParseStatements();
 		var endToken = Require(null, TokenType.OpCloseBrace);
 		return new BlockNode(nodes, startToken.Range.Join(endToken.Range));
+	}
+	
+	private List<SyntaxNode> ParseStatements()
+	{
+		var syncTokens = new[]
+		{
+			TokenType.EndOfFile,
+			TokenType.KeywordMod,
+			TokenType.KeywordUse,
+			TokenType.Identifier
+		};
+		
+		var statements = new List<SyntaxNode>();
+
+		while (Peek() != TokenType.EndOfFile)
+		{
+			try
+			{
+				var statement = ParseStatement();
+				statements.Add(statement);
+			}
+			catch (ParseException e)
+			{
+				diagnostics.Add(e);
+
+				do
+				{
+					position++;
+				} while (!syncTokens.Contains(Peek()));
+			}
+		}
+		
+		return statements;
+	}
+
+	private SyntaxNode ParseStatement()
+	{
+		if (Next() is not { } nextToken)
+		{
+			throw new ParseException("Expected statement; Instead, got end of file", source, 
+				tokens.LastOrDefault()?.Range ?? TextRange.Empty);
+		}
+		
+		if (nextToken.Type == TokenType.KeywordUse)
+		{
+			return ParseImport();
+		}
+		
+		if (nextToken.Type == TokenType.KeywordRet)
+		{
+			return ParseReturn();
+		}
+		
+		if (nextToken.Type == TokenType.Identifier)
+		{
+			return ParseDeclaration();
+		}
+		
+		throw new ParseException($"Expected statement; Instead, got '{nextToken.Type}'", nextToken);
+	}
+
+	private ReturnNode ParseReturn()
+	{
+		var startToken = Require(null, TokenType.KeywordRet);
+		
+		if (IsEndOfLine())
+		{
+			return new ReturnNode(null, startToken.Range);
+		}
+		
+		var expression = ParseExpression();
+		return new ReturnNode(expression, startToken.Range.Join(expression.range));
 	}
 
 	private SyntaxNode ParseExpression()

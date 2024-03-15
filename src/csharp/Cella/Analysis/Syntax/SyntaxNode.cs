@@ -12,6 +12,7 @@ public abstract class SyntaxNode
 		T Visit(AggregateImportNode aggregateImportNode);
 		T Visit(EntryNode entryNode);
 		T Visit(BlockNode blockNode);
+		T Visit(ReturnNode returnNode);
 	}
 
 	public interface IVisitor
@@ -21,6 +22,7 @@ public abstract class SyntaxNode
 		void Visit(AggregateImportNode aggregateImportNode);
 		void Visit(EntryNode entryNode);
 		void Visit(BlockNode blockNode);
+		void Visit(ReturnNode returnNode);
 	}
 	
 	public readonly TextRange range;
@@ -145,6 +147,26 @@ public sealed class BlockNode : SyntaxNode
 	public BlockNode(IEnumerable<SyntaxNode> nodes, TextRange range) : base(range)
 	{
 		this.nodes = nodes.ToImmutableArray();
+	}
+
+	public override void Accept(IVisitor visitor)
+	{
+		visitor.Visit(this);
+	}
+
+	public override T Accept<T>(IVisitor<T> visitor)
+	{
+		return visitor.Visit(this);
+	}
+}
+
+public sealed class ReturnNode : SyntaxNode
+{
+	public readonly SyntaxNode? expression;
+
+	public ReturnNode(SyntaxNode? expression, TextRange range) : base(range)
+	{
+		this.expression = expression;
 	}
 
 	public override void Accept(IVisitor visitor)
