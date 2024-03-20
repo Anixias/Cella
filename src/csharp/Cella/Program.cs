@@ -8,9 +8,17 @@ namespace Cella;
 public static class Program
 {
 	private static readonly string[] NewlineSeparators = ["\r\n", "\n", "\r"];
+	
+	/// <summary>
+	/// Used to group several ConsoleLock locks together
+	/// </summary>
 	private static readonly object ReportLock = new();
+	
+	/// <summary>
+	/// Used to control access to the console
+	/// </summary>
 	private static readonly object ConsoleLock = new();
-
+	
 	private class Options
 	{
 		public IReadOnlyList<string> InputPaths => inputPaths;
@@ -38,7 +46,7 @@ public static class Program
 
 			try
 			{
-				var extras = optionSet.Parse(args);
+				optionSet.Parse(args);
 				return options;
 			}
 			catch (OptionException e)
@@ -76,11 +84,30 @@ public static class Program
 			// Todo: Handle cross-platform default extensions
 			outputPath = Path.ChangeExtension(options.InputPaths[0], ".exe");
 		}
-		
-		var sources = new List<CompilationSource>();
+
+		var inputErrors = new List<string>();
+		var sources = new List<CompilationSource.IBufferSource>();
 		foreach (var inputPath in options.InputPaths)
 		{
-			sources.Add(new CompilationSource.File(inputPath));
+			var source = CompilationSource.FromPath(inputPath);
+
+			switch (source)
+			{
+				case null:
+					inputErrors.Add($"File or directory does not exist: \"{inputPath}\"");
+					break;
+				
+				case CompilationSource.Project project:
+					if (project.Verify(out var projectErrors))
+						sources.AddRange(project.GetSources());
+					
+					inputErrors.AddRange(projectErrors);
+					continue;
+				
+				case CompilationSource.IBufferSource bufferSource:
+					sources.Add(bufferSource);
+					continue;
+			}
 		}
 
 		foreach (var rawInput in options.RawInputs)
@@ -88,14 +115,28 @@ public static class Program
 			sources.Add(new CompilationSource.RawText(rawInput));
 		}
 
+		var hadInputError = inputErrors.Count > 0;
 		var executionResult = await Execute(sources);
-		if (executionResult.IsSuccess)
+		if (executionResult.IsSuccess && !hadInputError)
 		{
 			Console.ForegroundColor = ConsoleColor.Cyan;
 			Console.WriteLine($"Compilation succeeded ({Format(executionResult.ElapsedTime)})");
 			return 0;
 		}
+		
+		if (hadInputError)
+		{
+			Console.ForegroundColor = ConsoleColor.Red;
+			Console.WriteLine("Input Errors:");
+			foreach (var error in inputErrors)
+			{
+				Console.WriteLine($"\t{error}");
+			}
 
+			Console.WriteLine();
+			Console.ResetColor();
+		}
+		
 		Console.ForegroundColor = ConsoleColor.DarkRed;
 		Console.WriteLine("Failed to compile");
 		return 1;
@@ -136,8 +177,9 @@ public static class Program
 		return $"{time.TotalHours:F2} h";
 	}
 
-	private static async Task<ExecutionResult> Execute(IEnumerable<CompilationSource> sources)
+	private static async Task<ExecutionResult> Execute(IEnumerable<CompilationSource.IBufferSource> compilationSources)
 	{
+		var sources = compilationSources.ToArray();
 		var startTime = DateTime.UtcNow;
 		
 		var compilationTasks = sources.Select(CompileSource).ToArray();
@@ -149,14 +191,6 @@ public static class Program
 		var elapsedTime = endTime - startTime;
 
 		return new ExecutionResult(isSuccess, elapsedTime);
-	}
-
-	private static bool TestHelloWorld()
-	{
-		var result = CompileSource(new CompilationSource.RawText("mod helloWorld\n\nmain: entry(args: String[]): Int32\n{\n\tret 123\n}"));
-
-		result.Wait();
-		return result.Result.IsSuccess;
 	}
 
 	private static void PrintDiagnostics(DiagnosticList diagnostics)
@@ -266,7 +300,7 @@ public static class Program
 		}
 	}
 	
-	private static async Task<CompilationResult> CompileSource(CompilationSource source)
+	private static async Task<CompilationResult> CompileSource(CompilationSource.IBufferSource source)
 	{
 		var diagnostics = new DiagnosticList();
 		var sourceBuffer = await source.GetBuffer();
@@ -289,6 +323,7 @@ public static class Program
 			AstPrinter.Print(ast, Console.Out);
 			PrintDiagnostics(diagnostics);
 		}
+		
 		// Todo: Return IR ready for translation to LLVM IR
 		return new CompilationResult(diagnostics);
 	}
