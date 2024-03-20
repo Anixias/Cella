@@ -104,6 +104,10 @@ public static class Program
 					inputErrors.AddRange(projectErrors);
 					continue;
 				
+				case CompilationSource.IMultiSource multiSource:
+					sources.AddRange(multiSource.GetSources());
+					continue;
+				
 				case CompilationSource.IBufferSource bufferSource:
 					sources.Add(bufferSource);
 					continue;
@@ -154,9 +158,14 @@ public static class Program
 
 	private static string Format(TimeSpan time)
 	{
-		if (time < TimeSpan.FromMilliseconds(1.0))
+		if (time < TimeSpan.FromMicroseconds(1.0))
 		{
 			return $"{time.TotalNanoseconds:F2} ns";
+		}
+		
+		if (time < TimeSpan.FromMilliseconds(1.0))
+		{
+			return $"{time.TotalMicroseconds:F2} µs";
 		}
 		
 		if (time < TimeSpan.FromSeconds(1.0))

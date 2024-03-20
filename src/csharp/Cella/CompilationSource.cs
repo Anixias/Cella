@@ -39,6 +39,7 @@ public abstract class CompilationSource
 	public sealed class Project : CompilationSource, IMultiSource
 	{
 		public string FilePath { get; }
+		public string RootDirectory => Path.GetDirectoryName(FilePath) ?? "";
 		
 		public Project(string filePath)
 		{
@@ -47,7 +48,10 @@ public abstract class CompilationSource
 
 		public IEnumerable<IBufferSource> GetSources()
 		{
-			throw new NotImplementedException();
+			// Todo: Exclude files based on project settings
+			return System.IO.Directory.EnumerateFiles(RootDirectory, "*.*", SearchOption.AllDirectories)
+				.Where(IsCellaSource)
+				.Select(s => new File(s));
 		}
 
 		public bool Verify(out IEnumerable<string> errors)
@@ -55,6 +59,23 @@ public abstract class CompilationSource
 			// Todo: Implement verification of project settings, files exist, etc.
 			errors = [];
 			return true;
+		}
+	}
+	
+	public sealed class Directory : CompilationSource, IMultiSource
+	{
+		public string FilePath { get; }
+		
+		public Directory(string filePath)
+		{
+			FilePath = filePath;
+		}
+
+		public IEnumerable<IBufferSource> GetSources()
+		{
+			return System.IO.Directory.EnumerateFiles(FilePath, "*.*", SearchOption.AllDirectories)
+				.Where(IsCellaSource)
+				.Select(s => new File(s));
 		}
 	}
 	
@@ -72,20 +93,42 @@ public abstract class CompilationSource
 
 	public static CompilationSource? FromPath(string path)
 	{
-		if (Directory.Exists(path))
+		if (System.IO.Directory.Exists(path))
 		{
-			// Todo: Return a Directory source
-		}
-
-		if (System.IO.File.Exists(path))
-		{
-			// If the file is named 'cella' with no extension, it is a project file
-			if (Path.GetFileName(path).Equals("cella", StringComparison.InvariantCultureIgnoreCase))
+			// If the directory contains a file named "cella", use it instead
+			foreach (var file in System.IO.Directory.GetFiles(path))
 			{
-				
+				if (FileIsNamedCella(file))
+				{
+					return new Project(file);
+				}
 			}
+			
+			// Else, return a directory
+			return new Directory(path);
 		}
 
-		return null;
+		if (!System.IO.File.Exists(path))
+			return null;
+		
+		// If the file is named 'cella' with no extension, it is a project file
+		if (FileIsNamedCella(path))
+		{
+			return new Project(path);
+		}
+
+		return new File(path);
+
+		bool FileIsNamedCella(string path)
+		{
+			return Path.GetFileName(path).Equals("cella", StringComparison.InvariantCultureIgnoreCase);
+		}
+	}
+
+	private static bool IsCellaSource(string fileName)
+	{
+		return fileName.EndsWith(".ce", StringComparison.OrdinalIgnoreCase) ||
+		       fileName.EndsWith(".cel", StringComparison.OrdinalIgnoreCase) ||
+		       fileName.EndsWith(".cella", StringComparison.OrdinalIgnoreCase);
 	}
 }
