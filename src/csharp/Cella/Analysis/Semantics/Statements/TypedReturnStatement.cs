@@ -4,11 +4,16 @@ namespace Cella.Analysis.Semantics;
 
 public sealed class TypedReturnStatement : TypedStatementNode
 {
-	public TypedExpressionNode? Expression { get; set; }
+	public readonly TypedExpressionNode? expression;
 	public readonly ReturnStatement sourceNode;
 
-	public TypedReturnStatement(ReturnStatement sourceNode) : base(sourceNode.range)
+	public TypedReturnStatement(ReturnStatement sourceNode) : this(sourceNode, null)
 	{
+	}
+
+	private TypedReturnStatement(ReturnStatement sourceNode, TypedExpressionNode? expression) : base(sourceNode.range)
+	{
+		this.expression = expression;
 		this.sourceNode = sourceNode;
 	}
 
@@ -20,5 +25,10 @@ public sealed class TypedReturnStatement : TypedStatementNode
 	public override T Accept<T>(IVisitor<T> visitor)
 	{
 		return visitor.Visit(this);
+	}
+
+	public TypedReturnStatement Resolve(TypedExpressionNode? expression)
+	{
+		return new TypedReturnStatement(sourceNode, expression);
 	}
 }

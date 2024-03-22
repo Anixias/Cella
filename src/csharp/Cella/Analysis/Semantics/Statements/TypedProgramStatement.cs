@@ -27,4 +27,9 @@ public sealed class TypedProgramStatement : TypedStatementNode
 	{
 		return visitor.Visit(this);
 	}
+
+	public TypedProgramStatement Resolve(IEnumerable<TypedStatementNode> statements)
+	{
+		return new TypedProgramStatement(moduleSymbol, statements, sourceNode);
+	}
 }

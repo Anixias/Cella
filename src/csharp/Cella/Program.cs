@@ -343,6 +343,19 @@ public static class Program
 			return new CompilationResult(diagnostics);
 		}
 
+		(typedAst, var resolverDiagnostics) = Resolver.Resolve(globalScope, typedAst);
+		diagnostics.Add(resolverDiagnostics);
+
+		if (typedAst is null)
+		{
+			lock (ReportLock)
+			{
+				PrintDiagnostics(diagnostics);
+			}
+			
+			return new CompilationResult(diagnostics);
+		}
+
 		lock (ReportLock)
 		{
 			//AstPrinter.Print(ast, Console.Out);

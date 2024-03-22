@@ -7,6 +7,7 @@ public abstract class DataTypeSymbol : ISymbol
 	public string Name { get; }
 	public uint TypeID { get; }
 	public abstract string SymbolTypeName { get; }
+	public DataType BaseType => new DataType.Base(this);
 
 	protected DataTypeSymbol(string name)
 	{

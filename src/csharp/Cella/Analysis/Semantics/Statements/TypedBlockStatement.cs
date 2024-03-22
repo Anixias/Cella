@@ -26,4 +26,9 @@ public sealed class TypedBlockStatement : TypedStatementNode
 	{
 		return visitor.Visit(this);
 	}
+
+	public TypedBlockStatement Resolve(IEnumerable<TypedStatementNode> statements)
+	{
+		return new TypedBlockStatement(scope, statements, sourceNode);
+	}
 }

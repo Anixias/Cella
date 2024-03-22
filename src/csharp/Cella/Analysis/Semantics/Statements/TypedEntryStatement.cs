@@ -26,4 +26,9 @@ public sealed class TypedEntryStatement : TypedStatementNode
 	{
 		return visitor.Visit(this);
 	}
+
+	public TypedEntryStatement Resolve(TypedStatementNode body)
+	{
+		return new TypedEntryStatement(entrySymbol, body, sourceNode);
+	}
 }

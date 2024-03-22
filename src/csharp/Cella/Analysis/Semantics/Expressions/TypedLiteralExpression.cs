@@ -6,7 +6,7 @@ public sealed class TypedLiteralExpression : TypedExpressionNode
 {
 	public readonly Token token;
 	
-	public TypedLiteralExpression(Token token, DataType dataType) : base(dataType, token.Range)
+	public TypedLiteralExpression(Token token, DataType? dataType) : base(dataType, token.Range)
 	{
 		this.token = token;
 	}
