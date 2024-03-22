@@ -1,5 +1,9 @@
 bin/
 obj/
 /packages/
-riderModule.iml
+
+# Rider
+.idea/
+*.DotSettings
+*.iml
 /_ReSharper.Caches/
