@@ -194,7 +194,7 @@ public sealed class Parser
 		if (!hasModName || diagnostics.ErrorCount > 0)
 			return null;
 
-		return new ProgramStatement(modName, statements, new TextRange(0, source.Length - 1));
+		return new ProgramStatement(source, modName, statements, new TextRange(0, source.Length - 1));
 	}
 
 	private ModuleName ParseModuleName()
@@ -415,7 +415,7 @@ public sealed class Parser
 		
 		Require(null, TokenType.KeywordEntry);
 		Require(null, TokenType.OpOpenParen);
-		var parameters = ParseParameters();
+		var parameters = ParseParameters(TokenType.OpCloseParen);
 		Require(null, TokenType.OpCloseParen);
 		
 		var effects = new List<Token>();
@@ -466,9 +466,13 @@ public sealed class Parser
 		return effects;
 	}
 
-	private List<SyntaxParameter> ParseParameters()
+	private List<SyntaxParameter> ParseParameters(params TokenType[] closeTokens)
 	{
 		var parameters = new List<SyntaxParameter>();
+
+		if (closeTokens.Contains(Peek()))
+			return parameters;
+		
 		var allowSelf = true;
 		var requireDefaultValue = false;
 		Token? variadicParameter = null;

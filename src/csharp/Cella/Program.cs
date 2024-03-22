@@ -1,4 +1,5 @@
-﻿using Cella.Analysis.Syntax;
+﻿using Cella.Analysis.Semantics;
+using Cella.Analysis.Syntax;
 using Cella.Analysis.Text;
 using Cella.Diagnostics;
 using Mono.Options;
@@ -189,9 +190,10 @@ public static class Program
 	private static async Task<ExecutionResult> Execute(IEnumerable<CompilationSource.IBufferSource> compilationSources)
 	{
 		var sources = compilationSources.ToArray();
+		var globalScope = NativeSymbolHandler.CreateGlobalScope();
 		var startTime = DateTime.UtcNow;
-		
-		var compilationTasks = sources.Select(CompileSource).ToArray();
+
+		var compilationTasks = sources.Select(s => CompileSource(s, globalScope)).ToArray();
 		var results = await Task.WhenAll(compilationTasks);
 		
 		var endTime = DateTime.UtcNow;
@@ -308,15 +310,16 @@ public static class Program
 			}
 		}
 	}
-	
-	private static async Task<CompilationResult> CompileSource(CompilationSource.IBufferSource source)
+
+	private static async Task<CompilationResult> CompileSource(CompilationSource.IBufferSource source,
+		Scope globalScope)
 	{
 		var diagnostics = new DiagnosticList();
 		var sourceBuffer = await source.GetBuffer();
 		var lexer = new FilteredLexer(sourceBuffer);
 		var (ast, parserDiagnostics) = Parser.Parse(lexer);
 		diagnostics.Add(parserDiagnostics);
-		
+
 		if (ast is null)
 		{
 			lock (ReportLock)
@@ -327,12 +330,25 @@ public static class Program
 			return new CompilationResult(diagnostics);
 		}
 
+		var (typedAst, collectorDiagnostics) = Collector.Collect(globalScope, ast);
+		diagnostics.Add(collectorDiagnostics);
+
+		if (typedAst is null)
+		{
+			lock (ReportLock)
+			{
+				PrintDiagnostics(diagnostics);
+			}
+			
+			return new CompilationResult(diagnostics);
+		}
+
 		lock (ReportLock)
 		{
-			AstPrinter.Print(ast, Console.Out);
+			//AstPrinter.Print(ast, Console.Out);
 			PrintDiagnostics(diagnostics);
 		}
-		
+
 		// Todo: Return IR ready for translation to LLVM IR
 		return new CompilationResult(diagnostics);
 	}

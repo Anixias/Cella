@@ -23,6 +23,11 @@ public sealed class DiagnosticList : IEnumerable<Diagnostic>
 	{
 		this.diagnostics = diagnostics.ToList();
 	}
+
+	public void Clear()
+	{
+		diagnostics.Clear();
+	}
 	
 	public void Add(Diagnostic diagnostic)
 	{

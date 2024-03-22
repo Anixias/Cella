@@ -5,12 +5,14 @@ namespace Cella.Analysis.Syntax;
 
 public sealed class ProgramStatement : StatementNode
 {
+	public readonly IBuffer source;
 	public readonly ModuleName moduleName;
 	public readonly ImmutableArray<StatementNode> statements;
 
-	public ProgramStatement(ModuleName moduleName, IEnumerable<StatementNode> statements,
+	public ProgramStatement(IBuffer source, ModuleName moduleName, IEnumerable<StatementNode> statements,
 		TextRange range) : base(range)
 	{
+		this.source = source;
 		this.moduleName = moduleName;
 		this.statements = statements.ToImmutableArray();
 	}
