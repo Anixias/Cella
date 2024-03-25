@@ -9,6 +9,7 @@ public sealed class Token
 	public int Line { get; }
 	public int Column { get; }
 	public string Text => Source.GetText(Range);
+	public SourceLocation SourceLocation => new(Source, Range);
 	
 	/// <summary>
 	/// Only utilized by filtered lexer results

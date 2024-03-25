@@ -1,9 +1,12 @@
-﻿namespace Cella.Analysis.Semantics.Symbols;
+﻿using Cella.Analysis.Text;
+
+namespace Cella.Analysis.Semantics.Symbols;
 
 public sealed class ModuleSymbol : ISymbol
 {
-	public string SymbolTypeName => "a module";
 	public string Name { get; }
+	public List<SourceLocation> DeclarationLocations { get; } = new();
+	public List<SourceLocation> UsageLocations { get; } = new();
 	public Scope Scope { get; }
 	
 	public ModuleSymbol(string name, Scope scope)

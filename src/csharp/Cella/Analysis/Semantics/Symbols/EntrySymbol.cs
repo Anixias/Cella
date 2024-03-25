@@ -1,11 +1,13 @@
 using System.Collections.Immutable;
+using Cella.Analysis.Text;
 
 namespace Cella.Analysis.Semantics.Symbols;
 
 public sealed class EntrySymbol : ISymbol
 {
-	public string SymbolTypeName => "an entry point";
 	public string Name { get; }
+	public List<SourceLocation> DeclarationLocations { get; } = new();
+	public List<SourceLocation> UsageLocations { get; } = new();
 	public Scope Scope { get; }
 	public ImmutableArray<ParameterSymbol> Parameters { get; }
 	

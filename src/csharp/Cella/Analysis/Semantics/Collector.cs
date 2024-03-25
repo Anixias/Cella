@@ -100,6 +100,7 @@ public sealed class Collector : StatementNode.IVisitor<TypedStatementNode>
 				CurrentScope.AddSymbol(moduleSymbol);
 			}
 			
+			moduleSymbol.DeclarationLocations.Add(moduleIdentifier.SourceLocation);
 			scopeStack.Push(scope);
 			moduleScopeCount++;
 		}

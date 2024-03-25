@@ -7,8 +7,7 @@ using Cella.Diagnostics;
 namespace Cella.Analysis.Semantics;
 
 /// <summary>
-/// Traverses a <see cref="TypedAst"/> to populate a global <see cref="Scope"/> and resolve
-/// <see cref="ISymbol"/> references.
+/// Traverses a <see cref="TypedAst"/> to resolve <see cref="ISymbol"/> references and infer types.
 /// </summary>
 public sealed class Resolver : TypedStatementNode.IVisitor<TypedStatementNode>,
 	ExpressionNode.IVisitor<TypedExpressionNode>

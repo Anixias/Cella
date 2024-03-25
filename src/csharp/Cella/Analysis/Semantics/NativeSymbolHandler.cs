@@ -4,8 +4,13 @@ namespace Cella.Analysis.Semantics;
 
 public static class NativeSymbolHandler
 {
-	public static readonly TypeSymbol Int32 = new(nameof(Int32), new Scope());
-	public static readonly TypeSymbol Int64 = new(nameof(Int64), new Scope());
+	public static readonly TypeSymbol Int32 = CreateNativeType(nameof(Int32));
+	public static readonly TypeSymbol Int64 = CreateNativeType(nameof(Int64));
+
+	private static TypeSymbol CreateNativeType(string name)
+	{
+		return new TypeSymbol(name, new Scope());
+	}
 
 	static NativeSymbolHandler()
 	{
