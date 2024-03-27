@@ -193,12 +193,19 @@ public static class Program
 		var globalScope = NativeSymbolHandler.CreateGlobalScope();
 		var startTime = DateTime.UtcNow;
 
-		var compilationTasks = sources.Select(s => CompileSource(s, globalScope)).ToArray();
-		var results = await Task.WhenAll(compilationTasks);
+		var collectionTasks = sources.Select(s => CollectSource(s, globalScope)).ToArray();
+		var collectionResults = await Task.WhenAll(collectionTasks);
+		if (collectionResults.Any(t => t is null))
+		{
+			return new ExecutionResult(false, DateTime.UtcNow - startTime);
+		}
+
+		var resolutionTasks = collectionResults.Select(a => ResolveSource(a, globalScope));
+		var resolutionResults = await Task.WhenAll(resolutionTasks);
 		
 		var endTime = DateTime.UtcNow;
 
-		var isSuccess = results.All(r => r.IsSuccess);
+		var isSuccess = resolutionResults.All(r => r.IsSuccess);
 		var elapsedTime = endTime - startTime;
 
 		return new ExecutionResult(isSuccess, elapsedTime);
@@ -311,13 +318,13 @@ public static class Program
 		}
 	}
 
-	private static async Task<CompilationResult> CompileSource(CompilationSource.IBufferSource source,
+	private static async Task<TypedAst?> CollectSource(CompilationSource.IBufferSource source,
 		Scope globalScope)
 	{
 		var diagnostics = new DiagnosticList();
 		var sourceBuffer = await source.GetBuffer();
 		var lexer = new FilteredLexer(sourceBuffer);
-		var (ast, parserDiagnostics) = Parser.Parse(lexer);
+		var (ast, parserDiagnostics) = await Task.Run(() => Parser.Parse(lexer));
 		diagnostics.Add(parserDiagnostics);
 
 		if (ast is null)
@@ -327,26 +334,30 @@ public static class Program
 				PrintDiagnostics(diagnostics);
 			}
 
-			return new CompilationResult(diagnostics);
+			return null;
 		}
 
-		var (typedAst, collectorDiagnostics) = Collector.Collect(globalScope, ast);
+		var (typedAst, collectorDiagnostics) = await Task.Run(() => Collector.Collect(globalScope, ast));
 		diagnostics.Add(collectorDiagnostics);
 
-		if (typedAst is null)
+		if (typedAst is not null)
+			return typedAst;
+		
+		lock (ReportLock)
 		{
-			lock (ReportLock)
-			{
-				PrintDiagnostics(diagnostics);
-			}
-			
-			return new CompilationResult(diagnostics);
+			PrintDiagnostics(diagnostics);
 		}
 
-		(typedAst, var resolverDiagnostics) = Resolver.Resolve(globalScope, typedAst);
+		return null;
+	}
+
+	private static async Task<CompilationResult> ResolveSource(TypedAst ast, Scope globalScope)
+	{
+		var diagnostics = new DiagnosticList();
+		var (resolvedAst, resolverDiagnostics) = await Task.Run(() => Resolver.Resolve(globalScope, ast));
 		diagnostics.Add(resolverDiagnostics);
 
-		if (typedAst is null)
+		if (resolvedAst is null)
 		{
 			lock (ReportLock)
 			{
