@@ -336,6 +336,8 @@ public static class Program
 
 			return null;
 		}
+		
+		AstPrinter.Print(ast, Console.Out);
 
 		var (typedAst, collectorDiagnostics) = await Task.Run(() => Collector.Collect(globalScope, ast));
 		diagnostics.Add(collectorDiagnostics);
@@ -369,7 +371,6 @@ public static class Program
 
 		lock (ReportLock)
 		{
-			//AstPrinter.Print(ast, Console.Out);
 			PrintDiagnostics(diagnostics);
 		}
 
