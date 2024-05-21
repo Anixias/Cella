@@ -105,13 +105,13 @@ public class Lexer : ILexer
 		{
 			var value = UnescapeString(Source.GetText(new TextRange(position + 1, end - 1)), true);
 
-			if (!value.Item2)
+			if (!value.valid)
 			{
 				var invalidToken = new Token(TokenType.InvalidStringLiteral, new TextRange(position, end), Source);
 				return new ScanResult(invalidToken, end);
 			}
 
-			var token = new Token(TokenType.StringLiteral, new TextRange(position, end), Source, value.Item1);
+			var token = new Token(TokenType.StringLiteral, new TextRange(position, end), Source, value.result);
 
 			return new ScanResult(token, end);
 		}
@@ -130,7 +130,7 @@ public class Lexer : ILexer
 	/// <param name="text">The string to unescape</param>
 	/// <param name="escapeOpenBrace">Whether to allow \{ as a valid escape character</param>
 	/// <returns>A tuple: (result, valid)</returns>
-	public static (string, bool) UnescapeString(string text, bool escapeOpenBrace = false)
+	public static (string result, bool valid) UnescapeString(string text, bool escapeOpenBrace = false)
 	{
 		var result = new StringBuilder();
 		var escaped = false;
@@ -145,6 +145,8 @@ public class Lexer : ILexer
 				if (escaped)
 				{
 					result.Append('\\');
+					// Todo: Is this needed to fix escapes?
+					//escaped = false;
 					continue;
 				}
 
