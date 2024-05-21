@@ -1,4 +1,5 @@
-﻿using Cella.Analysis.Semantics;
+﻿using System.Text;
+using Cella.Analysis.Semantics;
 using Cella.Analysis.Syntax;
 using Cella.Analysis.Text;
 using Cella.Diagnostics;
@@ -25,8 +26,9 @@ public static class Program
 		public IReadOnlyList<string> InputPaths => inputPaths;
 		public IReadOnlyList<string> RawInputs => rawInputs;
 		public string? OutputPath { get; private set; }
-
-		private readonly List<string> inputPaths = new();
+		public bool WaitOnExit { get; private set; }
+	
+	private readonly List<string> inputPaths = new();
 		private readonly List<string> rawInputs = new();
 
 		private Options()
@@ -42,6 +44,7 @@ public static class Program
 			{
 				{ "o|output=", "the path to the file to output", o => options.OutputPath = o },
 				{ "r|raw=", "raw source code", r => options.rawInputs.Add(r)},
+				{ "w|wait", "wait on exit", _ => options.WaitOnExit = true},
 				{ "<>", i => options.inputPaths.Add(i) }
 			};
 
@@ -65,10 +68,26 @@ public static class Program
 		{
 			return 1;
 		}
+		
+		var returnCode = await Run(options);
+		Console.ResetColor();
+		
+		if (!options.WaitOnExit)
+			return returnCode;
+		
+		Console.WriteLine("\nPress enter to exit...");
+		Console.ReadLine();
+		
+		return returnCode;
+	}
+	
+	private static async Task<int> Run(Options options)
+	{
+		Console.OutputEncoding = Encoding.UTF8;
 
 		if (options.InputPaths.Count == 0 && options.RawInputs.Count == 0)
 		{
-			ReportExecutionError("No inputs provided. Specify a file, a folder, or a project, or use '-r' or '-raw' " +
+			ReportExecutionError("No inputs provided. Specify a file, a folder, or a project, or use '-r' or '--raw' " +
 			                     "to input raw code directly");
 			return 1;
 		}
@@ -122,39 +141,46 @@ public static class Program
 
 		var hadInputError = inputErrors.Count > 0;
 		var executionResult = await Execute(sources);
-		if (executionResult.IsSuccess && !hadInputError)
-		{
-			Console.ForegroundColor = ConsoleColor.Cyan;
-			Console.WriteLine($"Compilation succeeded ({Format(executionResult.ElapsedTime)})");
-			return 0;
-		}
 		
-		if (hadInputError)
+		lock (ConsoleLock)
 		{
-			Console.ForegroundColor = ConsoleColor.Red;
-			Console.WriteLine("Input Errors:");
-			foreach (var error in inputErrors)
+			if (executionResult.IsSuccess && !hadInputError)
 			{
-				Console.WriteLine($"\t{error}");
+				Console.ForegroundColor = ConsoleColor.Cyan;
+				Console.WriteLine($"Compilation succeeded ({Format(executionResult.ElapsedTime)})");
+				return 0;
 			}
-
-			Console.WriteLine();
-			Console.ResetColor();
+			
+			if (hadInputError)
+			{
+				Console.ForegroundColor = ConsoleColor.Red;
+				Console.WriteLine("Input Errors:");
+				foreach (var error in inputErrors)
+				{
+					Console.WriteLine($"\t{error}");
+				}
+				
+				Console.WriteLine();
+				Console.ResetColor();
+			}
+			
+			Console.ForegroundColor = ConsoleColor.DarkRed;
+			Console.WriteLine("Failed to compile");
+			return 1;
 		}
-		
-		Console.ForegroundColor = ConsoleColor.DarkRed;
-		Console.WriteLine("Failed to compile");
-		return 1;
 	}
 
 	private static void ReportExecutionError(string message)
 	{
-		Console.ResetColor();
-		Console.ForegroundColor = ConsoleColor.DarkRed;
-		Console.Write("Error: ");
-		Console.ResetColor();
-		Console.WriteLine(message);
-		Console.ResetColor();
+		lock (ConsoleLock)
+		{
+			Console.ResetColor();
+			Console.ForegroundColor = ConsoleColor.DarkRed;
+			Console.Write("Error: ");
+			Console.ResetColor();
+			Console.WriteLine(message);
+			Console.ResetColor();
+		}
 	}
 
 	private static string Format(TimeSpan time)
@@ -200,7 +226,7 @@ public static class Program
 			return new ExecutionResult(false, DateTime.UtcNow - startTime);
 		}
 
-		var resolutionTasks = collectionResults.Select(a => ResolveSource(a, globalScope));
+		var resolutionTasks = collectionResults.Select(a => ResolveSource(a!, globalScope));
 		var resolutionResults = await Task.WhenAll(resolutionTasks);
 		
 		var endTime = DateTime.UtcNow;
@@ -243,9 +269,10 @@ public static class Program
 		foreach (var diagnostic in diagnostics.OrderBy(d => d.line))
 		{
 			const int maxLineNumberLength = 8;
-			const char lineBar = '\u2502';
-			const char upArrow = '\u2191';
-			const char downArrow = '\u2193';
+			var simpleEncoding = !CanBeEncoded("\u2191");
+			var lineBar = simpleEncoding ? '|' : '\u2502';
+			var upArrow = simpleEncoding ? '^' : '\u2191';
+			//const char downArrow = '\u2193';
 			
 			// Todo: Support multiline errors
 			
@@ -317,9 +344,27 @@ public static class Program
 			}
 		}
 	}
+	
+	private static bool CanBeEncoded(string text)
+	{
+		try
+		{
+			Encoding.GetEncoding(Console.OutputEncoding.CodePage, EncoderFallback.ExceptionFallback,
+				DecoderFallback.ExceptionFallback).GetBytes(text);
+			
+			return true;
+		}
+		catch (EncoderFallbackException)
+		{
+			return false;
+		}
+		catch (NotSupportedException)
+		{
+			return false;
+		}
+	}
 
-	private static async Task<TypedAst?> CollectSource(CompilationSource.IBufferSource source,
-		Scope globalScope)
+	private static async Task<TypedAst?> CollectSource(CompilationSource.IBufferSource source, Scope globalScope)
 	{
 		var diagnostics = new DiagnosticList();
 		var sourceBuffer = await source.GetBuffer();
@@ -337,8 +382,11 @@ public static class Program
 			return null;
 		}
 		
-		AstPrinter.Print(ast, Console.Out);
-
+		lock (ConsoleLock)
+		{
+			AstPrinter.Print(ast, Console.Out);
+		}
+		
 		var (typedAst, collectorDiagnostics) = await Task.Run(() => Collector.Collect(globalScope, ast));
 		diagnostics.Add(collectorDiagnostics);
 
