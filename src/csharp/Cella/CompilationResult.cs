@@ -8,7 +8,7 @@ public readonly struct CompilationResult
 	
 	public readonly DiagnosticList diagnostics;
 	// Todo: Add custom IR output here
-
+	
 	public CompilationResult(DiagnosticList diagnostics)
 	{
 		this.diagnostics = diagnostics;

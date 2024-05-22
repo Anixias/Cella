@@ -11,12 +11,12 @@ public sealed class InterpolatedStringExpression : ExpressionNode
 	{
 		this.parts = parts.ToImmutableArray();
 	}
-
+	
 	public override void Accept(IVisitor visitor)
 	{
 		visitor.Visit(this);
 	}
-
+	
 	public override T Accept<T>(IVisitor<T> visitor)
 	{
 		return visitor.Visit(this);

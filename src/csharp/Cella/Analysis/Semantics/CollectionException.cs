@@ -6,7 +6,7 @@ namespace Cella.Analysis.Semantics;
 public sealed class CollectionException : Exception
 {
 	public DiagnosticSeverity Severity { get; init; } = DiagnosticSeverity.Error;
-
+	
 	private readonly IBuffer source;
 	private readonly TextRange range;
 	

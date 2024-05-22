@@ -21,16 +21,16 @@ public class Lexer : ILexer
 			return null;
 		
 		var character = Source[position];
-
+		
 		if (char.IsWhiteSpace(character))
 			return ScanWhiteSpace(position);
-
+		
 		if (char.IsDigit(character))
 			return ScanNumber(position);
-
+		
 		if (char.IsLetter(character) || character == '_')
 			return ScanIdentifier(position);
-
+		
 		switch (character)
 		{
 			case '"':
@@ -39,13 +39,13 @@ public class Lexer : ILexer
 			case '\'':
 				return ScanChar(position);
 		}
-
+		
 		if (TryScanComment(position) is { } comment)
 			return comment;
-
+		
 		return ScanOperator(position);
 	}
-
+	
 	private ScanResult ScanString(int position)
 	{
 		var end = position + 1;
@@ -63,13 +63,13 @@ public class Lexer : ILexer
 				end++;
 				break;
 			}
-
+			
 			if (character is '\n' or '\r')
 			{
 				isValid = false;
 				break;
 			}
-
+			
 			switch (character)
 			{
 				case '{' when !escaped:
@@ -91,28 +91,28 @@ public class Lexer : ILexer
 					escaped = false;
 					break;
 			}
-
+			
 			end++;
 		}
-
+		
 		if (!isValid)
 		{
 			var invalidToken = new Token(TokenType.InvalidStringLiteral, new TextRange(position, end), Source);
 			return new ScanResult(invalidToken, end);
 		}
-
+		
 		if (!interpolated)
 		{
 			var value = UnescapeString(Source.GetText(new TextRange(position + 1, end - 1)), true);
-
+			
 			if (!value.valid)
 			{
 				var invalidToken = new Token(TokenType.InvalidStringLiteral, new TextRange(position, end), Source);
 				return new ScanResult(invalidToken, end);
 			}
-
+			
 			var token = new Token(TokenType.StringLiteral, new TextRange(position, end), Source, value.result);
-
+			
 			return new ScanResult(token, end);
 		}
 		else
@@ -123,7 +123,7 @@ public class Lexer : ILexer
 			return new ScanResult(token, end);
 		}
 	}
-
+	
 	/// <summary>
 	/// Unescapes a string by replacing escape sequences with their respective literal values
 	/// </summary>
@@ -135,7 +135,7 @@ public class Lexer : ILexer
 		var result = new StringBuilder();
 		var escaped = false;
 		var valid = true;
-
+		
 		for (var i = 0; i < text.Length; i++)
 		{
 			var character = text[i];
@@ -149,60 +149,72 @@ public class Lexer : ILexer
 					//escaped = false;
 					continue;
 				}
-
+				
 				escaped = true;
 				continue;
 			}
-
+			
 			if (!escaped)
 			{
 				result.Append(character);
 				continue;
 			}
-
+			
 			escaped = false;
-
+			
 			switch (character)
 			{
 				default:
 					valid = false;
 					break;
+				
 				case '\'':
 					result.Append('\'');
 					break;
+				
 				case '"':
 					result.Append('"');
 					break;
+				
 				case '0':
 					result.Append('\0');
 					break;
+				
 				case 'a':
 					result.Append('\a');
 					break;
+				
 				case 'b':
 					result.Append('\b');
 					break;
+				
 				case 'f':
 					result.Append('\f');
 					break;
+				
 				case 'n':
 					result.Append('\n');
 					break;
+				
 				case 'r':
 					result.Append('\r');
 					break;
+				
 				case 't':
 					result.Append('\t');
 					break;
+				
 				case 'v':
 					result.Append('\v');
 					break;
+				
 				case '{':
 					if (escapeOpenBrace)
 						result.Append('{');
 					else
 						valid = false;
 					break;
+				
 				case 'u':
 					const int utf16Length = 4;
 					if (i + utf16Length >= text.Length)
@@ -214,14 +226,15 @@ public class Lexer : ILexer
 					{
 						var sequence = text.Substring(i + 1, utf16Length);
 						i += utf16Length;
-
+						
 						var sequenceValue = uint.Parse(sequence, NumberStyles.AllowHexSpecifier);
 						var chars = ConvertUnicodeCodePointToUTF8(sequenceValue);
 						var str = Encoding.UTF8.GetString(chars);
 						result.Append(str);
 					}
-
+					
 					break;
+				
 				case 'U':
 					// Todo: Test UTF32
 					const int utf32Length = 8;
@@ -234,28 +247,28 @@ public class Lexer : ILexer
 					{
 						var sequence = text.Substring(i + 1, utf32Length);
 						i += utf32Length;
-
+						
 						var sequenceValue = uint.Parse(sequence, NumberStyles.AllowHexSpecifier);
 						result.Append(Encoding.UTF32.GetString(BitConverter.GetBytes(sequenceValue)));
 					}
-
+					
 					break;
 			}
 		}
-
+		
 		return (result.ToString(), valid);
 	}
-
+	
 	private static byte[] ConvertUnicodeCodePointToUTF8(uint codePoint)
 	{
 		return codePoint switch
 		{
-			<= 0x7Fu => 
+			<= 0x7Fu =>
 			[
 				(byte)codePoint
 			],
 			
-			<= 0x7FFu => 
+			<= 0x7FFu =>
 			[
 				(byte)(0xC0 | (codePoint >> 6)),
 				(byte)(0x80 | (codePoint & 0x3F))
@@ -276,7 +289,7 @@ public class Lexer : ILexer
 			_ => Array.Empty<byte>()
 		};
 	}
-
+	
 	private ScanResult ScanChar(int position)
 	{
 		var end = position + 1;
@@ -290,18 +303,18 @@ public class Lexer : ILexer
 				end++;
 				break;
 			}
-
+			
 			if (Source[end] is '\n' or '\r')
 			{
 				isValid = false;
 				break;
 			}
-
+			
 			if (Source[end] == '\\')
 				escaped = !escaped;
 			else
 				escaped = false;
-
+			
 			end++;
 		}
 		
@@ -310,14 +323,14 @@ public class Lexer : ILexer
 			var invalidToken = new Token(TokenType.InvalidCharLiteral, new TextRange(position, end), Source);
 			return new ScanResult(invalidToken, end);
 		}
-
+		
 		var value = UnescapeString(Source.GetText(new TextRange(position + 1, end - 1)));
 		if (value.Item1.Length != 1 || !value.Item2)
 		{
 			var invalidToken = new Token(TokenType.InvalidCharLiteral, new TextRange(position, end), Source);
 			return new ScanResult(invalidToken, end);
 		}
-
+		
 		var bytes = Encoding.UTF8.GetBytes(value.Item1);
 		var paddedBytes = new byte[4];
 		Array.Copy(bytes, paddedBytes, bytes.Length);
@@ -325,7 +338,7 @@ public class Lexer : ILexer
 		var token = new Token(TokenType.CharLiteral, new TextRange(position, end), Source, paddedBytes);
 		return new ScanResult(token, end);
 	}
-
+	
 	private ScanResult? TryScanComment(int position)
 	{
 		if (Source[position] != '/')
@@ -333,7 +346,7 @@ public class Lexer : ILexer
 		
 		if (position + 1 >= Source.Length)
 			return null;
-
+		
 		return Source[position + 1] switch
 		{
 			'/' => ScanLineComment(position),
@@ -341,23 +354,23 @@ public class Lexer : ILexer
 			_ => null
 		};
 	}
-
+	
 	private ScanResult ScanLineComment(int position)
 	{
 		var end = position + 2;
 		while (end < Source.Length)
 		{
 			var character = Source[end];
-
+			
 			if (character is '\n' or '\r')
 				break;
 			
 			end++;
 		}
-
+		
 		return new ScanResult(new Token(TokenType.LineComment, new TextRange(position, end), Source), end);
 	}
-
+	
 	private ScanResult ScanMultilineComment(int position)
 	{
 		var end = position + 2;
@@ -369,10 +382,10 @@ public class Lexer : ILexer
 				end++;
 				break;
 			}
-
+			
 			var character = Source[end];
 			var next = Source[end + 1];
-
+			
 			if (character == '/' && next == '*')
 			{
 				nestLevel++;
@@ -390,13 +403,13 @@ public class Lexer : ILexer
 				
 				continue;
 			}
-
+			
 			end++;
 		}
-
+		
 		return new ScanResult(new Token(TokenType.MultilineComment, new TextRange(position, end), Source), end);
 	}
-
+	
 	private List<Token> ScanAllTokens()
 	{
 		var tokens = new List<Token>();
@@ -405,10 +418,8 @@ public class Lexer : ILexer
 		while (true)
 		{
 			if (ScanToken(position) is not { } lexerResult)
-			{
 				return tokens;
-			}
-
+			
 			tokens.Add(lexerResult.Token);
 			position = lexerResult.NextPosition;
 		}
@@ -418,14 +429,16 @@ public class Lexer : ILexer
 	{
 		var end = position;
 		while (end < Source.Length && char.IsDigit(Source[end]))
+		{
 			end++;
-
+		}
+		
 		if (end <= position)
 			return null;
-
+		
 		return int.Parse(Source.GetText(new TextRange(position, end)));
 	}
-
+	
 	private ScanResult ScanOperator(int position)
 	{
 		var end = position;
@@ -437,7 +450,7 @@ public class Lexer : ILexer
 			
 			end++;
 		}
-
+		
 		while (end > position)
 		{
 			var range = new TextRange(position, end);
@@ -450,11 +463,11 @@ public class Lexer : ILexer
 			
 			end--;
 		}
-
+		
 		end = position + 1;
 		return new ScanResult(new Token(TokenType.Invalid, new TextRange(position, end), Source), end);
 	}
-
+	
 	private ScanResult ScanWhiteSpace(int position)
 	{
 		if (Source[position] is '\n' or '\r')
@@ -462,13 +475,15 @@ public class Lexer : ILexer
 		
 		var end = position;
 		while (end < Source.Length && char.IsWhiteSpace(Source[end]))
+		{
 			end++;
-
+		}
+		
 		var range = new TextRange(position, end);
 		var token = new Token(TokenType.Whitespace, range, Source);
 		return new ScanResult(token, end);
 	}
-
+	
 	private ScanResult ScanNewline(int position)
 	{
 		var end = position;
@@ -487,20 +502,22 @@ public class Lexer : ILexer
 	{
 		var end = position;
 		while (end < Source.Length && (char.IsLetterOrDigit(Source[end]) || Source[end] == '_'))
+		{
 			end++;
-
+		}
+		
 		var range = new TextRange(position, end);
 		var text = Source.GetText(range);
 		var tokenType = TokenType.GetKeyword(text) ?? TokenType.Identifier;
 		var token = new Token(tokenType, range, Source);
 		return new ScanResult(token, end);
 	}
-
+	
 	private ScanResult ScanNumber(int position)
 	{
 		// 1_234, 123.456, 123.456f32, 123.456x32, 123u, 8i64, 0xAF80, 0b1011_0011, 2e3, 2e-3, 3.14e+3f
 		var end = position;
-
+		
 		if (position <= Source.Length - 2)
 		{
 			if (Source[position] == '0')
@@ -510,20 +527,21 @@ public class Lexer : ILexer
 					case 'x':
 					case 'X':
 						return ScanHexadecimal(position);
+					
 					case 'b':
 					case 'B':
 						return ScanBinary(position);
 				}
 			}
 		}
-
+		
 		object? value = null;
 		
 		while (end < Source.Length && IsDigit(Source[end]))
 		{
 			end++;
 		}
-
+		
 		if (end < Source.Length)
 		{
 			if (Source[end] == '.' && end + 1 < Source.Length && IsDigit(Source[end + 1]))
@@ -533,9 +551,9 @@ public class Lexer : ILexer
 				{
 					end++;
 				}
-
+				
 				var valueString = RemoveSeparators(Source.GetText(new TextRange(position, end)));
-
+				
 				if (end < Source.Length)
 				{
 					switch (Source[end])
@@ -545,10 +563,12 @@ public class Lexer : ILexer
 							end++;
 							if (end < Source.Length && Source[end] is '+' or '-')
 								end++;
-
+							
 							while (end < Source.Length && IsDigit(Source[end]))
+							{
 								end++;
-
+							}
+							
 							valueString = RemoveSeparators(Source.GetText(new TextRange(position, end)));
 							end = ParseFloatSuffix(end, valueString, out value);
 							break;
@@ -579,7 +599,7 @@ public class Lexer : ILexer
 			else
 			{
 				var valueString = RemoveSeparators(Source.GetText(new TextRange(position, end)));
-
+				
 				if (end < Source.Length)
 				{
 					switch (Source[end])
@@ -619,7 +639,9 @@ public class Lexer : ILexer
 									value = uint.TryParse(valueString, out var uDefaultValue) ? uDefaultValue : null;
 									break;
 							}
+							
 							break;
+						
 						case 'i':
 						case 'I':
 							end++;
@@ -655,16 +677,20 @@ public class Lexer : ILexer
 									value = int.TryParse(valueString, out var iDefaultValue) ? iDefaultValue : null;
 									break;
 							}
+							
 							break;
+						
 						case 'e':
 						case 'E':
 							end++;
 							if (end < Source.Length && Source[end] is '+' or '-')
 								end++;
-
+							
 							while (end < Source.Length && char.IsDigit(Source[end]))
+							{
 								end++;
-
+							}
+							
 							valueString = Source.GetText(new TextRange(position, end));
 							end = ParseFloatSuffix(end, valueString, out value);
 							break;
@@ -701,6 +727,7 @@ public class Lexer : ILexer
 									new TextRange(position, end), Source, value);
 								return new ScanResult(invalidToken, end);
 							}
+							
 							break;
 					}
 				}
@@ -761,21 +788,21 @@ public class Lexer : ILexer
 				return new ScanResult(invalidToken, end);
 			}
 		}
-
+		
 		var token = new Token(TokenType.NumberLiteral, new TextRange(position, end), Source, value);
 		return new ScanResult(token, end);
-
+		
 		bool IsDigit(char c)
 		{
 			return char.IsDigit(c) || c == '_';
 		}
-
+		
 		string RemoveSeparators(string str)
 		{
 			return str.Replace("_", null);
 		}
 	}
-
+	
 	private int ParseFloatSuffix(int end, string valueString, out object? value)
 	{
 		value = null;
@@ -790,7 +817,7 @@ public class Lexer : ILexer
 			{
 				case 32:
 					end += 2;
-
+					
 					value = float.TryParse(valueString, NumberStyles.Float, null,
 						out var float32Value)
 						? float32Value
@@ -799,7 +826,7 @@ public class Lexer : ILexer
 				
 				case 64:
 					end += 2;
-
+					
 					value = double.TryParse(valueString, NumberStyles.Float, null,
 						out var float64Value)
 						? float64Value
@@ -808,7 +835,7 @@ public class Lexer : ILexer
 				
 				case 128:
 					end += 3;
-
+					
 					value = decimal.TryParse(valueString, NumberStyles.Float, null,
 						out var float128Value)
 						? float128Value
@@ -831,7 +858,7 @@ public class Lexer : ILexer
 				? doubleValue
 				: null;
 		}
-
+		
 		return end;
 	}
 	
@@ -884,7 +911,7 @@ public class Lexer : ILexer
 		return end;
 	}
 #endif
-
+	
 	private ScanResult ScanHexadecimal(int position)
 	{
 		var end = position + 2;
@@ -892,7 +919,7 @@ public class Lexer : ILexer
 		{
 			end++;
 		}
-
+		
 		var valueString = RemoveSeparators(Source.GetText(new TextRange(position + 2, end)));
 		object? value = null;
 		
@@ -944,8 +971,9 @@ public class Lexer : ILexer
 								value = uDefaultValue;
 							break;
 					}
-
+					
 					break;
+				
 				case 'i':
 				case 'I':
 					end++;
@@ -989,10 +1017,11 @@ public class Lexer : ILexer
 								value = iDefaultValue;
 							break;
 					}
+					
 					break;
 			}
 		}
-
+		
 		if (!scannedSuffix)
 		{
 			if (int.TryParse(valueString, NumberStyles.AllowHexSpecifier, null, out var intValue))
@@ -1026,21 +1055,21 @@ public class Lexer : ILexer
 				return new ScanResult(invalidToken, end);
 			}
 		}
-
+		
 		var token = new Token(TokenType.NumberLiteral, new TextRange(position, end), Source, value);
 		return new ScanResult(token, end);
-
+		
 		bool IsHexDigit(char c)
 		{
 			return char.IsAsciiHexDigit(c) || c == '_';
 		}
-
+		
 		string RemoveSeparators(string str)
 		{
 			return str.Replace("_", null);
 		}
 	}
-
+	
 	private ScanResult ScanBinary(int position)
 	{
 		var end = position + 2;
@@ -1048,10 +1077,10 @@ public class Lexer : ILexer
 		{
 			end++;
 		}
-
+		
 		var valueString = RemoveSeparators(Source.GetText(new TextRange(position + 2, end)));
 		object? value = null;
-
+		
 		var scannedSuffix = false;
 		if (end < Source.Length)
 		{
@@ -1075,6 +1104,7 @@ public class Lexer : ILexer
 									new TextRange(position, end), Source, value);
 								return new ScanResult(invalidToken, end);
 							}
+							
 							break;
 						
 						case 16:
@@ -1089,6 +1119,7 @@ public class Lexer : ILexer
 									new TextRange(position, end), Source, value);
 								return new ScanResult(invalidToken, end);
 							}
+							
 							break;
 						
 						case 32:
@@ -1103,6 +1134,7 @@ public class Lexer : ILexer
 									new TextRange(position, end), Source, value);
 								return new ScanResult(invalidToken, end);
 							}
+							
 							break;
 						
 						case 64:
@@ -1117,6 +1149,7 @@ public class Lexer : ILexer
 									new TextRange(position, end), Source, value);
 								return new ScanResult(invalidToken, end);
 							}
+							
 							break;
 						
 						case 128:
@@ -1132,6 +1165,7 @@ public class Lexer : ILexer
 									new TextRange(position, end), Source, value);
 								return new ScanResult(invalidToken, end);
 							}
+							
 							break;
 						
 						// Todo: Invalid suffix
@@ -1146,10 +1180,12 @@ public class Lexer : ILexer
 									new TextRange(position, end), Source, value);
 								return new ScanResult(invalidToken, end);
 							}
+							
 							break;
 					}
-
+					
 					break;
+				
 				case 'i':
 				case 'I':
 					end++;
@@ -1168,6 +1204,7 @@ public class Lexer : ILexer
 									new TextRange(position, end), Source, value);
 								return new ScanResult(invalidToken, end);
 							}
+							
 							break;
 						
 						case 16:
@@ -1182,6 +1219,7 @@ public class Lexer : ILexer
 									new TextRange(position, end), Source, value);
 								return new ScanResult(invalidToken, end);
 							}
+							
 							break;
 						
 						case 32:
@@ -1196,6 +1234,7 @@ public class Lexer : ILexer
 									new TextRange(position, end), Source, value);
 								return new ScanResult(invalidToken, end);
 							}
+							
 							break;
 						
 						case 64:
@@ -1210,6 +1249,7 @@ public class Lexer : ILexer
 									new TextRange(position, end), Source, value);
 								return new ScanResult(invalidToken, end);
 							}
+							
 							break;
 						
 						case 128:
@@ -1225,6 +1265,7 @@ public class Lexer : ILexer
 									new TextRange(position, end), Source, value);
 								return new ScanResult(invalidToken, end);
 							}
+							
 							break;
 						
 						// Todo: Invalid suffix
@@ -1239,12 +1280,14 @@ public class Lexer : ILexer
 									new TextRange(position, end), Source, value);
 								return new ScanResult(invalidToken, end);
 							}
+							
 							break;
 					}
+					
 					break;
 			}
 		}
-
+		
 		if (!scannedSuffix)
 		{
 			try
@@ -1295,21 +1338,21 @@ public class Lexer : ILexer
 				}
 			}
 		}
-
+		
 		var token = new Token(TokenType.NumberLiteral, new TextRange(position, end), Source, value);
 		return new ScanResult(token, end);
-
+		
 		string RemoveSeparators(string str)
 		{
 			return str.Replace("_", null);
 		}
 	}
-
+	
 	public IEnumerator<Token> GetEnumerator()
 	{
 		return ScanAllTokens().GetEnumerator();
 	}
-
+	
 	IEnumerator IEnumerable.GetEnumerator()
 	{
 		return GetEnumerator();

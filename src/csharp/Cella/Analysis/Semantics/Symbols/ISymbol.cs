@@ -6,6 +6,7 @@ public interface ISymbol
 {
 	string Name { get; }
 	List<SourceLocation> DeclarationLocations { get; }
+	
 	List<SourceLocation> UsageLocations { get; }
 	//Type? EvaluatedType { get; }
 	//bool IsConstant { get; }

@@ -11,7 +11,7 @@ public abstract class CompilationSource
 	{
 		public Task<IBuffer> GetBuffer();
 	}
-
+	
 	/// <summary>
 	/// A collection of sources
 	/// </summary>
@@ -28,7 +28,7 @@ public abstract class CompilationSource
 		{
 			FilePath = filePath;
 		}
-
+		
 		public async Task<IBuffer> GetBuffer()
 		{
 			var source = await System.IO.File.ReadAllTextAsync(FilePath);
@@ -45,7 +45,7 @@ public abstract class CompilationSource
 		{
 			FilePath = filePath;
 		}
-
+		
 		public IEnumerable<IBufferSource> GetSources()
 		{
 			// Todo: Exclude files based on project settings
@@ -53,7 +53,7 @@ public abstract class CompilationSource
 				.Where(IsCellaSource)
 				.Select(s => new File(s));
 		}
-
+		
 		public bool Verify(out IEnumerable<string> errors)
 		{
 			// Todo: Implement verification of project settings, files exist, etc.
@@ -70,7 +70,7 @@ public abstract class CompilationSource
 		{
 			FilePath = filePath;
 		}
-
+		
 		public IEnumerable<IBufferSource> GetSources()
 		{
 			return System.IO.Directory.EnumerateFiles(FilePath, "*.*", SearchOption.AllDirectories)
@@ -90,7 +90,7 @@ public abstract class CompilationSource
 
 		public Task<IBuffer> GetBuffer() => Task.FromResult<IBuffer>(new StringBuffer(text));
 	}
-
+	
 	public static CompilationSource? FromPath(string path)
 	{
 		if (System.IO.Directory.Exists(path))
@@ -99,32 +99,28 @@ public abstract class CompilationSource
 			foreach (var file in System.IO.Directory.GetFiles(path))
 			{
 				if (FileIsNamedCella(file))
-				{
 					return new Project(file);
-				}
 			}
 			
 			// Else, return a directory
 			return new Directory(path);
 		}
-
+		
 		if (!System.IO.File.Exists(path))
 			return null;
 		
 		// If the file is named 'cella' with no extension, it is a project file
 		if (FileIsNamedCella(path))
-		{
 			return new Project(path);
-		}
-
+		
 		return new File(path);
-
+		
 		bool FileIsNamedCella(string path)
 		{
 			return Path.GetFileName(path).Equals("cella", StringComparison.InvariantCultureIgnoreCase);
 		}
 	}
-
+	
 	private static bool IsCellaSource(string fileName)
 	{
 		return fileName.EndsWith(".ce", StringComparison.OrdinalIgnoreCase) ||

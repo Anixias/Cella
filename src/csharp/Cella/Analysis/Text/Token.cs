@@ -24,7 +24,7 @@ public sealed class Token
 		Value = value;
 		(Line, Column) = source.GetLineColumn(range.Start);
 	}
-
+	
 	public override string ToString()
 	{
 		if (Value is null)

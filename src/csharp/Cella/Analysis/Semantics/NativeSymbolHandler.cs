@@ -6,12 +6,12 @@ public static class NativeSymbolHandler
 {
 	public static readonly TypeSymbol Int32 = CreateNativeType(nameof(Int32));
 	public static readonly TypeSymbol Int64 = CreateNativeType(nameof(Int64));
-
+	
 	private static TypeSymbol CreateNativeType(string name)
 	{
 		return new TypeSymbol(name, new Scope());
 	}
-
+	
 	static NativeSymbolHandler()
 	{
 		// Todo: Populate native symbol tables
@@ -26,7 +26,7 @@ public static class NativeSymbolHandler
 		
 		return globalScope;
 	}
-
+	
 	public static DataType? TypeOfValue(object? value)
 	{
 		return value switch

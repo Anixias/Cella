@@ -11,7 +11,7 @@ public abstract class TypedStatementNode
 		T Visit(TypedBlockStatement blockStatement);
 		T Visit(TypedReturnStatement returnStatement);
 	}
-
+	
 	public interface IVisitor
 	{
 		void Visit(TypedProgramStatement programStatement);
@@ -21,12 +21,12 @@ public abstract class TypedStatementNode
 	}
 	
 	public readonly TextRange range;
-
+	
 	protected TypedStatementNode(TextRange range)
 	{
 		this.range = range;
 	}
-
+	
 	public abstract void Accept(IVisitor visitor);
 	public abstract T Accept<T>(IVisitor<T> visitor);
 }

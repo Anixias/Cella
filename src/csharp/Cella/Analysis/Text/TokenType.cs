@@ -13,7 +13,7 @@ public sealed class TokenType
 	
 	private static readonly Dictionary<string, TokenType> Keywords = new();
 	private static readonly Dictionary<string, TokenType> Operators = new();
-
+	
 	public static ImmutableArray<TokenType> DeclarationModifiers => new[]
 	{
 		KeywordMut,
@@ -21,20 +21,20 @@ public sealed class TokenType
 		KeywordSelf,
 		KeywordVar
 	}.ToImmutableArray();
-
+	
 	public static ImmutableArray<TokenType> ParameterModifiers => new[]
 	{
 		// Only valid for `self` param
 		KeywordMut,
 		KeywordVar
 	}.ToImmutableArray();
-
+	
 	public static ImmutableArray<TokenType> SyntaxTypeModifiers => new[]
 	{
 		KeywordMut,
 		KeywordRef
 	}.ToImmutableArray();
-
+	
 	private readonly string representation;
 	
 	private TokenType(string representation)
@@ -50,11 +50,11 @@ public sealed class TokenType
 		{
 			IsKeyword = true
 		};
-
+		
 		Keywords.Add(text, type);
 		return type;
 	}
-
+	
 	private static TokenType CreateKeywordLiteral(string text)
 	{
 		var type = new TokenType(text)
@@ -62,7 +62,7 @@ public sealed class TokenType
 			IsKeyword = true,
 			IsLiteral = true
 		};
-
+		
 		Keywords.Add(text, type);
 		return type;
 	}
@@ -73,7 +73,7 @@ public sealed class TokenType
 		{
 			IsOperator = true
 		};
-
+		
 		Operators.Add(text, type);
 		return type;
 	}
@@ -82,7 +82,7 @@ public sealed class TokenType
 	{
 		return Keywords.GetValueOrDefault(keyword);
 	}
-
+	
 	public static TokenType? GetOperator(string @operator)
 	{
 		return Operators.GetValueOrDefault(@operator);
@@ -117,7 +117,7 @@ public sealed class TokenType
 	{
 		IsFiltered = true
 	};
-
+	
 	public static readonly TokenType MultilineComment = new("block comment")
 	{
 		IsFiltered = true
@@ -127,39 +127,39 @@ public sealed class TokenType
 	{
 		IsFiltered = true
 	};
-
+	
 	public static readonly TokenType NumberLiteral = new("number literal")
 	{
 		IsLiteral = true
 	};
-
+	
 	public static readonly TokenType InvalidNumberLiteral = new("invalid number literal")
 	{
 		IsLiteral = true,
 		IsInvalid = true
 	};
-
+	
 	public static readonly TokenType StringLiteral = new("string literal")
 	{
 		IsLiteral = true
 	};
-
+	
 	public static readonly TokenType InterpolatedStringLiteral = new("interpolated string literal")
 	{
 		IsLiteral = true
 	};
-
+	
 	public static readonly TokenType InvalidStringLiteral = new("invalid string literal")
 	{
 		IsLiteral = true,
 		IsInvalid = true
 	};
-
+	
 	public static readonly TokenType CharLiteral = new("char literal")
 	{
 		IsLiteral = true
 	};
-
+	
 	public static readonly TokenType InvalidCharLiteral = new("invalid char literal")
 	{
 		IsLiteral = true,
@@ -206,6 +206,7 @@ public sealed class TokenType
 	public static readonly TokenType KeywordVoid = CreateKeyword("void");
 	
 	#endregion
+	
 	#region Operators
 	
 	public static readonly TokenType OpComma = CreateOperator(",");

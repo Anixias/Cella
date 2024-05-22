@@ -13,13 +13,13 @@ public sealed class Parser
 	private readonly IReadOnlyList<Token> tokens;
 	private readonly DiagnosticList diagnostics = new();
 	private int position;
-
+	
 	private Parser(IBuffer source, IReadOnlyList<Token> tokens)
 	{
 		this.source = source;
 		this.tokens = tokens;
 	}
-
+	
 	public static (Ast? ast, DiagnosticList diagnostics) Parse(ILexer lexer)
 	{
 		var tokens = new List<Token>();
@@ -34,31 +34,31 @@ public sealed class Parser
 	
 	private bool IsEndOfFile(int position) => position >= tokens.Count;
 	private bool IsEndOfFile() => IsEndOfFile(position);
-
+	
 	private Token Require(string? errorMessage, params TokenType[] types)
 	{
 		if (errorMessage is null)
 		{
 			var typeString = new StringBuilder();
-
+			
 			if (types.Length == 1)
+			{
 				typeString.Append($"'{types[0]}'");
+			}
 			else
 			{
 				typeString.Append("one of: ");
 				typeString.AppendJoin(',', types.Select(t => $"'{t}'"));
 			}
-
+			
 			errorMessage = $"Expected {typeString}";
 		}
-
+		
 		if (IsEndOfFile())
-		{
 			throw tokens.Count > 0
 				? new ParseException($"{errorMessage}; Instead, got 'end of file'", tokens.Last())
 				: new ParseException($"{errorMessage}; Instead, got 'end of file'", source, TextRange.Empty);
-		}
-
+		
 		var token = tokens[position];
 		if (!types.Contains(token.Type))
 			throw new ParseException($"{errorMessage}; Instead, got '{token.Type}'", token);
@@ -66,7 +66,7 @@ public sealed class Parser
 		position++;
 		return token;
 	}
-
+	
 	private bool TryRequire(string? errorMessage, params TokenType[] types)
 	{
 		return TryRequire(out _, errorMessage, types);
@@ -88,12 +88,12 @@ public sealed class Parser
 			return false;
 		}
 	}
-
+	
 	private bool Match(params TokenType[] types)
 	{
 		return Match(out _, types);
 	}
-
+	
 	private bool Match([NotNullWhen(true)] out Token? token, params TokenType[] types)
 	{
 		if (types.Contains(TokenType.EndOfFile))
@@ -112,12 +112,12 @@ public sealed class Parser
 		position++;
 		return true;
 	}
-
+	
 	private bool MatchSameLine(params TokenType[] types)
 	{
 		return MatchSameLine(out _, types);
 	}
-
+	
 	private bool MatchSameLine([NotNullWhen(true)] out Token? token, params TokenType[] types)
 	{
 		if (types.Contains(TokenType.EndOfFile))
@@ -129,7 +129,7 @@ public sealed class Parser
 			return false;
 		
 		token = tokens[position];
-
+		
 		if (token.IsAfterNewline)
 			return false;
 		
@@ -139,21 +139,21 @@ public sealed class Parser
 		position++;
 		return true;
 	}
-
+	
 	private TokenType Peek()
 	{
 		return TokenAt(position)?.Type ?? TokenType.EndOfFile;
 	}
-
+	
 	private Token? TokenAt(int position)
 	{
 		return IsEndOfFile(position) ? null : tokens[position];
 	}
-
+	
 	private Token? Next() => TokenAt(position);
-
+	
 	private bool IsEndOfLine() => Next()?.IsAfterNewline ?? true;
-
+	
 	private Ast? Parse()
 	{
 		try
@@ -178,25 +178,23 @@ public sealed class Parser
 			return null;
 		}
 	}
-
+	
 	private ProgramStatement? ParseProgram()
 	{
 		const string errorRequireModuleName = "All Cella files must begin with a module name: 'mod <name>'";
 		var hasModName = TryRequire(errorRequireModuleName, TokenType.KeywordMod);
 		var modName = hasModName ? ParseModuleName() : ModuleName.Error;
 		var statements = ParseTopLevelStatements();
-
+		
 		if (TokenAt(position) is { } token)
-		{
 			diagnostics.Add(new ParseException("Expected end of file", token));
-		}
-
+		
 		if (!hasModName || diagnostics.ErrorCount > 0)
 			return null;
-
+		
 		return new ProgramStatement(source, modName, statements, new TextRange(0, source.Length - 1));
 	}
-
+	
 	private ModuleName ParseModuleName()
 	{
 		var nameTokens = new List<Token>();
@@ -205,10 +203,10 @@ public sealed class Parser
 			var identifier = Require(null, TokenType.Identifier);
 			nameTokens.Add(identifier);
 		} while (Match(TokenType.OpDot));
-
+		
 		return new ModuleName(nameTokens);
 	}
-
+	
 	private List<StatementNode> ParseTopLevelStatements()
 	{
 		var syncTokens = new[]
@@ -221,33 +219,33 @@ public sealed class Parser
 		
 		var statements = new List<StatementNode>();
 		var allowImports = true;
-
+		
 		while (Peek() != TokenType.EndOfFile)
 		{
 			try
 			{
 				var statement = ParseTopLevelStatement();
 				statements.Add(statement);
-
+				
 				var statementIsImport = statement is ImportStatement or AggregateImportStatement;
 				if (!statementIsImport)
 				{
 					allowImports = false;
 					continue;
 				}
-
+				
 				if (allowImports)
 					continue;
 				
 				const string errorImportsMustBeFirst =
 					"Top-level import statements must appear before any other statements";
-
+				
 				diagnostics.Add(new ParseException(errorImportsMustBeFirst, source, statement.range));
 			}
 			catch (ParseException e)
 			{
 				diagnostics.Add(e);
-
+				
 				do
 				{
 					position++;
@@ -257,28 +255,24 @@ public sealed class Parser
 		
 		return statements;
 	}
-
+	
 	private StatementNode ParseTopLevelStatement()
 	{
 		if (Next() is not { } nextToken)
 		{
-			throw new ParseException("Expected top-level statement; Instead, got end of file", source, 
+			throw new ParseException("Expected top-level statement; Instead, got end of file", source,
 				tokens.LastOrDefault()?.Range ?? TextRange.Empty);
 		}
 		
 		if (nextToken.Type == TokenType.KeywordUse)
-		{
 			return ParseImportStatement();
-		}
 		
 		if (nextToken.Type == TokenType.Identifier)
-		{
 			return ParseDeclarationStatement();
-		}
-
+		
 		throw new ParseException($"Expected top-level statement; Instead, got '{nextToken.Type}'", nextToken);
 	}
-
+	
 	private StatementNode ParseImportStatement()
 	{
 		var startToken = Require(null, TokenType.KeywordUse);
@@ -301,9 +295,7 @@ public sealed class Parser
 					var identifierToken = Require(null, TokenType.Identifier);
 					Token? tokenAlias = null;
 					if (Match(TokenType.KeywordAs))
-					{
 						tokenAlias = Require(null, TokenType.Identifier);
-					}
 					
 					importTokens.Add(new ImportToken(identifierToken, tokenAlias));
 				} while (Match(TokenType.OpComma));
@@ -314,7 +306,7 @@ public sealed class Parser
 				break;
 			}
 		} while (Match(TokenType.OpDot));
-
+		
 		if (identifierTokens.Count < (isAggregate ? 1 : 2))
 		{
 			if (identifierTokens.LastOrDefault() is { } token)
@@ -322,89 +314,86 @@ public sealed class Parser
 			
 			throw new ParseException("Invalid import statement", source, TextRange.Empty);
 		}
-
+		
 		var scope = identifierTokens.Take(identifierTokens.Count - 1).ToImmutableArray();
 		foreach (var token in scope)
 		{
 			if (token.Type != TokenType.Identifier)
 				throw new ParseException("Invalid import statement: Expected 'identifier'", token);
 		}
-
+		
 		Token? alias = null;
 		if (Match(TokenType.KeywordAs))
 		{
 			alias = Require(null, TokenType.Identifier);
 			range = range.Join(alias.Range);
 		}
-
+		
 		var moduleName = new ModuleName(scope);
+		
 		if (!isAggregate)
-		{
 			return new ImportStatement(moduleName, identifierTokens.Last(), alias, range);
-		}
 		
 		return new AggregateImportStatement(moduleName, importTokens, alias, range);
 	}
-
+	
 	private StatementNode ParseDeclarationStatement()
 	{
 		var identifier = Require(null, TokenType.Identifier);
 		Require(null, TokenType.OpColon);
-
+		
 		var modifierTypes = TokenType.DeclarationModifiers.ToArray();
 		var modifiers = ParseModifiers(modifierTypes);
-		
 		var peek = Peek();
+		
 		if (peek == TokenType.KeywordEntry)
-		{
 			return ParseEntryStatement(identifier, modifiers);
-		}
-
+		
 		if (peek == TokenType.KeywordFun)
 		{
 			// Todo: return ParseFunction(identifier, modifiers);
 		}
-
+		
 		if (peek == TokenType.KeywordType)
 		{
 			// Todo: return ParseType(identifier, modifiers);
 		}
-
+		
 		if (peek == TokenType.KeywordEnum)
 		{
 			// Todo: return ParseEnum(identifier, modifiers);
 		}
-
+		
 		if (peek == TokenType.Identifier)
 		{
 			// Todo: return ParseVariable(identifier, modifiers);
 		}
-			
+		
 		throw new ParseException("Excepted declaration type", Next()!);
 	}
-
+	
 	private List<Token> ParseModifiers(TokenType[] modifierTypes)
 	{
 		var modifiers = new List<Token>();
-
+		
 		while (true)
 		{
 			if (!Match(out var match, modifierTypes))
 				break;
-
+			
 			if (modifiers.All(m => m.Type != match.Type))
 			{
 				modifiers.Add(match);
 				continue;
 			}
-
+			
 			var duplicateError = new ParseException("Duplicate modifier specified", match);
 			diagnostics.Add(duplicateError);
 		}
-
+		
 		return modifiers;
 	}
-
+	
 	private EntryStatement ParseEntryStatement(Token identifier, List<Token> modifiers)
 	{
 		foreach (var modifier in modifiers)
@@ -423,53 +412,51 @@ public sealed class Parser
 		if (Match(TokenType.OpColon))
 		{
 			if (Peek() == TokenType.OpBang)
-			{
 				effects.AddRange(ParseEffects());
-			}
-
+			
 			returnType = ParseSyntaxType();
 		}
-
+		
 		var body = ParseBlockStatement();
 		return new EntryStatement(identifier, parameters, returnType, effects, body, identifier.Range.Join(body.range));
 	}
-
+	
 	private List<Token> ParseEffects()
 	{
 		var effects = new List<Token>();
-
+		
 		Require(null, TokenType.OpBang);
-
+		
 		if (Match(TokenType.OpOpenBrace))
 		{
 			do
-            {
-            	var effect = Require(null, TokenType.Identifier);
-    
-            	if (effects.Find(e => e.Text == effect.Text) is not null)
-            	{
-            		diagnostics.Add(new ParseException($"Effect '{effect.Text}' already specified", effect));
-            		continue;
-            	}
-            	
-            	effects.Add(effect);
-            } while (Match(TokenType.OpComma));
-            
-            Require(null, TokenType.OpCloseBrace);
+			{
+				var effect = Require(null, TokenType.Identifier);
+				
+				if (effects.Find(e => e.Text == effect.Text) is not null)
+				{
+					diagnostics.Add(new ParseException($"Effect '{effect.Text}' already specified", effect));
+					continue;
+				}
+				
+				effects.Add(effect);
+			} while (Match(TokenType.OpComma));
+			
+			Require(null, TokenType.OpCloseBrace);
 		}
 		else
 		{
 			var effect = Require(null, TokenType.Identifier);
 			effects.Add(effect);
 		}
-
+		
 		return effects;
 	}
-
+	
 	private List<SyntaxParameter> ParseParameters(params TokenType[] closeTokens)
 	{
 		var parameters = new List<SyntaxParameter>();
-
+		
 		if (closeTokens.Contains(Peek()))
 			return parameters;
 		
@@ -495,10 +482,10 @@ public sealed class Parser
 			
 			var modifiers = ParseModifiers(modifierTypes);
 			var identifier = Require(null, TokenType.Identifier, TokenType.KeywordSelf);
-
+			
 			if (isVariadic)
 				variadicParameter ??= identifier;
-
+			
 			if (alreadyVariadic)
 			{
 				diagnostics.Add(new ParseException($"Variadic parameter '{variadicParameter!.Text}' must be the " +
@@ -510,15 +497,11 @@ public sealed class Parser
 			if (identifier.Type == TokenType.KeywordSelf)
 			{
 				if (isVariadic)
-				{
 					diagnostics.Add(new ParseException("Parameter 'self' cannot be variadic", identifier));
-				}
 				
 				if (!allowSelf)
-				{
 					diagnostics.Add(new ParseException("Parameter 'self' only valid as first parameter", identifier));
-				}
-
+				
 				foreach (var modifier in modifiers)
 				{
 					if (modifier.Type == TokenType.KeywordVar)
@@ -555,7 +538,7 @@ public sealed class Parser
 			Require(null, TokenType.OpColon);
 			var type = ParseSyntaxType();
 			var defaultValueRange = Next()?.Range ?? TextRange.Empty;
-
+			
 			if (requireDefaultValue)
 			{
 				if (!TryRequire(
@@ -575,19 +558,17 @@ public sealed class Parser
 			requireDefaultValue = true;
 			var defaultValue = ParseExpression();
 			defaultValueRange = defaultValueRange.Join(defaultValue.range);
-
+			
 			if (isVariadic)
-			{
 				diagnostics.Add(new ParseException("Variadic parameters cannot have default value", source,
 					defaultValueRange));
-			}
 			
 			parameters.Add(new SyntaxParameter.Variable(identifier, type, modifiers, isVariadic, defaultValue));
 		} while (Match(TokenType.OpComma));
-
+		
 		return parameters;
 	}
-
+	
 	private SyntaxType ParseSyntaxType()
 	{
 		if (Peek() == TokenType.OpOpenParen)
@@ -595,10 +576,10 @@ public sealed class Parser
 		
 		var modifierTypes = TokenType.SyntaxTypeModifiers.ToArray();
 		var modifiers = ParseModifiers(modifierTypes);
-
+		
 		var mutIndex = modifiers.FindIndex(m => m.Type == TokenType.KeywordMut);
 		var refIndex = modifiers.FindIndex(m => m.Type == TokenType.KeywordRef);
-
+		
 		// 'ref mut' should be 'mut ref'
 		if (refIndex >= 0 && mutIndex > refIndex)
 		{
@@ -610,7 +591,7 @@ public sealed class Parser
 		
 		var identifier = Require(null, TokenType.Identifier);
 		SyntaxType type = new SyntaxType.Base(identifier);
-
+		
 		while (true)
 		{
 			if (Match(TokenType.OpOpenBracket))
@@ -628,11 +609,11 @@ public sealed class Parser
 			
 			// Todo: Nullable types '?'
 			// Todo: Generic types '<...>'
-
+			
 			return type;
 		}
 	}
-
+	
 	private BlockStatement ParseBlockStatement()
 	{
 		var startToken = Require(null, TokenType.OpOpenBrace);
@@ -656,7 +637,7 @@ public sealed class Parser
 		};
 		
 		var statements = new List<StatementNode>();
-
+		
 		var peek = Peek();
 		while (peek != TokenType.EndOfFile && !endTokens.Contains(peek))
 		{
@@ -668,58 +649,50 @@ public sealed class Parser
 			catch (ParseException e)
 			{
 				diagnostics.Add(e);
-
+				
 				do
 				{
 					position++;
 				} while (!syncTokens.Contains(Peek()));
 			}
-
+			
 			peek = Peek();
 		}
 		
 		return statements;
 	}
-
+	
 	private StatementNode ParseStatement()
 	{
 		if (Next() is not { } nextToken)
 		{
-			throw new ParseException("Expected statement; Instead, got end of file", source, 
+			throw new ParseException("Expected statement; Instead, got end of file", source,
 				tokens.LastOrDefault()?.Range ?? TextRange.Empty);
 		}
 		
 		if (nextToken.Type == TokenType.KeywordUse)
-		{
 			return ParseImportStatement();
-		}
 		
 		if (nextToken.Type == TokenType.KeywordRet)
-		{
 			return ParseReturnStatement();
-		}
 		
 		if (nextToken.Type == TokenType.Identifier)
-		{
 			return ParseDeclarationStatement();
-		}
 		
 		throw new ParseException($"Expected statement; Instead, got '{nextToken.Type}'", nextToken);
 	}
-
+	
 	private ReturnStatement ParseReturnStatement()
 	{
 		var startToken = Require(null, TokenType.KeywordRet);
 		
 		if (Match(out var voidToken, TokenType.KeywordVoid))
-		{
 			return new ReturnStatement(null, startToken.Range.Join(voidToken.Range));
-		}
 		
 		var expression = ParseExpression();
 		return new ReturnStatement(expression, startToken.Range.Join(expression.range));
 	}
-
+	
 	private ExpressionNode ParseExpression()
 	{
 		if (TryParseLambdaExpression(out var lambdaExpression))
@@ -727,11 +700,11 @@ public sealed class Parser
 		
 		return ParseAssignmentExpression();
 	}
-
+	
 	private bool TryParseLambdaExpression([NotNullWhen(true)] out LambdaExpression? lambdaExpression)
 	{
 		var startPosition = position;
-
+		
 		try
 		{
 			lambdaExpression = ParseLambdaExpression();
@@ -744,19 +717,19 @@ public sealed class Parser
 			return false;
 		}
 	}
-
+	
 	private LambdaExpression ParseLambdaExpression()
 	{
 		// Todo: Implement Lambda expressions
 		throw new NotImplementedException();
 	}
-
+	
 	private ExpressionNode ParseAssignmentExpression()
 	{
 		var expression = ParseConditionalExpression();
-
-		if (!Match(out var op, TokenType.OpEquals, TokenType.OpPlusEqual, TokenType.OpMinusEqual, 
-			    TokenType.OpStarStarEqual, TokenType.OpStarEqual, TokenType.OpSlashEqual, TokenType.OpAmpEqual, 
+		
+		if (!Match(out var op, TokenType.OpEquals, TokenType.OpPlusEqual, TokenType.OpMinusEqual,
+			    TokenType.OpStarStarEqual, TokenType.OpStarEqual, TokenType.OpSlashEqual, TokenType.OpAmpEqual,
 			    TokenType.OpBarEqual, TokenType.OpHatEqual, TokenType.OpPercentEqual))
 			return expression;
 		
@@ -767,34 +740,34 @@ public sealed class Parser
 	private ExpressionNode ParseConditionalExpression()
 	{
 		var expression = ParseNullCoalescingExpression();
-
+		
 		if (!Match(TokenType.OpQuestion))
 			return expression;
 		
 		var trueExpression = ParseExpression();
 		var range = expression.range.Join(trueExpression.range);
-
+		
 		ExpressionNode? falseExpression = null;
 		if (Match(TokenType.OpColon))
 		{
 			falseExpression = ParseExpression();
 			range = range.Join(falseExpression.range);
 		}
-
+		
 		return new ConditionalExpression(expression, trueExpression, falseExpression, range);
 	}
 	
 	private ExpressionNode ParseNullCoalescingExpression()
 	{
 		var expression = ParseEqualityExpression();
-
+		
 		while (Match(out var op, TokenType.OpQuestionQuestion))
 		{
 			var right = ParseExpression();
 			var range = expression.range.Join(right.range);
 			expression = new BinaryExpression(expression, BinaryExpression.Operation.NullCoalescence, op, right, range);
 		}
-
+		
 		return expression;
 	}
 	
@@ -806,17 +779,17 @@ public sealed class Parser
 		{
 			var right = ParseOrExpression();
 			var range = expression.range.Join(right.range);
-
+			
 			var operation = op.Type == TokenType.OpEqualsEquals
 				? BinaryExpression.Operation.Equals
 				: BinaryExpression.Operation.NotEquals;
 			
 			expression = new BinaryExpression(expression, operation, op, right, range);
 		}
-
+		
 		return expression;
 	}
-
+	
 	private ExpressionNode ParseOrExpression()
 	{
 		var expression = ParseXorExpression();
@@ -827,10 +800,10 @@ public sealed class Parser
 			var range = expression.range.Join(right.range);
 			expression = new BinaryExpression(expression, BinaryExpression.Operation.Or, op, right, range);
 		}
-
+		
 		return expression;
 	}
-
+	
 	private ExpressionNode ParseXorExpression()
 	{
 		var expression = ParseAndExpression();
@@ -841,10 +814,10 @@ public sealed class Parser
 			var range = expression.range.Join(right.range);
 			expression = new BinaryExpression(expression, BinaryExpression.Operation.Xor, op, right, range);
 		}
-
+		
 		return expression;
 	}
-
+	
 	private ExpressionNode ParseAndExpression()
 	{
 		var expression = ParseRelationalExpression();
@@ -855,16 +828,16 @@ public sealed class Parser
 			var range = expression.range.Join(right.range);
 			expression = new BinaryExpression(expression, BinaryExpression.Operation.And, op, right, range);
 		}
-
+		
 		return expression;
 	}
-
+	
 	private ExpressionNode ParseRelationalExpression()
 	{
 		var expression = ParseShiftExpression();
 		var range = expression.range;
-
-		if (Match(out var op, TokenType.OpLessEqual, TokenType.OpGreaterEqual, TokenType.OpLess, TokenType.OpGreater)) 
+		
+		if (Match(out var op, TokenType.OpLessEqual, TokenType.OpGreaterEqual, TokenType.OpLess, TokenType.OpGreater))
 		{
 			var right = ParseShiftExpression();
 			range = range.Join(right.range);
@@ -883,13 +856,13 @@ public sealed class Parser
 			
 			return new BinaryExpression(expression, operation, op, right, range);
 		}
-
+		
 		if (!Match(out var castOp, TokenType.KeywordIs, TokenType.KeywordAs))
 			return expression;
 		
 		var castType = ParseSyntaxType();
 		range = expression.range.Join(castType.range);
-
+		
 		var castOperation = castOp.Type == TokenType.KeywordIs
 			? CastExpression.Operation.Is
 			: CastExpression.Operation.As;
@@ -900,9 +873,9 @@ public sealed class Parser
 	private ExpressionNode ParseShiftExpression()
 	{
 		var expression = ParseAdditiveExpression();
-
+		
 		while (Match(out var op, TokenType.OpRotLeft, TokenType.OpRotRight, TokenType.OpLeftLeft,
-			TokenType.OpRightRight))
+			       TokenType.OpRightRight))
 		{
 			var right = ParseAdditiveExpression();
 			var range = expression.range.Join(right.range);
@@ -921,14 +894,14 @@ public sealed class Parser
 			
 			expression = new BinaryExpression(expression, operation, op, right, range);
 		}
-
+		
 		return expression;
 	}
 	
 	private ExpressionNode ParseAdditiveExpression()
 	{
 		var expression = ParseMultiplicativeExpression();
-
+		
 		while (Match(out var op, TokenType.OpPlus, TokenType.OpMinus))
 		{
 			var right = ParseMultiplicativeExpression();
@@ -944,15 +917,15 @@ public sealed class Parser
 			
 			expression = new BinaryExpression(expression, operation, op, right, range);
 		}
-
+		
 		return expression;
 	}
-
+	
 	private ExpressionNode ParseMultiplicativeExpression()
 	{
 		var expression = ParseExponentiationExpression();
-
-		while (Match(out var op, TokenType.OpStar, TokenType.OpSlash, TokenType.OpPercentPercent, TokenType.OpPercent)) 
+		
+		while (Match(out var op, TokenType.OpStar, TokenType.OpSlash, TokenType.OpPercentPercent, TokenType.OpPercent))
 		{
 			var right = ParseExponentiationExpression();
 			var range = expression.range.Join(right.range);
@@ -971,24 +944,24 @@ public sealed class Parser
 			
 			expression = new BinaryExpression(expression, operation, op, right, range);
 		}
-
+		
 		return expression;
 	}
-
+	
 	private ExpressionNode ParseExponentiationExpression()
 	{
 		var expression = ParseSwitchWithExpression();
-
-		if (Match(out var op, TokenType.OpStarStar)) 
+		
+		if (Match(out var op, TokenType.OpStarStar))
 		{
 			var right = ParseExponentiationExpression();
 			var range = expression.range.Join(right.range);
 			expression = new BinaryExpression(expression, BinaryExpression.Operation.Power, op, right, range);
 		}
-
+		
 		return expression;
 	}
-
+	
 	private ExpressionNode ParseSwitchWithExpression()
 	{
 		/* Todo: Implement switch and with?
@@ -1004,12 +977,12 @@ public sealed class Parser
 		
 		return ParseRangeExpression();
 	}
-
+	
 	private ExpressionNode ParseRangeExpression()
 	{
 		var expression = ParsePrefixUnaryExpression();
-
-		while (Match(out var op, TokenType.OpDotDotEqual, TokenType.OpDotDot)) 
+		
+		while (Match(out var op, TokenType.OpDotDotEqual, TokenType.OpDotDot))
 		{
 			var right = ParsePrefixUnaryExpression();
 			var range = expression.range.Join(right.range);
@@ -1024,10 +997,10 @@ public sealed class Parser
 			
 			expression = new BinaryExpression(expression, operation, op, right, range);
 		}
-
+		
 		return expression;
 	}
-
+	
 	private static UnaryExpression.Operation? GetPrefixUnaryOperation(TokenType op)
 	{
 		if (op == TokenType.OpPlus)
@@ -1043,21 +1016,21 @@ public sealed class Parser
 		if (op == TokenType.KeywordAwait)
 			return UnaryExpression.Operation.Await;
 		*/
-
+		
 		return null;
 	}
-
+	
 	private static UnaryExpression.Operation? GetPostfixUnaryOperation(TokenType op)
 	{
 		// If postfix unary operators are added, they will be defined here
 		return null;
 	}
-
+	
 	private ExpressionNode ParsePrefixUnaryExpression()
 	{
 		if (TokenAt(position) is not { } op || GetPrefixUnaryOperation(op.Type) is not { } operation)
 			return ParsePostfixUnaryExpression();
-
+		
 		position++;
 		var right = ParsePrefixUnaryExpression();
 		var range = op.Range.Join(right.range);
@@ -1075,19 +1048,19 @@ public sealed class Parser
 			{
 				case UnaryExpression.Operation.Identity:
 					return tokenExpression;
-					
+				
 				case UnaryExpression.Operation.Negate:
 					switch (token.Value)
 					{
 						case sbyte value:
 							return new TokenExpression(new Token(token.Type, token.Range, token.Source, (sbyte)-value));
-							
+						
 						case short value:
 							return new TokenExpression(new Token(token.Type, token.Range, token.Source, (short)-value));
-							
+						
 						case int value:
 							return new TokenExpression(new Token(token.Type, token.Range, token.Source, -value));
-							
+						
 						case long value:
 							return new TokenExpression(new Token(token.Type, token.Range, token.Source, -value));
 						
@@ -1097,38 +1070,41 @@ public sealed class Parser
 						case double value:
 							return new TokenExpression(new Token(token.Type, token.Range, token.Source, -value));
 					}
-					break;
 					
+					break;
+				
 				case UnaryExpression.Operation.Not:
 					switch (token.Value)
 					{
 						case sbyte value:
 							return new TokenExpression(new Token(token.Type, token.Range, token.Source, (sbyte)~value));
-							
+						
 						case byte value:
 							return new TokenExpression(new Token(token.Type, token.Range, token.Source, (byte)~value));
-							
+						
 						case short value:
 							return new TokenExpression(new Token(token.Type, token.Range, token.Source, (short)~value));
-							
+						
 						case ushort value:
-							return new TokenExpression(new Token(token.Type, token.Range, token.Source, (ushort)~value));
-							
+							return new TokenExpression(new Token(token.Type, token.Range, token.Source,
+								(ushort)~value));
+						
 						case int value:
 							return new TokenExpression(new Token(token.Type, token.Range, token.Source, ~value));
-							
+						
 						case uint value:
 							return new TokenExpression(new Token(token.Type, token.Range, token.Source, ~value));
-							
+						
 						case long value:
 							return new TokenExpression(new Token(token.Type, token.Range, token.Source, ~value));
-							
+						
 						case ulong value:
 							return new TokenExpression(new Token(token.Type, token.Range, token.Source, ~value));
-							
+						
 						case bool value:
 							return new TokenExpression(new Token(token.Type, token.Range, token.Source, !value));
 					}
+					
 					break;
 			}
 		}
@@ -1137,14 +1113,14 @@ public sealed class Parser
 			if (token.Value is bool value && operation == UnaryExpression.Operation.Not)
 				return new TokenExpression(new Token(token.Type, token.Range, token.Source, !value));
 		}
-
+		
 		return new UnaryExpression(right, operation, op, true, range);
 	}
 	
 	private ExpressionNode ParsePostfixUnaryExpression()
 	{
 		var expression = ParsePrimaryExpression();
-
+		
 		while (true)
 		{
 			var next = Next();
@@ -1193,32 +1169,32 @@ public sealed class Parser
 				expression = ParseInstantiationExpression(tokens, ref position, expression);
 				continue;
 			}*/
-
+			
 			break;
 		}
-
+		
 		return expression;
 	}
-
+	
 	private AccessExpression ParseAccessExpression(ExpressionNode source)
 	{
 		var accessOperator = Require(null, TokenType.OpQuestionDot, TokenType.OpDot);
 		var nullCheck = accessOperator.Type == TokenType.OpQuestionDot;
 		var target = ParsePrimaryExpression();
-
+		
 		return new AccessExpression(source, target, nullCheck, source.range.Join(target.range));
 	}
-
+	
 	private IndexExpression ParseIndexExpression(ExpressionNode source)
 	{
 		var accessOperator = Require(null, TokenType.OpQuestionOpenBracket, TokenType.OpOpenBracket);
 		var nullCheck = accessOperator.Type == TokenType.OpQuestionOpenBracket;
 		var index = ParseExpression();
 		var endToken = Require(null, TokenType.OpCloseBracket);
-
+		
 		return new IndexExpression(source, index, nullCheck, source.range.Join(endToken.Range));
 	}
-
+	
 	private FunctionCallExpression ParseFunctionCallExpression(ExpressionNode caller)
 	{
 		Require(null, TokenType.OpOpenParen);
@@ -1228,10 +1204,10 @@ public sealed class Parser
 			args = ParseArgumentList();
 		
 		var endToken = Require(null, TokenType.OpCloseParen);
-
+		
 		return new FunctionCallExpression(caller, args, caller.range.Join(endToken.Range));
 	}
-
+	
 	private List<ExpressionNode> ParseArgumentList()
 	{
 		var args = new List<ExpressionNode>();
@@ -1240,7 +1216,7 @@ public sealed class Parser
 		{
 			args.Add(ParseExpression());
 		} while (Match(TokenType.OpComma));
-
+		
 		return args;
 	}
 	
@@ -1248,26 +1224,24 @@ public sealed class Parser
 	{
 		if (Match(out var literal, TokenType.NumberLiteral, TokenType.StringLiteral, TokenType.CharLiteral,
 			    TokenType.KeywordSelf, TokenType.KeywordTrue, TokenType.KeywordFalse, TokenType.KeywordNull))
-		{
 			return new TokenExpression(literal);
-		}
-
+		
 		var next = Next();
 		if (next?.Type is not { } peek)
 			throw new ParseException("Expected expression; Instead, got end of file", source, TextRange.Empty);
 		
 		if (peek == TokenType.InterpolatedStringLiteral)
 			return ParseInterpolatedString();
-			
+		
 		if (peek == TokenType.OpOpenParen)
 			return ParseTupleExpression();
-
+		
 		if (peek == TokenType.OpOpenBracket)
 			return ParseListExpression();
-
+		
 		if (peek == TokenType.Identifier)
 			return new TokenExpression(Require(null, TokenType.Identifier));
-
+		
 		var start = position;
 		try
 		{
@@ -1279,13 +1253,13 @@ public sealed class Parser
 			throw new ParseException($"Expected expression; Instead, got '{peek}'", next);
 		}
 	}
-
+	
 	private readonly struct InterpolationPart
 	{
 		public readonly string text;
 		public readonly bool isStringLiteral;
 		public readonly TextRange range;
-
+		
 		public InterpolationPart(string text, bool isStringLiteral, TextRange range)
 		{
 			this.text = text;
@@ -1301,7 +1275,7 @@ public sealed class Parser
 			throw new ParseException("Malformed interpolated string", stringLiteral);
 		
 		var stringParts = new List<InterpolationPart>();
-
+		
 		var escaped = false;
 		var withinString = true;
 		var rangeStart = stringLiteral.Range.Start + 1;
@@ -1309,7 +1283,7 @@ public sealed class Parser
 		for (var i = 0; i < text.Length; i++)
 		{
 			var character = text[i];
-
+			
 			if (!withinString)
 			{
 				switch (character)
@@ -1318,6 +1292,7 @@ public sealed class Parser
 						withinString = true;
 						start = i + 1;
 						break;
+					
 					case '}':
 						withinString = true;
 						
@@ -1329,7 +1304,7 @@ public sealed class Parser
 						start = i + 1;
 						break;
 				}
-
+				
 				continue;
 			}
 			
@@ -1344,7 +1319,7 @@ public sealed class Parser
 					var partText = text[start..i];
 					if (partText != "")
 						stringParts.Add(new InterpolationPart(partText, true, new TextRange(start, i) + rangeStart));
-				
+					
 					start = i + 1;
 					withinString = false;
 					break;
@@ -1355,23 +1330,23 @@ public sealed class Parser
 					var partText = text[start..i];
 					if (partText != "")
 						stringParts.Add(new InterpolationPart(partText, true, new TextRange(start, i) + rangeStart));
-				
+					
 					start = i + 1;
 					withinString = false;
 					break;
 				}
 			}
-
+			
 			escaped = false;
 		}
-
+		
 		if (withinString)
 		{
 			var partText = text[start..];
 			if (partText != "")
 				stringParts.Add(new InterpolationPart(partText, true, new TextRange(start, text.Length) + rangeStart));
 		}
-
+		
 		var parts = new List<ExpressionNode>();
 		foreach (var part in stringParts)
 		{
@@ -1386,7 +1361,7 @@ public sealed class Parser
 				var partSource = new StringBuffer(part.text);
 				var lexer = new FilteredLexer(partSource);
 				var interpolatedTokens = new List<Token>();
-
+				
 				foreach (var interpolatedToken in lexer)
 				{
 					if (interpolatedToken.Type.IsInvalid)
@@ -1394,23 +1369,23 @@ public sealed class Parser
 						var characters = interpolatedToken.Text.Length > 1 ? "characters" : "character";
 						throw new ParseException($"Unexpected {characters} in interpolated string", interpolatedToken);
 					}
-
+					
 					interpolatedTokens.Add(new Token(interpolatedToken.Type, interpolatedToken.Range + part.range.Start,
 						source, interpolatedToken.Value));
 				}
-
+				
 				var interpolationParser = new Parser(partSource, interpolatedTokens);
 				parts.Add(interpolationParser.ParseExpression());
 			}
 		}
-
+		
 		return new InterpolatedStringExpression(parts, stringLiteral.Range);
 	}
-
+	
 	private ExpressionNode ParseTupleExpression()
 	{
 		var startToken = Require(null, TokenType.OpOpenParen);
-
+		
 		var expressions = new List<ExpressionNode>();
 		do
 		{
@@ -1418,21 +1393,21 @@ public sealed class Parser
 		} while (Match(TokenType.OpComma));
 		
 		var endToken = Require(null, TokenType.OpCloseParen);
-
+		
 		// If the tuple has only 1 value, it is actually a parenthesized expression, not a tuple
 		if (expressions.Count == 1)
 			return expressions[0];
 		
 		return new TupleExpression(expressions, startToken.Range.Join(endToken.Range));
 	}
-
+	
 	private ExpressionNode ParseListExpression()
 	{
 		if (TryParseMapExpression(out var mapExpression))
 			return mapExpression;
 		
 		var startToken = Require(null, TokenType.OpOpenBracket);
-
+		
 		var expressions = new List<ExpressionNode>();
 		do
 		{
@@ -1450,10 +1425,10 @@ public sealed class Parser
 		
 		var type = ParseSyntaxType();
 		range = range.Join(type.range);
-
+		
 		return new ListExpression(expressions, type, range);
 	}
-
+	
 	private bool TryParseMapExpression([NotNullWhen(true)] out MapExpression? mapExpression)
 	{
 		var start = position;
@@ -1469,11 +1444,11 @@ public sealed class Parser
 			return false;
 		}
 	}
-
+	
 	private MapExpression ParseMapExpression()
 	{
 		var startToken = Require(null, TokenType.OpOpenBracket);
-
+		
 		var expressions = new List<KeyValuePair<ExpressionNode, ExpressionNode>>();
 		do
 		{
@@ -1500,23 +1475,23 @@ public sealed class Parser
 		
 		return new MapExpression(expressions, tupleType, range.Join(type.range));
 	}
-
+	
 	private SyntaxType ParseTupleType()
 	{
 		var types = new List<SyntaxType>();
 		var startToken = Require(null, TokenType.OpOpenParen);
-
+		
 		do
 		{
 			types.Add(ParseSyntaxType());
 		} while (Match(TokenType.OpComma));
 		
 		var endToken = Require(null, TokenType.OpCloseParen);
-
+		
 		// If the tuple has only 1 value, it is actually a parenthesized type, not a tuple
 		if (types.Count == 1)
 			return types[0];
-
+		
 		return new SyntaxType.Tuple(types, startToken.Range.Join(endToken.Range));
 	}
 }

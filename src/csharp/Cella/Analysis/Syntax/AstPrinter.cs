@@ -9,58 +9,56 @@ public sealed class AstPrinter : StatementNode.IVisitor, ExpressionNode.IVisitor
 	private readonly StringBuilder stringBuilder = new();
 	private int indent;
 	private readonly List<bool> finalChildIndents = [];
-
+	
 	private bool IsLastChild
 	{
 		get => finalChildIndents[indent - 1];
 		set => finalChildIndents[indent - 1] = value;
 	}
-
+	
 	private AstPrinter(TextWriter textWriter)
 	{
 		this.textWriter = textWriter;
 	}
-
+	
 	public static void Print(Ast ast, TextWriter? textWriter = null)
 	{
 		var printer = new AstPrinter(textWriter ?? Console.Out);
 		printer.PrintAst(ast);
 	}
-
+	
 	private void PushIndent(bool isLastChild = true)
 	{
 		indent++;
 		finalChildIndents.Add(isLastChild);
 	}
-
+	
 	private void PopIndent()
 	{
 		indent--;
 		finalChildIndents.RemoveAt(indent);
 	}
-
+	
 	private void Write(string text)
 	{
 		for (var i = 0; i < indent - 1; i++)
 		{
 			stringBuilder.Append(finalChildIndents[i] ? "    " : "│   ");
 		}
-
+		
 		if (indent > 0)
-		{
 			stringBuilder.Append(IsLastChild ? "└── " : "├── ");
-		}
-
+		
 		stringBuilder.Append(text);
 		stringBuilder.AppendLine();
 	}
-
+	
 	private void PrintAst(Ast ast)
 	{
 		ast.Root.Accept(this);
 		textWriter.WriteLine(stringBuilder.ToString());
 	}
-
+	
 	public void Visit(ProgramStatement programStatement)
 	{
 		Write("Program");
@@ -68,7 +66,7 @@ public sealed class AstPrinter : StatementNode.IVisitor, ExpressionNode.IVisitor
 		var statementCount = programStatement.statements.Length;
 		PushIndent(statementCount == 0);
 		Write($"Module: {programStatement.moduleName}");
-
+		
 		if (statementCount > 0)
 		{
 			IsLastChild = true;
@@ -80,34 +78,29 @@ public sealed class AstPrinter : StatementNode.IVisitor, ExpressionNode.IVisitor
 				IsLastChild = i == statementCount - 1;
 				programStatement.statements[i].Accept(this);
 			}
+			
 			PopIndent();
 		}
-			
+		
 		PopIndent();
 	}
-
+	
 	public void Visit(ImportStatement importStatement)
 	{
+		var text = importStatement.importToken.identifier.Text;
+		
 		if (importStatement.importToken.alias is { } alias)
-		{
-			Write($"Import {importStatement.moduleName}::{importStatement.importToken.identifier.Text} as {alias.Text}");
-		}
+			Write($"Import {importStatement.moduleName}::{text} as {alias.Text}");
 		else
-		{
-			Write($"Import {importStatement.moduleName}::{importStatement.importToken.identifier.Text}");
-		}
+			Write($"Import {importStatement.moduleName}::{text}");
 	}
-
+	
 	public void Visit(AggregateImportStatement aggregateImportStatement)
 	{
 		if (aggregateImportStatement.alias is { } aggregateAlias)
-		{
 			Write($"Import {aggregateImportStatement.moduleName} as {aggregateAlias}");
-		}
 		else
-		{
 			Write($"Import {aggregateImportStatement.moduleName}");
-		}
 		
 		PushIndent(false);
 		for (var i = 0; i < aggregateImportStatement.importTokens.Length; i++)
@@ -116,18 +109,14 @@ public sealed class AstPrinter : StatementNode.IVisitor, ExpressionNode.IVisitor
 			
 			var importToken = aggregateImportStatement.importTokens[i];
 			if (importToken.alias is { } alias)
-			{
 				Write($"{importToken.identifier.Text} as {alias.Text}");
-			}
 			else
-			{
 				Write($"{importToken.identifier.Text}");
-			}
 		}
-
+		
 		PopIndent();
 	}
-
+	
 	public void Visit(EntryStatement entryStatement)
 	{
 		Write("Entry:");
@@ -135,10 +124,10 @@ public sealed class AstPrinter : StatementNode.IVisitor, ExpressionNode.IVisitor
 		PushIndent(false);
 		Write($"Name: {entryStatement.name.Text}");
 		Write($"Return Type: {entryStatement.returnType?.ToString() ?? "Void"}");
-
+		
 		PrintParameters(entryStatement.parameters.ToArray());
 		PrintEffects(entryStatement.effects.ToArray());
-
+		
 		IsLastChild = true;
 		Write("Body:");
 		PushIndent();
@@ -147,7 +136,7 @@ public sealed class AstPrinter : StatementNode.IVisitor, ExpressionNode.IVisitor
 		
 		PopIndent();
 	}
-
+	
 	public void Visit(BlockStatement blockStatement)
 	{
 		if (blockStatement.nodes.Length == 0)
@@ -164,9 +153,10 @@ public sealed class AstPrinter : StatementNode.IVisitor, ExpressionNode.IVisitor
 			IsLastChild = i == blockStatement.nodes.Length - 1;
 			blockStatement.nodes[i].Accept(this);
 		}
+		
 		PopIndent();
 	}
-
+	
 	public void Visit(ReturnStatement returnStatement)
 	{
 		if (returnStatement.expression is null)
@@ -180,7 +170,7 @@ public sealed class AstPrinter : StatementNode.IVisitor, ExpressionNode.IVisitor
 		returnStatement.expression.Accept(this);
 		PopIndent();
 	}
-
+	
 	private void PrintParameters(SyntaxParameter[] parameters)
 	{
 		if (parameters.Length == 0)
@@ -194,13 +184,13 @@ public sealed class AstPrinter : StatementNode.IVisitor, ExpressionNode.IVisitor
 			IsLastChild = i == parameters.Length - 1;
 			var parameter = parameters[i];
 			Write($"{parameter.identifier.Text}:");
-
+			
 			switch (parameter)
 			{
 				case SyntaxParameter.Self self:
 				{
 					PushIndent();
-
+					
 					if (self.modifiers.Length == 0)
 					{
 						Write("Modifiers: (none)");
@@ -218,7 +208,7 @@ public sealed class AstPrinter : StatementNode.IVisitor, ExpressionNode.IVisitor
 					PopIndent();
 					break;
 				}
-
+				
 				case SyntaxParameter.Variable variable:
 				{
 					PushIndent(false);
@@ -238,10 +228,10 @@ public sealed class AstPrinter : StatementNode.IVisitor, ExpressionNode.IVisitor
 							Write($"{variable.modifiers[i].Text}:");
 						}
 					}
-
+					
 					IsLastChild = variable.defaultValue is null;
 					Write($"Variadic: {variable.isVariadic}");
-
+					
 					if (variable.defaultValue is not null)
 					{
 						IsLastChild = true;
@@ -251,20 +241,21 @@ public sealed class AstPrinter : StatementNode.IVisitor, ExpressionNode.IVisitor
 						variable.defaultValue.Accept(this);
 						PopIndent();
 					}
-
+					
 					PopIndent();
 					break;
 				}
 			}
 		}
+		
 		PopIndent();
 	}
-
+	
 	private void PrintEffects(Token[] effects)
 	{
 		if (effects.Length == 0)
 			return;
-
+		
 		Write("Effects:");
 		
 		PushIndent(false);
@@ -273,26 +264,27 @@ public sealed class AstPrinter : StatementNode.IVisitor, ExpressionNode.IVisitor
 			IsLastChild = i == effects.Length - 1;
 			Write(effects[i].Text);
 		}
+		
 		PopIndent();
 	}
-
+	
 	public void Visit(LambdaExpression lambdaExpression)
 	{
 		Write("Lambda Expression:");
 		PushIndent(false);
-
+		
 		Write($"Return Type: {lambdaExpression.returnType?.ToString() ?? "Void"}");
 		PrintParameters(lambdaExpression.parameters.ToArray());
-
+		
 		IsLastChild = true;
 		Write("Body:");
 		PushIndent();
 		lambdaExpression.body.Accept(this);
 		PopIndent();
-
+		
 		PopIndent();
 	}
-
+	
 	public void Visit(AssignmentExpression assignmentExpression)
 	{
 		Write($"Assignment Expression ({assignmentExpression.op.Text}):");
@@ -302,7 +294,7 @@ public sealed class AstPrinter : StatementNode.IVisitor, ExpressionNode.IVisitor
 		assignmentExpression.right.Accept(this);
 		PopIndent();
 	}
-
+	
 	public void Visit(ConditionalExpression conditionalExpression)
 	{
 		Write("Conditional Expression:");
@@ -313,13 +305,13 @@ public sealed class AstPrinter : StatementNode.IVisitor, ExpressionNode.IVisitor
 		PushIndent();
 		conditionalExpression.condition.Accept(this);
 		PopIndent();
-
+		
 		IsLastChild = conditionalExpression.falseExpression is null;
 		Write("True Value:");
 		PushIndent();
 		conditionalExpression.trueExpression.Accept(this);
 		PopIndent();
-
+		
 		if (conditionalExpression.falseExpression is not null)
 		{
 			IsLastChild = true;
@@ -328,10 +320,10 @@ public sealed class AstPrinter : StatementNode.IVisitor, ExpressionNode.IVisitor
 			conditionalExpression.falseExpression.Accept(this);
 			PopIndent();
 		}
-
+		
 		PopIndent();
 	}
-
+	
 	public void Visit(BinaryExpression binaryExpression)
 	{
 		Write($"Binary Expression ({binaryExpression.operation}):");
@@ -341,7 +333,7 @@ public sealed class AstPrinter : StatementNode.IVisitor, ExpressionNode.IVisitor
 		binaryExpression.right.Accept(this);
 		PopIndent();
 	}
-
+	
 	public void Visit(UnaryExpression unaryExpression)
 	{
 		Write($"Unary Expression ({unaryExpression.operation}):");
@@ -349,7 +341,7 @@ public sealed class AstPrinter : StatementNode.IVisitor, ExpressionNode.IVisitor
 		unaryExpression.operand.Accept(this);
 		PopIndent();
 	}
-
+	
 	public void Visit(CastExpression castExpression)
 	{
 		Write($"Cast Expression ({castExpression.operation}):");
@@ -359,13 +351,13 @@ public sealed class AstPrinter : StatementNode.IVisitor, ExpressionNode.IVisitor
 		PushIndent();
 		castExpression.operand.Accept(this);
 		PopIndent();
-
+		
 		IsLastChild = true;
 		Write($"Target Type: {castExpression.type}");
 		
 		PopIndent();
 	}
-
+	
 	public void Visit(AccessExpression accessExpression)
 	{
 		Write("Access Expression:");
@@ -377,7 +369,7 @@ public sealed class AstPrinter : StatementNode.IVisitor, ExpressionNode.IVisitor
 		PushIndent();
 		accessExpression.source.Accept(this);
 		PopIndent();
-
+		
 		IsLastChild = true;
 		Write("Target:");
 		PushIndent();
@@ -386,7 +378,7 @@ public sealed class AstPrinter : StatementNode.IVisitor, ExpressionNode.IVisitor
 		
 		PopIndent();
 	}
-
+	
 	public void Visit(IndexExpression indexExpression)
 	{
 		Write("Index Expression:");
@@ -396,7 +388,7 @@ public sealed class AstPrinter : StatementNode.IVisitor, ExpressionNode.IVisitor
 		PushIndent();
 		indexExpression.source.Accept(this);
 		PopIndent();
-
+		
 		IsLastChild = true;
 		Write("Index:");
 		PushIndent();
@@ -405,7 +397,7 @@ public sealed class AstPrinter : StatementNode.IVisitor, ExpressionNode.IVisitor
 		
 		PopIndent();
 	}
-
+	
 	public void Visit(FunctionCallExpression functionCallExpression)
 	{
 		Write("Function Call Expression:");
@@ -416,13 +408,13 @@ public sealed class AstPrinter : StatementNode.IVisitor, ExpressionNode.IVisitor
 		PushIndent();
 		functionCallExpression.caller.Accept(this);
 		PopIndent();
-
+		
 		IsLastChild = true;
 		if (functionCallExpression.arguments.Length > 0)
 		{
 			Write("Arguments:");
 			PushIndent();
-
+			
 			for (var i = 0; i < functionCallExpression.arguments.Length; i++)
 			{
 				IsLastChild = i == functionCallExpression.arguments.Length - 1;
@@ -434,7 +426,7 @@ public sealed class AstPrinter : StatementNode.IVisitor, ExpressionNode.IVisitor
 		
 		PopIndent();
 	}
-
+	
 	public void Visit(TokenExpression tokenExpression)
 	{
 		if (tokenExpression.token.Type == TokenType.Identifier)
@@ -445,17 +437,17 @@ public sealed class AstPrinter : StatementNode.IVisitor, ExpressionNode.IVisitor
 		
 		Write(tokenExpression.token.Value?.ToString() ?? "null");
 	}
-
+	
 	public void Visit(TypeExpression typeExpression)
 	{
 		Write(typeExpression.type.ToString());
 	}
-
+	
 	public void Visit(InterpolatedStringExpression interpolatedStringExpression)
 	{
 		Write("Interpolated String Expression:");
 		PushIndent();
-
+		
 		for (var i = 0; i < interpolatedStringExpression.parts.Length; i++)
 		{
 			IsLastChild = i == interpolatedStringExpression.parts.Length - 1;
@@ -464,11 +456,11 @@ public sealed class AstPrinter : StatementNode.IVisitor, ExpressionNode.IVisitor
 		
 		PopIndent();
 	}
-
+	
 	public void Visit(TupleExpression tupleExpression)
 	{
 		Write("Tuple Expression:");
-
+		
 		PushIndent();
 		var count = 0;
 		foreach (var expression in tupleExpression.expressions)
@@ -478,13 +470,14 @@ public sealed class AstPrinter : StatementNode.IVisitor, ExpressionNode.IVisitor
 			
 			expression.Accept(this);
 		}
+		
 		PopIndent();
 	}
-
+	
 	public void Visit(ListExpression listExpression)
 	{
 		Write("List Expression:");
-
+		
 		PushIndent();
 		var count = 0;
 		foreach (var expression in listExpression.expressions)
@@ -494,13 +487,14 @@ public sealed class AstPrinter : StatementNode.IVisitor, ExpressionNode.IVisitor
 			
 			expression.Accept(this);
 		}
+		
 		PopIndent();
 	}
-
+	
 	public void Visit(MapExpression mapExpression)
 	{
 		Write("Map Expression:");
-
+		
 		PushIndent();
 		var count = 0;
 		foreach (var (key, value) in mapExpression.keyValuePairs)
@@ -515,7 +509,7 @@ public sealed class AstPrinter : StatementNode.IVisitor, ExpressionNode.IVisitor
 			PushIndent();
 			key.Accept(this);
 			PopIndent();
-
+			
 			IsLastChild = true;
 			Write("Value:");
 			PushIndent();
@@ -524,6 +518,7 @@ public sealed class AstPrinter : StatementNode.IVisitor, ExpressionNode.IVisitor
 			
 			PopIndent();
 		}
+		
 		PopIndent();
 	}
 }

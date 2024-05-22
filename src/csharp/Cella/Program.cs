@@ -27,15 +27,14 @@ public static class Program
 		public IReadOnlyList<string> RawInputs => rawInputs;
 		public string? OutputPath { get; private set; }
 		public bool WaitOnExit { get; private set; }
-	
-	private readonly List<string> inputPaths = new();
+		
+		private readonly List<string> inputPaths = new();
 		private readonly List<string> rawInputs = new();
-
+		
 		private Options()
 		{
-			
 		}
-
+		
 		public static Options? FromArgs(IEnumerable<string> args)
 		{
 			var options = new Options();
@@ -43,11 +42,11 @@ public static class Program
 			var optionSet = new OptionSet
 			{
 				{ "o|output=", "the path to the file to output", o => options.OutputPath = o },
-				{ "r|raw=", "raw source code", r => options.rawInputs.Add(r)},
-				{ "w|wait", "wait on exit", _ => options.WaitOnExit = true},
+				{ "r|raw=", "raw source code", r => options.rawInputs.Add(r) },
+				{ "w|wait", "wait on exit", _ => options.WaitOnExit = true },
 				{ "<>", i => options.inputPaths.Add(i) }
 			};
-
+			
 			try
 			{
 				optionSet.Parse(args);
@@ -65,9 +64,7 @@ public static class Program
 	public static async Task<int> Main(string[] args)
 	{
 		if (Options.FromArgs(args) is not { } options)
-		{
 			return 1;
-		}
 		
 		var returnCode = await Run(options);
 		Console.ResetColor();
@@ -84,7 +81,7 @@ public static class Program
 	private static async Task<int> Run(Options options)
 	{
 		Console.OutputEncoding = Encoding.UTF8;
-
+		
 		if (options.InputPaths.Count == 0 && options.RawInputs.Count == 0)
 		{
 			ReportExecutionError("No inputs provided. Specify a file, a folder, or a project, or use '-r' or '--raw' " +
@@ -104,13 +101,13 @@ public static class Program
 			// Todo: Handle cross-platform default extensions
 			outputPath = Path.ChangeExtension(options.InputPaths[0], ".exe");
 		}
-
+		
 		var inputErrors = new List<string>();
 		var sources = new List<CompilationSource.IBufferSource>();
 		foreach (var inputPath in options.InputPaths)
 		{
 			var source = CompilationSource.FromPath(inputPath);
-
+			
 			switch (source)
 			{
 				case null:
@@ -133,12 +130,12 @@ public static class Program
 					continue;
 			}
 		}
-
+		
 		foreach (var rawInput in options.RawInputs)
 		{
 			sources.Add(new CompilationSource.RawText(rawInput));
 		}
-
+		
 		var hadInputError = inputErrors.Count > 0;
 		var executionResult = await Execute(sources);
 		
@@ -169,7 +166,7 @@ public static class Program
 			return 1;
 		}
 	}
-
+	
 	private static void ReportExecutionError(string message)
 	{
 		lock (ConsoleLock)
@@ -182,61 +179,49 @@ public static class Program
 			Console.ResetColor();
 		}
 	}
-
+	
 	private static string Format(TimeSpan time)
 	{
 		if (time < TimeSpan.FromMicroseconds(1.0))
-		{
 			return $"{time.TotalNanoseconds:F2} ns";
-		}
 		
 		if (time < TimeSpan.FromMilliseconds(1.0))
-		{
 			return $"{time.TotalMicroseconds:F2} µs";
-		}
 		
 		if (time < TimeSpan.FromSeconds(1.0))
-		{
 			return $"{time.TotalMilliseconds:F2} ms";
-		}
 		
 		if (time < TimeSpan.FromMinutes(1.0))
-		{
 			return $"{time.TotalSeconds:F2} s";
-		}
 		
 		if (time < TimeSpan.FromHours(1.0))
-		{
 			return $"{time.TotalMinutes:F2} min";
-		}
 		
 		return $"{time.TotalHours:F2} h";
 	}
-
+	
 	private static async Task<ExecutionResult> Execute(IEnumerable<CompilationSource.IBufferSource> compilationSources)
 	{
 		var sources = compilationSources.ToArray();
 		var globalScope = NativeSymbolHandler.CreateGlobalScope();
 		var startTime = DateTime.UtcNow;
-
+		
 		var collectionTasks = sources.Select(s => CollectSource(s, globalScope)).ToArray();
 		var collectionResults = await Task.WhenAll(collectionTasks);
 		if (collectionResults.Any(t => t is null))
-		{
 			return new ExecutionResult(false, DateTime.UtcNow - startTime);
-		}
-
+		
 		var resolutionTasks = collectionResults.Select(a => ResolveSource(a!, globalScope));
 		var resolutionResults = await Task.WhenAll(resolutionTasks);
 		
 		var endTime = DateTime.UtcNow;
-
+		
 		var isSuccess = resolutionResults.All(r => r.IsSuccess);
 		var elapsedTime = endTime - startTime;
-
+		
 		return new ExecutionResult(isSuccess, elapsedTime);
 	}
-
+	
 	private static void PrintDiagnostics(DiagnosticList diagnostics)
 	{
 		if (diagnostics.Count <= 0)
@@ -245,7 +230,7 @@ public static class Program
 		PrintDiagnosticsOfSeverity(diagnostics, DiagnosticSeverity.Warning);
 		PrintDiagnosticsOfSeverity(diagnostics, DiagnosticSeverity.Error);
 	}
-
+	
 	private static void PrintDiagnosticsOfSeverity(DiagnosticList diagnostics, DiagnosticSeverity severity)
 	{
 		diagnostics = diagnostics.OfSeverity(severity);
@@ -258,14 +243,14 @@ public static class Program
 			DiagnosticSeverity.Warning => ConsoleColor.Yellow,
 			_ => ConsoleColor.White
 		};
-			
+		
 		var darkColor = severity switch
 		{
 			DiagnosticSeverity.Error => ConsoleColor.DarkRed,
 			DiagnosticSeverity.Warning => ConsoleColor.DarkYellow,
 			_ => ConsoleColor.White
 		};
-
+		
 		foreach (var diagnostic in diagnostics.OrderBy(d => d.line))
 		{
 			const int maxLineNumberLength = 8;
@@ -279,7 +264,7 @@ public static class Program
 			var lineHeader = diagnostic.line == 0
 				? $"{"?",maxLineNumberLength}"
 				: $"{diagnostic.line.ToString(),maxLineNumberLength}";
-
+			
 			var messageHeader = $"{new string(' ', lineHeader.Length)} {lineBar} ";
 			var lineRange = diagnostic.source.GetLineRange(diagnostic.line);
 			var lineText = diagnostic.source.GetText(diagnostic.line);
@@ -300,7 +285,7 @@ public static class Program
 					}
 					
 					var postRange = new TextRange(range.End, lineRange.End);
-
+					
 					if (diagnostic.line > 0)
 					{
 						Console.Write(diagnostic.source.GetText(preRange));
@@ -313,7 +298,7 @@ public static class Program
 					{
 						Console.WriteLine();
 					}
-
+					
 					Console.ForegroundColor = ConsoleColor.DarkGray;
 					Console.Write(messageHeader);
 					Console.ForegroundColor = darkColor;
@@ -330,7 +315,7 @@ public static class Program
 				}
 				
 				var messageParts = diagnostic.message.Split(NewlineSeparators, StringSplitOptions.None);
-
+				
 				foreach (var message in messageParts)
 				{
 					Console.ForegroundColor = ConsoleColor.DarkGray;
@@ -338,7 +323,7 @@ public static class Program
 					Console.ForegroundColor = color;
 					Console.WriteLine(message);
 				}
-
+				
 				Console.ResetColor();
 				Console.WriteLine();
 			}
@@ -363,7 +348,7 @@ public static class Program
 			return false;
 		}
 	}
-
+	
 	private static async Task<TypedAst?> CollectSource(CompilationSource.IBufferSource source, Scope globalScope)
 	{
 		var diagnostics = new DiagnosticList();
@@ -371,14 +356,14 @@ public static class Program
 		var lexer = new FilteredLexer(sourceBuffer);
 		var (ast, parserDiagnostics) = await Task.Run(() => Parser.Parse(lexer));
 		diagnostics.Add(parserDiagnostics);
-
+		
 		if (ast is null)
 		{
 			lock (ReportLock)
 			{
 				PrintDiagnostics(diagnostics);
 			}
-
+			
 			return null;
 		}
 		
@@ -389,7 +374,7 @@ public static class Program
 		
 		var (typedAst, collectorDiagnostics) = await Task.Run(() => Collector.Collect(globalScope, ast));
 		diagnostics.Add(collectorDiagnostics);
-
+		
 		if (typedAst is not null)
 			return typedAst;
 		
@@ -397,16 +382,16 @@ public static class Program
 		{
 			PrintDiagnostics(diagnostics);
 		}
-
+		
 		return null;
 	}
-
+	
 	private static async Task<CompilationResult> ResolveSource(TypedAst ast, Scope globalScope)
 	{
 		var diagnostics = new DiagnosticList();
 		var (resolvedAst, resolverDiagnostics) = await Task.Run(() => Resolver.Resolve(globalScope, ast));
 		diagnostics.Add(resolverDiagnostics);
-
+		
 		if (resolvedAst is null)
 		{
 			lock (ReportLock)
@@ -416,12 +401,12 @@ public static class Program
 			
 			return new CompilationResult(diagnostics);
 		}
-
+		
 		lock (ReportLock)
 		{
 			PrintDiagnostics(diagnostics);
 		}
-
+		
 		// Todo: Return IR ready for translation to LLVM IR
 		return new CompilationResult(diagnostics);
 	}

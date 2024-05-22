@@ -35,7 +35,7 @@ public sealed class BinaryExpression : ExpressionNode
 	public readonly Operation operation;
 	public readonly Token op;
 	public readonly ExpressionNode right;
-
+	
 	public BinaryExpression(ExpressionNode left, Operation operation, Token op, ExpressionNode right, TextRange range)
 		: base(range)
 	{
@@ -44,12 +44,12 @@ public sealed class BinaryExpression : ExpressionNode
 		this.op = op;
 		this.right = right;
 	}
-
+	
 	public override void Accept(IVisitor visitor)
 	{
 		visitor.Visit(this);
 	}
-
+	
 	public override T Accept<T>(IVisitor<T> visitor)
 	{
 		return visitor.Visit(this);

@@ -10,20 +10,22 @@ namespace Cella.Analysis.Semantics;
 public sealed class Scope : IEnumerable<Scope>
 {
 	private readonly object accessLock = new();
-
+	
 	public Scope? Parent
 	{
 		get
 		{
 			lock (accessLock)
+			{
 				return parent;
+			}
 		}
 	}
-
+	
 	private readonly List<Scope> childScopes = [];
 	private readonly Scope? parent;
 	private readonly SymbolTable symbolTable = new();
-
+	
 	public Scope(Scope? parent = null)
 	{
 		this.parent = parent;
@@ -33,13 +35,17 @@ public sealed class Scope : IEnumerable<Scope>
 	public void AddSymbol(ISymbol symbol)
 	{
 		lock (accessLock)
+		{
 			symbolTable.Add(symbol);
+		}
 	}
 	
 	public void AddOrReplaceSymbol(ISymbol symbol)
 	{
 		lock (accessLock)
+		{
 			symbolTable.AddOrReplace(symbol);
+		}
 	}
 	
 	public ISymbol? LookupSymbol(string name)
@@ -48,7 +54,7 @@ public sealed class Scope : IEnumerable<Scope>
 		{
 			if (symbolTable.Lookup(name) is { } symbol)
 				return symbol;
-
+			
 			return parent?.LookupSymbol(name);
 		}
 	}
@@ -74,11 +80,11 @@ public sealed class Scope : IEnumerable<Scope>
 		{
 			if (symbolTable.Lookup(name) is not { } genericSymbol)
 				return parent?.LookupSymbol(name, out symbol, out existingSymbol) ?? false;
-
+			
 			existingSymbol = genericSymbol;
 			if (genericSymbol is not T typedSymbol)
 				return false;
-
+			
 			symbol = typedSymbol;
 			return true;
 		}
@@ -87,7 +93,9 @@ public sealed class Scope : IEnumerable<Scope>
 	public IEnumerator<Scope> GetEnumerator()
 	{
 		lock (accessLock)
+		{
 			return childScopes.GetEnumerator();
+		}
 	}
 	
 	IEnumerator IEnumerable.GetEnumerator()
@@ -98,6 +106,8 @@ public sealed class Scope : IEnumerable<Scope>
 	private void AddChildScope(Scope scope)
 	{
 		lock (accessLock)
+		{
 			childScopes.Add(scope);
+		}
 	}
 }

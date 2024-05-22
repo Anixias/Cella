@@ -13,7 +13,7 @@ public abstract class StatementNode
 		T Visit(BlockStatement blockStatement);
 		T Visit(ReturnStatement returnStatement);
 	}
-
+	
 	public interface IVisitor
 	{
 		void Visit(ProgramStatement programStatement);
@@ -25,12 +25,12 @@ public abstract class StatementNode
 	}
 	
 	public readonly TextRange range;
-
+	
 	protected StatementNode(TextRange range)
 	{
 		this.range = range;
 	}
-
+	
 	public abstract void Accept(IVisitor visitor);
 	public abstract T Accept<T>(IVisitor<T> visitor);
 }

@@ -5,13 +5,13 @@ namespace Cella.Analysis.Semantics.Symbols;
 public abstract class DataTypeSymbol : ISymbol
 {
 	private static uint nextID = 1u;
-
+	
 	public string Name { get; }
 	public List<SourceLocation> DeclarationLocations { get; } = new();
 	public List<SourceLocation> UsageLocations { get; } = new();
 	public uint TypeID { get; }
 	public DataType BaseType => new DataType.Base(this);
-
+	
 	protected DataTypeSymbol(string name)
 	{
 		Name = name;

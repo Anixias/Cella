@@ -11,18 +11,18 @@ public abstract class TypedExpressionNode
 	{
 		T Visit(TypedLiteralExpression typedLiteralExpression);
 	}
-
+	
 	public interface IVisitor
 	{
 		void Visit(TypedLiteralExpression typedLiteralExpression);
 	}
-
+	
 	protected TypedExpressionNode(DataType? dataType, TextRange range)
 	{
 		DataType = dataType;
 		this.range = range;
 	}
-
+	
 	public abstract void Accept(IVisitor visitor);
 	public abstract T Accept<T>(IVisitor<T> visitor);
 }

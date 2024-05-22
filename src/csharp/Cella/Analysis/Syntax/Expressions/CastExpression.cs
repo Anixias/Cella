@@ -14,7 +14,7 @@ public sealed class CastExpression : ExpressionNode
 	public readonly Operation operation;
 	public readonly Token op;
 	public readonly SyntaxType type;
-
+	
 	public CastExpression(ExpressionNode operand, Operation operation, Token op, SyntaxType type, TextRange range)
 		: base(range)
 	{
@@ -23,12 +23,12 @@ public sealed class CastExpression : ExpressionNode
 		this.op = op;
 		this.type = type;
 	}
-
+	
 	public override void Accept(IVisitor visitor)
 	{
 		visitor.Visit(this);
 	}
-
+	
 	public override T Accept<T>(IVisitor<T> visitor)
 	{
 		return visitor.Visit(this);

@@ -22,7 +22,7 @@ public abstract class ExpressionNode
 		T Visit(ListExpression listExpression);
 		T Visit(MapExpression mapExpression);
 	}
-
+	
 	public interface IVisitor
 	{
 		void Visit(LambdaExpression lambdaExpression);
@@ -43,12 +43,12 @@ public abstract class ExpressionNode
 	}
 	
 	public readonly TextRange range;
-
+	
 	protected ExpressionNode(TextRange range)
 	{
 		this.range = range;
 	}
-
+	
 	public abstract void Accept(IVisitor visitor);
 	public abstract T Accept<T>(IVisitor<T> visitor);
 }

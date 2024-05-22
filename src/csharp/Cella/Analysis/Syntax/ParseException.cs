@@ -8,14 +8,14 @@ public class ParseException : Exception
 	public DiagnosticSeverity Severity { get; init; } = DiagnosticSeverity.Error;
 	private readonly IBuffer source;
 	private readonly TextRange range;
-
+	
 	public ParseException(string? message, Token token, TextRange? range = null)
 		: base(message)
 	{
 		source = token.Source;
 		this.range = range ?? token.Range;
 	}
-
+	
 	public ParseException(string? message, IBuffer source, TextRange range)
 		: base(message)
 	{

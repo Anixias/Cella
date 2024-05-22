@@ -17,13 +17,13 @@ public sealed class Collector : StatementNode.IVisitor<TypedStatementNode>
 	public readonly Scope globalScope;
 	private readonly Stack<Scope> scopeStack = new();
 	private Scope CurrentScope => scopeStack.Peek();
-
+	
 	private Collector(Scope globalScope)
 	{
 		this.globalScope = globalScope;
 		scopeStack.Push(globalScope);
 	}
-
+	
 	private static Diagnostic ConvertExceptionToDiagnostic(IBuffer source, Exception e)
 	{
 		var stackTrace = new StackTrace(e, true);
@@ -34,15 +34,15 @@ public sealed class Collector : StatementNode.IVisitor<TypedStatementNode>
 		
 		return new Diagnostic(DiagnosticSeverity.Error, source, null, message);
 	}
-
+	
 	public static (TypedAst? typedAst, DiagnosticList diagnostics) Collect(Scope globalScope, Ast ast)
 	{
 		var collector = new Collector(globalScope);
 		var typedAst = collector.Collect(ast);
-
+		
 		return (typedAst, collector.diagnostics);
 	}
-
+	
 	private TypedAst? Collect(Ast ast)
 	{
 		try
@@ -51,7 +51,7 @@ public sealed class Collector : StatementNode.IVisitor<TypedStatementNode>
 			
 			if (scopeStack.Count != 1)
 				throw new CollectionException("Invalid operation: Scope stack unbalanced", ast.Source, TextRange.Empty);
-
+			
 			return new TypedAst(root, ast.Source);
 		}
 		catch (CollectionException e)
@@ -70,7 +70,7 @@ public sealed class Collector : StatementNode.IVisitor<TypedStatementNode>
 			return null;
 		}
 	}
-
+	
 	public TypedStatementNode Visit(ProgramStatement programStatement)
 	{
 		var moduleScopeCount = 0;
@@ -79,17 +79,16 @@ public sealed class Collector : StatementNode.IVisitor<TypedStatementNode>
 		foreach (var moduleIdentifier in programStatement.moduleName.identifiers)
 		{
 			Scope scope;
-			if (tryLookup && CurrentScope.LookupSymbol(moduleIdentifier.Text, out moduleSymbol!, 
-													   out var existingSymbol))
+			if (tryLookup && CurrentScope.LookupSymbol(moduleIdentifier.Text, out moduleSymbol!, out var existing))
 			{
 				if (moduleSymbol is null)
 				{
-					// Todo: Report declaration location of 'existingSymbol'
+					// Todo: Report declaration location of 'existing'
 					throw new CollectionException($"Cannot define a module named '{moduleIdentifier.Text}': " +
 					                              $"A symbol with that name is already declared in this scope",
-												  moduleIdentifier);
+						moduleIdentifier);
 				}
-
+				
 				scope = moduleSymbol.Scope;
 			}
 			else
@@ -104,7 +103,7 @@ public sealed class Collector : StatementNode.IVisitor<TypedStatementNode>
 			scopeStack.Push(scope);
 			moduleScopeCount++;
 		}
-
+		
 		var statementScopeStart = moduleScopeCount + 1;
 		var statements = programStatement.statements.Select(s =>
 		{
@@ -115,11 +114,12 @@ public sealed class Collector : StatementNode.IVisitor<TypedStatementNode>
 			catch (CollectionException e)
 			{
 				diagnostics.Add(e);
-
+				
 				while (scopeStack.Count > statementScopeStart)
 				{
 					scopeStack.Pop();
 				}
+				
 				return null!;
 			}
 			catch (Exception e)
@@ -130,51 +130,53 @@ public sealed class Collector : StatementNode.IVisitor<TypedStatementNode>
 		}).ToArray();
 		
 		while (moduleScopeCount-- > 0)
+		{
 			scopeStack.Pop();
-
+		}
+		
 		if (statements.Contains(null))
 			throw new CollectionFailedException();
 		
 		return new TypedProgramStatement(moduleSymbol, statements, programStatement);
 	}
-
+	
 	public TypedStatementNode Visit(ImportStatement importStatement)
 	{
 		throw new NotImplementedException();
 	}
-
+	
 	public TypedStatementNode Visit(AggregateImportStatement aggregateImportStatement)
 	{
 		throw new NotImplementedException();
 	}
-
+	
 	public TypedStatementNode Visit(EntryStatement entryStatement)
 	{
 		var scope = new Scope(CurrentScope);
 		scopeStack.Push(scope);
-
+		
 		// Todo: Parameters and effects
 		var body = entryStatement.body.Accept(this);
-
+		
 		scopeStack.Pop();
-
+		
 		var entrySymbol = new EntrySymbol(entryStatement.name.Text, scope, []);
 		CurrentScope.AddSymbol(entrySymbol);
 		return new TypedEntryStatement(entrySymbol, body, entryStatement);
 	}
-
+	
 	public TypedStatementNode Visit(BlockStatement blockStatement)
 	{
 		var scope = new Scope(CurrentScope);
 		scopeStack.Push(scope);
-
+		
 		var statements = blockStatement.nodes.Select(s => s.Accept(this));
-
+		
 		scopeStack.Pop();
 		
 		return new TypedBlockStatement(scope, statements, blockStatement);
 	}
-
+	
 	public TypedStatementNode Visit(ReturnStatement returnStatement)
 	{
 		return new TypedReturnStatement(returnStatement);

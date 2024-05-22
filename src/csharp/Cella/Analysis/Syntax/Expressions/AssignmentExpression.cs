@@ -14,12 +14,12 @@ public sealed class AssignmentExpression : ExpressionNode
 		this.op = op;
 		this.right = right;
 	}
-
+	
 	public override void Accept(IVisitor visitor)
 	{
 		visitor.Visit(this);
 	}
-
+	
 	public override T Accept<T>(IVisitor<T> visitor)
 	{
 		return visitor.Visit(this);

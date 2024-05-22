@@ -10,12 +10,12 @@ public sealed class TypedLiteralExpression : TypedExpressionNode
 	{
 		this.token = token;
 	}
-
+	
 	public override void Accept(IVisitor visitor)
 	{
 		visitor.Visit(this);
 	}
-
+	
 	public override T Accept<T>(IVisitor<T> visitor)
 	{
 		return visitor.Visit(this);
