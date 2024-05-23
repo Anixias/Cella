@@ -55,9 +55,7 @@ public sealed class Parser
 		}
 		
 		if (IsEndOfFile())
-			throw tokens.Count > 0
-				? new ParseException($"{errorMessage}; Instead, got 'end of file'", tokens.Last())
-				: new ParseException($"{errorMessage}; Instead, got 'end of file'", source, TextRange.Empty);
+			throw new ParseException($"{errorMessage}; Instead, got 'end of file'", source, TextRange.EndOfFile);
 		
 		var token = tokens[position];
 		if (!types.Contains(token.Type))
@@ -261,7 +259,7 @@ public sealed class Parser
 		if (Next() is not { } nextToken)
 		{
 			throw new ParseException("Expected top-level statement; Instead, got end of file", source,
-				tokens.LastOrDefault()?.Range ?? TextRange.Empty);
+				TextRange.EndOfFile);
 		}
 		
 		if (nextToken.Type == TokenType.KeywordUse)
@@ -650,10 +648,13 @@ public sealed class Parser
 			{
 				diagnostics.Add(e);
 				
+				TokenType nextPeek;
+				
 				do
 				{
 					position++;
-				} while (!syncTokens.Contains(Peek()));
+					nextPeek = Peek();
+				} while (!syncTokens.Contains(nextPeek) && !endTokens.Contains(nextPeek));
 			}
 			
 			peek = Peek();
@@ -666,8 +667,7 @@ public sealed class Parser
 	{
 		if (Next() is not { } nextToken)
 		{
-			throw new ParseException("Expected statement; Instead, got end of file", source,
-				tokens.LastOrDefault()?.Range ?? TextRange.Empty);
+			throw new ParseException("Expected statement; Instead, got end of file", source, TextRange.EndOfFile);
 		}
 		
 		if (nextToken.Type == TokenType.KeywordUse)

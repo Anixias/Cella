@@ -1,11 +1,12 @@
 ﻿namespace Cella.Analysis.Text;
 
-public readonly struct TextRange
+public readonly record struct TextRange
 {
 	public int Start { get; }
 	public int End { get; }
 	public int Length => End - Start;
 	public static readonly TextRange Empty = new(0, 0);
+	public static readonly TextRange EndOfFile = new(-1, 0);
 	
 	public TextRange(int start, int end)
 	{

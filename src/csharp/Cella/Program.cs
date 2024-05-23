@@ -27,6 +27,7 @@ public static class Program
 		public IReadOnlyList<string> RawInputs => rawInputs;
 		public string? OutputPath { get; private set; }
 		public bool WaitOnExit { get; private set; }
+		public bool PrintParseTree { get; private set; }
 		
 		private readonly List<string> inputPaths = new();
 		private readonly List<string> rawInputs = new();
@@ -38,18 +39,30 @@ public static class Program
 		public static Options? FromArgs(IEnumerable<string> args)
 		{
 			var options = new Options();
+			var showHelp = false;
 			
 			var optionSet = new OptionSet
 			{
-				{ "o|output=", "the path to the file to output", o => options.OutputPath = o },
-				{ "r|raw=", "raw source code", r => options.rawInputs.Add(r) },
-				{ "w|wait", "wait on exit", _ => options.WaitOnExit = true },
+				{ "o|output=", "The {OUTPUT} path", o => options.OutputPath = o },
+				{ "r|raw=", "Raw input {SOURCE}", r => options.rawInputs.Add(r) },
+				{ "w|wait", "Wait on exit", _ => options.WaitOnExit = true },
+				{ "tree", "Print parse tree", _ => options.PrintParseTree = true },
+				{ "help", "Show help", _ => showHelp = true, true },
 				{ "<>", i => options.inputPaths.Add(i) }
 			};
 			
 			try
 			{
 				optionSet.Parse(args);
+				
+				if (!showHelp)
+					return options;
+				
+				Console.ForegroundColor = ConsoleColor.Blue;
+				optionSet.WriteOptionDescriptions(Console.Out);
+				Console.ResetColor();
+				Environment.Exit(0);
+				
 				return options;
 			}
 			catch (OptionException e)
@@ -61,10 +74,14 @@ public static class Program
 		}
 	}
 	
+	private static Options options = null!;
+	
 	public static async Task<int> Main(string[] args)
 	{
 		if (Options.FromArgs(args) is not { } options)
 			return 1;
+		
+		Program.options = options;
 		
 		var returnCode = await Run(options);
 		Console.ResetColor();
@@ -257,6 +274,7 @@ public static class Program
 			var simpleEncoding = !CanBeEncoded("\u2191");
 			var lineBar = simpleEncoding ? '|' : '\u2502';
 			var upArrow = simpleEncoding ? '^' : '\u2191';
+			var eofStr = simpleEncoding ? "(EOF)" : "·";
 			//const char downArrow = '\u2193';
 			
 			// Todo: Support multiline errors
@@ -276,35 +294,66 @@ public static class Program
 				
 				if (diagnostic.range is { } range)
 				{
-					var columnSkips = 0;
-					var preRange = new TextRange(lineRange.Start, range.Start);
-					while (char.IsWhiteSpace(diagnostic.source[preRange.Start]))
+					if (diagnostic.range != TextRange.EndOfFile)
 					{
-						preRange = new TextRange(preRange.Start + 1, preRange.End);
-						columnSkips++;
-					}
-					
-					var postRange = new TextRange(range.End, lineRange.End);
-					
-					if (diagnostic.line > 0)
-					{
-						Console.Write(diagnostic.source.GetText(preRange));
+						var columnSkips = 0;
+						var preRange = new TextRange(lineRange.Start, range.Start);
+						while (char.IsWhiteSpace(diagnostic.source[preRange.Start]))
+						{
+							preRange = new TextRange(preRange.Start + 1, preRange.End);
+							columnSkips++;
+						}
+						
+						var postRange = new TextRange(range.End, lineRange.End);
+						
+						if (diagnostic.line > 0)
+						{
+							Console.Write(diagnostic.source.GetText(preRange));
+							Console.ForegroundColor = darkColor;
+							Console.Write(diagnostic.source.GetText(range));
+							Console.ForegroundColor = ConsoleColor.Gray;
+							Console.WriteLine(diagnostic.source.GetText(postRange));
+						}
+						else
+						{
+							Console.WriteLine();
+						}
+						
+						Console.ForegroundColor = ConsoleColor.DarkGray;
+						Console.Write(messageHeader);
 						Console.ForegroundColor = darkColor;
-						Console.Write(diagnostic.source.GetText(range));
-						Console.ForegroundColor = ConsoleColor.Gray;
-						Console.WriteLine(diagnostic.source.GetText(postRange));
+						var column = diagnostic.source.GetLineColumn(range.Start).column - (columnSkips + 1);
+						Console.Write(new string(' ', column));
+						Console.WriteLine(new string(upArrow, range.Length));
 					}
 					else
 					{
-						Console.WriteLine();
+						var columnSkips = 0;
+						var preRange = new TextRange(lineRange.Start, lineRange.End);
+						while (char.IsWhiteSpace(diagnostic.source[preRange.Start]))
+						{
+							preRange = new TextRange(preRange.Start + 1, preRange.End);
+							columnSkips++;
+						}
+						
+						if (diagnostic.line > 0)
+						{
+							Console.Write(diagnostic.source.GetText(preRange));
+							Console.ForegroundColor = darkColor;
+							Console.WriteLine(eofStr);
+						}
+						else
+						{
+							Console.WriteLine();
+						}
+						
+						Console.ForegroundColor = ConsoleColor.DarkGray;
+						Console.Write(messageHeader);
+						Console.ForegroundColor = darkColor;
+						var column = diagnostic.source.GetLineColumn(preRange.End).column - (columnSkips + 1);
+						Console.Write(new string(' ', column));
+						Console.WriteLine(new string(upArrow, range.Length));
 					}
-					
-					Console.ForegroundColor = ConsoleColor.DarkGray;
-					Console.Write(messageHeader);
-					Console.ForegroundColor = darkColor;
-					var column = diagnostic.source.GetLineColumn(range.Start).Item2 - (columnSkips + 1);
-					Console.Write(new string(' ', column));
-					Console.WriteLine(new string(upArrow, range.Length));
 				}
 				else
 				{
@@ -367,9 +416,12 @@ public static class Program
 			return null;
 		}
 		
-		lock (ConsoleLock)
+		if (options.PrintParseTree)
 		{
-			AstPrinter.Print(ast, Console.Out);
+			lock (ConsoleLock)
+			{
+				AstPrinter.Print(ast, Console.Out);
+			}
 		}
 		
 		var (typedAst, collectorDiagnostics) = await Task.Run(() => Collector.Collect(globalScope, ast));

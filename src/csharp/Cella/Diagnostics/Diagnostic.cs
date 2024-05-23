@@ -32,6 +32,12 @@ public readonly struct Diagnostic
 			return;
 		}
 		
+		if (range == TextRange.EndOfFile)
+		{
+			(line, column) = source.GetLineColumn(source.Length);
+			return;
+		}
+		
 		(line, column) = source.GetLineColumn(range.Value.Start);
 	}
 	
