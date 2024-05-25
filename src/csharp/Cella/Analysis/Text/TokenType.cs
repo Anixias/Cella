@@ -88,7 +88,7 @@ public sealed class TokenType
 		return Operators.GetValueOrDefault(@operator);
 	}
 	
-	public static readonly TokenType EndOfFile = new("eof")
+	public static readonly TokenType EndOfFile = new("end of file")
 	{
 		IsInvalid = true
 	};

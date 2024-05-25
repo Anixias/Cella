@@ -54,10 +54,7 @@ public sealed class Parser
 			errorMessage = $"Expected {typeString}";
 		}
 		
-		if (IsEndOfFile())
-			throw new ParseException($"{errorMessage}; Instead, got 'end of file'", source, TextRange.EndOfFile);
-		
-		var token = tokens[position];
+		var token = IsEndOfFile() ? Token.EndOfFile(source) : tokens[position];
 		if (!types.Contains(token.Type))
 			throw new ParseException($"{errorMessage}; Instead, got '{token.Type}'", token);
 		
@@ -94,15 +91,7 @@ public sealed class Parser
 	
 	private bool Match([NotNullWhen(true)] out Token? token, params TokenType[] types)
 	{
-		if (types.Contains(TokenType.EndOfFile))
-			throw new ArgumentException("Cannot match EndOfFile token", nameof(types));
-		
-		token = null;
-		
-		if (IsEndOfFile())
-			return false;
-		
-		token = tokens[position];
+		token = IsEndOfFile() ? Token.EndOfFile(source) : tokens[position];
 		
 		if (!types.Contains(token.Type))
 			return false;
@@ -118,15 +107,7 @@ public sealed class Parser
 	
 	private bool MatchSameLine([NotNullWhen(true)] out Token? token, params TokenType[] types)
 	{
-		if (types.Contains(TokenType.EndOfFile))
-			throw new ArgumentException("Cannot match EndOfFile token", nameof(types));
-		
-		token = null;
-		
-		if (IsEndOfFile())
-			return false;
-		
-		token = tokens[position];
+		token = IsEndOfFile() ? Token.EndOfFile(source) : tokens[position];
 		
 		if (token.IsAfterNewline)
 			return false;
@@ -367,7 +348,7 @@ public sealed class Parser
 			// Todo: return ParseVariable(identifier, modifiers);
 		}
 		
-		throw new ParseException("Excepted declaration type", Next()!);
+		throw new ParseException("Expected declaration type", Next()!);
 	}
 	
 	private List<Token> ParseModifiers(TokenType[] modifierTypes)

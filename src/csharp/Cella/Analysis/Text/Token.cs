@@ -25,6 +25,20 @@ public sealed class Token
 		(Line, Column) = source.GetLineColumn(range.Start);
 	}
 	
+	private Token(TokenType type, TextRange range, IBuffer source, int position, object? value = null)
+	{
+		Source = source;
+		Type = type;
+		Range = range;
+		Value = value;
+		(Line, Column) = source.GetLineColumn(position);
+	}
+	
+	public static Token EndOfFile(IBuffer source)
+	{
+		return new Token(TokenType.EndOfFile, TextRange.EndOfFile, source, source.Length);
+	}
+	
 	public override string ToString()
 	{
 		if (Value is null)
