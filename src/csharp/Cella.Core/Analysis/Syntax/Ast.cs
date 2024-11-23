@@ -1,0 +1,15 @@
+﻿using Cella.Core.Analysis.Text;
+
+namespace Cella.Core.Analysis.Syntax;
+
+public class Ast
+{
+	public StatementNode Root { get; }
+	public IBuffer Source { get; }
+	
+	public Ast(StatementNode root, IBuffer source)
+	{
+		Root = root;
+		Source = source;
+	}
+}
