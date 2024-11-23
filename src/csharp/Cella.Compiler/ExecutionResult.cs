@@ -1,4 +1,4 @@
-﻿namespace Cella.Core.Diagnostics;
+﻿namespace Cella.Compiler;
 
 public readonly struct ExecutionResult
 {

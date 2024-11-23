@@ -5,32 +5,20 @@ using Cella.Core.Analysis.Text;
 using Cella.Core.Diagnostics;
 using Mono.Options;
 
-namespace Cella.Core;
+namespace Cella.Compiler;
 
-public static class Program
+internal static class Program
 {
-	private static readonly string[] NewlineSeparators = ["\r\n", "\n", "\r"];
-	
-	/// <summary>
-	/// Used to group several ConsoleLock locks together
-	/// </summary>
-	private static readonly object ReportLock = new();
-	
-	/// <summary>
-	/// Used to control access to the console
-	/// </summary>
-	private static readonly object ConsoleLock = new();
-	
 	private class Options
 	{
+		private readonly List<string> inputPaths = new();
+		private readonly List<string> rawInputs = new();
+		
 		public IReadOnlyList<string> InputPaths => inputPaths;
 		public IReadOnlyList<string> RawInputs => rawInputs;
 		public string? OutputPath { get; private set; }
 		public bool WaitOnExit { get; private set; }
 		public bool PrintParseTree { get; private set; }
-		
-		private readonly List<string> inputPaths = new();
-		private readonly List<string> rawInputs = new();
 		
 		private Options()
 		{
@@ -74,9 +62,21 @@ public static class Program
 		}
 	}
 	
+	private static readonly string[] NewlineSeparators = ["\r\n", "\n", "\r"];
+	
+	/// <summary>
+	/// Used to group several ConsoleLock locks together
+	/// </summary>
+	private static readonly Lock ReportLock = new();
+	
+	/// <summary>
+	/// Used to control access to the console
+	/// </summary>
+	private static readonly Lock ConsoleLock = new();
+	
 	private static Options options = null!;
 	
-	public static async Task<int> Main(string[] args)
+	private static async Task<int> Main(string[] args)
 	{
 		if (Options.FromArgs(args) is not { } options)
 			return 1;
@@ -315,9 +315,7 @@ public static class Program
 							Console.WriteLine(diagnostic.source.GetText(postRange));
 						}
 						else
-						{
 							Console.WriteLine();
-						}
 						
 						Console.ForegroundColor = ConsoleColor.DarkGray;
 						Console.Write(messageHeader);
@@ -343,9 +341,7 @@ public static class Program
 							Console.WriteLine(eofStr);
 						}
 						else
-						{
 							Console.WriteLine();
-						}
 						
 						Console.ForegroundColor = ConsoleColor.DarkGray;
 						Console.Write(messageHeader);

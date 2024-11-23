@@ -1,6 +1,6 @@
 ﻿using Cella.Core.Diagnostics;
 
-namespace Cella.Core;
+namespace Cella.Compiler;
 
 public readonly struct CompilationResult
 {

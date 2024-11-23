@@ -1,6 +1,6 @@
 ﻿using Cella.Core.Analysis.Text;
 
-namespace Cella.Core;
+namespace Cella.Compiler;
 
 public abstract class CompilationSource
 {
@@ -87,8 +87,11 @@ public abstract class CompilationSource
 		{
 			this.text = text;
 		}
-
-		public Task<IBuffer> GetBuffer() => Task.FromResult<IBuffer>(new StringBuffer(text));
+		
+		public Task<IBuffer> GetBuffer()
+		{
+			return Task.FromResult<IBuffer>(new StringBuffer(text));
+		}
 	}
 	
 	public static CompilationSource? FromPath(string path)
