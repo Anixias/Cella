@@ -1,6 +1,6 @@
 ﻿using System.Collections.Immutable;
 
-namespace Cella.Analysis.Text;
+namespace Cella.Core.Text;
 
 public sealed class TokenType
 {
@@ -11,38 +11,17 @@ public sealed class TokenType
 	public bool IsLiteral { get; private init; }
 	public bool IsFiltered { get; private init; }
 	
-	private static readonly Dictionary<string, TokenType> Keywords = new();
-	private static readonly Dictionary<string, TokenType> Operators = new();
+	private static readonly Dictionary<string, TokenType> _keywords = [];
+	private static readonly Dictionary<string, TokenType> _operators = [];
 	
-	public static ImmutableArray<TokenType> DeclarationModifiers => new[]
-	{
-		KeywordMut,
-		KeywordPub,
-		KeywordSelf,
-		KeywordVar
-	}.ToImmutableArray();
-	
-	public static ImmutableArray<TokenType> ParameterModifiers => new[]
-	{
-		// Only valid for `self` param
-		KeywordMut,
-		KeywordVar
-	}.ToImmutableArray();
-	
-	public static ImmutableArray<TokenType> SyntaxTypeModifiers => new[]
-	{
-		KeywordMut,
-		KeywordRef
-	}.ToImmutableArray();
-	
-	private readonly string representation;
+	private readonly string _representation;
 	
 	private TokenType(string representation)
 	{
-		this.representation = representation;
+		_representation = representation;
 	}
 
-	public override string ToString() => representation;
+	public override string ToString() => _representation;
 
 	private static TokenType CreateKeyword(string text)
 	{
@@ -51,7 +30,7 @@ public sealed class TokenType
 			IsKeyword = true
 		};
 		
-		Keywords.Add(text, type);
+		_keywords.Add(text, type);
 		return type;
 	}
 	
@@ -63,7 +42,7 @@ public sealed class TokenType
 			IsLiteral = true
 		};
 		
-		Keywords.Add(text, type);
+		_keywords.Add(text, type);
 		return type;
 	}
 	
@@ -74,19 +53,12 @@ public sealed class TokenType
 			IsOperator = true
 		};
 		
-		Operators.Add(text, type);
+		_operators.Add(text, type);
 		return type;
 	}
 	
-	public static TokenType? GetKeyword(string keyword)
-	{
-		return Keywords.GetValueOrDefault(keyword);
-	}
-	
-	public static TokenType? GetOperator(string @operator)
-	{
-		return Operators.GetValueOrDefault(@operator);
-	}
+	public static TokenType? GetKeyword(string keyword) => _keywords.GetValueOrDefault(keyword);
+	public static TokenType? GetOperator(string @operator) => _operators.GetValueOrDefault(@operator);
 	
 	public static readonly TokenType EndOfFile = new("end of file")
 	{
@@ -206,7 +178,6 @@ public sealed class TokenType
 	public static readonly TokenType KeywordVoid = CreateKeyword("void");
 	
 	#endregion
-	
 	#region Operators
 	
 	public static readonly TokenType OpComma = CreateOperator(",");
@@ -258,6 +229,30 @@ public sealed class TokenType
 	public static readonly TokenType OpRightRight = CreateOperator(">>");
 	public static readonly TokenType OpGreaterEqual = CreateOperator(">=");
 	public static readonly TokenType OpGreater = CreateOperator(">");
+	
+	#endregion
+	#region Collections
+	
+	public static ImmutableArray<TokenType> DeclarationModifiers { get; } = ImmutableArray.Create
+	(
+		KeywordMut,
+		KeywordPub,
+		KeywordSelf,
+		KeywordVar
+	);
+	
+	public static ImmutableArray<TokenType> ParameterModifiers { get; } = ImmutableArray.Create
+	(
+		// Only valid for `self` param
+		KeywordMut,
+		KeywordVar
+	);
+	
+	public static ImmutableArray<TokenType> SyntaxTypeModifiers { get; } = ImmutableArray.Create
+	(
+		KeywordMut,
+		KeywordRef
+	);
 	
 	#endregion
 }
