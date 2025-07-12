@@ -1,21 +1,21 @@
 ﻿using System.Collections.Immutable;
 
-namespace Cella.Analysis.Text;
+namespace Cella.Core.Text;
 
 public sealed class StringBuffer : IBuffer
 {
-	public static readonly IBuffer Empty = new StringBuffer("");
+	public static readonly StringBuffer Empty = new("");
 	
-	public char this[int position] => text[position];
-	public int Length => text.Length;
+	public char this[int position] => _text[position];
+	public int Length => _text.Length;
 	
-	private readonly string text;
-	private readonly ImmutableArray<TextRange> lines;
+	private readonly string _text;
+	private readonly ImmutableArray<TextRange> _lines;
 	
 	public StringBuffer(string text)
 	{
-		this.text = text;
-		lines = SplitLines(text);
+		_text = text;
+		_lines = SplitLines(text);
 	}
 	
 	private static ImmutableArray<TextRange> SplitLines(string text)
@@ -54,30 +54,20 @@ public sealed class StringBuffer : IBuffer
 		return lines.ToImmutableArray();
 	}
 	
-	public string GetText()
-	{
-		return text;
-	}
+	public ReadOnlySpan<char> GetText() => _text;
+	public ReadOnlySpan<char> GetText(int line) => GetText(GetLineRange(line));
 	
-	public string GetText(int line)
+	public ReadOnlySpan<char> GetText(TextRange range)
 	{
-		return GetText(GetLineRange(line));
-	}
-	
-	public string GetText(TextRange range)
-	{
-		if (range.Start < 0 || range.Start >= text.Length)
-			return "";
+		if (!range.IsValid || range.Start >= _text.Length || range.End > _text.Length)
+			return ReadOnlySpan<char>.Empty;
 		
-		if (range.Length < 0 || range.End > text.Length)
-			return "";
-		
-		return text.Substring(range.Start, range.Length);
+		return _text.AsSpan().Slice(range.Start, range.Length);
 	}
 	
-	public (int, int) GetLineColumn(int position)
+	public (int line, int column) GetLineColumn(int position)
 	{
-		if (position < 0 || position > text.Length)
+		if (position < 0 || position > _text.Length)
 			throw new ArgumentOutOfRangeException(nameof(position));
 		
 		var line = 1;
@@ -85,7 +75,7 @@ public sealed class StringBuffer : IBuffer
 		
 		for (var i = 0; i < position; i++)
 		{
-			switch (text[i])
+			switch (_text[i])
 			{
 				case '\n':
 					line++;
@@ -94,10 +84,8 @@ public sealed class StringBuffer : IBuffer
 				
 				case '\r':
 				{
-					if (i + 1 < text.Length && text[i + 1] == '\n')
-					{
+					if (i + 1 < _text.Length && _text[i + 1] == '\n')
 						i++;
-					}
 					
 					line++;
 					column = 1;
@@ -115,9 +103,9 @@ public sealed class StringBuffer : IBuffer
 	
 	public TextRange GetLineRange(int line)
 	{
-		if (line < 1 || line > lines.Length)
+		if (line < 1 || line > _lines.Length)
 			return TextRange.Empty;
 		
-		return lines[line - 1];
+		return _lines[line - 1];
 	}
 }

@@ -1,0 +1,15 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  
+  <PropertyGroup>
+    <AssemblyName>celc</AssemblyName>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net9.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+  
+  <ItemGroup>
+    <ProjectReference Include="..\src\Cella.Core\Cella.Core.csproj" />
+  </ItemGroup>
+
+</Project>
