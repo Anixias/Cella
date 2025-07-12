@@ -4,7 +4,7 @@ namespace Cella.Core.Text;
 
 public sealed class StringBuffer : IBuffer
 {
-	public static readonly StringBuffer Empty = new("");
+	public static readonly StringBuffer Empty = new(string.Empty);
 	
 	public char this[int position] => _text[position];
 	public int Length => _text.Length;
