@@ -1,6 +1,6 @@
 ﻿namespace Cella.Core.Text;
 
-public interface IBuffer
+public interface ISource
 {
 	char this[int position] { get; }
 	int Length { get; }

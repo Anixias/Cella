@@ -2,9 +2,9 @@
 
 namespace Cella.Core.Text;
 
-public sealed class StringBuffer : IBuffer
+public sealed class StringSource : ISource
 {
-	public static readonly StringBuffer Empty = new(string.Empty);
+	public static readonly StringSource Empty = new(string.Empty);
 	
 	public char this[int position] => _text[position];
 	public int Length => _text.Length;
@@ -12,7 +12,7 @@ public sealed class StringBuffer : IBuffer
 	private readonly string _text;
 	private readonly ImmutableArray<TextRange> _lines;
 	
-	public StringBuffer(string text)
+	public StringSource(string text)
 	{
 		_text = text;
 		_lines = SplitLines(text);

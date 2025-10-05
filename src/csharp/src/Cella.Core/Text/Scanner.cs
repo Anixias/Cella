@@ -1,24 +1,20 @@
-﻿// Todo: #define FIXED_POINT_SUPPORT
+﻿using System.Collections;
 
-using System.Globalization;
-using System.Text;
-using System.Collections;
+namespace Cella.Core.Text;
 
-namespace Cella.Analysis.Text;
-
-public class Lexer : ILexer
+public class Scanner : IScanner
 {
-	public IBuffer Source { get; }
+	public ISource Source { get; }
 	
-	public Lexer(IBuffer source)
+	public Scanner(ISource source)
 	{
 		Source = source;
 	}
 	
-	public ScanResult? ScanToken(int position)
+	public ScanResult ScanToken(int position)
 	{
-		if (position >= Source.Length)
-			return null;
+		if (position < 0 || position >= Source.Length)
+			return ScanResult.EndOfFile(Source);
 		
 		var character = Source[position];
 		
@@ -31,6 +27,7 @@ public class Lexer : ILexer
 		if (char.IsLetter(character) || character == '_')
 			return ScanIdentifier(position);
 		
+		/*
 		switch (character)
 		{
 			case '"':
@@ -38,14 +35,167 @@ public class Lexer : ILexer
 			
 			case '\'':
 				return ScanChar(position);
-		}
+		}*/
 		
-		if (TryScanComment(position) is { } comment)
+		if (TryScanComment(position, out var comment))
 			return comment;
 		
-		return ScanOperator(position);
+		if (TryScanOperator(position, out var op))
+			return op;
+		
+		// Invalid character, emit invalid token
+		var end = position + 1;
+		var range = new TextRange(position, end);
+		var token = new Token(TokenType.Invalid, Source, range);
+		return new ScanResult(token, end);
 	}
 	
+	private IEnumerable<Token> ScanAllTokens()
+	{
+		var position = 0;
+		while (ScanToken(position) is var lexerResult)
+		{
+			yield return lexerResult.Token;
+			
+			if (lexerResult.NextPosition <= position)
+				break;
+			
+			position = lexerResult.NextPosition;
+		}
+	}
+	
+	private ScanResult ScanWhiteSpace(int position)
+	{
+		if (Source[position] is '\n' or '\r')
+			return ScanNewline(position);
+		
+		var end = position;
+		while (end < Source.Length)
+		{
+			var c = Source[end];
+			if (c is '\n' or '\r' || !char.IsWhiteSpace(c))
+				break;
+			
+			end++;
+		}
+		
+		var range = new TextRange(position, end);
+		var token = new Token(TokenType.Whitespace, Source, range);
+		return new ScanResult(token, end);
+	}
+	
+	private ScanResult ScanNewline(int position)
+	{
+		var end = position;
+		
+		if (Source[end] == '\r')
+			end++;
+		
+		if (Source[end] == '\n')
+			end++;
+		
+		var range = new TextRange(position, end);
+		var token = new Token(TokenType.Newline, Source, range);
+		return new ScanResult(token, end);
+	}
+	
+	private ScanResult ScanIdentifier(int position)
+	{
+		var end = position;
+		
+		// Caller ensures it doesn't start with a digit
+		var c = Source[end];
+		while (char.IsLetterOrDigit(c) || c == '_')
+			c = Source[++end];
+		
+		var range = new TextRange(position, end);
+		var text = new string(Source.GetText(range));
+		var tokenType = TokenType.GetKeyword(text) ?? TokenType.Identifier;
+		
+		var token = new Token(tokenType, Source, range);
+		return new ScanResult(token, end);
+	}
+	
+	private ScanResult ScanNumber(int position)
+	{
+		var end = position;
+		
+		var c = Source[end];
+		while (char.IsDigit(c) || c == '_')
+			c = Source[++end];
+		
+		// @TODO Hex, binary, octal literals
+		// @TODO Floating point, fixed point, scientific notation, etc.
+		// @TODO Suffix type markers
+		
+		var range = new TextRange(position, end);
+		var token = new Token(TokenType.IntegerLiteral, Source, range);
+		return new ScanResult(token, end);
+	}
+	
+	private bool TryScanComment(int position, out ScanResult comment)
+	{
+		var end = position;
+		if (Source[end++] is not '/')
+		{
+			comment = default;
+			return false;
+		}
+		
+		TokenType tokenType;
+		switch (Source[end++])
+		{
+			// Line comment
+			case '/':
+				tokenType = TokenType.LineComment;
+				while (Source[end] is not '\r' and not '\n')
+					end++;
+				
+				break;
+			
+			default:
+				comment = default;
+				return false;
+		}
+		
+		var range = new TextRange(position, end);
+		var token = new Token(tokenType, Source, range);
+		comment = new(token, end);
+		return true;
+	}
+	
+	private bool TryScanOperator(int position, out ScanResult op)
+	{
+		var end = position;
+		while (end < Source.Length)
+		{
+			var c = Source[end];
+			if (char.IsLetterOrDigit(c) || char.IsWhiteSpace(c) || c == '_')
+				break;
+			
+			end++;
+		}
+		
+		// Tries longest matching operator first, then progressively shrinks until matches or fails all
+		while (end > position)
+		{
+			var range = new TextRange(position, end);
+			var operatorString = new string(Source.GetText(range));
+			if (TokenType.GetOperator(operatorString) is { } opType)
+			{
+				var token = new Token(opType, Source, range);
+				op = new ScanResult(token, end);
+				return true;
+			}
+			
+			end--;
+		}
+		
+		op = default;
+		return false;
+	}
+	
+	/*
 	private ScanResult ScanString(int position)
 	{
 		var end = position + 1;
@@ -408,21 +558,6 @@ public class Lexer : ILexer
 		}
 		
 		return new ScanResult(new Token(TokenType.MultilineComment, new TextRange(position, end), Source), end);
-	}
-	
-	private List<Token> ScanAllTokens()
-	{
-		var tokens = new List<Token>();
-		var position = 0;
-		
-		while (true)
-		{
-			if (ScanToken(position) is not { } lexerResult)
-				return tokens;
-			
-			tokens.Add(lexerResult.Token);
-			position = lexerResult.NextPosition;
-		}
 	}
 	
 	private int? ScanStorageSize(int position)
@@ -1346,15 +1481,8 @@ public class Lexer : ILexer
 		{
 			return str.Replace("_", null);
 		}
-	}
+	}*/
 	
-	public IEnumerator<Token> GetEnumerator()
-	{
-		return ScanAllTokens().GetEnumerator();
-	}
-	
-	IEnumerator IEnumerable.GetEnumerator()
-	{
-		return GetEnumerator();
-	}
+	public IEnumerator<Token> GetEnumerator() => ScanAllTokens().GetEnumerator();
+	IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 }
