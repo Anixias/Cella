@@ -10,4 +10,6 @@ public readonly record struct Token(TokenType Type, SourceLocation SourceLocatio
 	}
 	
 	public override string ToString() => $"{Type} [\"{SourceLocation.GetText()}\"]";
+	
+	public string GetText() => new(SourceLocation.GetText());
 }

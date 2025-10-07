@@ -1,11 +1,10 @@
-﻿using System.Collections.Immutable;
-
-namespace Cella.Core.Text;
+﻿namespace Cella.Core.Text;
 
 public sealed class TokenType
 {
 	public bool IsInvalid { get; private init; }
 	public bool IsKeyword { get; private init; }
+	public bool IsContextual { get; private init; }
 	public bool IsIdentifier { get; private init; }
 	public bool IsOperator { get; private init; }
 	public bool IsLiteral { get; private init; }
@@ -14,14 +13,14 @@ public sealed class TokenType
 	private static readonly Dictionary<string, TokenType> _keywords = [];
 	private static readonly Dictionary<string, TokenType> _operators = [];
 	
-	private readonly string _representation;
+	public string Representation { get; }
 	
 	private TokenType(string representation)
 	{
-		_representation = representation;
+		Representation = representation;
 	}
 
-	public override string ToString() => _representation;
+	public override string ToString() => Representation;
 
 	private static TokenType CreateKeyword(string text)
 	{
@@ -43,6 +42,18 @@ public sealed class TokenType
 		};
 		
 		_keywords.Add(text, type);
+		return type;
+	}
+	
+	private static TokenType CreateContextualKeyword(string text)
+	{
+		var type = new TokenType(text)
+		{
+			IsKeyword = true,
+			IsContextual = true
+		};
+		
+		// Do not add to keyword dictionary!
 		return type;
 	}
 	
@@ -101,11 +112,12 @@ public sealed class TokenType
 	public static readonly TokenType KeywordTrue = CreateKeywordLiteral("true");
 	public static readonly TokenType KeywordFalse = CreateKeywordLiteral("false");
 	
-	// @TODO Contextual keywords (would reuse Identifier token type; list the contextual keyword constants)
 	// Global keywords
-	public static readonly TokenType KeywordMod = CreateKeyword("mod");
-	public static readonly TokenType KeywordEntry = CreateKeyword("entry");
 	public static readonly TokenType KeywordRet = CreateKeyword("ret");
+	
+	// Contextual Keywords
+	public static readonly TokenType KeywordMod = CreateContextualKeyword("mod");
+	public static readonly TokenType KeywordEntry = CreateContextualKeyword("entry");
 	
 	#endregion
 	#region Operators

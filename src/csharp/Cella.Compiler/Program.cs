@@ -1,4 +1,6 @@
-﻿using Cella.Core.Text;
+﻿using System.Collections.Immutable;
+using Cella.Core.Syntax;
+using Cella.Core.Text;
 
 namespace Cella.Compiler;
 
@@ -19,7 +21,16 @@ internal static class Program
 		var source = new StringSource(sourceString);
 		var scanner = new FilteredScanner(source);
 		
+		// @TEMP
 		foreach (var token in scanner)
 			Console.WriteLine(token);
+		
+		Console.WriteLine("\n=== AST ===");
+		
+		var tokens = scanner.ToImmutableArray();
+		var parser = new FileParser(tokens);
+		var ast = parser.Parse();
+		
+		Console.WriteLine(ast?.ToString() ?? "Failed to parse.");
 	}
 }

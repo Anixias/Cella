@@ -9,7 +9,6 @@
   <ItemGroup>
     <Folder Include="Binding\" />
     <Folder Include="CodeGen\" />
-    <Folder Include="Syntax\" />
   </ItemGroup>
 
 </Project>
