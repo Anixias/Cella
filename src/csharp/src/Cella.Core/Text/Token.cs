@@ -9,7 +9,8 @@ public readonly record struct Token(TokenType Type, SourceLocation SourceLocatio
 	{
 	}
 	
-	public override string ToString() => $"{Type} [\"{SourceLocation.GetText()}\"]";
+	public override string ToString() => $"{Type} [{AsSpan()}]";
 	
-	public string GetText() => new(SourceLocation.GetText());
+	public string GetText() => new(AsSpan());
+	public ReadOnlySpan<char> AsSpan() => SourceLocation.GetText();
 }

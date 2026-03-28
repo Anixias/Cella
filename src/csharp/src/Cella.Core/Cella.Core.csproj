@@ -7,8 +7,13 @@
   </PropertyGroup>
   
   <ItemGroup>
-    <Folder Include="Binding\" />
     <Folder Include="CodeGen\" />
+  </ItemGroup>
+  
+  <ItemGroup>
+    <ProjectReference Include="..\..\Cella.SourceGenerators\Cella.SourceGenerators.csproj"
+                      OutputItemType="Analyzer"
+                      ReferenceOutputAssembly="false" />
   </ItemGroup>
 
 </Project>

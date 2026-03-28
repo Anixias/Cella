@@ -1,4 +1,5 @@
 ﻿using System.Collections.Immutable;
+using Cella.Core.Binding;
 using Cella.Core.Syntax;
 using Cella.Core.Text;
 
@@ -27,10 +28,21 @@ internal static class Program
 		
 		Console.WriteLine("\n=== AST ===");
 		
+		// TODO Change parser to retrieve tokens as needed
 		var tokens = scanner.ToImmutableArray();
 		var parser = new FileParser(tokens);
 		var ast = parser.Parse();
 		
-		Console.WriteLine(ast?.ToString() ?? "Failed to parse.");
+		Console.WriteLine(ast is null ? "Failed to parse." : AstPrinter.Print(ast));
+		
+		if (ast is null)
+			return;
+		
+		var collector = new Collector();
+		collector.Collect(ast);
+		
+		var resolver = new Resolver(collector);
+		var resolvedAst = resolver.Resolve(ast);
+		;
 	}
 }

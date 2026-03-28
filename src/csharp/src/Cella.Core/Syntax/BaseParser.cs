@@ -1,7 +1,7 @@
 ﻿using System.Collections.Immutable;
 using Cella.Core.Text;
 
-namespace Cella.Core.Syntax.Nodes;
+namespace Cella.Core.Syntax;
 
 public abstract class BaseParser<T>(ImmutableArray<Token> tokens) : IParser<T>
 {

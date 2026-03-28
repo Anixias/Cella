@@ -1,18 +1,19 @@
 ﻿using System.Collections.Immutable;
 using Cella.Core.Syntax.Nodes;
+using Cella.Core.Syntax.Nodes.Declarations;
 using Cella.Core.Text;
 
 namespace Cella.Core.Syntax;
 
 public sealed class FileParser(ImmutableArray<Token> tokens) : BaseParser<FileNode>(tokens)
 {
-	private static readonly Dictionary<string, TokenType> _topLevelContextualKeywords = new()
-	{
-		{ TokenType.KeywordMod.Representation, TokenType.KeywordMod },
-		{ TokenType.KeywordEntry.Representation, TokenType.KeywordEntry }
-	};
+	private static readonly Dictionary<string, TokenType> _topLevelContextualKeywords =
+		BuildContextualKeywords(TokenType.KeywordMod, TokenType.KeywordFun);
 	
 	private static readonly HashSet<TokenType> _topLevelSyncTypes = [TokenType.OpSemicolon, TokenType.EndOfFile];
+	
+	private static Dictionary<string, TokenType> BuildContextualKeywords(params IEnumerable<TokenType> tokenTypes) =>
+		tokenTypes.ToDictionary(static t => t.Representation);
 	
 	public override FileNode? Parse(ref int index)
 	{
@@ -23,8 +24,8 @@ public sealed class FileParser(ImmutableArray<Token> tokens) : BaseParser<FileNo
 		// Setup
 		var (source, range) = Tokens[0].SourceLocation;
 		
-		string? moduleName = null;
-		var nodes = new List<ISyntaxNode>(); // @TODO Change to declaration nodes?
+		Token moduleName = default;
+		var declarations = new List<IDeclarationNode>();
 		
 		while (!AtEnd(index))
 		{
@@ -37,16 +38,10 @@ public sealed class FileParser(ImmutableArray<Token> tokens) : BaseParser<FileNo
 					continue;
 				}
 				
-				if (!Consume(ref index, _topLevelSyncTypes, TokenType.OpSemicolon))
-				{
-					// @TODO Diagnostic: Expected ';'
-					continue;
-				}
-				
 				//if (moduleName is not null)
-				// @TODO Diagnostic: Module name already defined in this file
+				// @TODO Diagnostic: Module name already defined in this file <- This should go in semantic analysis
 				
-				moduleName = modIdentifier.GetText();
+				moduleName = modIdentifier;
 				continue;
 			}
 			
@@ -59,8 +54,8 @@ public sealed class FileParser(ImmutableArray<Token> tokens) : BaseParser<FileNo
 					continue;
 				}
 				
-				// Entry point function
-				if (Match(ref index, _topLevelContextualKeywords, TokenType.KeywordEntry))
+				// Function
+				if (Match(ref index, _topLevelContextualKeywords, TokenType.KeywordFun))
 				{
 					if (ParseFunction(ref index, identifier) is not { } function)
 					{
@@ -68,8 +63,7 @@ public sealed class FileParser(ImmutableArray<Token> tokens) : BaseParser<FileNo
 						continue;
 					}
 					
-					var entryPoint = new EntryPointNode(identifier.SourceLocation, function);
-					nodes.Add(entryPoint);
+					declarations.Add(function);
 					continue;
 				}
 				
@@ -83,8 +77,8 @@ public sealed class FileParser(ImmutableArray<Token> tokens) : BaseParser<FileNo
 			break;
 		}
 		
-		if (moduleName is null)
-			// @TODO Diagnostic: File must have a module name
+		if (moduleName == default)
+			// @TODO Diagnostic: File must have a module name -> Semantic analysis
 			return null;
 		
 		// Combine range to include penultimate token (because last must be EOF)
@@ -98,8 +92,8 @@ public sealed class FileParser(ImmutableArray<Token> tokens) : BaseParser<FileNo
 		
 		return new FileNode(new(source, range))
 		{
-			ModuleName = moduleName,
-			Nodes = nodes.ToImmutableArray()
+			ModuleIdentifier = moduleName,
+			Declarations = declarations.ToImmutableArray()
 		};
 	}
 	
@@ -120,7 +114,7 @@ public sealed class FileParser(ImmutableArray<Token> tokens) : BaseParser<FileNo
 		
 		// @TODO Optional return type
 		
-		if (!Match(ref index, TokenType.OpColon))
+		if (!Match(ref index, TokenType.OpArrow))
 			return null;
 		
 		// @TODO Return type should be more complex than a simple identifier token
@@ -184,10 +178,7 @@ public sealed class FileParser(ImmutableArray<Token> tokens) : BaseParser<FileNo
 		if (ParseExpression(ref index) is not { } expression)
 			return null;
 		
-		if (!Match(ref index, out var semicolon, TokenType.OpSemicolon))
-			return null;
-		
-		var range = retToken.SourceLocation.Range.Join(semicolon.SourceLocation.Range);
+		var range = retToken.SourceLocation.Range.Join(expression.SourceLocation.Range);
 		var source = retToken.SourceLocation.Source;
 		var sourceLocation = new SourceLocation(source, range);
 		

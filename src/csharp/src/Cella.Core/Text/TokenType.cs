@@ -117,7 +117,7 @@ public sealed class TokenType
 	
 	// Contextual Keywords
 	public static readonly TokenType KeywordMod = CreateContextualKeyword("mod");
-	public static readonly TokenType KeywordEntry = CreateContextualKeyword("entry");
+	public static readonly TokenType KeywordFun = CreateContextualKeyword("fun");
 	
 	#endregion
 	#region Operators
@@ -128,6 +128,7 @@ public sealed class TokenType
 	public static readonly TokenType OpCloseParen = CreateOperator(")");
 	public static readonly TokenType OpOpenBrace = CreateOperator("{");
 	public static readonly TokenType OpCloseBrace = CreateOperator("}");
+	public static readonly TokenType OpArrow = CreateOperator("->");
 	
 	#endregion
 }
