@@ -22,6 +22,7 @@ public sealed class FunctionSymbol
 {
 	public ImmutableArray<ParameterSymbol> Parameters { get; } = parameters.ToImmutableArray();
 	public TypeSymbol? ReturnType { get; } = returnType;
+	public string? MangledName { get; set;  }
 }
 
 public abstract class TypeSymbol(string name, params IEnumerable<SourceLocation> declarations)
@@ -29,7 +30,10 @@ public abstract class TypeSymbol(string name, params IEnumerable<SourceLocation>
 
 public sealed class InvalidType() : TypeSymbol("?");
 
-public sealed class PrimitiveType(string name) : TypeSymbol(name);
+public sealed class PrimitiveType(string name, PrimitiveTypeKind kind) : TypeSymbol(name)
+{
+	public PrimitiveTypeKind Kind { get; } = kind;
+}
 
 public abstract class VariableSymbol(string name, TypeSymbol type, params IEnumerable<SourceLocation> declarations)
 	: Symbol(name, declarations)

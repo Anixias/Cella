@@ -175,10 +175,16 @@ public sealed class FileParser(ImmutableArray<Token> tokens) : BaseParser<FileNo
 		
 		// @TODO Diagnostics
 		
-		if (ParseExpression(ref index) is not { } expression)
-			return null;
+		var expressionIndex = index;
+		var expression = ParseExpression(ref expressionIndex);
 		
-		var range = retToken.SourceLocation.Range.Join(expression.SourceLocation.Range);
+		var range = retToken.SourceLocation.Range;
+		if (expression is not null)
+		{
+			index = expressionIndex;
+			range = range.Join(expression.SourceLocation.Range);
+		}
+		
 		var source = retToken.SourceLocation.Source;
 		var sourceLocation = new SourceLocation(source, range);
 		

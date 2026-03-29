@@ -8,6 +8,8 @@ namespace Cella.Core.Binding;
 
 public sealed class TypeChecker : IResolvedNodeVisitor
 {
+	public IReadOnlyList<string> Diagnostics => _diagnostics;
+	
 	private readonly Stack<TypeSymbol?> _returnTypeStack = [];
 	private readonly List<string> _diagnostics = []; // TODO More info needed
 	

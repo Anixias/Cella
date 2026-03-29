@@ -86,10 +86,10 @@ public sealed class Lowerer : IResolvedDeclarationNodeVisitor
 				
 				case 1:
 				{
-					var block = function.Blocks[0];
+					/*var block = function.Blocks[0];
 					
 					if (block.Terminator == UndefinedTerminator.Instance)
-						block.Terminator = ReturnTerminator.Void;
+						block.Terminator = ReturnTerminator.Void;*/
 					
 					break;
 				}

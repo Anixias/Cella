@@ -12,7 +12,11 @@ namespace Cella.Core.Binding;
 public sealed class Resolver(CollectorContext context) : ISyntaxNodeVisitor<IResolvedNode>
 {
 	private readonly Stack<Scope> _scopes = [];
+	private readonly Stack<FunctionSymbol> _functions = [];
+	private readonly Stack<TypeSymbol?> _targetTypes = [];
 	private Scope CurrentScope => _scopes.Peek();
+	private FunctionSymbol CurrentFunction => _functions.Peek();
+	private TypeSymbol? CurrentTargetType => _targetTypes.Peek();
 	
 	private Scope GetScope(IDeclarationNode node) => context.DeclarationScopes[node];
 	
@@ -66,9 +70,15 @@ public sealed class Resolver(CollectorContext context) : ISyntaxNodeVisitor<IRes
 	public IResolvedNode Visit(FunctionNode node)
 	{
 		var function = (FunctionSymbol)context.DeclarationSymbols[node];
+		
 		_scopes.Push(context.DeclarationScopes[node]);
+		_functions.Push(function);
+		
 		var body = Visit(node.Body);
+		
+		_functions.Pop();
 		PopScope();
+		
 		return new ResolvedFunctionNode(function, body);
 	}
 	
@@ -79,26 +89,9 @@ public sealed class Resolver(CollectorContext context) : ISyntaxNodeVisitor<IRes
 		TypeSymbol? type = null;
 		object? value = null;
 		
-		// TODO Need context like what the target variable's type is declared as
-		// If not declared, we use type of token + value suffixes/format + range of value to determine type
 		if (node.Token.Type == TokenType.IntegerLiteral)
 		{
-			// Assuming no suffixes or target type...
-			if (int.TryParse(valueSpan, out var intValue))
-			{
-				value = intValue;
-				type = NativeSymbols.Int32;
-			}
-			else if (long.TryParse(valueSpan, out var longValue))
-			{
-				value = longValue;
-				type = NativeSymbols.Int64;
-			}
-			else if (Int128.TryParse(valueSpan, out var int128Value))
-			{
-				value = int128Value;
-				type = NativeSymbols.Int128;
-			}
+			(type, value) = ParseInteger(valueSpan, CurrentTargetType);
 		}
 		
 		// TODO We should emit diagnostics here
@@ -107,8 +100,53 @@ public sealed class Resolver(CollectorContext context) : ISyntaxNodeVisitor<IRes
 		return new ResolvedLiteralExpressionNode(type, value);
 	}
 	
-	public IResolvedNode Visit(ReturnStatementNode node) =>
-		new ResolvedReturnStatementNode(node.ExpressionNode is { } expressionNode
+	public IResolvedNode Visit(ReturnStatementNode node)
+	{
+		_targetTypes.Push(CurrentFunction.ReturnType);
+		
+		var result = new ResolvedReturnStatementNode(node.ExpressionNode is { } expressionNode
 			? VisitNode(expressionNode)
 			: null);
+		
+		_targetTypes.Pop();
+		return result;
+	}
+	
+	private static (TypeSymbol? Type, object? Value) ParseInteger(ReadOnlySpan<char> span, TypeSymbol? targetType)
+	{
+		// TODO Check suffixes
+		
+		if (targetType is PrimitiveType primitiveType)
+			switch (primitiveType.Kind)
+			{
+				case PrimitiveTypeKind.Int32:
+					if (int.TryParse(span, out var intValue))
+						return (NativeSymbols.Int32, intValue);
+					
+					break;
+				
+				case PrimitiveTypeKind.Int64:
+					if (long.TryParse(span, out var longValue))
+						return (NativeSymbols.Int64, longValue);
+					
+					break;
+				
+				case PrimitiveTypeKind.Int128:
+					if (Int128.TryParse(span, out var int128Value))
+						return (NativeSymbols.Int128, int128Value);
+					
+					break;
+			}
+		
+		if (int.TryParse(span, out var intValue2))
+			return (NativeSymbols.Int32, intValue2);
+		
+		if (long.TryParse(span, out var longValue2))
+			return (NativeSymbols.Int64, longValue2);
+		
+		if (Int128.TryParse(span, out var int128Value2))
+			return (NativeSymbols.Int128, int128Value2);
+		
+		return (null, null);
+	}
 }

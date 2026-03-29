@@ -6,10 +6,11 @@
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <RuntimeIdentifier Condition="'$(RuntimeIdentifier)' == ''">$(NETCoreSdkRuntimeIdentifier)</RuntimeIdentifier>
   </PropertyGroup>
   
   <ItemGroup>
-    <ProjectReference Include="..\src\Cella.Core\Cella.Core.csproj" />
+    <ProjectReference Include="..\Cella.Core\Cella.Core.csproj" />
   </ItemGroup>
 
 </Project>

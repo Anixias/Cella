@@ -1,5 +1,7 @@
 ﻿using System.Collections.Immutable;
+using Cella.Core.Analysis;
 using Cella.Core.Binding;
+using Cella.Core.CodeGen;
 using Cella.Core.Lowering;
 using Cella.Core.Syntax;
 using Cella.Core.Text;
@@ -55,12 +57,40 @@ internal static class Program
 		var typeChecker = new TypeChecker();
 		typeChecker.Check(resolvedAst);
 		
+		if (typeChecker.Diagnostics.Count > 0)
+		{
+			foreach (var diagnostic in typeChecker.Diagnostics)
+				Console.WriteLine(diagnostic);
+			
+			return;
+		}
+		
 		var lowerer = new Lowerer();
 		lowerer.Lower(resolvedAst);
 		
-		foreach (var module in lowerer.Modules)
-			Console.WriteLine(LoweredModulePrinter.Print(module));
+		var controlFlowAnalyzer = new ControlFlowAnalyzer();
 		
-		;
+		foreach (var module in lowerer.Modules)
+		{
+			Console.WriteLine(LoweredModulePrinter.Print(module));
+			
+			foreach (var function in module.Functions)
+				controlFlowAnalyzer.Analyze(function);
+		}
+		
+		if (controlFlowAnalyzer.Diagnostics.Count > 0)
+		{
+			foreach (var diagnostic in controlFlowAnalyzer.Diagnostics)
+				Console.WriteLine(diagnostic);
+			
+			return;
+		}
+		
+		var outputConfig = new OutputConfig(@"C:\Users\Anixias\Documents\cella\Projects\Dev", "test.exe", true, true);
+		var codeGenConfig = new CodeGenConfig(outputConfig, null);
+		var codeGenerator = new CodeGenerator(codeGenConfig);
+		
+		foreach (var module in lowerer.Modules)
+			codeGenerator.Generate(module);
 	}
 }

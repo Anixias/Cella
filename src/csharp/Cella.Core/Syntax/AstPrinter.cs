@@ -96,7 +96,8 @@ public sealed class AstPrinter : ISyntaxNodeVisitor
 		StartLine();
 		_sb.Append("ReturnStatementNode");
 		
-		VisitNode(node.ExpressionNode, true);
+		if (node.ExpressionNode is { } expressionNode)
+			VisitNode(expressionNode, true);
 	}
 	
 	private bool IsLast() => _hasMoreSiblings.Count == 0 || !_hasMoreSiblings[^1];

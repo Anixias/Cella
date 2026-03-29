@@ -51,8 +51,9 @@ public sealed class DeclarationCollector(CollectorContext context) : IDeclaratio
 		var parentScope = CurrentScope;
 		
 		// TEMP ReturnType won't be a simple Token later, cannot naively resolve it
+		var name = node.Identifier.GetText();
 		var returnType = parentScope.Resolve(node.ReturnType.GetText()) as TypeSymbol;
-		var function = new FunctionSymbol(node.Identifier.GetText(), [], returnType, node.SourceLocation);
+		var function = new FunctionSymbol(name, [], returnType, node.SourceLocation);
 		parentScope.Define(function);
 		
 		context.DeclarationSymbols[node] = function;

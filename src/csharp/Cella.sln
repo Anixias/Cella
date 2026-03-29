@@ -4,7 +4,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Cella-Old", "Cella-Old\Cell
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{305086DC-6B47-4590-BF64-BCEAA78CD18A}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Cella.Core", "src\Cella.Core\Cella.Core.csproj", "{103E7847-D03D-4AB4-BE30-EFD041E46532}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Cella.Core", "Cella.Core\Cella.Core.csproj", "{103E7847-D03D-4AB4-BE30-EFD041E46532}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Cella.Compiler", "Cella.Compiler\Cella.Compiler.csproj", "{2D110638-20A7-4CDA-A85C-38C810658068}"
 EndProject
