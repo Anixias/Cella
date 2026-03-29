@@ -9,7 +9,8 @@ public abstract class Symbol(string name, params IEnumerable<SourceLocation> dec
 	public ImmutableArray<SourceLocation> Declarations { get; } = declarations.ToImmutableArray();
 }
 
-public sealed class ModuleSymbol(string name, params IEnumerable<SourceLocation> declarations) : Symbol(name, declarations);
+public sealed class ModuleSymbol(string name, params IEnumerable<SourceLocation> declarations)
+	: Symbol(name, declarations);
 
 public sealed class FunctionSymbol
 (

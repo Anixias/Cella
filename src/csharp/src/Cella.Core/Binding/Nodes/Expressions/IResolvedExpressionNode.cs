@@ -6,3 +6,13 @@ public interface IResolvedExpressionNode : IResolvedNode
 {
 	TypeSymbol Type { get; }
 }
+
+[TreeVisitor<IResolvedExpressionNode>]
+public partial interface IResolvedExpressionNodeVisitor
+{
+}
+
+[TreeVisitor<IResolvedExpressionNode>]
+public partial interface IResolvedExpressionNodeVisitor<out T>
+{
+}

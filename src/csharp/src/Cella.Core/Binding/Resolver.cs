@@ -9,14 +9,23 @@ using Cella.Core.Text;
 
 namespace Cella.Core.Binding;
 
-public sealed class Resolver(Collector collector) : ISyntaxNodeVisitor<IResolvedNode>
+public sealed class Resolver(CollectorContext context) : ISyntaxNodeVisitor<IResolvedNode>
 {
 	private readonly Stack<Scope> _scopes = [];
 	private Scope CurrentScope => _scopes.Peek();
 	
-	private Scope GetScope(IDeclarationNode node) => collector.DeclarationScopes[node];
+	private Scope GetScope(IDeclarationNode node) => context.DeclarationScopes[node];
 	
-	public IResolvedNode Resolve(ISyntaxNode root) => VisitNode(root);
+	private Scope PushNodeScope(IDeclarationNode node)
+	{
+		var scope = GetScope(node);
+		_scopes.Push(scope);
+		return scope;
+	}
+	
+	private Scope PopScope() => _scopes.Pop();
+	
+	public ResolvedFileNode Resolve(FileNode root) => (ResolvedFileNode)Visit(root);
 	
 	private IResolvedDeclarationNode VisitNode(IDeclarationNode node) =>
 		(IResolvedDeclarationNode)((ISyntaxNodeVisitor<IResolvedNode>)this).Visit(node);
@@ -31,14 +40,14 @@ public sealed class Resolver(Collector collector) : ISyntaxNodeVisitor<IResolved
 	
 	public IResolvedNode Visit(FileNode node)
 	{
-		_scopes.Push(collector.DeclarationScopes[node]);
+		PushNodeScope(node);
 		var resolvedDeclarations = new List<IResolvedDeclarationNode>(node.Declarations.Length);
 		
 		foreach (var declaration in node.Declarations)
 			resolvedDeclarations.Add(VisitNode(declaration));
 		
-		_scopes.Pop();
-		var module = (ModuleSymbol)collector.DeclarationSymbols[node];
+		PopScope();
+		var module = (ModuleSymbol)context.DeclarationSymbols[node];
 		return new ResolvedFileNode(module, resolvedDeclarations);
 	}
 	
@@ -50,16 +59,16 @@ public sealed class Resolver(Collector collector) : ISyntaxNodeVisitor<IResolved
 		foreach (var child in node.StatementNodes)
 			statements.Add(VisitNode(child));
 		
-		_scopes.Pop();
+		PopScope();
 		return new ResolvedBlockStatementNode(statements);
 	}
 	
 	public IResolvedNode Visit(FunctionNode node)
 	{
-		var function = (FunctionSymbol)collector.DeclarationSymbols[node];
-		_scopes.Push(collector.DeclarationScopes[node]);
+		var function = (FunctionSymbol)context.DeclarationSymbols[node];
+		_scopes.Push(context.DeclarationScopes[node]);
 		var body = Visit(node.Body);
-		_scopes.Pop();
+		PopScope();
 		return new ResolvedFunctionNode(function, body);
 	}
 	
@@ -99,5 +108,7 @@ public sealed class Resolver(Collector collector) : ISyntaxNodeVisitor<IResolved
 	}
 	
 	public IResolvedNode Visit(ReturnStatementNode node) =>
-		new ResolvedReturnStatementNode(VisitNode(node.ExpressionNode));
+		new ResolvedReturnStatementNode(node.ExpressionNode is { } expressionNode
+			? VisitNode(expressionNode)
+			: null);
 }

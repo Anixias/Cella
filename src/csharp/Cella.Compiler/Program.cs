@@ -1,5 +1,6 @@
 ﻿using System.Collections.Immutable;
 using Cella.Core.Binding;
+using Cella.Core.Lowering;
 using Cella.Core.Syntax;
 using Cella.Core.Text;
 
@@ -38,11 +39,28 @@ internal static class Program
 		if (ast is null)
 			return;
 		
-		var collector = new Collector();
-		collector.Collect(ast);
+		var collectorContext = new CollectorContext();
 		
-		var resolver = new Resolver(collector);
+		// TODO Why do functions have resolved return types already?? That should be in resolver pass...
+		// Should there be an unresolved function symbol and a resolved function symbol??
+		var typeCollector = new TypeCollector(collectorContext);
+		typeCollector.Collect(ast);
+		
+		var declarationCollector = new DeclarationCollector(collectorContext);
+		declarationCollector.Collect(ast);
+		
+		var resolver = new Resolver(collectorContext);
 		var resolvedAst = resolver.Resolve(ast);
+		
+		var typeChecker = new TypeChecker();
+		typeChecker.Check(resolvedAst);
+		
+		var lowerer = new Lowerer();
+		lowerer.Lower(resolvedAst);
+		
+		foreach (var module in lowerer.Modules)
+			Console.WriteLine(LoweredModulePrinter.Print(module));
+		
 		;
 	}
 }
