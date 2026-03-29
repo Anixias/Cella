@@ -78,35 +78,40 @@ public sealed class Lowerer : IResolvedDeclarationNodeVisitor
 			}
 			
 			// Normalize blocks
-			if (function.Blocks.Count == 0)
+			switch (function.Blocks.Count)
 			{
-				function.Blocks.Add(new BasicBlock("entry")
-				{
-					Terminator = ReturnTerminator.Void
-				});
-			}
-			else if (function.Blocks.Count == 1)
-			{
-				var block = function.Blocks[0];
+				case 0:
+					function.Blocks.Add(new("entry") { Terminator = ReturnTerminator.Void });
+					break;
 				
-				if (block.Terminator == UndefinedTerminator.Instance)
-					block.Terminator = ReturnTerminator.Void;
-			}
-			else
-			{
-				for (var i = function.Blocks.Count - 1; i >= 0; i--)
+				case 1:
 				{
-					var block = function.Blocks[i];
+					var block = function.Blocks[0];
 					
-					if (block.Terminator != UndefinedTerminator.Instance)
-						continue;
-					
-					// If the block has no instructions and an undefined terminator, it wasn't actually used
-					// TODO We can't just remove the block because another block could be referencing it...
-					if (block.Instructions.Count == 0)
-						function.Blocks.RemoveAt(i);
-					else
+					if (block.Terminator == UndefinedTerminator.Instance)
 						block.Terminator = ReturnTerminator.Void;
+					
+					break;
+				}
+				
+				default:
+				{
+					for (var i = function.Blocks.Count - 1; i >= 0; i--)
+					{
+						var block = function.Blocks[i];
+						
+						if (block.Terminator != UndefinedTerminator.Instance)
+							continue;
+						
+						// If the block has no instructions and an undefined terminator, it wasn't actually used
+						// TODO We can't just remove the block because another block could be referencing it...
+						if (block.Instructions.Count == 0)
+							function.Blocks.RemoveAt(i);
+						else
+							block.Terminator = ReturnTerminator.Void;
+					}
+					
+					break;
 				}
 			}
 			
