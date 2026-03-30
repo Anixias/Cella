@@ -2,6 +2,7 @@
 
 public interface ISource
 {
+	string FilePath { get; }
 	char this[int position] { get; }
 	int Length { get; }
 	ReadOnlySpan<char> GetText();

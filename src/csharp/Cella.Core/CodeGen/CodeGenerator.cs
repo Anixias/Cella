@@ -25,9 +25,10 @@ public sealed unsafe class CodeGenerator : IDisposable
 		LLVM.InitializeAllAsmPrinters();
 	}
 	
+	public string TargetTriple { get; }
+	
 	private readonly CodeGenConfig _config;
 	private readonly string _dataLayoutStr;
-	private readonly string _targetTriple;
 	private readonly LLVMTargetMachineRef _targetMachine;
 	private readonly Dictionary<TypeSymbol, LLVMTypeRef> _typeMap = [];
 	
@@ -35,7 +36,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 	{
 		Init();
 		_config = config;
-		(_dataLayoutStr, _targetTriple, _targetMachine) = GetDataLayout(config.TargetConfig);
+		(_dataLayoutStr, TargetTriple, _targetMachine) = GetDataLayout(config.TargetConfig);
 		MapNativeSymbols();
 	}
 	
@@ -44,57 +45,70 @@ public sealed unsafe class CodeGenerator : IDisposable
 		_typeMap[NativeSymbols.Int32] = LLVMTypeRef.Int32;
 		_typeMap[NativeSymbols.Int64] = LLVMTypeRef.Int64;
 		_typeMap[NativeSymbols.Int128] = LLVMTypeRef.Int128;
-
 	}
 	
-	public void Generate(LoweredModule module)
+	public string? Generate(LoweredModule module)
 	{
 		using var llvmModule = LLVMModuleRef.CreateWithName(module.Symbol.Name);
-		
-		string message;
-		
-		// Build code
-		BuildModule(llvmModule, module);
-		
-		if (!llvmModule.TryVerify(LLVMVerifierFailureAction.LLVMAbortProcessAction, out message))
+		var llvmDiBuilder = llvmModule.CreateDIBuilder();
+		try
 		{
-			// TEMP
-			Console.WriteLine(message);
-			return;
-		}
-		
-		llvmModule.Target = _targetTriple;
-		llvmModule.DataLayout = _dataLayoutStr;
-		
-		if (_config.OutputConfig.EmitIR)
-		{
-			var irFilePath = Path.Combine(_config.OutputConfig.Directory, $"{module.Symbol.Name}.ll");
-			if (!llvmModule.TryPrintToFile(irFilePath, out message))
+			string message;
+			
+			// Build code
+			BuildModule(llvmModule, llvmDiBuilder, module);
+			
+			if (!llvmModule.TryVerify(LLVMVerifierFailureAction.LLVMAbortProcessAction, out message))
 			{
 				// TEMP
 				Console.WriteLine(message);
-				return;
+				return null;
 			}
-		}
-		
-		LLVMCodeGenFileType fileType;
-		string objectFilePath;
-		if (_config.OutputConfig.EmitAssembly)
-		{
-			fileType = LLVMCodeGenFileType.LLVMAssemblyFile;
-			objectFilePath = Path.Combine(_config.OutputConfig.Directory, $"{module.Symbol.Name}.s");
-		}
-		else
-		{
-			fileType = LLVMCodeGenFileType.LLVMObjectFile;
-			objectFilePath = Path.Combine(_config.OutputConfig.Directory, $"{module.Symbol.Name}.o");
-		}
-		
-		if (!_targetMachine.TryEmitToFile(llvmModule, objectFilePath, fileType, out message))
-		{
+			
+			llvmDiBuilder.DIBuilderFinalize();
+			
+			llvmModule.Target = TargetTriple;
+			llvmModule.DataLayout = _dataLayoutStr;
+			
+			if (!Directory.Exists(_config.OutputConfig.Directory))
+				Directory.CreateDirectory(_config.OutputConfig.Directory);
+			
+			if (_config.OutputConfig.EmitIR)
+			{
+				var irFilePath = Path.Combine(_config.OutputConfig.Directory, $"{module.Symbol.Name}.ll");
+				if (!llvmModule.TryPrintToFile(irFilePath, out message))
+				{
+					// TEMP
+					Console.WriteLine(message);
+					return null;
+				}
+			}
+			
+			if (_config.OutputConfig.EmitAssembly)
+			{
+				var assemblyFilePath = Path.Combine(_config.OutputConfig.Directory, $"{module.Symbol.Name}.s");
+				if (!_targetMachine.TryEmitToFile(llvmModule, assemblyFilePath, LLVMCodeGenFileType.LLVMAssemblyFile,
+					    out message))
+				{
+					// TEMP
+					Console.WriteLine(message);
+					return null;
+				}
+			}
+			
+			var objectFilePath = Path.Combine(_config.OutputConfig.Directory, $"{module.Symbol.Name}.o");
+			if (_targetMachine.TryEmitToFile(llvmModule, objectFilePath, LLVMCodeGenFileType.LLVMObjectFile,
+				    out message))
+				return objectFilePath;
+			
 			// TEMP
 			Console.WriteLine(message);
-			return;
+			return null;
+			
+		}
+		finally
+		{
+			LLVM.DisposeDIBuilder((LLVMOpaqueDIBuilder*)llvmDiBuilder.Handle);
 		}
 	}
 	
@@ -102,15 +116,15 @@ public sealed unsafe class CodeGenerator : IDisposable
 		? LLVMTypeRef.Void
 		: _typeMap.GetValueOrDefault(symbol, LLVMTypeRef.Void);
 	
-	private void BuildModule(LLVMModuleRef llvmModule, LoweredModule module)
+	private void BuildModule(LLVMModuleRef llvmModule, LLVMDIBuilderRef llvmDiBuilder, LoweredModule module)
 	{
 		// TODO Build types
 		
 		foreach (var function in module.Functions)
-			BuildFunction(llvmModule, function);
+			BuildFunction(llvmModule, llvmDiBuilder, function);
 	}
 	
-	private void BuildFunction(LLVMModuleRef llvmModule, LoweredFunction function)
+	private void BuildFunction(LLVMModuleRef llvmModule, LLVMDIBuilderRef llvmDiBuilder, LoweredFunction function)
 	{
 		var returnType = MapTypeSymbol(function.Symbol.ReturnType);
 		
@@ -253,13 +267,12 @@ public sealed unsafe class CodeGenerator : IDisposable
 public sealed record CodeGenConfig
 (
 	OutputConfig OutputConfig,
-	TargetConfig? TargetConfig
+	TargetConfig? TargetConfig // if null, compiles for current platform
 );
 
 public sealed record OutputConfig
 (
 	string Directory,
-	string FileName,
 	bool EmitIR = false,
 	bool EmitAssembly = false
 );
@@ -268,14 +281,5 @@ public sealed record TargetConfig
 (
 	string TargetTriple,
 	string? Cpu,
-	string? Features,
-	string ToolchainRoot,
-	LinkStyle LinkStyle
+	string? Features
 );
-
-public enum LinkStyle
-{
-	Executable,
-	StaticLibrary,
-	SharedLibrary
-}

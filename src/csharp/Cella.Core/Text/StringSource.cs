@@ -4,18 +4,21 @@ namespace Cella.Core.Text;
 
 public sealed class StringSource : ISource
 {
-	public static readonly StringSource Empty = new(string.Empty);
+	public static readonly StringSource Empty = new(string.Empty, string.Empty);
 	
+	public string FilePath { get; }
 	public char this[int position] => _text[position];
 	public int Length => _text.Length;
 	
 	private readonly string _text;
 	private readonly ImmutableArray<TextRange> _lines;
 	
-	public StringSource(string text)
+	public StringSource(string text, string filePath)
 	{
 		_text = text;
 		_lines = SplitLines(text);
+		
+		FilePath = filePath;
 	}
 	
 	private static ImmutableArray<TextRange> SplitLines(string text)

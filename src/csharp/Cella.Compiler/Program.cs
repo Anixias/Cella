@@ -1,4 +1,6 @@
 ﻿using System.Collections.Immutable;
+using System.Diagnostics;
+using Cella.Compiler.Linking;
 using Cella.Core.Analysis;
 using Cella.Core.Binding;
 using Cella.Core.CodeGen;
@@ -10,7 +12,7 @@ namespace Cella.Compiler;
 
 internal static class Program
 {
-	public static void Main(string[] args)
+	public static async Task Main(string[] args)
 	{
 		if (args.Length == 0)
 			return;
@@ -21,8 +23,8 @@ internal static class Program
 			return;
 		
 		// TODO Create some kind of StreamSource so the entire file doesn't have to be loaded into memory
-		var sourceString = File.ReadAllText(sourceFile);
-		var source = new StringSource(sourceString);
+		var sourceString = await File.ReadAllTextAsync(sourceFile);
+		var source = new StringSource(sourceString, sourceFile);
 		var scanner = new FilteredScanner(source);
 		
 		// @TEMP
@@ -86,11 +88,40 @@ internal static class Program
 			return;
 		}
 		
-		var outputConfig = new OutputConfig(@"C:\Users\Anixias\Documents\cella\Projects\Dev", "test.exe", true, true);
+		var objDir = "TODO";
+		var outputConfig = new OutputConfig(objDir, true, true);
 		var codeGenConfig = new CodeGenConfig(outputConfig, null);
 		var codeGenerator = new CodeGenerator(codeGenConfig);
 		
+		var objectFiles = new List<string>();
 		foreach (var module in lowerer.Modules)
-			codeGenerator.Generate(module);
+			if (codeGenerator.Generate(module) is { } objectFile)
+				objectFiles.Add(objectFile);
+		
+		var outputPath = "TODO";
+		var targetTriple = codeGenerator.TargetTriple;
+		
+		// TODO Toolchains and linker paths should be grabbed from environment variables, compiler installation location
+		var linker = new Linker(@"C:\cella\lld.exe");
+		var linkRequest = new LinkRequest(objectFiles, outputPath);
+		var linkerToolchain = Toolchain.FromTargetTriple(targetTriple, @"C:\cella\toolchains");
+		var linkExitCode = await linker.LinkAsync(linkRequest, linkerToolchain);
+		
+		Console.WriteLine($"Linker finished with exit code {linkExitCode}");
+		if (linkExitCode != 0)
+			return;
+		
+		var userProgram = new Process
+		{
+			StartInfo =
+			{
+				FileName = outputPath
+			}
+		};
+		
+		userProgram.Start();
+		await userProgram.WaitForExitAsync();
+		
+		Console.WriteLine($"User program finished with exit code {userProgram.ExitCode}");
 	}
 }
