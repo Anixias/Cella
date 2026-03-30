@@ -280,6 +280,6 @@ public sealed record OutputConfig
 public sealed record TargetConfig
 (
 	string TargetTriple,
-	string? Cpu,
-	string? Features
+	string? Cpu = null,
+	string? Features = null
 );

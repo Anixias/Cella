@@ -88,9 +88,12 @@ internal static class Program
 			return;
 		}
 		
+		var targetTriple = TargetTriple.FromHost(); // TODO Check CLI args
+		
 		var objDir = "TODO";
 		var outputConfig = new OutputConfig(objDir, true, true);
-		var codeGenConfig = new CodeGenConfig(outputConfig, null);
+		var targetConfig = new TargetConfig(targetTriple.ToLlvm());
+		var codeGenConfig = new CodeGenConfig(outputConfig, targetConfig);
 		var codeGenerator = new CodeGenerator(codeGenConfig);
 		
 		var objectFiles = new List<string>();
@@ -99,7 +102,6 @@ internal static class Program
 				objectFiles.Add(objectFile);
 		
 		var outputPath = "TODO";
-		var targetTriple = codeGenerator.TargetTriple;
 		
 		// TODO Toolchains and linker paths should be grabbed from environment variables, compiler installation location
 		var linker = new Linker(@"C:\cella\lld.exe");
