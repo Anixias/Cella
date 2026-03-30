@@ -15,6 +15,11 @@
   </ItemGroup>
   
   <ItemGroup>
+    <PackageReference Include="CsToml" Version="1.8.2" />
+    <PackageReference Include="CsToml.Generator" Version="1.8.2">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
     <PackageReference Include="libLLVM" Version="21.1.8" />
     <PackageReference Include="LLVMSharp" Version="20.1.2" />
   </ItemGroup>

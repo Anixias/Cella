@@ -1,4 +1,6 @@
-﻿namespace Cella.Compiler.Linking;
+﻿using Cella.Compiler.Projects;
+
+namespace Cella.Compiler.Linking;
 
 public sealed class WindowsMsvcToolchain(string root) : Toolchain(root)
 {
@@ -13,12 +15,16 @@ public sealed class WindowsMsvcToolchain(string root) : Toolchain(root)
 		var args = new List<string>
 		{
 			"/nologo",
-			"/subsystem:console", // TEMP This should be console or windows based on request
-			$"/out:{request.OutputFile}",
-			$"/libpath:{_msvcLibDir}",
-			$"/libpath:{_ucrtLibDir}",
-			$"/libpath:{_umLibDir}"
+			"/subsystem:console" // TEMP This should be console or windows based on request
 		};
+		
+		if (request.OutputType == ProjectOutputType.SharedLibrary)
+			args.Add("/dll");
+		
+		args.Add($"/out:{request.OutputFile}");
+		args.Add($"/libpath:{_msvcLibDir}");
+		args.Add($"/libpath:{_ucrtLibDir}");
+		args.Add($"/libpath:{_umLibDir}");
 		
 		args.AddRange(request.InputFiles);
 		

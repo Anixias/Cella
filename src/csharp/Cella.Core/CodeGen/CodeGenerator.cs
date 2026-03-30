@@ -1,4 +1,5 @@
-﻿using Cella.Core.CodeGen.Extensions;
+﻿using Cella.Compiler.Projects;
+using Cella.Core.CodeGen.Extensions;
 using Cella.Core.Lowering;
 using Cella.Core.Symbols;
 using LLVMSharp.Interop;
