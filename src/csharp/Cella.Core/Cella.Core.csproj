@@ -20,7 +20,7 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-    <PackageReference Include="libLLVM" Version="21.1.8" />
+    <PackageReference Include="libLLVM" Version="20.1.2" />
     <PackageReference Include="LLVMSharp" Version="20.1.2" />
   </ItemGroup>
 

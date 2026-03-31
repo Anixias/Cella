@@ -5,6 +5,7 @@ namespace Cella.Core.Binding.Nodes.Expressions;
 public interface IResolvedExpressionNode : IResolvedNode
 {
 	TypeSymbol Type { get; }
+	bool IsConstant { get; }
 }
 
 [TreeVisitor<IResolvedExpressionNode>]

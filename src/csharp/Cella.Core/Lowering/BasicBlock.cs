@@ -29,6 +29,31 @@ public sealed class TemporaryValue(TypeSymbol type, int id) : Value(type)
 	public int Id { get; } = id;
 }
 
+#region Constant Operations
+public sealed class ConstAddValue(TypeSymbol type, Value left, Value right) : Value(type)
+{
+	public Value Left { get; } = left;
+	public Value Right { get; } = right;
+}
+
+public sealed class ConstSubValue(TypeSymbol type, Value left, Value right) : Value(type)
+{
+	public Value Left { get; } = left;
+	public Value Right { get; } = right;
+}
+
+public sealed class ConstMulValue(TypeSymbol type, Value left, Value right) : Value(type)
+{
+	public Value Left { get; } = left;
+	public Value Right { get; } = right;
+}
+
+public sealed class ConstNegValue(TypeSymbol type, Value operand) : Value(type)
+{
+	public Value Operand { get; } = operand;
+}
+#endregion
+
 public interface IBlockTerminator;
 
 public sealed class UndefinedTerminator : IBlockTerminator

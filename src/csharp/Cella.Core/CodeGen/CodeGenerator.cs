@@ -182,17 +182,15 @@ public sealed unsafe class CodeGenerator : IDisposable
 		}
 	}
 	
-	private LLVMValueRef EmitValue(Value value)
+	private LLVMValueRef EmitValue(Value value) => value switch
 	{
-		switch (value)
-		{
-			case ConstantValue v:
-				return EmitConstant(v);
-			
-			default:
-				throw new InvalidOperationException();
-		}
-	}
+		ConstantValue v => EmitConstant(v),
+		ConstAddValue v => LLVMValueRef.CreateConstAdd(EmitValue(v.Left), EmitValue(v.Right)),
+		ConstSubValue v => LLVMValueRef.CreateConstSub(EmitValue(v.Left), EmitValue(v.Right)),
+		ConstMulValue v => LLVMValueRef.CreateConstMul(EmitValue(v.Left), EmitValue(v.Right)),
+		ConstNegValue v => LLVMValueRef.CreateConstNeg(EmitValue(v.Operand)),
+		_ => throw new InvalidOperationException()
+	};
 	
 	private LLVMValueRef EmitConstant(ConstantValue constant)
 	{

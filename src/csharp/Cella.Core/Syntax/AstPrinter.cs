@@ -91,6 +91,15 @@ public sealed class AstPrinter : ISyntaxNodeVisitor
 		_sb.Append("LiteralExpressionNode: ").Append(node.Token.ToString());
 	}
 	
+	public void Visit(BinaryOpExpressionNode node)
+	{
+		StartLine();
+		_sb.Append("BinaryOpExpressionNode: ").Append(node.Op.ToString());
+		
+		VisitNode(node.Left, false);
+		VisitNode(node.Right, true);
+	}
+	
 	public void Visit(ReturnStatementNode node)
 	{
 		StartLine();
@@ -98,6 +107,14 @@ public sealed class AstPrinter : ISyntaxNodeVisitor
 		
 		if (node.ExpressionNode is { } expressionNode)
 			VisitNode(expressionNode, true);
+	}
+	
+	public void Visit(UnaryOpExpressionNode node)
+	{
+		StartLine();
+		_sb.Append("UnaryOpExpressionNode: ").Append(node.Op.ToString());
+		
+		VisitNode(node.Operand, true);
 	}
 	
 	private bool IsLast() => _hasMoreSiblings.Count == 0 || !_hasMoreSiblings[^1];

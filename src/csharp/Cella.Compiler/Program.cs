@@ -186,11 +186,9 @@ internal static class Program
 			var source = new StringSource(sourceString, sourcePath);
 			var scanner = new FilteredScanner(source);
 			
-			// @TEMP
+			// TEMP
 			/*foreach (var token in scanner)
-				Console.WriteLine(token);
-			
-			Console.WriteLine("\n=== AST ===");*/
+				Console.WriteLine(token);*/
 			
 			// TODO Change parser to retrieve tokens as needed
 			var tokens = scanner.ToImmutableArray();
@@ -200,7 +198,9 @@ internal static class Program
 			var ast = parser.Parse();
 			ct.ThrowIfCancellationRequested();
 			
-			//Console.WriteLine(ast is null ? "Failed to parse." : AstPrinter.Print(ast));
+			// TEMP
+			/*Console.WriteLine("\n=== AST ===");
+			Console.WriteLine(ast is null ? "Failed to parse." : AstPrinter.Print(ast));*/
 			
 			if (ast is not null)
 				fileInfos.Add(new(sourcePath, ast, source));
@@ -222,31 +222,28 @@ internal static class Program
 			: $"{baseName}{ext}";
 	}
 	
-	private static string? GetOutputExtension(TargetTriple target, ProjectOutputType outputType)
+	private static string? GetOutputExtension(TargetTriple target, ProjectOutputType outputType) => target.Os switch
 	{
-		return target.Os switch
+		TargetTriple.OsTypes.Windows => outputType switch
 		{
-			TargetTriple.OsTypes.Windows => outputType switch
-			{
-				ProjectOutputType.Executable => ".exe",
-				ProjectOutputType.StaticLibrary => ".lib",
-				_ => ".dll",
-			},
-			TargetTriple.OsTypes.Linux => outputType switch
-			{
-				ProjectOutputType.Executable => null,
-				ProjectOutputType.StaticLibrary => ".a",
-				_ => ".so",
-			},
-			TargetTriple.OsTypes.MacOsX => outputType switch
-			{
-				ProjectOutputType.Executable => null,
-				ProjectOutputType.StaticLibrary => ".a",
-				_ => ".dylib",
-			},
-			_ => null
-		};
-	}
+			ProjectOutputType.Executable => ".exe",
+			ProjectOutputType.StaticLibrary => ".lib",
+			_ => ".dll",
+		},
+		TargetTriple.OsTypes.Linux => outputType switch
+		{
+			ProjectOutputType.Executable => null,
+			ProjectOutputType.StaticLibrary => ".a",
+			_ => ".so",
+		},
+		TargetTriple.OsTypes.MacOsX => outputType switch
+		{
+			ProjectOutputType.Executable => null,
+			ProjectOutputType.StaticLibrary => ".a",
+			_ => ".dylib",
+		},
+		_ => null
+	};
 }
 
 internal readonly record struct ProjectInfo

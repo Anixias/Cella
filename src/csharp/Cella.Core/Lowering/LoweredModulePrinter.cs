@@ -76,19 +76,47 @@ public static class LoweredModulePrinter
 	
 	private static void PrintValue(StringBuilder sb, Value value)
 	{
-		switch (value)
+		while (true)
 		{
-			case ConstantValue constantValue:
-				sb.Append('#').Append(constantValue.Value);
-				break;
+			switch (value)
+			{
+				case ConstantValue v:
+					sb.Append('#').Append(v.Value);
+					break;
+				
+				case VariableValue v:
+					sb.Append('$').Append(v.Variable.Name);
+					break;
+				
+				case TemporaryValue v:
+					sb.Append('t').Append(v.Id);
+					break;
+				
+				case ConstAddValue v:
+					PrintValue(sb, v.Left);
+					sb.Append(" + ");
+					value = v.Right;
+					continue;
+				
+				case ConstSubValue v:
+					PrintValue(sb, v.Left);
+					sb.Append(" - ");
+					value = v.Right;
+					continue;
+				
+				case ConstMulValue v:
+					PrintValue(sb, v.Left);
+					sb.Append(" * ");
+					value = v.Right;
+					continue;
+				
+				case ConstNegValue v:
+					sb.Append('-');
+					value = v.Operand;
+					continue;
+			}
 			
-			case VariableValue variableValue:
-				sb.Append('$').Append(variableValue.Variable.Name);
-				break;
-			
-			case TemporaryValue temporaryValue:
-				sb.Append('t').Append(temporaryValue.Id);
-				break;
+			break;
 		}
 	}
 }

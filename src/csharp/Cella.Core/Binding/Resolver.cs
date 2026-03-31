@@ -2,6 +2,7 @@
 using Cella.Core.Binding.Nodes.Declarations;
 using Cella.Core.Binding.Nodes.Expressions;
 using Cella.Core.Binding.Nodes.Statements;
+using Cella.Core.Binding.Operations;
 using Cella.Core.Symbols;
 using Cella.Core.Syntax.Nodes;
 using Cella.Core.Syntax.Nodes.Declarations;
@@ -90,14 +91,70 @@ public sealed class Resolver(CollectorContext context) : ISyntaxNodeVisitor<IRes
 		object? value = null;
 		
 		if (node.Token.Type == TokenType.IntegerLiteral)
-		{
 			(type, value) = ParseInteger(valueSpan, CurrentTargetType);
-		}
 		
 		// TODO We should emit diagnostics here
 		type ??= NativeSymbols.Invalid;
 		
 		return new ResolvedLiteralExpressionNode(type, value);
+	}
+	
+	public IResolvedNode Visit(UnaryOpExpressionNode node)
+	{
+		// We push null to allow sub-expressions to resolve naturally; then, we attempt to implicit cast to actual type
+		_targetTypes.Push(null);
+		var operand = VisitNode(node.Operand);
+		_targetTypes.Pop();
+		
+		UnaryOperation op;
+		if (node.Op.Type == TokenType.OpPlus)
+			op = UnaryOperation.Identity;
+		else if (node.Op.Type == TokenType.OpMinus)
+			op = UnaryOperation.Negation;
+		else
+			throw new InvalidOperationException();
+		
+		if (NativeOperations.Resolve(op, operand.Type) is { } nativeType)
+		{
+			// We optimize away identity operations if it's a native type since it's a no-op
+			if (op == UnaryOperation.Identity)
+				return operand;
+			
+			return new ResolvedUnaryOpExpressionNode(nativeType, op, operand);
+		}
+		
+		// TODO Based on type of sub-expression and the op token, we search for operator overloads
+		
+		return new ResolvedUnaryOpExpressionNode(NativeSymbols.Invalid, op, operand);
+	}
+	
+	public IResolvedNode Visit(BinaryOpExpressionNode node)
+	{
+		// We push null to allow sub-expressions to resolve naturally; then, we attempt to implicit cast to actual type
+		_targetTypes.Push(null);
+		var left = VisitNode(node.Left);
+		var right = VisitNode(node.Right);
+		_targetTypes.Pop();
+		
+		BinaryOperation op;
+		if (node.Op.Type == TokenType.OpPlus)
+			op = BinaryOperation.Addition;
+		else if (node.Op.Type == TokenType.OpMinus)
+			op = BinaryOperation.Subtraction;
+		else if (node.Op.Type == TokenType.OpStar)
+			op = BinaryOperation.Multiplication;
+		else if (node.Op.Type == TokenType.OpSlash)
+			op = BinaryOperation.Division;
+		else
+			throw new InvalidOperationException();
+		
+		// TODO How to handle implicit upcasts..?
+		if (NativeOperations.Resolve(left.Type, op, right.Type) is { } nativeType)
+			return new ResolvedBinaryOpExpressionNode(nativeType, left, op, right);
+		
+		// TODO Based on types of sub-expressions and the op token, we search for operator overloads
+		
+		return new ResolvedBinaryOpExpressionNode(NativeSymbols.Invalid, left, op, right);
 	}
 	
 	public IResolvedNode Visit(ReturnStatementNode node)

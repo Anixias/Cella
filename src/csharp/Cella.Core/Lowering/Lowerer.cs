@@ -1,6 +1,7 @@
 ﻿using Cella.Core.Binding.Nodes.Declarations;
 using Cella.Core.Binding.Nodes.Expressions;
 using Cella.Core.Binding.Nodes.Statements;
+using Cella.Core.Binding.Operations;
 using Cella.Core.Symbols;
 
 namespace Cella.Core.Lowering;
@@ -42,7 +43,7 @@ public sealed class Lowerer : IResolvedDeclarationNodeVisitor
 		CurrentModule.Functions.Add(function);
 	}
 	
-	private sealed class FunctionLowerer : IResolvedStatementNodeVisitor, IResolvedExpressionNodeVisitor<Value?>
+	private sealed class FunctionLowerer : IResolvedStatementNodeVisitor, IResolvedExpressionNodeVisitor<Value>
 	{
 		private readonly LoweredFunction _function;
 		private BasicBlock currentBlock;
@@ -123,8 +124,8 @@ public sealed class Lowerer : IResolvedDeclarationNodeVisitor
 		
 		private void VisitNode(IResolvedStatementNode node) => ((IResolvedStatementNodeVisitor)this).Visit(node);
 		
-		private Value? VisitNode(IResolvedExpressionNode node) =>
-			((IResolvedExpressionNodeVisitor<Value?>)this).Visit(node);
+		private Value VisitNode(IResolvedExpressionNode node) =>
+			((IResolvedExpressionNodeVisitor<Value>)this).Visit(node);
 		
 		public void Visit(ResolvedBlockStatementNode node)
 		{
@@ -141,7 +142,37 @@ public sealed class Lowerer : IResolvedDeclarationNodeVisitor
 			currentBlock = CreateBlock("unreachable");
 		}
 		
+		public Value Visit(ResolvedBinaryOpExpressionNode node)
+		{
+			if (node.IsConstant)
+				return BuildConstBinaryOp(node);
+			
+			throw new NotImplementedException();
+		}
+		
 		public Value Visit(ResolvedLiteralExpressionNode node) => new ConstantValue(node.Type, node.Value);
+		
+		public Value Visit(ResolvedUnaryOpExpressionNode node)
+		{
+			if (node.IsConstant)
+				return BuildConstUnaryOp(node);
+			
+			throw new NotImplementedException();
+		}
+		
+		private Value BuildConstUnaryOp(ResolvedUnaryOpExpressionNode node) => node.Op switch
+		{
+			UnaryOperation.Identity => VisitNode(node.Operand),
+			UnaryOperation.Negation => new ConstNegValue(node.Type, VisitNode(node.Operand)),
+			_ => throw new InvalidOperationException()
+		};
+		
+		private Value BuildConstBinaryOp(ResolvedBinaryOpExpressionNode node) => node.Op switch
+		{
+			BinaryOperation.Addition => new ConstAddValue(node.Type, VisitNode(node.Left), VisitNode(node.Right)),
+			BinaryOperation.Subtraction => new ConstSubValue(node.Type, VisitNode(node.Left), VisitNode(node.Right)),
+			BinaryOperation.Multiplication => new ConstMulValue(node.Type, VisitNode(node.Left), VisitNode(node.Right)),
+			_ => throw new InvalidOperationException()
+		};
 	}
 }
-

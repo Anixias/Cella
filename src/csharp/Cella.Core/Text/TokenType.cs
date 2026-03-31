@@ -129,6 +129,10 @@ public sealed class TokenType
 	public static readonly TokenType OpOpenBrace = CreateOperator("{");
 	public static readonly TokenType OpCloseBrace = CreateOperator("}");
 	public static readonly TokenType OpArrow = CreateOperator("->");
+	public static readonly TokenType OpPlus = CreateOperator("+");
+	public static readonly TokenType OpMinus = CreateOperator("-");
+	public static readonly TokenType OpStar = CreateOperator("*");
+	public static readonly TokenType OpSlash = CreateOperator("/");
 	
 	#endregion
 }

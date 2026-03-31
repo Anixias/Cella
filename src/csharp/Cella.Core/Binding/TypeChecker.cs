@@ -1,21 +1,21 @@
-﻿using Cella.Core.Binding.Nodes;
-using Cella.Core.Binding.Nodes.Declarations;
+﻿using Cella.Core.Binding.Nodes.Declarations;
 using Cella.Core.Binding.Nodes.Expressions;
 using Cella.Core.Binding.Nodes.Statements;
 using Cella.Core.Symbols;
 
 namespace Cella.Core.Binding;
 
-public sealed class TypeChecker : IResolvedNodeVisitor
+public sealed class TypeChecker : IResolvedStatementNodeVisitor, IResolvedDeclarationNodeVisitor
 {
 	public IReadOnlyList<string> Diagnostics => _diagnostics;
 	
 	private readonly Stack<TypeSymbol?> _returnTypeStack = [];
 	private readonly List<string> _diagnostics = []; // TODO More info needed
 	
-	public void Check(IResolvedNode root) => VisitNode(root);
+	public void Check(ResolvedFileNode root) => VisitNode(root);
 	
-	private void VisitNode(IResolvedNode node) => ((IResolvedNodeVisitor)this).Visit(node);
+	private void VisitNode(IResolvedStatementNode node) => ((IResolvedStatementNodeVisitor)this).Visit(node);
+	private void VisitNode(IResolvedDeclarationNode node) => ((IResolvedDeclarationNodeVisitor)this).Visit(node);
 	
 	public void Visit(ResolvedFileNode node)
 	{
@@ -25,13 +25,23 @@ public sealed class TypeChecker : IResolvedNodeVisitor
 	
 	public void Visit(ResolvedFunctionNode node)
 	{
-		_returnTypeStack.Push(node.FunctionSymbol.ReturnType);
-		VisitNode(node.Body);
+		var returnType = node.FunctionSymbol.ReturnType;
+		if (node.Body is IResolvedExpressionNode expression)
+		{
+			if (!AreTypesCompatible(returnType, expression.Type))
+				_diagnostics.Add(
+					$"Cannot return value of type '{expression.Type.Name}': Expected type '{returnType?.Name ?? "void"}'");
+			
+			return;
+		}
+		
+		// Should be impossible, but just in case
+		if (node.Body is not IResolvedStatementNode statement)
+			return;
+		
+		_returnTypeStack.Push(returnType);
+		VisitNode(statement);
 		_returnTypeStack.Pop();
-	}
-	
-	public void Visit(ResolvedLiteralExpressionNode node)
-	{
 	}
 	
 	public void Visit(ResolvedBlockStatementNode node)
