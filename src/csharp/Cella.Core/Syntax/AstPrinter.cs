@@ -41,6 +41,18 @@ public sealed class AstPrinter : ISyntaxNodeVisitor
 		_hasMoreSiblings.RemoveAt(_hasMoreSiblings.Count - 1);
 	}
 	
+	public void Visit(CallExpressionNode node)
+	{
+		StartLine();
+		_sb.Append("CallExpressionNode '").Append(node.Identifier.ToString()).Append('\'');
+		
+		for (var i = 0; i < node.Arguments.Length; i++)
+		{
+			var last = i == node.Arguments.Length - 1;
+			VisitNode(node.Arguments[i], last);
+		}
+	}
+	
 	public void Visit(FileNode node)
 	{
 		StartLine();

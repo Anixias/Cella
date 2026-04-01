@@ -1,4 +1,5 @@
-﻿using Cella.Core.Symbols;
+﻿using System.Collections.Immutable;
+using Cella.Core.Symbols;
 
 namespace Cella.Core.Lowering;
 
@@ -9,46 +10,59 @@ public sealed class BasicBlock(string label)
 	public IBlockTerminator Terminator { get; set; } = UndefinedTerminator.Instance;
 }
 
-public abstract class Value(TypeSymbol type)
+public abstract class Value(TypeSymbol type, bool isConstant)
 {
 	public TypeSymbol Type { get; } = type;
+	public bool IsConstant { get; } = isConstant;
 }
 
-public sealed class ConstantValue(TypeSymbol type, object? value) : Value(type)
+public sealed class ConstantValue(TypeSymbol type, object? value) : Value(type, true)
 {
 	public object? Value { get; } = value;
 }
 
-public sealed class VariableValue(VariableSymbol variable) : Value(variable.Type)
+public sealed class VariableValue(VariableSymbol variable) : Value(variable.Type, false)
 {
 	public VariableSymbol Variable { get; } = variable;
 }
 
-public sealed class TemporaryValue(TypeSymbol type, int id) : Value(type)
+public sealed class CallValue(FunctionSymbol function, IEnumerable<Value> arguments)
+	: Value(function.ReturnType ?? NativeSymbols.Void, false)
 {
-	public int Id { get; } = id;
+	public FunctionSymbol Function { get; } = function;
+	public ImmutableArray<Value> Arguments { get; } = arguments.ToImmutableArray();
 }
 
-#region Constant Operations
-public sealed class ConstAddValue(TypeSymbol type, Value left, Value right) : Value(type)
-{
-	public Value Left { get; } = left;
-	public Value Right { get; } = right;
-}
-
-public sealed class ConstSubValue(TypeSymbol type, Value left, Value right) : Value(type)
+#region Operations
+public sealed class AddValue(TypeSymbol type, Value left, Value right)
+	: Value(type, left.IsConstant && right.IsConstant)
 {
 	public Value Left { get; } = left;
 	public Value Right { get; } = right;
 }
 
-public sealed class ConstMulValue(TypeSymbol type, Value left, Value right) : Value(type)
+public sealed class SubValue(TypeSymbol type, Value left, Value right)
+	: Value(type, left.IsConstant && right.IsConstant)
 {
 	public Value Left { get; } = left;
 	public Value Right { get; } = right;
 }
 
-public sealed class ConstNegValue(TypeSymbol type, Value operand) : Value(type)
+public sealed class MulValue(TypeSymbol type, Value left, Value right)
+	: Value(type, left.IsConstant && right.IsConstant)
+{
+	public Value Left { get; } = left;
+	public Value Right { get; } = right;
+}
+
+public sealed class DivValue(TypeSymbol type, Value left, Value right)
+	: Value(type, left.IsConstant && right.IsConstant)
+{
+	public Value Left { get; } = left;
+	public Value Right { get; } = right;
+}
+
+public sealed class NegValue(TypeSymbol type, Value operand) : Value(type, operand.IsConstant)
 {
 	public Value Operand { get; } = operand;
 }

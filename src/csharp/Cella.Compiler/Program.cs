@@ -198,9 +198,9 @@ internal static class Program
 			var ast = parser.Parse();
 			ct.ThrowIfCancellationRequested();
 			
-			// TEMP
-			/*Console.WriteLine("\n=== AST ===");
-			Console.WriteLine(ast is null ? "Failed to parse." : AstPrinter.Print(ast));*/
+			// TODO Make opt-in via CLI flags
+			Console.WriteLine($"\n====== {Path.GetRelativePath(projectDirectory, sourcePath)} ======");
+			Console.WriteLine(ast is null ? "Failed to parse." : AstPrinter.Print(ast));
 			
 			if (ast is not null)
 				fileInfos.Add(new(sourcePath, ast, source));

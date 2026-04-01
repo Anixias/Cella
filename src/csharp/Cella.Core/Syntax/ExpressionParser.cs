@@ -84,17 +84,63 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 	
 	private IExpressionNode ParsePrimary(ref int index)
 	{
-		if (!Match(ref index, TokenType.OpOpenParen))
-			return ParseLiteral(ref index);
-		
-		var node = ParseExpression(ref index);
-		
-		if (!Match(ref index, TokenType.OpCloseParen))
+		// Parenthesized Expression
+		if (Match(ref index, TokenType.OpOpenParen))
 		{
-			// TODO Diagnostics
+			var node = ParseExpression(ref index);
+			
+			if (!Match(ref index, TokenType.OpCloseParen))
+			{
+				// TODO Diagnostics
+			}
+			
+			return node;
 		}
 		
-		return node;
+		// Call Expression & Variable Expression
+		// TODO Contextual keywords
+		// TODO Should not use identifier but instead a tightly-bound indexer, which is also used for type parameters
+		if (Match(ref index, out var identifier, TokenType.Identifier))
+		{
+			// Call Expression
+			if (Match(ref index, TokenType.OpOpenParen))
+				return ParseCallExpression(ref index, identifier);
+			
+			// Variable Expression
+			throw new NotImplementedException();
+		}
+		
+		return ParseLiteral(ref index);
+	}
+	
+	private IExpressionNode ParseCallExpression(ref int index, Token identifier)
+	{
+		// Caller already consumed open parenthesis
+		var range = identifier.SourceLocation.Range;
+		var arguments = new List<IExpressionNode>();
+		
+		Token closeParen;
+		while (!Match(ref index, out closeParen, TokenType.OpCloseParen))
+		{
+			if (AtEnd(index))
+			{
+				// TODO Diagnostic
+				range = range with { End = identifier.SourceLocation.Source.Length };
+				break;
+			}
+			
+			if (arguments.Count > 0 && !Match(ref index, TokenType.OpComma))
+			{
+				// TODO Diagnostic: Missing comma
+			}
+			
+			arguments.Add(ParseExpression(ref index));
+		}
+		
+		if (closeParen != default)
+			range = range.Join(closeParen.SourceLocation.Range);
+		
+		return new CallExpressionNode(identifier, arguments, identifier.SourceLocation with { Range = range });
 	}
 	
 	private IExpressionNode ParseLiteral(ref int index)

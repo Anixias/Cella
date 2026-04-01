@@ -142,36 +142,24 @@ public sealed class Lowerer : IResolvedDeclarationNodeVisitor
 			currentBlock = CreateBlock("unreachable");
 		}
 		
-		public Value Visit(ResolvedBinaryOpExpressionNode node)
-		{
-			if (node.IsConstant)
-				return BuildConstBinaryOp(node);
-			
-			throw new NotImplementedException();
-		}
+		public Value Visit(ResolvedFunctionCallExpression node) =>
+			new CallValue(node.Function, node.Arguments.Select(VisitNode));
 		
 		public Value Visit(ResolvedLiteralExpressionNode node) => new ConstantValue(node.Type, node.Value);
 		
-		public Value Visit(ResolvedUnaryOpExpressionNode node)
-		{
-			if (node.IsConstant)
-				return BuildConstUnaryOp(node);
-			
-			throw new NotImplementedException();
-		}
-		
-		private Value BuildConstUnaryOp(ResolvedUnaryOpExpressionNode node) => node.Op switch
+		public Value Visit(ResolvedUnaryOpExpressionNode node) => node.Op switch
 		{
 			UnaryOperation.Identity => VisitNode(node.Operand),
-			UnaryOperation.Negation => new ConstNegValue(node.Type, VisitNode(node.Operand)),
+			UnaryOperation.Negation => new NegValue(node.Type, VisitNode(node.Operand)),
 			_ => throw new InvalidOperationException()
 		};
 		
-		private Value BuildConstBinaryOp(ResolvedBinaryOpExpressionNode node) => node.Op switch
+		public Value Visit(ResolvedBinaryOpExpressionNode node)=> node.Op switch
 		{
-			BinaryOperation.Addition => new ConstAddValue(node.Type, VisitNode(node.Left), VisitNode(node.Right)),
-			BinaryOperation.Subtraction => new ConstSubValue(node.Type, VisitNode(node.Left), VisitNode(node.Right)),
-			BinaryOperation.Multiplication => new ConstMulValue(node.Type, VisitNode(node.Left), VisitNode(node.Right)),
+			BinaryOperation.Addition => new AddValue(node.Type, VisitNode(node.Left), VisitNode(node.Right)),
+			BinaryOperation.Subtraction => new SubValue(node.Type, VisitNode(node.Left), VisitNode(node.Right)),
+			BinaryOperation.Multiplication => new MulValue(node.Type, VisitNode(node.Left), VisitNode(node.Right)),
+			BinaryOperation.Division => new DivValue(node.Type, VisitNode(node.Left), VisitNode(node.Right)),
 			_ => throw new InvalidOperationException()
 		};
 	}

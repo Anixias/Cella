@@ -104,13 +104,14 @@ public sealed class FileParser(ImmutableArray<Token> tokens) : BaseParser<FileNo
 		
 		// @TODO Diagnostics
 		
-		if (!Match(ref index, TokenType.OpOpenParen))
-			return null;
-		
-		// @TODO Parameter list
-		
-		if (!Match(ref index, TokenType.OpCloseParen))
-			return null;
+		// Parentheses are optional for function declarations
+		if (Match(ref index, TokenType.OpOpenParen))
+		{
+			// @TODO Parameter list
+			
+			if (!Match(ref index, TokenType.OpCloseParen))
+				return null;
+		}
 		
 		// @TODO Optional return type
 		

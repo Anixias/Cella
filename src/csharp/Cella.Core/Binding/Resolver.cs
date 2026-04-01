@@ -41,7 +41,20 @@ public sealed class Resolver(CollectorContext context) : ISyntaxNodeVisitor<IRes
 	private IResolvedExpressionNode VisitNode(IExpressionNode node) =>
 		(IResolvedExpressionNode)((ISyntaxNodeVisitor<IResolvedNode>)this).Visit(node);
 	
-	private IResolvedNode VisitNode(ISyntaxNode node) => ((ISyntaxNodeVisitor<IResolvedNode>)this).Visit(node);
+	public IResolvedNode Visit(CallExpressionNode node)
+	{
+		var functionName = node.Identifier.GetText();
+		var resolvedName = CurrentScope.Resolve(functionName);
+		
+		// TODO Diagnostics, emit invalid expression instead of throwing exceptions
+		if (resolvedName is null)
+			throw new Exception($"Symbol '{functionName}' not found in this scope");
+		
+		if (resolvedName is not FunctionSymbol function)
+			throw new Exception($"Symbol '{functionName}' is not a function");
+		
+		return new ResolvedFunctionCallExpression(function, node.Arguments.Select(VisitNode));
+	}
 	
 	public IResolvedNode Visit(FileNode node)
 	{

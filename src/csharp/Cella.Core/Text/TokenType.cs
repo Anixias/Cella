@@ -133,6 +133,8 @@ public sealed class TokenType
 	public static readonly TokenType OpMinus = CreateOperator("-");
 	public static readonly TokenType OpStar = CreateOperator("*");
 	public static readonly TokenType OpSlash = CreateOperator("/");
+	public static readonly TokenType OpDot = CreateOperator(".");
+	public static readonly TokenType OpComma = CreateOperator(",");
 	
 	#endregion
 }

@@ -88,32 +88,51 @@ public static class LoweredModulePrinter
 					sb.Append('$').Append(v.Variable.Name);
 					break;
 				
-				case TemporaryValue v:
-					sb.Append('t').Append(v.Id);
-					break;
-				
-				case ConstAddValue v:
+				case AddValue v:
 					PrintValue(sb, v.Left);
 					sb.Append(" + ");
 					value = v.Right;
 					continue;
 				
-				case ConstSubValue v:
+				case SubValue v:
 					PrintValue(sb, v.Left);
 					sb.Append(" - ");
 					value = v.Right;
 					continue;
 				
-				case ConstMulValue v:
+				case MulValue v:
 					PrintValue(sb, v.Left);
 					sb.Append(" * ");
 					value = v.Right;
 					continue;
 				
-				case ConstNegValue v:
+				case DivValue v:
+					PrintValue(sb, v.Left);
+					sb.Append(" / ");
+					value = v.Right;
+					continue;
+				
+				case NegValue v:
 					sb.Append('-');
 					value = v.Operand;
 					continue;
+				
+				case CallValue v:
+					sb.Append(v.Function.Name).Append('(');
+					
+					var firstArg = true;
+					foreach (var arg in v.Arguments)
+					{
+						if (firstArg)
+							firstArg = false;
+						else
+							sb.Append(", ");
+						
+						PrintValue(sb, arg);
+					}
+					
+					sb.Append(')');
+					break;
 			}
 			
 			break;
