@@ -49,11 +49,15 @@ public sealed class TypeCollector : IDeclarationNodeVisitor
 		// If module symbol already defined, reuse it
 		if (CurrentScope.Resolve(moduleName) is not { } module)
 		{
-			module = new ModuleSymbol(moduleName, node.ModuleIdentifier.SourceLocation);
+			var m = new ModuleSymbol(moduleName, node.ModuleIdentifier.SourceLocation);
+			module = m;
 			CurrentScope.Define(module);
+			_context.ModuleScopes[m] = OpenScope();
 		}
+		else
+			_scopes.Push(_context.ModuleScopes[(ModuleSymbol)module]);
 		
-		_context.DeclarationScopes[node] = OpenScope();
+		_context.DeclarationScopes[node] = CurrentScope;
 		
 		foreach (var child in node.Declarations)
 			VisitNode(child);

@@ -32,6 +32,8 @@ public sealed class DeclarationCollector(CollectorContext context) : IDeclaratio
 	
 	public void Visit(FileNode node)
 	{
+		// TODO How to handle file-private declarations?
+		// Will likely need to track source FileNode as part of access info
 		OpenNodeScope(node);
 		
 		foreach (var child in node.Declarations)

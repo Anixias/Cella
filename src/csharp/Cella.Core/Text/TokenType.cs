@@ -118,6 +118,7 @@ public sealed class TokenType
 	// Contextual Keywords
 	public static readonly TokenType KeywordMod = CreateContextualKeyword("mod");
 	public static readonly TokenType KeywordFun = CreateContextualKeyword("fun");
+	public static readonly TokenType KeywordUse = CreateContextualKeyword("use");
 	
 	#endregion
 	#region Operators

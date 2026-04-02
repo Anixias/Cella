@@ -20,12 +20,12 @@ internal static class Program
 		if (args.Length == 0)
 			return;
 		
-		// Phase 0: Project collection
+		// Phase 0a: Project collection
 		var sourcePath = args[0];
-		var projectPaths = new List<string>();
+		var projectPaths = new HashSet<string>();
 		
 		if (Directory.Exists(sourcePath))
-			projectPaths.AddRange(CellaProject.FindProjects(sourcePath));
+			projectPaths.UnionWith(CellaProject.FindProjects(sourcePath));
 		else if (File.Exists(sourcePath))
 			projectPaths.Add(sourcePath);
 		
@@ -35,18 +35,85 @@ internal static class Program
 			return;
 		}
 		
-		await Parallel.ForEachAsync(projectPaths, async (p, ct) => await BuildProject(p, ct));
+		// Phase 0b: Dependency graph
+		var cts = new CancellationTokenSource();
+		ImmutableArray<ProjectInfo> projects;
+		try
+		{
+			var dependencyGraph = await MapDependenciesAsync(projectPaths);
+			projects = dependencyGraph.GetResolutionOrder().ToImmutableArray();
+		}
+		catch (InvalidOperationException e)
+		{
+			// TEMP
+			Console.WriteLine(e.Message);
+			return;
+		}
+		
+		foreach (var project in projects)
+			await BuildProject(project, cts.Token);
 	}
 	
-	private static async Task BuildProject(string projectPath, CancellationToken ct = default)
+	private static async Task<DependencyGraph<ProjectInfo>> MapDependenciesAsync(HashSet<string> projectPaths)
+	{
+		var projectLookup = new Dictionary<string, ProjectInfo>();
+		var projectDependencies = new Dictionary<ProjectInfo, HashSet<string>>();
+		var projectQueue = new Queue<string>(projectPaths.Select(Path.GetFullPath));
+		var processedPaths = new HashSet<string>();
+		var graph = new DependencyGraph<ProjectInfo>();
+		
+		// Collect projects
+		while (projectQueue.Count > 0)
+		{
+			var path = projectQueue.Dequeue();
+			if (!processedPaths.Add(path))
+				continue;
+			
+			CellaProject project;
+			await using (var stream = new FileStream(path, FileMode.Open))
+				project = await CellaProject.LoadAsync(stream);
+			
+			var projectDirectory = Path.GetDirectoryName(path) ?? string.Empty;
+			var projectName = Path.GetFileNameWithoutExtension(path);
+			var projectInfo = new ProjectInfo(path, projectDirectory, projectName, project);
+			graph.Add(projectInfo);
+			projectLookup[path] = projectInfo;
+			
+			// Queue dependencies to be collected
+			if (project.ProjectReferences is not { } references)
+				continue;
+			
+			foreach (var reference in references)
+			{
+				var dependencyPath = Path.GetFullPath(Path.Combine(projectDirectory, reference.Path));
+				
+				projectDependencies.GetOrAdd(projectInfo).Add(dependencyPath);
+				
+				if (!processedPaths.Contains(dependencyPath))
+					projectQueue.Enqueue(dependencyPath);
+			}
+		}
+		
+		// Map project dependencies
+		foreach (var (project, dependencies) in projectDependencies)
+			foreach (var dependency in dependencies)
+				graph.AddDependency(project, projectLookup[dependency]);
+		
+		return graph;
+	}
+	
+	private static async Task BuildProject(ProjectInfo project, CancellationToken ct = default)
 	{
 		// Phase 1: File parsing
-		var (_, projectDirectory, projectName, project, files) = await ProcessProject(projectPath, ct);
+		var files = await ProcessProject(project, ct);
 		
 		if (files.Length == 0)
 			return;
 		
 		var collectorContext = new CollectorContext();
+		
+		// TODO Can we merge these? Does declaration collection resolve type symbols? It shouldn't.
+		// If we let FunctionSymbol and other similar symbols be partially unresolved initially, it might work
 		
 		// Phase 2: Type collection
 		{
@@ -63,6 +130,8 @@ internal static class Program
 			foreach (var (_, ast, _) in files)
 				declarationCollector.Collect(ast);
 		}
+		
+		// TODO Need to know about symbols in dependencies
 		
 		// Phase 4: Symbol resolution
 		ImmutableArray<ResolvedSourceFileInfo> resolvedFiles;
@@ -122,7 +191,7 @@ internal static class Program
 		{
 			var targetTriple = TargetTriple.FromHost(); // TODO Check CLI args for cross-compilation
 			
-			var objDir = Path.Combine(projectDirectory, "obj");
+			var objDir = Path.Combine(project.Directory, "obj");
 			var outputConfig = new OutputConfig(objDir, true, true);
 			var targetConfig = new TargetConfig(targetTriple.ToLlvm());
 			var codeGenConfig = new CodeGenConfig(outputConfig, targetConfig);
@@ -133,13 +202,18 @@ internal static class Program
 				if (codeGenerator.Generate(module) is { } objectFile)
 					objectFiles.Add(objectFile);
 			
-			var outputBaseName = project.AssemblyName ?? projectName;
-			var outputFileName = GetOutputFileName(outputBaseName, targetTriple, project.OutputType);
-			var outputPath = Path.Combine(projectDirectory, "bin", outputFileName);
+			var outputType = project.Project.OutputType;
+			var outputBaseName = project.Project.AssemblyName ?? project.Name;
+			var outputFileName = GetOutputFileName(outputBaseName, targetTriple, outputType);
+			var outputDir = Path.Combine(project.Directory, "bin");
+			var outputPath = Path.Combine(outputDir, outputFileName);
+			
+			if (!Directory.Exists(outputDir))
+				Directory.CreateDirectory(outputDir);
 			
 			// TODO Toolchains and linker paths should be grabbed from environment variables, compiler installation location
 			var linker = new Linker(@"C:\cella\");
-			var linkRequest = new LinkRequest(project.OutputType, objectFiles, outputPath);
+			var linkRequest = new LinkRequest(outputType, objectFiles, outputPath);
 			var linkerToolchain = Toolchain.FromTargetTriple(targetTriple, @"C:\cella\toolchains");
 			var linkExitCode = await linker.LinkAsync(linkRequest, linkerToolchain);
 			
@@ -162,20 +236,12 @@ internal static class Program
 		Console.WriteLine($"User program finished with exit code {userProgram.ExitCode}");*/
 	}
 	
-	private static async Task<ProjectInfo> ProcessProject(string filePath, CancellationToken ct = default)
+	private static async Task<ImmutableArray<SourceFileInfo>> ProcessProject(ProjectInfo project, CancellationToken ct = default)
 	{
-		CellaProject project;
-		await using (var stream = new FileStream(filePath, FileMode.Open))
-		{
-			project = await CellaProject.LoadAsync(stream);
-		}
+		var files = new ConcurrentBag<SourceFileInfo>();
+		var filePaths = CellaProject.FindSourceFiles(project.Directory);
 		
-		var projectName = Path.GetFileNameWithoutExtension(filePath);
-		var projectDirectory = Path.GetDirectoryName(filePath)!;
-		var fileInfos = new ConcurrentBag<SourceFileInfo>();
-		
-		var sourceFiles = CellaProject.FindSourceFiles(projectDirectory);
-		foreach (var sourcePath in sourceFiles.AsParallel())
+		foreach (var sourcePath in filePaths.AsParallel())
 		{
 			ct.ThrowIfCancellationRequested();
 			
@@ -199,14 +265,14 @@ internal static class Program
 			ct.ThrowIfCancellationRequested();
 			
 			// TODO Make opt-in via CLI flags
-			Console.WriteLine($"\n====== {Path.GetRelativePath(projectDirectory, sourcePath)} ======");
+			Console.WriteLine($"\n====== {Path.GetRelativePath(project.Directory, sourcePath)} ======");
 			Console.WriteLine(ast is null ? "Failed to parse." : AstPrinter.Print(ast));
 			
 			if (ast is not null)
-				fileInfos.Add(new(sourcePath, ast, source));
+				files.Add(new(sourcePath, ast, source));
 		}
 		
-		return new(filePath, projectDirectory, projectName, project, fileInfos.ToImmutableArray());
+		return files.ToImmutableArray();
 	}
 	
 	public static string GetOutputFileName(string baseName, TargetTriple target, ProjectOutputType outputType)
@@ -228,19 +294,19 @@ internal static class Program
 		{
 			ProjectOutputType.Executable => ".exe",
 			ProjectOutputType.StaticLibrary => ".lib",
-			_ => ".dll",
+			_ => ".dll"
 		},
 		TargetTriple.OsTypes.Linux => outputType switch
 		{
 			ProjectOutputType.Executable => null,
 			ProjectOutputType.StaticLibrary => ".a",
-			_ => ".so",
+			_ => ".so"
 		},
 		TargetTriple.OsTypes.MacOsX => outputType switch
 		{
 			ProjectOutputType.Executable => null,
 			ProjectOutputType.StaticLibrary => ".a",
-			_ => ".dylib",
+			_ => ".dylib"
 		},
 		_ => null
 	};
@@ -251,8 +317,8 @@ internal readonly record struct ProjectInfo
 	string FilePath,
 	string Directory,
 	string Name,
-	CellaProject Project,
-	ImmutableArray<SourceFileInfo> Files
+	CellaProject Project
 );
+
 internal readonly record struct SourceFileInfo(string FilePath, FileNode Ast, ISource Source);
 internal readonly record struct ResolvedSourceFileInfo(string FilePath, ResolvedFileNode Ast, ISource Source);

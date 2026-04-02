@@ -16,6 +16,9 @@ public sealed partial class CellaProject
 	[TomlValueOnSerialized]
 	public string? AssemblyName { get; init; }
 	
+	[TomlValueOnSerialized]
+	public List<ProjectReference>? ProjectReferences { get; init; }
+	
 	public static IEnumerable<string> FindProjects(string directory) =>
 		Directory.EnumerateFiles(directory, ProjectSearchPattern, SearchOption.AllDirectories);
 	
@@ -39,9 +42,9 @@ public sealed partial class CellaProject
 	}
 }
 
-public enum ProjectOutputType
+[TomlSerializedObject]
+public sealed partial record ProjectReference
 {
-	Executable,
-	SharedLibrary,
-	StaticLibrary
+	[TomlValueOnSerialized]
+	public required string Path { get; init; }
 }

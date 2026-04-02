@@ -6,11 +6,12 @@ namespace Cella.Core.Binding;
 public readonly record struct CollectorContext
 (
 	Scope GlobalScope,
+	Dictionary<ModuleSymbol, Scope> ModuleScopes,
 	Dictionary<IDeclarationNode, Scope> DeclarationScopes,
 	Dictionary<IDeclarationNode, Symbol> DeclarationSymbols
 )
 {
-	public CollectorContext() : this(new(), [], [])
+	public CollectorContext() : this(new(), [], [], [])
 	{
 	}
 }

@@ -8,7 +8,7 @@ namespace Cella.Core.Syntax;
 public sealed class FileParser(ImmutableArray<Token> tokens) : BaseParser<FileNode>(tokens)
 {
 	private static readonly Dictionary<string, TokenType> _topLevelContextualKeywords =
-		BuildContextualKeywords(TokenType.KeywordMod, TokenType.KeywordFun);
+		BuildContextualKeywords(TokenType.KeywordMod, TokenType.KeywordFun, TokenType.KeywordUse);
 	
 	private static readonly HashSet<TokenType> _topLevelSyncTypes = [TokenType.OpSemicolon, TokenType.EndOfFile];
 	
@@ -44,6 +44,9 @@ public sealed class FileParser(ImmutableArray<Token> tokens) : BaseParser<FileNo
 				moduleName = modIdentifier;
 				continue;
 			}
+			
+			// Parse using directives
+			// TODO
 			
 			// Parse top-level declarations
 			if (Match(ref index, out var identifier, _topLevelContextualKeywords, TokenType.Identifier))
