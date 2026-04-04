@@ -8,7 +8,7 @@ namespace Cella.Core.Syntax;
 public sealed class FileParser(ImmutableArray<Token> tokens, string fileName) : BaseParser<FileNode>(tokens)
 {
 	private static readonly Dictionary<string, TokenType> _topLevelContextualKeywords =
-		BuildContextualKeywords(TokenType.KeywordMod, TokenType.KeywordFun, TokenType.KeywordUse);
+		BuildContextualKeywords(TokenType.KeywordMod, TokenType.KeywordFun, TokenType.KeywordUse, TokenType.KeywordPub);
 	
 	private static readonly HashSet<TokenType> _topLevelSyncTypes = [TokenType.OpSemicolon, TokenType.EndOfFile];
 	
@@ -58,10 +58,15 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName) : 
 					continue;
 				}
 				
+				var modifiers = new List<Token>();
+				
+				if (Match(ref index, out var pubToken, _topLevelContextualKeywords, TokenType.KeywordPub))
+					modifiers.Add(pubToken);
+				
 				// Function
 				if (Match(ref index, _topLevelContextualKeywords, TokenType.KeywordFun))
 				{
-					if (ParseFunction(ref index, identifier) is not { } function)
+					if (ParseFunction(ref index, identifier, modifiers) is not { } function)
 					{
 						ResyncTopLevel(ref index);
 						continue;
@@ -178,7 +183,7 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName) : 
 		return new(new(parts.ToImmutableArray()), import);
 	}
 	
-	private FunctionNode? ParseFunction(ref int index, Token identifier)
+	private FunctionNode? ParseFunction(ref int index, Token identifier, IEnumerable<Token> modifiers)
 	{
 		// When this is called, the identifier and fun/entry keywords are already consumed
 		// Caller is expected to resync in case of errors
@@ -206,7 +211,7 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName) : 
 		if (ParseBlock(ref index) is not { } body)
 			return null;
 		
-		return new(identifier, returnType, body);
+		return new(identifier, modifiers, returnType, body);
 	}
 	
 	private BlockStatementNode? ParseBlock(ref int index)

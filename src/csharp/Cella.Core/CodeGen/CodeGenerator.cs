@@ -146,7 +146,9 @@ public sealed unsafe class CodeGenerator : IDisposable
 			var info = CreateFunction(llvmModule, function.Info);
 			var llvmFunction = info.FunctionValue;
 			
-			// TEMP Force all functions to be exported
+			if (function.Info.Symbol.Visibility != Visibility.Public)
+				continue;
+			
 			llvmFunction.DLLStorageClass = LLVMDLLStorageClass.LLVMDLLExportStorageClass;
 			llvmFunction.Linkage = LLVMLinkage.LLVMDLLExportLinkage;
 		}

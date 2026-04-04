@@ -6,6 +6,19 @@ using Cella.Core.Text;
 
 namespace Cella.Core.Symbols;
 
+public enum Visibility
+{
+	/// <summary>
+	/// Only visible within the containing symbol
+	/// </summary>
+	Private,
+	
+	/// <summary>
+	/// Visible to other assemblies, exported
+	/// </summary>
+	Public
+}
+
 public interface IDefinedSymbol
 {
 	SourceLocation Definition { get; }
@@ -51,6 +64,11 @@ public sealed class FunctionSymbol
 ) : Symbol(name), IDefinedSymbol
 {
 	public FunctionNode Syntax { get; } = syntax;
+	
+	public Visibility Visibility { get; } = syntax.Modifiers.Any(static t => t.Type == TokenType.KeywordPub)
+		? Visibility.Public
+		: Visibility.Private;
+	
 	public FunctionInfo? ContainingFunction { get; } = containingFunction;
 	
 	public ImmutableDictionary<string, ParameterSymbol> Parameters { get; } =
