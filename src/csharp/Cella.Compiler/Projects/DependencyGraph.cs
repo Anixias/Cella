@@ -80,4 +80,13 @@ public class DependencyGraph<T> where T : notnull
         if (yieldedCount != _nodes.Count)
             throw new InvalidOperationException("The dependency graph contains a cycle and cannot be resolved.");
     }
+    
+    public IEnumerable<T> GetDependencies(T item)
+    {
+        if (!_dependencies.TryGetValue(item, out var dependencies))
+            yield break;
+        
+        foreach (var dependency in dependencies)
+            yield return dependency;
+    }
 }

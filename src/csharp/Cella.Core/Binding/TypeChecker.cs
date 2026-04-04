@@ -25,12 +25,12 @@ public sealed class TypeChecker : IResolvedStatementNodeVisitor, IResolvedDeclar
 	
 	public void Visit(ResolvedFunctionNode node)
 	{
-		var returnType = node.FunctionSymbol.ReturnType;
+		var returnType = node.FunctionInfo.Signature.ReturnType;
 		if (node.Body is IResolvedExpressionNode expression)
 		{
 			if (!AreTypesCompatible(returnType, expression.Type))
 				_diagnostics.Add(
-					$"Cannot return value of type '{expression.Type.Name}': Expected type '{returnType?.Name ?? "void"}'");
+					$"Cannot return value of type '{expression.Type.Name}': Expected type '{returnType.Name}'");
 			
 			return;
 		}

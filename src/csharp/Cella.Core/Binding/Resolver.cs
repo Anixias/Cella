@@ -10,25 +10,26 @@ using Cella.Core.Text;
 
 namespace Cella.Core.Binding;
 
-public sealed class Resolver(CollectorContext context) : ISyntaxNodeVisitor<IResolvedNode>
+public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 {
-	private readonly Stack<Scope> _scopes = [];
-	private readonly Stack<FunctionSymbol> _functions = [];
+	private readonly Dictionary<FunctionSymbol, FunctionInfo> _importedFunctions = [];
 	private readonly Stack<TypeSymbol?> _targetTypes = [];
-	private Scope CurrentScope => _scopes.Peek();
-	private FunctionSymbol CurrentFunction => _functions.Peek();
-	private TypeSymbol? CurrentTargetType => _targetTypes.Peek();
+	private readonly SymbolTable _symbolTable;
+	private readonly SignatureTable _assemblySignatureTable;
+	private readonly SignatureTable _dependencySignatureTable;
+	private readonly Stack<ResolutionContext> _resolutionContexts = [];
+	private ResolutionContext CurrentResolutionContext => _resolutionContexts.Peek();
+	private FunctionSymbol? CurrentFunction => CurrentResolutionContext.ContainingFunction;
+	private Scope? CurrentScope => CurrentResolutionContext.LocalScope;
 	
-	private Scope GetScope(IDeclarationNode node) => context.DeclarationScopes[node];
-	
-	private Scope PushNodeScope(IDeclarationNode node)
+	public Resolver(AssemblySymbol assemblySymbol, IEnumerable<AssemblySymbol> dependencies)
 	{
-		var scope = GetScope(node);
-		_scopes.Push(scope);
-		return scope;
+		_symbolTable = assemblySymbol.SymbolTable;
+		_assemblySignatureTable = assemblySymbol.SignatureTable;
+		_dependencySignatureTable = SignatureTable.Combine(dependencies.Select(static a => a.SignatureTable));
 	}
 	
-	private Scope PopScope() => _scopes.Pop();
+	private TypeSymbol? CurrentTargetType => _targetTypes.Peek();
 	
 	public ResolvedFileNode Resolve(FileNode root) => (ResolvedFileNode)Visit(root);
 	
@@ -41,59 +42,83 @@ public sealed class Resolver(CollectorContext context) : ISyntaxNodeVisitor<IRes
 	private IResolvedExpressionNode VisitNode(IExpressionNode node) =>
 		(IResolvedExpressionNode)((ISyntaxNodeVisitor<IResolvedNode>)this).Visit(node);
 	
-	public IResolvedNode Visit(CallExpressionNode node)
-	{
-		var functionName = node.Identifier.GetText();
-		var resolvedName = CurrentScope.Resolve(functionName);
-		
-		// TODO Diagnostics, emit invalid expression instead of throwing exceptions
-		if (resolvedName is null)
-			throw new Exception($"Symbol '{functionName}' not found in this scope");
-		
-		if (resolvedName is not FunctionSymbol function)
-			throw new Exception($"Symbol '{functionName}' is not a function");
-		
-		return new ResolvedFunctionCallExpression(function, node.Arguments.Select(VisitNode));
-	}
-	
 	public IResolvedNode Visit(FileNode node)
 	{
-		PushNodeScope(node);
-		var resolvedDeclarations = new List<IResolvedDeclarationNode>(node.Declarations.Length);
+		var file = (FileSymbol)_symbolTable.DeclarationSymbols[node];
+		var imports = _assemblySignatureTable.ImportEnvironments[file];
 		
+		var resolutionContext = new ResolutionContext
+		{
+			File = file,
+			Imports = imports
+		};
+		
+		_resolutionContexts.Push(resolutionContext);
+		
+		var resolvedDeclarations = new List<IResolvedDeclarationNode>(node.Declarations.Length);
 		foreach (var declaration in node.Declarations)
 			resolvedDeclarations.Add(VisitNode(declaration));
 		
-		PopScope();
-		var module = (ModuleSymbol)context.DeclarationSymbols[node];
-		return new ResolvedFileNode(module, resolvedDeclarations);
+		_resolutionContexts.Pop();
+		
+		var result = new ResolvedFileNode(file, resolvedDeclarations, _importedFunctions.Values);
+		_importedFunctions.Clear();
+		return result;
+	}
+	
+	public IResolvedNode Visit(FunctionNode node)
+	{
+		var function = (FunctionSymbol)_symbolTable.DeclarationSymbols[node];
+		var info = _assemblySignatureTable.Functions[function];
+		
+		var resolutionContext = CurrentResolutionContext with
+		{
+			ContainingFunction = function,
+			LocalScope = info.Scope
+		};
+		
+		_resolutionContexts.Push(resolutionContext);
+		var body = Visit(node.Body);
+		_resolutionContexts.Pop();
+		
+		return new ResolvedFunctionNode(info, body);
 	}
 	
 	public IResolvedNode Visit(BlockStatementNode node)
 	{
 		var statements = new List<IResolvedStatementNode>(node.StatementNodes.Length);
-		_scopes.Push(CurrentScope.CreateChild());
+		var scope = CurrentScope?.CreateChild();
 		
+		var resolutionContext = CurrentResolutionContext with { LocalScope = scope };
+		_resolutionContexts.Push(resolutionContext);
 		foreach (var child in node.StatementNodes)
 			statements.Add(VisitNode(child));
 		
-		PopScope();
+		_resolutionContexts.Pop();
+		
 		return new ResolvedBlockStatementNode(statements);
 	}
 	
-	public IResolvedNode Visit(FunctionNode node)
+	public IResolvedNode Visit(CallExpressionNode node)
 	{
-		var function = (FunctionSymbol)context.DeclarationSymbols[node];
+		var resolutionContext = CurrentResolutionContext;
+		var functionName = node.Identifier.GetText();
+		var symbol = resolutionContext.Resolve(functionName);
 		
-		_scopes.Push(context.DeclarationScopes[node]);
-		_functions.Push(function);
+		// TODO Diagnostics, emit invalid expression instead of throwing exceptions
+		if (symbol is null)
+			throw new Exception($"Symbol '{functionName}' not found in this scope");
 		
-		var body = Visit(node.Body);
+		if (symbol is not FunctionSymbol function)
+			throw new Exception($"Symbol '{functionName}' is not a function");
 		
-		_functions.Pop();
-		PopScope();
+		if (!_assemblySignatureTable.Functions.TryGetValue(function, out var info))
+		{
+			info = _dependencySignatureTable.Functions[function];
+			_importedFunctions.TryAdd(function, info);
+		}
 		
-		return new ResolvedFunctionNode(function, body);
+		return new ResolvedFunctionCallExpression(info, node.Arguments.Select(VisitNode));
 	}
 	
 	public IResolvedNode Visit(LiteralExpressionNode node)
@@ -172,7 +197,8 @@ public sealed class Resolver(CollectorContext context) : ISyntaxNodeVisitor<IRes
 	
 	public IResolvedNode Visit(ReturnStatementNode node)
 	{
-		_targetTypes.Push(CurrentFunction.ReturnType);
+		var info = _assemblySignatureTable.Functions[CurrentFunction!];
+		_targetTypes.Push(info.Signature.ReturnType);
 		
 		var result = new ResolvedReturnStatementNode(node.ExpressionNode is { } expressionNode
 			? VisitNode(expressionNode)

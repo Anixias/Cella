@@ -12,4 +12,11 @@ public sealed class Scope(Scope? parent = null)
 	public Symbol? Resolve(string name) => _symbols.GetValueOrDefault(name) ?? Parent?.Resolve(name);
 	
 	public Scope CreateChild() => new(this);
+	
+	public void CreateNativeTypes()
+	{
+		Define(NativeSymbols.Int32);
+		Define(NativeSymbols.Int64);
+		Define(NativeSymbols.Int128);
+	}
 }

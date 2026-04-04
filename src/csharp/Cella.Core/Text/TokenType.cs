@@ -127,6 +127,8 @@ public sealed class TokenType
 	public static readonly TokenType OpSemicolon = CreateOperator(";");
 	public static readonly TokenType OpOpenParen = CreateOperator("(");
 	public static readonly TokenType OpCloseParen = CreateOperator(")");
+	public static readonly TokenType OpOpenBracket = CreateOperator("[");
+	public static readonly TokenType OpCloseBracket = CreateOperator("]");
 	public static readonly TokenType OpOpenBrace = CreateOperator("{");
 	public static readonly TokenType OpCloseBrace = CreateOperator("}");
 	public static readonly TokenType OpArrow = CreateOperator("->");

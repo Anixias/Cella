@@ -1,4 +1,5 @@
-﻿using Cella.Core.CodeGen.Extensions;
+﻿using Cella.Core.Binding;
+using Cella.Core.CodeGen.Extensions;
 using Cella.Core.Lowering;
 using Cella.Core.Symbols;
 using LLVMSharp.Interop;
@@ -38,8 +39,8 @@ public sealed unsafe class CodeGenerator : IDisposable
 	private readonly string _dataLayoutStr;
 	private readonly LLVMTargetMachineRef _targetMachine;
 	private readonly Dictionary<TypeSymbol, LLVMTypeRef> _typeMap = [];
-	private readonly Dictionary<FunctionSymbol, LLVMFunctionInfo> _funMap = [];
-	private readonly Dictionary<VariableSymbol, LLVMValueRef> _varMap = [];
+	private readonly Dictionary<FunctionInfo, LLVMFunctionInfo> _funMap = [];
+	private readonly Dictionary<VariableInfo, LLVMValueRef> _varMap = [];
 	
 	public CodeGenerator(CodeGenConfig config)
 	{
@@ -130,33 +131,54 @@ public sealed unsafe class CodeGenerator : IDisposable
 	{
 		// TODO Build types
 		
+		// Create and map imported functions
+		foreach (var function in module.ImportedFunctions)
+		{
+			var info = CreateFunction(llvmModule, function);
+			var llvmFunction = info.FunctionValue;
+			llvmFunction.DLLStorageClass = LLVMDLLStorageClass.LLVMDLLImportStorageClass;
+			llvmFunction.Linkage = LLVMLinkage.LLVMDLLImportLinkage;
+		}
+		
 		// Create and map functions
 		foreach (var function in module.Functions)
-			CreateFunction(llvmModule, function);
+		{
+			var info = CreateFunction(llvmModule, function.Info);
+			var llvmFunction = info.FunctionValue;
+			
+			// TEMP Force all functions to be exported
+			llvmFunction.DLLStorageClass = LLVMDLLStorageClass.LLVMDLLExportStorageClass;
+			llvmFunction.Linkage = LLVMLinkage.LLVMDLLExportLinkage;
+		}
 		
 		// Build function bodies
 		foreach (var function in module.Functions)
 			BuildFunction(llvmModule, llvmDiBuilder, function);
 	}
 	
-	private void CreateFunction(LLVMModuleRef llvmModule, LoweredFunction function)
+	private LLVMFunctionInfo CreateFunction(LLVMModuleRef llvmModule, FunctionInfo function)
 	{
-		var returnType = MapTypeSymbol(function.Symbol.ReturnType);
+		var signature = function.Signature;
+		var symbol = function.Symbol;
+		var returnType = MapTypeSymbol(signature.ReturnType);
 		
-		var parameterTypes = new LLVMTypeRef[function.Symbol.Parameters.Length];
-		for (var i = 0; i < function.Symbol.Parameters.Length; i++)
-			parameterTypes[i] = MapTypeSymbol(function.Symbol.Parameters[i].Type);
+		var paramTypes = signature.ParameterTypes;
+		var paramLlvmTypes = new LLVMTypeRef[paramTypes.Length];
+		for (var i = 0; i < paramTypes.Length; i++)
+			paramLlvmTypes[i] = MapTypeSymbol(paramTypes[i]);
 		
 		// TODO Variadic
-		var functionType = LLVMTypeRef.CreateFunction(returnType, parameterTypes);
-		var functionValue = llvmModule.AddFunction(function.Symbol.MangledName ?? function.Symbol.Name, functionType);
+		var functionType = LLVMTypeRef.CreateFunction(returnType, paramLlvmTypes);
+		var functionValue = llvmModule.AddFunction(symbol.MangledName ?? symbol.Name, functionType);
+		var functionInfo = new LLVMFunctionInfo(functionValue, functionType, returnType);
 		
-		_funMap.Add(function.Symbol, new(functionValue, functionType, returnType));
+		_funMap.Add(function, functionInfo);
+		return functionInfo;
 	}
 	
 	private void BuildFunction(LLVMModuleRef llvmModule, LLVMDIBuilderRef llvmDiBuilder, LoweredFunction function)
 	{
-		var functionValue = _funMap[function.Symbol].FunctionValue;
+		var functionValue = _funMap[function.Info].FunctionValue;
 		
 		var blockMap = new Dictionary<BasicBlock, LLVMBasicBlockRef>();
 		foreach (var block in function.Blocks)
@@ -206,7 +228,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 	private LLVMValueRef EmitValue(Value value, LLVMBuilderRef builder) => value switch
 	{
 		ConstantValue v => EmitConstant(v),
-		VariableValue v => builder.BuildLoad2(MapTypeSymbol(v.Type), _varMap[v.Variable], v.Variable.Name),
+		VariableValue v => builder.BuildLoad2(MapTypeSymbol(v.Type), _varMap[v.Variable], v.Variable.Symbol.Name),
 		AddValue { IsConstant: true } v => LLVMValueRef.CreateConstAdd(EmitValue(v.Left, builder), EmitValue(v.Right, builder)),
 		AddValue v => builder.BuildAdd(EmitValue(v.Left, builder), EmitValue(v.Right, builder)), // TODO Check floating point?
 		SubValue { IsConstant: true } v => LLVMValueRef.CreateConstSub(EmitValue(v.Left, builder), EmitValue(v.Right, builder)),

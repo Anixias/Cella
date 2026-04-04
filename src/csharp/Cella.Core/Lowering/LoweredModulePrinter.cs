@@ -19,7 +19,7 @@ public static class LoweredModulePrinter
 		
 		foreach (var function in module.Functions)
 		{
-			sb.Append(function.Symbol.Name).Append(':').AppendLine();
+			sb.Append(function.Info.Symbol.Name).Append(':').AppendLine();
 			foreach (var block in function.Blocks)
 			{
 				const int labelIndent = 2;
@@ -85,7 +85,7 @@ public static class LoweredModulePrinter
 					break;
 				
 				case VariableValue v:
-					sb.Append('$').Append(v.Variable.Name);
+					sb.Append('$').Append(v.Variable.Symbol.Name);
 					break;
 				
 				case AddValue v:
@@ -118,7 +118,8 @@ public static class LoweredModulePrinter
 					continue;
 				
 				case CallValue v:
-					sb.Append(v.Function.Name).Append('(');
+				{
+					sb.Append(v.Function.Symbol.Name).Append('(');
 					
 					var firstArg = true;
 					foreach (var arg in v.Arguments)
@@ -133,6 +134,7 @@ public static class LoweredModulePrinter
 					
 					sb.Append(')');
 					break;
+				}
 			}
 			
 			break;

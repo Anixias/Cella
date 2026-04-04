@@ -21,11 +21,14 @@ public sealed class Lowerer : IResolvedDeclarationNodeVisitor
 	
 	public void Visit(ResolvedFileNode node)
 	{
-		if (!_modules.TryGetValue(node.ModuleSymbol, out var loweredModule))
+		var moduleSymbol = node.Symbol.Module;
+		if (!_modules.TryGetValue(moduleSymbol, out var loweredModule))
 		{
-			loweredModule = new(node.ModuleSymbol);
-			_modules[node.ModuleSymbol] = loweredModule;
+			loweredModule = new(moduleSymbol);
+			_modules[moduleSymbol] = loweredModule;
 		}
+		
+		loweredModule.ImportedFunctions.AddRange(node.ImportedFunctions);
 		
 		_moduleStack.Push(loweredModule);
 		
@@ -35,11 +38,11 @@ public sealed class Lowerer : IResolvedDeclarationNodeVisitor
 		_moduleStack.Pop();
 	}
 	
-	// TODO Probably want to mangle names here
+	// TODO Probably want to mangle names here?
 	public void Visit(ResolvedFunctionNode node)
 	{
 		var function = FunctionLowerer.Lower(node);
-		_functions[node.FunctionSymbol] = function;
+		_functions[node.FunctionInfo.Symbol] = function;
 		CurrentModule.Functions.Add(function);
 	}
 	
@@ -63,7 +66,7 @@ public sealed class Lowerer : IResolvedDeclarationNodeVisitor
 		
 		public static LoweredFunction Lower(ResolvedFunctionNode node)
 		{
-			var function = new LoweredFunction(node.FunctionSymbol);
+			var function = new LoweredFunction(node.FunctionInfo);
 			var lower = new FunctionLowerer(function);
 			
 			switch (node.Body)

@@ -7,6 +7,7 @@ using Cella.Core.Binding;
 using Cella.Core.Binding.Nodes.Declarations;
 using Cella.Core.CodeGen;
 using Cella.Core.Lowering;
+using Cella.Core.Symbols;
 using Cella.Core.Syntax;
 using Cella.Core.Syntax.Nodes.Declarations;
 using Cella.Core.Text;
@@ -37,11 +38,12 @@ internal static class Program
 		
 		// Phase 0b: Dependency graph
 		var cts = new CancellationTokenSource();
-		ImmutableArray<ProjectInfo> projects;
+		Dictionary<ProjectInfo, ImmutableHashSet<ProjectInfo>> projectDependencies;
 		try
 		{
 			var dependencyGraph = await MapDependenciesAsync(projectPaths);
-			projects = dependencyGraph.GetResolutionOrder().ToImmutableArray();
+			projectDependencies = dependencyGraph.GetResolutionOrder().ToDictionary(static p => p,
+				p => dependencyGraph.GetDependencies(p).ToImmutableHashSet());
 		}
 		catch (InvalidOperationException e)
 		{
@@ -50,8 +52,17 @@ internal static class Program
 			return;
 		}
 		
-		foreach (var project in projects)
-			await BuildProject(project, cts.Token);
+		var projectSymbols = new Dictionary<ProjectInfo, AssemblyInfo>();
+		
+		foreach (var (project, dependencies) in projectDependencies)
+		{
+			var dependencyInfo = new List<AssemblyInfo>();
+			foreach (var dependency in dependencies)
+				if (projectSymbols.TryGetValue(dependency, out var assemblySymbol))
+					dependencyInfo.Add(assemblySymbol);
+			
+			projectSymbols[project] = await BuildProject(project, dependencyInfo, cts.Token);
+		}
 	}
 	
 	private static async Task<DependencyGraph<ProjectInfo>> MapDependenciesAsync(HashSet<string> projectPaths)
@@ -102,48 +113,59 @@ internal static class Program
 		return graph;
 	}
 	
-	private static async Task BuildProject(ProjectInfo project, CancellationToken ct = default)
+	private readonly record struct AssemblyInfo
+	(
+		AssemblySymbol AssemblySymbol,
+		ProjectOutputType OutputType,
+		string? OutputPath
+	);
+	
+	private static async Task<AssemblyInfo> BuildProject(ProjectInfo project,
+		IEnumerable<AssemblyInfo> dependencies, CancellationToken ct = default)
 	{
 		// Phase 1: File parsing
+		var outputType = project.Project.OutputType;
 		var files = await ProcessProject(project, ct);
 		
 		if (files.Length == 0)
-			return;
+			return new(new(project.Name, SymbolTable.Empty, SignatureTable.Empty), outputType, null);
 		
-		var collectorContext = new CollectorContext();
-		
-		// TODO Can we merge these? Does declaration collection resolve type symbols? It shouldn't.
-		// If we let FunctionSymbol and other similar symbols be partially unresolved initially, it might work
-		
-		// Phase 2: Type collection
+		// Phase 2a: Symbol collection
+		SymbolTable symbolTable;
 		{
-			var typeCollector = new TypeCollector(collectorContext);
+			var symbolCollector = new SymbolCollector();
+			foreach (var info in files)
+				symbolCollector.Collect(info.Ast);
 			
-			foreach (var (_, ast, _) in files)
-				typeCollector.Collect(ast);
+			symbolTable = symbolCollector.Build();
 		}
 		
-		// Phase 3: Declaration collection
+		var dependencyList = dependencies.ToImmutableArray();
+		var dependencySymbols = dependencyList.Select(static d => d.AssemblySymbol).ToImmutableArray();
+		
+		// Phase 2b: Signature collection
+		AssemblySymbol assemblySymbol;
 		{
-			var declarationCollector = new DeclarationCollector(collectorContext);
+			var signatureCollector = new SignatureCollector(symbolTable, dependencySymbols);
+			foreach (var info in files)
+				signatureCollector.Collect(info.Ast);
 			
-			foreach (var (_, ast, _) in files)
-				declarationCollector.Collect(ast);
+			assemblySymbol = signatureCollector.FinishAssembly(project.Name);
 		}
 		
-		// TODO Need to know about symbols in dependencies
-		
-		// Phase 4: Symbol resolution
+		// Phase 3: Symbol resolution
 		ImmutableArray<ResolvedSourceFileInfo> resolvedFiles;
 		{
-			var resolver = new Resolver(collectorContext);
+			var resolver = new Resolver(assemblySymbol, dependencySymbols);
 			
 			resolvedFiles = files
 				.Select(sfi => new ResolvedSourceFileInfo(sfi.FilePath, resolver.Resolve(sfi.Ast), sfi.Source))
 				.ToImmutableArray();
 		}
 		
-		// Phase 5: Type checking
+		var errorResult = new AssemblyInfo(assemblySymbol, outputType, null);
+		
+		// Phase 4: Type checking
 		{
 			var typeChecker = new TypeChecker();
 			
@@ -155,18 +177,18 @@ internal static class Program
 				foreach (var diagnostic in typeChecker.Diagnostics)
 					Console.WriteLine(diagnostic);
 				
-				return;
+				return errorResult;
 			}
 		}
 		
-		// Phase 6: Lowering
+		// Phase 5: Lowering
 		var lowerer = new Lowerer();
 		{
 			foreach (var (_, resolvedAst, _) in resolvedFiles)
 				lowerer.Lower(resolvedAst);
 		}
 		
-		// Phase 7: Control flow analysis
+		// Phase 6: Control flow analysis
 		{
 			var controlFlowAnalyzer = new ControlFlowAnalyzer();
 			
@@ -183,12 +205,19 @@ internal static class Program
 				foreach (var diagnostic in controlFlowAnalyzer.Diagnostics)
 					Console.WriteLine(diagnostic);
 				
-				return;
+				return errorResult;
 			}
 		}
 		
-		// Phase 8: Code generation
+		// Phase 7: Code generation
+		string outputPath;
 		{
+			// TODO Need a more robust way of getting libs -- also Executable exports won't make a lib file...
+			var libFiles = dependencyList
+				.Select(static d => Path.ChangeExtension(d.OutputPath, ".lib"))
+				.WhereNot(string.IsNullOrEmpty)
+				.ToImmutableArray();
+			
 			var targetTriple = TargetTriple.FromHost(); // TODO Check CLI args for cross-compilation
 			
 			var objDir = Path.Combine(project.Directory, "obj");
@@ -202,24 +231,24 @@ internal static class Program
 				if (codeGenerator.Generate(module) is { } objectFile)
 					objectFiles.Add(objectFile);
 			
-			var outputType = project.Project.OutputType;
 			var outputBaseName = project.Project.AssemblyName ?? project.Name;
 			var outputFileName = GetOutputFileName(outputBaseName, targetTriple, outputType);
 			var outputDir = Path.Combine(project.Directory, "bin");
-			var outputPath = Path.Combine(outputDir, outputFileName);
+			outputPath = Path.Combine(outputDir, outputFileName);
 			
 			if (!Directory.Exists(outputDir))
 				Directory.CreateDirectory(outputDir);
 			
 			// TODO Toolchains and linker paths should be grabbed from environment variables, compiler installation location
+			const string toolchainDir = @"C:\cella\toolchains";
 			var linker = new Linker(@"C:\cella\");
-			var linkRequest = new LinkRequest(outputType, objectFiles, outputPath);
-			var linkerToolchain = Toolchain.FromTargetTriple(targetTriple, @"C:\cella\toolchains");
+			var linkRequest = new LinkRequest(outputType, objectFiles, outputPath, toolchainDir, libFiles);
+			var linkerToolchain = Toolchain.FromTargetTriple(targetTriple, toolchainDir);
 			var linkExitCode = await linker.LinkAsync(linkRequest, linkerToolchain);
 			
 			Console.WriteLine($"Linker finished with exit code {linkExitCode}");
 			if (linkExitCode != 0)
-				return;
+				return errorResult;
 		}
 		
 		/*var userProgram = new Process
@@ -234,6 +263,7 @@ internal static class Program
 		await userProgram.WaitForExitAsync();
 		
 		Console.WriteLine($"User program finished with exit code {userProgram.ExitCode}");*/
+		return new(assemblySymbol, outputType, outputPath);
 	}
 	
 	private static async Task<ImmutableArray<SourceFileInfo>> ProcessProject(ProjectInfo project, CancellationToken ct = default)
@@ -260,12 +290,14 @@ internal static class Program
 			var tokens = scanner.ToImmutableArray();
 			ct.ThrowIfCancellationRequested();
 			
-			var parser = new FileParser(tokens);
+			var fileName = Path.GetRelativePath(project.Directory, sourcePath);
+			
+			var parser = new FileParser(tokens, fileName);
 			var ast = parser.Parse();
 			ct.ThrowIfCancellationRequested();
 			
 			// TODO Make opt-in via CLI flags
-			Console.WriteLine($"\n====== {Path.GetRelativePath(project.Directory, sourcePath)} ======");
+			Console.WriteLine($"\n====== {fileName} ======");
 			Console.WriteLine(ast is null ? "Failed to parse." : AstPrinter.Print(ast));
 			
 			if (ast is not null)

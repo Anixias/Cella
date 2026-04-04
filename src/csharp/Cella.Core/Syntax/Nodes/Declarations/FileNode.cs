@@ -6,6 +6,8 @@ namespace Cella.Core.Syntax.Nodes.Declarations;
 public sealed class FileNode(SourceLocation sourceLocation) : IDeclarationNode
 {
 	public SourceLocation SourceLocation { get; } = sourceLocation;
-	public required Token ModuleIdentifier { get; init; }
+	public required string FileName { get; init; }
+	public required ModuleName ModuleName { get; init; }
 	public required ImmutableArray<IDeclarationNode> Declarations { get; init; }
+	public required ImmutableArray<ImportExpression> Imports { get; init; }
 }

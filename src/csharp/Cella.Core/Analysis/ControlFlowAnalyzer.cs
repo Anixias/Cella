@@ -17,7 +17,7 @@ public sealed class ControlFlowAnalyzer
 			switch (path.Type)
 			{
 				case BlockPathType.Undefined:
-					if (function.Symbol.ReturnType is not null)
+					if (function.Info.Signature.ReturnType is not null)
 					{
 						// TODO Implicit void return but we require a return type, error!
 						allPathsReturn = false;

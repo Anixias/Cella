@@ -33,6 +33,8 @@ public sealed class WindowsMsvcToolchain(string root) : Toolchain(root)
 		args.Add("libucrt.lib");
 		args.Add("kernel32.lib");
 		
+		args.AddRange(request.LibFiles.Distinct());
+		
 		return args;
 	}
 }

@@ -22,6 +22,8 @@ public sealed class LinuxGnuToolchain(string root) : Toolchain(root)
 		args.Add("-lc");
 		args.Add(Path.Combine(_libDir, "crtn.o"));
 		
+		args.AddRange(request.LibFiles.Distinct());
+		
 		return args;
 	}
 }

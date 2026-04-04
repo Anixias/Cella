@@ -1,9 +1,9 @@
-﻿using Cella.Core.Symbols;
+﻿using Cella.Core.Binding;
 
 namespace Cella.Core.Lowering;
 
-public sealed class LoweredFunction(FunctionSymbol symbol)
+public sealed class LoweredFunction(FunctionInfo info)
 {
-	public FunctionSymbol Symbol { get; } = symbol;
+	public FunctionInfo Info { get; } = info;
 	public List<BasicBlock> Blocks { get; } = [];
 }

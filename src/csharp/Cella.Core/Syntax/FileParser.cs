@@ -5,7 +5,7 @@ using Cella.Core.Text;
 
 namespace Cella.Core.Syntax;
 
-public sealed class FileParser(ImmutableArray<Token> tokens) : BaseParser<FileNode>(tokens)
+public sealed class FileParser(ImmutableArray<Token> tokens, string fileName) : BaseParser<FileNode>(tokens)
 {
 	private static readonly Dictionary<string, TokenType> _topLevelContextualKeywords =
 		BuildContextualKeywords(TokenType.KeywordMod, TokenType.KeywordFun, TokenType.KeywordUse);
@@ -24,29 +24,30 @@ public sealed class FileParser(ImmutableArray<Token> tokens) : BaseParser<FileNo
 		// Setup
 		var (source, range) = Tokens[0].SourceLocation;
 		
-		Token moduleName = default;
+		ModuleName moduleName = default;
 		var declarations = new List<IDeclarationNode>();
+		var imports = new List<ImportExpression>();
 		
 		while (!AtEnd(index))
 		{
 			// Parse module name
 			if (Match(ref index, _topLevelContextualKeywords, TokenType.KeywordMod))
 			{
-				if (!Consume(ref index, out var modIdentifier, _topLevelSyncTypes, TokenType.Identifier))
+				try
 				{
-					// @TODO Diagnostic: Expected identifier
-					continue;
+					moduleName = ParseModuleName(ref index);
+				}
+				catch (Exception e)
+				{
+					// TODO Diagnostics
 				}
 				
-				//if (moduleName is not null)
-				// @TODO Diagnostic: Module name already defined in this file <- This should go in semantic analysis
-				
-				moduleName = modIdentifier;
 				continue;
 			}
 			
-			// Parse using directives
-			// TODO
+			// Parse imports
+			if (Match(ref index, _topLevelContextualKeywords, TokenType.KeywordUse))
+				imports.Add(ParseImportExpression(ref index));
 			
 			// Parse top-level declarations
 			if (Match(ref index, out var identifier, _topLevelContextualKeywords, TokenType.Identifier))
@@ -95,9 +96,86 @@ public sealed class FileParser(ImmutableArray<Token> tokens) : BaseParser<FileNo
 		
 		return new FileNode(new(source, range))
 		{
-			ModuleIdentifier = moduleName,
+			FileName = fileName,
+			ModuleName = moduleName,
+			Imports = imports.ToImmutableArray(),
 			Declarations = declarations.ToImmutableArray()
 		};
+	}
+	
+	private ModuleName ParseModuleName(ref int index)
+	{
+		var parts = new List<Token>();
+		
+		if (!Consume(ref index, out var firstPart, _topLevelSyncTypes, TokenType.Identifier))
+			throw new Exception(); // TODO
+		
+		parts.Add(firstPart);
+		
+		while (Match(ref index, TokenType.OpDot))
+		{
+			if (Match(ref index, out var part, TokenType.Identifier))
+				parts.Add(part);
+		}
+		
+		return new(parts.ToImmutableArray());
+	}
+	
+	private ImportExpression ParseImportExpression(ref int index)
+	{
+		if (!Consume(ref index, out var firstPart, _topLevelSyncTypes, TokenType.Identifier))
+			throw new Exception(); // TODO
+		
+		var parts = new List<Token> { firstPart };
+		
+		IImport? import = null;
+		while (Match(ref index, TokenType.OpDot))
+		{
+			if (Match(ref index, out var part, TokenType.Identifier))
+			{
+				parts.Add(part);
+				continue;
+			}
+			
+			if (Match(ref index, TokenType.OpOpenBracket))
+			{
+				// Multiple import tokens
+				if (!Consume(ref index, out var firstImport, _topLevelSyncTypes, TokenType.Identifier))
+					throw new Exception(); // TODO
+				
+				var importTokens = new List<Token> { firstImport };
+				
+				while (Match(ref index, TokenType.OpComma))
+				{
+					if (!Match(ref index, out var importToken, TokenType.Identifier))
+						throw new Exception(); // TODO
+					
+					importTokens.Add(importToken);
+				}
+				
+				if (!Match(ref index, TokenType.OpCloseBracket))
+					throw new Exception(); // TODO Diagnostics
+				
+				import = new ListImport(importTokens.ToImmutableArray());
+				continue;
+			}
+			
+			if (!Match(ref index, TokenType.OpStar))
+				throw new Exception(); // TODO
+			
+			import = FullImport.Instance;
+		}
+		
+		if (import is null)
+		{
+			if (parts.Count < 2)
+				throw new Exception(); // TODO Diagnostics
+			
+			import = new TokenImport(parts[^1]);
+			parts.RemoveAt(parts.Count - 1);
+		}
+		
+		return new(new(parts.ToImmutableArray()), import);
 	}
 	
 	private FunctionNode? ParseFunction(ref int index, Token identifier)

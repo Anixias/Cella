@@ -1,4 +1,5 @@
 ﻿using System.Collections.Immutable;
+using Cella.Core.Binding;
 using Cella.Core.Symbols;
 
 namespace Cella.Core.Lowering;
@@ -21,15 +22,15 @@ public sealed class ConstantValue(TypeSymbol type, object? value) : Value(type, 
 	public object? Value { get; } = value;
 }
 
-public sealed class VariableValue(VariableSymbol variable) : Value(variable.Type, false)
+public sealed class VariableValue(VariableInfo variable) : Value(variable.Type, false)
 {
-	public VariableSymbol Variable { get; } = variable;
+	public VariableInfo Variable { get; } = variable;
 }
 
-public sealed class CallValue(FunctionSymbol function, IEnumerable<Value> arguments)
-	: Value(function.ReturnType ?? NativeSymbols.Void, false)
+public sealed class CallValue(FunctionInfo function, IEnumerable<Value> arguments)
+	: Value(function.Signature.ReturnType, false)
 {
-	public FunctionSymbol Function { get; } = function;
+	public FunctionInfo Function { get; } = function;
 	public ImmutableArray<Value> Arguments { get; } = arguments.ToImmutableArray();
 }
 
