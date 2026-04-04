@@ -7,9 +7,27 @@ public readonly struct ResolutionContext
 {
 	public FileSymbol File { get; init; }
 	public TypeSymbol? ContainingType { get; init; }
-	public FunctionSymbol? ContainingFunction { get; init; }
+	public FunctionInfo? ContainingFunction { get; init; }
 	public ImportEnvironment? Imports { get; init; }
 	public Scope? LocalScope { get; init; }
+	
+	public IEnumerable<string> GetQualifiers()
+	{
+		var result = new List<string>();
+		
+		// TODO Nested functions in functions not supported
+		for (var f = ContainingFunction; f is not null; f = f.Value.Symbol.ContainingFunction)
+			result.Add(Mangling.Mangle(f.Value.Symbol, f.Value.Signature));
+		
+		for (var t = ContainingType; t is not null; t = t.ContainingType)
+			result.Add(Mangling.Mangle(t));
+		
+		result.Reverse();
+		
+		var moduleParts = File.Module.ModuleName.Text.Split('.');
+		result.InsertRange(0, moduleParts);
+		return result;
+	}
 	
 	private static Symbol? ResolveFrom(string name, ImmutableArray<Symbol> candidates) => candidates switch
 	{
@@ -26,7 +44,7 @@ public readonly struct ResolutionContext
 			return localSymbol;
 		
 		// TODO Also check type parameters
-		if (ContainingFunction?.Parameters.GetValueOrDefault(name) is { } param)
+		if (ContainingFunction?.Symbol.Parameters.GetValueOrDefault(name) is { } param)
 			return param;
 		
 		for (var type = ContainingType; type is not null; type = type.ContainingType)

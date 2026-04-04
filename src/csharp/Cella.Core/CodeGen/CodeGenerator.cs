@@ -169,7 +169,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 		
 		// TODO Variadic
 		var functionType = LLVMTypeRef.CreateFunction(returnType, paramLlvmTypes);
-		var functionValue = llvmModule.AddFunction(symbol.MangledName ?? symbol.Name, functionType);
+		var functionValue = llvmModule.AddFunction(function.MangledName ?? symbol.Name, functionType);
 		var functionInfo = new LLVMFunctionInfo(functionValue, functionType, returnType);
 		
 		_funMap.Add(function, functionInfo);

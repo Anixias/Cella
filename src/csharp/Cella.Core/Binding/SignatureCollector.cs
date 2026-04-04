@@ -6,19 +6,24 @@ namespace Cella.Core.Binding;
 
 public sealed class SignatureCollector : IDeclarationNodeVisitor
 {
+	private readonly string? _entryPointName;
 	private readonly SymbolTable _symbolTable;
 	private readonly ImmutableArray<AssemblySymbol> _dependencies;
 	private readonly SignatureTable.Builder _builder = new();
 	private readonly Stack<ResolutionContext> _resolutionContexts = [];
 	private ResolutionContext CurrentResolutionContext => _resolutionContexts.Peek();
+	private readonly List<FunctionInfo> _entryPoints = [];
 	
-	public SignatureCollector(SymbolTable symbolTable, IEnumerable<AssemblySymbol> dependencies)
+	public SignatureCollector(string? entryPointName, SymbolTable symbolTable, IEnumerable<AssemblySymbol> dependencies)
 	{
+		_entryPointName = entryPointName;
 		_symbolTable = symbolTable;
 		_dependencies = dependencies.ToImmutableArray();
 	}
 	
-	public AssemblySymbol FinishAssembly(string name) => new(name, _symbolTable, _builder.Build());
+	// TODO Diagnostics: if (_entryPoints.Count > 1)
+	public AssemblySymbol FinishAssembly(string name) =>
+		new(name, _symbolTable, _builder.Build(), _entryPoints.FirstOrDefault());
 	
 	public void Collect(IDeclarationNode root) => VisitNode(root);
 	
@@ -58,7 +63,39 @@ public sealed class SignatureCollector : IDeclarationNodeVisitor
 			returnType = new InvalidType();
 		
 		var signature = new FunctionSignature([], returnType);
-		_builder.Functions[function] = new(function, signature, scope);
+		
+		// TODO Disable mangling if indicated
+		FunctionInfo info;
+		if (_entryPointName is not null && function.Name == _entryPointName && IsEntryPoint(signature))
+		{
+			info = new FunctionInfo(null, function, signature, scope);
+			_entryPoints.Add(info);
+		}
+		else
+		{
+			var mangledName = Mangling.Mangle(function, signature, resolutionContext.GetQualifiers());
+			info = new FunctionInfo(mangledName, function, signature, scope);
+		}
+		
+		_builder.Functions[function] = info;
+	}
+	
+	private static bool IsEntryPoint(FunctionSignature signature)
+	{
+		// To be an entry point, it must return void or i32 and have either no parameters or take an array of strings
+		// TODO Not complete; also, allow async returns?
+		
+		// TODO Do we allow other integer return types?
+		var returnType = signature.ReturnType;
+		if (returnType != NativeSymbols.Void && returnType != NativeSymbols.Int32)
+			return false;
+		
+		// TODO Allow array of strings as parameter
+		var paramTypes = signature.ParameterTypes;
+		if (paramTypes.Length > 0)
+			return false;
+		
+		return true;
 	}
 	
 	private ImportEnvironment CollectImports(FileNode node)

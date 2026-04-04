@@ -128,7 +128,7 @@ internal static class Program
 		var files = await ProcessProject(project, ct);
 		
 		if (files.Length == 0)
-			return new(new(project.Name, SymbolTable.Empty, SignatureTable.Empty), outputType, null);
+			return new(new(project.Name, SymbolTable.Empty, SignatureTable.Empty, null), outputType, null);
 		
 		// Phase 2a: Symbol collection
 		SymbolTable symbolTable;
@@ -144,13 +144,24 @@ internal static class Program
 		var dependencySymbols = dependencyList.Select(static d => d.AssemblySymbol).ToImmutableArray();
 		
 		// Phase 2b: Signature collection
+		// TODO Allow configuring entry point name?
+		var entryPointName = outputType == ProjectOutputType.Executable ? "main" : null;
+		
 		AssemblySymbol assemblySymbol;
 		{
-			var signatureCollector = new SignatureCollector(symbolTable, dependencySymbols);
+			var signatureCollector = new SignatureCollector(entryPointName, symbolTable, dependencySymbols);
 			foreach (var info in files)
 				signatureCollector.Collect(info.Ast);
 			
 			assemblySymbol = signatureCollector.FinishAssembly(project.Name);
+		}
+		
+		var errorResult = new AssemblyInfo(assemblySymbol, outputType, null);
+		
+		if (outputType == ProjectOutputType.Executable && assemblySymbol.EntryPoint is null)
+		{
+			// TODO Diagnostics
+			return errorResult;
 		}
 		
 		// Phase 3: Symbol resolution
@@ -162,8 +173,6 @@ internal static class Program
 				.Select(sfi => new ResolvedSourceFileInfo(sfi.FilePath, resolver.Resolve(sfi.Ast), sfi.Source))
 				.ToImmutableArray();
 		}
-		
-		var errorResult = new AssemblyInfo(assemblySymbol, outputType, null);
 		
 		// Phase 4: Type checking
 		{

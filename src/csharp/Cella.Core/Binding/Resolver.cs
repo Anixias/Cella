@@ -19,7 +19,7 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 	private readonly SignatureTable _dependencySignatureTable;
 	private readonly Stack<ResolutionContext> _resolutionContexts = [];
 	private ResolutionContext CurrentResolutionContext => _resolutionContexts.Peek();
-	private FunctionSymbol? CurrentFunction => CurrentResolutionContext.ContainingFunction;
+	private FunctionInfo CurrentFunction => CurrentResolutionContext.ContainingFunction!.Value;
 	private Scope? CurrentScope => CurrentResolutionContext.LocalScope;
 	
 	public Resolver(AssemblySymbol assemblySymbol, IEnumerable<AssemblySymbol> dependencies)
@@ -73,7 +73,7 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 		
 		var resolutionContext = CurrentResolutionContext with
 		{
-			ContainingFunction = function,
+			ContainingFunction = info,
 			LocalScope = info.Scope
 		};
 		
@@ -197,7 +197,7 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 	
 	public IResolvedNode Visit(ReturnStatementNode node)
 	{
-		var info = _assemblySignatureTable.Functions[CurrentFunction!];
+		var info = _assemblySignatureTable.Functions[CurrentFunction.Symbol];
 		_targetTypes.Push(info.Signature.ReturnType);
 		
 		var result = new ResolvedReturnStatementNode(node.ExpressionNode is { } expressionNode

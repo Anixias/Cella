@@ -38,7 +38,7 @@ public sealed class SymbolCollector : IDeclarationNodeVisitor
 		// Note: Parameters are created, but not defined until the function's body is created
 		
 		var name = node.Identifier.GetText();
-		var function = new FunctionSymbol(name, node, []);
+		var function = new FunctionSymbol(name, node, null, []);
 		_builder.DeclarationSymbols[node] = function;
 		_symbolsInFile.Add(function);
 	}

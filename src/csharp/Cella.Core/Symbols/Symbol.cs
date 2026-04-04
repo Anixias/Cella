@@ -16,10 +16,12 @@ public abstract class Symbol(string name)
 	public string Name { get; } = name;
 }
 
-public sealed class AssemblySymbol(string name, SymbolTable symbolTable, SignatureTable signatureTable) : Symbol(name)
+public sealed class AssemblySymbol(string name, SymbolTable symbolTable, SignatureTable signatureTable,
+	FunctionInfo? entryPoint) : Symbol(name)
 {
 	public SymbolTable SymbolTable { get; } = symbolTable;
 	public SignatureTable SignatureTable { get; } = signatureTable;
+	public FunctionInfo? EntryPoint { get; } = entryPoint;
 }
 
 public sealed class ModuleSymbol(ModuleName moduleName,
@@ -44,16 +46,17 @@ public sealed class FunctionSymbol
 (
 	string name,
 	FunctionNode syntax,
+	FunctionInfo? containingFunction,
 	IEnumerable<ParameterSymbol> parameters
 ) : Symbol(name), IDefinedSymbol
 {
 	public FunctionNode Syntax { get; } = syntax;
+	public FunctionInfo? ContainingFunction { get; } = containingFunction;
 	
 	public ImmutableDictionary<string, ParameterSymbol> Parameters { get; } =
 		parameters.ToImmutableDictionary(static s => s.Name);
 	
 	public SourceLocation Definition { get; } = syntax.SourceLocation;
-	public string? MangledName { get; set;  } // TODO
 }
 
 public abstract class TypeSymbol(string name, TypeSymbol? containingType = null, params IEnumerable<Symbol> children)
