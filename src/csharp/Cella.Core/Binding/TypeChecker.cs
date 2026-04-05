@@ -1,6 +1,7 @@
 ﻿using Cella.Core.Binding.Nodes.Declarations;
 using Cella.Core.Binding.Nodes.Expressions;
 using Cella.Core.Binding.Nodes.Statements;
+using Cella.Core.Binding.Operations;
 using Cella.Core.Symbols;
 
 namespace Cella.Core.Binding;
@@ -54,7 +55,35 @@ public sealed class TypeChecker : IResolvedStatementNodeVisitor, IResolvedDeclar
 	{
 		// TODO Disallow certain expressions from being allowed as statements? Only allow assignments, function calls, etc.
 		// ^Need to check for purity of expressions. Pure expressions as statements is either an error or a warning
+		
+		switch (node.Expression)
+		{
+			case ResolvedBinaryOpExpressionNode e:
+			{
+				switch (e.Op)
+				{
+					case BinaryOperation.Assignment:
+					case BinaryOperation.AddAssignment:
+					case BinaryOperation.SubtractAssignment:
+					case BinaryOperation.MultiplyAssignment:
+					case BinaryOperation.DivideAssignment:
+						// TODO Better diagnostic
+						if (!IsLValue(e.Left))
+							_diagnostics.Add("Assignment target must be a variable");
+						
+						break;
+				}
+				
+				break;
+			}
+		}
 	}
+	
+	private bool IsLValue(IResolvedExpressionNode expression) => expression switch
+	{
+		ResolvedVarExpressionNode => true,
+		_ => false
+	};
 	
 	public void Visit(ResolvedReturnStatementNode node)
 	{

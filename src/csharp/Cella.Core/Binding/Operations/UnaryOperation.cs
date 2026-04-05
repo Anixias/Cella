@@ -3,5 +3,7 @@
 public enum UnaryOperation
 {
 	Identity,
-	Negation
+	Negation,
+	
+	Count
 }

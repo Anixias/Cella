@@ -264,10 +264,24 @@ public sealed unsafe class CodeGenerator : IDisposable
 		MulValue { IsConstant: true } v => LLVMValueRef.CreateConstMul(EmitValue(v.Left, builder), EmitValue(v.Right, builder)),
 		MulValue v => builder.BuildMul(EmitValue(v.Left, builder), EmitValue(v.Right, builder)), // TODO Check floating point?
 		DivValue v => builder.BuildSDiv(EmitValue(v.Left, builder), EmitValue(v.Right, builder)), // TODO Check type for correct operation
+		AssignValue v => EmitAssignValue(v, builder),
 		NegValue { IsConstant: true } v => LLVMValueRef.CreateConstNeg(EmitValue(v.Operand, builder)),
 		NegValue v => builder.BuildNeg(EmitValue(v.Operand, builder)), // TODO Check floating point?
 		CallValue v when _funMap[v.Function] is var (fv, ft, _) => builder.BuildCall2(ft, fv,
 			v.Arguments.Select(a => EmitValue(a, builder)).ToArray()),
+		_ => throw new InvalidOperationException()
+	};
+	
+	private LLVMValueRef EmitAssignValue(AssignValue value, LLVMBuilderRef builder)
+	{
+		var right = EmitValue(value.Right, builder);
+		builder.BuildStore(right, EmitAddress(value.Left, builder));
+		return right;
+	}
+	
+	private LLVMValueRef EmitAddress(Value value, LLVMBuilderRef builder) => value switch
+	{
+		VariableValue v => _varMap[v.Variable],
 		_ => throw new InvalidOperationException()
 	};
 	

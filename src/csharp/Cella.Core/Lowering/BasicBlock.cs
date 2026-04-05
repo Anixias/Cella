@@ -63,6 +63,13 @@ public sealed class DivValue(TypeSymbol type, Value left, Value right)
 	public Value Right { get; } = right;
 }
 
+public sealed class AssignValue(TypeSymbol type, Value left, Value right)
+	: Value(type, left.IsConstant && right.IsConstant)
+{
+	public Value Left { get; } = left;
+	public Value Right { get; } = right;
+}
+
 public sealed class NegValue(TypeSymbol type, Value operand) : Value(type, operand.IsConstant)
 {
 	public Value Operand { get; } = operand;

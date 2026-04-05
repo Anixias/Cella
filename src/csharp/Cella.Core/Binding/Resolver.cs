@@ -253,6 +253,16 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 			op = BinaryOperation.Multiplication;
 		else if (node.Op.Type == TokenType.OpSlash)
 			op = BinaryOperation.Division;
+		else if (node.Op.Type == TokenType.OpEqual)
+			op = BinaryOperation.Assignment;
+		else if (node.Op.Type == TokenType.OpPlusEqual)
+			op = BinaryOperation.AddAssignment;
+		else if (node.Op.Type == TokenType.OpMinusEqual)
+			op = BinaryOperation.SubtractAssignment;
+		else if (node.Op.Type == TokenType.OpStarEqual)
+			op = BinaryOperation.MultiplyAssignment;
+		else if (node.Op.Type == TokenType.OpSlashEqual)
+			op = BinaryOperation.DivideAssignment;
 		else
 			throw new InvalidOperationException();
 		

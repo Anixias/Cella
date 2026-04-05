@@ -125,6 +125,11 @@ public sealed class TokenType
 	#endregion
 	#region Operators
 	
+	public static readonly TokenType OpArrow = CreateOperator("->");
+	public static readonly TokenType OpPlusEqual = CreateOperator("+=");
+	public static readonly TokenType OpMinusEqual = CreateOperator("-=");
+	public static readonly TokenType OpStarEqual = CreateOperator("*=");
+	public static readonly TokenType OpSlashEqual = CreateOperator("/=");
 	public static readonly TokenType OpColon = CreateOperator(":");
 	public static readonly TokenType OpSemicolon = CreateOperator(";");
 	public static readonly TokenType OpOpenParen = CreateOperator("(");
@@ -133,7 +138,6 @@ public sealed class TokenType
 	public static readonly TokenType OpCloseBracket = CreateOperator("]");
 	public static readonly TokenType OpOpenBrace = CreateOperator("{");
 	public static readonly TokenType OpCloseBrace = CreateOperator("}");
-	public static readonly TokenType OpArrow = CreateOperator("->");
 	public static readonly TokenType OpPlus = CreateOperator("+");
 	public static readonly TokenType OpMinus = CreateOperator("-");
 	public static readonly TokenType OpStar = CreateOperator("*");

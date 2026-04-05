@@ -18,35 +18,31 @@ public static class NativeOperations
 	public static TypeSymbol? Resolve(UnaryOperation op, TypeSymbol operand) =>
 		UnaryOperations.GetValueOrDefault(new NativeUnaryOperation(op, operand));
 	
-	private static Dictionary<NativeBinaryOperation, TypeSymbol> BuildBinaryOps() => new()
-	{
-		MakeSymmetricBinary(NativeSymbols.Int32, BinaryOperation.Addition),
-		MakeSymmetricBinary(NativeSymbols.Int32, BinaryOperation.Subtraction),
-		MakeSymmetricBinary(NativeSymbols.Int32, BinaryOperation.Multiplication),
-		MakeSymmetricBinary(NativeSymbols.Int32, BinaryOperation.Division),
-		
-		MakeSymmetricBinary(NativeSymbols.Int64, BinaryOperation.Addition),
-		MakeSymmetricBinary(NativeSymbols.Int64, BinaryOperation.Subtraction),
-		MakeSymmetricBinary(NativeSymbols.Int64, BinaryOperation.Multiplication),
-		MakeSymmetricBinary(NativeSymbols.Int64, BinaryOperation.Division),
-		
-		MakeSymmetricBinary(NativeSymbols.Int128, BinaryOperation.Addition),
-		MakeSymmetricBinary(NativeSymbols.Int128, BinaryOperation.Subtraction),
-		MakeSymmetricBinary(NativeSymbols.Int128, BinaryOperation.Multiplication),
-		MakeSymmetricBinary(NativeSymbols.Int128, BinaryOperation.Division),
-	};
+	private static Dictionary<NativeBinaryOperation, TypeSymbol> BuildBinaryOps() =>
+		new([
+			..MakeSymmetricBinaryFull(NativeSymbols.Int32),
+			..MakeSymmetricBinaryFull(NativeSymbols.Int64),
+			..MakeSymmetricBinaryFull(NativeSymbols.Int128),
+		]);
 	
-	private static Dictionary<NativeUnaryOperation, TypeSymbol> BuildUnaryOps() => new()
+	private static Dictionary<NativeUnaryOperation, TypeSymbol> BuildUnaryOps() =>
+		new([
+			..MakeSymmetricUnaryFull(NativeSymbols.Int32),
+			..MakeSymmetricUnaryFull(NativeSymbols.Int64),
+			..MakeSymmetricUnaryFull(NativeSymbols.Int128),
+		]);
+	
+	private static IEnumerable<KeyValuePair<NativeBinaryOperation, TypeSymbol>> MakeSymmetricBinaryFull(TypeSymbol type)
 	{
-		MakeSymmetricUnary(NativeSymbols.Int32, UnaryOperation.Identity),
-		MakeSymmetricUnary(NativeSymbols.Int32, UnaryOperation.Negation),
-		
-		MakeSymmetricUnary(NativeSymbols.Int64, UnaryOperation.Identity),
-		MakeSymmetricUnary(NativeSymbols.Int64, UnaryOperation.Negation),
-		
-		MakeSymmetricUnary(NativeSymbols.Int128, UnaryOperation.Identity),
-		MakeSymmetricUnary(NativeSymbols.Int128, UnaryOperation.Negation),
-	};
+		for (var op = (BinaryOperation)0; op < BinaryOperation.Count; op++)
+			yield return MakeSymmetricBinary(type, op);
+	}
+	
+	private static IEnumerable<KeyValuePair<NativeUnaryOperation, TypeSymbol>> MakeSymmetricUnaryFull(TypeSymbol type)
+	{
+		for (var op = (UnaryOperation)0; op < UnaryOperation.Count; op++)
+			yield return MakeSymmetricUnary(type, op);
+	}
 	
 	private static KeyValuePair<NativeBinaryOperation, TypeSymbol> MakeSymmetricBinary(TypeSymbol type,
 		BinaryOperation op) => new(new(type, op, type), type);

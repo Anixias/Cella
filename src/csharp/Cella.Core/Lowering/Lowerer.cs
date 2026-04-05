@@ -11,7 +11,6 @@ public sealed class Lowerer : IResolvedDeclarationNodeVisitor
 	public IReadOnlyCollection<LoweredModule> Modules => _modules.Values;
 	
 	private readonly Dictionary<ModuleSymbol, LoweredModule> _modules = [];
-	private readonly Dictionary<FunctionSymbol, LoweredFunction> _functions = [];
 	private readonly Stack<LoweredModule> _moduleStack = [];
 	private LoweredModule CurrentModule => _moduleStack.Peek();
 	
@@ -39,12 +38,7 @@ public sealed class Lowerer : IResolvedDeclarationNodeVisitor
 	}
 	
 	// TODO Probably want to mangle names here?
-	public void Visit(ResolvedFunctionNode node)
-	{
-		var function = FunctionLowerer.Lower(node);
-		_functions[node.FunctionInfo.Symbol] = function;
-		CurrentModule.Functions.Add(function);
-	}
+	public void Visit(ResolvedFunctionNode node) => CurrentModule.Functions.Add(FunctionLowerer.Lower(node));
 	
 	private sealed class FunctionLowerer : IResolvedStatementNodeVisitor, IResolvedExpressionNodeVisitor<Value>
 	{
@@ -171,12 +165,20 @@ public sealed class Lowerer : IResolvedDeclarationNodeVisitor
 		
 		public Value Visit(ResolvedVarExpressionNode node) => new VariableValue(new(node.Symbol, node.Type));
 		
-		public Value Visit(ResolvedBinaryOpExpressionNode node) => node.Op switch
+		public Value Visit(ResolvedBinaryOpExpressionNode node) =>
+			MapBinOp(VisitNode(node.Left), node.Op, VisitNode(node.Right), node.Type);
+		
+		private static Value MapBinOp(Value left, BinaryOperation op, Value right, TypeSymbol type) => op switch
 		{
-			BinaryOperation.Addition => new AddValue(node.Type, VisitNode(node.Left), VisitNode(node.Right)),
-			BinaryOperation.Subtraction => new SubValue(node.Type, VisitNode(node.Left), VisitNode(node.Right)),
-			BinaryOperation.Multiplication => new MulValue(node.Type, VisitNode(node.Left), VisitNode(node.Right)),
-			BinaryOperation.Division => new DivValue(node.Type, VisitNode(node.Left), VisitNode(node.Right)),
+			BinaryOperation.Addition => new AddValue(type, left, right),
+			BinaryOperation.Subtraction => new SubValue(type, left, right),
+			BinaryOperation.Multiplication => new MulValue(type, left, right),
+			BinaryOperation.Division => new DivValue(type, left, right),
+			BinaryOperation.Assignment => new AssignValue(type, left, right),
+			BinaryOperation.AddAssignment => new AssignValue(type, left, new AddValue(type, left, right)),
+			BinaryOperation.SubtractAssignment => new AssignValue(type, left, new SubValue(type, left, right)),
+			BinaryOperation.MultiplyAssignment => new AssignValue(type, left, new MulValue(type, left, right)),
+			BinaryOperation.DivideAssignment => new AssignValue(type, left, new DivValue(type, left, right)),
 			_ => throw new InvalidOperationException()
 		};
 	}

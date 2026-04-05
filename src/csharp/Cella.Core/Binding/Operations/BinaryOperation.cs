@@ -5,5 +5,12 @@ public enum BinaryOperation
 	Addition,
 	Subtraction,
 	Multiplication,
-	Division
+	Division,
+	Assignment,
+	AddAssignment,
+	SubtractAssignment,
+	MultiplyAssignment,
+	DivideAssignment,
+	
+	Count
 }

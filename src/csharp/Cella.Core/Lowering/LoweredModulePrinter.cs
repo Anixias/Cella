@@ -133,6 +133,12 @@ public static class LoweredModulePrinter
 					value = v.Right;
 					continue;
 				
+				case AssignValue v:
+					PrintValue(sb, v.Left);
+					sb.Append(" = ");
+					value = v.Right;
+					continue;
+				
 				case NegValue v:
 					sb.Append('-');
 					value = v.Operand;

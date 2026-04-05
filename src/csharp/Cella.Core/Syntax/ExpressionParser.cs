@@ -34,9 +34,28 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 		TokenType.OpSlash
 	];
 	
+	private static readonly HashSet<TokenType> _assignmentOps =
+	[
+		TokenType.OpPlusEqual,
+		TokenType.OpMinusEqual,
+		TokenType.OpStarEqual,
+		TokenType.OpSlashEqual,
+		TokenType.OpEqual
+	];
+	
 	public override IExpressionNode Parse(ref int index) => ParseExpression(ref index);
 	
-	private IExpressionNode ParseExpression(ref int index) => ParseAdditive(ref index);
+	private IExpressionNode ParseExpression(ref int index)
+	{
+		var node = ParseAdditive(ref index);
+		if (Match(ref index, out var op, _assignmentOps))
+		{
+			var right = ParseExpression(ref index);
+			node = new BinaryOpExpressionNode(node, op, right);
+		}
+		
+		return node;
+	}
 	
 	private IExpressionNode ParseAdditive(ref int index)
 	{
