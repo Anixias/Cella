@@ -21,6 +21,7 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 	private ResolutionContext CurrentResolutionContext => _resolutionContexts.Peek();
 	private FunctionInfo CurrentFunction => CurrentResolutionContext.ContainingFunction!.Value;
 	private Scope? CurrentScope => CurrentResolutionContext.LocalScope;
+	private TypeSymbol? CurrentTargetType => _targetTypes.TryPeek(out var result) ? result : null;
 	
 	public Resolver(AssemblySymbol assemblySymbol, IEnumerable<AssemblySymbol> dependencies)
 	{
@@ -28,8 +29,6 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 		_assemblySignatureTable = assemblySymbol.SignatureTable;
 		_dependencySignatureTable = SignatureTable.Combine(dependencies.Select(static a => a.SignatureTable));
 	}
-	
-	private TypeSymbol? CurrentTargetType => _targetTypes.Peek();
 	
 	public ResolvedFileNode Resolve(FileNode root) => (ResolvedFileNode)Visit(root);
 	

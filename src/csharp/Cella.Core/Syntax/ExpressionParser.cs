@@ -111,9 +111,18 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 		// TODO Should not use identifier but instead a tightly-bound indexer, which is also used for type parameters
 		if (Match(ref index, out var identifier, TokenType.Identifier))
 		{
+			var identifierLine = identifier.Line;
+			
+			var startIndex = index;
+			
 			// Call Expression
-			if (Match(ref index, TokenType.OpOpenParen))
-				return ParseCallExpression(ref index, identifier);
+			if (Match(ref index, out var openParen, TokenType.OpOpenParen))
+			{
+				if (openParen.Line == identifierLine)
+					return ParseCallExpression(ref index, identifier);
+				
+				index = startIndex;
+			}
 			
 			// Variable Expression
 			return new VarExpressionNode(identifier);

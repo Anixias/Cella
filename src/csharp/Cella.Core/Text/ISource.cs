@@ -8,6 +8,6 @@ public interface ISource
 	ReadOnlySpan<char> GetText();
 	ReadOnlySpan<char> GetText(int line);
 	ReadOnlySpan<char> GetText(TextRange range);
-	(int line, int column) GetLineColumn(int position);
+	(int Line, int Column) GetLineColumn(int position);
 	TextRange GetLineRange(int line);
 }

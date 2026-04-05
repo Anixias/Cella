@@ -68,10 +68,10 @@ public sealed class StringSource : ISource
 		return _text.AsSpan().Slice(range.Start, range.Length);
 	}
 	
-	public (int line, int column) GetLineColumn(int position)
+	public (int Line, int Column) GetLineColumn(int position)
 	{
 		if (position < 0 || position > _text.Length)
-			throw new ArgumentOutOfRangeException(nameof(position));
+			return (0, 0);
 		
 		var line = 1;
 		var column = 1;

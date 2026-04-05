@@ -309,21 +309,25 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName) : 
 		// retToken already consume when this function is called
 		
 		// @TODO Diagnostics
+		var range = retToken.SourceLocation.Range;
+		var source = retToken.SourceLocation.Source;
+		
+		if (AtEnd(index))
+			return new(new(source, range), null);
+		
+		var startLine = retToken.Line;
+		var nextLine = Tokens[index].Line;
+		
+		if (nextLine != startLine)
+			return new(new(source, range), null);
 		
 		var expressionIndex = index;
-		var expression = ParseExpression(ref expressionIndex);
+		if (ParseExpression(ref expressionIndex) is not { } expression)
+			return new(new(source, range), null);
 		
-		var range = retToken.SourceLocation.Range;
-		if (expression is not null)
-		{
-			index = expressionIndex;
-			range = range.Join(expression.SourceLocation.Range);
-		}
-		
-		var source = retToken.SourceLocation.Source;
-		var sourceLocation = new SourceLocation(source, range);
-		
-		return new(sourceLocation, expression);
+		index = expressionIndex;
+		range = range.Join(expression.SourceLocation.Range);
+		return new(new(source, range), expression);
 	}
 	
 	private IExpressionNode? ParseExpression(ref int index) => new ExpressionParser(Tokens).Parse(ref index);
