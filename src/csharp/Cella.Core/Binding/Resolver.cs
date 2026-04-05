@@ -99,6 +99,22 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 		return new ResolvedBlockStatementNode(statements);
 	}
 	
+	public IResolvedNode Visit(ReturnStatementNode node)
+	{
+		var info = _assemblySignatureTable.Functions[CurrentFunction.Symbol];
+		_targetTypes.Push(info.Signature.ReturnType);
+		
+		var result = new ResolvedReturnStatementNode(node.ExpressionNode is { } expressionNode
+			? VisitNode(expressionNode)
+			: null);
+		
+		_targetTypes.Pop();
+		return result;
+	}
+	
+	public IResolvedNode Visit(ExpressionStatementNode node) =>
+		new ResolvedExpressionStatementNode(VisitNode(node.ExpressionNode));
+	
 	public IResolvedNode Visit(CallExpressionNode node)
 	{
 		var resolutionContext = CurrentResolutionContext;
@@ -247,19 +263,6 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 		// TODO Based on types of sub-expressions and the op token, we search for operator overloads
 		
 		return new ResolvedBinaryOpExpressionNode(NativeSymbols.Invalid, left, op, right);
-	}
-	
-	public IResolvedNode Visit(ReturnStatementNode node)
-	{
-		var info = _assemblySignatureTable.Functions[CurrentFunction.Symbol];
-		_targetTypes.Push(info.Signature.ReturnType);
-		
-		var result = new ResolvedReturnStatementNode(node.ExpressionNode is { } expressionNode
-			? VisitNode(expressionNode)
-			: null);
-		
-		_targetTypes.Pop();
-		return result;
 	}
 	
 	private static (TypeSymbol? Type, object? Value) ParseInteger(ReadOnlySpan<char> span, TypeSymbol? targetType)

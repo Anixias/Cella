@@ -136,6 +136,12 @@ public sealed class Lowerer : IResolvedDeclarationNodeVisitor
 				VisitNode(statement);
 		}
 		
+		public void Visit(ResolvedExpressionStatementNode node)
+		{
+			var expression = VisitNode(node.Expression);
+			currentBlock.Instructions.Add(new ExpressionInstruction(expression));
+		}
+		
 		public void Visit(ResolvedReturnStatementNode node)
 		{
 			var value = node.Expression is null ? null : VisitNode(node.Expression);

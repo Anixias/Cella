@@ -208,6 +208,7 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName) : 
 		if (!Match(ref index, out var returnType, TokenType.Identifier))
 			return null;
 		
+		// TODO Allow parsing body as a single expression (with return type inference?)
 		if (ParseBlock(ref index) is not { } body)
 			return null;
 		
@@ -257,7 +258,10 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName) : 
 		if (Match(ref index, out var retToken, TokenType.KeywordRet))
 			return ParseReturnStatement(ref index, retToken);
 		
-		return null;
+		if (ParseExpression(ref index) is not { } expression)
+			return null;
+		
+		return new ExpressionStatementNode(expression);
 	}
 	
 	private VarStatementNode? ParseVarStatement(ref int index, Token varToken)

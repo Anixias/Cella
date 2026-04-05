@@ -217,6 +217,12 @@ public sealed unsafe class CodeGenerator : IDisposable
 				
 				break;
 			}
+			
+			case ExpressionInstruction i:
+			{
+				EmitValue(i.Value, builder);
+				break;
+			}
 		}
 	}
 	

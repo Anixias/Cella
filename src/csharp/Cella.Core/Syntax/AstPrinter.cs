@@ -151,6 +151,13 @@ public sealed class AstPrinter : ISyntaxNodeVisitor
 		VisitNode(node.Right, true);
 	}
 	
+	public void Visit(ExpressionStatementNode node)
+	{
+		StartLine();
+		_sb.Append("ExpressionStatementNode");
+		VisitNode(node.ExpressionNode, true);
+	}
+	
 	public void Visit(ReturnStatementNode node)
 	{
 		StartLine();

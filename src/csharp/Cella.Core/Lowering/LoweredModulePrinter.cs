@@ -41,7 +41,11 @@ public static class LoweredModulePrinter
 							}
 							
 							sb.AppendLine();
-							
+							break;
+						
+						case ExpressionInstruction i:
+							PrintValue(sb, i.Value);
+							sb.AppendLine();
 							break;
 						
 						default:

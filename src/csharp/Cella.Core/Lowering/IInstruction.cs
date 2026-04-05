@@ -10,3 +10,8 @@ public sealed class LocalVarInstruction(LocalVariableSymbol symbol, Value? initi
 	public LocalVariableSymbol Symbol { get; } = symbol;
 	public Value? Initializer { get; } = initializer;
 }
+
+public sealed class ExpressionInstruction(Value value) : IInstruction
+{
+	public Value Value { get; } = value;
+}

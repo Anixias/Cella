@@ -2,8 +2,7 @@
 
 namespace Cella.Core.Binding.Nodes.Statements;
 
-public sealed class ResolvedReturnStatementNode(IResolvedExpressionNode? expression)
-	: IResolvedStatementNode
+public sealed class ResolvedReturnStatementNode(IResolvedExpressionNode? expression) : IResolvedStatementNode
 {
 	public IResolvedExpressionNode? Expression { get; } = expression;
 }

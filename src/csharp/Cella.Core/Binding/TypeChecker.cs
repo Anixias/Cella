@@ -50,6 +50,12 @@ public sealed class TypeChecker : IResolvedStatementNodeVisitor, IResolvedDeclar
 			VisitNode(statement);
 	}
 	
+	public void Visit(ResolvedExpressionStatementNode node)
+	{
+		// TODO Disallow certain expressions from being allowed as statements? Only allow assignments, function calls, etc.
+		// ^Need to check for purity of expressions. Pure expressions as statements is either an error or a warning
+	}
+	
 	public void Visit(ResolvedReturnStatementNode node)
 	{
 		var expected = _returnTypeStack.Peek();
