@@ -53,7 +53,9 @@ public sealed class TypeChecker : IResolvedStatementNodeVisitor, IResolvedDeclar
 	
 	public void Visit(ResolvedExpressionStatementNode node)
 	{
-		// TODO Disallow certain expressions from being allowed as statements? Only allow assignments, function calls, etc.
+		if (!IsAllowedAsStatement(node.Expression))
+			_diagnostics.Add("Only assignments and function calls are allowed as statements");
+		
 		// ^Need to check for purity of expressions. Pure expressions as statements is either an error or a warning
 		
 		switch (node.Expression)
@@ -78,12 +80,6 @@ public sealed class TypeChecker : IResolvedStatementNodeVisitor, IResolvedDeclar
 			}
 		}
 	}
-	
-	private bool IsLValue(IResolvedExpressionNode expression) => expression switch
-	{
-		ResolvedVarExpressionNode => true,
-		_ => false
-	};
 	
 	public void Visit(ResolvedReturnStatementNode node)
 	{
@@ -112,4 +108,25 @@ public sealed class TypeChecker : IResolvedStatementNodeVisitor, IResolvedDeclar
 	
 	// TEMP Will need implicit conversions, subtyping, traits/interfaces, constraints, etc.
 	private bool AreTypesCompatible(TypeSymbol? expected, TypeSymbol? actual) => expected == actual;
+	
+	private bool IsLValue(IResolvedExpressionNode expression) => expression switch
+	{
+		ResolvedVarExpressionNode => true,
+		_ => false
+	};
+	
+	private bool IsAllowedAsStatement(IResolvedExpressionNode expression) => expression switch
+	{
+		ResolvedFunctionCallExpressionNode => true, // TODO Warn if function is pure?
+		ResolvedBinaryOpExpressionNode n => n.Op switch
+		{
+			BinaryOperation.Assignment => true,
+			BinaryOperation.AddAssignment => true,
+			BinaryOperation.SubtractAssignment => true,
+			BinaryOperation.MultiplyAssignment => true,
+			BinaryOperation.DivideAssignment => true,
+			_ => false
+		},
+		_ => false
+	};
 }
