@@ -63,16 +63,16 @@ public sealed class TypeChecker : IResolvedStatementNodeVisitor, IResolvedDeclar
 	public void Visit(ResolvedVarStatementNode node)
 	{
 		var expected = node.Symbol.Type;
-		if (expected == NativeSymbols.Invalid && node.Initializer is null)
-		{
-			_diagnostics.Add("Implicitly-typed local variable must have an initializer");
-			return;
-		}
 		
-		var actual = node.Initializer?.Type ?? NativeSymbols.Invalid;
-		if (!AreTypesCompatible(expected, actual))
-			_diagnostics.Add(
-				$"Cannot assign value of type '{actual.Name}': Expected type '{expected.Name}'");
+		if (node.Initializer is { } initializer)
+		{
+			var actual = initializer.Type;
+			if (!AreTypesCompatible(expected, actual))
+				_diagnostics.Add(
+					$"Cannot assign value of type '{actual.Name}': Expected type '{expected.Name}'");
+		}
+		else if (expected == NativeSymbols.Invalid)
+			_diagnostics.Add("Implicitly-typed local variable must have an initializer");
 	}
 	
 	// TEMP Will need implicit conversions, subtyping, traits/interfaces, constraints, etc.
