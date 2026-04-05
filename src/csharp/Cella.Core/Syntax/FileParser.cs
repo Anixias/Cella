@@ -258,10 +258,7 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName) : 
 		if (Match(ref index, out var retToken, TokenType.KeywordRet))
 			return ParseReturnStatement(ref index, retToken);
 		
-		if (ParseExpression(ref index) is not { } expression)
-			return null;
-		
-		return new ExpressionStatementNode(expression);
+		return new ExpressionStatementNode(ParseExpression(ref index));
 	}
 	
 	private VarStatementNode? ParseVarStatement(ref int index, Token varToken)
@@ -284,24 +281,14 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName) : 
 			type = typeToken;
 		}
 		
-		IExpressionNode? initializer = null;
-		var range = varToken.SourceLocation.Range;
-		if (Match(ref index, TokenType.OpEqual))
-		{
-			var expressionIndex = index;
-			initializer = ParseExpression(ref expressionIndex);
-			
-			if (initializer is not null)
-			{
-				index = expressionIndex;
-				range = range.Join(initializer.SourceLocation.Range);
-			}
-		}
+		var (source, range) = varToken.SourceLocation;
 		
-		var source = varToken.SourceLocation.Source;
-		var sourceLocation = new SourceLocation(source, range);
+		if (!Match(ref index, TokenType.OpEqual))
+			return new(new(source, range), identifier, type, null);
 		
-		return new(sourceLocation, identifier, type, initializer);
+		var initializer = ParseExpression(ref index);
+		range = range.Join(initializer.SourceLocation.Range);
+		return new(new(source, range), identifier, type, initializer);
 	}
 	
 	private ReturnStatementNode ParseReturnStatement(ref int index, Token retToken)
@@ -312,25 +299,29 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName) : 
 		var range = retToken.SourceLocation.Range;
 		var source = retToken.SourceLocation.Source;
 		
-		if (AtEnd(index))
+		if (AtEnd(index) || retToken.Line != Tokens[index].Line || TryParseExpression(ref index) is not { } expression)
 			return new(new(source, range), null);
 		
-		var startLine = retToken.Line;
-		var nextLine = Tokens[index].Line;
-		
-		if (nextLine != startLine)
-			return new(new(source, range), null);
-		
-		var expressionIndex = index;
-		if (ParseExpression(ref expressionIndex) is not { } expression)
-			return new(new(source, range), null);
-		
-		index = expressionIndex;
 		range = range.Join(expression.SourceLocation.Range);
 		return new(new(source, range), expression);
 	}
 	
-	private IExpressionNode? ParseExpression(ref int index) => new ExpressionParser(Tokens).Parse(ref index);
+	private IExpressionNode ParseExpression(ref int index) => new ExpressionParser(Tokens).Parse(ref index);
+	
+	private IExpressionNode? TryParseExpression(ref int index)
+	{
+		try
+		{
+			var parserIndex = index;
+			var result = new ExpressionParser(Tokens).Parse(ref parserIndex);
+			index = parserIndex;
+			return result;
+		}
+		catch
+		{
+			return null;
+		}
+	}
 	
 	private void ResyncTopLevel(ref int index)
 	{

@@ -112,7 +112,6 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 		if (Match(ref index, out var identifier, TokenType.Identifier))
 		{
 			var identifierLine = identifier.Line;
-			
 			var startIndex = index;
 			
 			// Call Expression
