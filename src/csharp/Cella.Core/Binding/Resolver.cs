@@ -83,6 +83,8 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 		return new ResolvedFunctionNode(info, body);
 	}
 	
+	public IResolvedNode Visit(ParameterNode node) => throw new InvalidOperationException();
+	
 	public IResolvedNode Visit(BlockStatementNode node)
 	{
 		var statements = new List<IResolvedStatementNode>(node.StatementNodes.Length);

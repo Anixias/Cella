@@ -71,10 +71,7 @@ public sealed class FunctionSymbol
 		: Visibility.Private;
 	
 	public FunctionInfo? ContainingFunction { get; } = containingFunction;
-	
-	public ImmutableDictionary<string, ParameterSymbol> Parameters { get; } =
-		parameters.ToImmutableDictionary(static s => s.Name);
-	
+	public ImmutableArray<ParameterSymbol> Parameters { get; } = parameters.ToImmutableArray();
 	public SourceLocation Definition { get; } = syntax.SourceLocation;
 }
 

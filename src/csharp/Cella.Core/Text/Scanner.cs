@@ -101,12 +101,13 @@ public class Scanner : IScanner
 	
 	private ScanResult ScanIdentifier(int position)
 	{
-		var end = position;
-		
-		// Caller ensures it doesn't start with a digit
-		var c = Source[end];
-		while (char.IsLetterOrDigit(c) || c == '_')
-			c = Source[++end];
+		int end;
+		for (end = position + 1; end < Source.Length; end++)
+		{
+			var c = Source[end];
+			if (!char.IsLetterOrDigit(c) && c != '_')
+				break;
+		}
 		
 		var range = new TextRange(position, end);
 		var text = new string(Source.GetText(range));
@@ -118,11 +119,13 @@ public class Scanner : IScanner
 	
 	private ScanResult ScanNumber(int position)
 	{
-		var end = position;
-		
-		var c = Source[end];
-		while (char.IsDigit(c) || c == '_')
-			c = Source[++end];
+		int end;
+		for (end = position + 1; end < Source.Length; end++)
+		{
+			var c = Source[end];
+			if (!char.IsDigit(c) && c != '_')
+				break;
+		}
 		
 		// @TODO Hex, binary, octal literals
 		// @TODO Floating point, fixed point, scientific notation, etc.
@@ -136,7 +139,7 @@ public class Scanner : IScanner
 	private bool TryScanComment(int position, out ScanResult comment)
 	{
 		var end = position;
-		if (Source[end++] is not '/')
+		if (end >= Source.Length - 1 || Source[end++] is not '/')
 		{
 			comment = default;
 			return false;
@@ -148,7 +151,7 @@ public class Scanner : IScanner
 			// Line comment
 			case '/':
 				tokenType = TokenType.LineComment;
-				while (Source[end] is not '\r' and not '\n')
+				while (end < Source.Length && Source[end] is not '\r' and not '\n')
 					end++;
 				
 				break;

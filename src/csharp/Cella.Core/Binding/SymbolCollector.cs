@@ -34,12 +34,19 @@ public sealed class SymbolCollector : IDeclarationNodeVisitor
 	
 	public void Visit(FunctionNode node)
 	{
-		// TODO foreach (var param in node.Parameters)
-		// Note: Parameters are created, but not defined until the function's body is created
+		var parameters = new List<ParameterSymbol>(node.Parameters.Length);
+		foreach (var param in node.Parameters)
+		{
+			var paramSymbol = new ParameterSymbol(param.Identifier);
+			parameters.Add(paramSymbol);
+			_builder.DeclarationSymbols[param] = paramSymbol;
+		}
 		
 		var name = node.Identifier.GetText();
-		var function = new FunctionSymbol(name, node, null, []);
+		var function = new FunctionSymbol(name, node, null, parameters);
 		_builder.DeclarationSymbols[node] = function;
 		_symbolsInFile.Add(function);
 	}
+	
+	public void Visit(ParameterNode node) => throw new InvalidOperationException();
 }

@@ -56,13 +56,32 @@ public sealed class SignatureCollector : IDeclarationNodeVisitor
 		
 		var scope = new Scope();
 		
-		// TODO Parameters (resolve types and define in scope^)
+		var paramTypes = new List<TypeSymbol>(node.Parameters.Length);
+		for (var i = 0; i < node.Parameters.Length; i++)
+		{
+			var param = node.Parameters[i];
+			var paramSymbol = function.Parameters[i];
+			
+			TypeSymbol paramType;
+			if (resolutionContext.Resolve(param.Type.GetText()) is not TypeSymbol paramTypeSymbol)
+				paramType = new InvalidType();
+			else
+				paramType = paramTypeSymbol;
+			
+			paramTypes.Add(paramType);
+			_builder.VariableTypes[paramSymbol] = paramType;
+			scope.Define(paramSymbol);
+		}
 		
-		// TODO Optional return type -- NativeSymbols.Void
-		if (resolutionContext.Resolve(node.ReturnType.GetText()) is not TypeSymbol returnType)
+		TypeSymbol returnType;
+		if (node.ReturnType is not { } returnTypeSyntax)
+			returnType = NativeSymbols.Void;
+		else if (resolutionContext.Resolve(returnTypeSyntax.GetText()) is not TypeSymbol returnTypeSymbol)
 			returnType = new InvalidType();
+		else
+			returnType = returnTypeSymbol;
 		
-		var signature = new FunctionSignature([], returnType);
+		var signature = new FunctionSignature(paramTypes, returnType);
 		
 		// TODO Disable mangling if indicated
 		FunctionInfo info;
@@ -78,6 +97,11 @@ public sealed class SignatureCollector : IDeclarationNodeVisitor
 		}
 		
 		_builder.Functions[function] = info;
+	}
+	
+	public void Visit(ParameterNode node)
+	{
+		throw new NotImplementedException();
 	}
 	
 	private static bool IsEntryPoint(FunctionSignature signature)

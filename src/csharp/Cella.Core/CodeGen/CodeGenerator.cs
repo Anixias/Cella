@@ -182,15 +182,36 @@ public sealed unsafe class CodeGenerator : IDisposable
 	{
 		var functionValue = _funMap[function.Info].FunctionValue;
 		
+		// Create blocks
 		var blockMap = new Dictionary<BasicBlock, LLVMBasicBlockRef>();
 		foreach (var block in function.Blocks)
 			blockMap.Add(block, functionValue.AppendBasicBlock(block.Label));
 		
+		// Build blocks
 		using var builder = llvmModule.Context.CreateBuilder();
-		foreach (var block in function.Blocks)
+		for (var i = 0; i < function.Blocks.Count; i++)
 		{
+			var block = function.Blocks[i];
 			var llvmBlock = blockMap[block];
 			builder.PositionAtEnd(llvmBlock);
+			
+			// First block allocates stack variables for parameters
+			if (i == 0)
+			{
+				var parameters = function.Info.Symbol.Parameters;
+				for (var p = 0; p < parameters.Length; p++)
+				{
+					var paramSymbol = parameters[p];
+					var paramType = function.Info.Signature.ParameterTypes[p];
+					var paramInfo = new VariableInfo(paramSymbol, paramType);
+					
+					var paramLlvmValue = functionValue.GetParam((uint)p);
+					var paramLlvmType = MapTypeSymbol(paramType);
+					var paramPtr = builder.BuildAlloca(paramLlvmType, paramSymbol.Name);
+					builder.BuildStore(paramLlvmValue, paramPtr);
+					_varMap[paramInfo] = paramPtr;
+				}
+			}
 			
 			foreach (var instruction in block.Instructions)
 				EmitInstruction(builder, instruction, blockMap);

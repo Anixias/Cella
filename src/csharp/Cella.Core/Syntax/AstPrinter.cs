@@ -133,9 +133,31 @@ public sealed class AstPrinter : ISyntaxNodeVisitor
 	{
 		StartLine();
 		_sb.Append("FunctionNode '").Append(node.Identifier.AsSpan()).Append('\'');
-		_sb.Append(" -> '").Append(node.ReturnType.AsSpan()).Append('\'');
+		
+		if (node.Parameters.Length > 0)
+		{
+			_sb.Append(" (");
+			
+			for (var i = 0; i < node.Parameters.Length; i++)
+			{
+				var param = node.Parameters[i];
+				if (i > 0)
+					_sb.Append(", ");
+				
+				Visit(param);
+			}
+			
+			_sb.Append(')');
+		}
+		
+		if (node.ReturnType is { } returnType)
+			_sb.Append(" -> '").Append(returnType.AsSpan()).Append('\'');
+		
 		VisitNode(node.Body, true);
 	}
+	
+	public void Visit(ParameterNode node) =>
+		_sb.Append(node.Identifier.AsSpan()).Append(": ").Append(node.Type.AsSpan());
 	
 	public void Visit(LiteralExpressionNode node)
 	{

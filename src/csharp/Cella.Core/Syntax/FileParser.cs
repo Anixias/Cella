@@ -183,36 +183,92 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName) : 
 		return new(new(parts.ToImmutableArray()), import);
 	}
 	
+	// TODO Move signature parsing to another function
 	private FunctionNode? ParseFunction(ref int index, Token identifier, IEnumerable<Token> modifiers)
 	{
-		// When this is called, the identifier and fun/entry keywords are already consumed
+		// When this is called, the identifier and fun keyword are already consumed
 		// Caller is expected to resync in case of errors
 		
 		// @TODO Diagnostics
 		
+		var parameters = new List<ParameterNode>();
+		
 		// Parentheses are optional for function declarations
 		if (Match(ref index, TokenType.OpOpenParen))
 		{
-			// @TODO Parameter list
-			
 			if (!Match(ref index, TokenType.OpCloseParen))
-				return null;
+			{
+				if (ParseParameterList(ref index) is not { } parameterList)
+					return null;
+				
+				parameters.AddRange(parameterList);
+				
+				// TODO Diagnostics
+				if (!Match(ref index, TokenType.OpCloseParen))
+					return null;
+			}
 		}
 		
-		// @TODO Optional return type
-		
-		if (!Match(ref index, TokenType.OpArrow))
-			return null;
-		
 		// @TODO Return type should be more complex than a simple identifier token
-		if (!Match(ref index, out var returnType, TokenType.Identifier))
-			return null;
+		Token? returnType;
+		if (Match(ref index, TokenType.OpArrow))
+		{
+			if (!Match(ref index, out var type, TokenType.Identifier))
+				return null;
+			
+			returnType = type;
+		}
+		else
+			returnType = null;
 		
 		// TODO Allow parsing body as a single expression (with return type inference?)
 		if (ParseBlock(ref index) is not { } body)
 			return null;
 		
-		return new(identifier, modifiers, returnType, body);
+		return new(identifier, modifiers, parameters, returnType, body);
+	}
+	
+	private List<ParameterNode>? ParseParameterList(ref int index)
+	{
+		var result = new List<ParameterNode>();
+		
+		if (ParseParameter(ref index) is not { } firstParameter)
+			return null;
+		
+		result.Add(firstParameter);
+		
+		while (Match(ref index, TokenType.OpComma))
+		{
+			if (ParseParameter(ref index) is not { } parameter)
+				return null;
+			
+			result.Add(parameter);
+		}
+		
+		return result;
+	}
+	
+	private ParameterNode? ParseParameter(ref int index)
+	{
+		// TODO Diagnostics
+		
+		// TODO Attempt resync 
+		if (!Match(ref index, out var identifier, TokenType.Identifier))
+			return null;
+		
+		// TODO Potentially make type optional, inferred from default or make auto-generic?
+		if (!Match(ref index, TokenType.OpColon))
+			return null;
+		
+		// TODO Type should be more complex than a simple identifier token
+		if (!Match(ref index, out var typeToken, TokenType.Identifier))
+			return null;
+		
+		if (!Match(ref index, TokenType.OpEqual))
+			return new(identifier, typeToken, null);
+		
+		var defaultValue = ParseExpression(ref index);
+		return new(identifier, typeToken, defaultValue);
 	}
 	
 	private BlockStatementNode? ParseBlock(ref int index)
@@ -263,7 +319,7 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName) : 
 	
 	private VarStatementNode? ParseVarStatement(ref int index, Token varToken)
 	{
-		// varToken already consume when this function is called
+		// varToken already consumed when this function is called
 		
 		// TODO Diagnostics
 		
@@ -293,7 +349,7 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName) : 
 	
 	private ReturnStatementNode ParseReturnStatement(ref int index, Token retToken)
 	{
-		// retToken already consume when this function is called
+		// retToken already consumed when this function is called
 		
 		// @TODO Diagnostics
 		var range = retToken.SourceLocation.Range;

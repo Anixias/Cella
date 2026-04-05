@@ -44,7 +44,7 @@ public readonly struct ResolutionContext
 			return localSymbol;
 		
 		// TODO Also check type parameters
-		if (ContainingFunction?.Symbol.Parameters.GetValueOrDefault(name) is { } param)
+		if (ContainingFunction?.Symbol.Parameters.FirstOrDefault(p => p.Name == name) is { } param)
 			return param;
 		
 		for (var type = ContainingType; type is not null; type = type.ContainingType)
