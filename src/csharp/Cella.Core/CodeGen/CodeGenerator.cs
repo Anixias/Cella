@@ -41,6 +41,8 @@ public sealed unsafe class CodeGenerator : IDisposable
 	private readonly Dictionary<TypeSymbol, LLVMTypeRef> _typeMap = [];
 	private readonly Dictionary<FunctionInfo, LLVMFunctionInfo> _funMap = [];
 	private readonly Dictionary<VariableInfo, LLVMValueRef> _varMap = [];
+	private readonly LLVMValueRef _true = LLVMValueRef.CreateConstInt(LLVMTypeRef.Int1, 1uL);
+	private readonly LLVMValueRef _false = LLVMValueRef.CreateConstInt(LLVMTypeRef.Int1, 0uL);
 	
 	public CodeGenerator(CodeGenConfig config)
 	{
@@ -56,6 +58,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 		_typeMap[NativeSymbols.Int32] = LLVMTypeRef.Int32;
 		_typeMap[NativeSymbols.Int64] = LLVMTypeRef.Int64;
 		_typeMap[NativeSymbols.Int128] = LLVMTypeRef.Int128;
+		_typeMap[NativeSymbols.Bool] = LLVMTypeRef.Int1;
 	}
 	
 	public string? Generate(LoweredModule module)
@@ -332,6 +335,9 @@ public sealed unsafe class CodeGenerator : IDisposable
 					words[1] = unchecked((ulong)(i128 >> 64));
 					return LLVMValueRef.CreateConstIntOfArbitraryPrecision(type, words);
 				}
+				
+				case PrimitiveTypeKind.Bool:
+					return (bool)value ? _true : _false;
 			}
 		}
 		

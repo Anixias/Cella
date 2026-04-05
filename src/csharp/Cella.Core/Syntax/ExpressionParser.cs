@@ -13,6 +13,8 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 	
 	private static readonly HashSet<TokenType> _literalTypes =
 	[
+		TokenType.KeywordTrue,
+		TokenType.KeywordFalse,
 		TokenType.IntegerLiteral
 	];
 	

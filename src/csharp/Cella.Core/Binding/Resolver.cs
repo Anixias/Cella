@@ -145,8 +145,13 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 		TypeSymbol? type = null;
 		object? value = null;
 		
-		if (node.Token.Type == TokenType.IntegerLiteral)
+		var tokenType = node.Token.Type;
+		if (tokenType == TokenType.IntegerLiteral)
 			(type, value) = ParseInteger(valueSpan, CurrentTargetType);
+		else if (tokenType == TokenType.KeywordTrue)
+			(type, value) = (NativeSymbols.Bool, true);
+		else if (tokenType == TokenType.KeywordFalse)
+			(type, value) = (NativeSymbols.Bool, false);
 		
 		// TODO We should emit diagnostics here
 		type ??= NativeSymbols.Invalid;
