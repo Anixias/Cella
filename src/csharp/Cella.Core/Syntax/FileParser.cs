@@ -221,7 +221,13 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName) : 
 		else
 			returnType = null;
 		
-		// TODO Allow parsing body as a single expression (with return type inference?)
+		if (Match(ref index, TokenType.OpEqual))
+		{
+			var expression = ParseExpression(ref index);
+			var statement = new ReturnStatementNode(expression.SourceLocation, expression);
+			return new(identifier, modifiers, parameters, returnType, statement);
+		}
+		
 		if (ParseBlock(ref index) is not { } body)
 			return null;
 		

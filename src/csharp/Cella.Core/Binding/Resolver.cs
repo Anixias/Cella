@@ -77,7 +77,7 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 		};
 		
 		_resolutionContexts.Push(resolutionContext);
-		var body = Visit(node.Body);
+		var body = VisitNode(node.Body);
 		_resolutionContexts.Pop();
 		
 		return new ResolvedFunctionNode(info, body);
