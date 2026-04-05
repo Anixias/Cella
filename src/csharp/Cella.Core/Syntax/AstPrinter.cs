@@ -49,8 +49,8 @@ public sealed class AstPrinter : ISyntaxNodeVisitor
 	
 	public void Visit(CallExpressionNode node)
 	{
-		StartLine(IsLast());
-		_sb.Append("CallExpressionNode '").Append(node.Identifier.ToString()).Append('\'');
+		StartLine();
+		_sb.Append("CallExpressionNode '").Append(node.Identifier.AsSpan()).Append('\'');
 		
 		for (var i = 0; i < node.Arguments.Length; i++)
 		{
@@ -61,7 +61,7 @@ public sealed class AstPrinter : ISyntaxNodeVisitor
 	
 	public void Visit(FileNode node)
 	{
-		StartLine(IsLast());
+		StartLine();
 		_sb.Append("FileNode");
 		
 		const int childrenCount = 3;
@@ -91,7 +91,7 @@ public sealed class AstPrinter : ISyntaxNodeVisitor
 						break;
 					
 					case TokenImport ti:
-						_sb.Append(ti.Token.GetText());
+						_sb.Append(ti.Token.AsSpan());
 						break;
 					
 					case ListImport li:
@@ -119,7 +119,7 @@ public sealed class AstPrinter : ISyntaxNodeVisitor
 	
 	public void Visit(BlockStatementNode node)
 	{
-		StartLine(IsLast());
+		StartLine();
 		_sb.Append("BlockStatement");
 		
 		for (var i = 0; i < node.StatementNodes.Length; i++)
@@ -131,7 +131,7 @@ public sealed class AstPrinter : ISyntaxNodeVisitor
 	
 	public void Visit(FunctionNode node)
 	{
-		StartLine(IsLast());
+		StartLine();
 		_sb.Append("FunctionNode '").Append(node.Identifier.AsSpan()).Append('\'');
 		_sb.Append(" -> '").Append(node.ReturnType.AsSpan()).Append('\'');
 		VisitNode(node.Body, true);
@@ -139,21 +139,21 @@ public sealed class AstPrinter : ISyntaxNodeVisitor
 	
 	public void Visit(LiteralExpressionNode node)
 	{
-		StartLine(IsLast());
-		_sb.Append("LiteralExpressionNode: ").Append(node.Token.ToString());
+		StartLine();
+		_sb.Append("LiteralExpressionNode: ").Append(node.Token.AsSpan());
 	}
 	
 	public void Visit(BinaryOpExpressionNode node)
 	{
-		StartLine(IsLast());
-		_sb.Append("BinaryOpExpressionNode: ").Append(node.Op.ToString());
+		StartLine();
+		_sb.Append("BinaryOpExpressionNode: ").Append(node.Op.AsSpan());
 		VisitNode(node.Left, false);
 		VisitNode(node.Right, true);
 	}
 	
 	public void Visit(ReturnStatementNode node)
 	{
-		StartLine(IsLast());
+		StartLine();
 		_sb.Append("ReturnStatementNode");
 		if (node.ExpressionNode is { } expressionNode)
 			VisitNode(expressionNode, true);
@@ -161,9 +161,27 @@ public sealed class AstPrinter : ISyntaxNodeVisitor
 	
 	public void Visit(UnaryOpExpressionNode node)
 	{
-		StartLine(IsLast());
-		_sb.Append("UnaryOpExpressionNode: ").Append(node.Op.ToString());
+		StartLine();
+		_sb.Append("UnaryOpExpressionNode: ").Append(node.Op.AsSpan());
 		VisitNode(node.Operand, true);
+	}
+	
+	public void Visit(VarExpressionNode node)
+	{
+		StartLine();
+		_sb.Append("VarExpressionNode: ").Append(node.Identifier.AsSpan());
+	}
+	
+	public void Visit(VarStatementNode node)
+	{
+		StartLine();
+		_sb.Append("VarStatementNode '").Append(node.Identifier.AsSpan()).Append('\'');
+		
+		if (node.Type is { } type)
+			_sb.Append(" (").Append(type.AsSpan()).Append(')');
+		
+		if (node.ExpressionNode is { } expressionNode)
+			VisitNode(expressionNode, true);
 	}
 	
 	private bool IsLast() => _hasMoreSiblings.Count == 0 || !_hasMoreSiblings[^1];

@@ -34,17 +34,7 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 		TokenType.OpSlash
 	];
 	
-	public override IExpressionNode? Parse(ref int index)
-	{
-		return ParseExpression(ref index);
-		
-		// @TEMP For now, assume the only valid expression is an integer literal
-		if (Match(ref index, out var literal, _literalTypes))
-			return new LiteralExpressionNode(literal);
-		
-		// @TODO Diagnostics
-		return null;
-	}
+	public override IExpressionNode Parse(ref int index) => ParseExpression(ref index);
 	
 	private IExpressionNode ParseExpression(ref int index) => ParseAdditive(ref index);
 	
@@ -107,7 +97,7 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 				return ParseCallExpression(ref index, identifier);
 			
 			// Variable Expression
-			throw new NotImplementedException();
+			return new VarExpressionNode(identifier);
 		}
 		
 		return ParseLiteral(ref index);

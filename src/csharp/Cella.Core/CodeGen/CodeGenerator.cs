@@ -192,12 +192,32 @@ public sealed unsafe class CodeGenerator : IDisposable
 			var llvmBlock = blockMap[block];
 			builder.PositionAtEnd(llvmBlock);
 			
-			// TODO Emit instructions
+			foreach (var instruction in block.Instructions)
+				EmitInstruction(builder, instruction, blockMap);
 			
 			EmitTerminator(builder, block.Terminator, blockMap);
 		}
 		
 		functionValue.VerifyFunction(LLVMVerifierFailureAction.LLVMAbortProcessAction);
+	}
+	
+	private void EmitInstruction(LLVMBuilderRef builder, IInstruction instruction,
+		Dictionary<BasicBlock, LLVMBasicBlockRef> blockMap)
+	{
+		switch (instruction)
+		{
+			case LocalVarInstruction i:
+			{
+				var type = MapTypeSymbol(i.Symbol.Type);
+				var ptr = builder.BuildAlloca(type, i.Symbol.Name);
+				_varMap[new(i.Symbol, i.Symbol.Type)] = ptr;
+				
+				if (i.Initializer is { } initializer)
+					builder.BuildStore(EmitValue(initializer, builder), ptr);
+				
+				break;
+			}
+		}
 	}
 	
 	private void EmitTerminator(LLVMBuilderRef builder, IBlockTerminator terminator, 

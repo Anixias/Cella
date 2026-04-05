@@ -3,7 +3,7 @@ using Cella.Core.Symbols;
 
 namespace Cella.Core.Binding.Nodes.Expressions;
 
-public sealed class ResolvedFunctionCallExpression(FunctionInfo function,
+public sealed class ResolvedFunctionCallExpressionNode(FunctionInfo function,
 	IEnumerable<IResolvedExpressionNode> arguments) : IResolvedExpressionNode
 {
 	public FunctionInfo Function { get; } = function;

@@ -145,7 +145,13 @@ public sealed class Lowerer : IResolvedDeclarationNodeVisitor
 			currentBlock = CreateBlock("unreachable");
 		}
 		
-		public Value Visit(ResolvedFunctionCallExpression node) =>
+		public void Visit(ResolvedVarStatementNode node)
+		{
+			var value = node.Initializer is null ? null : VisitNode(node.Initializer);
+			currentBlock.Instructions.Add(new LocalVarInstruction(node.Symbol, value));
+		}
+		
+		public Value Visit(ResolvedFunctionCallExpressionNode node) =>
 			new CallValue(node.Function, node.Arguments.Select(VisitNode));
 		
 		public Value Visit(ResolvedLiteralExpressionNode node) => new ConstantValue(node.Type, node.Value);
@@ -157,7 +163,9 @@ public sealed class Lowerer : IResolvedDeclarationNodeVisitor
 			_ => throw new InvalidOperationException()
 		};
 		
-		public Value Visit(ResolvedBinaryOpExpressionNode node)=> node.Op switch
+		public Value Visit(ResolvedVarExpressionNode node) => new VariableValue(new(node.Symbol, node.Type));
+		
+		public Value Visit(ResolvedBinaryOpExpressionNode node) => node.Op switch
 		{
 			BinaryOperation.Addition => new AddValue(node.Type, VisitNode(node.Left), VisitNode(node.Right)),
 			BinaryOperation.Subtraction => new SubValue(node.Type, VisitNode(node.Left), VisitNode(node.Right)),

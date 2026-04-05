@@ -114,6 +114,7 @@ public sealed class TokenType
 	
 	// Global keywords
 	public static readonly TokenType KeywordRet = CreateKeyword("ret");
+	public static readonly TokenType KeywordVar = CreateKeyword("var");
 	
 	// Contextual Keywords
 	public static readonly TokenType KeywordMod = CreateContextualKeyword("mod");
@@ -139,6 +140,7 @@ public sealed class TokenType
 	public static readonly TokenType OpSlash = CreateOperator("/");
 	public static readonly TokenType OpDot = CreateOperator(".");
 	public static readonly TokenType OpComma = CreateOperator(",");
+	public static readonly TokenType OpEqual = CreateOperator("=");
 	
 	#endregion
 }

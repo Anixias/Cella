@@ -1,6 +1,7 @@
 ﻿using System.Collections.Immutable;
 using Cella.Core.Binding;
 using Cella.Core.Syntax;
+using Cella.Core.Syntax.Nodes;
 using Cella.Core.Syntax.Nodes.Declarations;
 using Cella.Core.Text;
 
@@ -91,16 +92,26 @@ public sealed class PrimitiveType(string name, PrimitiveTypeKind kind) : TypeSym
 	public PrimitiveTypeKind Kind { get; } = kind;
 }
 
-public abstract class VariableSymbol(string name, SourceLocation definition)
-	: Symbol(name), IDefinedSymbol
+public abstract class VariableSymbol(Token identifier)
+	: Symbol(identifier.GetText()), IDefinedSymbol
 {
-	public SourceLocation Definition { get; } = definition;
+	public SourceLocation Definition { get; } = identifier.SourceLocation;
 }
 
 // TODO: Syntax node?
 // TODO: Initializer? Or is that stored elsewhere?
-public sealed class ParameterSymbol(string name, SourceLocation definition)
-	: VariableSymbol(name, definition);
+// TODO: Bind whether it has a constant initializer and no reassignments
+public sealed class LocalVariableSymbol(VarStatementNode syntax, TypeSymbol type)
+	: VariableSymbol(syntax.Identifier)
+{
+	public VarStatementNode Syntax { get; } = syntax;
+	public TypeSymbol Type { get; } = type;
+}
+
+// TODO: Syntax node?
+// TODO: Initializer? Or is that stored elsewhere?
+public sealed class ParameterSymbol(Token identifier)
+	: VariableSymbol(identifier);
 
 // TODO Throw errors when symbols resolved as ambiguous
 public sealed class AmbiguousSymbol(string name, IEnumerable<Symbol> candidates) : Symbol(name)

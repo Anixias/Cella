@@ -29,8 +29,25 @@ public static class LoweredModulePrinter
 				foreach (var instruction in block.Instructions)
 				{
 					sb.Append(' ', instructionIndent);
-					sb.AppendLine("[??]");
-					// TODO Print instructions
+					
+					switch (instruction)
+					{
+						case LocalVarInstruction i:
+							sb.Append(i.Symbol.Type.Name).Append(" $").Append(i.Symbol.Name);
+							if (i.Initializer is { } initializer)
+							{
+								sb.Append(" = ");
+								PrintValue(sb, initializer);
+							}
+							
+							sb.AppendLine();
+							
+							break;
+						
+						default:
+							sb.AppendLine("[??]");
+							break;
+					}
 				}
 				
 				sb.Append(' ', instructionIndent);

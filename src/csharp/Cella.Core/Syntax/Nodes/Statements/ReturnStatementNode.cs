@@ -1,5 +1,4 @@
-﻿using System.Collections.Immutable;
-using Cella.Core.Text;
+﻿using Cella.Core.Text;
 
 namespace Cella.Core.Syntax.Nodes;
 

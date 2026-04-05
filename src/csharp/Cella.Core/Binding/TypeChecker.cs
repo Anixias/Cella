@@ -60,6 +60,21 @@ public sealed class TypeChecker : IResolvedStatementNodeVisitor, IResolvedDeclar
 				$"Cannot return value of type '{actual?.Name ?? "void"}': Expected type '{expected?.Name ?? "void"}'");
 	}
 	
+	public void Visit(ResolvedVarStatementNode node)
+	{
+		var expected = node.Symbol.Type;
+		if (expected == NativeSymbols.Invalid && node.Initializer is null)
+		{
+			_diagnostics.Add("Implicitly-typed local variable must have an initializer");
+			return;
+		}
+		
+		var actual = node.Initializer?.Type ?? NativeSymbols.Invalid;
+		if (!AreTypesCompatible(expected, actual))
+			_diagnostics.Add(
+				$"Cannot assign value of type '{actual.Name}': Expected type '{expected.Name}'");
+	}
+	
 	// TEMP Will need implicit conversions, subtyping, traits/interfaces, constraints, etc.
 	private bool AreTypesCompatible(TypeSymbol? expected, TypeSymbol? actual) => expected == actual;
 }

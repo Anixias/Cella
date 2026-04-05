@@ -249,16 +249,60 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName) : 
 	{
 		// @TODO Diagnostics
 		
+		// Variable declaration statement
+		if (Match(ref index, out var varToken, TokenType.KeywordVar))
+			return ParseVarStatement(ref index, varToken);
+		
 		// Return statement
-		if (Match(ref index, out var ret, TokenType.KeywordRet))
-			return ParseReturnStatement(ref index, ret);
+		if (Match(ref index, out var retToken, TokenType.KeywordRet))
+			return ParseReturnStatement(ref index, retToken);
 		
 		return null;
 	}
 	
-	private ReturnStatementNode? ParseReturnStatement(ref int index, Token retToken)
+	private VarStatementNode? ParseVarStatement(ref int index, Token varToken)
 	{
-		// Ret token already consume when this function is called
+		// varToken already consume when this function is called
+		
+		// TODO Diagnostics
+		
+		// TODO Attempt resync 
+		if (!Match(ref index, out var identifier, TokenType.Identifier))
+			return null;
+		
+		Token? type = null;
+		if (Match(ref index, TokenType.OpColon))
+		{
+			// TODO Type should be more complex than a simple identifier token
+			if (!Match(ref index, out var typeToken, TokenType.Identifier))
+				return null;
+			
+			type = typeToken;
+		}
+		
+		IExpressionNode? initializer = null;
+		var range = varToken.SourceLocation.Range;
+		if (Match(ref index, TokenType.OpEqual))
+		{
+			var expressionIndex = index;
+			initializer = ParseExpression(ref expressionIndex);
+			
+			if (initializer is not null)
+			{
+				index = expressionIndex;
+				range = range.Join(initializer.SourceLocation.Range);
+			}
+		}
+		
+		var source = varToken.SourceLocation.Source;
+		var sourceLocation = new SourceLocation(source, range);
+		
+		return new(sourceLocation, identifier, type, initializer);
+	}
+	
+	private ReturnStatementNode ParseReturnStatement(ref int index, Token retToken)
+	{
+		// retToken already consume when this function is called
 		
 		// @TODO Diagnostics
 		

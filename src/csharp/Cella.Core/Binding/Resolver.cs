@@ -118,7 +118,7 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 			_importedFunctions.TryAdd(function, info);
 		}
 		
-		return new ResolvedFunctionCallExpression(info, node.Arguments.Select(VisitNode));
+		return new ResolvedFunctionCallExpressionNode(info, node.Arguments.Select(VisitNode));
 	}
 	
 	public IResolvedNode Visit(LiteralExpressionNode node)
@@ -164,6 +164,60 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 		// TODO Based on type of sub-expression and the op token, we search for operator overloads
 		
 		return new ResolvedUnaryOpExpressionNode(NativeSymbols.Invalid, op, operand);
+	}
+	
+	public IResolvedNode Visit(VarExpressionNode node)
+	{
+		var resolutionContext = CurrentResolutionContext;
+		var varName = node.Identifier.GetText();
+		var symbol = resolutionContext.Resolve(varName);
+		
+		// TODO Diagnostics, emit invalid expression instead of throwing exceptions
+		if (symbol is null)
+			throw new Exception($"Symbol '{varName}' not found in this scope");
+		
+		switch (symbol)
+		{
+			case LocalVariableSymbol v:
+				return new ResolvedVarExpressionNode(v, v.Type);
+			
+			case VariableSymbol v:
+				if (!_assemblySignatureTable.VariableTypes.TryGetValue(v, out var type))
+					type = _dependencySignatureTable.VariableTypes[v];
+				
+				return new ResolvedVarExpressionNode(v, type);
+			
+			default:
+				throw new Exception($"Symbol '{varName}' is not a variable");
+		}
+	}
+	
+	public IResolvedNode Visit(VarStatementNode node)
+	{
+		var resolutionContext = CurrentResolutionContext;
+		
+		TypeSymbol? type;
+		if (node.Type is { } specifiedType)
+			type = resolutionContext.Resolve(specifiedType.GetText()) as TypeSymbol;
+		else
+			type = null;
+		
+		IResolvedExpressionNode? initializer;
+		if (node.ExpressionNode is { } initializerNode)
+		{
+			_targetTypes.Push(type);
+			initializer = VisitNode(initializerNode);
+			_targetTypes.Pop();
+		}
+		else
+			initializer = null;
+		
+		type ??= initializer?.Type ?? NativeSymbols.Invalid;
+		
+		var symbol = new LocalVariableSymbol(node, type);
+		resolutionContext.LocalScope!.Define(symbol);
+		
+		return new ResolvedVarStatementNode(symbol, initializer);
 	}
 	
 	public IResolvedNode Visit(BinaryOpExpressionNode node)
