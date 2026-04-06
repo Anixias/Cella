@@ -1,4 +1,6 @@
 ﻿using System.Collections;
+using System.Globalization;
+using System.Text;
 
 namespace Cella.Core.Text;
 
@@ -27,15 +29,15 @@ public class Scanner : IScanner
 		if (char.IsLetter(character) || character == '_')
 			return ScanIdentifier(position);
 		
-		/*
+		
 		switch (character)
 		{
 			case '"':
 				return ScanString(position);
 			
-			case '\'':
-				return ScanChar(position);
-		}*/
+			/*case '\'':
+				return ScanChar(position);*/
+		}
 		
 		if (TryScanComment(position, out var comment))
 			return comment;
@@ -198,7 +200,6 @@ public class Scanner : IScanner
 		return false;
 	}
 	
-	/*
 	private ScanResult ScanString(int position)
 	{
 		var end = position + 1;
@@ -228,13 +229,11 @@ public class Scanner : IScanner
 				case '{' when !escaped:
 					interpolated = true;
 					interpolationLevel++;
-					end++;
-					continue;
+					break;
 				
 				case '}' when interpolationLevel > 0:
 					interpolationLevel--;
-					end++;
-					continue;
+					break;
 				
 				case '\\':
 					escaped = !escaped;
@@ -250,7 +249,7 @@ public class Scanner : IScanner
 		
 		if (!isValid)
 		{
-			var invalidToken = new Token(TokenType.InvalidStringLiteral, new TextRange(position, end), Source);
+			var invalidToken = new Token(TokenType.Invalid, Source, new TextRange(position, end));
 			return new ScanResult(invalidToken, end);
 		}
 		
@@ -258,23 +257,24 @@ public class Scanner : IScanner
 		{
 			var value = UnescapeString(Source.GetText(new TextRange(position + 1, end - 1)), true);
 			
-			if (!value.valid)
+			if (!value.IsValid)
 			{
-				var invalidToken = new Token(TokenType.InvalidStringLiteral, new TextRange(position, end), Source);
+				var invalidToken = new Token(TokenType.Invalid, Source, new TextRange(position, end));
 				return new ScanResult(invalidToken, end);
 			}
 			
-			var token = new Token(TokenType.StringLiteral, new TextRange(position, end), Source, value.result);
-			
+			var token = new Token(TokenType.StringLiteral, Source, new TextRange(position, end), value.Result);
 			return new ScanResult(token, end);
 		}
-		else
+		
+		throw new NotImplementedException();
+		/*else
 		{
 			// Don't escape interpolated strings -- let the parser do that!
 			var value = Source.GetText(new TextRange(position + 1, end - 1));
 			var token = new Token(TokenType.InterpolatedStringLiteral, new TextRange(position, end), Source, value);
 			return new ScanResult(token, end);
-		}
+		}*/
 	}
 	
 	/// <summary>
@@ -283,7 +283,7 @@ public class Scanner : IScanner
 	/// <param name="text">The string to unescape</param>
 	/// <param name="escapeOpenBrace">Whether to allow \{ as a valid escape character</param>
 	/// <returns>A tuple: (result, valid)</returns>
-	public static (string result, bool valid) UnescapeString(string text, bool escapeOpenBrace = false)
+	public static (string Result, bool IsValid) UnescapeString(ReadOnlySpan<char> text, bool escapeOpenBrace = false)
 	{
 		var result = new StringBuilder();
 		var escaped = false;
@@ -377,11 +377,11 @@ public class Scanner : IScanner
 					}
 					else
 					{
-						var sequence = text.Substring(i + 1, utf16Length);
+						var sequence = text.Slice(i + 1, utf16Length);
 						i += utf16Length;
 						
 						var sequenceValue = uint.Parse(sequence, NumberStyles.AllowHexSpecifier);
-						var chars = ConvertUnicodeCodePointToUTF8(sequenceValue);
+						var chars = ConvertUnicodeCodePointToUtf8(sequenceValue);
 						var str = Encoding.UTF8.GetString(chars);
 						result.Append(str);
 					}
@@ -389,7 +389,7 @@ public class Scanner : IScanner
 					break;
 				
 				case 'U':
-					// Todo: Test UTF32
+					// TODO Test UTF32
 					const int utf32Length = 8;
 					if (i + utf32Length >= text.Length)
 					{
@@ -398,7 +398,7 @@ public class Scanner : IScanner
 					}
 					else
 					{
-						var sequence = text.Substring(i + 1, utf32Length);
+						var sequence = text.Slice(i + 1, utf32Length);
 						i += utf32Length;
 						
 						var sequenceValue = uint.Parse(sequence, NumberStyles.AllowHexSpecifier);
@@ -412,7 +412,7 @@ public class Scanner : IScanner
 		return (result.ToString(), valid);
 	}
 	
-	private static byte[] ConvertUnicodeCodePointToUTF8(uint codePoint)
+	private static byte[] ConvertUnicodeCodePointToUtf8(uint codePoint)
 	{
 		return codePoint switch
 		{
@@ -429,21 +429,24 @@ public class Scanner : IScanner
 			
 			<= 0xFFFFu =>
 			[
-				(byte)(0xE0 | (codePoint >> 12)), (byte)(0x80 | ((codePoint >> 6) & 0x3F)),
+				(byte)(0xE0 | (codePoint >> 12)),
+				(byte)(0x80 | ((codePoint >> 6) & 0x3F)),
 				(byte)(0x80 | (codePoint & 0x3F))
 			],
 			
 			<= 0x10FFFFu =>
 			[
-				(byte)(0xF0 | (codePoint >> 18)), (byte)(0x80 | ((codePoint >> 12) & 0x3F)),
-				(byte)(0x80 | ((codePoint >> 6) & 0x3F)), (byte)(0x80 | (codePoint & 0x3F))
+				(byte)(0xF0 | (codePoint >> 18)),
+				(byte)(0x80 | ((codePoint >> 12) & 0x3F)),
+				(byte)(0x80 | ((codePoint >> 6) & 0x3F)),
+				(byte)(0x80 | (codePoint & 0x3F))
 			],
 			
 			_ => Array.Empty<byte>()
 		};
 	}
 	
-	private ScanResult ScanChar(int position)
+	/*private ScanResult ScanChar(int position)
 	{
 		var end = position + 1;
 		var isValid = true;

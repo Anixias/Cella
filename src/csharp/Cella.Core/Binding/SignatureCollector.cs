@@ -63,7 +63,7 @@ public sealed class SignatureCollector : IDeclarationNodeVisitor
 			var paramSymbol = function.Parameters[i];
 			
 			TypeSymbol paramType;
-			if (resolutionContext.Resolve(param.Type.GetText()) is not TypeSymbol paramTypeSymbol)
+			if (resolutionContext.Resolve(param.Type.Text) is not TypeSymbol paramTypeSymbol)
 				paramType = new InvalidType();
 			else
 				paramType = paramTypeSymbol;
@@ -76,7 +76,7 @@ public sealed class SignatureCollector : IDeclarationNodeVisitor
 		TypeSymbol returnType;
 		if (node.ReturnType is not { } returnTypeSyntax)
 			returnType = NativeSymbols.Void;
-		else if (resolutionContext.Resolve(returnTypeSyntax.GetText()) is not TypeSymbol returnTypeSymbol)
+		else if (resolutionContext.Resolve(returnTypeSyntax.Text) is not TypeSymbol returnTypeSymbol)
 			returnType = new InvalidType();
 		else
 			returnType = returnTypeSymbol;
@@ -87,22 +87,53 @@ public sealed class SignatureCollector : IDeclarationNodeVisitor
 		FunctionInfo info;
 		if (_entryPointName is not null && function.Name == _entryPointName && IsEntryPoint(signature))
 		{
-			info = new FunctionInfo(null, function, signature, scope);
+			info = new FunctionInfo(null, function, signature, scope, null);
 			_entryPoints.Add(info);
 		}
 		else
 		{
 			var mangledName = Mangling.Mangle(function, signature, resolutionContext.GetQualifiers());
-			info = new FunctionInfo(mangledName, function, signature, scope);
+			info = new FunctionInfo(mangledName, function, signature, scope, null);
 		}
 		
 		_builder.Functions[function] = info;
 	}
 	
-	public void Visit(ParameterNode node)
+	public void Visit(ExternalFunctionNode node)
 	{
-		throw new NotImplementedException();
+		var function = (FunctionSymbol)_symbolTable.DeclarationSymbols[node];
+		var resolutionContext = CurrentResolutionContext;
+		
+		var paramTypes = new List<TypeSymbol>(node.Parameters.Length);
+		for (var i = 0; i < node.Parameters.Length; i++)
+		{
+			var param = node.Parameters[i];
+			var paramSymbol = function.Parameters[i];
+			
+			TypeSymbol paramType;
+			if (resolutionContext.Resolve(param.Type.Text) is not TypeSymbol paramTypeSymbol)
+				paramType = new InvalidType();
+			else
+				paramType = paramTypeSymbol;
+			
+			paramTypes.Add(paramType);
+			_builder.VariableTypes[paramSymbol] = paramType;
+		}
+		
+		TypeSymbol returnType;
+		if (node.ReturnType is not { } returnTypeSyntax)
+			returnType = NativeSymbols.Void;
+		else if (resolutionContext.Resolve(returnTypeSyntax.Text) is not TypeSymbol returnTypeSymbol)
+			returnType = new InvalidType();
+		else
+			returnType = returnTypeSymbol;
+		
+		var syntax = (ExternalFunctionNode)function.Syntax;
+		var signature = new FunctionSignature(paramTypes, returnType);
+		_builder.Functions[function] = new(null, function, signature, null, syntax.Origin);
 	}
+	
+	public void Visit(ParameterNode node) => throw new InvalidOperationException();
 	
 	private static bool IsEntryPoint(FunctionSignature signature)
 	{
@@ -150,7 +181,7 @@ public sealed class SignatureCollector : IDeclarationNodeVisitor
 		{
 			case TokenImport i:
 			{
-				if (symbols.TryGetValue(i.Token.GetText(), out var symbol))
+				if (symbols.TryGetValue(i.Token.Text, out var symbol))
 					yield return symbol;
 				
 				break;
@@ -160,7 +191,7 @@ public sealed class SignatureCollector : IDeclarationNodeVisitor
 			{
 				foreach (var token in i.Tokens)
 				{
-					if (symbols.TryGetValue(token.GetText(), out var symbol))
+					if (symbols.TryGetValue(token.Text, out var symbol))
 						yield return symbol;
 				}
 				

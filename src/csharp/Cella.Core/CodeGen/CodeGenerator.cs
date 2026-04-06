@@ -1,4 +1,6 @@
-﻿using Cella.Core.Binding;
+﻿using System.Collections.Immutable;
+using System.Diagnostics.CodeAnalysis;
+using Cella.Core.Binding;
 using Cella.Core.Binding.Operations;
 using Cella.Core.CodeGen.Extensions;
 using Cella.Core.Lowering;
@@ -36,6 +38,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 	
 	public string TargetTriple { get; }
 	
+	private readonly AssemblySymbol _assemblySymbol;
 	private readonly CodeGenConfig _config;
 	private readonly string _dataLayoutStr;
 	private readonly LLVMTargetMachineRef _targetMachine;
@@ -44,10 +47,12 @@ public sealed unsafe class CodeGenerator : IDisposable
 	private readonly Dictionary<VariableInfo, LLVMValueRef> _varMap = [];
 	private readonly LLVMValueRef _true = LLVMValueRef.CreateConstInt(LLVMTypeRef.Int1, 1uL);
 	private readonly LLVMValueRef _false = LLVMValueRef.CreateConstInt(LLVMTypeRef.Int1, 0uL);
+	private readonly HashSet<string> _externalLibraries = [];
 	
-	public CodeGenerator(CodeGenConfig config)
+	public CodeGenerator(AssemblySymbol assemblySymbol, CodeGenConfig config)
 	{
 		Init();
+		_assemblySymbol = assemblySymbol;
 		_config = config;
 		(_dataLayoutStr, TargetTriple, _targetMachine) = GetDataLayout(config.TargetConfig);
 		MapNativeSymbols();
@@ -56,13 +61,20 @@ public sealed unsafe class CodeGenerator : IDisposable
 	private void MapNativeSymbols()
 	{
 		_typeMap[NativeSymbols.Void] = LLVMTypeRef.Void;
+		_typeMap[NativeSymbols.Int8] = LLVMTypeRef.Int8;
+		_typeMap[NativeSymbols.Int16] = LLVMTypeRef.Int16;
 		_typeMap[NativeSymbols.Int32] = LLVMTypeRef.Int32;
 		_typeMap[NativeSymbols.Int64] = LLVMTypeRef.Int64;
 		_typeMap[NativeSymbols.Int128] = LLVMTypeRef.Int128;
+		_typeMap[NativeSymbols.UInt8] = LLVMTypeRef.Int8;
+		_typeMap[NativeSymbols.UInt16] = LLVMTypeRef.Int16;
+		_typeMap[NativeSymbols.UInt32] = LLVMTypeRef.Int32;
+		_typeMap[NativeSymbols.UInt64] = LLVMTypeRef.Int64;
+		_typeMap[NativeSymbols.UInt128] = LLVMTypeRef.Int128;
 		_typeMap[NativeSymbols.Bool] = LLVMTypeRef.Int1;
 	}
 	
-	public string? Generate(LoweredModule module)
+	public CodeGenResult Generate(LoweredModule module)
 	{
 		using var llvmModule = LLVMModuleRef.CreateWithName(module.Symbol.Name);
 		var llvmDiBuilder = llvmModule.CreateDIBuilder();
@@ -74,11 +86,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 			BuildModule(llvmModule, llvmDiBuilder, module);
 			
 			if (!llvmModule.TryVerify(LLVMVerifierFailureAction.LLVMAbortProcessAction, out message))
-			{
-				// TEMP
-				Console.WriteLine(message);
-				return null;
-			}
+				return CodeGenResult.Failure with { ErrorMessage = message };
 			
 			llvmDiBuilder.DIBuilderFinalize();
 			
@@ -92,11 +100,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 			{
 				var irFilePath = Path.Combine(_config.OutputConfig.Directory, $"{module.Symbol.Name}.ll");
 				if (!llvmModule.TryPrintToFile(irFilePath, out message))
-				{
-					// TEMP
-					Console.WriteLine(message);
-					return null;
-				}
+					return CodeGenResult.Failure with { ErrorMessage = message };
 			}
 			
 			if (_config.OutputConfig.EmitAssembly)
@@ -104,25 +108,20 @@ public sealed unsafe class CodeGenerator : IDisposable
 				var assemblyFilePath = Path.Combine(_config.OutputConfig.Directory, $"{module.Symbol.Name}.s");
 				if (!_targetMachine.TryEmitToFile(llvmModule, assemblyFilePath, LLVMCodeGenFileType.LLVMAssemblyFile,
 					    out message))
-				{
-					// TEMP
-					Console.WriteLine(message);
-					return null;
-				}
+					return CodeGenResult.Failure with { ErrorMessage = message };
 			}
 			
 			var objectFilePath = Path.Combine(_config.OutputConfig.Directory, $"{module.Symbol.Name}.o");
 			if (_targetMachine.TryEmitToFile(llvmModule, objectFilePath, LLVMCodeGenFileType.LLVMObjectFile,
 				    out message))
-				return objectFilePath;
+				return new(true, objectFilePath, null, _externalLibraries);
 			
-			// TEMP
-			Console.WriteLine(message);
-			return null;
+			return CodeGenResult.Failure with { ErrorMessage = message };
 			
 		}
 		finally
 		{
+			_externalLibraries.Clear();
 			LLVM.DisposeDIBuilder((LLVMOpaqueDIBuilder*)llvmDiBuilder.Handle);
 		}
 	}
@@ -134,6 +133,21 @@ public sealed unsafe class CodeGenerator : IDisposable
 	private void BuildModule(LLVMModuleRef llvmModule, LLVMDIBuilderRef llvmDiBuilder, LoweredModule module)
 	{
 		// TODO Build types
+		
+		// Create and map external functions
+		foreach (var function in module.ExternalFunctions)
+		{
+			if (function.Origin is { } origin)
+				_externalLibraries.Add(origin);
+			
+			var info = CreateFunction(llvmModule, function);
+			var llvmFunction = info.FunctionValue;
+			llvmFunction.Linkage = LLVMLinkage.LLVMExternalLinkage;
+			
+			// TODO On Windows, check for DLL Import metadata/annotation/attribute
+			// llvmFunction.DLLStorageClass = LLVMDLLStorageClass.LLVMDLLImportStorageClass;
+			// llvmFunction.Linkage = LLVMLinkage.LLVMDLLImportLinkage;
+		}
 		
 		// Create and map imported functions
 		foreach (var function in module.ImportedFunctions)
@@ -150,11 +164,19 @@ public sealed unsafe class CodeGenerator : IDisposable
 			var info = CreateFunction(llvmModule, function.Info);
 			var llvmFunction = info.FunctionValue;
 			
-			if (function.Info.Symbol.Visibility != Visibility.Public)
-				continue;
-			
-			llvmFunction.DLLStorageClass = LLVMDLLStorageClass.LLVMDLLExportStorageClass;
-			llvmFunction.Linkage = LLVMLinkage.LLVMDLLExportLinkage;
+			if (function.Info.Symbol.Visibility == Visibility.Public)
+			{
+				// TODO Use ExternalLinkage if not building a DLL?
+				llvmFunction.DLLStorageClass = LLVMDLLStorageClass.LLVMDLLExportStorageClass;
+				llvmFunction.Linkage = LLVMLinkage.LLVMDLLExportLinkage;
+			}
+			else
+			{
+				if (_assemblySymbol.EntryPoint is { } entryPoint && entryPoint.Symbol == function.Info.Symbol)
+					llvmFunction.Linkage = LLVMLinkage.LLVMExternalLinkage;
+				else
+					llvmFunction.Linkage = LLVMLinkage.LLVMInternalLinkage;
+			}
 		}
 		
 		// Build function bodies
@@ -375,6 +397,12 @@ public sealed unsafe class CodeGenerator : IDisposable
 		{
 			switch (primitiveType.Kind)
 			{
+				case PrimitiveTypeKind.Int8:
+					return LLVMValueRef.CreateConstInt(type, unchecked((ulong)(sbyte)value), true);
+				
+				case PrimitiveTypeKind.Int16:
+					return LLVMValueRef.CreateConstInt(type, unchecked((ulong)(short)value), true);
+				
 				case PrimitiveTypeKind.Int32:
 					return LLVMValueRef.CreateConstInt(type, unchecked((ulong)(int)value), true);
 				
@@ -388,6 +416,28 @@ public sealed unsafe class CodeGenerator : IDisposable
 					Span<ulong> words = stackalloc ulong[2];
 					words[0] = unchecked((ulong)i128);
 					words[1] = unchecked((ulong)(i128 >> 64));
+					return LLVMValueRef.CreateConstIntOfArbitraryPrecision(type, words);
+				}
+				
+				case PrimitiveTypeKind.UInt8:
+					return LLVMValueRef.CreateConstInt(type, (byte)value, true);
+				
+				case PrimitiveTypeKind.UInt16:
+					return LLVMValueRef.CreateConstInt(type, (ushort)value, true);
+				
+				case PrimitiveTypeKind.UInt32:
+					return LLVMValueRef.CreateConstInt(type, (uint)value, true);
+				
+				case PrimitiveTypeKind.UInt64:
+					return LLVMValueRef.CreateConstInt(type, (ulong)value, true);
+				
+				case PrimitiveTypeKind.UInt128:
+				{
+					// Little Endian
+					var u128 = (UInt128)value;
+					Span<ulong> words = stackalloc ulong[2];
+					words[0] = (ulong)u128;
+					words[1] = (ulong)(u128 >> 64);
 					return LLVMValueRef.CreateConstIntOfArbitraryPrecision(type, words);
 				}
 				
@@ -435,6 +485,30 @@ public sealed unsafe class CodeGenerator : IDisposable
 	public void Dispose()
 	{
 		_targetMachine.Dispose();
+	}
+}
+
+public readonly struct CodeGenResult
+{
+	public static readonly CodeGenResult Failure = new(false, null, null, []);
+	
+	public bool IsSuccess { get; }
+	
+	[MemberNotNullWhen(true, nameof(IsSuccess))]
+	public string? OutputPath { get; }
+	
+	[MemberNotNullWhen(false, nameof(IsSuccess))]
+	public string? ErrorMessage { get; init; }
+	
+	public ImmutableHashSet<string> ExternalLibraries { get; }
+	
+	public CodeGenResult(bool isSuccess, string? outputPath, string? errorMessage,
+		IEnumerable<string> externalLibraries)
+	{
+		IsSuccess = isSuccess;
+		OutputPath = outputPath;
+		ErrorMessage = errorMessage;
+		ExternalLibraries = externalLibraries.ToImmutableHashSet();
 	}
 }
 

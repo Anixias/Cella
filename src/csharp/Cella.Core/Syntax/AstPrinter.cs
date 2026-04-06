@@ -119,7 +119,7 @@ public sealed class AstPrinter : ISyntaxNodeVisitor
 						break;
 					
 					case ListImport li:
-						_sb.Append('[').AppendJoin(", ", li.Tokens.Select(static t => t.GetText())).Append(']');
+						_sb.Append('[').AppendJoin(", ", li.Tokens.Select(static t => t.Text)).Append(']');
 						break;
 				}
 			}, last);
@@ -178,6 +178,31 @@ public sealed class AstPrinter : ISyntaxNodeVisitor
 			_sb.Append(" -> '").Append(returnType.AsSpan()).Append('\'');
 		
 		VisitNode(node.Body, true);
+	}
+	
+	public void Visit(ExternalFunctionNode node)
+	{
+		StartLine();
+		_sb.Append("ExternalFunctionNode '").Append(node.Identifier.AsSpan()).Append('\'');
+		
+		if (node.Parameters.Length > 0)
+		{
+			_sb.Append(" (");
+			
+			for (var i = 0; i < node.Parameters.Length; i++)
+			{
+				var param = node.Parameters[i];
+				if (i > 0)
+					_sb.Append(", ");
+				
+				Visit(param);
+			}
+			
+			_sb.Append(')');
+		}
+		
+		if (node.ReturnType is { } returnType)
+			_sb.Append(" -> '").Append(returnType.AsSpan()).Append('\'');
 	}
 	
 	public void Visit(ParameterNode node) =>

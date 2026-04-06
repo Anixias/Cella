@@ -35,13 +35,16 @@ public sealed class TypeChecker : IResolvedStatementNodeVisitor, IResolvedDeclar
 			return;
 		}
 		
-		// Should be impossible, but just in case
 		if (node.Body is not IResolvedStatementNode statement)
 			return;
 		
 		_returnTypeStack.Push(returnType);
 		VisitNode(statement);
 		_returnTypeStack.Pop();
+	}
+	
+	public void Visit(ResolvedExternalFunctionNode node)
+	{
 	}
 	
 	public void Visit(ResolvedBlockStatementNode node)

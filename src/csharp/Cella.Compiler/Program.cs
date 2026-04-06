@@ -221,24 +221,28 @@ internal static class Program
 		// Phase 7: Code generation
 		string outputPath;
 		{
-			// TODO Need a more robust way of getting libs -- also Executable exports won't make a lib file...
-			var libFiles = dependencyList
-				.Select(static d => Path.ChangeExtension(d.OutputPath, ".lib"))
-				.WhereNot(string.IsNullOrEmpty)
-				.ToImmutableArray();
-			
 			var targetTriple = TargetTriple.FromHost(); // TODO Check CLI args for cross-compilation
 			
 			var objDir = Path.Combine(project.Directory, "obj");
 			var outputConfig = new OutputConfig(objDir, true, true);
 			var targetConfig = new TargetConfig(targetTriple.ToLlvm());
 			var codeGenConfig = new CodeGenConfig(outputConfig, targetConfig);
-			var codeGenerator = new CodeGenerator(codeGenConfig);
+			var codeGenerator = new CodeGenerator(assemblySymbol, codeGenConfig);
 			
+			var externalLibraries = new HashSet<string>();
 			var objectFiles = new List<string>();
 			foreach (var module in lowerer.Modules)
-				if (codeGenerator.Generate(module) is { } objectFile)
-					objectFiles.Add(objectFile);
+			{
+				var result = codeGenerator.Generate(module);
+				if (!result.IsSuccess)
+				{
+					Console.WriteLine($"Error: {result.ErrorMessage}");
+					continue;
+				}
+				
+				objectFiles.Add(result.OutputPath!);
+				externalLibraries.UnionWith(result.ExternalLibraries);
+			}
 			
 			var outputBaseName = project.Project.AssemblyName ?? project.Name;
 			var outputFileName = GetOutputFileName(outputBaseName, targetTriple, outputType);
@@ -247,6 +251,13 @@ internal static class Program
 			
 			if (!Directory.Exists(outputDir))
 				Directory.CreateDirectory(outputDir);
+			
+			// TODO Need a more robust way of getting libs
+			var libFiles = externalLibraries
+				.Concat(dependencyList.Select(static d => d.OutputPath))
+				.Select(static p => Path.ChangeExtension(p, ".lib"))
+				.WhereNot(string.IsNullOrEmpty)
+				.ToImmutableHashSet();
 			
 			// TODO Toolchains and linker paths should be grabbed from environment variables, compiler installation location
 			const string toolchainDir = @"C:\cella\toolchains";

@@ -39,8 +39,8 @@ public sealed class Lowerer : IResolvedDeclarationNodeVisitor
 		_moduleStack.Pop();
 	}
 	
-	// TODO Probably want to mangle names here?
 	public void Visit(ResolvedFunctionNode node) => CurrentModule.Functions.Add(FunctionLowerer.Lower(node));
+	public void Visit(ResolvedExternalFunctionNode node) => CurrentModule.ExternalFunctions.Add(node.FunctionInfo);
 	
 	private sealed class FunctionLowerer : IResolvedStatementNodeVisitor, IResolvedExpressionNodeVisitor<Value>
 	{

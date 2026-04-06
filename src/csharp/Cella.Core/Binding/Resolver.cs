@@ -83,6 +83,13 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 		return new ResolvedFunctionNode(info, body);
 	}
 	
+	public IResolvedNode Visit(ExternalFunctionNode node)
+	{
+		var function = (FunctionSymbol)_symbolTable.DeclarationSymbols[node];
+		var info = _assemblySignatureTable.Functions[function];
+		return new ResolvedExternalFunctionNode(info);
+	}
+	
 	public IResolvedNode Visit(ParameterNode node) => throw new InvalidOperationException();
 	
 	public IResolvedNode Visit(BlockStatementNode node)
@@ -119,7 +126,7 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 	public IResolvedNode Visit(CallExpressionNode node)
 	{
 		var resolutionContext = CurrentResolutionContext;
-		var functionName = node.Identifier.GetText();
+		var functionName = node.Identifier.Text;
 		var symbol = resolutionContext.Resolve(functionName);
 		
 		// TODO Diagnostics, emit invalid expression instead of throwing exceptions
@@ -135,7 +142,17 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 			_importedFunctions.TryAdd(function, info);
 		}
 		
-		return new ResolvedFunctionCallExpressionNode(info, node.Arguments.Select(VisitNode));
+		var paramTypes = info.Signature.ParameterTypes;
+		var args = new List<IResolvedExpressionNode>(node.Arguments.Length);
+		for (var i = 0; i < node.Arguments.Length; i++)
+		{
+			var paramType = i < paramTypes.Length ? paramTypes[i] : null;
+			_targetTypes.Push(paramType);
+			args.Add(VisitNode(node.Arguments[i]));
+			_targetTypes.Pop();
+		}
+		
+		return new ResolvedFunctionCallExpressionNode(info, args);
 	}
 	
 	public IResolvedNode Visit(LiteralExpressionNode node)
@@ -162,7 +179,7 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 	public IResolvedNode Visit(VarExpressionNode node)
 	{
 		var resolutionContext = CurrentResolutionContext;
-		var varName = node.Identifier.GetText();
+		var varName = node.Identifier.Text;
 		var symbol = resolutionContext.Resolve(varName);
 		
 		// TODO Diagnostics, emit invalid expression instead of throwing exceptions
@@ -203,7 +220,7 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 		
 		TypeSymbol? type;
 		if (node.Type is { } specifiedType)
-			type = resolutionContext.Resolve(specifiedType.GetText()) as TypeSymbol;
+			type = resolutionContext.Resolve(specifiedType.Text) as TypeSymbol;
 		else
 			type = null;
 		
@@ -321,6 +338,18 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 		if (targetType is PrimitiveType primitiveType)
 			switch (primitiveType.Kind)
 			{
+				case PrimitiveTypeKind.Int8:
+					if (sbyte.TryParse(span, out var sbyteValue))
+						return (NativeSymbols.Int8, sbyteValue);
+					
+					break;
+				
+				case PrimitiveTypeKind.Int16:
+					if (short.TryParse(span, out var shortValue))
+						return (NativeSymbols.Int16, shortValue);
+					
+					break;
+				
 				case PrimitiveTypeKind.Int32:
 					if (int.TryParse(span, out var intValue))
 						return (NativeSymbols.Int32, intValue);
@@ -336,6 +365,36 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 				case PrimitiveTypeKind.Int128:
 					if (Int128.TryParse(span, out var int128Value))
 						return (NativeSymbols.Int128, int128Value);
+					
+					break;
+				
+				case PrimitiveTypeKind.UInt8:
+					if (byte.TryParse(span, out var byteValue))
+						return (NativeSymbols.UInt8, byteValue);
+					
+					break;
+				
+				case PrimitiveTypeKind.UInt16:
+					if (ushort.TryParse(span, out var ushortValue))
+						return (NativeSymbols.UInt16, ushortValue);
+					
+					break;
+				
+				case PrimitiveTypeKind.UInt32:
+					if (uint.TryParse(span, out var uintValue))
+						return (NativeSymbols.UInt32, uintValue);
+					
+					break;
+				
+				case PrimitiveTypeKind.UInt64:
+					if (ulong.TryParse(span, out var ulongValue))
+						return (NativeSymbols.UInt64, ulongValue);
+					
+					break;
+				
+				case PrimitiveTypeKind.UInt128:
+					if (UInt128.TryParse(span, out var uint128Value))
+						return (NativeSymbols.UInt128, uint128Value);
 					
 					break;
 			}

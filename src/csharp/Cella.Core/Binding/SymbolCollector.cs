@@ -42,7 +42,24 @@ public sealed class SymbolCollector : IDeclarationNodeVisitor
 			_builder.DeclarationSymbols[param] = paramSymbol;
 		}
 		
-		var name = node.Identifier.GetText();
+		// TODO Containing function
+		var name = node.Identifier.Text;
+		var function = new FunctionSymbol(name, node, null, parameters);
+		_builder.DeclarationSymbols[node] = function;
+		_symbolsInFile.Add(function);
+	}
+	
+	public void Visit(ExternalFunctionNode node)
+	{
+		var parameters = new List<ParameterSymbol>(node.Parameters.Length);
+		foreach (var param in node.Parameters)
+		{
+			var paramSymbol = new ParameterSymbol(param.Identifier);
+			parameters.Add(paramSymbol);
+			_builder.DeclarationSymbols[param] = paramSymbol;
+		}
+		
+		var name = node.Identifier.Text;
 		var function = new FunctionSymbol(name, node, null, parameters);
 		_builder.DeclarationSymbols[node] = function;
 		_symbolsInFile.Add(function);

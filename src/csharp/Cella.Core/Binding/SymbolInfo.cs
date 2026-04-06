@@ -7,7 +7,8 @@ public readonly record struct FunctionInfo
 	string? MangledName,
 	FunctionSymbol Symbol,
 	FunctionSignature Signature,
-	Scope Scope
+	Scope? Scope,
+	string? Origin
 );
 
 public readonly record struct VariableInfo(VariableSymbol Symbol, TypeSymbol Type);

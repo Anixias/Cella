@@ -54,17 +54,16 @@ public sealed class FileSymbol(FileNode syntax, ModuleSymbol module, IEnumerable
 	// TODO Symbols by name won't work with overloaded functions
 }
 
-// TODO Access visibility modifiers
 // TODO Type parameter symbols
 public sealed class FunctionSymbol
 (
 	string name,
-	FunctionNode syntax,
+	IFunctionNode syntax,
 	FunctionInfo? containingFunction,
 	IEnumerable<ParameterSymbol> parameters
 ) : Symbol(name), IDefinedSymbol
 {
-	public FunctionNode Syntax { get; } = syntax;
+	public IFunctionNode Syntax { get; } = syntax;
 	
 	public Visibility Visibility { get; } = syntax.Modifiers.Any(static t => t.Type == TokenType.KeywordPub)
 		? Visibility.Public
@@ -84,13 +83,19 @@ public abstract class TypeSymbol(string name, TypeSymbol? containingType = null,
 
 public sealed class InvalidType() : TypeSymbol("??");
 
-public sealed class PrimitiveType(string name, PrimitiveTypeKind kind) : TypeSymbol(name)
+public sealed class PrimitiveType(string name, PrimitiveTypeKind kind, int size) : TypeSymbol(name)
 {
 	public PrimitiveTypeKind Kind { get; } = kind;
+	public int Size { get; } = size;
+}
+
+public sealed class PointerType(TypeSymbol baseType) : TypeSymbol($"ptr {baseType.Name}")
+{
+	public TypeSymbol BaseType { get; } = baseType;
 }
 
 public abstract class VariableSymbol(Token identifier)
-	: Symbol(identifier.GetText()), IDefinedSymbol
+	: Symbol(identifier.Text), IDefinedSymbol
 {
 	public SourceLocation Definition { get; } = identifier.SourceLocation;
 }

@@ -106,6 +106,11 @@ public sealed class TokenType
 		IsLiteral = true
 	};
 	
+	public static readonly TokenType StringLiteral = new("string literal")
+	{
+		IsLiteral = true
+	};
+	
 	#region Keywords
 	
 	// Literal keywords
@@ -123,6 +128,8 @@ public sealed class TokenType
 	public static readonly TokenType KeywordFun = CreateContextualKeyword("fun");
 	public static readonly TokenType KeywordUse = CreateContextualKeyword("use");
 	public static readonly TokenType KeywordPub = CreateContextualKeyword("pub");
+	public static readonly TokenType KeywordPtr = CreateContextualKeyword("ptr");
+	public static readonly TokenType KeywordExt = CreateContextualKeyword("ext");
 	
 	#endregion
 	#region Operators

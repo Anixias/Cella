@@ -151,7 +151,7 @@ public abstract class BaseParser<T>(ImmutableArray<Token> tokens) : IParser<T>
 		if (contextualTypes is null || token.Type != TokenType.Identifier)
 			return token;
 		
-		var tokenText = new string(token.GetText());
+		var tokenText = new string(token.Text);
 		if (contextualTypes.TryGetValue(tokenText, out var context))
 			return token with { Type = context };
 		

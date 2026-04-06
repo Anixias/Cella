@@ -4,7 +4,7 @@ namespace Cella.Core.Symbols;
 
 public static class Mangling
 {
-	public static string Mangle(FunctionSymbol symbol, FunctionSignature signature,
+	public static string Mangle(Symbol symbol, FunctionSignature signature,
 		params IEnumerable<string> qualifierParts)
 	{
 		var sb = new StringBuilder()

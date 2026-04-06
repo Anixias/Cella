@@ -8,7 +8,8 @@ namespace Cella.Core.Syntax;
 public sealed class FileParser(ImmutableArray<Token> tokens, string fileName) : BaseParser<FileNode>(tokens)
 {
 	private static readonly Dictionary<string, TokenType> _topLevelContextualKeywords =
-		BuildContextualKeywords(TokenType.KeywordMod, TokenType.KeywordFun, TokenType.KeywordUse, TokenType.KeywordPub);
+		BuildContextualKeywords(TokenType.KeywordMod, TokenType.KeywordFun, TokenType.KeywordUse, TokenType.KeywordPub,
+			TokenType.KeywordExt);
 	
 	private static readonly HashSet<TokenType> _topLevelSyncTypes = [TokenType.OpSemicolon, TokenType.EndOfFile];
 	
@@ -49,6 +50,10 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName) : 
 			if (Match(ref index, _topLevelContextualKeywords, TokenType.KeywordUse))
 				imports.Add(ParseImportExpression(ref index));
 			
+			// Parse external declarations
+			if (Match(ref index, _topLevelContextualKeywords, TokenType.KeywordExt))
+				declarations.AddRange(ParseExternalDeclarations(ref index));
+			
 			// Parse top-level declarations
 			if (Match(ref index, out var identifier, _topLevelContextualKeywords, TokenType.Identifier))
 			{
@@ -58,10 +63,7 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName) : 
 					continue;
 				}
 				
-				var modifiers = new List<Token>();
-				
-				if (Match(ref index, out var pubToken, _topLevelContextualKeywords, TokenType.KeywordPub))
-					modifiers.Add(pubToken);
+				var modifiers = ParseDeclarationModifiers(ref index);
 				
 				// Function
 				if (Match(ref index, _topLevelContextualKeywords, TokenType.KeywordFun))
@@ -106,6 +108,47 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName) : 
 			Imports = imports.ToImmutableArray(),
 			Declarations = declarations.ToImmutableArray()
 		};
+	}
+	
+	private List<Token> ParseDeclarationModifiers(ref int index)
+	{
+		var modifiers = new List<Token>();
+		
+		if (Match(ref index, out var pubToken, _topLevelContextualKeywords, TokenType.KeywordPub))
+			modifiers.Add(pubToken);
+		
+		return modifiers;
+	}
+	
+	private List<IDeclarationNode> ParseExternalDeclarations(ref int index)
+	{
+		// 'ext' token already consumed by caller
+		
+		// TODO Diagnostics
+		
+		// Optional library origin
+		string? origin;
+		if (Match(ref index, TokenType.OpOpenParen))
+		{
+			if (!Match(ref index, out var str, TokenType.StringLiteral))
+				return [];
+			
+			origin = str.Text;
+			
+			if (!Match(ref index, TokenType.OpCloseParen))
+				return [];
+		}
+		else
+			origin = null;
+		
+		if (!Match(ref index, TokenType.OpOpenBrace))
+			return [ParseExternalDeclaration(ref index, origin)];
+		
+		var nodes = new List<IDeclarationNode>();
+		while (!Match(ref index, TokenType.OpCloseBrace))
+			nodes.Add(ParseExternalDeclaration(ref index, origin));
+		
+		return nodes;
 	}
 	
 	private ModuleName ParseModuleName(ref int index)
@@ -183,7 +226,6 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName) : 
 		return new(new(parts.ToImmutableArray()), import);
 	}
 	
-	// TODO Move signature parsing to another function
 	private FunctionNode? ParseFunction(ref int index, Token identifier, IEnumerable<Token> modifiers)
 	{
 		// When this is called, the identifier and fun keyword are already consumed
@@ -191,6 +233,48 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName) : 
 		
 		// @TODO Diagnostics
 		
+		if (ParseFunctionSignature(ref index) is not { } signature)
+			return null;
+		
+		var (parameters, returnType) = signature;
+		
+		if (Match(ref index, TokenType.OpEqual))
+		{
+			var expression = ParseExpression(ref index);
+			var statement = new ReturnStatementNode(expression.SourceLocation, expression);
+			return new(identifier, modifiers, parameters, returnType, statement);
+		}
+		
+		if (ParseBlock(ref index) is not { } body)
+			return null;
+		
+		return new(identifier, modifiers, parameters, returnType, body);
+	}
+	
+	private ExternalFunctionNode? ParseExternalDeclaration(ref int index, string? origin)
+	{
+		// TODO Diagnostics
+		
+		var modifiers = ParseDeclarationModifiers(ref index);
+		
+		if (!Match(ref index, out var identifier, _topLevelContextualKeywords, TokenType.Identifier))
+			return null;
+		
+		if (!Match(ref index, TokenType.OpColon))
+			return null;
+		
+		if (!Match(ref index, _topLevelContextualKeywords, TokenType.KeywordFun))
+			return null;
+		
+		if (ParseFunctionSignature(ref index) is not { } signature)
+			return null;
+		
+		var (parameters, returnType) = signature;
+		return new(identifier, modifiers, parameters, returnType, origin);
+	}
+	
+	private (List<ParameterNode> Parameters, Token? ReturnType)? ParseFunctionSignature(ref int index)
+	{
 		var parameters = new List<ParameterNode>();
 		
 		// Parentheses are optional for function declarations
@@ -221,17 +305,7 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName) : 
 		else
 			returnType = null;
 		
-		if (Match(ref index, TokenType.OpEqual))
-		{
-			var expression = ParseExpression(ref index);
-			var statement = new ReturnStatementNode(expression.SourceLocation, expression);
-			return new(identifier, modifiers, parameters, returnType, statement);
-		}
-		
-		if (ParseBlock(ref index) is not { } body)
-			return null;
-		
-		return new(identifier, modifiers, parameters, returnType, body);
+		return (parameters, returnType);
 	}
 	
 	private List<ParameterNode>? ParseParameterList(ref int index)
