@@ -68,6 +68,30 @@ public sealed class TypeChecker : IResolvedStatementNodeVisitor, IResolvedDeclar
 				if (!IsLValue(e.Left))
 					_diagnostics.Add("Assignment target must be a variable");
 				
+				var expected = e.Left.Type;
+				var actual = e.Right.Type;
+				if (!AreTypesCompatible(expected, actual))
+					_diagnostics.Add($"Cannot assign source type '{actual.Name}' to target type '{expected.Name}'");
+				
+				break;
+			}
+			
+			case ResolvedFunctionCallExpressionNode e:
+			{
+				var args = e.Arguments;
+				var paramTypes = e.Function.Signature.ParameterTypes;
+				if (args.Length != paramTypes.Length)
+					_diagnostics.Add($"Incorrect number of arguments: Expected {paramTypes.Length}, got {args.Length}");
+				
+				for (var i = 0; i < args.Length; i++)
+				{
+					var expected = paramTypes[i];
+					var actual = args[i].Type;
+					
+					if (!AreTypesCompatible(expected, actual))
+						_diagnostics.Add($"Argument type '{actual.Name}' is not assignable to parameter type '{expected.Name}'");
+				}
+				
 				break;
 			}
 		}
@@ -84,7 +108,7 @@ public sealed class TypeChecker : IResolvedStatementNodeVisitor, IResolvedDeclar
 	public void Visit(ResolvedReturnStatementNode node)
 	{
 		var expected = _returnTypeStack.Peek();
-		var actual = node.Expression?.Type;
+		var actual = node.Expression?.Type ?? NativeSymbols.Void;
 		
 		if (!AreTypesCompatible(expected, actual))
 			_diagnostics.Add(

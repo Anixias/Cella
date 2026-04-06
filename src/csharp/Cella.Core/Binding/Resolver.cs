@@ -1,4 +1,5 @@
-﻿using Cella.Core.Binding.Nodes;
+﻿using System.Text;
+using Cella.Core.Binding.Nodes;
 using Cella.Core.Binding.Nodes.Declarations;
 using Cella.Core.Binding.Nodes.Expressions;
 using Cella.Core.Binding.Nodes.Statements;
@@ -169,6 +170,8 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 			(type, value) = (NativeSymbols.Bool, true);
 		else if (tokenType == TokenType.KeywordFalse)
 			(type, value) = (NativeSymbols.Bool, false);
+		else if (tokenType == TokenType.StringLiteral)
+			(type, value) = ParseString(valueSpan, CurrentTargetType);
 		
 		// TODO We should emit diagnostics here
 		type ??= NativeSymbols.Invalid;
@@ -409,5 +412,36 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 			return (NativeSymbols.Int128, int128Value2);
 		
 		return (null, null);
+	}
+	
+	private (TypeSymbol? type, object? value) ParseString(ReadOnlySpan<char> span, TypeSymbol? targetType)
+	{
+		// TODO Check prefixes/suffixes
+		
+		if (targetType is PrimitiveType primitiveType)
+			switch (primitiveType.Kind)
+			{
+				case PrimitiveTypeKind.CStr:
+					return ParseCStr(span);
+			}
+		
+		return ParseStr(span);
+		
+		static (TypeSymbol? type, object? value) ParseStr(ReadOnlySpan<char> span)
+		{
+			var byteCount = Encoding.UTF8.GetByteCount(span);
+			var bytes = new byte[byteCount];
+			Encoding.UTF8.GetBytes(span, bytes);
+			var charCount = (ulong)Encoding.UTF8.GetCharCount(bytes);
+			return (NativeSymbols.Str, new StrValue(charCount, bytes));
+		}
+		
+		static (TypeSymbol? type, object? value) ParseCStr(ReadOnlySpan<char> span)
+		{
+			var byteCount = Encoding.UTF8.GetByteCount(span);
+			var result = new byte[byteCount + 1];
+			Encoding.UTF8.GetBytes(span, result);
+			return (NativeSymbols.CStr, result);
+		}
 	}
 }

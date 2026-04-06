@@ -1,5 +1,6 @@
 ﻿using Cella.Core.Collections;
 using Cella.Core.Lowering;
+using Cella.Core.Symbols;
 
 namespace Cella.Core.Analysis;
 
@@ -17,7 +18,7 @@ public sealed class ControlFlowAnalyzer
 			switch (path.Type)
 			{
 				case BlockPathType.Undefined:
-					if (function.Info.Signature.ReturnType is not null)
+					if (function.Info.Signature.ReturnType != NativeSymbols.Void)
 					{
 						// TODO Implicit void return but we require a return type, error!
 						allPathsReturn = false;

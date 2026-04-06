@@ -42,41 +42,54 @@ public sealed unsafe class CodeGenerator : IDisposable
 	private readonly CodeGenConfig _config;
 	private readonly string _dataLayoutStr;
 	private readonly LLVMTargetMachineRef _targetMachine;
+	private readonly uint _pointerSize;
 	private readonly Dictionary<TypeSymbol, LLVMTypeRef> _typeMap = [];
 	private readonly Dictionary<FunctionInfo, LLVMFunctionInfo> _funMap = [];
 	private readonly Dictionary<VariableInfo, LLVMValueRef> _varMap = [];
 	private readonly LLVMValueRef _true = LLVMValueRef.CreateConstInt(LLVMTypeRef.Int1, 1uL);
 	private readonly LLVMValueRef _false = LLVMValueRef.CreateConstInt(LLVMTypeRef.Int1, 0uL);
 	private readonly HashSet<string> _externalLibraries = [];
+	private readonly Dictionary<byte[], LLVMValueRef> _stringPool = new(ByteArrayComparer.Instance);
+	private LLVMModuleRef currentModule;
 	
 	public CodeGenerator(AssemblySymbol assemblySymbol, CodeGenConfig config)
 	{
 		Init();
 		_assemblySymbol = assemblySymbol;
 		_config = config;
-		(_dataLayoutStr, TargetTriple, _targetMachine) = GetDataLayout(config.TargetConfig);
+		(_dataLayoutStr, TargetTriple, _targetMachine, _pointerSize) = GetDataLayout(config.TargetConfig);
 		MapNativeSymbols();
 	}
 	
 	private void MapNativeSymbols()
 	{
+		// TODO Map address spaces based on target?
+		
+		var intSize = LLVMTypeRef.CreateInt(_pointerSize * 8);
 		_typeMap[NativeSymbols.Void] = LLVMTypeRef.Void;
 		_typeMap[NativeSymbols.Int8] = LLVMTypeRef.Int8;
 		_typeMap[NativeSymbols.Int16] = LLVMTypeRef.Int16;
 		_typeMap[NativeSymbols.Int32] = LLVMTypeRef.Int32;
 		_typeMap[NativeSymbols.Int64] = LLVMTypeRef.Int64;
 		_typeMap[NativeSymbols.Int128] = LLVMTypeRef.Int128;
+		_typeMap[NativeSymbols.IntSize] = intSize;
 		_typeMap[NativeSymbols.UInt8] = LLVMTypeRef.Int8;
 		_typeMap[NativeSymbols.UInt16] = LLVMTypeRef.Int16;
 		_typeMap[NativeSymbols.UInt32] = LLVMTypeRef.Int32;
 		_typeMap[NativeSymbols.UInt64] = LLVMTypeRef.Int64;
 		_typeMap[NativeSymbols.UInt128] = LLVMTypeRef.Int128;
+		_typeMap[NativeSymbols.UIntSize] = intSize;
 		_typeMap[NativeSymbols.Bool] = LLVMTypeRef.Int1;
+		_typeMap[NativeSymbols.Str] =
+			LLVMTypeRef.CreateStruct([intSize, LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0u)], false);
+		
+		_typeMap[NativeSymbols.CStr] = LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0u);
 	}
 	
 	public CodeGenResult Generate(LoweredModule module)
 	{
 		using var llvmModule = LLVMModuleRef.CreateWithName(module.Symbol.Name);
+		currentModule = llvmModule;
 		var llvmDiBuilder = llvmModule.CreateDIBuilder();
 		try
 		{
@@ -122,13 +135,17 @@ public sealed unsafe class CodeGenerator : IDisposable
 		finally
 		{
 			_externalLibraries.Clear();
+			_stringPool.Clear();
 			LLVM.DisposeDIBuilder((LLVMOpaqueDIBuilder*)llvmDiBuilder.Handle);
+			currentModule = default;
 		}
 	}
 	
 	private LLVMTypeRef MapTypeSymbol(TypeSymbol? symbol) => symbol is null
 		? LLVMTypeRef.Void
-		: _typeMap.GetValueOrDefault(symbol, LLVMTypeRef.Void);
+		: _typeMap.TryGetValue(symbol, out var type)
+			? type
+			: throw new InvalidOperationException($"Symbol '{symbol.Name}' not mapped in LLVM");
 	
 	private void BuildModule(LLVMModuleRef llvmModule, LLVMDIBuilderRef llvmDiBuilder, LoweredModule module)
 	{
@@ -295,6 +312,11 @@ public sealed unsafe class CodeGenerator : IDisposable
 				builder.BuildCondBr(condition, blockMap[term.TrueTarget], blockMap[term.FalseTarget]);
 				break;
 			
+			// This happens with an empty function body
+			case UndefinedTerminator:
+				builder.BuildRetVoid();
+				break;
+			
 			default:
 				throw new InvalidOperationException();
 		}
@@ -420,16 +442,16 @@ public sealed unsafe class CodeGenerator : IDisposable
 				}
 				
 				case PrimitiveTypeKind.UInt8:
-					return LLVMValueRef.CreateConstInt(type, (byte)value, true);
+					return LLVMValueRef.CreateConstInt(type, (byte)value);
 				
 				case PrimitiveTypeKind.UInt16:
-					return LLVMValueRef.CreateConstInt(type, (ushort)value, true);
+					return LLVMValueRef.CreateConstInt(type, (ushort)value);
 				
 				case PrimitiveTypeKind.UInt32:
-					return LLVMValueRef.CreateConstInt(type, (uint)value, true);
+					return LLVMValueRef.CreateConstInt(type, (uint)value);
 				
 				case PrimitiveTypeKind.UInt64:
-					return LLVMValueRef.CreateConstInt(type, (ulong)value, true);
+					return LLVMValueRef.CreateConstInt(type, (ulong)value);
 				
 				case PrimitiveTypeKind.UInt128:
 				{
@@ -441,6 +463,22 @@ public sealed unsafe class CodeGenerator : IDisposable
 					return LLVMValueRef.CreateConstIntOfArbitraryPrecision(type, words);
 				}
 				
+				case PrimitiveTypeKind.Str:
+				{
+					var lengthType = MapTypeSymbol(NativeSymbols.UIntSize);
+					var str = (StrValue)value;
+					var ptr = GetOrCreateStringGlobal(str.Bytes);
+					
+					var length = LLVMValueRef.CreateConstInt(lengthType, str.Length);
+					return LLVMValueRef.CreateConstStruct([length, ptr], false);
+				}
+				
+				case PrimitiveTypeKind.CStr:
+				{
+					var bytes = (byte[])value;
+					return GetOrCreateStringGlobal(bytes);
+				}
+				
 				case PrimitiveTypeKind.Bool:
 					return (bool)value ? _true : _false;
 			}
@@ -449,7 +487,29 @@ public sealed unsafe class CodeGenerator : IDisposable
 		throw new InvalidOperationException();
 	}
 	
-	private static (string DataLayout, string TargetTriple, LLVMTargetMachineRef TargetMachine)
+	private LLVMValueRef GetOrCreateStringGlobal(byte[] bytes)
+	{
+		if (_stringPool.TryGetValue(bytes, out var existing))
+			return existing;
+		
+		var byteType = MapTypeSymbol(NativeSymbols.UInt8);
+		var byteValues = bytes.Select(b => LLVMValueRef.CreateConstInt(byteType, b));
+		var arrayValue = LLVMValueRef.CreateConstArray(byteType, [..byteValues]);
+		
+		var global = currentModule.AddGlobal(arrayValue.TypeOf, string.Empty);
+		global.Initializer = arrayValue;
+		global.IsGlobalConstant = true;
+		global.Linkage = LLVMLinkage.LLVMLinkerPrivateLinkage;
+		global.HasUnnamedAddr = true;
+		
+		var ptr = LLVMValueRef.CreateConstInBoundsGEP2(byteType, global,
+			[LLVMValueRef.CreateConstInt(LLVMTypeRef.Int32, 0)]);
+		
+		_stringPool[bytes] = ptr;
+		return ptr;
+	}
+	
+	private static (string DataLayout, string TargetTriple, LLVMTargetMachineRef TargetMachine, uint PointerSize)
 		GetDataLayout(TargetConfig? target)
 	{
 		var triple = target?.TargetTriple ?? LLVMTargetRef.DefaultTriple;
@@ -471,7 +531,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 		try
 		{
 			dataLayoutStr = LLVM.CopyStringRepOfTargetData((LLVMOpaqueTargetData*)dataLayout.Handle);
-			return (SpanExtensions.AsString(dataLayoutStr), triple, targetMachine);
+			return (SpanExtensions.AsString(dataLayoutStr), triple, targetMachine, dataLayout.PointerSize());
 		}
 		finally
 		{
@@ -531,3 +591,17 @@ public sealed record TargetConfig
 	string? Cpu = null,
 	string? Features = null
 );
+
+internal sealed class ByteArrayComparer : IEqualityComparer<byte[]>
+{
+	public static ByteArrayComparer Instance { get; } = new();
+	
+	public bool Equals(byte[]? x, byte[]? y) => x is null ? y is null : y is not null && x.AsSpan().SequenceEqual(y);
+	
+	public int GetHashCode(byte[] obj)
+	{
+		var hash = new HashCode();
+		hash.AddBytes(obj);
+		return hash.ToHashCode();
+	}
+}
