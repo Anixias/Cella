@@ -1,8 +1,11 @@
-﻿using Cella.Core.Binding.Nodes.Declarations;
+﻿using Cella.Core.Binding;
+using Cella.Core.Binding.Nodes.Declarations;
 using Cella.Core.Binding.Nodes.Expressions;
 using Cella.Core.Binding.Nodes.Statements;
 using Cella.Core.Binding.Operations;
 using Cella.Core.Symbols;
+using Cella.Core.Syntax.Nodes;
+using Cella.Core.Text;
 
 namespace Cella.Core.Lowering;
 
@@ -156,30 +159,143 @@ public sealed class Lowerer : IResolvedDeclarationNodeVisitor
 		
 		public Value Visit(ResolvedLiteralExpressionNode node) => new ConstantValue(node.Type, node.Value);
 		
-		public Value Visit(ResolvedUnaryOpExpressionNode node) => node.Op switch
-		{
-			UnaryOperation.Identity => VisitNode(node.Operand),
-			UnaryOperation.Negation => new NegValue(node.Type, VisitNode(node.Operand)),
-			_ => throw new InvalidOperationException()
-		};
+		public Value Visit(ResolvedUnaryOpExpressionNode node) =>
+			LowerUnaryOp(VisitNode(node.Operand), node.Op, node.Type);
 		
 		public Value Visit(ResolvedVarExpressionNode node) => new VariableValue(new(node.Symbol, node.Type));
 		
 		public Value Visit(ResolvedBinaryOpExpressionNode node) =>
-			MapBinOp(VisitNode(node.Left), node.Op, VisitNode(node.Right), node.Type);
+			LowerBinOp(VisitNode(node.Left), node.Op, VisitNode(node.Right), node.Type);
 		
-		private static Value MapBinOp(Value left, BinaryOperation op, Value right, TypeSymbol type) => op switch
+		public Value Visit(ResolvedAssignmentExpressionNode node) =>
+			LowerAssignment(VisitNode(node.Left), node.Op, VisitNode(node.Right), node.Type);
+		
+		public Value Visit(ResolvedChainedExpressionNode node)
 		{
-			BinaryOperation.Addition => new AddValue(type, left, right),
-			BinaryOperation.Subtraction => new SubValue(type, left, right),
-			BinaryOperation.Multiplication => new MulValue(type, left, right),
-			BinaryOperation.Division => new DivValue(type, left, right),
-			BinaryOperation.Assignment => new AssignValue(type, left, right),
-			BinaryOperation.AddAssignment => new AssignValue(type, left, new AddValue(type, left, right)),
-			BinaryOperation.SubtractAssignment => new AssignValue(type, left, new SubValue(type, left, right)),
-			BinaryOperation.MultiplyAssignment => new AssignValue(type, left, new MulValue(type, left, right)),
-			BinaryOperation.DivideAssignment => new AssignValue(type, left, new DivValue(type, left, right)),
-			_ => throw new InvalidOperationException()
-		};
+			// First and last operands don't need temporaries, so subtract 2
+			var tempVarCount = node.Operands.Length - 2;
+			var tempVars = new List<VariableInfo>(tempVarCount);
+			var tempValues = new List<Value>(tempVarCount);
+			
+			for (var i = 1; i < node.Operands.Length - 1; i++)
+			{
+				var operand = node.Operands[i];
+				
+				var tempNode = new VarStatementNode(SourceLocation.None,
+					new Token(TokenType.Identifier, SourceLocation.None), null, null);
+				
+				var tempSymbol = new LocalVariableSymbol(tempNode, operand.Type);
+				var tempValue = VisitNode(operand);
+				var tempInfo = new VariableInfo(tempSymbol, operand.Type);
+				
+				currentBlock.Instructions.Add(new LocalVarInstruction(tempSymbol, tempValue));
+				tempVars.Add(tempInfo);
+				tempValues.Add(tempValue);
+			}
+			
+			Value? result = null;
+			var left = VisitNode(node.Operands[0]);
+			
+			for (var i = 1; i < node.Operands.Length; i++)
+			{
+				var right = i == node.Operands.Length - 1
+					? VisitNode(node.Operands[i])
+					: tempValues[i - 1];
+				
+				var comparisonType = node.SubTypes[i - 1];
+				var comparison = new BinOpValue(comparisonType, left, right, MapBinOp(node.Ops[i - 1]));
+				left = right;
+				
+				result = result is null
+					? comparison
+					: new BinOpValue(comparisonType, result, comparison, BinaryOperation.And);
+			}
+			
+			return result!;
+		}
+		
+		private static AssignValue LowerAssignment(Value left, Token op, Value right, TypeSymbol type)
+		{
+			if (op.Type == TokenType.OpEqual)
+				return new AssignValue(type, left, right);
+			
+			if (op.Type == TokenType.OpPlusEqual)
+				return new AssignValue(type, left, new BinOpValue(type, left, right, BinaryOperation.Addition));
+			
+			if (op.Type == TokenType.OpMinusEqual)
+				return new AssignValue(type, left, new BinOpValue(type, left, right, BinaryOperation.Subtraction));
+			
+			if (op.Type == TokenType.OpStarEqual)
+				return new AssignValue(type, left, new BinOpValue(type, left, right, BinaryOperation.Multiplication));
+			
+			if (op.Type == TokenType.OpSlashEqual)
+				return new AssignValue(type, left, new BinOpValue(type, left, right, BinaryOperation.Division));
+			
+			throw new InvalidOperationException();
+		}
+		
+		private static BinOpValue LowerBinOp(Value left, Token op, Value right, TypeSymbol type) =>
+			new(type, left, right, MapBinOp(op));
+		
+		private static UnaryOpValue LowerUnaryOp(Value operand, Token op, TypeSymbol type) =>
+			new(type, operand, MapUnaryOp(op));
+		
+		private static BinaryOperation MapBinOp(Token op)
+		{
+			if (op.Type == TokenType.OpPlus)
+				return BinaryOperation.Addition;
+			
+			if (op.Type == TokenType.OpMinus)
+				return BinaryOperation.Subtraction;
+			
+			if (op.Type == TokenType.OpStar)
+				return BinaryOperation.Multiplication;
+			
+			if (op.Type == TokenType.OpSlash)
+				return BinaryOperation.Division;
+			
+			if (op.Type == TokenType.OpEqualEqual)
+				return BinaryOperation.Equal;
+			
+			if (op.Type == TokenType.OpBangEqual)
+				return BinaryOperation.NotEqual;
+			
+			if (op.Type == TokenType.OpGreater)
+				return BinaryOperation.Greater;
+			
+			if (op.Type == TokenType.OpGreaterEqual)
+				return BinaryOperation.GreaterEqual;
+			
+			if (op.Type == TokenType.OpLess)
+				return BinaryOperation.Less;
+			
+			if (op.Type == TokenType.OpLessEqual)
+				return BinaryOperation.LessEqual;
+			
+			if (op.Type == TokenType.OpAmpersand)
+				return BinaryOperation.And;
+			
+			if (op.Type == TokenType.OpBar)
+				return BinaryOperation.Or;
+			
+			if (op.Type == TokenType.OpHat)
+				return BinaryOperation.Xor;
+			
+			throw new InvalidOperationException();
+		}
+		
+		private static UnaryOperation MapUnaryOp(Token nodeOp)
+		{
+			if (nodeOp.Type == TokenType.OpPlus)
+				return UnaryOperation.Identity;
+			
+			if (nodeOp.Type == TokenType.OpMinus)
+				return UnaryOperation.Negation;
+			
+			if (nodeOp.Type == TokenType.OpBang)
+				return UnaryOperation.Not;
+			
+			throw new InvalidOperationException();
+		}
 	}
 }

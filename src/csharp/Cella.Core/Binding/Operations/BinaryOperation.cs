@@ -6,11 +6,15 @@ public enum BinaryOperation
 	Subtraction,
 	Multiplication,
 	Division,
-	Assignment,
-	AddAssignment,
-	SubtractAssignment,
-	MultiplyAssignment,
-	DivideAssignment,
+	Equal,
+	NotEqual,
+	Greater,
+	GreaterEqual,
+	Less,
+	LessEqual,
+	And,
+	Or,
+	Xor,
 	
 	Count
 }

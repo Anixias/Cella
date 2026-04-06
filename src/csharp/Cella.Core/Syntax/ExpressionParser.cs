@@ -27,7 +27,8 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 	private static readonly HashSet<TokenType> _unaryPrefixOps =
 	[
 		TokenType.OpPlus,
-		TokenType.OpMinus
+		TokenType.OpMinus,
+		TokenType.OpBang
 	];
 	
 	private static readonly HashSet<TokenType> _multiplicativeOps =
@@ -45,18 +46,93 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 		TokenType.OpEqual
 	];
 	
-	public override IExpressionNode Parse(ref int index) => ParseExpression(ref index);
+	private static readonly HashSet<TokenType> _equalityOps =
+	[
+		TokenType.OpEqualEqual,
+		TokenType.OpBangEqual
+	];
 	
-	private IExpressionNode ParseExpression(ref int index)
+	private static readonly HashSet<TokenType> _comparisonOps =
+	[
+		TokenType.OpGreaterEqual,
+		TokenType.OpLessEqual,
+		TokenType.OpGreater,
+		TokenType.OpLess
+	];
+	
+	public override IExpressionNode Parse(ref int index) => ParseExpression(ref index);
+	private IExpressionNode ParseExpression(ref int index) => ParseAssignment(ref index);
+	
+	private IExpressionNode ParseAssignment(ref int index)
 	{
-		var node = ParseAdditive(ref index);
-		if (Match(ref index, out var op, _assignmentOps))
+		var left = ParseXor(ref index);
+		if (!Match(ref index, out var op, _assignmentOps))
+			return left;
+		
+		var right = ParseExpression(ref index);
+		return new BinaryOpExpressionNode(left, op, right);
+	}
+	
+	private IExpressionNode ParseXor(ref int index)
+	{
+		var node = ParseOr(ref index);
+		while (Match(ref index, out var op, TokenType.OpHat))
 		{
-			var right = ParseExpression(ref index);
+			var right = ParseOr(ref index);
 			node = new BinaryOpExpressionNode(node, op, right);
 		}
 		
 		return node;
+	}
+	
+	private IExpressionNode ParseOr(ref int index)
+	{
+		var node = ParseAnd(ref index);
+		while (Match(ref index, out var op, TokenType.OpBar))
+		{
+			var right = ParseAnd(ref index);
+			node = new BinaryOpExpressionNode(node, op, right);
+		}
+		
+		return node;
+	}
+	
+	private IExpressionNode ParseAnd(ref int index)
+	{
+		var node = ParseEquality(ref index);
+		while (Match(ref index, out var op, TokenType.OpAmpersand))
+		{
+			var right = ParseEquality(ref index);
+			node = new BinaryOpExpressionNode(node, op, right);
+		}
+		
+		return node;
+	}
+	
+	private IExpressionNode ParseEquality(ref int index)
+	{
+		var node = ParseComparison(ref index);
+		while (Match(ref index, out var op, _equalityOps))
+		{
+			var right = ParseComparison(ref index);
+			node = new BinaryOpExpressionNode(node, op, right);
+		}
+		
+		return node;
+	}
+	
+	private IExpressionNode ParseComparison(ref int index)
+	{
+		var operands = new List<IExpressionNode> { ParseAdditive(ref index) };
+		var ops = new List<Token>();
+		
+		while (Match(ref index, out var op, _comparisonOps))
+		{
+			ops.Add(op);
+			operands.Add(ParseAdditive(ref index));
+		}
+		
+		return operands.Count == 1 ? operands[0] : new ChainedExpressionNode(operands, ops);
 	}
 	
 	private IExpressionNode ParseAdditive(ref int index)
@@ -90,7 +166,6 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 		
 		var operand = ParseUnary(ref index);
 		return new UnaryOpExpressionNode(op, operand);
-		
 	}
 	
 	private IExpressionNode ParsePrimary(ref int index)
@@ -132,7 +207,7 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 		return ParseLiteral(ref index);
 	}
 	
-	private IExpressionNode ParseCallExpression(ref int index, Token identifier)
+	private CallExpressionNode ParseCallExpression(ref int index, Token identifier)
 	{
 		// Caller already consumed open parenthesis
 		var range = identifier.SourceLocation.Range;
@@ -159,13 +234,13 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 		if (closeParen != default)
 			range = range.Join(closeParen.SourceLocation.Range);
 		
-		return new CallExpressionNode(identifier, arguments, identifier.SourceLocation with { Range = range });
+		return new(identifier, arguments, identifier.SourceLocation with { Range = range });
 	}
 	
-	private IExpressionNode ParseLiteral(ref int index)
+	private LiteralExpressionNode ParseLiteral(ref int index)
 	{
 		if (Match(ref index, out var literal, _literalTypes))
-			return new LiteralExpressionNode(literal);
+			return new(literal);
 		
 		// TODO Diagnostics
 		// TEMP Should emit an erroneous node instead of throwing

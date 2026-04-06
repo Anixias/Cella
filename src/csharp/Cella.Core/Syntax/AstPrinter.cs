@@ -59,6 +59,30 @@ public sealed class AstPrinter : ISyntaxNodeVisitor
 		}
 	}
 	
+	public void Visit(ChainedExpressionNode node)
+	{
+		StartLine();
+		_sb.Append("ChainedExpressionNode");
+		
+		var operandCount = node.Operands.Length;
+		for (var i = 0; i < operandCount; i++)
+		{
+			var operand = node.Operands[i];
+			var isLast = i == operandCount - 1;
+			VisitNode(operand, isLast);
+			
+			if (isLast)
+				continue;
+			
+			var op = node.Ops[i];
+			VisitAction(() =>
+			{
+				StartLine();
+				_sb.Append(op.AsSpan());
+			}, isLast);
+		}
+	}
+	
 	public void Visit(FileNode node)
 	{
 		StartLine();

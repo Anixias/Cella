@@ -3,7 +3,7 @@ using Cella.Core.Text;
 
 namespace Cella.Core.Binding.Nodes.Expressions;
 
-public sealed class ResolvedBinaryOpExpressionNode
+public sealed class ResolvedAssignmentExpressionNode
 (
 	TypeSymbol type,
 	IResolvedExpressionNode left,

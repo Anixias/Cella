@@ -1,5 +1,6 @@
 ﻿using System.Collections.Immutable;
 using Cella.Core.Binding;
+using Cella.Core.Binding.Operations;
 using Cella.Core.Symbols;
 
 namespace Cella.Core.Lowering;
@@ -35,32 +36,18 @@ public sealed class CallValue(FunctionInfo function, IEnumerable<Value> argument
 }
 
 #region Operations
-public sealed class AddValue(TypeSymbol type, Value left, Value right)
-	: Value(type, left.IsConstant && right.IsConstant)
+public sealed class UnaryOpValue(TypeSymbol type, Value operand, UnaryOperation op) : Value(type, operand.IsConstant)
 {
-	public Value Left { get; } = left;
-	public Value Right { get; } = right;
+	public Value Operand { get; } = operand;
+	public UnaryOperation Op { get; } = op;
 }
 
-public sealed class SubValue(TypeSymbol type, Value left, Value right)
+public sealed class BinOpValue(TypeSymbol type, Value left, Value right, BinaryOperation op)
 	: Value(type, left.IsConstant && right.IsConstant)
 {
 	public Value Left { get; } = left;
 	public Value Right { get; } = right;
-}
-
-public sealed class MulValue(TypeSymbol type, Value left, Value right)
-	: Value(type, left.IsConstant && right.IsConstant)
-{
-	public Value Left { get; } = left;
-	public Value Right { get; } = right;
-}
-
-public sealed class DivValue(TypeSymbol type, Value left, Value right)
-	: Value(type, left.IsConstant && right.IsConstant)
-{
-	public Value Left { get; } = left;
-	public Value Right { get; } = right;
+	public BinaryOperation Op { get; } = op;
 }
 
 public sealed class AssignValue(TypeSymbol type, Value left, Value right)
@@ -68,11 +55,6 @@ public sealed class AssignValue(TypeSymbol type, Value left, Value right)
 {
 	public Value Left { get; } = left;
 	public Value Right { get; } = right;
-}
-
-public sealed class NegValue(TypeSymbol type, Value operand) : Value(type, operand.IsConstant)
-{
-	public Value Operand { get; } = operand;
 }
 #endregion
 

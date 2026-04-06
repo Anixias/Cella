@@ -130,6 +130,11 @@ public sealed class TokenType
 	public static readonly TokenType OpMinusEqual = CreateOperator("-=");
 	public static readonly TokenType OpStarEqual = CreateOperator("*=");
 	public static readonly TokenType OpSlashEqual = CreateOperator("/=");
+	public static readonly TokenType OpEqualEqual = CreateOperator("==");
+	public static readonly TokenType OpBangEqual = CreateOperator("!=");
+	public static readonly TokenType OpGreaterEqual = CreateOperator(">=");
+	public static readonly TokenType OpLessEqual = CreateOperator("<=");
+	
 	public static readonly TokenType OpColon = CreateOperator(":");
 	public static readonly TokenType OpSemicolon = CreateOperator(";");
 	public static readonly TokenType OpOpenParen = CreateOperator("(");
@@ -145,6 +150,12 @@ public sealed class TokenType
 	public static readonly TokenType OpDot = CreateOperator(".");
 	public static readonly TokenType OpComma = CreateOperator(",");
 	public static readonly TokenType OpEqual = CreateOperator("=");
+	public static readonly TokenType OpBang = CreateOperator("!");
+	public static readonly TokenType OpAmpersand = CreateOperator("&");
+	public static readonly TokenType OpBar = CreateOperator("|");
+	public static readonly TokenType OpHat = CreateOperator("^");
+	public static readonly TokenType OpGreater = CreateOperator(">");
+	public static readonly TokenType OpLess = CreateOperator("<");
 	
 	#endregion
 }

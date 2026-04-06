@@ -1,7 +1,6 @@
 ﻿using Cella.Core.Binding.Nodes.Declarations;
 using Cella.Core.Binding.Nodes.Expressions;
 using Cella.Core.Binding.Nodes.Statements;
-using Cella.Core.Binding.Operations;
 using Cella.Core.Symbols;
 
 namespace Cella.Core.Binding;
@@ -60,21 +59,11 @@ public sealed class TypeChecker : IResolvedStatementNodeVisitor, IResolvedDeclar
 		
 		switch (node.Expression)
 		{
-			case ResolvedBinaryOpExpressionNode e:
+			case ResolvedAssignmentExpressionNode e:
 			{
-				switch (e.Op)
-				{
-					case BinaryOperation.Assignment:
-					case BinaryOperation.AddAssignment:
-					case BinaryOperation.SubtractAssignment:
-					case BinaryOperation.MultiplyAssignment:
-					case BinaryOperation.DivideAssignment:
-						// TODO Better diagnostic
-						if (!IsLValue(e.Left))
-							_diagnostics.Add("Assignment target must be a variable");
-						
-						break;
-				}
+				// TODO Better diagnostic
+				if (!IsLValue(e.Left))
+					_diagnostics.Add("Assignment target must be a variable");
 				
 				break;
 			}
@@ -118,15 +107,7 @@ public sealed class TypeChecker : IResolvedStatementNodeVisitor, IResolvedDeclar
 	private bool IsAllowedAsStatement(IResolvedExpressionNode expression) => expression switch
 	{
 		ResolvedFunctionCallExpressionNode => true, // TODO Warn if function is pure?
-		ResolvedBinaryOpExpressionNode n => n.Op switch
-		{
-			BinaryOperation.Assignment => true,
-			BinaryOperation.AddAssignment => true,
-			BinaryOperation.SubtractAssignment => true,
-			BinaryOperation.MultiplyAssignment => true,
-			BinaryOperation.DivideAssignment => true,
-			_ => false
-		},
+		ResolvedAssignmentExpressionNode => true,
 		_ => false
 	};
 }

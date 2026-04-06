@@ -1,4 +1,5 @@
 ﻿using System.Text;
+using Cella.Core.Binding.Operations;
 
 namespace Cella.Core.Lowering;
 
@@ -109,27 +110,81 @@ public static class LoweredModulePrinter
 					sb.Append('$').Append(v.Variable.Symbol.Name);
 					break;
 				
-				case AddValue v:
+				case BinOpValue { Op: BinaryOperation.Addition } v:
 					PrintValue(sb, v.Left);
 					sb.Append(" + ");
 					value = v.Right;
 					continue;
 				
-				case SubValue v:
+				case BinOpValue { Op: BinaryOperation.Subtraction } v:
 					PrintValue(sb, v.Left);
 					sb.Append(" - ");
 					value = v.Right;
 					continue;
 				
-				case MulValue v:
+				case BinOpValue { Op: BinaryOperation.Multiplication } v:
 					PrintValue(sb, v.Left);
 					sb.Append(" * ");
 					value = v.Right;
 					continue;
 				
-				case DivValue v:
+				case BinOpValue { Op: BinaryOperation.Division } v:
 					PrintValue(sb, v.Left);
 					sb.Append(" / ");
+					value = v.Right;
+					continue;
+				
+				case BinOpValue { Op: BinaryOperation.And } v:
+					PrintValue(sb, v.Left);
+					sb.Append(" & ");
+					value = v.Right;
+					continue;
+				
+				case BinOpValue { Op: BinaryOperation.Or } v:
+					PrintValue(sb, v.Left);
+					sb.Append(" | ");
+					value = v.Right;
+					continue;
+				
+				case BinOpValue { Op: BinaryOperation.Xor } v:
+					PrintValue(sb, v.Left);
+					sb.Append(" ^ ");
+					value = v.Right;
+					continue;
+				
+				case BinOpValue { Op: BinaryOperation.Greater } v:
+					PrintValue(sb, v.Left);
+					sb.Append(" > ");
+					value = v.Right;
+					continue;
+				
+				case BinOpValue { Op: BinaryOperation.GreaterEqual } v:
+					PrintValue(sb, v.Left);
+					sb.Append(" >= ");
+					value = v.Right;
+					continue;
+				
+				case BinOpValue { Op: BinaryOperation.Less } v:
+					PrintValue(sb, v.Left);
+					sb.Append(" < ");
+					value = v.Right;
+					continue;
+				
+				case BinOpValue { Op: BinaryOperation.LessEqual } v:
+					PrintValue(sb, v.Left);
+					sb.Append(" <= ");
+					value = v.Right;
+					continue;
+				
+				case BinOpValue { Op: BinaryOperation.Equal } v:
+					PrintValue(sb, v.Left);
+					sb.Append(" == ");
+					value = v.Right;
+					continue;
+				
+				case BinOpValue { Op: BinaryOperation.NotEqual } v:
+					PrintValue(sb, v.Left);
+					sb.Append(" != ");
 					value = v.Right;
 					continue;
 				
@@ -139,8 +194,18 @@ public static class LoweredModulePrinter
 					value = v.Right;
 					continue;
 				
-				case NegValue v:
+				case UnaryOpValue { Op: UnaryOperation.Identity } v:
+					sb.Append('+');
+					value = v.Operand;
+					continue;
+				
+				case UnaryOpValue { Op: UnaryOperation.Negation } v:
 					sb.Append('-');
+					value = v.Operand;
+					continue;
+				
+				case UnaryOpValue { Op: UnaryOperation.Not } v:
+					sb.Append('!');
 					value = v.Operand;
 					continue;
 				

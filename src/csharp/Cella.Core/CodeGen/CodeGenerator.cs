@@ -1,4 +1,5 @@
 ﻿using Cella.Core.Binding;
+using Cella.Core.Binding.Operations;
 using Cella.Core.CodeGen.Extensions;
 using Cella.Core.Lowering;
 using Cella.Core.Symbols;
@@ -281,18 +282,72 @@ public sealed unsafe class CodeGenerator : IDisposable
 	{
 		ConstantValue v => EmitConstant(v),
 		VariableValue v => builder.BuildLoad2(MapTypeSymbol(v.Type), _varMap[v.Variable], v.Variable.Symbol.Name),
-		AddValue { IsConstant: true } v => LLVMValueRef.CreateConstAdd(EmitValue(v.Left, builder), EmitValue(v.Right, builder)),
-		AddValue v => builder.BuildAdd(EmitValue(v.Left, builder), EmitValue(v.Right, builder)), // TODO Check floating point?
-		SubValue { IsConstant: true } v => LLVMValueRef.CreateConstSub(EmitValue(v.Left, builder), EmitValue(v.Right, builder)),
-		SubValue v => builder.BuildSub(EmitValue(v.Left, builder), EmitValue(v.Right, builder)), // TODO Check floating point?
-		MulValue { IsConstant: true } v => LLVMValueRef.CreateConstMul(EmitValue(v.Left, builder), EmitValue(v.Right, builder)),
-		MulValue v => builder.BuildMul(EmitValue(v.Left, builder), EmitValue(v.Right, builder)), // TODO Check floating point?
-		DivValue v => builder.BuildSDiv(EmitValue(v.Left, builder), EmitValue(v.Right, builder)), // TODO Check type for correct operation
+		BinOpValue v => EmitBinaryOp(v, builder),
+		UnaryOpValue v => EmitUnaryOp(v, builder),
 		AssignValue v => EmitAssignValue(v, builder),
-		NegValue { IsConstant: true } v => LLVMValueRef.CreateConstNeg(EmitValue(v.Operand, builder)),
-		NegValue v => builder.BuildNeg(EmitValue(v.Operand, builder)), // TODO Check floating point?
 		CallValue v when _funMap[v.Function] is var (fv, ft, _) => builder.BuildCall2(ft, fv,
 			v.Arguments.Select(a => EmitValue(a, builder)).ToArray()),
+		_ => throw new InvalidOperationException()
+	};
+	
+	private LLVMValueRef EmitBinaryOp(BinOpValue v, LLVMBuilderRef builder) => v switch
+	{
+		{ IsConstant: true, Op: BinaryOperation.Addition } =>
+			LLVMValueRef.CreateConstAdd(EmitValue(v.Left, builder), EmitValue(v.Right, builder)), // TODO Check floating point?
+		{ Op: BinaryOperation.Addition } =>
+			builder.BuildAdd(EmitValue(v.Left, builder), EmitValue(v.Right, builder)), // TODO Check floating point?
+		
+		{ IsConstant: true, Op: BinaryOperation.Subtraction } =>
+			LLVMValueRef.CreateConstSub(EmitValue(v.Left, builder), EmitValue(v.Right, builder)), // TODO Check floating point?
+		{ Op: BinaryOperation.Subtraction } =>
+			builder.BuildSub(EmitValue(v.Left, builder), EmitValue(v.Right, builder)), // TODO Check floating point?
+		
+		{ IsConstant: true, Op: BinaryOperation.Multiplication } =>
+			LLVMValueRef.CreateConstMul(EmitValue(v.Left, builder), EmitValue(v.Right, builder)), // TODO Check floating point?
+		{ Op: BinaryOperation.Multiplication } =>
+			builder.BuildMul(EmitValue(v.Left, builder), EmitValue(v.Right, builder)), // TODO Check floating point?
+		
+		{ Op: BinaryOperation.Division } =>
+			builder.BuildSDiv(EmitValue(v.Left, builder), EmitValue(v.Right, builder)), // TODO Check type for correct operation
+		
+		{ Op: BinaryOperation.Greater } =>
+			builder.BuildICmp(LLVMIntPredicate.LLVMIntSGT, EmitValue(v.Left, builder), EmitValue(v.Right, builder)), // TODO Check type for correct operation
+		
+		{ Op: BinaryOperation.GreaterEqual } =>
+			builder.BuildICmp(LLVMIntPredicate.LLVMIntSGE, EmitValue(v.Left, builder), EmitValue(v.Right, builder)), // TODO Check type for correct operation
+		
+		{ Op: BinaryOperation.Less } =>
+			builder.BuildICmp(LLVMIntPredicate.LLVMIntSLT, EmitValue(v.Left, builder), EmitValue(v.Right, builder)), // TODO Check type for correct operation
+		
+		{ Op: BinaryOperation.LessEqual } =>
+			builder.BuildICmp(LLVMIntPredicate.LLVMIntSLE, EmitValue(v.Left, builder), EmitValue(v.Right, builder)), // TODO Check type for correct operation
+		
+		{ Op: BinaryOperation.Equal } =>
+			builder.BuildICmp(LLVMIntPredicate.LLVMIntEQ, EmitValue(v.Left, builder), EmitValue(v.Right, builder)), // TODO Check type for correct operation
+		
+		{ Op: BinaryOperation.NotEqual } =>
+			builder.BuildICmp(LLVMIntPredicate.LLVMIntNE, EmitValue(v.Left, builder), EmitValue(v.Right, builder)), // TODO Check type for correct operation
+		
+		{ Op: BinaryOperation.And } =>
+			builder.BuildAnd(EmitValue(v.Left, builder), EmitValue(v.Right, builder)),
+		
+		{ Op: BinaryOperation.Or } =>
+			builder.BuildOr(EmitValue(v.Left, builder), EmitValue(v.Right, builder)),
+		
+		{ Op: BinaryOperation.Xor } =>
+			builder.BuildXor(EmitValue(v.Left, builder), EmitValue(v.Right, builder)),
+		
+		_ => throw new InvalidOperationException()
+	};
+	
+	private LLVMValueRef EmitUnaryOp(UnaryOpValue v, LLVMBuilderRef builder) => v switch
+	{
+		{ IsConstant: true, Op: UnaryOperation.Negation } => LLVMValueRef.CreateConstNeg(EmitValue(v.Operand, builder)),
+		{ Op: UnaryOperation.Negation } => builder.BuildNeg(EmitValue(v.Operand, builder)), // TODO Check floating point?
+		
+		{ IsConstant: true, Op: UnaryOperation.Not } => LLVMValueRef.CreateConstNot(EmitValue(v.Operand, builder)),
+		{ Op: UnaryOperation.Not } => builder.BuildNot(EmitValue(v.Operand, builder)),
+		
 		_ => throw new InvalidOperationException()
 	};
 	
