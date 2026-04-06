@@ -48,11 +48,17 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName) : 
 			
 			// Parse imports
 			if (Match(ref index, _topLevelContextualKeywords, TokenType.KeywordUse))
+			{
 				imports.Add(ParseImportExpression(ref index));
+				continue;
+			}
 			
 			// Parse external declarations
 			if (Match(ref index, _topLevelContextualKeywords, TokenType.KeywordExt))
-				declarations.AddRange(ParseExternalDeclarations(ref index));
+			{
+				declarations.AddRange(ParseExternalDeclarations(ref index).Where(static ed => ed is not null)!);
+				continue;
+			}
 			
 			// Parse top-level declarations
 			if (Match(ref index, out var identifier, _topLevelContextualKeywords, TokenType.Identifier))
@@ -120,7 +126,7 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName) : 
 		return modifiers;
 	}
 	
-	private List<IDeclarationNode> ParseExternalDeclarations(ref int index)
+	private List<IDeclarationNode?> ParseExternalDeclarations(ref int index)
 	{
 		// 'ext' token already consumed by caller
 		
@@ -144,7 +150,7 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName) : 
 		if (!Match(ref index, TokenType.OpOpenBrace))
 			return [ParseExternalDeclaration(ref index, origin)];
 		
-		var nodes = new List<IDeclarationNode>();
+		var nodes = new List<IDeclarationNode?>();
 		while (!Match(ref index, TokenType.OpCloseBrace))
 			nodes.Add(ParseExternalDeclaration(ref index, origin));
 		
@@ -255,13 +261,13 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName) : 
 	{
 		// TODO Diagnostics
 		
-		var modifiers = ParseDeclarationModifiers(ref index);
-		
 		if (!Match(ref index, out var identifier, _topLevelContextualKeywords, TokenType.Identifier))
 			return null;
 		
 		if (!Match(ref index, TokenType.OpColon))
 			return null;
+		
+		var modifiers = ParseDeclarationModifiers(ref index);
 		
 		if (!Match(ref index, _topLevelContextualKeywords, TokenType.KeywordFun))
 			return null;
