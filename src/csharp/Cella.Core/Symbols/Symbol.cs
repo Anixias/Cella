@@ -20,9 +20,9 @@ public enum Visibility
 	Public
 }
 
-public interface IDefinedSymbol
+public interface IExportable
 {
-	SourceLocation Definition { get; }
+	Visibility Visibility { get; }
 }
 
 public abstract class Symbol(string name)
@@ -61,17 +61,17 @@ public sealed class FunctionSymbol
 	IFunctionNode syntax,
 	FunctionInfo? containingFunction,
 	IEnumerable<ParameterSymbol> parameters
-) : Symbol(name), IDefinedSymbol
+) : Symbol(name), IExportable
 {
 	public IFunctionNode Syntax { get; } = syntax;
-	
-	public Visibility Visibility { get; } = syntax.Modifiers.Any(static t => t.Type == TokenType.KeywordPub)
-		? Visibility.Public
-		: Visibility.Private;
 	
 	public FunctionInfo? ContainingFunction { get; } = containingFunction;
 	public ImmutableArray<ParameterSymbol> Parameters { get; } = parameters.ToImmutableArray();
 	public SourceLocation Definition { get; } = syntax.SourceLocation;
+	
+	public Visibility Visibility { get; } = syntax.Modifiers.Any(static t => t.Type == TokenType.KeywordPub)
+		? Visibility.Public
+		: Visibility.Private;
 }
 
 public abstract class TypeSymbol(string name, TypeSymbol? containingType = null, params IEnumerable<Symbol> children)
@@ -94,8 +94,7 @@ public sealed class PointerType(TypeSymbol baseType) : TypeSymbol($"ptr {baseTyp
 	public TypeSymbol BaseType { get; } = baseType;
 }
 
-public abstract class VariableSymbol(Token identifier)
-	: Symbol(identifier.Text), IDefinedSymbol
+public abstract class VariableSymbol(Token identifier) : Symbol(identifier.Text)
 {
 	public SourceLocation Definition { get; } = identifier.SourceLocation;
 }

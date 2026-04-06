@@ -29,6 +29,9 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName) : 
 		var declarations = new List<IDeclarationNode>();
 		var imports = new List<ImportExpression>();
 		
+		var moduleNameAllowed = true;
+		var importsAllowed = false;
+		
 		while (!AtEnd(index))
 		{
 			// Parse module name
@@ -43,19 +46,28 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName) : 
 					// TODO Diagnostics
 				}
 				
-				continue;
+				if (moduleNameAllowed)
+				{
+					moduleNameAllowed = false;
+					importsAllowed = true;
+				}
+				// TODO else Diagnostics
 			}
 			
 			// Parse imports
 			if (Match(ref index, _topLevelContextualKeywords, TokenType.KeywordUse))
 			{
 				imports.Add(ParseImportExpression(ref index));
+				
+				// TODO if (!importsAllowed) Diagnostics
+				
 				continue;
 			}
 			
 			// Parse external declarations
 			if (Match(ref index, _topLevelContextualKeywords, TokenType.KeywordExt))
 			{
+				importsAllowed = false;
 				declarations.AddRange(ParseExternalDeclarations(ref index).Where(static ed => ed is not null)!);
 				continue;
 			}
@@ -63,6 +75,8 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName) : 
 			// Parse top-level declarations
 			if (Match(ref index, out var identifier, _topLevelContextualKeywords, TokenType.Identifier))
 			{
+				importsAllowed = false;
+				
 				if (!Consume(ref index, _topLevelSyncTypes, TokenType.OpColon))
 				{
 					// @TODO Diagnostic: Expected identifier

@@ -181,7 +181,7 @@ public sealed class SignatureCollector : IDeclarationNodeVisitor
 		{
 			case TokenImport i:
 			{
-				if (symbols.TryGetValue(i.Token.Text, out var symbol))
+				if (symbols.TryGetValue(i.Token.Text, out var symbol) && CanImport(symbol))
 					yield return symbol;
 				
 				break;
@@ -191,7 +191,7 @@ public sealed class SignatureCollector : IDeclarationNodeVisitor
 			{
 				foreach (var token in i.Tokens)
 				{
-					if (symbols.TryGetValue(token.Text, out var symbol))
+					if (symbols.TryGetValue(token.Text, out var symbol) && CanImport(symbol))
 						yield return symbol;
 				}
 				
@@ -201,10 +201,16 @@ public sealed class SignatureCollector : IDeclarationNodeVisitor
 			case FullImport:
 			{
 				foreach (var symbol in symbols.Values)
-					yield return symbol;
+					if (CanImport(symbol))
+						yield return symbol;
 				
 				break;
 			}
 		}
+		
+		yield break;
+		
+		bool CanImport(Symbol symbol) => symbol is IExportable exportable && 
+			(exportable.Visibility == Visibility.Public || isLocal);
 	}
 }
