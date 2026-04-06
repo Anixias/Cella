@@ -316,11 +316,39 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName) : 
 		if (Match(ref index, out var varToken, TokenType.KeywordVar))
 			return ParseVarStatement(ref index, varToken);
 		
+		if (Match(ref index, out var ifToken, TokenType.KeywordIf))
+			return ParseIfStatement(ref index, ifToken);
+		
 		// Return statement
 		if (Match(ref index, out var retToken, TokenType.KeywordRet))
 			return ParseReturnStatement(ref index, retToken);
 		
 		return new ExpressionStatementNode(ParseExpression(ref index));
+	}
+	
+	private IfStatementNode? ParseIfStatement(ref int index, Token ifToken)
+	{
+		// ifToken already consumed when this function is called
+		
+		// TODO Diagnostics
+		
+		var condition = ParseExpression(ref index);
+		
+		if (ParseStatement(ref index) is not { } then)
+			return null;
+		
+		var (source, range) = ifToken.SourceLocation;
+		if (!Match(ref index, TokenType.KeywordElse))
+		{
+			range = range.Join(then.SourceLocation.Range);
+			return new(new(source, range), condition, then, null);
+		}
+		
+		if (ParseStatement(ref index) is not { } @else)
+			return null;
+		
+		range = range.Join(@else.SourceLocation.Range);
+		return new(new(source, range), condition, then, @else);
 	}
 	
 	private VarStatementNode? ParseVarStatement(ref int index, Token varToken)

@@ -185,6 +185,18 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 		}
 	}
 	
+	public IResolvedNode Visit(IfStatementNode node)
+	{
+		_targetTypes.Push(NativeSymbols.Bool);
+		var condition = VisitNode(node.Condition);
+		_targetTypes.Pop();
+		
+		var then = VisitNode(node.Then);
+		var @else = node.Else is null ? null : VisitNode(node.Else);
+		
+		return new ResolvedIfStatementNode(condition, then, @else);
+	}
+	
 	public IResolvedNode Visit(VarStatementNode node)
 	{
 		var resolutionContext = CurrentResolutionContext;

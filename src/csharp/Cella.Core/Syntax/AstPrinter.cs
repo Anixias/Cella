@@ -204,6 +204,19 @@ public sealed class AstPrinter : ISyntaxNodeVisitor
 		VisitNode(node.ExpressionNode, true);
 	}
 	
+	public void Visit(IfStatementNode node)
+	{
+		StartLine();
+		_sb.Append("IfStatementNode");
+		var hasElse = node.Else is not null;
+		
+		VisitNode(node.Condition, false);
+		VisitNode(node.Then, !hasElse);
+		
+		if (hasElse)
+			VisitNode(node.Else!, true);
+	}
+	
 	public void Visit(ReturnStatementNode node)
 	{
 		StartLine();

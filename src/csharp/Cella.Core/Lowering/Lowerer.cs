@@ -1,5 +1,4 @@
-﻿using Cella.Core.Binding;
-using Cella.Core.Binding.Nodes.Declarations;
+﻿using Cella.Core.Binding.Nodes.Declarations;
 using Cella.Core.Binding.Nodes.Expressions;
 using Cella.Core.Binding.Nodes.Statements;
 using Cella.Core.Binding.Operations;
@@ -137,6 +136,38 @@ public sealed class Lowerer : IResolvedDeclarationNodeVisitor
 		{
 			var expression = VisitNode(node.Expression);
 			currentBlock.Instructions.Add(new ExpressionInstruction(expression));
+		}
+		
+		public void Visit(ResolvedIfStatementNode node)
+		{
+			// Condition & terminate block
+			var condition = VisitNode(node.Condition);
+			
+			var thenBlock = CreateBlock("then");
+			var elseBlock = node.Else is null ? null : CreateBlock("else");
+			var mergeBlock = CreateBlock("merge");
+			
+			currentBlock.Terminator = new ConditionalBranchTerminator(condition, thenBlock, elseBlock ?? mergeBlock);
+			
+			// Then block
+			currentBlock = thenBlock;
+			VisitNode(node.Then);
+			
+			if (currentBlock is { Terminator: UndefinedTerminator, Instructions.Count: > 0 })
+				currentBlock.Terminator = new BranchTerminator(mergeBlock);
+			
+			// Else block
+			if (node.Else is { } @else)
+			{
+				currentBlock = elseBlock!;
+				VisitNode(@else);
+				
+				if (currentBlock is { Terminator: UndefinedTerminator, Instructions.Count: > 0 })
+					currentBlock.Terminator = new BranchTerminator(mergeBlock);
+			}
+			
+			// Finish
+			currentBlock = mergeBlock;
 		}
 		
 		public void Visit(ResolvedReturnStatementNode node)

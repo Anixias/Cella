@@ -115,6 +115,8 @@ public sealed class TokenType
 	// Global keywords
 	public static readonly TokenType KeywordRet = CreateKeyword("ret");
 	public static readonly TokenType KeywordVar = CreateKeyword("var");
+	public static readonly TokenType KeywordIf = CreateKeyword("if");
+	public static readonly TokenType KeywordElse = CreateKeyword("else");
 	
 	// Contextual Keywords
 	public static readonly TokenType KeywordMod = CreateContextualKeyword("mod");

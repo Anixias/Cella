@@ -70,6 +70,14 @@ public sealed class TypeChecker : IResolvedStatementNodeVisitor, IResolvedDeclar
 		}
 	}
 	
+	public void Visit(ResolvedIfStatementNode node)
+	{
+		var conditionType = node.Condition.Type;
+		if (!AreTypesCompatible(NativeSymbols.Bool, conditionType))
+			_diagnostics.Add(
+				$"Invalid condition type '{conditionType.Name}': Expected type '{NativeSymbols.Bool.Name}'");
+	}
+	
 	public void Visit(ResolvedReturnStatementNode node)
 	{
 		var expected = _returnTypeStack.Peek();
