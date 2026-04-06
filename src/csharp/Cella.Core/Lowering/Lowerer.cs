@@ -172,9 +172,10 @@ public sealed class Lowerer : IResolvedDeclarationNodeVisitor
 		
 		public Value Visit(ResolvedChainedExpressionNode node)
 		{
+			// TODO Implement short-circuiting
+			
 			// First and last operands don't need temporaries, so subtract 2
 			var tempVarCount = node.Operands.Length - 2;
-			var tempVars = new List<VariableInfo>(tempVarCount);
 			var tempValues = new List<Value>(tempVarCount);
 			
 			for (var i = 1; i < node.Operands.Length - 1; i++)
@@ -186,10 +187,8 @@ public sealed class Lowerer : IResolvedDeclarationNodeVisitor
 				
 				var tempSymbol = new LocalVariableSymbol(tempNode, operand.Type);
 				var tempValue = VisitNode(operand);
-				var tempInfo = new VariableInfo(tempSymbol, operand.Type);
 				
 				currentBlock.Instructions.Add(new LocalVarInstruction(tempSymbol, tempValue));
-				tempVars.Add(tempInfo);
 				tempValues.Add(tempValue);
 			}
 			
