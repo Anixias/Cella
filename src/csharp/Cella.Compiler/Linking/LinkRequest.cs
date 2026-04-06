@@ -11,4 +11,5 @@ public sealed class LinkRequest(ProjectOutputType outputType, IEnumerable<string
 	public string OutputFile { get; } = outputFile;
 	public string ToolchainsDirectory { get; } = toolchainsDirectory;
 	public ImmutableArray<string> LibFiles { get; } = libFiles.ToImmutableArray();
+	public SystemLinkPreference LinkPreference { get; init; } = SystemLinkPreference.Dynamic;
 }

@@ -262,7 +262,12 @@ internal static class Program
 			// TODO Toolchains and linker paths should be grabbed from environment variables, compiler installation location
 			const string toolchainDir = @"C:\cella\toolchains";
 			var linker = new Linker(@"C:\cella\");
-			var linkRequest = new LinkRequest(outputType, objectFiles, outputPath, toolchainDir, libFiles);
+			var linkPreference = project.Project.SystemLinkPreference;
+			var linkRequest = new LinkRequest(outputType, objectFiles, outputPath, toolchainDir, libFiles!)
+			{
+				LinkPreference = linkPreference
+			};
+			
 			var linkerToolchain = Toolchain.FromTargetTriple(targetTriple, toolchainDir);
 			var linkExitCode = await linker.LinkAsync(linkRequest, linkerToolchain);
 			

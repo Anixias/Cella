@@ -1,4 +1,5 @@
-﻿using CsToml;
+﻿using Cella.Compiler.Linking;
+using CsToml;
 
 namespace Cella.Compiler.Projects;
 
@@ -12,6 +13,9 @@ public sealed partial class CellaProject
 	
 	[TomlValueOnSerialized]
 	public required ProjectOutputType OutputType { get; init; }
+	
+	[TomlValueOnSerialized]
+	public SystemLinkPreference SystemLinkPreference { get; init; }
 	
 	[TomlValueOnSerialized]
 	public string? AssemblyName { get; init; }

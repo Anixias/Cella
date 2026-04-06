@@ -7,6 +7,8 @@ public sealed class LinuxGnuToolchain(string root) : Toolchain(root)
 	private readonly string _sysrootDir = Path.Combine(root, "sysroot");
 	private readonly string _libDir = Path.Combine(root, "sysroot", "usr", "lib");
 	
+	public override Dictionary<string, string?> GetLinkerEnvironmentVars(LinkRequest request) => [];
+	
 	public override List<string> GetLinkerArgs(LinkRequest request)
 	{
 		var args = new List<string>

@@ -10,6 +10,13 @@ public sealed class WindowsMsvcToolchain(string root) : Toolchain(root)
 	private readonly string _ucrtLibDir = Path.Combine(root, "ucrt");
 	private readonly string _umLibDir = Path.Combine(root, "um");
 	
+	public override Dictionary<string, string?> GetLinkerEnvironmentVars(LinkRequest request) => new()
+	{
+		["LIB"] = string.Join(';', _msvcLibDir, _ucrtLibDir, _umLibDir),
+		["LINK"] = string.Empty,
+		["_LINK_"] = string.Empty,
+	};
+	
 	public override List<string> GetLinkerArgs(LinkRequest request)
 	{
 		var args = new List<string>
@@ -22,23 +29,11 @@ public sealed class WindowsMsvcToolchain(string root) : Toolchain(root)
 			args.Add("/dll");
 		
 		args.Add($"/out:{request.OutputFile}");
-		args.Add($"/libpath:{_msvcLibDir}");
-		args.Add($"/libpath:{_ucrtLibDir}");
-		args.Add($"/libpath:{_umLibDir}");
 		
 		args.AddRange(request.InputFiles);
 		
-		args.Add("libcmt.lib");
-		args.Add("libvcruntime.lib");
-		args.Add("libucrt.lib");
-		args.Add("kernel32.lib");
-		
-		/*
-		args.Add("msvcrt.lib");
-		args.Add("vcruntime.lib");
-		args.Add("ucrt.lib");
-		args.Add("kernel32.lib");
-		*/
+		if (request.OutputType is ProjectOutputType.Executable or ProjectOutputType.SharedLibrary)
+			args.Add(request.LinkPreference == SystemLinkPreference.Static ? "libcmt.lib" : "msvcrt.lib");
 		
 		args.AddRange(request.LibFiles.Distinct());
 		

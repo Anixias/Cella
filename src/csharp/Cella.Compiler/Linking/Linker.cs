@@ -38,11 +38,21 @@ public sealed class Linker(string rootPath)
 		
 		var linkerPath = Path.Combine(rootPath, linkerName);
 		
-		var process = new Process();
-		process.StartInfo.FileName = linkerPath;
-		process.StartInfo.Arguments = argStr;
-		process.StartInfo.RedirectStandardError = true;
-		process.StartInfo.UseShellExecute = false;
+		var process = new Process
+		{
+			StartInfo =
+			{
+				FileName = linkerPath,
+				Arguments = argStr,
+				RedirectStandardError = true,
+				UseShellExecute = false
+			}
+		};
+		
+		var environmentVars = toolchain.GetLinkerEnvironmentVars(request);
+		foreach (var (key, value) in environmentVars)
+			process.StartInfo.Environment[key] = value;
+		
 		process.Start();
 		
 		await process.WaitForExitAsync();

@@ -5,6 +5,7 @@ public abstract class Toolchain(string root)
 	public string Root { get; } = root;
 	public abstract string LldFlavor { get; }
 	
+	public abstract Dictionary<string, string?> GetLinkerEnvironmentVars(LinkRequest request);
 	public abstract List<string> GetLinkerArgs(LinkRequest request);
 	
 	public static Toolchain FromTargetTriple(TargetTriple targetTriple, string toolchainsDirectory)
