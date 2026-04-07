@@ -99,8 +99,6 @@ public abstract class VariableSymbol(Token identifier) : Symbol(identifier.Text)
 	public SourceLocation Definition { get; } = identifier.SourceLocation;
 }
 
-// TODO: Syntax node?
-// TODO: Initializer? Or is that stored elsewhere?
 // TODO: Bind whether it has a constant initializer and no reassignments
 public sealed class LocalVariableSymbol(VarStatementNode syntax, TypeSymbol type)
 	: VariableSymbol(syntax.Identifier)
@@ -109,10 +107,14 @@ public sealed class LocalVariableSymbol(VarStatementNode syntax, TypeSymbol type
 	public TypeSymbol Type { get; } = type;
 }
 
-// TODO: Syntax node?
 // TODO: Initializer? Or is that stored elsewhere?
 public sealed class ParameterSymbol(Token identifier)
 	: VariableSymbol(identifier);
+
+public sealed class LabelSymbol(Token identifier) : Symbol(identifier.Text)
+{
+	public SourceLocation Definition { get; } = identifier.SourceLocation;
+}
 
 // TODO Throw errors when symbols resolved as ambiguous
 public sealed class AmbiguousSymbol(string name, IEnumerable<Symbol> candidates) : Symbol(name)

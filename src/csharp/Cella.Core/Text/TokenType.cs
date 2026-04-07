@@ -122,18 +122,25 @@ public sealed class TokenType
 	public static readonly TokenType KeywordVar = CreateKeyword("var");
 	public static readonly TokenType KeywordIf = CreateKeyword("if");
 	public static readonly TokenType KeywordElse = CreateKeyword("else");
+	public static readonly TokenType KeywordFor = CreateKeyword("for");
+	public static readonly TokenType KeywordIn = CreateKeyword("in");
+	public static readonly TokenType KeywordLoop = CreateKeyword("loop");
+	public static readonly TokenType KeywordWhile = CreateKeyword("while");
+	public static readonly TokenType KeywordBreak = CreateKeyword("break");
+	public static readonly TokenType KeywordCont = CreateKeyword("cont");
 	
 	// Contextual Keywords
 	public static readonly TokenType KeywordMod = CreateContextualKeyword("mod");
 	public static readonly TokenType KeywordFun = CreateContextualKeyword("fun");
 	public static readonly TokenType KeywordUse = CreateContextualKeyword("use");
 	public static readonly TokenType KeywordPub = CreateContextualKeyword("pub");
-	public static readonly TokenType KeywordPtr = CreateContextualKeyword("ptr");
 	public static readonly TokenType KeywordExt = CreateContextualKeyword("ext");
 	
 	#endregion
 	#region Operators
 	
+	public static readonly TokenType OpDotDotEqual = CreateOperator("..=");
+	public static readonly TokenType OpDotDot = CreateOperator("..");
 	public static readonly TokenType OpArrow = CreateOperator("->");
 	public static readonly TokenType OpPlusEqual = CreateOperator("+=");
 	public static readonly TokenType OpMinusEqual = CreateOperator("-=");

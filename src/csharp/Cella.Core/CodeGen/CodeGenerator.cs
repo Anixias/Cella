@@ -474,10 +474,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 				}
 				
 				case PrimitiveTypeKind.CStr:
-				{
-					var bytes = (byte[])value;
-					return GetOrCreateStringGlobal(bytes);
-				}
+					return GetOrCreateStringGlobal((byte[])value);
 				
 				case PrimitiveTypeKind.Bool:
 					return (bool)value ? _true : _false;

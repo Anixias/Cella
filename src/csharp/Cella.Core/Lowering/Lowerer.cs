@@ -44,8 +44,21 @@ public sealed class Lowerer : IResolvedDeclarationNodeVisitor
 	
 	private sealed class FunctionLowerer : IResolvedStatementNodeVisitor, IResolvedExpressionNodeVisitor<Value>
 	{
+		private readonly record struct LoopContext(BasicBlock BreakTarget, BasicBlock ContinueTarget);
+		
 		private readonly LoweredFunction _function;
+		private readonly Stack<LoopContext> _loopStack = [];
+		private readonly Dictionary<LabelSymbol, LoopContext> _loopsByLabel = [];
 		private BasicBlock currentBlock;
+		private ulong nextLoopId;
+		
+		private FunctionLowerer(LoweredFunction function)
+		{
+			_function = function;
+			currentBlock = CreateBlock("entry");
+		}
+		
+		private ulong NextLoopId() => nextLoopId++;
 		
 		private BasicBlock CreateBlock(string hint)
 		{
@@ -54,11 +67,9 @@ public sealed class Lowerer : IResolvedDeclarationNodeVisitor
 			return block;
 		}
 		
-		private FunctionLowerer(LoweredFunction function)
-		{
-			_function = function;
-			currentBlock = CreateBlock("entry");
-		}
+		private LoopContext GetLoopContext(LabelSymbol? label) => label is null
+			? _loopStack.Peek()
+			: _loopsByLabel[label];
 		
 		public static LoweredFunction Lower(ResolvedFunctionNode node)
 		{
@@ -132,6 +143,20 @@ public sealed class Lowerer : IResolvedDeclarationNodeVisitor
 				VisitNode(statement);
 		}
 		
+		public void Visit(ResolvedBreakStatementNode node)
+		{
+			var context = GetLoopContext(node.Label);
+			currentBlock.Terminator = new BranchTerminator(context.BreakTarget);
+			currentBlock = CreateBlock("unreachable");
+		}
+		
+		public void Visit(ResolvedContinueStatementNode node)
+		{
+			var context = GetLoopContext(node.Label);
+			currentBlock.Terminator = new BranchTerminator(context.ContinueTarget);
+			currentBlock = CreateBlock("unreachable");
+		}
+		
 		public void Visit(ResolvedExpressionStatementNode node)
 		{
 			var expression = VisitNode(node.Expression);
@@ -183,6 +208,128 @@ public sealed class Lowerer : IResolvedDeclarationNodeVisitor
 		{
 			var value = node.Initializer is null ? null : VisitNode(node.Initializer);
 			currentBlock.Instructions.Add(new LocalVarInstruction(node.Symbol, value));
+		}
+		
+		private void VisitInLoop(IResolvedStatementNode body, BasicBlock breakBlock, BasicBlock continueBlock,
+			LabelSymbol? label)
+		{
+			var loopContext = new LoopContext(breakBlock, continueBlock);
+			if (label is not null)
+				_loopsByLabel[label] = loopContext;
+			
+			_loopStack.Push(loopContext);
+			VisitNode(body);
+			_loopStack.Pop();
+		}
+		
+		public void Visit(ResolvedDoWhileStatementNode node)
+		{
+			var id = NextLoopId();
+			var bodyBlock = CreateBlock($"dowhile{id}_body");
+			var condBlock = CreateBlock($"dowhile{id}_cond");
+			var exitBlock = CreateBlock($"dowhile{id}_exit");
+			
+			currentBlock.Terminator = new BranchTerminator(bodyBlock);
+			
+			// Body
+			currentBlock = bodyBlock;
+			VisitInLoop(node.Body, exitBlock, condBlock, node.Label);
+			
+			if (currentBlock.Terminator is UndefinedTerminator)
+				currentBlock.Terminator = new BranchTerminator(condBlock);
+			
+			// Condition
+			currentBlock = condBlock;
+			var condition = VisitNode(node.Condition);
+			currentBlock.Terminator = new ConditionalBranchTerminator(condition, bodyBlock, exitBlock);
+			
+			currentBlock = exitBlock;
+		}
+		
+		public void Visit(ResolvedLoopStatementNode node)
+		{
+			var id = NextLoopId();
+			var bodyBlock = CreateBlock($"loop{id}_body");
+			var exitBlock = CreateBlock($"loop{id}_exit");
+			
+			currentBlock.Terminator = new BranchTerminator(bodyBlock);
+			
+			// Body
+			currentBlock = bodyBlock;
+			VisitInLoop(node.Body, exitBlock, bodyBlock, node.Label);
+			
+			if (currentBlock.Terminator is UndefinedTerminator)
+				currentBlock.Terminator = new BranchTerminator(bodyBlock);
+			
+			currentBlock = exitBlock;
+		}
+		
+		public void Visit(ResolvedRepeatStatementNode node)
+		{
+			var id = NextLoopId();
+			
+			// Create implicit counter variable initialized with count
+			var countValue = VisitNode(node.Count);
+			var counterNode = new VarStatementNode(SourceLocation.None,
+				new Token(TokenType.Identifier, SourceLocation.None, $"repeat{id}$i"), null, null);
+			var counterSymbol = new LocalVariableSymbol(counterNode, countValue.Type);
+			currentBlock.Instructions.Add(new LocalVarInstruction(counterSymbol, countValue));
+			
+			var counterVar = new VariableValue(new(counterSymbol, countValue.Type));
+			var one = new ConstantValue(countValue.Type, 1);
+			var zero = new ConstantValue(countValue.Type, 0);
+			
+			var condBlock = CreateBlock($"repeat{id}_cond");
+			var bodyBlock = CreateBlock($"repeat{id}_body");
+			var latchBlock = CreateBlock($"repeat{id}_latch");
+			var exitBlock = CreateBlock($"repeat{id}_exit");
+			
+			currentBlock.Terminator = new BranchTerminator(condBlock);
+			
+			// Condition: counter > 0
+			currentBlock = condBlock;
+			var condition = new BinOpValue(countValue.Type, counterVar, zero, BinaryOperation.Greater);
+			currentBlock.Terminator = new ConditionalBranchTerminator(condition, bodyBlock, exitBlock);
+			
+			// Body
+			currentBlock = bodyBlock;
+			VisitInLoop(node.Body, exitBlock, latchBlock, node.Label);
+			
+			if (currentBlock.Terminator is UndefinedTerminator)
+				currentBlock.Terminator = new BranchTerminator(latchBlock);
+			
+			// Latch: decrement counter, jump back to condition
+			currentBlock = latchBlock;
+			var decrement = new AssignValue(countValue.Type, counterVar,
+				new BinOpValue(countValue.Type, counterVar, one, BinaryOperation.Subtraction));
+			latchBlock.Instructions.Add(new ExpressionInstruction(decrement));
+			latchBlock.Terminator = new BranchTerminator(condBlock);
+			
+			currentBlock = exitBlock;
+		}
+		
+		public void Visit(ResolvedWhileStatementNode node)
+		{
+			var id = NextLoopId();
+			var condBlock = CreateBlock($"while{id}_cond");
+			var bodyBlock = CreateBlock($"while{id}_body");
+			var exitBlock = CreateBlock($"while{id}_exit");
+			
+			currentBlock.Terminator = new BranchTerminator(condBlock);
+			
+			// Condition
+			currentBlock = condBlock;
+			var condition = VisitNode(node.Condition);
+			currentBlock.Terminator = new ConditionalBranchTerminator(condition, bodyBlock, exitBlock);
+			
+			// Body
+			currentBlock = bodyBlock;
+			VisitInLoop(node.Body, exitBlock, condBlock, node.Label);
+			
+			if (currentBlock.Terminator is UndefinedTerminator)
+				currentBlock.Terminator = new BranchTerminator(condBlock);
+			
+			currentBlock = exitBlock;
 		}
 		
 		public Value Visit(ResolvedFunctionCallExpressionNode node) =>

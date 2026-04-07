@@ -133,7 +133,12 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 			operands.Add(ParseAdditive(ref index));
 		}
 		
-		return operands.Count == 1 ? operands[0] : new ChainedExpressionNode(operands, ops);
+		return operands.Count switch
+		{
+			1 => operands[0],
+			2 => new BinaryOpExpressionNode(operands[0], ops[0], operands[1]),
+			_ => new ChainedExpressionNode(operands, ops)
+		};
 	}
 	
 	private IExpressionNode ParseAdditive(ref int index)

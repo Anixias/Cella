@@ -121,6 +121,54 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 		return result;
 	}
 	
+	public IResolvedNode Visit(BreakStatementNode node)
+	{
+		LabelSymbol? labelSymbol;
+		if (node.ExpressionNode is { } expressionNode)
+		{
+			// TODO Better diagnostics
+			if (expressionNode is not VarExpressionNode varExpr)
+				throw new Exception("Expression must be a label");
+			
+			var name = varExpr.Identifier.Text;
+			if (CurrentResolutionContext.Resolve(name) is not { } symbol)
+				throw new Exception($"Symbol '{name}' not found in this scope");
+			
+			if (symbol is not LabelSymbol label)
+				throw new Exception($"Symbol '{name}' is not a label");
+			
+			labelSymbol = label;
+		}
+		else
+			labelSymbol = null;
+		
+		return new ResolvedBreakStatementNode(labelSymbol);
+	}
+	
+	public IResolvedNode Visit(ContinueStatementNode node)
+	{
+		LabelSymbol? labelSymbol;
+		if (node.ExpressionNode is { } expressionNode)
+		{
+			// TODO Better diagnostics
+			if (expressionNode is not VarExpressionNode varExpr)
+				throw new Exception("Expression must be a label");
+			
+			var name = varExpr.Identifier.Text;
+			if (CurrentResolutionContext.Resolve(name) is not { } symbol)
+				throw new Exception($"Symbol '{name}' not found in this scope");
+			
+			if (symbol is not LabelSymbol label)
+				throw new Exception($"Symbol '{name}' is not a label");
+			
+			labelSymbol = label;
+		}
+		else
+			labelSymbol = null;
+
+		return new ResolvedContinueStatementNode(labelSymbol);
+	}
+	
 	public IResolvedNode Visit(ExpressionStatementNode node) =>
 		new ResolvedExpressionStatementNode(VisitNode(node.ExpressionNode));
 	
@@ -243,6 +291,100 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 		resolutionContext.LocalScope!.Define(symbol);
 		
 		return new ResolvedVarStatementNode(symbol, initializer);
+	}
+	
+	public IResolvedNode Visit(WhileStatementNode node)
+	{
+		var condition = VisitNode(node.Condition);
+		
+		// Create a scope for the body and label (if applicable)
+		var scope = CurrentScope?.CreateChild() ?? new();
+		var resolutionContext = CurrentResolutionContext with { LocalScope = scope };
+		
+		LabelSymbol? symbol;
+		if (node.Label is { } label)
+		{
+			symbol = new(label);
+			scope.Define(symbol);
+		}
+		else
+			symbol = null;
+		
+		_resolutionContexts.Push(resolutionContext);
+		var body = VisitNode(node.Body);
+		_resolutionContexts.Pop();
+		
+		return new ResolvedWhileStatementNode(condition, body, symbol);
+	}
+	
+	public IResolvedNode Visit(DoWhileStatementNode node)
+	{
+		var condition = VisitNode(node.Condition);
+		
+		// Create a scope for the body and label (if applicable)
+		var scope = CurrentScope?.CreateChild() ?? new();
+		var resolutionContext = CurrentResolutionContext with { LocalScope = scope };
+		
+		LabelSymbol? symbol;
+		if (node.Label is { } label)
+		{
+			symbol = new(label);
+			scope.Define(symbol);
+		}
+		else
+			symbol = null;
+		
+		_resolutionContexts.Push(resolutionContext);
+		var body = VisitNode(node.Body);
+		_resolutionContexts.Pop();
+		
+		return new ResolvedDoWhileStatementNode(body, condition, symbol);
+	}
+	
+	public IResolvedNode Visit(RepeatStatementNode node)
+	{
+		var count = VisitNode(node.Count);
+		
+		// Create a scope for the body and label (if applicable)
+		var scope = CurrentScope?.CreateChild() ?? new();
+		var resolutionContext = CurrentResolutionContext with { LocalScope = scope };
+		
+		LabelSymbol? symbol;
+		if (node.Label is { } label)
+		{
+			symbol = new(label);
+			scope.Define(symbol);
+		}
+		else
+			symbol = null;
+		
+		_resolutionContexts.Push(resolutionContext);
+		var body = VisitNode(node.Body);
+		_resolutionContexts.Pop();
+		
+		return new ResolvedRepeatStatementNode(count, body, symbol);
+	}
+	
+	public IResolvedNode Visit(LoopStatementNode node)
+	{
+		// Create a scope for the body and label (if applicable)
+		var scope = CurrentScope?.CreateChild() ?? new();
+		var resolutionContext = CurrentResolutionContext with { LocalScope = scope };
+		
+		LabelSymbol? symbol;
+		if (node.Label is { } label)
+		{
+			symbol = new(label);
+			scope.Define(symbol);
+		}
+		else
+			symbol = null;
+		
+		_resolutionContexts.Push(resolutionContext);
+		var body = VisitNode(node.Body);
+		_resolutionContexts.Pop();
+		
+		return new ResolvedLoopStatementNode(body, symbol);
 	}
 	
 	public IResolvedNode Visit(UnaryOpExpressionNode node)

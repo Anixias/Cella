@@ -53,6 +53,14 @@ public sealed class TypeChecker : IResolvedStatementNodeVisitor, IResolvedDeclar
 			VisitNode(statement);
 	}
 	
+	public void Visit(ResolvedBreakStatementNode node)
+	{
+	}
+	
+	public void Visit(ResolvedContinueStatementNode node)
+	{
+	}
+	
 	public void Visit(ResolvedExpressionStatementNode node)
 	{
 		if (!IsAllowedAsStatement(node.Expression))
@@ -82,14 +90,17 @@ public sealed class TypeChecker : IResolvedStatementNodeVisitor, IResolvedDeclar
 				var paramTypes = e.Function.Signature.ParameterTypes;
 				if (args.Length != paramTypes.Length)
 					_diagnostics.Add($"Incorrect number of arguments: Expected {paramTypes.Length}, got {args.Length}");
-				
-				for (var i = 0; i < args.Length; i++)
+				else
 				{
-					var expected = paramTypes[i];
-					var actual = args[i].Type;
-					
-					if (!AreTypesCompatible(expected, actual))
-						_diagnostics.Add($"Argument type '{actual.Name}' is not assignable to parameter type '{expected.Name}'");
+					for (var i = 0; i < args.Length; i++)
+					{
+						var expected = paramTypes[i];
+						var actual = args[i].Type;
+						
+						if (!AreTypesCompatible(expected, actual))
+							_diagnostics.Add(
+								$"Argument type '{actual.Name}' is not assignable to parameter type '{expected.Name}'");
+					}
 				}
 				
 				break;
@@ -103,6 +114,11 @@ public sealed class TypeChecker : IResolvedStatementNodeVisitor, IResolvedDeclar
 		if (!AreTypesCompatible(NativeSymbols.Bool, conditionType))
 			_diagnostics.Add(
 				$"Invalid condition type '{conditionType.Name}': Expected type '{NativeSymbols.Bool.Name}'");
+		
+		VisitNode(node.Then);
+		
+		if (node.Else is { } @else)
+			VisitNode(@else);
 	}
 	
 	public void Visit(ResolvedReturnStatementNode node)
@@ -130,6 +146,38 @@ public sealed class TypeChecker : IResolvedStatementNodeVisitor, IResolvedDeclar
 			_diagnostics.Add("Implicitly-typed local variable must have an initializer");
 	}
 	
+	public void Visit(ResolvedWhileStatementNode node)
+	{
+		var conditionType = node.Condition.Type;
+		if (!AreTypesCompatible(NativeSymbols.Bool, conditionType))
+			_diagnostics.Add(
+				$"Invalid condition type '{conditionType.Name}': Expected type '{NativeSymbols.Bool.Name}'");
+		
+		VisitNode(node.Body);
+	}
+	
+	public void Visit(ResolvedDoWhileStatementNode node)
+	{
+		var conditionType = node.Condition.Type;
+		if (!AreTypesCompatible(NativeSymbols.Bool, conditionType))
+			_diagnostics.Add(
+				$"Invalid condition type '{conditionType.Name}': Expected type '{NativeSymbols.Bool.Name}'");
+		
+		VisitNode(node.Body);
+	}
+	
+	public void Visit(ResolvedLoopStatementNode node) => VisitNode(node.Body);
+	
+	public void Visit(ResolvedRepeatStatementNode node)
+	{
+		var countType = node.Count.Type;
+		if (!IsIntegralType(countType))
+			_diagnostics.Add(
+				$"Invalid count type '{countType.Name}': Expected an integral type");
+		
+		VisitNode(node.Body);
+	}
+	
 	// TEMP Will need implicit conversions, subtyping, traits/interfaces, constraints, etc.
 	private bool AreTypesCompatible(TypeSymbol? expected, TypeSymbol? actual) => expected == actual;
 	
@@ -143,6 +191,23 @@ public sealed class TypeChecker : IResolvedStatementNodeVisitor, IResolvedDeclar
 	{
 		ResolvedFunctionCallExpressionNode => true, // TODO Warn if function is pure?
 		ResolvedAssignmentExpressionNode => true,
+		_ => false
+	};
+	
+	private bool IsIntegralType(TypeSymbol type) => type is PrimitiveType pt && pt.Kind switch
+	{
+		PrimitiveTypeKind.Int8 => true,
+		PrimitiveTypeKind.Int16 => true,
+		PrimitiveTypeKind.Int32 => true,
+		PrimitiveTypeKind.Int64 => true,
+		PrimitiveTypeKind.Int128 => true,
+		PrimitiveTypeKind.IntSize => true,
+		PrimitiveTypeKind.UInt8 => true,
+		PrimitiveTypeKind.UInt16 => true,
+		PrimitiveTypeKind.UInt32 => true,
+		PrimitiveTypeKind.UInt64 => true,
+		PrimitiveTypeKind.UInt128 => true,
+		PrimitiveTypeKind.UIntSize => true,
 		_ => false
 	};
 }

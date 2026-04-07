@@ -250,6 +250,22 @@ public sealed class AstPrinter : ISyntaxNodeVisitor
 			VisitNode(expressionNode, true);
 	}
 	
+	public void Visit(BreakStatementNode node)
+	{
+		StartLine();
+		_sb.Append("BreakStatementNode");
+		if (node.ExpressionNode is { } expressionNode)
+			VisitNode(expressionNode, true);
+	}
+	
+	public void Visit(ContinueStatementNode node)
+	{
+		StartLine();
+		_sb.Append("ContinueStatementNode");
+		if (node.ExpressionNode is { } expressionNode)
+			VisitNode(expressionNode, true);
+	}
+	
 	public void Visit(UnaryOpExpressionNode node)
 	{
 		StartLine();
@@ -273,6 +289,53 @@ public sealed class AstPrinter : ISyntaxNodeVisitor
 		
 		if (node.ExpressionNode is { } expressionNode)
 			VisitNode(expressionNode, true);
+	}
+	
+	public void Visit(WhileStatementNode node)
+	{
+		StartLine();
+		_sb.Append("WhileStatementNode");
+		
+		if (node.Label is { } label)
+			_sb.Append(" '").Append(label.Text).Append('\'');
+		
+		VisitNode(node.Condition, false);
+		VisitNode(node.Body, true);
+	}
+	
+	public void Visit(DoWhileStatementNode node)
+	{
+		StartLine();
+		_sb.Append("DoWhileStatementNode");
+		
+		if (node.Label is { } label)
+			_sb.Append(" '").Append(label.Text).Append('\'');
+		
+		VisitNode(node.Body, false);
+		VisitNode(node.Condition, true);
+	}
+	
+	public void Visit(LoopStatementNode node)
+	{
+		StartLine();
+		_sb.Append("LoopStatementNode");
+		
+		if (node.Label is { } label)
+			_sb.Append(" '").Append(label.Text).Append('\'');
+		
+		VisitNode(node.Body, true);
+	}
+	
+	public void Visit(RepeatStatementNode node)
+	{
+		StartLine();
+		_sb.Append("RepeatStatementNode");
+		
+		if (node.Label is { } label)
+			_sb.Append(" '").Append(label.Text).Append('\'');
+		
+		VisitNode(node.Count, false);
+		VisitNode(node.Body, true);
 	}
 	
 	private bool IsLast() => _hasMoreSiblings.Count == 0 || !_hasMoreSiblings[^1];

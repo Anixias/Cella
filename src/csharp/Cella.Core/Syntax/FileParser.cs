@@ -265,7 +265,10 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName) : 
 			return new(identifier, modifiers, parameters, returnType, statement);
 		}
 		
-		if (ParseBlock(ref index) is not { } body)
+		if (!Match(ref index, out var openBraceToken, TokenType.OpOpenBrace))
+			return null;
+		
+		if (ParseBlockStatement(ref index, openBraceToken) is not { } body)
 			return null;
 		
 		return new(identifier, modifiers, parameters, returnType, body);
@@ -371,12 +374,9 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName) : 
 		return new(identifier, typeToken, defaultValue);
 	}
 	
-	private BlockStatementNode? ParseBlock(ref int index)
+	private BlockStatementNode? ParseBlockStatement(ref int index, Token open)
 	{
 		// @TODO Diagnostics
-		
-		if (!Match(ref index, out var open, TokenType.OpOpenBrace))
-			return null;
 		
 		// @TODO Replace with statement node type
 		var statements = new List<IStatementNode>();
@@ -406,18 +406,104 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName) : 
 	{
 		// @TODO Diagnostics
 		
-		// Variable declaration statement
 		if (Match(ref index, out var varToken, TokenType.KeywordVar))
 			return ParseVarStatement(ref index, varToken);
 		
 		if (Match(ref index, out var ifToken, TokenType.KeywordIf))
 			return ParseIfStatement(ref index, ifToken);
 		
-		// Return statement
+		if (Match(ref index, out var forToken, TokenType.KeywordFor))
+			return ParseForStatement(ref index, forToken);
+		
+		if (Match(ref index, out var loopToken, TokenType.KeywordLoop))
+			return ParseLoopStatement(ref index, loopToken);
+		
 		if (Match(ref index, out var retToken, TokenType.KeywordRet))
 			return ParseReturnStatement(ref index, retToken);
 		
-		return new ExpressionStatementNode(ParseExpression(ref index));
+		if (Match(ref index, out var breakToken, TokenType.KeywordBreak))
+			return ParseBreakStatement(ref index, breakToken);
+		
+		if (Match(ref index, out var contToken, TokenType.KeywordCont))
+			return ParseContinueStatement(ref index, contToken);
+		
+		if (Match(ref index, out var openBraceToken, TokenType.OpOpenBrace))
+			return ParseBlockStatement(ref index, openBraceToken);
+		
+		// Named loops
+		var expr = ParseExpression(ref index);
+		if (expr is not VarExpressionNode var)
+			return new ExpressionStatementNode(expr);
+		
+		// Attempt to parse as loop, else backtrack
+		var backtrackIndex = index;
+		
+		if (Match(ref index, TokenType.OpColon))
+		{
+			if (Match(ref index, out var namedForToken, TokenType.KeywordFor))
+				return ParseForStatement(ref index, namedForToken, var.Identifier);
+			
+			if (Match(ref index, out var namedLoopToken, TokenType.KeywordLoop))
+				return ParseLoopStatement(ref index, namedLoopToken, var.Identifier);
+		}
+		
+		index = backtrackIndex;
+		return new ExpressionStatementNode(expr);
+	}
+	
+	private IStatementNode? ParseForStatement(ref int index, Token forToken, Token? labelToken = null)
+	{
+		throw new NotImplementedException();
+	}
+	
+	private IStatementNode? ParseLoopStatement(ref int index, Token loopToken, Token? labelToken = null)
+	{
+		// TODO Diagnostics
+		
+		var (source, range) = loopToken.SourceLocation;
+		if (labelToken is { } label)
+			range = range.Join(label.SourceLocation.Range);
+		
+		// While-loop:
+		if (Match(ref index, TokenType.KeywordWhile))
+		{
+			var condition = ParseExpression(ref index);
+			
+			if (ParseStatement(ref index) is not { } body)
+				return null;
+			
+			range = range.Join(body.SourceLocation.Range);
+			return new WhileStatementNode(new(source, range), condition, body, labelToken);
+		}
+		
+		// Repeat loop:
+		if (Match(ref index, TokenType.KeywordFor))
+		{
+			var count = ParseExpression(ref index);
+			
+			if (ParseStatement(ref index) is not { } body)
+				return null;
+			
+			range = range.Join(body.SourceLocation.Range);
+			return new RepeatStatementNode(new(source, range), count, body, labelToken);
+		}
+		
+		// Other loops
+		if (ParseStatement(ref index) is not { } statement)
+			return null;
+		
+		// Do-While loop:
+		if (Match(ref index, TokenType.KeywordWhile))
+		{
+			var condition = ParseExpression(ref index);
+			
+			range = range.Join(condition.SourceLocation.Range);
+			return new DoWhileStatementNode(new(source, range), statement, condition, labelToken);
+		}
+		
+		// Infinite loop:
+		range = range.Join(statement.SourceLocation.Range);
+		return new LoopStatementNode(new(source, range), statement, labelToken);
 	}
 	
 	private IfStatementNode? ParseIfStatement(ref int index, Token ifToken)
@@ -484,6 +570,37 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName) : 
 		var source = retToken.SourceLocation.Source;
 		
 		if (AtEnd(index) || retToken.Line != Tokens[index].Line || TryParseExpression(ref index) is not { } expression)
+			return new(new(source, range), null);
+		
+		range = range.Join(expression.SourceLocation.Range);
+		return new(new(source, range), expression);
+	}
+	
+	private BreakStatementNode ParseBreakStatement(ref int index, Token breakToken)
+	{
+		// breakToken already consumed when this function is called
+		
+		// @TODO Diagnostics
+		var range = breakToken.SourceLocation.Range;
+		var source = breakToken.SourceLocation.Source;
+		
+		if (AtEnd(index) || breakToken.Line != Tokens[index].Line ||
+		    TryParseExpression(ref index) is not { } expression)
+			return new(new(source, range), null);
+		
+		range = range.Join(expression.SourceLocation.Range);
+		return new(new(source, range), expression);
+	}
+	
+	private ContinueStatementNode ParseContinueStatement(ref int index, Token contToken)
+	{
+		// continueToken already consumed when this function is called
+		
+		// @TODO Diagnostics
+		var range = contToken.SourceLocation.Range;
+		var source = contToken.SourceLocation.Source;
+		
+		if (AtEnd(index) || contToken.Line != Tokens[index].Line || TryParseExpression(ref index) is not { } expression)
 			return new(new(source, range), null);
 		
 		range = range.Join(expression.SourceLocation.Range);
