@@ -1,7 +1,7 @@
 ﻿using System.Collections.Immutable;
 using Cella.Core.Symbols;
 using Cella.Core.Syntax;
-using Cella.Core.Syntax.Nodes.Declarations;
+using Cella.Core.Syntax.Nodes;
 
 namespace Cella.Core.Binding;
 

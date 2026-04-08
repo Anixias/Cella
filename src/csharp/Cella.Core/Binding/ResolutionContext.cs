@@ -1,5 +1,6 @@
 ﻿using System.Collections.Immutable;
 using Cella.Core.Symbols;
+using Cella.Core.Syntax.Nodes;
 
 namespace Cella.Core.Binding;
 
@@ -10,6 +11,7 @@ public readonly struct ResolutionContext
 	public FunctionInfo? ContainingFunction { get; init; }
 	public ImportEnvironment? Imports { get; init; }
 	public Scope? LocalScope { get; init; }
+	public TypePool TypePool { get; init; }
 	
 	public IEnumerable<string> GetQualifiers()
 	{
@@ -59,4 +61,20 @@ public readonly struct ResolutionContext
 		
 		return NativeSymbols.Resolve(name);
 	}
+	
+	public TypeSymbol ResolveType(ITypeNode node) => node switch
+	{
+		IdentifierTypeNode n => Resolve(n.Token.Text) as TypeSymbol ?? NativeSymbols.Invalid, // TODO Diagnostics
+		GenericTypeNode n => ResolveGenericType(n),
+		_ => NativeSymbols.Invalid
+	};
+	
+	private TypeSymbol ResolveGenericType(GenericTypeNode node) => node.Identifier.Text switch
+	{
+		"array" when node.TypeParameters.Length == 1
+			=> TypePool.GetArrayType(ResolveType(node.TypeParameters[0])),
+		"array"
+			=> NativeSymbols.Invalid, // TODO Diagnostics, wrong number of type params
+		_ => NativeSymbols.Invalid
+	};
 }

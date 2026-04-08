@@ -1,4 +1,4 @@
-﻿namespace Cella.Core.Syntax.Nodes.Declarations;
+﻿namespace Cella.Core.Syntax.Nodes;
 
 public interface IDeclarationNode : ISyntaxNode;
 

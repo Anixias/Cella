@@ -141,11 +141,25 @@ public sealed unsafe class CodeGenerator : IDisposable
 		}
 	}
 	
-	private LLVMTypeRef MapTypeSymbol(TypeSymbol? symbol) => symbol is null
-		? LLVMTypeRef.Void
-		: _typeMap.TryGetValue(symbol, out var type)
-			? type
-			: throw new InvalidOperationException($"Symbol '{symbol.Name}' not mapped in LLVM");
+	private LLVMTypeRef MapTypeSymbol(TypeSymbol? symbol)
+	{
+		if (symbol is null)
+			return LLVMTypeRef.Void;
+		
+		if (_typeMap.TryGetValue(symbol, out var type))
+			return type;
+		
+		// Lazy mapping for generic types
+		if (symbol is ArrayType arrayType)
+		{
+			var elementType = MapTypeSymbol(arrayType.ElementType);
+			var usizeType = LLVMTypeRef.CreateInt(_pointerSize * 8);
+			var ptrType = LLVMTypeRef.CreatePointer(elementType, 0u);
+			return LLVMTypeRef.CreateStruct([usizeType, ptrType], false);
+		}
+		
+		throw new InvalidOperationException($"Symbol '{symbol.Name}' not mapped in LLVM");
+	}
 	
 	private void BuildModule(LLVMModuleRef llvmModule, LLVMDIBuilderRef llvmDiBuilder, LoweredModule module)
 	{
@@ -329,6 +343,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 		BinOpValue v => EmitBinaryOp(v, builder),
 		UnaryOpValue v => EmitUnaryOp(v, builder),
 		AssignValue v => EmitAssignValue(v, builder),
+		IndexerValue v => EmitIndexer(v, builder),
 		CallValue v when _funMap[v.Function] is var (fv, ft, _) => builder.BuildCall2(ft, fv,
 			v.Arguments.Select(a => EmitValue(a, builder)).ToArray()),
 		_ => throw new InvalidOperationException()
@@ -395,6 +410,32 @@ public sealed unsafe class CodeGenerator : IDisposable
 		_ => throw new InvalidOperationException()
 	};
 	
+	private LLVMValueRef EmitIndexer(IndexerValue v, LLVMBuilderRef builder)
+	{
+		var target = EmitValue(v.Target, builder);
+		var index = EmitValue(v.Index, builder);
+		var elementType = MapTypeSymbol(v.Type);
+		
+		// TODO Switch to BuildInBoundsGEP2 once compiler-generated bounds checks are implemented
+		var dataPtr = builder.BuildExtractValue(target, 1, "dataptr");
+		var elemPtr = builder.BuildGEP2(elementType, dataPtr, new[] { index }, "elemptr");
+		
+		return builder.BuildLoad2(elementType, elemPtr, "elem");
+	}
+	
+	private LLVMValueRef EmitIndexerAddress(IndexerValue v, LLVMBuilderRef builder)
+	{
+		var target = EmitValue(v.Target, builder);
+		var index = EmitValue(v.Index, builder);
+		var elementType = MapTypeSymbol(v.Type);
+		
+		// TODO Switch to BuildInBoundsGEP2 once compiler-generated bounds checks are implemented
+		var dataPtr = builder.BuildExtractValue(target, 1, "dataptr");
+		var elemPtr = builder.BuildGEP2(elementType, dataPtr, new[] { index }, "elemptr");
+		
+		return elemPtr;
+	}
+	
 	private LLVMValueRef EmitAssignValue(AssignValue value, LLVMBuilderRef builder)
 	{
 		var right = EmitValue(value.Right, builder);
@@ -405,6 +446,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 	private LLVMValueRef EmitAddress(Value value, LLVMBuilderRef builder) => value switch
 	{
 		VariableValue v => _varMap[v.Variable],
+		IndexerValue v => EmitIndexerAddress(v, builder),
 		_ => throw new InvalidOperationException()
 	};
 	

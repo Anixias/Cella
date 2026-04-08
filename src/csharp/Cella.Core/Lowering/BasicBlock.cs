@@ -35,6 +35,12 @@ public sealed class CallValue(FunctionInfo function, IEnumerable<Value> argument
 	public ImmutableArray<Value> Arguments { get; } = arguments.ToImmutableArray();
 }
 
+public sealed class IndexerValue(TypeSymbol type, Value target, Value index) : Value(type, false)
+{
+	public Value Target { get; } = target;
+	public Value Index { get; } = index;
+}
+
 #region Operations
 public sealed class UnaryOpValue(TypeSymbol type, Value operand, UnaryOperation op) : Value(type, operand.IsConstant)
 {

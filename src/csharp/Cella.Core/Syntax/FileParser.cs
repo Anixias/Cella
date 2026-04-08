@@ -1,6 +1,5 @@
 ﻿using System.Collections.Immutable;
 using Cella.Core.Syntax.Nodes;
-using Cella.Core.Syntax.Nodes.Declarations;
 using Cella.Core.Text;
 
 namespace Cella.Core.Syntax;
@@ -296,7 +295,7 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName) : 
 		return new(identifier, modifiers, parameters, returnType, origin);
 	}
 	
-	private (List<ParameterNode> Parameters, Token? ReturnType)? ParseFunctionSignature(ref int index)
+	private (List<ParameterNode> Parameters, ITypeNode? ReturnType)? ParseFunctionSignature(ref int index)
 	{
 		var parameters = new List<ParameterNode>();
 		
@@ -316,18 +315,7 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName) : 
 			}
 		}
 		
-		// @TODO Return type should be more complex than a simple identifier token
-		Token? returnType;
-		if (Match(ref index, TokenType.OpArrow))
-		{
-			if (!Match(ref index, out var type, TokenType.Identifier))
-				return null;
-			
-			returnType = type;
-		}
-		else
-			returnType = null;
-		
+		var returnType = Match(ref index, TokenType.OpArrow) ? ParseType(ref index) : null;
 		return (parameters, returnType);
 	}
 	
@@ -364,14 +352,13 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName) : 
 			return null;
 		
 		// TODO Type should be more complex than a simple identifier token
-		if (!Match(ref index, out var typeToken, TokenType.Identifier))
-			return null;
+		var type = ParseType(ref index);
 		
 		if (!Match(ref index, TokenType.OpEqual))
-			return new(identifier, typeToken, null);
+			return new(identifier, type, null);
 		
 		var defaultValue = ParseExpression(ref index);
-		return new(identifier, typeToken, defaultValue);
+		return new(identifier, type, defaultValue);
 	}
 	
 	private BlockStatementNode? ParseBlockStatement(ref int index, Token open)
@@ -541,15 +528,7 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName) : 
 		if (!Match(ref index, out var identifier, TokenType.Identifier))
 			return null;
 		
-		Token? type = null;
-		if (Match(ref index, TokenType.OpColon))
-		{
-			// TODO Type should be more complex than a simple identifier token
-			if (!Match(ref index, out var typeToken, TokenType.Identifier))
-				return null;
-			
-			type = typeToken;
-		}
+		var type = Match(ref index, TokenType.OpColon) ? ParseType(ref index) : null;
 		
 		var (source, range) = varToken.SourceLocation;
 		
@@ -608,6 +587,7 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName) : 
 	}
 	
 	private IExpressionNode ParseExpression(ref int index) => new ExpressionParser(Tokens).Parse(ref index);
+	private ITypeNode ParseType(ref int index) => new TypeParser(Tokens).Parse(ref index);
 	
 	private IExpressionNode? TryParseExpression(ref int index)
 	{

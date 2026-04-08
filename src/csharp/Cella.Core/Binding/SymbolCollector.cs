@@ -1,5 +1,5 @@
 ﻿using Cella.Core.Symbols;
-using Cella.Core.Syntax.Nodes.Declarations;
+using Cella.Core.Syntax.Nodes;
 
 namespace Cella.Core.Binding;
 
@@ -34,6 +34,7 @@ public sealed class SymbolCollector : IDeclarationNodeVisitor
 	
 	public void Visit(FunctionNode node)
 	{
+		// TODO Disallow multiple parameters with the same name
 		var parameters = new List<ParameterSymbol>(node.Parameters.Length);
 		foreach (var param in node.Parameters)
 		{
@@ -51,6 +52,7 @@ public sealed class SymbolCollector : IDeclarationNodeVisitor
 	
 	public void Visit(ExternalFunctionNode node)
 	{
+		// TODO Disallow multiple parameters with the same name
 		var parameters = new List<ParameterSymbol>(node.Parameters.Length);
 		foreach (var param in node.Parameters)
 		{

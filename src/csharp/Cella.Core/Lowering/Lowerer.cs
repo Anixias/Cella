@@ -97,16 +97,18 @@ public sealed class Lowerer : IResolvedDeclarationNodeVisitor
 				
 				case 1:
 				{
-					/*var block = function.Blocks[0];
+					var block = function.Blocks[0];
 					
 					if (block.Terminator == UndefinedTerminator.Instance)
-						block.Terminator = ReturnTerminator.Void;*/
+						block.Terminator = ReturnTerminator.Void;
 					
 					break;
 				}
 				
 				default:
 				{
+					var reachableBlocks = FindReachableBlocks(function);
+					
 					for (var i = function.Blocks.Count - 1; i >= 0; i--)
 					{
 						var block = function.Blocks[i];
@@ -114,12 +116,18 @@ public sealed class Lowerer : IResolvedDeclarationNodeVisitor
 						if (block.Terminator != UndefinedTerminator.Instance)
 							continue;
 						
-						// If the block has no instructions and an undefined terminator, it wasn't actually used
-						// TODO We can't just remove the block because another block could be referencing it...
-						if (block.Instructions.Count == 0)
+						var isReachable = reachableBlocks.Contains(block);
+						
+						// Remove unused blocks
+						if (block.Instructions.Count == 0 && !isReachable)
+						{
 							function.Blocks.RemoveAt(i);
-						else
-							block.Terminator = ReturnTerminator.Void;
+							continue;
+						}
+						
+						// TODO Warn about unreachable code
+						
+						block.Terminator = ReturnTerminator.Void;
 					}
 					
 					break;
@@ -335,6 +343,9 @@ public sealed class Lowerer : IResolvedDeclarationNodeVisitor
 		public Value Visit(ResolvedFunctionCallExpressionNode node) =>
 			new CallValue(node.Function, node.Arguments.Select(VisitNode));
 		
+		public Value Visit(ResolvedIndexerExpressionNode node) =>
+			new IndexerValue(node.Type, VisitNode(node.Target), VisitNode(node.Index));
+		
 		public Value Visit(ResolvedLiteralExpressionNode node) => new ConstantValue(node.Type, node.Value);
 		
 		public Value Visit(ResolvedUnaryOpExpressionNode node) =>
@@ -474,5 +485,36 @@ public sealed class Lowerer : IResolvedDeclarationNodeVisitor
 			
 			throw new InvalidOperationException();
 		}
+	}
+	
+	private static HashSet<BasicBlock> FindReachableBlocks(LoweredFunction function)
+	{
+		if (function.Blocks.Count == 0)
+			return [];
+		
+		var reachable = new HashSet<BasicBlock>();
+		var queue = new Queue<BasicBlock>();
+		queue.Enqueue(function.Blocks[0]);
+		
+		while (queue.Count > 0)
+		{
+			var block = queue.Dequeue();
+			if (!reachable.Add(block))
+				continue;
+			
+			switch (block.Terminator)
+			{
+				case BranchTerminator t:
+					queue.Enqueue(t.Target);
+					break;
+				
+				case ConditionalBranchTerminator t:
+					queue.Enqueue(t.TrueTarget);
+					queue.Enqueue(t.FalseTarget);
+					break;
+			}
+		}
+		
+		return reachable;
 	}
 }

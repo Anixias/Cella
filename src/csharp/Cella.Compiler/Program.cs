@@ -9,7 +9,7 @@ using Cella.Core.CodeGen;
 using Cella.Core.Lowering;
 using Cella.Core.Symbols;
 using Cella.Core.Syntax;
-using Cella.Core.Syntax.Nodes.Declarations;
+using Cella.Core.Syntax.Nodes;
 using Cella.Core.Text;
 
 namespace Cella.Compiler;
@@ -147,9 +147,10 @@ internal static class Program
 		// TODO Allow configuring entry point name?
 		var entryPointName = outputType == ProjectOutputType.Executable ? "main" : null;
 		
+		var typePool = new TypePool();
 		AssemblySymbol assemblySymbol;
 		{
-			var signatureCollector = new SignatureCollector(entryPointName, symbolTable, dependencySymbols);
+			var signatureCollector = new SignatureCollector(entryPointName, symbolTable, typePool, dependencySymbols);
 			foreach (var info in files)
 				signatureCollector.Collect(info.Ast);
 			
@@ -167,7 +168,7 @@ internal static class Program
 		// Phase 3: Symbol resolution
 		ImmutableArray<ResolvedSourceFileInfo> resolvedFiles;
 		{
-			var resolver = new Resolver(assemblySymbol, dependencySymbols);
+			var resolver = new Resolver(assemblySymbol, dependencySymbols, typePool);
 			
 			resolvedFiles = files
 				.Select(sfi => new ResolvedSourceFileInfo(sfi.FilePath, resolver.Resolve(sfi.Ast), sfi.Source))

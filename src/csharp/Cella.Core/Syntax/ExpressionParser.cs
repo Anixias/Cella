@@ -61,6 +61,14 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 		TokenType.OpLess
 	];
 	
+	private bool IsNextNewline(int next)
+	{
+		if (AtEnd(next - 1) || AtEnd(next))
+			return false;
+		
+		return Tokens[next - 1].Line != Tokens[next].Line;
+	}
+	
 	public override IExpressionNode Parse(ref int index) => ParseExpression(ref index);
 	private IExpressionNode ParseExpression(ref int index) => ParseAssignment(ref index);
 	
@@ -176,47 +184,88 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 	
 	private IExpressionNode ParsePrimary(ref int index)
 	{
-		// Parenthesized Expression
+		IExpressionNode node;
+		
 		if (Match(ref index, TokenType.OpOpenParen))
 		{
-			var node = ParseExpression(ref index);
+			// Parenthesized Expression
+			node = ParseExpression(ref index);
 			
 			if (!Match(ref index, TokenType.OpCloseParen))
 			{
 				// TODO Diagnostics
 			}
-			
-			return node;
 		}
+		else if (Match(ref index, out var identifier, TokenType.Identifier))
+			node = new VarExpressionNode(identifier);
+		else
+			node = ParseLiteral(ref index);
 		
-		// Call Expression & Variable Expression
-		// TODO Contextual keywords
-		// TODO Should not use identifier but instead a tightly-bound indexer, which is also used for type parameters
-		if (Match(ref index, out var identifier, TokenType.Identifier))
-		{
-			var identifierLine = identifier.Line;
-			var startIndex = index;
-			
-			// Call Expression
-			if (Match(ref index, out var openParen, TokenType.OpOpenParen))
-			{
-				if (openParen.Line == identifierLine)
-					return ParseCallExpression(ref index, identifier);
-				
-				index = startIndex;
-			}
-			
-			// Variable Expression
-			return new VarExpressionNode(identifier);
-		}
-		
-		return ParseLiteral(ref index);
+		return ParsePostfix(ref index, node);
 	}
 	
-	private CallExpressionNode ParseCallExpression(ref int index, Token identifier)
+	private IExpressionNode ParsePostfix(ref int index, IExpressionNode target)
+	{
+		while (true)
+		{
+			// Call, Indexer, Access
+			// TODO Contextual keywords
+			// TODO Should not use identifier but instead a tightly-bound indexer, which is also used for type parameters
+			// TODO An indexer or call expression could be chained with one another; this won't parse those
+			var startIndex = index;
+				
+			// Access Expression
+			if (Match(ref index, out var dot, TokenType.OpDot))
+			{
+				if (!Match(ref index, out var member, TokenType.Identifier))
+				{
+					// TODO Diagnostic
+					index = startIndex;
+					break;
+				}
+				
+				var (source, range) = dot.SourceLocation;
+				range = range.Join(member.SourceLocation.Range);
+				target = new AccessExpressionNode(target, member, new(source, range));
+				continue;
+			}
+			
+			// Call Expression
+			if (Match(ref index, TokenType.OpOpenParen))
+			{
+				if (IsNextNewline(index))
+				{
+					index = startIndex;
+					break;
+				}
+				
+				target = ParseCallExpression(ref index, target);
+				continue;
+			}
+			
+			// Indexer Expression
+			if (Match(ref index, TokenType.OpOpenBracket))
+			{
+				if (IsNextNewline(index))
+				{
+					index = startIndex;
+					break;
+				}
+				
+				target = ParseIndexerExpression(ref index, target);
+				continue;
+			}
+			
+			break;
+		}
+		
+		return target;
+	}
+	
+	private CallExpressionNode ParseCallExpression(ref int index, IExpressionNode target)
 	{
 		// Caller already consumed open parenthesis
-		var range = identifier.SourceLocation.Range;
+		var range = target.SourceLocation.Range;
 		var arguments = new List<IExpressionNode>();
 		
 		Token closeParen;
@@ -225,7 +274,7 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 			if (AtEnd(index))
 			{
 				// TODO Diagnostic
-				range = range with { End = identifier.SourceLocation.Source.Length };
+				range = range with { End = target.SourceLocation.Source.Length };
 				break;
 			}
 			
@@ -240,7 +289,37 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 		if (closeParen != default)
 			range = range.Join(closeParen.SourceLocation.Range);
 		
-		return new(identifier, arguments, identifier.SourceLocation with { Range = range });
+		return new(target, arguments, target.SourceLocation with { Range = range });
+	}
+	
+	private IndexerExpressionNode ParseIndexerExpression(ref int index, IExpressionNode target)
+	{
+		// Caller already consumed open bracket
+		var range = target.SourceLocation.Range;
+		var arguments = new List<IExpressionNode>();
+		
+		Token closeBracket;
+		while (!Match(ref index, out closeBracket, TokenType.OpCloseBracket))
+		{
+			if (AtEnd(index))
+			{
+				// TODO Diagnostic
+				range = range with { End = target.SourceLocation.Source.Length };
+				break;
+			}
+			
+			if (arguments.Count > 0 && !Match(ref index, TokenType.OpComma))
+			{
+				// TODO Diagnostic: Missing comma
+			}
+			
+			arguments.Add(ParseExpression(ref index));
+		}
+		
+		if (closeBracket != default)
+			range = range.Join(closeBracket.SourceLocation.Range);
+		
+		return new(target, arguments, target.SourceLocation with { Range = range });
 	}
 	
 	private LiteralExpressionNode ParseLiteral(ref int index)

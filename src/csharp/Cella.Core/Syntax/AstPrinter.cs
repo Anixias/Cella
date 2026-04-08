@@ -1,6 +1,5 @@
 ﻿using System.Text;
 using Cella.Core.Syntax.Nodes;
-using Cella.Core.Syntax.Nodes.Declarations;
 
 namespace Cella.Core.Syntax;
 
@@ -50,13 +49,33 @@ public sealed class AstPrinter : ISyntaxNodeVisitor
 	public void Visit(CallExpressionNode node)
 	{
 		StartLine();
-		_sb.Append("CallExpressionNode '").Append(node.Identifier.AsSpan()).Append('\'');
+		_sb.Append("CallExpressionNode");
+		VisitNode(node.Target, node.Arguments.Length == 0);
 		
 		for (var i = 0; i < node.Arguments.Length; i++)
 		{
 			var last = i == node.Arguments.Length - 1;
 			VisitNode(node.Arguments[i], last);
 		}
+	}
+	
+	public void Visit(IndexerExpressionNode node)
+	{
+		StartLine();
+		_sb.Append("IndexerExpressionNode '");
+		VisitNode(node.Target, node.Arguments.Length == 0);
+		
+		for (var i = 0; i < node.Arguments.Length; i++)
+		{
+			var last = i == node.Arguments.Length - 1;
+			VisitNode(node.Arguments[i], last);
+		}
+	}
+	
+	public void Visit(AccessExpressionNode node)
+	{
+		// TODO
+		throw new NotImplementedException();
 	}
 	
 	public void Visit(ChainedExpressionNode node)
@@ -175,10 +194,29 @@ public sealed class AstPrinter : ISyntaxNodeVisitor
 		}
 		
 		if (node.ReturnType is { } returnType)
-			_sb.Append(" -> '").Append(returnType.AsSpan()).Append('\'');
+		{
+			_sb.Append(" -> ");
+			VisitNode(returnType, false);
+		}
 		
 		VisitNode(node.Body, true);
 	}
+	
+	public void Visit(GenericTypeNode node)
+	{
+		_sb.Append(node.Identifier.Text).Append('[');
+		for (var i = 0; i < node.TypeParameters.Length; i++)
+		{
+			if (i > 0)
+				_sb.Append(", ");
+			
+			VisitNode(node.TypeParameters[i], false);
+		}
+		
+		_sb.Append(']');
+	}
+	
+	public void Visit(IdentifierTypeNode node) => _sb.Append(node.Token.Text);
 	
 	public void Visit(ExternalFunctionNode node)
 	{
@@ -201,12 +239,18 @@ public sealed class AstPrinter : ISyntaxNodeVisitor
 			_sb.Append(')');
 		}
 		
-		if (node.ReturnType is { } returnType)
-			_sb.Append(" -> '").Append(returnType.AsSpan()).Append('\'');
+		if (node.ReturnType is not { } returnType)
+			return;
+		
+		_sb.Append(" -> ");
+		VisitNode(returnType, false);
 	}
 	
-	public void Visit(ParameterNode node) =>
-		_sb.Append(node.Identifier.AsSpan()).Append(": ").Append(node.Type.AsSpan());
+	public void Visit(ParameterNode node)
+	{
+		_sb.Append(node.Identifier.AsSpan()).Append(": ");
+		VisitNode(node.Type, false);
+	}
 	
 	public void Visit(LiteralExpressionNode node)
 	{
@@ -285,7 +329,11 @@ public sealed class AstPrinter : ISyntaxNodeVisitor
 		_sb.Append("VarStatementNode '").Append(node.Identifier.AsSpan()).Append('\'');
 		
 		if (node.Type is { } type)
-			_sb.Append(" (").Append(type.AsSpan()).Append(')');
+		{
+			_sb.Append(" (");
+			VisitNode(type, false);
+			_sb.Append(')');
+		}
 		
 		if (node.ExpressionNode is { } expressionNode)
 			VisitNode(expressionNode, true);

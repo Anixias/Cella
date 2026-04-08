@@ -1,6 +1,6 @@
 ﻿using System.Collections.Immutable;
 using Cella.Core.Symbols;
-using Cella.Core.Syntax.Nodes.Declarations;
+using Cella.Core.Syntax.Nodes;
 
 namespace Cella.Core.Binding;
 
@@ -8,16 +8,19 @@ public sealed class SignatureCollector : IDeclarationNodeVisitor
 {
 	private readonly string? _entryPointName;
 	private readonly SymbolTable _symbolTable;
+	private readonly TypePool _typePool;
 	private readonly ImmutableArray<AssemblySymbol> _dependencies;
 	private readonly SignatureTable.Builder _builder = new();
 	private readonly Stack<ResolutionContext> _resolutionContexts = [];
 	private ResolutionContext CurrentResolutionContext => _resolutionContexts.Peek();
 	private readonly List<FunctionInfo> _entryPoints = [];
 	
-	public SignatureCollector(string? entryPointName, SymbolTable symbolTable, IEnumerable<AssemblySymbol> dependencies)
+	public SignatureCollector(string? entryPointName, SymbolTable symbolTable, TypePool typePool,
+		IEnumerable<AssemblySymbol> dependencies)
 	{
 		_entryPointName = entryPointName;
 		_symbolTable = symbolTable;
+		_typePool = typePool;
 		_dependencies = dependencies.ToImmutableArray();
 	}
 	
@@ -38,7 +41,8 @@ public sealed class SignatureCollector : IDeclarationNodeVisitor
 		var resolutionContext = new ResolutionContext
 		{
 			File = file,
-			Imports = imports
+			Imports = imports,
+			TypePool = _typePool
 		};
 		
 		_resolutionContexts.Push(resolutionContext);
@@ -61,12 +65,7 @@ public sealed class SignatureCollector : IDeclarationNodeVisitor
 		{
 			var param = node.Parameters[i];
 			var paramSymbol = function.Parameters[i];
-			
-			TypeSymbol paramType;
-			if (resolutionContext.Resolve(param.Type.Text) is not TypeSymbol paramTypeSymbol)
-				paramType = new InvalidType();
-			else
-				paramType = paramTypeSymbol;
+			var paramType = resolutionContext.ResolveType(param.Type);
 			
 			paramTypes.Add(paramType);
 			_builder.VariableTypes[paramSymbol] = paramType;
@@ -76,10 +75,8 @@ public sealed class SignatureCollector : IDeclarationNodeVisitor
 		TypeSymbol returnType;
 		if (node.ReturnType is not { } returnTypeSyntax)
 			returnType = NativeSymbols.Void;
-		else if (resolutionContext.Resolve(returnTypeSyntax.Text) is not TypeSymbol returnTypeSymbol)
-			returnType = new InvalidType();
 		else
-			returnType = returnTypeSymbol;
+			returnType = resolutionContext.ResolveType(returnTypeSyntax);
 		
 		var signature = new FunctionSignature(paramTypes, returnType);
 		
@@ -109,12 +106,7 @@ public sealed class SignatureCollector : IDeclarationNodeVisitor
 		{
 			var param = node.Parameters[i];
 			var paramSymbol = function.Parameters[i];
-			
-			TypeSymbol paramType;
-			if (resolutionContext.Resolve(param.Type.Text) is not TypeSymbol paramTypeSymbol)
-				paramType = new InvalidType();
-			else
-				paramType = paramTypeSymbol;
+			var paramType = resolutionContext.ResolveType(param.Type);
 			
 			paramTypes.Add(paramType);
 			_builder.VariableTypes[paramSymbol] = paramType;
@@ -123,10 +115,8 @@ public sealed class SignatureCollector : IDeclarationNodeVisitor
 		TypeSymbol returnType;
 		if (node.ReturnType is not { } returnTypeSyntax)
 			returnType = NativeSymbols.Void;
-		else if (resolutionContext.Resolve(returnTypeSyntax.Text) is not TypeSymbol returnTypeSymbol)
-			returnType = new InvalidType();
 		else
-			returnType = returnTypeSymbol;
+			returnType = resolutionContext.ResolveType(returnTypeSyntax);
 		
 		var syntax = (ExternalFunctionNode)function.Syntax;
 		var signature = new FunctionSignature(paramTypes, returnType);

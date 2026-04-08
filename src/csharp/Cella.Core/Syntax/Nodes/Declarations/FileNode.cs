@@ -1,7 +1,7 @@
 ﻿using System.Collections.Immutable;
 using Cella.Core.Text;
 
-namespace Cella.Core.Syntax.Nodes.Declarations;
+namespace Cella.Core.Syntax.Nodes;
 
 public sealed class FileNode(SourceLocation sourceLocation) : IDeclarationNode
 {

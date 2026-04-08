@@ -4,8 +4,7 @@ using Cella.Core.Text;
 namespace Cella.Core.Syntax.Nodes;
 
 // TODO Target can be an expression
-// TODO Type parameters?
-public sealed class CallExpressionNode(IExpressionNode target, IEnumerable<IExpressionNode> arguments,
+public sealed class IndexerExpressionNode(IExpressionNode target, IEnumerable<IExpressionNode> arguments,
 	SourceLocation sourceLocation) : IExpressionNode
 {
 	public IExpressionNode Target { get; } = target;

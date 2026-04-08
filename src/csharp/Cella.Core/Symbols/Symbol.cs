@@ -2,7 +2,6 @@
 using Cella.Core.Binding;
 using Cella.Core.Syntax;
 using Cella.Core.Syntax.Nodes;
-using Cella.Core.Syntax.Nodes.Declarations;
 using Cella.Core.Text;
 
 namespace Cella.Core.Symbols;
@@ -81,18 +80,60 @@ public abstract class TypeSymbol(string name, TypeSymbol? containingType = null,
 	public ImmutableDictionary<string, Symbol> Children { get; } = children.ToImmutableDictionary(static s => s.Name);
 }
 
-public sealed class InvalidType() : TypeSymbol("??");
+public sealed class InvalidType : TypeSymbol
+{
+	public static InvalidType Instance { get; } = new();
+	
+	private InvalidType() : base("??")
+	{
+	}
+}
 
-public sealed class PrimitiveType(string name, PrimitiveTypeKind kind, ISize size) : TypeSymbol(name)
+public interface IPrimitiveType
+{
+	PrimitiveTypeKind Kind { get; }
+	ISize Size { get; }
+}
+
+public sealed class PrimitiveType(string name, PrimitiveTypeKind kind, ISize size) : TypeSymbol(name), IPrimitiveType
 {
 	public PrimitiveTypeKind Kind { get; } = kind;
 	public ISize Size { get; } = size;
 }
 
-public sealed class PointerType(TypeSymbol baseType) : TypeSymbol($"ptr {baseType.Name}")
+public enum PointerKind
+{
+	Unsafe,
+	Mutable,
+	Immutable,
+	Owning
+}
+
+public sealed class PointerType(TypeSymbol baseType, PointerKind pointerKind)
+	: TypeSymbol(BuildName(baseType, pointerKind)), IPrimitiveType
 {
 	public TypeSymbol BaseType { get; } = baseType;
+	public PrimitiveTypeKind Kind { get; } = PrimitiveTypeKind.Pointer;
+	public PointerKind PointerKind { get; } = pointerKind;
+	public ISize Size { get; } = StorageSize.Ptr;
+	
+	public static string BuildName(TypeSymbol baseType, PointerKind pointerKind) => pointerKind switch
+	{
+		PointerKind.Mutable => $"mut {baseType.Name}",
+		PointerKind.Immutable => $"imm {baseType.Name}",
+		PointerKind.Owning => $"own {baseType.Name}",
+		_ => $"ptr {baseType.Name}"
+	};
 }
+
+public sealed class ArrayType(TypeSymbol elementType) : TypeSymbol($"array[{elementType.Name}]"), IPrimitiveType
+{
+	public TypeSymbol ElementType { get; } = elementType;
+	public PrimitiveTypeKind Kind { get; } = PrimitiveTypeKind.Array;
+	public ISize Size { get; } = StorageSize.Ptr;
+}
+
+// TODO SpanType, ViewType
 
 public abstract class VariableSymbol(Token identifier) : Symbol(identifier.Text)
 {

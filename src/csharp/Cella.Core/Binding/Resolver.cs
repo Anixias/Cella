@@ -6,26 +6,27 @@ using Cella.Core.Binding.Nodes.Statements;
 using Cella.Core.Binding.Operations;
 using Cella.Core.Symbols;
 using Cella.Core.Syntax.Nodes;
-using Cella.Core.Syntax.Nodes.Declarations;
 using Cella.Core.Text;
 
 namespace Cella.Core.Binding;
 
 public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 {
-	private readonly Dictionary<FunctionSymbol, FunctionInfo> _importedFunctions = [];
-	private readonly Stack<TypeSymbol?> _targetTypes = [];
 	private readonly SymbolTable _symbolTable;
 	private readonly SignatureTable _assemblySignatureTable;
 	private readonly SignatureTable _dependencySignatureTable;
+	private readonly TypePool _typePool;
+	private readonly Dictionary<FunctionSymbol, FunctionInfo> _importedFunctions = [];
+	private readonly Stack<TypeSymbol?> _targetTypes = [];
 	private readonly Stack<ResolutionContext> _resolutionContexts = [];
 	private ResolutionContext CurrentResolutionContext => _resolutionContexts.Peek();
 	private FunctionInfo CurrentFunction => CurrentResolutionContext.ContainingFunction!.Value;
 	private Scope? CurrentScope => CurrentResolutionContext.LocalScope;
 	private TypeSymbol? CurrentTargetType => _targetTypes.TryPeek(out var result) ? result : null;
 	
-	public Resolver(AssemblySymbol assemblySymbol, IEnumerable<AssemblySymbol> dependencies)
+	public Resolver(AssemblySymbol assemblySymbol, IEnumerable<AssemblySymbol> dependencies, TypePool typePool)
 	{
+		_typePool = typePool;
 		_symbolTable = assemblySymbol.SymbolTable;
 		_assemblySignatureTable = assemblySymbol.SignatureTable;
 		_dependencySignatureTable = SignatureTable.Combine(dependencies.Select(static a => a.SignatureTable));
@@ -50,7 +51,8 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 		var resolutionContext = new ResolutionContext
 		{
 			File = file,
-			Imports = imports
+			Imports = imports,
+			TypePool = _typePool
 		};
 		
 		_resolutionContexts.Push(resolutionContext);
@@ -91,6 +93,9 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 		return new ResolvedExternalFunctionNode(info);
 	}
 	
+	
+	public IResolvedNode Visit(GenericTypeNode node) => throw new InvalidOperationException();
+	public IResolvedNode Visit(IdentifierTypeNode node) => throw new InvalidOperationException();
 	public IResolvedNode Visit(ParameterNode node) => throw new InvalidOperationException();
 	
 	public IResolvedNode Visit(BlockStatementNode node)
@@ -174,34 +179,67 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 	
 	public IResolvedNode Visit(CallExpressionNode node)
 	{
-		var resolutionContext = CurrentResolutionContext;
-		var functionName = node.Identifier.Text;
-		var symbol = resolutionContext.Resolve(functionName);
-		
-		// TODO Diagnostics, emit invalid expression instead of throwing exceptions
-		if (symbol is null)
-			throw new Exception($"Symbol '{functionName}' not found in this scope");
-		
-		if (symbol is not FunctionSymbol function)
-			throw new Exception($"Symbol '{functionName}' is not a function");
-		
-		if (!_assemblySignatureTable.Functions.TryGetValue(function, out var info))
+		switch (node.Target)
 		{
-			info = _dependencySignatureTable.Functions[function];
-			_importedFunctions.TryAdd(function, info);
+			case VarExpressionNode varExpr:
+			{
+				var functionName = varExpr.Identifier.Text;
+				var symbol = CurrentResolutionContext.Resolve(functionName);
+				
+				// TODO Diagnostics, emit invalid expression instead of throwing exceptions
+				if (symbol is null)
+					throw new Exception($"Symbol '{functionName}' not found in this scope");
+				
+				if (symbol is not FunctionSymbol function)
+					throw new Exception($"Symbol '{functionName}' is not a function");
+				
+				if (!_assemblySignatureTable.Functions.TryGetValue(function, out var info))
+				{
+					info = _dependencySignatureTable.Functions[function];
+					_importedFunctions.TryAdd(function, info);
+				}
+				
+				var paramTypes = info.Signature.ParameterTypes;
+				var args = new List<IResolvedExpressionNode>(node.Arguments.Length);
+				for (var i = 0; i < node.Arguments.Length; i++)
+				{
+					var paramType = i < paramTypes.Length ? paramTypes[i] : null;
+					_targetTypes.Push(paramType);
+					args.Add(VisitNode(node.Arguments[i]));
+					_targetTypes.Pop();
+				}
+				
+				return new ResolvedFunctionCallExpressionNode(info, args);
+			}
+			
+			default:
+				throw new NotImplementedException();
 		}
+	}
+	
+	public IResolvedNode Visit(IndexerExpressionNode node)
+	{
+		var target = VisitNode(node.Target);
 		
-		var paramTypes = info.Signature.ParameterTypes;
-		var args = new List<IResolvedExpressionNode>(node.Arguments.Length);
-		for (var i = 0; i < node.Arguments.Length; i++)
-		{
-			var paramType = i < paramTypes.Length ? paramTypes[i] : null;
-			_targetTypes.Push(paramType);
-			args.Add(VisitNode(node.Arguments[i]));
-			_targetTypes.Pop();
-		}
+		// TODO Indexable types other than ArrayType
+		if (target.Type is not ArrayType arrayType)
+			throw new Exception($"Cannot index into type '{target.Type.Name}'");
 		
-		return new ResolvedFunctionCallExpressionNode(info, args);
+		if (node.Arguments.Length != 1)
+			throw new Exception("Array indexer requires exactly one argument");
+		
+		_targetTypes.Push(NativeSymbols.UIntSize);
+		var indexExpr = VisitNode(node.Arguments[0]);
+		_targetTypes.Pop();
+		
+		return new ResolvedIndexerExpressionNode(arrayType.ElementType, target, indexExpr);
+	}
+	
+	public IResolvedNode Visit(AccessExpressionNode node)
+	{
+		// TODO: struct field access
+		// For now only needed as an intermediate in call resolution
+		throw new NotImplementedException();
 	}
 	
 	public IResolvedNode Visit(LiteralExpressionNode node)
@@ -271,7 +309,7 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 		
 		TypeSymbol? type;
 		if (node.Type is { } specifiedType)
-			type = resolutionContext.Resolve(specifiedType.Text) as TypeSymbol;
+			type = resolutionContext.ResolveType(specifiedType);
 		else
 			type = null;
 		
