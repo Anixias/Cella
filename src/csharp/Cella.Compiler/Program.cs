@@ -147,10 +147,15 @@ internal static class Program
 		// TODO Allow configuring entry point name?
 		var entryPointName = outputType == ProjectOutputType.Executable ? "main" : null;
 		
-		var typePool = new TypePool();
+		var typeMemberTable = new TypeMemberTable();
+		typeMemberTable.CreateNativeMembers();
+		
+		var typePool = new TypePool(typeMemberTable);
 		AssemblySymbol assemblySymbol;
 		{
-			var signatureCollector = new SignatureCollector(entryPointName, symbolTable, typePool, dependencySymbols);
+			var signatureCollector = new SignatureCollector(entryPointName, symbolTable, typePool, typeMemberTable,
+				dependencySymbols);
+			
 			foreach (var info in files)
 				signatureCollector.Collect(info.Ast);
 			
@@ -168,7 +173,7 @@ internal static class Program
 		// Phase 3: Symbol resolution
 		ImmutableArray<ResolvedSourceFileInfo> resolvedFiles;
 		{
-			var resolver = new Resolver(assemblySymbol, dependencySymbols, typePool);
+			var resolver = new Resolver(assemblySymbol, dependencySymbols, typePool, typeMemberTable);
 			
 			resolvedFiles = files
 				.Select(sfi => new ResolvedSourceFileInfo(sfi.FilePath, resolver.Resolve(sfi.Ast), sfi.Source))
@@ -228,7 +233,7 @@ internal static class Program
 			var outputConfig = new OutputConfig(objDir, true, true);
 			var targetConfig = new TargetConfig(targetTriple.ToLlvm());
 			var codeGenConfig = new CodeGenConfig(outputConfig, targetConfig);
-			var codeGenerator = new CodeGenerator(assemblySymbol, codeGenConfig);
+			var codeGenerator = new CodeGenerator(assemblySymbol, typeMemberTable, codeGenConfig);
 			
 			var externalLibraries = new HashSet<string>();
 			var objectFiles = new List<string>();

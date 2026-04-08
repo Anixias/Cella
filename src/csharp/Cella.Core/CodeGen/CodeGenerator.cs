@@ -39,6 +39,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 	public string TargetTriple { get; }
 	
 	private readonly AssemblySymbol _assemblySymbol;
+	private readonly TypeMemberTable _typeMemberTable;
 	private readonly CodeGenConfig _config;
 	private readonly string _dataLayoutStr;
 	private readonly LLVMTargetMachineRef _targetMachine;
@@ -52,10 +53,11 @@ public sealed unsafe class CodeGenerator : IDisposable
 	private readonly Dictionary<byte[], LLVMValueRef> _stringPool = new(ByteArrayComparer.Instance);
 	private LLVMModuleRef currentModule;
 	
-	public CodeGenerator(AssemblySymbol assemblySymbol, CodeGenConfig config)
+	public CodeGenerator(AssemblySymbol assemblySymbol, TypeMemberTable typeMemberTable, CodeGenConfig config)
 	{
 		Init();
 		_assemblySymbol = assemblySymbol;
+		_typeMemberTable = typeMemberTable;
 		_config = config;
 		(_dataLayoutStr, TargetTriple, _targetMachine, _pointerSize) = GetDataLayout(config.TargetConfig);
 		MapNativeSymbols();
@@ -344,6 +346,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 		UnaryOpValue v => EmitUnaryOp(v, builder),
 		AssignValue v => EmitAssignValue(v, builder),
 		IndexerValue v => EmitIndexer(v, builder),
+		AccessValue v => EmitAccessValue(v, builder),
 		CallValue v when _funMap[v.Function] is var (fv, ft, _) => builder.BuildCall2(ft, fv,
 			v.Arguments.Select(a => EmitValue(a, builder)).ToArray()),
 		_ => throw new InvalidOperationException()
@@ -436,10 +439,19 @@ public sealed unsafe class CodeGenerator : IDisposable
 		return elemPtr;
 	}
 	
-	private LLVMValueRef EmitAssignValue(AssignValue value, LLVMBuilderRef builder)
+	private LLVMValueRef EmitAccessValue(AccessValue v, LLVMBuilderRef builder)
 	{
-		var right = EmitValue(value.Right, builder);
-		builder.BuildStore(right, EmitAddress(value.Left, builder));
+		// TODO Fields could have been reordered to pack them
+		// TODO Also, GetFieldIndex is O(n), would probably want to cache the final indices in another dictionary
+		var target = EmitValue(v.Target, builder);
+		var fieldIndex = (uint)_typeMemberTable.GetFieldIndex(v.Target.Type, v.Member);
+		return builder.BuildExtractValue(target, fieldIndex, v.Member.Name);
+	}
+	
+	private LLVMValueRef EmitAssignValue(AssignValue v, LLVMBuilderRef builder)
+	{
+		var right = EmitValue(v.Right, builder);
+		builder.BuildStore(right, EmitAddress(v.Left, builder));
 		return right;
 	}
 	
@@ -483,6 +495,10 @@ public sealed unsafe class CodeGenerator : IDisposable
 					return LLVMValueRef.CreateConstIntOfArbitraryPrecision(type, words);
 				}
 				
+				// TODO How to properly interpret this?
+				case PrimitiveTypeKind.IntSize:
+					return LLVMValueRef.CreateConstInt(type, unchecked((ulong)(long)value), true);
+				
 				case PrimitiveTypeKind.UInt8:
 					return LLVMValueRef.CreateConstInt(type, (byte)value);
 				
@@ -504,6 +520,10 @@ public sealed unsafe class CodeGenerator : IDisposable
 					words[1] = (ulong)(u128 >> 64);
 					return LLVMValueRef.CreateConstIntOfArbitraryPrecision(type, words);
 				}
+				
+				// TODO How to properly interpret this?
+				case PrimitiveTypeKind.UIntSize:
+					return LLVMValueRef.CreateConstInt(type, (ulong)value);
 				
 				case PrimitiveTypeKind.Str:
 				{

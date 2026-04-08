@@ -28,6 +28,7 @@ public sealed class VariableValue(VariableInfo variable) : Value(variable.Type, 
 	public VariableInfo Variable { get; } = variable;
 }
 
+// TODO Detect if the function is constant
 public sealed class CallValue(FunctionInfo function, IEnumerable<Value> arguments)
 	: Value(function.Signature.ReturnType, false)
 {
@@ -35,10 +36,18 @@ public sealed class CallValue(FunctionInfo function, IEnumerable<Value> argument
 	public ImmutableArray<Value> Arguments { get; } = arguments.ToImmutableArray();
 }
 
+// TODO Detect if the target and index are constant
 public sealed class IndexerValue(TypeSymbol type, Value target, Value index) : Value(type, false)
 {
 	public Value Target { get; } = target;
 	public Value Index { get; } = index;
+}
+
+// TODO Detect if the member is constant
+public sealed class AccessValue(TypeSymbol type, Value target, MemberSymbol member) : Value(type, false)
+{
+	public Value Target { get; } = target;
+	public MemberSymbol Member { get; } = member;
 }
 
 #region Operations

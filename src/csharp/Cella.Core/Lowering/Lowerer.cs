@@ -346,6 +346,9 @@ public sealed class Lowerer : IResolvedDeclarationNodeVisitor
 		public Value Visit(ResolvedIndexerExpressionNode node) =>
 			new IndexerValue(node.Type, VisitNode(node.Target), VisitNode(node.Index));
 		
+		public Value Visit(ResolvedAccessExpressionNode node) =>
+			new AccessValue(node.Type, VisitNode(node.Target), node.Member);
+		
 		public Value Visit(ResolvedLiteralExpressionNode node) => new ConstantValue(node.Type, node.Value);
 		
 		public Value Visit(ResolvedUnaryOpExpressionNode node) =>

@@ -12,6 +12,7 @@ public readonly struct ResolutionContext
 	public ImportEnvironment? Imports { get; init; }
 	public Scope? LocalScope { get; init; }
 	public TypePool TypePool { get; init; }
+	public TypeMemberTable TypeMemberTable { get; init; }
 	
 	public IEnumerable<string> GetQualifiers()
 	{

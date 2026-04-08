@@ -135,25 +135,40 @@ public sealed class ArrayType(TypeSymbol elementType) : TypeSymbol($"array[{elem
 
 // TODO SpanType, ViewType
 
-public abstract class VariableSymbol(Token identifier) : Symbol(identifier.Text)
-{
-	public SourceLocation Definition { get; } = identifier.SourceLocation;
-}
+public abstract class VariableSymbol(string name) : Symbol(name);
 
 // TODO: Bind whether it has a constant initializer and no reassignments
 public sealed class LocalVariableSymbol(VarStatementNode syntax, TypeSymbol type)
-	: VariableSymbol(syntax.Identifier)
+	: VariableSymbol(syntax.Identifier.Text)
 {
 	public VarStatementNode Syntax { get; } = syntax;
 	public TypeSymbol Type { get; } = type;
+	public SourceLocation Definition { get; } = syntax.SourceLocation;
 }
 
 // TODO: Initializer? Or is that stored elsewhere?
-public sealed class ParameterSymbol(Token identifier)
-	: VariableSymbol(identifier);
+public sealed class ParameterSymbol(Token identifier) : VariableSymbol(identifier.Text)
+{
+	public Token Identifier { get; } = identifier;
+	public SourceLocation Definition { get; } = identifier.SourceLocation;
+}
 
 public sealed class LabelSymbol(Token identifier) : Symbol(identifier.Text)
 {
+	public Token Identifier { get; } = identifier;
+	public SourceLocation Definition { get; } = identifier.SourceLocation;
+}
+
+public abstract class MemberSymbol(string name, TypeSymbol type) : VariableSymbol(name)
+{
+	public TypeSymbol Type { get; } = type;
+}
+
+public sealed class IntrinsicMemberSymbol(string name, TypeSymbol type) : MemberSymbol(name, type);
+
+public sealed class DefinedMemberSymbol(Token identifier, TypeSymbol type) : MemberSymbol(identifier.Text, type)
+{
+	public Token Identifier { get; } = identifier;
 	public SourceLocation Definition { get; } = identifier.SourceLocation;
 }
 

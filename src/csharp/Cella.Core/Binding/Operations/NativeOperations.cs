@@ -58,6 +58,12 @@ public static class NativeOperations
 	
 	private static Dictionary<NativeBinaryOperation, TypeSymbol> BuildBinaryOps() =>
 		new([
+			..MakeSymmetricBinary(NativeSymbols.Int8, _numericBinOps),
+			..MakeBinary(NativeSymbols.Int8, NativeSymbols.Bool, _comparisonBinOps),
+			
+			..MakeSymmetricBinary(NativeSymbols.Int16, _numericBinOps),
+			..MakeBinary(NativeSymbols.Int16, NativeSymbols.Bool, _comparisonBinOps),
+			
 			..MakeSymmetricBinary(NativeSymbols.Int32, _numericBinOps),
 			..MakeBinary(NativeSymbols.Int32, NativeSymbols.Bool, _comparisonBinOps),
 			
@@ -66,6 +72,27 @@ public static class NativeOperations
 			
 			..MakeSymmetricBinary(NativeSymbols.Int128, _numericBinOps),
 			..MakeBinary(NativeSymbols.Int128, NativeSymbols.Bool, _comparisonBinOps),
+			
+			..MakeSymmetricBinary(NativeSymbols.IntSize, _numericBinOps),
+			..MakeBinary(NativeSymbols.IntSize, NativeSymbols.Bool, _comparisonBinOps),
+			
+			..MakeSymmetricBinary(NativeSymbols.UInt8, _numericBinOps),
+			..MakeBinary(NativeSymbols.UInt8, NativeSymbols.Bool, _comparisonBinOps),
+			
+			..MakeSymmetricBinary(NativeSymbols.UInt16, _numericBinOps),
+			..MakeBinary(NativeSymbols.UInt16, NativeSymbols.Bool, _comparisonBinOps),
+			
+			..MakeSymmetricBinary(NativeSymbols.UInt32, _numericBinOps),
+			..MakeBinary(NativeSymbols.UInt32, NativeSymbols.Bool, _comparisonBinOps),
+			
+			..MakeSymmetricBinary(NativeSymbols.UInt64, _numericBinOps),
+			..MakeBinary(NativeSymbols.UInt64, NativeSymbols.Bool, _comparisonBinOps),
+			
+			..MakeSymmetricBinary(NativeSymbols.UInt128, _numericBinOps),
+			..MakeBinary(NativeSymbols.UInt128, NativeSymbols.Bool, _comparisonBinOps),
+			
+			..MakeSymmetricBinary(NativeSymbols.UIntSize, _numericBinOps),
+			..MakeBinary(NativeSymbols.UIntSize, NativeSymbols.Bool, _comparisonBinOps),
 			
 			..MakeSymmetricBinary(NativeSymbols.Bool,
 			[

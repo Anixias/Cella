@@ -9,6 +9,7 @@ public sealed class SignatureCollector : IDeclarationNodeVisitor
 	private readonly string? _entryPointName;
 	private readonly SymbolTable _symbolTable;
 	private readonly TypePool _typePool;
+	private readonly TypeMemberTable _typeMemberTable;
 	private readonly ImmutableArray<AssemblySymbol> _dependencies;
 	private readonly SignatureTable.Builder _builder = new();
 	private readonly Stack<ResolutionContext> _resolutionContexts = [];
@@ -16,11 +17,13 @@ public sealed class SignatureCollector : IDeclarationNodeVisitor
 	private readonly List<FunctionInfo> _entryPoints = [];
 	
 	public SignatureCollector(string? entryPointName, SymbolTable symbolTable, TypePool typePool,
+		TypeMemberTable typeMemberTable,
 		IEnumerable<AssemblySymbol> dependencies)
 	{
 		_entryPointName = entryPointName;
 		_symbolTable = symbolTable;
 		_typePool = typePool;
+		_typeMemberTable = typeMemberTable;
 		_dependencies = dependencies.ToImmutableArray();
 	}
 	
@@ -42,7 +45,8 @@ public sealed class SignatureCollector : IDeclarationNodeVisitor
 		{
 			File = file,
 			Imports = imports,
-			TypePool = _typePool
+			TypePool = _typePool,
+			TypeMemberTable = _typeMemberTable
 		};
 		
 		_resolutionContexts.Push(resolutionContext);

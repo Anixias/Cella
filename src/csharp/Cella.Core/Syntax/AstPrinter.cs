@@ -62,7 +62,7 @@ public sealed class AstPrinter : ISyntaxNodeVisitor
 	public void Visit(IndexerExpressionNode node)
 	{
 		StartLine();
-		_sb.Append("IndexerExpressionNode '");
+		_sb.Append("IndexerExpressionNode");
 		VisitNode(node.Target, node.Arguments.Length == 0);
 		
 		for (var i = 0; i < node.Arguments.Length; i++)
@@ -74,8 +74,16 @@ public sealed class AstPrinter : ISyntaxNodeVisitor
 	
 	public void Visit(AccessExpressionNode node)
 	{
-		// TODO
-		throw new NotImplementedException();
+		StartLine();
+		_sb.Append("AccessExpressionNode");
+		VisitNode(node.Target, false);
+		
+		var member = node.Member;
+		VisitAction(() =>
+		{
+			StartLine();
+			_sb.Append(member.AsSpan());
+		}, true);
 	}
 	
 	public void Visit(ChainedExpressionNode node)

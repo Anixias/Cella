@@ -16,6 +16,7 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 	private readonly SignatureTable _assemblySignatureTable;
 	private readonly SignatureTable _dependencySignatureTable;
 	private readonly TypePool _typePool;
+	private readonly TypeMemberTable _typeMemberTable;
 	private readonly Dictionary<FunctionSymbol, FunctionInfo> _importedFunctions = [];
 	private readonly Stack<TypeSymbol?> _targetTypes = [];
 	private readonly Stack<ResolutionContext> _resolutionContexts = [];
@@ -24,9 +25,11 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 	private Scope? CurrentScope => CurrentResolutionContext.LocalScope;
 	private TypeSymbol? CurrentTargetType => _targetTypes.TryPeek(out var result) ? result : null;
 	
-	public Resolver(AssemblySymbol assemblySymbol, IEnumerable<AssemblySymbol> dependencies, TypePool typePool)
+	public Resolver(AssemblySymbol assemblySymbol, IEnumerable<AssemblySymbol> dependencies, TypePool typePool,
+		TypeMemberTable typeMemberTable)
 	{
 		_typePool = typePool;
+		_typeMemberTable = typeMemberTable;
 		_symbolTable = assemblySymbol.SymbolTable;
 		_assemblySignatureTable = assemblySymbol.SignatureTable;
 		_dependencySignatureTable = SignatureTable.Combine(dependencies.Select(static a => a.SignatureTable));
@@ -52,7 +55,8 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 		{
 			File = file,
 			Imports = imports,
-			TypePool = _typePool
+			TypePool = _typePool,
+			TypeMemberTable = _typeMemberTable
 		};
 		
 		_resolutionContexts.Push(resolutionContext);
@@ -237,9 +241,13 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 	
 	public IResolvedNode Visit(AccessExpressionNode node)
 	{
-		// TODO: struct field access
-		// For now only needed as an intermediate in call resolution
-		throw new NotImplementedException();
+		var target = VisitNode(node.Target);
+		var memberName = node.Member.Text;
+		
+		if (CurrentResolutionContext.TypeMemberTable.Resolve(target.Type, memberName) is not { } member)
+			throw new Exception($"Type '{target.Type.Name}' has no member '{memberName}'");
+		
+		return new ResolvedAccessExpressionNode(target, member);
 	}
 	
 	public IResolvedNode Visit(LiteralExpressionNode node)
@@ -450,26 +458,39 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 	
 	public IResolvedNode Visit(BinaryOpExpressionNode node)
 	{
-		// We push null to allow sub-expressions to resolve naturally; then, we attempt to implicit cast to actual type
-		_targetTypes.Push(null);
-		var left = VisitNode(node.Left);
-		var right = VisitNode(node.Right);
-		_targetTypes.Pop();
-		
 		var op = node.Op;
 		var isAssignment = op.Type == TokenType.OpEqual || op.Type == TokenType.OpPlusEqual ||
 		                   op.Type == TokenType.OpMinusEqual || op.Type == TokenType.OpStarEqual ||
 		                   op.Type == TokenType.OpSlashEqual;
 		
+		_targetTypes.Push(null);
 		if (isAssignment)
+		{
+			var left = VisitNode(node.Left);
+			_targetTypes.Pop();
+			
+			// Attempt to coerce right side to left type
+			// TODO Does this make sense for modify-assign operators? What about with operator overloads?
+			_targetTypes.Push(left.Type);
+			var right = VisitNode(node.Right);
+			_targetTypes.Pop();
+			
 			return new ResolvedAssignmentExpressionNode(left.Type, left, op, right);
-		
-		// TODO How to handle implicit upcasts..?
-		if (NativeOperations.Resolve(left.Type, op.Type, right.Type) is { } nativeType)
-			return new ResolvedBinaryOpExpressionNode(nativeType, left, op, right);
-		
-		// TODO Based on types of sub-expressions and the op token, we search for operator overloads
-		return new ResolvedBinaryOpExpressionNode(NativeSymbols.Invalid, left, op, right);
+		}
+		else
+		{
+			// We push null to allow sub-expressions to resolve naturally; then, we attempt to implicit cast to actual type
+			var left = VisitNode(node.Left);
+			var right = VisitNode(node.Right);
+			_targetTypes.Pop();
+			
+			// TODO How to handle implicit upcasts..?
+			if (NativeOperations.Resolve(left.Type, op.Type, right.Type) is { } nativeType)
+				return new ResolvedBinaryOpExpressionNode(nativeType, left, op, right);
+			
+			// TODO Based on types of sub-expressions and the op token, we search for operator overloads
+			return new ResolvedBinaryOpExpressionNode(NativeSymbols.Invalid, left, op, right);
+		}
 	}
 	
 	public IResolvedNode Visit(ChainedExpressionNode node)
@@ -551,6 +572,12 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 					
 					break;
 				
+				case PrimitiveTypeKind.IntSize: // TEMP How to detect this properly?
+					if (long.TryParse(span, out var intSizeValue))
+						return (NativeSymbols.IntSize, intSizeValue);
+					
+					break;
+				
 				case PrimitiveTypeKind.UInt8:
 					if (byte.TryParse(span, out var byteValue))
 						return (NativeSymbols.UInt8, byteValue);
@@ -578,6 +605,12 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 				case PrimitiveTypeKind.UInt128:
 					if (UInt128.TryParse(span, out var uint128Value))
 						return (NativeSymbols.UInt128, uint128Value);
+					
+					break;
+				
+				case PrimitiveTypeKind.UIntSize: // TEMP How to detect this properly?
+					if (ulong.TryParse(span, out var uintSizeValue))
+						return (NativeSymbols.UIntSize, uintSizeValue);
 					
 					break;
 			}
