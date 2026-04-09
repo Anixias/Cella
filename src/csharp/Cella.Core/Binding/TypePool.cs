@@ -8,7 +8,7 @@ public sealed class TypePool(TypeMemberTable memberTable)
 	// private readonly Dictionary<TypeSymbol, SliceType> _sliceTypes = [];
 	// private readonly Dictionary<TypeSymbol, ViewType> _viewTypes = [];
 	
-	public SpanType GetArrayType(TypeSymbol elementType)
+	public SpanType GetSpanType(TypeSymbol elementType)
 	{
 		if (_spanTypes.TryGetValue(elementType, out var existing))
 			return existing;

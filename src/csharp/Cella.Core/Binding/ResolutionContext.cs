@@ -73,7 +73,7 @@ public readonly struct ResolutionContext
 	private TypeSymbol ResolveGenericType(GenericTypeNode node) => node.Identifier.Text switch
 	{
 		"span" when node.TypeParameters.Length == 1
-			=> TypePool.GetArrayType(ResolveType(node.TypeParameters[0])),
+			=> TypePool.GetSpanType(ResolveType(node.TypeParameters[0])),
 		"span"
 			=> NativeSymbols.Invalid, // TODO Diagnostics, wrong number of type params
 		_ => NativeSymbols.Invalid
