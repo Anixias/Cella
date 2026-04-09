@@ -1,4 +1,5 @@
-﻿using System.Text;
+﻿using System.Numerics;
+using System.Text;
 using Cella.Core.Binding.Nodes;
 using Cella.Core.Binding.Nodes.Declarations;
 using Cella.Core.Binding.Nodes.Expressions;
@@ -17,6 +18,7 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 	private readonly SignatureTable _dependencySignatureTable;
 	private readonly TypePool _typePool;
 	private readonly TypeMemberTable _typeMemberTable;
+	private readonly uint _pointerBitSize;
 	private readonly Dictionary<FunctionSymbol, FunctionInfo> _importedFunctions = [];
 	private readonly Stack<TypeSymbol?> _targetTypes = [];
 	private readonly Stack<ResolutionContext> _resolutionContexts = [];
@@ -26,10 +28,11 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 	private TypeSymbol? CurrentTargetType => _targetTypes.TryPeek(out var result) ? result : null;
 	
 	public Resolver(AssemblySymbol assemblySymbol, IEnumerable<AssemblySymbol> dependencies, TypePool typePool,
-		TypeMemberTable typeMemberTable)
+		TypeMemberTable typeMemberTable, uint pointerBitSize)
 	{
 		_typePool = typePool;
 		_typeMemberTable = typeMemberTable;
+		_pointerBitSize = pointerBitSize;
 		_symbolTable = assemblySymbol.SymbolTable;
 		_assemblySignatureTable = assemblySymbol.SignatureTable;
 		_dependencySignatureTable = SignatureTable.Combine(dependencies.Select(static a => a.SignatureTable));
@@ -226,7 +229,7 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 		var target = VisitNode(node.Target);
 		
 		// TODO Indexable types other than ArrayType
-		if (target.Type is not ArrayType arrayType)
+		if (target.Type is not SpanType spanType)
 			throw new Exception($"Cannot index into type '{target.Type.Name}'");
 		
 		if (node.Arguments.Length != 1)
@@ -236,7 +239,7 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 		var indexExpr = VisitNode(node.Arguments[0]);
 		_targetTypes.Pop();
 		
-		return new ResolvedIndexerExpressionNode(arrayType.ElementType, target, indexExpr);
+		return new ResolvedIndexerExpressionNode(spanType.ElementType, target, indexExpr);
 	}
 	
 	public IResolvedNode Visit(AccessExpressionNode node)
@@ -535,7 +538,7 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 		return new ResolvedChainedExpressionNode(resultType, operands, node.Ops, types);
 	}
 	
-	private static (TypeSymbol? Type, object? Value) ParseInteger(ReadOnlySpan<char> span, TypeSymbol? targetType)
+	private (TypeSymbol? Type, object? Value) ParseInteger(ReadOnlySpan<char> span, TypeSymbol? targetType)
 	{
 		// TODO Check suffixes
 		
@@ -572,8 +575,8 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 					
 					break;
 				
-				case PrimitiveTypeKind.IntSize: // TEMP How to detect this properly?
-					if (long.TryParse(span, out var intSizeValue))
+				case PrimitiveTypeKind.IntSize:
+					if (BigInteger.TryParse(span, out var intSizeValue) && intSizeValue.GetBitLength() < _pointerBitSize)
 						return (NativeSymbols.IntSize, intSizeValue);
 					
 					break;
@@ -608,8 +611,8 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 					
 					break;
 				
-				case PrimitiveTypeKind.UIntSize: // TEMP How to detect this properly?
-					if (ulong.TryParse(span, out var uintSizeValue))
+				case PrimitiveTypeKind.UIntSize:
+					if (BigInteger.TryParse(span, out var uintSizeValue) && uintSizeValue.GetBitLength() < _pointerBitSize)
 						return (NativeSymbols.UIntSize, uintSizeValue);
 					
 					break;

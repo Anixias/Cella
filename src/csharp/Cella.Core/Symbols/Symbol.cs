@@ -126,14 +126,16 @@ public sealed class PointerType(TypeSymbol baseType, PointerKind pointerKind)
 	};
 }
 
-public sealed class ArrayType(TypeSymbol elementType) : TypeSymbol($"array[{elementType.Name}]"), IPrimitiveType
+public sealed class SpanType(TypeSymbol elementType) : TypeSymbol($"span[{elementType.Name}]"), IPrimitiveType
 {
 	public TypeSymbol ElementType { get; } = elementType;
-	public PrimitiveTypeKind Kind { get; } = PrimitiveTypeKind.Array;
+	public PrimitiveTypeKind Kind { get; } = PrimitiveTypeKind.Span;
 	public ISize Size { get; } = StorageSize.Ptr;
 }
 
-// TODO SpanType, ViewType
+// TODO ArrayType
+
+// TODO ViewType
 
 public abstract class VariableSymbol(string name) : Symbol(name);
 

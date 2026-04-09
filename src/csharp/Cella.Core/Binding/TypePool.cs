@@ -4,19 +4,19 @@ namespace Cella.Core.Binding;
 
 public sealed class TypePool(TypeMemberTable memberTable)
 {
-	private readonly Dictionary<TypeSymbol, ArrayType> _arrayTypes = [];
+	private readonly Dictionary<TypeSymbol, SpanType> _spanTypes = [];
 	// private readonly Dictionary<TypeSymbol, SliceType> _sliceTypes = [];
 	// private readonly Dictionary<TypeSymbol, ViewType> _viewTypes = [];
 	
-	public ArrayType GetArrayType(TypeSymbol elementType)
+	public SpanType GetArrayType(TypeSymbol elementType)
 	{
-		if (_arrayTypes.TryGetValue(elementType, out var existing))
+		if (_spanTypes.TryGetValue(elementType, out var existing))
 			return existing;
 		
-		var arrayType = new ArrayType(elementType);
-		_arrayTypes[elementType] = arrayType;
-		memberTable.CreateArrayMembers(arrayType);
-		return arrayType;
+		var spanType = new SpanType(elementType);
+		_spanTypes[elementType] = spanType;
+		memberTable.CreateArrayMembers(spanType);
+		return spanType;
 	}
 }
 
@@ -41,7 +41,7 @@ public sealed class TypeMemberTable
 		Register(NativeSymbols.Str, new IntrinsicMemberSymbol("byteLength", NativeSymbols.UIntSize));
 	}
 	
-	public void CreateArrayMembers(ArrayType type)
+	public void CreateArrayMembers(SpanType type)
 	{
 		Register(type, new IntrinsicMemberSymbol("length", NativeSymbols.UIntSize));
 	}

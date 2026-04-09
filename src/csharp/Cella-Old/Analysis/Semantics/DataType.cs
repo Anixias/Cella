@@ -72,10 +72,10 @@ public abstract class DataType
 		
 		public override bool Equals(DataType? type)
 		{
-			if (type is not Array arrayType)
+			if (type is not Array spanType)
 				return false;
 			
-			if (!baseType.Equals(arrayType.baseType))
+			if (!baseType.Equals(spanType.baseType))
 				return false;
 			
 			return true;

@@ -170,10 +170,20 @@ internal static class Program
 			return errorResult;
 		}
 		
+		// TODO Should I make a dependency here on LLVM? This implies a Language Server would also have to do this
+		// We need to know the pointer size of the target for proper symbol resolution
+		var targetTriple = TargetTriple.FromHost(); // TODO Check CLI args for cross-compilation
+		
+		var objDir = Path.Combine(project.Directory, "obj");
+		var outputConfig = new OutputConfig(objDir, true, true);
+		var targetConfig = new TargetConfig(targetTriple.ToLlvm());
+		var codeGenConfig = new CodeGenConfig(outputConfig, targetConfig);
+		var pointerBitSize = codeGenConfig.GetPointerSize() * 8;
+		
 		// Phase 3: Symbol resolution
 		ImmutableArray<ResolvedSourceFileInfo> resolvedFiles;
 		{
-			var resolver = new Resolver(assemblySymbol, dependencySymbols, typePool, typeMemberTable);
+			var resolver = new Resolver(assemblySymbol, dependencySymbols, typePool, typeMemberTable, pointerBitSize);
 			
 			resolvedFiles = files
 				.Select(sfi => new ResolvedSourceFileInfo(sfi.FilePath, resolver.Resolve(sfi.Ast), sfi.Source))
@@ -227,12 +237,6 @@ internal static class Program
 		// Phase 7: Code generation
 		string outputPath;
 		{
-			var targetTriple = TargetTriple.FromHost(); // TODO Check CLI args for cross-compilation
-			
-			var objDir = Path.Combine(project.Directory, "obj");
-			var outputConfig = new OutputConfig(objDir, true, true);
-			var targetConfig = new TargetConfig(targetTriple.ToLlvm());
-			var codeGenConfig = new CodeGenConfig(outputConfig, targetConfig);
 			var codeGenerator = new CodeGenerator(assemblySymbol, typeMemberTable, codeGenConfig);
 			
 			var externalLibraries = new HashSet<string>();

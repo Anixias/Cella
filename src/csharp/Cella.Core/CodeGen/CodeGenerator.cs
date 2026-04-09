@@ -1,5 +1,7 @@
-﻿using System.Collections.Immutable;
+﻿using System.Buffers.Binary;
+using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
+using System.Numerics;
 using Cella.Core.Binding;
 using Cella.Core.Binding.Operations;
 using Cella.Core.CodeGen.Extensions;
@@ -22,7 +24,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 {
 	private static bool isInitialized;
 	
-	private static void Init()
+	public static void Init()
 	{
 		if (isInitialized)
 			return;
@@ -59,7 +61,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 		_assemblySymbol = assemblySymbol;
 		_typeMemberTable = typeMemberTable;
 		_config = config;
-		(_dataLayoutStr, TargetTriple, _targetMachine, _pointerSize) = GetDataLayout(config.TargetConfig);
+		(_dataLayoutStr, TargetTriple, _targetMachine, _pointerSize) = config.GetDataLayout();
 		MapNativeSymbols();
 	}
 	
@@ -152,9 +154,9 @@ public sealed unsafe class CodeGenerator : IDisposable
 			return type;
 		
 		// Lazy mapping for generic types
-		if (symbol is ArrayType arrayType)
+		if (symbol is SpanType spanType)
 		{
-			var elementType = MapTypeSymbol(arrayType.ElementType);
+			var elementType = MapTypeSymbol(spanType.ElementType);
 			var usizeType = LLVMTypeRef.CreateInt(_pointerSize * 8);
 			var ptrType = LLVMTypeRef.CreatePointer(elementType, 0u);
 			return LLVMTypeRef.CreateStruct([usizeType, ptrType], false);
@@ -471,6 +473,9 @@ public sealed unsafe class CodeGenerator : IDisposable
 		
 		if (constant.Type is PrimitiveType primitiveType)
 		{
+			var ptrBits = (int)(_pointerSize * 8);
+			var ptrWordCount = GetWordCount(ptrBits);
+			
 			switch (primitiveType.Kind)
 			{
 				case PrimitiveTypeKind.Int8:
@@ -495,9 +500,12 @@ public sealed unsafe class CodeGenerator : IDisposable
 					return LLVMValueRef.CreateConstIntOfArbitraryPrecision(type, words);
 				}
 				
-				// TODO How to properly interpret this?
 				case PrimitiveTypeKind.IntSize:
-					return LLVMValueRef.CreateConstInt(type, unchecked((ulong)(long)value), true);
+				{
+					Span<ulong> words = stackalloc ulong[ptrWordCount];
+					BigIntegerToWords((BigInteger)value, ptrBits, false, words);
+					return LLVMValueRef.CreateConstIntOfArbitraryPrecision(type, words);
+				}
 				
 				case PrimitiveTypeKind.UInt8:
 					return LLVMValueRef.CreateConstInt(type, (byte)value);
@@ -521,9 +529,12 @@ public sealed unsafe class CodeGenerator : IDisposable
 					return LLVMValueRef.CreateConstIntOfArbitraryPrecision(type, words);
 				}
 				
-				// TODO How to properly interpret this?
 				case PrimitiveTypeKind.UIntSize:
-					return LLVMValueRef.CreateConstInt(type, (ulong)value);
+				{
+					Span<ulong> words = stackalloc ulong[ptrWordCount];
+					BigIntegerToWords((BigInteger)value, ptrBits, true, words);
+					return LLVMValueRef.CreateConstIntOfArbitraryPrecision(type, words);
+				}
 				
 				case PrimitiveTypeKind.Str:
 				{
@@ -553,10 +564,10 @@ public sealed unsafe class CodeGenerator : IDisposable
 		
 		var byteType = MapTypeSymbol(NativeSymbols.UInt8);
 		var byteValues = bytes.Select(b => LLVMValueRef.CreateConstInt(byteType, b));
-		var arrayValue = LLVMValueRef.CreateConstArray(byteType, [..byteValues]);
+		var spanValue = LLVMValueRef.CreateConstArray(byteType, [..byteValues]);
 		
-		var global = currentModule.AddGlobal(arrayValue.TypeOf, string.Empty);
-		global.Initializer = arrayValue;
+		var global = currentModule.AddGlobal(spanValue.TypeOf, string.Empty);
+		global.Initializer = spanValue;
 		global.IsGlobalConstant = true;
 		global.Linkage = LLVMLinkage.LLVMLinkerPrivateLinkage;
 		global.HasUnnamedAddr = true;
@@ -568,38 +579,52 @@ public sealed unsafe class CodeGenerator : IDisposable
 		return ptr;
 	}
 	
-	private static (string DataLayout, string TargetTriple, LLVMTargetMachineRef TargetMachine, uint PointerSize)
-		GetDataLayout(TargetConfig? target)
-	{
-		var triple = target?.TargetTriple ?? LLVMTargetRef.DefaultTriple;
-		
-		var targetRef = LLVMTargetRef.GetTargetFromTriple(triple);
-		var cpu = string.IsNullOrWhiteSpace(target?.Cpu) ? "generic" : target.Cpu;
-		var features = target?.Features ?? "";
-		
-		var targetMachine = targetRef.CreateTargetMachine(
-			triple,
-			cpu,
-			features,
-			LLVMCodeGenOptLevel.LLVMCodeGenLevelDefault,
-			LLVMRelocMode.LLVMRelocPIC,
-			LLVMCodeModel.LLVMCodeModelDefault);
-		
-		var dataLayout = targetMachine.CreateTargetDataLayout();
-		sbyte* dataLayoutStr = null;
-		try
-		{
-			dataLayoutStr = LLVM.CopyStringRepOfTargetData((LLVMOpaqueTargetData*)dataLayout.Handle);
-			return (SpanExtensions.AsString(dataLayoutStr), triple, targetMachine, dataLayout.PointerSize());
-		}
-		finally
-		{
-			if (dataLayoutStr is not null)
-				LLVM.DisposeMessage(dataLayoutStr);
-			
-			dataLayout.Dispose();
-		}
-	}
+	private static void BigIntegerToWords(BigInteger value, int maxBitCount, bool isUnsigned, Span<ulong> words)
+    {
+        switch (maxBitCount)
+        {
+	        case < 0:
+		        throw new ArgumentException($"{nameof(maxBitCount)} must be non‑negative.", nameof(maxBitCount));
+	        
+	        case 0:
+		        return;
+        }
+        
+        var maxByteSize = (value.GetByteCount() + 7) & ~7;
+        Span<byte> bytes = stackalloc byte[maxByteSize];
+        value.TryWriteBytes(bytes, out var bytesWritten, isUnsigned);
+        
+        for (var i = 0; i < words.Length; i++)
+        {
+	        var offset = i * 8;
+	        var word = BinaryPrimitives.ReadUInt64LittleEndian(bytes.Slice(offset, 8));
+	        
+	        // The last word may contain padding bytes, need to sign-extend if signed
+	        if (!isUnsigned && i == words.Length - 1)
+	        {
+		        var lastWordBytes = bytesWritten & 7;
+		        if (lastWordBytes == 0)
+			        lastWordBytes = 8;
+		        
+		        if (lastWordBytes < 8)
+		        {
+			        // If highest bit is set, sign-extend padding bytes
+			        var msb = bytes[offset + lastWordBytes - 1];
+			        if ((msb & 0x80) != 0)
+				        word |= ulong.MaxValue << (lastWordBytes * 8);
+		        }
+	        }
+	        
+	        words[i] = word;
+        }
+    }
+	
+	private const int BitsPerWord = sizeof(ulong) * 8;
+	
+    /// <summary>
+    /// Returns the number of ulong words required to hold <see cref="maxBitCount"/> bits.
+    /// </summary>
+    private static int GetWordCount(int maxBitCount) => (maxBitCount + BitsPerWord - 1) / BitsPerWord;
 	
 	public void Dispose()
 	{
@@ -635,7 +660,44 @@ public sealed record CodeGenConfig
 (
 	OutputConfig OutputConfig,
 	TargetConfig? TargetConfig // if null, compiles for current platform
-);
+)
+{
+	public uint GetPointerSize() => GetDataLayout().PointerSize;
+	
+	public unsafe (string DataLayout, string TargetTriple, LLVMTargetMachineRef TargetMachine, uint PointerSize)
+		GetDataLayout()
+	{
+		CodeGenerator.Init();
+		var triple = TargetConfig?.TargetTriple ?? LLVMTargetRef.DefaultTriple;
+		
+		var targetRef = LLVMTargetRef.GetTargetFromTriple(triple);
+		var cpu = string.IsNullOrWhiteSpace(TargetConfig?.Cpu) ? "generic" : TargetConfig.Cpu;
+		var features = TargetConfig?.Features ?? "";
+		
+		var targetMachine = targetRef.CreateTargetMachine(
+			triple,
+			cpu,
+			features,
+			LLVMCodeGenOptLevel.LLVMCodeGenLevelDefault,
+			LLVMRelocMode.LLVMRelocPIC,
+			LLVMCodeModel.LLVMCodeModelDefault);
+		
+		var dataLayout = targetMachine.CreateTargetDataLayout();
+		sbyte* dataLayoutStr = null;
+		try
+		{
+			dataLayoutStr = LLVM.CopyStringRepOfTargetData((LLVMOpaqueTargetData*)dataLayout.Handle);
+			return (SpanExtensions.AsString(dataLayoutStr), triple, targetMachine, dataLayout.PointerSize());
+		}
+		finally
+		{
+			if (dataLayoutStr is not null)
+				LLVM.DisposeMessage(dataLayoutStr);
+			
+			dataLayout.Dispose();
+		}
+	}
+}
 
 public sealed record OutputConfig
 (

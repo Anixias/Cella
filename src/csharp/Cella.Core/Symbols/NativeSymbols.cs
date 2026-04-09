@@ -21,7 +21,8 @@ public enum PrimitiveTypeKind
 	Str,
 	CStr,
 	Pointer,
-	Array
+	Array,
+	Span
 }
 
 public static class NativeSymbols
@@ -51,16 +52,16 @@ public static class NativeSymbols
 		Bool, Str, CStr
 	}.ToImmutableDictionary(static s => s.Name);
 	
-	private static readonly Dictionary<TypeSymbol, ArrayType> _arrayTypes = [];
+	private static readonly Dictionary<TypeSymbol, SpanType> _spanTypes = [];
 	
-	public static ArrayType GetOrCreateArray(TypeSymbol elementType)
+	public static SpanType GetOrCreateArray(TypeSymbol elementType)
 	{
-		if (_arrayTypes.TryGetValue(elementType, out var existing))
+		if (_spanTypes.TryGetValue(elementType, out var existing))
 			return existing;
 		
-		var arrayType = new ArrayType(elementType);
-		_arrayTypes[elementType] = arrayType;
-		return arrayType;
+		var spanType = new SpanType(elementType);
+		_spanTypes[elementType] = spanType;
+		return spanType;
 	}
 	
 	public static Symbol? Resolve(string name) => _primitiveTypes.GetValueOrDefault(name);
