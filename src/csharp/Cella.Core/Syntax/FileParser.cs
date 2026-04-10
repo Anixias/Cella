@@ -165,7 +165,17 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName) : 
 		
 		var nodes = new List<IDeclarationNode?>();
 		while (!Match(ref index, TokenType.OpCloseBrace))
-			nodes.Add(ParseExternalDeclaration(ref index, origin));
+		{
+			if (ParseExternalDeclaration(ref index, origin) is not { } ext)
+			{
+				// TODO Diagnostics
+				nodes.Add(null);
+				SkipUntil(ref index, TokenType.OpCloseBrace);
+				break;
+			}
+			
+			nodes.Add(ext);
+		}
 		
 		return nodes;
 	}
