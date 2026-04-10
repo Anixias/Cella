@@ -1,6 +1,8 @@
 ﻿using System.Collections.Immutable;
+using System.Numerics;
 using Cella.Core.Symbols;
 using Cella.Core.Syntax.Nodes;
+using Cella.Core.Text;
 
 namespace Cella.Core.Binding;
 
@@ -70,12 +72,60 @@ public readonly struct ResolutionContext
 		_ => NativeSymbols.Invalid
 	};
 	
-	private TypeSymbol ResolveGenericType(GenericTypeNode node) => node.Identifier.Text switch
-	{
-		"span" when node.TypeParameters.Length == 1
-			=> TypePool.GetSpanType(ResolveType(node.TypeParameters[0])),
-		"span"
-			=> NativeSymbols.Invalid, // TODO Diagnostics, wrong number of type params
-		_ => NativeSymbols.Invalid
-	};
+	private TypeSymbol ResolveTypeArgument(IGenericArgumentNode node) => node switch
+    {
+        TypeArgumentNode t => ResolveType(t.Type),
+        IdentifierArgumentNode i => Resolve(i.Identifier.Text) as TypeSymbol ?? NativeSymbols.Invalid,
+        _ => NativeSymbols.Invalid
+    };
+	
+    private BigInteger? ResolveConstIntArgument(IGenericArgumentNode node) => node switch
+    {
+        ExpressionArgumentNode e => ResolveConstIntExpression(e.Expression),
+        IdentifierArgumentNode i => ResolveConstIntIdentifier(i.Identifier),
+        _ => null
+    };
+    
+    private BigInteger? ResolveConstIntIdentifier(Token identifier) =>
+	    throw new NotImplementedException();
+    
+    // TODO Need to implement constant expression evaluation prior to resolution?
+    // TODO Cannot handle negative integers
+    private BigInteger? ResolveConstIntExpression(IExpressionNode node) => node switch
+    {
+        LiteralExpressionNode e when e.Token.Type == TokenType.IntegerLiteral
+            => BigInteger.TryParse(e.Token.AsSpan(), out var value) ? value : null,
+        
+        _ => null
+    };
+    
+    private TypeSymbol ResolveGenericType(GenericTypeNode node) => node.Identifier.Text switch
+    {
+        "span" when node.Arguments.Length == 1
+            => ResolveSpanType(node),
+
+        "array" when node.Arguments.Length == 2
+            => ResolveArrayType(node),
+
+        _ => NativeSymbols.Invalid
+    };
+    
+    private TypeSymbol ResolveSpanType(GenericTypeNode node)
+    {
+        var elementType = ResolveTypeArgument(node.Arguments[0]);
+        return elementType == NativeSymbols.Invalid
+            ? NativeSymbols.Invalid
+            : TypePool.GetSpanType(elementType);
+    }
+    
+    private TypeSymbol ResolveArrayType(GenericTypeNode node)
+    {
+        var elementType = ResolveTypeArgument(node.Arguments[0]);
+        var length = ResolveConstIntArgument(node.Arguments[1]);
+
+        if (elementType == NativeSymbols.Invalid || length is null || length.Value < 0)
+            return NativeSymbols.Invalid;
+
+        return TypePool.GetArrayType(elementType, length.Value);
+    }
 }

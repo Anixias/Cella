@@ -3,7 +3,6 @@ using Cella.Core.Text;
 
 namespace Cella.Core.Syntax.Nodes;
 
-// TODO Target can be an expression
 // TODO Type parameters?
 public sealed class CallExpressionNode(IExpressionNode target, IEnumerable<IExpressionNode> arguments,
 	SourceLocation sourceLocation) : IExpressionNode

@@ -594,7 +594,7 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName) : 
 		try
 		{
 			var parserIndex = index;
-			var result = new ExpressionParser(Tokens).Parse(ref parserIndex);
+			var result = ParseExpression(ref parserIndex);
 			index = parserIndex;
 			return result;
 		}

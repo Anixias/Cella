@@ -12,10 +12,15 @@ public sealed class BasicBlock(string label)
 	public IBlockTerminator Terminator { get; set; } = UndefinedTerminator.Instance;
 }
 
-public abstract class Value(TypeSymbol type, bool isConstant)
+public abstract class Value(TypeSymbol type)
 {
 	public TypeSymbol Type { get; } = type;
-	public bool IsConstant { get; } = isConstant;
+	public bool IsConstant { get; protected init; }
+	
+	protected Value(TypeSymbol type, bool isConstant) : this(type)
+	{
+		IsConstant = isConstant;
+	}
 }
 
 public sealed class ConstantValue(TypeSymbol type, object? value) : Value(type, true)
@@ -48,6 +53,19 @@ public sealed class AccessValue(TypeSymbol type, Value target, MemberSymbol memb
 {
 	public Value Target { get; } = target;
 	public MemberSymbol Member { get; } = member;
+}
+
+public sealed class ArrayValue : Value
+{
+	public ArrayType ArrayType { get; }
+	public ImmutableArray<Value> Elements { get; }
+	
+	public ArrayValue(ArrayType type, IEnumerable<Value> elements) : base(type)
+	{
+		ArrayType = type;
+		Elements = elements.ToImmutableArray();
+		IsConstant = Elements.All(static e => e.IsConstant);
+	}
 }
 
 #region Operations

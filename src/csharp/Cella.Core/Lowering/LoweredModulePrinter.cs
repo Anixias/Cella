@@ -256,6 +256,21 @@ public static class LoweredModulePrinter
 					sb.Append('.').Append(v.Member.Name);
 					break;
 				}
+				
+				case ArrayValue v:
+				{
+					sb.Append('[');
+					for (var i = 0; i < v.Elements.Length; i++)
+					{
+						if (i > 0)
+							sb.Append(", ");
+						
+						PrintValue(sb, v.Elements[i]);
+					}
+					
+					sb.Append(']');
+					break;
+				}
 			}
 			
 			break;

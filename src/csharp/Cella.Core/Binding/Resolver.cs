@@ -228,9 +228,13 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 	{
 		var target = VisitNode(node.Target);
 		
-		// TODO Indexable types other than ArrayType
-		if (target.Type is not SpanType spanType)
-			throw new Exception($"Cannot index into type '{target.Type.Name}'");
+		// TODO Indexable user-defined types
+		var elementType = target.Type switch
+		{
+			SpanType spanType => spanType.ElementType,
+			ArrayType arrayType => arrayType.ElementType,
+			_ => throw new Exception($"Cannot index into type '{target.Type.Name}'")
+		};
 		
 		if (node.Arguments.Length != 1)
 			throw new Exception("Array indexer requires exactly one argument");
@@ -239,7 +243,7 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 		var indexExpr = VisitNode(node.Arguments[0]);
 		_targetTypes.Pop();
 		
-		return new ResolvedIndexerExpressionNode(spanType.ElementType, target, indexExpr);
+		return new ResolvedIndexerExpressionNode(elementType, target, indexExpr);
 	}
 	
 	public IResolvedNode Visit(AccessExpressionNode node)
@@ -251,6 +255,30 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 			throw new Exception($"Type '{target.Type.Name}' has no member '{memberName}'");
 		
 		return new ResolvedAccessExpressionNode(target, member);
+	}
+	
+	public IResolvedNode Visit(ArrayExpressionNode node)
+	{
+		var values = new List<IResolvedExpressionNode>(node.Values.Length);
+		
+		TypeSymbol? elementType = null;
+		if (CurrentTargetType is ArrayType targetType)
+			elementType = targetType.ElementType;
+		
+		for (var i = 0; i < node.Values.Length; i++)
+		{
+			_targetTypes.Push(elementType);
+			var value = VisitNode(node.Values[i]);
+			_targetTypes.Pop();
+			
+			values.Add(value);
+			elementType ??= value.Type;
+		}
+		
+		elementType ??= NativeSymbols.Invalid;
+		
+		var type = _typePool.GetArrayType(elementType, node.Values.Length);
+		return new ResolvedArrayExpressionNode(type, values);
 	}
 	
 	public IResolvedNode Visit(LiteralExpressionNode node)

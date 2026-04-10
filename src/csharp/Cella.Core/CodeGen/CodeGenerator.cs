@@ -154,15 +154,30 @@ public sealed unsafe class CodeGenerator : IDisposable
 			return type;
 		
 		// Lazy mapping for generic types
-		if (symbol is SpanType spanType)
+		switch (symbol)
 		{
-			var elementType = MapTypeSymbol(spanType.ElementType);
-			var usizeType = LLVMTypeRef.CreateInt(_pointerSize * 8);
-			var ptrType = LLVMTypeRef.CreatePointer(elementType, 0u);
-			return LLVMTypeRef.CreateStruct([usizeType, ptrType], false);
+			case ArrayType arrayType:
+			{
+				var elementType = MapTypeSymbol(arrayType.ElementType);
+				var length = (uint)arrayType.Length;
+				var llvmArray = LLVMTypeRef.CreateArray(elementType, length);
+				_typeMap[symbol] = llvmArray;
+				return llvmArray;
+			}
+			
+			case SpanType spanType:
+			{
+				var elementType = MapTypeSymbol(spanType.ElementType);
+				var usizeType = LLVMTypeRef.CreateInt(_pointerSize * 8);
+				var ptrType = LLVMTypeRef.CreatePointer(elementType, 0u);
+				var llvmSpan = LLVMTypeRef.CreateStruct([usizeType, ptrType], false);
+				_typeMap[symbol] = llvmSpan;
+				return llvmSpan;
+			}
+			
+			default:
+				throw new InvalidOperationException($"Symbol '{symbol.Name}' not mapped in LLVM");
 		}
-		
-		throw new InvalidOperationException($"Symbol '{symbol.Name}' not mapped in LLVM");
 	}
 	
 	private void BuildModule(LLVMModuleRef llvmModule, LLVMDIBuilderRef llvmDiBuilder, LoweredModule module)
@@ -349,6 +364,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 		AssignValue v => EmitAssignValue(v, builder),
 		IndexerValue v => EmitIndexer(v, builder),
 		AccessValue v => EmitAccessValue(v, builder),
+		ArrayValue v => EmitArrayValue(v, builder),
 		CallValue v when _funMap[v.Function] is var (fv, ft, _) => builder.BuildCall2(ft, fv,
 			v.Arguments.Select(a => EmitValue(a, builder)).ToArray()),
 		_ => throw new InvalidOperationException()
@@ -417,37 +433,69 @@ public sealed unsafe class CodeGenerator : IDisposable
 	
 	private LLVMValueRef EmitIndexer(IndexerValue v, LLVMBuilderRef builder)
 	{
-		var target = EmitValue(v.Target, builder);
-		var index = EmitValue(v.Index, builder);
-		var elementType = MapTypeSymbol(v.Type);
-		
-		// TODO Switch to BuildInBoundsGEP2 once compiler-generated bounds checks are implemented
-		var dataPtr = builder.BuildExtractValue(target, 1, "dataptr");
-		var elemPtr = builder.BuildGEP2(elementType, dataPtr, new[] { index }, "elemptr");
-		
-		return builder.BuildLoad2(elementType, elemPtr, "elem");
+		var (elemPtr, elemType) = EmitIndexerAddress(v, builder);
+		return builder.BuildLoad2(elemType, elemPtr, "elem");
 	}
 	
-	private LLVMValueRef EmitIndexerAddress(IndexerValue v, LLVMBuilderRef builder)
+	private (LLVMValueRef Ptr, LLVMTypeRef ElemType) EmitIndexerAddress(IndexerValue v, LLVMBuilderRef builder)
 	{
-		var target = EmitValue(v.Target, builder);
 		var index = EmitValue(v.Index, builder);
-		var elementType = MapTypeSymbol(v.Type);
+		var elemType = MapTypeSymbol(v.Type);
 		
 		// TODO Switch to BuildInBoundsGEP2 once compiler-generated bounds checks are implemented
-		var dataPtr = builder.BuildExtractValue(target, 1, "dataptr");
-		var elemPtr = builder.BuildGEP2(elementType, dataPtr, new[] { index }, "elemptr");
-		
-		return elemPtr;
+		switch (v.Target.Type)
+		{
+			case SpanType:
+			{
+				var target = EmitValue(v.Target, builder);
+				var dataPtr = builder.BuildExtractValue(target, 1, "dataptr");
+				var elemPtr = builder.BuildGEP2(elemType, dataPtr, new[] { index }, "elemptr");
+				return (elemPtr, elemType);
+			}
+			
+			case ArrayType a:
+			{
+				var arrayPtr = EmitAddress(v.Target, builder);
+				var arrayType = MapTypeSymbol(a);
+				var zero = LLVMValueRef.CreateConstInt(LLVMTypeRef.Int32, 0);
+				var elemPtr = builder.BuildGEP2(arrayType, arrayPtr, new[] { zero, index }, "elemptr");
+				return (elemPtr, elemType);
+			}
+			
+			default:
+				throw new InvalidOperationException();
+		}
 	}
 	
 	private LLVMValueRef EmitAccessValue(AccessValue v, LLVMBuilderRef builder)
 	{
+		// Special case for arrays
+		switch (v.Target.Type)
+		{
+			case ArrayType arrayType:
+				return EmitSizeConstant(arrayType.Length, true);
+		}
+		
 		// TODO Fields could have been reordered to pack them
 		// TODO Also, GetFieldIndex is O(n), would probably want to cache the final indices in another dictionary
 		var target = EmitValue(v.Target, builder);
 		var fieldIndex = (uint)_typeMemberTable.GetFieldIndex(v.Target.Type, v.Member);
 		return builder.BuildExtractValue(target, fieldIndex, v.Member.Name);
+	}
+	
+	private LLVMValueRef EmitArrayValue(ArrayValue value, LLVMBuilderRef builder)
+	{
+		var arrayType = MapTypeSymbol(value.ArrayType);
+		
+		if (value.IsConstant)
+			return LLVMValueRef.CreateConstArray(MapTypeSymbol(value.ArrayType.ElementType),
+				[..value.Elements.Select(e => EmitValue(e, builder))]);
+		
+		var agg = arrayType.Undef;
+		for (uint i = 0; i < value.Elements.Length; i++)
+			agg = builder.BuildInsertValue(agg, EmitValue(value.Elements[(int)i], builder), i, $"arr{i}");
+		
+		return agg;
 	}
 	
 	private LLVMValueRef EmitAssignValue(AssignValue v, LLVMBuilderRef builder)
@@ -460,7 +508,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 	private LLVMValueRef EmitAddress(Value value, LLVMBuilderRef builder) => value switch
 	{
 		VariableValue v => _varMap[v.Variable],
-		IndexerValue v => EmitIndexerAddress(v, builder),
+		IndexerValue v => EmitIndexerAddress(v, builder).Ptr,
 		_ => throw new InvalidOperationException()
 	};
 	
@@ -501,11 +549,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 				}
 				
 				case PrimitiveTypeKind.IntSize:
-				{
-					Span<ulong> words = stackalloc ulong[ptrWordCount];
-					BigIntegerToWords((BigInteger)value, ptrBits, false, words);
-					return LLVMValueRef.CreateConstIntOfArbitraryPrecision(type, words);
-				}
+					return EmitSizeConstant((BigInteger)value, false);
 				
 				case PrimitiveTypeKind.UInt8:
 					return LLVMValueRef.CreateConstInt(type, (byte)value);
@@ -530,11 +574,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 				}
 				
 				case PrimitiveTypeKind.UIntSize:
-				{
-					Span<ulong> words = stackalloc ulong[ptrWordCount];
-					BigIntegerToWords((BigInteger)value, ptrBits, true, words);
-					return LLVMValueRef.CreateConstIntOfArbitraryPrecision(type, words);
-				}
+					return EmitSizeConstant((BigInteger)value, true);
 				
 				case PrimitiveTypeKind.Str:
 				{
@@ -577,6 +617,16 @@ public sealed unsafe class CodeGenerator : IDisposable
 		
 		_stringPool[bytes] = ptr;
 		return ptr;
+	}
+	
+	private LLVMValueRef EmitSizeConstant(BigInteger value, bool isUnsigned)
+	{
+		var usizeType = MapTypeSymbol(isUnsigned ? NativeSymbols.UIntSize : NativeSymbols.IntSize);
+		var ptrBits = (int)(_pointerSize * 8);
+		var wordCount = GetWordCount(ptrBits);
+		Span<ulong> words = stackalloc ulong[wordCount];
+		BigIntegerToWords(value, ptrBits, isUnsigned, words);
+		return LLVMValueRef.CreateConstIntOfArbitraryPrecision(usizeType, words);
 	}
 	
 	private static void BigIntegerToWords(BigInteger value, int maxBitCount, bool isUnsigned, Span<ulong> words)

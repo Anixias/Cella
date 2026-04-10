@@ -1,4 +1,5 @@
 ﻿using System.Collections.Immutable;
+using System.Numerics;
 using Cella.Core.Binding;
 using Cella.Core.Syntax;
 using Cella.Core.Syntax.Nodes;
@@ -78,11 +79,14 @@ public abstract class TypeSymbol(string name, TypeSymbol? containingType = null,
 {
 	public TypeSymbol? ContainingType { get; } = containingType;
 	public ImmutableDictionary<string, Symbol> Children { get; } = children.ToImmutableDictionary(static s => s.Name);
+	public abstract ISize Size { get; }
 }
 
 public sealed class InvalidType : TypeSymbol
 {
 	public static InvalidType Instance { get; } = new();
+	
+	public override ISize Size => new ConstSize(0);
 	
 	private InvalidType() : base("??")
 	{
@@ -92,13 +96,12 @@ public sealed class InvalidType : TypeSymbol
 public interface IPrimitiveType
 {
 	PrimitiveTypeKind Kind { get; }
-	ISize Size { get; }
 }
 
 public sealed class PrimitiveType(string name, PrimitiveTypeKind kind, ISize size) : TypeSymbol(name), IPrimitiveType
 {
 	public PrimitiveTypeKind Kind { get; } = kind;
-	public ISize Size { get; } = size;
+	public override ISize Size { get; } = size;
 }
 
 public enum PointerKind
@@ -115,7 +118,7 @@ public sealed class PointerType(TypeSymbol baseType, PointerKind pointerKind)
 	public TypeSymbol BaseType { get; } = baseType;
 	public PrimitiveTypeKind Kind { get; } = PrimitiveTypeKind.Pointer;
 	public PointerKind PointerKind { get; } = pointerKind;
-	public ISize Size { get; } = StorageSize.Ptr;
+	public override ISize Size { get; } = StorageSize.Ptr;
 	
 	public static string BuildName(TypeSymbol baseType, PointerKind pointerKind) => pointerKind switch
 	{
@@ -126,14 +129,21 @@ public sealed class PointerType(TypeSymbol baseType, PointerKind pointerKind)
 	};
 }
 
+public sealed class ArrayType(TypeSymbol elementType, BigInteger length)
+	: TypeSymbol($"array[{elementType.Name} * {length}]"), IPrimitiveType
+{
+	public TypeSymbol ElementType { get; } = elementType;
+	public BigInteger Length { get; } = length;
+	public PrimitiveTypeKind Kind { get; } = PrimitiveTypeKind.Array;
+	public override ISize Size { get; } = StorageSize.Product(elementType.Size, length);
+}
+
 public sealed class SpanType(TypeSymbol elementType) : TypeSymbol($"span[{elementType.Name}]"), IPrimitiveType
 {
 	public TypeSymbol ElementType { get; } = elementType;
 	public PrimitiveTypeKind Kind { get; } = PrimitiveTypeKind.Span;
-	public ISize Size { get; } = StorageSize.Ptr;
+	public override ISize Size { get; } = StorageSize.Sum(NativeSymbols.UIntSize.Size, StorageSize.Ptr);
 }
-
-// TODO ArrayType
 
 // TODO ViewType
 

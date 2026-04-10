@@ -196,6 +196,34 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 				// TODO Diagnostics
 			}
 		}
+		else if (Match(ref index, out var openBracket, TokenType.OpOpenBracket))
+		{
+			// Array Expression
+			var (source, range) = openBracket.SourceLocation;
+			
+			if (Match(ref index, out var closeBracket, TokenType.OpCloseBracket))
+			{
+				range = range.Join(closeBracket.SourceLocation.Range);
+				node = new ArrayExpressionNode([], new(source, range));
+			}
+			else
+			{
+				var values = new List<IExpressionNode> { ParseExpression(ref index) };
+				
+				// TODO Allow trailing comma
+				while (Match(ref index, TokenType.OpComma))
+					values.Add(ParseExpression(ref index));
+				
+				if (!Match(ref index, out closeBracket, TokenType.OpCloseBracket))
+				{
+					// TODO Diagnostics
+					throw new InvalidOperationException();
+				}
+				
+				range = range.Join(closeBracket.SourceLocation.Range);
+				node = new ArrayExpressionNode(values, new(source, range));
+			}
+		}
 		else if (Match(ref index, out var identifier, TokenType.Identifier))
 			node = new VarExpressionNode(identifier);
 		else

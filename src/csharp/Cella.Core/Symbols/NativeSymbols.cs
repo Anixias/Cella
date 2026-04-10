@@ -1,4 +1,5 @@
 ﻿using System.Collections.Immutable;
+using System.Numerics;
 
 namespace Cella.Core.Symbols;
 
@@ -76,6 +77,7 @@ public static class StorageSize
 	public static PointerSize Ptr => default;
 	public static ConstSize Const(int bytes) => new(bytes);
 	public static SumSize Sum(params IEnumerable<ISize> sizes) => new(sizes);
+	public static ProductSize Product(ISize size, BigInteger count) => new(size, count);
 }
 
 public readonly record struct ConstSize(int Value) : ISize;
@@ -89,3 +91,4 @@ public readonly record struct SumSize : ISize
 		Sizes = sizes.ToImmutableArray();
 	}
 }
+public readonly record struct ProductSize(ISize Size, BigInteger Count) : ISize;

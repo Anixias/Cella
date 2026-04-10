@@ -86,6 +86,18 @@ public sealed class AstPrinter : ISyntaxNodeVisitor
 		}, true);
 	}
 	
+	public void Visit(ArrayExpressionNode node)
+	{
+		StartLine();
+		_sb.Append("ArrayExpressionNode");
+		
+		for (var i = 0; i < node.Values.Length; i++)
+		{
+			var last = i == node.Values.Length - 1;
+			VisitNode(node.Values[i], last);
+		}
+	}
+	
 	public void Visit(ChainedExpressionNode node)
 	{
 		StartLine();
@@ -210,20 +222,7 @@ public sealed class AstPrinter : ISyntaxNodeVisitor
 		VisitNode(node.Body, true);
 	}
 	
-	public void Visit(GenericTypeNode node)
-	{
-		_sb.Append(node.Identifier.Text).Append('[');
-		for (var i = 0; i < node.TypeParameters.Length; i++)
-		{
-			if (i > 0)
-				_sb.Append(", ");
-			
-			VisitNode(node.TypeParameters[i], false);
-		}
-		
-		_sb.Append(']');
-	}
-	
+	public void Visit(GenericTypeNode node) => _sb.Append(node.SourceLocation.GetText());
 	public void Visit(IdentifierTypeNode node) => _sb.Append(node.Token.Text);
 	
 	public void Visit(ExternalFunctionNode node)

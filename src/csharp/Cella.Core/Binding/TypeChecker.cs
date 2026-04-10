@@ -184,6 +184,8 @@ public sealed class TypeChecker : IResolvedStatementNodeVisitor, IResolvedDeclar
 	private bool IsLValue(IResolvedExpressionNode expression) => expression switch
 	{
 		ResolvedVarExpressionNode => true,
+		ResolvedAccessExpressionNode => true,
+		ResolvedIndexerExpressionNode => true,
 		_ => false
 	};
 	

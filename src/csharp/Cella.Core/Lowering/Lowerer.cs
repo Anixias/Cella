@@ -349,12 +349,17 @@ public sealed class Lowerer : IResolvedDeclarationNodeVisitor
 		public Value Visit(ResolvedAccessExpressionNode node) =>
 			new AccessValue(node.Type, VisitNode(node.Target), node.Member);
 		
-		public Value Visit(ResolvedLiteralExpressionNode node) => new ConstantValue(node.Type, node.Value);
+		public Value Visit(ResolvedLiteralExpressionNode node) =>
+			new ConstantValue(node.Type, node.Value);
+		
+		public Value Visit(ResolvedArrayExpressionNode node) =>
+			new ArrayValue((ArrayType)node.Type, node.Values.Select(VisitNode));
 		
 		public Value Visit(ResolvedUnaryOpExpressionNode node) =>
 			LowerUnaryOp(VisitNode(node.Operand), node.Op, node.Type);
 		
-		public Value Visit(ResolvedVarExpressionNode node) => new VariableValue(new(node.Symbol, node.Type));
+		public Value Visit(ResolvedVarExpressionNode node) =>
+			new VariableValue(new(node.Symbol, node.Type));
 		
 		public Value Visit(ResolvedBinaryOpExpressionNode node) =>
 			LowerBinOp(VisitNode(node.Left), node.Op, VisitNode(node.Right), node.Type);

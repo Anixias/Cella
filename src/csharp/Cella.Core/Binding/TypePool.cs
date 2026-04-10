@@ -1,12 +1,24 @@
-﻿using Cella.Core.Symbols;
+﻿using System.Numerics;
+using Cella.Core.Symbols;
 
 namespace Cella.Core.Binding;
 
 public sealed class TypePool(TypeMemberTable memberTable)
 {
+	private readonly Dictionary<(TypeSymbol, BigInteger), ArrayType> _arrayTypes = [];
 	private readonly Dictionary<TypeSymbol, SpanType> _spanTypes = [];
-	// private readonly Dictionary<TypeSymbol, SliceType> _sliceTypes = [];
-	// private readonly Dictionary<TypeSymbol, ViewType> _viewTypes = [];
+	
+	public ArrayType GetArrayType(TypeSymbol elementType, BigInteger length)
+	{
+		var key = (elementType, length);
+		if (_arrayTypes.TryGetValue(key, out var existing))
+			return existing;
+		
+		var arrayType = new ArrayType(elementType, length);
+		_arrayTypes[key] = arrayType;
+		memberTable.CreateArrayMembers(arrayType);
+		return arrayType;
+	}
 	
 	public SpanType GetSpanType(TypeSymbol elementType)
 	{
@@ -15,7 +27,7 @@ public sealed class TypePool(TypeMemberTable memberTable)
 		
 		var spanType = new SpanType(elementType);
 		_spanTypes[elementType] = spanType;
-		memberTable.CreateArrayMembers(spanType);
+		memberTable.CreateSpanMembers(spanType);
 		return spanType;
 	}
 }
@@ -41,7 +53,12 @@ public sealed class TypeMemberTable
 		Register(NativeSymbols.Str, new IntrinsicMemberSymbol("byteLength", NativeSymbols.UIntSize));
 	}
 	
-	public void CreateArrayMembers(SpanType type)
+	public void CreateArrayMembers(ArrayType type)
+	{
+		Register(type, new IntrinsicMemberSymbol("length", NativeSymbols.UIntSize));
+	}
+	
+	public void CreateSpanMembers(SpanType type)
 	{
 		Register(type, new IntrinsicMemberSymbol("length", NativeSymbols.UIntSize));
 	}
