@@ -103,6 +103,9 @@ public readonly struct ResolutionContext
     {
         "span" when node.Arguments.Length == 1
             => ResolveSpanType(node),
+        
+        "view" when node.Arguments.Length == 1
+            => ResolveViewType(node),
 
         "array" when node.Arguments.Length == 2
             => ResolveArrayType(node),
@@ -116,6 +119,14 @@ public readonly struct ResolutionContext
         return elementType == NativeSymbols.Invalid
             ? NativeSymbols.Invalid
             : TypePool.GetSpanType(elementType);
+    }
+    
+    private TypeSymbol ResolveViewType(GenericTypeNode node)
+    {
+        var elementType = ResolveTypeArgument(node.Arguments[0]);
+        return elementType == NativeSymbols.Invalid
+            ? NativeSymbols.Invalid
+            : TypePool.GetViewType(elementType);
     }
     
     private TypeSymbol ResolveArrayType(GenericTypeNode node)

@@ -176,6 +176,16 @@ public sealed unsafe class CodeGenerator : IDisposable
 				return llvmSpan;
 			}
 			
+			case ViewType viewType:
+			{
+				var elementType = MapTypeSymbol(viewType.ElementType);
+				var usizeType = LLVMTypeRef.CreateInt(_pointerSize * 8);
+				var ptrType = LLVMTypeRef.CreatePointer(elementType, 0u);
+				var llvmSpan = LLVMTypeRef.CreateStruct([usizeType, ptrType], false);
+				_typeMap[symbol] = llvmSpan;
+				return llvmSpan;
+			}
+			
 			default:
 				throw new InvalidOperationException($"Symbol '{symbol.Name}' not mapped in LLVM");
 		}
@@ -420,6 +430,34 @@ public sealed unsafe class CodeGenerator : IDisposable
 				spanValue = builder.BuildInsertValue(spanValue, dataPtr, 1, "span.ptr");
 				return spanValue;
 			}
+			
+			// Array -> View
+			if (c.To is ViewType viewType)
+			{
+				// TODO This will probably crash for an empty array (and the InBounds would be incorrect?)
+				var lengthValue = EmitSizeConstant(arrayType.Length, true);
+				
+				var zero = LLVMValueRef.CreateConstInt(LLVMTypeRef.Int32, 0);
+				LLVMValueRef dataPtr;
+				if (IsAddressable(v.Source))
+				{
+					var arrayPtr = EmitAddress(v.Source, builder);
+					dataPtr = builder.BuildInBoundsGEP2(llvmArrayType, arrayPtr, new[] { zero, zero }, "data");
+				}
+				else
+				{
+					// Trying to convert literal into span, need to implicitly stack-allocate literal array
+					var arrayPtr = builder.BuildAlloca(llvmArrayType, "array");
+					builder.BuildStore(source, arrayPtr);
+					dataPtr = builder.BuildInBoundsGEP2(llvmArrayType, arrayPtr, new[] { zero, zero }, "data");
+				}
+				
+				var llvmViewType = MapTypeSymbol(viewType);
+				var viewValue = llvmViewType.Undef;
+				viewValue = builder.BuildInsertValue(viewValue, lengthValue, 0, "view.length");
+				viewValue = builder.BuildInsertValue(viewValue, dataPtr, 1, "view.ptr");
+				return viewValue;
+			}
 		}
 		
 		throw new InvalidOperationException();
@@ -532,6 +570,14 @@ public sealed unsafe class CodeGenerator : IDisposable
 				return (elemPtr, elemType);
 			}
 			
+			case ViewType:
+			{
+				var target = EmitValue(v.Target, builder);
+				var dataPtr = builder.BuildExtractValue(target, 1, "dataptr");
+				var elemPtr = builder.BuildGEP2(elemType, dataPtr, new[] { index }, "elemptr");
+				return (elemPtr, elemType);
+			}
+			
 			case ArrayType a:
 			{
 				var arrayPtr = EmitAddress(v.Target, builder);
@@ -552,7 +598,10 @@ public sealed unsafe class CodeGenerator : IDisposable
 		switch (v.Target.Type)
 		{
 			case ArrayType arrayType:
-				return EmitSizeConstant(arrayType.Length, true);
+				if (v.Member.Name == "length")
+					return EmitSizeConstant(arrayType.Length, true);
+				
+				break;
 		}
 		
 		// TODO Fields could have been reordered to pack them

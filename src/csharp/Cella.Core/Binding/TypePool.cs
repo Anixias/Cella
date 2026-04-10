@@ -8,6 +8,7 @@ public sealed class TypePool(TypeMemberTable memberTable, ConversionTable conver
 {
 	private readonly Dictionary<(TypeSymbol, BigInteger), ArrayType> _arrayTypes = [];
 	private readonly Dictionary<TypeSymbol, SpanType> _spanTypes = [];
+	private readonly Dictionary<TypeSymbol, ViewType> _viewTypes = [];
 	
 	public ArrayType GetArrayType(TypeSymbol elementType, BigInteger length)
 	{
@@ -23,6 +24,10 @@ public sealed class TypePool(TypeMemberTable memberTable, ConversionTable conver
 		var spanType = GetSpanType(elementType);
 		conversionTable.Add(new NativeConversion(arrayType, spanType, ConversionKind.Implicit, 1));
 		
+		// To view
+		var viewType = GetViewType(elementType);
+		conversionTable.Add(new NativeConversion(arrayType, viewType, ConversionKind.Implicit, 1));
+		
 		return arrayType;
 	}
 	
@@ -34,6 +39,22 @@ public sealed class TypePool(TypeMemberTable memberTable, ConversionTable conver
 		var spanType = new SpanType(elementType);
 		_spanTypes[elementType] = spanType;
 		memberTable.CreateSpanMembers(spanType);
+		
+		// To view
+		var viewType = GetViewType(elementType);
+		conversionTable.Add(new NativeConversion(spanType, viewType, ConversionKind.Implicit, 1));
+		
 		return spanType;
+	}
+	
+	public ViewType GetViewType(TypeSymbol elementType)
+	{
+		if (_viewTypes.TryGetValue(elementType, out var existing))
+			return existing;
+		
+		var viewType = new ViewType(elementType);
+		_viewTypes[elementType] = viewType;
+		memberTable.CreateViewMembers(viewType);
+		return viewType;
 	}
 }

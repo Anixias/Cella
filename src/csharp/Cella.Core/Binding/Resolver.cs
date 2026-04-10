@@ -240,6 +240,7 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 		var elementType = target.Type switch
 		{
 			SpanType spanType => spanType.ElementType,
+			ViewType viewType => viewType.ElementType,
 			ArrayType arrayType => arrayType.ElementType,
 			_ => throw new Exception($"Cannot index into type '{target.Type.Name}'")
 		};

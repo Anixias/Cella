@@ -32,4 +32,9 @@ public sealed class TypeMemberTable
 	{
 		Register(type, new IntrinsicMemberSymbol("length", NativeSymbols.UIntSize));
 	}
+	
+	public void CreateViewMembers(ViewType type)
+	{
+		Register(type, new IntrinsicMemberSymbol("length", NativeSymbols.UIntSize));
+	}
 }

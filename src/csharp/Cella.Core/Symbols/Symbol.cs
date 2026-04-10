@@ -151,7 +151,12 @@ public sealed class SpanType(TypeSymbol elementType) : TypeSymbol($"span[{elemen
 	public override ISize Size { get; } = StorageSize.Sum(NativeSymbols.UIntSize.Size, StorageSize.Ptr);
 }
 
-// TODO ViewType
+public sealed class ViewType(TypeSymbol elementType) : TypeSymbol($"view[{elementType.Name}]"), IPrimitiveType
+{
+	public TypeSymbol ElementType { get; } = elementType;
+	public PrimitiveTypeKind Kind { get; } = PrimitiveTypeKind.Span;
+	public override ISize Size { get; } = StorageSize.Sum(NativeSymbols.UIntSize.Size, StorageSize.Ptr);
+}
 
 public abstract class VariableSymbol(string name) : Symbol(name);
 
