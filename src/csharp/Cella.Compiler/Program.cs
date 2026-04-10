@@ -4,7 +4,9 @@ using Cella.Compiler.Linking;
 using Cella.Compiler.Projects;
 using Cella.Core.Analysis;
 using Cella.Core.Binding;
+using Cella.Core.Binding.Conversions;
 using Cella.Core.Binding.Nodes.Declarations;
+using Cella.Core.Binding.Operations;
 using Cella.Core.CodeGen;
 using Cella.Core.Lowering;
 using Cella.Core.Symbols;
@@ -147,14 +149,16 @@ internal static class Program
 		// TODO Allow configuring entry point name?
 		var entryPointName = outputType == ProjectOutputType.Executable ? "main" : null;
 		
+		var conversionTable = ConversionTable.CreateNative();
+		var operatorRegistry = new OperatorRegistry(conversionTable);
 		var typeMemberTable = new TypeMemberTable();
 		typeMemberTable.CreateNativeMembers();
 		
-		var typePool = new TypePool(typeMemberTable);
+		var typePool = new TypePool(typeMemberTable, conversionTable);
 		AssemblySymbol assemblySymbol;
 		{
 			var signatureCollector = new SignatureCollector(entryPointName, symbolTable, typePool, typeMemberTable,
-				dependencySymbols);
+				conversionTable, operatorRegistry, dependencySymbols);
 			
 			foreach (var info in files)
 				signatureCollector.Collect(info.Ast);
@@ -183,7 +187,8 @@ internal static class Program
 		// Phase 3: Symbol resolution
 		ImmutableArray<ResolvedSourceFileInfo> resolvedFiles;
 		{
-			var resolver = new Resolver(assemblySymbol, dependencySymbols, typePool, typeMemberTable, pointerBitSize);
+			var resolver = new Resolver(assemblySymbol, dependencySymbols, typePool, typeMemberTable, conversionTable,
+				operatorRegistry, pointerBitSize);
 			
 			resolvedFiles = files
 				.Select(sfi => new ResolvedSourceFileInfo(sfi.FilePath, resolver.Resolve(sfi.Ast), sfi.Source))

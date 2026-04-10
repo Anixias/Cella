@@ -1,19 +1,18 @@
-﻿using Cella.Core.Symbols;
-using Cella.Core.Text;
+﻿using Cella.Core.Binding.Operations;
+using Cella.Core.Symbols;
 
 namespace Cella.Core.Binding.Nodes.Expressions;
 
 public sealed class ResolvedBinaryOpExpressionNode
 (
-	TypeSymbol type,
 	IResolvedExpressionNode left,
-	Token op,
-	IResolvedExpressionNode right
+	IResolvedExpressionNode right,
+	OperationImpl? operation
 ) : IResolvedExpressionNode
 {
-	public TypeSymbol Type { get; } = type;
+	public TypeSymbol Type { get; } = operation?.Result ?? NativeSymbols.Invalid;
 	public bool IsConstant { get; } = left.IsConstant && right.IsConstant;
 	public IResolvedExpressionNode Left { get; } = left;
-	public Token Op { get; } = op;
 	public IResolvedExpressionNode Right { get; } = right;
+	public OperationImpl? Operation { get; } = operation;
 }

@@ -1,9 +1,12 @@
-﻿using Cella.Core.Symbols;
+﻿using Cella.Core.Binding.Conversions;
+using Cella.Core.Binding.Operations;
+using Cella.Core.Symbols;
 using Cella.Core.Syntax.Nodes;
 
 namespace Cella.Core.Binding;
 
-public sealed class SymbolCollector : IDeclarationNodeVisitor
+public sealed class SymbolCollector
+	: IDeclarationNodeVisitor
 {
 	private readonly SymbolTable.Builder _builder = new();
 	private readonly List<Symbol> _symbolsInFile = [];

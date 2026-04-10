@@ -1,17 +1,16 @@
-﻿using Cella.Core.Symbols;
-using Cella.Core.Text;
+﻿using Cella.Core.Binding.Operations;
+using Cella.Core.Symbols;
 
 namespace Cella.Core.Binding.Nodes.Expressions;
 
 public sealed class ResolvedUnaryOpExpressionNode
 (
-	TypeSymbol type,
-	Token op,
-	IResolvedExpressionNode operand
+	IResolvedExpressionNode operand,
+	OperationImpl? operation
 ) : IResolvedExpressionNode
 {
-	public TypeSymbol Type { get; } = type;
+	public TypeSymbol Type { get; } = operation?.Result ?? NativeSymbols.Invalid;
 	public bool IsConstant { get; } = operand.IsConstant;
-	public Token Op { get; } = op;
 	public IResolvedExpressionNode Operand { get; } = operand;
+	public OperationImpl? Operation { get; } = operation;
 }

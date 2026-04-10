@@ -3,6 +3,7 @@ using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
 using System.Numerics;
 using Cella.Core.Binding;
+using Cella.Core.Binding.Conversions;
 using Cella.Core.Binding.Operations;
 using Cella.Core.CodeGen.Extensions;
 using Cella.Core.Lowering;
@@ -365,10 +366,88 @@ public sealed unsafe class CodeGenerator : IDisposable
 		IndexerValue v => EmitIndexer(v, builder),
 		AccessValue v => EmitAccessValue(v, builder),
 		ArrayValue v => EmitArrayValue(v, builder),
+		ConversionValue v => EmitConversion(v, builder),
 		CallValue v when _funMap[v.Function] is var (fv, ft, _) => builder.BuildCall2(ft, fv,
 			v.Arguments.Select(a => EmitValue(a, builder)).ToArray()),
 		_ => throw new InvalidOperationException()
 	};
+	
+	private LLVMValueRef EmitConversion(ConversionValue v, LLVMBuilderRef builder)
+	{
+		return v.Conversion switch
+		{
+			IdentityConversion => EmitValue(v.Source, builder),
+			IntegerConversion c => EmitIntegerConversion(c, EmitValue(v.Source, builder), builder),
+			NativeConversion c => EmitNativeConversion(c, v, builder),
+			FunctionConversion c => EmitValue(new CallValue(c.Function, [v.Source]), builder),
+			_ => throw new InvalidOperationException()
+		};
+	}
+	
+	private LLVMValueRef EmitNativeConversion(NativeConversion c, ConversionValue v, LLVMBuilderRef builder)
+	{
+		var source = EmitValue(v.Source, builder);
+		
+		// Arrays
+		if (c.From is ArrayType arrayType)
+		{
+			var llvmArrayType = MapTypeSymbol(arrayType);
+			
+			// Array -> Span
+			if (c.To is SpanType spanType)
+			{
+				// TODO This will probably crash for an empty array (and the InBounds would be incorrect?)
+				var lengthValue = EmitSizeConstant(arrayType.Length, true);
+				
+				var zero = LLVMValueRef.CreateConstInt(LLVMTypeRef.Int32, 0);
+				LLVMValueRef dataPtr;
+				if (IsAddressable(v.Source))
+				{
+					var arrayPtr = EmitAddress(v.Source, builder);
+					dataPtr = builder.BuildInBoundsGEP2(llvmArrayType, arrayPtr, new[] { zero, zero }, "data");
+				}
+				else
+				{
+					// Trying to convert literal into span, need to implicitly stack-allocate literal array
+					var arrayPtr = builder.BuildAlloca(llvmArrayType, "array");
+					builder.BuildStore(source, arrayPtr);
+					dataPtr = builder.BuildInBoundsGEP2(llvmArrayType, arrayPtr, new[] { zero, zero }, "data");
+				}
+				
+				var llvmSpanType = MapTypeSymbol(spanType);
+				var spanValue = llvmSpanType.Undef;
+				spanValue = builder.BuildInsertValue(spanValue, lengthValue, 0, "span.length");
+				spanValue = builder.BuildInsertValue(spanValue, dataPtr, 1, "span.ptr");
+				return spanValue;
+			}
+		}
+		
+		throw new InvalidOperationException();
+	}
+	
+	private bool IsAddressable(Value value) => value switch
+	{
+		VariableValue => true,
+		IndexerValue => true,
+		AccessValue => true,
+		_ => false
+	};
+	
+	private LLVMValueRef EmitIntegerConversion(IntegerConversion c, LLVMValueRef source, LLVMBuilderRef builder)
+	{
+		var srcType = source.TypeOf;
+		var destType = MapTypeSymbol(c.To);
+		
+		if (destType.IntWidth == srcType.IntWidth)
+			return source;
+		
+		if (destType.IntWidth < srcType.IntWidth)
+			return builder.BuildTrunc(source, destType);
+		
+		return c.FromSigned
+			? builder.BuildSExt(source, destType)
+			: builder.BuildZExt(source, destType);
+	}
 	
 	private LLVMValueRef EmitBinaryOp(BinOpValue v, LLVMBuilderRef builder) => v switch
 	{
@@ -521,9 +600,6 @@ public sealed unsafe class CodeGenerator : IDisposable
 		
 		if (constant.Type is PrimitiveType primitiveType)
 		{
-			var ptrBits = (int)(_pointerSize * 8);
-			var ptrWordCount = GetWordCount(ptrBits);
-			
 			switch (primitiveType.Kind)
 			{
 				case PrimitiveTypeKind.Int8:
@@ -604,10 +680,10 @@ public sealed unsafe class CodeGenerator : IDisposable
 		
 		var byteType = MapTypeSymbol(NativeSymbols.UInt8);
 		var byteValues = bytes.Select(b => LLVMValueRef.CreateConstInt(byteType, b));
-		var spanValue = LLVMValueRef.CreateConstArray(byteType, [..byteValues]);
+		var arrayValue = LLVMValueRef.CreateConstArray(byteType, [..byteValues]);
 		
-		var global = currentModule.AddGlobal(spanValue.TypeOf, string.Empty);
-		global.Initializer = spanValue;
+		var global = currentModule.AddGlobal(arrayValue.TypeOf, string.Empty);
+		global.Initializer = arrayValue;
 		global.IsGlobalConstant = true;
 		global.Linkage = LLVMLinkage.LLVMLinkerPrivateLinkage;
 		global.HasUnnamedAddr = true;

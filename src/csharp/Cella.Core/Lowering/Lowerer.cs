@@ -340,6 +340,9 @@ public sealed class Lowerer : IResolvedDeclarationNodeVisitor
 			currentBlock = exitBlock;
 		}
 		
+		public Value Visit(ResolvedConversionExpressionNode node) =>
+			new ConversionValue(VisitNode(node.Source), node.Conversion);
+		
 		public Value Visit(ResolvedFunctionCallExpressionNode node) =>
 			new CallValue(node.Function, node.Arguments.Select(VisitNode));
 		
@@ -356,13 +359,13 @@ public sealed class Lowerer : IResolvedDeclarationNodeVisitor
 			new ArrayValue((ArrayType)node.Type, node.Values.Select(VisitNode));
 		
 		public Value Visit(ResolvedUnaryOpExpressionNode node) =>
-			LowerUnaryOp(VisitNode(node.Operand), node.Op, node.Type);
+			LowerUnaryOp(VisitNode(node.Operand), node.Operation);
 		
 		public Value Visit(ResolvedVarExpressionNode node) =>
 			new VariableValue(new(node.Symbol, node.Type));
 		
 		public Value Visit(ResolvedBinaryOpExpressionNode node) =>
-			LowerBinOp(VisitNode(node.Left), node.Op, VisitNode(node.Right), node.Type);
+			LowerBinOp(VisitNode(node.Left), node.Operation, VisitNode(node.Right));
 		
 		public Value Visit(ResolvedAssignmentExpressionNode node) =>
 			LowerAssignment(VisitNode(node.Left), node.Op, VisitNode(node.Right), node.Type);
@@ -398,13 +401,13 @@ public sealed class Lowerer : IResolvedDeclarationNodeVisitor
 					? VisitNode(node.Operands[i])
 					: tempValues[i - 1];
 				
-				var comparisonType = node.SubTypes[i - 1];
-				var comparison = new BinOpValue(comparisonType, left, right, MapBinOp(node.Ops[i - 1]));
+				var op = node.Ops[i - 1];
+				var comparison = LowerBinOp(left, op, right);
 				left = right;
 				
 				result = result is null
 					? comparison
-					: new BinOpValue(comparisonType, result, comparison, BinaryOperation.And);
+					: new BinOpValue(comparison.Type, result, comparison, BinaryOperation.And);
 			}
 			
 			return result!;
@@ -430,65 +433,73 @@ public sealed class Lowerer : IResolvedDeclarationNodeVisitor
 			throw new InvalidOperationException();
 		}
 		
-		private static BinOpValue LowerBinOp(Value left, Token op, Value right, TypeSymbol type) =>
-			new(type, left, right, MapBinOp(op));
-		
-		private static UnaryOpValue LowerUnaryOp(Value operand, Token op, TypeSymbol type) =>
-			new(type, operand, MapUnaryOp(op));
-		
-		private static BinaryOperation MapBinOp(Token op)
+		private static Value LowerBinOp(Value left, OperationImpl? op, Value right) => op switch
 		{
-			if (op.Type == TokenType.OpPlus)
+			NativeImpl native => new BinOpValue(native.Result, left, right, MapBinOp(native.Op)),
+			FunctionImpl function => new CallValue(function.Function, [left, right]),
+			_ => throw new InvalidOperationException()
+		};
+		
+		private static Value LowerUnaryOp(Value operand, OperationImpl? op) => op switch
+		{
+			NativeImpl native => new UnaryOpValue(native.Result, operand, MapUnaryOp(native.Op)),
+			FunctionImpl function => new CallValue(function.Function, [operand]),
+			_ => throw new InvalidOperationException()
+		};
+		
+		private static BinaryOperation MapBinOp(TokenType op)
+		{
+			if (op == TokenType.OpPlus)
 				return BinaryOperation.Addition;
 			
-			if (op.Type == TokenType.OpMinus)
+			if (op == TokenType.OpMinus)
 				return BinaryOperation.Subtraction;
 			
-			if (op.Type == TokenType.OpStar)
+			if (op == TokenType.OpStar)
 				return BinaryOperation.Multiplication;
 			
-			if (op.Type == TokenType.OpSlash)
+			if (op == TokenType.OpSlash)
 				return BinaryOperation.Division;
 			
-			if (op.Type == TokenType.OpEqualEqual)
+			if (op == TokenType.OpEqualEqual)
 				return BinaryOperation.Equal;
 			
-			if (op.Type == TokenType.OpBangEqual)
+			if (op == TokenType.OpBangEqual)
 				return BinaryOperation.NotEqual;
 			
-			if (op.Type == TokenType.OpGreater)
+			if (op == TokenType.OpGreater)
 				return BinaryOperation.Greater;
 			
-			if (op.Type == TokenType.OpGreaterEqual)
+			if (op == TokenType.OpGreaterEqual)
 				return BinaryOperation.GreaterEqual;
 			
-			if (op.Type == TokenType.OpLess)
+			if (op == TokenType.OpLess)
 				return BinaryOperation.Less;
 			
-			if (op.Type == TokenType.OpLessEqual)
+			if (op == TokenType.OpLessEqual)
 				return BinaryOperation.LessEqual;
 			
-			if (op.Type == TokenType.OpAmpersand)
+			if (op == TokenType.OpAmpersand)
 				return BinaryOperation.And;
 			
-			if (op.Type == TokenType.OpBar)
+			if (op == TokenType.OpBar)
 				return BinaryOperation.Or;
 			
-			if (op.Type == TokenType.OpHat)
+			if (op == TokenType.OpHat)
 				return BinaryOperation.Xor;
 			
 			throw new InvalidOperationException();
 		}
 		
-		private static UnaryOperation MapUnaryOp(Token nodeOp)
+		private static UnaryOperation MapUnaryOp(TokenType op)
 		{
-			if (nodeOp.Type == TokenType.OpPlus)
+			if (op == TokenType.OpPlus)
 				return UnaryOperation.Identity;
 			
-			if (nodeOp.Type == TokenType.OpMinus)
+			if (op == TokenType.OpMinus)
 				return UnaryOperation.Negation;
 			
-			if (nodeOp.Type == TokenType.OpBang)
+			if (op == TokenType.OpBang)
 				return UnaryOperation.Not;
 			
 			throw new InvalidOperationException();

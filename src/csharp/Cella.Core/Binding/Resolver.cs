@@ -1,5 +1,7 @@
-﻿using System.Numerics;
+﻿using System.Diagnostics.CodeAnalysis;
+using System.Numerics;
 using System.Text;
+using Cella.Core.Binding.Conversions;
 using Cella.Core.Binding.Nodes;
 using Cella.Core.Binding.Nodes.Declarations;
 using Cella.Core.Binding.Nodes.Expressions;
@@ -18,6 +20,8 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 	private readonly SignatureTable _dependencySignatureTable;
 	private readonly TypePool _typePool;
 	private readonly TypeMemberTable _typeMemberTable;
+	private readonly ConversionTable _conversionTable;
+	private readonly OperatorRegistry _operatorRegistry;
 	private readonly uint _pointerBitSize;
 	private readonly Dictionary<FunctionSymbol, FunctionInfo> _importedFunctions = [];
 	private readonly Stack<TypeSymbol?> _targetTypes = [];
@@ -28,10 +32,12 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 	private TypeSymbol? CurrentTargetType => _targetTypes.TryPeek(out var result) ? result : null;
 	
 	public Resolver(AssemblySymbol assemblySymbol, IEnumerable<AssemblySymbol> dependencies, TypePool typePool,
-		TypeMemberTable typeMemberTable, uint pointerBitSize)
+		TypeMemberTable typeMemberTable, ConversionTable conversionTable, OperatorRegistry operatorRegistry, uint pointerBitSize)
 	{
 		_typePool = typePool;
 		_typeMemberTable = typeMemberTable;
+		_conversionTable = conversionTable;
+		_operatorRegistry = operatorRegistry;
 		_pointerBitSize = pointerBitSize;
 		_symbolTable = assemblySymbol.SymbolTable;
 		_assemblySignatureTable = assemblySymbol.SignatureTable;
@@ -122,15 +128,12 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 	
 	public IResolvedNode Visit(ReturnStatementNode node)
 	{
-		var info = _assemblySignatureTable.Functions[CurrentFunction.Symbol];
-		_targetTypes.Push(info.Signature.ReturnType);
-		
-		var result = new ResolvedReturnStatementNode(node.ExpressionNode is { } expressionNode
-			? VisitNode(expressionNode)
-			: null);
-		
+		var returnType = _assemblySignatureTable.Functions[CurrentFunction.Symbol].Signature.ReturnType;
+		_targetTypes.Push(returnType);
+		var expression = ApplyImplicitConversion(node.ExpressionNode is { } expr ? VisitNode(expr) : null, returnType);
 		_targetTypes.Pop();
-		return result;
+		
+		return new ResolvedReturnStatementNode(expression);
 	}
 	
 	public IResolvedNode Visit(BreakStatementNode node)
@@ -212,8 +215,13 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 				{
 					var paramType = i < paramTypes.Length ? paramTypes[i] : null;
 					_targetTypes.Push(paramType);
-					args.Add(VisitNode(node.Arguments[i]));
+					var arg = VisitNode(node.Arguments[i]);
 					_targetTypes.Pop();
+					
+					if (paramType is not null)
+						arg = ApplyImplicitConversion(arg, paramType);
+					
+					args.Add(arg);
 				}
 				
 				return new ResolvedFunctionCallExpressionNode(info, args);
@@ -358,6 +366,9 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 			_targetTypes.Push(type);
 			initializer = VisitNode(initializerNode);
 			_targetTypes.Pop();
+			
+			if (type is not null)
+				initializer = ApplyImplicitConversion(initializer, type);
 		}
 		else
 			initializer = null;
@@ -473,18 +484,14 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 		
 		var op = node.Op;
 		
-		if (NativeOperations.Resolve(op.Type, operand.Type) is { } nativeType)
-		{
-			// We optimize away identity operations if it's a native type since it's a no-op
-			if (op.Type == TokenType.OpPlus)
-				return operand;
-			
-			return new ResolvedUnaryOpExpressionNode(nativeType, op, operand);
-		}
+		var resolution = _operatorRegistry.ResolveUnary(op.Type, operand.Type);
+		if (resolution.Operation is not { } operation)
+			return new ResolvedUnaryOpExpressionNode(operand, null);
 		
-		// TODO Based on type of sub-expression and the op token, we search for operator overloads
+		if (resolution.OperandConversion is { } conversion)
+			operand = new ResolvedConversionExpressionNode(operand, conversion);
 		
-		return new ResolvedUnaryOpExpressionNode(NativeSymbols.Invalid, op, operand);
+		return new ResolvedUnaryOpExpressionNode(operand, operation);
 	}
 	
 	public IResolvedNode Visit(BinaryOpExpressionNode node)
@@ -499,11 +506,8 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 		{
 			var left = VisitNode(node.Left);
 			_targetTypes.Pop();
-			
-			// Attempt to coerce right side to left type
-			// TODO Does this make sense for modify-assign operators? What about with operator overloads?
 			_targetTypes.Push(left.Type);
-			var right = VisitNode(node.Right);
+			var right = ApplyImplicitConversion(VisitNode(node.Right), left.Type);
 			_targetTypes.Pop();
 			
 			return new ResolvedAssignmentExpressionNode(left.Type, left, op, right);
@@ -516,11 +520,16 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 			_targetTypes.Pop();
 			
 			// TODO How to handle implicit upcasts..?
-			if (NativeOperations.Resolve(left.Type, op.Type, right.Type) is { } nativeType)
-				return new ResolvedBinaryOpExpressionNode(nativeType, left, op, right);
+			var resolution = _operatorRegistry.ResolveBinary(left.Type, op.Type, right.Type);
+			if (resolution.Operation is not { } operation)
+				return new ResolvedBinaryOpExpressionNode(left, right, null);
 			
-			// TODO Based on types of sub-expressions and the op token, we search for operator overloads
-			return new ResolvedBinaryOpExpressionNode(NativeSymbols.Invalid, left, op, right);
+			if (resolution.LeftConversion is { } leftConversion)
+				left = new ResolvedConversionExpressionNode(left, leftConversion);
+			if (resolution.RightConversion is { } rightConversion)
+				right = new ResolvedConversionExpressionNode(right, rightConversion);
+			
+			return new ResolvedBinaryOpExpressionNode(left, right, operation);
 		}
 	}
 	
@@ -535,35 +544,47 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 		
 		_targetTypes.Pop();
 		
-		var types = new List<TypeSymbol>(node.Ops.Length);
+		// TODO How to handle implicit conversions per pair?
+		
+		var operations = new List<OperationImpl?>(node.Ops.Length);
 		for (var i = 0; i < operands.Count - 1; i++)
 		{
 			var left = operands[i];
 			var op = node.Ops[i];
 			var right = operands[i + 1];
 			
-			// TODO Operator overloads
-			if (NativeOperations.Resolve(left.Type, op.Type, right.Type) is not { } opNativeType)
-				opNativeType = NativeSymbols.Invalid;
-			
-			types.Add(opNativeType);
+			var resolution = _operatorRegistry.ResolveBinary(left.Type, op.Type, right.Type);
+			operations.Add(resolution.Operation);
 		}
 		
 		// Aggregate types with implicit AND
-		var resultType = types[0];
-		for (var i = 1; i < types.Count - 1; i++)
+		var resultType = operations[0]?.Result ?? NativeSymbols.Invalid;
+		for (var i = 1; i < operations.Count - 1; i++)
 		{
-			var right = types[i + 1];
-			
-			if (NativeOperations.Resolve(resultType, TokenType.OpAmpersand, right) is not { } opNativeType)
-				opNativeType = NativeSymbols.Invalid;
-			
-			resultType = opNativeType;
+			var right = operations[i + 1]?.Result ?? NativeSymbols.Invalid;
+			var resolution = _operatorRegistry.ResolveBinary(resultType, TokenType.OpAmpersand, right);
+			resultType = resolution.Operation?.Result ?? NativeSymbols.Invalid;
 		}
 		
-		// TODO Implicit cast if needed
+		// TODO Implicit cast if needed?
 		
-		return new ResolvedChainedExpressionNode(resultType, operands, node.Ops, types);
+		return new ResolvedChainedExpressionNode(resultType, operands, operations);
+	}
+	
+	[return: NotNullIfNotNull(nameof(source))]
+	private IResolvedExpressionNode? ApplyImplicitConversion(IResolvedExpressionNode? source, TypeSymbol target)
+	{
+		if (source is null)
+			return null;
+		
+		if (source.Type == target)
+			return source;
+		
+		if (_conversionTable.FindImplicit(source.Type, target) is { } conversion)
+			return new ResolvedConversionExpressionNode(source, conversion);
+		
+		// TODO Diagnostic
+		return source;
 	}
 	
 	private (TypeSymbol? Type, object? Value) ParseInteger(ReadOnlySpan<char> span, TypeSymbol? targetType)

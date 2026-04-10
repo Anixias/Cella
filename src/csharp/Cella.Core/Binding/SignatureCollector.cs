@@ -1,4 +1,6 @@
 ﻿using System.Collections.Immutable;
+using Cella.Core.Binding.Conversions;
+using Cella.Core.Binding.Operations;
 using Cella.Core.Symbols;
 using Cella.Core.Syntax.Nodes;
 
@@ -10,6 +12,8 @@ public sealed class SignatureCollector : IDeclarationNodeVisitor
 	private readonly SymbolTable _symbolTable;
 	private readonly TypePool _typePool;
 	private readonly TypeMemberTable _typeMemberTable;
+	private readonly ConversionTable _conversionTable;
+	private readonly OperatorRegistry _operatorRegistry;
 	private readonly ImmutableArray<AssemblySymbol> _dependencies;
 	private readonly SignatureTable.Builder _builder = new();
 	private readonly Stack<ResolutionContext> _resolutionContexts = [];
@@ -17,13 +21,15 @@ public sealed class SignatureCollector : IDeclarationNodeVisitor
 	private readonly List<FunctionInfo> _entryPoints = [];
 	
 	public SignatureCollector(string? entryPointName, SymbolTable symbolTable, TypePool typePool,
-		TypeMemberTable typeMemberTable,
+		TypeMemberTable typeMemberTable, ConversionTable conversionTable, OperatorRegistry operatorRegistry,
 		IEnumerable<AssemblySymbol> dependencies)
 	{
 		_entryPointName = entryPointName;
 		_symbolTable = symbolTable;
 		_typePool = typePool;
 		_typeMemberTable = typeMemberTable;
+		_conversionTable = conversionTable;
+		_operatorRegistry = operatorRegistry;
 		_dependencies = dependencies.ToImmutableArray();
 	}
 	

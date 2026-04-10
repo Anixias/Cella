@@ -98,10 +98,16 @@ public interface IPrimitiveType
 	PrimitiveTypeKind Kind { get; }
 }
 
-public sealed class PrimitiveType(string name, PrimitiveTypeKind kind, ISize size) : TypeSymbol(name), IPrimitiveType
+public class PrimitiveType(string name, PrimitiveTypeKind kind, ISize size) : TypeSymbol(name), IPrimitiveType
 {
 	public PrimitiveTypeKind Kind { get; } = kind;
 	public override ISize Size { get; } = size;
+}
+
+public sealed class IntegerType(string name, PrimitiveTypeKind kind, ISize size, bool isSigned)
+	: PrimitiveType(name, kind, size)
+{
+	public bool IsSigned { get; } = isSigned;
 }
 
 public enum PointerKind

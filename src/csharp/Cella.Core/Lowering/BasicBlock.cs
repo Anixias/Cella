@@ -1,5 +1,6 @@
 ﻿using System.Collections.Immutable;
 using Cella.Core.Binding;
+using Cella.Core.Binding.Conversions;
 using Cella.Core.Binding.Operations;
 using Cella.Core.Symbols;
 
@@ -31,6 +32,13 @@ public sealed class ConstantValue(TypeSymbol type, object? value) : Value(type, 
 public sealed class VariableValue(VariableInfo variable) : Value(variable.Type, false)
 {
 	public VariableInfo Variable { get; } = variable;
+}
+
+public sealed class ConversionValue(Value source, Conversion conversion)
+	: Value(conversion.To, source.IsConstant && conversion.IsConstant)
+{
+	public Value Source { get; } = source;
+	public Conversion Conversion { get; } = conversion;
 }
 
 // TODO Detect if the function is constant
