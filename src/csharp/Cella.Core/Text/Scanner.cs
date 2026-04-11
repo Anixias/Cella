@@ -188,6 +188,18 @@ public class Scanner : IScanner
 			var operatorString = new string(Source.GetText(range));
 			if (TokenType.GetOperator(operatorString) is { } opType)
 			{
+				// Special case for negative number literals
+				if (end < Source.Length - 1 && opType == TokenType.OpMinus && char.IsDigit(Source[end]))
+				{
+					var number = ScanNumber(end);
+					end = number.NextPosition;
+					
+					range = new TextRange(position, end);
+					var negToken = new Token(number.Token.Type, Source, range);
+					op = new ScanResult(negToken, end);
+					return true;
+				}
+				
 				var token = new Token(opType, Source, range);
 				op = new ScanResult(token, end);
 				return true;

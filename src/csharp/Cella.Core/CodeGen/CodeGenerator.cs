@@ -507,6 +507,9 @@ public sealed unsafe class CodeGenerator : IDisposable
 		{ Op: BinaryOperation.Division } =>
 			builder.BuildSDiv(EmitValue(v.Left, builder), EmitValue(v.Right, builder)), // TODO Check type for correct operation
 		
+		{ Op: BinaryOperation.Modulo } =>
+			builder.BuildSRem(EmitValue(v.Left, builder), EmitValue(v.Right, builder)), // TODO Check type for correct operation
+		
 		{ Op: BinaryOperation.Greater } =>
 			builder.BuildICmp(LLVMIntPredicate.LLVMIntSGT, EmitValue(v.Left, builder), EmitValue(v.Right, builder)), // TODO Check type for correct operation
 		

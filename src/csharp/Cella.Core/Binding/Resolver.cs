@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics.CodeAnalysis;
+using System.Globalization;
 using System.Numerics;
 using System.Text;
 using Cella.Core.Binding.Conversions;
@@ -7,6 +8,7 @@ using Cella.Core.Binding.Nodes.Declarations;
 using Cella.Core.Binding.Nodes.Expressions;
 using Cella.Core.Binding.Nodes.Statements;
 using Cella.Core.Binding.Operations;
+using Cella.Core.Lowering;
 using Cella.Core.Symbols;
 using Cella.Core.Syntax.Nodes;
 using Cella.Core.Text;
@@ -500,7 +502,9 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 		var op = node.Op;
 		var isAssignment = op.Type == TokenType.OpEqual || op.Type == TokenType.OpPlusEqual ||
 		                   op.Type == TokenType.OpMinusEqual || op.Type == TokenType.OpStarEqual ||
-		                   op.Type == TokenType.OpSlashEqual;
+		                   op.Type == TokenType.OpSlashEqual || op.Type == TokenType.OpPercentEqual ||
+		                   op.Type == TokenType.OpAmpersandEqual || op.Type == TokenType.OpBarEqual ||
+		                   op.Type == TokenType.OpHatEqual;
 		
 		_targetTypes.Push(null);
 		if (isAssignment)

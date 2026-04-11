@@ -30,9 +30,20 @@ public sealed class OperatorRegistry(ConversionTable conversionTable)
 		TokenType.OpStarEqual,
 		TokenType.OpSlash,
 		TokenType.OpSlashEqual,
+		TokenType.OpPercent,
+		TokenType.OpPercentEqual,
 		TokenType.OpAmpersand,
+		TokenType.OpAmpersandEqual,
 		TokenType.OpBar,
+		TokenType.OpBarEqual,
 		TokenType.OpHat,
+		TokenType.OpHatEqual,
+	];
+	
+	private static readonly ImmutableArray<TokenType> _equalityBinOps =
+	[
+		TokenType.OpEqualEqual,
+		TokenType.OpBangEqual,
 	];
 	
 	private static readonly ImmutableArray<TokenType> _comparisonBinOps =
@@ -43,6 +54,7 @@ public sealed class OperatorRegistry(ConversionTable conversionTable)
 		TokenType.OpLessEqual,
 		TokenType.OpEqualEqual,
 		TokenType.OpBangEqual,
+		.._equalityBinOps
 	];
 	
 	private static readonly ImmutableArray<TokenType> _numericUnaryOps =
@@ -52,15 +64,15 @@ public sealed class OperatorRegistry(ConversionTable conversionTable)
 		TokenType.OpBang,
 	];
 	
-	private static readonly ImmutableArray<TokenType> _equalityBinOps =
-	[
-		TokenType.OpEqualEqual,
-		TokenType.OpBangEqual,
-	];
-	
 	private static readonly ImmutableArray<TokenType> _boolBinOps =
 	[
-		TokenType.OpAmpersand, TokenType.OpBar, TokenType.OpHat, .._equalityBinOps
+		TokenType.OpAmpersandEqual,
+		TokenType.OpAmpersand,
+		TokenType.OpBarEqual,
+		TokenType.OpBar,
+		TokenType.OpHatEqual,
+		TokenType.OpHat,
+		.._equalityBinOps
 	];
 	
 	private static readonly ImmutableArray<TypeSymbol> _numericTypes =

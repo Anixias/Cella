@@ -134,6 +134,12 @@ public static class LoweredModulePrinter
 					value = v.Right;
 					continue;
 				
+				case BinOpValue { Op: BinaryOperation.Modulo } v:
+					PrintValue(sb, v.Left);
+					sb.Append(" % ");
+					value = v.Right;
+					continue;
+				
 				case BinOpValue { Op: BinaryOperation.And } v:
 					PrintValue(sb, v.Left);
 					sb.Append(" & ");

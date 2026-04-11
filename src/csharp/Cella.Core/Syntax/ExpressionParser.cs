@@ -35,7 +35,8 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 	private static readonly HashSet<TokenType> _multiplicativeOps =
 	[
 		TokenType.OpStar,
-		TokenType.OpSlash
+		TokenType.OpSlash,
+		TokenType.OpPercent,
 	];
 	
 	private static readonly HashSet<TokenType> _assignmentOps =
@@ -44,6 +45,10 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 		TokenType.OpMinusEqual,
 		TokenType.OpStarEqual,
 		TokenType.OpSlashEqual,
+		TokenType.OpPercentEqual,
+		TokenType.OpAmpersandEqual,
+		TokenType.OpBarEqual,
+		TokenType.OpHatEqual,
 		TokenType.OpEqual
 	];
 	

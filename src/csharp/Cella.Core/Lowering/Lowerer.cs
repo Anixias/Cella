@@ -430,6 +430,18 @@ public sealed class Lowerer : IResolvedDeclarationNodeVisitor
 			if (op.Type == TokenType.OpSlashEqual)
 				return new AssignValue(type, left, new BinOpValue(type, left, right, BinaryOperation.Division));
 			
+			if (op.Type == TokenType.OpPercentEqual)
+				return new AssignValue(type, left, new BinOpValue(type, left, right, BinaryOperation.Modulo));
+			
+			if (op.Type == TokenType.OpAmpersandEqual)
+				return new AssignValue(type, left, new BinOpValue(type, left, right, BinaryOperation.And));
+			
+			if (op.Type == TokenType.OpBarEqual)
+				return new AssignValue(type, left, new BinOpValue(type, left, right, BinaryOperation.Or));
+			
+			if (op.Type == TokenType.OpHatEqual)
+				return new AssignValue(type, left, new BinOpValue(type, left, right, BinaryOperation.Xor));
+			
 			throw new InvalidOperationException();
 		}
 		
@@ -460,6 +472,9 @@ public sealed class Lowerer : IResolvedDeclarationNodeVisitor
 			
 			if (op == TokenType.OpSlash)
 				return BinaryOperation.Division;
+			
+			if (op == TokenType.OpPercent)
+				return BinaryOperation.Modulo;
 			
 			if (op == TokenType.OpEqualEqual)
 				return BinaryOperation.Equal;

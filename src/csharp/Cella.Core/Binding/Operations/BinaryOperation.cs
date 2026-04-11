@@ -6,6 +6,7 @@ public enum BinaryOperation
 	Subtraction,
 	Multiplication,
 	Division,
+	Modulo,
 	Equal,
 	NotEqual,
 	Greater,

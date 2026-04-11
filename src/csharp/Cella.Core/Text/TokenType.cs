@@ -146,10 +146,14 @@ public sealed class TokenType
 	public static readonly TokenType OpMinusEqual = CreateOperator("-=");
 	public static readonly TokenType OpStarEqual = CreateOperator("*=");
 	public static readonly TokenType OpSlashEqual = CreateOperator("/=");
+	public static readonly TokenType OpPercentEqual = CreateOperator("%=");
 	public static readonly TokenType OpEqualEqual = CreateOperator("==");
 	public static readonly TokenType OpBangEqual = CreateOperator("!=");
 	public static readonly TokenType OpGreaterEqual = CreateOperator(">=");
 	public static readonly TokenType OpLessEqual = CreateOperator("<=");
+	public static readonly TokenType OpAmpersandEqual = CreateOperator("&=");
+	public static readonly TokenType OpBarEqual = CreateOperator("|=");
+	public static readonly TokenType OpHatEqual = CreateOperator("^=");
 	
 	public static readonly TokenType OpColon = CreateOperator(":");
 	public static readonly TokenType OpSemicolon = CreateOperator(";");
@@ -163,6 +167,7 @@ public sealed class TokenType
 	public static readonly TokenType OpMinus = CreateOperator("-");
 	public static readonly TokenType OpStar = CreateOperator("*");
 	public static readonly TokenType OpSlash = CreateOperator("/");
+	public static readonly TokenType OpPercent = CreateOperator("%");
 	public static readonly TokenType OpDot = CreateOperator(".");
 	public static readonly TokenType OpComma = CreateOperator(",");
 	public static readonly TokenType OpEqual = CreateOperator("=");
