@@ -161,28 +161,38 @@ public class Scanner : IScanner
 			// Block comment
 			case '*':
 				tokenType = TokenType.BlockComment;
+				var depth = 1;
+				var lastSlash = false;
 				var lastAsterisk = false;
 				while (end < Source.Length)
 				{
-					var done = false;
 					switch (Source[end])
 					{
 						case '*':
+							if (lastSlash)
+								depth++;
+							
 							lastAsterisk = true;
+							lastSlash = false;
 							break;
 						
-						case '/' when lastAsterisk:
-							done = true;
+						case '/':
+							if (lastAsterisk)
+								depth--;
+							
+							lastAsterisk = false;
+							lastSlash = true;
 							break;
 						
 						default:
 							lastAsterisk = false;
+							lastSlash = false;
 							break;
 					}
 					
 					end++;
 					
-					if (done)
+					if (depth <= 0)
 						break;
 				}
 				
