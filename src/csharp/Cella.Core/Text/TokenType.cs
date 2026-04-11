@@ -101,6 +101,11 @@ public sealed class TokenType
 		IsFiltered = true
 	};
 	
+	public static readonly TokenType BlockComment = new("block comment")
+	{
+		IsFiltered = true
+	};
+	
 	public static readonly TokenType IntegerLiteral = new("integer literal")
 	{
 		IsLiteral = true

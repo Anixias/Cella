@@ -158,6 +158,36 @@ public class Scanner : IScanner
 				
 				break;
 			
+			// Block comment
+			case '*':
+				tokenType = TokenType.BlockComment;
+				var lastAsterisk = false;
+				while (end < Source.Length)
+				{
+					var done = false;
+					switch (Source[end])
+					{
+						case '*':
+							lastAsterisk = true;
+							break;
+						
+						case '/' when lastAsterisk:
+							done = true;
+							break;
+						
+						default:
+							lastAsterisk = false;
+							break;
+					}
+					
+					end++;
+					
+					if (done)
+						break;
+				}
+				
+				break;
+			
 			default:
 				comment = default;
 				return false;
