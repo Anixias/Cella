@@ -1,5 +1,4 @@
 ﻿using System.Diagnostics.CodeAnalysis;
-using System.Globalization;
 using System.Numerics;
 using System.Text;
 using Cella.Core.Binding.Conversions;
@@ -8,7 +7,6 @@ using Cella.Core.Binding.Nodes.Declarations;
 using Cella.Core.Binding.Nodes.Expressions;
 using Cella.Core.Binding.Nodes.Statements;
 using Cella.Core.Binding.Operations;
-using Cella.Core.Lowering;
 using Cella.Core.Symbols;
 using Cella.Core.Syntax.Nodes;
 using Cella.Core.Text;
@@ -17,6 +15,13 @@ namespace Cella.Core.Binding;
 
 public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 {
+	// Used to fold unary operations on literals
+	private sealed class UnaryOpJob(TokenType op)
+	{
+		public TokenType Op { get; } = op;
+		public bool Consumed { get; set; }
+	}
+	
 	private readonly SymbolTable _symbolTable;
 	private readonly SignatureTable _assemblySignatureTable;
 	private readonly SignatureTable _dependencySignatureTable;
@@ -26,6 +31,7 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 	private readonly OperatorRegistry _operatorRegistry;
 	private readonly uint _pointerBitSize;
 	private readonly Dictionary<FunctionSymbol, FunctionInfo> _importedFunctions = [];
+	private readonly Stack<UnaryOpJob> _unaryOpJobs = [];
 	private readonly Stack<TypeSymbol?> _targetTypes = [];
 	private readonly Stack<ResolutionContext> _resolutionContexts = [];
 	private ResolutionContext CurrentResolutionContext => _resolutionContexts.Peek();
@@ -480,12 +486,17 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 	
 	public IResolvedNode Visit(UnaryOpExpressionNode node)
 	{
+		var op = node.Op;
+		
 		// We push null to allow sub-expressions to resolve naturally; then, we attempt to implicit cast to actual type
 		_targetTypes.Push(null);
+		_unaryOpJobs.Push(new(op.Type));
 		var operand = VisitNode(node.Operand);
+		var consumed = _unaryOpJobs.Pop().Consumed;
 		_targetTypes.Pop();
 		
-		var op = node.Op;
+		if (consumed)
+			return operand;
 		
 		var resolution = _operatorRegistry.ResolveUnary(op.Type, operand.Type);
 		if (resolution.Operation is not { } operation)
@@ -595,6 +606,17 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 	private (TypeSymbol? Type, object? Value) ParseInteger(ReadOnlySpan<char> span, TypeSymbol? targetType)
 	{
 		// TODO Check suffixes
+		
+		// Consume unary minus jobs
+		if (_unaryOpJobs.TryPeek(out var job) && job.Op == TokenType.OpMinus)
+		{
+			// We have to allocate a new string
+			Span<char> newSpan = new char[span.Length + 1];
+			newSpan[0] = '-';
+			span.CopyTo(newSpan[1..]);
+			span = newSpan;
+			job.Consumed = true;
+		}
 		
 		if (targetType is PrimitiveType primitiveType)
 			switch (primitiveType.Kind)
