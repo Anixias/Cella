@@ -200,6 +200,12 @@ public static class LoweredModulePrinter
 					value = v.Right;
 					continue;
 				
+				case ConversionValue v:
+					sb.Append(v.Type.Name).Append('(');
+					PrintValue(sb, v.Source);
+					sb.Append(')');
+					break;
+				
 				case UnaryOpValue { Op: UnaryOperation.Identity } v:
 					sb.Append('+');
 					value = v.Operand;
