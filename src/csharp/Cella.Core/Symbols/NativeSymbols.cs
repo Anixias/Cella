@@ -29,6 +29,7 @@ public enum PrimitiveTypeKind
 public static class NativeSymbols
 {
 	public static InvalidType Invalid => InvalidType.Instance;
+	public static UntypedIntegerType UntypedInteger => UntypedIntegerType.Instance;
 	public static PrimitiveType Void { get; } = new("void", PrimitiveTypeKind.Void, StorageSize.Const(0));
 	public static IntegerType Int8 { get; } = new("i8", PrimitiveTypeKind.Int8, StorageSize.Const(1), true);
 	public static IntegerType Int16 { get; } = new("i16", PrimitiveTypeKind.Int16, StorageSize.Const(2), true);

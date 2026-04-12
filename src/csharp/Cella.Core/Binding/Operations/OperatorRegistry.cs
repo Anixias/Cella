@@ -82,7 +82,8 @@ public sealed class OperatorRegistry(ConversionTable conversionTable)
 		NativeSymbols.Int32, NativeSymbols.UInt32,
 		NativeSymbols.Int64, NativeSymbols.UInt64,
 		NativeSymbols.Int128, NativeSymbols.UInt128,
-		NativeSymbols.IntSize, NativeSymbols.UIntSize
+		NativeSymbols.IntSize, NativeSymbols.UIntSize,
+		NativeSymbols.UntypedInteger
 	];
 	
 	private static readonly ImmutableDictionary<UnaryOperation, OperationImpl> _unaryOps =
@@ -161,17 +162,17 @@ public sealed class OperatorRegistry(ConversionTable conversionTable)
 	}
 }
 
-public abstract class OperationImpl(TypeSymbol result)
+public abstract class OperationImpl(TokenType op, TypeSymbol result)
 {
+	public TokenType Op { get; } = op;
 	public TypeSymbol Result { get; } = result;
 }
 
-public sealed class NativeImpl(TokenType op, TypeSymbol result) : OperationImpl(result)
+public sealed class NativeImpl(TokenType op, TypeSymbol result) : OperationImpl(op, result)
 {
-	public TokenType Op { get; } = op;
 }
 
-public sealed class FunctionImpl(FunctionInfo function) : OperationImpl(function.Signature.ReturnType)
+public sealed class FunctionImpl(TokenType op, FunctionInfo function) : OperationImpl(op, function.Signature.ReturnType)
 {
 	public FunctionInfo Function { get; } = function;
 }

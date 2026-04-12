@@ -110,6 +110,16 @@ public sealed class IntegerType(string name, PrimitiveTypeKind kind, ISize size,
 	public bool IsSigned { get; } = isSigned;
 }
 
+public abstract class UntypedType(string name) : TypeSymbol(name)
+{
+	public override ISize Size => new ConstSize(0);
+}
+
+public sealed class UntypedIntegerType() : UntypedType("i?")
+{
+	public static UntypedIntegerType Instance { get; } = new();
+}
+
 public enum PointerKind
 {
 	Unsafe,
@@ -187,6 +197,7 @@ public abstract class MemberSymbol(string name, TypeSymbol type) : VariableSymbo
 	public TypeSymbol Type { get; } = type;
 }
 
+public enum MemberStorageKind
 public sealed class IntrinsicMemberSymbol(string name, TypeSymbol type) : MemberSymbol(name, type);
 
 public sealed class DefinedMemberSymbol(Token identifier, TypeSymbol type) : MemberSymbol(identifier.Text, type)

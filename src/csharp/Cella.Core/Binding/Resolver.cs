@@ -30,6 +30,10 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 	private readonly ConversionTable _conversionTable;
 	private readonly OperatorRegistry _operatorRegistry;
 	private readonly uint _pointerBitSize;
+	private readonly BigInteger _isizeMinValue;
+	private readonly BigInteger _isizeMaxValue;
+	private readonly BigInteger _usizeMinValue;
+	private readonly BigInteger _usizeMaxValue;
 	private readonly Dictionary<FunctionSymbol, FunctionInfo> _importedFunctions = [];
 	private readonly Stack<UnaryOpJob> _unaryOpJobs = [];
 	private readonly Stack<TypeSymbol?> _targetTypes = [];
@@ -40,7 +44,8 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 	private TypeSymbol? CurrentTargetType => _targetTypes.TryPeek(out var result) ? result : null;
 	
 	public Resolver(AssemblySymbol assemblySymbol, IEnumerable<AssemblySymbol> dependencies, TypePool typePool,
-		TypeMemberTable typeMemberTable, ConversionTable conversionTable, OperatorRegistry operatorRegistry, uint pointerBitSize)
+		TypeMemberTable typeMemberTable, ConversionTable conversionTable, OperatorRegistry operatorRegistry,
+		uint pointerBitSize)
 	{
 		_typePool = typePool;
 		_typeMemberTable = typeMemberTable;
@@ -50,6 +55,12 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 		_symbolTable = assemblySymbol.SymbolTable;
 		_assemblySignatureTable = assemblySymbol.SignatureTable;
 		_dependencySignatureTable = SignatureTable.Combine(dependencies.Select(static a => a.SignatureTable));
+		
+		var ptrBits = (int)pointerBitSize;
+		_isizeMinValue = -BigInteger.Pow(2, ptrBits - 1);
+		_isizeMaxValue = BigInteger.Pow(2, ptrBits - 1) - 1;
+		_usizeMinValue = BigInteger.Zero;
+		_usizeMaxValue = BigInteger.Pow(2, ptrBits) - 1;
 	}
 	
 	public ResolvedFileNode Resolve(FileNode root) => (ResolvedFileNode)Visit(root);
@@ -138,7 +149,7 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 	{
 		var returnType = _assemblySignatureTable.Functions[CurrentFunction.Symbol].Signature.ReturnType;
 		_targetTypes.Push(returnType);
-		var expression = ApplyImplicitConversion(node.ExpressionNode is { } expr ? VisitNode(expr) : null, returnType);
+		var expression = CoerceToType(node.ExpressionNode is { } expr ? VisitNode(expr) : null, returnType);
 		_targetTypes.Pop();
 		
 		return new ResolvedReturnStatementNode(expression);
@@ -227,7 +238,7 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 					_targetTypes.Pop();
 					
 					if (paramType is not null)
-						arg = ApplyImplicitConversion(arg, paramType);
+						arg = CoerceToType(arg, paramType);
 					
 					args.Add(arg);
 				}
@@ -377,7 +388,7 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 			_targetTypes.Pop();
 			
 			if (type is not null)
-				initializer = ApplyImplicitConversion(initializer, type);
+				initializer = CoerceToType(initializer, type);
 		}
 		else
 			initializer = null;
@@ -523,7 +534,7 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 			var left = VisitNode(node.Left);
 			_targetTypes.Pop();
 			_targetTypes.Push(left.Type);
-			var right = ApplyImplicitConversion(VisitNode(node.Right), left.Type);
+			var right = CoerceToType(VisitNode(node.Right), left.Type);
 			_targetTypes.Pop();
 			
 			return new ResolvedAssignmentExpressionNode(left.Type, left, op, right);
@@ -535,10 +546,24 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 			var right = VisitNode(node.Right);
 			_targetTypes.Pop();
 			
-			// TODO How to handle implicit upcasts..?
+			left = MaterializeBinaryOperand(left, right.Type);
+			right = MaterializeBinaryOperand(right, left.Type);
+			
 			var resolution = _operatorRegistry.ResolveBinary(left.Type, op.Type, right.Type);
 			if (resolution.Operation is not { } operation)
 				return new ResolvedBinaryOpExpressionNode(left, right, null);
+			
+			// If result is concrete but children are untyped, resolve them as default types and re-resolve
+			if (operation.Result is not UntypedType)
+			{
+				if (left.Type is UntypedType)
+					left = MaterializeAsDefault(left);
+				if (right.Type is UntypedType)
+					right = MaterializeAsDefault(right);
+				
+				resolution = _operatorRegistry.ResolveBinary(left.Type, op.Type, right.Type);
+				operation = resolution.Operation;
+			}
 			
 			if (resolution.LeftConversion is { } leftConversion)
 				left = new ResolvedConversionExpressionNode(left, leftConversion);
@@ -694,14 +719,8 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 					break;
 			}
 		
-		if (int.TryParse(span, out var intValue2))
-			return (NativeSymbols.Int32, intValue2);
-		
-		if (long.TryParse(span, out var longValue2))
-			return (NativeSymbols.Int64, longValue2);
-		
-		if (Int128.TryParse(span, out var int128Value2))
-			return (NativeSymbols.Int128, int128Value2);
+		if (BigInteger.TryParse(span, out var untypedValue))
+			return (NativeSymbols.UntypedInteger, untypedValue);
 		
 		return (null, null);
 	}
@@ -735,5 +754,166 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 			Encoding.UTF8.GetBytes(span, result);
 			return (NativeSymbols.CStr, result);
 		}
+	}
+	
+	private IResolvedExpressionNode MaterializeBinaryOperand(IResolvedExpressionNode operand, TypeSymbol peerType)
+	{
+		// Only care about untyped integer literals
+		if (operand is not ResolvedLiteralExpressionNode { Type: UntypedIntegerType } literal)
+			return operand;
+		
+		return peerType switch
+		{
+			UntypedIntegerType => operand,
+			IntegerType intType when literal.Value is BigInteger value && FitsInType(value, intType) =>
+				MaterializeLiteral(intType, value),
+			_ => MaterializeAsDefault(literal)
+		};
+	}
+	
+	private IResolvedExpressionNode MaterializeAsDefault(IResolvedExpressionNode node)
+	{
+		if (node.Type is not UntypedIntegerType)
+			return node;
+		
+		if (node is not ResolvedLiteralExpressionNode { Value: BigInteger value })
+			return MaterializeExpression(node, NativeSymbols.Int32);
+		
+		var targetType = SmallestFittingType(value) ?? throw new InvalidOperationException();
+		return MaterializeLiteral(targetType, value);
+	}
+	
+	private ResolvedLiteralExpressionNode MaterializeLiteral(IntegerType type, BigInteger value) =>
+		new(type, ConvertInteger(value, type));
+	
+	private static object? ConvertInteger(BigInteger value, IntegerType type) => type.Kind switch
+	{
+		PrimitiveTypeKind.Int8 => (sbyte)value,
+		PrimitiveTypeKind.Int16 => (short)value,
+		PrimitiveTypeKind.Int32 => (int)value,
+		PrimitiveTypeKind.Int64 => (long)value,
+		PrimitiveTypeKind.Int128 => (Int128)value,
+		PrimitiveTypeKind.IntSize => (object?)value,
+		PrimitiveTypeKind.UInt8 => (byte)value,
+		PrimitiveTypeKind.UInt16 => (ushort)value,
+		PrimitiveTypeKind.UInt32 => (uint)value,
+		PrimitiveTypeKind.UInt64 => (ulong)value,
+		PrimitiveTypeKind.UInt128 => (UInt128)value,
+		PrimitiveTypeKind.UIntSize => value,
+		_ => throw new InvalidOperationException()
+	};
+	
+	private bool FitsInType(BigInteger value, IntegerType type) => type.Kind switch
+	{
+		PrimitiveTypeKind.Int8 => value >= sbyte.MinValue && value <= sbyte.MaxValue,
+		PrimitiveTypeKind.Int16 => value >= short.MinValue && value <= short.MaxValue,
+		PrimitiveTypeKind.Int32 => value >= int.MinValue && value <= int.MaxValue,
+		PrimitiveTypeKind.Int64 => value >= long.MinValue && value <= long.MaxValue,
+		PrimitiveTypeKind.Int128 => value >= Int128.MinValue && value <= Int128.MaxValue,
+		PrimitiveTypeKind.IntSize => value >= _isizeMinValue && value <= _isizeMaxValue,
+		PrimitiveTypeKind.UInt8 => value >= byte.MinValue && value <= byte.MaxValue,
+		PrimitiveTypeKind.UInt16 => value >= ushort.MinValue && value <= ushort.MaxValue,
+		PrimitiveTypeKind.UInt32 => value >= uint.MinValue && value <= uint.MaxValue,
+		PrimitiveTypeKind.UInt64 => value >= ulong.MinValue && value <= ulong.MaxValue,
+		PrimitiveTypeKind.UInt128 => value >= UInt128.MinValue && value <= UInt128.MaxValue,
+		PrimitiveTypeKind.UIntSize => value >= _usizeMinValue && value <= _usizeMaxValue,
+		_ => false
+	};
+	
+	private IResolvedExpressionNode MaterializeExpression(IResolvedExpressionNode node, IntegerType target)
+	{
+	    if (node.Type is not UntypedIntegerType)
+	        return node;
+	    
+	    switch (node)
+	    {
+	        case ResolvedLiteralExpressionNode { Value: BigInteger value } literal:
+	        {
+	            if (FitsInType(value, target))
+	                return MaterializeLiteral(target, value);
+	            
+	            var fallback = SmallestFittingType(value);
+	            return fallback is not null
+	                ? MaterializeLiteral(fallback, value)
+	                : literal; // TODO Diagnostic: Too large for any integer type
+	        }
+	        
+	        case ResolvedUnaryOpExpressionNode unary:
+	        {
+	            var operand = MaterializeExpression(unary.Operand, target);
+	            var resolution = unary.Operation?.Op is { } op
+		            ? _operatorRegistry.ResolveUnary(op, operand.Type)
+		            : default;
+	            
+	            if (resolution.OperandConversion is { } conv)
+	                operand = new ResolvedConversionExpressionNode(operand, conv);
+	            
+	            return new ResolvedUnaryOpExpressionNode(operand, resolution.Operation);
+	        }
+	        
+	        case ResolvedBinaryOpExpressionNode binary:
+	        {
+	            var left = MaterializeExpression(binary.Left, target);
+	            var right = MaterializeExpression(binary.Right, target);
+	            
+	            if (left.Type != right.Type)
+	            {
+	                // Try widening the narrower side
+	                if (FindCommonType(left.Type, right.Type) is { } common)
+	                {
+	                    left = CoerceToType(left, common);
+	                    right = CoerceToType(right, common);
+	                }
+	            }
+	            
+	            var resolution = binary.Operation?.Op is { } op
+		            ? _operatorRegistry.ResolveBinary(left.Type, op, right.Type)
+		            : default;
+	            
+	            if (resolution.LeftConversion is { } leftConversion)
+		            left = new ResolvedConversionExpressionNode(left, leftConversion);
+	            if (resolution.RightConversion is { } rightConversion)
+		            right = new ResolvedConversionExpressionNode(right, rightConversion);
+	            
+	            return new ResolvedBinaryOpExpressionNode(left, right, resolution.Operation);
+	        }
+	        
+	        default:
+	            return node;
+	    }
+	}
+	
+	private IntegerType? SmallestFittingType(BigInteger value)
+	{
+		if (value >= int.MinValue && value <= int.MaxValue)
+			return NativeSymbols.Int32;
+		
+		if (value >= long.MinValue && value <= long.MaxValue)
+			return NativeSymbols.Int64;
+		
+		if (value >= Int128.MinValue && value <= Int128.MaxValue)
+			return NativeSymbols.Int128;
+		
+		return null;
+	}
+	
+	private TypeSymbol? FindCommonType(TypeSymbol a, TypeSymbol b)
+	{
+		if (_conversionTable.FindImplicit(a, b) is not null)
+			return b;
+		
+		if (_conversionTable.FindImplicit(b, a) is not null)
+			return a;
+		
+		return null;
+	}
+	
+	[return: NotNullIfNotNull(nameof(node))]
+	private IResolvedExpressionNode? CoerceToType(IResolvedExpressionNode? node, TypeSymbol target)
+	{
+		if (node?.Type is UntypedIntegerType && target is IntegerType intTarget)
+			node = MaterializeExpression(node, intTarget);
+		
+		return ApplyImplicitConversion(node, target);
 	}
 }
