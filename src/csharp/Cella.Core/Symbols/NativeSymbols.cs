@@ -53,18 +53,6 @@ public static class NativeSymbols
 		Bool, Str, CStr
 	}.ToImmutableDictionary(static s => s.Name);
 	
-	private static readonly Dictionary<TypeSymbol, SpanType> _spanTypes = [];
-	
-	public static SpanType GetOrCreateArray(TypeSymbol elementType)
-	{
-		if (_spanTypes.TryGetValue(elementType, out var existing))
-			return existing;
-		
-		var spanType = new SpanType(elementType);
-		_spanTypes[elementType] = spanType;
-		return spanType;
-	}
-	
 	public static Symbol? Resolve(string name) => _primitiveTypes.GetValueOrDefault(name);
 }
 
