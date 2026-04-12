@@ -64,11 +64,11 @@ public sealed class ConversionTable
 		{
 			for (var j = 0; j < i; j++)
 			{
-				// Always explicit
-				table.Add(new IntegerConversion(intTypes[i].S, intTypes[j].S, ConversionKind.Explicit, 1));
-				table.Add(new IntegerConversion(intTypes[i].U, intTypes[j].U, ConversionKind.Explicit, 1));
-				table.Add(new IntegerConversion(intTypes[i].S, intTypes[j].U, ConversionKind.Explicit, 1));
-				table.Add(new IntegerConversion(intTypes[i].U, intTypes[j].S, ConversionKind.Explicit, 1));
+				// Always explicit and costs more than widening
+				table.Add(new IntegerConversion(intTypes[i].S, intTypes[j].S, ConversionKind.Explicit, 2));
+				table.Add(new IntegerConversion(intTypes[i].U, intTypes[j].U, ConversionKind.Explicit, 2));
+				table.Add(new IntegerConversion(intTypes[i].S, intTypes[j].U, ConversionKind.Explicit, 2));
+				table.Add(new IntegerConversion(intTypes[i].U, intTypes[j].S, ConversionKind.Explicit, 2));
 			}
 		}
 		
@@ -76,9 +76,9 @@ public sealed class ConversionTable
 		for (var i = 0; i < intTypes.Length; i++)
 		{
 			// Sign change
-			// Always explicit
-			table.Add(new IntegerConversion(intTypes[i].S, intTypes[i].U, ConversionKind.Explicit, 1));
-			table.Add(new IntegerConversion(intTypes[i].U, intTypes[i].S, ConversionKind.Explicit, 1));
+			// Always explicit, no cost due to no runtime overhead
+			table.Add(new IntegerConversion(intTypes[i].S, intTypes[i].U, ConversionKind.Explicit, 0));
+			table.Add(new IntegerConversion(intTypes[i].U, intTypes[i].S, ConversionKind.Explicit, 0));
 			
 			// Integer native size conversions
 			// These are always explicit because it depends on the target whether it is a widening/narrowing/neither
