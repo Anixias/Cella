@@ -319,6 +319,8 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 		var tokenType = node.Token.Type;
 		if (tokenType == TokenType.IntegerLiteral)
 			(type, value) = ParseInteger(valueSpan, CurrentTargetType);
+		else if (tokenType == TokenType.KeywordNull)
+			(type, value) = (NativeSymbols.VoidPtr, null);
 		else if (tokenType == TokenType.KeywordTrue)
 			(type, value) = (NativeSymbols.Bool, true);
 		else if (tokenType == TokenType.KeywordFalse)
@@ -386,6 +388,8 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 			_targetTypes.Push(type);
 			initializer = VisitNode(initializerNode);
 			_targetTypes.Pop();
+			
+			initializer = MaterializeAsDefault(initializer);
 			
 			if (type is not null)
 				initializer = CoerceToType(initializer, type);

@@ -1,14 +1,46 @@
 ﻿using System.Numerics;
 using Cella.Core.Binding.Conversions;
+using Cella.Core.Binding.Operations;
 using Cella.Core.Symbols;
+using Cella.Core.Text;
 
 namespace Cella.Core.Binding;
 
-public sealed class TypePool(TypeMemberTable memberTable, ConversionTable conversionTable)
+public sealed class TypePool(TypeMemberTable memberTable, ConversionTable conversionTable,
+	OperatorRegistry operatorRegistry)
 {
 	private readonly Dictionary<(TypeSymbol, BigInteger), ArrayType> _arrayTypes = [];
 	private readonly Dictionary<TypeSymbol, SpanType> _spanTypes = [];
 	private readonly Dictionary<TypeSymbol, ViewType> _viewTypes = [];
+	private readonly Dictionary<(TypeSymbol, PointerKind), PointerType> _pointerTypes = [];
+	
+	public PointerType GetPointerType(TypeSymbol baseType, PointerKind kind)
+	{
+		var key = (baseType, kind);
+		if (_pointerTypes.TryGetValue(key, out var existing))
+			return existing;
+		
+		var ptrType = new PointerType(baseType, kind);
+		_pointerTypes[key] = ptrType;
+		
+		// Conversions
+		switch (kind)
+		{
+			case PointerKind.Unsafe:
+				break;
+			
+			default:
+				// All pointers except ptr[T] can be implicitly converted to ptr[T]
+				var unsafeType = new PointerType(baseType, PointerKind.Unsafe);
+				conversionTable.Add(new NativeConversion(ptrType, unsafeType, ConversionKind.Implicit, 0));
+				break;
+		}
+		
+		// All pointers can be implicitly converted to ptr
+		conversionTable.Add(new NativeConversion(ptrType, PointerType.VoidPtr, ConversionKind.Implicit, 0));
+		
+		return ptrType;
+	}
 	
 	public ArrayType GetArrayType(TypeSymbol elementType, BigInteger length)
 	{
@@ -27,6 +59,10 @@ public sealed class TypePool(TypeMemberTable memberTable, ConversionTable conver
 		// To view
 		var viewType = GetViewType(elementType);
 		conversionTable.Add(new NativeConversion(arrayType, viewType, ConversionKind.Implicit, 1));
+		
+		// To pointer
+		var ptrType = GetPointerType(elementType, PointerKind.Unsafe);
+		operatorRegistry.CreateUnary(TokenType.OpAt, arrayType, new NativeImpl(TokenType.OpAt, ptrType));
 		
 		return arrayType;
 	}

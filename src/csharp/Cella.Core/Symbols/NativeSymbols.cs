@@ -30,6 +30,7 @@ public static class NativeSymbols
 {
 	public static InvalidType Invalid => InvalidType.Instance;
 	public static UntypedIntegerType UntypedInteger => UntypedIntegerType.Instance;
+	public static PointerType VoidPtr => PointerType.VoidPtr;
 	public static PrimitiveType Void { get; } = new("void", PrimitiveTypeKind.Void, StorageSize.Const(0));
 	public static IntegerType Int8 { get; } = new("i8", PrimitiveTypeKind.Int8, StorageSize.Const(1), true);
 	public static IntegerType Int16 { get; } = new("i16", PrimitiveTypeKind.Int16, StorageSize.Const(2), true);
@@ -47,11 +48,11 @@ public static class NativeSymbols
 	public static PrimitiveType Str { get; } = new("str", PrimitiveTypeKind.Str, StorageSize.Ptr);
 	public static PrimitiveType CStr { get; } = new("cstr", PrimitiveTypeKind.CStr, StorageSize.Ptr);
 	
-	private static readonly ImmutableDictionary<string, PrimitiveType> _primitiveTypes = new[]
+	private static readonly ImmutableDictionary<string, TypeSymbol> _primitiveTypes = new TypeSymbol[]
 	{
 		Int8, Int16, Int32, Int64, Int128, IntSize,
 		UInt8, UInt16, UInt32, UInt64, UInt128, UIntSize,
-		Bool, Str, CStr
+		Bool, Str, CStr, VoidPtr
 	}.ToImmutableDictionary(static s => s.Name);
 	
 	public static Symbol? Resolve(string name) => _primitiveTypes.GetValueOrDefault(name);

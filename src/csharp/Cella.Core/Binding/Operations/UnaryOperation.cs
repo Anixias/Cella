@@ -5,6 +5,7 @@ public enum UnaryOperation
 	Identity,
 	Negation,
 	Not,
+	AddressOf,
 	
 	Count
 }

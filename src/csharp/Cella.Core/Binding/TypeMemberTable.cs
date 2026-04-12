@@ -20,21 +20,32 @@ public sealed class TypeMemberTable
 	public void CreateNativeMembers()
 	{
 		// TODO constructors, str.toCstr(), str.getCharLength(), etc.
-		Register(NativeSymbols.Str, new IntrinsicMemberSymbol("byteLength", NativeSymbols.UIntSize));
+		//Register(NativeSymbols.Str, new IntrinsicMemberSymbol("byteLength", NativeSymbols.UIntSize));
 	}
 	
 	public void CreateArrayMembers(ArrayType type)
 	{
-		Register(type, new IntrinsicMemberSymbol("length", NativeSymbols.UIntSize));
+		var length = new PropertySymbol("length", NativeSymbols.UIntSize)
+		{
+			Getter = new NativeAccessor(NativeMemberIntrinsic.ArrayLength)
+		};
+		
+		Register(type, length);
 	}
 	
 	public void CreateSpanMembers(SpanType type)
 	{
-		Register(type, new IntrinsicMemberSymbol("length", NativeSymbols.UIntSize));
+		var length = new FieldSymbol("length", NativeSymbols.UIntSize, false);
+		Register(type, length);
+		var data = new FieldSymbol("data", new PointerType(type.ElementType, PointerKind.Mutable), false);
+		Register(type, data);
 	}
 	
 	public void CreateViewMembers(ViewType type)
 	{
-		Register(type, new IntrinsicMemberSymbol("length", NativeSymbols.UIntSize));
+		var length = new FieldSymbol("length", NativeSymbols.UIntSize, false);
+		Register(type, length);
+		var data = new FieldSymbol("data", new PointerType(type.ElementType, PointerKind.Immutable), false);
+		Register(type, data);
 	}
 }

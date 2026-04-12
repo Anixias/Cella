@@ -5,7 +5,14 @@ namespace Cella.Core.Binding.Nodes.Expressions;
 public sealed class ResolvedAccessExpressionNode(IResolvedExpressionNode target, MemberSymbol member)
 	: IResolvedExpressionNode
 {
-	public TypeSymbol Type { get; } = member.Type;
+	public TypeSymbol Type { get; } = member switch
+	{
+		FieldSymbol m => m.Type,
+		PropertySymbol m => m.Type,
+		IndexerSymbol m => m.Type,
+		_ => NativeSymbols.Invalid // TODO Function pointers?
+	};
+	
 	public IResolvedExpressionNode Target { get; } = target;
 	public MemberSymbol Member { get; } = member;
 	public bool IsConstant => false; // TODO Member should know if it is a constant

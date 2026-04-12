@@ -2,6 +2,7 @@
 using Cella.Core.Binding.Nodes.Expressions;
 using Cella.Core.Binding.Nodes.Statements;
 using Cella.Core.Symbols;
+using Cella.Core.Text;
 
 namespace Cella.Core.Binding;
 
@@ -80,6 +81,14 @@ public sealed class TypeChecker : IResolvedStatementNodeVisitor, IResolvedDeclar
 				var actual = e.Right.Type;
 				if (!AreTypesCompatible(expected, actual))
 					_diagnostics.Add($"Cannot assign source type '{actual.Name}' to target type '{expected.Name}'");
+				
+				break;
+			}
+			
+			case ResolvedUnaryOpExpressionNode e when e.Operation?.Op == TokenType.OpAt:
+			{
+				if (!IsLValue(e.Operand))
+					_diagnostics.Add("Cannot take the address of an unstored value");
 				
 				break;
 			}

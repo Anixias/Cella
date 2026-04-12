@@ -86,20 +86,23 @@ public sealed class OperatorRegistry(ConversionTable conversionTable)
 		NativeSymbols.UntypedInteger
 	];
 	
-	private static readonly ImmutableDictionary<UnaryOperation, OperationImpl> _unaryOps =
-		CreateUnaryOps().ToImmutableDictionary();
+	private readonly Dictionary<UnaryOperationKey, OperationImpl> _unaryOps = CreateUnaryOps();
+	private readonly Dictionary<BinaryOperationKey, OperationImpl> _binaryOps = CreateBinaryOps();
 	
-	private static readonly ImmutableDictionary<BinaryOperation, OperationImpl> _binaryOps =
-		CreateBinaryOps().ToImmutableDictionary();
-	
-	private readonly record struct UnaryOperation(TokenType Op, TypeSymbol Operand);
-	private readonly record struct BinaryOperation(TypeSymbol Left, TokenType Op, TypeSymbol Right);
+	private readonly record struct UnaryOperationKey(TokenType Op, TypeSymbol Operand);
+	private readonly record struct BinaryOperationKey(TypeSymbol Left, TokenType Op, TypeSymbol Right);
 	
 	private readonly ConversionTable _conversionTable = conversionTable;
 	
+	public bool CreateBinary(TypeSymbol left, TokenType op, TypeSymbol right, OperationImpl impl) =>
+		_binaryOps.TryAdd(new(left, op, right), impl);
+	
+	public bool CreateUnary(TokenType op, TypeSymbol operand, OperationImpl impl) =>
+		_unaryOps.TryAdd(new(op, operand), impl);
+	
 	public BinaryResolution ResolveBinary(TypeSymbol left, TokenType op, TypeSymbol right, TypeSymbol? target = null)
 	{
-		var key = new BinaryOperation(left, op, right);
+		var key = new BinaryOperationKey(left, op, right);
 		if (_binaryOps.TryGetValue(key, out var exact))
 			return new(exact, null, null);
 		
@@ -111,9 +114,9 @@ public sealed class OperatorRegistry(ConversionTable conversionTable)
 		//var rightImplicit = _conversionTable.FindAllImplicit(right).ToImmutableArray();
 	}
 	
-	public UnaryResolution ResolveUnary(TokenType op, TypeSymbol right, TypeSymbol? target = null)
+	public UnaryResolution ResolveUnary(TokenType op, TypeSymbol operand, TypeSymbol? target = null)
 	{
-		var key = new UnaryOperation(op, right);
+		var key = new UnaryOperationKey(op, operand);
 		if (_unaryOps.TryGetValue(key, out var exact))
 			return new(exact, null);
 		
@@ -125,9 +128,9 @@ public sealed class OperatorRegistry(ConversionTable conversionTable)
 		//var rightImplicit = _conversionTable.FindAllImplicit(right).ToImmutableArray();
 	}
 	
-	private static Dictionary<UnaryOperation, OperationImpl> CreateUnaryOps()
+	private static Dictionary<UnaryOperationKey, OperationImpl> CreateUnaryOps()
 	{
-		var result = new Dictionary<UnaryOperation, OperationImpl>();
+		var result = new Dictionary<UnaryOperationKey, OperationImpl>();
 		
 		foreach (var type in _numericTypes)
 		{
@@ -140,9 +143,9 @@ public sealed class OperatorRegistry(ConversionTable conversionTable)
 		return result;
 	}
 	
-	private static Dictionary<BinaryOperation, OperationImpl> CreateBinaryOps()
+	private static Dictionary<BinaryOperationKey, OperationImpl> CreateBinaryOps()
 	{
-		var result = new Dictionary<BinaryOperation, OperationImpl>();
+		var result = new Dictionary<BinaryOperationKey, OperationImpl>();
 		
 		foreach (var type in _numericTypes)
 		{
@@ -155,6 +158,17 @@ public sealed class OperatorRegistry(ConversionTable conversionTable)
 		
 		foreach (var op in _boolBinOps)
 			result[new(NativeSymbols.Bool, op, NativeSymbols.Bool)] = new NativeImpl(op, NativeSymbols.Bool);
+		
+		// Pointers
+		result[new(NativeSymbols.VoidPtr, TokenType.OpPlus, NativeSymbols.VoidPtr)]
+			= new NativeImpl(TokenType.OpPlus, NativeSymbols.VoidPtr);
+		
+		result[new(NativeSymbols.VoidPtr, TokenType.OpMinus, NativeSymbols.VoidPtr)]
+			= new NativeImpl(TokenType.OpMinus, NativeSymbols.VoidPtr);
+		
+		
+		foreach (var op in _comparisonBinOps)
+			result[new(NativeSymbols.VoidPtr, op, NativeSymbols.VoidPtr)] = new NativeImpl(op, NativeSymbols.Bool);
 		
 		// TODO Should equality operations should be defined for everything?
 		

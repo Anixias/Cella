@@ -125,23 +125,37 @@ public enum PointerKind
 	Unsafe,
 	Mutable,
 	Immutable,
-	Owning
+	Owning,
+	
+	Count
 }
 
-public sealed class PointerType(TypeSymbol baseType, PointerKind pointerKind)
-	: TypeSymbol(BuildName(baseType, pointerKind)), IPrimitiveType
+public sealed class PointerType : TypeSymbol, IPrimitiveType
 {
-	public TypeSymbol BaseType { get; } = baseType;
+	public static PointerType VoidPtr { get; } = new("ptr", NativeSymbols.Void, PointerKind.Unsafe);
+	
+	private PointerType(string name, TypeSymbol baseType, PointerKind pointerKind) : base(name)
+	{
+		BaseType = baseType;
+		PointerKind = pointerKind;
+	}
+	
+	public PointerType(TypeSymbol baseType, PointerKind pointerKind)
+		: this(BuildName(baseType, pointerKind), baseType, pointerKind)
+	{
+	}
+	
+	public TypeSymbol BaseType { get; }
 	public PrimitiveTypeKind Kind { get; } = PrimitiveTypeKind.Pointer;
-	public PointerKind PointerKind { get; } = pointerKind;
+	public PointerKind PointerKind { get; }
 	public override ISize Size { get; } = StorageSize.Ptr;
 	
 	public static string BuildName(TypeSymbol baseType, PointerKind pointerKind) => pointerKind switch
 	{
-		PointerKind.Mutable => $"mut {baseType.Name}",
-		PointerKind.Immutable => $"imm {baseType.Name}",
-		PointerKind.Owning => $"own {baseType.Name}",
-		_ => $"ptr {baseType.Name}"
+		PointerKind.Mutable => $"mut[{baseType.Name}]",
+		PointerKind.Immutable => $"imm[{baseType.Name}]",
+		PointerKind.Owning => $"own[{baseType.Name}]",
+		_ => $"ptr[{baseType.Name}]"
 	};
 }
 
@@ -192,22 +206,66 @@ public sealed class LabelSymbol(Token identifier) : Symbol(identifier.Text)
 	public SourceLocation Definition { get; } = identifier.SourceLocation;
 }
 
-public abstract class MemberSymbol(string name, TypeSymbol type) : VariableSymbol(name)
+public abstract class MemberSymbol(string name) : Symbol(name)
+{
+}
+
+public abstract class MemberVariableSymbol(string name, TypeSymbol type) : MemberSymbol(name)
 {
 	public TypeSymbol Type { get; } = type;
 }
 
-public enum MemberStorageKind
-public sealed class IntrinsicMemberSymbol(string name, TypeSymbol type) : MemberSymbol(name, type);
-
-public sealed class DefinedMemberSymbol(Token identifier, TypeSymbol type) : MemberSymbol(identifier.Text, type)
+public sealed class FieldSymbol(string name, TypeSymbol type, bool isMutable) : MemberVariableSymbol(name, type)
 {
-	public Token Identifier { get; } = identifier;
-	public SourceLocation Definition { get; } = identifier.SourceLocation;
+	public bool IsMutable { get; } = isMutable;
 }
+
+public sealed class PropertySymbol(string name, TypeSymbol type) : MemberVariableSymbol(name, type)
+{
+	public FieldSymbol? BackingField { get; init; }
+	public AccessorImpl? Getter { get; init; }
+	public AccessorImpl? Setter { get; init; }
+}
+
+public sealed class IndexerSymbol(string name, TypeSymbol type, IEnumerable<ParameterSymbol> parameters)
+	: MemberVariableSymbol(name, type)
+{
+	public ImmutableArray<ParameterSymbol> Parameters { get; } = parameters.ToImmutableArray();
+	public AccessorImpl? Getter { get; init; }
+	public AccessorImpl? Setter { get; init; }
+}
+
+public sealed class MethodSymbol(FunctionSymbol function, SelfReferenceKind selfReferenceKind)
+	: MemberSymbol(function.Name)
+{
+	public FunctionSymbol Function { get; } = function;
+	public SelfReferenceKind SelfReferenceKind { get; } = selfReferenceKind;
+}
+
+public abstract record AccessorImpl;
+
+public sealed record NativeAccessor(NativeMemberIntrinsic Intrinsic) : AccessorImpl;
+public sealed record FunctionAccessor(FunctionSymbol Function) : AccessorImpl;
 
 // TODO Throw errors when symbols resolved as ambiguous
 public sealed class AmbiguousSymbol(string name, IEnumerable<Symbol> candidates) : Symbol(name)
 {
 	public ImmutableArray<Symbol> Candidates { get; } = candidates.ToImmutableArray();
+}
+
+public enum SelfReferenceKind
+{
+	None,
+	Mutable,
+	Immutable
+}
+
+public enum NativeMemberIntrinsic
+{
+	ArrayLength,
+	ArrayIndexGet,
+	ArrayIndexSet,
+	SpanIndexGet,
+	SpanIndexSet,
+	ViewIndexGet
 }

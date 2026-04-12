@@ -121,6 +121,7 @@ public sealed class TokenType
 	// Literal keywords
 	public static readonly TokenType KeywordTrue = CreateKeywordLiteral("true");
 	public static readonly TokenType KeywordFalse = CreateKeywordLiteral("false");
+	public static readonly TokenType KeywordNull = CreateKeywordLiteral("null");
 	
 	// Global keywords
 	public static readonly TokenType KeywordRet = CreateKeyword("ret");
@@ -182,6 +183,7 @@ public sealed class TokenType
 	public static readonly TokenType OpHat = CreateOperator("^");
 	public static readonly TokenType OpGreater = CreateOperator(">");
 	public static readonly TokenType OpLess = CreateOperator("<");
+	public static readonly TokenType OpAt = CreateOperator("@");
 	
 	#endregion
 }

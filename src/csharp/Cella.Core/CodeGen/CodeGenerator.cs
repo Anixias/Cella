@@ -72,6 +72,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 		
 		var intSize = LLVMTypeRef.CreateInt(_pointerSize * 8);
 		_typeMap[NativeSymbols.Void] = LLVMTypeRef.Void;
+		_typeMap[NativeSymbols.VoidPtr] = LLVMTypeRef.CreatePointer(LLVMTypeRef.Void, 0u);
 		_typeMap[NativeSymbols.Int8] = LLVMTypeRef.Int8;
 		_typeMap[NativeSymbols.Int16] = LLVMTypeRef.Int16;
 		_typeMap[NativeSymbols.Int32] = LLVMTypeRef.Int32;
@@ -184,6 +185,14 @@ public sealed unsafe class CodeGenerator : IDisposable
 				var llvmSpan = LLVMTypeRef.CreateStruct([usizeType, ptrType], false);
 				_typeMap[symbol] = llvmSpan;
 				return llvmSpan;
+			}
+			
+			case PointerType ptrType:
+			{
+				var baseType = MapTypeSymbol(ptrType.BaseType);
+				var llvmPtrType = LLVMTypeRef.CreatePointer(baseType, 0u);
+				_typeMap[symbol] = llvmPtrType;
+				return llvmPtrType;
 			}
 			
 			default:
@@ -460,6 +469,13 @@ public sealed unsafe class CodeGenerator : IDisposable
 			}
 		}
 		
+		// Pointers
+		if (c is { From: PointerType, To: PointerType })
+		{
+			var destType = MapTypeSymbol(c.To);
+			return builder.BuildBitCast(source, destType, "ptrcast");
+		}
+		
 		throw new InvalidOperationException();
 	}
 	
@@ -487,58 +503,71 @@ public sealed unsafe class CodeGenerator : IDisposable
 			: builder.BuildZExt(source, destType);
 	}
 	
-	private LLVMValueRef EmitBinaryOp(BinOpValue v, LLVMBuilderRef builder) => v switch
+	private LLVMValueRef EmitBinaryOp(BinOpValue v, LLVMBuilderRef builder)
 	{
-		{ IsConstant: true, Op: BinaryOperation.Addition } =>
-			LLVMValueRef.CreateConstAdd(EmitValue(v.Left, builder), EmitValue(v.Right, builder)), // TODO Check floating point?
-		{ Op: BinaryOperation.Addition } =>
-			builder.BuildAdd(EmitValue(v.Left, builder), EmitValue(v.Right, builder)), // TODO Check floating point?
+		var left = EmitValue(v.Left, builder);
+		var right = EmitValue(v.Right, builder);
+		var signed = v.Left.Type is IntegerType { IsSigned: true }; // TODO Check for floating point
 		
-		{ IsConstant: true, Op: BinaryOperation.Subtraction } =>
-			LLVMValueRef.CreateConstSub(EmitValue(v.Left, builder), EmitValue(v.Right, builder)), // TODO Check floating point?
-		{ Op: BinaryOperation.Subtraction } =>
-			builder.BuildSub(EmitValue(v.Left, builder), EmitValue(v.Right, builder)), // TODO Check floating point?
-		
-		{ IsConstant: true, Op: BinaryOperation.Multiplication } =>
-			LLVMValueRef.CreateConstMul(EmitValue(v.Left, builder), EmitValue(v.Right, builder)), // TODO Check floating point?
-		{ Op: BinaryOperation.Multiplication } =>
-			builder.BuildMul(EmitValue(v.Left, builder), EmitValue(v.Right, builder)), // TODO Check floating point?
-		
-		{ Op: BinaryOperation.Division } =>
-			builder.BuildSDiv(EmitValue(v.Left, builder), EmitValue(v.Right, builder)), // TODO Check type for correct operation
-		
-		{ Op: BinaryOperation.Modulo } =>
-			builder.BuildSRem(EmitValue(v.Left, builder), EmitValue(v.Right, builder)), // TODO Check type for correct operation
-		
-		{ Op: BinaryOperation.Greater } =>
-			builder.BuildICmp(LLVMIntPredicate.LLVMIntSGT, EmitValue(v.Left, builder), EmitValue(v.Right, builder)), // TODO Check type for correct operation
-		
-		{ Op: BinaryOperation.GreaterEqual } =>
-			builder.BuildICmp(LLVMIntPredicate.LLVMIntSGE, EmitValue(v.Left, builder), EmitValue(v.Right, builder)), // TODO Check type for correct operation
-		
-		{ Op: BinaryOperation.Less } =>
-			builder.BuildICmp(LLVMIntPredicate.LLVMIntSLT, EmitValue(v.Left, builder), EmitValue(v.Right, builder)), // TODO Check type for correct operation
-		
-		{ Op: BinaryOperation.LessEqual } =>
-			builder.BuildICmp(LLVMIntPredicate.LLVMIntSLE, EmitValue(v.Left, builder), EmitValue(v.Right, builder)), // TODO Check type for correct operation
-		
-		{ Op: BinaryOperation.Equal } =>
-			builder.BuildICmp(LLVMIntPredicate.LLVMIntEQ, EmitValue(v.Left, builder), EmitValue(v.Right, builder)), // TODO Check type for correct operation
-		
-		{ Op: BinaryOperation.NotEqual } =>
-			builder.BuildICmp(LLVMIntPredicate.LLVMIntNE, EmitValue(v.Left, builder), EmitValue(v.Right, builder)), // TODO Check type for correct operation
-		
-		{ Op: BinaryOperation.And } =>
-			builder.BuildAnd(EmitValue(v.Left, builder), EmitValue(v.Right, builder)),
-		
-		{ Op: BinaryOperation.Or } =>
-			builder.BuildOr(EmitValue(v.Left, builder), EmitValue(v.Right, builder)),
-		
-		{ Op: BinaryOperation.Xor } =>
-			builder.BuildXor(EmitValue(v.Left, builder), EmitValue(v.Right, builder)),
-		
-		_ => throw new InvalidOperationException()
-	};
+		return v switch
+		{
+			{ IsConstant: true, Op: BinaryOperation.Addition } =>
+				LLVMValueRef.CreateConstAdd(left, right), // TODO Check floating point?
+			{ Op: BinaryOperation.Addition } =>
+				builder.BuildAdd(left, right), // TODO Check floating point?
+			
+			{ IsConstant: true, Op: BinaryOperation.Subtraction } =>
+				LLVMValueRef.CreateConstSub(left, right), // TODO Check floating point?
+			{ Op: BinaryOperation.Subtraction } =>
+				builder.BuildSub(left, right), // TODO Check floating point?
+			
+			{ IsConstant: true, Op: BinaryOperation.Multiplication } =>
+				LLVMValueRef.CreateConstMul(left, right), // TODO Check floating point?
+			{ Op: BinaryOperation.Multiplication } =>
+				builder.BuildMul(left, right), // TODO Check floating point?
+			
+			{ Op: BinaryOperation.Division } => signed // TODO Check floating point?
+				? builder.BuildSDiv(left, right)
+				: builder.BuildUDiv(left, right),
+			
+			{ Op: BinaryOperation.Modulo } => signed // TODO Check floating point?
+				? builder.BuildSRem(left, right)
+				: builder.BuildURem(left, right),
+			
+			{ Op: BinaryOperation.Greater } => signed // TODO Check floating point?
+				? builder.BuildICmp(LLVMIntPredicate.LLVMIntSGT, left, right)
+				: builder.BuildICmp(LLVMIntPredicate.LLVMIntUGT, left, right),
+			
+			{ Op: BinaryOperation.GreaterEqual } => signed // TODO Check floating point?
+				? builder.BuildICmp(LLVMIntPredicate.LLVMIntSGE, left, right)
+				: builder.BuildICmp(LLVMIntPredicate.LLVMIntUGE, left, right),
+			
+			{ Op: BinaryOperation.Less } => signed // TODO Check floating point?
+				? builder.BuildICmp(LLVMIntPredicate.LLVMIntSLT, left, right)
+				: builder.BuildICmp(LLVMIntPredicate.LLVMIntULT, left, right),
+			
+			{ Op: BinaryOperation.LessEqual } => signed // TODO Check floating point?
+				? builder.BuildICmp(LLVMIntPredicate.LLVMIntSLE, left, right)
+				: builder.BuildICmp(LLVMIntPredicate.LLVMIntULE, left, right),
+			
+			{ Op: BinaryOperation.Equal } =>
+				builder.BuildICmp(LLVMIntPredicate.LLVMIntEQ, left, right), // TODO Check type for correct operation
+			
+			{ Op: BinaryOperation.NotEqual } =>
+				builder.BuildICmp(LLVMIntPredicate.LLVMIntNE, left, right), // TODO Check type for correct operation
+			
+			{ Op: BinaryOperation.And } =>
+				builder.BuildAnd(left, right),
+			
+			{ Op: BinaryOperation.Or } =>
+				builder.BuildOr(left, right),
+			
+			{ Op: BinaryOperation.Xor } =>
+				builder.BuildXor(left, right),
+			
+			_ => throw new InvalidOperationException()
+		};
+	}
 	
 	private LLVMValueRef EmitUnaryOp(UnaryOpValue v, LLVMBuilderRef builder) => v switch
 	{
@@ -547,6 +576,8 @@ public sealed unsafe class CodeGenerator : IDisposable
 		
 		{ IsConstant: true, Op: UnaryOperation.Not } => LLVMValueRef.CreateConstNot(EmitValue(v.Operand, builder)),
 		{ Op: UnaryOperation.Not } => builder.BuildNot(EmitValue(v.Operand, builder)),
+		
+		{ Op: UnaryOperation.AddressOf } => EmitAddress(v.Operand, builder),
 		
 		_ => throw new InvalidOperationException()
 	};
@@ -595,14 +626,25 @@ public sealed unsafe class CodeGenerator : IDisposable
 		}
 	}
 	
+	private LLVMValueRef EmitAccessAddress(AccessValue v, LLVMBuilderRef builder)
+	{
+		var targetPtr = EmitAddress(v.Target, builder);
+		var targetType = MapTypeSymbol(v.Target.Type);
+		var fieldIndex = (uint)_typeMemberTable.GetFieldIndex(v.Target.Type, v.Member);
+		return builder.BuildStructGEP2(targetType, targetPtr, fieldIndex, v.Member.Name + ".addr");
+	}
+	
 	private LLVMValueRef EmitAccessValue(AccessValue v, LLVMBuilderRef builder)
 	{
-		// Special case for arrays
-		switch (v.Target.Type)
+		// Intrinsic properties
+		switch (v.Member)
 		{
-			case ArrayType arrayType:
-				if (v.Member.Name == "length")
-					return EmitSizeConstant(arrayType.Length, true);
+			case PropertySymbol { Getter: NativeAccessor getter }:
+				switch (getter.Intrinsic)
+				{
+					case NativeMemberIntrinsic.ArrayLength when v.Target.Type is ArrayType arrayType:
+						return EmitSizeConstant(arrayType.Length, true);
+				}
 				
 				break;
 		}
@@ -640,6 +682,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 	{
 		VariableValue v => _varMap[v.Variable],
 		IndexerValue v => EmitIndexerAddress(v, builder).Ptr,
+		AccessValue v => EmitAccessAddress(v, builder),
 		_ => throw new InvalidOperationException()
 	};
 	

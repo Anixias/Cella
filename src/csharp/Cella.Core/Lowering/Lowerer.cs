@@ -1,4 +1,5 @@
-﻿using Cella.Core.Binding.Nodes.Declarations;
+﻿using System.Numerics;
+using Cella.Core.Binding.Nodes.Declarations;
 using Cella.Core.Binding.Nodes.Expressions;
 using Cella.Core.Binding.Nodes.Statements;
 using Cella.Core.Binding.Operations;
@@ -186,7 +187,7 @@ public sealed class Lowerer : IResolvedDeclarationNodeVisitor
 			currentBlock = thenBlock;
 			VisitNode(node.Then);
 			
-			if (currentBlock is { Terminator: UndefinedTerminator, Instructions.Count: > 0 })
+			if (currentBlock.Terminator is UndefinedTerminator)
 				currentBlock.Terminator = new BranchTerminator(mergeBlock);
 			
 			// Else block
@@ -195,7 +196,7 @@ public sealed class Lowerer : IResolvedDeclarationNodeVisitor
 				currentBlock = elseBlock!;
 				VisitNode(@else);
 				
-				if (currentBlock is { Terminator: UndefinedTerminator, Instructions.Count: > 0 })
+				if (currentBlock.Terminator is UndefinedTerminator)
 					currentBlock.Terminator = new BranchTerminator(mergeBlock);
 			}
 			
@@ -284,8 +285,8 @@ public sealed class Lowerer : IResolvedDeclarationNodeVisitor
 			currentBlock.Instructions.Add(new LocalVarInstruction(counterSymbol, countValue));
 			
 			var counterVar = new VariableValue(new(counterSymbol, countValue.Type));
-			var one = new ConstantValue(countValue.Type, 1);
-			var zero = new ConstantValue(countValue.Type, 0);
+			var one = MakeConstant(countValue.Type, BigInteger.One);
+			var zero = MakeConstant(countValue.Type, BigInteger.Zero);
 			
 			var condBlock = CreateBlock($"repeat{id}_cond");
 			var bodyBlock = CreateBlock($"repeat{id}_body");
@@ -314,6 +315,27 @@ public sealed class Lowerer : IResolvedDeclarationNodeVisitor
 			latchBlock.Terminator = new BranchTerminator(condBlock);
 			
 			currentBlock = exitBlock;
+		}
+		
+		private ConstantValue MakeConstant(TypeSymbol type, object? value)
+		{
+			if (type is not IntegerType intType || value is not BigInteger v)
+				return new(type, value);
+			
+			return intType.Kind switch
+			{
+				PrimitiveTypeKind.Int8 => new(type, (sbyte)v),
+				PrimitiveTypeKind.Int16 => new(type, (short)v),
+				PrimitiveTypeKind.Int32 => new(type, (int)v),
+				PrimitiveTypeKind.Int64 => new(type, (long)v),
+				PrimitiveTypeKind.Int128 => new(type, (Int128)v),
+				PrimitiveTypeKind.UInt8 => new(type, (byte)v),
+				PrimitiveTypeKind.UInt16 => new(type, (ushort)v),
+				PrimitiveTypeKind.UInt32 => new(type, (uint)v),
+				PrimitiveTypeKind.UInt64 => new(type, (ulong)v),
+				PrimitiveTypeKind.UInt128 => new(type, (UInt128)v),
+				_ => new(type, v)
+			};
 		}
 		
 		public void Visit(ResolvedWhileStatementNode node)
@@ -353,7 +375,7 @@ public sealed class Lowerer : IResolvedDeclarationNodeVisitor
 			new AccessValue(node.Type, VisitNode(node.Target), node.Member);
 		
 		public Value Visit(ResolvedLiteralExpressionNode node) =>
-			new ConstantValue(node.Type, node.Value);
+			MakeConstant(node.Type, node.Value);
 		
 		public Value Visit(ResolvedArrayExpressionNode node) =>
 			new ArrayValue((ArrayType)node.Type, node.Values.Select(VisitNode));
@@ -516,6 +538,9 @@ public sealed class Lowerer : IResolvedDeclarationNodeVisitor
 			
 			if (op == TokenType.OpBang)
 				return UnaryOperation.Not;
+			
+			if (op == TokenType.OpAt)
+				return UnaryOperation.AddressOf;
 			
 			throw new InvalidOperationException();
 		}

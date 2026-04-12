@@ -15,6 +15,7 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 	[
 		TokenType.KeywordTrue,
 		TokenType.KeywordFalse,
+		TokenType.KeywordNull,
 		TokenType.IntegerLiteral,
 		TokenType.StringLiteral
 	];
@@ -29,7 +30,8 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 	[
 		TokenType.OpPlus,
 		TokenType.OpMinus,
-		TokenType.OpBang
+		TokenType.OpBang,
+		TokenType.OpAt
 	];
 	
 	private static readonly HashSet<TokenType> _multiplicativeOps =

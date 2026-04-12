@@ -110,8 +110,31 @@ public readonly struct ResolutionContext
         "array" when node.Arguments.Length == 2
             => ResolveArrayType(node),
 
+        "ptr" when node.Arguments.Length == 0
+            => NativeSymbols.VoidPtr,
+
+        "ptr" when node.Arguments.Length == 1
+            => ResolvePointerType(node, PointerKind.Unsafe),
+
+        "mut" when node.Arguments.Length == 1
+            => ResolvePointerType(node, PointerKind.Mutable),
+
+        "imm" when node.Arguments.Length == 1
+            => ResolvePointerType(node, PointerKind.Immutable),
+
+        "own" when node.Arguments.Length == 1
+            => ResolvePointerType(node, PointerKind.Owning),
+
         _ => NativeSymbols.Invalid
     };
+    
+    private TypeSymbol ResolvePointerType(GenericTypeNode node, PointerKind kind)
+    {
+	    var elementType = ResolveTypeArgument(node.Arguments[0]);
+	    return elementType == NativeSymbols.Invalid
+		    ? NativeSymbols.Invalid
+		    : TypePool.GetPointerType(elementType, kind);
+    }
     
     private TypeSymbol ResolveSpanType(GenericTypeNode node)
     {

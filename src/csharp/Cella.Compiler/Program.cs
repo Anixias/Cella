@@ -154,7 +154,7 @@ internal static class Program
 		var typeMemberTable = new TypeMemberTable();
 		typeMemberTable.CreateNativeMembers();
 		
-		var typePool = new TypePool(typeMemberTable, conversionTable);
+		var typePool = new TypePool(typeMemberTable, conversionTable, operatorRegistry);
 		AssemblySymbol assemblySymbol;
 		{
 			var signatureCollector = new SignatureCollector(entryPointName, symbolTable, typePool, typeMemberTable,
