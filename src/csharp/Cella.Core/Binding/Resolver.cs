@@ -513,13 +513,7 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 		if (consumed)
 			return operand;
 		
-		var resolution = _operatorRegistry.ResolveUnary(op.Type, operand.Type);
-		if (resolution.Operation is not { } operation)
-			return new ResolvedUnaryOpExpressionNode(operand, null);
-		
-		if (resolution.OperandConversion is { } conversion)
-			operand = new ResolvedConversionExpressionNode(operand, conversion);
-		
+		var operation = _operatorRegistry.ResolveUnary(op.Type, operand.Type);
 		return new ResolvedUnaryOpExpressionNode(operand, operation);
 	}
 	
@@ -545,7 +539,8 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 		}
 		else
 		{
-			// We push null to allow sub-expressions to resolve naturally; then, we attempt to implicit cast to actual type
+			// We push null to allow sub-expressions to resolve naturally
+			// Then, we attempt to implicit cast to actual type
 			var left = VisitNode(node.Left);
 			var right = VisitNode(node.Right);
 			_targetTypes.Pop();
@@ -553,9 +548,16 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 			left = MaterializeBinaryOperand(left, right.Type);
 			right = MaterializeBinaryOperand(right, left.Type);
 			
-			var resolution = _operatorRegistry.ResolveBinary(left.Type, op.Type, right.Type);
-			if (resolution.Operation is not { } operation)
+			var resolutionSet = _operatorRegistry.ResolveBinary(left.Type, op.Type, right.Type);
+			if (resolutionSet.IsAmbiguous)
+				throw new Exception(
+					$"Ambiguous operation '{op.Text}' between '{left.Type.Name}' and '{right.Type.Name}'");
+			
+			if (!resolutionSet.HasResult)
 				return new ResolvedBinaryOpExpressionNode(left, right, null);
+			
+			var resolution = resolutionSet[0];
+			var operation = resolution.Operation;
 			
 			// If result is concrete but children are untyped, resolve them as default types and re-resolve
 			if (operation.Result is not UntypedType)
@@ -565,7 +567,15 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 				if (right.Type is UntypedType)
 					right = MaterializeAsDefault(right);
 				
-				resolution = _operatorRegistry.ResolveBinary(left.Type, op.Type, right.Type);
+				resolutionSet = _operatorRegistry.ResolveBinary(left.Type, op.Type, right.Type);
+				if (resolutionSet.IsAmbiguous)
+					throw new Exception(
+						$"Ambiguous operation '{op.Text}' between '{left.Type.Name}' and '{right.Type.Name}'");
+				
+				if (!resolutionSet.HasResult)
+					return new ResolvedBinaryOpExpressionNode(left, right, null);
+				
+				resolution = resolutionSet[0];
 				operation = resolution.Operation;
 			}
 			
@@ -589,7 +599,45 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 		
 		_targetTypes.Pop();
 		
-		// TODO How to handle implicit conversions per pair?
+		// Materialize untyped integer operands left to right
+		for (var i = 0; i < operands.Count - 1; i++)
+		{
+			operands[i] = MaterializeBinaryOperand(operands[i], operands[i + 1].Type);
+			operands[i + 1] = MaterializeBinaryOperand(operands[i + 1], operands[i].Type);
+		}
+		
+		// Propagate materialized operands back right to left
+		for (var i = operands.Count - 1; i > 0; i--)
+		{
+			operands[i] = MaterializeBinaryOperand(operands[i], operands[i - 1].Type);
+			operands[i - 1] = MaterializeBinaryOperand(operands[i - 1], operands[i].Type);
+		}
+		
+		TypeSymbol? prevType = null;
+		var allSameType = true;
+		for (var i = 0; i < operands.Count; i++)
+		{
+			var newOp = MaterializeAsDefault(operands[i]);
+			operands[i] = newOp;
+			
+			if (i > 0 && prevType != newOp.Type)
+				allSameType = false;
+			
+			prevType = newOp.Type;
+		}
+		
+		if (!allSameType)
+		{
+			var commonType = operands[0].Type;
+			for (var i = 1; i < operands.Count && commonType is not null; i++)
+				commonType = FindCommonType(commonType, operands[i].Type);
+			
+			if (commonType is null)
+				throw new Exception("Cannot chain comparisons between incompatible types");
+			
+			for (var i = 0; i < operands.Count; i++)
+				operands[i] = CoerceToType(operands[i], commonType);
+		}
 		
 		var operations = new List<OperationImpl?>(node.Ops.Length);
 		for (var i = 0; i < operands.Count - 1; i++)
@@ -598,20 +646,25 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 			var op = node.Ops[i];
 			var right = operands[i + 1];
 			
-			var resolution = _operatorRegistry.ResolveBinary(left.Type, op.Type, right.Type);
-			operations.Add(resolution.Operation);
+			var resolutionSet = _operatorRegistry.ResolveBinary(left.Type, op.Type, right.Type);
+			if (resolutionSet.IsAmbiguous)
+				throw new Exception(
+					$"Ambiguous operation '{op.Text}' between '{left.Type.Name}' and '{right.Type.Name}'");
+			
+			operations.Add(resolutionSet.HasResult ? resolutionSet[0].Operation : null);
 		}
 		
 		// Aggregate types with implicit AND
 		var resultType = operations[0]?.Result ?? NativeSymbols.Invalid;
-		for (var i = 1; i < operations.Count - 1; i++)
+		for (var i = 1; i < operations.Count; i++)
 		{
-			var right = operations[i + 1]?.Result ?? NativeSymbols.Invalid;
-			var resolution = _operatorRegistry.ResolveBinary(resultType, TokenType.OpAmpersand, right);
-			resultType = resolution.Operation?.Result ?? NativeSymbols.Invalid;
+			var right = operations[i]?.Result ?? NativeSymbols.Invalid;
+			var resolutionSet = _operatorRegistry.ResolveBinary(resultType, TokenType.OpAmpersand, right);
+			if (resolutionSet.IsAmbiguous)
+				throw new Exception($"Ambiguous operation '&' between '{resultType.Name}' and '{right.Name}'");
+			
+			resultType = resolutionSet.HasResult ? resolutionSet[0].Operation.Result : NativeSymbols.Invalid;
 		}
-		
-		// TODO Implicit cast if needed?
 		
 		return new ResolvedChainedExpressionNode(resultType, operands, operations);
 	}
@@ -847,12 +900,9 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 	            var operand = MaterializeExpression(unary.Operand, target);
 	            var resolution = unary.Operation?.Op is { } op
 		            ? _operatorRegistry.ResolveUnary(op, operand.Type)
-		            : default;
+		            : null;
 	            
-	            if (resolution.OperandConversion is { } conv)
-	                operand = new ResolvedConversionExpressionNode(operand, conv);
-	            
-	            return new ResolvedUnaryOpExpressionNode(operand, resolution.Operation);
+	            return new ResolvedUnaryOpExpressionNode(operand, resolution);
 	        }
 	        
 	        case ResolvedBinaryOpExpressionNode binary:
@@ -870,9 +920,18 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 	                }
 	            }
 	            
-	            var resolution = binary.Operation?.Op is { } op
+	            var resolutionSet = binary.Operation?.Op is { } op 
 		            ? _operatorRegistry.ResolveBinary(left.Type, op, right.Type)
-		            : default;
+		            : BinaryResolutionSet.None;
+	            
+	            if (resolutionSet.IsAmbiguous)
+		            throw new Exception($"Ambiguous operation '{binary.Operation!.Op!.Representation}' between " +
+		                                $"'{left.Type.Name}' and '{right.Type.Name}'");
+	            
+	            if (!resolutionSet.HasResult)
+		            return new ResolvedBinaryOpExpressionNode(left, right, null);
+	            
+	            var resolution = resolutionSet[0];
 	            
 	            if (resolution.LeftConversion is { } leftConversion)
 		            left = new ResolvedConversionExpressionNode(left, leftConversion);
@@ -903,6 +962,9 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 	
 	private TypeSymbol? FindCommonType(TypeSymbol a, TypeSymbol b)
 	{
+		if (a == b)
+			return a;
+		
 		if (_conversionTable.FindImplicit(a, b) is not null)
 			return b;
 		

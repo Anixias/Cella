@@ -7,16 +7,38 @@ namespace Cella.Core.Binding.Operations;
 
 public readonly record struct BinaryResolution
 (
-	OperationImpl? Operation,
+	OperationImpl Operation,
 	Conversion? LeftConversion,
 	Conversion? RightConversion
 );
 
-public readonly record struct UnaryResolution
-(
-	OperationImpl? Operation,
-	Conversion? OperandConversion
-);
+public readonly struct BinaryResolutionSet
+{
+	public static BinaryResolutionSet None => default;
+	public static BinaryResolutionSet Single(BinaryResolution resolution) => new(resolution, default, 1);
+	public static BinaryResolutionSet Ambiguous(BinaryResolution a, BinaryResolution b) => new(a, b, 2);
+	
+	public int Count { get; }
+	public bool IsAmbiguous => Count > 1;
+	public bool HasResult => Count > 0;
+	
+	private readonly BinaryResolution _first;
+	private readonly BinaryResolution _second;
+	
+	public BinaryResolution this[int index] => index switch
+	{
+		0 when Count > 0 => _first,
+		1 when Count > 1 => _second,
+		_ => throw new ArgumentOutOfRangeException(nameof(index))
+	};
+	
+	private BinaryResolutionSet(BinaryResolution first, BinaryResolution second, int count)
+	{
+		_first = first;
+		_second = second;
+		Count = count;
+	}
+}
 
 public sealed class OperatorRegistry(ConversionTable conversionTable)
 {
@@ -100,33 +122,52 @@ public sealed class OperatorRegistry(ConversionTable conversionTable)
 	public bool CreateUnary(TokenType op, TypeSymbol operand, OperationImpl impl) =>
 		_unaryOps.TryAdd(new(op, operand), impl);
 	
-	public BinaryResolution ResolveBinary(TypeSymbol left, TokenType op, TypeSymbol right, TypeSymbol? target = null)
+	public BinaryResolutionSet ResolveBinary(TypeSymbol left, TokenType op, TypeSymbol right)
 	{
 		var key = new BinaryOperationKey(left, op, right);
 		if (_binaryOps.TryGetValue(key, out var exact))
-			return new(exact, null, null);
+			return BinaryResolutionSet.Single(new(exact, null, null));
 		
-		// TODO Do implicit conversion graph traversal
-		return new(null, null, null);
+		if (left == right)
+			return BinaryResolutionSet.None;
 		
-		// No exact match, try implicit conversions
-		//var leftImplicit = _conversionTable.FindAllImplicit(left).ToImmutableArray();
-		//var rightImplicit = _conversionTable.FindAllImplicit(right).ToImmutableArray();
+		BinaryResolution? leftCandidate = null;
+		var leftCost = int.MaxValue;
+		BinaryResolution? rightCandidate = null;
+		var rightCost = int.MaxValue;
+		
+		var leftConversion = _conversionTable.FindImplicit(left, right);
+		if (leftConversion is not null && _binaryOps.TryGetValue(new(right, op, right), out var impl))
+		{
+			leftCandidate = new(impl, leftConversion, null);
+			leftCost = leftConversion.Cost;
+		}
+		
+		var rightConversion = _conversionTable.FindImplicit(right, left);
+		if (rightConversion is not null && _binaryOps.TryGetValue(new(left, op, left), out impl))
+		{
+			rightCandidate = new(impl, null, rightConversion);
+			rightCost = rightConversion.Cost;
+		}
+		
+		if (leftCandidate is null && rightCandidate is null)
+			return BinaryResolutionSet.None;
+		
+		if (leftCandidate is not null && rightCandidate is not null)
+		{
+			if (leftCost < rightCost)
+				return BinaryResolutionSet.Single(leftCandidate.Value);
+			if (rightCost < leftCost)
+				return BinaryResolutionSet.Single(rightCandidate.Value);
+			
+			return BinaryResolutionSet.Ambiguous(leftCandidate.Value, rightCandidate.Value);
+		}
+		
+		return BinaryResolutionSet.Single(leftCandidate ?? rightCandidate!.Value);
 	}
 	
-	public UnaryResolution ResolveUnary(TokenType op, TypeSymbol operand, TypeSymbol? target = null)
-	{
-		var key = new UnaryOperationKey(op, operand);
-		if (_unaryOps.TryGetValue(key, out var exact))
-			return new(exact, null);
-		
-		// TODO Do implicit conversion graph traversal
-		return new(null, null);
-		
-		// No exact match, try implicit conversions
-		//var leftImplicit = _conversionTable.FindAllImplicit(left).ToImmutableArray();
-		//var rightImplicit = _conversionTable.FindAllImplicit(right).ToImmutableArray();
-	}
+	public OperationImpl? ResolveUnary(TokenType op, TypeSymbol operand) =>
+		_unaryOps.GetValueOrDefault(new(op, operand));
 	
 	private static Dictionary<UnaryOperationKey, OperationImpl> CreateUnaryOps()
 	{
