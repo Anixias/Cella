@@ -122,6 +122,7 @@ public sealed class TokenType
 	public static readonly TokenType KeywordTrue = CreateKeywordLiteral("true");
 	public static readonly TokenType KeywordFalse = CreateKeywordLiteral("false");
 	public static readonly TokenType KeywordNull = CreateKeywordLiteral("null");
+	public static readonly TokenType KeywordUndef = CreateKeywordLiteral("undef");
 	
 	// Global keywords
 	public static readonly TokenType KeywordRet = CreateKeyword("ret");

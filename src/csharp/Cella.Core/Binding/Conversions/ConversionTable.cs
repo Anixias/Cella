@@ -92,6 +92,10 @@ public sealed class ConversionTable
 			table.Add(new IntegerConversion(NativeSymbols.UIntSize, intTypes[i].U, ConversionKind.Explicit, 1));
 		}
 		
+		// cstr <-> ptr
+		table.Add(new NativeConversion(NativeSymbols.CStr, NativeSymbols.VoidPtr, ConversionKind.Implicit, 0));
+		table.Add(new NativeConversion(NativeSymbols.VoidPtr, NativeSymbols.CStr, ConversionKind.Explicit, 0));
+		
 		return table;
 	}
 }

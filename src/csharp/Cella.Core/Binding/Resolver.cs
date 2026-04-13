@@ -206,7 +206,38 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 	public IResolvedNode Visit(ExpressionStatementNode node) =>
 		new ResolvedExpressionStatementNode(VisitNode(node.ExpressionNode));
 	
-	public IResolvedNode Visit(CallExpressionNode node)
+	public IResolvedNode Visit(CallExpressionNode node) => TryResolveCallTargetAsType(node.Target) is { } targetType
+		? VisitTypeCall(node, targetType)
+		: VisitFunctionCall(node);
+	
+	private IResolvedNode VisitTypeCall(CallExpressionNode node, TypeSymbol targetType)
+	{
+		// TODO Zero-arg default construction
+		// TODO Multi-arg constructors
+		if (node.Arguments.Length != 1)
+			throw new Exception(
+				$"No constructor for type '{targetType.Name}' with {node.Arguments.Length} argument(s)");
+		
+		_targetTypes.Push(targetType);
+		var arg = VisitNode(node.Arguments[0]);
+		_targetTypes.Pop();
+		
+		if (arg.Type is UntypedIntegerType && targetType is IntegerType intTarget)
+			arg = MaterializeExpression(arg, intTarget);
+		else
+			arg = MaterializeAsDefault(arg);
+		
+		if (arg.Type == targetType)
+			return arg;
+		
+		if (_conversionTable.FindExplicit(arg.Type, targetType) is { } conversion)
+			return new ResolvedConversionExpressionNode(arg, conversion);
+		
+		// TODO Look up constructors
+		throw new Exception($"No conversion from '{arg.Type.Name}' to '{targetType.Name}'");
+	}
+	
+	private ResolvedFunctionCallExpressionNode VisitFunctionCall(CallExpressionNode node)
 	{
 		switch (node.Target)
 		{
@@ -220,7 +251,7 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 					throw new Exception($"Symbol '{functionName}' not found in this scope");
 				
 				if (symbol is not FunctionSymbol function)
-					throw new Exception($"Symbol '{functionName}' is not a function");
+					throw new Exception($"Symbol '{functionName}' is not a function or type");
 				
 				if (!_assemblySignatureTable.Functions.TryGetValue(function, out var info))
 				{
@@ -248,6 +279,115 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 			
 			default:
 				throw new NotImplementedException();
+		}
+	}
+	
+	private TypeSymbol? TryResolveCallTargetAsType(IExpressionNode target)
+	{
+		switch (target)
+		{
+			case VarExpressionNode e:
+				return CurrentResolutionContext.Resolve(e.Identifier.Text) as TypeSymbol;
+			
+			case IndexerExpressionNode e:
+				return TryResolveIndexerAsGenericType(e);
+			
+			case AccessExpressionNode:
+				// TODO Module qualifiers or nested types
+				return null;
+			
+			default:
+				return null;
+		}
+	}
+	
+	private TypeSymbol? TryResolveIndexerAsGenericType(IndexerExpressionNode node)
+	{
+		if (node.Target is not VarExpressionNode varExpr)
+		{
+			// TODO AccessExpressionNode for module.GenericType[T]
+			return null;
+		}
+		
+		var name = varExpr.Identifier.Text;
+		return TryResolveGenericType(name, node.Arguments);
+	}
+	
+	private TypeSymbol? TryResolveGenericType(string name, IReadOnlyList<IExpressionNode> arguments)
+	{
+		switch (name)
+		{
+			case "span" when arguments.Count == 1:
+				return TryResolveExpressionAsType(arguments[0]) is { } spanEl
+					? _typePool.GetSpanType(spanEl)
+					: null;
+			
+			case "view" when arguments.Count == 1:
+				return TryResolveExpressionAsType(arguments[0]) is { } viewEl
+					? _typePool.GetViewType(viewEl)
+					: null;
+			
+			case "ptr" when arguments.Count == 0:
+				return NativeSymbols.VoidPtr;
+			
+			case "ptr" when arguments.Count == 1:
+				return TryResolveExpressionAsType(arguments[0]) is { } ptrEl
+					? _typePool.GetPointerType(ptrEl, PointerKind.Unsafe)
+					: null;
+			
+			case "mut" when arguments.Count == 1:
+				return TryResolveExpressionAsType(arguments[0]) is { } mutEl
+					? _typePool.GetPointerType(mutEl, PointerKind.Mutable)
+					: null;
+			
+			case "imm" when arguments.Count == 1:
+				return TryResolveExpressionAsType(arguments[0]) is { } immEl
+					? _typePool.GetPointerType(immEl, PointerKind.Immutable)
+					: null;
+			
+			case "own" when arguments.Count == 1:
+				return TryResolveExpressionAsType(arguments[0]) is { } ownEl
+					? _typePool.GetPointerType(ownEl, PointerKind.Owning)
+					: null;
+			
+			case "array" when arguments.Count == 2:
+			{
+				var elementType = TryResolveExpressionAsType(arguments[0]);
+				if (elementType is null)
+					return null;
+				
+				if (arguments[1] is not LiteralExpressionNode { Token: var token } ||
+				    token.Type != TokenType.IntegerLiteral)
+					return null;
+				
+				if (!BigInteger.TryParse(token.AsSpan(), out var length) || length < 0)
+					return null;
+				
+				return _typePool.GetArrayType(elementType, length);
+			}
+			
+			// TODO User-defined generic types
+			default:
+				return null;
+		}
+	}
+	
+	private TypeSymbol? TryResolveExpressionAsType(IExpressionNode expr)
+	{
+		switch (expr)
+		{
+			case VarExpressionNode varExpr:
+				return CurrentResolutionContext.Resolve(varExpr.Identifier.Text) as TypeSymbol;
+			
+			case IndexerExpressionNode indexerExpr:
+				return TryResolveIndexerAsGenericType(indexerExpr);
+			
+			case AccessExpressionNode:
+				// TODO Module-qualified or nested types
+				return null;
+			
+			default:
+				return null;
 		}
 	}
 	

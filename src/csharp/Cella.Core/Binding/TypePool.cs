@@ -36,8 +36,9 @@ public sealed class TypePool(TypeMemberTable memberTable, ConversionTable conver
 				break;
 		}
 		
-		// All pointers can be implicitly converted to ptr
+		// All pointers can be implicitly converted to ptr / explicitly converted from ptr
 		conversionTable.Add(new NativeConversion(ptrType, PointerType.VoidPtr, ConversionKind.Implicit, 0));
+		conversionTable.Add(new NativeConversion(PointerType.VoidPtr, ptrType, ConversionKind.Explicit, 0));
 		
 		return ptrType;
 	}

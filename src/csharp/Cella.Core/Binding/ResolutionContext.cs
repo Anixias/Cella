@@ -110,9 +110,6 @@ public readonly struct ResolutionContext
         "array" when node.Arguments.Length == 2
             => ResolveArrayType(node),
 
-        "ptr" when node.Arguments.Length == 0
-            => NativeSymbols.VoidPtr,
-
         "ptr" when node.Arguments.Length == 1
             => ResolvePointerType(node, PointerKind.Unsafe),
 
