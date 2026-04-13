@@ -14,6 +14,26 @@ public sealed class TypePool(TypeMemberTable memberTable, ConversionTable conver
 	private readonly Dictionary<TypeSymbol, ViewType> _viewTypes = [];
 	private readonly Dictionary<(TypeSymbol, PointerKind), PointerType> _pointerTypes = [];
 	
+	public TypeSymbol? ResolveBuiltinGenericType(string name, IReadOnlyList<IGenericArgument> typeArgs) => name switch
+	{
+		"ptr" when typeArgs.Count == 0 => NativeSymbols.VoidPtr,
+		"ptr" when typeArgs is [GenericTypeArgument { Type: { } t }] =>
+			GetPointerType(t, PointerKind.Unsafe),
+		"mut" when typeArgs is [GenericTypeArgument { Type: { } t }] =>
+			GetPointerType(t, PointerKind.Mutable),
+		"imm" when typeArgs is [GenericTypeArgument { Type: { } t }] =>
+			GetPointerType(t, PointerKind.Immutable),
+		"own" when typeArgs is [GenericTypeArgument { Type: { } t }] =>
+			GetPointerType(t, PointerKind.Owning),
+		"span" when typeArgs is [GenericTypeArgument { Type: { } t }] => GetSpanType(t),
+		"view" when typeArgs is [GenericTypeArgument { Type: { } t }] => GetViewType(t),
+		"array" when typeArgs is [GenericTypeArgument { Type: { } t }, GenericConstArgument { Value: var v }] =>
+			GetArrayType(t, v),
+		"array" when typeArgs is [GenericTypeArgument { Type: { } t }] =>
+			new ArrayType(t, BigInteger.MinusOne), // Don't use GetArrayType; we don't want to actually create it
+		_ => null
+	};
+	
 	public PointerType GetPointerType(TypeSymbol baseType, PointerKind kind)
 	{
 		var key = (baseType, kind);
@@ -95,3 +115,8 @@ public sealed class TypePool(TypeMemberTable memberTable, ConversionTable conver
 		return viewType;
 	}
 }
+
+public interface IGenericArgument;
+
+public sealed record GenericTypeArgument(TypeSymbol Type) : IGenericArgument;
+public sealed record GenericConstArgument(BigInteger Value) : IGenericArgument;

@@ -309,87 +309,39 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 			return null;
 		}
 		
-		var name = varExpr.Identifier.Text;
-		return TryResolveGenericType(name, node.Arguments);
+		return TryResolveGenericTypeFromExpressions(varExpr.Identifier.Text, node.Arguments);
 	}
 	
-	private TypeSymbol? TryResolveGenericType(string name, IReadOnlyList<IExpressionNode> arguments)
+	private TypeSymbol? TryResolveGenericTypeFromExpressions(string name, IReadOnlyList<IExpressionNode> arguments)
 	{
-		switch (name)
+		var typeArgs = new List<IGenericArgument>(arguments.Count);
+		
+		foreach (var arg in arguments)
 		{
-			case "span" when arguments.Count == 1:
-				return TryResolveExpressionAsType(arguments[0]) is { } spanEl
-					? _typePool.GetSpanType(spanEl)
-					: null;
-			
-			case "view" when arguments.Count == 1:
-				return TryResolveExpressionAsType(arguments[0]) is { } viewEl
-					? _typePool.GetViewType(viewEl)
-					: null;
-			
-			case "ptr" when arguments.Count == 0:
-				return NativeSymbols.VoidPtr;
-			
-			case "ptr" when arguments.Count == 1:
-				return TryResolveExpressionAsType(arguments[0]) is { } ptrEl
-					? _typePool.GetPointerType(ptrEl, PointerKind.Unsafe)
-					: null;
-			
-			case "mut" when arguments.Count == 1:
-				return TryResolveExpressionAsType(arguments[0]) is { } mutEl
-					? _typePool.GetPointerType(mutEl, PointerKind.Mutable)
-					: null;
-			
-			case "imm" when arguments.Count == 1:
-				return TryResolveExpressionAsType(arguments[0]) is { } immEl
-					? _typePool.GetPointerType(immEl, PointerKind.Immutable)
-					: null;
-			
-			case "own" when arguments.Count == 1:
-				return TryResolveExpressionAsType(arguments[0]) is { } ownEl
-					? _typePool.GetPointerType(ownEl, PointerKind.Owning)
-					: null;
-			
-			case "array" when arguments.Count == 2:
+			if (TryResolveExpressionAsType(arg) is { } typeArg)
 			{
-				var elementType = TryResolveExpressionAsType(arguments[0]);
-				if (elementType is null)
-					return null;
-				
-				if (arguments[1] is not LiteralExpressionNode { Token: var token } ||
-				    token.Type != TokenType.IntegerLiteral)
-					return null;
-				
-				if (!BigInteger.TryParse(token.AsSpan(), out var length) || length < 0)
-					return null;
-				
-				return _typePool.GetArrayType(elementType, length);
+				typeArgs.Add(new GenericTypeArgument(typeArg));
+				continue;
 			}
 			
-			// TODO User-defined generic types
-			default:
+			if (arg is not LiteralExpressionNode { Token: var token }
+			    || token.Type != TokenType.IntegerLiteral
+			    || !BigInteger.TryParse(token.AsSpan(), out var constVal))
 				return null;
+			
+			typeArgs.Add(new GenericConstArgument(constVal));
 		}
+		
+		return _typePool.ResolveBuiltinGenericType(name, typeArgs);
 	}
 	
-	private TypeSymbol? TryResolveExpressionAsType(IExpressionNode expr)
+	private TypeSymbol? TryResolveExpressionAsType(IExpressionNode expr) => expr switch
 	{
-		switch (expr)
-		{
-			case VarExpressionNode varExpr:
-				return CurrentResolutionContext.Resolve(varExpr.Identifier.Text) as TypeSymbol;
-			
-			case IndexerExpressionNode indexerExpr:
-				return TryResolveIndexerAsGenericType(indexerExpr);
-			
-			case AccessExpressionNode:
-				// TODO Module-qualified or nested types
-				return null;
-			
-			default:
-				return null;
-		}
-	}
+		VarExpressionNode varExpr => CurrentResolutionContext.Resolve(varExpr.Identifier.Text) as TypeSymbol,
+		IndexerExpressionNode indexerExpr => TryResolveIndexerAsGenericType(indexerExpr),
+		AccessExpressionNode => null, // TODO Module-qualified or nested types
+		_ => null
+	};
 	
 	public IResolvedNode Visit(IndexerExpressionNode node)
 	{
@@ -429,21 +381,65 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 	{
 		var values = new List<IResolvedExpressionNode>(node.Values.Length);
 		
-		TypeSymbol? elementType = null;
-		if (CurrentTargetType is ArrayType targetType)
-			elementType = targetType.ElementType;
+		var elementType = CurrentTargetType switch
+		{
+			ArrayType t => t.ElementType,
+			SpanType t => t.ElementType,
+			ViewType t => t.ElementType,
+			_ => null
+		};
 		
-		for (var i = 0; i < node.Values.Length; i++)
+		foreach (var expression in node.Values)
 		{
 			_targetTypes.Push(elementType);
-			var value = VisitNode(node.Values[i]);
+			var value = VisitNode(expression);
 			_targetTypes.Pop();
-			
 			values.Add(value);
-			elementType ??= value.Type;
 		}
 		
-		elementType ??= NativeSymbols.Invalid;
+		if (values.Count == 0)
+		{
+			elementType ??= NativeSymbols.Invalid;
+		}
+		else if (elementType is not null)
+		{
+			for (var i = 0; i < values.Count; i++)
+				values[i] = CoerceToType(values[i], elementType);
+		}
+		else
+		{
+			// Materialize untyped integer values left to right
+			for (var i = 0; i < values.Count - 1; i++)
+			{
+				values[i] = MaterializeWithPeer(values[i], values[i + 1].Type);
+				values[i + 1] = MaterializeWithPeer(values[i + 1], values[i].Type);
+			}
+			
+			// Propagate materialized values back right to left
+			for (var i = values.Count - 1; i > 0; i--)
+			{
+				values[i] = MaterializeWithPeer(values[i], values[i - 1].Type);
+				values[i - 1] = MaterializeWithPeer(values[i - 1], values[i].Type);
+			}
+			
+			for (var i = 0; i < values.Count; i++)
+				values[i] = MaterializeAsDefault(values[i]);
+			
+			elementType = values[0].Type;
+			for (var i = 1; i < values.Count; i++)
+			{
+				elementType = FindCommonType(elementType, values[i].Type);
+				if (elementType is not null)
+					continue;
+				
+				// TODO Diagnostic: incompatible element types
+				elementType = NativeSymbols.Invalid;
+				break;
+			}
+			
+			for (var i = 0; i < values.Count; i++)
+				values[i] = CoerceToType(values[i], elementType);
+		}
 		
 		var type = _typePool.GetArrayType(elementType, node.Values.Length);
 		return new ResolvedArrayExpressionNode(type, values);
@@ -531,11 +527,18 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 			
 			initializer = MaterializeAsDefault(initializer);
 			
-			if (type is not null)
+			if (type is ArrayType a && a.Length < 0 && initializer.Type is ArrayType)
+				type = initializer.Type;
+			else if (type is not null)
 				initializer = CoerceToType(initializer, type);
 		}
 		else
+		{
 			initializer = null;
+			
+			if (type is ArrayType a && a.Length < 0)
+				throw new Exception("Unsized array type requires an initializer");
+		}
 		
 		type ??= initializer?.Type ?? NativeSymbols.Invalid;
 		
@@ -685,8 +688,8 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 			var right = VisitNode(node.Right);
 			_targetTypes.Pop();
 			
-			left = MaterializeBinaryOperand(left, right.Type);
-			right = MaterializeBinaryOperand(right, left.Type);
+			left = MaterializeWithPeer(left, right.Type);
+			right = MaterializeWithPeer(right, left.Type);
 			
 			var resolutionSet = _operatorRegistry.ResolveBinary(left.Type, op.Type, right.Type);
 			if (resolutionSet.IsAmbiguous)
@@ -742,15 +745,15 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 		// Materialize untyped integer operands left to right
 		for (var i = 0; i < operands.Count - 1; i++)
 		{
-			operands[i] = MaterializeBinaryOperand(operands[i], operands[i + 1].Type);
-			operands[i + 1] = MaterializeBinaryOperand(operands[i + 1], operands[i].Type);
+			operands[i] = MaterializeWithPeer(operands[i], operands[i + 1].Type);
+			operands[i + 1] = MaterializeWithPeer(operands[i + 1], operands[i].Type);
 		}
 		
 		// Propagate materialized operands back right to left
 		for (var i = operands.Count - 1; i > 0; i--)
 		{
-			operands[i] = MaterializeBinaryOperand(operands[i], operands[i - 1].Type);
-			operands[i - 1] = MaterializeBinaryOperand(operands[i - 1], operands[i].Type);
+			operands[i] = MaterializeWithPeer(operands[i], operands[i - 1].Type);
+			operands[i - 1] = MaterializeWithPeer(operands[i - 1], operands[i].Type);
 		}
 		
 		TypeSymbol? prevType = null;
@@ -953,7 +956,7 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 		}
 	}
 	
-	private IResolvedExpressionNode MaterializeBinaryOperand(IResolvedExpressionNode operand, TypeSymbol peerType)
+	private IResolvedExpressionNode MaterializeWithPeer(IResolvedExpressionNode operand, TypeSymbol peerType)
 	{
 		// Only care about untyped integer literals
 		if (operand is not ResolvedLiteralExpressionNode { Type: UntypedIntegerType } literal)

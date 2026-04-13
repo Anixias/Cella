@@ -99,64 +99,26 @@ public readonly struct ResolutionContext
         _ => null
     };
     
-    private TypeSymbol ResolveGenericType(GenericTypeNode node) => node.Identifier.Text switch
+    private TypeSymbol ResolveGenericType(GenericTypeNode node)
     {
-        "span" when node.Arguments.Length == 1
-            => ResolveSpanType(node),
-        
-        "view" when node.Arguments.Length == 1
-            => ResolveViewType(node),
-
-        "array" when node.Arguments.Length == 2
-            => ResolveArrayType(node),
-
-        "ptr" when node.Arguments.Length == 1
-            => ResolvePointerType(node, PointerKind.Unsafe),
-
-        "mut" when node.Arguments.Length == 1
-            => ResolvePointerType(node, PointerKind.Mutable),
-
-        "imm" when node.Arguments.Length == 1
-            => ResolvePointerType(node, PointerKind.Immutable),
-
-        "own" when node.Arguments.Length == 1
-            => ResolvePointerType(node, PointerKind.Owning),
-
-        _ => NativeSymbols.Invalid
-    };
-    
-    private TypeSymbol ResolvePointerType(GenericTypeNode node, PointerKind kind)
-    {
-	    var elementType = ResolveTypeArgument(node.Arguments[0]);
-	    return elementType == NativeSymbols.Invalid
-		    ? NativeSymbols.Invalid
-		    : TypePool.GetPointerType(elementType, kind);
-    }
-    
-    private TypeSymbol ResolveSpanType(GenericTypeNode node)
-    {
-        var elementType = ResolveTypeArgument(node.Arguments[0]);
-        return elementType == NativeSymbols.Invalid
-            ? NativeSymbols.Invalid
-            : TypePool.GetSpanType(elementType);
-    }
-    
-    private TypeSymbol ResolveViewType(GenericTypeNode node)
-    {
-        var elementType = ResolveTypeArgument(node.Arguments[0]);
-        return elementType == NativeSymbols.Invalid
-            ? NativeSymbols.Invalid
-            : TypePool.GetViewType(elementType);
-    }
-    
-    private TypeSymbol ResolveArrayType(GenericTypeNode node)
-    {
-        var elementType = ResolveTypeArgument(node.Arguments[0]);
-        var length = ResolveConstIntArgument(node.Arguments[1]);
-
-        if (elementType == NativeSymbols.Invalid || length is null || length.Value < 0)
-            return NativeSymbols.Invalid;
-
-        return TypePool.GetArrayType(elementType, length.Value);
+	    var typeArgs = new List<IGenericArgument>(node.Arguments.Length);
+	    
+	    foreach (var arg in node.Arguments)
+	    {
+		    var typeArg = ResolveTypeArgument(arg);
+		    if (typeArg != NativeSymbols.Invalid)
+		    {
+			    typeArgs.Add(new GenericTypeArgument(typeArg));
+			    continue;
+		    }
+		    
+		    if (ResolveConstIntArgument(arg) is not { } constVal)
+			    return NativeSymbols.Invalid;
+		    
+		    typeArgs.Add(new GenericConstArgument(constVal));
+	    }
+	    
+	    return TypePool.ResolveBuiltinGenericType(node.Identifier.Text, typeArgs.ToArray())
+	           ?? NativeSymbols.Invalid;
     }
 }
