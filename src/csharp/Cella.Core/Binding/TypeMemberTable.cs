@@ -33,6 +33,14 @@ public sealed class TypeMemberTable
 		Register(type, length);
 	}
 	
+	public void CreateBufferMembers(BufferType type)
+	{
+		var length = new FieldSymbol("length", NativeSymbols.UIntSize, false);
+		Register(type, length);
+		var data = new FieldSymbol("data", new PointerType(type.ElementType, PointerKind.Owning), false);
+		Register(type, data);
+	}
+	
 	public void CreateSpanMembers(SpanType type)
 	{
 		var length = new FieldSymbol("length", NativeSymbols.UIntSize, false);

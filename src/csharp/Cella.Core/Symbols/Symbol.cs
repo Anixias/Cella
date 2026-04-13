@@ -168,6 +168,13 @@ public sealed class ArrayType(TypeSymbol elementType, BigInteger length)
 	public override ISize Size { get; } = StorageSize.Product(elementType.Size, length);
 }
 
+public sealed class BufferType(TypeSymbol elementType) : TypeSymbol($"buffer[{elementType.Name}]"), IPrimitiveType
+{
+	public TypeSymbol ElementType { get; } = elementType;
+	public PrimitiveTypeKind Kind { get; } = PrimitiveTypeKind.Buffer;
+	public override ISize Size { get; } = StorageSize.Sum(NativeSymbols.UIntSize.Size, StorageSize.Ptr);
+}
+
 public sealed class SpanType(TypeSymbol elementType) : TypeSymbol($"span[{elementType.Name}]"), IPrimitiveType
 {
 	public TypeSymbol ElementType { get; } = elementType;
@@ -178,7 +185,7 @@ public sealed class SpanType(TypeSymbol elementType) : TypeSymbol($"span[{elemen
 public sealed class ViewType(TypeSymbol elementType) : TypeSymbol($"view[{elementType.Name}]"), IPrimitiveType
 {
 	public TypeSymbol ElementType { get; } = elementType;
-	public PrimitiveTypeKind Kind { get; } = PrimitiveTypeKind.Span;
+	public PrimitiveTypeKind Kind { get; } = PrimitiveTypeKind.View;
 	public override ISize Size { get; } = StorageSize.Sum(NativeSymbols.UIntSize.Size, StorageSize.Ptr);
 }
 

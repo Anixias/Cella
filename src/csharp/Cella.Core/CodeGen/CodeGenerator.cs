@@ -167,6 +167,16 @@ public sealed unsafe class CodeGenerator : IDisposable
 				return llvmArray;
 			}
 			
+			case BufferType bufferType:
+			{
+				var elementType = MapTypeSymbol(bufferType.ElementType);
+				var usizeType = LLVMTypeRef.CreateInt(_pointerSize * 8);
+				var ptrType = LLVMTypeRef.CreatePointer(elementType, 0u);
+				var llvmBuffer = LLVMTypeRef.CreateStruct([usizeType, ptrType], false);
+				_typeMap[symbol] = llvmBuffer;
+				return llvmBuffer;
+			}
+			
 			case SpanType spanType:
 			{
 				var elementType = MapTypeSymbol(spanType.ElementType);
@@ -411,6 +421,34 @@ public sealed unsafe class CodeGenerator : IDisposable
 		if (c.From is ArrayType arrayType)
 		{
 			var llvmArrayType = MapTypeSymbol(arrayType);
+			
+			// Array -> Buffer
+			if (c.To is BufferType bufferType)
+			{
+				// TODO This will probably crash for an empty array (and the InBounds would be incorrect?)
+				var lengthValue = EmitSizeConstant(arrayType.Length, true);
+				
+				var zero = LLVMValueRef.CreateConstInt(LLVMTypeRef.Int32, 0);
+				LLVMValueRef dataPtr;
+				if (IsAddressable(v.Source))
+				{
+					var arrayPtr = EmitAddress(v.Source, builder);
+					dataPtr = builder.BuildInBoundsGEP2(llvmArrayType, arrayPtr, new[] { zero, zero }, "data");
+				}
+				else
+				{
+					// Trying to convert literal into span, need to implicitly stack-allocate literal array
+					var arrayPtr = builder.BuildAlloca(llvmArrayType, "array");
+					builder.BuildStore(source, arrayPtr);
+					dataPtr = builder.BuildInBoundsGEP2(llvmArrayType, arrayPtr, new[] { zero, zero }, "data");
+				}
+				
+				var llvmSpanType = MapTypeSymbol(bufferType);
+				var bufferValue = llvmSpanType.Undef;
+				bufferValue = builder.BuildInsertValue(bufferValue, lengthValue, 0, "buffer.length");
+				bufferValue = builder.BuildInsertValue(bufferValue, dataPtr, 1, "buffer.ptr");
+				return bufferValue;
+			}
 			
 			// Array -> Span
 			if (c.To is SpanType spanType)

@@ -10,6 +10,7 @@ public sealed class TypePool(TypeMemberTable memberTable, ConversionTable conver
 	OperatorRegistry operatorRegistry)
 {
 	private readonly Dictionary<(TypeSymbol, BigInteger), ArrayType> _arrayTypes = [];
+	private readonly Dictionary<TypeSymbol, BufferType> _bufferTypes = [];
 	private readonly Dictionary<TypeSymbol, SpanType> _spanTypes = [];
 	private readonly Dictionary<TypeSymbol, ViewType> _viewTypes = [];
 	private readonly Dictionary<(TypeSymbol, PointerKind), PointerType> _pointerTypes = [];
@@ -25,6 +26,7 @@ public sealed class TypePool(TypeMemberTable memberTable, ConversionTable conver
 			GetPointerType(t, PointerKind.Immutable),
 		"own" when typeArgs is [GenericTypeArgument { Type: { } t }] =>
 			GetPointerType(t, PointerKind.Owning),
+		"buffer" when typeArgs is [GenericTypeArgument { Type: { } t }] => GetBufferType(t),
 		"span" when typeArgs is [GenericTypeArgument { Type: { } t }] => GetSpanType(t),
 		"view" when typeArgs is [GenericTypeArgument { Type: { } t }] => GetViewType(t),
 		"array" when typeArgs is [GenericTypeArgument { Type: { } t }, GenericConstArgument { Value: var v }] =>
@@ -73,6 +75,10 @@ public sealed class TypePool(TypeMemberTable memberTable, ConversionTable conver
 		_arrayTypes[key] = arrayType;
 		memberTable.CreateArrayMembers(arrayType);
 		
+		// To buffer
+		var bufferType = GetBufferType(elementType);
+		conversionTable.Add(new NativeConversion(arrayType, bufferType, ConversionKind.Implicit, 1));
+		
 		// To span
 		var spanType = GetSpanType(elementType);
 		conversionTable.Add(new NativeConversion(arrayType, spanType, ConversionKind.Implicit, 1));
@@ -86,6 +92,26 @@ public sealed class TypePool(TypeMemberTable memberTable, ConversionTable conver
 		operatorRegistry.CreateUnary(TokenType.OpAt, arrayType, new NativeImpl(TokenType.OpAt, ptrType));
 		
 		return arrayType;
+	}
+	
+	public BufferType GetBufferType(TypeSymbol elementType)
+	{
+		if (_bufferTypes.TryGetValue(elementType, out var existing))
+			return existing;
+		
+		var bufferType = new BufferType(elementType);
+		_bufferTypes[elementType] = bufferType;
+		memberTable.CreateBufferMembers(bufferType);
+		
+		// To span
+		var spanType = GetSpanType(elementType);
+		conversionTable.Add(new NativeConversion(bufferType, spanType, ConversionKind.Implicit, 1));
+		
+		// To view
+		var viewType = GetViewType(elementType);
+		conversionTable.Add(new NativeConversion(bufferType, viewType, ConversionKind.Implicit, 1));
+		
+		return bufferType;
 	}
 	
 	public SpanType GetSpanType(TypeSymbol elementType)

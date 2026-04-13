@@ -16,6 +16,7 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 		TokenType.KeywordTrue,
 		TokenType.KeywordFalse,
 		TokenType.KeywordNull,
+		TokenType.KeywordUndef,
 		TokenType.IntegerLiteral,
 		TokenType.StringLiteral
 	];
