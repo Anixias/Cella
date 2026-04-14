@@ -23,9 +23,9 @@ public sealed record Diagnostic
 		SourceLocation = sourceLocation;
 		Message = message;
 		
-		if (sourceLocation.Range.IsEmpty)
+		if (!sourceLocation.Range.IsValid)
 		{
-			Line = 0;
+			Line = int.MaxValue;
 			Column = 0;
 			return;
 		}

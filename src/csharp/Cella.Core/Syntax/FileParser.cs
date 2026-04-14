@@ -118,14 +118,47 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName) : 
 					continue;
 				}
 				
-				// Unknown declaration, cannot resync
+				// Unknown declaration
 				Report(Tokens[index], "Unknown declaration type");
-				break;
+				
+				// Skip until another identifier is encountered. If we encounter braces, keep skipping until closed
+				index++;
+				var braceCount = 0;
+				var loop = true;
+				while (loop && !AtEnd(index))
+				{
+					switch (Tokens[index].Type)
+					{
+						case TokenType.OpOpenBrace:
+							braceCount++;
+							index++;
+							break;
+						
+						case TokenType.OpCloseBrace:
+							braceCount--;
+							index++;
+							break;
+						
+						case TokenType.Identifier:
+							if (braceCount > 0)
+								index++;
+							else
+								loop = false;
+							
+							break;
+						
+						default:
+							index++;
+							break;
+					}
+				}
+				
+				continue;
 			}
 			
 			// Unexpected token, cannot resync
 			Report(Tokens[index], "Unexpected token");
-			break;
+			return null;
 		}
 		
 		if (moduleName == default)
@@ -141,9 +174,12 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName) : 
 		// Must read EOF at end
 		if (!Match(ref index, TokenType.EndOfFile))
 		{
-			Report(Tokens[^1], "Expected end of file");
+			Report(Tokens[index], "Expected end of file");
 			return null;
 		}
+		
+		if (Diagnostics.ErrorCount > 0)
+			return null;
 		
 		return new FileNode(new(source, range))
 		{
