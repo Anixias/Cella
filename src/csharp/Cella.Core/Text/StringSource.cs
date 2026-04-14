@@ -73,34 +73,20 @@ public sealed class StringSource : ISource
 		if (position < 0 || position > _text.Length)
 			return (0, 0);
 		
-		var line = 1;
-		var column = 1;
+		var low = 0;
+		var high = _lines.Length - 1;
 		
-		for (var i = 0; i < position; i++)
+		while (low < high)
 		{
-			switch (_text[i])
-			{
-				case '\n':
-					line++;
-					column = 1;
-					break;
-				
-				case '\r':
-				{
-					if (i + 1 < _text.Length && _text[i + 1] == '\n')
-						i++;
-					
-					line++;
-					column = 1;
-					break;
-				}
-				
-				default:
-					column++;
-					break;
-			}
+			var mid = (low + high) / 2;
+			if (_lines[mid].End < position)
+				low = mid + 1;
+			else
+				high = mid;
 		}
 		
+		var line = low + 1;
+		var column = position - _lines[low].Start + 1;
 		return (line, column);
 	}
 	

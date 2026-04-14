@@ -43,6 +43,7 @@ public enum TokenType
 	KeywordUse,
 	KeywordPub,
 	KeywordExt,
+	KeywordRec,
 	
 	// Operators
 	OpDotDotEqual,
@@ -92,7 +93,6 @@ public static class TokenTypeInfo
 		bool IsInvalid = false,
 		bool IsKeyword = false,
 		bool IsContextual = false,
-		bool IsIdentifier = false,
 		bool IsOperator = false,
 		bool IsLiteral = false,
 		bool IsFiltered = false
@@ -108,7 +108,7 @@ public static class TokenTypeInfo
 		{
 			[TokenType.EndOfFile] = new("end of file", IsInvalid: true),
 			[TokenType.Invalid] = new("invalid", IsInvalid: true),
-			[TokenType.Identifier] = new("identifier", IsIdentifier: true),
+			[TokenType.Identifier] = new("identifier"),
 			
 			[TokenType.Whitespace] = new("whitespace", IsFiltered: true),
 			[TokenType.Newline] = new("newline", IsFiltered: true),
@@ -139,6 +139,7 @@ public static class TokenTypeInfo
 			[TokenType.KeywordUse] = new("use", IsKeyword: true, IsContextual: true),
 			[TokenType.KeywordPub] = new("pub", IsKeyword: true, IsContextual: true),
 			[TokenType.KeywordExt] = new("ext", IsKeyword: true, IsContextual: true),
+			[TokenType.KeywordRec] = new("ext", IsKeyword: true, IsContextual: true),
 			
 			[TokenType.OpDotDotEqual] = new("..=", IsOperator: true),
 			[TokenType.OpDotDot] = new("..", IsOperator: true),
@@ -198,7 +199,6 @@ public static class TokenTypeInfo
 		public bool IsInvalid => _metadata[t].IsInvalid;
 		public bool IsKeyword => _metadata[t].IsKeyword;
 		public bool IsContextual => _metadata[t].IsContextual;
-		public bool IsIdentifier => _metadata[t].IsIdentifier;
 		public bool IsOperator => _metadata[t].IsOperator;
 		public bool IsLiteral => _metadata[t].IsLiteral;
 		public bool IsFiltered => _metadata[t].IsFiltered;

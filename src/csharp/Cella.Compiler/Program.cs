@@ -1,5 +1,6 @@
 ﻿using System.Collections.Concurrent;
 using System.Collections.Immutable;
+using System.Text;
 using Cella.Compiler.Linking;
 using Cella.Compiler.Projects;
 using Cella.Core.Analysis;
@@ -13,6 +14,7 @@ using Cella.Core.Symbols;
 using Cella.Core.Syntax;
 using Cella.Core.Syntax.Nodes;
 using Cella.Core.Text;
+using Cella.Diagnostics;
 
 namespace Cella.Compiler;
 
@@ -306,7 +308,8 @@ internal static class Program
 		return new(assemblySymbol, outputType, outputPath);
 	}
 	
-	private static async Task<ImmutableArray<SourceFileInfo>> ProcessProject(ProjectInfo project, CancellationToken ct = default)
+	private static async Task<ImmutableArray<SourceFileInfo>> ProcessProject(ProjectInfo project,
+		CancellationToken ct = default)
 	{
 		var files = new ConcurrentBag<SourceFileInfo>();
 		var filePaths = CellaProject.FindSourceFiles(project.Directory);
@@ -336,12 +339,18 @@ internal static class Program
 			var ast = parser.Parse();
 			ct.ThrowIfCancellationRequested();
 			
-			// TODO Make opt-in via CLI flags
-			Console.WriteLine($"\n====== {fileName} ======");
-			Console.WriteLine(ast is null ? "Failed to parse." : AstPrinter.Print(ast));
-			
-			if (ast is not null)
+			if (ast is null)
+			{
+				Console.WriteLine($"\n====== {fileName} ======");
+				foreach (var error in parser.Diagnostics.Errors)
+					PrintDiagnostic(error);
+			}
+			else
+			{
+				// TODO Make opt-in via CLI flags
+				Console.WriteLine(AstPrinter.Print(ast));
 				files.Add(new(sourcePath, ast, source));
+			}
 		}
 		
 		return files.ToImmutableArray();
@@ -382,6 +391,201 @@ internal static class Program
 		},
 		_ => null
 	};
+	
+	private const int TabWidth = 4;
+	
+	private static void PrintDiagnostic(Diagnostic diagnostic)
+	{
+		var severity = diagnostic.Severity;
+		var (source, range) = diagnostic.SourceLocation;
+		
+		if (!range.IsValid)
+		{
+			var sourceLength = source.Length;
+			var pos = sourceLength > 0 ? sourceLength - 1 : 0;
+			range = new(pos, pos + 1);
+		}
+		
+		var (severityColor, severityLabel) = severity switch
+		{
+			DiagnosticSeverity.Error => (ConsoleColor.Red, "Error"),
+			DiagnosticSeverity.Warning => (ConsoleColor.Yellow, "Warning"),
+			DiagnosticSeverity.Hint => (ConsoleColor.Green, "Hint"),
+			_ => (ConsoleColor.Gray, "Info")
+		};
+		
+		var (startLine, startCol) = source.GetLineColumn(range.Start);
+		var (endLine, endCol) = source.GetLineColumn(range.End);
+		
+		var firstDisplayLine = Math.Max(1, startLine - 1);
+		var gutterWidth = endLine.ToString().Length;
+		
+		var lineNumbers = Enumerable.Range(firstDisplayLine, endLine - firstDisplayLine + 1).ToList();
+		var rawLines = lineNumbers.Select(n => source.GetText(source.GetLineRange(n)).ToString()).ToList();
+		
+		var commonLeading = rawLines
+			.Where(static l => l.Any(static c => !char.IsWhiteSpace(c)))
+			.Select(LeadingVisualWidth)
+			.DefaultIfEmpty(0)
+			.Min();
+		
+		var strippedLines = rawLines
+			.Select(l => StripLeading(l, commonLeading))
+			.Select(static r => r.OvershootSpaces > 0 ? new string(' ', r.OvershootSpaces) + r.Text : r.Text)
+			.ToList();
+		
+		WriteColored($"{severityLabel}", severityColor);
+		Console.WriteLine($" at line {startLine}, column {startCol}");
+		
+		for (var i = 0; i < lineNumbers.Count; i++)
+		{
+			var lineNum = lineNumbers[i];
+			var stripped = strippedLines[i];
+			var isPreceding = lineNum < startLine;
+			
+			WriteColored(
+				$"{lineNum.ToString().PadLeft(gutterWidth)} │ ",
+				isPreceding ? ConsoleColor.DarkGray : severityColor);
+			
+			if (isPreceding)
+			{
+				WriteColored(ExpandTabs(stripped), ConsoleColor.DarkGray);
+				Console.WriteLine();
+				continue;
+			}
+			
+			var rawLine = rawLines[i];
+			var hlVisStart = lineNum == startLine
+				? Math.Max(0, VisualColumn(rawLine, startCol - 1) - commonLeading)
+				: 0;
+			
+			var hlVisEnd = lineNum == endLine
+				? Math.Max(0, VisualColumn(rawLine, endCol - 1) - commonLeading)
+				: VisualColumn(stripped, stripped.Length);
+			
+			var lineVisLen = VisualColumn(stripped, stripped.Length);
+			hlVisStart = Math.Clamp(hlVisStart, 0, lineVisLen);
+			hlVisEnd = Math.Clamp(hlVisEnd, 0, lineVisLen);
+			
+			var visualCol = 0;
+			foreach (var ch in stripped)
+			{
+				var expanded = ch == '\t' ? new string(' ', TabWidth - visualCol % TabWidth) : ch.ToString();
+				var charVisWidth = expanded.Length;
+				var inHighlight = visualCol >= hlVisStart && visualCol < hlVisEnd;
+				
+				if (inHighlight)
+					WriteColored(expanded, severityColor);
+				else
+					Console.Write(expanded);
+				
+				visualCol += charVisWidth;
+			}
+			
+			Console.WriteLine();
+			
+			WriteColored($"{new string(' ', gutterWidth)}   ", ConsoleColor.DarkGray);
+			Console.Write(new string(' ', hlVisStart));
+			
+			var arrowCount = Math.Max(0, hlVisEnd - hlVisStart);
+			var arrowLine = arrowCount switch
+			{
+				> 2 => '╘' + new string('═', arrowCount - 2) + "╛ ",
+				2 => "╘╛ ",
+				_ => "^ "
+			};
+			
+			WriteColored(arrowLine, severityColor);
+			WriteColored(diagnostic.Message, severityColor);
+			Console.WriteLine();
+			Console.WriteLine();
+		}
+	}
+	
+	private static int LeadingVisualWidth(string line)
+	{
+		var col = 0;
+		foreach (var ch in line)
+		{
+			if (ch == ' ')
+				col++;
+			else if (ch == '\t')
+				col += TabWidth - col % TabWidth;
+			else
+				break;
+		}
+		
+		return col;
+	}
+	
+	private static (string Text, int OvershootSpaces) StripLeading(string line, int targetVisualColumns)
+	{
+		var col = 0;
+		var i = 0;
+		while (i < line.Length && col < targetVisualColumns)
+		{
+			if (line[i] == ' ')
+			{
+				col++;
+				i++;
+			}
+			else if (line[i] == '\t')
+			{
+				var tabStop = TabWidth - col % TabWidth;
+				if (col + tabStop > targetVisualColumns)
+				{
+					i++;
+					var overshoot = col + tabStop - targetVisualColumns;
+					return (line[i..], overshoot);
+				}
+				
+				col += tabStop;
+				i++;
+			}
+			else break;
+		}
+		
+		return (line[i..], 0);
+	}
+	
+	private static int VisualColumn(string text, int charIndex)
+	{
+		var col = 0;
+		for (var i = 0; i < charIndex && i < text.Length; i++)
+			col += text[i] == '\t' ? TabWidth - col % TabWidth : 1;
+		
+		return col;
+	}
+	
+	private static string ExpandTabs(string text)
+	{
+		var sb = new StringBuilder(text.Length);
+		var col = 0;
+		foreach (var c in text)
+		{
+			if (c == '\t')
+			{
+				var spaces = TabWidth - col % TabWidth;
+				sb.Append(' ', spaces);
+				col += spaces;
+			}
+			else
+			{
+				sb.Append(c);
+				col++;
+			}
+		}
+		
+		return sb.ToString();
+	}
+	
+	private static void WriteColored(string text, ConsoleColor color)
+	{
+		var prev = Console.ForegroundColor;
+		Console.ForegroundColor = color;
+		Console.Write(text);
+		Console.ForegroundColor = prev;
+	}
 }
 
 internal readonly record struct ProjectInfo

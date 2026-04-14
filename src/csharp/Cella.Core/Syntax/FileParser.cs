@@ -1,6 +1,7 @@
 ﻿using System.Collections.Immutable;
 using Cella.Core.Syntax.Nodes;
 using Cella.Core.Text;
+using Cella.Diagnostics;
 
 namespace Cella.Core.Syntax;
 
@@ -15,11 +16,25 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName) : 
 	private static Dictionary<string, TokenType> BuildContextualKeywords(params IEnumerable<TokenType> tokenTypes) =>
 		tokenTypes.ToDictionary(static t => t.Representation);
 	
+	public DiagnosticList Diagnostics { get; } = new();
+	
+	private void Report(SourceLocation location, string message,
+		DiagnosticSeverity severity = DiagnosticSeverity.Error) =>
+		Diagnostics.Add(new(severity, location, message));
+	
+	private void Report(Token token, string message, DiagnosticSeverity severity = DiagnosticSeverity.Error) =>
+		Diagnostics.Add(new(severity, token.SourceLocation, message));
+	
+	private void Report(string message, DiagnosticSeverity severity = DiagnosticSeverity.Error) =>
+		Diagnostics.Add(new(severity, new(Tokens[0].SourceLocation.Source, TextRange.Empty), message));
+	
 	public override FileNode? Parse(ref int index)
 	{
 		if (Tokens.Length == 0)
-			// @TODO Diagnostic
+		{
+			Report("Cannot parse empty file");
 			return null;
+		}
 		
 		// Setup
 		var (source, range) = Tokens[0].SourceLocation;
@@ -42,7 +57,7 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName) : 
 				}
 				catch (Exception e)
 				{
-					// TODO Diagnostics
+					Report(moduleName.SourceLocation, $"Failed to parse module name: {e.Message}");
 				}
 				
 				if (moduleNameAllowed)
@@ -50,15 +65,20 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName) : 
 					moduleNameAllowed = false;
 					importsAllowed = true;
 				}
-				// TODO else Diagnostics
+				else
+				{
+					Report(moduleName.SourceLocation, "Module name must precede all other declarations or imports");
+					continue;
+				}
 			}
 			
 			// Parse imports
-			if (Match(ref index, _topLevelContextualKeywords, TokenType.KeywordUse))
+			if (Match(ref index, out var useToken, _topLevelContextualKeywords, TokenType.KeywordUse))
 			{
 				imports.Add(ParseImportExpression(ref index));
 				
-				// TODO if (!importsAllowed) Diagnostics
+				if (!importsAllowed)
+					Report(useToken, "Imports must precede all other declarations");
 				
 				continue;
 			}
@@ -76,9 +96,10 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName) : 
 			{
 				importsAllowed = false;
 				
+				var colonIndex = index;
 				if (!Consume(ref index, _topLevelSyncTypes, TokenType.OpColon))
 				{
-					// @TODO Diagnostic: Expected identifier
+					Report(Tokens[colonIndex], "Expected ':' after identifier");
 					continue;
 				}
 				
@@ -98,18 +119,20 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName) : 
 				}
 				
 				// Unknown declaration, cannot resync
-				// @TODO Emit error
+				Report(Tokens[index], "Unknown declaration type");
 				break;
 			}
 			
 			// Unexpected token, cannot resync
-			// @TODO Emit error
+			Report(Tokens[index], "Unexpected token");
 			break;
 		}
 		
 		if (moduleName == default)
-			// @TODO Diagnostic: File must have a module name -> Semantic analysis
+		{
+			Report("All files must begin with a module name (mod a.b.c)");
 			return null;
+		}
 		
 		// Combine range to include penultimate token (because last must be EOF)
 		if (index > 1)
@@ -117,8 +140,10 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName) : 
 		
 		// Must read EOF at end
 		if (!Match(ref index, TokenType.EndOfFile))
-			// @TODO Diagnostic: Error during parsing
+		{
+			Report(Tokens[^1], "Expected end of file");
 			return null;
+		}
 		
 		return new FileNode(new(source, range))
 		{
