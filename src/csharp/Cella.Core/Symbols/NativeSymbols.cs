@@ -69,44 +69,32 @@ public static class StorageSize
 	public static PointerSize Ptr => default;
 	public static ConstSize Const(int bytes) => new(bytes);
 	public static SumSize Sum(params IEnumerable<ISize> sizes) => new(sizes);
+	public static MaxSize Max(params IEnumerable<ISize> sizes) => new(sizes);
 	public static ProductSize Product(ISize size, BigInteger count) => new(size, count);
 	
-	public static uint CountBits(ISize size, uint pointerSize)
+	public static uint CountBits(ISize size, uint pointerSize) => size switch
 	{
-		var result = 0u;
-		
-		switch (size)
-		{
-			case ConstSize s:
-				result += (uint)s.Value * 8;
-				break;
-			
-			case PointerSize:
-				result += pointerSize;
-				break;
-			
-			case SumSize s:
-				result += (uint)s.Sizes.Sum(s => CountBits(s, pointerSize));
-				break;
-			
-			case ProductSize s:
-				result += (uint)(s.Count * CountBits(s.Size, pointerSize));
-				break;
-		}
-		
-		return result;
-	}
+		ConstSize s => (uint)s.Value * 8,
+		PointerSize => pointerSize,
+		SumSize s => (uint)s.Sizes.Sum(s => CountBits(s, pointerSize)),
+		MaxSize s => s.Sizes.Max(s => CountBits(s, pointerSize)),
+		ProductSize s => (uint)(s.Count * CountBits(s.Size, pointerSize)),
+		_ => 0u
+	};
 }
 
 public readonly record struct ConstSize(int Value) : ISize;
 public readonly record struct PointerSize : ISize;
+public readonly record struct ProductSize(ISize Size, BigInteger Count) : ISize;
+
 public readonly record struct SumSize : ISize
 {
 	public ImmutableArray<ISize> Sizes { get; init; }
-	
-	public SumSize(IEnumerable<ISize> sizes)
-	{
-		Sizes = sizes.ToImmutableArray();
-	}
+	public SumSize(IEnumerable<ISize> sizes) => Sizes = sizes.ToImmutableArray();
 }
-public readonly record struct ProductSize(ISize Size, BigInteger Count) : ISize;
+
+public readonly record struct MaxSize : ISize
+{
+	public ImmutableArray<ISize> Sizes { get; init; }
+	public MaxSize(IEnumerable<ISize> sizes) => Sizes = sizes.ToImmutableArray();
+}
