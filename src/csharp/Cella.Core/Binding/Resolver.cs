@@ -125,7 +125,6 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 		return new ResolvedExternalFunctionNode(info);
 	}
 	
-	
 	public IResolvedNode Visit(GenericTypeNode node) => throw new InvalidOperationException();
 	public IResolvedNode Visit(IdentifierTypeNode node) => throw new InvalidOperationException();
 	public IResolvedNode Visit(ParameterNode node) => throw new InvalidOperationException();
@@ -199,7 +198,7 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 		}
 		else
 			labelSymbol = null;
-
+		
 		return new ResolvedContinueStatementNode(labelSymbol);
 	}
 	
@@ -324,8 +323,7 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 				continue;
 			}
 			
-			if (arg is not LiteralExpressionNode { Token: var token }
-			    || token.Type != TokenType.IntegerLiteral
+			if (arg is not LiteralExpressionNode { Token: { Type: TokenType.IntegerLiteral } token }
 			    || !BigInteger.TryParse(token.AsSpan(), out var constVal))
 				return null;
 			
@@ -707,6 +705,7 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 			{
 				if (left.Type is UntypedType)
 					left = MaterializeAsDefault(left);
+				
 				if (right.Type is UntypedType)
 					right = MaterializeAsDefault(right);
 				
@@ -724,6 +723,7 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 			
 			if (resolution.LeftConversion is { } leftConversion)
 				left = new ResolvedConversionExpressionNode(left, leftConversion);
+			
 			if (resolution.RightConversion is { } rightConversion)
 				right = new ResolvedConversionExpressionNode(right, rightConversion);
 			
@@ -877,7 +877,8 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 					break;
 				
 				case PrimitiveTypeKind.IntSize:
-					if (BigInteger.TryParse(span, out var intSizeValue) && intSizeValue.GetBitLength() < _pointerBitSize)
+					if (BigInteger.TryParse(span, out var intSizeValue) &&
+					    intSizeValue.GetBitLength() < _pointerBitSize)
 						return (NativeSymbols.IntSize, intSizeValue);
 					
 					break;
@@ -913,7 +914,8 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 					break;
 				
 				case PrimitiveTypeKind.UIntSize:
-					if (BigInteger.TryParse(span, out var uintSizeValue) && uintSizeValue.GetBitLength() < _pointerBitSize)
+					if (BigInteger.TryParse(span, out var uintSizeValue) &&
+					    uintSizeValue.GetBitLength() < _pointerBitSize)
 						return (NativeSymbols.UIntSize, uintSizeValue);
 					
 					break;
@@ -1022,71 +1024,72 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 	
 	private IResolvedExpressionNode MaterializeExpression(IResolvedExpressionNode node, IntegerType target)
 	{
-	    if (node.Type is not UntypedIntegerType)
-	        return node;
-	    
-	    switch (node)
-	    {
-	        case ResolvedLiteralExpressionNode { Value: BigInteger value } literal:
-	        {
-	            if (FitsInType(value, target))
-	                return MaterializeLiteral(target, value);
-	            
-	            var fallback = SmallestFittingType(value);
-	            return fallback is not null
-	                ? MaterializeLiteral(fallback, value)
-	                : literal; // TODO Diagnostic: Too large for any integer type
-	        }
-	        
-	        case ResolvedUnaryOpExpressionNode unary:
-	        {
-	            var operand = MaterializeExpression(unary.Operand, target);
-	            var resolution = unary.Operation?.Op is { } op
-		            ? _operatorRegistry.ResolveUnary(op, operand.Type)
-		            : null;
-	            
-	            return new ResolvedUnaryOpExpressionNode(operand, resolution);
-	        }
-	        
-	        case ResolvedBinaryOpExpressionNode binary:
-	        {
-	            var left = MaterializeExpression(binary.Left, target);
-	            var right = MaterializeExpression(binary.Right, target);
-	            
-	            if (left.Type != right.Type)
-	            {
-	                // Try widening the narrower side
-	                if (FindCommonType(left.Type, right.Type) is { } common)
-	                {
-	                    left = CoerceToType(left, common);
-	                    right = CoerceToType(right, common);
-	                }
-	            }
-	            
-	            var resolutionSet = binary.Operation?.Op is { } op 
-		            ? _operatorRegistry.ResolveBinary(left.Type, op, right.Type)
-		            : BinaryResolutionSet.None;
-	            
-	            if (resolutionSet.IsAmbiguous)
-		            throw new Exception($"Ambiguous operation '{binary.Operation!.Op!.Representation}' between " +
-		                                $"'{left.Type.Name}' and '{right.Type.Name}'");
-	            
-	            if (!resolutionSet.HasResult)
-		            return new ResolvedBinaryOpExpressionNode(left, right, null);
-	            
-	            var resolution = resolutionSet[0];
-	            
-	            if (resolution.LeftConversion is { } leftConversion)
-		            left = new ResolvedConversionExpressionNode(left, leftConversion);
-	            if (resolution.RightConversion is { } rightConversion)
-		            right = new ResolvedConversionExpressionNode(right, rightConversion);
-	            
-	            return new ResolvedBinaryOpExpressionNode(left, right, resolution.Operation);
-	        }
-	        
-	        default:
-	            return node;
-	    }
+		if (node.Type is not UntypedIntegerType)
+			return node;
+		
+		switch (node)
+		{
+			case ResolvedLiteralExpressionNode { Value: BigInteger value } literal:
+			{
+				if (FitsInType(value, target))
+					return MaterializeLiteral(target, value);
+				
+				var fallback = SmallestFittingType(value);
+				return fallback is not null
+					? MaterializeLiteral(fallback, value)
+					: literal; // TODO Diagnostic: Too large for any integer type
+			}
+			
+			case ResolvedUnaryOpExpressionNode unary:
+			{
+				var operand = MaterializeExpression(unary.Operand, target);
+				var resolution = unary.Operation?.Op is { } op
+					? _operatorRegistry.ResolveUnary(op, operand.Type)
+					: null;
+				
+				return new ResolvedUnaryOpExpressionNode(operand, resolution);
+			}
+			
+			case ResolvedBinaryOpExpressionNode binary:
+			{
+				var left = MaterializeExpression(binary.Left, target);
+				var right = MaterializeExpression(binary.Right, target);
+				
+				if (left.Type != right.Type)
+				{
+					// Try widening the narrower side
+					if (FindCommonType(left.Type, right.Type) is { } common)
+					{
+						left = CoerceToType(left, common);
+						right = CoerceToType(right, common);
+					}
+				}
+				
+				var resolutionSet = binary.Operation?.Op is { } op
+					? _operatorRegistry.ResolveBinary(left.Type, op, right.Type)
+					: BinaryResolutionSet.None;
+				
+				if (resolutionSet.IsAmbiguous)
+					throw new Exception($"Ambiguous operation '{binary.Operation!.Op!.Representation}' between " +
+					                    $"'{left.Type.Name}' and '{right.Type.Name}'");
+				
+				if (!resolutionSet.HasResult)
+					return new ResolvedBinaryOpExpressionNode(left, right, null);
+				
+				var resolution = resolutionSet[0];
+				
+				if (resolution.LeftConversion is { } leftConversion)
+					left = new ResolvedConversionExpressionNode(left, leftConversion);
+				
+				if (resolution.RightConversion is { } rightConversion)
+					right = new ResolvedConversionExpressionNode(right, rightConversion);
+				
+				return new ResolvedBinaryOpExpressionNode(left, right, resolution.Operation);
+			}
+			
+			default:
+				return node;
+		}
 	}
 	
 	private IntegerType? SmallestFittingType(BigInteger value)

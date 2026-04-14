@@ -93,8 +93,8 @@ public readonly struct ResolutionContext
     // TODO Cannot handle negative integers
     private BigInteger? ResolveConstIntExpression(IExpressionNode node) => node switch
     {
-        LiteralExpressionNode e when e.Token.Type == TokenType.IntegerLiteral
-            => BigInteger.TryParse(e.Token.AsSpan(), out var value) ? value : null,
+        LiteralExpressionNode { Token.Type: TokenType.IntegerLiteral } e =>
+	        BigInteger.TryParse(e.Token.AsSpan(), out var value) ? value : null,
         
         _ => null
     };

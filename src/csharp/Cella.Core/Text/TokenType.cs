@@ -1,190 +1,209 @@
-﻿namespace Cella.Core.Text;
+﻿using System.Collections.Immutable;
 
-public sealed class TokenType
+namespace Cella.Core.Text;
+
+public enum TokenType
 {
-	public bool IsInvalid { get; private init; }
-	public bool IsKeyword { get; private init; }
-	public bool IsContextual { get; private init; }
-	public bool IsIdentifier { get; private init; }
-	public bool IsOperator { get; private init; }
-	public bool IsLiteral { get; private init; }
-	public bool IsFiltered { get; private init; }
+	// Special
+	Invalid = -1,
+	EndOfFile,
+	Identifier,
 	
-	private static readonly Dictionary<string, TokenType> _keywords = [];
-	private static readonly Dictionary<string, TokenType> _operators = [];
+	// Filtered
+	Whitespace,
+	Newline,
+	LineComment,
+	BlockComment,
 	
-	public string Representation { get; }
-	
-	private TokenType(string representation)
-	{
-		Representation = representation;
-	}
-
-	public override string ToString() => Representation;
-
-	private static TokenType CreateKeyword(string text)
-	{
-		var type = new TokenType(text)
-		{
-			IsKeyword = true
-		};
-		
-		_keywords.Add(text, type);
-		return type;
-	}
-	
-	private static TokenType CreateKeywordLiteral(string text)
-	{
-		var type = new TokenType(text)
-		{
-			IsKeyword = true,
-			IsLiteral = true
-		};
-		
-		_keywords.Add(text, type);
-		return type;
-	}
-	
-	private static TokenType CreateContextualKeyword(string text)
-	{
-		var type = new TokenType(text)
-		{
-			IsKeyword = true,
-			IsContextual = true
-		};
-		
-		// Do not add to keyword dictionary!
-		return type;
-	}
-	
-	private static TokenType CreateOperator(string text)
-	{
-		var type = new TokenType(text)
-		{
-			IsOperator = true
-		};
-		
-		_operators.Add(text, type);
-		return type;
-	}
-	
-	public static TokenType? GetKeyword(string keyword) => _keywords.GetValueOrDefault(keyword);
-	public static TokenType? GetOperator(string @operator) => _operators.GetValueOrDefault(@operator);
-	
-	public static readonly TokenType EndOfFile = new("end of file")
-	{
-		IsInvalid = true
-	};
-	
-	public static readonly TokenType Invalid = new("invalid")
-	{
-		IsInvalid = true
-	};
-	
-	public static readonly TokenType Identifier = new("identifier")
-	{
-		IsIdentifier = true
-	};
-	
-	public static readonly TokenType Whitespace = new("whitespace")
-	{
-		IsFiltered = true
-	};
-	
-	public static readonly TokenType Newline = new("newline")
-	{
-		IsFiltered = true
-	};
-	
-	public static readonly TokenType LineComment = new("line comment")
-	{
-		IsFiltered = true
-	};
-	
-	public static readonly TokenType BlockComment = new("block comment")
-	{
-		IsFiltered = true
-	};
-	
-	public static readonly TokenType IntegerLiteral = new("integer literal")
-	{
-		IsLiteral = true
-	};
-	
-	public static readonly TokenType StringLiteral = new("string literal")
-	{
-		IsLiteral = true
-	};
-	
-	#region Keywords
+	// Literals
+	IntegerLiteral,
+	StringLiteral,
 	
 	// Literal keywords
-	public static readonly TokenType KeywordTrue = CreateKeywordLiteral("true");
-	public static readonly TokenType KeywordFalse = CreateKeywordLiteral("false");
-	public static readonly TokenType KeywordNull = CreateKeywordLiteral("null");
-	public static readonly TokenType KeywordUndef = CreateKeywordLiteral("undef");
+	KeywordTrue,
+	KeywordFalse,
+	KeywordNull,
+	KeywordUndef,
 	
 	// Global keywords
-	public static readonly TokenType KeywordRet = CreateKeyword("ret");
-	public static readonly TokenType KeywordVar = CreateKeyword("var");
-	public static readonly TokenType KeywordIf = CreateKeyword("if");
-	public static readonly TokenType KeywordElse = CreateKeyword("else");
-	public static readonly TokenType KeywordFor = CreateKeyword("for");
-	public static readonly TokenType KeywordIn = CreateKeyword("in");
-	public static readonly TokenType KeywordLoop = CreateKeyword("loop");
-	public static readonly TokenType KeywordWhile = CreateKeyword("while");
-	public static readonly TokenType KeywordBreak = CreateKeyword("break");
-	public static readonly TokenType KeywordCont = CreateKeyword("cont");
+	KeywordRet,
+	KeywordVar,
+	KeywordIf,
+	KeywordElse,
+	KeywordFor,
+	KeywordIn,
+	KeywordLoop,
+	KeywordWhile,
+	KeywordBreak,
+	KeywordCont,
 	
 	// Contextual Keywords
-	public static readonly TokenType KeywordMod = CreateContextualKeyword("mod");
-	public static readonly TokenType KeywordFun = CreateContextualKeyword("fun");
-	public static readonly TokenType KeywordUse = CreateContextualKeyword("use");
-	public static readonly TokenType KeywordPub = CreateContextualKeyword("pub");
-	public static readonly TokenType KeywordExt = CreateContextualKeyword("ext");
+	KeywordMod,
+	KeywordFun,
+	KeywordUse,
+	KeywordPub,
+	KeywordExt,
 	
-	#endregion
-	#region Operators
+	// Operators
+	OpDotDotEqual,
+	OpDotDot,
+	OpArrow,
+	OpPlusEqual,
+	OpMinusEqual,
+	OpStarEqual,
+	OpSlashEqual,
+	OpPercentEqual,
+	OpEqualEqual,
+	OpBangEqual,
+	OpGreaterEqual,
+	OpLessEqual,
+	OpAmpersandEqual,
+	OpBarEqual,
+	OpHatEqual,
+	OpColon,
+	OpSemicolon,
+	OpOpenParen,
+	OpCloseParen,
+	OpOpenBracket,
+	OpCloseBracket,
+	OpOpenBrace,
+	OpCloseBrace,
+	OpPlus,
+	OpMinus,
+	OpStar,
+	OpSlash,
+	OpPercent,
+	OpDot,
+	OpComma,
+	OpEqual,
+	OpBang,
+	OpAmpersand,
+	OpBar,
+	OpHat,
+	OpGreater,
+	OpLess,
+	OpAt,
+}
+
+public static class TokenTypeInfo
+{
+	private sealed record TokenMetadata(
+		string Representation,
+		bool IsInvalid = false,
+		bool IsKeyword = false,
+		bool IsContextual = false,
+		bool IsIdentifier = false,
+		bool IsOperator = false,
+		bool IsLiteral = false,
+		bool IsFiltered = false
+	);
 	
-	public static readonly TokenType OpDotDotEqual = CreateOperator("..=");
-	public static readonly TokenType OpDotDot = CreateOperator("..");
-	public static readonly TokenType OpArrow = CreateOperator("->");
-	public static readonly TokenType OpPlusEqual = CreateOperator("+=");
-	public static readonly TokenType OpMinusEqual = CreateOperator("-=");
-	public static readonly TokenType OpStarEqual = CreateOperator("*=");
-	public static readonly TokenType OpSlashEqual = CreateOperator("/=");
-	public static readonly TokenType OpPercentEqual = CreateOperator("%=");
-	public static readonly TokenType OpEqualEqual = CreateOperator("==");
-	public static readonly TokenType OpBangEqual = CreateOperator("!=");
-	public static readonly TokenType OpGreaterEqual = CreateOperator(">=");
-	public static readonly TokenType OpLessEqual = CreateOperator("<=");
-	public static readonly TokenType OpAmpersandEqual = CreateOperator("&=");
-	public static readonly TokenType OpBarEqual = CreateOperator("|=");
-	public static readonly TokenType OpHatEqual = CreateOperator("^=");
+	private static readonly ImmutableDictionary<TokenType, TokenMetadata> _metadata;
+	private static readonly ImmutableDictionary<string, TokenType> _keywords;
+	private static readonly ImmutableDictionary<string, TokenType> _operators;
 	
-	public static readonly TokenType OpColon = CreateOperator(":");
-	public static readonly TokenType OpSemicolon = CreateOperator(";");
-	public static readonly TokenType OpOpenParen = CreateOperator("(");
-	public static readonly TokenType OpCloseParen = CreateOperator(")");
-	public static readonly TokenType OpOpenBracket = CreateOperator("[");
-	public static readonly TokenType OpCloseBracket = CreateOperator("]");
-	public static readonly TokenType OpOpenBrace = CreateOperator("{");
-	public static readonly TokenType OpCloseBrace = CreateOperator("}");
-	public static readonly TokenType OpPlus = CreateOperator("+");
-	public static readonly TokenType OpMinus = CreateOperator("-");
-	public static readonly TokenType OpStar = CreateOperator("*");
-	public static readonly TokenType OpSlash = CreateOperator("/");
-	public static readonly TokenType OpPercent = CreateOperator("%");
-	public static readonly TokenType OpDot = CreateOperator(".");
-	public static readonly TokenType OpComma = CreateOperator(",");
-	public static readonly TokenType OpEqual = CreateOperator("=");
-	public static readonly TokenType OpBang = CreateOperator("!");
-	public static readonly TokenType OpAmpersand = CreateOperator("&");
-	public static readonly TokenType OpBar = CreateOperator("|");
-	public static readonly TokenType OpHat = CreateOperator("^");
-	public static readonly TokenType OpGreater = CreateOperator(">");
-	public static readonly TokenType OpLess = CreateOperator("<");
-	public static readonly TokenType OpAt = CreateOperator("@");
+	static TokenTypeInfo()
+	{
+		_metadata = new Dictionary<TokenType, TokenMetadata>
+		{
+			[TokenType.EndOfFile] = new("end of file", IsInvalid: true),
+			[TokenType.Invalid] = new("invalid", IsInvalid: true),
+			[TokenType.Identifier] = new("identifier", IsIdentifier: true),
+			
+			[TokenType.Whitespace] = new("whitespace", IsFiltered: true),
+			[TokenType.Newline] = new("newline", IsFiltered: true),
+			[TokenType.LineComment] = new("line comment", IsFiltered: true),
+			[TokenType.BlockComment] = new("block comment", IsFiltered: true),
+			
+			[TokenType.IntegerLiteral] = new("integer literal", IsLiteral: true),
+			[TokenType.StringLiteral] = new("string literal", IsLiteral: true),
+			
+			[TokenType.KeywordTrue] = new("true", IsKeyword: true, IsLiteral: true),
+			[TokenType.KeywordFalse] = new("false", IsKeyword: true, IsLiteral: true),
+			[TokenType.KeywordNull] = new("null", IsKeyword: true, IsLiteral: true),
+			[TokenType.KeywordUndef] = new("undef", IsKeyword: true, IsLiteral: true),
+			
+			[TokenType.KeywordRet] = new("ret", IsKeyword: true),
+			[TokenType.KeywordVar] = new("var", IsKeyword: true),
+			[TokenType.KeywordIf] = new("if", IsKeyword: true),
+			[TokenType.KeywordElse] = new("else", IsKeyword: true),
+			[TokenType.KeywordFor] = new("for", IsKeyword: true),
+			[TokenType.KeywordIn] = new("in", IsKeyword: true),
+			[TokenType.KeywordLoop] = new("loop", IsKeyword: true),
+			[TokenType.KeywordWhile] = new("while", IsKeyword: true),
+			[TokenType.KeywordBreak] = new("break", IsKeyword: true),
+			[TokenType.KeywordCont] = new("cont", IsKeyword: true),
+			
+			[TokenType.KeywordMod] = new("mod", IsKeyword: true, IsContextual: true),
+			[TokenType.KeywordFun] = new("fun", IsKeyword: true, IsContextual: true),
+			[TokenType.KeywordUse] = new("use", IsKeyword: true, IsContextual: true),
+			[TokenType.KeywordPub] = new("pub", IsKeyword: true, IsContextual: true),
+			[TokenType.KeywordExt] = new("ext", IsKeyword: true, IsContextual: true),
+			
+			[TokenType.OpDotDotEqual] = new("..=", IsOperator: true),
+			[TokenType.OpDotDot] = new("..", IsOperator: true),
+			[TokenType.OpArrow] = new("->", IsOperator: true),
+			[TokenType.OpPlusEqual] = new("+=", IsOperator: true),
+			[TokenType.OpMinusEqual] = new("-=", IsOperator: true),
+			[TokenType.OpStarEqual] = new("*=", IsOperator: true),
+			[TokenType.OpSlashEqual] = new("/=", IsOperator: true),
+			[TokenType.OpPercentEqual] = new("%=", IsOperator: true),
+			[TokenType.OpEqualEqual] = new("==", IsOperator: true),
+			[TokenType.OpBangEqual] = new("!=", IsOperator: true),
+			[TokenType.OpGreaterEqual] = new(">=", IsOperator: true),
+			[TokenType.OpLessEqual] = new("<=", IsOperator: true),
+			[TokenType.OpAmpersandEqual] = new("&=", IsOperator: true),
+			[TokenType.OpBarEqual] = new("|=", IsOperator: true),
+			[TokenType.OpHatEqual] = new("^=", IsOperator: true),
+			[TokenType.OpColon] = new(":", IsOperator: true),
+			[TokenType.OpSemicolon] = new(";", IsOperator: true),
+			[TokenType.OpOpenParen] = new("(", IsOperator: true),
+			[TokenType.OpCloseParen] = new(")", IsOperator: true),
+			[TokenType.OpOpenBracket] = new("[", IsOperator: true),
+			[TokenType.OpCloseBracket] = new("]", IsOperator: true),
+			[TokenType.OpOpenBrace] = new("{", IsOperator: true),
+			[TokenType.OpCloseBrace] = new("}", IsOperator: true),
+			[TokenType.OpPlus] = new("+", IsOperator: true),
+			[TokenType.OpMinus] = new("-", IsOperator: true),
+			[TokenType.OpStar] = new("*", IsOperator: true),
+			[TokenType.OpSlash] = new("/", IsOperator: true),
+			[TokenType.OpPercent] = new("%", IsOperator: true),
+			[TokenType.OpDot] = new(".", IsOperator: true),
+			[TokenType.OpComma] = new(",", IsOperator: true),
+			[TokenType.OpEqual] = new("=", IsOperator: true),
+			[TokenType.OpBang] = new("!", IsOperator: true),
+			[TokenType.OpAmpersand] = new("&", IsOperator: true),
+			[TokenType.OpBar] = new("|", IsOperator: true),
+			[TokenType.OpHat] = new("^", IsOperator: true),
+			[TokenType.OpGreater] = new(">", IsOperator: true),
+			[TokenType.OpLess] = new("<", IsOperator: true),
+			[TokenType.OpAt] = new("@", IsOperator: true),
+		}.ToImmutableDictionary();
+		
+		_keywords = _metadata.Where(static kvp => kvp.Value is { IsKeyword: true, IsContextual: false })
+			.ToImmutableDictionary(KeySelector, ElementSelector);
+		
+		_operators = _metadata.Where(static kvp => kvp.Value.IsOperator)
+			.ToImmutableDictionary(KeySelector, ElementSelector);
+		
+		return;
+		
+		static string KeySelector(KeyValuePair<TokenType, TokenMetadata> kvp) => kvp.Value.Representation;
+		static TokenType ElementSelector(KeyValuePair<TokenType, TokenMetadata> kvp) => kvp.Key;
+	}
 	
-	#endregion
+	extension(TokenType t)
+	{
+		public string Representation => _metadata[t].Representation;
+		public bool IsInvalid => _metadata[t].IsInvalid;
+		public bool IsKeyword => _metadata[t].IsKeyword;
+		public bool IsContextual => _metadata[t].IsContextual;
+		public bool IsIdentifier => _metadata[t].IsIdentifier;
+		public bool IsOperator => _metadata[t].IsOperator;
+		public bool IsLiteral => _metadata[t].IsLiteral;
+		public bool IsFiltered => _metadata[t].IsFiltered;
+		
+		public static TokenType? GetKeyword(string text) => _keywords.TryGetValue(text, out var type) ? type : null;
+		public static TokenType? GetOperator(string text) => _operators.TryGetValue(text, out var type) ? type : null;
+	}
 }

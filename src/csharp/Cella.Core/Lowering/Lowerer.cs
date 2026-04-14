@@ -435,37 +435,27 @@ public sealed class Lowerer : IResolvedDeclarationNodeVisitor
 			return result!;
 		}
 		
-		private static AssignValue LowerAssignment(Value left, Token op, Value right, TypeSymbol type)
+		private static AssignValue LowerAssignment(Value left, Token op, Value right, TypeSymbol type) => op.Type switch
 		{
-			if (op.Type == TokenType.OpEqual)
-				return new AssignValue(type, left, right);
-			
-			if (op.Type == TokenType.OpPlusEqual)
-				return new AssignValue(type, left, new BinOpValue(type, left, right, BinaryOperation.Addition));
-			
-			if (op.Type == TokenType.OpMinusEqual)
-				return new AssignValue(type, left, new BinOpValue(type, left, right, BinaryOperation.Subtraction));
-			
-			if (op.Type == TokenType.OpStarEqual)
-				return new AssignValue(type, left, new BinOpValue(type, left, right, BinaryOperation.Multiplication));
-			
-			if (op.Type == TokenType.OpSlashEqual)
-				return new AssignValue(type, left, new BinOpValue(type, left, right, BinaryOperation.Division));
-			
-			if (op.Type == TokenType.OpPercentEqual)
-				return new AssignValue(type, left, new BinOpValue(type, left, right, BinaryOperation.Modulo));
-			
-			if (op.Type == TokenType.OpAmpersandEqual)
-				return new AssignValue(type, left, new BinOpValue(type, left, right, BinaryOperation.And));
-			
-			if (op.Type == TokenType.OpBarEqual)
-				return new AssignValue(type, left, new BinOpValue(type, left, right, BinaryOperation.Or));
-			
-			if (op.Type == TokenType.OpHatEqual)
-				return new AssignValue(type, left, new BinOpValue(type, left, right, BinaryOperation.Xor));
-			
-			throw new InvalidOperationException();
-		}
+			TokenType.OpEqual => new AssignValue(type, left, right),
+			TokenType.OpPlusEqual => new AssignValue(type, left,
+				new BinOpValue(type, left, right, BinaryOperation.Addition)),
+			TokenType.OpMinusEqual => new AssignValue(type, left,
+				new BinOpValue(type, left, right, BinaryOperation.Subtraction)),
+			TokenType.OpStarEqual => new AssignValue(type, left,
+				new BinOpValue(type, left, right, BinaryOperation.Multiplication)),
+			TokenType.OpSlashEqual => new AssignValue(type, left,
+				new BinOpValue(type, left, right, BinaryOperation.Division)),
+			TokenType.OpPercentEqual => new AssignValue(type, left,
+				new BinOpValue(type, left, right, BinaryOperation.Modulo)),
+			TokenType.OpAmpersandEqual => new AssignValue(type, left,
+				new BinOpValue(type, left, right, BinaryOperation.And)),
+			TokenType.OpBarEqual => new AssignValue(type, left,
+				new BinOpValue(type, left, right, BinaryOperation.Or)),
+			TokenType.OpHatEqual => new AssignValue(type, left,
+				new BinOpValue(type, left, right, BinaryOperation.Xor)),
+			_ => throw new InvalidOperationException()
+		};
 		
 		private static Value LowerBinOp(Value left, OperationImpl? op, Value right) => op switch
 		{
@@ -481,69 +471,33 @@ public sealed class Lowerer : IResolvedDeclarationNodeVisitor
 			_ => throw new InvalidOperationException()
 		};
 		
-		private static BinaryOperation MapBinOp(TokenType op)
+		private static BinaryOperation MapBinOp(TokenType op) => op switch
 		{
-			if (op == TokenType.OpPlus)
-				return BinaryOperation.Addition;
-			
-			if (op == TokenType.OpMinus)
-				return BinaryOperation.Subtraction;
-			
-			if (op == TokenType.OpStar)
-				return BinaryOperation.Multiplication;
-			
-			if (op == TokenType.OpSlash)
-				return BinaryOperation.Division;
-			
-			if (op == TokenType.OpPercent)
-				return BinaryOperation.Modulo;
-			
-			if (op == TokenType.OpEqualEqual)
-				return BinaryOperation.Equal;
-			
-			if (op == TokenType.OpBangEqual)
-				return BinaryOperation.NotEqual;
-			
-			if (op == TokenType.OpGreater)
-				return BinaryOperation.Greater;
-			
-			if (op == TokenType.OpGreaterEqual)
-				return BinaryOperation.GreaterEqual;
-			
-			if (op == TokenType.OpLess)
-				return BinaryOperation.Less;
-			
-			if (op == TokenType.OpLessEqual)
-				return BinaryOperation.LessEqual;
-			
-			if (op == TokenType.OpAmpersand)
-				return BinaryOperation.And;
-			
-			if (op == TokenType.OpBar)
-				return BinaryOperation.Or;
-			
-			if (op == TokenType.OpHat)
-				return BinaryOperation.Xor;
-			
-			throw new InvalidOperationException();
-		}
+			TokenType.OpPlus => BinaryOperation.Addition,
+			TokenType.OpMinus => BinaryOperation.Subtraction,
+			TokenType.OpStar => BinaryOperation.Multiplication,
+			TokenType.OpSlash => BinaryOperation.Division,
+			TokenType.OpPercent => BinaryOperation.Modulo,
+			TokenType.OpEqualEqual => BinaryOperation.Equal,
+			TokenType.OpBangEqual => BinaryOperation.NotEqual,
+			TokenType.OpGreater => BinaryOperation.Greater,
+			TokenType.OpGreaterEqual => BinaryOperation.GreaterEqual,
+			TokenType.OpLess => BinaryOperation.Less,
+			TokenType.OpLessEqual => BinaryOperation.LessEqual,
+			TokenType.OpAmpersand => BinaryOperation.And,
+			TokenType.OpBar => BinaryOperation.Or,
+			TokenType.OpHat => BinaryOperation.Xor,
+			_ => throw new InvalidOperationException()
+		};
 		
-		private static UnaryOperation MapUnaryOp(TokenType op)
+		private static UnaryOperation MapUnaryOp(TokenType op) => op switch
 		{
-			if (op == TokenType.OpPlus)
-				return UnaryOperation.Identity;
-			
-			if (op == TokenType.OpMinus)
-				return UnaryOperation.Negation;
-			
-			if (op == TokenType.OpBang)
-				return UnaryOperation.Not;
-			
-			if (op == TokenType.OpAt)
-				return UnaryOperation.AddressOf;
-			
-			throw new InvalidOperationException();
-		}
+			TokenType.OpPlus => UnaryOperation.Identity,
+			TokenType.OpMinus => UnaryOperation.Negation,
+			TokenType.OpBang => UnaryOperation.Not,
+			TokenType.OpAt => UnaryOperation.AddressOf,
+			_ => throw new InvalidOperationException()
+		};
 	}
 	
 	private static HashSet<BasicBlock> FindReachableBlocks(LoweredFunction function)
