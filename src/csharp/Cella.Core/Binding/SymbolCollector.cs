@@ -3,8 +3,7 @@ using Cella.Core.Syntax.Nodes;
 
 namespace Cella.Core.Binding;
 
-public sealed class SymbolCollector
-	: IDeclarationNodeVisitor
+public sealed class SymbolCollector : IDeclarationNodeVisitor<Symbol>
 {
 	private readonly SymbolTable.Builder _builder = new();
 	private readonly List<Symbol> _symbolsInFile = [];
@@ -13,9 +12,9 @@ public sealed class SymbolCollector
 	
 	public void Collect(IDeclarationNode root) => VisitNode(root);
 	
-	private void VisitNode(IDeclarationNode node) => ((IDeclarationNodeVisitor)this).Visit(node);
+	private Symbol VisitNode(IDeclarationNode node) => ((IDeclarationNodeVisitor<Symbol>)this).Visit(node);
 	
-	public void Visit(FileNode node)
+	public Symbol Visit(FileNode node)
 	{
 		var moduleName = node.ModuleName;
 		
@@ -28,12 +27,14 @@ public sealed class SymbolCollector
 		foreach (var child in node.Declarations)
 			VisitNode(child);
 		
-		_builder.DeclarationSymbols[node] = new FileSymbol(node, module, _symbolsInFile);
+		var symbol = new FileSymbol(node, module, _symbolsInFile);
+		_builder.DeclarationSymbols[node] = symbol;
 		_builder.SymbolsByModule.GetOrAdd(module).UnionWith(_symbolsInFile);
 		_symbolsInFile.Clear();
+		return symbol;
 	}
 	
-	public void Visit(FunctionNode node)
+	public Symbol Visit(FunctionNode node)
 	{
 		// TODO Disallow multiple parameters with the same name
 		var parameters = new List<ParameterSymbol>(node.Parameters.Length);
@@ -49,9 +50,10 @@ public sealed class SymbolCollector
 		var function = new FunctionSymbol(name, node, null, parameters);
 		_builder.DeclarationSymbols[node] = function;
 		_symbolsInFile.Add(function);
+		return function;
 	}
 	
-	public void Visit(ExternalFunctionNode node)
+	public Symbol Visit(ExternalFunctionNode node)
 	{
 		// TODO Disallow multiple parameters with the same name
 		var parameters = new List<ParameterSymbol>(node.Parameters.Length);
@@ -66,7 +68,53 @@ public sealed class SymbolCollector
 		var function = new FunctionSymbol(name, node, null, parameters);
 		_builder.DeclarationSymbols[node] = function;
 		_symbolsInFile.Add(function);
+		return function;
 	}
 	
-	public void Visit(ParameterNode node) => throw new InvalidOperationException();
+	public Symbol Visit(ParameterNode node) => throw new InvalidOperationException();
+	
+	public Symbol Visit(RecordNode node)
+	{
+		// TODO Type parameters
+		var members = new List<MemberSymbol>(node.Members.Length);
+		var types = new List<TypeSymbol>(node.Members.Length);
+		
+		foreach (var member in node.Members)
+		{
+			var m = VisitNode(member);
+			switch (m)
+			{
+				case FieldSymbol s:
+					members.Add(s);
+					break;
+				
+				case FunctionSymbol s:
+					members.Add(new MethodSymbol(s, SelfReferenceKind.None)); // TODO Self reference
+					break;
+				
+				case TypeSymbol s:
+					types.Add(s);
+					break;
+				
+				default:
+					// TODO Diagnostics?
+					break;
+			}
+		}
+		
+		var name = node.Identifier.Text;
+		var record = new RecordSymbol(name, node, members, types);
+		_builder.DeclarationSymbols[node] = record;
+		_symbolsInFile.Add(record);
+		return record;
+	}
+	
+	public Symbol Visit(FieldNode node)
+	{
+		var name = node.Identifier.Text;
+		var field = new FieldSymbol(name, node, true); // TODO Immutable fields
+		_builder.DeclarationSymbols[node] = field;
+		_symbolsInFile.Add(field);
+		return field;
+	}
 }

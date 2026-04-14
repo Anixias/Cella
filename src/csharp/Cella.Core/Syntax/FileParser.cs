@@ -9,7 +9,7 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName) : 
 {
 	private static readonly Dictionary<string, TokenType> _topLevelContextualKeywords =
 		BuildContextualKeywords(TokenType.KeywordMod, TokenType.KeywordFun, TokenType.KeywordUse, TokenType.KeywordPub,
-			TokenType.KeywordExt);
+			TokenType.KeywordExt, TokenType.KeywordRec);
 	
 	private static readonly HashSet<TokenType> _topLevelSyncTypes = [TokenType.OpSemicolon, TokenType.EndOfFile];
 	
@@ -105,6 +105,19 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName) : 
 				
 				var modifiers = ParseDeclarationModifiers(ref index);
 				
+				// Record
+				if (Match(ref index, _topLevelContextualKeywords, TokenType.KeywordRec))
+				{
+					if (ParseRecord(ref index, identifier, modifiers) is not { } record)
+					{
+						ResyncTopLevel(ref index);
+						continue;
+					}
+					
+					declarations.Add(record);
+					continue;
+				}
+				
 				// Function
 				if (Match(ref index, _topLevelContextualKeywords, TokenType.KeywordFun))
 				{
@@ -120,39 +133,8 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName) : 
 				
 				// Unknown declaration
 				Report(Tokens[index], "Unknown declaration type");
-				
-				// Skip until another identifier is encountered. If we encounter braces, keep skipping until closed
 				index++;
-				var braceCount = 0;
-				var loop = true;
-				while (loop && !AtEnd(index))
-				{
-					switch (Tokens[index].Type)
-					{
-						case TokenType.OpOpenBrace:
-							braceCount++;
-							index++;
-							break;
-						
-						case TokenType.OpCloseBrace:
-							braceCount--;
-							index++;
-							break;
-						
-						case TokenType.Identifier:
-							if (braceCount > 0)
-								index++;
-							else
-								loop = false;
-							
-							break;
-						
-						default:
-							index++;
-							break;
-					}
-				}
-				
+				ResyncTopLevel(ref index);
 				continue;
 			}
 			
@@ -432,6 +414,12 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName) : 
 		return new(identifier, type, defaultValue);
 	}
 	
+	private RecordNode? ParseRecord(ref int index, Token identifier, IEnumerable<Token> modifiers)
+	{
+		// TODO Type parameters
+		return null;
+	}
+	
 	private BlockStatementNode? ParseBlockStatement(ref int index, Token open)
 	{
 		// @TODO Diagnostics
@@ -677,8 +665,36 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName) : 
 	
 	private void ResyncTopLevel(ref int index)
 	{
-		SkipUntil(ref index, _topLevelSyncTypes);
-		SkipIf(ref index, TokenType.OpSemicolon);
+		// Skip until another identifier is encountered. If we encounter braces, keep skipping until closed
+		var braceCount = 0;
+		var loop = true;
+		while (loop && !AtEnd(index))
+		{
+			switch (Tokens[index].Type)
+			{
+				case TokenType.OpOpenBrace:
+					braceCount++;
+					index++;
+					break;
+				
+				case TokenType.OpCloseBrace:
+					braceCount--;
+					index++;
+					break;
+				
+				case TokenType.Identifier:
+					if (braceCount > 0)
+						index++;
+					else
+						loop = false;
+					
+					break;
+				
+				default:
+					index++;
+					break;
+			}
+		}
 	}
 	
 	private void ResyncSimple(ref int index)

@@ -56,6 +56,10 @@ internal static class Program
 			return;
 		}
 		
+		var conversionTable = ConversionTable.CreateNative();
+		var operatorRegistry = new OperatorRegistry(conversionTable);
+		var sizeTable = new SizeTable();
+		var typePool = new TypePool(conversionTable, operatorRegistry, sizeTable);
 		var projectSymbols = new Dictionary<ProjectInfo, AssemblyInfo>();
 		
 		foreach (var (project, dependencies) in projectDependencies)
@@ -65,7 +69,7 @@ internal static class Program
 				if (projectSymbols.TryGetValue(dependency, out var assemblySymbol))
 					dependencyInfo.Add(assemblySymbol);
 			
-			projectSymbols[project] = await BuildProject(project, dependencyInfo, cts.Token);
+			projectSymbols[project] = await BuildProject(project, typePool, dependencyInfo, cts.Token);
 		}
 	}
 	
@@ -124,7 +128,7 @@ internal static class Program
 		string? OutputPath
 	);
 	
-	private static async Task<AssemblyInfo> BuildProject(ProjectInfo project,
+	private static async Task<AssemblyInfo> BuildProject(ProjectInfo project, TypePool typePool,
 		IEnumerable<AssemblyInfo> dependencies, CancellationToken ct = default)
 	{
 		// Phase 1: File parsing
@@ -151,16 +155,9 @@ internal static class Program
 		// TODO Allow configuring entry point name?
 		var entryPointName = outputType == ProjectOutputType.Executable ? "main" : null;
 		
-		var conversionTable = ConversionTable.CreateNative();
-		var operatorRegistry = new OperatorRegistry(conversionTable);
-		var typeMemberTable = new TypeMemberTable();
-		typeMemberTable.CreateNativeMembers();
-		
-		var typePool = new TypePool(typeMemberTable, conversionTable, operatorRegistry);
 		AssemblySymbol assemblySymbol;
 		{
-			var signatureCollector = new SignatureCollector(entryPointName, symbolTable, typePool, typeMemberTable,
-				conversionTable, operatorRegistry, dependencySymbols);
+			var signatureCollector = new SignatureCollector(entryPointName, symbolTable, typePool, dependencySymbols);
 			
 			foreach (var info in files)
 				signatureCollector.Collect(info.Ast);
@@ -189,8 +186,7 @@ internal static class Program
 		// Phase 3: Symbol resolution
 		ImmutableArray<ResolvedSourceFileInfo> resolvedFiles;
 		{
-			var resolver = new Resolver(assemblySymbol, dependencySymbols, typePool, typeMemberTable, conversionTable,
-				operatorRegistry, pointerBitSize);
+			var resolver = new Resolver(assemblySymbol, dependencySymbols, typePool, pointerBitSize);
 			
 			resolvedFiles = files
 				.Select(sfi => new ResolvedSourceFileInfo(sfi.FilePath, resolver.Resolve(sfi.Ast), sfi.Source))
@@ -244,7 +240,7 @@ internal static class Program
 		// Phase 7: Code generation
 		string outputPath;
 		{
-			var codeGenerator = new CodeGenerator(assemblySymbol, typeMemberTable, codeGenConfig);
+			var codeGenerator = new CodeGenerator(assemblySymbol, typePool, codeGenConfig);
 			
 			var externalLibraries = new HashSet<string>();
 			var objectFiles = new List<string>();

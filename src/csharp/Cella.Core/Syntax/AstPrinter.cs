@@ -122,6 +122,19 @@ public sealed class AstPrinter : ISyntaxNodeVisitor
 		}
 	}
 	
+	public void Visit(FieldNode node)
+	{
+		StartLine();
+		_sb.Append("FieldNode '").Append(node.Identifier.AsSpan()).Append('\'');
+		
+		_sb.Append(" (");
+		VisitNode(node.Type, false);
+		_sb.Append(')');
+		
+		if (node.Initializer is { } expressionNode)
+			VisitNode(expressionNode, true);
+	}
+	
 	public void Visit(FileNode node)
 	{
 		StartLine();
@@ -197,6 +210,8 @@ public sealed class AstPrinter : ISyntaxNodeVisitor
 		StartLine();
 		_sb.Append("FunctionNode '").Append(node.Identifier.AsSpan()).Append('\'');
 		
+		// TODO Modifiers
+		
 		if (node.Parameters.Length > 0)
 		{
 			_sb.Append(" (");
@@ -230,6 +245,8 @@ public sealed class AstPrinter : ISyntaxNodeVisitor
 		StartLine();
 		_sb.Append("ExternalFunctionNode '").Append(node.Identifier.AsSpan()).Append('\'');
 		
+		// TODO Modifiers
+		
 		if (node.Parameters.Length > 0)
 		{
 			_sb.Append(" (");
@@ -257,6 +274,15 @@ public sealed class AstPrinter : ISyntaxNodeVisitor
 	{
 		_sb.Append(node.Identifier.AsSpan()).Append(": ");
 		VisitNode(node.Type, false);
+	}
+	
+	public void Visit(RecordNode node)
+	{
+		StartLine();
+		_sb.Append("RecordNode '").Append(node.Identifier.AsSpan()).Append('\'');
+		
+		// TODO Modifiers
+		// TODO Members
 	}
 	
 	public void Visit(LiteralExpressionNode node)

@@ -79,14 +79,11 @@ public abstract class TypeSymbol(string name, TypeSymbol? containingType = null,
 {
 	public TypeSymbol? ContainingType { get; } = containingType;
 	public ImmutableDictionary<string, Symbol> Children { get; } = children.ToImmutableDictionary(static s => s.Name);
-	public abstract ISize Size { get; }
 }
 
 public sealed class InvalidType : TypeSymbol
 {
 	public static InvalidType Instance { get; } = new();
-	
-	public override ISize Size => new ConstSize(0);
 	
 	private InvalidType() : base("??")
 	{
@@ -98,21 +95,19 @@ public interface IPrimitiveType
 	PrimitiveTypeKind Kind { get; }
 }
 
-public class PrimitiveType(string name, PrimitiveTypeKind kind, ISize size) : TypeSymbol(name), IPrimitiveType
+public class PrimitiveType(string name, PrimitiveTypeKind kind) : TypeSymbol(name), IPrimitiveType
 {
 	public PrimitiveTypeKind Kind { get; } = kind;
-	public override ISize Size { get; } = size;
 }
 
-public sealed class IntegerType(string name, PrimitiveTypeKind kind, ISize size, bool isSigned)
-	: PrimitiveType(name, kind, size)
+public sealed class IntegerType(string name, PrimitiveTypeKind kind, bool isSigned)
+	: PrimitiveType(name, kind)
 {
 	public bool IsSigned { get; } = isSigned;
 }
 
 public abstract class UntypedType(string name) : TypeSymbol(name)
 {
-	public override ISize Size => new ConstSize(0);
 }
 
 public sealed class UntypedIntegerType() : UntypedType("i?")
@@ -125,9 +120,7 @@ public enum PointerKind
 	Unsafe,
 	Mutable,
 	Immutable,
-	Owning,
-	
-	Count
+	Owning
 }
 
 public sealed class PointerType : TypeSymbol, IPrimitiveType
@@ -148,7 +141,6 @@ public sealed class PointerType : TypeSymbol, IPrimitiveType
 	public TypeSymbol BaseType { get; }
 	public PrimitiveTypeKind Kind { get; } = PrimitiveTypeKind.Pointer;
 	public PointerKind PointerKind { get; }
-	public override ISize Size { get; } = StorageSize.Ptr;
 	
 	public static string BuildName(TypeSymbol baseType, PointerKind pointerKind) => pointerKind switch
 	{
@@ -165,28 +157,24 @@ public sealed class ArrayType(TypeSymbol elementType, BigInteger length)
 	public TypeSymbol ElementType { get; } = elementType;
 	public BigInteger Length { get; } = length;
 	public PrimitiveTypeKind Kind { get; } = PrimitiveTypeKind.Array;
-	public override ISize Size { get; } = StorageSize.Product(elementType.Size, length);
 }
 
 public sealed class BufferType(TypeSymbol elementType) : TypeSymbol($"buffer[{elementType.Name}]"), IPrimitiveType
 {
 	public TypeSymbol ElementType { get; } = elementType;
 	public PrimitiveTypeKind Kind { get; } = PrimitiveTypeKind.Buffer;
-	public override ISize Size { get; } = StorageSize.Sum(NativeSymbols.UIntSize.Size, StorageSize.Ptr);
 }
 
 public sealed class SpanType(TypeSymbol elementType) : TypeSymbol($"span[{elementType.Name}]"), IPrimitiveType
 {
 	public TypeSymbol ElementType { get; } = elementType;
 	public PrimitiveTypeKind Kind { get; } = PrimitiveTypeKind.Span;
-	public override ISize Size { get; } = StorageSize.Sum(NativeSymbols.UIntSize.Size, StorageSize.Ptr);
 }
 
 public sealed class ViewType(TypeSymbol elementType) : TypeSymbol($"view[{elementType.Name}]"), IPrimitiveType
 {
 	public TypeSymbol ElementType { get; } = elementType;
 	public PrimitiveTypeKind Kind { get; } = PrimitiveTypeKind.View;
-	public override ISize Size { get; } = StorageSize.Sum(NativeSymbols.UIntSize.Size, StorageSize.Ptr);
 }
 
 public abstract class VariableSymbol(string name) : Symbol(name);
@@ -213,29 +201,38 @@ public sealed class LabelSymbol(Token identifier) : Symbol(identifier.Text)
 	public SourceLocation Definition { get; } = identifier.SourceLocation;
 }
 
-public abstract class MemberSymbol(string name) : Symbol(name)
+public sealed class RecordSymbol : TypeSymbol
 {
+	public RecordNode Node { get; }
+	public ImmutableArray<MemberSymbol> Members { get; }
+	public ImmutableArray<TypeSymbol> NestedTypes { get; }
+	
+	public RecordSymbol(string name, RecordNode node, IEnumerable<MemberSymbol> members,
+		IEnumerable<TypeSymbol> nestedTypes) : base(name)
+	{
+		Node = node;
+		Members = members.ToImmutableArray();
+		NestedTypes = nestedTypes.ToImmutableArray();
+	}
 }
 
-public abstract class MemberVariableSymbol(string name, TypeSymbol type) : MemberSymbol(name)
-{
-	public TypeSymbol Type { get; } = type;
-}
+public abstract class MemberSymbol(string name) : Symbol(name);
+public abstract class TypedMemberSymbol(string name) : MemberSymbol(name);
 
-public sealed class FieldSymbol(string name, TypeSymbol type, bool isMutable) : MemberVariableSymbol(name, type)
+public sealed class FieldSymbol(string name, FieldNode? node, bool isMutable) : TypedMemberSymbol(name)
 {
+	public FieldNode? Node { get; } = node;
 	public bool IsMutable { get; } = isMutable;
 }
 
-public sealed class PropertySymbol(string name, TypeSymbol type) : MemberVariableSymbol(name, type)
+public sealed class PropertySymbol(string name) : TypedMemberSymbol(name)
 {
 	public FieldSymbol? BackingField { get; init; }
 	public AccessorImpl? Getter { get; init; }
 	public AccessorImpl? Setter { get; init; }
 }
 
-public sealed class IndexerSymbol(string name, TypeSymbol type, IEnumerable<ParameterSymbol> parameters)
-	: MemberVariableSymbol(name, type)
+public sealed class IndexerSymbol(string name, IEnumerable<ParameterSymbol> parameters) : TypedMemberSymbol(name)
 {
 	public ImmutableArray<ParameterSymbol> Parameters { get; } = parameters.ToImmutableArray();
 	public AccessorImpl? Getter { get; init; }

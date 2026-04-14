@@ -26,7 +26,6 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 	private readonly SignatureTable _assemblySignatureTable;
 	private readonly SignatureTable _dependencySignatureTable;
 	private readonly TypePool _typePool;
-	private readonly TypeMemberTable _typeMemberTable;
 	private readonly ConversionTable _conversionTable;
 	private readonly OperatorRegistry _operatorRegistry;
 	private readonly uint _pointerBitSize;
@@ -44,13 +43,11 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 	private TypeSymbol? CurrentTargetType => _targetTypes.TryPeek(out var result) ? result : null;
 	
 	public Resolver(AssemblySymbol assemblySymbol, IEnumerable<AssemblySymbol> dependencies, TypePool typePool,
-		TypeMemberTable typeMemberTable, ConversionTable conversionTable, OperatorRegistry operatorRegistry,
 		uint pointerBitSize)
 	{
 		_typePool = typePool;
-		_typeMemberTable = typeMemberTable;
-		_conversionTable = conversionTable;
-		_operatorRegistry = operatorRegistry;
+		_conversionTable = typePool.ConversionTable;
+		_operatorRegistry = typePool.OperatorRegistry;
 		_pointerBitSize = pointerBitSize;
 		_symbolTable = assemblySymbol.SymbolTable;
 		_assemblySignatureTable = assemblySymbol.SignatureTable;
@@ -74,6 +71,11 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 	private IResolvedExpressionNode VisitNode(IExpressionNode node) =>
 		(IResolvedExpressionNode)((ISyntaxNodeVisitor<IResolvedNode>)this).Visit(node);
 	
+	public IResolvedNode Visit(FieldNode node)
+	{
+		throw new NotImplementedException();
+	}
+	
 	public IResolvedNode Visit(FileNode node)
 	{
 		var file = (FileSymbol)_symbolTable.DeclarationSymbols[node];
@@ -83,8 +85,7 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 		{
 			File = file,
 			Imports = imports,
-			TypePool = _typePool,
-			TypeMemberTable = _typeMemberTable
+			TypePool = _typePool
 		};
 		
 		_resolutionContexts.Push(resolutionContext);
@@ -128,6 +129,10 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 	public IResolvedNode Visit(GenericTypeNode node) => throw new InvalidOperationException();
 	public IResolvedNode Visit(IdentifierTypeNode node) => throw new InvalidOperationException();
 	public IResolvedNode Visit(ParameterNode node) => throw new InvalidOperationException();
+	public IResolvedNode Visit(RecordNode node)
+	{
+		throw new NotImplementedException();
+	}
 	
 	public IResolvedNode Visit(BlockStatementNode node)
 	{
@@ -368,11 +373,13 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 	{
 		var target = VisitNode(node.Target);
 		var memberName = node.Member.Text;
+		var resolutionContext = CurrentResolutionContext;
 		
-		if (CurrentResolutionContext.TypeMemberTable.Resolve(target.Type, memberName) is not { } member)
+		if (resolutionContext.TypePool.ResolveMember(target.Type, memberName) is not { } member)
 			throw new Exception($"Type '{target.Type.Name}' has no member '{memberName}'");
 		
-		return new ResolvedAccessExpressionNode(target, member);
+		var memberType = GetMemberType(member);
+		return new ResolvedAccessExpressionNode(target, member, memberType);
 	}
 	
 	public IResolvedNode Visit(ArrayExpressionNode node)
@@ -1128,4 +1135,7 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 		
 		return ApplyImplicitConversion(node, target);
 	}
+	
+	private TypeSymbol GetMemberType(MemberSymbol member) =>
+		_typePool.TryGetTypeOfMember(member, out var type) ? type : NativeSymbols.Invalid;
 }

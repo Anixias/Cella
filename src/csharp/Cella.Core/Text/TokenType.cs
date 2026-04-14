@@ -139,7 +139,7 @@ public static class TokenTypeInfo
 			[TokenType.KeywordUse] = new("use", IsKeyword: true, IsContextual: true),
 			[TokenType.KeywordPub] = new("pub", IsKeyword: true, IsContextual: true),
 			[TokenType.KeywordExt] = new("ext", IsKeyword: true, IsContextual: true),
-			[TokenType.KeywordRec] = new("ext", IsKeyword: true, IsContextual: true),
+			[TokenType.KeywordRec] = new("rec", IsKeyword: true, IsContextual: true),
 			
 			[TokenType.OpDotDotEqual] = new("..=", IsOperator: true),
 			[TokenType.OpDotDot] = new("..", IsOperator: true),

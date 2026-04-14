@@ -114,8 +114,6 @@ public sealed class OperatorRegistry(ConversionTable conversionTable)
 	private readonly record struct UnaryOperationKey(TokenType Op, TypeSymbol Operand);
 	private readonly record struct BinaryOperationKey(TypeSymbol Left, TokenType Op, TypeSymbol Right);
 	
-	private readonly ConversionTable _conversionTable = conversionTable;
-	
 	public bool CreateBinary(TypeSymbol left, TokenType op, TypeSymbol right, OperationImpl impl) =>
 		_binaryOps.TryAdd(new(left, op, right), impl);
 	
@@ -136,14 +134,14 @@ public sealed class OperatorRegistry(ConversionTable conversionTable)
 		BinaryResolution? rightCandidate = null;
 		var rightCost = int.MaxValue;
 		
-		var leftConversion = _conversionTable.FindImplicit(left, right);
+		var leftConversion = conversionTable.FindImplicit(left, right);
 		if (leftConversion is not null && _binaryOps.TryGetValue(new(right, op, right), out var impl))
 		{
 			leftCandidate = new(impl, leftConversion, null);
 			leftCost = leftConversion.Cost;
 		}
 		
-		var rightConversion = _conversionTable.FindImplicit(right, left);
+		var rightConversion = conversionTable.FindImplicit(right, left);
 		if (rightConversion is not null && _binaryOps.TryGetValue(new(left, op, left), out impl))
 		{
 			rightCandidate = new(impl, null, rightConversion);
