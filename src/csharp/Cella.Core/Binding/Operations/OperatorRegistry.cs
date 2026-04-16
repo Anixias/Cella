@@ -83,14 +83,16 @@ public sealed class OperatorRegistry(ConversionTable conversionTable)
 	[
 		TokenType.OpPlus,
 		TokenType.OpMinus,
-		TokenType.OpBang,
+		TokenType.OpTilde,
 	];
 	
 	private static readonly ImmutableArray<TokenType> _boolBinOps =
 	[
 		TokenType.OpAmpersandEqual,
+		TokenType.OpAmpersandAmpersand,
 		TokenType.OpAmpersand,
 		TokenType.OpBarEqual,
+		TokenType.OpBarBar,
 		TokenType.OpBar,
 		TokenType.OpHatEqual,
 		TokenType.OpHat,

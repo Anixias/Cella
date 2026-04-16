@@ -52,6 +52,7 @@ public sealed class Lowerer : IResolvedDeclarationNodeVisitor
 		private readonly Dictionary<LabelSymbol, LoopContext> _loopsByLabel = [];
 		private BasicBlock currentBlock;
 		private ulong nextLoopId;
+		private ulong nextTempId;
 		
 		private FunctionLowerer(LoweredFunction function)
 		{
@@ -60,6 +61,7 @@ public sealed class Lowerer : IResolvedDeclarationNodeVisitor
 		}
 		
 		private ulong NextLoopId() => nextLoopId++;
+		private ulong NextTempId() => nextTempId++;
 		
 		private BasicBlock CreateBlock(string hint)
 		{
@@ -279,9 +281,7 @@ public sealed class Lowerer : IResolvedDeclarationNodeVisitor
 			
 			// Create implicit counter variable initialized with count
 			var countValue = VisitNode(node.Count);
-			var counterNode = new VarStatementNode(SourceLocation.None,
-				new Token(TokenType.Identifier, SourceLocation.None, $"repeat{id}$i"), null, null);
-			var counterSymbol = new LocalVariableSymbol(counterNode, countValue.Type);
+			var counterSymbol = CreateTempSymbol(countValue.Type, $"repeat{id}$i");
 			currentBlock.Instructions.Add(new LocalVarInstruction(counterSymbol, countValue));
 			
 			var counterVar = new VariableValue(new(counterSymbol, countValue.Type));
@@ -386,53 +386,114 @@ public sealed class Lowerer : IResolvedDeclarationNodeVisitor
 		public Value Visit(ResolvedVarExpressionNode node) =>
 			new VariableValue(new(node.Symbol, node.Type));
 		
-		public Value Visit(ResolvedBinaryOpExpressionNode node) =>
-			LowerBinOp(VisitNode(node.Left), node.Operation, VisitNode(node.Right));
+		public Value Visit(ResolvedBinaryOpExpressionNode node)
+		{
+			if (IsShortCircuitOp(node.Operation))
+				return LowerShortCircuit(node.Left, node.Operation!.Op, node.Right);
+			
+			return LowerBinOp(VisitNode(node.Left), node.Operation, VisitNode(node.Right));
+		}
+		
+		private static bool IsShortCircuitOp(OperationImpl? op) =>
+			op is NativeImpl { Op: TokenType.OpAmpersandAmpersand or TokenType.OpBarBar };
+		
+		private VariableValue LowerShortCircuit(IResolvedExpressionNode leftNode, TokenType op,
+			IResolvedExpressionNode rightNode)
+		{
+			var resultSymbol = CreateTempSymbol(NativeSymbols.Bool, "sc_result");
+			currentBlock.Instructions.Add(new LocalVarInstruction(resultSymbol, null));
+			var result = new VariableValue(new(resultSymbol, NativeSymbols.Bool));
+			
+			var rightBlock = CreateBlock("sc_right");
+			var mergeBlock = CreateBlock("sc_merge");
+			
+			var left = VisitNode(leftNode);
+			
+			currentBlock.Instructions.Add(
+				new ExpressionInstruction(new AssignValue(NativeSymbols.Bool, result, left)));
+			
+			currentBlock.Terminator = op == TokenType.OpAmpersandAmpersand ?
+				new ConditionalBranchTerminator(result, rightBlock, mergeBlock)
+				: new ConditionalBranchTerminator(result, mergeBlock, rightBlock);
+			
+			currentBlock = rightBlock;
+			var right = VisitNode(rightNode);
+			currentBlock.Instructions.Add(
+				new ExpressionInstruction(new AssignValue(NativeSymbols.Bool, result, right)));
+			currentBlock.Terminator = new BranchTerminator(mergeBlock);
+			currentBlock = mergeBlock;
+			return result;
+		}
+		
+		private LocalVariableSymbol CreateTempSymbol(TypeSymbol type, string name)
+		{
+			name = $"t{NextTempId()}__{name}";
+			var node = new VarStatementNode(SourceLocation.None, new(TokenType.Identifier, SourceLocation.None, name),
+				null, null);
+			
+			return new LocalVariableSymbol(node, type);
+		}
 		
 		public Value Visit(ResolvedAssignmentExpressionNode node) =>
 			LowerAssignment(VisitNode(node.Left), node.Op, VisitNode(node.Right), node.Type);
 		
 		public Value Visit(ResolvedChainedExpressionNode node)
 		{
-			// TODO Implement short-circuiting
+			var resultSymbol = CreateTempSymbol(NativeSymbols.Bool, "chain_result");
+			currentBlock.Instructions.Add(new LocalVarInstruction(resultSymbol, null));
+			var result = new VariableValue(new(resultSymbol, NativeSymbols.Bool));
 			
-			// First and last operands don't need temporaries, so subtract 2
-			var tempVarCount = node.Operands.Length - 2;
-			var tempValues = new List<Value>(tempVarCount);
-			
-			for (var i = 1; i < node.Operands.Length - 1; i++)
-			{
-				var operand = node.Operands[i];
-				
-				var tempNode = new VarStatementNode(SourceLocation.None,
-					new Token(TokenType.Identifier, SourceLocation.None), null, null);
-				
-				var tempSymbol = new LocalVariableSymbol(tempNode, operand.Type);
-				var tempValue = VisitNode(operand);
-				
-				currentBlock.Instructions.Add(new LocalVarInstruction(tempSymbol, tempValue));
-				tempValues.Add(tempValue);
-			}
-			
-			Value? result = null;
+			var mergeBlock = CreateBlock("chain_merge");
 			var left = VisitNode(node.Operands[0]);
 			
-			for (var i = 1; i < node.Operands.Length; i++)
+			for (var i = 0; i < node.Ops.Length; i++)
 			{
-				var right = i == node.Operands.Length - 1
-					? VisitNode(node.Operands[i])
-					: tempValues[i - 1];
+				var op = node.Ops[i];
+				var rightNode = node.Operands[i + 1];
+				var isLast = i == node.Ops.Length - 1;
 				
-				var op = node.Ops[i - 1];
+				Value right;
+				if (isLast)
+				{
+					right = VisitNode(rightNode);
+				}
+				else
+				{
+					var tempSymbol = CreateTempSymbol(rightNode.Type, $"chain_inner{i}");
+					var rightValue = VisitNode(rightNode);
+					currentBlock.Instructions.Add(new LocalVarInstruction(tempSymbol, rightValue));
+					right = new VariableValue(new(tempSymbol, rightNode.Type));
+				}
+				
 				var comparison = LowerBinOp(left, op, right);
-				left = right;
 				
-				result = result is null
-					? comparison
-					: new BinOpValue(comparison.Type, result, comparison, BinaryOperation.And);
+				if (isLast)
+				{
+					currentBlock.Instructions.Add(
+						new ExpressionInstruction(new AssignValue(NativeSymbols.Bool, result, comparison)));
+					
+					currentBlock.Terminator = new BranchTerminator(mergeBlock);
+				}
+				else
+				{
+					var nextBlock = CreateBlock("chain_next");
+					var falseBlock = CreateBlock("chain_false");
+					
+					currentBlock.Terminator = new ConditionalBranchTerminator(comparison, nextBlock, falseBlock);
+					
+					currentBlock = falseBlock;
+					currentBlock.Instructions.Add(
+						new ExpressionInstruction(new AssignValue(NativeSymbols.Bool, result, ConstantValue.False)));
+					
+					currentBlock.Terminator = new BranchTerminator(mergeBlock);
+					
+					currentBlock = nextBlock;
+					left = right;
+				}
 			}
 			
-			return result!;
+			currentBlock = mergeBlock;
+			return result;
 		}
 		
 		private static AssignValue LowerAssignment(Value left, Token op, Value right, TypeSymbol type) => op.Type switch
@@ -449,11 +510,11 @@ public sealed class Lowerer : IResolvedDeclarationNodeVisitor
 			TokenType.OpPercentEqual => new AssignValue(type, left,
 				new BinOpValue(type, left, right, BinaryOperation.Modulo)),
 			TokenType.OpAmpersandEqual => new AssignValue(type, left,
-				new BinOpValue(type, left, right, BinaryOperation.And)),
+				new BinOpValue(type, left, right, BinaryOperation.BitwiseAnd)),
 			TokenType.OpBarEqual => new AssignValue(type, left,
-				new BinOpValue(type, left, right, BinaryOperation.Or)),
+				new BinOpValue(type, left, right, BinaryOperation.BitwiseOr)),
 			TokenType.OpHatEqual => new AssignValue(type, left,
-				new BinOpValue(type, left, right, BinaryOperation.Xor)),
+				new BinOpValue(type, left, right, BinaryOperation.BitwiseXor)),
 			_ => throw new InvalidOperationException()
 		};
 		
@@ -484,9 +545,11 @@ public sealed class Lowerer : IResolvedDeclarationNodeVisitor
 			TokenType.OpGreaterEqual => BinaryOperation.GreaterEqual,
 			TokenType.OpLess => BinaryOperation.Less,
 			TokenType.OpLessEqual => BinaryOperation.LessEqual,
-			TokenType.OpAmpersand => BinaryOperation.And,
-			TokenType.OpBar => BinaryOperation.Or,
-			TokenType.OpHat => BinaryOperation.Xor,
+			TokenType.OpAmpersand => BinaryOperation.BitwiseAnd,
+			TokenType.OpBar => BinaryOperation.BitwiseOr,
+			TokenType.OpHat => BinaryOperation.BitwiseXor,
+			TokenType.OpAmpersandAmpersand => BinaryOperation.LogicalAnd,
+			TokenType.OpBarBar => BinaryOperation.LogicalOr,
 			_ => throw new InvalidOperationException()
 		};
 		
@@ -494,7 +557,8 @@ public sealed class Lowerer : IResolvedDeclarationNodeVisitor
 		{
 			TokenType.OpPlus => UnaryOperation.Identity,
 			TokenType.OpMinus => UnaryOperation.Negation,
-			TokenType.OpBang => UnaryOperation.Not,
+			TokenType.OpTilde => UnaryOperation.BitwiseNot,
+			TokenType.OpBang => UnaryOperation.LogicalNot,
 			TokenType.OpAt => UnaryOperation.AddressOf,
 			_ => throw new InvalidOperationException()
 		};

@@ -32,6 +32,7 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 		TokenType.OpPlus,
 		TokenType.OpMinus,
 		TokenType.OpBang,
+		TokenType.OpTilde,
 		TokenType.OpAt
 	];
 	
@@ -82,7 +83,7 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 	
 	private IExpressionNode ParseAssignment(ref int index)
 	{
-		var left = ParseXor(ref index);
+		var left = ParseLogicalOr(ref index);
 		if (!Match(ref index, out var op, _assignmentOps))
 			return left;
 		
@@ -90,34 +91,22 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 		return new BinaryOpExpressionNode(left, op, right);
 	}
 	
-	private IExpressionNode ParseXor(ref int index)
+	private IExpressionNode ParseLogicalOr(ref int index)
 	{
-		var node = ParseOr(ref index);
-		while (Match(ref index, out var op, TokenType.OpHat))
+		var node = ParseLogicalAnd(ref index);
+		while (Match(ref index, out var op, TokenType.OpBarBar))
 		{
-			var right = ParseOr(ref index);
+			var right = ParseLogicalAnd(ref index);
 			node = new BinaryOpExpressionNode(node, op, right);
 		}
 		
 		return node;
 	}
 	
-	private IExpressionNode ParseOr(ref int index)
-	{
-		var node = ParseAnd(ref index);
-		while (Match(ref index, out var op, TokenType.OpBar))
-		{
-			var right = ParseAnd(ref index);
-			node = new BinaryOpExpressionNode(node, op, right);
-		}
-		
-		return node;
-	}
-	
-	private IExpressionNode ParseAnd(ref int index)
+	private IExpressionNode ParseLogicalAnd(ref int index)
 	{
 		var node = ParseEquality(ref index);
-		while (Match(ref index, out var op, TokenType.OpAmpersand))
+		while (Match(ref index, out var op, TokenType.OpAmpersandAmpersand))
 		{
 			var right = ParseEquality(ref index);
 			node = new BinaryOpExpressionNode(node, op, right);
@@ -140,13 +129,13 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 	
 	private IExpressionNode ParseComparison(ref int index)
 	{
-		var operands = new List<IExpressionNode> { ParseAdditive(ref index) };
+		var operands = new List<IExpressionNode> { ParseBitwiseOr(ref index) };
 		var ops = new List<Token>();
 		
 		while (Match(ref index, out var op, _comparisonOps))
 		{
 			ops.Add(op);
-			operands.Add(ParseAdditive(ref index));
+			operands.Add(ParseBitwiseOr(ref index));
 		}
 		
 		return operands.Count switch
@@ -155,6 +144,42 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 			2 => new BinaryOpExpressionNode(operands[0], ops[0], operands[1]),
 			_ => new ChainedExpressionNode(operands, ops)
 		};
+	}
+	
+	private IExpressionNode ParseBitwiseOr(ref int index)
+	{
+		var node = ParseBitwiseXor(ref index);
+		while (Match(ref index, out var op, TokenType.OpBar))
+		{
+			var right = ParseBitwiseXor(ref index);
+			node = new BinaryOpExpressionNode(node, op, right);
+		}
+		
+		return node;
+	}
+	
+	private IExpressionNode ParseBitwiseXor(ref int index)
+	{
+		var node = ParseBitwiseAnd(ref index);
+		while (Match(ref index, out var op, TokenType.OpHat))
+		{
+			var right = ParseBitwiseAnd(ref index);
+			node = new BinaryOpExpressionNode(node, op, right);
+		}
+		
+		return node;
+	}
+	
+	private IExpressionNode ParseBitwiseAnd(ref int index)
+	{
+		var node = ParseAdditive(ref index);
+		while (Match(ref index, out var op, TokenType.OpAmpersand))
+		{
+			var right = ParseAdditive(ref index);
+			node = new BinaryOpExpressionNode(node, op, right);
+		}
+		
+		return node;
 	}
 	
 	private IExpressionNode ParseAdditive(ref int index)

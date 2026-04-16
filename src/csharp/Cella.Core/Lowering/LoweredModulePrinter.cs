@@ -140,21 +140,33 @@ public static class LoweredModulePrinter
 					value = v.Right;
 					continue;
 				
-				case BinOpValue { Op: BinaryOperation.And } v:
+				case BinOpValue { Op: BinaryOperation.BitwiseAnd } v:
 					PrintValue(sb, v.Left);
 					sb.Append(" & ");
 					value = v.Right;
 					continue;
 				
-				case BinOpValue { Op: BinaryOperation.Or } v:
+				case BinOpValue { Op: BinaryOperation.BitwiseOr } v:
 					PrintValue(sb, v.Left);
 					sb.Append(" | ");
 					value = v.Right;
 					continue;
 				
-				case BinOpValue { Op: BinaryOperation.Xor } v:
+				case BinOpValue { Op: BinaryOperation.BitwiseXor } v:
 					PrintValue(sb, v.Left);
 					sb.Append(" ^ ");
+					value = v.Right;
+					continue;
+				
+				case BinOpValue { Op: BinaryOperation.LogicalAnd } v:
+					PrintValue(sb, v.Left);
+					sb.Append(" && ");
+					value = v.Right;
+					continue;
+				
+				case BinOpValue { Op: BinaryOperation.LogicalOr } v:
+					PrintValue(sb, v.Left);
+					sb.Append(" || ");
 					value = v.Right;
 					continue;
 				
@@ -216,7 +228,12 @@ public static class LoweredModulePrinter
 					value = v.Operand;
 					continue;
 				
-				case UnaryOpValue { Op: UnaryOperation.Not } v:
+				case UnaryOpValue { Op: UnaryOperation.BitwiseNot } v:
+					sb.Append('~');
+					value = v.Operand;
+					continue;
+				
+				case UnaryOpValue { Op: UnaryOperation.LogicalNot } v:
 					sb.Append('!');
 					value = v.Operand;
 					continue;

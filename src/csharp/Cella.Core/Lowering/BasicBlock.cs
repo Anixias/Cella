@@ -26,6 +26,9 @@ public abstract class Value(TypeSymbol type)
 
 public sealed class ConstantValue(TypeSymbol type, object? value) : Value(type, true)
 {
+	public static ConstantValue True { get; } = new(NativeSymbols.Bool, true);
+	public static ConstantValue False { get; } = new(NativeSymbols.Bool, true);
+	
 	public object? Value { get; } = value;
 }
 

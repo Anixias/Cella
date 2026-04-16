@@ -13,9 +13,11 @@ public enum BinaryOperation
 	GreaterEqual,
 	Less,
 	LessEqual,
-	And,
-	Or,
-	Xor,
+	BitwiseAnd,
+	BitwiseOr,
+	BitwiseXor,
+	LogicalAnd,
+	LogicalOr,
 	
 	Count
 }

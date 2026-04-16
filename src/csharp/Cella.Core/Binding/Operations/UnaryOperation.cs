@@ -4,7 +4,8 @@ public enum UnaryOperation
 {
 	Identity,
 	Negation,
-	Not,
+	LogicalNot,
+	BitwiseNot,
 	AddressOf,
 	
 	Count

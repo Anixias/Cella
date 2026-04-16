@@ -70,8 +70,11 @@ public sealed class StringSource : ISource
 	
 	public (int Line, int Column) GetLineColumn(int position)
 	{
-		if (position < 0 || position > _text.Length)
+		if (position < 0)
 			return (0, 0);
+		
+		if (position >= _text.Length)
+			return (_lines.Length, _lines.Length > 0 ? _lines[^1].Length : 0);
 		
 		var low = 0;
 		var high = _lines.Length - 1;

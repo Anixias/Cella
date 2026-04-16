@@ -595,14 +595,20 @@ public sealed unsafe class CodeGenerator : IDisposable
 			{ Op: BinaryOperation.NotEqual } =>
 				builder.BuildICmp(LLVMIntPredicate.LLVMIntNE, left, right), // TODO Check type for correct operation
 			
-			{ Op: BinaryOperation.And } =>
+			{ Op: BinaryOperation.BitwiseAnd } =>
 				builder.BuildAnd(left, right),
 			
-			{ Op: BinaryOperation.Or } =>
+			{ Op: BinaryOperation.BitwiseOr } =>
 				builder.BuildOr(left, right),
 			
-			{ Op: BinaryOperation.Xor } =>
+			{ Op: BinaryOperation.BitwiseXor } =>
 				builder.BuildXor(left, right),
+			
+			{ Op: BinaryOperation.LogicalAnd } =>
+				builder.BuildAnd(left, right),
+			
+			{ Op: BinaryOperation.LogicalOr } =>
+				builder.BuildOr(left, right),
 			
 			_ => throw new InvalidOperationException()
 		};
@@ -613,8 +619,13 @@ public sealed unsafe class CodeGenerator : IDisposable
 		{ IsConstant: true, Op: UnaryOperation.Negation } => LLVMValueRef.CreateConstNeg(EmitValue(v.Operand, builder)),
 		{ Op: UnaryOperation.Negation } => builder.BuildNeg(EmitValue(v.Operand, builder)), // TODO Check floating point?
 		
-		{ IsConstant: true, Op: UnaryOperation.Not } => LLVMValueRef.CreateConstNot(EmitValue(v.Operand, builder)),
-		{ Op: UnaryOperation.Not } => builder.BuildNot(EmitValue(v.Operand, builder)),
+		{ IsConstant: true, Op: UnaryOperation.BitwiseNot } =>
+			LLVMValueRef.CreateConstNot(EmitValue(v.Operand, builder)),
+		{ Op: UnaryOperation.BitwiseNot } => builder.BuildNot(EmitValue(v.Operand, builder)),
+		
+		{ IsConstant: true, Op: UnaryOperation.LogicalNot } =>
+			LLVMValueRef.CreateConstNot(EmitValue(v.Operand, builder)),
+		{ Op: UnaryOperation.LogicalNot } => builder.BuildNot(EmitValue(v.Operand, builder)),
 		
 		{ Op: UnaryOperation.AddressOf } => EmitAddress(v.Operand, builder),
 		
