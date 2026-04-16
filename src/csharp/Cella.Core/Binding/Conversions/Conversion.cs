@@ -21,6 +21,9 @@ public abstract class Conversion(TypeSymbol from, TypeSymbol to, ConversionKind 
 public sealed class NativeConversion(TypeSymbol from, TypeSymbol to, ConversionKind kind, int cost)
 	: Conversion(from, to, kind, cost, true);
 
+public sealed class FreeConversion(TypeSymbol from, TypeSymbol to, ConversionKind kind)
+	: Conversion(from, to, kind, 0, true);
+
 // TODO Is this needed?
 public sealed class IdentityConversion(TypeSymbol symbol)
 	: Conversion(symbol, symbol, ConversionKind.Identity, 0, true);

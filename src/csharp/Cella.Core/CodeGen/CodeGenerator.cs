@@ -408,6 +408,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 			IdentityConversion => EmitValue(v.Source, builder),
 			IntegerConversion c => EmitIntegerConversion(c, EmitValue(v.Source, builder), builder),
 			NativeConversion c => EmitNativeConversion(c, v, builder),
+			FreeConversion => EmitValue(v.Source, builder),
 			FunctionConversion c => EmitValue(new CallValue(c.Function, [v.Source]), builder),
 			_ => throw new InvalidOperationException()
 		};

@@ -93,8 +93,8 @@ public sealed class ConversionTable
 		}
 		
 		// cstr <-> ptr
-		table.Add(new NativeConversion(NativeSymbols.CStr, NativeSymbols.VoidPtr, ConversionKind.Implicit, 0));
-		table.Add(new NativeConversion(NativeSymbols.VoidPtr, NativeSymbols.CStr, ConversionKind.Explicit, 0));
+		table.Add(new FreeConversion(NativeSymbols.CStr, NativeSymbols.VoidPtr, ConversionKind.Implicit));
+		table.Add(new FreeConversion(NativeSymbols.VoidPtr, NativeSymbols.CStr, ConversionKind.Explicit));
 		
 		return table;
 	}

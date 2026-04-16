@@ -183,6 +183,14 @@ public sealed class TypePool
 	
 	public void CreateNativeMembers()
 	{
+		// cstr <-> ptr[i8]/ptr[u8]
+		var ptrI8 = GetPointerType(NativeSymbols.Int8, PointerKind.Unsafe);
+		ConversionTable.Add(new FreeConversion(NativeSymbols.CStr, ptrI8, ConversionKind.Implicit));
+		ConversionTable.Add(new FreeConversion(ptrI8, NativeSymbols.CStr, ConversionKind.Explicit));
+		var ptrU8 = GetPointerType(NativeSymbols.UInt8, PointerKind.Unsafe);
+		ConversionTable.Add(new FreeConversion(NativeSymbols.CStr, ptrU8, ConversionKind.Implicit));
+		ConversionTable.Add(new FreeConversion(ptrU8, NativeSymbols.CStr, ConversionKind.Explicit));
+		
 		// TODO constructors, str.toCstr(), str.getCharLength(), etc.
 		//Register(NativeSymbols.Str, new IntrinsicMemberSymbol("byteLength", NativeSymbols.UIntSize));
 	}

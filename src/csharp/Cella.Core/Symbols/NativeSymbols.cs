@@ -72,13 +72,13 @@ public static class StorageSize
 	public static MaxSize Max(params IEnumerable<ISize> sizes) => new(sizes);
 	public static ProductSize Product(ISize size, BigInteger count) => new(size, count);
 	
-	public static uint CountBits(ISize size, uint pointerSize) => size switch
+	public static uint CountBits(this ISize size, uint pointerSize) => size switch
 	{
 		ConstSize s => (uint)s.Value * 8,
 		PointerSize => pointerSize,
-		SumSize s => (uint)s.Sizes.Sum(s => CountBits(s, pointerSize)),
-		MaxSize s => s.Sizes.Max(s => CountBits(s, pointerSize)),
-		ProductSize s => (uint)(s.Count * CountBits(s.Size, pointerSize)),
+		SumSize s => (uint)s.Sizes.Sum(s => s.CountBits(pointerSize)),
+		MaxSize s => s.Sizes.Max(s => s.CountBits(pointerSize)),
+		ProductSize s => (uint)(s.Count * s.Size.CountBits(pointerSize)),
 		_ => 0u
 	};
 }
