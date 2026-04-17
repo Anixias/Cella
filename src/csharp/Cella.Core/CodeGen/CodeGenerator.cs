@@ -47,6 +47,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 	private readonly string _dataLayoutStr;
 	private readonly LLVMTargetMachineRef _targetMachine;
 	private readonly uint _pointerSize;
+	private readonly LLVMPassBuilderOptionsRef _passBuilderOptions = LLVMPassBuilderOptionsRef.Create();
 	private readonly Dictionary<TypeSymbol, LLVMTypeRef> _typeMap = [];
 	private readonly Dictionary<FunctionInfo, LLVMFunctionInfo> _funMap = [];
 	private readonly Dictionary<VariableInfo, LLVMValueRef> _varMap = [];
@@ -59,11 +60,22 @@ public sealed unsafe class CodeGenerator : IDisposable
 	public CodeGenerator(AssemblySymbol assemblySymbol, TypePool typePool, CodeGenConfig config)
 	{
 		Init();
+		_passBuilderOptions.SetVerifyEach(true);
 		_assemblySymbol = assemblySymbol;
 		_typePool = typePool;
 		_config = config;
 		(_dataLayoutStr, TargetTriple, _targetMachine, _pointerSize) = config.GetDataLayout();
 		MapNativeSymbols();
+	}
+	
+	private LLVMErrorRef RunOptimizationPass(LLVMModuleRef module)
+	{
+		// TODO Build string from config
+		using var passStr = new MarshaledString("default<O2>");
+		var errorHandle = LLVM.RunPasses((LLVMOpaqueModule*)module.Handle, passStr,
+			(LLVMOpaqueTargetMachine*)_targetMachine.Handle, (LLVMOpaquePassBuilderOptions*)_passBuilderOptions.Handle);
+		
+		return new LLVMErrorRef((nint)errorHandle);
 	}
 	
 	private void MapNativeSymbols()
@@ -262,6 +274,9 @@ public sealed unsafe class CodeGenerator : IDisposable
 		// Build function bodies
 		foreach (var function in module.Functions)
 			BuildFunction(llvmModule, llvmDiBuilder, function);
+		
+		// Optimize the module
+		RunOptimizationPass(llvmModule);
 	}
 	
 	private LLVMFunctionInfo CreateFunction(LLVMModuleRef llvmModule, FunctionInfo function)
