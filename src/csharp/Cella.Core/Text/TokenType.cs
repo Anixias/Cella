@@ -18,6 +18,8 @@ public enum TokenType
 	// Literals
 	IntegerLiteral,
 	StringLiteral,
+	CharLiteral,
+	InvalidCharLiteral,
 	
 	// Literal keywords
 	KeywordTrue,
@@ -120,6 +122,8 @@ public static class TokenTypeInfo
 			
 			[TokenType.IntegerLiteral] = new("integer literal", IsLiteral: true),
 			[TokenType.StringLiteral] = new("string literal", IsLiteral: true),
+			[TokenType.CharLiteral] = new("char literal", IsLiteral: true),
+			[TokenType.InvalidCharLiteral] = new("invalid char literal", IsLiteral: true, IsInvalid: true),
 			
 			[TokenType.KeywordTrue] = new("true", IsKeyword: true, IsLiteral: true),
 			[TokenType.KeywordFalse] = new("false", IsKeyword: true, IsLiteral: true),

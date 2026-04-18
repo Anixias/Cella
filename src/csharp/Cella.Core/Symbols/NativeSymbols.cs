@@ -18,6 +18,7 @@ public enum PrimitiveTypeKind
 	UInt64,
 	UInt128,
 	UIntSize,
+	Char,
 	Bool,
 	Str,
 	CStr,
@@ -46,6 +47,7 @@ public static class NativeSymbols
 	public static IntegerType UInt64 { get; } = new("u64", PrimitiveTypeKind.UInt64, false);
 	public static IntegerType UInt128 { get; } = new("u128", PrimitiveTypeKind.UInt128, false);
 	public static IntegerType UIntSize { get; } = new("usize", PrimitiveTypeKind.UIntSize, false);
+	public static IntegerType Char { get; } = new("char", PrimitiveTypeKind.Char, false);
 	public static PrimitiveType Bool { get; } = new("bool", PrimitiveTypeKind.Bool);
 	public static PrimitiveType Str { get; } = new("str", PrimitiveTypeKind.Str);
 	public static PrimitiveType CStr { get; } = new("cstr", PrimitiveTypeKind.CStr);
@@ -54,7 +56,7 @@ public static class NativeSymbols
 	{
 		Int8, Int16, Int32, Int64, Int128, IntSize,
 		UInt8, UInt16, UInt32, UInt64, UInt128, UIntSize,
-		Bool, Str, CStr, VoidPtr
+		Char, Bool, Str, CStr, VoidPtr
 	}.ToImmutableDictionary(static s => s.Name);
 	
 	public static Symbol? Resolve(string name) => _primitiveTypes.GetValueOrDefault(name);

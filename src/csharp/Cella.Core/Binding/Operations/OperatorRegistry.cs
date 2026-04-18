@@ -107,7 +107,8 @@ public sealed class OperatorRegistry(ConversionTable conversionTable)
 		NativeSymbols.Int64, NativeSymbols.UInt64,
 		NativeSymbols.Int128, NativeSymbols.UInt128,
 		NativeSymbols.IntSize, NativeSymbols.UIntSize,
-		NativeSymbols.UntypedInteger
+		NativeSymbols.UntypedInteger,
+		NativeSymbols.Char // TODO Handle char differently?
 	];
 	
 	private readonly Dictionary<UnaryOperationKey, OperationImpl> _unaryOps = CreateUnaryOps();

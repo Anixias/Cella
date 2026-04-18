@@ -35,8 +35,8 @@ public class Scanner : IScanner
 			case '"':
 				return ScanString(position);
 			
-			/*case '\'':
-				return ScanChar(position);*/
+			case '\'':
+				return ScanChar(position);
 		}
 		
 		if (TryScanComment(position, out var comment))
@@ -486,7 +486,7 @@ public class Scanner : IScanner
 		};
 	}
 	
-	/*private ScanResult ScanChar(int position)
+	private ScanResult ScanChar(int position)
 	{
 		var end = position + 1;
 		var isValid = true;
@@ -516,26 +516,22 @@ public class Scanner : IScanner
 		
 		if (!isValid)
 		{
-			var invalidToken = new Token(TokenType.InvalidCharLiteral, new TextRange(position, end), Source);
+			var invalidToken = new Token(TokenType.InvalidCharLiteral, Source, new TextRange(position, end));
 			return new ScanResult(invalidToken, end);
 		}
 		
 		var value = UnescapeString(Source.GetText(new TextRange(position + 1, end - 1)));
-		if (value.Item1.Length != 1 || !value.Item2)
+		if (value.Result.Length != 1 || !value.IsValid)
 		{
-			var invalidToken = new Token(TokenType.InvalidCharLiteral, new TextRange(position, end), Source);
+			var invalidToken = new Token(TokenType.InvalidCharLiteral, Source, new TextRange(position, end));
 			return new ScanResult(invalidToken, end);
 		}
 		
-		var bytes = Encoding.UTF8.GetBytes(value.Item1);
-		var paddedBytes = new byte[4];
-		Array.Copy(bytes, paddedBytes, bytes.Length);
-		
-		var token = new Token(TokenType.CharLiteral, new TextRange(position, end), Source, paddedBytes);
+		var token = new Token(TokenType.CharLiteral, Source, new TextRange(position, end), value.Result);
 		return new ScanResult(token, end);
 	}
 	
-	private ScanResult? TryScanComment(int position)
+	/*private ScanResult? TryScanComment(int position)
 	{
 		if (Source[position] != '/')
 			return null;

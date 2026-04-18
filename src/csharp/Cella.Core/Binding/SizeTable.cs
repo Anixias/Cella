@@ -22,6 +22,7 @@ public sealed class SizeTable
 		[NativeSymbols.UInt64] = StorageSize.Const(8),
 		[NativeSymbols.UInt128] = StorageSize.Const(16),
 		[NativeSymbols.UIntSize] = StorageSize.Ptr,
+		[NativeSymbols.Char] = StorageSize.Const(4),
 		[NativeSymbols.Bool] = StorageSize.Const(1),
 		[NativeSymbols.Str] = StorageSize.Sum(StorageSize.Ptr, StorageSize.Ptr), // usize length + ptr data
 		[NativeSymbols.CStr] = StorageSize.Ptr

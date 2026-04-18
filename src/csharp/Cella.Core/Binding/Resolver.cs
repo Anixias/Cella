@@ -478,16 +478,32 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 		object? value = null;
 		
 		var tokenType = node.Token.Type;
-		if (tokenType == TokenType.IntegerLiteral)
-			(type, value) = ParseInteger(valueSpan, CurrentTargetType);
-		else if (tokenType == TokenType.KeywordNull)
-			(type, value) = (NativeSymbols.VoidPtr, null);
-		else if (tokenType == TokenType.KeywordTrue)
-			(type, value) = (NativeSymbols.Bool, true);
-		else if (tokenType == TokenType.KeywordFalse)
-			(type, value) = (NativeSymbols.Bool, false);
-		else if (tokenType == TokenType.StringLiteral)
-			(type, value) = ParseString(valueSpan, CurrentTargetType);
+		switch (tokenType)
+		{
+			case TokenType.IntegerLiteral:
+				(type, value) = ParseInteger(valueSpan, CurrentTargetType);
+				break;
+			
+			case TokenType.KeywordNull:
+				(type, value) = (NativeSymbols.VoidPtr, null);
+				break;
+			
+			case TokenType.KeywordTrue:
+				(type, value) = (NativeSymbols.Bool, true);
+				break;
+			
+			case TokenType.KeywordFalse:
+				(type, value) = (NativeSymbols.Bool, false);
+				break;
+			
+			case TokenType.StringLiteral:
+				(type, value) = ParseString(valueSpan, CurrentTargetType);
+				break;
+			
+			case TokenType.CharLiteral:
+				(type, value) = ParseChar(valueSpan);
+				break;
+		}
 		
 		// TODO We should emit diagnostics here
 		type ??= NativeSymbols.Invalid;
@@ -953,6 +969,8 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 		
 		return (null, null);
 	}
+	
+	private (TypeSymbol type, uint value) ParseChar(ReadOnlySpan<char> span) => (NativeSymbols.Char, span[0]);
 	
 	private (TypeSymbol? type, object? value) ParseString(ReadOnlySpan<char> span, TypeSymbol? targetType)
 	{

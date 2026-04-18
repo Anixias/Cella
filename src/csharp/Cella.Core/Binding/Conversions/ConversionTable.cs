@@ -90,7 +90,31 @@ public sealed class ConversionTable
 			table.Add(new IntegerConversion(intTypes[i].U, NativeSymbols.UIntSize, ConversionKind.Explicit, 1));
 			table.Add(new IntegerConversion(NativeSymbols.UIntSize, intTypes[i].S, ConversionKind.Explicit, 1));
 			table.Add(new IntegerConversion(NativeSymbols.UIntSize, intTypes[i].U, ConversionKind.Explicit, 1));
+			
+			// Any integer type -> char
+			// Always explicit
+			table.Add(new IntegerConversion(intTypes[i].S, NativeSymbols.Char, ConversionKind.Explicit, 1));
+			
+			if (intTypes[i].U == NativeSymbols.UInt32)
+				table.Add(new FreeConversion(NativeSymbols.UInt32, NativeSymbols.Char, ConversionKind.Explicit));
+			else
+				table.Add(new IntegerConversion(intTypes[i].U, NativeSymbols.Char, ConversionKind.Explicit, 1));
 		}
+		
+		// char -> Any integer type
+		// Explicit if dest smaller than char (u32) or usize/isize
+		table.Add(new IntegerConversion(NativeSymbols.Char, NativeSymbols.Int8, ConversionKind.Explicit, 1));
+		table.Add(new IntegerConversion(NativeSymbols.Char, NativeSymbols.UInt8, ConversionKind.Explicit, 1));
+		table.Add(new IntegerConversion(NativeSymbols.Char, NativeSymbols.Int16, ConversionKind.Explicit, 1));
+		table.Add(new IntegerConversion(NativeSymbols.Char, NativeSymbols.UInt16, ConversionKind.Explicit, 1));
+		table.Add(new IntegerConversion(NativeSymbols.Char, NativeSymbols.Int32, ConversionKind.Explicit, 1));
+		table.Add(new FreeConversion(NativeSymbols.Char, NativeSymbols.UInt32, ConversionKind.Implicit));
+		table.Add(new IntegerConversion(NativeSymbols.Char, NativeSymbols.Int64, ConversionKind.Implicit, 1));
+		table.Add(new IntegerConversion(NativeSymbols.Char, NativeSymbols.UInt64, ConversionKind.Implicit, 1));
+		table.Add(new IntegerConversion(NativeSymbols.Char, NativeSymbols.Int128, ConversionKind.Implicit, 1));
+		table.Add(new IntegerConversion(NativeSymbols.Char, NativeSymbols.UInt128, ConversionKind.Implicit, 1));
+		table.Add(new IntegerConversion(NativeSymbols.Char, NativeSymbols.IntSize, ConversionKind.Explicit, 1));
+		table.Add(new IntegerConversion(NativeSymbols.Char, NativeSymbols.UIntSize, ConversionKind.Explicit, 1));
 		
 		// cstr <-> ptr
 		table.Add(new FreeConversion(NativeSymbols.CStr, NativeSymbols.VoidPtr, ConversionKind.Implicit));

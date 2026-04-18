@@ -97,6 +97,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 		_typeMap[NativeSymbols.UInt64] = LLVMTypeRef.Int64;
 		_typeMap[NativeSymbols.UInt128] = LLVMTypeRef.Int128;
 		_typeMap[NativeSymbols.UIntSize] = intSize;
+		_typeMap[NativeSymbols.Char] = LLVMTypeRef.Int32;
 		_typeMap[NativeSymbols.Bool] = LLVMTypeRef.Int1;
 		_typeMap[NativeSymbols.Str] =
 			LLVMTypeRef.CreateStruct([intSize, LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0u)], false);
@@ -825,6 +826,9 @@ public sealed unsafe class CodeGenerator : IDisposable
 				
 				case PrimitiveTypeKind.UIntSize:
 					return EmitSizeConstant((BigInteger)value, true);
+				
+				case PrimitiveTypeKind.Char:
+					return LLVMValueRef.CreateConstInt(type, (uint)value);
 				
 				case PrimitiveTypeKind.Str:
 				{

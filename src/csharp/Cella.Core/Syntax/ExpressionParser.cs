@@ -18,7 +18,9 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 		TokenType.KeywordNull,
 		TokenType.KeywordUndef,
 		TokenType.IntegerLiteral,
-		TokenType.StringLiteral
+		TokenType.StringLiteral,
+		TokenType.CharLiteral,
+		TokenType.InvalidCharLiteral
 	];
 	
 	private static readonly HashSet<TokenType> _additiveOps =

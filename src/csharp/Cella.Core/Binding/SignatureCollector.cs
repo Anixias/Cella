@@ -161,7 +161,7 @@ public sealed class SignatureCollector : IDeclarationNodeVisitor
 		if (returnType != NativeSymbols.Void && returnType != NativeSymbols.Int32)
 			return false;
 		
-		// TODO Allow array of strings as parameter
+		// TODO Allow view of strings as parameter
 		var paramTypes = signature.ParameterTypes;
 		if (paramTypes.Length > 0)
 			return false;
