@@ -3,9 +3,6 @@ using System.Numerics;
 using System.Text;
 using Cella.Core.Binding.Conversions;
 using Cella.Core.Binding.Nodes;
-using Cella.Core.Binding.Nodes.Declarations;
-using Cella.Core.Binding.Nodes.Expressions;
-using Cella.Core.Binding.Nodes.Statements;
 using Cella.Core.Binding.Operations;
 using Cella.Core.Symbols;
 using Cella.Core.Syntax.Nodes;
@@ -73,7 +70,23 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 	
 	public IResolvedNode Visit(FieldNode node)
 	{
-		throw new NotImplementedException();
+		var resolutionContext = CurrentResolutionContext;
+		var type = resolutionContext.ResolveType(node.Type);
+		var field = (FieldSymbol)_symbolTable.DeclarationSymbols[node];
+		IResolvedExpressionNode? initializer;
+		if (node.Initializer is { } initializerNode)
+		{
+			_targetTypes.Push(type);
+			initializer = VisitNode(initializerNode);
+			_targetTypes.Pop();
+			
+			initializer = MaterializeAsDefault(initializer);
+			initializer = CoerceToType(initializer, type);
+		}
+		else
+			initializer = null;
+		
+		return new ResolvedFieldNode(field, type, initializer);
 	}
 	
 	public IResolvedNode Visit(FileNode node)
@@ -129,9 +142,16 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 	public IResolvedNode Visit(GenericTypeNode node) => throw new InvalidOperationException();
 	public IResolvedNode Visit(IdentifierTypeNode node) => throw new InvalidOperationException();
 	public IResolvedNode Visit(ParameterNode node) => throw new InvalidOperationException();
+	
 	public IResolvedNode Visit(RecordNode node)
 	{
-		throw new NotImplementedException();
+		var members = new List<IResolvedDeclarationNode>();
+		
+		foreach (var member in node.Members)
+			members.Add(VisitNode(member));
+		
+		var record = (RecordSymbol)_symbolTable.DeclarationSymbols[node];
+		return new ResolvedRecordNode(record, members);
 	}
 	
 	public IResolvedNode Visit(BlockStatementNode node)

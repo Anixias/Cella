@@ -1,7 +1,7 @@
 ﻿using Cella.Core.Binding.Conversions;
 using Cella.Core.Symbols;
 
-namespace Cella.Core.Binding.Nodes.Expressions;
+namespace Cella.Core.Binding.Nodes;
 
 public sealed class ResolvedConversionExpressionNode(IResolvedExpressionNode source, Conversion conversion)
 	: IResolvedExpressionNode

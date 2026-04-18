@@ -161,8 +161,11 @@ public sealed class TypePool
 		return viewType;
 	}
 	
-	public void Register(TypeSymbol type, MemberSymbol member) =>
-		_members.GetOrAdd(type)[member.Name] = member;
+	public void RegisterMember(TypeSymbol containingType, TypedMemberSymbol member, TypeSymbol memberType)
+	{
+		_members.GetOrAdd(containingType)[member.Name] = member;
+		_memberTypes[member] = memberType;
+	}
 	
 	public MemberSymbol? ResolveMember(TypeSymbol type, string name) =>
 		_members.GetValueOrDefault(type)?.GetValueOrDefault(name);
@@ -180,6 +183,8 @@ public sealed class TypePool
 		type = null;
 		return false;
 	}
+	
+	public TypeSymbol GetTypeOfMember(TypedMemberSymbol member) => _memberTypes[member];
 	
 	public void CreateNativeMembers()
 	{
@@ -203,47 +208,40 @@ public sealed class TypePool
 			Getter = new NativeAccessor(NativeMemberIntrinsic.ArrayLength)
 		};
 		
-		_memberTypes[length] = lengthType;
-		Register(type, length);
+		RegisterMember(type, length, lengthType);
 	}
 	
 	public void CreateBufferMembers(BufferType type)
 	{
 		var lengthType = NativeSymbols.UIntSize;
 		var length = new FieldSymbol("length", null, false);
-		_memberTypes[length] = lengthType;
-		Register(type, length);
+		RegisterMember(type, length, lengthType);
 		
 		var dataType = GetPointerType(type.ElementType, PointerKind.Owning);
 		var data = new FieldSymbol("data", null, false);
-		_memberTypes[data] = dataType;
-		Register(type, data);
+		RegisterMember(type, data, dataType);
 	}
 	
 	public void CreateSpanMembers(SpanType type)
 	{
 		var lengthType = NativeSymbols.UIntSize;
 		var length = new FieldSymbol("length", null, false);
-		_memberTypes[length] = lengthType;
-		Register(type, length);
+		RegisterMember(type, length, lengthType);
 		
 		var dataType = GetPointerType(type.ElementType, PointerKind.Mutable);
 		var data = new FieldSymbol("data", null, false);
-		_memberTypes[data] = dataType;
-		Register(type, data);
+		RegisterMember(type, data, dataType);
 	}
 	
 	public void CreateViewMembers(ViewType type)
 	{
 		var lengthType = NativeSymbols.UIntSize;
 		var length = new FieldSymbol("length", null, false);
-		_memberTypes[length] = lengthType;
-		Register(type, length);
+		RegisterMember(type, length, lengthType);
 		
 		var dataType = GetPointerType(type.ElementType, PointerKind.Mutable);
 		var data = new FieldSymbol("data", null, false);
-		_memberTypes[data] = dataType;
-		Register(type, data);
+		RegisterMember(type, data, dataType);
 	}
 }
 

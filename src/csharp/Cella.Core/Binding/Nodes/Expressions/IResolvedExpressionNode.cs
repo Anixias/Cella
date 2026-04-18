@@ -1,6 +1,6 @@
 ﻿using Cella.Core.Symbols;
 
-namespace Cella.Core.Binding.Nodes.Expressions;
+namespace Cella.Core.Binding.Nodes;
 
 public interface IResolvedExpressionNode : IResolvedNode
 {

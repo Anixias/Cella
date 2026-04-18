@@ -3,7 +3,6 @@ using Cella.Core.Text;
 
 namespace Cella.Core.Syntax.Nodes;
 
-// TODO Members
 public sealed class RecordNode(Token identifier, IEnumerable<Token> modifiers, IEnumerable<IDeclarationNode> members)
 	: IDeclarationNode
 {

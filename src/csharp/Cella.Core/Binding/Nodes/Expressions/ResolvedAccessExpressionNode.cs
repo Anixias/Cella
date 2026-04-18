@@ -1,6 +1,6 @@
 ﻿using Cella.Core.Symbols;
 
-namespace Cella.Core.Binding.Nodes.Expressions;
+namespace Cella.Core.Binding.Nodes;
 
 public sealed class ResolvedAccessExpressionNode(IResolvedExpressionNode target, MemberSymbol member, TypeSymbol type)
 	: IResolvedExpressionNode

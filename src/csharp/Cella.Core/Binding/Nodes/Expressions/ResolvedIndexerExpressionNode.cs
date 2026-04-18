@@ -1,6 +1,6 @@
 ﻿using Cella.Core.Symbols;
 
-namespace Cella.Core.Binding.Nodes.Expressions;
+namespace Cella.Core.Binding.Nodes;
 
 public sealed class ResolvedIndexerExpressionNode(TypeSymbol type, IResolvedExpressionNode target,
 	IResolvedExpressionNode index) : IResolvedExpressionNode

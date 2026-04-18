@@ -1,4 +1,4 @@
-﻿namespace Cella.Core.Binding.Nodes.Declarations;
+﻿namespace Cella.Core.Binding.Nodes;
 
 public sealed class ResolvedExternalFunctionNode(FunctionInfo functionInfo) : IResolvedDeclarationNode
 {

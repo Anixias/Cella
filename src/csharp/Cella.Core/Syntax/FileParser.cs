@@ -94,6 +94,7 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName) : 
 			// Parse top-level declarations
 			if (Match(ref index, out var identifier, _topLevelContextualKeywords, TokenType.Identifier))
 			{
+				// TODO Type parameters
 				importsAllowed = false;
 				
 				var colonIndex = index;
@@ -416,8 +417,52 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName) : 
 	
 	private RecordNode? ParseRecord(ref int index, Token identifier, IEnumerable<Token> modifiers)
 	{
-		// TODO Type parameters
-		return null;
+		// When this is called, the identifier and rec keyword are already consumed
+		// Caller is expected to resync in case of errors
+		
+		// Empty record
+		if (!Match(ref index, TokenType.OpOpenBrace))
+			return new(identifier, modifiers, []);
+		
+		var members = new List<IDeclarationNode>();
+		while (!Match(ref index, TokenType.OpCloseBrace))
+		{
+			// TODO Diagnostics
+			if (ParseMember(ref index) is not { } member)
+			{
+				ResyncSimple(ref index);
+				return null;
+			}
+			
+			if (AtEnd(index))
+				return null;
+			
+			members.Add(member);
+		}
+		
+		return new(identifier, modifiers, members);
+	}
+	
+	private IDeclarationNode? ParseMember(ref int index)
+	{
+		// TODO Diagnostics
+		
+		if (!Match(ref index, out var identifier, TokenType.Identifier) || !Match(ref index, TokenType.OpColon))
+			return null;
+		
+		// TODO Functions, constructors, casts, operator overloads
+		
+		// Fields
+		// TODO Visibility modifiers / visibility blocks
+		return ParseField(ref index, identifier, []);
+	}
+	
+	private FieldNode ParseField(ref int index, Token identifier, IEnumerable<Token> modifiers)
+	{
+		var type = ParseType(ref index);
+		var initializer = Match(ref index, TokenType.OpEqual) ? ParseExpression(ref index) : null;
+		
+		return new(identifier, type, modifiers, initializer);
 	}
 	
 	private BlockStatementNode? ParseBlockStatement(ref int index, Token open)

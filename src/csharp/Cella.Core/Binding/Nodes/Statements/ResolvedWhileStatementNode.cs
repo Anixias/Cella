@@ -1,7 +1,6 @@
-﻿using Cella.Core.Binding.Nodes.Expressions;
-using Cella.Core.Symbols;
+﻿using Cella.Core.Symbols;
 
-namespace Cella.Core.Binding.Nodes.Statements;
+namespace Cella.Core.Binding.Nodes;
 
 public sealed class ResolvedWhileStatementNode(IResolvedExpressionNode condition, IResolvedStatementNode body,
 	LabelSymbol? label)

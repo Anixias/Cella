@@ -34,7 +34,11 @@ public sealed class SignatureCollector : IDeclarationNodeVisitor
 	
 	public void Visit(FieldNode node)
 	{
-		throw new NotImplementedException();
+		var field = (FieldSymbol)_symbolTable.DeclarationSymbols[node];
+		
+		var resolutionContext = CurrentResolutionContext;
+		var fieldType = resolutionContext.ResolveType(node.Type);
+		_typePool.RegisterMember(resolutionContext.ContainingType!, field, fieldType);
 	}
 	
 	public void Visit(FileNode node)
@@ -129,9 +133,22 @@ public sealed class SignatureCollector : IDeclarationNodeVisitor
 	}
 	
 	public void Visit(ParameterNode node) => throw new InvalidOperationException();
+	
 	public void Visit(RecordNode node)
 	{
-		throw new NotImplementedException();
+		var record = (RecordSymbol)_symbolTable.DeclarationSymbols[node];
+		
+		var resolutionContext = CurrentResolutionContext with
+		{
+			ContainingType = record
+		};
+		
+		_resolutionContexts.Push(resolutionContext);
+		
+		foreach (var member in node.Members)
+			VisitNode(member);
+		
+		_resolutionContexts.Pop();
 	}
 	
 	private static bool IsEntryPoint(FunctionSignature signature)

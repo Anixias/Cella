@@ -1,6 +1,4 @@
-﻿using Cella.Core.Binding.Nodes.Expressions;
-
-namespace Cella.Core.Binding.Nodes.Statements;
+﻿namespace Cella.Core.Binding.Nodes;
 
 public sealed class ResolvedReturnStatementNode(IResolvedExpressionNode? expression) : IResolvedStatementNode
 {

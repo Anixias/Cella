@@ -6,7 +6,7 @@ using Cella.Compiler.Projects;
 using Cella.Core.Analysis;
 using Cella.Core.Binding;
 using Cella.Core.Binding.Conversions;
-using Cella.Core.Binding.Nodes.Declarations;
+using Cella.Core.Binding.Nodes;
 using Cella.Core.Binding.Operations;
 using Cella.Core.CodeGen;
 using Cella.Core.Lowering;

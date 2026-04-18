@@ -1,4 +1,4 @@
-﻿namespace Cella.Core.Binding.Nodes.Statements;
+﻿namespace Cella.Core.Binding.Nodes;
 
 public interface IResolvedStatementNode : IResolvedNode
 {

@@ -1,6 +1,6 @@
 ﻿using System.Collections.Immutable;
 
-namespace Cella.Core.Binding.Nodes.Statements;
+namespace Cella.Core.Binding.Nodes;
 
 public sealed class ResolvedBlockStatementNode(IEnumerable<IResolvedStatementNode> statements)
 	: IResolvedStatementNode

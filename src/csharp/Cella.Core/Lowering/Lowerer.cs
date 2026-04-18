@@ -1,7 +1,5 @@
 ﻿using System.Numerics;
-using Cella.Core.Binding.Nodes.Declarations;
-using Cella.Core.Binding.Nodes.Expressions;
-using Cella.Core.Binding.Nodes.Statements;
+using Cella.Core.Binding.Nodes;
 using Cella.Core.Binding.Operations;
 using Cella.Core.Symbols;
 using Cella.Core.Syntax.Nodes;
@@ -41,6 +39,26 @@ public sealed class Lowerer : IResolvedDeclarationNodeVisitor
 	}
 	
 	public void Visit(ResolvedFunctionNode node) => CurrentModule.Functions.Add(FunctionLowerer.Lower(node));
+	
+	public void Visit(ResolvedRecordNode node)
+	{
+		foreach (var member in node.Members)
+			VisitNode(member);
+		
+		CurrentModule.Types.Add(node.Symbol);
+	}
+	
+	public void Visit(ResolvedFieldNode node)
+	{
+		// TODO Do anything?
+	}
+	
+	public void Visit(ResolvedMethodNode node)
+	{
+		// TODO Handle self-reference?
+		VisitNode(node.FunctionNode);
+	}
+	
 	public void Visit(ResolvedExternalFunctionNode node) => CurrentModule.ExternalFunctions.Add(node.FunctionInfo);
 	
 	private sealed class FunctionLowerer : IResolvedStatementNodeVisitor, IResolvedExpressionNodeVisitor<Value>

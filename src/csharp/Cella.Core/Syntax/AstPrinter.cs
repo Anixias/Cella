@@ -131,6 +131,8 @@ public sealed class AstPrinter : ISyntaxNodeVisitor
 		VisitNode(node.Type, false);
 		_sb.Append(')');
 		
+		// TODO Modifiers
+		
 		if (node.Initializer is { } expressionNode)
 			VisitNode(expressionNode, true);
 	}
@@ -282,7 +284,9 @@ public sealed class AstPrinter : ISyntaxNodeVisitor
 		_sb.Append("RecordNode '").Append(node.Identifier.AsSpan()).Append('\'');
 		
 		// TODO Modifiers
-		// TODO Members
+		
+		for (var i = 0; i < node.Members.Length; i++)
+			VisitNode(node.Members[i], i == node.Members.Length - 1);
 	}
 	
 	public void Visit(LiteralExpressionNode node)

@@ -1,7 +1,7 @@
 ﻿using System.Collections.Immutable;
 using Cella.Core.Symbols;
 
-namespace Cella.Core.Binding.Nodes.Expressions;
+namespace Cella.Core.Binding.Nodes;
 
 public sealed class ResolvedArrayExpressionNode : IResolvedExpressionNode
 {

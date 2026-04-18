@@ -218,13 +218,14 @@ public sealed unsafe class CodeGenerator : IDisposable
 			}
 			
 			default:
-				throw new InvalidOperationException($"Symbol '{symbol.Name}' not mapped in LLVM");
+				throw new InvalidOperationException($"Type '{symbol.Name}' not mapped in LLVM");
 		}
 	}
 	
 	private void BuildModule(LLVMModuleRef llvmModule, LLVMDIBuilderRef llvmDiBuilder, LoweredModule module)
 	{
-		// TODO Build types
+		foreach (var type in module.Types)
+			BuildType(type);
 		
 		// Create and map external functions
 		foreach (var function in module.ExternalFunctions)
@@ -277,6 +278,19 @@ public sealed unsafe class CodeGenerator : IDisposable
 		
 		// Optimize the module
 		RunOptimizationPass(llvmModule);
+	}
+	
+	private void BuildType(TypeSymbol type)
+	{
+		var fieldTypes = _typePool
+			.GetMembers(type)
+			.OfType<FieldSymbol>()
+			.Select(f => _typePool.GetTypeOfMember(f))
+			.Select(MapTypeSymbol)
+			.ToArray();
+		
+		// TODO Allow controlling packed?
+		_typeMap[type] = LLVMTypeRef.CreateStruct(fieldTypes, false);
 	}
 	
 	private LLVMFunctionInfo CreateFunction(LLVMModuleRef llvmModule, FunctionInfo function)

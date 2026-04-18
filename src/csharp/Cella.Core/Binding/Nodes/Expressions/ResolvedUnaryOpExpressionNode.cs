@@ -1,7 +1,7 @@
 ﻿using Cella.Core.Binding.Operations;
 using Cella.Core.Symbols;
 
-namespace Cella.Core.Binding.Nodes.Expressions;
+namespace Cella.Core.Binding.Nodes;
 
 public sealed class ResolvedUnaryOpExpressionNode
 (

@@ -1,6 +1,6 @@
 ﻿using Cella.Core.Symbols;
 
-namespace Cella.Core.Binding.Nodes.Statements;
+namespace Cella.Core.Binding.Nodes;
 
 public sealed class ResolvedBreakStatementNode(LabelSymbol? label) : IResolvedStatementNode
 {

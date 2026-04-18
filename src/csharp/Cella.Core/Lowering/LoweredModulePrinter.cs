@@ -1,5 +1,6 @@
 ﻿using System.Text;
 using Cella.Core.Binding.Operations;
+using Cella.Core.Symbols;
 
 namespace Cella.Core.Lowering;
 
@@ -18,82 +19,101 @@ public static class LoweredModulePrinter
 		sb.Append(' ', moduleNamePadding / 2).Append(moduleName).Append(' ', (moduleNamePadding + 1) / 2).AppendLine();
 		sb.Append('=', moduleHeaderSize).AppendLine();
 		
-		foreach (var function in module.Functions)
+		foreach (var type in module.Types)
 		{
-			sb.Append(function.Info.Symbol.Name).Append(':').AppendLine();
-			foreach (var block in function.Blocks)
+			switch (type)
 			{
-				const int labelIndent = 2;
-				sb.Append(' ', labelIndent).Append(block.Label).Append(':').AppendLine();
-				
-				const int instructionIndent = 4;
-				foreach (var instruction in block.Instructions)
-				{
-					sb.Append(' ', instructionIndent);
-					
-					switch (instruction)
+				case RecordSymbol s:
+					sb.Append(s.Name).Append(':').AppendLine();
+					foreach (var member in s.Members)
 					{
-						case LocalVarInstruction i:
-							sb.Append(i.Symbol.Type.Name).Append(" $").Append(i.Symbol.Name);
-							if (i.Initializer is { } initializer)
-							{
-								sb.Append(" = ");
-								PrintValue(sb, initializer);
-							}
-							
-							sb.AppendLine();
-							break;
-						
-						case ExpressionInstruction i:
-							PrintValue(sb, i.Value);
-							sb.AppendLine();
-							break;
-						
-						default:
-							sb.AppendLine("[??]");
-							break;
+						const int memberIndent = 2;
+						sb.Append(' ', memberIndent).Append(member.Name).AppendLine();
 					}
-				}
-				
-				sb.Append(' ', instructionIndent);
-				switch (block.Terminator)
-				{
-					case UndefinedTerminator:
-						sb.AppendLine("<ERR>");
-						break;
 					
-					case ReturnTerminator returnTerminator:
-						sb.Append("ret");
-						
-						if (returnTerminator.Value is { } returnValue)
+					break;
+			}
+		}
+		
+		foreach (var function in module.Functions)
+			PrintFunction(sb, function);
+		
+		return sb.ToString();
+	}
+	
+	private static void PrintFunction(StringBuilder sb, LoweredFunction function)
+	{
+		sb.Append(function.Info.Symbol.Name).Append(':').AppendLine();
+		foreach (var block in function.Blocks)
+		{
+			const int labelIndent = 2;
+			sb.Append(' ', labelIndent).Append(block.Label).Append(':').AppendLine();
+			
+			const int instructionIndent = 4;
+			foreach (var instruction in block.Instructions)
+			{
+				sb.Append(' ', instructionIndent);
+				
+				switch (instruction)
+				{
+					case LocalVarInstruction i:
+						sb.Append(i.Symbol.Type.Name).Append(" $").Append(i.Symbol.Name);
+						if (i.Initializer is { } initializer)
 						{
-							sb.Append(' ');
-							PrintValue(sb, returnValue);
+							sb.Append(" = ");
+							PrintValue(sb, initializer);
 						}
 						
 						sb.AppendLine();
 						break;
 					
-					case BranchTerminator branchTerminator:
-						sb.Append("jmp ").AppendLine(branchTerminator.Target.Label);
+					case ExpressionInstruction i:
+						PrintValue(sb, i.Value);
+						sb.AppendLine();
 						break;
 					
-					case ConditionalBranchTerminator conditionalBranchTerminator:
-						sb.Append("if ");
-						PrintValue(sb, conditionalBranchTerminator.Condition);
-						
-						sb.Append(" then ")
-							.Append(conditionalBranchTerminator.TrueTarget.Label)
-							.Append(" else ")
-							.Append(conditionalBranchTerminator.FalseTarget.Label)
-							.AppendLine();
-						
+					default:
+						sb.AppendLine("[??]");
 						break;
 				}
 			}
+			
+			sb.Append(' ', instructionIndent);
+			switch (block.Terminator)
+			{
+				case UndefinedTerminator:
+					sb.AppendLine("<ERR>");
+					break;
+				
+				case ReturnTerminator returnTerminator:
+					sb.Append("ret");
+					
+					if (returnTerminator.Value is { } returnValue)
+					{
+						sb.Append(' ');
+						PrintValue(sb, returnValue);
+					}
+					
+					sb.AppendLine();
+					break;
+				
+				case BranchTerminator branchTerminator:
+					sb.Append("jmp ").AppendLine(branchTerminator.Target.Label);
+					break;
+				
+				case ConditionalBranchTerminator conditionalBranchTerminator:
+					sb.Append("if ");
+					PrintValue(sb, conditionalBranchTerminator.Condition);
+					
+					sb.Append(" then ")
+						.Append(conditionalBranchTerminator.TrueTarget.Label)
+						.Append(" else ")
+						.Append(conditionalBranchTerminator.FalseTarget.Label)
+						.AppendLine();
+					
+					break;
+			}
 		}
-		
-		return sb.ToString();
 	}
 	
 	private static void PrintValue(StringBuilder sb, Value value)

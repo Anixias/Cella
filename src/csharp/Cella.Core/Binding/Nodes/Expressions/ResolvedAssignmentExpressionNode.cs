@@ -1,7 +1,7 @@
 ﻿using Cella.Core.Symbols;
 using Cella.Core.Text;
 
-namespace Cella.Core.Binding.Nodes.Expressions;
+namespace Cella.Core.Binding.Nodes;
 
 public sealed class ResolvedAssignmentExpressionNode
 (

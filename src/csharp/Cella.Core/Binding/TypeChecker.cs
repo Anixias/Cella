@@ -1,8 +1,8 @@
-﻿using Cella.Core.Binding.Nodes.Declarations;
-using Cella.Core.Binding.Nodes.Expressions;
-using Cella.Core.Binding.Nodes.Statements;
+﻿using Cella.Core.Binding.Nodes;
 using Cella.Core.Symbols;
 using Cella.Core.Text;
+using IResolvedDeclarationNodeVisitor = Cella.Core.Binding.Nodes.IResolvedDeclarationNodeVisitor;
+using IResolvedStatementNodeVisitor = Cella.Core.Binding.Nodes.IResolvedStatementNodeVisitor;
 
 namespace Cella.Core.Binding;
 
@@ -43,6 +43,26 @@ public sealed class TypeChecker : IResolvedStatementNodeVisitor, IResolvedDeclar
 		VisitNode(statement);
 		_returnTypeStack.Pop();
 	}
+	
+	public void Visit(ResolvedRecordNode node)
+	{
+		foreach (var member in node.Members)
+			VisitNode(member);
+	}
+	
+	public void Visit(ResolvedFieldNode node)
+	{
+		if (node.Initializer is not { } initializer)
+			return;
+		
+		var expected = node.Type;
+		var actual = initializer.Type;
+		if (!AreTypesCompatible(expected, actual))
+			_diagnostics.Add(
+				$"Cannot assign value of type '{actual.Name}': Expected type '{expected.Name}'");
+	}
+	
+	public void Visit(ResolvedMethodNode node) => VisitNode(node.FunctionNode);
 	
 	public void Visit(ResolvedExternalFunctionNode node)
 	{
@@ -85,7 +105,7 @@ public sealed class TypeChecker : IResolvedStatementNodeVisitor, IResolvedDeclar
 				break;
 			}
 			
-			case ResolvedUnaryOpExpressionNode e when e.Operation?.Op == TokenType.OpAt:
+			case ResolvedUnaryOpExpressionNode { Operation.Op: TokenType.OpAt } e:
 			{
 				if (!IsLValue(e.Operand))
 					_diagnostics.Add("Cannot take the address of an unstored value");

@@ -1,7 +1,7 @@
 ﻿using System.Collections.Immutable;
 using Cella.Core.Symbols;
 
-namespace Cella.Core.Binding.Nodes.Declarations;
+namespace Cella.Core.Binding.Nodes;
 
 public sealed class ResolvedFileNode(FileSymbol symbol, IEnumerable<IResolvedDeclarationNode> declarations,
 	IEnumerable<FunctionInfo> importedFunctions)
