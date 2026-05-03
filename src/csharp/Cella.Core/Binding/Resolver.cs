@@ -697,8 +697,18 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 		if (consumed)
 			return operand;
 		
+		// Special unary operators that aren't stored in the registry
+		if (op.Type == TokenType.OpAt)
+			return ResolveAddressOf(op.Type, operand);
+		
 		var operation = _operatorRegistry.ResolveUnary(op.Type, operand.Type);
 		return new ResolvedUnaryOpExpressionNode(operand, operation);
+	}
+	
+	private ResolvedUnaryOpExpressionNode ResolveAddressOf(TokenType opType, IResolvedExpressionNode operand)
+	{
+		var ptrType = _typePool.GetPointerType(operand.Type, PointerKind.Unsafe);
+		return new(operand, new NativeImpl(opType, ptrType));
 	}
 	
 	public IResolvedNode Visit(BinaryOpExpressionNode node)
@@ -1115,7 +1125,7 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 					: BinaryResolutionSet.None;
 				
 				if (resolutionSet.IsAmbiguous)
-					throw new Exception($"Ambiguous operation '{binary.Operation!.Op!.Representation}' between " +
+					throw new Exception($"Ambiguous operation '{binary.Operation!.Op.Representation}' between " +
 					                    $"'{left.Type.Name}' and '{right.Type.Name}'");
 				
 				if (!resolutionSet.HasResult)

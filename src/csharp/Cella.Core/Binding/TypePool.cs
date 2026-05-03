@@ -105,8 +105,9 @@ public sealed class TypePool
 		ConversionTable.Add(new NativeConversion(arrayType, viewType, ConversionKind.Implicit, 1));
 		
 		// To pointer
-		var ptrType = GetPointerType(elementType, PointerKind.Unsafe);
-		OperatorRegistry.CreateUnary(TokenType.OpAt, arrayType, new NativeImpl(TokenType.OpAt, ptrType));
+		var arrayPtrType = GetPointerType(arrayType, PointerKind.Unsafe);
+		var elementPtrType = GetPointerType(elementType, PointerKind.Unsafe);
+		ConversionTable.Add(new NativeConversion(arrayPtrType, elementPtrType, ConversionKind.Implicit, 0));
 		
 		return arrayType;
 	}

@@ -88,8 +88,84 @@ public sealed class TypeChecker : IResolvedStatementNodeVisitor, IResolvedDeclar
 			_diagnostics.Add("Only assignments and function calls are allowed as statements");
 		
 		// ^Need to check for purity of expressions. Pure expressions as statements is either an error or a warning
+		CheckExpression(node.Expression);
+	}
+	
+	public void Visit(ResolvedIfStatementNode node)
+	{
+		var conditionType = node.Condition.Type;
+		if (!AreTypesCompatible(NativeSymbols.Bool, conditionType))
+			_diagnostics.Add(
+				$"Invalid condition type '{conditionType.Name}': Expected type '{NativeSymbols.Bool.Name}'");
 		
-		switch (node.Expression)
+		VisitNode(node.Then);
+		
+		if (node.Else is { } @else)
+			VisitNode(@else);
+	}
+	
+	public void Visit(ResolvedReturnStatementNode node)
+	{
+		var expected = _returnTypeStack.Peek();
+		var actual = node.Expression?.Type ?? NativeSymbols.Void;
+		
+		if (!AreTypesCompatible(expected, actual))
+			_diagnostics.Add(
+				$"Cannot return value of type '{actual?.Name ?? "void"}': Expected type '{expected?.Name ?? "void"}'");
+	}
+	
+	public void Visit(ResolvedVarStatementNode node)
+	{
+		var expected = node.Symbol.Type;
+		
+		if (node.Initializer is { } initializer)
+		{
+			var actual = initializer.Type;
+			if (!AreTypesCompatible(expected, actual))
+				_diagnostics.Add(
+					$"Cannot assign value of type '{actual.Name}': Expected type '{expected.Name}'");
+			
+			CheckExpression(initializer);
+		}
+		else if (expected == NativeSymbols.Invalid)
+			_diagnostics.Add("Implicitly-typed local variable must have an initializer");
+	}
+	
+	public void Visit(ResolvedWhileStatementNode node)
+	{
+		var conditionType = node.Condition.Type;
+		if (!AreTypesCompatible(NativeSymbols.Bool, conditionType))
+			_diagnostics.Add(
+				$"Invalid condition type '{conditionType.Name}': Expected type '{NativeSymbols.Bool.Name}'");
+		
+		VisitNode(node.Body);
+	}
+	
+	public void Visit(ResolvedDoWhileStatementNode node)
+	{
+		var conditionType = node.Condition.Type;
+		if (!AreTypesCompatible(NativeSymbols.Bool, conditionType))
+			_diagnostics.Add(
+				$"Invalid condition type '{conditionType.Name}': Expected type '{NativeSymbols.Bool.Name}'");
+		
+		VisitNode(node.Body);
+	}
+	
+	public void Visit(ResolvedLoopStatementNode node) => VisitNode(node.Body);
+	
+	public void Visit(ResolvedRepeatStatementNode node)
+	{
+		var countType = node.Count.Type;
+		if (!IsIntegralType(countType))
+			_diagnostics.Add(
+				$"Invalid count type '{countType.Name}': Expected an integral type");
+		
+		VisitNode(node.Body);
+	}
+	
+	private void CheckExpression(IResolvedExpressionNode expression)
+	{
+		switch (expression)
 		{
 			case ResolvedAssignmentExpressionNode e:
 			{
@@ -135,76 +211,6 @@ public sealed class TypeChecker : IResolvedStatementNodeVisitor, IResolvedDeclar
 				break;
 			}
 		}
-	}
-	
-	public void Visit(ResolvedIfStatementNode node)
-	{
-		var conditionType = node.Condition.Type;
-		if (!AreTypesCompatible(NativeSymbols.Bool, conditionType))
-			_diagnostics.Add(
-				$"Invalid condition type '{conditionType.Name}': Expected type '{NativeSymbols.Bool.Name}'");
-		
-		VisitNode(node.Then);
-		
-		if (node.Else is { } @else)
-			VisitNode(@else);
-	}
-	
-	public void Visit(ResolvedReturnStatementNode node)
-	{
-		var expected = _returnTypeStack.Peek();
-		var actual = node.Expression?.Type ?? NativeSymbols.Void;
-		
-		if (!AreTypesCompatible(expected, actual))
-			_diagnostics.Add(
-				$"Cannot return value of type '{actual?.Name ?? "void"}': Expected type '{expected?.Name ?? "void"}'");
-	}
-	
-	public void Visit(ResolvedVarStatementNode node)
-	{
-		var expected = node.Symbol.Type;
-		
-		if (node.Initializer is { } initializer)
-		{
-			var actual = initializer.Type;
-			if (!AreTypesCompatible(expected, actual))
-				_diagnostics.Add(
-					$"Cannot assign value of type '{actual.Name}': Expected type '{expected.Name}'");
-		}
-		else if (expected == NativeSymbols.Invalid)
-			_diagnostics.Add("Implicitly-typed local variable must have an initializer");
-	}
-	
-	public void Visit(ResolvedWhileStatementNode node)
-	{
-		var conditionType = node.Condition.Type;
-		if (!AreTypesCompatible(NativeSymbols.Bool, conditionType))
-			_diagnostics.Add(
-				$"Invalid condition type '{conditionType.Name}': Expected type '{NativeSymbols.Bool.Name}'");
-		
-		VisitNode(node.Body);
-	}
-	
-	public void Visit(ResolvedDoWhileStatementNode node)
-	{
-		var conditionType = node.Condition.Type;
-		if (!AreTypesCompatible(NativeSymbols.Bool, conditionType))
-			_diagnostics.Add(
-				$"Invalid condition type '{conditionType.Name}': Expected type '{NativeSymbols.Bool.Name}'");
-		
-		VisitNode(node.Body);
-	}
-	
-	public void Visit(ResolvedLoopStatementNode node) => VisitNode(node.Body);
-	
-	public void Visit(ResolvedRepeatStatementNode node)
-	{
-		var countType = node.Count.Type;
-		if (!IsIntegralType(countType))
-			_diagnostics.Add(
-				$"Invalid count type '{countType.Name}': Expected an integral type");
-		
-		VisitNode(node.Body);
 	}
 	
 	// TEMP Will need implicit conversions, subtyping, traits/interfaces, constraints, etc.
