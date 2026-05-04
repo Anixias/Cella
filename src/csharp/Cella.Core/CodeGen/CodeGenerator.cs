@@ -9,6 +9,7 @@ using Cella.Core.CodeGen.Extensions;
 using Cella.Core.Lowering;
 using Cella.Core.Symbols;
 using LLVMSharp.Interop;
+// ReSharper disable StringLiteralTypo
 
 namespace Cella.Core.CodeGen;
 
@@ -429,23 +430,33 @@ public sealed unsafe class CodeGenerator : IDisposable
 		ConversionValue v => EmitConversion(v, builder),
 		CallValue v when _funMap[v.Function] is var (fv, ft, _) => builder.BuildCall2(ft, fv,
 			v.Arguments.Select(a => EmitValue(a, builder)).ToArray()),
+		HeapValue v => EmitHeap(v, builder),
 		_ => throw new InvalidOperationException()
 	};
 	
+	private LLVMValueRef EmitHeap(HeapValue v, LLVMBuilderRef builder)
+	{
+		var ptrType = (PointerType)v.Type;
+		var baseType = MapTypeSymbol(ptrType.BaseType);
+		var malloc = builder.BuildMalloc(baseType);
+		
+		if (v.Initializer is not UndefValue)
+			builder.BuildStore(EmitValue(v.Initializer, builder), malloc);
+		
+		return malloc;
+	}
+	
 	private LLVMValueRef EmitZero(ZeroValue v) => LLVMValueRef.CreateConstNull(MapTypeSymbol(v.Type));
 	
-	private LLVMValueRef EmitConversion(ConversionValue v, LLVMBuilderRef builder)
+	private LLVMValueRef EmitConversion(ConversionValue v, LLVMBuilderRef builder) => v.Conversion switch
 	{
-		return v.Conversion switch
-		{
-			IdentityConversion => EmitValue(v.Source, builder),
-			IntegerConversion c => EmitIntegerConversion(c, EmitValue(v.Source, builder), builder),
-			NativeConversion c => EmitNativeConversion(c, v, builder),
-			FreeConversion => EmitValue(v.Source, builder),
-			FunctionConversion c => EmitValue(new CallValue(c.Function, [v.Source]), builder),
-			_ => throw new InvalidOperationException()
-		};
-	}
+		IdentityConversion => EmitValue(v.Source, builder),
+		IntegerConversion c => EmitIntegerConversion(c, EmitValue(v.Source, builder), builder),
+		NativeConversion c => EmitNativeConversion(c, v, builder),
+		FreeConversion => EmitValue(v.Source, builder),
+		FunctionConversion c => EmitValue(new CallValue(c.Function, [v.Source]), builder),
+		_ => throw new InvalidOperationException()
+	};
 	
 	private LLVMValueRef EmitNativeConversion(NativeConversion c, ConversionValue v, LLVMBuilderRef builder)
 	{

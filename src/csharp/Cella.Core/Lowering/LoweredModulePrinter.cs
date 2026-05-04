@@ -123,7 +123,18 @@ public static class LoweredModulePrinter
 			switch (value)
 			{
 				case ConstantValue v:
-					sb.Append('#').Append(v.Value);
+					sb.Append('#');
+					
+					if (v.Value is null)
+						sb.Append("null");
+					else
+						sb.Append(v.Value);
+					
+					break;
+				
+				case HeapValue v:
+					sb.Append("heap:");
+					PrintValue(sb, v.Initializer);
 					break;
 				
 				case ZeroValue v:
@@ -272,9 +283,10 @@ public static class LoweredModulePrinter
 					continue;
 				
 				case UnaryOpValue { Op: UnaryOperation.Dereference } v:
-					sb.Append('*');
-					value = v.Operand;
-					continue;
+					sb.Append("(*");
+					PrintValue(sb, v.Operand);
+					sb.Append(')');
+					break;
 				
 				case CallValue v:
 				{

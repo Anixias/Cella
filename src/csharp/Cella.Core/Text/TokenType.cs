@@ -38,6 +38,7 @@ public enum TokenType
 	KeywordWhile,
 	KeywordBreak,
 	KeywordCont,
+	KeywordHeap,
 	
 	// Contextual Keywords
 	KeywordMod,
@@ -140,6 +141,7 @@ public static class TokenTypeInfo
 			[TokenType.KeywordWhile] = new("while", IsKeyword: true),
 			[TokenType.KeywordBreak] = new("break", IsKeyword: true),
 			[TokenType.KeywordCont] = new("cont", IsKeyword: true),
+			[TokenType.KeywordHeap] = new("heap", IsKeyword: true),
 			
 			[TokenType.KeywordMod] = new("mod", IsKeyword: true, IsContextual: true),
 			[TokenType.KeywordFun] = new("fun", IsKeyword: true, IsContextual: true),

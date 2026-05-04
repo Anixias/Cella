@@ -392,6 +392,11 @@ public sealed class Lowerer : IResolvedDeclarationNodeVisitor
 		public Value Visit(ResolvedFunctionCallExpressionNode node) =>
 			new CallValue(node.Function, node.Arguments.Select(VisitNode));
 		
+		public Value Visit(ResolvedHeapExpressionNode node) =>
+			new HeapValue(node.Type, node.Initializer is { } initializer
+				? VisitNode(initializer)
+				: new ZeroValue(((PointerType)node.Type).BaseType));
+		
 		public Value Visit(ResolvedIndexerExpressionNode node) =>
 			new IndexerValue(node.Type, VisitNode(node.Target), VisitNode(node.Index));
 		

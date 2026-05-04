@@ -349,13 +349,60 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		_ => null
 	};
 	
+	public IResolvedExpressionNode Visit(HeapExpressionNode node)
+	{
+		var resolutionContext = CurrentResolutionContext;
+		var typePool = resolutionContext.TypePool;
+		
+		IResolvedExpressionNode? initializer;
+		TypeSymbol elementType;
+		
+		switch (node.Target)
+		{
+			case ITypeNode n:
+				elementType = resolutionContext.ResolveType(n);
+				initializer = null;
+				break;
+			
+			case UndefExpressionNode n:
+				initializer = Visit(n);
+				elementType = initializer.Type;
+				break;
+			
+			case CallExpressionNode n:
+				throw new NotImplementedException(); // TODO Need to implement constructor initialization!!
+			
+			default:
+				return Error(node, "Expression after 'heap' must be a type, undef[T], or a constructor call",
+					CurrentTargetType);
+		}
+		
+		if (IsInvalid(elementType))
+			return new ResolvedInvalidExpressionNode(node);
+		
+		var ownType = typePool.GetPointerType(elementType, PointerKind.Owning);
+		return new ResolvedHeapExpressionNode(initializer, ownType, node);
+	}
+	
 	public IResolvedExpressionNode Visit(IndexerExpressionNode node)
 	{
 		var target = VisitNode(node.Target);
 		
 		// TODO Indexable user-defined types
+		
+		// Auto-dereferencing through high-level pointer types
+		var lookupType = target.Type;
+		if (target.Type is PointerType
+		    {
+			    PointerKind: PointerKind.Mutable or PointerKind.Immutable or PointerKind.Owning
+		    } ptrType)
+		{
+			lookupType = ptrType.BaseType;
+			target = ResolveDereference(TokenType.OpStar, target, node.Target);
+		}
+		
 		TypeSymbol elementType;
-		switch (target.Type)
+		switch (lookupType)
 		{
 			case SpanType spanType:
 				elementType = spanType.ElementType;
@@ -389,8 +436,19 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		var memberName = node.Member.Text;
 		var resolutionContext = CurrentResolutionContext;
 		
-		if (resolutionContext.TypePool.ResolveMember(target.Type, memberName) is not { } member)
-			return Error(node, $"Type '{target.Type.Name}' has no member '{memberName}'", CurrentTargetType,
+		// Auto-dereferencing through high-level pointer types
+		var lookupType = target.Type;
+		if (target.Type is PointerType
+		    {
+			    PointerKind: PointerKind.Mutable or PointerKind.Immutable or PointerKind.Owning
+		    } ptrType)
+		{
+			lookupType = ptrType.BaseType;
+			target = ResolveDereference(TokenType.OpStar, target, node.Target);
+		}
+		
+		if (resolutionContext.TypePool.ResolveMember(lookupType, memberName) is not { } member)
+			return Error(node, $"Type '{lookupType.Name}' has no member '{memberName}'", CurrentTargetType,
 				node.Member.SourceLocation);
 		
 		var memberType = GetMemberType(member);
@@ -719,7 +777,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	}
 	
 	private IResolvedExpressionNode ResolveDereference(TokenType opType, IResolvedExpressionNode operand,
-		UnaryOpExpressionNode node) => operand.Type switch
+		IExpressionNode node) => operand.Type switch
 	{
 		PointerType { BaseType: { } baseType } => baseType == NativeSymbols.Void
 			? Error(node, "Cannot dereference an untyped pointer; Cast to a typed pointer first", CurrentTargetType)

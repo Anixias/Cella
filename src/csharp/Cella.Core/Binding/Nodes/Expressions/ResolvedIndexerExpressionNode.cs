@@ -4,9 +4,7 @@ using Cella.Core.Syntax.Nodes;
 namespace Cella.Core.Binding.Nodes;
 
 public sealed class ResolvedIndexerExpressionNode(TypeSymbol type, IResolvedExpressionNode target,
-	IResolvedExpressionNode index,
-	IExpressionNode syntax
-) : IResolvedExpressionNode
+	IResolvedExpressionNode index, IExpressionNode syntax) : IResolvedExpressionNode
 {
 	public TypeSymbol Type { get; } = type;
 	public IResolvedExpressionNode Target { get; } = target;

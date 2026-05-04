@@ -306,6 +306,10 @@ public sealed class TypeChecker : IResolvedStatementNodeVisitor, IResolvedDeclar
 		}
 	}
 	
+	public void Visit(ResolvedHeapExpressionNode node)
+	{
+	}
+	
 	public void Visit(ResolvedIndexerExpressionNode node)
 	{
 		VisitNode(node.Target);
