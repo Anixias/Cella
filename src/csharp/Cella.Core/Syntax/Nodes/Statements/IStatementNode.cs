@@ -3,11 +3,7 @@
 public interface IStatementNode : ISyntaxNode;
 
 [TreeVisitor<IStatementNode>]
-public partial interface IStatementNodeVisitor
-{
-}
+public partial interface IStatementNodeVisitor;
 
 [TreeVisitor<IStatementNode>]
-public partial interface IStatementNodeVisitor<out T>
-{
-}
+public partial interface IStatementNodeVisitor<out T>;

@@ -191,6 +191,14 @@ internal static class Program
 			resolvedFiles = files
 				.Select(sfi => new ResolvedSourceFileInfo(sfi.FilePath, resolver.Resolve(sfi.Ast), sfi.Source))
 				.ToImmutableArray();
+			
+			if (resolver.Diagnostics.ErrorCount > 0)
+			{
+				foreach (var error in resolver.Diagnostics.Errors)
+					PrintDiagnostic(error);
+				
+				return errorResult;
+			}
 		}
 		
 		// Phase 4: Type checking

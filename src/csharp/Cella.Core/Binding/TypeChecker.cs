@@ -11,6 +11,8 @@ public sealed class TypeChecker : IResolvedStatementNodeVisitor, IResolvedDeclar
 	public DiagnosticList Diagnostics { get; } = new();
 	
 	private readonly Stack<TypeSymbol?> _returnTypeStack = [];
+	private int continueDepth;
+	private int breakDepth;
 	
 	public void Check(ResolvedFileNode root) => VisitNode(root);
 	
@@ -44,6 +46,9 @@ public sealed class TypeChecker : IResolvedStatementNodeVisitor, IResolvedDeclar
 		_returnTypeStack.Pop();
 	}
 	
+	public void Visit(ResolvedInvalidDeclarationNode node) =>
+		throw new InvalidOperationException();
+	
 	public void Visit(ResolvedRecordNode node)
 	{
 		foreach (var member in node.Members)
@@ -76,10 +81,16 @@ public sealed class TypeChecker : IResolvedStatementNodeVisitor, IResolvedDeclar
 	
 	public void Visit(ResolvedBreakStatementNode node)
 	{
+		if (breakDepth <= 0)
+			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Syntax.SourceLocation,
+				"Breaks are only allowed within loops")); // TODO Allow within switch statements?
 	}
 	
 	public void Visit(ResolvedContinueStatementNode node)
 	{
+		if (continueDepth <= 0)
+			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Syntax.SourceLocation,
+				"Continues are only allowed within loops"));
 	}
 	
 	public void Visit(ResolvedExpressionStatementNode node)
@@ -104,6 +115,9 @@ public sealed class TypeChecker : IResolvedStatementNodeVisitor, IResolvedDeclar
 		if (node.Else is { } @else)
 			VisitNode(@else);
 	}
+	
+	public void Visit(ResolvedInvalidStatementNode node) =>
+		throw new InvalidOperationException();
 	
 	public void Visit(ResolvedReturnStatementNode node)
 	{
@@ -142,7 +156,11 @@ public sealed class TypeChecker : IResolvedStatementNodeVisitor, IResolvedDeclar
 			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Condition.Syntax.SourceLocation,
 				$"Invalid condition type '{conditionType.Name}': Expected type '{NativeSymbols.Bool.Name}'"));
 		
+		continueDepth++;
+		breakDepth++;
 		VisitNode(node.Body);
+		breakDepth--;
+		continueDepth--;
 	}
 	
 	public void Visit(ResolvedDoWhileStatementNode node)
@@ -152,10 +170,21 @@ public sealed class TypeChecker : IResolvedStatementNodeVisitor, IResolvedDeclar
 			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Condition.Syntax.SourceLocation,
 				$"Invalid condition type '{conditionType.Name}': Expected type '{NativeSymbols.Bool.Name}'"));
 		
+		continueDepth++;
+		breakDepth++;
 		VisitNode(node.Body);
+		breakDepth--;
+		continueDepth--;
 	}
 	
-	public void Visit(ResolvedLoopStatementNode node) => VisitNode(node.Body);
+	public void Visit(ResolvedLoopStatementNode node)
+	{
+		continueDepth++;
+		breakDepth++;
+		VisitNode(node.Body);
+		breakDepth--;
+		continueDepth--;
+	}
 	
 	public void Visit(ResolvedRepeatStatementNode node)
 	{
@@ -164,7 +193,11 @@ public sealed class TypeChecker : IResolvedStatementNodeVisitor, IResolvedDeclar
 			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Count.Syntax.SourceLocation,
 				$"Invalid count type '{countType.Name}': Expected an integral type"));
 		
+		continueDepth++;
+		breakDepth++;
 		VisitNode(node.Body);
+		breakDepth--;
+		continueDepth--;
 	}
 	
 	// TEMP Will need implicit conversions, subtyping, traits/interfaces, constraints, etc.
@@ -277,6 +310,9 @@ public sealed class TypeChecker : IResolvedStatementNodeVisitor, IResolvedDeclar
 		VisitNode(node.Target);
 		VisitNode(node.Index);
 	}
+	
+	public void Visit(ResolvedInvalidExpressionNode node) =>
+		throw new InvalidOperationException();
 	
 	public void Visit(ResolvedLiteralExpressionNode node)
 	{

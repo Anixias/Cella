@@ -39,6 +39,7 @@ public sealed class Lowerer : IResolvedDeclarationNodeVisitor
 	}
 	
 	public void Visit(ResolvedFunctionNode node) => CurrentModule.Functions.Add(FunctionLowerer.Lower(node));
+	public void Visit(ResolvedInvalidDeclarationNode node) => throw new InvalidOperationException();
 	
 	public void Visit(ResolvedRecordNode node)
 	{
@@ -226,6 +227,9 @@ public sealed class Lowerer : IResolvedDeclarationNodeVisitor
 			currentBlock = mergeBlock;
 		}
 		
+		public void Visit(ResolvedInvalidStatementNode node) =>
+			throw new InvalidOperationException();
+		
 		public void Visit(ResolvedReturnStatementNode node)
 		{
 			var value = node.Expression is null ? null : VisitNode(node.Expression);
@@ -390,6 +394,9 @@ public sealed class Lowerer : IResolvedDeclarationNodeVisitor
 		
 		public Value Visit(ResolvedIndexerExpressionNode node) =>
 			new IndexerValue(node.Type, VisitNode(node.Target), VisitNode(node.Index));
+		
+		public Value Visit(ResolvedInvalidExpressionNode node) =>
+			throw new InvalidOperationException();
 		
 		public Value Visit(ResolvedAccessExpressionNode node) =>
 			new AccessValue(node.Type, VisitNode(node.Target), node.Member);

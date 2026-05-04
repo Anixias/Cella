@@ -11,11 +11,15 @@ public interface IResolvedExpressionNode : IResolvedNode
 }
 
 [TreeVisitor<IResolvedExpressionNode>]
-public partial interface IResolvedExpressionNodeVisitor
-{
-}
+public partial interface IResolvedExpressionNodeVisitor;
 
 [TreeVisitor<IResolvedExpressionNode>]
-public partial interface IResolvedExpressionNodeVisitor<out T>
+public partial interface IResolvedExpressionNodeVisitor<out T>;
+
+public sealed class ResolvedInvalidExpressionNode(IExpressionNode syntax, TypeSymbol? type = null)
+	: IResolvedExpressionNode
 {
+	public TypeSymbol Type { get; } = type ?? NativeSymbols.Invalid;
+	public bool IsConstant => true;
+	public IExpressionNode Syntax { get; } = syntax;
 }

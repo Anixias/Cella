@@ -7,10 +7,12 @@ using Cella.Core.Binding.Operations;
 using Cella.Core.Symbols;
 using Cella.Core.Syntax.Nodes;
 using Cella.Core.Text;
+using Cella.Diagnostics;
 
 namespace Cella.Core.Binding;
 
-public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
+public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
+	IExpressionNodeVisitor<IResolvedExpressionNode>, IDeclarationNodeVisitor<IResolvedDeclarationNode>
 {
 	// Used to fold unary operations on literals
 	private sealed class UnaryOpJob(TokenType op)
@@ -18,6 +20,8 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 		public TokenType Op { get; } = op;
 		public bool Consumed { get; set; }
 	}
+	
+	public DiagnosticList Diagnostics { get; } = new();
 	
 	private readonly SymbolTable _symbolTable;
 	private readonly SignatureTable _assemblySignatureTable;
@@ -60,15 +64,15 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 	public ResolvedFileNode Resolve(FileNode root) => (ResolvedFileNode)Visit(root);
 	
 	private IResolvedDeclarationNode VisitNode(IDeclarationNode node) =>
-		(IResolvedDeclarationNode)((ISyntaxNodeVisitor<IResolvedNode>)this).Visit(node);
+		((IDeclarationNodeVisitor<IResolvedDeclarationNode>)this).Visit(node);
 	
 	private IResolvedStatementNode VisitNode(IStatementNode node) =>
-		(IResolvedStatementNode)((ISyntaxNodeVisitor<IResolvedNode>)this).Visit(node);
+		((IStatementNodeVisitor<IResolvedStatementNode>)this).Visit(node);
 	
 	private IResolvedExpressionNode VisitNode(IExpressionNode node) =>
-		(IResolvedExpressionNode)((ISyntaxNodeVisitor<IResolvedNode>)this).Visit(node);
+		((IExpressionNodeVisitor<IResolvedExpressionNode>)this).Visit(node);
 	
-	public IResolvedNode Visit(FieldNode node)
+	public IResolvedDeclarationNode Visit(FieldNode node)
 	{
 		var resolutionContext = CurrentResolutionContext;
 		var type = resolutionContext.ResolveType(node.Type);
@@ -89,7 +93,7 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 		return new ResolvedFieldNode(field, type, initializer, node);
 	}
 	
-	public IResolvedNode Visit(FileNode node)
+	public IResolvedDeclarationNode Visit(FileNode node)
 	{
 		var file = (FileSymbol)_symbolTable.DeclarationSymbols[node];
 		var imports = _assemblySignatureTable.ImportEnvironments[file];
@@ -114,7 +118,7 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 		return result;
 	}
 	
-	public IResolvedNode Visit(FunctionNode node)
+	public IResolvedDeclarationNode Visit(FunctionNode node)
 	{
 		var function = (FunctionSymbol)_symbolTable.DeclarationSymbols[node];
 		var info = _assemblySignatureTable.Functions[function];
@@ -132,18 +136,16 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 		return new ResolvedFunctionNode(info, body, node);
 	}
 	
-	public IResolvedNode Visit(ExternalFunctionNode node)
+	public IResolvedDeclarationNode Visit(ExternalFunctionNode node)
 	{
 		var function = (FunctionSymbol)_symbolTable.DeclarationSymbols[node];
 		var info = _assemblySignatureTable.Functions[function];
 		return new ResolvedExternalFunctionNode(info, node);
 	}
 	
-	public IResolvedNode Visit(GenericTypeNode node) => throw new InvalidOperationException();
-	public IResolvedNode Visit(IdentifierTypeNode node) => throw new InvalidOperationException();
-	public IResolvedNode Visit(ParameterNode node) => throw new InvalidOperationException();
+	public IResolvedDeclarationNode Visit(ParameterNode node) => throw new InvalidOperationException();
 	
-	public IResolvedNode Visit(RecordNode node)
+	public IResolvedDeclarationNode Visit(RecordNode node)
 	{
 		var members = new List<IResolvedDeclarationNode>();
 		
@@ -154,7 +156,7 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 		return new ResolvedRecordNode(record, members, node);
 	}
 	
-	public IResolvedNode Visit(BlockStatementNode node)
+	public IResolvedStatementNode Visit(BlockStatementNode node)
 	{
 		var statements = new List<IResolvedStatementNode>(node.StatementNodes.Length);
 		var scope = CurrentScope?.CreateChild();
@@ -169,7 +171,7 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 		return new ResolvedBlockStatementNode(statements, node);
 	}
 	
-	public IResolvedNode Visit(ReturnStatementNode node)
+	public IResolvedStatementNode Visit(ReturnStatementNode node)
 	{
 		var returnType = _assemblySignatureTable.Functions[CurrentFunction.Symbol].Signature.ReturnType;
 		_targetTypes.Push(returnType);
@@ -179,72 +181,65 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 		return new ResolvedReturnStatementNode(expression, node);
 	}
 	
-	public IResolvedNode Visit(BreakStatementNode node)
+	public IResolvedStatementNode Visit(BreakStatementNode node)
 	{
-		LabelSymbol? labelSymbol;
-		if (node.ExpressionNode is { } expressionNode)
-		{
-			// TODO Better diagnostics
-			if (expressionNode is not VarExpressionNode varExpr)
-				throw new Exception("Expression must be a label");
-			
-			var name = varExpr.Identifier.Text;
-			if (CurrentResolutionContext.Resolve(name) is not { } symbol)
-				throw new Exception($"Symbol '{name}' not found in this scope");
-			
-			if (symbol is not LabelSymbol label)
-				throw new Exception($"Symbol '{name}' is not a label");
-			
-			labelSymbol = label;
-		}
-		else
-			labelSymbol = null;
+		if (node.ExpressionNode is not { } expressionNode)
+			return new ResolvedBreakStatementNode(null, node);
 		
-		return new ResolvedBreakStatementNode(labelSymbol, node);
+		if (expressionNode is not VarExpressionNode varExpr)
+			return Error(node, "Expression must be a label", expressionNode);
+		
+		var name = varExpr.Identifier.Text;
+		if (CurrentResolutionContext.Resolve(name) is not { } symbol)
+			return Error(node, $"Symbol '{name}' not found in this scope", varExpr);
+		
+		if (symbol is not LabelSymbol label)
+			return Error(node, $"Symbol '{name}' is not a label", varExpr);
+		
+		return new ResolvedBreakStatementNode(label, node);
 	}
 	
-	public IResolvedNode Visit(ContinueStatementNode node)
+	public IResolvedStatementNode Visit(ContinueStatementNode node)
 	{
-		LabelSymbol? labelSymbol;
-		if (node.ExpressionNode is { } expressionNode)
-		{
-			// TODO Better diagnostics
-			if (expressionNode is not VarExpressionNode varExpr)
-				throw new Exception("Expression must be a label");
-			
-			var name = varExpr.Identifier.Text;
-			if (CurrentResolutionContext.Resolve(name) is not { } symbol)
-				throw new Exception($"Symbol '{name}' not found in this scope");
-			
-			if (symbol is not LabelSymbol label)
-				throw new Exception($"Symbol '{name}' is not a label");
-			
-			labelSymbol = label;
-		}
-		else
-			labelSymbol = null;
+		if (node.ExpressionNode is not { } expressionNode)
+			return new ResolvedContinueStatementNode(null, node);
 		
-		return new ResolvedContinueStatementNode(labelSymbol, node);
+		if (expressionNode is not VarExpressionNode varExpr)
+			return Error(node, "Expression must be a label", expressionNode);
+		
+		var name = varExpr.Identifier.Text;
+		if (CurrentResolutionContext.Resolve(name) is not { } symbol)
+			return Error(node, $"Symbol '{name}' not found in this scope", varExpr);
+		
+		if (symbol is not LabelSymbol label)
+			return Error(node, $"Symbol '{name}' is not a label", varExpr);
+		
+		return new ResolvedContinueStatementNode(label, node);
 	}
 	
-	public IResolvedNode Visit(ExpressionStatementNode node) =>
+	public IResolvedStatementNode Visit(ExpressionStatementNode node) =>
 		new ResolvedExpressionStatementNode(VisitNode(node.ExpressionNode), node);
 	
-	public IResolvedNode Visit(CallExpressionNode node) => TryResolveCallTargetAsType(node.Target) is { } targetType
-		? VisitTypeCall(node, targetType)
-		: VisitFunctionCall(node);
+	public IResolvedExpressionNode Visit(CallExpressionNode node) =>
+		TryResolveCallTargetAsType(node.Target) is { } targetType
+			? VisitTypeCall(node, targetType)
+			: VisitFunctionCall(node);
 	
-	private IResolvedNode VisitTypeCall(CallExpressionNode node, TypeSymbol targetType)
+	private IResolvedExpressionNode VisitTypeCall(CallExpressionNode node, TypeSymbol targetType)
 	{
-		// TODO Zero-arg default construction
 		// TODO Multi-arg constructors
 		if (node.Arguments.Length != 1)
-			throw new Exception(
-				$"No constructor for type '{targetType.Name}' with {node.Arguments.Length} argument(s)");
+			return Error(node, $"No constructor for type '{targetType.Name}' with {node.Arguments.Length} argument(s)",
+				targetType);
 		
-		_targetTypes.Push(targetType);
+		// Don't push targetType; we're trying to find a CAST to targetType, not a targetType itself
+		_targetTypes.Push(null);
 		var arg = VisitNode(node.Arguments[0]);
 		_targetTypes.Pop();
+		
+		// If the argument has an invalid type, we don't want to cascade useless errors; assume identity conversion
+		if (arg.Type == NativeSymbols.Invalid)
+			return new ResolvedConversionExpressionNode(arg, new IdentityConversion(targetType), node);
 		
 		if (arg.Type is UntypedIntegerType && targetType is IntegerType intTarget)
 			arg = MaterializeExpression(arg, intTarget);
@@ -258,10 +253,10 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 			return new ResolvedConversionExpressionNode(arg, conversion, node);
 		
 		// TODO Look up constructors
-		throw new Exception($"No conversion from '{arg.Type.Name}' to '{targetType.Name}'");
+		return Error(node, $"No conversion from '{arg.Type.Name}' to '{targetType.Name}'", targetType, arg.Syntax);
 	}
 	
-	private ResolvedFunctionCallExpressionNode VisitFunctionCall(CallExpressionNode node)
+	private IResolvedExpressionNode VisitFunctionCall(CallExpressionNode node)
 	{
 		switch (node.Target)
 		{
@@ -272,10 +267,11 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 				
 				// TODO Diagnostics, emit invalid expression instead of throwing exceptions
 				if (symbol is null)
-					throw new Exception($"Symbol '{functionName}' not found in this scope");
+					return Error(node, $"Symbol '{functionName}' not found in this scope", CurrentTargetType, varExpr);
 				
 				if (symbol is not FunctionSymbol function)
-					throw new Exception($"Symbol '{functionName}' is not a function or type");
+					return Error(node, $"Symbol '{functionName}' is not a function or type", CurrentTargetType,
+						varExpr);
 				
 				if (!_assemblySignatureTable.Functions.TryGetValue(function, out var info))
 				{
@@ -306,32 +302,19 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 		}
 	}
 	
-	private TypeSymbol? TryResolveCallTargetAsType(IExpressionNode target)
+	private TypeSymbol? TryResolveCallTargetAsType(IExpressionNode target) => target switch
 	{
-		switch (target)
-		{
-			case VarExpressionNode e:
-				return CurrentResolutionContext.Resolve(e.Identifier.Text) as TypeSymbol;
-			
-			case IndexerExpressionNode e:
-				return TryResolveIndexerAsGenericType(e);
-			
-			case AccessExpressionNode:
-				// TODO Module qualifiers or nested types
-				return null;
-			
-			default:
-				return null;
-		}
-	}
+		VarExpressionNode e => CurrentResolutionContext.Resolve(e.Identifier.Text) as TypeSymbol,
+		IndexerExpressionNode e => TryResolveIndexerAsGenericType(e),
+		AccessExpressionNode => null, // TODO Module qualifiers or nested types
+		_ => null
+	};
 	
 	private TypeSymbol? TryResolveIndexerAsGenericType(IndexerExpressionNode node)
 	{
+		// TODO AccessExpressionNode for module.GenericType[T]
 		if (node.Target is not VarExpressionNode varExpr)
-		{
-			// TODO AccessExpressionNode for module.GenericType[T]
 			return null;
-		}
 		
 		return TryResolveGenericTypeFromExpressions(varExpr.Identifier.Text, node.Arguments);
 	}
@@ -366,21 +349,32 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 		_ => null
 	};
 	
-	public IResolvedNode Visit(IndexerExpressionNode node)
+	public IResolvedExpressionNode Visit(IndexerExpressionNode node)
 	{
 		var target = VisitNode(node.Target);
 		
 		// TODO Indexable user-defined types
-		var elementType = target.Type switch
+		TypeSymbol elementType;
+		switch (target.Type)
 		{
-			SpanType spanType => spanType.ElementType,
-			ViewType viewType => viewType.ElementType,
-			ArrayType arrayType => arrayType.ElementType,
-			_ => throw new Exception($"Cannot index into type '{target.Type.Name}'")
-		};
+			case SpanType spanType:
+				elementType = spanType.ElementType;
+				break;
+			
+			case ViewType viewType:
+				elementType = viewType.ElementType;
+				break;
+			
+			case ArrayType arrayType:
+				elementType = arrayType.ElementType;
+				break;
+			
+			default:
+				return Error(node, $"Cannot index into type '{target.Type.Name}'", CurrentTargetType, target.Syntax);
+		}
 		
 		if (node.Arguments.Length != 1)
-			throw new Exception("Array indexer requires exactly one argument");
+			return Error(node, "Array indexer requires exactly one argument", elementType);
 		
 		_targetTypes.Push(NativeSymbols.UIntSize);
 		var indexExpr = VisitNode(node.Arguments[0]);
@@ -389,20 +383,21 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 		return new ResolvedIndexerExpressionNode(elementType, target, indexExpr, node);
 	}
 	
-	public IResolvedNode Visit(AccessExpressionNode node)
+	public IResolvedExpressionNode Visit(AccessExpressionNode node)
 	{
 		var target = VisitNode(node.Target);
 		var memberName = node.Member.Text;
 		var resolutionContext = CurrentResolutionContext;
 		
 		if (resolutionContext.TypePool.ResolveMember(target.Type, memberName) is not { } member)
-			throw new Exception($"Type '{target.Type.Name}' has no member '{memberName}'");
+			return Error(node, $"Type '{target.Type.Name}' has no member '{memberName}'", CurrentTargetType,
+				node.Member.SourceLocation);
 		
 		var memberType = GetMemberType(member);
 		return new ResolvedAccessExpressionNode(target, member, memberType, node);
 	}
 	
-	public IResolvedNode Visit(ArrayExpressionNode node)
+	public IResolvedExpressionNode Visit(ArrayExpressionNode node)
 	{
 		var values = new List<IResolvedExpressionNode>(node.Values.Length);
 		
@@ -470,7 +465,7 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 		return new ResolvedArrayExpressionNode(type, values, node);
 	}
 	
-	public IResolvedNode Visit(LiteralExpressionNode node)
+	public IResolvedExpressionNode Visit(LiteralExpressionNode node)
 	{
 		var valueSpan = node.Token.AsSpan();
 		
@@ -511,7 +506,7 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 		return new ResolvedLiteralExpressionNode(type, value, node);
 	}
 	
-	public IResolvedNode Visit(UndefExpressionNode node)
+	public IResolvedExpressionNode Visit(UndefExpressionNode node)
 	{
 		var resolutionContext = CurrentResolutionContext;
 		var type = node.Type is null 
@@ -521,15 +516,14 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 		return new ResolvedUndefExpressionNode(type, node);
 	}
 	
-	public IResolvedNode Visit(VarExpressionNode node)
+	public IResolvedExpressionNode Visit(VarExpressionNode node)
 	{
 		var resolutionContext = CurrentResolutionContext;
 		var varName = node.Identifier.Text;
 		var symbol = resolutionContext.Resolve(varName);
 		
-		// TODO Diagnostics, emit invalid expression instead of throwing exceptions
 		if (symbol is null)
-			throw new Exception($"Symbol '{varName}' not found in this scope");
+			return Error(node, $"Symbol '{varName}' not found in this scope", CurrentTargetType);
 		
 		switch (symbol)
 		{
@@ -543,11 +537,11 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 				return new ResolvedVarExpressionNode(v, type, node);
 			
 			default:
-				throw new Exception($"Symbol '{varName}' is not a variable");
+				return Error(node, $"Symbol '{varName}' is not a variable", CurrentTargetType);
 		}
 	}
 	
-	public IResolvedNode Visit(IfStatementNode node)
+	public IResolvedStatementNode Visit(IfStatementNode node)
 	{
 		_targetTypes.Push(NativeSymbols.Bool);
 		var condition = VisitNode(node.Condition);
@@ -559,7 +553,7 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 		return new ResolvedIfStatementNode(condition, then, @else, node);
 	}
 	
-	public IResolvedNode Visit(VarStatementNode node)
+	public IResolvedStatementNode Visit(VarStatementNode node)
 	{
 		var resolutionContext = CurrentResolutionContext;
 		
@@ -588,7 +582,7 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 			initializer = null;
 			
 			if (type is ArrayType a && a.Length < 0)
-				throw new Exception("Unsized array type requires an initializer");
+				return Error(node, "Unsized array type requires an initializer");
 		}
 		
 		type ??= initializer?.Type ?? NativeSymbols.Invalid;
@@ -599,7 +593,7 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 		return new ResolvedVarStatementNode(symbol, initializer, node);
 	}
 	
-	public IResolvedNode Visit(WhileStatementNode node)
+	public IResolvedStatementNode Visit(WhileStatementNode node)
 	{
 		var condition = VisitNode(node.Condition);
 		
@@ -623,7 +617,7 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 		return new ResolvedWhileStatementNode(condition, body, symbol, node);
 	}
 	
-	public IResolvedNode Visit(DoWhileStatementNode node)
+	public IResolvedStatementNode Visit(DoWhileStatementNode node)
 	{
 		var condition = VisitNode(node.Condition);
 		
@@ -647,7 +641,7 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 		return new ResolvedDoWhileStatementNode(body, condition, symbol, node);
 	}
 	
-	public IResolvedNode Visit(RepeatStatementNode node)
+	public IResolvedStatementNode Visit(RepeatStatementNode node)
 	{
 		var count = VisitNode(node.Count);
 		
@@ -671,7 +665,7 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 		return new ResolvedRepeatStatementNode(count, body, symbol, node);
 	}
 	
-	public IResolvedNode Visit(LoopStatementNode node)
+	public IResolvedStatementNode Visit(LoopStatementNode node)
 	{
 		// Create a scope for the body and label (if applicable)
 		var scope = CurrentScope?.CreateChild() ?? new();
@@ -693,7 +687,7 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 		return new ResolvedLoopStatementNode(body, symbol, node);
 	}
 	
-	public IResolvedNode Visit(UnaryOpExpressionNode node)
+	public IResolvedExpressionNode Visit(UnaryOpExpressionNode node)
 	{
 		var op = node.Op;
 		
@@ -722,7 +716,7 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 		return new(operand, new NativeImpl(opType, ptrType), node);
 	}
 	
-	public IResolvedNode Visit(BinaryOpExpressionNode node)
+	public IResolvedExpressionNode Visit(BinaryOpExpressionNode node)
 	{
 		var op = node.Op;
 		var isAssignment = op.Type == TokenType.OpEqual || op.Type == TokenType.OpPlusEqual ||
@@ -755,11 +749,13 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 			
 			var resolutionSet = _operatorRegistry.ResolveBinary(left.Type, op.Type, right.Type);
 			if (resolutionSet.IsAmbiguous)
-				throw new Exception(
-					$"Ambiguous operation '{op.Text}' between '{left.Type.Name}' and '{right.Type.Name}'");
+				return Error(node,
+					$"Ambiguous operation '{op.Text}' between '{left.Type.Name}' and '{right.Type.Name}'",
+					CurrentTargetType);
 			
 			if (!resolutionSet.HasResult)
-				return new ResolvedBinaryOpExpressionNode(left, right, null, node);
+				return Error(node, $"No operation defined for '{op.Text}' between " +
+				                   $"'{left.Type.Name}' and '{right.Type.Name}'", CurrentTargetType);
 			
 			var resolution = resolutionSet[0];
 			var operation = resolution.Operation;
@@ -775,11 +771,13 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 				
 				resolutionSet = _operatorRegistry.ResolveBinary(left.Type, op.Type, right.Type);
 				if (resolutionSet.IsAmbiguous)
-					throw new Exception(
-						$"Ambiguous operation '{op.Text}' between '{left.Type.Name}' and '{right.Type.Name}'");
+					return Error(node,
+						$"Ambiguous operation '{op.Text}' between '{left.Type.Name}' and '{right.Type.Name}'",
+						CurrentTargetType);
 				
 				if (!resolutionSet.HasResult)
-					return new ResolvedBinaryOpExpressionNode(left, right, null, node);
+					return Error(node, $"No operation defined for '{op.Text}' between " +
+					                   $"'{left.Type.Name}' and '{right.Type.Name}'", CurrentTargetType);
 				
 				resolution = resolutionSet[0];
 				operation = resolution.Operation;
@@ -795,7 +793,7 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 		}
 	}
 	
-	public IResolvedNode Visit(ChainedExpressionNode node)
+	public IResolvedExpressionNode Visit(ChainedExpressionNode node)
 	{
 		// We push null to allow sub-expressions to resolve naturally; then, we attempt to implicit cast to actual type
 		var operands = new List<IResolvedExpressionNode>(node.Operands.Length);
@@ -840,7 +838,7 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 				commonType = FindCommonType(commonType, operands[i].Type);
 			
 			if (commonType is null)
-				throw new Exception("Cannot chain comparisons between incompatible types");
+				return Error(node, "Cannot chain comparisons between incompatible types", CurrentTargetType);
 			
 			for (var i = 0; i < operands.Count; i++)
 				operands[i] = CoerceToType(operands[i], commonType);
@@ -855,8 +853,14 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 			
 			var resolutionSet = _operatorRegistry.ResolveBinary(left.Type, op.Type, right.Type);
 			if (resolutionSet.IsAmbiguous)
-				throw new Exception(
-					$"Ambiguous operation '{op.Text}' between '{left.Type.Name}' and '{right.Type.Name}'");
+			{
+				var (source, range) = left.Syntax.SourceLocation;
+				range = range.Join(right.Syntax.SourceLocation.Range);
+				
+				return Error(node,
+					$"Ambiguous operation '{op.Text}' between '{left.Type.Name}' and '{right.Type.Name}'",
+					CurrentTargetType, new SourceLocation(source, range));
+			}
 			
 			operations.Add(resolutionSet.HasResult ? resolutionSet[0].Operation : null);
 		}
@@ -868,7 +872,8 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 			var right = operations[i]?.Result ?? NativeSymbols.Invalid;
 			var resolutionSet = _operatorRegistry.ResolveBinary(resultType, TokenType.OpAmpersand, right);
 			if (resolutionSet.IsAmbiguous)
-				throw new Exception($"Ambiguous operation '&' between '{resultType.Name}' and '{right.Name}'");
+				Error(node, $"Ambiguous operation '&' between '{resultType.Name}' and '{right.Name}'",
+					CurrentTargetType);
 			
 			resultType = resolutionSet.HasResult ? resolutionSet[0].Operation.Result : NativeSymbols.Invalid;
 		}
@@ -1136,8 +1141,8 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 					: BinaryResolutionSet.None;
 				
 				if (resolutionSet.IsAmbiguous)
-					throw new Exception($"Ambiguous operation '{binary.Operation!.Op.Representation}' between " +
-					                    $"'{left.Type.Name}' and '{right.Type.Name}'");
+					return Error(node.Syntax, $"Ambiguous operation '{binary.Operation!.Op.Representation}' between " +
+					                    $"'{left.Type.Name}' and '{right.Type.Name}'", CurrentTargetType);
 				
 				if (!resolutionSet.HasResult)
 					return new ResolvedBinaryOpExpressionNode(left, right, null, node.Syntax);
@@ -1197,4 +1202,32 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 	
 	private TypeSymbol GetMemberType(MemberSymbol member) =>
 		_typePool.TryGetTypeOfMember(member, out var type) ? type : NativeSymbols.Invalid;
+	
+	private ResolvedInvalidExpressionNode Error(IExpressionNode node, string message, TypeSymbol? type,
+		ISyntaxNode? source = null) => Error(node, message, type, source?.SourceLocation ?? node.SourceLocation);
+	
+	private ResolvedInvalidStatementNode Error(IStatementNode node, string message, ISyntaxNode? source = null) =>
+		Error(node, message, source?.SourceLocation ?? node.SourceLocation);
+	
+	private ResolvedInvalidDeclarationNode Error(IDeclarationNode node, string message, ISyntaxNode? source = null) =>
+		Error(node, message, source?.SourceLocation ?? node.SourceLocation);
+	
+	private ResolvedInvalidExpressionNode Error(IExpressionNode node, string message, TypeSymbol? type,
+		SourceLocation sourceLocation)
+	{
+		Diagnostics.Add(new(DiagnosticSeverity.Error, sourceLocation, message));
+		return new(node, type);
+	}
+	
+	private ResolvedInvalidStatementNode Error(IStatementNode node, string message, SourceLocation sourceLocation)
+	{
+		Diagnostics.Add(new(DiagnosticSeverity.Error, sourceLocation, message));
+		return new(node);
+	}
+	
+	private ResolvedInvalidDeclarationNode Error(IDeclarationNode node, string message, SourceLocation sourceLocation)
+	{
+		Diagnostics.Add(new(DiagnosticSeverity.Error, sourceLocation, message));
+		return new(node);
+	}
 }
