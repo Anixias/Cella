@@ -1,16 +1,16 @@
 ﻿using Cella.Core.Binding.Nodes;
 using Cella.Core.Symbols;
 using Cella.Core.Text;
+using Cella.Diagnostics;
 
 namespace Cella.Core.Binding;
 
 public sealed class TypeChecker : IResolvedStatementNodeVisitor, IResolvedDeclarationNodeVisitor,
 	IResolvedExpressionNodeVisitor
 {
-	public IReadOnlyList<string> Diagnostics => _diagnostics;
+	public DiagnosticList Diagnostics { get; } = new();
 	
 	private readonly Stack<TypeSymbol?> _returnTypeStack = [];
-	private readonly List<string> _diagnostics = []; // TODO More info needed
 	
 	public void Check(ResolvedFileNode root) => VisitNode(root);
 	
@@ -30,8 +30,8 @@ public sealed class TypeChecker : IResolvedStatementNodeVisitor, IResolvedDeclar
 		if (node.Body is IResolvedExpressionNode expression)
 		{
 			if (!AreTypesCompatible(returnType, expression.Type))
-				_diagnostics.Add(
-					$"Cannot return value of type '{expression.Type.Name}': Expected type '{returnType.Name}'");
+				Diagnostics.Add(new(DiagnosticSeverity.Error, expression.Syntax.SourceLocation,
+					$"Cannot return value of type '{expression.Type.Name}': Expected type '{returnType.Name}'"));
 			
 			return;
 		}
@@ -58,8 +58,8 @@ public sealed class TypeChecker : IResolvedStatementNodeVisitor, IResolvedDeclar
 		var expected = node.Type;
 		var actual = initializer.Type;
 		if (!AreTypesCompatible(expected, actual))
-			_diagnostics.Add(
-				$"Cannot assign value of type '{actual.Name}': Expected type '{expected.Name}'");
+			Diagnostics.Add(new(DiagnosticSeverity.Error, initializer.Syntax.SourceLocation,
+				$"Cannot assign value of type '{actual.Name}': Expected type '{expected.Name}'"));
 	}
 	
 	public void Visit(ResolvedMethodNode node) => VisitNode(node.FunctionNode);
@@ -85,7 +85,8 @@ public sealed class TypeChecker : IResolvedStatementNodeVisitor, IResolvedDeclar
 	public void Visit(ResolvedExpressionStatementNode node)
 	{
 		if (!IsAllowedAsStatement(node.Expression))
-			_diagnostics.Add("Only assignments and function calls are allowed as statements");
+			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Syntax.SourceLocation,
+				"Only assignments and function calls are allowed as statements"));
 		
 		// ^Need to check for purity of expressions. Pure expressions as statements is either an error or a warning
 		VisitNode(node.Expression);
@@ -95,8 +96,8 @@ public sealed class TypeChecker : IResolvedStatementNodeVisitor, IResolvedDeclar
 	{
 		var conditionType = node.Condition.Type;
 		if (!AreTypesCompatible(NativeSymbols.Bool, conditionType))
-			_diagnostics.Add(
-				$"Invalid condition type '{conditionType.Name}': Expected type '{NativeSymbols.Bool.Name}'");
+			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Condition.Syntax.SourceLocation,
+				$"Invalid condition type '{conditionType.Name}': Expected type '{NativeSymbols.Bool.Name}'"));
 		
 		VisitNode(node.Then);
 		
@@ -110,8 +111,8 @@ public sealed class TypeChecker : IResolvedStatementNodeVisitor, IResolvedDeclar
 		var actual = node.Expression?.Type ?? NativeSymbols.Void;
 		
 		if (!AreTypesCompatible(expected, actual))
-			_diagnostics.Add(
-				$"Cannot return value of type '{actual.Name}': Expected type '{expected?.Name ?? "void"}'");
+			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Syntax.SourceLocation,
+				$"Cannot return value of type '{actual.Name}': Expected type '{expected?.Name ?? "void"}'"));
 	}
 	
 	public void Visit(ResolvedVarStatementNode node)
@@ -122,23 +123,24 @@ public sealed class TypeChecker : IResolvedStatementNodeVisitor, IResolvedDeclar
 		{
 			var actual = initializer.Type;
 			if (!AreTypesCompatible(expected, actual))
-				_diagnostics.Add(
-					$"Cannot assign value of type '{actual.Name}': Expected type '{expected.Name}'");
+				Diagnostics.Add(new(DiagnosticSeverity.Error, initializer.Syntax.SourceLocation,
+					$"Cannot assign value of type '{actual.Name}': Expected type '{expected.Name}'"));
 			
 			// Special case: If undef, don't check (it will throw an error)
 			if (initializer is not ResolvedUndefExpressionNode)
 				VisitNode(initializer);
 		}
 		else if (expected == NativeSymbols.Invalid)
-			_diagnostics.Add("Implicitly-typed local variable must have an initializer");
+			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Syntax.SourceLocation,
+				"Implicitly-typed local variable must have an initializer"));
 	}
 	
 	public void Visit(ResolvedWhileStatementNode node)
 	{
 		var conditionType = node.Condition.Type;
 		if (!AreTypesCompatible(NativeSymbols.Bool, conditionType))
-			_diagnostics.Add(
-				$"Invalid condition type '{conditionType.Name}': Expected type '{NativeSymbols.Bool.Name}'");
+			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Condition.Syntax.SourceLocation,
+				$"Invalid condition type '{conditionType.Name}': Expected type '{NativeSymbols.Bool.Name}'"));
 		
 		VisitNode(node.Body);
 	}
@@ -147,8 +149,8 @@ public sealed class TypeChecker : IResolvedStatementNodeVisitor, IResolvedDeclar
 	{
 		var conditionType = node.Condition.Type;
 		if (!AreTypesCompatible(NativeSymbols.Bool, conditionType))
-			_diagnostics.Add(
-				$"Invalid condition type '{conditionType.Name}': Expected type '{NativeSymbols.Bool.Name}'");
+			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Condition.Syntax.SourceLocation,
+				$"Invalid condition type '{conditionType.Name}': Expected type '{NativeSymbols.Bool.Name}'"));
 		
 		VisitNode(node.Body);
 	}
@@ -159,8 +161,8 @@ public sealed class TypeChecker : IResolvedStatementNodeVisitor, IResolvedDeclar
 	{
 		var countType = node.Count.Type;
 		if (!IsIntegralType(countType))
-			_diagnostics.Add(
-				$"Invalid count type '{countType.Name}': Expected an integral type");
+			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Count.Syntax.SourceLocation,
+				$"Invalid count type '{countType.Name}': Expected an integral type"));
 		
 		VisitNode(node.Body);
 	}
@@ -215,12 +217,14 @@ public sealed class TypeChecker : IResolvedStatementNodeVisitor, IResolvedDeclar
 	{
 		// TODO Better diagnostic
 		if (!IsLValue(node.Left))
-			_diagnostics.Add("Assignment target must be a variable");
+			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Left.Syntax.SourceLocation,
+				"Assignment target must be a variable"));
 		
 		var expected = node.Left.Type;
 		var actual = node.Right.Type;
 		if (!AreTypesCompatible(expected, actual))
-			_diagnostics.Add($"Cannot assign source type '{actual.Name}' to target type '{expected.Name}'");
+			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Right.Syntax.SourceLocation,
+				$"Cannot assign source type '{actual.Name}' to target type '{expected.Name}'"));
 		
 		VisitNode(node.Right);
 	}
@@ -248,7 +252,9 @@ public sealed class TypeChecker : IResolvedStatementNodeVisitor, IResolvedDeclar
 		var paramTypes = node.Function.Signature.ParameterTypes;
 		if (args.Length != paramTypes.Length)
 		{
-			_diagnostics.Add($"Incorrect number of arguments: Expected {paramTypes.Length}, got {args.Length}");
+			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Syntax.SourceLocation,
+				$"Incorrect number of arguments: Expected {paramTypes.Length}, got {args.Length}"));
+			
 			return;
 		}
 		
@@ -259,8 +265,8 @@ public sealed class TypeChecker : IResolvedStatementNodeVisitor, IResolvedDeclar
 			var actual = arg.Type;
 			
 			if (!AreTypesCompatible(expected, actual))
-				_diagnostics.Add($"Argument type '{actual.Name}' is not assignable to parameter type " +
-				                 $"'{expected.Name}'");
+				Diagnostics.Add(new(DiagnosticSeverity.Error, arg.Syntax.SourceLocation,
+					$"Argument type '{actual.Name}' is not assignable to parameter type '{expected.Name}'"));
 			
 			VisitNode(arg);
 		}
@@ -279,13 +285,16 @@ public sealed class TypeChecker : IResolvedStatementNodeVisitor, IResolvedDeclar
 	public void Visit(ResolvedUnaryOpExpressionNode node)
 	{
 		if (node.Operation?.Op == TokenType.OpAt && !IsLValue(node.Operand))
-			_diagnostics.Add("Cannot take the address of an unstored value");
+			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Operand.Syntax.SourceLocation,
+				"Cannot take the address of an unstored value"));
 		
 		VisitNode(node.Operand);
 	}
 	
+	// TODO Better diagnostics
 	public void Visit(ResolvedUndefExpressionNode node) =>
-		_diagnostics.Add("'undef' may only be used as a variable initializer");
+		Diagnostics.Add(new(DiagnosticSeverity.Error, node.Syntax.SourceLocation,
+			"'undef' may only be used as a variable initializer"));
 	
 	public void Visit(ResolvedVarExpressionNode node)
 	{

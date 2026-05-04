@@ -103,9 +103,11 @@ public sealed class Lowerer : IResolvedDeclarationNodeVisitor
 					lower.VisitNode(statement);
 					break;
 				
-				// If expression body, fabricate a return statement
+				// If expression body, synthesize a return statement
 				case IResolvedExpressionNode expression:
-					lower.Visit(new ResolvedReturnStatementNode(expression));
+					lower.Visit(new ResolvedReturnStatementNode(expression,
+						new ReturnStatementNode(expression.Syntax.SourceLocation, expression.Syntax)));
+					
 					break;
 			}
 			

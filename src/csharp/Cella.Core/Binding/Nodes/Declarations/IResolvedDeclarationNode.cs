@@ -1,7 +1,10 @@
-﻿namespace Cella.Core.Binding.Nodes;
+﻿using Cella.Core.Syntax.Nodes;
+
+namespace Cella.Core.Binding.Nodes;
 
 public interface IResolvedDeclarationNode : IResolvedNode
 {
+	IDeclarationNode Syntax { get; }
 }
 
 [TreeVisitor<IResolvedDeclarationNode>]

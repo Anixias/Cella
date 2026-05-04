@@ -200,10 +200,10 @@ internal static class Program
 			foreach (var (_, resolvedAst, _) in resolvedFiles)
 				typeChecker.Check(resolvedAst);
 			
-			if (typeChecker.Diagnostics.Count > 0)
+			if (typeChecker.Diagnostics.ErrorCount > 0)
 			{
-				foreach (var diagnostic in typeChecker.Diagnostics)
-					Console.WriteLine(diagnostic);
+				foreach (var error in typeChecker.Diagnostics.Errors)
+					PrintDiagnostic(error);
 				
 				return errorResult;
 			}
@@ -431,8 +431,18 @@ internal static class Program
 			.ToList();
 		
 		WriteColored($"{severityLabel}", severityColor);
-		Console.WriteLine($" at line {startLine}, column {startCol}");
 		
+		if (lineNumbers.Count == 0)
+		{
+			Console.Write($" at line {startLine}, column {startCol}: ");
+			WriteColored(diagnostic.Message, severityColor);
+			Console.WriteLine();
+			Console.WriteLine();
+			
+			return;
+		}
+		
+		Console.WriteLine($" at line {startLine}, column {startCol}");
 		for (var i = 0; i < lineNumbers.Count; i++)
 		{
 			var lineNum = lineNumbers[i];

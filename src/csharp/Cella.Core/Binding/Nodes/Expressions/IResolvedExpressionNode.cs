@@ -1,4 +1,5 @@
 ﻿using Cella.Core.Symbols;
+using Cella.Core.Syntax.Nodes;
 
 namespace Cella.Core.Binding.Nodes;
 
@@ -6,6 +7,7 @@ public interface IResolvedExpressionNode : IResolvedNode
 {
 	TypeSymbol Type { get; }
 	bool IsConstant { get; }
+	IExpressionNode Syntax { get; }
 }
 
 [TreeVisitor<IResolvedExpressionNode>]

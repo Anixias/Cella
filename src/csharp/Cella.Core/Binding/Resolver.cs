@@ -86,7 +86,7 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 		else
 			initializer = null;
 		
-		return new ResolvedFieldNode(field, type, initializer);
+		return new ResolvedFieldNode(field, type, initializer, node);
 	}
 	
 	public IResolvedNode Visit(FileNode node)
@@ -109,7 +109,7 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 		
 		_resolutionContexts.Pop();
 		
-		var result = new ResolvedFileNode(file, resolvedDeclarations, _importedFunctions.Values);
+		var result = new ResolvedFileNode(file, resolvedDeclarations, _importedFunctions.Values, node);
 		_importedFunctions.Clear();
 		return result;
 	}
@@ -129,14 +129,14 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 		var body = VisitNode(node.Body);
 		_resolutionContexts.Pop();
 		
-		return new ResolvedFunctionNode(info, body);
+		return new ResolvedFunctionNode(info, body, node);
 	}
 	
 	public IResolvedNode Visit(ExternalFunctionNode node)
 	{
 		var function = (FunctionSymbol)_symbolTable.DeclarationSymbols[node];
 		var info = _assemblySignatureTable.Functions[function];
-		return new ResolvedExternalFunctionNode(info);
+		return new ResolvedExternalFunctionNode(info, node);
 	}
 	
 	public IResolvedNode Visit(GenericTypeNode node) => throw new InvalidOperationException();
@@ -151,7 +151,7 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 			members.Add(VisitNode(member));
 		
 		var record = (RecordSymbol)_symbolTable.DeclarationSymbols[node];
-		return new ResolvedRecordNode(record, members);
+		return new ResolvedRecordNode(record, members, node);
 	}
 	
 	public IResolvedNode Visit(BlockStatementNode node)
@@ -166,7 +166,7 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 		
 		_resolutionContexts.Pop();
 		
-		return new ResolvedBlockStatementNode(statements);
+		return new ResolvedBlockStatementNode(statements, node);
 	}
 	
 	public IResolvedNode Visit(ReturnStatementNode node)
@@ -176,7 +176,7 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 		var expression = CoerceToType(node.ExpressionNode is { } expr ? VisitNode(expr) : null, returnType);
 		_targetTypes.Pop();
 		
-		return new ResolvedReturnStatementNode(expression);
+		return new ResolvedReturnStatementNode(expression, node);
 	}
 	
 	public IResolvedNode Visit(BreakStatementNode node)
@@ -200,7 +200,7 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 		else
 			labelSymbol = null;
 		
-		return new ResolvedBreakStatementNode(labelSymbol);
+		return new ResolvedBreakStatementNode(labelSymbol, node);
 	}
 	
 	public IResolvedNode Visit(ContinueStatementNode node)
@@ -224,11 +224,11 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 		else
 			labelSymbol = null;
 		
-		return new ResolvedContinueStatementNode(labelSymbol);
+		return new ResolvedContinueStatementNode(labelSymbol, node);
 	}
 	
 	public IResolvedNode Visit(ExpressionStatementNode node) =>
-		new ResolvedExpressionStatementNode(VisitNode(node.ExpressionNode));
+		new ResolvedExpressionStatementNode(VisitNode(node.ExpressionNode), node);
 	
 	public IResolvedNode Visit(CallExpressionNode node) => TryResolveCallTargetAsType(node.Target) is { } targetType
 		? VisitTypeCall(node, targetType)
@@ -255,7 +255,7 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 			return arg;
 		
 		if (_conversionTable.FindExplicit(arg.Type, targetType) is { } conversion)
-			return new ResolvedConversionExpressionNode(arg, conversion);
+			return new ResolvedConversionExpressionNode(arg, conversion, node);
 		
 		// TODO Look up constructors
 		throw new Exception($"No conversion from '{arg.Type.Name}' to '{targetType.Name}'");
@@ -298,7 +298,7 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 					args.Add(arg);
 				}
 				
-				return new ResolvedFunctionCallExpressionNode(info, args);
+				return new ResolvedFunctionCallExpressionNode(info, args, node);
 			}
 			
 			default:
@@ -386,7 +386,7 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 		var indexExpr = VisitNode(node.Arguments[0]);
 		_targetTypes.Pop();
 		
-		return new ResolvedIndexerExpressionNode(elementType, target, indexExpr);
+		return new ResolvedIndexerExpressionNode(elementType, target, indexExpr, node);
 	}
 	
 	public IResolvedNode Visit(AccessExpressionNode node)
@@ -399,7 +399,7 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 			throw new Exception($"Type '{target.Type.Name}' has no member '{memberName}'");
 		
 		var memberType = GetMemberType(member);
-		return new ResolvedAccessExpressionNode(target, member, memberType);
+		return new ResolvedAccessExpressionNode(target, member, memberType, node);
 	}
 	
 	public IResolvedNode Visit(ArrayExpressionNode node)
@@ -467,7 +467,7 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 		}
 		
 		var type = _typePool.GetArrayType(elementType, node.Values.Length);
-		return new ResolvedArrayExpressionNode(type, values);
+		return new ResolvedArrayExpressionNode(type, values, node);
 	}
 	
 	public IResolvedNode Visit(LiteralExpressionNode node)
@@ -508,7 +508,7 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 		// TODO We should emit diagnostics here
 		type ??= NativeSymbols.Invalid;
 		
-		return new ResolvedLiteralExpressionNode(type, value);
+		return new ResolvedLiteralExpressionNode(type, value, node);
 	}
 	
 	public IResolvedNode Visit(UndefExpressionNode node)
@@ -518,7 +518,7 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 			? _targetTypes.TryPeek(out var targetType) ? targetType ?? NativeSymbols.Invalid : NativeSymbols.Invalid
 			: resolutionContext.ResolveType(node.Type);
 		
-		return new ResolvedUndefExpressionNode(type);
+		return new ResolvedUndefExpressionNode(type, node);
 	}
 	
 	public IResolvedNode Visit(VarExpressionNode node)
@@ -534,13 +534,13 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 		switch (symbol)
 		{
 			case LocalVariableSymbol v:
-				return new ResolvedVarExpressionNode(v, v.Type);
+				return new ResolvedVarExpressionNode(v, v.Type, node);
 			
 			case VariableSymbol v:
 				if (!_assemblySignatureTable.VariableTypes.TryGetValue(v, out var type))
 					type = _dependencySignatureTable.VariableTypes[v];
 				
-				return new ResolvedVarExpressionNode(v, type);
+				return new ResolvedVarExpressionNode(v, type, node);
 			
 			default:
 				throw new Exception($"Symbol '{varName}' is not a variable");
@@ -556,7 +556,7 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 		var then = VisitNode(node.Then);
 		var @else = node.Else is null ? null : VisitNode(node.Else);
 		
-		return new ResolvedIfStatementNode(condition, then, @else);
+		return new ResolvedIfStatementNode(condition, then, @else, node);
 	}
 	
 	public IResolvedNode Visit(VarStatementNode node)
@@ -596,7 +596,7 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 		var symbol = new LocalVariableSymbol(node, type);
 		resolutionContext.LocalScope!.Define(symbol);
 		
-		return new ResolvedVarStatementNode(symbol, initializer);
+		return new ResolvedVarStatementNode(symbol, initializer, node);
 	}
 	
 	public IResolvedNode Visit(WhileStatementNode node)
@@ -620,7 +620,7 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 		var body = VisitNode(node.Body);
 		_resolutionContexts.Pop();
 		
-		return new ResolvedWhileStatementNode(condition, body, symbol);
+		return new ResolvedWhileStatementNode(condition, body, symbol, node);
 	}
 	
 	public IResolvedNode Visit(DoWhileStatementNode node)
@@ -644,7 +644,7 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 		var body = VisitNode(node.Body);
 		_resolutionContexts.Pop();
 		
-		return new ResolvedDoWhileStatementNode(body, condition, symbol);
+		return new ResolvedDoWhileStatementNode(body, condition, symbol, node);
 	}
 	
 	public IResolvedNode Visit(RepeatStatementNode node)
@@ -668,7 +668,7 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 		var body = VisitNode(node.Body);
 		_resolutionContexts.Pop();
 		
-		return new ResolvedRepeatStatementNode(count, body, symbol);
+		return new ResolvedRepeatStatementNode(count, body, symbol, node);
 	}
 	
 	public IResolvedNode Visit(LoopStatementNode node)
@@ -690,7 +690,7 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 		var body = VisitNode(node.Body);
 		_resolutionContexts.Pop();
 		
-		return new ResolvedLoopStatementNode(body, symbol);
+		return new ResolvedLoopStatementNode(body, symbol, node);
 	}
 	
 	public IResolvedNode Visit(UnaryOpExpressionNode node)
@@ -709,16 +709,17 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 		
 		// Special unary operators that aren't stored in the registry
 		if (op.Type == TokenType.OpAt)
-			return ResolveAddressOf(op.Type, operand);
+			return ResolveAddressOf(op.Type, operand, node);
 		
 		var operation = _operatorRegistry.ResolveUnary(op.Type, operand.Type);
-		return new ResolvedUnaryOpExpressionNode(operand, operation);
+		return new ResolvedUnaryOpExpressionNode(operand, operation, node);
 	}
 	
-	private ResolvedUnaryOpExpressionNode ResolveAddressOf(TokenType opType, IResolvedExpressionNode operand)
+	private ResolvedUnaryOpExpressionNode ResolveAddressOf(TokenType opType, IResolvedExpressionNode operand,
+		UnaryOpExpressionNode node)
 	{
 		var ptrType = _typePool.GetPointerType(operand.Type, PointerKind.Unsafe);
-		return new(operand, new NativeImpl(opType, ptrType));
+		return new(operand, new NativeImpl(opType, ptrType), node);
 	}
 	
 	public IResolvedNode Visit(BinaryOpExpressionNode node)
@@ -739,7 +740,7 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 			var right = CoerceToType(VisitNode(node.Right), left.Type);
 			_targetTypes.Pop();
 			
-			return new ResolvedAssignmentExpressionNode(left.Type, left, op, right);
+			return new ResolvedAssignmentExpressionNode(left.Type, left, op, right, node);
 		}
 		else
 		{
@@ -758,7 +759,7 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 					$"Ambiguous operation '{op.Text}' between '{left.Type.Name}' and '{right.Type.Name}'");
 			
 			if (!resolutionSet.HasResult)
-				return new ResolvedBinaryOpExpressionNode(left, right, null);
+				return new ResolvedBinaryOpExpressionNode(left, right, null, node);
 			
 			var resolution = resolutionSet[0];
 			var operation = resolution.Operation;
@@ -778,19 +779,19 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 						$"Ambiguous operation '{op.Text}' between '{left.Type.Name}' and '{right.Type.Name}'");
 				
 				if (!resolutionSet.HasResult)
-					return new ResolvedBinaryOpExpressionNode(left, right, null);
+					return new ResolvedBinaryOpExpressionNode(left, right, null, node);
 				
 				resolution = resolutionSet[0];
 				operation = resolution.Operation;
 			}
 			
 			if (resolution.LeftConversion is { } leftConversion)
-				left = new ResolvedConversionExpressionNode(left, leftConversion);
+				left = new ResolvedConversionExpressionNode(left, leftConversion, node);
 			
 			if (resolution.RightConversion is { } rightConversion)
-				right = new ResolvedConversionExpressionNode(right, rightConversion);
+				right = new ResolvedConversionExpressionNode(right, rightConversion, node);
 			
-			return new ResolvedBinaryOpExpressionNode(left, right, operation);
+			return new ResolvedBinaryOpExpressionNode(left, right, operation, node);
 		}
 	}
 	
@@ -872,7 +873,7 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 			resultType = resolutionSet.HasResult ? resolutionSet[0].Operation.Result : NativeSymbols.Invalid;
 		}
 		
-		return new ResolvedChainedExpressionNode(resultType, operands, operations);
+		return new ResolvedChainedExpressionNode(resultType, operands, operations, node);
 	}
 	
 	[return: NotNullIfNotNull(nameof(source))]
@@ -885,7 +886,7 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 			return source;
 		
 		if (_conversionTable.FindImplicit(source.Type, target) is { } conversion)
-			return new ResolvedConversionExpressionNode(source, conversion);
+			return new ResolvedConversionExpressionNode(source, conversion, source.Syntax);
 		
 		// TODO Diagnostic
 		return source;
@@ -1033,7 +1034,7 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 		{
 			UntypedIntegerType => operand,
 			IntegerType intType when literal.Value is BigInteger value && FitsInType(value, intType) =>
-				MaterializeLiteral(intType, value),
+				MaterializeLiteral(operand.Syntax, intType, value),
 			_ => MaterializeAsDefault(literal)
 		};
 	}
@@ -1047,11 +1048,11 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 			return MaterializeExpression(node, NativeSymbols.Int32);
 		
 		var targetType = SmallestFittingType(value) ?? throw new InvalidOperationException();
-		return MaterializeLiteral(targetType, value);
+		return MaterializeLiteral(node.Syntax, targetType, value);
 	}
 	
-	private ResolvedLiteralExpressionNode MaterializeLiteral(IntegerType type, BigInteger value) =>
-		new(type, ConvertInteger(value, type));
+	private ResolvedLiteralExpressionNode MaterializeLiteral(IExpressionNode syntax, IntegerType type,
+		BigInteger value) => new(type, ConvertInteger(value, type), syntax);
 	
 	private static object? ConvertInteger(BigInteger value, IntegerType type) => type.Kind switch
 	{
@@ -1097,11 +1098,11 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 			case ResolvedLiteralExpressionNode { Value: BigInteger value } literal:
 			{
 				if (FitsInType(value, target))
-					return MaterializeLiteral(target, value);
+					return MaterializeLiteral(node.Syntax, target, value);
 				
 				var fallback = SmallestFittingType(value);
 				return fallback is not null
-					? MaterializeLiteral(fallback, value)
+					? MaterializeLiteral(node.Syntax, fallback, value)
 					: literal; // TODO Diagnostic: Too large for any integer type
 			}
 			
@@ -1112,7 +1113,7 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 					? _operatorRegistry.ResolveUnary(op, operand.Type)
 					: null;
 				
-				return new ResolvedUnaryOpExpressionNode(operand, resolution);
+				return new ResolvedUnaryOpExpressionNode(operand, resolution, unary.Syntax);
 			}
 			
 			case ResolvedBinaryOpExpressionNode binary:
@@ -1139,17 +1140,17 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 					                    $"'{left.Type.Name}' and '{right.Type.Name}'");
 				
 				if (!resolutionSet.HasResult)
-					return new ResolvedBinaryOpExpressionNode(left, right, null);
+					return new ResolvedBinaryOpExpressionNode(left, right, null, node.Syntax);
 				
 				var resolution = resolutionSet[0];
 				
 				if (resolution.LeftConversion is { } leftConversion)
-					left = new ResolvedConversionExpressionNode(left, leftConversion);
+					left = new ResolvedConversionExpressionNode(left, leftConversion, node.Syntax);
 				
 				if (resolution.RightConversion is { } rightConversion)
-					right = new ResolvedConversionExpressionNode(right, rightConversion);
+					right = new ResolvedConversionExpressionNode(right, rightConversion, node.Syntax);
 				
-				return new ResolvedBinaryOpExpressionNode(left, right, resolution.Operation);
+				return new ResolvedBinaryOpExpressionNode(left, right, resolution.Operation, node.Syntax);
 			}
 			
 			default:
