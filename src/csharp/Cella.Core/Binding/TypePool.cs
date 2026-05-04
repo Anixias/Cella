@@ -78,6 +78,12 @@ public sealed class TypePool
 		ConversionTable.Add(new NativeConversion(ptrType, PointerType.VoidPtr, ConversionKind.Implicit, 0));
 		ConversionTable.Add(new NativeConversion(PointerType.VoidPtr, ptrType, ConversionKind.Explicit, 0));
 		
+		// All pointers can be explicitly converted to/from usize and isize
+		ConversionTable.Add(new NativeConversion(ptrType, NativeSymbols.UIntSize, ConversionKind.Explicit, 0));
+		ConversionTable.Add(new NativeConversion(NativeSymbols.UIntSize, ptrType, ConversionKind.Explicit, 0));
+		ConversionTable.Add(new NativeConversion(ptrType, NativeSymbols.IntSize, ConversionKind.Explicit, 0));
+		ConversionTable.Add(new NativeConversion(NativeSymbols.IntSize, ptrType, ConversionKind.Explicit, 0));
+		
 		return ptrType;
 	}
 	
@@ -189,13 +195,25 @@ public sealed class TypePool
 	
 	public void CreateNativeMembers()
 	{
-		// cstr <-> ptr[i8]/ptr[u8]
+		// ptr <-> usize/isize
+		var ptr = NativeSymbols.VoidPtr;
+		ConversionTable.Add(new NativeConversion(ptr, NativeSymbols.UIntSize, ConversionKind.Explicit, 0));
+		ConversionTable.Add(new NativeConversion(NativeSymbols.UIntSize, ptr, ConversionKind.Explicit, 0));
+		ConversionTable.Add(new NativeConversion(ptr, NativeSymbols.IntSize, ConversionKind.Explicit, 0));
+		ConversionTable.Add(new NativeConversion(NativeSymbols.IntSize, ptr, ConversionKind.Explicit, 0));
+		
+		// cstr <-> ptr[i8]/ptr[u8]/usize/isize
+		var cstr = NativeSymbols.CStr;
 		var ptrI8 = GetPointerType(NativeSymbols.Int8, PointerKind.Unsafe);
-		ConversionTable.Add(new FreeConversion(NativeSymbols.CStr, ptrI8, ConversionKind.Implicit));
-		ConversionTable.Add(new FreeConversion(ptrI8, NativeSymbols.CStr, ConversionKind.Explicit));
+		ConversionTable.Add(new FreeConversion(cstr, ptrI8, ConversionKind.Implicit));
+		ConversionTable.Add(new FreeConversion(ptrI8, cstr, ConversionKind.Explicit));
 		var ptrU8 = GetPointerType(NativeSymbols.UInt8, PointerKind.Unsafe);
-		ConversionTable.Add(new FreeConversion(NativeSymbols.CStr, ptrU8, ConversionKind.Implicit));
-		ConversionTable.Add(new FreeConversion(ptrU8, NativeSymbols.CStr, ConversionKind.Explicit));
+		ConversionTable.Add(new FreeConversion(cstr, ptrU8, ConversionKind.Implicit));
+		ConversionTable.Add(new FreeConversion(ptrU8, cstr, ConversionKind.Explicit));
+		ConversionTable.Add(new NativeConversion(cstr, NativeSymbols.UIntSize, ConversionKind.Explicit, 0));
+		ConversionTable.Add(new NativeConversion(NativeSymbols.UIntSize, cstr, ConversionKind.Explicit, 0));
+		ConversionTable.Add(new NativeConversion(cstr, NativeSymbols.IntSize, ConversionKind.Explicit, 0));
+		ConversionTable.Add(new NativeConversion(NativeSymbols.IntSize, cstr, ConversionKind.Explicit, 0));
 		
 		// TODO constructors, str.toCstr(), str.getCharLength(), etc.
 		//Register(NativeSymbols.Str, new IntrinsicMemberSymbol("byteLength", NativeSymbols.UIntSize));

@@ -241,7 +241,7 @@ public sealed class Lowerer : IResolvedDeclarationNodeVisitor
 		
 		public void Visit(ResolvedVarStatementNode node)
 		{
-			var value = node.Initializer is null ? null : VisitNode(node.Initializer);
+			var value = node.Initializer is null ? new ZeroValue(node.Symbol.Type) : VisitNode(node.Initializer);
 			currentBlock.Instructions.Add(new LocalVarInstruction(node.Symbol, value));
 		}
 		
@@ -411,7 +411,7 @@ public sealed class Lowerer : IResolvedDeclarationNodeVisitor
 			LowerUnaryOp(VisitNode(node.Operand), node.Operation);
 		
 		public Value Visit(ResolvedUndefExpressionNode node) =>
-			null!;
+			new UndefValue(node.Type);
 		
 		public Value Visit(ResolvedVarExpressionNode node) =>
 			new VariableValue(new(node.Symbol, node.Type));

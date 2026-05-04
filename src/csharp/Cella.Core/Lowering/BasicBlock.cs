@@ -32,6 +32,10 @@ public sealed class ConstantValue(TypeSymbol type, object? value) : Value(type, 
 	public object? Value { get; } = value;
 }
 
+// Used to zero-initialize memory
+public sealed class ZeroValue(TypeSymbol type) : Value(type, true);
+public sealed class UndefValue(TypeSymbol type) : Value(type, true);
+
 public sealed class VariableValue(VariableInfo variable) : Value(variable.Type, false)
 {
 	public VariableInfo Variable { get; } = variable;

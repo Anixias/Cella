@@ -369,8 +369,8 @@ public sealed unsafe class CodeGenerator : IDisposable
 				var ptr = builder.BuildAlloca(type, i.Symbol.Name);
 				_varMap[new(i.Symbol, i.Symbol.Type)] = ptr;
 				
-				if (i.Initializer is { } initializer)
-					builder.BuildStore(EmitValue(initializer, builder), ptr);
+				if (i.Initializer is not UndefValue)
+					builder.BuildStore(EmitValue(i.Initializer, builder), ptr);
 				
 				break;
 			}
@@ -418,6 +418,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 	private LLVMValueRef EmitValue(Value value, LLVMBuilderRef builder) => value switch
 	{
 		ConstantValue v => EmitConstant(v),
+		ZeroValue v => EmitZero(v),
 		VariableValue v => builder.BuildLoad2(MapTypeSymbol(v.Type), _varMap[v.Variable], v.Variable.Symbol.Name),
 		BinOpValue v => EmitBinaryOp(v, builder),
 		UnaryOpValue v => EmitUnaryOp(v, builder),
@@ -430,6 +431,8 @@ public sealed unsafe class CodeGenerator : IDisposable
 			v.Arguments.Select(a => EmitValue(a, builder)).ToArray()),
 		_ => throw new InvalidOperationException()
 	};
+	
+	private LLVMValueRef EmitZero(ZeroValue v) => LLVMValueRef.CreateConstNull(MapTypeSymbol(v.Type));
 	
 	private LLVMValueRef EmitConversion(ConversionValue v, LLVMBuilderRef builder)
 	{
@@ -539,13 +542,41 @@ public sealed unsafe class CodeGenerator : IDisposable
 		}
 		
 		// Pointers
-		if (c is { From: PointerType, To: PointerType })
+		switch (c)
 		{
-			var destType = MapTypeSymbol(c.To);
-			return builder.BuildBitCast(source, destType, "ptrcast");
+			case { From: PointerType, To: PointerType }:
+			{
+				var destType = MapTypeSymbol(c.To);
+				return builder.BuildBitCast(source, destType, "ptrcast");
+			}
+			
+			case { From: PointerType, To: IntegerType }:
+			{
+				var destType = MapTypeSymbol(c.To);
+				return builder.BuildPtrToInt(source, destType, "ptrtoint");
+			}
+			
+			case { From: IntegerType, To: PointerType }:
+			{
+				var destType = MapTypeSymbol(c.To);
+				return builder.BuildIntToPtr(source, destType, "inttoptr");
+			}
+			
+			case { From: PrimitiveType { Kind: PrimitiveTypeKind.CStr }, To: IntegerType }:
+			{
+				var destType = MapTypeSymbol(c.To);
+				return builder.BuildPtrToInt(source, destType, "cstrtoint");
+			}
+			
+			case { From: IntegerType, To: PrimitiveType { Kind: PrimitiveTypeKind.CStr } }:
+			{
+				var destType = MapTypeSymbol(c.To);
+				return builder.BuildIntToPtr(source, destType, "inttocstr");
+			}
+			
+			default:
+				throw new InvalidOperationException();
 		}
-		
-		throw new InvalidOperationException();
 	}
 	
 	private bool IsAddressable(Value value) => value switch

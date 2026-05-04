@@ -126,6 +126,14 @@ public static class LoweredModulePrinter
 					sb.Append('#').Append(v.Value);
 					break;
 				
+				case ZeroValue v:
+					sb.Append("zero[").Append(v.Type.Name).Append(']');
+					break;
+				
+				case UndefValue v:
+					sb.Append("undef[").Append(v.Type.Name).Append(']');
+					break;
+				
 				case VariableValue v:
 					sb.Append('$').Append(v.Variable.Symbol.Name);
 					break;
