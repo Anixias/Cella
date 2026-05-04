@@ -511,6 +511,16 @@ public sealed class Resolver : ISyntaxNodeVisitor<IResolvedNode>
 		return new ResolvedLiteralExpressionNode(type, value);
 	}
 	
+	public IResolvedNode Visit(UndefExpressionNode node)
+	{
+		var resolutionContext = CurrentResolutionContext;
+		var type = node.Type is null 
+			? _targetTypes.TryPeek(out var targetType) ? targetType ?? NativeSymbols.Invalid : NativeSymbols.Invalid
+			: resolutionContext.ResolveType(node.Type);
+		
+		return new ResolvedUndefExpressionNode(type);
+	}
+	
 	public IResolvedNode Visit(VarExpressionNode node)
 	{
 		var resolutionContext = CurrentResolutionContext;

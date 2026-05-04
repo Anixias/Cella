@@ -354,6 +354,15 @@ public sealed class AstPrinter : ISyntaxNodeVisitor
 		VisitNode(node.Operand, true);
 	}
 	
+	public void Visit(UndefExpressionNode node)
+	{
+		StartLine();
+		_sb.Append("UndefExpressionNode");
+		
+		if (node.Type is { } type)
+			VisitNode(type, true);
+	}
+	
 	public void Visit(VarExpressionNode node)
 	{
 		StartLine();

@@ -1,12 +1,11 @@
 ﻿using Cella.Core.Binding.Nodes;
 using Cella.Core.Symbols;
 using Cella.Core.Text;
-using IResolvedDeclarationNodeVisitor = Cella.Core.Binding.Nodes.IResolvedDeclarationNodeVisitor;
-using IResolvedStatementNodeVisitor = Cella.Core.Binding.Nodes.IResolvedStatementNodeVisitor;
 
 namespace Cella.Core.Binding;
 
-public sealed class TypeChecker : IResolvedStatementNodeVisitor, IResolvedDeclarationNodeVisitor
+public sealed class TypeChecker : IResolvedStatementNodeVisitor, IResolvedDeclarationNodeVisitor,
+	IResolvedExpressionNodeVisitor
 {
 	public IReadOnlyList<string> Diagnostics => _diagnostics;
 	
@@ -17,6 +16,7 @@ public sealed class TypeChecker : IResolvedStatementNodeVisitor, IResolvedDeclar
 	
 	private void VisitNode(IResolvedStatementNode node) => ((IResolvedStatementNodeVisitor)this).Visit(node);
 	private void VisitNode(IResolvedDeclarationNode node) => ((IResolvedDeclarationNodeVisitor)this).Visit(node);
+	private void VisitNode(IResolvedExpressionNode node) => ((IResolvedExpressionNodeVisitor)this).Visit(node);
 	
 	public void Visit(ResolvedFileNode node)
 	{
@@ -88,7 +88,7 @@ public sealed class TypeChecker : IResolvedStatementNodeVisitor, IResolvedDeclar
 			_diagnostics.Add("Only assignments and function calls are allowed as statements");
 		
 		// ^Need to check for purity of expressions. Pure expressions as statements is either an error or a warning
-		CheckExpression(node.Expression);
+		VisitNode(node.Expression);
 	}
 	
 	public void Visit(ResolvedIfStatementNode node)
@@ -111,7 +111,7 @@ public sealed class TypeChecker : IResolvedStatementNodeVisitor, IResolvedDeclar
 		
 		if (!AreTypesCompatible(expected, actual))
 			_diagnostics.Add(
-				$"Cannot return value of type '{actual?.Name ?? "void"}': Expected type '{expected?.Name ?? "void"}'");
+				$"Cannot return value of type '{actual.Name}': Expected type '{expected?.Name ?? "void"}'");
 	}
 	
 	public void Visit(ResolvedVarStatementNode node)
@@ -125,7 +125,9 @@ public sealed class TypeChecker : IResolvedStatementNodeVisitor, IResolvedDeclar
 				_diagnostics.Add(
 					$"Cannot assign value of type '{actual.Name}': Expected type '{expected.Name}'");
 			
-			CheckExpression(initializer);
+			// Special case: If undef, don't check (it will throw an error)
+			if (initializer is not ResolvedUndefExpressionNode)
+				VisitNode(initializer);
 		}
 		else if (expected == NativeSymbols.Invalid)
 			_diagnostics.Add("Implicitly-typed local variable must have an initializer");
@@ -163,56 +165,6 @@ public sealed class TypeChecker : IResolvedStatementNodeVisitor, IResolvedDeclar
 		VisitNode(node.Body);
 	}
 	
-	private void CheckExpression(IResolvedExpressionNode expression)
-	{
-		switch (expression)
-		{
-			case ResolvedAssignmentExpressionNode e:
-			{
-				// TODO Better diagnostic
-				if (!IsLValue(e.Left))
-					_diagnostics.Add("Assignment target must be a variable");
-				
-				var expected = e.Left.Type;
-				var actual = e.Right.Type;
-				if (!AreTypesCompatible(expected, actual))
-					_diagnostics.Add($"Cannot assign source type '{actual.Name}' to target type '{expected.Name}'");
-				
-				break;
-			}
-			
-			case ResolvedUnaryOpExpressionNode { Operation.Op: TokenType.OpAt } e:
-			{
-				if (!IsLValue(e.Operand))
-					_diagnostics.Add("Cannot take the address of an unstored value");
-				
-				break;
-			}
-			
-			case ResolvedFunctionCallExpressionNode e:
-			{
-				var args = e.Arguments;
-				var paramTypes = e.Function.Signature.ParameterTypes;
-				if (args.Length != paramTypes.Length)
-					_diagnostics.Add($"Incorrect number of arguments: Expected {paramTypes.Length}, got {args.Length}");
-				else
-				{
-					for (var i = 0; i < args.Length; i++)
-					{
-						var expected = paramTypes[i];
-						var actual = args[i].Type;
-						
-						if (!AreTypesCompatible(expected, actual))
-							_diagnostics.Add(
-								$"Argument type '{actual.Name}' is not assignable to parameter type '{expected.Name}'");
-					}
-				}
-				
-				break;
-			}
-		}
-	}
-	
 	// TEMP Will need implicit conversions, subtyping, traits/interfaces, constraints, etc.
 	private bool AreTypesCompatible(TypeSymbol? expected, TypeSymbol? actual) => expected == actual;
 	
@@ -247,4 +199,95 @@ public sealed class TypeChecker : IResolvedStatementNodeVisitor, IResolvedDeclar
 		PrimitiveTypeKind.UIntSize => true,
 		_ => false
 	};
+	
+	public void Visit(ResolvedAccessExpressionNode node)
+	{
+		VisitNode(node.Target);
+	}
+	
+	public void Visit(ResolvedArrayExpressionNode node)
+	{
+		foreach (var value in node.Values)
+			VisitNode(value);
+	}
+	
+	public void Visit(ResolvedAssignmentExpressionNode node)
+	{
+		// TODO Better diagnostic
+		if (!IsLValue(node.Left))
+			_diagnostics.Add("Assignment target must be a variable");
+		
+		var expected = node.Left.Type;
+		var actual = node.Right.Type;
+		if (!AreTypesCompatible(expected, actual))
+			_diagnostics.Add($"Cannot assign source type '{actual.Name}' to target type '{expected.Name}'");
+		
+		VisitNode(node.Right);
+	}
+	
+	public void Visit(ResolvedBinaryOpExpressionNode node)
+	{
+		VisitNode(node.Left);
+		VisitNode(node.Right);
+	}
+	
+	public void Visit(ResolvedChainedExpressionNode node)
+	{
+		foreach (var operand in node.Operands)
+			VisitNode(operand);
+	}
+	
+	public void Visit(ResolvedConversionExpressionNode node)
+	{
+		VisitNode(node.Source);
+	}
+	
+	public void Visit(ResolvedFunctionCallExpressionNode node)
+	{
+		var args = node.Arguments;
+		var paramTypes = node.Function.Signature.ParameterTypes;
+		if (args.Length != paramTypes.Length)
+		{
+			_diagnostics.Add($"Incorrect number of arguments: Expected {paramTypes.Length}, got {args.Length}");
+			return;
+		}
+		
+		for (var i = 0; i < args.Length; i++)
+		{
+			var arg = args[i];
+			var expected = paramTypes[i];
+			var actual = arg.Type;
+			
+			if (!AreTypesCompatible(expected, actual))
+				_diagnostics.Add($"Argument type '{actual.Name}' is not assignable to parameter type " +
+				                 $"'{expected.Name}'");
+			
+			VisitNode(arg);
+		}
+	}
+	
+	public void Visit(ResolvedIndexerExpressionNode node)
+	{
+		VisitNode(node.Target);
+		VisitNode(node.Index);
+	}
+	
+	public void Visit(ResolvedLiteralExpressionNode node)
+	{
+	}
+	
+	public void Visit(ResolvedUnaryOpExpressionNode node)
+	{
+		if (node.Operation?.Op == TokenType.OpAt && !IsLValue(node.Operand))
+			_diagnostics.Add("Cannot take the address of an unstored value");
+		
+		VisitNode(node.Operand);
+	}
+	
+	public void Visit(ResolvedUndefExpressionNode node) =>
+		_diagnostics.Add("'undef' may only be used as a variable initializer");
+	
+	public void Visit(ResolvedVarExpressionNode node)
+	{
+	}
 }

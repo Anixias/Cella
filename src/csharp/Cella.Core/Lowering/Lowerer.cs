@@ -401,6 +401,9 @@ public sealed class Lowerer : IResolvedDeclarationNodeVisitor
 		public Value Visit(ResolvedUnaryOpExpressionNode node) =>
 			LowerUnaryOp(VisitNode(node.Operand), node.Operation);
 		
+		public Value Visit(ResolvedUndefExpressionNode node) =>
+			null!;
+		
 		public Value Visit(ResolvedVarExpressionNode node) =>
 			new VariableValue(new(node.Symbol, node.Type));
 		

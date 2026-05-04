@@ -16,7 +16,6 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 		TokenType.KeywordTrue,
 		TokenType.KeywordFalse,
 		TokenType.KeywordNull,
-		TokenType.KeywordUndef,
 		TokenType.IntegerLiteral,
 		TokenType.StringLiteral,
 		TokenType.CharLiteral,
@@ -82,6 +81,7 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 	
 	public override IExpressionNode Parse(ref int index) => ParseExpression(ref index);
 	private IExpressionNode ParseExpression(ref int index) => ParseAssignment(ref index);
+	private ITypeNode ParseType(ref int index) => new TypeParser(Tokens).Parse(ref index);
 	
 	private IExpressionNode ParseAssignment(ref int index)
 	{
@@ -261,10 +261,30 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 		}
 		else if (Match(ref index, out var identifier, TokenType.Identifier))
 			node = new VarExpressionNode(identifier);
+		else if (Match(ref index, out var undef, TokenType.KeywordUndef))
+			node = ParseUndef(ref index, undef);
 		else
 			node = ParseLiteral(ref index);
 		
 		return ParsePostfix(ref index, node);
+	}
+	
+	private UndefExpressionNode ParseUndef(ref int index, Token token)
+	{
+		if (!Match(ref index, TokenType.OpOpenBracket))
+			return new UndefExpressionNode(token, null, token.SourceLocation);
+		
+		var type = ParseType(ref index);
+		
+		if (!Match(ref index, out var closeBracket, TokenType.OpCloseBracket))
+		{
+			// TODO Diagnostics
+			throw new InvalidOperationException();
+		}
+		
+		var (source, range) = token.SourceLocation;
+		range = range.Join(closeBracket.SourceLocation.Range);
+		return new UndefExpressionNode(token, type, new(source, range));
 	}
 	
 	private IExpressionNode ParsePostfix(ref int index, IExpressionNode target)
