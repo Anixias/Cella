@@ -12,7 +12,6 @@ public sealed class Lowerer(TypePool typePool) : IResolvedDeclarationNodeVisitor
 {
 	public IReadOnlyCollection<LoweredModule> Modules => _modules.Values;
 	
-	private readonly TypePool _typePool = typePool;
 	private readonly Dictionary<ModuleSymbol, LoweredModule> _modules = [];
 	private readonly Stack<LoweredModule> _moduleStack = [];
 	private LoweredModule CurrentModule => _moduleStack.Peek();
@@ -40,7 +39,7 @@ public sealed class Lowerer(TypePool typePool) : IResolvedDeclarationNodeVisitor
 		_moduleStack.Pop();
 	}
 	
-	public void Visit(ResolvedFunctionNode node) => CurrentModule.Functions.Add(FunctionLowerer.Lower(node, _typePool));
+	public void Visit(ResolvedFunctionNode node) => CurrentModule.Functions.Add(FunctionLowerer.Lower(node, typePool));
 	public void Visit(ResolvedInvalidDeclarationNode node) => throw new InvalidOperationException();
 	
 	public void Visit(ResolvedRecordNode node)
