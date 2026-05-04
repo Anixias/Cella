@@ -180,12 +180,16 @@ public sealed class ViewType(TypeSymbol elementType) : TypeSymbol($"view[{elemen
 public abstract class VariableSymbol(string name) : Symbol(name);
 
 // TODO: Bind whether it has a constant initializer and no reassignments
-public sealed class LocalVariableSymbol(VarStatementNode syntax, TypeSymbol type)
-	: VariableSymbol(syntax.Identifier.Text)
+public sealed class LocalVariableSymbol(VarStatementNode syntax, TypeSymbol type, string nameOverride)
+	: VariableSymbol(nameOverride)
 {
 	public VarStatementNode Syntax { get; } = syntax;
 	public TypeSymbol Type { get; } = type;
 	public SourceLocation Definition { get; } = syntax.SourceLocation;
+	
+	public LocalVariableSymbol(VarStatementNode syntax, TypeSymbol type) : this(syntax, type, syntax.Identifier.Text)
+	{
+	}
 }
 
 // TODO: Initializer? Or is that stored elsewhere?

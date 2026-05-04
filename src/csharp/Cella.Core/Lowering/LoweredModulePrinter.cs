@@ -72,6 +72,12 @@ public static class LoweredModulePrinter
 						sb.AppendLine();
 						break;
 					
+					case DropInstruction i:
+						sb.Append("drop ");
+						PrintValue(sb, i.Value);
+						sb.AppendLine();
+						break;
+					
 					default:
 						sb.AppendLine("[??]");
 						break;

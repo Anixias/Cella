@@ -15,3 +15,8 @@ public sealed class ExpressionInstruction(Value value) : IInstruction
 {
 	public Value Value { get; } = value;
 }
+
+public sealed class DropInstruction(VariableValue value) : IInstruction
+{
+	public VariableValue Value { get; } = value;
+}

@@ -241,8 +241,10 @@ public sealed class Lowerer : IResolvedDeclarationNodeVisitor
 		
 		public void Visit(ResolvedVarStatementNode node)
 		{
+			// TODO Check if initializer is uninitialized linear type
 			var value = node.Initializer is null ? new ZeroValue(node.Symbol.Type) : VisitNode(node.Initializer);
 			currentBlock.Instructions.Add(new LocalVarInstruction(node.Symbol, value));
+			InvalidateLinear(value);
 		}
 		
 		private void VisitInLoop(IResolvedStatementNode body, BasicBlock breakBlock, BasicBlock continueBlock,
@@ -436,7 +438,7 @@ public sealed class Lowerer : IResolvedDeclarationNodeVisitor
 			IResolvedExpressionNode rightNode)
 		{
 			var resultSymbol = CreateTempSymbol(NativeSymbols.Bool, "sc_result");
-			currentBlock.Instructions.Add(new LocalVarInstruction(resultSymbol, null));
+			currentBlock.Instructions.Add(new LocalVarInstruction(resultSymbol, new UndefValue(NativeSymbols.Bool)));
 			var result = new VariableValue(new(resultSymbol, NativeSymbols.Bool));
 			
 			var rightBlock = CreateBlock("sc_right");
@@ -469,13 +471,45 @@ public sealed class Lowerer : IResolvedDeclarationNodeVisitor
 			return new LocalVariableSymbol(node, type);
 		}
 		
-		public Value Visit(ResolvedAssignmentExpressionNode node) =>
-			LowerAssignment(VisitNode(node.Left), node.Op, VisitNode(node.Right), node.Type);
+		public Value Visit(ResolvedAssignmentExpressionNode node)
+		{
+			var left = VisitNode(node.Left);
+			Drop(left);
+			
+			// TODO Check if right is already uninitialized linear type
+			var right = VisitNode(node.Right);
+			InvalidateLinear(right);
+			
+			return LowerAssignment(left, node.Op, right, node.Type);
+		}
+		
+		private void Drop(Value value)
+		{
+			if (!IsOwning(value.Type) || value is not VariableValue vLeft)
+				return;
+			
+			// left != null
+			var condition = new BinOpValue(NativeSymbols.Bool, value, new ZeroValue(value.Type),
+				BinaryOperation.NotEqual);
+			
+			var thenBlock = CreateBlock("drop_then");
+			var mergeBlock = CreateBlock("drop_merge");
+			thenBlock.Terminator = new BranchTerminator(mergeBlock);
+			
+			currentBlock.Terminator = new ConditionalBranchTerminator(condition, thenBlock, mergeBlock);
+			
+			// Then block
+			// TODO Drop recursive
+			currentBlock = thenBlock;
+			currentBlock.Instructions.Add(new DropInstruction(vLeft));
+			
+			currentBlock = mergeBlock;
+		}
 		
 		public Value Visit(ResolvedChainedExpressionNode node)
 		{
 			var resultSymbol = CreateTempSymbol(NativeSymbols.Bool, "chain_result");
-			currentBlock.Instructions.Add(new LocalVarInstruction(resultSymbol, null));
+			currentBlock.Instructions.Add(new LocalVarInstruction(resultSymbol, new UndefValue(NativeSymbols.Bool)));
 			var result = new VariableValue(new(resultSymbol, NativeSymbols.Bool));
 			
 			var mergeBlock = CreateBlock("chain_merge");
@@ -598,6 +632,14 @@ public sealed class Lowerer : IResolvedDeclarationNodeVisitor
 			TokenType.OpStar => UnaryOperation.Dereference,
 			_ => throw new InvalidOperationException()
 		};
+		
+		private void InvalidateLinear(Value value)
+		{
+			// If it's an owning pointer (and not a new heap allocation), we set it to null
+			if (IsAssignable(value) && IsOwning(value.Type))
+				currentBlock.Instructions.Add(new ExpressionInstruction(
+					new AssignValue(value.Type, value, new ZeroValue(value.Type))));
+		}
 	}
 	
 	private static HashSet<BasicBlock> FindReachableBlocks(LoweredFunction function)
@@ -630,4 +672,9 @@ public sealed class Lowerer : IResolvedDeclarationNodeVisitor
 		
 		return reachable;
 	}
+	
+	private static bool IsOwning(TypeSymbol type) => type is PointerType { PointerKind: PointerKind.Owning };
+	
+	// TODO Properties with backing fields, indexers, etc.?
+	private static bool IsAssignable(Value value) => value is VariableValue or AccessValue { Member: FieldSymbol };
 }

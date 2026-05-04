@@ -381,6 +381,16 @@ public sealed unsafe class CodeGenerator : IDisposable
 				EmitValue(i.Value, builder);
 				break;
 			}
+			
+			case DropInstruction i:
+			{
+				var ptr = EmitAddress(i.Value, builder);
+				builder.BuildFree(ptr);
+				break;
+			}
+			
+			default:
+				throw new InvalidOperationException();
 		}
 	}
 	
