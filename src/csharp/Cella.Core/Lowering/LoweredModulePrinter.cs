@@ -271,6 +271,11 @@ public static class LoweredModulePrinter
 					value = v.Operand;
 					continue;
 				
+				case UnaryOpValue { Op: UnaryOperation.Dereference } v:
+					sb.Append('*');
+					value = v.Operand;
+					continue;
+				
 				case CallValue v:
 				{
 					sb.Append(v.Function.Symbol.Name).Append('(');

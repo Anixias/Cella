@@ -590,6 +590,7 @@ public sealed class Lowerer : IResolvedDeclarationNodeVisitor
 			TokenType.OpTilde => UnaryOperation.BitwiseNot,
 			TokenType.OpBang => UnaryOperation.LogicalNot,
 			TokenType.OpAt => UnaryOperation.AddressOf,
+			TokenType.OpStar => UnaryOperation.Dereference,
 			_ => throw new InvalidOperationException()
 		};
 	}

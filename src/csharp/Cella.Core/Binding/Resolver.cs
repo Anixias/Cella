@@ -701,13 +701,34 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		if (consumed)
 			return operand;
 		
-		// Special unary operators that aren't stored in the registry
-		if (op.Type == TokenType.OpAt)
-			return ResolveAddressOf(op.Type, operand, node);
-		
-		var operation = _operatorRegistry.ResolveUnary(op.Type, operand.Type);
-		return new ResolvedUnaryOpExpressionNode(operand, operation, node);
+		switch (op.Type)
+		{
+			// Special unary operators that aren't stored in the registry
+			case TokenType.OpAt:
+				return ResolveAddressOf(op.Type, operand, node);
+			
+			case TokenType.OpStar:
+				return ResolveDereference(op.Type, operand, node);
+			
+			default:
+			{
+				var operation = _operatorRegistry.ResolveUnary(op.Type, operand.Type);
+				return new ResolvedUnaryOpExpressionNode(operand, operation, node);
+			}
+		}
 	}
+	
+	private IResolvedExpressionNode ResolveDereference(TokenType opType, IResolvedExpressionNode operand,
+		UnaryOpExpressionNode node) => operand.Type switch
+	{
+		PointerType { BaseType: { } baseType } => baseType == NativeSymbols.Void
+			? Error(node, "Cannot dereference an untyped pointer; Cast to a typed pointer first", CurrentTargetType)
+			: new ResolvedUnaryOpExpressionNode(operand, new NativeImpl(opType, baseType), node),
+		_ => IsInvalid(operand.Type)
+			? new ResolvedUnaryOpExpressionNode(operand, new NativeImpl(opType, CurrentTargetType ??
+				NativeSymbols.Invalid), node)
+			: Error(node, $"Cannot dereference type '{operand.Type.Name}'", CurrentTargetType)
+	};
 	
 	private ResolvedUnaryOpExpressionNode ResolveAddressOf(TokenType opType, IResolvedExpressionNode operand,
 		UnaryOpExpressionNode node)

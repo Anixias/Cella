@@ -34,7 +34,8 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 		TokenType.OpMinus,
 		TokenType.OpBang,
 		TokenType.OpTilde,
-		TokenType.OpAt
+		TokenType.OpAt,
+		TokenType.OpStar
 	];
 	
 	private static readonly HashSet<TokenType> _multiplicativeOps =
@@ -86,7 +87,7 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 	private IExpressionNode ParseAssignment(ref int index)
 	{
 		var left = ParseLogicalOr(ref index);
-		if (!Match(ref index, out var op, _assignmentOps))
+		if (IsNextNewline(index) || !Match(ref index, out var op, _assignmentOps))
 			return left;
 		
 		var right = ParseExpression(ref index);
@@ -96,7 +97,7 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 	private IExpressionNode ParseLogicalOr(ref int index)
 	{
 		var node = ParseLogicalAnd(ref index);
-		while (Match(ref index, out var op, TokenType.OpBarBar))
+		while (!IsNextNewline(index) && Match(ref index, out var op, TokenType.OpBarBar))
 		{
 			var right = ParseLogicalAnd(ref index);
 			node = new BinaryOpExpressionNode(node, op, right);
@@ -108,7 +109,7 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 	private IExpressionNode ParseLogicalAnd(ref int index)
 	{
 		var node = ParseEquality(ref index);
-		while (Match(ref index, out var op, TokenType.OpAmpersandAmpersand))
+		while (!IsNextNewline(index) && Match(ref index, out var op, TokenType.OpAmpersandAmpersand))
 		{
 			var right = ParseEquality(ref index);
 			node = new BinaryOpExpressionNode(node, op, right);
@@ -120,7 +121,7 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 	private IExpressionNode ParseEquality(ref int index)
 	{
 		var node = ParseComparison(ref index);
-		while (Match(ref index, out var op, _equalityOps))
+		while (!IsNextNewline(index) && Match(ref index, out var op, _equalityOps))
 		{
 			var right = ParseComparison(ref index);
 			node = new BinaryOpExpressionNode(node, op, right);
@@ -134,7 +135,7 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 		var operands = new List<IExpressionNode> { ParseBitwiseOr(ref index) };
 		var ops = new List<Token>();
 		
-		while (Match(ref index, out var op, _comparisonOps))
+		while (!IsNextNewline(index) && Match(ref index, out var op, _comparisonOps))
 		{
 			ops.Add(op);
 			operands.Add(ParseBitwiseOr(ref index));
@@ -151,7 +152,7 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 	private IExpressionNode ParseBitwiseOr(ref int index)
 	{
 		var node = ParseBitwiseXor(ref index);
-		while (Match(ref index, out var op, TokenType.OpBar))
+		while (!IsNextNewline(index) && Match(ref index, out var op, TokenType.OpBar))
 		{
 			var right = ParseBitwiseXor(ref index);
 			node = new BinaryOpExpressionNode(node, op, right);
@@ -163,7 +164,7 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 	private IExpressionNode ParseBitwiseXor(ref int index)
 	{
 		var node = ParseBitwiseAnd(ref index);
-		while (Match(ref index, out var op, TokenType.OpHat))
+		while (!IsNextNewline(index) && Match(ref index, out var op, TokenType.OpHat))
 		{
 			var right = ParseBitwiseAnd(ref index);
 			node = new BinaryOpExpressionNode(node, op, right);
@@ -175,7 +176,7 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 	private IExpressionNode ParseBitwiseAnd(ref int index)
 	{
 		var node = ParseAdditive(ref index);
-		while (Match(ref index, out var op, TokenType.OpAmpersand))
+		while (!IsNextNewline(index) && Match(ref index, out var op, TokenType.OpAmpersand))
 		{
 			var right = ParseAdditive(ref index);
 			node = new BinaryOpExpressionNode(node, op, right);
@@ -187,7 +188,7 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 	private IExpressionNode ParseAdditive(ref int index)
 	{
 		var node = ParseMultiplicative(ref index);
-		while (Match(ref index, out var op, _additiveOps))
+		while (!IsNextNewline(index) && Match(ref index, out var op, _additiveOps))
 		{
 			var right = ParseMultiplicative(ref index);
 			node = new BinaryOpExpressionNode(node, op, right);
@@ -199,7 +200,7 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 	private IExpressionNode ParseMultiplicative(ref int index)
 	{
 		var node = ParseUnary(ref index);
-		while (Match(ref index, out var op, _multiplicativeOps))
+		while (!IsNextNewline(index) && Match(ref index, out var op, _multiplicativeOps))
 		{
 			var right = ParseUnary(ref index);
 			node = new BinaryOpExpressionNode(node, op, right);
@@ -213,6 +214,7 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 		if (!Match(ref index, out var op, _unaryPrefixOps))
 			return ParsePrimary(ref index);
 		
+		// TODO Should disallow newlines here
 		var operand = ParseUnary(ref index);
 		return new UnaryOpExpressionNode(op, operand);
 	}
@@ -266,7 +268,7 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 		else
 			node = ParseLiteral(ref index);
 		
-		return ParsePostfix(ref index, node);
+		return IsNextNewline(index) ? node : ParsePostfix(ref index, node);
 	}
 	
 	private UndefExpressionNode ParseUndef(ref int index, Token token)

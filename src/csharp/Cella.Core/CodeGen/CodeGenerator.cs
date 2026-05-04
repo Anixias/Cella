@@ -689,6 +689,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 		{ Op: UnaryOperation.LogicalNot } => builder.BuildNot(EmitValue(v.Operand, builder)),
 		
 		{ Op: UnaryOperation.AddressOf } => EmitAddress(v.Operand, builder),
+		{ Op: UnaryOperation.Dereference } => builder.BuildLoad2(MapTypeSymbol(v.Type), EmitValue(v.Operand, builder)),
 		
 		_ => throw new InvalidOperationException()
 	};
@@ -760,6 +761,14 @@ public sealed unsafe class CodeGenerator : IDisposable
 				break;
 		}
 		
+		// If target has an address, GEP + load only the field
+		if (IsAddressable(v.Target))
+		{
+			var fieldAddress = EmitAccessAddress(v, builder);
+			var fieldType = MapTypeSymbol(_typePool.GetTypeOfMember((TypedMemberSymbol)v.Member));
+			return builder.BuildLoad2(fieldType, fieldAddress, v.Member.Name);
+		}
+		
 		// TODO Fields could have been reordered to pack them
 		// TODO Also, GetFieldIndex is O(n), would probably want to cache the final indices in another dictionary
 		var target = EmitValue(v.Target, builder);
@@ -794,6 +803,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 		VariableValue v => _varMap[v.Variable],
 		IndexerValue v => EmitIndexerAddress(v, builder).Ptr,
 		AccessValue v => EmitAccessAddress(v, builder),
+		UnaryOpValue { Op: UnaryOperation.Dereference } v => EmitValue(v.Operand, builder),
 		_ => throw new InvalidOperationException()
 	};
 	

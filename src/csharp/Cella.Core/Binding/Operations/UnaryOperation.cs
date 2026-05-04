@@ -7,6 +7,7 @@ public enum UnaryOperation
 	LogicalNot,
 	BitwiseNot,
 	AddressOf,
+	Dereference,
 	
 	Count
 }

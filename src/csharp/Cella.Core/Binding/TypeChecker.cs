@@ -208,6 +208,7 @@ public sealed class TypeChecker : IResolvedStatementNodeVisitor, IResolvedDeclar
 		ResolvedVarExpressionNode => true,
 		ResolvedAccessExpressionNode => true,
 		ResolvedIndexerExpressionNode => true,
+		ResolvedUnaryOpExpressionNode { Operation.Op: TokenType.OpStar } => true,
 		_ => false
 	};
 	
@@ -251,7 +252,7 @@ public sealed class TypeChecker : IResolvedStatementNodeVisitor, IResolvedDeclar
 		// TODO Better diagnostic
 		if (!IsLValue(node.Left))
 			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Left.Syntax.SourceLocation,
-				"Assignment target must be a variable"));
+				"Assignment target must be addressable"));
 		
 		var expected = node.Left.Type;
 		var actual = node.Right.Type;
