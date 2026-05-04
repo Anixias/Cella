@@ -218,7 +218,7 @@ internal static class Program
 		}
 		
 		// Phase 5: Lowering
-		var lowerer = new Lowerer();
+		var lowerer = new Lowerer(typePool);
 		{
 			foreach (var (_, resolvedAst, _) in resolvedFiles)
 				lowerer.Lower(resolvedAst);
