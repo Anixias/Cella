@@ -238,7 +238,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		_targetTypes.Pop();
 		
 		// If the argument has an invalid type, we don't want to cascade useless errors; assume identity conversion
-		if (arg.Type == NativeSymbols.Invalid)
+		if (IsInvalid(arg))
 			return new ResolvedConversionExpressionNode(arg, new IdentityConversion(targetType), node);
 		
 		if (arg.Type is UntypedIntegerType && targetType is IntegerType intTarget)
@@ -719,11 +719,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	public IResolvedExpressionNode Visit(BinaryOpExpressionNode node)
 	{
 		var op = node.Op;
-		var isAssignment = op.Type == TokenType.OpEqual || op.Type == TokenType.OpPlusEqual ||
-		                   op.Type == TokenType.OpMinusEqual || op.Type == TokenType.OpStarEqual ||
-		                   op.Type == TokenType.OpSlashEqual || op.Type == TokenType.OpPercentEqual ||
-		                   op.Type == TokenType.OpAmpersandEqual || op.Type == TokenType.OpBarEqual ||
-		                   op.Type == TokenType.OpHatEqual;
+		var isAssignment = op.Type is TokenType.OpEqual or TokenType.OpPlusEqual or TokenType.OpMinusEqual
+			or TokenType.OpStarEqual or TokenType.OpSlashEqual or TokenType.OpPercentEqual or TokenType.OpAmpersandEqual
+			or TokenType.OpBarEqual or TokenType.OpHatEqual;
 		
 		_targetTypes.Push(null);
 		if (isAssignment)
@@ -747,6 +745,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			left = MaterializeWithPeer(left, right.Type);
 			right = MaterializeWithPeer(right, left.Type);
 			
+			if (AnyInvalid(left, right))
+				return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
+			
 			var resolutionSet = _operatorRegistry.ResolveBinary(left.Type, op.Type, right.Type);
 			if (resolutionSet.IsAmbiguous)
 				return Error(node,
@@ -768,6 +769,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 				
 				if (right.Type is UntypedType)
 					right = MaterializeAsDefault(right);
+				
+				if (AnyInvalid(left, right))
+					return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
 				
 				resolutionSet = _operatorRegistry.ResolveBinary(left.Type, op.Type, right.Type);
 				if (resolutionSet.IsAmbiguous)
@@ -851,6 +855,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			var op = node.Ops[i];
 			var right = operands[i + 1];
 			
+			if (AnyInvalid(left, right))
+				return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
+			
 			var resolutionSet = _operatorRegistry.ResolveBinary(left.Type, op.Type, right.Type);
 			if (resolutionSet.IsAmbiguous)
 			{
@@ -889,6 +896,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		
 		if (source.Type == target)
 			return source;
+		
+		if (IsInvalid(source) || IsInvalid(target))
+			return new ResolvedConversionExpressionNode(source, new IdentityConversion(target), source.Syntax);
 		
 		if (_conversionTable.FindImplicit(source.Type, target) is { } conversion)
 			return new ResolvedConversionExpressionNode(source, conversion, source.Syntax);
@@ -1182,6 +1192,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		if (a == b)
 			return a;
 		
+		if (AnyInvalid(a, b))
+			return NativeSymbols.Invalid;
+		
 		if (_conversionTable.FindImplicit(a, b) is not null)
 			return b;
 		
@@ -1230,4 +1243,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		Diagnostics.Add(new(DiagnosticSeverity.Error, sourceLocation, message));
 		return new(node);
 	}
+	
+	private static bool IsInvalid(TypeSymbol type) => type is InvalidType;
+	private static bool AnyInvalid(params TypeSymbol[] types) => types.Any(IsInvalid);
+	private static bool IsInvalid(IResolvedExpressionNode expression) => expression.Type is InvalidType;
+	private static bool AnyInvalid(params IResolvedExpressionNode[] expressions) => expressions.Any(IsInvalid);
 }
