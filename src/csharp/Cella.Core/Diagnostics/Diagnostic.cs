@@ -1,4 +1,5 @@
-﻿using Cella.Core.Text;
+﻿using System.Collections.Immutable;
+using Cella.Core.Text;
 
 namespace Cella.Diagnostics;
 
@@ -14,6 +15,7 @@ public sealed record Diagnostic
 	public DiagnosticSeverity Severity { get; }
 	public SourceLocation SourceLocation { get; }
 	public string Message { get; }
+	public ImmutableArray<string> Hints { get; init; } = ImmutableArray<string>.Empty; // TODO Suggested fixes for IDE?
 	public int Line { get; }
 	public int Column { get; }
 	

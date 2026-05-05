@@ -10,4 +10,6 @@ public sealed class UnaryOpExpressionNode(Token op, IExpressionNode operand) : I
 	{
 		Range = op.SourceLocation.Range.Join(operand.SourceLocation.Range)
 	};
+	
+	public bool IsContained => true;
 }

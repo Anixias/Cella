@@ -7,4 +7,5 @@ public sealed class UndefExpressionNode(Token token, ITypeNode? type, SourceLoca
 	public Token Token { get; } = token;
 	public ITypeNode? Type { get; } = type;
 	public SourceLocation SourceLocation { get; } = sourceLocation;
+	public bool IsContained => true;
 }

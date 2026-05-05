@@ -11,4 +11,6 @@ public sealed class BinaryOpExpressionNode(IExpressionNode left, Token op, IExpr
 	{
 		Range = left.SourceLocation.Range.Join(op.SourceLocation.Range.Join(right.SourceLocation.Range))
 	};
+	
+	public bool IsContained => false;
 }

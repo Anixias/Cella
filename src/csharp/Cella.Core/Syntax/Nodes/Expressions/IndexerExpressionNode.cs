@@ -10,4 +10,5 @@ public sealed class IndexerExpressionNode(IExpressionNode target, IEnumerable<IE
 	public IExpressionNode Target { get; } = target;
 	public ImmutableArray<IExpressionNode> Arguments { get; } = arguments.ToImmutableArray();
 	public SourceLocation SourceLocation { get; } = sourceLocation;
+	public bool IsContained => Target.IsContained;
 }

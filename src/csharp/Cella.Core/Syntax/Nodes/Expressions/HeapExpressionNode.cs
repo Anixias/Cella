@@ -6,4 +6,5 @@ public sealed class HeapExpressionNode(ISyntaxNode target, SourceLocation source
 {
 	public ISyntaxNode Target { get; } = target;
 	public SourceLocation SourceLocation { get; } = sourceLocation;
+	public bool IsContained => true;
 }

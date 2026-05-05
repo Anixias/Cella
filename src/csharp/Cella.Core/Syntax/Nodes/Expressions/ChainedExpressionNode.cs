@@ -21,4 +21,5 @@ public sealed class ChainedExpressionNode : IExpressionNode
 	public ImmutableArray<IExpressionNode> Operands { get; }
 	public ImmutableArray<Token> Ops { get; }
 	public SourceLocation SourceLocation { get; }
+	public bool IsContained => false;
 }

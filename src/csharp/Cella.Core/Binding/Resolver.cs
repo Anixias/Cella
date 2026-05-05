@@ -834,8 +834,10 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 					CurrentTargetType);
 			
 			if (!resolutionSet.HasResult)
-				return Error(node, $"No operation defined for '{op.Text}' between " +
-				                   $"'{left.Type.Name}' and '{right.Type.Name}'", CurrentTargetType);
+			{
+				var diagnostic = DiagnosticReporter.ReportBinaryOpMismatch(_operatorRegistry, left, op, right);
+				return Error(node, diagnostic, CurrentTargetType);
+			}
 			
 			var resolution = resolutionSet[0];
 			var operation = resolution.Operation;
@@ -843,27 +845,41 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			// If result is concrete but children are untyped, resolve them as default types and re-resolve
 			if (operation.Result is not UntypedType)
 			{
+				var changed = false;
+				
 				if (left.Type is UntypedType)
+				{
 					left = MaterializeAsDefault(left);
+					changed = true;
+				}
 				
 				if (right.Type is UntypedType)
+				{
 					right = MaterializeAsDefault(right);
+					changed = true;
+				}
 				
 				if (AnyInvalid(left, right))
 					return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
 				
-				resolutionSet = _operatorRegistry.ResolveBinary(left.Type, op.Type, right.Type);
-				if (resolutionSet.IsAmbiguous)
-					return Error(node,
-						$"Ambiguous operation '{op.Text}' between '{left.Type.Name}' and '{right.Type.Name}'",
-						CurrentTargetType);
-				
-				if (!resolutionSet.HasResult)
-					return Error(node, $"No operation defined for '{op.Text}' between " +
-					                   $"'{left.Type.Name}' and '{right.Type.Name}'", CurrentTargetType);
-				
-				resolution = resolutionSet[0];
-				operation = resolution.Operation;
+				// If at least one operand was materialized, need to re-resolve operation
+				if (changed)
+				{
+					resolutionSet = _operatorRegistry.ResolveBinary(left.Type, op.Type, right.Type);
+					if (resolutionSet.IsAmbiguous)
+						return Error(node,
+							$"Ambiguous operation '{op.Text}' between '{left.Type.Name}' and '{right.Type.Name}'",
+							CurrentTargetType);
+					
+					if (!resolutionSet.HasResult)
+					{
+						var diagnostic = DiagnosticReporter.ReportBinaryOpMismatch(_operatorRegistry, left, op, right);
+						return Error(node, diagnostic, CurrentTargetType);
+					}
+					
+					resolution = resolutionSet[0];
+					operation = resolution.Operation;
+				}
 			}
 			
 			if (resolution.LeftConversion is { } leftConversion)
@@ -1295,14 +1311,14 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	private TypeSymbol GetMemberType(MemberSymbol member) =>
 		_typePool.TryGetTypeOfMember(member, out var type) ? type : NativeSymbols.Invalid;
 	
+	private ResolvedInvalidExpressionNode Error(IExpressionNode node, Diagnostic diagnostic, TypeSymbol? type)
+	{
+		Diagnostics.Add(diagnostic);
+		return new(node, type);
+	}
+	
 	private ResolvedInvalidExpressionNode Error(IExpressionNode node, string message, TypeSymbol? type,
 		ISyntaxNode? source = null) => Error(node, message, type, source?.SourceLocation ?? node.SourceLocation);
-	
-	private ResolvedInvalidStatementNode Error(IStatementNode node, string message, ISyntaxNode? source = null) =>
-		Error(node, message, source?.SourceLocation ?? node.SourceLocation);
-	
-	private ResolvedInvalidDeclarationNode Error(IDeclarationNode node, string message, ISyntaxNode? source = null) =>
-		Error(node, message, source?.SourceLocation ?? node.SourceLocation);
 	
 	private ResolvedInvalidExpressionNode Error(IExpressionNode node, string message, TypeSymbol? type,
 		SourceLocation sourceLocation)
@@ -1317,9 +1333,27 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		return new(node);
 	}
 	
+	private ResolvedInvalidStatementNode Error(IStatementNode node, string message, ISyntaxNode? source = null) =>
+		Error(node, message, source?.SourceLocation ?? node.SourceLocation);
+	
+	private ResolvedInvalidStatementNode Error(IStatementNode node, Diagnostic diagnostic)
+	{
+		Diagnostics.Add(diagnostic);
+		return new(node);
+	}
+	
 	private ResolvedInvalidDeclarationNode Error(IDeclarationNode node, string message, SourceLocation sourceLocation)
 	{
 		Diagnostics.Add(new(DiagnosticSeverity.Error, sourceLocation, message));
+		return new(node);
+	}
+	
+	private ResolvedInvalidDeclarationNode Error(IDeclarationNode node, string message, ISyntaxNode? source = null) =>
+		Error(node, message, source?.SourceLocation ?? node.SourceLocation);
+	
+	private ResolvedInvalidDeclarationNode Error(IDeclarationNode node, Diagnostic diagnostic)
+	{
+		Diagnostics.Add(diagnostic);
 		return new(node);
 	}
 	

@@ -418,6 +418,8 @@ internal static class Program
 			_ => (ConsoleColor.Gray, "Info")
 		};
 		
+		const ConsoleColor suggestionColor = ConsoleColor.Cyan;
+		
 		var (startLine, startCol) = source.GetLineColumn(range.Start);
 		var (endLine, endCol) = source.GetLineColumn(range.End);
 		
@@ -498,7 +500,8 @@ internal static class Program
 			
 			Console.WriteLine();
 			
-			WriteColored($"{new string(' ', gutterWidth)}   ", ConsoleColor.DarkGray);
+			var gutter = new string(' ', gutterWidth);
+			WriteColored($"{gutter}   ", ConsoleColor.DarkGray);
 			Console.Write(new string(' ', hlVisStart));
 			
 			var arrowCount = Math.Max(0, hlVisEnd - hlVisStart);
@@ -512,6 +515,14 @@ internal static class Program
 			WriteColored(arrowLine, severityColor);
 			WriteColored(diagnostic.Message, severityColor);
 			Console.WriteLine();
+			
+			foreach (var hint in diagnostic.Hints)
+			{
+				WriteColored($"{gutter}   {new string(' ', hlVisEnd - 1)}| ", ConsoleColor.DarkGray);
+				WriteColored(hint, suggestionColor);
+				Console.WriteLine();
+			}
+			
 			Console.WriteLine();
 		}
 	}

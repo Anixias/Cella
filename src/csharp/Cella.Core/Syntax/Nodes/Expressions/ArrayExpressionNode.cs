@@ -8,4 +8,5 @@ public sealed class ArrayExpressionNode(IEnumerable<IExpressionNode> values, Sou
 {
 	public ImmutableArray<IExpressionNode> Values { get; } = values.ToImmutableArray();
 	public SourceLocation SourceLocation { get; } = sourceLocation;
+	public bool IsContained => true;
 }
