@@ -81,35 +81,8 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 	}
 	
 	public override IExpressionNode Parse(ref int index) => ParseExpression(ref index);
+	private IExpressionNode ParseExpression(ref int index) => ParseAssignment(ref index);
 	private ITypeNode ParseType(ref int index) => new TypeParser(Tokens).Parse(ref index);
-	
-	private IExpressionNode ParseExpression(ref int index)
-	{
-		if (Match(ref index, out var heap, TokenType.KeywordHeap))
-		{
-			var (source, range) = heap.SourceLocation;
-			
-			// Try to parse a type; if that fails, parse a primary
-			var typeIndex = index;
-			try
-			{
-				var type = ParseType(ref typeIndex);
-				index = typeIndex;
-				range = range.Join(type.SourceLocation.Range);
-				return new HeapExpressionNode(type, new(source, range));
-			}
-			catch
-			{
-				// Ignored
-			}
-			
-			var expression = ParsePrimary(ref index);
-			range = range.Join(expression.SourceLocation.Range);
-			return new HeapExpressionNode(expression, new(source, range));
-		}
-		
-		return ParseAssignment(ref index);
-	}
 	
 	private IExpressionNode ParseAssignment(ref int index)
 	{
@@ -292,6 +265,28 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 			node = new VarExpressionNode(identifier);
 		else if (Match(ref index, out var undef, TokenType.KeywordUndef))
 			node = ParseUndef(ref index, undef);
+		else if (Match(ref index, out var heap, TokenType.KeywordHeap))
+		{
+			var (source, range) = heap.SourceLocation;
+			
+			// Try to parse a type; if that fails, parse a primary
+			var typeIndex = index;
+			try
+			{
+				var type = ParseType(ref typeIndex);
+				index = typeIndex;
+				range = range.Join(type.SourceLocation.Range);
+				return new HeapExpressionNode(type, new(source, range));
+			}
+			catch
+			{
+				// Ignored
+			}
+			
+			var expression = ParsePrimary(ref index);
+			range = range.Join(expression.SourceLocation.Range);
+			return new HeapExpressionNode(expression, new(source, range));
+		}
 		else
 			node = ParseLiteral(ref index);
 		

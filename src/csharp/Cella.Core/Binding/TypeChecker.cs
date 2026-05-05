@@ -13,6 +13,7 @@ public sealed class TypeChecker : IResolvedStatementNodeVisitor, IResolvedDeclar
 	private readonly Stack<TypeSymbol?> _returnTypeStack = [];
 	private int continueDepth;
 	private int breakDepth;
+	private bool undefAllowed;
 	
 	public void Check(ResolvedFileNode root) => VisitNode(root);
 	
@@ -308,6 +309,14 @@ public sealed class TypeChecker : IResolvedStatementNodeVisitor, IResolvedDeclar
 	
 	public void Visit(ResolvedHeapExpressionNode node)
 	{
+		if (node.Initializer is not { } initializer)
+			return;
+		
+		// Undefined is allowed in heap expressions
+		var wasAllowed = undefAllowed;
+		undefAllowed = true;
+		VisitNode(initializer);
+		undefAllowed = wasAllowed;
 	}
 	
 	public void Visit(ResolvedIndexerExpressionNode node)
@@ -333,9 +342,14 @@ public sealed class TypeChecker : IResolvedStatementNodeVisitor, IResolvedDeclar
 	}
 	
 	// TODO Better diagnostics
-	public void Visit(ResolvedUndefExpressionNode node) =>
+	public void Visit(ResolvedUndefExpressionNode node)
+	{
+		if (undefAllowed)
+			return;
+		
 		Diagnostics.Add(new(DiagnosticSeverity.Error, node.Syntax.SourceLocation,
-			"'undef' may only be used as a variable initializer"));
+			"'undef' may only be used as a variable initializer or in memory allocations"));
+	}
 	
 	public void Visit(ResolvedVarExpressionNode node)
 	{

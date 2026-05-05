@@ -244,7 +244,7 @@ public sealed class AstPrinter : ISyntaxNodeVisitor
 	public void Visit(HeapExpressionNode node)
 	{
 		StartLine();
-		_sb.Append("HeapExpressionNode");
+		_sb.Append("HeapExpressionNode: ");
 		VisitNode(node.Target, true);
 	}
 	
