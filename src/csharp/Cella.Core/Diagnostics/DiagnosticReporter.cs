@@ -45,7 +45,77 @@ public static class DiagnosticReporter
 		};
 	}
 	
+	public static Diagnostic ReportUndefinedSymbol(ISyntaxNode node, string missingName,
+		IEnumerable<string> availableNames)
+	{
+		var message = $"Symbol '{missingName}' not found in this scope";
+		var hints = new List<string>();
+		
+		string? bestMatch = null;
+		var bestDistance = int.MaxValue;
+		
+		foreach (var name in availableNames)
+		{
+			if (Math.Abs(name.Length - missingName.Length) > 3)
+				continue;
+			
+			var distance = LevenshteinDistance(missingName, name);
+			var threshold = missingName.Length > 5 ? 3 : 2;
+			
+			if (distance > threshold || distance >= bestDistance)
+				continue;
+			
+			bestDistance = distance;
+			bestMatch = name;
+		}
+		
+		if (bestMatch is null)
+		{
+			// TODO Check for missing imports?
+		}
+		else
+		{
+			hints.Add($"Did you mean '{bestMatch}'?");
+		}
+		
+		return new Diagnostic(DiagnosticSeverity.Error, node.SourceLocation, message)
+		{
+			Hints = hints.ToImmutableArray()
+		};
+	}
+	
 	private static string ApplyUnary(TokenType op, IExpressionNode operand) => operand.IsContained
 		? $"{op.Representation}{operand.SourceLocation.GetText()}"
 		: $"{op.Representation}({operand.SourceLocation.GetText()})";
+	
+	private static int LevenshteinDistance(string source, string target)
+	{
+		if (string.IsNullOrEmpty(source))
+			return string.IsNullOrEmpty(target) ? 0 : target.Length;
+		
+		if (string.IsNullOrEmpty(target))
+			return source.Length;
+		
+		var v0 = new int[target.Length + 1];
+		var v1 = new int[target.Length + 1];
+		
+		for (var i = 0; i < v0.Length; i++)
+			v0[i] = i;
+		
+		for (var i = 0; i < source.Length; i++)
+		{
+			v1[0] = i + 1;
+			
+			for (var j = 0; j < target.Length; j++)
+			{
+				var cost = source[i] == target[j] ? 0 : 1;
+				v1[j + 1] = Math.Min(v1[j] + 1, Math.Min(v0[j + 1] + 1, v0[j] + cost));
+			}
+			
+			for (var j = 0; j < v0.Length; j++)
+				v0[j] = v1[j];
+		}
+		
+		return v1[target.Length];
+	}
 }

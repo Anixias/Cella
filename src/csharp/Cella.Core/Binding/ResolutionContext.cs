@@ -64,6 +64,33 @@ public readonly struct ResolutionContext
 		return NativeSymbols.Resolve(name);
 	}
 	
+	public IEnumerable<Symbol> GetAllSymbols()
+	{
+		// TODO None of this will work with function overloads :(
+		
+		if (LocalScope is { } scope)
+			foreach (var symbol in scope.Symbols)
+				yield return symbol;
+		
+		// TODO Also check type parameters
+		if (ContainingFunction is { } function)
+			foreach (var param in function.Symbol.Parameters)
+				yield return param;
+		
+		for (var type = ContainingType; type is not null; type = type.ContainingType)
+			foreach (var child in type.Children.Values)
+				yield return child;
+		
+		foreach (var symbol in File.Symbols.Values)
+			yield return symbol;
+		
+		if (Imports is not { } imports)
+			yield break;
+		
+		foreach (var import in imports.ImportedSymbols)
+			yield return import;
+	}
+	
 	public TypeSymbol ResolveType(ITypeNode node) => node switch
 	{
 		IdentifierTypeNode n => Resolve(n.Token.Text) as TypeSymbol ?? NativeSymbols.Invalid, // TODO Diagnostics

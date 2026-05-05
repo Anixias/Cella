@@ -5,6 +5,8 @@ namespace Cella.Core.Binding;
 
 public sealed class ImportEnvironment(IEnumerable<Symbol> importedSymbols)
 {
+	public IEnumerable<Symbol> ImportedSymbols => _importedSymbols.SelectMany(static kvp => kvp.Value);
+	
 	private readonly ImmutableDictionary<string, ImmutableArray<Symbol>> _importedSymbols = importedSymbols
 		.GroupBy(static s => s.Name)
 		.ToImmutableDictionary(static g => g.Key, static g => g.ToImmutableArray());

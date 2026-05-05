@@ -191,7 +191,10 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		
 		var name = varExpr.Identifier.Text;
 		if (CurrentResolutionContext.Resolve(name) is not { } symbol)
-			return Error(node, $"Symbol '{name}' not found in this scope", varExpr);
+		{
+			var diagnostic = DiagnosticReporter.ReportUndefinedSymbol(node, name, GetVisibleSymbolNames());
+			return Error(node, diagnostic);
+		}
 		
 		if (symbol is not LabelSymbol label)
 			return Error(node, $"Symbol '{name}' is not a label", varExpr);
@@ -209,7 +212,10 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		
 		var name = varExpr.Identifier.Text;
 		if (CurrentResolutionContext.Resolve(name) is not { } symbol)
-			return Error(node, $"Symbol '{name}' not found in this scope", varExpr);
+		{
+			var diagnostic = DiagnosticReporter.ReportUndefinedSymbol(node, name, GetVisibleSymbolNames());
+			return Error(node, diagnostic);
+		}
 		
 		if (symbol is not LabelSymbol label)
 			return Error(node, $"Symbol '{name}' is not a label", varExpr);
@@ -265,9 +271,13 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 				var functionName = varExpr.Identifier.Text;
 				var symbol = CurrentResolutionContext.Resolve(functionName);
 				
-				// TODO Diagnostics, emit invalid expression instead of throwing exceptions
 				if (symbol is null)
-					return Error(node, $"Symbol '{functionName}' not found in this scope", CurrentTargetType, varExpr);
+				{
+					var diagnostic = DiagnosticReporter.ReportUndefinedSymbol(node, functionName,
+						GetVisibleSymbolNames());
+					
+					return Error(node, diagnostic, CurrentTargetType);
+				}
 				
 				if (symbol is not FunctionSymbol function)
 					return Error(node, $"Symbol '{functionName}' is not a function or type", CurrentTargetType,
@@ -581,7 +591,10 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		var symbol = resolutionContext.Resolve(varName);
 		
 		if (symbol is null)
-			return Error(node, $"Symbol '{varName}' not found in this scope", CurrentTargetType);
+		{
+			var diagnostic = DiagnosticReporter.ReportUndefinedSymbol(node, varName, GetVisibleSymbolNames());
+			return Error(node, diagnostic, CurrentTargetType);
+		}
 		
 		switch (symbol)
 		{
@@ -1310,6 +1323,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	
 	private TypeSymbol GetMemberType(MemberSymbol member) =>
 		_typePool.TryGetTypeOfMember(member, out var type) ? type : NativeSymbols.Invalid;
+	
+	private IEnumerable<string> GetVisibleSymbolNames() =>
+		CurrentResolutionContext.GetAllSymbols().Select(static s => s.Name).Distinct();
 	
 	private ResolvedInvalidExpressionNode Error(IExpressionNode node, Diagnostic diagnostic, TypeSymbol? type)
 	{

@@ -5,6 +5,7 @@ namespace Cella.Core.Binding;
 public sealed class Scope(Scope? parent = null)
 {
 	public Scope? Parent { get; } = parent;
+	public IReadOnlyCollection<Symbol> Symbols => _symbols.Values;
 	
 	private readonly Dictionary<string, Symbol> _symbols = [];
 	
