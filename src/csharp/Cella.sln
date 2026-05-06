@@ -1,7 +1,5 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Cella-Old", "Cella-Old\Cella-Old.csproj", "{45FF1999-3514-4FD2-9B3C-F443FAE33028}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Cella.Core", "Cella.Core\Cella.Core.csproj", "{103E7847-D03D-4AB4-BE30-EFD041E46532}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Cella.Compiler", "Cella.Compiler\Cella.Compiler.csproj", "{2D110638-20A7-4CDA-A85C-38C810658068}"
@@ -14,10 +12,6 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{45FF1999-3514-4FD2-9B3C-F443FAE33028}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{45FF1999-3514-4FD2-9B3C-F443FAE33028}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{45FF1999-3514-4FD2-9B3C-F443FAE33028}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{45FF1999-3514-4FD2-9B3C-F443FAE33028}.Release|Any CPU.Build.0 = Release|Any CPU
 		{103E7847-D03D-4AB4-BE30-EFD041E46532}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{103E7847-D03D-4AB4-BE30-EFD041E46532}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{103E7847-D03D-4AB4-BE30-EFD041E46532}.Release|Any CPU.ActiveCfg = Release|Any CPU
