@@ -382,8 +382,13 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			case CallExpressionNode n:
 				throw new NotImplementedException(); // TODO Need to implement constructor initialization!!
 			
+			case IExpressionNode n:
+				initializer = VisitNode(n);
+				elementType = initializer.Type;
+				break;
+			
 			default:
-				return Error(node, "Expression after 'heap' must be a type, undef[T], or a constructor call",
+				return Error(node, "'heap' must be followed by a type or an expression",
 					CurrentTargetType);
 		}
 		
