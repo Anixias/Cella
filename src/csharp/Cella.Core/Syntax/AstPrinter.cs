@@ -375,7 +375,7 @@ public sealed class AstPrinter : ISyntaxNodeVisitor
 	{
 		StartLine();
 		_sb.Append("SizeOfExpressionNode");
-		VisitNode(node.Type, true);
+		VisitNode(node.Expression, true);
 	}
 	
 	public void Visit(VarExpressionNode node)

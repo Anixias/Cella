@@ -586,8 +586,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	
 	public IResolvedExpressionNode Visit(SizeOfExpressionNode node)
 	{
-		var resolutionContext = CurrentResolutionContext;
-		var target = resolutionContext.ResolveType(node.Type);
+		var target = TryResolveExpressionAsType(node.Expression) ?? VisitNode(node.Expression).Type;
 		
 		if (IsInvalid(target))
 			return new ResolvedInvalidExpressionNode(node);

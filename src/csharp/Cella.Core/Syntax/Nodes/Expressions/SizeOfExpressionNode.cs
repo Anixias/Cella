@@ -2,10 +2,11 @@
 
 namespace Cella.Core.Syntax.Nodes;
 
-public sealed class SizeOfExpressionNode(Token token, ITypeNode type, SourceLocation sourceLocation) : IExpressionNode
+public sealed class SizeOfExpressionNode(Token token, IExpressionNode expression, SourceLocation sourceLocation)
+	: IExpressionNode
 {
 	public Token Token { get; } = token;
-	public ITypeNode Type { get; } = type;
+	public IExpressionNode Expression { get; } = expression;
 	public SourceLocation SourceLocation { get; } = sourceLocation;
 	public bool IsContained => true;
 }

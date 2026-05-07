@@ -315,15 +315,15 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 	
 	private SizeOfExpressionNode ParseSizeOf(ref int index, Token token)
 	{
-		if (!Match(ref index, TokenType.OpOpenBracket))
+		if (!Match(ref index, TokenType.OpOpenParen))
 		{
 			// TODO Diagnostics
 			throw new InvalidOperationException();
 		}
 		
-		var type = ParseType(ref index);
+		var expression = ParseExpression(ref index);
 		
-		if (!Match(ref index, out var closeBracket, TokenType.OpCloseBracket))
+		if (!Match(ref index, out var closeBracket, TokenType.OpCloseParen))
 		{
 			// TODO Diagnostics
 			throw new InvalidOperationException();
@@ -331,7 +331,7 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 		
 		var (source, range) = token.SourceLocation;
 		range = range.Join(closeBracket.SourceLocation.Range);
-		return new SizeOfExpressionNode(token, type, new(source, range));
+		return new SizeOfExpressionNode(token, expression, new(source, range));
 	}
 	
 	private IExpressionNode ParsePostfix(ref int index, IExpressionNode target)
