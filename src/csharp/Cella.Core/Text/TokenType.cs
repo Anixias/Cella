@@ -26,6 +26,7 @@ public enum TokenType
 	KeywordFalse,
 	KeywordNull,
 	KeywordUndef,
+	KeywordSizeOf,
 	
 	// Global keywords
 	KeywordRet,
@@ -130,6 +131,7 @@ public static class TokenTypeInfo
 			[TokenType.KeywordFalse] = new("false", IsKeyword: true, IsLiteral: true),
 			[TokenType.KeywordNull] = new("null", IsKeyword: true, IsLiteral: true),
 			[TokenType.KeywordUndef] = new("undef", IsKeyword: true, IsLiteral: true),
+			[TokenType.KeywordSizeOf] = new("sizeOf", IsKeyword: true, IsLiteral: true),
 			
 			[TokenType.KeywordRet] = new("ret", IsKeyword: true),
 			[TokenType.KeywordVar] = new("var", IsKeyword: true),

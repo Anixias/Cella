@@ -584,6 +584,20 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		return new ResolvedUndefExpressionNode(type, node);
 	}
 	
+	public IResolvedExpressionNode Visit(SizeOfExpressionNode node)
+	{
+		var resolutionContext = CurrentResolutionContext;
+		var target = resolutionContext.ResolveType(node.Type);
+		
+		if (IsInvalid(target))
+			return new ResolvedInvalidExpressionNode(node);
+		
+		var sizeInBits = _typePool.SizeTable.GetSize(target).CountBits(_pointerBitSize);
+		var sizeInBytes = new BigInteger((sizeInBits + 7) / 8);
+		
+		return new ResolvedLiteralExpressionNode(NativeSymbols.UntypedInteger, sizeInBytes, node);
+	}
+	
 	public IResolvedExpressionNode Visit(VarExpressionNode node)
 	{
 		var resolutionContext = CurrentResolutionContext;

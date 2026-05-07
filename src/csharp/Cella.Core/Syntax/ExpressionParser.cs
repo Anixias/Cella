@@ -265,6 +265,8 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 			node = new VarExpressionNode(identifier);
 		else if (Match(ref index, out var undef, TokenType.KeywordUndef))
 			node = ParseUndef(ref index, undef);
+		else if (Match(ref index, out var sizeOf, TokenType.KeywordSizeOf))
+			node = ParseSizeOf(ref index, sizeOf);
 		else if (Match(ref index, out var heap, TokenType.KeywordHeap))
 		{
 			var (source, range) = heap.SourceLocation;
@@ -309,6 +311,27 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 		var (source, range) = token.SourceLocation;
 		range = range.Join(closeBracket.SourceLocation.Range);
 		return new UndefExpressionNode(token, type, new(source, range));
+	}
+	
+	private SizeOfExpressionNode ParseSizeOf(ref int index, Token token)
+	{
+		if (!Match(ref index, TokenType.OpOpenBracket))
+		{
+			// TODO Diagnostics
+			throw new InvalidOperationException();
+		}
+		
+		var type = ParseType(ref index);
+		
+		if (!Match(ref index, out var closeBracket, TokenType.OpCloseBracket))
+		{
+			// TODO Diagnostics
+			throw new InvalidOperationException();
+		}
+		
+		var (source, range) = token.SourceLocation;
+		range = range.Join(closeBracket.SourceLocation.Range);
+		return new SizeOfExpressionNode(token, type, new(source, range));
 	}
 	
 	private IExpressionNode ParsePostfix(ref int index, IExpressionNode target)
