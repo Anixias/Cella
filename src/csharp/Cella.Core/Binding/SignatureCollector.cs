@@ -93,13 +93,13 @@ public sealed class SignatureCollector : IDeclarationNodeVisitor
 		FunctionInfo info;
 		if (_entryPointName is not null && function.Name == _entryPointName && IsEntryPoint(signature))
 		{
-			info = new FunctionInfo(null, function, signature, scope, null);
+			info = new FunctionInfo(null, function, signature, scope, null, resolutionContext.File);
 			_entryPoints.Add(info);
 		}
 		else
 		{
 			var mangledName = Mangling.Mangle(function, signature, resolutionContext.GetQualifiers());
-			info = new FunctionInfo(mangledName, function, signature, scope, null);
+			info = new FunctionInfo(mangledName, function, signature, scope, null, resolutionContext.File);
 		}
 		
 		_builder.Functions[function] = info;
@@ -129,7 +129,7 @@ public sealed class SignatureCollector : IDeclarationNodeVisitor
 		
 		var syntax = (ExternalFunctionNode)function.Syntax;
 		var signature = new FunctionSignature(paramTypes, returnType);
-		_builder.Functions[function] = new(null, function, signature, null, syntax.Origin);
+		_builder.Functions[function] = new(null, function, signature, null, syntax.Origin, resolutionContext.File);
 	}
 	
 	public void Visit(ParameterNode node) => throw new InvalidOperationException();

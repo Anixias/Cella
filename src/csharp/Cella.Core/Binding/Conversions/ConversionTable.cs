@@ -92,13 +92,16 @@ public sealed class ConversionTable
 			table.Add(new IntegerConversion(NativeSymbols.UIntSize, intTypes[i].U, ConversionKind.Explicit, 1));
 			
 			// Any integer type -> char
-			// Always explicit
-			table.Add(new IntegerConversion(intTypes[i].S, NativeSymbols.Char, ConversionKind.Explicit, 1));
-			
+			// Explicit for all except i32/u32
 			if (intTypes[i].U == NativeSymbols.UInt32)
-				table.Add(new FreeConversion(NativeSymbols.UInt32, NativeSymbols.Char, ConversionKind.Explicit));
+				table.Add(new FreeConversion(NativeSymbols.UInt32, NativeSymbols.Char, ConversionKind.Implicit));
 			else
 				table.Add(new IntegerConversion(intTypes[i].U, NativeSymbols.Char, ConversionKind.Explicit, 1));
+			
+			if (intTypes[i].S == NativeSymbols.Int32)
+				table.Add(new FreeConversion(NativeSymbols.Int32, NativeSymbols.Char, ConversionKind.Implicit));
+			else
+				table.Add(new IntegerConversion(intTypes[i].S, NativeSymbols.Char, ConversionKind.Explicit, 1));
 		}
 		
 		// char -> Any integer type

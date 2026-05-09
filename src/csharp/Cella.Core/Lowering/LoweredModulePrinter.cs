@@ -19,24 +19,29 @@ public static class LoweredModulePrinter
 		sb.Append(' ', moduleNamePadding / 2).Append(moduleName).Append(' ', (moduleNamePadding + 1) / 2).AppendLine();
 		sb.Append('=', moduleHeaderSize).AppendLine();
 		
-		foreach (var type in module.Types)
+		foreach (var file in module.Files)
 		{
-			switch (type)
+			sb.Append('[').Append(file.Symbol.Name).Append(']').AppendLine();
+			
+			foreach (var type in file.Types)
 			{
-				case RecordSymbol s:
-					sb.Append(s.Name).Append(':').AppendLine();
-					foreach (var member in s.Members)
-					{
-						const int memberIndent = 2;
-						sb.Append(' ', memberIndent).Append(member.Name).AppendLine();
-					}
-					
-					break;
+				switch (type)
+				{
+					case RecordSymbol s:
+						sb.Append(s.Name).Append(':').AppendLine();
+						foreach (var member in s.Members)
+						{
+							const int memberIndent = 2;
+							sb.Append(' ', memberIndent).Append(member.Name).AppendLine();
+						}
+						
+						break;
+				}
 			}
+			
+			foreach (var function in file.Functions)
+				PrintFunction(sb, function);
 		}
-		
-		foreach (var function in module.Functions)
-			PrintFunction(sb, function);
 		
 		return sb.ToString();
 	}
@@ -76,6 +81,14 @@ public static class LoweredModulePrinter
 						sb.Append("drop ");
 						PrintValue(sb, i.Value);
 						sb.AppendLine();
+						break;
+					
+					case BeginScopeInstruction i:
+						sb.AppendLine($"~begin:{i.ScopeId}");
+						break;
+					
+					case EndScopeInstruction i:
+						sb.AppendLine($"~end:{i.ScopeId}");
 						break;
 					
 					default:
@@ -139,8 +152,9 @@ public static class LoweredModulePrinter
 					break;
 				
 				case HeapValue v:
-					sb.Append("heap:");
+					sb.Append("heap(");
 					PrintValue(sb, v.Initializer);
+					sb.Append(')');
 					break;
 				
 				case ZeroValue v:

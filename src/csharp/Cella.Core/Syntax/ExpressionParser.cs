@@ -6,6 +6,9 @@ namespace Cella.Core.Syntax;
 
 public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<IExpressionNode>(tokens)
 {
+	private static Dictionary<string, TokenType> BuildContextualKeywords(params IEnumerable<TokenType> tokenTypes) =>
+		tokenTypes.ToDictionary(static t => t.Representation);
+	
 	private static readonly HashSet<TokenType> _syncTypes =
 	[
 		TokenType.OpOpenParen
@@ -71,6 +74,15 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 		TokenType.OpGreater,
 		TokenType.OpLess
 	];
+	
+	private static readonly HashSet<TokenType> _borrowKeywords =
+	[
+		TokenType.KeywordMut,
+		TokenType.KeywordImm
+	];
+	
+	private static readonly Dictionary<string, TokenType> _borrowKeywordDictionary =
+		BuildContextualKeywords(TokenType.KeywordMut, TokenType.KeywordImm);
 	
 	private bool IsNextNewline(int next)
 	{
@@ -211,6 +223,22 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 	
 	private IExpressionNode ParseUnary(ref int index)
 	{
+		// Special case: mut x/imm x borrows
+		var startIndex = index;
+		if (Match(ref index, out var borrow, _borrowKeywordDictionary, _borrowKeywords))
+		{
+			// If the next token is on a new line or is '[', exit
+			if (IsNextNewline(index) || Match(ref index, TokenType.OpOpenBracket))
+			{
+				index = startIndex;
+			}
+			else
+			{
+				var borrowOperand = ParseUnary(ref index);
+				return new UnaryOpExpressionNode(borrow, borrowOperand);
+			}
+		}
+		
 		if (!Match(ref index, out var op, _unaryPrefixOps))
 			return ParsePrimary(ref index);
 		
@@ -345,7 +373,7 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 			var startIndex = index;
 				
 			// Access Expression
-			if (Match(ref index, out var dot, TokenType.OpDot))
+			if (Match(ref index, TokenType.OpDot))
 			{
 				if (!Match(ref index, out var member, TokenType.Identifier))
 				{
@@ -354,7 +382,7 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 					break;
 				}
 				
-				var (source, range) = dot.SourceLocation;
+				var (source, range) = target.SourceLocation;
 				range = range.Join(member.SourceLocation.Range);
 				target = new AccessExpressionNode(target, member, new(source, range));
 				continue;

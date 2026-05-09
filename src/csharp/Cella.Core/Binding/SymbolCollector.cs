@@ -8,7 +8,17 @@ public sealed class SymbolCollector : IDeclarationNodeVisitor<Symbol>
 	private readonly SymbolTable.Builder _builder = new();
 	private readonly List<Symbol> _symbolsInFile = [];
 	
-	public SymbolTable Build() => _builder.Build();
+	public SymbolTable Build()
+	{
+		try
+		{
+			return _builder.Build();
+		}
+		catch (Exception e)
+		{
+			return _builder.Build();
+		}
+	}
 	
 	public void Collect(IDeclarationNode root) => VisitNode(root);
 	
@@ -28,6 +38,7 @@ public sealed class SymbolCollector : IDeclarationNodeVisitor<Symbol>
 			VisitNode(child);
 		
 		var symbol = new FileSymbol(node, module, _symbolsInFile);
+		module.Files.Add(symbol);
 		_builder.DeclarationSymbols[node] = symbol;
 		_builder.SymbolsByModule.GetOrAdd(module).UnionWith(_symbolsInFile);
 		_symbolsInFile.Clear();
@@ -114,7 +125,6 @@ public sealed class SymbolCollector : IDeclarationNodeVisitor<Symbol>
 		var name = node.Identifier.Text;
 		var field = new FieldSymbol(name, node, true); // TODO Immutable fields
 		_builder.DeclarationSymbols[node] = field;
-		_symbolsInFile.Add(field);
 		return field;
 	}
 }

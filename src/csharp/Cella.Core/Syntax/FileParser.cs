@@ -5,7 +5,8 @@ using Cella.Diagnostics;
 
 namespace Cella.Core.Syntax;
 
-public sealed class FileParser(ImmutableArray<Token> tokens, string fileName) : BaseParser<FileNode>(tokens)
+public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, string fullPath)
+	: BaseParser<FileNode>(tokens)
 {
 	private static readonly Dictionary<string, TokenType> _topLevelContextualKeywords =
 		BuildContextualKeywords(TokenType.KeywordMod, TokenType.KeywordFun, TokenType.KeywordUse, TokenType.KeywordPub,
@@ -167,6 +168,7 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName) : 
 		return new FileNode(new(source, range))
 		{
 			FileName = fileName,
+			FullPath = fullPath,
 			ModuleName = moduleName,
 			Imports = imports.ToImmutableArray(),
 			Declarations = declarations.ToImmutableArray()

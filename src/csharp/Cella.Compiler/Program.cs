@@ -180,7 +180,7 @@ internal static class Program
 		var objDir = Path.Combine(project.Directory, "obj");
 		var outputConfig = new OutputConfig(objDir, true, true);
 		var targetConfig = new TargetConfig(targetTriple.ToLlvm());
-		var codeGenConfig = new CodeGenConfig(outputConfig, targetConfig);
+		var codeGenConfig = new CodeGenConfig(outputConfig, targetConfig, OptimizeMode.Debug); // TODO Read from CLI args
 		var pointerBitSize = codeGenConfig.GetPointerSize() * 8;
 		
 		// Phase 3: Symbol resolution
@@ -194,9 +194,7 @@ internal static class Program
 			
 			if (resolver.Diagnostics.ErrorCount > 0)
 			{
-				foreach (var error in resolver.Diagnostics.Errors)
-					PrintDiagnostic(error);
-				
+				PrintDiagnostics(resolver.Diagnostics.Errors, project.Directory);
 				return errorResult;
 			}
 		}
@@ -210,15 +208,13 @@ internal static class Program
 			
 			if (typeChecker.Diagnostics.ErrorCount > 0)
 			{
-				foreach (var error in typeChecker.Diagnostics.Errors)
-					PrintDiagnostic(error);
-				
+				PrintDiagnostics(typeChecker.Diagnostics.Errors, project.Directory);
 				return errorResult;
 			}
 		}
 		
 		// Phase 5: Lowering
-		var lowerer = new Lowerer(typePool);
+		var lowerer = new Lowerer();
 		{
 			foreach (var (_, resolvedAst, _) in resolvedFiles)
 				lowerer.Lower(resolvedAst);
@@ -226,21 +222,32 @@ internal static class Program
 		
 		// Phase 6: Control flow analysis
 		{
-			var controlFlowAnalyzer = new ControlFlowAnalyzer();
+			var cfgDiagnostics = new DiagnosticList();
+			var controlFlowAnalyzer = new ControlFlowAnalyzer(cfgDiagnostics);
+			
+			// TODO Linear analysis for ownership/borrows and drop insertion
+			//var linearAnalyzer = new LinearAnalyzer(typePool, assemblySymbol.SignatureTable, cfgDiagnostics);
 			
 			foreach (var module in lowerer.Modules)
 			{
-				Console.WriteLine(LoweredModulePrinter.Print(module));
+				foreach (var file in module.Files)
+				{
+					foreach (var function in file.Functions)
+					{
+						controlFlowAnalyzer.Analyze(function);
+						
+						// TODO Linear analysis for ownership/borrows and drop insertion
+						//if (controlFlowAnalyzer.Analyze(function))
+						//	linearAnalyzer.Analyze(function);
+					}
+				}
 				
-				foreach (var function in module.Functions)
-					controlFlowAnalyzer.Analyze(function);
+				Console.WriteLine(LoweredModulePrinter.Print(module));
 			}
 			
-			if (controlFlowAnalyzer.Diagnostics.Count > 0)
+			if (cfgDiagnostics.Count > 0)
 			{
-				foreach (var diagnostic in controlFlowAnalyzer.Diagnostics)
-					Console.WriteLine(diagnostic);
-				
+				PrintDiagnostics(cfgDiagnostics, project.Directory);
 				return errorResult;
 			}
 		}
@@ -339,20 +346,18 @@ internal static class Program
 			
 			var fileName = Path.GetRelativePath(project.Directory, sourcePath);
 			
-			var parser = new FileParser(tokens, fileName);
+			var parser = new FileParser(tokens, fileName, sourcePath);
 			var ast = parser.Parse();
 			ct.ThrowIfCancellationRequested();
 			
 			if (ast is null)
 			{
-				Console.WriteLine($"\n====== {fileName} ======");
-				foreach (var error in parser.Diagnostics.Errors)
-					PrintDiagnostic(error);
+				PrintDiagnostics(parser.Diagnostics.Errors, project.Directory);
 			}
 			else
 			{
 				// TODO Make opt-in via CLI flags
-				Console.WriteLine(AstPrinter.Print(ast));
+				//Console.WriteLine(AstPrinter.Print(ast));
 				files.Add(new(sourcePath, ast, source));
 			}
 		}
@@ -397,6 +402,29 @@ internal static class Program
 	};
 	
 	private const int TabWidth = 4;
+	
+	private static void PrintDiagnostics(IEnumerable<Diagnostic> diagnostics, string? rootDirectory)
+	{
+		var diagnosticsByFile = diagnostics
+			.GroupBy(static d => d.SourceLocation.Source.FilePath)
+			.ToDictionary(static g => g.Key, static g => g
+				.OrderBy(static d => d.Line)
+				.ThenBy(static d => d.Column)
+				.ToArray());
+		
+		foreach (var (file, set) in diagnosticsByFile.OrderBy(static kvp => kvp.Key))
+		{
+			var path = rootDirectory is not null ? Path.GetRelativePath(rootDirectory, file) : file;
+			
+			Console.ForegroundColor = ConsoleColor.Blue;
+			Console.WriteLine($"\n====== {path} ======");
+			Console.WriteLine();
+			Console.ForegroundColor = ConsoleColor.Gray;
+			
+			foreach (var diagnostic in set)
+				PrintDiagnostic(diagnostic);
+		}
+	}
 	
 	private static void PrintDiagnostic(Diagnostic diagnostic)
 	{

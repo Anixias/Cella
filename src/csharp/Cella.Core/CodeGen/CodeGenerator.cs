@@ -66,13 +66,16 @@ public sealed unsafe class CodeGenerator : IDisposable
 		_typePool = typePool;
 		_config = config;
 		(_dataLayoutStr, TargetTriple, _targetMachine, _pointerSize) = config.GetDataLayout();
-		MapNativeSymbols();
 	}
 	
 	private LLVMErrorRef RunOptimizationPass(LLVMModuleRef module)
 	{
-		// TODO Build string from config
-		using var passStr = new MarshaledString("default<O2>");
+		using var passStr = new MarshaledString(_config.OptimizeMode switch
+		{
+			OptimizeMode.Release => "default<O3>",
+			_ => "default<O0>"
+		});
+		
 		var errorHandle = LLVM.RunPasses((LLVMOpaqueModule*)module.Handle, passStr,
 			(LLVMOpaqueTargetMachine*)_targetMachine.Handle, (LLVMOpaquePassBuilderOptions*)_passBuilderOptions.Handle);
 		
@@ -108,6 +111,8 @@ public sealed unsafe class CodeGenerator : IDisposable
 	
 	public CodeGenResult Generate(LoweredModule module)
 	{
+		MapNativeSymbols();
+		
 		using var llvmModule = LLVMModuleRef.CreateWithName(module.Symbol.Name);
 		currentModule = llvmModule;
 		var llvmDiBuilder = llvmModule.CreateDIBuilder();
@@ -117,6 +122,10 @@ public sealed unsafe class CodeGenerator : IDisposable
 			
 			// Build code
 			BuildModule(llvmModule, llvmDiBuilder, module);
+			
+			_funMap.Clear();
+			_varMap.Clear();
+			_typeMap.Clear();
 			
 			if (!llvmModule.TryVerify(LLVMVerifierFailureAction.LLVMAbortProcessAction, out message))
 				return CodeGenResult.Failure with { ErrorMessage = message };
@@ -169,7 +178,6 @@ public sealed unsafe class CodeGenerator : IDisposable
 		if (_typeMap.TryGetValue(symbol, out var type))
 			return type;
 		
-		// Lazy mapping for generic types
 		switch (symbol)
 		{
 			case ArrayType arrayType:
@@ -220,70 +228,97 @@ public sealed unsafe class CodeGenerator : IDisposable
 			}
 			
 			default:
-				throw new InvalidOperationException($"Type '{symbol.Name}' not mapped in LLVM");
+				return CreateType(symbol);
+			//throw new InvalidOperationException($"Type '{symbol.Name}' not mapped in LLVM");
 		}
 	}
 	
 	private void BuildModule(LLVMModuleRef llvmModule, LLVMDIBuilderRef llvmDiBuilder, LoweredModule module)
 	{
-		foreach (var type in module.Types)
-			BuildType(type);
+		var isOptimized = _config.OptimizeMode == OptimizeMode.Debug ? 0 : 1;
+		var dwarfLang = LLVMDWARFSourceLanguage.LLVMDWARFSourceLanguageC99;
 		
-		// Create and map external functions
-		foreach (var function in module.ExternalFunctions)
+		/*foreach (var file in module.Files)
 		{
-			if (function.Origin is { } origin)
-				_externalLibraries.Add(origin);
-			
-			var info = CreateFunction(llvmModule, function);
-			var llvmFunction = info.FunctionValue;
-			llvmFunction.Linkage = LLVMLinkage.LLVMExternalLinkage;
-			
-			// TODO On Windows, check for DLL Import metadata/annotation/attribute
-			// llvmFunction.DLLStorageClass = LLVMDLLStorageClass.LLVMDLLImportStorageClass;
-			// llvmFunction.Linkage = LLVMLinkage.LLVMDLLImportLinkage;
-		}
-		
-		// Create and map imported functions
-		foreach (var function in module.ImportedFunctions)
-		{
-			var info = CreateFunction(llvmModule, function);
-			var llvmFunction = info.FunctionValue;
-			llvmFunction.DLLStorageClass = LLVMDLLStorageClass.LLVMDLLImportStorageClass;
-			llvmFunction.Linkage = LLVMLinkage.LLVMDLLImportLinkage;
-		}
-		
-		// Create and map functions
-		foreach (var function in module.Functions)
-		{
-			var info = CreateFunction(llvmModule, function.Info);
-			var llvmFunction = info.FunctionValue;
-			
-			if (function.Info.Symbol.Visibility == Visibility.Public)
+			LLVMMetadataRef fileMetadata;
 			{
-				// TODO Use ExternalLinkage if not building a DLL?
-				llvmFunction.DLLStorageClass = LLVMDLLStorageClass.LLVMDLLExportStorageClass;
-				llvmFunction.Linkage = LLVMLinkage.LLVMDLLExportLinkage;
+				var fullPath = file.Symbol.FullPath;
+				var fileName = Path.GetFileName(fullPath);
+				var directory = Path.GetDirectoryName(fullPath)?.Replace('\\', '/') ?? string.Empty;
+				fileMetadata = llvmDiBuilder.CreateFile(fileName, directory);
 			}
-			else
+			
+			// TODO Emit debug info for types, functions, etc.
+			var compileUnit = llvmDiBuilder.CreateCompileUnit(dwarfLang, fileMetadata, "", isOptimized, "", 0, "",
+				LLVMDWARFEmissionKind.LLVMDWARFEmissionFull, 0, 1, 0, "", "");
+		}*/
+		
+		foreach (var file in module.Files)
+		{
+			// Create and map external functions
+			foreach (var function in file.ExternalFunctions)
 			{
-				if (_assemblySymbol.EntryPoint is { } entryPoint && entryPoint.Symbol == function.Info.Symbol)
-					llvmFunction.Linkage = LLVMLinkage.LLVMExternalLinkage;
+				if (function.Origin is { } origin)
+					_externalLibraries.Add(origin);
+				
+				var info = CreateFunction(llvmModule, function);
+				var llvmFunction = info.FunctionValue;
+				llvmFunction.Linkage = LLVMLinkage.LLVMExternalLinkage;
+				
+				// TODO On Windows, check for DLL Import metadata/annotation/attribute
+				// llvmFunction.DLLStorageClass = LLVMDLLStorageClass.LLVMDLLImportStorageClass;
+				// llvmFunction.Linkage = LLVMLinkage.LLVMDLLImportLinkage;
+			}
+			
+			// Create and map imported functions
+			foreach (var function in file.ImportedFunctions)
+			{
+				var info = CreateFunction(llvmModule, function);
+				var llvmFunction = info.FunctionValue;
+				llvmFunction.DLLStorageClass = LLVMDLLStorageClass.LLVMDLLImportStorageClass;
+				llvmFunction.Linkage = LLVMLinkage.LLVMDLLImportLinkage;
+			}
+			
+			// Create and map functions
+			foreach (var function in file.Functions)
+			{
+				var info = CreateFunction(llvmModule, function.Info);
+				var llvmFunction = info.FunctionValue;
+				
+				if (function.Info.Symbol.Visibility == Visibility.Public)
+				{
+					// TODO Use ExternalLinkage if not building a DLL?
+					llvmFunction.DLLStorageClass = LLVMDLLStorageClass.LLVMDLLExportStorageClass;
+					llvmFunction.Linkage = LLVMLinkage.LLVMDLLExportLinkage;
+				}
 				else
-					llvmFunction.Linkage = LLVMLinkage.LLVMInternalLinkage;
+				{
+					if (_assemblySymbol.EntryPoint is { } entryPoint && entryPoint.Symbol == function.Info.Symbol)
+						llvmFunction.Linkage = LLVMLinkage.LLVMExternalLinkage;
+					else
+						llvmFunction.Linkage = LLVMLinkage.LLVMInternalLinkage;
+				}
 			}
 		}
 		
-		// Build function bodies
-		foreach (var function in module.Functions)
-			BuildFunction(llvmModule, llvmDiBuilder, function);
+		foreach (var file in module.Files)
+		{
+			// Build function bodies
+			foreach (var function in file.Functions)
+				BuildFunction(llvmModule, llvmDiBuilder, function);
+		}
 		
 		// Optimize the module
 		RunOptimizationPass(llvmModule);
+		
+		llvmDiBuilder.DIBuilderFinalize();
 	}
 	
-	private void BuildType(TypeSymbol type)
+	private LLVMTypeRef CreateType(TypeSymbol type)
 	{
+		if (_typeMap.TryGetValue(type, out var existing))
+			return existing;
+		
 		var fieldTypes = _typePool
 			.GetMembers(type)
 			.OfType<FieldSymbol>()
@@ -292,11 +327,16 @@ public sealed unsafe class CodeGenerator : IDisposable
 			.ToArray();
 		
 		// TODO Allow controlling packed?
-		_typeMap[type] = LLVMTypeRef.CreateStruct(fieldTypes, false);
+		var typeRef = LLVMTypeRef.CreateStruct(fieldTypes, false);
+		_typeMap[type] = typeRef;
+		return typeRef;
 	}
 	
 	private LLVMFunctionInfo CreateFunction(LLVMModuleRef llvmModule, FunctionInfo function)
 	{
+		if (_funMap.TryGetValue(function, out var existing))
+			return existing;
+		
 		var signature = function.Signature;
 		var symbol = function.Symbol;
 		var returnType = MapTypeSymbol(signature.ReturnType);
@@ -364,6 +404,10 @@ public sealed unsafe class CodeGenerator : IDisposable
 	{
 		switch (instruction)
 		{
+			case BeginScopeInstruction:
+			case EndScopeInstruction:
+				break;
+			
 			case LocalVarInstruction i:
 			{
 				var type = MapTypeSymbol(i.Symbol.Type);
@@ -384,13 +428,128 @@ public sealed unsafe class CodeGenerator : IDisposable
 			
 			case DropInstruction i:
 			{
-				var ptr = EmitAddress(i.Value, builder);
-				builder.BuildFree(ptr);
+				EmitDrop(i.Value, builder);
 				break;
 			}
 			
 			default:
 				throw new InvalidOperationException();
+		}
+	}
+	
+	private void EmitDrop(Value value, LLVMBuilderRef builder)
+	{
+		while (value is ConversionValue conversion)
+			value = conversion.Source;
+		
+		switch (value.Type)
+		{
+			case PointerType { PointerKind: PointerKind.Owning }:
+			{
+				// Drop the owned pointer value, not the address of the storage slot that
+				// contains it. For example, `drop x: own[i32]` must lower to
+				// `free(load x)`, and `drop record.field: own[i32]` must lower to
+				// `free(load &record.field)`.
+				var ptr = EmitValue(value, builder);
+				builder.BuildFree(ptr);
+				break;
+			}
+			
+			case ArrayType array:
+				EmitArrayDrop(value, array, builder);
+				break;
+			
+			case RecordSymbol record:
+				EmitRecordDrop(value, record, builder);
+				break;
+		}
+	}
+	
+	private void EmitArrayDrop(Value value, ArrayType array, LLVMBuilderRef builder)
+	{
+		if (!_typePool.NeedsDrop(array.ElementType))
+			return;
+		
+		if (array.Length < 0 || array.Length > int.MaxValue)
+			throw new InvalidOperationException($"Cannot drop array type '{array.Name}' with non-fixed or too-large length");
+		
+		var length = (int)array.Length;
+		
+		if (IsAddressable(value))
+		{
+			for (var i = length - 1; i >= 0; i--)
+			{
+				var index = new ConstantValue(NativeSymbols.Int32, i);
+				var element = new IndexerValue(array.ElementType, value, index, value.SourceLocation);
+				EmitDrop(element, builder);
+			}
+			
+			return;
+		}
+		
+		var aggregate = EmitValue(value, builder);
+		for (var i = length - 1; i >= 0; i--)
+		{
+			var elementValue = builder.BuildExtractValue(aggregate, (uint)i, $"drop.elem{i}");
+			EmitDropValue(elementValue, array.ElementType, builder);
+		}
+	}
+	
+	private void EmitDropValue(LLVMValueRef value, TypeSymbol type, LLVMBuilderRef builder)
+	{
+		switch (type)
+		{
+			case PointerType { PointerKind: PointerKind.Owning }:
+				builder.BuildFree(value);
+				break;
+			
+			case ArrayType array:
+			{
+				if (!_typePool.NeedsDrop(array.ElementType))
+					break;
+				
+				if (array.Length < 0 || array.Length > int.MaxValue)
+					throw new InvalidOperationException($"Cannot drop array type '{array.Name}' with non-fixed or too-large length");
+				
+				var length = (int)array.Length;
+				for (var i = length - 1; i >= 0; i--)
+				{
+					var elementValue = builder.BuildExtractValue(value, (uint)i, $"drop.elem{i}");
+					EmitDropValue(elementValue, array.ElementType, builder);
+				}
+				
+				break;
+			}
+			
+			case RecordSymbol record:
+			{
+				foreach (var field in record.Members.OfType<FieldSymbol>().Reverse())
+				{
+					var fieldType = _typePool.GetTypeOfMember(field);
+					if (!_typePool.NeedsDrop(fieldType))
+						continue;
+					
+					var fieldIndex = (uint)_typePool.GetFieldIndex(record, field);
+					var fieldValue = builder.BuildExtractValue(value, fieldIndex, field.Name);
+					EmitDropValue(fieldValue, fieldType, builder);
+				}
+				
+				break;
+			}
+		}
+	}
+	
+	private void EmitRecordDrop(Value value, RecordSymbol record, LLVMBuilderRef builder)
+	{
+		// Records own their dropping fields; the record storage itself may be stack
+		// storage, a field, or a dereferenced pointer. Never free the record address.
+		foreach (var field in record.Members.OfType<FieldSymbol>().Reverse())
+		{
+			var fieldType = _typePool.GetTypeOfMember(field);
+			if (!_typePool.NeedsDrop(fieldType))
+				continue;
+			
+			EmitDrop(new AccessValue(fieldType, value, field, value.SourceLocation), builder);
 		}
 	}
 	
@@ -464,7 +623,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 		IntegerConversion c => EmitIntegerConversion(c, EmitValue(v.Source, builder), builder),
 		NativeConversion c => EmitNativeConversion(c, v, builder),
 		FreeConversion => EmitValue(v.Source, builder),
-		FunctionConversion c => EmitValue(new CallValue(c.Function, [v.Source]), builder),
+		FunctionConversion c => EmitValue(new CallValue(c.Function, [v.Source], v.SourceLocation), builder),
 		_ => throw new InvalidOperationException()
 	};
 	
@@ -1025,7 +1184,8 @@ public readonly struct CodeGenResult
 public sealed record CodeGenConfig
 (
 	OutputConfig OutputConfig,
-	TargetConfig? TargetConfig // if null, compiles for current platform
+	TargetConfig? TargetConfig, // if null, compiles for current platform
+	OptimizeMode OptimizeMode
 )
 {
 	public uint GetPointerSize() => GetDataLayout().PointerSize;
@@ -1078,6 +1238,12 @@ public sealed record TargetConfig
 	string? Cpu = null,
 	string? Features = null
 );
+
+public enum OptimizeMode
+{
+	Debug,
+	Release
+}
 
 internal sealed class ByteArrayComparer : IEqualityComparer<byte[]>
 {

@@ -40,7 +40,7 @@ public readonly struct BinaryResolutionSet
 	}
 }
 
-public sealed class OperatorRegistry(ConversionTable conversionTable)
+public sealed class OperatorRegistry
 {
 	private static readonly ImmutableArray<TokenType> _numericBinOps =
 	[
@@ -112,7 +112,14 @@ public sealed class OperatorRegistry(ConversionTable conversionTable)
 	];
 	
 	private readonly Dictionary<UnaryOperationKey, OperationImpl> _unaryOps = CreateUnaryOps();
-	private readonly Dictionary<BinaryOperationKey, OperationImpl> _binaryOps = CreateBinaryOps();
+	private readonly Dictionary<BinaryOperationKey, OperationImpl> _binaryOps;
+	private readonly ConversionTable _conversionTable;
+	
+	public OperatorRegistry(ConversionTable conversionTable)
+	{
+		_conversionTable = conversionTable;
+		_binaryOps = CreateBinaryOps();
+	}
 	
 	private readonly record struct UnaryOperationKey(TokenType Op, TypeSymbol Operand);
 	private readonly record struct BinaryOperationKey(TypeSymbol Left, TokenType Op, TypeSymbol Right);
@@ -137,14 +144,14 @@ public sealed class OperatorRegistry(ConversionTable conversionTable)
 		BinaryResolution? rightCandidate = null;
 		var rightCost = int.MaxValue;
 		
-		var leftConversion = conversionTable.FindImplicit(left, right);
+		var leftConversion = _conversionTable.FindImplicit(left, right);
 		if (leftConversion is not null && _binaryOps.TryGetValue(new(right, op, right), out var impl))
 		{
 			leftCandidate = new(impl, leftConversion, null);
 			leftCost = leftConversion.Cost;
 		}
 		
-		var rightConversion = conversionTable.FindImplicit(right, left);
+		var rightConversion = _conversionTable.FindImplicit(right, left);
 		if (rightConversion is not null && _binaryOps.TryGetValue(new(left, op, left), out impl))
 		{
 			rightCandidate = new(impl, null, rightConversion);
@@ -185,7 +192,7 @@ public sealed class OperatorRegistry(ConversionTable conversionTable)
 		return result;
 	}
 	
-	private static Dictionary<BinaryOperationKey, OperationImpl> CreateBinaryOps()
+	private Dictionary<BinaryOperationKey, OperationImpl> CreateBinaryOps()
 	{
 		var result = new Dictionary<BinaryOperationKey, OperationImpl>();
 		
@@ -202,13 +209,6 @@ public sealed class OperatorRegistry(ConversionTable conversionTable)
 			result[new(NativeSymbols.Bool, op, NativeSymbols.Bool)] = new NativeImpl(op, NativeSymbols.Bool);
 		
 		// Pointers
-		result[new(NativeSymbols.VoidPtr, TokenType.OpPlus, NativeSymbols.VoidPtr)]
-			= new NativeImpl(TokenType.OpPlus, NativeSymbols.VoidPtr);
-		
-		result[new(NativeSymbols.VoidPtr, TokenType.OpMinus, NativeSymbols.VoidPtr)]
-			= new NativeImpl(TokenType.OpMinus, NativeSymbols.VoidPtr);
-		
-		
 		foreach (var op in _comparisonBinOps)
 			result[new(NativeSymbols.VoidPtr, op, NativeSymbols.VoidPtr)] = new NativeImpl(op, NativeSymbols.Bool);
 		
@@ -224,11 +224,16 @@ public abstract class OperationImpl(TokenType op, TypeSymbol result)
 	public TypeSymbol Result { get; } = result;
 }
 
-public sealed class NativeImpl(TokenType op, TypeSymbol result) : OperationImpl(op, result)
-{
-}
+public sealed class NativeImpl(TokenType op, TypeSymbol result) : OperationImpl(op, result);
 
 public sealed class FunctionImpl(TokenType op, FunctionInfo function) : OperationImpl(op, function.Signature.ReturnType)
 {
 	public FunctionInfo Function { get; } = function;
+}
+
+public sealed class ConversionImpl(TokenType op, TypeSymbol result) : OperationImpl(op, result)
+{
+	public Conversion? LeftConversion { get; init; }
+	public Conversion? RightConversion { get; init; }
+	public Conversion? ResultConversion { get; init; }
 }

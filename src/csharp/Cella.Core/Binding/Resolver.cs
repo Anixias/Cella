@@ -227,7 +227,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		new ResolvedExpressionStatementNode(VisitNode(node.ExpressionNode), node);
 	
 	public IResolvedExpressionNode Visit(CallExpressionNode node) =>
-		TryResolveCallTargetAsType(node.Target) is { } targetType
+		_typePool.TryResolveExpressionAsType(node.Target, CurrentResolutionContext.Resolve) is { } targetType
 			? VisitTypeCall(node, targetType)
 			: VisitFunctionCall(node);
 	
@@ -288,6 +288,12 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 					info = _dependencySignatureTable.Functions[function];
 					_importedFunctions.TryAdd(function, info);
 				}
+				else
+				{
+					// If function is from a different module in the same assembly, it's still an import
+					if (info.File.Module != CurrentResolutionContext.File.Module)
+						_importedFunctions.TryAdd(function, info);
+				}
 				
 				var paramTypes = info.Signature.ParameterTypes;
 				var args = new List<IResolvedExpressionNode>(node.Arguments.Length);
@@ -311,53 +317,6 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 				throw new NotImplementedException();
 		}
 	}
-	
-	private TypeSymbol? TryResolveCallTargetAsType(IExpressionNode target) => target switch
-	{
-		VarExpressionNode e => CurrentResolutionContext.Resolve(e.Identifier.Text) as TypeSymbol,
-		IndexerExpressionNode e => TryResolveIndexerAsGenericType(e),
-		AccessExpressionNode => null, // TODO Module qualifiers or nested types
-		_ => null
-	};
-	
-	private TypeSymbol? TryResolveIndexerAsGenericType(IndexerExpressionNode node)
-	{
-		// TODO AccessExpressionNode for module.GenericType[T]
-		if (node.Target is not VarExpressionNode varExpr)
-			return null;
-		
-		return TryResolveGenericTypeFromExpressions(varExpr.Identifier.Text, node.Arguments);
-	}
-	
-	private TypeSymbol? TryResolveGenericTypeFromExpressions(string name, IReadOnlyList<IExpressionNode> arguments)
-	{
-		var typeArgs = new List<IGenericArgument>(arguments.Count);
-		
-		foreach (var arg in arguments)
-		{
-			if (TryResolveExpressionAsType(arg) is { } typeArg)
-			{
-				typeArgs.Add(new GenericTypeArgument(typeArg));
-				continue;
-			}
-			
-			if (arg is not LiteralExpressionNode { Token: { Type: TokenType.IntegerLiteral } token }
-			    || !BigInteger.TryParse(token.AsSpan(), out var constVal))
-				return null;
-			
-			typeArgs.Add(new GenericConstArgument(constVal));
-		}
-		
-		return _typePool.ResolveBuiltinGenericType(name, typeArgs);
-	}
-	
-	private TypeSymbol? TryResolveExpressionAsType(IExpressionNode expr) => expr switch
-	{
-		VarExpressionNode varExpr => CurrentResolutionContext.Resolve(varExpr.Identifier.Text) as TypeSymbol,
-		IndexerExpressionNode indexerExpr => TryResolveIndexerAsGenericType(indexerExpr),
-		AccessExpressionNode => null, // TODO Module-qualified or nested types
-		_ => null
-	};
 	
 	public IResolvedExpressionNode Visit(HeapExpressionNode node)
 	{
@@ -383,7 +342,29 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 				throw new NotImplementedException(); // TODO Need to implement constructor initialization!!
 			
 			case IExpressionNode n:
+				var targetElementType = CurrentTargetType is PointerType { PointerKind: PointerKind.Owning } ptrType
+					? ptrType.BaseType
+					: null;
+				
+				var pushedTargetType = false;
+				if (targetElementType is not null)
+				{
+					pushedTargetType = true;
+					_targetTypes.Push(targetElementType);
+				}
+				
 				initializer = VisitNode(n);
+				
+				if (pushedTargetType)
+					_targetTypes.Pop();
+				
+				if (initializer.Type is UntypedType)
+				{
+					initializer = targetElementType is IntegerType intTarget
+						? MaterializeExpression(initializer, intTarget)
+						: MaterializeAsDefault(initializer);
+				}
+				
 				elementType = initializer.Type;
 				break;
 			
@@ -546,38 +527,26 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		object? value = null;
 		
 		var tokenType = node.Token.Type;
-		switch (tokenType)
+		(type, value) = tokenType switch
 		{
-			case TokenType.IntegerLiteral:
-				(type, value) = ParseInteger(valueSpan, CurrentTargetType);
-				break;
-			
-			case TokenType.KeywordNull:
-				(type, value) = (NativeSymbols.VoidPtr, null);
-				break;
-			
-			case TokenType.KeywordTrue:
-				(type, value) = (NativeSymbols.Bool, true);
-				break;
-			
-			case TokenType.KeywordFalse:
-				(type, value) = (NativeSymbols.Bool, false);
-				break;
-			
-			case TokenType.StringLiteral:
-				(type, value) = ParseString(valueSpan, CurrentTargetType);
-				break;
-			
-			case TokenType.CharLiteral:
-				(type, value) = ParseChar(valueSpan);
-				break;
-		}
+			TokenType.IntegerLiteral => ParseInteger(valueSpan, CurrentTargetType),
+			TokenType.KeywordNull => ParseNull(CurrentTargetType),
+			TokenType.KeywordTrue => (NativeSymbols.Bool, true),
+			TokenType.KeywordFalse => (NativeSymbols.Bool, false),
+			TokenType.StringLiteral => ParseString(valueSpan, CurrentTargetType),
+			TokenType.CharLiteral => ParseChar(valueSpan),
+			_ => (type, value)
+		};
 		
 		// TODO We should emit diagnostics here
 		type ??= NativeSymbols.Invalid;
 		
 		return new ResolvedLiteralExpressionNode(type, value, node);
 	}
+	
+	// TODO Won't work with subexpressions, might need an "untyped pointer" type like UntypedIntegerType
+	private (TypeSymbol? type, object? value) ParseNull(TypeSymbol? targetType) =>
+		targetType is PointerType ptrType ? (ptrType, null) : (NativeSymbols.VoidPtr, null);
 	
 	public IResolvedExpressionNode Visit(UndefExpressionNode node)
 	{
@@ -591,7 +560,8 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	
 	public IResolvedExpressionNode Visit(SizeOfExpressionNode node)
 	{
-		var target = TryResolveExpressionAsType(node.Expression) ?? VisitNode(node.Expression).Type;
+		var target = _typePool.TryResolveExpressionAsType(node.Expression, CurrentResolutionContext.Resolve)
+		             ?? VisitNode(node.Expression).Type;
 		
 		if (IsInvalid(target))
 			return new ResolvedInvalidExpressionNode(node);
@@ -659,7 +629,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			initializer = VisitNode(initializerNode);
 			_targetTypes.Pop();
 			
-			initializer = MaterializeAsDefault(initializer);
+			initializer = type is IntegerType i
+				? MaterializeExpression(initializer, i)
+				: MaterializeAsDefault(initializer);
 			
 			if (type is ArrayType a && a.Length < 0 && initializer.Type is ArrayType)
 				type = initializer.Type;
@@ -799,6 +771,10 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			case TokenType.OpStar:
 				return ResolveDereference(op.Type, operand, node);
 			
+			case TokenType.KeywordMut:
+			case TokenType.KeywordImm:
+				return ResolveBorrow(op.Type, operand, node);
+			
 			default:
 			{
 				var operation = _operatorRegistry.ResolveUnary(op.Type, operand.Type);
@@ -824,6 +800,23 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	{
 		var ptrType = _typePool.GetPointerType(operand.Type, PointerKind.Unsafe);
 		return new(operand, new NativeImpl(opType, ptrType), node);
+	}
+	
+	private IResolvedExpressionNode ResolveBorrow(TokenType opType, IResolvedExpressionNode operand,
+		UnaryOpExpressionNode node)
+	{
+		if (IsInvalid(operand.Type) || operand.Type is not PointerType { PointerKind: PointerKind.Owning } ptrType)
+			return Error(node, $"Cannot borrow type '{operand.Type.Name}'", null);
+		
+		var borrowType = _typePool.GetPointerType(ptrType.BaseType, opType switch
+		{
+			TokenType.KeywordMut => PointerKind.Mutable,
+			TokenType.KeywordImm => PointerKind.Immutable,
+			_ => throw new InvalidOperationException()
+		});
+		
+		return new ResolvedConversionExpressionNode(operand, new FreeConversion(operand.Type, borrowType,
+			ConversionKind.Implicit), node);
 	}
 	
 	public IResolvedExpressionNode Visit(BinaryOpExpressionNode node)
@@ -1209,6 +1202,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		PrimitiveTypeKind.UInt64 => (ulong)value,
 		PrimitiveTypeKind.UInt128 => (UInt128)value,
 		PrimitiveTypeKind.UIntSize => value,
+		PrimitiveTypeKind.Char => (uint)value,
 		_ => throw new InvalidOperationException()
 	};
 	
@@ -1226,6 +1220,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		PrimitiveTypeKind.UInt64 => value >= ulong.MinValue && value <= ulong.MaxValue,
 		PrimitiveTypeKind.UInt128 => value >= UInt128.MinValue && value <= UInt128.MaxValue,
 		PrimitiveTypeKind.UIntSize => value >= _usizeMinValue && value <= _usizeMaxValue,
+		PrimitiveTypeKind.Char => value >= uint.MinValue && value <= uint.MaxValue,
 		_ => false
 	};
 	

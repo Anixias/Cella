@@ -8,7 +8,8 @@ public readonly record struct FunctionInfo
 	FunctionSymbol Symbol,
 	FunctionSignature Signature,
 	Scope? Scope,
-	string? Origin
+	string? Origin,
+	FileSymbol File
 );
 
 public readonly record struct VariableInfo(VariableSymbol Symbol, TypeSymbol Type);

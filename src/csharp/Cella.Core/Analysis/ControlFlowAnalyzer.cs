@@ -1,16 +1,13 @@
 ﻿using Cella.Core.Collections;
 using Cella.Core.Lowering;
 using Cella.Core.Symbols;
+using Cella.Diagnostics;
 
 namespace Cella.Core.Analysis;
 
-public sealed class ControlFlowAnalyzer
+public sealed class ControlFlowAnalyzer(DiagnosticList diagnostics)
 {
-	public IReadOnlyList<string> Diagnostics => _diagnostics;
-	
-	private readonly List<string> _diagnostics = [];
-	
-	public void Analyze(LoweredFunction function)
+	public bool Analyze(LoweredFunction function)
 	{
 		var allPathsReturn = true;
 		foreach (var path in GetMinimalPaths(function))
@@ -25,11 +22,21 @@ public sealed class ControlFlowAnalyzer
 					}
 					break;
 			}
+			
+			if (!allPathsReturn)
+				break;
 		}
 		
 		// TEMP
 		if (!allPathsReturn)
-			_diagnostics.Add("Not all paths return a value!");
+		{
+			diagnostics.Add(new(DiagnosticSeverity.Error, function.Info.Symbol.Definition,
+				"Not all paths return a value!"));
+			
+			return false;
+		}
+		
+		return true;
 	}
 	
 	private enum BlockPathType

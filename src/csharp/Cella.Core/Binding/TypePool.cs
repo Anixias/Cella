@@ -3,6 +3,7 @@ using System.Numerics;
 using Cella.Core.Binding.Conversions;
 using Cella.Core.Binding.Operations;
 using Cella.Core.Symbols;
+using Cella.Core.Syntax.Nodes;
 using Cella.Core.Text;
 
 namespace Cella.Core.Binding;
@@ -20,6 +21,7 @@ public sealed class TypePool
 	private readonly Dictionary<TypeSymbol, ViewType> _viewTypes = [];
 	private readonly Dictionary<(TypeSymbol, PointerKind), PointerType> _pointerTypes = [];
 	private readonly Dictionary<TypedMemberSymbol, TypeSymbol> _memberTypes = [];
+	private readonly Dictionary<TypeSymbol, bool> _needsDrop = [];
 	
 	public TypePool(ConversionTable conversionTable, OperatorRegistry operatorRegistry, SizeTable sizeTable)
 	{
@@ -29,6 +31,10 @@ public sealed class TypePool
 		
 		CreateNativeMembers();
 	}
+	
+	public void SetNeedsDrop(TypeSymbol type, bool needsDrop) => _needsDrop[type] = needsDrop;
+	public bool NeedsDrop(TypeSymbol type) => _needsDrop.GetValueOrDefault(type, false);
+	public bool TryGetNeedsDrop(TypeSymbol type, out bool result) => _needsDrop.TryGetValue(type, out result);
 	
 	public TypeSymbol? ResolveBuiltinGenericType(string name, IReadOnlyList<IGenericArgument> typeArgs) => name switch
 	{
@@ -51,6 +57,116 @@ public sealed class TypePool
 		_ => null
 	};
 	
+	public TypeSymbol? TryResolveExpressionAsType(IExpressionNode expr, Func<string, Symbol?> resolveSymbol) =>
+		expr switch
+		{
+			VarExpressionNode v => resolveSymbol(v.Identifier.Text) as TypeSymbol,
+			IndexerExpressionNode i => TryResolveIndexerAsGenericType(i, resolveSymbol),
+			AccessExpressionNode => null, // TODO Module-qualified types like module.SomeType
+			_ => null
+		};
+	
+	private TypeSymbol? TryResolveIndexerAsGenericType(IndexerExpressionNode node, Func<string, Symbol?> resolveSymbol)
+	{
+		// TODO AccessExpressionNode for module.GenericType[T]
+		if (node.Target is not VarExpressionNode varExpr)
+			return null;
+		
+		var typeArgs = new List<IGenericArgument>(node.Arguments.Length);
+		
+		foreach (var arg in node.Arguments)
+		{
+			if (TryResolveExpressionAsType(arg, resolveSymbol) is { } typeArg)
+			{
+				typeArgs.Add(new GenericTypeArgument(typeArg));
+				continue;
+			}
+			
+			if (arg is not LiteralExpressionNode { Token: { Type: TokenType.IntegerLiteral } token }
+			    || !BigInteger.TryParse(token.AsSpan(), out var constVal))
+				return null;
+			
+			typeArgs.Add(new GenericConstArgument(constVal));
+		}
+		
+		return ResolveBuiltinGenericType(varExpr.Identifier.Text, typeArgs);
+	}
+	
+	private void CreatePointerArithmetic(PointerType ptrType)
+	{
+		var ptrToUSize = ConversionTable.FindExplicit(ptrType, NativeSymbols.UIntSize);
+		var uSizeToPtr = ConversionTable.FindExplicit(NativeSymbols.UIntSize, ptrType);
+		var ptrToISize = ConversionTable.FindExplicit(ptrType, NativeSymbols.IntSize);
+		
+		// usize(ptr[T]) + usize = ptr[T](usize)
+		OperatorRegistry.CreateBinary(ptrType, TokenType.OpPlus, NativeSymbols.UIntSize,
+			new ConversionImpl(TokenType.OpPlus, ptrType)
+			{
+				LeftConversion = ptrToUSize,
+				ResultConversion = uSizeToPtr
+			});
+		
+		// usize(ptr[T]) - usize = ptr[T](usize)
+		OperatorRegistry.CreateBinary(ptrType, TokenType.OpMinus, NativeSymbols.UIntSize,
+			new ConversionImpl(TokenType.OpMinus, ptrType)
+			{
+				LeftConversion = ptrToUSize,
+				ResultConversion = uSizeToPtr
+			});
+		
+		// isize(ptr[T]) - isize(ptr[T]) = isize
+		OperatorRegistry.CreateBinary(ptrType, TokenType.OpMinus, ptrType,
+			new ConversionImpl(TokenType.OpMinus, NativeSymbols.IntSize)
+			{
+				LeftConversion = ptrToISize,
+				RightConversion = ptrToISize
+			});
+		
+		if (ptrType == NativeSymbols.VoidPtr)
+			return;
+		
+		// isize(ptr[T]) - isize(ptr) = isize
+		// isize(ptr) - isize(ptr[T]) = isize
+		var voidPtrToISize = ConversionTable.FindExplicit(NativeSymbols.VoidPtr, NativeSymbols.IntSize);
+		
+		OperatorRegistry.CreateBinary(ptrType, TokenType.OpMinus, NativeSymbols.VoidPtr,
+			new ConversionImpl(TokenType.OpMinus, NativeSymbols.IntSize)
+			{
+				LeftConversion = ptrToISize,
+				RightConversion = voidPtrToISize
+			});
+		
+		OperatorRegistry.CreateBinary(NativeSymbols.VoidPtr, TokenType.OpMinus, ptrType,
+			new ConversionImpl(TokenType.OpMinus, NativeSymbols.IntSize)
+			{
+				LeftConversion = voidPtrToISize,
+				RightConversion = ptrToISize
+			});
+		
+		/*
+		// usize(ptr) - usize = ptr(usize)
+		result[new(NativeSymbols.VoidPtr, TokenType.OpMinus, NativeSymbols.UIntSize)]
+			= new ConversionImpl(TokenType.OpMinus, NativeSymbols.VoidPtr)
+			{
+				LeftConversion = NativeSymbols.UIntSize,
+				IntermediateResult = NativeSymbols.UIntSize
+			};
+		
+		// isize(ptr) - isize(ptr) = isize
+		result[new(NativeSymbols.VoidPtr, TokenType.OpMinus, NativeSymbols.VoidPtr)]
+			= new ConversionImpl(TokenType.OpMinus, NativeSymbols.IntSize)
+			{
+				LeftConversion = NativeSymbols.IntSize,
+				RightConversion = NativeSymbols.IntSize
+			};
+		 */
+		
+		return;
+		
+		void MakeBinary(TypeSymbol left, TokenType op, TypeSymbol right) =>
+			OperatorRegistry.CreateBinary(left, op, right, new NativeImpl(op, left));
+	}
+	
 	public PointerType GetPointerType(TypeSymbol baseType, PointerKind kind)
 	{
 		var key = (baseType, kind);
@@ -69,8 +185,24 @@ public sealed class TypePool
 			
 			default:
 				// All pointers except ptr[T] can be implicitly converted to ptr[T]
-				var unsafeType = new PointerType(baseType, PointerKind.Unsafe);
+				var unsafeType = GetPointerType(baseType, PointerKind.Unsafe);
 				ConversionTable.Add(new NativeConversion(ptrType, unsafeType, ConversionKind.Implicit, 0));
+				break;
+		}
+		
+		// Own <-> Unsafe
+		switch (kind)
+		{
+			case PointerKind.Owning:
+				var unsafeType = GetPointerType(baseType, PointerKind.Unsafe);
+				ConversionTable.Add(new NativeConversion(ptrType, unsafeType, ConversionKind.Explicit, 0));
+				ConversionTable.Add(new NativeConversion(unsafeType, ptrType, ConversionKind.Explicit, 0));
+				break;
+			
+			case PointerKind.Unsafe:
+				var ownType = GetPointerType(baseType, PointerKind.Owning);
+				ConversionTable.Add(new NativeConversion(ptrType, ownType, ConversionKind.Explicit, 0));
+				ConversionTable.Add(new NativeConversion(ownType, ptrType, ConversionKind.Explicit, 0));
 				break;
 		}
 		
@@ -83,6 +215,9 @@ public sealed class TypePool
 		ConversionTable.Add(new NativeConversion(NativeSymbols.UIntSize, ptrType, ConversionKind.Explicit, 0));
 		ConversionTable.Add(new NativeConversion(ptrType, NativeSymbols.IntSize, ConversionKind.Explicit, 0));
 		ConversionTable.Add(new NativeConversion(NativeSymbols.IntSize, ptrType, ConversionKind.Explicit, 0));
+		
+		// Pointer arithmetic
+		CreatePointerArithmetic(ptrType);
 		
 		return ptrType;
 	}
@@ -216,7 +351,29 @@ public sealed class TypePool
 		ConversionTable.Add(new NativeConversion(NativeSymbols.IntSize, cstr, ConversionKind.Explicit, 0));
 		
 		// TODO constructors, str.toCstr(), str.getCharLength(), etc.
-		//Register(NativeSymbols.Str, new IntrinsicMemberSymbol("byteLength", NativeSymbols.UIntSize));
+		CreateStrMembers();
+		
+		// Operations
+		CreatePointerArithmetic(NativeSymbols.VoidPtr);
+	}
+	
+	private void CreateStrMembers()
+	{
+		var lengthType = NativeSymbols.UIntSize;
+		var length = new PropertySymbol("byteLength")
+		{
+			Getter = new NativeAccessor(NativeMemberIntrinsic.StrByteLength)
+		};
+		
+		RegisterMember(NativeSymbols.Str, length, lengthType);
+		
+		var ptrType = GetPointerType(NativeSymbols.UInt8, PointerKind.Unsafe);
+		var data = new PropertySymbol("data")
+		{
+			Getter = new NativeAccessor(NativeMemberIntrinsic.StrData)
+		};
+		
+		RegisterMember(NativeSymbols.Str, data, ptrType);
 	}
 	
 	public void CreateArrayMembers(ArrayType type)

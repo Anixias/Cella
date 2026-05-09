@@ -55,8 +55,9 @@ public readonly struct ResolutionContext
 			if (type.Children.TryGetValue(name, out var member))
 				return member;
 		
-		if (File.Symbols.TryGetValue(name, out var fileSymbol))
-			return fileSymbol;
+		foreach (var file in File.Module.Files)
+			if (file.Symbols.TryGetValue(name, out var fileSymbol))
+				return fileSymbol;
 		
 		if (Imports?.Resolve(name) is { Length: > 0 } imports)
 			return ResolveFrom(name, imports);
@@ -102,7 +103,9 @@ public readonly struct ResolutionContext
     {
         TypeArgumentNode t => ResolveType(t.Type),
         IdentifierArgumentNode i => Resolve(i.Identifier.Text) as TypeSymbol ?? NativeSymbols.Invalid,
-        _ => NativeSymbols.Invalid
+        ExpressionArgumentNode e => TypePool.TryResolveExpressionAsType(e.Expression, Resolve)
+                                    ?? NativeSymbols.Invalid,
+	    _ => NativeSymbols.Invalid
     };
 	
     private BigInteger? ResolveConstIntArgument(IGenericArgumentNode node) => node switch

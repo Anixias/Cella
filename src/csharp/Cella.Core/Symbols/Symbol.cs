@@ -25,6 +25,17 @@ public interface IExportable
 	Visibility Visibility { get; }
 }
 
+public static class VisibilityExtensions
+{
+	extension(Visibility visibility)
+	{
+		public static Visibility FromModifiers(IEnumerable<Token> tokens) =>
+			tokens.Any(static t => t.Type == TokenType.KeywordPub)
+				? Visibility.Public
+				: Visibility.Private;
+	}
+}
+
 public abstract class Symbol(string name)
 {
 	public string Name { get; } = name;
@@ -43,12 +54,14 @@ public sealed class ModuleSymbol(ModuleName moduleName,
 {
 	public ModuleName ModuleName { get; } = moduleName;
 	public ImmutableArray<SourceLocation> Declarations { get; } = declarations.ToImmutableArray();
+	public List<FileSymbol> Files { get; } = [];
 }
 
 public sealed class FileSymbol(FileNode syntax, ModuleSymbol module, IEnumerable<Symbol> symbols)
 	: Symbol(syntax.FileName)
 {
 	public FileNode Syntax { get; } = syntax;
+	public string FullPath { get; } = syntax.FullPath;
 	public ModuleSymbol Module { get; } = module;
 	public ImmutableDictionary<string, Symbol> Symbols { get; } = symbols.ToImmutableDictionary(static s => s.Name);
 	// TODO Symbols by name won't work with overloaded functions
@@ -68,10 +81,7 @@ public sealed class FunctionSymbol
 	public FunctionInfo? ContainingFunction { get; } = containingFunction;
 	public ImmutableArray<ParameterSymbol> Parameters { get; } = parameters.ToImmutableArray();
 	public SourceLocation Definition { get; } = syntax.SourceLocation;
-	
-	public Visibility Visibility { get; } = syntax.Modifiers.Any(static t => t.Type == TokenType.KeywordPub)
-		? Visibility.Public
-		: Visibility.Private;
+	public Visibility Visibility { get; } = Visibility.FromModifiers(syntax.Modifiers);
 }
 
 public abstract class TypeSymbol(string name, TypeSymbol? containingType = null, params IEnumerable<Symbol> children)
@@ -205,11 +215,12 @@ public sealed class LabelSymbol(Token identifier) : Symbol(identifier.Text)
 	public SourceLocation Definition { get; } = identifier.SourceLocation;
 }
 
-public sealed class RecordSymbol : TypeSymbol
+public sealed class RecordSymbol : TypeSymbol, IExportable
 {
 	public RecordNode Node { get; }
 	public ImmutableArray<MemberSymbol> Members { get; }
 	public ImmutableArray<TypeSymbol> NestedTypes { get; }
+	public Visibility Visibility { get; }
 	
 	public RecordSymbol(string name, RecordNode node, IEnumerable<MemberSymbol> members,
 		IEnumerable<TypeSymbol> nestedTypes) : base(name)
@@ -217,6 +228,7 @@ public sealed class RecordSymbol : TypeSymbol
 		Node = node;
 		Members = members.ToImmutableArray();
 		NestedTypes = nestedTypes.ToImmutableArray();
+		Visibility = Visibility.FromModifiers(node.Modifiers);
 	}
 }
 
@@ -271,6 +283,8 @@ public enum SelfReferenceKind
 public enum NativeMemberIntrinsic
 {
 	ArrayLength,
+	StrByteLength,
+	StrData,
 	ArrayIndexGet,
 	ArrayIndexSet,
 	SpanIndexGet,

@@ -48,6 +48,8 @@ public enum TokenType
 	KeywordPub,
 	KeywordExt,
 	KeywordRec,
+	KeywordMut,
+	KeywordImm,
 	
 	// Operators
 	OpDotDotEqual,
@@ -151,6 +153,8 @@ public static class TokenTypeInfo
 			[TokenType.KeywordPub] = new("pub", IsKeyword: true, IsContextual: true),
 			[TokenType.KeywordExt] = new("ext", IsKeyword: true, IsContextual: true),
 			[TokenType.KeywordRec] = new("rec", IsKeyword: true, IsContextual: true),
+			[TokenType.KeywordMut] = new("mut", IsKeyword: true, IsContextual: true),
+			[TokenType.KeywordImm] = new("imm", IsKeyword: true, IsContextual: true),
 			
 			[TokenType.OpDotDotEqual] = new("..=", IsOperator: true),
 			[TokenType.OpDotDot] = new("..", IsOperator: true),

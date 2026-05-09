@@ -1,5 +1,5 @@
 ﻿using System.Numerics;
-using Cella.Core.Binding;
+using Cella.Core.Analysis;
 using Cella.Core.Binding.Nodes;
 using Cella.Core.Binding.Operations;
 using Cella.Core.Symbols;
@@ -8,13 +8,14 @@ using Cella.Core.Text;
 
 namespace Cella.Core.Lowering;
 
-public sealed class Lowerer(TypePool typePool) : IResolvedDeclarationNodeVisitor
+public sealed class Lowerer : IResolvedDeclarationNodeVisitor
 {
 	public IReadOnlyCollection<LoweredModule> Modules => _modules.Values;
+	public IReadOnlyCollection<LoweredFile> Files => _files.Values;
 	
 	private readonly Dictionary<ModuleSymbol, LoweredModule> _modules = [];
-	private readonly Stack<LoweredModule> _moduleStack = [];
-	private LoweredModule CurrentModule => _moduleStack.Peek();
+	private readonly Dictionary<FileSymbol, LoweredFile> _files = [];
+	private LoweredFile? currentFile;
 	
 	public void Lower(IResolvedDeclarationNode root) => VisitNode(root);
 	
@@ -29,17 +30,18 @@ public sealed class Lowerer(TypePool typePool) : IResolvedDeclarationNodeVisitor
 			_modules[moduleSymbol] = loweredModule;
 		}
 		
-		loweredModule.ImportedFunctions.AddRange(node.ImportedFunctions);
-		
-		_moduleStack.Push(loweredModule);
+		currentFile = new LoweredFile(node.Symbol);
+		_files[node.Symbol] = currentFile;
+		loweredModule.Files.Add(currentFile);
+		currentFile.ImportedFunctions.AddRange(node.ImportedFunctions);
 		
 		foreach (var declaration in node.Declarations)
 			VisitNode(declaration);
 		
-		_moduleStack.Pop();
+		currentFile = null;
 	}
 	
-	public void Visit(ResolvedFunctionNode node) => CurrentModule.Functions.Add(FunctionLowerer.Lower(node, typePool));
+	public void Visit(ResolvedFunctionNode node) => currentFile?.Functions.Add(FunctionLowerer.Lower(node));
 	public void Visit(ResolvedInvalidDeclarationNode node) => throw new InvalidOperationException();
 	
 	public void Visit(ResolvedRecordNode node)
@@ -47,7 +49,7 @@ public sealed class Lowerer(TypePool typePool) : IResolvedDeclarationNodeVisitor
 		foreach (var member in node.Members)
 			VisitNode(member);
 		
-		CurrentModule.Types.Add(node.Symbol);
+		currentFile?.Types.Add(node.Symbol);
 	}
 	
 	public void Visit(ResolvedFieldNode node)
@@ -61,47 +63,28 @@ public sealed class Lowerer(TypePool typePool) : IResolvedDeclarationNodeVisitor
 		VisitNode(node.FunctionNode);
 	}
 	
-	public void Visit(ResolvedExternalFunctionNode node) => CurrentModule.ExternalFunctions.Add(node.FunctionInfo);
+	public void Visit(ResolvedExternalFunctionNode node) => currentFile?.ExternalFunctions.Add(node.FunctionInfo);
 	
 	private sealed class FunctionLowerer : IResolvedStatementNodeVisitor, IResolvedExpressionNodeVisitor<Value>
 	{
 		private readonly record struct LoopContext(BasicBlock BreakTarget, BasicBlock ContinueTarget, int ScopeDepth);
 		
 		private readonly LoweredFunction _function;
-		private readonly TypePool _typePool;
-		private readonly Stack<List<Value>> _scopes = [];
 		private readonly Stack<LoopContext> _loopStack = [];
 		private readonly Dictionary<LabelSymbol, LoopContext> _loopsByLabel = [];
+		private readonly Stack<ActiveScope> _activeScopes = [];
 		private BasicBlock currentBlock;
 		private ulong nextLoopId;
 		private ulong nextTempId;
+		private int nextScopeId;
+		private int CurrentScopeId => _activeScopes.TryPeek(out var scope) ? scope.Id : 0;
 		
-		private FunctionLowerer(LoweredFunction function, TypePool typePool)
+		private readonly record struct ActiveScope(int Id, SourceLocation Location);
+		
+		private FunctionLowerer(LoweredFunction function)
 		{
 			_function = function;
-			_typePool = typePool;
 			currentBlock = CreateBlock("entry");
-		}
-		
-		private bool NeedsDrop(TypeSymbol type)
-		{
-			if (IsOwning(type))
-				return true;
-			
-			if (type is RecordSymbol record)
-				return record.Members.OfType<FieldSymbol>().Any(f => NeedsDrop(_typePool.GetTypeOfMember(f)));
-			
-			return false;
-		}
-		
-		private void UnwindScopes(int targetDepth, Value? moving = null)
-		{
-			// Don't drop the variable being moved (such as in a return statement)
-			foreach (var scope in _scopes.Take(_scopes.Count - targetDepth))
-				foreach (var value in scope)
-					if (moving is not VariableValue m || value is not VariableValue v ||
-					    v.Variable.Symbol != m.Variable.Symbol)
-						Drop(value);
 		}
 		
 		private ulong NextLoopId() => nextLoopId++;
@@ -118,10 +101,10 @@ public sealed class Lowerer(TypePool typePool) : IResolvedDeclarationNodeVisitor
 			? _loopStack.Peek()
 			: _loopsByLabel[label];
 		
-		public static LoweredFunction Lower(ResolvedFunctionNode node, TypePool typePool)
+		public static LoweredFunction Lower(ResolvedFunctionNode node)
 		{
 			var function = new LoweredFunction(node.FunctionInfo);
-			var lower = new FunctionLowerer(function, typePool);
+			var lower = new FunctionLowerer(function);
 			
 			switch (node.Body)
 			{
@@ -156,7 +139,7 @@ public sealed class Lowerer(TypePool typePool) : IResolvedDeclarationNodeVisitor
 				
 				default:
 				{
-					var reachableBlocks = FindReachableBlocks(function);
+					var reachableBlocks = CfgUtils.FindReachableBlocks(function);
 					
 					for (var i = function.Blocks.Count - 1; i >= 0; i--)
 					{
@@ -190,36 +173,48 @@ public sealed class Lowerer(TypePool typePool) : IResolvedDeclarationNodeVisitor
 		private Value VisitNode(IResolvedExpressionNode node) =>
 			((IResolvedExpressionNodeVisitor<Value>)this).Visit(node);
 		
+		private void BeginScope(SourceLocation location)
+		{
+			var id = ++nextScopeId;
+			currentBlock.Instructions.Add(new BeginScopeInstruction(id, location));
+			_activeScopes.Push(new ActiveScope(id, location));
+		}
+		
+		private void EndCurrentScope()
+		{
+			var scope = _activeScopes.Pop();
+			if (currentBlock.Terminator is UndefinedTerminator)
+				currentBlock.Instructions.Add(new EndScopeInstruction(scope.Id, scope.Location));
+		}
+		
+		private void EmitScopeEndsToDepth(int targetDepth)
+		{
+			foreach (var scope in _activeScopes.Take(Math.Max(0, _activeScopes.Count - targetDepth)))
+				currentBlock.Instructions.Add(new EndScopeInstruction(scope.Id, scope.Location));
+		}
+		
 		public void Visit(ResolvedBlockStatementNode node)
 		{
-			_scopes.Push([]);
-			
+			BeginScope(node.Syntax.SourceLocation);
 			foreach (var statement in node.Statements)
 				VisitNode(statement);
 			
-			var scopeVars = _scopes.Pop();
-			
-			// Only drop if scope ends without explicit control flow
-			if (currentBlock.Terminator is not UndefinedTerminator)
-				return;
-			
-			foreach (var v in scopeVars)
-				Drop(v);
+			EndCurrentScope();
 		}
 		
 		public void Visit(ResolvedBreakStatementNode node)
 		{
 			var context = GetLoopContext(node.Label);
-			UnwindScopes(context.ScopeDepth);
-			currentBlock.Terminator = new BranchTerminator(context.BreakTarget);
+			EmitScopeEndsToDepth(context.ScopeDepth);
+			currentBlock.Terminator = new BranchTerminator(context.BreakTarget, node.Syntax.SourceLocation);
 			currentBlock = CreateBlock("unreachable");
 		}
 		
 		public void Visit(ResolvedContinueStatementNode node)
 		{
 			var context = GetLoopContext(node.Label);
-			UnwindScopes(context.ScopeDepth);
-			currentBlock.Terminator = new BranchTerminator(context.ContinueTarget);
+			EmitScopeEndsToDepth(context.ScopeDepth);
+			currentBlock.Terminator = new BranchTerminator(context.ContinueTarget, node.Syntax.SourceLocation);
 			currentBlock = CreateBlock("unreachable");
 		}
 		
@@ -238,14 +233,14 @@ public sealed class Lowerer(TypePool typePool) : IResolvedDeclarationNodeVisitor
 			var elseBlock = node.Else is null ? null : CreateBlock("else");
 			var mergeBlock = CreateBlock("merge");
 			
-			currentBlock.Terminator = new ConditionalBranchTerminator(condition, thenBlock, elseBlock ?? mergeBlock);
+			currentBlock.Terminator = new ConditionalBranchTerminator(condition, thenBlock, elseBlock ?? mergeBlock, node.Condition.Syntax.SourceLocation);
 			
 			// Then block
 			currentBlock = thenBlock;
 			VisitNode(node.Then);
 			
 			if (currentBlock.Terminator is UndefinedTerminator)
-				currentBlock.Terminator = new BranchTerminator(mergeBlock);
+				currentBlock.Terminator = new BranchTerminator(mergeBlock, node.Syntax.SourceLocation);
 			
 			// Else block
 			if (node.Else is { } @else)
@@ -254,7 +249,7 @@ public sealed class Lowerer(TypePool typePool) : IResolvedDeclarationNodeVisitor
 				VisitNode(@else);
 				
 				if (currentBlock.Terminator is UndefinedTerminator)
-					currentBlock.Terminator = new BranchTerminator(mergeBlock);
+					currentBlock.Terminator = new BranchTerminator(mergeBlock, node.Syntax.SourceLocation);
 			}
 			
 			// Finish
@@ -268,29 +263,32 @@ public sealed class Lowerer(TypePool typePool) : IResolvedDeclarationNodeVisitor
 		{
 			var value = node.Expression is null ? null : VisitNode(node.Expression);
 			
-			// Return unwinds all scopes and also moves the expression
-			UnwindScopes(0, value);
+			if (value is not null)
+			{
+				var returnSymbol = CreateTempSymbol(value.Type, "return");
+				currentBlock.Instructions.Add(new LocalVarInstruction(returnSymbol, value,
+					node.Syntax.SourceLocation, scopeId: 0));
+				
+				value = new VariableValue(new(returnSymbol, value.Type), node.Syntax.SourceLocation);
+			}
 			
 			// We don't want to add further instructions to this terminated block, so create a dummy block
-			currentBlock.Terminator = ReturnTerminator.FromValue(value);
+			EmitScopeEndsToDepth(0);
+			currentBlock.Terminator = ReturnTerminator.FromValue(value, node.Syntax.SourceLocation);
 			currentBlock = CreateBlock("unreachable");
 		}
 		
 		public void Visit(ResolvedVarStatementNode node)
 		{
-			// TODO Check if initializer is uninitialized linear type
 			var value = node.Initializer is null ? new ZeroValue(node.Symbol.Type) : VisitNode(node.Initializer);
-			currentBlock.Instructions.Add(new LocalVarInstruction(node.Symbol, value));
-			InvalidateLinear(value);
-			
-			if (NeedsDrop(node.Symbol.Type) && _scopes.Count > 0)
-				_scopes.Peek().Add(new VariableValue(new(node.Symbol, node.Symbol.Type)));
+			currentBlock.Instructions.Add(new LocalVarInstruction(node.Symbol, value, node.Syntax.SourceLocation,
+				CurrentScopeId));
 		}
 		
 		private void VisitInLoop(IResolvedStatementNode body, BasicBlock breakBlock, BasicBlock continueBlock,
 			LabelSymbol? label)
 		{
-			var loopContext = new LoopContext(breakBlock, continueBlock, _scopes.Count);
+			var loopContext = new LoopContext(breakBlock, continueBlock, _activeScopes.Count);
 			if (label is not null)
 				_loopsByLabel[label] = loopContext;
 			
@@ -306,19 +304,19 @@ public sealed class Lowerer(TypePool typePool) : IResolvedDeclarationNodeVisitor
 			var condBlock = CreateBlock($"dowhile{id}_cond");
 			var exitBlock = CreateBlock($"dowhile{id}_exit");
 			
-			currentBlock.Terminator = new BranchTerminator(bodyBlock);
+			currentBlock.Terminator = new BranchTerminator(bodyBlock, node.Syntax.SourceLocation);
 			
 			// Body
 			currentBlock = bodyBlock;
 			VisitInLoop(node.Body, exitBlock, condBlock, node.Label);
 			
 			if (currentBlock.Terminator is UndefinedTerminator)
-				currentBlock.Terminator = new BranchTerminator(condBlock);
+				currentBlock.Terminator = new BranchTerminator(condBlock, node.Syntax.SourceLocation);
 			
 			// Condition
 			currentBlock = condBlock;
 			var condition = VisitNode(node.Condition);
-			currentBlock.Terminator = new ConditionalBranchTerminator(condition, bodyBlock, exitBlock);
+			currentBlock.Terminator = new ConditionalBranchTerminator(condition, bodyBlock, exitBlock, node.Condition.Syntax.SourceLocation);
 			
 			currentBlock = exitBlock;
 		}
@@ -329,14 +327,14 @@ public sealed class Lowerer(TypePool typePool) : IResolvedDeclarationNodeVisitor
 			var bodyBlock = CreateBlock($"loop{id}_body");
 			var exitBlock = CreateBlock($"loop{id}_exit");
 			
-			currentBlock.Terminator = new BranchTerminator(bodyBlock);
+			currentBlock.Terminator = new BranchTerminator(bodyBlock, node.Syntax.SourceLocation);
 			
 			// Body
 			currentBlock = bodyBlock;
 			VisitInLoop(node.Body, exitBlock, bodyBlock, node.Label);
 			
 			if (currentBlock.Terminator is UndefinedTerminator)
-				currentBlock.Terminator = new BranchTerminator(bodyBlock);
+				currentBlock.Terminator = new BranchTerminator(bodyBlock, node.Syntax.SourceLocation);
 			
 			currentBlock = exitBlock;
 		}
@@ -348,9 +346,11 @@ public sealed class Lowerer(TypePool typePool) : IResolvedDeclarationNodeVisitor
 			// Create implicit counter variable initialized with count
 			var countValue = VisitNode(node.Count);
 			var counterSymbol = CreateTempSymbol(countValue.Type, $"repeat{id}$i");
-			currentBlock.Instructions.Add(new LocalVarInstruction(counterSymbol, countValue));
+			var counterLocation = node.Count.Syntax.SourceLocation;
+			currentBlock.Instructions.Add(new LocalVarInstruction(counterSymbol, countValue, counterLocation,
+				CurrentScopeId));
 			
-			var counterVar = new VariableValue(new(counterSymbol, countValue.Type));
+			var counterVar = new VariableValue(new(counterSymbol, countValue.Type), counterLocation);
 			var one = MakeConstant(countValue.Type, BigInteger.One);
 			var zero = MakeConstant(countValue.Type, BigInteger.Zero);
 			
@@ -359,26 +359,29 @@ public sealed class Lowerer(TypePool typePool) : IResolvedDeclarationNodeVisitor
 			var latchBlock = CreateBlock($"repeat{id}_latch");
 			var exitBlock = CreateBlock($"repeat{id}_exit");
 			
-			currentBlock.Terminator = new BranchTerminator(condBlock);
+			currentBlock.Terminator = new BranchTerminator(condBlock, node.Syntax.SourceLocation);
 			
 			// Condition: counter > 0
 			currentBlock = condBlock;
-			var condition = new BinOpValue(countValue.Type, counterVar, zero, BinaryOperation.Greater);
-			currentBlock.Terminator = new ConditionalBranchTerminator(condition, bodyBlock, exitBlock);
+			var condition = new BinOpValue(countValue.Type, counterVar, zero, BinaryOperation.Greater, counterLocation);
+			currentBlock.Terminator = new ConditionalBranchTerminator(condition, bodyBlock, exitBlock,
+				node.Syntax.SourceLocation);
 			
 			// Body
 			currentBlock = bodyBlock;
 			VisitInLoop(node.Body, exitBlock, latchBlock, node.Label);
 			
 			if (currentBlock.Terminator is UndefinedTerminator)
-				currentBlock.Terminator = new BranchTerminator(latchBlock);
+				currentBlock.Terminator = new BranchTerminator(latchBlock, node.Syntax.SourceLocation);
 			
 			// Latch: decrement counter, jump back to condition
 			currentBlock = latchBlock;
 			var decrement = new AssignValue(countValue.Type, counterVar,
-				new BinOpValue(countValue.Type, counterVar, one, BinaryOperation.Subtraction));
+				new BinOpValue(countValue.Type, counterVar, one, BinaryOperation.Subtraction, counterLocation),
+				counterLocation);
+			
 			latchBlock.Instructions.Add(new ExpressionInstruction(decrement));
-			latchBlock.Terminator = new BranchTerminator(condBlock);
+			latchBlock.Terminator = new BranchTerminator(condBlock, node.Syntax.SourceLocation);
 			
 			currentBlock = exitBlock;
 		}
@@ -411,48 +414,48 @@ public sealed class Lowerer(TypePool typePool) : IResolvedDeclarationNodeVisitor
 			var bodyBlock = CreateBlock($"while{id}_body");
 			var exitBlock = CreateBlock($"while{id}_exit");
 			
-			currentBlock.Terminator = new BranchTerminator(condBlock);
+			currentBlock.Terminator = new BranchTerminator(condBlock, node.Syntax.SourceLocation);
 			
 			// Condition
 			currentBlock = condBlock;
 			var condition = VisitNode(node.Condition);
-			currentBlock.Terminator = new ConditionalBranchTerminator(condition, bodyBlock, exitBlock);
+			currentBlock.Terminator = new ConditionalBranchTerminator(condition, bodyBlock, exitBlock, node.Condition.Syntax.SourceLocation);
 			
 			// Body
 			currentBlock = bodyBlock;
 			VisitInLoop(node.Body, exitBlock, condBlock, node.Label);
 			
 			if (currentBlock.Terminator is UndefinedTerminator)
-				currentBlock.Terminator = new BranchTerminator(condBlock);
+				currentBlock.Terminator = new BranchTerminator(condBlock, node.Syntax.SourceLocation);
 			
 			currentBlock = exitBlock;
 		}
 		
 		public Value Visit(ResolvedConversionExpressionNode node) =>
-			new ConversionValue(VisitNode(node.Source), node.Conversion);
+			new ConversionValue(VisitNode(node.Source), node.Conversion, node.Syntax.SourceLocation);
 		
 		public Value Visit(ResolvedFunctionCallExpressionNode node) =>
-			new CallValue(node.Function, node.Arguments.Select(VisitNode));
+			new CallValue(node.Function, node.Arguments.Select(VisitNode), node.Syntax.SourceLocation);
 		
 		public Value Visit(ResolvedHeapExpressionNode node) =>
 			new HeapValue(node.Type, node.Initializer is { } initializer
 				? VisitNode(initializer)
-				: new ZeroValue(((PointerType)node.Type).BaseType));
+				: new ZeroValue(((PointerType)node.Type).BaseType), node.Syntax.SourceLocation);
 		
 		public Value Visit(ResolvedIndexerExpressionNode node) =>
-			new IndexerValue(node.Type, VisitNode(node.Target), VisitNode(node.Index));
+			new IndexerValue(node.Type, VisitNode(node.Target), VisitNode(node.Index), node.Syntax.SourceLocation);
 		
 		public Value Visit(ResolvedInvalidExpressionNode node) =>
 			throw new InvalidOperationException();
 		
 		public Value Visit(ResolvedAccessExpressionNode node) =>
-			new AccessValue(node.Type, VisitNode(node.Target), node.Member);
+			new AccessValue(node.Type, VisitNode(node.Target), node.Member, node.Syntax.SourceLocation);
 		
 		public Value Visit(ResolvedLiteralExpressionNode node) =>
 			MakeConstant(node.Type, node.Value);
 		
 		public Value Visit(ResolvedArrayExpressionNode node) =>
-			new ArrayValue((ArrayType)node.Type, node.Values.Select(VisitNode));
+			new ArrayValue((ArrayType)node.Type, node.Values.Select(VisitNode), node.Syntax.SourceLocation);
 		
 		public Value Visit(ResolvedUnaryOpExpressionNode node) =>
 			LowerUnaryOp(VisitNode(node.Operand), node.Operation);
@@ -461,7 +464,7 @@ public sealed class Lowerer(TypePool typePool) : IResolvedDeclarationNodeVisitor
 			new UndefValue(node.Type);
 		
 		public Value Visit(ResolvedVarExpressionNode node) =>
-			new VariableValue(new(node.Symbol, node.Type));
+			new VariableValue(new(node.Symbol, node.Type), node.Syntax.SourceLocation);
 		
 		public Value Visit(ResolvedBinaryOpExpressionNode node)
 		{
@@ -477,9 +480,13 @@ public sealed class Lowerer(TypePool typePool) : IResolvedDeclarationNodeVisitor
 		private VariableValue LowerShortCircuit(IResolvedExpressionNode leftNode, TokenType op,
 			IResolvedExpressionNode rightNode)
 		{
+			var sourceLocation = Join(leftNode.Syntax.SourceLocation, rightNode.Syntax.SourceLocation);
+			
 			var resultSymbol = CreateTempSymbol(NativeSymbols.Bool, "sc_result");
-			currentBlock.Instructions.Add(new LocalVarInstruction(resultSymbol, new UndefValue(NativeSymbols.Bool)));
-			var result = new VariableValue(new(resultSymbol, NativeSymbols.Bool));
+			currentBlock.Instructions.Add(new LocalVarInstruction(resultSymbol, new UndefValue(NativeSymbols.Bool),
+				leftNode.Syntax.SourceLocation, CurrentScopeId));
+			
+			var result = new VariableValue(new(resultSymbol, NativeSymbols.Bool), sourceLocation);
 			
 			var rightBlock = CreateBlock("sc_right");
 			var mergeBlock = CreateBlock("sc_merge");
@@ -487,17 +494,17 @@ public sealed class Lowerer(TypePool typePool) : IResolvedDeclarationNodeVisitor
 			var left = VisitNode(leftNode);
 			
 			currentBlock.Instructions.Add(
-				new ExpressionInstruction(new AssignValue(NativeSymbols.Bool, result, left)));
+				new ExpressionInstruction(new AssignValue(NativeSymbols.Bool, result, left, sourceLocation)));
 			
 			currentBlock.Terminator = op == TokenType.OpAmpersandAmpersand ?
-				new ConditionalBranchTerminator(result, rightBlock, mergeBlock)
-				: new ConditionalBranchTerminator(result, mergeBlock, rightBlock);
+				new ConditionalBranchTerminator(result, rightBlock, mergeBlock, leftNode.Syntax.SourceLocation)
+				: new ConditionalBranchTerminator(result, mergeBlock, rightBlock, leftNode.Syntax.SourceLocation);
 			
 			currentBlock = rightBlock;
 			var right = VisitNode(rightNode);
 			currentBlock.Instructions.Add(
-				new ExpressionInstruction(new AssignValue(NativeSymbols.Bool, result, right)));
-			currentBlock.Terminator = new BranchTerminator(mergeBlock);
+				new ExpressionInstruction(new AssignValue(NativeSymbols.Bool, result, right, sourceLocation)));
+			currentBlock.Terminator = new BranchTerminator(mergeBlock, rightNode.Syntax.SourceLocation);
 			currentBlock = mergeBlock;
 			return result;
 		}
@@ -514,64 +521,17 @@ public sealed class Lowerer(TypePool typePool) : IResolvedDeclarationNodeVisitor
 		public Value Visit(ResolvedAssignmentExpressionNode node)
 		{
 			var left = VisitNode(node.Left);
-			Drop(left);
-			
-			// TODO Check if right is already uninitialized linear type
 			var right = VisitNode(node.Right);
-			InvalidateLinear(right);
-			
 			return LowerAssignment(left, node.Op, right, node.Type);
-		}
-		
-		private void Drop(Value value)
-		{
-			if (IsOwning(value.Type))
-			{
-				var ptrType = (PointerType)value.Type;
-				
-				// left != null
-				var condition = new BinOpValue(NativeSymbols.Bool, value, new ZeroValue(value.Type),
-					BinaryOperation.NotEqual);
-				
-				var thenBlock = CreateBlock("drop_then");
-				var mergeBlock = CreateBlock("drop_merge");
-				thenBlock.Terminator = new BranchTerminator(mergeBlock);
-				
-				currentBlock.Terminator = new ConditionalBranchTerminator(condition, thenBlock, mergeBlock);
-				
-				// Then block
-				currentBlock = thenBlock;
-				
-				// Recursively drop owning fields
-				if (NeedsDrop(ptrType.BaseType))
-				{
-					var deref = new UnaryOpValue(ptrType.BaseType, value, UnaryOperation.Dereference);
-					Drop(deref);
-				}
-				
-				currentBlock.Instructions.Add(new DropInstruction(value));
-				currentBlock.Terminator = new BranchTerminator(mergeBlock);
-				
-				currentBlock = mergeBlock;
-				return;
-			}
-			
-			if (value.Type is not RecordSymbol record)
-				return;
-			
-			foreach (var field in record.Members.OfType<FieldSymbol>())
-			{
-				var type = _typePool.GetTypeOfMember(field);
-				if (NeedsDrop(type))
-					Drop(new AccessValue(type, value, field));
-			}
 		}
 		
 		public Value Visit(ResolvedChainedExpressionNode node)
 		{
 			var resultSymbol = CreateTempSymbol(NativeSymbols.Bool, "chain_result");
-			currentBlock.Instructions.Add(new LocalVarInstruction(resultSymbol, new UndefValue(NativeSymbols.Bool)));
-			var result = new VariableValue(new(resultSymbol, NativeSymbols.Bool));
+			currentBlock.Instructions.Add(new LocalVarInstruction(resultSymbol, new UndefValue(NativeSymbols.Bool),
+				node.Syntax.SourceLocation, CurrentScopeId));
+			
+			var result = new VariableValue(new(resultSymbol, NativeSymbols.Bool), node.Syntax.SourceLocation);
 			
 			var mergeBlock = CreateBlock("chain_merge");
 			var left = VisitNode(node.Operands[0]);
@@ -591,31 +551,35 @@ public sealed class Lowerer(TypePool typePool) : IResolvedDeclarationNodeVisitor
 				{
 					var tempSymbol = CreateTempSymbol(rightNode.Type, $"chain_inner{i}");
 					var rightValue = VisitNode(rightNode);
-					currentBlock.Instructions.Add(new LocalVarInstruction(tempSymbol, rightValue));
-					right = new VariableValue(new(tempSymbol, rightNode.Type));
+					currentBlock.Instructions.Add(new LocalVarInstruction(tempSymbol, rightValue,
+						rightNode.Syntax.SourceLocation, CurrentScopeId));
+					
+					right = new VariableValue(new(tempSymbol, rightNode.Type), rightNode.Syntax.SourceLocation);
 				}
 				
 				var comparison = LowerBinOp(left, op, right);
 				
 				if (isLast)
 				{
-					currentBlock.Instructions.Add(
-						new ExpressionInstruction(new AssignValue(NativeSymbols.Bool, result, comparison)));
+					currentBlock.Instructions.Add(new ExpressionInstruction(new AssignValue(NativeSymbols.Bool, result,
+						comparison, Join(result.SourceLocation, comparison.SourceLocation))));
 					
-					currentBlock.Terminator = new BranchTerminator(mergeBlock);
+					currentBlock.Terminator = new BranchTerminator(mergeBlock, node.Syntax.SourceLocation);
 				}
 				else
 				{
 					var nextBlock = CreateBlock("chain_next");
 					var falseBlock = CreateBlock("chain_false");
 					
-					currentBlock.Terminator = new ConditionalBranchTerminator(comparison, nextBlock, falseBlock);
+					currentBlock.Terminator = new ConditionalBranchTerminator(comparison, nextBlock, falseBlock,
+						comparison.SourceLocation);
 					
 					currentBlock = falseBlock;
 					currentBlock.Instructions.Add(
-						new ExpressionInstruction(new AssignValue(NativeSymbols.Bool, result, ConstantValue.False)));
+						new ExpressionInstruction(new AssignValue(NativeSymbols.Bool, result, ConstantValue.False,
+							comparison.SourceLocation)));
 					
-					currentBlock.Terminator = new BranchTerminator(mergeBlock);
+					currentBlock.Terminator = new BranchTerminator(mergeBlock, node.Syntax.SourceLocation);
 					
 					currentBlock = nextBlock;
 					left = right;
@@ -628,37 +592,60 @@ public sealed class Lowerer(TypePool typePool) : IResolvedDeclarationNodeVisitor
 		
 		private static AssignValue LowerAssignment(Value left, Token op, Value right, TypeSymbol type) => op.Type switch
 		{
-			TokenType.OpEqual => new AssignValue(type, left, right),
-			TokenType.OpPlusEqual => new AssignValue(type, left,
-				new BinOpValue(type, left, right, BinaryOperation.Addition)),
-			TokenType.OpMinusEqual => new AssignValue(type, left,
-				new BinOpValue(type, left, right, BinaryOperation.Subtraction)),
-			TokenType.OpStarEqual => new AssignValue(type, left,
-				new BinOpValue(type, left, right, BinaryOperation.Multiplication)),
-			TokenType.OpSlashEqual => new AssignValue(type, left,
-				new BinOpValue(type, left, right, BinaryOperation.Division)),
-			TokenType.OpPercentEqual => new AssignValue(type, left,
-				new BinOpValue(type, left, right, BinaryOperation.Modulo)),
-			TokenType.OpAmpersandEqual => new AssignValue(type, left,
-				new BinOpValue(type, left, right, BinaryOperation.BitwiseAnd)),
-			TokenType.OpBarEqual => new AssignValue(type, left,
-				new BinOpValue(type, left, right, BinaryOperation.BitwiseOr)),
-			TokenType.OpHatEqual => new AssignValue(type, left,
-				new BinOpValue(type, left, right, BinaryOperation.BitwiseXor)),
+			TokenType.OpEqual => new AssignValue(type, left, right, op.SourceLocation),
+			TokenType.OpPlusEqual => new AssignValue(type, left, new BinOpValue(type, left, right,
+				BinaryOperation.Addition, op.SourceLocation), op.SourceLocation),
+			TokenType.OpMinusEqual => new AssignValue(type, left, new BinOpValue(type, left, right,
+				BinaryOperation.Subtraction, op.SourceLocation), op.SourceLocation),
+			TokenType.OpStarEqual => new AssignValue(type, left, new BinOpValue(type, left, right,
+				BinaryOperation.Multiplication, op.SourceLocation), op.SourceLocation),
+			TokenType.OpSlashEqual => new AssignValue(type, left, new BinOpValue(type, left, right,
+				BinaryOperation.Division, op.SourceLocation), op.SourceLocation),
+			TokenType.OpPercentEqual => new AssignValue(type, left, new BinOpValue(type, left, right,
+				BinaryOperation.Modulo, op.SourceLocation), op.SourceLocation),
+			TokenType.OpAmpersandEqual => new AssignValue(type, left, new BinOpValue(type, left, right,
+				BinaryOperation.BitwiseAnd, op.SourceLocation), op.SourceLocation),
+			TokenType.OpBarEqual => new AssignValue(type, left, new BinOpValue(type, left, right,
+				BinaryOperation.BitwiseOr, op.SourceLocation), op.SourceLocation),
+			TokenType.OpHatEqual => new AssignValue(type, left, new BinOpValue(type, left, right,
+				BinaryOperation.BitwiseXor, op.SourceLocation), op.SourceLocation),
 			_ => throw new InvalidOperationException()
 		};
 		
 		private static Value LowerBinOp(Value left, OperationImpl? op, Value right) => op switch
 		{
-			NativeImpl native => new BinOpValue(native.Result, left, right, MapBinOp(native.Op)),
-			FunctionImpl function => new CallValue(function.Function, [left, right]),
+			NativeImpl native => new BinOpValue(native.Result, left, right, MapBinOp(native.Op),
+				Join(left.SourceLocation, right.SourceLocation)),
+			FunctionImpl function => new CallValue(function.Function, [left, right],
+				Join(left.SourceLocation, right.SourceLocation)),
+			ConversionImpl conversion => LowerConversionBinOp(left, conversion, right),
 			_ => throw new InvalidOperationException()
 		};
 		
+		private static Value LowerConversionBinOp(Value left, ConversionImpl conversion, Value right)
+		{
+			left = conversion.LeftConversion is { } leftConversion
+				? new ConversionValue(left, leftConversion, left.SourceLocation)
+				: left;
+			
+			right = conversion.RightConversion is { } rightConversion
+				? new ConversionValue(right, rightConversion, right.SourceLocation)
+				: right;
+			
+			var intermediateType = conversion.ResultConversion?.From ?? conversion.Result;
+			var intermediateResult = new BinOpValue(intermediateType, left, right,
+				MapBinOp(conversion.Op), Join(left.SourceLocation, right.SourceLocation));
+			
+			return conversion.ResultConversion is { } resultConversion
+				? new ConversionValue(intermediateResult, resultConversion, intermediateResult.SourceLocation)
+				: intermediateResult;
+		}
+		
 		private static Value LowerUnaryOp(Value operand, OperationImpl? op) => op switch
 		{
-			NativeImpl native => new UnaryOpValue(native.Result, operand, MapUnaryOp(native.Op)),
-			FunctionImpl function => new CallValue(function.Function, [operand]),
+			NativeImpl native => new UnaryOpValue(native.Result, operand, MapUnaryOp(native.Op),
+				operand.SourceLocation),
+			FunctionImpl function => new CallValue(function.Function, [operand], operand.SourceLocation),
 			_ => throw new InvalidOperationException()
 		};
 		
@@ -694,48 +681,11 @@ public sealed class Lowerer(TypePool typePool) : IResolvedDeclarationNodeVisitor
 			_ => throw new InvalidOperationException()
 		};
 		
-		private void InvalidateLinear(Value value)
+		private static SourceLocation Join(SourceLocation left, SourceLocation right)
 		{
-			// If it's an owning pointer (and not a new heap allocation), we set it to null
-			if (IsAssignable(value) && IsOwning(value.Type))
-				currentBlock.Instructions.Add(new ExpressionInstruction(
-					new AssignValue(value.Type, value, new ZeroValue(value.Type))));
+			var (source, range) = left;
+			range = range.Join(right.Range);
+			return new(source, range);
 		}
 	}
-	
-	private static HashSet<BasicBlock> FindReachableBlocks(LoweredFunction function)
-	{
-		if (function.Blocks.Count == 0)
-			return [];
-		
-		var reachable = new HashSet<BasicBlock>();
-		var queue = new Queue<BasicBlock>();
-		queue.Enqueue(function.Blocks[0]);
-		
-		while (queue.Count > 0)
-		{
-			var block = queue.Dequeue();
-			if (!reachable.Add(block))
-				continue;
-			
-			switch (block.Terminator)
-			{
-				case BranchTerminator t:
-					queue.Enqueue(t.Target);
-					break;
-				
-				case ConditionalBranchTerminator t:
-					queue.Enqueue(t.TrueTarget);
-					queue.Enqueue(t.FalseTarget);
-					break;
-			}
-		}
-		
-		return reachable;
-	}
-	
-	private static bool IsOwning(TypeSymbol type) => type is PointerType { PointerKind: PointerKind.Owning };
-	
-	// TODO Properties with backing fields, indexers, etc.?
-	private static bool IsAssignable(Value value) => value is VariableValue or AccessValue { Member: FieldSymbol };
 }
