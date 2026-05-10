@@ -9,17 +9,18 @@ public sealed class ControlFlowAnalyzer(DiagnosticList diagnostics)
 {
 	public bool Analyze(LoweredFunction function)
 	{
+		DetectUnreachableCode(function);
+		
 		var allPathsReturn = true;
 		foreach (var path in GetMinimalPaths(function))
 		{
 			switch (path.Type)
 			{
 				case BlockPathType.Undefined:
+				case BlockPathType.ReturnsVoid:
 					if (function.Info.Signature.ReturnType != NativeSymbols.Void)
-					{
-						// TODO Implicit void return but we require a return type, error!
 						allPathsReturn = false;
-					}
+					
 					break;
 			}
 			
@@ -27,30 +28,49 @@ public sealed class ControlFlowAnalyzer(DiagnosticList diagnostics)
 				break;
 		}
 		
-		// TEMP
-		if (!allPathsReturn)
-		{
-			diagnostics.Add(new(DiagnosticSeverity.Error, function.Info.Symbol.Definition,
-				"Not all paths return a value!"));
-			
-			return false;
-		}
+		if (allPathsReturn)
+			return true;
 		
-		return true;
+		diagnostics.Add(new(DiagnosticSeverity.Error, function.Info.Symbol.Definition,
+			"Not all paths return a value!"));
+		
+		return false;
+		
+	}
+	
+	private void DetectUnreachableCode(LoweredFunction function)
+	{
+		var reachableBlocks = CfgUtils.FindReachableBlocks(function);
+		
+		for (var i = function.Blocks.Count - 1; i >= 0; i--)
+		{
+			var block = function.Blocks[i];
+			
+			if (reachableBlocks.Contains(block))
+				continue;
+			
+			// Remove unused blocks
+			//function.Blocks.RemoveAt(i);
+			
+			var (source, range) = block.GetSourceLocation();
+			range = new(range.Start, range.Start); // Empty length to avoid coloring first character only
+			diagnostics.Add(DiagnosticReporter.ReportUnreachableCode(new(source, range)));
+		}
 	}
 	
 	private enum BlockPathType
 	{
 		Undefined,
-		Returns,
-		InfiniteLoop
+		ReturnsVoid,
+		ReturnsValue,
+		Loops
 	}
 	
 	private readonly record struct BlockPath(BlockPathType Type, OrderedSet<BasicBlock> Path);
 	
 	/// <summary>
 	/// Returns all minimal paths through a function body. Minimal means that the paths returned will not loop. If a
-	/// returned path has type <see cref="BlockPathType.InfiniteLoop"/>, it ends at the block that would have then
+	/// returned path has type <see cref="BlockPathType.Loops"/>, it ends at the block that would have then
 	/// looped back to a previously-visited block. It will only contain distinct blocks.
 	/// </summary>
 	private static IEnumerable<BlockPath> GetMinimalPaths(LoweredFunction function)
@@ -66,72 +86,76 @@ public sealed class ControlFlowAnalyzer(DiagnosticList diagnostics)
 	
 	private static IEnumerable<BlockPath> Explore(BasicBlock current, OrderedSet<BasicBlock> path)
 	{
-		switch (current.Terminator)
+		while (true)
 		{
-			case UndefinedTerminator:
-				yield return new(BlockPathType.Undefined, path);
-				yield break;
-			
-			case ReturnTerminator:
-				yield return new(BlockPathType.Returns, path);
-				yield break;
-			
-			case BranchTerminator term:
-				var target = term.Target;
-				
-				// Infinite loop
-				if (!path.Add(target))
-				{
-					yield return new(BlockPathType.InfiniteLoop, path);
+			switch (current.Terminator)
+			{
+				case UndefinedTerminator:
+					yield return new(BlockPathType.Undefined, path);
 					yield break;
-				}
 				
-				foreach (var subpath in Explore(target, path))
-					yield return subpath;
-				
-				yield break;
-			
-			case ConditionalBranchTerminator term:
-				var trueTarget = term.TrueTarget;
-				var falseTarget = term.FalseTarget;
-				var trueLoops = path.Contains(trueTarget);
-				var falseLoops = path.Contains(falseTarget);
-				
-				// Infinite loop
-				if (trueLoops && falseLoops)
-				{
-					yield return new(BlockPathType.InfiniteLoop, path);
+				case ReturnTerminator t:
+					yield return new(t.Value is null ? BlockPathType.ReturnsVoid : BlockPathType.ReturnsValue, path);
 					yield break;
-				}
 				
-				// If only one branch is going to be explored, we allow mutation of the path parameter
-				var allowModification = trueLoops != falseLoops;
+				case BranchTerminator term:
+					var target = term.Target;
+					
+					// Loop
+					if (!path.Add(target))
+					{
+						yield return new(BlockPathType.Loops, path);
+						yield break;
+					}
+					
+					current = target;
+					continue;
 				
-				if (!trueLoops)
-				{
-					var newPath = allowModification
-						? path
-						: new OrderedSet<BasicBlock>(path);
+				case ConditionalBranchTerminator term:
+					var trueTarget = term.TrueTarget;
+					var falseTarget = term.FalseTarget;
+					var trueLoops = path.Contains(trueTarget);
+					var falseLoops = path.Contains(falseTarget);
 					
-					newPath.Add(trueTarget);
+					// Infinite loop
+					if (trueLoops && falseLoops)
+					{
+						yield return new(BlockPathType.Loops, path);
+						yield break;
+					}
 					
-					foreach (var subpath in Explore(trueTarget, newPath))
-						yield return subpath;
-				}
-				
-				if (!falseLoops)
-				{
-					var newPath = allowModification
-						? path
-						: new OrderedSet<BasicBlock>(path);
+					// If only one branch is going to be explored, we allow mutation of the path parameter
+					var allowModification = trueLoops != falseLoops;
 					
-					newPath.Add(falseTarget);
+					if (!trueLoops)
+					{
+						var newPath = allowModification
+							? path
+							: new OrderedSet<BasicBlock>(path);
+						
+						newPath.Add(trueTarget);
+						
+						foreach (var subpath in Explore(trueTarget, newPath))
+							yield return subpath;
+					}
 					
-					foreach (var subpath in Explore(falseTarget, newPath))
-						yield return subpath;
-				}
-				
-				yield break;
+					if (!falseLoops)
+					{
+						var newPath = allowModification
+							? path
+							: new OrderedSet<BasicBlock>(path);
+						
+						newPath.Add(falseTarget);
+						
+						current = falseTarget;
+						path = newPath;
+						continue;
+					}
+					
+					yield break;
+			}
+			
+			break;
 		}
 	}
 }

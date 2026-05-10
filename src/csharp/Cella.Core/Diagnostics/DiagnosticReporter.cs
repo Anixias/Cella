@@ -9,6 +9,9 @@ namespace Cella.Diagnostics;
 
 public static class DiagnosticReporter
 {
+	public static Diagnostic ReportUnreachableCode(SourceLocation location) =>
+		new(DiagnosticSeverity.Warning, location, "Unreachable code");
+	
 	public static Diagnostic ReportBinaryOpMismatch(OperatorRegistry registry, IResolvedExpressionNode left, Token op,
 		IResolvedExpressionNode right)
 	{

@@ -1,5 +1,4 @@
 ﻿using System.Numerics;
-using Cella.Core.Analysis;
 using Cella.Core.Binding.Nodes;
 using Cella.Core.Binding.Operations;
 using Cella.Core.Symbols;
@@ -73,7 +72,7 @@ public sealed class Lowerer : IResolvedDeclarationNodeVisitor
 		private readonly Stack<LoopContext> _loopStack = [];
 		private readonly Dictionary<LabelSymbol, LoopContext> _loopsByLabel = [];
 		private readonly Stack<ActiveScope> _activeScopes = [];
-		private BasicBlock currentBlock;
+		private BasicBlock? currentBlock;
 		private ulong nextLoopId;
 		private ulong nextTempId;
 		private int nextScopeId;
@@ -89,6 +88,8 @@ public sealed class Lowerer : IResolvedDeclarationNodeVisitor
 		
 		private ulong NextLoopId() => nextLoopId++;
 		private ulong NextTempId() => nextTempId++;
+		
+		private BasicBlock GetOrMakeBlock() => currentBlock ??= CreateBlock("block");
 		
 		private BasicBlock CreateBlock(string hint)
 		{
@@ -114,12 +115,17 @@ public sealed class Lowerer : IResolvedDeclarationNodeVisitor
 				
 				// If expression body, synthesize a return statement
 				case IResolvedExpressionNode expression:
-					lower.Visit(new ResolvedReturnStatementNode(expression,
-						new ReturnStatementNode(expression.Syntax.SourceLocation, expression.Syntax)));
+					// If void return, we do not return the expression itself
+					if (node.FunctionInfo.Signature.ReturnType == NativeSymbols.Void)
+						lower.VisitNode(expression);
+					else
+						lower.Visit(new ResolvedReturnStatementNode(expression,
+							new ReturnStatementNode(expression.Syntax.SourceLocation, expression.Syntax)));
 					
 					break;
 			}
 			
+			// TODO Normalize after all analysis, right before codegen?
 			// Normalize blocks
 			switch (function.Blocks.Count)
 			{
@@ -127,36 +133,11 @@ public sealed class Lowerer : IResolvedDeclarationNodeVisitor
 					function.Blocks.Add(new("entry") { Terminator = ReturnTerminator.Void });
 					break;
 				
-				case 1:
-				{
-					var block = function.Blocks[0];
-					
-					if (block.Terminator == UndefinedTerminator.Instance)
-						block.Terminator = ReturnTerminator.Void;
-					
-					break;
-				}
-				
 				default:
 				{
-					var reachableBlocks = CfgUtils.FindReachableBlocks(function);
-					
-					for (var i = function.Blocks.Count - 1; i >= 0; i--)
-					{
-						var block = function.Blocks[i];
-						
-						// Remove unused blocks
-						if (!reachableBlocks.Contains(block))
-						{
-							function.Blocks.RemoveAt(i);
-							continue;
-						}
-						
-						// TODO Warn about unreachable code
-						
+					foreach (var block in function.Blocks)
 						if (block.Terminator is UndefinedTerminator)
 							block.Terminator = ReturnTerminator.Void;
-					}
 					
 					break;
 				}
@@ -176,21 +157,23 @@ public sealed class Lowerer : IResolvedDeclarationNodeVisitor
 		private void BeginScope(SourceLocation location)
 		{
 			var id = ++nextScopeId;
-			currentBlock.Instructions.Add(new BeginScopeInstruction(id, location));
+			GetOrMakeBlock().Instructions.Add(new BeginScopeInstruction(id, location));
 			_activeScopes.Push(new ActiveScope(id, location));
 		}
 		
 		private void EndCurrentScope()
 		{
 			var scope = _activeScopes.Pop();
-			if (currentBlock.Terminator is UndefinedTerminator)
-				currentBlock.Instructions.Add(new EndScopeInstruction(scope.Id, scope.Location));
+			
+			if (currentBlock is { Terminator: UndefinedTerminator } block)
+				block.Instructions.Add(new EndScopeInstruction(scope.Id, scope.Location.End));
 		}
 		
 		private void EmitScopeEndsToDepth(int targetDepth)
 		{
+			var block = GetOrMakeBlock();
 			foreach (var scope in _activeScopes.Take(Math.Max(0, _activeScopes.Count - targetDepth)))
-				currentBlock.Instructions.Add(new EndScopeInstruction(scope.Id, scope.Location));
+				block.Instructions.Add(new EndScopeInstruction(scope.Id, scope.Location.End));
 		}
 		
 		public void Visit(ResolvedBlockStatementNode node)
@@ -206,22 +189,22 @@ public sealed class Lowerer : IResolvedDeclarationNodeVisitor
 		{
 			var context = GetLoopContext(node.Label);
 			EmitScopeEndsToDepth(context.ScopeDepth);
-			currentBlock.Terminator = new BranchTerminator(context.BreakTarget, node.Syntax.SourceLocation);
-			currentBlock = CreateBlock("unreachable");
+			GetOrMakeBlock().Terminator = new BranchTerminator(context.BreakTarget, node.Syntax.SourceLocation);
+			currentBlock = null;
 		}
 		
 		public void Visit(ResolvedContinueStatementNode node)
 		{
 			var context = GetLoopContext(node.Label);
 			EmitScopeEndsToDepth(context.ScopeDepth);
-			currentBlock.Terminator = new BranchTerminator(context.ContinueTarget, node.Syntax.SourceLocation);
-			currentBlock = CreateBlock("unreachable");
+			GetOrMakeBlock().Terminator = new BranchTerminator(context.ContinueTarget, node.Syntax.SourceLocation);
+			currentBlock = null;
 		}
 		
 		public void Visit(ResolvedExpressionStatementNode node)
 		{
 			var expression = VisitNode(node.Expression);
-			currentBlock.Instructions.Add(new ExpressionInstruction(expression));
+			GetOrMakeBlock().Instructions.Add(new ExpressionInstruction(expression));
 		}
 		
 		public void Visit(ResolvedIfStatementNode node)
@@ -233,23 +216,20 @@ public sealed class Lowerer : IResolvedDeclarationNodeVisitor
 			var elseBlock = node.Else is null ? null : CreateBlock("else");
 			var mergeBlock = CreateBlock("merge");
 			
-			currentBlock.Terminator = new ConditionalBranchTerminator(condition, thenBlock, elseBlock ?? mergeBlock, node.Condition.Syntax.SourceLocation);
+			GetOrMakeBlock().Terminator = new ConditionalBranchTerminator(condition, thenBlock, elseBlock ?? mergeBlock,
+				node.Condition.Syntax.SourceLocation);
 			
 			// Then block
 			currentBlock = thenBlock;
 			VisitNode(node.Then);
-			
-			if (currentBlock.Terminator is UndefinedTerminator)
-				currentBlock.Terminator = new BranchTerminator(mergeBlock, node.Syntax.SourceLocation);
+			currentBlock?.FillTerminator(new BranchTerminator(mergeBlock, node.Syntax.SourceLocation));
 			
 			// Else block
 			if (node.Else is { } @else)
 			{
 				currentBlock = elseBlock!;
 				VisitNode(@else);
-				
-				if (currentBlock.Terminator is UndefinedTerminator)
-					currentBlock.Terminator = new BranchTerminator(mergeBlock, node.Syntax.SourceLocation);
+				currentBlock?.FillTerminator(new BranchTerminator(mergeBlock, node.Syntax.SourceLocation));
 			}
 			
 			// Finish
@@ -263,25 +243,25 @@ public sealed class Lowerer : IResolvedDeclarationNodeVisitor
 		{
 			var value = node.Expression is null ? null : VisitNode(node.Expression);
 			
+			var block = GetOrMakeBlock();
 			if (value is not null)
 			{
 				var returnSymbol = CreateTempSymbol(value.Type, "return");
-				currentBlock.Instructions.Add(new LocalVarInstruction(returnSymbol, value,
+				block.Instructions.Add(new LocalVarInstruction(returnSymbol, value,
 					node.Syntax.SourceLocation, scopeId: 0));
 				
 				value = new VariableValue(new(returnSymbol, value.Type), node.Syntax.SourceLocation);
 			}
 			
-			// We don't want to add further instructions to this terminated block, so create a dummy block
 			EmitScopeEndsToDepth(0);
-			currentBlock.Terminator = ReturnTerminator.FromValue(value, node.Syntax.SourceLocation);
-			currentBlock = CreateBlock("unreachable");
+			block.Terminator = ReturnTerminator.FromValue(value, node.Syntax.SourceLocation);
+			currentBlock = null;
 		}
 		
 		public void Visit(ResolvedVarStatementNode node)
 		{
 			var value = node.Initializer is null ? new ZeroValue(node.Symbol.Type) : VisitNode(node.Initializer);
-			currentBlock.Instructions.Add(new LocalVarInstruction(node.Symbol, value, node.Syntax.SourceLocation,
+			GetOrMakeBlock().Instructions.Add(new LocalVarInstruction(node.Symbol, value, node.Syntax.SourceLocation,
 				CurrentScopeId));
 		}
 		
@@ -304,19 +284,18 @@ public sealed class Lowerer : IResolvedDeclarationNodeVisitor
 			var condBlock = CreateBlock($"dowhile{id}_cond");
 			var exitBlock = CreateBlock($"dowhile{id}_exit");
 			
-			currentBlock.Terminator = new BranchTerminator(bodyBlock, node.Syntax.SourceLocation);
+			GetOrMakeBlock().Terminator = new BranchTerminator(bodyBlock, node.Syntax.SourceLocation);
 			
 			// Body
 			currentBlock = bodyBlock;
 			VisitInLoop(node.Body, exitBlock, condBlock, node.Label);
-			
-			if (currentBlock.Terminator is UndefinedTerminator)
-				currentBlock.Terminator = new BranchTerminator(condBlock, node.Syntax.SourceLocation);
+			currentBlock?.FillTerminator(new BranchTerminator(condBlock, node.Syntax.SourceLocation));
 			
 			// Condition
 			currentBlock = condBlock;
 			var condition = VisitNode(node.Condition);
-			currentBlock.Terminator = new ConditionalBranchTerminator(condition, bodyBlock, exitBlock, node.Condition.Syntax.SourceLocation);
+			currentBlock?.FillTerminator(new ConditionalBranchTerminator(condition, bodyBlock, exitBlock,
+					node.Condition.Syntax.SourceLocation));
 			
 			currentBlock = exitBlock;
 		}
@@ -327,14 +306,12 @@ public sealed class Lowerer : IResolvedDeclarationNodeVisitor
 			var bodyBlock = CreateBlock($"loop{id}_body");
 			var exitBlock = CreateBlock($"loop{id}_exit");
 			
-			currentBlock.Terminator = new BranchTerminator(bodyBlock, node.Syntax.SourceLocation);
+			GetOrMakeBlock().Terminator = new BranchTerminator(bodyBlock, node.Syntax.SourceLocation);
 			
 			// Body
 			currentBlock = bodyBlock;
 			VisitInLoop(node.Body, exitBlock, bodyBlock, node.Label);
-			
-			if (currentBlock.Terminator is UndefinedTerminator)
-				currentBlock.Terminator = new BranchTerminator(bodyBlock, node.Syntax.SourceLocation);
+			currentBlock?.FillTerminator(new BranchTerminator(bodyBlock, node.Syntax.SourceLocation));
 			
 			currentBlock = exitBlock;
 		}
@@ -347,7 +324,8 @@ public sealed class Lowerer : IResolvedDeclarationNodeVisitor
 			var countValue = VisitNode(node.Count);
 			var counterSymbol = CreateTempSymbol(countValue.Type, $"repeat{id}$i");
 			var counterLocation = node.Count.Syntax.SourceLocation;
-			currentBlock.Instructions.Add(new LocalVarInstruction(counterSymbol, countValue, counterLocation,
+			var block = GetOrMakeBlock();
+			block.Instructions.Add(new LocalVarInstruction(counterSymbol, countValue, counterLocation,
 				CurrentScopeId));
 			
 			var counterVar = new VariableValue(new(counterSymbol, countValue.Type), counterLocation);
@@ -359,7 +337,7 @@ public sealed class Lowerer : IResolvedDeclarationNodeVisitor
 			var latchBlock = CreateBlock($"repeat{id}_latch");
 			var exitBlock = CreateBlock($"repeat{id}_exit");
 			
-			currentBlock.Terminator = new BranchTerminator(condBlock, node.Syntax.SourceLocation);
+			block.Terminator = new BranchTerminator(condBlock, node.Syntax.SourceLocation);
 			
 			// Condition: counter > 0
 			currentBlock = condBlock;
@@ -370,9 +348,7 @@ public sealed class Lowerer : IResolvedDeclarationNodeVisitor
 			// Body
 			currentBlock = bodyBlock;
 			VisitInLoop(node.Body, exitBlock, latchBlock, node.Label);
-			
-			if (currentBlock.Terminator is UndefinedTerminator)
-				currentBlock.Terminator = new BranchTerminator(latchBlock, node.Syntax.SourceLocation);
+			currentBlock?.FillTerminator(new BranchTerminator(latchBlock, node.Syntax.SourceLocation));
 			
 			// Latch: decrement counter, jump back to condition
 			currentBlock = latchBlock;
@@ -414,19 +390,18 @@ public sealed class Lowerer : IResolvedDeclarationNodeVisitor
 			var bodyBlock = CreateBlock($"while{id}_body");
 			var exitBlock = CreateBlock($"while{id}_exit");
 			
-			currentBlock.Terminator = new BranchTerminator(condBlock, node.Syntax.SourceLocation);
+			GetOrMakeBlock().Terminator = new BranchTerminator(condBlock, node.Syntax.SourceLocation);
 			
 			// Condition
 			currentBlock = condBlock;
 			var condition = VisitNode(node.Condition);
-			currentBlock.Terminator = new ConditionalBranchTerminator(condition, bodyBlock, exitBlock, node.Condition.Syntax.SourceLocation);
+			currentBlock?.FillTerminator(new ConditionalBranchTerminator(condition, bodyBlock, exitBlock,
+				node.Condition.Syntax.SourceLocation));
 			
 			// Body
 			currentBlock = bodyBlock;
 			VisitInLoop(node.Body, exitBlock, condBlock, node.Label);
-			
-			if (currentBlock.Terminator is UndefinedTerminator)
-				currentBlock.Terminator = new BranchTerminator(condBlock, node.Syntax.SourceLocation);
+			currentBlock?.FillTerminator(new BranchTerminator(condBlock, node.Syntax.SourceLocation));
 			
 			currentBlock = exitBlock;
 		}
@@ -483,7 +458,8 @@ public sealed class Lowerer : IResolvedDeclarationNodeVisitor
 			var sourceLocation = Join(leftNode.Syntax.SourceLocation, rightNode.Syntax.SourceLocation);
 			
 			var resultSymbol = CreateTempSymbol(NativeSymbols.Bool, "sc_result");
-			currentBlock.Instructions.Add(new LocalVarInstruction(resultSymbol, new UndefValue(NativeSymbols.Bool),
+			var block = GetOrMakeBlock();
+			block.Instructions.Add(new LocalVarInstruction(resultSymbol, new UndefValue(NativeSymbols.Bool),
 				leftNode.Syntax.SourceLocation, CurrentScopeId));
 			
 			var result = new VariableValue(new(resultSymbol, NativeSymbols.Bool), sourceLocation);
@@ -493,18 +469,24 @@ public sealed class Lowerer : IResolvedDeclarationNodeVisitor
 			
 			var left = VisitNode(leftNode);
 			
-			currentBlock.Instructions.Add(
+			block.Instructions.Add(
 				new ExpressionInstruction(new AssignValue(NativeSymbols.Bool, result, left, sourceLocation)));
 			
-			currentBlock.Terminator = op == TokenType.OpAmpersandAmpersand ?
+			block.Terminator = op == TokenType.OpAmpersandAmpersand ?
 				new ConditionalBranchTerminator(result, rightBlock, mergeBlock, leftNode.Syntax.SourceLocation)
 				: new ConditionalBranchTerminator(result, mergeBlock, rightBlock, leftNode.Syntax.SourceLocation);
 			
 			currentBlock = rightBlock;
 			var right = VisitNode(rightNode);
-			currentBlock.Instructions.Add(
-				new ExpressionInstruction(new AssignValue(NativeSymbols.Bool, result, right, sourceLocation)));
-			currentBlock.Terminator = new BranchTerminator(mergeBlock, rightNode.Syntax.SourceLocation);
+			
+			if (currentBlock is not null)
+			{
+				currentBlock.Instructions.Add(
+					new ExpressionInstruction(new AssignValue(NativeSymbols.Bool, result, right, sourceLocation)));
+				
+				currentBlock.FillTerminator(new BranchTerminator(mergeBlock, rightNode.Syntax.SourceLocation));
+			}
+			
 			currentBlock = mergeBlock;
 			return result;
 		}
@@ -528,7 +510,8 @@ public sealed class Lowerer : IResolvedDeclarationNodeVisitor
 		public Value Visit(ResolvedChainedExpressionNode node)
 		{
 			var resultSymbol = CreateTempSymbol(NativeSymbols.Bool, "chain_result");
-			currentBlock.Instructions.Add(new LocalVarInstruction(resultSymbol, new UndefValue(NativeSymbols.Bool),
+			var block = GetOrMakeBlock();
+			block.Instructions.Add(new LocalVarInstruction(resultSymbol, new UndefValue(NativeSymbols.Bool),
 				node.Syntax.SourceLocation, CurrentScopeId));
 			
 			var result = new VariableValue(new(resultSymbol, NativeSymbols.Bool), node.Syntax.SourceLocation);
@@ -551,7 +534,7 @@ public sealed class Lowerer : IResolvedDeclarationNodeVisitor
 				{
 					var tempSymbol = CreateTempSymbol(rightNode.Type, $"chain_inner{i}");
 					var rightValue = VisitNode(rightNode);
-					currentBlock.Instructions.Add(new LocalVarInstruction(tempSymbol, rightValue,
+					block.Instructions.Add(new LocalVarInstruction(tempSymbol, rightValue,
 						rightNode.Syntax.SourceLocation, CurrentScopeId));
 					
 					right = new VariableValue(new(tempSymbol, rightNode.Type), rightNode.Syntax.SourceLocation);
@@ -561,17 +544,17 @@ public sealed class Lowerer : IResolvedDeclarationNodeVisitor
 				
 				if (isLast)
 				{
-					currentBlock.Instructions.Add(new ExpressionInstruction(new AssignValue(NativeSymbols.Bool, result,
+					block.Instructions.Add(new ExpressionInstruction(new AssignValue(NativeSymbols.Bool, result,
 						comparison, Join(result.SourceLocation, comparison.SourceLocation))));
 					
-					currentBlock.Terminator = new BranchTerminator(mergeBlock, node.Syntax.SourceLocation);
+					block.Terminator = new BranchTerminator(mergeBlock, node.Syntax.SourceLocation);
 				}
 				else
 				{
 					var nextBlock = CreateBlock("chain_next");
 					var falseBlock = CreateBlock("chain_false");
 					
-					currentBlock.Terminator = new ConditionalBranchTerminator(comparison, nextBlock, falseBlock,
+					block.Terminator = new ConditionalBranchTerminator(comparison, nextBlock, falseBlock,
 						comparison.SourceLocation);
 					
 					currentBlock = falseBlock;

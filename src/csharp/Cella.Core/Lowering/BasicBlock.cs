@@ -12,6 +12,22 @@ public sealed class BasicBlock(string label)
 	public string Label { get; } = label;
 	public List<IInstruction> Instructions { get; } = [];
 	public IBlockTerminator Terminator { get; set; } = UndefinedTerminator.Instance;
+	
+	public SourceLocation GetSourceLocation()
+	{
+		if (Instructions.Count == 0)
+			return SourceLocation.None;
+		
+		var (source, range) = Instructions[0].SourceLocation;
+		range = range.Join(Instructions[^1].SourceLocation.Range);
+		return new SourceLocation(source, range);
+	}
+	
+	public void FillTerminator(IBlockTerminator terminator)
+	{
+		if (Terminator is UndefinedTerminator)
+			Terminator = terminator;
+	}
 }
 
 public abstract class Value(TypeSymbol type, SourceLocation sourceLocation)

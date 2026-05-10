@@ -414,12 +414,15 @@ internal static class Program
 		
 		foreach (var (file, set) in diagnosticsByFile.OrderBy(static kvp => kvp.Key))
 		{
-			var path = rootDirectory is not null ? Path.GetRelativePath(rootDirectory, file) : file;
-			
-			Console.ForegroundColor = ConsoleColor.Blue;
-			Console.WriteLine($"\n====== {path} ======");
-			Console.WriteLine();
-			Console.ForegroundColor = ConsoleColor.Gray;
+			if (!string.IsNullOrEmpty(file))
+			{
+				var path = rootDirectory is not null ? Path.GetRelativePath(rootDirectory, file) : file;
+				
+				Console.ForegroundColor = ConsoleColor.Blue;
+				Console.WriteLine($"\n====== {path} ======");
+				Console.WriteLine();
+				Console.ForegroundColor = ConsoleColor.Gray;
+			}
 			
 			foreach (var diagnostic in set)
 				PrintDiagnostic(diagnostic);
