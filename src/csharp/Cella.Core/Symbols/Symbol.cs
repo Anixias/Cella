@@ -63,7 +63,10 @@ public sealed class FileSymbol(FileNode syntax, ModuleSymbol module, IEnumerable
 	public FileNode Syntax { get; } = syntax;
 	public string FullPath { get; } = syntax.FullPath;
 	public ModuleSymbol Module { get; } = module;
-	public ImmutableDictionary<string, Symbol> Symbols { get; } = symbols.ToImmutableDictionary(static s => s.Name);
+	public ImmutableDictionary<string, HashSet<Symbol>> Symbols { get; } = symbols
+		.GroupBy(static s => s.Name)
+		.ToImmutableDictionary(static g => g.Key, static g => g.ToHashSet());
+	
 	// TODO Symbols by name won't work with overloaded functions
 }
 

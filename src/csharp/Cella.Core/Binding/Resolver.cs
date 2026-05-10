@@ -280,8 +280,16 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 				}
 				
 				if (symbol is not FunctionSymbol function)
+				{
+					if (symbol is AmbiguousSymbol ambiguous)
+					{
+						// TODO Check function overloads
+						return Error(node, $"Symbol '{functionName}' is ambiguous", CurrentTargetType, varExpr);
+					}
+					
 					return Error(node, $"Symbol '{functionName}' is not a function or type", CurrentTargetType,
 						varExpr);
+				}
 				
 				if (!_assemblySignatureTable.Functions.TryGetValue(function, out var info))
 				{

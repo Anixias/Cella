@@ -18,13 +18,21 @@ public readonly record struct SymbolTable
 		{
 			ModuleSymbols = ModuleSymbols.ToImmutableDictionary(),
 			SymbolsByModule = SymbolsByModule.ToImmutableDictionary(static kvp => kvp.Key,
-				static kvp => kvp.Value.ToImmutableDictionary(static s => s.Name)),
+				static kvp => kvp.Value
+					.GroupBy(static s => s.Name)
+					.ToImmutableDictionary(static g => g.Key, static g => g.ToHashSet())),
 			DeclarationSymbols = DeclarationSymbols.ToImmutableDictionary()
 		};
 	}
 	
 	public ImmutableDictionary<ModuleName, ModuleSymbol> ModuleSymbols { get; init; }
-	public ImmutableDictionary<ModuleSymbol, ImmutableDictionary<string, Symbol>> SymbolsByModule { get; init; }
+	
+	public ImmutableDictionary<ModuleSymbol, ImmutableDictionary<string, HashSet<Symbol>>> SymbolsByModule
+	{
+		get;
+		init;
+	}
+	
 	public ImmutableDictionary<IDeclarationNode, Symbol> DeclarationSymbols { get; init; }
 	
 	public static readonly SymbolTable Empty = new()

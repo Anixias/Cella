@@ -8,17 +8,7 @@ public sealed class SymbolCollector : IDeclarationNodeVisitor<Symbol>
 	private readonly SymbolTable.Builder _builder = new();
 	private readonly List<Symbol> _symbolsInFile = [];
 	
-	public SymbolTable Build()
-	{
-		try
-		{
-			return _builder.Build();
-		}
-		catch (Exception e)
-		{
-			return _builder.Build();
-		}
-	}
+	public SymbolTable Build() => _builder.Build();
 	
 	public void Collect(IDeclarationNode root) => VisitNode(root);
 	

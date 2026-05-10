@@ -1,5 +1,4 @@
-﻿using System.Collections.Immutable;
-using System.Numerics;
+﻿using System.Numerics;
 using Cella.Core.Symbols;
 using Cella.Core.Syntax.Nodes;
 using Cella.Core.Text;
@@ -33,10 +32,10 @@ public readonly struct ResolutionContext
 		return result;
 	}
 	
-	private static Symbol? ResolveFrom(string name, ImmutableArray<Symbol> candidates) => candidates switch
+	private static Symbol? ResolveFrom(string name, IReadOnlyCollection<Symbol> candidates) => candidates switch
 	{
-		{ Length: > 1 } => new AmbiguousSymbol(name, candidates),
-		{ Length: 1 } => candidates[0],
+		{ Count: > 1 } => new AmbiguousSymbol(name, candidates),
+		{ Count: 1 } => candidates.First(),
 		_ => null
 	};
 	
@@ -56,8 +55,8 @@ public readonly struct ResolutionContext
 				return member;
 		
 		foreach (var file in File.Module.Files)
-			if (file.Symbols.TryGetValue(name, out var fileSymbol))
-				return fileSymbol;
+			if (file.Symbols.TryGetValue(name, out var fileSet))
+				return ResolveFrom(name, fileSet);
 		
 		if (Imports?.Resolve(name) is { Length: > 0 } imports)
 			return ResolveFrom(name, imports);
@@ -82,8 +81,9 @@ public readonly struct ResolutionContext
 			foreach (var child in type.Children.Values)
 				yield return child;
 		
-		foreach (var symbol in File.Symbols.Values)
-			yield return symbol;
+		foreach (var fileSet in File.Symbols.Values)
+			foreach (var fileSymbol in fileSet)
+				yield return fileSymbol;
 		
 		if (Imports is not { } imports)
 			yield break;

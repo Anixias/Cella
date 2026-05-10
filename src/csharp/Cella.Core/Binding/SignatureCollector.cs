@@ -197,8 +197,10 @@ public sealed class SignatureCollector : IDeclarationNodeVisitor
 		{
 			case TokenImport i:
 			{
-				if (symbols.TryGetValue(i.Token.Text, out var symbol) && CanImport(symbol))
-					yield return symbol;
+				if (symbols.TryGetValue(i.Token.Text, out var symbolSet))
+					foreach (var symbol in symbolSet)
+						if (CanImport(symbol))
+							yield return symbol;
 				
 				break;
 			}
@@ -207,8 +209,12 @@ public sealed class SignatureCollector : IDeclarationNodeVisitor
 			{
 				foreach (var token in i.Tokens)
 				{
-					if (symbols.TryGetValue(token.Text, out var symbol) && CanImport(symbol))
-						yield return symbol;
+					if (!symbols.TryGetValue(token.Text, out var symbolSet))
+						continue;
+					
+					foreach (var symbol in symbolSet)
+						if (CanImport(symbol))
+							yield return symbol;
 				}
 				
 				break;
@@ -216,9 +222,10 @@ public sealed class SignatureCollector : IDeclarationNodeVisitor
 			
 			case FullImport:
 			{
-				foreach (var symbol in symbols.Values)
-					if (CanImport(symbol))
-						yield return symbol;
+				foreach (var symbolSet in symbols.Values)
+					foreach (var symbol in symbolSet)
+						if (CanImport(symbol))
+							yield return symbol;
 				
 				break;
 			}
