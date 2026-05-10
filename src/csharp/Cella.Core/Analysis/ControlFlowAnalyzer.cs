@@ -41,17 +41,20 @@ public sealed class ControlFlowAnalyzer(DiagnosticList diagnostics)
 	private void DetectUnreachableCode(LoweredFunction function)
 	{
 		var reachableBlocks = CfgUtils.FindReachableBlocks(function);
+		var unreachableRegion = false;
 		
-		for (var i = function.Blocks.Count - 1; i >= 0; i--)
+		foreach (var block in function.Blocks)
 		{
-			var block = function.Blocks[i];
-			
 			if (reachableBlocks.Contains(block))
+			{
+				unreachableRegion = false;
+				continue;
+			}
+			
+			if (unreachableRegion)
 				continue;
 			
-			// Remove unused blocks
-			//function.Blocks.RemoveAt(i);
-			
+			unreachableRegion = true;
 			var (source, range) = block.GetSourceLocation();
 			range = new(range.Start, range.Start); // Empty length to avoid coloring first character only
 			diagnostics.Add(DiagnosticReporter.ReportUnreachableCode(new(source, range)));
