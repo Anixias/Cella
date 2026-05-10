@@ -33,6 +33,8 @@ public static class NativeSymbols
 {
 	public static InvalidType Invalid => InvalidType.Instance;
 	public static UntypedIntegerType UntypedInteger => UntypedIntegerType.Instance;
+	public static UntypedNullType UntypedNull => UntypedNullType.Instance;
+	public static UntypedStringType UntypedString => UntypedStringType.Instance;
 	public static PointerType VoidPtr => PointerType.VoidPtr;
 	public static PrimitiveType Void { get; } = new("void", PrimitiveTypeKind.Void);
 	public static IntegerType Int8 { get; } = new("i8", PrimitiveTypeKind.Int8, true);
@@ -49,8 +51,8 @@ public static class NativeSymbols
 	public static IntegerType UIntSize { get; } = new("usize", PrimitiveTypeKind.UIntSize, false);
 	public static IntegerType Char { get; } = new("char", PrimitiveTypeKind.Char, false);
 	public static PrimitiveType Bool { get; } = new("bool", PrimitiveTypeKind.Bool);
-	public static PrimitiveType Str { get; } = new("str", PrimitiveTypeKind.Str);
-	public static PrimitiveType CStr { get; } = new("cstr", PrimitiveTypeKind.CStr);
+	public static StringType Str { get; } = new("str", PrimitiveTypeKind.Str);
+	public static StringType CStr { get; } = new("cstr", PrimitiveTypeKind.CStr);
 	
 	private static readonly ImmutableDictionary<string, TypeSymbol> _primitiveTypes = new TypeSymbol[]
 	{

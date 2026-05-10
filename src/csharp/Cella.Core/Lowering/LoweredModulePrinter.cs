@@ -142,7 +142,7 @@ public static class LoweredModulePrinter
 			switch (value)
 			{
 				case ConstantValue v:
-					sb.Append('#');
+					sb.Append('#').Append('[').Append(v.Type.Name).Append(']');
 					
 					if (v.Value is null)
 						sb.Append("null");

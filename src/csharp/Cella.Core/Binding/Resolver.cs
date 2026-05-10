@@ -72,6 +72,22 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	private IResolvedExpressionNode VisitNode(IExpressionNode node) =>
 		((IExpressionNodeVisitor<IResolvedExpressionNode>)this).Visit(node);
 	
+	private IResolvedExpressionNode VisitNode(IExpressionNode node, TypeSymbol? targetType)
+	{
+		_targetTypes.Push(targetType);
+		try
+		{
+			var result = VisitNode(node);
+			return targetType is null
+				? result
+				: CoerceToType(result, targetType);
+		}
+		finally
+		{
+			_targetTypes.Pop();
+		}
+	}
+	
 	public IResolvedDeclarationNode Visit(FieldNode node)
 	{
 		var resolutionContext = CurrentResolutionContext;
@@ -79,14 +95,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		var field = (FieldSymbol)_symbolTable.DeclarationSymbols[node];
 		IResolvedExpressionNode? initializer;
 		if (node.Initializer is { } initializerNode)
-		{
-			_targetTypes.Push(type);
-			initializer = VisitNode(initializerNode);
-			_targetTypes.Pop();
-			
-			initializer = MaterializeAsDefault(initializer);
-			initializer = CoerceToType(initializer, type);
-		}
+			initializer = VisitNode(initializerNode, type);
 		else
 			initializer = null;
 		
@@ -174,10 +183,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	public IResolvedStatementNode Visit(ReturnStatementNode node)
 	{
 		var returnType = _assemblySignatureTable.Functions[CurrentFunction.Symbol].Signature.ReturnType;
-		_targetTypes.Push(returnType);
-		var expression = CoerceToType(node.ExpressionNode is { } expr ? VisitNode(expr) : null, returnType);
-		_targetTypes.Pop();
-		
+		var expression = node.ExpressionNode is { } expr ? VisitNode(expr, returnType) : null;
 		return new ResolvedReturnStatementNode(expression, node);
 	}
 	
@@ -239,18 +245,19 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 				targetType);
 		
 		// Don't push targetType; we're trying to find a CAST to targetType, not a targetType itself
-		_targetTypes.Push(null);
-		var arg = VisitNode(node.Arguments[0]);
-		_targetTypes.Pop();
+		var arg = VisitNode(node.Arguments[0], null);
 		
 		// If the argument has an invalid type, we don't want to cascade useless errors; assume identity conversion
 		if (IsInvalid(arg))
 			return new ResolvedConversionExpressionNode(arg, new IdentityConversion(targetType), node);
 		
-		if (arg.Type is UntypedIntegerType && targetType is IntegerType intTarget)
-			arg = MaterializeExpression(arg, intTarget);
-		else
-			arg = MaterializeAsDefault(arg);
+		if (arg.Type is UntypedType)
+		{
+			arg = MaterializeExpression(arg, targetType);
+			
+			if (arg.Type is UntypedType)
+				arg = MaterializeAsDefault(arg);
+		}
 		
 		if (arg.Type == targetType)
 			return arg;
@@ -308,13 +315,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 				for (var i = 0; i < node.Arguments.Length; i++)
 				{
 					var paramType = i < paramTypes.Length ? paramTypes[i] : null;
-					_targetTypes.Push(paramType);
-					var arg = VisitNode(node.Arguments[i]);
-					_targetTypes.Pop();
-					
-					if (paramType is not null)
-						arg = CoerceToType(arg, paramType);
-					
+					var arg = VisitNode(node.Arguments[i], paramType);
 					args.Add(arg);
 				}
 				
@@ -341,12 +342,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 				initializer = null;
 				break;
 			
-			case UndefExpressionNode n:
-				initializer = Visit(n);
-				elementType = initializer.Type;
-				break;
-			
-			case CallExpressionNode n:
+			case CallExpressionNode:
 				throw new NotImplementedException(); // TODO Need to implement constructor initialization!!
 			
 			case IExpressionNode n:
@@ -354,22 +350,12 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 					? ptrType.BaseType
 					: null;
 				
-				var pushedTargetType = false;
-				if (targetElementType is not null)
-				{
-					pushedTargetType = true;
-					_targetTypes.Push(targetElementType);
-				}
-				
-				initializer = VisitNode(n);
-				
-				if (pushedTargetType)
-					_targetTypes.Pop();
+				initializer = targetElementType is null ? VisitNode(n) : VisitNode(n, targetElementType);
 				
 				if (initializer.Type is UntypedType)
 				{
-					initializer = targetElementType is IntegerType intTarget
-						? MaterializeExpression(initializer, intTarget)
+					initializer = targetElementType is not null
+						? MaterializeExpression(initializer, targetElementType)
 						: MaterializeAsDefault(initializer);
 				}
 				
@@ -427,10 +413,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		if (node.Arguments.Length != 1)
 			return Error(node, "Array indexer requires exactly one argument", elementType);
 		
-		_targetTypes.Push(NativeSymbols.UIntSize);
-		var indexExpr = VisitNode(node.Arguments[0]);
-		_targetTypes.Pop();
-		
+		var indexExpr = VisitNode(node.Arguments[0], NativeSymbols.UIntSize);
 		return new ResolvedIndexerExpressionNode(elementType, target, indexExpr, node);
 	}
 	
@@ -473,9 +456,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		
 		foreach (var expression in node.Values)
 		{
-			_targetTypes.Push(elementType);
-			var value = VisitNode(expression);
-			_targetTypes.Pop();
+			var value = VisitNode(expression, elementType);
 			values.Add(value);
 		}
 		
@@ -537,11 +518,11 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		var tokenType = node.Token.Type;
 		(type, value) = tokenType switch
 		{
-			TokenType.IntegerLiteral => ParseInteger(valueSpan, CurrentTargetType),
-			TokenType.KeywordNull => ParseNull(CurrentTargetType),
+			TokenType.IntegerLiteral => ParseInteger(valueSpan),
+			TokenType.KeywordNull => ParseNull(),
 			TokenType.KeywordTrue => (NativeSymbols.Bool, true),
 			TokenType.KeywordFalse => (NativeSymbols.Bool, false),
-			TokenType.StringLiteral => ParseString(valueSpan, CurrentTargetType),
+			TokenType.StringLiteral => ParseString(valueSpan),
 			TokenType.CharLiteral => ParseChar(valueSpan),
 			_ => (type, value)
 		};
@@ -551,10 +532,6 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		
 		return new ResolvedLiteralExpressionNode(type, value, node);
 	}
-	
-	// TODO Won't work with subexpressions, might need an "untyped pointer" type like UntypedIntegerType
-	private (TypeSymbol? type, object? value) ParseNull(TypeSymbol? targetType) =>
-		targetType is PointerType ptrType ? (ptrType, null) : (NativeSymbols.VoidPtr, null);
 	
 	public IResolvedExpressionNode Visit(UndefExpressionNode node)
 	{
@@ -610,9 +587,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	
 	public IResolvedStatementNode Visit(IfStatementNode node)
 	{
-		_targetTypes.Push(NativeSymbols.Bool);
-		var condition = VisitNode(node.Condition);
-		_targetTypes.Pop();
+		var condition = VisitNode(node.Condition, NativeSymbols.Bool);
 		
 		var then = VisitNode(node.Then);
 		var @else = node.Else is null ? null : VisitNode(node.Else);
@@ -633,18 +608,12 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		IResolvedExpressionNode? initializer;
 		if (node.ExpressionNode is { } initializerNode)
 		{
-			_targetTypes.Push(type);
-			initializer = VisitNode(initializerNode);
-			_targetTypes.Pop();
-			
-			initializer = type is IntegerType i
-				? MaterializeExpression(initializer, i)
-				: MaterializeAsDefault(initializer);
+			initializer = type is null
+				? MaterializeAsDefault(VisitNode(initializerNode, null))
+				: VisitNode(initializerNode, type);
 			
 			if (type is ArrayType a && a.Length < 0 && initializer.Type is ArrayType)
 				type = initializer.Type;
-			else if (type is not null)
-				initializer = CoerceToType(initializer, type);
 		}
 		else
 		{
@@ -664,7 +633,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	
 	public IResolvedStatementNode Visit(WhileStatementNode node)
 	{
-		var condition = VisitNode(node.Condition);
+		var condition = VisitNode(node.Condition, NativeSymbols.Bool);
 		
 		// Create a scope for the body and label (if applicable)
 		var scope = CurrentScope?.CreateChild() ?? new();
@@ -688,7 +657,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	
 	public IResolvedStatementNode Visit(DoWhileStatementNode node)
 	{
-		var condition = VisitNode(node.Condition);
+		var condition = VisitNode(node.Condition, NativeSymbols.Bool);
 		
 		// Create a scope for the body and label (if applicable)
 		var scope = CurrentScope?.CreateChild() ?? new();
@@ -763,12 +732,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	{
 		var op = node.Op;
 		
-		// We push null to allow sub-expressions to resolve naturally; then, we attempt to implicit cast to actual type
-		_targetTypes.Push(null);
 		_unaryOpJobs.Push(new(op.Type));
-		var operand = VisitNode(node.Operand);
+		var operand = VisitNode(node.Operand, null);
 		var consumed = _unaryOpJobs.Pop().Consumed;
-		_targetTypes.Pop();
 		
 		if (consumed)
 			return operand;
@@ -837,24 +803,18 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			or TokenType.OpStarEqual or TokenType.OpSlashEqual or TokenType.OpPercentEqual or TokenType.OpAmpersandEqual
 			or TokenType.OpBarEqual or TokenType.OpHatEqual;
 		
-		_targetTypes.Push(null);
 		if (isAssignment)
 		{
-			var left = VisitNode(node.Left);
-			_targetTypes.Pop();
-			_targetTypes.Push(left.Type);
-			var right = CoerceToType(VisitNode(node.Right), left.Type);
-			_targetTypes.Pop();
-			
+			var left = VisitNode(node.Left, null);
+			var right = VisitNode(node.Right, left.Type);
 			return new ResolvedAssignmentExpressionNode(left.Type, left, op, right, node);
 		}
 		else
 		{
 			// We push null to allow sub-expressions to resolve naturally
 			// Then, we attempt to implicit cast to actual type
-			var left = VisitNode(node.Left);
-			var right = VisitNode(node.Right);
-			_targetTypes.Pop();
+			var left = VisitNode(node.Left, null);
+			var right = VisitNode(node.Right, null);
 			
 			left = MaterializeWithPeer(left, right.Type);
 			right = MaterializeWithPeer(right, left.Type);
@@ -931,12 +891,8 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	{
 		// We push null to allow sub-expressions to resolve naturally; then, we attempt to implicit cast to actual type
 		var operands = new List<IResolvedExpressionNode>(node.Operands.Length);
-		_targetTypes.Push(null);
-		
 		foreach (var operand in node.Operands)
-			operands.Add(VisitNode(operand));
-		
-		_targetTypes.Pop();
+			operands.Add(VisitNode(operand, null));
 		
 		// Materialize untyped integer operands left to right
 		for (var i = 0; i < operands.Count - 1; i++)
@@ -1033,16 +989,15 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		if (_conversionTable.FindImplicit(source.Type, target) is { } conversion)
 			return new ResolvedConversionExpressionNode(source, conversion, source.Syntax);
 		
-		// TODO Diagnostic
-		return source;
+		return Error(source.Syntax, $"Cannot convert type '{source.Type.Name}' to '{target.Name}'", target);
 	}
 	
-	private (TypeSymbol? Type, object? Value) ParseInteger(ReadOnlySpan<char> span, TypeSymbol? targetType)
+	private (TypeSymbol? Type, object? Value) ParseInteger(ReadOnlySpan<char> span)
 	{
 		// TODO Check suffixes
 		
 		// Consume unary minus jobs
-		if (_unaryOpJobs.TryPeek(out var job) && job.Op == TokenType.OpMinus)
+		if (_unaryOpJobs.TryPeek(out var job) && job is { Op: TokenType.OpMinus, Consumed: false })
 		{
 			// We have to allocate a new string
 			Span<char> newSpan = new char[span.Length + 1];
@@ -1052,148 +1007,56 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			job.Consumed = true;
 		}
 		
-		if (targetType is PrimitiveType primitiveType)
-			switch (primitiveType.Kind)
-			{
-				case PrimitiveTypeKind.Int8:
-					if (sbyte.TryParse(span, out var sbyteValue))
-						return (NativeSymbols.Int8, sbyteValue);
-					
-					break;
-				
-				case PrimitiveTypeKind.Int16:
-					if (short.TryParse(span, out var shortValue))
-						return (NativeSymbols.Int16, shortValue);
-					
-					break;
-				
-				case PrimitiveTypeKind.Int32:
-					if (int.TryParse(span, out var intValue))
-						return (NativeSymbols.Int32, intValue);
-					
-					break;
-				
-				case PrimitiveTypeKind.Int64:
-					if (long.TryParse(span, out var longValue))
-						return (NativeSymbols.Int64, longValue);
-					
-					break;
-				
-				case PrimitiveTypeKind.Int128:
-					if (Int128.TryParse(span, out var int128Value))
-						return (NativeSymbols.Int128, int128Value);
-					
-					break;
-				
-				case PrimitiveTypeKind.IntSize:
-					if (BigInteger.TryParse(span, out var intSizeValue) &&
-					    intSizeValue.GetBitLength() < _pointerBitSize)
-						return (NativeSymbols.IntSize, intSizeValue);
-					
-					break;
-				
-				case PrimitiveTypeKind.UInt8:
-					if (byte.TryParse(span, out var byteValue))
-						return (NativeSymbols.UInt8, byteValue);
-					
-					break;
-				
-				case PrimitiveTypeKind.UInt16:
-					if (ushort.TryParse(span, out var ushortValue))
-						return (NativeSymbols.UInt16, ushortValue);
-					
-					break;
-				
-				case PrimitiveTypeKind.UInt32:
-					if (uint.TryParse(span, out var uintValue))
-						return (NativeSymbols.UInt32, uintValue);
-					
-					break;
-				
-				case PrimitiveTypeKind.UInt64:
-					if (ulong.TryParse(span, out var ulongValue))
-						return (NativeSymbols.UInt64, ulongValue);
-					
-					break;
-				
-				case PrimitiveTypeKind.UInt128:
-					if (UInt128.TryParse(span, out var uint128Value))
-						return (NativeSymbols.UInt128, uint128Value);
-					
-					break;
-				
-				case PrimitiveTypeKind.UIntSize:
-					if (BigInteger.TryParse(span, out var uintSizeValue) &&
-					    uintSizeValue.GetBitLength() < _pointerBitSize)
-						return (NativeSymbols.UIntSize, uintSizeValue);
-					
-					break;
-			}
-		
 		if (BigInteger.TryParse(span, out var untypedValue))
 			return (NativeSymbols.UntypedInteger, untypedValue);
 		
 		return (null, null);
 	}
 	
-	private (TypeSymbol type, uint value) ParseChar(ReadOnlySpan<char> span) => (NativeSymbols.Char, span[0]);
+	private (TypeSymbol type, uint value) ParseChar(ReadOnlySpan<char> span) =>
+		(NativeSymbols.Char, span[0]);
 	
-	private (TypeSymbol? type, object? value) ParseString(ReadOnlySpan<char> span, TypeSymbol? targetType)
-	{
-		// TODO Check prefixes/suffixes
-		
-		if (targetType is PrimitiveType primitiveType)
-			switch (primitiveType.Kind)
-			{
-				case PrimitiveTypeKind.CStr:
-					return ParseCStr(span);
-			}
-		
-		return ParseStr(span);
-		
-		static (TypeSymbol? type, object? value) ParseStr(ReadOnlySpan<char> span)
-		{
-			var byteCount = Encoding.UTF8.GetByteCount(span);
-			var bytes = new byte[byteCount];
-			Encoding.UTF8.GetBytes(span, bytes);
-			var charCount = (ulong)Encoding.UTF8.GetCharCount(bytes);
-			return (NativeSymbols.Str, new StrValue(charCount, bytes));
-		}
-		
-		static (TypeSymbol? type, object? value) ParseCStr(ReadOnlySpan<char> span)
-		{
-			var byteCount = Encoding.UTF8.GetByteCount(span);
-			var result = new byte[byteCount + 1];
-			Encoding.UTF8.GetBytes(span, result);
-			return (NativeSymbols.CStr, result);
-		}
-	}
+	private (TypeSymbol type, object? value) ParseNull() =>
+		(NativeSymbols.UntypedNull, null);
+	
+	private (TypeSymbol type, string value) ParseString(ReadOnlySpan<char> span) =>
+		(NativeSymbols.UntypedString, new string(span));
 	
 	private IResolvedExpressionNode MaterializeWithPeer(IResolvedExpressionNode operand, TypeSymbol peerType)
 	{
-		// Only care about untyped integer literals
-		if (operand is not ResolvedLiteralExpressionNode { Type: UntypedIntegerType } literal)
+		if (peerType is UntypedType)
 			return operand;
 		
-		return peerType switch
-		{
-			UntypedIntegerType => operand,
-			IntegerType intType when literal.Value is BigInteger value && FitsInType(value, intType) =>
-				MaterializeLiteral(operand.Syntax, intType, value),
-			_ => MaterializeAsDefault(literal)
-		};
+		var materialized = MaterializeExpression(operand, peerType);
+		return materialized.Type is UntypedType
+			? operand
+			: materialized;
 	}
 	
 	private IResolvedExpressionNode MaterializeAsDefault(IResolvedExpressionNode node)
 	{
-		if (node.Type is not UntypedIntegerType)
-			return node;
-		
-		if (node is not ResolvedLiteralExpressionNode { Value: BigInteger value })
-			return MaterializeExpression(node, NativeSymbols.Int32);
-		
-		var targetType = SmallestFittingType(value) ?? throw new InvalidOperationException();
-		return MaterializeLiteral(node.Syntax, targetType, value);
+		// TODO This doesn't work very well. Need to implement some kind of planner based on candidate operations/types
+		switch (node.Type)
+		{
+			case UntypedIntegerType:
+			{
+				if (node is not ResolvedLiteralExpressionNode literal)
+					return MaterializeExpression(node, NativeSymbols.Int32);
+				
+				var value = (BigInteger)literal.Value!;
+				var targetType = SmallestFittingType(value) ?? throw new InvalidOperationException();
+				return MaterializeLiteral(node.Syntax, targetType, value);
+			}
+			
+			case UntypedNullType when node is ResolvedLiteralExpressionNode literal:
+				return MaterializeNull(literal, NativeSymbols.VoidPtr);
+			
+			case UntypedStringType when node is ResolvedLiteralExpressionNode literal:
+				return MaterializeStr(literal);
+			
+			default:
+				return node;
+		}
 	}
 	
 	private ResolvedLiteralExpressionNode MaterializeLiteral(IExpressionNode syntax, IntegerType type,
@@ -1235,22 +1098,21 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		_ => false
 	};
 	
-	private IResolvedExpressionNode MaterializeExpression(IResolvedExpressionNode node, IntegerType target)
+	private IResolvedExpressionNode MaterializeExpression(IResolvedExpressionNode node, TypeSymbol target)
 	{
-		if (node.Type is not UntypedIntegerType)
-			return node;
-		
 		switch (node)
 		{
-			case ResolvedLiteralExpressionNode { Value: BigInteger value } literal:
+			case ResolvedLiteralExpressionNode literal:
 			{
-				if (FitsInType(value, target))
-					return MaterializeLiteral(node.Syntax, target, value);
-				
-				var fallback = SmallestFittingType(value);
-				return fallback is not null
-					? MaterializeLiteral(node.Syntax, fallback, value)
-					: literal; // TODO Diagnostic: Too large for any integer type
+				return node.Type switch
+				{
+					UntypedIntegerType when target is IntegerType t => MaterializeInteger(literal, t),
+					UntypedNullType when target is PointerType t => MaterializeNull(literal, t),
+					UntypedStringType when target is StringType t => t == NativeSymbols.CStr
+						? MaterializeCStr(literal)
+						: MaterializeStr(literal),
+					_ => literal
+				};
 			}
 			
 			case ResolvedUnaryOpExpressionNode unary:
@@ -1305,6 +1167,55 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		}
 	}
 	
+	private ResolvedLiteralExpressionNode MaterializeInteger(ResolvedLiteralExpressionNode node, IntegerType target)
+	{
+		if (node.Type is not UntypedIntegerType)
+			return node;
+		
+		var value = (BigInteger)node.Value!;
+		
+		if (FitsInType(value, target))
+			return MaterializeLiteral(node.Syntax, target, value);
+		
+		var fallback = SmallestFittingType(value);
+		return fallback is not null
+			? MaterializeLiteral(node.Syntax, fallback, value)
+			: node; // TODO Diagnostic: Too large for any integer type
+	}
+	
+	private ResolvedLiteralExpressionNode MaterializeNull(ResolvedLiteralExpressionNode node, PointerType target)
+	{
+		if (node.Type is not UntypedNullType)
+			return node;
+		
+		return new ResolvedLiteralExpressionNode(target, null, node.Syntax);
+	}
+	
+	private ResolvedLiteralExpressionNode MaterializeStr(ResolvedLiteralExpressionNode node)
+	{
+		if (node.Type is not UntypedStringType)
+			return node;
+		
+		var text = (string)node.Value!;
+		var byteCount = Encoding.UTF8.GetByteCount(text);
+		var bytes = new byte[byteCount];
+		Encoding.UTF8.GetBytes(text, bytes);
+		var charCount = (ulong)Encoding.UTF8.GetCharCount(bytes);
+		return new ResolvedLiteralExpressionNode(NativeSymbols.Str, new StrValue(charCount, bytes), node.Syntax);
+	}
+	
+	private ResolvedLiteralExpressionNode MaterializeCStr(ResolvedLiteralExpressionNode node)
+	{
+		if (node.Type is not UntypedStringType)
+			return node;
+		
+		var text = (string)node.Value!;
+		var byteCount = Encoding.UTF8.GetByteCount(text);
+		var bytes = new byte[byteCount + 1];
+		Encoding.UTF8.GetBytes(text, bytes);
+		return new ResolvedLiteralExpressionNode(NativeSymbols.CStr, bytes, node.Syntax);
+	}
+	
 	private IntegerType? SmallestFittingType(BigInteger value)
 	{
 		if (value >= int.MinValue && value <= int.MaxValue)
@@ -1339,8 +1250,8 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	[return: NotNullIfNotNull(nameof(node))]
 	private IResolvedExpressionNode? CoerceToType(IResolvedExpressionNode? node, TypeSymbol target)
 	{
-		if (node?.Type is UntypedIntegerType && target is IntegerType intTarget)
-			node = MaterializeExpression(node, intTarget);
+		if (node?.Type is UntypedType)
+			node = MaterializeExpression(node, target);
 		
 		return ApplyImplicitConversion(node, target);
 	}

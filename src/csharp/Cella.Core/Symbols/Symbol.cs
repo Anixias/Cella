@@ -119,13 +119,23 @@ public sealed class IntegerType(string name, PrimitiveTypeKind kind, bool isSign
 	public bool IsSigned { get; } = isSigned;
 }
 
-public abstract class UntypedType(string name) : TypeSymbol(name)
-{
-}
+public sealed class StringType(string name, PrimitiveTypeKind kind) : PrimitiveType(name, kind);
+
+public abstract class UntypedType(string name) : TypeSymbol(name);
 
 public sealed class UntypedIntegerType() : UntypedType("i?")
 {
 	public static UntypedIntegerType Instance { get; } = new();
+}
+
+public sealed class UntypedNullType() : UntypedType("null?")
+{
+	public static UntypedNullType Instance { get; } = new();
+}
+
+public sealed class UntypedStringType() : UntypedType("str?")
+{
+	public static UntypedStringType Instance { get; } = new();
 }
 
 public enum PointerKind
