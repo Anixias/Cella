@@ -125,23 +125,6 @@ public sealed class Lowerer : IResolvedDeclarationNodeVisitor
 					break;
 			}
 			
-			// TODO Normalize after all analysis, right before codegen?
-			// Normalize blocks
-			switch (function.Blocks.Count)
-			{
-				case 0:
-					function.Blocks.Add(new("entry", function.Blocks)).SetTerminator(ReturnTerminator.Void);
-					break;
-				
-				default:
-				{
-					foreach (var block in function.Blocks)
-						block.FillTerminator(ReturnTerminator.Void);
-					
-					break;
-				}
-			}
-			
 			return function;
 		}
 		

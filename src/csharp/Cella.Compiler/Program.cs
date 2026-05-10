@@ -239,6 +239,8 @@ internal static class Program
 						// TODO Linear analysis for ownership/borrows and drop insertion
 						//if (controlFlowAnalyzer.Analyze(function))
 						//	linearAnalyzer.Analyze(function);
+						
+						function.Normalize();
 					}
 				}
 				
