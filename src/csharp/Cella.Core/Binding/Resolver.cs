@@ -706,6 +706,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	{
 		var count = VisitNode(node.Count);
 		
+		if (count.Type is UntypedType)
+			count = MaterializeAsDefault(count);
+		
 		// Create a scope for the body and label (if applicable)
 		var scope = CurrentScope?.CreateChild() ?? new();
 		var resolutionContext = CurrentResolutionContext with { LocalScope = scope };

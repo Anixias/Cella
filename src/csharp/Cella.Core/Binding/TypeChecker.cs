@@ -220,22 +220,7 @@ public sealed class TypeChecker : IResolvedStatementNodeVisitor, IResolvedDeclar
 		_ => false
 	};
 	
-	private bool IsIntegralType(TypeSymbol type) => type is PrimitiveType pt && pt.Kind switch
-	{
-		PrimitiveTypeKind.Int8 => true,
-		PrimitiveTypeKind.Int16 => true,
-		PrimitiveTypeKind.Int32 => true,
-		PrimitiveTypeKind.Int64 => true,
-		PrimitiveTypeKind.Int128 => true,
-		PrimitiveTypeKind.IntSize => true,
-		PrimitiveTypeKind.UInt8 => true,
-		PrimitiveTypeKind.UInt16 => true,
-		PrimitiveTypeKind.UInt32 => true,
-		PrimitiveTypeKind.UInt64 => true,
-		PrimitiveTypeKind.UInt128 => true,
-		PrimitiveTypeKind.UIntSize => true,
-		_ => false
-	};
+	private bool IsIntegralType(TypeSymbol type) => type is IntegerType;
 	
 	public void Visit(ResolvedAccessExpressionNode node)
 	{

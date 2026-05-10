@@ -5,5 +5,5 @@ namespace Cella.Core.Lowering;
 public sealed class LoweredFunction(FunctionInfo info)
 {
 	public FunctionInfo Info { get; } = info;
-	public List<BasicBlock> Blocks { get; } = [];
+	public ControlFlowGraph Blocks { get; } = new();
 }

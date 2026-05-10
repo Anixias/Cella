@@ -7,26 +7,39 @@ using Cella.Core.Text;
 
 namespace Cella.Core.Lowering;
 
-public sealed class BasicBlock(string label)
+public sealed class BasicBlock(string label, ControlFlowGraph owner)
 {
 	public string Label { get; } = label;
+	public ControlFlowGraph Owner { get; } = owner;
 	public List<IInstruction> Instructions { get; } = [];
-	public IBlockTerminator Terminator { get; set; } = UndefinedTerminator.Instance;
+	public IBlockTerminator Terminator { get; private set; } = UndefinedTerminator.Instance;
 	
-	public SourceLocation GetSourceLocation()
-	{
-		if (Instructions.Count == 0)
-			return SourceLocation.None;
-		
-		var (source, range) = Instructions[0].SourceLocation;
-		range = range.Join(Instructions[^1].SourceLocation.Range);
-		return new SourceLocation(source, range);
-	}
+	public void SetTerminatorRaw(IBlockTerminator terminator)
+		=> Terminator = terminator;
+	
+	public void SetTerminator(IBlockTerminator terminator) =>
+		Owner.SetTerminator(this, terminator);
 	
 	public void FillTerminator(IBlockTerminator terminator)
 	{
 		if (Terminator is UndefinedTerminator)
-			Terminator = terminator;
+			Owner.SetTerminator(this, terminator);
+	}
+	
+	public bool HasSuccessor() => Owner.HasSuccessor(this);
+	public bool HasPredecessor() => Owner.HasPredecessor(this);
+	public IReadOnlySet<BasicBlock> GetSuccessors() => Owner.GetSuccessors(this);
+	public IReadOnlySet<BasicBlock> GetPredecessors() => Owner.GetPredecessors(this);
+	
+	public SourceLocation GetSourceLocation()
+	{
+		if (Instructions.Count == 0)
+			return Terminator.SourceLocation;
+		
+		var (source, range) = Instructions[0].SourceLocation;
+		range = range.Join(Instructions[^1].SourceLocation.Range);
+		range = range.Join(Terminator.SourceLocation.Range);
+		return new SourceLocation(source, range);
 	}
 }
 

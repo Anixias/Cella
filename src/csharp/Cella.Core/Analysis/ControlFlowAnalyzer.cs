@@ -10,37 +10,12 @@ public sealed class ControlFlowAnalyzer(DiagnosticList diagnostics)
 	public bool Analyze(LoweredFunction function)
 	{
 		DetectUnreachableCode(function);
-		
-		var allPathsReturn = true;
-		foreach (var path in GetMinimalPaths(function))
-		{
-			switch (path.Type)
-			{
-				case BlockPathType.Undefined:
-				case BlockPathType.ReturnsVoid:
-					if (function.Info.Signature.ReturnType != NativeSymbols.Void)
-						allPathsReturn = false;
-					
-					break;
-			}
-			
-			if (!allPathsReturn)
-				break;
-		}
-		
-		if (allPathsReturn)
-			return true;
-		
-		diagnostics.Add(new(DiagnosticSeverity.Error, function.Info.Symbol.Definition,
-			"Not all paths return a value!"));
-		
-		return false;
-		
+		return AllPathsReturn(function);
 	}
 	
 	private void DetectUnreachableCode(LoweredFunction function)
 	{
-		var reachableBlocks = CfgUtils.FindReachableBlocks(function);
+		var reachableBlocks = function.Blocks.FindReachable();
 		var unreachableRegion = false;
 		
 		foreach (var block in function.Blocks)
@@ -59,6 +34,30 @@ public sealed class ControlFlowAnalyzer(DiagnosticList diagnostics)
 			range = new(range.Start, range.Start); // Empty length to avoid coloring first character only
 			diagnostics.Add(DiagnosticReporter.ReportUnreachableCode(new(source, range)));
 		}
+	}
+	
+	private bool AllPathsReturn(LoweredFunction function)
+	{
+		if (function.Info.Signature.ReturnType == NativeSymbols.Void)
+			return true;
+		
+		var allPathsReturn = true;
+		foreach (var path in GetMinimalPaths(function))
+		{
+			if (path.Type is not (BlockPathType.Undefined or BlockPathType.ReturnsVoid))
+				continue;
+			
+			allPathsReturn = false;
+			break;
+		}
+		
+		if (allPathsReturn)
+			return true;
+		
+		diagnostics.Add(new(DiagnosticSeverity.Error, function.Info.Symbol.Definition,
+			"Not all paths return a value!"));
+		
+		return false;
 	}
 	
 	private enum BlockPathType
