@@ -44,7 +44,7 @@ public sealed class ControlFlowAnalyzer(DiagnosticList diagnostics)
 		var allPathsReturn = true;
 		foreach (var path in GetMinimalPaths(function))
 		{
-			if (path.Type is not (BlockPathType.Undefined or BlockPathType.ReturnsVoid))
+			if (path.Type is not BlockPathType.Undefined)
 				continue;
 			
 			allPathsReturn = false;
@@ -55,7 +55,7 @@ public sealed class ControlFlowAnalyzer(DiagnosticList diagnostics)
 			return true;
 		
 		diagnostics.Add(new(DiagnosticSeverity.Error, function.Info.Symbol.Definition,
-			"Not all paths return a value!"));
+			"Not all paths return a value"));
 		
 		return false;
 	}
@@ -63,8 +63,7 @@ public sealed class ControlFlowAnalyzer(DiagnosticList diagnostics)
 	private enum BlockPathType
 	{
 		Undefined,
-		ReturnsVoid,
-		ReturnsValue,
+		Returns,
 		Loops
 	}
 	
@@ -96,8 +95,8 @@ public sealed class ControlFlowAnalyzer(DiagnosticList diagnostics)
 					yield return new(BlockPathType.Undefined, path);
 					yield break;
 				
-				case ReturnTerminator t:
-					yield return new(t.Value is null ? BlockPathType.ReturnsVoid : BlockPathType.ReturnsValue, path);
+				case ReturnTerminator:
+					yield return new(BlockPathType.Returns, path);
 					yield break;
 				
 				case BranchTerminator term:
