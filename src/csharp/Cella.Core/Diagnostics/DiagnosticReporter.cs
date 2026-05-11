@@ -57,19 +57,27 @@ public static class DiagnosticReporter
 		string? bestMatch = null;
 		var bestDistance = int.MaxValue;
 		
-		foreach (var name in availableNames)
+		if (missingName.Length > 1)
 		{
-			if (Math.Abs(name.Length - missingName.Length) > 3)
-				continue;
-			
-			var distance = LevenshteinDistance(missingName, name);
-			var threshold = missingName.Length > 5 ? 3 : 2;
-			
-			if (distance > threshold || distance >= bestDistance)
-				continue;
-			
-			bestDistance = distance;
-			bestMatch = name;
+			foreach (var name in availableNames)
+			{
+				if (Math.Abs(name.Length - missingName.Length) > 3)
+					continue;
+				
+				var distance = LevenshteinDistance(missingName, name);
+				var threshold = missingName.Length switch
+				{
+					> 5 => 3,
+					> 2 => 2,
+					_ => 1
+				};
+				
+				if (distance > threshold || distance >= bestDistance)
+					continue;
+				
+				bestDistance = distance;
+				bestMatch = name;
+			}
 		}
 		
 		if (bestMatch is null)
