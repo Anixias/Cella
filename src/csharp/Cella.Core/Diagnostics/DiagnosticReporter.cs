@@ -21,8 +21,7 @@ public static class DiagnosticReporter
 		// One side is a pointer to the other side's type
 		if (left.Type is PointerType leftPtr && leftPtr.BaseType == right.Type)
 		{
-			var resolutionSet = registry.ResolveBinary(leftPtr.BaseType, op.Type, right.Type);
-			if (resolutionSet.HasResult)
+			if (HasExactBinary(registry, leftPtr.BaseType, op.Type, right.Type))
 			{
 				hints.Add($"Did you mean '{ApplyUnary(TokenType.OpStar, left.Syntax)} {op.Text} " +
 				          $"{right.Syntax.SourceLocation.GetText()}'?");
@@ -30,8 +29,7 @@ public static class DiagnosticReporter
 		}
 		else if (right.Type is PointerType rightPtr && rightPtr.BaseType == left.Type)
 		{
-			var resolutionSet = registry.ResolveBinary(left.Type, op.Type, rightPtr.BaseType);
-			if (resolutionSet.HasResult)
+			if (HasExactBinary(registry, left.Type, op.Type, rightPtr.BaseType))
 			{
 				hints.Add($"Did you mean '{left.Syntax.SourceLocation.GetText()} {op.Text} " +
 				          $"{ApplyUnary(TokenType.OpStar, right.Syntax)}'?");
@@ -93,6 +91,19 @@ public static class DiagnosticReporter
 		{
 			Hints = hints.ToImmutableArray()
 		};
+	}
+	
+	private static bool HasExactBinary(OperatorRegistry registry, TypeSymbol left, TokenType op,
+		TypeSymbol right)
+	{
+		foreach (var candidate in registry.GetBinaryCandidates(op))
+		{
+			var parameters = candidate.ParameterTypes;
+			if (parameters.Length == 2 && parameters[0] == left && parameters[1] == right)
+				return true;
+		}
+		
+		return false;
 	}
 	
 	private static string ApplyUnary(TokenType op, IExpressionNode operand) => operand.IsContained

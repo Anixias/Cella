@@ -121,21 +121,94 @@ public sealed class IntegerType(string name, PrimitiveTypeKind kind, bool isSign
 
 public sealed class StringType(string name, PrimitiveTypeKind kind) : PrimitiveType(name, kind);
 
-public abstract class UntypedType(string name) : TypeSymbol(name);
+public enum MaterializationMode { Default, Overload }
+
+public abstract class UntypedType(string name) : TypeSymbol(name)
+{
+	public abstract int MaterializationCost(TypeSymbol target, MaterializationMode mode);
+}
 
 public sealed class UntypedIntegerType() : UntypedType("i?")
 {
 	public static UntypedIntegerType Instance { get; } = new();
+	
+	public override int MaterializationCost(TypeSymbol target, MaterializationMode mode)
+	{
+		if (target == NativeSymbols.Int32)
+			return 0;
+		
+		switch (mode)
+		{
+			case MaterializationMode.Overload:
+				if (target == NativeSymbols.Int8)
+					return 1;
+				if (target == NativeSymbols.UInt8)
+					return 2;
+				if (target == NativeSymbols.Int16)
+					return 3;
+				if (target == NativeSymbols.UInt16)
+					return 4;
+				if (target == NativeSymbols.UInt32)
+					return 5;
+				if (target == NativeSymbols.Int64)
+					return 6;
+				if (target == NativeSymbols.UInt64)
+					return 7;
+				if (target == NativeSymbols.Int128)
+					return 8;
+				if (target == NativeSymbols.UInt128)
+					return 9;
+				if (target == NativeSymbols.IntSize)
+					return 10;
+				if (target == NativeSymbols.UIntSize)
+					return 11;
+				
+				return int.MaxValue;
+			
+			default:
+				if (target == NativeSymbols.Int64)
+					return 1;
+				
+				if (target == NativeSymbols.Int128)
+					return 2;
+				
+				return int.MaxValue;
+		}
+	}
 }
 
 public sealed class UntypedNullType() : UntypedType("null?")
 {
 	public static UntypedNullType Instance { get; } = new();
+	
+	public override int MaterializationCost(TypeSymbol target, MaterializationMode mode) => mode switch
+	{
+		MaterializationMode.Overload => target is PointerType ? 0 : int.MaxValue,
+		_ => target == NativeSymbols.VoidPtr ? 0 : int.MaxValue
+	};
 }
 
 public sealed class UntypedStringType() : UntypedType("str?")
 {
 	public static UntypedStringType Instance { get; } = new();
+	
+	public override int MaterializationCost(TypeSymbol target, MaterializationMode mode)
+	{
+		if (target == NativeSymbols.Str)
+			return 0;
+		
+		switch (mode)
+		{
+			case MaterializationMode.Overload:
+				if (target == NativeSymbols.CStr)
+					return 1;
+				
+				return int.MaxValue;
+			
+			default:
+				return int.MaxValue;
+		}
+	}
 }
 
 public enum PointerKind

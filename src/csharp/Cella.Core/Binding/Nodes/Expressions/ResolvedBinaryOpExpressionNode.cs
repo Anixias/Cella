@@ -12,7 +12,7 @@ public sealed class ResolvedBinaryOpExpressionNode
 	IExpressionNode syntax
 ) : IResolvedExpressionNode
 {
-	public TypeSymbol Type { get; } = operation?.Result ?? NativeSymbols.Invalid;
+	public TypeSymbol Type { get; } = operation?.ReturnType ?? NativeSymbols.Invalid;
 	public bool IsConstant { get; } = left.IsConstant && right.IsConstant;
 	public IExpressionNode Syntax { get; } = syntax;
 	public IResolvedExpressionNode Left { get; } = left;

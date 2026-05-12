@@ -505,7 +505,7 @@ public sealed class Lowerer : IResolvedDeclarationNodeVisitor
 			
 			var mergeBlock = CreateBlock("chain_merge");
 			var left = VisitNode(node.Operands[0]);
-			block = GetOrMakeBlock();
+			GetOrMakeBlock();
 			
 			for (var i = 0; i < node.Ops.Length; i++)
 			{
@@ -603,7 +603,7 @@ public sealed class Lowerer : IResolvedDeclarationNodeVisitor
 		
 		private static Value LowerBinOp(Value left, OperationImpl? op, Value right) => op switch
 		{
-			NativeImpl native => new BinOpValue(native.Result, left, right, MapBinOp(native.Op),
+			NativeImpl native => new BinOpValue(native.ReturnType, left, right, MapBinOp(native.Op),
 				Join(left.SourceLocation, right.SourceLocation)),
 			FunctionImpl function => new CallValue(function.Function, [left, right],
 				Join(left.SourceLocation, right.SourceLocation)),
@@ -613,15 +613,13 @@ public sealed class Lowerer : IResolvedDeclarationNodeVisitor
 		
 		private static Value LowerConversionBinOp(Value left, ConversionImpl conversion, Value right)
 		{
-			left = conversion.LeftConversion is { } leftConversion
-				? new ConversionValue(left, leftConversion, left.SourceLocation)
-				: left;
+			if (conversion.ParameterConversions[0] is { } leftConversion)
+				left = new ConversionValue(left, leftConversion, left.SourceLocation);
 			
-			right = conversion.RightConversion is { } rightConversion
-				? new ConversionValue(right, rightConversion, right.SourceLocation)
-				: right;
+			if (conversion.ParameterConversions[1] is { } rightConversion)
+				right = new ConversionValue(right, rightConversion, right.SourceLocation);
 			
-			var intermediateType = conversion.ResultConversion?.From ?? conversion.Result;
+			var intermediateType = conversion.ResultConversion?.From ?? conversion.ReturnType;
 			var intermediateResult = new BinOpValue(intermediateType, left, right,
 				MapBinOp(conversion.Op), Join(left.SourceLocation, right.SourceLocation));
 			
@@ -632,7 +630,7 @@ public sealed class Lowerer : IResolvedDeclarationNodeVisitor
 		
 		private static Value LowerUnaryOp(Value operand, OperationImpl? op) => op switch
 		{
-			NativeImpl native => new UnaryOpValue(native.Result, operand, MapUnaryOp(native.Op),
+			NativeImpl native => new UnaryOpValue(native.ReturnType, operand, MapUnaryOp(native.Op),
 				operand.SourceLocation),
 			FunctionImpl function => new CallValue(function.Function, [operand], operand.SourceLocation),
 			_ => throw new InvalidOperationException()

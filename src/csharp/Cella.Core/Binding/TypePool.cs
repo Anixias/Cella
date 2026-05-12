@@ -99,28 +99,22 @@ public sealed class TypePool
 		var ptrToISize = ConversionTable.FindExplicit(ptrType, NativeSymbols.IntSize);
 		
 		// usize(ptr[T]) + usize = ptr[T](usize)
-		OperatorRegistry.CreateBinary(ptrType, TokenType.OpPlus, NativeSymbols.UIntSize,
-			new ConversionImpl(TokenType.OpPlus, ptrType)
+		OperatorRegistry.Create(new ConversionImpl(TokenType.OpPlus, ptrType, (ptrType, ptrToUSize),
+			(NativeSymbols.UIntSize, null))
 			{
-				LeftConversion = ptrToUSize,
 				ResultConversion = uSizeToPtr
 			});
 		
 		// usize(ptr[T]) - usize = ptr[T](usize)
-		OperatorRegistry.CreateBinary(ptrType, TokenType.OpMinus, NativeSymbols.UIntSize,
-			new ConversionImpl(TokenType.OpMinus, ptrType)
+		OperatorRegistry.Create(new ConversionImpl(TokenType.OpMinus, ptrType, (ptrType, ptrToUSize),
+			(NativeSymbols.UIntSize, null))
 			{
-				LeftConversion = ptrToUSize,
 				ResultConversion = uSizeToPtr
 			});
 		
 		// isize(ptr[T]) - isize(ptr[T]) = isize
-		OperatorRegistry.CreateBinary(ptrType, TokenType.OpMinus, ptrType,
-			new ConversionImpl(TokenType.OpMinus, NativeSymbols.IntSize)
-			{
-				LeftConversion = ptrToISize,
-				RightConversion = ptrToISize
-			});
+		OperatorRegistry.Create(new ConversionImpl(TokenType.OpMinus, NativeSymbols.IntSize, (ptrType, ptrToISize),
+			(ptrType, ptrToISize)));
 		
 		if (ptrType == NativeSymbols.VoidPtr)
 			return;
@@ -129,42 +123,11 @@ public sealed class TypePool
 		// isize(ptr) - isize(ptr[T]) = isize
 		var voidPtrToISize = ConversionTable.FindExplicit(NativeSymbols.VoidPtr, NativeSymbols.IntSize);
 		
-		OperatorRegistry.CreateBinary(ptrType, TokenType.OpMinus, NativeSymbols.VoidPtr,
-			new ConversionImpl(TokenType.OpMinus, NativeSymbols.IntSize)
-			{
-				LeftConversion = ptrToISize,
-				RightConversion = voidPtrToISize
-			});
+		OperatorRegistry.Create(new ConversionImpl(TokenType.OpMinus, NativeSymbols.IntSize, (ptrType, ptrToISize),
+			(NativeSymbols.VoidPtr, voidPtrToISize)));
 		
-		OperatorRegistry.CreateBinary(NativeSymbols.VoidPtr, TokenType.OpMinus, ptrType,
-			new ConversionImpl(TokenType.OpMinus, NativeSymbols.IntSize)
-			{
-				LeftConversion = voidPtrToISize,
-				RightConversion = ptrToISize
-			});
-		
-		/*
-		// usize(ptr) - usize = ptr(usize)
-		result[new(NativeSymbols.VoidPtr, TokenType.OpMinus, NativeSymbols.UIntSize)]
-			= new ConversionImpl(TokenType.OpMinus, NativeSymbols.VoidPtr)
-			{
-				LeftConversion = NativeSymbols.UIntSize,
-				IntermediateResult = NativeSymbols.UIntSize
-			};
-		
-		// isize(ptr) - isize(ptr) = isize
-		result[new(NativeSymbols.VoidPtr, TokenType.OpMinus, NativeSymbols.VoidPtr)]
-			= new ConversionImpl(TokenType.OpMinus, NativeSymbols.IntSize)
-			{
-				LeftConversion = NativeSymbols.IntSize,
-				RightConversion = NativeSymbols.IntSize
-			};
-		 */
-		
-		return;
-		
-		void MakeBinary(TypeSymbol left, TokenType op, TypeSymbol right) =>
-			OperatorRegistry.CreateBinary(left, op, right, new NativeImpl(op, left));
+		OperatorRegistry.Create(new ConversionImpl(TokenType.OpMinus, NativeSymbols.IntSize,
+			(NativeSymbols.VoidPtr, voidPtrToISize), (ptrType, ptrToISize)));
 	}
 	
 	public PointerType GetPointerType(TypeSymbol baseType, PointerKind kind)

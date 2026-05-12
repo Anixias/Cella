@@ -11,7 +11,7 @@ public sealed class ResolvedUnaryOpExpressionNode
 	IExpressionNode syntax
 ) : IResolvedExpressionNode
 {
-	public TypeSymbol Type { get; } = operation?.Result ?? NativeSymbols.Invalid;
+	public TypeSymbol Type { get; } = operation?.ReturnType ?? NativeSymbols.Invalid;
 	public bool IsConstant { get; } = operand.IsConstant;
 	public IResolvedExpressionNode Operand { get; } = operand;
 	public OperationImpl? Operation { get; } = operation;

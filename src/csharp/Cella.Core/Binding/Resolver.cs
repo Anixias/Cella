@@ -1,4 +1,5 @@
-﻿using System.Diagnostics.CodeAnalysis;
+﻿using System.Collections.Immutable;
+using System.Diagnostics.CodeAnalysis;
 using System.Numerics;
 using System.Text;
 using Cella.Core.Binding.Conversions;
@@ -271,60 +272,58 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	
 	private IResolvedExpressionNode VisitFunctionCall(CallExpressionNode node)
 	{
-		switch (node.Target)
+		if (node.Target is not VarExpressionNode varExpr)
+			throw new NotImplementedException();
+		
+		var functionName = varExpr.Identifier.Text;
+		var symbol = CurrentResolutionContext.Resolve(functionName);
+		
+		if (symbol is null)
 		{
-			case VarExpressionNode varExpr:
-			{
-				var functionName = varExpr.Identifier.Text;
-				var symbol = CurrentResolutionContext.Resolve(functionName);
-				
-				if (symbol is null)
-				{
-					var diagnostic = DiagnosticReporter.ReportUndefinedSymbol(node, functionName,
-						GetVisibleSymbolNames());
-					
-					return Error(node, diagnostic, CurrentTargetType);
-				}
-				
-				if (symbol is not FunctionSymbol function)
-				{
-					if (symbol is AmbiguousSymbol ambiguous)
-					{
-						// TODO Check function overloads
-						return Error(node, $"Symbol '{functionName}' is ambiguous", CurrentTargetType, varExpr);
-					}
-					
-					return Error(node, $"Symbol '{functionName}' is not a function or type", CurrentTargetType,
-						varExpr);
-				}
-				
-				if (!_assemblySignatureTable.Functions.TryGetValue(function, out var info))
-				{
-					info = _dependencySignatureTable.Functions[function];
-					_importedFunctions.TryAdd(function, info);
-				}
-				else
-				{
-					// If function is from a different module in the same assembly, it's still an import
-					if (info.File.Module != CurrentResolutionContext.File.Module)
-						_importedFunctions.TryAdd(function, info);
-				}
-				
-				var paramTypes = info.Signature.ParameterTypes;
-				var args = new List<IResolvedExpressionNode>(node.Arguments.Length);
-				for (var i = 0; i < node.Arguments.Length; i++)
-				{
-					var paramType = i < paramTypes.Length ? paramTypes[i] : null;
-					var arg = VisitNode(node.Arguments[i], paramType);
-					args.Add(arg);
-				}
-				
-				return new ResolvedFunctionCallExpressionNode(info, args, node);
-			}
-			
-			default:
-				throw new NotImplementedException();
+			var diagnostic = DiagnosticReporter.ReportUndefinedSymbol(node, functionName, GetVisibleSymbolNames());
+			return Error(node, diagnostic, CurrentTargetType);
 		}
+		
+		var functionSymbols = symbol switch
+		{
+			FunctionSymbol f => [f],
+			AmbiguousSymbol a => a.Candidates.OfType<FunctionSymbol>().ToArray(),
+			_ => []
+		};
+		
+		if (functionSymbols.Length == 0)
+			return Error(node, $"Symbol '{functionName}' is not a function or type", CurrentTargetType, varExpr);
+		
+		var args = new IResolvedExpressionNode[node.Arguments.Length];
+		for (var i = 0; i < node.Arguments.Length; i++)
+			args[i] = VisitNode(node.Arguments[i], null);
+		
+		if (AnyInvalid(args))
+			return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
+		
+		var candidates = functionSymbols
+			.Select(GetFunctionInfo)
+			.Select(static info => new FunctionCallable(info))
+			.ToArray();
+		
+		var resolutionSet = ResolveCallable(candidates, args, MaterializationMode.Overload, CurrentTargetType);
+		
+		if (resolutionSet.IsAmbiguous)
+			return Error(node, $"Call to '{functionName}' is ambiguous", CurrentTargetType, varExpr);
+		
+		// TODO If only one candidate, we could report the unmatched arguments instead of the whole function?
+		if (!resolutionSet.HasResult)
+			return Error(node, $"No overload of '{functionName}' accepts these arguments", CurrentTargetType, varExpr);
+		
+		var resolution = resolutionSet[0];
+		var callable = (FunctionCallable)resolution.Callable;
+		var info = callable.Info;
+		
+		TrackImportedFunction(info);
+		
+		var resolvedArgs = ApplyArgumentResolution(args, resolution);
+		var result = new ResolvedFunctionCallExpressionNode(info, resolvedArgs, node);
+		return ApplyResultResolution(result, resolution);
 	}
 	
 	public IResolvedExpressionNode Visit(HeapExpressionNode node)
@@ -754,8 +753,24 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			
 			default:
 			{
-				var operation = _operatorRegistry.ResolveUnary(op.Type, operand.Type);
-				return new ResolvedUnaryOpExpressionNode(operand, operation, node);
+				var candidates = _operatorRegistry.GetUnaryCandidates(op.Type);
+				var operandArray = new[] { operand };
+				var resolutionSet = ResolveCallable(candidates, operandArray, MaterializationMode.Overload,
+					CurrentTargetType);
+				
+				if (resolutionSet.IsAmbiguous)
+					return Error(node, $"Ambiguous operation '{op.Text}' on '{operand.Type.Name}'", CurrentTargetType);
+				
+				if (!resolutionSet.HasResult)
+					return Error(node, $"Operator '{op.Text}' cannot be applied to '{operand.Type.Name}'",
+						CurrentTargetType);
+				
+				var resolution = resolutionSet[0];
+				var resolvedOperand = ApplyArgumentResolution(operandArray, resolution);
+				var operation = (OperationImpl)resolution.Callable;
+				var result = new ResolvedUnaryOpExpressionNode(resolvedOperand[0], operation, node);
+				
+				return ApplyResultResolution(result, resolution);
 			}
 		}
 	}
@@ -811,18 +826,17 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		}
 		else
 		{
-			// We push null to allow sub-expressions to resolve naturally
-			// Then, we attempt to implicit cast to actual type
 			var left = VisitNode(node.Left, null);
 			var right = VisitNode(node.Right, null);
-			
-			left = MaterializeWithPeer(left, right.Type);
-			right = MaterializeWithPeer(right, left.Type);
 			
 			if (AnyInvalid(left, right))
 				return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
 			
-			var resolutionSet = _operatorRegistry.ResolveBinary(left.Type, op.Type, right.Type);
+			var candidates = _operatorRegistry.GetBinaryCandidates(op.Type);
+			var args = new[] { left, right };
+			var resolutionSet = ResolveCallable(candidates, args, MaterializationMode.Overload,
+				CurrentTargetType);
+			
 			if (resolutionSet.IsAmbiguous)
 				return Error(node,
 					$"Ambiguous operation '{op.Text}' between '{left.Type.Name}' and '{right.Type.Name}'",
@@ -835,55 +849,11 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			}
 			
 			var resolution = resolutionSet[0];
-			var operation = resolution.Operation;
+			var resolvedArgs = ApplyArgumentResolution(args, resolution);
+			var operation = (OperationImpl)resolution.Callable;
 			
-			// If result is concrete but children are untyped, resolve them as default types and re-resolve
-			if (operation.Result is not UntypedType)
-			{
-				var changed = false;
-				
-				if (left.Type is UntypedType)
-				{
-					left = MaterializeAsDefault(left);
-					changed = true;
-				}
-				
-				if (right.Type is UntypedType)
-				{
-					right = MaterializeAsDefault(right);
-					changed = true;
-				}
-				
-				if (AnyInvalid(left, right))
-					return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
-				
-				// If at least one operand was materialized, need to re-resolve operation
-				if (changed)
-				{
-					resolutionSet = _operatorRegistry.ResolveBinary(left.Type, op.Type, right.Type);
-					if (resolutionSet.IsAmbiguous)
-						return Error(node,
-							$"Ambiguous operation '{op.Text}' between '{left.Type.Name}' and '{right.Type.Name}'",
-							CurrentTargetType);
-					
-					if (!resolutionSet.HasResult)
-					{
-						var diagnostic = DiagnosticReporter.ReportBinaryOpMismatch(_operatorRegistry, left, op, right);
-						return Error(node, diagnostic, CurrentTargetType);
-					}
-					
-					resolution = resolutionSet[0];
-					operation = resolution.Operation;
-				}
-			}
-			
-			if (resolution.LeftConversion is { } leftConversion)
-				left = new ResolvedConversionExpressionNode(left, leftConversion, node);
-			
-			if (resolution.RightConversion is { } rightConversion)
-				right = new ResolvedConversionExpressionNode(right, rightConversion, node);
-			
-			return new ResolvedBinaryOpExpressionNode(left, right, operation, node);
+			var result = new ResolvedBinaryOpExpressionNode(resolvedArgs[0], resolvedArgs[1], operation, node);
+			return ApplyResultResolution(result, resolution);
 		}
 	}
 	
@@ -908,31 +878,19 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			operands[i - 1] = MaterializeWithPeer(operands[i - 1], operands[i].Type);
 		}
 		
-		TypeSymbol? prevType = null;
-		var allSameType = true;
-		for (var i = 0; i < operands.Count; i++)
-		{
-			var newOp = MaterializeAsDefault(operands[i]);
-			operands[i] = newOp;
-			
-			if (i > 0 && prevType != newOp.Type)
-				allSameType = false;
-			
-			prevType = newOp.Type;
-		}
+		for (var i = 0; i < operands.Count - 1; i++)
+			operands[i] = MaterializeAsDefault(operands[i]);
 		
-		if (!allSameType)
-		{
-			var commonType = operands[0].Type;
-			for (var i = 1; i < operands.Count && commonType is not null; i++)
-				commonType = FindCommonType(commonType, operands[i].Type);
-			
-			if (commonType is null)
-				return Error(node, "Cannot chain comparisons between incompatible types", CurrentTargetType);
-			
-			for (var i = 0; i < operands.Count; i++)
-				operands[i] = CoerceToType(operands[i], commonType);
-		}
+		// TODO Do we need common types anymore?
+		var commonType = operands[0].Type;
+		for (var i = 1; i < operands.Count && commonType is not null; i++)
+			commonType = FindCommonType(commonType, operands[i].Type);
+		
+		if (commonType is null)
+			return Error(node, "Cannot chain comparisons between incompatible types", CurrentTargetType);
+		
+		for (var i = 0; i < operands.Count; i++)
+			operands[i] = CoerceToType(operands[i], commonType);
 		
 		var operations = new List<OperationImpl?>(node.Ops.Length);
 		for (var i = 0; i < operands.Count - 1; i++)
@@ -944,7 +902,11 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			if (AnyInvalid(left, right))
 				return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
 			
-			var resolutionSet = _operatorRegistry.ResolveBinary(left.Type, op.Type, right.Type);
+			// TODO Allow types other than bool?
+			var args = new[] { left, right };
+			var candidates = _operatorRegistry.GetBinaryCandidates(op.Type);
+			var resolutionSet = ResolveCallable(candidates, args, MaterializationMode.Overload, NativeSymbols.Bool);
+			
 			if (resolutionSet.IsAmbiguous)
 			{
 				var (source, range) = left.Syntax.SourceLocation;
@@ -955,23 +917,23 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 					CurrentTargetType, new SourceLocation(source, range));
 			}
 			
-			operations.Add(resolutionSet.HasResult ? resolutionSet[0].Operation : null);
-		}
-		
-		// Aggregate types with implicit AND
-		var resultType = operations[0]?.Result ?? NativeSymbols.Invalid;
-		for (var i = 1; i < operations.Count; i++)
-		{
-			var right = operations[i]?.Result ?? NativeSymbols.Invalid;
-			var resolutionSet = _operatorRegistry.ResolveBinary(resultType, TokenType.OpAmpersand, right);
-			if (resolutionSet.IsAmbiguous)
-				Error(node, $"Ambiguous operation '&' between '{resultType.Name}' and '{right.Name}'",
-					CurrentTargetType);
+			if (!resolutionSet.HasResult)
+			{
+				var diagnostic = DiagnosticReporter.ReportBinaryOpMismatch(_operatorRegistry, left, op, right);
+				return Error(node, diagnostic, CurrentTargetType);
+			}
 			
-			resultType = resolutionSet.HasResult ? resolutionSet[0].Operation.Result : NativeSymbols.Invalid;
+			var resolution = resolutionSet[0];
+			var resolvedArgs = ApplyArgumentResolution(args, resolution);
+			
+			operands[i] = resolvedArgs[0];
+			operands[i + 1] = resolvedArgs[1];
+			operations.Add((OperationImpl)resolution.Callable);
 		}
 		
-		return new ResolvedChainedExpressionNode(resultType, operands, operations, node);
+		// TODO Aggregate types with implicit AND?
+		
+		return new ResolvedChainedExpressionNode(NativeSymbols.Bool, operands, operations, node);
 	}
 	
 	[return: NotNullIfNotNull(nameof(source))]
@@ -1035,18 +997,27 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	
 	private IResolvedExpressionNode MaterializeAsDefault(IResolvedExpressionNode node)
 	{
-		// TODO This doesn't work very well. Need to implement some kind of planner based on candidate operations/types
 		switch (node.Type)
 		{
-			case UntypedIntegerType:
+			case UntypedIntegerType u when node is ResolvedLiteralExpressionNode literal:
 			{
-				if (node is not ResolvedLiteralExpressionNode literal)
-					return MaterializeExpression(node, NativeSymbols.Int32);
-				
 				var value = (BigInteger)literal.Value!;
-				var targetType = SmallestFittingType(value) ?? throw new InvalidOperationException();
-				return MaterializeLiteral(node.Syntax, targetType, value);
+				
+				// Cheapest default type that can fit the value
+				var targetType = NativeSymbols.IntegerTypes
+					.Where(t => FitsInType(value, t))
+					.Select(t => new { Type = t, Cost = u.MaterializationCost(t, MaterializationMode.Default) })
+					.Where(static x => x.Cost != int.MaxValue)
+					.OrderBy(static x => x.Cost)
+					.FirstOrDefault()?.Type;
+				
+				return targetType is not null
+					? MaterializeLiteral(node.Syntax, targetType, value)
+					: Error(node.Syntax, "Integer literal too large to fit any type", targetType);
 			}
+			
+			case UntypedIntegerType:
+				return MaterializeExpression(node, NativeSymbols.Int32);
 			
 			case UntypedNullType when node is ResolvedLiteralExpressionNode literal:
 				return MaterializeNull(literal, NativeSymbols.VoidPtr);
@@ -1100,71 +1071,18 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	
 	private IResolvedExpressionNode MaterializeExpression(IResolvedExpressionNode node, TypeSymbol target)
 	{
-		switch (node)
+		if (node is not ResolvedLiteralExpressionNode literal)
+			return node;
+		
+		return node.Type switch
 		{
-			case ResolvedLiteralExpressionNode literal:
-			{
-				return node.Type switch
-				{
-					UntypedIntegerType when target is IntegerType t => MaterializeInteger(literal, t),
-					UntypedNullType when target is PointerType t => MaterializeNull(literal, t),
-					UntypedStringType when target is StringType t => t == NativeSymbols.CStr
-						? MaterializeCStr(literal)
-						: MaterializeStr(literal),
-					_ => literal
-				};
-			}
-			
-			case ResolvedUnaryOpExpressionNode unary:
-			{
-				var operand = MaterializeExpression(unary.Operand, target);
-				var resolution = unary.Operation?.Op is { } op
-					? _operatorRegistry.ResolveUnary(op, operand.Type)
-					: null;
-				
-				return new ResolvedUnaryOpExpressionNode(operand, resolution, unary.Syntax);
-			}
-			
-			case ResolvedBinaryOpExpressionNode binary:
-			{
-				var left = MaterializeExpression(binary.Left, target);
-				var right = MaterializeExpression(binary.Right, target);
-				
-				if (left.Type != right.Type)
-				{
-					// Try widening the narrower side
-					if (FindCommonType(left.Type, right.Type) is { } common)
-					{
-						left = CoerceToType(left, common);
-						right = CoerceToType(right, common);
-					}
-				}
-				
-				var resolutionSet = binary.Operation?.Op is { } op
-					? _operatorRegistry.ResolveBinary(left.Type, op, right.Type)
-					: BinaryResolutionSet.None;
-				
-				if (resolutionSet.IsAmbiguous)
-					return Error(node.Syntax, $"Ambiguous operation '{binary.Operation!.Op.Representation}' between " +
-					                    $"'{left.Type.Name}' and '{right.Type.Name}'", CurrentTargetType);
-				
-				if (!resolutionSet.HasResult)
-					return new ResolvedBinaryOpExpressionNode(left, right, null, node.Syntax);
-				
-				var resolution = resolutionSet[0];
-				
-				if (resolution.LeftConversion is { } leftConversion)
-					left = new ResolvedConversionExpressionNode(left, leftConversion, node.Syntax);
-				
-				if (resolution.RightConversion is { } rightConversion)
-					right = new ResolvedConversionExpressionNode(right, rightConversion, node.Syntax);
-				
-				return new ResolvedBinaryOpExpressionNode(left, right, resolution.Operation, node.Syntax);
-			}
-			
-			default:
-				return node;
-		}
+			UntypedIntegerType when target is IntegerType t => MaterializeInteger(literal, t),
+			UntypedNullType when target is PointerType t => MaterializeNull(literal, t),
+			UntypedStringType when target is StringType t => t == NativeSymbols.CStr
+				? MaterializeCStr(literal)
+				: MaterializeStr(literal),
+			_ => literal
+		};
 	}
 	
 	private ResolvedLiteralExpressionNode MaterializeInteger(ResolvedLiteralExpressionNode node, IntegerType target)
@@ -1312,4 +1230,192 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	private static bool AnyInvalid(params TypeSymbol[] types) => types.Any(IsInvalid);
 	private static bool IsInvalid(IResolvedExpressionNode expression) => expression.Type is InvalidType;
 	private static bool AnyInvalid(params IResolvedExpressionNode[] expressions) => expressions.Any(IsInvalid);
+	
+	private FunctionInfo GetFunctionInfo(FunctionSymbol function) =>
+		_assemblySignatureTable.Functions.TryGetValue(function, out var info)
+			? info
+			: _dependencySignatureTable.Functions[function];
+	
+	private void TrackImportedFunction(FunctionInfo info)
+	{
+		if (!_assemblySignatureTable.Functions.ContainsKey(info.Symbol) ||
+		    info.File.Module != CurrentResolutionContext.File.Module)
+			_importedFunctions.TryAdd(info.Symbol, info);
+	}
+	
+	private ResolutionSet ResolveCallable(IEnumerable<ICallable> candidates,
+		IReadOnlyList<IResolvedExpressionNode> args, MaterializationMode mode, TypeSymbol? target = null)
+	{
+		var options = new List<CallableResolution>();
+		
+		foreach (var candidate in candidates)
+		{
+			if (candidate.ParameterTypes.Length != args.Count)
+				continue;
+			
+			var argumentCost = 0;
+			var argumentConversions = new Conversion?[args.Count];
+			var valid = true;
+			
+			for (var i = 0; i < args.Count; i++)
+			{
+				var (cost, conversion) = MatchArg(args[i], candidate.ParameterTypes[i], mode);
+				
+				if (cost == int.MaxValue)
+				{
+					valid = false;
+					break;
+				}
+				
+				argumentCost += cost;
+				argumentConversions[i] = conversion;
+			}
+			
+			if (!valid)
+				continue;
+			
+			var resultRank = 0;
+			var resultCost = 0;
+			Conversion? resultConversion = null;
+			
+			if (target is not null && candidate.ReturnType != target)
+			{
+				var conversion = _conversionTable.FindImplicit(candidate.ReturnType, target);
+				if (conversion is null)
+					continue;
+				
+				// Exact returns beat converted returns, so set to a higher cost
+				resultRank = 1;
+				resultCost = conversion.Cost;
+				resultConversion = conversion;
+			}
+			
+			var totalCost = new CallableCost(resultRank, argumentCost, resultCost);
+			options.Add(new(candidate, totalCost, resultConversion, argumentConversions));
+		}
+		
+		if (options.Count == 0)
+			return ResolutionSet.None;
+		
+		var best = options.Min(static v => v.Cost);
+		var winners = options.Where(v => v.Cost == best).ToList();
+		return winners.Count switch
+		{
+			0 => ResolutionSet.None,
+			1 => ResolutionSet.Single(winners[0]),
+			_ => ResolutionSet.Ambiguous(winners)
+		};
+	}
+	
+	private List<IResolvedExpressionNode> ApplyArgumentResolution(IReadOnlyList<IResolvedExpressionNode> args,
+		CallableResolution resolution)
+	{
+		var result = new List<IResolvedExpressionNode>(args.Count);
+		
+		for (var i = 0; i < args.Count; i++)
+		{
+			var arg = args[i];
+			var target = resolution.Callable.ParameterTypes[i];
+			
+			if (arg.Type is UntypedType)
+				arg = MaterializeExpression(arg, target);
+			
+			if (arg.Type is UntypedType)
+				arg = MaterializeAsDefault(arg);
+			
+			if (resolution.ArgumentConversions[i] is { } conversion)
+				arg = new ResolvedConversionExpressionNode(arg, conversion, arg.Syntax);
+			
+			result.Add(arg);
+		}
+		
+		return result;
+	}
+	
+	private IResolvedExpressionNode ApplyResultResolution(IResolvedExpressionNode node,
+		CallableResolution resolution) => resolution.ResultConversion is { } conversion
+			? new ResolvedConversionExpressionNode(node, conversion, node.Syntax)
+			: node;
+	
+	private (int Cost, Conversion? Conversion) MatchArg(IResolvedExpressionNode arg, TypeSymbol target,
+		MaterializationMode mode)
+	{
+		if (arg.Type == target)
+			return (0, null);
+		
+		if (arg.Type is UntypedType u)
+		{
+			// Special case for integer literals: If target type cannot store the value, conversion is impossible
+			if (target is IntegerType i && u is UntypedIntegerType && arg is ResolvedLiteralExpressionNode literal)
+			{
+				var value = (BigInteger)literal.Value!;
+				if (!FitsInType(value, i))
+					return (int.MaxValue, null);
+			}
+			
+			var cost = u.MaterializationCost(target, mode);
+			return (cost, null);
+		}
+		
+		var conversion = _conversionTable.FindImplicit(arg.Type, target);
+		return conversion is null ? (Cost: int.MaxValue, null) : (conversion.Cost, conversion);
+	}
+	
+	private readonly record struct CallableResolution
+	(
+		ICallable Callable,
+		CallableCost Cost,
+		Conversion? ResultConversion,
+		Conversion?[] ArgumentConversions
+	);
+	
+	private readonly record struct CallableCost(int ResultRank, int ArgumentCost, int ResultCost)
+		: IComparable<CallableCost>
+	{
+		public int CompareTo(CallableCost other)
+		{
+			var resultRankComparison = ResultRank.CompareTo(other.ResultRank);
+			if (resultRankComparison != 0)
+				return resultRankComparison;
+			
+			var argumentCostComparison = ArgumentCost.CompareTo(other.ArgumentCost);
+			if (argumentCostComparison != 0)
+				return argumentCostComparison;
+			
+			return ResultCost.CompareTo(other.ResultCost);
+		}
+	}
+	
+	private readonly struct ResolutionSet
+	{
+		public static ResolutionSet None => default;
+		public static ResolutionSet Single(CallableResolution resolution) => new(resolution);
+		public static ResolutionSet Ambiguous(params IEnumerable<CallableResolution> resolutions) => new(resolutions);
+		
+		public int Count { get; }
+		public bool IsAmbiguous => Count > 1;
+		public bool HasResult => Count > 0;
+		public CallableResolution this[int index] => _resolutions.IsDefaultOrEmpty ? default : _resolutions[index];
+		
+		private readonly ImmutableArray<CallableResolution> _resolutions;
+		
+		private ResolutionSet(params IEnumerable<CallableResolution> resolutions)
+		{
+			_resolutions = resolutions.ToImmutableArray();
+			Count = _resolutions.Length;
+		}
+	}
+	
+	private sealed class FunctionCallable(FunctionInfo info) : ICallable
+	{
+		public FunctionInfo Info { get; } = info;
+		public ImmutableArray<TypeSymbol> ParameterTypes => Info.Signature.ParameterTypes;
+		public TypeSymbol ReturnType => Info.Signature.ReturnType;
+	}
+}
+
+public interface ICallable
+{
+	ImmutableArray<TypeSymbol> ParameterTypes { get; }
+	TypeSymbol ReturnType { get; }
 }

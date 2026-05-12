@@ -61,6 +61,23 @@ public static class NativeSymbols
 		Char, Bool, Str, CStr, VoidPtr
 	}.ToImmutableDictionary(static s => s.Name);
 	
+	public static ImmutableArray<IntegerType> IntegerTypes { get; } =
+	[
+		Int8,
+		UInt8,
+		Int16,
+		UInt16,
+		Int32,
+		UInt32,
+		Int64,
+		UInt64,
+		Int128,
+		UInt128,
+		IntSize,
+		UIntSize,
+		Char
+	];
+	
 	public static Symbol? Resolve(string name) => _primitiveTypes.GetValueOrDefault(name);
 }
 

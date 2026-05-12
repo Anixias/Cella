@@ -57,7 +57,7 @@ internal static class Program
 		}
 		
 		var conversionTable = ConversionTable.CreateNative();
-		var operatorRegistry = new OperatorRegistry(conversionTable);
+		var operatorRegistry = new OperatorRegistry();
 		var sizeTable = new SizeTable();
 		var typePool = new TypePool(conversionTable, operatorRegistry, sizeTable);
 		var projectSymbols = new Dictionary<ProjectInfo, AssemblyInfo>();

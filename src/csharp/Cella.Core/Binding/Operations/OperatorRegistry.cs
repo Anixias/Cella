@@ -5,41 +5,6 @@ using Cella.Core.Text;
 
 namespace Cella.Core.Binding.Operations;
 
-public readonly record struct BinaryResolution
-(
-	OperationImpl Operation,
-	Conversion? LeftConversion,
-	Conversion? RightConversion
-);
-
-public readonly struct BinaryResolutionSet
-{
-	public static BinaryResolutionSet None => default;
-	public static BinaryResolutionSet Single(BinaryResolution resolution) => new(resolution, default, 1);
-	public static BinaryResolutionSet Ambiguous(BinaryResolution a, BinaryResolution b) => new(a, b, 2);
-	
-	public int Count { get; }
-	public bool IsAmbiguous => Count > 1;
-	public bool HasResult => Count > 0;
-	
-	private readonly BinaryResolution _first;
-	private readonly BinaryResolution _second;
-	
-	public BinaryResolution this[int index] => index switch
-	{
-		0 when Count > 0 => _first,
-		1 when Count > 1 => _second,
-		_ => throw new ArgumentOutOfRangeException(nameof(index))
-	};
-	
-	private BinaryResolutionSet(BinaryResolution first, BinaryResolution second, int count)
-	{
-		_first = first;
-		_second = second;
-		Count = count;
-	}
-}
-
 public sealed class OperatorRegistry
 {
 	private static readonly ImmutableArray<TokenType> _numericBinOps =
@@ -74,8 +39,6 @@ public sealed class OperatorRegistry
 		TokenType.OpGreaterEqual,
 		TokenType.OpLess,
 		TokenType.OpLessEqual,
-		TokenType.OpEqualEqual,
-		TokenType.OpBangEqual,
 		.._equalityBinOps
 	];
 	
@@ -107,133 +70,111 @@ public sealed class OperatorRegistry
 		NativeSymbols.Int64, NativeSymbols.UInt64,
 		NativeSymbols.Int128, NativeSymbols.UInt128,
 		NativeSymbols.IntSize, NativeSymbols.UIntSize,
-		NativeSymbols.UntypedInteger,
 		NativeSymbols.Char // TODO Handle char differently?
 	];
 	
-	private readonly Dictionary<UnaryOperationKey, OperationImpl> _unaryOps = CreateUnaryOps();
-	private readonly Dictionary<BinaryOperationKey, OperationImpl> _binaryOps;
-	private readonly ConversionTable _conversionTable;
+	private readonly Dictionary<TokenType, List<ICallable>> _unaryOps = CreateUnaryOps();
+	private readonly Dictionary<TokenType, List<ICallable>> _binaryOps;
 	
-	public OperatorRegistry(ConversionTable conversionTable)
+	public OperatorRegistry()
 	{
-		_conversionTable = conversionTable;
 		_binaryOps = CreateBinaryOps();
 	}
 	
-	private readonly record struct UnaryOperationKey(TokenType Op, TypeSymbol Operand);
-	private readonly record struct BinaryOperationKey(TypeSymbol Left, TokenType Op, TypeSymbol Right);
-	
-	public bool CreateBinary(TypeSymbol left, TokenType op, TypeSymbol right, OperationImpl impl) =>
-		_binaryOps.TryAdd(new(left, op, right), impl);
-	
-	public bool CreateUnary(TokenType op, TypeSymbol operand, OperationImpl impl) =>
-		_unaryOps.TryAdd(new(op, operand), impl);
-	
-	public BinaryResolutionSet ResolveBinary(TypeSymbol left, TokenType op, TypeSymbol right)
+	public void Create(OperationImpl impl)
 	{
-		var key = new BinaryOperationKey(left, op, right);
-		if (_binaryOps.TryGetValue(key, out var exact))
-			return BinaryResolutionSet.Single(new(exact, null, null));
-		
-		if (left == right)
-			return BinaryResolutionSet.None;
-		
-		BinaryResolution? leftCandidate = null;
-		var leftCost = int.MaxValue;
-		BinaryResolution? rightCandidate = null;
-		var rightCost = int.MaxValue;
-		
-		var leftConversion = _conversionTable.FindImplicit(left, right);
-		if (leftConversion is not null && _binaryOps.TryGetValue(new(right, op, right), out var impl))
+		switch (impl.ParameterTypes.Length)
 		{
-			leftCandidate = new(impl, leftConversion, null);
-			leftCost = leftConversion.Cost;
-		}
-		
-		var rightConversion = _conversionTable.FindImplicit(right, left);
-		if (rightConversion is not null && _binaryOps.TryGetValue(new(left, op, left), out impl))
-		{
-			rightCandidate = new(impl, null, rightConversion);
-			rightCost = rightConversion.Cost;
-		}
-		
-		if (leftCandidate is null && rightCandidate is null)
-			return BinaryResolutionSet.None;
-		
-		if (leftCandidate is not null && rightCandidate is not null)
-		{
-			if (leftCost < rightCost)
-				return BinaryResolutionSet.Single(leftCandidate.Value);
-			if (rightCost < leftCost)
-				return BinaryResolutionSet.Single(rightCandidate.Value);
+			case 1:
+				_unaryOps.GetOrAdd(impl.Op).Add(impl);
+				break;
 			
-			return BinaryResolutionSet.Ambiguous(leftCandidate.Value, rightCandidate.Value);
+			case 2:
+				_binaryOps.GetOrAdd(impl.Op).Add(impl);
+				break;
+			
+			default:
+				throw new InvalidOperationException();
 		}
-		
-		return BinaryResolutionSet.Single(leftCandidate ?? rightCandidate!.Value);
 	}
 	
-	public OperationImpl? ResolveUnary(TokenType op, TypeSymbol operand) =>
-		_unaryOps.GetValueOrDefault(new(op, operand));
-	
-	private static Dictionary<UnaryOperationKey, OperationImpl> CreateUnaryOps()
+	private static Dictionary<TokenType, List<ICallable>> CreateUnaryOps()
 	{
-		var result = new Dictionary<UnaryOperationKey, OperationImpl>();
+		var result = new Dictionary<TokenType, List<ICallable>>();
 		
-		foreach (var type in _numericTypes)
+		foreach (var op in _numericUnaryOps)
 		{
-			foreach (var op in _numericUnaryOps)
-				result[new(op, type)] = new NativeImpl(op, type);
+			var list = result.GetOrAdd(op);
+			foreach (var type in _numericTypes)
+				list.Add(new NativeImpl(op, type, type));
 		}
 		
-		result[new(TokenType.OpBang, NativeSymbols.Bool)] = new NativeImpl(TokenType.OpBang, NativeSymbols.Bool);
-		
+		result.GetOrAdd(TokenType.OpBang).Add(new NativeImpl(TokenType.OpBang, NativeSymbols.Bool, NativeSymbols.Bool));
 		return result;
 	}
 	
-	private Dictionary<BinaryOperationKey, OperationImpl> CreateBinaryOps()
+	private Dictionary<TokenType, List<ICallable>> CreateBinaryOps()
 	{
-		var result = new Dictionary<BinaryOperationKey, OperationImpl>();
+		var result = new Dictionary<TokenType, List<ICallable>>();
 		
-		foreach (var type in _numericTypes)
+		
+		foreach (var op in _numericBinOps)
 		{
-			foreach (var op in _numericBinOps)
-				result[new(type, op, type)] = new NativeImpl(op, type);
-			
-			foreach (var op in _comparisonBinOps)
-				result[new(type, op, type)] = new NativeImpl(op, NativeSymbols.Bool);
+			var list = result.GetOrAdd(op);
+			foreach (var type in _numericTypes)
+				list.Add(new NativeImpl(op, type, type, type));
+		}
+		
+		foreach (var op in _comparisonBinOps)
+		{
+			var list = result.GetOrAdd(op);
+			foreach (var type in _numericTypes)
+				list.Add(new NativeImpl(op, NativeSymbols.Bool, type, type));
 		}
 		
 		foreach (var op in _boolBinOps)
-			result[new(NativeSymbols.Bool, op, NativeSymbols.Bool)] = new NativeImpl(op, NativeSymbols.Bool);
+			result.GetOrAdd(op).Add(new NativeImpl(op, NativeSymbols.Bool, NativeSymbols.Bool, NativeSymbols.Bool));
 		
 		// Pointers
 		foreach (var op in _comparisonBinOps)
-			result[new(NativeSymbols.VoidPtr, op, NativeSymbols.VoidPtr)] = new NativeImpl(op, NativeSymbols.Bool);
+			result.GetOrAdd(op)
+				.Add(new NativeImpl(op, NativeSymbols.Bool, NativeSymbols.VoidPtr, NativeSymbols.VoidPtr));
 		
 		// TODO Should equality operations should be defined for everything?
 		
 		return result;
 	}
+	
+	public IReadOnlyList<ICallable> GetUnaryCandidates(TokenType op) =>
+		_unaryOps.TryGetValue(op, out var candidates) ? candidates : Array.Empty<ICallable>();
+	
+	public IReadOnlyList<ICallable> GetBinaryCandidates(TokenType op) =>
+		_binaryOps.TryGetValue(op, out var candidates) ? candidates : Array.Empty<ICallable>();
 }
 
-public abstract class OperationImpl(TokenType op, TypeSymbol result)
+public abstract class OperationImpl(TokenType op, TypeSymbol result, params IEnumerable<TypeSymbol> parameters)
+	: ICallable
 {
 	public TokenType Op { get; } = op;
-	public TypeSymbol Result { get; } = result;
+	public TypeSymbol ReturnType { get; } = result;
+	public ImmutableArray<TypeSymbol> ParameterTypes { get; } = parameters.ToImmutableArray();
 }
 
-public sealed class NativeImpl(TokenType op, TypeSymbol result) : OperationImpl(op, result);
+public sealed class NativeImpl(TokenType op, TypeSymbol result, params IEnumerable<TypeSymbol> parameters)
+	: OperationImpl(op, result, parameters);
 
-public sealed class FunctionImpl(TokenType op, FunctionInfo function) : OperationImpl(op, function.Signature.ReturnType)
+public sealed class FunctionImpl(TokenType op, FunctionInfo function)
+	: OperationImpl(op, function.Signature.ReturnType, function.Signature.ParameterTypes)
 {
 	public FunctionInfo Function { get; } = function;
 }
 
-public sealed class ConversionImpl(TokenType op, TypeSymbol result) : OperationImpl(op, result)
+public sealed class ConversionImpl(TokenType op, TypeSymbol result,
+	params IReadOnlyList<(TypeSymbol Type, Conversion? Conversion)> parameters)
+	: OperationImpl(op, result, parameters.Select(static p => p.Type))
 {
-	public Conversion? LeftConversion { get; init; }
-	public Conversion? RightConversion { get; init; }
+	public ImmutableArray<Conversion?> ParameterConversions { get; } = parameters.Select(static p => p.Conversion)
+		.ToImmutableArray();
+	
 	public Conversion? ResultConversion { get; init; }
 }
