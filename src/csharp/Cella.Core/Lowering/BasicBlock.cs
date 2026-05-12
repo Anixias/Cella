@@ -146,6 +146,22 @@ public sealed class AssignValue(TypeSymbol type, Value left, Value right, Source
 	public Value Left { get; } = left;
 	public Value Right { get; } = right;
 }
+
+public sealed class PointerOffsetValue(PointerType type, Value pointer, Value offset, BinaryOperation op,
+	SourceLocation sourceLocation) : Value(type, false, sourceLocation)
+{
+	public Value Pointer { get; } = pointer;
+	public Value Offset { get; } = offset;
+	public BinaryOperation Op { get; } = op;
+}
+
+public sealed class PointerDifferenceValue(Value left, Value right, PointerType pointerType,
+	SourceLocation sourceLocation) : Value(NativeSymbols.IntSize, false, sourceLocation)
+{
+	public Value Left { get; } = left;
+	public Value Right { get; } = right;
+	public PointerType PointerType { get; } = pointerType;
+}
 #endregion
 
 public interface IBlockTerminator

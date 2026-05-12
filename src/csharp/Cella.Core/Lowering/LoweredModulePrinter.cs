@@ -151,6 +151,18 @@ public static class LoweredModulePrinter
 					
 					break;
 				
+				case PointerOffsetValue v:
+					PrintValue(sb, v.Pointer);
+					sb.Append(v.Op == BinaryOperation.Addition ? " + " : " - ");
+					PrintValue(sb, v.Offset);
+					break;
+				
+				case PointerDifferenceValue v:
+					PrintValue(sb, v.Left);
+					sb.Append(" - ");
+					PrintValue(sb, v.Right);
+					break;
+				
 				case HeapValue v:
 					sb.Append("heap(");
 					PrintValue(sb, v.Initializer);

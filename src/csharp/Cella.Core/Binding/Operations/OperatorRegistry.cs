@@ -169,6 +169,19 @@ public sealed class FunctionImpl(TokenType op, FunctionInfo function)
 	public FunctionInfo Function { get; } = function;
 }
 
+public sealed class PointerOffsetImpl(TokenType op, PointerType pointerType, TypeSymbol offsetType)
+	: OperationImpl(op, pointerType, pointerType, offsetType)
+{
+	public PointerType PointerType { get; } = pointerType;
+	public TypeSymbol OffsetType { get; } = offsetType;
+}
+
+public sealed class PointerDifferenceImpl(PointerType pointerType)
+	: OperationImpl(TokenType.OpMinus, NativeSymbols.IntSize, pointerType, pointerType)
+{
+	public PointerType PointerType { get; } = pointerType;
+}
+
 public sealed class ConversionImpl(TokenType op, TypeSymbol result,
 	params IReadOnlyList<(TypeSymbol Type, Conversion? Conversion)> parameters)
 	: OperationImpl(op, result, parameters.Select(static p => p.Type))

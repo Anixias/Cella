@@ -94,40 +94,9 @@ public sealed class TypePool
 	
 	private void CreatePointerArithmetic(PointerType ptrType)
 	{
-		var ptrToUSize = ConversionTable.FindExplicit(ptrType, NativeSymbols.UIntSize);
-		var uSizeToPtr = ConversionTable.FindExplicit(NativeSymbols.UIntSize, ptrType);
-		var ptrToISize = ConversionTable.FindExplicit(ptrType, NativeSymbols.IntSize);
-		
-		// usize(ptr[T]) + usize = ptr[T](usize)
-		OperatorRegistry.Create(new ConversionImpl(TokenType.OpPlus, ptrType, (ptrType, ptrToUSize),
-			(NativeSymbols.UIntSize, null))
-			{
-				ResultConversion = uSizeToPtr
-			});
-		
-		// usize(ptr[T]) - usize = ptr[T](usize)
-		OperatorRegistry.Create(new ConversionImpl(TokenType.OpMinus, ptrType, (ptrType, ptrToUSize),
-			(NativeSymbols.UIntSize, null))
-			{
-				ResultConversion = uSizeToPtr
-			});
-		
-		// isize(ptr[T]) - isize(ptr[T]) = isize
-		OperatorRegistry.Create(new ConversionImpl(TokenType.OpMinus, NativeSymbols.IntSize, (ptrType, ptrToISize),
-			(ptrType, ptrToISize)));
-		
-		if (ptrType == NativeSymbols.VoidPtr)
-			return;
-		
-		// isize(ptr[T]) - isize(ptr) = isize
-		// isize(ptr) - isize(ptr[T]) = isize
-		var voidPtrToISize = ConversionTable.FindExplicit(NativeSymbols.VoidPtr, NativeSymbols.IntSize);
-		
-		OperatorRegistry.Create(new ConversionImpl(TokenType.OpMinus, NativeSymbols.IntSize, (ptrType, ptrToISize),
-			(NativeSymbols.VoidPtr, voidPtrToISize)));
-		
-		OperatorRegistry.Create(new ConversionImpl(TokenType.OpMinus, NativeSymbols.IntSize,
-			(NativeSymbols.VoidPtr, voidPtrToISize), (ptrType, ptrToISize)));
+		OperatorRegistry.Create(new PointerOffsetImpl(TokenType.OpPlus, ptrType, NativeSymbols.UIntSize));
+		OperatorRegistry.Create(new PointerOffsetImpl(TokenType.OpMinus, ptrType, NativeSymbols.UIntSize));
+		OperatorRegistry.Create(new PointerDifferenceImpl(ptrType));
 	}
 	
 	public PointerType GetPointerType(TypeSymbol baseType, PointerKind kind)
@@ -149,7 +118,7 @@ public sealed class TypePool
 			default:
 				// All pointers except ptr[T] can be implicitly converted to ptr[T]
 				var unsafeType = GetPointerType(baseType, PointerKind.Unsafe);
-				ConversionTable.Add(new NativeConversion(ptrType, unsafeType, ConversionKind.Implicit, 0));
+				ConversionTable.Add(new NativeConversion(ptrType, unsafeType, ConversionKind.Implicit, 1));
 				break;
 		}
 		
@@ -170,7 +139,7 @@ public sealed class TypePool
 		}
 		
 		// All pointers can be implicitly converted to ptr / explicitly converted from ptr
-		ConversionTable.Add(new NativeConversion(ptrType, PointerType.VoidPtr, ConversionKind.Implicit, 0));
+		ConversionTable.Add(new NativeConversion(ptrType, PointerType.VoidPtr, ConversionKind.Implicit, 1));
 		ConversionTable.Add(new NativeConversion(PointerType.VoidPtr, ptrType, ConversionKind.Explicit, 0));
 		
 		// All pointers can be explicitly converted to/from usize and isize
@@ -211,7 +180,7 @@ public sealed class TypePool
 		// To pointer
 		var arrayPtrType = GetPointerType(arrayType, PointerKind.Unsafe);
 		var elementPtrType = GetPointerType(elementType, PointerKind.Unsafe);
-		ConversionTable.Add(new NativeConversion(arrayPtrType, elementPtrType, ConversionKind.Implicit, 0));
+		ConversionTable.Add(new NativeConversion(arrayPtrType, elementPtrType, ConversionKind.Implicit, 1));
 		
 		return arrayType;
 	}

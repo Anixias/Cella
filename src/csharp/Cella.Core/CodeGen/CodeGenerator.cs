@@ -599,9 +599,59 @@ public sealed unsafe class CodeGenerator : IDisposable
 		ConversionValue v => EmitConversion(v, builder),
 		CallValue v when _funMap[v.Function] is var (fv, ft, _) => builder.BuildCall2(ft, fv,
 			v.Arguments.Select(a => EmitValue(a, builder)).ToArray()),
+		PointerOffsetValue v => EmitPointerOffset(v, builder),
+		PointerDifferenceValue v => EmitPointerDifference(v, builder),
 		HeapValue v => EmitHeap(v, builder),
 		_ => throw new InvalidOperationException()
 	};
+	
+	private LLVMValueRef EmitPointerOffset(PointerOffsetValue v, LLVMBuilderRef builder)
+	{
+		var ptr = EmitValue(v.Pointer, builder);
+		var offset = EmitValue(v.Offset, builder);
+		
+		if (v.Op == BinaryOperation.Subtraction)
+			offset = offset.IsConstant
+				? LLVMValueRef.CreateConstNeg(offset)
+				: builder.BuildNeg(offset, "ptroff.negate");
+		
+		var ptrType = (PointerType)v.Type;
+		
+		var elementType = ptrType.BaseType == NativeSymbols.Void
+			? LLVMTypeRef.Int8
+			: MapTypeSymbol(ptrType.BaseType);
+		
+		if (ptrType.BaseType != NativeSymbols.Void)
+			return builder.BuildGEP2(elementType, ptr, new[] { offset }, "ptroff");
+		
+		var bytePtrType = LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0);
+		var bytePtr = builder.BuildBitCast(ptr, bytePtrType, "voidptr.as.byteptr");
+		var result = builder.BuildGEP2(elementType, bytePtr, new[] { offset }, "ptroff");
+		return builder.BuildBitCast(result, MapTypeSymbol(ptrType), "byteptr.as.voidptr");
+		
+	}
+	
+	private LLVMValueRef EmitPointerDifference(PointerDifferenceValue v, LLVMBuilderRef builder)
+	{
+		var isize = MapTypeSymbol(NativeSymbols.IntSize);
+		var left = builder.BuildPtrToInt(EmitValue(v.Left, builder), isize, "ptrdiff.left");
+		var right = builder.BuildPtrToInt(EmitValue(v.Right, builder), isize, "ptrdiff.right");
+		
+		var byteDiff = builder.BuildSub(left, right, "ptrdiff.bytes");
+		
+		if (v.PointerType.BaseType == NativeSymbols.Void)
+			return byteDiff;
+		
+		var elementBits = _typePool.SizeTable.GetSize(v.PointerType.BaseType).CountBits(_pointerSize);
+		var elementBytes = (elementBits + 7) / 8;
+		
+		if (elementBytes == 0)
+			throw new InvalidOperationException("Cannot subtract pointers to zero-sized type " +
+			                                    v.PointerType.BaseType.Name);
+		
+		var elementSize = EmitSizeConstant(elementBytes, false);
+		return builder.BuildSDiv(byteDiff, elementSize, "ptrdiff.typed");
+	}
 	
 	private LLVMValueRef EmitHeap(HeapValue v, LLVMBuilderRef builder)
 	{

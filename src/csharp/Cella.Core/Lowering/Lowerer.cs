@@ -609,11 +609,15 @@ public sealed class Lowerer : IResolvedDeclarationNodeVisitor
 		
 		private static Value LowerBinOp(Value left, OperationImpl? op, Value right) => op switch
 		{
-			NativeImpl native => new BinOpValue(native.ReturnType, left, right, MapBinOp(native.Op),
+			NativeImpl i => new BinOpValue(i.ReturnType, left, right, MapBinOp(i.Op),
 				Join(left.SourceLocation, right.SourceLocation)),
-			FunctionImpl function => new CallValue(function.Function, [left, right],
+			FunctionImpl i => new CallValue(i.Function, [left, right],
 				Join(left.SourceLocation, right.SourceLocation)),
-			ConversionImpl conversion => LowerConversionBinOp(left, conversion, right),
+			PointerOffsetImpl i => new PointerOffsetValue(i.PointerType, left, right, MapBinOp(i.Op),
+				Join(left.SourceLocation, right.SourceLocation)),
+			PointerDifferenceImpl i => new PointerDifferenceValue(left, right, i.PointerType,
+				Join(left.SourceLocation, right.SourceLocation)),
+			ConversionImpl i => LowerConversionBinOp(left, i, right),
 			_ => throw new InvalidOperationException()
 		};
 		

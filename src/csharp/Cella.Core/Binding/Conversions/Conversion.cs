@@ -22,7 +22,7 @@ public sealed class NativeConversion(TypeSymbol from, TypeSymbol to, ConversionK
 	: Conversion(from, to, kind, cost, true);
 
 public sealed class FreeConversion(TypeSymbol from, TypeSymbol to, ConversionKind kind)
-	: Conversion(from, to, kind, 0, true);
+	: Conversion(from, to, kind, 1, true);
 
 // TODO Is this needed?
 public sealed class IdentityConversion(TypeSymbol symbol)
