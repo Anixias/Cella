@@ -1,4 +1,5 @@
 ﻿using System.Numerics;
+using Cella.Core.Binding.Conversions;
 using Cella.Core.Binding.Nodes;
 using Cella.Core.Binding.Operations;
 using Cella.Core.Symbols;
@@ -619,17 +620,17 @@ public sealed class Lowerer : IResolvedDeclarationNodeVisitor
 		private static Value LowerConversionBinOp(Value left, ConversionImpl conversion, Value right)
 		{
 			if (conversion.ParameterConversions[0] is { } leftConversion)
-				left = new ConversionValue(left, leftConversion, left.SourceLocation);
+				left = Convert(left, leftConversion);
 			
 			if (conversion.ParameterConversions[1] is { } rightConversion)
-				right = new ConversionValue(right, rightConversion, right.SourceLocation);
+				right = Convert(right, rightConversion);
 			
 			var intermediateType = conversion.ResultConversion?.From ?? conversion.ReturnType;
 			var intermediateResult = new BinOpValue(intermediateType, left, right,
 				MapBinOp(conversion.Op), Join(left.SourceLocation, right.SourceLocation));
 			
 			return conversion.ResultConversion is { } resultConversion
-				? new ConversionValue(intermediateResult, resultConversion, intermediateResult.SourceLocation)
+				? Convert(intermediateResult, resultConversion)
 				: intermediateResult;
 		}
 		
@@ -678,6 +679,38 @@ public sealed class Lowerer : IResolvedDeclarationNodeVisitor
 			var (source, range) = left;
 			range = range.Join(right.Range);
 			return new(source, range);
+		}
+		
+		private static Value Convert(Value value, Conversion conversion)
+		{
+			if (value.Type == conversion.To)
+				return value;
+			
+			if (value is ConversionValue inner && CanCancelConversions(inner.Conversion, conversion))
+				return inner.Source;
+			
+			return new ConversionValue(value, conversion, value.SourceLocation);
+		}
+		
+		private static bool CanCancelConversions(Conversion inner, Conversion outer)
+		{
+			if (inner.From != outer.To || inner.To != outer.From)
+				return false;
+			
+			return IsReinterpret(inner) && IsReinterpret(outer);
+		}
+		
+		private static bool IsReinterpret(Conversion conversion)
+		{
+			// TODO Maybe add a special reinterpret conversion type?
+			
+			if (conversion.From == NativeSymbols.UIntSize && conversion.To is PointerType)
+				return true;
+			
+			if (conversion.From is PointerType && conversion.To == NativeSymbols.UIntSize)
+				return true;
+			
+			return false;
 		}
 		
 		private Value StabilizeStorage(Value value) => value switch
