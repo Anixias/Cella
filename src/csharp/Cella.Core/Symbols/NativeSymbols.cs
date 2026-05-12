@@ -61,7 +61,7 @@ public static class NativeSymbols
 		Char, Bool, Str, CStr, VoidPtr
 	}.ToImmutableDictionary(static s => s.Name);
 	
-	public static ImmutableArray<IntegerType> IntegerTypes { get; } =
+	public static ImmutableArray<IntegerType> PureIntegerTypes { get; } =
 	[
 		Int8,
 		UInt8,
@@ -74,7 +74,12 @@ public static class NativeSymbols
 		Int128,
 		UInt128,
 		IntSize,
-		UIntSize,
+		UIntSize
+	];
+	
+	public static ImmutableArray<IntegerType> IntegerTypes { get; } =
+	[
+		..PureIntegerTypes,
 		Char
 	];
 	

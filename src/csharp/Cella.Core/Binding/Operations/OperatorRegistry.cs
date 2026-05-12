@@ -64,13 +64,7 @@ public sealed class OperatorRegistry
 	
 	private static readonly ImmutableArray<TypeSymbol> _numericTypes =
 	[
-		NativeSymbols.Int8, NativeSymbols.UInt8,
-		NativeSymbols.Int16, NativeSymbols.UInt16,
-		NativeSymbols.Int32, NativeSymbols.UInt32,
-		NativeSymbols.Int64, NativeSymbols.UInt64,
-		NativeSymbols.Int128, NativeSymbols.UInt128,
-		NativeSymbols.IntSize, NativeSymbols.UIntSize,
-		NativeSymbols.Char // TODO Handle char differently?
+		..NativeSymbols.IntegerTypes // TODO Handle char differently?
 	];
 	
 	private readonly Dictionary<TokenType, List<ICallable>> _unaryOps = CreateUnaryOps();

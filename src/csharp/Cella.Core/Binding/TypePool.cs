@@ -94,8 +94,8 @@ public sealed class TypePool
 	
 	private void CreatePointerArithmetic(PointerType ptrType)
 	{
-		OperatorRegistry.Create(new PointerOffsetImpl(TokenType.OpPlus, ptrType, NativeSymbols.UIntSize));
-		OperatorRegistry.Create(new PointerOffsetImpl(TokenType.OpMinus, ptrType, NativeSymbols.UIntSize));
+		OperatorRegistry.Create(new PointerOffsetImpl(TokenType.OpPlus, ptrType, NativeSymbols.IntSize));
+		OperatorRegistry.Create(new PointerOffsetImpl(TokenType.OpMinus, ptrType, NativeSymbols.IntSize));
 		OperatorRegistry.Create(new PointerDifferenceImpl(ptrType));
 	}
 	
