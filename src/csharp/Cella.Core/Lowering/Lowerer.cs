@@ -480,7 +480,7 @@ public sealed class Lowerer : IResolvedDeclarationNodeVisitor
 		
 		private LocalVariableSymbol CreateTempSymbol(TypeSymbol type, string name)
 		{
-			name = $"t{NextTempId()}__{name}";
+			name = $".t{NextTempId()}__{name}";
 			var node = new VarStatementNode(SourceLocation.None, new(TokenType.Identifier, SourceLocation.None, name),
 				null, null);
 			
@@ -490,6 +490,11 @@ public sealed class Lowerer : IResolvedDeclarationNodeVisitor
 		public Value Visit(ResolvedAssignmentExpressionNode node)
 		{
 			var left = VisitNode(node.Left);
+			
+			// Need to stabilize the left side first so compound assignments don't double-evaluate
+			if (node.Op.Type != TokenType.OpEqual)
+				left = StabilizeStorage(left);
+			
 			var right = VisitNode(node.Right);
 			return LowerAssignment(left, node.Op, right, node.Type);
 		}
@@ -673,6 +678,36 @@ public sealed class Lowerer : IResolvedDeclarationNodeVisitor
 			var (source, range) = left;
 			range = range.Join(right.Range);
 			return new(source, range);
+		}
+		
+		private Value StabilizeStorage(Value value) => value switch
+		{
+			IndexerValue v => new IndexerValue(v.Type, StabilizeStorageBase(v.Target),
+				CaptureAsAtomic(v.Index, "index"), v.SourceLocation),
+			AccessValue v => new AccessValue(v.Type, StabilizeStorageBase(v.Target), v.Member, v.SourceLocation),
+			UnaryOpValue { Op: UnaryOperation.Dereference } v => new UnaryOpValue(v.Type,
+				CaptureAsAtomic(v.Operand, "addr"), UnaryOperation.Dereference, v.SourceLocation),
+			_ => value
+		};
+		
+		private Value StabilizeStorageBase(Value value) => value switch
+		{
+			VariableValue => value,
+			IndexerValue or AccessValue or UnaryOpValue { Op: UnaryOperation.Dereference } => StabilizeStorage(value),
+			_ => CaptureAsAtomic(value, "target")
+		};
+		
+		private Value CaptureAsAtomic(Value value, string hint)
+		{
+			if (value is ConstantValue or ZeroValue or UndefValue or VariableValue)
+				return value;
+			
+			var symbol = CreateTempSymbol(value.Type, hint);
+			
+			GetOrMakeBlock().Instructions
+				.Add(new LocalVarInstruction(symbol, value, value.SourceLocation, CurrentScopeId));
+			
+			return new VariableValue(new(symbol, value.Type), value.SourceLocation);
 		}
 	}
 }
