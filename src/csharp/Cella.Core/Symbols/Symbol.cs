@@ -70,21 +70,25 @@ public sealed class FileSymbol(FileNode syntax, ModuleSymbol module, IEnumerable
 	// TODO Symbols by name won't work with overloaded functions
 }
 
-// TODO Type parameter symbols
-public sealed class FunctionSymbol
-(
-	string name,
-	IFunctionNode syntax,
-	FunctionInfo? containingFunction,
-	IEnumerable<ParameterSymbol> parameters
-) : Symbol(name), IExportable
+public enum FunctionKind
 {
-	public IFunctionNode Syntax { get; } = syntax;
-	
+	Free,
+	Method,
+	Constructor,
+	External
+}
+
+// TODO Type parameter symbols
+public sealed class FunctionSymbol(string name, IDeclarationNode syntax, IEnumerable<Token> modifiers,
+	FunctionInfo? containingFunction, IEnumerable<ParameterSymbol> parameters, FunctionKind kind)
+	: Symbol(name), IExportable
+{
+	public IDeclarationNode Syntax { get; } = syntax;
+	public Visibility Visibility { get; } = Visibility.FromModifiers(modifiers);
 	public FunctionInfo? ContainingFunction { get; } = containingFunction;
 	public ImmutableArray<ParameterSymbol> Parameters { get; } = parameters.ToImmutableArray();
+	public FunctionKind Kind { get; } = kind;
 	public SourceLocation Definition { get; } = syntax.SourceLocation;
-	public Visibility Visibility { get; } = Visibility.FromModifiers(syntax.Modifiers);
 }
 
 public abstract class TypeSymbol(string name, TypeSymbol? containingType = null, params IEnumerable<Symbol> children)
@@ -289,10 +293,22 @@ public sealed class LocalVariableSymbol(VarStatementNode syntax, TypeSymbol type
 }
 
 // TODO: Initializer? Or is that stored elsewhere?
-public sealed class ParameterSymbol(Token identifier) : VariableSymbol(identifier.Text)
+public sealed class ParameterSymbol : VariableSymbol
 {
-	public Token Identifier { get; } = identifier;
-	public SourceLocation Definition { get; } = identifier.SourceLocation;
+	public Token Identifier { get; }
+	public SourceLocation Definition { get; }
+	
+	public ParameterSymbol(Token identifier) : base(identifier.Text)
+	{
+		Identifier = identifier;
+		Definition = identifier.SourceLocation;
+	}
+	
+	public ParameterSymbol(string name, SourceLocation definition) : base(name)
+	{
+		Identifier = default;
+		Definition = definition;
+	}
 }
 
 public sealed class LabelSymbol(Token identifier) : Symbol(identifier.Text)

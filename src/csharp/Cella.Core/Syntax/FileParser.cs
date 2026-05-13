@@ -12,6 +12,9 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 		BuildContextualKeywords(TokenType.KeywordMod, TokenType.KeywordFun, TokenType.KeywordUse, TokenType.KeywordPub,
 			TokenType.KeywordExt, TokenType.KeywordRec);
 	
+	private static readonly Dictionary<string, TokenType> _memberContextualKeywords =
+		BuildContextualKeywords(TokenType.KeywordFun, TokenType.KeywordPub, TokenType.KeywordNew, TokenType.KeywordOp);
+	
 	private static readonly HashSet<TokenType> _topLevelSyncTypes = [TokenType.OpSemicolon, TokenType.EndOfFile];
 	
 	private static Dictionary<string, TokenType> BuildContextualKeywords(params IEnumerable<TokenType> tokenTypes) =>
@@ -351,25 +354,35 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 		return new(identifier, modifiers, parameters, returnType, origin);
 	}
 	
-	private (List<ParameterNode> Parameters, ITypeNode? ReturnType)? ParseFunctionSignature(ref int index)
+	private List<ParameterNode>? ParseParameters(ref int index, bool optionalParentheses)
 	{
 		var parameters = new List<ParameterNode>();
 		
 		// Parentheses are optional for function declarations
 		if (Match(ref index, TokenType.OpOpenParen))
 		{
+			if (Match(ref index, TokenType.OpCloseParen))
+				return parameters;
+			
+			if (ParseParameterList(ref index) is not { } parameterList)
+				return null;
+			
+			parameters.AddRange(parameterList);
+			
+			// TODO Diagnostics
 			if (!Match(ref index, TokenType.OpCloseParen))
-			{
-				if (ParseParameterList(ref index) is not { } parameterList)
-					return null;
-				
-				parameters.AddRange(parameterList);
-				
-				// TODO Diagnostics
-				if (!Match(ref index, TokenType.OpCloseParen))
-					return null;
-			}
+				return null;
 		}
+		else if (!optionalParentheses)
+			return null; // TODO Diagnostics
+		
+		return parameters;
+	}
+	
+	private (List<ParameterNode> Parameters, ITypeNode? ReturnType)? ParseFunctionSignature(ref int index)
+	{
+		if (ParseParameters(ref index, true) is not { } parameters)
+			return null;
 		
 		var returnType = Match(ref index, TokenType.OpArrow) ? ParseType(ref index) : null;
 		return (parameters, returnType);
@@ -448,15 +461,46 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 	private IDeclarationNode? ParseMember(ref int index)
 	{
 		// TODO Diagnostics
+		// TODO Visibility modifiers / visibility blocks
+		
+		if (Match(ref index, out var newKeyword, _memberContextualKeywords, TokenType.KeywordNew))
+			return ParseConstructor(ref index, newKeyword, []);
 		
 		if (!Match(ref index, out var identifier, TokenType.Identifier) || !Match(ref index, TokenType.OpColon))
 			return null;
 		
-		// TODO Functions, constructors, casts, operator overloads
+		// TODO Functions, casts, operator overloads
 		
 		// Fields
-		// TODO Visibility modifiers / visibility blocks
 		return ParseField(ref index, identifier, []);
+	}
+	
+	private ConstructorNode? ParseConstructor(ref int index, Token newKeyword, IEnumerable<Token> modifiers)
+	{
+		// When this is called, the identifier and fun keyword are already consumed
+		// Caller is expected to resync in case of errors
+		
+		// @TODO Diagnostics
+		
+		if (!Match(ref index, TokenType.OpColon))
+			return null;
+		
+		if (!Match(ref index, _memberContextualKeywords, TokenType.KeywordOp))
+			return null;
+		
+		if (ParseParameters(ref index, true) is not { } parameters)
+			return null;
+		
+		if (!Match(ref index, out var openBraceToken, TokenType.OpOpenBrace))
+			return null;
+		
+		if (ParseBlockStatement(ref index, openBraceToken) is not { } body)
+			return null;
+		
+		var (source, range) = newKeyword.SourceLocation;
+		range = range.Join(body.SourceLocation.Range);
+		
+		return new(modifiers, parameters, body, new(source, range));
 	}
 	
 	private FieldNode ParseField(ref int index, Token identifier, IEnumerable<Token> modifiers)

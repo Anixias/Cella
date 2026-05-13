@@ -1,4 +1,5 @@
 ﻿using System.Numerics;
+using Cella.Core.Binding;
 using Cella.Core.Binding.Conversions;
 using Cella.Core.Binding.Nodes;
 using Cella.Core.Binding.Operations;
@@ -393,16 +394,66 @@ public sealed class Lowerer : IResolvedDeclarationNodeVisitor
 			ContinueWith(exitBlock);
 		}
 		
+		public Value Visit(ResolvedConstructorCallExpressionNode node)
+		{
+			var sourceLocation = node.Syntax.SourceLocation;
+			
+			var resultSymbol = CreateTempSymbol(node.Type, ".cons__mem");
+			GetOrMakeBlock().Instructions
+				.Add(new LocalVarInstruction(resultSymbol, new UndefValue(node.Type), sourceLocation, CurrentScopeId));
+			
+			var result = new VariableValue(new(resultSymbol, node.Type), sourceLocation);
+			
+			var selfType = node.Function.Signature.ParameterTypes[0];
+			var self = new UnaryOpValue(selfType, result, UnaryOperation.AddressOf, sourceLocation);
+			
+			LowerConstructor(node.Function, self, node.Arguments, sourceLocation);
+			
+			return result;
+		}
+		
 		public Value Visit(ResolvedConversionExpressionNode node) =>
 			new ConversionValue(VisitNode(node.Source), node.Conversion, node.Syntax.SourceLocation);
 		
 		public Value Visit(ResolvedFunctionCallExpressionNode node) =>
 			new CallValue(node.Function, node.Arguments.Select(VisitNode), node.Syntax.SourceLocation);
 		
-		public Value Visit(ResolvedHeapExpressionNode node) =>
-			new HeapValue(node.Type, node.Initializer is { } initializer
-				? VisitNode(initializer)
-				: new ZeroValue(((PointerType)node.Type).BaseType), node.Syntax.SourceLocation);
+		public Value Visit(ResolvedHeapExpressionNode node)
+		{
+			if (node.Initializer is not ResolvedConstructorCallExpressionNode constructor)
+				return new HeapValue(node.Type, node.Initializer is { } initializer
+					? VisitNode(initializer)
+					: new ZeroValue(((PointerType)node.Type).BaseType), node.Syntax.SourceLocation);
+			
+			var ownType = (PointerType)node.Type;
+			var elementType = ownType.BaseType;
+			var sourceLocation = node.Syntax.SourceLocation;
+			
+			var ownerSymbol = CreateTempSymbol(node.Type, ".cons");
+			var heapValue = new HeapValue(node.Type, new UndefValue(elementType), sourceLocation);
+			
+			GetOrMakeBlock().Instructions
+				.Add(new LocalVarInstruction(ownerSymbol, heapValue, sourceLocation, CurrentScopeId));
+			
+			var owner = new VariableValue(new(ownerSymbol, node.Type), sourceLocation);
+			
+			var selfType = constructor.Function.Signature.ParameterTypes[0];
+			var self = Convert(owner, new FreeConversion(owner.Type, selfType, ConversionKind.Implicit));
+			
+			LowerConstructor(constructor.Function, self, constructor.Arguments, sourceLocation);
+			
+			return owner;
+		}
+		
+		private void LowerConstructor(FunctionInfo constructor, Value self,
+			IReadOnlyList<IResolvedExpressionNode> arguments, SourceLocation sourceLocation)
+		{
+			var args = new List<Value> { self };
+			args.AddRange(arguments.Select(VisitNode));
+			
+			GetOrMakeBlock().Instructions
+				.Add(new ExpressionInstruction(new CallValue(constructor, args, sourceLocation)));
+		}
 		
 		public Value Visit(ResolvedIndexerExpressionNode node) =>
 			new IndexerValue(node.Type, VisitNode(node.Target), VisitNode(node.Index), node.Syntax.SourceLocation);

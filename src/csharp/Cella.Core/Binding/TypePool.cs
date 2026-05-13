@@ -22,6 +22,7 @@ public sealed class TypePool
 	private readonly Dictionary<(TypeSymbol, PointerKind), PointerType> _pointerTypes = [];
 	private readonly Dictionary<TypedMemberSymbol, TypeSymbol> _memberTypes = [];
 	private readonly Dictionary<TypeSymbol, bool> _needsDrop = [];
+	private readonly Dictionary<TypeSymbol, List<FunctionInfo>> _constructors = [];
 	
 	public TypePool(ConversionTable conversionTable, OperatorRegistry operatorRegistry, SizeTable sizeTable)
 	{
@@ -31,6 +32,11 @@ public sealed class TypePool
 		
 		CreateNativeMembers();
 	}
+	
+	public void AddConstructor(TypeSymbol type, FunctionInfo info) => _constructors.GetOrAdd(type).Add(info);
+	
+	public IReadOnlyList<FunctionInfo> GetConstructors(TypeSymbol type) =>
+		_constructors.TryGetValue(type, out var list) ? list : [];
 	
 	public void SetNeedsDrop(TypeSymbol type, bool needsDrop) => _needsDrop[type] = needsDrop;
 	public bool NeedsDrop(TypeSymbol type) => _needsDrop.GetValueOrDefault(type, false);

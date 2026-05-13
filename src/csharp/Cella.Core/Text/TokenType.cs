@@ -50,6 +50,8 @@ public enum TokenType
 	KeywordRec,
 	KeywordMut,
 	KeywordImm,
+	KeywordNew,
+	KeywordOp,
 	
 	// Operators
 	OpDotDotEqual,
@@ -155,6 +157,8 @@ public static class TokenTypeInfo
 			[TokenType.KeywordRec] = new("rec", IsKeyword: true, IsContextual: true),
 			[TokenType.KeywordMut] = new("mut", IsKeyword: true, IsContextual: true),
 			[TokenType.KeywordImm] = new("imm", IsKeyword: true, IsContextual: true),
+			[TokenType.KeywordNew] = new("new", IsKeyword: true, IsContextual: true),
+			[TokenType.KeywordOp] = new("op", IsKeyword: true, IsContextual: true),
 			
 			[TokenType.OpDotDotEqual] = new("..=", IsOperator: true),
 			[TokenType.OpDotDot] = new("..", IsOperator: true),

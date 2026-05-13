@@ -62,6 +62,41 @@ public sealed class SignatureCollector : IDeclarationNodeVisitor
 		_resolutionContexts.Pop();
 	}
 	
+	public void Visit(ConstructorNode node)
+	{
+		var function = (FunctionSymbol)_symbolTable.DeclarationSymbols[node];
+		var resolutionContext = CurrentResolutionContext;
+		var containingType = resolutionContext.ContainingType!;
+		
+		var scope = new Scope();
+		var paramTypes = new List<TypeSymbol>(node.Parameters.Length + 1);
+		
+		var selfSymbol = function.Parameters[0];
+		var selfType = _typePool.GetPointerType(containingType, PointerKind.Mutable);
+		
+		paramTypes.Add(selfType);
+		_builder.VariableTypes[selfSymbol] = selfType;
+		scope.Define(selfSymbol);
+		
+		for (var i = 0; i < node.Parameters.Length; i++)
+		{
+			var param = node.Parameters[i];
+			var paramSymbol = function.Parameters[i + 1]; // + 1 due to implicit self parameter
+			var paramType = resolutionContext.ResolveType(param.Type);
+			
+			paramTypes.Add(paramType);
+			_builder.VariableTypes[paramSymbol] = paramType;
+			scope.Define(paramSymbol);
+		}
+		
+		var signature = new FunctionSignature(paramTypes, NativeSymbols.Void);
+		var mangledName = Mangling.Mangle(function, signature, resolutionContext.GetQualifiers());
+		var info = new FunctionInfo(mangledName, function, signature, scope, null, resolutionContext.File);
+		
+		_builder.Functions[function] = info;
+		_typePool.AddConstructor(containingType, info);
+	}
+	
 	public void Visit(FunctionNode node)
 	{
 		var function = (FunctionSymbol)_symbolTable.DeclarationSymbols[node];

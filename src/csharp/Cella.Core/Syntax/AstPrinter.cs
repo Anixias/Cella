@@ -122,6 +122,32 @@ public sealed class AstPrinter : ISyntaxNodeVisitor
 		}
 	}
 	
+	public void Visit(ConstructorNode node)
+	{
+		StartLine();
+		_sb.Append("ConstructorNode");
+		
+		// TODO Modifiers
+		
+		if (node.Parameters.Length > 0)
+		{
+			_sb.Append(" (");
+			
+			for (var i = 0; i < node.Parameters.Length; i++)
+			{
+				var param = node.Parameters[i];
+				if (i > 0)
+					_sb.Append(", ");
+				
+				Visit(param);
+			}
+			
+			_sb.Append(')');
+		}
+		
+		VisitNode(node.Body, true);
+	}
+	
 	public void Visit(FieldNode node)
 	{
 		StartLine();

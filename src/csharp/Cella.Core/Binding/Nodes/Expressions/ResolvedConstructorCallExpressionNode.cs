@@ -4,14 +4,15 @@ using Cella.Core.Syntax.Nodes;
 
 namespace Cella.Core.Binding.Nodes;
 
-public sealed class ResolvedFunctionCallExpressionNode(FunctionInfo function,
+public sealed class ResolvedConstructorCallExpressionNode(FunctionInfo function,
 	IEnumerable<IResolvedExpressionNode> arguments,
+	TypeSymbol type,
 	IExpressionNode syntax
 ) : IResolvedExpressionNode
 {
 	public FunctionInfo Function { get; } = function;
 	public ImmutableArray<IResolvedExpressionNode> Arguments { get; } = arguments.ToImmutableArray();
-	public TypeSymbol Type { get; } = function.Signature.ReturnType;
+	public TypeSymbol Type { get; } = type; // Constructors always return void, bypass
 	public IExpressionNode Syntax { get; } = syntax;
-	public bool IsConstant => false; // TODO We should be able to detect if the function body is constant
+	public bool IsConstant => false;
 }

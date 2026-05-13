@@ -7,6 +7,7 @@ public sealed class SymbolCollector : IDeclarationNodeVisitor<Symbol>
 {
 	private readonly SymbolTable.Builder _builder = new();
 	private readonly List<Symbol> _symbolsInFile = [];
+	private readonly Stack<string> _typeStack = [];
 	
 	public SymbolTable Build() => _builder.Build();
 	
@@ -35,6 +36,32 @@ public sealed class SymbolCollector : IDeclarationNodeVisitor<Symbol>
 		return symbol;
 	}
 	
+	public Symbol Visit(ConstructorNode node)
+	{
+		// TODO Disallow multiple parameters with the same name
+		var parameters = new List<ParameterSymbol>(node.Parameters.Length + 1)
+		{
+			new("self", node.SourceLocation)
+		};
+		
+		foreach (var param in node.Parameters)
+		{
+			var paramSymbol = new ParameterSymbol(param.Identifier);
+			parameters.Add(paramSymbol);
+			_builder.DeclarationSymbols[param] = paramSymbol;
+		}
+		
+		if (_typeStack.TryPeek(out var name))
+			name += ".new";
+		else
+			name = ".new";
+		
+		// Do not add to file symbols
+		var function = new FunctionSymbol(name, node, node.Modifiers, null, parameters, FunctionKind.Constructor);
+		_builder.DeclarationSymbols[node] = function;
+		return function;
+	}
+	
 	public Symbol Visit(FunctionNode node)
 	{
 		// TODO Disallow multiple parameters with the same name
@@ -48,7 +75,7 @@ public sealed class SymbolCollector : IDeclarationNodeVisitor<Symbol>
 		
 		// TODO Containing function
 		var name = node.Identifier.Text;
-		var function = new FunctionSymbol(name, node, null, parameters);
+		var function = new FunctionSymbol(name, node, node.Modifiers, null, parameters, FunctionKind.Free);
 		_builder.DeclarationSymbols[node] = function;
 		_symbolsInFile.Add(function);
 		return function;
@@ -66,7 +93,7 @@ public sealed class SymbolCollector : IDeclarationNodeVisitor<Symbol>
 		}
 		
 		var name = node.Identifier.Text;
-		var function = new FunctionSymbol(name, node, null, parameters);
+		var function = new FunctionSymbol(name, node, node.Modifiers, null, parameters, FunctionKind.External);
 		_builder.DeclarationSymbols[node] = function;
 		_symbolsInFile.Add(function);
 		return function;
@@ -76,6 +103,8 @@ public sealed class SymbolCollector : IDeclarationNodeVisitor<Symbol>
 	
 	public Symbol Visit(RecordNode node)
 	{
+		_typeStack.Push(node.Identifier.Text);
+		
 		// TODO Type parameters
 		var members = new List<MemberSymbol>(node.Members.Length);
 		var types = new List<TypeSymbol>(node.Members.Length);
@@ -87,6 +116,10 @@ public sealed class SymbolCollector : IDeclarationNodeVisitor<Symbol>
 			{
 				case FieldSymbol s:
 					members.Add(s);
+					break;
+				
+				case FunctionSymbol { Kind: FunctionKind.Constructor } s:
+					members.Add(new MethodSymbol(s, SelfReferenceKind.Mutable));
 					break;
 				
 				case FunctionSymbol s:
@@ -107,6 +140,8 @@ public sealed class SymbolCollector : IDeclarationNodeVisitor<Symbol>
 		var record = new RecordSymbol(name, node, members, types);
 		_builder.DeclarationSymbols[node] = record;
 		_symbolsInFile.Add(record);
+		_typeStack.Pop();
+		
 		return record;
 	}
 	

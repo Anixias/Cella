@@ -128,6 +128,24 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		return result;
 	}
 	
+	public IResolvedDeclarationNode Visit(ConstructorNode node)
+	{
+		var function = (FunctionSymbol)_symbolTable.DeclarationSymbols[node];
+		var info = _assemblySignatureTable.Functions[function];
+		
+		var resolutionContext = CurrentResolutionContext with
+		{
+			ContainingFunction = info,
+			LocalScope = info.Scope
+		};
+		
+		_resolutionContexts.Push(resolutionContext);
+		var body = VisitNode(node.Body);
+		_resolutionContexts.Pop();
+		
+		return new ResolvedFunctionNode(info, body, node);
+	}
+	
 	public IResolvedDeclarationNode Visit(FunctionNode node)
 	{
 		var function = (FunctionSymbol)_symbolTable.DeclarationSymbols[node];
@@ -240,10 +258,8 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	
 	private IResolvedExpressionNode VisitTypeCall(CallExpressionNode node, TypeSymbol targetType)
 	{
-		// TODO Multi-arg constructors
 		if (node.Arguments.Length != 1)
-			return Error(node, $"No constructor for type '{targetType.Name}' with {node.Arguments.Length} argument(s)",
-				targetType);
+			return VisitConstructorCall(node, targetType, null);
 		
 		// Don't push targetType; we're trying to find a CAST to targetType, not a targetType itself
 		var arg = VisitNode(node.Arguments[0], null);
@@ -266,8 +282,57 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		if (_conversionTable.FindExplicit(arg.Type, targetType) is { } conversion)
 			return new ResolvedConversionExpressionNode(arg, conversion, node);
 		
-		// TODO Look up constructors
-		return Error(node, $"No conversion from '{arg.Type.Name}' to '{targetType.Name}'", targetType, arg.Syntax);
+		return VisitConstructorCall(node, targetType, arg);
+	}
+	
+	private IResolvedExpressionNode VisitConstructorCall(CallExpressionNode node, TypeSymbol targetType,
+		IResolvedExpressionNode? firstArg)
+	{
+		var args = new IResolvedExpressionNode[node.Arguments.Length];
+		
+		var iStart = 0;
+		if (firstArg is not null)
+		{
+			iStart++;
+			args[0] = firstArg;
+		}
+		
+		for (var i = iStart; i < node.Arguments.Length; i++)
+			args[i] = VisitNode(node.Arguments[i], null);
+		
+		if (AnyInvalid(args))
+			return new ResolvedInvalidExpressionNode(node, targetType);
+		
+		var ctorCandidates = _typePool.GetConstructors(targetType)
+			.Select(info => new ConstructorCallable(info, targetType));
+		
+		var resolutionSet = ResolveCallable(ctorCandidates, args, MaterializationMode.Overload, targetType);
+		
+		if (resolutionSet.IsAmbiguous)
+			return Error(node, $"Conversion to '{targetType.Name}' is ambiguous", targetType, node);
+		
+		if (!resolutionSet.HasResult)
+		{
+			var message = args.Length == 1
+				? $"No constructor for '{targetType.Name}' accepts argument of type '{args[0].Type.Name}'"
+				: $"No constructor for '{targetType.Name}' accepts these arguments";
+			
+			return Error(node, message, targetType, node);
+		}
+		
+		var resolution = resolutionSet[0];
+		var callable = (ConstructorCallable)resolution.Callable;
+		var info = callable.Info;
+		
+		var resolvedArgs = ApplyArgumentResolution(args, resolution);
+		var result = new ResolvedConstructorCallExpressionNode(info, resolvedArgs, targetType, node);
+		
+		if (resolution.ResultConversion is { } resultConversion && resultConversion.To != targetType)
+			throw new InvalidOperationException(); // Should be impossible
+		
+		TrackImportedFunction(info);
+		
+		return result;
 	}
 	
 	private IResolvedExpressionNode VisitFunctionCall(CallExpressionNode node)
@@ -340,9 +405,6 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 				elementType = resolutionContext.ResolveType(n);
 				initializer = null;
 				break;
-			
-			case CallExpressionNode:
-				throw new NotImplementedException(); // TODO Need to implement constructor initialization!!
 			
 			case IExpressionNode n:
 				var targetElementType = CurrentTargetType is PointerType { PointerKind: PointerKind.Owning } ptrType
@@ -1411,6 +1473,15 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		public FunctionInfo Info { get; } = info;
 		public ImmutableArray<TypeSymbol> ParameterTypes => Info.Signature.ParameterTypes;
 		public TypeSymbol ReturnType => Info.Signature.ReturnType;
+	}
+	
+	private sealed class ConstructorCallable(FunctionInfo info, TypeSymbol type) : ICallable
+	{
+		public FunctionInfo Info { get; } = info;
+		public ImmutableArray<TypeSymbol> ParameterTypes { get; } =
+			info.Signature.ParameterTypes.Skip(1).ToImmutableArray(); // Skip implicit self
+		
+		public TypeSymbol ReturnType { get; } = type;
 	}
 }
 

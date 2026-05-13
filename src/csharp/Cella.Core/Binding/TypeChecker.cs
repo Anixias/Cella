@@ -261,6 +261,32 @@ public sealed class TypeChecker : IResolvedStatementNodeVisitor, IResolvedDeclar
 			VisitNode(operand);
 	}
 	
+	public void Visit(ResolvedConstructorCallExpressionNode node)
+	{
+		var args = node.Arguments;
+		var paramTypes = node.Function.Signature.ParameterTypes;
+		if (args.Length != paramTypes.Length - 1) // - 1 for implicit self parameter
+		{
+			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Syntax.SourceLocation,
+				$"Incorrect number of arguments: Expected {paramTypes.Length}, got {args.Length}"));
+			
+			return;
+		}
+		
+		for (var i = 0; i < args.Length; i++)
+		{
+			var arg = args[i];
+			var expected = paramTypes[i + 1];
+			var actual = arg.Type;
+			
+			if (!AreTypesCompatible(expected, actual))
+				Diagnostics.Add(new(DiagnosticSeverity.Error, arg.Syntax.SourceLocation,
+					$"Argument type '{actual.Name}' is not assignable to parameter type '{expected.Name}'"));
+			
+			VisitNode(arg);
+		}
+	}
+	
 	public void Visit(ResolvedConversionExpressionNode node)
 	{
 		VisitNode(node.Source);
