@@ -17,6 +17,9 @@ public abstract class BaseParser<T>(ImmutableArray<Token> tokens) : IParser<T>
 	
 	protected bool AtEnd(int index) => index < 0 || index >= Tokens.Length || Tokens[index].Type == TokenType.EndOfFile;
 	
+	protected bool Peek(int index, TokenType type) =>
+		!AtEnd(index) && Tokens[index].Type == type;
+	
 	protected bool Match(ref int index, IReadOnlySet<TokenType> types) =>
 		Match(ref index, out _, null, types);
 	

@@ -296,27 +296,7 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 		else if (Match(ref index, out var sizeOf, TokenType.KeywordSizeOf))
 			node = ParseSizeOf(ref index, sizeOf);
 		else if (Match(ref index, out var heap, TokenType.KeywordHeap))
-		{
-			var (source, range) = heap.SourceLocation;
-			
-			// Try to parse a type; if that fails, parse a primary
-			var typeIndex = index;
-			try
-			{
-				var type = ParseType(ref typeIndex);
-				index = typeIndex;
-				range = range.Join(type.SourceLocation.Range);
-				return new HeapExpressionNode(type, new(source, range));
-			}
-			catch
-			{
-				// Ignored
-			}
-			
-			var expression = ParsePrimary(ref index);
-			range = range.Join(expression.SourceLocation.Range);
-			return new HeapExpressionNode(expression, new(source, range));
-		}
+			return ParseHeap(ref index, heap);
 		else
 			node = ParseLiteral(ref index);
 		
@@ -488,5 +468,37 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 		// TODO Diagnostics
 		// TEMP Should emit an erroneous node instead of throwing
 		throw new InvalidOperationException();
+	}
+	
+	private HeapExpressionNode ParseHeap(ref int index, Token heap)
+	{
+		var (source, range) = heap.SourceLocation;
+		var startIndex = index;
+		
+		try
+		{
+			var typeIndex = index;
+			var type = ParseType(ref typeIndex);
+			
+			if (IsNextNewline(typeIndex) || !Peek(typeIndex, TokenType.OpOpenParen))
+			{
+				index = typeIndex;
+				range = range.Join(type.SourceLocation.Range);
+				return new HeapExpressionNode(type, new(source, range));
+			}
+		}
+		catch
+		{
+			// Parse as an expression
+		}
+		
+		index = startIndex;
+		var expression = ParsePrimary(ref index);
+		
+		if (!IsNextNewline(index))
+			expression = ParsePostfix(ref index, expression);
+		
+		range = range.Join(expression.SourceLocation.Range);
+		return new HeapExpressionNode(expression, new(source, range));
 	}
 }
