@@ -4,7 +4,6 @@ using Cella.Core.Text;
 namespace Cella.Core.Syntax.Nodes;
 
 public readonly record struct ImportExpression(ModuleName ModuleName, IImport Import);
-
 public interface IImport;
 
 public readonly record struct FullImport : IImport

@@ -1,0 +1,7 @@
+mod test
+
+main: fun -> i32
+{
+	var flag: bool = 1
+	ret 0
+}

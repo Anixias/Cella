@@ -1,0 +1,9 @@
+
+====== missing_return.ce ======
+
+Error at line 3, column 1
+2 │ 
+3 │ sign: fun(n: i32) -> i32
+    ╘══╛ Not all paths return a value
+
+[compilation failed]

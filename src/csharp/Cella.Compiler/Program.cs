@@ -20,13 +20,14 @@ namespace Cella.Compiler;
 
 internal static class Program
 {
-	public static async Task Main(string[] args)
+	public static async Task<int> Main(string[] args)
 	{
-		if (args.Length == 0)
-			return;
+		var verbose = !args.Contains("--quiet");
+		var sourcePath = args.FirstOrDefault(static a => !a.StartsWith("--"));
+		if (sourcePath is null)
+			return 1;
 		
 		// Phase 0a: Project collection
-		var sourcePath = args[0];
 		var projectPaths = new HashSet<string>();
 		
 		if (Directory.Exists(sourcePath))
@@ -37,7 +38,7 @@ internal static class Program
 		if (projectPaths.Count == 0)
 		{
 			Console.WriteLine("No projects provided, exiting");
-			return;
+			return 1;
 		}
 		
 		// Phase 0b: Dependency graph
@@ -53,7 +54,7 @@ internal static class Program
 		{
 			// TEMP
 			Console.WriteLine(e.Message);
-			return;
+			return 1;
 		}
 		
 		var conversionTable = ConversionTable.CreateNative();
@@ -61,6 +62,7 @@ internal static class Program
 		var sizeTable = new SizeTable();
 		var typePool = new TypePool(conversionTable, operatorRegistry, sizeTable);
 		var projectSymbols = new Dictionary<ProjectInfo, AssemblyInfo>();
+		var succeeded = true;
 		
 		foreach (var (project, dependencies) in projectDependencies)
 		{
@@ -69,8 +71,12 @@ internal static class Program
 				if (projectSymbols.TryGetValue(dependency, out var assemblySymbol))
 					dependencyInfo.Add(assemblySymbol);
 			
-			projectSymbols[project] = await BuildProject(project, typePool, dependencyInfo, cts.Token);
+			var assemblyInfo = await BuildProject(project, typePool, dependencyInfo, verbose, cts.Token);
+			projectSymbols[project] = assemblyInfo;
+			succeeded &= assemblyInfo.Succeeded;
 		}
+		
+		return succeeded ? 0 : 1;
 	}
 	
 	private static async Task<DependencyGraph<ProjectInfo>> MapDependenciesAsync(HashSet<string> projectPaths)
@@ -125,18 +131,22 @@ internal static class Program
 	(
 		AssemblySymbol AssemblySymbol,
 		ProjectOutputType OutputType,
-		string? OutputPath
+		string? OutputPath,
+		bool Succeeded
 	);
 	
 	private static async Task<AssemblyInfo> BuildProject(ProjectInfo project, TypePool typePool,
-		IEnumerable<AssemblyInfo> dependencies, CancellationToken ct = default)
+		IEnumerable<AssemblyInfo> dependencies, bool verbose, CancellationToken ct = default)
 	{
 		// Phase 1: File parsing
 		var outputType = project.Project.OutputType;
-		var files = await ProcessProject(project, ct);
+		var (files, hasParseErrors) = await ProcessProject(project, ct);
+		
+		if (hasParseErrors)
+			return new(new(project.Name, SymbolTable.Empty, SignatureTable.Empty, null), outputType, null, false);
 		
 		if (files.Length == 0)
-			return new(new(project.Name, SymbolTable.Empty, SignatureTable.Empty, null), outputType, null);
+			return new(new(project.Name, SymbolTable.Empty, SignatureTable.Empty, null), outputType, null, true);
 		
 		// Phase 2a: Symbol collection
 		SymbolTable symbolTable;
@@ -165,7 +175,7 @@ internal static class Program
 			assemblySymbol = signatureCollector.FinishAssembly(project.Name);
 		}
 		
-		var errorResult = new AssemblyInfo(assemblySymbol, outputType, null);
+		var errorResult = new AssemblyInfo(assemblySymbol, outputType, null, false);
 		
 		if (outputType == ProjectOutputType.Executable && assemblySymbol.EntryPoint is null)
 		{
@@ -180,7 +190,9 @@ internal static class Program
 		var objDir = Path.Combine(project.Directory, "obj");
 		var outputConfig = new OutputConfig(objDir, true, true);
 		var targetConfig = new TargetConfig(targetTriple.ToLlvm());
-		var codeGenConfig = new CodeGenConfig(outputConfig, targetConfig, OptimizeMode.Debug); // TODO Read from CLI args
+		var codeGenConfig =
+			new CodeGenConfig(outputConfig, targetConfig, OptimizeMode.Debug); // TODO Read from CLI args
+		
 		var pointerBitSize = codeGenConfig.GetPointerSize() * 8;
 		
 		// Phase 3: Symbol resolution
@@ -244,7 +256,8 @@ internal static class Program
 					}
 				}
 				
-				Console.WriteLine(LoweredModulePrinter.Print(module));
+				if (verbose)
+					Console.WriteLine(LoweredModulePrinter.Print(module));
 			}
 			
 			if (cfgDiagnostics.Count > 0)
@@ -261,18 +274,23 @@ internal static class Program
 			
 			var externalLibraries = new HashSet<string>();
 			var objectFiles = new List<string>();
+			var codeGenFailed = false;
 			foreach (var module in lowerer.Modules)
 			{
 				var result = codeGenerator.Generate(module);
 				if (!result.IsSuccess)
 				{
 					Console.WriteLine($"Error: {result.ErrorMessage}");
+					codeGenFailed = true;
 					continue;
 				}
 				
 				objectFiles.Add(result.OutputPath!);
 				externalLibraries.UnionWith(result.ExternalLibraries);
 			}
+			
+			if (codeGenFailed)
+				return errorResult;
 			
 			var outputBaseName = project.Project.AssemblyName ?? project.Name;
 			var outputFileName = GetOutputFileName(outputBaseName, targetTriple, outputType);
@@ -291,7 +309,7 @@ internal static class Program
 			
 			// TODO Toolchains and linker paths should be grabbed from environment variables, compiler installation location
 			const string toolchainDir = @"C:\cella\toolchains";
-			var linker = new Linker(@"C:\cella\");
+			var linker = new Linker(@"C:\cella\", verbose);
 			var linkPreference = project.Project.SystemLinkPreference;
 			var linkRequest = new LinkRequest(outputType, objectFiles, outputPath, toolchainDir, libFiles!)
 			{
@@ -301,7 +319,9 @@ internal static class Program
 			var linkerToolchain = Toolchain.FromTargetTriple(targetTriple, toolchainDir);
 			var linkExitCode = await linker.LinkAsync(linkRequest, linkerToolchain);
 			
-			Console.WriteLine($"Linker finished with exit code {linkExitCode}");
+			if (verbose || linkExitCode != 0)
+				Console.WriteLine($"Linker finished with exit code {linkExitCode}");
+			
 			if (linkExitCode != 0)
 				return errorResult;
 		}
@@ -318,13 +338,14 @@ internal static class Program
 		await userProgram.WaitForExitAsync();
 		
 		Console.WriteLine($"User program finished with exit code {userProgram.ExitCode}");*/
-		return new(assemblySymbol, outputType, outputPath);
+		return new(assemblySymbol, outputType, outputPath, true);
 	}
 	
-	private static async Task<ImmutableArray<SourceFileInfo>> ProcessProject(ProjectInfo project,
-		CancellationToken ct = default)
+	private static async Task<(ImmutableArray<SourceFileInfo> Files, bool HasErrors)> ProcessProject(
+		ProjectInfo project, CancellationToken ct = default)
 	{
 		var files = new ConcurrentBag<SourceFileInfo>();
+		var hasErrors = false;
 		var filePaths = CellaProject.FindSourceFiles(project.Directory);
 		
 		foreach (var sourcePath in filePaths.AsParallel())
@@ -355,6 +376,7 @@ internal static class Program
 			if (ast is null)
 			{
 				PrintDiagnostics(parser.Diagnostics.Errors, project.Directory);
+				hasErrors = true;
 			}
 			else
 			{
@@ -364,7 +386,7 @@ internal static class Program
 			}
 		}
 		
-		return files.ToImmutableArray();
+		return (files.ToImmutableArray(), hasErrors);
 	}
 	
 	public static string GetOutputFileName(string baseName, TargetTriple target, ProjectOutputType outputType)
@@ -600,7 +622,8 @@ internal static class Program
 				col += tabStop;
 				i++;
 			}
-			else break;
+			else
+				break;
 		}
 		
 		return (line[i..], 0);

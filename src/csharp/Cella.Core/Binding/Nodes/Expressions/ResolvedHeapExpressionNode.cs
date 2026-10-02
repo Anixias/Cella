@@ -3,8 +3,12 @@ using Cella.Core.Syntax.Nodes;
 
 namespace Cella.Core.Binding.Nodes;
 
-public sealed class ResolvedHeapExpressionNode(IResolvedExpressionNode? initializer, PointerType type,
-	HeapExpressionNode syntax) : IResolvedExpressionNode
+public sealed class ResolvedHeapExpressionNode
+(
+	IResolvedExpressionNode? initializer,
+	PointerType type,
+	HeapExpressionNode syntax
+) : IResolvedExpressionNode
 {
 	public IResolvedExpressionNode? Initializer { get; } = initializer;
 	public TypeSymbol Type { get; } = type;

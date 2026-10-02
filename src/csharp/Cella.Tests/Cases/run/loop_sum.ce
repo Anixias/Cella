@@ -1,0 +1,14 @@
+mod test
+
+main: fun -> i32
+{
+	var sum = 0
+	var i = 1
+	loop while i <= 10
+	{
+		sum += i
+		i += 1
+	}
+
+	ret sum
+}

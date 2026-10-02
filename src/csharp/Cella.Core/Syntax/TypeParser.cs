@@ -47,7 +47,6 @@ public sealed class TypeParser(ImmutableArray<Token> tokens) : BaseParser<ITypeN
 			return new IdentifierArgumentNode(var.Identifier);
 		
 		return new ExpressionArgumentNode(expression);
-		
 	}
 	
 	private IExpressionNode ParseExpression(ref int index) => new ExpressionParser(Tokens).Parse(ref index);

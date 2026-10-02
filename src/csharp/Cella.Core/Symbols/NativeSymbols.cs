@@ -87,7 +87,6 @@ public static class NativeSymbols
 }
 
 public readonly record struct StrValue(ulong Length, byte[] Bytes);
-
 public interface ISize;
 
 public static class StorageSize

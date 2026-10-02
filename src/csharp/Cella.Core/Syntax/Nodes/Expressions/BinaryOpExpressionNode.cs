@@ -7,6 +7,7 @@ public sealed class BinaryOpExpressionNode(IExpressionNode left, Token op, IExpr
 	public IExpressionNode Left { get; } = left;
 	public Token Op { get; } = op;
 	public IExpressionNode Right { get; } = right;
+	
 	public SourceLocation SourceLocation { get; } = left.SourceLocation with
 	{
 		Range = left.SourceLocation.Range.Join(op.SourceLocation.Range.Join(right.SourceLocation.Range))

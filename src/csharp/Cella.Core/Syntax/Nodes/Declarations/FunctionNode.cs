@@ -12,8 +12,14 @@ public interface IFunctionNode : IDeclarationNode
 }
 
 // TODO Store local function nodes directly and omit from body node?
-public sealed class FunctionNode(Token identifier, IEnumerable<Token> modifiers, IEnumerable<ParameterNode> parameters,
-	ITypeNode? returnType, IStatementNode body) : IFunctionNode
+public sealed class FunctionNode
+(
+	Token identifier,
+	IEnumerable<Token> modifiers,
+	IEnumerable<ParameterNode> parameters,
+	ITypeNode? returnType,
+	IStatementNode body
+) : IFunctionNode
 {
 	public SourceLocation SourceLocation => Identifier.SourceLocation;
 	public Token Identifier { get; } = identifier;
@@ -23,8 +29,14 @@ public sealed class FunctionNode(Token identifier, IEnumerable<Token> modifiers,
 	public IStatementNode Body { get; } = body;
 }
 
-public sealed class ExternalFunctionNode(Token identifier, IEnumerable<Token> modifiers,
-	IEnumerable<ParameterNode> parameters, ITypeNode? returnType, string? origin) : IFunctionNode
+public sealed class ExternalFunctionNode
+(
+	Token identifier,
+	IEnumerable<Token> modifiers,
+	IEnumerable<ParameterNode> parameters,
+	ITypeNode? returnType,
+	string? origin
+) : IFunctionNode
 {
 	public SourceLocation SourceLocation => Identifier.SourceLocation;
 	public Token Identifier { get; } = identifier;

@@ -268,7 +268,7 @@ public sealed class SignatureCollector : IDeclarationNodeVisitor
 		
 		yield break;
 		
-		bool CanImport(Symbol symbol) => symbol is IExportable exportable && 
-			(exportable.Visibility == Visibility.Public || isLocal);
+		bool CanImport(Symbol symbol) => symbol is IExportable exportable &&
+		                                 (exportable.Visibility == Visibility.Public || isLocal);
 	}
 }

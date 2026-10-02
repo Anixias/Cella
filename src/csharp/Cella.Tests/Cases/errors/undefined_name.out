@@ -1,0 +1,10 @@
+
+====== undefined_name.ce ======
+
+Error at line 6, column 6
+5 │ var total = 3
+6 │ ret totl
+        ╘══╛ Symbol 'totl' not found in this scope
+           | Did you mean 'total'?
+
+[compilation failed]

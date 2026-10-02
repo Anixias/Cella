@@ -3,7 +3,7 @@ using Cella.Compiler.Projects;
 
 namespace Cella.Compiler.Linking;
 
-public sealed class Linker(string rootPath)
+public sealed class Linker(string rootPath, bool verbose)
 {
 	public async Task<int> LinkAsync(LinkRequest request, Toolchain toolchain)
 	{
@@ -34,7 +34,8 @@ public sealed class Linker(string rootPath)
 		args.AddRange(toolchain.GetLinkerArgs(request));
 		
 		var argStr = string.Join(" ", args);
-		Console.WriteLine($"Linker starting with arguments: {argStr}");
+		if (verbose)
+			Console.WriteLine($"Linker starting with arguments: {argStr}");
 		
 		var linkerPath = Path.Combine(rootPath, linkerName);
 		

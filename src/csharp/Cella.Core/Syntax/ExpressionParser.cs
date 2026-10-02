@@ -351,7 +351,7 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 			// TODO Should not use identifier but instead a tightly-bound indexer, which is also used for type parameters
 			// TODO An indexer or call expression could be chained with one another; this won't parse those
 			var startIndex = index;
-				
+			
 			// Access Expression
 			if (Match(ref index, TokenType.OpDot))
 			{

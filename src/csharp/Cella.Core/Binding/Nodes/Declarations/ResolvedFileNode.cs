@@ -4,7 +4,10 @@ using Cella.Core.Syntax.Nodes;
 
 namespace Cella.Core.Binding.Nodes;
 
-public sealed class ResolvedFileNode(FileSymbol symbol, IEnumerable<IResolvedDeclarationNode> declarations,
+public sealed class ResolvedFileNode
+(
+	FileSymbol symbol,
+	IEnumerable<IResolvedDeclarationNode> declarations,
 	IEnumerable<FunctionInfo> importedFunctions,
 	IDeclarationNode syntax
 ) : IResolvedDeclarationNode

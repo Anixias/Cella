@@ -1,0 +1,9 @@
+
+====== type_mismatch.ce ======
+
+Error at line 5, column 19
+4 │ {
+5 │     var flag: bool = 1
+                         ^ Cannot convert type 'i?' to 'bool'
+
+[compilation failed]

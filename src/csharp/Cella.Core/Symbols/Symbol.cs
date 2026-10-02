@@ -41,16 +41,24 @@ public abstract class Symbol(string name)
 	public string Name { get; } = name;
 }
 
-public sealed class AssemblySymbol(string name, SymbolTable symbolTable, SignatureTable signatureTable,
-	FunctionInfo? entryPoint) : Symbol(name)
+public sealed class AssemblySymbol
+(
+	string name,
+	SymbolTable symbolTable,
+	SignatureTable signatureTable,
+	FunctionInfo? entryPoint
+) : Symbol(name)
 {
 	public SymbolTable SymbolTable { get; } = symbolTable;
 	public SignatureTable SignatureTable { get; } = signatureTable;
 	public FunctionInfo? EntryPoint { get; } = entryPoint;
 }
 
-public sealed class ModuleSymbol(ModuleName moduleName,
-	params IEnumerable<SourceLocation> declarations) : Symbol(moduleName.Text)
+public sealed class ModuleSymbol
+(
+	ModuleName moduleName,
+	params IEnumerable<SourceLocation> declarations
+) : Symbol(moduleName.Text)
 {
 	public ModuleName ModuleName { get; } = moduleName;
 	public ImmutableArray<SourceLocation> Declarations { get; } = declarations.ToImmutableArray();
@@ -63,6 +71,7 @@ public sealed class FileSymbol(FileNode syntax, ModuleSymbol module, IEnumerable
 	public FileNode Syntax { get; } = syntax;
 	public string FullPath { get; } = syntax.FullPath;
 	public ModuleSymbol Module { get; } = module;
+	
 	public ImmutableDictionary<string, HashSet<Symbol>> Symbols { get; } = symbols
 		.GroupBy(static s => s.Name)
 		.ToImmutableDictionary(static g => g.Key, static g => g.ToHashSet());
@@ -79,8 +88,15 @@ public enum FunctionKind
 }
 
 // TODO Type parameter symbols
-public sealed class FunctionSymbol(string name, IDeclarationNode syntax, IEnumerable<Token> modifiers,
-	FunctionInfo? containingFunction, IEnumerable<ParameterSymbol> parameters, FunctionKind kind)
+public sealed class FunctionSymbol
+(
+	string name,
+	IDeclarationNode syntax,
+	IEnumerable<Token> modifiers,
+	FunctionInfo? containingFunction,
+	IEnumerable<ParameterSymbol> parameters,
+	FunctionKind kind
+)
 	: Symbol(name), IExportable
 {
 	public IDeclarationNode Syntax { get; } = syntax;
@@ -125,7 +141,11 @@ public sealed class IntegerType(string name, PrimitiveTypeKind kind, bool isSign
 
 public sealed class StringType(string name, PrimitiveTypeKind kind) : PrimitiveType(name, kind);
 
-public enum MaterializationMode { Default, Overload }
+public enum MaterializationMode
+{
+	Default,
+	Overload
+}
 
 public abstract class UntypedType(string name) : TypeSymbol(name)
 {
@@ -146,24 +166,34 @@ public sealed class UntypedIntegerType() : UntypedType("i?")
 			case MaterializationMode.Overload:
 				if (target == NativeSymbols.Int8)
 					return 1;
+				
 				if (target == NativeSymbols.UInt8)
 					return 2;
+				
 				if (target == NativeSymbols.Int16)
 					return 3;
+				
 				if (target == NativeSymbols.UInt16)
 					return 4;
+				
 				if (target == NativeSymbols.UInt32)
 					return 5;
+				
 				if (target == NativeSymbols.Int64)
 					return 6;
+				
 				if (target == NativeSymbols.UInt64)
 					return 7;
+				
 				if (target == NativeSymbols.Int128)
 					return 8;
+				
 				if (target == NativeSymbols.UInt128)
 					return 9;
+				
 				if (target == NativeSymbols.IntSize)
 					return 10;
+				
 				if (target == NativeSymbols.UIntSize)
 					return 11;
 				
@@ -365,7 +395,6 @@ public sealed class MethodSymbol(FunctionSymbol function, SelfReferenceKind self
 }
 
 public abstract record AccessorImpl;
-
 public sealed record NativeAccessor(NativeMemberIntrinsic Intrinsic) : AccessorImpl;
 public sealed record FunctionAccessor(FunctionSymbol Function) : AccessorImpl;
 

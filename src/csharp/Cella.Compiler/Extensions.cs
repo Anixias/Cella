@@ -13,7 +13,8 @@ internal static class Extensions
 		return value;
 	}
 	
-	public static IEnumerable<TSource> WhereNot<TSource>(this IEnumerable<TSource> source, Func<TSource, bool> predicate)
+	public static IEnumerable<TSource> WhereNot<TSource>(this IEnumerable<TSource> source,
+		Func<TSource, bool> predicate)
 	{
 		foreach (var item in source)
 			if (!predicate(item))

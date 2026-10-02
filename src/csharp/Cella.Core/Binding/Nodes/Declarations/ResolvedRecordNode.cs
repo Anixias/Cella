@@ -4,8 +4,12 @@ using Cella.Core.Syntax.Nodes;
 
 namespace Cella.Core.Binding.Nodes;
 
-public sealed class ResolvedRecordNode(RecordSymbol symbol, IEnumerable<IResolvedDeclarationNode> members,
-	IDeclarationNode syntax) : IResolvedDeclarationNode
+public sealed class ResolvedRecordNode
+(
+	RecordSymbol symbol,
+	IEnumerable<IResolvedDeclarationNode> members,
+	IDeclarationNode syntax
+) : IResolvedDeclarationNode
 {
 	public RecordSymbol Symbol { get; } = symbol;
 	public ImmutableArray<IResolvedDeclarationNode> Members { get; } = members.ToImmutableArray();
@@ -14,8 +18,13 @@ public sealed class ResolvedRecordNode(RecordSymbol symbol, IEnumerable<IResolve
 
 // TODO Properties
 
-public sealed class ResolvedFieldNode(FieldSymbol symbol, TypeSymbol type, IResolvedExpressionNode? initializer,
-	IDeclarationNode syntax) : IResolvedDeclarationNode
+public sealed class ResolvedFieldNode
+(
+	FieldSymbol symbol,
+	TypeSymbol type,
+	IResolvedExpressionNode? initializer,
+	IDeclarationNode syntax
+) : IResolvedDeclarationNode
 {
 	public FieldSymbol Symbol { get; } = symbol;
 	public TypeSymbol Type { get; } = type;

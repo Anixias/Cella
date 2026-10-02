@@ -197,7 +197,8 @@ public sealed class Lowerer : IResolvedDeclarationNodeVisitor
 			var elseBlock = node.Else is null ? null : CreateBlock("else");
 			var mergeBlock = CreateBlock("merge");
 			
-			GetOrMakeBlock().SetTerminator(new ConditionalBranchTerminator(condition, thenBlock, elseBlock ?? mergeBlock,
+			GetOrMakeBlock().SetTerminator(new ConditionalBranchTerminator(condition, thenBlock,
+				elseBlock ?? mergeBlock,
 				node.Condition.Syntax.SourceLocation));
 			
 			// Then block
@@ -276,7 +277,7 @@ public sealed class Lowerer : IResolvedDeclarationNodeVisitor
 			currentBlock = condBlock;
 			var condition = VisitNode(node.Condition);
 			currentBlock?.FillTerminator(new ConditionalBranchTerminator(condition, bodyBlock, exitBlock,
-					node.Condition.Syntax.SourceLocation));
+				node.Condition.Syntax.SourceLocation));
 			
 			ContinueWith(exitBlock);
 		}

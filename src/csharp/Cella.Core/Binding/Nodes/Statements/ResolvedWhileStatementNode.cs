@@ -3,7 +3,10 @@ using Cella.Core.Syntax.Nodes;
 
 namespace Cella.Core.Binding.Nodes;
 
-public sealed class ResolvedWhileStatementNode(IResolvedExpressionNode condition, IResolvedStatementNode body,
+public sealed class ResolvedWhileStatementNode
+(
+	IResolvedExpressionNode condition,
+	IResolvedStatementNode body,
 	LabelSymbol? label,
 	IStatementNode syntax
 ) : IResolvedStatementNode
@@ -14,7 +17,10 @@ public sealed class ResolvedWhileStatementNode(IResolvedExpressionNode condition
 	public IStatementNode Syntax { get; } = syntax;
 }
 
-public sealed class ResolvedDoWhileStatementNode(IResolvedStatementNode body, IResolvedExpressionNode condition,
+public sealed class ResolvedDoWhileStatementNode
+(
+	IResolvedStatementNode body,
+	IResolvedExpressionNode condition,
 	LabelSymbol? label,
 	IStatementNode syntax
 ) : IResolvedStatementNode
@@ -25,7 +31,10 @@ public sealed class ResolvedDoWhileStatementNode(IResolvedStatementNode body, IR
 	public IStatementNode Syntax { get; } = syntax;
 }
 
-public sealed class ResolvedRepeatStatementNode(IResolvedExpressionNode count, IResolvedStatementNode body,
+public sealed class ResolvedRepeatStatementNode
+(
+	IResolvedExpressionNode count,
+	IResolvedStatementNode body,
 	LabelSymbol? label,
 	IStatementNode syntax
 ) : IResolvedStatementNode

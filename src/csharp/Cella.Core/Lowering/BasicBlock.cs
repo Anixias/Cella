@@ -132,8 +132,14 @@ public sealed class UnaryOpValue(TypeSymbol type, Value operand, UnaryOperation 
 	public UnaryOperation Op { get; } = op;
 }
 
-public sealed class BinOpValue(TypeSymbol type, Value left, Value right, BinaryOperation op,
-	SourceLocation sourceLocation) : Value(type, left.IsConstant && right.IsConstant, sourceLocation)
+public sealed class BinOpValue
+(
+	TypeSymbol type,
+	Value left,
+	Value right,
+	BinaryOperation op,
+	SourceLocation sourceLocation
+) : Value(type, left.IsConstant && right.IsConstant, sourceLocation)
 {
 	public Value Left { get; } = left;
 	public Value Right { get; } = right;
@@ -147,16 +153,27 @@ public sealed class AssignValue(TypeSymbol type, Value left, Value right, Source
 	public Value Right { get; } = right;
 }
 
-public sealed class PointerOffsetValue(PointerType type, Value pointer, Value offset, BinaryOperation op,
-	SourceLocation sourceLocation) : Value(type, false, sourceLocation)
+public sealed class PointerOffsetValue
+(
+	PointerType type,
+	Value pointer,
+	Value offset,
+	BinaryOperation op,
+	SourceLocation sourceLocation
+) : Value(type, false, sourceLocation)
 {
 	public Value Pointer { get; } = pointer;
 	public Value Offset { get; } = offset;
 	public BinaryOperation Op { get; } = op;
 }
 
-public sealed class PointerDifferenceValue(Value left, Value right, PointerType pointerType,
-	SourceLocation sourceLocation) : Value(NativeSymbols.IntSize, false, sourceLocation)
+public sealed class PointerDifferenceValue
+(
+	Value left,
+	Value right,
+	PointerType pointerType,
+	SourceLocation sourceLocation
+) : Value(NativeSymbols.IntSize, false, sourceLocation)
 {
 	public Value Left { get; } = left;
 	public Value Right { get; } = right;
@@ -203,8 +220,13 @@ public sealed class BranchTerminator(BasicBlock target, SourceLocation sourceLoc
 	public SourceLocation SourceLocation { get; } = sourceLocation;
 }
 
-public sealed class ConditionalBranchTerminator(Value condition, BasicBlock trueTarget, BasicBlock falseTarget,
-	SourceLocation sourceLocation = default) : IBlockTerminator
+public sealed class ConditionalBranchTerminator
+(
+	Value condition,
+	BasicBlock trueTarget,
+	BasicBlock falseTarget,
+	SourceLocation sourceLocation = default
+) : IBlockTerminator
 {
 	public Value Condition { get; } = condition;
 	public BasicBlock TrueTarget { get; } = trueTarget;

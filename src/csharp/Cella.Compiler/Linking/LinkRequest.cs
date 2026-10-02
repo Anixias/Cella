@@ -3,8 +3,14 @@ using Cella.Compiler.Projects;
 
 namespace Cella.Compiler.Linking;
 
-public sealed class LinkRequest(ProjectOutputType outputType, IEnumerable<string> inputFiles, string outputFile,
-	string toolchainsDirectory, params IEnumerable<string> libFiles)
+public sealed class LinkRequest
+(
+	ProjectOutputType outputType,
+	IEnumerable<string> inputFiles,
+	string outputFile,
+	string toolchainsDirectory,
+	params IEnumerable<string> libFiles
+)
 {
 	public ProjectOutputType OutputType { get; } = outputType;
 	public ImmutableArray<string> InputFiles { get; } = inputFiles.ToImmutableArray();

@@ -1,0 +1,12 @@
+mod test
+
+ext
+{
+	puts: fun(text: cstr) -> i32
+}
+
+main: fun -> i32
+{
+	puts("Hello from Cella")
+	ret 0
+}

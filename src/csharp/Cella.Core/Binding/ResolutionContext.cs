@@ -100,54 +100,54 @@ public readonly struct ResolutionContext
 	};
 	
 	private TypeSymbol ResolveTypeArgument(IGenericArgumentNode node) => node switch
-    {
-        TypeArgumentNode t => ResolveType(t.Type),
-        IdentifierArgumentNode i => Resolve(i.Identifier.Text) as TypeSymbol ?? NativeSymbols.Invalid,
-        ExpressionArgumentNode e => TypePool.TryResolveExpressionAsType(e.Expression, Resolve)
-                                    ?? NativeSymbols.Invalid,
-	    _ => NativeSymbols.Invalid
-    };
+	{
+		TypeArgumentNode t => ResolveType(t.Type),
+		IdentifierArgumentNode i => Resolve(i.Identifier.Text) as TypeSymbol ?? NativeSymbols.Invalid,
+		ExpressionArgumentNode e => TypePool.TryResolveExpressionAsType(e.Expression, Resolve)
+		                            ?? NativeSymbols.Invalid,
+		_ => NativeSymbols.Invalid
+	};
 	
-    private BigInteger? ResolveConstIntArgument(IGenericArgumentNode node) => node switch
-    {
-        ExpressionArgumentNode e => ResolveConstIntExpression(e.Expression),
-        IdentifierArgumentNode i => ResolveConstIntIdentifier(i.Identifier),
-        _ => null
-    };
-    
-    private BigInteger? ResolveConstIntIdentifier(Token identifier) =>
-	    throw new NotImplementedException();
-    
-    // TODO Need to implement constant expression evaluation prior to resolution?
-    // TODO Cannot handle negative integers
-    private BigInteger? ResolveConstIntExpression(IExpressionNode node) => node switch
-    {
-        LiteralExpressionNode { Token.Type: TokenType.IntegerLiteral } e =>
-	        BigInteger.TryParse(e.Token.AsSpan(), out var value) ? value : null,
-        
-        _ => null
-    };
-    
-    private TypeSymbol ResolveGenericType(GenericTypeNode node)
-    {
-	    var typeArgs = new List<IGenericArgument>(node.Arguments.Length);
-	    
-	    foreach (var arg in node.Arguments)
-	    {
-		    var typeArg = ResolveTypeArgument(arg);
-		    if (typeArg != NativeSymbols.Invalid)
-		    {
-			    typeArgs.Add(new GenericTypeArgument(typeArg));
-			    continue;
-		    }
-		    
-		    if (ResolveConstIntArgument(arg) is not { } constVal)
-			    return NativeSymbols.Invalid;
-		    
-		    typeArgs.Add(new GenericConstArgument(constVal));
-	    }
-	    
-	    return TypePool.ResolveBuiltinGenericType(node.Identifier.Text, typeArgs.ToArray())
-	           ?? NativeSymbols.Invalid;
-    }
+	private BigInteger? ResolveConstIntArgument(IGenericArgumentNode node) => node switch
+	{
+		ExpressionArgumentNode e => ResolveConstIntExpression(e.Expression),
+		IdentifierArgumentNode i => ResolveConstIntIdentifier(i.Identifier),
+		_ => null
+	};
+	
+	private BigInteger? ResolveConstIntIdentifier(Token identifier) =>
+		throw new NotImplementedException();
+	
+	// TODO Need to implement constant expression evaluation prior to resolution?
+	// TODO Cannot handle negative integers
+	private BigInteger? ResolveConstIntExpression(IExpressionNode node) => node switch
+	{
+		LiteralExpressionNode { Token.Type: TokenType.IntegerLiteral } e =>
+			BigInteger.TryParse(e.Token.AsSpan(), out var value) ? value : null,
+		
+		_ => null
+	};
+	
+	private TypeSymbol ResolveGenericType(GenericTypeNode node)
+	{
+		var typeArgs = new List<IGenericArgument>(node.Arguments.Length);
+		
+		foreach (var arg in node.Arguments)
+		{
+			var typeArg = ResolveTypeArgument(arg);
+			if (typeArg != NativeSymbols.Invalid)
+			{
+				typeArgs.Add(new GenericTypeArgument(typeArg));
+				continue;
+			}
+			
+			if (ResolveConstIntArgument(arg) is not { } constVal)
+				return NativeSymbols.Invalid;
+			
+			typeArgs.Add(new GenericConstArgument(constVal));
+		}
+		
+		return TypePool.ResolveBuiltinGenericType(node.Identifier.Text, typeArgs.ToArray())
+		       ?? NativeSymbols.Invalid;
+	}
 }

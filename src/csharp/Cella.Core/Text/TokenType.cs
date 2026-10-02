@@ -99,7 +99,8 @@ public enum TokenType
 
 public static class TokenTypeInfo
 {
-	private sealed record TokenMetadata(
+	private sealed record TokenMetadata
+	(
 		string Representation,
 		bool IsInvalid = false,
 		bool IsKeyword = false,

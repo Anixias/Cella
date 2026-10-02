@@ -360,6 +360,5 @@ public sealed class TypePool
 }
 
 public interface IGenericArgument;
-
 public sealed record GenericTypeArgument(TypeSymbol Type) : IGenericArgument;
 public sealed record GenericConstArgument(BigInteger Value) : IGenericArgument;

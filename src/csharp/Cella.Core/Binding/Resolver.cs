@@ -597,7 +597,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	public IResolvedExpressionNode Visit(UndefExpressionNode node)
 	{
 		var resolutionContext = CurrentResolutionContext;
-		var type = node.Type is null 
+		var type = node.Type is null
 			? _targetTypes.TryPeek(out var targetType) ? targetType ?? NativeSymbols.Invalid : NativeSymbols.Invalid
 			: resolutionContext.ResolveType(node.Type);
 		
@@ -1396,8 +1396,8 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	
 	private IResolvedExpressionNode ApplyResultResolution(IResolvedExpressionNode node,
 		CallableResolution resolution) => resolution.ResultConversion is { } conversion
-			? new ResolvedConversionExpressionNode(node, conversion, node.Syntax)
-			: node;
+		? new ResolvedConversionExpressionNode(node, conversion, node.Syntax)
+		: node;
 	
 	private (int Cost, Conversion? Conversion) MatchArg(IResolvedExpressionNode arg, TypeSymbol target,
 		MaterializationMode mode)
@@ -1478,6 +1478,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	private sealed class ConstructorCallable(FunctionInfo info, TypeSymbol type) : ICallable
 	{
 		public FunctionInfo Info { get; } = info;
+		
 		public ImmutableArray<TypeSymbol> ParameterTypes { get; } =
 			info.Signature.ParameterTypes.Skip(1).ToImmutableArray(); // Skip implicit self
 		

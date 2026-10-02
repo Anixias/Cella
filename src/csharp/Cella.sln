@@ -6,6 +6,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Cella.Compiler", "Cella.Com
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Cella.SourceGenerators", "Cella.SourceGenerators\Cella.SourceGenerators.csproj", "{2CD0C34A-52EB-4407-BD06-C225219B02D3}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Cella.Tests", "Cella.Tests\Cella.Tests.csproj", "{5521D7F2-AAF6-46BD-92D2-09C26AAEA416}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -24,6 +26,10 @@ Global
 		{2CD0C34A-52EB-4407-BD06-C225219B02D3}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{2CD0C34A-52EB-4407-BD06-C225219B02D3}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{2CD0C34A-52EB-4407-BD06-C225219B02D3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5521D7F2-AAF6-46BD-92D2-09C26AAEA416}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5521D7F2-AAF6-46BD-92D2-09C26AAEA416}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5521D7F2-AAF6-46BD-92D2-09C26AAEA416}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5521D7F2-AAF6-46BD-92D2-09C26AAEA416}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 	EndGlobalSection

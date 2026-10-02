@@ -11,12 +11,12 @@
   <ItemGroup>
     <ProjectReference Include="..\Cella.SourceGenerators\Cella.SourceGenerators.csproj"
                       OutputItemType="Analyzer"
-                      ReferenceOutputAssembly="false" />
+                      ReferenceOutputAssembly="false"/>
   </ItemGroup>
   
   <ItemGroup>
-    <PackageReference Include="libLLVM" Version="20.1.2" />
-    <PackageReference Include="LLVMSharp" Version="20.1.2" />
+    <PackageReference Include="libLLVM" Version="20.1.2"/>
+    <PackageReference Include="LLVMSharp" Version="20.1.2"/>
   </ItemGroup>
 
 </Project>

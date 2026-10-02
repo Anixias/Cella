@@ -1,0 +1,12 @@
+mod test
+
+sign: fun(n: i32) -> i32
+{
+	if n > 0
+		ret 1
+}
+
+main: fun -> i32
+{
+	ret sign(5)
+}

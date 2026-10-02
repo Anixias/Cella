@@ -29,7 +29,6 @@ public class Scanner : IScanner
 		if (char.IsLetter(character) || character == '_')
 			return ScanIdentifier(position);
 		
-		
 		switch (character)
 		{
 			case '"':
@@ -406,6 +405,7 @@ public class Scanner : IScanner
 						result.Append('{');
 					else
 						valid = false;
+					
 					break;
 				
 				case 'u':
@@ -535,10 +535,10 @@ public class Scanner : IScanner
 	{
 		if (Source[position] != '/')
 			return null;
-		
+	
 		if (position + 1 >= Source.Length)
 			return null;
-		
+	
 		return Source[position + 1] switch
 		{
 			'/' => ScanLineComment(position),
@@ -553,13 +553,13 @@ public class Scanner : IScanner
 		while (end < Source.Length)
 		{
 			var character = Source[end];
-			
+	
 			if (character is '\n' or '\r')
 				break;
-			
+	
 			end++;
 		}
-		
+	
 		return new ScanResult(new Token(TokenType.LineComment, new TextRange(position, end), Source), end);
 	}
 	
@@ -574,31 +574,31 @@ public class Scanner : IScanner
 				end++;
 				break;
 			}
-			
+	
 			var character = Source[end];
 			var next = Source[end + 1];
-			
+	
 			if (character == '/' && next == '*')
 			{
 				nestLevel++;
 				end += 2;
 				continue;
 			}
-			
+	
 			if (character == '*' && next == '/')
 			{
 				nestLevel--;
 				end += 2;
-				
+	
 				if (nestLevel <= 0)
 					break;
-				
+	
 				continue;
 			}
-			
+	
 			end++;
 		}
-		
+	
 		return new ScanResult(new Token(TokenType.MultilineComment, new TextRange(position, end), Source), end);
 	}
 	
@@ -609,10 +609,10 @@ public class Scanner : IScanner
 		{
 			end++;
 		}
-		
+	
 		if (end <= position)
 			return null;
-		
+	
 		return int.Parse(Source.GetText(new TextRange(position, end)));
 	}
 	
@@ -624,10 +624,10 @@ public class Scanner : IScanner
 			var character = Source[end];
 			if (char.IsLetterOrDigit(character) || char.IsWhiteSpace(character) || character == '_')
 				break;
-			
+	
 			end++;
 		}
-		
+	
 		while (end > position)
 		{
 			var range = new TextRange(position, end);
@@ -637,10 +637,10 @@ public class Scanner : IScanner
 				var token = new Token(@operator, range, Source);
 				return new ScanResult(token, end);
 			}
-			
+	
 			end--;
 		}
-		
+	
 		end = position + 1;
 		return new ScanResult(new Token(TokenType.Invalid, new TextRange(position, end), Source), end);
 	}
@@ -649,13 +649,13 @@ public class Scanner : IScanner
 	{
 		if (Source[position] is '\n' or '\r')
 			return ScanNewline(position);
-		
+	
 		var end = position;
 		while (end < Source.Length && char.IsWhiteSpace(Source[end]))
 		{
 			end++;
 		}
-		
+	
 		var range = new TextRange(position, end);
 		var token = new Token(TokenType.Whitespace, range, Source);
 		return new ScanResult(token, end);
@@ -666,10 +666,10 @@ public class Scanner : IScanner
 		var end = position;
 		if (Source[end] == '\r')
 			end++;
-		
+	
 		if (Source[end] == '\n')
 			end++;
-		
+	
 		var range = new TextRange(position, end);
 		var token = new Token(TokenType.Newline, range, Source);
 		return new ScanResult(token, end);
@@ -682,7 +682,7 @@ public class Scanner : IScanner
 		{
 			end++;
 		}
-		
+	
 		var range = new TextRange(position, end);
 		var text = Source.GetText(range);
 		var tokenType = TokenType.GetKeyword(text) ?? TokenType.Identifier;
@@ -694,7 +694,7 @@ public class Scanner : IScanner
 	{
 		// 1_234, 123.456, 123.456f32, 123.456x32, 123u, 8i64, 0xAF80, 0b1011_0011, 2e3, 2e-3, 3.14e+3f
 		var end = position;
-		
+	
 		if (position <= Source.Length - 2)
 		{
 			if (Source[position] == '0')
@@ -704,21 +704,21 @@ public class Scanner : IScanner
 					case 'x':
 					case 'X':
 						return ScanHexadecimal(position);
-					
+	
 					case 'b':
 					case 'B':
 						return ScanBinary(position);
 				}
 			}
 		}
-		
+	
 		object? value = null;
-		
+	
 		while (end < Source.Length && IsDigit(Source[end]))
 		{
 			end++;
 		}
-		
+	
 		if (end < Source.Length)
 		{
 			if (Source[end] == '.' && end + 1 < Source.Length && IsDigit(Source[end + 1]))
@@ -728,9 +728,9 @@ public class Scanner : IScanner
 				{
 					end++;
 				}
-				
+	
 				var valueString = RemoveSeparators(Source.GetText(new TextRange(position, end)));
-				
+	
 				if (end < Source.Length)
 				{
 					switch (Source[end])
@@ -740,28 +740,28 @@ public class Scanner : IScanner
 							end++;
 							if (end < Source.Length && Source[end] is '+' or '-')
 								end++;
-							
+	
 							while (end < Source.Length && IsDigit(Source[end]))
 							{
 								end++;
 							}
-							
+	
 							valueString = RemoveSeparators(Source.GetText(new TextRange(position, end)));
 							end = ParseFloatSuffix(end, valueString, out value);
 							break;
-						
+	
 						case 'f':
 						case 'F':
 							end = ParseFloatSuffix(end, valueString, out value);
 							break;
-						
+	
 #if FIXED_POINT_SUPPORT
 						case 'x':
 						case 'X':
 							end = ParseFixedSuffix(end, valueString, out value);
 							break;
 #endif
-						
+	
 						// Todo: Invalid suffix
 						default:
 							value = double.TryParse(valueString, out var defaultValue) ? defaultValue : null;
@@ -776,7 +776,7 @@ public class Scanner : IScanner
 			else
 			{
 				var valueString = RemoveSeparators(Source.GetText(new TextRange(position, end)));
-				
+	
 				if (end < Source.Length)
 				{
 					switch (Source[end])
@@ -790,35 +790,35 @@ public class Scanner : IScanner
 									end++;
 									value = byte.TryParse(valueString, out var byteValue) ? byteValue : null;
 									break;
-								
+	
 								case 16:
 									end += 2;
 									value = ushort.TryParse(valueString, out var ushortValue) ? ushortValue : null;
 									break;
-								
+	
 								case 32:
 									end += 2;
 									value = uint.TryParse(valueString, out var uintValue) ? uintValue : null;
 									break;
-								
+	
 								case 64:
 									end += 2;
 									value = ulong.TryParse(valueString, out var ulongValue) ? ulongValue : null;
 									break;
-								
+	
 								case 128:
 									end += 3;
 									value = UInt128.TryParse(valueString, out var uint128Value) ? uint128Value : null;
 									break;
-								
+	
 								// Todo: Invalid suffix
 								case null:
 									value = uint.TryParse(valueString, out var uDefaultValue) ? uDefaultValue : null;
 									break;
 							}
-							
+	
 							break;
-						
+	
 						case 'i':
 						case 'I':
 							end++;
@@ -828,62 +828,62 @@ public class Scanner : IScanner
 									end++;
 									value = sbyte.TryParse(valueString, out var sbyteValue) ? sbyteValue : null;
 									break;
-								
+	
 								case 16:
 									end += 2;
 									value = short.TryParse(valueString, out var shortValue) ? shortValue : null;
 									break;
-								
+	
 								case 32:
 									end += 2;
 									value = int.TryParse(valueString, out var sIntValue) ? sIntValue : null;
 									break;
-								
+	
 								case 64:
 									end += 2;
 									value = long.TryParse(valueString, out var longValue) ? longValue : null;
 									break;
-								
+	
 								case 128:
 									end += 3;
 									value = Int128.TryParse(valueString, out var int128Value) ? int128Value : null;
 									break;
-								
+	
 								// Todo: Invalid suffix
 								case null:
 									value = int.TryParse(valueString, out var iDefaultValue) ? iDefaultValue : null;
 									break;
 							}
-							
+	
 							break;
-						
+	
 						case 'e':
 						case 'E':
 							end++;
 							if (end < Source.Length && Source[end] is '+' or '-')
 								end++;
-							
+	
 							while (end < Source.Length && char.IsDigit(Source[end]))
 							{
 								end++;
 							}
-							
+	
 							valueString = Source.GetText(new TextRange(position, end));
 							end = ParseFloatSuffix(end, valueString, out value);
 							break;
-						
+	
 						case 'f':
 						case 'F':
 							end = ParseFloatSuffix(end, valueString, out value);
 							break;
-						
+	
 #if FIXED_POINT_SUPPORT
 						case 'x':
 						case 'X':
 							end = ParseFixedSuffix(end, valueString, out value);
 							break;
 #endif
-						
+	
 						// Todo: Invalid suffix
 						default:
 							if (int.TryParse(valueString, out var intValue))
@@ -904,7 +904,7 @@ public class Scanner : IScanner
 									new TextRange(position, end), Source, value);
 								return new ScanResult(invalidToken, end);
 							}
-							
+	
 							break;
 					}
 				}
@@ -965,15 +965,15 @@ public class Scanner : IScanner
 				return new ScanResult(invalidToken, end);
 			}
 		}
-		
+	
 		var token = new Token(TokenType.NumberLiteral, new TextRange(position, end), Source, value);
 		return new ScanResult(token, end);
-		
+	
 		bool IsDigit(char c)
 		{
 			return char.IsDigit(c) || c == '_';
 		}
-		
+	
 		string RemoveSeparators(string str)
 		{
 			return str.Replace("_", null);
@@ -983,42 +983,42 @@ public class Scanner : IScanner
 	private int ParseFloatSuffix(int end, string valueString, out object? value)
 	{
 		value = null;
-		
+	
 		if (end < Source.Length)
 		{
 			if (Source[end] is not ('f' or 'F'))
 				return end;
-			
+	
 			end++;
 			switch (ScanStorageSize(end))
 			{
 				case 32:
 					end += 2;
-					
+	
 					value = float.TryParse(valueString, NumberStyles.Float, null,
 						out var float32Value)
 						? float32Value
 						: null;
 					break;
-				
+	
 				case 64:
 					end += 2;
-					
+	
 					value = double.TryParse(valueString, NumberStyles.Float, null,
 						out var float64Value)
 						? float64Value
 						: null;
 					break;
-				
+	
 				case 128:
 					end += 3;
-					
+	
 					value = decimal.TryParse(valueString, NumberStyles.Float, null,
 						out var float128Value)
 						? float128Value
 						: null;
 					break;
-				
+	
 				// Todo: Invalid suffix
 				case null:
 					value = float.TryParse(valueString, NumberStyles.Float, null,
@@ -1035,7 +1035,7 @@ public class Scanner : IScanner
 				? doubleValue
 				: null;
 		}
-		
+	
 		return end;
 	}
 	
@@ -1043,40 +1043,40 @@ public class Scanner : IScanner
 	private int ParseFixedSuffix(int end, string valueString, out object? value)
 	{
 		value = null;
-
+	
 		if (end >= Source.Length)
 			return end;
-		
+	
 		if (Source[end] is not ('x' or 'X'))
 			return end;
-			
+	
 		end++;
 		switch (ScanStorageSize(end))
 		{
 			case 32:
 				end += 2;
-
+	
 				value = Fixed32.TryParse(valueString, out var fixed32Value)
 					? fixed32Value
 					: null;
 				break;
-			
+	
 			case 64:
 				end += 2;
-
+	
 				value = Fixed64.TryParse(valueString, out var fixed64Value)
 					? fixed64Value
 					: null;
 				break;
-			
+	
 			case 128:
 				end += 3;
-
+	
 				value = Fixed128.TryParse(valueString, out var fixed128Value)
 					? fixed128Value
 					: null;
 				break;
-			
+	
 			// Todo: Invalid suffix
 			case null:
 				value = Fixed64.TryParse(valueString, out var fixedValue)
@@ -1084,7 +1084,7 @@ public class Scanner : IScanner
 					: null;
 				break;
 		}
-
+	
 		return end;
 	}
 #endif
@@ -1096,10 +1096,10 @@ public class Scanner : IScanner
 		{
 			end++;
 		}
-		
+	
 		var valueString = RemoveSeparators(Source.GetText(new TextRange(position + 2, end)));
 		object? value = null;
-		
+	
 		var scannedSuffix = false;
 		if (end < Source.Length)
 		{
@@ -1116,41 +1116,41 @@ public class Scanner : IScanner
 							if (byte.TryParse(valueString, NumberStyles.AllowHexSpecifier, null, out var byteValue))
 								value = byteValue;
 							break;
-						
+	
 						case 16:
 							end += 2;
 							if (ushort.TryParse(valueString, NumberStyles.AllowHexSpecifier, null, out var ushortValue))
 								value = ushortValue;
 							break;
-						
+	
 						case 32:
 							end += 2;
 							if (uint.TryParse(valueString, NumberStyles.AllowHexSpecifier, null, out var uintValue))
 								value = uintValue;
 							break;
-						
+	
 						case 64:
 							end += 2;
 							if (ulong.TryParse(valueString, NumberStyles.AllowHexSpecifier, null, out var ulongValue))
 								value = ulongValue;
 							break;
-						
+	
 						case 128:
 							end += 3;
 							if (UInt128.TryParse(valueString, NumberStyles.AllowHexSpecifier, null,
 								    out var uint128Value))
 								value = uint128Value;
 							break;
-						
+	
 						// Todo: Invalid suffix
 						case null:
 							if (uint.TryParse(valueString, NumberStyles.AllowHexSpecifier, null, out var uDefaultValue))
 								value = uDefaultValue;
 							break;
 					}
-					
+	
 					break;
-				
+	
 				case 'i':
 				case 'I':
 					end++;
@@ -1162,43 +1162,43 @@ public class Scanner : IScanner
 							if (sbyte.TryParse(valueString, NumberStyles.AllowHexSpecifier, null, out var sbyteValue))
 								value = sbyteValue;
 							break;
-						
+	
 						case 16:
 							end += 2;
 							if (short.TryParse(valueString, NumberStyles.AllowHexSpecifier, null, out var shortValue))
 								value = shortValue;
 							break;
-						
+	
 						case 32:
 							end += 2;
 							if (int.TryParse(valueString, NumberStyles.AllowHexSpecifier, null, out var sIntValue))
 								value = sIntValue;
 							break;
-						
+	
 						case 64:
 							end += 2;
 							if (long.TryParse(valueString, NumberStyles.AllowHexSpecifier, null, out var longValue))
 								value = longValue;
 							break;
-						
+	
 						case 128:
 							end += 3;
 							if (Int128.TryParse(valueString, NumberStyles.AllowHexSpecifier, null,
 								    out var int128Value))
 								value = int128Value;
 							break;
-						
+	
 						// Todo: Invalid suffix
 						case null:
 							if (int.TryParse(valueString, NumberStyles.AllowHexSpecifier, null, out var iDefaultValue))
 								value = iDefaultValue;
 							break;
 					}
-					
+	
 					break;
 			}
 		}
-		
+	
 		if (!scannedSuffix)
 		{
 			if (int.TryParse(valueString, NumberStyles.AllowHexSpecifier, null, out var intValue))
@@ -1232,15 +1232,15 @@ public class Scanner : IScanner
 				return new ScanResult(invalidToken, end);
 			}
 		}
-		
+	
 		var token = new Token(TokenType.NumberLiteral, new TextRange(position, end), Source, value);
 		return new ScanResult(token, end);
-		
+	
 		bool IsHexDigit(char c)
 		{
 			return char.IsAsciiHexDigit(c) || c == '_';
 		}
-		
+	
 		string RemoveSeparators(string str)
 		{
 			return str.Replace("_", null);
@@ -1254,10 +1254,10 @@ public class Scanner : IScanner
 		{
 			end++;
 		}
-		
+	
 		var valueString = RemoveSeparators(Source.GetText(new TextRange(position + 2, end)));
 		object? value = null;
-		
+	
 		var scannedSuffix = false;
 		if (end < Source.Length)
 		{
@@ -1281,9 +1281,9 @@ public class Scanner : IScanner
 									new TextRange(position, end), Source, value);
 								return new ScanResult(invalidToken, end);
 							}
-							
+	
 							break;
-						
+	
 						case 16:
 							end += 2;
 							try
@@ -1296,9 +1296,9 @@ public class Scanner : IScanner
 									new TextRange(position, end), Source, value);
 								return new ScanResult(invalidToken, end);
 							}
-							
+	
 							break;
-						
+	
 						case 32:
 							end += 2;
 							try
@@ -1311,9 +1311,9 @@ public class Scanner : IScanner
 									new TextRange(position, end), Source, value);
 								return new ScanResult(invalidToken, end);
 							}
-							
+	
 							break;
-						
+	
 						case 64:
 							end += 2;
 							try
@@ -1326,9 +1326,9 @@ public class Scanner : IScanner
 									new TextRange(position, end), Source, value);
 								return new ScanResult(invalidToken, end);
 							}
-							
+	
 							break;
-						
+	
 						case 128:
 							end += 3;
 							if (UInt128.TryParse(valueString, NumberStyles.AllowBinarySpecifier, null,
@@ -1342,9 +1342,9 @@ public class Scanner : IScanner
 									new TextRange(position, end), Source, value);
 								return new ScanResult(invalidToken, end);
 							}
-							
+	
 							break;
-						
+	
 						// Todo: Invalid suffix
 						case null:
 							try
@@ -1357,12 +1357,12 @@ public class Scanner : IScanner
 									new TextRange(position, end), Source, value);
 								return new ScanResult(invalidToken, end);
 							}
-							
+	
 							break;
 					}
-					
+	
 					break;
-				
+	
 				case 'i':
 				case 'I':
 					end++;
@@ -1381,9 +1381,9 @@ public class Scanner : IScanner
 									new TextRange(position, end), Source, value);
 								return new ScanResult(invalidToken, end);
 							}
-							
+	
 							break;
-						
+	
 						case 16:
 							end += 2;
 							try
@@ -1396,9 +1396,9 @@ public class Scanner : IScanner
 									new TextRange(position, end), Source, value);
 								return new ScanResult(invalidToken, end);
 							}
-							
+	
 							break;
-						
+	
 						case 32:
 							end += 2;
 							try
@@ -1411,9 +1411,9 @@ public class Scanner : IScanner
 									new TextRange(position, end), Source, value);
 								return new ScanResult(invalidToken, end);
 							}
-							
+	
 							break;
-						
+	
 						case 64:
 							end += 2;
 							try
@@ -1426,9 +1426,9 @@ public class Scanner : IScanner
 									new TextRange(position, end), Source, value);
 								return new ScanResult(invalidToken, end);
 							}
-							
+	
 							break;
-						
+	
 						case 128:
 							end += 3;
 							if (Int128.TryParse(valueString, NumberStyles.AllowBinarySpecifier, null,
@@ -1442,9 +1442,9 @@ public class Scanner : IScanner
 									new TextRange(position, end), Source, value);
 								return new ScanResult(invalidToken, end);
 							}
-							
+	
 							break;
-						
+	
 						// Todo: Invalid suffix
 						case null:
 							try
@@ -1457,14 +1457,14 @@ public class Scanner : IScanner
 									new TextRange(position, end), Source, value);
 								return new ScanResult(invalidToken, end);
 							}
-							
+	
 							break;
 					}
-					
+	
 					break;
 			}
 		}
-		
+	
 		if (!scannedSuffix)
 		{
 			try
@@ -1515,10 +1515,10 @@ public class Scanner : IScanner
 				}
 			}
 		}
-		
+	
 		var token = new Token(TokenType.NumberLiteral, new TextRange(position, end), Source, value);
 		return new ScanResult(token, end);
-		
+	
 		string RemoveSeparators(string str)
 		{
 			return str.Replace("_", null);

@@ -2,7 +2,10 @@
 
 namespace Cella.Core.Binding.Nodes;
 
-public sealed class ResolvedIfStatementNode(IResolvedExpressionNode condition, IResolvedStatementNode then,
+public sealed class ResolvedIfStatementNode
+(
+	IResolvedExpressionNode condition,
+	IResolvedStatementNode then,
 	IResolvedStatementNode? @else,
 	IStatementNode syntax
 ) : IResolvedStatementNode

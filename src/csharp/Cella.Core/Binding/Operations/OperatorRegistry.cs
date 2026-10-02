@@ -111,7 +111,6 @@ public sealed class OperatorRegistry
 	{
 		var result = new Dictionary<TokenType, List<ICallable>>();
 		
-		
 		foreach (var op in _numericBinOps)
 		{
 			var list = result.GetOrAdd(op);
@@ -176,8 +175,12 @@ public sealed class PointerDifferenceImpl(PointerType pointerType)
 	public PointerType PointerType { get; } = pointerType;
 }
 
-public sealed class ConversionImpl(TokenType op, TypeSymbol result,
-	params IReadOnlyList<(TypeSymbol Type, Conversion? Conversion)> parameters)
+public sealed class ConversionImpl
+(
+	TokenType op,
+	TypeSymbol result,
+	params IReadOnlyList<(TypeSymbol Type, Conversion? Conversion)> parameters
+)
 	: OperationImpl(op, result, parameters.Select(static p => p.Type))
 {
 	public ImmutableArray<Conversion?> ParameterConversions { get; } = parameters.Select(static p => p.Conversion)

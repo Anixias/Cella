@@ -3,8 +3,12 @@ using Cella.Core.Text;
 
 namespace Cella.Core.Syntax.Nodes;
 
-public sealed class GenericTypeNode(SourceLocation sourceLocation, Token identifier,
-	IEnumerable<IGenericArgumentNode> arguments) : ITypeNode
+public sealed class GenericTypeNode
+(
+	SourceLocation sourceLocation,
+	Token identifier,
+	IEnumerable<IGenericArgumentNode> arguments
+) : ITypeNode
 {
 	public Token Identifier { get; } = identifier;
 	public ImmutableArray<IGenericArgumentNode> Arguments { get; } = arguments.ToImmutableArray();

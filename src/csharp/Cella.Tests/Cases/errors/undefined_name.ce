@@ -1,0 +1,7 @@
+mod test
+
+main: fun -> i32
+{
+	var total = 3
+	ret totl
+}

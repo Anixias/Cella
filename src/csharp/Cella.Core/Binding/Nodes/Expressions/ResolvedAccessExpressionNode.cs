@@ -3,8 +3,13 @@ using Cella.Core.Syntax.Nodes;
 
 namespace Cella.Core.Binding.Nodes;
 
-public sealed class ResolvedAccessExpressionNode(IResolvedExpressionNode target, MemberSymbol member, TypeSymbol type,
-	IExpressionNode syntax) : IResolvedExpressionNode
+public sealed class ResolvedAccessExpressionNode
+(
+	IResolvedExpressionNode target,
+	MemberSymbol member,
+	TypeSymbol type,
+	IExpressionNode syntax
+) : IResolvedExpressionNode
 {
 	public IResolvedExpressionNode Target { get; } = target;
 	public MemberSymbol Member { get; } = member;

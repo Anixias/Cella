@@ -4,8 +4,12 @@ using Cella.Core.Syntax.Nodes;
 
 namespace Cella.Core.Binding.Nodes;
 
-public sealed class ResolvedConversionExpressionNode(IResolvedExpressionNode source, Conversion conversion,
-	IExpressionNode syntax) : IResolvedExpressionNode
+public sealed class ResolvedConversionExpressionNode
+(
+	IResolvedExpressionNode source,
+	Conversion conversion,
+	IExpressionNode syntax
+) : IResolvedExpressionNode
 {
 	public IResolvedExpressionNode Source { get; } = source;
 	public Conversion Conversion { get; } = conversion;

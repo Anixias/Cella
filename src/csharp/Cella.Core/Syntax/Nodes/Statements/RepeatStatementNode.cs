@@ -2,8 +2,13 @@
 
 namespace Cella.Core.Syntax.Nodes;
 
-public sealed class RepeatStatementNode(SourceLocation sourceLocation, IExpressionNode count, IStatementNode body,
-	Token? label) : IStatementNode
+public sealed class RepeatStatementNode
+(
+	SourceLocation sourceLocation,
+	IExpressionNode count,
+	IStatementNode body,
+	Token? label
+) : IStatementNode
 {
 	public SourceLocation SourceLocation { get; } = sourceLocation;
 	public IExpressionNode Count { get; } = count;

@@ -9,6 +9,7 @@ using Cella.Core.CodeGen.Extensions;
 using Cella.Core.Lowering;
 using Cella.Core.Symbols;
 using LLVMSharp.Interop;
+
 // ReSharper disable StringLiteralTypo
 
 namespace Cella.Core.CodeGen;
@@ -159,7 +160,6 @@ public sealed unsafe class CodeGenerator : IDisposable
 				return new(true, objectFilePath, null, _externalLibraries);
 			
 			return CodeGenResult.Failure with { ErrorMessage = message };
-			
 		}
 		finally
 		{
@@ -247,7 +247,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 				var directory = Path.GetDirectoryName(fullPath)?.Replace('\\', '/') ?? string.Empty;
 				fileMetadata = llvmDiBuilder.CreateFile(fileName, directory);
 			}
-			
+		
 			// TODO Emit debug info for types, functions, etc.
 			var compileUnit = llvmDiBuilder.CreateCompileUnit(dwarfLang, fileMetadata, "", isOptimized, "", 0, "",
 				LLVMDWARFEmissionKind.LLVMDWARFEmissionFull, 0, 1, 0, "", "");
@@ -471,7 +471,8 @@ public sealed unsafe class CodeGenerator : IDisposable
 			return;
 		
 		if (array.Length < 0 || array.Length > int.MaxValue)
-			throw new InvalidOperationException($"Cannot drop array type '{array.Name}' with non-fixed or too-large length");
+			throw new InvalidOperationException(
+				$"Cannot drop array type '{array.Name}' with non-fixed or too-large length");
 		
 		var length = (int)array.Length;
 		
@@ -509,7 +510,8 @@ public sealed unsafe class CodeGenerator : IDisposable
 					break;
 				
 				if (array.Length < 0 || array.Length > int.MaxValue)
-					throw new InvalidOperationException($"Cannot drop array type '{array.Name}' with non-fixed or too-large length");
+					throw new InvalidOperationException(
+						$"Cannot drop array type '{array.Name}' with non-fixed or too-large length");
 				
 				var length = (int)array.Length;
 				for (var i = length - 1; i >= 0; i--)
@@ -553,7 +555,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 		}
 	}
 	
-	private void EmitTerminator(LLVMBuilderRef builder, IBlockTerminator terminator, 
+	private void EmitTerminator(LLVMBuilderRef builder, IBlockTerminator terminator,
 		Dictionary<BasicBlock, LLVMBasicBlockRef> blockMap)
 	{
 		switch (terminator)
@@ -628,7 +630,6 @@ public sealed unsafe class CodeGenerator : IDisposable
 		var bytePtr = builder.BuildBitCast(ptr, bytePtrType, "voidptr.as.byteptr");
 		var result = builder.BuildGEP2(elementType, bytePtr, new[] { offset }, "ptroff");
 		return builder.BuildBitCast(result, MapTypeSymbol(ptrType), "byteptr.as.voidptr");
-		
 	}
 	
 	private LLVMValueRef EmitPointerDifference(PointerDifferenceValue v, LLVMBuilderRef builder)
@@ -908,7 +909,8 @@ public sealed unsafe class CodeGenerator : IDisposable
 	private LLVMValueRef EmitUnaryOp(UnaryOpValue v, LLVMBuilderRef builder) => v switch
 	{
 		{ IsConstant: true, Op: UnaryOperation.Negation } => LLVMValueRef.CreateConstNeg(EmitValue(v.Operand, builder)),
-		{ Op: UnaryOperation.Negation } => builder.BuildNeg(EmitValue(v.Operand, builder)), // TODO Check floating point?
+		{ Op: UnaryOperation.Negation } => builder.BuildNeg(EmitValue(v.Operand,
+			builder)), // TODO Check floating point?
 		
 		{ IsConstant: true, Op: UnaryOperation.BitwiseNot } =>
 			LLVMValueRef.CreateConstNot(EmitValue(v.Operand, builder)),
@@ -1155,51 +1157,51 @@ public sealed unsafe class CodeGenerator : IDisposable
 	}
 	
 	private static void BigIntegerToWords(BigInteger value, int maxBitCount, bool isUnsigned, Span<ulong> words)
-    {
-        switch (maxBitCount)
-        {
-	        case < 0:
-		        throw new ArgumentException($"{nameof(maxBitCount)} must be non‑negative.", nameof(maxBitCount));
-	        
-	        case 0:
-		        return;
-        }
-        
-        var maxByteSize = (value.GetByteCount() + 7) & ~7;
-        Span<byte> bytes = stackalloc byte[maxByteSize];
-        value.TryWriteBytes(bytes, out var bytesWritten, isUnsigned);
-        
-        for (var i = 0; i < words.Length; i++)
-        {
-	        var offset = i * 8;
-	        var word = BinaryPrimitives.ReadUInt64LittleEndian(bytes.Slice(offset, 8));
-	        
-	        // The last word may contain padding bytes, need to sign-extend if signed
-	        if (!isUnsigned && i == words.Length - 1)
-	        {
-		        var lastWordBytes = bytesWritten & 7;
-		        if (lastWordBytes == 0)
-			        lastWordBytes = 8;
-		        
-		        if (lastWordBytes < 8)
-		        {
-			        // If highest bit is set, sign-extend padding bytes
-			        var msb = bytes[offset + lastWordBytes - 1];
-			        if ((msb & 0x80) != 0)
-				        word |= ulong.MaxValue << (lastWordBytes * 8);
-		        }
-	        }
-	        
-	        words[i] = word;
-        }
-    }
+	{
+		switch (maxBitCount)
+		{
+			case < 0:
+				throw new ArgumentException($"{nameof(maxBitCount)} must be non‑negative.", nameof(maxBitCount));
+			
+			case 0:
+				return;
+		}
+		
+		var maxByteSize = (value.GetByteCount() + 7) & ~7;
+		Span<byte> bytes = stackalloc byte[maxByteSize];
+		value.TryWriteBytes(bytes, out var bytesWritten, isUnsigned);
+		
+		for (var i = 0; i < words.Length; i++)
+		{
+			var offset = i * 8;
+			var word = BinaryPrimitives.ReadUInt64LittleEndian(bytes.Slice(offset, 8));
+			
+			// The last word may contain padding bytes, need to sign-extend if signed
+			if (!isUnsigned && i == words.Length - 1)
+			{
+				var lastWordBytes = bytesWritten & 7;
+				if (lastWordBytes == 0)
+					lastWordBytes = 8;
+				
+				if (lastWordBytes < 8)
+				{
+					// If highest bit is set, sign-extend padding bytes
+					var msb = bytes[offset + lastWordBytes - 1];
+					if ((msb & 0x80) != 0)
+						word |= ulong.MaxValue << (lastWordBytes * 8);
+				}
+			}
+			
+			words[i] = word;
+		}
+	}
 	
 	private const int BitsPerWord = sizeof(ulong) * 8;
 	
-    /// <summary>
-    /// Returns the number of ulong words required to hold <see cref="maxBitCount"/> bits.
-    /// </summary>
-    private static int GetWordCount(int maxBitCount) => (maxBitCount + BitsPerWord - 1) / BitsPerWord;
+	/// <summary>
+	/// Returns the number of ulong words required to hold <see cref="maxBitCount"/> bits.
+	/// </summary>
+	private static int GetWordCount(int maxBitCount) => (maxBitCount + BitsPerWord - 1) / BitsPerWord;
 	
 	public void Dispose()
 	{

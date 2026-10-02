@@ -4,7 +4,9 @@ using Cella.Core.Syntax.Nodes;
 
 namespace Cella.Core.Binding.Nodes;
 
-public sealed class ResolvedFunctionCallExpressionNode(FunctionInfo function,
+public sealed class ResolvedFunctionCallExpressionNode
+(
+	FunctionInfo function,
 	IEnumerable<IResolvedExpressionNode> arguments,
 	IExpressionNode syntax
 ) : IResolvedExpressionNode
