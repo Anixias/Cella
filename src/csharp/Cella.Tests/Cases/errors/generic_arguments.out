@@ -1,0 +1,24 @@
+
+====== generic_arguments.ce ======
+
+Error at line 5, column 15
+4 │ {
+5 │     var pointer: ptr[i32, 3]
+                     ╘═════════╛ 'ptr' takes one type argument
+
+Error at line 6, column 15
+5 │ var pointer: ptr[i32, 3]
+6 │ var numbers: array[3, i32]
+                 ╘═══════════╛ 'array' takes an element type and an optional length
+
+Error at line 7, column 12
+6 │ var numbers: array[3, i32]
+7 │ var many: array[i32, 3, 4]
+              ╘══════════════╛ 'array' takes an element type and an optional length
+
+Error at line 8, column 13
+7 │ var many: array[i32, 3, 4]
+8 │ var slice: span[3]
+               ╘═════╛ 'span' takes one type argument
+
+[compilation failed]

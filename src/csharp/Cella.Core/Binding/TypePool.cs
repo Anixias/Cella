@@ -42,8 +42,18 @@ public sealed class TypePool
 	public bool NeedsDrop(TypeSymbol type) => _needsDrop.GetValueOrDefault(type, false);
 	public bool TryGetNeedsDrop(TypeSymbol type, out bool result) => _needsDrop.TryGetValue(type, out result);
 	
-	public static IReadOnlyList<string> BuiltinGenericTypeNames { get; } =
-		["ptr", "mut", "imm", "own", "buffer", "span", "view", "array"];
+	public static IReadOnlyDictionary<string, string> BuiltinGenericTypeArguments { get; } =
+		new Dictionary<string, string>
+		{
+			["ptr"] = "one type argument",
+			["mut"] = "one type argument",
+			["imm"] = "one type argument",
+			["own"] = "one type argument",
+			["buffer"] = "one type argument",
+			["span"] = "one type argument",
+			["view"] = "one type argument",
+			["array"] = "an element type and an optional length"
+		};
 	
 	public TypeSymbol? ResolveBuiltinGenericType(string name, IReadOnlyList<IGenericArgument> typeArgs) => name switch
 	{

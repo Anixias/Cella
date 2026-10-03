@@ -176,10 +176,10 @@ public readonly struct ResolutionContext
 	private TypeSymbol ResolveGenericType(GenericTypeNode node)
 	{
 		var name = node.Identifier;
-		if (!TypePool.BuiltinGenericTypeNames.Contains(name.Text))
+		if (!TypePool.BuiltinGenericTypeArguments.TryGetValue(name.Text, out var expectedArguments))
 		{
 			Diagnostics.Add(DiagnosticReporter.ReportUndefinedType(name.SourceLocation, name.Text,
-				TypePool.BuiltinGenericTypeNames));
+				TypePool.BuiltinGenericTypeArguments.Keys));
 			
 			return NativeSymbols.Invalid;
 		}
@@ -201,7 +201,10 @@ public readonly struct ResolutionContext
 			typeArgs.Add(new GenericConstArgument(constVal));
 		}
 		
-		return TypePool.ResolveBuiltinGenericType(node.Identifier.Text, typeArgs.ToArray())
-		       ?? NativeSymbols.Invalid;
+		if (TypePool.ResolveBuiltinGenericType(name.Text, typeArgs.ToArray()) is { } type)
+			return type;
+		
+		Diagnostics.Add(new(DiagnosticSeverity.Error, node.SourceLocation, $"'{name.Text}' takes {expectedArguments}"));
+		return NativeSymbols.Invalid;
 	}
 }
