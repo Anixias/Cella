@@ -400,7 +400,7 @@ public sealed class Lowerer : IResolvedDeclarationNodeVisitor
 			
 			var resultSymbol = CreateTempSymbol(node.Type, ".cons__mem");
 			GetOrMakeBlock().Instructions
-				.Add(new LocalVarInstruction(resultSymbol, new UndefValue(node.Type), sourceLocation, CurrentScopeId));
+				.Add(new LocalVarInstruction(resultSymbol, new ZeroValue(node.Type), sourceLocation, CurrentScopeId));
 			
 			var result = new VariableValue(new(resultSymbol, node.Type), sourceLocation);
 			
@@ -430,7 +430,7 @@ public sealed class Lowerer : IResolvedDeclarationNodeVisitor
 			var sourceLocation = node.Syntax.SourceLocation;
 			
 			var ownerSymbol = CreateTempSymbol(node.Type, ".cons");
-			var heapValue = new HeapValue(node.Type, new UndefValue(elementType), sourceLocation);
+			var heapValue = new HeapValue(node.Type, new ZeroValue(elementType), sourceLocation);
 			
 			GetOrMakeBlock().Instructions
 				.Add(new LocalVarInstruction(ownerSymbol, heapValue, sourceLocation, CurrentScopeId));

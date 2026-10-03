@@ -1,0 +1,18 @@
+mod test
+
+Counter: rec
+{
+	count: i32
+	step: i32
+	new: op(step: i32)
+	{
+		self.step = step
+	}
+}
+
+main: fun -> i32
+{
+	var local = Counter(5)
+	var boxed = heap Counter(3)
+	ret local.count + boxed.count + local.step + boxed.step
+}
