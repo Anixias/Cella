@@ -1,0 +1,42 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+flag: fun(value: bool) -> i32
+{
+	if value
+		ret 1
+	ret 0
+}
+
+main: fun -> i32
+{
+	var negative: i32 = -1
+	var one: u32 = 1
+	printf("%d %d %d %d %d %d\n", flag(negative < one), flag(negative <= one), flag(negative > one),
+		flag(negative >= one), flag(negative == one), flag(negative != one))
+
+	var largest: u32 = 4294967295
+	printf("%d %d\n", flag(negative == largest), flag(largest > negative))
+
+	var wide: i64 = -5
+	var small: u8 = 200
+	printf("%d %d\n", flag(wide < small), flag(small > wide))
+
+	var hugeSigned: i128 = -1
+	var hugeUnsigned: u128 = 340282366920938463463374607431768211455
+	printf("%d %d\n", flag(hugeSigned < hugeUnsigned), flag(hugeSigned == hugeUnsigned))
+
+	var size: usize = 3
+	var offset: isize = -3
+	printf("%d\n", flag(offset < size))
+
+	var letter = 'a'
+	var code: i32 = 97
+	var minus: i32 = -97
+	printf("%d %d\n", flag(minus < letter), flag(code == letter))
+	ret 0
+}

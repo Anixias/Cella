@@ -966,6 +966,16 @@ public sealed unsafe class CodeGenerator : IDisposable
 		var right = EmitValue(v.Right, builder);
 		var signed = v.Left.Type is IntegerType { IsSigned: true }; // TODO Check for floating point
 		
+		if (v.Left.Type is IntegerType { IsSigned: var leftSigned } &&
+		    v.Right.Type is IntegerType { IsSigned: var rightSigned } &&
+		    leftSigned != rightSigned)
+		{
+			var wide = LLVMTypeRef.CreateInt(Math.Max(left.TypeOf.IntWidth, right.TypeOf.IntWidth) + 1);
+			left = leftSigned ? builder.BuildSExt(left, wide) : builder.BuildZExt(left, wide);
+			right = rightSigned ? builder.BuildSExt(right, wide) : builder.BuildZExt(right, wide);
+			signed = true;
+		}
+		
 		return v switch
 		{
 			{ IsConstant: true, Op: BinaryOperation.Addition } =>

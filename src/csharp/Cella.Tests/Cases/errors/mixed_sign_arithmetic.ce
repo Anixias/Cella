@@ -1,0 +1,18 @@
+mod test
+
+main: fun -> i32
+{
+	var signed: i32 = -1
+	var unsigned: u32 = 1
+	var sum = signed + unsigned
+	var bits = signed & unsigned
+
+	var wide: i64 = 2
+	var huge: u64 = 3
+	var product = huge * wide
+
+	var letter = 'a'
+	var next = letter + signed
+	var forced: char = unsigned
+	ret 0
+}

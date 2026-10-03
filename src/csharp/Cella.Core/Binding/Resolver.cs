@@ -928,6 +928,19 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			if (AnyInvalid(left, right))
 				return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
 			
+			if (IsMixedSignComparison(op.Type, left.Type, right.Type))
+			{
+				var comparison = new NativeImpl(op.Type, NativeSymbols.Bool, left.Type, right.Type);
+				return new ResolvedBinaryOpExpressionNode(left, right, comparison, node);
+			}
+			
+			if (FindLossyMixedSign(left.Type, right.Type) is var (signedType, unsignedType))
+			{
+				var hint = $"'{signedType.Name}' can't represent every '{unsignedType.Name}' value";
+				var mismatch = DiagnosticReporter.ReportBinaryOpMismatch(_operatorRegistry, left, op, right);
+				return Error(node, mismatch with { Hints = [hint] }, CurrentTargetType);
+			}
+			
 			var candidates = _operatorRegistry.GetBinaryCandidates(op.Type);
 			var args = new[] { left, right };
 			var resolutionSet = ResolveCallable(candidates, args, MaterializationMode.Overload,
@@ -1244,6 +1257,21 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			return NativeSymbols.Int128;
 		
 		return null;
+	}
+	
+	private static bool IsMixedSignComparison(TokenType op, TypeSymbol left, TypeSymbol right) =>
+		op is TokenType.OpLess or TokenType.OpLessEqual or TokenType.OpGreater or TokenType.OpGreaterEqual
+			or TokenType.OpEqualEqual or TokenType.OpBangEqual &&
+		left is IntegerType { IsSigned: var leftSigned } && right is IntegerType { IsSigned: var rightSigned } &&
+		leftSigned != rightSigned;
+	
+	private (IntegerType Signed, IntegerType Unsigned)? FindLossyMixedSign(TypeSymbol left, TypeSymbol right)
+	{
+		if (left is not IntegerType a || right is not IntegerType b || a.IsSigned == b.IsSigned)
+			return null;
+		
+		var (signedType, unsignedType) = a.IsSigned ? (a, b) : (b, a);
+		return CountBits(signedType) <= CountBits(unsignedType) ? (signedType, unsignedType) : null;
 	}
 	
 	private TypeSymbol? FindCommonType(TypeSymbol a, TypeSymbol b)

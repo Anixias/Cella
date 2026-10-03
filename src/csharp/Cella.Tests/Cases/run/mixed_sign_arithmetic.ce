@@ -1,0 +1,24 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+main: fun -> i32
+{
+	var small: u8 = 200
+	var offset: i32 = -50
+	var sum = small + offset
+
+	var count: u32 = 4000000000
+	var wide: i64 = -1
+	var total = count + wide
+	var widened: i64 = count
+
+	var letter = 'a'
+	var code: u32 = letter
+
+	printf("%d %lld %lld %u\n", sum, total, widened, code)
+	ret 0
+}

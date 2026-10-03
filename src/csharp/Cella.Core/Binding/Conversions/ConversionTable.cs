@@ -51,11 +51,10 @@ public sealed class ConversionTable
 		{
 			for (var j = i + 1; j < intTypes.Length; j++)
 			{
-				// Sign change must be explicit
 				table.Add(new IntegerConversion(intTypes[i].S, intTypes[j].S, ConversionKind.Implicit, 1));
 				table.Add(new IntegerConversion(intTypes[i].U, intTypes[j].U, ConversionKind.Implicit, 1));
 				table.Add(new IntegerConversion(intTypes[i].S, intTypes[j].U, ConversionKind.Explicit, 1));
-				table.Add(new IntegerConversion(intTypes[i].U, intTypes[j].S, ConversionKind.Explicit, 1));
+				table.Add(new IntegerConversion(intTypes[i].U, intTypes[j].S, ConversionKind.Implicit, 1));
 			}
 		}
 		
@@ -92,14 +91,13 @@ public sealed class ConversionTable
 			table.Add(new IntegerConversion(NativeSymbols.UIntSize, intTypes[i].U, ConversionKind.Explicit, 1));
 			
 			// Any integer type -> char
-			// Explicit for all except i32/u32
 			if (intTypes[i].U == NativeSymbols.UInt32)
-				table.Add(new FreeConversion(NativeSymbols.UInt32, NativeSymbols.Char, ConversionKind.Implicit));
+				table.Add(new FreeConversion(NativeSymbols.UInt32, NativeSymbols.Char, ConversionKind.Explicit));
 			else
 				table.Add(new IntegerConversion(intTypes[i].U, NativeSymbols.Char, ConversionKind.Explicit, 1));
 			
 			if (intTypes[i].S == NativeSymbols.Int32)
-				table.Add(new FreeConversion(NativeSymbols.Int32, NativeSymbols.Char, ConversionKind.Implicit));
+				table.Add(new FreeConversion(NativeSymbols.Int32, NativeSymbols.Char, ConversionKind.Explicit));
 			else
 				table.Add(new IntegerConversion(intTypes[i].S, NativeSymbols.Char, ConversionKind.Explicit, 1));
 		}
