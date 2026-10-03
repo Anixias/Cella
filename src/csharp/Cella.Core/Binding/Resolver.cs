@@ -447,6 +447,13 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	public IResolvedExpressionNode Visit(IndexerExpressionNode node)
 	{
 		var target = VisitNode(node.Target);
+		if (IsInvalid(target))
+		{
+			foreach (var argument in node.Arguments)
+				VisitNode(argument);
+			
+			return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
+		}
 		
 		// TODO Indexable user-defined types
 		
@@ -490,6 +497,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	public IResolvedExpressionNode Visit(AccessExpressionNode node)
 	{
 		var target = VisitNode(node.Target);
+		if (IsInvalid(target))
+			return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
+		
 		var memberName = node.Member.Text;
 		var resolutionContext = CurrentResolutionContext;
 		
@@ -824,6 +834,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		if (consumed)
 			return operand;
 		
+		if (IsInvalid(operand))
+			return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
+		
 		switch (op.Type)
 		{
 			// Special unary operators that aren't stored in the registry
@@ -867,10 +880,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		PointerType { BaseType: { } baseType } => baseType == NativeSymbols.Void
 			? Error(node, "Cannot dereference an untyped pointer; Cast to a typed pointer first", CurrentTargetType)
 			: new ResolvedUnaryOpExpressionNode(operand, new NativeImpl(opType, baseType), node),
-		_ => IsInvalid(operand.Type)
-			? new ResolvedUnaryOpExpressionNode(operand, new NativeImpl(opType, CurrentTargetType ??
-				NativeSymbols.Invalid), node)
-			: Error(node, $"Cannot dereference type '{operand.Type.Name}'", CurrentTargetType)
+		_ => Error(node, $"Cannot dereference type '{operand.Type.Name}'", CurrentTargetType)
 	};
 	
 	private ResolvedUnaryOpExpressionNode ResolveAddressOf(TokenType opType, IResolvedExpressionNode operand,
@@ -883,7 +893,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	private IResolvedExpressionNode ResolveBorrow(TokenType opType, IResolvedExpressionNode operand,
 		UnaryOpExpressionNode node)
 	{
-		if (IsInvalid(operand.Type) || operand.Type is not PointerType { PointerKind: PointerKind.Owning } ptrType)
+		if (operand.Type is not PointerType { PointerKind: PointerKind.Owning } ptrType)
 			return Error(node, $"Cannot borrow type '{operand.Type.Name}'", null);
 		
 		var borrowType = _typePool.GetPointerType(ptrType.BaseType, opType switch

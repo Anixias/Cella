@@ -1,0 +1,33 @@
+mod test
+
+access: fun -> i32
+{
+	var point = missingPoint
+	ret point.x
+}
+
+index: fun -> i32
+{
+	ret missingArray[missingIndex]
+}
+
+negate: fun -> i32
+{
+	ret -missingValue
+}
+
+assign: fun
+{
+	missingTarget.x = 5
+}
+
+declared: fun -> i32
+{
+	var shape: Missing
+	ret shape.sides
+}
+
+main: fun -> i32
+{
+	ret 0
+}

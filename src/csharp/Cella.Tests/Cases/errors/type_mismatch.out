@@ -4,6 +4,6 @@
 Error at line 5, column 19
 4 │ {
 5 │     var flag: bool = 1
-                         ^ Cannot convert type 'i?' to 'bool'
+                         ^ Cannot convert type 'integer literal' to 'bool'
 
 [compilation failed]

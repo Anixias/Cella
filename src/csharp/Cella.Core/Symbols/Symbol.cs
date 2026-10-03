@@ -152,7 +152,7 @@ public abstract class UntypedType(string name) : TypeSymbol(name)
 	public abstract int MaterializationCost(TypeSymbol target, MaterializationMode mode);
 }
 
-public sealed class UntypedIntegerType() : UntypedType("i?")
+public sealed class UntypedIntegerType() : UntypedType("integer literal")
 {
 	public static UntypedIntegerType Instance { get; } = new();
 	
@@ -211,7 +211,7 @@ public sealed class UntypedIntegerType() : UntypedType("i?")
 	}
 }
 
-public sealed class UntypedNullType() : UntypedType("null?")
+public sealed class UntypedNullType() : UntypedType("null")
 {
 	public static UntypedNullType Instance { get; } = new();
 	
@@ -222,7 +222,7 @@ public sealed class UntypedNullType() : UntypedType("null?")
 	};
 }
 
-public sealed class UntypedStringType() : UntypedType("str?")
+public sealed class UntypedStringType() : UntypedType("string literal")
 {
 	public static UntypedStringType Instance { get; } = new();
 	

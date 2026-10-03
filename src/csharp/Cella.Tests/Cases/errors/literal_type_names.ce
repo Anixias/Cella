@@ -1,0 +1,9 @@
+mod test
+
+main: fun -> i32
+{
+	var flag: bool = 5
+	var count: i32 = "text"
+	var number: i32 = null
+	ret 0
+}

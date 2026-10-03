@@ -1,0 +1,19 @@
+
+====== literal_type_names.ce ======
+
+Error at line 5, column 19
+4 │ {
+5 │     var flag: bool = 5
+                         ^ Cannot convert type 'integer literal' to 'bool'
+
+Error at line 6, column 19
+5 │ var flag: bool = 5
+6 │ var count: i32 = "text"
+                     ╘════╛ Cannot convert type 'string literal' to 'i32'
+
+Error at line 7, column 20
+6 │ var count: i32 = "text"
+7 │ var number: i32 = null
+                      ╘══╛ Cannot convert type 'null' to 'i32'
+
+[compilation failed]
