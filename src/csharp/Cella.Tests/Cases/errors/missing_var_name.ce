@@ -1,0 +1,7 @@
+mod test
+
+main: fun -> i32
+{
+	var : i32 = 5
+	ret 0
+}

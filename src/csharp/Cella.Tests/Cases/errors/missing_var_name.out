@@ -1,0 +1,9 @@
+
+====== missing_var_name.ce ======
+
+Error at line 5, column 6
+4 │ {
+5 │     var : i32 = 5
+            ^ Expected a name after 'var'
+
+[compilation failed]

@@ -1,0 +1,5 @@
+mod test
+
+ext
+{
+	puts: fun(text: cstr) -> i32

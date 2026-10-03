@@ -1,0 +1,9 @@
+
+====== missing_type.ce ======
+
+Error at line 5, column 13
+4 │ {
+5 │     var count: = 5
+                   ^ Unexpected token
+
+[compilation failed]

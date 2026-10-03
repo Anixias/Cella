@@ -1,0 +1,5 @@
+mod test
+
+main: fun -> i32
+{
+	ret 0

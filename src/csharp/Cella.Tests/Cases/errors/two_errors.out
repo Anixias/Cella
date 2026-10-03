@@ -1,0 +1,14 @@
+
+====== two_errors.ce ======
+
+Error at line 5, column 6
+4 │ {
+5 │     var : i32 = 1
+            ^ Expected a name after 'var'
+
+Error at line 11, column 13
+10 │ {
+11 │     var value: = 2
+                    ^ Unexpected token
+
+[compilation failed]

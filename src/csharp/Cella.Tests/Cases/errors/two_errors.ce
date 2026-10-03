@@ -1,0 +1,18 @@
+mod test
+
+first: fun -> i32
+{
+	var : i32 = 1
+	ret 0
+}
+
+second: fun -> i32
+{
+	var value: = 2
+	ret 0
+}
+
+main: fun -> i32
+{
+	ret 0
+}
