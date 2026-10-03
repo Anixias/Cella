@@ -100,7 +100,12 @@ public sealed class OperatorRegistry
 		{
 			var list = result.GetOrAdd(op);
 			foreach (var type in _numericTypes)
+			{
+				if (op == TokenType.OpMinus && type is IntegerType { IsSigned: false })
+					continue;
+				
 				list.Add(new NativeImpl(op, type, type));
+			}
 		}
 		
 		result.GetOrAdd(TokenType.OpBang).Add(new NativeImpl(TokenType.OpBang, NativeSymbols.Bool, NativeSymbols.Bool));

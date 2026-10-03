@@ -1,0 +1,18 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+main: fun -> i32
+{
+	var mask = 0xFF
+	var flags = 0b1010_0101
+	var word: u32 = 0XDEAD_BEEF
+	var negative = -0x10
+	var values: array[u8, 0x4]
+
+	printf("%d %d %u %d %d\n", mask, flags, word, negative, i32(values.length))
+	ret 0
+}

@@ -1,0 +1,24 @@
+
+====== bad_number_literals.ce ======
+
+Error at line 5, column 6
+4 │ {
+5 │     ret 0xFG
+            ╘══╛ Invalid digit 'G' in hex literal
+
+Error at line 10, column 6
+ 9 │ {
+10 │     ret 0b102
+             ╘═══╛ Invalid digit '2' in binary literal
+
+Error at line 15, column 6
+14 │ {
+15 │     ret 0x
+             ╘╛ Expected hex digits
+
+Error at line 20, column 6
+19 │ {
+20 │     ret 0b__
+             ╘══╛ Expected binary digits
+
+[compilation failed]

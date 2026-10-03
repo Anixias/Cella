@@ -1,0 +1,26 @@
+mod test
+
+hexDigit: fun -> i32
+{
+	ret 0xFG
+}
+
+binaryDigit: fun -> i32
+{
+	ret 0b102
+}
+
+noDigits: fun -> i32
+{
+	ret 0x
+}
+
+onlySeparators: fun -> i32
+{
+	ret 0b__
+}
+
+main: fun -> i32
+{
+	ret 0
+}

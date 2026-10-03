@@ -1,0 +1,22 @@
+
+====== negate_unsigned.ce ======
+
+Error at line 8, column 10
+7 │ var letter = 'a'
+8 │ var a = -count
+            ╘════╛ Operator '-' cannot be applied to 'u32'
+                 | 'u32' can't represent negative values
+
+Error at line 9, column 10
+8 │ var a = -count
+9 │ var b = -small
+            ╘════╛ Operator '-' cannot be applied to 'u8'
+                 | 'u8' can't represent negative values
+
+Error at line 10, column 10
+ 9 │ var b = -small
+10 │ var c = -letter
+             ╘═════╛ Operator '-' cannot be applied to 'char'
+                   | 'char' can't represent negative values
+
+[compilation failed]

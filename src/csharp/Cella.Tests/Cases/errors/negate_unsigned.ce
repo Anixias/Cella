@@ -1,0 +1,14 @@
+mod test
+
+main: fun -> i32
+{
+	var count: u32 = 5
+	var small: u8 = 1
+	var letter = 'a'
+	var a = -count
+	var b = -small
+	var c = -letter
+	var d = -i64(count)
+	var e = ~count
+	ret 0
+}

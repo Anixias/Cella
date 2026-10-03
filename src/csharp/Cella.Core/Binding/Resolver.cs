@@ -852,6 +852,17 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			
 			default:
 			{
+				if (op.Type == TokenType.OpMinus && operand.Type is IntegerType { IsSigned: false })
+				{
+					var negation = new Diagnostic(DiagnosticSeverity.Error, node.SourceLocation,
+						$"Operator '-' cannot be applied to '{operand.Type.Name}'")
+					{
+						Hints = [$"'{operand.Type.Name}' can't represent negative values"]
+					};
+					
+					return Error(node, negation, CurrentTargetType);
+				}
+				
 				var candidates = _operatorRegistry.GetUnaryCandidates(op.Type);
 				var operandArray = new[] { operand };
 				var resolutionSet = ResolveCallable(candidates, operandArray, MaterializationMode.Overload,

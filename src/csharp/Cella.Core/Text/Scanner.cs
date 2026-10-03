@@ -122,15 +122,9 @@ public class Scanner : IScanner
 	
 	private ScanResult ScanNumber(int position)
 	{
-		// @TODO Hex, binary, octal literals
+		// @TODO Octal literals
 		if (Source[position] == '0' && position + 1 < Source.Length && Source[position + 1] is 'x' or 'X' or 'b' or 'B')
-		{
-			var message = Source[position + 1] is 'x' or 'X'
-				? "Hex literals are not supported yet"
-				: "Binary literals are not supported yet";
-			
-			return ScanUnsupportedNumber(position, position + 2, message);
-		}
+			return ScanPrefixedNumber(position);
 		
 		int end;
 		for (end = position + 1; end < Source.Length; end++)
@@ -160,9 +154,55 @@ public class Scanner : IScanner
 		return new ScanResult(token, end);
 	}
 	
-	public static bool TryParseInteger(ReadOnlySpan<char> text, out BigInteger value) =>
-		BigInteger.TryParse(text.ToString().Replace("_", ""), NumberStyles.AllowLeadingSign,
-			CultureInfo.InvariantCulture, out value);
+	private ScanResult ScanPrefixedNumber(int position)
+	{
+		var isHex = Source[position + 1] is 'x' or 'X';
+		var end = position + 2;
+		while (end < Source.Length && (char.IsLetterOrDigit(Source[end]) || Source[end] == '_'))
+			end++;
+		
+		var range = new TextRange(position, end);
+		var token = FindPrefixedNumberError(Source.GetText(new TextRange(position + 2, end)), isHex) is { } error
+			? new Token(TokenType.Invalid, Source, range) { Error = error }
+			: new Token(TokenType.IntegerLiteral, Source, range);
+		
+		return new ScanResult(token, end);
+	}
+	
+	private static string? FindPrefixedNumberError(ReadOnlySpan<char> digits, bool isHex)
+	{
+		var kind = isHex ? "hex" : "binary";
+		foreach (var digit in digits)
+		{
+			if (digit != '_' && !(isHex ? char.IsAsciiHexDigit(digit) : digit is '0' or '1'))
+				return $"Invalid digit '{digit}' in {kind} literal";
+		}
+		
+		return digits.IndexOfAnyExcept('_') < 0 ? $"Expected {kind} digits" : null;
+	}
+	
+	public static bool TryParseInteger(ReadOnlySpan<char> text, out BigInteger value)
+	{
+		var digits = text.ToString().Replace("_", "");
+		var isNegative = digits.StartsWith('-');
+		if (isNegative)
+			digits = digits[1..];
+		
+		var (body, style) = digits switch
+		{
+			['0', 'x' or 'X', ..] => ("0" + digits[2..], NumberStyles.AllowHexSpecifier),
+			['0', 'b' or 'B', ..] => ("0" + digits[2..], NumberStyles.AllowBinarySpecifier),
+			_ => (digits, NumberStyles.None)
+		};
+		
+		if (!BigInteger.TryParse(body, style, CultureInfo.InvariantCulture, out value))
+			return false;
+		
+		if (isNegative)
+			value = -value;
+		
+		return true;
+	}
 	
 	private bool TryScanComment(int position, out ScanResult comment)
 	{

@@ -5,25 +5,25 @@ Error at line 7, column 12
 6 │ var unsigned: u32 = 1
 7 │ var sum = signed + unsigned
               ╘═══════════════╛ No operation defined for '+' between 'i32' and 'u32'
-                              | 'i32' can't hold every 'u32' value; convert one side explicitly
+                              | 'i32' can't represent every 'u32' value
 
 Error at line 8, column 13
 7 │ var sum = signed + unsigned
 8 │ var bits = signed & unsigned
                ╘═══════════════╛ No operation defined for '&' between 'i32' and 'u32'
-                               | 'i32' can't hold every 'u32' value; convert one side explicitly
+                               | 'i32' can't represent every 'u32' value
 
 Error at line 12, column 16
 11 │ var huge: u64 = 3
 12 │ var product = huge * wide
                    ╘═════════╛ No operation defined for '*' between 'u64' and 'i64'
-                             | 'i64' can't hold every 'u64' value; convert one side explicitly
+                             | 'i64' can't represent every 'u64' value
 
 Error at line 15, column 13
 14 │ var letter = 'a'
 15 │ var next = letter + signed
                 ╘═════════════╛ No operation defined for '+' between 'char' and 'i32'
-                              | 'i32' can't hold every 'char' value; convert one side explicitly
+                              | 'i32' can't represent every 'char' value
 
 Error at line 16, column 21
 15 │ var next = letter + signed
