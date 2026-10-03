@@ -1,0 +1,20 @@
+mod test
+
+main: fun -> i32
+{
+	var wide: i64 = 1
+	var unsigned: u32 = 2
+	var offset: isize = 3
+	var signed: i32 = 4
+	var text: str = "hello"
+	var length = text.byteLength
+	var a: isize = wide
+	var b: isize = unsigned
+	var c: i32 = offset
+	var d: i64 = length
+	var e: usize = signed
+	var f = unsigned + offset
+	var g = length + wide
+	var h = text.data + wide
+	ret 0
+}

@@ -1,0 +1,46 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+	malloc: fun(size: usize) -> ptr
+	free: fun(memory: ptr)
+}
+
+main: fun -> i32
+{
+	var small: i32 = -3
+	var short: u16 = 5
+	var count: u32 = 6
+	var letter = 'A'
+	var signedSize: isize = small
+	var fromShort: isize = short
+	var unsignedSize: usize = count
+	var fromLetter: usize = letter
+	printf("%lld %lld %llu %llu\n", signedSize, fromShort, unsignedSize, fromLetter)
+
+	var text: str = "hello"
+	var length = text.byteLength
+	var wide: i64 = signedSize
+	var wider: u64 = length
+	var widest: i128 = length
+	printf("%lld %llu %lld\n", wide, wider, i64(widest))
+
+	var values = [10, 20, 30, 40, 50, 60]
+	var start = @values[0]
+	var step: u16 = 2
+	var back = -1
+	var third = start + step
+	var second = third + back
+	var fifth = second + count / 2
+	var last = text.data + (length - 1)
+	printf("%d %d %d %c\n", *third, *second, *fifth, *last)
+
+	var mixed = short + signedSize
+	var total = wide + signedSize
+	var bytes = step + length
+	var memory = malloc(count)
+	free(memory)
+	printf("%lld %lld %llu\n", mixed, total, bytes)
+	ret 0
+}

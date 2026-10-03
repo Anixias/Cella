@@ -1,0 +1,46 @@
+
+====== lossy_size_conversions.ce ======
+
+Error at line 11, column 17
+10 │ var length = text.byteLength
+11 │ var a: isize = wide
+                    ╘══╛ Cannot convert type 'i64' to 'isize'
+
+Error at line 12, column 17
+11 │ var a: isize = wide
+12 │ var b: isize = unsigned
+                    ╘══════╛ Cannot convert type 'u32' to 'isize'
+
+Error at line 13, column 15
+12 │ var b: isize = unsigned
+13 │ var c: i32 = offset
+                  ╘════╛ Cannot convert type 'isize' to 'i32'
+
+Error at line 14, column 15
+13 │ var c: i32 = offset
+14 │ var d: i64 = length
+                  ╘════╛ Cannot convert type 'usize' to 'i64'
+
+Error at line 15, column 17
+14 │ var d: i64 = length
+15 │ var e: usize = signed
+                    ╘════╛ Cannot convert type 'i32' to 'usize'
+
+Error at line 16, column 10
+15 │ var e: usize = signed
+16 │ var f = unsigned + offset
+             ╘═══════════════╛ No operation defined for '+' between 'u32' and 'isize'
+                             | 'isize' can't represent every 'u32' value on 32-bit targets
+
+Error at line 17, column 10
+16 │ var f = unsigned + offset
+17 │ var g = length + wide
+             ╘═══════════╛ No operation defined for '+' between 'usize' and 'i64'
+                         | 'i64' can't represent every 'usize' value
+
+Error at line 18, column 10
+17 │ var g = length + wide
+18 │ var h = text.data + wide
+             ╘══════════════╛ No operation defined for '+' between 'ptr[u8]' and 'i64'
+
+[compilation failed]

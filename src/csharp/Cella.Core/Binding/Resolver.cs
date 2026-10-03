@@ -954,6 +954,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			    FindLossyMixedSign(left.Type, right.Type) is var (signedType, unsignedType))
 			{
 				var hint = $"'{signedType.Name}' can't represent every '{unsignedType.Name}' value";
+				if (CountBits(signedType) > CountBits(unsignedType))
+					hint += signedType == NativeSymbols.IntSize ? " on 32-bit targets" : " on 64-bit targets";
+				
 				var mismatch = DiagnosticReporter.ReportBinaryOpMismatch(_operatorRegistry, left, op, right);
 				return Error(node, mismatch with { Hints = [hint] }, CurrentTargetType);
 			}
@@ -1343,7 +1346,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			return null;
 		
 		var (signedType, unsignedType) = a.IsSigned ? (a, b) : (b, a);
-		return CountBits(signedType) <= CountBits(unsignedType) ? (signedType, unsignedType) : null;
+		return _conversionTable.FindImplicit(unsignedType, signedType) is null ? (signedType, unsignedType) : null;
 	}
 	
 	private TypeSymbol? FindCommonType(TypeSymbol a, TypeSymbol b)

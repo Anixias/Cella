@@ -71,24 +71,13 @@ public sealed class ConversionTable
 			}
 		}
 		
-		// Integer sign changing & to/from size types
+		// Integer sign changing
 		for (var i = 0; i < intTypes.Length; i++)
 		{
 			// Sign change
 			// Always explicit, no cost due to no runtime overhead
 			table.Add(new IntegerConversion(intTypes[i].S, intTypes[i].U, ConversionKind.Explicit, 0));
 			table.Add(new IntegerConversion(intTypes[i].U, intTypes[i].S, ConversionKind.Explicit, 0));
-			
-			// Integer native size conversions
-			// These are always explicit because it depends on the target whether it is a widening/narrowing/neither
-			table.Add(new IntegerConversion(intTypes[i].S, NativeSymbols.IntSize, ConversionKind.Explicit, 1));
-			table.Add(new IntegerConversion(intTypes[i].U, NativeSymbols.IntSize, ConversionKind.Explicit, 1));
-			table.Add(new IntegerConversion(NativeSymbols.IntSize, intTypes[i].S, ConversionKind.Explicit, 1));
-			table.Add(new IntegerConversion(NativeSymbols.IntSize, intTypes[i].U, ConversionKind.Explicit, 1));
-			table.Add(new IntegerConversion(intTypes[i].S, NativeSymbols.UIntSize, ConversionKind.Explicit, 1));
-			table.Add(new IntegerConversion(intTypes[i].U, NativeSymbols.UIntSize, ConversionKind.Explicit, 1));
-			table.Add(new IntegerConversion(NativeSymbols.UIntSize, intTypes[i].S, ConversionKind.Explicit, 1));
-			table.Add(new IntegerConversion(NativeSymbols.UIntSize, intTypes[i].U, ConversionKind.Explicit, 1));
 			
 			// Any integer type -> char
 			if (intTypes[i].U == NativeSymbols.UInt32)
@@ -102,11 +91,32 @@ public sealed class ConversionTable
 				table.Add(new IntegerConversion(intTypes[i].S, NativeSymbols.Char, ConversionKind.Explicit, 1));
 		}
 		
+		// Integer native size conversions
+		var sizeTypes = new (IntegerType Size, IntegerType Narrowest, IntegerType Widest)[]
+		{
+			(NativeSymbols.IntSize, NativeSymbols.Int32, NativeSymbols.Int64),
+			(NativeSymbols.UIntSize, NativeSymbols.UInt32, NativeSymbols.UInt64)
+		};
+		
+		foreach (var (size, narrowest, widest) in sizeTypes)
+		{
+			foreach (var type in intTypes.SelectMany(static pair => new[] { pair.S, pair.U }))
+			{
+				table.Add(IsLossless(type, narrowest)
+					? new IntegerConversion(type, size, ConversionKind.Implicit, type.IsSigned == size.IsSigned ? 1 : 2)
+					: new IntegerConversion(type, size, ConversionKind.Explicit, 1));
+				
+				table.Add(IsLossless(widest, type)
+					? new IntegerConversion(size, type, ConversionKind.Implicit, 5)
+					: new IntegerConversion(size, type, ConversionKind.Explicit, 1));
+			}
+		}
+		
 		table.Add(new IntegerConversion(NativeSymbols.IntSize, NativeSymbols.UIntSize, ConversionKind.Explicit, 0));
 		table.Add(new IntegerConversion(NativeSymbols.UIntSize, NativeSymbols.IntSize, ConversionKind.Explicit, 0));
 		
 		// char -> Any integer type
-		// Explicit if dest smaller than char (u32) or usize/isize
+		// Explicit if dest smaller than char (u32) or isize
 		table.Add(new IntegerConversion(NativeSymbols.Char, NativeSymbols.Int8, ConversionKind.Explicit, 1));
 		table.Add(new IntegerConversion(NativeSymbols.Char, NativeSymbols.UInt8, ConversionKind.Explicit, 1));
 		table.Add(new IntegerConversion(NativeSymbols.Char, NativeSymbols.Int16, ConversionKind.Explicit, 1));
@@ -118,7 +128,7 @@ public sealed class ConversionTable
 		table.Add(new IntegerConversion(NativeSymbols.Char, NativeSymbols.Int128, ConversionKind.Implicit, 1));
 		table.Add(new IntegerConversion(NativeSymbols.Char, NativeSymbols.UInt128, ConversionKind.Implicit, 1));
 		table.Add(new IntegerConversion(NativeSymbols.Char, NativeSymbols.IntSize, ConversionKind.Explicit, 1));
-		table.Add(new IntegerConversion(NativeSymbols.Char, NativeSymbols.UIntSize, ConversionKind.Explicit, 1));
+		table.Add(new IntegerConversion(NativeSymbols.Char, NativeSymbols.UIntSize, ConversionKind.Implicit, 1));
 		
 		foreach (var type in NativeSymbols.PureIntegerTypes)
 			table.Add(new NativeConversion(NativeSymbols.Bool, type, ConversionKind.Explicit, 1));
@@ -128,5 +138,7 @@ public sealed class ConversionTable
 		table.Add(new FreeConversion(NativeSymbols.VoidPtr, NativeSymbols.CStr, ConversionKind.Explicit));
 		
 		return table;
+		
+		bool IsLossless(IntegerType from, IntegerType to) => from == to || table.FindImplicit(from, to) is not null;
 	}
 }
