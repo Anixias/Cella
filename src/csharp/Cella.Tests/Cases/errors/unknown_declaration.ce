@@ -1,0 +1,18 @@
+mod test
+
+counter: var i32
+
+Shape: union
+{
+	sides: i32
+}
+
+ext
+{
+	puts: fun(text: cstr) -> i32
+}
+
+main: fun -> i32
+{
+	ret puts("hi")
+}

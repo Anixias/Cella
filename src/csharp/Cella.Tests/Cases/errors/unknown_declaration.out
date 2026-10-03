@@ -1,0 +1,14 @@
+
+====== unknown_declaration.ce ======
+
+Error at line 3, column 10
+2 │ 
+3 │ counter: var i32
+             ╘═╛ Unknown declaration type
+
+Error at line 5, column 8
+4 │ 
+5 │ Shape: union
+           ╘═══╛ Unknown declaration type
+
+[compilation failed]

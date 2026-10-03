@@ -1,0 +1,11 @@
+mod test
+
+main: fun(count: i32) -> i32
+{
+	ret count
+}
+
+main: fun -> i64
+{
+	ret 0
+}

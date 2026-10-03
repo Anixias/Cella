@@ -17,6 +17,9 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 	
 	private static readonly HashSet<TokenType> _topLevelSyncTypes = [TokenType.OpSemicolon, TokenType.EndOfFile];
 	
+	private static readonly HashSet<TokenType> _topLevelKeywords =
+		[TokenType.KeywordMod, TokenType.KeywordUse, TokenType.KeywordExt];
+	
 	private static Dictionary<string, TokenType> BuildContextualKeywords(params IEnumerable<TokenType> tokenTypes) =>
 		tokenTypes.ToDictionary(static t => t.Representation);
 	
@@ -821,7 +824,7 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 	
 	private void ResyncTopLevel(ref int index)
 	{
-		// Skip until another identifier is encountered. If we encounter braces, keep skipping until closed
+		// Skip until another declaration starts. If we encounter braces, keep skipping until closed
 		var braceCount = 0;
 		var loop = true;
 		while (loop && !AtEnd(index))
@@ -839,7 +842,7 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 					break;
 				
 				case TokenType.Identifier:
-					if (braceCount > 0)
+					if (braceCount > 0 || !StartsTopLevelDeclaration(index))
 						index++;
 					else
 						loop = false;
@@ -851,6 +854,13 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 					break;
 			}
 		}
+	}
+	
+	private bool StartsTopLevelDeclaration(int index)
+	{
+		var keywordIndex = index;
+		return Peek(index + 1, TokenType.OpColon) ||
+		       Match(ref keywordIndex, _topLevelContextualKeywords, _topLevelKeywords);
 	}
 	
 	private void SkipDeclaration(ref int index, int start)

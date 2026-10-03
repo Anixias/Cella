@@ -185,12 +185,6 @@ internal static class Program
 			return errorResult;
 		}
 		
-		if (outputType == ProjectOutputType.Executable && assemblySymbol.EntryPoint is null)
-		{
-			// TODO Diagnostics
-			return errorResult;
-		}
-		
 		// TODO Should I make a dependency here on LLVM? This implies a Language Server would also have to do this
 		// We need to know the pointer size of the target for proper symbol resolution
 		var targetTriple = TargetTriple.FromHost(); // TODO Check CLI args for cross-compilation
@@ -480,6 +474,17 @@ internal static class Program
 			DiagnosticSeverity.Hint => (ConsoleColor.Green, "Hint"),
 			_ => (ConsoleColor.Gray, "Info")
 		};
+		
+		if (diagnostic.SourceLocation == SourceLocation.None)
+		{
+			WriteColored(severityLabel, severityColor);
+			Console.Write(": ");
+			WriteColored(diagnostic.Message, severityColor);
+			Console.WriteLine();
+			Console.WriteLine();
+			
+			return;
+		}
 		
 		const ConsoleColor suggestionColor = ConsoleColor.Cyan;
 		

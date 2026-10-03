@@ -1,0 +1,6 @@
+mod test
+
+helper: fun -> i32
+{
+	ret 0
+}

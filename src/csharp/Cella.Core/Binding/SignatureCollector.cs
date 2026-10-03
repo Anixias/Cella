@@ -28,12 +28,14 @@ public sealed class SignatureCollector : IDeclarationNodeVisitor
 		_dependencies = dependencies.ToImmutableArray();
 	}
 	
-	// TODO Diagnostics: if (_entryPoints.Count > 1)
 	public AssemblySymbol FinishAssembly(string name)
 	{
 		ReportDuplicateDeclarations();
 		ReportRecordCycles();
-		return new(name, _symbolTable, _builder.Build(), _entryPoints.FirstOrDefault());
+		ReportEntryPoint();
+		
+		FunctionInfo? entryPoint = _entryPoints.Count == 1 ? _entryPoints[0] : null;
+		return new(name, _symbolTable, _builder.Build(), entryPoint);
 	}
 	
 	public void Collect(IDeclarationNode root) => VisitNode(root);
@@ -272,6 +274,41 @@ public sealed class SignatureCollector : IDeclarationNodeVisitor
 		RecordNode node => node.Identifier,
 		_ => throw new InvalidOperationException()
 	};
+	
+	private void ReportEntryPoint()
+	{
+		if (_entryPointName is null || _entryPoints.Count == 1)
+			return;
+		
+		if (_entryPoints.Count > 1)
+		{
+			var reportedAsDuplicates = _entryPoints.Select(static e => e.File.Module).Distinct().Count() == 1;
+			if (reportedAsDuplicates)
+				return;
+			
+			foreach (var entryPoint in _entryPoints)
+				Diagnostics.Add(new(DiagnosticSeverity.Error, GetIdentifier(entryPoint.Symbol.Syntax).SourceLocation,
+					$"The program has more than one '{_entryPointName}' function"));
+			
+			return;
+		}
+		
+		var candidates = _builder.Functions.Values
+			.Where(f => f.Symbol is { Kind: FunctionKind.Free } && f.Symbol.Name == _entryPointName)
+			.ToList();
+		
+		if (candidates.Count == 0)
+		{
+			Diagnostics.Add(new(DiagnosticSeverity.Error, SourceLocation.None,
+				$"The program has no '{_entryPointName}' function"));
+			
+			return;
+		}
+		
+		foreach (var candidate in candidates)
+			Diagnostics.Add(new(DiagnosticSeverity.Error, GetIdentifier(candidate.Symbol.Syntax).SourceLocation,
+				$"'{_entryPointName}' must have no parameters and return 'i32' or nothing"));
+	}
 	
 	private void ReportRecordCycles()
 	{
