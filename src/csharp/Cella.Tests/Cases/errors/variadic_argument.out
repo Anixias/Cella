@@ -4,11 +4,11 @@
 Error at line 18, column 20
 17 │ var point: Point
 18 │ printf("%s %d\n", name, point)
-                       ╘══╛ Cannot pass type 'str' to a variadic C function
+                       ╘══╛ Cannot pass type 'str' to a variadic ext function
 
 Error at line 18, column 26
 17 │ var point: Point
 18 │ printf("%s %d\n", name, point)
-                             ╘═══╛ Cannot pass type 'Point' to a variadic C function
+                             ╘═══╛ Cannot pass type 'Point' to a variadic ext function
 
 [compilation failed]

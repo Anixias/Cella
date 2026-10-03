@@ -24,6 +24,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	
 	public DiagnosticList Diagnostics { get; } = new();
 	
+	private static readonly NativeConversion _boolPromotion =
+		new(NativeSymbols.Bool, NativeSymbols.Int32, ConversionKind.Implicit, 0);
+	
 	private readonly SymbolTable _symbolTable;
 	private readonly SignatureTable _assemblySignatureTable;
 	private readonly SignatureTable _dependencySignatureTable;
@@ -1406,11 +1409,8 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		
 		switch (arg.Type)
 		{
-			case PrimitiveType { Kind: PrimitiveTypeKind.Bool } type:
-			{
-				var conversion = new NativeConversion(type, NativeSymbols.Int32, ConversionKind.Implicit, 0);
-				return new ResolvedConversionExpressionNode(arg, conversion, arg.Syntax);
-			}
+			case PrimitiveType { Kind: PrimitiveTypeKind.Bool }:
+				return new ResolvedConversionExpressionNode(arg, _boolPromotion, arg.Syntax);
 			
 			case IntegerType type when CountBits(type) < 32:
 				return new ResolvedConversionExpressionNode(arg,
