@@ -1,0 +1,34 @@
+mod test
+
+Company: rec
+{
+	headquarters: Office
+}
+
+Office: rec
+{
+	manager: Employee
+	floors: array[Floor, 3]
+}
+
+Floor: rec
+{
+	desks: array[array[Desk, 4], 8]
+}
+
+Desk: rec
+{
+	owner: ptr[Employee]
+	office: Office
+}
+
+Employee: rec
+{
+	mentor: ptr[Employee]
+	age: i32
+}
+
+main: fun -> i32
+{
+	ret 0
+}

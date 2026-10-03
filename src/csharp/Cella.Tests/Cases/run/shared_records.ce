@@ -1,0 +1,24 @@
+mod test
+
+Shape: rec
+{
+	outline: array[Line, 4]
+	center: Point
+}
+
+Line: rec
+{
+	start: Point
+	end: Point
+}
+
+Point: rec
+{
+	x: i32
+	y: i32
+}
+
+main: fun -> i32
+{
+	ret sizeOf(Shape)
+}

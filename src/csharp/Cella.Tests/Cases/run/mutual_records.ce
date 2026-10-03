@@ -1,0 +1,26 @@
+mod test
+
+Parent: rec
+{
+	child: ptr[Child]
+	age: i32
+}
+
+Child: rec
+{
+	parent: ptr[Parent]
+	age: i32
+}
+
+main: fun -> i32
+{
+	var parent: Parent
+	parent.child = null
+	parent.age = 30
+
+	var child: Child
+	child.parent = null
+	child.age = 4
+
+	ret parent.age + child.age
+}

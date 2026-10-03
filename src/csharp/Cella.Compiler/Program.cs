@@ -166,6 +166,7 @@ internal static class Program
 		var entryPointName = outputType == ProjectOutputType.Executable ? "main" : null;
 		
 		AssemblySymbol assemblySymbol;
+		DiagnosticList signatureDiagnostics;
 		{
 			var signatureCollector = new SignatureCollector(entryPointName, symbolTable, typePool, dependencySymbols);
 			
@@ -173,9 +174,16 @@ internal static class Program
 				signatureCollector.Collect(info.Ast);
 			
 			assemblySymbol = signatureCollector.FinishAssembly(project.Name);
+			signatureDiagnostics = signatureCollector.Diagnostics;
 		}
 		
 		var errorResult = new AssemblyInfo(assemblySymbol, outputType, null, false);
+		
+		if (signatureDiagnostics.ErrorCount > 0)
+		{
+			PrintDiagnostics(signatureDiagnostics.Errors, project.Directory);
+			return errorResult;
+		}
 		
 		if (outputType == ProjectOutputType.Executable && assemblySymbol.EntryPoint is null)
 		{

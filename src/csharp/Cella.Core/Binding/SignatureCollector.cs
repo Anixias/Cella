@@ -1,6 +1,7 @@
 ﻿using System.Collections.Immutable;
 using Cella.Core.Symbols;
 using Cella.Core.Syntax.Nodes;
+using Cella.Diagnostics;
 
 namespace Cella.Core.Binding;
 
@@ -15,6 +16,8 @@ public sealed class SignatureCollector : IDeclarationNodeVisitor
 	private ResolutionContext CurrentResolutionContext => _resolutionContexts.Peek();
 	private readonly List<FunctionInfo> _entryPoints = [];
 	
+	public DiagnosticList Diagnostics { get; } = new();
+	
 	public SignatureCollector(string? entryPointName, SymbolTable symbolTable, TypePool typePool,
 		IEnumerable<AssemblySymbol> dependencies)
 	{
@@ -25,8 +28,11 @@ public sealed class SignatureCollector : IDeclarationNodeVisitor
 	}
 	
 	// TODO Diagnostics: if (_entryPoints.Count > 1)
-	public AssemblySymbol FinishAssembly(string name) =>
-		new(name, _symbolTable, _builder.Build(), _entryPoints.FirstOrDefault());
+	public AssemblySymbol FinishAssembly(string name)
+	{
+		ReportRecordCycles();
+		return new(name, _symbolTable, _builder.Build(), _entryPoints.FirstOrDefault());
+	}
 	
 	public void Collect(IDeclarationNode root) => VisitNode(root);
 	
@@ -186,6 +192,49 @@ public sealed class SignatureCollector : IDeclarationNodeVisitor
 		_resolutionContexts.Pop();
 		_typePool.RegisterRecord(record);
 	}
+	
+	private void ReportRecordCycles()
+	{
+		foreach (var record in _symbolTable.DeclarationSymbols.Values.OfType<RecordSymbol>())
+		{
+			foreach (var field in _typePool.GetMembers(record).OfType<FieldSymbol>())
+			{
+				var fieldType = _typePool.GetTypeOfMember(field);
+				if (!ContainsRecord(fieldType, record))
+					continue;
+				
+				Diagnostics.Add(new(DiagnosticSeverity.Error, field.Node!.Type.SourceLocation,
+					$"Field '{field.Name}' of type '{fieldType.Name}' causes a cycle in the memory layout"));
+			}
+		}
+	}
+	
+	private bool ContainsRecord(TypeSymbol type, RecordSymbol record)
+	{
+		var visited = new HashSet<RecordSymbol>();
+		var pending = new Stack<TypeSymbol>([type]);
+		
+		while (pending.TryPop(out var current))
+		{
+			if (GetContainedRecord(current) is not { } contained || !visited.Add(contained))
+				continue;
+			
+			if (contained == record)
+				return true;
+			
+			foreach (var field in _typePool.GetMembers(contained).OfType<FieldSymbol>())
+				pending.Push(_typePool.GetTypeOfMember(field));
+		}
+		
+		return false;
+	}
+	
+	private static RecordSymbol? GetContainedRecord(TypeSymbol type) => type switch
+	{
+		RecordSymbol record => record,
+		ArrayType array => GetContainedRecord(array.ElementType),
+		_ => null
+	};
 	
 	private static bool IsEntryPoint(FunctionSignature signature)
 	{

@@ -1,0 +1,17 @@
+mod test
+
+Node: rec
+{
+	value: i32
+	next: Node
+}
+
+Tree: rec
+{
+	children: array[Tree, 2]
+}
+
+main: fun -> i32
+{
+	ret 0
+}

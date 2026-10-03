@@ -1,0 +1,19 @@
+
+====== record_cycle.ce ======
+
+Error at line 11, column 10
+10 │ manager: Employee
+11 │ floors: array[Floor, 3]
+             ╘═════════════╛ Field 'floors' of type 'array[Floor * 3]' causes a cycle in the memory layout
+
+Error at line 16, column 9
+15 │ {
+16 │     desks: array[array[Desk, 4], 8]
+                ╘══════════════════════╛ Field 'desks' of type 'array[array[Desk * 4] * 8]' causes a cycle in the memory layout
+
+Error at line 22, column 10
+21 │ owner: ptr[Employee]
+22 │ office: Office
+             ╘════╛ Field 'office' of type 'Office' causes a cycle in the memory layout
+
+[compilation failed]
