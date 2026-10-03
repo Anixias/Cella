@@ -1,6 +1,7 @@
 ﻿using System.Collections.Immutable;
 using Cella.Core.Syntax.Nodes;
 using Cella.Core.Text;
+using Cella.Diagnostics;
 
 namespace Cella.Core.Syntax;
 
@@ -252,16 +253,13 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 	{
 		IExpressionNode node;
 		
-		if (Match(ref index, TokenType.OpOpenParen))
+		if (Match(ref index, out var openParen, TokenType.OpOpenParen))
 		{
 			// Parenthesized Expression
 			node = ParseExpression(ref index);
 			
 			if (!Match(ref index, TokenType.OpCloseParen))
-			{
-				// TODO Diagnostics
-				throw new InvalidOperationException();
-			}
+				throw Expected(index, "')'", openParen);
 		}
 		else if (Match(ref index, out var openBracket, TokenType.OpOpenBracket))
 		{
@@ -282,10 +280,7 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 					values.Add(ParseExpression(ref index));
 				
 				if (!Match(ref index, out closeBracket, TokenType.OpCloseBracket))
-				{
-					// TODO Diagnostics
-					throw new InvalidOperationException();
-				}
+					throw Expected(index, "',' or ']'", openBracket);
 				
 				range = range.Join(closeBracket.SourceLocation.Range);
 				node = new ArrayExpressionNode(values, new(source, range));
@@ -307,16 +302,13 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 	
 	private UndefExpressionNode ParseUndef(ref int index, Token token)
 	{
-		if (!Match(ref index, TokenType.OpOpenBracket))
+		if (!Match(ref index, out var openBracket, TokenType.OpOpenBracket))
 			return new UndefExpressionNode(token, null, token.SourceLocation);
 		
 		var type = ParseType(ref index);
 		
 		if (!Match(ref index, out var closeBracket, TokenType.OpCloseBracket))
-		{
-			// TODO Diagnostics
-			throw new InvalidOperationException();
-		}
+			throw Expected(index, "']'", openBracket);
 		
 		var (source, range) = token.SourceLocation;
 		range = range.Join(closeBracket.SourceLocation.Range);
@@ -325,19 +317,13 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 	
 	private SizeOfExpressionNode ParseSizeOf(ref int index, Token token)
 	{
-		if (!Match(ref index, TokenType.OpOpenParen))
-		{
-			// TODO Diagnostics
-			throw new InvalidOperationException();
-		}
+		if (!Match(ref index, out var openParen, TokenType.OpOpenParen))
+			throw Expected(index, "'('");
 		
 		var expression = ParseExpression(ref index);
 		
 		if (!Match(ref index, out var closeBracket, TokenType.OpCloseParen))
-		{
-			// TODO Diagnostics
-			throw new InvalidOperationException();
-		}
+			throw Expected(index, "')'", openParen);
 		
 		var (source, range) = token.SourceLocation;
 		range = range.Join(closeBracket.SourceLocation.Range);
@@ -371,16 +357,16 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 			}
 			
 			// Call Expression
-			if (!IsNextNewline(index) && Match(ref index, TokenType.OpOpenParen))
+			if (!IsNextNewline(index) && Match(ref index, out var openParen, TokenType.OpOpenParen))
 			{
-				target = ParseCallExpression(ref index, target);
+				target = ParseCallExpression(ref index, target, openParen);
 				continue;
 			}
 			
 			// Indexer Expression
-			if (!IsNextNewline(index) && Match(ref index, TokenType.OpOpenBracket))
+			if (!IsNextNewline(index) && Match(ref index, out var openBracket, TokenType.OpOpenBracket))
 			{
-				target = ParseIndexerExpression(ref index, target);
+				target = ParseIndexerExpression(ref index, target, openBracket);
 				continue;
 			}
 			
@@ -390,7 +376,7 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 		return target;
 	}
 	
-	private CallExpressionNode ParseCallExpression(ref int index, IExpressionNode target)
+	private CallExpressionNode ParseCallExpression(ref int index, IExpressionNode target, Token openParen)
 	{
 		// Caller already consumed open parenthesis
 		var range = target.SourceLocation.Range;
@@ -400,28 +386,20 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 		while (!Match(ref index, out closeParen, TokenType.OpCloseParen))
 		{
 			if (AtEnd(index))
-			{
-				// TODO Diagnostic
-				range = range with { End = target.SourceLocation.Source.Length };
-				break;
-			}
+				throw Expected(index, "')'", openParen);
 			
 			if (arguments.Count > 0 && !Match(ref index, TokenType.OpComma))
-			{
-				// TODO Diagnostic: Missing comma
-				throw new InvalidOperationException();
-			}
+				throw Expected(index, "',' or ')'", openParen);
 			
 			arguments.Add(ParseExpression(ref index));
 		}
 		
-		if (closeParen != default)
-			range = range.Join(closeParen.SourceLocation.Range);
+		range = range.Join(closeParen.SourceLocation.Range);
 		
 		return new(target, arguments, target.SourceLocation with { Range = range });
 	}
 	
-	private IndexerExpressionNode ParseIndexerExpression(ref int index, IExpressionNode target)
+	private IndexerExpressionNode ParseIndexerExpression(ref int index, IExpressionNode target, Token openBracket)
 	{
 		// Caller already consumed open bracket
 		var range = target.SourceLocation.Range;
@@ -431,25 +409,29 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 		while (!Match(ref index, out closeBracket, TokenType.OpCloseBracket))
 		{
 			if (AtEnd(index))
-			{
-				// TODO Diagnostic
-				range = range with { End = target.SourceLocation.Source.Length };
-				break;
-			}
+				throw Expected(index, "']'", openBracket);
 			
 			if (arguments.Count > 0 && !Match(ref index, TokenType.OpComma))
-			{
-				// TODO Diagnostic: Missing comma
-				throw new InvalidOperationException();
-			}
+				throw Expected(index, "',' or ']'", openBracket);
 			
 			arguments.Add(ParseExpression(ref index));
 		}
 		
-		if (closeBracket != default)
-			range = range.Join(closeBracket.SourceLocation.Range);
+		range = range.Join(closeBracket.SourceLocation.Range);
 		
 		return new(target, arguments, target.SourceLocation with { Range = range });
+	}
+	
+	private ParseException Expected(int index, string expected, Token? opener = null)
+	{
+		var token = Tokens[Math.Min(index, Tokens.Length - 1)];
+		if (token.Error is { } error)
+			return new(new Diagnostic(DiagnosticSeverity.Error, token.SourceLocation, error));
+		
+		return new(new Diagnostic(DiagnosticSeverity.Error, token.SourceLocation, $"Expected {expected}")
+		{
+			Hints = opener is { } o ? [$"To match the '{o.Text}' on line {o.Line}"] : []
+		});
 	}
 	
 	private LiteralExpressionNode ParseLiteral(ref int index)

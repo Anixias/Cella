@@ -32,6 +32,8 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 	private void Report(Token token, string message, DiagnosticSeverity severity = DiagnosticSeverity.Error) =>
 		Diagnostics.Add(new(severity, token.SourceLocation, message));
 	
+	private void ReportUnexpected(Token token) => Report(token, token.Error ?? "Unexpected token");
+	
 	private void Report(string message, DiagnosticSeverity severity = DiagnosticSeverity.Error) =>
 		Diagnostics.Add(new(severity, new(Tokens[0].SourceLocation.Source, TextRange.Empty), message));
 	
@@ -161,7 +163,7 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 			}
 			
 			// Unexpected token, cannot resync
-			Report(Tokens[index], "Unexpected token");
+			ReportUnexpected(Tokens[index]);
 			return null;
 		}
 		
@@ -207,9 +209,14 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 		{
 			declaration = parse(ref index);
 		}
+		catch (ParseException e)
+		{
+			Diagnostics.Add(e.Diagnostic);
+			declaration = null;
+		}
 		catch (InvalidOperationException)
 		{
-			Report(Tokens[index], "Unexpected token");
+			ReportUnexpected(Tokens[index]);
 			declaration = null;
 		}
 		

@@ -102,7 +102,7 @@ public sealed class TypePool
 			}
 			
 			if (arg is not LiteralExpressionNode { Token: { Type: TokenType.IntegerLiteral } token }
-			    || !BigInteger.TryParse(token.AsSpan(), out var constVal))
+			    || !Scanner.TryParseInteger(token.AsSpan(), out var constVal))
 				return null;
 			
 			typeArgs.Add(new GenericConstArgument(constVal));

@@ -1,0 +1,8 @@
+mod test
+
+main: fun -> i32
+{
+	var big = 1_000
+	var values: array[i32, 1_0]
+	ret big - 958 + i32(values.length)
+}

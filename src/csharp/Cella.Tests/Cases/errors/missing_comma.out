@@ -4,11 +4,13 @@
 Error at line 10, column 12
  9 │ {
 10 │     ret add(1 2)
-                   ^ Unexpected token
+                   ^ Expected ',' or ')'
+                   | To match the '(' on line 10
 
 Error at line 16, column 15
 15 │ var values: array[i32, 2]
 16 │ ret values[0 1]
-                  ^ Unexpected token
+                  ^ Expected ',' or ']'
+                  | To match the '[' on line 16
 
 [compilation failed]

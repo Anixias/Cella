@@ -1065,7 +1065,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			job.Consumed = true;
 		}
 		
-		if (BigInteger.TryParse(span, out var untypedValue))
+		if (Scanner.TryParseInteger(span, out var untypedValue))
 			return (NativeSymbols.UntypedInteger, untypedValue);
 		
 		return (null, null);

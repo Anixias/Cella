@@ -168,7 +168,7 @@ public readonly struct ResolutionContext
 	private BigInteger? ResolveConstIntExpression(IExpressionNode node) => node switch
 	{
 		LiteralExpressionNode { Token.Type: TokenType.IntegerLiteral } e =>
-			BigInteger.TryParse(e.Token.AsSpan(), out var value) ? value : null,
+			Scanner.TryParseInteger(e.Token.AsSpan(), out var value) ? value : null,
 		
 		_ => null
 	};

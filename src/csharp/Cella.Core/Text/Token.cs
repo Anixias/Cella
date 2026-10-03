@@ -8,6 +8,7 @@ public readonly record struct Token
 	public SourceLocation SourceLocation { get; init; }
 	public int Line { get; }
 	public string Text { get; }
+	public string? Error { get; init; }
 	public ReadOnlySpan<char> AsSpan() => Text.AsSpan();
 	public ReadOnlySpan<char> AsSourceSpan() => SourceLocation.GetText();
 	

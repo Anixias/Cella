@@ -1,6 +1,7 @@
 ﻿using System.Buffers;
 using System.Collections;
 using System.Globalization;
+using System.Numerics;
 using System.Text;
 
 namespace Cella.Core.Text;
@@ -48,7 +49,7 @@ public class Scanner : IScanner
 		// Invalid character, emit invalid token
 		var end = position + 1;
 		var range = new TextRange(position, end);
-		var token = new Token(TokenType.Invalid, Source, range);
+		var token = new Token(TokenType.Invalid, Source, range) { Error = $"Unexpected character '{character}'" };
 		return new ScanResult(token, end);
 	}
 	
@@ -121,6 +122,16 @@ public class Scanner : IScanner
 	
 	private ScanResult ScanNumber(int position)
 	{
+		// @TODO Hex, binary, octal literals
+		if (Source[position] == '0' && position + 1 < Source.Length && Source[position + 1] is 'x' or 'X' or 'b' or 'B')
+		{
+			var message = Source[position + 1] is 'x' or 'X'
+				? "Hex literals are not supported yet"
+				: "Binary literals are not supported yet";
+			
+			return ScanUnsupportedNumber(position, position + 2, message);
+		}
+		
 		int end;
 		for (end = position + 1; end < Source.Length; end++)
 		{
@@ -129,14 +140,29 @@ public class Scanner : IScanner
 				break;
 		}
 		
-		// @TODO Hex, binary, octal literals
 		// @TODO Floating point, fixed point, scientific notation, etc.
+		if (end + 1 < Source.Length && Source[end] == '.' && char.IsDigit(Source[end + 1]))
+			return ScanUnsupportedNumber(position, end + 1, "Floating-point literals are not supported yet");
+		
 		// @TODO Suffix type markers
 		
 		var range = new TextRange(position, end);
 		var token = new Token(TokenType.IntegerLiteral, Source, range);
 		return new ScanResult(token, end);
 	}
+	
+	private ScanResult ScanUnsupportedNumber(int position, int end, string message)
+	{
+		while (end < Source.Length && (char.IsLetterOrDigit(Source[end]) || Source[end] == '_'))
+			end++;
+		
+		var token = new Token(TokenType.Invalid, Source, new TextRange(position, end)) { Error = message };
+		return new ScanResult(token, end);
+	}
+	
+	public static bool TryParseInteger(ReadOnlySpan<char> text, out BigInteger value) =>
+		BigInteger.TryParse(text.ToString().Replace("_", ""), NumberStyles.AllowLeadingSign,
+			CultureInfo.InvariantCulture, out value);
 	
 	private bool TryScanComment(int position, out ScanResult comment)
 	{
@@ -198,7 +224,11 @@ public class Scanner : IScanner
 				
 				if (depth > 0)
 				{
-					var opener = new Token(TokenType.Invalid, Source, new TextRange(position, position + 2));
+					var opener = new Token(TokenType.Invalid, Source, new TextRange(position, position + 2))
+					{
+						Error = "Unterminated block comment"
+					};
+					
 					comment = new(opener, end);
 					return true;
 				}
@@ -218,6 +248,19 @@ public class Scanner : IScanner
 	
 	private bool TryScanOperator(int position, out ScanResult op)
 	{
+		// TODO Shift operators
+		if (position + 1 < Source.Length && Source[position] is '<' or '>' && Source[position + 1] == Source[position])
+		{
+			var shiftEnd = position + 2 < Source.Length && Source[position + 2] == '=' ? position + 3 : position + 2;
+			var shift = new Token(TokenType.Invalid, Source, new TextRange(position, shiftEnd))
+			{
+				Error = "Shift operators are not supported yet"
+			};
+			
+			op = new ScanResult(shift, shiftEnd);
+			return true;
+		}
+		
 		var end = position;
 		while (end < Source.Length)
 		{
@@ -250,7 +293,7 @@ public class Scanner : IScanner
 	private ScanResult ScanString(int position)
 	{
 		var end = position + 1;
-		var isValid = true;
+		var terminated = false;
 		var escaped = false;
 		var interpolated = false;
 		var interpolationLevel = 0;
@@ -262,14 +305,12 @@ public class Scanner : IScanner
 			if (character == '"' && !escaped && interpolationLevel == 0)
 			{
 				end++;
+				terminated = true;
 				break;
 			}
 			
 			if (character is '\n' or '\r')
-			{
-				isValid = false;
 				break;
-			}
 			
 			switch (character)
 			{
@@ -294,9 +335,13 @@ public class Scanner : IScanner
 			end++;
 		}
 		
-		if (!isValid)
+		if (!terminated)
 		{
-			var invalidToken = new Token(TokenType.Invalid, Source, new TextRange(position, end));
+			var invalidToken = new Token(TokenType.Invalid, Source, new TextRange(position, end))
+			{
+				Error = "Unterminated string literal"
+			};
+			
 			return new ScanResult(invalidToken, end);
 		}
 		
@@ -306,7 +351,11 @@ public class Scanner : IScanner
 			
 			if (!value.IsValid)
 			{
-				var invalidToken = new Token(TokenType.Invalid, Source, new TextRange(position, end));
+				var invalidToken = new Token(TokenType.Invalid, Source, new TextRange(position, end))
+				{
+					Error = "Invalid escape sequence in string literal"
+				};
+				
 				return new ScanResult(invalidToken, end);
 			}
 			
