@@ -287,8 +287,9 @@ public sealed class TypeChecker : IResolvedStatementNodeVisitor, IResolvedDeclar
 	public void Visit(ResolvedFunctionCallExpressionNode node)
 	{
 		var args = node.Arguments;
-		var paramTypes = node.Function.Signature.ParameterTypes;
-		if (args.Length != paramTypes.Length)
+		var signature = node.Function.Signature;
+		var paramTypes = signature.ParameterTypes;
+		if (signature.IsVariadic ? args.Length < paramTypes.Length : args.Length != paramTypes.Length)
 		{
 			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Syntax.SourceLocation,
 				$"Incorrect number of arguments: Expected {paramTypes.Length}, got {args.Length}"));
@@ -299,6 +300,12 @@ public sealed class TypeChecker : IResolvedStatementNodeVisitor, IResolvedDeclar
 		for (var i = 0; i < args.Length; i++)
 		{
 			var arg = args[i];
+			if (i >= paramTypes.Length)
+			{
+				VisitNode(arg);
+				continue;
+			}
+			
 			var expected = paramTypes[i];
 			var actual = arg.Type;
 			

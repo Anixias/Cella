@@ -54,6 +54,7 @@ public enum TokenType
 	KeywordOp,
 	
 	// Operators
+	OpDotDotDot,
 	OpDotDotEqual,
 	OpDotDot,
 	OpArrow,
@@ -161,6 +162,7 @@ public static class TokenTypeInfo
 			[TokenType.KeywordNew] = new("new", IsKeyword: true, IsContextual: true),
 			[TokenType.KeywordOp] = new("op", IsKeyword: true, IsContextual: true),
 			
+			[TokenType.OpDotDotDot] = new("...", IsOperator: true),
 			[TokenType.OpDotDotEqual] = new("..=", IsOperator: true),
 			[TokenType.OpDotDot] = new("..", IsOperator: true),
 			[TokenType.OpArrow] = new("->", IsOperator: true),

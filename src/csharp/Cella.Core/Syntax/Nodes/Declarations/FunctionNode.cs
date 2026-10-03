@@ -35,6 +35,7 @@ public sealed class ExternalFunctionNode
 	IEnumerable<Token> modifiers,
 	IEnumerable<ParameterNode> parameters,
 	ITypeNode? returnType,
+	bool isVariadic,
 	string? origin
 ) : IFunctionNode
 {
@@ -43,5 +44,6 @@ public sealed class ExternalFunctionNode
 	public ImmutableArray<Token> Modifiers { get; } = modifiers.ToImmutableArray();
 	public ImmutableArray<ParameterNode> Parameters { get; } = parameters.ToImmutableArray();
 	public ITypeNode? ReturnType { get; } = returnType;
+	public bool IsVariadic { get; } = isVariadic;
 	public string? Origin { get; } = origin;
 }

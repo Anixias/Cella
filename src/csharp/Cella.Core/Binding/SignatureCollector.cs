@@ -169,7 +169,7 @@ public sealed class SignatureCollector : IDeclarationNodeVisitor
 			returnType = resolutionContext.ResolveType(returnTypeSyntax);
 		
 		var syntax = (ExternalFunctionNode)function.Syntax;
-		var signature = new FunctionSignature(paramTypes, returnType);
+		var signature = new FunctionSignature(paramTypes, returnType, syntax.IsVariadic);
 		_builder.Functions[function] = new(null, function, signature, null, syntax.Origin, resolutionContext.File);
 	}
 	

@@ -348,8 +348,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 		for (var i = 0; i < paramTypes.Length; i++)
 			paramLlvmTypes[i] = MapTypeSymbol(paramTypes[i]);
 		
-		// TODO Variadic
-		var functionType = LLVMTypeRef.CreateFunction(returnType, paramLlvmTypes);
+		var functionType = LLVMTypeRef.CreateFunction(returnType, paramLlvmTypes, signature.IsVariadic);
 		var functionValue = llvmModule.AddFunction(function.MangledName ?? symbol.Name, functionType);
 		var functionInfo = new LLVMFunctionInfo(functionValue, functionType, returnType);
 		
@@ -805,6 +804,12 @@ public sealed unsafe class CodeGenerator : IDisposable
 			{
 				var destType = MapTypeSymbol(c.To);
 				return builder.BuildIntToPtr(source, destType, "inttocstr");
+			}
+			
+			case { From: PrimitiveType { Kind: PrimitiveTypeKind.Bool }, To: IntegerType }:
+			{
+				var destType = MapTypeSymbol(c.To);
+				return builder.BuildZExt(source, destType, "booltoint");
 			}
 			
 			default:

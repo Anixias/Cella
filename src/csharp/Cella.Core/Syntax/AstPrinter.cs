@@ -293,6 +293,9 @@ public sealed class AstPrinter : ISyntaxNodeVisitor
 				Visit(param);
 			}
 			
+			if (node.IsVariadic)
+				_sb.Append(", ...");
+			
 			_sb.Append(')');
 		}
 		

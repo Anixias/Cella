@@ -120,7 +120,7 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 				if (Match(ref index, _topLevelContextualKeywords, TokenType.KeywordRec))
 				{
 					var record = ParseDeclaration(ref index, identifier, "record",
-						(ref int i) => ParseRecord(ref i, identifier, modifiers));
+						(ref i) => ParseRecord(ref i, identifier, modifiers));
 					
 					if (record is null)
 					{
@@ -136,7 +136,7 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 				if (Match(ref index, _topLevelContextualKeywords, TokenType.KeywordFun))
 				{
 					var function = ParseDeclaration(ref index, identifier, "function",
-						(ref int i) => ParseFunction(ref i, identifier, modifiers));
+						(ref i) => ParseFunction(ref i, identifier, modifiers));
 					
 					if (function is null)
 					{
@@ -355,10 +355,10 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 		
 		// @TODO Diagnostics
 		
-		if (ParseFunctionSignature(ref index) is not { } signature)
+		if (ParseFunctionSignature(ref index, false) is not { } signature)
 			return null;
 		
-		var (parameters, returnType) = signature;
+		var (parameters, returnType, _) = signature;
 		
 		if (Match(ref index, TokenType.OpEqual))
 		{
@@ -391,15 +391,20 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 		if (!Match(ref index, _topLevelContextualKeywords, TokenType.KeywordFun))
 			return null;
 		
-		if (ParseFunctionSignature(ref index) is not { } signature)
+		if (ParseFunctionSignature(ref index, true) is not { } signature)
 			return null;
 		
-		var (parameters, returnType) = signature;
-		return new(identifier, modifiers, parameters, returnType, origin);
+		var (parameters, returnType, isVariadic) = signature;
+		return new(identifier, modifiers, parameters, returnType, isVariadic, origin);
 	}
 	
-	private List<ParameterNode>? ParseParameters(ref int index, bool optionalParentheses)
+	private List<ParameterNode>? ParseParameters(ref int index, bool optionalParentheses) =>
+		ParseParameters(ref index, optionalParentheses, false, out _);
+	
+	private List<ParameterNode>? ParseParameters(ref int index, bool optionalParentheses, bool allowVariadic,
+		out bool isVariadic)
 	{
+		isVariadic = false;
 		var parameters = new List<ParameterNode>();
 		
 		// Parentheses are optional for function declarations
@@ -408,7 +413,7 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 			if (Match(ref index, TokenType.OpCloseParen))
 				return parameters;
 			
-			if (ParseParameterList(ref index) is not { } parameterList)
+			if (ParseParameterList(ref index, allowVariadic, out isVariadic) is not { } parameterList)
 				return null;
 			
 			parameters.AddRange(parameterList);
@@ -423,17 +428,19 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 		return parameters;
 	}
 	
-	private (List<ParameterNode> Parameters, ITypeNode? ReturnType)? ParseFunctionSignature(ref int index)
+	private (List<ParameterNode> Parameters, ITypeNode? ReturnType, bool IsVariadic)? ParseFunctionSignature(
+		ref int index, bool allowVariadic)
 	{
-		if (ParseParameters(ref index, true) is not { } parameters)
+		if (ParseParameters(ref index, true, allowVariadic, out var isVariadic) is not { } parameters)
 			return null;
 		
 		var returnType = Match(ref index, TokenType.OpArrow) ? ParseType(ref index) : null;
-		return (parameters, returnType);
+		return (parameters, returnType, isVariadic);
 	}
 	
-	private List<ParameterNode>? ParseParameterList(ref int index)
+	private List<ParameterNode>? ParseParameterList(ref int index, bool allowVariadic, out bool isVariadic)
 	{
+		isVariadic = false;
 		var result = new List<ParameterNode>();
 		
 		if (ParseParameter(ref index) is not { } firstParameter)
@@ -443,6 +450,12 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 		
 		while (Match(ref index, TokenType.OpComma))
 		{
+			if (allowVariadic && Match(ref index, TokenType.OpDotDotDot))
+			{
+				isVariadic = true;
+				break;
+			}
+			
 			if (ParseParameter(ref index) is not { } parameter)
 				return null;
 			

@@ -1307,14 +1307,15 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		
 		foreach (var candidate in candidates)
 		{
-			if (candidate.ParameterTypes.Length != args.Count)
+			var parameterCount = candidate.ParameterTypes.Length;
+			if (candidate.IsVariadic ? args.Count < parameterCount : args.Count != parameterCount)
 				continue;
 			
 			var argumentCost = 0;
 			var argumentConversions = new Conversion?[args.Count];
 			var valid = true;
 			
-			for (var i = 0; i < args.Count; i++)
+			for (var i = 0; i < parameterCount; i++)
 			{
 				var (cost, conversion) = MatchArg(args[i], candidate.ParameterTypes[i], mode);
 				
@@ -1372,6 +1373,12 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		for (var i = 0; i < args.Count; i++)
 		{
 			var arg = args[i];
+			if (i >= resolution.Callable.ParameterTypes.Length)
+			{
+				result.Add(PromoteVariadicArgument(arg));
+				continue;
+			}
+			
 			var target = resolution.Callable.ParameterTypes[i];
 			
 			if (arg.Type is UntypedType)
@@ -1388,6 +1395,42 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		
 		return result;
 	}
+	
+	private IResolvedExpressionNode PromoteVariadicArgument(IResolvedExpressionNode arg)
+	{
+		if (arg.Type is UntypedStringType)
+			arg = MaterializeExpression(arg, NativeSymbols.CStr);
+		
+		if (arg.Type is UntypedType)
+			arg = MaterializeAsDefault(arg);
+		
+		switch (arg.Type)
+		{
+			case PrimitiveType { Kind: PrimitiveTypeKind.Bool } type:
+			{
+				var conversion = new NativeConversion(type, NativeSymbols.Int32, ConversionKind.Implicit, 0);
+				return new ResolvedConversionExpressionNode(arg, conversion, arg.Syntax);
+			}
+			
+			case IntegerType type when CountBits(type) < 32:
+				return new ResolvedConversionExpressionNode(arg,
+					_conversionTable.FindExplicit(type, NativeSymbols.Int32)!,
+					arg.Syntax);
+			
+			case IntegerType type when CountBits(type) <= 64:
+				return arg;
+			
+			case PointerType { PointerKind: PointerKind.Unsafe }:
+			case PrimitiveType { Kind: PrimitiveTypeKind.CStr }:
+				return arg;
+			
+			default:
+				return Error(arg.Syntax, $"Cannot pass type '{arg.Type.Name}' to a variadic ext function",
+					NativeSymbols.Invalid);
+		}
+	}
+	
+	private uint CountBits(TypeSymbol type) => _typePool.SizeTable.GetSize(type).CountBits(_pointerBitSize);
 	
 	private IResolvedExpressionNode ApplyResultResolution(IResolvedExpressionNode node,
 		CallableResolution resolution) => resolution.ResultConversion is { } conversion
@@ -1468,6 +1511,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		public FunctionInfo Info { get; } = info;
 		public ImmutableArray<TypeSymbol> ParameterTypes => Info.Signature.ParameterTypes;
 		public TypeSymbol ReturnType => Info.Signature.ReturnType;
+		public bool IsVariadic => Info.Signature.IsVariadic;
 	}
 	
 	private sealed class ConstructorCallable(FunctionInfo info, TypeSymbol type) : ICallable
@@ -1485,4 +1529,5 @@ public interface ICallable
 {
 	ImmutableArray<TypeSymbol> ParameterTypes { get; }
 	TypeSymbol ReturnType { get; }
+	bool IsVariadic => false;
 }

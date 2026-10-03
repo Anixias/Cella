@@ -1,0 +1,15 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+main: fun -> i32
+{
+	var small: u8 = 200
+	var negative: i8 = -5
+	var big: i64 = 5000000000
+	printf("%d %s %d %d %lld %d\n", 42, "text", small, negative, big, true)
+	ret 0
+}
