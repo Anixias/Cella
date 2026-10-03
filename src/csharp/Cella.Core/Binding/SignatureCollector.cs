@@ -132,17 +132,11 @@ public sealed class SignatureCollector : IDeclarationNodeVisitor
 		var signature = new FunctionSignature(paramTypes, returnType);
 		
 		// TODO Disable mangling if indicated
-		FunctionInfo info;
+		var mangledName = Mangling.Mangle(function, signature, resolutionContext.GetQualifiers());
+		var info = new FunctionInfo(mangledName, function, signature, scope, null, resolutionContext.File);
+		
 		if (_entryPointName is not null && function.Name == _entryPointName && IsEntryPoint(signature))
-		{
-			info = new FunctionInfo(null, function, signature, scope, null, resolutionContext.File);
 			_entryPoints.Add(info);
-		}
-		else
-		{
-			var mangledName = Mangling.Mangle(function, signature, resolutionContext.GetQualifiers());
-			info = new FunctionInfo(mangledName, function, signature, scope, null, resolutionContext.File);
-		}
 		
 		_builder.Functions[function] = info;
 	}

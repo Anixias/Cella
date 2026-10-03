@@ -1,0 +1,12 @@
+mod test
+
+main: fun -> i32
+{
+	var values: array[i32, 4]
+	values.length = 2
+	values.length += 1
+	var text = "abc"
+	text.byteLength = 1
+	var address = @values.length
+	ret 0
+}

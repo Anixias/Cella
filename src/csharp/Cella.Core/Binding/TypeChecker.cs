@@ -199,7 +199,7 @@ public sealed class TypeChecker : IResolvedStatementNodeVisitor, IResolvedDeclar
 	private bool IsLValue(IResolvedExpressionNode expression) => expression switch
 	{
 		ResolvedVarExpressionNode => true,
-		ResolvedAccessExpressionNode e => IsLValue(e.Target),
+		ResolvedAccessExpressionNode { Member: FieldSymbol } e => IsLValue(e.Target),
 		ResolvedIndexerExpressionNode { Target.Type: SpanType or ViewType } => true,
 		ResolvedIndexerExpressionNode e => IsLValue(e.Target),
 		ResolvedUnaryOpExpressionNode { Operation.Op: TokenType.OpStar } => true,
@@ -229,7 +229,10 @@ public sealed class TypeChecker : IResolvedStatementNodeVisitor, IResolvedDeclar
 	public void Visit(ResolvedAssignmentExpressionNode node)
 	{
 		// TODO Better diagnostic
-		if (!IsLValue(node.Left))
+		if (node.Left is ResolvedAccessExpressionNode { Member: PropertySymbol { Setter: null } property })
+			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Left.Syntax.SourceLocation,
+				$"'{property.Name}' is read-only"));
+		else if (!IsLValue(node.Left))
 			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Left.Syntax.SourceLocation,
 				"Assignment target must be addressable"));
 		

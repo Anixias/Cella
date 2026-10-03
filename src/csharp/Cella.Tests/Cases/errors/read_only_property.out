@@ -1,0 +1,24 @@
+
+====== read_only_property.ce ======
+
+Error at line 6, column 2
+5 │ var values: array[i32, 4]
+6 │ values.length = 2
+    ╘═══════════╛ 'length' is read-only
+
+Error at line 7, column 2
+6 │ values.length = 2
+7 │ values.length += 1
+    ╘═══════════╛ 'length' is read-only
+
+Error at line 9, column 2
+8 │ var text = "abc"
+9 │ text.byteLength = 1
+    ╘═════════════╛ 'byteLength' is read-only
+
+Error at line 10, column 17
+ 9 │ text.byteLength = 1
+10 │ var address = @values.length
+                    ╘═══════════╛ Cannot take the address of an unstored value
+
+[compilation failed]

@@ -258,6 +258,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 				LLVMDWARFEmissionKind.LLVMDWARFEmissionFull, 0, 1, 0, "", "");
 		}*/
 		
+		LLVMFunctionInfo? entryPoint = null;
 		foreach (var file in module.Files)
 		{
 			// Create and map external functions
@@ -298,11 +299,11 @@ public sealed unsafe class CodeGenerator : IDisposable
 				}
 				else
 				{
-					if (_assemblySymbol.EntryPoint is { } entryPoint && entryPoint.Symbol == function.Info.Symbol)
-						llvmFunction.Linkage = LLVMLinkage.LLVMExternalLinkage;
-					else
-						llvmFunction.Linkage = LLVMLinkage.LLVMInternalLinkage;
+					llvmFunction.Linkage = LLVMLinkage.LLVMInternalLinkage;
 				}
+				
+				if (_assemblySymbol.EntryPoint?.Symbol == function.Info.Symbol)
+					entryPoint = info;
 			}
 		}
 		
@@ -312,6 +313,9 @@ public sealed unsafe class CodeGenerator : IDisposable
 			foreach (var function in file.Functions)
 				BuildFunction(llvmModule, llvmDiBuilder, function);
 		}
+		
+		if (entryPoint is { } entry)
+			BuildEntryPoint(llvmModule, entry);
 		
 		// Optimize the module
 		RunOptimizationPass(llvmModule);
@@ -368,6 +372,20 @@ public sealed unsafe class CodeGenerator : IDisposable
 		
 		_funMap.Add(function, functionInfo);
 		return functionInfo;
+	}
+	
+	private static void BuildEntryPoint(LLVMModuleRef llvmModule, LLVMFunctionInfo entryPoint)
+	{
+		var main = llvmModule.AddFunction("main", LLVMTypeRef.CreateFunction(LLVMTypeRef.Int32, []));
+		main.Linkage = LLVMLinkage.LLVMExternalLinkage;
+		
+		using var builder = llvmModule.Context.CreateBuilder();
+		builder.PositionAtEnd(main.AppendBasicBlock("entry"));
+		
+		var result = builder.BuildCall2(entryPoint.FunctionType, entryPoint.FunctionValue, []);
+		builder.BuildRet(entryPoint.ReturnType.Kind == LLVMTypeKind.LLVMVoidTypeKind
+			? LLVMValueRef.CreateConstInt(LLVMTypeRef.Int32, 0)
+			: result);
 	}
 	
 	private void BuildFunction(LLVMModuleRef llvmModule, LLVMDIBuilderRef llvmDiBuilder, LoweredFunction function)

@@ -1,0 +1,14 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+main: fun
+{
+	printf("first\n")
+	if printf("second\n") > 0
+		ret
+	printf("never\n")
+}
