@@ -8,6 +8,7 @@ public sealed class SizeTable
 	{
 		[NativeSymbols.Invalid] = StorageSize.Const(0),
 		[NativeSymbols.UntypedInteger] = StorageSize.Const(0),
+		[NativeSymbols.UntypedFloat] = StorageSize.Const(0),
 		[NativeSymbols.VoidPtr] = StorageSize.Ptr,
 		[NativeSymbols.Void] = StorageSize.Const(0),
 		[NativeSymbols.Int8] = StorageSize.Const(1),
@@ -22,6 +23,8 @@ public sealed class SizeTable
 		[NativeSymbols.UInt64] = StorageSize.Const(8),
 		[NativeSymbols.UInt128] = StorageSize.Const(16),
 		[NativeSymbols.UIntSize] = StorageSize.Ptr,
+		[NativeSymbols.Float32] = StorageSize.Const(4),
+		[NativeSymbols.Float64] = StorageSize.Const(8),
 		[NativeSymbols.Char] = StorageSize.Const(4),
 		[NativeSymbols.Bool] = StorageSize.Const(1),
 		[NativeSymbols.Str] = StorageSize.Sum(StorageSize.Ptr, StorageSize.Ptr), // usize length + ptr data

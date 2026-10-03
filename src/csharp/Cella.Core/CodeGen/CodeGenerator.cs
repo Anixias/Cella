@@ -107,6 +107,8 @@ public sealed unsafe class CodeGenerator : IDisposable
 		_typeMap[NativeSymbols.UInt64] = LLVMTypeRef.Int64;
 		_typeMap[NativeSymbols.UInt128] = LLVMTypeRef.Int128;
 		_typeMap[NativeSymbols.UIntSize] = intSize;
+		_typeMap[NativeSymbols.Float32] = LLVMTypeRef.Float;
+		_typeMap[NativeSymbols.Float64] = LLVMTypeRef.Double;
 		_typeMap[NativeSymbols.Char] = LLVMTypeRef.Int32;
 		_typeMap[NativeSymbols.Bool] = LLVMTypeRef.Int1;
 		_typeMap[NativeSymbols.Str] =
@@ -790,6 +792,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 	{
 		IdentityConversion => EmitValue(v.Source, builder),
 		IntegerConversion c => EmitIntegerConversion(c, EmitValue(v.Source, builder), builder),
+		FloatConversion c => EmitFloatConversion(c, EmitValue(v.Source, builder), builder),
 		NativeConversion c => EmitNativeConversion(c, v, builder),
 		FreeConversion => EmitValue(v.Source, builder),
 		FunctionConversion c => EmitValue(new CallValue(c.Function, [v.Source], v.SourceLocation), builder),
@@ -963,6 +966,35 @@ public sealed unsafe class CodeGenerator : IDisposable
 			: builder.BuildZExt(source, destType);
 	}
 	
+	private LLVMValueRef EmitFloatConversion(FloatConversion c, LLVMValueRef source, LLVMBuilderRef builder)
+	{
+		var destType = MapTypeSymbol(c.To);
+		return (c.From, c.To) switch
+		{
+			(FloatType, FloatType) when CountBits(c.To) > CountBits(c.From) => builder.BuildFPExt(source, destType),
+			(FloatType, FloatType) => builder.BuildFPTrunc(source, destType),
+			(IntegerType { IsSigned: true }, _) => builder.BuildSIToFP(source, destType),
+			(IntegerType, _) => builder.BuildUIToFP(source, destType),
+			(_, IntegerType { IsSigned: var signed }) => BuildSaturatingFloatToInt(source, destType, signed, builder),
+			_ => throw new InvalidOperationException()
+		};
+	}
+	
+	private LLVMValueRef BuildSaturatingFloatToInt(LLVMValueRef source, LLVMTypeRef destType, bool isSigned,
+		LLVMBuilderRef builder)
+	{
+		var sourceName = source.TypeOf.Kind == LLVMTypeKind.LLVMFloatTypeKind ? "f32" : "f64";
+		var name = $"llvm.{(isSigned ? "fptosi" : "fptoui")}.sat.i{destType.IntWidth}.{sourceName}";
+		var functionType = LLVMTypeRef.CreateFunction(destType, [source.TypeOf]);
+		var function = currentModule.GetNamedFunction(name);
+		if (function.Handle == IntPtr.Zero)
+			function = currentModule.AddFunction(name, functionType);
+		
+		return builder.BuildCall2(functionType, function, [source]);
+	}
+	
+	private uint CountBits(TypeSymbol type) => _typePool.SizeTable.GetSize(type).CountBits(_pointerSize * 8);
+	
 	private LLVMValueRef EmitBinaryOp(BinOpValue v, LLVMBuilderRef builder)
 	{
 		if (v.Op is BinaryOperation.ShiftLeft or BinaryOperation.ShiftRight)
@@ -971,9 +1003,12 @@ public sealed unsafe class CodeGenerator : IDisposable
 		if (v.Op is BinaryOperation.RotateLeft or BinaryOperation.RotateRight)
 			return EmitRotate(v, builder);
 		
+		if (v.Left.Type is FloatType)
+			return EmitFloatBinaryOp(v, builder);
+		
 		var left = EmitValue(v.Left, builder);
 		var right = EmitValue(v.Right, builder);
-		var signed = v.Left.Type is IntegerType { IsSigned: true }; // TODO Check for floating point
+		var signed = v.Left.Type is IntegerType { IsSigned: true };
 		
 		if (v.Left.Type is IntegerType { IsSigned: var leftSigned } &&
 		    v.Right.Type is IntegerType { IsSigned: var rightSigned } &&
@@ -988,41 +1023,41 @@ public sealed unsafe class CodeGenerator : IDisposable
 		return v switch
 		{
 			{ IsConstant: true, Op: BinaryOperation.Addition } =>
-				LLVMValueRef.CreateConstAdd(left, right), // TODO Check floating point?
+				LLVMValueRef.CreateConstAdd(left, right),
 			{ Op: BinaryOperation.Addition } =>
-				builder.BuildAdd(left, right), // TODO Check floating point?
+				builder.BuildAdd(left, right),
 			
 			{ IsConstant: true, Op: BinaryOperation.Subtraction } =>
-				LLVMValueRef.CreateConstSub(left, right), // TODO Check floating point?
+				LLVMValueRef.CreateConstSub(left, right),
 			{ Op: BinaryOperation.Subtraction } =>
-				builder.BuildSub(left, right), // TODO Check floating point?
+				builder.BuildSub(left, right),
 			
 			{ IsConstant: true, Op: BinaryOperation.Multiplication } =>
-				LLVMValueRef.CreateConstMul(left, right), // TODO Check floating point?
+				LLVMValueRef.CreateConstMul(left, right),
 			{ Op: BinaryOperation.Multiplication } =>
-				builder.BuildMul(left, right), // TODO Check floating point?
+				builder.BuildMul(left, right),
 			
-			{ Op: BinaryOperation.Division } => signed // TODO Check floating point?
+			{ Op: BinaryOperation.Division } => signed
 				? builder.BuildSDiv(left, right)
 				: builder.BuildUDiv(left, right),
 			
-			{ Op: BinaryOperation.Modulo } => signed // TODO Check floating point?
+			{ Op: BinaryOperation.Modulo } => signed
 				? builder.BuildSRem(left, right)
 				: builder.BuildURem(left, right),
 			
-			{ Op: BinaryOperation.Greater } => signed // TODO Check floating point?
+			{ Op: BinaryOperation.Greater } => signed
 				? builder.BuildICmp(LLVMIntPredicate.LLVMIntSGT, left, right)
 				: builder.BuildICmp(LLVMIntPredicate.LLVMIntUGT, left, right),
 			
-			{ Op: BinaryOperation.GreaterEqual } => signed // TODO Check floating point?
+			{ Op: BinaryOperation.GreaterEqual } => signed
 				? builder.BuildICmp(LLVMIntPredicate.LLVMIntSGE, left, right)
 				: builder.BuildICmp(LLVMIntPredicate.LLVMIntUGE, left, right),
 			
-			{ Op: BinaryOperation.Less } => signed // TODO Check floating point?
+			{ Op: BinaryOperation.Less } => signed
 				? builder.BuildICmp(LLVMIntPredicate.LLVMIntSLT, left, right)
 				: builder.BuildICmp(LLVMIntPredicate.LLVMIntULT, left, right),
 			
-			{ Op: BinaryOperation.LessEqual } => signed // TODO Check floating point?
+			{ Op: BinaryOperation.LessEqual } => signed
 				? builder.BuildICmp(LLVMIntPredicate.LLVMIntSLE, left, right)
 				: builder.BuildICmp(LLVMIntPredicate.LLVMIntULE, left, right),
 			
@@ -1047,6 +1082,27 @@ public sealed unsafe class CodeGenerator : IDisposable
 			{ Op: BinaryOperation.LogicalOr } =>
 				builder.BuildOr(left, right),
 			
+			_ => throw new InvalidOperationException()
+		};
+	}
+	
+	private LLVMValueRef EmitFloatBinaryOp(BinOpValue v, LLVMBuilderRef builder)
+	{
+		var left = EmitValue(v.Left, builder);
+		var right = EmitValue(v.Right, builder);
+		return v.Op switch
+		{
+			BinaryOperation.Addition => builder.BuildFAdd(left, right),
+			BinaryOperation.Subtraction => builder.BuildFSub(left, right),
+			BinaryOperation.Multiplication => builder.BuildFMul(left, right),
+			BinaryOperation.Division => builder.BuildFDiv(left, right),
+			BinaryOperation.Modulo => builder.BuildFRem(left, right),
+			BinaryOperation.Equal => builder.BuildFCmp(LLVMRealPredicate.LLVMRealOEQ, left, right),
+			BinaryOperation.NotEqual => builder.BuildFCmp(LLVMRealPredicate.LLVMRealUNE, left, right),
+			BinaryOperation.Greater => builder.BuildFCmp(LLVMRealPredicate.LLVMRealOGT, left, right),
+			BinaryOperation.GreaterEqual => builder.BuildFCmp(LLVMRealPredicate.LLVMRealOGE, left, right),
+			BinaryOperation.Less => builder.BuildFCmp(LLVMRealPredicate.LLVMRealOLT, left, right),
+			BinaryOperation.LessEqual => builder.BuildFCmp(LLVMRealPredicate.LLVMRealOLE, left, right),
 			_ => throw new InvalidOperationException()
 		};
 	}
@@ -1097,9 +1153,10 @@ public sealed unsafe class CodeGenerator : IDisposable
 	
 	private LLVMValueRef EmitUnaryOp(UnaryOpValue v, LLVMBuilderRef builder) => v switch
 	{
+		{ Op: UnaryOperation.Identity } => EmitValue(v.Operand, builder),
+		{ Op: UnaryOperation.Negation, Operand.Type: FloatType } => builder.BuildFNeg(EmitValue(v.Operand, builder)),
 		{ IsConstant: true, Op: UnaryOperation.Negation } => LLVMValueRef.CreateConstNeg(EmitValue(v.Operand, builder)),
-		{ Op: UnaryOperation.Negation } => builder.BuildNeg(EmitValue(v.Operand,
-			builder)), // TODO Check floating point?
+		{ Op: UnaryOperation.Negation } => builder.BuildNeg(EmitValue(v.Operand, builder)),
 		
 		{ IsConstant: true, Op: UnaryOperation.BitwiseNot } =>
 			LLVMValueRef.CreateConstNot(EmitValue(v.Operand, builder)),
@@ -1303,6 +1360,10 @@ public sealed unsafe class CodeGenerator : IDisposable
 				
 				case PrimitiveTypeKind.Char:
 					return LLVMValueRef.CreateConstInt(type, (uint)value);
+				
+				case PrimitiveTypeKind.Float32:
+				case PrimitiveTypeKind.Float64:
+					return LLVMValueRef.CreateConstReal(type, (double)value);
 				
 				case PrimitiveTypeKind.Str:
 				{

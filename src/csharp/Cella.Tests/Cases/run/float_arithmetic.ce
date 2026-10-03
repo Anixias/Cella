@@ -1,0 +1,41 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+main: fun -> i32
+{
+	var half = 1.5
+	var third: f32 = 1.0 / 3.0
+	var scaled = half * 2 + 0.25
+	var exponent = 1.5e3
+	var tiny = 2.5E-3
+	var grouped = 1_000.000_5
+	printf("%.2f %.6f %.2f %.1f %.4f %.4f %.1f %.1f\n", half, third, scaled, exponent, tiny, grouped, -half, +half)
+
+	var x = 10.0
+	x += 1.5
+	x *= 2
+	x -= 0.5
+	x /= 2
+	var rest = x % 4.0
+	x %= 4.0
+	var single: f32 = 2.5
+	single *= 3
+	printf("%.2f %.2f %.2f\n", x, rest, single)
+
+	var count = 3
+	var byte: u8 = 4
+	var a = count + half
+	var b = single + half
+	var c = single * 2
+	var d = byte * single
+	printf("%.2f %.2f %.2f %.2f %d %d\n", a, b, c, d, sizeOf(b), sizeOf(c))
+
+	var zero = 0.0
+	var nan = zero / zero
+	printf("%d %d %d %d %d %d\n", half < 2.0, half >= 1.5, half == 1.5, half > 2, nan == nan, nan != nan)
+	ret 0
+}

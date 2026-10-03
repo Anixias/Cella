@@ -139,6 +139,7 @@ public sealed class IntegerType(string name, PrimitiveTypeKind kind, bool isSign
 	public bool IsSigned { get; } = isSigned;
 }
 
+public sealed class FloatType(string name, PrimitiveTypeKind kind) : PrimitiveType(name, kind);
 public sealed class StringType(string name, PrimitiveTypeKind kind) : PrimitiveType(name, kind);
 
 public enum MaterializationMode
@@ -197,6 +198,12 @@ public sealed class UntypedIntegerType() : UntypedType("integer literal")
 				if (target == NativeSymbols.UIntSize)
 					return 11;
 				
+				if (target == NativeSymbols.Float64)
+					return 12;
+				
+				if (target == NativeSymbols.Float32)
+					return 13;
+				
 				return int.MaxValue;
 			
 			default:
@@ -208,6 +215,19 @@ public sealed class UntypedIntegerType() : UntypedType("integer literal")
 				
 				return int.MaxValue;
 		}
+	}
+}
+
+public sealed class UntypedFloatType() : UntypedType("float literal")
+{
+	public static UntypedFloatType Instance { get; } = new();
+	
+	public override int MaterializationCost(TypeSymbol target, MaterializationMode mode)
+	{
+		if (target == NativeSymbols.Float64)
+			return 0;
+		
+		return mode == MaterializationMode.Overload && target == NativeSymbols.Float32 ? 1 : int.MaxValue;
 	}
 }
 

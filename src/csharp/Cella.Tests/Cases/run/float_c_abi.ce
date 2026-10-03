@@ -1,0 +1,39 @@
+mod test
+
+Fcomplex: rec
+{
+	re: f32
+	im: f32
+}
+
+Dcomplex: rec
+{
+	re: f64
+	im: f64
+}
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+	sqrt: fun(x: f64) -> f64
+	sqrtf: fun(x: f32) -> f32
+	pow: fun(x: f64, y: f64) -> f64
+	floor: fun(x: f64) -> f64
+	_FCbuild: fun(re: f32, im: f32) -> Fcomplex
+	crealf: fun(z: Fcomplex) -> f32
+	cimagf: fun(z: Fcomplex) -> f32
+	_Cbuild: fun(re: f64, im: f64) -> Dcomplex
+	cabs: fun(z: Dcomplex) -> f64
+	cimag: fun(z: Dcomplex) -> f64
+}
+
+main: fun -> i32
+{
+	var single: f32 = 0.5
+	printf("%.5f %.1f %.1f %.1f %.2f\n", sqrt(2.0), sqrtf(9.0), pow(2.0, 10.0), floor(-1.5), single)
+
+	var packed = _FCbuild(1.5, -2.5)
+	var wide = _Cbuild(3.0, 4.0)
+	printf("%.1f %.1f %.1f %.1f %.1f %.1f\n", packed.re, crealf(packed), cimagf(packed), wide.re, cimag(wide), cabs(wide))
+	ret 0
+}

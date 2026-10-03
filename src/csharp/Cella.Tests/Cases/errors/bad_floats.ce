@@ -1,0 +1,17 @@
+mod test
+
+main: fun -> i32
+{
+	var half = 1.5
+	var wide: i64 = 3
+	var a: f32 = 16_777_217
+	var b: f32 = half
+	var c = wide + half
+	var d = half & 1
+	var e = half << 1
+	var f = 1e400
+	var g: f32 = 1e39
+	var h = i128(half)
+	var i = bool(half)
+	ret 0
+}

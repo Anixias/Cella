@@ -1,0 +1,49 @@
+
+====== bad_floats.ce ======
+
+Error at line 7, column 15
+6 │ var wide: i64 = 3
+7 │ var a: f32 = 16_777_217
+                 ╘════════╛ Cannot convert type 'i32' to 'f32'
+
+Error at line 8, column 15
+7 │ var a: f32 = 16_777_217
+8 │ var b: f32 = half
+                 ╘══╛ Cannot convert type 'f64' to 'f32'
+
+Error at line 9, column 10
+8 │ var b: f32 = half
+9 │ var c = wide + half
+            ╘═════════╛ No operation defined for '+' between 'i64' and 'f64'
+
+Error at line 10, column 10
+ 9 │ var c = wide + half
+10 │ var d = half & 1
+             ╘══════╛ No operation defined for '&' between 'f64' and 'integer literal'
+
+Error at line 11, column 10
+10 │ var d = half & 1
+11 │ var e = half << 1
+             ╘═══════╛ No operation defined for '<<' between 'f64' and 'integer literal'
+
+Error at line 12, column 10
+11 │ var e = half << 1
+12 │ var f = 1e400
+             ╘═══╛ Float literal too large to fit any type
+
+Error at line 13, column 15
+12 │ var f = 1e400
+13 │ var g: f32 = 1e39
+                  ╘══╛ Cannot convert type 'f64' to 'f32'
+
+Error at line 14, column 10
+13 │ var g: f32 = 1e39
+14 │ var h = i128(half)
+             ╘════════╛ No constructor for 'i128' accepts argument of type 'f64'
+
+Error at line 15, column 10
+14 │ var h = i128(half)
+15 │ var i = bool(half)
+             ╘════════╛ No constructor for 'bool' accepts argument of type 'f64'
+
+[compilation failed]

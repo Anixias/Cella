@@ -133,6 +133,27 @@ public sealed class ConversionTable
 		foreach (var type in NativeSymbols.PureIntegerTypes)
 			table.Add(new NativeConversion(NativeSymbols.Bool, type, ConversionKind.Explicit, 1));
 		
+		table.Add(new FloatConversion(NativeSymbols.Float32, NativeSymbols.Float64, ConversionKind.Implicit, 1));
+		table.Add(new FloatConversion(NativeSymbols.Float64, NativeSymbols.Float32, ConversionKind.Explicit, 2));
+		
+		var floatPrecisions = new (FloatType Type, int SignificandBits)[]
+		{
+			(NativeSymbols.Float32, 24),
+			(NativeSymbols.Float64, 53)
+		};
+		
+		foreach (var (floatType, significandBits) in floatPrecisions)
+		{
+			for (var i = 0; i < intTypes.Length - 1; i++)
+			{
+				AddFloatConversions(intTypes[i].S, floatType, (8 << i) - 1 <= significandBits);
+				AddFloatConversions(intTypes[i].U, floatType, 8 << i <= significandBits);
+			}
+			
+			AddFloatConversions(NativeSymbols.IntSize, floatType, false);
+			AddFloatConversions(NativeSymbols.UIntSize, floatType, false);
+		}
+		
 		// cstr <-> ptr
 		table.Add(new FreeConversion(NativeSymbols.CStr, NativeSymbols.VoidPtr, ConversionKind.Implicit));
 		table.Add(new FreeConversion(NativeSymbols.VoidPtr, NativeSymbols.CStr, ConversionKind.Explicit));
@@ -140,5 +161,12 @@ public sealed class ConversionTable
 		return table;
 		
 		bool IsLossless(IntegerType from, IntegerType to) => from == to || table.FindImplicit(from, to) is not null;
+		
+		void AddFloatConversions(IntegerType integer, FloatType floating, bool isExact)
+		{
+			var kind = isExact ? ConversionKind.Implicit : ConversionKind.Explicit;
+			table.Add(new FloatConversion(integer, floating, kind, 2));
+			table.Add(new FloatConversion(floating, integer, ConversionKind.Explicit, 2));
+		}
 	}
 }

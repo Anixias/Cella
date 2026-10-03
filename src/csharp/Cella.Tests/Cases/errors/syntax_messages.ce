@@ -15,9 +15,9 @@ strayCharacter: fun -> i32
 	ret 5 $ 3
 }
 
-float: fun
+exponent: fun
 {
-	var half = 1.5
+	var big = 1e
 }
 
 array: fun

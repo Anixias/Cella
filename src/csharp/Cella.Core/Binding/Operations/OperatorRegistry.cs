@@ -7,7 +7,7 @@ namespace Cella.Core.Binding.Operations;
 
 public sealed class OperatorRegistry
 {
-	private static readonly ImmutableArray<TokenType> _numericBinOps =
+	private static readonly ImmutableArray<TokenType> _arithmeticBinOps =
 	[
 		TokenType.OpPlus,
 		TokenType.OpPlusEqual,
@@ -19,6 +19,11 @@ public sealed class OperatorRegistry
 		TokenType.OpSlashEqual,
 		TokenType.OpPercent,
 		TokenType.OpPercentEqual,
+	];
+	
+	private static readonly ImmutableArray<TokenType> _numericBinOps =
+	[
+		.._arithmeticBinOps,
 		TokenType.OpAmpersand,
 		TokenType.OpAmpersandEqual,
 		TokenType.OpBar,
@@ -54,10 +59,15 @@ public sealed class OperatorRegistry
 		.._equalityBinOps
 	];
 	
-	private static readonly ImmutableArray<TokenType> _numericUnaryOps =
+	private static readonly ImmutableArray<TokenType> _signUnaryOps =
 	[
 		TokenType.OpPlus,
 		TokenType.OpMinus,
+	];
+	
+	private static readonly ImmutableArray<TokenType> _numericUnaryOps =
+	[
+		.._signUnaryOps,
 		TokenType.OpTilde,
 	];
 	
@@ -77,6 +87,12 @@ public sealed class OperatorRegistry
 	private static readonly ImmutableArray<TypeSymbol> _numericTypes =
 	[
 		..NativeSymbols.IntegerTypes // TODO Handle char differently?
+	];
+	
+	private static readonly ImmutableArray<TypeSymbol> _comparableTypes =
+	[
+		.._numericTypes,
+		..NativeSymbols.FloatTypes
 	];
 	
 	private readonly Dictionary<TokenType, List<ICallable>> _unaryOps = CreateUnaryOps();
@@ -120,6 +136,13 @@ public sealed class OperatorRegistry
 			}
 		}
 		
+		foreach (var op in _signUnaryOps)
+		{
+			var list = result.GetOrAdd(op);
+			foreach (var type in NativeSymbols.FloatTypes)
+				list.Add(new NativeImpl(op, type, type));
+		}
+		
 		result.GetOrAdd(TokenType.OpBang).Add(new NativeImpl(TokenType.OpBang, NativeSymbols.Bool, NativeSymbols.Bool));
 		return result;
 	}
@@ -132,6 +155,13 @@ public sealed class OperatorRegistry
 		{
 			var list = result.GetOrAdd(op);
 			foreach (var type in _numericTypes)
+				list.Add(new NativeImpl(op, type, type, type));
+		}
+		
+		foreach (var op in _arithmeticBinOps)
+		{
+			var list = result.GetOrAdd(op);
+			foreach (var type in NativeSymbols.FloatTypes)
 				list.Add(new NativeImpl(op, type, type, type));
 		}
 		
@@ -148,7 +178,7 @@ public sealed class OperatorRegistry
 		foreach (var op in _comparisonBinOps)
 		{
 			var list = result.GetOrAdd(op);
-			foreach (var type in _numericTypes)
+			foreach (var type in _comparableTypes)
 				list.Add(new NativeImpl(op, NativeSymbols.Bool, type, type));
 		}
 		

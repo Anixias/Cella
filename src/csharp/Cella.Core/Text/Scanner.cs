@@ -126,32 +126,48 @@ public class Scanner : IScanner
 		if (Source[position] == '0' && position + 1 < Source.Length && Source[position + 1] is 'x' or 'X' or 'b' or 'B')
 			return ScanPrefixedNumber(position);
 		
-		int end;
-		for (end = position + 1; end < Source.Length; end++)
+		var end = ScanDigits(position + 1);
+		var tokenType = TokenType.IntegerLiteral;
+		
+		if (end + 1 < Source.Length && Source[end] == '.' && char.IsDigit(Source[end + 1]))
 		{
-			var c = Source[end];
-			if (!char.IsDigit(c) && c != '_')
-				break;
+			end = ScanDigits(end + 1);
+			tokenType = TokenType.FloatLiteral;
 		}
 		
-		// @TODO Floating point, fixed point, scientific notation, etc.
-		if (end + 1 < Source.Length && Source[end] == '.' && char.IsDigit(Source[end + 1]))
-			return ScanUnsupportedNumber(position, end + 1, "Floating-point literals are not supported yet");
+		if (end < Source.Length && Source[end] is 'e' or 'E')
+		{
+			var exponent = end + 1;
+			if (exponent < Source.Length && Source[exponent] is '+' or '-')
+				exponent++;
+			
+			if (exponent >= Source.Length || !char.IsDigit(Source[exponent]))
+			{
+				var invalid = new Token(TokenType.Invalid, Source, new TextRange(position, exponent))
+				{
+					Error = "Expected exponent digits"
+				};
+				
+				return new ScanResult(invalid, exponent);
+			}
+			
+			end = ScanDigits(exponent);
+			tokenType = TokenType.FloatLiteral;
+		}
 		
 		// @TODO Suffix type markers
 		
 		var range = new TextRange(position, end);
-		var token = new Token(TokenType.IntegerLiteral, Source, range);
+		var token = new Token(tokenType, Source, range);
 		return new ScanResult(token, end);
 	}
 	
-	private ScanResult ScanUnsupportedNumber(int position, int end, string message)
+	private int ScanDigits(int position)
 	{
-		while (end < Source.Length && (char.IsLetterOrDigit(Source[end]) || Source[end] == '_'))
-			end++;
+		while (position < Source.Length && (char.IsDigit(Source[position]) || Source[position] == '_'))
+			position++;
 		
-		var token = new Token(TokenType.Invalid, Source, new TextRange(position, end)) { Error = message };
-		return new ScanResult(token, end);
+		return position;
 	}
 	
 	private ScanResult ScanPrefixedNumber(int position)

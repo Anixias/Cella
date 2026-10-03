@@ -16,10 +16,10 @@ Error at line 15, column 8
 15 │     ret 5 $ 3
                ^ Unexpected character '$'
 
-Error at line 20, column 13
+Error at line 20, column 12
 19 │ {
-20 │     var half = 1.5
-                    ╘═╛ Floating-point literals are not supported yet
+20 │     var big = 1e
+                   ╘╛ Expected exponent digits
 
 Error at line 26, column 1
 25 │     var values = [1, 2

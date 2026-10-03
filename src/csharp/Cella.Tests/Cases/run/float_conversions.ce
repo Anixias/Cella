@@ -1,0 +1,29 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+main: fun -> i32
+{
+	var count = 7
+	var small: u16 = 300
+	var asDouble: f64 = count
+	var asSingle: f32 = small
+	var widened = f64(asSingle)
+	var narrowed = f32(asDouble)
+	var rounded = f64(9_007_199_254_740_993)
+	printf("%.1f %.1f %.1f %.1f %.1f\n", asDouble, asSingle, widened, narrowed, rounded)
+
+	var zero = 0.0
+	var nan = zero / zero
+	var truncated = i32(2.7)
+	var negative = i32(-2.7)
+	var tooBig = i32(1e20)
+	var belowZero = u32(-5.0)
+	var notANumber = i32(nan)
+	var huge = i64(9.5e18)
+	printf("%d %d %d %u %d %lld\n", truncated, negative, tooBig, belowZero, notANumber, huge)
+	ret 0
+}

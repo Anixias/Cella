@@ -18,6 +18,8 @@ public enum PrimitiveTypeKind
 	UInt64,
 	UInt128,
 	UIntSize,
+	Float32,
+	Float64,
 	Char,
 	Bool,
 	Str,
@@ -33,6 +35,7 @@ public static class NativeSymbols
 {
 	public static InvalidType Invalid => InvalidType.Instance;
 	public static UntypedIntegerType UntypedInteger => UntypedIntegerType.Instance;
+	public static UntypedFloatType UntypedFloat => UntypedFloatType.Instance;
 	public static UntypedNullType UntypedNull => UntypedNullType.Instance;
 	public static UntypedStringType UntypedString => UntypedStringType.Instance;
 	public static PointerType VoidPtr => PointerType.VoidPtr;
@@ -49,6 +52,8 @@ public static class NativeSymbols
 	public static IntegerType UInt64 { get; } = new("u64", PrimitiveTypeKind.UInt64, false);
 	public static IntegerType UInt128 { get; } = new("u128", PrimitiveTypeKind.UInt128, false);
 	public static IntegerType UIntSize { get; } = new("usize", PrimitiveTypeKind.UIntSize, false);
+	public static FloatType Float32 { get; } = new("f32", PrimitiveTypeKind.Float32);
+	public static FloatType Float64 { get; } = new("f64", PrimitiveTypeKind.Float64);
 	public static IntegerType Char { get; } = new("char", PrimitiveTypeKind.Char, false);
 	public static PrimitiveType Bool { get; } = new("bool", PrimitiveTypeKind.Bool);
 	public static StringType Str { get; } = new("str", PrimitiveTypeKind.Str);
@@ -58,6 +63,7 @@ public static class NativeSymbols
 	{
 		Int8, Int16, Int32, Int64, Int128, IntSize,
 		UInt8, UInt16, UInt32, UInt64, UInt128, UIntSize,
+		Float32, Float64,
 		Char, Bool, Str, CStr, VoidPtr
 	}.ToImmutableDictionary(static s => s.Name);
 	
@@ -81,6 +87,12 @@ public static class NativeSymbols
 	[
 		..PureIntegerTypes,
 		Char
+	];
+	
+	public static ImmutableArray<FloatType> FloatTypes { get; } =
+	[
+		Float32,
+		Float64
 	];
 	
 	public static Symbol? Resolve(string name) => _primitiveTypes.GetValueOrDefault(name);

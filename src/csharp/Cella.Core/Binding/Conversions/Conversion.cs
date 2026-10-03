@@ -35,6 +35,9 @@ public sealed class IntegerConversion(IntegerType from, IntegerType to, Conversi
 	public bool ToSigned { get; } = to.IsSigned;
 }
 
+public sealed class FloatConversion(PrimitiveType from, PrimitiveType to, ConversionKind kind, int cost)
+	: Conversion(from, to, kind, cost, to is not IntegerType);
+
 // TODO Detect constant functions
 public sealed class FunctionConversion(FunctionInfo function, ConversionKind kind, int cost)
 	: Conversion(function.Signature.ParameterTypes[0], function.Signature.ReturnType, kind, cost, false)

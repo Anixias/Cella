@@ -1,5 +1,6 @@
 ﻿using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
+using System.Globalization;
 using System.Numerics;
 using System.Text;
 using Cella.Core.Binding.Conversions;
@@ -614,6 +615,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		(type, value) = tokenType switch
 		{
 			TokenType.IntegerLiteral => ParseInteger(valueSpan),
+			TokenType.FloatLiteral => ParseFloat(valueSpan),
 			TokenType.KeywordNull => ParseNull(),
 			TokenType.KeywordTrue => (NativeSymbols.Bool, true),
 			TokenType.KeywordFalse => (NativeSymbols.Bool, false),
@@ -1118,21 +1120,22 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	{
 		// TODO Check suffixes
 		
-		// Consume unary minus jobs
-		if (_unaryOpJobs.TryPeek(out var job) && job is { Op: TokenType.OpMinus, Consumed: false })
-		{
-			// We have to allocate a new string
-			Span<char> newSpan = new char[span.Length + 1];
-			newSpan[0] = '-';
-			span.CopyTo(newSpan[1..]);
-			span = newSpan;
-			job.Consumed = true;
-		}
-		
-		if (Scanner.TryParseInteger(span, out var untypedValue))
+		if (Scanner.TryParseInteger(ConsumeNegation(span), out var untypedValue))
 			return (NativeSymbols.UntypedInteger, untypedValue);
 		
 		return (null, null);
+	}
+	
+	private (TypeSymbol? Type, object? Value) ParseFloat(ReadOnlySpan<char> span) =>
+		(NativeSymbols.UntypedFloat, ConsumeNegation(span).Replace("_", ""));
+	
+	private string ConsumeNegation(ReadOnlySpan<char> span)
+	{
+		if (!_unaryOpJobs.TryPeek(out var job) || job is not { Op: TokenType.OpMinus, Consumed: false })
+			return span.ToString();
+		
+		job.Consumed = true;
+		return $"-{span}";
 	}
 	
 	private (TypeSymbol type, uint value) ParseChar(ReadOnlySpan<char> span)
@@ -1181,6 +1184,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			
 			case UntypedIntegerType:
 				return MaterializeExpression(node, NativeSymbols.Int32);
+			
+			case UntypedFloatType when node is ResolvedLiteralExpressionNode literal:
+				return MaterializeFloat(literal, NativeSymbols.Float64);
 			
 			case UntypedNullType when node is ResolvedLiteralExpressionNode literal:
 				return MaterializeNull(literal, NativeSymbols.VoidPtr);
@@ -1240,6 +1246,8 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		return node.Type switch
 		{
 			UntypedIntegerType when target is IntegerType t => MaterializeInteger(literal, t),
+			UntypedIntegerType when target is FloatType t => MaterializeIntegerAsFloat(literal, t),
+			UntypedFloatType when target is FloatType t => MaterializeFloat(literal, t),
 			UntypedNullType when target is PointerType t => MaterializeNull(literal, t),
 			UntypedStringType when target is StringType t => t == NativeSymbols.CStr
 				? MaterializeCStr(literal)
@@ -1262,6 +1270,41 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		return fallback is not null
 			? MaterializeLiteral(node.Syntax, fallback, value)
 			: node; // TODO Diagnostic: Too large for any integer type
+	}
+	
+	private ResolvedLiteralExpressionNode MaterializeIntegerAsFloat(ResolvedLiteralExpressionNode node,
+		FloatType target)
+	{
+		var value = (BigInteger)node.Value!;
+		return IsExactInFloat(value, target)
+			? new ResolvedLiteralExpressionNode(target, (double)value, node.Syntax)
+			: MaterializeInteger(node, NativeSymbols.Int32);
+	}
+	
+	private IResolvedExpressionNode MaterializeFloat(ResolvedLiteralExpressionNode node, FloatType target)
+	{
+		var text = (string)node.Value!;
+		var type = FitsInFloat(text, target) ? target : NativeSymbols.Float64;
+		return FitsInFloat(text, type)
+			? new ResolvedLiteralExpressionNode(type, ParseFloatValue(text, type), node.Syntax)
+			: Error(node.Syntax, "Float literal too large to fit any type", target);
+	}
+	
+	private static double ParseFloatValue(string text, FloatType type) => type == NativeSymbols.Float32
+		? float.Parse(text, CultureInfo.InvariantCulture)
+		: double.Parse(text, CultureInfo.InvariantCulture);
+	
+	private static bool FitsInFloat(string text, FloatType type) => double.IsFinite(ParseFloatValue(text, type));
+	
+	private static bool IsExactInFloat(BigInteger value, FloatType type)
+	{
+		var (significandBits, maxBitLength) = type == NativeSymbols.Float32 ? (24, 128) : (53, 1024);
+		var magnitude = BigInteger.Abs(value);
+		if (magnitude.IsZero)
+			return true;
+		
+		var significand = magnitude >> (int)BigInteger.TrailingZeroCount(magnitude);
+		return significand.GetBitLength() <= significandBits && magnitude.GetBitLength() <= maxBitLength;
 	}
 	
 	private ResolvedLiteralExpressionNode MaterializeNull(ResolvedLiteralExpressionNode node, PointerType target)
@@ -1566,6 +1609,14 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			case IntegerType type when CountBits(type) <= 64:
 				return arg;
 			
+			case FloatType { Kind: PrimitiveTypeKind.Float32 } type:
+				return new ResolvedConversionExpressionNode(arg,
+					_conversionTable.FindImplicit(type, NativeSymbols.Float64)!,
+					arg.Syntax);
+			
+			case FloatType { Kind: PrimitiveTypeKind.Float64 }:
+				return arg;
+			
 			case PointerType { PointerKind: PointerKind.Unsafe }:
 			case PrimitiveType { Kind: PrimitiveTypeKind.CStr }:
 				return arg;
@@ -1591,13 +1642,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		
 		if (arg.Type is UntypedType u)
 		{
-			// Special case for integer literals: If target type cannot store the value, conversion is impossible
-			if (target is IntegerType i && u is UntypedIntegerType && arg is ResolvedLiteralExpressionNode literal)
-			{
-				var value = (BigInteger)literal.Value!;
-				if (!FitsInType(value, i))
-					return (int.MaxValue, null);
-			}
+			// Special case for literals: If target type cannot store the value, conversion is impossible
+			if (arg is ResolvedLiteralExpressionNode literal && !LiteralFits(literal, target))
+				return (int.MaxValue, null);
 			
 			var cost = u.MaterializationCost(target, mode);
 			return (cost, null);
@@ -1606,6 +1653,14 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		var conversion = _conversionTable.FindImplicit(arg.Type, target);
 		return conversion is null ? (Cost: int.MaxValue, null) : (conversion.Cost, conversion);
 	}
+	
+	private bool LiteralFits(ResolvedLiteralExpressionNode literal, TypeSymbol target) => (literal.Type, target) switch
+	{
+		(UntypedIntegerType, IntegerType type) => FitsInType((BigInteger)literal.Value!, type),
+		(UntypedIntegerType, FloatType type) => IsExactInFloat((BigInteger)literal.Value!, type),
+		(UntypedFloatType, FloatType type) => FitsInFloat((string)literal.Value!, type),
+		_ => true
+	};
 	
 	private readonly record struct CallableResolution
 	(

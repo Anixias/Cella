@@ -17,6 +17,7 @@ public enum TokenType
 	
 	// Literals
 	IntegerLiteral,
+	FloatLiteral,
 	StringLiteral,
 	InterpolatedStringLiteral,
 	CharLiteral,
@@ -138,6 +139,7 @@ public static class TokenTypeInfo
 			[TokenType.BlockComment] = new("block comment", IsFiltered: true),
 			
 			[TokenType.IntegerLiteral] = new("integer literal", IsLiteral: true),
+			[TokenType.FloatLiteral] = new("float literal", IsLiteral: true),
 			[TokenType.StringLiteral] = new("string literal", IsLiteral: true),
 			[TokenType.InterpolatedStringLiteral] = new("interpolated string literal", IsLiteral: true),
 			[TokenType.CharLiteral] = new("char literal", IsLiteral: true),
