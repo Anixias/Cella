@@ -33,9 +33,7 @@ public abstract class BaseParser<T>(ImmutableArray<Token> tokens) : IParser<T>
 	protected bool Match(ref int index, out Token token, IReadOnlyDictionary<string, TokenType>? contextualTypes,
 		IReadOnlySet<TokenType> types)
 	{
-		token = Reinterpret(Tokens[index], contextualTypes);
-		
-		if (!types.Contains(token.Type))
+		if (!TryGetToken(index, contextualTypes, out token) || !types.Contains(token.Type))
 			return false;
 		
 		index++;
@@ -54,9 +52,7 @@ public abstract class BaseParser<T>(ImmutableArray<Token> tokens) : IParser<T>
 	protected bool Match(ref int index, out Token token, IReadOnlyDictionary<string, TokenType>? contextualTypes,
 		TokenType type)
 	{
-		token = Reinterpret(Tokens[index], contextualTypes);
-		
-		if (token.Type != type)
+		if (!TryGetToken(index, contextualTypes, out token) || token.Type != type)
 			return false;
 		
 		index++;
@@ -69,7 +65,7 @@ public abstract class BaseParser<T>(ImmutableArray<Token> tokens) : IParser<T>
 	protected void SkipUntil(ref int index, IReadOnlyDictionary<string, TokenType>? contextualTypes,
 		IReadOnlySet<TokenType> types)
 	{
-		while (index < Tokens.Length)
+		while (!AtEnd(index))
 		{
 			var token = Reinterpret(Tokens[index], contextualTypes);
 			
@@ -86,7 +82,7 @@ public abstract class BaseParser<T>(ImmutableArray<Token> tokens) : IParser<T>
 	
 	protected void SkipUntil(ref int index, IReadOnlyDictionary<string, TokenType>? contextualTypes, TokenType type)
 	{
-		while (index < Tokens.Length)
+		while (!AtEnd(index))
 		{
 			var token = Reinterpret(Tokens[index], contextualTypes);
 			
@@ -112,7 +108,8 @@ public abstract class BaseParser<T>(ImmutableArray<Token> tokens) : IParser<T>
 	protected bool Consume(ref int index, out Token token, IReadOnlyDictionary<string, TokenType>? contextualTypes,
 		IReadOnlySet<TokenType> syncTypes, IReadOnlySet<TokenType> types)
 	{
-		token = Reinterpret(Tokens[index], contextualTypes);
+		if (!TryGetToken(index, contextualTypes, out token))
+			return false;
 		
 		if (!types.Contains(token.Type))
 		{
@@ -137,7 +134,8 @@ public abstract class BaseParser<T>(ImmutableArray<Token> tokens) : IParser<T>
 	protected bool Consume(ref int index, out Token token, IReadOnlyDictionary<string, TokenType>? contextualTypes,
 		IReadOnlySet<TokenType> syncTypes, TokenType type)
 	{
-		token = Reinterpret(Tokens[index], contextualTypes);
+		if (!TryGetToken(index, contextualTypes, out token))
+			return false;
 		
 		if (token.Type != type)
 		{
@@ -146,6 +144,18 @@ public abstract class BaseParser<T>(ImmutableArray<Token> tokens) : IParser<T>
 		}
 		
 		index++;
+		return true;
+	}
+	
+	private bool TryGetToken(int index, IReadOnlyDictionary<string, TokenType>? contextualTypes, out Token token)
+	{
+		if (index < 0 || index >= Tokens.Length)
+		{
+			token = default;
+			return false;
+		}
+		
+		token = Reinterpret(Tokens[index], contextualTypes);
 		return true;
 	}
 	
