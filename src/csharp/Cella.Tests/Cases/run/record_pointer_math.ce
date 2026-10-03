@@ -7,6 +7,12 @@ Wide: rec
 	small: i16
 }
 
+Node: rec
+{
+	value: i32
+	next: ptr[Node]
+}
+
 main: fun -> i32
 {
 	var first = heap Wide
@@ -20,6 +26,14 @@ main: fun -> i32
 	var count: isize = 3
 	if fourth - first != count
 		ret 2
+
+	var head = heap Node
+	if head + 3 - head != count
+		ret 3
+
+	var slot = heap ptr[i32]
+	if slot + 3 - slot != count
+		ret 4
 
 	ret 0
 }

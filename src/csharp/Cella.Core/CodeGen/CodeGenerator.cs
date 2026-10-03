@@ -743,7 +743,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 		if (v.PointerType.BaseType == NativeSymbols.Void)
 			return byteDiff;
 		
-		var elementBits = _typePool.SizeTable.GetSize(v.PointerType.BaseType).CountBits(_pointerSize);
+		var elementBits = _typePool.SizeTable.GetSize(v.PointerType.BaseType).CountBits(_pointerSize * 8);
 		var elementBytes = (elementBits + 7) / 8;
 		
 		if (elementBytes == 0)
