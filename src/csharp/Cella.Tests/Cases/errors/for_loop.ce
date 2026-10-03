@@ -1,0 +1,16 @@
+mod test
+
+sum: fun(values: array[i32, 3]) -> i32
+{
+	var total = 0
+	for value in values
+	{
+		total += value
+	}
+	ret total
+}
+
+main: fun -> i32
+{
+	ret 0
+}

@@ -640,7 +640,8 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 	
 	private IStatementNode? ParseForStatement(ref int index, Token forToken, Token? labelToken = null)
 	{
-		throw new NotImplementedException();
+		Report(forToken, "'for' loops are not supported yet");
+		return null;
 	}
 	
 	private IStatementNode? ParseLoopStatement(ref int index, Token loopToken, Token? labelToken = null)

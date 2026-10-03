@@ -1,0 +1,9 @@
+
+====== for_loop.ce ======
+
+Error at line 6, column 2
+5 │ var total = 0
+6 │ for value in values
+    ╘═╛ 'for' loops are not supported yet
+
+[compilation failed]
