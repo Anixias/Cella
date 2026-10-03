@@ -42,6 +42,9 @@ public sealed class TypePool
 	public bool NeedsDrop(TypeSymbol type) => _needsDrop.GetValueOrDefault(type, false);
 	public bool TryGetNeedsDrop(TypeSymbol type, out bool result) => _needsDrop.TryGetValue(type, out result);
 	
+	public static IReadOnlyList<string> BuiltinGenericTypeNames { get; } =
+		["ptr", "mut", "imm", "own", "buffer", "span", "view", "array"];
+	
 	public TypeSymbol? ResolveBuiltinGenericType(string name, IReadOnlyList<IGenericArgument> typeArgs) => name switch
 	{
 		"ptr" when typeArgs.Count == 0 => NativeSymbols.VoidPtr,

@@ -1,0 +1,16 @@
+
+====== unknown_type.ce ======
+
+Error at line 11, column 10
+10 │ {
+11 │     origin: Pont
+                 ╘══╛ Type 'Pont' not found in this scope
+                    | Did you mean 'Point'?
+
+Error at line 14, column 20
+13 │ 
+14 │ scale: fun(amount: usise) -> i32 = 0
+                        ╘═══╛ Type 'usise' not found in this scope
+                            | Did you mean 'usize'?
+
+[compilation failed]

@@ -1,0 +1,19 @@
+mod test
+
+Point: rec
+{
+	x: i32
+	y: i32
+}
+
+Shape: rec
+{
+	origin: Pont
+}
+
+scale: fun(amount: usise) -> i32 = 0
+
+main: fun -> i32
+{
+	ret 0
+}

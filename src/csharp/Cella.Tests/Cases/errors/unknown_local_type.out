@@ -1,0 +1,27 @@
+
+====== unknown_local_type.ce ======
+
+Error at line 11, column 13
+10 │ var count = 3
+11 │ var point: Pont
+                ╘══╛ Type 'Pont' not found in this scope
+                   | Did you mean 'Point'?
+
+Error at line 12, column 12
+11 │ var point: Pont
+12 │ var flag: bol
+               ╘═╛ Type 'bol' not found in this scope
+                 | Did you mean 'bool'?
+
+Error at line 13, column 13
+12 │ var flag: bol
+13 │ var items: aray[i32, 3]
+                ╘══╛ Type 'aray' not found in this scope
+                   | Did you mean 'array'?
+
+Error at line 14, column 12
+13 │ var items: aray[i32, 3]
+14 │ var copy: count
+               ╘═══╛ 'count' is not a type
+
+[compilation failed]

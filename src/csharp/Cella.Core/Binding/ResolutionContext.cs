@@ -70,7 +70,7 @@ public readonly struct ResolutionContext
 	{
 		// TODO None of this will work with function overloads :(
 		
-		if (LocalScope is { } scope)
+		for (var scope = LocalScope; scope is not null; scope = scope.Parent)
 			foreach (var symbol in scope.Symbols)
 				yield return symbol;
 		
@@ -83,23 +83,57 @@ public readonly struct ResolutionContext
 			foreach (var child in type.Children.Values)
 				yield return child;
 		
-		foreach (var fileSet in File.Symbols.Values)
-			foreach (var fileSymbol in fileSet)
-				yield return fileSymbol;
+		foreach (var file in File.Module.Files)
+			foreach (var fileSet in file.Symbols.Values)
+				foreach (var fileSymbol in fileSet)
+					yield return fileSymbol;
 		
-		if (Imports is not { } imports)
-			yield break;
+		if (Imports is { } imports)
+			foreach (var import in imports.ImportedSymbols)
+				yield return import;
 		
-		foreach (var import in imports.ImportedSymbols)
-			yield return import;
+		foreach (var primitive in NativeSymbols.PrimitiveTypes)
+			yield return primitive;
 	}
 	
 	public TypeSymbol ResolveType(ITypeNode node) => node switch
 	{
-		IdentifierTypeNode n => Resolve(n.Token.Text) as TypeSymbol ?? NativeSymbols.Invalid, // TODO Diagnostics
+		IdentifierTypeNode n => ResolveNamedType(n.Token),
 		GenericTypeNode n => ResolveGenericType(n),
 		_ => NativeSymbols.Invalid
 	};
+	
+	private TypeSymbol ResolveNamedType(Token name)
+	{
+		switch (Resolve(name.Text))
+		{
+			case TypeSymbol type:
+				return type;
+			
+			case null:
+				ReportUndefinedType(name);
+				break;
+			
+			case AmbiguousSymbol:
+				Diagnostics.Add(new(DiagnosticSeverity.Error, name.SourceLocation, $"'{name.Text}' is ambiguous"));
+				break;
+			
+			default:
+				Diagnostics.Add(new(DiagnosticSeverity.Error, name.SourceLocation, $"'{name.Text}' is not a type"));
+				break;
+		}
+		
+		return NativeSymbols.Invalid;
+	}
+	
+	private void ReportUndefinedType(Token name) => Diagnostics.Add(
+		DiagnosticReporter.ReportUndefinedType(name.SourceLocation, name.Text, GetVisibleTypeNames()));
+	
+	private IEnumerable<string> GetVisibleTypeNames() => GetAllSymbols()
+		.OfType<TypeSymbol>()
+		.Select(static t => t.Name)
+		.Distinct()
+		.Order();
 	
 	private TypeSymbol ResolveTypeArgument(IGenericArgumentNode node) => node switch
 	{
@@ -120,8 +154,11 @@ public readonly struct ResolutionContext
 	private BigInteger? ResolveConstIntIdentifier(Token identifier)
 	{
 		// TODO Named constants
-		Diagnostics.Add(new(DiagnosticSeverity.Error, identifier.SourceLocation,
-			$"'{identifier.Text}' is not a type or an integer literal"));
+		if (Resolve(identifier.Text) is null)
+			ReportUndefinedType(identifier);
+		else
+			Diagnostics.Add(new(DiagnosticSeverity.Error, identifier.SourceLocation,
+				$"'{identifier.Text}' is not a type or an integer literal"));
 		
 		return null;
 	}
@@ -138,6 +175,15 @@ public readonly struct ResolutionContext
 	
 	private TypeSymbol ResolveGenericType(GenericTypeNode node)
 	{
+		var name = node.Identifier;
+		if (!TypePool.BuiltinGenericTypeNames.Contains(name.Text))
+		{
+			Diagnostics.Add(DiagnosticReporter.ReportUndefinedType(name.SourceLocation, name.Text,
+				TypePool.BuiltinGenericTypeNames));
+			
+			return NativeSymbols.Invalid;
+		}
+		
 		var typeArgs = new List<IGenericArgument>(node.Arguments.Length);
 		
 		foreach (var arg in node.Arguments)

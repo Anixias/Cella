@@ -47,9 +47,17 @@ public static class DiagnosticReporter
 	}
 	
 	public static Diagnostic ReportUndefinedSymbol(ISyntaxNode node, string missingName,
+		IEnumerable<string> availableNames) =>
+		ReportUndefined(node.SourceLocation, $"Symbol '{missingName}' not found in this scope", missingName,
+			availableNames);
+	
+	public static Diagnostic ReportUndefinedType(SourceLocation location, string missingName,
+		IEnumerable<string> availableNames) =>
+		ReportUndefined(location, $"Type '{missingName}' not found in this scope", missingName, availableNames);
+	
+	private static Diagnostic ReportUndefined(SourceLocation location, string message, string missingName,
 		IEnumerable<string> availableNames)
 	{
-		var message = $"Symbol '{missingName}' not found in this scope";
 		var hints = new List<string>();
 		
 		string? bestMatch = null;
@@ -87,7 +95,7 @@ public static class DiagnosticReporter
 			hints.Add($"Did you mean '{bestMatch}'?");
 		}
 		
-		return new Diagnostic(DiagnosticSeverity.Error, node.SourceLocation, message)
+		return new Diagnostic(DiagnosticSeverity.Error, location, message)
 		{
 			Hints = hints.ToImmutableArray()
 		};

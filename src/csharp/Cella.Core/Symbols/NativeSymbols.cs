@@ -84,6 +84,7 @@ public static class NativeSymbols
 	];
 	
 	public static Symbol? Resolve(string name) => _primitiveTypes.GetValueOrDefault(name);
+	public static IEnumerable<TypeSymbol> PrimitiveTypes => _primitiveTypes.Values;
 }
 
 public readonly record struct StrValue(ulong Length, byte[] Bytes);

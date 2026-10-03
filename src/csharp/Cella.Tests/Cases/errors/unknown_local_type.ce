@@ -1,0 +1,16 @@
+mod test
+
+Point: rec
+{
+	x: i32
+}
+
+main: fun -> i32
+{
+	var count = 3
+	var point: Pont
+	var flag: bol
+	var items: aray[i32, 3]
+	var copy: count
+	ret 0
+}
