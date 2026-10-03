@@ -33,7 +33,10 @@ public sealed class WindowsMsvcToolchain(string root) : Toolchain(root)
 		args.AddRange(request.InputFiles);
 		
 		if (request.OutputType is ProjectOutputType.Executable or ProjectOutputType.SharedLibrary)
+		{
 			args.Add(request.LinkPreference == SystemLinkPreference.Static ? "libcmt.lib" : "msvcrt.lib");
+			args.Add("legacy_stdio_definitions.lib");
+		}
 		
 		args.AddRange(request.LibFiles.Distinct());
 		
