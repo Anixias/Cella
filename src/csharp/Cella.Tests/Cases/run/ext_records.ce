@@ -1,0 +1,64 @@
+mod test
+
+ext
+{
+	div: fun(numerator: i32, denominator: i32) -> Quotient
+	lldiv: fun(numerator: i64, denominator: i64) -> WideQuotient
+	printf: fun(format: cstr, ...) -> i32
+}
+
+ext("user32")
+{
+	PtInRect: fun(rect: Rect, point: Point) -> i32
+}
+
+Quotient: rec
+{
+	quot: i32
+	rem: i32
+}
+
+WideQuotient: rec
+{
+	quot: i64
+	rem: i64
+}
+
+Point: rec
+{
+	x: i32
+	y: i32
+}
+
+Rect: rec
+{
+	left: i32
+	top: i32
+	right: i32
+	bottom: i32
+}
+
+main: fun -> i32
+{
+	var small = div(17, 5)
+	var wide = lldiv(5000000000, 3)
+
+	var bounds: Rect
+	bounds.left = 10
+	bounds.top = 10
+	bounds.right = 20
+	bounds.bottom = 20
+
+	var inside: Point
+	inside.x = 15
+	inside.y = 15
+
+	var outside: Point
+	outside.x = 25
+	outside.y = 15
+
+	var hit = PtInRect(bounds, inside)
+	var miss = PtInRect(bounds, outside)
+	printf("%d %d %lld %lld %d %d\n", small.quot, small.rem, wide.quot, wide.rem, hit, miss)
+	ret 0
+}
