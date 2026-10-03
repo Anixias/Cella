@@ -1,0 +1,19 @@
+
+====== assign_to_call_result.ce ======
+
+Error at line 22, column 2
+21 │ {
+22 │     make().x = 1
+         ╘══════╛ Assignment target must be addressable
+
+Error at line 23, column 2
+22 │ make().x = 1
+23 │ numbers()[0] = 2
+     ╘══════════╛ Assignment target must be addressable
+
+Error at line 24, column 17
+23 │ numbers()[0] = 2
+24 │ var address = @make().x
+                    ╘══════╛ Cannot take the address of an unstored value
+
+[compilation failed]

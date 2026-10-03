@@ -919,8 +919,10 @@ public sealed unsafe class CodeGenerator : IDisposable
 	private bool IsAddressable(Value value) => value switch
 	{
 		VariableValue => true,
-		IndexerValue => true,
-		AccessValue => true,
+		IndexerValue { Target.Type: SpanType or ViewType } => true,
+		IndexerValue v => IsAddressable(v.Target),
+		AccessValue v => IsAddressable(v.Target),
+		UnaryOpValue { Op: UnaryOperation.Dereference } => true,
 		_ => false
 	};
 	
@@ -1040,7 +1042,6 @@ public sealed unsafe class CodeGenerator : IDisposable
 	
 	private (LLVMValueRef Ptr, LLVMTypeRef ElemType) EmitIndexerAddress(IndexerValue v, LLVMBuilderRef builder)
 	{
-		var index = EmitValue(v.Index, builder);
 		var elemType = MapTypeSymbol(v.Type);
 		
 		// TODO Switch to BuildInBoundsGEP2 once compiler-generated bounds checks are implemented
@@ -1049,6 +1050,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 			case SpanType:
 			{
 				var target = EmitValue(v.Target, builder);
+				var index = EmitValue(v.Index, builder);
 				var dataPtr = builder.BuildExtractValue(target, 1, "dataptr");
 				var elemPtr = builder.BuildGEP2(elemType, dataPtr, new[] { index }, "elemptr");
 				return (elemPtr, elemType);
@@ -1057,6 +1059,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 			case ViewType:
 			{
 				var target = EmitValue(v.Target, builder);
+				var index = EmitValue(v.Index, builder);
 				var dataPtr = builder.BuildExtractValue(target, 1, "dataptr");
 				var elemPtr = builder.BuildGEP2(elemType, dataPtr, new[] { index }, "elemptr");
 				return (elemPtr, elemType);
@@ -1064,8 +1067,19 @@ public sealed unsafe class CodeGenerator : IDisposable
 			
 			case ArrayType a:
 			{
-				var arrayPtr = EmitAddress(v.Target, builder);
 				var arrayType = MapTypeSymbol(a);
+				LLVMValueRef arrayPtr;
+				if (IsAddressable(v.Target))
+				{
+					arrayPtr = EmitAddress(v.Target, builder);
+				}
+				else
+				{
+					arrayPtr = BuildEntryAlloca(builder, arrayType, "array");
+					builder.BuildStore(EmitValue(v.Target, builder), arrayPtr);
+				}
+				
+				var index = EmitValue(v.Index, builder);
 				var zero = LLVMValueRef.CreateConstInt(LLVMTypeRef.Int32, 0);
 				var elemPtr = builder.BuildGEP2(arrayType, arrayPtr, new[] { zero, index }, "elemptr");
 				return (elemPtr, elemType);

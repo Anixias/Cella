@@ -301,7 +301,7 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 		else
 			node = ParseLiteral(ref index);
 		
-		return IsNextNewline(index) ? node : ParsePostfix(ref index, node);
+		return ParsePostfix(ref index, node);
 	}
 	
 	private UndefExpressionNode ParseUndef(ref int index, Token token)
@@ -370,27 +370,15 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 			}
 			
 			// Call Expression
-			if (Match(ref index, TokenType.OpOpenParen))
+			if (!IsNextNewline(index) && Match(ref index, TokenType.OpOpenParen))
 			{
-				if (IsNextNewline(index))
-				{
-					index = startIndex;
-					break;
-				}
-				
 				target = ParseCallExpression(ref index, target);
 				continue;
 			}
 			
 			// Indexer Expression
-			if (Match(ref index, TokenType.OpOpenBracket))
+			if (!IsNextNewline(index) && Match(ref index, TokenType.OpOpenBracket))
 			{
-				if (IsNextNewline(index))
-				{
-					index = startIndex;
-					break;
-				}
-				
 				target = ParseIndexerExpression(ref index, target);
 				continue;
 			}

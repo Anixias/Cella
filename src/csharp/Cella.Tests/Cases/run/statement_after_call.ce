@@ -1,0 +1,29 @@
+mod test
+
+Point: rec
+{
+	x: i32
+	y: i32
+}
+
+twice: fun(value: i32) -> i32
+{
+	ret value * 2
+}
+
+main: fun -> i32
+{
+	var point: Point
+	var p = @point
+	var values: array[i32, 2]
+	values[1] = 5
+
+	var doubled = twice(10)
+	(*p).x = doubled
+	var picked = values[1]
+	(*p).y = picked
+	var copied = point.x
+	(*p).x = copied + 1
+
+	ret (*p).x + (*p).y
+}

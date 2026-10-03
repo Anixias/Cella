@@ -1,0 +1,56 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Inner: rec
+{
+	value: i32
+}
+
+Outer: rec
+{
+	inner: Inner
+	count: i32
+	values: array[i32, 3]
+}
+
+make: fun -> Outer
+{
+	var outer: Outer
+	outer.inner.value = 20
+	outer.count = 2
+	outer.values[2] = 5
+	ret outer
+}
+
+numbers: fun -> array[i32, 3]
+{
+	var values: array[i32, 3]
+	values[1] = 9
+	ret values
+}
+
+add: fun(first: i32, second: i32) -> i32
+{
+	ret first + second
+}
+
+count: fun -> i32
+{
+	ret make().count
+}
+
+main: fun -> i32
+{
+	var value: i32 = make().inner.value
+	var element: i32 = numbers()[1]
+	var nested = make().values[2]
+	var size: usize = sizeOf(make())
+	var sum = add(make().count, numbers()[1])
+
+	printf("%d %d %d %d %d %d\n", value, element, nested, i32(size), sum, count())
+	ret 0
+}

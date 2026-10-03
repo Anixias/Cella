@@ -1,0 +1,18 @@
+mod test
+
+add: fun(first: i32, second: i32) -> i32
+{
+	ret first + second
+}
+
+main: fun -> i32
+{
+	var total = add(
+		add(10, 20),
+		12)
+
+	ret add(
+		total,
+		0
+	)
+}

@@ -1,0 +1,26 @@
+mod test
+
+Point: rec
+{
+	x: i32
+}
+
+make: fun -> Point
+{
+	var point: Point
+	ret point
+}
+
+numbers: fun -> array[i32, 2]
+{
+	var values: array[i32, 2]
+	ret values
+}
+
+main: fun -> i32
+{
+	make().x = 1
+	numbers()[0] = 2
+	var address = @make().x
+	ret 0
+}

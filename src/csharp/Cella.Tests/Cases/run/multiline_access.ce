@@ -1,0 +1,34 @@
+mod test
+
+Inner: rec
+{
+	value: i32
+}
+
+Outer: rec
+{
+	inner: Inner
+	count: i32
+}
+
+make: fun -> Outer
+{
+	var outer: Outer
+	outer.inner.value = 20
+	outer.count = 2
+	ret outer
+}
+
+main: fun -> i32
+{
+	var outer = make()
+	var first = outer
+		.inner
+		.value
+	var second = outer.inner
+		.value
+	var third = make()
+		.count
+
+	ret first + second + third
+}

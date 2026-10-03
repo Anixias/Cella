@@ -73,15 +73,14 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	private IResolvedStatementNode VisitNode(IStatementNode node) =>
 		((IStatementNodeVisitor<IResolvedStatementNode>)this).Visit(node);
 	
-	private IResolvedExpressionNode VisitNode(IExpressionNode node) =>
-		((IExpressionNodeVisitor<IResolvedExpressionNode>)this).Visit(node);
+	private IResolvedExpressionNode VisitNode(IExpressionNode node) => VisitNode(node, null);
 	
 	private IResolvedExpressionNode VisitNode(IExpressionNode node, TypeSymbol? targetType)
 	{
 		_targetTypes.Push(targetType);
 		try
 		{
-			var result = VisitNode(node);
+			var result = ((IExpressionNodeVisitor<IResolvedExpressionNode>)this).Visit(node);
 			return targetType is null
 				? result
 				: CoerceToType(result, targetType);

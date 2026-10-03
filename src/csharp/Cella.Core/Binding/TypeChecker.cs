@@ -199,8 +199,9 @@ public sealed class TypeChecker : IResolvedStatementNodeVisitor, IResolvedDeclar
 	private bool IsLValue(IResolvedExpressionNode expression) => expression switch
 	{
 		ResolvedVarExpressionNode => true,
-		ResolvedAccessExpressionNode => true,
-		ResolvedIndexerExpressionNode => true,
+		ResolvedAccessExpressionNode e => IsLValue(e.Target),
+		ResolvedIndexerExpressionNode { Target.Type: SpanType or ViewType } => true,
+		ResolvedIndexerExpressionNode e => IsLValue(e.Target),
 		ResolvedUnaryOpExpressionNode { Operation.Op: TokenType.OpStar } => true,
 		_ => false
 	};

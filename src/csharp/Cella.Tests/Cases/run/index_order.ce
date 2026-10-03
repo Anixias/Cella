@@ -1,0 +1,36 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+numbers: fun -> array[i32, 2]
+{
+	printf("numbers\n")
+	var values: array[i32, 2]
+	values[1] = 7
+	ret values
+}
+
+row: fun -> usize
+{
+	printf("row\n")
+	ret 1
+}
+
+column: fun -> usize
+{
+	printf("column\n")
+	ret 0
+}
+
+main: fun -> i32
+{
+	var grid: array[array[i32, 2], 2]
+	grid[1][0] = 5
+
+	var cell = grid[row()][column()]
+	var element = numbers()[row()]
+	ret cell + element
+}
