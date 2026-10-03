@@ -88,14 +88,20 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 			}
 			
 			// Parse external declarations
-			if (Match(ref index, _topLevelContextualKeywords, TokenType.KeywordExt))
+			var externalStart = index;
+			if (Match(ref index, out var extToken, _topLevelContextualKeywords, TokenType.KeywordExt))
 			{
 				importsAllowed = false;
-				declarations.AddRange(ParseExternalDeclarations(ref index).Where(static ed => ed is not null)!);
+				if (ParseDeclaration(ref index, extToken, "external", ParseExternalDeclarations) is { } externals)
+					declarations.AddRange(externals);
+				else
+					SkipDeclaration(ref index, externalStart);
+				
 				continue;
 			}
 			
 			// Parse top-level declarations
+			var declarationStart = index;
 			if (Match(ref index, out var identifier, _topLevelContextualKeywords, TokenType.Identifier))
 			{
 				// TODO Type parameters
@@ -113,9 +119,12 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 				// Record
 				if (Match(ref index, _topLevelContextualKeywords, TokenType.KeywordRec))
 				{
-					if (ParseRecord(ref index, identifier, modifiers) is not { } record)
+					var record = ParseDeclaration(ref index, identifier, "record",
+						(ref int i) => ParseRecord(ref i, identifier, modifiers));
+					
+					if (record is null)
 					{
-						ResyncTopLevel(ref index);
+						SkipDeclaration(ref index, declarationStart);
 						continue;
 					}
 					
@@ -126,9 +135,12 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 				// Function
 				if (Match(ref index, _topLevelContextualKeywords, TokenType.KeywordFun))
 				{
-					if (ParseFunction(ref index, identifier, modifiers) is not { } function)
+					var function = ParseDeclaration(ref index, identifier, "function",
+						(ref int i) => ParseFunction(ref i, identifier, modifiers));
+					
+					if (function is null)
 					{
-						ResyncTopLevel(ref index);
+						SkipDeclaration(ref index, declarationStart);
 						continue;
 					}
 					
@@ -138,7 +150,9 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 				
 				// Unknown declaration
 				Report(Tokens[index], "Unknown declaration type");
-				index++;
+				if (!AtEnd(index))
+					index++;
+				
 				ResyncTopLevel(ref index);
 				continue;
 			}
@@ -178,6 +192,30 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 		};
 	}
 	
+	private delegate T? DeclarationParser<T>(ref int index) where T : class;
+	
+	private T? ParseDeclaration<T>(ref int index, Token start, string kind, DeclarationParser<T> parse)
+		where T : class
+	{
+		var errorCount = Diagnostics.ErrorCount;
+		T? declaration;
+		
+		try
+		{
+			declaration = parse(ref index);
+		}
+		catch (InvalidOperationException)
+		{
+			Report(Tokens[index], "Unexpected token");
+			declaration = null;
+		}
+		
+		if (declaration is null && Diagnostics.ErrorCount == errorCount)
+			Report(start, $"Invalid {kind} declaration");
+		
+		return declaration;
+	}
+	
 	private List<Token> ParseDeclarationModifiers(ref int index)
 	{
 		var modifiers = new List<Token>();
@@ -188,7 +226,7 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 		return modifiers;
 	}
 	
-	private List<IDeclarationNode?> ParseExternalDeclarations(ref int index)
+	private List<IDeclarationNode>? ParseExternalDeclarations(ref int index)
 	{
 		// 'ext' token already consumed by caller
 		
@@ -199,28 +237,34 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 		if (Match(ref index, TokenType.OpOpenParen))
 		{
 			if (!Match(ref index, out var str, TokenType.StringLiteral))
-				return [];
+				return null;
 			
 			origin = str.Text;
 			
 			if (!Match(ref index, TokenType.OpCloseParen))
-				return [];
+				return null;
 		}
 		else
 			origin = null;
 		
-		if (!Match(ref index, TokenType.OpOpenBrace))
-			return [ParseExternalDeclaration(ref index, origin)];
+		if (!Match(ref index, out var openBrace, TokenType.OpOpenBrace))
+			return ParseExternalDeclaration(ref index, origin) is { } single ? [single] : null;
 		
-		var nodes = new List<IDeclarationNode?>();
+		var nodes = new List<IDeclarationNode>();
 		while (!Match(ref index, TokenType.OpCloseBrace))
 		{
+			if (AtEnd(index))
+			{
+				Report(openBrace, "Expected '}' to close this block");
+				return null;
+			}
+			
 			if (ParseExternalDeclaration(ref index, origin) is not { } ext)
 			{
 				// TODO Diagnostics
-				nodes.Add(null);
 				SkipUntil(ref index, TokenType.OpCloseBrace);
-				break;
+				SkipIf(ref index, TokenType.OpCloseBrace);
+				return null;
 			}
 			
 			nodes.Add(ext);
@@ -436,21 +480,24 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 		// Caller is expected to resync in case of errors
 		
 		// Empty record
-		if (!Match(ref index, TokenType.OpOpenBrace))
+		if (!Match(ref index, out var openBrace, TokenType.OpOpenBrace))
 			return new(identifier, modifiers, []);
 		
 		var members = new List<IDeclarationNode>();
 		while (!Match(ref index, TokenType.OpCloseBrace))
 		{
+			if (AtEnd(index))
+			{
+				Report(openBrace, "Expected '}' to close this block");
+				return null;
+			}
+			
 			// TODO Diagnostics
 			if (ParseMember(ref index) is not { } member)
 			{
 				ResyncSimple(ref index);
 				return null;
 			}
-			
-			if (AtEnd(index))
-				return null;
 			
 			members.Add(member);
 		}
@@ -521,14 +568,17 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 		Token close;
 		while (!Match(ref index, out close, TokenType.OpCloseBrace))
 		{
+			if (AtEnd(index))
+			{
+				Report(open, "Expected '}' to close this block");
+				return null;
+			}
+			
 			if (ParseStatement(ref index) is not { } statement)
 			{
 				ResyncSimple(ref index);
 				return null;
 			}
-			
-			if (AtEnd(index))
-				return null;
 			
 			statements.Add(statement);
 		}
@@ -676,7 +726,10 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 		
 		// TODO Attempt resync 
 		if (!Match(ref index, out var identifier, TokenType.Identifier))
+		{
+			Report(Tokens[index], "Expected a name after 'var'");
 			return null;
+		}
 		
 		var type = Match(ref index, TokenType.OpColon) ? ParseType(ref index) : null;
 		
@@ -786,6 +839,30 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 					break;
 			}
 		}
+	}
+	
+	private void SkipDeclaration(ref int index, int start)
+	{
+		var braceCount = 0;
+		for (var i = start; !AtEnd(i); i++)
+		{
+			switch (Tokens[i].Type)
+			{
+				case TokenType.OpOpenBrace:
+					braceCount++;
+					break;
+				
+				case TokenType.OpCloseBrace:
+					braceCount--;
+					if (braceCount > 0)
+						break;
+					
+					index = i + 1;
+					return;
+			}
+		}
+		
+		ResyncTopLevel(ref index);
 	}
 	
 	private void ResyncSimple(ref int index)
