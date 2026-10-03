@@ -1,0 +1,9 @@
+
+====== missing_paren.ce ======
+
+Error at line 6, column 2
+5 │ var x = (1 + 2
+6 │ ret x
+    ╘═╛ Unexpected token
+
+[compilation failed]

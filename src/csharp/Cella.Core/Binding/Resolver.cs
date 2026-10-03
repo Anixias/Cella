@@ -588,6 +588,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			return Error(node, diagnostic, CurrentTargetType);
 		}
 		
+		if (node.Token.Type == TokenType.InvalidCharLiteral)
+			return Error(node, "Invalid character literal", CurrentTargetType);
+		
 		var valueSpan = node.Token.AsSpan();
 		
 		TypeSymbol? type = null;
@@ -1054,8 +1057,11 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		return (null, null);
 	}
 	
-	private (TypeSymbol type, uint value) ParseChar(ReadOnlySpan<char> span) =>
-		(NativeSymbols.Char, span[0]);
+	private (TypeSymbol type, uint value) ParseChar(ReadOnlySpan<char> span)
+	{
+		Rune.DecodeFromUtf16(span, out var rune, out _);
+		return (NativeSymbols.Char, (uint)rune.Value);
+	}
 	
 	private (TypeSymbol type, object? value) ParseNull() =>
 		(NativeSymbols.UntypedNull, null);

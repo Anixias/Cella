@@ -260,6 +260,7 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 			if (!Match(ref index, TokenType.OpCloseParen))
 			{
 				// TODO Diagnostics
+				throw new InvalidOperationException();
 			}
 		}
 		else if (Match(ref index, out var openBracket, TokenType.OpOpenBracket))

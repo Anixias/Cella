@@ -1,4 +1,5 @@
-﻿using System.Collections;
+﻿using System.Buffers;
+using System.Collections;
 using System.Globalization;
 using System.Text;
 
@@ -467,7 +468,7 @@ public class Scanner : IScanner
 		}
 		
 		var value = UnescapeString(Source.GetText(new TextRange(position + 1, end - 1)));
-		if (value.Result.Length != 1 || !value.IsValid)
+		if (!value.IsValid || !IsSingleRune(value.Result))
 		{
 			var invalidToken = new Token(TokenType.InvalidCharLiteral, Source, new TextRange(position, end));
 			return new ScanResult(invalidToken, end);
@@ -476,6 +477,9 @@ public class Scanner : IScanner
 		var token = new Token(TokenType.CharLiteral, Source, new TextRange(position, end), value.Result);
 		return new ScanResult(token, end);
 	}
+	
+	private static bool IsSingleRune(string text) =>
+		Rune.DecodeFromUtf16(text, out _, out var length) == OperationStatus.Done && length == text.Length;
 	
 	/*private ScanResult? TryScanComment(int position)
 	{

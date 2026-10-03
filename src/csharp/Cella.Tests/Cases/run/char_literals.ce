@@ -1,0 +1,14 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+main: fun -> i32
+{
+	printf("%d %d %d\n", 'a', 'é', '😀')
+	printf("%d %d %d\n", '\n', '\\', '\'')
+	printf("%d %d\n", 'é', '\U0001F600')
+	ret 0
+}

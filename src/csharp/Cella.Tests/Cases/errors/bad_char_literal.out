@@ -1,0 +1,24 @@
+
+====== bad_char_literal.ce ======
+
+Error at line 5, column 14
+4 │ {
+5 │     var empty = ''
+                    ╘╛ Invalid character literal
+
+Error at line 6, column 22
+5 │ var empty = ''
+6 │ var twoCharacters = 'ab'
+                        ╘══╛ Invalid character literal
+
+Error at line 7, column 18
+6 │ var twoCharacters = 'ab'
+7 │ var badEscape = '\q'
+                    ╘══╛ Invalid character literal
+
+Error at line 8, column 21
+7 │ var badEscape = '\q'
+8 │ var unterminated = 'a
+                       ╘╛ Invalid character literal
+
+[compilation failed]

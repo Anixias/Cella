@@ -1,0 +1,10 @@
+mod test
+
+main: fun -> i32
+{
+	var empty = ''
+	var twoCharacters = 'ab'
+	var badEscape = '\q'
+	var unterminated = 'a
+	ret 0
+}
