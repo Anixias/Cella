@@ -1,0 +1,51 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+main: fun -> i32
+{
+	var value = 100
+	value += 5
+	value -= 10
+	value *= 3
+	value /= 4
+	value %= 50
+
+	var bits: u8 = 0b1100
+	bits &= 0b1010
+	bits |= 0b0001
+	bits ^= 0b1111
+	bits <<= 2
+	bits >>= 1
+	bits <<<= 5
+	bits >>>= 1
+
+	var flag = true
+	flag &= false
+	flag |= true
+	flag ^= true
+	printf("%d %d %d\n", value, bits, flag)
+
+	var total: u32 = 0
+	var factor: u8 = 200
+	total += factor * factor
+	var letter = 'a'
+	letter += 1
+	printf("%u %c\n", total, letter)
+
+	var values = [10, 20, 30, 40]
+	var p = @values[0]
+	p += 2
+	var third = *p
+	p -= 1
+	var second = *p
+	var step: isize = 2
+	p += step
+	*p += 5
+	values[0] *= 2
+	printf("%d %d %d %d\n", third, second, values[3], values[0])
+	ret 0
+}

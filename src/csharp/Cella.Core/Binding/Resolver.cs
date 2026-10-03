@@ -930,11 +930,11 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		if (isAssignment)
 		{
 			var left = VisitNode(node.Left, null);
-			if (IsShiftOrRotate(op.Type))
-				return ResolveShiftAssignment(node, left);
+			if (op.Type != TokenType.OpEqual)
+				return ResolveCompoundAssignment(node, MaterializeAsDefault(left));
 			
 			var right = VisitNode(node.Right, left.Type);
-			return new ResolvedAssignmentExpressionNode(left.Type, left, op, right, node);
+			return new ResolvedAssignmentExpressionNode(left.Type, left, op, right, null, node);
 		}
 		else
 		{
@@ -986,28 +986,32 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		}
 	}
 	
-	private IResolvedExpressionNode ResolveShiftAssignment(BinaryOpExpressionNode node, IResolvedExpressionNode left)
+	private IResolvedExpressionNode ResolveCompoundAssignment(BinaryOpExpressionNode node, IResolvedExpressionNode left)
 	{
-		var right = VisitNode(node.Right, null);
+		var candidates = _operatorRegistry.GetBinaryCandidates(node.Op.Type)
+			.Where(candidate => candidate.ReturnType == left.Type && candidate.ParameterTypes[0] == left.Type)
+			.ToList();
+		
+		var rightTypes = candidates.Select(static candidate => candidate.ParameterTypes[1]).Distinct().ToList();
+		var right = VisitNode(node.Right, rightTypes.Count == 1 ? rightTypes[0] : null);
 		if (AnyInvalid(left, right))
 			return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
 		
-		left = MaterializeAsDefault(left);
 		var args = new[] { left, right };
-		var candidates = _operatorRegistry.GetBinaryCandidates(node.Op.Type);
-		var resolutionSet = ResolveCallable(candidates, args, MaterializationMode.Overload, left.Type);
-		
+		var resolutionSet = ResolveCallable(candidates, args, MaterializationMode.Overload);
 		if (resolutionSet.Count != 1)
 		{
 			var diagnostic = DiagnosticReporter.ReportBinaryOpMismatch(_operatorRegistry, left, node.Op, right);
 			return Error(node, diagnostic, CurrentTargetType);
 		}
 		
-		var amount = ApplyArgumentResolution(args, resolutionSet[0])[1];
-		if (FindShiftRangeError(node, left.Type, amount) is { } rangeError)
+		var resolution = resolutionSet[0];
+		var resolvedRight = ApplyArgumentResolution(args, resolution)[1];
+		if (FindShiftRangeError(node, left.Type, resolvedRight) is { } rangeError)
 			return Error(node, rangeError, CurrentTargetType);
 		
-		return new ResolvedAssignmentExpressionNode(left.Type, left, node.Op, amount, node);
+		var operation = (OperationImpl)resolution.Callable;
+		return new ResolvedAssignmentExpressionNode(left.Type, left, node.Op, resolvedRight, operation, node);
 	}
 	
 	public IResolvedExpressionNode Visit(ChainedExpressionNode node)

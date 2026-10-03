@@ -1,4 +1,5 @@
-﻿using Cella.Core.Symbols;
+﻿using Cella.Core.Binding.Operations;
+using Cella.Core.Symbols;
 using Cella.Core.Syntax.Nodes;
 using Cella.Core.Text;
 
@@ -10,6 +11,7 @@ public sealed class ResolvedAssignmentExpressionNode
 	IResolvedExpressionNode left,
 	Token op,
 	IResolvedExpressionNode right,
+	OperationImpl? operation,
 	IExpressionNode syntax
 ) : IResolvedExpressionNode
 {
@@ -19,4 +21,5 @@ public sealed class ResolvedAssignmentExpressionNode
 	public IResolvedExpressionNode Left { get; } = left;
 	public Token Op { get; } = op;
 	public IResolvedExpressionNode Right { get; } = right;
+	public OperationImpl? Operation { get; } = operation;
 }

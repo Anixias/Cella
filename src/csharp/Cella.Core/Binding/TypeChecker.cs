@@ -263,10 +263,7 @@ public sealed class TypeChecker : IResolvedStatementNodeVisitor, IResolvedDeclar
 		
 		var expected = node.Left.Type;
 		var actual = node.Right.Type;
-		var isShiftOrRotate = node.Op.Type is TokenType.OpLessLessEqual or TokenType.OpGreaterGreaterEqual
-			or TokenType.OpLessLessLessEqual or TokenType.OpGreaterGreaterGreaterEqual;
-		
-		if (!isShiftOrRotate && !AreTypesCompatible(expected, actual))
+		if (node.Operation is null && !AreTypesCompatible(expected, actual))
 			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Right.Syntax.SourceLocation,
 				$"Cannot assign source type '{actual.Name}' to target type '{expected.Name}'"));
 		

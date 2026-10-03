@@ -367,6 +367,7 @@ public sealed class Lowerer : IResolvedDeclarationNodeVisitor
 				PrimitiveTypeKind.UInt32 => new(type, (uint)v),
 				PrimitiveTypeKind.UInt64 => new(type, (ulong)v),
 				PrimitiveTypeKind.UInt128 => new(type, (UInt128)v),
+				PrimitiveTypeKind.Char => new(type, (uint)v),
 				_ => new(type, v)
 			};
 		}
@@ -544,11 +545,12 @@ public sealed class Lowerer : IResolvedDeclarationNodeVisitor
 			var left = VisitNode(node.Left);
 			
 			// Need to stabilize the left side first so compound assignments don't double-evaluate
-			if (node.Op.Type != TokenType.OpEqual)
+			if (node.Operation is not null)
 				left = StabilizeStorage(left);
 			
 			var right = VisitNode(node.Right);
-			return LowerAssignment(left, node.Op, right, node.Type);
+			var value = node.Operation is null ? right : LowerBinOp(left, node.Operation, right);
+			return new AssignValue(node.Type, left, value, node.Op.SourceLocation);
 		}
 		
 		public Value Visit(ResolvedChainedExpressionNode node)
@@ -636,36 +638,6 @@ public sealed class Lowerer : IResolvedDeclarationNodeVisitor
 			currentBlock = null;
 		}
 		
-		private static AssignValue LowerAssignment(Value left, Token op, Value right, TypeSymbol type) => op.Type switch
-		{
-			TokenType.OpEqual => new AssignValue(type, left, right, op.SourceLocation),
-			TokenType.OpPlusEqual => new AssignValue(type, left, new BinOpValue(type, left, right,
-				BinaryOperation.Addition, op.SourceLocation), op.SourceLocation),
-			TokenType.OpMinusEqual => new AssignValue(type, left, new BinOpValue(type, left, right,
-				BinaryOperation.Subtraction, op.SourceLocation), op.SourceLocation),
-			TokenType.OpStarEqual => new AssignValue(type, left, new BinOpValue(type, left, right,
-				BinaryOperation.Multiplication, op.SourceLocation), op.SourceLocation),
-			TokenType.OpSlashEqual => new AssignValue(type, left, new BinOpValue(type, left, right,
-				BinaryOperation.Division, op.SourceLocation), op.SourceLocation),
-			TokenType.OpPercentEqual => new AssignValue(type, left, new BinOpValue(type, left, right,
-				BinaryOperation.Modulo, op.SourceLocation), op.SourceLocation),
-			TokenType.OpAmpersandEqual => new AssignValue(type, left, new BinOpValue(type, left, right,
-				BinaryOperation.BitwiseAnd, op.SourceLocation), op.SourceLocation),
-			TokenType.OpBarEqual => new AssignValue(type, left, new BinOpValue(type, left, right,
-				BinaryOperation.BitwiseOr, op.SourceLocation), op.SourceLocation),
-			TokenType.OpHatEqual => new AssignValue(type, left, new BinOpValue(type, left, right,
-				BinaryOperation.BitwiseXor, op.SourceLocation), op.SourceLocation),
-			TokenType.OpLessLessEqual => new AssignValue(type, left, new BinOpValue(type, left, right,
-				BinaryOperation.ShiftLeft, op.SourceLocation), op.SourceLocation),
-			TokenType.OpGreaterGreaterEqual => new AssignValue(type, left, new BinOpValue(type, left, right,
-				BinaryOperation.ShiftRight, op.SourceLocation), op.SourceLocation),
-			TokenType.OpLessLessLessEqual => new AssignValue(type, left, new BinOpValue(type, left, right,
-				BinaryOperation.RotateLeft, op.SourceLocation), op.SourceLocation),
-			TokenType.OpGreaterGreaterGreaterEqual => new AssignValue(type, left, new BinOpValue(type, left, right,
-				BinaryOperation.RotateRight, op.SourceLocation), op.SourceLocation),
-			_ => throw new InvalidOperationException()
-		};
-		
 		private static Value LowerBinOp(Value left, OperationImpl? op, Value right) => op switch
 		{
 			NativeImpl i => new BinOpValue(i.ReturnType, left, right, MapBinOp(i.Op),
@@ -707,24 +679,24 @@ public sealed class Lowerer : IResolvedDeclarationNodeVisitor
 		
 		private static BinaryOperation MapBinOp(TokenType op) => op switch
 		{
-			TokenType.OpPlus => BinaryOperation.Addition,
-			TokenType.OpMinus => BinaryOperation.Subtraction,
-			TokenType.OpStar => BinaryOperation.Multiplication,
-			TokenType.OpSlash => BinaryOperation.Division,
-			TokenType.OpPercent => BinaryOperation.Modulo,
+			TokenType.OpPlus or TokenType.OpPlusEqual => BinaryOperation.Addition,
+			TokenType.OpMinus or TokenType.OpMinusEqual => BinaryOperation.Subtraction,
+			TokenType.OpStar or TokenType.OpStarEqual => BinaryOperation.Multiplication,
+			TokenType.OpSlash or TokenType.OpSlashEqual => BinaryOperation.Division,
+			TokenType.OpPercent or TokenType.OpPercentEqual => BinaryOperation.Modulo,
 			TokenType.OpEqualEqual => BinaryOperation.Equal,
 			TokenType.OpBangEqual => BinaryOperation.NotEqual,
 			TokenType.OpGreater => BinaryOperation.Greater,
 			TokenType.OpGreaterEqual => BinaryOperation.GreaterEqual,
 			TokenType.OpLess => BinaryOperation.Less,
 			TokenType.OpLessEqual => BinaryOperation.LessEqual,
-			TokenType.OpAmpersand => BinaryOperation.BitwiseAnd,
-			TokenType.OpBar => BinaryOperation.BitwiseOr,
-			TokenType.OpHat => BinaryOperation.BitwiseXor,
-			TokenType.OpLessLess => BinaryOperation.ShiftLeft,
-			TokenType.OpGreaterGreater => BinaryOperation.ShiftRight,
-			TokenType.OpLessLessLess => BinaryOperation.RotateLeft,
-			TokenType.OpGreaterGreaterGreater => BinaryOperation.RotateRight,
+			TokenType.OpAmpersand or TokenType.OpAmpersandEqual => BinaryOperation.BitwiseAnd,
+			TokenType.OpBar or TokenType.OpBarEqual => BinaryOperation.BitwiseOr,
+			TokenType.OpHat or TokenType.OpHatEqual => BinaryOperation.BitwiseXor,
+			TokenType.OpLessLess or TokenType.OpLessLessEqual => BinaryOperation.ShiftLeft,
+			TokenType.OpGreaterGreater or TokenType.OpGreaterGreaterEqual => BinaryOperation.ShiftRight,
+			TokenType.OpLessLessLess or TokenType.OpLessLessLessEqual => BinaryOperation.RotateLeft,
+			TokenType.OpGreaterGreaterGreater or TokenType.OpGreaterGreaterGreaterEqual => BinaryOperation.RotateRight,
 			TokenType.OpAmpersandAmpersand => BinaryOperation.LogicalAnd,
 			TokenType.OpBarBar => BinaryOperation.LogicalOr,
 			_ => throw new InvalidOperationException()

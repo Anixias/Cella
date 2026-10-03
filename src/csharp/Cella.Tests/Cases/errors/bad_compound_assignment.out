@@ -1,0 +1,24 @@
+
+====== bad_compound_assignment.ce ======
+
+Error at line 11, column 2
+10 │ var p = @values[0]
+11 │ flag += true
+     ╘══════════╛ No operation defined for '+=' between 'bool' and 'bool'
+
+Error at line 12, column 2
+11 │ flag += true
+12 │ text += "b"
+     ╘═════════╛ No operation defined for '+=' between 'str' and 'string literal'
+
+Error at line 13, column 2
+12 │ text += "b"
+13 │ p *= 2
+     ╘════╛ No operation defined for '*=' between 'ptr[i32]' and 'integer literal'
+
+Error at line 14, column 11
+13 │ p *= 2
+14 │ small += big
+              ╘═╛ Cannot convert type 'u32' to 'u8'
+
+[compilation failed]

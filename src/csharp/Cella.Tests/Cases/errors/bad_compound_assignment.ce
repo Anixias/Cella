@@ -1,0 +1,16 @@
+mod test
+
+main: fun -> i32
+{
+	var flag = true
+	var text = "a"
+	var small: u8 = 1
+	var big: u32 = 2
+	var values = [1, 2]
+	var p = @values[0]
+	flag += true
+	text += "b"
+	p *= 2
+	small += big
+	ret 0
+}

@@ -115,6 +115,8 @@ public sealed class TypePool
 	{
 		OperatorRegistry.Create(new PointerOffsetImpl(TokenType.OpPlus, ptrType, NativeSymbols.IntSize));
 		OperatorRegistry.Create(new PointerOffsetImpl(TokenType.OpMinus, ptrType, NativeSymbols.IntSize));
+		OperatorRegistry.Create(new PointerOffsetImpl(TokenType.OpPlusEqual, ptrType, NativeSymbols.IntSize));
+		OperatorRegistry.Create(new PointerOffsetImpl(TokenType.OpMinusEqual, ptrType, NativeSymbols.IntSize));
 		OperatorRegistry.Create(new PointerDifferenceImpl(ptrType));
 	}
 	
