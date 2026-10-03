@@ -1178,8 +1178,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		var byteCount = Encoding.UTF8.GetByteCount(text);
 		var bytes = new byte[byteCount];
 		Encoding.UTF8.GetBytes(text, bytes);
-		var charCount = (ulong)Encoding.UTF8.GetCharCount(bytes);
-		return new ResolvedLiteralExpressionNode(NativeSymbols.Str, new StrValue(charCount, bytes), node.Syntax);
+		return new ResolvedLiteralExpressionNode(NativeSymbols.Str, new StrValue((ulong)byteCount, bytes), node.Syntax);
 	}
 	
 	private ResolvedLiteralExpressionNode MaterializeCStr(ResolvedLiteralExpressionNode node)

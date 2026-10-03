@@ -1,0 +1,14 @@
+mod test
+
+main: fun -> i32
+{
+	var accented: str = "héllo"
+	if accented.byteLength != 6
+		ret 1
+
+	var emoji: str = "😀"
+	if emoji.byteLength != 4
+		ret 2
+
+	ret 0
+}
