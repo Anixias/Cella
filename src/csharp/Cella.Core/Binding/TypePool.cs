@@ -113,10 +113,14 @@ public sealed class TypePool
 	
 	private void CreatePointerArithmetic(PointerType ptrType)
 	{
-		OperatorRegistry.Create(new PointerOffsetImpl(TokenType.OpPlus, ptrType, NativeSymbols.IntSize));
-		OperatorRegistry.Create(new PointerOffsetImpl(TokenType.OpMinus, ptrType, NativeSymbols.IntSize));
-		OperatorRegistry.Create(new PointerOffsetImpl(TokenType.OpPlusEqual, ptrType, NativeSymbols.IntSize));
-		OperatorRegistry.Create(new PointerOffsetImpl(TokenType.OpMinusEqual, ptrType, NativeSymbols.IntSize));
+		foreach (var offsetType in new[] { NativeSymbols.IntSize, NativeSymbols.UIntSize })
+		{
+			OperatorRegistry.Create(new PointerOffsetImpl(TokenType.OpPlus, ptrType, offsetType));
+			OperatorRegistry.Create(new PointerOffsetImpl(TokenType.OpMinus, ptrType, offsetType));
+			OperatorRegistry.Create(new PointerOffsetImpl(TokenType.OpPlusEqual, ptrType, offsetType));
+			OperatorRegistry.Create(new PointerOffsetImpl(TokenType.OpMinusEqual, ptrType, offsetType));
+		}
+		
 		OperatorRegistry.Create(new PointerDifferenceImpl(ptrType));
 	}
 	

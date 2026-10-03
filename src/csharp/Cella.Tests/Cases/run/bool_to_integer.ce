@@ -1,0 +1,19 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+main: fun -> i32
+{
+	var flag = true
+	var low = 3
+	var high = 8
+	var count = i32(flag) + i32(high > low) + i32(low > high)
+	var byte = u8(false)
+	var wide = i64(true) * 40
+	var size = usize(flag)
+	printf("%d %d %lld %llu\n", count, byte, wide, size)
+	ret 0
+}

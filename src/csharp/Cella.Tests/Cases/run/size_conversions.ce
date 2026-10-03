@@ -1,0 +1,23 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+main: fun -> i32
+{
+	var text: str = "hello"
+	var end = text.data + text.byteLength
+	var last = end - 1
+	var cursor = text.data
+	cursor += text.byteLength
+	cursor -= text.byteLength
+	cursor += 1
+	printf("%c %c %lld\n", *last, *cursor, end - text.data)
+
+	var negative: isize = -1
+	var length = text.byteLength
+	printf("%llu %lld\n", usize(negative), isize(length))
+	ret 0
+}

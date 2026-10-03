@@ -102,6 +102,9 @@ public sealed class ConversionTable
 				table.Add(new IntegerConversion(intTypes[i].S, NativeSymbols.Char, ConversionKind.Explicit, 1));
 		}
 		
+		table.Add(new IntegerConversion(NativeSymbols.IntSize, NativeSymbols.UIntSize, ConversionKind.Explicit, 0));
+		table.Add(new IntegerConversion(NativeSymbols.UIntSize, NativeSymbols.IntSize, ConversionKind.Explicit, 0));
+		
 		// char -> Any integer type
 		// Explicit if dest smaller than char (u32) or usize/isize
 		table.Add(new IntegerConversion(NativeSymbols.Char, NativeSymbols.Int8, ConversionKind.Explicit, 1));
@@ -116,6 +119,9 @@ public sealed class ConversionTable
 		table.Add(new IntegerConversion(NativeSymbols.Char, NativeSymbols.UInt128, ConversionKind.Implicit, 1));
 		table.Add(new IntegerConversion(NativeSymbols.Char, NativeSymbols.IntSize, ConversionKind.Explicit, 1));
 		table.Add(new IntegerConversion(NativeSymbols.Char, NativeSymbols.UIntSize, ConversionKind.Explicit, 1));
+		
+		foreach (var type in NativeSymbols.PureIntegerTypes)
+			table.Add(new NativeConversion(NativeSymbols.Bool, type, ConversionKind.Explicit, 1));
 		
 		// cstr <-> ptr
 		table.Add(new FreeConversion(NativeSymbols.CStr, NativeSymbols.VoidPtr, ConversionKind.Implicit));
