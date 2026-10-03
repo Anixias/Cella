@@ -58,14 +58,6 @@ public sealed class TypeChecker : IResolvedStatementNodeVisitor, IResolvedDeclar
 	
 	public void Visit(ResolvedFieldNode node)
 	{
-		if (node.Initializer is not { } initializer)
-			return;
-		
-		var expected = node.Type;
-		var actual = initializer.Type;
-		if (!AreTypesCompatible(expected, actual))
-			Diagnostics.Add(new(DiagnosticSeverity.Error, initializer.Syntax.SourceLocation,
-				$"Cannot assign value of type '{actual.Name}': Expected type '{expected.Name}'"));
 	}
 	
 	public void Visit(ResolvedMethodNode node) => VisitNode(node.FunctionNode);

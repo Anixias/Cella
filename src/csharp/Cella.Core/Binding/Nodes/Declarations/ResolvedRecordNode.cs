@@ -22,13 +22,11 @@ public sealed class ResolvedFieldNode
 (
 	FieldSymbol symbol,
 	TypeSymbol type,
-	IResolvedExpressionNode? initializer,
 	IDeclarationNode syntax
 ) : IResolvedDeclarationNode
 {
 	public FieldSymbol Symbol { get; } = symbol;
 	public TypeSymbol Type { get; } = type;
-	public IResolvedExpressionNode? Initializer { get; } = initializer;
 	public IDeclarationNode Syntax { get; } = syntax;
 }
 

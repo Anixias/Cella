@@ -158,9 +158,6 @@ public sealed class AstPrinter : ISyntaxNodeVisitor
 		_sb.Append(')');
 		
 		// TODO Modifiers
-		
-		if (node.Initializer is { } expressionNode)
-			VisitNode(expressionNode, true);
 	}
 	
 	public void Visit(FileNode node)

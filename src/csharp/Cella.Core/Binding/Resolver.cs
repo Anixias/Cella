@@ -94,13 +94,8 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		var resolutionContext = CurrentResolutionContext;
 		var type = resolutionContext.ResolveType(node.Type);
 		var field = (FieldSymbol)_symbolTable.DeclarationSymbols[node];
-		IResolvedExpressionNode? initializer;
-		if (node.Initializer is { } initializerNode)
-			initializer = VisitNode(initializerNode, type);
-		else
-			initializer = null;
 		
-		return new ResolvedFieldNode(field, type, initializer, node);
+		return new ResolvedFieldNode(field, type, node);
 	}
 	
 	public IResolvedDeclarationNode Visit(FileNode node)

@@ -16,14 +16,12 @@ public sealed class FieldNode
 (
 	Token identifier,
 	ITypeNode type,
-	IEnumerable<Token> modifiers,
-	IExpressionNode? initializer
+	IEnumerable<Token> modifiers
 ) : IDeclarationNode
 {
 	public Token Identifier { get; } = identifier;
 	public ITypeNode Type { get; } = type;
 	public ImmutableArray<Token> Modifiers { get; } = modifiers.ToImmutableArray();
-	public IExpressionNode? Initializer { get; } = initializer;
 	public SourceLocation SourceLocation { get; } = identifier.SourceLocation;
 }
 

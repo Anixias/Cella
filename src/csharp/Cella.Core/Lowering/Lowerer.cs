@@ -55,7 +55,6 @@ public sealed class Lowerer : IResolvedDeclarationNodeVisitor
 	
 	public void Visit(ResolvedFieldNode node)
 	{
-		// TODO Do anything?
 	}
 	
 	public void Visit(ResolvedMethodNode node)

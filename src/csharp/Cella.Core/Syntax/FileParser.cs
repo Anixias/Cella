@@ -553,9 +553,7 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 	private FieldNode ParseField(ref int index, Token identifier, IEnumerable<Token> modifiers)
 	{
 		var type = ParseType(ref index);
-		var initializer = Match(ref index, TokenType.OpEqual) ? ParseExpression(ref index) : null;
-		
-		return new(identifier, type, modifiers, initializer);
+		return new(identifier, type, modifiers);
 	}
 	
 	private BlockStatementNode? ParseBlockStatement(ref int index, Token open)
