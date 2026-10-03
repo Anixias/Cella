@@ -319,6 +319,9 @@ public sealed unsafe class CodeGenerator : IDisposable
 		if (_typeMap.TryGetValue(type, out var existing))
 			return existing;
 		
+		var typeRef = LLVMContextRef.Global.CreateNamedStruct(type.Name);
+		_typeMap[type] = typeRef;
+		
 		var fieldTypes = _typePool
 			.GetMembers(type)
 			.OfType<FieldSymbol>()
@@ -327,8 +330,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 			.ToArray();
 		
 		// TODO Allow controlling packed?
-		var typeRef = LLVMTypeRef.CreateStruct(fieldTypes, false);
-		_typeMap[type] = typeRef;
+		typeRef.StructSetBody(fieldTypes, false);
 		return typeRef;
 	}
 	
