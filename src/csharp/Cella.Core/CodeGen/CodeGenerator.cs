@@ -359,6 +359,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 	private void BuildFunction(LLVMModuleRef llvmModule, LLVMDIBuilderRef llvmDiBuilder, LoweredFunction function)
 	{
 		var functionValue = _funMap[function.Info].FunctionValue;
+		var allocaBlock = functionValue.AppendBasicBlock("allocas");
 		
 		// Create blocks
 		var blockMap = new Dictionary<BasicBlock, LLVMBasicBlockRef>();
@@ -385,7 +386,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 					
 					var paramLlvmValue = functionValue.GetParam((uint)p);
 					var paramLlvmType = MapTypeSymbol(paramType);
-					var paramPtr = builder.BuildAlloca(paramLlvmType, paramSymbol.Name);
+					var paramPtr = BuildEntryAlloca(builder, paramLlvmType, paramSymbol.Name);
 					builder.BuildStore(paramLlvmValue, paramPtr);
 					_varMap[paramInfo] = paramPtr;
 				}
@@ -397,7 +398,17 @@ public sealed unsafe class CodeGenerator : IDisposable
 			EmitTerminator(builder, block.Terminator, blockMap);
 		}
 		
+		builder.PositionAtEnd(allocaBlock);
+		builder.BuildBr(blockMap[function.Blocks[0]]);
+		
 		functionValue.VerifyFunction(LLVMVerifierFailureAction.LLVMAbortProcessAction);
+	}
+	
+	private static LLVMValueRef BuildEntryAlloca(LLVMBuilderRef builder, LLVMTypeRef type, string name)
+	{
+		using var allocaBuilder = type.Context.CreateBuilder();
+		allocaBuilder.PositionAtEnd(builder.InsertBlock.Parent.EntryBasicBlock);
+		return allocaBuilder.BuildAlloca(type, name);
 	}
 	
 	private void EmitInstruction(LLVMBuilderRef builder, IInstruction instruction,
@@ -412,7 +423,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 			case LocalVarInstruction i:
 			{
 				var type = MapTypeSymbol(i.Symbol.Type);
-				var ptr = builder.BuildAlloca(type, i.Symbol.Name);
+				var ptr = BuildEntryAlloca(builder, type, i.Symbol.Name);
 				_varMap[new(i.Symbol, i.Symbol.Type)] = ptr;
 				
 				if (i.Initializer is not UndefValue)
@@ -704,7 +715,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 				else
 				{
 					// Trying to convert literal into span, need to implicitly stack-allocate literal array
-					var arrayPtr = builder.BuildAlloca(llvmArrayType, "array");
+					var arrayPtr = BuildEntryAlloca(builder, llvmArrayType, "array");
 					builder.BuildStore(source, arrayPtr);
 					dataPtr = builder.BuildInBoundsGEP2(llvmArrayType, arrayPtr, new[] { zero, zero }, "data");
 				}
@@ -732,7 +743,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 				else
 				{
 					// Trying to convert literal into span, need to implicitly stack-allocate literal array
-					var arrayPtr = builder.BuildAlloca(llvmArrayType, "array");
+					var arrayPtr = BuildEntryAlloca(builder, llvmArrayType, "array");
 					builder.BuildStore(source, arrayPtr);
 					dataPtr = builder.BuildInBoundsGEP2(llvmArrayType, arrayPtr, new[] { zero, zero }, "data");
 				}
@@ -760,7 +771,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 				else
 				{
 					// Trying to convert literal into span, need to implicitly stack-allocate literal array
-					var arrayPtr = builder.BuildAlloca(llvmArrayType, "array");
+					var arrayPtr = BuildEntryAlloca(builder, llvmArrayType, "array");
 					builder.BuildStore(source, arrayPtr);
 					dataPtr = builder.BuildInBoundsGEP2(llvmArrayType, arrayPtr, new[] { zero, zero }, "data");
 				}

@@ -1,0 +1,16 @@
+mod test
+
+main: fun -> i32
+{
+	var total = 0
+	var i = 0
+	loop while i < 10000
+	{
+		var scratch: array[i64, 512]
+		scratch[0] = 1
+		total += 1
+		i += 1
+	}
+
+	ret total
+}
