@@ -288,19 +288,6 @@ public class Scanner : IScanner
 	
 	private bool TryScanOperator(int position, out ScanResult op)
 	{
-		// TODO Shift operators
-		if (position + 1 < Source.Length && Source[position] is '<' or '>' && Source[position + 1] == Source[position])
-		{
-			var shiftEnd = position + 2 < Source.Length && Source[position + 2] == '=' ? position + 3 : position + 2;
-			var shift = new Token(TokenType.Invalid, Source, new TextRange(position, shiftEnd))
-			{
-				Error = "Shift operators are not supported yet"
-			};
-			
-			op = new ScanResult(shift, shiftEnd);
-			return true;
-		}
-		
 		var end = position;
 		while (end < Source.Length)
 		{

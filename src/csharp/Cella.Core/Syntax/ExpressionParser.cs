@@ -27,6 +27,14 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 		TokenType.InvalidCharLiteral
 	];
 	
+	private static readonly HashSet<TokenType> _shiftOps =
+	[
+		TokenType.OpLessLess,
+		TokenType.OpGreaterGreater,
+		TokenType.OpLessLessLess,
+		TokenType.OpGreaterGreaterGreater
+	];
+	
 	private static readonly HashSet<TokenType> _additiveOps =
 	[
 		TokenType.OpPlus,
@@ -60,6 +68,10 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 		TokenType.OpAmpersandEqual,
 		TokenType.OpBarEqual,
 		TokenType.OpHatEqual,
+		TokenType.OpLessLessEqual,
+		TokenType.OpGreaterGreaterEqual,
+		TokenType.OpLessLessLessEqual,
+		TokenType.OpGreaterGreaterGreaterEqual,
 		TokenType.OpEqual
 	];
 	
@@ -189,8 +201,20 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 	
 	private IExpressionNode ParseBitwiseAnd(ref int index)
 	{
-		var node = ParseAdditive(ref index);
+		var node = ParseShift(ref index);
 		while (!IsNextNewline(index) && Match(ref index, out var op, TokenType.OpAmpersand))
+		{
+			var right = ParseShift(ref index);
+			node = new BinaryOpExpressionNode(node, op, right);
+		}
+		
+		return node;
+	}
+	
+	private IExpressionNode ParseShift(ref int index)
+	{
+		var node = ParseAdditive(ref index);
+		while (!IsNextNewline(index) && Match(ref index, out var op, _shiftOps))
 		{
 			var right = ParseAdditive(ref index);
 			node = new BinaryOpExpressionNode(node, op, right);

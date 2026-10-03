@@ -923,11 +923,16 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		var op = node.Op;
 		var isAssignment = op.Type is TokenType.OpEqual or TokenType.OpPlusEqual or TokenType.OpMinusEqual
 			or TokenType.OpStarEqual or TokenType.OpSlashEqual or TokenType.OpPercentEqual or TokenType.OpAmpersandEqual
-			or TokenType.OpBarEqual or TokenType.OpHatEqual;
+			or TokenType.OpBarEqual or TokenType.OpHatEqual or TokenType.OpLessLessEqual
+			or TokenType.OpGreaterGreaterEqual or TokenType.OpLessLessLessEqual
+			or TokenType.OpGreaterGreaterGreaterEqual;
 		
 		if (isAssignment)
 		{
 			var left = VisitNode(node.Left, null);
+			if (IsShiftOrRotate(op.Type))
+				return ResolveShiftAssignment(node, left);
+			
 			var right = VisitNode(node.Right, left.Type);
 			return new ResolvedAssignmentExpressionNode(left.Type, left, op, right, node);
 		}
@@ -945,7 +950,8 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 				return new ResolvedBinaryOpExpressionNode(left, right, comparison, node);
 			}
 			
-			if (FindLossyMixedSign(left.Type, right.Type) is var (signedType, unsignedType))
+			if (!IsShiftOrRotate(op.Type) &&
+			    FindLossyMixedSign(left.Type, right.Type) is var (signedType, unsignedType))
 			{
 				var hint = $"'{signedType.Name}' can't represent every '{unsignedType.Name}' value";
 				var mismatch = DiagnosticReporter.ReportBinaryOpMismatch(_operatorRegistry, left, op, right);
@@ -972,9 +978,36 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			var resolvedArgs = ApplyArgumentResolution(args, resolution);
 			var operation = (OperationImpl)resolution.Callable;
 			
+			if (FindShiftRangeError(node, resolvedArgs[0].Type, resolvedArgs[1]) is { } rangeError)
+				return Error(node, rangeError, CurrentTargetType);
+			
 			var result = new ResolvedBinaryOpExpressionNode(resolvedArgs[0], resolvedArgs[1], operation, node);
 			return ApplyResultResolution(result, resolution);
 		}
+	}
+	
+	private IResolvedExpressionNode ResolveShiftAssignment(BinaryOpExpressionNode node, IResolvedExpressionNode left)
+	{
+		var right = VisitNode(node.Right, null);
+		if (AnyInvalid(left, right))
+			return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
+		
+		left = MaterializeAsDefault(left);
+		var args = new[] { left, right };
+		var candidates = _operatorRegistry.GetBinaryCandidates(node.Op.Type);
+		var resolutionSet = ResolveCallable(candidates, args, MaterializationMode.Overload, left.Type);
+		
+		if (resolutionSet.Count != 1)
+		{
+			var diagnostic = DiagnosticReporter.ReportBinaryOpMismatch(_operatorRegistry, left, node.Op, right);
+			return Error(node, diagnostic, CurrentTargetType);
+		}
+		
+		var amount = ApplyArgumentResolution(args, resolutionSet[0])[1];
+		if (FindShiftRangeError(node, left.Type, amount) is { } rangeError)
+			return Error(node, rangeError, CurrentTargetType);
+		
+		return new ResolvedAssignmentExpressionNode(left.Type, left, node.Op, amount, node);
 	}
 	
 	public IResolvedExpressionNode Visit(ChainedExpressionNode node)
@@ -1275,6 +1308,30 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			or TokenType.OpEqualEqual or TokenType.OpBangEqual &&
 		left is IntegerType { IsSigned: var leftSigned } && right is IntegerType { IsSigned: var rightSigned } &&
 		leftSigned != rightSigned;
+	
+	private static bool IsShiftOrRotate(TokenType op) => op is TokenType.OpLessLess or TokenType.OpLessLessEqual
+		or TokenType.OpGreaterGreater or TokenType.OpGreaterGreaterEqual or TokenType.OpLessLessLess
+		or TokenType.OpLessLessLessEqual or TokenType.OpGreaterGreaterGreater or TokenType.OpGreaterGreaterGreaterEqual;
+	
+	private Diagnostic? FindShiftRangeError(BinaryOpExpressionNode node, TypeSymbol valueType,
+		IResolvedExpressionNode amount)
+	{
+		var isShift = node.Op.Type is TokenType.OpLessLess or TokenType.OpLessLessEqual or TokenType.OpGreaterGreater
+			or TokenType.OpGreaterGreaterEqual;
+		
+		if (!isShift || amount is not ResolvedLiteralExpressionNode { IntegerValue: { } value })
+			return null;
+		
+		var bits = CountBits(valueType);
+		if (value >= 0 && value < bits)
+			return null;
+		
+		return new Diagnostic(DiagnosticSeverity.Error, node.Right.SourceLocation,
+			$"Shift amount {value} is out of range for '{valueType.Name}'")
+		{
+			Hints = [$"'{valueType.Name}' has {bits} bits"]
+		};
+	}
 	
 	private (IntegerType Signed, IntegerType Unsigned)? FindLossyMixedSign(TypeSymbol left, TypeSymbol right)
 	{

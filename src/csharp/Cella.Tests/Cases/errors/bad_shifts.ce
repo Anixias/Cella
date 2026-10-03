@@ -1,0 +1,18 @@
+mod test
+
+main: fun -> i32
+{
+	var count: u32 = 1
+	var small: u8 = 1
+	var flag = true
+	var a = flag << 1
+	var b = count << flag
+	var c = count << 32
+	var d = small >> -1
+	var e = 1 << 40
+	small <<= 8
+	flag <<= 1
+	var f = count <<< 40
+	var g = count << 31
+	ret 0
+}

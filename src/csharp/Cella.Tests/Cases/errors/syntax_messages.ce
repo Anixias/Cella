@@ -20,11 +20,6 @@ float: fun
 	var half = 1.5
 }
 
-shift: fun -> i32
-{
-	ret 1 << 3
-}
-
 array: fun
 {
 	var values = [1, 2

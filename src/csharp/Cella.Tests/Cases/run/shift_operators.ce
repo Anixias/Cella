@@ -1,0 +1,38 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+main: fun -> i32
+{
+	var negative = -64
+	var top: u32 = 0x8000_0000
+	var count: u8 = 3
+	var wide: u64 = 1 << 40
+	printf("%d %d %d %u %d %llu\n", 1 << 4, 0xF0 >> 4, negative >> 2, top >> 31, 1000 << count, wide)
+	printf("%d %d %d %d\n", 1 << 2 + 1, 0xFF & 1 << 4, 1 << 4 | 1, 2 + 1 << 1)
+
+	var far = 40
+	var back = -1
+	var one: u32 = 1
+	var positive = 64
+	printf("%u %u %d %d %u %u\n", one << far, one << back, negative >> far, positive >> far, top >> far, one << 31)
+
+	var small: u8 = 0xFF
+	var big: i64 = 300
+	var widened: u32 = small << 4
+	var huge: u128 = 1
+	var size: usize = 1
+	printf("%u %d %d %llu %llu\n", widened, small << 4, small << big, u64(huge << 100 >> 96), size << 10)
+
+	var flags: u8 = 1
+	var two: i64 = 2
+	flags <<= 3
+	flags >>= 1
+	flags <<= two
+	var table = [1 << 2, -8 >> 1]
+	printf("%d %d %d\n", flags, table[0], table[1])
+	ret 0
+}

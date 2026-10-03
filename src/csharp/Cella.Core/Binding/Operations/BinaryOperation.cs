@@ -16,6 +16,10 @@ public enum BinaryOperation
 	BitwiseAnd,
 	BitwiseOr,
 	BitwiseXor,
+	ShiftLeft,
+	ShiftRight,
+	RotateLeft,
+	RotateRight,
 	LogicalAnd,
 	LogicalOr,
 	

@@ -1,0 +1,43 @@
+
+====== bad_shifts.ce ======
+
+Error at line 8, column 10
+7 │ var flag = true
+8 │ var a = flag << 1
+            ╘═══════╛ No operation defined for '<<' between 'bool' and 'integer literal'
+
+Error at line 9, column 10
+8 │ var a = flag << 1
+9 │ var b = count << flag
+            ╘═══════════╛ No operation defined for '<<' between 'u32' and 'bool'
+
+Error at line 10, column 19
+ 9 │ var b = count << flag
+10 │ var c = count << 32
+                      ╘╛ Shift amount 32 is out of range for 'u32'
+                       | 'u32' has 32 bits
+
+Error at line 11, column 19
+10 │ var c = count << 32
+11 │ var d = small >> -1
+                      ╘╛ Shift amount -1 is out of range for 'u8'
+                       | 'u8' has 8 bits
+
+Error at line 12, column 15
+11 │ var d = small >> -1
+12 │ var e = 1 << 40
+                  ╘╛ Shift amount 40 is out of range for 'i32'
+                   | 'i32' has 32 bits
+
+Error at line 13, column 12
+12 │ var e = 1 << 40
+13 │ small <<= 8
+               ^ Shift amount 8 is out of range for 'u8'
+               | 'u8' has 8 bits
+
+Error at line 14, column 2
+13 │ small <<= 8
+14 │ flag <<= 1
+     ╘════════╛ No operation defined for '<<=' between 'bool' and 'integer literal'
+
+[compilation failed]

@@ -1,5 +1,4 @@
-﻿using System.Numerics;
-using Cella.Core.Binding.Conversions;
+﻿using Cella.Core.Binding.Conversions;
 using Cella.Core.Binding.Nodes;
 using Cella.Core.Binding.Operations;
 using Cella.Core.Symbols;
@@ -237,21 +236,7 @@ public sealed class TypeChecker : IResolvedStatementNodeVisitor, IResolvedDeclar
 	private static bool IsZeroLiteral(IResolvedExpressionNode expression) => expression switch
 	{
 		ResolvedConversionExpressionNode { Conversion: IntegerConversion } e => IsZeroLiteral(e.Source),
-		ResolvedLiteralExpressionNode { Type: IntegerType or UntypedIntegerType } e => e.Value switch
-		{
-			sbyte value => value == 0,
-			short value => value == 0,
-			int value => value == 0,
-			long value => value == 0,
-			Int128 value => value == 0,
-			byte value => value == 0,
-			ushort value => value == 0,
-			uint value => value == 0,
-			ulong value => value == 0,
-			UInt128 value => value == 0,
-			BigInteger value => value.IsZero,
-			_ => false
-		},
+		ResolvedLiteralExpressionNode { Type: IntegerType or UntypedIntegerType, IntegerValue.IsZero: true } => true,
 		_ => false
 	};
 	
@@ -278,7 +263,10 @@ public sealed class TypeChecker : IResolvedStatementNodeVisitor, IResolvedDeclar
 		
 		var expected = node.Left.Type;
 		var actual = node.Right.Type;
-		if (!AreTypesCompatible(expected, actual))
+		var isShiftOrRotate = node.Op.Type is TokenType.OpLessLessEqual or TokenType.OpGreaterGreaterEqual
+			or TokenType.OpLessLessLessEqual or TokenType.OpGreaterGreaterGreaterEqual;
+		
+		if (!isShiftOrRotate && !AreTypesCompatible(expected, actual))
 			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Right.Syntax.SourceLocation,
 				$"Cannot assign source type '{actual.Name}' to target type '{expected.Name}'"));
 		

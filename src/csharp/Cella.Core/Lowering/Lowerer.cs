@@ -655,6 +655,14 @@ public sealed class Lowerer : IResolvedDeclarationNodeVisitor
 				BinaryOperation.BitwiseOr, op.SourceLocation), op.SourceLocation),
 			TokenType.OpHatEqual => new AssignValue(type, left, new BinOpValue(type, left, right,
 				BinaryOperation.BitwiseXor, op.SourceLocation), op.SourceLocation),
+			TokenType.OpLessLessEqual => new AssignValue(type, left, new BinOpValue(type, left, right,
+				BinaryOperation.ShiftLeft, op.SourceLocation), op.SourceLocation),
+			TokenType.OpGreaterGreaterEqual => new AssignValue(type, left, new BinOpValue(type, left, right,
+				BinaryOperation.ShiftRight, op.SourceLocation), op.SourceLocation),
+			TokenType.OpLessLessLessEqual => new AssignValue(type, left, new BinOpValue(type, left, right,
+				BinaryOperation.RotateLeft, op.SourceLocation), op.SourceLocation),
+			TokenType.OpGreaterGreaterGreaterEqual => new AssignValue(type, left, new BinOpValue(type, left, right,
+				BinaryOperation.RotateRight, op.SourceLocation), op.SourceLocation),
 			_ => throw new InvalidOperationException()
 		};
 		
@@ -713,6 +721,10 @@ public sealed class Lowerer : IResolvedDeclarationNodeVisitor
 			TokenType.OpAmpersand => BinaryOperation.BitwiseAnd,
 			TokenType.OpBar => BinaryOperation.BitwiseOr,
 			TokenType.OpHat => BinaryOperation.BitwiseXor,
+			TokenType.OpLessLess => BinaryOperation.ShiftLeft,
+			TokenType.OpGreaterGreater => BinaryOperation.ShiftRight,
+			TokenType.OpLessLessLess => BinaryOperation.RotateLeft,
+			TokenType.OpGreaterGreaterGreater => BinaryOperation.RotateRight,
 			TokenType.OpAmpersandAmpersand => BinaryOperation.LogicalAnd,
 			TokenType.OpBarBar => BinaryOperation.LogicalOr,
 			_ => throw new InvalidOperationException()

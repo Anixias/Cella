@@ -1,0 +1,27 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+main: fun -> i32
+{
+	var byte: u8 = 0x81
+	var word: u32 = 0x1234_5678
+	var signed: i8 = -128
+	var huge: u128 = 1
+	var steps: i64 = 33
+	printf("%d %d %d %d\n", byte <<< 1, byte >>> 1, byte <<< 9, byte <<< -1)
+	printf("%08x %08x %08x %d %d\n", word <<< 8, word >>> 8, word >>> steps, signed <<< 1, signed >>> 1)
+	printf("%llu\n", u64(huge <<< 127 >> 120))
+
+	word <<<= 4
+	printf("%08x\n", word)
+	word >>>= 8
+	printf("%08x\n", word)
+
+	var table = [0x81 <<< 1, 1 >>> 1]
+	printf("%d %d\n", table[0], table[1])
+	ret 0
+}

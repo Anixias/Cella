@@ -944,10 +944,13 @@ public sealed unsafe class CodeGenerator : IDisposable
 		_ => false
 	};
 	
-	private LLVMValueRef EmitIntegerConversion(IntegerConversion c, LLVMValueRef source, LLVMBuilderRef builder)
+	private LLVMValueRef EmitIntegerConversion(IntegerConversion c, LLVMValueRef source, LLVMBuilderRef builder) =>
+		ResizeInteger(source, MapTypeSymbol(c.To), c.FromSigned, builder);
+	
+	private static LLVMValueRef ResizeInteger(LLVMValueRef source, LLVMTypeRef destType, bool isSigned,
+		LLVMBuilderRef builder)
 	{
 		var srcType = source.TypeOf;
-		var destType = MapTypeSymbol(c.To);
 		
 		if (destType.IntWidth == srcType.IntWidth)
 			return source;
@@ -955,13 +958,19 @@ public sealed unsafe class CodeGenerator : IDisposable
 		if (destType.IntWidth < srcType.IntWidth)
 			return builder.BuildTrunc(source, destType);
 		
-		return c.FromSigned
+		return isSigned
 			? builder.BuildSExt(source, destType)
 			: builder.BuildZExt(source, destType);
 	}
 	
 	private LLVMValueRef EmitBinaryOp(BinOpValue v, LLVMBuilderRef builder)
 	{
+		if (v.Op is BinaryOperation.ShiftLeft or BinaryOperation.ShiftRight)
+			return EmitShift(v, builder);
+		
+		if (v.Op is BinaryOperation.RotateLeft or BinaryOperation.RotateRight)
+			return EmitRotate(v, builder);
+		
 		var left = EmitValue(v.Left, builder);
 		var right = EmitValue(v.Right, builder);
 		var signed = v.Left.Type is IntegerType { IsSigned: true }; // TODO Check for floating point
@@ -1040,6 +1049,50 @@ public sealed unsafe class CodeGenerator : IDisposable
 			
 			_ => throw new InvalidOperationException()
 		};
+	}
+	
+	private LLVMValueRef EmitShift(BinOpValue v, LLVMBuilderRef builder)
+	{
+		var value = EmitValue(v.Left, builder);
+		var amount = EmitValue(v.Right, builder);
+		var type = value.TypeOf;
+		var bits = type.IntWidth;
+		var count = ResizeInteger(amount, type, v.Right.Type is IntegerType { IsSigned: true }, builder);
+		
+		var checkedAmount = amount.TypeOf.IntWidth > bits ? amount : count;
+		var inRange = builder.BuildICmp(LLVMIntPredicate.LLVMIntULT, checkedAmount,
+			LLVMValueRef.CreateConstInt(checkedAmount.TypeOf, bits));
+		
+		var isSigned = v.Left.Type is IntegerType { IsSigned: true };
+		var shifted = v.Op switch
+		{
+			BinaryOperation.ShiftLeft => builder.BuildShl(value, count),
+			_ when isSigned => builder.BuildAShr(value, count),
+			_ => builder.BuildLShr(value, count)
+		};
+		
+		var shiftedOut = v.Op == BinaryOperation.ShiftRight && isSigned
+			? builder.BuildAShr(value, LLVMValueRef.CreateConstInt(type, bits - 1))
+			: LLVMValueRef.CreateConstNull(type);
+		
+		return builder.BuildSelect(inRange, shifted, shiftedOut);
+	}
+	
+	private LLVMValueRef EmitRotate(BinOpValue v, LLVMBuilderRef builder)
+	{
+		var value = EmitValue(v.Left, builder);
+		var type = value.TypeOf;
+		var amount = ResizeInteger(EmitValue(v.Right, builder), type,
+			v.Right.Type is IntegerType { IsSigned: true }, builder);
+		
+		var mask = LLVMValueRef.CreateConstInt(type, type.IntWidth - 1);
+		var forward = builder.BuildAnd(amount, mask);
+		var backward = builder.BuildAnd(builder.BuildNeg(amount), mask);
+		var (leftCount, rightCount) = v.Op == BinaryOperation.RotateLeft
+			? (forward, backward)
+			: (backward, forward);
+		
+		return builder.BuildOr(builder.BuildShl(value, leftCount), builder.BuildLShr(value, rightCount));
 	}
 	
 	private LLVMValueRef EmitUnaryOp(UnaryOpValue v, LLVMBuilderRef builder) => v switch

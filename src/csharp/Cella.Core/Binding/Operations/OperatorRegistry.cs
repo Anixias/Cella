@@ -27,6 +27,18 @@ public sealed class OperatorRegistry
 		TokenType.OpHatEqual,
 	];
 	
+	private static readonly ImmutableArray<TokenType> _shiftBinOps =
+	[
+		TokenType.OpLessLess,
+		TokenType.OpLessLessEqual,
+		TokenType.OpGreaterGreater,
+		TokenType.OpGreaterGreaterEqual,
+		TokenType.OpLessLessLess,
+		TokenType.OpLessLessLessEqual,
+		TokenType.OpGreaterGreaterGreater,
+		TokenType.OpGreaterGreaterGreaterEqual,
+	];
+	
 	private static readonly ImmutableArray<TokenType> _equalityBinOps =
 	[
 		TokenType.OpEqualEqual,
@@ -121,6 +133,16 @@ public sealed class OperatorRegistry
 			var list = result.GetOrAdd(op);
 			foreach (var type in _numericTypes)
 				list.Add(new NativeImpl(op, type, type, type));
+		}
+		
+		foreach (var op in _shiftBinOps)
+		{
+			var list = result.GetOrAdd(op);
+			foreach (var type in NativeSymbols.PureIntegerTypes)
+			{
+				foreach (var amountType in NativeSymbols.PureIntegerTypes)
+					list.Add(new NativeImpl(op, type, type, amountType));
+			}
 		}
 		
 		foreach (var op in _comparisonBinOps)

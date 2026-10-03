@@ -229,6 +229,30 @@ public static class LoweredModulePrinter
 					value = v.Right;
 					continue;
 				
+				case BinOpValue { Op: BinaryOperation.ShiftLeft } v:
+					PrintValue(sb, v.Left);
+					sb.Append(" << ");
+					value = v.Right;
+					continue;
+				
+				case BinOpValue { Op: BinaryOperation.ShiftRight } v:
+					PrintValue(sb, v.Left);
+					sb.Append(" >> ");
+					value = v.Right;
+					continue;
+				
+				case BinOpValue { Op: BinaryOperation.RotateLeft } v:
+					PrintValue(sb, v.Left);
+					sb.Append(" <<< ");
+					value = v.Right;
+					continue;
+				
+				case BinOpValue { Op: BinaryOperation.RotateRight } v:
+					PrintValue(sb, v.Left);
+					sb.Append(" >>> ");
+					value = v.Right;
+					continue;
+				
 				case BinOpValue { Op: BinaryOperation.LogicalAnd } v:
 					PrintValue(sb, v.Left);
 					sb.Append(" && ");
