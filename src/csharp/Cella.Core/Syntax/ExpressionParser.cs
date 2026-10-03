@@ -408,6 +408,7 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 			if (arguments.Count > 0 && !Match(ref index, TokenType.OpComma))
 			{
 				// TODO Diagnostic: Missing comma
+				throw new InvalidOperationException();
 			}
 			
 			arguments.Add(ParseExpression(ref index));
@@ -438,6 +439,7 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 			if (arguments.Count > 0 && !Match(ref index, TokenType.OpComma))
 			{
 				// TODO Diagnostic: Missing comma
+				throw new InvalidOperationException();
 			}
 			
 			arguments.Add(ParseExpression(ref index));

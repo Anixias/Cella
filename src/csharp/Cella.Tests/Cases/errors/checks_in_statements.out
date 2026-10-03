@@ -1,0 +1,29 @@
+
+====== checks_in_statements.ce ======
+
+Error at line 17, column 6
+16 │ var count = 3
+17 │ if @make().x == null
+         ╘══════╛ Cannot take the address of an unstored value
+
+Error at line 20, column 21
+19 │ 
+20 │ loop while count / 0 > 0
+                        ^ Division by zero
+
+Error at line 26, column 11
+25 │     count += 1
+26 │ } while @make().x == null
+              ╘══════╛ Cannot take the address of an unstored value
+
+Error at line 28, column 19
+27 │ 
+28 │ loop for count % 0
+                      ^ Division by zero
+
+Error at line 32, column 6
+31 │ 
+32 │ ret undef
+         ╘═══╛ 'undef' may only be used as a variable initializer or in memory allocations
+
+[compilation failed]

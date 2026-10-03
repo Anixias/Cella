@@ -1,0 +1,22 @@
+mod test
+
+add: fun(a: i32, b: i32) -> i32
+{
+	ret a + b
+}
+
+call: fun -> i32
+{
+	ret add(1 2)
+}
+
+index: fun -> i32
+{
+	var values: array[i32, 2]
+	ret values[0 1]
+}
+
+main: fun -> i32
+{
+	ret 0
+}

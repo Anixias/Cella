@@ -1,0 +1,12 @@
+mod test
+
+main: fun -> i32
+{
+	var x = 10
+	var a = x / 0
+	var b = x % 0
+	x /= 0
+	x %= 0
+	var fine = 0 / x
+	ret 5 / 0
+}

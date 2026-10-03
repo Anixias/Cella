@@ -1,4 +1,7 @@
-﻿using Cella.Core.Binding.Nodes;
+﻿using System.Numerics;
+using Cella.Core.Binding.Conversions;
+using Cella.Core.Binding.Nodes;
+using Cella.Core.Binding.Operations;
 using Cella.Core.Symbols;
 using Cella.Core.Text;
 using Cella.Diagnostics;
@@ -103,6 +106,7 @@ public sealed class TypeChecker : IResolvedStatementNodeVisitor, IResolvedDeclar
 			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Condition.Syntax.SourceLocation,
 				$"Invalid condition type '{conditionType.Name}': Expected type '{NativeSymbols.Bool.Name}'"));
 		
+		VisitNode(node.Condition);
 		VisitNode(node.Then);
 		
 		if (node.Else is { } @else)
@@ -120,6 +124,9 @@ public sealed class TypeChecker : IResolvedStatementNodeVisitor, IResolvedDeclar
 		if (!AreTypesCompatible(expected, actual))
 			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Syntax.SourceLocation,
 				$"Cannot return value of type '{actual.Name}': Expected type '{expected?.Name ?? "void"}'"));
+		
+		if (node.Expression is { } expression)
+			VisitNode(expression);
 	}
 	
 	public void Visit(ResolvedVarStatementNode node)
@@ -149,6 +156,8 @@ public sealed class TypeChecker : IResolvedStatementNodeVisitor, IResolvedDeclar
 			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Condition.Syntax.SourceLocation,
 				$"Invalid condition type '{conditionType.Name}': Expected type '{NativeSymbols.Bool.Name}'"));
 		
+		VisitNode(node.Condition);
+		
 		continueDepth++;
 		breakDepth++;
 		VisitNode(node.Body);
@@ -162,6 +171,8 @@ public sealed class TypeChecker : IResolvedStatementNodeVisitor, IResolvedDeclar
 		if (!AreTypesCompatible(NativeSymbols.Bool, conditionType))
 			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Condition.Syntax.SourceLocation,
 				$"Invalid condition type '{conditionType.Name}': Expected type '{NativeSymbols.Bool.Name}'"));
+		
+		VisitNode(node.Condition);
 		
 		continueDepth++;
 		breakDepth++;
@@ -185,6 +196,8 @@ public sealed class TypeChecker : IResolvedStatementNodeVisitor, IResolvedDeclar
 		if (!IsIntegralType(countType))
 			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Count.Syntax.SourceLocation,
 				$"Invalid count type '{countType.Name}': Expected an integral type"));
+		
+		VisitNode(node.Count);
 		
 		continueDepth++;
 		breakDepth++;
@@ -215,6 +228,33 @@ public sealed class TypeChecker : IResolvedStatementNodeVisitor, IResolvedDeclar
 	
 	private bool IsIntegralType(TypeSymbol type) => type is IntegerType;
 	
+	private void ReportZeroDivisor(IResolvedExpressionNode divisor)
+	{
+		if (IsZeroLiteral(divisor))
+			Diagnostics.Add(new(DiagnosticSeverity.Error, divisor.Syntax.SourceLocation, "Division by zero"));
+	}
+	
+	private static bool IsZeroLiteral(IResolvedExpressionNode expression) => expression switch
+	{
+		ResolvedConversionExpressionNode { Conversion: IntegerConversion } e => IsZeroLiteral(e.Source),
+		ResolvedLiteralExpressionNode { Type: IntegerType or UntypedIntegerType } e => e.Value switch
+		{
+			sbyte value => value == 0,
+			short value => value == 0,
+			int value => value == 0,
+			long value => value == 0,
+			Int128 value => value == 0,
+			byte value => value == 0,
+			ushort value => value == 0,
+			uint value => value == 0,
+			ulong value => value == 0,
+			UInt128 value => value == 0,
+			BigInteger value => value.IsZero,
+			_ => false
+		},
+		_ => false
+	};
+	
 	public void Visit(ResolvedAccessExpressionNode node)
 	{
 		VisitNode(node.Target);
@@ -242,11 +282,17 @@ public sealed class TypeChecker : IResolvedStatementNodeVisitor, IResolvedDeclar
 			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Right.Syntax.SourceLocation,
 				$"Cannot assign source type '{actual.Name}' to target type '{expected.Name}'"));
 		
+		if (node.Op.Type is TokenType.OpSlashEqual or TokenType.OpPercentEqual)
+			ReportZeroDivisor(node.Right);
+		
 		VisitNode(node.Right);
 	}
 	
 	public void Visit(ResolvedBinaryOpExpressionNode node)
 	{
+		if (node.Operation is NativeImpl { Op: TokenType.OpSlash or TokenType.OpPercent })
+			ReportZeroDivisor(node.Right);
+		
 		VisitNode(node.Left);
 		VisitNode(node.Right);
 	}

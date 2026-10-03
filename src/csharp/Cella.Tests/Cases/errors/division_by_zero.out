@@ -1,0 +1,29 @@
+
+====== division_by_zero.ce ======
+
+Error at line 6, column 14
+5 │ var x = 10
+6 │ var a = x / 0
+                ^ Division by zero
+
+Error at line 7, column 14
+6 │ var a = x / 0
+7 │ var b = x % 0
+                ^ Division by zero
+
+Error at line 8, column 7
+7 │ var b = x % 0
+8 │ x /= 0
+         ^ Division by zero
+
+Error at line 9, column 7
+8 │ x /= 0
+9 │ x %= 0
+         ^ Division by zero
+
+Error at line 11, column 10
+10 │ var fine = 0 / x
+11 │ ret 5 / 0
+             ^ Division by zero
+
+[compilation failed]
