@@ -169,7 +169,7 @@ public sealed class TypePool
 		var arrayType = new ArrayType(elementType, length);
 		_arrayTypes[key] = arrayType;
 		CreateArrayMembers(arrayType);
-		SizeTable.Register(arrayType, StorageSize.Product(SizeTable.GetSize(elementType), length));
+		SizeTable.Register(arrayType, () => StorageSize.Product(SizeTable.GetSize(elementType), length));
 		
 		// To buffer
 		var bufferType = GetBufferType(elementType);
@@ -241,6 +241,16 @@ public sealed class TypePool
 		return viewType;
 	}
 	
+	public void RegisterRecord(RecordSymbol record) => SizeTable.Register(record, () =>
+	{
+		var fieldSizes = GetMembers(record)
+			.OfType<FieldSymbol>()
+			.Select(GetTypeOfMember)
+			.Select(SizeTable.GetSize);
+		
+		return StorageSize.Sum(fieldSizes);
+	});
+	
 	public void RegisterMember(TypeSymbol containingType, TypedMemberSymbol member, TypeSymbol memberType)
 	{
 		_members.GetOrAdd(containingType)[member.Name] = member;
@@ -253,7 +263,8 @@ public sealed class TypePool
 	public int GetFieldIndex(TypeSymbol type, MemberSymbol member) =>
 		_members[type].IndexOf(member.Name);
 	
-	public IReadOnlyList<MemberSymbol> GetMembers(TypeSymbol type) => _members[type].Values;
+	public IReadOnlyList<MemberSymbol> GetMembers(TypeSymbol type) =>
+		_members.TryGetValue(type, out var members) ? members.Values : [];
 	
 	public bool TryGetTypeOfMember(MemberSymbol member, [NotNullWhen(true)] out TypeSymbol? type)
 	{

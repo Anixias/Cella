@@ -1,0 +1,53 @@
+mod test
+
+Bag: rec
+{
+	items: array[Pair, 2]
+}
+
+Pair: rec
+{
+	tag: u8
+	value: i32
+}
+
+Wide: rec
+{
+	flag: bool
+	big: i64
+	small: i16
+}
+
+Nested: rec
+{
+	pair: Pair
+	flag: bool
+}
+
+Empty: rec
+{
+}
+
+main: fun -> i32
+{
+	if sizeOf(Pair) != 8
+		ret 1
+
+	if sizeOf(Wide) != 24
+		ret 2
+
+	if sizeOf(Nested) != 12
+		ret 3
+
+	if sizeOf(Bag) != 16
+		ret 4
+
+	if sizeOf(array[Pair, 3]) != 24
+		ret 5
+
+	var empty: Empty
+	if sizeOf(empty) != 0
+		ret 6
+
+	ret 0
+}

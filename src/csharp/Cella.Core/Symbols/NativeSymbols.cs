@@ -97,15 +97,42 @@ public static class StorageSize
 	public static MaxSize Max(params IEnumerable<ISize> sizes) => new(sizes);
 	public static ProductSize Product(ISize size, BigInteger count) => new(size, count);
 	
-	public static uint CountBits(this ISize size, uint pointerSize) => size switch
+	extension(ISize size)
 	{
-		ConstSize s => (uint)s.Value * 8,
-		PointerSize => pointerSize,
-		SumSize s => (uint)s.Sizes.Sum(s => s.CountBits(pointerSize)),
-		MaxSize s => s.Sizes.Max(s => s.CountBits(pointerSize)),
-		ProductSize s => (uint)(s.Count * s.Size.CountBits(pointerSize)),
-		_ => 0u
-	};
+		public uint CountBits(uint pointerSize) => size switch
+		{
+			ConstSize s => (uint)s.Value * 8,
+			PointerSize => pointerSize,
+			SumSize s => CountSumBits(s.Sizes, pointerSize),
+			MaxSize s => Align(s.Sizes.Max(s => s.CountBits(pointerSize)), CountMaxAlignmentBits(s.Sizes, pointerSize)),
+			ProductSize s => (uint)(s.Count * s.Size.CountBits(pointerSize)),
+			_ => 0u
+		};
+		
+		public uint CountAlignmentBits(uint pointerSize) => size switch
+		{
+			ConstSize { Value: > 0 } s => (uint)s.Value * 8,
+			PointerSize => pointerSize,
+			SumSize s => CountMaxAlignmentBits(s.Sizes, pointerSize),
+			MaxSize s => CountMaxAlignmentBits(s.Sizes, pointerSize),
+			ProductSize s => s.Size.CountAlignmentBits(pointerSize),
+			_ => 8u
+		};
+	}
+	
+	private static uint CountSumBits(ImmutableArray<ISize> sizes, uint pointerSize)
+	{
+		var offset = 0u;
+		foreach (var size in sizes)
+			offset = Align(offset, size.CountAlignmentBits(pointerSize)) + size.CountBits(pointerSize);
+		
+		return Align(offset, CountMaxAlignmentBits(sizes, pointerSize));
+	}
+	
+	private static uint CountMaxAlignmentBits(ImmutableArray<ISize> sizes, uint pointerSize) =>
+		sizes.Aggregate(8u, (alignment, size) => Math.Max(alignment, size.CountAlignmentBits(pointerSize)));
+	
+	private static uint Align(uint bits, uint alignment) => (bits + alignment - 1) / alignment * alignment;
 }
 
 public readonly record struct ConstSize(int Value) : ISize;

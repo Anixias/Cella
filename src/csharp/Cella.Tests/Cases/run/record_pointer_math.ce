@@ -1,0 +1,25 @@
+mod test
+
+Wide: rec
+{
+	flag: bool
+	big: i64
+	small: i16
+}
+
+main: fun -> i32
+{
+	var first = heap Wide
+	var fourth = first + 3
+
+	var bytes = usize(fourth) - usize(first)
+	var expected: usize = 3 * sizeOf(Wide)
+	if bytes != expected
+		ret 1
+
+	var count: isize = 3
+	if fourth - first != count
+		ret 2
+
+	ret 0
+}

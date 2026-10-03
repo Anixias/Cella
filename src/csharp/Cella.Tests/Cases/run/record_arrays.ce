@@ -1,0 +1,24 @@
+mod test
+
+Bag: rec
+{
+	items: array[Pair, 2]
+}
+
+Pair: rec
+{
+	tag: u8
+	value: i32
+}
+
+main: fun -> i32
+{
+	var pairs: array[Pair, 3]
+	pairs[1].value = 5
+	pairs[2].value = 9
+
+	var bag: Bag
+	bag.items[1].value = 20
+
+	ret pairs[1].value + pairs[2].value + bag.items[1].value
+}

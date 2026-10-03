@@ -184,6 +184,7 @@ public sealed class SignatureCollector : IDeclarationNodeVisitor
 			VisitNode(member);
 		
 		_resolutionContexts.Pop();
+		_typePool.RegisterRecord(record);
 	}
 	
 	private static bool IsEntryPoint(FunctionSignature signature)
