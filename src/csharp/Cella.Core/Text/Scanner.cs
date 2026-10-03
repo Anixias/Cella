@@ -331,8 +331,7 @@ public class Scanner : IScanner
 				if (escaped)
 				{
 					result.Append('\\');
-					// Todo: Is this needed to fix escapes?
-					//escaped = false;
+					escaped = false;
 					continue;
 				}
 				
@@ -404,41 +403,18 @@ public class Scanner : IScanner
 				
 				case 'u':
 					const int utf16Length = 4;
-					if (i + utf16Length >= text.Length)
-					{
+					if (i + utf16Length >= text.Length || !TryAppendCodePoint(result, text.Slice(i + 1, utf16Length)))
 						valid = false;
-						i += utf16Length;
-					}
-					else
-					{
-						var sequence = text.Slice(i + 1, utf16Length);
-						i += utf16Length;
-						
-						var sequenceValue = uint.Parse(sequence, NumberStyles.AllowHexSpecifier);
-						var chars = ConvertUnicodeCodePointToUtf8(sequenceValue);
-						var str = Encoding.UTF8.GetString(chars);
-						result.Append(str);
-					}
 					
+					i += utf16Length;
 					break;
 				
 				case 'U':
-					// TODO Test UTF32
 					const int utf32Length = 8;
-					if (i + utf32Length >= text.Length)
-					{
+					if (i + utf32Length >= text.Length || !TryAppendCodePoint(result, text.Slice(i + 1, utf32Length)))
 						valid = false;
-						i += utf32Length;
-					}
-					else
-					{
-						var sequence = text.Slice(i + 1, utf32Length);
-						i += utf32Length;
-						
-						var sequenceValue = uint.Parse(sequence, NumberStyles.AllowHexSpecifier);
-						result.Append(Encoding.UTF32.GetString(BitConverter.GetBytes(sequenceValue)));
-					}
 					
+					i += utf32Length;
 					break;
 			}
 		}
@@ -446,38 +422,14 @@ public class Scanner : IScanner
 		return (result.ToString(), valid);
 	}
 	
-	private static byte[] ConvertUnicodeCodePointToUtf8(uint codePoint)
+	private static bool TryAppendCodePoint(StringBuilder result, ReadOnlySpan<char> hexDigits)
 	{
-		return codePoint switch
-		{
-			<= 0x7Fu =>
-			[
-				(byte)codePoint
-			],
-			
-			<= 0x7FFu =>
-			[
-				(byte)(0xC0 | (codePoint >> 6)),
-				(byte)(0x80 | (codePoint & 0x3F))
-			],
-			
-			<= 0xFFFFu =>
-			[
-				(byte)(0xE0 | (codePoint >> 12)),
-				(byte)(0x80 | ((codePoint >> 6) & 0x3F)),
-				(byte)(0x80 | (codePoint & 0x3F))
-			],
-			
-			<= 0x10FFFFu =>
-			[
-				(byte)(0xF0 | (codePoint >> 18)),
-				(byte)(0x80 | ((codePoint >> 12) & 0x3F)),
-				(byte)(0x80 | ((codePoint >> 6) & 0x3F)),
-				(byte)(0x80 | (codePoint & 0x3F))
-			],
-			
-			_ => Array.Empty<byte>()
-		};
+		if (!uint.TryParse(hexDigits, NumberStyles.AllowHexSpecifier, CultureInfo.InvariantCulture, out var codePoint)
+		    || !Rune.IsValid(codePoint))
+			return false;
+		
+		result.Append(char.ConvertFromUtf32((int)codePoint));
+		return true;
 	}
 	
 	private ScanResult ScanChar(int position)

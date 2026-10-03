@@ -1,0 +1,31 @@
+mod test
+
+ext
+{
+	puts: fun(text: cstr) -> i32
+}
+
+notHex: fun
+{
+	puts("\uZZZZ")
+}
+
+surrogate: fun
+{
+	puts("\uD800")
+}
+
+tooLarge: fun
+{
+	puts("\U00110000")
+}
+
+tooShort: fun
+{
+	puts("\u12")
+}
+
+main: fun -> i32
+{
+	ret 0
+}

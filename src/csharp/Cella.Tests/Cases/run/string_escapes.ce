@@ -1,0 +1,31 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+dump: fun(text: str)
+{
+	var bytes = text.data
+	var remaining = text.byteLength
+	loop while remaining > 0
+	{
+		printf(" %02x", *bytes)
+		bytes = bytes + 1
+		remaining -= 1
+	}
+
+	printf("\n")
+}
+
+main: fun -> i32
+{
+	dump("C:\\new")
+	dump("a\\\\b")
+	dump("end\\")
+	dump("\\n\\t")
+	dump("caf\u00e9")
+	dump("\U0001F600")
+	ret 0
+}
