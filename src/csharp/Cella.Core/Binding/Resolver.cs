@@ -1455,7 +1455,8 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			if (candidate.IsVariadic ? args.Count < parameterCount : args.Count != parameterCount)
 				continue;
 			
-			var argumentCost = 0;
+			var conversionCost = 0;
+			var materializationCost = 0;
 			var argumentConversions = new Conversion?[args.Count];
 			var valid = true;
 			
@@ -1469,7 +1470,11 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 					break;
 				}
 				
-				argumentCost += cost;
+				if (args[i].Type is UntypedType)
+					materializationCost += cost;
+				else
+					conversionCost += cost;
+				
 				argumentConversions[i] = conversion;
 			}
 			
@@ -1492,7 +1497,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 				resultConversion = conversion;
 			}
 			
-			var totalCost = new CallableCost(resultRank, argumentCost, resultCost);
+			var totalCost = new CallableCost(resultRank, conversionCost, materializationCost, resultCost);
 			options.Add(new(candidate, totalCost, resultConversion, argumentConversions));
 		}
 		
@@ -1610,8 +1615,13 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		Conversion?[] ArgumentConversions
 	);
 	
-	private readonly record struct CallableCost(int ResultRank, int ArgumentCost, int ResultCost)
-		: IComparable<CallableCost>
+	private readonly record struct CallableCost
+	(
+		int ResultRank,
+		int ConversionCost,
+		int MaterializationCost,
+		int ResultCost
+	) : IComparable<CallableCost>
 	{
 		public int CompareTo(CallableCost other)
 		{
@@ -1619,9 +1629,13 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			if (resultRankComparison != 0)
 				return resultRankComparison;
 			
-			var argumentCostComparison = ArgumentCost.CompareTo(other.ArgumentCost);
-			if (argumentCostComparison != 0)
-				return argumentCostComparison;
+			var conversionCostComparison = ConversionCost.CompareTo(other.ConversionCost);
+			if (conversionCostComparison != 0)
+				return conversionCostComparison;
+			
+			var materializationCostComparison = MaterializationCost.CompareTo(other.MaterializationCost);
+			if (materializationCostComparison != 0)
+				return materializationCostComparison;
 			
 			return ResultCost.CompareTo(other.ResultCost);
 		}
