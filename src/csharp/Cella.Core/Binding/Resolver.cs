@@ -110,7 +110,8 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		{
 			File = file,
 			Imports = imports,
-			TypePool = _typePool
+			TypePool = _typePool,
+			Diagnostics = Diagnostics
 		};
 		
 		_resolutionContexts.Push(resolutionContext);
@@ -336,7 +337,14 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	private IResolvedExpressionNode VisitFunctionCall(CallExpressionNode node)
 	{
 		if (node.Target is not VarExpressionNode varExpr)
-			throw new NotImplementedException();
+		{
+			// TODO Methods, module-qualified calls and calls through function values
+			var message = node.Target is AccessExpressionNode
+				? "Member calls are not supported yet"
+				: "Calling this expression is not supported yet";
+			
+			return Error(node, message, CurrentTargetType, node.Target);
+		}
 		
 		var functionName = varExpr.Identifier.Text;
 		var symbol = CurrentResolutionContext.Resolve(functionName);
@@ -569,6 +577,18 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	
 	public IResolvedExpressionNode Visit(LiteralExpressionNode node)
 	{
+		if (node.Token.Type == TokenType.InterpolatedStringLiteral)
+		{
+			// TODO String interpolation
+			var diagnostic = new Diagnostic(DiagnosticSeverity.Error, node.SourceLocation,
+				"String interpolation is not supported yet")
+			{
+				Hints = ["Use '\\{' for a literal brace"]
+			};
+			
+			return Error(node, diagnostic, CurrentTargetType);
+		}
+		
 		var valueSpan = node.Token.AsSpan();
 		
 		TypeSymbol? type = null;

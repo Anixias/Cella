@@ -306,14 +306,8 @@ public class Scanner : IScanner
 			return new ScanResult(token, end);
 		}
 		
-		throw new NotImplementedException();
-		/*else
-		{
-			// Don't escape interpolated strings -- let the parser do that!
-			var value = Source.GetText(new TextRange(position + 1, end - 1));
-			var token = new Token(TokenType.InterpolatedStringLiteral, new TextRange(position, end), Source, value);
-			return new ScanResult(token, end);
-		}*/
+		var interpolatedToken = new Token(TokenType.InterpolatedStringLiteral, Source, new TextRange(position, end));
+		return new ScanResult(interpolatedToken, end);
 	}
 	
 	/// <summary>

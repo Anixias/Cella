@@ -57,7 +57,8 @@ public sealed class SignatureCollector : IDeclarationNodeVisitor
 		{
 			File = file,
 			Imports = imports,
-			TypePool = _typePool
+			TypePool = _typePool,
+			Diagnostics = Diagnostics
 		};
 		
 		_resolutionContexts.Push(resolutionContext);

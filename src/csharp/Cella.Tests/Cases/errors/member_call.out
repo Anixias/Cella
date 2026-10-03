@@ -1,0 +1,19 @@
+
+====== member_call.ce ======
+
+Error at line 13, column 13
+12 │ var point: Point
+13 │ var size = point.size()
+                ╘════════╛ Member calls are not supported yet
+
+Error at line 14, column 14
+13 │ var size = point.size()
+14 │ var value = test.helper()
+                 ╘═════════╛ Member calls are not supported yet
+
+Error at line 15, column 15
+14 │ var value = test.helper()
+15 │ var nested = helper()()
+                  ╘══════╛ Calling this expression is not supported yet
+
+[compilation failed]

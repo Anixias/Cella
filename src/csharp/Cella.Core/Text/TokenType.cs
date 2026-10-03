@@ -18,6 +18,7 @@ public enum TokenType
 	// Literals
 	IntegerLiteral,
 	StringLiteral,
+	InterpolatedStringLiteral,
 	CharLiteral,
 	InvalidCharLiteral,
 	
@@ -130,6 +131,7 @@ public static class TokenTypeInfo
 			
 			[TokenType.IntegerLiteral] = new("integer literal", IsLiteral: true),
 			[TokenType.StringLiteral] = new("string literal", IsLiteral: true),
+			[TokenType.InterpolatedStringLiteral] = new("interpolated string literal", IsLiteral: true),
 			[TokenType.CharLiteral] = new("char literal", IsLiteral: true),
 			[TokenType.InvalidCharLiteral] = new("invalid char literal", IsLiteral: true, IsInvalid: true),
 			

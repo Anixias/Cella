@@ -1,0 +1,13 @@
+mod test
+
+ext
+{
+	puts: fun(text: cstr) -> i32
+}
+
+main: fun -> i32
+{
+	puts("count {1}")
+	puts("literal \{ brace")
+	ret 0
+}

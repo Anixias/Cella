@@ -1,0 +1,10 @@
+
+====== interpolated_string.ce ======
+
+Error at line 10, column 7
+ 9 │ {
+10 │     puts("count {1}")
+              ╘═════════╛ String interpolation is not supported yet
+                        | Use '\{' for a literal brace
+
+[compilation failed]

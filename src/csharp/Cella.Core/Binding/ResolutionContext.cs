@@ -2,6 +2,7 @@
 using Cella.Core.Symbols;
 using Cella.Core.Syntax.Nodes;
 using Cella.Core.Text;
+using Cella.Diagnostics;
 
 namespace Cella.Core.Binding;
 
@@ -13,6 +14,7 @@ public readonly struct ResolutionContext
 	public ImportEnvironment? Imports { get; init; }
 	public Scope? LocalScope { get; init; }
 	public TypePool TypePool { get; init; }
+	public DiagnosticList Diagnostics { get; init; }
 	
 	public IEnumerable<string> GetQualifiers()
 	{
@@ -115,8 +117,14 @@ public readonly struct ResolutionContext
 		_ => null
 	};
 	
-	private BigInteger? ResolveConstIntIdentifier(Token identifier) =>
-		throw new NotImplementedException();
+	private BigInteger? ResolveConstIntIdentifier(Token identifier)
+	{
+		// TODO Named constants
+		Diagnostics.Add(new(DiagnosticSeverity.Error, identifier.SourceLocation,
+			$"'{identifier.Text}' is not a type or an integer literal"));
+		
+		return null;
+	}
 	
 	// TODO Need to implement constant expression evaluation prior to resolution?
 	// TODO Cannot handle negative integers

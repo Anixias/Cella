@@ -1,0 +1,9 @@
+
+====== named_array_size.ce ======
+
+Error at line 6, column 25
+5 │ var count = 3
+6 │ var values: array[i32, count]
+                           ╘═══╛ 'count' is not a type or an integer literal
+
+[compilation failed]

@@ -1,0 +1,17 @@
+mod test
+
+Point: rec
+{
+	x: i32
+}
+
+helper: fun -> i32 = 1
+
+main: fun -> i32
+{
+	var point: Point
+	var size = point.size()
+	var value = test.helper()
+	var nested = helper()()
+	ret 0
+}

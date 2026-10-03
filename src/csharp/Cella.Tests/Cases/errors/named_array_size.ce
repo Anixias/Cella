@@ -1,0 +1,8 @@
+mod test
+
+main: fun -> i32
+{
+	var count = 3
+	var values: array[i32, count]
+	ret 0
+}
