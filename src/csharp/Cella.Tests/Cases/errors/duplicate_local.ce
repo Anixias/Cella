@@ -1,0 +1,14 @@
+mod test
+
+main: fun -> i32
+{
+	var total = 1
+	var total = 2
+
+	if total > 0
+	{
+		var total = 3
+	}
+
+	ret total
+}

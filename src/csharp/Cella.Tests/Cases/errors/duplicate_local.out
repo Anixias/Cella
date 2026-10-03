@@ -1,0 +1,14 @@
+
+====== duplicate_local.ce ======
+
+Error at line 5, column 6
+4 │ {
+5 │     var total = 1
+            ╘═══╛ 'total' is declared more than once in this scope
+
+Error at line 6, column 6
+5 │ var total = 1
+6 │ var total = 2
+        ╘═══╛ 'total' is declared more than once in this scope
+
+[compilation failed]

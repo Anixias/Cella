@@ -184,6 +184,10 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	
 	public IResolvedStatementNode Visit(BlockStatementNode node)
 	{
+		Diagnostics.AddRange(DiagnosticReporter.ReportDuplicates(
+			node.StatementNodes.OfType<VarStatementNode>().Select(static v => v.Identifier),
+			static name => $"'{name}' is declared more than once in this scope"));
+		
 		var statements = new List<IResolvedStatementNode>(node.StatementNodes.Length);
 		var scope = CurrentScope?.CreateChild();
 		

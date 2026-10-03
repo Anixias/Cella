@@ -1,0 +1,103 @@
+
+====== duplicate_declarations.ce ======
+
+Error at line 5, column 2
+4 │ {
+5 │     puts: fun(text: cstr) -> i32
+        ╘══╛ 'puts' is declared more than once as an ext function
+           | Each ext function is one C symbol, so it can't be overloaded
+
+Error at line 6, column 2
+5 │ puts: fun(text: cstr) -> i32
+6 │ puts: fun(text: cstr) -> i32
+    ╘══╛ 'puts' is declared more than once as an ext function
+       | Each ext function is one C symbol, so it can't be overloaded
+
+Error at line 7, column 2
+6 │ puts: fun(text: cstr) -> i32
+7 │ abs: fun(value: i32) -> i32
+    ╘═╛ 'abs' is declared more than once as an ext function
+      | Each ext function is one C symbol, so it can't be overloaded
+
+Error at line 8, column 2
+7 │ abs: fun(value: i32) -> i32
+8 │ abs: fun(value: i64) -> i64
+    ╘═╛ 'abs' is declared more than once as an ext function
+      | Each ext function is one C symbol, so it can't be overloaded
+
+Error at line 16, column 1
+15 │ 
+16 │ Point: rec
+     ╘═══╛ 'Point' is declared more than once in this module
+
+Error at line 18, column 2
+17 │ {
+18 │     x: i32
+         ^ Field 'x' is declared more than once in 'Point'
+
+Error at line 19, column 2
+18 │ x: i32
+19 │ x: i32
+     ^ Field 'x' is declared more than once in 'Point'
+
+Error at line 22, column 10
+21 │ 
+22 │ new: op(x: i32, x: i32)
+             ^ Parameter 'x' is declared more than once
+
+Error at line 22, column 18
+21 │ 
+22 │ new: op(x: i32, x: i32)
+                     ^ Parameter 'x' is declared more than once
+
+Error at line 27, column 1
+26 │ 
+27 │ Point: rec
+     ╘═══╛ 'Point' is declared more than once in this module
+
+Error at line 32, column 1
+31 │ 
+32 │ Shape: rec
+     ╘═══╛ 'Shape' is declared more than once in this module
+
+Error at line 37, column 1
+36 │ 
+37 │ Shape: fun -> i32
+     ╘═══╛ 'Shape' is declared more than once in this module
+
+Error at line 42, column 1
+41 │ 
+42 │ value: fun -> i32
+     ╘═══╛ 'value' is declared more than once with the same signature
+
+Error at line 47, column 1
+46 │ 
+47 │ value: fun -> i32
+     ╘═══╛ 'value' is declared more than once with the same signature
+
+Error at line 52, column 1
+51 │ 
+52 │ value: fun -> i64
+     ╘═══╛ 'value' overloads cannot differ only in return type
+
+Error at line 62, column 1
+61 │ 
+62 │ parse: fun(text: str) -> i32
+     ╘═══╛ 'parse' overloads cannot differ only in return type
+
+Error at line 67, column 1
+66 │ 
+67 │ parse: fun(text: str) -> i64
+     ╘═══╛ 'parse' overloads cannot differ only in return type
+
+Error at line 72, column 10
+71 │ 
+72 │ add: fun(a: i32, a: i32) -> i32
+              ^ Parameter 'a' is declared more than once
+
+Error at line 72, column 18
+71 │ 
+72 │ add: fun(a: i32, a: i32) -> i32
+                      ^ Parameter 'a' is declared more than once
+
+[compilation failed]

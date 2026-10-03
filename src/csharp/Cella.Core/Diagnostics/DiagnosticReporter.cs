@@ -55,6 +55,13 @@ public static class DiagnosticReporter
 		IEnumerable<string> availableNames) =>
 		ReportUndefined(location, $"Type '{missingName}' not found in this scope", missingName, availableNames);
 	
+	public static IEnumerable<Diagnostic> ReportDuplicates(IEnumerable<Token> identifiers,
+		Func<string, string> describe) => identifiers
+		.GroupBy(static identifier => identifier.Text)
+		.Where(static sameName => sameName.Count() > 1)
+		.SelectMany(sameName => sameName.Select(identifier =>
+			new Diagnostic(DiagnosticSeverity.Error, identifier.SourceLocation, describe(sameName.Key))));
+	
 	private static Diagnostic ReportUndefined(SourceLocation location, string message, string missingName,
 		IEnumerable<string> availableNames)
 	{

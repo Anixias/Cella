@@ -196,6 +196,13 @@ public class Scanner : IScanner
 						break;
 				}
 				
+				if (depth > 0)
+				{
+					var opener = new Token(TokenType.Invalid, Source, new TextRange(position, position + 2));
+					comment = new(opener, end);
+					return true;
+				}
+				
 				break;
 			
 			default:

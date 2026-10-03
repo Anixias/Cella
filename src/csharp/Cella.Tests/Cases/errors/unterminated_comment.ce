@@ -1,0 +1,12 @@
+mod test
+
+main: fun -> i32
+{
+	ret 0
+}
+
+/* outer comment /* nested comment */
+helper: fun -> i32
+{
+	ret 1
+}

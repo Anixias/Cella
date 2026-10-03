@@ -1,6 +1,7 @@
 ﻿using System.Collections.Immutable;
 using Cella.Core.Symbols;
 using Cella.Core.Syntax.Nodes;
+using Cella.Core.Text;
 using Cella.Diagnostics;
 
 namespace Cella.Core.Binding;
@@ -30,6 +31,7 @@ public sealed class SignatureCollector : IDeclarationNodeVisitor
 	// TODO Diagnostics: if (_entryPoints.Count > 1)
 	public AssemblySymbol FinishAssembly(string name)
 	{
+		ReportDuplicateDeclarations();
 		ReportRecordCycles();
 		return new(name, _symbolTable, _builder.Build(), _entryPoints.FirstOrDefault());
 	}
@@ -74,6 +76,7 @@ public sealed class SignatureCollector : IDeclarationNodeVisitor
 		var function = (FunctionSymbol)_symbolTable.DeclarationSymbols[node];
 		var resolutionContext = CurrentResolutionContext;
 		var containingType = resolutionContext.ContainingType!;
+		ReportDuplicateParameters(node.Parameters);
 		
 		var scope = new Scope();
 		var paramTypes = new List<TypeSymbol>(node.Parameters.Length + 1);
@@ -108,6 +111,7 @@ public sealed class SignatureCollector : IDeclarationNodeVisitor
 	{
 		var function = (FunctionSymbol)_symbolTable.DeclarationSymbols[node];
 		var resolutionContext = CurrentResolutionContext;
+		ReportDuplicateParameters(node.Parameters);
 		
 		var scope = new Scope();
 		
@@ -145,6 +149,7 @@ public sealed class SignatureCollector : IDeclarationNodeVisitor
 	{
 		var function = (FunctionSymbol)_symbolTable.DeclarationSymbols[node];
 		var resolutionContext = CurrentResolutionContext;
+		ReportDuplicateParameters(node.Parameters);
 		
 		var paramTypes = new List<TypeSymbol>(node.Parameters.Length);
 		for (var i = 0; i < node.Parameters.Length; i++)
@@ -173,6 +178,9 @@ public sealed class SignatureCollector : IDeclarationNodeVisitor
 	public void Visit(RecordNode node)
 	{
 		var record = (RecordSymbol)_symbolTable.DeclarationSymbols[node];
+		var fieldNames = node.Members.OfType<FieldNode>().Select(static f => f.Identifier);
+		Diagnostics.AddRange(DiagnosticReporter.ReportDuplicates(fieldNames,
+			name => $"Field '{name}' is declared more than once in '{record.Name}'"));
 		
 		var resolutionContext = CurrentResolutionContext with
 		{
@@ -187,6 +195,83 @@ public sealed class SignatureCollector : IDeclarationNodeVisitor
 		_resolutionContexts.Pop();
 		_typePool.RegisterRecord(record);
 	}
+	
+	private void ReportDuplicateParameters(IEnumerable<ParameterNode> parameters) =>
+		Diagnostics.AddRange(DiagnosticReporter.ReportDuplicates(parameters.Select(static p => p.Identifier),
+			static name => $"Parameter '{name}' is declared more than once"));
+	
+	private void ReportDuplicateDeclarations()
+	{
+		foreach (var module in _symbolTable.ModuleSymbols.Values)
+		{
+			var declarationsByName = module.Files
+				.SelectMany(static f => f.Syntax.Declarations)
+				.Where(d => _symbolTable.DeclarationSymbols.ContainsKey(d))
+				.ToLookup(d => _symbolTable.DeclarationSymbols[d].Name);
+			
+			foreach (var sameName in declarationsByName)
+			{
+				foreach (var declaration in sameName)
+				{
+					if (FindConflict(declaration, sameName) is { } diagnostic)
+						Diagnostics.Add(diagnostic);
+				}
+			}
+		}
+	}
+	
+	private Diagnostic? FindConflict(IDeclarationNode declaration, IEnumerable<IDeclarationNode> sameName)
+	{
+		var symbol = _symbolTable.DeclarationSymbols[declaration];
+		var others = sameName
+			.Where(other => other != declaration)
+			.Select(other => _symbolTable.DeclarationSymbols[other])
+			.ToList();
+		
+		if (others.Count == 0)
+			return null;
+		
+		var location = GetIdentifier(declaration).SourceLocation;
+		if (symbol is not FunctionSymbol function || others.Any(static s => s is not FunctionSymbol))
+			return new(DiagnosticSeverity.Error, location,
+				$"'{symbol.Name}' is declared more than once in this module");
+		
+		var isExternal = function.Kind == FunctionKind.External;
+		if (isExternal && others.Any(static s => s is FunctionSymbol { Kind: FunctionKind.External }))
+		{
+			return new(DiagnosticSeverity.Error, location,
+				$"'{symbol.Name}' is declared more than once as an ext function")
+			{
+				Hints = ["Each ext function is one C symbol, so it can't be overloaded"]
+			};
+		}
+		
+		var signature = _builder.Functions[function].Signature;
+		var sameParameters = others
+			.Select(other => _builder.Functions[(FunctionSymbol)other].Signature)
+			.Where(other => HasSameParameters(other, signature))
+			.ToList();
+		
+		if (sameParameters.Count == 0)
+			return null;
+		
+		var message = sameParameters.Any(other => other.ReturnType == signature.ReturnType)
+			? $"'{symbol.Name}' is declared more than once with the same signature"
+			: $"'{symbol.Name}' overloads cannot differ only in return type";
+		
+		return new(DiagnosticSeverity.Error, location, message);
+	}
+	
+	private static bool HasSameParameters(FunctionSignature first, FunctionSignature second) =>
+		first.IsVariadic == second.IsVariadic && first.ParameterTypes.SequenceEqual(second.ParameterTypes);
+	
+	private static Token GetIdentifier(IDeclarationNode declaration) => declaration switch
+	{
+		FunctionNode node => node.Identifier,
+		ExternalFunctionNode node => node.Identifier,
+		RecordNode node => node.Identifier,
+		_ => throw new InvalidOperationException()
+	};
 	
 	private void ReportRecordCycles()
 	{

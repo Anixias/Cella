@@ -38,7 +38,6 @@ public sealed class SymbolCollector : IDeclarationNodeVisitor<Symbol>
 	
 	public Symbol Visit(ConstructorNode node)
 	{
-		// TODO Disallow multiple parameters with the same name
 		var parameters = new List<ParameterSymbol>(node.Parameters.Length + 1)
 		{
 			new("self", node.SourceLocation)
@@ -64,7 +63,6 @@ public sealed class SymbolCollector : IDeclarationNodeVisitor<Symbol>
 	
 	public Symbol Visit(FunctionNode node)
 	{
-		// TODO Disallow multiple parameters with the same name
 		var parameters = new List<ParameterSymbol>(node.Parameters.Length);
 		foreach (var param in node.Parameters)
 		{
@@ -83,7 +81,6 @@ public sealed class SymbolCollector : IDeclarationNodeVisitor<Symbol>
 	
 	public Symbol Visit(ExternalFunctionNode node)
 	{
-		// TODO Disallow multiple parameters with the same name
 		var parameters = new List<ParameterSymbol>(node.Parameters.Length);
 		foreach (var param in node.Parameters)
 		{
