@@ -1,0 +1,19 @@
+mod test
+
+Node: rec
+{
+	value: i32
+	next: own[Node]
+}
+
+main: fun -> i32
+{
+	var head = heap Node
+	head.value = 1
+	head.next = heap Node
+	head.next.value = 2
+	head.next.next = heap Node
+	head.next.next.value = 4
+
+	ret head.value + head.next.value + head.next.next.value
+}
