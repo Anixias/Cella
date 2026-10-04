@@ -37,5 +37,10 @@ main: fun -> i32
 	var s = handler.scale(5)
 	printf("%d\n", helper)
 	var none: fun(i32) -> i32 = null
+	var missing: ext fun(i32) -> i32 = null
+	var raw = ptr(helper)
+	var boxed = ptr(closure)
+	var implicit: ptr = twice
+	var back: ext fun(i32) -> i32 = ptr(twice)
 	ret 0
 }

@@ -718,7 +718,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 		ArrayValue v => EmitArrayValue(v, builder),
 		ConversionValue v => EmitConversion(v, builder),
 		CallValue v => EmitCall(v, builder),
-		FunctionReferenceValue v => EmitFunctionReference(v.Function, (FunctionType)v.Type),
+		FunctionReferenceValue v => EmitFunctionReference(v.Function, v.Type),
 		IndirectCallValue v => EmitIndirectCall(v, builder),
 		PointerOffsetValue v => EmitPointerOffset(v, builder),
 		PointerDifferenceValue v => EmitPointerDifference(v, builder),
@@ -1680,9 +1680,9 @@ public sealed unsafe class CodeGenerator : IDisposable
 	private static void MakeMonotonic(LLVMValueRef instruction) =>
 		LLVM.SetOrdering((LLVMOpaqueValue*)instruction.Handle, LLVMAtomicOrdering.LLVMAtomicOrderingMonotonic);
 	
-	private LLVMValueRef EmitFunctionReference(FunctionInfo function, FunctionType type)
+	private LLVMValueRef EmitFunctionReference(FunctionInfo function, TypeSymbol type)
 	{
-		if (!type.IsExternal)
+		if (type is FunctionType { IsExternal: false })
 		{
 			var environment = LLVMValueRef.CreateConstNull(OpaquePointer);
 			return LLVMValueRef.CreateConstStruct([GetClosureThunk(function), environment], false);
@@ -1797,7 +1797,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 		ArrayConstant c => EmitArrayConstant(MapTypeSymbol(c.ArrayType.ElementType),
 			[..c.Elements.Select(EmitStaticConstant)]),
 		EnumConstant c => EmitEnumConstant(c),
-		FunctionConstant c => EmitFunctionReference(c.Function, (FunctionType)c.Type),
+		FunctionConstant c => EmitFunctionReference(c.Function, c.Type),
 		ZeroConstant c => LLVMValueRef.CreateConstNull(MapTypeSymbol(c.Type)),
 		_ => throw new InvalidOperationException()
 	};

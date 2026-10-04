@@ -66,4 +66,29 @@ Error at line 39, column 30
 39 │ var none: fun(i32) -> i32 = null
                                  ╘══╛ Cannot convert type 'null' to 'fun(i32) -> i32'
 
+Error at line 40, column 37
+39 │ var none: fun(i32) -> i32 = null
+40 │ var missing: ext fun(i32) -> i32 = null
+                                        ╘══╛ Cannot convert type 'null' to 'ext fun(i32) -> i32'
+
+Error at line 41, column 12
+40 │ var missing: ext fun(i32) -> i32 = null
+41 │ var raw = ptr(helper)
+               ╘═════════╛ No constructor for 'ptr' accepts argument of type 'fun(i32) -> i32'
+
+Error at line 42, column 14
+41 │ var raw = ptr(helper)
+42 │ var boxed = ptr(closure)
+                 ╘══════════╛ No constructor for 'ptr' accepts argument of type 'fun(i32) -> i32'
+
+Error at line 43, column 22
+42 │ var boxed = ptr(closure)
+43 │ var implicit: ptr = twice
+                         ╘═══╛ Cannot convert type 'ext fun(i32) -> i32' to 'ptr'
+
+Error at line 44, column 34
+43 │ var implicit: ptr = twice
+44 │ var back: ext fun(i32) -> i32 = ptr(twice)
+                                     ╘════════╛ Cannot convert type 'ptr' to 'ext fun(i32) -> i32'
+
 [compilation failed]

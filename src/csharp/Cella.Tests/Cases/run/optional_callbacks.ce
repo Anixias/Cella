@@ -1,0 +1,57 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+	qsort: fun(items: ptr, count: usize, size: usize, compare: ptr)
+	signal: fun(sig: i32, handler: ptr) -> ptr
+	raise: fun(sig: i32) -> i32
+}
+
+caught: var i32 = 0
+
+onSignal: ext fun(sig: i32)
+{
+	caught = sig
+}
+
+ascending: fun(left: ptr, right: ptr) -> i32
+{
+	var a = *ptr[i32](left)
+	var b = *ptr[i32](right)
+	if a < b
+		ret -1
+
+	if a > b
+		ret 1
+
+	ret 0
+}
+
+descending: ext fun(left: ptr, right: ptr) -> i32 = *ptr[i32](right) - *ptr[i32](left)
+
+compareUp: val ext fun(ptr, ptr) -> i32 = ascending
+comparers: val array[ptr, 2] = [ptr(compareUp), ptr(descending)]
+
+main: fun -> i32
+{
+	val previous = signal(2, ptr(onSignal))
+	val restored = signal(2, null)
+	signal(2, ptr(onSignal))
+	raise(2)
+	printf("%d %d %d\n", caught, previous == null, restored == ptr(onSignal))
+
+	var values = [5, 3, 9, 1, 7]
+	qsort(@values, 5, sizeOf(i32), comparers[0])
+	printf("%d %d %d %d %d\n", values[0], values[1], values[2], values[3], values[4])
+
+	var index: usize = 1
+	qsort(@values, 5, sizeOf(i32), comparers[index])
+	printf("%d %d %d %d %d\n", values[0], values[1], values[2], values[3], values[4])
+
+	var compare: ext fun(ptr, ptr) -> i32 = ascending
+	qsort(@values, 5, sizeOf(i32), ptr(compare))
+	printf("%d %d %d %d %d\n", values[0], values[1], values[2], values[3], values[4])
+	printf("%d\n", ptr(compareUp) == comparers[0])
+	ret 0
+}

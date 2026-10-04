@@ -109,6 +109,10 @@ public sealed class TypePool
 		_functionTypes.Add(functionType);
 		var size = isExternal ? StorageSize.Ptr : (ISize)StorageSize.Sum(StorageSize.Ptr, StorageSize.Ptr);
 		SizeTable.Register(functionType, size);
+		
+		if (isExternal)
+			ConversionTable.Add(new FreeConversion(functionType, NativeSymbols.VoidPtr, ConversionKind.Explicit));
+		
 		return functionType;
 	}
 	

@@ -337,6 +337,8 @@ public sealed class ConstantEvaluator
 		(NativeConversion { To: IntegerType } c, BoolConstant flag) =>
 			new IntegerConstant(c.To, flag.Value ? BigInteger.One : BigInteger.Zero),
 		(FreeConversion c, NullConstant) => new NullConstant(c.To),
+		(FreeConversion { From: FunctionType } c, FunctionConstant function) =>
+			new FunctionConstant(function.Function, c.To),
 		_ => null
 	};
 	
