@@ -1,0 +1,21 @@
+mod test
+
+ext
+{
+	puts: fun(text: cstr) -> i32
+}
+
+area: fun(w: i32, h: i32) -> i32 = w * h
+scale: fun(n: i32) -> i32 = n
+scale: fun(n: f64) -> f64 = n
+
+main: fun -> i32
+{
+	area = area
+	area = 5
+	area += 1
+	scale = scale
+	puts = puts
+	test.area = missing
+	ret 0
+}

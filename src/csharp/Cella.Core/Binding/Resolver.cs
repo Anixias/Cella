@@ -1551,6 +1551,13 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		if (isAssignment)
 		{
 			var left = VisitNode(node.Left, null);
+			if (left is ResolvedFunctionGroupExpressionNode function)
+			{
+				VisitNode(node.Right, null);
+				return Error(node, $"'{function.Group.FunctionName}' is a function and can't be changed",
+					CurrentTargetType, node.Left);
+			}
+			
 			if (op.Type != TokenType.OpEqual)
 				return ResolveCompoundAssignment(node, MaterializeAsDefault(left));
 			
