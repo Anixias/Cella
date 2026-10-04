@@ -17,7 +17,6 @@ public sealed class TypeChecker(ConstantEvaluator evaluator) : IResolvedStatemen
 	private readonly Stack<TypeSymbol?> _returnTypeStack = [];
 	private int continueDepth;
 	private int breakDepth;
-	private bool undefAllowed;
 	
 	public void Check(ResolvedFileNode root) => VisitNode(root);
 	
@@ -244,7 +243,6 @@ public sealed class TypeChecker(ConstantEvaluator evaluator) : IResolvedStatemen
 		ResolvedVarExpressionNode => true,
 		ResolvedGlobalExpressionNode => true,
 		ResolvedAccessExpressionNode { Member: FieldSymbol } e => IsLValue(e.Target),
-		ResolvedIndexerExpressionNode { Target.Type: SpanType or ViewType } => true,
 		ResolvedIndexerExpressionNode e => IsLValue(e.Target),
 		ResolvedUnaryOpExpressionNode { Operation.Op: TokenType.OpStar } => true,
 		_ => false
@@ -407,11 +405,6 @@ public sealed class TypeChecker(ConstantEvaluator evaluator) : IResolvedStatemen
 	
 	public void Visit(ResolvedConversionExpressionNode node)
 	{
-		if (node.Conversion is NativeConversion { From: ArrayType, To: SpanType or BufferType } &&
-		    FindImmutableBinding(node.Source) is { } binding)
-			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Source.Syntax.SourceLocation,
-				$"{DescribeImmutable(binding)} and can't be changed through a '{node.Type.Name}'"));
-		
 		if (node.Conversion is EnumConversion { To: EnumSymbol { IsExternal: false } enumType } &&
 		    evaluator.Evaluate(node.Source) is IntegerConstant { Value: var value } && evaluator.Evaluate(node) is null)
 			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Source.Syntax.SourceLocation,
@@ -476,18 +469,6 @@ public sealed class TypeChecker(ConstantEvaluator evaluator) : IResolvedStatemen
 			VisitNode(argument);
 	}
 	
-	public void Visit(ResolvedHeapExpressionNode node)
-	{
-		if (node.Initializer is not { } initializer)
-			return;
-		
-		// Undefined is allowed in heap expressions
-		var wasAllowed = undefAllowed;
-		undefAllowed = true;
-		VisitNode(initializer);
-		undefAllowed = wasAllowed;
-	}
-	
 	public void Visit(ResolvedIndexerExpressionNode node)
 	{
 		if (node.Target.Type is ArrayType { Length.Sign: >= 0 } array &&
@@ -528,11 +509,8 @@ public sealed class TypeChecker(ConstantEvaluator evaluator) : IResolvedStatemen
 	// TODO Better diagnostics
 	public void Visit(ResolvedUndefExpressionNode node)
 	{
-		if (undefAllowed)
-			return;
-		
 		Diagnostics.Add(new(DiagnosticSeverity.Error, node.Syntax.SourceLocation,
-			"'undef' may only be used as a variable initializer or in memory allocations"));
+			"'undef' may only be used as a variable initializer"));
 	}
 	
 	public void Visit(ResolvedVarExpressionNode node)

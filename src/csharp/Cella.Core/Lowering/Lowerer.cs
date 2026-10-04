@@ -679,33 +679,6 @@ public sealed class Lowerer
 			return new IndirectCallValue(operands[0], operands.Skip(1), node.FunctionType, node.Syntax.SourceLocation);
 		}
 		
-		public Value Visit(ResolvedHeapExpressionNode node)
-		{
-			if (node.Initializer is not ResolvedConstructorCallExpressionNode constructor)
-				return new HeapValue(node.Type, node.Initializer is { } initializer
-					? VisitNode(initializer)
-					: new ZeroValue(((PointerType)node.Type).BaseType), node.Syntax.SourceLocation);
-			
-			var ownType = (PointerType)node.Type;
-			var elementType = ownType.BaseType;
-			var sourceLocation = node.Syntax.SourceLocation;
-			
-			var ownerSymbol = CreateTempSymbol(node.Type, ".cons");
-			var heapValue = new HeapValue(node.Type, new ZeroValue(elementType), sourceLocation);
-			
-			GetOrMakeBlock().Instructions
-				.Add(new LocalVarInstruction(ownerSymbol, heapValue, sourceLocation, CurrentScopeId));
-			
-			var owner = new VariableValue(new(ownerSymbol, node.Type), sourceLocation);
-			
-			var selfType = constructor.Function.Signature.ParameterTypes[0];
-			var self = Convert(owner, new FreeConversion(owner.Type, selfType, ConversionKind.Implicit));
-			
-			LowerConstructor(constructor.Function, self, constructor.Arguments, sourceLocation);
-			
-			return owner;
-		}
-		
 		private void LowerConstructor(FunctionInfo constructor, Value self,
 			IReadOnlyList<IResolvedExpressionNode> arguments, SourceLocation sourceLocation)
 		{

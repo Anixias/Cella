@@ -309,14 +309,6 @@ public sealed class FunctionGroupType(string functionName, IEnumerable<FunctionI
 			: int.MaxValue;
 }
 
-public enum PointerKind
-{
-	Unsafe,
-	Mutable,
-	Immutable,
-	Owning
-}
-
 public sealed class FunctionType : TypeSymbol
 {
 	public bool IsExternal { get; }
@@ -342,30 +334,19 @@ public sealed class FunctionType : TypeSymbol
 
 public sealed class PointerType : TypeSymbol, IPrimitiveType
 {
-	public static PointerType VoidPtr { get; } = new("ptr", NativeSymbols.Void, PointerKind.Unsafe);
+	public static PointerType VoidPtr { get; } = new("ptr", NativeSymbols.Void);
 	
-	private PointerType(string name, TypeSymbol baseType, PointerKind pointerKind) : base(name)
+	private PointerType(string name, TypeSymbol baseType) : base(name)
 	{
 		BaseType = baseType;
-		PointerKind = pointerKind;
 	}
 	
-	public PointerType(TypeSymbol baseType, PointerKind pointerKind)
-		: this(BuildName(baseType, pointerKind), baseType, pointerKind)
+	public PointerType(TypeSymbol baseType) : this($"ptr[{baseType.Name}]", baseType)
 	{
 	}
 	
 	public TypeSymbol BaseType { get; }
 	public PrimitiveTypeKind Kind { get; } = PrimitiveTypeKind.Pointer;
-	public PointerKind PointerKind { get; }
-	
-	public static string BuildName(TypeSymbol baseType, PointerKind pointerKind) => pointerKind switch
-	{
-		PointerKind.Mutable => $"mut[{baseType.Name}]",
-		PointerKind.Immutable => $"imm[{baseType.Name}]",
-		PointerKind.Owning => $"own[{baseType.Name}]",
-		_ => $"ptr[{baseType.Name}]"
-	};
 }
 
 public sealed class ArrayType(TypeSymbol elementType, BigInteger length)
@@ -375,24 +356,6 @@ public sealed class ArrayType(TypeSymbol elementType, BigInteger length)
 	public TypeSymbol ElementType { get; } = elementType;
 	public BigInteger Length { get; } = length;
 	public PrimitiveTypeKind Kind { get; } = PrimitiveTypeKind.Array;
-}
-
-public sealed class BufferType(TypeSymbol elementType) : TypeSymbol($"buffer[{elementType.Name}]"), IPrimitiveType
-{
-	public TypeSymbol ElementType { get; } = elementType;
-	public PrimitiveTypeKind Kind { get; } = PrimitiveTypeKind.Buffer;
-}
-
-public sealed class SpanType(TypeSymbol elementType) : TypeSymbol($"span[{elementType.Name}]"), IPrimitiveType
-{
-	public TypeSymbol ElementType { get; } = elementType;
-	public PrimitiveTypeKind Kind { get; } = PrimitiveTypeKind.Span;
-}
-
-public sealed class ViewType(TypeSymbol elementType) : TypeSymbol($"view[{elementType.Name}]"), IPrimitiveType
-{
-	public TypeSymbol ElementType { get; } = elementType;
-	public PrimitiveTypeKind Kind { get; } = PrimitiveTypeKind.View;
 }
 
 public abstract class VariableSymbol(string name) : Symbol(name);

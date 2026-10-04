@@ -43,7 +43,6 @@ public enum TokenType
 	KeywordWhile,
 	KeywordBreak,
 	KeywordCont,
-	KeywordHeap,
 	KeywordMatch,
 	KeywordIs,
 	
@@ -55,8 +54,6 @@ public enum TokenType
 	KeywordExt,
 	KeywordRec,
 	KeywordEnum,
-	KeywordMut,
-	KeywordImm,
 	KeywordNew,
 	KeywordOp,
 	
@@ -169,7 +166,6 @@ public static class TokenTypeInfo
 			[TokenType.KeywordWhile] = new("while", IsKeyword: true),
 			[TokenType.KeywordBreak] = new("break", IsKeyword: true),
 			[TokenType.KeywordCont] = new("cont", IsKeyword: true),
-			[TokenType.KeywordHeap] = new("heap", IsKeyword: true),
 			[TokenType.KeywordMatch] = new("match", IsKeyword: true),
 			[TokenType.KeywordIs] = new("is", IsKeyword: true),
 			
@@ -180,8 +176,6 @@ public static class TokenTypeInfo
 			[TokenType.KeywordExt] = new("ext", IsKeyword: true, IsContextual: true),
 			[TokenType.KeywordRec] = new("rec", IsKeyword: true, IsContextual: true),
 			[TokenType.KeywordEnum] = new("enum", IsKeyword: true, IsContextual: true),
-			[TokenType.KeywordMut] = new("mut", IsKeyword: true, IsContextual: true),
-			[TokenType.KeywordImm] = new("imm", IsKeyword: true, IsContextual: true),
 			[TokenType.KeywordNew] = new("new", IsKeyword: true, IsContextual: true),
 			[TokenType.KeywordOp] = new("op", IsKeyword: true, IsContextual: true),
 			

@@ -370,12 +370,6 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	private (IResolvedExpressionNode Value, EnumSymbol? Type) ResolveMatchedValue(IExpressionNode node)
 	{
 		var value = VisitNode(node, null);
-		if (value.Type is PointerType
-		    {
-			    PointerKind: PointerKind.Mutable or PointerKind.Immutable or PointerKind.Owning
-		    })
-			value = ResolveDereference(TokenType.OpStar, value, node);
-		
 		if (value.Type is EnumSymbol enumType)
 			return (value, enumType);
 		
@@ -825,14 +819,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	}
 	
 	private FieldSymbol? FindField(TypeSymbol type, string name) =>
-		_typePool.ResolveMember(Dereference(type), name) as FieldSymbol;
-	
-	private static TypeSymbol Dereference(TypeSymbol type) => type is PointerType
-	{
-		PointerKind: PointerKind.Mutable or PointerKind.Immutable or PointerKind.Owning
-	} pointer
-		? pointer.BaseType
-		: type;
+		_typePool.ResolveMember(type, name) as FieldSymbol;
 	
 	private IResolvedExpressionNode VisitIndirectCall(CallExpressionNode node, IResolvedExpressionNode target)
 	{
@@ -856,55 +843,6 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		return new ResolvedIndirectCallExpressionNode(target, resolvedArgs, functionType, node);
 	}
 	
-	public IResolvedExpressionNode Visit(HeapExpressionNode node)
-	{
-		var resolutionContext = CurrentResolutionContext;
-		var typePool = resolutionContext.TypePool;
-		
-		IResolvedExpressionNode? initializer;
-		TypeSymbol elementType;
-		
-		switch (node.Target)
-		{
-			case ITypeNode n:
-				elementType = resolutionContext.ResolveType(n);
-				initializer = null;
-				break;
-			
-			case IExpressionNode n when resolutionContext.TryResolveExpressionAsType(n) is { } type:
-				elementType = type;
-				initializer = null;
-				break;
-			
-			case IExpressionNode n:
-				var targetElementType = CurrentTargetType is PointerType { PointerKind: PointerKind.Owning } ptrType
-					? ptrType.BaseType
-					: null;
-				
-				initializer = targetElementType is null ? VisitNode(n) : VisitNode(n, targetElementType);
-				
-				if (initializer.Type is UntypedType)
-				{
-					initializer = targetElementType is not null
-						? MaterializeExpression(initializer, targetElementType)
-						: MaterializeAsDefault(initializer);
-				}
-				
-				elementType = initializer.Type;
-				break;
-			
-			default:
-				return Error(node, "'heap' must be followed by a type or an expression",
-					CurrentTargetType);
-		}
-		
-		if (IsInvalid(elementType))
-			return new ResolvedInvalidExpressionNode(node);
-		
-		var ownType = typePool.GetPointerType(elementType, PointerKind.Owning);
-		return new ResolvedHeapExpressionNode(initializer, ownType, node);
-	}
-	
 	public IResolvedExpressionNode Visit(IndexerExpressionNode node)
 	{
 		var target = VisitNode(node.Target);
@@ -918,35 +856,8 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		
 		// TODO Indexable user-defined types
 		
-		// Auto-dereferencing through high-level pointer types
-		var lookupType = target.Type;
-		if (target.Type is PointerType
-		    {
-			    PointerKind: PointerKind.Mutable or PointerKind.Immutable or PointerKind.Owning
-		    } ptrType)
-		{
-			lookupType = ptrType.BaseType;
-			target = ResolveDereference(TokenType.OpStar, target, node.Target);
-		}
-		
-		TypeSymbol elementType;
-		switch (lookupType)
-		{
-			case SpanType spanType:
-				elementType = spanType.ElementType;
-				break;
-			
-			case ViewType viewType:
-				elementType = viewType.ElementType;
-				break;
-			
-			case ArrayType arrayType:
-				elementType = arrayType.ElementType;
-				break;
-			
-			default:
-				return Error(node, $"Cannot index into type '{target.Type.Name}'", CurrentTargetType, target.Syntax);
-		}
+		if (target.Type is not ArrayType { ElementType: var elementType })
+			return Error(node, $"Cannot index into type '{target.Type.Name}'", CurrentTargetType, target.Syntax);
 		
 		if (node.Arguments.Length != 1)
 			return Error(node, "Array indexer requires exactly one argument", elementType);
@@ -986,19 +897,8 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		var memberName = node.Member.Text;
 		var resolutionContext = CurrentResolutionContext;
 		
-		// Auto-dereferencing through high-level pointer types
-		var lookupType = target.Type;
-		if (target.Type is PointerType
-		    {
-			    PointerKind: PointerKind.Mutable or PointerKind.Immutable or PointerKind.Owning
-		    } ptrType)
-		{
-			lookupType = ptrType.BaseType;
-			target = ResolveDereference(TokenType.OpStar, target, node.Target);
-		}
-		
-		if (resolutionContext.TypePool.ResolveMember(lookupType, memberName) is not { } member)
-			return Error(node, $"Type '{lookupType.Name}' has no member '{memberName}'", CurrentTargetType,
+		if (resolutionContext.TypePool.ResolveMember(target.Type, memberName) is not { } member)
+			return Error(node, $"Type '{target.Type.Name}' has no member '{memberName}'", CurrentTargetType,
 				node.Member.SourceLocation);
 		
 		var memberType = GetMemberType(member);
@@ -1009,13 +909,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	{
 		var values = new List<IResolvedExpressionNode>(node.Values.Length);
 		
-		var elementType = CurrentTargetType switch
-		{
-			ArrayType t => t.ElementType,
-			SpanType t => t.ElementType,
-			ViewType t => t.ElementType,
-			_ => null
-		};
+		var elementType = (CurrentTargetType as ArrayType)?.ElementType;
 		
 		foreach (var expression in node.Values)
 		{
@@ -1223,12 +1117,11 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	
 	private bool HasMember(TypeSymbol type, Token member)
 	{
-		var lookupType = Dereference(type);
-		if (_typePool.ResolveMember(lookupType, member.Text) is not null)
+		if (_typePool.ResolveMember(type, member.Text) is not null)
 			return true;
 		
 		Diagnostics.Add(new(DiagnosticSeverity.Error, member.SourceLocation,
-			$"Type '{lookupType.Name}' has no member '{member.Text}'"));
+			$"Type '{type.Name}' has no member '{member.Text}'"));
 		
 		return false;
 	}
@@ -1258,6 +1151,10 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			case GlobalSymbol g:
 				return new ResolvedGlobalExpressionNode(g, _signatures.GetGlobalType(g), node);
 			
+			case VariableSymbol v when IsConstructorSelf(v):
+				var self = new ResolvedVarExpressionNode(v, _signatures.GetVariableType(v), node);
+				return ResolveDereference(TokenType.OpStar, self, node);
+			
 			case VariableSymbol v:
 				return new ResolvedVarExpressionNode(v, _signatures.GetVariableType(v), node);
 			
@@ -1271,6 +1168,11 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 				return Error(node, $"Symbol '{GetName(node)}' is not a variable", CurrentTargetType);
 		}
 	}
+	
+	private bool IsConstructorSelf(VariableSymbol variable) => CurrentResolutionContext.ContainingFunction is
+	{
+		Symbol: { Kind: FunctionKind.Constructor, Parameters: [var self, ..] }
+	} && self == variable;
 	
 	private static FunctionSymbol[] GetFunctions(Symbol? symbol) => symbol switch
 	{
@@ -1525,10 +1427,6 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			case TokenType.OpStar:
 				return ResolveDereference(op.Type, operand, node);
 			
-			case TokenType.KeywordMut:
-			case TokenType.KeywordImm:
-				return ResolveBorrow(op.Type, operand, node);
-			
 			default:
 			{
 				if (op.Type == TokenType.OpMinus && operand.Type is IntegerType { IsSigned: false })
@@ -1576,25 +1474,8 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	private ResolvedUnaryOpExpressionNode ResolveAddressOf(TokenType opType, IResolvedExpressionNode operand,
 		UnaryOpExpressionNode node)
 	{
-		var ptrType = _typePool.GetPointerType(operand.Type, PointerKind.Unsafe);
+		var ptrType = _typePool.GetPointerType(operand.Type);
 		return new(operand, new NativeImpl(opType, ptrType), node);
-	}
-	
-	private IResolvedExpressionNode ResolveBorrow(TokenType opType, IResolvedExpressionNode operand,
-		UnaryOpExpressionNode node)
-	{
-		if (operand.Type is not PointerType { PointerKind: PointerKind.Owning } ptrType)
-			return Error(node, $"Cannot borrow type '{operand.Type.Name}'", null);
-		
-		var borrowType = _typePool.GetPointerType(ptrType.BaseType, opType switch
-		{
-			TokenType.KeywordMut => PointerKind.Mutable,
-			TokenType.KeywordImm => PointerKind.Immutable,
-			_ => throw new InvalidOperationException()
-		});
-		
-		return new ResolvedConversionExpressionNode(operand, new FreeConversion(operand.Type, borrowType,
-			ConversionKind.Implicit), node);
 	}
 	
 	public IResolvedExpressionNode Visit(BinaryOpExpressionNode node)
@@ -2327,7 +2208,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			case FloatType { Kind: PrimitiveTypeKind.Float64 }:
 				return arg;
 			
-			case PointerType { PointerKind: PointerKind.Unsafe }:
+			case PointerType:
 			case PrimitiveType { Kind: PrimitiveTypeKind.CStr }:
 				return arg;
 			

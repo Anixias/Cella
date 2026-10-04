@@ -201,36 +201,6 @@ public sealed unsafe class CodeGenerator : IDisposable
 				return llvmArray;
 			}
 			
-			case BufferType bufferType:
-			{
-				var elementType = MapTypeSymbol(bufferType.ElementType);
-				var usizeType = LLVMTypeRef.CreateInt(_pointerSize * 8);
-				var ptrType = LLVMTypeRef.CreatePointer(elementType, 0u);
-				var llvmBuffer = LLVMTypeRef.CreateStruct([usizeType, ptrType], false);
-				_typeMap[symbol] = llvmBuffer;
-				return llvmBuffer;
-			}
-			
-			case SpanType spanType:
-			{
-				var elementType = MapTypeSymbol(spanType.ElementType);
-				var usizeType = LLVMTypeRef.CreateInt(_pointerSize * 8);
-				var ptrType = LLVMTypeRef.CreatePointer(elementType, 0u);
-				var llvmSpan = LLVMTypeRef.CreateStruct([usizeType, ptrType], false);
-				_typeMap[symbol] = llvmSpan;
-				return llvmSpan;
-			}
-			
-			case ViewType viewType:
-			{
-				var elementType = MapTypeSymbol(viewType.ElementType);
-				var usizeType = LLVMTypeRef.CreateInt(_pointerSize * 8);
-				var ptrType = LLVMTypeRef.CreatePointer(elementType, 0u);
-				var llvmSpan = LLVMTypeRef.CreateStruct([usizeType, ptrType], false);
-				_typeMap[symbol] = llvmSpan;
-				return llvmSpan;
-			}
-			
 			case FunctionType functionType:
 			{
 				var llvmFunctionType = functionType.IsExternal
@@ -537,17 +507,6 @@ public sealed unsafe class CodeGenerator : IDisposable
 		
 		switch (value.Type)
 		{
-			case PointerType { PointerKind: PointerKind.Owning }:
-			{
-				// Drop the owned pointer value, not the address of the storage slot that
-				// contains it. For example, `drop x: own[i32]` must lower to
-				// `free(load x)`, and `drop record.field: own[i32]` must lower to
-				// `free(load &record.field)`.
-				var ptr = EmitValue(value, builder);
-				builder.BuildFree(ptr);
-				break;
-			}
-			
 			case ArrayType array:
 				EmitArrayDrop(value, array, builder);
 				break;
@@ -593,10 +552,6 @@ public sealed unsafe class CodeGenerator : IDisposable
 	{
 		switch (type)
 		{
-			case PointerType { PointerKind: PointerKind.Owning }:
-				builder.BuildFree(value);
-				break;
-			
 			case ArrayType array:
 			{
 				if (!_typePool.NeedsDrop(array.ElementType))
@@ -717,7 +672,6 @@ public sealed unsafe class CodeGenerator : IDisposable
 		IndirectCallValue v => EmitIndirectCall(v, builder),
 		PointerOffsetValue v => EmitPointerOffset(v, builder),
 		PointerDifferenceValue v => EmitPointerDifference(v, builder),
-		HeapValue v => EmitHeap(v, builder),
 		EnumValue v => EmitEnumValue(v, builder),
 		EnumTagValue v => EmitEnumTag(v, builder),
 		EnumPayloadValue v => EmitEnumPayload(v, builder),
@@ -894,18 +848,6 @@ public sealed unsafe class CodeGenerator : IDisposable
 		return builder.BuildSDiv(byteDiff, elementSize, "ptrdiff.typed");
 	}
 	
-	private LLVMValueRef EmitHeap(HeapValue v, LLVMBuilderRef builder)
-	{
-		var ptrType = (PointerType)v.Type;
-		var baseType = MapTypeSymbol(ptrType.BaseType);
-		var malloc = builder.BuildMalloc(baseType);
-		
-		if (v.Initializer is not UndefValue)
-			builder.BuildStore(EmitValue(v.Initializer, builder), malloc);
-		
-		return malloc;
-	}
-	
 	private LLVMValueRef EmitZero(ZeroValue v) => LLVMValueRef.CreateConstNull(MapTypeSymbol(v.Type));
 	
 	private LLVMValueRef EmitEnumValue(EnumValue v, LLVMBuilderRef builder)
@@ -1029,96 +971,6 @@ public sealed unsafe class CodeGenerator : IDisposable
 	{
 		var source = EmitValue(v.Source, builder);
 		
-		// Arrays
-		if (c.From is ArrayType arrayType)
-		{
-			var llvmArrayType = MapTypeSymbol(arrayType);
-			
-			// Array -> Buffer
-			if (c.To is BufferType bufferType)
-			{
-				// TODO This will probably crash for an empty array (and the InBounds would be incorrect?)
-				var lengthValue = EmitSizeConstant(arrayType.Length, true);
-				
-				var zero = LLVMValueRef.CreateConstInt(LLVMTypeRef.Int32, 0);
-				LLVMValueRef dataPtr;
-				if (IsAddressable(v.Source))
-				{
-					var arrayPtr = EmitAddress(v.Source, builder);
-					dataPtr = builder.BuildInBoundsGEP2(llvmArrayType, arrayPtr, new[] { zero, zero }, "data");
-				}
-				else
-				{
-					// Trying to convert literal into span, need to implicitly stack-allocate literal array
-					var arrayPtr = BuildEntryAlloca(builder, llvmArrayType, "array");
-					builder.BuildStore(source, arrayPtr);
-					dataPtr = builder.BuildInBoundsGEP2(llvmArrayType, arrayPtr, new[] { zero, zero }, "data");
-				}
-				
-				var llvmSpanType = MapTypeSymbol(bufferType);
-				var bufferValue = llvmSpanType.Undef;
-				bufferValue = builder.BuildInsertValue(bufferValue, lengthValue, 0, "buffer.length");
-				bufferValue = builder.BuildInsertValue(bufferValue, dataPtr, 1, "buffer.ptr");
-				return bufferValue;
-			}
-			
-			// Array -> Span
-			if (c.To is SpanType spanType)
-			{
-				// TODO This will probably crash for an empty array (and the InBounds would be incorrect?)
-				var lengthValue = EmitSizeConstant(arrayType.Length, true);
-				
-				var zero = LLVMValueRef.CreateConstInt(LLVMTypeRef.Int32, 0);
-				LLVMValueRef dataPtr;
-				if (IsAddressable(v.Source))
-				{
-					var arrayPtr = EmitAddress(v.Source, builder);
-					dataPtr = builder.BuildInBoundsGEP2(llvmArrayType, arrayPtr, new[] { zero, zero }, "data");
-				}
-				else
-				{
-					// Trying to convert literal into span, need to implicitly stack-allocate literal array
-					var arrayPtr = BuildEntryAlloca(builder, llvmArrayType, "array");
-					builder.BuildStore(source, arrayPtr);
-					dataPtr = builder.BuildInBoundsGEP2(llvmArrayType, arrayPtr, new[] { zero, zero }, "data");
-				}
-				
-				var llvmSpanType = MapTypeSymbol(spanType);
-				var spanValue = llvmSpanType.Undef;
-				spanValue = builder.BuildInsertValue(spanValue, lengthValue, 0, "span.length");
-				spanValue = builder.BuildInsertValue(spanValue, dataPtr, 1, "span.ptr");
-				return spanValue;
-			}
-			
-			// Array -> View
-			if (c.To is ViewType viewType)
-			{
-				// TODO This will probably crash for an empty array (and the InBounds would be incorrect?)
-				var lengthValue = EmitSizeConstant(arrayType.Length, true);
-				
-				var zero = LLVMValueRef.CreateConstInt(LLVMTypeRef.Int32, 0);
-				LLVMValueRef dataPtr;
-				if (IsAddressable(v.Source))
-				{
-					var arrayPtr = EmitAddress(v.Source, builder);
-					dataPtr = builder.BuildInBoundsGEP2(llvmArrayType, arrayPtr, new[] { zero, zero }, "data");
-				}
-				else
-				{
-					// Trying to convert literal into span, need to implicitly stack-allocate literal array
-					var arrayPtr = BuildEntryAlloca(builder, llvmArrayType, "array");
-					builder.BuildStore(source, arrayPtr);
-					dataPtr = builder.BuildInBoundsGEP2(llvmArrayType, arrayPtr, new[] { zero, zero }, "data");
-				}
-				
-				var llvmViewType = MapTypeSymbol(viewType);
-				var viewValue = llvmViewType.Undef;
-				viewValue = builder.BuildInsertValue(viewValue, lengthValue, 0, "view.length");
-				viewValue = builder.BuildInsertValue(viewValue, dataPtr, 1, "view.ptr");
-				return viewValue;
-			}
-		}
-		
 		// Pointers
 		switch (c)
 		{
@@ -1167,7 +1019,6 @@ public sealed unsafe class CodeGenerator : IDisposable
 	{
 		VariableValue => true,
 		GlobalValue => true,
-		IndexerValue { Target.Type: SpanType or ViewType } => true,
 		IndexerValue v => IsAddressable(v.Target),
 		AccessValue v => IsAddressable(v.Target),
 		UnaryOpValue { Op: UnaryOperation.Dereference } => true,
@@ -1457,24 +1308,6 @@ public sealed unsafe class CodeGenerator : IDisposable
 		// TODO Switch to BuildInBoundsGEP2 once compiler-generated bounds checks are implemented
 		switch (v.Target.Type)
 		{
-			case SpanType:
-			{
-				var target = EmitValue(v.Target, builder);
-				var index = EmitValue(v.Index, builder);
-				var dataPtr = builder.BuildExtractValue(target, 1, "dataptr");
-				var elemPtr = builder.BuildGEP2(elemType, dataPtr, new[] { index }, "elemptr");
-				return (elemPtr, elemType);
-			}
-			
-			case ViewType:
-			{
-				var target = EmitValue(v.Target, builder);
-				var index = EmitValue(v.Index, builder);
-				var dataPtr = builder.BuildExtractValue(target, 1, "dataptr");
-				var elemPtr = builder.BuildGEP2(elemType, dataPtr, new[] { index }, "elemptr");
-				return (elemPtr, elemType);
-			}
-			
 			case ArrayType a:
 			{
 				var arrayType = MapTypeSymbol(a);

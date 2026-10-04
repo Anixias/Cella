@@ -5,6 +5,6 @@ main: fun -> i32
 	var pointer: ptr[i32, 3]
 	var numbers: array[3, i32]
 	var many: array[i32, 3, 4]
-	var slice: span[3]
+	var slot: ptr[3]
 	ret 0
 }

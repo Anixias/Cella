@@ -151,10 +151,6 @@ main: fun -> i32
 	if (*pointer).effect is hit(n)
 		printf("through a pointer %d\n", n)
 
-	var owned = heap Effect.hit(11)
-	if owned is hit(n)
-		printf("owned %d\n", n)
-
 	var last = Node.end
 	var middle = Node.link(2, @last)
 	var first = Node.link(1, @middle)

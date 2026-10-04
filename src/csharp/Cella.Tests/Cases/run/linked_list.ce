@@ -3,17 +3,14 @@ mod test
 Node: rec
 {
 	value: i32
-	next: own[Node]
+	next: ptr[Node]
 }
 
 main: fun -> i32
 {
-	var head = heap Node
-	head.value = 1
-	head.next = heap Node
-	head.next.value = 2
-	head.next.next = heap Node
-	head.next.next.value = 4
+	var third = Node(4, null)
+	var second = Node(2, @third)
+	var head = Node(1, @second)
 
-	ret head.value + head.next.value + head.next.next.value
+	ret head.value + (*head.next).value + (*(*head.next).next).value
 }

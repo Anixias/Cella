@@ -422,7 +422,7 @@ public sealed class SignatureCollector
 		var paramTypes = new List<TypeSymbol>(node.Parameters.Length + 1);
 		
 		var selfSymbol = function.Parameters[0];
-		var selfType = _typePool.GetPointerType(containingType, PointerKind.Mutable);
+		var selfType = _typePool.GetPointerType(containingType);
 		
 		paramTypes.Add(selfType);
 		_builder.VariableTypes[selfSymbol] = selfType;

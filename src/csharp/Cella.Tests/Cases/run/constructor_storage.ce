@@ -13,6 +13,6 @@ Counter: rec
 main: fun -> i32
 {
 	var local = Counter(5)
-	var boxed = heap Counter(3)
-	ret local.count + boxed.count + local.step + boxed.step
+	var other = Counter(3)
+	ret local.count + other.count + local.step + other.step
 }

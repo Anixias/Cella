@@ -15,7 +15,8 @@ Node: rec
 
 main: fun -> i32
 {
-	var first = heap Wide
+	var wide: Wide
+	var first = @wide
 	var fourth = first + 3
 
 	var bytes = usize(fourth) - usize(first)
@@ -27,11 +28,13 @@ main: fun -> i32
 	if fourth - first != count
 		ret 2
 
-	var head = heap Node
+	var node: Node
+	var head = @node
 	if head + 3 - head != count
 		ret 3
 
-	var slot = heap ptr[i32]
+	var target: ptr[i32]
+	var slot = @target
 	if slot + 3 - slot != count
 		ret 4
 

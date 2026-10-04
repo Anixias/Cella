@@ -11,9 +11,4 @@ Error at line 20, column 4
 20 │     values[0] = 3
          ╘═══════╛ 'values' is bound by a pattern and can't be changed
 
-Error at line 21, column 26
-20 │ values[0] = 3
-21 │ var view: span[i32] = values
-                           ╘════╛ 'values' is bound by a pattern and can't be changed through a 'span[i32]'
-
 [compilation failed]

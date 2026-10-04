@@ -1,4 +1,4 @@
-point y x x
+point y x
 Team red scale main unset
 i32 test scale byteLength
 geometry geometry area game

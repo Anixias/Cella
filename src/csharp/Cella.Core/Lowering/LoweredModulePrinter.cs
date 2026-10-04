@@ -176,12 +176,6 @@ public static class LoweredModulePrinter
 					PrintValue(sb, v.Right);
 					break;
 				
-				case HeapValue v:
-					sb.Append("heap(");
-					PrintValue(sb, v.Initializer);
-					sb.Append(')');
-					break;
-				
 				case ZeroValue v:
 					sb.Append("zero[").Append(v.Type.Name).Append(']');
 					break;

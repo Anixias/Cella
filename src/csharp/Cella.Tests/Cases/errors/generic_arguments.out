@@ -16,9 +16,9 @@ Error at line 7, column 12
 7 │ var many: array[i32, 3, 4]
               ╘══════════════╛ 'array' takes an element type and an optional length
 
-Error at line 8, column 13
+Error at line 8, column 12
 7 │ var many: array[i32, 3, 4]
-8 │ var slice: span[3]
-               ╘═════╛ 'span' takes one type argument
+8 │ var slot: ptr[3]
+              ╘════╛ 'ptr' takes one type argument
 
 [compilation failed]

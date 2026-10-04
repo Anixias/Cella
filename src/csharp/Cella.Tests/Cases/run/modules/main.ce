@@ -51,8 +51,7 @@ main: fun -> i32
 
 	val code = geometry.Code(7)
 	val tally = geometry.Tally(4)
-	val boxed = heap geometry.Point(5, 6)
-	printf("%d %d %d %d\n", i32(code), code == geometry.Code.bad, tally.count, boxed.y)
+	printf("%d %d %d\n", i32(code), code == geometry.Code.bad, tally.count)
 
 	printf("%d %d %d %d\n", game.physics.fall(2), physics.gravity, test.helper(), shadowed(geometry.Point(8, 9)))
 	geometry.puts("done")

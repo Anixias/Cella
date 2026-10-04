@@ -32,9 +32,8 @@ describe: fun(count: i32) -> cstr = nameOf(count)
 main: fun -> i32
 {
 	val point = Point(1, 2)
-	val boxed = heap Point(3, 4)
 	var unset: i32
-	printf("%s %s %s %s\n", nameOf(point), nameOf(point.y), nameOf(boxed.x), nameOf(Point.x))
+	printf("%s %s %s\n", nameOf(point), nameOf(point.y), nameOf(Point.x))
 	printf("%s %s %s %s %s\n", nameOf(Team), nameOf(Team.red), nameOf(scale), nameOf(main), nameOf(unset))
 	printf("%s %s %s %s\n", nameOf(i32), nameOf(test), nameOf(test.scale), nameOf(str.byteLength))
 	printf("%s %s %s %s\n", nameOf(game.geometry), nameOf(geometry), nameOf(geometry.area), nameOf(game))

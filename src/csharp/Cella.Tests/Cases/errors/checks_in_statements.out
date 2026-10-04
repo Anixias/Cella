@@ -24,6 +24,6 @@ Error at line 28, column 19
 Error at line 32, column 6
 31 │ 
 32 │ ret undef
-         ╘═══╛ 'undef' may only be used as a variable initializer or in memory allocations
+         ╘═══╛ 'undef' may only be used as a variable initializer
 
 [compilation failed]

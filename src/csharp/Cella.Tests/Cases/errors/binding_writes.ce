@@ -18,7 +18,6 @@ main: fun -> i32
 		many(values) =>
 		{
 			values[0] = 3
-			var view: span[i32] = values
 		}
 		else => ret 0
 	}

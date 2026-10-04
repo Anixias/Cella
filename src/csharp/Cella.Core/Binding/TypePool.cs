@@ -17,10 +17,7 @@ public sealed class TypePool
 	
 	private readonly Dictionary<TypeSymbol, OrderedDictionary<string, MemberSymbol>> _members = [];
 	private readonly Dictionary<(TypeSymbol, BigInteger), ArrayType> _arrayTypes = [];
-	private readonly Dictionary<TypeSymbol, BufferType> _bufferTypes = [];
-	private readonly Dictionary<TypeSymbol, SpanType> _spanTypes = [];
-	private readonly Dictionary<TypeSymbol, ViewType> _viewTypes = [];
-	private readonly Dictionary<(TypeSymbol, PointerKind), PointerType> _pointerTypes = [];
+	private readonly Dictionary<TypeSymbol, PointerType> _pointerTypes = [];
 	private readonly List<FunctionType> _functionTypes = [];
 	private readonly Dictionary<TypedMemberSymbol, TypeSymbol> _memberTypes = [];
 	private readonly Dictionary<TypeSymbol, bool> _needsDrop = [];
@@ -54,29 +51,13 @@ public sealed class TypePool
 		new Dictionary<string, string>
 		{
 			["ptr"] = "one type argument",
-			["mut"] = "one type argument",
-			["imm"] = "one type argument",
-			["own"] = "one type argument",
-			["buffer"] = "one type argument",
-			["span"] = "one type argument",
-			["view"] = "one type argument",
 			["array"] = "an element type and an optional length"
 		};
 	
 	public TypeSymbol? ResolveBuiltinGenericType(string name, IReadOnlyList<IGenericArgument> typeArgs) => name switch
 	{
 		"ptr" when typeArgs.Count == 0 => NativeSymbols.VoidPtr,
-		"ptr" when typeArgs is [GenericTypeArgument { Type: { } t }] =>
-			GetPointerType(t, PointerKind.Unsafe),
-		"mut" when typeArgs is [GenericTypeArgument { Type: { } t }] =>
-			GetPointerType(t, PointerKind.Mutable),
-		"imm" when typeArgs is [GenericTypeArgument { Type: { } t }] =>
-			GetPointerType(t, PointerKind.Immutable),
-		"own" when typeArgs is [GenericTypeArgument { Type: { } t }] =>
-			GetPointerType(t, PointerKind.Owning),
-		"buffer" when typeArgs is [GenericTypeArgument { Type: { } t }] => GetBufferType(t),
-		"span" when typeArgs is [GenericTypeArgument { Type: { } t }] => GetSpanType(t),
-		"view" when typeArgs is [GenericTypeArgument { Type: { } t }] => GetViewType(t),
+		"ptr" when typeArgs is [GenericTypeArgument { Type: { } t }] => GetPointerType(t),
 		"array" when typeArgs is [GenericTypeArgument { Type: { } t }, GenericConstArgument { Value: var v }] =>
 			GetArrayType(t, v),
 		"array" when typeArgs is [GenericTypeArgument { Type: { } t }] =>
@@ -118,44 +99,14 @@ public sealed class TypePool
 		return functionType;
 	}
 	
-	public PointerType GetPointerType(TypeSymbol baseType, PointerKind kind)
+	public PointerType GetPointerType(TypeSymbol baseType)
 	{
-		var key = (baseType, kind);
-		if (_pointerTypes.TryGetValue(key, out var existing))
+		if (_pointerTypes.TryGetValue(baseType, out var existing))
 			return existing;
 		
-		var ptrType = new PointerType(baseType, kind);
-		_pointerTypes[key] = ptrType;
+		var ptrType = new PointerType(baseType);
+		_pointerTypes[baseType] = ptrType;
 		SizeTable.Register(ptrType, StorageSize.Ptr);
-		
-		// Conversions
-		switch (kind)
-		{
-			case PointerKind.Unsafe:
-				break;
-			
-			default:
-				// All pointers except ptr[T] can be implicitly converted to ptr[T]
-				var unsafeType = GetPointerType(baseType, PointerKind.Unsafe);
-				ConversionTable.Add(new NativeConversion(ptrType, unsafeType, ConversionKind.Implicit, 1));
-				break;
-		}
-		
-		// Own <-> Unsafe
-		switch (kind)
-		{
-			case PointerKind.Owning:
-				var unsafeType = GetPointerType(baseType, PointerKind.Unsafe);
-				ConversionTable.Add(new NativeConversion(ptrType, unsafeType, ConversionKind.Explicit, 0));
-				ConversionTable.Add(new NativeConversion(unsafeType, ptrType, ConversionKind.Explicit, 0));
-				break;
-			
-			case PointerKind.Unsafe:
-				var ownType = GetPointerType(baseType, PointerKind.Owning);
-				ConversionTable.Add(new NativeConversion(ptrType, ownType, ConversionKind.Explicit, 0));
-				ConversionTable.Add(new NativeConversion(ownType, ptrType, ConversionKind.Explicit, 0));
-				break;
-		}
 		
 		// All pointers can be implicitly converted to ptr / explicitly converted from ptr
 		ConversionTable.Add(new NativeConversion(ptrType, PointerType.VoidPtr, ConversionKind.Implicit, 1));
@@ -184,74 +135,12 @@ public sealed class TypePool
 		CreateArrayMembers(arrayType);
 		SizeTable.Register(arrayType, () => StorageSize.Product(SizeTable.GetSize(elementType), length));
 		
-		// To buffer
-		var bufferType = GetBufferType(elementType);
-		ConversionTable.Add(new NativeConversion(arrayType, bufferType, ConversionKind.Implicit, 1));
-		
-		// To span
-		var spanType = GetSpanType(elementType);
-		ConversionTable.Add(new NativeConversion(arrayType, spanType, ConversionKind.Implicit, 1));
-		
-		// To view
-		var viewType = GetViewType(elementType);
-		ConversionTable.Add(new NativeConversion(arrayType, viewType, ConversionKind.Implicit, 1));
-		
 		// To pointer
-		var arrayPtrType = GetPointerType(arrayType, PointerKind.Unsafe);
-		var elementPtrType = GetPointerType(elementType, PointerKind.Unsafe);
+		var arrayPtrType = GetPointerType(arrayType);
+		var elementPtrType = GetPointerType(elementType);
 		ConversionTable.Add(new NativeConversion(arrayPtrType, elementPtrType, ConversionKind.Implicit, 1));
 		
 		return arrayType;
-	}
-	
-	public BufferType GetBufferType(TypeSymbol elementType)
-	{
-		if (_bufferTypes.TryGetValue(elementType, out var existing))
-			return existing;
-		
-		var bufferType = new BufferType(elementType);
-		_bufferTypes[elementType] = bufferType;
-		CreateBufferMembers(bufferType);
-		SizeTable.Register(bufferType, StorageSize.Sum(StorageSize.Ptr, StorageSize.Ptr));
-		
-		// To span
-		var spanType = GetSpanType(elementType);
-		ConversionTable.Add(new NativeConversion(bufferType, spanType, ConversionKind.Implicit, 1));
-		
-		// To view
-		var viewType = GetViewType(elementType);
-		ConversionTable.Add(new NativeConversion(bufferType, viewType, ConversionKind.Implicit, 1));
-		
-		return bufferType;
-	}
-	
-	public SpanType GetSpanType(TypeSymbol elementType)
-	{
-		if (_spanTypes.TryGetValue(elementType, out var existing))
-			return existing;
-		
-		var spanType = new SpanType(elementType);
-		_spanTypes[elementType] = spanType;
-		CreateSpanMembers(spanType);
-		SizeTable.Register(spanType, StorageSize.Sum(StorageSize.Ptr, StorageSize.Ptr));
-		
-		// To view
-		var viewType = GetViewType(elementType);
-		ConversionTable.Add(new NativeConversion(spanType, viewType, ConversionKind.Implicit, 1));
-		
-		return spanType;
-	}
-	
-	public ViewType GetViewType(TypeSymbol elementType)
-	{
-		if (_viewTypes.TryGetValue(elementType, out var existing))
-			return existing;
-		
-		var viewType = new ViewType(elementType);
-		_viewTypes[elementType] = viewType;
-		CreateViewMembers(viewType);
-		SizeTable.Register(viewType, StorageSize.Sum(StorageSize.Ptr, StorageSize.Ptr));
-		return viewType;
 	}
 	
 	public void RegisterRecord(RecordSymbol record) => SizeTable.Register(record, () =>
@@ -373,10 +262,10 @@ public sealed class TypePool
 		
 		// cstr <-> ptr[i8]/ptr[u8]/usize/isize
 		var cstr = NativeSymbols.CStr;
-		var ptrI8 = GetPointerType(NativeSymbols.Int8, PointerKind.Unsafe);
+		var ptrI8 = GetPointerType(NativeSymbols.Int8);
 		ConversionTable.Add(new FreeConversion(cstr, ptrI8, ConversionKind.Implicit));
 		ConversionTable.Add(new FreeConversion(ptrI8, cstr, ConversionKind.Explicit));
-		var ptrU8 = GetPointerType(NativeSymbols.UInt8, PointerKind.Unsafe);
+		var ptrU8 = GetPointerType(NativeSymbols.UInt8);
 		ConversionTable.Add(new FreeConversion(cstr, ptrU8, ConversionKind.Implicit));
 		ConversionTable.Add(new FreeConversion(ptrU8, cstr, ConversionKind.Explicit));
 		ConversionTable.Add(new NativeConversion(cstr, NativeSymbols.UIntSize, ConversionKind.Explicit, 0));
@@ -401,7 +290,7 @@ public sealed class TypePool
 		
 		RegisterMember(NativeSymbols.Str, length, lengthType);
 		
-		var ptrType = GetPointerType(NativeSymbols.UInt8, PointerKind.Unsafe);
+		var ptrType = GetPointerType(NativeSymbols.UInt8);
 		var data = new PropertySymbol("data")
 		{
 			Getter = new NativeAccessor(NativeMemberIntrinsic.StrData)
@@ -419,39 +308,6 @@ public sealed class TypePool
 		};
 		
 		RegisterMember(type, length, lengthType);
-	}
-	
-	public void CreateBufferMembers(BufferType type)
-	{
-		var lengthType = NativeSymbols.UIntSize;
-		var length = new FieldSymbol("length", null, false);
-		RegisterMember(type, length, lengthType);
-		
-		var dataType = GetPointerType(type.ElementType, PointerKind.Owning);
-		var data = new FieldSymbol("data", null, false);
-		RegisterMember(type, data, dataType);
-	}
-	
-	public void CreateSpanMembers(SpanType type)
-	{
-		var lengthType = NativeSymbols.UIntSize;
-		var length = new FieldSymbol("length", null, false);
-		RegisterMember(type, length, lengthType);
-		
-		var dataType = GetPointerType(type.ElementType, PointerKind.Mutable);
-		var data = new FieldSymbol("data", null, false);
-		RegisterMember(type, data, dataType);
-	}
-	
-	public void CreateViewMembers(ViewType type)
-	{
-		var lengthType = NativeSymbols.UIntSize;
-		var length = new FieldSymbol("length", null, false);
-		RegisterMember(type, length, lengthType);
-		
-		var dataType = GetPointerType(type.ElementType, PointerKind.Mutable);
-		var data = new FieldSymbol("data", null, false);
-		RegisterMember(type, data, dataType);
 	}
 }
 

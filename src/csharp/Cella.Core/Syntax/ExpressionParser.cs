@@ -7,9 +7,6 @@ namespace Cella.Core.Syntax;
 
 public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<IExpressionNode>(tokens)
 {
-	private static Dictionary<string, TokenType> BuildContextualKeywords(params IEnumerable<TokenType> tokenTypes) =>
-		tokenTypes.ToDictionary(static t => t.Representation);
-	
 	private static readonly HashSet<TokenType> _literalTypes =
 	[
 		TokenType.KeywordTrue,
@@ -38,7 +35,6 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 		TokenType.KeywordUndef,
 		TokenType.KeywordSizeOf,
 		TokenType.KeywordNameOf,
-		TokenType.KeywordHeap,
 		TokenType.KeywordMatch,
 		TokenType.KeywordRet,
 		TokenType.KeywordBreak,
@@ -106,15 +102,6 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 		TokenType.OpGreater,
 		TokenType.OpLess
 	];
-	
-	private static readonly HashSet<TokenType> _borrowKeywords =
-	[
-		TokenType.KeywordMut,
-		TokenType.KeywordImm
-	];
-	
-	private static readonly Dictionary<string, TokenType> _borrowKeywordDictionary =
-		BuildContextualKeywords(TokenType.KeywordMut, TokenType.KeywordImm);
 	
 	private bool IsNextNewline(int next)
 	{
@@ -330,22 +317,6 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 	
 	private IExpressionNode ParseUnary(ref int index)
 	{
-		// Special case: mut x/imm x borrows
-		var startIndex = index;
-		if (Match(ref index, out var borrow, _borrowKeywordDictionary, _borrowKeywords))
-		{
-			// If the next token is on a new line or is '[', exit
-			if (IsNextNewline(index) || Match(ref index, TokenType.OpOpenBracket))
-			{
-				index = startIndex;
-			}
-			else
-			{
-				var borrowOperand = ParseUnary(ref index);
-				return new UnaryOpExpressionNode(borrow, borrowOperand);
-			}
-		}
-		
 		if (!Match(ref index, out var op, _unaryPrefixOps))
 			return ParsePrimary(ref index);
 		
@@ -399,8 +370,6 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 			node = ParseSizeOf(ref index, sizeOf);
 		else if (Match(ref index, out var nameOf, TokenType.KeywordNameOf))
 			node = ParseNameOf(ref index, nameOf);
-		else if (Match(ref index, out var heap, TokenType.KeywordHeap))
-			return ParseHeap(ref index, heap);
 		else if (Match(ref index, out var match, TokenType.KeywordMatch))
 			return ParseMatch(ref index, match);
 		else if (Match(ref index, out var jump, _jumpKeywords))
@@ -480,8 +449,8 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 			return false;
 		
 		var type = Tokens[index].Type;
-		return _expressionStarts.Contains(type) || _literalTypes.Contains(type) || _unaryPrefixOps.Contains(type) ||
-		       _borrowKeywords.Contains(type);
+		return _expressionStarts.Contains(type) || _literalTypes.Contains(type) ||
+		       _unaryPrefixOps.Contains(type);
 	}
 	
 	private UndefExpressionNode ParseUndef(ref int index, Token token)
@@ -687,38 +656,5 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 		// TODO Diagnostics
 		// TEMP Should emit an erroneous node instead of throwing
 		throw new InvalidOperationException();
-	}
-	
-	private HeapExpressionNode ParseHeap(ref int index, Token heap)
-	{
-		var (source, range) = heap.SourceLocation;
-		var startIndex = index;
-		
-		try
-		{
-			var typeIndex = index;
-			var type = ParseType(ref typeIndex);
-			
-			var isConstruction = Peek(typeIndex, TokenType.OpOpenParen) || Peek(typeIndex, TokenType.OpDot);
-			if (type is not QualifiedTypeNode && (IsNextNewline(typeIndex) || !isConstruction))
-			{
-				index = typeIndex;
-				range = range.Join(type.SourceLocation.Range);
-				return new HeapExpressionNode(type, new(source, range));
-			}
-		}
-		catch
-		{
-			// Parse as an expression
-		}
-		
-		index = startIndex;
-		var expression = ParsePrimary(ref index);
-		
-		if (!IsNextNewline(index))
-			expression = ParsePostfix(ref index, expression);
-		
-		range = range.Join(expression.SourceLocation.Range);
-		return new HeapExpressionNode(expression, new(source, range));
 	}
 }

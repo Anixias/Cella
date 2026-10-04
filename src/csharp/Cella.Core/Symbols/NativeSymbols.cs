@@ -26,9 +26,6 @@ public enum PrimitiveTypeKind
 	CStr,
 	Pointer,
 	Array,
-	Buffer,
-	Span,
-	View,
 }
 
 public static class NativeSymbols
