@@ -261,6 +261,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	
 	private IResolvedExpressionNode VisitTypeCall(CallExpressionNode node, TypeSymbol targetType)
 	{
+		if (targetType is RecordSymbol record && _typePool.GetConstructors(record).Count == 0)
+			return VisitRecordConstruction(node, record);
+		
 		if (node.Arguments.Length != 1)
 			return VisitConstructorCall(node, targetType, null);
 		
@@ -286,6 +289,34 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			return new ResolvedConversionExpressionNode(arg, conversion, node);
 		
 		return VisitConstructorCall(node, targetType, arg);
+	}
+	
+	private IResolvedExpressionNode VisitRecordConstruction(CallExpressionNode node, RecordSymbol record)
+	{
+		var fields = _typePool.GetMembers(record).OfType<FieldSymbol>().ToArray();
+		if (node.Arguments.Length > 0 && node.Arguments.Length != fields.Length)
+		{
+			var args = node.Arguments.Select(a => VisitNode(a, null)).ToArray();
+			if (AnyInvalid(args))
+				return new ResolvedInvalidExpressionNode(node, record);
+			
+			var names = string.Join(", ", fields.Select(static f => f.Name));
+			var diagnostic = new Diagnostic(DiagnosticSeverity.Error, node.SourceLocation,
+				$"No constructor for '{record.Name}' accepts these arguments")
+			{
+				Hints =
+				[
+					fields.Length == 0
+						? $"'{record.Name}' has no fields"
+						: $"'{record.Name}' takes no arguments, or one for each field: {names}"
+				]
+			};
+			
+			return Error(node, diagnostic, record);
+		}
+		
+		var values = node.Arguments.Select((a, i) => VisitNode(a, GetMemberType(fields[i]))).ToArray();
+		return new ResolvedRecordExpressionNode(record, fields.Zip(values), node);
 	}
 	
 	private IResolvedExpressionNode VisitConstructorCall(CallExpressionNode node, TypeSymbol targetType,

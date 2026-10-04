@@ -1,0 +1,37 @@
+
+====== bad_record_construction.ce ======
+
+Error at line 24, column 10
+23 │ {
+24 │     var a = Point(1)
+                 ╘══════╛ No constructor for 'Point' accepts these arguments
+                        | 'Point' takes no arguments, or one for each field: x, y
+
+Error at line 25, column 19
+24 │ var a = Point(1)
+25 │ var b = Point(1, true)
+                      ╘══╛ Cannot convert type 'bool' to 'i32'
+
+Error at line 26, column 10
+25 │ var b = Point(1, true)
+26 │ var c = Point(1, 2, 3)
+             ╘════════════╛ No constructor for 'Point' accepts these arguments
+                          | 'Point' takes no arguments, or one for each field: x, y
+
+Error at line 27, column 10
+26 │ var c = Point(1, 2, 3)
+27 │ var d = Counter()
+             ╘═══════╛ No constructor for 'Counter' accepts these arguments
+
+Error at line 28, column 10
+27 │ var d = Counter()
+28 │ var e = Empty(1)
+             ╘══════╛ No constructor for 'Empty' accepts these arguments
+                    | 'Empty' has no fields
+
+Error at line 29, column 16
+28 │ var e = Empty(1)
+29 │ var f = Point(missing, 2)
+                   ╘═════╛ Symbol 'missing' not found in this scope
+
+[compilation failed]

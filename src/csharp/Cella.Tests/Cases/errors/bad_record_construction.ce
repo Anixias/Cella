@@ -1,0 +1,31 @@
+mod test
+
+Point: rec
+{
+	x: i32
+	y: i32
+}
+
+Empty: rec
+{
+}
+
+Counter: rec
+{
+	count: i32
+	new: op(start: i32)
+	{
+		self.count = start
+	}
+}
+
+main: fun -> i32
+{
+	var a = Point(1)
+	var b = Point(1, true)
+	var c = Point(1, 2, 3)
+	var d = Counter()
+	var e = Empty(1)
+	var f = Point(missing, 2)
+	ret 0
+}

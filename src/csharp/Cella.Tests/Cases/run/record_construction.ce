@@ -1,0 +1,61 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Point: rec
+{
+	x: i32
+	y: i32
+}
+
+Color: rec
+{
+	r: u8
+	g: u8
+	b: u8
+	alpha: f32
+}
+
+Line: rec
+{
+	start: Point
+	end: Point
+}
+
+Counter: rec
+{
+	count: i32
+	new: op(start: i32)
+	{
+		self.count = start
+	}
+}
+
+Wide: rec
+{
+	value: u32
+}
+
+sum: fun(point: Point) -> i32 = point.x + point.y
+
+main: fun -> i32
+{
+	var origin = Point()
+	var corner = Point(3, 4)
+	var line = Line(Point(1, 2), corner)
+	var blank = Line()
+	printf("%d %d %d %d %d %d %d %d %d\n", origin.x, origin.y, corner.x, corner.y, sum(Point(5, 6)), line.start.y,
+		line.end.x, blank.start.x, blank.end.y)
+
+	var color = Color(255, 128, 0, 0.5)
+	var factor: u8 = 200
+	var wide = Wide(factor * factor)
+	var counter = Counter(7)
+	var points = [Point(1, 1), Point(), Point(2, 3)]
+	printf("%d %d %d %.2f %u %d %d %d\n", color.r, color.g, color.b, color.alpha, wide.value, counter.count,
+		points[0].x + points[2].y, points[1].x)
+	ret 0
+}

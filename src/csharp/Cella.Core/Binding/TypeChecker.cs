@@ -377,6 +377,12 @@ public sealed class TypeChecker : IResolvedStatementNodeVisitor, IResolvedDeclar
 	{
 	}
 	
+	public void Visit(ResolvedRecordExpressionNode node)
+	{
+		foreach (var (_, value) in node.Fields)
+			VisitNode(value);
+	}
+	
 	public void Visit(ResolvedUnaryOpExpressionNode node)
 	{
 		if (node.Operation?.Op == TokenType.OpAt && !IsLValue(node.Operand))

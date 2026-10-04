@@ -413,6 +413,28 @@ public sealed class Lowerer : IResolvedDeclarationNodeVisitor
 			return result;
 		}
 		
+		public Value Visit(ResolvedRecordExpressionNode node)
+		{
+			if (node.Fields.IsEmpty)
+				return new ZeroValue(node.Type);
+			
+			var sourceLocation = node.Syntax.SourceLocation;
+			var resultSymbol = CreateTempSymbol(node.Type, ".record");
+			GetOrMakeBlock().Instructions
+				.Add(new LocalVarInstruction(resultSymbol, new ZeroValue(node.Type), sourceLocation, CurrentScopeId));
+			
+			var result = new VariableValue(new(resultSymbol, node.Type), sourceLocation);
+			foreach (var (field, value) in node.Fields)
+			{
+				var fieldValue = VisitNode(value);
+				var target = new AccessValue(fieldValue.Type, result, field, sourceLocation);
+				GetOrMakeBlock().Instructions.Add(
+					new ExpressionInstruction(new AssignValue(fieldValue.Type, target, fieldValue, sourceLocation)));
+			}
+			
+			return result;
+		}
+		
 		public Value Visit(ResolvedConversionExpressionNode node) =>
 			new ConversionValue(VisitNode(node.Source), node.Conversion, node.Syntax.SourceLocation);
 		
