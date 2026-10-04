@@ -1,4 +1,5 @@
-﻿using System.Numerics;
+﻿using System.Collections.Immutable;
+using System.Numerics;
 using Cella.Core.Binding.Constants;
 using Cella.Core.Symbols;
 using Cella.Core.Syntax.Nodes;
@@ -13,6 +14,7 @@ public readonly struct ResolutionContext
 	public TypeSymbol? ContainingType { get; init; }
 	public FunctionInfo? ContainingFunction { get; init; }
 	public ImportEnvironment? Imports { get; init; }
+	public ModuleIndex? Modules { get; init; }
 	public Scope? LocalScope { get; init; }
 	public TypePool TypePool { get; init; }
 	public DiagnosticList Diagnostics { get; init; }
@@ -65,7 +67,71 @@ public readonly struct ResolutionContext
 		if (Imports?.Resolve(name) is { Length: > 0 } imports)
 			return ResolveFrom(name, imports);
 		
-		return NativeSymbols.Resolve(name);
+		return NativeSymbols.Resolve(name) ?? Modules?.Root.Children.GetValueOrDefault(name);
+	}
+	
+	public static Symbol? ResolveMember(ModulePathSymbol module, string name) =>
+		module.Members.TryGetValue(name, out var members)
+			? ResolveFrom(name, members)
+			: module.Children.GetValueOrDefault(name);
+	
+	public ModulePathSymbol? ResolveModule(IExpressionNode node) => node switch
+	{
+		VarExpressionNode v => Resolve(v.Identifier.Text) as ModulePathSymbol,
+		AccessExpressionNode a => ResolveModule(a.Target) is { } module
+			? ResolveMember(module, a.Member.Text) as ModulePathSymbol
+			: null,
+		_ => null
+	};
+	
+	public Symbol? ResolveQualifiedName(ImmutableArray<Token> parts)
+	{
+		var first = parts[0];
+		if (Resolve(first.Text) is { } symbol)
+			return ResolveMembers(symbol, parts, 1, Diagnostics);
+		
+		Diagnostics.Add(DiagnosticReporter.ReportUndefinedModule(first.SourceLocation, first.Text,
+			GetAllSymbols().OfType<ModulePathSymbol>().Select(static m => m.Name).Distinct()));
+		
+		return null;
+	}
+	
+	public static Symbol? ResolveMembers(Symbol symbol, ImmutableArray<Token> parts, int start,
+		DiagnosticList diagnostics)
+	{
+		for (var i = start; i < parts.Length; i++)
+		{
+			if (symbol is not ModulePathSymbol module)
+			{
+				diagnostics.Add(ReportNotModule(symbol, parts[..i]));
+				return null;
+			}
+			
+			if (ResolveMember(module, parts[i].Text) is not { } member)
+			{
+				diagnostics.Add(DiagnosticReporter.ReportUndefinedMember(parts[i].SourceLocation, module,
+					parts[i].Text));
+				
+				return null;
+			}
+			
+			symbol = member;
+		}
+		
+		return symbol;
+	}
+	
+	public static Diagnostic ReportNotModule(Symbol symbol, ImmutableArray<Token> path)
+	{
+		var name = string.Join('.', path.Select(static p => p.Text));
+		var problem = symbol is AmbiguousSymbol ? "is ambiguous" : "is not a module";
+		return new(DiagnosticSeverity.Error, GetSpan(path), $"'{name}' {problem}");
+	}
+	
+	public static SourceLocation GetSpan(ImmutableArray<Token> parts)
+	{
+		var (source, range) = parts[0].SourceLocation;
+		return new(source, range.Join(parts[^1].SourceLocation.Range));
 	}
 	
 	public IEnumerable<Symbol> GetAllSymbols()
@@ -96,11 +162,16 @@ public readonly struct ResolutionContext
 		
 		foreach (var primitive in NativeSymbols.PrimitiveTypes)
 			yield return primitive;
+		
+		if (Modules is { } modules)
+			foreach (var module in modules.Root.Children.Values)
+				yield return module;
 	}
 	
 	public TypeSymbol ResolveType(ITypeNode node) => node switch
 	{
 		IdentifierTypeNode n => ResolveNamedType(n.Token),
+		QualifiedTypeNode n => ResolveQualifiedType(n),
 		GenericTypeNode n => ResolveGenericType(n),
 		FunctionTypeNode n => TypePool.GetFunctionType(n.IsExternal, n.ParameterTypes.Select(ResolveType),
 			n.ReturnType is { } returnType ? ResolveType(returnType) : NativeSymbols.Void),
@@ -130,6 +201,29 @@ public readonly struct ResolutionContext
 		return NativeSymbols.Invalid;
 	}
 	
+	private TypeSymbol ResolveQualifiedType(QualifiedTypeNode node)
+	{
+		var name = string.Join('.', node.Parts.Select(static p => p.Text));
+		switch (ResolveQualifiedName(node.Parts))
+		{
+			case TypeSymbol type:
+				return type;
+			
+			case null:
+				break;
+			
+			case AmbiguousSymbol:
+				Diagnostics.Add(new(DiagnosticSeverity.Error, node.SourceLocation, $"'{name}' is ambiguous"));
+				break;
+			
+			default:
+				Diagnostics.Add(new(DiagnosticSeverity.Error, node.SourceLocation, $"'{name}' is not a type"));
+				break;
+		}
+		
+		return NativeSymbols.Invalid;
+	}
+	
 	private void ReportUndefinedType(Token name) => Diagnostics.Add(
 		DiagnosticReporter.ReportUndefinedType(name.SourceLocation, name.Text, GetVisibleTypeNames()));
 	
@@ -143,7 +237,9 @@ public readonly struct ResolutionContext
 	{
 		VarExpressionNode v => Resolve(v.Identifier.Text) as TypeSymbol,
 		IndexerExpressionNode i => TryResolveGenericType(i),
-		AccessExpressionNode => null, // TODO Module-qualified types like module.SomeType
+		AccessExpressionNode a => ResolveModule(a.Target) is { } module
+			? ResolveMember(module, a.Member.Text) as TypeSymbol
+			: null,
 		_ => null
 	};
 	

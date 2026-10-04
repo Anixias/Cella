@@ -66,6 +66,16 @@ public sealed class ModuleSymbol
 	public List<FileSymbol> Files { get; } = [];
 }
 
+public sealed class ModulePathSymbol(string path, ModulePathSymbol? parent)
+	: Symbol(path[(path.LastIndexOf('.') + 1)..])
+{
+	public string Path { get; } = path;
+	public ModulePathSymbol? Parent { get; } = parent;
+	public Dictionary<string, List<Symbol>> Members { get; } = [];
+	public Dictionary<string, List<Symbol>> PrivateMembers { get; } = [];
+	public Dictionary<string, ModulePathSymbol> Children { get; } = [];
+}
+
 public sealed class FileSymbol(FileNode syntax, ModuleSymbol module, IEnumerable<Symbol> symbols)
 	: Symbol(syntax.FileName)
 {

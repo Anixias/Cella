@@ -1,0 +1,20 @@
+mod test
+
+main: fun -> i32
+{
+	geometry.missing()
+	val a: i32 = geomtry.area(1, 2)
+	val m = geometry
+	geometry()
+	val n = game.physics
+	val t = geometry.Point
+	geometry.area(1)
+	val effect = geometry.Effect.none
+	if effect is geometry.Other.none
+		ret 1
+	if effect is geomtry.Effect.none
+		ret 2
+	if effect is geometry.Effects.none
+		ret 3
+	ret 0
+}

@@ -1,0 +1,19 @@
+mod geometry
+
+Point: rec
+{
+	x: i32
+}
+
+Effect: enum
+{
+	none
+	hit(amount: i32)
+}
+
+Other: enum
+{
+	none
+}
+
+area: fun(w: i32, h: i32) -> i32 = w * h

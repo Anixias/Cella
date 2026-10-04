@@ -20,6 +20,9 @@ public sealed class TypeParser(ImmutableArray<Token> tokens) : BaseParser<ITypeN
 		if (!Match(ref index, out var identifier, TokenType.Identifier))
 			throw new InvalidOperationException();
 		
+		if (Peek(index, TokenType.OpDot))
+			return ParseQualifiedType(ref index, identifier);
+		
 		var startIndex = index;
 		if (!Match(ref index, out var openBracket, TokenType.OpOpenBracket))
 			return new IdentifierTypeNode(identifier);
@@ -42,6 +45,22 @@ public sealed class TypeParser(ImmutableArray<Token> tokens) : BaseParser<ITypeN
 		range = range.Join(closeBracket.SourceLocation.Range);
 		
 		return new GenericTypeNode(new(source, range), identifier, args);
+	}
+	
+	private QualifiedTypeNode ParseQualifiedType(ref int index, Token first)
+	{
+		var parts = new List<Token> { first };
+		while (Match(ref index, TokenType.OpDot))
+		{
+			if (!Match(ref index, out var part, TokenType.Identifier))
+				throw new InvalidOperationException();
+			
+			parts.Add(part);
+		}
+		
+		var (source, range) = first.SourceLocation;
+		range = range.Join(parts[^1].SourceLocation.Range);
+		return new QualifiedTypeNode(new(source, range), parts);
 	}
 	
 	private FunctionTypeNode? TryParseFunctionType(ref int index)

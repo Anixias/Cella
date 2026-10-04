@@ -193,7 +193,8 @@ public sealed class AstPrinter : ISyntaxNodeVisitor
 			VisitAction(() =>
 			{
 				StartLine(IsLast());
-				_sb.Append(import.ModuleName.Text).Append('.');
+				if (import.ModuleName.Text.Length > 0)
+					_sb.Append(import.ModuleName.Text).Append('.');
 				
 				switch (import.Import)
 				{
@@ -284,6 +285,8 @@ public sealed class AstPrinter : ISyntaxNodeVisitor
 	}
 	
 	public void Visit(IdentifierTypeNode node) => _sb.Append(node.Token.Text);
+	
+	public void Visit(QualifiedTypeNode node) => _sb.Append(node.SourceLocation.GetText());
 	
 	public void Visit(ExternalFunctionNode node)
 	{

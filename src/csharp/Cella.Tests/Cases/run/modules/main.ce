@@ -1,0 +1,60 @@
+mod test
+
+use game.physics
+use geometry
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+table: val array[fun(i32) -> i32, 2] = [geometry.twice, geometry.doubler]
+
+sum: fun(p: geometry.Point) -> i32 = p.x + p.y
+
+swap: fun(p: geometry.Point) -> geometry.Point = geometry.Point(p.y, p.x)
+
+shadowed: fun(geometry: geometry.Point) -> i32 = geometry.y
+
+describe: fun(shape: geometry.Shape) -> i32 = match shape
+{
+	geometry.Shape.circle => 1
+	square => 2
+	rect(w, _) => w
+}
+
+helper: fun -> i32 = 99
+
+main: fun -> i32
+{
+	printf("%d %d %.1f\n", geometry.area(2, 3), geometry.scale(5), geometry.scale(1.5))
+
+	val f = geometry.area
+	val g: ext fun(i32, i32) -> i32 = geometry.area
+	printf("%d %d %d %d\n", f(3, 4), g(4, 5), table[1](6), geometry.doubler(21))
+
+	geometry.counter += 1
+	geometry.counter = geometry.counter * 2
+	var lengths: array[i32, geometry.sides]
+	printf("%d %d\n", geometry.counter, i32(sizeOf(lengths)))
+
+	val p: geometry.Point = geometry.Point(1, 2)
+	val q = swap(p)
+	var points: array[geometry.Point, 2]
+	points[1] = geometry.origin()
+	printf("%d %d %d %d %d\n", q.x, sum(q), points[1].y, i32(sizeOf(geometry.Point)),
+		i32(sizeOf(array[geometry.Point, 2])))
+
+	val shape = geometry.Shape.rect(3, 4)
+	if shape is geometry.Shape.rect(w, h)
+		printf("%d %d %d %d\n", w, h, geometry.measure(shape), describe(geometry.Shape.square))
+
+	val code = geometry.Code(7)
+	val tally = geometry.Tally(4)
+	val boxed = heap geometry.Point(5, 6)
+	printf("%d %d %d %d\n", i32(code), code == geometry.Code.bad, tally.count, boxed.y)
+
+	printf("%d %d %d %d\n", game.physics.fall(2), physics.gravity, test.helper(), shadowed(geometry.Point(8, 9)))
+	geometry.puts("done")
+	ret 0
+}

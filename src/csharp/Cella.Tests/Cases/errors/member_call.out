@@ -6,14 +6,9 @@ Error at line 13, column 13
 13 │ var size = point.size()
                 ╘════════╛ Member calls are not supported yet
 
-Error at line 14, column 14
+Error at line 14, column 15
 13 │ var size = point.size()
-14 │ var value = test.helper()
-                 ╘═════════╛ Member calls are not supported yet
-
-Error at line 15, column 15
-14 │ var value = test.helper()
-15 │ var nested = helper()()
+14 │ var nested = helper()()
                   ╘══════╛ Cannot call a value of type 'i32'
 
 [compilation failed]

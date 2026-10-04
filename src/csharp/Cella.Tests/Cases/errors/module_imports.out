@@ -1,0 +1,36 @@
+
+====== main.ce ======
+
+Error at line 3, column 14
+2 │ 
+3 │ use geometry.missing
+                 ╘═════╛ Module 'geometry' has no member 'missing'
+
+Error at line 4, column 5
+3 │ use geometry.missing
+4 │ use gemoetry.area
+        ╘══════╛ Module 'gemoetry' not found
+               | Did you mean 'geometry'?
+
+Error at line 5, column 5
+4 │ use gemoetry.area
+5 │ use nothing
+        ╘═════╛ Module 'nothing' not found
+
+Error at line 6, column 21
+5 │ use nothing
+6 │ use geometry.[area, other]
+                        ╘═══╛ Module 'geometry' has no member 'other'
+
+Error at line 7, column 5
+6 │ use geometry.[area, other]
+7 │ use geometry.area.more
+        ╘═══════════╛ 'geometry.area' is not a module
+
+Error at line 8, column 10
+7 │ use geometry.area.more
+8 │ use game.phyics.speed
+             ╘════╛ Module 'game' has no member 'phyics'
+                  | Did you mean 'physics'?
+
+[compilation failed]

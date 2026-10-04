@@ -1,0 +1,23 @@
+
+====== game.ce ======
+
+Error at line 3, column 1
+2 │ 
+3 │ geometry: fun -> i32 = 1
+    ╘══════╛ 'game.geometry' is both a module and a member of 'game'
+
+
+====== game\geometry.ce ======
+
+Error at line 1, column 5
+1 │ mod game.geometry
+        ╘═══════════╛ 'game.geometry' is both a module and a member of 'game'
+
+
+====== game\shapes.ce ======
+
+Error at line 1, column 5
+1 │ mod game.geometry
+        ╘═══════════╛ 'game.geometry' is both a module and a member of 'game'
+
+[compilation failed]

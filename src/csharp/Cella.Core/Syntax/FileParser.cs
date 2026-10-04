@@ -95,7 +95,10 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 			// Parse imports
 			if (Match(ref index, out var useToken, _topLevelContextualKeywords, TokenType.KeywordUse))
 			{
-				imports.Add(ParseImportExpression(ref index));
+				if (ParseImportExpression(ref index) is { } import)
+					imports.Add(import);
+				else
+					ResyncTopLevel(ref index);
 				
 				if (!importsAllowed)
 					Report(useToken, "Imports must precede all other declarations");
@@ -346,61 +349,78 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 		return new(parts.ToImmutableArray());
 	}
 	
-	private ImportExpression ParseImportExpression(ref int index)
+	private ImportExpression? ParseImportExpression(ref int index)
 	{
-		if (!Consume(ref index, out var firstPart, _topLevelSyncTypes, TokenType.Identifier))
-			throw new Exception(); // TODO
+		if (!IsOnSameLine(index) || !Match(ref index, out var firstPart, TokenType.Identifier))
+		{
+			ReportExpected(IsOnSameLine(index) ? index : index - 1, "a module name");
+			return null;
+		}
 		
 		var parts = new List<Token> { firstPart };
-		
 		IImport? import = null;
-		while (Match(ref index, TokenType.OpDot))
+		while (import is null && Match(ref index, TokenType.OpDot))
 		{
+			if (!IsOnSameLine(index))
+			{
+				ReportExpected(index - 1, "a name, '[' or '*' after '.'");
+				return null;
+			}
+			
 			if (Match(ref index, out var part, TokenType.Identifier))
 			{
 				parts.Add(part);
-				continue;
 			}
-			
-			if (Match(ref index, TokenType.OpOpenBracket))
+			else if (Match(ref index, out var openBracket, TokenType.OpOpenBracket))
 			{
-				// Multiple import tokens
-				if (!Consume(ref index, out var firstImport, _topLevelSyncTypes, TokenType.Identifier))
-					throw new Exception(); // TODO
+				if (ParseImportList(ref index, openBracket) is not { } list)
+					return null;
 				
-				var importTokens = new List<Token> { firstImport };
-				
-				while (Match(ref index, TokenType.OpComma))
-				{
-					if (!Match(ref index, out var importToken, TokenType.Identifier))
-						throw new Exception(); // TODO
-					
-					importTokens.Add(importToken);
-				}
-				
-				if (!Match(ref index, TokenType.OpCloseBracket))
-					throw new Exception(); // TODO Diagnostics
-				
-				import = new ListImport(importTokens.ToImmutableArray());
-				continue;
+				import = list;
 			}
-			
-			if (!Match(ref index, TokenType.OpStar))
-				throw new Exception(); // TODO
-			
-			import = FullImport.Instance;
+			else if (Match(ref index, TokenType.OpStar))
+			{
+				import = FullImport.Instance;
+			}
+			else
+			{
+				ReportExpected(index, "a name, '[' or '*'");
+				return null;
+			}
 		}
 		
 		if (import is null)
 		{
-			if (parts.Count < 2)
-				throw new Exception(); // TODO Diagnostics
-			
 			import = new TokenImport(parts[^1]);
 			parts.RemoveAt(parts.Count - 1);
 		}
 		
 		return new(new(parts.ToImmutableArray()), import);
+	}
+	
+	private bool IsOnSameLine(int index) => !AtEnd(index) && Tokens[index].Line == Tokens[index - 1].Line;
+	
+	private ListImport? ParseImportList(ref int index, Token openBracket)
+	{
+		var names = new List<Token>();
+		while (!Match(ref index, TokenType.OpCloseBracket))
+		{
+			if (names.Count > 0 && !Match(ref index, TokenType.OpComma))
+			{
+				ReportExpected(index, "',' or ']'", openBracket);
+				return null;
+			}
+			
+			if (!Match(ref index, out var name, TokenType.Identifier))
+			{
+				ReportExpected(index, "a name", openBracket);
+				return null;
+			}
+			
+			names.Add(name);
+		}
+		
+		return new ListImport(names.ToImmutableArray());
 	}
 	
 	private FunctionNode? ParseFunction(ref int index, Token identifier, IEnumerable<Token> modifiers,

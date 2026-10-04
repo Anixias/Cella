@@ -17,7 +17,7 @@ public sealed class GoldenTests
 	public static TheoryData<string, bool> Cases()
 	{
 		var cases = new TheoryData<string, bool>();
-		foreach (var path in Directory.EnumerateFiles(_casesDirectory, "*.ce", SearchOption.AllDirectories).Order())
+		foreach (var path in FindCases())
 		{
 			var name = Path.GetRelativePath(_casesDirectory, path).Replace('\\', '/');
 			cases.Add(name, false);
@@ -27,6 +27,11 @@ public sealed class GoldenTests
 		
 		return cases;
 	}
+	
+	private static IEnumerable<string> FindCases() => Directory.EnumerateDirectories(_casesDirectory)
+		.SelectMany(static category => Directory.EnumerateFiles(category, "*.ce")
+			.Concat(Directory.EnumerateDirectories(category)))
+		.Order();
 	
 	[Theory]
 	[MemberData(nameof(Cases))]
@@ -59,7 +64,7 @@ public sealed class GoldenTests
 		var caseDirectory = Directory.CreateTempSubdirectory("cella-").FullName;
 		try
 		{
-			File.Copy(sourcePath, Path.Combine(caseDirectory, Path.GetFileName(sourcePath)));
+			CopySources(sourcePath, caseDirectory);
 			var projectPath = Path.Combine(caseDirectory, "test.celp");
 			await File.WriteAllTextAsync(projectPath,
 				"OutputType = \"Executable\"\nSystemLinkPreference = \"Dynamic\"\n",
@@ -78,6 +83,22 @@ public sealed class GoldenTests
 		finally
 		{
 			Directory.Delete(caseDirectory, true);
+		}
+	}
+	
+	private static void CopySources(string sourcePath, string caseDirectory)
+	{
+		if (File.Exists(sourcePath))
+		{
+			File.Copy(sourcePath, Path.Combine(caseDirectory, Path.GetFileName(sourcePath)));
+			return;
+		}
+		
+		foreach (var file in Directory.EnumerateFiles(sourcePath, "*.ce", SearchOption.AllDirectories))
+		{
+			var target = Path.Combine(caseDirectory, Path.GetRelativePath(sourcePath, file));
+			Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+			File.Copy(file, target);
 		}
 	}
 	

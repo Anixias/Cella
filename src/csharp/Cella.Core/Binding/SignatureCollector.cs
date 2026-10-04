@@ -35,6 +35,7 @@ public sealed class SignatureCollector
 	
 	public DiagnosticList Diagnostics { get; } = new();
 	public ConstantEvaluator Evaluator { get; }
+	public ModuleIndex Modules { get; }
 	
 	public SignatureCollector(string? entryPointName, SymbolTable symbolTable, TypePool typePool,
 		IEnumerable<AssemblySymbol> dependencies, uint pointerBitSize)
@@ -45,6 +46,7 @@ public sealed class SignatureCollector
 		_dependencies = dependencies.ToImmutableArray();
 		_dependencyTable = SignatureTable.Combine(_dependencies.Select(static a => a.SignatureTable));
 		Evaluator = new ConstantEvaluator(typePool, pointerBitSize, GetGlobalValue);
+		Modules = new ModuleIndex(symbolTable, _dependencies.Select(static a => a.SymbolTable));
 	}
 	
 	public void Collect(IReadOnlyCollection<FileNode> files, IConstantResolver constantResolver)
@@ -65,6 +67,7 @@ public sealed class SignatureCollector
 	public AssemblySymbol FinishAssembly(string name)
 	{
 		ReportDuplicateDeclarations();
+		ReportModuleConflicts();
 		ReportLayoutCycles();
 		ReportEntryPoint();
 		ReportPlainEnumsInCSignatures();
@@ -178,6 +181,7 @@ public sealed class SignatureCollector
 		{
 			File = file,
 			Imports = imports,
+			Modules = Modules,
 			TypePool = _typePool,
 			Diagnostics = Diagnostics,
 			EvaluateConstant = EvaluateConstant
@@ -611,6 +615,34 @@ public sealed class SignatureCollector
 		return new(DiagnosticSeverity.Error, location, message);
 	}
 	
+	private void ReportModuleConflicts()
+	{
+		foreach (var module in _symbolTable.ModuleSymbols.Values)
+		{
+			var path = Modules.Find(module.Name)!;
+			var declarations = module.Files
+				.SelectMany(static f => f.Syntax.Declarations)
+				.Where(d => _symbolTable.DeclarationSymbols.ContainsKey(d));
+			
+			foreach (var declaration in declarations)
+			{
+				var name = _symbolTable.DeclarationSymbols[declaration].Name;
+				if (path.Children.ContainsKey(name))
+					Diagnostics.Add(ReportModuleConflict(GetIdentifier(declaration).SourceLocation, path, name));
+			}
+			
+			if (path.Parent is not { } parent || !parent.Members.ContainsKey(path.Name))
+				continue;
+			
+			foreach (var file in module.Files)
+				Diagnostics.Add(ReportModuleConflict(file.Syntax.ModuleName.SourceLocation, parent, path.Name));
+		}
+	}
+	
+	private static Diagnostic ReportModuleConflict(SourceLocation location, ModulePathSymbol parent, string name) =>
+		new(DiagnosticSeverity.Error, location,
+			$"'{parent.Path}.{name}' is both a module and a member of '{parent.Path}'");
+	
 	private static bool HasSameParameters(FunctionSignature first, FunctionSignature second) =>
 		first.IsVariadic == second.IsVariadic && first.ParameterTypes.SequenceEqual(second.ParameterTypes);
 	
@@ -790,67 +822,42 @@ public sealed class SignatureCollector
 	{
 		var imports = new List<Symbol>();
 		foreach (var importExpression in node.Imports)
-		{
-			imports.AddRange(CollectImportsFromSymbolTable(_symbolTable, true, importExpression));
-			
-			foreach (var assembly in _dependencies)
-				imports.AddRange(CollectImportsFromSymbolTable(assembly.SymbolTable, false, importExpression));
-		}
+			imports.AddRange(CollectImport(importExpression));
 		
 		return new(imports);
 	}
 	
-	private IEnumerable<Symbol> CollectImportsFromSymbolTable(SymbolTable symbolTable, bool isLocal,
-		ImportExpression importExpression)
+	private List<Symbol> CollectImport(ImportExpression import)
 	{
-		// TODO Accessibility/visibility modifiers (if isLocal, we can see internal+)
-		if (!symbolTable.ModuleSymbols.TryGetValue(importExpression.ModuleName, out var module))
-			yield break;
+		var path = import.ModuleName.Parts;
+		var symbol = ResolutionContext.ResolveMembers(Modules.Root, path, 0, Diagnostics);
+		if (symbol is ModulePathSymbol module)
+			return CollectImport(module, import.Import);
 		
-		if (!symbolTable.SymbolsByModule.TryGetValue(module, out var symbols))
-			yield break;
+		if (symbol is not null)
+			Diagnostics.Add(ResolutionContext.ReportNotModule(symbol, path));
 		
-		switch (importExpression.Import)
+		return [];
+	}
+	
+	private List<Symbol> CollectImport(ModulePathSymbol module, IImport import) =>
+		import switch
 		{
-			case TokenImport i:
-			{
-				if (symbols.TryGetValue(i.Token.Text, out var symbolSet))
-					foreach (var symbol in symbolSet)
-						if (CanImport(symbol))
-							yield return symbol;
-				
-				break;
-			}
-			
-			case ListImport i:
-			{
-				foreach (var token in i.Tokens)
-				{
-					if (!symbols.TryGetValue(token.Text, out var symbolSet))
-						continue;
-					
-					foreach (var symbol in symbolSet)
-						if (CanImport(symbol))
-							yield return symbol;
-				}
-				
-				break;
-			}
-			
-			case FullImport:
-			{
-				foreach (var symbolSet in symbols.Values)
-					foreach (var symbol in symbolSet)
-						if (CanImport(symbol))
-							yield return symbol;
-				
-				break;
-			}
-		}
+			FullImport => [..module.Members.Values.SelectMany(static members => members)],
+			TokenImport i => ImportMember(module, i.Token),
+			ListImport i => [..i.Tokens.SelectMany(token => ImportMember(module, token))],
+			_ => []
+		};
+	
+	private List<Symbol> ImportMember(ModulePathSymbol module, Token name)
+	{
+		if (module.Members.TryGetValue(name.Text, out var members))
+			return members;
 		
-		yield break;
+		if (module.Children.TryGetValue(name.Text, out var child))
+			return [child];
 		
-		bool CanImport(Symbol symbol) => symbol is IExportable exportable &&
-		                                 (exportable.Visibility == Visibility.Public || isLocal);
+		Diagnostics.Add(DiagnosticReporter.ReportUndefinedMember(name.SourceLocation, module, name.Text));
+		return [];
 	}
 }

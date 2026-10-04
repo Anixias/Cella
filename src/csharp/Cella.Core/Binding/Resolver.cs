@@ -146,6 +146,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		{
 			File = file,
 			Imports = imports,
+			Modules = _signatures.Modules,
 			TypePool = _typePool,
 			Diagnostics = Diagnostics,
 			EvaluateConstant = EvaluateConstant
@@ -386,7 +387,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	
 	private ResolvedPattern? ResolvePattern(PatternNode pattern, EnumSymbol enumType)
 	{
-		if (pattern.TypeName is { } typeName && !IsEnumName(typeName, enumType))
+		if (pattern.TypePath.Length > 0 && !IsEnumName(pattern.TypePath, enumType))
 			return null;
 		
 		if (FindCase(enumType, pattern.CaseName) is not { } enumCase)
@@ -412,15 +413,17 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			: new LocalVariableSymbol(token, types?[i] ?? NativeSymbols.Invalid, false) { IsPatternBinding = true })
 	];
 	
-	private bool IsEnumName(Token typeName, EnumSymbol enumType)
+	private bool IsEnumName(ImmutableArray<Token> typePath, EnumSymbol enumType)
 	{
-		switch (CurrentResolutionContext.Resolve(typeName.Text))
+		var context = CurrentResolutionContext;
+		var symbol = typePath is [var name] ? context.Resolve(name.Text) : context.ResolveQualifiedName(typePath);
+		switch (symbol)
 		{
-			case var symbol when symbol == enumType:
+			case not null when symbol == enumType:
 				return true;
 			
-			case null:
-				var typeNames = CurrentResolutionContext.GetAllSymbols()
+			case null when typePath is [var typeName]:
+				var typeNames = context.GetAllSymbols()
 					.OfType<TypeSymbol>()
 					.Select(static t => t.Name)
 					.Distinct();
@@ -430,8 +433,11 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 				
 				return false;
 			
+			case null:
+				return false;
+			
 			default:
-				Diagnostics.Add(new(DiagnosticSeverity.Error, typeName.SourceLocation,
+				Diagnostics.Add(new(DiagnosticSeverity.Error, ResolutionContext.GetSpan(typePath),
 					$"Expected a case of '{enumType.Name}'"));
 				
 				return false;
@@ -738,28 +744,33 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	
 	private IResolvedExpressionNode VisitFunctionCall(CallExpressionNode node)
 	{
-		// TODO Methods and module-qualified calls
-		if (node.Target is AccessExpressionNode access)
-			return VisitMemberCall(node, access);
-		
-		if (node.Target is not VarExpressionNode varExpr)
-			return VisitIndirectCall(node, VisitNode(node.Target, null));
-		
-		var functionName = varExpr.Identifier.Text;
-		var symbol = CurrentResolutionContext.Resolve(functionName);
-		
-		if (symbol is null)
+		var context = CurrentResolutionContext;
+		Symbol? symbol;
+		switch (node.Target)
 		{
-			var diagnostic = DiagnosticReporter.ReportUndefinedSymbol(node, functionName, GetVisibleSymbolNames());
-			return Error(node, diagnostic, CurrentTargetType);
+			case VarExpressionNode varExpr:
+				symbol = context.Resolve(varExpr.Identifier.Text);
+				if (symbol is not null)
+					break;
+				
+				var diagnostic = DiagnosticReporter.ReportUndefinedSymbol(node, varExpr.Identifier.Text,
+					GetVisibleSymbolNames());
+				
+				return Error(node, diagnostic, CurrentTargetType);
+			
+			case AccessExpressionNode access when context.ResolveModule(access.Target) is { } module:
+				symbol = ResolutionContext.ResolveMember(module, access.Member.Text);
+				break;
+			
+			case AccessExpressionNode access:
+				return VisitMemberCall(node, access);
+			
+			default:
+				return VisitIndirectCall(node, VisitNode(node.Target, null));
 		}
 		
-		var functionSymbols = symbol switch
-		{
-			FunctionSymbol f => [f],
-			AmbiguousSymbol a => a.Candidates.OfType<FunctionSymbol>().ToArray(),
-			_ => []
-		};
+		var functionName = GetName(node.Target);
+		var functionSymbols = GetFunctions(symbol);
 		
 		if (functionSymbols.Length == 0)
 			return VisitIndirectCall(node, VisitNode(node.Target, null));
@@ -779,11 +790,12 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		var resolutionSet = ResolveCallable(candidates, args, MaterializationMode.Overload, CurrentTargetType);
 		
 		if (resolutionSet.IsAmbiguous)
-			return Error(node, $"Call to '{functionName}' is ambiguous", CurrentTargetType, varExpr);
+			return Error(node, $"Call to '{functionName}' is ambiguous", CurrentTargetType, node.Target);
 		
 		// TODO If only one candidate, we could report the unmatched arguments instead of the whole function?
 		if (!resolutionSet.HasResult)
-			return Error(node, $"No overload of '{functionName}' accepts these arguments", CurrentTargetType, varExpr);
+			return Error(node, $"No overload of '{functionName}' accepts these arguments", CurrentTargetType,
+				node.Target);
 		
 		var resolution = resolutionSet[0];
 		var callable = (FunctionCallable)resolution.Callable;
@@ -799,11 +811,14 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	private IResolvedExpressionNode VisitMemberCall(CallExpressionNode node, AccessExpressionNode access)
 	{
 		if (access.Target is VarExpressionNode name &&
-		    CurrentResolutionContext.Resolve(name.Identifier.Text) is null or TypeSymbol)
+		    CurrentResolutionContext.Resolve(name.Identifier.Text) is TypeSymbol)
 			return Error(node, "Member calls are not supported yet", CurrentTargetType, node.Target);
 		
 		var target = VisitNode(access.Target, null);
-		if (!IsInvalid(target) && FindField(target.Type, access.Member.Text) is null)
+		if (IsInvalid(target))
+			return VisitIndirectCall(node, target);
+		
+		if (FindField(target.Type, access.Member.Text) is null)
 			return Error(node, "Member calls are not supported yet", CurrentTargetType, node.Target);
 		
 		return VisitIndirectCall(node, ResolveAccess(access, target));
@@ -855,6 +870,11 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		{
 			case ITypeNode n:
 				elementType = resolutionContext.ResolveType(n);
+				initializer = null;
+				break;
+			
+			case IExpressionNode n when resolutionContext.TryResolveExpressionAsType(n) is { } type:
+				elementType = type;
 				initializer = null;
 				break;
 			
@@ -942,7 +962,19 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		if (ResolveEnumType(node.Target) is { } enumType)
 			return VisitEnumCase(node, enumType, null);
 		
+		if (CurrentResolutionContext.ResolveModule(node.Target) is { } module)
+			return VisitModuleMember(node, module);
+		
 		return ResolveAccess(node, VisitNode(node.Target));
+	}
+	
+	private IResolvedExpressionNode VisitModuleMember(AccessExpressionNode node, ModulePathSymbol module)
+	{
+		if (ResolutionContext.ResolveMember(module, node.Member.Text) is { } member)
+			return ResolveSymbolValue(node, member);
+		
+		var diagnostic = DiagnosticReporter.ReportUndefinedMember(node.Member.SourceLocation, module, node.Member.Text);
+		return Error(node, diagnostic, CurrentTargetType);
 	}
 	
 	private IResolvedExpressionNode ResolveAccess(AccessExpressionNode node, IResolvedExpressionNode target)
@@ -1093,6 +1125,11 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			return Error(node, diagnostic, CurrentTargetType);
 		}
 		
+		return ResolveSymbolValue(node, symbol);
+	}
+	
+	private IResolvedExpressionNode ResolveSymbolValue(IExpressionNode node, Symbol symbol)
+	{
 		switch (symbol)
 		{
 			case LocalVariableSymbol v:
@@ -1107,20 +1144,33 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			case FunctionSymbol or AmbiguousSymbol:
 				return ResolveFunctionValue(node, symbol);
 			
+			case ModulePathSymbol:
+				return Error(node, $"'{GetName(node)}' is a module, not a value", CurrentTargetType);
+			
 			default:
-				return Error(node, $"Symbol '{varName}' is not a variable", CurrentTargetType);
+				return Error(node, $"Symbol '{GetName(node)}' is not a variable", CurrentTargetType);
 		}
 	}
 	
-	private IResolvedExpressionNode ResolveFunctionValue(VarExpressionNode node, Symbol symbol)
+	private static FunctionSymbol[] GetFunctions(Symbol? symbol) => symbol switch
 	{
-		var name = node.Identifier.Text;
-		var functions = symbol switch
-		{
-			FunctionSymbol f => [f],
-			AmbiguousSymbol a => a.Candidates.OfType<FunctionSymbol>().ToArray(),
-			_ => []
-		};
+		FunctionSymbol f => [f],
+		AmbiguousSymbol a when a.Candidates.All(static c => c is FunctionSymbol) =>
+			[..a.Candidates.Cast<FunctionSymbol>()],
+		_ => []
+	};
+	
+	private static string GetName(IExpressionNode node) => node switch
+	{
+		VarExpressionNode v => v.Identifier.Text,
+		AccessExpressionNode a => $"{GetName(a.Target)}.{a.Member.Text}",
+		_ => node.SourceLocation.GetText().ToString()
+	};
+	
+	private IResolvedExpressionNode ResolveFunctionValue(IExpressionNode node, Symbol symbol)
+	{
+		var name = GetName(node);
+		var functions = GetFunctions(symbol);
 		
 		if (functions.Length == 0)
 			return Error(node, $"Reference to '{name}' is ambiguous", CurrentTargetType);

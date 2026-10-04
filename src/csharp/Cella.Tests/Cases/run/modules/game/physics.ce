@@ -1,0 +1,5 @@
+mod game.physics
+
+gravity: val i32 = 10
+
+fall: fun(time: i32) -> i32 = gravity * time * time / 2 + geometry.twice(1)

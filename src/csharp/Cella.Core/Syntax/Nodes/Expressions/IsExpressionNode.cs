@@ -14,14 +14,14 @@ public sealed class IsExpressionNode(IExpressionNode value, PatternNode pattern,
 
 public sealed class PatternNode
 (
-	Token? typeName,
+	IEnumerable<Token> typePath,
 	Token caseName,
 	IEnumerable<Token> bindings,
 	bool hasParentheses,
 	SourceLocation sourceLocation
 )
 {
-	public Token? TypeName { get; } = typeName;
+	public ImmutableArray<Token> TypePath { get; } = typePath.ToImmutableArray();
 	public Token CaseName { get; } = caseName;
 	public ImmutableArray<Token> Bindings { get; } = bindings.ToImmutableArray();
 	public bool HasParentheses { get; } = hasParentheses;

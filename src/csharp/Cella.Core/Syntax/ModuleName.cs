@@ -7,12 +7,13 @@ public readonly struct ModuleName : IEquatable<ModuleName>
 {
 	public SourceLocation SourceLocation { get; } = SourceLocation.None;
 	public string Text { get; } = string.Empty;
+	public ImmutableArray<Token> Parts { get; } = [];
 	
 	public ModuleName(IEnumerable<Token> parts)
 	{
-		var array = parts.ToImmutableArray();
-		SourceLocation = GetSourceLocation(array);
-		Text = string.Join('.', array.Select(static p => p.Text));
+		Parts = parts.ToImmutableArray();
+		SourceLocation = GetSourceLocation(Parts);
+		Text = string.Join('.', Parts.Select(static p => p.Text));
 	}
 	
 	private static SourceLocation GetSourceLocation(ImmutableArray<Token> parts)

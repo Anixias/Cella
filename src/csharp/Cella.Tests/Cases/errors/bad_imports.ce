@@ -1,0 +1,12 @@
+mod test
+
+use
+use geometry.
+use geometry.[area
+use geometry.[area,]
+use geometry.4
+
+main: fun -> i32
+{
+	ret 0
+}

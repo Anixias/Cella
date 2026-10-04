@@ -1,0 +1,53 @@
+mod geometry
+
+ext
+{
+	puts: fun(text: cstr) -> i32
+}
+
+sides: val usize = 3
+scaleBy: val i32 = 4
+counter: var i32 = 10
+
+Point: rec
+{
+	x: i32
+	y: i32
+}
+
+Tally: rec
+{
+	count: i32
+	new: op(start: i32)
+	{
+		self.count = start * 10
+	}
+}
+
+Shape: enum
+{
+	circle
+	square
+	rect(w: i32, h: i32)
+}
+
+Code: enum(u8)
+{
+	ok
+	bad = 7
+}
+
+doubler: val fun(i32) -> i32 = twice
+
+area: fun(w: i32, h: i32) -> i32 = w * h
+scale: fun(n: i32) -> i32 = n * scaleBy
+scale: fun(n: f64) -> f64 = n * 2.0
+twice: fun(n: i32) -> i32 = n * 2
+origin: pub fun -> Point = Point(0, 0)
+
+measure: fun(shape: Shape) -> i32 = match shape
+{
+	circle => 1
+	square => 2
+	rect(w, h) => w * h
+}

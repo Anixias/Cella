@@ -8,6 +8,7 @@ public sealed class ImportEnvironment(IEnumerable<Symbol> importedSymbols)
 	public IEnumerable<Symbol> ImportedSymbols => _importedSymbols.SelectMany(static kvp => kvp.Value);
 	
 	private readonly ImmutableDictionary<string, ImmutableArray<Symbol>> _importedSymbols = importedSymbols
+		.Distinct()
 		.GroupBy(static s => s.Name)
 		.ToImmutableDictionary(static g => g.Key, static g => g.ToImmutableArray());
 	
@@ -20,6 +21,6 @@ public sealed class ImportEnvironment(IEnumerable<Symbol> importedSymbols)
 // - for the module in this assembly, all non-file-private symbols
 // - for the module in other assemblies, all public symbols
 // Then, import all symbols in import expressions
-// - for import expressions whose module is in this assembly, all non-file-private symbols referenced (error if not found)
-// - for other assemblies, all public symbols referenced (error if not found)
+// - for import expressions whose module is in this assembly, all non-file-private symbols referenced
+// - for other assemblies, all public symbols referenced
 // ^ all of these symbols are grouped by name; ambiguous if a name has more than 1 match

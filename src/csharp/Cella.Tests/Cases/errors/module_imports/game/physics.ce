@@ -1,0 +1,3 @@
+mod game.physics
+
+speed: val i32 = 1

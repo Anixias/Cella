@@ -55,6 +55,22 @@ public static class DiagnosticReporter
 		IEnumerable<string> availableNames) =>
 		ReportUndefined(location, $"Type '{missingName}' not found in this scope", missingName, availableNames);
 	
+	public static Diagnostic ReportUndefinedModule(SourceLocation location, string missingName,
+		IEnumerable<string> availableNames) =>
+		ReportUndefined(location, $"Module '{missingName}' not found", missingName, availableNames);
+	
+	public static Diagnostic ReportUndefinedMember(SourceLocation location, ModulePathSymbol module, string missingName)
+	{
+		if (module.Parent is null)
+			return ReportUndefinedModule(location, missingName, module.Children.Keys);
+		
+		if (module.PrivateMembers.ContainsKey(missingName))
+			return new(DiagnosticSeverity.Error, location, $"'{module.Path}.{missingName}' isn't public");
+		
+		return ReportUndefined(location, $"Module '{module.Path}' has no member '{missingName}'", missingName,
+			module.Members.Keys.Concat(module.Children.Keys));
+	}
+	
 	public static Diagnostic ReportUndefinedCase(SourceLocation location, string enumName, string missingName,
 		IEnumerable<string> caseNames) =>
 		ReportUndefined(location, $"'{enumName}' has no case '{missingName}'", missingName, caseNames);

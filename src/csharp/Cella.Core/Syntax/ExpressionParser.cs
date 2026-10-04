@@ -195,20 +195,21 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 		if (!MatchName(ref index, out var first))
 			throw Expected(index, "a case name");
 		
-		Token? typeName = null;
-		var caseName = first;
-		if (first.Type == TokenType.Identifier && !IsNextNewline(index) && Match(ref index, TokenType.OpDot))
+		var names = new List<Token> { first };
+		while (names[^1].Type == TokenType.Identifier && !IsNextNewline(index) && Match(ref index, TokenType.OpDot))
 		{
-			if (!MatchName(ref index, out caseName))
+			if (!MatchName(ref index, out var name))
 				throw Expected(index, "a case name");
 			
-			typeName = first;
+			names.Add(name);
 		}
 		
+		var caseName = names[^1];
+		var typePath = names[..^1];
 		var (source, range) = first.SourceLocation;
 		range = range.Join(caseName.SourceLocation.Range);
 		if (IsNextNewline(index) || !Match(ref index, out var openParen, TokenType.OpOpenParen))
-			return new PatternNode(typeName, caseName, [], false, new(source, range));
+			return new PatternNode(typePath, caseName, [], false, new(source, range));
 		
 		var bindings = new List<Token>();
 		Token closeParen;
@@ -227,7 +228,7 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 		}
 		
 		range = range.Join(closeParen.SourceLocation.Range);
-		return new PatternNode(typeName, caseName, bindings, true, new(source, range));
+		return new PatternNode(typePath, caseName, bindings, true, new(source, range));
 	}
 	
 	private bool MatchName(ref int index, out Token name)
@@ -640,7 +641,7 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 			var type = ParseType(ref typeIndex);
 			
 			var isConstruction = Peek(typeIndex, TokenType.OpOpenParen) || Peek(typeIndex, TokenType.OpDot);
-			if (IsNextNewline(typeIndex) || !isConstruction)
+			if (type is not QualifiedTypeNode && (IsNextNewline(typeIndex) || !isConstruction))
 			{
 				index = typeIndex;
 				range = range.Join(type.SourceLocation.Range);

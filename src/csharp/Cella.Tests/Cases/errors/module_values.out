@@ -1,0 +1,65 @@
+
+====== main.ce ======
+
+Error at line 5, column 11
+4 │ {
+5 │     geometry.missing()
+                 ╘═════╛ Module 'geometry' has no member 'missing'
+
+Error at line 6, column 15
+5 │ geometry.missing()
+6 │ val a: i32 = geomtry.area(1, 2)
+                 ╘═════╛ Symbol 'geomtry' not found in this scope
+                       | Did you mean 'geometry'?
+
+Error at line 7, column 10
+6 │ val a: i32 = geomtry.area(1, 2)
+7 │ val m = geometry
+            ╘══════╛ 'geometry' is a module, not a value
+
+Error at line 8, column 2
+7 │ val m = geometry
+8 │ geometry()
+    ╘══════╛ 'geometry' is a module, not a value
+
+Error at line 9, column 10
+8 │ geometry()
+9 │ val n = game.physics
+            ╘══════════╛ 'game.physics' is a module, not a value
+
+Error at line 10, column 10
+ 9 │ val n = game.physics
+10 │ val t = geometry.Point
+             ╘════════════╛ Symbol 'geometry.Point' is not a variable
+
+Error at line 11, column 2
+10 │ val t = geometry.Point
+11 │ geometry.area(1)
+     ╘═══════════╛ No overload of 'geometry.area' accepts these arguments
+
+Error at line 13, column 15
+12 │ val effect = geometry.Effect.none
+13 │ if effect is geometry.Other.none
+                  ╘════════════╛ Expected a case of 'Effect'
+
+Error at line 15, column 15
+14 │     ret 1
+15 │ if effect is geomtry.Effect.none
+                  ╘═════╛ Module 'geomtry' not found
+                        | Did you mean 'geometry'?
+
+Error at line 17, column 24
+16 │     ret 2
+17 │ if effect is geometry.Effects.none
+                           ╘═════╛ Module 'geometry' has no member 'Effects'
+                                 | Did you mean 'Effect'?
+
+
+====== other.ce ======
+
+Error at line 6, column 21
+5 │ 
+6 │ check: fun -> i32 = geometry.area()
+                        ╘══════╛ Reference to 'geometry' is ambiguous
+
+[compilation failed]

@@ -1,0 +1,14 @@
+mod test
+
+use geometry.missing
+use gemoetry.area
+use nothing
+use geometry.[area, other]
+use geometry.area.more
+use game.phyics.speed
+use game.physics.*
+
+main: fun -> i32
+{
+	ret 0
+}

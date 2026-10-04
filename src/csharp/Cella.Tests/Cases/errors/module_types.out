@@ -1,0 +1,36 @@
+
+====== main.ce ======
+
+Error at line 3, column 15
+2 │ 
+3 │ first: fun(p: geometry) -> i32 = 0
+                  ╘══════╛ 'geometry' is not a type
+
+Error at line 4, column 16
+3 │ first: fun(p: geometry) -> i32 = 0
+4 │ second: fun(p: geometry.area) -> i32 = 0
+                   ╘═══════════╛ 'geometry.area' is not a type
+
+Error at line 5, column 24
+4 │ second: fun(p: geometry.area) -> i32 = 0
+5 │ third: fun(p: geometry.Pointt) -> i32 = 0
+                           ╘════╛ Module 'geometry' has no member 'Pointt'
+                                | Did you mean 'Point'?
+
+Error at line 6, column 16
+5 │ third: fun(p: geometry.Pointt) -> i32 = 0
+6 │ fourth: fun(p: geomtry.Point) -> i32 = 0
+                   ╘═════╛ Module 'geomtry' not found
+                         | Did you mean 'geometry'?
+
+Error at line 7, column 15
+6 │ fourth: fun(p: geomtry.Point) -> i32 = 0
+7 │ fifth: fun(p: geometry.area.Point) -> i32 = 0
+                  ╘═══════════╛ 'geometry.area' is not a module
+
+Error at line 8, column 30
+7 │ fifth: fun(p: geometry.area.Point) -> i32 = 0
+8 │ sixth: fun(p: array[geometry.Missing, 2]) -> i32 = 0
+                                 ╘═════╛ Module 'geometry' has no member 'Missing'
+
+[compilation failed]

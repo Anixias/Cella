@@ -298,12 +298,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 			
 			// Create and map imported functions
 			foreach (var function in file.ImportedFunctions)
-			{
-				var info = CreateFunction(llvmModule, function);
-				var llvmFunction = info.FunctionValue;
-				llvmFunction.DLLStorageClass = LLVMDLLStorageClass.LLVMDLLImportStorageClass;
-				llvmFunction.Linkage = LLVMLinkage.LLVMDLLImportLinkage;
-			}
+				GetFunctionValue(function);
 			
 			// Create and map functions
 			foreach (var function in file.Functions)
@@ -319,7 +314,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 				}
 				else
 				{
-					llvmFunction.Linkage = LLVMLinkage.LLVMInternalLinkage;
+					llvmFunction.Visibility = LLVMVisibility.LLVMHiddenVisibility;
 				}
 				
 				if (_assemblySymbol.EntryPoint?.Symbol == function.Info.Symbol)
@@ -1685,7 +1680,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 		}
 		else
 		{
-			global.Linkage = LLVMLinkage.LLVMInternalLinkage;
+			global.Visibility = LLVMVisibility.LLVMHiddenVisibility;
 		}
 		
 		_globalMap[info.Symbol] = global;
@@ -1698,8 +1693,16 @@ public sealed unsafe class CodeGenerator : IDisposable
 		
 		var global = currentModule.AddGlobal(GetGlobalStorageType(info), info.MangledName);
 		global.IsGlobalConstant = !info.Symbol.IsMutable;
-		global.DLLStorageClass = LLVMDLLStorageClass.LLVMDLLImportStorageClass;
-		global.Linkage = LLVMLinkage.LLVMDLLImportLinkage;
+		if (!_assemblySymbol.SignatureTable.Globals.ContainsKey(info.Symbol))
+		{
+			global.DLLStorageClass = LLVMDLLStorageClass.LLVMDLLImportStorageClass;
+			global.Linkage = LLVMLinkage.LLVMDLLImportLinkage;
+		}
+		else if (info.Symbol.Visibility != Visibility.Public)
+		{
+			global.Visibility = LLVMVisibility.LLVMHiddenVisibility;
+		}
+		
 		_globalMap[info.Symbol] = global;
 		return global;
 	}
@@ -1830,10 +1833,14 @@ public sealed unsafe class CodeGenerator : IDisposable
 			
 			value.Linkage = LLVMLinkage.LLVMExternalLinkage;
 		}
-		else
+		else if (!_assemblySymbol.SignatureTable.Functions.ContainsKey(function.Symbol))
 		{
 			value.DLLStorageClass = LLVMDLLStorageClass.LLVMDLLImportStorageClass;
 			value.Linkage = LLVMLinkage.LLVMDLLImportLinkage;
+		}
+		else if (function.Symbol.Visibility != Visibility.Public)
+		{
+			value.Visibility = LLVMVisibility.LLVMHiddenVisibility;
 		}
 		
 		return value;

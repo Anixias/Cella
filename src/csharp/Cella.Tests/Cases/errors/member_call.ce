@@ -11,7 +11,6 @@ main: fun -> i32
 {
 	var point: Point
 	var size = point.size()
-	var value = test.helper()
 	var nested = helper()()
 	ret 0
 }

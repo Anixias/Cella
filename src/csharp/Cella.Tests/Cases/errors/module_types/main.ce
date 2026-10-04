@@ -1,0 +1,13 @@
+mod test
+
+first: fun(p: geometry) -> i32 = 0
+second: fun(p: geometry.area) -> i32 = 0
+third: fun(p: geometry.Pointt) -> i32 = 0
+fourth: fun(p: geomtry.Point) -> i32 = 0
+fifth: fun(p: geometry.area.Point) -> i32 = 0
+sixth: fun(p: array[geometry.Missing, 2]) -> i32 = 0
+
+main: fun -> i32
+{
+	ret 0
+}

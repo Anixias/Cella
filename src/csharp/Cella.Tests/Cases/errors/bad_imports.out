@@ -1,0 +1,31 @@
+
+====== bad_imports.ce ======
+
+Error at line 3, column 1
+2 │ 
+3 │ use
+    ╘═╛ Expected a module name
+
+Error at line 4, column 13
+3 │ use
+4 │ use geometry.
+                ^ Expected a name, '[' or '*' after '.'
+
+Error at line 6, column 1
+5 │ use geometry.[area
+6 │ use geometry.[area,]
+    ╘═╛ Expected ',' or ']'
+      | To match the '[' on line 5
+
+Error at line 6, column 20
+5 │ use geometry.[area
+6 │ use geometry.[area,]
+                       ^ Expected a name
+                       | To match the '[' on line 6
+
+Error at line 7, column 14
+6 │ use geometry.[area,]
+7 │ use geometry.4
+                 ^ Expected a name, '[' or '*'
+
+[compilation failed]
