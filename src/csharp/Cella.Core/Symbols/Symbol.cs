@@ -453,6 +453,7 @@ public sealed class EnumSymbol : TypeSymbol, IExportable
 	public ImmutableArray<EnumCaseSymbol> Cases { get; }
 	public Visibility Visibility { get; }
 	public bool HasPayload => Cases.Any(static c => c.Fields.Length > 0);
+	public bool IsExternal => Node.IsExternal;
 	
 	public EnumSymbol(EnumNode node, IEnumerable<EnumCaseSymbol> cases) : base(node.Identifier.Text)
 	{

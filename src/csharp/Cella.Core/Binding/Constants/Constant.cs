@@ -73,4 +73,9 @@ public sealed class EnumConstant(TypeSymbol type, EnumCaseSymbol enumCase, IEnum
 	public ImmutableArray<Constant> Payload { get; } = payload.ToImmutableArray();
 }
 
+public sealed class EnumTagConstant(TypeSymbol type, BigInteger tag) : Constant(type)
+{
+	public BigInteger Tag { get; } = tag;
+}
+
 public sealed class ZeroConstant(TypeSymbol type) : Constant(type);

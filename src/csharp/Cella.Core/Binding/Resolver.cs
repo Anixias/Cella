@@ -605,6 +605,14 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		if (arms.Any(static arm => arm.IsElse || arm.Case is null))
 			return;
 		
+		if (enumType.IsExternal)
+		{
+			Diagnostics.Add(new(DiagnosticSeverity.Error, keyword.SourceLocation,
+				$"This match doesn't handle every value of '{enumType.Name}'"));
+			
+			return;
+		}
+		
 		var missing = enumType.Cases
 			.Where(enumCase => arms.All(arm => arm.Value != _typePool.GetCaseValue(enumType, enumCase)))
 			.DistinctBy(enumCase => _typePool.GetCaseValue(enumType, enumCase))

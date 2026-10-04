@@ -1,0 +1,79 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+VkResult: ext enum
+{
+	success = 0
+	notReady
+	timeout
+	errorOutOfHostMemory = -1
+}
+
+Format: ext enum(u8)
+{
+	rgba8 = 37
+	bgra8 = 44
+}
+
+Event: ext enum(u32)
+{
+	quit = 0x100
+	keyDown(key: i32, repeat: bool) = 0x300
+	keyUp(key: i32, repeat: bool)
+	click(x: i32, y: i32) = 0x400
+}
+
+weird: val VkResult = VkResult(-1000)
+named: val VkResult = VkResult(2)
+
+describe: fun(result: VkResult) -> i32 = match result
+{
+	success => 0
+	timeout => 2
+	else => 99
+}
+
+code: fun(result: VkResult) -> i32
+{
+	match result
+	{
+		success => ret 0
+		notReady => ret 1
+		timeout => ret 2
+		errorOutOfHostMemory => ret -1
+	}
+
+	ret 7
+}
+
+handle: ext fun(event: Event) -> i32 = match event
+{
+	keyDown(key, repeat) => key * 10 + i32(repeat)
+	keyUp(key, _) => -key
+	click(x, y) => x + y
+	else => 0
+}
+
+main: fun -> i32
+{
+	printf("%d %d %d\n", i32(sizeOf(VkResult)), i32(sizeOf(Format)), i32(sizeOf(Event)))
+
+	var n = -1000
+	val unknown = VkResult(n)
+	printf("%d %d %d %d\n", describe(VkResult.success), describe(VkResult.timeout), describe(unknown), i32(unknown))
+	printf("%d %d %d\n", i32(weird), describe(weird), named == VkResult.timeout)
+	printf("%d %d %d\n", code(VkResult.timeout), code(VkResult.errorOutOfHostMemory), code(unknown))
+
+	var zero: Format
+	printf("%d %d %d\n", i32(zero), zero == Format.rgba8, i32(Format(44)))
+	printf("%d %d\n", unknown is success, VkResult(1) == VkResult.notReady)
+
+	val call: ext fun(Event) -> i32 = handle
+	printf("%d %d %d %d\n", call(Event.keyDown(6, true)), call(Event.keyUp(4, false)), call(Event.click(2, 3)),
+		call(Event.quit))
+	ret 0
+}

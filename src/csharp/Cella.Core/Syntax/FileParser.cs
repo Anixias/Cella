@@ -148,10 +148,12 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 					continue;
 				}
 				
+				var kindIndex = index;
+				var isExternal = Match(ref index, _topLevelContextualKeywords, TokenType.KeywordExt);
 				if (Match(ref index, _topLevelContextualKeywords, TokenType.KeywordEnum))
 				{
 					var enumNode = ParseDeclaration(ref index, identifier, "enum",
-						(ref i) => ParseEnum(ref i, identifier, modifiers));
+						(ref i) => ParseEnum(ref i, identifier, modifiers, isExternal));
 					
 					if (enumNode is null)
 					{
@@ -164,7 +166,7 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 				}
 				
 				// Global
-				if (Match(ref index, out var bindingKeyword, _bindingKeywords))
+				if (!isExternal && Match(ref index, out var bindingKeyword, _bindingKeywords))
 				{
 					var global = ParseDeclaration(ref index, identifier, "global",
 						(ref i) => ParseGlobal(ref i, identifier, modifiers, bindingKeyword));
@@ -180,8 +182,6 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 				}
 				
 				// Function
-				var kindIndex = index;
-				var isExternal = Match(ref index, _topLevelContextualKeywords, TokenType.KeywordExt);
 				if (Match(ref index, _topLevelContextualKeywords, TokenType.KeywordFun))
 				{
 					var function = ParseDeclaration(ref index, identifier, "function",
@@ -599,7 +599,7 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 		return new(identifier, modifiers, members);
 	}
 	
-	private EnumNode? ParseEnum(ref int index, Token identifier, IEnumerable<Token> modifiers)
+	private EnumNode? ParseEnum(ref int index, Token identifier, IEnumerable<Token> modifiers, bool isExternal)
 	{
 		ITypeNode? tagType = null;
 		if (Match(ref index, out var openParen, TokenType.OpOpenParen))
@@ -613,7 +613,7 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 		}
 		
 		if (!Match(ref index, out var openBrace, TokenType.OpOpenBrace))
-			return new(identifier, modifiers, tagType, []);
+			return new(identifier, modifiers, isExternal, tagType, []);
 		
 		var cases = new List<EnumCaseNode>();
 		while (!Match(ref index, TokenType.OpCloseBrace))
@@ -630,7 +630,7 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 			cases.Add(enumCase);
 		}
 		
-		return new(identifier, modifiers, tagType, cases);
+		return new(identifier, modifiers, isExternal, tagType, cases);
 	}
 	
 	private EnumCaseNode? ParseEnumCase(ref int index)

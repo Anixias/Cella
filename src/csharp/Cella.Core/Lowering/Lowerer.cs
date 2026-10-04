@@ -293,7 +293,7 @@ public sealed class Lowerer
 			var tag = CaptureAsAtomic(new EnumTagValue(tagType, scrutinee, location), "tag");
 			var mergeBlock = CreateBlock("match_end");
 			var caseValues = enumType.Cases.Select(c => _typePool.GetCaseValue(enumType, c)).ToHashSet();
-			var coversEveryCase = caseValues.SetEquals(arms
+			var coversEveryCase = !enumType.IsExternal && caseValues.SetEquals(arms
 				.Where(static arm => arm.Pattern is not null)
 				.Select(arm => _typePool.GetCaseValue(enumType, arm.Pattern!.Case)));
 			

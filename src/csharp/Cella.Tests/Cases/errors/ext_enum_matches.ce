@@ -1,0 +1,24 @@
+mod test
+
+VkResult: ext enum
+{
+	success = 0
+	timeout = 2
+}
+
+main: fun -> i32
+{
+	val r = VkResult.success
+	val a = match r { success => 0  timeout => 2 }
+	val b = match r { success => 0 }
+	val c = match r { success => 0  else => 1 }
+
+	var d = 0
+	match r
+	{
+		success => d = 1
+		timeout => d = 2
+	}
+
+	ret a + b + c + d
+}

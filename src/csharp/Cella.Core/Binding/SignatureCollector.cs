@@ -292,7 +292,7 @@ public sealed class SignatureCollector
 		var values = CollectCaseValues(enumType, context);
 		var tagType = GetTagType(enumType, context, values);
 		ReportSharedValues(enumType, values, payloads);
-		if (!node.Cases.IsEmpty && !values.Contains(BigInteger.Zero))
+		if (!enumType.IsExternal && !node.Cases.IsEmpty && !values.Contains(BigInteger.Zero))
 			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Identifier.SourceLocation,
 				$"'{enumType.Name}' needs a case with the value 0"));
 		
@@ -346,18 +346,10 @@ public sealed class SignatureCollector
 	
 	private IntegerType GetTagType(EnumSymbol enumType, ResolutionContext context, IReadOnlyList<BigInteger> values)
 	{
-		if (enumType.Node.TagType is not { } typeNode)
+		var declared = enumType.Node.TagType is { } typeNode ? ResolveTagType(typeNode, context) : null;
+		var tagType = declared ?? (enumType.IsExternal ? NativeSymbols.Int32 : null);
+		if (tagType is null)
 			return SmallestTagType(values);
-		
-		var type = context.ResolveType(typeNode);
-		if (type is not IntegerType tagType || !NativeSymbols.PureIntegerTypes.Contains(tagType))
-		{
-			if (type is not InvalidType)
-				Diagnostics.Add(new(DiagnosticSeverity.Error, typeNode.SourceLocation,
-					$"'{type.Name}' isn't an integer type"));
-			
-			return SmallestTagType(values);
-		}
 		
 		for (var i = 0; i < values.Count; i++)
 		{
@@ -371,6 +363,19 @@ public sealed class SignatureCollector
 		}
 		
 		return tagType;
+	}
+	
+	private IntegerType? ResolveTagType(ITypeNode typeNode, ResolutionContext context)
+	{
+		var type = context.ResolveType(typeNode);
+		if (type is IntegerType tagType && NativeSymbols.PureIntegerTypes.Contains(tagType))
+			return tagType;
+		
+		if (type is not InvalidType)
+			Diagnostics.Add(new(DiagnosticSeverity.Error, typeNode.SourceLocation,
+				$"'{type.Name}' isn't an integer type"));
+		
+		return null;
 	}
 	
 	private IntegerType SmallestTagType(IReadOnlyList<BigInteger> values)

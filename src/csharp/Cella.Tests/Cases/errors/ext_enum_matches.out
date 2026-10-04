@@ -1,0 +1,14 @@
+
+====== ext_enum_matches.ce ======
+
+Error at line 12, column 10
+11 │ val r = VkResult.success
+12 │ val a = match r { success => 0  timeout => 2 }
+             ╘═══╛ This match doesn't handle every value of 'VkResult'
+
+Error at line 13, column 10
+12 │ val a = match r { success => 0  timeout => 2 }
+13 │ val b = match r { success => 0 }
+             ╘═══╛ This match doesn't handle every value of 'VkResult'
+
+[compilation failed]

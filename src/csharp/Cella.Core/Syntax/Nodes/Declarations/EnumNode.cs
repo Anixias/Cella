@@ -7,6 +7,7 @@ public sealed class EnumNode
 (
 	Token identifier,
 	IEnumerable<Token> modifiers,
+	bool isExternal,
 	ITypeNode? tagType,
 	IEnumerable<EnumCaseNode> cases
 ) : IDeclarationNode
@@ -14,6 +15,7 @@ public sealed class EnumNode
 	public SourceLocation SourceLocation { get; } = identifier.SourceLocation;
 	public Token Identifier { get; } = identifier;
 	public ImmutableArray<Token> Modifiers { get; } = modifiers.ToImmutableArray();
+	public bool IsExternal { get; } = isExternal;
 	public ITypeNode? TagType { get; } = tagType;
 	public ImmutableArray<EnumCaseNode> Cases { get; } = cases.ToImmutableArray();
 }

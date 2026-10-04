@@ -949,7 +949,9 @@ public sealed unsafe class CodeGenerator : IDisposable
 		
 		var to = (EnumSymbol)c.To;
 		var sourceType = (IntegerType)c.From;
-		TrapIf(builder.BuildNot(IsCaseValue(to, source, sourceType, builder)), builder);
+		if (!to.IsExternal)
+			TrapIf(builder.BuildNot(IsCaseValue(to, source, sourceType, builder)), builder);
+		
 		var resized = ResizeInteger(source, MapTypeSymbol(_typePool.GetTagType(to)), sourceType.IsSigned, builder);
 		return builder.BuildInsertValue(LLVMValueRef.CreateConstNull(MapTypeSymbol(to)), resized, 0, to.Name);
 	}
@@ -1848,6 +1850,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 		ArrayConstant c => EmitArrayConstant(MapTypeSymbol(c.ArrayType.ElementType),
 			[..c.Elements.Select(EmitStaticConstant)]),
 		EnumConstant c => EmitEnumConstant(c),
+		EnumTagConstant c => EmitEnumTagConstant(c),
 		FunctionConstant c => EmitFunctionReference(c.Function, c.Type),
 		ZeroConstant c => LLVMValueRef.CreateConstNull(MapTypeSymbol(c.Type)),
 		_ => throw new InvalidOperationException()
@@ -1867,14 +1870,10 @@ public sealed unsafe class CodeGenerator : IDisposable
 	{
 		var enumType = MapTypeSymbol(constant.Type);
 		var tag = EmitCaseTag((EnumSymbol)constant.Type, constant.Case);
-		
-		if (enumType.StructElementTypesCount == 1)
-			return LLVMValueRef.CreateConstNamedStruct(enumType, [tag]);
+		if (constant.Payload.IsEmpty)
+			return EmitTagOnly(enumType, tag);
 		
 		var area = enumType.StructGetTypeAtIndex(1);
-		if (constant.Payload.IsEmpty)
-			return LLVMValueRef.CreateConstNamedStruct(enumType, [tag, LLVMValueRef.CreateConstNull(area)]);
-		
 		var payload = LLVMValueRef.CreateConstStruct([..constant.Payload.Select(EmitStaticConstant)], false);
 		var alignment = LLVMValueRef.CreateConstNull(LLVMTypeRef.CreateArray(area.ElementType, 0));
 		var tail = _targetData.ABISizeOfType(area) - _targetData.ABISizeOfType(payload.TypeOf);
@@ -1884,6 +1883,19 @@ public sealed unsafe class CodeGenerator : IDisposable
 		var padding = LLVMValueRef.CreateConstNull(LLVMTypeRef.CreateArray(LLVMTypeRef.Int8, (uint)tail));
 		return LLVMValueRef.CreateConstStruct([tag, alignment, payload, padding], false);
 	}
+	
+	private LLVMValueRef EmitEnumTagConstant(EnumTagConstant constant)
+	{
+		var enumType = (EnumSymbol)constant.Type;
+		var tag = EmitIntegerConstant(new IntegerConstant(_typePool.GetTagType(enumType), constant.Tag));
+		return EmitTagOnly(MapTypeSymbol(enumType), tag);
+	}
+	
+	private static LLVMValueRef EmitTagOnly(LLVMTypeRef enumType, LLVMValueRef tag) =>
+		enumType.StructElementTypesCount == 1
+			? LLVMValueRef.CreateConstNamedStruct(enumType, [tag])
+			: LLVMValueRef.CreateConstNamedStruct(enumType,
+				[tag, LLVMValueRef.CreateConstNull(enumType.StructGetTypeAtIndex(1))]);
 	
 	private LLVMValueRef EmitIntegerConstant(IntegerConstant constant)
 	{

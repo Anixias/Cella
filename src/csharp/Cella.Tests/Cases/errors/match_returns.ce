@@ -25,7 +25,22 @@ complete: fun(team: Team) -> i32
 	ret 3
 }
 
+Code: ext enum
+{
+	ok
+	failed
+}
+
+open: fun(code: Code) -> i32
+{
+	match code
+	{
+		ok => ret 1
+		failed => ret 2
+	}
+}
+
 main: fun -> i32
 {
-	ret partial(Team.red) + complete(Team.blue)
+	ret partial(Team.red) + complete(Team.blue) + open(Code.ok)
 }

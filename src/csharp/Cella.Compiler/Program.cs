@@ -223,6 +223,7 @@ internal static class Program
 		// Phase 5: Lowering
 		var lowerer = new Lowerer(signatureCollector.Evaluator, typePool,
 			g => signatureCollector.GetGlobalInfo(g)!.Value);
+		
 		{
 			foreach (var (_, resolvedAst, _) in resolvedFiles)
 				lowerer.Lower(resolvedAst);

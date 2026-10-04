@@ -11,4 +11,9 @@ Warning at line 25, column 2
 25 │ ret 3
      ^ Unreachable code
 
+Error at line 34, column 1
+33 │ 
+34 │ open: fun(code: Code) -> i32
+     ╘══╛ Not all paths return a value
+
 [compilation failed]

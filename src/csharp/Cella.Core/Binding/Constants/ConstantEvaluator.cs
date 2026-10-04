@@ -87,6 +87,7 @@ public sealed class ConstantEvaluator
 	private BigInteger? GetTag(Constant constant) => constant switch
 	{
 		EnumConstant { Type: EnumSymbol enumType } value => typePool.GetCaseValue(enumType, value.Case),
+		EnumTagConstant value => value.Tag,
 		ZeroConstant { Type: EnumSymbol } => BigInteger.Zero,
 		_ => null
 	};
@@ -373,12 +374,18 @@ public sealed class ConstantEvaluator
 		(FreeConversion { From: FunctionType } c, FunctionConstant function) =>
 			new FunctionConstant(function.Function, c.To),
 		(EnumConversion { To: IntegerType to }, var constant) when GetTag(constant) is { } tag => Integer(to, tag),
+		(EnumConversion { To: EnumSymbol { IsExternal: true } enumType }, IntegerConstant integer) =>
+			ToEnum(enumType, Wrap(integer.Value, typePool.GetTagType(enumType))),
 		(EnumConversion { To: EnumSymbol enumType }, IntegerConstant integer) =>
 			typePool.FindCase(enumType, integer.Value) is { } enumCase
 				? new EnumConstant(enumType, enumCase, [])
 				: null,
 		_ => null
 	};
+	
+	private Constant ToEnum(EnumSymbol enumType, BigInteger tag) => typePool.FindCase(enumType, tag) is { } enumCase
+		? new EnumConstant(enumType, enumCase, [])
+		: new EnumTagConstant(enumType, tag);
 	
 	private IntegerConstant Integer(TypeSymbol type, BigInteger value) =>
 		new(type, type is IntegerType integer ? Wrap(value, integer) : value);
