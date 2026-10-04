@@ -67,6 +67,7 @@ public sealed class SignatureCollector
 		ReportDuplicateDeclarations();
 		ReportLayoutCycles();
 		ReportEntryPoint();
+		ReportPlainEnumsInCSignatures();
 		
 		FunctionInfo? entryPoint = _entryPoints.Count == 1 ? _entryPoints[0] : null;
 		return new(name, _symbolTable, _builder.Build(), entryPoint);
@@ -656,6 +657,58 @@ public sealed class SignatureCollector
 		foreach (var candidate in candidates)
 			Diagnostics.Add(new(DiagnosticSeverity.Error, GetIdentifier(candidate.Symbol.Syntax).SourceLocation,
 				$"'{_entryPointName}' must have no parameters and return 'i32' or nothing"));
+	}
+	
+	private void ReportPlainEnumsInCSignatures()
+	{
+		foreach (var (function, info) in _builder.Functions)
+		{
+			if (!function.IsExternal)
+				continue;
+			
+			var (parameters, returnType) = function.Syntax switch
+			{
+				FunctionNode node => (node.Parameters, node.ReturnType),
+				ExternalFunctionNode node => (node.Parameters, node.ReturnType),
+				_ => ([], null)
+			};
+			
+			for (var i = 0; i < parameters.Length; i++)
+				ReportPlainEnum(info.Signature.ParameterTypes[i], parameters[i].Type.SourceLocation);
+			
+			if (returnType is not null)
+				ReportPlainEnum(info.Signature.ReturnType, returnType.SourceLocation);
+		}
+	}
+	
+	private void ReportPlainEnum(TypeSymbol type, SourceLocation location)
+	{
+		if (FindPlainEnum(type, []) is not { } plainEnum)
+			return;
+		
+		var name = plainEnum == type ? $"'{type.Name}'" : $"'{plainEnum.Name}' in '{type.Name}'";
+		Diagnostics.Add(new(DiagnosticSeverity.Error, location,
+			$"{name} isn't an 'ext enum', so it can't be part of a C signature"));
+	}
+	
+	private EnumSymbol? FindPlainEnum(TypeSymbol type, HashSet<TypeSymbol> visited)
+	{
+		if (type is EnumSymbol { IsExternal: false } plainEnum)
+			return plainEnum;
+		
+		if (!visited.Add(type))
+			return null;
+		
+		IEnumerable<TypeSymbol> parts = type switch
+		{
+			EnumSymbol enumType => enumType.Cases.SelectMany(c => _typePool.GetPayloadTypes(enumType, c)),
+			RecordSymbol record => _typePool.GetMembers(record).OfType<FieldSymbol>().Select(_typePool.GetTypeOfMember),
+			ArrayType array => [array.ElementType],
+			FunctionType { IsExternal: true } function => [..function.ParameterTypes, function.ReturnType],
+			_ => []
+		};
+		
+		return parts.Select(part => FindPlainEnum(part, visited)).FirstOrDefault(static found => found is not null);
 	}
 	
 	private void ReportLayoutCycles()

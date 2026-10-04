@@ -1,0 +1,56 @@
+mod test
+
+Team: enum
+{
+	red
+	blue
+}
+
+Code: ext enum
+{
+	ok
+	failed
+}
+
+Packet: rec
+{
+	team: Team
+	size: i32
+}
+
+Wrapper: rec
+{
+	packets: array[Packet, 2]
+}
+
+Message: ext enum
+{
+	empty
+	sent(team: Team)
+}
+
+Node: rec
+{
+	visit: ext fun(Node) -> i32
+	team: Team
+}
+
+ext
+{
+	currentTeam: fun -> Team
+	setTeam: fun(team: Team)
+	sendPacket: fun(packet: Packet)
+	sendAll: fun(wrapper: Wrapper)
+	post: fun(message: Message)
+	onTeam: fun(callback: ext fun(Team) -> i32)
+	walk: fun(node: Node)
+	byPointer: fun(team: ptr[Team])
+	fine: fun(code: Code) -> Code
+}
+
+swap: ext fun(team: Team) -> Team = team
+
+main: fun -> i32
+{
+	ret 0
+}

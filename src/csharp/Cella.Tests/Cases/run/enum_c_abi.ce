@@ -5,13 +5,13 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-Team: enum
+Team: ext enum
 {
 	red
 	blue
 }
 
-Effect: enum
+Effect: ext enum
 {
 	none
 	hit(amount: i32)
