@@ -4,7 +4,6 @@ using System.Numerics;
 using Cella.Core.Binding.Conversions;
 using Cella.Core.Binding.Operations;
 using Cella.Core.Symbols;
-using Cella.Core.Syntax.Nodes;
 using Cella.Core.Text;
 
 namespace Cella.Core.Binding;
@@ -14,6 +13,7 @@ public sealed class TypePool
 	public ConversionTable ConversionTable { get; }
 	public OperatorRegistry OperatorRegistry { get; }
 	public SizeTable SizeTable { get; }
+	public Action<RecordSymbol>? RecordCompleter { get; set; }
 	
 	private readonly Dictionary<TypeSymbol, OrderedDictionary<string, MemberSymbol>> _members = [];
 	private readonly Dictionary<(TypeSymbol, BigInteger), ArrayType> _arrayTypes = [];
@@ -31,14 +31,18 @@ public sealed class TypePool
 		ConversionTable = conversionTable;
 		OperatorRegistry = operatorRegistry;
 		SizeTable = sizeTable;
+		SizeTable.Completer = Complete;
 		
 		CreateNativeMembers();
 	}
 	
 	public void AddConstructor(TypeSymbol type, FunctionInfo info) => _constructors.GetOrAdd(type).Add(info);
 	
-	public IReadOnlyList<FunctionInfo> GetConstructors(TypeSymbol type) =>
-		_constructors.TryGetValue(type, out var list) ? list : [];
+	public IReadOnlyList<FunctionInfo> GetConstructors(TypeSymbol type)
+	{
+		Complete(type);
+		return _constructors.TryGetValue(type, out var list) ? list : [];
+	}
 	
 	public void SetNeedsDrop(TypeSymbol type, bool needsDrop) => _needsDrop[type] = needsDrop;
 	public bool NeedsDrop(TypeSymbol type) => _needsDrop.GetValueOrDefault(type, false);
@@ -77,41 +81,6 @@ public sealed class TypePool
 			new ArrayType(t, BigInteger.MinusOne), // Don't use GetArrayType; we don't want to actually create it
 		_ => null
 	};
-	
-	public TypeSymbol? TryResolveExpressionAsType(IExpressionNode expr, Func<string, Symbol?> resolveSymbol) =>
-		expr switch
-		{
-			VarExpressionNode v => resolveSymbol(v.Identifier.Text) as TypeSymbol,
-			IndexerExpressionNode i => TryResolveIndexerAsGenericType(i, resolveSymbol),
-			AccessExpressionNode => null, // TODO Module-qualified types like module.SomeType
-			_ => null
-		};
-	
-	private TypeSymbol? TryResolveIndexerAsGenericType(IndexerExpressionNode node, Func<string, Symbol?> resolveSymbol)
-	{
-		// TODO AccessExpressionNode for module.GenericType[T]
-		if (node.Target is not VarExpressionNode varExpr)
-			return null;
-		
-		var typeArgs = new List<IGenericArgument>(node.Arguments.Length);
-		
-		foreach (var arg in node.Arguments)
-		{
-			if (TryResolveExpressionAsType(arg, resolveSymbol) is { } typeArg)
-			{
-				typeArgs.Add(new GenericTypeArgument(typeArg));
-				continue;
-			}
-			
-			if (arg is not LiteralExpressionNode { Token: { Type: TokenType.IntegerLiteral } token }
-			    || !Scanner.TryParseInteger(token.AsSpan(), out var constVal))
-				return null;
-			
-			typeArgs.Add(new GenericConstArgument(constVal));
-		}
-		
-		return ResolveBuiltinGenericType(varExpr.Identifier.Text, typeArgs);
-	}
 	
 	private void CreatePointerArithmetic(PointerType ptrType)
 	{
@@ -283,7 +252,7 @@ public sealed class TypePool
 		var fieldSizes = GetMembers(record)
 			.OfType<FieldSymbol>()
 			.Select(GetTypeOfMember)
-			.Select(SizeTable.GetSize);
+			.Select(type => SizeTable.TryGetSize(type) ?? StorageSize.Const(0));
 		
 		return StorageSize.Sum(fieldSizes);
 	});
@@ -294,14 +263,26 @@ public sealed class TypePool
 		_memberTypes[member] = memberType;
 	}
 	
-	public MemberSymbol? ResolveMember(TypeSymbol type, string name) =>
-		_members.GetValueOrDefault(type)?.GetValueOrDefault(name);
+	public MemberSymbol? ResolveMember(TypeSymbol type, string name)
+	{
+		Complete(type);
+		return _members.GetValueOrDefault(type)?.GetValueOrDefault(name);
+	}
 	
 	public int GetFieldIndex(TypeSymbol type, MemberSymbol member) =>
 		_members[type].IndexOf(member.Name);
 	
-	public IReadOnlyList<MemberSymbol> GetMembers(TypeSymbol type) =>
-		_members.TryGetValue(type, out var members) ? members.Values : [];
+	public IReadOnlyList<MemberSymbol> GetMembers(TypeSymbol type)
+	{
+		Complete(type);
+		return _members.TryGetValue(type, out var members) ? members.Values : [];
+	}
+	
+	private void Complete(TypeSymbol type)
+	{
+		if (type is RecordSymbol record)
+			RecordCompleter?.Invoke(record);
+	}
 	
 	public bool TryGetTypeOfMember(MemberSymbol member, [NotNullWhen(true)] out TypeSymbol? type)
 	{

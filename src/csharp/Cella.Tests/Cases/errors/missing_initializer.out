@@ -1,0 +1,9 @@
+
+====== missing_initializer.ce ======
+
+Error at line 3, column 14
+2 │ 
+3 │ counter: var i32
+                 ╘═╛ Expected '=' and an initial value
+
+[compilation failed]

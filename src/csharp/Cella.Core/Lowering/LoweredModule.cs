@@ -13,6 +13,7 @@ public sealed class LoweredFile(FileSymbol symbol)
 {
 	public FileSymbol Symbol { get; } = symbol;
 	public List<TypeSymbol> Types { get; } = [];
+	public List<GlobalInfo> Globals { get; } = [];
 	public List<LoweredFunction> Functions { get; } = [];
 	public List<FunctionInfo> ImportedFunctions { get; } = [];
 	public List<FunctionInfo> ExternalFunctions { get; } = [];

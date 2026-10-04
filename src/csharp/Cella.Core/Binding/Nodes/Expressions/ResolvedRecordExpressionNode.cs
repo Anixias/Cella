@@ -17,5 +17,4 @@ public sealed class ResolvedRecordExpressionNode
 		fields.ToImmutableArray();
 	
 	public IExpressionNode Syntax { get; } = syntax;
-	public bool IsConstant => false;
 }

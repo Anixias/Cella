@@ -161,47 +161,40 @@ internal static class Program
 		var dependencyList = dependencies.ToImmutableArray();
 		var dependencySymbols = dependencyList.Select(static d => d.AssemblySymbol).ToImmutableArray();
 		
-		// Phase 2b: Signature collection
-		// TODO Allow configuring entry point name?
-		var entryPointName = outputType == ProjectOutputType.Executable ? "main" : null;
-		
-		AssemblySymbol assemblySymbol;
-		DiagnosticList signatureDiagnostics;
-		{
-			var signatureCollector = new SignatureCollector(entryPointName, symbolTable, typePool, dependencySymbols);
-			
-			foreach (var info in files)
-				signatureCollector.Collect(info.Ast);
-			
-			assemblySymbol = signatureCollector.FinishAssembly(project.Name);
-			signatureDiagnostics = signatureCollector.Diagnostics;
-		}
-		
-		var errorResult = new AssemblyInfo(assemblySymbol, outputType, null, false);
-		
-		if (signatureDiagnostics.ErrorCount > 0)
-		{
-			PrintDiagnostics(signatureDiagnostics.Errors, project.Directory);
-			return errorResult;
-		}
-		
 		// TODO Should I make a dependency here on LLVM? This implies a Language Server would also have to do this
 		// We need to know the pointer size of the target for proper symbol resolution
 		var targetTriple = TargetTriple.FromHost(); // TODO Check CLI args for cross-compilation
 		
 		var objDir = Path.Combine(project.Directory, "obj");
 		var outputConfig = new OutputConfig(objDir, true, true);
-		var targetConfig = new TargetConfig(targetTriple.ToLlvm());
+		var targetConfig = new TargetConfig(targetTriple.ToLlvm(), Features: targetTriple.ToLlvmFeatures());
 		var codeGenConfig =
 			new CodeGenConfig(outputConfig, targetConfig, OptimizeMode.Debug); // TODO Read from CLI args
 		
 		var pointerBitSize = codeGenConfig.GetPointerSize() * 8;
 		
+		// Phase 2b: Signature collection
+		// TODO Allow configuring entry point name?
+		var entryPointName = outputType == ProjectOutputType.Executable ? "main" : null;
+		var signatureCollector = new SignatureCollector(entryPointName, symbolTable, typePool, dependencySymbols,
+			pointerBitSize);
+		
+		var resolver = new Resolver(symbolTable, signatureCollector, typePool, pointerBitSize);
+		signatureCollector.Collect(files.Select(static info => info.Ast).ToArray(), resolver);
+		
+		var assemblySymbol = signatureCollector.FinishAssembly(project.Name);
+		var errorResult = new AssemblyInfo(assemblySymbol, outputType, null, false);
+		
+		var signatureErrors = signatureCollector.Diagnostics.Errors.Concat(resolver.Diagnostics.Errors).ToArray();
+		if (signatureErrors.Length > 0)
+		{
+			PrintDiagnostics(signatureErrors, project.Directory);
+			return errorResult;
+		}
+		
 		// Phase 3: Symbol resolution
 		ImmutableArray<ResolvedSourceFileInfo> resolvedFiles;
 		{
-			var resolver = new Resolver(assemblySymbol, dependencySymbols, typePool, pointerBitSize);
-			
 			resolvedFiles = files
 				.Select(sfi => new ResolvedSourceFileInfo(sfi.FilePath, resolver.Resolve(sfi.Ast), sfi.Source))
 				.ToImmutableArray();
@@ -215,7 +208,7 @@ internal static class Program
 		
 		// Phase 4: Type checking
 		{
-			var typeChecker = new TypeChecker();
+			var typeChecker = new TypeChecker(signatureCollector.Evaluator);
 			
 			foreach (var (_, resolvedAst, _) in resolvedFiles)
 				typeChecker.Check(resolvedAst);
@@ -228,7 +221,7 @@ internal static class Program
 		}
 		
 		// Phase 5: Lowering
-		var lowerer = new Lowerer();
+		var lowerer = new Lowerer(signatureCollector.Evaluator, g => signatureCollector.GetGlobalInfo(g)!.Value);
 		{
 			foreach (var (_, resolvedAst, _) in resolvedFiles)
 				lowerer.Lower(resolvedAst);

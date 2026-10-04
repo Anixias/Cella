@@ -1,0 +1,28 @@
+mod test
+
+counter: var i32 = 0
+limit: val i32 = 5
+table: val array[i32, 3] = [1, 2, 3]
+
+Point: rec
+{
+	x: i32
+}
+
+origin: val Point = Point(1)
+
+main: fun -> i32
+{
+	limit = 6
+	val local = 1
+	local += 1
+	table[0] = 5
+	origin.x = 2
+	val point = Point(3)
+	point.x = 4
+	var p = @counter
+	var s: span[i32] = table
+	var fine = 0
+	fine = local + limit
+	ret fine
+}

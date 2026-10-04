@@ -1,0 +1,48 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+limit: val usize = 4
+doubled: val i32 = base * 2
+base: val i32 = 3
+greeting: val cstr = "hello"
+title: val str = "Cella"
+ratio: val f64 = 1.5 * 2.0
+large: val bool = limit > 2
+letter: val char = 'x'
+
+counter: var i32 = 10
+total: var u64 = 0
+enabled: var bool = true
+scale: var f32 = 0.5
+initial: var char = 'a'
+wide: var i128 = 5
+
+bump: fun -> i32
+{
+	counter += 1
+	ret counter
+}
+
+main: fun -> i32
+{
+	bump()
+	counter += 4
+	total = u64(counter) * 2
+	enabled = !enabled
+	scale *= 3
+	initial = 'z'
+	wide = wide << 100
+	printf("%d %d %s %.*s %.1f %d %u\n", doubled, base, greeting, i32(title.byteLength), title.data, ratio, large,
+		letter)
+	printf("%d %llu %d %.2f %u %lld\n", counter, total, enabled, scale, initial, i64(wide >> 100))
+
+	var counter = 7
+	var values: array[i32, limit]
+	values[3] = doubled
+	printf("%d %d %zu\n", counter, values[3], values.length)
+	ret 0
+}

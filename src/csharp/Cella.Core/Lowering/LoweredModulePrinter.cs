@@ -39,6 +39,9 @@ public static class LoweredModulePrinter
 				}
 			}
 			
+			foreach (var global in file.Globals)
+				sb.Append('@').Append(global.Symbol.Name).Append(": ").Append(global.Type.Name).AppendLine();
+			
 			foreach (var function in file.Functions)
 				PrintFunction(sb, function);
 		}
@@ -179,6 +182,10 @@ public static class LoweredModulePrinter
 				
 				case VariableValue v:
 					sb.Append('$').Append(v.Variable.Symbol.Name);
+					break;
+				
+				case GlobalValue v:
+					sb.Append('@').Append(v.Global.Symbol.Name);
 					break;
 				
 				case BinOpValue { Op: BinaryOperation.Addition } v:

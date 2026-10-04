@@ -1,0 +1,15 @@
+
+====== local_vals.ce ======
+
+Error at line 5, column 6
+4 │ {
+5 │     val later: i32
+            ╘═══╛ A 'val' without an initial value is not supported yet
+
+Error at line 8, column 15
+7 │ var x: i32 = 1
+8 │ var y = x << bits
+                 ╘══╛ Shift amount 40 is out of range for 'i32'
+                    | 'i32' has 32 bits
+
+[compilation failed]

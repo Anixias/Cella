@@ -3,6 +3,7 @@ using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
 using System.Numerics;
 using Cella.Core.Binding;
+using Cella.Core.Binding.Constants;
 using Cella.Core.Binding.Conversions;
 using Cella.Core.Binding.Operations;
 using Cella.Core.CodeGen.Extensions;
@@ -56,6 +57,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 	private readonly Dictionary<TypeSymbol, LLVMTypeRef> _typeMap = [];
 	private readonly Dictionary<FunctionInfo, LLVMFunctionInfo> _funMap = [];
 	private readonly Dictionary<VariableInfo, LLVMValueRef> _varMap = [];
+	private readonly Dictionary<GlobalSymbol, LLVMValueRef> _globalMap = [];
 	private readonly LLVMValueRef _true = LLVMValueRef.CreateConstInt(LLVMTypeRef.Int1, 1uL);
 	private readonly LLVMValueRef _false = LLVMValueRef.CreateConstInt(LLVMTypeRef.Int1, 0uL);
 	private readonly HashSet<string> _externalLibraries = [];
@@ -134,6 +136,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 			
 			_funMap.Clear();
 			_varMap.Clear();
+			_globalMap.Clear();
 			_typeMap.Clear();
 			
 			if (!llvmModule.TryVerify(LLVMVerifierFailureAction.LLVMAbortProcessAction, out message))
@@ -316,6 +319,10 @@ public sealed unsafe class CodeGenerator : IDisposable
 					entryPoint = info;
 			}
 		}
+		
+		foreach (var file in module.Files)
+			foreach (var global in file.Globals)
+				DefineGlobal(global);
 		
 		foreach (var file in module.Files)
 		{
@@ -671,6 +678,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 		ConstantValue v => EmitConstant(v),
 		ZeroValue v => EmitZero(v),
 		VariableValue v => builder.BuildLoad2(MapTypeSymbol(v.Type), _varMap[v.Variable], v.Variable.Symbol.Name),
+		GlobalValue v => EmitGlobalLoad(v.Global, builder),
 		BinOpValue v => EmitBinaryOp(v, builder),
 		UnaryOpValue v => EmitUnaryOp(v, builder),
 		AssignValue v => EmitAssignValue(v, builder),
@@ -679,7 +687,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 		ArrayValue v => EmitArrayValue(v, builder),
 		ConversionValue v => EmitConversion(v, builder),
 		CallValue v => EmitCall(v, builder),
-		FunctionReferenceValue v => _funMap[v.Function].FunctionValue,
+		FunctionReferenceValue v => GetFunctionValue(v.Function),
 		IndirectCallValue v => EmitIndirectCall(v, builder),
 		PointerOffsetValue v => EmitPointerOffset(v, builder),
 		PointerDifferenceValue v => EmitPointerDifference(v, builder),
@@ -1014,6 +1022,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 	private bool IsAddressable(Value value) => value switch
 	{
 		VariableValue => true,
+		GlobalValue => true,
 		IndexerValue { Target.Type: SpanType or ViewType } => true,
 		IndexerValue v => IsAddressable(v.Target),
 		AccessValue v => IsAddressable(v.Target),
@@ -1403,13 +1412,18 @@ public sealed unsafe class CodeGenerator : IDisposable
 	private LLVMValueRef EmitAssignValue(AssignValue v, LLVMBuilderRef builder)
 	{
 		var right = EmitValue(v.Right, builder);
-		builder.BuildStore(right, EmitAddress(v.Left, builder));
+		if (v.Left is GlobalValue global)
+			EmitGlobalStore(global.Global, right, builder);
+		else
+			builder.BuildStore(right, EmitAddress(v.Left, builder));
+		
 		return right;
 	}
 	
 	private LLVMValueRef EmitAddress(Value value, LLVMBuilderRef builder) => value switch
 	{
 		VariableValue v => _varMap[v.Variable],
+		GlobalValue v => GetGlobal(v.Global),
 		IndexerValue v => EmitIndexerAddress(v, builder).Ptr,
 		AccessValue v => EmitAccessAddress(v, builder),
 		UnaryOpValue { Op: UnaryOperation.Dereference } v => EmitValue(v.Operand, builder),
@@ -1503,6 +1517,119 @@ public sealed unsafe class CodeGenerator : IDisposable
 		}
 		
 		throw new InvalidOperationException();
+	}
+	
+	private void DefineGlobal(GlobalInfo info)
+	{
+		var global = currentModule.AddGlobal(GetGlobalStorageType(info), info.MangledName);
+		global.Initializer = info.Symbol.IsMutable && info.Value is BoolConstant flag
+			? LLVMValueRef.CreateConstInt(LLVMTypeRef.Int8, flag.Value ? 1uL : 0uL)
+			: EmitStaticConstant(info.Value!);
+		
+		global.IsGlobalConstant = !info.Symbol.IsMutable;
+		if (info.Symbol.Visibility == Visibility.Public)
+		{
+			global.DLLStorageClass = LLVMDLLStorageClass.LLVMDLLExportStorageClass;
+			global.Linkage = LLVMLinkage.LLVMDLLExportLinkage;
+		}
+		else
+		{
+			global.Linkage = LLVMLinkage.LLVMInternalLinkage;
+		}
+		
+		_globalMap[info.Symbol] = global;
+	}
+	
+	private LLVMValueRef GetGlobal(GlobalInfo info)
+	{
+		if (_globalMap.TryGetValue(info.Symbol, out var existing))
+			return existing;
+		
+		var global = currentModule.AddGlobal(GetGlobalStorageType(info), info.MangledName);
+		global.IsGlobalConstant = !info.Symbol.IsMutable;
+		global.DLLStorageClass = LLVMDLLStorageClass.LLVMDLLImportStorageClass;
+		global.Linkage = LLVMLinkage.LLVMDLLImportLinkage;
+		_globalMap[info.Symbol] = global;
+		return global;
+	}
+	
+	private LLVMTypeRef GetGlobalStorageType(GlobalInfo info) =>
+		info.Symbol.IsMutable && info.Type == NativeSymbols.Bool ? LLVMTypeRef.Int8 : MapTypeSymbol(info.Type);
+	
+	private LLVMValueRef EmitGlobalLoad(GlobalInfo info, LLVMBuilderRef builder)
+	{
+		var storageType = GetGlobalStorageType(info);
+		var load = builder.BuildLoad2(storageType, GetGlobal(info), info.Symbol.Name);
+		if (!info.Symbol.IsMutable)
+			return load;
+		
+		MakeMonotonic(load);
+		load.Alignment = _targetData.ABIAlignmentOfType(storageType);
+		return info.Type == NativeSymbols.Bool ? builder.BuildTrunc(load, LLVMTypeRef.Int1) : load;
+	}
+	
+	private void EmitGlobalStore(GlobalInfo info, LLVMValueRef value, LLVMBuilderRef builder)
+	{
+		var storageType = GetGlobalStorageType(info);
+		if (info.Type == NativeSymbols.Bool)
+			value = builder.BuildZExt(value, storageType);
+		
+		var store = builder.BuildStore(value, GetGlobal(info));
+		MakeMonotonic(store);
+		store.Alignment = _targetData.ABIAlignmentOfType(storageType);
+	}
+	
+	private static void MakeMonotonic(LLVMValueRef instruction) =>
+		LLVM.SetOrdering((LLVMOpaqueValue*)instruction.Handle, LLVMAtomicOrdering.LLVMAtomicOrderingMonotonic);
+	
+	private LLVMValueRef GetFunctionValue(FunctionInfo function)
+	{
+		if (_funMap.TryGetValue(function, out var existing))
+			return existing.FunctionValue;
+		
+		var value = CreateFunction(currentModule, function).FunctionValue;
+		if (function.Symbol.Kind == FunctionKind.External)
+		{
+			if (function.Origin is { } origin)
+				_externalLibraries.Add(origin);
+			
+			value.Linkage = LLVMLinkage.LLVMExternalLinkage;
+		}
+		else
+		{
+			value.DLLStorageClass = LLVMDLLStorageClass.LLVMDLLImportStorageClass;
+			value.Linkage = LLVMLinkage.LLVMDLLImportLinkage;
+		}
+		
+		return value;
+	}
+	
+	private LLVMValueRef EmitStaticConstant(Constant constant) => constant switch
+	{
+		IntegerConstant c => EmitIntegerConstant(c),
+		FloatConstant c => LLVMValueRef.CreateConstReal(MapTypeSymbol(c.Type), c.Value),
+		BoolConstant c => c.Value ? _true : _false,
+		NullConstant c => LLVMValueRef.CreateConstNull(MapTypeSymbol(c.Type)),
+		StringConstant c => EmitConstant(new ConstantValue(c.Type, c.Value)),
+		RecordConstant c => LLVMValueRef.CreateConstNamedStruct(MapTypeSymbol(c.Type),
+			[..c.Fields.Select(EmitStaticConstant)]),
+		ArrayConstant c => LLVMValueRef.CreateConstArray(MapTypeSymbol(c.ArrayType.ElementType),
+			[..c.Elements.Select(EmitStaticConstant)]),
+		FunctionConstant c => GetFunctionValue(c.Function),
+		ZeroConstant c => LLVMValueRef.CreateConstNull(MapTypeSymbol(c.Type)),
+		_ => throw new InvalidOperationException()
+	};
+	
+	private LLVMValueRef EmitIntegerConstant(IntegerConstant constant)
+	{
+		var type = MapTypeSymbol(constant.Type);
+		var bits = (int)type.IntWidth;
+		var pattern = constant.Value.Sign < 0 ? constant.Value + (BigInteger.One << bits) : constant.Value;
+		var words = new ulong[GetWordCount(bits)];
+		for (var i = 0; i < words.Length; i++)
+			words[i] = (ulong)((pattern >> (BitsPerWord * i)) & ulong.MaxValue);
+		
+		return LLVMValueRef.CreateConstIntOfArbitraryPrecision(type, words);
 	}
 	
 	private LLVMValueRef GetOrCreateStringGlobal(byte[] bytes)

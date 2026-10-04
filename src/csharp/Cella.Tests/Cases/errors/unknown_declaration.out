@@ -3,8 +3,8 @@
 
 Error at line 3, column 10
 2 │ 
-3 │ counter: var i32
-             ╘═╛ Unknown declaration type
+3 │ counter: static i32 = 0
+             ╘════╛ Unknown declaration type
 
 Error at line 5, column 8
 4 │ 

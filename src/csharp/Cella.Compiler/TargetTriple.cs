@@ -52,6 +52,12 @@ public readonly record struct TargetTriple(string Os, string Arch, string? Abi)
 		};
 	}
 	
+	public string ToLlvmFeatures() => (Os, Arch) switch
+	{
+		(OsTypes.Windows, ArchTypes.X64) => "+cx16",
+		_ => ""
+	};
+	
 	public static TargetTriple FromHost()
 	{
 		var arch = RuntimeInformation.OSArchitecture switch

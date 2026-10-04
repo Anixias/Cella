@@ -1,6 +1,7 @@
 ﻿using System.Collections.Immutable;
 using System.Numerics;
 using Cella.Core.Binding;
+using Cella.Core.Binding.Constants;
 using Cella.Core.Syntax;
 using Cella.Core.Syntax.Nodes;
 using Cella.Core.Text;
@@ -353,13 +354,14 @@ public sealed class ViewType(TypeSymbol elementType) : TypeSymbol($"view[{elemen
 
 public abstract class VariableSymbol(string name) : Symbol(name);
 
-// TODO: Bind whether it has a constant initializer and no reassignments
 public sealed class LocalVariableSymbol(VarStatementNode syntax, TypeSymbol type, string nameOverride)
 	: VariableSymbol(nameOverride)
 {
 	public VarStatementNode Syntax { get; } = syntax;
 	public TypeSymbol Type { get; } = type;
 	public SourceLocation Definition { get; } = syntax.SourceLocation;
+	public bool IsMutable => Syntax.IsMutable;
+	public Constant? ConstantValue { get; init; }
 	
 	public LocalVariableSymbol(VarStatementNode syntax, TypeSymbol type) : this(syntax, type, syntax.Identifier.Text)
 	{
@@ -367,6 +369,14 @@ public sealed class LocalVariableSymbol(VarStatementNode syntax, TypeSymbol type
 }
 
 // TODO: Initializer? Or is that stored elsewhere?
+public sealed class GlobalSymbol(GlobalNode syntax) : VariableSymbol(syntax.Identifier.Text), IExportable
+{
+	public GlobalNode Syntax { get; } = syntax;
+	public bool IsMutable => Syntax.IsMutable;
+	public Visibility Visibility { get; } = Visibility.FromModifiers(syntax.Modifiers);
+	public SourceLocation Definition { get; } = syntax.SourceLocation;
+}
+
 public sealed class ParameterSymbol : VariableSymbol
 {
 	public Token Identifier { get; }

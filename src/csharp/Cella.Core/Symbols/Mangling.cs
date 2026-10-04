@@ -17,6 +17,9 @@ public static class Mangling
 		return sb.ToString();
 	}
 	
+	public static string Mangle(Symbol symbol, params IEnumerable<string> qualifierParts) =>
+		new StringBuilder().Append('?').AppendJoin('.', qualifierParts.Append(symbol.Name)).ToString();
+	
 	public static string Mangle(TypeSymbol type)
 	{
 		// TODO Handle complex types

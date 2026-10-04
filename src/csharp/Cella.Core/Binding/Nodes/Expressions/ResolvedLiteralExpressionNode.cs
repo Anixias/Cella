@@ -9,7 +9,6 @@ public sealed class ResolvedLiteralExpressionNode(TypeSymbol type, object? value
 {
 	public TypeSymbol Type { get; } = type;
 	public object? Value { get; } = value;
-	public bool IsConstant => true;
 	public IExpressionNode Syntax { get; } = syntax;
 	
 	public BigInteger? IntegerValue => Value switch

@@ -1,0 +1,18 @@
+mod test
+
+Buffer: rec
+{
+	data: array[u8, size]
+}
+
+size: val usize = sizeOf(Buffer) + 1
+first: val i32 = second + 1
+second: val i32 = first + 1
+itself: val i32 = itself
+lengths: val array[usize, lengths[0]] = [1]
+fine: val i32 = 1
+
+main: fun -> i32
+{
+	ret fine
+}

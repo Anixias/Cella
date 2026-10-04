@@ -13,5 +13,4 @@ public sealed class ResolvedHeapExpressionNode
 	public IResolvedExpressionNode? Initializer { get; } = initializer;
 	public TypeSymbol Type { get; } = type;
 	public IExpressionNode Syntax { get; } = syntax;
-	public bool IsConstant => false;
 }

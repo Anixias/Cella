@@ -3,6 +3,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Numerics;
 using System.Text;
+using Cella.Core.Binding.Constants;
 using Cella.Core.Binding.Conversions;
 using Cella.Core.Binding.Nodes;
 using Cella.Core.Binding.Operations;
@@ -14,7 +15,8 @@ using Cella.Diagnostics;
 namespace Cella.Core.Binding;
 
 public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
-	IExpressionNodeVisitor<IResolvedExpressionNode>, IDeclarationNodeVisitor<IResolvedDeclarationNode>
+	IExpressionNodeVisitor<IResolvedExpressionNode>, IDeclarationNodeVisitor<IResolvedDeclarationNode>,
+	IConstantResolver
 {
 	// Used to fold unary operations on literals
 	private sealed class UnaryOpJob(TokenType op)
@@ -29,8 +31,8 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		new(NativeSymbols.Bool, NativeSymbols.Int32, ConversionKind.Implicit, 0);
 	
 	private readonly SymbolTable _symbolTable;
-	private readonly SignatureTable _assemblySignatureTable;
-	private readonly SignatureTable _dependencySignatureTable;
+	private readonly SignatureCollector _signatures;
+	private readonly ConstantEvaluator _evaluator;
 	private readonly TypePool _typePool;
 	private readonly ConversionTable _conversionTable;
 	private readonly OperatorRegistry _operatorRegistry;
@@ -48,16 +50,15 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	private Scope? CurrentScope => CurrentResolutionContext.LocalScope;
 	private TypeSymbol? CurrentTargetType => _targetTypes.TryPeek(out var result) ? result : null;
 	
-	public Resolver(AssemblySymbol assemblySymbol, IEnumerable<AssemblySymbol> dependencies, TypePool typePool,
-		uint pointerBitSize)
+	public Resolver(SymbolTable symbolTable, SignatureCollector signatures, TypePool typePool, uint pointerBitSize)
 	{
 		_typePool = typePool;
 		_conversionTable = typePool.ConversionTable;
 		_operatorRegistry = typePool.OperatorRegistry;
 		_pointerBitSize = pointerBitSize;
-		_symbolTable = assemblySymbol.SymbolTable;
-		_assemblySignatureTable = assemblySymbol.SignatureTable;
-		_dependencySignatureTable = SignatureTable.Combine(dependencies.Select(static a => a.SignatureTable));
+		_symbolTable = symbolTable;
+		_signatures = signatures;
+		_evaluator = signatures.Evaluator;
 		
 		var ptrBits = (int)pointerBitSize;
 		_isizeMinValue = -BigInteger.Pow(2, ptrBits - 1);
@@ -67,6 +68,23 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	}
 	
 	public ResolvedFileNode Resolve(FileNode root) => (ResolvedFileNode)Visit(root);
+	
+	public IResolvedExpressionNode ResolveInitializer(IExpressionNode initializer, TypeSymbol type,
+		ResolutionContext context)
+	{
+		_resolutionContexts.Push(context);
+		var result = VisitNode(initializer, type);
+		_resolutionContexts.Pop();
+		return result;
+	}
+	
+	public Constant? EvaluateConstant(IExpressionNode expression, ResolutionContext context)
+	{
+		_resolutionContexts.Push(context);
+		var result = VisitNode(expression, null);
+		_resolutionContexts.Pop();
+		return _evaluator.Evaluate(result);
+	}
 	
 	private IResolvedDeclarationNode VisitNode(IDeclarationNode node) =>
 		((IDeclarationNodeVisitor<IResolvedDeclarationNode>)this).Visit(node);
@@ -104,16 +122,18 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	public IResolvedDeclarationNode Visit(FileNode node)
 	{
 		var file = (FileSymbol)_symbolTable.DeclarationSymbols[node];
-		var imports = _assemblySignatureTable.ImportEnvironments[file];
+		var imports = _signatures.GetImports(file);
 		
 		var resolutionContext = new ResolutionContext
 		{
 			File = file,
 			Imports = imports,
 			TypePool = _typePool,
-			Diagnostics = Diagnostics
+			Diagnostics = Diagnostics,
+			EvaluateConstant = EvaluateConstant
 		};
 		
+		_importedFunctions.Clear();
 		_resolutionContexts.Push(resolutionContext);
 		
 		var resolvedDeclarations = new List<IResolvedDeclarationNode>(node.Declarations.Length);
@@ -130,7 +150,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	public IResolvedDeclarationNode Visit(ConstructorNode node)
 	{
 		var function = (FunctionSymbol)_symbolTable.DeclarationSymbols[node];
-		var info = _assemblySignatureTable.Functions[function];
+		var info = _signatures.GetFunctionInfo(function);
 		
 		var resolutionContext = CurrentResolutionContext with
 		{
@@ -148,7 +168,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	public IResolvedDeclarationNode Visit(FunctionNode node)
 	{
 		var function = (FunctionSymbol)_symbolTable.DeclarationSymbols[node];
-		var info = _assemblySignatureTable.Functions[function];
+		var info = _signatures.GetFunctionInfo(function);
 		
 		var resolutionContext = CurrentResolutionContext with
 		{
@@ -166,8 +186,14 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	public IResolvedDeclarationNode Visit(ExternalFunctionNode node)
 	{
 		var function = (FunctionSymbol)_symbolTable.DeclarationSymbols[node];
-		var info = _assemblySignatureTable.Functions[function];
+		var info = _signatures.GetFunctionInfo(function);
 		return new ResolvedExternalFunctionNode(info, node);
+	}
+	
+	public IResolvedDeclarationNode Visit(GlobalNode node)
+	{
+		var global = (GlobalSymbol)_symbolTable.DeclarationSymbols[node];
+		return new ResolvedGlobalNode(_signatures.GetGlobalInfo(global)!.Value, node);
 	}
 	
 	public IResolvedDeclarationNode Visit(ParameterNode node) => throw new InvalidOperationException();
@@ -204,7 +230,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	
 	public IResolvedStatementNode Visit(ReturnStatementNode node)
 	{
-		var returnType = _assemblySignatureTable.Functions[CurrentFunction.Symbol].Signature.ReturnType;
+		var returnType = CurrentFunction.Signature.ReturnType;
 		var expression = node.ExpressionNode is { } expr ? VisitNode(expr, returnType) : null;
 		return new ResolvedReturnStatementNode(expression, node);
 	}
@@ -255,9 +281,12 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		new ResolvedExpressionStatementNode(VisitNode(node.ExpressionNode), node);
 	
 	public IResolvedExpressionNode Visit(CallExpressionNode node) =>
-		_typePool.TryResolveExpressionAsType(node.Target, CurrentResolutionContext.Resolve) is { } targetType
-			? VisitTypeCall(node, targetType)
-			: VisitFunctionCall(node);
+		CurrentResolutionContext.TryResolveExpressionAsType(node.Target) switch
+		{
+			null => VisitFunctionCall(node),
+			InvalidType => new ResolvedInvalidExpressionNode(node, CurrentTargetType),
+			var targetType => VisitTypeCall(node, targetType)
+		};
 	
 	private IResolvedExpressionNode VisitTypeCall(CallExpressionNode node, TypeSymbol targetType)
 	{
@@ -690,13 +719,13 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	
 	public IResolvedExpressionNode Visit(SizeOfExpressionNode node)
 	{
-		var target = _typePool.TryResolveExpressionAsType(node.Expression, CurrentResolutionContext.Resolve)
+		var target = CurrentResolutionContext.TryResolveExpressionAsType(node.Expression)
 		             ?? VisitNode(node.Expression).Type;
 		
-		if (IsInvalid(target))
+		if (IsInvalid(target) || _typePool.SizeTable.TryGetSize(target) is not { } size)
 			return new ResolvedInvalidExpressionNode(node);
 		
-		var sizeInBits = _typePool.SizeTable.GetSize(target).CountBits(_pointerBitSize);
+		var sizeInBits = size.CountBits(_pointerBitSize);
 		var sizeInBytes = new BigInteger((sizeInBits + 7) / 8);
 		
 		return new ResolvedLiteralExpressionNode(NativeSymbols.UntypedInteger, sizeInBytes, node);
@@ -719,11 +748,11 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			case LocalVariableSymbol v:
 				return new ResolvedVarExpressionNode(v, v.Type, node);
 			
+			case GlobalSymbol g:
+				return new ResolvedGlobalExpressionNode(g, _signatures.GetGlobalType(g), node);
+			
 			case VariableSymbol v:
-				if (!_assemblySignatureTable.VariableTypes.TryGetValue(v, out var type))
-					type = _dependencySignatureTable.VariableTypes[v];
-				
-				return new ResolvedVarExpressionNode(v, type, node);
+				return new ResolvedVarExpressionNode(v, _signatures.GetVariableType(v), node);
 			
 			case FunctionSymbol or AmbiguousSymbol:
 				return ResolveFunctionValue(node, symbol);
@@ -771,6 +800,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	public IResolvedStatementNode Visit(VarStatementNode node)
 	{
 		var resolutionContext = CurrentResolutionContext;
+		if (!node.IsMutable && node.ExpressionNode is null)
+			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Identifier.SourceLocation,
+				"A 'val' without an initial value is not supported yet"));
 		
 		TypeSymbol? type;
 		if (node.Type is { } specifiedType)
@@ -798,7 +830,11 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		
 		type ??= initializer?.Type ?? NativeSymbols.Invalid;
 		
-		var symbol = new LocalVariableSymbol(node, type);
+		var symbol = new LocalVariableSymbol(node, type)
+		{
+			ConstantValue = node.IsMutable || initializer is null ? null : _evaluator.Evaluate(initializer)
+		};
+		
 		resolutionContext.LocalScope!.Define(symbol);
 		
 		return new ResolvedVarStatementNode(symbol, initializer, node);
@@ -1445,7 +1481,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		var isShift = node.Op.Type is TokenType.OpLessLess or TokenType.OpLessLessEqual or TokenType.OpGreaterGreater
 			or TokenType.OpGreaterGreaterEqual;
 		
-		if (!isShift || amount is not ResolvedLiteralExpressionNode { IntegerValue: { } value })
+		if (!isShift || _evaluator.Evaluate(amount) is not IntegerConstant { Value: var value })
 			return null;
 		
 		var bits = CountBits(valueType);
@@ -1551,15 +1587,11 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	private static bool IsInvalid(IResolvedExpressionNode expression) => expression.Type is InvalidType;
 	private static bool AnyInvalid(params IResolvedExpressionNode[] expressions) => expressions.Any(IsInvalid);
 	
-	private FunctionInfo GetFunctionInfo(FunctionSymbol function) =>
-		_assemblySignatureTable.Functions.TryGetValue(function, out var info)
-			? info
-			: _dependencySignatureTable.Functions[function];
+	private FunctionInfo GetFunctionInfo(FunctionSymbol function) => _signatures.GetFunctionInfo(function);
 	
 	private void TrackImportedFunction(FunctionInfo info)
 	{
-		if (!_assemblySignatureTable.Functions.ContainsKey(info.Symbol) ||
-		    info.File.Module != CurrentResolutionContext.File.Module)
+		if (!_signatures.IsLocal(info.Symbol) || info.File.Module != CurrentResolutionContext.File.Module)
 			_importedFunctions.TryAdd(info.Symbol, info);
 	}
 	

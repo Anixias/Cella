@@ -20,6 +20,8 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 	private static readonly HashSet<TokenType> _topLevelKeywords =
 		[TokenType.KeywordMod, TokenType.KeywordUse, TokenType.KeywordExt];
 	
+	private static readonly HashSet<TokenType> _bindingKeywords = [TokenType.KeywordVal, TokenType.KeywordVar];
+	
 	private static Dictionary<string, TokenType> BuildContextualKeywords(params IEnumerable<TokenType> tokenTypes) =>
 		tokenTypes.ToDictionary(static t => t.Representation);
 	
@@ -134,6 +136,22 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 					}
 					
 					declarations.Add(record);
+					continue;
+				}
+				
+				// Global
+				if (Match(ref index, out var bindingKeyword, _bindingKeywords))
+				{
+					var global = ParseDeclaration(ref index, identifier, "global",
+						(ref i) => ParseGlobal(ref i, identifier, modifiers, bindingKeyword));
+					
+					if (global is null)
+					{
+						ResyncTopLevel(ref index);
+						continue;
+					}
+					
+					declarations.Add(global);
 					continue;
 				}
 				
@@ -390,6 +408,19 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 		return new(identifier, modifiers, parameters, returnType, body, isExternal);
 	}
 	
+	private GlobalNode? ParseGlobal(ref int index, Token identifier, IEnumerable<Token> modifiers, Token keyword)
+	{
+		var type = ParseType(ref index);
+		if (!Match(ref index, TokenType.OpEqual))
+		{
+			Report(type.SourceLocation, "Expected '=' and an initial value");
+			return null;
+		}
+		
+		var initializer = ParseExpression(ref index);
+		return new(identifier, modifiers, keyword, type, initializer);
+	}
+	
 	private ExternalFunctionNode? ParseExternalDeclaration(ref int index, string? origin)
 	{
 		// TODO Diagnostics
@@ -618,8 +649,8 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 	{
 		// @TODO Diagnostics
 		
-		if (Match(ref index, out var varToken, TokenType.KeywordVar))
-			return ParseVarStatement(ref index, varToken);
+		if (Match(ref index, out var bindingToken, _bindingKeywords))
+			return ParseVarStatement(ref index, bindingToken);
 		
 		if (Match(ref index, out var ifToken, TokenType.KeywordIf))
 			return ParseIfStatement(ref index, ifToken);
@@ -744,29 +775,30 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 		return new(new(source, range), condition, then, @else);
 	}
 	
-	private VarStatementNode? ParseVarStatement(ref int index, Token varToken)
+	private VarStatementNode? ParseVarStatement(ref int index, Token keyword)
 	{
-		// varToken already consumed when this function is called
+		// keyword already consumed when this function is called
 		
 		// TODO Diagnostics
 		
 		// TODO Attempt resync 
 		if (!Match(ref index, out var identifier, TokenType.Identifier))
 		{
-			Report(Tokens[index], "Expected a name after 'var'");
+			Report(Tokens[index], $"Expected a name after '{keyword.Text}'");
 			return null;
 		}
 		
 		var type = Match(ref index, TokenType.OpColon) ? ParseType(ref index) : null;
+		var isMutable = keyword.Type == TokenType.KeywordVar;
 		
-		var (source, range) = varToken.SourceLocation;
+		var (source, range) = keyword.SourceLocation;
 		
 		if (!Match(ref index, TokenType.OpEqual))
-			return new(new(source, range), identifier, type, null);
+			return new(new(source, range), identifier, type, null, isMutable);
 		
 		var initializer = ParseExpression(ref index);
 		range = range.Join(initializer.SourceLocation.Range);
-		return new(new(source, range), identifier, type, initializer);
+		return new(new(source, range), identifier, type, initializer, isMutable);
 	}
 	
 	private ReturnStatementNode ParseReturnStatement(ref int index, Token retToken)

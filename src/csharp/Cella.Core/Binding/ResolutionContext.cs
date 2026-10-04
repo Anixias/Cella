@@ -1,4 +1,5 @@
 ﻿using System.Numerics;
+using Cella.Core.Binding.Constants;
 using Cella.Core.Symbols;
 using Cella.Core.Syntax.Nodes;
 using Cella.Core.Text;
@@ -15,6 +16,7 @@ public readonly struct ResolutionContext
 	public Scope? LocalScope { get; init; }
 	public TypePool TypePool { get; init; }
 	public DiagnosticList Diagnostics { get; init; }
+	public Func<IExpressionNode, ResolutionContext, Constant?>? EvaluateConstant { get; init; }
 	
 	public IEnumerable<string> GetQualifiers()
 	{
@@ -137,43 +139,93 @@ public readonly struct ResolutionContext
 		.Distinct()
 		.Order();
 	
-	private TypeSymbol ResolveTypeArgument(IGenericArgumentNode node) => node switch
+	public TypeSymbol? TryResolveExpressionAsType(IExpressionNode expression) => expression switch
+	{
+		VarExpressionNode v => Resolve(v.Identifier.Text) as TypeSymbol,
+		IndexerExpressionNode i => TryResolveGenericType(i),
+		AccessExpressionNode => null, // TODO Module-qualified types like module.SomeType
+		_ => null
+	};
+	
+	private TypeSymbol? TryResolveGenericType(IndexerExpressionNode node)
+	{
+		// TODO AccessExpressionNode for module.GenericType[T]
+		if (node.Target is not VarExpressionNode target ||
+		    Resolve(target.Identifier.Text) is not (null or TypeSymbol) ||
+		    !TypePool.BuiltinGenericTypeArguments.ContainsKey(target.Identifier.Text))
+			return null;
+		
+		var typeArgs = new List<IGenericArgument>(node.Arguments.Length);
+		foreach (var argument in node.Arguments)
+		{
+			if (TryResolveExpressionAsType(argument) is { } typeArg)
+			{
+				typeArgs.Add(new GenericTypeArgument(typeArg));
+				continue;
+			}
+			
+			if (EvaluateLength(argument) is not { } length)
+				return NativeSymbols.Invalid;
+			
+			typeArgs.Add(new GenericConstArgument(length));
+		}
+		
+		return TypePool.ResolveBuiltinGenericType(target.Identifier.Text, typeArgs);
+	}
+	
+	private TypeSymbol? ResolveTypeArgument(IGenericArgumentNode node) => node switch
 	{
 		TypeArgumentNode t => ResolveType(t.Type),
-		IdentifierArgumentNode i => Resolve(i.Identifier.Text) as TypeSymbol ?? NativeSymbols.Invalid,
-		ExpressionArgumentNode e => TypePool.TryResolveExpressionAsType(e.Expression, Resolve)
-		                            ?? NativeSymbols.Invalid,
-		_ => NativeSymbols.Invalid
+		IdentifierArgumentNode i => Resolve(i.Identifier.Text) as TypeSymbol,
+		ExpressionArgumentNode e => TryResolveExpressionAsType(e.Expression),
+		_ => null
 	};
 	
 	private BigInteger? ResolveConstIntArgument(IGenericArgumentNode node) => node switch
 	{
-		ExpressionArgumentNode e => ResolveConstIntExpression(e.Expression),
+		ExpressionArgumentNode e => EvaluateLength(e.Expression),
 		IdentifierArgumentNode i => ResolveConstIntIdentifier(i.Identifier),
 		_ => null
 	};
 	
 	private BigInteger? ResolveConstIntIdentifier(Token identifier)
 	{
-		// TODO Named constants
-		if (Resolve(identifier.Text) is null)
-			ReportUndefinedType(identifier);
-		else
-			Diagnostics.Add(new(DiagnosticSeverity.Error, identifier.SourceLocation,
-				$"'{identifier.Text}' is not a type or an integer literal"));
+		if (Resolve(identifier.Text) is not null)
+			return EvaluateLength(new VarExpressionNode(identifier));
 		
+		ReportUndefinedType(identifier);
 		return null;
 	}
 	
-	// TODO Need to implement constant expression evaluation prior to resolution?
-	// TODO Cannot handle negative integers
-	private BigInteger? ResolveConstIntExpression(IExpressionNode node) => node switch
+	private BigInteger? EvaluateLength(IExpressionNode expression)
 	{
-		LiteralExpressionNode { Token.Type: TokenType.IntegerLiteral } e =>
-			Scanner.TryParseInteger(e.Token.AsSpan(), out var value) ? value : null,
-		
-		_ => null
-	};
+		switch (EvaluateConstant?.Invoke(expression, this))
+		{
+			case InvalidConstant:
+				return null;
+			
+			case IntegerConstant { Value.Sign: >= 0 } length:
+				return length.Value;
+			
+			case IntegerConstant:
+				Report(expression, "Array length can't be negative");
+				return null;
+			
+			case null:
+				Report(expression, expression is VarExpressionNode name
+					? $"'{name.Identifier.Text}' is not a type or a constant"
+					: "Array length must be a constant");
+				
+				return null;
+			
+			default:
+				Report(expression, "Array length must be an integer");
+				return null;
+		}
+	}
+	
+	private void Report(IExpressionNode node, string message) =>
+		Diagnostics.Add(new(DiagnosticSeverity.Error, node.SourceLocation, message));
 	
 	private TypeSymbol ResolveGenericType(GenericTypeNode node)
 	{
@@ -190,9 +242,11 @@ public readonly struct ResolutionContext
 		
 		foreach (var arg in node.Arguments)
 		{
-			var typeArg = ResolveTypeArgument(arg);
-			if (typeArg != NativeSymbols.Invalid)
+			if (ResolveTypeArgument(arg) is { } typeArg)
 			{
+				if (typeArg == NativeSymbols.Invalid)
+					return NativeSymbols.Invalid;
+				
 				typeArgs.Add(new GenericTypeArgument(typeArg));
 				continue;
 			}

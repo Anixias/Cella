@@ -14,6 +14,5 @@ public sealed class ResolvedAccessExpressionNode
 	public IResolvedExpressionNode Target { get; } = target;
 	public MemberSymbol Member { get; } = member;
 	public TypeSymbol Type { get; } = type;
-	public bool IsConstant => false; // TODO Member should know if it is a constant
 	public IExpressionNode Syntax { get; } = syntax;
 }

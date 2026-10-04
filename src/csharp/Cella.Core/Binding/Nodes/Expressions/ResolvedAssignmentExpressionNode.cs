@@ -16,7 +16,6 @@ public sealed class ResolvedAssignmentExpressionNode
 ) : IResolvedExpressionNode
 {
 	public TypeSymbol Type { get; } = type;
-	public bool IsConstant { get; } = left.IsConstant && right.IsConstant;
 	public IExpressionNode Syntax { get; } = syntax;
 	public IResolvedExpressionNode Left { get; } = left;
 	public Token Op { get; } = op;

@@ -13,5 +13,4 @@ public sealed class ResolvedFunctionReferenceExpressionNode
 	public FunctionInfo Function { get; } = function;
 	public TypeSymbol Type { get; } = type;
 	public IExpressionNode Syntax { get; } = syntax;
-	public bool IsConstant => true;
 }

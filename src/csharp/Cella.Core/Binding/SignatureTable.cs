@@ -10,6 +10,7 @@ public readonly record struct SignatureTable
 		public Dictionary<FileSymbol, ImportEnvironment> ImportEnvironments { get; } = [];
 		public Dictionary<FunctionSymbol, FunctionInfo> Functions { get; } = [];
 		public Dictionary<VariableSymbol, TypeSymbol> VariableTypes { get; } = [];
+		public Dictionary<GlobalSymbol, GlobalInfo> Globals { get; } = [];
 		public Dictionary<TypeSymbol, ISize> TypeSizes { get; } = [];
 		
 		public SignatureTable Build() => new()
@@ -17,6 +18,7 @@ public readonly record struct SignatureTable
 			ImportEnvironments = ImportEnvironments.ToImmutableDictionary(),
 			Functions = Functions.ToImmutableDictionary(),
 			VariableTypes = VariableTypes.ToImmutableDictionary(),
+			Globals = Globals.ToImmutableDictionary(),
 			TypeSizes = TypeSizes.ToImmutableDictionary(),
 		};
 	}
@@ -24,6 +26,7 @@ public readonly record struct SignatureTable
 	public ImmutableDictionary<FileSymbol, ImportEnvironment> ImportEnvironments { get; init; }
 	public ImmutableDictionary<FunctionSymbol, FunctionInfo> Functions { get; init; }
 	public ImmutableDictionary<VariableSymbol, TypeSymbol> VariableTypes { get; init; }
+	public ImmutableDictionary<GlobalSymbol, GlobalInfo> Globals { get; init; }
 	public ImmutableDictionary<TypeSymbol, ISize> TypeSizes { get; init; }
 	
 	public static readonly SignatureTable Empty = new()
@@ -31,6 +34,7 @@ public readonly record struct SignatureTable
 		ImportEnvironments = [],
 		Functions = [],
 		VariableTypes = [],
+		Globals = [],
 		TypeSizes = []
 	};
 	
@@ -48,6 +52,9 @@ public readonly record struct SignatureTable
 			
 			foreach (var (var, type) in table.VariableTypes)
 				builder.VariableTypes[var] = type;
+			
+			foreach (var (global, info) in table.Globals)
+				builder.Globals[global] = info;
 			
 			foreach (var (type, size) in table.TypeSizes)
 				builder.TypeSizes[type] = size;

@@ -17,5 +17,4 @@ public sealed class ResolvedIndirectCallExpressionNode
 	public FunctionType FunctionType { get; } = functionType;
 	public TypeSymbol Type { get; } = functionType.ReturnType;
 	public IExpressionNode Syntax { get; } = syntax;
-	public bool IsConstant => false;
 }

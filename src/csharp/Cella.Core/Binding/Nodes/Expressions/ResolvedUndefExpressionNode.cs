@@ -7,5 +7,4 @@ public sealed class ResolvedUndefExpressionNode(TypeSymbol type, IExpressionNode
 {
 	public TypeSymbol Type { get; } = type;
 	public IExpressionNode Syntax { get; } = syntax;
-	public bool IsConstant => true;
 }

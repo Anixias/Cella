@@ -1,0 +1,39 @@
+
+====== val_writes.ce ======
+
+Error at line 16, column 2
+15 │ {
+16 │     limit = 6
+         ╘═══╛ 'limit' is a 'val' and can't be changed
+
+Error at line 18, column 2
+17 │ val local = 1
+18 │ local += 1
+     ╘═══╛ 'local' is a 'val' and can't be changed
+
+Error at line 19, column 2
+18 │ local += 1
+19 │ table[0] = 5
+     ╘══════╛ 'table' is a 'val' and can't be changed
+
+Error at line 20, column 2
+19 │ table[0] = 5
+20 │ origin.x = 2
+     ╘══════╛ 'origin' is a 'val' and can't be changed
+
+Error at line 22, column 2
+21 │ val point = Point(3)
+22 │ point.x = 4
+     ╘═════╛ 'point' is a 'val' and can't be changed
+
+Error at line 23, column 11
+22 │ point.x = 4
+23 │ var p = @counter
+              ╘═════╛ Cannot take the address of 'counter', a module 'var'
+
+Error at line 24, column 21
+23 │ var p = @counter
+24 │ var s: span[i32] = table
+                        ╘═══╛ 'table' is a 'val' and can't be changed through a 'span[i32]'
+
+[compilation failed]

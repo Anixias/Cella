@@ -1,0 +1,20 @@
+mod test
+
+ext
+{
+	rand: fun -> i32
+}
+
+counter: var i32 = 0
+limit: val i32 = 5
+random: val i32 = rand()
+copied: val i32 = counter
+address: val ptr[i32] = @counter
+quotient: val i32 = 1 / (limit - 5)
+dependent: val i32 = random + 1
+fine: val i32 = limit * 2
+
+main: fun -> i32
+{
+	ret fine
+}

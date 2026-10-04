@@ -1,0 +1,18 @@
+mod test
+
+Point: rec
+{
+	x: i32
+}
+
+record: var Point = Point()
+items: var array[i32, 2] = [1, 2]
+negative: val array[i32, -1] = []
+fractional: val array[i32, 1.5] = []
+mismatch: val i32 = 1.5
+fine: val i32 = 1
+
+main: fun -> i32
+{
+	ret fine
+}

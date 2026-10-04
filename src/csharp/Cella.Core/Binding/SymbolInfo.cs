@@ -1,4 +1,6 @@
-﻿using Cella.Core.Symbols;
+﻿using Cella.Core.Binding.Constants;
+using Cella.Core.Binding.Nodes;
+using Cella.Core.Symbols;
 
 namespace Cella.Core.Binding;
 
@@ -13,3 +15,13 @@ public readonly record struct FunctionInfo
 );
 
 public readonly record struct VariableInfo(VariableSymbol Symbol, TypeSymbol Type);
+
+public readonly record struct GlobalInfo
+(
+	string MangledName,
+	GlobalSymbol Symbol,
+	TypeSymbol Type,
+	IResolvedExpressionNode Initializer,
+	Constant? Value,
+	FileSymbol File
+);

@@ -33,6 +33,8 @@ public sealed class SizeTable
 	
 	private readonly Dictionary<TypeSymbol, Func<ISize>> _deferredSizes = [];
 	
+	public Action<TypeSymbol>? Completer { get; set; }
+	
 	public void Register(TypeSymbol type, ISize size) => _sizes[type] = size;
 	public void Register(TypeSymbol type, Func<ISize> computeSize) => _deferredSizes[type] = computeSize;
 	
@@ -40,6 +42,15 @@ public sealed class SizeTable
 		TryGetSize(type) ?? throw new KeyNotFoundException($"No size is registered for type '{type.Name}'");
 	
 	public ISize? TryGetSize(TypeSymbol type)
+	{
+		if (TryGetRegisteredSize(type) is { } size)
+			return size;
+		
+		Completer?.Invoke(type);
+		return TryGetRegisteredSize(type);
+	}
+	
+	private ISize? TryGetRegisteredSize(TypeSymbol type)
 	{
 		if (_sizes.TryGetValue(type, out var size))
 			return size;

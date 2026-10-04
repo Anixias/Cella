@@ -6,7 +6,6 @@ namespace Cella.Core.Binding.Nodes;
 public interface IResolvedExpressionNode : IResolvedNode
 {
 	TypeSymbol Type { get; }
-	bool IsConstant { get; }
 	IExpressionNode Syntax { get; }
 }
 
@@ -20,6 +19,5 @@ public sealed class ResolvedInvalidExpressionNode(IExpressionNode syntax, TypeSy
 	: IResolvedExpressionNode
 {
 	public TypeSymbol Type { get; } = type ?? NativeSymbols.Invalid;
-	public bool IsConstant => true;
 	public IExpressionNode Syntax { get; } = syntax;
 }

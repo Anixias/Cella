@@ -142,6 +142,14 @@ public sealed class SymbolCollector : IDeclarationNodeVisitor<Symbol>
 		return record;
 	}
 	
+	public Symbol Visit(GlobalNode node)
+	{
+		var global = new GlobalSymbol(node);
+		_builder.DeclarationSymbols[node] = global;
+		_symbolsInFile.Add(global);
+		return global;
+	}
+	
 	public Symbol Visit(FieldNode node)
 	{
 		var name = node.Identifier.Text;

@@ -1,6 +1,6 @@
 mod test
 
-counter: var i32
+counter: static i32 = 0
 
 Shape: union
 {

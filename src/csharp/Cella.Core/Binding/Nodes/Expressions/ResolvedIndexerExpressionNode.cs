@@ -14,6 +14,5 @@ public sealed class ResolvedIndexerExpressionNode
 	public TypeSymbol Type { get; } = type;
 	public IResolvedExpressionNode Target { get; } = target;
 	public IResolvedExpressionNode Index { get; } = index;
-	public bool IsConstant => Target.IsConstant && Index.IsConstant;
 	public IExpressionNode Syntax { get; } = syntax;
 }

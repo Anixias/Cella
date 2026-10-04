@@ -8,6 +8,5 @@ public sealed class ResolvedVarExpressionNode(VariableSymbol symbol, TypeSymbol 
 {
 	public VariableSymbol Symbol { get; } = symbol;
 	public TypeSymbol Type { get; } = type;
-	public bool IsConstant => false; // TODO We should be able to detect if the variable is constant
 	public IExpressionNode Syntax { get; } = syntax;
 }

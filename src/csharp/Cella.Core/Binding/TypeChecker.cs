@@ -1,4 +1,6 @@
-﻿using Cella.Core.Binding.Conversions;
+﻿using System.Numerics;
+using Cella.Core.Binding.Constants;
+using Cella.Core.Binding.Conversions;
 using Cella.Core.Binding.Nodes;
 using Cella.Core.Binding.Operations;
 using Cella.Core.Symbols;
@@ -7,8 +9,8 @@ using Cella.Diagnostics;
 
 namespace Cella.Core.Binding;
 
-public sealed class TypeChecker : IResolvedStatementNodeVisitor, IResolvedDeclarationNodeVisitor,
-	IResolvedExpressionNodeVisitor
+public sealed class TypeChecker(ConstantEvaluator evaluator) : IResolvedStatementNodeVisitor,
+	IResolvedDeclarationNodeVisitor, IResolvedExpressionNodeVisitor
 {
 	public DiagnosticList Diagnostics { get; } = new();
 	
@@ -66,6 +68,17 @@ public sealed class TypeChecker : IResolvedStatementNodeVisitor, IResolvedDeclar
 	
 	public void Visit(ResolvedExternalFunctionNode node)
 	{
+	}
+	
+	public void Visit(ResolvedGlobalNode node)
+	{
+		var errorCount = Diagnostics.ErrorCount;
+		VisitNode(node.Info.Initializer);
+		
+		if (node.Info.Value is null && Diagnostics.ErrorCount == errorCount &&
+		    FindNonConstant(node.Info.Initializer) is { } blocking)
+			Diagnostics.Add(new(DiagnosticSeverity.Error, blocking.Syntax.SourceLocation,
+				$"The initial value of '{node.Info.Symbol.Name}' must be a constant"));
 	}
 	
 	public void Visit(ResolvedBlockStatementNode node)
@@ -211,6 +224,7 @@ public sealed class TypeChecker : IResolvedStatementNodeVisitor, IResolvedDeclar
 	private bool IsLValue(IResolvedExpressionNode expression) => expression switch
 	{
 		ResolvedVarExpressionNode => true,
+		ResolvedGlobalExpressionNode => true,
 		ResolvedAccessExpressionNode { Member: FieldSymbol } e => IsLValue(e.Target),
 		ResolvedIndexerExpressionNode { Target.Type: SpanType or ViewType } => true,
 		ResolvedIndexerExpressionNode e => IsLValue(e.Target),
@@ -230,15 +244,56 @@ public sealed class TypeChecker : IResolvedStatementNodeVisitor, IResolvedDeclar
 	
 	private void ReportZeroDivisor(IResolvedExpressionNode divisor)
 	{
-		if (IsZeroLiteral(divisor))
+		if (evaluator.Evaluate(divisor) is IntegerConstant { Value.IsZero: true })
 			Diagnostics.Add(new(DiagnosticSeverity.Error, divisor.Syntax.SourceLocation, "Division by zero"));
 	}
 	
-	private static bool IsZeroLiteral(IResolvedExpressionNode expression) => expression switch
+	private bool IsOverflowingDivision(ResolvedBinaryOpExpressionNode node) =>
+		node.Type is IntegerType { IsSigned: true } type &&
+		evaluator.Evaluate(node.Right) is IntegerConstant { Value: var divisor } && divisor == BigInteger.MinusOne &&
+		evaluator.Evaluate(node.Left) is IntegerConstant { Value: var dividend } && !evaluator.Fits(-dividend, type);
+	
+	private static string? FindImmutableBinding(IResolvedExpressionNode place) => place switch
 	{
-		ResolvedConversionExpressionNode { Conversion: IntegerConversion } e => IsZeroLiteral(e.Source),
-		ResolvedLiteralExpressionNode { Type: IntegerType or UntypedIntegerType, IntegerValue.IsZero: true } => true,
-		_ => false
+		ResolvedVarExpressionNode { Symbol: LocalVariableSymbol { IsMutable: false } local } => local.Name,
+		ResolvedGlobalExpressionNode { Symbol: { IsMutable: false } global } => global.Name,
+		ResolvedAccessExpressionNode { Member: FieldSymbol } e => FindImmutableBinding(e.Target),
+		ResolvedIndexerExpressionNode { Target.Type: ArrayType } e => FindImmutableBinding(e.Target),
+		_ => null
+	};
+	
+	private IResolvedExpressionNode? FindNonConstant(IResolvedExpressionNode node)
+	{
+		if (evaluator.Evaluate(node) is not null)
+			return null;
+		
+		if (!CanFold(node))
+			return node;
+		
+		return GetOperands(node).Select(FindNonConstant).FirstOrDefault(static n => n is not null) ?? node;
+	}
+	
+	private static bool CanFold(IResolvedExpressionNode node) => node switch
+	{
+		ResolvedUnaryOpExpressionNode { Operation: NativeImpl { Op: not (TokenType.OpAt or TokenType.OpStar) } } =>
+			true,
+		ResolvedUnaryOpExpressionNode => false,
+		ResolvedBinaryOpExpressionNode { Operation: NativeImpl or ConversionImpl } => true,
+		ResolvedBinaryOpExpressionNode => false,
+		_ => true
+	};
+	
+	private static IEnumerable<IResolvedExpressionNode> GetOperands(IResolvedExpressionNode node) => node switch
+	{
+		ResolvedUnaryOpExpressionNode n => [n.Operand],
+		ResolvedBinaryOpExpressionNode n => [n.Left, n.Right],
+		ResolvedChainedExpressionNode n => n.Operands,
+		ResolvedConversionExpressionNode n => [n.Source],
+		ResolvedAccessExpressionNode n => [n.Target],
+		ResolvedIndexerExpressionNode n => [n.Target, n.Index],
+		ResolvedRecordExpressionNode n => n.Fields.Select(static f => f.Value),
+		ResolvedArrayExpressionNode n => n.Values,
+		_ => []
 	};
 	
 	public void Visit(ResolvedAccessExpressionNode node)
@@ -261,6 +316,9 @@ public sealed class TypeChecker : IResolvedStatementNodeVisitor, IResolvedDeclar
 		else if (!IsLValue(node.Left))
 			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Left.Syntax.SourceLocation,
 				"Assignment target must be addressable"));
+		else if (FindImmutableBinding(node.Left) is { } name)
+			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Left.Syntax.SourceLocation,
+				$"'{name}' is a 'val' and can't be changed"));
 		
 		var expected = node.Left.Type;
 		var actual = node.Right.Type;
@@ -271,6 +329,7 @@ public sealed class TypeChecker : IResolvedStatementNodeVisitor, IResolvedDeclar
 		if (node.Op.Type is TokenType.OpSlashEqual or TokenType.OpPercentEqual)
 			ReportZeroDivisor(node.Right);
 		
+		VisitNode(node.Left);
 		VisitNode(node.Right);
 	}
 	
@@ -278,6 +337,10 @@ public sealed class TypeChecker : IResolvedStatementNodeVisitor, IResolvedDeclar
 	{
 		if (node.Operation is NativeImpl { Op: TokenType.OpSlash or TokenType.OpPercent })
 			ReportZeroDivisor(node.Right);
+		
+		if (node.Operation is NativeImpl { Op: TokenType.OpSlash } && IsOverflowingDivision(node))
+			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Syntax.SourceLocation,
+				$"Division overflows '{node.Type.Name}'"));
 		
 		VisitNode(node.Left);
 		VisitNode(node.Right);
@@ -317,6 +380,11 @@ public sealed class TypeChecker : IResolvedStatementNodeVisitor, IResolvedDeclar
 	
 	public void Visit(ResolvedConversionExpressionNode node)
 	{
+		if (node.Conversion is NativeConversion { From: ArrayType, To: SpanType or BufferType } &&
+		    FindImmutableBinding(node.Source) is { } name)
+			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Source.Syntax.SourceLocation,
+				$"'{name}' is a 'val' and can't be changed through a '{node.Type.Name}'"));
+		
 		VisitNode(node.Source);
 	}
 	
@@ -378,6 +446,11 @@ public sealed class TypeChecker : IResolvedStatementNodeVisitor, IResolvedDeclar
 	
 	public void Visit(ResolvedIndexerExpressionNode node)
 	{
+		if (node.Target.Type is ArrayType { Length.Sign: >= 0 } array &&
+		    evaluator.Evaluate(node.Index) is IntegerConstant { Value: var index } && index >= array.Length)
+			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Index.Syntax.SourceLocation,
+				$"Index {index} is out of range for '{array.Name}'"));
+		
 		VisitNode(node.Target);
 		VisitNode(node.Index);
 	}
@@ -400,6 +473,10 @@ public sealed class TypeChecker : IResolvedStatementNodeVisitor, IResolvedDeclar
 		if (node.Operation?.Op == TokenType.OpAt && !IsLValue(node.Operand))
 			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Operand.Syntax.SourceLocation,
 				"Cannot take the address of an unstored value"));
+		else if (node is { Operation.Op: TokenType.OpAt } &&
+		         node.Operand is ResolvedGlobalExpressionNode { Symbol: { IsMutable: true } global })
+			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Operand.Syntax.SourceLocation,
+				$"Cannot take the address of '{global.Name}', a module 'var'"));
 		
 		VisitNode(node.Operand);
 	}
@@ -415,6 +492,10 @@ public sealed class TypeChecker : IResolvedStatementNodeVisitor, IResolvedDeclar
 	}
 	
 	public void Visit(ResolvedVarExpressionNode node)
+	{
+	}
+	
+	public void Visit(ResolvedGlobalExpressionNode node)
 	{
 	}
 }

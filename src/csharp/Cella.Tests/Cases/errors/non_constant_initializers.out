@@ -1,0 +1,24 @@
+
+====== non_constant_initializers.ce ======
+
+Error at line 10, column 19
+ 9 │ limit: val i32 = 5
+10 │ random: val i32 = rand()
+                       ╘════╛ The initial value of 'random' must be a constant
+
+Error at line 11, column 19
+10 │ random: val i32 = rand()
+11 │ copied: val i32 = counter
+                       ╘═════╛ The initial value of 'copied' must be a constant
+
+Error at line 12, column 26
+11 │ copied: val i32 = counter
+12 │ address: val ptr[i32] = @counter
+                              ╘═════╛ Cannot take the address of 'counter', a module 'var'
+
+Error at line 13, column 26
+12 │ address: val ptr[i32] = @counter
+13 │ quotient: val i32 = 1 / (limit - 5)
+                              ╘═══════╛ Division by zero
+
+[compilation failed]

@@ -148,6 +148,16 @@ public sealed class AstPrinter : ISyntaxNodeVisitor
 		VisitNode(node.Body, true);
 	}
 	
+	public void Visit(GlobalNode node)
+	{
+		StartLine();
+		_sb.Append("GlobalNode '").Append(node.Identifier.AsSpan()).Append("' ").Append(node.Keyword.AsSpan());
+		_sb.Append(" (");
+		VisitNode(node.Type, false);
+		_sb.Append(')');
+		VisitNode(node.Initializer, true);
+	}
+	
 	public void Visit(FieldNode node)
 	{
 		StartLine();

@@ -1,4 +1,6 @@
 ﻿using System.Collections.Immutable;
+using Cella.Core.Binding.Constants;
+using Cella.Core.Binding.Nodes;
 using Cella.Core.Symbols;
 using Cella.Core.Syntax.Nodes;
 using Cella.Core.Text;
@@ -6,26 +8,57 @@ using Cella.Diagnostics;
 
 namespace Cella.Core.Binding;
 
-public sealed class SignatureCollector : IDeclarationNodeVisitor
+public interface IConstantResolver
 {
+	IResolvedExpressionNode ResolveInitializer(IExpressionNode initializer, TypeSymbol type, ResolutionContext context);
+	Constant? EvaluateConstant(IExpressionNode expression, ResolutionContext context);
+}
+
+public sealed class SignatureCollector
+{
+	private readonly record struct Declaration(IDeclarationNode Node, ResolutionContext Context);
+	
 	private readonly string? _entryPointName;
 	private readonly SymbolTable _symbolTable;
 	private readonly TypePool _typePool;
 	private readonly ImmutableArray<AssemblySymbol> _dependencies;
+	private readonly SignatureTable _dependencyTable;
 	private readonly SignatureTable.Builder _builder = new();
-	private readonly Stack<ResolutionContext> _resolutionContexts = [];
-	private ResolutionContext CurrentResolutionContext => _resolutionContexts.Peek();
+	private readonly Dictionary<Symbol, Declaration> _declarations = [];
+	private readonly Dictionary<GlobalSymbol, TypeSymbol> _globalTypes = [];
+	private readonly HashSet<RecordSymbol> _completedRecords = [];
+	private readonly List<(Symbol Symbol, bool IsValue)> _inProgress = [];
+	private readonly HashSet<Symbol> _cyclic = [];
 	private readonly List<FunctionInfo> _entryPoints = [];
+	private IConstantResolver? constants;
 	
 	public DiagnosticList Diagnostics { get; } = new();
+	public ConstantEvaluator Evaluator { get; }
 	
 	public SignatureCollector(string? entryPointName, SymbolTable symbolTable, TypePool typePool,
-		IEnumerable<AssemblySymbol> dependencies)
+		IEnumerable<AssemblySymbol> dependencies, uint pointerBitSize)
 	{
 		_entryPointName = entryPointName;
 		_symbolTable = symbolTable;
 		_typePool = typePool;
 		_dependencies = dependencies.ToImmutableArray();
+		_dependencyTable = SignatureTable.Combine(_dependencies.Select(static a => a.SignatureTable));
+		Evaluator = new ConstantEvaluator(typePool, pointerBitSize, GetGlobalValue);
+	}
+	
+	public void Collect(IReadOnlyCollection<FileNode> files, IConstantResolver constantResolver)
+	{
+		constants = constantResolver;
+		_typePool.RecordCompleter = CompleteRecord;
+		
+		foreach (var file in files)
+			Register(file);
+		
+		foreach (var file in files)
+			foreach (var declaration in file.Declarations)
+				Complete(_symbolTable.DeclarationSymbols[declaration]);
+		
+		_typePool.RecordCompleter = null;
 	}
 	
 	public AssemblySymbol FinishAssembly(string name)
@@ -38,46 +71,191 @@ public sealed class SignatureCollector : IDeclarationNodeVisitor
 		return new(name, _symbolTable, _builder.Build(), entryPoint);
 	}
 	
-	public void Collect(IDeclarationNode root) => VisitNode(root);
+	public bool IsLocal(Symbol symbol) => _declarations.ContainsKey(symbol);
 	
-	private void VisitNode(IDeclarationNode node) => ((IDeclarationNodeVisitor)this).Visit(node);
+	public ImportEnvironment GetImports(FileSymbol file) => _builder.ImportEnvironments[file];
 	
-	public void Visit(FieldNode node)
+	public FunctionInfo GetFunctionInfo(FunctionSymbol function)
 	{
-		var field = (FieldSymbol)_symbolTable.DeclarationSymbols[node];
+		if (_builder.Functions.TryGetValue(function, out var info))
+			return info;
 		
-		var resolutionContext = CurrentResolutionContext;
-		var fieldType = resolutionContext.ResolveType(node.Type);
-		_typePool.RegisterMember(resolutionContext.ContainingType!, field, fieldType);
+		if (!_declarations.TryGetValue(function, out var declaration))
+			return _dependencyTable.Functions[function];
+		
+		if (declaration.Node is ConstructorNode)
+		{
+			CompleteRecord((RecordSymbol)declaration.Context.ContainingType!);
+			return _builder.Functions.TryGetValue(function, out info) ? info : CreateInvalidInfo(function, declaration);
+		}
+		
+		if (!Enter(function, false))
+			return CreateInvalidInfo(function, declaration);
+		
+		info = declaration.Node switch
+		{
+			FunctionNode node => CollectFunction(function, node, declaration.Context),
+			ExternalFunctionNode node => CollectExternalFunction(function, node, declaration.Context),
+			_ => throw new InvalidOperationException()
+		};
+		
+		_builder.Functions[function] = info;
+		Exit();
+		return info;
 	}
 	
-	public void Visit(FileNode node)
+	public TypeSymbol GetVariableType(VariableSymbol variable)
+	{
+		if (variable is GlobalSymbol global)
+			return GetGlobalType(global);
+		
+		return _builder.VariableTypes.TryGetValue(variable, out var type)
+			? type
+			: _dependencyTable.VariableTypes[variable];
+	}
+	
+	public TypeSymbol GetGlobalType(GlobalSymbol global)
+	{
+		if (_globalTypes.TryGetValue(global, out var type))
+			return type;
+		
+		if (!_declarations.TryGetValue(global, out var declaration))
+			return _dependencyTable.Globals[global].Type;
+		
+		if (!Enter(global, false))
+			return NativeSymbols.Invalid;
+		
+		var node = (GlobalNode)declaration.Node;
+		type = declaration.Context.ResolveType(node.Type);
+		if (node.IsMutable && !IsScalar(type))
+			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Type.SourceLocation,
+				"A module 'var' must be an integer, a float, 'bool' or 'char'"));
+		
+		_globalTypes[global] = type;
+		Exit();
+		return type;
+	}
+	
+	public GlobalInfo? GetGlobalInfo(GlobalSymbol global)
+	{
+		if (_builder.Globals.TryGetValue(global, out var info))
+			return info;
+		
+		if (!_declarations.TryGetValue(global, out var declaration))
+			return _dependencyTable.Globals[global];
+		
+		var type = GetGlobalType(global);
+		if (!Enter(global, true))
+			return null;
+		
+		var node = (GlobalNode)declaration.Node;
+		var context = declaration.Context;
+		var initializer = constants!.ResolveInitializer(node.Initializer, type, context);
+		var value = type is InvalidType ? InvalidConstant.Instance : Evaluator.Evaluate(initializer);
+		var mangledName = Mangling.Mangle(global, context.GetQualifiers());
+		
+		info = new GlobalInfo(mangledName, global, type, initializer, value, context.File);
+		_builder.Globals[global] = info;
+		Exit();
+		return info;
+	}
+	
+	private Constant GetGlobalValue(GlobalSymbol global) =>
+		GetGlobalInfo(global) is { Value: { } value } ? value : InvalidConstant.Instance;
+	
+	private static bool IsScalar(TypeSymbol type) =>
+		type is IntegerType or FloatType or PrimitiveType { Kind: PrimitiveTypeKind.Bool } or InvalidType;
+	
+	private void Register(FileNode node)
 	{
 		var file = (FileSymbol)_symbolTable.DeclarationSymbols[node];
 		var imports = CollectImports(node);
 		_builder.ImportEnvironments[file] = imports;
 		
-		var resolutionContext = new ResolutionContext
+		var context = new ResolutionContext
 		{
 			File = file,
 			Imports = imports,
 			TypePool = _typePool,
-			Diagnostics = Diagnostics
+			Diagnostics = Diagnostics,
+			EvaluateConstant = EvaluateConstant
 		};
 		
-		_resolutionContexts.Push(resolutionContext);
-		
-		foreach (var child in node.Declarations)
-			VisitNode(child);
-		
-		_resolutionContexts.Pop();
+		foreach (var declaration in node.Declarations)
+		{
+			var symbol = _symbolTable.DeclarationSymbols[declaration];
+			_declarations[symbol] = new(declaration, context);
+			
+			if (declaration is not RecordNode record)
+				continue;
+			
+			var memberContext = context with { ContainingType = (RecordSymbol)symbol };
+			foreach (var member in record.Members)
+				_declarations[_symbolTable.DeclarationSymbols[member]] = new(member, memberContext);
+		}
 	}
 	
-	public void Visit(ConstructorNode node)
+	private Constant? EvaluateConstant(IExpressionNode expression, ResolutionContext context) =>
+		constants!.EvaluateConstant(expression, context);
+	
+	private void Complete(Symbol symbol)
 	{
-		var function = (FunctionSymbol)_symbolTable.DeclarationSymbols[node];
-		var resolutionContext = CurrentResolutionContext;
-		var containingType = resolutionContext.ContainingType!;
+		switch (symbol)
+		{
+			case FunctionSymbol function:
+				GetFunctionInfo(function);
+				break;
+			
+			case RecordSymbol record:
+				CompleteRecord(record);
+				break;
+			
+			case GlobalSymbol global:
+				GetGlobalInfo(global);
+				break;
+		}
+	}
+	
+	private void CompleteRecord(RecordSymbol record)
+	{
+		if (_completedRecords.Contains(record) || !_declarations.TryGetValue(record, out var declaration) ||
+		    !Enter(record, false))
+			return;
+		
+		var node = (RecordNode)declaration.Node;
+		var fieldNames = node.Members.OfType<FieldNode>().Select(static f => f.Identifier);
+		Diagnostics.AddRange(DiagnosticReporter.ReportDuplicates(fieldNames,
+			name => $"Field '{name}' is declared more than once in '{record.Name}'"));
+		
+		foreach (var member in node.Members)
+		{
+			var symbol = _symbolTable.DeclarationSymbols[member];
+			var context = _declarations[symbol].Context;
+			
+			switch (member)
+			{
+				case FieldNode field:
+					_typePool.RegisterMember(record, (FieldSymbol)symbol, context.ResolveType(field.Type));
+					break;
+				
+				case ConstructorNode constructor:
+					CollectConstructor((FunctionSymbol)symbol, constructor, context);
+					break;
+				
+				default:
+					Complete(symbol);
+					break;
+			}
+		}
+		
+		_typePool.RegisterRecord(record);
+		_completedRecords.Add(record);
+		Exit();
+	}
+	
+	private void CollectConstructor(FunctionSymbol function, ConstructorNode node, ResolutionContext context)
+	{
+		var containingType = context.ContainingType!;
 		ReportDuplicateParameters(node.Parameters);
 		
 		var scope = new Scope();
@@ -94,7 +272,7 @@ public sealed class SignatureCollector : IDeclarationNodeVisitor
 		{
 			var param = node.Parameters[i];
 			var paramSymbol = function.Parameters[i + 1]; // + 1 due to implicit self parameter
-			var paramType = resolutionContext.ResolveType(param.Type);
+			var paramType = context.ResolveType(param.Type);
 			
 			paramTypes.Add(paramType);
 			_builder.VariableTypes[paramSymbol] = paramType;
@@ -102,17 +280,15 @@ public sealed class SignatureCollector : IDeclarationNodeVisitor
 		}
 		
 		var signature = new FunctionSignature(paramTypes, NativeSymbols.Void);
-		var mangledName = Mangling.Mangle(function, signature, resolutionContext.GetQualifiers());
-		var info = new FunctionInfo(mangledName, function, signature, scope, null, resolutionContext.File);
+		var mangledName = Mangling.Mangle(function, signature, context.GetQualifiers());
+		var info = new FunctionInfo(mangledName, function, signature, scope, null, context.File);
 		
 		_builder.Functions[function] = info;
 		_typePool.AddConstructor(containingType, info);
 	}
 	
-	public void Visit(FunctionNode node)
+	private FunctionInfo CollectFunction(FunctionSymbol function, FunctionNode node, ResolutionContext context)
 	{
-		var function = (FunctionSymbol)_symbolTable.DeclarationSymbols[node];
-		var resolutionContext = CurrentResolutionContext;
 		ReportDuplicateParameters(node.Parameters);
 		
 		var scope = new Scope();
@@ -122,7 +298,7 @@ public sealed class SignatureCollector : IDeclarationNodeVisitor
 		{
 			var param = node.Parameters[i];
 			var paramSymbol = function.Parameters[i];
-			var paramType = resolutionContext.ResolveType(param.Type);
+			var paramType = context.ResolveType(param.Type);
 			
 			paramTypes.Add(paramType);
 			_builder.VariableTypes[paramSymbol] = paramType;
@@ -133,24 +309,23 @@ public sealed class SignatureCollector : IDeclarationNodeVisitor
 		if (node.ReturnType is not { } returnTypeSyntax)
 			returnType = NativeSymbols.Void;
 		else
-			returnType = resolutionContext.ResolveType(returnTypeSyntax);
+			returnType = context.ResolveType(returnTypeSyntax);
 		
 		var signature = new FunctionSignature(paramTypes, returnType);
 		
 		// TODO Disable mangling if indicated
-		var mangledName = Mangling.Mangle(function, signature, resolutionContext.GetQualifiers());
-		var info = new FunctionInfo(mangledName, function, signature, scope, null, resolutionContext.File);
+		var mangledName = Mangling.Mangle(function, signature, context.GetQualifiers());
+		var info = new FunctionInfo(mangledName, function, signature, scope, null, context.File);
 		
 		if (_entryPointName is not null && function.Name == _entryPointName && IsEntryPoint(signature))
 			_entryPoints.Add(info);
 		
-		_builder.Functions[function] = info;
+		return info;
 	}
 	
-	public void Visit(ExternalFunctionNode node)
+	private FunctionInfo CollectExternalFunction(FunctionSymbol function, ExternalFunctionNode node,
+		ResolutionContext context)
 	{
-		var function = (FunctionSymbol)_symbolTable.DeclarationSymbols[node];
-		var resolutionContext = CurrentResolutionContext;
 		ReportDuplicateParameters(node.Parameters);
 		
 		var paramTypes = new List<TypeSymbol>(node.Parameters.Length);
@@ -158,7 +333,7 @@ public sealed class SignatureCollector : IDeclarationNodeVisitor
 		{
 			var param = node.Parameters[i];
 			var paramSymbol = function.Parameters[i];
-			var paramType = resolutionContext.ResolveType(param.Type);
+			var paramType = context.ResolveType(param.Type);
 			
 			paramTypes.Add(paramType);
 			_builder.VariableTypes[paramSymbol] = paramType;
@@ -168,34 +343,49 @@ public sealed class SignatureCollector : IDeclarationNodeVisitor
 		if (node.ReturnType is not { } returnTypeSyntax)
 			returnType = NativeSymbols.Void;
 		else
-			returnType = resolutionContext.ResolveType(returnTypeSyntax);
+			returnType = context.ResolveType(returnTypeSyntax);
 		
-		var syntax = (ExternalFunctionNode)function.Syntax;
-		var signature = new FunctionSignature(paramTypes, returnType, syntax.IsVariadic);
-		_builder.Functions[function] = new(null, function, signature, null, syntax.Origin, resolutionContext.File);
+		var signature = new FunctionSignature(paramTypes, returnType, node.IsVariadic);
+		return new(null, function, signature, null, node.Origin, context.File);
 	}
 	
-	public void Visit(ParameterNode node) => throw new InvalidOperationException();
-	
-	public void Visit(RecordNode node)
+	private static FunctionInfo CreateInvalidInfo(FunctionSymbol function, Declaration declaration)
 	{
-		var record = (RecordSymbol)_symbolTable.DeclarationSymbols[node];
-		var fieldNames = node.Members.OfType<FieldNode>().Select(static f => f.Identifier);
-		Diagnostics.AddRange(DiagnosticReporter.ReportDuplicates(fieldNames,
-			name => $"Field '{name}' is declared more than once in '{record.Name}'"));
-		
-		var resolutionContext = CurrentResolutionContext with
+		var parameterTypes = function.Parameters.Select(static _ => (TypeSymbol)NativeSymbols.Invalid);
+		var signature = new FunctionSignature(parameterTypes, NativeSymbols.Invalid);
+		return new(null, function, signature, new Scope(), null, declaration.Context.File);
+	}
+	
+	private bool Enter(Symbol symbol, bool isValue)
+	{
+		var index = _inProgress.IndexOf((symbol, isValue));
+		if (index < 0)
 		{
-			ContainingType = record
+			_inProgress.Add((symbol, isValue));
+			return true;
+		}
+		
+		foreach (var (member, _) in _inProgress.Skip(index))
+			if (_cyclic.Add(member))
+				ReportCycle(member);
+		
+		return false;
+	}
+	
+	private void Exit() => _inProgress.RemoveAt(_inProgress.Count - 1);
+	
+	private void ReportCycle(Symbol symbol)
+	{
+		var (identifier, message) = symbol switch
+		{
+			GlobalSymbol global => (global.Syntax.Identifier, $"'{global.Name}' depends on its own value"),
+			RecordSymbol record => (record.Node.Identifier, $"'{record.Name}' depends on its own layout"),
+			FunctionSymbol function => (GetIdentifier(function.Syntax),
+				$"'{function.Name}' depends on its own signature"),
+			_ => throw new InvalidOperationException()
 		};
 		
-		_resolutionContexts.Push(resolutionContext);
-		
-		foreach (var member in node.Members)
-			VisitNode(member);
-		
-		_resolutionContexts.Pop();
-		_typePool.RegisterRecord(record);
+		Diagnostics.Add(new(DiagnosticSeverity.Error, identifier.SourceLocation, message));
 	}
 	
 	private void ReportDuplicateParameters(IEnumerable<ParameterNode> parameters) =>
@@ -272,6 +462,7 @@ public sealed class SignatureCollector : IDeclarationNodeVisitor
 		FunctionNode node => node.Identifier,
 		ExternalFunctionNode node => node.Identifier,
 		RecordNode node => node.Identifier,
+		GlobalNode node => node.Identifier,
 		_ => throw new InvalidOperationException()
 	};
 	

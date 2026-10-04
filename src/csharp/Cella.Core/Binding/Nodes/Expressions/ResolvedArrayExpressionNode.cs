@@ -8,7 +8,6 @@ public sealed class ResolvedArrayExpressionNode : IResolvedExpressionNode
 {
 	public ImmutableArray<IResolvedExpressionNode> Values { get; }
 	public TypeSymbol Type { get; }
-	public bool IsConstant { get; }
 	public IExpressionNode Syntax { get; }
 	
 	public ResolvedArrayExpressionNode(TypeSymbol type, IEnumerable<IResolvedExpressionNode> values,
@@ -17,6 +16,5 @@ public sealed class ResolvedArrayExpressionNode : IResolvedExpressionNode
 		Values = values.ToImmutableArray();
 		Type = type;
 		Syntax = syntax;
-		IsConstant = Values.All(static v => v.IsConstant);
 	}
 }

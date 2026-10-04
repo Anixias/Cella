@@ -14,6 +14,5 @@ public sealed class ResolvedConversionExpressionNode
 	public IResolvedExpressionNode Source { get; } = source;
 	public Conversion Conversion { get; } = conversion;
 	public TypeSymbol Type { get; } = conversion.To;
-	public bool IsConstant { get; } = conversion is NativeConversion && source.IsConstant;
 	public IExpressionNode Syntax { get; } = syntax;
 }

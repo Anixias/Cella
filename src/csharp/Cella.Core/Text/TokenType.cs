@@ -33,6 +33,7 @@ public enum TokenType
 	// Global keywords
 	KeywordRet,
 	KeywordVar,
+	KeywordVal,
 	KeywordIf,
 	KeywordElse,
 	KeywordFor,
@@ -153,6 +154,7 @@ public static class TokenTypeInfo
 			
 			[TokenType.KeywordRet] = new("ret", IsKeyword: true),
 			[TokenType.KeywordVar] = new("var", IsKeyword: true),
+			[TokenType.KeywordVal] = new("val", IsKeyword: true),
 			[TokenType.KeywordIf] = new("if", IsKeyword: true),
 			[TokenType.KeywordElse] = new("else", IsKeyword: true),
 			[TokenType.KeywordFor] = new("for", IsKeyword: true),

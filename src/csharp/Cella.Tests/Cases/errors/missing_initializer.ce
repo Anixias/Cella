@@ -1,0 +1,9 @@
+mod test
+
+counter: var i32
+limit: val i32 = 4
+
+main: fun -> i32
+{
+	ret limit
+}

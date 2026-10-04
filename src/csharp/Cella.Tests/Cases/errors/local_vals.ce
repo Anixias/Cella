@@ -1,0 +1,10 @@
+mod test
+
+main: fun -> i32
+{
+	val later: i32
+	val bits = 40
+	var x: i32 = 1
+	var y = x << bits
+	ret 0
+}

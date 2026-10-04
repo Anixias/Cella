@@ -16,5 +16,4 @@ public sealed class ResolvedConstructorCallExpressionNode
 	public ImmutableArray<IResolvedExpressionNode> Arguments { get; } = arguments.ToImmutableArray();
 	public TypeSymbol Type { get; } = type; // Constructors always return void, bypass
 	public IExpressionNode Syntax { get; } = syntax;
-	public bool IsConstant => false;
 }

@@ -15,5 +15,4 @@ public sealed class ResolvedFunctionCallExpressionNode
 	public ImmutableArray<IResolvedExpressionNode> Arguments { get; } = arguments.ToImmutableArray();
 	public TypeSymbol Type { get; } = function.Signature.ReturnType;
 	public IExpressionNode Syntax { get; } = syntax;
-	public bool IsConstant => false; // TODO We should be able to detect if the function body is constant
 }

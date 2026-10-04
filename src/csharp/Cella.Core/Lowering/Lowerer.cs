@@ -1,15 +1,18 @@
 ﻿using System.Numerics;
 using Cella.Core.Binding;
+using Cella.Core.Binding.Constants;
 using Cella.Core.Binding.Conversions;
 using Cella.Core.Binding.Nodes;
 using Cella.Core.Binding.Operations;
 using Cella.Core.Symbols;
 using Cella.Core.Syntax.Nodes;
 using Cella.Core.Text;
+using static Cella.Core.Binding.Operations.OperationMapping;
 
 namespace Cella.Core.Lowering;
 
-public sealed class Lowerer : IResolvedDeclarationNodeVisitor
+public sealed class Lowerer(ConstantEvaluator evaluator, Func<GlobalSymbol, GlobalInfo> getGlobalInfo)
+	: IResolvedDeclarationNodeVisitor
 {
 	public IReadOnlyCollection<LoweredModule> Modules => _modules.Values;
 	public IReadOnlyCollection<LoweredFile> Files => _files.Values;
@@ -42,7 +45,9 @@ public sealed class Lowerer : IResolvedDeclarationNodeVisitor
 		currentFile = null;
 	}
 	
-	public void Visit(ResolvedFunctionNode node) => currentFile?.Functions.Add(FunctionLowerer.Lower(node));
+	public void Visit(ResolvedFunctionNode node) =>
+		currentFile?.Functions.Add(FunctionLowerer.Lower(node, evaluator, getGlobalInfo));
+	
 	public void Visit(ResolvedInvalidDeclarationNode node) => throw new InvalidOperationException();
 	
 	public void Visit(ResolvedRecordNode node)
@@ -65,11 +70,15 @@ public sealed class Lowerer : IResolvedDeclarationNodeVisitor
 	
 	public void Visit(ResolvedExternalFunctionNode node) => currentFile?.ExternalFunctions.Add(node.FunctionInfo);
 	
+	public void Visit(ResolvedGlobalNode node) => currentFile?.Globals.Add(node.Info);
+	
 	private sealed class FunctionLowerer : IResolvedStatementNodeVisitor, IResolvedExpressionNodeVisitor<Value>
 	{
 		private readonly record struct LoopContext(BasicBlock BreakTarget, BasicBlock ContinueTarget, int ScopeDepth);
 		
 		private readonly LoweredFunction _function;
+		private readonly ConstantEvaluator _evaluator;
+		private readonly Func<GlobalSymbol, GlobalInfo> _getGlobalInfo;
 		private readonly Stack<LoopContext> _loopStack = [];
 		private readonly Dictionary<LabelSymbol, LoopContext> _loopsByLabel = [];
 		private readonly Stack<ActiveScope> _activeScopes = [];
@@ -81,9 +90,12 @@ public sealed class Lowerer : IResolvedDeclarationNodeVisitor
 		
 		private readonly record struct ActiveScope(int Id, SourceLocation Location);
 		
-		private FunctionLowerer(LoweredFunction function)
+		private FunctionLowerer(LoweredFunction function, ConstantEvaluator evaluator,
+			Func<GlobalSymbol, GlobalInfo> getGlobalInfo)
 		{
 			_function = function;
+			_evaluator = evaluator;
+			_getGlobalInfo = getGlobalInfo;
 			currentBlock = CreateBlock("entry");
 		}
 		
@@ -103,10 +115,11 @@ public sealed class Lowerer : IResolvedDeclarationNodeVisitor
 			? _loopStack.Peek()
 			: _loopsByLabel[label];
 		
-		public static LoweredFunction Lower(ResolvedFunctionNode node)
+		public static LoweredFunction Lower(ResolvedFunctionNode node, ConstantEvaluator evaluator,
+			Func<GlobalSymbol, GlobalInfo> getGlobalInfo)
 		{
 			var function = new LoweredFunction(node.FunctionInfo);
-			var lower = new FunctionLowerer(function);
+			var lower = new FunctionLowerer(function, evaluator, getGlobalInfo);
 			
 			switch (node.Body)
 			{
@@ -132,7 +145,21 @@ public sealed class Lowerer : IResolvedDeclarationNodeVisitor
 		private void VisitNode(IResolvedStatementNode node) => ((IResolvedStatementNodeVisitor)this).Visit(node);
 		
 		private Value VisitNode(IResolvedExpressionNode node) =>
+			LowerConstant(_evaluator.Evaluate(node), node.Syntax.SourceLocation) ?? VisitPlace(node);
+		
+		private Value VisitPlace(IResolvedExpressionNode node) =>
 			((IResolvedExpressionNodeVisitor<Value>)this).Visit(node);
+		
+		private Value? LowerConstant(Constant? constant, SourceLocation location) => constant switch
+		{
+			IntegerConstant { Type: IntegerType } c => MakeConstant(c.Type, c.Value),
+			FloatConstant { Type: FloatType } c => new ConstantValue(c.Type, c.Value),
+			BoolConstant c => c.Value ? ConstantValue.True : ConstantValue.False,
+			NullConstant { Type: not UntypedType } c => new ConstantValue(c.Type, null),
+			StringConstant { Type: StringType } c => new ConstantValue(c.Type, c.Value),
+			FunctionConstant c => new FunctionReferenceValue(c.Function, c.Type, location),
+			_ => null
+		};
 		
 		private void BeginScope(SourceLocation location)
 		{
@@ -500,14 +527,20 @@ public sealed class Lowerer : IResolvedDeclarationNodeVisitor
 		public Value Visit(ResolvedArrayExpressionNode node) =>
 			new ArrayValue((ArrayType)node.Type, node.Values.Select(VisitNode), node.Syntax.SourceLocation);
 		
-		public Value Visit(ResolvedUnaryOpExpressionNode node) =>
-			LowerUnaryOp(VisitNode(node.Operand), node.Operation);
+		public Value Visit(ResolvedUnaryOpExpressionNode node)
+		{
+			var operand = node.Operation?.Op == TokenType.OpAt ? VisitPlace(node.Operand) : VisitNode(node.Operand);
+			return LowerUnaryOp(operand, node.Operation);
+		}
 		
 		public Value Visit(ResolvedUndefExpressionNode node) =>
 			new UndefValue(node.Type);
 		
 		public Value Visit(ResolvedVarExpressionNode node) =>
 			new VariableValue(new(node.Symbol, node.Type), node.Syntax.SourceLocation);
+		
+		public Value Visit(ResolvedGlobalExpressionNode node) =>
+			new GlobalValue(_getGlobalInfo(node.Symbol), node.Syntax.SourceLocation);
 		
 		public Value Visit(ResolvedBinaryOpExpressionNode node)
 		{
@@ -564,14 +597,14 @@ public sealed class Lowerer : IResolvedDeclarationNodeVisitor
 		{
 			name = $".t{NextTempId()}__{name}";
 			var node = new VarStatementNode(SourceLocation.None, new(TokenType.Identifier, SourceLocation.None, name),
-				null, null);
+				null, null, true);
 			
 			return new LocalVariableSymbol(node, type);
 		}
 		
 		public Value Visit(ResolvedAssignmentExpressionNode node)
 		{
-			var left = VisitNode(node.Left);
+			var left = VisitPlace(node.Left);
 			
 			// Need to stabilize the left side first so compound assignments don't double-evaluate
 			if (node.Operation is not null)
@@ -669,11 +702,11 @@ public sealed class Lowerer : IResolvedDeclarationNodeVisitor
 		
 		private static Value LowerBinOp(Value left, OperationImpl? op, Value right) => op switch
 		{
-			NativeImpl i => new BinOpValue(i.ReturnType, left, right, MapBinOp(i.Op),
+			NativeImpl i => new BinOpValue(i.ReturnType, left, right, ToBinaryOperation(i.Op),
 				Join(left.SourceLocation, right.SourceLocation)),
 			FunctionImpl i => new CallValue(i.Function, [left, right],
 				Join(left.SourceLocation, right.SourceLocation)),
-			PointerOffsetImpl i => new PointerOffsetValue(i.PointerType, left, right, MapBinOp(i.Op),
+			PointerOffsetImpl i => new PointerOffsetValue(i.PointerType, left, right, ToBinaryOperation(i.Op),
 				Join(left.SourceLocation, right.SourceLocation)),
 			PointerDifferenceImpl i => new PointerDifferenceValue(left, right, i.PointerType,
 				Join(left.SourceLocation, right.SourceLocation)),
@@ -691,7 +724,7 @@ public sealed class Lowerer : IResolvedDeclarationNodeVisitor
 			
 			var intermediateType = conversion.ResultConversion?.From ?? conversion.ReturnType;
 			var intermediateResult = new BinOpValue(intermediateType, left, right,
-				MapBinOp(conversion.Op), Join(left.SourceLocation, right.SourceLocation));
+				ToBinaryOperation(conversion.Op), Join(left.SourceLocation, right.SourceLocation));
 			
 			return conversion.ResultConversion is { } resultConversion
 				? Convert(intermediateResult, resultConversion)
@@ -700,45 +733,9 @@ public sealed class Lowerer : IResolvedDeclarationNodeVisitor
 		
 		private static Value LowerUnaryOp(Value operand, OperationImpl? op) => op switch
 		{
-			NativeImpl native => new UnaryOpValue(native.ReturnType, operand, MapUnaryOp(native.Op),
+			NativeImpl native => new UnaryOpValue(native.ReturnType, operand, ToUnaryOperation(native.Op),
 				operand.SourceLocation),
 			FunctionImpl function => new CallValue(function.Function, [operand], operand.SourceLocation),
-			_ => throw new InvalidOperationException()
-		};
-		
-		private static BinaryOperation MapBinOp(TokenType op) => op switch
-		{
-			TokenType.OpPlus or TokenType.OpPlusEqual => BinaryOperation.Addition,
-			TokenType.OpMinus or TokenType.OpMinusEqual => BinaryOperation.Subtraction,
-			TokenType.OpStar or TokenType.OpStarEqual => BinaryOperation.Multiplication,
-			TokenType.OpSlash or TokenType.OpSlashEqual => BinaryOperation.Division,
-			TokenType.OpPercent or TokenType.OpPercentEqual => BinaryOperation.Modulo,
-			TokenType.OpEqualEqual => BinaryOperation.Equal,
-			TokenType.OpBangEqual => BinaryOperation.NotEqual,
-			TokenType.OpGreater => BinaryOperation.Greater,
-			TokenType.OpGreaterEqual => BinaryOperation.GreaterEqual,
-			TokenType.OpLess => BinaryOperation.Less,
-			TokenType.OpLessEqual => BinaryOperation.LessEqual,
-			TokenType.OpAmpersand or TokenType.OpAmpersandEqual => BinaryOperation.BitwiseAnd,
-			TokenType.OpBar or TokenType.OpBarEqual => BinaryOperation.BitwiseOr,
-			TokenType.OpHat or TokenType.OpHatEqual => BinaryOperation.BitwiseXor,
-			TokenType.OpLessLess or TokenType.OpLessLessEqual => BinaryOperation.ShiftLeft,
-			TokenType.OpGreaterGreater or TokenType.OpGreaterGreaterEqual => BinaryOperation.ShiftRight,
-			TokenType.OpLessLessLess or TokenType.OpLessLessLessEqual => BinaryOperation.RotateLeft,
-			TokenType.OpGreaterGreaterGreater or TokenType.OpGreaterGreaterGreaterEqual => BinaryOperation.RotateRight,
-			TokenType.OpAmpersandAmpersand => BinaryOperation.LogicalAnd,
-			TokenType.OpBarBar => BinaryOperation.LogicalOr,
-			_ => throw new InvalidOperationException()
-		};
-		
-		private static UnaryOperation MapUnaryOp(TokenType op) => op switch
-		{
-			TokenType.OpPlus => UnaryOperation.Identity,
-			TokenType.OpMinus => UnaryOperation.Negation,
-			TokenType.OpTilde => UnaryOperation.BitwiseNot,
-			TokenType.OpBang => UnaryOperation.LogicalNot,
-			TokenType.OpAt => UnaryOperation.AddressOf,
-			TokenType.OpStar => UnaryOperation.Dereference,
 			_ => throw new InvalidOperationException()
 		};
 		
@@ -793,7 +790,7 @@ public sealed class Lowerer : IResolvedDeclarationNodeVisitor
 		
 		private Value StabilizeStorageBase(Value value) => value switch
 		{
-			VariableValue => value,
+			VariableValue or GlobalValue => value,
 			IndexerValue or AccessValue or UnaryOpValue { Op: UnaryOperation.Dereference } => StabilizeStorage(value),
 			_ => CaptureAsAtomic(value, "target")
 		};
