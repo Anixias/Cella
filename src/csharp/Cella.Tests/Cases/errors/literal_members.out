@@ -1,0 +1,19 @@
+
+====== literal_members.ce ======
+
+Error at line 5, column 16
+4 │ {
+5 │     val a = "abc".missing
+                      ╘═════╛ Type 'str' has no member 'missing'
+
+Error at line 6, column 14
+5 │ val a = "abc".missing
+6 │ val b = (5).missing
+                ╘═════╛ Type 'i32' has no member 'missing'
+
+Error at line 7, column 27
+6 │ val b = (5).missing
+7 │ val c = "abc".byteLength.x
+                             ^ Type 'usize' has no member 'x'
+
+[compilation failed]

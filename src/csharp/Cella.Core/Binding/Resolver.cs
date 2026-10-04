@@ -980,6 +980,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		if (IsInvalid(target))
 			return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
 		
+		if (target is ResolvedLiteralExpressionNode { Type: UntypedType })
+			target = MaterializeAsDefault(target);
+		
 		var memberName = node.Member.Text;
 		var resolutionContext = CurrentResolutionContext;
 		

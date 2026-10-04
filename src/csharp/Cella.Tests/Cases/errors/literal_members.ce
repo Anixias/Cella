@@ -1,0 +1,9 @@
+mod test
+
+main: fun -> i32
+{
+	val a = "abc".missing
+	val b = (5).missing
+	val c = "abc".byteLength.x
+	ret 0
+}

@@ -1,0 +1,24 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Point: rec
+{
+	x: i32
+}
+
+title: val str = "Cella"
+size: val usize = "four".byteLength
+
+main: fun -> i32
+{
+	var buffer: array[u8, "abc".byteLength]
+	printf("%d %d %d\n", i32("abc".byteLength), i32(size), i32(sizeOf(buffer)))
+	printf("%.*s\n", i32("hello".byteLength), "hello".data)
+	printf("%d %d %d\n", i32("{title}!".byteLength), i32(nameOf(Point).byteLength), i32(("a" + "bc").byteLength))
+	printf("%d\n", i32("héllo".byteLength))
+	ret 0
+}
