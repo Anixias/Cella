@@ -5,9 +5,20 @@ ext
 	puts: fun(text: cstr) -> i32
 }
 
+count: val i32 = 3
+title: val str = "Cella"
+label: val cstr = "c"
+
 main: fun -> i32
 {
+	var name = "world"
 	puts("count {1}")
 	puts("literal \{ brace")
+	puts("hello {name}")
+	puts("{count} {'c'} {missing} {nameOf(missing)}")
+	val joined = title + name
+	val mixed = title + label
+	val number = "a" + 5
+	name += "x"
 	ret 0
 }

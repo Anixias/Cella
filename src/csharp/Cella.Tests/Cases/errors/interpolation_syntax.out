@@ -1,0 +1,24 @@
+
+====== interpolation_syntax.ce ======
+
+Error at line 5, column 9
+4 │ {
+5 │     ret "x{}y"
+               ^ Expected an expression
+
+Error at line 10, column 13
+ 9 │ {
+10 │     ret "x{"a" "b"}y"
+                    ╘═╛ Expected '}'
+
+Error at line 15, column 14
+14 │ {
+15 │     ret "x{"a" +}y"
+                     ^ Unexpected token
+
+Error at line 20, column 6
+19 │ {
+20 │     ret "x{"a"
+             ╘════╛ Unterminated string literal
+
+[compilation failed]

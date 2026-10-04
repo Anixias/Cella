@@ -1,10 +1,54 @@
 
 ====== interpolated_string.ce ======
 
-Error at line 10, column 7
- 9 │ {
-10 │     puts("count {1}")
-              ╘═════════╛ String interpolation is not supported yet
-                        | Use '\{' for a literal brace
+Error at line 15, column 15
+14 │ var name = "world"
+15 │ puts("count {1}")
+                  ^ 'integer literal' is not a string
+
+Error at line 17, column 15
+16 │ puts("literal \{ brace")
+17 │ puts("hello {name}")
+                  ╘══╛ 'name' isn't a constant
+
+Error at line 18, column 9
+17 │ puts("hello {name}")
+18 │ puts("{count} {'c'} {missing} {nameOf(missing)}")
+            ╘═══╛ 'i32' is not a string
+
+Error at line 18, column 17
+17 │ puts("hello {name}")
+18 │ puts("{count} {'c'} {missing} {nameOf(missing)}")
+                    ╘═╛ 'char' is not a string
+
+Error at line 18, column 23
+17 │ puts("hello {name}")
+18 │ puts("{count} {'c'} {missing} {nameOf(missing)}")
+                          ╘═════╛ Symbol 'missing' not found in this scope
+
+Error at line 18, column 40
+17 │ puts("hello {name}")
+18 │ puts("{count} {'c'} {missing} {nameOf(missing)}")
+                                           ╘═════╛ Symbol 'missing' not found in this scope
+
+Error at line 19, column 23
+18 │ puts("{count} {'c'} {missing} {nameOf(missing)}")
+19 │ val joined = title + name
+                          ╘══╛ 'name' isn't a constant
+
+Error at line 20, column 14
+19 │ val joined = title + name
+20 │ val mixed = title + label
+                 ╘═══════════╛ No operation defined for '+' between 'str' and 'cstr'
+
+Error at line 21, column 15
+20 │ val mixed = title + label
+21 │ val number = "a" + 5
+                  ╘═════╛ No operation defined for '+' between 'string literal' and 'integer literal'
+
+Error at line 22, column 2
+21 │ val number = "a" + 5
+22 │ name += "x"
+     ╘═════════╛ No operation defined for '+=' between 'str' and 'string literal'
 
 [compilation failed]

@@ -10,11 +10,6 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 	private static Dictionary<string, TokenType> BuildContextualKeywords(params IEnumerable<TokenType> tokenTypes) =>
 		tokenTypes.ToDictionary(static t => t.Representation);
 	
-	private static readonly HashSet<TokenType> _syncTypes =
-	[
-		TokenType.OpOpenParen
-	];
-	
 	private static readonly HashSet<TokenType> _literalTypes =
 	[
 		TokenType.KeywordTrue,
@@ -23,7 +18,6 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 		TokenType.IntegerLiteral,
 		TokenType.FloatLiteral,
 		TokenType.StringLiteral,
-		TokenType.InterpolatedStringLiteral,
 		TokenType.CharLiteral,
 		TokenType.InvalidCharLiteral
 	];
@@ -38,6 +32,7 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 	private static readonly HashSet<TokenType> _expressionStarts =
 	[
 		TokenType.Identifier,
+		TokenType.InterpolatedStringLiteral,
 		TokenType.OpOpenParen,
 		TokenType.OpOpenBracket,
 		TokenType.KeywordUndef,
@@ -410,6 +405,8 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 			return ParseMatch(ref index, match);
 		else if (Match(ref index, out var jump, _jumpKeywords))
 			return ParseJump(ref index, jump);
+		else if (Match(ref index, out var interpolated, TokenType.InterpolatedStringLiteral))
+			node = ParseInterpolatedString(interpolated);
 		else
 			node = ParseLiteral(ref index);
 		
@@ -517,6 +514,39 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 		var (source, range) = token.SourceLocation;
 		range = range.Join(closeBracket.SourceLocation.Range);
 		return new SizeOfExpressionNode(token, target, new(source, range));
+	}
+	
+	private static InterpolatedStringExpressionNode ParseInterpolatedString(Token token)
+	{
+		var interpolation = token.Interpolation!;
+		var values = interpolation.Holes.Select(static h =>
+			new ExpressionParser([..h.Tokens, new Token(TokenType.EndOfFile, h.Close)]).ParseHole());
+		
+		return new InterpolatedStringExpressionNode(interpolation.Segments, values, token.SourceLocation);
+	}
+	
+	private IExpressionNode ParseHole()
+	{
+		var index = 0;
+		if (AtEnd(index))
+			throw Expected(index, "an expression");
+		
+		IExpressionNode value;
+		try
+		{
+			value = ParseExpression(ref index);
+		}
+		catch (InvalidOperationException e) when (e is not ParseException)
+		{
+			var token = Tokens[Math.Min(index, Tokens.Length - 1)];
+			throw new ParseException(new Diagnostic(DiagnosticSeverity.Error, token.SourceLocation,
+				token.Error ?? "Unexpected token"));
+		}
+		
+		if (!AtEnd(index))
+			throw Expected(index, "'}'");
+		
+		return value;
 	}
 	
 	private NameOfExpressionNode ParseNameOf(ref int index, Token token)

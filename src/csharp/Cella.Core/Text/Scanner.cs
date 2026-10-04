@@ -335,79 +335,107 @@ public class Scanner : IScanner
 	
 	private ScanResult ScanString(int position)
 	{
-		var end = position + 1;
-		var terminated = false;
+		var line = Source.GetLineColumn(position).Line;
+		var segments = new List<string>();
+		var holes = new List<InterpolationHole>();
+		var isValid = true;
+		var segmentStart = position + 1;
 		var escaped = false;
-		var interpolated = false;
-		var interpolationLevel = 0;
+		var end = segmentStart;
 		
-		while (end < Source.Length)
+		while (end < Source.Length && Source[end] is not ('\n' or '\r'))
 		{
 			var character = Source[end];
-			
-			if (character == '"' && !escaped && interpolationLevel == 0)
+			if (character == '"' && !escaped)
 			{
-				end++;
-				terminated = true;
-				break;
+				isValid &= AddSegment(segments, segmentStart, end);
+				return CreateStringToken(new TextRange(position, end + 1), segments, holes, isValid);
 			}
 			
-			if (character is '\n' or '\r')
-				break;
-			
-			switch (character)
+			if (character == '{' && !escaped)
 			{
-				case '{' when !escaped:
-					interpolated = true;
-					interpolationLevel++;
+				isValid &= AddSegment(segments, segmentStart, end);
+				var (hole, next) = ScanHole(end + 1, line);
+				end = next;
+				if (hole is null)
 					break;
 				
-				case '}' when interpolationLevel > 0:
-					interpolationLevel--;
-					break;
-				
-				case '\\':
-					escaped = !escaped;
-					break;
-				
-				default:
-					escaped = false;
-					break;
+				holes.Add(hole.Value);
+				segmentStart = next;
+				continue;
 			}
 			
+			escaped = character == '\\' && !escaped;
 			end++;
 		}
 		
-		if (!terminated)
+		var invalidToken = new Token(TokenType.Invalid, Source, new TextRange(position, end))
 		{
-			var invalidToken = new Token(TokenType.Invalid, Source, new TextRange(position, end))
-			{
-				Error = "Unterminated string literal"
-			};
-			
-			return new ScanResult(invalidToken, end);
-		}
+			Error = "Unterminated string literal"
+		};
 		
-		if (!interpolated)
+		return new ScanResult(invalidToken, end);
+	}
+	
+	private bool AddSegment(List<string> segments, int start, int end)
+	{
+		var (text, isValid) = UnescapeString(Source.GetText(new TextRange(start, end)), true);
+		segments.Add(text);
+		return isValid;
+	}
+	
+	private (InterpolationHole? Hole, int End) ScanHole(int position, int line)
+	{
+		var tokens = new List<Token>();
+		var depth = 0;
+		while (true)
 		{
-			var value = UnescapeString(Source.GetText(new TextRange(position + 1, end - 1)), true);
+			var (token, next) = ScanToken(position);
+			if (next <= position || token.Type is TokenType.EndOfFile or TokenType.Newline || token.Line != line)
+				return (null, position);
 			
-			if (!value.IsValid)
+			position = next;
+			if (token.Type.IsFiltered)
+				continue;
+			
+			if (token.Type == TokenType.OpCloseBrace)
 			{
-				var invalidToken = new Token(TokenType.Invalid, Source, new TextRange(position, end))
-				{
-					Error = "Invalid escape sequence in string literal"
-				};
+				if (depth == 0)
+					return (new InterpolationHole([..tokens], token.SourceLocation), position);
 				
-				return new ScanResult(invalidToken, end);
+				depth--;
+			}
+			else if (token.Type == TokenType.OpOpenBrace)
+			{
+				depth++;
 			}
 			
-			var token = new Token(TokenType.StringLiteral, Source, new TextRange(position, end), value.Result);
-			return new ScanResult(token, end);
+			tokens.Add(token);
+		}
+	}
+	
+	private ScanResult CreateStringToken(TextRange range, List<string> segments, List<InterpolationHole> holes,
+		bool isValid)
+	{
+		if (!isValid)
+		{
+			var invalidToken = new Token(TokenType.Invalid, Source, range)
+			{
+				Error = "Invalid escape sequence in string literal"
+			};
+			
+			return new ScanResult(invalidToken, range.End);
 		}
 		
-		var interpolatedToken = new Token(TokenType.InterpolatedStringLiteral, Source, new TextRange(position, end));
-		return new ScanResult(interpolatedToken, end);
+		if (holes.Count == 0)
+			return new ScanResult(new Token(TokenType.StringLiteral, Source, range, segments[0]), range.End);
+		
+		var interpolatedToken = new Token(TokenType.InterpolatedStringLiteral, Source, range)
+		{
+			Interpolation = new([..segments], [..holes])
+		};
+		
+		return new ScanResult(interpolatedToken, range.End);
 	}
 	
 	/// <summary>

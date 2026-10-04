@@ -1,0 +1,26 @@
+mod test
+
+empty: fun -> str
+{
+	ret "x{}y"
+}
+
+extra: fun -> str
+{
+	ret "x{"a" "b"}y"
+}
+
+operand: fun -> str
+{
+	ret "x{"a" +}y"
+}
+
+unterminated: fun -> str
+{
+	ret "x{"a"
+}
+
+main: fun -> i32
+{
+	ret 0
+}

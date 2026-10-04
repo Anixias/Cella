@@ -1,0 +1,38 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Point: rec
+{
+	x: i32
+}
+
+title: val str = "Cella"
+version: val cstr = "1.0"
+banner: val cstr = "{title} v{version}!"
+full: val str = title + " " + "language"
+greeting: val cstr = version + "-beta"
+nested: val str = "[{"{title}"}]"
+
+show: fun(text: str) = printf("%.*s\n", i32(text.byteLength), text.data)
+
+main: fun -> i32
+{
+	val name = "world"
+	printf("%s\n", banner)
+	show(full)
+	printf("%s\n", greeting)
+	show(nested)
+	printf("%s\n", "Hello, {name}! {nameOf(Point)} {"a" + "b"}")
+	printf("%s\n", "braces: \{ } {"}"} {"\{"}")
+	printf("%s\n", "quote \" tab\tend {"\"q\""}")
+
+	val joined = "x" + "y" + "z"
+	val twice: str = "{title}{title}"
+	show(joined)
+	printf("%d %d\n", i32(sizeOf(joined)), i32(twice.byteLength))
+	ret 0
+}

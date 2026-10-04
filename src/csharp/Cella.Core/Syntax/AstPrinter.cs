@@ -486,6 +486,15 @@ public sealed class AstPrinter : ISyntaxNodeVisitor
 		VisitNode(node.Target, true);
 	}
 	
+	public void Visit(InterpolatedStringExpressionNode node)
+	{
+		StartLine();
+		_sb.Append("InterpolatedStringExpressionNode");
+		
+		for (var i = 0; i < node.Values.Length; i++)
+			VisitNode(node.Values[i], i == node.Values.Length - 1);
+	}
+	
 	public void Visit(NameOfExpressionNode node)
 	{
 		StartLine();

@@ -1041,20 +1041,75 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		return new ResolvedArrayExpressionNode(type, values, node);
 	}
 	
-	public IResolvedExpressionNode Visit(LiteralExpressionNode node)
+	public IResolvedExpressionNode Visit(InterpolatedStringExpressionNode node)
 	{
-		if (node.Token.Type == TokenType.InterpolatedStringLiteral)
+		var text = new StringBuilder(node.Segments[0]);
+		var isValid = true;
+		for (var i = 0; i < node.Values.Length; i++)
 		{
-			// TODO String interpolation
-			var diagnostic = new Diagnostic(DiagnosticSeverity.Error, node.SourceLocation,
-				"String interpolation is not supported yet")
-			{
-				Hints = ["Use '\\{' for a literal brace"]
-			};
+			if (FoldString(VisitNode(node.Values[i], null)) is { } value)
+				text.Append(value);
+			else
+				isValid = false;
 			
-			return Error(node, diagnostic, CurrentTargetType);
+			text.Append(node.Segments[i + 1]);
 		}
 		
+		return isValid
+			? new ResolvedLiteralExpressionNode(NativeSymbols.UntypedString, text.ToString(), node)
+			: new ResolvedInvalidExpressionNode(node, CurrentTargetType);
+	}
+	
+	private string? FoldString(IResolvedExpressionNode value)
+	{
+		if (IsInvalid(value))
+			return null;
+		
+		if (!IsString(value.Type))
+		{
+			Diagnostics.Add(new(DiagnosticSeverity.Error, value.Syntax.SourceLocation,
+				$"'{value.Type.Name}' is not a string"));
+			
+			return null;
+		}
+		
+		switch (_evaluator.Evaluate(value))
+		{
+			case StringConstant constant:
+				return constant.Text;
+			
+			case InvalidConstant:
+				return null;
+			
+			default:
+				Diagnostics.Add(new(DiagnosticSeverity.Error, value.Syntax.SourceLocation,
+					$"'{value.Syntax.SourceLocation.GetText()}' isn't a constant"));
+				
+				return null;
+		}
+	}
+	
+	private static bool IsString(TypeSymbol type) => type is StringType or UntypedStringType;
+	
+	private IResolvedExpressionNode ConcatenateStrings(BinaryOpExpressionNode node, IResolvedExpressionNode left,
+		IResolvedExpressionNode right)
+	{
+		if (left.Type is StringType && right.Type is StringType && left.Type != right.Type)
+			return Error(node, DiagnosticReporter.ReportBinaryOpMismatch(_operatorRegistry, left, node.Op, right),
+				CurrentTargetType);
+		
+		var leftText = FoldString(left);
+		var rightText = FoldString(right);
+		if (leftText is null || rightText is null)
+			return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
+		
+		var text = new ResolvedLiteralExpressionNode(NativeSymbols.UntypedString, leftText + rightText, node);
+		var type = left.Type as StringType ?? right.Type as StringType;
+		return type is null ? text : MaterializeExpression(text, type);
+	}
+	
+	public IResolvedExpressionNode Visit(LiteralExpressionNode node)
+	{
 		if (node.Token.Type == TokenType.InvalidCharLiteral)
 			return Error(node, "Invalid character literal", CurrentTargetType);
 		
@@ -1577,6 +1632,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			
 			if (AnyInvalid(left, right))
 				return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
+			
+			if (op.Type == TokenType.OpPlus && IsString(left.Type) && IsString(right.Type))
+				return ConcatenateStrings(node, left, right);
 			
 			if (IsMixedSignComparison(op.Type, left.Type, right.Type))
 			{

@@ -1,5 +1,6 @@
 ﻿using System.Collections.Immutable;
 using System.Numerics;
+using System.Text;
 using Cella.Core.Symbols;
 
 namespace Cella.Core.Binding.Constants;
@@ -48,6 +49,13 @@ public sealed class NullConstant(TypeSymbol type) : Constant(type);
 public sealed class StringConstant(TypeSymbol type, object value) : Constant(type)
 {
 	public object Value { get; } = value;
+	
+	public string Text => Value switch
+	{
+		StrValue text => Encoding.UTF8.GetString(text.Bytes),
+		byte[] bytes => Encoding.UTF8.GetString(bytes, 0, bytes.Length - 1),
+		_ => (string)Value
+	};
 }
 
 public sealed class RecordConstant(TypeSymbol type, IEnumerable<Constant> fields) : Constant(type)
