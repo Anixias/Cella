@@ -21,4 +21,9 @@ Error at line 13, column 26
 13 │ quotient: val i32 = 1 / (limit - 5)
                               ╘═══════╛ Division by zero
 
+Error at line 23, column 19
+22 │ 
+23 │ chosen: val i32 = match Mode.slow(3) { fast => 4  slow(factor) => rand() + factor }
+                       ╘═══════════════════════════════════════════════════════════════╛ The initial value of 'chosen' must be a constant
+
 [compilation failed]

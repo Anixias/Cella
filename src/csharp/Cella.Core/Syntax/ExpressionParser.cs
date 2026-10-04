@@ -28,6 +28,27 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 		TokenType.InvalidCharLiteral
 	];
 	
+	private static readonly HashSet<TokenType> _jumpKeywords =
+	[
+		TokenType.KeywordRet,
+		TokenType.KeywordBreak,
+		TokenType.KeywordCont
+	];
+	
+	private static readonly HashSet<TokenType> _expressionStarts =
+	[
+		TokenType.Identifier,
+		TokenType.OpOpenParen,
+		TokenType.OpOpenBracket,
+		TokenType.KeywordUndef,
+		TokenType.KeywordSizeOf,
+		TokenType.KeywordHeap,
+		TokenType.KeywordMatch,
+		TokenType.KeywordRet,
+		TokenType.KeywordBreak,
+		TokenType.KeywordCont
+	];
+	
 	private static readonly HashSet<TokenType> _shiftOps =
 	[
 		TokenType.OpLessLess,
@@ -381,10 +402,85 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 			node = ParseSizeOf(ref index, sizeOf);
 		else if (Match(ref index, out var heap, TokenType.KeywordHeap))
 			return ParseHeap(ref index, heap);
+		else if (Match(ref index, out var match, TokenType.KeywordMatch))
+			return ParseMatch(ref index, match);
+		else if (Match(ref index, out var jump, _jumpKeywords))
+			return ParseJump(ref index, jump);
 		else
 			node = ParseLiteral(ref index);
 		
 		return ParsePostfix(ref index, node);
+	}
+	
+	private MatchExpressionNode ParseMatch(ref int index, Token keyword)
+	{
+		var value = ParseExpression(ref index);
+		if (!Match(ref index, out var openBrace, TokenType.OpOpenBrace))
+			throw Expected(index, "'{'");
+		
+		var arms = new List<MatchExpressionArmNode>();
+		Token closeBrace;
+		while (!Match(ref index, out closeBrace, TokenType.OpCloseBrace))
+		{
+			if (AtEnd(index))
+				throw Expected(index, "'}'", openBrace);
+			
+			arms.Add(ParseMatchArm(ref index));
+		}
+		
+		var (source, range) = keyword.SourceLocation;
+		range = range.Join(closeBrace.SourceLocation.Range);
+		return new MatchExpressionNode(keyword, value, arms, new(source, range));
+	}
+	
+	private MatchExpressionArmNode ParseMatchArm(ref int index)
+	{
+		PatternNode? pattern = null;
+		SourceLocation location;
+		if (Match(ref index, out var elseToken, TokenType.KeywordElse))
+			location = elseToken.SourceLocation;
+		else
+		{
+			pattern = ParsePattern(ref index);
+			location = pattern.SourceLocation;
+		}
+		
+		if (!Match(ref index, TokenType.OpFatArrow))
+			throw Expected(index, "'=>'");
+		
+		return new MatchExpressionArmNode(pattern, location, ParseExpression(ref index));
+	}
+	
+	private IExpressionNode ParseJump(ref int index, Token keyword)
+	{
+		var operandIndex = index;
+		var operand = IsNextNewline(index) || !CanStartExpression(index) ? null : ParseExpression(ref operandIndex);
+		if (operand is not null && Peek(operandIndex, TokenType.OpFatArrow))
+			operand = null;
+		else
+			index = operandIndex;
+		
+		var (source, range) = keyword.SourceLocation;
+		if (operand is not null)
+			range = range.Join(operand.SourceLocation.Range);
+		
+		var location = new SourceLocation(source, range);
+		return keyword.Type switch
+		{
+			TokenType.KeywordRet => new ReturnExpressionNode(location, operand),
+			TokenType.KeywordBreak => new BreakExpressionNode(location, operand),
+			_ => new ContinueExpressionNode(location, operand)
+		};
+	}
+	
+	private bool CanStartExpression(int index)
+	{
+		if (AtEnd(index))
+			return false;
+		
+		var type = Tokens[index].Type;
+		return _expressionStarts.Contains(type) || _literalTypes.Contains(type) || _unaryPrefixOps.Contains(type) ||
+		       _borrowKeywords.Contains(type);
 	}
 	
 	private UndefExpressionNode ParseUndef(ref int index, Token token)

@@ -1,0 +1,111 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Effect: enum
+{
+	none
+	hit(amount: i32)
+}
+
+Step: enum
+{
+	go
+	stop
+	skip
+}
+
+count: var i32 = 0
+
+total: fun(effects: array[Effect, 4]) -> i32
+{
+	var sum = 0
+	var i: usize = 0
+	loop while i < 4
+	{
+		val effect = effects[i]
+		i += 1
+		val amount = match effect
+		{
+			none => cont
+			hit(n) => n
+		}
+
+		if amount > 50
+			break
+
+		sum += amount
+	}
+
+	ret sum
+}
+
+first: fun(effects: array[Effect, 4]) -> i32
+{
+	var i: usize = 0
+	loop while i < 4
+	{
+		val amount = match effects[i] { hit(n) => ret n  none => 0 }
+		i += usize(amount) + 1
+	}
+
+	ret -1
+}
+
+doubled: fun(effect: Effect) -> i32
+{
+	val amount = match effect { none => ret -1  hit(n) => n }
+	ret amount * 2
+}
+
+walk: fun(steps: array[Step, 5]) -> i32
+{
+	var weight = 0
+	var i: usize = 0
+	outer: loop while i < 5
+	{
+		val step = steps[i]
+		i += 1
+		var j = 0
+		loop while j < 3
+		{
+			j += 1
+			weight += match step
+			{
+				go => j
+				skip => cont outer
+				stop => break outer
+			}
+		}
+	}
+
+	ret weight
+}
+
+tally: fun(effect: Effect)
+{
+	match effect { none => ret  hit(n) => count += n }
+	val bonus = match effect { none => ret  Effect.hit(n) => n * 10 }
+	count += bonus
+}
+
+check: fun(ok: bool) -> i32
+{
+	val checked = ok || ret 7
+	ret i32(checked)
+}
+
+main: fun -> i32
+{
+	val effects = [Effect.hit(3), Effect.none, Effect.hit(60), Effect.hit(9)]
+	val later = [Effect.none, Effect.none, Effect.hit(4), Effect.hit(9)]
+	printf("%d %d %d %d\n", total(effects), first(later), doubled(Effect.none), doubled(Effect.hit(8)))
+	printf("%d\n", walk([Step.go, Step.skip, Step.go, Step.stop, Step.go]))
+	tally(Effect.hit(2))
+	tally(Effect.none)
+	printf("%d %d %d\n", count, check(true), check(false))
+	ret 0
+}

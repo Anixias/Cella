@@ -14,6 +14,14 @@ quotient: val i32 = 1 / (limit - 5)
 dependent: val i32 = random + 1
 fine: val i32 = limit * 2
 
+Mode: enum
+{
+	fast
+	slow(factor: i32)
+}
+
+chosen: val i32 = match Mode.slow(3) { fast => 4  slow(factor) => rand() + factor }
+
 main: fun -> i32
 {
 	ret fine

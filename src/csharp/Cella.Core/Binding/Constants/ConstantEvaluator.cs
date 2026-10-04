@@ -15,9 +15,13 @@ public sealed class ConstantEvaluator
 )
 {
 	private readonly Dictionary<IResolvedExpressionNode, Constant?> _cache = new(ReferenceEqualityComparer.Instance);
+	private readonly Dictionary<LocalVariableSymbol, Constant> _bindings = [];
 	
 	public Constant? Evaluate(IResolvedExpressionNode node)
 	{
+		if (_bindings.Count > 0)
+			return Fold(node);
+		
 		if (_cache.TryGetValue(node, out var cached))
 			return cached;
 		
@@ -36,6 +40,8 @@ public sealed class ConstantEvaluator
 		ResolvedBinaryOpExpressionNode n => FoldBinary(n),
 		ResolvedChainedExpressionNode n => FoldChain(n),
 		ResolvedConversionExpressionNode n => FoldAll([n.Source], values => Convert(values[0], n.Conversion)),
+		ResolvedVarExpressionNode { Symbol: LocalVariableSymbol symbol } when
+			_bindings.TryGetValue(symbol, out var bound) => bound,
 		ResolvedVarExpressionNode { Symbol: LocalVariableSymbol { ConstantValue: { } value } } => value,
 		ResolvedGlobalExpressionNode { Symbol: { IsMutable: false } global } => getGlobalValue(global),
 		ResolvedAccessExpressionNode n => FoldAccess(n),
@@ -48,8 +54,33 @@ public sealed class ConstantEvaluator
 		ResolvedEnumCaseExpressionNode n => FoldAll(n.Payload, values => new EnumConstant(n.Type, n.Case, values)),
 		ResolvedIsExpressionNode { Pattern.HasBindings: false } n => FoldAll([n.Value], values =>
 			GetCase(values[0]) is { } enumCase ? BoolConstant.From(enumCase == n.Pattern.Case) : null),
+		ResolvedMatchExpressionNode n => FoldMatch(n),
 		_ => null
 	};
+	
+	private Constant? FoldMatch(ResolvedMatchExpressionNode node)
+	{
+		var value = Evaluate(node.Value);
+		if (value is null or InvalidConstant)
+			return value;
+		
+		if (GetCase(value) is not { } enumCase ||
+		    node.Arms.FirstOrDefault(arm => arm.Pattern is null || arm.Pattern.Case == enumCase) is not { } arm)
+			return null;
+		
+		var bindings = arm.Pattern?.Bindings ?? [];
+		for (var i = 0; i < bindings.Length; i++)
+		{
+			if (bindings[i] is { } binding)
+				_bindings[binding] = value is EnumConstant constant ? constant.Payload[i] : Zero(binding.Type);
+		}
+		
+		var result = Evaluate(arm.Value);
+		foreach (var binding in bindings.OfType<LocalVariableSymbol>())
+			_bindings.Remove(binding);
+		
+		return result;
+	}
 	
 	private static EnumCaseSymbol? GetCase(Constant constant) => constant switch
 	{

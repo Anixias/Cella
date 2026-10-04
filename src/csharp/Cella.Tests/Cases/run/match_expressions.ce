@@ -1,0 +1,97 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Role: enum
+{
+	fighter
+	healer
+	tank
+}
+
+Effect: enum
+{
+	none
+	hit(amount: i32)
+	heal(amount: i32, crit: bool)
+}
+
+Shape: enum
+{
+	dot
+	box(w: i32, h: i32)
+}
+
+Pair: enum
+{
+	one(s: Shape)
+	two(a: Shape, b: Shape)
+}
+
+Mode: enum
+{
+	fast
+	slow(factor: i32)
+}
+
+mode: val Mode = Mode.slow(3)
+size: val i32 = match mode { fast => 4  slow(factor) => factor * 8 }
+table: val array[i32, match Mode.fast { fast => 2  slow(factor) => factor }] = [5, 6]
+
+damage: fun(role: Role) -> i32 = match role
+{
+	fighter => 7
+	else => 1
+}
+
+power: fun(effect: Effect) -> i64
+{
+	val value: i64 = match effect
+	{
+		none => 0
+		hit(n) => n * 2
+		heal(n, crit) => n * (1 + i32(crit))
+	}
+
+	ret value
+}
+
+area: fun(shape: Shape) -> i32 = match shape { dot => 0  box(w, h) => w * h }
+
+total: fun(pair: Pair) -> i32 = match pair
+{
+	one(s) => area(s)
+	two(a, b) => match a { dot => 100  box(w, _) => w + area(b) }
+}
+
+helper: fun(x: i32) -> i32 = x + 1
+other: fun(x: i32) -> i32 = x * 10
+
+main: fun -> i32
+{
+	val role = Role.healer
+	val scale = match role { fighter => 1.5  healer => 2  tank => 3 }
+	printf("%d %d %d %.1f\n", damage(Role.fighter), damage(role), damage(Role.tank), scale)
+	printf("%lld %lld %lld\n", power(Effect.none), power(Effect.hit(4)), power(Effect.heal(5, true)))
+	printf("%d %d %d\n", total(Pair.one(Shape.box(3, 3))), total(Pair.two(Shape.box(2, 3), Shape.box(4, 5))),
+		total(Pair.two(Shape.dot, Shape.dot)))
+
+	var small: u8 = match role { fighter => 1  healer => 200  tank => 3 }
+	val big: i64 = match role { fighter => 1  else => 5_000_000_000 }
+	val f: fun(i32) -> i32 = match role { fighter => helper  else => other }
+	printf("%d %lld %d\n", small, big, f(2))
+
+	if match role { healer => true  else => false }
+		printf("healer\n")
+
+	var count = 0
+	loop while match role { fighter => false  else => count < 3 }
+		count += 1
+
+	val local = match Mode.slow(2) { fast => 1  slow(factor) => factor + 10 }
+	printf("%d %d %d %d %d\n", count, size, table[1], local, i32(sizeOf(table)))
+	ret 0
+}

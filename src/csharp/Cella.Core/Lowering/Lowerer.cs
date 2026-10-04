@@ -84,6 +84,7 @@ public sealed class Lowerer(ConstantEvaluator evaluator, Func<GlobalSymbol, Glob
 		private readonly Stack<LoopContext> _loopStack = [];
 		private readonly Dictionary<LabelSymbol, LoopContext> _loopsByLabel = [];
 		private readonly Stack<ActiveScope> _activeScopes = [];
+		private readonly HashSet<LocalVariableSymbol> _temporaries = [];
 		private BasicBlock? currentBlock;
 		private ulong nextLoopId;
 		private ulong nextTempId;
@@ -135,8 +136,7 @@ public sealed class Lowerer(ConstantEvaluator evaluator, Func<GlobalSymbol, Glob
 					if (node.FunctionInfo.Signature.ReturnType == NativeSymbols.Void)
 						lower.VisitNode(expression);
 					else
-						lower.Visit(new ResolvedReturnStatementNode(expression,
-							new ReturnStatementNode(expression.Syntax.SourceLocation, expression.Syntax)));
+						lower.LowerReturn(expression, expression.Syntax.SourceLocation);
 					
 					break;
 			}
@@ -194,26 +194,29 @@ public sealed class Lowerer(ConstantEvaluator evaluator, Func<GlobalSymbol, Glob
 			EndCurrentScope();
 		}
 		
-		public void Visit(ResolvedBreakStatementNode node)
+		public Value Visit(ResolvedBreakExpressionNode node)
 		{
 			var context = GetLoopContext(node.Label);
 			EmitScopeEndsToDepth(context.ScopeDepth);
 			GetOrMakeBlock().SetTerminator(new BranchTerminator(context.BreakTarget, node.Syntax.SourceLocation));
 			currentBlock = null;
+			return new UndefValue(node.Type);
 		}
 		
-		public void Visit(ResolvedContinueStatementNode node)
+		public Value Visit(ResolvedContinueExpressionNode node)
 		{
 			var context = GetLoopContext(node.Label);
 			EmitScopeEndsToDepth(context.ScopeDepth);
 			GetOrMakeBlock().SetTerminator(new BranchTerminator(context.ContinueTarget, node.Syntax.SourceLocation));
 			currentBlock = null;
+			return new UndefValue(node.Type);
 		}
 		
 		public void Visit(ResolvedExpressionStatementNode node)
 		{
+			GetOrMakeBlock();
 			var expression = VisitNode(node.Expression);
-			GetOrMakeBlock().Instructions.Add(new ExpressionInstruction(expression));
+			currentBlock?.Instructions.Add(new ExpressionInstruction(expression));
 		}
 		
 		public void Visit(ResolvedIfStatementNode node)
@@ -244,25 +247,56 @@ public sealed class Lowerer(ConstantEvaluator evaluator, Func<GlobalSymbol, Glob
 		public void Visit(ResolvedInvalidStatementNode node) =>
 			throw new InvalidOperationException();
 		
-		public void Visit(ResolvedMatchStatementNode node)
+		public void Visit(ResolvedMatchStatementNode node) => LowerMatch(node.Value,
+			[..node.Arms.Select(static arm => (arm.Pattern, arm.Body.Syntax.SourceLocation))],
+			node.Syntax.SourceLocation, index => VisitNode(node.Arms[index].Body));
+		
+		public Value Visit(ResolvedMatchExpressionNode node)
 		{
 			var location = node.Syntax.SourceLocation;
-			var scrutinee = LowerScrutinee(node.Value);
+			VariableValue? result = null;
+			if (node.Type is not NeverType && node.Type != NativeSymbols.Void)
+			{
+				var symbol = CreateTempSymbol(node.Type, "match_result");
+				GetOrMakeBlock().Instructions.Add(new LocalVarInstruction(symbol, new UndefValue(node.Type), location,
+					CurrentScopeId));
+				
+				result = new VariableValue(new(symbol, node.Type), location);
+			}
+			
+			LowerMatch(node.Value, [..node.Arms.Select(static arm => (arm.Pattern, arm.Value.Syntax.SourceLocation))],
+				location, index =>
+				{
+					var arm = node.Arms[index].Value;
+					var value = VisitNode(arm);
+					currentBlock?.Instructions.Add(new ExpressionInstruction(result is null
+						? value
+						: new AssignValue(node.Type, result, value, arm.Syntax.SourceLocation)));
+				});
+			
+			return result ?? (Value)new UndefValue(node.Type);
+		}
+		
+		private void LowerMatch(IResolvedExpressionNode value,
+			IReadOnlyList<(ResolvedPattern? Pattern, SourceLocation Location)> arms, SourceLocation location,
+			Action<int> lowerArm)
+		{
+			var scrutinee = LowerScrutinee(value);
 			var enumType = (EnumSymbol)scrutinee.Type;
 			var tagType = TypePool.GetTagType(enumType);
 			var tag = CaptureAsAtomic(new EnumTagValue(tagType, scrutinee, location), "tag");
 			var mergeBlock = CreateBlock("match_end");
-			var coversEveryCase = node.Arms.Count(static arm => arm.Pattern is not null) == enumType.Cases.Length;
+			var coversEveryCase = arms.Count(static arm => arm.Pattern is not null) == enumType.Cases.Length;
 			
 			var testBlock = GetOrMakeBlock();
-			for (var i = 0; i < node.Arms.Length; i++)
+			for (var i = 0; i < arms.Count; i++)
 			{
-				var arm = node.Arms[i];
-				var isLast = i == node.Arms.Length - 1;
+				var (pattern, armLocation) = arms[i];
+				var isLast = i == arms.Count - 1;
 				var armBlock = CreateBlock("match_arm");
 				BasicBlock? nextBlock = null;
 				
-				if (arm.Pattern is not { } pattern || coversEveryCase && isLast)
+				if (pattern is null || coversEveryCase && isLast)
 					testBlock.SetTerminator(new BranchTerminator(armBlock, location));
 				else
 				{
@@ -273,11 +307,11 @@ public sealed class Lowerer(ConstantEvaluator evaluator, Func<GlobalSymbol, Glob
 				}
 				
 				currentBlock = armBlock;
-				BeginScope(arm.Body.Syntax.SourceLocation);
-				if (arm.Pattern is { } armPattern)
-					BindPayload(scrutinee, armPattern);
+				BeginScope(armLocation);
+				if (pattern is not null)
+					BindPayload(scrutinee, pattern);
 				
-				VisitNode(arm.Body);
+				lowerArm(i);
 				EndCurrentScope();
 				currentBlock?.FillTerminator(new BranchTerminator(mergeBlock, location));
 				
@@ -287,7 +321,7 @@ public sealed class Lowerer(ConstantEvaluator evaluator, Func<GlobalSymbol, Glob
 				testBlock = nextBlock;
 			}
 			
-			if (node.Arms.IsEmpty)
+			if (arms.Count == 0)
 				testBlock.SetTerminator(new BranchTerminator(mergeBlock, location));
 			
 			ContinueWith(mergeBlock);
@@ -336,8 +370,9 @@ public sealed class Lowerer(ConstantEvaluator evaluator, Func<GlobalSymbol, Glob
 				}
 			}
 			
+			GetOrMakeBlock();
 			var value = VisitNode(condition);
-			GetOrMakeBlock().SetTerminator(new ConditionalBranchTerminator(value, trueBlock, falseBlock, location));
+			currentBlock?.SetTerminator(new ConditionalBranchTerminator(value, trueBlock, falseBlock, location));
 			currentBlock = null;
 		}
 		
@@ -372,29 +407,36 @@ public sealed class Lowerer(ConstantEvaluator evaluator, Func<GlobalSymbol, Glob
 			}
 		}
 		
-		public void Visit(ResolvedReturnStatementNode node)
+		public Value Visit(ResolvedReturnExpressionNode node)
 		{
-			var value = node.Expression is null ? null : VisitNode(node.Expression);
+			LowerReturn(node.Value, node.Syntax.SourceLocation);
+			return new UndefValue(node.Type);
+		}
+		
+		private void LowerReturn(IResolvedExpressionNode? expression, SourceLocation location)
+		{
+			GetOrMakeBlock();
+			var value = expression is null ? null : VisitNode(expression);
+			if (currentBlock is not { } block)
+				return;
 			
-			var block = GetOrMakeBlock();
 			if (value is not null)
 			{
 				var returnSymbol = CreateTempSymbol(value.Type, "return");
-				block.Instructions.Add(new LocalVarInstruction(returnSymbol, value,
-					node.Syntax.SourceLocation, scopeId: 0));
-				
-				value = new VariableValue(new(returnSymbol, value.Type), node.Syntax.SourceLocation);
+				block.Instructions.Add(new LocalVarInstruction(returnSymbol, value, location, scopeId: 0));
+				value = new VariableValue(new(returnSymbol, value.Type), location);
 			}
 			
 			EmitScopeEndsToDepth(0);
-			block.SetTerminator(ReturnTerminator.FromValue(value, node.Syntax.SourceLocation));
+			block.SetTerminator(ReturnTerminator.FromValue(value, location));
 			currentBlock = null;
 		}
 		
 		public void Visit(ResolvedVarStatementNode node)
 		{
+			GetOrMakeBlock();
 			var value = node.Initializer is null ? new ZeroValue(node.Symbol.Type) : VisitNode(node.Initializer);
-			GetOrMakeBlock().Instructions.Add(new LocalVarInstruction(node.Symbol, value, node.Syntax.SourceLocation,
+			currentBlock?.Instructions.Add(new LocalVarInstruction(node.Symbol, value, node.Syntax.SourceLocation,
 				CurrentScopeId));
 		}
 		
@@ -584,7 +626,7 @@ public sealed class Lowerer(ConstantEvaluator evaluator, Func<GlobalSymbol, Glob
 		}
 		
 		public Value Visit(ResolvedEnumCaseExpressionNode node) => new EnumValue((EnumSymbol)node.Type, node.Case,
-			node.Payload.Select(VisitNode), node.Syntax.SourceLocation);
+			LowerOperands(node.Payload), node.Syntax.SourceLocation);
 		
 		public Value Visit(ResolvedIsExpressionNode node)
 		{
@@ -614,16 +656,18 @@ public sealed class Lowerer(ConstantEvaluator evaluator, Func<GlobalSymbol, Glob
 			new ConversionValue(VisitNode(node.Source), node.Conversion, node.Syntax.SourceLocation);
 		
 		public Value Visit(ResolvedFunctionCallExpressionNode node) =>
-			new CallValue(node.Function, node.Arguments.Select(VisitNode), node.Syntax.SourceLocation);
+			new CallValue(node.Function, LowerOperands(node.Arguments), node.Syntax.SourceLocation);
 		
 		public Value Visit(ResolvedFunctionGroupExpressionNode node) => throw new InvalidOperationException();
 		
 		public Value Visit(ResolvedFunctionReferenceExpressionNode node) =>
 			new FunctionReferenceValue(node.Function, node.Type, node.Syntax.SourceLocation);
 		
-		public Value Visit(ResolvedIndirectCallExpressionNode node) =>
-			new IndirectCallValue(VisitNode(node.Target), node.Arguments.Select(VisitNode), node.FunctionType,
-				node.Syntax.SourceLocation);
+		public Value Visit(ResolvedIndirectCallExpressionNode node)
+		{
+			var operands = LowerOperands([node.Target, ..node.Arguments]);
+			return new IndirectCallValue(operands[0], operands.Skip(1), node.FunctionType, node.Syntax.SourceLocation);
+		}
 		
 		public Value Visit(ResolvedHeapExpressionNode node)
 		{
@@ -656,14 +700,22 @@ public sealed class Lowerer(ConstantEvaluator evaluator, Func<GlobalSymbol, Glob
 			IReadOnlyList<IResolvedExpressionNode> arguments, SourceLocation sourceLocation)
 		{
 			var args = new List<Value> { self };
-			args.AddRange(arguments.Select(VisitNode));
+			args.AddRange(LowerOperands(arguments));
 			
 			GetOrMakeBlock().Instructions
 				.Add(new ExpressionInstruction(new CallValue(constructor, args, sourceLocation)));
 		}
 		
-		public Value Visit(ResolvedIndexerExpressionNode node) =>
-			new IndexerValue(node.Type, VisitNode(node.Target), VisitNode(node.Index), node.Syntax.SourceLocation);
+		public Value Visit(ResolvedIndexerExpressionNode node)
+		{
+			var target = VisitNode(node.Target);
+			if (MayEmit(node.Index))
+				target = node.Target.Type is ArrayType
+					? StabilizeStorageBase(target)
+					: CaptureAsAtomic(target, "target");
+			
+			return new IndexerValue(node.Type, target, VisitNode(node.Index), node.Syntax.SourceLocation);
+		}
 		
 		public Value Visit(ResolvedInvalidExpressionNode node) =>
 			throw new InvalidOperationException();
@@ -675,7 +727,7 @@ public sealed class Lowerer(ConstantEvaluator evaluator, Func<GlobalSymbol, Glob
 			MakeConstant(node.Type, node.Value);
 		
 		public Value Visit(ResolvedArrayExpressionNode node) =>
-			new ArrayValue((ArrayType)node.Type, node.Values.Select(VisitNode), node.Syntax.SourceLocation);
+			new ArrayValue((ArrayType)node.Type, LowerOperands(node.Values), node.Syntax.SourceLocation);
 		
 		public Value Visit(ResolvedUnaryOpExpressionNode node)
 		{
@@ -697,7 +749,8 @@ public sealed class Lowerer(ConstantEvaluator evaluator, Func<GlobalSymbol, Glob
 			if (IsShortCircuitOp(node.Operation))
 				return LowerShortCircuit(node.Left, node.Operation!.Op, node.Right);
 			
-			return LowerBinOp(VisitNode(node.Left), node.Operation, VisitNode(node.Right));
+			var operands = LowerOperands([node.Left, node.Right]);
+			return LowerBinOp(operands[0], node.Operation, operands[1]);
 		}
 		
 		private static bool IsShortCircuitOp(OperationImpl? op) =>
@@ -746,19 +799,57 @@ public sealed class Lowerer(ConstantEvaluator evaluator, Func<GlobalSymbol, Glob
 		private LocalVariableSymbol CreateTempSymbol(TypeSymbol type, string name)
 		{
 			name = $".t{NextTempId()}__{name}";
-			return new LocalVariableSymbol(new(TokenType.Identifier, SourceLocation.None, name), type, true);
+			var symbol = new LocalVariableSymbol(new(TokenType.Identifier, SourceLocation.None, name), type, true);
+			_temporaries.Add(symbol);
+			return symbol;
 		}
+		
+		private List<Value> LowerOperands(IReadOnlyList<IResolvedExpressionNode> operands)
+		{
+			var values = new List<Value>(operands.Count);
+			foreach (var operand in operands)
+			{
+				if (MayEmit(operand))
+				{
+					for (var i = 0; i < values.Count; i++)
+						values[i] = CaptureAsAtomic(values[i], "operand");
+				}
+				
+				values.Add(VisitNode(operand));
+			}
+			
+			return values;
+		}
+		
+		private static bool MayEmit(IResolvedExpressionNode node) => node switch
+		{
+			ResolvedLiteralExpressionNode or ResolvedVarExpressionNode or ResolvedGlobalExpressionNode
+				or ResolvedFunctionReferenceExpressionNode or ResolvedUndefExpressionNode => false,
+			ResolvedConversionExpressionNode n => MayEmit(n.Source),
+			ResolvedAccessExpressionNode n => MayEmit(n.Target),
+			ResolvedIndexerExpressionNode n => MayEmit(n.Target) || MayEmit(n.Index),
+			ResolvedUnaryOpExpressionNode n => MayEmit(n.Operand),
+			ResolvedBinaryOpExpressionNode n => IsShortCircuitOp(n.Operation) || MayEmit(n.Left) || MayEmit(n.Right),
+			ResolvedAssignmentExpressionNode n => n.Operation is not null || MayEmit(n.Left) || MayEmit(n.Right),
+			ResolvedFunctionCallExpressionNode n => n.Arguments.Any(MayEmit),
+			ResolvedIndirectCallExpressionNode n => MayEmit(n.Target) || n.Arguments.Any(MayEmit),
+			ResolvedArrayExpressionNode n => n.Values.Any(MayEmit),
+			ResolvedEnumCaseExpressionNode n => n.Payload.Any(MayEmit),
+			_ => true
+		};
 		
 		public Value Visit(ResolvedAssignmentExpressionNode node)
 		{
 			var left = VisitPlace(node.Left);
 			
 			// Need to stabilize the left side first so compound assignments don't double-evaluate
-			if (node.Operation is not null)
+			var emits = MayEmit(node.Right);
+			if (node.Operation is not null || emits)
 				left = StabilizeStorage(left);
 			
+			var current = node.Operation is not null && emits ? CaptureAsAtomic(left, "current") : left;
 			var right = VisitNode(node.Right);
-			var value = node.Operation is null ? right : LowerBinOp(left, node.Operation, right);
+			var value = node.Operation is null ? right : LowerBinOp(current, node.Operation, right);
 			return new AssignValue(node.Type, left, value, node.Op.SourceLocation);
 		}
 		
@@ -780,6 +871,9 @@ public sealed class Lowerer(ConstantEvaluator evaluator, Func<GlobalSymbol, Glob
 				var op = node.Ops[i];
 				var rightNode = node.Operands[i + 1];
 				var isLast = i == node.Ops.Length - 1;
+				
+				if (!isLast || MayEmit(rightNode))
+					left = CaptureAsAtomic(left, "chain_left");
 				
 				Value right;
 				if (isLast)
@@ -948,7 +1042,7 @@ public sealed class Lowerer(ConstantEvaluator evaluator, Func<GlobalSymbol, Glob
 		
 		private Value CaptureAsAtomic(Value value, string hint)
 		{
-			if (value is ConstantValue or ZeroValue or UndefValue or VariableValue)
+			if (IsStable(value))
 				return value;
 			
 			var symbol = CreateTempSymbol(value.Type, hint);
@@ -958,5 +1052,13 @@ public sealed class Lowerer(ConstantEvaluator evaluator, Func<GlobalSymbol, Glob
 			
 			return new VariableValue(new(symbol, value.Type), value.SourceLocation);
 		}
+		
+		private bool IsStable(Value value) => value switch
+		{
+			ConstantValue or ZeroValue or UndefValue or FunctionReferenceValue => true,
+			VariableValue { Variable.Symbol: LocalVariableSymbol symbol } =>
+				!symbol.IsMutable || _temporaries.Contains(symbol),
+			_ => false
+		};
 	}
 }

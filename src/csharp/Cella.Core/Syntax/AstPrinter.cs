@@ -371,6 +371,24 @@ public sealed class AstPrinter : ISyntaxNodeVisitor
 		}
 	}
 	
+	public void Visit(MatchExpressionNode node)
+	{
+		StartLine();
+		_sb.Append("MatchExpressionNode");
+		VisitNode(node.Value, node.Arms.Length == 0);
+		
+		for (var i = 0; i < node.Arms.Length; i++)
+		{
+			var arm = node.Arms[i];
+			VisitAction(() =>
+			{
+				StartLine();
+				_sb.Append("Arm: ").Append(arm.SourceLocation.GetText());
+				VisitNode(arm.Value, true);
+			}, i == node.Arms.Length - 1);
+		}
+	}
+	
 	public void Visit(IsExpressionNode node)
 	{
 		StartLine();
@@ -412,28 +430,28 @@ public sealed class AstPrinter : ISyntaxNodeVisitor
 			VisitNode(node.Else!, true);
 	}
 	
-	public void Visit(ReturnStatementNode node)
+	public void Visit(ReturnExpressionNode node)
 	{
 		StartLine();
-		_sb.Append("ReturnStatementNode");
-		if (node.ExpressionNode is { } expressionNode)
-			VisitNode(expressionNode, true);
+		_sb.Append("ReturnExpressionNode");
+		if (node.Value is { } value)
+			VisitNode(value, true);
 	}
 	
-	public void Visit(BreakStatementNode node)
+	public void Visit(BreakExpressionNode node)
 	{
 		StartLine();
-		_sb.Append("BreakStatementNode");
-		if (node.ExpressionNode is { } expressionNode)
-			VisitNode(expressionNode, true);
+		_sb.Append("BreakExpressionNode");
+		if (node.Label is { } label)
+			VisitNode(label, true);
 	}
 	
-	public void Visit(ContinueStatementNode node)
+	public void Visit(ContinueExpressionNode node)
 	{
 		StartLine();
-		_sb.Append("ContinueStatementNode");
-		if (node.ExpressionNode is { } expressionNode)
-			VisitNode(expressionNode, true);
+		_sb.Append("ContinueExpressionNode");
+		if (node.Label is { } label)
+			VisitNode(label, true);
 	}
 	
 	public void Visit(UnaryOpExpressionNode node)

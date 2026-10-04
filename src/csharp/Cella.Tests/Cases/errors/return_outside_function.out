@@ -1,0 +1,9 @@
+
+====== return_outside_function.ce ======
+
+Error at line 3, column 18
+2 │ 
+3 │ limit: val i32 = ret 5
+                     ╘═══╛ Returns are only allowed within functions
+
+[compilation failed]

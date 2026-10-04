@@ -1,0 +1,72 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Effect: enum
+{
+	none
+	hit(amount: i32)
+}
+
+trace: fun(name: cstr, value: i32) -> i32
+{
+	printf("%s ", name)
+	ret value
+}
+
+flag: fun(name: cstr) -> bool
+{
+	printf("%s ", name)
+	ret true
+}
+
+counter: var i32 = 0
+
+bump: fun(n: i32) -> i32
+{
+	counter = 100
+	ret n
+}
+
+make: fun -> Effect
+{
+	printf("make ")
+	ret Effect.hit(5)
+}
+
+three: fun(a: i32, b: i32, c: i32) -> i32
+{
+	printf("= %d\n", a + b + c)
+	ret 0
+}
+
+two: fun(a: i32, b: bool) -> i32
+{
+	printf("= %d %d\n", a, b)
+	ret 0
+}
+
+main: fun -> i32
+{
+	three(trace("a", 1), match make() { hit(n) => trace("arm", n)  none => 0 }, trace("c", 3))
+	two(trace("left", 1), true && flag("right"))
+	two(trace("left", 2), make() is none)
+	two(trace("left", 3), trace("x", 1) < trace("y", 2) < trace("z", 3))
+
+	val sum = trace("plus", 1) + match make() { hit(n) => trace("arm", n)  none => 0 }
+	val pair = [trace("first", 1), match make() { hit(n) => trace("second", n)  none => 0 }]
+	printf("= %d %d %d\n", sum, pair[0], pair[1])
+
+	var values = [10, 20, 30]
+	values[usize(trace("index", 1))] = match make() { hit(n) => trace("value", n)  none => 0 }
+	values[usize(trace("index", 2))] += trace("value", 4)
+	printf("= %d %d\n", values[1], values[2])
+
+	counter = 1
+	counter += match make() { hit(n) => bump(n)  none => 0 }
+	printf("= %d\n", counter)
+	ret 0
+}

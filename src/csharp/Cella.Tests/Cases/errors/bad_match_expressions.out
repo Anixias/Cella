@@ -1,0 +1,59 @@
+
+====== bad_match_expressions.ce ======
+
+Error at line 13, column 10
+12 │ val r = Role.fighter
+13 │ val a = match r { fighter => 1 }
+             ╘═══╛ This match doesn't handle every case of 'Role': healer, tank
+
+Error at line 14, column 10
+13 │ val a = match r { fighter => 1 }
+14 │ val b = match r
+             ╘═══╛ The arms of this match have incompatible types: 'i32', 'str'
+
+Error at line 21, column 20
+20 │ 
+21 │ val c = match r { else => 1  fighter => 2 }
+                       ╘══╛ 'else' must be the last arm
+
+Error at line 22, column 20
+21 │ val c = match r { else => 1  fighter => 2 }
+22 │ val d = match r { fighter => 1  fighter => 2  else => 3 }
+                       ╘═════╛ 'fighter' is matched more than once
+
+Error at line 22, column 34
+21 │ val c = match r { else => 1  fighter => 2 }
+22 │ val d = match r { fighter => 1  fighter => 2  else => 3 }
+                                     ╘═════╛ 'fighter' is matched more than once
+
+Error at line 23, column 34
+22 │ val d = match r { fighter => 1  fighter => 2  else => 3 }
+23 │ val e = match r { fighter => 1  mage => 2 }
+                                     ╘══╛ 'Role' has no case 'mage'
+
+Error at line 24, column 16
+23 │ val e = match r { fighter => 1  mage => 2 }
+24 │ val f = match 5 { fighter => 1 }
+                   ^ 'integer literal' is not an enum
+
+Error at line 25, column 37
+24 │ val f = match 5 { fighter => 1 }
+25 │ val g: bool = match r { fighter => 1  else => 2 }
+                                        ^ Cannot convert type 'integer literal' to 'bool'
+
+Error at line 25, column 48
+24 │ val f = match 5 { fighter => 1 }
+25 │ val g: bool = match r { fighter => 1  else => 2 }
+                                                   ^ Cannot convert type 'integer literal' to 'bool'
+
+Error at line 26, column 34
+25 │ val g: bool = match r { fighter => 1  else => 2 }
+26 │ val h = match r { fighter => 1  else => 2  else => 3 }
+                                     ╘══╛ A match can have only one 'else' arm
+
+Error at line 26, column 45
+25 │ val g: bool = match r { fighter => 1  else => 2 }
+26 │ val h = match r { fighter => 1  else => 2  else => 3 }
+                                                ╘══╛ A match can have only one 'else' arm
+
+[compilation failed]

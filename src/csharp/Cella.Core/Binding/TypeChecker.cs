@@ -91,14 +91,14 @@ public sealed class TypeChecker(ConstantEvaluator evaluator) : IResolvedStatemen
 			VisitNode(statement);
 	}
 	
-	public void Visit(ResolvedBreakStatementNode node)
+	public void Visit(ResolvedBreakExpressionNode node)
 	{
 		if (breakDepth <= 0)
 			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Syntax.SourceLocation,
 				"Breaks are only allowed within loops")); // TODO Allow within switch statements?
 	}
 	
-	public void Visit(ResolvedContinueStatementNode node)
+	public void Visit(ResolvedContinueExpressionNode node)
 	{
 		if (continueDepth <= 0)
 			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Syntax.SourceLocation,
@@ -139,17 +139,24 @@ public sealed class TypeChecker(ConstantEvaluator evaluator) : IResolvedStatemen
 			VisitNode(arm.Body);
 	}
 	
-	public void Visit(ResolvedReturnStatementNode node)
+	public void Visit(ResolvedMatchExpressionNode node)
+	{
+		VisitNode(node.Value);
+		foreach (var arm in node.Arms)
+			VisitNode(arm.Value);
+	}
+	
+	public void Visit(ResolvedReturnExpressionNode node)
 	{
 		var expected = _returnTypeStack.Peek();
-		var actual = node.Expression?.Type ?? NativeSymbols.Void;
+		var actual = node.Value?.Type ?? NativeSymbols.Void;
 		
 		if (!AreTypesCompatible(expected, actual))
 			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Syntax.SourceLocation,
 				$"Cannot return value of type '{actual.Name}': Expected type '{expected?.Name ?? "void"}'"));
 		
-		if (node.Expression is { } expression)
-			VisitNode(expression);
+		if (node.Value is { } value)
+			VisitNode(value);
 	}
 	
 	public void Visit(ResolvedVarStatementNode node)
@@ -248,6 +255,7 @@ public sealed class TypeChecker(ConstantEvaluator evaluator) : IResolvedStatemen
 		ResolvedFunctionCallExpressionNode => true, // TODO Warn if function is pure?
 		ResolvedIndirectCallExpressionNode => true,
 		ResolvedAssignmentExpressionNode => true,
+		ResolvedReturnExpressionNode or ResolvedBreakExpressionNode or ResolvedContinueExpressionNode => true,
 		_ => false
 	};
 	
@@ -310,6 +318,7 @@ public sealed class TypeChecker(ConstantEvaluator evaluator) : IResolvedStatemen
 		ResolvedRecordExpressionNode n => n.Fields.Select(static f => f.Value),
 		ResolvedEnumCaseExpressionNode n => n.Payload,
 		ResolvedIsExpressionNode n => [n.Value],
+		ResolvedMatchExpressionNode n => [n.Value],
 		ResolvedArrayExpressionNode n => n.Values,
 		_ => []
 	};

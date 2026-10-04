@@ -48,7 +48,6 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	private readonly HashSet<LocalVariableSymbol> _repeatedBindings = [];
 	private readonly Dictionary<IResolvedExpressionNode, ImmutableArray<LocalVariableSymbol?>> _failedPatterns = [];
 	private ResolutionContext CurrentResolutionContext => _resolutionContexts.Peek();
-	private FunctionInfo CurrentFunction => CurrentResolutionContext.ContainingFunction!.Value;
 	private Scope? CurrentScope => CurrentResolutionContext.LocalScope;
 	private TypeSymbol? CurrentTargetType => _targetTypes.TryPeek(out var result) ? result : null;
 	
@@ -233,53 +232,46 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		return new ResolvedBlockStatementNode(statements, node);
 	}
 	
-	public IResolvedStatementNode Visit(ReturnStatementNode node)
+	public IResolvedExpressionNode Visit(ReturnExpressionNode node)
 	{
-		var returnType = CurrentFunction.Signature.ReturnType;
-		var expression = node.ExpressionNode is { } expr ? VisitNode(expr, returnType) : null;
-		return new ResolvedReturnStatementNode(expression, node);
+		if (CurrentResolutionContext.ContainingFunction is not { } function)
+			return Error(node, "Returns are only allowed within functions", null);
+		
+		var value = node.Value is { } expression ? VisitNode(expression, function.Signature.ReturnType) : null;
+		return new ResolvedReturnExpressionNode(value, node);
 	}
 	
-	public IResolvedStatementNode Visit(BreakStatementNode node)
+	public IResolvedExpressionNode Visit(BreakExpressionNode node)
 	{
-		if (node.ExpressionNode is not { } expressionNode)
-			return new ResolvedBreakStatementNode(null, node);
+		var (label, error) = ResolveLabel(node, node.Label);
+		return error ?? (IResolvedExpressionNode)new ResolvedBreakExpressionNode(label, node);
+	}
+	
+	public IResolvedExpressionNode Visit(ContinueExpressionNode node)
+	{
+		var (label, error) = ResolveLabel(node, node.Label);
+		return error ?? (IResolvedExpressionNode)new ResolvedContinueExpressionNode(label, node);
+	}
+	
+	private (LabelSymbol? Label, ResolvedInvalidExpressionNode? Error) ResolveLabel(IExpressionNode node,
+		IExpressionNode? labelNode)
+	{
+		if (labelNode is null)
+			return (null, null);
 		
-		if (expressionNode is not VarExpressionNode varExpr)
-			return Error(node, "Expression must be a label", expressionNode);
+		if (labelNode is not VarExpressionNode varExpr)
+			return (null, Error(node, "Expression must be a label", null, labelNode));
 		
 		var name = varExpr.Identifier.Text;
 		if (CurrentResolutionContext.Resolve(name) is not { } symbol)
 		{
 			var diagnostic = DiagnosticReporter.ReportUndefinedSymbol(node, name, GetVisibleSymbolNames());
-			return Error(node, diagnostic);
+			return (null, Error(node, diagnostic, null));
 		}
 		
-		if (symbol is not LabelSymbol label)
-			return Error(node, $"Symbol '{name}' is not a label", varExpr);
-		
-		return new ResolvedBreakStatementNode(label, node);
-	}
-	
-	public IResolvedStatementNode Visit(ContinueStatementNode node)
-	{
-		if (node.ExpressionNode is not { } expressionNode)
-			return new ResolvedContinueStatementNode(null, node);
-		
-		if (expressionNode is not VarExpressionNode varExpr)
-			return Error(node, "Expression must be a label", expressionNode);
-		
-		var name = varExpr.Identifier.Text;
-		if (CurrentResolutionContext.Resolve(name) is not { } symbol)
-		{
-			var diagnostic = DiagnosticReporter.ReportUndefinedSymbol(node, name, GetVisibleSymbolNames());
-			return Error(node, diagnostic);
-		}
-		
-		if (symbol is not LabelSymbol label)
-			return Error(node, $"Symbol '{name}' is not a label", varExpr);
-		
-		return new ResolvedContinueStatementNode(label, node);
+		return symbol is LabelSymbol label
+			? (label, null)
+			: (null, Error(node, $"Symbol '{name}' is not a label", null, varExpr));
 	}
 	
 	public IResolvedStatementNode Visit(ExpressionStatementNode node) =>
@@ -468,10 +460,11 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		return result;
 	}
 	
-	private IResolvedExpressionNode VisitInScope(IExpressionNode node, IEnumerable<LocalVariableSymbol> bindings)
+	private IResolvedExpressionNode VisitInScope(IExpressionNode node, IEnumerable<LocalVariableSymbol?> bindings,
+		TypeSymbol? target = null)
 	{
 		_resolutionContexts.Push(CurrentResolutionContext with { LocalScope = CreateScope(bindings) });
-		var result = VisitNode(node, null);
+		var result = VisitNode(node, target);
 		_resolutionContexts.Pop();
 		return result;
 	}
@@ -491,41 +484,92 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	{
 		var (value, enumType) = ResolveMatchedValue(node.Value);
 		var arms = new List<ResolvedMatchArm>(node.Arms.Length);
+		var summaries = new List<MatchArmSummary>(node.Arms.Length);
 		foreach (var arm in node.Arms)
 		{
 			var pattern = arm.Pattern is { } syntax && enumType is not null ? ResolvePattern(syntax, enumType) : null;
 			var bindings = pattern?.Bindings ?? (arm.Pattern is { } failed ? CreateBindings(failed, null) : []);
 			ReportDeclarationBody(arm.Body, "a match arm");
 			arms.Add(new ResolvedMatchArm(pattern, VisitInScope(arm.Body, bindings)));
+			summaries.Add(new MatchArmSummary(arm.Pattern is null, pattern?.Case, arm.SourceLocation));
 		}
 		
-		ReportArmConflicts(node, arms);
+		ReportArmConflicts(summaries);
 		return new ResolvedMatchStatementNode(value, arms, node);
 	}
 	
-	private void ReportArmConflicts(MatchStatementNode node, IReadOnlyList<ResolvedMatchArm> arms)
+	public IResolvedExpressionNode Visit(MatchExpressionNode node)
 	{
-		var elseArms = node.Arms.Where(static arm => arm.Pattern is null).ToList();
+		var target = CurrentTargetType;
+		var (value, enumType) = ResolveMatchedValue(node.Value);
+		var patterns = new List<ResolvedPattern?>(node.Arms.Length);
+		var values = new List<IResolvedExpressionNode>(node.Arms.Length);
+		var summaries = new List<MatchArmSummary>(node.Arms.Length);
+		foreach (var arm in node.Arms)
+		{
+			var pattern = arm.Pattern is { } syntax && enumType is not null ? ResolvePattern(syntax, enumType) : null;
+			var bindings = pattern?.Bindings ?? (arm.Pattern is { } failed ? CreateBindings(failed, null) : []);
+			patterns.Add(pattern);
+			values.Add(VisitInScope(arm.Value, bindings, target));
+			summaries.Add(new MatchArmSummary(arm.Pattern is null, pattern?.Case, arm.SourceLocation));
+		}
+		
+		ReportArmConflicts(summaries);
+		if (enumType is not null)
+			ReportMissingCases(node.Keyword, enumType, summaries);
+		
+		var type = target ?? UnifyTypes(values);
+		if (type is null)
+		{
+			var types = string.Join(", ", values.Select(static v => $"'{v.Type.Name}'").Distinct());
+			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Keyword.SourceLocation,
+				$"The arms of this match have incompatible types: {types}"));
+			
+			type = NativeSymbols.Invalid;
+		}
+		
+		var arms = values.Select((v, i) => new ResolvedMatchExpressionArm(patterns[i], CoerceToType(v, type)));
+		return new ResolvedMatchExpressionNode(value, arms, type, node);
+	}
+	
+	private readonly record struct MatchArmSummary(bool IsElse, EnumCaseSymbol? Case, SourceLocation Location);
+	
+	private void ReportArmConflicts(IReadOnlyList<MatchArmSummary> arms)
+	{
+		var elseArms = arms.Where(static arm => arm.IsElse).ToList();
 		if (elseArms.Count > 1)
 		{
 			foreach (var arm in elseArms)
-				Diagnostics.Add(new(DiagnosticSeverity.Error, arm.SourceLocation,
-					"A match can have only one 'else' arm"));
+				Diagnostics.Add(new(DiagnosticSeverity.Error, arm.Location, "A match can have only one 'else' arm"));
 		}
-		else if (elseArms.Count == 1 && node.Arms[^1].Pattern is not null)
+		else if (elseArms.Count == 1 && !arms[^1].IsElse)
 		{
-			Diagnostics.Add(new(DiagnosticSeverity.Error, elseArms[0].SourceLocation, "'else' must be the last arm"));
+			Diagnostics.Add(new(DiagnosticSeverity.Error, elseArms[0].Location, "'else' must be the last arm"));
 		}
 		
 		var repeated = arms
-			.Select((arm, index) => (Case: arm.Pattern?.Case, Location: node.Arms[index].SourceLocation))
 			.Where(static arm => arm.Case is not null)
 			.GroupBy(static arm => arm.Case)
 			.Where(static sameCase => sameCase.Count() > 1)
 			.SelectMany(static sameCase => sameCase);
 		
-		foreach (var (enumCase, location) in repeated)
-			Diagnostics.Add(new(DiagnosticSeverity.Error, location, $"'{enumCase!.Name}' is matched more than once"));
+		foreach (var arm in repeated)
+			Diagnostics.Add(new(DiagnosticSeverity.Error, arm.Location,
+				$"'{arm.Case!.Name}' is matched more than once"));
+	}
+	
+	private void ReportMissingCases(Token keyword, EnumSymbol enumType, IReadOnlyList<MatchArmSummary> arms)
+	{
+		if (arms.Any(static arm => arm.IsElse || arm.Case is null))
+			return;
+		
+		var missing = enumType.Cases.Where(enumCase => arms.All(arm => arm.Case != enumCase)).ToList();
+		if (missing.Count == 0)
+			return;
+		
+		var names = string.Join(", ", missing.Select(static enumCase => enumCase.Name));
+		Diagnostics.Add(new(DiagnosticSeverity.Error, keyword.SourceLocation,
+			$"This match doesn't handle every case of '{enumType.Name}': {names}"));
 	}
 	
 	private IResolvedExpressionNode VisitTypeCall(CallExpressionNode node, TypeSymbol targetType)
@@ -903,35 +947,8 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		}
 		else
 		{
-			// Materialize untyped integer values left to right
-			for (var i = 0; i < values.Count - 1; i++)
-			{
-				values[i] = MaterializeWithPeer(values[i], values[i + 1].Type);
-				values[i + 1] = MaterializeWithPeer(values[i + 1], values[i].Type);
-			}
-			
-			// Propagate materialized values back right to left
-			for (var i = values.Count - 1; i > 0; i--)
-			{
-				values[i] = MaterializeWithPeer(values[i], values[i - 1].Type);
-				values[i - 1] = MaterializeWithPeer(values[i - 1], values[i].Type);
-			}
-			
-			for (var i = 0; i < values.Count; i++)
-				values[i] = MaterializeAsDefault(values[i]);
-			
-			elementType = values[0].Type;
-			for (var i = 1; i < values.Count; i++)
-			{
-				elementType = FindCommonType(elementType, values[i].Type);
-				if (elementType is not null)
-					continue;
-				
-				// TODO Diagnostic: incompatible element types
-				elementType = NativeSymbols.Invalid;
-				break;
-			}
-			
+			// TODO Diagnostic: incompatible element types
+			elementType = UnifyTypes(values) ?? NativeSymbols.Invalid;
 			for (var i = 0; i < values.Count; i++)
 				values[i] = CoerceToType(values[i], elementType);
 		}
@@ -1468,28 +1485,8 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		foreach (var operand in node.Operands)
 			operands.Add(VisitNode(operand, null));
 		
-		// Materialize untyped integer operands left to right
-		for (var i = 0; i < operands.Count - 1; i++)
-		{
-			operands[i] = MaterializeWithPeer(operands[i], operands[i + 1].Type);
-			operands[i + 1] = MaterializeWithPeer(operands[i + 1], operands[i].Type);
-		}
-		
-		// Propagate materialized operands back right to left
-		for (var i = operands.Count - 1; i > 0; i--)
-		{
-			operands[i] = MaterializeWithPeer(operands[i], operands[i - 1].Type);
-			operands[i - 1] = MaterializeWithPeer(operands[i - 1], operands[i].Type);
-		}
-		
-		for (var i = 0; i < operands.Count; i++)
-			operands[i] = MaterializeAsDefault(operands[i]);
-		
 		// TODO Do we need common types anymore?
-		var commonType = operands[0].Type;
-		for (var i = 1; i < operands.Count && commonType is not null; i++)
-			commonType = FindCommonType(commonType, operands[i].Type);
-		
+		var commonType = UnifyTypes(operands);
 		if (commonType is null)
 			return Error(node, "Cannot chain comparisons between incompatible types", CurrentTargetType);
 		
@@ -1691,6 +1688,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		if (node is ResolvedFunctionGroupExpressionNode group)
 			return MaterializeFunction(group, target);
 		
+		if (node.Type is NeverType)
+			return new ResolvedConversionExpressionNode(node, new NeverConversion(target), node.Syntax);
+		
 		if (node is not ResolvedLiteralExpressionNode literal)
 			return node;
 		
@@ -1843,10 +1843,42 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		return _conversionTable.FindImplicit(unsignedType, signedType) is null ? (signedType, unsignedType) : null;
 	}
 	
+	private TypeSymbol? UnifyTypes(IList<IResolvedExpressionNode> values)
+	{
+		if (values.Count == 0)
+			return NativeSymbols.Never;
+		
+		// Materialize untyped integer values left to right
+		for (var i = 0; i < values.Count - 1; i++)
+		{
+			values[i] = MaterializeWithPeer(values[i], values[i + 1].Type);
+			values[i + 1] = MaterializeWithPeer(values[i + 1], values[i].Type);
+		}
+		
+		// Propagate materialized values back right to left
+		for (var i = values.Count - 1; i > 0; i--)
+		{
+			values[i] = MaterializeWithPeer(values[i], values[i - 1].Type);
+			values[i - 1] = MaterializeWithPeer(values[i - 1], values[i].Type);
+		}
+		
+		for (var i = 0; i < values.Count; i++)
+			values[i] = MaterializeAsDefault(values[i]);
+		
+		TypeSymbol? commonType = values[0].Type;
+		for (var i = 1; i < values.Count && commonType is not null; i++)
+			commonType = FindCommonType(commonType, values[i].Type);
+		
+		return commonType;
+	}
+	
 	private TypeSymbol? FindCommonType(TypeSymbol a, TypeSymbol b)
 	{
-		if (a == b)
+		if (a == b || b is NeverType)
 			return a;
+		
+		if (a is NeverType)
+			return b;
 		
 		if (AnyInvalid(a, b))
 			return NativeSymbols.Invalid;
@@ -1899,12 +1931,6 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	
 	private ResolvedInvalidStatementNode Error(IStatementNode node, string message, ISyntaxNode? source = null) =>
 		Error(node, message, source?.SourceLocation ?? node.SourceLocation);
-	
-	private ResolvedInvalidStatementNode Error(IStatementNode node, Diagnostic diagnostic)
-	{
-		Diagnostics.Add(diagnostic);
-		return new(node);
-	}
 	
 	private ResolvedInvalidDeclarationNode Error(IDeclarationNode node, string message, SourceLocation sourceLocation)
 	{
@@ -2045,6 +2071,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		
 		switch (arg.Type)
 		{
+			case NeverType:
+				return arg;
+			
 			case PrimitiveType { Kind: PrimitiveTypeKind.Bool }:
 				return new ResolvedConversionExpressionNode(arg, _boolPromotion, arg.Syntax);
 			

@@ -38,6 +38,7 @@ public static class NativeSymbols
 	public static UntypedFloatType UntypedFloat => UntypedFloatType.Instance;
 	public static UntypedNullType UntypedNull => UntypedNullType.Instance;
 	public static UntypedStringType UntypedString => UntypedStringType.Instance;
+	public static NeverType Never => NeverType.Instance;
 	public static PointerType VoidPtr => PointerType.VoidPtr;
 	public static PrimitiveType Void { get; } = new("void", PrimitiveTypeKind.Void);
 	public static IntegerType Int8 { get; } = new("i8", PrimitiveTypeKind.Int8, true);

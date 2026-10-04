@@ -155,6 +155,13 @@ public abstract class UntypedType(string name) : TypeSymbol(name)
 	public abstract int MaterializationCost(TypeSymbol target, MaterializationMode mode);
 }
 
+public sealed class NeverType() : UntypedType("never")
+{
+	public static NeverType Instance { get; } = new();
+	
+	public override int MaterializationCost(TypeSymbol target, MaterializationMode mode) => 0;
+}
+
 public sealed class UntypedIntegerType() : UntypedType("integer literal")
 {
 	public static UntypedIntegerType Instance { get; } = new();

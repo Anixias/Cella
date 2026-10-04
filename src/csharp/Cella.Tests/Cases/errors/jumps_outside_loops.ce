@@ -1,0 +1,21 @@
+mod test
+
+Role: enum
+{
+	fighter
+	healer
+}
+
+answer: fun -> i32
+{
+	ret
+}
+
+main: fun -> i32
+{
+	val r = Role.fighter
+	val x = match r { fighter => break  healer => 1 }
+	val y = match r { fighter => cont  healer => 2 }
+	break
+	ret x + y
+}

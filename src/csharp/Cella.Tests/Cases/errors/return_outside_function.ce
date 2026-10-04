@@ -1,0 +1,5 @@
+mod test
+
+limit: val i32 = ret 5
+
+main: fun -> i32 = limit

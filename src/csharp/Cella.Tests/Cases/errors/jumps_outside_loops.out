@@ -1,0 +1,24 @@
+
+====== jumps_outside_loops.ce ======
+
+Error at line 11, column 2
+10 │ {
+11 │     ret
+         ╘═╛ Cannot return value of type 'void': Expected type 'i32'
+
+Error at line 17, column 31
+16 │ val r = Role.fighter
+17 │ val x = match r { fighter => break  healer => 1 }
+                                  ╘═══╛ Breaks are only allowed within loops
+
+Error at line 18, column 31
+17 │ val x = match r { fighter => break  healer => 1 }
+18 │ val y = match r { fighter => cont  healer => 2 }
+                                  ╘══╛ Continues are only allowed within loops
+
+Error at line 19, column 2
+18 │ val y = match r { fighter => cont  healer => 2 }
+19 │ break
+     ╘═══╛ Breaks are only allowed within loops
+
+[compilation failed]

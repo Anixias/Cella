@@ -419,7 +419,8 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 		if (Match(ref index, TokenType.OpEqual))
 		{
 			var expression = ParseExpression(ref index);
-			var statement = new ReturnStatementNode(expression.SourceLocation, expression);
+			var returnExpression = new ReturnExpressionNode(expression.SourceLocation, expression);
+			var statement = new ExpressionStatementNode(returnExpression);
 			return new(identifier, modifiers, parameters, returnType, statement, isExternal);
 		}
 		
@@ -749,15 +750,6 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 		if (Match(ref index, out var matchToken, TokenType.KeywordMatch))
 			return ParseMatchStatement(ref index, matchToken);
 		
-		if (Match(ref index, out var retToken, TokenType.KeywordRet))
-			return ParseReturnStatement(ref index, retToken);
-		
-		if (Match(ref index, out var breakToken, TokenType.KeywordBreak))
-			return ParseBreakStatement(ref index, breakToken);
-		
-		if (Match(ref index, out var contToken, TokenType.KeywordCont))
-			return ParseContinueStatement(ref index, contToken);
-		
 		if (Match(ref index, out var openBraceToken, TokenType.OpOpenBrace))
 			return ParseBlockStatement(ref index, openBraceToken);
 		
@@ -940,69 +932,8 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 		return new(new(source, range), identifier, type, initializer, isMutable);
 	}
 	
-	private ReturnStatementNode ParseReturnStatement(ref int index, Token retToken)
-	{
-		// retToken already consumed when this function is called
-		
-		// @TODO Diagnostics
-		var range = retToken.SourceLocation.Range;
-		var source = retToken.SourceLocation.Source;
-		
-		if (AtEnd(index) || retToken.Line != Tokens[index].Line || TryParseExpression(ref index) is not { } expression)
-			return new(new(source, range), null);
-		
-		range = range.Join(expression.SourceLocation.Range);
-		return new(new(source, range), expression);
-	}
-	
-	private BreakStatementNode ParseBreakStatement(ref int index, Token breakToken)
-	{
-		// breakToken already consumed when this function is called
-		
-		// @TODO Diagnostics
-		var range = breakToken.SourceLocation.Range;
-		var source = breakToken.SourceLocation.Source;
-		
-		if (AtEnd(index) || breakToken.Line != Tokens[index].Line ||
-		    TryParseExpression(ref index) is not { } expression)
-			return new(new(source, range), null);
-		
-		range = range.Join(expression.SourceLocation.Range);
-		return new(new(source, range), expression);
-	}
-	
-	private ContinueStatementNode ParseContinueStatement(ref int index, Token contToken)
-	{
-		// continueToken already consumed when this function is called
-		
-		// @TODO Diagnostics
-		var range = contToken.SourceLocation.Range;
-		var source = contToken.SourceLocation.Source;
-		
-		if (AtEnd(index) || contToken.Line != Tokens[index].Line || TryParseExpression(ref index) is not { } expression)
-			return new(new(source, range), null);
-		
-		range = range.Join(expression.SourceLocation.Range);
-		return new(new(source, range), expression);
-	}
-	
 	private IExpressionNode ParseExpression(ref int index) => new ExpressionParser(Tokens).Parse(ref index);
 	private ITypeNode ParseType(ref int index) => new TypeParser(Tokens).Parse(ref index);
-	
-	private IExpressionNode? TryParseExpression(ref int index)
-	{
-		try
-		{
-			var parserIndex = index;
-			var result = ParseExpression(ref parserIndex);
-			index = parserIndex;
-			return result;
-		}
-		catch
-		{
-			return null;
-		}
-	}
 	
 	private void ResyncTopLevel(ref int index)
 	{
