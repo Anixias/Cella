@@ -1,0 +1,49 @@
+
+====== declaration_recovery.ce ======
+
+Error at line 4, column 6
+3 │ limit: val i32 = (1 +
+4 │ first: fun -> i32 = (2 +
+         ^ Expected ')'
+         | To match the '(' on line 3
+
+Error at line 6, column 7
+5 │ 
+6 │ second: fun(
+          ^ Expected ')'
+          | To match the '(' on line 4
+
+Error at line 8, column 5
+7 │ a: i32,
+8 │ b: ) -> i32
+       ^ Unexpected token
+
+Error at line 14, column 7
+13 │ third: fun -> i32 = (3 +
+14 │ fourth: fun -> i32
+           ^ Expected ')'
+           | To match the '(' on line 13
+
+Error at line 16, column 6
+15 │ {
+16 │     ret (4 +
+             ^ Unexpected token
+
+Error at line 20, column 5
+19 │ fifth: fun(
+20 │     a: ,
+            ^ Unexpected token
+
+Error at line 27, column 8
+26 │ sixth: fun -> i32 = call(
+27 │ seventh: fun -> i32
+            ^ Expected ',' or ')'
+            | To match the '(' on line 26
+
+Error at line 30, column 7
+29 │ val x = (7 +
+30 │ outer: loop while true
+          ^ Expected ')'
+          | To match the '(' on line 29
+
+[compilation failed]

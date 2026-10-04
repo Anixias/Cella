@@ -1,0 +1,41 @@
+mod test
+
+limit: val i32 = (1 +
+first: fun -> i32 = (2 +
+
+second: fun(
+	a: i32,
+	b: ) -> i32
+{
+	ret a
+}
+
+third: fun -> i32 = (3 +
+fourth: fun -> i32
+{
+	ret (4 +
+}
+
+fifth: fun(
+	a: ,
+	b: i32) -> i32
+{
+	ret b
+}
+
+sixth: fun -> i32 = call(
+seventh: fun -> i32
+{
+	val x = (7 +
+	outer: loop while true
+	{
+		break outer
+	}
+
+	ret x
+}
+
+main: fun -> i32
+{
+	ret 0
+}

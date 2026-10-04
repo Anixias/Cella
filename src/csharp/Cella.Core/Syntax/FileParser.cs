@@ -176,7 +176,7 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 					
 					if (global is null)
 					{
-						ResyncTopLevel(ref index);
+						SkipDeclaration(ref index, declarationStart);
 						continue;
 					}
 					
@@ -1024,6 +1024,7 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 	private void SkipDeclaration(ref int index, int start)
 	{
 		var braceCount = 0;
+		var parameterLists = new Stack<bool>();
 		for (var i = start; !AtEnd(i); i++)
 		{
 			switch (Tokens[i].Type)
@@ -1039,11 +1040,33 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 					
 					index = i + 1;
 					return;
+				
+				case TokenType.OpOpenParen:
+					parameterLists.Push(FollowsFun(i));
+					break;
+				
+				case TokenType.OpCloseParen:
+					parameterLists.TryPop(out _);
+					break;
+				
+				case TokenType.Identifier when i > start && braceCount == 0 && !parameterLists.Contains(true) &&
+				                               StartsDeclarationOnLine(i):
+					index = i;
+					return;
 			}
 		}
 		
 		ResyncTopLevel(ref index);
 	}
+	
+	private bool FollowsFun(int index)
+	{
+		var keywordIndex = index - 1;
+		return Match(ref keywordIndex, _topLevelContextualKeywords, TokenType.KeywordFun);
+	}
+	
+	private bool StartsDeclarationOnLine(int index) =>
+		Tokens[index].Line != Tokens[index - 1].Line && StartsTopLevelDeclaration(index);
 	
 	private void ResyncSimple(ref int index)
 	{
