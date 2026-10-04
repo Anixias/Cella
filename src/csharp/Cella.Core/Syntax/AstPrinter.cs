@@ -340,6 +340,9 @@ public sealed class AstPrinter : ISyntaxNodeVisitor
 		StartLine();
 		_sb.Append("EnumNode '").Append(node.Identifier.AsSpan()).Append('\'');
 		
+		if (node.TagType is { } tagType)
+			VisitNode(tagType, node.Cases.IsEmpty);
+		
 		for (var i = 0; i < node.Cases.Length; i++)
 		{
 			var enumCase = node.Cases[i];
@@ -348,7 +351,10 @@ public sealed class AstPrinter : ISyntaxNodeVisitor
 				StartLine();
 				_sb.Append("Case '").Append(enumCase.Identifier.AsSpan()).Append('\'');
 				foreach (var field in enumCase.Payload)
-					VisitNode(field, field == enumCase.Payload[^1]);
+					VisitNode(field, field == enumCase.Payload[^1] && enumCase.Value is null);
+				
+				if (enumCase.Value is { } value)
+					VisitNode(value, true);
 			}, i == node.Cases.Length - 1);
 		}
 	}

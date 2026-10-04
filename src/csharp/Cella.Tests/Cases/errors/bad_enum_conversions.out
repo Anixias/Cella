@@ -1,0 +1,19 @@
+
+====== bad_enum_conversions.ce ======
+
+Error at line 18, column 16
+17 │ {
+18 │     val s = Small(5)
+                       ^ 'Small' has no case with the value 5
+
+Error at line 19, column 17
+18 │ val s = Small(5)
+19 │ val t = Small(-1)
+                    ^ 'Small' has no case with the value -1
+
+Error at line 20, column 15
+19 │ val t = Small(-1)
+20 │ val u = Code(50)
+                  ╘╛ 'Code' has no case with the value 50
+
+[compilation failed]

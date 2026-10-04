@@ -1,0 +1,19 @@
+
+====== enum_alias_arms.ce ======
+
+Error at line 14, column 20
+13 │ val e = Effect.none
+14 │ val a = match e { hit(n) => n  strike(n) => n  else => 0 }
+                       ╘════╛ 'hit' and 'strike' are the same case
+
+Error at line 14, column 33
+13 │ val e = Effect.none
+14 │ val a = match e { hit(n) => n  strike(n) => n  else => 0 }
+                                    ╘═══════╛ 'hit' and 'strike' are the same case
+
+Error at line 15, column 10
+14 │ val a = match e { hit(n) => n  strike(n) => n  else => 0 }
+15 │ val b = match e { none => 0  strike(n) => n }
+             ╘═══╛ This match doesn't handle every case of 'Effect': heal
+
+[compilation failed]

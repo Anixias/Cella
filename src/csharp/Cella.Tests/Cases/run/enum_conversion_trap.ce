@@ -1,0 +1,15 @@
+mod test
+
+Code: enum
+{
+	none
+	first = 100
+	second
+}
+
+main: fun -> i32
+{
+	var n = 50
+	val code = Code(n)
+	ret i32(code)
+}

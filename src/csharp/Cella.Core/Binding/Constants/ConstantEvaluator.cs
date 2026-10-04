@@ -53,7 +53,9 @@ public sealed class ConstantEvaluator
 		ResolvedFunctionReferenceExpressionNode n => new FunctionConstant(n.Function, n.Type),
 		ResolvedEnumCaseExpressionNode n => FoldAll(n.Payload, values => new EnumConstant(n.Type, n.Case, values)),
 		ResolvedIsExpressionNode { Pattern.HasBindings: false } n => FoldAll([n.Value], values =>
-			GetCase(values[0]) is { } enumCase ? BoolConstant.From(enumCase == n.Pattern.Case) : null),
+			values[0].Type is EnumSymbol enumType && GetTag(values[0]) is { } tag
+				? BoolConstant.From(tag == typePool.GetCaseValue(enumType, n.Pattern.Case))
+				: null),
 		ResolvedMatchExpressionNode n => FoldMatch(n),
 		_ => null
 	};
@@ -64,8 +66,8 @@ public sealed class ConstantEvaluator
 		if (value is null or InvalidConstant)
 			return value;
 		
-		if (GetCase(value) is not { } enumCase ||
-		    node.Arms.FirstOrDefault(arm => arm.Pattern is null || arm.Pattern.Case == enumCase) is not { } arm)
+		if (value.Type is not EnumSymbol enumType || GetTag(value) is not { } tag || node.Arms.FirstOrDefault(arm =>
+			    arm.Pattern is null || typePool.GetCaseValue(enumType, arm.Pattern.Case) == tag) is not { } arm)
 			return null;
 		
 		var bindings = arm.Pattern?.Bindings ?? [];
@@ -82,10 +84,10 @@ public sealed class ConstantEvaluator
 		return result;
 	}
 	
-	private static EnumCaseSymbol? GetCase(Constant constant) => constant switch
+	private BigInteger? GetTag(Constant constant) => constant switch
 	{
-		EnumConstant value => value.Case,
-		ZeroConstant { Type: EnumSymbol { Cases: [var first, ..] } } => first,
+		EnumConstant { Type: EnumSymbol enumType } value => typePool.GetCaseValue(enumType, value.Case),
+		ZeroConstant { Type: EnumSymbol } => BigInteger.Zero,
 		_ => null
 	};
 	
@@ -252,10 +254,10 @@ public sealed class ConstantEvaluator
 				BinaryOperation.NotEqual => BoolConstant.False,
 				_ => null
 			},
-			_ when GetCase(left) is { } leftCase && GetCase(right) is { } rightCase => operation switch
+			_ when GetTag(left) is { } leftTag && GetTag(right) is { } rightTag => operation switch
 			{
-				BinaryOperation.Equal => BoolConstant.From(leftCase == rightCase),
-				BinaryOperation.NotEqual => BoolConstant.From(leftCase != rightCase),
+				BinaryOperation.Equal => BoolConstant.From(leftTag == rightTag),
+				BinaryOperation.NotEqual => BoolConstant.From(leftTag != rightTag),
 				_ => null
 			},
 			_ => null
@@ -370,6 +372,11 @@ public sealed class ConstantEvaluator
 		(FreeConversion c, NullConstant) => new NullConstant(c.To),
 		(FreeConversion { From: FunctionType } c, FunctionConstant function) =>
 			new FunctionConstant(function.Function, c.To),
+		(EnumConversion { To: IntegerType to }, var constant) when GetTag(constant) is { } tag => Integer(to, tag),
+		(EnumConversion { To: EnumSymbol enumType }, IntegerConstant integer) =>
+			typePool.FindCase(enumType, integer.Value) is { } enumCase
+				? new EnumConstant(enumType, enumCase, [])
+				: null,
 		_ => null
 	};
 	

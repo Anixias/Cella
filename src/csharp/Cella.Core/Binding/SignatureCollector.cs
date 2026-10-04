@@ -1,4 +1,5 @@
 ﻿using System.Collections.Immutable;
+using System.Numerics;
 using Cella.Core.Binding.Constants;
 using Cella.Core.Binding.Nodes;
 using Cella.Core.Symbols;
@@ -185,6 +186,8 @@ public sealed class SignatureCollector
 		{
 			var symbol = _symbolTable.DeclarationSymbols[declaration];
 			_declarations[symbol] = new(declaration, context);
+			if (symbol is EnumSymbol { HasPayload: false } enumType)
+				_typePool.RegisterEnumConversions(enumType);
 			
 			if (declaration is not RecordNode record)
 				continue;
@@ -264,6 +267,7 @@ public sealed class SignatureCollector
 			return;
 		
 		var node = enumType.Node;
+		var context = declaration.Context;
 		if (node.Cases.IsEmpty)
 			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Identifier.SourceLocation,
 				$"'{enumType.Name}' needs at least one case"));
@@ -271,19 +275,132 @@ public sealed class SignatureCollector
 		Diagnostics.AddRange(DiagnosticReporter.ReportDuplicates(node.Cases.Select(static c => c.Identifier),
 			name => $"Case '{name}' is declared more than once in '{enumType.Name}'"));
 		
+		var payloads = new Dictionary<EnumCaseSymbol, ImmutableArray<TypeSymbol>>();
 		foreach (var enumCase in enumType.Cases)
 		{
 			Diagnostics.AddRange(DiagnosticReporter.ReportDuplicates(
 				enumCase.Node.Payload.Select(static f => f.Identifier),
 				name => $"Payload '{name}' is declared more than once in '{enumCase.Name}'"));
 			
-			foreach (var field in enumCase.Fields)
-				_typePool.RegisterPayloadField(field, declaration.Context.ResolveType(field.Node!.Type));
+			ImmutableArray<TypeSymbol> types = [..enumCase.Fields.Select(f => context.ResolveType(f.Node!.Type))];
+			for (var i = 0; i < types.Length; i++)
+				_typePool.RegisterPayloadField(enumCase.Fields[i], types[i]);
+			
+			payloads[enumCase] = types;
 		}
 		
-		_typePool.RegisterEnum(enumType);
+		var values = CollectCaseValues(enumType, context);
+		var tagType = GetTagType(enumType, context, values);
+		ReportSharedValues(enumType, values, payloads);
+		if (!node.Cases.IsEmpty && !values.Contains(BigInteger.Zero))
+			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Identifier.SourceLocation,
+				$"'{enumType.Name}' needs a case with the value 0"));
+		
+		_typePool.RegisterEnum(enumType, tagType, values);
 		_completedTypes.Add(enumType);
 		Exit();
+	}
+	
+	private ImmutableArray<BigInteger> CollectCaseValues(EnumSymbol enumType, ResolutionContext context)
+	{
+		var scope = new Scope();
+		var values = ImmutableArray.CreateBuilder<BigInteger>(enumType.Cases.Length);
+		var next = BigInteger.Zero;
+		foreach (var enumCase in enumType.Cases)
+		{
+			var value = enumCase.Node.Value is { } expression
+				? EvaluateCaseValue(enumCase, expression, context with { LocalScope = scope }) ?? next
+				: next;
+			
+			values.Add(value);
+			scope.Define(new LocalVariableSymbol(enumCase.Node.Identifier, NativeSymbols.Int128, false)
+			{
+				ConstantValue = new IntegerConstant(NativeSymbols.Int128, value)
+			});
+			
+			next = value + 1;
+		}
+		
+		return values.MoveToImmutable();
+	}
+	
+	private BigInteger? EvaluateCaseValue(EnumCaseSymbol enumCase, IExpressionNode expression,
+		ResolutionContext context)
+	{
+		var value = constants!.ResolveInitializer(expression, NativeSymbols.Int128, context);
+		switch (Evaluator.Evaluate(value))
+		{
+			case IntegerConstant constant:
+				return constant.Value;
+			
+			case null:
+				Diagnostics.Add(new(DiagnosticSeverity.Error, expression.SourceLocation,
+					$"The value of '{enumCase.Name}' must be a constant"));
+				
+				return null;
+			
+			default:
+				return null;
+		}
+	}
+	
+	private IntegerType GetTagType(EnumSymbol enumType, ResolutionContext context, IReadOnlyList<BigInteger> values)
+	{
+		if (enumType.Node.TagType is not { } typeNode)
+			return SmallestTagType(values);
+		
+		var type = context.ResolveType(typeNode);
+		if (type is not IntegerType tagType || !NativeSymbols.PureIntegerTypes.Contains(tagType))
+		{
+			if (type is not InvalidType)
+				Diagnostics.Add(new(DiagnosticSeverity.Error, typeNode.SourceLocation,
+					$"'{type.Name}' isn't an integer type"));
+			
+			return SmallestTagType(values);
+		}
+		
+		for (var i = 0; i < values.Count; i++)
+		{
+			if (Evaluator.Fits(values[i], tagType))
+				continue;
+			
+			var enumCase = enumType.Cases[i];
+			var location = enumCase.Node.Value?.SourceLocation ?? enumCase.Node.Identifier.SourceLocation;
+			Diagnostics.Add(new(DiagnosticSeverity.Error, location,
+				$"'{enumCase.Name}' is {values[i]}, which doesn't fit in '{tagType.Name}'"));
+		}
+		
+		return tagType;
+	}
+	
+	private IntegerType SmallestTagType(IReadOnlyList<BigInteger> values)
+	{
+		IntegerType[] candidates = values.Any(static value => value.Sign < 0)
+			? [NativeSymbols.Int8, NativeSymbols.Int16, NativeSymbols.Int32, NativeSymbols.Int64]
+			: [NativeSymbols.UInt8, NativeSymbols.UInt16, NativeSymbols.UInt32, NativeSymbols.UInt64];
+		
+		return candidates.FirstOrDefault(type => values.All(value => Evaluator.Fits(value, type)))
+		       ?? NativeSymbols.Int128;
+	}
+	
+	private void ReportSharedValues(EnumSymbol enumType, IReadOnlyList<BigInteger> values,
+		IReadOnlyDictionary<EnumCaseSymbol, ImmutableArray<TypeSymbol>> payloads)
+	{
+		var groups = enumType.Cases
+			.Select((enumCase, i) => (Case: enumCase, Value: values[i]))
+			.GroupBy(static c => c.Value);
+		
+		foreach (var group in groups)
+		{
+			var shape = payloads[group.First().Case];
+			if (group.All(c => payloads[c.Case].SequenceEqual(shape)))
+				continue;
+			
+			var names = DiagnosticReporter.JoinNames([..group.Select(static c => c.Case.Name)]);
+			foreach (var (enumCase, value) in group)
+				Diagnostics.Add(new(DiagnosticSeverity.Error, enumCase.Node.Identifier.SourceLocation,
+					$"{names} share the value {value} but have different payloads"));
+		}
 	}
 	
 	private void CollectConstructor(FunctionSymbol function, ConstructorNode node, ResolutionContext context)

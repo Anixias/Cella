@@ -25,6 +25,8 @@ public sealed class TypePool
 	private readonly Dictionary<TypedMemberSymbol, TypeSymbol> _memberTypes = [];
 	private readonly Dictionary<TypeSymbol, bool> _needsDrop = [];
 	private readonly Dictionary<TypeSymbol, List<FunctionInfo>> _constructors = [];
+	private readonly Dictionary<EnumSymbol, IntegerType> _tagTypes = [];
+	private readonly Dictionary<EnumCaseSymbol, BigInteger> _caseValues = [];
 	
 	public TypePool(ConversionTable conversionTable, OperatorRegistry operatorRegistry, SizeTable sizeTable)
 	{
@@ -262,11 +264,15 @@ public sealed class TypePool
 		return StorageSize.Sum(fieldSizes);
 	});
 	
-	public void RegisterEnum(EnumSymbol enumType)
+	public void RegisterEnum(EnumSymbol enumType, IntegerType tagType, IReadOnlyList<BigInteger> values)
 	{
+		_tagTypes[enumType] = tagType;
+		for (var i = 0; i < values.Count; i++)
+			_caseValues[enumType.Cases[i]] = values[i];
+		
 		SizeTable.Register(enumType, () =>
 		{
-			var tagSize = SizeTable.GetSize(GetTagType(enumType));
+			var tagSize = SizeTable.GetSize(tagType);
 			if (!enumType.HasPayload)
 				return tagSize;
 			
@@ -294,12 +300,29 @@ public sealed class TypePool
 	private TypeSymbol GetPayloadType(FieldSymbol field) =>
 		_memberTypes.GetValueOrDefault(field) ?? NativeSymbols.Invalid;
 	
-	public static IntegerType GetTagType(EnumSymbol enumType) => enumType.Cases.Length switch
+	public void RegisterEnumConversions(EnumSymbol enumType)
 	{
-		<= 1 << 8 => NativeSymbols.UInt8,
-		<= 1 << 16 => NativeSymbols.UInt16,
-		_ => NativeSymbols.UInt32
-	};
+		foreach (var integerType in NativeSymbols.PureIntegerTypes)
+		{
+			ConversionTable.Add(new EnumConversion(enumType, integerType));
+			ConversionTable.Add(new EnumConversion(integerType, enumType));
+		}
+	}
+	
+	public IntegerType GetTagType(EnumSymbol enumType)
+	{
+		Complete(enumType);
+		return _tagTypes.GetValueOrDefault(enumType, NativeSymbols.UInt8);
+	}
+	
+	public BigInteger GetCaseValue(EnumSymbol enumType, EnumCaseSymbol enumCase)
+	{
+		Complete(enumType);
+		return _caseValues.GetValueOrDefault(enumCase, enumCase.Index);
+	}
+	
+	public EnumCaseSymbol? FindCase(EnumSymbol enumType, BigInteger value) =>
+		enumType.Cases.FirstOrDefault(enumCase => GetCaseValue(enumType, enumCase) == value);
 	
 	public void RegisterMember(TypeSymbol containingType, TypedMemberSymbol member, TypeSymbol memberType)
 	{

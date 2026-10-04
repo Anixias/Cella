@@ -24,7 +24,8 @@ main: fun -> i32
 	var g = Effect.both(1)
 	var h = Effect.none == Effect.none
 	var i = Team.red < Team.blue
-	var j = i32(Team.red)
+	var j = i32(Effect.none)
 	var k = Effect.hit(missing)
+	var l = Effect(0)
 	ret 0
 }

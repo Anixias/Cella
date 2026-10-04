@@ -517,7 +517,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			var bindings = pattern?.Bindings ?? (arm.Pattern is { } failed ? CreateBindings(failed, null) : []);
 			ReportDeclarationBody(arm.Body, "a match arm");
 			arms.Add(new ResolvedMatchArm(pattern, VisitInScope(arm.Body, bindings)));
-			summaries.Add(new MatchArmSummary(arm.Pattern is null, pattern?.Case, arm.SourceLocation));
+			summaries.Add(SummarizeArm(arm.Pattern, pattern, enumType, arm.SourceLocation));
 		}
 		
 		ReportArmConflicts(summaries);
@@ -537,7 +537,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			var bindings = pattern?.Bindings ?? (arm.Pattern is { } failed ? CreateBindings(failed, null) : []);
 			patterns.Add(pattern);
 			values.Add(VisitInScope(arm.Value, bindings, target));
-			summaries.Add(new MatchArmSummary(arm.Pattern is null, pattern?.Case, arm.SourceLocation));
+			summaries.Add(SummarizeArm(arm.Pattern, pattern, enumType, arm.SourceLocation));
 		}
 		
 		ReportArmConflicts(summaries);
@@ -558,7 +558,17 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		return new ResolvedMatchExpressionNode(value, arms, type, node);
 	}
 	
-	private readonly record struct MatchArmSummary(bool IsElse, EnumCaseSymbol? Case, SourceLocation Location);
+	private readonly record struct MatchArmSummary
+	(
+		bool IsElse,
+		EnumCaseSymbol? Case,
+		BigInteger? Value,
+		SourceLocation Location
+	);
+	
+	private MatchArmSummary SummarizeArm(PatternNode? syntax, ResolvedPattern? pattern, EnumSymbol? enumType,
+		SourceLocation location) => new(syntax is null, pattern?.Case,
+		pattern is null ? null : _typePool.GetCaseValue(enumType!, pattern.Case), location);
 	
 	private void ReportArmConflicts(IReadOnlyList<MatchArmSummary> arms)
 	{
@@ -574,14 +584,20 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		}
 		
 		var repeated = arms
-			.Where(static arm => arm.Case is not null)
-			.GroupBy(static arm => arm.Case)
-			.Where(static sameCase => sameCase.Count() > 1)
-			.SelectMany(static sameCase => sameCase);
+			.Where(static arm => arm.Value is not null)
+			.GroupBy(static arm => arm.Value)
+			.Where(static sameCase => sameCase.Count() > 1);
 		
-		foreach (var arm in repeated)
-			Diagnostics.Add(new(DiagnosticSeverity.Error, arm.Location,
-				$"'{arm.Case!.Name}' is matched more than once"));
+		foreach (var sameCase in repeated)
+		{
+			List<string> names = [..sameCase.Select(static arm => arm.Case!.Name).Distinct()];
+			var message = names is [var name]
+				? $"'{name}' is matched more than once"
+				: $"{DiagnosticReporter.JoinNames(names)} are the same case";
+			
+			foreach (var arm in sameCase)
+				Diagnostics.Add(new(DiagnosticSeverity.Error, arm.Location, message));
+		}
 	}
 	
 	private void ReportMissingCases(Token keyword, EnumSymbol enumType, IReadOnlyList<MatchArmSummary> arms)
@@ -589,7 +605,11 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		if (arms.Any(static arm => arm.IsElse || arm.Case is null))
 			return;
 		
-		var missing = enumType.Cases.Where(enumCase => arms.All(arm => arm.Case != enumCase)).ToList();
+		var missing = enumType.Cases
+			.Where(enumCase => arms.All(arm => arm.Value != _typePool.GetCaseValue(enumType, enumCase)))
+			.DistinctBy(enumCase => _typePool.GetCaseValue(enumType, enumCase))
+			.ToList();
+		
 		if (missing.Count == 0)
 			return;
 		

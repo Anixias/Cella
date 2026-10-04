@@ -601,8 +601,19 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 	
 	private EnumNode? ParseEnum(ref int index, Token identifier, IEnumerable<Token> modifiers)
 	{
+		ITypeNode? tagType = null;
+		if (Match(ref index, out var openParen, TokenType.OpOpenParen))
+		{
+			tagType = ParseType(ref index);
+			if (!Match(ref index, TokenType.OpCloseParen))
+			{
+				ReportExpected(index, "')'", openParen);
+				return null;
+			}
+		}
+		
 		if (!Match(ref index, out var openBrace, TokenType.OpOpenBrace))
-			return new(identifier, modifiers, []);
+			return new(identifier, modifiers, tagType, []);
 		
 		var cases = new List<EnumCaseNode>();
 		while (!Match(ref index, TokenType.OpCloseBrace))
@@ -619,7 +630,7 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 			cases.Add(enumCase);
 		}
 		
-		return new(identifier, modifiers, cases);
+		return new(identifier, modifiers, tagType, cases);
 	}
 	
 	private EnumCaseNode? ParseEnumCase(ref int index)
@@ -632,32 +643,35 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 		}
 		
 		index++;
-		if (Tokens[index].Line != name.Line || !Match(ref index, out var openParen, TokenType.OpOpenParen))
-			return new(name, []);
-		
 		var payload = new List<FieldNode>();
-		do
+		if (Tokens[index].Line == name.Line && Match(ref index, out var openParen, TokenType.OpOpenParen))
 		{
-			if (!Match(ref index, out var fieldName, TokenType.Identifier))
+			do
 			{
-				ReportExpected(index, "a payload name");
+				if (!Match(ref index, out var fieldName, TokenType.Identifier))
+				{
+					ReportExpected(index, "a payload name");
+					return null;
+				}
+				
+				if (!Match(ref index, TokenType.OpColon))
+				{
+					ReportExpected(index, "':' and a type");
+					return null;
+				}
+				
+				payload.Add(new FieldNode(fieldName, ParseType(ref index), []));
+			} while (Match(ref index, TokenType.OpComma));
+			
+			if (!Match(ref index, TokenType.OpCloseParen))
+			{
+				ReportExpected(index, "',' or ')'", openParen);
 				return null;
 			}
-			
-			if (!Match(ref index, TokenType.OpColon))
-			{
-				ReportExpected(index, "':' and a type");
-				return null;
-			}
-			
-			payload.Add(new FieldNode(fieldName, ParseType(ref index), []));
-		} while (Match(ref index, TokenType.OpComma));
+		}
 		
-		if (Match(ref index, TokenType.OpCloseParen))
-			return new(name, payload);
-		
-		ReportExpected(index, "',' or ')'", openParen);
-		return null;
+		var value = Match(ref index, TokenType.OpEqual) ? ParseExpression(ref index) : null;
+		return new(name, payload, value);
 	}
 	
 	private IDeclarationNode? ParseMember(ref int index)

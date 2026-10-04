@@ -1,0 +1,23 @@
+mod test
+
+Small: enum
+{
+	a
+	b
+	c
+}
+
+Code: enum
+{
+	none
+	first = 100
+}
+
+main: fun -> i32
+{
+	val s = Small(5)
+	val t = Small(-1)
+	val u = Code(50)
+	val fine = Small(2)
+	ret 0
+}

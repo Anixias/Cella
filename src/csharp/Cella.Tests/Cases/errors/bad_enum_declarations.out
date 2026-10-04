@@ -1,0 +1,59 @@
+
+====== bad_enum_declarations.ce ======
+
+Error at line 6, column 9
+5 │ low
+6 │ high = 300
+           ╘═╛ 'high' is 300, which doesn't fit in 'u8'
+
+Error at line 9, column 1
+8 │ 
+9 │ Flags: enum(u8)
+    ╘═══╛ 'Flags' needs a case with the value 0
+
+Error at line 12, column 2
+11 │ a = 255
+12 │ b
+     ^ 'b' is 256, which doesn't fit in 'u8'
+
+Error at line 15, column 1
+14 │ 
+15 │ Missing: enum
+     ╘═════╛ 'Missing' needs a case with the value 0
+
+Error at line 24, column 2
+23 │ none
+24 │ hit(amount: i32) = 1
+     ╘═╛ 'hit', 'miss' and 'plain' share the value 1 but have different payloads
+
+Error at line 25, column 2
+24 │ hit(amount: i32) = 1
+25 │ miss(chance: f32) = 1
+     ╘══╛ 'hit', 'miss' and 'plain' share the value 1 but have different payloads
+
+Error at line 26, column 2
+25 │ miss(chance: f32) = 1
+26 │ plain = 1
+     ╘═══╛ 'hit', 'miss' and 'plain' share the value 1 but have different payloads
+
+Error at line 29, column 14
+28 │ 
+29 │ NotInt: enum(f32)
+                  ╘═╛ 'f32' isn't an integer type
+
+Error at line 37, column 10
+36 │ zero = 0
+37 │ other = runtime()
+             ╘═══════╛ The value of 'other' must be a constant
+
+Error at line 43, column 10
+42 │ zero
+43 │ minus = -1
+             ╘╛ 'minus' is -1, which doesn't fit in 'u8'
+
+Error at line 48, column 6
+47 │ {
+48 │     a = b
+             ^ Symbol 'b' not found in this scope
+
+[compilation failed]

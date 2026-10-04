@@ -412,6 +412,11 @@ public sealed class TypeChecker(ConstantEvaluator evaluator) : IResolvedStatemen
 			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Source.Syntax.SourceLocation,
 				$"{DescribeImmutable(binding)} and can't be changed through a '{node.Type.Name}'"));
 		
+		if (node.Conversion is EnumConversion { To: EnumSymbol enumType } &&
+		    evaluator.Evaluate(node.Source) is IntegerConstant { Value: var value } && evaluator.Evaluate(node) is null)
+			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Source.Syntax.SourceLocation,
+				$"'{enumType.Name}' has no case with the value {value}"));
+		
 		VisitNode(node.Source);
 	}
 	

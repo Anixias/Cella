@@ -11,8 +11,12 @@ using static Cella.Core.Binding.Operations.OperationMapping;
 
 namespace Cella.Core.Lowering;
 
-public sealed class Lowerer(ConstantEvaluator evaluator, Func<GlobalSymbol, GlobalInfo> getGlobalInfo)
-	: IResolvedDeclarationNodeVisitor
+public sealed class Lowerer
+(
+	ConstantEvaluator evaluator,
+	TypePool typePool,
+	Func<GlobalSymbol, GlobalInfo> getGlobalInfo
+) : IResolvedDeclarationNodeVisitor
 {
 	public IReadOnlyCollection<LoweredModule> Modules => _modules.Values;
 	public IReadOnlyCollection<LoweredFile> Files => _files.Values;
@@ -46,7 +50,7 @@ public sealed class Lowerer(ConstantEvaluator evaluator, Func<GlobalSymbol, Glob
 	}
 	
 	public void Visit(ResolvedFunctionNode node) =>
-		currentFile?.Functions.Add(FunctionLowerer.Lower(node, evaluator, getGlobalInfo));
+		currentFile?.Functions.Add(FunctionLowerer.Lower(node, evaluator, typePool, getGlobalInfo));
 	
 	public void Visit(ResolvedInvalidDeclarationNode node) => throw new InvalidOperationException();
 	
@@ -80,6 +84,7 @@ public sealed class Lowerer(ConstantEvaluator evaluator, Func<GlobalSymbol, Glob
 		
 		private readonly LoweredFunction _function;
 		private readonly ConstantEvaluator _evaluator;
+		private readonly TypePool _typePool;
 		private readonly Func<GlobalSymbol, GlobalInfo> _getGlobalInfo;
 		private readonly Stack<LoopContext> _loopStack = [];
 		private readonly Dictionary<LabelSymbol, LoopContext> _loopsByLabel = [];
@@ -93,11 +98,12 @@ public sealed class Lowerer(ConstantEvaluator evaluator, Func<GlobalSymbol, Glob
 		
 		private readonly record struct ActiveScope(int Id, SourceLocation Location);
 		
-		private FunctionLowerer(LoweredFunction function, ConstantEvaluator evaluator,
+		private FunctionLowerer(LoweredFunction function, ConstantEvaluator evaluator, TypePool typePool,
 			Func<GlobalSymbol, GlobalInfo> getGlobalInfo)
 		{
 			_function = function;
 			_evaluator = evaluator;
+			_typePool = typePool;
 			_getGlobalInfo = getGlobalInfo;
 			currentBlock = CreateBlock("entry");
 		}
@@ -118,11 +124,11 @@ public sealed class Lowerer(ConstantEvaluator evaluator, Func<GlobalSymbol, Glob
 			? _loopStack.Peek()
 			: _loopsByLabel[label];
 		
-		public static LoweredFunction Lower(ResolvedFunctionNode node, ConstantEvaluator evaluator,
+		public static LoweredFunction Lower(ResolvedFunctionNode node, ConstantEvaluator evaluator, TypePool typePool,
 			Func<GlobalSymbol, GlobalInfo> getGlobalInfo)
 		{
 			var function = new LoweredFunction(node.FunctionInfo);
-			var lower = new FunctionLowerer(function, evaluator, getGlobalInfo);
+			var lower = new FunctionLowerer(function, evaluator, typePool, getGlobalInfo);
 			
 			switch (node.Body)
 			{
@@ -283,10 +289,13 @@ public sealed class Lowerer(ConstantEvaluator evaluator, Func<GlobalSymbol, Glob
 		{
 			var scrutinee = LowerScrutinee(value);
 			var enumType = (EnumSymbol)scrutinee.Type;
-			var tagType = TypePool.GetTagType(enumType);
+			var tagType = _typePool.GetTagType(enumType);
 			var tag = CaptureAsAtomic(new EnumTagValue(tagType, scrutinee, location), "tag");
 			var mergeBlock = CreateBlock("match_end");
-			var coversEveryCase = arms.Count(static arm => arm.Pattern is not null) == enumType.Cases.Length;
+			var caseValues = enumType.Cases.Select(c => _typePool.GetCaseValue(enumType, c)).ToHashSet();
+			var coversEveryCase = caseValues.SetEquals(arms
+				.Where(static arm => arm.Pattern is not null)
+				.Select(arm => _typePool.GetCaseValue(enumType, arm.Pattern!.Case)));
 			
 			var testBlock = GetOrMakeBlock();
 			for (var i = 0; i < arms.Count; i++)
@@ -301,7 +310,7 @@ public sealed class Lowerer(ConstantEvaluator evaluator, Func<GlobalSymbol, Glob
 				else
 				{
 					nextBlock = isLast ? mergeBlock : CreateBlock("match_next");
-					var caseTag = MakeConstant(tagType, new BigInteger(pattern.Case.Index));
+					var caseTag = MakeConstant(tagType, _typePool.GetCaseValue(enumType, pattern.Case));
 					var test = new BinOpValue(NativeSymbols.Bool, tag, caseTag, BinaryOperation.Equal, location);
 					testBlock.SetTerminator(new ConditionalBranchTerminator(test, armBlock, nextBlock, location));
 				}
@@ -388,9 +397,10 @@ public sealed class Lowerer(ConstantEvaluator evaluator, Func<GlobalSymbol, Glob
 		private BinOpValue TestCase(Value scrutinee, EnumCaseSymbol enumCase)
 		{
 			var location = scrutinee.SourceLocation;
-			var tagType = TypePool.GetTagType((EnumSymbol)scrutinee.Type);
+			var enumType = (EnumSymbol)scrutinee.Type;
+			var tagType = _typePool.GetTagType(enumType);
 			var tag = new EnumTagValue(tagType, scrutinee, location);
-			var caseTag = MakeConstant(tagType, new BigInteger(enumCase.Index));
+			var caseTag = MakeConstant(tagType, _typePool.GetCaseValue(enumType, enumCase));
 			return new BinOpValue(NativeSymbols.Bool, tag, caseTag, BinaryOperation.Equal, location);
 		}
 		
@@ -941,11 +951,11 @@ public sealed class Lowerer(ConstantEvaluator evaluator, Func<GlobalSymbol, Glob
 			currentBlock = null;
 		}
 		
-		private static Value LowerBinOp(Value left, OperationImpl? op, Value right) => op switch
+		private Value LowerBinOp(Value left, OperationImpl? op, Value right) => op switch
 		{
 			NativeImpl { ParameterTypes: [EnumSymbol enumType, _] } i => new BinOpValue(i.ReturnType,
-				new EnumTagValue(TypePool.GetTagType(enumType), left, left.SourceLocation),
-				new EnumTagValue(TypePool.GetTagType(enumType), right, right.SourceLocation),
+				new EnumTagValue(_typePool.GetTagType(enumType), left, left.SourceLocation),
+				new EnumTagValue(_typePool.GetTagType(enumType), right, right.SourceLocation),
 				ToBinaryOperation(i.Op), Join(left.SourceLocation, right.SourceLocation)),
 			NativeImpl i => new BinOpValue(i.ReturnType, left, right, ToBinaryOperation(i.Op),
 				Join(left.SourceLocation, right.SourceLocation)),

@@ -59,6 +59,10 @@ public static class DiagnosticReporter
 		IEnumerable<string> caseNames) =>
 		ReportUndefined(location, $"'{enumName}' has no case '{missingName}'", missingName, caseNames);
 	
+	public static string JoinNames(IReadOnlyList<string> names) => names.Count == 1
+		? $"'{names[0]}'"
+		: $"{string.Join(", ", names.Take(names.Count - 1).Select(static name => $"'{name}'"))} and '{names[^1]}'";
+	
 	public static IEnumerable<Diagnostic> ReportDuplicates(IEnumerable<Token> identifiers,
 		Func<string, string> describe) => identifiers
 		.GroupBy(static identifier => identifier.Text)

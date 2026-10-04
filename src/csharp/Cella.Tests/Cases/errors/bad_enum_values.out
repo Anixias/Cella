@@ -49,12 +49,17 @@ Error at line 26, column 10
 
 Error at line 27, column 10
 26 │ var i = Team.red < Team.blue
-27 │ var j = i32(Team.red)
-             ╘═══════════╛ No constructor for 'i32' accepts argument of type 'Team'
+27 │ var j = i32(Effect.none)
+             ╘══════════════╛ No constructor for 'i32' accepts argument of type 'Effect'
 
 Error at line 28, column 21
-27 │ var j = i32(Team.red)
+27 │ var j = i32(Effect.none)
 28 │ var k = Effect.hit(missing)
                         ╘═════╛ Symbol 'missing' not found in this scope
+
+Error at line 29, column 10
+28 │ var k = Effect.hit(missing)
+29 │ var l = Effect(0)
+             ╘═══════╛ No constructor for 'Effect' accepts argument of type 'i32'
 
 [compilation failed]

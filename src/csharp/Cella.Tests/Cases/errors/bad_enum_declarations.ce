@@ -1,0 +1,57 @@
+mod test
+
+Byte: enum(u8)
+{
+	low
+	high = 300
+}
+
+Flags: enum(u8)
+{
+	a = 255
+	b
+}
+
+Missing: enum
+{
+	one = 1
+	two = 2
+}
+
+Shapes: enum
+{
+	none
+	hit(amount: i32) = 1
+	miss(chance: f32) = 1
+	plain = 1
+}
+
+NotInt: enum(f32)
+{
+	zero
+}
+
+Dynamic: enum
+{
+	zero = 0
+	other = runtime()
+}
+
+Negative: enum(u8)
+{
+	zero
+	minus = -1
+}
+
+Forward: enum
+{
+	a = b
+	b = 0
+}
+
+runtime: fun -> i32 = 5
+
+main: fun -> i32
+{
+	ret 0
+}

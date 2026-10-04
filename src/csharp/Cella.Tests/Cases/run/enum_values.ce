@@ -1,0 +1,99 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Result: enum
+{
+	ok = 0
+	notReady
+	timeout
+	lost = -1
+	unknown = -50
+}
+
+Code: enum(u16)
+{
+	none
+	first = 100
+	second
+	last = first + 3
+}
+
+Small: enum
+{
+	a
+	b
+	c
+}
+
+Wide: enum
+{
+	zero
+	big = 70000
+}
+
+Effect: enum
+{
+	none = 0
+	hit(amount: i32) = 5
+	strike(damage: i32) = 5
+	heal(amount: i32) = 9
+}
+
+Team: enum(i32)
+{
+	red = 0
+	blue = 7
+}
+
+limit: val i32 = 40
+early: val i32 = i32(Late.b) + i32(Result(2))
+lengths: val array[u8, i32(Late.b)] = [1, 2, 3, 4, 5, 6, 7]
+back: val Result = Result(-1)
+
+Late: enum
+{
+	a
+	b = limit / 8 + 2
+}
+
+describe: fun(effect: Effect) -> i32 = match effect
+{
+	none => 0
+	hit(n) => n
+	heal(n) => -n
+}
+
+flip: ext fun(team: Team) -> Team = match team { red => Team.blue  blue => Team.red }
+
+main: fun -> i32
+{
+	printf("%d %d %d %d %d\n", i32(Result.ok), i32(Result.notReady), i32(Result.timeout), i32(Result.lost),
+		i32(Result.unknown))
+	printf("%d %d %d %d\n", i32(Code.none), i32(Code.first), i32(Code.second), i32(Code.last))
+	printf("%d %d %d %d %d\n", i32(sizeOf(Result)), i32(sizeOf(Code)), i32(sizeOf(Small)), i32(sizeOf(Wide)),
+		i32(sizeOf(Team)))
+
+	var n = 2
+	val small = Small(n)
+	val code = Code(101)
+	val result = Result(-1)
+	printf("%d %d %d\n", small == Small.c, code == Code.second, result == Result.lost)
+
+	val strike = Effect.strike(7)
+	printf("%d %d %d\n", describe(strike), describe(Effect.hit(3)), describe(Effect.heal(4)))
+	if strike is hit(amount)
+		printf("hit %d\n", amount)
+
+	var e: Result
+	var s: Small
+	printf("%d %d %d %d\n", i32(e), i32(s), i32(u8(Code.first)), i64(Result.unknown))
+
+	val swap: ext fun(Team) -> Team = flip
+	printf("%d %d\n", i32(swap(Team.red)), i32(swap(Team.blue)))
+	printf("%d %d %d %d\n", early, i32(sizeOf(lengths)), i32(back), back == Result.lost)
+	ret 0
+}

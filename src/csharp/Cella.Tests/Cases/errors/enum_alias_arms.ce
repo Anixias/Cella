@@ -1,0 +1,18 @@
+mod test
+
+Effect: enum
+{
+	none
+	hit(amount: i32)
+	strike(damage: i32) = 1
+	heal(amount: i32)
+}
+
+main: fun -> i32
+{
+	val e = Effect.none
+	val a = match e { hit(n) => n  strike(n) => n  else => 0 }
+	val b = match e { none => 0  strike(n) => n }
+	val c = match e { none => 0  hit(n) => n  heal(n) => n }
+	ret 0
+}

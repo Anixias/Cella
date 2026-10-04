@@ -372,7 +372,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 		var typeRef = LLVMContextRef.Global.CreateNamedStruct(enumType.Name);
 		_typeMap[enumType] = typeRef;
 		
-		var tagType = MapTypeSymbol(TypePool.GetTagType(enumType));
+		var tagType = MapTypeSymbol(_typePool.GetTagType(enumType));
 		var payloadTypes = enumType.Cases.Where(static c => c.Fields.Length > 0).Select(GetPayloadType).ToList();
 		if (payloadTypes.Count == 0)
 		{
@@ -916,8 +916,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 	private LLVMValueRef EmitEnumValue(EnumValue v, LLVMBuilderRef builder)
 	{
 		var enumType = MapTypeSymbol(v.Type);
-		var tagType = MapTypeSymbol(TypePool.GetTagType((EnumSymbol)v.Type));
-		var tag = LLVMValueRef.CreateConstInt(tagType, (ulong)v.Case.Index);
+		var tag = EmitCaseTag((EnumSymbol)v.Type, v.Case);
 		if (v.Payload.IsEmpty)
 			return builder.BuildInsertValue(LLVMValueRef.CreateConstNull(enumType), tag, 0, v.Case.Name);
 		
@@ -934,6 +933,57 @@ public sealed unsafe class CodeGenerator : IDisposable
 		}
 		
 		return builder.BuildLoad2(enumType, slot, v.Case.Name);
+	}
+	
+	private LLVMValueRef EmitCaseTag(EnumSymbol enumType, EnumCaseSymbol enumCase) => EmitIntegerConstant(
+		new IntegerConstant(_typePool.GetTagType(enumType), _typePool.GetCaseValue(enumType, enumCase)));
+	
+	private LLVMValueRef EmitEnumConversion(EnumConversion c, ConversionValue v, LLVMBuilderRef builder)
+	{
+		var source = EmitValue(v.Source, builder);
+		if (c.From is EnumSymbol from)
+		{
+			var tag = builder.BuildExtractValue(source, 0, "tag");
+			return ResizeInteger(tag, MapTypeSymbol(c.To), _typePool.GetTagType(from).IsSigned, builder);
+		}
+		
+		var to = (EnumSymbol)c.To;
+		var sourceType = (IntegerType)c.From;
+		TrapIf(builder.BuildNot(IsCaseValue(to, source, sourceType, builder)), builder);
+		var resized = ResizeInteger(source, MapTypeSymbol(_typePool.GetTagType(to)), sourceType.IsSigned, builder);
+		return builder.BuildInsertValue(LLVMValueRef.CreateConstNull(MapTypeSymbol(to)), resized, 0, to.Name);
+	}
+	
+	private LLVMValueRef IsCaseValue(EnumSymbol enumType, LLVMValueRef value, IntegerType type,
+		LLVMBuilderRef builder)
+	{
+		var bits = (int)value.TypeOf.IntWidth;
+		var minimum = type.IsSigned ? -(BigInteger.One << (bits - 1)) : BigInteger.Zero;
+		var maximum = type.IsSigned ? (BigInteger.One << (bits - 1)) - 1 : (BigInteger.One << bits) - 1;
+		var values = enumType.Cases
+			.Select(enumCase => _typePool.GetCaseValue(enumType, enumCase))
+			.Where(caseValue => caseValue >= minimum && caseValue <= maximum)
+			.Distinct()
+			.Order()
+			.ToList();
+		
+		var result = _false;
+		var start = 0;
+		while (start < values.Count)
+		{
+			var end = start;
+			while (end + 1 < values.Count && values[end + 1] == values[end] + 1)
+				end++;
+			
+			var low = EmitIntegerConstant(new IntegerConstant(type, values[start]));
+			var span = EmitIntegerConstant(new IntegerConstant(type, values[end] - values[start]));
+			var offset = builder.BuildSub(value, low);
+			var inRange = builder.BuildICmp(LLVMIntPredicate.LLVMIntULE, offset, span);
+			result = result.Handle == _false.Handle ? inRange : builder.BuildOr(result, inRange);
+			start = end + 1;
+		}
+		
+		return result;
 	}
 	
 	private LLVMValueRef EmitEnumTag(EnumTagValue v, LLVMBuilderRef builder)
@@ -972,6 +1022,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 		IntegerConversion c => EmitIntegerConversion(c, EmitValue(v.Source, builder), builder),
 		FloatConversion c => EmitFloatConversion(c, EmitValue(v.Source, builder), builder),
 		NativeConversion c => EmitNativeConversion(c, v, builder),
+		EnumConversion c => EmitEnumConversion(c, v, builder),
 		FreeConversion => EmitValue(v.Source, builder),
 		FunctionConversion c => EmitValue(new CallValue(c.Function, [v.Source], v.SourceLocation), builder),
 		_ => throw new InvalidOperationException()
@@ -1815,8 +1866,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 	private LLVMValueRef EmitEnumConstant(EnumConstant constant)
 	{
 		var enumType = MapTypeSymbol(constant.Type);
-		var tag = EmitIntegerConstant(new IntegerConstant(TypePool.GetTagType((EnumSymbol)constant.Type),
-			constant.Case.Index));
+		var tag = EmitCaseTag((EnumSymbol)constant.Type, constant.Case);
 		
 		if (enumType.StructElementTypesCount == 1)
 			return LLVMValueRef.CreateConstNamedStruct(enumType, [tag]);
