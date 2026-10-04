@@ -23,6 +23,7 @@ internal static class Program
 	public static async Task<int> Main(string[] args)
 	{
 		var verbose = !args.Contains("--quiet");
+		var optimizeMode = args.Contains("--release") ? OptimizeMode.Release : OptimizeMode.Debug;
 		var sourcePath = args.FirstOrDefault(static a => !a.StartsWith("--"));
 		if (sourcePath is null)
 			return 1;
@@ -71,7 +72,7 @@ internal static class Program
 				if (projectSymbols.TryGetValue(dependency, out var assemblySymbol))
 					dependencyInfo.Add(assemblySymbol);
 			
-			var assemblyInfo = await BuildProject(project, typePool, dependencyInfo, verbose, cts.Token);
+			var assemblyInfo = await BuildProject(project, typePool, dependencyInfo, verbose, optimizeMode, cts.Token);
 			projectSymbols[project] = assemblyInfo;
 			succeeded &= assemblyInfo.Succeeded;
 		}
@@ -136,7 +137,7 @@ internal static class Program
 	);
 	
 	private static async Task<AssemblyInfo> BuildProject(ProjectInfo project, TypePool typePool,
-		IEnumerable<AssemblyInfo> dependencies, bool verbose, CancellationToken ct = default)
+		IEnumerable<AssemblyInfo> dependencies, bool verbose, OptimizeMode optimizeMode, CancellationToken ct = default)
 	{
 		// Phase 1: File parsing
 		var outputType = project.Project.OutputType;
@@ -168,8 +169,7 @@ internal static class Program
 		var objDir = Path.Combine(project.Directory, "obj");
 		var outputConfig = new OutputConfig(objDir, true, true);
 		var targetConfig = new TargetConfig(targetTriple.ToLlvm(), Features: targetTriple.ToLlvmFeatures());
-		var codeGenConfig =
-			new CodeGenConfig(outputConfig, targetConfig, OptimizeMode.Debug); // TODO Read from CLI args
+		var codeGenConfig = new CodeGenConfig(outputConfig, targetConfig, optimizeMode);
 		
 		var pointerBitSize = codeGenConfig.GetPointerSize() * 8;
 		

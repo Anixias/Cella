@@ -1,0 +1,51 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Pair: rec
+{
+	tag: i8
+	value: i64
+}
+
+Wide: rec
+{
+	tag: u8
+	value: i128
+}
+
+Mixed: rec
+{
+	flag: bool
+	ratio: f64
+	pair: Pair
+	count: u16
+}
+
+pairs: val array[Pair, 3] = [Pair(1, 1234567890123), Pair(2, -9876543210), Pair(3, 42)]
+
+main: fun -> i32
+{
+	var index: usize = 1
+	printf("%lld %lld\n", pairs[index].value, pairs[index + 1].value)
+
+	var local = [Pair(4, 5000000000), Pair(5, 6000000000)]
+	val pairStride = isize(@local[1]) - isize(@local[0])
+	val pairValue = isize(@local[0].value) - isize(@local[0])
+	printf("%d %d %d\n", i32(sizeOf(Pair)), i32(pairStride), i32(pairValue))
+
+	var wides: array[Wide, 2]
+	val wideStride = isize(@wides[1]) - isize(@wides[0])
+	val wideValue = isize(@wides[0].value) - isize(@wides[0])
+	printf("%d %d %d\n", i32(sizeOf(Wide)), i32(wideStride), i32(wideValue))
+
+	var mixed: Mixed
+	val ratio = isize(@mixed.ratio) - isize(@mixed)
+	val pair = isize(@mixed.pair) - isize(@mixed)
+	val count = isize(@mixed.count) - isize(@mixed)
+	printf("%d %d %d %d\n", i32(sizeOf(Mixed)), i32(ratio), i32(pair), i32(count))
+	ret 0
+}

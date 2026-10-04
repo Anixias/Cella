@@ -14,25 +14,34 @@ public sealed class GoldenTests
 	private static readonly SemaphoreSlim _compilerLock = new(1, 1);
 	private static readonly TimeSpan _runTimeout = TimeSpan.FromSeconds(10);
 	
-	public static TheoryData<string> Cases()
+	public static TheoryData<string, bool> Cases()
 	{
-		var cases = new TheoryData<string>();
+		var cases = new TheoryData<string, bool>();
 		foreach (var path in Directory.EnumerateFiles(_casesDirectory, "*.ce", SearchOption.AllDirectories).Order())
-			cases.Add(Path.GetRelativePath(_casesDirectory, path).Replace('\\', '/'));
+		{
+			var name = Path.GetRelativePath(_casesDirectory, path).Replace('\\', '/');
+			cases.Add(name, false);
+			if (name.StartsWith("run/"))
+				cases.Add(name, true);
+		}
 		
 		return cases;
 	}
 	
 	[Theory]
 	[MemberData(nameof(Cases))]
-	public async Task Case(string name)
+	public async Task Case(string name, bool release)
 	{
 		var cancellationToken = TestContext.Current.CancellationToken;
+		var updating = Environment.GetEnvironmentVariable(UpdateVariable) == "1";
+		if (updating && release)
+			return;
+		
 		var sourcePath = Path.Combine(_casesDirectory, name);
 		var expectedPath = Path.ChangeExtension(sourcePath, ".out");
-		var actual = await RunAsync(sourcePath, cancellationToken);
+		var actual = await RunAsync(sourcePath, release, cancellationToken);
 		
-		if (Environment.GetEnvironmentVariable(UpdateVariable) == "1")
+		if (updating)
 		{
 			await File.WriteAllTextAsync(expectedPath, actual, cancellationToken);
 			return;
@@ -45,7 +54,7 @@ public sealed class GoldenTests
 		Assert.Equal(expected, actual);
 	}
 	
-	private static async Task<string> RunAsync(string sourcePath, CancellationToken cancellationToken)
+	private static async Task<string> RunAsync(string sourcePath, bool release, CancellationToken cancellationToken)
 	{
 		var caseDirectory = Directory.CreateTempSubdirectory("cella-").FullName;
 		try
@@ -56,7 +65,7 @@ public sealed class GoldenTests
 				"OutputType = \"Executable\"\nSystemLinkPreference = \"Dynamic\"\n",
 				cancellationToken);
 			
-			var (compileExitCode, compileOutput) = await CompileAsync(projectPath, cancellationToken);
+			var (compileExitCode, compileOutput) = await CompileAsync(projectPath, release, cancellationToken);
 			compileOutput = compileOutput.Replace(caseDirectory, "<case>");
 			if (compileExitCode != 0)
 				return Transcript(compileOutput, "[compilation failed]");
@@ -72,7 +81,7 @@ public sealed class GoldenTests
 		}
 	}
 	
-	private static async Task<(int ExitCode, string Output)> CompileAsync(string projectPath,
+	private static async Task<(int ExitCode, string Output)> CompileAsync(string projectPath, bool release,
 		CancellationToken cancellationToken)
 	{
 		await _compilerLock.WaitAsync(cancellationToken);
@@ -83,7 +92,8 @@ public sealed class GoldenTests
 			var output = new StringWriter();
 			Console.SetOut(output);
 			Console.SetError(output);
-			var exitCode = await Program.Main([projectPath, "--quiet"]);
+			string[] arguments = release ? [projectPath, "--quiet", "--release"] : [projectPath, "--quiet"];
+			var exitCode = await Program.Main(arguments);
 			return (exitCode, output.ToString());
 		}
 		finally
