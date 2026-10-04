@@ -1,0 +1,68 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Effect: enum
+{
+	none
+	hit(amount: i32)
+}
+
+counter: var i32 = 0
+
+greet: fun
+{
+	printf("hi\n")
+}
+
+done: fun(flag: bool)
+{
+	if flag
+		ret
+
+	greet()
+}
+
+log: fun(x: i32) = printf("%d\n", x)
+hello: fun = greet()
+bump: fun = counter += 1
+handle: fun(e: Effect) = match e { none => greet()  hit(n) => log(n) }
+record: ext fun(x: i32) = counter = x
+
+pick: fun(x: i32)
+{
+	printf("void\n")
+}
+
+pick: fun(x: i64) -> i32
+{
+	printf("i64\n")
+	ret 7
+}
+
+main: fun -> i32
+{
+	greet()
+	var f = greet
+	f()
+	match Effect.hit(2) { none => greet()  hit(n) => f() }
+	done(false)
+	done(true)
+
+	log(5)
+	hello()
+	bump()
+	bump()
+	handle(Effect.none)
+	handle(Effect.hit(9))
+	val callback: ext fun(i32) = record
+	callback(counter + 40)
+	printf("%d\n", counter)
+
+	val y: i32 = pick(1)
+	pick(2)
+	ret y
+}

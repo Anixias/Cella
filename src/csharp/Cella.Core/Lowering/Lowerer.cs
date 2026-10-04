@@ -255,7 +255,7 @@ public sealed class Lowerer(ConstantEvaluator evaluator, Func<GlobalSymbol, Glob
 		{
 			var location = node.Syntax.SourceLocation;
 			VariableValue? result = null;
-			if (node.Type is not NeverType && node.Type != NativeSymbols.Void)
+			if (node.Type is not NeverType)
 			{
 				var symbol = CreateTempSymbol(node.Type, "match_result");
 				GetOrMakeBlock().Instructions.Add(new LocalVarInstruction(symbol, new UndefValue(node.Type), location,
@@ -269,9 +269,9 @@ public sealed class Lowerer(ConstantEvaluator evaluator, Func<GlobalSymbol, Glob
 				{
 					var arm = node.Arms[index].Value;
 					var value = VisitNode(arm);
-					currentBlock?.Instructions.Add(new ExpressionInstruction(result is null
-						? value
-						: new AssignValue(node.Type, result, value, arm.Syntax.SourceLocation)));
+					if (result is not null)
+						currentBlock?.Instructions.Add(new ExpressionInstruction(
+							new AssignValue(node.Type, result, value, arm.Syntax.SourceLocation)));
 				});
 			
 			return result ?? (Value)new UndefValue(node.Type);

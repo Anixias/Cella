@@ -1,0 +1,24 @@
+
+====== void_returns.ce ======
+
+Error at line 13, column 18
+12 │ 
+13 │ early: fun = ret 5
+                      ^ Cannot return a value from 'early'
+
+Error at line 17, column 6
+16 │ {
+17 │     ret greet()
+             ╘═════╛ Cannot return a value from 'finish'
+
+Error at line 22, column 6
+21 │ {
+22 │     ret 5
+             ^ Cannot return a value from 'stop'
+
+Error at line 27, column 6
+26 │ {
+27 │     ret missing
+             ╘═════╛ Symbol 'missing' not found in this scope
+
+[compilation failed]

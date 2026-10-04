@@ -418,9 +418,9 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 		
 		if (Match(ref index, TokenType.OpEqual))
 		{
-			var expression = ParseExpression(ref index);
-			var returnExpression = new ReturnExpressionNode(expression.SourceLocation, expression);
-			var statement = new ExpressionStatementNode(returnExpression);
+			if (ParseExpressionBody(ref index, returnType is null) is not { } statement)
+				return null;
+			
 			return new(identifier, modifiers, parameters, returnType, statement, isExternal);
 		}
 		
@@ -431,6 +431,17 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 			return null;
 		
 		return new(identifier, modifiers, parameters, returnType, body, isExternal);
+	}
+	
+	private IStatementNode? ParseExpressionBody(ref int index, bool discardsValue)
+	{
+		if (discardsValue && Match(ref index, out var matchToken, TokenType.KeywordMatch))
+			return ParseMatchStatement(ref index, matchToken);
+		
+		var expression = ParseExpression(ref index);
+		return new ExpressionStatementNode(discardsValue
+			? expression
+			: new ReturnExpressionNode(expression.SourceLocation, expression));
 	}
 	
 	private GlobalNode? ParseGlobal(ref int index, Token identifier, IEnumerable<Token> modifiers, Token keyword)

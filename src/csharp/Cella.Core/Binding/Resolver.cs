@@ -101,6 +101,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		try
 		{
 			var result = ((IExpressionNodeVisitor<IResolvedExpressionNode>)this).Visit(node);
+			if (result.Type == NativeSymbols.Void)
+				return ReportVoidValue(result, targetType);
+			
 			return targetType is null
 				? result
 				: CoerceToType(result, targetType);
@@ -109,6 +112,20 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		{
 			_targetTypes.Pop();
 		}
+	}
+	
+	private IResolvedExpressionNode VisitDiscarded(IExpressionNode node)
+	{
+		_targetTypes.Push(null);
+		var result = ((IExpressionNodeVisitor<IResolvedExpressionNode>)this).Visit(node);
+		_targetTypes.Pop();
+		return result;
+	}
+	
+	private ResolvedInvalidExpressionNode ReportVoidValue(IResolvedExpressionNode node, TypeSymbol? type)
+	{
+		var function = node.Syntax is CallExpressionNode call ? call.Target : node.Syntax;
+		return Error(node.Syntax, $"'{function.SourceLocation.GetText()}' doesn't return a value", type);
 	}
 	
 	public IResolvedDeclarationNode Visit(FieldNode node)
@@ -237,8 +254,17 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		if (CurrentResolutionContext.ContainingFunction is not { } function)
 			return Error(node, "Returns are only allowed within functions", null);
 		
-		var value = node.Value is { } expression ? VisitNode(expression, function.Signature.ReturnType) : null;
-		return new ResolvedReturnExpressionNode(value, node);
+		if (node.Value is not { } expression)
+			return new ResolvedReturnExpressionNode(null, node);
+		
+		var returnType = function.Signature.ReturnType;
+		if (returnType != NativeSymbols.Void)
+			return new ResolvedReturnExpressionNode(VisitNode(expression, returnType), node);
+		
+		if (IsInvalid(VisitDiscarded(expression)))
+			return new ResolvedInvalidExpressionNode(node);
+		
+		return Error(node, $"Cannot return a value from '{function.Symbol.Name}'", null, expression);
 	}
 	
 	public IResolvedExpressionNode Visit(BreakExpressionNode node)
@@ -275,7 +301,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	}
 	
 	public IResolvedStatementNode Visit(ExpressionStatementNode node) =>
-		new ResolvedExpressionStatementNode(VisitNode(node.ExpressionNode), node);
+		new ResolvedExpressionStatementNode(VisitDiscarded(node.ExpressionNode), node);
 	
 	public IResolvedExpressionNode Visit(CallExpressionNode node)
 	{
@@ -2004,12 +2030,12 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			if (target is not null && candidate.ReturnType != target)
 			{
 				var conversion = _conversionTable.FindImplicit(candidate.ReturnType, target);
-				if (conversion is null)
+				if (conversion is null && candidate.ReturnType != NativeSymbols.Void)
 					continue;
 				
 				// Exact returns beat converted returns, so set to a higher cost
 				resultRank = 1;
-				resultCost = conversion.Cost;
+				resultCost = conversion?.Cost ?? 0;
 				resultConversion = conversion;
 			}
 			

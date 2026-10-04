@@ -1,0 +1,89 @@
+
+====== void_values.ce ======
+
+Error at line 25, column 22
+24 │ take: fun(x: i32) -> i32 = x
+25 │ answer: fun -> i32 = greet()
+                          ╘═════╛ 'greet' doesn't return a value
+
+Error at line 29, column 10
+28 │ {
+29 │     val a = greet()
+                 ╘═════╛ 'greet' doesn't return a value
+
+Error at line 30, column 15
+29 │ val a = greet()
+30 │ var b: i32 = greet()
+                  ╘═════╛ 'greet' doesn't return a value
+
+Error at line 31, column 7
+30 │ var b: i32 = greet()
+31 │ take(greet())
+          ╘═════╛ 'greet' doesn't return a value
+
+Error at line 32, column 17
+31 │ take(greet())
+32 │ printf("%d\n", greet())
+                    ╘═════╛ 'greet' doesn't return a value
+
+Error at line 33, column 11
+32 │ printf("%d\n", greet())
+33 │ val c = [greet(), greet()]
+              ╘═════╛ 'greet' doesn't return a value
+
+Error at line 33, column 20
+32 │ printf("%d\n", greet())
+33 │ val c = [greet(), greet()]
+                       ╘═════╛ 'greet' doesn't return a value
+
+Error at line 34, column 10
+33 │ val c = [greet(), greet()]
+34 │ val d = greet() + 1
+             ╘═════╛ 'greet' doesn't return a value
+
+Error at line 35, column 5
+34 │ val d = greet() + 1
+35 │ if greet()
+        ╘═════╛ 'greet' doesn't return a value
+
+Error at line 38, column 38
+37 │ 
+38 │ val e = match Effect.none { none => greet()  hit(n) => n }
+                                         ╘═════╛ 'greet' doesn't return a value
+
+Error at line 39, column 21
+38 │ val e = match Effect.none { none => greet()  hit(n) => n }
+39 │ val f = Effect.hit(greet())
+                        ╘═════╛ 'greet' doesn't return a value
+
+Error at line 40, column 17
+39 │ val f = Effect.hit(greet())
+40 │ val g = sizeOf(greet())
+                    ╘═════╛ 'greet' doesn't return a value
+
+Error at line 42, column 10
+41 │ var handler = Handler(greet)
+42 │ val h = handler.callback()
+             ╘════════════════╛ 'handler.callback' doesn't return a value
+
+Error at line 44, column 6
+43 │ var k = 0
+44 │ k = greet()
+         ╘═════╛ 'greet' doesn't return a value
+
+Error at line 45, column 14
+44 │ k = greet()
+45 │ val m = i32(greet())
+                 ╘═════╛ 'greet' doesn't return a value
+
+Error at line 46, column 10
+45 │ val m = i32(greet())
+46 │ val p = greet() is none
+             ╘═════╛ 'greet' doesn't return a value
+
+Error at line 47, column 11
+46 │ val p = greet() is none
+47 │ ret take(greet())
+              ╘═════╛ 'greet' doesn't return a value
+
+[compilation failed]

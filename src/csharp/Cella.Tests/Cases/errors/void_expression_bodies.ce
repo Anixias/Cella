@@ -1,0 +1,9 @@
+mod test
+
+noop: fun = 5
+twice: fun(x: i32) = x * 2
+
+main: fun -> i32
+{
+	ret 0
+}

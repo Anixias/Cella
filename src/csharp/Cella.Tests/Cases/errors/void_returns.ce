@@ -1,0 +1,33 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+greet: fun
+{
+	printf("hi\n")
+}
+
+early: fun = ret 5
+
+finish: fun
+{
+	ret greet()
+}
+
+stop: fun
+{
+	ret 5
+}
+
+nested: fun
+{
+	ret missing
+}
+
+main: fun -> i32
+{
+	ret 0
+}

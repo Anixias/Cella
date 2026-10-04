@@ -1,0 +1,14 @@
+
+====== void_expression_bodies.ce ======
+
+Error at line 3, column 13
+2 │ 
+3 │ noop: fun = 5
+                ^ Only assignments and function calls are allowed as statements
+
+Error at line 4, column 22
+3 │ noop: fun = 5
+4 │ twice: fun(x: i32) = x * 2
+                         ╘═══╛ Only assignments and function calls are allowed as statements
+
+[compilation failed]

@@ -1,0 +1,48 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Effect: enum
+{
+	none
+	hit(amount: i32)
+}
+
+Handler: rec
+{
+	callback: fun()
+}
+
+greet: fun
+{
+	printf("hi\n")
+}
+
+take: fun(x: i32) -> i32 = x
+answer: fun -> i32 = greet()
+
+main: fun -> i32
+{
+	val a = greet()
+	var b: i32 = greet()
+	take(greet())
+	printf("%d\n", greet())
+	val c = [greet(), greet()]
+	val d = greet() + 1
+	if greet()
+		ret 1
+
+	val e = match Effect.none { none => greet()  hit(n) => n }
+	val f = Effect.hit(greet())
+	val g = sizeOf(greet())
+	var handler = Handler(greet)
+	val h = handler.callback()
+	var k = 0
+	k = greet()
+	val m = i32(greet())
+	val p = greet() is none
+	ret take(greet())
+}
