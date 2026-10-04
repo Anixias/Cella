@@ -1,0 +1,90 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Handler: rec
+{
+	callback: fun(i32) -> i32
+	native: ext fun(i32) -> i32
+	scale: i32
+}
+
+Pipeline: rec
+{
+	first: fun(i32) -> i32
+	second: fun(i32) -> i32
+}
+
+double: fun(x: i32) -> i32 = x * 2
+triple: fun(x: i32) -> i32 = x * 3
+twice: ext fun(x: i32) -> i32 = x * 2
+answer: fun -> i32 = 42
+decrement: fun(n: i32) -> i32 = n - 1
+halve: fun(n: i32) -> i32 = n / 2
+over: fun(x: i32) -> i32 = x + 1
+over: fun(x: f64) -> f64 = x * 0.5
+
+greet: fun
+{
+	printf("hello\n")
+}
+
+op: val fun(i32) -> i32 = triple
+ops: val array[fun(i32) -> i32, 2] = [double, triple]
+pipeline: val Pipeline = Pipeline(double, triple)
+
+apply: fun(f: fun(i32) -> i32, x: i32) -> i32 = f(x)
+
+pick: fun(which: i32) -> fun(i32) -> i32
+{
+	if which == 0
+		ret double
+
+	ret triple
+}
+
+countdown: fun(n: i32, step: fun(i32) -> i32) -> i32
+{
+	if n <= 0
+		ret 0
+
+	ret 1 + countdown(step(n), step)
+}
+
+main: fun -> i32
+{
+	var f = double
+	var g: fun(i32) -> i32 = triple
+	printf("%d %d %d %d\n", f(4), g(4), apply(double, 5), apply(g, 5))
+	f = g
+	printf("%d %d %d\n", f(2), pick(0)(7), pick(1)(7))
+
+	var table = [double, triple, f]
+	var i: usize = 0
+	loop while i < table.length
+	{
+		printf("%d ", table[i](10))
+		i += 1
+	}
+
+	var hello = greet
+	hello()
+	var constant = answer
+	printf("%d %d %d\n", constant(), countdown(10, decrement), countdown(100, halve))
+
+	var a: fun(i32) -> i32 = over
+	var b: fun(f64) -> f64 = over
+	printf("%d %.2f %d\n", a(1), b(3.0), apply(over, 10))
+
+	var handler = Handler(double, twice, 5)
+	var pointer = @handler
+	printf("%d %d %d\n", handler.callback(handler.scale), handler.native(handler.scale), (*pointer).callback(7))
+
+	var index: usize = 1
+	printf("%d %d %d\n", op(5), ops[index](5), pipeline.second(pipeline.first(5)))
+	printf("%d %d %d\n", i32(sizeOf(fun(i32) -> i32)), i32(sizeOf(ext fun(i32) -> i32)), i32(sizeOf(double)))
+	ret 0
+}

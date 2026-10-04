@@ -15,7 +15,6 @@ Error at line 32, column 20
 31 │ var b = team is green
 32 │ var c = effect is hit
                        ╘═╛ 'Effect.hit' holds 1 value: amount
-                         | Write 'hit(_)' to match any payload
 
 Error at line 33, column 18
 32 │ var c = effect is hit

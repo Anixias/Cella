@@ -1,44 +1,69 @@
 
 ====== bad_function_values.ce ======
 
-Error at line 15, column 10
-14 │ {
-15 │     var a = helper
-                 ╘════╛ Only 'ext fun' functions can be used as values so far
+Error at line 23, column 10
+22 │ {
+23 │     var b = printf
+                 ╘════╛ Variadic function 'printf' can't be used as a value
 
-Error at line 16, column 10
-15 │ var a = helper
-16 │ var b = printf
-             ╘════╛ Variadic function 'printf' can't be used as a value
-
-Error at line 17, column 10
-16 │ var b = printf
-17 │ var c = over
+Error at line 24, column 10
+23 │ var b = printf
+24 │ var c = over
              ╘══╛ Reference to 'over' is ambiguous
 
-Error at line 19, column 10
-18 │ var f = twice
-19 │ var d = f(1, 2)
+Error at line 26, column 10
+25 │ var f = twice
+26 │ var d = f(1, 2)
              ^ 'ext fun(i32) -> i32' doesn't accept these arguments
 
-Error at line 20, column 10
-19 │ var d = f(1, 2)
-20 │ var e = f(true)
+Error at line 27, column 10
+26 │ var d = f(1, 2)
+27 │ var e = f(true)
              ^ 'ext fun(i32) -> i32' doesn't accept these arguments
 
-Error at line 22, column 10
-21 │ var n = 5
-22 │ var g = n(1)
+Error at line 29, column 10
+28 │ var n = 5
+29 │ var g = n(1)
              ^ Cannot call a value of type 'i32'
 
-Error at line 23, column 31
-22 │ var g = n(1)
-23 │ var h: ext fun(i32) -> i64 = twice
+Error at line 30, column 31
+29 │ var g = n(1)
+30 │ var h: ext fun(i32) -> i64 = twice
                                   ╘═══╛ Cannot convert type 'ext fun(i32) -> i32' to 'ext fun(i32) -> i64'
 
-Error at line 24, column 31
-23 │ var h: ext fun(i32) -> i64 = twice
-24 │ var k: ext fun(i32) -> i32 = helper
-                                  ╘════╛ Only 'ext fun' functions can be used as values so far
+Error at line 31, column 27
+30 │ var h: ext fun(i32) -> i64 = twice
+31 │ var k: fun(i32) -> i64 = over
+                              ╘══╛ No overload of 'over' matches 'fun(i32) -> i64'
+
+Error at line 32, column 15
+31 │ var k: fun(i32) -> i64 = over
+32 │ var x: i32 = helper
+                  ╘════╛ Cannot convert type 'fun(i32) -> i32' to 'i32'
+
+Error at line 34, column 36
+33 │ var closure = helper
+34 │ var native: ext fun(i32) -> i32 = closure
+                                       ╘═════╛ Cannot convert type 'fun(i32) -> i32' to 'ext fun(i32) -> i32'
+
+Error at line 35, column 13
+34 │ var native: ext fun(i32) -> i32 = closure
+35 │ var both = apply(over, 1)
+                ╘═══╛ Call to 'apply' is ambiguous
+
+Error at line 37, column 10
+36 │ var handler = Handler(helper, 2)
+37 │ var s = handler.scale(5)
+             ╘═══════════╛ Cannot call a value of type 'i32'
+
+Error at line 38, column 17
+37 │ var s = handler.scale(5)
+38 │ printf("%d\n", helper)
+                    ╘════╛ Cannot pass type 'fun(i32) -> i32' to a variadic ext function
+
+Error at line 39, column 30
+38 │ printf("%d\n", helper)
+39 │ var none: fun(i32) -> i32 = null
+                                 ╘══╛ Cannot convert type 'null' to 'fun(i32) -> i32'
 
 [compilation failed]

@@ -47,8 +47,9 @@ public sealed class TypeParser(ImmutableArray<Token> tokens) : BaseParser<ITypeN
 	private FunctionTypeNode? TryParseFunctionType(ref int index)
 	{
 		var start = index;
-		if (!Match(ref index, out var ext, _functionKeywords, TokenType.KeywordExt) ||
-		    !Match(ref index, out var end, _functionKeywords, TokenType.KeywordFun))
+		var first = Tokens[index];
+		var isExternal = Match(ref index, _functionKeywords, TokenType.KeywordExt);
+		if (!Match(ref index, out var end, _functionKeywords, TokenType.KeywordFun))
 		{
 			index = start;
 			return null;
@@ -66,9 +67,9 @@ public sealed class TypeParser(ImmutableArray<Token> tokens) : BaseParser<ITypeN
 		}
 		
 		var returnType = Match(ref index, TokenType.OpArrow) ? ParseType(ref index) : null;
-		var (source, range) = ext.SourceLocation;
+		var (source, range) = first.SourceLocation;
 		range = range.Join((returnType?.SourceLocation ?? end.SourceLocation).Range);
-		return new FunctionTypeNode(new(source, range), true, parameterTypes, returnType);
+		return new FunctionTypeNode(new(source, range), isExternal, parameterTypes, returnType);
 	}
 	
 	private IGenericArgumentNode ParseGenericArgument(ref int index)

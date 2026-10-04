@@ -267,6 +267,31 @@ public sealed class UntypedStringType() : UntypedType("string literal")
 	}
 }
 
+public sealed class FunctionGroupType(string functionName, IEnumerable<FunctionInfo> functions, string name)
+	: UntypedType(name)
+{
+	public string FunctionName { get; } = functionName;
+	public ImmutableArray<FunctionInfo> Functions { get; } = functions.ToImmutableArray();
+	
+	public FunctionInfo? Find(FunctionType type)
+	{
+		foreach (var function in Functions)
+		{
+			var signature = function.Signature;
+			if (!signature.IsVariadic && signature.ReturnType == type.ReturnType &&
+			    signature.ParameterTypes.SequenceEqual(type.ParameterTypes))
+				return function;
+		}
+		
+		return null;
+	}
+	
+	public override int MaterializationCost(TypeSymbol target, MaterializationMode mode) =>
+		target is FunctionType type && Find(type) is { } function
+			? function.Symbol.IsExternal == type.IsExternal ? 0 : 1
+			: int.MaxValue;
+}
+
 public enum PointerKind
 {
 	Unsafe,

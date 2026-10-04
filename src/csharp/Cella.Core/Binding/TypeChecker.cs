@@ -443,6 +443,10 @@ public sealed class TypeChecker(ConstantEvaluator evaluator) : IResolvedStatemen
 	{
 	}
 	
+	public void Visit(ResolvedFunctionGroupExpressionNode node)
+	{
+	}
+	
 	public void Visit(ResolvedEnumCaseExpressionNode node)
 	{
 		foreach (var value in node.Payload)

@@ -377,14 +377,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		var payloadTypes = _typePool.GetPayloadTypes(enumType, enumCase);
 		if (pattern.Bindings.Length != payloadTypes.Length || pattern.HasParentheses == payloadTypes.IsEmpty)
 		{
-			var diagnostic = ReportPayloadCount(pattern.SourceLocation, enumType, enumCase);
-			if (!pattern.HasParentheses)
-			{
-				var wildcards = string.Join(", ", payloadTypes.Select(static _ => "_"));
-				diagnostic = diagnostic with { Hints = [$"Write '{enumCase.Name}({wildcards})' to match any payload"] };
-			}
-			
-			Diagnostics.Add(diagnostic);
+			Diagnostics.Add(ReportPayloadCount(pattern.SourceLocation, enumType, enumCase));
 			return null;
 		}
 		
@@ -648,11 +641,11 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	private IResolvedExpressionNode VisitFunctionCall(CallExpressionNode node)
 	{
 		// TODO Methods and module-qualified calls
-		if (node.Target is AccessExpressionNode)
-			return Error(node, "Member calls are not supported yet", CurrentTargetType, node.Target);
+		if (node.Target is AccessExpressionNode access)
+			return VisitMemberCall(node, access);
 		
 		if (node.Target is not VarExpressionNode varExpr)
-			return VisitIndirectCall(node);
+			return VisitIndirectCall(node, VisitNode(node.Target, null));
 		
 		var functionName = varExpr.Identifier.Text;
 		var symbol = CurrentResolutionContext.Resolve(functionName);
@@ -671,7 +664,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		};
 		
 		if (functionSymbols.Length == 0)
-			return VisitIndirectCall(node);
+			return VisitIndirectCall(node, VisitNode(node.Target, null));
 		
 		var args = new IResolvedExpressionNode[node.Arguments.Length];
 		for (var i = 0; i < node.Arguments.Length; i++)
@@ -705,9 +698,36 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		return ApplyResultResolution(result, resolution);
 	}
 	
-	private IResolvedExpressionNode VisitIndirectCall(CallExpressionNode node)
+	private IResolvedExpressionNode VisitMemberCall(CallExpressionNode node, AccessExpressionNode access)
 	{
-		var target = VisitNode(node.Target, null);
+		if (access.Target is VarExpressionNode name &&
+		    CurrentResolutionContext.Resolve(name.Identifier.Text) is null or TypeSymbol)
+			return Error(node, "Member calls are not supported yet", CurrentTargetType, node.Target);
+		
+		var target = VisitNode(access.Target, null);
+		if (!IsInvalid(target) && FindField(target.Type, access.Member.Text) is null)
+			return Error(node, "Member calls are not supported yet", CurrentTargetType, node.Target);
+		
+		return VisitIndirectCall(node, ResolveAccess(access, target));
+	}
+	
+	private FieldSymbol? FindField(TypeSymbol type, string name)
+	{
+		var lookupType = type is PointerType
+		{
+			PointerKind: PointerKind.Mutable or PointerKind.Immutable or PointerKind.Owning
+		} pointer
+			? pointer.BaseType
+			: type;
+		
+		return _typePool.ResolveMember(lookupType, name) as FieldSymbol;
+	}
+	
+	private IResolvedExpressionNode VisitIndirectCall(CallExpressionNode node, IResolvedExpressionNode target)
+	{
+		if (target.Type is UntypedType)
+			target = MaterializeAsDefault(target);
+		
 		var args = node.Arguments.Select(argument => VisitNode(argument, null)).ToArray();
 		if (IsInvalid(target) || AnyInvalid(args))
 			return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
@@ -824,7 +844,11 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		if (ResolveEnumType(node.Target) is { } enumType)
 			return VisitEnumCase(node, enumType, null);
 		
-		var target = VisitNode(node.Target);
+		return ResolveAccess(node, VisitNode(node.Target));
+	}
+	
+	private IResolvedExpressionNode ResolveAccess(AccessExpressionNode node, IResolvedExpressionNode target)
+	{
 		if (IsInvalid(target))
 			return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
 		
@@ -969,8 +993,13 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	
 	public IResolvedExpressionNode Visit(SizeOfExpressionNode node)
 	{
-		var target = CurrentResolutionContext.TryResolveExpressionAsType(node.Expression)
-		             ?? VisitNode(node.Expression).Type;
+		var target = node.Target switch
+		{
+			ITypeNode type => CurrentResolutionContext.ResolveType(type),
+			IExpressionNode expression => CurrentResolutionContext.TryResolveExpressionAsType(expression)
+			                              ?? MaterializeAsDefault(VisitNode(expression)).Type,
+			_ => NativeSymbols.Invalid
+		};
 		
 		if (IsInvalid(target) || _typePool.SizeTable.TryGetSize(target) is not { } size)
 			return new ResolvedInvalidExpressionNode(node);
@@ -1022,19 +1051,52 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			_ => []
 		};
 		
-		if (functions.Length != 1)
+		if (functions.Length == 0)
 			return Error(node, $"Reference to '{name}' is ambiguous", CurrentTargetType);
 		
-		var info = GetFunctionInfo(functions[0]);
-		if (!info.Symbol.IsExternal)
-			return Error(node, "Only 'ext fun' functions can be used as values so far", CurrentTargetType);
+		var infos = functions.Select(GetFunctionInfo).ToArray();
+		var typeName = infos is [var single] ? GetNaturalType(single).Name : name;
+		return new ResolvedFunctionGroupExpressionNode(new FunctionGroupType(name, infos, typeName), node);
+	}
+	
+	private FunctionType GetNaturalType(FunctionInfo function) => _typePool.GetFunctionType(
+		function.Symbol.IsExternal, function.Signature.ParameterTypes, function.Signature.ReturnType);
+	
+	private IResolvedExpressionNode MaterializeFunction(ResolvedFunctionGroupExpressionNode node, TypeSymbol target)
+	{
+		if (target is not FunctionType type || node.Group.Find(type) is not { } function)
+			return node;
 		
-		if (info.Signature.IsVariadic)
-			return Error(node, $"Variadic function '{name}' can't be used as a value", CurrentTargetType);
+		TrackImportedFunction(function);
+		return new ResolvedFunctionReferenceExpressionNode(function, type, node.Syntax);
+	}
+	
+	private IResolvedExpressionNode MaterializeFunctionAsDefault(ResolvedFunctionGroupExpressionNode node)
+	{
+		var group = node.Group;
+		if (group.Functions is not [var function])
+			return Error(node.Syntax, $"Reference to '{group.FunctionName}' is ambiguous", NativeSymbols.Invalid);
 		
-		TrackImportedFunction(info);
-		var type = _typePool.GetFunctionType(true, info.Signature.ParameterTypes, info.Signature.ReturnType);
-		return new ResolvedFunctionReferenceExpressionNode(info, type, node);
+		if (function.Signature.IsVariadic)
+			return Error(node.Syntax, $"Variadic function '{group.FunctionName}' can't be used as a value",
+				NativeSymbols.Invalid);
+		
+		TrackImportedFunction(function);
+		return new ResolvedFunctionReferenceExpressionNode(function, GetNaturalType(function), node.Syntax);
+	}
+	
+	private ResolvedInvalidExpressionNode ReportFunctionMismatch(ResolvedFunctionGroupExpressionNode node,
+		TypeSymbol target)
+	{
+		var group = node.Group;
+		var message = group.Functions switch
+		{
+			[{ Signature.IsVariadic: true }] => $"Variadic function '{group.FunctionName}' can't be used as a value",
+			[_] => $"Cannot convert type '{group.Name}' to '{target.Name}'",
+			_ => $"No overload of '{group.FunctionName}' matches '{target.Name}'"
+		};
+		
+		return Error(node.Syntax, message, target);
 	}
 	
 	public IResolvedStatementNode Visit(IfStatementNode node)
@@ -1493,6 +1555,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		if (_conversionTable.FindImplicit(source.Type, target) is { } conversion)
 			return new ResolvedConversionExpressionNode(source, conversion, source.Syntax);
 		
+		if (source is ResolvedFunctionGroupExpressionNode group)
+			return ReportFunctionMismatch(group, target);
+		
 		return Error(source.Syntax, $"Cannot convert type '{source.Type.Name}' to '{target.Name}'", target);
 	}
 	
@@ -1574,6 +1639,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			case UntypedStringType when node is ResolvedLiteralExpressionNode literal:
 				return MaterializeStr(literal);
 			
+			case FunctionGroupType when node is ResolvedFunctionGroupExpressionNode group:
+				return MaterializeFunctionAsDefault(group);
+			
 			default:
 				return node;
 		}
@@ -1620,6 +1688,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	
 	private IResolvedExpressionNode MaterializeExpression(IResolvedExpressionNode node, TypeSymbol target)
 	{
+		if (node is ResolvedFunctionGroupExpressionNode group)
+			return MaterializeFunction(group, target);
+		
 		if (node is not ResolvedLiteralExpressionNode literal)
 			return node;
 		

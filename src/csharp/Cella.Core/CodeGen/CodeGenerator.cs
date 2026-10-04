@@ -180,6 +180,8 @@ public sealed unsafe class CodeGenerator : IDisposable
 		}
 	}
 	
+	private static LLVMTypeRef OpaquePointer => LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0u);
+	
 	private LLVMTypeRef MapTypeSymbol(TypeSymbol? symbol)
 	{
 		if (symbol is null)
@@ -229,11 +231,14 @@ public sealed unsafe class CodeGenerator : IDisposable
 				return llvmSpan;
 			}
 			
-			case FunctionType:
+			case FunctionType functionType:
 			{
-				var llvmFunctionPointer = LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0u);
-				_typeMap[symbol] = llvmFunctionPointer;
-				return llvmFunctionPointer;
+				var llvmFunctionType = functionType.IsExternal
+					? OpaquePointer
+					: LLVMTypeRef.CreateStruct([OpaquePointer, OpaquePointer], false);
+				
+				_typeMap[symbol] = llvmFunctionType;
+				return llvmFunctionType;
 			}
 			
 			case PointerType ptrType:
@@ -713,7 +718,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 		ArrayValue v => EmitArrayValue(v, builder),
 		ConversionValue v => EmitConversion(v, builder),
 		CallValue v => EmitCall(v, builder),
-		FunctionReferenceValue v => GetFunctionValue(v.Function),
+		FunctionReferenceValue v => EmitFunctionReference(v.Function, (FunctionType)v.Type),
 		IndirectCallValue v => EmitIndirectCall(v, builder),
 		PointerOffsetValue v => EmitPointerOffset(v, builder),
 		PointerDifferenceValue v => EmitPointerDifference(v, builder),
@@ -739,6 +744,15 @@ public sealed unsafe class CodeGenerator : IDisposable
 		var target = EmitValue(v.Target, builder);
 		var args = v.Arguments.Select(a => EmitValue(a, builder)).ToList();
 		var returnType = MapTypeSymbol(v.FunctionType.ReturnType);
+		if (!v.FunctionType.IsExternal)
+		{
+			var parameterTypes = v.FunctionType.ParameterTypes.Select(MapTypeSymbol);
+			var codeType = LLVMTypeRef.CreateFunction(returnType, [OpaquePointer, ..parameterTypes]);
+			var code = builder.BuildExtractValue(target, 0, "code");
+			var environment = builder.BuildExtractValue(target, 1, "env");
+			return builder.BuildCall2(codeType, code, [environment, ..args]);
+		}
+		
 		var signature = _cAbi.Classify(v.FunctionType.ParameterTypes.Select(MapTypeSymbol), returnType);
 		return EmitCCall(signature, signature.CreateFunctionType(false), target, returnType, args, builder);
 	}
@@ -1666,6 +1680,90 @@ public sealed unsafe class CodeGenerator : IDisposable
 	private static void MakeMonotonic(LLVMValueRef instruction) =>
 		LLVM.SetOrdering((LLVMOpaqueValue*)instruction.Handle, LLVMAtomicOrdering.LLVMAtomicOrderingMonotonic);
 	
+	private LLVMValueRef EmitFunctionReference(FunctionInfo function, FunctionType type)
+	{
+		if (!type.IsExternal)
+		{
+			var environment = LLVMValueRef.CreateConstNull(OpaquePointer);
+			return LLVMValueRef.CreateConstStruct([GetClosureThunk(function), environment], false);
+		}
+		
+		return function.Symbol.IsExternal ? GetFunctionValue(function) : GetExternalThunk(function);
+	}
+	
+	private LLVMValueRef GetClosureThunk(FunctionInfo function)
+	{
+		var name = $"{function.MangledName ?? function.Symbol.Name}$fun";
+		var existing = currentModule.GetNamedFunction(name);
+		if (existing.Handle != IntPtr.Zero)
+			return existing;
+		
+		GetFunctionValue(function);
+		var target = _funMap[function];
+		var parameterTypes = function.Signature.ParameterTypes.Select(MapTypeSymbol).ToArray();
+		var thunkType = LLVMTypeRef.CreateFunction(target.ReturnType, [OpaquePointer, ..parameterTypes]);
+		var thunk = currentModule.AddFunction(name, thunkType);
+		thunk.Linkage = LLVMLinkage.LLVMInternalLinkage;
+		
+		using var builder = currentModule.Context.CreateBuilder();
+		builder.PositionAtEnd(thunk.AppendBasicBlock("entry"));
+		var args = parameterTypes.Select((_, i) => thunk.GetParam((uint)i + 1)).ToList();
+		var result = target.CSignature is { } signature
+			? EmitCCall(signature, target.FunctionType, target.FunctionValue, target.ReturnType, args, builder)
+			: builder.BuildCall2(target.FunctionType, target.FunctionValue, args.ToArray());
+		
+		if (target.ReturnType.Kind == LLVMTypeKind.LLVMVoidTypeKind)
+			builder.BuildRetVoid();
+		else
+			builder.BuildRet(result);
+		
+		return thunk;
+	}
+	
+	private LLVMValueRef GetExternalThunk(FunctionInfo function)
+	{
+		var name = $"{function.MangledName}$ext";
+		var existing = currentModule.GetNamedFunction(name);
+		if (existing.Handle != IntPtr.Zero)
+			return existing;
+		
+		GetFunctionValue(function);
+		var target = _funMap[function];
+		var parameterTypes = function.Signature.ParameterTypes.Select(MapTypeSymbol).ToArray();
+		var signature = _cAbi.Classify(parameterTypes, target.ReturnType);
+		var thunk = currentModule.AddFunction(name, signature.CreateFunctionType(false));
+		thunk.Linkage = LLVMLinkage.LLVMInternalLinkage;
+		
+		var isIndirect = signature.Return.Kind == CPassKind.Indirect;
+		if (isIndirect)
+			AddSretAttribute(thunk, signature.Return.Type, false);
+		
+		using var builder = currentModule.Context.CreateBuilder();
+		builder.PositionAtEnd(thunk.AppendBasicBlock("entry"));
+		var first = isIndirect ? 1u : 0u;
+		var args = parameterTypes
+			.Select((type, i) => ReceiveCArgument(signature.Parameters[i], thunk.GetParam(first + (uint)i), type,
+				builder))
+			.ToArray();
+		
+		var result = builder.BuildCall2(target.FunctionType, target.FunctionValue, args);
+		if (target.ReturnType.Kind == LLVMTypeKind.LLVMVoidTypeKind)
+		{
+			builder.BuildRetVoid();
+		}
+		else if (isIndirect)
+		{
+			builder.BuildStore(result, thunk.GetParam(0));
+			builder.BuildRetVoid();
+		}
+		else
+		{
+			builder.BuildRet(PassCArgument(signature.Return, result, builder));
+		}
+		
+		return thunk;
+	}
+	
 	private LLVMValueRef GetFunctionValue(FunctionInfo function)
 	{
 		if (_funMap.TryGetValue(function, out var existing))
@@ -1699,7 +1797,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 		ArrayConstant c => EmitArrayConstant(MapTypeSymbol(c.ArrayType.ElementType),
 			[..c.Elements.Select(EmitStaticConstant)]),
 		EnumConstant c => EmitEnumConstant(c),
-		FunctionConstant c => GetFunctionValue(c.Function),
+		FunctionConstant c => EmitFunctionReference(c.Function, (FunctionType)c.Type),
 		ZeroConstant c => LLVMValueRef.CreateConstNull(MapTypeSymbol(c.Type)),
 		_ => throw new InvalidOperationException()
 	};

@@ -407,14 +407,16 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 		if (!Match(ref index, out var openParen, TokenType.OpOpenParen))
 			throw Expected(index, "'('");
 		
-		var expression = ParseExpression(ref index);
+		ISyntaxNode target = Tokens[index] is { Type: TokenType.Identifier, Text: "ext" or "fun" }
+			? ParseType(ref index)
+			: ParseExpression(ref index);
 		
 		if (!Match(ref index, out var closeBracket, TokenType.OpCloseParen))
 			throw Expected(index, "')'", openParen);
 		
 		var (source, range) = token.SourceLocation;
 		range = range.Join(closeBracket.SourceLocation.Range);
-		return new SizeOfExpressionNode(token, expression, new(source, range));
+		return new SizeOfExpressionNode(token, target, new(source, range));
 	}
 	
 	private IExpressionNode ParsePostfix(ref int index, IExpressionNode target)

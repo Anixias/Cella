@@ -107,7 +107,8 @@ public sealed class TypePool
 		
 		var functionType = new FunctionType(isExternal, parameters, returnType);
 		_functionTypes.Add(functionType);
-		SizeTable.Register(functionType, StorageSize.Ptr);
+		var size = isExternal ? StorageSize.Ptr : (ISize)StorageSize.Sum(StorageSize.Ptr, StorageSize.Ptr);
+		SizeTable.Register(functionType, size);
 		return functionType;
 	}
 	

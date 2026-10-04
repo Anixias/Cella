@@ -5,14 +5,21 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
+Handler: rec
+{
+	callback: fun(i32) -> i32
+	scale: i32
+}
+
 helper: fun(x: i32) -> i32 = x
 twice: ext fun(x: i32) -> i32 = x * 2
-over: ext fun(x: i32) -> i32 = x
-over: ext fun(x: f64) -> f64 = x
+over: fun(x: i32) -> i32 = x
+over: fun(x: f64) -> f64 = x
+apply: fun(f: fun(i32) -> i32, x: i32) -> i32 = f(x)
+apply: fun(f: fun(f64) -> f64, x: i32) -> i32 = x
 
 main: fun -> i32
 {
-	var a = helper
 	var b = printf
 	var c = over
 	var f = twice
@@ -21,6 +28,14 @@ main: fun -> i32
 	var n = 5
 	var g = n(1)
 	var h: ext fun(i32) -> i64 = twice
-	var k: ext fun(i32) -> i32 = helper
+	var k: fun(i32) -> i64 = over
+	var x: i32 = helper
+	var closure = helper
+	var native: ext fun(i32) -> i32 = closure
+	var both = apply(over, 1)
+	var handler = Handler(helper, 2)
+	var s = handler.scale(5)
+	printf("%d\n", helper)
+	var none: fun(i32) -> i32 = null
 	ret 0
 }

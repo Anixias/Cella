@@ -616,6 +616,8 @@ public sealed class Lowerer(ConstantEvaluator evaluator, Func<GlobalSymbol, Glob
 		public Value Visit(ResolvedFunctionCallExpressionNode node) =>
 			new CallValue(node.Function, node.Arguments.Select(VisitNode), node.Syntax.SourceLocation);
 		
+		public Value Visit(ResolvedFunctionGroupExpressionNode node) => throw new InvalidOperationException();
+		
 		public Value Visit(ResolvedFunctionReferenceExpressionNode node) =>
 			new FunctionReferenceValue(node.Function, node.Type, node.Syntax.SourceLocation);
 		
