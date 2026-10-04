@@ -1,0 +1,50 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Team: enum
+{
+	red
+	blue
+}
+
+Effect: enum
+{
+	none
+	hit(amount: i32)
+	pair(first: i8, second: i64)
+}
+
+swap: ext fun(team: Team, unused: i32) -> Team
+{
+	if team == Team.red
+		ret Team.blue
+
+	ret Team.red
+}
+
+combine: ext fun(effect: Effect, extra: i32) -> Effect
+{
+	if effect is hit(amount)
+		ret Effect.pair(i8(amount), i64(extra))
+
+	ret Effect.none
+}
+
+main: fun -> i32
+{
+	var flip: ext fun(Team, i32) -> Team = swap
+	var join: ext fun(Effect, i32) -> Effect = combine
+	printf("%d\n", i32(flip(Team.red, 0) == Team.blue))
+
+	if join(Effect.hit(4), 77) is pair(first, second)
+		printf("%d %lld\n", i32(first), second)
+
+	if join(Effect.none, 1) is none
+		printf("none\n")
+
+	ret 0
+}

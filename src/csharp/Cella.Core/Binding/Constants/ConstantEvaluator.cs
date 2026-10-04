@@ -45,6 +45,16 @@ public sealed class ConstantEvaluator
 		ResolvedArrayExpressionNode { Type: ArrayType type } n =>
 			FoldAll(n.Values, values => new ArrayConstant(type, values)),
 		ResolvedFunctionReferenceExpressionNode n => new FunctionConstant(n.Function, n.Type),
+		ResolvedEnumCaseExpressionNode n => FoldAll(n.Payload, values => new EnumConstant(n.Type, n.Case, values)),
+		ResolvedIsExpressionNode { Pattern.HasBindings: false } n => FoldAll([n.Value], values =>
+			GetCase(values[0]) is { } enumCase ? BoolConstant.From(enumCase == n.Pattern.Case) : null),
+		_ => null
+	};
+	
+	private static EnumCaseSymbol? GetCase(Constant constant) => constant switch
+	{
+		EnumConstant value => value.Case,
+		ZeroConstant { Type: EnumSymbol { Cases: [var first, ..] } } => first,
 		_ => null
 	};
 	
@@ -209,6 +219,12 @@ public sealed class ConstantEvaluator
 			{
 				BinaryOperation.Equal => BoolConstant.True,
 				BinaryOperation.NotEqual => BoolConstant.False,
+				_ => null
+			},
+			_ when GetCase(left) is { } leftCase && GetCase(right) is { } rightCase => operation switch
+			{
+				BinaryOperation.Equal => BoolConstant.From(leftCase == rightCase),
+				BinaryOperation.NotEqual => BoolConstant.From(leftCase != rightCase),
 				_ => null
 			},
 			_ => null

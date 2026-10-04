@@ -1,0 +1,191 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Effect: enum
+{
+	none
+	hit(amount: i32)
+	mend(amount: i32, bonus: u8)
+	scale(factor: f64)
+}
+
+Inner: enum
+{
+	empty
+	value(n: i16)
+}
+
+Unit: rec
+{
+	hp: i32
+	inner: Inner
+}
+
+Outer: enum
+{
+	nothing
+	wrap(inner: Inner, tag: u8)
+	unit(u: Unit, extra: f32)
+}
+
+Wide: enum
+{
+	small(v: u8)
+	big(v: i128)
+	flags(first: bool, second: bool)
+}
+
+Node: enum
+{
+	end
+	link(value: i32, next: ptr[Node])
+}
+
+Box: rec
+{
+	effect: Effect
+}
+
+strike: val Effect = Effect.hit(42)
+effects: val array[Effect, 3] = [Effect.mend(1, 2), Effect.none, Effect.scale(0.25)]
+deep: val Outer = Outer.wrap(Inner.value(-7), 9)
+boxed: val Outer = Outer.unit(Unit(30, Inner.value(3)), 2.5)
+
+describe: fun(effect: Effect)
+{
+	match effect
+	{
+		hit(amount) => printf("hit(%d) ", amount)
+		mend(amount, bonus) => printf("mend(%d, %d) ", amount, i32(bonus))
+		scale(factor) => printf("scale(%.2f) ", factor)
+		none => printf("none ")
+	}
+}
+
+show: fun(outer: Outer)
+{
+	match outer
+	{
+		nothing => printf("nothing\n")
+		wrap(inner, tag) =>
+		{
+			match inner
+			{
+				empty => printf("wrap(empty, %d)\n", i32(tag))
+				value(n) => printf("wrap(value(%d), %d)\n", i32(n), i32(tag))
+			}
+		}
+		unit(u, extra) =>
+		{
+			if u.inner is value(n) && u.hp > 10
+				printf("unit(%d, %d, %.1f)\n", u.hp, i32(n), f64(extra))
+		}
+	}
+}
+
+make: fun(n: i32) -> Effect
+{
+	if n > 0
+		ret Effect.hit(n)
+
+	ret Effect.none
+}
+
+main: fun -> i32
+{
+	describe(Effect.hit(5))
+	describe(Effect.mend(3, 2))
+	describe(strike)
+	describe(effects[0])
+	describe(effects[1])
+	describe(effects[2])
+	var zeroed: Effect
+	describe(zeroed)
+	printf("\n")
+
+	show(deep)
+	show(boxed)
+	show(Outer.wrap(Inner.empty, 1))
+
+	var effect = Effect.hit(9)
+	if effect is hit(n) && n > 5
+		printf("big hit %d\n", n)
+
+	if effect is mend(_, bonus)
+		printf("mend %d\n", i32(bonus))
+	else
+		printf("not mend\n")
+
+	if !(effect is hit(_)) || effect is none
+		printf("wrong\n")
+
+	val big = effect is hit(n) && n > 3
+	val either = effect is none || effect is scale(_)
+	printf("%d %d\n", i32(big), i32(either))
+
+	match effect
+	{
+		hit(n) =>
+		{
+			effect = Effect.hit(50)
+			printf("copied %d, now ", n)
+		}
+		else => printf("wrong\n")
+	}
+
+	if effect is hit(n)
+		printf("%d\n", n)
+
+	match make(3)
+	{
+		hit(n) => printf("call %d\n", n)
+		else => printf("wrong\n")
+	}
+
+	var box = Box(Effect.hit(8))
+	var pointer = @box
+	if (*pointer).effect is hit(n)
+		printf("through a pointer %d\n", n)
+
+	var owned = heap Effect.hit(11)
+	if owned is hit(n)
+		printf("owned %d\n", n)
+
+	var last = Node.end
+	var middle = Node.link(2, @last)
+	var first = Node.link(1, @middle)
+	var current = first
+	var total = 0
+	loop while current is link(value, next)
+	{
+		total += value
+		current = *next
+	}
+
+	printf("list total %d\n", total)
+
+	var items = [Wide.small(7), Wide.big(170141183460469231731687303715884105727), Wide.flags(true, false)]
+	var sum = 0
+	var i: usize = 0
+	loop while i < items.length
+	{
+		match items[i]
+		{
+			small(v) => sum += i32(v)
+			big(v) => sum += i32(v >> 120)
+			flags(first, second) => sum += i32(first) * 100 + i32(second) * 1000
+		}
+
+		i += 1
+	}
+
+	var p0 = @items[0]
+	var p1 = @items[1]
+	printf("%d %d %d\n", sum, i32(sizeOf(Wide)), i32(isize(p1) - isize(p0)))
+	printf("%d %d %d %d\n", i32(sizeOf(Effect)), i32(sizeOf(Inner)), i32(sizeOf(Unit)), i32(sizeOf(Outer)))
+	ret 0
+}

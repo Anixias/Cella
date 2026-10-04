@@ -1,0 +1,19 @@
+
+====== binding_writes.ce ======
+
+Error at line 14, column 3
+13 │ if effect is hit(n)
+14 │     n = 2
+         ^ 'n' is bound by a pattern and can't be changed
+
+Error at line 20, column 4
+19 │ {
+20 │     values[0] = 3
+         ╘═══════╛ 'values' is bound by a pattern and can't be changed
+
+Error at line 21, column 26
+20 │ values[0] = 3
+21 │ var view: span[i32] = values
+                           ╘════╛ 'values' is bound by a pattern and can't be changed through a 'span[i32]'
+
+[compilation failed]

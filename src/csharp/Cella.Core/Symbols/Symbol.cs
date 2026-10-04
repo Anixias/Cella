@@ -354,18 +354,14 @@ public sealed class ViewType(TypeSymbol elementType) : TypeSymbol($"view[{elemen
 
 public abstract class VariableSymbol(string name) : Symbol(name);
 
-public sealed class LocalVariableSymbol(VarStatementNode syntax, TypeSymbol type, string nameOverride)
-	: VariableSymbol(nameOverride)
+public sealed class LocalVariableSymbol(Token identifier, TypeSymbol type, bool isMutable)
+	: VariableSymbol(identifier.Text)
 {
-	public VarStatementNode Syntax { get; } = syntax;
+	public Token Identifier { get; } = identifier;
 	public TypeSymbol Type { get; } = type;
-	public SourceLocation Definition { get; } = syntax.SourceLocation;
-	public bool IsMutable => Syntax.IsMutable;
+	public bool IsMutable { get; } = isMutable;
+	public bool IsPatternBinding { get; init; }
 	public Constant? ConstantValue { get; init; }
-	
-	public LocalVariableSymbol(VarStatementNode syntax, TypeSymbol type) : this(syntax, type, syntax.Identifier.Text)
-	{
-	}
 }
 
 // TODO: Initializer? Or is that stored elsewhere?
@@ -416,6 +412,29 @@ public sealed class RecordSymbol : TypeSymbol, IExportable
 		NestedTypes = nestedTypes.ToImmutableArray();
 		Visibility = Visibility.FromModifiers(node.Modifiers);
 	}
+}
+
+public sealed class EnumSymbol : TypeSymbol, IExportable
+{
+	public EnumNode Node { get; }
+	public ImmutableArray<EnumCaseSymbol> Cases { get; }
+	public Visibility Visibility { get; }
+	public bool HasPayload => Cases.Any(static c => c.Fields.Length > 0);
+	
+	public EnumSymbol(EnumNode node, IEnumerable<EnumCaseSymbol> cases) : base(node.Identifier.Text)
+	{
+		Node = node;
+		Cases = cases.ToImmutableArray();
+		Visibility = Visibility.FromModifiers(node.Modifiers);
+	}
+}
+
+public sealed class EnumCaseSymbol(EnumCaseNode node, int index, IEnumerable<FieldSymbol> fields)
+	: Symbol(node.Identifier.Text)
+{
+	public EnumCaseNode Node { get; } = node;
+	public int Index { get; } = index;
+	public ImmutableArray<FieldSymbol> Fields { get; } = fields.ToImmutableArray();
 }
 
 public abstract class MemberSymbol(string name) : Symbol(name);

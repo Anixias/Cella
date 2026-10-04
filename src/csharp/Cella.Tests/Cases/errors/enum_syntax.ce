@@ -1,0 +1,53 @@
+mod test
+
+Team: enum
+{
+	red,
+	blue
+}
+
+Effect: enum
+{
+	hit(i32)
+}
+
+Heal: enum
+{
+	mend(amount: i32
+}
+
+Role: enum
+{
+	fighter
+}
+
+missingArrow: fun -> i32
+{
+	match Role.fighter
+	{
+		fighter ret 1
+	}
+
+	ret 0
+}
+
+missingBrace: fun -> i32
+{
+	match Role.fighter
+		fighter => ret 1
+
+	ret 0
+}
+
+missingBinding: fun -> i32
+{
+	if Role.fighter is fighter(1)
+		ret 1
+
+	ret 0
+}
+
+main: fun -> i32
+{
+	ret 0
+}

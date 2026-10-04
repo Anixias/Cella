@@ -1,0 +1,35 @@
+
+====== enum_syntax.ce ======
+
+Error at line 5, column 5
+4 │ {
+5 │     red,
+           ^ Expected a case name
+
+Error at line 11, column 9
+10 │ {
+11 │     hit(i32)
+                ^ Expected ':' and a type
+
+Error at line 17, column 1
+16 │     mend(amount: i32
+17 │ }
+     ^ Expected ',' or ')'
+     | To match the '(' on line 16
+
+Error at line 28, column 11
+27 │ {
+28 │     fighter ret 1
+                 ╘═╛ Expected '=>'
+
+Error at line 37, column 3
+36 │ match Role.fighter
+37 │     fighter => ret 1
+         ╘═════╛ Expected '{'
+
+Error at line 44, column 29
+43 │ {
+44 │     if Role.fighter is fighter(1)
+                                    ^ Expected a name or '_'
+
+[compilation failed]

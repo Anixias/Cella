@@ -1,0 +1,60 @@
+
+====== bad_enum_values.ce ======
+
+Error at line 18, column 15
+17 │ {
+18 │     var a = Team.rde
+                      ╘═╛ 'Team' has no case 'rde'
+                        | Did you mean 'red'?
+
+Error at line 19, column 10
+18 │ var a = Team.rde
+19 │ var b = Effect.hit
+             ╘════════╛ 'Effect.hit' holds 1 value: amount
+
+Error at line 20, column 10
+19 │ var b = Effect.hit
+20 │ var c = Effect.hit(1, 2)
+             ╘══════════════╛ 'Effect.hit' holds 1 value: amount
+
+Error at line 21, column 10
+20 │ var c = Effect.hit(1, 2)
+21 │ var d = Team.red(1)
+             ╘═════════╛ 'Team.red' holds no values
+
+Error at line 22, column 10
+21 │ var d = Team.red(1)
+22 │ var e = Team.red()
+             ╘════════╛ 'Team.red' holds no values
+
+Error at line 23, column 21
+22 │ var e = Team.red()
+23 │ var f = Effect.hit(true)
+                        ╘══╛ Cannot convert type 'bool' to 'i32'
+
+Error at line 24, column 10
+23 │ var f = Effect.hit(true)
+24 │ var g = Effect.both(1)
+             ╘════════════╛ 'Effect.both' holds 2 values: first, second
+
+Error at line 25, column 10
+24 │ var g = Effect.both(1)
+25 │ var h = Effect.none == Effect.none
+             ╘════════════════════════╛ No operation defined for '==' between 'Effect' and 'Effect'
+
+Error at line 26, column 10
+25 │ var h = Effect.none == Effect.none
+26 │ var i = Team.red < Team.blue
+             ╘══════════════════╛ No operation defined for '<' between 'Team' and 'Team'
+
+Error at line 27, column 10
+26 │ var i = Team.red < Team.blue
+27 │ var j = i32(Team.red)
+             ╘═══════════╛ No constructor for 'i32' accepts argument of type 'Team'
+
+Error at line 28, column 21
+27 │ var j = i32(Team.red)
+28 │ var k = Effect.hit(missing)
+                        ╘═════╛ Symbol 'missing' not found in this scope
+
+[compilation failed]

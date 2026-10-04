@@ -1,0 +1,15 @@
+hit(5) mend(3, 2) hit(42) mend(1, 2) none scale(0.25) none 
+wrap(value(-7), 9)
+unit(30, 3, 2.5)
+wrap(empty, 1)
+big hit 9
+not mend
+1 0
+copied 9, now 50
+call 3
+through a pointer 8
+owned 11
+list total 3
+234 32 32
+16 4 8 16
+[exit code 0]

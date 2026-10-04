@@ -45,6 +45,8 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	private readonly Stack<UnaryOpJob> _unaryOpJobs = [];
 	private readonly Stack<TypeSymbol?> _targetTypes = [];
 	private readonly Stack<ResolutionContext> _resolutionContexts = [];
+	private readonly HashSet<LocalVariableSymbol> _repeatedBindings = [];
+	private readonly Dictionary<IResolvedExpressionNode, ImmutableArray<LocalVariableSymbol?>> _failedPatterns = [];
 	private ResolutionContext CurrentResolutionContext => _resolutionContexts.Peek();
 	private FunctionInfo CurrentFunction => CurrentResolutionContext.ContainingFunction!.Value;
 	private Scope? CurrentScope => CurrentResolutionContext.LocalScope;
@@ -209,6 +211,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		return new ResolvedRecordNode(record, members, node);
 	}
 	
+	public IResolvedDeclarationNode Visit(EnumNode node) =>
+		new ResolvedEnumNode((EnumSymbol)_symbolTable.DeclarationSymbols[node], node);
+	
 	public IResolvedStatementNode Visit(BlockStatementNode node)
 	{
 		Diagnostics.AddRange(DiagnosticReporter.ReportDuplicates(
@@ -280,13 +285,257 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	public IResolvedStatementNode Visit(ExpressionStatementNode node) =>
 		new ResolvedExpressionStatementNode(VisitNode(node.ExpressionNode), node);
 	
-	public IResolvedExpressionNode Visit(CallExpressionNode node) =>
-		CurrentResolutionContext.TryResolveExpressionAsType(node.Target) switch
+	public IResolvedExpressionNode Visit(CallExpressionNode node)
+	{
+		if (node.Target is AccessExpressionNode access && ResolveEnumType(access.Target) is { } enumType)
+			return VisitEnumCase(access, enumType, node);
+		
+		return CurrentResolutionContext.TryResolveExpressionAsType(node.Target) switch
 		{
 			null => VisitFunctionCall(node),
 			InvalidType => new ResolvedInvalidExpressionNode(node, CurrentTargetType),
 			var targetType => VisitTypeCall(node, targetType)
 		};
+	}
+	
+	private EnumSymbol? ResolveEnumType(IExpressionNode node) =>
+		CurrentResolutionContext.TryResolveExpressionAsType(node) as EnumSymbol;
+	
+	private IResolvedExpressionNode VisitEnumCase(AccessExpressionNode access, EnumSymbol enumType,
+		CallExpressionNode? call)
+	{
+		IExpressionNode node = call is null ? access : call;
+		var arguments = call?.Arguments ?? [];
+		var enumCase = FindCase(enumType, access.Member);
+		ImmutableArray<TypeSymbol> payloadTypes = enumCase is null ? [] : _typePool.GetPayloadTypes(enumType, enumCase);
+		
+		if (enumCase is null || arguments.Length != payloadTypes.Length || call is not null && payloadTypes.IsEmpty)
+		{
+			var values = arguments.Select(argument => VisitNode(argument, null)).ToArray();
+			if (enumCase is not null && !AnyInvalid(values))
+				Diagnostics.Add(ReportPayloadCount(node.SourceLocation, enumType, enumCase));
+			
+			return new ResolvedInvalidExpressionNode(node, enumType);
+		}
+		
+		var payload = arguments.Select((argument, i) => VisitNode(argument, payloadTypes[i]));
+		return new ResolvedEnumCaseExpressionNode(enumType, enumCase, payload, node);
+	}
+	
+	private EnumCaseSymbol? FindCase(EnumSymbol enumType, Token name)
+	{
+		if (enumType.Cases.FirstOrDefault(c => c.Name == name.Text) is { } enumCase)
+			return enumCase;
+		
+		Diagnostics.Add(DiagnosticReporter.ReportUndefinedCase(name.SourceLocation, enumType.Name, name.Text,
+			enumType.Cases.Select(static c => c.Name)));
+		
+		return null;
+	}
+	
+	private static Diagnostic ReportPayloadCount(SourceLocation location, EnumSymbol enumType,
+		EnumCaseSymbol enumCase)
+	{
+		var name = $"'{enumType.Name}.{enumCase.Name}'";
+		var fields = string.Join(", ", enumCase.Fields.Select(static f => f.Name));
+		var message = enumCase.Fields.Length switch
+		{
+			0 => $"{name} holds no values",
+			1 => $"{name} holds 1 value: {fields}",
+			var count => $"{name} holds {count} values: {fields}"
+		};
+		
+		return new Diagnostic(DiagnosticSeverity.Error, location, message);
+	}
+	
+	private (IResolvedExpressionNode Value, EnumSymbol? Type) ResolveMatchedValue(IExpressionNode node)
+	{
+		var value = VisitNode(node, null);
+		if (value.Type is PointerType
+		    {
+			    PointerKind: PointerKind.Mutable or PointerKind.Immutable or PointerKind.Owning
+		    })
+			value = ResolveDereference(TokenType.OpStar, value, node);
+		
+		if (value.Type is EnumSymbol enumType)
+			return (value, enumType);
+		
+		if (!IsInvalid(value))
+			Diagnostics.Add(new(DiagnosticSeverity.Error, node.SourceLocation, $"'{value.Type.Name}' is not an enum"));
+		
+		return (value, null);
+	}
+	
+	private ResolvedPattern? ResolvePattern(PatternNode pattern, EnumSymbol enumType)
+	{
+		if (pattern.TypeName is { } typeName && !IsEnumName(typeName, enumType))
+			return null;
+		
+		if (FindCase(enumType, pattern.CaseName) is not { } enumCase)
+			return null;
+		
+		var payloadTypes = _typePool.GetPayloadTypes(enumType, enumCase);
+		if (pattern.Bindings.Length != payloadTypes.Length || pattern.HasParentheses == payloadTypes.IsEmpty)
+		{
+			var diagnostic = ReportPayloadCount(pattern.SourceLocation, enumType, enumCase);
+			if (!pattern.HasParentheses)
+			{
+				var wildcards = string.Join(", ", payloadTypes.Select(static _ => "_"));
+				diagnostic = diagnostic with { Hints = [$"Write '{enumCase.Name}({wildcards})' to match any payload"] };
+			}
+			
+			Diagnostics.Add(diagnostic);
+			return null;
+		}
+		
+		var bindings = CreateBindings(pattern, payloadTypes);
+		ReportRepeatedBindings(bindings.OfType<LocalVariableSymbol>());
+		return new ResolvedPattern(enumCase, bindings);
+	}
+	
+	private static ImmutableArray<LocalVariableSymbol?> CreateBindings(PatternNode pattern,
+		IReadOnlyList<TypeSymbol>? types) =>
+	[
+		..pattern.Bindings.Select((token, i) => token.Text == "_"
+			? null
+			: new LocalVariableSymbol(token, types?[i] ?? NativeSymbols.Invalid, false) { IsPatternBinding = true })
+	];
+	
+	private bool IsEnumName(Token typeName, EnumSymbol enumType)
+	{
+		switch (CurrentResolutionContext.Resolve(typeName.Text))
+		{
+			case var symbol when symbol == enumType:
+				return true;
+			
+			case null:
+				var typeNames = CurrentResolutionContext.GetAllSymbols()
+					.OfType<TypeSymbol>()
+					.Select(static t => t.Name)
+					.Distinct();
+				
+				Diagnostics.Add(DiagnosticReporter.ReportUndefinedType(typeName.SourceLocation, typeName.Text,
+					typeNames));
+				
+				return false;
+			
+			default:
+				Diagnostics.Add(new(DiagnosticSeverity.Error, typeName.SourceLocation,
+					$"Expected a case of '{enumType.Name}'"));
+				
+				return false;
+		}
+	}
+	
+	private void ReportRepeatedBindings(IEnumerable<LocalVariableSymbol> bindings)
+	{
+		foreach (var sameName in bindings.GroupBy(static b => b.Name).Where(static g => g.Count() > 1))
+		{
+			foreach (var binding in sameName)
+			{
+				if (_repeatedBindings.Add(binding))
+					Diagnostics.Add(new(DiagnosticSeverity.Error, binding.Identifier.SourceLocation,
+						$"'{binding.Name}' is bound more than once"));
+			}
+		}
+	}
+	
+	private IEnumerable<LocalVariableSymbol> GetTrueBindings(IResolvedExpressionNode condition) =>
+		condition switch
+		{
+			ResolvedIsExpressionNode node => node.Pattern.Bindings.OfType<LocalVariableSymbol>(),
+			ResolvedInvalidExpressionNode node when _failedPatterns.TryGetValue(node, out var bindings) =>
+				bindings.OfType<LocalVariableSymbol>(),
+			ResolvedBinaryOpExpressionNode { Operation: NativeImpl { Op: TokenType.OpAmpersandAmpersand } } node =>
+				GetTrueBindings(node.Left).Concat(GetTrueBindings(node.Right)),
+			_ => []
+		};
+	
+	private Scope? DefineBindings(IEnumerable<LocalVariableSymbol?> bindings)
+	{
+		Scope? scope = null;
+		foreach (var binding in bindings.OfType<LocalVariableSymbol>())
+		{
+			scope ??= CurrentScope?.CreateChild() ?? new Scope();
+			scope.Define(binding);
+		}
+		
+		return scope;
+	}
+	
+	private IResolvedStatementNode VisitWithBindings(IStatementNode node, IEnumerable<LocalVariableSymbol?> bindings) =>
+		DefineBindings(bindings) is { } scope ? VisitInScope(node, scope) : VisitNode(node);
+	
+	private IResolvedStatementNode VisitInScope(IStatementNode node, Scope scope)
+	{
+		_resolutionContexts.Push(CurrentResolutionContext with { LocalScope = scope });
+		var result = VisitNode(node);
+		_resolutionContexts.Pop();
+		return result;
+	}
+	
+	private IResolvedExpressionNode VisitWithBindings(IExpressionNode node, IEnumerable<LocalVariableSymbol> bindings)
+	{
+		if (DefineBindings(bindings) is not { } scope)
+			return VisitNode(node, null);
+		
+		_resolutionContexts.Push(CurrentResolutionContext with { LocalScope = scope });
+		var result = VisitNode(node, null);
+		_resolutionContexts.Pop();
+		return result;
+	}
+	
+	public IResolvedExpressionNode Visit(IsExpressionNode node)
+	{
+		var (value, enumType) = ResolveMatchedValue(node.Value);
+		if (enumType is not null && ResolvePattern(node.Pattern, enumType) is { } pattern)
+			return new ResolvedIsExpressionNode(value, pattern, node);
+		
+		var invalid = new ResolvedInvalidExpressionNode(node, NativeSymbols.Bool);
+		_failedPatterns[invalid] = CreateBindings(node.Pattern, null);
+		return invalid;
+	}
+	
+	public IResolvedStatementNode Visit(MatchStatementNode node)
+	{
+		var (value, enumType) = ResolveMatchedValue(node.Value);
+		var arms = new List<ResolvedMatchArm>(node.Arms.Length);
+		foreach (var arm in node.Arms)
+		{
+			var pattern = arm.Pattern is { } syntax && enumType is not null ? ResolvePattern(syntax, enumType) : null;
+			var bindings = pattern?.Bindings ?? (arm.Pattern is { } failed ? CreateBindings(failed, null) : []);
+			var scope = DefineBindings(bindings) ?? CurrentScope?.CreateChild() ?? new Scope();
+			arms.Add(new ResolvedMatchArm(pattern, VisitInScope(arm.Body, scope)));
+		}
+		
+		ReportArmConflicts(node, arms);
+		return new ResolvedMatchStatementNode(value, arms, node);
+	}
+	
+	private void ReportArmConflicts(MatchStatementNode node, IReadOnlyList<ResolvedMatchArm> arms)
+	{
+		var elseArms = node.Arms.Where(static arm => arm.Pattern is null).ToList();
+		if (elseArms.Count > 1)
+		{
+			foreach (var arm in elseArms)
+				Diagnostics.Add(new(DiagnosticSeverity.Error, arm.SourceLocation,
+					"A match can have only one 'else' arm"));
+		}
+		else if (elseArms.Count == 1 && node.Arms[^1].Pattern is not null)
+		{
+			Diagnostics.Add(new(DiagnosticSeverity.Error, elseArms[0].SourceLocation, "'else' must be the last arm"));
+		}
+		
+		var repeated = arms
+			.Select((arm, index) => (Case: arm.Pattern?.Case, Location: node.Arms[index].SourceLocation))
+			.Where(static arm => arm.Case is not null)
+			.GroupBy(static arm => arm.Case)
+			.Where(static sameCase => sameCase.Count() > 1)
+			.SelectMany(static sameCase => sameCase);
+		
+		foreach (var (enumCase, location) in repeated)
+			Diagnostics.Add(new(DiagnosticSeverity.Error, location, $"'{enumCase!.Name}' is matched more than once"));
+	}
 	
 	private IResolvedExpressionNode VisitTypeCall(CallExpressionNode node, TypeSymbol targetType)
 	{
@@ -574,6 +823,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	
 	public IResolvedExpressionNode Visit(AccessExpressionNode node)
 	{
+		if (ResolveEnumType(node.Target) is { } enumType)
+			return VisitEnumCase(node, enumType, null);
+		
 		var target = VisitNode(node.Target);
 		if (IsInvalid(target))
 			return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
@@ -791,7 +1043,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	{
 		var condition = VisitNode(node.Condition, NativeSymbols.Bool);
 		
-		var then = VisitNode(node.Then);
+		var then = VisitWithBindings(node.Then, GetTrueBindings(condition));
 		var @else = node.Else is null ? null : VisitNode(node.Else);
 		
 		return new ResolvedIfStatementNode(condition, then, @else, node);
@@ -830,7 +1082,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		
 		type ??= initializer?.Type ?? NativeSymbols.Invalid;
 		
-		var symbol = new LocalVariableSymbol(node, type)
+		var symbol = new LocalVariableSymbol(node.Identifier, type, node.IsMutable)
 		{
 			ConstantValue = node.IsMutable || initializer is null ? null : _evaluator.Evaluate(initializer)
 		};
@@ -846,6 +1098,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		
 		// Create a scope for the body and label (if applicable)
 		var scope = CurrentScope?.CreateChild() ?? new();
+		foreach (var binding in GetTrueBindings(condition))
+			scope.Define(binding);
+		
 		var resolutionContext = CurrentResolutionContext with { LocalScope = scope };
 		
 		LabelSymbol? symbol;
@@ -1053,7 +1308,13 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		else
 		{
 			var left = VisitNode(node.Left, null);
-			var right = VisitNode(node.Right, null);
+			var isConjunction = op.Type == TokenType.OpAmpersandAmpersand;
+			var right = isConjunction
+				? VisitWithBindings(node.Right, GetTrueBindings(left))
+				: VisitNode(node.Right, null);
+			
+			if (isConjunction)
+				ReportRepeatedBindings(GetTrueBindings(left).Concat(GetTrueBindings(right)));
 			
 			if (AnyInvalid(left, right))
 				return new ResolvedInvalidExpressionNode(node, CurrentTargetType);

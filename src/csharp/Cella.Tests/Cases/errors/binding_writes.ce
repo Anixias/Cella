@@ -1,0 +1,27 @@
+mod test
+
+Effect: enum
+{
+	none
+	hit(amount: i32)
+	many(values: array[i32, 2])
+}
+
+main: fun -> i32
+{
+	var effect = Effect.hit(1)
+	if effect is hit(n)
+		n = 2
+
+	match effect
+	{
+		many(values) =>
+		{
+			values[0] = 3
+			var view: span[i32] = values
+		}
+		else => ret 0
+	}
+
+	ret 0
+}

@@ -58,6 +58,8 @@ public sealed class Lowerer(ConstantEvaluator evaluator, Func<GlobalSymbol, Glob
 		currentFile?.Types.Add(node.Symbol);
 	}
 	
+	public void Visit(ResolvedEnumNode node) => currentFile?.Types.Add(node.Symbol);
+	
 	public void Visit(ResolvedFieldNode node)
 	{
 	}
@@ -216,16 +218,11 @@ public sealed class Lowerer(ConstantEvaluator evaluator, Func<GlobalSymbol, Glob
 		
 		public void Visit(ResolvedIfStatementNode node)
 		{
-			// Condition & terminate block
-			var condition = VisitNode(node.Condition);
-			
 			var thenBlock = CreateBlock("then");
 			var elseBlock = node.Else is null ? null : CreateBlock("else");
 			var mergeBlock = CreateBlock("merge");
 			
-			GetOrMakeBlock().SetTerminator(new ConditionalBranchTerminator(condition, thenBlock,
-				elseBlock ?? mergeBlock,
-				node.Condition.Syntax.SourceLocation));
+			LowerBranch(node.Condition, thenBlock, elseBlock ?? mergeBlock);
 			
 			// Then block
 			currentBlock = thenBlock;
@@ -246,6 +243,134 @@ public sealed class Lowerer(ConstantEvaluator evaluator, Func<GlobalSymbol, Glob
 		
 		public void Visit(ResolvedInvalidStatementNode node) =>
 			throw new InvalidOperationException();
+		
+		public void Visit(ResolvedMatchStatementNode node)
+		{
+			var location = node.Syntax.SourceLocation;
+			var scrutinee = LowerScrutinee(node.Value);
+			var enumType = (EnumSymbol)scrutinee.Type;
+			var tagType = TypePool.GetTagType(enumType);
+			var tag = CaptureAsAtomic(new EnumTagValue(tagType, scrutinee, location), "tag");
+			var mergeBlock = CreateBlock("match_end");
+			var coversEveryCase = node.Arms.Count(static arm => arm.Pattern is not null) == enumType.Cases.Length;
+			
+			var testBlock = GetOrMakeBlock();
+			for (var i = 0; i < node.Arms.Length; i++)
+			{
+				var arm = node.Arms[i];
+				var isLast = i == node.Arms.Length - 1;
+				var armBlock = CreateBlock("match_arm");
+				BasicBlock? nextBlock = null;
+				
+				if (arm.Pattern is not { } pattern || coversEveryCase && isLast)
+					testBlock.SetTerminator(new BranchTerminator(armBlock, location));
+				else
+				{
+					nextBlock = isLast ? mergeBlock : CreateBlock("match_next");
+					var caseTag = MakeConstant(tagType, new BigInteger(pattern.Case.Index));
+					var test = new BinOpValue(NativeSymbols.Bool, tag, caseTag, BinaryOperation.Equal, location);
+					testBlock.SetTerminator(new ConditionalBranchTerminator(test, armBlock, nextBlock, location));
+				}
+				
+				currentBlock = armBlock;
+				BeginScope(arm.Body.Syntax.SourceLocation);
+				if (arm.Pattern is { } armPattern)
+					BindPayload(scrutinee, armPattern);
+				
+				VisitNode(arm.Body);
+				EndCurrentScope();
+				currentBlock?.FillTerminator(new BranchTerminator(mergeBlock, location));
+				
+				if (nextBlock is null)
+					break;
+				
+				testBlock = nextBlock;
+			}
+			
+			if (node.Arms.IsEmpty)
+				testBlock.SetTerminator(new BranchTerminator(mergeBlock, location));
+			
+			ContinueWith(mergeBlock);
+		}
+		
+		private void LowerBranch(IResolvedExpressionNode condition, BasicBlock trueBlock, BasicBlock falseBlock)
+		{
+			var location = condition.Syntax.SourceLocation;
+			if (_evaluator.Evaluate(condition) is null)
+			{
+				switch (condition)
+				{
+					case ResolvedBinaryOpExpressionNode
+					{
+						Operation: NativeImpl { Op: TokenType.OpAmpersandAmpersand or TokenType.OpBarBar } operation
+					} node:
+					{
+						var rightBlock = CreateBlock("cond_right");
+						if (operation.Op == TokenType.OpAmpersandAmpersand)
+							LowerBranch(node.Left, rightBlock, falseBlock);
+						else
+							LowerBranch(node.Left, trueBlock, rightBlock);
+						
+						currentBlock = rightBlock;
+						LowerBranch(node.Right, trueBlock, falseBlock);
+						return;
+					}
+					
+					case ResolvedUnaryOpExpressionNode { Operation: NativeImpl { Op: TokenType.OpBang } } node:
+						LowerBranch(node.Operand, falseBlock, trueBlock);
+						return;
+					
+					case ResolvedIsExpressionNode { Pattern.HasBindings: true } node:
+					{
+						var scrutinee = LowerScrutinee(node.Value);
+						var bindBlock = CreateBlock("is_bind");
+						GetOrMakeBlock().SetTerminator(new ConditionalBranchTerminator(
+							TestCase(scrutinee, node.Pattern.Case), bindBlock, falseBlock, location));
+						
+						currentBlock = bindBlock;
+						BindPayload(scrutinee, node.Pattern);
+						GetOrMakeBlock().SetTerminator(new BranchTerminator(trueBlock, location));
+						currentBlock = null;
+						return;
+					}
+				}
+			}
+			
+			var value = VisitNode(condition);
+			GetOrMakeBlock().SetTerminator(new ConditionalBranchTerminator(value, trueBlock, falseBlock, location));
+			currentBlock = null;
+		}
+		
+		private Value LowerScrutinee(IResolvedExpressionNode node)
+		{
+			var value = VisitNode(node);
+			return value is VariableValue or GlobalValue or AccessValue or IndexerValue
+				or UnaryOpValue { Op: UnaryOperation.Dereference }
+				? StabilizeStorage(value)
+				: CaptureAsAtomic(value, "scrutinee");
+		}
+		
+		private BinOpValue TestCase(Value scrutinee, EnumCaseSymbol enumCase)
+		{
+			var location = scrutinee.SourceLocation;
+			var tagType = TypePool.GetTagType((EnumSymbol)scrutinee.Type);
+			var tag = new EnumTagValue(tagType, scrutinee, location);
+			var caseTag = MakeConstant(tagType, new BigInteger(enumCase.Index));
+			return new BinOpValue(NativeSymbols.Bool, tag, caseTag, BinaryOperation.Equal, location);
+		}
+		
+		private void BindPayload(Value scrutinee, ResolvedPattern pattern)
+		{
+			for (var i = 0; i < pattern.Bindings.Length; i++)
+			{
+				if (pattern.Bindings[i] is not { } binding)
+					continue;
+				
+				var location = binding.Identifier.SourceLocation;
+				var payload = new EnumPayloadValue(binding.Type, scrutinee, pattern.Case, i, location);
+				GetOrMakeBlock().Instructions.Add(new LocalVarInstruction(binding, payload, location, CurrentScopeId));
+			}
+		}
 		
 		public void Visit(ResolvedReturnStatementNode node)
 		{
@@ -301,9 +426,7 @@ public sealed class Lowerer(ConstantEvaluator evaluator, Func<GlobalSymbol, Glob
 			
 			// Condition
 			currentBlock = condBlock;
-			var condition = VisitNode(node.Condition);
-			currentBlock?.FillTerminator(new ConditionalBranchTerminator(condition, bodyBlock, exitBlock,
-				node.Condition.Syntax.SourceLocation));
+			LowerBranch(node.Condition, bodyBlock, exitBlock);
 			
 			ContinueWith(exitBlock);
 		}
@@ -410,9 +533,7 @@ public sealed class Lowerer(ConstantEvaluator evaluator, Func<GlobalSymbol, Glob
 			
 			// Condition
 			currentBlock = condBlock;
-			var condition = VisitNode(node.Condition);
-			currentBlock?.FillTerminator(new ConditionalBranchTerminator(condition, bodyBlock, exitBlock,
-				node.Condition.Syntax.SourceLocation));
+			LowerBranch(node.Condition, bodyBlock, exitBlock);
 			
 			// Body
 			currentBlock = bodyBlock;
@@ -459,6 +580,33 @@ public sealed class Lowerer(ConstantEvaluator evaluator, Func<GlobalSymbol, Glob
 					new ExpressionInstruction(new AssignValue(fieldValue.Type, target, fieldValue, sourceLocation)));
 			}
 			
+			return result;
+		}
+		
+		public Value Visit(ResolvedEnumCaseExpressionNode node) => new EnumValue((EnumSymbol)node.Type, node.Case,
+			node.Payload.Select(VisitNode), node.Syntax.SourceLocation);
+		
+		public Value Visit(ResolvedIsExpressionNode node)
+		{
+			var location = node.Syntax.SourceLocation;
+			var scrutinee = LowerScrutinee(node.Value);
+			var test = TestCase(scrutinee, node.Pattern.Case);
+			if (!node.Pattern.HasBindings)
+				return test;
+			
+			var resultSymbol = CreateTempSymbol(NativeSymbols.Bool, "is_result");
+			GetOrMakeBlock().Instructions.Add(new LocalVarInstruction(resultSymbol, test, location, CurrentScopeId));
+			var result = new VariableValue(new(resultSymbol, NativeSymbols.Bool), location);
+			
+			var bindBlock = CreateBlock("is_bind");
+			var mergeBlock = CreateBlock("is_merge");
+			GetOrMakeBlock().SetTerminator(new ConditionalBranchTerminator(result, bindBlock, mergeBlock, location));
+			
+			currentBlock = bindBlock;
+			BindPayload(scrutinee, node.Pattern);
+			GetOrMakeBlock().SetTerminator(new BranchTerminator(mergeBlock, location));
+			
+			ContinueWith(mergeBlock);
 			return result;
 		}
 		
@@ -596,10 +744,7 @@ public sealed class Lowerer(ConstantEvaluator evaluator, Func<GlobalSymbol, Glob
 		private LocalVariableSymbol CreateTempSymbol(TypeSymbol type, string name)
 		{
 			name = $".t{NextTempId()}__{name}";
-			var node = new VarStatementNode(SourceLocation.None, new(TokenType.Identifier, SourceLocation.None, name),
-				null, null, true);
-			
-			return new LocalVariableSymbol(node, type);
+			return new LocalVariableSymbol(new(TokenType.Identifier, SourceLocation.None, name), type, true);
 		}
 		
 		public Value Visit(ResolvedAssignmentExpressionNode node)
@@ -702,6 +847,10 @@ public sealed class Lowerer(ConstantEvaluator evaluator, Func<GlobalSymbol, Glob
 		
 		private static Value LowerBinOp(Value left, OperationImpl? op, Value right) => op switch
 		{
+			NativeImpl { ParameterTypes: [EnumSymbol enumType, _] } i => new BinOpValue(i.ReturnType,
+				new EnumTagValue(TypePool.GetTagType(enumType), left, left.SourceLocation),
+				new EnumTagValue(TypePool.GetTagType(enumType), right, right.SourceLocation),
+				ToBinaryOperation(i.Op), Join(left.SourceLocation, right.SourceLocation)),
 			NativeImpl i => new BinOpValue(i.ReturnType, left, right, ToBinaryOperation(i.Op),
 				Join(left.SourceLocation, right.SourceLocation)),
 			FunctionImpl i => new CallValue(i.Function, [left, right],

@@ -1,0 +1,14 @@
+
+====== match_returns.ce ======
+
+Error at line 9, column 1
+8 │ 
+9 │ partial: fun(team: Team) -> i32
+    ╘═════╛ Not all paths return a value
+
+Warning at line 25, column 2
+24 │ 
+25 │ ret 3
+     ^ Unreachable code
+
+[compilation failed]

@@ -55,6 +55,10 @@ public static class DiagnosticReporter
 		IEnumerable<string> availableNames) =>
 		ReportUndefined(location, $"Type '{missingName}' not found in this scope", missingName, availableNames);
 	
+	public static Diagnostic ReportUndefinedCase(SourceLocation location, string enumName, string missingName,
+		IEnumerable<string> caseNames) =>
+		ReportUndefined(location, $"'{enumName}' has no case '{missingName}'", missingName, caseNames);
+	
 	public static IEnumerable<Diagnostic> ReportDuplicates(IEnumerable<Token> identifiers,
 		Func<string, string> describe) => identifiers
 		.GroupBy(static identifier => identifier.Text)

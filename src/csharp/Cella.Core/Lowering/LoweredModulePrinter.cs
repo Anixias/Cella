@@ -36,6 +36,16 @@ public static class LoweredModulePrinter
 						}
 						
 						break;
+					
+					case EnumSymbol s:
+						sb.Append(s.Name).Append(':').AppendLine();
+						foreach (var enumCase in s.Cases)
+						{
+							const int caseIndent = 2;
+							sb.Append(' ', caseIndent).Append(enumCase.Name).AppendLine();
+						}
+						
+						break;
 				}
 			}
 			
@@ -420,6 +430,36 @@ public static class LoweredModulePrinter
 					sb.Append('.').Append(v.Member.Name);
 					break;
 				}
+				
+				case EnumValue v:
+				{
+					sb.Append(v.Type.Name).Append('.').Append(v.Case.Name);
+					if (v.Payload.IsEmpty)
+						break;
+					
+					sb.Append('(');
+					for (var i = 0; i < v.Payload.Length; i++)
+					{
+						if (i > 0)
+							sb.Append(", ");
+						
+						PrintValue(sb, v.Payload[i]);
+					}
+					
+					sb.Append(')');
+					break;
+				}
+				
+				case EnumTagValue v:
+					sb.Append("tag(");
+					PrintValue(sb, v.Target);
+					sb.Append(')');
+					break;
+				
+				case EnumPayloadValue v:
+					PrintValue(sb, v.Target);
+					sb.Append('.').Append(v.Case.Name).Append('.').Append(v.Case.Fields[v.Index].Name);
+					break;
 				
 				case ArrayValue v:
 				{

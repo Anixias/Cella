@@ -1,0 +1,52 @@
+mod test
+
+Team: enum
+{
+	red
+	blue
+	red
+}
+
+Effect: enum
+{
+	hit(amount: i32, amount: i32)
+	miss(target: Missing)
+}
+
+Never: enum
+{
+}
+
+Chain: enum
+{
+	end
+	link(next: Chain)
+}
+
+Holder: rec
+{
+	item: Item
+}
+
+Item: enum
+{
+	none
+	held(holders: array[Holder, 2])
+}
+
+Point: rec
+{
+	x: i32
+}
+
+Point: enum
+{
+	origin
+}
+
+current: var Team = Team.blue
+
+main: fun -> i32
+{
+	ret 0
+}

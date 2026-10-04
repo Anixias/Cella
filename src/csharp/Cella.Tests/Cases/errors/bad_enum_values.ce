@@ -1,0 +1,30 @@
+mod test
+
+Team: enum
+{
+	red
+	blue
+}
+
+Effect: enum
+{
+	none
+	hit(amount: i32)
+	both(first: i32, second: i32)
+}
+
+main: fun -> i32
+{
+	var a = Team.rde
+	var b = Effect.hit
+	var c = Effect.hit(1, 2)
+	var d = Team.red(1)
+	var e = Team.red()
+	var f = Effect.hit(true)
+	var g = Effect.both(1)
+	var h = Effect.none == Effect.none
+	var i = Team.red < Team.blue
+	var j = i32(Team.red)
+	var k = Effect.hit(missing)
+	ret 0
+}

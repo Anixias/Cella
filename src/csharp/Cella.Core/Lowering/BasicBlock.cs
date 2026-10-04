@@ -135,6 +135,38 @@ public sealed class AccessValue(TypeSymbol type, Value target, MemberSymbol memb
 	public MemberSymbol Member { get; } = member;
 }
 
+public sealed class EnumValue
+(
+	EnumSymbol type,
+	EnumCaseSymbol enumCase,
+	IEnumerable<Value> payload,
+	SourceLocation sourceLocation
+) : Value(type, false, sourceLocation)
+{
+	public EnumCaseSymbol Case { get; } = enumCase;
+	public ImmutableArray<Value> Payload { get; } = payload.ToImmutableArray();
+}
+
+public sealed class EnumTagValue(IntegerType type, Value target, SourceLocation sourceLocation)
+	: Value(type, false, sourceLocation)
+{
+	public Value Target { get; } = target;
+}
+
+public sealed class EnumPayloadValue
+(
+	TypeSymbol type,
+	Value target,
+	EnumCaseSymbol enumCase,
+	int index,
+	SourceLocation sourceLocation
+) : Value(type, false, sourceLocation)
+{
+	public Value Target { get; } = target;
+	public EnumCaseSymbol Case { get; } = enumCase;
+	public int Index { get; } = index;
+}
+
 public sealed class ArrayValue : Value
 {
 	public ArrayType ArrayType { get; }

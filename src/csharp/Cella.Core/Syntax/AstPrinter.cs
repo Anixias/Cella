@@ -335,6 +335,49 @@ public sealed class AstPrinter : ISyntaxNodeVisitor
 			VisitNode(node.Members[i], i == node.Members.Length - 1);
 	}
 	
+	public void Visit(EnumNode node)
+	{
+		StartLine();
+		_sb.Append("EnumNode '").Append(node.Identifier.AsSpan()).Append('\'');
+		
+		for (var i = 0; i < node.Cases.Length; i++)
+		{
+			var enumCase = node.Cases[i];
+			VisitAction(() =>
+			{
+				StartLine();
+				_sb.Append("Case '").Append(enumCase.Identifier.AsSpan()).Append('\'');
+				foreach (var field in enumCase.Payload)
+					VisitNode(field, field == enumCase.Payload[^1]);
+			}, i == node.Cases.Length - 1);
+		}
+	}
+	
+	public void Visit(MatchStatementNode node)
+	{
+		StartLine();
+		_sb.Append("MatchStatementNode");
+		VisitNode(node.Value, node.Arms.Length == 0);
+		
+		for (var i = 0; i < node.Arms.Length; i++)
+		{
+			var arm = node.Arms[i];
+			VisitAction(() =>
+			{
+				StartLine();
+				_sb.Append("Arm: ").Append(arm.SourceLocation.GetText());
+				VisitNode(arm.Body, true);
+			}, i == node.Arms.Length - 1);
+		}
+	}
+	
+	public void Visit(IsExpressionNode node)
+	{
+		StartLine();
+		_sb.Append("IsExpressionNode: ").Append(node.Pattern.SourceLocation.GetText());
+		VisitNode(node.Value, true);
+	}
+	
 	public void Visit(LiteralExpressionNode node)
 	{
 		StartLine();

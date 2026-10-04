@@ -1,0 +1,31 @@
+mod test
+
+Team: enum
+{
+	red
+	blue
+}
+
+partial: fun(team: Team) -> i32
+{
+	match team
+	{
+		red => ret 1
+	}
+}
+
+complete: fun(team: Team) -> i32
+{
+	match team
+	{
+		red => ret 1
+		blue => ret 2
+	}
+
+	ret 3
+}
+
+main: fun -> i32
+{
+	ret partial(Team.red) + complete(Team.blue)
+}

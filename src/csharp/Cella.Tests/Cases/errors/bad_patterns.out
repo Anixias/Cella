@@ -1,0 +1,116 @@
+
+====== bad_patterns.ce ======
+
+Error at line 30, column 10
+29 │ var effect = Effect.none
+30 │ var a = 5 is red
+             ^ 'integer literal' is not an enum
+
+Error at line 31, column 18
+30 │ var a = 5 is red
+31 │ var b = team is green
+                     ╘═══╛ 'Team' has no case 'green'
+
+Error at line 32, column 20
+31 │ var b = team is green
+32 │ var c = effect is hit
+                       ╘═╛ 'Effect.hit' holds 1 value: amount
+                         | Write 'hit(_)' to match any payload
+
+Error at line 33, column 18
+32 │ var c = effect is hit
+33 │ var d = team is red()
+                     ╘═══╛ 'Team.red' holds no values
+
+Error at line 34, column 20
+33 │ var d = team is red()
+34 │ var e = effect is hit(x, y)
+                       ╘═══════╛ 'Effect.hit' holds 1 value: amount
+
+Error at line 35, column 25
+34 │ var e = effect is hit(x, y)
+35 │ var f = effect is both(z, z)
+                            ^ 'z' is bound more than once
+
+Error at line 35, column 28
+34 │ var e = effect is hit(x, y)
+35 │ var f = effect is both(z, z)
+                               ^ 'z' is bound more than once
+
+Error at line 36, column 24
+35 │ var f = effect is both(z, z)
+36 │ var g = effect is hit(w) && effect is both(w, _)
+                           ^ 'w' is bound more than once
+
+Error at line 36, column 45
+35 │ var f = effect is both(z, z)
+36 │ var g = effect is hit(w) && effect is both(w, _)
+                                                ^ 'w' is bound more than once
+
+Error at line 37, column 20
+36 │ var g = effect is hit(w) && effect is both(w, _)
+37 │ var h = effect is Role.fighter
+                       ╘══╛ Expected a case of 'Effect'
+
+Error at line 38, column 20
+37 │ var h = effect is Role.fighter
+38 │ var i = effect is Tem.hit(_)
+                       ╘═╛ Type 'Tem' not found in this scope
+                         | Did you mean 'Team'?
+
+Error at line 43, column 18
+42 │ else
+43 │     printf("%d\n", n)
+                        ^ Symbol 'n' not found in this scope
+
+Error at line 45, column 25
+44 │ 
+45 │ if effect is hit(m) || m > 3
+                            ^ Symbol 'm' not found in this scope
+
+Error at line 46, column 18
+45 │ if effect is hit(m) || m > 3
+46 │     printf("%d\n", m)
+                        ^ Symbol 'm' not found in this scope
+
+Error at line 48, column 5
+47 │ 
+48 │ if missing is hit(o)
+        ╘═════╛ Symbol 'missing' not found in this scope
+
+Error at line 51, column 8
+50 │ 
+51 │ match 5
+           ^ 'integer literal' is not an enum
+
+Error at line 58, column 3
+57 │ {
+58 │     red => ret 1
+         ╘═╛ 'red' is matched more than once
+
+Error at line 60, column 3
+59 │ blue => ret 2
+60 │ red => ret 3
+     ╘═╛ 'red' is matched more than once
+
+Error at line 65, column 3
+64 │ {
+65 │     else => ret 1
+         ╘══╛ A match can have only one 'else' arm
+
+Error at line 66, column 3
+65 │ else => ret 1
+66 │ else => ret 2
+     ╘══╛ A match can have only one 'else' arm
+
+Error at line 71, column 3
+70 │ {
+71 │     else => ret 1
+         ╘══╛ 'else' must be the last arm
+
+Error at line 81, column 6
+80 │ 
+81 │ ret declared
+         ╘══════╛ Symbol 'declared' not found in this scope
+
+[compilation failed]

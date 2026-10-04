@@ -1,0 +1,64 @@
+
+====== bad_enums.ce ======
+
+Error at line 5, column 2
+4 │ {
+5 │     red
+        ╘═╛ Case 'red' is declared more than once in 'Team'
+
+Error at line 7, column 2
+6 │ blue
+7 │ red
+    ╘═╛ Case 'red' is declared more than once in 'Team'
+
+Error at line 12, column 6
+11 │ {
+12 │     hit(amount: i32, amount: i32)
+             ╘════╛ Payload 'amount' is declared more than once in 'hit'
+
+Error at line 12, column 19
+11 │ {
+12 │     hit(amount: i32, amount: i32)
+                          ╘════╛ Payload 'amount' is declared more than once in 'hit'
+
+Error at line 13, column 15
+12 │ hit(amount: i32, amount: i32)
+13 │ miss(target: Missing)
+                  ╘═════╛ Type 'Missing' not found in this scope
+
+Error at line 16, column 1
+15 │ 
+16 │ Never: enum
+     ╘═══╛ 'Never' needs at least one case
+
+Error at line 23, column 13
+22 │ end
+23 │ link(next: Chain)
+                ╘═══╛ Payload 'next' of type 'Chain' causes a cycle in the memory layout
+
+Error at line 28, column 8
+27 │ {
+28 │     item: Item
+               ╘══╛ Field 'item' of type 'Item' causes a cycle in the memory layout
+
+Error at line 34, column 16
+33 │ none
+34 │ held(holders: array[Holder, 2])
+                   ╘══════════════╛ Payload 'holders' of type 'array[Holder * 2]' causes a cycle in the memory layout
+
+Error at line 37, column 1
+36 │ 
+37 │ Point: rec
+     ╘═══╛ 'Point' is declared more than once in this module
+
+Error at line 42, column 1
+41 │ 
+42 │ Point: enum
+     ╘═══╛ 'Point' is declared more than once in this module
+
+Error at line 47, column 14
+46 │ 
+47 │ current: var Team = Team.blue
+                  ╘══╛ A module 'var' must be an integer, a float, 'bool' or 'char'
+
+[compilation failed]

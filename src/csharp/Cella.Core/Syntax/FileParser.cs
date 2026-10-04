@@ -10,7 +10,7 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 {
 	private static readonly Dictionary<string, TokenType> _topLevelContextualKeywords =
 		BuildContextualKeywords(TokenType.KeywordMod, TokenType.KeywordFun, TokenType.KeywordUse, TokenType.KeywordPub,
-			TokenType.KeywordExt, TokenType.KeywordRec);
+			TokenType.KeywordExt, TokenType.KeywordRec, TokenType.KeywordEnum);
 	
 	private static readonly Dictionary<string, TokenType> _memberContextualKeywords =
 		BuildContextualKeywords(TokenType.KeywordFun, TokenType.KeywordPub, TokenType.KeywordNew, TokenType.KeywordOp);
@@ -35,6 +35,15 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 		Diagnostics.Add(new(severity, token.SourceLocation, message));
 	
 	private void ReportUnexpected(Token token) => Report(token, token.Error ?? "Unexpected token");
+	
+	private void ReportExpected(int index, string expected, Token? opener = null)
+	{
+		var token = Tokens[Math.Min(index, Tokens.Length - 1)];
+		Diagnostics.Add(new(DiagnosticSeverity.Error, token.SourceLocation, token.Error ?? $"Expected {expected}")
+		{
+			Hints = token.Error is null && opener is { } o ? [$"To match the '{o.Text}' on line {o.Line}"] : []
+		});
+	}
 	
 	private void Report(string message, DiagnosticSeverity severity = DiagnosticSeverity.Error) =>
 		Diagnostics.Add(new(severity, new(Tokens[0].SourceLocation.Source, TextRange.Empty), message));
@@ -136,6 +145,21 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 					}
 					
 					declarations.Add(record);
+					continue;
+				}
+				
+				if (Match(ref index, _topLevelContextualKeywords, TokenType.KeywordEnum))
+				{
+					var enumNode = ParseDeclaration(ref index, identifier, "enum",
+						(ref i) => ParseEnum(ref i, identifier, modifiers));
+					
+					if (enumNode is null)
+					{
+						SkipDeclaration(ref index, declarationStart);
+						continue;
+					}
+					
+					declarations.Add(enumNode);
 					continue;
 				}
 				
@@ -563,6 +587,67 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 		return new(identifier, modifiers, members);
 	}
 	
+	private EnumNode? ParseEnum(ref int index, Token identifier, IEnumerable<Token> modifiers)
+	{
+		if (!Match(ref index, out var openBrace, TokenType.OpOpenBrace))
+			return new(identifier, modifiers, []);
+		
+		var cases = new List<EnumCaseNode>();
+		while (!Match(ref index, TokenType.OpCloseBrace))
+		{
+			if (AtEnd(index))
+			{
+				Report(openBrace, "Expected '}' to close this block");
+				return null;
+			}
+			
+			if (ParseEnumCase(ref index) is not { } enumCase)
+				return null;
+			
+			cases.Add(enumCase);
+		}
+		
+		return new(identifier, modifiers, cases);
+	}
+	
+	private EnumCaseNode? ParseEnumCase(ref int index)
+	{
+		var name = Tokens[index];
+		if (name.Type != TokenType.Identifier && !name.Type.IsKeyword)
+		{
+			ReportExpected(index, "a case name");
+			return null;
+		}
+		
+		index++;
+		if (Tokens[index].Line != name.Line || !Match(ref index, out var openParen, TokenType.OpOpenParen))
+			return new(name, []);
+		
+		var payload = new List<FieldNode>();
+		do
+		{
+			if (!Match(ref index, out var fieldName, TokenType.Identifier))
+			{
+				ReportExpected(index, "a payload name");
+				return null;
+			}
+			
+			if (!Match(ref index, TokenType.OpColon))
+			{
+				ReportExpected(index, "':' and a type");
+				return null;
+			}
+			
+			payload.Add(new FieldNode(fieldName, ParseType(ref index), []));
+		} while (Match(ref index, TokenType.OpComma));
+		
+		if (Match(ref index, TokenType.OpCloseParen))
+			return new(name, payload);
+		
+		ReportExpected(index, "',' or ')'", openParen);
+		return null;
+	}
+	
 	private IDeclarationNode? ParseMember(ref int index)
 	{
 		// TODO Diagnostics
@@ -660,6 +745,9 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 		
 		if (Match(ref index, out var loopToken, TokenType.KeywordLoop))
 			return ParseLoopStatement(ref index, loopToken);
+		
+		if (Match(ref index, out var matchToken, TokenType.KeywordMatch))
+			return ParseMatchStatement(ref index, matchToken);
 		
 		if (Match(ref index, out var retToken, TokenType.KeywordRet))
 			return ParseReturnStatement(ref index, retToken);
@@ -773,6 +861,57 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 		
 		range = range.Join(@else.SourceLocation.Range);
 		return new(new(source, range), condition, then, @else);
+	}
+	
+	private MatchStatementNode? ParseMatchStatement(ref int index, Token matchToken)
+	{
+		var value = ParseExpression(ref index);
+		if (!Match(ref index, out var openBrace, TokenType.OpOpenBrace))
+		{
+			ReportExpected(index, "'{'");
+			return null;
+		}
+		
+		var arms = new List<MatchArmNode>();
+		Token closeBrace;
+		while (!Match(ref index, out closeBrace, TokenType.OpCloseBrace))
+		{
+			if (AtEnd(index))
+			{
+				Report(openBrace, "Expected '}' to close this block");
+				return null;
+			}
+			
+			if (ParseMatchArm(ref index) is not { } arm)
+				return null;
+			
+			arms.Add(arm);
+		}
+		
+		var (source, range) = matchToken.SourceLocation;
+		range = range.Join(closeBrace.SourceLocation.Range);
+		return new(new(source, range), value, arms);
+	}
+	
+	private MatchArmNode? ParseMatchArm(ref int index)
+	{
+		PatternNode? pattern = null;
+		SourceLocation location;
+		if (Match(ref index, out var elseToken, TokenType.KeywordElse))
+			location = elseToken.SourceLocation;
+		else
+		{
+			pattern = new ExpressionParser(Tokens).ParsePattern(ref index);
+			location = pattern.SourceLocation;
+		}
+		
+		if (!Match(ref index, TokenType.OpFatArrow))
+		{
+			ReportExpected(index, "'=>'");
+			return null;
+		}
+		
+		return ParseStatement(ref index) is { } body ? new(pattern, location, body) : null;
 	}
 	
 	private VarStatementNode? ParseVarStatement(ref int index, Token keyword)

@@ -13,7 +13,7 @@ public sealed class TypePool
 	public ConversionTable ConversionTable { get; }
 	public OperatorRegistry OperatorRegistry { get; }
 	public SizeTable SizeTable { get; }
-	public Action<RecordSymbol>? RecordCompleter { get; set; }
+	public Action<TypeSymbol>? TypeCompleter { get; set; }
 	
 	private readonly Dictionary<TypeSymbol, OrderedDictionary<string, MemberSymbol>> _members = [];
 	private readonly Dictionary<(TypeSymbol, BigInteger), ArrayType> _arrayTypes = [];
@@ -257,6 +257,45 @@ public sealed class TypePool
 		return StorageSize.Sum(fieldSizes);
 	});
 	
+	public void RegisterEnum(EnumSymbol enumType)
+	{
+		SizeTable.Register(enumType, () =>
+		{
+			var tagSize = SizeTable.GetSize(GetTagType(enumType));
+			if (!enumType.HasPayload)
+				return tagSize;
+			
+			var payloadSizes = enumType.Cases.Select(ISize (enumCase) => StorageSize.Sum(enumCase.Fields
+				.Select(field => SizeTable.TryGetSize(GetPayloadType(field)) ?? StorageSize.Const(0))));
+			
+			return StorageSize.Sum(tagSize, StorageSize.Max(payloadSizes));
+		});
+		
+		if (enumType.HasPayload)
+			return;
+		
+		OperatorRegistry.Create(new NativeImpl(TokenType.OpEqualEqual, NativeSymbols.Bool, enumType, enumType));
+		OperatorRegistry.Create(new NativeImpl(TokenType.OpBangEqual, NativeSymbols.Bool, enumType, enumType));
+	}
+	
+	public void RegisterPayloadField(FieldSymbol field, TypeSymbol type) => _memberTypes[field] = type;
+	
+	public ImmutableArray<TypeSymbol> GetPayloadTypes(EnumSymbol enumType, EnumCaseSymbol enumCase)
+	{
+		Complete(enumType);
+		return [..enumCase.Fields.Select(GetPayloadType)];
+	}
+	
+	private TypeSymbol GetPayloadType(FieldSymbol field) =>
+		_memberTypes.GetValueOrDefault(field) ?? NativeSymbols.Invalid;
+	
+	public static IntegerType GetTagType(EnumSymbol enumType) => enumType.Cases.Length switch
+	{
+		<= 1 << 8 => NativeSymbols.UInt8,
+		<= 1 << 16 => NativeSymbols.UInt16,
+		_ => NativeSymbols.UInt32
+	};
+	
 	public void RegisterMember(TypeSymbol containingType, TypedMemberSymbol member, TypeSymbol memberType)
 	{
 		_members.GetOrAdd(containingType)[member.Name] = member;
@@ -280,8 +319,8 @@ public sealed class TypePool
 	
 	private void Complete(TypeSymbol type)
 	{
-		if (type is RecordSymbol record)
-			RecordCompleter?.Invoke(record);
+		if (type is RecordSymbol or EnumSymbol)
+			TypeCompleter?.Invoke(type);
 	}
 	
 	public bool TryGetTypeOfMember(MemberSymbol member, [NotNullWhen(true)] out TypeSymbol? type)

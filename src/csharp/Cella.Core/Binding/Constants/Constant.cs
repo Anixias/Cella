@@ -66,4 +66,11 @@ public sealed class FunctionConstant(FunctionInfo function, TypeSymbol type) : C
 	public FunctionInfo Function { get; } = function;
 }
 
+public sealed class EnumConstant(TypeSymbol type, EnumCaseSymbol enumCase, IEnumerable<Constant> payload)
+	: Constant(type)
+{
+	public EnumCaseSymbol Case { get; } = enumCase;
+	public ImmutableArray<Constant> Payload { get; } = payload.ToImmutableArray();
+}
+
 public sealed class ZeroConstant(TypeSymbol type) : Constant(type);

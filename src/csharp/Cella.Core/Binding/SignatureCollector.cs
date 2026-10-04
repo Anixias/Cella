@@ -26,7 +26,7 @@ public sealed class SignatureCollector
 	private readonly SignatureTable.Builder _builder = new();
 	private readonly Dictionary<Symbol, Declaration> _declarations = [];
 	private readonly Dictionary<GlobalSymbol, TypeSymbol> _globalTypes = [];
-	private readonly HashSet<RecordSymbol> _completedRecords = [];
+	private readonly HashSet<TypeSymbol> _completedTypes = [];
 	private readonly List<(Symbol Symbol, bool IsValue)> _inProgress = [];
 	private readonly HashSet<Symbol> _cyclic = [];
 	private readonly List<FunctionInfo> _entryPoints = [];
@@ -49,7 +49,7 @@ public sealed class SignatureCollector
 	public void Collect(IReadOnlyCollection<FileNode> files, IConstantResolver constantResolver)
 	{
 		constants = constantResolver;
-		_typePool.RecordCompleter = CompleteRecord;
+		_typePool.TypeCompleter = Complete;
 		
 		foreach (var file in files)
 			Register(file);
@@ -58,13 +58,13 @@ public sealed class SignatureCollector
 			foreach (var declaration in file.Declarations)
 				Complete(_symbolTable.DeclarationSymbols[declaration]);
 		
-		_typePool.RecordCompleter = null;
+		_typePool.TypeCompleter = null;
 	}
 	
 	public AssemblySymbol FinishAssembly(string name)
 	{
 		ReportDuplicateDeclarations();
-		ReportRecordCycles();
+		ReportLayoutCycles();
 		ReportEntryPoint();
 		
 		FunctionInfo? entryPoint = _entryPoints.Count == 1 ? _entryPoints[0] : null;
@@ -210,6 +210,10 @@ public sealed class SignatureCollector
 				CompleteRecord(record);
 				break;
 			
+			case EnumSymbol enumType:
+				CompleteEnum(enumType);
+				break;
+			
 			case GlobalSymbol global:
 				GetGlobalInfo(global);
 				break;
@@ -218,7 +222,7 @@ public sealed class SignatureCollector
 	
 	private void CompleteRecord(RecordSymbol record)
 	{
-		if (_completedRecords.Contains(record) || !_declarations.TryGetValue(record, out var declaration) ||
+		if (_completedTypes.Contains(record) || !_declarations.TryGetValue(record, out var declaration) ||
 		    !Enter(record, false))
 			return;
 		
@@ -249,7 +253,36 @@ public sealed class SignatureCollector
 		}
 		
 		_typePool.RegisterRecord(record);
-		_completedRecords.Add(record);
+		_completedTypes.Add(record);
+		Exit();
+	}
+	
+	private void CompleteEnum(EnumSymbol enumType)
+	{
+		if (_completedTypes.Contains(enumType) || !_declarations.TryGetValue(enumType, out var declaration) ||
+		    !Enter(enumType, false))
+			return;
+		
+		var node = enumType.Node;
+		if (node.Cases.IsEmpty)
+			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Identifier.SourceLocation,
+				$"'{enumType.Name}' needs at least one case"));
+		
+		Diagnostics.AddRange(DiagnosticReporter.ReportDuplicates(node.Cases.Select(static c => c.Identifier),
+			name => $"Case '{name}' is declared more than once in '{enumType.Name}'"));
+		
+		foreach (var enumCase in enumType.Cases)
+		{
+			Diagnostics.AddRange(DiagnosticReporter.ReportDuplicates(
+				enumCase.Node.Payload.Select(static f => f.Identifier),
+				name => $"Payload '{name}' is declared more than once in '{enumCase.Name}'"));
+			
+			foreach (var field in enumCase.Fields)
+				_typePool.RegisterPayloadField(field, declaration.Context.ResolveType(field.Node!.Type));
+		}
+		
+		_typePool.RegisterEnum(enumType);
+		_completedTypes.Add(enumType);
 		Exit();
 	}
 	
@@ -380,6 +413,7 @@ public sealed class SignatureCollector
 		{
 			GlobalSymbol global => (global.Syntax.Identifier, $"'{global.Name}' depends on its own value"),
 			RecordSymbol record => (record.Node.Identifier, $"'{record.Name}' depends on its own layout"),
+			EnumSymbol enumType => (enumType.Node.Identifier, $"'{enumType.Name}' depends on its own layout"),
 			FunctionSymbol function => (GetIdentifier(function.Syntax),
 				$"'{function.Name}' depends on its own signature"),
 			_ => throw new InvalidOperationException()
@@ -462,6 +496,7 @@ public sealed class SignatureCollector
 		FunctionNode node => node.Identifier,
 		ExternalFunctionNode node => node.Identifier,
 		RecordNode node => node.Identifier,
+		EnumNode node => node.Identifier,
 		GlobalNode node => node.Identifier,
 		_ => throw new InvalidOperationException()
 	};
@@ -501,46 +536,60 @@ public sealed class SignatureCollector
 				$"'{_entryPointName}' must have no parameters and return 'i32' or nothing"));
 	}
 	
-	private void ReportRecordCycles()
+	private void ReportLayoutCycles()
 	{
-		foreach (var record in _symbolTable.DeclarationSymbols.Values.OfType<RecordSymbol>())
+		foreach (var type in _symbolTable.DeclarationSymbols.Values.OfType<TypeSymbol>())
 		{
-			foreach (var field in _typePool.GetMembers(record).OfType<FieldSymbol>())
+			foreach (var (field, fieldType) in GetStoredFields(type))
 			{
-				var fieldType = _typePool.GetTypeOfMember(field);
-				if (!ContainsRecord(fieldType, record))
+				if (!ContainsType(fieldType, type))
 					continue;
 				
+				var kind = type is EnumSymbol ? "Payload" : "Field";
 				Diagnostics.Add(new(DiagnosticSeverity.Error, field.Node!.Type.SourceLocation,
-					$"Field '{field.Name}' of type '{fieldType.Name}' causes a cycle in the memory layout"));
+					$"{kind} '{field.Name}' of type '{fieldType.Name}' causes a cycle in the memory layout"));
 			}
 		}
 	}
 	
-	private bool ContainsRecord(TypeSymbol type, RecordSymbol record)
+	private bool ContainsType(TypeSymbol type, TypeSymbol target)
 	{
-		var visited = new HashSet<RecordSymbol>();
+		var visited = new HashSet<TypeSymbol>();
 		var pending = new Stack<TypeSymbol>([type]);
 		
 		while (pending.TryPop(out var current))
 		{
-			if (GetContainedRecord(current) is not { } contained || !visited.Add(contained))
+			if (GetStoredType(current) is not { } stored || !visited.Add(stored))
 				continue;
 			
-			if (contained == record)
+			if (stored == target)
 				return true;
 			
-			foreach (var field in _typePool.GetMembers(contained).OfType<FieldSymbol>())
-				pending.Push(_typePool.GetTypeOfMember(field));
+			foreach (var (_, fieldType) in GetStoredFields(stored))
+				pending.Push(fieldType);
 		}
 		
 		return false;
 	}
 	
-	private static RecordSymbol? GetContainedRecord(TypeSymbol type) => type switch
+	private IEnumerable<(FieldSymbol Field, TypeSymbol Type)> GetStoredFields(TypeSymbol type)
 	{
-		RecordSymbol record => record,
-		ArrayType array => GetContainedRecord(array.ElementType),
+		IEnumerable<FieldSymbol> fields = type switch
+		{
+			RecordSymbol record => _typePool.GetMembers(record).OfType<FieldSymbol>(),
+			EnumSymbol enumType => enumType.Cases.SelectMany(static c => c.Fields),
+			_ => []
+		};
+		
+		foreach (var field in fields)
+			if (_typePool.TryGetTypeOfMember(field, out var fieldType))
+				yield return (field, fieldType);
+	}
+	
+	private static TypeSymbol? GetStoredType(TypeSymbol type) => type switch
+	{
+		RecordSymbol or EnumSymbol => type,
+		ArrayType array => GetStoredType(array.ElementType),
 		_ => null
 	};
 	

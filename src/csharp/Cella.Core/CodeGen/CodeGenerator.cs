@@ -125,6 +125,8 @@ public sealed unsafe class CodeGenerator : IDisposable
 		MapNativeSymbols();
 		
 		using var llvmModule = LLVMModuleRef.CreateWithName(module.Symbol.Name);
+		llvmModule.Target = TargetTriple;
+		llvmModule.DataLayout = _dataLayoutStr;
 		currentModule = llvmModule;
 		var llvmDiBuilder = llvmModule.CreateDIBuilder();
 		try
@@ -143,9 +145,6 @@ public sealed unsafe class CodeGenerator : IDisposable
 				return CodeGenResult.Failure with { ErrorMessage = message };
 			
 			llvmDiBuilder.DIBuilderFinalize();
-			
-			llvmModule.Target = TargetTriple;
-			llvmModule.DataLayout = _dataLayoutStr;
 			
 			if (!Directory.Exists(_config.OutputConfig.Directory))
 				Directory.CreateDirectory(_config.OutputConfig.Directory);
@@ -244,6 +243,9 @@ public sealed unsafe class CodeGenerator : IDisposable
 				_typeMap[symbol] = llvmPtrType;
 				return llvmPtrType;
 			}
+			
+			case EnumSymbol enumType:
+				return CreateEnumType(enumType);
 			
 			default:
 				return CreateType(symbol);
@@ -360,6 +362,29 @@ public sealed unsafe class CodeGenerator : IDisposable
 		return typeRef;
 	}
 	
+	private LLVMTypeRef CreateEnumType(EnumSymbol enumType)
+	{
+		var typeRef = LLVMContextRef.Global.CreateNamedStruct(enumType.Name);
+		_typeMap[enumType] = typeRef;
+		
+		var tagType = MapTypeSymbol(TypePool.GetTagType(enumType));
+		var payloadTypes = enumType.Cases.Where(static c => c.Fields.Length > 0).Select(GetPayloadType).ToList();
+		if (payloadTypes.Count == 0)
+		{
+			typeRef.StructSetBody([tagType], false);
+			return typeRef;
+		}
+		
+		var alignment = payloadTypes.Max(type => _targetData.ABIAlignmentOfType(type));
+		var size = payloadTypes.Max(type => _targetData.ABISizeOfType(type));
+		var count = (uint)((size + alignment - 1) / alignment);
+		typeRef.StructSetBody([tagType, LLVMTypeRef.CreateArray(LLVMTypeRef.CreateInt(alignment * 8), count)], false);
+		return typeRef;
+	}
+	
+	private LLVMTypeRef GetPayloadType(EnumCaseSymbol enumCase) => LLVMTypeRef.CreateStruct(
+		[..enumCase.Fields.Select(field => MapTypeSymbol(_typePool.GetTypeOfMember(field)))], false);
+	
 	private LLVMFunctionInfo CreateFunction(LLVMModuleRef llvmModule, FunctionInfo function)
 	{
 		if (_funMap.TryGetValue(function, out var existing))
@@ -418,6 +443,11 @@ public sealed unsafe class CodeGenerator : IDisposable
 		
 		// Build blocks
 		using var builder = llvmModule.Context.CreateBuilder();
+		builder.PositionAtEnd(allocaBlock);
+		foreach (var local in function.Blocks.SelectMany(static b => b.Instructions).OfType<LocalVarInstruction>())
+			_varMap[new(local.Symbol, local.Symbol.Type)] =
+				BuildEntryAlloca(builder, MapTypeSymbol(local.Symbol.Type), local.Symbol.Name);
+		
 		for (var i = 0; i < function.Blocks.Count; i++)
 		{
 			var block = function.Blocks[i];
@@ -477,12 +507,8 @@ public sealed unsafe class CodeGenerator : IDisposable
 			
 			case LocalVarInstruction i:
 			{
-				var type = MapTypeSymbol(i.Symbol.Type);
-				var ptr = BuildEntryAlloca(builder, type, i.Symbol.Name);
-				_varMap[new(i.Symbol, i.Symbol.Type)] = ptr;
-				
 				if (i.Initializer is not UndefValue)
-					builder.BuildStore(EmitValue(i.Initializer, builder), ptr);
+					builder.BuildStore(EmitValue(i.Initializer, builder), _varMap[new(i.Symbol, i.Symbol.Type)]);
 				
 				break;
 			}
@@ -692,6 +718,9 @@ public sealed unsafe class CodeGenerator : IDisposable
 		PointerOffsetValue v => EmitPointerOffset(v, builder),
 		PointerDifferenceValue v => EmitPointerDifference(v, builder),
 		HeapValue v => EmitHeap(v, builder),
+		EnumValue v => EmitEnumValue(v, builder),
+		EnumTagValue v => EmitEnumTag(v, builder),
+		EnumPayloadValue v => EmitEnumPayload(v, builder),
 		_ => throw new InvalidOperationException()
 	};
 	
@@ -869,6 +898,59 @@ public sealed unsafe class CodeGenerator : IDisposable
 	}
 	
 	private LLVMValueRef EmitZero(ZeroValue v) => LLVMValueRef.CreateConstNull(MapTypeSymbol(v.Type));
+	
+	private LLVMValueRef EmitEnumValue(EnumValue v, LLVMBuilderRef builder)
+	{
+		var enumType = MapTypeSymbol(v.Type);
+		var tagType = MapTypeSymbol(TypePool.GetTagType((EnumSymbol)v.Type));
+		var tag = LLVMValueRef.CreateConstInt(tagType, (ulong)v.Case.Index);
+		if (v.Payload.IsEmpty)
+			return builder.BuildInsertValue(LLVMValueRef.CreateConstNull(enumType), tag, 0, v.Case.Name);
+		
+		var slot = BuildEntryAlloca(builder, enumType, v.Case.Name);
+		builder.BuildStore(LLVMValueRef.CreateConstNull(enumType), slot);
+		builder.BuildStore(tag, builder.BuildStructGEP2(enumType, slot, 0, "tag.addr"));
+		
+		var payloadType = GetPayloadType(v.Case);
+		var payload = builder.BuildStructGEP2(enumType, slot, 1, "payload");
+		for (var i = 0; i < v.Payload.Length; i++)
+		{
+			var value = EmitValue(v.Payload[i], builder);
+			builder.BuildStore(value, builder.BuildStructGEP2(payloadType, payload, (uint)i, v.Case.Fields[i].Name));
+		}
+		
+		return builder.BuildLoad2(enumType, slot, v.Case.Name);
+	}
+	
+	private LLVMValueRef EmitEnumTag(EnumTagValue v, LLVMBuilderRef builder)
+	{
+		if (!IsAddressable(v.Target))
+			return builder.BuildExtractValue(EmitValue(v.Target, builder), 0, "tag");
+		
+		var enumType = MapTypeSymbol(v.Target.Type);
+		var address = builder.BuildStructGEP2(enumType, EmitAddress(v.Target, builder), 0, "tag.addr");
+		return builder.BuildLoad2(MapTypeSymbol(v.Type), address, "tag");
+	}
+	
+	private LLVMValueRef EmitEnumPayload(EnumPayloadValue v, LLVMBuilderRef builder)
+	{
+		var enumType = MapTypeSymbol(v.Target.Type);
+		LLVMValueRef address;
+		if (IsAddressable(v.Target))
+		{
+			address = EmitAddress(v.Target, builder);
+		}
+		else
+		{
+			address = BuildEntryAlloca(builder, enumType, "scrutinee");
+			builder.BuildStore(EmitValue(v.Target, builder), address);
+		}
+		
+		var name = v.Case.Fields[v.Index].Name;
+		var payload = builder.BuildStructGEP2(enumType, address, 1, "payload");
+		var field = builder.BuildStructGEP2(GetPayloadType(v.Case), payload, (uint)v.Index, name + ".addr");
+		return builder.BuildLoad2(MapTypeSymbol(v.Type), field, name);
+	}
 	
 	private LLVMValueRef EmitConversion(ConversionValue v, LLVMBuilderRef builder) => v.Conversion switch
 	{
@@ -1521,10 +1603,12 @@ public sealed unsafe class CodeGenerator : IDisposable
 	
 	private void DefineGlobal(GlobalInfo info)
 	{
-		var global = currentModule.AddGlobal(GetGlobalStorageType(info), info.MangledName);
-		global.Initializer = info.Symbol.IsMutable && info.Value is BoolConstant flag
+		var initializer = info.Symbol.IsMutable && info.Value is BoolConstant flag
 			? LLVMValueRef.CreateConstInt(LLVMTypeRef.Int8, flag.Value ? 1uL : 0uL)
 			: EmitStaticConstant(info.Value!);
+		
+		var global = currentModule.AddGlobal(initializer.TypeOf, info.MangledName);
+		global.Initializer = initializer;
 		
 		global.IsGlobalConstant = !info.Symbol.IsMutable;
 		if (info.Symbol.Visibility == Visibility.Public)
@@ -1611,14 +1695,47 @@ public sealed unsafe class CodeGenerator : IDisposable
 		BoolConstant c => c.Value ? _true : _false,
 		NullConstant c => LLVMValueRef.CreateConstNull(MapTypeSymbol(c.Type)),
 		StringConstant c => EmitConstant(new ConstantValue(c.Type, c.Value)),
-		RecordConstant c => LLVMValueRef.CreateConstNamedStruct(MapTypeSymbol(c.Type),
-			[..c.Fields.Select(EmitStaticConstant)]),
-		ArrayConstant c => LLVMValueRef.CreateConstArray(MapTypeSymbol(c.ArrayType.ElementType),
+		RecordConstant c => EmitStructConstant(MapTypeSymbol(c.Type), [..c.Fields.Select(EmitStaticConstant)]),
+		ArrayConstant c => EmitArrayConstant(MapTypeSymbol(c.ArrayType.ElementType),
 			[..c.Elements.Select(EmitStaticConstant)]),
+		EnumConstant c => EmitEnumConstant(c),
 		FunctionConstant c => GetFunctionValue(c.Function),
 		ZeroConstant c => LLVMValueRef.CreateConstNull(MapTypeSymbol(c.Type)),
 		_ => throw new InvalidOperationException()
 	};
+	
+	private static LLVMValueRef EmitStructConstant(LLVMTypeRef type, LLVMValueRef[] fields) =>
+		fields.Select((field, i) => field.TypeOf == type.StructGetTypeAtIndex((uint)i)).All(static same => same)
+			? LLVMValueRef.CreateConstNamedStruct(type, fields)
+			: LLVMValueRef.CreateConstStruct(fields, false);
+	
+	private static LLVMValueRef EmitArrayConstant(LLVMTypeRef elementType, LLVMValueRef[] elements) =>
+		elements.All(element => element.TypeOf == elementType)
+			? LLVMValueRef.CreateConstArray(elementType, elements)
+			: LLVMValueRef.CreateConstStruct(elements, false);
+	
+	private LLVMValueRef EmitEnumConstant(EnumConstant constant)
+	{
+		var enumType = MapTypeSymbol(constant.Type);
+		var tag = EmitIntegerConstant(new IntegerConstant(TypePool.GetTagType((EnumSymbol)constant.Type),
+			constant.Case.Index));
+		
+		if (enumType.StructElementTypesCount == 1)
+			return LLVMValueRef.CreateConstNamedStruct(enumType, [tag]);
+		
+		var area = enumType.StructGetTypeAtIndex(1);
+		if (constant.Payload.IsEmpty)
+			return LLVMValueRef.CreateConstNamedStruct(enumType, [tag, LLVMValueRef.CreateConstNull(area)]);
+		
+		var payload = LLVMValueRef.CreateConstStruct([..constant.Payload.Select(EmitStaticConstant)], false);
+		var alignment = LLVMValueRef.CreateConstNull(LLVMTypeRef.CreateArray(area.ElementType, 0));
+		var tail = _targetData.ABISizeOfType(area) - _targetData.ABISizeOfType(payload.TypeOf);
+		if (tail == 0)
+			return LLVMValueRef.CreateConstStruct([tag, alignment, payload], false);
+		
+		var padding = LLVMValueRef.CreateConstNull(LLVMTypeRef.CreateArray(LLVMTypeRef.Int8, (uint)tail));
+		return LLVMValueRef.CreateConstStruct([tag, alignment, payload, padding], false);
+	}
 	
 	private LLVMValueRef EmitIntegerConstant(IntegerConstant constant)
 	{

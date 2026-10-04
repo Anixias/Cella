@@ -1,0 +1,82 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Team: enum
+{
+	red
+	blue
+}
+
+Role: enum
+{
+	fighter
+}
+
+Effect: enum
+{
+	none
+	hit(amount: i32)
+	both(first: i32, second: i32)
+}
+
+main: fun -> i32
+{
+	val team = Team.red
+	var effect = Effect.none
+	var a = 5 is red
+	var b = team is green
+	var c = effect is hit
+	var d = team is red()
+	var e = effect is hit(x, y)
+	var f = effect is both(z, z)
+	var g = effect is hit(w) && effect is both(w, _)
+	var h = effect is Role.fighter
+	var i = effect is Tem.hit(_)
+
+	if effect is hit(n)
+		printf("%d\n", n)
+	else
+		printf("%d\n", n)
+
+	if effect is hit(m) || m > 3
+		printf("%d\n", m)
+
+	if missing is hit(o)
+		printf("%d\n", o)
+
+	match 5
+	{
+		red => ret 1
+	}
+
+	match team
+	{
+		red => ret 1
+		blue => ret 2
+		red => ret 3
+	}
+
+	match team
+	{
+		else => ret 1
+		else => ret 2
+	}
+
+	match team
+	{
+		else => ret 1
+		blue => ret 2
+	}
+
+	match team
+	{
+		red => var declared = 5
+		else => ret 0
+	}
+
+	ret declared
+}

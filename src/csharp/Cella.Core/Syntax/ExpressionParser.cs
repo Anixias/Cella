@@ -147,14 +147,76 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 	
 	private IExpressionNode ParseEquality(ref int index)
 	{
-		var node = ParseComparison(ref index);
+		var node = ParseIs(ref index);
 		while (!IsNextNewline(index) && Match(ref index, out var op, _equalityOps))
 		{
-			var right = ParseComparison(ref index);
+			var right = ParseIs(ref index);
 			node = new BinaryOpExpressionNode(node, op, right);
 		}
 		
 		return node;
+	}
+	
+	private IExpressionNode ParseIs(ref int index)
+	{
+		var node = ParseComparison(ref index);
+		if (IsNextNewline(index) || !Match(ref index, TokenType.KeywordIs))
+			return node;
+		
+		var pattern = ParsePattern(ref index);
+		var (source, range) = node.SourceLocation;
+		range = range.Join(pattern.SourceLocation.Range);
+		return new IsExpressionNode(node, pattern, new(source, range));
+	}
+	
+	public PatternNode ParsePattern(ref int index)
+	{
+		if (!MatchName(ref index, out var first))
+			throw Expected(index, "a case name");
+		
+		Token? typeName = null;
+		var caseName = first;
+		if (first.Type == TokenType.Identifier && !IsNextNewline(index) && Match(ref index, TokenType.OpDot))
+		{
+			if (!MatchName(ref index, out caseName))
+				throw Expected(index, "a case name");
+			
+			typeName = first;
+		}
+		
+		var (source, range) = first.SourceLocation;
+		range = range.Join(caseName.SourceLocation.Range);
+		if (IsNextNewline(index) || !Match(ref index, out var openParen, TokenType.OpOpenParen))
+			return new PatternNode(typeName, caseName, [], false, new(source, range));
+		
+		var bindings = new List<Token>();
+		Token closeParen;
+		while (!Match(ref index, out closeParen, TokenType.OpCloseParen))
+		{
+			if (AtEnd(index))
+				throw Expected(index, "')'", openParen);
+			
+			if (bindings.Count > 0 && !Match(ref index, TokenType.OpComma))
+				throw Expected(index, "',' or ')'", openParen);
+			
+			if (!Match(ref index, out var binding, TokenType.Identifier))
+				throw Expected(index, "a name or '_'");
+			
+			bindings.Add(binding);
+		}
+		
+		range = range.Join(closeParen.SourceLocation.Range);
+		return new PatternNode(typeName, caseName, bindings, true, new(source, range));
+	}
+	
+	private bool MatchName(ref int index, out Token name)
+	{
+		name = Tokens[Math.Min(index, Tokens.Length - 1)];
+		if (AtEnd(index) || name.Type != TokenType.Identifier && !name.Type.IsKeyword)
+			return false;
+		
+		index++;
+		return true;
 	}
 	
 	private IExpressionNode ParseComparison(ref int index)
@@ -368,7 +430,7 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 			// Access Expression
 			if (Match(ref index, TokenType.OpDot))
 			{
-				if (!Match(ref index, out var member, TokenType.Identifier))
+				if (!MatchName(ref index, out var member))
 				{
 					// TODO Diagnostic
 					index = startIndex;
@@ -479,7 +541,8 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 			var typeIndex = index;
 			var type = ParseType(ref typeIndex);
 			
-			if (IsNextNewline(typeIndex) || !Peek(typeIndex, TokenType.OpOpenParen))
+			var isConstruction = Peek(typeIndex, TokenType.OpOpenParen) || Peek(typeIndex, TokenType.OpDot);
+			if (IsNextNewline(typeIndex) || !isConstruction)
 			{
 				index = typeIndex;
 				range = range.Join(type.SourceLocation.Range);

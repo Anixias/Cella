@@ -142,6 +142,17 @@ public sealed class SymbolCollector : IDeclarationNodeVisitor<Symbol>
 		return record;
 	}
 	
+	public Symbol Visit(EnumNode node)
+	{
+		var cases = node.Cases.Select((e, i) =>
+			new EnumCaseSymbol(e, i, e.Payload.Select(f => (FieldSymbol)VisitNode(f))));
+		
+		var symbol = new EnumSymbol(node, cases);
+		_builder.DeclarationSymbols[node] = symbol;
+		_symbolsInFile.Add(symbol);
+		return symbol;
+	}
+	
 	public Symbol Visit(GlobalNode node)
 	{
 		var global = new GlobalSymbol(node);

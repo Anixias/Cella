@@ -64,6 +64,10 @@ public sealed class TypeChecker(ConstantEvaluator evaluator) : IResolvedStatemen
 	{
 	}
 	
+	public void Visit(ResolvedEnumNode node)
+	{
+	}
+	
 	public void Visit(ResolvedMethodNode node) => VisitNode(node.FunctionNode);
 	
 	public void Visit(ResolvedExternalFunctionNode node)
@@ -127,6 +131,13 @@ public sealed class TypeChecker(ConstantEvaluator evaluator) : IResolvedStatemen
 	
 	public void Visit(ResolvedInvalidStatementNode node) =>
 		throw new InvalidOperationException();
+	
+	public void Visit(ResolvedMatchStatementNode node)
+	{
+		VisitNode(node.Value);
+		foreach (var arm in node.Arms)
+			VisitNode(arm.Body);
+	}
 	
 	public void Visit(ResolvedReturnStatementNode node)
 	{
@@ -253,14 +264,19 @@ public sealed class TypeChecker(ConstantEvaluator evaluator) : IResolvedStatemen
 		evaluator.Evaluate(node.Right) is IntegerConstant { Value: var divisor } && divisor == BigInteger.MinusOne &&
 		evaluator.Evaluate(node.Left) is IntegerConstant { Value: var dividend } && !evaluator.Fits(-dividend, type);
 	
-	private static string? FindImmutableBinding(IResolvedExpressionNode place) => place switch
+	private static VariableSymbol? FindImmutableBinding(IResolvedExpressionNode place) => place switch
 	{
-		ResolvedVarExpressionNode { Symbol: LocalVariableSymbol { IsMutable: false } local } => local.Name,
-		ResolvedGlobalExpressionNode { Symbol: { IsMutable: false } global } => global.Name,
+		ResolvedVarExpressionNode { Symbol: LocalVariableSymbol { IsMutable: false } local } => local,
+		ResolvedGlobalExpressionNode { Symbol: { IsMutable: false } global } => global,
 		ResolvedAccessExpressionNode { Member: FieldSymbol } e => FindImmutableBinding(e.Target),
 		ResolvedIndexerExpressionNode { Target.Type: ArrayType } e => FindImmutableBinding(e.Target),
 		_ => null
 	};
+	
+	private static string DescribeImmutable(VariableSymbol binding) =>
+		binding is LocalVariableSymbol { IsPatternBinding: true }
+			? $"'{binding.Name}' is bound by a pattern"
+			: $"'{binding.Name}' is a 'val'";
 	
 	private IResolvedExpressionNode? FindNonConstant(IResolvedExpressionNode node)
 	{
@@ -292,6 +308,8 @@ public sealed class TypeChecker(ConstantEvaluator evaluator) : IResolvedStatemen
 		ResolvedAccessExpressionNode n => [n.Target],
 		ResolvedIndexerExpressionNode n => [n.Target, n.Index],
 		ResolvedRecordExpressionNode n => n.Fields.Select(static f => f.Value),
+		ResolvedEnumCaseExpressionNode n => n.Payload,
+		ResolvedIsExpressionNode n => [n.Value],
 		ResolvedArrayExpressionNode n => n.Values,
 		_ => []
 	};
@@ -316,9 +334,9 @@ public sealed class TypeChecker(ConstantEvaluator evaluator) : IResolvedStatemen
 		else if (!IsLValue(node.Left))
 			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Left.Syntax.SourceLocation,
 				"Assignment target must be addressable"));
-		else if (FindImmutableBinding(node.Left) is { } name)
+		else if (FindImmutableBinding(node.Left) is { } binding)
 			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Left.Syntax.SourceLocation,
-				$"'{name}' is a 'val' and can't be changed"));
+				$"{DescribeImmutable(binding)} and can't be changed"));
 		
 		var expected = node.Left.Type;
 		var actual = node.Right.Type;
@@ -381,9 +399,9 @@ public sealed class TypeChecker(ConstantEvaluator evaluator) : IResolvedStatemen
 	public void Visit(ResolvedConversionExpressionNode node)
 	{
 		if (node.Conversion is NativeConversion { From: ArrayType, To: SpanType or BufferType } &&
-		    FindImmutableBinding(node.Source) is { } name)
+		    FindImmutableBinding(node.Source) is { } binding)
 			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Source.Syntax.SourceLocation,
-				$"'{name}' is a 'val' and can't be changed through a '{node.Type.Name}'"));
+				$"{DescribeImmutable(binding)} and can't be changed through a '{node.Type.Name}'"));
 		
 		VisitNode(node.Source);
 	}
@@ -424,6 +442,14 @@ public sealed class TypeChecker(ConstantEvaluator evaluator) : IResolvedStatemen
 	public void Visit(ResolvedFunctionReferenceExpressionNode node)
 	{
 	}
+	
+	public void Visit(ResolvedEnumCaseExpressionNode node)
+	{
+		foreach (var value in node.Payload)
+			VisitNode(value);
+	}
+	
+	public void Visit(ResolvedIsExpressionNode node) => VisitNode(node.Value);
 	
 	public void Visit(ResolvedIndirectCallExpressionNode node)
 	{

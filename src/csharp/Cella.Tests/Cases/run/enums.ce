@@ -1,0 +1,94 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Team: enum
+{
+	red
+	blue
+	green
+}
+
+Role: enum { fighter  caster  healer }
+
+Json: enum
+{
+	null
+	true
+	false
+}
+
+Unit: rec
+{
+	hp: i32
+	team: Team
+}
+
+home: val Team = Team.blue
+order: val array[Team, 3] = [Team.green, Team.red, Team.blue]
+
+number: fun(team: Team) -> i32
+{
+	match team
+	{
+		red => ret 1
+		blue => ret 2
+		green => ret 3
+	}
+}
+
+score: fun(role: Role) -> i32
+{
+	var result = 0
+	match role
+	{
+		fighter => result = 10
+		else => result = 1
+	}
+
+	match role
+	{
+		caster => result += 100
+	}
+
+	ret result
+}
+
+opposite: fun(team: Team) -> Team
+{
+	if team == Team.red
+		ret Team.blue
+
+	ret Team.red
+}
+
+main: fun -> i32
+{
+	var team = Team.blue
+	var zeroed: Team
+	printf("%d %d %d\n", number(team), number(zeroed), number(Team.green))
+	printf("%d %d %d\n", i32(team == Team.blue), i32(team != Team.blue), i32(zeroed == Team.red))
+	printf("%d %d\n", i32(team is blue), i32(team is Team.red))
+	printf("%d %d %d\n", score(Role.fighter), score(Role.caster), score(Role.healer))
+	printf("%d %d\n", number(opposite(Team.red)), number(opposite(home)))
+	printf("%d %d %d\n", number(order[0]), number(order[1]), number(order[2]))
+
+	var unit = Unit(10, Team.green)
+	if unit.team == Team.green
+		printf("green unit with %d hp\n", unit.hp)
+
+	var json = Json.true
+	match json
+	{
+		null => printf("null\n")
+		Json.true => printf("true\n")
+		false => printf("false\n")
+	}
+
+	val folded = Team.red == Team.blue
+	printf("%d %d %d %d\n", i32(folded), i32(sizeOf(Team)), i32(sizeOf(Unit)), i32(sizeOf(array[Role, 5])))
+	ret 0
+}
