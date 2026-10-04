@@ -14,6 +14,6 @@ Error at line 14, column 14
 Error at line 15, column 15
 14 │ var value = test.helper()
 15 │ var nested = helper()()
-                  ╘══════╛ Calling this expression is not supported yet
+                  ╘══════╛ Cannot call a value of type 'i32'
 
 [compilation failed]

@@ -1,0 +1,44 @@
+
+====== bad_function_values.ce ======
+
+Error at line 15, column 10
+14 │ {
+15 │     var a = helper
+                 ╘════╛ Only 'ext fun' functions can be used as values so far
+
+Error at line 16, column 10
+15 │ var a = helper
+16 │ var b = printf
+             ╘════╛ Variadic function 'printf' can't be used as a value
+
+Error at line 17, column 10
+16 │ var b = printf
+17 │ var c = over
+             ╘══╛ Reference to 'over' is ambiguous
+
+Error at line 19, column 10
+18 │ var f = twice
+19 │ var d = f(1, 2)
+             ^ 'ext fun(i32) -> i32' doesn't accept these arguments
+
+Error at line 20, column 10
+19 │ var d = f(1, 2)
+20 │ var e = f(true)
+             ^ 'ext fun(i32) -> i32' doesn't accept these arguments
+
+Error at line 22, column 10
+21 │ var n = 5
+22 │ var g = n(1)
+             ^ Cannot call a value of type 'i32'
+
+Error at line 23, column 31
+22 │ var g = n(1)
+23 │ var h: ext fun(i32) -> i64 = twice
+                                  ╘═══╛ Cannot convert type 'ext fun(i32) -> i32' to 'ext fun(i32) -> i64'
+
+Error at line 24, column 31
+23 │ var h: ext fun(i32) -> i64 = twice
+24 │ var k: ext fun(i32) -> i32 = helper
+                                  ╘════╛ Only 'ext fun' functions can be used as values so far
+
+[compilation failed]

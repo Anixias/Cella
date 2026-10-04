@@ -18,7 +18,8 @@ public sealed class FunctionNode
 	IEnumerable<Token> modifiers,
 	IEnumerable<ParameterNode> parameters,
 	ITypeNode? returnType,
-	IStatementNode body
+	IStatementNode body,
+	bool isExternal
 ) : IFunctionNode
 {
 	public SourceLocation SourceLocation => Identifier.SourceLocation;
@@ -27,6 +28,7 @@ public sealed class FunctionNode
 	public ImmutableArray<ParameterNode> Parameters { get; } = parameters.ToImmutableArray();
 	public ITypeNode? ReturnType { get; } = returnType;
 	public IStatementNode Body { get; } = body;
+	public bool IsExternal { get; } = isExternal;
 }
 
 public sealed class ExternalFunctionNode

@@ -100,6 +100,8 @@ public readonly struct ResolutionContext
 	{
 		IdentifierTypeNode n => ResolveNamedType(n.Token),
 		GenericTypeNode n => ResolveGenericType(n),
+		FunctionTypeNode n => TypePool.GetFunctionType(n.IsExternal, n.ParameterTypes.Select(ResolveType),
+			n.ReturnType is { } returnType ? ResolveType(returnType) : NativeSymbols.Void),
 		_ => NativeSymbols.Invalid
 	};
 	

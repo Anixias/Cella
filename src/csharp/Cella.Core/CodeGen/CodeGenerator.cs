@@ -61,6 +61,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 	private readonly HashSet<string> _externalLibraries = [];
 	private readonly Dictionary<byte[], LLVMValueRef> _stringPool = new(ByteArrayComparer.Instance);
 	private LLVMModuleRef currentModule;
+	private LLVMFunctionInfo currentFunction;
 	
 	public CodeGenerator(AssemblySymbol assemblySymbol, TypePool typePool, CodeGenConfig config)
 	{
@@ -226,6 +227,13 @@ public sealed unsafe class CodeGenerator : IDisposable
 				return llvmSpan;
 			}
 			
+			case FunctionType:
+			{
+				var llvmFunctionPointer = LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0u);
+				_typeMap[symbol] = llvmFunctionPointer;
+				return llvmFunctionPointer;
+			}
+			
 			case PointerType ptrType:
 			{
 				var baseType = MapTypeSymbol(ptrType.BaseType);
@@ -359,7 +367,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 		for (var i = 0; i < paramTypes.Length; i++)
 			paramLlvmTypes[i] = MapTypeSymbol(paramTypes[i]);
 		
-		CSignature? cSignature = symbol.Kind == FunctionKind.External
+		CSignature? cSignature = symbol.IsExternal
 			? _cAbi.Classify(paramLlvmTypes, returnType)
 			: null;
 		
@@ -368,7 +376,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 		
 		var functionValue = llvmModule.AddFunction(function.MangledName ?? symbol.Name, functionType);
 		if (cSignature is { Return: { Kind: CPassKind.Indirect } sret })
-			AddSretAttribute(functionValue, sret.Type);
+			AddSretAttribute(functionValue, sret.Type, false);
 		
 		var functionInfo = new LLVMFunctionInfo(functionValue, functionType, returnType, cSignature);
 		
@@ -392,7 +400,8 @@ public sealed unsafe class CodeGenerator : IDisposable
 	
 	private void BuildFunction(LLVMModuleRef llvmModule, LLVMDIBuilderRef llvmDiBuilder, LoweredFunction function)
 	{
-		var functionValue = _funMap[function.Info].FunctionValue;
+		currentFunction = _funMap[function.Info];
+		var functionValue = currentFunction.FunctionValue;
 		var allocaBlock = functionValue.AppendBasicBlock("allocas");
 		
 		// Create blocks
@@ -412,14 +421,19 @@ public sealed unsafe class CodeGenerator : IDisposable
 			if (i == 0)
 			{
 				var parameters = function.Info.Symbol.Parameters;
+				var signature = currentFunction.CSignature;
+				var firstParameter = signature?.Return.Kind == CPassKind.Indirect ? 1u : 0u;
 				for (var p = 0; p < parameters.Length; p++)
 				{
 					var paramSymbol = parameters[p];
 					var paramType = function.Info.Signature.ParameterTypes[p];
 					var paramInfo = new VariableInfo(paramSymbol, paramType);
 					
-					var paramLlvmValue = functionValue.GetParam((uint)p);
+					var paramLlvmValue = functionValue.GetParam(firstParameter + (uint)p);
 					var paramLlvmType = MapTypeSymbol(paramType);
+					if (signature is { Parameters: var passes })
+						paramLlvmValue = ReceiveCArgument(passes[p], paramLlvmValue, paramLlvmType, builder);
+					
 					var paramPtr = BuildEntryAlloca(builder, paramLlvmType, paramSymbol.Name);
 					builder.BuildStore(paramLlvmValue, paramPtr);
 					_varMap[paramInfo] = paramPtr;
@@ -610,7 +624,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 				if (term.Value is not { } value)
 					builder.BuildRetVoid();
 				else
-					builder.BuildRet(EmitValue(value, builder));
+					EmitReturn(EmitValue(value, builder), builder);
 				
 				break;
 			
@@ -633,6 +647,25 @@ public sealed unsafe class CodeGenerator : IDisposable
 		}
 	}
 	
+	private void EmitReturn(LLVMValueRef value, LLVMBuilderRef builder)
+	{
+		switch (currentFunction.CSignature?.Return)
+		{
+			case { Kind: CPassKind.Indirect }:
+				builder.BuildStore(value, currentFunction.FunctionValue.GetParam(0));
+				builder.BuildRetVoid();
+				break;
+			
+			case { } pass:
+				builder.BuildRet(PassCArgument(pass, value, builder));
+				break;
+			
+			default:
+				builder.BuildRet(value);
+				break;
+		}
+	}
+	
 	private LLVMValueRef EmitValue(Value value, LLVMBuilderRef builder) => value switch
 	{
 		ConstantValue v => EmitConstant(v),
@@ -646,6 +679,8 @@ public sealed unsafe class CodeGenerator : IDisposable
 		ArrayValue v => EmitArrayValue(v, builder),
 		ConversionValue v => EmitConversion(v, builder),
 		CallValue v => EmitCall(v, builder),
+		FunctionReferenceValue v => _funMap[v.Function].FunctionValue,
+		IndirectCallValue v => EmitIndirectCall(v, builder),
 		PointerOffsetValue v => EmitPointerOffset(v, builder),
 		PointerDifferenceValue v => EmitPointerDifference(v, builder),
 		HeapValue v => EmitHeap(v, builder),
@@ -659,6 +694,21 @@ public sealed unsafe class CodeGenerator : IDisposable
 		if (function.CSignature is not { } signature)
 			return builder.BuildCall2(function.FunctionType, function.FunctionValue, args.ToArray());
 		
+		return EmitCCall(signature, function.FunctionType, function.FunctionValue, function.ReturnType, args, builder);
+	}
+	
+	private LLVMValueRef EmitIndirectCall(IndirectCallValue v, LLVMBuilderRef builder)
+	{
+		var target = EmitValue(v.Target, builder);
+		var args = v.Arguments.Select(a => EmitValue(a, builder)).ToList();
+		var returnType = MapTypeSymbol(v.FunctionType.ReturnType);
+		var signature = _cAbi.Classify(v.FunctionType.ParameterTypes.Select(MapTypeSymbol), returnType);
+		return EmitCCall(signature, signature.CreateFunctionType(false), target, returnType, args, builder);
+	}
+	
+	private LLVMValueRef EmitCCall(CSignature signature, LLVMTypeRef functionType, LLVMValueRef callee,
+		LLVMTypeRef returnType, List<LLVMValueRef> args, LLVMBuilderRef builder)
+	{
 		for (var i = 0; i < signature.Parameters.Length; i++)
 			args[i] = PassCArgument(signature.Parameters[i], args[i], builder);
 		
@@ -669,17 +719,18 @@ public sealed unsafe class CodeGenerator : IDisposable
 			args.Insert(0, returnSlot);
 		}
 		
-		var result = builder.BuildCall2(function.FunctionType, function.FunctionValue, args.ToArray());
+		var result = builder.BuildCall2(functionType, callee, args.ToArray());
 		switch (signature.Return.Kind)
 		{
 			case CPassKind.Integer:
 			{
 				var slot = BuildEntryAlloca(builder, signature.Return.Type, "coerce");
 				builder.BuildStore(result, slot);
-				return builder.BuildLoad2(function.ReturnType, slot);
+				return builder.BuildLoad2(returnType, slot);
 			}
 			
 			case CPassKind.Indirect:
+				AddSretAttribute(result, signature.Return.Type, true);
 				return builder.BuildLoad2(signature.Return.Type, returnSlot);
 			
 			default:
@@ -710,6 +761,26 @@ public sealed unsafe class CodeGenerator : IDisposable
 		}
 	}
 	
+	private static LLVMValueRef ReceiveCArgument(CPass pass, LLVMValueRef value, LLVMTypeRef type,
+		LLVMBuilderRef builder)
+	{
+		switch (pass.Kind)
+		{
+			case CPassKind.Integer:
+			{
+				var slot = BuildEntryAlloca(builder, pass.Type, "coerce");
+				builder.BuildStore(value, slot);
+				return builder.BuildLoad2(type, slot);
+			}
+			
+			case CPassKind.Indirect:
+				return builder.BuildLoad2(type, value);
+			
+			default:
+				return value;
+		}
+	}
+	
 	private static LLVMValueRef BuildIndirectSlot(LLVMBuilderRef builder, LLVMTypeRef type)
 	{
 		var slot = BuildEntryAlloca(builder, type, "indirect");
@@ -717,14 +788,17 @@ public sealed unsafe class CodeGenerator : IDisposable
 		return slot;
 	}
 	
-	private static void AddSretAttribute(LLVMValueRef function, LLVMTypeRef type)
+	private static void AddSretAttribute(LLVMValueRef value, LLVMTypeRef type, bool isCall)
 	{
 		using var name = new MarshaledString("sret");
 		var kind = LLVM.GetEnumAttributeKindForName(name, (nuint)name.Length);
 		var attribute = LLVM.CreateTypeAttribute((LLVMOpaqueContext*)type.Context.Handle, kind,
 			(LLVMOpaqueType*)type.Handle);
 		
-		LLVM.AddAttributeAtIndex((LLVMOpaqueValue*)function.Handle, (LLVMAttributeIndex)1, attribute);
+		if (isCall)
+			LLVM.AddCallSiteAttribute((LLVMOpaqueValue*)value.Handle, (LLVMAttributeIndex)1, attribute);
+		else
+			LLVM.AddAttributeAtIndex((LLVMOpaqueValue*)value.Handle, (LLVMAttributeIndex)1, attribute);
 	}
 	
 	private LLVMValueRef EmitPointerOffset(PointerOffsetValue v, LLVMBuilderRef builder)

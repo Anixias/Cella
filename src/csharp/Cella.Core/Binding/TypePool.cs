@@ -1,4 +1,5 @@
-﻿using System.Diagnostics.CodeAnalysis;
+﻿using System.Collections.Immutable;
+using System.Diagnostics.CodeAnalysis;
 using System.Numerics;
 using Cella.Core.Binding.Conversions;
 using Cella.Core.Binding.Operations;
@@ -20,6 +21,7 @@ public sealed class TypePool
 	private readonly Dictionary<TypeSymbol, SpanType> _spanTypes = [];
 	private readonly Dictionary<TypeSymbol, ViewType> _viewTypes = [];
 	private readonly Dictionary<(TypeSymbol, PointerKind), PointerType> _pointerTypes = [];
+	private readonly List<FunctionType> _functionTypes = [];
 	private readonly Dictionary<TypedMemberSymbol, TypeSymbol> _memberTypes = [];
 	private readonly Dictionary<TypeSymbol, bool> _needsDrop = [];
 	private readonly Dictionary<TypeSymbol, List<FunctionInfo>> _constructors = [];
@@ -122,6 +124,22 @@ public sealed class TypePool
 		}
 		
 		OperatorRegistry.Create(new PointerDifferenceImpl(ptrType));
+	}
+	
+	public FunctionType GetFunctionType(bool isExternal, IEnumerable<TypeSymbol> parameterTypes,
+		TypeSymbol returnType)
+	{
+		var parameters = parameterTypes.ToImmutableArray();
+		var existing = _functionTypes.Find(type => type.IsExternal == isExternal && type.ReturnType == returnType &&
+		                                           type.ParameterTypes.SequenceEqual(parameters));
+		
+		if (existing is not null)
+			return existing;
+		
+		var functionType = new FunctionType(isExternal, parameters, returnType);
+		_functionTypes.Add(functionType);
+		SizeTable.Register(functionType, StorageSize.Ptr);
+		return functionType;
 	}
 	
 	public PointerType GetPointerType(TypeSymbol baseType, PointerKind kind)

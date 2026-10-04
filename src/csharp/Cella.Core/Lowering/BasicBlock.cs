@@ -94,6 +94,25 @@ public sealed class CallValue(FunctionInfo function, IEnumerable<Value> argument
 	public ImmutableArray<Value> Arguments { get; } = arguments.ToImmutableArray();
 }
 
+public sealed class FunctionReferenceValue(FunctionInfo function, TypeSymbol type, SourceLocation sourceLocation)
+	: Value(type, true, sourceLocation)
+{
+	public FunctionInfo Function { get; } = function;
+}
+
+public sealed class IndirectCallValue
+(
+	Value target,
+	IEnumerable<Value> arguments,
+	FunctionType functionType,
+	SourceLocation sourceLocation
+) : Value(functionType.ReturnType, false, sourceLocation)
+{
+	public Value Target { get; } = target;
+	public ImmutableArray<Value> Arguments { get; } = arguments.ToImmutableArray();
+	public FunctionType FunctionType { get; } = functionType;
+}
+
 // TODO Detect if the target and index are constant
 public sealed class IndexerValue(TypeSymbol type, Value target, Value index, SourceLocation sourceLocation)
 	: Value(type, false, sourceLocation)

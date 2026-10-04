@@ -264,6 +264,8 @@ public sealed class AstPrinter : ISyntaxNodeVisitor
 	
 	public void Visit(GenericTypeNode node) => _sb.Append(node.SourceLocation.GetText());
 	
+	public void Visit(FunctionTypeNode node) => _sb.Append(node.SourceLocation.GetText());
+	
 	public void Visit(HeapExpressionNode node)
 	{
 		StartLine();

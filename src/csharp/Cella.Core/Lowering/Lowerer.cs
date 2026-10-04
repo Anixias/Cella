@@ -441,6 +441,13 @@ public sealed class Lowerer : IResolvedDeclarationNodeVisitor
 		public Value Visit(ResolvedFunctionCallExpressionNode node) =>
 			new CallValue(node.Function, node.Arguments.Select(VisitNode), node.Syntax.SourceLocation);
 		
+		public Value Visit(ResolvedFunctionReferenceExpressionNode node) =>
+			new FunctionReferenceValue(node.Function, node.Type, node.Syntax.SourceLocation);
+		
+		public Value Visit(ResolvedIndirectCallExpressionNode node) =>
+			new IndirectCallValue(VisitNode(node.Target), node.Arguments.Select(VisitNode), node.FunctionType,
+				node.Syntax.SourceLocation);
+		
 		public Value Visit(ResolvedHeapExpressionNode node)
 		{
 			if (node.Initializer is not ResolvedConstructorCallExpressionNode constructor)

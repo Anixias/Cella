@@ -221,6 +221,7 @@ public sealed class TypeChecker : IResolvedStatementNodeVisitor, IResolvedDeclar
 	private bool IsAllowedAsStatement(IResolvedExpressionNode expression) => expression switch
 	{
 		ResolvedFunctionCallExpressionNode => true, // TODO Warn if function is pure?
+		ResolvedIndirectCallExpressionNode => true,
 		ResolvedAssignmentExpressionNode => true,
 		_ => false
 	};
@@ -350,6 +351,17 @@ public sealed class TypeChecker : IResolvedStatementNodeVisitor, IResolvedDeclar
 			
 			VisitNode(arg);
 		}
+	}
+	
+	public void Visit(ResolvedFunctionReferenceExpressionNode node)
+	{
+	}
+	
+	public void Visit(ResolvedIndirectCallExpressionNode node)
+	{
+		VisitNode(node.Target);
+		foreach (var argument in node.Arguments)
+			VisitNode(argument);
 	}
 	
 	public void Visit(ResolvedHeapExpressionNode node)

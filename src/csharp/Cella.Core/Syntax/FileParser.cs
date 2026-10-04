@@ -138,10 +138,12 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 				}
 				
 				// Function
+				var kindIndex = index;
+				var isExternal = Match(ref index, _topLevelContextualKeywords, TokenType.KeywordExt);
 				if (Match(ref index, _topLevelContextualKeywords, TokenType.KeywordFun))
 				{
 					var function = ParseDeclaration(ref index, identifier, "function",
-						(ref i) => ParseFunction(ref i, identifier, modifiers));
+						(ref i) => ParseFunction(ref i, identifier, modifiers, isExternal));
 					
 					if (function is null)
 					{
@@ -154,6 +156,7 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 				}
 				
 				// Unknown declaration
+				index = kindIndex;
 				Report(Tokens[index], "Unknown declaration type");
 				if (!AtEnd(index))
 					index++;
@@ -358,7 +361,8 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 		return new(new(parts.ToImmutableArray()), import);
 	}
 	
-	private FunctionNode? ParseFunction(ref int index, Token identifier, IEnumerable<Token> modifiers)
+	private FunctionNode? ParseFunction(ref int index, Token identifier, IEnumerable<Token> modifiers,
+		bool isExternal)
 	{
 		// When this is called, the identifier and fun keyword are already consumed
 		// Caller is expected to resync in case of errors
@@ -374,7 +378,7 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 		{
 			var expression = ParseExpression(ref index);
 			var statement = new ReturnStatementNode(expression.SourceLocation, expression);
-			return new(identifier, modifiers, parameters, returnType, statement);
+			return new(identifier, modifiers, parameters, returnType, statement, isExternal);
 		}
 		
 		if (!Match(ref index, out var openBraceToken, TokenType.OpOpenBrace))
@@ -383,7 +387,7 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 		if (ParseBlockStatement(ref index, openBraceToken) is not { } body)
 			return null;
 		
-		return new(identifier, modifiers, parameters, returnType, body);
+		return new(identifier, modifiers, parameters, returnType, body, isExternal);
 	}
 	
 	private ExternalFunctionNode? ParseExternalDeclaration(ref int index, string? origin)

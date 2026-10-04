@@ -363,6 +363,28 @@ public static class LoweredModulePrinter
 					break;
 				}
 				
+				case FunctionReferenceValue v:
+					sb.Append(v.Function.Symbol.Name);
+					break;
+				
+				case IndirectCallValue v:
+				{
+					sb.Append('(');
+					PrintValue(sb, v.Target);
+					sb.Append(")(");
+					
+					for (var i = 0; i < v.Arguments.Length; i++)
+					{
+						if (i > 0)
+							sb.Append(", ");
+						
+						PrintValue(sb, v.Arguments[i]);
+					}
+					
+					sb.Append(')');
+					break;
+				}
+				
 				case IndexerValue v:
 				{
 					PrintValue(sb, v.Target);

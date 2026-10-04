@@ -371,15 +371,12 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	
 	private IResolvedExpressionNode VisitFunctionCall(CallExpressionNode node)
 	{
+		// TODO Methods and module-qualified calls
+		if (node.Target is AccessExpressionNode)
+			return Error(node, "Member calls are not supported yet", CurrentTargetType, node.Target);
+		
 		if (node.Target is not VarExpressionNode varExpr)
-		{
-			// TODO Methods, module-qualified calls and calls through function values
-			var message = node.Target is AccessExpressionNode
-				? "Member calls are not supported yet"
-				: "Calling this expression is not supported yet";
-			
-			return Error(node, message, CurrentTargetType, node.Target);
-		}
+			return VisitIndirectCall(node);
 		
 		var functionName = varExpr.Identifier.Text;
 		var symbol = CurrentResolutionContext.Resolve(functionName);
@@ -398,7 +395,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		};
 		
 		if (functionSymbols.Length == 0)
-			return Error(node, $"Symbol '{functionName}' is not a function or type", CurrentTargetType, varExpr);
+			return VisitIndirectCall(node);
 		
 		var args = new IResolvedExpressionNode[node.Arguments.Length];
 		for (var i = 0; i < node.Arguments.Length; i++)
@@ -430,6 +427,26 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		var resolvedArgs = ApplyArgumentResolution(args, resolution);
 		var result = new ResolvedFunctionCallExpressionNode(info, resolvedArgs, node);
 		return ApplyResultResolution(result, resolution);
+	}
+	
+	private IResolvedExpressionNode VisitIndirectCall(CallExpressionNode node)
+	{
+		var target = VisitNode(node.Target, null);
+		var args = node.Arguments.Select(argument => VisitNode(argument, null)).ToArray();
+		if (IsInvalid(target) || AnyInvalid(args))
+			return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
+		
+		if (target.Type is not FunctionType functionType)
+			return Error(node, $"Cannot call a value of type '{target.Type.Name}'", CurrentTargetType, node.Target);
+		
+		var resolutionSet = ResolveCallable([new FunctionTypeCallable(functionType)], args,
+			MaterializationMode.Overload);
+		
+		if (!resolutionSet.HasResult)
+			return Error(node, $"'{functionType.Name}' doesn't accept these arguments", CurrentTargetType, node.Target);
+		
+		var resolvedArgs = ApplyArgumentResolution(args, resolutionSet[0]);
+		return new ResolvedIndirectCallExpressionNode(target, resolvedArgs, functionType, node);
 	}
 	
 	public IResolvedExpressionNode Visit(HeapExpressionNode node)
@@ -708,9 +725,37 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 				
 				return new ResolvedVarExpressionNode(v, type, node);
 			
+			case FunctionSymbol or AmbiguousSymbol:
+				return ResolveFunctionValue(node, symbol);
+			
 			default:
 				return Error(node, $"Symbol '{varName}' is not a variable", CurrentTargetType);
 		}
+	}
+	
+	private IResolvedExpressionNode ResolveFunctionValue(VarExpressionNode node, Symbol symbol)
+	{
+		var name = node.Identifier.Text;
+		var functions = symbol switch
+		{
+			FunctionSymbol f => [f],
+			AmbiguousSymbol a => a.Candidates.OfType<FunctionSymbol>().ToArray(),
+			_ => []
+		};
+		
+		if (functions.Length != 1)
+			return Error(node, $"Reference to '{name}' is ambiguous", CurrentTargetType);
+		
+		var info = GetFunctionInfo(functions[0]);
+		if (!info.Symbol.IsExternal)
+			return Error(node, "Only 'ext fun' functions can be used as values so far", CurrentTargetType);
+		
+		if (info.Signature.IsVariadic)
+			return Error(node, $"Variadic function '{name}' can't be used as a value", CurrentTargetType);
+		
+		TrackImportedFunction(info);
+		var type = _typePool.GetFunctionType(true, info.Signature.ParameterTypes, info.Signature.ReturnType);
+		return new ResolvedFunctionReferenceExpressionNode(info, type, node);
 	}
 	
 	public IResolvedStatementNode Visit(IfStatementNode node)
@@ -1753,6 +1798,12 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		public ImmutableArray<TypeSymbol> ParameterTypes => Info.Signature.ParameterTypes;
 		public TypeSymbol ReturnType => Info.Signature.ReturnType;
 		public bool IsVariadic => Info.Signature.IsVariadic;
+	}
+	
+	private sealed class FunctionTypeCallable(FunctionType type) : ICallable
+	{
+		public ImmutableArray<TypeSymbol> ParameterTypes => type.ParameterTypes;
+		public TypeSymbol ReturnType => type.ReturnType;
 	}
 	
 	private sealed class ConstructorCallable(FunctionInfo info, TypeSymbol type) : ICallable

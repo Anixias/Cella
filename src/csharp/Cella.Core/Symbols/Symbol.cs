@@ -105,6 +105,7 @@ public sealed class FunctionSymbol
 	public ImmutableArray<ParameterSymbol> Parameters { get; } = parameters.ToImmutableArray();
 	public FunctionKind Kind { get; } = kind;
 	public SourceLocation Definition { get; } = syntax.SourceLocation;
+	public bool IsExternal => Kind == FunctionKind.External || Syntax is FunctionNode { IsExternal: true };
 }
 
 public abstract class TypeSymbol(string name, TypeSymbol? containingType = null, params IEnumerable<Symbol> children)
@@ -271,6 +272,29 @@ public enum PointerKind
 	Mutable,
 	Immutable,
 	Owning
+}
+
+public sealed class FunctionType : TypeSymbol
+{
+	public bool IsExternal { get; }
+	public ImmutableArray<TypeSymbol> ParameterTypes { get; }
+	public TypeSymbol ReturnType { get; }
+	
+	public FunctionType(bool isExternal, ImmutableArray<TypeSymbol> parameterTypes, TypeSymbol returnType)
+		: base(BuildName(isExternal, parameterTypes, returnType))
+	{
+		IsExternal = isExternal;
+		ParameterTypes = parameterTypes;
+		ReturnType = returnType;
+	}
+	
+	private static string BuildName(bool isExternal, ImmutableArray<TypeSymbol> parameterTypes,
+		TypeSymbol returnType)
+	{
+		var prefix = isExternal ? "ext fun" : "fun";
+		var name = $"{prefix}({string.Join(", ", parameterTypes.Select(static t => t.Name))})";
+		return returnType == NativeSymbols.Void ? name : $"{name} -> {returnType.Name}";
+	}
 }
 
 public sealed class PointerType : TypeSymbol, IPrimitiveType

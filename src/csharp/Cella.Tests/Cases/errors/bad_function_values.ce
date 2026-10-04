@@ -1,0 +1,26 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+helper: fun(x: i32) -> i32 = x
+twice: ext fun(x: i32) -> i32 = x * 2
+over: ext fun(x: i32) -> i32 = x
+over: ext fun(x: f64) -> f64 = x
+
+main: fun -> i32
+{
+	var a = helper
+	var b = printf
+	var c = over
+	var f = twice
+	var d = f(1, 2)
+	var e = f(true)
+	var n = 5
+	var g = n(1)
+	var h: ext fun(i32) -> i64 = twice
+	var k: ext fun(i32) -> i32 = helper
+	ret 0
+}
