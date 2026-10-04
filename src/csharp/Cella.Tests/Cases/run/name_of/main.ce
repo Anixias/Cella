@@ -1,0 +1,56 @@
+mod test
+
+use game.geometry
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Point: rec
+{
+	x: i32
+	y: i32
+}
+
+Team: enum
+{
+	red
+	blue
+}
+
+title: val str = nameOf(Point)
+label: val cstr = nameOf(Team.blue)
+
+scale: fun(n: i32) -> i32 = n * 2
+scale: fun(n: f64) -> f64 = n * 2.0
+
+show: fun(text: str) = printf("%.*s\n", i32(text.byteLength), text.data)
+
+describe: fun(count: i32) -> cstr = nameOf(count)
+
+main: fun -> i32
+{
+	val point = Point(1, 2)
+	val boxed = heap Point(3, 4)
+	var unset: i32
+	printf("%s %s %s %s\n", nameOf(point), nameOf(point.y), nameOf(boxed.x), nameOf(Point.x))
+	printf("%s %s %s %s %s\n", nameOf(Team), nameOf(Team.red), nameOf(scale), nameOf(main), nameOf(unset))
+	printf("%s %s %s %s\n", nameOf(i32), nameOf(test), nameOf(test.scale), nameOf(str.byteLength))
+	printf("%s %s %s %s\n", nameOf(game.geometry), nameOf(geometry), nameOf(geometry.area), nameOf(game))
+	printf("%s %s\n", describe(1), label)
+	show(title)
+	show(nameOf(label))
+
+	val text = nameOf(Point.y)
+	printf("%d\n", i32(text.byteLength))
+
+	var count = 0
+	outer: loop while count < 1
+	{
+		printf("%s\n", nameOf(outer))
+		count += 1
+	}
+
+	ret 0
+}

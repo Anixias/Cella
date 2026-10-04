@@ -824,17 +824,15 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		return VisitIndirectCall(node, ResolveAccess(access, target));
 	}
 	
-	private FieldSymbol? FindField(TypeSymbol type, string name)
+	private FieldSymbol? FindField(TypeSymbol type, string name) =>
+		_typePool.ResolveMember(Dereference(type), name) as FieldSymbol;
+	
+	private static TypeSymbol Dereference(TypeSymbol type) => type is PointerType
 	{
-		var lookupType = type is PointerType
-		{
-			PointerKind: PointerKind.Mutable or PointerKind.Immutable or PointerKind.Owning
-		} pointer
-			? pointer.BaseType
-			: type;
-		
-		return _typePool.ResolveMember(lookupType, name) as FieldSymbol;
-	}
+		PointerKind: PointerKind.Mutable or PointerKind.Immutable or PointerKind.Owning
+	} pointer
+		? pointer.BaseType
+		: type;
 	
 	private IResolvedExpressionNode VisitIndirectCall(CallExpressionNode node, IResolvedExpressionNode target)
 	{
@@ -1111,6 +1109,70 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		var sizeInBytes = new BigInteger((sizeInBits + 7) / 8);
 		
 		return new ResolvedLiteralExpressionNode(NativeSymbols.UntypedInteger, sizeInBytes, node);
+	}
+	
+	public IResolvedExpressionNode Visit(NameOfExpressionNode node)
+	{
+		if (!IsDefinedName(node.Name))
+			return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
+		
+		var name = node.Name switch
+		{
+			AccessExpressionNode access => access.Member.Text,
+			VarExpressionNode variable => variable.Identifier.Text,
+			_ => throw new InvalidOperationException()
+		};
+		
+		return new ResolvedLiteralExpressionNode(NativeSymbols.UntypedString, name, node);
+	}
+	
+	private bool IsDefinedName(IExpressionNode name)
+	{
+		var context = CurrentResolutionContext;
+		switch (name)
+		{
+			case VarExpressionNode variable when context.Resolve(variable.Identifier.Text) is null:
+				Diagnostics.Add(DiagnosticReporter.ReportUndefinedSymbol(variable, variable.Identifier.Text,
+					GetVisibleSymbolNames()));
+				
+				return false;
+			
+			case VarExpressionNode:
+				return true;
+			
+			case AccessExpressionNode access when context.ResolveModule(access.Target) is { } module:
+				if (ResolutionContext.ResolveMember(module, access.Member.Text) is not null)
+					return true;
+				
+				Diagnostics.Add(DiagnosticReporter.ReportUndefinedMember(access.Member.SourceLocation, module,
+					access.Member.Text));
+				
+				return false;
+			
+			case AccessExpressionNode access when context.TryResolveExpressionAsType(access.Target) is { } type:
+				return type is EnumSymbol enumType
+					? FindCase(enumType, access.Member) is not null
+					: HasMember(type, access.Member);
+			
+			case AccessExpressionNode access:
+				var target = VisitNode(access.Target, null);
+				return !IsInvalid(target) && HasMember(target.Type, access.Member);
+			
+			default:
+				return false;
+		}
+	}
+	
+	private bool HasMember(TypeSymbol type, Token member)
+	{
+		var lookupType = Dereference(type);
+		if (_typePool.ResolveMember(lookupType, member.Text) is not null)
+			return true;
+		
+		Diagnostics.Add(new(DiagnosticSeverity.Error, member.SourceLocation,
+			$"Type '{lookupType.Name}' has no member '{member.Text}'"));
+		
+		return false;
 	}
 	
 	public IResolvedExpressionNode Visit(VarExpressionNode node)

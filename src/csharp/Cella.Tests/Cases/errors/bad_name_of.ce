@@ -1,0 +1,24 @@
+mod test
+
+Point: rec
+{
+	x: i32
+}
+
+Team: enum
+{
+	red
+}
+
+main: fun -> i32
+{
+	val point = Point(1)
+	val a = nameOf(missing)
+	val b = nameOf(point.z)
+	val c = nameOf(Point.z)
+	val d = nameOf(Team.green)
+	val e = nameOf(test.nothing)
+	val f = nameOf(Pointt.x)
+	val g: i32 = nameOf(point)
+	ret 0
+}

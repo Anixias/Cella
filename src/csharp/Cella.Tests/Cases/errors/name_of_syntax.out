@@ -1,0 +1,30 @@
+
+====== name_of_syntax.ce ======
+
+Error at line 5, column 13
+4 │ {
+5 │     ret nameOf(5)
+                   ^ Expected a name
+
+Error at line 10, column 17
+ 9 │ {
+10 │     ret nameOf(main())
+                        ^ Expected ')'
+                        | To match the '(' on line 10
+
+Error at line 15, column 18
+14 │ {
+15 │     ret nameOf(main.)
+                         ^ Expected a name
+
+Error at line 20, column 13
+19 │ {
+20 │     ret nameOf("main")
+                    ╘════╛ Expected a name
+
+Error at line 26, column 1
+25 │     ret nameOf
+26 │ }
+     ^ Expected '('
+
+[compilation failed]

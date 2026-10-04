@@ -1,0 +1,31 @@
+mod test
+
+first: fun -> str
+{
+	ret nameOf(5)
+}
+
+second: fun -> str
+{
+	ret nameOf(main())
+}
+
+third: fun -> str
+{
+	ret nameOf(main.)
+}
+
+fourth: fun -> str
+{
+	ret nameOf("main")
+}
+
+fifth: fun -> str
+{
+	ret nameOf
+}
+
+main: fun -> i32
+{
+	ret 0
+}

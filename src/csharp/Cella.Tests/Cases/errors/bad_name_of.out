@@ -1,0 +1,40 @@
+
+====== bad_name_of.ce ======
+
+Error at line 16, column 17
+15 │ val point = Point(1)
+16 │ val a = nameOf(missing)
+                    ╘═════╛ Symbol 'missing' not found in this scope
+
+Error at line 17, column 23
+16 │ val a = nameOf(missing)
+17 │ val b = nameOf(point.z)
+                          ^ Type 'Point' has no member 'z'
+
+Error at line 18, column 23
+17 │ val b = nameOf(point.z)
+18 │ val c = nameOf(Point.z)
+                          ^ Type 'Point' has no member 'z'
+
+Error at line 19, column 22
+18 │ val c = nameOf(Point.z)
+19 │ val d = nameOf(Team.green)
+                         ╘═══╛ 'Team' has no case 'green'
+
+Error at line 20, column 22
+19 │ val d = nameOf(Team.green)
+20 │ val e = nameOf(test.nothing)
+                         ╘═════╛ Module 'test' has no member 'nothing'
+
+Error at line 21, column 17
+20 │ val e = nameOf(test.nothing)
+21 │ val f = nameOf(Pointt.x)
+                    ╘════╛ Symbol 'Pointt' not found in this scope
+                         | Did you mean 'Point'?
+
+Error at line 22, column 15
+21 │ val f = nameOf(Pointt.x)
+22 │ val g: i32 = nameOf(point)
+                  ╘═══════════╛ Cannot convert type 'string literal' to 'i32'
+
+[compilation failed]

@@ -486,6 +486,12 @@ public sealed class AstPrinter : ISyntaxNodeVisitor
 		VisitNode(node.Target, true);
 	}
 	
+	public void Visit(NameOfExpressionNode node)
+	{
+		StartLine();
+		_sb.Append("NameOfExpressionNode: ").Append(node.Name.SourceLocation.GetText());
+	}
+	
 	public void Visit(VarExpressionNode node)
 	{
 		StartLine();

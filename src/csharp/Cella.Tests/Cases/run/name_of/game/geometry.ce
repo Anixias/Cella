@@ -1,0 +1,3 @@
+mod game.geometry
+
+area: fun -> i32 = 1

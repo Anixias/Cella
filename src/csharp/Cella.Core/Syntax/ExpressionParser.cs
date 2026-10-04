@@ -42,6 +42,7 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 		TokenType.OpOpenBracket,
 		TokenType.KeywordUndef,
 		TokenType.KeywordSizeOf,
+		TokenType.KeywordNameOf,
 		TokenType.KeywordHeap,
 		TokenType.KeywordMatch,
 		TokenType.KeywordRet,
@@ -401,6 +402,8 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 			node = ParseUndef(ref index, undef);
 		else if (Match(ref index, out var sizeOf, TokenType.KeywordSizeOf))
 			node = ParseSizeOf(ref index, sizeOf);
+		else if (Match(ref index, out var nameOf, TokenType.KeywordNameOf))
+			node = ParseNameOf(ref index, nameOf);
 		else if (Match(ref index, out var heap, TokenType.KeywordHeap))
 			return ParseHeap(ref index, heap);
 		else if (Match(ref index, out var match, TokenType.KeywordMatch))
@@ -514,6 +517,32 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 		var (source, range) = token.SourceLocation;
 		range = range.Join(closeBracket.SourceLocation.Range);
 		return new SizeOfExpressionNode(token, target, new(source, range));
+	}
+	
+	private NameOfExpressionNode ParseNameOf(ref int index, Token token)
+	{
+		if (!Match(ref index, out var openParen, TokenType.OpOpenParen))
+			throw Expected(index, "'('");
+		
+		if (!Match(ref index, out var first, TokenType.Identifier))
+			throw Expected(index, "a name");
+		
+		IExpressionNode name = new VarExpressionNode(first);
+		while (Match(ref index, TokenType.OpDot))
+		{
+			if (!MatchName(ref index, out var member))
+				throw Expected(index, "a name");
+			
+			var (nameSource, nameRange) = name.SourceLocation;
+			name = new AccessExpressionNode(name, member, new(nameSource, nameRange.Join(member.SourceLocation.Range)));
+		}
+		
+		if (!Match(ref index, out var closeParen, TokenType.OpCloseParen))
+			throw Expected(index, "')'", openParen);
+		
+		var (source, range) = token.SourceLocation;
+		range = range.Join(closeParen.SourceLocation.Range);
+		return new NameOfExpressionNode(token, name, new(source, range));
 	}
 	
 	private IExpressionNode ParsePostfix(ref int index, IExpressionNode target)
