@@ -44,7 +44,7 @@ Error at line 28, column 8
 Error at line 34, column 16
 33 │ none
 34 │ held(holders: array[Holder, 2])
-                   ╘══════════════╛ Payload 'holders' of type 'array[Holder * 2]' causes a cycle in the memory layout
+                   ╘══════════════╛ Payload 'holders' of type 'array[Holder, 2]' causes a cycle in the memory layout
 
 Error at line 37, column 1
 36 │ 

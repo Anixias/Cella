@@ -4,7 +4,7 @@
 Error at line 9, column 9
 8 │ var values: array[i32, 4]
 9 │ values[last] = 1
-           ╘══╛ Index 4 is out of range for 'array[i32 * 4]'
+           ╘══╛ Index 4 is out of range for 'array[i32, 4]'
 
 Error at line 10, column 23
  9 │ values[last] = 1

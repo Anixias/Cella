@@ -327,7 +327,8 @@ public sealed class PointerType : TypeSymbol, IPrimitiveType
 }
 
 public sealed class ArrayType(TypeSymbol elementType, BigInteger length)
-	: TypeSymbol($"array[{elementType.Name} * {length}]"), IPrimitiveType
+	: TypeSymbol(length.Sign < 0 ? $"array[{elementType.Name}]" : $"array[{elementType.Name}, {length}]"),
+		IPrimitiveType
 {
 	public TypeSymbol ElementType { get; } = elementType;
 	public BigInteger Length { get; } = length;

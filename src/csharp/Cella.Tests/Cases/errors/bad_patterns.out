@@ -108,6 +108,11 @@ Error at line 71, column 3
 71 │     else => ret 1
          ╘══╛ 'else' must be the last arm
 
+Error at line 77, column 10
+76 │ {
+77 │     red => var declared = 5
+                ╘══════════════╛ A declaration can't be the whole body of a match arm
+
 Error at line 81, column 6
 80 │ 
 81 │ ret declared

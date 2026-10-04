@@ -1,0 +1,37 @@
+mod test
+
+Team: enum
+{
+	red
+	blue
+}
+
+main: fun -> i32
+{
+	var ready = true
+	if ready
+		var first = 1
+	else
+		val second = 2
+
+	loop while ready
+		var third = 3
+
+	loop
+		var fourth = 4
+	while ready
+
+	loop for 2
+		var fifth = 5
+
+	loop
+		val sixth = 6
+
+	match Team.red
+	{
+		red => var seventh = 7
+		else => ret 0
+	}
+
+	ret first
+}

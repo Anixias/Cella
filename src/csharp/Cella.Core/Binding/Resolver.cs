@@ -451,35 +451,33 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			_ => []
 		};
 	
-	private Scope? DefineBindings(IEnumerable<LocalVariableSymbol?> bindings)
+	private void ReportDeclarationBody(IStatementNode body, string owner)
 	{
-		Scope? scope = null;
+		if (body is VarStatementNode declaration)
+			Diagnostics.Add(new(DiagnosticSeverity.Error, declaration.SourceLocation,
+				$"A declaration can't be the whole body of {owner}"));
+	}
+	
+	private Scope CreateScope(IEnumerable<LocalVariableSymbol?> bindings)
+	{
+		var scope = CurrentScope?.CreateChild() ?? new Scope();
 		foreach (var binding in bindings.OfType<LocalVariableSymbol>())
-		{
-			scope ??= CurrentScope?.CreateChild() ?? new Scope();
 			scope.Define(binding);
-		}
 		
 		return scope;
 	}
 	
-	private IResolvedStatementNode VisitWithBindings(IStatementNode node, IEnumerable<LocalVariableSymbol?> bindings) =>
-		DefineBindings(bindings) is { } scope ? VisitInScope(node, scope) : VisitNode(node);
-	
-	private IResolvedStatementNode VisitInScope(IStatementNode node, Scope scope)
+	private IResolvedStatementNode VisitInScope(IStatementNode node, IEnumerable<LocalVariableSymbol?> bindings)
 	{
-		_resolutionContexts.Push(CurrentResolutionContext with { LocalScope = scope });
+		_resolutionContexts.Push(CurrentResolutionContext with { LocalScope = CreateScope(bindings) });
 		var result = VisitNode(node);
 		_resolutionContexts.Pop();
 		return result;
 	}
 	
-	private IResolvedExpressionNode VisitWithBindings(IExpressionNode node, IEnumerable<LocalVariableSymbol> bindings)
+	private IResolvedExpressionNode VisitInScope(IExpressionNode node, IEnumerable<LocalVariableSymbol> bindings)
 	{
-		if (DefineBindings(bindings) is not { } scope)
-			return VisitNode(node, null);
-		
-		_resolutionContexts.Push(CurrentResolutionContext with { LocalScope = scope });
+		_resolutionContexts.Push(CurrentResolutionContext with { LocalScope = CreateScope(bindings) });
 		var result = VisitNode(node, null);
 		_resolutionContexts.Pop();
 		return result;
@@ -504,8 +502,8 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		{
 			var pattern = arm.Pattern is { } syntax && enumType is not null ? ResolvePattern(syntax, enumType) : null;
 			var bindings = pattern?.Bindings ?? (arm.Pattern is { } failed ? CreateBindings(failed, null) : []);
-			var scope = DefineBindings(bindings) ?? CurrentScope?.CreateChild() ?? new Scope();
-			arms.Add(new ResolvedMatchArm(pattern, VisitInScope(arm.Body, scope)));
+			ReportDeclarationBody(arm.Body, "a match arm");
+			arms.Add(new ResolvedMatchArm(pattern, VisitInScope(arm.Body, bindings)));
 		}
 		
 		ReportArmConflicts(node, arms);
@@ -1043,8 +1041,13 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	{
 		var condition = VisitNode(node.Condition, NativeSymbols.Bool);
 		
-		var then = VisitWithBindings(node.Then, GetTrueBindings(condition));
-		var @else = node.Else is null ? null : VisitNode(node.Else);
+		ReportDeclarationBody(node.Then, "an 'if'");
+		var then = VisitInScope(node.Then, GetTrueBindings(condition));
+		
+		if (node.Else is { } elseNode)
+			ReportDeclarationBody(elseNode, "an 'else'");
+		
+		var @else = node.Else is null ? null : VisitInScope(node.Else, []);
 		
 		return new ResolvedIfStatementNode(condition, then, @else, node);
 	}
@@ -1113,6 +1116,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			symbol = null;
 		
 		_resolutionContexts.Push(resolutionContext);
+		ReportDeclarationBody(node.Body, "a loop");
 		var body = VisitNode(node.Body);
 		_resolutionContexts.Pop();
 		
@@ -1137,6 +1141,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			symbol = null;
 		
 		_resolutionContexts.Push(resolutionContext);
+		ReportDeclarationBody(node.Body, "a loop");
 		var body = VisitNode(node.Body);
 		_resolutionContexts.Pop();
 		
@@ -1164,6 +1169,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			symbol = null;
 		
 		_resolutionContexts.Push(resolutionContext);
+		ReportDeclarationBody(node.Body, "a loop");
 		var body = VisitNode(node.Body);
 		_resolutionContexts.Pop();
 		
@@ -1186,6 +1192,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			symbol = null;
 		
 		_resolutionContexts.Push(resolutionContext);
+		ReportDeclarationBody(node.Body, "a loop");
 		var body = VisitNode(node.Body);
 		_resolutionContexts.Pop();
 		
@@ -1310,7 +1317,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			var left = VisitNode(node.Left, null);
 			var isConjunction = op.Type == TokenType.OpAmpersandAmpersand;
 			var right = isConjunction
-				? VisitWithBindings(node.Right, GetTrueBindings(left))
+				? VisitInScope(node.Right, GetTrueBindings(left))
 				: VisitNode(node.Right, null);
 			
 			if (isConjunction)
@@ -1413,7 +1420,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			operands[i - 1] = MaterializeWithPeer(operands[i - 1], operands[i].Type);
 		}
 		
-		for (var i = 0; i < operands.Count - 1; i++)
+		for (var i = 0; i < operands.Count; i++)
 			operands[i] = MaterializeAsDefault(operands[i]);
 		
 		// TODO Do we need common types anymore?

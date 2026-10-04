@@ -1,0 +1,28 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+ordered: val bool = 1 < 2 < 3
+
+main: fun -> i32
+{
+	printf("%d %d %d\n", i32(1 < 3 < 2), i32(1 < 2 < 3), i32(ordered))
+	printf("%d %d\n", i32(1.0 < 2.5 < 3.0), i32(0.5 > 1.5 > -1.0))
+	printf("%d %d\n", i32(3000000000 > 2 > 1), i32('a' < 'b' <= 'b'))
+
+	var small: u8 = 7
+	var count = 40
+	var wide: i64 = 9
+	printf("%d %d %d\n", i32(0 <= small < 10), i32(1 < count < 300), i32(small < count < 300))
+	printf("%d %d\n", i32(count < 41 < wide), i32(5 <= 5 <= 5 < 6))
+
+	if 1 < 3 < 2
+		printf("wrong\n")
+	else
+		printf("folded\n")
+
+	ret 0
+}
