@@ -1,0 +1,9 @@
+mod test
+
+main: fun -> i32
+{
+	var zero: u64 = 0
+	var value: u64 = 10
+	value %= zero
+	ret 0
+}

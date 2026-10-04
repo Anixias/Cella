@@ -986,11 +986,13 @@ public sealed unsafe class CodeGenerator : IDisposable
 		var sourceName = source.TypeOf.Kind == LLVMTypeKind.LLVMFloatTypeKind ? "f32" : "f64";
 		var name = $"llvm.{(isSigned ? "fptosi" : "fptoui")}.sat.i{destType.IntWidth}.{sourceName}";
 		var functionType = LLVMTypeRef.CreateFunction(destType, [source.TypeOf]);
+		return builder.BuildCall2(functionType, GetIntrinsic(name, functionType), [source]);
+	}
+	
+	private LLVMValueRef GetIntrinsic(string name, LLVMTypeRef functionType)
+	{
 		var function = currentModule.GetNamedFunction(name);
-		if (function.Handle == IntPtr.Zero)
-			function = currentModule.AddFunction(name, functionType);
-		
-		return builder.BuildCall2(functionType, function, [source]);
+		return function.Handle == IntPtr.Zero ? currentModule.AddFunction(name, functionType) : function;
 	}
 	
 	private uint CountBits(TypeSymbol type) => _typePool.SizeTable.GetSize(type).CountBits(_pointerSize * 8);
@@ -1037,13 +1039,8 @@ public sealed unsafe class CodeGenerator : IDisposable
 			{ Op: BinaryOperation.Multiplication } =>
 				builder.BuildMul(left, right),
 			
-			{ Op: BinaryOperation.Division } => signed
-				? builder.BuildSDiv(left, right)
-				: builder.BuildUDiv(left, right),
-			
-			{ Op: BinaryOperation.Modulo } => signed
-				? builder.BuildSRem(left, right)
-				: builder.BuildURem(left, right),
+			{ Op: BinaryOperation.Division or BinaryOperation.Modulo } =>
+				EmitIntegerDivision(v.Op, left, right, signed, builder),
 			
 			{ Op: BinaryOperation.Greater } => signed
 				? builder.BuildICmp(LLVMIntPredicate.LLVMIntSGT, left, right)
@@ -1084,6 +1081,54 @@ public sealed unsafe class CodeGenerator : IDisposable
 			
 			_ => throw new InvalidOperationException()
 		};
+	}
+	
+	private LLVMValueRef EmitIntegerDivision(BinaryOperation op, LLVMValueRef left, LLVMValueRef right, bool signed,
+		LLVMBuilderRef builder)
+	{
+		var type = left.TypeOf;
+		var one = LLVMValueRef.CreateConstInt(type, 1);
+		TrapIf(builder.BuildICmp(LLVMIntPredicate.LLVMIntEQ, right, LLVMValueRef.CreateConstNull(type)), builder);
+		
+		if (!signed)
+		{
+			return op == BinaryOperation.Division
+				? builder.BuildUDiv(left, right)
+				: builder.BuildURem(left, right);
+		}
+		
+		var isMinusOne = builder.BuildICmp(LLVMIntPredicate.LLVMIntEQ, right, LLVMValueRef.CreateConstAllOnes(type));
+		if (isMinusOne.Handle == _false.Handle)
+		{
+			return op == BinaryOperation.Division
+				? builder.BuildSDiv(left, right)
+				: builder.BuildSRem(left, right);
+		}
+		
+		if (op == BinaryOperation.Modulo)
+			return builder.BuildSRem(left, builder.BuildSelect(isMinusOne, one, right));
+		
+		var minimum = builder.BuildShl(one, LLVMValueRef.CreateConstInt(type, type.IntWidth - 1));
+		TrapIf(builder.BuildAnd(isMinusOne, builder.BuildICmp(LLVMIntPredicate.LLVMIntEQ, left, minimum)), builder);
+		return builder.BuildSDiv(left, right);
+	}
+	
+	private void TrapIf(LLVMValueRef condition, LLVMBuilderRef builder)
+	{
+		if (condition.Handle == _false.Handle)
+			return;
+		
+		var function = builder.InsertBlock.Parent;
+		var trapBlock = function.AppendBasicBlock("trap");
+		var continueBlock = function.AppendBasicBlock("no_trap");
+		builder.BuildCondBr(condition, trapBlock, continueBlock);
+		
+		builder.PositionAtEnd(trapBlock);
+		var trapType = LLVMTypeRef.CreateFunction(LLVMTypeRef.Void, []);
+		builder.BuildCall2(trapType, GetIntrinsic("llvm.trap", trapType), []);
+		builder.BuildUnreachable();
+		
+		builder.PositionAtEnd(continueBlock);
 	}
 	
 	private LLVMValueRef EmitFloatBinaryOp(BinOpValue v, LLVMBuilderRef builder)

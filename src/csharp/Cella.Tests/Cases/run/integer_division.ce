@@ -1,0 +1,27 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+main: fun -> i32
+{
+	var seven = 7
+	var two = 2
+	var minusTwo = -2
+	var minusOne = -1
+	var minimum = -2147483648
+	var big: u32 = 4_000_000_000
+	var three: u32 = 3
+	var table = [10 / 3, 10 % 3]
+	printf("%d %d %d %d %d %d\n", seven / two, seven % two, -seven / two, -seven % two, seven / minusTwo, seven % minusTwo)
+	printf("%d %d %d %d %u %u %d %d\n", seven / minusOne, seven % minusOne, minimum % minusOne, minimum / two, big / three,
+		big % three, table[0], table[1])
+
+	var value = 100
+	value /= 7
+	value %= 5
+	printf("%d\n", value)
+	ret 0
+}

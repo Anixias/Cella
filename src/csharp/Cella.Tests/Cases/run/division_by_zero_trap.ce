@@ -1,0 +1,7 @@
+mod test
+
+main: fun -> i32
+{
+	var zero = 0
+	ret 10 / zero
+}
