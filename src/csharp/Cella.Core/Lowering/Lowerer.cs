@@ -783,13 +783,13 @@ public sealed class Lowerer
 		
 		public Value Visit(ResolvedIndirectCallExpressionNode node)
 		{
-			var type = node.FunctionType;
-			var operands = LowerOperands([node.Target, ..node.Arguments], i => i == 0
-				? Passing.Read
-				: GetPassing(type.ParameterTypes[i - 1], type.ParameterModes[i - 1], type.IsExternal));
-			
-			return new IndirectCallValue(operands[0], operands.Skip(1), type, node.Syntax.SourceLocation);
+			var operands = LowerOperands([node.Target, ..node.Arguments], GetOperandPassing(node.FunctionType));
+			return new IndirectCallValue(operands[0], operands.Skip(1), node.FunctionType, node.Syntax.SourceLocation);
 		}
+		
+		private Func<int, Passing> GetOperandPassing(FunctionType type) => i => i == 0
+			? Passing.Read
+			: GetPassing(type.ParameterTypes[i - 1], type.ParameterModes[i - 1], type.IsExternal);
 		
 		private void LowerConstructor(FunctionInfo constructor, Value self,
 			IReadOnlyList<IResolvedExpressionNode> arguments, SourceLocation sourceLocation)
@@ -944,13 +944,15 @@ public sealed class Lowerer
 		}
 		
 		private List<Value> LowerArguments(IReadOnlyList<IResolvedExpressionNode> arguments, FunctionInfo function,
-			int firstParameter)
+			int firstParameter) => LowerOperands(arguments, GetArgumentPassing(function, firstParameter));
+		
+		private Func<int, Passing> GetArgumentPassing(FunctionInfo function, int firstParameter)
 		{
 			var signature = function.Signature;
-			return LowerOperands(arguments, i => firstParameter + i < signature.ParameterTypes.Length
+			return i => firstParameter + i < signature.ParameterTypes.Length
 				? GetPassing(signature.ParameterTypes[firstParameter + i], signature.GetMode(firstParameter + i),
 					function.Symbol.IsExternal)
-				: Passing.Read);
+				: Passing.Read;
 		}
 		
 		private Passing GetPassing(TypeSymbol type, ParameterMode mode, bool isExternal) =>
@@ -993,37 +995,52 @@ public sealed class Lowerer
 			_ => false
 		};
 		
-		private static bool MayEmit(IResolvedExpressionNode node) => node switch
+		private bool MayEmit(IResolvedExpressionNode node) => node switch
 		{
 			ResolvedLiteralExpressionNode or ResolvedVarExpressionNode or ResolvedGlobalExpressionNode
 				or ResolvedFunctionReferenceExpressionNode or ResolvedUndefExpressionNode => false,
 			ResolvedConversionExpressionNode n => MayEmit(n.Source),
-			ResolvedAccessExpressionNode n => MayEmit(n.Target),
-			ResolvedIndexerExpressionNode n => MayEmit(n.Target) || MayEmit(n.Index),
+			ResolvedAccessExpressionNode n => IsMaterialized(n.Target) || MayEmit(n.Target),
+			ResolvedIndexerExpressionNode n => IsMaterialized(n.Target) || MayEmit(n.Target) || MayEmit(n.Index),
 			ResolvedUnaryOpExpressionNode n => MayEmit(n.Operand),
 			ResolvedMutArgumentExpressionNode n => MayEmit(n.Place),
 			ResolvedOwnExpressionNode n => MayEmit(n.Value),
 			ResolvedBinaryOpExpressionNode n => IsShortCircuitOp(n.Operation) || MayEmit(n.Left) || MayEmit(n.Right),
-			ResolvedAssignmentExpressionNode n => n.Operation is not null || MayEmit(n.Left) || MayEmit(n.Right),
-			ResolvedFunctionCallExpressionNode n => n.Arguments.Any(MayEmit),
-			ResolvedIndirectCallExpressionNode n => MayEmit(n.Target) || n.Arguments.Any(MayEmit),
+			ResolvedAssignmentExpressionNode n => n.Operation is not null || _typePool.NeedsDrop(n.Type)
+			                                                              || MayEmit(n.Left) || MayEmit(n.Right),
+			ResolvedFunctionCallExpressionNode n => MayEmitOperands(n.Arguments, GetArgumentPassing(n.Function, 0)),
+			ResolvedIndirectCallExpressionNode n => MayEmitOperands([n.Target, ..n.Arguments],
+				GetOperandPassing(n.FunctionType)),
 			ResolvedArrayExpressionNode n => n.Values.Any(MayEmit),
 			ResolvedEnumCaseExpressionNode n => n.Payload.Any(MayEmit),
 			_ => true
 		};
 		
+		private bool MayEmitOperands(IReadOnlyList<IResolvedExpressionNode> operands, Func<int, Passing> passing) =>
+			operands.Where((operand, i) => passing(i) == Passing.Borrow && !IsPlace(operand) || MayEmit(operand)).Any();
+		
+		private bool IsMaterialized(IResolvedExpressionNode target) =>
+			!IsPlace(target) && _typePool.NeedsDrop(target.Type);
+		
 		public Value Visit(ResolvedAssignmentExpressionNode node)
 		{
 			var left = VisitPlace(node.Left);
+			var dropsOld = _typePool.NeedsDrop(node.Type);
 			
-			// Need to stabilize the left side first so compound assignments don't double-evaluate
+			// Need to stabilize the left side first so it doesn't double-evaluate
 			var emits = MayEmit(node.Right);
-			if (node.Operation is not null || emits)
+			if (node.Operation is not null || emits || dropsOld)
 				left = StabilizeStorage(left);
 			
 			var current = node.Operation is not null && emits ? CaptureAsAtomic(left, "current") : left;
 			var right = Consume(VisitNode(node.Right));
 			var value = node.Operation is null ? right : LowerBinOp(current, node.Operation, right);
+			if (dropsOld && currentBlock is not null)
+			{
+				value = Consume(CaptureAsAtomic(value, "assigned"));
+				currentBlock.Instructions.Add(new DropInstruction(left, node.Op.SourceLocation));
+			}
+			
 			return new AssignValue(node.Type, left, value, node.Op.SourceLocation);
 		}
 		

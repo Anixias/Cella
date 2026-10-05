@@ -11,6 +11,15 @@ Effect: enum
 	hit(amount: i32)
 }
 
+Buffer: rec
+{
+	id: i32
+
+	drop: op
+	{
+	}
+}
+
 trace: fun(name: cstr, value: i32) -> i32
 {
 	printf("%s ", name)
@@ -37,6 +46,14 @@ make: fun -> Effect
 	ret Effect.hit(5)
 }
 
+loud: fun(id: i32) -> Buffer
+{
+	printf("loud ")
+	ret Buffer(id)
+}
+
+show: fun(buffer: Buffer) -> i32 = buffer.id
+
 three: fun(a: i32, b: i32, c: i32) -> i32
 {
 	printf("= %d\n", a + b + c)
@@ -55,6 +72,10 @@ main: fun -> i32
 	two(trace("left", 1), true && flag("right"))
 	two(trace("left", 2), make() is none)
 	two(trace("left", 3), trace("x", 1) < trace("y", 2) < trace("z", 3))
+
+	val view = show
+	three(trace("a", 1), show(loud(2)), loud(3).id)
+	three(trace("b", 1), view(loud(4)), 0)
 
 	val sum = trace("plus", 1) + match make() { hit(n) => trace("arm", n)  none => 0 }
 	val pair = [trace("first", 1), match make() { hit(n) => trace("second", n)  none => 0 }]

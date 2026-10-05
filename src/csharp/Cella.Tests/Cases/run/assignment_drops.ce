@@ -1,0 +1,75 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Buffer: rec
+{
+	id: i32
+
+	drop: op
+	{
+	}
+}
+
+Holder: rec
+{
+	buffer: Buffer
+	count: i32
+
+	new: op(id: i32)
+	{
+		self.buffer = Buffer(id)
+		self.count = 1
+	}
+}
+
+counter: var i32 = 0
+
+next: fun -> usize
+{
+	counter += 1
+	ret usize(counter)
+}
+
+make: fun(id: i32) -> Buffer = Buffer(id)
+grow: fun(buffer: Buffer) -> Buffer = Buffer(buffer.id * 2)
+give: fun(own buffer: Buffer) -> Buffer = Buffer(buffer.id + 1)
+
+refill: fun(mut buffer: Buffer, id: i32)
+{
+	buffer = make(id)
+}
+
+main: fun -> i32
+{
+	var b = make(1)
+	b = make(2)
+	b = grow(b)
+	printf("%d\n", b.id)
+
+	var holder = Holder(5)
+	holder.buffer = make(6)
+	refill(mut holder.buffer, 7)
+	printf("%d %d\n", holder.buffer.id, holder.count)
+
+	var values = [make(10), make(20), make(30)]
+	values[next()] = make(40)
+	values[next()] = grow(values[0])
+	val p = @values[0]
+	*p = make(50)
+	printf("%d %d %d %d\n", values[0].id, values[1].id, values[2].id, counter)
+
+	var i = 0
+	loop while i < 3
+	{
+		b = make(b.id + i)
+		i += 1
+	}
+
+	b = give(b)
+	printf("%d\n", b.id)
+	ret 0
+}
