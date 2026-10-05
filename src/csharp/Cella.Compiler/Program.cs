@@ -233,9 +233,7 @@ internal static class Program
 		{
 			var cfgDiagnostics = new DiagnosticList();
 			var controlFlowAnalyzer = new ControlFlowAnalyzer(cfgDiagnostics);
-			
-			// TODO Linear analysis for ownership/borrows and drop insertion
-			//var linearAnalyzer = new LinearAnalyzer(typePool, assemblySymbol.SignatureTable, cfgDiagnostics);
+			var memoryChecker = new MemoryChecker(typePool);
 			
 			foreach (var module in lowerer.Modules)
 			{
@@ -243,18 +241,15 @@ internal static class Program
 				{
 					foreach (var function in file.Functions)
 					{
-						controlFlowAnalyzer.Analyze(function);
-						
-						// TODO Linear analysis for ownership/borrows and drop insertion
-						//if (controlFlowAnalyzer.Analyze(function))
-						//	linearAnalyzer.Analyze(function);
-						
+						var allPathsReturn = controlFlowAnalyzer.Analyze(function);
 						function.Normalize();
+						if (allPathsReturn)
+							memoryChecker.Check(function);
 					}
 				}
 				
 				if (verbose)
-					Console.WriteLine(LoweredModulePrinter.Print(module));
+					Console.WriteLine(LoweredModulePrinter.Print(module, memoryChecker.DropStates));
 			}
 			
 			if (cfgDiagnostics.Count > 0)

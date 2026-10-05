@@ -1250,6 +1250,7 @@ public sealed class Lowerer
 			ConstantValue or ZeroValue or UndefValue or FunctionReferenceValue => true,
 			VariableValue { Variable.Symbol: LocalVariableSymbol symbol } =>
 				!symbol.IsMutable || _temporaries.Contains(symbol),
+			VariableValue { Variable.Symbol: ParameterSymbol { Mode: ParameterMode.Mut } } => true,
 			MoveValue { Place: VariableValue { Variable.Symbol: LocalVariableSymbol symbol } } =>
 				_temporaries.Contains(symbol),
 			_ => false

@@ -1,0 +1,222 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Buffer: rec
+{
+	id: i32
+
+	drop: op
+	{
+	}
+}
+
+Pair: rec
+{
+	left: Buffer
+	right: Buffer
+}
+
+Nest: rec
+{
+	pair: Pair
+	tail: Buffer
+}
+
+Effect: enum
+{
+	none
+	hold(buffer: Buffer)
+	count(n: i32)
+}
+
+make: fun(id: i32) -> Buffer = Buffer(id)
+take: fun(own buffer: Buffer) -> i32 = buffer.id
+
+sometimes: fun(flag: bool) -> i32
+{
+	val a = make(1)
+	var total = 0
+	if flag
+		total += take(a)
+
+	ret total
+}
+
+partly: fun -> i32
+{
+	var p = Pair(make(1), make(2))
+	val left = p.left
+	ret left.id + p.right.id
+}
+
+refilled: fun -> i32
+{
+	var p = Pair(make(1), make(2))
+	val old = p.left
+	p.left = make(old.id + 10)
+	ret p.left.id + old.id + p.right.id
+}
+
+fieldByField: fun(both: bool) -> i32
+{
+	var p: Pair = undef
+	p.left = make(3)
+	if both
+	{
+		p.right = make(4)
+		ret p.left.id + p.right.id
+	}
+
+	ret p.left.id
+}
+
+wholeFromFields: fun -> i32
+{
+	var q: Pair = undef
+	q.left = make(5)
+	q.right = make(6)
+	val whole = q
+	ret whole.left.id + whole.right.id
+}
+
+nested: fun -> i32
+{
+	var n = Nest(Pair(make(1), make(2)), make(3))
+	val right = n.pair.right
+	n.pair.right = make(right.id + 4)
+	val tail = n.tail
+	ret n.pair.left.id + n.pair.right.id + right.id + tail.id
+}
+
+elements: fun -> i32
+{
+	var items = [make(1), make(2), make(3)]
+	items[2] = make(4)
+	var i: usize = 1
+	items[i] = make(5)
+	ret items[0].id + items[1].id + items[2].id
+}
+
+slots: fun -> i32
+{
+	var parts: array[Buffer, 2] = undef
+	parts[0] = make(7)
+	parts[1] = make(8)
+	ret parts[0].id + parts[1].id
+}
+
+cycle: fun(limit: i32) -> i32
+{
+	var x = make(1)
+	var total = 0
+	var i = 0
+	loop while i < limit
+	{
+		i += 1
+		if i == 2
+			cont
+
+		total += take(x)
+		x = make(i)
+		if total > 4
+			break
+	}
+
+	ret total + x.id
+}
+
+rounds: fun -> i32
+{
+	var total = 0
+	var outer = 0
+	loop while outer < 3
+	{
+		val y = make(outer + 1)
+		var inner = 0
+		loop while inner < 2
+		{
+			if inner == outer
+			{
+				total += take(y)
+				break
+			}
+
+			inner += 1
+		}
+
+		outer += 1
+	}
+
+	ret total
+}
+
+early: fun(flag: bool) -> i32
+{
+	val a = make(5)
+	val b = make(6)
+	if flag
+		ret take(a)
+
+	ret take(b) + a.id
+}
+
+matched: fun(effect: Effect) -> i32
+{
+	val spare = make(7)
+	match effect
+	{
+		hold(buffer) => ret buffer.id
+		count(n) => ret n + take(spare)
+		else => {}
+	}
+
+	ret spare.id
+}
+
+swapIn: fun(mut pair: Pair, id: i32) -> i32
+{
+	val old = own pair.left
+	pair.left = make(id)
+	ret old.id
+}
+
+reowned: fun(own buffer: Buffer) -> i32
+{
+	val first = take(buffer)
+	buffer = make(first + 1)
+	ret buffer.id
+}
+
+choose: fun(flag: bool) -> i32
+{
+	val a = make(8)
+	val b = make(9)
+	var chosen: Buffer = undef
+	if flag
+		chosen = a
+	else
+		chosen = b
+
+	ret chosen.id
+}
+
+main: fun -> i32
+{
+	printf("%d %d\n", sometimes(true), sometimes(false))
+	printf("%d %d\n", partly(), refilled())
+	printf("%d %d %d\n", fieldByField(true), fieldByField(false), wholeFromFields())
+	printf("%d %d %d\n", nested(), elements(), slots())
+	printf("%d %d %d\n", cycle(5), cycle(2), rounds())
+	printf("%d %d\n", early(true), early(false))
+	printf("%d %d %d\n", matched(Effect.hold(make(3))), matched(Effect.count(4)), matched(Effect.none))
+
+	var pair = Pair(make(1), make(2))
+	val old = swapIn(mut pair, 5)
+	printf("%d %d\n", old, pair.left.id)
+	printf("%d %d %d\n", reowned(make(6)), choose(true), choose(false))
+	ret 0
+}

@@ -52,4 +52,33 @@ public static class CfgUtils
 		
 		return reachable;
 	}
+	
+	public static List<BasicBlock> GetReversePostorder(LoweredFunction function)
+	{
+		var order = new List<BasicBlock>(function.Blocks.Count);
+		if (function.Blocks.Count == 0)
+			return order;
+		
+		var entry = function.Blocks[0];
+		var visited = new HashSet<BasicBlock> { entry };
+		var stack = new Stack<(BasicBlock Block, int Next)>();
+		stack.Push((entry, 0));
+		while (stack.Count > 0)
+		{
+			var (block, next) = stack.Pop();
+			var successors = GetSuccessors(block);
+			if (next == successors.Length)
+			{
+				order.Add(block);
+				continue;
+			}
+			
+			stack.Push((block, next + 1));
+			if (visited.Add(successors[next]))
+				stack.Push((successors[next], 0));
+		}
+		
+		order.Reverse();
+		return order;
+	}
 }
