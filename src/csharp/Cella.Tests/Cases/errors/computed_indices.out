@@ -1,0 +1,35 @@
+
+====== computed_indices.ce ======
+
+Error at line 24, column 15
+23 │ var items = [make(1), make(2), make(3)]
+24 │ val picked = items[i]
+                  ╘══════╛ Cannot move array elements at computed indices
+
+Error at line 30, column 73
+29 │ 
+30 │ parameter: fun(mut items: array[Buffer, 2], i: usize) -> i32 = take(own items[i])
+                                                                             ╘══════╛ Cannot move array elements at computed indices
+
+Error at line 42, column 2
+41 │ var items: array[Buffer, 2] = undef
+42 │ items[i] = make(1)
+     ╘══════╛ Cannot assign elements of uninitialized arrays at computed indices
+
+Error at line 44, column 2
+43 │ items[0] = make(2)
+44 │ items[i] = make(3)
+     ╘══════╛ Cannot assign elements of partly initialized arrays at computed indices
+
+Error at line 54, column 2
+53 │ val other = items
+54 │ items[i] = make(3)
+     ╘══════╛ Cannot assign elements of moved arrays at computed indices
+            | Moved on line 53
+
+Error at line 61, column 2
+60 │ var holder: Holder = undef
+61 │ holder.items[i] = make(1)
+     ╘═════════════╛ Cannot assign elements of uninitialized arrays at computed indices
+
+[compilation failed]

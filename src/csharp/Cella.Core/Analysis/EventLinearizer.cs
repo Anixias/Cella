@@ -90,7 +90,7 @@ public sealed class EventLinearizer
 					AddValue(v.Right);
 					AddOperands(v.Left);
 					if (GetPlace(v.Left) is { } target)
-						events.Add(new WriteEvent(target, v.SourceLocation));
+						events.Add(new WriteEvent(target, v.Left.SourceLocation));
 					
 					break;
 				

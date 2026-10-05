@@ -37,8 +37,6 @@ public sealed class MovePath(Projection? projection, TypeSymbol type, int partCo
 
 public sealed class MovePaths
 {
-	private const int MaxTrackedElements = 64;
-	
 	private readonly TypePool _typePool;
 	private readonly Dictionary<VariableSymbol, MovePath> _roots = [];
 	private readonly List<MovePath> _paths = [];
@@ -130,17 +128,14 @@ public sealed class MovePaths
 	private TypeSymbol? GetPartType(TypeSymbol type, Projection projection) => (type, projection) switch
 	{
 		(RecordSymbol, FieldProjection p) => _typePool.GetTypeOfMember(p.Field),
-		(ArrayType a, IndexProjection { Index: { } index }) when IsTracked(a) && index >= 0 && index < a.Length =>
-			a.ElementType,
+		(ArrayType a, IndexProjection { Index: { } index }) when index >= 0 && index < a.Length => a.ElementType,
 		_ => null
 	};
 	
 	private int CountParts(TypeSymbol type) => type switch
 	{
 		RecordSymbol r => _typePool.GetMembers(r).OfType<FieldSymbol>().Count(),
-		ArrayType a when IsTracked(a) => (int)a.Length,
+		ArrayType a when a.Length.Sign >= 0 && a.Length <= int.MaxValue => (int)a.Length,
 		_ => 0
 	};
-	
-	private static bool IsTracked(ArrayType type) => type.Length.Sign >= 0 && type.Length <= MaxTrackedElements;
 }

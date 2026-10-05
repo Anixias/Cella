@@ -8,6 +8,8 @@ namespace Cella.Core.Analysis;
 
 public sealed class MemoryChecker(TypePool typePool, DiagnosticList diagnostics)
 {
+	private readonly record struct Uninitialized(string Condition, IEnumerable<MoveSite> Moves);
+	
 	private readonly Dictionary<DropInstruction, DropState> _dropStates = [];
 	
 	public IReadOnlyDictionary<DropInstruction, DropState> DropStates => _dropStates;
@@ -25,6 +27,14 @@ public sealed class MemoryChecker(TypePool typePool, DiagnosticList diagnostics)
 				{
 					case AccessEvent access:
 						CheckAccess(access, state, paths);
+						break;
+					
+					case WriteEvent write when write.Place.Path.Any(IsComputedIndex):
+						if (FindUninitialized(write.Place, state, paths) is { } uninitialized)
+							Report(write.Location,
+								$"Cannot assign elements of {uninitialized.Condition} arrays at computed indices",
+								uninitialized.Moves);
+						
 						break;
 					
 					case DropEvent drop when paths.Find(drop.Place) is { } path:
@@ -48,23 +58,28 @@ public sealed class MemoryChecker(TypePool typePool, DiagnosticList diagnostics)
 			return;
 		}
 		
-		if (paths.FindPrefix(access.Place) is not ({ } path, var depth))
-			return;
+		if (FindUninitialized(access.Place, state, paths) is { } uninitialized)
+			Report(access.Location, $"Cannot use {uninitialized.Condition} values", uninitialized.Moves);
+	}
+	
+	private static Uninitialized? FindUninitialized(Place place, InitState state, MovePaths paths)
+	{
+		if (paths.FindPrefix(place) is not ({ } path, var depth))
+			return null;
 		
-		var projections = access.Place.Path;
-		var isWhole = depth == projections.Length || projections[depth] is IndexProjection { Index: null };
+		var isWhole = depth == place.Path.Length || IsComputedIndex(place.Path[depth]);
 		if (isWhole ? state.IsWhollyInitialized(path) : state.GetOwnState(path) == PathState.Initialized)
-			return;
+			return null;
 		
 		var uninitialized = isWhole ? state.GetUninitialized(path) : state.GetOwnState(path) & ~PathState.Initialized;
 		var isPartial = isWhole && state.HasInitializedPart(path);
-		if (uninitialized.HasFlag(PathState.Moved))
-			Report(access.Location, isPartial ? "Cannot use partly moved values" : "Cannot use moved values",
-				isWhole ? state.GetMoves(path) : state.GetOwnMoves(path));
-		else
-			Report(access.Location,
-				isPartial ? "Cannot use partly initialized values" : "Cannot use uninitialized values", []);
+		if (!uninitialized.HasFlag(PathState.Moved))
+			return new(isPartial ? "partly initialized" : "uninitialized", []);
+		
+		return new(isPartial ? "partly moved" : "moved", isWhole ? state.GetMoves(path) : state.GetOwnMoves(path));
 	}
+	
+	private static bool IsComputedIndex(Projection projection) => projection is IndexProjection { Index: null };
 	
 	private void CheckRefills(LoweredFunction function, InitState state, MovePaths paths,
 		HashSet<SourceLocation> reportedMoves)
@@ -91,6 +106,7 @@ public sealed class MemoryChecker(TypePool typePool, DiagnosticList diagnostics)
 			when !typePool.IsCopy(paths.GetRoot(parameter).Type) => "Cannot move read-only parameters",
 		LocalVariableSymbol { IsPatternBinding: true } binding
 			when binding.IsMutBinding || !typePool.IsCopy(binding.Type) => "Cannot move pattern bindings",
+		_ when place.Path.Any(IsComputedIndex) => "Cannot move array elements at computed indices",
 		ParameterSymbol { Mode: ParameterMode.Mut } => null,
 		_ => HasDestructorAbove(place, paths) ? "Cannot move fields out of values with destructors" : null
 	};
