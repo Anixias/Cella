@@ -50,5 +50,12 @@ main: fun -> i32
 	var i = Holder()
 	var j = Holder(Effect.none)
 	var k = Handler()
+	var l = File()
 	ret 0
+}
+
+File: rec
+{
+	handle: req i32
+	flags: i32
 }

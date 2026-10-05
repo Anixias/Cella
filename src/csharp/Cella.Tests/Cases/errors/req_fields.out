@@ -1,0 +1,64 @@
+
+====== req_fields.ce ======
+
+Error at line 32, column 2
+31 │ 
+32 │ new: op(flags: i32)
+     ╘═╛ Cannot leave fields uninitialized
+       | 'handle' is uninitialized
+
+Error at line 43, column 2
+42 │ 
+43 │ new: op(count: i32)
+     ╘═╛ Cannot leave fields uninitialized
+       | 'pos' is uninitialized
+
+Error at line 53, column 2
+52 │ 
+53 │ new: op(x: i32)
+     ╘═╛ Cannot leave fields uninitialized
+       | 'pos' is uninitialized
+
+Error at line 64, column 2
+63 │ 
+64 │ new: op(scale: i32)
+     ╘═╛ Cannot leave fields uninitialized
+       | 'handler' is partly initialized
+
+Error at line 84, column 15
+83 │ var file: File
+84 │ ret describe(file)
+                  ╘══╛ Cannot use uninitialized values
+
+Error at line 91, column 15
+90 │ file.flags = 1
+91 │ ret describe(file)
+                  ╘══╛ Cannot use partly initialized values
+
+Error at line 97, column 6
+96 │ var file: File
+97 │ ret file.handle
+         ╘═════════╛ Cannot use uninitialized values
+
+Error at line 104, column 20
+103 │ owner.count = 1
+104 │ ret describeOwner(owner)
+                        ╘═══╛ Cannot use partly initialized values
+
+Error at line 111, column 21
+110 │ holder.count = 1
+111 │ ret describeHolder(holder)
+                         ╘════╛ Cannot use partly initialized values
+
+Error at line 117, column 6
+116 │ var holder: PointHolder
+117 │ ret holder.pos.x
+          ╘══════════╛ Cannot use uninitialized values
+
+Error at line 126, column 21
+125 │ holder.pos.x = 3
+126 │ ret describeHolder(holder)
+                         ╘════╛ Cannot use partly moved values
+                              | Moved on line 124
+
+[compilation failed]

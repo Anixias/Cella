@@ -59,6 +59,7 @@ public enum TokenType
 	KeywordNew,
 	KeywordDrop,
 	KeywordOp,
+	KeywordReq,
 	
 	// Operators
 	OpLessLessLessEqual,
@@ -184,6 +185,7 @@ public static class TokenTypeInfo
 			[TokenType.KeywordNew] = new("new", IsKeyword: true, IsContextual: true),
 			[TokenType.KeywordDrop] = new("drop", IsKeyword: true, IsContextual: true),
 			[TokenType.KeywordOp] = new("op", IsKeyword: true, IsContextual: true),
+			[TokenType.KeywordReq] = new("req", IsKeyword: true, IsContextual: true),
 			
 			[TokenType.OpLessLessLessEqual] = new("<<<=", IsOperator: true),
 			[TokenType.OpGreaterGreaterGreaterEqual] = new(">>>=", IsOperator: true),

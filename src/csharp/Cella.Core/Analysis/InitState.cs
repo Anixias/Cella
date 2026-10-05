@@ -82,6 +82,10 @@ public sealed class InitState
 	
 	public void Move(MovePath path, SourceLocation location) => Fill(path, PathState.Moved, [new(path, location)]);
 	
+	public void ApplyDefaults(MovePath path) => ApplyDefaults(path.Index, path.End);
+	
+	public void ApplyOwnDefault(MovePath path) => ApplyDefaults(path.Index, path.Index + 1);
+	
 	public PathState GetOwnState(MovePath path) => _states[path.Index];
 	
 	public IEnumerable<MoveSite> GetOwnMoves(MovePath path) => _moves[path.Index];
@@ -98,6 +102,15 @@ public sealed class InitState
 		var count = path.End - path.Index;
 		_states.AsSpan(path.Index, count).Fill(state);
 		_moves.AsSpan(path.Index, count).Fill(moves);
+	}
+	
+	private void ApplyDefaults(int start, int end)
+	{
+		for (var i = start; i < end; i++)
+		{
+			if (_states[i].HasFlag(PathState.Unassigned))
+				_states[i] = _states[i] & ~PathState.Unassigned | PathState.Initialized;
+		}
 	}
 	
 	private Initialization Classify(MovePath path)

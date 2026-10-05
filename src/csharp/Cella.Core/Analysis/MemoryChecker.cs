@@ -34,6 +34,7 @@ public sealed class MemoryChecker(TypePool typePool, DiagnosticList diagnostics)
 						break;
 					
 					case WriteEvent write when write.Place.Path.Any(IsComputedIndex):
+						ApplyRequiredDefaults(state, write.Place, paths);
 						if (FindUninitialized(write.Place, state, paths) is { } uninitialized)
 							Report(write.Location,
 								$"Cannot assign elements of {uninitialized.Condition} arrays at computed indices",
@@ -75,7 +76,7 @@ public sealed class MemoryChecker(TypePool typePool, DiagnosticList diagnostics)
 		
 		return typePool.GetMembers(record)
 			.OfType<FieldSymbol>()
-			.Where(field => !typePool.HasDefault(typePool.GetTypeOfMember(field)))
+			.Where(field => !typePool.HasDefault(field))
 			.Select(field => new Place(self, [new FieldProjection(field)]))
 			.ToList();
 	}
@@ -264,22 +265,42 @@ public sealed class MemoryChecker(TypePool typePool, DiagnosticList diagnostics)
 	
 	private void SetDefaults(InitState state, MovePath path)
 	{
+		state.Set(path, PathState.Unassigned);
+		ApplyDefaults(state, path);
+	}
+	
+	private void ApplyRequiredDefaults(InitState state, Place place, MovePaths paths)
+	{
+		foreach (var path in paths.FindAncestors(place))
+		{
+			if (path.Projection is FieldProjection { Field.IsRequired: true })
+				ApplyDefaults(state, path);
+		}
+	}
+	
+	private void ApplyDefaults(InitState state, MovePath path)
+	{
 		if (typePool.HasDefault(path.Type))
 		{
-			state.Set(path, PathState.Initialized);
+			state.ApplyDefaults(path);
 			return;
 		}
 		
-		state.Set(path, UntrackedPartsHaveDefaults(path) ? PathState.Initialized : PathState.Unassigned);
+		if (UntrackedPartsHaveDefaults(path))
+			state.ApplyOwnDefault(path);
+		
 		foreach (var child in path.Children)
-			SetDefaults(state, child);
+		{
+			if (child.Projection is not FieldProjection { Field.IsRequired: true })
+				ApplyDefaults(state, child);
+		}
 	}
 	
 	private bool UntrackedPartsHaveDefaults(MovePath path) =>
 		path is { IsComplete: false, Type: RecordSymbol record } && typePool.GetMembers(record)
 			.OfType<FieldSymbol>()
 			.Where(field => path.GetChild(new FieldProjection(field)) is null)
-			.All(field => typePool.HasDefault(typePool.GetTypeOfMember(field)));
+			.All(typePool.HasDefault);
 	
 	private void Transfer(InitState state, MemoryEvent memoryEvent, MovePaths paths)
 	{
@@ -293,8 +314,11 @@ public sealed class MemoryChecker(TypePool typePool, DiagnosticList diagnostics)
 				state.Set(paths.GetRoot(e.Local), e.Kind == DefineKind.Undef ? PathState.Undef : PathState.Initialized);
 				break;
 			
-			case WriteEvent e when paths.Find(e.Place) is { } path:
-				state.Write(path, e.Location);
+			case WriteEvent e:
+				ApplyRequiredDefaults(state, e.Place, paths);
+				if (paths.Find(e.Place) is { } target)
+					state.Write(target, e.Location);
+				
 				break;
 			
 			case AccessEvent { Kind: AccessKind.Move } e when paths.Find(e.Place) is { } path:

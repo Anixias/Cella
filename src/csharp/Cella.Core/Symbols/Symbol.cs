@@ -484,6 +484,7 @@ public sealed class FieldSymbol(string name, FieldNode? node, bool isMutable) : 
 {
 	public FieldNode? Node { get; } = node;
 	public bool IsMutable { get; } = isMutable;
+	public bool IsRequired { get; } = node?.Modifiers.Any(static m => m.Type == TokenType.KeywordReq) ?? false;
 }
 
 public sealed class PropertySymbol(string name) : TypedMemberSymbol(name)

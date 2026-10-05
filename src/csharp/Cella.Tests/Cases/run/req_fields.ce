@@ -1,0 +1,199 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Point: rec
+{
+	x: i32
+	y: i32
+}
+
+File: rec
+{
+	handle: req i32
+	flags: i32
+}
+
+Owner: rec
+{
+	file: File
+	count: i32
+}
+
+Handler: rec
+{
+	callback: fun(i32) -> i32
+	scale: i32
+}
+
+Placed: rec
+{
+	pos: req Point
+	label: i32
+
+	new: op(x: i32)
+	{
+		self.pos = Point(x, x + 1)
+	}
+}
+
+Partial: rec
+{
+	pos: req Point
+
+	new: op(x: i32)
+	{
+		self.pos.x = x
+	}
+}
+
+Merged: rec
+{
+	pos: req Point
+
+	new: op(flag: bool)
+	{
+		if flag
+			self.pos.x = 1
+
+		self.pos.y = 2
+	}
+}
+
+Opened: rec
+{
+	handle: req i32
+
+	new: op(flag: bool)
+	{
+		if flag
+			self.handle = 3
+		else
+			self.handle = 4
+	}
+}
+
+Wrapper: rec
+{
+	handler: req Handler
+
+	new: op(f: fun(i32) -> i32)
+	{
+		self.handler.callback = f
+	}
+}
+
+Callback: rec
+{
+	run: req fun(i32) -> i32
+}
+
+PointHolder: rec
+{
+	pos: req Point
+	count: i32
+}
+
+Values: rec
+{
+	values: req array[i32, 3]
+}
+
+Named: rec
+{
+	req: i32
+	next: req i32
+}
+
+req: rec
+{
+	value: i32
+}
+
+Wrapped: rec
+{
+	inner: req
+	other: i32
+}
+
+double: fun(n: i32) -> i32 = n * 2
+
+describe: fun(file: File) -> i32 = file.handle * 10 + file.flags
+
+implicit: fun -> i32 = describe(File(7, 1))
+
+local: fun -> i32
+{
+	var file: File
+	file.handle = 5
+	ret describe(file)
+}
+
+owner: fun -> i32
+{
+	var owner: Owner
+	owner.file.handle = 6
+	ret describe(owner.file) + owner.count
+}
+
+files: fun -> i32
+{
+	var files: array[File, 2]
+	files[0].handle = 1
+	files[1] = File(2, 3)
+	ret describe(files[0]) + describe(files[1])
+}
+
+callback: fun -> i32
+{
+	var callback: Callback
+	callback.run = double
+	ret callback.run(8)
+}
+
+parts: fun -> i32
+{
+	var holder: PointHolder
+	holder.pos.y = 3
+	ret holder.pos.x * 100 + holder.pos.y * 10 + holder.count
+}
+
+computed: fun(i: usize) -> i32
+{
+	var values: Values
+	values.values[i] = 5
+	ret values.values[0] * 100 + values.values[1] * 10 + values.values[2]
+}
+
+named: fun -> i32
+{
+	val req = 2
+	var named: Named
+	named.next = req
+	ret named.req + named.next
+}
+
+wrapped: fun -> i32
+{
+	val wrapped = Wrapped(req(9), 1)
+	ret wrapped.inner.value + wrapped.other
+}
+
+main: fun -> i32
+{
+	val placed = Placed(4)
+	val partial = Partial(5)
+	val merged = Merged(true)
+	val other = Merged(false)
+	val wrapper = Wrapper(double)
+	printf("%d %d %d %d\n", implicit(), local(), owner(), files())
+	printf("%d %d %d %d %d %d\n", placed.pos.x, placed.pos.y, partial.pos.x, partial.pos.y,
+		merged.pos.x + merged.pos.y, other.pos.x + other.pos.y)
+	printf("%d %d %d %d\n", Opened(true).handle + Opened(false).handle,
+		wrapper.handler.callback(wrapper.handler.scale + 6), callback(), parts())
+	printf("%d %d %d\n", computed(1), named(), wrapped())
+	ret 0
+}

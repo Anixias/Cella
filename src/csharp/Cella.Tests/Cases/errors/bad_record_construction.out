@@ -62,4 +62,10 @@ Error at line 52, column 10
              ╘═══════╛ No constructor for 'Handler' accepts these arguments
                      | 'Handler' takes one argument for each field: callback, scale
 
+Error at line 53, column 10
+52 │ var k = Handler()
+53 │ var l = File()
+             ╘════╛ No constructor for 'File' accepts these arguments
+                  | 'File' takes one argument for each field: handle, flags
+
 [compilation failed]

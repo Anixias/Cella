@@ -46,6 +46,7 @@ public sealed class TypePool
 	public bool NeedsDrop(TypeSymbol type) => GetFacts(type).NeedsDrop;
 	public bool IsCopy(TypeSymbol type) => GetFacts(type).IsCopy;
 	public bool HasDefault(TypeSymbol type) => GetFacts(type).HasDefault;
+	public bool HasDefault(FieldSymbol field) => !field.IsRequired && HasDefault(GetTypeOfMember(field));
 	
 	public bool PassesByPointer(TypeSymbol type, ParameterMode mode) =>
 		mode == ParameterMode.ReadOnly && NeedsDrop(type);
@@ -73,7 +74,10 @@ public sealed class TypePool
 		_facts[type] = TypeFacts.Plain;
 		facts = type switch
 		{
-			RecordSymbol r => Combine(r.HasDestructor, GetParts(r)),
+			RecordSymbol r => Combine(r.HasDestructor, GetParts(r)) with
+			{
+				HasDefault = GetMembers(r).OfType<FieldSymbol>().All(HasDefault)
+			},
 			EnumSymbol e => Combine(false, GetParts(e)) with { HasDefault = e.Cases is [{ Fields.IsEmpty: true }, ..] },
 			ArrayType => Combine(false, GetParts(type)),
 			FunctionType => TypeFacts.Plain with { HasDefault = false },

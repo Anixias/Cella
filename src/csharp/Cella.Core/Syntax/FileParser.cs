@@ -14,7 +14,7 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 	
 	private static readonly Dictionary<string, TokenType> _memberContextualKeywords =
 		BuildContextualKeywords(TokenType.KeywordFun, TokenType.KeywordPub, TokenType.KeywordNew, TokenType.KeywordDrop,
-			TokenType.KeywordOp);
+			TokenType.KeywordOp, TokenType.KeywordReq);
 	
 	private static readonly HashSet<TokenType> _topLevelSyncTypes = [TokenType.OpSemicolon, TokenType.EndOfFile];
 	
@@ -716,7 +716,17 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 		// TODO Functions, casts, operator overloads
 		
 		// Fields
-		return ParseField(ref index, identifier, []);
+		return ParseField(ref index, identifier, ParseFieldModifiers(ref index));
+	}
+	
+	private List<Token> ParseFieldModifiers(ref int index)
+	{
+		var modifiers = new List<Token>();
+		if (Peek(index + 1, TokenType.Identifier) && Tokens[index + 1].Line == Tokens[index].Line &&
+		    Match(ref index, out var reqToken, _memberContextualKeywords, TokenType.KeywordReq))
+			modifiers.Add(reqToken);
+		
+		return modifiers;
 	}
 	
 	private ConstructorNode? ParseConstructor(ref int index, Token newKeyword, IEnumerable<Token> modifiers)

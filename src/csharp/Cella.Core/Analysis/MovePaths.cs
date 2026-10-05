@@ -103,6 +103,21 @@ public sealed class MovePaths
 		return (path, depth);
 	}
 	
+	public IEnumerable<MovePath> FindAncestors(Place place)
+	{
+		if (!_roots.TryGetValue(place.Root, out var path))
+			yield break;
+		
+		foreach (var projection in place.Path)
+		{
+			yield return path;
+			if (path.GetChild(projection) is not { } child)
+				yield break;
+			
+			path = child;
+		}
+	}
+	
 	private void AddRoot(VariableSymbol symbol, TypeSymbol type)
 	{
 		if (!_roots.ContainsKey(symbol))

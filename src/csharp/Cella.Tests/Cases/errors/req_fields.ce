@@ -1,0 +1,129 @@
+mod test
+
+Point: rec
+{
+	x: i32
+	y: i32
+}
+
+File: rec
+{
+	handle: req i32
+	flags: i32
+}
+
+Owner: rec
+{
+	file: File
+	count: i32
+}
+
+Handler: rec
+{
+	callback: fun(i32) -> i32
+	scale: i32
+}
+
+Forgot: rec
+{
+	handle: req i32
+	flags: i32
+
+	new: op(flags: i32)
+	{
+		self.flags = flags
+	}
+}
+
+Untouched: rec
+{
+	pos: req Point
+	count: i32
+
+	new: op(count: i32)
+	{
+		self.count = count
+	}
+}
+
+Sometimes: rec
+{
+	pos: req Point
+
+	new: op(x: i32)
+	{
+		if x > 0
+			self.pos.x = x
+	}
+}
+
+Whole: rec
+{
+	handler: req Handler
+
+	new: op(scale: i32)
+	{
+		self.handler.scale = scale
+	}
+}
+
+PointHolder: rec
+{
+	pos: req Point
+	count: i32
+}
+
+take: fun(own pos: Point) -> i32 = pos.x
+describe: fun(file: File) -> i32 = file.handle
+describeOwner: fun(owner: Owner) -> i32 = owner.count
+describeHolder: fun(holder: PointHolder) -> i32 = holder.count
+
+unset: fun -> i32
+{
+	var file: File
+	ret describe(file)
+}
+
+flagsOnly: fun -> i32
+{
+	var file: File
+	file.flags = 1
+	ret describe(file)
+}
+
+readHandle: fun -> i32
+{
+	var file: File
+	ret file.handle
+}
+
+ownerCount: fun -> i32
+{
+	var owner: Owner
+	owner.count = 1
+	ret describeOwner(owner)
+}
+
+countOnly: fun -> i32
+{
+	var holder: PointHolder
+	holder.count = 1
+	ret describeHolder(holder)
+}
+
+readDefault: fun -> i32
+{
+	var holder: PointHolder
+	ret holder.pos.x
+}
+
+movedPart: fun -> i32
+{
+	var holder: PointHolder
+	holder.pos = Point(1, 2)
+	take(own holder.pos)
+	holder.pos.x = 3
+	ret describeHolder(holder)
+}
+
+main: fun -> i32 = 0
