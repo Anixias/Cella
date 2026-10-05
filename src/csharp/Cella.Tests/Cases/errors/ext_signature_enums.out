@@ -1,0 +1,49 @@
+
+====== ext_signature_enums.ce ======
+
+Error at line 40, column 22
+39 │ {
+40 │     currentTeam: fun -> Team
+                             ╘══╛ 'Team' isn't an 'ext enum', so it can't be part of an 'ext' signature
+
+Error at line 41, column 21
+40 │ currentTeam: fun -> Team
+41 │ setTeam: fun(team: Team)
+                        ╘══╛ 'Team' isn't an 'ext enum', so it can't be part of an 'ext' signature
+
+Error at line 42, column 26
+41 │ setTeam: fun(team: Team)
+42 │ sendPacket: fun(packet: Packet)
+                             ╘════╛ 'Team' in 'Packet' isn't an 'ext enum', so it can't be part of an 'ext' signature
+
+Error at line 43, column 24
+42 │ sendPacket: fun(packet: Packet)
+43 │ sendAll: fun(wrapper: Wrapper)
+                           ╘═════╛ 'Team' in 'Wrapper' isn't an 'ext enum', so it can't be part of an 'ext' signature
+
+Error at line 44, column 21
+43 │ sendAll: fun(wrapper: Wrapper)
+44 │ post: fun(message: Message)
+                        ╘═════╛ 'Team' in 'Message' isn't an 'ext enum', so it can't be part of an 'ext' signature
+
+Error at line 45, column 24
+44 │ post: fun(message: Message)
+45 │ onTeam: fun(callback: ext fun(Team) -> i32)
+                           ╘══════════════════╛ 'Team' in 'ext fun(Team) -> i32' isn't an 'ext enum', so it can't be part of an 'ext' signature
+
+Error at line 46, column 18
+45 │ onTeam: fun(callback: ext fun(Team) -> i32)
+46 │ walk: fun(node: Node)
+                     ╘══╛ 'Team' in 'Node' isn't an 'ext enum', so it can't be part of an 'ext' signature
+
+Error at line 51, column 21
+50 │ 
+51 │ swap: ext fun(team: Team) -> Team = team
+                         ╘══╛ 'Team' isn't an 'ext enum', so it can't be part of an 'ext' signature
+
+Error at line 51, column 30
+50 │ 
+51 │ swap: ext fun(team: Team) -> Team = team
+                                  ╘══╛ 'Team' isn't an 'ext enum', so it can't be part of an 'ext' signature
+
+[compilation failed]

@@ -31,6 +31,7 @@ public sealed class SignatureCollector
 	private readonly List<(Symbol Symbol, bool IsValue)> _inProgress = [];
 	private readonly HashSet<Symbol> _cyclic = [];
 	private readonly List<FunctionInfo> _entryPoints = [];
+	private readonly ExtSignatureTypes _extSignatureTypes;
 	private IConstantResolver? constants;
 	
 	public DiagnosticList Diagnostics { get; } = new();
@@ -43,6 +44,7 @@ public sealed class SignatureCollector
 		_entryPointName = entryPointName;
 		_symbolTable = symbolTable;
 		_typePool = typePool;
+		_extSignatureTypes = new(typePool);
 		_dependencies = dependencies.ToImmutableArray();
 		_dependencyTable = SignatureTable.Combine(_dependencies.Select(static a => a.SignatureTable));
 		Evaluator = new ConstantEvaluator(typePool, pointerBitSize, GetGlobalValue);
@@ -70,7 +72,8 @@ public sealed class SignatureCollector
 		ReportModuleConflicts();
 		ReportLayoutCycles();
 		ReportEntryPoint();
-		ReportPlainEnumsInCSignatures();
+		ReportPlainEnumsInExtSignatures();
+		ReportDestructorsInExtSignatures();
 		
 		FunctionInfo? entryPoint = _entryPoints.Count == 1 ? _entryPoints[0] : null;
 		return new(name, _symbolTable, _builder.Build(), entryPoint);
@@ -184,6 +187,7 @@ public sealed class SignatureCollector
 			Modules = Modules,
 			TypePool = _typePool,
 			Diagnostics = Diagnostics,
+			ExtSignatureTypes = _extSignatureTypes,
 			EvaluateConstant = EvaluateConstant
 		};
 		
@@ -728,7 +732,21 @@ public sealed class SignatureCollector
 				$"'{_entryPointName}' must have no parameters and return 'i32' or nothing"));
 	}
 	
-	private void ReportPlainEnumsInCSignatures()
+	private void ReportPlainEnumsInExtSignatures()
+	{
+		foreach (var (type, location) in GetExtSignatureTypes())
+			ReportPlainEnum(type, location);
+	}
+	
+	private void ReportDestructorsInExtSignatures()
+	{
+		foreach (var (type, location) in GetExtSignatureTypes())
+			_extSignatureTypes.Add(type, location);
+		
+		_extSignatureTypes.ReportDestructors(Diagnostics);
+	}
+	
+	private IEnumerable<(TypeSymbol Type, SourceLocation Location)> GetExtSignatureTypes()
 	{
 		foreach (var (function, info) in _builder.Functions)
 		{
@@ -743,10 +761,10 @@ public sealed class SignatureCollector
 			};
 			
 			for (var i = 0; i < parameters.Length; i++)
-				ReportPlainEnum(info.Signature.GetDeclaredType(i), parameters[i].Type.SourceLocation);
+				yield return (info.Signature.GetDeclaredType(i), parameters[i].Type.SourceLocation);
 			
 			if (returnType is not null)
-				ReportPlainEnum(info.Signature.ReturnType, returnType.SourceLocation);
+				yield return (info.Signature.ReturnType, returnType.SourceLocation);
 		}
 	}
 	
@@ -757,7 +775,7 @@ public sealed class SignatureCollector
 		
 		var name = plainEnum == type ? $"'{type.Name}'" : $"'{plainEnum.Name}' in '{type.Name}'";
 		Diagnostics.Add(new(DiagnosticSeverity.Error, location,
-			$"{name} isn't an 'ext enum', so it can't be part of a C signature"));
+			$"{name} isn't an 'ext enum', so it can't be part of an 'ext' signature"));
 	}
 	
 	private EnumSymbol? FindPlainEnum(TypeSymbol type, HashSet<TypeSymbol> visited)

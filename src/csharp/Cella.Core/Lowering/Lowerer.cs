@@ -789,7 +789,7 @@ public sealed class Lowerer
 		
 		private Func<int, Passing> GetOperandPassing(FunctionType type) => i => i == 0
 			? Passing.Read
-			: GetPassing(type.ParameterTypes[i - 1], type.ParameterModes[i - 1], type.IsExternal);
+			: GetPassing(type.ParameterTypes[i - 1], type.ParameterModes[i - 1]);
 		
 		private void LowerConstructor(FunctionInfo constructor, Value self,
 			IReadOnlyList<IResolvedExpressionNode> arguments, SourceLocation sourceLocation)
@@ -950,13 +950,12 @@ public sealed class Lowerer
 		{
 			var signature = function.Signature;
 			return i => firstParameter + i < signature.ParameterTypes.Length
-				? GetPassing(signature.ParameterTypes[firstParameter + i], signature.GetMode(firstParameter + i),
-					function.Symbol.IsExternal)
+				? GetPassing(signature.ParameterTypes[firstParameter + i], signature.GetMode(firstParameter + i))
 				: Passing.Read;
 		}
 		
-		private Passing GetPassing(TypeSymbol type, ParameterMode mode, bool isExternal) =>
-			_typePool.PassesByPointer(type, mode, isExternal) ? Passing.Borrow
+		private Passing GetPassing(TypeSymbol type, ParameterMode mode) =>
+			_typePool.PassesByPointer(type, mode) ? Passing.Borrow
 			: mode == ParameterMode.Own ? Passing.Consume
 			: Passing.Read;
 		

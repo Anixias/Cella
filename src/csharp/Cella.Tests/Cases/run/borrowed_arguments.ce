@@ -49,7 +49,6 @@ sameEffect: fun(effect: Effect, address: ptr[Effect]) -> bool = @effect == addre
 sameArray: fun(values: array[Buffer, 2], address: ptr[array[Buffer, 2]]) -> bool = @values == address
 forward: fun(buffer: Buffer, address: ptr[Buffer]) -> bool = same(buffer, address)
 readId: fun(buffer: Buffer) -> i32 = buffer.id
-cSame: ext fun(buffer: Buffer, address: ptr[Buffer]) -> bool = @buffer == address
 
 fromMut: fun(mut buffer: Buffer, address: ptr[Buffer]) -> bool = same(buffer, address)
 
@@ -89,12 +88,9 @@ main: fun -> i32
 	}
 
 	val check = same
-	val viaC: ext fun(Buffer, ptr[Buffer]) -> bool = same
-	val viaFun: fun(Buffer, ptr[Buffer]) -> bool = cSame
-	printf("fun %d c %d ext %d thunk %d\n", flag(check(buffer, @buffer)), flag(cSame(buffer, @buffer)),
-		flag(viaC(buffer, @buffer)), flag(viaFun(buffer, @buffer)))
+	printf("fun %d\n", flag(check(buffer, @buffer)))
 
-	printf("temporary %d %d %d\n", readId(Buffer(7)), readId(buffers[0]), flag(viaC(Buffer(8), null)))
+	printf("temporary %d %d\n", readId(Buffer(7)), readId(buffers[0]))
 	printf("observe %d\n", observe(buffer, bump(mut buffer)))
 	ret 0
 }

@@ -47,6 +47,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	private readonly Stack<ResolutionContext> _resolutionContexts = [];
 	private readonly HashSet<LocalVariableSymbol> _repeatedBindings = [];
 	private readonly Dictionary<IResolvedExpressionNode, ImmutableArray<LocalVariableSymbol?>> _failedPatterns = [];
+	private readonly ExtSignatureTypes _extSignatureTypes;
 	private ResolutionContext CurrentResolutionContext => _resolutionContexts.Peek();
 	private Scope? CurrentScope => CurrentResolutionContext.LocalScope;
 	private TypeSymbol? CurrentTargetType => _targetTypes.TryPeek(out var result) ? result : null;
@@ -54,6 +55,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	public Resolver(SymbolTable symbolTable, SignatureCollector signatures, TypePool typePool, uint pointerBitSize)
 	{
 		_typePool = typePool;
+		_extSignatureTypes = new(typePool);
 		_conversionTable = typePool.ConversionTable;
 		_operatorRegistry = typePool.OperatorRegistry;
 		_pointerBitSize = pointerBitSize;
@@ -149,6 +151,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			Modules = _signatures.Modules,
 			TypePool = _typePool,
 			Diagnostics = Diagnostics,
+			ExtSignatureTypes = _extSignatureTypes,
 			EvaluateConstant = EvaluateConstant
 		};
 		
@@ -160,6 +163,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			resolvedDeclarations.Add(VisitNode(declaration));
 		
 		_resolutionContexts.Pop();
+		_extSignatureTypes.ReportDestructors(Diagnostics);
 		
 		var result = new ResolvedFileNode(file, resolvedDeclarations, _importedFunctions.Values, node);
 		_importedFunctions.Clear();

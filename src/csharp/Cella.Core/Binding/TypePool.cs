@@ -46,8 +46,23 @@ public sealed class TypePool
 	public bool NeedsDrop(TypeSymbol type) => GetFacts(type).NeedsDrop;
 	public bool IsCopy(TypeSymbol type) => GetFacts(type).IsCopy;
 	
-	public bool PassesByPointer(TypeSymbol type, ParameterMode mode, bool isExternal) =>
-		mode == ParameterMode.ReadOnly && !isExternal && NeedsDrop(type);
+	public bool PassesByPointer(TypeSymbol type, ParameterMode mode) =>
+		mode == ParameterMode.ReadOnly && NeedsDrop(type);
+	
+	public RecordSymbol? FindDestructor(TypeSymbol type) => FindDestructor(type, []);
+	
+	private RecordSymbol? FindDestructor(TypeSymbol type, HashSet<TypeSymbol> visited)
+	{
+		if (!NeedsDrop(type) || !visited.Add(type))
+			return null;
+		
+		if (type is RecordSymbol { HasDestructor: true } record)
+			return record;
+		
+		return GetParts(type)
+			.Select(part => FindDestructor(part, visited))
+			.FirstOrDefault(static found => found is not null);
+	}
 	
 	private TypeFacts GetFacts(TypeSymbol type)
 	{
@@ -57,15 +72,22 @@ public sealed class TypePool
 		_facts[type] = TypeFacts.Plain;
 		facts = type switch
 		{
-			RecordSymbol r => Combine(r.HasDestructor, GetMembers(r).OfType<FieldSymbol>().Select(GetTypeOfMember)),
-			EnumSymbol e => Combine(false, e.Cases.SelectMany(c => GetPayloadTypes(e, c))),
-			ArrayType array => GetFacts(array.ElementType),
+			RecordSymbol r => Combine(r.HasDestructor, GetParts(r)),
+			EnumSymbol or ArrayType => Combine(false, GetParts(type)),
 			_ => TypeFacts.Plain
 		};
 		
 		_facts[type] = facts;
 		return facts;
 	}
+	
+	private IEnumerable<TypeSymbol> GetParts(TypeSymbol type) => type switch
+	{
+		RecordSymbol r => GetMembers(r).OfType<FieldSymbol>().Select(GetTypeOfMember),
+		EnumSymbol e => e.Cases.SelectMany(c => GetPayloadTypes(e, c)),
+		ArrayType array => [array.ElementType],
+		_ => []
+	};
 	
 	private TypeFacts Combine(bool hasDestructor, IEnumerable<TypeSymbol> parts)
 	{

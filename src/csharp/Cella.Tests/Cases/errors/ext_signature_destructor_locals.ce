@@ -1,0 +1,23 @@
+mod test
+
+Buffer: rec
+{
+	data: ptr
+
+	drop: op
+	{
+	}
+}
+
+Holder: rec
+{
+	buffer: Buffer
+}
+
+main: fun -> i32
+{
+	var callback: ext fun(Buffer) -> i32
+	var nested: ptr[ext fun(mut Holder)]
+	var fine: ext fun(ptr[Buffer]) -> i32
+	ret i32(sizeOf(ext fun() -> Holder))
+}

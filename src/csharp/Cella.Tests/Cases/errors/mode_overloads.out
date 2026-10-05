@@ -4,12 +4,12 @@
 Error at line 11, column 22
 10 │ {
 11 │     pick: fun(mut team: Team)
-                             ╘══╛ 'Team' isn't an 'ext enum', so it can't be part of a C signature
+                             ╘══╛ 'Team' isn't an 'ext enum', so it can't be part of an 'ext' signature
 
 Error at line 12, column 26
 11 │ pick: fun(mut team: Team)
 12 │ register: fun(callback: ext fun(mut Team))
-                             ╘═══════════════╛ 'Team' in 'ext fun(mut Team)' isn't an 'ext enum', so it can't be part of a C signature
+                             ╘═══════════════╛ 'Team' in 'ext fun(mut Team)' isn't an 'ext enum', so it can't be part of an 'ext' signature
 
 Error at line 15, column 1
 14 │ 

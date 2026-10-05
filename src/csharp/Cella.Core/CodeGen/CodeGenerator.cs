@@ -182,8 +182,8 @@ public sealed unsafe class CodeGenerator : IDisposable
 	
 	private static LLVMTypeRef OpaquePointer => LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0u);
 	
-	private LLVMTypeRef MapParameterType(TypeSymbol type, ParameterMode mode, bool isExternal) =>
-		_typePool.PassesByPointer(type, mode, isExternal) ? OpaquePointer : MapTypeSymbol(type);
+	private LLVMTypeRef MapParameterType(TypeSymbol type, ParameterMode mode) =>
+		_typePool.PassesByPointer(type, mode) ? OpaquePointer : MapTypeSymbol(type);
 	
 	private LLVMTypeRef MapTypeSymbol(TypeSymbol? symbol)
 	{
@@ -370,7 +370,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 		var paramTypes = signature.ParameterTypes;
 		var paramLlvmTypes = new LLVMTypeRef[paramTypes.Length];
 		for (var i = 0; i < paramTypes.Length; i++)
-			paramLlvmTypes[i] = MapParameterType(paramTypes[i], signature.GetMode(i), symbol.IsExternal);
+			paramLlvmTypes[i] = MapParameterType(paramTypes[i], signature.GetMode(i));
 		
 		CSignature? cSignature = symbol.IsExternal
 			? _cAbi.Classify(paramLlvmTypes, returnType)
@@ -440,8 +440,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 					var paramInfo = new VariableInfo(paramSymbol, paramType);
 					
 					var paramLlvmValue = functionValue.GetParam(firstParameter + (uint)p);
-					if (_typePool.PassesByPointer(paramType, function.Info.Signature.GetMode(p),
-						    function.Info.Symbol.IsExternal))
+					if (_typePool.PassesByPointer(paramType, function.Info.Signature.GetMode(p)))
 					{
 						_varMap[paramInfo] = paramLlvmValue;
 						continue;
@@ -707,7 +706,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 		if (!v.FunctionType.IsExternal)
 		{
 			var parameterTypes = v.FunctionType.ParameterTypes
-				.Select((type, i) => MapParameterType(type, v.FunctionType.ParameterModes[i], false));
+				.Select((type, i) => MapParameterType(type, v.FunctionType.ParameterModes[i]));
 			
 			var codeType = LLVMTypeRef.CreateFunction(returnType, [OpaquePointer, ..parameterTypes]);
 			var code = builder.BuildExtractValue(target, 0, "code");
@@ -1607,7 +1606,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 		var target = _funMap[function];
 		var declared = function.Signature;
 		var parameterTypes = declared.ParameterTypes
-			.Select((type, i) => MapParameterType(type, declared.GetMode(i), false))
+			.Select((type, i) => MapParameterType(type, declared.GetMode(i)))
 			.ToArray();
 		
 		var thunkType = LLVMTypeRef.CreateFunction(target.ReturnType, [OpaquePointer, ..parameterTypes]);
@@ -1617,16 +1616,6 @@ public sealed unsafe class CodeGenerator : IDisposable
 		using var builder = currentModule.Context.CreateBuilder();
 		builder.PositionAtEnd(thunk.AppendBasicBlock("entry"));
 		var args = parameterTypes.Select((_, i) => thunk.GetParam((uint)i + 1)).ToList();
-		if (function.Symbol.IsExternal)
-		{
-			for (var i = 0; i < args.Count; i++)
-			{
-				var type = declared.ParameterTypes[i];
-				if (_typePool.PassesByPointer(type, declared.GetMode(i), false))
-					args[i] = builder.BuildLoad2(MapTypeSymbol(type), args[i]);
-			}
-		}
-		
 		var result = target.CSignature is { } signature
 			? EmitCCall(signature, target.FunctionType, target.FunctionValue, target.ReturnType, args, builder)
 			: builder.BuildCall2(target.FunctionType, target.FunctionValue, args.ToArray());
@@ -1664,17 +1653,6 @@ public sealed unsafe class CodeGenerator : IDisposable
 			.Select((type, i) => ReceiveCArgument(signature.Parameters[i], thunk.GetParam(first + (uint)i), type,
 				builder))
 			.ToArray();
-		
-		var declared = function.Signature;
-		for (var i = 0; i < args.Length; i++)
-		{
-			if (!_typePool.PassesByPointer(declared.ParameterTypes[i], declared.GetMode(i), function.Symbol.IsExternal))
-				continue;
-			
-			var slot = BuildEntryAlloca(builder, parameterTypes[i], "argument");
-			builder.BuildStore(args[i], slot);
-			args[i] = slot;
-		}
 		
 		var result = builder.BuildCall2(target.FunctionType, target.FunctionValue, args);
 		if (target.ReturnType.Kind == LLVMTypeKind.LLVMVoidTypeKind)

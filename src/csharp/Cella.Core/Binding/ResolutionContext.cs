@@ -18,6 +18,7 @@ public readonly struct ResolutionContext
 	public Scope? LocalScope { get; init; }
 	public TypePool TypePool { get; init; }
 	public DiagnosticList Diagnostics { get; init; }
+	public ExtSignatureTypes? ExtSignatureTypes { get; init; }
 	public Func<IExpressionNode, ResolutionContext, Constant?>? EvaluateConstant { get; init; }
 	
 	public IEnumerable<string> GetQualifiers()
@@ -186,7 +187,17 @@ public readonly struct ResolutionContext
 			.Select((type, i) => typePool.GetPassedType(type, modes[i]));
 		
 		var returnType = node.ReturnType is { } returnTypeNode ? ResolveType(returnTypeNode) : NativeSymbols.Void;
-		return TypePool.GetFunctionType(node.IsExternal, parameterTypes, modes, returnType);
+		var functionType = TypePool.GetFunctionType(node.IsExternal, parameterTypes, modes, returnType);
+		if (functionType.IsExternal && ExtSignatureTypes is { } signatureTypes)
+		{
+			for (var i = 0; i < node.ParameterTypes.Length; i++)
+				signatureTypes.Add(functionType.GetDeclaredType(i), node.ParameterTypes[i].SourceLocation);
+			
+			if (node.ReturnType is not null)
+				signatureTypes.Add(returnType, node.ReturnType.SourceLocation);
+		}
+		
+		return functionType;
 	}
 	
 	private TypeSymbol ResolveNamedType(Token name)
