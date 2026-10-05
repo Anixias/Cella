@@ -1,0 +1,98 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Buffer: rec
+{
+	id: i32
+
+	drop: op
+	{
+	}
+}
+
+Effect: enum
+{
+	none
+	hold(buffer: Buffer)
+	pair(first: Buffer, second: Buffer)
+	count(n: i32)
+}
+
+make: fun(id: i32) -> Effect = Effect.hold(Buffer(id))
+take: fun(own buffer: Buffer) -> i32 = buffer.id
+
+rvalue: fun -> i32
+{
+	match make(1)
+	{
+		hold(buffer) => ret take(buffer)
+		else => ret 0
+	}
+}
+
+moved: fun -> i32
+{
+	val effect = Effect.pair(Buffer(2), Buffer(3))
+	match own effect
+	{
+		pair(first, _) => ret take(first)
+		else => ret 0
+	}
+}
+
+bindings: fun -> i32
+{
+	val effect = make(4)
+	var total = 0
+	match effect
+	{
+		hold(var buffer) =>
+		{
+			buffer.id += 10
+			total = take(buffer)
+		}
+		else => {}
+	}
+
+	ret total
+}
+
+copies: fun -> i32
+{
+	var effect = Effect.count(5)
+	match effect
+	{
+		count(var n) => n += 1
+		else => {}
+	}
+
+	match effect
+	{
+		count(n) => ret n
+		else => ret 0
+	}
+}
+
+condition: fun -> i32
+{
+	if make(6) is hold(buffer)
+		ret take(buffer)
+
+	ret 0
+}
+
+value: fun -> i32 = match make(7)
+{
+	hold(buffer) => take(buffer)
+	else => 0
+}
+
+main: fun -> i32
+{
+	printf("%d %d %d %d %d %d\n", rvalue(), moved(), bindings(), copies(), condition(), value())
+	ret 0
+}

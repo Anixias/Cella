@@ -42,5 +42,11 @@ main: fun -> i32
 		else => ret 0
 	}
 
+	match Effect.hold(Buffer(6))
+	{
+		hold(owned) => owned.id = 7
+		else => {}
+	}
+
 	ret 0
 }

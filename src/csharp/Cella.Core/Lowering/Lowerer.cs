@@ -342,7 +342,7 @@ public sealed class Lowerer
 		{
 			BeginScope(node.Syntax.SourceLocation, true);
 			LowerMatch(node.Value, [..node.Arms.Select(static arm => (arm.Pattern, arm.Body.Syntax.SourceLocation))],
-				node.Syntax.SourceLocation, index => VisitNode(node.Arms[index].Body));
+				node.Syntax.SourceLocation, node.OwnsValue, index => VisitNode(node.Arms[index].Body));
 			
 			EndCurrentScope();
 		}
@@ -361,7 +361,7 @@ public sealed class Lowerer
 			}
 			
 			LowerMatch(node.Value, [..node.Arms.Select(static arm => (arm.Pattern, arm.Value.Syntax.SourceLocation))],
-				location, index =>
+				location, node.OwnsValue, index =>
 				{
 					var arm = node.Arms[index].Value;
 					var value = Consume(VisitNode(arm));
@@ -375,7 +375,7 @@ public sealed class Lowerer
 		
 		private void LowerMatch(IResolvedExpressionNode value,
 			IReadOnlyList<(ResolvedPattern? Pattern, SourceLocation Location)> arms, SourceLocation location,
-			Action<int> lowerArm)
+			bool ownsValue, Action<int> lowerArm)
 		{
 			var scrutinee = LowerScrutinee(value);
 			var enumType = (EnumSymbol)scrutinee.Type;
@@ -408,7 +408,9 @@ public sealed class Lowerer
 				currentBlock = armBlock;
 				BeginScope(armLocation);
 				if (pattern is not null)
-					BindPayload(scrutinee, pattern);
+					BindPayload(scrutinee, pattern, ownsValue);
+				else if (ownsValue)
+					StoreTemporary(Consume(scrutinee), "unbound");
 				
 				lowerArm(i);
 				EndCurrentScope();
@@ -461,7 +463,7 @@ public sealed class Lowerer
 							TestCase(scrutinee, node.Pattern.Case), bindBlock, falseBlock, location));
 						
 						currentBlock = bindBlock;
-						BindPayload(scrutinee, node.Pattern);
+						BindPayload(scrutinee, node.Pattern, node.OwnsValue);
 						GetOrMakeBlock().SetTerminator(new BranchTerminator(trueBlock, location));
 						currentBlock = null;
 						return;
@@ -494,21 +496,44 @@ public sealed class Lowerer
 			return new BinOpValue(NativeSymbols.Bool, tag, caseTag, BinaryOperation.Equal, location);
 		}
 		
-		private void BindPayload(Value scrutinee, ResolvedPattern pattern)
+		private void BindPayload(Value scrutinee, ResolvedPattern pattern, bool ownsValue)
 		{
+			var payloadTypes = _typePool.GetPayloadTypes((EnumSymbol)scrutinee.Type, pattern.Case);
 			for (var i = 0; i < pattern.Bindings.Length; i++)
 			{
-				if (pattern.Bindings[i] is not { } binding)
-					continue;
-				
-				var location = binding.Identifier.SourceLocation;
-				Value payload = binding is { IsBorrowBinding: true, Type: PointerType pointer }
-					? new UnaryOpValue(pointer, new EnumPayloadValue(pointer.BaseType, scrutinee, pattern.Case, i,
-						location), UnaryOperation.AddressOf, location)
-					: new EnumPayloadValue(binding.Type, scrutinee, pattern.Case, i, location);
-				
-				GetOrMakeBlock().Instructions.Add(new LocalVarInstruction(binding, payload, location, CurrentScopeId));
+				var binding = pattern.Bindings[i];
+				var location = binding?.Identifier.SourceLocation ?? scrutinee.SourceLocation;
+				var payload = new EnumPayloadValue(payloadTypes[i], scrutinee, pattern.Case, i, location);
+				var isMoved = ownsValue && _typePool.NeedsDrop(payloadTypes[i]);
+				switch (binding)
+				{
+					case { IsBorrowBinding: true, Type: PointerType pointer }:
+						GetOrMakeBlock().Instructions.Add(new LocalVarInstruction(binding,
+							new UnaryOpValue(pointer, payload, UnaryOperation.AddressOf, location), location,
+							CurrentScopeId));
+						
+						break;
+					
+					case not null when isMoved:
+						Declare(GetOrMakeBlock(),
+							new LocalVarInstruction(binding, new MoveValue(payload), location, CurrentScopeId));
+						
+						break;
+					
+					case not null:
+						GetOrMakeBlock().Instructions.Add(
+							new LocalVarInstruction(binding, payload, location, CurrentScopeId));
+						
+						break;
+					
+					case null when isMoved:
+						StoreTemporary(new MoveValue(payload), "unbound");
+						break;
+				}
 			}
+			
+			if (ownsValue)
+				GetOrMakeBlock().Instructions.Add(new ExpressionInstruction(Consume(scrutinee)));
 		}
 		
 		public Value Visit(ResolvedReturnExpressionNode node)
@@ -770,7 +795,7 @@ public sealed class Lowerer
 			GetOrMakeBlock().SetTerminator(new ConditionalBranchTerminator(result, bindBlock, mergeBlock, location));
 			
 			currentBlock = bindBlock;
-			BindPayload(scrutinee, node.Pattern);
+			BindPayload(scrutinee, node.Pattern, node.OwnsValue);
 			GetOrMakeBlock().SetTerminator(new BranchTerminator(mergeBlock, location));
 			
 			ContinueWith(mergeBlock);

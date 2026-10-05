@@ -97,6 +97,13 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 		TokenType.OpBangEqual
 	];
 	
+	private static readonly HashSet<TokenType> _bindingModes =
+	[
+		TokenType.KeywordMut,
+		TokenType.KeywordOwn,
+		TokenType.KeywordVar
+	];
+	
 	private static readonly HashSet<TokenType> _comparisonOps =
 	[
 		TokenType.OpGreaterEqual,
@@ -208,7 +215,7 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 			if (bindings.Count > 0 && !Match(ref index, TokenType.OpComma))
 				throw Expected(index, "',' or ')'", openParen);
 			
-			Token? mode = Match(ref index, out var keyword, TokenType.KeywordMut) ? keyword : null;
+			Token? mode = Match(ref index, out var keyword, _bindingModes) ? keyword : null;
 			if (!Match(ref index, out var binding, TokenType.Identifier))
 				throw Expected(index, "a name or '_'");
 			

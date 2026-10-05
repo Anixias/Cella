@@ -1,0 +1,49 @@
+mod test
+
+Buffer: rec
+{
+	id: i32
+
+	drop: op
+	{
+	}
+}
+
+Effect: enum
+{
+	none
+	hold(buffer: Buffer)
+}
+
+make: fun(id: i32) -> Effect = Effect.hold(Buffer(id))
+take: fun(own buffer: Buffer) -> i32 = buffer.id
+touch: fun(mut buffer: Buffer)
+{
+}
+
+used: fun -> i32
+{
+	val effect = make(1)
+	match own effect
+	{
+		hold(buffer) => take(buffer)
+		else => {}
+	}
+
+	match effect
+	{
+		hold(buffer) => ret buffer.id
+		else => ret 0
+	}
+}
+
+parameter: fun(effect: Effect) -> i32
+{
+	match effect
+	{
+		hold(own buffer) => ret take(buffer)
+		else => ret 0
+	}
+}
+
+main: fun -> i32 = 0

@@ -9,6 +9,7 @@ public sealed class ResolvedIsExpressionNode
 	IResolvedExpressionNode value,
 	ResolvedPattern pattern,
 	bool isMut,
+	bool ownsValue,
 	IExpressionNode syntax
 ) : IResolvedExpressionNode
 {
@@ -16,6 +17,7 @@ public sealed class ResolvedIsExpressionNode
 	public IResolvedExpressionNode Value { get; } = value;
 	public ResolvedPattern Pattern { get; } = pattern;
 	public bool IsMut { get; } = isMut;
+	public bool OwnsValue { get; } = ownsValue;
 	public IExpressionNode Syntax { get; } = syntax;
 }
 

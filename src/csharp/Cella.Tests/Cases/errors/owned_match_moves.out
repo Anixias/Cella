@@ -1,0 +1,21 @@
+
+====== owned_match_moves.ce ======
+
+Error at line 33, column 8
+32 │ 
+33 │ match effect
+           ╘════╛ Cannot use moved values
+                | Moved on line 27
+
+Error at line 35, column 8
+34 │ {
+35 │     hold(buffer) => ret buffer.id
+              ╘════╛ Cannot use moved values
+                   | Moved on line 27
+
+Error at line 42, column 8
+41 │ {
+42 │     match effect
+               ╘════╛ Cannot move read-only parameters
+
+[compilation failed]

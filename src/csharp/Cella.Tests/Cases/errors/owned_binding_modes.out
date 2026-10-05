@@ -1,0 +1,14 @@
+
+====== owned_binding_modes.ce ======
+
+Error at line 28, column 12
+27 │ {
+28 │     hold(mut buffer) => touch(mut buffer)
+                  ╘════╛ Cannot mutably borrow unstored values
+
+Error at line 40, column 12
+39 │ {
+40 │     hold(own buffer) => ret take(buffer)
+                  ╘════╛ Cannot move mutably borrowed payloads
+
+[compilation failed]

@@ -3,7 +3,7 @@ using Cella.Core.Syntax.Nodes;
 
 namespace Cella.Core.Binding.Nodes;
 
-public sealed class ResolvedOwnExpressionNode(IResolvedExpressionNode value, OwnExpressionNode syntax)
+public sealed class ResolvedOwnExpressionNode(IResolvedExpressionNode value, IExpressionNode syntax)
 	: IResolvedExpressionNode
 {
 	public IResolvedExpressionNode Value { get; } = value;
