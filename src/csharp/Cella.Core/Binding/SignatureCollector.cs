@@ -620,13 +620,7 @@ public sealed class SignatureCollector
 		
 		var isExternal = function.Kind == FunctionKind.External;
 		if (isExternal && others.Any(static s => s is FunctionSymbol { Kind: FunctionKind.External }))
-		{
-			return new(DiagnosticSeverity.Error, location,
-				$"'{symbol.Name}' is declared more than once as an ext function")
-			{
-				Hints = ["Each ext function is one C symbol, so it can't be overloaded"]
-			};
-		}
+			return new(DiagnosticSeverity.Error, location, "'ext' functions cannot be overloaded");
 		
 		var signature = _builder.Functions[function].Signature;
 		var sameParameters = others
