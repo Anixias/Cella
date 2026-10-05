@@ -295,7 +295,7 @@ public sealed class FunctionGroupType(string functionName, IEnumerable<FunctionI
 		foreach (var function in Functions)
 		{
 			var signature = function.Signature;
-			if (!signature.IsVariadic && signature.ReturnType == type.ReturnType &&
+			if (!signature.IsVariadic && !signature.HasMutParameter && signature.ReturnType == type.ReturnType &&
 			    signature.ParameterTypes.SequenceEqual(type.ParameterTypes))
 				return function;
 		}
@@ -379,10 +379,18 @@ public sealed class GlobalSymbol(GlobalNode syntax) : VariableSymbol(syntax.Iden
 	public SourceLocation Definition { get; } = syntax.SourceLocation;
 }
 
+public enum ParameterMode
+{
+	ReadOnly,
+	Mut,
+	Own
+}
+
 public sealed class ParameterSymbol : VariableSymbol
 {
 	public Token Identifier { get; }
 	public SourceLocation Definition { get; }
+	public ParameterMode Mode { get; init; }
 	
 	public ParameterSymbol(Token identifier) : base(identifier.Text)
 	{

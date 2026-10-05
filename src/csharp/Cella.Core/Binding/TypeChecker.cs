@@ -273,16 +273,19 @@ public sealed class TypeChecker(ConstantEvaluator evaluator) : IResolvedStatemen
 	private static VariableSymbol? FindImmutableBinding(IResolvedExpressionNode place) => place switch
 	{
 		ResolvedVarExpressionNode { Symbol: LocalVariableSymbol { IsMutable: false } local } => local,
+		ResolvedVarExpressionNode { Symbol: ParameterSymbol { Mode: ParameterMode.ReadOnly } parameter } => parameter,
 		ResolvedGlobalExpressionNode { Symbol: { IsMutable: false } global } => global,
 		ResolvedAccessExpressionNode { Member: FieldSymbol } e => FindImmutableBinding(e.Target),
 		ResolvedIndexerExpressionNode { Target.Type: ArrayType } e => FindImmutableBinding(e.Target),
 		_ => null
 	};
 	
-	private static string DescribeImmutable(VariableSymbol binding) =>
-		binding is LocalVariableSymbol { IsPatternBinding: true }
-			? $"'{binding.Name}' is bound by a pattern"
-			: $"'{binding.Name}' is a 'val'";
+	private static string DescribeImmutable(VariableSymbol binding) => binding switch
+	{
+		LocalVariableSymbol { IsPatternBinding: true } => $"'{binding.Name}' is bound by a pattern",
+		ParameterSymbol => $"'{binding.Name}' is a read-only parameter",
+		_ => $"'{binding.Name}' is a 'val'"
+	};
 	
 	private IResolvedExpressionNode? FindNonConstant(IResolvedExpressionNode node)
 	{
@@ -448,6 +451,22 @@ public sealed class TypeChecker(ConstantEvaluator evaluator) : IResolvedStatemen
 	
 	public void Visit(ResolvedFunctionReferenceExpressionNode node)
 	{
+	}
+	
+	public void Visit(ResolvedMutArgumentExpressionNode node)
+	{
+		var place = node.Place;
+		var location = place.Syntax.SourceLocation;
+		if (!IsLValue(place))
+			Diagnostics.Add(new(DiagnosticSeverity.Error, location, "Cannot pass an unstored value as 'mut'"));
+		else if (place is ResolvedGlobalExpressionNode { Symbol: { IsMutable: true } global })
+			Diagnostics.Add(new(DiagnosticSeverity.Error, location,
+				$"Cannot pass '{global.Name}', a module 'var', as 'mut'"));
+		else if (FindImmutableBinding(place) is { } binding)
+			Diagnostics.Add(new(DiagnosticSeverity.Error, location,
+				$"{DescribeImmutable(binding)} and can't be passed 'mut'"));
+		
+		VisitNode(place);
 	}
 	
 	public void Visit(ResolvedFunctionGroupExpressionNode node)

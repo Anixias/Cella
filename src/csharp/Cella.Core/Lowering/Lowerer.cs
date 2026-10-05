@@ -721,6 +721,9 @@ public sealed class Lowerer
 		public Value Visit(ResolvedUndefExpressionNode node) =>
 			new UndefValue(node.Type);
 		
+		public Value Visit(ResolvedMutArgumentExpressionNode node) => new UnaryOpValue(node.Type,
+			VisitPlace(node.Place), UnaryOperation.AddressOf, node.Syntax.SourceLocation);
+		
 		public Value Visit(ResolvedVarExpressionNode node) =>
 			new VariableValue(new(node.Symbol, node.Type), node.Syntax.SourceLocation);
 		
@@ -812,6 +815,7 @@ public sealed class Lowerer
 			ResolvedAccessExpressionNode n => MayEmit(n.Target),
 			ResolvedIndexerExpressionNode n => MayEmit(n.Target) || MayEmit(n.Index),
 			ResolvedUnaryOpExpressionNode n => MayEmit(n.Operand),
+			ResolvedMutArgumentExpressionNode n => MayEmit(n.Place),
 			ResolvedBinaryOpExpressionNode n => IsShortCircuitOp(n.Operation) || MayEmit(n.Left) || MayEmit(n.Right),
 			ResolvedAssignmentExpressionNode n => n.Operation is not null || MayEmit(n.Left) || MayEmit(n.Right),
 			ResolvedFunctionCallExpressionNode n => n.Arguments.Any(MayEmit),

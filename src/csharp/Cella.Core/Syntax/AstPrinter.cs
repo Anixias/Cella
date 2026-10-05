@@ -316,6 +316,9 @@ public sealed class AstPrinter : ISyntaxNodeVisitor
 	
 	public void Visit(ParameterNode node)
 	{
+		if (node.Mode is { } mode)
+			_sb.Append(mode.AsSpan()).Append(' ');
+		
 		_sb.Append(node.Identifier.AsSpan()).Append(": ");
 		VisitNode(node.Type, false);
 	}
@@ -492,6 +495,13 @@ public sealed class AstPrinter : ISyntaxNodeVisitor
 	{
 		StartLine();
 		_sb.Append("NameOfExpressionNode: ").Append(node.Name.SourceLocation.GetText());
+	}
+	
+	public void Visit(MutArgumentExpressionNode node)
+	{
+		StartLine();
+		_sb.Append("MutArgumentExpressionNode");
+		VisitNode(node.Value, true);
 	}
 	
 	public void Visit(VarExpressionNode node)

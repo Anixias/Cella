@@ -1,0 +1,39 @@
+
+====== mode_overloads.ce ======
+
+Error at line 11, column 22
+10 │ {
+11 │     pick: fun(mut team: Team)
+                             ╘══╛ 'Team' isn't an 'ext enum', so it can't be part of a C signature
+
+Error at line 14, column 1
+13 │ 
+14 │ first: fun(mut x: i32) {}
+     ╘═══╛ 'first' overloads cannot differ only in parameter modes
+
+Error at line 15, column 1
+14 │ first: fun(mut x: i32) {}
+15 │ first: fun(x: i32) {}
+     ╘═══╛ 'first' overloads cannot differ only in parameter modes
+
+Error at line 17, column 1
+16 │ 
+17 │ second: fun(own x: i32) {}
+     ╘════╛ 'second' overloads cannot differ only in parameter modes
+
+Error at line 18, column 1
+17 │ second: fun(own x: i32) {}
+18 │ second: fun(x: i32) {}
+     ╘════╛ 'second' overloads cannot differ only in parameter modes
+
+Error at line 20, column 1
+19 │ 
+20 │ third: fun(mut x: i32) -> i32 = 1
+     ╘═══╛ 'third' overloads cannot differ only in parameter modes and return type
+
+Error at line 21, column 1
+20 │ third: fun(mut x: i32) -> i32 = 1
+21 │ third: fun(x: i32) {}
+     ╘═══╛ 'third' overloads cannot differ only in parameter modes and return type
+
+[compilation failed]

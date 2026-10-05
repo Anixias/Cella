@@ -7,6 +7,9 @@ namespace Cella.Core.Syntax;
 
 public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<IExpressionNode>(tokens)
 {
+	private static Dictionary<string, TokenType> BuildContextualKeywords(params IEnumerable<TokenType> tokenTypes) =>
+		tokenTypes.ToDictionary(static t => t.Representation);
+	
 	private static readonly HashSet<TokenType> _literalTypes =
 	[
 		TokenType.KeywordTrue,
@@ -101,6 +104,18 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 		TokenType.OpLessEqual,
 		TokenType.OpGreater,
 		TokenType.OpLess
+	];
+	
+	private static readonly HashSet<TokenType> _argumentModes = [TokenType.KeywordMut];
+	
+	private static readonly Dictionary<string, TokenType> _argumentModeKeywords =
+		BuildContextualKeywords(TokenType.KeywordMut);
+	
+	private static readonly HashSet<TokenType> _operandContinuations =
+	[
+		TokenType.OpPlus,
+		TokenType.OpMinus,
+		TokenType.OpOpenBracket
 	];
 	
 	private bool IsNextNewline(int next)
@@ -605,12 +620,24 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 			if (arguments.Count > 0 && !Match(ref index, TokenType.OpComma))
 				throw Expected(index, "',' or ')'", openParen);
 			
-			arguments.Add(ParseExpression(ref index));
+			arguments.Add(ParseArgument(ref index));
 		}
 		
 		range = range.Join(closeParen.SourceLocation.Range);
 		
 		return new(target, arguments, target.SourceLocation with { Range = range });
+	}
+	
+	private IExpressionNode ParseArgument(ref int index)
+	{
+		var valueIndex = index;
+		if (!Match(ref valueIndex, out var keyword, _argumentModeKeywords, _argumentModes) ||
+		    IsNextNewline(valueIndex) || !CanStartExpression(valueIndex) ||
+		    _operandContinuations.Contains(Tokens[valueIndex].Type))
+			return ParseExpression(ref index);
+		
+		index = valueIndex;
+		return new MutArgumentExpressionNode(keyword, ParseExpression(ref index));
 	}
 	
 	private IndexerExpressionNode ParseIndexerExpression(ref int index, IExpressionNode target, Token openBracket)

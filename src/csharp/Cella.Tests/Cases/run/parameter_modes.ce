@@ -1,0 +1,162 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+	frexp: fun(value: f64, mut exponent: i32) -> f64
+}
+
+Point: rec
+{
+	x: i32
+	y: i32
+}
+
+Counter: rec
+{
+	count: i32
+
+	new: op(mut total: i32)
+	{
+		total += 1
+		self.count = total
+		double(mut self.count)
+	}
+}
+
+Effect: enum
+{
+	none
+	hit(amount: i32)
+}
+
+damage: fun(mut hp: i32, amount: i32)
+{
+	hp -= amount
+}
+
+double: fun(mut value: i32)
+{
+	value *= 2
+}
+
+nudge: fun(mut p: Point, dx: i32)
+{
+	p.x += dx
+	damage(mut p.y, 1)
+}
+
+shift: fun(mut p: Point)
+{
+	nudge(mut p, 10)
+}
+
+sum: fun(p: Point) -> i32 = p.x + p.y
+
+bump: fun(own n: i32) -> i32
+{
+	n += 1
+	ret n
+}
+
+fill: fun(mut values: array[i32, 3], v: i32)
+{
+	values[0] = v
+	values[2] = v * 2
+}
+
+countdown: fun(mut n: i32, mut steps: i32)
+{
+	if n <= 0
+		ret
+
+	n -= 1
+	steps += 1
+	countdown(mut n, mut steps)
+}
+
+strength: fun(mut e: Effect) -> i32
+{
+	if e is hit(n)
+		ret n
+
+	e = Effect.hit(9)
+	ret 0
+}
+
+advance: fun(mut cursor: ptr[i32], mut p: Point) -> usize
+{
+	cursor = cursor + 1
+	(*@p).x = 70
+	printf("%s %s %zu\n", nameOf(p), nameOf(p.y), sizeOf(p))
+	ret sizeOf(cursor)
+}
+
+pick: fun(mut x: i32) -> i32 = 1
+pick: fun(x: i64) -> i32 = 2
+pick: fun(x: ptr[i32]) -> i32 = 3
+
+overwrite: fun(mut a: i32, b: i32) -> i32
+{
+	a = 100
+	ret b
+}
+
+modes: fun(mut: i32, own: i32) -> i32 = mut * 10 + own
+
+main: fun -> i32
+{
+	var hp = 10
+	damage(mut hp, 3)
+	var player = Point(1, 5)
+	damage(mut player.x, 1)
+	var values = [4, 5, 6]
+	damage(mut values[1], 2)
+	var target = 50
+	val pointer = @target
+	damage(mut *pointer, 8)
+	printf("%d %d %d %d\n", hp, player.x, values[1], target)
+
+	nudge(mut player, 3)
+	shift(mut player)
+	printf("%d %d %d\n", player.x, player.y, sum(player))
+
+	val original = 7
+	printf("%d %d\n", bump(original), original)
+
+	fill(mut values, 9)
+	printf("%d %d %d\n", values[0], values[1], values[2])
+
+	var total = 41
+	val counter = Counter(mut total)
+	printf("%d %d\n", counter.count, total)
+
+	var n = 5
+	var steps = 0
+	countdown(mut n, mut steps)
+	printf("%d %d\n", n, steps)
+
+	var effect = Effect.none
+	val first = strength(mut effect)
+	val second = strength(mut effect)
+	printf("%d %d\n", first, second)
+
+	var cursor = @values[0]
+	val size = advance(mut cursor, mut player)
+	printf("%d %d %zu\n", player.x, *cursor, size)
+
+	var small: i32 = 1
+	val big: i64 = 2
+	printf("%d %d %d\n", pick(mut small), pick(big), pick(@small))
+
+	var a = 1
+	printf("%d %d\n", overwrite(mut a, a), a)
+
+	var exponent = 0
+	val mantissa = frexp(8.0, mut exponent)
+	printf("%.2f %d\n", mantissa, exponent)
+
+	var mut = 3
+	printf("%d %d\n", modes(mut, 4), modes(mut + 1, mut))
+	ret 0
+}

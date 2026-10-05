@@ -1,0 +1,43 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Point: rec
+{
+	x: i32
+}
+
+Effect: enum
+{
+	none
+	hit(amount: i32)
+}
+
+damage: fun(mut hp: i32, amount: i32)
+{
+	hp -= amount
+}
+
+show: fun(x: i32) {}
+
+main: fun -> i32
+{
+	var hp = 10
+	var big: i64 = 5
+	damage(hp, 3)
+	damage(7, 3)
+	damage(mut big, 3)
+	show(mut hp)
+	val point = Point(mut hp)
+	val effect = Effect.hit(mut hp)
+	val converted = i32(mut hp)
+	printf("%d\n", mut hp)
+	var callback: fun(i32) = show
+	callback(mut hp)
+	val f = damage
+	var g: fun(ptr[i32], i32) = damage
+	ret 0
+}

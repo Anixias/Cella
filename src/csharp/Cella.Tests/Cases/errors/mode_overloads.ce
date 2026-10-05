@@ -1,0 +1,26 @@
+mod test
+
+Team: enum
+{
+	red
+	blue
+}
+
+ext
+{
+	pick: fun(mut team: Team)
+}
+
+first: fun(mut x: i32) {}
+first: fun(x: i32) {}
+
+second: fun(own x: i32) {}
+second: fun(x: i32) {}
+
+third: fun(mut x: i32) -> i32 = 1
+third: fun(x: i32) {}
+
+main: fun -> i32
+{
+	ret 0
+}

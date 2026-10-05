@@ -631,7 +631,8 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		if (targetType is RecordSymbol record && _typePool.GetConstructors(record).Count == 0)
 			return VisitRecordConstruction(node, record);
 		
-		if (node.Arguments.Length != 1)
+		if (node.Arguments.Length != 1 ||
+		    node.Arguments[0] is MutArgumentExpressionNode && _typePool.GetConstructors(targetType).Count > 0)
 			return VisitConstructorCall(node, targetType, null);
 		
 		// Don't push targetType; we're trying to find a CAST to targetType, not a targetType itself
@@ -699,13 +700,14 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		}
 		
 		for (var i = iStart; i < node.Arguments.Length; i++)
-			args[i] = VisitNode(node.Arguments[i], null);
+			args[i] = VisitArgument(node.Arguments[i]);
 		
 		if (AnyInvalid(args))
 			return new ResolvedInvalidExpressionNode(node, targetType);
 		
 		var ctorCandidates = _typePool.GetConstructors(targetType)
-			.Select(info => new ConstructorCallable(info, targetType));
+			.Select(info => new ConstructorCallable(info, targetType))
+			.ToArray();
 		
 		var resolutionSet = ResolveCallable(ctorCandidates, args, MaterializationMode.Overload, targetType);
 		
@@ -714,8 +716,11 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		
 		if (!resolutionSet.HasResult)
 		{
+			if (ReportArgumentModes(ctorCandidates, args, targetType))
+				return new ResolvedInvalidExpressionNode(node, targetType);
+			
 			var message = args.Length == 1
-				? $"No constructor for '{targetType.Name}' accepts argument of type '{args[0].Type.Name}'"
+				? $"No constructor for '{targetType.Name}' accepts argument of type '{GetArgumentType(args[0]).Name}'"
 				: $"No constructor for '{targetType.Name}' accepts these arguments";
 			
 			return Error(node, message, targetType, node);
@@ -771,7 +776,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		
 		var args = new IResolvedExpressionNode[node.Arguments.Length];
 		for (var i = 0; i < node.Arguments.Length; i++)
-			args[i] = VisitNode(node.Arguments[i], null);
+			args[i] = VisitArgument(node.Arguments[i]);
 		
 		if (AnyInvalid(args))
 			return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
@@ -785,6 +790,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		
 		if (resolutionSet.IsAmbiguous)
 			return Error(node, $"Call to '{functionName}' is ambiguous", CurrentTargetType, node.Target);
+		
+		if (!resolutionSet.HasResult && ReportArgumentModes(candidates, args, CurrentTargetType))
+			return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
 		
 		// TODO If only one candidate, we could report the unmatched arguments instead of the whole function?
 		if (!resolutionSet.HasResult)
@@ -801,6 +809,73 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		var result = new ResolvedFunctionCallExpressionNode(info, resolvedArgs, node);
 		return ApplyResultResolution(result, resolution);
 	}
+	
+	private IResolvedExpressionNode VisitArgument(IExpressionNode node)
+	{
+		if (node is not MutArgumentExpressionNode argument)
+			return VisitNode(node, null);
+		
+		var place = VisitNode(argument.Value, null);
+		if (IsInvalid(place))
+			return new ResolvedInvalidExpressionNode(argument);
+		
+		if (place.Type is UntypedType)
+			place = MaterializeAsDefault(place);
+		
+		return new ResolvedMutArgumentExpressionNode(place, _typePool.GetPointerType(place.Type), argument);
+	}
+	
+	public IResolvedExpressionNode Visit(MutArgumentExpressionNode node)
+	{
+		VisitNode(node.Value, null);
+		return Error(node, "Only an argument to a 'mut' parameter can be marked 'mut'", CurrentTargetType,
+			node.Keyword.SourceLocation);
+	}
+	
+	private bool ReportArgumentModes(IReadOnlyList<ICallable> candidates, IReadOnlyList<IResolvedExpressionNode> args,
+		TypeSymbol? target)
+	{
+		var relaxed = ResolveCallable(candidates, args, MaterializationMode.Overload, target, true);
+		if (relaxed.Count != 1)
+			return false;
+		
+		var diagnostics = args
+			.Select((arg, i) => ReportArgumentMode(relaxed[0].Callable, i, arg))
+			.OfType<Diagnostic>()
+			.ToList();
+		
+		Diagnostics.AddRange(diagnostics);
+		return diagnostics.Count > 0;
+	}
+	
+	private static Diagnostic? ReportArgumentMode(ICallable callable, int index, IResolvedExpressionNode arg)
+	{
+		var argument = arg as ResolvedMutArgumentExpressionNode;
+		var hasParameter = index < callable.ParameterTypes.Length;
+		var isMut = hasParameter && callable.GetMode(index) == ParameterMode.Mut;
+		var name = hasParameter ? callable.GetParameterName(index) : null;
+		
+		if (argument is null)
+			return isMut
+				? new(DiagnosticSeverity.Error, arg.Syntax.SourceLocation,
+					$"An argument to 'mut' parameter '{name}' must be marked 'mut'")
+				: null;
+		
+		if (!isMut)
+			return new(DiagnosticSeverity.Error, argument.Argument.Keyword.SourceLocation, name is null
+				? "Only an argument to a 'mut' parameter can be marked 'mut'"
+				: $"'{name}' isn't a 'mut' parameter");
+		
+		if (callable.ParameterTypes[index] is not PointerType { BaseType: var declared } ||
+		    argument.Place.Type == declared)
+			return null;
+		
+		return new(DiagnosticSeverity.Error, argument.Place.Syntax.SourceLocation,
+			$"Cannot pass '{argument.Place.Type.Name}' to 'mut' parameter '{name}' of type '{declared.Name}'");
+	}
+	
+	private static TypeSymbol GetArgumentType(IResolvedExpressionNode arg) =>
+		arg is ResolvedMutArgumentExpressionNode argument ? argument.Place.Type : arg.Type;
 	
 	private IResolvedExpressionNode VisitMemberCall(CallExpressionNode node, AccessExpressionNode access)
 	{
@@ -1151,9 +1226,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			case GlobalSymbol g:
 				return new ResolvedGlobalExpressionNode(g, _signatures.GetGlobalType(g), node);
 			
-			case VariableSymbol v when IsConstructorSelf(v):
-				var self = new ResolvedVarExpressionNode(v, _signatures.GetVariableType(v), node);
-				return ResolveDereference(TokenType.OpStar, self, node);
+			case ParameterSymbol { Mode: ParameterMode.Mut } parameter:
+				var pointer = new ResolvedVarExpressionNode(parameter, _signatures.GetVariableType(parameter), node);
+				return pointer.Type is PointerType ? ResolveDereference(TokenType.OpStar, pointer, node) : pointer;
 			
 			case VariableSymbol v:
 				return new ResolvedVarExpressionNode(v, _signatures.GetVariableType(v), node);
@@ -1168,11 +1243,6 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 				return Error(node, $"Symbol '{GetName(node)}' is not a variable", CurrentTargetType);
 		}
 	}
-	
-	private bool IsConstructorSelf(VariableSymbol variable) => CurrentResolutionContext.ContainingFunction is
-	{
-		Symbol: { Kind: FunctionKind.Constructor, Parameters: [var self, ..] }
-	} && self == variable;
 	
 	private static FunctionSymbol[] GetFunctions(Symbol? symbol) => symbol switch
 	{
@@ -1224,9 +1294,15 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			return Error(node.Syntax, $"Variadic function '{group.FunctionName}' can't be used as a value",
 				NativeSymbols.Invalid);
 		
+		if (function.Signature.HasMutParameter)
+			return Error(node.Syntax, DescribeMutFunctionValue(group), NativeSymbols.Invalid);
+		
 		TrackImportedFunction(function);
 		return new ResolvedFunctionReferenceExpressionNode(function, GetNaturalType(function), node.Syntax);
 	}
+	
+	private static string DescribeMutFunctionValue(FunctionGroupType group) =>
+		$"'{group.FunctionName}' has a 'mut' parameter and can't be used as a value yet";
 	
 	private ResolvedInvalidExpressionNode ReportFunctionMismatch(ResolvedFunctionGroupExpressionNode node,
 		TypeSymbol target)
@@ -1235,6 +1311,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		var message = group.Functions switch
 		{
 			[{ Signature.IsVariadic: true }] => $"Variadic function '{group.FunctionName}' can't be used as a value",
+			[{ Signature.HasMutParameter: true }] => DescribeMutFunctionValue(group),
 			[_] => $"Cannot convert type '{group.Name}' to '{target.Name}'",
 			_ => $"No overload of '{group.FunctionName}' matches '{target.Name}'"
 		};
@@ -2076,7 +2153,8 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	}
 	
 	private ResolutionSet ResolveCallable(IEnumerable<ICallable> candidates,
-		IReadOnlyList<IResolvedExpressionNode> args, MaterializationMode mode, TypeSymbol? target = null)
+		IReadOnlyList<IResolvedExpressionNode> args, MaterializationMode mode, TypeSymbol? target = null,
+		bool ignoreModes = false)
 	{
 		var options = new List<CallableResolution>();
 		
@@ -2086,6 +2164,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			if (candidate.IsVariadic ? args.Count < parameterCount : args.Count != parameterCount)
 				continue;
 			
+			if (!ignoreModes && args.Skip(parameterCount).Any(static arg => arg is ResolvedMutArgumentExpressionNode))
+				continue;
+			
 			var conversionCost = 0;
 			var materializationCost = 0;
 			var argumentConversions = new Conversion?[args.Count];
@@ -2093,7 +2174,8 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			
 			for (var i = 0; i < parameterCount; i++)
 			{
-				var (cost, conversion) = MatchArg(args[i], candidate.ParameterTypes[i], mode);
+				var (cost, conversion) = MatchArg(args[i], candidate.ParameterTypes[i], candidate.GetMode(i), mode,
+					ignoreModes);
 				
 				if (cost == int.MaxValue)
 				{
@@ -2226,6 +2308,20 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		: node;
 	
 	private (int Cost, Conversion? Conversion) MatchArg(IResolvedExpressionNode arg, TypeSymbol target,
+		ParameterMode parameterMode, MaterializationMode mode, bool ignoreModes)
+	{
+		if (parameterMode == ParameterMode.Mut)
+			return ignoreModes || arg is ResolvedMutArgumentExpressionNode && arg.Type == target
+				? (0, null)
+				: (int.MaxValue, null);
+		
+		if (arg is not ResolvedMutArgumentExpressionNode argument)
+			return MatchArg(arg, target, mode);
+		
+		return ignoreModes ? MatchArg(argument.Place, target, mode) : (int.MaxValue, null);
+	}
+	
+	private (int Cost, Conversion? Conversion) MatchArg(IResolvedExpressionNode arg, TypeSymbol target,
 		MaterializationMode mode)
 	{
 		if (arg.Type == target)
@@ -2313,6 +2409,8 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		public ImmutableArray<TypeSymbol> ParameterTypes => Info.Signature.ParameterTypes;
 		public TypeSymbol ReturnType => Info.Signature.ReturnType;
 		public bool IsVariadic => Info.Signature.IsVariadic;
+		public ParameterMode GetMode(int index) => Info.Signature.GetMode(index);
+		public string GetParameterName(int index) => Info.Symbol.Parameters[index].Name;
 	}
 	
 	private sealed class FunctionTypeCallable(FunctionType type) : ICallable
@@ -2329,6 +2427,8 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			info.Signature.ParameterTypes.Skip(1).ToImmutableArray(); // Skip implicit self
 		
 		public TypeSymbol ReturnType { get; } = type;
+		public ParameterMode GetMode(int index) => Info.Signature.GetMode(index + 1);
+		public string GetParameterName(int index) => Info.Symbol.Parameters[index + 1].Name;
 	}
 }
 
@@ -2337,4 +2437,6 @@ public interface ICallable
 	ImmutableArray<TypeSymbol> ParameterTypes { get; }
 	TypeSymbol ReturnType { get; }
 	bool IsVariadic => false;
+	ParameterMode GetMode(int index) => ParameterMode.ReadOnly;
+	string? GetParameterName(int index) => null;
 }

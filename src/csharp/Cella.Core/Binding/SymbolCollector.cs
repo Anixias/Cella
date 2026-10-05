@@ -1,5 +1,6 @@
 ﻿using Cella.Core.Symbols;
 using Cella.Core.Syntax.Nodes;
+using Cella.Core.Text;
 
 namespace Cella.Core.Binding;
 
@@ -40,12 +41,12 @@ public sealed class SymbolCollector : IDeclarationNodeVisitor<Symbol>
 	{
 		var parameters = new List<ParameterSymbol>(node.Parameters.Length + 1)
 		{
-			new("self", node.SourceLocation)
+			new("self", node.SourceLocation) { Mode = ParameterMode.Mut }
 		};
 		
 		foreach (var param in node.Parameters)
 		{
-			var paramSymbol = new ParameterSymbol(param.Identifier);
+			var paramSymbol = new ParameterSymbol(param.Identifier) { Mode = GetMode(param) };
 			parameters.Add(paramSymbol);
 			_builder.DeclarationSymbols[param] = paramSymbol;
 		}
@@ -66,7 +67,7 @@ public sealed class SymbolCollector : IDeclarationNodeVisitor<Symbol>
 		var parameters = new List<ParameterSymbol>(node.Parameters.Length);
 		foreach (var param in node.Parameters)
 		{
-			var paramSymbol = new ParameterSymbol(param.Identifier);
+			var paramSymbol = new ParameterSymbol(param.Identifier) { Mode = GetMode(param) };
 			parameters.Add(paramSymbol);
 			_builder.DeclarationSymbols[param] = paramSymbol;
 		}
@@ -84,7 +85,7 @@ public sealed class SymbolCollector : IDeclarationNodeVisitor<Symbol>
 		var parameters = new List<ParameterSymbol>(node.Parameters.Length);
 		foreach (var param in node.Parameters)
 		{
-			var paramSymbol = new ParameterSymbol(param.Identifier);
+			var paramSymbol = new ParameterSymbol(param.Identifier) { Mode = GetMode(param) };
 			parameters.Add(paramSymbol);
 			_builder.DeclarationSymbols[param] = paramSymbol;
 		}
@@ -97,6 +98,13 @@ public sealed class SymbolCollector : IDeclarationNodeVisitor<Symbol>
 	}
 	
 	public Symbol Visit(ParameterNode node) => throw new InvalidOperationException();
+	
+	private static ParameterMode GetMode(ParameterNode node) => node.Mode?.Type switch
+	{
+		TokenType.KeywordMut => ParameterMode.Mut,
+		TokenType.KeywordOwn => ParameterMode.Own,
+		_ => ParameterMode.ReadOnly
+	};
 	
 	public Symbol Visit(RecordNode node)
 	{

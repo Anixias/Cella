@@ -432,14 +432,14 @@ public sealed class SignatureCollector
 		{
 			var param = node.Parameters[i];
 			var paramSymbol = function.Parameters[i + 1]; // + 1 due to implicit self parameter
-			var paramType = context.ResolveType(param.Type);
+			var paramType = GetPassedType(paramSymbol, context.ResolveType(param.Type));
 			
 			paramTypes.Add(paramType);
 			_builder.VariableTypes[paramSymbol] = paramType;
 			scope.Define(paramSymbol);
 		}
 		
-		var signature = new FunctionSignature(paramTypes, NativeSymbols.Void);
+		var signature = new FunctionSignature(paramTypes, NativeSymbols.Void, false, GetModes(function));
 		var mangledName = Mangling.Mangle(function, signature, context.GetQualifiers());
 		var info = new FunctionInfo(mangledName, function, signature, scope, null, context.File);
 		
@@ -458,7 +458,7 @@ public sealed class SignatureCollector
 		{
 			var param = node.Parameters[i];
 			var paramSymbol = function.Parameters[i];
-			var paramType = context.ResolveType(param.Type);
+			var paramType = GetPassedType(paramSymbol, context.ResolveType(param.Type));
 			
 			paramTypes.Add(paramType);
 			_builder.VariableTypes[paramSymbol] = paramType;
@@ -471,7 +471,7 @@ public sealed class SignatureCollector
 		else
 			returnType = context.ResolveType(returnTypeSyntax);
 		
-		var signature = new FunctionSignature(paramTypes, returnType);
+		var signature = new FunctionSignature(paramTypes, returnType, false, GetModes(function));
 		
 		// TODO Disable mangling if indicated
 		var mangledName = Mangling.Mangle(function, signature, context.GetQualifiers());
@@ -493,7 +493,7 @@ public sealed class SignatureCollector
 		{
 			var param = node.Parameters[i];
 			var paramSymbol = function.Parameters[i];
-			var paramType = context.ResolveType(param.Type);
+			var paramType = GetPassedType(paramSymbol, context.ResolveType(param.Type));
 			
 			paramTypes.Add(paramType);
 			_builder.VariableTypes[paramSymbol] = paramType;
@@ -505,16 +505,22 @@ public sealed class SignatureCollector
 		else
 			returnType = context.ResolveType(returnTypeSyntax);
 		
-		var signature = new FunctionSignature(paramTypes, returnType, node.IsVariadic);
+		var signature = new FunctionSignature(paramTypes, returnType, node.IsVariadic, GetModes(function));
 		return new(null, function, signature, null, node.Origin, context.File);
 	}
 	
 	private static FunctionInfo CreateInvalidInfo(FunctionSymbol function, Declaration declaration)
 	{
 		var parameterTypes = function.Parameters.Select(static _ => (TypeSymbol)NativeSymbols.Invalid);
-		var signature = new FunctionSignature(parameterTypes, NativeSymbols.Invalid);
+		var signature = new FunctionSignature(parameterTypes, NativeSymbols.Invalid, false, GetModes(function));
 		return new(null, function, signature, new Scope(), null, declaration.Context.File);
 	}
+	
+	private TypeSymbol GetPassedType(ParameterSymbol parameter, TypeSymbol type) =>
+		parameter.Mode == ParameterMode.Mut && type is not InvalidType ? _typePool.GetPointerType(type) : type;
+	
+	private static IEnumerable<ParameterMode> GetModes(FunctionSymbol function) =>
+		function.Parameters.Select(static p => p.Mode);
 	
 	private bool Enter(Symbol symbol, bool isValue)
 	{
@@ -608,9 +614,19 @@ public sealed class SignatureCollector
 		if (sameParameters.Count == 0)
 			return null;
 		
-		var message = sameParameters.Any(other => other.ReturnType == signature.ReturnType)
-			? $"'{symbol.Name}' is declared more than once with the same signature"
-			: $"'{symbol.Name}' overloads cannot differ only in return type";
+		var sameModes = sameParameters
+			.Where(other => other.ParameterModes.SequenceEqual(signature.ParameterModes))
+			.ToList();
+		
+		var sameReturn = sameParameters.Any(other => other.ReturnType == signature.ReturnType);
+		var message = (sameModes.Count > 0, sameReturn) switch
+		{
+			(true, _) when sameModes.Any(other => other.ReturnType == signature.ReturnType) =>
+				$"'{symbol.Name}' is declared more than once with the same signature",
+			(true, _) => $"'{symbol.Name}' overloads cannot differ only in return type",
+			(false, true) => $"'{symbol.Name}' overloads cannot differ only in parameter modes",
+			(false, false) => $"'{symbol.Name}' overloads cannot differ only in parameter modes and return type"
+		};
 		
 		return new(DiagnosticSeverity.Error, location, message);
 	}
@@ -644,7 +660,9 @@ public sealed class SignatureCollector
 			$"'{parent.Path}.{name}' is both a module and a member of '{parent.Path}'");
 	
 	private static bool HasSameParameters(FunctionSignature first, FunctionSignature second) =>
-		first.IsVariadic == second.IsVariadic && first.ParameterTypes.SequenceEqual(second.ParameterTypes);
+		first.IsVariadic == second.IsVariadic && first.ParameterTypes.Length == second.ParameterTypes.Length &&
+		Enumerable.Range(0, first.ParameterTypes.Length)
+			.All(i => first.GetDeclaredType(i) == second.GetDeclaredType(i));
 	
 	private static Token GetIdentifier(IDeclarationNode declaration) => declaration switch
 	{
@@ -706,7 +724,7 @@ public sealed class SignatureCollector
 			};
 			
 			for (var i = 0; i < parameters.Length; i++)
-				ReportPlainEnum(info.Signature.ParameterTypes[i], parameters[i].Type.SourceLocation);
+				ReportPlainEnum(info.Signature.GetDeclaredType(i), parameters[i].Type.SourceLocation);
 			
 			if (returnType is not null)
 				ReportPlainEnum(info.Signature.ReturnType, returnType.SourceLocation);

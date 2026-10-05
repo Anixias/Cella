@@ -54,6 +54,8 @@ public enum TokenType
 	KeywordExt,
 	KeywordRec,
 	KeywordEnum,
+	KeywordMut,
+	KeywordOwn,
 	KeywordNew,
 	KeywordOp,
 	
@@ -176,6 +178,8 @@ public static class TokenTypeInfo
 			[TokenType.KeywordExt] = new("ext", IsKeyword: true, IsContextual: true),
 			[TokenType.KeywordRec] = new("rec", IsKeyword: true, IsContextual: true),
 			[TokenType.KeywordEnum] = new("enum", IsKeyword: true, IsContextual: true),
+			[TokenType.KeywordMut] = new("mut", IsKeyword: true, IsContextual: true),
+			[TokenType.KeywordOwn] = new("own", IsKeyword: true, IsContextual: true),
 			[TokenType.KeywordNew] = new("new", IsKeyword: true, IsContextual: true),
 			[TokenType.KeywordOp] = new("op", IsKeyword: true, IsContextual: true),
 			

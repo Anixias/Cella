@@ -1,0 +1,56 @@
+mod test
+
+counter: var i32 = 0
+limit: val i32 = 5
+
+Point: rec
+{
+	x: i32
+}
+
+Effect: enum
+{
+	none
+	hit(amount: i32)
+}
+
+damage: fun(mut hp: i32, amount: i32)
+{
+	hp -= amount
+}
+
+make: fun -> i32 = 1
+
+readOnly: fun(p: Point, n: i32, values: array[i32, 2])
+{
+	p.x = 5
+	n += 1
+	values[0] = 1
+	damage(mut n, 1)
+	damage(mut p.x, 1)
+	damage(mut values[1], 1)
+}
+
+owned: fun(own p: Point, own n: i32)
+{
+	p.x = 5
+	n += 1
+	damage(mut n, 1)
+}
+
+main: fun -> i32
+{
+	damage(mut 5, 3)
+	damage(mut make(), 3)
+	val fixed = 10
+	damage(mut fixed, 3)
+	damage(mut counter, 1)
+	damage(mut limit, 1)
+	var effect = Effect.hit(3)
+	if effect is hit(n)
+		damage(mut n, 1)
+
+	var hp = 1
+	damage(mut hp + 1, 1)
+	ret 0
+}

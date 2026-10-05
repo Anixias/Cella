@@ -12,10 +12,15 @@ public static class Mangling
 			.AppendJoin('.', qualifierParts.Append(symbol.Name));
 		
 		if (signature.ParameterTypes.Length > 0)
-			sb.Append(':').AppendJoin('.', signature.ParameterTypes.Select(Mangle));
+			sb.Append(':').AppendJoin('.', signature.ParameterTypes.Select((_, i) => MangleParameter(signature, i)));
 		
 		return sb.ToString();
 	}
+	
+	private static string MangleParameter(FunctionSignature signature, int index) =>
+		signature.GetMode(index) == ParameterMode.Mut
+			? $"mut {Mangle(signature.GetDeclaredType(index))}"
+			: Mangle(signature.ParameterTypes[index]);
 	
 	public static string Mangle(Symbol symbol, params IEnumerable<string> qualifierParts) =>
 		new StringBuilder().Append('?').AppendJoin('.', qualifierParts.Append(symbol.Name)).ToString();
