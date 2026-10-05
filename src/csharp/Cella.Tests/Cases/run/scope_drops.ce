@@ -1,0 +1,129 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Buffer: rec
+{
+	id: i32
+
+	drop: op
+	{
+	}
+}
+
+Handle: rec
+{
+	id: i32
+
+	drop: op
+	{
+		val last = Buffer(self.id)
+	}
+}
+
+Pair: rec
+{
+	left: Buffer
+	right: Buffer
+
+	new: op(left: i32, right: i32)
+	{
+		val spare = Buffer(right)
+		self.left = Buffer(left)
+		self.right = Buffer(spare.id)
+	}
+}
+
+Effect: enum
+{
+	none
+	owned(buffer: Buffer)
+}
+
+make: fun(id: i32) -> Buffer = Buffer(id)
+give: fun(own buffer: Buffer) -> Buffer = own buffer
+sum: fun(own values: array[Buffer, 2]) -> i32 = values[0].id + values[1].id
+
+unwrap: fun(own effect: Effect) -> i32
+{
+	ret match effect
+	{
+		owned(buffer) => buffer.id
+		else => 0
+	}
+}
+
+pick: fun(own fallback: Buffer, which: i32) -> i32
+{
+	val a = make(1)
+	if which == 0
+		ret a.id
+
+	val b = make(2)
+	if which == 1
+	{
+		val c = make(3)
+		ret b.id + c.id
+	}
+
+	ret fallback.id
+}
+
+count: fun(limit: i32) -> i32
+{
+	var steps = 0
+	outer: loop
+	{
+		val x = make(steps)
+		loop while make(steps).id < limit
+		{
+			val y = make(steps)
+			steps += 1
+			if steps % 2 == 1
+				cont
+
+			if steps > 6
+				break outer
+		}
+
+		ret steps * 10
+	}
+
+	ret steps
+}
+
+main: fun -> i32
+{
+	printf("%d %d %d\n", pick(make(9), 0), pick(make(9), 1), pick(make(9), 2))
+	printf("%d %d\n", count(4), count(10))
+
+	var i = 0
+	loop
+	{
+		i += 1
+	} while make(i).id < 3 && make(i + 1).id > 0
+
+	var total = 0
+	loop for make(3).id
+		total += 2
+
+	make(1)
+	val n = match Effect.owned(make(4))
+	{
+		owned(b) => make(b.id + 1).id
+		else => 0
+	}
+
+	printf("%d %d %d\n", i, total, n)
+
+	val pair = Pair(6, 7)
+	val handle = Handle(8)
+	printf("%d %d %d\n", pair.left.id, pair.right.id, handle.id)
+	printf("%d %d %d %d\n", sum([make(1), make(2)]), give(make(11)).id, unwrap(Effect.owned(make(12))),
+		unwrap(Effect.none))
+
+	ret 0
+}

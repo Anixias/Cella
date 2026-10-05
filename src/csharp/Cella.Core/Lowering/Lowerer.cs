@@ -89,6 +89,7 @@ public sealed class Lowerer
 		private readonly Dictionary<LabelSymbol, LoopContext> _loopsByLabel = [];
 		private readonly Stack<ActiveScope> _activeScopes = [];
 		private readonly HashSet<int> _temporaryScopes = [];
+		private readonly Dictionary<int, List<VariableInfo>> _scopeDrops = [];
 		private readonly HashSet<LocalVariableSymbol> _temporaries = [];
 		private BasicBlock? currentBlock;
 		private ulong nextLoopId;
@@ -134,7 +135,7 @@ public sealed class Lowerer
 			switch (node.Body)
 			{
 				case IResolvedStatementNode statement:
-					lower.VisitNode(statement);
+					lower.LowerBody(node, statement);
 					lower.PruneEmptyScopes();
 					break;
 				
@@ -150,6 +151,26 @@ public sealed class Lowerer
 			}
 			
 			return function;
+		}
+		
+		private void LowerBody(ResolvedFunctionNode node, IResolvedStatementNode body)
+		{
+			var signature = node.FunctionInfo.Signature;
+			var parameters = node.FunctionInfo.Symbol.Parameters
+				.Select((p, i) => new VariableInfo(p, signature.ParameterTypes[i]))
+				.Where((p, i) => signature.GetMode(i) == ParameterMode.Own && _typePool.NeedsDrop(p.Type))
+				.ToArray();
+			
+			if (parameters.Length == 0)
+			{
+				VisitNode(body);
+				return;
+			}
+			
+			var scope = BeginScope(node.Syntax.SourceLocation);
+			_scopeDrops[scope.Id].AddRange(parameters);
+			VisitNode(body);
+			EndCurrentScope();
 		}
 		
 		private void VisitNode(IResolvedStatementNode node) => ((IResolvedStatementNodeVisitor)this).Visit(node);
@@ -176,18 +197,34 @@ public sealed class Lowerer
 			var scope = new ActiveScope(++nextScopeId, location, isTemporary);
 			GetOrMakeBlock().Instructions.Add(new BeginScopeInstruction(scope.Id, location));
 			_activeScopes.Push(scope);
+			_scopeDrops[scope.Id] = [];
 			if (isTemporary)
 				_temporaryScopes.Add(scope.Id);
 			
 			return scope;
 		}
 		
-		private BasicBlock CreateScopeExit(ActiveScope scope, BasicBlock target, string hint)
+		private void ExitScope(BasicBlock block, ActiveScope scope, BasicBlock target)
 		{
-			var block = CreateBlock(hint);
-			block.Instructions.Add(new EndScopeInstruction(scope.Id, scope.Location.End));
+			EndScope(block, scope);
 			block.SetTerminator(new BranchTerminator(target, scope.Location));
-			return block;
+		}
+		
+		private void EndScope(BasicBlock block, ActiveScope scope)
+		{
+			var location = scope.Location.End;
+			foreach (var variable in Enumerable.Reverse(_scopeDrops[scope.Id]))
+				block.Instructions.Add(new DropInstruction(new VariableValue(variable, location), location));
+			
+			block.Instructions.Add(new EndScopeInstruction(scope.Id, location));
+		}
+		
+		private void Declare(BasicBlock block, LocalVarInstruction declaration)
+		{
+			block.Instructions.Add(declaration);
+			var symbol = declaration.Symbol;
+			if (_typePool.NeedsDrop(symbol.Type) && _scopeDrops.TryGetValue(declaration.ScopeId, out var drops))
+				drops.Add(new(symbol, symbol.Type));
 		}
 		
 		private void PruneEmptyScopes()
@@ -216,14 +253,14 @@ public sealed class Lowerer
 			var scope = _activeScopes.Pop();
 			
 			if (currentBlock is { Terminator: UndefinedTerminator } block)
-				block.Instructions.Add(new EndScopeInstruction(scope.Id, scope.Location.End));
+				EndScope(block, scope);
 		}
 		
 		private void EmitScopeEndsToDepth(int targetDepth)
 		{
 			var block = GetOrMakeBlock();
 			foreach (var scope in _activeScopes.Take(Math.Max(0, _activeScopes.Count - targetDepth)))
-				block.Instructions.Add(new EndScopeInstruction(scope.Id, scope.Location.End));
+				EndScope(block, scope);
 		}
 		
 		public void Visit(ResolvedBlockStatementNode node)
@@ -314,7 +351,7 @@ public sealed class Lowerer
 			if (node.Type is not NeverType)
 			{
 				var symbol = CreateTempSymbol(node.Type, "match_result");
-				GetOrMakeBlock().Instructions.Add(new LocalVarInstruction(symbol, new UndefValue(node.Type), location,
+				Declare(GetOrMakeBlock(), new LocalVarInstruction(symbol, new UndefValue(node.Type), location,
 					CurrentScopeId));
 				
 				result = new VariableValue(new(symbol, node.Type), location);
@@ -503,8 +540,8 @@ public sealed class Lowerer
 				? new ZeroValue(node.Symbol.Type)
 				: Consume(VisitNode(node.Initializer));
 			
-			currentBlock?.Instructions.Add(new LocalVarInstruction(node.Symbol, value, node.Syntax.SourceLocation,
-				BlockScopeId));
+			if (currentBlock is { } block)
+				Declare(block, new LocalVarInstruction(node.Symbol, value, node.Syntax.SourceLocation, BlockScopeId));
 			
 			EndCurrentScope();
 		}
@@ -538,8 +575,11 @@ public sealed class Lowerer
 			// Condition
 			currentBlock = condBlock;
 			var scope = BeginScope(node.Condition.Syntax.SourceLocation, true);
-			LowerBranch(node.Condition, CreateScopeExit(scope, bodyBlock, $"dowhile{id}_again"),
-				CreateScopeExit(scope, exitBlock, $"dowhile{id}_done"));
+			var againBlock = CreateBlock($"dowhile{id}_again");
+			var doneBlock = CreateBlock($"dowhile{id}_done");
+			LowerBranch(node.Condition, againBlock, doneBlock);
+			ExitScope(againBlock, scope, bodyBlock);
+			ExitScope(doneBlock, scope, exitBlock);
 			
 			EndCurrentScope();
 			ContinueWith(exitBlock);
@@ -650,7 +690,9 @@ public sealed class Lowerer
 			currentBlock = condBlock;
 			var scopeDepth = _activeScopes.Count;
 			var scope = BeginScope(node.Condition.Syntax.SourceLocation, true);
-			LowerBranch(node.Condition, bodyBlock, CreateScopeExit(scope, exitBlock, $"while{id}_done"));
+			var doneBlock = CreateBlock($"while{id}_done");
+			LowerBranch(node.Condition, bodyBlock, doneBlock);
+			ExitScope(doneBlock, scope, exitBlock);
 			
 			// Body
 			currentBlock = bodyBlock;
@@ -666,8 +708,8 @@ public sealed class Lowerer
 			var sourceLocation = node.Syntax.SourceLocation;
 			
 			var resultSymbol = CreateTempSymbol(node.Type, ".cons__mem");
-			GetOrMakeBlock().Instructions
-				.Add(new LocalVarInstruction(resultSymbol, new ZeroValue(node.Type), sourceLocation, CurrentScopeId));
+			Declare(GetOrMakeBlock(),
+				new LocalVarInstruction(resultSymbol, new ZeroValue(node.Type), sourceLocation, CurrentScopeId));
 			
 			var result = new VariableValue(new(resultSymbol, node.Type), sourceLocation);
 			
@@ -686,8 +728,8 @@ public sealed class Lowerer
 			
 			var sourceLocation = node.Syntax.SourceLocation;
 			var resultSymbol = CreateTempSymbol(node.Type, ".record");
-			GetOrMakeBlock().Instructions
-				.Add(new LocalVarInstruction(resultSymbol, new ZeroValue(node.Type), sourceLocation, CurrentScopeId));
+			Declare(GetOrMakeBlock(),
+				new LocalVarInstruction(resultSymbol, new ZeroValue(node.Type), sourceLocation, CurrentScopeId));
 			
 			var result = new VariableValue(new(resultSymbol, node.Type), sourceLocation);
 			foreach (var (field, value) in node.Fields)
@@ -1018,8 +1060,8 @@ public sealed class Lowerer
 					var tempSymbol = CreateTempSymbol(rightNode.Type, $"chain_inner{i}");
 					var rightValue = VisitNode(rightNode);
 					block = GetOrMakeBlock();
-					block.Instructions.Add(new LocalVarInstruction(tempSymbol, rightValue,
-						rightNode.Syntax.SourceLocation, CurrentScopeId));
+					Declare(block, new LocalVarInstruction(tempSymbol, rightValue, rightNode.Syntax.SourceLocation,
+						CurrentScopeId));
 					
 					right = new VariableValue(new(tempSymbol, rightNode.Type), rightNode.Syntax.SourceLocation);
 				}
@@ -1179,8 +1221,7 @@ public sealed class Lowerer
 		{
 			var symbol = CreateTempSymbol(value.Type, hint);
 			
-			GetOrMakeBlock().Instructions
-				.Add(new LocalVarInstruction(symbol, value, value.SourceLocation, CurrentScopeId));
+			Declare(GetOrMakeBlock(), new LocalVarInstruction(symbol, value, value.SourceLocation, CurrentScopeId));
 			
 			return new VariableValue(new(symbol, value.Type), value.SourceLocation);
 		}
