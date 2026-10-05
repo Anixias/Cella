@@ -404,10 +404,12 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			return null;
 		
 		var isMutBinding = isMut || mode is not null;
-		var bindingType = isMutBinding ? _typePool.GetPassedType(type, ParameterMode.Mut) : type;
+		var isBorrowBinding = isMutBinding || !_typePool.IsCopy(type);
+		var bindingType = isBorrowBinding && type is not InvalidType ? _typePool.GetPointerType(type) : type;
 		return new LocalVariableSymbol(token, bindingType, false)
 		{
 			IsPatternBinding = true,
+			IsBorrowBinding = isBorrowBinding,
 			IsMutBinding = isMutBinding
 		};
 	}
@@ -1268,7 +1270,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	{
 		switch (symbol)
 		{
-			case LocalVariableSymbol { IsMutBinding: true, Type: PointerType } binding:
+			case LocalVariableSymbol { IsBorrowBinding: true, Type: PointerType } binding:
 				return ResolveDereference(TokenType.OpStar, new ResolvedVarExpressionNode(binding, binding.Type, node),
 					node);
 			

@@ -1,0 +1,103 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Buffer: rec
+{
+	id: i32
+
+	drop: op
+	{
+	}
+}
+
+Effect: enum
+{
+	none
+	hold(buffer: Buffer)
+	count(n: i32)
+}
+
+Outer: enum
+{
+	empty
+	nested(inner: Effect)
+}
+
+Holder: rec
+{
+	outer: Outer
+}
+
+show: fun(buffer: Buffer) -> i32 = buffer.id
+
+describe: fun(effect: Effect) -> i32
+{
+	match effect
+	{
+		hold(buffer) => ret show(buffer) + buffer.id
+		count(n) => ret n
+		else => ret 0
+	}
+}
+
+unwrap: fun(outer: Outer) -> i32
+{
+	match outer
+	{
+		nested(inner) =>
+		{
+			match inner
+			{
+				hold(buffer) => ret 100 + buffer.id
+				else => ret -1
+			}
+		}
+		else => ret 0
+	}
+}
+
+aliased: fun -> i32
+{
+	var effect = Effect.hold(Buffer(1))
+	val pointer = @effect
+	match effect
+	{
+		hold(buffer) =>
+		{
+			*pointer = Effect.hold(Buffer(2))
+			ret buffer.id
+		}
+		else => ret 0
+	}
+}
+
+copied: fun -> i32
+{
+	var effect = Effect.count(1)
+	val pointer = @effect
+	match effect
+	{
+		count(n) =>
+		{
+			*pointer = Effect.count(2)
+			ret n
+		}
+		else => ret 0
+	}
+}
+
+main: fun -> i32
+{
+	val holder = Holder(Outer.nested(Effect.hold(Buffer(7))))
+	var total = 0
+	if holder.outer is nested(inner)
+		total = describe(inner)
+
+	printf("%d %d %d %d\n", describe(Effect.hold(Buffer(3))), unwrap(holder.outer), total, describe(Effect.count(4)))
+	printf("%d %d\n", aliased(), copied())
+	ret 0
+}

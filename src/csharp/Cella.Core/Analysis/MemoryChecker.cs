@@ -120,8 +120,7 @@ public sealed class MemoryChecker(TypePool typePool, DiagnosticList diagnostics)
 	{
 		ParameterSymbol { Mode: ParameterMode.ReadOnly } parameter
 			when !typePool.IsCopy(paths.GetRoot(parameter).Type) => "Cannot move read-only parameters",
-		LocalVariableSymbol { IsPatternBinding: true } binding
-			when binding.IsMutBinding || !typePool.IsCopy(binding.Type) => "Cannot move pattern bindings",
+		LocalVariableSymbol { IsBorrowBinding: true } => "Cannot move pattern bindings",
 		_ when place.Path.Any(IsComputedIndex) => "Cannot move array elements at computed indices",
 		ParameterSymbol { Mode: ParameterMode.Mut } => null,
 		_ => HasDestructorAbove(place, paths) ? "Cannot move fields out of values with destructors" : null

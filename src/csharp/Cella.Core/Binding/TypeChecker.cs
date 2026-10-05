@@ -288,6 +288,14 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool) 
 	private static VariableSymbol? FindImmutableBinding(IResolvedExpressionNode place) => place switch
 	{
 		ResolvedVarExpressionNode { Symbol: LocalVariableSymbol { IsMutable: false } local } => local,
+		ResolvedUnaryOpExpressionNode
+		{
+			Operation.Op: TokenType.OpStar,
+			Operand: ResolvedVarExpressionNode
+			{
+				Symbol: LocalVariableSymbol { IsBorrowBinding: true, IsMutBinding: false } local
+			}
+		} => local,
 		ResolvedVarExpressionNode { Symbol: ParameterSymbol { Mode: ParameterMode.ReadOnly } parameter } => parameter,
 		ResolvedGlobalExpressionNode { Symbol: { IsMutable: false } global } => global,
 		ResolvedAccessExpressionNode { Member: FieldSymbol } e => FindImmutableBinding(e.Target),
@@ -516,7 +524,7 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool) 
 		ResolvedIndexerExpressionNode n => IsThroughPointer(n.Target),
 		ResolvedUnaryOpExpressionNode { Operation.Op: TokenType.OpStar } n => n.Operand is not ResolvedVarExpressionNode
 		{
-			Symbol: ParameterSymbol { Mode: ParameterMode.Mut } or LocalVariableSymbol { IsMutBinding: true }
+			Symbol: ParameterSymbol { Mode: ParameterMode.Mut } or LocalVariableSymbol { IsBorrowBinding: true }
 		},
 		_ => false
 	};

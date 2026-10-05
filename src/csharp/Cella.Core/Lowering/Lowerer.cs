@@ -502,7 +502,7 @@ public sealed class Lowerer
 					continue;
 				
 				var location = binding.Identifier.SourceLocation;
-				Value payload = binding is { IsMutBinding: true, Type: PointerType pointer }
+				Value payload = binding is { IsBorrowBinding: true, Type: PointerType pointer }
 					? new UnaryOpValue(pointer, new EnumPayloadValue(pointer.BaseType, scrutinee, pattern.Case, i,
 						location), UnaryOperation.AddressOf, location)
 					: new EnumPayloadValue(binding.Type, scrutinee, pattern.Case, i, location);

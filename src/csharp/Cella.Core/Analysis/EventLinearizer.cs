@@ -216,7 +216,7 @@ public sealed class EventLinearizer
 			symbol switch
 			{
 				ParameterSymbol { Mode: ParameterMode.Mut } => new(symbol, []),
-				LocalVariableSymbol { IsMutBinding: true } => new(symbol, [new DerefProjection()]),
+				LocalVariableSymbol { IsBorrowBinding: true } => new(symbol, [new DerefProjection()]),
 				_ => null
 			},
 		AccessValue { Member: FieldSymbol field } v => GetPlace(v.Target)?.Project(new FieldProjection(field)),

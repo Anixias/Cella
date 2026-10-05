@@ -1,10 +1,24 @@
 mod test
 
+Buffer: rec
+{
+	id: i32
+
+	drop: op
+	{
+	}
+}
+
 Effect: enum
 {
 	none
 	hit(amount: i32)
 	many(values: array[i32, 2])
+	hold(buffer: Buffer)
+}
+
+touch: fun(mut buffer: Buffer)
+{
 }
 
 main: fun -> i32
@@ -18,6 +32,12 @@ main: fun -> i32
 		many(values) =>
 		{
 			values[0] = 3
+		}
+		hold(buffer) =>
+		{
+			buffer.id = 4
+			buffer = Buffer(5)
+			touch(mut buffer)
 		}
 		else => ret 0
 	}
