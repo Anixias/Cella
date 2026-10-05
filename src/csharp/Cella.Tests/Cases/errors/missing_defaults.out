@@ -1,24 +1,44 @@
 
 ====== missing_defaults.ce ======
 
-Error at line 20, column 13
-19 │ var effect: Effect
-20 │ ret amount(effect)
+Error at line 31, column 13
+30 │ var effect: Effect
+31 │ ret amount(effect)
                 ╘════╛ Cannot use uninitialized values
 
-Error at line 29, column 13
-28 │ 
-29 │ ret amount(effect)
+Error at line 40, column 13
+39 │ 
+40 │ ret amount(effect)
                 ╘════╛ Cannot use uninitialized values
 
-Error at line 36, column 13
-35 │ holder.count = 1
-36 │ ret amount(holder.effect) + holder.count
+Error at line 47, column 13
+46 │ holder.count = 1
+47 │ ret amount(holder.effect) + holder.count
                 ╘═══════════╛ Cannot use uninitialized values
 
-Error at line 43, column 13
-42 │ effects[0] = Effect.none
-43 │ ret amount(effects[1])
+Error at line 54, column 13
+53 │ effects[0] = Effect.none
+54 │ ret amount(effects[1])
                 ╘════════╛ Cannot use uninitialized values
+
+Error at line 60, column 6
+59 │ var f: fun(i32) -> i32
+60 │ ret f(1)
+         ^ Cannot use uninitialized values
+
+Error at line 67, column 6
+66 │ handler.scale = 3
+67 │ ret handler.callback(handler.scale)
+         ╘══════════════╛ Cannot use uninitialized values
+
+Error at line 74, column 6
+73 │ callbacks[0] = abs
+74 │ ret callbacks[1](4)
+         ╘══════════╛ Cannot use uninitialized values
+
+Error at line 80, column 6
+79 │ var f: ext fun(i32) -> i32
+80 │ ret f(-6)
+         ^ Cannot use uninitialized values
 
 [compilation failed]

@@ -31,6 +31,12 @@ Holder: rec
 	count: i32
 }
 
+Handler: rec
+{
+	callback: fun(i32) -> i32
+	scale: i32
+}
+
 main: fun -> i32
 {
 	var a = Point(1)
@@ -43,5 +49,6 @@ main: fun -> i32
 	var h = Counter(Counter(1))
 	var i = Holder()
 	var j = Holder(Effect.none)
+	var k = Handler()
 	ret 0
 }

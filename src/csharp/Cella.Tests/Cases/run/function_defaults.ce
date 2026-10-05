@@ -1,0 +1,60 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+ext
+{
+	abs: fun(n: i32) -> i32
+}
+
+Handler: rec
+{
+	callback: fun(i32) -> i32
+	scale: i32
+}
+
+double: fun(n: i32) -> i32 = n * 2
+negate: fun(n: i32) -> i32 = -n
+
+pick: fun(flag: bool) -> i32
+{
+	var f: fun(i32) -> i32
+	if flag
+		f = double
+	else
+		f = negate
+
+	ret f(10)
+}
+
+fields: fun -> i32
+{
+	var handler: Handler
+	handler.callback = double
+	handler.scale = 3
+	ret handler.callback(handler.scale)
+}
+
+table: fun -> i32
+{
+	var callbacks: array[fun(i32) -> i32, 2]
+	callbacks[0] = double
+	callbacks[1] = negate
+	ret callbacks[0](4) + callbacks[1](1)
+}
+
+native: fun -> i32
+{
+	var f: ext fun(i32) -> i32
+	f = abs
+	ret f(-6)
+}
+
+main: fun -> i32
+{
+	printf("%d %d %d %d %d\n", pick(true), pick(false), fields(), table(), native())
+	ret 0
+}

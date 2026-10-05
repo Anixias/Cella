@@ -1,59 +1,65 @@
 
 ====== bad_record_construction.ce ======
 
-Error at line 36, column 10
-35 │ {
-36 │     var a = Point(1)
+Error at line 42, column 10
+41 │ {
+42 │     var a = Point(1)
                  ╘══════╛ No constructor for 'Point' accepts these arguments
                         | 'Point' takes no arguments, or one for each field: x, y
 
-Error at line 37, column 19
-36 │ var a = Point(1)
-37 │ var b = Point(1, true)
+Error at line 43, column 19
+42 │ var a = Point(1)
+43 │ var b = Point(1, true)
                       ╘══╛ Cannot convert type 'bool' to 'i32'
 
-Error at line 38, column 10
-37 │ var b = Point(1, true)
-38 │ var c = Point(1, 2, 3)
+Error at line 44, column 10
+43 │ var b = Point(1, true)
+44 │ var c = Point(1, 2, 3)
              ╘════════════╛ No constructor for 'Point' accepts these arguments
                           | 'Point' takes no arguments, or one for each field: x, y
 
-Error at line 39, column 10
-38 │ var c = Point(1, 2, 3)
-39 │ var d = Counter()
+Error at line 45, column 10
+44 │ var c = Point(1, 2, 3)
+45 │ var d = Counter()
              ╘═══════╛ No constructor for 'Counter' accepts these arguments
 
-Error at line 40, column 10
-39 │ var d = Counter()
-40 │ var e = Empty(1)
+Error at line 46, column 10
+45 │ var d = Counter()
+46 │ var e = Empty(1)
              ╘══════╛ No constructor for 'Empty' accepts these arguments
                     | 'Empty' has no fields
 
-Error at line 41, column 16
-40 │ var e = Empty(1)
-41 │ var f = Point(missing, 2)
+Error at line 47, column 16
+46 │ var e = Empty(1)
+47 │ var f = Point(missing, 2)
                    ╘═════╛ Symbol 'missing' not found in this scope
 
-Error at line 42, column 10
-41 │ var f = Point(missing, 2)
-42 │ var g = Counter("abc")
+Error at line 48, column 10
+47 │ var f = Point(missing, 2)
+48 │ var g = Counter("abc")
              ╘════════════╛ No constructor for 'Counter' accepts argument of type 'string literal'
 
-Error at line 43, column 10
-42 │ var g = Counter("abc")
-43 │ var h = Counter(Counter(1))
+Error at line 49, column 10
+48 │ var g = Counter("abc")
+49 │ var h = Counter(Counter(1))
              ╘═════════════════╛ No constructor for 'Counter' accepts argument of type 'Counter'
 
-Error at line 44, column 10
-43 │ var h = Counter(Counter(1))
-44 │ var i = Holder()
+Error at line 50, column 10
+49 │ var h = Counter(Counter(1))
+50 │ var i = Holder()
              ╘══════╛ No constructor for 'Holder' accepts these arguments
                     | 'Holder' takes one argument for each field: effect, count
 
-Error at line 45, column 10
-44 │ var i = Holder()
-45 │ var j = Holder(Effect.none)
+Error at line 51, column 10
+50 │ var i = Holder()
+51 │ var j = Holder(Effect.none)
              ╘═════════════════╛ No constructor for 'Holder' accepts these arguments
                                | 'Holder' takes one argument for each field: effect, count
+
+Error at line 52, column 10
+51 │ var j = Holder(Effect.none)
+52 │ var k = Handler()
+             ╘═══════╛ No constructor for 'Handler' accepts these arguments
+                     | 'Handler' takes one argument for each field: callback, scale
 
 [compilation failed]
