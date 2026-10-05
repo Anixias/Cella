@@ -42,12 +42,9 @@ public sealed class MemoryChecker(TypePool typePool, DiagnosticList diagnostics)
 	
 	private void CheckAccess(AccessEvent access, InitState state, MovePaths paths)
 	{
-		if (access.Kind == AccessKind.Move && IsBorrowed(access.Place, paths))
+		if (access.Kind == AccessKind.Move && GetMoveError(access.Place, paths) is { } error)
 		{
-			Report(access.Location, access.Place.Root is ParameterSymbol
-				? "Cannot move read-only parameters"
-				: "Cannot move pattern bindings", []);
-			
+			Report(access.Location, error, []);
 			return;
 		}
 		
@@ -88,13 +85,41 @@ public sealed class MemoryChecker(TypePool typePool, DiagnosticList diagnostics)
 		}
 	}
 	
-	private bool IsBorrowed(Place place, MovePaths paths) => place.Root switch
+	private string? GetMoveError(Place place, MovePaths paths) => place.Root switch
 	{
-		ParameterSymbol { Mode: ParameterMode.ReadOnly } parameter => !typePool.IsCopy(paths.GetRoot(parameter).Type),
-		LocalVariableSymbol { IsPatternBinding: true } binding =>
-			binding.IsMutBinding || !typePool.IsCopy(binding.Type),
-		_ => false
+		ParameterSymbol { Mode: ParameterMode.ReadOnly } parameter
+			when !typePool.IsCopy(paths.GetRoot(parameter).Type) => "Cannot move read-only parameters",
+		LocalVariableSymbol { IsPatternBinding: true } binding
+			when binding.IsMutBinding || !typePool.IsCopy(binding.Type) => "Cannot move pattern bindings",
+		ParameterSymbol { Mode: ParameterMode.Mut } => null,
+		_ => HasDestructorAbove(place, paths) ? "Cannot move fields out of values with destructors" : null
 	};
+	
+	private bool HasDestructorAbove(Place place, MovePaths paths)
+	{
+		var type = paths.GetRoot(place.Root).Type;
+		foreach (var projection in place.Path)
+		{
+			if (type is RecordSymbol { HasDestructor: true })
+				return true;
+			
+			switch (projection)
+			{
+				case FieldProjection p:
+					type = typePool.GetTypeOfMember(p.Field);
+					break;
+				
+				case IndexProjection when type is ArrayType array:
+					type = array.ElementType;
+					break;
+				
+				default:
+					return false;
+			}
+		}
+		
+		return false;
+	}
 	
 	private void Report(SourceLocation location, string message, IEnumerable<MoveSite> moves) =>
 		diagnostics.Add(new(DiagnosticSeverity.Error, location, message)
@@ -172,7 +197,7 @@ public sealed class MemoryChecker(TypePool typePool, DiagnosticList diagnostics)
 				break;
 			
 			case AccessEvent { Kind: AccessKind.Move } e when paths.Find(e.Place) is { } path:
-				if (!IsBorrowed(e.Place, paths))
+				if (GetMoveError(e.Place, paths) is null)
 					state.Move(path, e.Location);
 				
 				break;

@@ -1,0 +1,29 @@
+
+====== destructor_fields.ce ======
+
+Error at line 49, column 15
+48 │ val holder = Holder(make(1), 2)
+49 │ val buffer = holder.buffer
+                  ╘═══════════╛ Cannot move fields out of values with destructors
+
+Error at line 50, column 18
+49 │ val buffer = holder.buffer
+50 │ val count = own holder.count
+                     ╘══════════╛ Cannot move fields out of values with destructors
+
+Error at line 58, column 11
+57 │ val shell = Shell(Inner(make(1)), [make(2), make(3)])
+58 │ ret take(shell.inner.buffer) + take(shell.items[0])
+              ╘════════════════╛ Cannot move fields out of values with destructors
+
+Error at line 58, column 38
+57 │ val shell = Shell(Inner(make(1)), [make(2), make(3)])
+58 │ ret take(shell.inner.buffer) + take(shell.items[0])
+                                         ╘════════════╛ Cannot move fields out of values with destructors
+
+Error at line 61, column 46
+60 │ 
+61 │ owned: fun(own holder: Holder) -> i32 = take(holder.buffer)
+                                                  ╘═══════════╛ Cannot move fields out of values with destructors
+
+[compilation failed]
