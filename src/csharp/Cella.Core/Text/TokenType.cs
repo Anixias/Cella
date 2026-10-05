@@ -57,6 +57,7 @@ public enum TokenType
 	KeywordRec,
 	KeywordEnum,
 	KeywordNew,
+	KeywordDrop,
 	KeywordOp,
 	
 	// Operators
@@ -181,6 +182,7 @@ public static class TokenTypeInfo
 			[TokenType.KeywordRec] = new("rec", IsKeyword: true, IsContextual: true),
 			[TokenType.KeywordEnum] = new("enum", IsKeyword: true, IsContextual: true),
 			[TokenType.KeywordNew] = new("new", IsKeyword: true, IsContextual: true),
+			[TokenType.KeywordDrop] = new("drop", IsKeyword: true, IsContextual: true),
 			[TokenType.KeywordOp] = new("op", IsKeyword: true, IsContextual: true),
 			
 			[TokenType.OpLessLessLessEqual] = new("<<<=", IsOperator: true),

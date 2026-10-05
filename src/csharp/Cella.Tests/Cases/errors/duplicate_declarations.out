@@ -50,54 +50,64 @@ Error at line 22, column 18
 22 │ new: op(x: i32, x: i32)
                      ^ Parameter 'x' is declared more than once
 
-Error at line 27, column 1
-26 │ 
-27 │ Point: rec
+Error at line 26, column 2
+25 │ 
+26 │ drop: op
+     ╘══╛ 'drop' is declared more than once in 'Point'
+
+Error at line 30, column 2
+29 │ 
+30 │ drop: op
+     ╘══╛ 'drop' is declared more than once in 'Point'
+
+Error at line 35, column 1
+34 │ 
+35 │ Point: rec
      ╘═══╛ 'Point' is declared more than once in this module
 
-Error at line 32, column 1
-31 │ 
-32 │ Shape: rec
+Error at line 40, column 1
+39 │ 
+40 │ Shape: rec
      ╘═══╛ 'Shape' is declared more than once in this module
 
-Error at line 37, column 1
-36 │ 
-37 │ Shape: fun -> i32
+Error at line 45, column 1
+44 │ 
+45 │ Shape: fun -> i32
      ╘═══╛ 'Shape' is declared more than once in this module
 
-Error at line 42, column 1
-41 │ 
-42 │ value: fun -> i32
+Error at line 50, column 1
+49 │ 
+50 │ value: fun -> i32
      ╘═══╛ 'value' is declared more than once with the same signature
 
-Error at line 47, column 1
-46 │ 
-47 │ value: fun -> i32
+Error at line 55, column 1
+54 │ 
+55 │ value: fun -> i32
      ╘═══╛ 'value' is declared more than once with the same signature
 
-Error at line 52, column 1
-51 │ 
-52 │ value: fun -> i64
+Error at line 60, column 1
+59 │ 
+60 │ value: fun -> i64
      ╘═══╛ 'value' overloads cannot differ only in return type
 
-Error at line 62, column 1
-61 │ 
-62 │ parse: fun(text: str) -> i32
+Error at line 70, column 1
+69 │ 
+70 │ parse: fun(text: str) -> i32
      ╘═══╛ 'parse' overloads cannot differ only in return type
 
-Error at line 67, column 1
-66 │ 
-67 │ parse: fun(text: str) -> i64
+Error at line 75, column 1
+74 │ 
+75 │ parse: fun(text: str) -> i64
      ╘═══╛ 'parse' overloads cannot differ only in return type
 
-Error at line 72, column 10
-71 │ 
-72 │ add: fun(a: i32, a: i32) -> i32
+Error at line 80, column 10
+79 │ 
+80 │ add: fun(a: i32, a: i32) -> i32
               ^ Parameter 'a' is declared more than once
 
-Error at line 72, column 18
-71 │ 
-72 │ add: fun(a: i32, a: i32) -> i32
+Error at line 80, column 18
+79 │ 
+80 │ add: fun(a: i32, a: i32) -> i32
                       ^ Parameter 'a' is declared more than once
 
 [compilation failed]

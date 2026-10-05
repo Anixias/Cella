@@ -38,3 +38,15 @@ public sealed class ConstructorNode
 	public IStatementNode Body { get; } = body;
 	public SourceLocation SourceLocation { get; } = sourceLocation;
 }
+
+public sealed class DestructorNode
+(
+	Token keyword,
+	IStatementNode body,
+	SourceLocation sourceLocation
+) : IDeclarationNode
+{
+	public Token Keyword { get; } = keyword;
+	public IStatementNode Body { get; } = body;
+	public SourceLocation SourceLocation { get; } = sourceLocation;
+}

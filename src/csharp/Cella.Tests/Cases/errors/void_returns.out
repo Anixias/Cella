@@ -21,4 +21,9 @@ Error at line 27, column 6
 27 │     ret missing
              ╘═════╛ Symbol 'missing' not found in this scope
 
+Error at line 36, column 7
+35 │ {
+36 │     ret 5
+             ^ Cannot return a value from 'Buffer.drop'
+
 [compilation failed]

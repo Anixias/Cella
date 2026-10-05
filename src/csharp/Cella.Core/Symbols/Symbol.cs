@@ -95,6 +95,7 @@ public enum FunctionKind
 	Free,
 	Method,
 	Constructor,
+	Destructor,
 	External
 }
 

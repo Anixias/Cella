@@ -166,25 +166,13 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		return result;
 	}
 	
-	public IResolvedDeclarationNode Visit(ConstructorNode node)
-	{
-		var function = (FunctionSymbol)_symbolTable.DeclarationSymbols[node];
-		var info = _signatures.GetFunctionInfo(function);
-		
-		var resolutionContext = CurrentResolutionContext with
-		{
-			ContainingFunction = info,
-			LocalScope = info.Scope
-		};
-		
-		_resolutionContexts.Push(resolutionContext);
-		var body = VisitNode(node.Body);
-		_resolutionContexts.Pop();
-		
-		return new ResolvedFunctionNode(info, body, node);
-	}
+	public IResolvedDeclarationNode Visit(ConstructorNode node) => ResolveFunction(node, node.Body);
 	
-	public IResolvedDeclarationNode Visit(FunctionNode node)
+	public IResolvedDeclarationNode Visit(DestructorNode node) => ResolveFunction(node, node.Body);
+	
+	public IResolvedDeclarationNode Visit(FunctionNode node) => ResolveFunction(node, node.Body);
+	
+	private ResolvedFunctionNode ResolveFunction(IDeclarationNode node, IStatementNode body)
 	{
 		var function = (FunctionSymbol)_symbolTable.DeclarationSymbols[node];
 		var info = _signatures.GetFunctionInfo(function);
@@ -196,10 +184,10 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		};
 		
 		_resolutionContexts.Push(resolutionContext);
-		var body = VisitNode(node.Body);
+		var resolvedBody = VisitNode(body);
 		_resolutionContexts.Pop();
 		
-		return new ResolvedFunctionNode(info, body, node);
+		return new ResolvedFunctionNode(info, resolvedBody, node);
 	}
 	
 	public IResolvedDeclarationNode Visit(ExternalFunctionNode node)

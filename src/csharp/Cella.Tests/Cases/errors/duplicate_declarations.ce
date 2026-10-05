@@ -22,6 +22,14 @@ Point: rec
 	new: op(x: i32, x: i32)
 	{
 	}
+
+	drop: op
+	{
+	}
+
+	drop: op
+	{
+	}
 }
 
 Point: rec

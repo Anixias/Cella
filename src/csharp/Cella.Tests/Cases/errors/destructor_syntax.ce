@@ -1,0 +1,12 @@
+mod test
+
+Buffer: rec
+{
+	size: usize
+
+	drop: op(other: Buffer)
+	{
+	}
+}
+
+main: fun -> i32 = 0

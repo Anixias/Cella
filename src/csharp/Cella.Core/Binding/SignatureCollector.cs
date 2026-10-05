@@ -88,7 +88,7 @@ public sealed class SignatureCollector
 		if (!_declarations.TryGetValue(function, out var declaration))
 			return _dependencyTable.Functions[function];
 		
-		if (declaration.Node is ConstructorNode)
+		if (declaration.Node is ConstructorNode or DestructorNode)
 		{
 			CompleteRecord((RecordSymbol)declaration.Context.ContainingType!);
 			return _builder.Functions.TryGetValue(function, out info) ? info : CreateInvalidInfo(function, declaration);
@@ -239,6 +239,10 @@ public sealed class SignatureCollector
 		Diagnostics.AddRange(DiagnosticReporter.ReportDuplicates(fieldNames,
 			name => $"Field '{name}' is declared more than once in '{record.Name}'"));
 		
+		var destructors = node.Members.OfType<DestructorNode>().Select(static d => d.Keyword);
+		Diagnostics.AddRange(DiagnosticReporter.ReportDuplicates(destructors,
+			name => $"'{name}' is declared more than once in '{record.Name}'"));
+		
 		foreach (var member in node.Members)
 		{
 			var symbol = _symbolTable.DeclarationSymbols[member];
@@ -252,6 +256,10 @@ public sealed class SignatureCollector
 				
 				case ConstructorNode constructor:
 					CollectConstructor((FunctionSymbol)symbol, constructor, context);
+					break;
+				
+				case DestructorNode:
+					CollectDestructor((FunctionSymbol)symbol, context);
 					break;
 				
 				default:
@@ -445,6 +453,20 @@ public sealed class SignatureCollector
 		
 		_builder.Functions[function] = info;
 		_typePool.AddConstructor(containingType, info);
+	}
+	
+	private void CollectDestructor(FunctionSymbol function, ResolutionContext context)
+	{
+		var self = function.Parameters[0];
+		var selfType = _typePool.GetPointerType(context.ContainingType!);
+		_builder.VariableTypes[self] = selfType;
+		
+		var scope = new Scope();
+		scope.Define(self);
+		
+		var signature = new FunctionSignature([selfType], NativeSymbols.Void, false, GetModes(function));
+		var mangledName = Mangling.Mangle(function, signature, context.GetQualifiers());
+		_builder.Functions[function] = new FunctionInfo(mangledName, function, signature, scope, null, context.File);
 	}
 	
 	private FunctionInfo CollectFunction(FunctionSymbol function, FunctionNode node, ResolutionContext context)

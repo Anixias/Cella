@@ -27,6 +27,16 @@ nested: fun
 	ret missing
 }
 
+Buffer: rec
+{
+	size: usize
+
+	drop: op
+	{
+		ret 5
+	}
+}
+
 main: fun -> i32
 {
 	ret 0

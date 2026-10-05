@@ -1,0 +1,48 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+	malloc: fun(size: usize) -> ptr
+	free: fun(memory: ptr)
+}
+
+Buffer: rec
+{
+	data: ptr
+	size: usize
+
+	new: op(size: usize)
+	{
+		self.data = malloc(size)
+		self.size = size
+	}
+
+	drop: op
+	{
+		printf("drop %zu\n", self.size)
+		free(self.data)
+		self.size = 0
+	}
+}
+
+Handle: rec
+{
+	id: i32
+
+	drop: op()
+	{
+		printf("close %d\n", self.id)
+	}
+}
+
+main: fun -> i32
+{
+	val size: usize = 16
+	val buffer = Buffer(size)
+	val handle = Handle(7)
+	val empty = Handle()
+	val drop = 3
+	printf("%zu %d %d %d\n", buffer.size, handle.id, empty.id, drop)
+	ret 0
+}

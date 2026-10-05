@@ -62,6 +62,20 @@ public sealed class SymbolCollector : IDeclarationNodeVisitor<Symbol>
 		return function;
 	}
 	
+	public Symbol Visit(DestructorNode node)
+	{
+		var self = new ParameterSymbol("self", node.SourceLocation) { Mode = ParameterMode.Mut };
+		
+		if (_typeStack.TryPeek(out var name))
+			name += ".drop";
+		else
+			name = ".drop";
+		
+		var function = new FunctionSymbol(name, node, [], null, [self], FunctionKind.Destructor);
+		_builder.DeclarationSymbols[node] = function;
+		return function;
+	}
+	
 	public Symbol Visit(FunctionNode node)
 	{
 		var parameters = new List<ParameterSymbol>(node.Parameters.Length);
@@ -123,7 +137,7 @@ public sealed class SymbolCollector : IDeclarationNodeVisitor<Symbol>
 					members.Add(s);
 					break;
 				
-				case FunctionSymbol { Kind: FunctionKind.Constructor } s:
+				case FunctionSymbol { Kind: FunctionKind.Constructor or FunctionKind.Destructor } s:
 					members.Add(new MethodSymbol(s, SelfReferenceKind.Mutable));
 					break;
 				

@@ -13,7 +13,8 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 			TokenType.KeywordExt, TokenType.KeywordRec, TokenType.KeywordEnum);
 	
 	private static readonly Dictionary<string, TokenType> _memberContextualKeywords =
-		BuildContextualKeywords(TokenType.KeywordFun, TokenType.KeywordPub, TokenType.KeywordNew, TokenType.KeywordOp);
+		BuildContextualKeywords(TokenType.KeywordFun, TokenType.KeywordPub, TokenType.KeywordNew, TokenType.KeywordDrop,
+			TokenType.KeywordOp);
 	
 	private static readonly HashSet<TokenType> _topLevelSyncTypes = [TokenType.OpSemicolon, TokenType.EndOfFile];
 	
@@ -706,6 +707,9 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 		if (Match(ref index, out var newKeyword, _memberContextualKeywords, TokenType.KeywordNew))
 			return ParseConstructor(ref index, newKeyword, []);
 		
+		if (Match(ref index, out var dropKeyword, _memberContextualKeywords, TokenType.KeywordDrop))
+			return ParseDestructor(ref index, dropKeyword);
+		
 		if (!Match(ref index, out var identifier, TokenType.Identifier) || !Match(ref index, TokenType.OpColon))
 			return null;
 		
@@ -741,6 +745,29 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 		range = range.Join(body.SourceLocation.Range);
 		
 		return new(modifiers, parameters, body, new(source, range));
+	}
+	
+	private DestructorNode? ParseDestructor(ref int index, Token dropKeyword)
+	{
+		if (!Match(ref index, TokenType.OpColon) || !Match(ref index, _memberContextualKeywords, TokenType.KeywordOp))
+			return null;
+		
+		if (ParseParameters(ref index, true) is not { } parameters)
+			return null;
+		
+		if (parameters.Count > 0)
+			Report(parameters[0].SourceLocation, "'drop' takes no parameters");
+		
+		if (!Match(ref index, out var openBraceToken, TokenType.OpOpenBrace))
+			return null;
+		
+		if (ParseBlockStatement(ref index, openBraceToken) is not { } body)
+			return null;
+		
+		var (source, range) = dropKeyword.SourceLocation;
+		range = range.Join(body.SourceLocation.Range);
+		
+		return new(dropKeyword, body, new(source, range));
 	}
 	
 	private FieldNode ParseField(ref int index, Token identifier, IEnumerable<Token> modifiers)

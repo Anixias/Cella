@@ -148,6 +148,13 @@ public sealed class AstPrinter : ISyntaxNodeVisitor
 		VisitNode(node.Body, true);
 	}
 	
+	public void Visit(DestructorNode node)
+	{
+		StartLine();
+		_sb.Append("DestructorNode");
+		VisitNode(node.Body, true);
+	}
+	
 	public void Visit(GlobalNode node)
 	{
 		StartLine();
