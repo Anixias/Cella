@@ -1,0 +1,93 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Point: rec
+{
+	x: i32
+	y: i32
+}
+
+Effect: enum
+{
+	none
+	hit(amount: i32)
+}
+
+Node: rec
+{
+	value: i32
+	next: ptr[Node]
+}
+
+Unit: rec
+{
+	position: Point
+	effect: Effect
+	callback: fun(i32) -> i32
+	scores: array[i32, 3]
+	name: str
+}
+
+triple: fun(n: i32) -> i32 = n * 3
+
+damage: fun(mut hp: i32, amount: i32)
+{
+	hp -= amount
+}
+
+shift: fun(p: ptr[Point], dx: i32)
+{
+	p.x += dx
+}
+
+pick: fun(p: ptr[Point]) -> ptr[Point] = p
+
+lift: fun(mut cursor: ptr[Point])
+{
+	cursor.y = 77
+}
+
+main: fun -> i32
+{
+	var third = Node(4, null)
+	var second = Node(2, @third)
+	var head = Node(1, @second)
+	printf("%d\n", head.value + head.next.value + head.next.next.value)
+
+	var point = Point(1, 2)
+	val p = @point
+	p.x = 10
+	p.y += 5
+	shift(p, 3)
+	damage(mut p.x, 1)
+	printf("%d %d\n", point.x, point.y)
+
+	val field = @p.y
+	*field = 40
+	pick(p).x = 99
+	var cursor = p
+	lift(mut cursor)
+	printf("%d %d %d\n", point.x, point.y, pick(p).y)
+
+	var unit = Unit(Point(5, 6), Effect.hit(8), triple, [7, 8, 9], "hello")
+	val u = @unit
+	printf("%d %d %d\n", u.position.x, u.callback(4), u.scores[2])
+	printf("%zu %zu %s\n", u.scores.length, u.name.byteLength, nameOf(u.position))
+	printf("%zu %zu\n", sizeOf(u.position), sizeOf(u.position.x))
+
+	match mut u.effect
+	{
+		hit(n) => n += 100
+		else => {}
+	}
+	if u.effect is hit(n)
+		printf("%d\n", n)
+
+	val scores = @unit.scores
+	printf("%zu\n", scores.length)
+	ret 0
+}

@@ -1,0 +1,23 @@
+mod test
+
+Point: rec
+{
+	x: i32
+}
+
+main: fun -> i32
+{
+	var point = Point(1)
+	val p = @point
+	val pp = @p
+	val raw: ptr = p
+	val a = pp.x
+	val b = raw.x
+	val c = p.z
+	val d = nameOf(p.z)
+	val e = null.x
+	var values = [1, 2]
+	val v = @values
+	val w = v[1]
+	ret 0
+}

@@ -21,4 +21,14 @@ Error at line 10, column 17
 10 │ var address = @values.length
                     ╘═══════════╛ Cannot take the address of an unstored value
 
+Error at line 12, column 2
+11 │ val pointer = @values
+12 │ pointer.length = 3
+     ╘════════════╛ 'length' is read-only
+
+Error at line 14, column 2
+13 │ val view = @text
+14 │ view.byteLength = 2
+     ╘═════════════╛ 'byteLength' is read-only
+
 [compilation failed]

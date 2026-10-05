@@ -919,7 +919,10 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	}
 	
 	private FieldSymbol? FindField(TypeSymbol type, string name) =>
-		_typePool.ResolveMember(type, name) as FieldSymbol;
+		_typePool.ResolveMember(GetMemberOwner(type), name) as FieldSymbol;
+	
+	private static TypeSymbol GetMemberOwner(TypeSymbol type) =>
+		type is PointerType { BaseType: var baseType } && baseType != NativeSymbols.Void ? baseType : type;
 	
 	private IResolvedExpressionNode VisitIndirectCall(CallExpressionNode node, IResolvedExpressionNode target)
 	{
@@ -996,6 +999,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		
 		if (target is ResolvedLiteralExpressionNode { Type: UntypedType })
 			target = MaterializeAsDefault(target);
+		
+		if (GetMemberOwner(target.Type) != target.Type)
+			target = ResolveDereference(TokenType.OpStar, target, node.Target);
 		
 		var memberName = node.Member.Text;
 		var resolutionContext = CurrentResolutionContext;
@@ -1211,7 +1217,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			
 			case AccessExpressionNode access:
 				var target = VisitNode(access.Target, null);
-				return !IsInvalid(target) && HasMember(target.Type, access.Member);
+				return !IsInvalid(target) && HasMember(GetMemberOwner(target.Type), access.Member);
 			
 			default:
 				return false;

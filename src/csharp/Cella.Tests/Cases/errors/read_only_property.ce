@@ -8,5 +8,9 @@ main: fun -> i32
 	var text = "abc"
 	text.byteLength = 1
 	var address = @values.length
+	val pointer = @values
+	pointer.length = 3
+	val view = @text
+	view.byteLength = 2
 	ret 0
 }
