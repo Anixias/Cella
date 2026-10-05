@@ -439,6 +439,7 @@ public sealed class RecordSymbol : TypeSymbol, IExportable
 	public ImmutableArray<MemberSymbol> Members { get; }
 	public ImmutableArray<TypeSymbol> NestedTypes { get; }
 	public Visibility Visibility { get; }
+	public bool HasDestructor => Members.Any(static m => m is MethodSymbol { Function.Kind: FunctionKind.Destructor });
 	
 	public RecordSymbol(string name, RecordNode node, IEnumerable<MemberSymbol> members,
 		IEnumerable<TypeSymbol> nestedTypes) : base(name)

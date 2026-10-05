@@ -20,7 +20,7 @@ public sealed class TypePool
 	private readonly Dictionary<TypeSymbol, PointerType> _pointerTypes = [];
 	private readonly List<FunctionType> _functionTypes = [];
 	private readonly Dictionary<TypedMemberSymbol, TypeSymbol> _memberTypes = [];
-	private readonly Dictionary<TypeSymbol, bool> _needsDrop = [];
+	private readonly Dictionary<TypeSymbol, TypeFacts> _facts = [];
 	private readonly Dictionary<TypeSymbol, List<FunctionInfo>> _constructors = [];
 	private readonly Dictionary<EnumSymbol, IntegerType> _tagTypes = [];
 	private readonly Dictionary<EnumCaseSymbol, BigInteger> _caseValues = [];
@@ -43,9 +43,33 @@ public sealed class TypePool
 		return _constructors.TryGetValue(type, out var list) ? list : [];
 	}
 	
-	public void SetNeedsDrop(TypeSymbol type, bool needsDrop) => _needsDrop[type] = needsDrop;
-	public bool NeedsDrop(TypeSymbol type) => _needsDrop.GetValueOrDefault(type, false);
-	public bool TryGetNeedsDrop(TypeSymbol type, out bool result) => _needsDrop.TryGetValue(type, out result);
+	public bool NeedsDrop(TypeSymbol type) => GetFacts(type).NeedsDrop;
+	public bool IsCopy(TypeSymbol type) => GetFacts(type).IsCopy;
+	
+	private TypeFacts GetFacts(TypeSymbol type)
+	{
+		if (_facts.TryGetValue(type, out var facts))
+			return facts;
+		
+		_facts[type] = TypeFacts.Plain;
+		facts = type switch
+		{
+			RecordSymbol r => Combine(r.HasDestructor, GetMembers(r).OfType<FieldSymbol>().Select(GetTypeOfMember)),
+			EnumSymbol e => Combine(false, e.Cases.SelectMany(c => GetPayloadTypes(e, c))),
+			ArrayType array => GetFacts(array.ElementType),
+			_ => TypeFacts.Plain
+		};
+		
+		_facts[type] = facts;
+		return facts;
+	}
+	
+	private TypeFacts Combine(bool hasDestructor, IEnumerable<TypeSymbol> parts)
+	{
+		var facts = parts.Select(GetFacts).ToArray();
+		return new(hasDestructor || facts.Any(static f => f.NeedsDrop),
+			!hasDestructor && facts.All(static f => f.IsCopy));
+	}
 	
 	public static IReadOnlyDictionary<string, string> BuiltinGenericTypeArguments { get; } =
 		new Dictionary<string, string>
@@ -313,6 +337,11 @@ public sealed class TypePool
 		};
 		
 		RegisterMember(type, length, lengthType);
+	}
+	
+	private readonly record struct TypeFacts(bool NeedsDrop, bool IsCopy)
+	{
+		public static TypeFacts Plain => new(false, true);
 	}
 }
 
