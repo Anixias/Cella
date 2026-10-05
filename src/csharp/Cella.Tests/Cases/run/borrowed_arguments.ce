@@ -1,0 +1,100 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Buffer: rec
+{
+	id: i32
+
+	new: op(id: i32)
+	{
+		self.id = id
+	}
+
+	drop: op
+	{
+	}
+}
+
+Plain: rec
+{
+	id: i32
+}
+
+Holder: rec
+{
+	buffer: Buffer
+	matched: bool
+
+	new: op(source: Buffer, address: ptr[Buffer])
+	{
+		self.buffer = Buffer(source.id)
+		self.matched = @source == address
+	}
+}
+
+Effect: enum
+{
+	none
+	owned(buffer: Buffer)
+}
+
+same: fun(buffer: Buffer, address: ptr[Buffer]) -> bool = @buffer == address
+samePlain: fun(plain: Plain, address: ptr[Plain]) -> bool = @plain == address
+sameHolder: fun(holder: Holder, address: ptr[Holder]) -> bool = @holder == address
+sameEffect: fun(effect: Effect, address: ptr[Effect]) -> bool = @effect == address
+sameArray: fun(values: array[Buffer, 2], address: ptr[array[Buffer, 2]]) -> bool = @values == address
+forward: fun(buffer: Buffer, address: ptr[Buffer]) -> bool = same(buffer, address)
+readId: fun(buffer: Buffer) -> i32 = buffer.id
+cSame: ext fun(buffer: Buffer, address: ptr[Buffer]) -> bool = @buffer == address
+
+fromMut: fun(mut buffer: Buffer, address: ptr[Buffer]) -> bool = same(buffer, address)
+
+observe: fun(buffer: Buffer, ignored: i32) -> i32 = buffer.id
+
+bump: fun(mut buffer: Buffer) -> i32
+{
+	buffer.id += 100
+	ret 0
+}
+
+flag: fun(value: bool) -> i32 = i32(value)
+
+main: fun -> i32
+{
+	var buffer = Buffer(1)
+	var plain = Plain(2)
+	printf("local %d plain %d\n", flag(same(buffer, @buffer)), flag(samePlain(plain, @plain)))
+
+	var holder = Holder(buffer, @buffer)
+	printf("ctor %d field %d record %d\n", flag(holder.matched), flag(same(holder.buffer, @holder.buffer)),
+		flag(sameHolder(holder, @holder)))
+
+	var buffers = [Buffer(3), Buffer(4)]
+	val p = @buffer
+	printf("element %d deref %d array %d\n", flag(same(buffers[1], @buffers[1])), flag(same(*p, p)),
+		flag(sameArray(buffers, @buffers)))
+
+	var effect = Effect.owned(Buffer(5))
+	printf("enum %d forward %d mut %d\n", flag(sameEffect(effect, @effect)), flag(forward(buffer, @buffer)),
+		flag(fromMut(mut buffer, @buffer)))
+
+	match mut effect
+	{
+		owned(inner) => printf("binding %d\n", flag(same(inner, @inner)))
+		else => {}
+	}
+
+	val check = same
+	val viaC: ext fun(Buffer, ptr[Buffer]) -> bool = same
+	val viaFun: fun(Buffer, ptr[Buffer]) -> bool = cSame
+	printf("fun %d c %d ext %d thunk %d\n", flag(check(buffer, @buffer)), flag(cSame(buffer, @buffer)),
+		flag(viaC(buffer, @buffer)), flag(viaFun(buffer, @buffer)))
+
+	printf("temporary %d %d %d\n", readId(Buffer(7)), readId(buffers[0]), flag(viaC(Buffer(8), null)))
+	printf("observe %d\n", observe(buffer, bump(mut buffer)))
+	ret 0
+}

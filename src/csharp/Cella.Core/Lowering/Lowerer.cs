@@ -5,7 +5,6 @@ using Cella.Core.Binding.Conversions;
 using Cella.Core.Binding.Nodes;
 using Cella.Core.Binding.Operations;
 using Cella.Core.Symbols;
-using Cella.Core.Syntax.Nodes;
 using Cella.Core.Text;
 using static Cella.Core.Binding.Operations.OperationMapping;
 
@@ -669,8 +668,8 @@ public sealed class Lowerer
 		public Value Visit(ResolvedConversionExpressionNode node) =>
 			new ConversionValue(VisitNode(node.Source), node.Conversion, node.Syntax.SourceLocation);
 		
-		public Value Visit(ResolvedFunctionCallExpressionNode node) =>
-			new CallValue(node.Function, LowerOperands(node.Arguments), node.Syntax.SourceLocation);
+		public Value Visit(ResolvedFunctionCallExpressionNode node) => new CallValue(node.Function,
+			LowerArguments(node.Arguments, node.Function, 0), node.Syntax.SourceLocation);
 		
 		public Value Visit(ResolvedFunctionGroupExpressionNode node) => throw new InvalidOperationException();
 		
@@ -679,15 +678,19 @@ public sealed class Lowerer
 		
 		public Value Visit(ResolvedIndirectCallExpressionNode node)
 		{
-			var operands = LowerOperands([node.Target, ..node.Arguments]);
-			return new IndirectCallValue(operands[0], operands.Skip(1), node.FunctionType, node.Syntax.SourceLocation);
+			var type = node.FunctionType;
+			var operands = LowerOperands([node.Target, ..node.Arguments],
+				i => i > 0 && _typePool.PassesByPointer(type.ParameterTypes[i - 1], type.ParameterModes[i - 1],
+					type.IsExternal));
+			
+			return new IndirectCallValue(operands[0], operands.Skip(1), type, node.Syntax.SourceLocation);
 		}
 		
 		private void LowerConstructor(FunctionInfo constructor, Value self,
 			IReadOnlyList<IResolvedExpressionNode> arguments, SourceLocation sourceLocation)
 		{
 			var args = new List<Value> { self };
-			args.AddRange(LowerOperands(arguments));
+			args.AddRange(LowerArguments(arguments, constructor, 1));
 			
 			GetOrMakeBlock().Instructions
 				.Add(new ExpressionInstruction(new CallValue(constructor, args, sourceLocation)));
@@ -794,22 +797,57 @@ public sealed class Lowerer
 			return symbol;
 		}
 		
-		private List<Value> LowerOperands(IReadOnlyList<IResolvedExpressionNode> operands)
+		private List<Value> LowerOperands(IReadOnlyList<IResolvedExpressionNode> operands,
+			Func<int, bool>? isBorrowed = null)
 		{
 			var values = new List<Value>(operands.Count);
-			foreach (var operand in operands)
+			for (var i = 0; i < operands.Count; i++)
 			{
+				var operand = operands[i];
 				if (MayEmit(operand))
 				{
-					for (var i = 0; i < values.Count; i++)
-						values[i] = CaptureAsAtomic(values[i], "operand");
+					for (var j = 0; j < values.Count; j++)
+						values[j] = CaptureAsAtomic(values[j], "operand");
 				}
 				
-				values.Add(VisitNode(operand));
+				values.Add(isBorrowed?.Invoke(i) == true ? LowerBorrow(operand) : VisitNode(operand));
 			}
 			
 			return values;
 		}
+		
+		private List<Value> LowerArguments(IReadOnlyList<IResolvedExpressionNode> arguments, FunctionInfo function,
+			int firstParameter)
+		{
+			var signature = function.Signature;
+			return LowerOperands(arguments, i => firstParameter + i < signature.ParameterTypes.Length &&
+			                                     _typePool.PassesByPointer(signature.ParameterTypes[firstParameter + i],
+				                                     signature.GetMode(firstParameter + i),
+				                                     function.Symbol.IsExternal));
+		}
+		
+		private UnaryOpValue LowerBorrow(IResolvedExpressionNode argument)
+		{
+			var place = IsPlace(argument)
+				? VisitPlace(argument)
+				: VisitNode(argument) switch
+				{
+					VariableValue temporary => temporary,
+					var value => StoreTemporary(value, "borrow")
+				};
+			
+			return new UnaryOpValue(_typePool.GetPointerType(argument.Type), place, UnaryOperation.AddressOf,
+				argument.Syntax.SourceLocation);
+		}
+		
+		private static bool IsPlace(IResolvedExpressionNode node) => node switch
+		{
+			ResolvedVarExpressionNode => true,
+			ResolvedAccessExpressionNode { Member: FieldSymbol } n => IsPlace(n.Target),
+			ResolvedIndexerExpressionNode n => IsPlace(n.Target),
+			ResolvedUnaryOpExpressionNode { Operation.Op: TokenType.OpStar } => true,
+			_ => false
+		};
 		
 		private static bool MayEmit(IResolvedExpressionNode node) => node switch
 		{
@@ -1031,11 +1069,11 @@ public sealed class Lowerer
 			_ => CaptureAsAtomic(value, "target")
 		};
 		
-		private Value CaptureAsAtomic(Value value, string hint)
+		private Value CaptureAsAtomic(Value value, string hint) =>
+			IsStable(value) ? value : StoreTemporary(value, hint);
+		
+		private VariableValue StoreTemporary(Value value, string hint)
 		{
-			if (IsStable(value))
-				return value;
-			
 			var symbol = CreateTempSymbol(value.Type, hint);
 			
 			GetOrMakeBlock().Instructions

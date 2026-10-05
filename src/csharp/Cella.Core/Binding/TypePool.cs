@@ -46,6 +46,9 @@ public sealed class TypePool
 	public bool NeedsDrop(TypeSymbol type) => GetFacts(type).NeedsDrop;
 	public bool IsCopy(TypeSymbol type) => GetFacts(type).IsCopy;
 	
+	public bool PassesByPointer(TypeSymbol type, ParameterMode mode, bool isExternal) =>
+		mode == ParameterMode.ReadOnly && !isExternal && NeedsDrop(type);
+	
 	private TypeFacts GetFacts(TypeSymbol type)
 	{
 		if (_facts.TryGetValue(type, out var facts))

@@ -1,0 +1,9 @@
+local 1 plain 0
+ctor 1 field 1 record 1
+element 1 deref 1 array 1
+enum 1 forward 1 mut 1
+binding 1
+fun 1 c 0 ext 0 thunk 0
+temporary 7 3 0
+observe 101
+[exit code 0]
