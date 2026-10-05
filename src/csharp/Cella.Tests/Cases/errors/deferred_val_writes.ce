@@ -1,0 +1,73 @@
+mod test
+
+Buffer: rec
+{
+	id: i32
+
+	drop: op
+	{
+	}
+}
+
+make: fun(id: i32) -> Buffer = Buffer(id)
+take: fun(own buffer: Buffer) -> i32 = buffer.id
+pair: fun(a: i32, b: i32) -> i32 = a + b
+
+twice: fun -> i32
+{
+	val x: i32
+	x = 1
+	x = 2
+	ret x
+}
+
+branches: fun(flag: bool) -> i32
+{
+	val x: i32
+	if flag
+		x = 1
+
+	x = 2
+	ret x
+}
+
+looped: fun -> i32
+{
+	val x: i32
+	loop for 3
+		x = 1
+
+	ret 0
+}
+
+unread: fun -> i32
+{
+	val x: i32
+	ret x
+}
+
+maybe: fun(flag: bool) -> i32
+{
+	val x: i32
+	if flag
+		x = 1
+
+	ret x
+}
+
+moved: fun -> i32
+{
+	val b: Buffer
+	b = make(1)
+	take(b)
+	b = make(2)
+	ret b.id
+}
+
+order: fun -> i32
+{
+	val x: i32
+	ret pair(x, x = 5)
+}
+
+main: fun -> i32 = 0

@@ -539,9 +539,12 @@ public sealed class Lowerer
 		public void Visit(ResolvedVarStatementNode node)
 		{
 			BeginScope(node.Syntax.SourceLocation, true);
-			var value = node.Initializer is null
-				? new ZeroValue(node.Symbol.Type)
-				: Consume(VisitNode(node.Initializer));
+			var value = node switch
+			{
+				{ Initializer: { } initializer } => Consume(VisitNode(initializer)),
+				{ Symbol.IsDeferred: true } => new UndefValue(node.Symbol.Type),
+				_ => new ZeroValue(node.Symbol.Type)
+			};
 			
 			if (currentBlock is { } block)
 				Declare(block, new LocalVarInstruction(node.Symbol, value, node.Syntax.SourceLocation, BlockScopeId));
@@ -1247,7 +1250,7 @@ public sealed class Lowerer
 		{
 			ConstantValue or ZeroValue or UndefValue or FunctionReferenceValue => true,
 			VariableValue { Variable.Symbol: LocalVariableSymbol symbol } =>
-				!symbol.IsMutable || _temporaries.Contains(symbol),
+				!symbol.IsMutable && !symbol.IsDeferred || _temporaries.Contains(symbol),
 			VariableValue { Variable.Symbol: ParameterSymbol { Mode: ParameterMode.Mut } } => true,
 			MoveValue { Place: VariableValue { Variable.Symbol: LocalVariableSymbol symbol } } =>
 				_temporaries.Contains(symbol),

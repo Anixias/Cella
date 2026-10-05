@@ -295,6 +295,12 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool) 
 		_ => null
 	};
 	
+	private static bool IsDeferredWrite(ResolvedAssignmentExpressionNode node) =>
+		node is
+		{
+			Operation: null, Left: ResolvedVarExpressionNode { Symbol: LocalVariableSymbol { IsDeferred: true } }
+		};
+	
 	private static string DescribeImmutable(VariableSymbol binding) => binding switch
 	{
 		LocalVariableSymbol { IsPatternBinding: true } => "read-only pattern bindings",
@@ -361,7 +367,7 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool) 
 		else if (!IsLValue(node.Left))
 			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Left.Syntax.SourceLocation,
 				"Assignment target must be addressable"));
-		else if (FindImmutableBinding(node.Left) is { } binding)
+		else if (!IsDeferredWrite(node) && FindImmutableBinding(node.Left) is { } binding)
 			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Left.Syntax.SourceLocation,
 				$"Cannot reassign {DescribeImmutable(binding)}"));
 		

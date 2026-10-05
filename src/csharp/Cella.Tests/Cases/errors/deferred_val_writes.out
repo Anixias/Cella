@@ -1,0 +1,43 @@
+
+====== deferred_val_writes.ce ======
+
+Error at line 20, column 2
+19 │ x = 1
+20 │ x = 2
+     ^ Cannot reassign values
+     | Assigned on line 19
+
+Error at line 30, column 2
+29 │ 
+30 │ x = 2
+     ^ Cannot reassign values
+     | Assigned on line 28
+
+Error at line 38, column 3
+37 │ loop for 3
+38 │     x = 1
+         ^ Cannot reassign values
+         | Assigned here in an earlier iteration
+
+Error at line 46, column 6
+45 │ val x: i32
+46 │ ret x
+         ^ Cannot use uninitialized values
+
+Error at line 55, column 6
+54 │ 
+55 │ ret x
+         ^ Cannot use uninitialized values
+
+Error at line 63, column 2
+62 │ take(b)
+63 │ b = make(2)
+     ^ Cannot reassign values
+     | Assigned on line 61
+
+Error at line 70, column 11
+69 │ val x: i32
+70 │ ret pair(x, x = 5)
+              ^ Cannot use uninitialized values
+
+[compilation failed]

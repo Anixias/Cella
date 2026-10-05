@@ -376,6 +376,7 @@ public sealed class LocalVariableSymbol(Token identifier, TypeSymbol type, bool 
 	public bool IsMutable { get; } = isMutable;
 	public bool IsPatternBinding { get; init; }
 	public bool IsMutBinding { get; init; }
+	public bool IsDeferred { get; init; }
 	public Constant? ConstantValue { get; init; }
 }
 

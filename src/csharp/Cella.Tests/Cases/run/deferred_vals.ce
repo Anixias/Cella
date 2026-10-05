@@ -1,0 +1,68 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Buffer: rec
+{
+	id: i32
+
+	drop: op
+	{
+	}
+}
+
+make: fun(id: i32) -> Buffer = Buffer(id)
+
+pick: fun(flag: bool) -> i32
+{
+	val result: i32
+	if flag
+		result = 10
+	else
+		result = 20
+
+	ret result
+}
+
+late: fun(n: i32) -> i32
+{
+	val buffer: Buffer
+	val doubled = n * 2
+	buffer = make(doubled)
+	ret buffer.id
+}
+
+looped: fun -> i32
+{
+	var total = 0
+	var i = 0
+	loop while i < 3
+	{
+		val square: i32
+		square = i * i
+		total += square
+		i += 1
+	}
+
+	ret total
+}
+
+early: fun(n: i32) -> i32
+{
+	val sign: i32
+	if n < 0
+		ret -1
+
+	sign = 1
+	ret sign
+}
+
+main: fun -> i32
+{
+	printf("%d %d\n", pick(true), pick(false))
+	printf("%d %d %d %d\n", late(4), looped(), early(-5), early(5))
+	ret 0
+}

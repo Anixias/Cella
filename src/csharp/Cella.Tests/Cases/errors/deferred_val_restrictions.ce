@@ -1,0 +1,23 @@
+mod test
+
+Pair: rec
+{
+	left: i32
+	right: i32
+}
+
+bump: fun(mut n: i32)
+{
+	n += 1
+}
+
+main: fun -> i32
+{
+	val later: i32
+	val pair: Pair
+	pair.left = 1
+	later += 1
+	bump(mut later)
+	later = 2
+	ret later
+}

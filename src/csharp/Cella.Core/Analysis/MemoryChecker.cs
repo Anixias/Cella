@@ -33,8 +33,12 @@ public sealed class MemoryChecker(TypePool typePool, DiagnosticList diagnostics)
 						if (FindUninitialized(write.Place, state, paths) is { } uninitialized)
 							Report(write.Location,
 								$"Cannot assign elements of {uninitialized.Condition} arrays at computed indices",
-								uninitialized.Moves);
+								DescribeMoves(write.Location, uninitialized.Moves));
 						
+						break;
+					
+					case WriteEvent write:
+						CheckDeferredWrite(write, state, paths);
 						break;
 					
 					case DropEvent drop when paths.Find(drop.Place) is { } path:
@@ -59,7 +63,19 @@ public sealed class MemoryChecker(TypePool typePool, DiagnosticList diagnostics)
 		}
 		
 		if (FindUninitialized(access.Place, state, paths) is { } uninitialized)
-			Report(access.Location, $"Cannot use {uninitialized.Condition} values", uninitialized.Moves);
+			Report(access.Location, $"Cannot use {uninitialized.Condition} values",
+				DescribeMoves(access.Location, uninitialized.Moves));
+	}
+	
+	private void CheckDeferredWrite(WriteEvent write, InitState state, MovePaths paths)
+	{
+		if (write.Place is not { Root: LocalVariableSymbol { IsDeferred: true } local, Path.IsEmpty: true })
+			return;
+		
+		var path = paths.GetRoot(local);
+		if ((state.GetOwnState(path) & (PathState.Initialized | PathState.Moved)) != 0)
+			Report(write.Location, "Cannot reassign values",
+				DescribeSites(write.Location, state.GetOwnWrites(path), "Assigned"));
 	}
 	
 	private static Uninitialized? FindUninitialized(Place place, InitState state, MovePaths paths)
@@ -137,20 +153,19 @@ public sealed class MemoryChecker(TypePool typePool, DiagnosticList diagnostics)
 		return false;
 	}
 	
-	private void Report(SourceLocation location, string message, IEnumerable<MoveSite> moves) =>
-		diagnostics.Add(new(DiagnosticSeverity.Error, location, message)
-		{
-			Hints =
-			[
-				..moves
-					.Select(static move => move.Location)
-					.OrderBy(static at => at.Range.Start)
-					.Select(at => at == location
-						? "Moved here in an earlier iteration"
-						: $"Moved on line {at.GetLineColumn().Line}")
-					.Distinct()
-			]
-		});
+	private void Report(SourceLocation location, string message, IEnumerable<string> hints) =>
+		diagnostics.Add(new(DiagnosticSeverity.Error, location, message) { Hints = [..hints] });
+	
+	private static IEnumerable<string> DescribeMoves(SourceLocation location, IEnumerable<MoveSite> moves) =>
+		DescribeSites(location, moves.Select(static move => move.Location), "Moved");
+	
+	private static IEnumerable<string> DescribeSites(SourceLocation location, IEnumerable<SourceLocation> sites,
+		string action) => sites
+		.OrderBy(static at => at.Range.Start)
+		.Select(at => at == location
+			? $"{action} here in an earlier iteration"
+			: $"{action} on line {at.GetLineColumn().Line}")
+		.Distinct();
 	
 	private Dictionary<BasicBlock, InitState> SolveInitialization(LoweredFunction function,
 		Dictionary<BasicBlock, List<MemoryEvent>> events, MovePaths paths)
@@ -209,7 +224,7 @@ public sealed class MemoryChecker(TypePool typePool, DiagnosticList diagnostics)
 				break;
 			
 			case WriteEvent e when paths.Find(e.Place) is { } path:
-				state.Set(path, PathState.Initialized);
+				state.Write(path, e.Location);
 				break;
 			
 			case AccessEvent { Kind: AccessKind.Move } e when paths.Find(e.Place) is { } path:

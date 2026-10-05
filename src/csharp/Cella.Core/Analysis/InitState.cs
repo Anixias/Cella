@@ -28,22 +28,28 @@ public sealed class InitState
 {
 	private readonly PathState[] _states;
 	private readonly ImmutableHashSet<MoveSite>[] _moves;
+	private readonly ImmutableHashSet<SourceLocation>[] _writes;
 	
 	public InitState(int count, PathState state)
 	{
 		_states = new PathState[count];
 		_moves = new ImmutableHashSet<MoveSite>[count];
+		_writes = new ImmutableHashSet<SourceLocation>[count];
 		Array.Fill(_states, state);
 		Array.Fill(_moves, ImmutableHashSet<MoveSite>.Empty);
+		Array.Fill(_writes, ImmutableHashSet<SourceLocation>.Empty);
 	}
 	
-	private InitState(PathState[] states, ImmutableHashSet<MoveSite>[] moves)
+	private InitState(PathState[] states, ImmutableHashSet<MoveSite>[] moves,
+		ImmutableHashSet<SourceLocation>[] writes)
 	{
 		_states = states;
 		_moves = moves;
+		_writes = writes;
 	}
 	
-	public InitState Copy() => new((PathState[])_states.Clone(), (ImmutableHashSet<MoveSite>[])_moves.Clone());
+	public InitState Copy() => new((PathState[])_states.Clone(), (ImmutableHashSet<MoveSite>[])_moves.Clone(),
+		(ImmutableHashSet<SourceLocation>[])_writes.Clone());
 	
 	public bool JoinWith(InitState other)
 	{
@@ -52,21 +58,35 @@ public sealed class InitState
 		{
 			var joined = _states[i] | other._states[i];
 			var moves = _moves[i].Union(other._moves[i]);
-			changed |= joined != _states[i] || moves.Count != _moves[i].Count;
+			var writes = _writes[i].Union(other._writes[i]);
+			changed |= joined != _states[i] || moves.Count != _moves[i].Count || writes.Count != _writes[i].Count;
 			_states[i] = joined;
 			_moves[i] = moves;
+			_writes[i] = writes;
 		}
 		
 		return changed;
 	}
 	
-	public void Set(MovePath path, PathState state) => Fill(path, state, ImmutableHashSet<MoveSite>.Empty);
+	public void Set(MovePath path, PathState state)
+	{
+		Fill(path, state, ImmutableHashSet<MoveSite>.Empty);
+		_writes.AsSpan(path.Index, path.End - path.Index).Fill(ImmutableHashSet<SourceLocation>.Empty);
+	}
+	
+	public void Write(MovePath path, SourceLocation location)
+	{
+		Fill(path, PathState.Initialized, ImmutableHashSet<MoveSite>.Empty);
+		_writes.AsSpan(path.Index, path.End - path.Index).Fill([location]);
+	}
 	
 	public void Move(MovePath path, SourceLocation location) => Fill(path, PathState.Moved, [new(path, location)]);
 	
 	public PathState GetOwnState(MovePath path) => _states[path.Index];
 	
 	public IEnumerable<MoveSite> GetOwnMoves(MovePath path) => _moves[path.Index];
+	
+	public IEnumerable<SourceLocation> GetOwnWrites(MovePath path) => _writes[path.Index];
 	
 	public IEnumerable<MoveSite> GetMoves(MovePath path) =>
 		_moves.Skip(path.Index).Take(path.End - path.Index).SelectMany(static moves => moves).Distinct();

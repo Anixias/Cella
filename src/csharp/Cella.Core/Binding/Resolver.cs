@@ -1382,10 +1382,6 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	public IResolvedStatementNode Visit(VarStatementNode node)
 	{
 		var resolutionContext = CurrentResolutionContext;
-		if (!node.IsMutable && node.ExpressionNode is null)
-			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Identifier.SourceLocation,
-				"Uninitialized values are not supported yet"));
-		
 		TypeSymbol? type;
 		if (node.Type is { } specifiedType)
 			type = resolutionContext.ResolveType(specifiedType);
@@ -1414,7 +1410,8 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		
 		var symbol = new LocalVariableSymbol(node.Identifier, type, node.IsMutable)
 		{
-			ConstantValue = node.IsMutable || initializer is null ? null : _evaluator.Evaluate(initializer)
+			ConstantValue = node.IsMutable || initializer is null ? null : _evaluator.Evaluate(initializer),
+			IsDeferred = !node.IsMutable && initializer is null
 		};
 		
 		resolutionContext.LocalScope!.Define(symbol);

@@ -1,0 +1,19 @@
+
+====== deferred_val_restrictions.ce ======
+
+Error at line 18, column 2
+17 │ val pair: Pair
+18 │ pair.left = 1
+     ╘═══════╛ Cannot reassign values
+
+Error at line 19, column 2
+18 │ pair.left = 1
+19 │ later += 1
+     ╘═══╛ Cannot reassign values
+
+Error at line 20, column 11
+19 │ later += 1
+20 │ bump(mut later)
+              ╘═══╛ Cannot mutably borrow values
+
+[compilation failed]
