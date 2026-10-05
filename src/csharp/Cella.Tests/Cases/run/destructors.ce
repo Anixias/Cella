@@ -38,8 +38,7 @@ Handle: rec
 
 main: fun -> i32
 {
-	val size: usize = 16
-	val buffer = Buffer(size)
+	val buffer = Buffer(16)
 	val handle = Handle(7)
 	val empty = Handle()
 	val drop = 3

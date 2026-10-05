@@ -27,5 +27,7 @@ main: fun -> i32
 	var d = Counter()
 	var e = Empty(1)
 	var f = Point(missing, 2)
+	var g = Counter("abc")
+	var h = Counter(Counter(1))
 	ret 0
 }

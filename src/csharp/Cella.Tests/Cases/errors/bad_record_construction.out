@@ -34,4 +34,14 @@ Error at line 29, column 16
 29 │ var f = Point(missing, 2)
                    ╘═════╛ Symbol 'missing' not found in this scope
 
+Error at line 30, column 10
+29 │ var f = Point(missing, 2)
+30 │ var g = Counter("abc")
+             ╘════════════╛ No constructor for 'Counter' accepts argument of type 'string literal'
+
+Error at line 31, column 10
+30 │ var g = Counter("abc")
+31 │ var h = Counter(Counter(1))
+             ╘═════════════════╛ No constructor for 'Counter' accepts argument of type 'Counter'
+
 [compilation failed]

@@ -640,11 +640,12 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	
 	private IResolvedExpressionNode VisitTypeCall(CallExpressionNode node, TypeSymbol targetType)
 	{
-		if (targetType is RecordSymbol record && _typePool.GetConstructors(record).Count == 0)
-			return VisitRecordConstruction(node, record);
+		if (targetType is RecordSymbol record)
+			return _typePool.GetConstructors(record).Count == 0
+				? VisitRecordConstruction(node, record)
+				: VisitConstructorCall(node, record, null);
 		
-		if (node.Arguments.Length != 1 ||
-		    node.Arguments[0] is MutArgumentExpressionNode && _typePool.GetConstructors(targetType).Count > 0)
+		if (node.Arguments.Length != 1)
 			return VisitConstructorCall(node, targetType, null);
 		
 		// Don't push targetType; we're trying to find a CAST to targetType, not a targetType itself

@@ -1,0 +1,60 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Small: rec
+{
+	value: u8
+
+	new: op(value: u8)
+	{
+		self.value = value
+	}
+}
+
+Name: rec
+{
+	text: cstr
+
+	new: op(text: cstr)
+	{
+		self.text = text
+	}
+}
+
+Size: rec
+{
+	bytes: usize
+
+	new: op(bytes: usize)
+	{
+		self.bytes = bytes
+	}
+}
+
+Number: rec
+{
+	kind: i32
+
+	new: op(value: i64)
+	{
+		self.kind = 1
+	}
+
+	new: op(value: f64)
+	{
+		self.kind = 2
+	}
+}
+
+main: fun -> i32
+{
+	val small = Small(5)
+	val name = Name("abc")
+	val size = Size(16)
+	printf("%d %s %zu %d %d\n", small.value, name.text, size.bytes, Number(5).kind, Number(1.5).kind)
+	ret 0
+}
