@@ -854,11 +854,12 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		var hasParameter = index < callable.ParameterTypes.Length;
 		var isMut = hasParameter && callable.GetMode(index) == ParameterMode.Mut;
 		var name = hasParameter ? callable.GetParameterName(index) : null;
+		var parameter = name is null ? "a 'mut' parameter" : $"'mut' parameter '{name}'";
 		
 		if (argument is null)
 			return isMut
 				? new(DiagnosticSeverity.Error, arg.Syntax.SourceLocation,
-					$"An argument to 'mut' parameter '{name}' must be marked 'mut'")
+					$"An argument to {parameter} must be marked 'mut'")
 				: null;
 		
 		if (!isMut)
@@ -871,7 +872,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			return null;
 		
 		return new(DiagnosticSeverity.Error, argument.Place.Syntax.SourceLocation,
-			$"Cannot pass '{argument.Place.Type.Name}' to 'mut' parameter '{name}' of type '{declared.Name}'");
+			$"Cannot pass '{argument.Place.Type.Name}' to {parameter} of type '{declared.Name}'");
 	}
 	
 	private static TypeSymbol GetArgumentType(IResolvedExpressionNode arg) =>
@@ -901,15 +902,18 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		if (target.Type is UntypedType)
 			target = MaterializeAsDefault(target);
 		
-		var args = node.Arguments.Select(argument => VisitNode(argument, null)).ToArray();
+		var args = node.Arguments.Select(VisitArgument).ToArray();
 		if (IsInvalid(target) || AnyInvalid(args))
 			return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
 		
 		if (target.Type is not FunctionType functionType)
 			return Error(node, $"Cannot call a value of type '{target.Type.Name}'", CurrentTargetType, node.Target);
 		
-		var resolutionSet = ResolveCallable([new FunctionTypeCallable(functionType)], args,
-			MaterializationMode.Overload);
+		ICallable[] candidates = [new FunctionTypeCallable(functionType)];
+		var resolutionSet = ResolveCallable(candidates, args, MaterializationMode.Overload);
+		
+		if (!resolutionSet.HasResult && ReportArgumentModes(candidates, args, null))
+			return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
 		
 		if (!resolutionSet.HasResult)
 			return Error(node, $"'{functionType.Name}' doesn't accept these arguments", CurrentTargetType, node.Target);
@@ -1272,8 +1276,12 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		return new ResolvedFunctionGroupExpressionNode(new FunctionGroupType(name, infos, typeName), node);
 	}
 	
-	private FunctionType GetNaturalType(FunctionInfo function) => _typePool.GetFunctionType(
-		function.Symbol.IsExternal, function.Signature.ParameterTypes, function.Signature.ReturnType);
+	private FunctionType GetNaturalType(FunctionInfo function)
+	{
+		var signature = function.Signature;
+		return _typePool.GetFunctionType(function.Symbol.IsExternal, signature.ParameterTypes,
+			signature.ParameterTypes.Select((_, i) => signature.GetMode(i)), signature.ReturnType);
+	}
 	
 	private IResolvedExpressionNode MaterializeFunction(ResolvedFunctionGroupExpressionNode node, TypeSymbol target)
 	{
@@ -1294,15 +1302,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			return Error(node.Syntax, $"Variadic function '{group.FunctionName}' can't be used as a value",
 				NativeSymbols.Invalid);
 		
-		if (function.Signature.HasMutParameter)
-			return Error(node.Syntax, DescribeMutFunctionValue(group), NativeSymbols.Invalid);
-		
 		TrackImportedFunction(function);
 		return new ResolvedFunctionReferenceExpressionNode(function, GetNaturalType(function), node.Syntax);
 	}
-	
-	private static string DescribeMutFunctionValue(FunctionGroupType group) =>
-		$"'{group.FunctionName}' has a 'mut' parameter and can't be used as a value yet";
 	
 	private ResolvedInvalidExpressionNode ReportFunctionMismatch(ResolvedFunctionGroupExpressionNode node,
 		TypeSymbol target)
@@ -1311,7 +1313,6 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		var message = group.Functions switch
 		{
 			[{ Signature.IsVariadic: true }] => $"Variadic function '{group.FunctionName}' can't be used as a value",
-			[{ Signature.HasMutParameter: true }] => DescribeMutFunctionValue(group),
 			[_] => $"Cannot convert type '{group.Name}' to '{target.Name}'",
 			_ => $"No overload of '{group.FunctionName}' matches '{target.Name}'"
 		};
@@ -2417,6 +2418,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	{
 		public ImmutableArray<TypeSymbol> ParameterTypes => type.ParameterTypes;
 		public TypeSymbol ReturnType => type.ReturnType;
+		public ParameterMode GetMode(int index) => type.ParameterModes[index];
 	}
 	
 	private sealed class ConstructorCallable(FunctionInfo info, TypeSymbol type) : ICallable

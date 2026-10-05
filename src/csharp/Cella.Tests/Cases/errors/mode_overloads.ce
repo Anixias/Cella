@@ -9,6 +9,7 @@ Team: enum
 ext
 {
 	pick: fun(mut team: Team)
+	register: fun(callback: ext fun(mut Team))
 }
 
 first: fun(mut x: i32) {}

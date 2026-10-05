@@ -173,10 +173,21 @@ public readonly struct ResolutionContext
 		IdentifierTypeNode n => ResolveNamedType(n.Token),
 		QualifiedTypeNode n => ResolveQualifiedType(n),
 		GenericTypeNode n => ResolveGenericType(n),
-		FunctionTypeNode n => TypePool.GetFunctionType(n.IsExternal, n.ParameterTypes.Select(ResolveType),
-			n.ReturnType is { } returnType ? ResolveType(returnType) : NativeSymbols.Void),
+		FunctionTypeNode n => ResolveFunctionType(n),
 		_ => NativeSymbols.Invalid
 	};
+	
+	private FunctionType ResolveFunctionType(FunctionTypeNode node)
+	{
+		var modes = node.ParameterModes.Select(SymbolCollector.GetMode).ToArray();
+		var typePool = TypePool;
+		var parameterTypes = node.ParameterTypes
+			.Select(ResolveType)
+			.Select((type, i) => typePool.GetPassedType(type, modes[i]));
+		
+		var returnType = node.ReturnType is { } returnTypeNode ? ResolveType(returnTypeNode) : NativeSymbols.Void;
+		return TypePool.GetFunctionType(node.IsExternal, parameterTypes, modes, returnType);
+	}
 	
 	private TypeSymbol ResolveNamedType(Token name)
 	{

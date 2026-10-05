@@ -46,14 +46,24 @@ Error at line 39, column 11
 39 │ callback(mut hp)
               ╘═╛ Only an argument to a 'mut' parameter can be marked 'mut'
 
-Error at line 40, column 10
-39 │ callback(mut hp)
+Error at line 41, column 4
 40 │ val f = damage
-             ╘════╛ 'damage' has a 'mut' parameter and can't be used as a value yet
+41 │ f(hp, 3)
+       ╘╛ An argument to a 'mut' parameter must be marked 'mut'
 
-Error at line 41, column 30
-40 │ val f = damage
-41 │ var g: fun(ptr[i32], i32) = damage
-                                 ╘════╛ 'damage' has a 'mut' parameter and can't be used as a value yet
+Error at line 42, column 8
+41 │ f(hp, 3)
+42 │ f(mut big, 3)
+           ╘═╛ Cannot pass 'i64' to a 'mut' parameter of type 'i32'
+
+Error at line 43, column 30
+42 │ f(mut big, 3)
+43 │ var g: fun(ptr[i32], i32) = damage
+                                 ╘════╛ Cannot convert type 'fun(mut i32, i32)' to 'fun(ptr[i32], i32)'
+
+Error at line 44, column 29
+43 │ var g: fun(ptr[i32], i32) = damage
+44 │ var h: fun(own i32, i32) = damage
+                                ╘════╛ Cannot convert type 'fun(mut i32, i32)' to 'fun(own i32, i32)'
 
 [compilation failed]

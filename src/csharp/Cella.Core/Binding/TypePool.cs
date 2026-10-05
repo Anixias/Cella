@@ -79,16 +79,18 @@ public sealed class TypePool
 	}
 	
 	public FunctionType GetFunctionType(bool isExternal, IEnumerable<TypeSymbol> parameterTypes,
-		TypeSymbol returnType)
+		IEnumerable<ParameterMode> parameterModes, TypeSymbol returnType)
 	{
 		var parameters = parameterTypes.ToImmutableArray();
+		var modes = parameterModes.ToImmutableArray();
 		var existing = _functionTypes.Find(type => type.IsExternal == isExternal && type.ReturnType == returnType &&
-		                                           type.ParameterTypes.SequenceEqual(parameters));
+		                                           type.ParameterTypes.SequenceEqual(parameters) &&
+		                                           type.ParameterModes.SequenceEqual(modes));
 		
 		if (existing is not null)
 			return existing;
 		
-		var functionType = new FunctionType(isExternal, parameters, returnType);
+		var functionType = new FunctionType(isExternal, parameters, modes, returnType);
 		_functionTypes.Add(functionType);
 		var size = isExternal ? StorageSize.Ptr : (ISize)StorageSize.Sum(StorageSize.Ptr, StorageSize.Ptr);
 		SizeTable.Register(functionType, size);
@@ -98,6 +100,9 @@ public sealed class TypePool
 		
 		return functionType;
 	}
+	
+	public TypeSymbol GetPassedType(TypeSymbol type, ParameterMode mode) =>
+		mode == ParameterMode.Mut && type is not InvalidType ? GetPointerType(type) : type;
 	
 	public PointerType GetPointerType(TypeSymbol baseType)
 	{

@@ -16,13 +16,9 @@ public sealed class FunctionSignature
 	public TypeSymbol ReturnType { get; } = returnType;
 	public bool IsVariadic { get; } = isVariadic;
 	public ImmutableArray<ParameterMode> ParameterModes { get; } = parameterModes?.ToImmutableArray() ?? [];
-	public bool HasMutParameter => ParameterModes.Contains(ParameterMode.Mut);
 	
 	public ParameterMode GetMode(int index) =>
 		index < ParameterModes.Length ? ParameterModes[index] : ParameterMode.ReadOnly;
 	
-	public TypeSymbol GetDeclaredType(int index) =>
-		GetMode(index) == ParameterMode.Mut && ParameterTypes[index] is PointerType pointer
-			? pointer.BaseType
-			: ParameterTypes[index];
+	public TypeSymbol GetDeclaredType(int index) => GetMode(index).GetDeclaredType(ParameterTypes[index]);
 }

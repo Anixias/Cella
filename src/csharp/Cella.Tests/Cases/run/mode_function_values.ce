@@ -1,0 +1,77 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+	frexp: fun(value: f64, mut exponent: i32) -> f64
+}
+
+Point: rec
+{
+	x: i32
+	y: i32
+}
+
+Handler: rec
+{
+	callback: fun(mut Point, i32)
+}
+
+damage: fun(mut hp: i32, amount: i32)
+{
+	hp -= amount
+}
+
+nudge: fun(mut p: Point, dx: i32)
+{
+	p.x += dx
+}
+
+bump: fun(own n: i32) -> i32
+{
+	n += 1
+	ret n
+}
+
+tick: ext fun(mut count: i32)
+{
+	count += 1
+}
+
+apply: fun(action: fun(mut i32, i32), mut target: i32)
+{
+	action(mut target, 4)
+}
+
+main: fun -> i32
+{
+	var hp = 20
+	val hurt = damage
+	hurt(mut hp, 3)
+	var typed: fun(mut i32, i32) = damage
+	typed(mut hp, 2)
+	apply(damage, mut hp)
+	printf("%d\n", hp)
+
+	var handler = Handler(nudge)
+	var p = Point(1, 2)
+	handler.callback(mut p, 5)
+	printf("%d %d\n", p.x, p.y)
+
+	var increment: fun(own i32) -> i32 = bump
+	printf("%d\n", increment(4))
+
+	var exponent = 0
+	var split: ext fun(f64, mut i32) -> f64 = frexp
+	val mantissa = split(16.0, mut exponent)
+	printf("%.2f %d\n", mantissa, exponent)
+
+	var c: ext fun(mut i32, i32) = damage
+	c(mut hp, 1)
+	var t: ext fun(mut i32) = tick
+	t(mut hp)
+	printf("%d\n", hp)
+
+	printf("%zu %zu\n", sizeOf(fun(mut i32)), sizeOf(ext fun(mut i32)))
+	ret 0
+}

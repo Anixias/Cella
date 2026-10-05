@@ -432,7 +432,7 @@ public sealed class SignatureCollector
 		{
 			var param = node.Parameters[i];
 			var paramSymbol = function.Parameters[i + 1]; // + 1 due to implicit self parameter
-			var paramType = GetPassedType(paramSymbol, context.ResolveType(param.Type));
+			var paramType = _typePool.GetPassedType(context.ResolveType(param.Type), paramSymbol.Mode);
 			
 			paramTypes.Add(paramType);
 			_builder.VariableTypes[paramSymbol] = paramType;
@@ -458,7 +458,7 @@ public sealed class SignatureCollector
 		{
 			var param = node.Parameters[i];
 			var paramSymbol = function.Parameters[i];
-			var paramType = GetPassedType(paramSymbol, context.ResolveType(param.Type));
+			var paramType = _typePool.GetPassedType(context.ResolveType(param.Type), paramSymbol.Mode);
 			
 			paramTypes.Add(paramType);
 			_builder.VariableTypes[paramSymbol] = paramType;
@@ -493,7 +493,7 @@ public sealed class SignatureCollector
 		{
 			var param = node.Parameters[i];
 			var paramSymbol = function.Parameters[i];
-			var paramType = GetPassedType(paramSymbol, context.ResolveType(param.Type));
+			var paramType = _typePool.GetPassedType(context.ResolveType(param.Type), paramSymbol.Mode);
 			
 			paramTypes.Add(paramType);
 			_builder.VariableTypes[paramSymbol] = paramType;
@@ -515,9 +515,6 @@ public sealed class SignatureCollector
 		var signature = new FunctionSignature(parameterTypes, NativeSymbols.Invalid, false, GetModes(function));
 		return new(null, function, signature, new Scope(), null, declaration.Context.File);
 	}
-	
-	private TypeSymbol GetPassedType(ParameterSymbol parameter, TypeSymbol type) =>
-		parameter.Mode == ParameterMode.Mut && type is not InvalidType ? _typePool.GetPointerType(type) : type;
 	
 	private static IEnumerable<ParameterMode> GetModes(FunctionSymbol function) =>
 		function.Parameters.Select(static p => p.Mode);
@@ -754,7 +751,8 @@ public sealed class SignatureCollector
 			EnumSymbol enumType => enumType.Cases.SelectMany(c => _typePool.GetPayloadTypes(enumType, c)),
 			RecordSymbol record => _typePool.GetMembers(record).OfType<FieldSymbol>().Select(_typePool.GetTypeOfMember),
 			ArrayType array => [array.ElementType],
-			FunctionType { IsExternal: true } function => [..function.ParameterTypes, function.ReturnType],
+			FunctionType { IsExternal: true } function =>
+				[..function.ParameterTypes.Select((_, i) => function.GetDeclaredType(i)), function.ReturnType],
 			_ => []
 		};
 		

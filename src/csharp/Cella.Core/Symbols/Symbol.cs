@@ -295,8 +295,9 @@ public sealed class FunctionGroupType(string functionName, IEnumerable<FunctionI
 		foreach (var function in Functions)
 		{
 			var signature = function.Signature;
-			if (!signature.IsVariadic && !signature.HasMutParameter && signature.ReturnType == type.ReturnType &&
-			    signature.ParameterTypes.SequenceEqual(type.ParameterTypes))
+			if (!signature.IsVariadic && signature.ReturnType == type.ReturnType &&
+			    signature.ParameterTypes.SequenceEqual(type.ParameterTypes) &&
+			    type.ParameterModes.Select((_, i) => signature.GetMode(i)).SequenceEqual(type.ParameterModes))
 				return function;
 		}
 		
@@ -313,21 +314,27 @@ public sealed class FunctionType : TypeSymbol
 {
 	public bool IsExternal { get; }
 	public ImmutableArray<TypeSymbol> ParameterTypes { get; }
+	public ImmutableArray<ParameterMode> ParameterModes { get; }
 	public TypeSymbol ReturnType { get; }
 	
-	public FunctionType(bool isExternal, ImmutableArray<TypeSymbol> parameterTypes, TypeSymbol returnType)
-		: base(BuildName(isExternal, parameterTypes, returnType))
+	public FunctionType(bool isExternal, ImmutableArray<TypeSymbol> parameterTypes,
+		ImmutableArray<ParameterMode> parameterModes, TypeSymbol returnType)
+		: base(BuildName(isExternal, parameterTypes, parameterModes, returnType))
 	{
 		IsExternal = isExternal;
 		ParameterTypes = parameterTypes;
+		ParameterModes = parameterModes;
 		ReturnType = returnType;
 	}
 	
+	public TypeSymbol GetDeclaredType(int index) => ParameterModes[index].GetDeclaredType(ParameterTypes[index]);
+	
 	private static string BuildName(bool isExternal, ImmutableArray<TypeSymbol> parameterTypes,
-		TypeSymbol returnType)
+		ImmutableArray<ParameterMode> parameterModes, TypeSymbol returnType)
 	{
 		var prefix = isExternal ? "ext fun" : "fun";
-		var name = $"{prefix}({string.Join(", ", parameterTypes.Select(static t => t.Name))})";
+		var parameters = parameterTypes.Select((type, i) => parameterModes[i].Describe(type));
+		var name = $"{prefix}({string.Join(", ", parameters)})";
 		return returnType == NativeSymbols.Void ? name : $"{name} -> {returnType.Name}";
 	}
 }
@@ -384,6 +391,19 @@ public enum ParameterMode
 	ReadOnly,
 	Mut,
 	Own
+}
+
+public static class ParameterModeExtensions
+{
+	public static TypeSymbol GetDeclaredType(this ParameterMode mode, TypeSymbol passedType) =>
+		mode == ParameterMode.Mut && passedType is PointerType pointer ? pointer.BaseType : passedType;
+	
+	public static string Describe(this ParameterMode mode, TypeSymbol passedType) => mode switch
+	{
+		ParameterMode.Mut => $"mut {mode.GetDeclaredType(passedType).Name}",
+		ParameterMode.Own => $"own {passedType.Name}",
+		_ => passedType.Name
+	};
 }
 
 public sealed class ParameterSymbol : VariableSymbol
