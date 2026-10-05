@@ -1,0 +1,46 @@
+mod test
+
+Effect: enum
+{
+	hit(amount: i32)
+	none
+}
+
+Holder: rec
+{
+	effect: Effect
+	count: i32
+}
+
+amount: fun(effect: Effect) -> i32 = match effect { hit(n) => n  none => 0 }
+
+direct: fun -> i32
+{
+	var effect: Effect
+	ret amount(effect)
+}
+
+partial: fun(flag: bool) -> i32
+{
+	var effect: Effect
+	if flag
+		effect = Effect.none
+
+	ret amount(effect)
+}
+
+record: fun -> i32
+{
+	var holder: Holder
+	holder.count = 1
+	ret amount(holder.effect) + holder.count
+}
+
+array: fun -> i32
+{
+	var effects: array[Effect, 2]
+	effects[0] = Effect.none
+	ret amount(effects[1])
+}
+
+main: fun -> i32 = 0

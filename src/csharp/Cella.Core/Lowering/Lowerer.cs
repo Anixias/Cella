@@ -543,6 +543,7 @@ public sealed class Lowerer
 			{
 				{ Initializer: { } initializer } => Consume(VisitNode(initializer)),
 				{ Symbol.IsDeferred: true } => new UndefValue(node.Symbol.Type),
+				_ when !_typePool.HasDefault(node.Symbol.Type) => new UndefValue(node.Symbol.Type),
 				_ => new ZeroValue(node.Symbol.Type)
 			};
 			

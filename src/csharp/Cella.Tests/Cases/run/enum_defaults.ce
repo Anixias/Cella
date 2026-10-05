@@ -1,0 +1,53 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Mode: enum
+{
+	idle
+	running(speed: i32)
+}
+
+Effect: enum
+{
+	hit(amount: i32)
+	none
+}
+
+Holder: rec
+{
+	effect: Effect
+	count: i32
+}
+
+Settings: rec
+{
+	mode: Mode
+	level: i32
+}
+
+amount: fun(effect: Effect) -> i32 = match effect { hit(n) => n  none => 0 }
+speed: fun(mode: Mode) -> i32 = match mode { idle => -1  running(s) => s }
+
+main: fun -> i32
+{
+	var mode: Mode
+	var settings: Settings
+	val fresh = Settings()
+	printf("%d %d %d\n", speed(mode), speed(settings.mode), fresh.level)
+
+	var effect: Effect
+	effect = Effect.hit(3)
+	var holder: Holder
+	holder.effect = Effect.none
+	holder.count = 4
+	var effects: array[Effect, 2]
+	effects = [Effect.hit(5), Effect.none]
+	var built = Holder(Effect.hit(6), 7)
+	printf("%d %d %d %d %d\n", amount(effect), amount(holder.effect) + holder.count, amount(effects[0]),
+		amount(built.effect), built.count)
+	ret 0
+}

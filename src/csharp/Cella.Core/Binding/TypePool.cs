@@ -45,6 +45,7 @@ public sealed class TypePool
 	
 	public bool NeedsDrop(TypeSymbol type) => GetFacts(type).NeedsDrop;
 	public bool IsCopy(TypeSymbol type) => GetFacts(type).IsCopy;
+	public bool HasDefault(TypeSymbol type) => GetFacts(type).HasDefault;
 	
 	public bool PassesByPointer(TypeSymbol type, ParameterMode mode) =>
 		mode == ParameterMode.ReadOnly && NeedsDrop(type);
@@ -73,7 +74,8 @@ public sealed class TypePool
 		facts = type switch
 		{
 			RecordSymbol r => Combine(r.HasDestructor, GetParts(r)),
-			EnumSymbol or ArrayType => Combine(false, GetParts(type)),
+			EnumSymbol e => Combine(false, GetParts(e)) with { HasDefault = e.Cases is [{ Fields.IsEmpty: true }, ..] },
+			ArrayType => Combine(false, GetParts(type)),
 			_ => TypeFacts.Plain
 		};
 		
@@ -93,7 +95,8 @@ public sealed class TypePool
 	{
 		var facts = parts.Select(GetFacts).ToArray();
 		return new(hasDestructor || facts.Any(static f => f.NeedsDrop),
-			!hasDestructor && facts.All(static f => f.IsCopy));
+			!hasDestructor && facts.All(static f => f.IsCopy),
+			facts.All(static f => f.HasDefault));
 	}
 	
 	public static IReadOnlyDictionary<string, string> BuiltinGenericTypeArguments { get; } =
@@ -364,9 +367,9 @@ public sealed class TypePool
 		RegisterMember(type, length, lengthType);
 	}
 	
-	private readonly record struct TypeFacts(bool NeedsDrop, bool IsCopy)
+	private readonly record struct TypeFacts(bool NeedsDrop, bool IsCopy, bool HasDefault)
 	{
-		public static TypeFacts Plain => new(false, true);
+		public static TypeFacts Plain => new(false, true, true);
 	}
 }
 

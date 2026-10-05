@@ -679,7 +679,8 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	private IResolvedExpressionNode VisitRecordConstruction(CallExpressionNode node, RecordSymbol record)
 	{
 		var fields = _typePool.GetMembers(record).OfType<FieldSymbol>().ToArray();
-		if (node.Arguments.Length > 0 && node.Arguments.Length != fields.Length)
+		var hasDefault = _typePool.HasDefault(record);
+		if (node.Arguments.Length != fields.Length && (node.Arguments.Length > 0 || !hasDefault))
 		{
 			var args = node.Arguments.Select(a => VisitNode(a, null)).ToArray();
 			if (AnyInvalid(args))
@@ -691,9 +692,12 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			{
 				Hints =
 				[
-					fields.Length == 0
-						? $"'{record.Name}' has no fields"
-						: $"'{record.Name}' takes no arguments, or one for each field: {names}"
+					(fields.Length, hasDefault) switch
+					{
+						(0, _) => $"'{record.Name}' has no fields",
+						(_, true) => $"'{record.Name}' takes no arguments, or one for each field: {names}",
+						_ => $"'{record.Name}' takes one argument for each field: {names}"
+					}
 				]
 			};
 			

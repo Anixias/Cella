@@ -19,6 +19,18 @@ Counter: rec
 	}
 }
 
+Effect: enum
+{
+	hit(amount: i32)
+	none
+}
+
+Holder: rec
+{
+	effect: Effect
+	count: i32
+}
+
 main: fun -> i32
 {
 	var a = Point(1)
@@ -29,5 +41,7 @@ main: fun -> i32
 	var f = Point(missing, 2)
 	var g = Counter("abc")
 	var h = Counter(Counter(1))
+	var i = Holder()
+	var j = Holder(Effect.none)
 	ret 0
 }

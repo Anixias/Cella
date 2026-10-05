@@ -1,0 +1,24 @@
+
+====== missing_defaults.ce ======
+
+Error at line 20, column 13
+19 │ var effect: Effect
+20 │ ret amount(effect)
+                ╘════╛ Cannot use uninitialized values
+
+Error at line 29, column 13
+28 │ 
+29 │ ret amount(effect)
+                ╘════╛ Cannot use uninitialized values
+
+Error at line 36, column 13
+35 │ holder.count = 1
+36 │ ret amount(holder.effect) + holder.count
+                ╘═══════════╛ Cannot use uninitialized values
+
+Error at line 43, column 13
+42 │ effects[0] = Effect.none
+43 │ ret amount(effects[1])
+                ╘════════╛ Cannot use uninitialized values
+
+[compilation failed]
