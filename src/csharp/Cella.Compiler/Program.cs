@@ -208,7 +208,7 @@ internal static class Program
 		
 		// Phase 4: Type checking
 		{
-			var typeChecker = new TypeChecker(signatureCollector.Evaluator);
+			var typeChecker = new TypeChecker(signatureCollector.Evaluator, typePool);
 			
 			foreach (var (_, resolvedAst, _) in resolvedFiles)
 				typeChecker.Check(resolvedAst);

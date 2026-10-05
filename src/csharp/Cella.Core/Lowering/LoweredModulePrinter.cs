@@ -318,6 +318,11 @@ public static class LoweredModulePrinter
 					value = v.Right;
 					continue;
 				
+				case MoveValue v:
+					sb.Append("move ");
+					value = v.Place;
+					continue;
+				
 				case ConversionValue v:
 					sb.Append(v.Type.Name).Append('(');
 					PrintValue(sb, v.Source);

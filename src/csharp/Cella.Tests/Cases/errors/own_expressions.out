@@ -1,0 +1,64 @@
+
+====== own_expressions.ce ======
+
+Error at line 32, column 12
+31 │ var a = Buffer(1)
+32 │ val p = @(own a)
+               ╘═══╛ Cannot take the address of an unstored value
+
+Error at line 33, column 11
+32 │ val p = @(own a)
+33 │ bump(mut own a)
+              ╘═══╛ Cannot pass an unstored value as 'mut'
+
+Error at line 34, column 2
+33 │ bump(mut own a)
+34 │ own a = Buffer(2)
+     ╘═══╛ Assignment target must be addressable
+
+Error at line 35, column 2
+34 │ own a = Buffer(2)
+35 │ own a
+     ╘═══╛ Only assignments and function calls are allowed as statements
+
+Error at line 37, column 18
+36 │ 
+37 │ val field = own make().buffer
+                     ╘═══════════╛ 'own' has no effect on an unstored value
+
+Error at line 38, column 19
+37 │ val field = own make().buffer
+38 │ val global = own counter
+                      ╘═════╛ 'own' has no effect on 'counter', a module 'var'
+
+Error at line 39, column 21
+38 │ val global = own counter
+39 │ val constant = own limit
+                        ╘═══╛ 'own' has no effect on 'limit', a module 'val'
+
+Error at line 42, column 19
+41 │ val q = @number
+42 │ val copied = own *q
+                      ╘╛ 'own' has no effect on 'i32' through a pointer
+
+Error at line 45, column 18
+44 │ val h = @holder
+45 │ val count = own h.count
+                     ╘═════╛ 'own' has no effect on 'i32' through a pointer
+
+Error at line 47, column 17
+46 │ 
+47 │ val implicit = h.buffer
+                    ╘══════╛ A 'Buffer' moved out of a pointer must be marked 'own'
+
+Error at line 48, column 14
+47 │ val implicit = h.buffer
+48 │ val whole = *h
+                 ╘╛ A 'Holder' moved out of a pointer must be marked 'own'
+
+Error at line 49, column 19
+48 │ val whole = *h
+49 │ val given = take(h.buffer)
+                      ╘══════╛ A 'Buffer' moved out of a pointer must be marked 'own'
+
+[compilation failed]

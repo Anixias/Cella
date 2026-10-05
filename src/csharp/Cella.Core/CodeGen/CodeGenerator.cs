@@ -670,6 +670,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 		ZeroValue v => EmitZero(v),
 		VariableValue v => builder.BuildLoad2(MapTypeSymbol(v.Type), _varMap[v.Variable], v.Variable.Symbol.Name),
 		GlobalValue v => EmitGlobalLoad(v.Global, builder),
+		MoveValue v => EmitValue(v.Place, builder),
 		BinOpValue v => EmitBinaryOp(v, builder),
 		UnaryOpValue v => EmitUnaryOp(v, builder),
 		AssignValue v => EmitAssignValue(v, builder),

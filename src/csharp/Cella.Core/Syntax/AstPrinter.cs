@@ -521,6 +521,13 @@ public sealed class AstPrinter : ISyntaxNodeVisitor
 		VisitNode(node.Value, true);
 	}
 	
+	public void Visit(OwnExpressionNode node)
+	{
+		StartLine();
+		_sb.Append("OwnExpressionNode");
+		VisitNode(node.Value, true);
+	}
+	
 	public void Visit(VarExpressionNode node)
 	{
 		StartLine();

@@ -273,7 +273,7 @@ public sealed class Lowerer
 				location, index =>
 				{
 					var arm = node.Arms[index].Value;
-					var value = VisitNode(arm);
+					var value = Consume(VisitNode(arm));
 					if (result is not null)
 						currentBlock?.Instructions.Add(new ExpressionInstruction(
 							new AssignValue(node.Type, result, value, arm.Syntax.SourceLocation)));
@@ -429,7 +429,7 @@ public sealed class Lowerer
 		private void LowerReturn(IResolvedExpressionNode? expression, SourceLocation location)
 		{
 			GetOrMakeBlock();
-			var value = expression is null ? null : VisitNode(expression);
+			var value = expression is null ? null : Consume(VisitNode(expression));
 			if (currentBlock is not { } block)
 				return;
 			
@@ -437,7 +437,7 @@ public sealed class Lowerer
 			{
 				var returnSymbol = CreateTempSymbol(value.Type, "return");
 				block.Instructions.Add(new LocalVarInstruction(returnSymbol, value, location, scopeId: 0));
-				value = new VariableValue(new(returnSymbol, value.Type), location);
+				value = Consume(new VariableValue(new(returnSymbol, value.Type), location));
 			}
 			
 			EmitScopeEndsToDepth(0);
@@ -448,7 +448,10 @@ public sealed class Lowerer
 		public void Visit(ResolvedVarStatementNode node)
 		{
 			GetOrMakeBlock();
-			var value = node.Initializer is null ? new ZeroValue(node.Symbol.Type) : VisitNode(node.Initializer);
+			var value = node.Initializer is null
+				? new ZeroValue(node.Symbol.Type)
+				: Consume(VisitNode(node.Initializer));
+			
 			currentBlock?.Instructions.Add(new LocalVarInstruction(node.Symbol, value, node.Syntax.SourceLocation,
 				CurrentScopeId));
 		}
@@ -629,7 +632,7 @@ public sealed class Lowerer
 			var result = new VariableValue(new(resultSymbol, node.Type), sourceLocation);
 			foreach (var (field, value) in node.Fields)
 			{
-				var fieldValue = VisitNode(value);
+				var fieldValue = Consume(VisitNode(value));
 				var target = new AccessValue(fieldValue.Type, result, field, sourceLocation);
 				GetOrMakeBlock().Instructions.Add(
 					new ExpressionInstruction(new AssignValue(fieldValue.Type, target, fieldValue, sourceLocation)));
@@ -639,7 +642,7 @@ public sealed class Lowerer
 		}
 		
 		public Value Visit(ResolvedEnumCaseExpressionNode node) => new EnumValue((EnumSymbol)node.Type, node.Case,
-			LowerOperands(node.Payload), node.Syntax.SourceLocation);
+			LowerOperands(node.Payload, static _ => Passing.Consume), node.Syntax.SourceLocation);
 		
 		public Value Visit(ResolvedIsExpressionNode node)
 		{
@@ -679,9 +682,9 @@ public sealed class Lowerer
 		public Value Visit(ResolvedIndirectCallExpressionNode node)
 		{
 			var type = node.FunctionType;
-			var operands = LowerOperands([node.Target, ..node.Arguments],
-				i => i > 0 && _typePool.PassesByPointer(type.ParameterTypes[i - 1], type.ParameterModes[i - 1],
-					type.IsExternal));
+			var operands = LowerOperands([node.Target, ..node.Arguments], i => i == 0
+				? Passing.Read
+				: GetPassing(type.ParameterTypes[i - 1], type.ParameterModes[i - 1], type.IsExternal));
 			
 			return new IndirectCallValue(operands[0], operands.Skip(1), type, node.Syntax.SourceLocation);
 		}
@@ -716,8 +719,8 @@ public sealed class Lowerer
 		public Value Visit(ResolvedLiteralExpressionNode node) =>
 			MakeConstant(node.Type, node.Value);
 		
-		public Value Visit(ResolvedArrayExpressionNode node) =>
-			new ArrayValue((ArrayType)node.Type, LowerOperands(node.Values), node.Syntax.SourceLocation);
+		public Value Visit(ResolvedArrayExpressionNode node) => new ArrayValue((ArrayType)node.Type,
+			LowerOperands(node.Values, static _ => Passing.Consume), node.Syntax.SourceLocation);
 		
 		public Value Visit(ResolvedUnaryOpExpressionNode node)
 		{
@@ -727,6 +730,8 @@ public sealed class Lowerer
 		
 		public Value Visit(ResolvedUndefExpressionNode node) =>
 			new UndefValue(node.Type);
+		
+		public Value Visit(ResolvedOwnExpressionNode node) => new MoveValue(VisitPlace(node.Value));
 		
 		public Value Visit(ResolvedMutArgumentExpressionNode node) => new UnaryOpValue(node.Type,
 			VisitPlace(node.Place), UnaryOperation.AddressOf, node.Syntax.SourceLocation);
@@ -797,20 +802,37 @@ public sealed class Lowerer
 			return symbol;
 		}
 		
+		private enum Passing
+		{
+			Read,
+			Borrow,
+			Consume
+		}
+		
 		private List<Value> LowerOperands(IReadOnlyList<IResolvedExpressionNode> operands,
-			Func<int, bool>? isBorrowed = null)
+			Func<int, Passing>? passing = null)
 		{
 			var values = new List<Value>(operands.Count);
+			var passings = new List<Passing>(operands.Count);
 			for (var i = 0; i < operands.Count; i++)
 			{
 				var operand = operands[i];
 				if (MayEmit(operand))
 				{
 					for (var j = 0; j < values.Count; j++)
-						values[j] = CaptureAsAtomic(values[j], "operand");
+					{
+						var captured = CaptureAsAtomic(values[j], "operand");
+						values[j] = passings[j] == Passing.Consume ? Consume(captured) : captured;
+					}
 				}
 				
-				values.Add(isBorrowed?.Invoke(i) == true ? LowerBorrow(operand) : VisitNode(operand));
+				passings.Add(passing?.Invoke(i) ?? Passing.Read);
+				values.Add(passings[i] switch
+				{
+					Passing.Borrow => LowerBorrow(operand),
+					Passing.Consume => Consume(VisitNode(operand)),
+					_ => VisitNode(operand)
+				});
 			}
 			
 			return values;
@@ -820,11 +842,28 @@ public sealed class Lowerer
 			int firstParameter)
 		{
 			var signature = function.Signature;
-			return LowerOperands(arguments, i => firstParameter + i < signature.ParameterTypes.Length &&
-			                                     _typePool.PassesByPointer(signature.ParameterTypes[firstParameter + i],
-				                                     signature.GetMode(firstParameter + i),
-				                                     function.Symbol.IsExternal));
+			return LowerOperands(arguments, i => firstParameter + i < signature.ParameterTypes.Length
+				? GetPassing(signature.ParameterTypes[firstParameter + i], signature.GetMode(firstParameter + i),
+					function.Symbol.IsExternal)
+				: Passing.Read);
 		}
+		
+		private Passing GetPassing(TypeSymbol type, ParameterMode mode, bool isExternal) =>
+			_typePool.PassesByPointer(type, mode, isExternal) ? Passing.Borrow
+			: mode == ParameterMode.Own ? Passing.Consume
+			: Passing.Read;
+		
+		private Value Consume(Value value) =>
+			!_typePool.IsCopy(value.Type) && IsPlaceValue(value) ? new MoveValue(value) : value;
+		
+		private static bool IsPlaceValue(Value value) => value switch
+		{
+			VariableValue or GlobalValue or UnaryOpValue { Op: UnaryOperation.Dereference } => true,
+			AccessValue v => IsPlaceValue(v.Target),
+			IndexerValue v => IsPlaceValue(v.Target),
+			EnumPayloadValue v => IsPlaceValue(v.Target),
+			_ => false
+		};
 		
 		private UnaryOpValue LowerBorrow(IResolvedExpressionNode argument)
 		{
@@ -858,6 +897,7 @@ public sealed class Lowerer
 			ResolvedIndexerExpressionNode n => MayEmit(n.Target) || MayEmit(n.Index),
 			ResolvedUnaryOpExpressionNode n => MayEmit(n.Operand),
 			ResolvedMutArgumentExpressionNode n => MayEmit(n.Place),
+			ResolvedOwnExpressionNode n => MayEmit(n.Value),
 			ResolvedBinaryOpExpressionNode n => IsShortCircuitOp(n.Operation) || MayEmit(n.Left) || MayEmit(n.Right),
 			ResolvedAssignmentExpressionNode n => n.Operation is not null || MayEmit(n.Left) || MayEmit(n.Right),
 			ResolvedFunctionCallExpressionNode n => n.Arguments.Any(MayEmit),
@@ -877,7 +917,7 @@ public sealed class Lowerer
 				left = StabilizeStorage(left);
 			
 			var current = node.Operation is not null && emits ? CaptureAsAtomic(left, "current") : left;
-			var right = VisitNode(node.Right);
+			var right = Consume(VisitNode(node.Right));
 			var value = node.Operation is null ? right : LowerBinOp(current, node.Operation, right);
 			return new AssignValue(node.Type, left, value, node.Op.SourceLocation);
 		}
@@ -1087,6 +1127,8 @@ public sealed class Lowerer
 			ConstantValue or ZeroValue or UndefValue or FunctionReferenceValue => true,
 			VariableValue { Variable.Symbol: LocalVariableSymbol symbol } =>
 				!symbol.IsMutable || _temporaries.Contains(symbol),
+			MoveValue { Place: VariableValue { Variable.Symbol: LocalVariableSymbol symbol } } =>
+				_temporaries.Contains(symbol),
 			_ => false
 		};
 	}

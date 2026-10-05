@@ -1,0 +1,21 @@
+mod test
+
+Buffer: rec
+{
+	id: i32
+}
+
+make: fun -> Buffer = Buffer(1)
+over: fun(x: i32) -> i32 = x
+over: fun(x: i64) -> i64 = x
+
+main: fun -> i32
+{
+	val a = own make()
+	val b = own 7
+	val c = own Buffer(2)
+	val d: fun(i32) -> i32 = own over
+	val e: ptr = own null
+	val f = own (3 + 4)
+	ret 0
+}

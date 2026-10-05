@@ -79,6 +79,11 @@ public sealed class GlobalValue(GlobalInfo global, SourceLocation sourceLocation
 	public GlobalInfo Global { get; } = global;
 }
 
+public sealed class MoveValue(Value place) : Value(place.Type, false, place.SourceLocation)
+{
+	public Value Place { get; } = place;
+}
+
 public sealed class ConversionValue(Value source, Conversion conversion, SourceLocation sourceLocation)
 	: Value(conversion.To, source.IsConstant && conversion.IsConstant, sourceLocation)
 {

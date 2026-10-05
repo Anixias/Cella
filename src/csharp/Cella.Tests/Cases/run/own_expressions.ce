@@ -1,0 +1,81 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Buffer: rec
+{
+	id: i32
+
+	new: op(id: i32)
+	{
+		self.id = id
+	}
+
+	drop: op
+	{
+	}
+}
+
+Holder: rec
+{
+	buffer: Buffer
+	count: i32
+}
+
+Effect: enum
+{
+	none
+	owned(buffer: Buffer)
+}
+
+same: fun(buffer: Buffer, address: ptr[Buffer]) -> bool = @buffer == address
+keep: fun(own count: i32) -> i32 = count
+take: fun(own buffer: Buffer) -> i32 = buffer.id
+give: fun(own buffer: Buffer) -> Buffer = own buffer
+flag: fun(value: bool) -> i32 = i32(value)
+
+main: fun -> i32
+{
+	var count = 6
+	val moved = own count
+	var other = 7
+	val wide: i64 = own other
+	var third = 8
+	printf("%d %lld %d\n", moved, wide, keep(own third))
+
+	var d = Buffer(9)
+	val address = @d
+	printf("%d %d\n", flag(same(d, address)), flag(same(own d, address)))
+
+	var values = [Buffer(10), Buffer(11)]
+	val p = @values[0]
+	val first = own *p
+	var holder = Holder(Buffer(12), 13)
+	val h = @holder
+	val inner = own h.buffer
+	printf("%d %d\n", first.id, inner.id)
+
+	val effect = Effect.owned(Buffer(14))
+	if own effect is owned(buffer)
+		printf("%d\n", buffer.id)
+
+	var next = Effect.owned(Buffer(15))
+	match own next
+	{
+		owned(buffer) => printf("%d\n", buffer.id)
+		else => {}
+	}
+
+	var e = Buffer(16)
+	val f = own e
+	var g = Buffer(17)
+	val wrapped = Holder(own g, 18)
+	var k = Buffer(19)
+	printf("%d %d %d %d\n", f.id, wrapped.buffer.id, take(own k), give(Buffer(20)).id)
+
+	var status = 0
+	ret own status
+}

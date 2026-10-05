@@ -1,0 +1,34 @@
+
+====== own_unstored.ce ======
+
+Error at line 14, column 14
+13 │ {
+14 │     val a = own make()
+                     ╘════╛ 'own' has no effect on an unstored value
+
+Error at line 15, column 14
+14 │ val a = own make()
+15 │ val b = own 7
+                 ^ 'own' has no effect on an unstored value
+
+Error at line 16, column 14
+15 │ val b = own 7
+16 │ val c = own Buffer(2)
+                 ╘═══════╛ 'own' has no effect on an unstored value
+
+Error at line 17, column 31
+16 │ val c = own Buffer(2)
+17 │ val d: fun(i32) -> i32 = own over
+                                  ╘══╛ 'own' has no effect on an unstored value
+
+Error at line 18, column 19
+17 │ val d: fun(i32) -> i32 = own over
+18 │ val e: ptr = own null
+                      ╘══╛ 'own' has no effect on an unstored value
+
+Error at line 19, column 15
+18 │ val e: ptr = own null
+19 │ val f = own (3 + 4)
+                  ╘═══╛ 'own' has no effect on an unstored value
+
+[compilation failed]

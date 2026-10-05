@@ -9,7 +9,7 @@ using Cella.Diagnostics;
 
 namespace Cella.Core.Binding;
 
-public sealed class TypeChecker(ConstantEvaluator evaluator) : IResolvedStatementNodeVisitor,
+public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool) : IResolvedStatementNodeVisitor,
 	IResolvedDeclarationNodeVisitor, IResolvedExpressionNodeVisitor
 {
 	public DiagnosticList Diagnostics { get; } = new();
@@ -148,7 +148,10 @@ public sealed class TypeChecker(ConstantEvaluator evaluator) : IResolvedStatemen
 		
 		VisitNode(node.Value);
 		foreach (var arm in node.Arms)
+		{
 			VisitNode(arm.Value);
+			CheckConsumed(arm.Value);
+		}
 	}
 	
 	public void Visit(ResolvedReturnExpressionNode node)
@@ -160,8 +163,11 @@ public sealed class TypeChecker(ConstantEvaluator evaluator) : IResolvedStatemen
 			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Syntax.SourceLocation,
 				$"Cannot return value of type '{actual.Name}': Expected type '{expected?.Name ?? "void"}'"));
 		
-		if (node.Value is { } value)
-			VisitNode(value);
+		if (node.Value is not { } value)
+			return;
+		
+		VisitNode(value);
+		CheckConsumed(value);
 	}
 	
 	public void Visit(ResolvedVarStatementNode node)
@@ -177,7 +183,10 @@ public sealed class TypeChecker(ConstantEvaluator evaluator) : IResolvedStatemen
 			
 			// Special case: If undef, don't check (it will throw an error)
 			if (initializer is not ResolvedUndefExpressionNode)
+			{
 				VisitNode(initializer);
+				CheckConsumed(initializer);
+			}
 		}
 		else if (expected == NativeSymbols.Invalid)
 			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Syntax.SourceLocation,
@@ -338,7 +347,10 @@ public sealed class TypeChecker(ConstantEvaluator evaluator) : IResolvedStatemen
 	public void Visit(ResolvedArrayExpressionNode node)
 	{
 		foreach (var value in node.Values)
+		{
 			VisitNode(value);
+			CheckConsumed(value);
+		}
 	}
 	
 	public void Visit(ResolvedAssignmentExpressionNode node)
@@ -365,6 +377,8 @@ public sealed class TypeChecker(ConstantEvaluator evaluator) : IResolvedStatemen
 		
 		VisitNode(node.Left);
 		VisitNode(node.Right);
+		if (node.Operation is null)
+			CheckConsumed(node.Right);
 	}
 	
 	public void Visit(ResolvedBinaryOpExpressionNode node)
@@ -409,6 +423,8 @@ public sealed class TypeChecker(ConstantEvaluator evaluator) : IResolvedStatemen
 					$"Argument type '{actual.Name}' is not assignable to parameter type '{expected.Name}'"));
 			
 			VisitNode(arg);
+			if (node.Function.Signature.GetMode(i + 1) == ParameterMode.Own)
+				CheckConsumed(arg);
 		}
 	}
 	
@@ -452,12 +468,48 @@ public sealed class TypeChecker(ConstantEvaluator evaluator) : IResolvedStatemen
 					$"Argument type '{actual.Name}' is not assignable to parameter type '{expected.Name}'"));
 			
 			VisitNode(arg);
+			if (signature.GetMode(i) == ParameterMode.Own)
+				CheckConsumed(arg);
 		}
 	}
 	
 	public void Visit(ResolvedFunctionReferenceExpressionNode node)
 	{
 	}
+	
+	public void Visit(ResolvedOwnExpressionNode node)
+	{
+		var location = node.Value.Syntax.SourceLocation;
+		if (!IsLValue(node.Value))
+			Diagnostics.Add(new(DiagnosticSeverity.Error, location, "'own' has no effect on an unstored value"));
+		else if (node.Value is ResolvedGlobalExpressionNode { Symbol: var global })
+			Diagnostics.Add(new(DiagnosticSeverity.Error, location,
+				$"'own' has no effect on '{global.Name}', a module '{(global.IsMutable ? "var" : "val")}'"));
+		else if (IsThroughPointer(node.Value) && typePool.IsCopy(node.Value.Type))
+			Diagnostics.Add(new(DiagnosticSeverity.Error, location,
+				$"'own' has no effect on '{node.Value.Type.Name}' through a pointer"));
+		
+		VisitNode(node.Value);
+	}
+	
+	private void CheckConsumed(IResolvedExpressionNode value)
+	{
+		if (value is not ResolvedOwnExpressionNode && IsLValue(value) && IsThroughPointer(value) &&
+		    !typePool.IsCopy(value.Type))
+			Diagnostics.Add(new(DiagnosticSeverity.Error, value.Syntax.SourceLocation,
+				$"A '{value.Type.Name}' moved out of a pointer must be marked 'own'"));
+	}
+	
+	private static bool IsThroughPointer(IResolvedExpressionNode place) => place switch
+	{
+		ResolvedAccessExpressionNode n => IsThroughPointer(n.Target),
+		ResolvedIndexerExpressionNode n => IsThroughPointer(n.Target),
+		ResolvedUnaryOpExpressionNode { Operation.Op: TokenType.OpStar } n => n.Operand is not ResolvedVarExpressionNode
+		{
+			Symbol: ParameterSymbol { Mode: ParameterMode.Mut } or LocalVariableSymbol { IsMutBinding: true }
+		},
+		_ => false
+	};
 	
 	public void Visit(ResolvedMutArgumentExpressionNode node)
 	{
@@ -485,7 +537,10 @@ public sealed class TypeChecker(ConstantEvaluator evaluator) : IResolvedStatemen
 	public void Visit(ResolvedEnumCaseExpressionNode node)
 	{
 		foreach (var value in node.Payload)
+		{
 			VisitNode(value);
+			CheckConsumed(value);
+		}
 	}
 	
 	public void Visit(ResolvedIsExpressionNode node)
@@ -499,8 +554,12 @@ public sealed class TypeChecker(ConstantEvaluator evaluator) : IResolvedStatemen
 	public void Visit(ResolvedIndirectCallExpressionNode node)
 	{
 		VisitNode(node.Target);
-		foreach (var argument in node.Arguments)
-			VisitNode(argument);
+		for (var i = 0; i < node.Arguments.Length; i++)
+		{
+			VisitNode(node.Arguments[i]);
+			if (node.FunctionType.ParameterModes[i] == ParameterMode.Own)
+				CheckConsumed(node.Arguments[i]);
+		}
 	}
 	
 	public void Visit(ResolvedIndexerExpressionNode node)
@@ -524,7 +583,10 @@ public sealed class TypeChecker(ConstantEvaluator evaluator) : IResolvedStatemen
 	public void Visit(ResolvedRecordExpressionNode node)
 	{
 		foreach (var (_, value) in node.Fields)
+		{
 			VisitNode(value);
+			CheckConsumed(value);
+		}
 	}
 	
 	public void Visit(ResolvedUnaryOpExpressionNode node)

@@ -838,6 +838,24 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		return new ResolvedMutArgumentExpressionNode(place, _typePool.GetPointerType(place.Type), argument);
 	}
 	
+	public IResolvedExpressionNode Visit(OwnExpressionNode node)
+	{
+		var isPlace = node.Value is VarExpressionNode or AccessExpressionNode or IndexerExpressionNode
+			or UnaryOpExpressionNode { Op.Type: TokenType.OpStar };
+		
+		var value = VisitNode(node.Value, isPlace ? null : CurrentTargetType);
+		if (IsInvalid(value))
+			return value;
+		
+		if (isPlace && value.Type is not UntypedType)
+			return new ResolvedOwnExpressionNode(value, node);
+		
+		Diagnostics.Add(new(DiagnosticSeverity.Error, node.Value.SourceLocation,
+			"'own' has no effect on an unstored value"));
+		
+		return value;
+	}
+	
 	public IResolvedExpressionNode Visit(MutArgumentExpressionNode node)
 	{
 		VisitNode(node.Value, null);

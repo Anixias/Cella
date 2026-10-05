@@ -37,6 +37,7 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 		TokenType.KeywordNameOf,
 		TokenType.KeywordMatch,
 		TokenType.KeywordMut,
+		TokenType.KeywordOwn,
 		TokenType.KeywordRet,
 		TokenType.KeywordBreak,
 		TokenType.KeywordCont
@@ -322,6 +323,9 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 	
 	private IExpressionNode ParseUnary(ref int index)
 	{
+		if (Match(ref index, out var ownKeyword, TokenType.KeywordOwn))
+			return new OwnExpressionNode(ownKeyword, ParseUnary(ref index));
+		
 		if (!Match(ref index, out var op, _unaryPrefixOps))
 			return ParsePrimary(ref index);
 		

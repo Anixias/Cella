@@ -1,0 +1,51 @@
+mod test
+
+Buffer: rec
+{
+	id: i32
+
+	drop: op
+	{
+	}
+}
+
+Holder: rec
+{
+	buffer: Buffer
+	count: i32
+}
+
+counter: var i32 = 0
+limit: val i32 = 3
+
+bump: fun(mut buffer: Buffer)
+{
+	buffer.id += 1
+}
+
+take: fun(own buffer: Buffer) -> i32 = buffer.id
+make: fun -> Holder = Holder(Buffer(1), 2)
+
+main: fun -> i32
+{
+	var a = Buffer(1)
+	val p = @(own a)
+	bump(mut own a)
+	own a = Buffer(2)
+	own a
+
+	val field = own make().buffer
+	val global = own counter
+	val constant = own limit
+	var number = 4
+	val q = @number
+	val copied = own *q
+	var holder = Holder(Buffer(5), 6)
+	val h = @holder
+	val count = own h.count
+
+	val implicit = h.buffer
+	val whole = *h
+	val given = take(h.buffer)
+	ret 0
+}
