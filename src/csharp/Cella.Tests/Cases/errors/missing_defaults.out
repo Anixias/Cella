@@ -41,4 +41,24 @@ Error at line 80, column 6
 80 │ ret f(-6)
          ^ Cannot use uninitialized values
 
+Error at line 104, column 15
+103 │ handler.scale = 3
+104 │ ret describe(handler)
+                   ╘═════╛ Cannot use partly initialized values
+
+Error at line 111, column 19
+110 │ pair.first = abs
+111 │ ret describePair(pair)
+                       ╘══╛ Cannot use partly initialized values
+
+Error at line 118, column 18
+117 │ handlers[0].callback = abs
+118 │ ret describeAll(handlers)
+                      ╘══════╛ Cannot use partly initialized values
+
+Error at line 125, column 20
+124 │ outer.label = 1
+125 │ ret describeOuter(outer)
+                        ╘═══╛ Cannot use partly initialized values
+
 [compilation failed]

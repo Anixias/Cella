@@ -80,4 +80,49 @@ native: fun -> i32
 	ret f(-6)
 }
 
+Pair: rec
+{
+	first: fun(i32) -> i32
+	second: fun(i32) -> i32
+}
+
+Outer: rec
+{
+	handler: Handler
+	label: i32
+}
+
+describe: fun(handler: Handler) -> i32 = handler.scale
+describePair: fun(pair: Pair) -> i32 = 0
+describeAll: fun(handlers: array[Handler, 2]) -> i32 = 0
+describeOuter: fun(outer: Outer) -> i32 = outer.label
+
+wholeHandler: fun -> i32
+{
+	var handler: Handler
+	handler.scale = 3
+	ret describe(handler)
+}
+
+wholePair: fun -> i32
+{
+	var pair: Pair
+	pair.first = abs
+	ret describePair(pair)
+}
+
+wholeHandlers: fun -> i32
+{
+	var handlers: array[Handler, 2]
+	handlers[0].callback = abs
+	ret describeAll(handlers)
+}
+
+wholeOuter: fun -> i32
+{
+	var outer: Outer
+	outer.label = 1
+	ret describeOuter(outer)
+}
+
 main: fun -> i32 = 0

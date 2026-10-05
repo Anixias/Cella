@@ -1,0 +1,126 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Effect: enum
+{
+	hit(amount: i32)
+	none
+}
+
+Handler: rec
+{
+	callback: fun(i32) -> i32
+	scale: i32
+}
+
+double: fun(n: i32) -> i32 = n * 2
+negate: fun(n: i32) -> i32 = -n
+
+amount: fun(effect: Effect) -> i32 = match effect
+{
+	hit(n) => n
+	none => 0
+}
+
+Branches: rec
+{
+	effect: Effect
+	count: i32
+
+	new: op(flag: bool)
+	{
+		if flag
+			self.effect = Effect.hit(5)
+		else
+			self.effect = Effect.none
+	}
+}
+
+Matched: rec
+{
+	effect: Effect
+
+	new: op(source: Effect)
+	{
+		match source
+		{
+			hit(n) => self.effect = Effect.hit(n * 2)
+			none => self.effect = Effect.none
+		}
+	}
+}
+
+Early: rec
+{
+	effect: Effect
+	extra: i32
+
+	new: op(flag: bool)
+	{
+		self.effect = Effect.hit(7)
+		if flag
+			ret
+
+		self.extra = 1
+	}
+}
+
+Wrapper: rec
+{
+	handler: Handler
+	parts: Handler
+
+	new: op()
+	{
+		self.handler = Handler(double, 3)
+		self.parts.callback = negate
+		self.parts.scale = 4
+	}
+}
+
+Table: rec
+{
+	callbacks: array[fun(i32) -> i32, 2]
+
+	new: op()
+	{
+		self.callbacks[0] = double
+		self.callbacks[1] = negate
+	}
+}
+
+describe: fun(whole: Whole) -> i32 = amount(whole.effect) + whole.count
+
+Whole: rec
+{
+	effect: Effect
+	count: i32
+	total: i32
+
+	new: op(count: i32)
+	{
+		self.effect = Effect.hit(count)
+		self.count = count
+		self.total = describe(self)
+	}
+}
+
+main: fun -> i32
+{
+	val branches = Branches(true)
+	val matched = Matched(Effect.hit(9))
+	val early = Early(true)
+	val wrapper = Wrapper()
+	val table = Table()
+	val whole = Whole(6)
+	printf("%d %d %d %d %d\n", amount(branches.effect), branches.count, amount(Branches(false).effect),
+		amount(matched.effect), amount(Matched(Effect.none).effect))
+	printf("%d %d %d\n", amount(early.effect), early.extra, Early(false).extra)
+	printf("%d %d\n", wrapper.handler.callback(wrapper.handler.scale), wrapper.parts.callback(wrapper.parts.scale))
+	printf("%d %d %d\n", table.callbacks[0](5) + table.callbacks[1](1), whole.total, whole.count)
+	ret 0
+}

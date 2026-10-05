@@ -1,6 +1,7 @@
 ﻿using Cella.Core.Binding;
 using Cella.Core.Lowering;
 using Cella.Core.Symbols;
+using Cella.Core.Syntax.Nodes;
 using Cella.Core.Text;
 using Cella.Diagnostics;
 
@@ -17,9 +18,12 @@ public sealed class MemoryChecker(TypePool typePool, DiagnosticList diagnostics)
 	public void Check(LoweredFunction function)
 	{
 		var events = EventLinearizer.Linearize(function);
-		var paths = MovePaths.Build(function, events.Values.SelectMany(static e => e), typePool);
+		var requiredFields = GetRequiredFields(function);
+		var paths = MovePaths.Build(function, events.Values.SelectMany(static e => e), requiredFields, typePool);
+		var entryState = CreateEntryState(function, paths);
 		var reportedMoves = new HashSet<SourceLocation>();
-		foreach (var (block, state) in SolveInitialization(function, events, paths))
+		InitState? returnState = null;
+		foreach (var (block, state) in SolveInitialization(function, events, paths, entryState))
 		{
 			foreach (var memoryEvent in events[block])
 			{
@@ -49,9 +53,52 @@ public sealed class MemoryChecker(TypePool typePool, DiagnosticList diagnostics)
 				Transfer(state, memoryEvent, paths);
 			}
 			
-			if (block.Terminator is ReturnTerminator)
-				CheckRefills(function, state, paths, reportedMoves);
+			if (block.Terminator is not ReturnTerminator)
+				continue;
+			
+			CheckRefills(function, state, paths, reportedMoves);
+			if (returnState is null)
+				returnState = state;
+			else
+				returnState.JoinWith(state);
 		}
+		
+		if (returnState is not null)
+			CheckRequiredFields(function, requiredFields, returnState, paths);
+	}
+	
+	private List<Place> GetRequiredFields(LoweredFunction function)
+	{
+		if (function.Info.Symbol is not { Kind: FunctionKind.Constructor, Parameters: [var self, ..] } ||
+		    function.Info.Signature.GetDeclaredType(0) is not RecordSymbol record)
+			return [];
+		
+		return typePool.GetMembers(record)
+			.OfType<FieldSymbol>()
+			.Where(field => !typePool.HasDefault(typePool.GetTypeOfMember(field)))
+			.Select(field => new Place(self, [new FieldProjection(field)]))
+			.ToList();
+	}
+	
+	private void CheckRequiredFields(LoweredFunction function, List<Place> requiredFields, InitState state,
+		MovePaths paths)
+	{
+		if (function.Info.Symbol.Syntax is not ConstructorNode constructor)
+			return;
+		
+		var hints = new List<string>();
+		foreach (var field in requiredFields)
+		{
+			if (paths.Find(field) is not { } path || !state.GetUninitialized(path).HasFlag(PathState.Unassigned))
+				continue;
+			
+			var name = ((FieldProjection)field.Path[0]).Field.Name;
+			var condition = state.HasInitializedPart(path) ? "partly initialized" : "uninitialized";
+			hints.Add($"'{name}' is {condition}");
+		}
+		
+		if (hints.Count > 0)
+			Report(constructor.Keyword.SourceLocation, "Cannot leave fields uninitialized", hints);
 	}
 	
 	private void CheckAccess(AccessEvent access, InitState state, MovePaths paths)
@@ -167,7 +214,7 @@ public sealed class MemoryChecker(TypePool typePool, DiagnosticList diagnostics)
 		.Distinct();
 	
 	private Dictionary<BasicBlock, InitState> SolveInitialization(LoweredFunction function,
-		Dictionary<BasicBlock, List<MemoryEvent>> events, MovePaths paths)
+		Dictionary<BasicBlock, List<MemoryEvent>> events, MovePaths paths, InitState entryState)
 	{
 		var order = CfgUtils.GetReversePostorder(function);
 		var entryStates = new Dictionary<BasicBlock, InitState>();
@@ -178,9 +225,7 @@ public sealed class MemoryChecker(TypePool typePool, DiagnosticList diagnostics)
 			changed = false;
 			foreach (var block in order)
 			{
-				var state = block == order[0]
-					? CreateEntryState(function, paths)
-					: new InitState(paths.Count, PathState.None);
+				var state = block == order[0] ? entryState.Copy() : new InitState(paths.Count, PathState.None);
 				
 				foreach (var predecessor in block.GetPredecessors())
 				{
@@ -205,21 +250,47 @@ public sealed class MemoryChecker(TypePool typePool, DiagnosticList diagnostics)
 		return entryStates;
 	}
 	
-	private static InitState CreateEntryState(LoweredFunction function, MovePaths paths)
+	private InitState CreateEntryState(LoweredFunction function, MovePaths paths)
 	{
 		var state = new InitState(paths.Count, PathState.Unassigned);
 		foreach (var parameter in function.Info.Symbol.Parameters)
 			state.Set(paths.GetRoot(parameter), PathState.Initialized);
 		
+		if (function.Info.Symbol is { Kind: FunctionKind.Constructor, Parameters: [var self, ..] })
+			SetDefaults(state, paths.GetRoot(self));
+		
 		return state;
 	}
+	
+	private void SetDefaults(InitState state, MovePath path)
+	{
+		if (typePool.HasDefault(path.Type))
+		{
+			state.Set(path, PathState.Initialized);
+			return;
+		}
+		
+		state.Set(path, UntrackedPartsHaveDefaults(path) ? PathState.Initialized : PathState.Unassigned);
+		foreach (var child in path.Children)
+			SetDefaults(state, child);
+	}
+	
+	private bool UntrackedPartsHaveDefaults(MovePath path) =>
+		path is { IsComplete: false, Type: RecordSymbol record } && typePool.GetMembers(record)
+			.OfType<FieldSymbol>()
+			.Where(field => path.GetChild(new FieldProjection(field)) is null)
+			.All(field => typePool.HasDefault(typePool.GetTypeOfMember(field)));
 	
 	private void Transfer(InitState state, MemoryEvent memoryEvent, MovePaths paths)
 	{
 		switch (memoryEvent)
 		{
+			case DefineEvent { Kind: DefineKind.Zero } e:
+				SetDefaults(state, paths.GetRoot(e.Local));
+				break;
+			
 			case DefineEvent e:
-				state.Set(paths.GetRoot(e.Local), e.IsUndef ? PathState.Undef : PathState.Initialized);
+				state.Set(paths.GetRoot(e.Local), e.Kind == DefineKind.Undef ? PathState.Undef : PathState.Initialized);
 				break;
 			
 			case WriteEvent e when paths.Find(e.Place) is { } path:

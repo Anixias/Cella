@@ -744,7 +744,7 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 		var (source, range) = newKeyword.SourceLocation;
 		range = range.Join(body.SourceLocation.Range);
 		
-		return new(modifiers, parameters, body, new(source, range));
+		return new(newKeyword, modifiers, parameters, body, new(source, range));
 	}
 	
 	private DestructorNode? ParseDestructor(ref int index, Token dropKeyword)

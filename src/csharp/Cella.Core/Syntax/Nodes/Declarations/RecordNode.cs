@@ -27,12 +27,14 @@ public sealed class FieldNode
 
 public sealed class ConstructorNode
 (
+	Token keyword,
 	IEnumerable<Token> modifiers,
 	IEnumerable<ParameterNode> parameters,
 	IStatementNode body,
 	SourceLocation sourceLocation
 ) : IDeclarationNode
 {
+	public Token Keyword { get; } = keyword;
 	public ImmutableArray<Token> Modifiers { get; } = modifiers.ToImmutableArray();
 	public ImmutableArray<ParameterNode> Parameters { get; } = parameters.ToImmutableArray();
 	public IStatementNode Body { get; } = body;

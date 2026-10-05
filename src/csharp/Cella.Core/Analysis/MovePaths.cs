@@ -48,7 +48,8 @@ public sealed class MovePaths
 		_typePool = typePool;
 	}
 	
-	public static MovePaths Build(LoweredFunction function, IEnumerable<MemoryEvent> events, TypePool typePool)
+	public static MovePaths Build(LoweredFunction function, IEnumerable<MemoryEvent> events, IEnumerable<Place> places,
+		TypePool typePool)
 	{
 		var paths = new MovePaths(typePool);
 		var parameters = function.Info.Symbol.Parameters;
@@ -72,6 +73,9 @@ public sealed class MovePaths
 			if (place is not null)
 				paths.Track(place);
 		}
+		
+		foreach (var place in places)
+			paths.Track(place);
 		
 		foreach (var root in paths._roots.Values)
 			root.Number(paths._paths);

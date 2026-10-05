@@ -1,0 +1,101 @@
+mod test
+
+Effect: enum
+{
+	hit(amount: i32)
+	none
+}
+
+Handler: rec
+{
+	callback: fun(i32) -> i32
+	scale: i32
+}
+
+Holder: rec
+{
+	effect: Effect
+	count: i32
+
+	new: op(count: i32)
+	{
+		self.count = count
+	}
+}
+
+Sometimes: rec
+{
+	effect: Effect
+
+	new: op(flag: bool)
+	{
+		if flag
+			self.effect = Effect.hit(1)
+	}
+}
+
+Early: rec
+{
+	effect: Effect
+
+	new: op(flag: bool)
+	{
+		if flag
+			ret
+
+		self.effect = Effect.none
+	}
+}
+
+Looped: rec
+{
+	effect: Effect
+
+	new: op(count: i32)
+	{
+		var i = 0
+		loop while i < count
+		{
+			self.effect = Effect.hit(i)
+			i += 1
+		}
+	}
+}
+
+Wrapper: rec
+{
+	handler: Handler
+
+	new: op(scale: i32)
+	{
+		self.handler.scale = scale
+	}
+}
+
+Pair: rec
+{
+	first: Effect
+	count: i32
+	second: fun(i32) -> i32
+
+	new: op()
+	{
+	}
+}
+
+describe: fun(user: User) -> i32 = user.count
+
+User: rec
+{
+	effect: Effect
+	count: i32
+
+	new: op(count: i32)
+	{
+		val copy = self.effect
+		self.count = describe(self)
+		self.effect = copy
+	}
+}
+
+main: fun -> i32 = 0

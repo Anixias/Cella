@@ -54,7 +54,13 @@ public sealed class EventLinearizer
 		{
 			case LocalVarInstruction i:
 				AddValue(i.Initializer);
-				events.Add(new DefineEvent(i.Symbol, i.Initializer is UndefValue, i.SourceLocation));
+				events.Add(new DefineEvent(i.Symbol, i.Initializer switch
+				{
+					UndefValue => DefineKind.Undef,
+					ZeroValue => DefineKind.Zero,
+					_ => DefineKind.Value
+				}, i.SourceLocation));
+				
 				break;
 			
 			case ExpressionInstruction i:
@@ -110,6 +116,18 @@ public sealed class EventLinearizer
 				case EnumTagValue v:
 					value = v.Target;
 					continue;
+				
+				case CallValue
+				{
+					Function.Symbol.Kind: FunctionKind.Constructor,
+					Arguments: [UnaryOpValue { Op: UnaryOperation.AddressOf, Operand: var self }, ..]
+				} v:
+					AddValues(v.Arguments.Skip(1));
+					AddOperands(self);
+					if (GetPlace(self) is { } constructed)
+						events.Add(new WriteEvent(constructed, self.SourceLocation));
+					
+					break;
 				
 				case CallValue v:
 					AddValues(v.Arguments);

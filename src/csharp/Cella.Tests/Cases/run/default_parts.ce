@@ -1,0 +1,90 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Effect: enum
+{
+	hit(amount: i32)
+	none
+}
+
+Handler: rec
+{
+	callback: fun(i32) -> i32
+	scale: i32
+}
+
+Holder: rec
+{
+	effect: Effect
+	count: i32
+}
+
+Outer: rec
+{
+	handler: Handler
+	label: i32
+}
+
+Wrapper: rec
+{
+	handler: Handler
+
+	new: op(f: fun(i32) -> i32)
+	{
+		self.handler.callback = f
+	}
+}
+
+double: fun(n: i32) -> i32 = n * 2
+negate: fun(n: i32) -> i32 = -n
+
+amount: fun(effect: Effect) -> i32 = match effect
+{
+	hit(n) => n
+	none => 0
+}
+
+local: fun -> i32
+{
+	var handler: Handler
+	handler.callback = double
+	ret handler.callback(5) + handler.scale
+}
+
+holder: fun -> i32
+{
+	var holder: Holder
+	holder.effect = Effect.hit(3)
+	ret amount(holder.effect) + holder.count
+}
+
+elements: fun -> i32
+{
+	var handlers: array[Handler, 2]
+	handlers[0].callback = double
+	handlers[1].callback = negate
+	ret handlers[0].callback(handlers[1].scale + 4) + handlers[1].callback(1)
+}
+
+nested: fun -> i32
+{
+	var outer: Outer
+	outer.handler.callback = negate
+	ret outer.handler.callback(outer.label + 2)
+}
+
+constructed: fun -> i32
+{
+	val wrapper = Wrapper(double)
+	ret wrapper.handler.callback(wrapper.handler.scale + 21)
+}
+
+main: fun -> i32
+{
+	printf("%d %d %d %d %d\n", local(), holder(), elements(), nested(), constructed())
+	ret 0
+}

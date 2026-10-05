@@ -11,11 +11,18 @@ public enum AccessKind
 	Move
 }
 
+public enum DefineKind
+{
+	Value,
+	Zero,
+	Undef
+}
+
 public abstract record MemoryEvent(SourceLocation Location);
 public sealed record AccessEvent(Place Place, AccessKind Kind, SourceLocation Location) : MemoryEvent(Location);
 public sealed record WriteEvent(Place Place, SourceLocation Location) : MemoryEvent(Location);
 
-public sealed record DefineEvent(LocalVariableSymbol Local, bool IsUndef, SourceLocation Location)
+public sealed record DefineEvent(LocalVariableSymbol Local, DefineKind Kind, SourceLocation Location)
 	: MemoryEvent(Location);
 
 public sealed record DropEvent(Place Place, DropInstruction Instruction) : MemoryEvent(Instruction.SourceLocation);
