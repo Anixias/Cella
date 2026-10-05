@@ -1,0 +1,53 @@
+mod test
+
+Buffer: rec
+{
+	id: i32
+
+	drop: op
+	{
+	}
+}
+
+make: fun(id: i32) -> Buffer = Buffer(id)
+take: fun(own buffer: Buffer) -> i32 = buffer.id
+show: fun(buffer: Buffer) -> i32 = buffer.id
+
+again: fun -> Buffer
+{
+	val a = make(1)
+	take(a)
+	take(a)
+	show(a)
+	ret a
+}
+
+sometimes: fun(flag: bool) -> i32
+{
+	val a = make(1)
+	if flag
+		take(a)
+
+	ret a.id
+}
+
+repeated: fun -> i32
+{
+	val a = make(1)
+	var total = 0
+	loop for 3
+		total += take(a)
+
+	ret total
+}
+
+reassigned: fun -> i32
+{
+	var a = make(1)
+	val b = a
+	a = make(2)
+	val c = (a = make(3))
+	ret a.id + b.id + c.id
+}
+
+main: fun -> i32 = 0

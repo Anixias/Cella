@@ -83,16 +83,22 @@ public sealed class MovePaths
 	
 	public MovePath GetRoot(VariableSymbol symbol) => _roots[symbol];
 	
-	public MovePath? Find(Place place)
+	public MovePath? Find(Place place) =>
+		FindPrefix(place) is ({ } path, var depth) && depth == place.Path.Length ? path : null;
+	
+	public (MovePath? Path, int Depth) FindPrefix(Place place)
 	{
-		if (!_roots.TryGetValue(place.Root, out var root))
-			return null;
+		if (!_roots.TryGetValue(place.Root, out var path))
+			return (null, 0);
 		
-		MovePath? path = root;
-		foreach (var projection in place.Path)
-			path = path?.GetChild(projection);
+		var depth = 0;
+		while (depth < place.Path.Length && path.GetChild(place.Path[depth]) is { } child)
+		{
+			path = child;
+			depth++;
+		}
 		
-		return path;
+		return (path, depth);
 	}
 	
 	private void AddRoot(VariableSymbol symbol, TypeSymbol type)

@@ -233,7 +233,7 @@ internal static class Program
 		{
 			var cfgDiagnostics = new DiagnosticList();
 			var controlFlowAnalyzer = new ControlFlowAnalyzer(cfgDiagnostics);
-			var memoryChecker = new MemoryChecker(typePool);
+			var memoryChecker = new MemoryChecker(typePool, cfgDiagnostics);
 			
 			foreach (var module in lowerer.Modules)
 			{

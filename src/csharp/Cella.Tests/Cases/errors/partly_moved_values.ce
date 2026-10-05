@@ -1,0 +1,45 @@
+mod test
+
+Buffer: rec
+{
+	id: i32
+
+	drop: op
+	{
+	}
+}
+
+Pair: rec
+{
+	left: Buffer
+	right: Buffer
+}
+
+make: fun(id: i32) -> Buffer = Buffer(id)
+show: fun(pair: Pair) -> i32 = pair.left.id
+
+whole: fun -> Pair
+{
+	val pair = Pair(make(1), make(2))
+	val left = pair.left
+	val total = show(pair) + pair.right.id + left.id
+	ret pair
+}
+
+refilled: fun -> Pair
+{
+	var pair = Pair(make(1), make(2))
+	val left = pair.left
+	pair.left = make(left.id + 1)
+	ret pair
+}
+
+elements: fun -> i32
+{
+	var items = [make(1), make(2)]
+	val first = items[0]
+	var i: usize = 1
+	ret items[i].id + items[1].id + first.id
+}
+
+main: fun -> i32 = 0

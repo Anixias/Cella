@@ -1,0 +1,24 @@
+
+====== mut_parameter_refills.ce ======
+
+Error at line 24, column 12
+23 │ {
+24 │     take(own self.buffer)
+                  ╘═════════╛ Cannot leave 'mut' parameters partly moved
+
+Error at line 33, column 11
+32 │ {
+33 │     take(own buffer)
+                  ╘════╛ Cannot leave 'mut' parameters moved
+
+Error at line 38, column 16
+37 │ {
+38 │     val old = own pair.left
+                       ╘═══════╛ Cannot leave 'mut' parameters partly moved
+
+Error at line 44, column 16
+43 │ {
+44 │     val old = own buffer
+                       ╘════╛ Cannot leave 'mut' parameters moved
+
+[compilation failed]

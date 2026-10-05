@@ -1,0 +1,59 @@
+mod test
+
+Buffer: rec
+{
+	id: i32
+
+	drop: op
+	{
+	}
+}
+
+Pair: rec
+{
+	left: Buffer
+	right: Buffer
+}
+
+Wrapper: rec
+{
+	buffer: Buffer
+
+	drop: op
+	{
+		take(own self.buffer)
+	}
+}
+
+make: fun(id: i32) -> Buffer = Buffer(id)
+take: fun(own buffer: Buffer) -> i32 = buffer.id
+
+whole: fun(mut buffer: Buffer)
+{
+	take(own buffer)
+}
+
+field: fun(mut pair: Pair) -> i32
+{
+	val old = own pair.left
+	ret old.id
+}
+
+early: fun(mut buffer: Buffer, flag: bool) -> i32
+{
+	val old = own buffer
+	if flag
+		ret 1
+
+	buffer = make(old.id + 1)
+	ret 0
+}
+
+swap: fun(mut pair: Pair)
+{
+	val left = own pair.left
+	pair.left = own pair.right
+	pair.right = left
+}
+
+main: fun -> i32 = 0

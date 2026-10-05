@@ -1,0 +1,56 @@
+mod test
+
+Buffer: rec
+{
+	id: i32
+
+	drop: op
+	{
+	}
+}
+
+Pair: rec
+{
+	left: Buffer
+	right: Buffer
+}
+
+make: fun(id: i32) -> Buffer = Buffer(id)
+show: fun(buffer: Buffer) -> i32 = buffer.id
+sum: fun(pair: Pair) -> i32 = pair.left.id + pair.right.id
+
+numbers: fun -> i32
+{
+	var n: i32 = undef
+	n += 1
+	var m: i32 = undef
+	m = 2
+	ret m
+}
+
+sometimes: fun(flag: bool) -> i32
+{
+	var b: Buffer = undef
+	if flag
+		b = make(1)
+
+	ret show(b)
+}
+
+fields: fun -> i32
+{
+	var pair: Pair = undef
+	pair.left = make(1)
+	val total = sum(pair) + pair.left.id + pair.right.id
+	pair.right = make(2)
+	ret sum(pair) + total
+}
+
+address: fun -> i32
+{
+	var n: i32 = undef
+	val pointer = @n
+	ret 0
+}
+
+main: fun -> i32 = 0

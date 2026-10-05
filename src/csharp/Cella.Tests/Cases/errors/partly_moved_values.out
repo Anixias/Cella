@@ -1,0 +1,22 @@
+
+====== partly_moved_values.ce ======
+
+Error at line 25, column 19
+24 │ val left = pair.left
+25 │ val total = show(pair) + pair.right.id + left.id
+                      ╘══╛ Cannot use partly moved values
+                         | Moved on line 24
+
+Error at line 26, column 6
+25 │ val total = show(pair) + pair.right.id + left.id
+26 │ ret pair
+         ╘══╛ Cannot use partly moved values
+            | Moved on line 24
+
+Error at line 42, column 6
+41 │ var i: usize = 1
+42 │ ret items[i].id + items[1].id + first.id
+         ╘═════════╛ Cannot use partly moved values
+                   | Moved on line 40
+
+[compilation failed]

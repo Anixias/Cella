@@ -1,0 +1,29 @@
+
+====== uninitialized_values.ce ======
+
+Error at line 25, column 2
+24 │ var n: i32 = undef
+25 │ n += 1
+     ^ Cannot use uninitialized values
+
+Error at line 37, column 11
+36 │ 
+37 │ ret show(b)
+              ^ Cannot use uninitialized values
+
+Error at line 44, column 18
+43 │ pair.left = make(1)
+44 │ val total = sum(pair) + pair.left.id + pair.right.id
+                     ╘══╛ Cannot use partly initialized values
+
+Error at line 44, column 41
+43 │ pair.left = make(1)
+44 │ val total = sum(pair) + pair.left.id + pair.right.id
+                                            ╘═══════════╛ Cannot use uninitialized values
+
+Error at line 52, column 17
+51 │ var n: i32 = undef
+52 │ val pointer = @n
+                    ^ Cannot use uninitialized values
+
+[compilation failed]

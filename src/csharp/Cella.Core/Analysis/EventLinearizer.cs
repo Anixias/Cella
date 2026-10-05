@@ -2,7 +2,6 @@
 using Cella.Core.Binding.Operations;
 using Cella.Core.Lowering;
 using Cella.Core.Symbols;
-using Cella.Core.Text;
 
 namespace Cella.Core.Analysis;
 
@@ -84,7 +83,7 @@ public sealed class EventLinearizer
 			switch (value)
 			{
 				case MoveValue v:
-					AddAccess(v.Place, AccessKind.Move, v.SourceLocation);
+					AddAccess(v.Place, AccessKind.Move);
 					break;
 				
 				case AssignValue v:
@@ -96,7 +95,7 @@ public sealed class EventLinearizer
 					break;
 				
 				case UnaryOpValue { Op: UnaryOperation.AddressOf } v:
-					AddAccess(v.Operand, AccessKind.Borrow, v.SourceLocation);
+					AddAccess(v.Operand, AccessKind.Borrow);
 					break;
 				
 				case AccessValue { Member: not FieldSymbol } v:
@@ -105,7 +104,7 @@ public sealed class EventLinearizer
 				
 				case VariableValue or GlobalValue or AccessValue or IndexerValue or EnumPayloadValue or
 					UnaryOpValue { Op: UnaryOperation.Dereference }:
-					AddAccess(value, AccessKind.Read, value.SourceLocation);
+					AddAccess(value, AccessKind.Read);
 					break;
 				
 				case EnumTagValue v:
@@ -163,11 +162,11 @@ public sealed class EventLinearizer
 			AddValue(value);
 	}
 	
-	private void AddAccess(Value place, AccessKind kind, SourceLocation location)
+	private void AddAccess(Value place, AccessKind kind)
 	{
 		AddOperands(place);
 		if (GetPlace(place) is { } target)
-			events.Add(new AccessEvent(target, kind, location));
+			events.Add(new AccessEvent(target, kind, place.SourceLocation));
 	}
 	
 	private void AddOperands(Value place)

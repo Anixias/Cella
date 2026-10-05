@@ -1,0 +1,56 @@
+mod test
+
+Buffer: rec
+{
+	id: i32
+
+	drop: op
+	{
+	}
+}
+
+Holder: rec
+{
+	buffer: Buffer
+}
+
+Effect: enum
+{
+	none
+	hold(buffer: Buffer)
+	count(n: i32)
+}
+
+take: fun(own buffer: Buffer) -> i32 = buffer.id
+takeNumber: fun(own n: i32) -> i32 = n
+
+parameters: fun(buffer: Buffer, holder: Holder, n: i32) -> i32
+{
+	ret take(buffer) + take(holder.buffer) + takeNumber(own n)
+}
+
+returned: fun(buffer: Buffer) -> Buffer
+{
+	ret buffer
+}
+
+bindings: fun(effect: Effect) -> i32
+{
+	match effect
+	{
+		hold(buffer) => ret take(buffer)
+		count(n) => ret takeNumber(own n)
+		else => ret 0
+	}
+}
+
+mutBindings: fun(mut effect: Effect) -> i32
+{
+	match mut effect
+	{
+		hold(buffer) => ret take(buffer)
+		else => ret 0
+	}
+}
+
+main: fun -> i32 = 0

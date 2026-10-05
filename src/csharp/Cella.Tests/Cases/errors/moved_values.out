@@ -1,0 +1,40 @@
+
+====== moved_values.ce ======
+
+Error at line 20, column 7
+19 │ take(a)
+20 │ take(a)
+          ^ Cannot use moved values
+          | Moved on line 19
+
+Error at line 21, column 7
+20 │ take(a)
+21 │ show(a)
+          ^ Cannot use moved values
+          | Moved on line 20
+
+Error at line 22, column 6
+21 │ show(a)
+22 │ ret a
+         ^ Cannot use moved values
+         | Moved on line 20
+
+Error at line 31, column 6
+30 │ 
+31 │ ret a.id
+         ╘══╛ Cannot use moved values
+            | Moved on line 29
+
+Error at line 39, column 17
+38 │ loop for 3
+39 │     total += take(a)
+                       ^ Cannot use moved values
+                       | Moved here in an earlier iteration
+
+Error at line 50, column 6
+49 │ val c = (a = make(3))
+50 │ ret a.id + b.id + c.id
+         ╘══╛ Cannot use moved values
+            | Moved on line 49
+
+[compilation failed]

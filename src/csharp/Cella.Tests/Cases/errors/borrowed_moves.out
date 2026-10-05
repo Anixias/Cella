@@ -1,0 +1,29 @@
+
+====== borrowed_moves.ce ======
+
+Error at line 29, column 11
+28 │ {
+29 │     ret take(buffer) + take(holder.buffer) + takeNumber(own n)
+                  ╘════╛ Cannot move read-only parameters
+
+Error at line 29, column 26
+28 │ {
+29 │     ret take(buffer) + take(holder.buffer) + takeNumber(own n)
+                                 ╘═══════════╛ Cannot move read-only parameters
+
+Error at line 34, column 6
+33 │ {
+34 │     ret buffer
+             ╘════╛ Cannot move read-only parameters
+
+Error at line 41, column 28
+40 │ {
+41 │     hold(buffer) => ret take(buffer)
+                                  ╘════╛ Cannot move pattern bindings
+
+Error at line 51, column 28
+50 │ {
+51 │     hold(buffer) => ret take(buffer)
+                                  ╘════╛ Cannot move pattern bindings
+
+[compilation failed]

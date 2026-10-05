@@ -868,24 +868,22 @@ public sealed class Lowerer
 			var sourceLocation = Join(leftNode.Syntax.SourceLocation, rightNode.Syntax.SourceLocation);
 			
 			var resultSymbol = CreateTempSymbol(NativeSymbols.Bool, "sc_result");
-			var block = GetOrMakeBlock();
-			block.Instructions.Add(new LocalVarInstruction(resultSymbol, new UndefValue(NativeSymbols.Bool),
+			GetOrMakeBlock().Instructions.Add(new LocalVarInstruction(resultSymbol, new UndefValue(NativeSymbols.Bool),
 				leftNode.Syntax.SourceLocation, CurrentScopeId));
 			
 			var result = new VariableValue(new(resultSymbol, NativeSymbols.Bool), sourceLocation);
 			
 			var rightBlock = CreateBlock("sc_right");
+			var skipBlock = CreateBlock("sc_skip");
 			var mergeBlock = CreateBlock("sc_merge");
 			
-			var left = VisitNode(leftNode);
+			var isAnd = op == TokenType.OpAmpersandAmpersand;
+			LowerBranch(leftNode, isAnd ? rightBlock : skipBlock, isAnd ? skipBlock : rightBlock);
 			
-			block = GetOrMakeBlock();
-			block.Instructions.Add(
-				new ExpressionInstruction(new AssignValue(NativeSymbols.Bool, result, left, sourceLocation)));
+			skipBlock.Instructions.Add(new ExpressionInstruction(new AssignValue(NativeSymbols.Bool, result,
+				isAnd ? ConstantValue.False : ConstantValue.True, sourceLocation)));
 			
-			block.SetTerminator(op == TokenType.OpAmpersandAmpersand
-				? new ConditionalBranchTerminator(result, rightBlock, mergeBlock, leftNode.Syntax.SourceLocation)
-				: new ConditionalBranchTerminator(result, mergeBlock, rightBlock, leftNode.Syntax.SourceLocation));
+			skipBlock.SetTerminator(new BranchTerminator(mergeBlock, leftNode.Syntax.SourceLocation));
 			
 			currentBlock = rightBlock;
 			var right = VisitNode(rightNode);
