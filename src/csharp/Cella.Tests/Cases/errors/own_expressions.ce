@@ -43,9 +43,12 @@ main: fun -> i32
 	var holder = Holder(Buffer(5), 6)
 	val h = @holder
 	val count = own h.count
+	val stored = own (counter = 5)
+	val through = own (*q = 7)
 
 	val implicit = h.buffer
 	val whole = *h
 	val given = take(h.buffer)
+	val replaced = (h.buffer = Buffer(8))
 	ret 0
 }

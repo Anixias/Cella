@@ -480,12 +480,13 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool) 
 	public void Visit(ResolvedOwnExpressionNode node)
 	{
 		var location = node.Value.Syntax.SourceLocation;
-		if (!IsLValue(node.Value))
+		var place = SkipAssignment(node.Value);
+		if (!IsLValue(place))
 			Diagnostics.Add(new(DiagnosticSeverity.Error, location, "'own' has no effect on an unstored value"));
-		else if (node.Value is ResolvedGlobalExpressionNode { Symbol: var global })
+		else if (place is ResolvedGlobalExpressionNode { Symbol: var global })
 			Diagnostics.Add(new(DiagnosticSeverity.Error, location,
 				$"'own' has no effect on '{global.Name}', a module '{(global.IsMutable ? "var" : "val")}'"));
-		else if (IsThroughPointer(node.Value) && typePool.IsCopy(node.Value.Type))
+		else if (IsThroughPointer(place) && typePool.IsCopy(node.Value.Type))
 			Diagnostics.Add(new(DiagnosticSeverity.Error, location,
 				$"'own' has no effect on '{node.Value.Type.Name}' through a pointer"));
 		
@@ -494,11 +495,15 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool) 
 	
 	private void CheckConsumed(IResolvedExpressionNode value)
 	{
-		if (value is not ResolvedOwnExpressionNode && IsLValue(value) && IsThroughPointer(value) &&
+		var place = SkipAssignment(value);
+		if (value is not ResolvedOwnExpressionNode && IsLValue(place) && IsThroughPointer(place) &&
 		    !typePool.IsCopy(value.Type))
 			Diagnostics.Add(new(DiagnosticSeverity.Error, value.Syntax.SourceLocation,
 				$"A '{value.Type.Name}' moved out of a pointer must be marked 'own'"));
 	}
+	
+	private static IResolvedExpressionNode SkipAssignment(IResolvedExpressionNode value) =>
+		value is ResolvedAssignmentExpressionNode assignment ? assignment.Left : value;
 	
 	private static bool IsThroughPointer(IResolvedExpressionNode place) => place switch
 	{

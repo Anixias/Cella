@@ -1,0 +1,50 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Buffer: rec
+{
+	id: i32
+
+	drop: op
+	{
+	}
+}
+
+Holder: rec
+{
+	buffer: Buffer
+}
+
+show: fun(buffer: Buffer) -> i32 = buffer.id
+same: fun(buffer: Buffer, address: ptr[Buffer]) -> i32 = i32(@buffer == address)
+take: fun(own buffer: Buffer) -> i32 = buffer.id
+
+main: fun -> i32
+{
+	var b = Buffer(1)
+	var holder = Holder(Buffer(2))
+	printf("%d %d %d\n", show(b = Buffer(3)), same(b = Buffer(4), @b),
+		same(holder.buffer = Buffer(5), @holder.buffer))
+
+	val c = (b = Buffer(6))
+	printf("%d %d %d\n", c.id, (b = Buffer(7)).id, take(b = Buffer(8)))
+
+	var a = Buffer(0)
+	a = b = Buffer(9)
+	printf("%d\n", a.id)
+
+	var x = 0
+	var y = 0
+	x = y = 10
+	var values = [1, 2, 3]
+	var i: usize = 0
+	printf("%d %d %d %zu %d\n", x, y, values[i] = 11, i = 2, values[0])
+
+	val moved = own (x = 12)
+	printf("%d\n", moved)
+	ret 0
+}

@@ -293,8 +293,11 @@ public sealed class Lowerer
 		public void Visit(ResolvedExpressionStatementNode node)
 		{
 			BeginScope(node.Syntax.SourceLocation, true);
-			var expression = VisitNode(node.Expression);
-			if (currentBlock is not null)
+			var expression = node.Expression is ResolvedAssignmentExpressionNode assignment
+				? LowerAssignment(assignment, false)
+				: VisitNode(node.Expression);
+			
+			if (currentBlock is not null && !IsPlaceValue(expression))
 			{
 				if (expression is CallValue or IndirectCallValue && _typePool.NeedsDrop(expression.Type))
 					StoreTemporary(expression, "discard");
@@ -973,14 +976,8 @@ public sealed class Lowerer
 		
 		private UnaryOpValue LowerBorrow(IResolvedExpressionNode argument)
 		{
-			var place = IsPlace(argument)
-				? VisitPlace(argument)
-				: VisitNode(argument) switch
-				{
-					VariableValue temporary => temporary,
-					var value => StoreTemporary(value, "borrow")
-				};
-			
+			var value = VisitNode(argument);
+			var place = IsPlaceValue(value) ? value : StoreTemporary(value, "borrow");
 			return new UnaryOpValue(_typePool.GetPointerType(argument.Type), place, UnaryOperation.AddressOf,
 				argument.Syntax.SourceLocation);
 		}
@@ -1005,8 +1002,6 @@ public sealed class Lowerer
 			ResolvedMutArgumentExpressionNode n => MayEmit(n.Place),
 			ResolvedOwnExpressionNode n => MayEmit(n.Value),
 			ResolvedBinaryOpExpressionNode n => IsShortCircuitOp(n.Operation) || MayEmit(n.Left) || MayEmit(n.Right),
-			ResolvedAssignmentExpressionNode n => n.Operation is not null || _typePool.NeedsDrop(n.Type)
-			                                                              || MayEmit(n.Left) || MayEmit(n.Right),
 			ResolvedFunctionCallExpressionNode n => MayEmitOperands(n.Arguments, GetArgumentPassing(n.Function, 0)),
 			ResolvedIndirectCallExpressionNode n => MayEmitOperands([n.Target, ..n.Arguments],
 				GetOperandPassing(n.FunctionType)),
@@ -1021,26 +1016,34 @@ public sealed class Lowerer
 		private bool IsMaterialized(IResolvedExpressionNode target) =>
 			!IsPlace(target) && _typePool.NeedsDrop(target.Type);
 		
-		public Value Visit(ResolvedAssignmentExpressionNode node)
+		public Value Visit(ResolvedAssignmentExpressionNode node) => LowerAssignment(node, true);
+		
+		private Value LowerAssignment(ResolvedAssignmentExpressionNode node, bool isValue)
 		{
 			var left = VisitPlace(node.Left);
 			var dropsOld = _typePool.NeedsDrop(node.Type);
 			
 			// Need to stabilize the left side first so it doesn't double-evaluate
 			var emits = MayEmit(node.Right);
-			if (node.Operation is not null || emits || dropsOld)
+			if (isValue || node.Operation is not null || emits || dropsOld)
 				left = StabilizeStorage(left);
 			
 			var current = node.Operation is not null && emits ? CaptureAsAtomic(left, "current") : left;
 			var right = Consume(VisitNode(node.Right));
 			var value = node.Operation is null ? right : LowerBinOp(current, node.Operation, right);
-			if (dropsOld && currentBlock is not null)
+			if (currentBlock is null)
+				return left;
+			
+			if (dropsOld)
 			{
 				value = Consume(CaptureAsAtomic(value, "assigned"));
 				currentBlock.Instructions.Add(new DropInstruction(left, node.Op.SourceLocation));
 			}
 			
-			return new AssignValue(node.Type, left, value, node.Op.SourceLocation);
+			currentBlock.Instructions.Add(
+				new ExpressionInstruction(new AssignValue(node.Type, left, value, node.Op.SourceLocation)));
+			
+			return left;
 		}
 		
 		public Value Visit(ResolvedChainedExpressionNode node)

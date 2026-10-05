@@ -845,7 +845,8 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	public IResolvedExpressionNode Visit(OwnExpressionNode node)
 	{
 		var isPlace = node.Value is VarExpressionNode or AccessExpressionNode or IndexerExpressionNode
-			or UnaryOpExpressionNode { Op.Type: TokenType.OpStar };
+			              or UnaryOpExpressionNode { Op.Type: TokenType.OpStar }
+		              || node.Value is BinaryOpExpressionNode binary && IsAssignment(binary.Op.Type);
 		
 		var value = VisitNode(node.Value, isPlace ? null : CurrentTargetType);
 		if (IsInvalid(value))
@@ -1601,16 +1602,15 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		return new(operand, new NativeImpl(opType, ptrType), node);
 	}
 	
+	private static bool IsAssignment(TokenType op) => op is TokenType.OpEqual or TokenType.OpPlusEqual
+		or TokenType.OpMinusEqual or TokenType.OpStarEqual or TokenType.OpSlashEqual or TokenType.OpPercentEqual
+		or TokenType.OpAmpersandEqual or TokenType.OpBarEqual or TokenType.OpHatEqual or TokenType.OpLessLessEqual
+		or TokenType.OpGreaterGreaterEqual or TokenType.OpLessLessLessEqual or TokenType.OpGreaterGreaterGreaterEqual;
+	
 	public IResolvedExpressionNode Visit(BinaryOpExpressionNode node)
 	{
 		var op = node.Op;
-		var isAssignment = op.Type is TokenType.OpEqual or TokenType.OpPlusEqual or TokenType.OpMinusEqual
-			or TokenType.OpStarEqual or TokenType.OpSlashEqual or TokenType.OpPercentEqual or TokenType.OpAmpersandEqual
-			or TokenType.OpBarEqual or TokenType.OpHatEqual or TokenType.OpLessLessEqual
-			or TokenType.OpGreaterGreaterEqual or TokenType.OpLessLessLessEqual
-			or TokenType.OpGreaterGreaterGreaterEqual;
-		
-		if (isAssignment)
+		if (IsAssignment(op.Type))
 		{
 			var left = VisitNode(node.Left, null);
 			if (left is ResolvedFunctionGroupExpressionNode function)
