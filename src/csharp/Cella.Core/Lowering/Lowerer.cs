@@ -88,14 +88,16 @@ public sealed class Lowerer
 		private readonly Stack<LoopContext> _loopStack = [];
 		private readonly Dictionary<LabelSymbol, LoopContext> _loopsByLabel = [];
 		private readonly Stack<ActiveScope> _activeScopes = [];
+		private readonly HashSet<int> _temporaryScopes = [];
 		private readonly HashSet<LocalVariableSymbol> _temporaries = [];
 		private BasicBlock? currentBlock;
 		private ulong nextLoopId;
 		private ulong nextTempId;
 		private int nextScopeId;
 		private int CurrentScopeId => _activeScopes.TryPeek(out var scope) ? scope.Id : 0;
+		private int BlockScopeId => _activeScopes.FirstOrDefault(static scope => !scope.IsTemporary).Id;
 		
-		private readonly record struct ActiveScope(int Id, SourceLocation Location);
+		private readonly record struct ActiveScope(int Id, SourceLocation Location, bool IsTemporary);
 		
 		private FunctionLowerer(LoweredFunction function, ConstantEvaluator evaluator, TypePool typePool,
 			Func<GlobalSymbol, GlobalInfo> getGlobalInfo)
@@ -133,6 +135,7 @@ public sealed class Lowerer
 			{
 				case IResolvedStatementNode statement:
 					lower.VisitNode(statement);
+					lower.PruneEmptyScopes();
 					break;
 				
 				// If expression body, synthesize a return statement
@@ -168,11 +171,44 @@ public sealed class Lowerer
 			_ => null
 		};
 		
-		private void BeginScope(SourceLocation location)
+		private ActiveScope BeginScope(SourceLocation location, bool isTemporary = false)
 		{
-			var id = ++nextScopeId;
-			GetOrMakeBlock().Instructions.Add(new BeginScopeInstruction(id, location));
-			_activeScopes.Push(new ActiveScope(id, location));
+			var scope = new ActiveScope(++nextScopeId, location, isTemporary);
+			GetOrMakeBlock().Instructions.Add(new BeginScopeInstruction(scope.Id, location));
+			_activeScopes.Push(scope);
+			if (isTemporary)
+				_temporaryScopes.Add(scope.Id);
+			
+			return scope;
+		}
+		
+		private BasicBlock CreateScopeExit(ActiveScope scope, BasicBlock target, string hint)
+		{
+			var block = CreateBlock(hint);
+			block.Instructions.Add(new EndScopeInstruction(scope.Id, scope.Location.End));
+			block.SetTerminator(new BranchTerminator(target, scope.Location));
+			return block;
+		}
+		
+		private void PruneEmptyScopes()
+		{
+			var used = _function.Blocks
+				.SelectMany(static block => block.Instructions)
+				.OfType<LocalVarInstruction>()
+				.Select(static instruction => instruction.ScopeId)
+				.ToHashSet();
+			
+			foreach (var block in _function.Blocks)
+				block.Instructions.RemoveAll(instruction => instruction switch
+				{
+					BeginScopeInstruction i => IsEmptyTemporary(i.ScopeId),
+					EndScopeInstruction i => IsEmptyTemporary(i.ScopeId),
+					_ => false
+				});
+			
+			return;
+			
+			bool IsEmptyTemporary(int scopeId) => _temporaryScopes.Contains(scopeId) && !used.Contains(scopeId);
 		}
 		
 		private void EndCurrentScope()
@@ -219,13 +255,22 @@ public sealed class Lowerer
 		
 		public void Visit(ResolvedExpressionStatementNode node)
 		{
-			GetOrMakeBlock();
+			BeginScope(node.Syntax.SourceLocation, true);
 			var expression = VisitNode(node.Expression);
-			currentBlock?.Instructions.Add(new ExpressionInstruction(expression));
+			if (currentBlock is not null)
+			{
+				if (expression is CallValue or IndirectCallValue && _typePool.NeedsDrop(expression.Type))
+					StoreTemporary(expression, "discard");
+				else
+					currentBlock.Instructions.Add(new ExpressionInstruction(expression));
+			}
+			
+			EndCurrentScope();
 		}
 		
 		public void Visit(ResolvedIfStatementNode node)
 		{
+			BeginScope(node.Syntax.SourceLocation, true);
 			var thenBlock = CreateBlock("then");
 			var elseBlock = node.Else is null ? null : CreateBlock("else");
 			var mergeBlock = CreateBlock("merge");
@@ -247,14 +292,20 @@ public sealed class Lowerer
 			
 			// Finish
 			ContinueWith(mergeBlock);
+			EndCurrentScope();
 		}
 		
 		public void Visit(ResolvedInvalidStatementNode node) =>
 			throw new InvalidOperationException();
 		
-		public void Visit(ResolvedMatchStatementNode node) => LowerMatch(node.Value,
-			[..node.Arms.Select(static arm => (arm.Pattern, arm.Body.Syntax.SourceLocation))],
-			node.Syntax.SourceLocation, index => VisitNode(node.Arms[index].Body));
+		public void Visit(ResolvedMatchStatementNode node)
+		{
+			BeginScope(node.Syntax.SourceLocation, true);
+			LowerMatch(node.Value, [..node.Arms.Select(static arm => (arm.Pattern, arm.Body.Syntax.SourceLocation))],
+				node.Syntax.SourceLocation, index => VisitNode(node.Arms[index].Body));
+			
+			EndCurrentScope();
+		}
 		
 		public Value Visit(ResolvedMatchExpressionNode node)
 		{
@@ -447,19 +498,21 @@ public sealed class Lowerer
 		
 		public void Visit(ResolvedVarStatementNode node)
 		{
-			GetOrMakeBlock();
+			BeginScope(node.Syntax.SourceLocation, true);
 			var value = node.Initializer is null
 				? new ZeroValue(node.Symbol.Type)
 				: Consume(VisitNode(node.Initializer));
 			
 			currentBlock?.Instructions.Add(new LocalVarInstruction(node.Symbol, value, node.Syntax.SourceLocation,
-				CurrentScopeId));
+				BlockScopeId));
+			
+			EndCurrentScope();
 		}
 		
 		private void VisitInLoop(IResolvedStatementNode body, BasicBlock breakBlock, BasicBlock continueBlock,
-			LabelSymbol? label)
+			LabelSymbol? label, int scopeDepth)
 		{
-			var loopContext = new LoopContext(breakBlock, continueBlock, _activeScopes.Count);
+			var loopContext = new LoopContext(breakBlock, continueBlock, scopeDepth);
 			if (label is not null)
 				_loopsByLabel[label] = loopContext;
 			
@@ -479,13 +532,16 @@ public sealed class Lowerer
 			
 			// Body
 			currentBlock = bodyBlock;
-			VisitInLoop(node.Body, exitBlock, condBlock, node.Label);
+			VisitInLoop(node.Body, exitBlock, condBlock, node.Label, _activeScopes.Count);
 			currentBlock?.FillTerminator(new BranchTerminator(condBlock, node.Syntax.SourceLocation));
 			
 			// Condition
 			currentBlock = condBlock;
-			LowerBranch(node.Condition, bodyBlock, exitBlock);
+			var scope = BeginScope(node.Condition.Syntax.SourceLocation, true);
+			LowerBranch(node.Condition, CreateScopeExit(scope, bodyBlock, $"dowhile{id}_again"),
+				CreateScopeExit(scope, exitBlock, $"dowhile{id}_done"));
 			
+			EndCurrentScope();
 			ContinueWith(exitBlock);
 		}
 		
@@ -499,7 +555,7 @@ public sealed class Lowerer
 			
 			// Body
 			currentBlock = bodyBlock;
-			VisitInLoop(node.Body, exitBlock, bodyBlock, node.Label);
+			VisitInLoop(node.Body, exitBlock, bodyBlock, node.Label, _activeScopes.Count);
 			currentBlock?.FillTerminator(new BranchTerminator(bodyBlock, node.Syntax.SourceLocation));
 			
 			ContinueWith(exitBlock);
@@ -510,12 +566,13 @@ public sealed class Lowerer
 			var id = NextLoopId();
 			
 			// Create implicit counter variable initialized with count
+			BeginScope(node.Count.Syntax.SourceLocation, true);
 			var countValue = VisitNode(node.Count);
 			var counterSymbol = CreateTempSymbol(countValue.Type, $"repeat{id}$i");
 			var counterLocation = node.Count.Syntax.SourceLocation;
 			var block = GetOrMakeBlock();
-			block.Instructions.Add(new LocalVarInstruction(counterSymbol, countValue, counterLocation,
-				CurrentScopeId));
+			block.Instructions.Add(new LocalVarInstruction(counterSymbol, countValue, counterLocation, BlockScopeId));
+			EndCurrentScope();
 			
 			var counterVar = new VariableValue(new(counterSymbol, countValue.Type), counterLocation);
 			var one = MakeConstant(countValue.Type, BigInteger.One);
@@ -536,7 +593,7 @@ public sealed class Lowerer
 			
 			// Body
 			currentBlock = bodyBlock;
-			VisitInLoop(node.Body, exitBlock, latchBlock, node.Label);
+			VisitInLoop(node.Body, exitBlock, latchBlock, node.Label, _activeScopes.Count);
 			currentBlock?.FillTerminator(new BranchTerminator(latchBlock, node.Syntax.SourceLocation));
 			
 			// Latch: decrement counter, jump back to condition
@@ -591,11 +648,14 @@ public sealed class Lowerer
 			
 			// Condition
 			currentBlock = condBlock;
-			LowerBranch(node.Condition, bodyBlock, exitBlock);
+			var scopeDepth = _activeScopes.Count;
+			var scope = BeginScope(node.Condition.Syntax.SourceLocation, true);
+			LowerBranch(node.Condition, bodyBlock, CreateScopeExit(scope, exitBlock, $"while{id}_done"));
 			
 			// Body
 			currentBlock = bodyBlock;
-			VisitInLoop(node.Body, exitBlock, condBlock, node.Label);
+			VisitInLoop(node.Body, exitBlock, condBlock, node.Label, scopeDepth);
+			EndCurrentScope();
 			currentBlock?.FillTerminator(new BranchTerminator(condBlock, node.Syntax.SourceLocation));
 			
 			ContinueWith(exitBlock);
@@ -701,7 +761,7 @@ public sealed class Lowerer
 		
 		public Value Visit(ResolvedIndexerExpressionNode node)
 		{
-			var target = VisitNode(node.Target);
+			var target = MaterializeTemporary(VisitNode(node.Target));
 			if (MayEmit(node.Index))
 				target = node.Target.Type is ArrayType
 					? StabilizeStorageBase(target)
@@ -713,8 +773,11 @@ public sealed class Lowerer
 		public Value Visit(ResolvedInvalidExpressionNode node) =>
 			throw new InvalidOperationException();
 		
-		public Value Visit(ResolvedAccessExpressionNode node) =>
-			new AccessValue(node.Type, VisitNode(node.Target), node.Member, node.Syntax.SourceLocation);
+		public Value Visit(ResolvedAccessExpressionNode node) => new AccessValue(node.Type,
+			MaterializeTemporary(VisitNode(node.Target)), node.Member, node.Syntax.SourceLocation);
+		
+		private Value MaterializeTemporary(Value value) =>
+			!IsPlaceValue(value) && _typePool.NeedsDrop(value.Type) ? StoreTemporary(value, "temporary") : value;
 		
 		public Value Visit(ResolvedLiteralExpressionNode node) =>
 			MakeConstant(node.Type, node.Value);

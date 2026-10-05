@@ -1,0 +1,68 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Buffer: rec
+{
+	id: i32
+
+	drop: op
+	{
+	}
+}
+
+Pair: rec
+{
+	left: Buffer
+	right: Buffer
+}
+
+Effect: enum
+{
+	none
+	owned(buffer: Buffer)
+}
+
+make: fun(id: i32) -> Buffer = Buffer(id)
+pair: fun(left: i32, right: i32) -> Pair = Pair(Buffer(left), Buffer(right))
+show: fun(buffer: Buffer) -> i32 = buffer.id
+effect: fun(id: i32) -> Effect = Effect.owned(Buffer(id))
+buffers: fun -> array[Buffer, 2] = [Buffer(7), Buffer(8)]
+
+main: fun -> i32
+{
+	make(1)
+	printf("%d %d %d\n", show(make(2)), make(3).id, pair(4, 5).right.id)
+	printf("%d\n", buffers()[1].id)
+
+	if make(6).id > 0 && effect(9) is owned(b)
+		printf("%d\n", b.id)
+
+	var i = 0
+	loop while make(i).id < 3
+	{
+		i += 1
+	}
+
+	loop
+	{
+		i += 10
+	} while make(i).id < 30
+
+	var total = 0
+	loop for make(3).id
+	{
+		total += 1
+	}
+
+	match effect(11)
+	{
+		owned(c) => printf("%d %d %d\n", i, total, c.id)
+		else => {}
+	}
+
+	ret make(0).id
+}

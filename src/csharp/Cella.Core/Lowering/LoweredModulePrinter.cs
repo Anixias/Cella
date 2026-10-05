@@ -75,7 +75,7 @@ public static class LoweredModulePrinter
 				switch (instruction)
 				{
 					case LocalVarInstruction i:
-						sb.Append(i.Symbol.Type.Name).Append(" $").Append(i.Symbol.Name);
+						sb.Append(i.Symbol.Type.Name).Append(" $").Append(i.Symbol.Name).Append(" ~").Append(i.ScopeId);
 						if (i.Initializer is { } initializer)
 						{
 							sb.Append(" = ");
