@@ -1,0 +1,93 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Effect: enum
+{
+	none
+	hit(amount: i32)
+	pair(left: i32, right: i32)
+}
+
+Unit: rec
+{
+	effect: Effect
+}
+
+heal: fun(mut amount: i32)
+{
+	amount += 100
+}
+
+boost: fun(mut e: Effect)
+{
+	match mut e
+	{
+		hit(n) => n *= 2
+		else => {}
+	}
+}
+
+describe: fun(e: Effect) -> i32 = match e
+{
+	hit(n) => n
+	pair(l, r) => l * 100 + r
+	none => -1
+}
+
+main: fun -> i32
+{
+	var e = Effect.hit(5)
+	match mut e
+	{
+		hit(n) => n += 1
+		else => {}
+	}
+	printf("%d\n", describe(e))
+
+	if mut e is hit(n)
+		n += 10
+	printf("%d\n", describe(e))
+
+	var p = Effect.pair(1, 2)
+	if p is pair(mut a, b)
+		a = b * 10
+	printf("%d\n", describe(p))
+
+	var units = [Unit(Effect.hit(1)), Unit(Effect.none)]
+	match mut units[0].effect
+	{
+		hit(n) => heal(mut n)
+		else => {}
+	}
+	printf("%d\n", describe(units[0].effect))
+
+	boost(mut e)
+	printf("%d\n", describe(e))
+
+	val pointer = @e
+	if mut *pointer is hit(n)
+		n = 3
+	if mut (e) is hit(n)
+		n += 1
+	printf("%d\n", describe(e))
+
+	val total = match mut p
+	{
+		pair(l, r) => l + r
+		else => 0
+	}
+	printf("%d\n", total)
+
+	if mut p is pair(l, r) && l > 10
+		r = l + r
+	printf("%d\n", describe(p))
+
+	if p is pair(mut _, mut right)
+		right = 0
+	printf("%d\n", describe(p))
+	ret 0
+}

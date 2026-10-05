@@ -1,0 +1,16 @@
+mod test
+
+Effect: enum
+{
+	none
+	hit(amount: i32)
+}
+
+main: fun -> i32
+{
+	var e = Effect.hit(1)
+	if mut e
+		ret 1
+
+	ret 0
+}

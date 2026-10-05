@@ -362,6 +362,9 @@ public sealed class AstPrinter : ISyntaxNodeVisitor
 	{
 		StartLine();
 		_sb.Append("MatchStatementNode");
+		if (node.Mode is { } mode)
+			_sb.Append(' ').Append(mode.AsSpan());
+		
 		VisitNode(node.Value, node.Arms.Length == 0);
 		
 		for (var i = 0; i < node.Arms.Length; i++)
@@ -380,6 +383,9 @@ public sealed class AstPrinter : ISyntaxNodeVisitor
 	{
 		StartLine();
 		_sb.Append("MatchExpressionNode");
+		if (node.Mode is { } mode)
+			_sb.Append(' ').Append(mode.AsSpan());
+		
 		VisitNode(node.Value, node.Arms.Length == 0);
 		
 		for (var i = 0; i < node.Arms.Length; i++)
@@ -397,7 +403,11 @@ public sealed class AstPrinter : ISyntaxNodeVisitor
 	public void Visit(IsExpressionNode node)
 	{
 		StartLine();
-		_sb.Append("IsExpressionNode: ").Append(node.Pattern.SourceLocation.GetText());
+		_sb.Append("IsExpressionNode");
+		if (node.Mode is { } mode)
+			_sb.Append(' ').Append(mode.AsSpan());
+		
+		_sb.Append(": ").Append(node.Pattern.SourceLocation.GetText());
 		VisitNode(node.Value, true);
 	}
 	

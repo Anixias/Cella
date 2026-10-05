@@ -8,12 +8,14 @@ public sealed class ResolvedIsExpressionNode
 (
 	IResolvedExpressionNode value,
 	ResolvedPattern pattern,
+	bool isMut,
 	IExpressionNode syntax
 ) : IResolvedExpressionNode
 {
 	public TypeSymbol Type => NativeSymbols.Bool;
 	public IResolvedExpressionNode Value { get; } = value;
 	public ResolvedPattern Pattern { get; } = pattern;
+	public bool IsMut { get; } = isMut;
 	public IExpressionNode Syntax { get; } = syntax;
 }
 
@@ -22,4 +24,5 @@ public sealed class ResolvedPattern(EnumCaseSymbol enumCase, IEnumerable<LocalVa
 	public EnumCaseSymbol Case { get; } = enumCase;
 	public ImmutableArray<LocalVariableSymbol?> Bindings { get; } = bindings.ToImmutableArray();
 	public bool HasBindings => Bindings.Any(static binding => binding is not null);
+	public bool HasMutBindings => Bindings.Any(static binding => binding is { IsMutBinding: true });
 }

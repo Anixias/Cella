@@ -6,12 +6,14 @@ namespace Cella.Core.Syntax.Nodes;
 public sealed class MatchExpressionNode
 (
 	Token keyword,
+	Token? mode,
 	IExpressionNode value,
 	IEnumerable<MatchExpressionArmNode> arms,
 	SourceLocation sourceLocation
 ) : IExpressionNode
 {
 	public Token Keyword { get; } = keyword;
+	public Token? Mode { get; } = mode;
 	public IExpressionNode Value { get; } = value;
 	public ImmutableArray<MatchExpressionArmNode> Arms { get; } = arms.ToImmutableArray();
 	public SourceLocation SourceLocation { get; } = sourceLocation;

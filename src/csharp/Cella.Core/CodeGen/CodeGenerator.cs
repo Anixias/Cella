@@ -935,7 +935,10 @@ public sealed unsafe class CodeGenerator : IDisposable
 		return builder.BuildLoad2(MapTypeSymbol(v.Type), address, "tag");
 	}
 	
-	private LLVMValueRef EmitEnumPayload(EnumPayloadValue v, LLVMBuilderRef builder)
+	private LLVMValueRef EmitEnumPayload(EnumPayloadValue v, LLVMBuilderRef builder) =>
+		builder.BuildLoad2(MapTypeSymbol(v.Type), EmitEnumPayloadAddress(v, builder), v.Case.Fields[v.Index].Name);
+	
+	private LLVMValueRef EmitEnumPayloadAddress(EnumPayloadValue v, LLVMBuilderRef builder)
 	{
 		var enumType = MapTypeSymbol(v.Target.Type);
 		LLVMValueRef address;
@@ -951,8 +954,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 		
 		var name = v.Case.Fields[v.Index].Name;
 		var payload = builder.BuildStructGEP2(enumType, address, 1, "payload");
-		var field = builder.BuildStructGEP2(GetPayloadType(v.Case), payload, (uint)v.Index, name + ".addr");
-		return builder.BuildLoad2(MapTypeSymbol(v.Type), field, name);
+		return builder.BuildStructGEP2(GetPayloadType(v.Case), payload, (uint)v.Index, name + ".addr");
 	}
 	
 	private LLVMValueRef EmitConversion(ConversionValue v, LLVMBuilderRef builder) => v.Conversion switch
@@ -1404,6 +1406,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 		IndexerValue v => EmitIndexerAddress(v, builder).Ptr,
 		AccessValue v => EmitAccessAddress(v, builder),
 		UnaryOpValue { Op: UnaryOperation.Dereference } v => EmitValue(v.Operand, builder),
+		EnumPayloadValue v => EmitEnumPayloadAddress(v, builder),
 		_ => throw new InvalidOperationException()
 	};
 	

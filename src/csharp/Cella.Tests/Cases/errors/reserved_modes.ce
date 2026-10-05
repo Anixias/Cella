@@ -1,0 +1,14 @@
+mod test
+
+modes: fun(mut: i32, own: i32) -> i32 = 1
+
+Point: rec
+{
+	own: i32
+}
+
+main: fun -> i32
+{
+	var mut = 3
+	ret 0
+}

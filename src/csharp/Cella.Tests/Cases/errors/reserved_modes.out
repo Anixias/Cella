@@ -1,0 +1,19 @@
+
+====== reserved_modes.ce ======
+
+Error at line 3, column 1
+2 │ 
+3 │ modes: fun(mut: i32, own: i32) -> i32 = 1
+    ╘═══╛ Invalid function declaration
+
+Error at line 5, column 1
+4 │ 
+5 │ Point: rec
+    ╘═══╛ Invalid record declaration
+
+Error at line 12, column 6
+11 │ {
+12 │     var mut = 3
+             ╘═╛ Expected a name after 'var'
+
+[compilation failed]

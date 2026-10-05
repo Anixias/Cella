@@ -133,6 +133,9 @@ public sealed class TypeChecker(ConstantEvaluator evaluator) : IResolvedStatemen
 	
 	public void Visit(ResolvedMatchStatementNode node)
 	{
+		if (node.IsMut)
+			CheckMutPlace(node.Value, "match", "matched");
+		
 		VisitNode(node.Value);
 		foreach (var arm in node.Arms)
 			VisitNode(arm.Body);
@@ -140,6 +143,9 @@ public sealed class TypeChecker(ConstantEvaluator evaluator) : IResolvedStatemen
 	
 	public void Visit(ResolvedMatchExpressionNode node)
 	{
+		if (node.IsMut)
+			CheckMutPlace(node.Value, "match", "matched");
+		
 		VisitNode(node.Value);
 		foreach (var arm in node.Arms)
 			VisitNode(arm.Value);
@@ -455,18 +461,21 @@ public sealed class TypeChecker(ConstantEvaluator evaluator) : IResolvedStatemen
 	
 	public void Visit(ResolvedMutArgumentExpressionNode node)
 	{
-		var place = node.Place;
+		CheckMutPlace(node.Place, "pass", "passed");
+		VisitNode(node.Place);
+	}
+	
+	private void CheckMutPlace(IResolvedExpressionNode place, string verb, string participle)
+	{
 		var location = place.Syntax.SourceLocation;
 		if (!IsLValue(place))
-			Diagnostics.Add(new(DiagnosticSeverity.Error, location, "Cannot pass an unstored value as 'mut'"));
+			Diagnostics.Add(new(DiagnosticSeverity.Error, location, $"Cannot {verb} an unstored value as 'mut'"));
 		else if (place is ResolvedGlobalExpressionNode { Symbol: { IsMutable: true } global })
 			Diagnostics.Add(new(DiagnosticSeverity.Error, location,
-				$"Cannot pass '{global.Name}', a module 'var', as 'mut'"));
+				$"Cannot {verb} '{global.Name}', a module 'var', as 'mut'"));
 		else if (FindImmutableBinding(place) is { } binding)
 			Diagnostics.Add(new(DiagnosticSeverity.Error, location,
-				$"{DescribeImmutable(binding)} and can't be passed 'mut'"));
-		
-		VisitNode(place);
+				$"{DescribeImmutable(binding)} and can't be {participle} 'mut'"));
 	}
 	
 	public void Visit(ResolvedFunctionGroupExpressionNode node)
@@ -479,7 +488,13 @@ public sealed class TypeChecker(ConstantEvaluator evaluator) : IResolvedStatemen
 			VisitNode(value);
 	}
 	
-	public void Visit(ResolvedIsExpressionNode node) => VisitNode(node.Value);
+	public void Visit(ResolvedIsExpressionNode node)
+	{
+		if (node.IsMut)
+			CheckMutPlace(node.Value, "match", "matched");
+		
+		VisitNode(node.Value);
+	}
 	
 	public void Visit(ResolvedIndirectCallExpressionNode node)
 	{

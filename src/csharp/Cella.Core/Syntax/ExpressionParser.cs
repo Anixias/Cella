@@ -7,9 +7,6 @@ namespace Cella.Core.Syntax;
 
 public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<IExpressionNode>(tokens)
 {
-	private static Dictionary<string, TokenType> BuildContextualKeywords(params IEnumerable<TokenType> tokenTypes) =>
-		tokenTypes.ToDictionary(static t => t.Representation);
-	
 	private static readonly HashSet<TokenType> _literalTypes =
 	[
 		TokenType.KeywordTrue,
@@ -39,6 +36,7 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 		TokenType.KeywordSizeOf,
 		TokenType.KeywordNameOf,
 		TokenType.KeywordMatch,
+		TokenType.KeywordMut,
 		TokenType.KeywordRet,
 		TokenType.KeywordBreak,
 		TokenType.KeywordCont
@@ -106,18 +104,6 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 		TokenType.OpLess
 	];
 	
-	private static readonly HashSet<TokenType> _argumentModes = [TokenType.KeywordMut];
-	
-	private static readonly Dictionary<string, TokenType> _argumentModeKeywords =
-		BuildContextualKeywords(TokenType.KeywordMut);
-	
-	private static readonly HashSet<TokenType> _operandContinuations =
-	[
-		TokenType.OpPlus,
-		TokenType.OpMinus,
-		TokenType.OpOpenBracket
-	];
-	
 	private bool IsNextNewline(int next)
 	{
 		if (AtEnd(next - 1) || AtEnd(next))
@@ -178,14 +164,15 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 	
 	private IExpressionNode ParseIs(ref int index)
 	{
+		Token? mode = Match(ref index, out var keyword, TokenType.KeywordMut) ? keyword : null;
 		var node = ParseComparison(ref index);
 		if (IsNextNewline(index) || !Match(ref index, TokenType.KeywordIs))
-			return node;
+			return mode is null ? node : throw Expected(index, "'is'");
 		
 		var pattern = ParsePattern(ref index);
-		var (source, range) = node.SourceLocation;
+		var (source, range) = mode?.SourceLocation ?? node.SourceLocation;
 		range = range.Join(pattern.SourceLocation.Range);
-		return new IsExpressionNode(node, pattern, new(source, range));
+		return new IsExpressionNode(mode, node, pattern, new(source, range));
 	}
 	
 	public PatternNode ParsePattern(ref int index)
@@ -207,9 +194,10 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 		var (source, range) = first.SourceLocation;
 		range = range.Join(caseName.SourceLocation.Range);
 		if (IsNextNewline(index) || !Match(ref index, out var openParen, TokenType.OpOpenParen))
-			return new PatternNode(typePath, caseName, [], false, new(source, range));
+			return new PatternNode(typePath, caseName, [], [], false, new(source, range));
 		
 		var bindings = new List<Token>();
+		var bindingModes = new List<Token?>();
 		Token closeParen;
 		while (!Match(ref index, out closeParen, TokenType.OpCloseParen))
 		{
@@ -219,14 +207,16 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 			if (bindings.Count > 0 && !Match(ref index, TokenType.OpComma))
 				throw Expected(index, "',' or ')'", openParen);
 			
+			Token? mode = Match(ref index, out var keyword, TokenType.KeywordMut) ? keyword : null;
 			if (!Match(ref index, out var binding, TokenType.Identifier))
 				throw Expected(index, "a name or '_'");
 			
 			bindings.Add(binding);
+			bindingModes.Add(mode);
 		}
 		
 		range = range.Join(closeParen.SourceLocation.Range);
-		return new PatternNode(typePath, caseName, bindings, true, new(source, range));
+		return new PatternNode(typePath, caseName, bindings, bindingModes, true, new(source, range));
 	}
 	
 	private bool MatchName(ref int index, out Token name)
@@ -399,6 +389,7 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 	
 	private MatchExpressionNode ParseMatch(ref int index, Token keyword)
 	{
+		Token? mode = Match(ref index, out var modeKeyword, TokenType.KeywordMut) ? modeKeyword : null;
 		var value = ParseExpression(ref index);
 		if (!Match(ref index, out var openBrace, TokenType.OpOpenBrace))
 			throw Expected(index, "'{'");
@@ -415,7 +406,7 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 		
 		var (source, range) = keyword.SourceLocation;
 		range = range.Join(closeBrace.SourceLocation.Range);
-		return new MatchExpressionNode(keyword, value, arms, new(source, range));
+		return new MatchExpressionNode(keyword, mode, value, arms, new(source, range));
 	}
 	
 	private MatchExpressionArmNode ParseMatchArm(ref int index)
@@ -628,17 +619,9 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 		return new(target, arguments, target.SourceLocation with { Range = range });
 	}
 	
-	private IExpressionNode ParseArgument(ref int index)
-	{
-		var valueIndex = index;
-		if (!Match(ref valueIndex, out var keyword, _argumentModeKeywords, _argumentModes) ||
-		    IsNextNewline(valueIndex) || !CanStartExpression(valueIndex) ||
-		    _operandContinuations.Contains(Tokens[valueIndex].Type))
-			return ParseExpression(ref index);
-		
-		index = valueIndex;
-		return new MutArgumentExpressionNode(keyword, ParseExpression(ref index));
-	}
+	private IExpressionNode ParseArgument(ref int index) => Match(ref index, out var keyword, TokenType.KeywordMut)
+		? new MutArgumentExpressionNode(keyword, ParseExpression(ref index))
+		: ParseExpression(ref index);
 	
 	private IndexerExpressionNode ParseIndexerExpression(ref int index, IExpressionNode target, Token openBracket)
 	{

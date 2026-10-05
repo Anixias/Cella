@@ -8,6 +8,7 @@ public sealed class ResolvedMatchExpressionNode
 (
 	IResolvedExpressionNode value,
 	IEnumerable<ResolvedMatchExpressionArm> arms,
+	bool isMut,
 	TypeSymbol type,
 	IExpressionNode syntax
 ) : IResolvedExpressionNode
@@ -15,6 +16,7 @@ public sealed class ResolvedMatchExpressionNode
 	public TypeSymbol Type { get; } = type;
 	public IResolvedExpressionNode Value { get; } = value;
 	public ImmutableArray<ResolvedMatchExpressionArm> Arms { get; } = arms.ToImmutableArray();
+	public bool IsMut { get; } = isMut;
 	public IExpressionNode Syntax { get; } = syntax;
 }
 

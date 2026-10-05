@@ -102,8 +102,6 @@ overwrite: fun(mut a: i32, b: i32) -> i32
 	ret b
 }
 
-modes: fun(mut: i32, own: i32) -> i32 = mut * 10 + own
-
 main: fun -> i32
 {
 	var hp = 10
@@ -155,8 +153,5 @@ main: fun -> i32
 	var exponent = 0
 	val mantissa = frexp(8.0, mut exponent)
 	printf("%.2f %d\n", mantissa, exponent)
-
-	var mut = 3
-	printf("%d %d\n", modes(mut, 4), modes(mut + 1, mut))
 	ret 0
 }

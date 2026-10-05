@@ -1,0 +1,9 @@
+
+====== pattern_mode_syntax.ce ======
+
+Error at line 13, column 3
+12 │ if mut e
+13 │     ret 1
+         ╘═╛ Expected 'is'
+
+[compilation failed]

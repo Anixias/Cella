@@ -11,9 +11,6 @@ public sealed class TypeParser(ImmutableArray<Token> tokens) : BaseParser<ITypeN
 	
 	private static readonly HashSet<TokenType> _parameterModes = [TokenType.KeywordMut, TokenType.KeywordOwn];
 	
-	private static readonly Dictionary<string, TokenType> _parameterModeKeywords =
-		_parameterModes.ToDictionary(static t => t.Representation);
-	
 	public override ITypeNode Parse(ref int index) => ParseType(ref index);
 	
 	private ITypeNode ParseType(ref int index)
@@ -85,7 +82,7 @@ public sealed class TypeParser(ImmutableArray<Token> tokens) : BaseParser<ITypeN
 		{
 			do
 			{
-				parameterModes.Add(ParseParameterMode(ref index));
+				parameterModes.Add(Match(ref index, out var mode, _parameterModes) ? mode : null);
 				parameterTypes.Add(ParseType(ref index));
 			} while (Match(ref index, TokenType.OpComma));
 			
@@ -97,17 +94,6 @@ public sealed class TypeParser(ImmutableArray<Token> tokens) : BaseParser<ITypeN
 		var (source, range) = first.SourceLocation;
 		range = range.Join((returnType?.SourceLocation ?? end.SourceLocation).Range);
 		return new FunctionTypeNode(new(source, range), isExternal, parameterModes, parameterTypes, returnType);
-	}
-	
-	private Token? ParseParameterMode(ref int index)
-	{
-		var typeIndex = index;
-		if (!Match(ref typeIndex, out var mode, _parameterModeKeywords, _parameterModes) ||
-		    !Peek(typeIndex, TokenType.Identifier))
-			return null;
-		
-		index = typeIndex;
-		return mode;
 	}
 	
 	private IGenericArgumentNode ParseGenericArgument(ref int index)

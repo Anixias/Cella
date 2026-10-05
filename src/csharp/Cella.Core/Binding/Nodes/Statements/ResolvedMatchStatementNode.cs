@@ -7,11 +7,13 @@ public sealed class ResolvedMatchStatementNode
 (
 	IResolvedExpressionNode value,
 	IEnumerable<ResolvedMatchArm> arms,
+	bool isMut,
 	IStatementNode syntax
 ) : IResolvedStatementNode
 {
 	public IResolvedExpressionNode Value { get; } = value;
 	public ImmutableArray<ResolvedMatchArm> Arms { get; } = arms.ToImmutableArray();
+	public bool IsMut { get; } = isMut;
 	public IStatementNode Syntax { get; } = syntax;
 }
 

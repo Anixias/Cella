@@ -24,9 +24,6 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 	
 	private static readonly HashSet<TokenType> _parameterModes = [TokenType.KeywordMut, TokenType.KeywordOwn];
 	
-	private static readonly Dictionary<string, TokenType> _parameterModeKeywords =
-		BuildContextualKeywords(TokenType.KeywordMut, TokenType.KeywordOwn);
-	
 	private static Dictionary<string, TokenType> BuildContextualKeywords(params IEnumerable<TokenType> tokenTypes) =>
 		tokenTypes.ToDictionary(static t => t.Representation);
 	
@@ -575,14 +572,7 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 	{
 		// TODO Diagnostics
 		
-		var modeIndex = index;
-		Token? mode = null;
-		if (Match(ref modeIndex, out var keyword, _parameterModeKeywords, _parameterModes) &&
-		    Peek(modeIndex, TokenType.Identifier))
-		{
-			mode = keyword;
-			index = modeIndex;
-		}
+		Token? mode = Match(ref index, out var keyword, _parameterModes) ? keyword : null;
 		
 		// TODO Attempt resync 
 		if (!Match(ref index, out var identifier, TokenType.Identifier))
@@ -916,6 +906,7 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 	
 	private MatchStatementNode? ParseMatchStatement(ref int index, Token matchToken)
 	{
+		Token? mode = Match(ref index, out var keyword, TokenType.KeywordMut) ? keyword : null;
 		var value = ParseExpression(ref index);
 		if (!Match(ref index, out var openBrace, TokenType.OpOpenBrace))
 		{
@@ -941,7 +932,7 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 		
 		var (source, range) = matchToken.SourceLocation;
 		range = range.Join(closeBrace.SourceLocation.Range);
-		return new(new(source, range), value, arms);
+		return new(new(source, range), mode, value, arms);
 	}
 	
 	private MatchArmNode? ParseMatchArm(ref int index)
