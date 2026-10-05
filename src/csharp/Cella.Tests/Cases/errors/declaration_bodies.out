@@ -4,37 +4,37 @@
 Error at line 13, column 3
 12 │ if ready
 13 │     var first = 1
-         ╘═══════════╛ A declaration can't be the whole body of an 'if'
+         ╘═══════════╛ Declarations cannot be whole bodies
 
 Error at line 15, column 3
 14 │ else
 15 │     val second = 2
-         ╘════════════╛ A declaration can't be the whole body of an 'else'
+         ╘════════════╛ Declarations cannot be whole bodies
 
 Error at line 18, column 3
 17 │ loop while ready
 18 │     var third = 3
-         ╘═══════════╛ A declaration can't be the whole body of a loop
+         ╘═══════════╛ Declarations cannot be whole bodies
 
 Error at line 21, column 3
 20 │ loop
 21 │     var fourth = 4
-         ╘════════════╛ A declaration can't be the whole body of a loop
+         ╘════════════╛ Declarations cannot be whole bodies
 
 Error at line 25, column 3
 24 │ loop for 2
 25 │     var fifth = 5
-         ╘═══════════╛ A declaration can't be the whole body of a loop
+         ╘═══════════╛ Declarations cannot be whole bodies
 
 Error at line 28, column 3
 27 │ loop
 28 │     val sixth = 6
-         ╘═══════════╛ A declaration can't be the whole body of a loop
+         ╘═══════════╛ Declarations cannot be whole bodies
 
 Error at line 32, column 10
 31 │ {
 32 │     red => var seventh = 7
-                ╘═════════════╛ A declaration can't be the whole body of a match arm
+                ╘═════════════╛ Declarations cannot be whole bodies
 
 Error at line 36, column 6
 35 │ 

@@ -756,7 +756,7 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 			return null;
 		
 		if (parameters.Count > 0)
-			Report(parameters[0].SourceLocation, "'drop' takes no parameters");
+			Report(parameters[0].SourceLocation, "Destructors cannot take parameters");
 		
 		if (!Match(ref index, out var openBraceToken, TokenType.OpOpenBrace))
 			return null;

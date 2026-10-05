@@ -59,7 +59,7 @@ Error at line 37, column 10
 Error at line 38, column 17
 37 │ var s = handler.scale(5)
 38 │ printf("%d\n", helper)
-                    ╘════╛ Cannot pass type 'fun(i32) -> i32' to a variadic ext function
+                    ╘════╛ Cannot pass 'fun(i32) -> i32' values to variadic functions
 
 Error at line 39, column 30
 38 │ printf("%d\n", helper)

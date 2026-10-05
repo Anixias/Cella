@@ -4,12 +4,12 @@
 Error at line 32, column 12
 31 │ var a = Buffer(1)
 32 │ val p = @(own a)
-               ╘═══╛ Cannot take the address of an unstored value
+               ╘═══╛ Cannot take the address of unstored values
 
 Error at line 33, column 11
 32 │ val p = @(own a)
 33 │ bump(mut own a)
-              ╘═══╛ Cannot pass an unstored value as 'mut'
+              ╘═══╛ Cannot mutably borrow unstored values
 
 Error at line 34, column 2
 33 │ bump(mut own a)
@@ -24,56 +24,56 @@ Error at line 35, column 2
 Error at line 37, column 18
 36 │ 
 37 │ val field = own make().buffer
-                     ╘═══════════╛ 'own' has no effect on an unstored value
+                     ╘═══════════╛ Cannot move unstored values
 
 Error at line 38, column 19
 37 │ val field = own make().buffer
 38 │ val global = own counter
-                      ╘═════╛ 'own' has no effect on 'counter', a module 'var'
+                      ╘═════╛ Cannot move module variables
 
 Error at line 39, column 21
 38 │ val global = own counter
 39 │ val constant = own limit
-                        ╘═══╛ 'own' has no effect on 'limit', a module 'val'
+                        ╘═══╛ Cannot move module values
 
 Error at line 42, column 19
 41 │ val q = @number
 42 │ val copied = own *q
-                      ╘╛ 'own' has no effect on 'i32' through a pointer
+                      ╘╛ Cannot move 'i32' values out of a pointer
 
 Error at line 45, column 18
 44 │ val h = @holder
 45 │ val count = own h.count
-                     ╘═════╛ 'own' has no effect on 'i32' through a pointer
+                     ╘═════╛ Cannot move 'i32' values out of a pointer
 
 Error at line 46, column 20
 45 │ val count = own h.count
 46 │ val stored = own (counter = 5)
-                       ╘═════════╛ 'own' has no effect on 'counter', a module 'var'
+                       ╘═════════╛ Cannot move module variables
 
 Error at line 47, column 21
 46 │ val stored = own (counter = 5)
 47 │ val through = own (*q = 7)
-                        ╘════╛ 'own' has no effect on 'i32' through a pointer
+                        ╘════╛ Cannot move 'i32' values out of a pointer
 
 Error at line 49, column 17
 48 │ 
 49 │ val implicit = h.buffer
-                    ╘══════╛ A 'Buffer' moved out of a pointer must be marked 'own'
+                    ╘══════╛ Cannot move 'Buffer' values out of a pointer implicitly
 
 Error at line 50, column 14
 49 │ val implicit = h.buffer
 50 │ val whole = *h
-                 ╘╛ A 'Holder' moved out of a pointer must be marked 'own'
+                 ╘╛ Cannot move 'Holder' values out of a pointer implicitly
 
 Error at line 51, column 19
 50 │ val whole = *h
 51 │ val given = take(h.buffer)
-                      ╘══════╛ A 'Buffer' moved out of a pointer must be marked 'own'
+                      ╘══════╛ Cannot move 'Buffer' values out of a pointer implicitly
 
 Error at line 52, column 18
 51 │ val given = take(h.buffer)
 52 │ val replaced = (h.buffer = Buffer(8))
-                     ╘══════════════════╛ A 'Buffer' moved out of a pointer must be marked 'own'
+                     ╘══════════════════╛ Cannot move 'Buffer' values out of a pointer implicitly
 
 [compilation failed]

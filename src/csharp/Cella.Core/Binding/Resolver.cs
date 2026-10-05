@@ -467,11 +467,11 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			_ => []
 		};
 	
-	private void ReportDeclarationBody(IStatementNode body, string owner)
+	private void ReportDeclarationBody(IStatementNode body)
 	{
 		if (body is VarStatementNode declaration)
 			Diagnostics.Add(new(DiagnosticSeverity.Error, declaration.SourceLocation,
-				$"A declaration can't be the whole body of {owner}"));
+				"Declarations cannot be whole bodies"));
 	}
 	
 	private Scope CreateScope(IEnumerable<LocalVariableSymbol?> bindings)
@@ -525,7 +525,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 				: null;
 			
 			var bindings = pattern?.Bindings ?? (arm.Pattern is { } failed ? CreateBindings(failed, null, isMut) : []);
-			ReportDeclarationBody(arm.Body, "a match arm");
+			ReportDeclarationBody(arm.Body);
 			arms.Add(new ResolvedMatchArm(pattern, VisitInScope(arm.Body, bindings)));
 			summaries.Add(SummarizeArm(arm.Pattern, pattern, enumType, arm.SourceLocation));
 		}
@@ -856,7 +856,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			return new ResolvedOwnExpressionNode(value, node);
 		
 		Diagnostics.Add(new(DiagnosticSeverity.Error, node.Value.SourceLocation,
-			"'own' has no effect on an unstored value"));
+			"Cannot move unstored values"));
 		
 		return value;
 	}
@@ -890,12 +890,10 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		var hasParameter = index < callable.ParameterTypes.Length;
 		var isMut = hasParameter && callable.GetMode(index) == ParameterMode.Mut;
 		var name = hasParameter ? callable.GetParameterName(index) : null;
-		var parameter = name is null ? "a 'mut' parameter" : $"'mut' parameter '{name}'";
 		
 		if (argument is null)
 			return isMut
-				? new(DiagnosticSeverity.Error, arg.Syntax.SourceLocation,
-					$"An argument to {parameter} must be marked 'mut'")
+				? new(DiagnosticSeverity.Error, arg.Syntax.SourceLocation, "Cannot mutably borrow arguments implicitly")
 				: null;
 		
 		if (!isMut)
@@ -908,7 +906,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			return null;
 		
 		return new(DiagnosticSeverity.Error, argument.Place.Syntax.SourceLocation,
-			$"Cannot pass '{argument.Place.Type.Name}' to {parameter} of type '{declared.Name}'");
+			$"Cannot mutably borrow '{argument.Place.Type.Name}' values as '{declared.Name}'");
 	}
 	
 	private static TypeSymbol GetArgumentType(IResolvedExpressionNode arg) =>
@@ -1370,11 +1368,11 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	{
 		var condition = VisitNode(node.Condition, NativeSymbols.Bool);
 		
-		ReportDeclarationBody(node.Then, "an 'if'");
+		ReportDeclarationBody(node.Then);
 		var then = VisitInScope(node.Then, GetTrueBindings(condition));
 		
 		if (node.Else is { } elseNode)
-			ReportDeclarationBody(elseNode, "an 'else'");
+			ReportDeclarationBody(elseNode);
 		
 		var @else = node.Else is null ? null : VisitInScope(node.Else, []);
 		
@@ -1386,7 +1384,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		var resolutionContext = CurrentResolutionContext;
 		if (!node.IsMutable && node.ExpressionNode is null)
 			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Identifier.SourceLocation,
-				"A 'val' without an initial value is not supported yet"));
+				"Uninitialized values are not supported yet"));
 		
 		TypeSymbol? type;
 		if (node.Type is { } specifiedType)
@@ -1445,7 +1443,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			symbol = null;
 		
 		_resolutionContexts.Push(resolutionContext);
-		ReportDeclarationBody(node.Body, "a loop");
+		ReportDeclarationBody(node.Body);
 		var body = VisitNode(node.Body);
 		_resolutionContexts.Pop();
 		
@@ -1470,7 +1468,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			symbol = null;
 		
 		_resolutionContexts.Push(resolutionContext);
-		ReportDeclarationBody(node.Body, "a loop");
+		ReportDeclarationBody(node.Body);
 		var body = VisitNode(node.Body);
 		_resolutionContexts.Pop();
 		
@@ -1498,7 +1496,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			symbol = null;
 		
 		_resolutionContexts.Push(resolutionContext);
-		ReportDeclarationBody(node.Body, "a loop");
+		ReportDeclarationBody(node.Body);
 		var body = VisitNode(node.Body);
 		_resolutionContexts.Pop();
 		
@@ -1521,7 +1519,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			symbol = null;
 		
 		_resolutionContexts.Push(resolutionContext);
-		ReportDeclarationBody(node.Body, "a loop");
+		ReportDeclarationBody(node.Body);
 		var body = VisitNode(node.Body);
 		_resolutionContexts.Pop();
 		
@@ -1613,11 +1611,10 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		if (IsAssignment(op.Type))
 		{
 			var left = VisitNode(node.Left, null);
-			if (left is ResolvedFunctionGroupExpressionNode function)
+			if (left is ResolvedFunctionGroupExpressionNode)
 			{
 				VisitNode(node.Right, null);
-				return Error(node, $"'{function.Group.FunctionName}' is a function and can't be changed",
-					CurrentTargetType, node.Left);
+				return Error(node, "Cannot reassign functions", CurrentTargetType, node.Left);
 			}
 			
 			if (op.Type != TokenType.OpEqual)
@@ -2341,7 +2338,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 				return arg;
 			
 			default:
-				return Error(arg.Syntax, $"Cannot pass type '{arg.Type.Name}' to a variadic ext function",
+				return Error(arg.Syntax, $"Cannot pass '{arg.Type.Name}' values to variadic functions",
 					NativeSymbols.Invalid);
 		}
 	}

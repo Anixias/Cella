@@ -134,7 +134,7 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool) 
 	public void Visit(ResolvedMatchStatementNode node)
 	{
 		if (node.IsMut)
-			CheckMutPlace(node.Value, "match", "matched");
+			CheckMutPlace(node.Value);
 		
 		VisitNode(node.Value);
 		foreach (var arm in node.Arms)
@@ -144,7 +144,7 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool) 
 	public void Visit(ResolvedMatchExpressionNode node)
 	{
 		if (node.IsMut)
-			CheckMutPlace(node.Value, "match", "matched");
+			CheckMutPlace(node.Value);
 		
 		VisitNode(node.Value);
 		foreach (var arm in node.Arms)
@@ -297,9 +297,9 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool) 
 	
 	private static string DescribeImmutable(VariableSymbol binding) => binding switch
 	{
-		LocalVariableSymbol { IsPatternBinding: true } => $"'{binding.Name}' is bound by a pattern",
-		ParameterSymbol => $"'{binding.Name}' is a read-only parameter",
-		_ => $"'{binding.Name}' is a 'val'"
+		LocalVariableSymbol { IsPatternBinding: true } => "read-only pattern bindings",
+		ParameterSymbol => "read-only parameters",
+		_ => "values"
 	};
 	
 	private IResolvedExpressionNode? FindNonConstant(IResolvedExpressionNode node)
@@ -355,16 +355,15 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool) 
 	
 	public void Visit(ResolvedAssignmentExpressionNode node)
 	{
-		// TODO Better diagnostic
-		if (node.Left is ResolvedAccessExpressionNode { Member: PropertySymbol { Setter: null } property })
+		if (node.Left is ResolvedAccessExpressionNode { Member: PropertySymbol { Setter: null } })
 			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Left.Syntax.SourceLocation,
-				$"'{property.Name}' is read-only"));
+				"Cannot reassign read-only properties"));
 		else if (!IsLValue(node.Left))
 			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Left.Syntax.SourceLocation,
 				"Assignment target must be addressable"));
 		else if (FindImmutableBinding(node.Left) is { } binding)
 			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Left.Syntax.SourceLocation,
-				$"{DescribeImmutable(binding)} and can't be changed"));
+				$"Cannot reassign {DescribeImmutable(binding)}"));
 		
 		var expected = node.Left.Type;
 		var actual = node.Right.Type;
@@ -482,13 +481,13 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool) 
 		var location = node.Value.Syntax.SourceLocation;
 		var place = SkipAssignment(node.Value);
 		if (!IsLValue(place))
-			Diagnostics.Add(new(DiagnosticSeverity.Error, location, "'own' has no effect on an unstored value"));
+			Diagnostics.Add(new(DiagnosticSeverity.Error, location, "Cannot move unstored values"));
 		else if (place is ResolvedGlobalExpressionNode { Symbol: var global })
 			Diagnostics.Add(new(DiagnosticSeverity.Error, location,
-				$"'own' has no effect on '{global.Name}', a module '{(global.IsMutable ? "var" : "val")}'"));
+				$"Cannot move module {(global.IsMutable ? "variables" : "values")}"));
 		else if (IsThroughPointer(place) && typePool.IsCopy(node.Value.Type))
 			Diagnostics.Add(new(DiagnosticSeverity.Error, location,
-				$"'own' has no effect on '{node.Value.Type.Name}' through a pointer"));
+				$"Cannot move '{node.Value.Type.Name}' values out of a pointer"));
 		
 		VisitNode(node.Value);
 	}
@@ -499,7 +498,7 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool) 
 		if (value is not ResolvedOwnExpressionNode && IsLValue(place) && IsThroughPointer(place) &&
 		    !typePool.IsCopy(value.Type))
 			Diagnostics.Add(new(DiagnosticSeverity.Error, value.Syntax.SourceLocation,
-				$"A '{value.Type.Name}' moved out of a pointer must be marked 'own'"));
+				$"Cannot move '{value.Type.Name}' values out of a pointer implicitly"));
 	}
 	
 	private static IResolvedExpressionNode SkipAssignment(IResolvedExpressionNode value) =>
@@ -518,21 +517,20 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool) 
 	
 	public void Visit(ResolvedMutArgumentExpressionNode node)
 	{
-		CheckMutPlace(node.Place, "pass", "passed");
+		CheckMutPlace(node.Place);
 		VisitNode(node.Place);
 	}
 	
-	private void CheckMutPlace(IResolvedExpressionNode place, string verb, string participle)
+	private void CheckMutPlace(IResolvedExpressionNode place)
 	{
 		var location = place.Syntax.SourceLocation;
 		if (!IsLValue(place))
-			Diagnostics.Add(new(DiagnosticSeverity.Error, location, $"Cannot {verb} an unstored value as 'mut'"));
-		else if (place is ResolvedGlobalExpressionNode { Symbol: { IsMutable: true } global })
-			Diagnostics.Add(new(DiagnosticSeverity.Error, location,
-				$"Cannot {verb} '{global.Name}', a module 'var', as 'mut'"));
+			Diagnostics.Add(new(DiagnosticSeverity.Error, location, "Cannot mutably borrow unstored values"));
+		else if (place is ResolvedGlobalExpressionNode { Symbol.IsMutable: true })
+			Diagnostics.Add(new(DiagnosticSeverity.Error, location, "Cannot mutably borrow module variables"));
 		else if (FindImmutableBinding(place) is { } binding)
 			Diagnostics.Add(new(DiagnosticSeverity.Error, location,
-				$"{DescribeImmutable(binding)} and can't be {participle} 'mut'"));
+				$"Cannot mutably borrow {DescribeImmutable(binding)}"));
 	}
 	
 	public void Visit(ResolvedFunctionGroupExpressionNode node)
@@ -551,7 +549,7 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool) 
 	public void Visit(ResolvedIsExpressionNode node)
 	{
 		if (node.IsMut)
-			CheckMutPlace(node.Value, "match", "matched");
+			CheckMutPlace(node.Value);
 		
 		VisitNode(node.Value);
 	}
@@ -598,11 +596,11 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool) 
 	{
 		if (node.Operation?.Op == TokenType.OpAt && !IsLValue(node.Operand))
 			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Operand.Syntax.SourceLocation,
-				"Cannot take the address of an unstored value"));
+				"Cannot take the address of unstored values"));
 		else if (node is { Operation.Op: TokenType.OpAt } &&
-		         node.Operand is ResolvedGlobalExpressionNode { Symbol: { IsMutable: true } global })
+		         node.Operand is ResolvedGlobalExpressionNode { Symbol.IsMutable: true })
 			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Operand.Syntax.SourceLocation,
-				$"Cannot take the address of '{global.Name}', a module 'var'"));
+				"Cannot take the address of module variables"));
 		
 		VisitNode(node.Operand);
 	}

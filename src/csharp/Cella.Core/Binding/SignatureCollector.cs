@@ -137,7 +137,7 @@ public sealed class SignatureCollector
 		type = declaration.Context.ResolveType(node.Type);
 		if (node.IsMutable && !IsScalar(type))
 			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Type.SourceLocation,
-				"A module 'var' must be an integer, a float, 'bool' or 'char'"));
+				"Module variables must be numbers, 'bool' or 'char'"));
 		
 		_globalTypes[global] = type;
 		Exit();

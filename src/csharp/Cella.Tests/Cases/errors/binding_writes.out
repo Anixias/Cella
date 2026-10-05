@@ -4,11 +4,11 @@
 Error at line 14, column 3
 13 │ if effect is hit(n)
 14 │     n = 2
-         ^ 'n' is bound by a pattern and can't be changed
+         ^ Cannot reassign read-only pattern bindings
 
 Error at line 20, column 4
 19 │ {
 20 │     values[0] = 3
-         ╘═══════╛ 'values' is bound by a pattern and can't be changed
+         ╘═══════╛ Cannot reassign read-only pattern bindings
 
 [compilation failed]

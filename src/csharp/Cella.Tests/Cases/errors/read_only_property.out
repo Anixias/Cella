@@ -4,31 +4,31 @@
 Error at line 6, column 2
 5 │ var values: array[i32, 4]
 6 │ values.length = 2
-    ╘═══════════╛ 'length' is read-only
+    ╘═══════════╛ Cannot reassign read-only properties
 
 Error at line 7, column 2
 6 │ values.length = 2
 7 │ values.length += 1
-    ╘═══════════╛ 'length' is read-only
+    ╘═══════════╛ Cannot reassign read-only properties
 
 Error at line 9, column 2
 8 │ var text = "abc"
 9 │ text.byteLength = 1
-    ╘═════════════╛ 'byteLength' is read-only
+    ╘═════════════╛ Cannot reassign read-only properties
 
 Error at line 10, column 17
  9 │ text.byteLength = 1
 10 │ var address = @values.length
-                    ╘═══════════╛ Cannot take the address of an unstored value
+                    ╘═══════════╛ Cannot take the address of unstored values
 
 Error at line 12, column 2
 11 │ val pointer = @values
 12 │ pointer.length = 3
-     ╘════════════╛ 'length' is read-only
+     ╘════════════╛ Cannot reassign read-only properties
 
 Error at line 14, column 2
 13 │ val view = @text
 14 │ view.byteLength = 2
-     ╘═════════════╛ 'byteLength' is read-only
+     ╘═════════════╛ Cannot reassign read-only properties
 
 [compilation failed]

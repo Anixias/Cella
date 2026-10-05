@@ -110,7 +110,7 @@ Error at line 71, column 3
 Error at line 77, column 10
 76 │ {
 77 │     red => var declared = 5
-                ╘══════════════╛ A declaration can't be the whole body of a match arm
+                ╘══════════════╛ Declarations cannot be whole bodies
 
 Error at line 81, column 6
 80 │ 

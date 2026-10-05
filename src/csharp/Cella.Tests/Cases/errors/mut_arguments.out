@@ -4,17 +4,17 @@
 Error at line 30, column 9
 29 │ var big: i64 = 5
 30 │ damage(hp, 3)
-            ╘╛ An argument to 'mut' parameter 'hp' must be marked 'mut'
+            ╘╛ Cannot mutably borrow arguments implicitly
 
 Error at line 31, column 9
 30 │ damage(hp, 3)
 31 │ damage(7, 3)
-            ^ An argument to 'mut' parameter 'hp' must be marked 'mut'
+            ^ Cannot mutably borrow arguments implicitly
 
 Error at line 32, column 13
 31 │ damage(7, 3)
 32 │ damage(mut big, 3)
-                ╘═╛ Cannot pass 'i64' to 'mut' parameter 'hp' of type 'i32'
+                ╘═╛ Cannot mutably borrow 'i64' values as 'i32'
 
 Error at line 33, column 7
 32 │ damage(mut big, 3)
@@ -49,12 +49,12 @@ Error at line 39, column 11
 Error at line 41, column 4
 40 │ val f = damage
 41 │ f(hp, 3)
-       ╘╛ An argument to a 'mut' parameter must be marked 'mut'
+       ╘╛ Cannot mutably borrow arguments implicitly
 
 Error at line 42, column 8
 41 │ f(hp, 3)
 42 │ f(mut big, 3)
-           ╘═╛ Cannot pass 'i64' to a 'mut' parameter of type 'i32'
+           ╘═╛ Cannot mutably borrow 'i64' values as 'i32'
 
 Error at line 43, column 30
 42 │ f(mut big, 3)

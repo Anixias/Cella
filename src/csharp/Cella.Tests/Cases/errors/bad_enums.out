@@ -59,6 +59,6 @@ Error at line 42, column 1
 Error at line 47, column 14
 46 │ 
 47 │ current: var Team = Team.blue
-                  ╘══╛ A module 'var' must be an integer, a float, 'bool' or 'char'
+                  ╘══╛ Module variables must be numbers, 'bool' or 'char'
 
 [compilation failed]

@@ -4,26 +4,26 @@
 Error at line 13, column 9
 12 │ {
 13 │     if mut e is hit(n)
-                ^ 'e' is a read-only parameter and can't be matched 'mut'
+                ^ Cannot mutably borrow read-only parameters
 
 Error at line 20, column 12
 19 │ val fixed = Effect.hit(1)
 20 │ match mut fixed
-               ╘═══╛ 'fixed' is a 'val' and can't be matched 'mut'
+               ╘═══╛ Cannot mutably borrow values
 
 Error at line 26, column 5
 25 │ 
 26 │ if fixed is hit(mut n)
-        ╘═══╛ 'fixed' is a 'val' and can't be matched 'mut'
+        ╘═══╛ Cannot mutably borrow values
 
 Error at line 29, column 12
 28 │ 
 29 │ match mut make()
-               ╘════╛ Cannot match an unstored value as 'mut'
+               ╘════╛ Cannot mutably borrow unstored values
 
 Error at line 37, column 3
 36 │ if e is hit(n)
 37 │     n = 5
-         ^ 'n' is bound by a pattern and can't be changed
+         ^ Cannot reassign read-only pattern bindings
 
 [compilation failed]

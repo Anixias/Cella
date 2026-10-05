@@ -4,6 +4,6 @@
 Error at line 7, column 11
 6 │ 
 7 │ drop: op(other: Buffer)
-             ╘═══╛ 'drop' takes no parameters
+             ╘═══╛ Destructors cannot take parameters
 
 [compilation failed]

@@ -4,7 +4,7 @@
 Error at line 5, column 6
 4 │ {
 5 │     val later: i32
-            ╘═══╛ A 'val' without an initial value is not supported yet
+            ╘═══╛ Uninitialized values are not supported yet
 
 Error at line 8, column 15
 7 │ var x: i32 = 1
