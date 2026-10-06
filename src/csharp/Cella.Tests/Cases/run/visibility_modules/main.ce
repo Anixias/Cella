@@ -1,0 +1,19 @@
+mod test
+
+use game.*
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+helper: fun -> i32 = 100
+
+main: fun -> i32
+{
+	var world = game.World.create(5)
+	game.advance(mut world)
+	val rule = Rule(2)
+	printf("%d %d %d %d\n", world.turn, helper(), describe(world), describe(rule))
+	ret 0
+}

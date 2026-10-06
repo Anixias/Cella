@@ -15,19 +15,31 @@ Error at line 15, column 9
 
 Error at line 21, column 9
 20 │ {
-21 │     token: Token
+21 │     count: mut[i32]
+                ╘══════╛ Cannot store borrows in plain records
+                       | Did you mean 'Shared: pvt ref rec'?
+
+Error at line 28, column 10
+27 │ {
+28 │     count: mut[i32]
+                ╘══════╛ Cannot store borrows in plain records
+                       | Did you mean 'Local: ref rec'?
+
+Error at line 34, column 9
+33 │ {
+34 │     token: Token
                 ╘═══╛ Cannot store borrows in plain records
                     | Did you mean 'Holder: ref rec'?
 
-Error at line 22, column 10
-21 │ token: Token
-22 │ values: array[imm[i32], 2]
+Error at line 35, column 10
+34 │ token: Token
+35 │ values: array[imm[i32], 2]
              ╘════════════════╛ Cannot store borrows in plain records
                               | Did you mean 'Holder: ref rec'?
 
-Error at line 28, column 15
-27 │ none
-28 │ unit(health: imm[i32])
+Error at line 41, column 15
+40 │ none
+41 │ unit(health: imm[i32])
                   ╘══════╛ Cannot store borrows in plain enums
                          | Did you mean 'Target: ref enum'?
 

@@ -1,0 +1,5 @@
+mod game
+
+peek: fun(hidden: Hidden) -> i32 = 0
+
+share: fun(secret: Secret) -> i32 = secret.code

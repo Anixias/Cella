@@ -10,14 +10,16 @@ using Cella.Diagnostics;
 
 namespace Cella.Core.Binding;
 
-public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool) : IResolvedStatementNodeVisitor,
-	IResolvedDeclarationNodeVisitor, IResolvedExpressionNodeVisitor
+public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool, ModuleIndex modules)
+	: IResolvedStatementNodeVisitor, IResolvedDeclarationNodeVisitor, IResolvedExpressionNodeVisitor
 {
 	public DiagnosticList Diagnostics { get; } = new();
 	
 	private readonly Stack<TypeSymbol?> _returnTypeStack = [];
 	private int continueDepth;
 	private int breakDepth;
+	private FileSymbol currentFile = null!;
+	private TypeSymbol? currentType;
 	
 	public void Check(ResolvedFileNode root) => VisitNode(root);
 	
@@ -27,6 +29,7 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool) 
 	
 	public void Visit(ResolvedFileNode node)
 	{
+		currentFile = node.Symbol;
 		foreach (var declaration in node.Declarations)
 			VisitNode(declaration);
 	}
@@ -56,8 +59,11 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool) 
 	
 	public void Visit(ResolvedRecordNode node)
 	{
+		currentType = node.Symbol;
 		foreach (var member in node.Members)
 			VisitNode(member);
+		
+		currentType = null;
 	}
 	
 	public void Visit(ResolvedFieldNode node)
@@ -66,8 +72,11 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool) 
 	
 	public void Visit(ResolvedEnumNode node)
 	{
+		currentType = node.Symbol;
 		foreach (var function in node.Functions)
 			VisitNode(function);
+		
+		currentType = null;
 	}
 	
 	public void Visit(ResolvedMethodNode node) => VisitNode(node.FunctionNode);
@@ -380,6 +389,8 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool) 
 		else if (!IsLValue(node.Left))
 			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Left.Syntax.SourceLocation,
 				"Assignment target must be addressable"));
+		else if (ReportUnwritable(node.Left) is { } unwritable)
+			Diagnostics.Add(unwritable);
 		else if (IsThroughReadOnlyBorrow(node.Left))
 			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Left.Syntax.SourceLocation,
 				"Cannot write through read-only borrows"));
@@ -527,6 +538,8 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool) 
 		else if (IsThroughPointer(place) && typePool.IsCopy(node.Value.Type))
 			Diagnostics.Add(new(DiagnosticSeverity.Error, location,
 				$"Cannot move '{node.Value.Type.Name}' values out of a pointer"));
+		else if (!typePool.IsCopy(node.Value.Type) && ReportUnwritable(place) is { } unwritable)
+			Diagnostics.Add(unwritable);
 		
 		VisitNode(node.Value);
 	}
@@ -542,7 +555,30 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool) 
 		else if (IsThroughPointer(place))
 			Diagnostics.Add(new(DiagnosticSeverity.Error, value.Syntax.SourceLocation,
 				$"Cannot move '{value.Type.Name}' values out of a pointer implicitly"));
+		else if (ReportUnwritable(place) is { } unwritable)
+			Diagnostics.Add(unwritable);
 	}
+	
+	private Diagnostic? ReportUnwritable(IResolvedExpressionNode place) => place switch
+	{
+		ResolvedAccessExpressionNode { Member: FieldSymbol field } node =>
+			ReportUnwritable(node.Target.Type, field, GetMemberLocation(node)) ?? ReportUnwritable(node.Target),
+		ResolvedIndexerExpressionNode { Target.Type: ArrayType } node => ReportUnwritable(node.Target),
+		_ => null
+	};
+	
+	private Diagnostic? ReportUnwritable(TypeSymbol owner, FieldSymbol field, SourceLocation location)
+	{
+		if (!modules.IsAccessible(owner, field.Visibility, currentFile, currentType))
+			return DiagnosticReporter.ReportHidden(location, field.Name, field.Visibility, true);
+		
+		return modules.IsAccessible(owner, field.WriteVisibility, currentFile, currentType)
+			? null
+			: DiagnosticReporter.ReportReadOnly(location, field.Name, field.WriteVisibility);
+	}
+	
+	private static SourceLocation GetMemberLocation(ResolvedAccessExpressionNode node) =>
+		node.Syntax is AccessExpressionNode access ? access.Member.SourceLocation : node.Syntax.SourceLocation;
 	
 	private void CheckBorrowedTemporary(IResolvedExpressionNode value)
 	{
@@ -614,6 +650,8 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool) 
 			Diagnostics.Add(new(DiagnosticSeverity.Error, location, "Cannot mutably borrow unstored values"));
 		else if (place is ResolvedGlobalExpressionNode { Symbol.IsMutable: true })
 			Diagnostics.Add(new(DiagnosticSeverity.Error, location, "Cannot mutably borrow module variables"));
+		else if (ReportUnwritable(place) is { } unwritable)
+			Diagnostics.Add(unwritable);
 		else if (IsThroughReadOnlyBorrow(place))
 			Diagnostics.Add(new(DiagnosticSeverity.Error, location, "Cannot mutably borrow through read-only borrows"));
 		else if (FindImmutableBinding(place) is { } binding)
@@ -673,8 +711,11 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool) 
 	
 	public void Visit(ResolvedRecordExpressionNode node)
 	{
-		foreach (var (_, value) in node.Fields)
+		foreach (var (field, value) in node.Fields)
 		{
+			if (ReportUnwritable(node.Type, field, value.Syntax.SourceLocation) is { } unwritable)
+				Diagnostics.Add(unwritable);
+			
 			VisitNode(value);
 			CheckConsumed(value);
 		}

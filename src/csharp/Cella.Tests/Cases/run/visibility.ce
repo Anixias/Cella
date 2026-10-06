@@ -1,0 +1,142 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Counter: rec
+{
+	count: pvt set i32
+	step: pvt i32
+
+	new: pvt op(step: i32)
+	{
+		self.count = 0
+		self.step = step
+	}
+
+	by: fun(step: i32) -> Counter = Counter(step)
+
+	bump: fun(mut self)
+	{
+		self.count += self.advance()
+	}
+
+	merge: fun(mut self, other: Counter)
+	{
+		self.count += other.count
+	}
+
+	advance: pvt fun(self) -> i32 = self.step
+}
+
+Shape: enum
+{
+	square(side: i32)
+	circle(radius: i32)
+
+	size: fun(self) -> i32 = self.area() + self.edges()
+
+	edges: pvt fun(self) -> i32 = match self
+	{
+		square(side) => 4
+		circle(radius) => 0
+	}
+
+	pvt
+	{
+		area: fun(self) -> i32 = match self
+		{
+			square(side) => side * side
+			circle(radius) => Shape.approximate(radius)
+		}
+
+		approximate: fun(radius: i32) -> i32 = 3 * radius * radius
+	}
+}
+
+Camera: rec
+{
+	x: pvt i32
+	dirty: pvt set bool
+
+	move: fun(mut self, x: i32)
+	{
+		self.x = x
+		self.dirty = true
+	}
+
+	position: fun(self) -> i32 = self.x
+}
+
+Ledger: rec
+{
+	mod
+	{
+		total: pvt set i32
+		entries: i32
+	}
+
+	add: fun(mut self, amount: i32)
+	{
+		self.total += amount
+		self.entries += 1
+	}
+}
+
+Target: rec
+{
+	value: i32
+
+	label: fun(self) -> i32 = 1
+}
+
+Handle: rec
+{
+	target: req ptr[Target]
+	value: pvt i32
+
+	*: op(self) -> imm[Target] = imm *self.target
+	*: op(mut self) -> mut[Target] = mut *self.target
+
+	at: fun(target: ptr[Target]) -> Handle = Handle(target, 40)
+	label: pvt fun(self) -> i32 = 2
+	total: fun(self) -> i32 = self.value + self.label()
+}
+
+audit: mod fun(ledger: Ledger) -> i32 = ledger.total * 100 + ledger.entries
+
+pvt
+{
+	scale: val i32 = 10
+
+	double: fun(value: i32) -> i32 = value * 2
+}
+
+main: fun -> i32
+{
+	var counter = Counter.by(3)
+	counter.bump()
+	counter.bump()
+	var other = Counter.by(4)
+	other.bump()
+	counter.merge(other)
+
+	var camera = Camera()
+	camera.move(7)
+
+	var ledger = Ledger()
+	ledger.add(5)
+	ledger.add(4)
+	ledger.entries += 1
+
+	var target = Target(5)
+	var handle = Handle.at(@target)
+	handle.value += 1
+
+	printf("%d %d %d\n", counter.count, Shape.square(2).size(), Shape.circle(1).size())
+	printf("%d %d %d %d\n", camera.position(), camera.dirty, audit(ledger), double(scale))
+	printf("%d %d %d\n", handle.value, handle.label(), handle.total())
+	ret 0
+}

@@ -77,7 +77,8 @@ public static class DiagnosticReporter
 		IEnumerable<string> availableNames) =>
 		ReportUndefined(location, $"Module '{missingName}' not found", missingName, availableNames);
 	
-	public static Diagnostic ReportUndefinedMember(SourceLocation location, ModulePathSymbol module, string missingName)
+	public static Diagnostic ReportUndefinedMember(SourceLocation location, ModulePathSymbol module, string missingName,
+		IEnumerable<string> memberNames)
 	{
 		if (module.Parent is null)
 			return ReportUndefinedModule(location, missingName, module.Children.Keys);
@@ -86,8 +87,17 @@ public static class DiagnosticReporter
 			return new(DiagnosticSeverity.Error, location, $"'{module.Path}.{missingName}' isn't public");
 		
 		return ReportUndefined(location, $"Module '{module.Path}' has no member '{missingName}'", missingName,
-			module.Members.Keys.Concat(module.Children.Keys));
+			memberNames.Concat(module.Children.Keys));
 	}
+	
+	public static Diagnostic ReportHidden(SourceLocation location, string name, Visibility visibility, bool isMember) =>
+		new(DiagnosticSeverity.Error, location, $"'{name}' is private to its {DescribeScope(visibility, isMember)}");
+	
+	public static Diagnostic ReportReadOnly(SourceLocation location, string name, Visibility visibility) =>
+		new(DiagnosticSeverity.Error, location, $"'{name}' is read-only outside its {DescribeScope(visibility, true)}");
+	
+	private static string DescribeScope(Visibility visibility, bool isMember) =>
+		visibility != Visibility.Private ? "module" : isMember ? "type" : "file";
 	
 	public static Diagnostic ReportUndefinedCase(SourceLocation location, string enumName, string missingName,
 		IEnumerable<string> caseNames) =>

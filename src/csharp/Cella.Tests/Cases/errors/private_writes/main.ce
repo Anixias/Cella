@@ -1,0 +1,53 @@
+mod test
+
+use game.*
+
+addOne: fun(mut value: i32)
+{
+	value += 1
+}
+
+writes: fun
+{
+	var box = Box.make()
+	box.limit = 1
+	box.limit += 1
+	box.items[0] = 1
+	box.inner.amount = 1
+	box.inner.grow()
+	addOne(mut box.limit)
+	val view = mut box.limit
+	match mut box.shape
+	{
+		dot(size) => size += 1
+	}
+
+	match box.shape
+	{
+		dot(mut size) => size += 1
+	}
+}
+
+moves: fun
+{
+	var box = Box.make()
+	val taken = own box.inner
+	val copied = box.inner
+}
+
+modules: fun
+{
+	var counter = Counter()
+	counter.total = 1
+}
+
+builds: fun -> Plain = Plain(1, 2, 3)
+
+defaults: fun -> Plain = Plain()
+
+pointers: fun(mut handle: Handle)
+{
+	handle.value = 1
+}
+
+main: fun -> i32 = 0

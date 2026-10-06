@@ -1,0 +1,80 @@
+mod game
+
+Box: rec
+{
+	limit: pvt set i32
+	items: pvt set array[i32, 2]
+	inner: pvt set Inner
+	shape: pvt set Shape
+
+	make: fun -> Box = Box(0, [0, 0], Inner(0), Shape.dot(0))
+
+	reset: fun(mut self)
+	{
+		self.limit = 0
+		self.items[1] = 2
+		self.inner.amount = 3
+		self.inner.grow()
+		match mut self.shape
+		{
+			dot(size) => size = 4
+		}
+	}
+}
+
+Inner: rec
+{
+	amount: i32
+
+	grow: fun(mut self)
+	{
+		self.amount += 1
+	}
+
+	drop: op
+	{
+	}
+}
+
+Shape: enum
+{
+	dot(size: i32)
+}
+
+Counter: rec
+{
+	total: mod set i32
+	hits: mod i32
+}
+
+Plain: rec
+{
+	shown: i32
+	hidden: pvt i32
+	fixed: pvt set i32
+}
+
+Target: rec
+{
+	value: i32
+}
+
+Handle: rec
+{
+	target: req ptr[Target]
+
+	*: op(self) -> imm[Target] = imm *self.target
+	*: pvt op(mut self) -> mut[Target] = mut *self.target
+
+	bump: fun(mut self)
+	{
+		self.value += 1
+	}
+}
+
+touch: fun
+{
+	var counter = Counter()
+	counter.total = 5
+	counter.hits = 6
+}

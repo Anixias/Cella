@@ -1,0 +1,35 @@
+mod test
+
+ext
+{
+	printf: pvt fun(format: cstr, ...) -> i32
+}
+
+Node: pvt rec
+{
+	value: i32
+	label: i32
+
+	new: op(value: i32)
+	{
+		self.value = value
+		self.label = value * 100
+	}
+
+	describe: fun(self) -> i32 = self.value + self.label
+
+	drop: op
+	{
+		printf("other node %d\n", self.value)
+	}
+}
+
+limit: pvt val i32 = 1000
+
+helper: pvt fun(value: i32) -> i32 = value * limit
+
+other: fun -> i32
+{
+	val node = Node(2)
+	ret helper(node.describe())
+}

@@ -17,6 +17,7 @@ public sealed class EnumNode
 	public SourceLocation SourceLocation { get; } = identifier.SourceLocation;
 	public Token Identifier { get; } = identifier;
 	public ImmutableArray<Token> Modifiers { get; } = modifiers.ToImmutableArray();
+	public Token? Visibility { get; init; }
 	public bool IsExternal { get; } = isExternal;
 	public bool IsRef { get; } = isRef;
 	public ITypeNode? TagType { get; } = tagType;

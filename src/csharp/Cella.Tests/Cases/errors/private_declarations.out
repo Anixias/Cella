@@ -1,0 +1,87 @@
+
+====== main.ce ======
+
+Error at line 6, column 15
+5 │ var world = game.World()
+6 │ val a = game.helper()
+                 ╘════╛ 'game.helper' is private to its module
+
+Error at line 7, column 15
+6 │ val a = game.helper()
+7 │ val b = game.tool
+                 ╘══╛ 'game.tool' is private to its file
+
+Error at line 8, column 16
+7 │ val b = game.tool
+8 │ val c = world.seed
+                  ╘══╛ 'seed' is private to its module
+
+Error at line 9, column 8
+8 │ val c = world.seed
+9 │ world.tick()
+          ╘══╛ 'tick' is private to its module
+
+Error at line 10, column 21
+ 9 │ world.tick()
+10 │ val d = game.World.create()
+                        ╘════╛ 'create' is private to its module
+
+Error at line 11, column 15
+10 │ val d = game.World.create()
+11 │ val e = game.Secret()
+                  ╘════╛ 'game.Secret' is private to its module
+
+Error at line 12, column 22
+11 │ val e = game.Secret()
+12 │ val f = nameOf(game.tool)
+                         ╘══╛ 'game.tool' is private to its file
+
+Error at line 13, column 28
+12 │ val f = nameOf(game.tool)
+13 │ val g = nameOf(game.World.seed)
+                               ╘══╛ 'seed' is private to its module
+
+Error at line 14, column 15
+13 │ val g = nameOf(game.World.seed)
+14 │ val memory = malloc(4)
+                  ╘═══════╛ 'malloc' is private to its file
+
+Error at line 15, column 2
+14 │ val memory = malloc(4)
+15 │ free(memory)
+     ╘══════════╛ 'free' is private to its file
+
+Error at line 16, column 6
+15 │ free(memory)
+16 │ ret limit
+         ╘═══╛ 'limit' is private to its file
+
+
+====== rules.ce ======
+
+Error at line 8, column 10
+7 │ val a = helper() + world.seed
+8 │ val b = tool()
+            ╘════╛ 'tool' is private to its file
+
+Error at line 9, column 10
+8 │ val b = tool()
+9 │ val c = Hidden()
+            ╘══════╛ 'Hidden' is private to its file
+
+Error at line 10, column 16
+ 9 │ val c = Hidden()
+10 │ val d = world.secret
+                   ╘════╛ 'secret' is private to its type
+
+Error at line 11, column 10
+10 │ val d = world.secret
+11 │ val e = Color.red
+             ╘═══╛ 'Color' is private to its file
+
+Error at line 12, column 17
+11 │ val e = Color.red
+12 │ val f = nameOf(tool)
+                    ╘══╛ 'tool' is private to its file
+
+[compilation failed]

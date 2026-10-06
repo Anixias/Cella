@@ -1,0 +1,54 @@
+
+====== private_members.ce ======
+
+Error at line 42, column 35
+41 │ 
+42 │ reads: fun(box: Box) -> i32 = box.value
+                                       ╘═══╛ 'value' is private to its type
+
+Error at line 44, column 35
+43 │ 
+44 │ calls: fun(box: Box) -> i32 = box.peek()
+                                       ╘══╛ 'peek' is private to its type
+
+Error at line 46, column 27
+45 │ 
+46 │ statics: fun -> i32 = Box.secret()
+                               ╘════╛ 'secret' is private to its type
+
+Error at line 50, column 14
+49 │ {
+50 │     val f = Box.secret
+                     ╘════╛ 'secret' is private to its type
+
+Error at line 54, column 26
+53 │ 
+54 │ constructs: fun -> Box = Box(2)
+                              ╘════╛ 'new' is private to its type
+
+Error at line 56, column 34
+55 │ 
+56 │ names: fun -> str = nameOf(Plain.hidden)
+                                      ╘════╛ 'hidden' is private to its type
+
+Error at line 58, column 53
+57 │ 
+58 │ valueNames: fun(plain: Plain) -> str = nameOf(plain.hidden)
+                                                         ╘════╛ 'hidden' is private to its type
+
+Error at line 60, column 47
+59 │ 
+60 │ dereferences: fun(pointer: Pointer) -> i32 = (*pointer).shown
+                                                   ╘══════╛ '*' is private to its type
+
+Error at line 62, column 49
+61 │ 
+62 │ lookups: fun(pointer: Pointer) -> i32 = pointer.shown
+                                                     ╘═══╛ Type 'Pointer' has no member 'shown'
+
+Error at line 64, column 46
+63 │ 
+64 │ shadows: fun(shared: Shared) -> i32 = shared.hidden
+                                                  ╘════╛ 'hidden' is private to its type
+
+[compilation failed]

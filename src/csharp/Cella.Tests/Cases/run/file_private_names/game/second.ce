@@ -1,0 +1,11 @@
+mod game
+
+Node: pvt rec
+{
+	value: i32
+	extra: i32
+}
+
+describe: fun(node: Node) -> i32 = node.value * 100
+
+makeSecond: fun -> Node = Node(7, 0)

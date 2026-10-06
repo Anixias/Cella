@@ -5,6 +5,7 @@ namespace Cella.Core.Binding;
 public sealed class ModuleIndex
 {
 	private readonly Dictionary<string, ModulePathSymbol> _paths = [];
+	private readonly Dictionary<Symbol, FileSymbol> _files = [];
 	
 	public ModuleIndex(SymbolTable symbolTable, IEnumerable<SymbolTable> dependencies)
 	{
@@ -14,11 +15,51 @@ public sealed class ModuleIndex
 		Add(symbolTable, true);
 		foreach (var dependency in dependencies)
 			Add(dependency, false);
+		
+		foreach (var file in symbolTable.ModuleSymbols.Values.SelectMany(static module => module.Files))
+			foreach (var symbol in file.Symbols.Values.SelectMany(static symbols => symbols))
+				_files[symbol] = file;
 	}
 	
 	public ModulePathSymbol Root { get; }
 	
 	public ModulePathSymbol? Find(string path) => _paths.GetValueOrDefault(path);
+	
+	public static Visibility GetVisibility(Symbol symbol) =>
+		symbol is IExportable exportable ? exportable.Visibility : Visibility.Public;
+	
+	public string? FindPrivateFile(Symbol symbol) =>
+		GetVisibility(symbol) == Visibility.Private && _files.GetValueOrDefault(symbol) is { } file
+			? file.Name.Replace('\\', '/')
+			: null;
+	
+	public bool IsVisible(Symbol symbol, FileSymbol from) => GetVisibility(symbol) switch
+	{
+		Visibility.Public => true,
+		var visibility => _files.GetValueOrDefault(symbol) is { } file && visibility switch
+		{
+			Visibility.Private => file == from,
+			Visibility.Module => file.Module == from.Module,
+			_ => true
+		}
+	};
+	
+	public bool IsAccessible(TypeSymbol owner, Visibility visibility, FileSymbol from, TypeSymbol? within)
+	{
+		if (visibility == Visibility.Module)
+			return _files.GetValueOrDefault(owner)?.Module == from.Module;
+		
+		if (visibility != Visibility.Private)
+			return true;
+		
+		for (var type = within; type is not null; type = type.ContainingType)
+		{
+			if (type == owner)
+				return true;
+		}
+		
+		return false;
+	}
 	
 	private void Add(SymbolTable symbolTable, bool isLocal)
 	{

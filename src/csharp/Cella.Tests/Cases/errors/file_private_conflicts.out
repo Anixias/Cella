@@ -1,0 +1,37 @@
+
+====== main.ce ======
+
+Error at line 3, column 1
+2 │ 
+3 │ helper: pvt fun -> i32 = 1
+    ╘════╛ 'helper' is declared more than once with the same signature
+
+Error at line 5, column 1
+4 │ 
+5 │ tool: pvt fun -> i32 = 1
+    ╘══╛ 'tool' is declared more than once with the same signature
+
+Error at line 7, column 1
+6 │ 
+7 │ tool: pvt fun -> i32 = 2
+    ╘══╛ 'tool' is declared more than once with the same signature
+
+Error at line 11, column 1
+10 │ 
+11 │ main: pvt fun -> i32 = 0
+     ╘══╛ The program has more than one 'main' function
+
+
+====== other.ce ======
+
+Error at line 3, column 1
+2 │ 
+3 │ helper: fun -> i32 = 2
+    ╘════╛ 'helper' is declared more than once with the same signature
+
+Error at line 7, column 1
+6 │ 
+7 │ main: pvt fun -> i32 = 1
+    ╘══╛ The program has more than one 'main' function
+
+[compilation failed]

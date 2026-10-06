@@ -1,0 +1,6 @@
+mod io
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}

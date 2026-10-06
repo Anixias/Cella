@@ -1,0 +1,13 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+main: fun -> i32
+{
+	printf("own %d\n", 1)
+	io.printf("theirs %d\n", 2)
+	ret 0
+}

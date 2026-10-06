@@ -1,0 +1,21 @@
+mod test
+
+ext
+{
+	malloc: pvt fun(size: usize) -> ptr
+}
+
+pvt
+{
+	ext
+	{
+		free: fun(memory: ptr)
+	}
+
+	limit: val i32 = 5
+}
+
+cycle: fun
+{
+	free(malloc(usize(limit)))
+}

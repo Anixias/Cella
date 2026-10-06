@@ -1,0 +1,8 @@
+mod test
+
+use game.helper
+use game.[World, tool]
+
+secret: fun(value: game.Secret) -> i32 = 0
+
+main: fun -> i32 = 0

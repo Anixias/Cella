@@ -1,0 +1,75 @@
+mod test
+
+pvt
+{
+	broken: 5
+}
+
+mod
+{
+	unfinished: fun(
+}
+
+Point: pub pvt rec
+{
+	x: i32
+}
+
+twice: pvt mod fun -> i32 = 0
+
+Mixed: rec
+{
+	a: pub i32
+	b: pvt mod i32
+	c: pvt pvt set i32
+	d: pvt set mod set i32
+	e: pvt set mod i32
+	f: pvt set fun(self) -> i32 = 0
+	g: mod pvt set i32
+
+	pvt
+	{
+		h: mod i32
+		i: mod set i32
+
+		mod
+		{
+			j: i32
+		}
+
+		drop: op
+		{
+		}
+	}
+}
+
+Kind: enum
+{
+	first
+
+	pvt
+	{
+		second
+
+		name: fun(self) -> i32 = 0
+	}
+}
+
+Destroyed: rec
+{
+	drop: mod op
+	{
+	}
+}
+
+mod
+{
+	helper: pvt fun -> i32 = 0
+	exported: pub fun -> i32 = 0
+
+	pvt
+	{
+	}
+}
+
+main: fun -> i32 = 0

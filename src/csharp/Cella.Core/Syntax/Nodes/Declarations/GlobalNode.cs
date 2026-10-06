@@ -15,6 +15,7 @@ public sealed class GlobalNode
 	public SourceLocation SourceLocation => Identifier.SourceLocation;
 	public Token Identifier { get; } = identifier;
 	public ImmutableArray<Token> Modifiers { get; } = modifiers.ToImmutableArray();
+	public Token? Visibility { get; init; }
 	public Token Keyword { get; } = keyword;
 	public ITypeNode Type { get; } = type;
 	public IExpressionNode Initializer { get; } = initializer;

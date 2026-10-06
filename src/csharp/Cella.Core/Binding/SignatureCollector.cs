@@ -160,7 +160,7 @@ public sealed class SignatureCollector
 		var context = declaration.Context;
 		var initializer = constants!.ResolveInitializer(node.Initializer, type, context);
 		var value = type is InvalidType ? InvalidConstant.Instance : Evaluator.Evaluate(initializer);
-		var mangledName = Mangling.Mangle(global, context.GetQualifiers());
+		var mangledName = context.Mangle(global);
 		
 		info = new GlobalInfo(mangledName, global, type, initializer, value, context.File);
 		_builder.Globals[global] = info;
@@ -177,19 +177,19 @@ public sealed class SignatureCollector
 	private void Register(FileNode node)
 	{
 		var file = (FileSymbol)_symbolTable.DeclarationSymbols[node];
-		var imports = CollectImports(node);
-		_builder.ImportEnvironments[file] = imports;
-		
 		var context = new ResolutionContext
 		{
 			File = file,
-			Imports = imports,
 			Modules = Modules,
 			TypePool = _typePool,
 			Diagnostics = Diagnostics,
 			ExtSignatureTypes = _extSignatureTypes,
 			EvaluateConstant = EvaluateConstant
 		};
+		
+		var imports = CollectImports(node, context);
+		_builder.ImportEnvironments[file] = imports;
+		context = context with { Imports = imports };
 		
 		foreach (var declaration in node.Declarations)
 		{
@@ -561,7 +561,7 @@ public sealed class SignatureCollector
 		}
 		
 		var signature = new FunctionSignature(paramTypes, NativeSymbols.Void, false, GetModes(function));
-		var mangledName = Mangling.Mangle(function, signature, context.GetQualifiers());
+		var mangledName = context.Mangle(function, signature);
 		var info = new FunctionInfo(mangledName, function, signature, scope, null, context.File);
 		
 		_builder.Functions[function] = info;
@@ -578,7 +578,7 @@ public sealed class SignatureCollector
 		scope.Define(self);
 		
 		var signature = new FunctionSignature([selfType], NativeSymbols.Void, false, GetModes(function));
-		var mangledName = Mangling.Mangle(function, signature, context.GetQualifiers());
+		var mangledName = context.Mangle(function, signature);
 		var info = new FunctionInfo(mangledName, function, signature, scope, null, context.File);
 		_builder.Functions[function] = info;
 		_typePool.SetDestructor(context.ContainingType!, info);
@@ -629,7 +629,7 @@ public sealed class SignatureCollector
 		var signature = new FunctionSignature(paramTypes, returnType, false, GetModes(function));
 		
 		// TODO Disable mangling if indicated
-		var mangledName = Mangling.Mangle(function, signature, context.GetQualifiers());
+		var mangledName = context.Mangle(function, signature);
 		var info = new FunctionInfo(mangledName, function, signature, scope, null, context.File);
 		
 		if (_entryPointName is not null && function.Name == _entryPointName && IsEntryPoint(signature))
@@ -727,20 +727,30 @@ public sealed class SignatureCollector
 		foreach (var module in _symbolTable.ModuleSymbols.Values)
 		{
 			var declarationsByName = module.Files
-				.SelectMany(static f => f.Syntax.Declarations)
-				.Where(d => _symbolTable.DeclarationSymbols.ContainsKey(d))
-				.ToLookup(d => _symbolTable.DeclarationSymbols[d].Name);
+				.SelectMany(static file => file.Syntax.Declarations.Select(declaration => (file, declaration)))
+				.Where(d => _symbolTable.DeclarationSymbols.ContainsKey(d.declaration))
+				.Select(d => (d.file, d.declaration, symbol: _symbolTable.DeclarationSymbols[d.declaration]))
+				.ToLookup(static d => d.symbol.Name);
 			
 			foreach (var sameName in declarationsByName)
 			{
-				foreach (var declaration in sameName)
+				foreach (var (file, declaration, symbol) in sameName)
 				{
-					if (FindConflict(declaration, sameName) is { } diagnostic)
+					var visibleTogether = sameName
+						.Where(other => AreVisibleTogether(symbol, file, other.symbol, other.file))
+						.Select(static other => other.declaration);
+					
+					if (FindConflict(declaration, visibleTogether) is { } diagnostic)
 						Diagnostics.Add(diagnostic);
 				}
 			}
 		}
 	}
+	
+	private static bool AreVisibleTogether(Symbol first, FileSymbol firstFile, Symbol second, FileSymbol secondFile) =>
+		firstFile.Module == secondFile.Module && (firstFile == secondFile ||
+		                                          ModuleIndex.GetVisibility(first) != Visibility.Private ||
+		                                          ModuleIndex.GetVisibility(second) != Visibility.Private);
 	
 	private Diagnostic? FindConflict(IDeclarationNode declaration, IEnumerable<IDeclarationNode> sameName)
 	{
@@ -838,7 +848,9 @@ public sealed class SignatureCollector
 		
 		if (_entryPoints.Count > 1)
 		{
-			var reportedAsDuplicates = _entryPoints.Select(static e => e.File.Module).Distinct().Count() == 1;
+			var reportedAsDuplicates = _entryPoints.All(entryPoint => _entryPoints.Any(other => other != entryPoint &&
+				AreVisibleTogether(entryPoint.Symbol, entryPoint.File, other.Symbol, other.File)));
+			
 			if (reportedAsDuplicates)
 				return;
 			
@@ -1010,21 +1022,21 @@ public sealed class SignatureCollector
 		return true;
 	}
 	
-	private ImportEnvironment CollectImports(FileNode node)
+	private ImportEnvironment CollectImports(FileNode node, ResolutionContext context)
 	{
 		var imports = new List<Symbol>();
 		foreach (var importExpression in node.Imports)
-			imports.AddRange(CollectImport(importExpression));
+			imports.AddRange(CollectImport(importExpression, context));
 		
 		return new(imports);
 	}
 	
-	private List<Symbol> CollectImport(ImportExpression import)
+	private List<Symbol> CollectImport(ImportExpression import, ResolutionContext context)
 	{
 		var path = import.ModuleName.Parts;
-		var symbol = ResolutionContext.ResolveMembers(Modules.Root, path, 0, Diagnostics);
+		var symbol = context.ResolveMembers(Modules.Root, path, 0);
 		if (symbol is ModulePathSymbol module)
-			return CollectImport(module, import.Import);
+			return CollectImport(module, import.Import, context);
 		
 		if (symbol is not null)
 			Diagnostics.Add(ResolutionContext.ReportNotModule(symbol, path));
@@ -1032,24 +1044,25 @@ public sealed class SignatureCollector
 		return [];
 	}
 	
-	private List<Symbol> CollectImport(ModulePathSymbol module, IImport import) =>
+	private List<Symbol> CollectImport(ModulePathSymbol module, IImport import, ResolutionContext context) =>
 		import switch
 		{
-			FullImport => [..module.Members.Values.SelectMany(static members => members)],
-			TokenImport i => ImportMember(module, i.Token),
-			ListImport i => [..i.Tokens.SelectMany(token => ImportMember(module, token))],
+			FullImport => [..module.Members.Values.SelectMany(static members => members).Where(context.IsVisible)],
+			TokenImport i => ImportMember(module, i.Token, context),
+			ListImport i => [..i.Tokens.SelectMany(token => ImportMember(module, token, context))],
 			_ => []
 		};
 	
-	private List<Symbol> ImportMember(ModulePathSymbol module, Token name)
+	private List<Symbol> ImportMember(ModulePathSymbol module, Token name, ResolutionContext context)
 	{
-		if (module.Members.TryGetValue(name.Text, out var members))
-			return members;
+		if (module.Members.TryGetValue(name.Text, out var members) &&
+		    members.Where(context.IsVisible).ToList() is { Count: > 0 } visible)
+			return visible;
 		
 		if (module.Children.TryGetValue(name.Text, out var child))
 			return [child];
 		
-		Diagnostics.Add(DiagnosticReporter.ReportUndefinedMember(name.SourceLocation, module, name.Text));
+		Diagnostics.Add(context.ReportUndefinedMember(name.SourceLocation, module, name.Text));
 		return [];
 	}
 }

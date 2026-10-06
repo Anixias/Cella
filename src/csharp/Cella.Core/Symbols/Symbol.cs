@@ -15,6 +15,9 @@ public enum Visibility
 	/// </summary>
 	Private,
 	
+	Module,
+	Project,
+	
 	/// <summary>
 	/// Visible to other assemblies, exported
 	/// </summary>
@@ -30,10 +33,13 @@ public static class VisibilityExtensions
 {
 	extension(Visibility visibility)
 	{
-		public static Visibility FromModifiers(IEnumerable<Token> tokens) =>
-			tokens.Any(static t => t.Type == TokenType.KeywordPub)
-				? Visibility.Public
-				: Visibility.Private;
+		public static Visibility FromKeyword(Token? keyword) => keyword?.Type switch
+		{
+			TokenType.KeywordPub => Visibility.Public,
+			TokenType.KeywordMod => Visibility.Module,
+			TokenType.KeywordPvt => Visibility.Private,
+			_ => Visibility.Project
+		};
 	}
 }
 
@@ -104,7 +110,7 @@ public sealed class FunctionSymbol
 (
 	string name,
 	IDeclarationNode syntax,
-	IEnumerable<Token> modifiers,
+	Visibility visibility,
 	FunctionInfo? containingFunction,
 	IEnumerable<ParameterSymbol> parameters,
 	FunctionKind kind
@@ -112,7 +118,7 @@ public sealed class FunctionSymbol
 	: Symbol(name), IExportable
 {
 	public IDeclarationNode Syntax { get; } = syntax;
-	public Visibility Visibility { get; } = Visibility.FromModifiers(modifiers);
+	public Visibility Visibility { get; } = visibility;
 	public FunctionInfo? ContainingFunction { get; } = containingFunction;
 	public ImmutableArray<ParameterSymbol> Parameters { get; } = parameters.ToImmutableArray();
 	public FunctionKind Kind { get; } = kind;
@@ -398,7 +404,7 @@ public sealed class GlobalSymbol(GlobalNode syntax) : VariableSymbol(syntax.Iden
 {
 	public GlobalNode Syntax { get; } = syntax;
 	public bool IsMutable => Syntax.IsMutable;
-	public Visibility Visibility { get; } = Visibility.FromModifiers(syntax.Modifiers);
+	public Visibility Visibility { get; } = Visibility.FromKeyword(syntax.Visibility);
 	public SourceLocation Definition { get; } = syntax.SourceLocation;
 }
 
@@ -466,7 +472,7 @@ public sealed class RecordSymbol : TypeSymbol, IExportable
 		Node = node;
 		Members = members.ToImmutableArray();
 		NestedTypes = nestedTypes.ToImmutableArray();
-		Visibility = Visibility.FromModifiers(node.Modifiers);
+		Visibility = Visibility.FromKeyword(node.Visibility);
 	}
 }
 
@@ -486,7 +492,7 @@ public sealed class EnumSymbol : TypeSymbol, IExportable
 		Node = node;
 		Cases = cases.ToImmutableArray();
 		Functions = functions.ToImmutableArray();
-		Visibility = Visibility.FromModifiers(node.Modifiers);
+		Visibility = Visibility.FromKeyword(node.Visibility);
 	}
 	
 	public override IEnumerable<MethodSymbol> GetFunctions(string name) => Functions.Where(f => f.Name == name);
@@ -508,6 +514,8 @@ public sealed class FieldSymbol(string name, FieldNode? node, bool isMutable) : 
 	public FieldNode? Node { get; } = node;
 	public bool IsMutable { get; } = isMutable;
 	public bool IsRequired { get; } = node?.Modifiers.Any(static m => m.Type == TokenType.KeywordReq) ?? false;
+	public Visibility Visibility { get; } = Visibility.FromKeyword(node?.Visibility);
+	public Visibility WriteVisibility { get; } = Visibility.FromKeyword(node?.WriteVisibility ?? node?.Visibility);
 }
 
 public sealed class PropertySymbol(string name) : TypedMemberSymbol(name)

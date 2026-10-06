@@ -1,0 +1,35 @@
+mod game
+
+World: rec
+{
+	turn: i32
+	seed: mod i32
+	secret: pvt i32
+
+	tick: mod fun(mut self)
+	{
+		self.turn += 1
+	}
+
+	create: mod fun -> World = World()
+}
+
+Secret: mod rec
+{
+	code: i32
+}
+
+Hidden: pvt rec
+{
+	code: i32
+}
+
+Color: pvt enum
+{
+	red
+	green
+}
+
+helper: mod fun -> i32 = 1
+
+tool: pvt fun -> i32 = 2

@@ -498,8 +498,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 					.Select(static t => t.Name)
 					.Distinct();
 				
-				Diagnostics.Add(DiagnosticReporter.ReportUndefinedType(typeName.SourceLocation, typeName.Text,
-					typeNames));
+				Diagnostics.Add(context.ReportHidden(typeName.Text, typeName.SourceLocation) ??
+				                DiagnosticReporter.ReportUndefinedType(typeName.SourceLocation, typeName.Text,
+					                typeNames));
 				
 				return false;
 			
@@ -811,9 +812,15 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		if (AnyInvalid(args))
 			return new ResolvedInvalidExpressionNode(node, targetType);
 		
-		var ctorCandidates = _typePool.GetConstructors(targetType)
+		var constructors = _typePool.GetConstructors(targetType);
+		var ctorCandidates = constructors
+			.Where(info => CanAccess(targetType, info.Symbol.Visibility))
 			.Select(info => new ReceiverCallable(info, targetType))
 			.ToArray();
+		
+		if (ctorCandidates.Length == 0 && constructors.Count > 0)
+			return Error(node, ReportHiddenMember(node.SourceLocation, "new",
+				constructors.Select(static info => info.Symbol.Visibility)), targetType);
 		
 		var resolutionSet = ResolveCallable(ctorCandidates, args, MaterializationMode.Overload, targetType);
 		
@@ -858,13 +865,10 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 				if (symbol is not null)
 					break;
 				
-				var diagnostic = DiagnosticReporter.ReportUndefinedSymbol(node, varExpr.Identifier.Text,
-					GetVisibleSymbolNames());
-				
-				return Error(node, diagnostic, CurrentTargetType);
+				return Error(node, ReportUndefinedSymbol(node, varExpr.Identifier.Text), CurrentTargetType);
 			
 			case AccessExpressionNode access when context.ResolveModule(access.Target) is { } module:
-				symbol = ResolutionContext.ResolveMember(module, access.Member.Text);
+				symbol = context.ResolveMember(module, access.Member.Text);
 				break;
 			
 			case AccessExpressionNode access:
@@ -1060,10 +1064,15 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 					: $"Type '{owner.Name}' has no member '{access.Member.Text}'", CurrentTargetType,
 				access.Member.SourceLocation);
 		
+		var accessible = methods.Where(method => CanAccess(owner, method.Function.Visibility)).ToArray();
+		if (accessible.Length == 0)
+			return Error(node, ReportHiddenMember(access.Member.SourceLocation, access.Member.Text,
+				methods.Select(static method => method.Function.Visibility)), CurrentTargetType);
+		
 		if (owner != target.Type)
 			target = ResolveDereference(TokenType.OpStar, target, access.Target);
 		
-		var candidates = methods
+		var candidates = accessible
 			.Select(method => GetFunctionInfo(method.Function))
 			.Select(static info => new ReceiverCallable(info, info.Signature.ReturnType));
 		
@@ -1081,7 +1090,12 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			return Error(node, DescribeMissingStatic(type, access.Member.Text), CurrentTargetType,
 				access.Member.SourceLocation);
 		
-		var candidates = statics.Select(GetFunctionInfo).Select(static info => new FunctionCallable(info));
+		var accessible = FindAccessible(type, statics);
+		if (accessible.Length == 0)
+			return Error(node, ReportHiddenMember(access.Member.SourceLocation, access.Member.Text,
+				statics.Select(static function => function.Visibility)), CurrentTargetType);
+		
+		var candidates = accessible.Select(GetFunctionInfo).Select(static info => new FunctionCallable(info));
 		return ResolveCall(node, GetName(node.Target), [..candidates], null);
 	}
 	
@@ -1091,11 +1105,30 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
 		
 		var statics = FindStatics(type, node.Member.Text);
-		return statics.Length > 0
-			? ResolveFunctionValue(node, statics)
-			: Error(node, DescribeMissingStatic(type, node.Member.Text), CurrentTargetType,
+		if (statics.Length == 0)
+			return Error(node, DescribeMissingStatic(type, node.Member.Text), CurrentTargetType,
 				node.Member.SourceLocation);
+		
+		var accessible = FindAccessible(type, statics);
+		return accessible.Length > 0
+			? ResolveFunctionValue(node, accessible)
+			: Error(node, ReportHiddenMember(node.Member.SourceLocation, node.Member.Text,
+				statics.Select(static function => function.Visibility)), CurrentTargetType);
 	}
+	
+	private FunctionSymbol[] FindAccessible(TypeSymbol owner, IEnumerable<FunctionSymbol> functions) =>
+		[..functions.Where(function => CanAccess(owner, function.Visibility))];
+	
+	private bool CanAccess(TypeSymbol owner, Visibility visibility) =>
+		CurrentResolutionContext.CanAccess(owner, visibility);
+	
+	private static Diagnostic ReportHiddenMember(SourceLocation location, string name,
+		IEnumerable<Visibility> visibilities) =>
+		DiagnosticReporter.ReportHidden(location, name, visibilities.Max(), true);
+	
+	private Diagnostic ReportUndefinedSymbol(ISyntaxNode node, string name) =>
+		CurrentResolutionContext.ReportHidden(name, node.SourceLocation) ??
+		DiagnosticReporter.ReportUndefinedSymbol(node, name, GetVisibleSymbolNames());
 	
 	private string DescribeMissingStatic(TypeSymbol type, string name) =>
 		FindFunctions(type, name).Length > 0 ? "Cannot use methods through types"
@@ -1119,19 +1152,31 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		if (type is PointerType { BaseType: var baseType } && baseType != NativeSymbols.Void)
 			return baseType;
 		
-		if (_typePool.ResolveMember(type, name) is not null || FindFunctions(type, name).Length > 0)
+		if (DeclaresAccessibleMember(type, name))
 			return type;
 		
-		return GetDereferenceTarget(type) ?? type;
+		return GetDereferenceTarget(type) is { } target && (!DeclaresMember(type, name) || DeclaresMember(target, name))
+			? target
+			: type;
 	}
+	
+	private bool DeclaresMember(TypeSymbol type, string name) =>
+		_typePool.ResolveMember(type, name) is not null || FindFunctions(type, name).Length > 0;
+	
+	private bool DeclaresAccessibleMember(TypeSymbol type, string name) => _typePool.ResolveMember(type, name) switch
+	{
+		FieldSymbol field => CanAccess(type, field.Visibility),
+		null => FindFunctions(type, name).Any(function => CanAccess(type, function.Function.Visibility)),
+		_ => true
+	};
 	
 	private TypeSymbol? GetDereferenceTarget(TypeSymbol type) => FindDereferences(type)
 		.Select(dereference => GetFunctionInfo(dereference.Function).Signature.ReturnType)
 		.OfType<BorrowType>()
 		.FirstOrDefault()?.Target;
 	
-	private static IEnumerable<MethodSymbol> FindDereferences(TypeSymbol type) =>
-		type.GetFunctions("*").Where(static method => method.HasReceiver);
+	private IEnumerable<MethodSymbol> FindDereferences(TypeSymbol type) => type.GetFunctions("*")
+		.Where(method => method.HasReceiver && CanAccess(type, method.Function.Visibility));
 	
 	private MethodSymbol? FindDereference(TypeSymbol type, ParameterMode mode) => FindDereferences(type)
 		.FirstOrDefault(method => GetFunctionInfo(method.Function).Signature is var signature &&
@@ -1245,10 +1290,11 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	
 	private IResolvedExpressionNode VisitModuleMember(AccessExpressionNode node, ModulePathSymbol module)
 	{
-		if (ResolutionContext.ResolveMember(module, node.Member.Text) is { } member)
+		var context = CurrentResolutionContext;
+		if (context.ResolveMember(module, node.Member.Text) is { } member)
 			return ResolveSymbolValue(node, member);
 		
-		var diagnostic = DiagnosticReporter.ReportUndefinedMember(node.Member.SourceLocation, module, node.Member.Text);
+		var diagnostic = context.ReportUndefinedMember(node.Member.SourceLocation, module, node.Member.Text);
 		return Error(node, diagnostic, CurrentTargetType);
 	}
 	
@@ -1275,6 +1321,10 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 					"Cannot use methods as values",
 				_ => "Cannot use static functions through values"
 			}, CurrentTargetType, node.Member.SourceLocation);
+		
+		if (member is FieldSymbol field && !CanAccess(target.Type, field.Visibility))
+			return Error(node, DiagnosticReporter.ReportHidden(node.Member.SourceLocation, memberName, field.Visibility,
+				true), CurrentTargetType);
 		
 		var memberType = GetMemberType(member);
 		return new ResolvedAccessExpressionNode(target, member, memberType, node);
@@ -1459,19 +1509,17 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		switch (name)
 		{
 			case VarExpressionNode variable when context.Resolve(variable.Identifier.Text) is null:
-				Diagnostics.Add(DiagnosticReporter.ReportUndefinedSymbol(variable, variable.Identifier.Text,
-					GetVisibleSymbolNames()));
-				
+				Diagnostics.Add(ReportUndefinedSymbol(variable, variable.Identifier.Text));
 				return false;
 			
 			case VarExpressionNode:
 				return true;
 			
 			case AccessExpressionNode access when context.ResolveModule(access.Target) is { } module:
-				if (ResolutionContext.ResolveMember(module, access.Member.Text) is not null)
+				if (context.ResolveMember(module, access.Member.Text) is not null)
 					return true;
 				
-				Diagnostics.Add(DiagnosticReporter.ReportUndefinedMember(access.Member.SourceLocation, module,
+				Diagnostics.Add(context.ReportUndefinedMember(access.Member.SourceLocation, module,
 					access.Member.Text));
 				
 				return false;
@@ -1492,8 +1540,17 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	
 	private bool HasMember(TypeSymbol type, Token member)
 	{
-		if (_typePool.ResolveMember(type, member.Text) is not null)
-			return true;
+		switch (_typePool.ResolveMember(type, member.Text))
+		{
+			case FieldSymbol field when !CanAccess(type, field.Visibility):
+				Diagnostics.Add(DiagnosticReporter.ReportHidden(member.SourceLocation, member.Text, field.Visibility,
+					true));
+				
+				return false;
+			
+			case not null:
+				return true;
+		}
 		
 		Diagnostics.Add(new(DiagnosticSeverity.Error, member.SourceLocation,
 			$"Type '{type.Name}' has no member '{member.Text}'"));
@@ -1507,13 +1564,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		var varName = node.Identifier.Text;
 		var symbol = resolutionContext.Resolve(varName);
 		
-		if (symbol is null)
-		{
-			var diagnostic = DiagnosticReporter.ReportUndefinedSymbol(node, varName, GetVisibleSymbolNames());
-			return Error(node, diagnostic, CurrentTargetType);
-		}
-		
-		return ResolveSymbolValue(node, symbol);
+		return symbol is null
+			? Error(node, ReportUndefinedSymbol(node, varName), CurrentTargetType)
+			: ResolveSymbolValue(node, symbol);
 	}
 	
 	private IResolvedExpressionNode ResolveSymbolValue(IExpressionNode node, Symbol symbol)
@@ -1849,6 +1902,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			: new ResolvedUnaryOpExpressionNode(operand, new NativeImpl(opType, baseType), node),
 		var type when (FindDereference(type, ParameterMode.ReadOnly) ?? FindDereference(type, ParameterMode.Mut)) is
 			{ } dereference => Decay(CallDereference(operand, dereference, node)),
+		var type when type.GetFunctions("*").Where(static method => method.HasReceiver).ToList() is
+			{ Count: > 0 } hidden => Error(node, ReportHiddenMember(node.SourceLocation, "*",
+			hidden.Select(static method => method.Function.Visibility)), CurrentTargetType),
 		_ => Error(node, $"Cannot dereference type '{operand.Type.Name}'", CurrentTargetType)
 	};
 	

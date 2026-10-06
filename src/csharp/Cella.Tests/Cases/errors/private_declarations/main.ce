@@ -1,0 +1,17 @@
+mod test
+
+main: fun -> i32
+{
+	var world = game.World()
+	val a = game.helper()
+	val b = game.tool
+	val c = world.seed
+	world.tick()
+	val d = game.World.create()
+	val e = game.Secret()
+	val f = nameOf(game.tool)
+	val g = nameOf(game.World.seed)
+	val memory = malloc(4)
+	free(memory)
+	ret limit
+}

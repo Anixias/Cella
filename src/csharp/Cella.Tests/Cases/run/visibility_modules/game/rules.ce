@@ -1,0 +1,15 @@
+mod game
+
+Rule: rec
+{
+	weight: i32
+}
+
+describe: fun(rule: Rule) -> i32 = rule.weight * 1000
+
+advance: fun(mut world: World)
+{
+	world.turn += step(world)
+}
+
+step: pvt fun(world: World) -> i32 = helper(world)

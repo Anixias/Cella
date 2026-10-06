@@ -1,0 +1,14 @@
+mod game
+
+check: fun -> i32
+{
+	var world = World()
+	world.tick()
+	val a = helper() + world.seed
+	val b = tool()
+	val c = Hidden()
+	val d = world.secret
+	val e = Color.red
+	val f = nameOf(tool)
+	ret 0
+}

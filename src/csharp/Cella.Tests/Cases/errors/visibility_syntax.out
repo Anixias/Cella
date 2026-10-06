@@ -1,0 +1,99 @@
+
+====== visibility_syntax.ce ======
+
+Error at line 5, column 10
+4 │ {
+5 │     broken: 5
+                ^ Unknown declaration type
+
+Error at line 10, column 2
+ 9 │ {
+10 │     unfinished: fun(
+         ╘════════╛ Invalid function declaration
+
+Error at line 13, column 8
+12 │ 
+13 │ Point: pub pvt rec
+            ╘═════╛ Cannot combine 'pub' and 'pvt'
+
+Error at line 18, column 8
+17 │ 
+18 │ twice: pvt mod fun -> i32 = 0
+            ╘═════╛ Cannot combine 'pvt' and 'mod'
+
+Error at line 22, column 5
+21 │ {
+22 │     a: pub i32
+            ╘═╛ Cannot declare 'pub' members
+
+Error at line 23, column 5
+22 │ a: pub i32
+23 │ b: pvt mod i32
+        ╘═════╛ Cannot combine 'pvt' and 'mod'
+
+Error at line 24, column 5
+23 │ b: pvt mod i32
+24 │ c: pvt pvt set i32
+        ╘═════════╛ Cannot combine 'pvt' and 'pvt set'
+
+Error at line 25, column 5
+24 │ c: pvt pvt set i32
+25 │ d: pvt set mod set i32
+        ╘═════════════╛ Cannot combine 'pvt set' and 'mod set'
+
+Error at line 26, column 13
+25 │ d: pvt set mod set i32
+26 │ e: pvt set mod i32
+                ╘═╛ Cannot use 'mod' after 'pvt set'
+
+Error at line 27, column 5
+26 │ e: pvt set mod i32
+27 │ f: pvt set fun(self) -> i32 = 0
+        ╘═════╛ Cannot use 'pvt set' on functions
+
+Error at line 32, column 6
+31 │ {
+32 │     h: mod i32
+            ╘═╛ Cannot use 'mod' in 'pvt' blocks
+
+Error at line 33, column 6
+32 │ h: mod i32
+33 │ i: mod set i32
+        ╘═════╛ Cannot use 'mod set' in 'pvt' blocks
+
+Error at line 35, column 3
+34 │ 
+35 │ mod
+     ╘═╛ Cannot use 'mod' in 'pvt' blocks
+
+Error at line 40, column 3
+39 │ 
+40 │ drop: op
+     ╘══╛ Cannot declare 'pvt' destructors
+
+Error at line 52, column 3
+51 │ {
+52 │     second
+         ╘════╛ Cannot declare 'pvt' cases
+
+Error at line 60, column 8
+59 │ {
+60 │     drop: mod op
+               ╘═╛ Cannot declare 'mod' destructors
+
+Error at line 67, column 10
+66 │ {
+67 │     helper: pvt fun -> i32 = 0
+                 ╘═╛ Cannot use 'pvt' in 'mod' blocks
+
+Error at line 68, column 12
+67 │ helper: pvt fun -> i32 = 0
+68 │ exported: pub fun -> i32 = 0
+               ╘═╛ Cannot use 'pub' in 'mod' blocks
+
+Error at line 70, column 2
+69 │ 
+70 │ pvt
+     ╘═╛ Cannot use 'pvt' in 'mod' blocks
+
+[compilation failed]

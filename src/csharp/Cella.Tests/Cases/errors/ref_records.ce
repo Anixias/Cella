@@ -16,6 +16,19 @@ Counter: pub rec
 	step: i32
 }
 
+Shared: pvt rec
+{
+	count: mut[i32]
+}
+
+pvt
+{
+	Local: rec
+	{
+		count: mut[i32]
+	}
+}
+
 Holder: rec
 {
 	token: Token

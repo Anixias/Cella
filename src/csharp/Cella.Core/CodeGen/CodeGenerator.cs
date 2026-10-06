@@ -393,7 +393,9 @@ public sealed unsafe class CodeGenerator : IDisposable
 		var functionType = cSignature?.CreateFunctionType(signature.IsVariadic)
 		                   ?? LLVMTypeRef.CreateFunction(returnType, paramLlvmTypes, signature.IsVariadic);
 		
-		var functionValue = llvmModule.AddFunction(function.MangledName ?? symbol.Name, functionType);
+		var name = function.MangledName ?? symbol.Name;
+		var declared = symbol.Kind == FunctionKind.External ? llvmModule.GetNamedFunction(name) : default;
+		var functionValue = declared.Handle != IntPtr.Zero ? declared : llvmModule.AddFunction(name, functionType);
 		if (cSignature is { Return: { Kind: CPassKind.Indirect } sret })
 			AddSretAttribute(functionValue, sret.Type, false);
 		

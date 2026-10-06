@@ -26,6 +26,7 @@ public sealed class FunctionNode
 	public SourceLocation SourceLocation => Identifier.SourceLocation;
 	public Token Identifier { get; } = identifier;
 	public ImmutableArray<Token> Modifiers { get; } = modifiers.ToImmutableArray();
+	public Token? Visibility { get; init; }
 	public ReceiverNode? Receiver { get; } = receiver;
 	public ImmutableArray<ParameterNode> Parameters { get; } = parameters.ToImmutableArray();
 	public ITypeNode? ReturnType { get; } = returnType;
@@ -46,6 +47,7 @@ public sealed class ExternalFunctionNode
 	public SourceLocation SourceLocation => Identifier.SourceLocation;
 	public Token Identifier { get; } = identifier;
 	public ImmutableArray<Token> Modifiers { get; } = modifiers.ToImmutableArray();
+	public Token? Visibility { get; init; }
 	public ImmutableArray<ParameterNode> Parameters { get; } = parameters.ToImmutableArray();
 	public ITypeNode? ReturnType { get; } = returnType;
 	public bool IsVariadic { get; } = isVariadic;

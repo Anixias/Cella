@@ -9,6 +9,7 @@ public sealed class SymbolCollector : IDeclarationNodeVisitor<Symbol>
 	private readonly SymbolTable.Builder _builder = new();
 	private readonly List<Symbol> _symbolsInFile = [];
 	private readonly Stack<string> _typeStack = [];
+	private readonly Stack<Visibility> _typeVisibilities = [];
 	
 	public SymbolTable Build() => _builder.Build();
 	
@@ -57,7 +58,9 @@ public sealed class SymbolCollector : IDeclarationNodeVisitor<Symbol>
 			name = ".new";
 		
 		// Do not add to file symbols
-		var function = new FunctionSymbol(name, node, node.Modifiers, null, parameters, FunctionKind.Constructor);
+		var function = new FunctionSymbol(name, node, GetMemberVisibility(node.Visibility), null, parameters,
+			FunctionKind.Constructor);
+		
 		_builder.DeclarationSymbols[node] = function;
 		return function;
 	}
@@ -71,7 +74,7 @@ public sealed class SymbolCollector : IDeclarationNodeVisitor<Symbol>
 		else
 			name = ".drop";
 		
-		var function = new FunctionSymbol(name, node, [], null, [self], FunctionKind.Destructor);
+		var function = new FunctionSymbol(name, node, GetMemberVisibility(null), null, [self], FunctionKind.Destructor);
 		_builder.DeclarationSymbols[node] = function;
 		return function;
 	}
@@ -93,7 +96,8 @@ public sealed class SymbolCollector : IDeclarationNodeVisitor<Symbol>
 		var isMember = _typeStack.TryPeek(out var typeName);
 		var name = isMember ? $"{typeName}.{node.Identifier.Text}" : node.Identifier.Text;
 		var kind = node.Receiver is null ? FunctionKind.Free : FunctionKind.Method;
-		var function = new FunctionSymbol(name, node, node.Modifiers, null, parameters, kind);
+		var visibility = isMember ? GetMemberVisibility(node.Visibility) : Visibility.FromKeyword(node.Visibility);
+		var function = new FunctionSymbol(name, node, visibility, null, parameters, kind);
 		_builder.DeclarationSymbols[node] = function;
 		if (!isMember)
 			_symbolsInFile.Add(function);
@@ -112,13 +116,20 @@ public sealed class SymbolCollector : IDeclarationNodeVisitor<Symbol>
 		}
 		
 		var name = node.Identifier.Text;
-		var function = new FunctionSymbol(name, node, node.Modifiers, null, parameters, FunctionKind.External);
+		var function = new FunctionSymbol(name, node, Visibility.FromKeyword(node.Visibility), null, parameters,
+			FunctionKind.External);
+		
 		_builder.DeclarationSymbols[node] = function;
 		_symbolsInFile.Add(function);
 		return function;
 	}
 	
 	public Symbol Visit(ParameterNode node) => throw new InvalidOperationException();
+	
+	private Visibility GetMemberVisibility(Token? keyword) =>
+		keyword is null && _typeVisibilities.TryPeek(out var visibility) && visibility == Visibility.Public
+			? Visibility.Public
+			: Visibility.FromKeyword(keyword);
 	
 	public static ParameterMode GetMode(Token? keyword) => keyword?.Type switch
 	{
@@ -130,6 +141,7 @@ public sealed class SymbolCollector : IDeclarationNodeVisitor<Symbol>
 	public Symbol Visit(RecordNode node)
 	{
 		_typeStack.Push(node.Identifier.Text);
+		_typeVisibilities.Push(Visibility.FromKeyword(node.Visibility));
 		
 		// TODO Type parameters
 		var members = new List<MemberSymbol>(node.Members.Length);
@@ -163,6 +175,7 @@ public sealed class SymbolCollector : IDeclarationNodeVisitor<Symbol>
 		_builder.DeclarationSymbols[node] = record;
 		_symbolsInFile.Add(record);
 		_typeStack.Pop();
+		_typeVisibilities.Pop();
 		
 		return record;
 	}
@@ -181,11 +194,13 @@ public sealed class SymbolCollector : IDeclarationNodeVisitor<Symbol>
 			new EnumCaseSymbol(e, i, e.Payload.Select(f => (FieldSymbol)VisitNode(f))));
 		
 		_typeStack.Push(node.Identifier.Text);
+		_typeVisibilities.Push(Visibility.FromKeyword(node.Visibility));
 		var functions = node.Functions
 			.Select(function => new MethodSymbol(function.Identifier.Text, (FunctionSymbol)VisitNode(function)))
 			.ToList();
 		
 		_typeStack.Pop();
+		_typeVisibilities.Pop();
 		var symbol = new EnumSymbol(node, cases, functions);
 		_builder.DeclarationSymbols[node] = symbol;
 		_symbolsInFile.Add(symbol);

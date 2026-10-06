@@ -1,0 +1,27 @@
+
+====== main.ce ======
+
+Error at line 3, column 10
+2 │ 
+3 │ use game.helper
+             ╘════╛ 'game.helper' is private to its module
+
+Error at line 4, column 18
+3 │ use game.helper
+4 │ use game.[World, tool]
+                     ╘══╛ 'game.tool' is private to its file
+
+Error at line 6, column 25
+5 │ 
+6 │ secret: fun(value: game.Secret) -> i32 = 0
+                            ╘════╛ 'game.Secret' is private to its module
+
+
+====== rules.ce ======
+
+Error at line 3, column 19
+2 │ 
+3 │ peek: fun(hidden: Hidden) -> i32 = 0
+                      ╘════╛ 'Hidden' is private to its file
+
+[compilation failed]

@@ -10,16 +10,23 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 {
 	private static readonly Dictionary<string, TokenType> _topLevelContextualKeywords =
 		BuildContextualKeywords(TokenType.KeywordMod, TokenType.KeywordFun, TokenType.KeywordUse, TokenType.KeywordPub,
-			TokenType.KeywordExt, TokenType.KeywordRec, TokenType.KeywordEnum, TokenType.KeywordRef);
+			TokenType.KeywordPvt, TokenType.KeywordExt, TokenType.KeywordRec, TokenType.KeywordEnum,
+			TokenType.KeywordRef);
 	
 	private static readonly Dictionary<string, TokenType> _memberContextualKeywords =
-		BuildContextualKeywords(TokenType.KeywordFun, TokenType.KeywordPub, TokenType.KeywordNew, TokenType.KeywordDrop,
-			TokenType.KeywordOp, TokenType.KeywordReq);
+		BuildContextualKeywords(TokenType.KeywordFun, TokenType.KeywordPub, TokenType.KeywordPvt, TokenType.KeywordMod,
+			TokenType.KeywordSet, TokenType.KeywordNew, TokenType.KeywordDrop, TokenType.KeywordOp,
+			TokenType.KeywordReq);
 	
 	private static readonly HashSet<TokenType> _topLevelSyncTypes = [TokenType.OpSemicolon, TokenType.EndOfFile];
 	
 	private static readonly HashSet<TokenType> _topLevelKeywords =
-		[TokenType.KeywordMod, TokenType.KeywordUse, TokenType.KeywordExt];
+		[TokenType.KeywordMod, TokenType.KeywordUse, TokenType.KeywordExt, TokenType.KeywordPvt];
+	
+	private static readonly HashSet<TokenType> _visibilityKeywords =
+		[TokenType.KeywordPub, TokenType.KeywordPvt, TokenType.KeywordMod];
+	
+	private static readonly HashSet<TokenType> _blockKeywords = [TokenType.KeywordPvt, TokenType.KeywordMod];
 	
 	private static readonly HashSet<TokenType> _bindingKeywords = [TokenType.KeywordVal, TokenType.KeywordVar];
 	
@@ -72,7 +79,8 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 		while (!AtEnd(index))
 		{
 			// Parse module name
-			if (Match(ref index, _topLevelContextualKeywords, TokenType.KeywordMod))
+			if (!IsVisibilityBlock(index, _topLevelContextualKeywords) &&
+			    Match(ref index, _topLevelContextualKeywords, TokenType.KeywordMod))
 			{
 				try
 				{
@@ -109,118 +117,9 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 				continue;
 			}
 			
-			// Parse external declarations
-			var externalStart = index;
-			if (Match(ref index, out var extToken, _topLevelContextualKeywords, TokenType.KeywordExt))
+			if (ParseTopLevelDeclaration(ref index, declarations, null))
 			{
 				importsAllowed = false;
-				if (ParseDeclaration(ref index, extToken, "external", ParseExternalDeclarations) is { } externals)
-					declarations.AddRange(externals);
-				else
-					SkipDeclaration(ref index, externalStart);
-				
-				continue;
-			}
-			
-			// Parse top-level declarations
-			var declarationStart = index;
-			if (Match(ref index, out var identifier, _topLevelContextualKeywords, TokenType.Identifier))
-			{
-				// TODO Type parameters
-				importsAllowed = false;
-				
-				var colonIndex = index;
-				if (!Consume(ref index, _topLevelSyncTypes, TokenType.OpColon))
-				{
-					Report(Tokens[colonIndex], "Expected ':' after identifier");
-					continue;
-				}
-				
-				var modifiers = ParseDeclarationModifiers(ref index);
-				var isRef = Match(ref index, _topLevelContextualKeywords, TokenType.KeywordRef);
-				
-				// Record
-				if (Match(ref index, _topLevelContextualKeywords, TokenType.KeywordRec))
-				{
-					var record = ParseDeclaration(ref index, identifier, "record",
-						(ref i) => ParseRecord(ref i, identifier, modifiers, isRef));
-					
-					if (record is null)
-					{
-						SkipDeclaration(ref index, declarationStart);
-						continue;
-					}
-					
-					declarations.Add(record);
-					continue;
-				}
-				
-				var kindIndex = index;
-				var isExternal = !isRef && Match(ref index, _topLevelContextualKeywords, TokenType.KeywordExt);
-				if (Match(ref index, _topLevelContextualKeywords, TokenType.KeywordEnum))
-				{
-					var enumNode = ParseDeclaration(ref index, identifier, "enum",
-						(ref i) => ParseEnum(ref i, identifier, modifiers, isExternal, isRef));
-					
-					if (enumNode is null)
-					{
-						SkipDeclaration(ref index, declarationStart);
-						continue;
-					}
-					
-					declarations.Add(enumNode);
-					continue;
-				}
-				
-				if (isRef)
-				{
-					Report(Tokens[index], "Expected 'rec' or 'enum' after 'ref'");
-					if (!AtEnd(index))
-						index++;
-					
-					ResyncTopLevel(ref index);
-					continue;
-				}
-				
-				// Global
-				if (!isExternal && Match(ref index, out var bindingKeyword, _bindingKeywords))
-				{
-					var global = ParseDeclaration(ref index, identifier, "global",
-						(ref i) => ParseGlobal(ref i, identifier, modifiers, bindingKeyword));
-					
-					if (global is null)
-					{
-						SkipDeclaration(ref index, declarationStart);
-						continue;
-					}
-					
-					declarations.Add(global);
-					continue;
-				}
-				
-				// Function
-				if (Match(ref index, _topLevelContextualKeywords, TokenType.KeywordFun))
-				{
-					var function = ParseDeclaration(ref index, identifier, "function",
-						(ref i) => ParseFunction(ref i, identifier, modifiers, isExternal));
-					
-					if (function is null)
-					{
-						SkipDeclaration(ref index, declarationStart);
-						continue;
-					}
-					
-					declarations.Add(function);
-					continue;
-				}
-				
-				// Unknown declaration
-				index = kindIndex;
-				Report(Tokens[index], "Unknown declaration type");
-				if (!AtEnd(index))
-					index++;
-				
-				ResyncTopLevel(ref index);
 				continue;
 			}
 			
@@ -259,6 +158,253 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 		};
 	}
 	
+	private bool ParseTopLevelDeclaration(ref int index, List<IDeclarationNode> declarations, Token? block)
+	{
+		if (MatchVisibilityBlock(ref index, _topLevelContextualKeywords, out var keyword, out var openBrace))
+		{
+			if (block is { } outer)
+				Report(keyword, $"Cannot use '{keyword.Text}' in '{outer.Text}' blocks");
+			
+			ParseTopLevelBlock(ref index, openBrace, block ?? keyword, declarations);
+			return true;
+		}
+		
+		var insideBlock = block is not null;
+		
+		// Parse external declarations
+		var externalStart = index;
+		if (Match(ref index, out var extToken, _topLevelContextualKeywords, TokenType.KeywordExt))
+		{
+			if (ParseDeclaration(ref index, extToken, "external",
+				    (ref i) => ParseExternalDeclarations(ref i, block)) is { } externals)
+				declarations.AddRange(externals);
+			else
+				SkipDeclaration(ref index, externalStart, insideBlock);
+			
+			return true;
+		}
+		
+		// Parse top-level declarations
+		var declarationStart = index;
+		if (!Match(ref index, out var identifier, _topLevelContextualKeywords, TokenType.Identifier))
+			return false;
+		
+		// TODO Type parameters
+		var colonIndex = index;
+		if (!Consume(ref index, _topLevelSyncTypes, TokenType.OpColon))
+		{
+			Report(Tokens[colonIndex], "Expected ':' after identifier");
+			return true;
+		}
+		
+		var modifiers = ParseDeclarationModifiers(ref index, block);
+		var isRef = Match(ref index, _topLevelContextualKeywords, TokenType.KeywordRef);
+		
+		// Record
+		if (Match(ref index, _topLevelContextualKeywords, TokenType.KeywordRec))
+		{
+			var record = ParseDeclaration(ref index, identifier, "record",
+				(ref i) => ParseRecord(ref i, identifier, modifiers, isRef));
+			
+			if (record is null)
+				SkipDeclaration(ref index, declarationStart, insideBlock);
+			else
+				declarations.Add(record);
+			
+			return true;
+		}
+		
+		var kindIndex = index;
+		var isExternal = !isRef && Match(ref index, _topLevelContextualKeywords, TokenType.KeywordExt);
+		if (Match(ref index, _topLevelContextualKeywords, TokenType.KeywordEnum))
+		{
+			var enumNode = ParseDeclaration(ref index, identifier, "enum",
+				(ref i) => ParseEnum(ref i, identifier, modifiers, isExternal, isRef));
+			
+			if (enumNode is null)
+				SkipDeclaration(ref index, declarationStart, insideBlock);
+			else
+				declarations.Add(enumNode);
+			
+			return true;
+		}
+		
+		if (isRef)
+		{
+			Report(Tokens[index], "Expected 'rec' or 'enum' after 'ref'");
+			if (!AtEnd(index))
+				index++;
+			
+			ResyncTopLevel(ref index, insideBlock);
+			return true;
+		}
+		
+		// Global
+		if (!isExternal && Match(ref index, out var bindingKeyword, _bindingKeywords))
+		{
+			var global = ParseDeclaration(ref index, identifier, "global",
+				(ref i) => ParseGlobal(ref i, identifier, modifiers, bindingKeyword));
+			
+			if (global is null)
+				SkipDeclaration(ref index, declarationStart, insideBlock);
+			else
+				declarations.Add(global);
+			
+			return true;
+		}
+		
+		// Function
+		if (Match(ref index, _topLevelContextualKeywords, TokenType.KeywordFun))
+		{
+			var function = ParseDeclaration(ref index, identifier, "function",
+				(ref i) => ParseFunction(ref i, identifier, modifiers, isExternal));
+			
+			if (function is null)
+				SkipDeclaration(ref index, declarationStart, insideBlock);
+			else
+				declarations.Add(function);
+			
+			return true;
+		}
+		
+		// Unknown declaration
+		index = kindIndex;
+		Report(Tokens[index], "Unknown declaration type");
+		if (!AtEnd(index))
+			index++;
+		
+		ResyncTopLevel(ref index, insideBlock);
+		return true;
+	}
+	
+	private void ParseTopLevelBlock(ref int index, Token openBrace, Token block, List<IDeclarationNode> declarations)
+	{
+		while (!Match(ref index, TokenType.OpCloseBrace))
+		{
+			if (AtEnd(index))
+			{
+				Report(openBrace, "Expected '}' to close this block");
+				return;
+			}
+			
+			if (ParseTopLevelDeclaration(ref index, declarations, block))
+				continue;
+			
+			ReportUnexpected(Tokens[index]);
+			while (!AtEnd(index))
+				index++;
+			
+			return;
+		}
+	}
+	
+	private bool IsVisibilityBlock(int index, IReadOnlyDictionary<string, TokenType> keywords) =>
+		MatchVisibilityBlock(ref index, keywords, out _, out _);
+	
+	private bool MatchVisibilityBlock(ref int index, IReadOnlyDictionary<string, TokenType> keywords, out Token keyword,
+		out Token openBrace)
+	{
+		var start = index;
+		if (Match(ref index, out keyword, keywords, _blockKeywords) &&
+		    Match(ref index, out openBrace, TokenType.OpOpenBrace))
+			return true;
+		
+		index = start;
+		openBrace = default;
+		return false;
+	}
+	
+	private readonly record struct DeclarationModifiers
+	(
+		List<Token> Tokens,
+		Token? Visibility,
+		Token? WriteVisibility = null,
+		SourceLocation WriteLocation = default
+	);
+	
+	private DeclarationModifiers ParseDeclarationModifiers(ref int index, Token? block)
+	{
+		var keywords = new List<Token>();
+		while (Match(ref index, out var keyword, _topLevelContextualKeywords, _visibilityKeywords))
+			keywords.Add(keyword);
+		
+		return new(keywords, CheckVisibility(keywords, block, false));
+	}
+	
+	private DeclarationModifiers ParseMemberModifiers(ref int index, Token? block)
+	{
+		var tokens = new List<Token>();
+		var keywords = new List<Token>();
+		var restrictions = new List<(Token Scope, Token Set)>();
+		while (StartsMemberType(index + 1) &&
+		       Match(ref index, out var keyword, _memberContextualKeywords, _visibilityKeywords))
+		{
+			tokens.Add(keyword);
+			if (keyword.Type != TokenType.KeywordPub && StartsMemberType(index + 1) &&
+			    Match(ref index, out var set, _memberContextualKeywords, TokenType.KeywordSet))
+			{
+				tokens.Add(set);
+				restrictions.Add((keyword, set));
+				continue;
+			}
+			
+			if (restrictions.Count > 0)
+				Report(keyword, $"Cannot use '{keyword.Text}' after '{restrictions[^1].Scope.Text} set'");
+			
+			keywords.Add(keyword);
+		}
+		
+		var visibility = CheckVisibility(keywords, block, true);
+		if (restrictions.Count == 0)
+			return new(tokens, visibility);
+		
+		var (scope, setKeyword) = restrictions[0];
+		var location = Span(scope, setKeyword);
+		if (restrictions.Count > 1)
+		{
+			List<string> names = [..restrictions.Select(static r => $"{r.Scope.Text} set")];
+			Report(Span(scope, restrictions[^1].Set), $"Cannot combine {DiagnosticReporter.JoinNames(names)}");
+		}
+		else if (keywords is [{ Type: not TokenType.KeywordPub } read] && !IsNarrower(scope, read))
+			Report(Span(read, setKeyword), $"Cannot combine '{read.Text}' and '{scope.Text} set'");
+		else if (keywords.Count == 0 && block is { } outer && !IsNarrower(scope, outer))
+			Report(location, $"Cannot use '{scope.Text} set' in '{outer.Text}' blocks");
+		
+		return new(tokens, visibility, scope, location);
+	}
+	
+	private bool StartsMemberType(int index) =>
+		!AtEnd(index) && Tokens[index].Line == Tokens[index - 1].Line &&
+		Tokens[index].Type is TokenType.Identifier or TokenType.KeywordImm or TokenType.KeywordMut;
+	
+	private static bool IsNarrower(Token write, Token read) =>
+		write.Type == TokenType.KeywordPvt && read.Type == TokenType.KeywordMod;
+	
+	private Token? CheckVisibility(List<Token> keywords, Token? block, bool isMember)
+	{
+		if (keywords.Count > 1)
+			Report(Span(keywords[0], keywords[^1]),
+				$"Cannot combine {DiagnosticReporter.JoinNames([..keywords.Select(static k => k.Text)])}");
+		else if (isMember && keywords is [{ Type: TokenType.KeywordPub } pub])
+			Report(pub, "Cannot declare 'pub' members");
+		else if (keywords is [var keyword] && block is { } outer)
+			Report(keyword, $"Cannot use '{keyword.Text}' in '{outer.Text}' blocks");
+		
+		return keywords.Count > 0 ? keywords[0] : block;
+	}
+	
+	private void RejectWriteRestriction(DeclarationModifiers modifiers, string kinds)
+	{
+		if (modifiers.WriteVisibility is { } scope)
+			Report(modifiers.WriteLocation, $"Cannot use '{scope.Text} set' on {kinds}");
+	}
+	
+	private static SourceLocation Span(Token first, Token last)
+	{
+		var (source, range) = first.SourceLocation;
+		return new(source, range.Join(last.SourceLocation.Range));
+	}
+	
 	private delegate T? DeclarationParser<T>(ref int index) where T : class;
 	
 	private T? ParseDeclaration<T>(ref int index, Token start, string kind, DeclarationParser<T> parse)
@@ -288,17 +434,7 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 		return declaration;
 	}
 	
-	private List<Token> ParseDeclarationModifiers(ref int index)
-	{
-		var modifiers = new List<Token>();
-		
-		if (Match(ref index, out var pubToken, _topLevelContextualKeywords, TokenType.KeywordPub))
-			modifiers.Add(pubToken);
-		
-		return modifiers;
-	}
-	
-	private List<IDeclarationNode>? ParseExternalDeclarations(ref int index)
+	private List<IDeclarationNode>? ParseExternalDeclarations(ref int index, Token? block)
 	{
 		// 'ext' token already consumed by caller
 		
@@ -320,7 +456,7 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 			origin = null;
 		
 		if (!Match(ref index, out var openBrace, TokenType.OpOpenBrace))
-			return ParseExternalDeclaration(ref index, origin) is { } single ? [single] : null;
+			return ParseExternalDeclaration(ref index, origin, block) is { } single ? [single] : null;
 		
 		var nodes = new List<IDeclarationNode>();
 		while (!Match(ref index, TokenType.OpCloseBrace))
@@ -331,7 +467,7 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 				return null;
 			}
 			
-			if (ParseExternalDeclaration(ref index, origin) is not { } ext)
+			if (ParseExternalDeclaration(ref index, origin, block) is not { } ext)
 			{
 				// TODO Diagnostics
 				SkipUntil(ref index, TokenType.OpCloseBrace);
@@ -437,7 +573,7 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 		return new ListImport(names.ToImmutableArray());
 	}
 	
-	private FunctionNode? ParseFunction(ref int index, Token identifier, IEnumerable<Token> modifiers,
+	private FunctionNode? ParseFunction(ref int index, Token identifier, DeclarationModifiers modifiers,
 		bool isExternal)
 	{
 		// When this is called, the identifier and fun keyword are already consumed
@@ -455,7 +591,10 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 			if (ParseExpressionBody(ref index, returnType is null) is not { } statement)
 				return null;
 			
-			return new(identifier, modifiers, receiver, parameters, returnType, statement, isExternal);
+			return new(identifier, modifiers.Tokens, receiver, parameters, returnType, statement, isExternal)
+			{
+				Visibility = modifiers.Visibility
+			};
 		}
 		
 		if (!Match(ref index, out var openBraceToken, TokenType.OpOpenBrace))
@@ -464,7 +603,10 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 		if (ParseBlockStatement(ref index, openBraceToken) is not { } body)
 			return null;
 		
-		return new(identifier, modifiers, receiver, parameters, returnType, body, isExternal);
+		return new(identifier, modifiers.Tokens, receiver, parameters, returnType, body, isExternal)
+		{
+			Visibility = modifiers.Visibility
+		};
 	}
 	
 	private IStatementNode? ParseExpressionBody(ref int index, bool discardsValue)
@@ -478,7 +620,7 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 			: new ReturnExpressionNode(expression.SourceLocation, expression));
 	}
 	
-	private GlobalNode? ParseGlobal(ref int index, Token identifier, IEnumerable<Token> modifiers, Token keyword)
+	private GlobalNode? ParseGlobal(ref int index, Token identifier, DeclarationModifiers modifiers, Token keyword)
 	{
 		var type = ParseType(ref index);
 		if (!Match(ref index, TokenType.OpEqual))
@@ -488,10 +630,10 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 		}
 		
 		var initializer = ParseExpression(ref index);
-		return new(identifier, modifiers, keyword, type, initializer);
+		return new(identifier, modifiers.Tokens, keyword, type, initializer) { Visibility = modifiers.Visibility };
 	}
 	
-	private ExternalFunctionNode? ParseExternalDeclaration(ref int index, string? origin)
+	private ExternalFunctionNode? ParseExternalDeclaration(ref int index, string? origin, Token? block)
 	{
 		// TODO Diagnostics
 		
@@ -501,7 +643,7 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 		if (!Match(ref index, TokenType.OpColon))
 			return null;
 		
-		var modifiers = ParseDeclarationModifiers(ref index);
+		var modifiers = ParseDeclarationModifiers(ref index, block);
 		
 		if (!Match(ref index, _topLevelContextualKeywords, TokenType.KeywordFun))
 			return null;
@@ -510,7 +652,10 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 			return null;
 		
 		var (_, parameters, returnType, isVariadic) = signature;
-		return new(identifier, modifiers, parameters, returnType, isVariadic, origin);
+		return new(identifier, modifiers.Tokens, parameters, returnType, isVariadic, origin)
+		{
+			Visibility = modifiers.Visibility
+		};
 	}
 	
 	private List<ParameterNode>? ParseParameters(ref int index, bool optionalParentheses) =>
@@ -621,38 +766,57 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 		return new(mode, identifier, type, defaultValue);
 	}
 	
-	private RecordNode? ParseRecord(ref int index, Token identifier, IEnumerable<Token> modifiers, bool isRef)
+	private RecordNode? ParseRecord(ref int index, Token identifier, DeclarationModifiers modifiers, bool isRef)
 	{
 		// When this is called, the identifier and rec keyword are already consumed
 		// Caller is expected to resync in case of errors
 		
 		// Empty record
 		if (!Match(ref index, out var openBrace, TokenType.OpOpenBrace))
-			return new(identifier, modifiers, isRef, []);
+			return new(identifier, modifiers.Tokens, isRef, []) { Visibility = modifiers.Visibility };
 		
 		var members = new List<IDeclarationNode>();
+		if (!ParseMembers(ref index, openBrace, null, members))
+			return null;
+		
+		return new(identifier, modifiers.Tokens, isRef, members) { Visibility = modifiers.Visibility };
+	}
+	
+	private bool ParseMembers(ref int index, Token openBrace, Token? block, List<IDeclarationNode> members)
+	{
 		while (!Match(ref index, TokenType.OpCloseBrace))
 		{
 			if (AtEnd(index))
 			{
 				Report(openBrace, "Expected '}' to close this block");
-				return null;
+				return false;
+			}
+			
+			if (MatchVisibilityBlock(ref index, _memberContextualKeywords, out var keyword, out var blockBrace))
+			{
+				if (block is { } outer)
+					Report(keyword, $"Cannot use '{keyword.Text}' in '{outer.Text}' blocks");
+				
+				if (!ParseMembers(ref index, blockBrace, block ?? keyword, members))
+					return false;
+				
+				continue;
 			}
 			
 			// TODO Diagnostics
-			if (ParseMember(ref index) is not { } member)
+			if (ParseMember(ref index, block) is not { } member)
 			{
 				ResyncSimple(ref index);
-				return null;
+				return false;
 			}
 			
 			members.Add(member);
 		}
 		
-		return new(identifier, modifiers, isRef, members);
+		return true;
 	}
 	
-	private EnumNode? ParseEnum(ref int index, Token identifier, IEnumerable<Token> modifiers, bool isExternal,
+	private EnumNode? ParseEnum(ref int index, Token identifier, DeclarationModifiers modifiers, bool isExternal,
 		bool isRef)
 	{
 		ITypeNode? tagType = null;
@@ -667,49 +831,80 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 		}
 		
 		if (!Match(ref index, out var openBrace, TokenType.OpOpenBrace))
-			return new(identifier, modifiers, isExternal, isRef, tagType, [], []);
+			return new(identifier, modifiers.Tokens, isExternal, isRef, tagType, [], [])
+			{
+				Visibility = modifiers.Visibility
+			};
 		
 		var cases = new List<EnumCaseNode>();
 		var functions = new List<FunctionNode>();
+		if (!ParseEnumBody(ref index, openBrace, null, cases, functions))
+			return null;
+		
+		return new(identifier, modifiers.Tokens, isExternal, isRef, tagType, cases, functions)
+		{
+			Visibility = modifiers.Visibility
+		};
+	}
+	
+	private bool ParseEnumBody(ref int index, Token openBrace, Token? block, List<EnumCaseNode> cases,
+		List<FunctionNode> functions)
+	{
 		while (!Match(ref index, TokenType.OpCloseBrace))
 		{
 			if (AtEnd(index))
 			{
 				Report(openBrace, "Expected '}' to close this block");
-				return null;
+				return false;
+			}
+			
+			if (MatchVisibilityBlock(ref index, _memberContextualKeywords, out var keyword, out var blockBrace))
+			{
+				if (block is { } outer)
+					Report(keyword, $"Cannot use '{keyword.Text}' in '{outer.Text}' blocks");
+				
+				if (!ParseEnumBody(ref index, blockBrace, block ?? keyword, cases, functions))
+					return false;
+				
+				continue;
 			}
 			
 			if (Peek(index, TokenType.Identifier) && Peek(index + 1, TokenType.OpColon))
 			{
-				if (ParseEnumFunction(ref index) is not { } function)
-					return null;
+				if (ParseEnumFunction(ref index, block) is not { } function)
+					return false;
 				
 				functions.Add(function);
 				continue;
 			}
 			
 			if (ParseEnumCase(ref index) is not { } enumCase)
-				return null;
+				return false;
+			
+			if (block is { } caseBlock)
+				Report(enumCase.Identifier, $"Cannot declare '{caseBlock.Text}' cases");
 			
 			cases.Add(enumCase);
 		}
 		
-		return new(identifier, modifiers, isExternal, isRef, tagType, cases, functions);
+		return true;
 	}
 	
-	private FunctionNode? ParseEnumFunction(ref int index)
+	private FunctionNode? ParseEnumFunction(ref int index, Token? block)
 	{
 		var identifier = Tokens[index];
 		index += 2;
+		var modifiers = ParseMemberModifiers(ref index, block);
 		if (!IsFunctionMember(index))
 		{
 			Report(identifier, "Cannot declare fields in enums");
 			return null;
 		}
 		
+		RejectWriteRestriction(modifiers, "functions");
 		Match(ref index, _memberContextualKeywords, TokenType.KeywordFun);
 		return ParseDeclaration(ref index, identifier, "function",
-			(ref i) => ParseFunction(ref i, identifier, [], false));
+			(ref i) => ParseFunction(ref i, identifier, modifiers, false));
 	}
 	
 	private EnumCaseNode? ParseEnumCase(ref int index)
@@ -753,37 +948,47 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 		return new(name, payload, value);
 	}
 	
-	private IDeclarationNode? ParseMember(ref int index)
+	private IDeclarationNode? ParseMember(ref int index, Token? block)
 	{
 		// TODO Diagnostics
-		// TODO Visibility modifiers / visibility blocks
 		
 		if (Match(ref index, out var newKeyword, _memberContextualKeywords, TokenType.KeywordNew))
-			return ParseConstructor(ref index, newKeyword, []);
+			return ParseConstructor(ref index, newKeyword, block);
 		
 		if (Match(ref index, out var dropKeyword, _memberContextualKeywords, TokenType.KeywordDrop))
-			return ParseDestructor(ref index, dropKeyword);
+			return ParseDestructor(ref index, dropKeyword, block);
 		
 		if (Match(ref index, out var star, TokenType.OpStar))
-			return ParseDeclaration(ref index, star, "operator", (ref i) =>
-				Match(ref i, TokenType.OpColon) && Match(ref i, _memberContextualKeywords, TokenType.KeywordOp)
-					? ParseFunction(ref i, star, [], false)
-					: null);
+			return ParseDeclaration(ref index, star, "operator", (ref i) => ParseOperator(ref i, star, block));
 		
 		if (!Match(ref index, out var identifier, TokenType.Identifier) || !Match(ref index, TokenType.OpColon))
 			return null;
 		
+		var modifiers = ParseMemberModifiers(ref index, block);
 		if (IsFunctionMember(index))
 		{
+			RejectWriteRestriction(modifiers, "functions");
 			Match(ref index, _memberContextualKeywords, TokenType.KeywordFun);
 			return ParseDeclaration(ref index, identifier, "function",
-				(ref i) => ParseFunction(ref i, identifier, [], false));
+				(ref i) => ParseFunction(ref i, identifier, modifiers, false));
 		}
 		
 		// TODO Casts, operator overloads
 		
 		// Fields
-		return ParseField(ref index, identifier, ParseFieldModifiers(ref index));
+		return ParseField(ref index, identifier, modifiers);
+	}
+	
+	private FunctionNode? ParseOperator(ref int index, Token star, Token? block)
+	{
+		if (!Match(ref index, TokenType.OpColon))
+			return null;
+		
+		var modifiers = ParseMemberModifiers(ref index, block);
+		RejectWriteRestriction(modifiers, "operators");
+		return Match(ref index, _memberContextualKeywords, TokenType.KeywordOp)
+			? ParseFunction(ref index, star, modifiers, false)
+			: null;
 	}
 	
 	private bool IsFunctionMember(int index) =>
@@ -799,7 +1004,7 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 		return modifiers;
 	}
 	
-	private ConstructorNode? ParseConstructor(ref int index, Token newKeyword, IEnumerable<Token> modifiers)
+	private ConstructorNode? ParseConstructor(ref int index, Token newKeyword, Token? block)
 	{
 		// When this is called, the identifier and fun keyword are already consumed
 		// Caller is expected to resync in case of errors
@@ -809,6 +1014,8 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 		if (!Match(ref index, TokenType.OpColon))
 			return null;
 		
+		var modifiers = ParseMemberModifiers(ref index, block);
+		RejectWriteRestriction(modifiers, "constructors");
 		if (!Match(ref index, _memberContextualKeywords, TokenType.KeywordOp))
 			return null;
 		
@@ -824,12 +1031,24 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 		var (source, range) = newKeyword.SourceLocation;
 		range = range.Join(body.SourceLocation.Range);
 		
-		return new(newKeyword, modifiers, parameters, body, new(source, range));
+		return new(newKeyword, modifiers.Tokens, parameters, body, new(source, range))
+		{
+			Visibility = modifiers.Visibility
+		};
 	}
 	
-	private DestructorNode? ParseDestructor(ref int index, Token dropKeyword)
+	private DestructorNode? ParseDestructor(ref int index, Token dropKeyword, Token? block)
 	{
-		if (!Match(ref index, TokenType.OpColon) || !Match(ref index, _memberContextualKeywords, TokenType.KeywordOp))
+		if (!Match(ref index, TokenType.OpColon))
+			return null;
+		
+		var modifiers = ParseMemberModifiers(ref index, block);
+		RejectWriteRestriction(modifiers, "destructors");
+		if (modifiers.Visibility is { Type: not TokenType.KeywordPub } visibility)
+			Report(modifiers.Tokens.Contains(visibility) ? visibility : dropKeyword,
+				$"Cannot declare '{visibility.Text}' destructors");
+		
+		if (!Match(ref index, _memberContextualKeywords, TokenType.KeywordOp))
 			return null;
 		
 		if (ParseParameters(ref index, true) is not { } parameters)
@@ -850,10 +1069,15 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 		return new(dropKeyword, body, new(source, range));
 	}
 	
-	private FieldNode ParseField(ref int index, Token identifier, IEnumerable<Token> modifiers)
+	private FieldNode ParseField(ref int index, Token identifier, DeclarationModifiers modifiers)
 	{
+		var tokens = modifiers.Tokens.Concat(ParseFieldModifiers(ref index));
 		var type = ParseType(ref index);
-		return new(identifier, type, modifiers);
+		return new(identifier, type, tokens)
+		{
+			Visibility = modifiers.Visibility,
+			WriteVisibility = modifiers.WriteVisibility
+		};
 	}
 	
 	private BlockStatementNode? ParseBlockStatement(ref int index, Token open)
@@ -1092,7 +1316,7 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 	private IExpressionNode ParseExpression(ref int index) => new ExpressionParser(Tokens).Parse(ref index);
 	private ITypeNode ParseType(ref int index) => new TypeParser(Tokens).Parse(ref index);
 	
-	private void ResyncTopLevel(ref int index)
+	private void ResyncTopLevel(ref int index, bool insideBlock = false)
 	{
 		// Skip until another declaration starts. If we encounter braces, keep skipping until closed
 		var braceCount = 0;
@@ -1104,6 +1328,10 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 				case TokenType.OpOpenBrace:
 					braceCount++;
 					index++;
+					break;
+				
+				case TokenType.OpCloseBrace when braceCount == 0 && insideBlock:
+					loop = false;
 					break;
 				
 				case TokenType.OpCloseBrace:
@@ -1133,7 +1361,7 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 		       Match(ref keywordIndex, _topLevelContextualKeywords, _topLevelKeywords);
 	}
 	
-	private void SkipDeclaration(ref int index, int start)
+	private void SkipDeclaration(ref int index, int start, bool insideBlock = false)
 	{
 		var braceCount = 0;
 		var parameterLists = new Stack<bool>();
@@ -1150,7 +1378,7 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 					if (braceCount > 0)
 						break;
 					
-					index = i + 1;
+					index = braceCount < 0 && insideBlock ? i : i + 1;
 					return;
 				
 				case TokenType.OpOpenParen:
@@ -1168,7 +1396,7 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 			}
 		}
 		
-		ResyncTopLevel(ref index);
+		ResyncTopLevel(ref index, insideBlock);
 	}
 	
 	private bool FollowsFun(int index)

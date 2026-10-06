@@ -14,6 +14,7 @@ public sealed class RecordNode
 	public SourceLocation SourceLocation { get; } = identifier.SourceLocation;
 	public Token Identifier { get; } = identifier;
 	public ImmutableArray<Token> Modifiers { get; } = modifiers.ToImmutableArray();
+	public Token? Visibility { get; init; }
 	public bool IsRef { get; } = isRef;
 	public ImmutableArray<IDeclarationNode> Members { get; } = members.ToImmutableArray();
 }
@@ -28,6 +29,8 @@ public sealed class FieldNode
 	public Token Identifier { get; } = identifier;
 	public ITypeNode Type { get; } = type;
 	public ImmutableArray<Token> Modifiers { get; } = modifiers.ToImmutableArray();
+	public Token? Visibility { get; init; }
+	public Token? WriteVisibility { get; init; }
 	public SourceLocation SourceLocation { get; } = identifier.SourceLocation;
 }
 
@@ -42,6 +45,7 @@ public sealed class ConstructorNode
 {
 	public Token Keyword { get; } = keyword;
 	public ImmutableArray<Token> Modifiers { get; } = modifiers.ToImmutableArray();
+	public Token? Visibility { get; init; }
 	public ImmutableArray<ParameterNode> Parameters { get; } = parameters.ToImmutableArray();
 	public IStatementNode Body { get; } = body;
 	public SourceLocation SourceLocation { get; } = sourceLocation;

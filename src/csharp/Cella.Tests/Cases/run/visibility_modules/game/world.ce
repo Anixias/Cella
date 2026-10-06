@@ -1,0 +1,24 @@
+mod game
+
+World: rec
+{
+	turn: mod set i32
+	seed: mod i32
+	secret: pvt i32
+
+	create: fun(seed: i32) -> World
+	{
+		var world = World()
+		world.seed = seed
+		world.secret = seed * 2
+		ret world
+	}
+
+	reveal: mod fun(self) -> i32 = self.secret
+}
+
+helper: mod fun(world: World) -> i32 = world.seed + world.reveal()
+
+describe: fun(world: World) -> i32 = tally(world) + describe(Rule(1))
+
+tally: pvt fun(world: World) -> i32 = world.turn * 10

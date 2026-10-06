@@ -21,16 +21,23 @@ public readonly struct ResolutionContext
 	public ExtSignatureTypes? ExtSignatureTypes { get; init; }
 	public Func<IExpressionNode, ResolutionContext, Constant?>? EvaluateConstant { get; init; }
 	
-	public IEnumerable<string> GetQualifiers()
+	public string Mangle(Symbol symbol) => Mangling.Mangle(symbol, FindPrivateFile, GetQualifiers());
+	
+	public string Mangle(Symbol symbol, FunctionSignature signature) =>
+		Mangling.Mangle(symbol, signature, FindPrivateFile, GetQualifiers());
+	
+	private string? FindPrivateFile(Symbol symbol) => Modules?.FindPrivateFile(symbol);
+	
+	private List<string> GetQualifiers()
 	{
 		var result = new List<string>();
 		
 		// TODO Nested functions in functions not supported
 		for (var f = ContainingFunction; f is not null; f = f.Value.Symbol.ContainingFunction)
-			result.Add(Mangling.Mangle(f.Value.Symbol, f.Value.Signature));
+			result.Add(Mangling.Mangle(f.Value.Symbol, f.Value.Signature, FindPrivateFile));
 		
 		for (var t = ContainingType; t is not null; t = t.ContainingType)
-			result.Add(Mangling.Mangle(t));
+			result.Add(Mangling.Mangle(t, FindPrivateFile));
 		
 		result.Reverse();
 		
@@ -73,9 +80,8 @@ public readonly struct ResolutionContext
 				return function;
 		}
 		
-		foreach (var file in File.Module.Files)
-			if (file.Symbols.TryGetValue(name, out var fileSet))
-				return ResolveFrom(name, fileSet);
+		if (ResolveFrom(name, [..GetModuleSymbols(name).Where(IsVisible)]) is { } moduleSymbol)
+			return moduleSymbol;
 		
 		if (Imports?.Resolve(name) is { Length: > 0 } imports)
 			return ResolveFrom(name, imports);
@@ -83,10 +89,46 @@ public readonly struct ResolutionContext
 		return NativeSymbols.Resolve(name) ?? Modules?.Root.Children.GetValueOrDefault(name);
 	}
 	
-	public static Symbol? ResolveMember(ModulePathSymbol module, string name) =>
-		module.Members.TryGetValue(name, out var members)
-			? ResolveFrom(name, members)
+	private IEnumerable<Symbol> GetModuleSymbols(string name) =>
+		File.Module.Files.SelectMany(file => file.Symbols.GetValueOrDefault(name) ?? []);
+	
+	public bool IsVisible(Symbol symbol) => Modules?.IsVisible(symbol, File) ?? true;
+	
+	public bool CanAccess(TypeSymbol owner, Visibility visibility) =>
+		Modules?.IsAccessible(owner, visibility, File, ContainingType) ?? true;
+	
+	public Diagnostic? ReportHidden(string name, SourceLocation location)
+	{
+		foreach (var symbol in GetModuleSymbols(name))
+		{
+			if (!IsVisible(symbol))
+				return DiagnosticReporter.ReportHidden(location, name, ModuleIndex.GetVisibility(symbol), false);
+		}
+		
+		return null;
+	}
+	
+	public Symbol? ResolveMember(ModulePathSymbol module, string name) =>
+		module.Members.TryGetValue(name, out var members) &&
+		ResolveFrom(name, [..members.Where(IsVisible)]) is { } member
+			? member
 			: module.Children.GetValueOrDefault(name);
+	
+	public Diagnostic ReportUndefinedMember(SourceLocation location, ModulePathSymbol module, string name)
+	{
+		if (module.Members.TryGetValue(name, out var members) && members.Count > 0)
+			return DiagnosticReporter.ReportHidden(location, $"{module.Path}.{name}",
+				members.Max(ModuleIndex.GetVisibility), false);
+		
+		var memberNames = new List<string>();
+		foreach (var (memberName, symbols) in module.Members)
+		{
+			if (symbols.Any(IsVisible))
+				memberNames.Add(memberName);
+		}
+		
+		return DiagnosticReporter.ReportUndefinedMember(location, module, name, memberNames);
+	}
 	
 	public ModulePathSymbol? ResolveModule(IExpressionNode node) => node switch
 	{
@@ -101,7 +143,7 @@ public readonly struct ResolutionContext
 	{
 		var first = parts[0];
 		if (Resolve(first.Text) is { } symbol)
-			return ResolveMembers(symbol, parts, 1, Diagnostics);
+			return ResolveMembers(symbol, parts, 1);
 		
 		Diagnostics.Add(DiagnosticReporter.ReportUndefinedModule(first.SourceLocation, first.Text,
 			GetAllSymbols().OfType<ModulePathSymbol>().Select(static m => m.Name).Distinct()));
@@ -109,22 +151,19 @@ public readonly struct ResolutionContext
 		return null;
 	}
 	
-	public static Symbol? ResolveMembers(Symbol symbol, ImmutableArray<Token> parts, int start,
-		DiagnosticList diagnostics)
+	public Symbol? ResolveMembers(Symbol symbol, ImmutableArray<Token> parts, int start)
 	{
 		for (var i = start; i < parts.Length; i++)
 		{
 			if (symbol is not ModulePathSymbol module)
 			{
-				diagnostics.Add(ReportNotModule(symbol, parts[..i]));
+				Diagnostics.Add(ReportNotModule(symbol, parts[..i]));
 				return null;
 			}
 			
 			if (ResolveMember(module, parts[i].Text) is not { } member)
 			{
-				diagnostics.Add(DiagnosticReporter.ReportUndefinedMember(parts[i].SourceLocation, module,
-					parts[i].Text));
-				
+				Diagnostics.Add(ReportUndefinedMember(parts[i].SourceLocation, module, parts[i].Text));
 				return null;
 			}
 			
@@ -167,7 +206,8 @@ public readonly struct ResolutionContext
 		foreach (var file in File.Module.Files)
 			foreach (var fileSet in file.Symbols.Values)
 				foreach (var fileSymbol in fileSet)
-					yield return fileSymbol;
+					if (IsVisible(fileSymbol))
+						yield return fileSymbol;
 		
 		if (Imports is { } imports)
 			foreach (var import in imports.ImportedSymbols)
@@ -273,8 +313,10 @@ public readonly struct ResolutionContext
 		return NativeSymbols.Invalid;
 	}
 	
-	private void ReportUndefinedType(Token name) => Diagnostics.Add(
-		DiagnosticReporter.ReportUndefinedType(name.SourceLocation, name.Text, GetVisibleTypeNames()));
+	private void ReportUndefinedType(Token name) => Diagnostics.Add(ReportHidden(name.Text, name.SourceLocation) ??
+	                                                                DiagnosticReporter.ReportUndefinedType(
+		                                                                name.SourceLocation, name.Text,
+		                                                                GetVisibleTypeNames()));
 	
 	private IEnumerable<string> GetVisibleTypeNames() => GetAllSymbols()
 		.OfType<TypeSymbol>()

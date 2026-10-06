@@ -1,0 +1,66 @@
+mod test
+
+Box: rec
+{
+	value: pvt i32
+
+	new: pvt op(value: i32)
+	{
+		self.value = value
+	}
+
+	make: fun -> Box = Box(1)
+	secret: pvt fun -> i32 = 1
+	peek: pvt fun(self) -> i32 = self.value
+	read: fun(self) -> i32 = self.peek() + Box.secret()
+}
+
+Plain: rec
+{
+	shown: i32
+	hidden: pvt i32
+}
+
+Pointer: rec
+{
+	target: req ptr[Plain]
+	hidden: pvt i32
+
+	*: pvt op(self) -> imm[Plain] = imm *self.target
+}
+
+Shared: rec
+{
+	target: req ptr[Plain]
+
+	*: op(self) -> imm[Plain] = imm *self.target
+	*: pvt op(mut self) -> mut[Plain] = mut *self.target
+
+	hidden: pvt fun(self) -> i32 = 0
+}
+
+reads: fun(box: Box) -> i32 = box.value
+
+calls: fun(box: Box) -> i32 = box.peek()
+
+statics: fun -> i32 = Box.secret()
+
+staticValue: fun -> i32
+{
+	val f = Box.secret
+	ret 0
+}
+
+constructs: fun -> Box = Box(2)
+
+names: fun -> str = nameOf(Plain.hidden)
+
+valueNames: fun(plain: Plain) -> str = nameOf(plain.hidden)
+
+dereferences: fun(pointer: Pointer) -> i32 = (*pointer).shown
+
+lookups: fun(pointer: Pointer) -> i32 = pointer.shown
+
+shadows: fun(shared: Shared) -> i32 = shared.hidden
+
+main: fun -> i32 = 0

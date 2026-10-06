@@ -1,0 +1,11 @@
+mod test
+
+helper: pvt fun -> i32 = 1
+
+tool: pvt fun -> i32 = 1
+
+tool: pvt fun -> i32 = 2
+
+shared: pvt fun(value: i32) -> i32 = value
+
+main: pvt fun -> i32 = 0

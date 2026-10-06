@@ -1,0 +1,79 @@
+
+====== main.ce ======
+
+Error at line 13, column 6
+12 │ var box = Box.make()
+13 │ box.limit = 1
+         ╘═══╛ 'limit' is read-only outside its type
+
+Error at line 14, column 6
+13 │ box.limit = 1
+14 │ box.limit += 1
+         ╘═══╛ 'limit' is read-only outside its type
+
+Error at line 15, column 6
+14 │ box.limit += 1
+15 │ box.items[0] = 1
+         ╘═══╛ 'items' is read-only outside its type
+
+Error at line 16, column 6
+15 │ box.items[0] = 1
+16 │ box.inner.amount = 1
+         ╘═══╛ 'inner' is read-only outside its type
+
+Error at line 17, column 6
+16 │ box.inner.amount = 1
+17 │ box.inner.grow()
+         ╘═══╛ 'inner' is read-only outside its type
+
+Error at line 18, column 17
+17 │ box.inner.grow()
+18 │ addOne(mut box.limit)
+                    ╘═══╛ 'limit' is read-only outside its type
+
+Error at line 19, column 21
+18 │ addOne(mut box.limit)
+19 │ val view = mut box.limit
+                        ╘═══╛ 'limit' is read-only outside its type
+
+Error at line 20, column 16
+19 │ val view = mut box.limit
+20 │ match mut box.shape
+                   ╘═══╛ 'shape' is read-only outside its type
+
+Error at line 25, column 12
+24 │ 
+25 │ match box.shape
+               ╘═══╛ 'shape' is read-only outside its type
+
+Error at line 34, column 22
+33 │ var box = Box.make()
+34 │ val taken = own box.inner
+                         ╘═══╛ 'inner' is read-only outside its type
+
+Error at line 35, column 19
+34 │ val taken = own box.inner
+35 │ val copied = box.inner
+                      ╘═══╛ 'inner' is read-only outside its type
+
+Error at line 41, column 10
+40 │ var counter = Counter()
+41 │ counter.total = 1
+             ╘═══╛ 'total' is read-only outside its module
+
+Error at line 44, column 33
+43 │ 
+44 │ builds: fun -> Plain = Plain(1, 2, 3)
+                                     ^ 'hidden' is private to its type
+
+Error at line 44, column 36
+43 │ 
+44 │ builds: fun -> Plain = Plain(1, 2, 3)
+                                        ^ 'fixed' is read-only outside its type
+
+Error at line 50, column 2
+49 │ {
+50 │     handle.value = 1
+         ╘══════════╛ Cannot write through read-only borrows
+
+[compilation failed]
