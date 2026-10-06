@@ -76,4 +76,9 @@ Error at line 162, column 21
 162 │ ret describeKeeper(keeper)
                          ╘════╛ Cannot use partly initialized values
 
+Error at line 176, column 19
+175 │ var code: Code
+176 │ ret describeCode(code)
+                       ╘══╛ Cannot use uninitialized values
+
 [compilation failed]

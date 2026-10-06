@@ -78,7 +78,10 @@ public sealed class TypePool
 			{
 				HasDefault = !r.HasDestructor && GetMembers(r).OfType<FieldSymbol>().All(HasDefault)
 			},
-			EnumSymbol e => Combine(false, GetParts(e)) with { HasDefault = e.Cases is [{ Fields.IsEmpty: true }, ..] },
+			EnumSymbol e => Combine(false, GetParts(e)) with
+			{
+				HasDefault = FindCase(e, BigInteger.Zero) is { } zeroCase ? zeroCase.Fields.IsEmpty : e.IsExternal
+			},
 			ArrayType => Combine(false, GetParts(type)),
 			FunctionType => TypeFacts.Plain with { HasDefault = false },
 			_ => TypeFacts.Plain

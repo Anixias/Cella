@@ -162,4 +162,18 @@ keeper: fun -> i32
 	ret describeKeeper(keeper)
 }
 
+Code: enum
+{
+	first = 1
+	held(amount: i32) = 0
+}
+
+describeCode: fun(code: Code) -> i32 = match code { first => 1  held(n) => n }
+
+zeroCase: fun -> i32
+{
+	var code: Code
+	ret describeCode(code)
+}
+
 main: fun -> i32 = 0

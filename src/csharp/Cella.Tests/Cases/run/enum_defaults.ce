@@ -29,8 +29,29 @@ Settings: rec
 	level: i32
 }
 
+Level: enum
+{
+	high = 2
+	low = 0
+}
+
+Signal: enum
+{
+	data(value: i32) = 1
+	quiet = 0
+}
+
+Event: ext enum
+{
+	key(code: i32) = 1
+	closed = 2
+}
+
 amount: fun(effect: Effect) -> i32 = match effect { hit(n) => n  none => 0 }
 speed: fun(mode: Mode) -> i32 = match mode { idle => -1  running(s) => s }
+height: fun(level: Level) -> i32 = match level { high => 2  low => 0 }
+reading: fun(signal: Signal) -> i32 = match signal { data(v) => v  quiet => -2 }
+keyCode: fun(event: Event) -> i32 = match event { key(c) => c  closed => 2  else => -3 }
 
 main: fun -> i32
 {
@@ -49,5 +70,10 @@ main: fun -> i32
 	var built = Holder(Effect.hit(6), 7)
 	printf("%d %d %d %d %d\n", amount(effect), amount(holder.effect) + holder.count, amount(effects[0]),
 		amount(built.effect), built.count)
+
+	var level: Level
+	var signal: Signal
+	var event: Event
+	printf("%d %d %d\n", height(level), reading(signal), keyCode(event))
 	ret 0
 }
