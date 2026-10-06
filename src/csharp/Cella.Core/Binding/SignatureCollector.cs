@@ -19,6 +19,14 @@ public sealed class SignatureCollector
 {
 	private readonly record struct Declaration(IDeclarationNode Node, ResolutionContext Context);
 	
+	private enum MemberKind
+	{
+		Field,
+		Case,
+		Function,
+		Property
+	}
+	
 	private readonly string? _entryPointName;
 	private readonly SymbolTable _symbolTable;
 	private readonly TypePool _typePool;
@@ -27,6 +35,7 @@ public sealed class SignatureCollector
 	private readonly SignatureTable.Builder _builder = new();
 	private readonly Dictionary<Symbol, Declaration> _declarations = [];
 	private readonly Dictionary<GlobalSymbol, TypeSymbol> _globalTypes = [];
+	private readonly Dictionary<PropertySymbol, TypeSymbol> _propertyTypes = [];
 	private readonly HashSet<TypeSymbol> _completedTypes = [];
 	private readonly List<(Symbol Symbol, bool IsValue)> _inProgress = [];
 	private readonly HashSet<Symbol> _cyclic = [];
@@ -215,7 +224,14 @@ public sealed class SignatureCollector
 			
 			var memberContext = context with { ContainingType = symbol as TypeSymbol };
 			foreach (var member in members)
+			{
 				_declarations[_symbolTable.DeclarationSymbols[member]] = new(member, memberContext);
+				if (member is not PropertyNode property)
+					continue;
+				
+				foreach (var accessor in property.Accessors)
+					_declarations[_symbolTable.DeclarationSymbols[accessor]] = new(accessor, memberContext);
+			}
 		}
 	}
 	
@@ -240,6 +256,10 @@ public sealed class SignatureCollector
 			
 			case GlobalSymbol global:
 				GetGlobalInfo(global);
+				break;
+			
+			case PropertySymbol property:
+				CompleteProperty(property);
 				break;
 		}
 	}
@@ -294,9 +314,13 @@ public sealed class SignatureCollector
 		
 		var functions = node.Members.OfType<FunctionNode>().ToLookup(static f => f.Identifier.Type == TokenType.OpStar);
 		ReportMemberConflicts(record, [
-			..node.Members.OfType<FieldNode>().Select(static f => (f.Identifier, (FunctionNode?)null, true)),
-			..node.Members.OfType<GlobalNode>().Select(static g => (g.Identifier, (FunctionNode?)null, true)),
-			..functions[false].Select(static f => (f.Identifier, (FunctionNode?)f, false))
+			..node.Members.OfType<FieldNode>()
+				.Select(static f => (f.Identifier, (FunctionNode?)null, MemberKind.Field)),
+			..node.Members.OfType<GlobalNode>()
+				.Select(static g => (g.Identifier, (FunctionNode?)null, MemberKind.Field)),
+			..node.Members.OfType<PropertyNode>()
+				.Select(static p => (p.Identifier, (FunctionNode?)null, MemberKind.Property)),
+			..functions[false].Select(static f => (f.Identifier, (FunctionNode?)f, MemberKind.Function))
 		]);
 		
 		ReportDereferences(record, [..functions[true]]);
@@ -351,7 +375,7 @@ public sealed class SignatureCollector
 	private static string DescribeReceiver(ParameterMode mode) => mode == ParameterMode.Mut ? "mut self" : "self";
 	
 	private void ReportMemberConflicts(TypeSymbol type,
-		IEnumerable<(Token Name, FunctionNode? Function, bool IsField)> members)
+		IEnumerable<(Token Name, FunctionNode? Function, MemberKind Kind)> members)
 	{
 		var sameNames = members
 			.GroupBy(static member => member.Name.Text)
@@ -359,7 +383,7 @@ public sealed class SignatureCollector
 		
 		foreach (var sameName in sameNames)
 		{
-			if (sameName.All(static member => member.Function is not null))
+			if (sameName.All(static member => member.Kind == MemberKind.Function))
 			{
 				var functions = sameName.Select(static member => member.Function!).ToList();
 				Diagnostics.AddRange(functions
@@ -369,10 +393,10 @@ public sealed class SignatureCollector
 				continue;
 			}
 			
-			if (sameName.All(static member => member is { Function: null, IsField: false }))
+			if (sameName.All(static member => member.Kind == MemberKind.Case))
 				continue;
 			
-			var message = sameName.All(static member => member.IsField)
+			var message = sameName.All(static member => member.Kind == MemberKind.Field)
 				? $"Field '{sameName.Key}' is declared more than once in '{type.Name}'"
 				: $"'{sameName.Key}' is declared more than once in '{type.Name}'";
 			
@@ -431,11 +455,105 @@ public sealed class SignatureCollector
 			Complete(_symbolTable.DeclarationSymbols[member]);
 		
 		ReportMemberConflicts(enumType, [
-			..node.Cases.Select(static c => (c.Identifier, (FunctionNode?)null, false)),
-			..node.Members.OfType<GlobalNode>().Select(static g => (g.Identifier, (FunctionNode?)null, true)),
-			..node.Members.OfType<FunctionNode>().Select(static f => (f.Identifier, (FunctionNode?)f, false))
+			..node.Cases.Select(static c => (c.Identifier, (FunctionNode?)null, MemberKind.Case)),
+			..node.Members.OfType<GlobalNode>()
+				.Select(static g => (g.Identifier, (FunctionNode?)null, MemberKind.Field)),
+			..node.Members.OfType<PropertyNode>()
+				.Select(static p => (p.Identifier, (FunctionNode?)null, MemberKind.Property)),
+			..node.Members.OfType<FunctionNode>()
+				.Select(static f => (f.Identifier, (FunctionNode?)f, MemberKind.Function))
 		]);
 	}
+	
+	private void CompleteProperty(PropertySymbol property)
+	{
+		var node = property.Node!;
+		var type = node.Type is { } typeNode ? GetPropertyType(property, typeNode) : null;
+		if (node.Keyword is not null)
+			ReportMissingAccessors(property);
+		
+		Diagnostics.AddRange(DiagnosticReporter.ReportDuplicates(node.Accessors.Select(static a => a.Identifier),
+			name => $"'{name}' is declared more than once in '{property.Name}'"));
+		
+		if (node.Accessors.Select(static accessor => accessor.Receiver is null).Distinct().Count() > 1)
+			Diagnostics.AddRange(node.Accessors.Select(static accessor => new Diagnostic(DiagnosticSeverity.Error,
+				accessor.Identifier.SourceLocation, "Cannot combine static and instance accessors")));
+		
+		foreach (var accessor in node.Accessors)
+		{
+			var info = GetFunctionInfo((FunctionSymbol)_symbolTable.DeclarationSymbols[accessor]);
+			ReportAccessor(accessor, info.Signature, type, node.Type);
+		}
+	}
+	
+	private void ReportMissingAccessors(PropertySymbol property)
+	{
+		var missing = (property.Getter, property.Setter) switch
+		{
+			(null, null) => "a getter and a setter",
+			(null, _) => "a getter",
+			(_, null) => "a setter",
+			_ => null
+		};
+		
+		if (missing is not null)
+			Diagnostics.Add(new(DiagnosticSeverity.Error, property.Node!.Identifier.SourceLocation,
+				$"'{property.Name}' needs {missing}"));
+	}
+	
+	private void ReportAccessor(FunctionNode accessor, FunctionSignature signature, TypeSymbol? type,
+		ITypeNode? shared)
+	{
+		var isGetter = accessor.Identifier.Type == TokenType.KeywordGet;
+		if (accessor.Receiver is { Mode: { Type: TokenType.KeywordOwn } } receiver)
+			Diagnostics.Add(new(DiagnosticSeverity.Error, receiver.SourceLocation,
+				$"Cannot take 'own self' in {(isGetter ? "getters" : "setters")}"));
+		
+		if (!isGetter && accessor.Parameters is [{ Mode: { Type: TokenType.KeywordMut } mode }])
+			Diagnostics.Add(new(DiagnosticSeverity.Error, mode.SourceLocation,
+				"Cannot take 'mut' parameters in setters"));
+		
+		if (type is null or InvalidType)
+			return;
+		
+		if (isGetter && accessor.ReturnType is { } returnType && returnType != shared &&
+		    signature.ReturnType is not InvalidType && signature.ReturnType != type)
+			Diagnostics.Add(new(DiagnosticSeverity.Error, returnType.SourceLocation,
+				$"'get' must return '{type.Name}'"));
+		
+		if (isGetter || accessor.Parameters is not [var value] || value.Type == shared)
+			return;
+		
+		var valueType = signature.GetDeclaredType(signature.ParameterTypes.Length - 1);
+		if (valueType is not InvalidType && valueType != type)
+			Diagnostics.Add(new(DiagnosticSeverity.Error, value.Type.SourceLocation,
+				$"'{value.Identifier.Text}' must be '{type.Name}'"));
+	}
+	
+	private TypeSymbol GetPropertyType(PropertySymbol property, ITypeNode typeNode)
+	{
+		if (_propertyTypes.TryGetValue(property, out var type))
+			return type;
+		
+		var context = _declarations[property].Context;
+		var owner = context.ContainingType!;
+		type = context.ResolveType(typeNode);
+		_propertyTypes[property] = type;
+		
+		var visibility = property.Node!.Accessors
+			.Select(accessor => (FunctionSymbol)_symbolTable.DeclarationSymbols[accessor])
+			.Select(accessor => GetEffectiveVisibility(accessor.Visibility, owner))
+			.DefaultIfEmpty(GetEffectiveVisibility(property.Visibility, owner))
+			.Max();
+		
+		ReportHiddenType(typeNode, type, visibility, property.Name);
+		return type;
+	}
+	
+	private TypeSymbol ResolveSignatureType(FunctionSymbol function, ITypeNode node, ResolutionContext context) =>
+		function.Property is { Node.Type: { } shared } property && node == shared
+			? GetPropertyType(property, shared)
+			: context.ResolveType(node);
 	
 	private void ReportHiddenType(ITypeNode node, TypeSymbol type, Visibility visibility, string name)
 	{
@@ -638,7 +756,7 @@ public sealed class SignatureCollector
 	private FunctionInfo CollectFunction(FunctionSymbol function, FunctionNode node, ResolutionContext context)
 	{
 		ReportDuplicateParameters(node.Parameters);
-		ReportBorrowParameters(node.Parameters, node.IsExternal);
+		ReportBorrowParameters(node.Parameters, node.IsExternal, function.Property?.Node?.Type);
 		
 		var scope = new Scope();
 		
@@ -660,13 +778,18 @@ public sealed class SignatureCollector
 		}
 		
 		var visibility = GetEffectiveVisibility(function, context);
+		var name = function.Property?.Name ?? node.Identifier.Text;
+		var reportsHiddenTypes = function.Property?.Node?.Keyword is null;
 		var offset = paramTypes.Count;
 		for (var i = 0; i < node.Parameters.Length; i++)
 		{
 			var param = node.Parameters[i];
 			var paramSymbol = function.Parameters[i + offset];
-			var paramType = _typePool.GetPassedType(context.ResolveType(param.Type), paramSymbol.Mode);
-			ReportHiddenType(param.Type, paramType, visibility, node.Identifier.Text);
+			var paramType = _typePool.GetPassedType(ResolveSignatureType(function, param.Type, context),
+				paramSymbol.Mode);
+			
+			if (reportsHiddenTypes)
+				ReportHiddenType(param.Type, paramType, visibility, name);
 			
 			paramTypes.Add(paramType);
 			_builder.VariableTypes[paramSymbol] = paramType;
@@ -677,10 +800,10 @@ public sealed class SignatureCollector
 		if (node.ReturnType is not { } returnTypeSyntax)
 			returnType = NativeSymbols.Void;
 		else
-			returnType = context.ResolveType(returnTypeSyntax);
+			returnType = ResolveSignatureType(function, returnTypeSyntax, context);
 		
-		if (node.ReturnType is { } returnTypeNode)
-			ReportHiddenType(returnTypeNode, returnType, visibility, node.Identifier.Text);
+		if (reportsHiddenTypes && node.ReturnType is { } returnTypeNode)
+			ReportHiddenType(returnTypeNode, returnType, visibility, name);
 		
 		var signature = new FunctionSignature(paramTypes, returnType, false, GetModes(function));
 		
@@ -772,13 +895,20 @@ public sealed class SignatureCollector
 		Diagnostics.AddRange(DiagnosticReporter.ReportDuplicates(parameters.Select(static p => p.Identifier),
 			static name => $"Parameter '{name}' is declared more than once"));
 	
-	private void ReportBorrowParameters(IEnumerable<ParameterNode> parameters, bool isExternal)
+	private void ReportBorrowParameters(IEnumerable<ParameterNode> parameters, bool isExternal,
+		ITypeNode? sharedType = null)
 	{
 		foreach (var parameter in parameters)
 		{
-			if (parameter.Type is BorrowTypeNode borrow)
-				Diagnostics.Add(DiagnosticReporter.ReportBorrowParameter(borrow, parameter.Identifier.Text,
-					parameter.Mode is not null, isExternal));
+			if (parameter.Type is not BorrowTypeNode borrow)
+				continue;
+			
+			var diagnostic = DiagnosticReporter.ReportBorrowParameter(borrow, parameter.Identifier.Text,
+				parameter.Mode is not null, isExternal);
+			
+			Diagnostics.Add(borrow == sharedType
+				? new(DiagnosticSeverity.Error, parameter.Identifier.SourceLocation, diagnostic.Message)
+				: diagnostic);
 		}
 	}
 	

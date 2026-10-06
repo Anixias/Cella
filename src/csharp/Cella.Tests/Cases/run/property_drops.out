@@ -1,0 +1,2 @@
+drop 1 | 2 | 102 | 102 drop 102 drop 2 | 13 3 |drop 3 drop 102 drop 13 
+[exit code 0]

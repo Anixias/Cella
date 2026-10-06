@@ -1,0 +1,21 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+main: fun -> i32
+{
+	var unit = game.Unit(40)
+	unit.health -= 15
+	unit.harden()
+	printf("%d %d %d\n", unit.health, unit.armor, game.Unit.total)
+	game.Color.picked = 3
+	game.Color.picked += 2
+	val warm = game.Color.red
+	if warm.isWarm
+		printf("%d %d\n", game.Color.picked, game.Color.blue.code)
+
+	ret 0
+}

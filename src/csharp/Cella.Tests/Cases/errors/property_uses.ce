@@ -1,0 +1,58 @@
+mod test
+
+Unit: rec
+{
+	hp: pvt i32
+
+	health: prop i32
+	{
+		get(self) = self.hp
+		pvt set(mut self, value)
+		{
+			self.hp = value
+		}
+	}
+
+	shield: prop i32
+	{
+		pvt get(self) = self.hp
+		set(mut self, value)
+		{
+			self.hp = value
+		}
+	}
+
+	level: get(self) -> i32 = self.hp
+
+	volume: set(mut self, value: i32)
+	{
+		self.hp = value
+	}
+
+	count: get -> i32 = 1
+
+	secret: pvt get(self) -> i32 = 1
+
+	hidden: pvt get -> i32 = 2
+}
+
+uses: fun(mut unit: Unit)
+{
+	unit.level = 1
+	Unit.count = 2
+	val loud = unit.volume
+	unit.volume += 1
+	unit.health = 3
+	val shown = unit.shield
+	unit.shield += 1
+	val secret = unit.secret
+	val total = unit.count
+	val wrong = Unit.level
+	val names = nameOf(unit.secret)
+	val static = Unit.hidden
+	unit.volume = "loud"
+	own unit.volume = 5
+	val result = (unit.volume = 6)
+}
+
+main: fun -> i32 = 0

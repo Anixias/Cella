@@ -1,0 +1,109 @@
+
+====== property_declarations.ce ======
+
+Error at line 10, column 2
+ 9 │ {
+10 │     hp: i32
+         ╘╛ 'hp' is declared more than once in 'Unit'
+
+Error at line 12, column 2
+11 │ 
+12 │ health: prop i32
+     ╘════╛ 'health' needs a setter
+
+Error at line 17, column 2
+16 │ 
+17 │ mana: prop i32
+     ╘══╛ 'mana' needs a getter
+
+Error at line 22, column 2
+21 │ 
+22 │ empty: prop i32
+     ╘═══╛ 'empty' needs a getter and a setter
+
+Error at line 26, column 3
+25 │ {
+26 │     get(self) = 1
+         ╘═╛ 'get' is declared more than once in 'twice'
+
+Error at line 27, column 3
+26 │ get(self) = 1
+27 │ get(self) = 2
+     ╘═╛ 'get' is declared more than once in 'twice'
+
+Error at line 33, column 3
+32 │ {
+33 │     get = 1
+         ╘═╛ Cannot combine static and instance accessors
+
+Error at line 34, column 3
+33 │ get = 1
+34 │ set(mut self, value) = 0
+     ╘═╛ Cannot combine static and instance accessors
+
+Error at line 39, column 11
+38 │ {
+39 │     get(own self) = 1
+                 ╘══╛ Cannot take 'own self' in getters
+
+Error at line 40, column 11
+39 │ get(own self) = 1
+40 │ set(own self, value) = 0
+             ╘══╛ Cannot take 'own self' in setters
+
+Error at line 43, column 26
+42 │ 
+43 │ borrowed: set(mut self, mut value: i32) = 0
+                             ╘═╛ Cannot take 'mut' parameters in setters
+
+Error at line 47, column 16
+46 │ {
+47 │     get(self) -> i64 = 1
+                      ╘═╛ 'get' must return 'i32'
+
+Error at line 48, column 24
+47 │ get(self) -> i64 = 1
+48 │ set(mut self, value: u8) = 0
+                          ╘╛ 'value' must be 'i32'
+
+Error at line 51, column 2
+50 │ 
+51 │ hp: get(self) -> i32 = 1
+     ╘╛ 'hp' is declared more than once in 'Unit'
+
+Error at line 53, column 2
+52 │ 
+53 │ speed: get(self) -> i32 = 1
+     ╘═══╛ 'speed' is declared more than once in 'Unit'
+
+Error at line 55, column 2
+54 │ 
+55 │ speed: set(mut self, value: i32) = 0
+     ╘═══╛ 'speed' is declared more than once in 'Unit'
+
+Error at line 57, column 15
+56 │ 
+57 │ secret: prop Node
+                  ╘══╛ 'Node' is less visible than 'secret'
+
+Error at line 63, column 23
+62 │ 
+63 │ hidden: get(self) -> Node = Node(1)
+                          ╘══╛ 'Node' is less visible than 'hidden'
+
+Error at line 68, column 17
+67 │ get(self) = imm self.hp
+68 │ set(mut self, value) = 0
+                   ╘═══╛ Cannot use borrow types for parameters
+
+Error at line 74, column 2
+73 │ {
+74 │     first
+         ╘═══╛ 'first' is declared more than once in 'Kind'
+
+Error at line 75, column 2
+74 │ first
+75 │ first: get -> i32 = 1
+     ╘═══╛ 'first' is declared more than once in 'Kind'
+
+[compilation failed]

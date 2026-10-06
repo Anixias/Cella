@@ -1,0 +1,74 @@
+
+====== property_syntax.ce ======
+
+Error at line 7, column 20
+6 │ 
+7 │ health: get(self, extra: i32) -> i32 = self.hp
+                      ╘═══╛ Getters cannot take parameters
+
+Error at line 9, column 10
+8 │ 
+9 │ volume: set(mut self) = 0
+            ╘═╛ Setters must take one parameter
+
+Error at line 11, column 35
+10 │ 
+11 │ pitch: set(mut self, first: i32, second: i32) = 0
+                                      ╘════╛ Setters must take one parameter
+
+Error at line 13, column 38
+12 │ 
+13 │ speed: set(mut self, value: i32) -> i32 = 0
+                                         ╘═╛ Setters cannot return values
+
+Error at line 15, column 19
+14 │ 
+15 │ label: get(self) = self.hp
+                      ^ Expected '->' and a type
+
+Error at line 17, column 9
+16 │ 
+17 │ armor: pvt set get(self) -> i32 = 1
+            ╘═════╛ Cannot use 'pvt set' on properties
+
+Error at line 22, column 3
+21 │ get(self) = 1
+22 │ mod set(mut self, value) = 0
+     ╘═╛ Cannot use 'mod' in 'pvt' properties
+
+Error at line 27, column 3
+26 │ {
+27 │     pvt get(self) = 1
+         ╘═╛ Cannot restrict both accessors
+
+Error at line 28, column 3
+27 │ pvt get(self) = 1
+28 │ pvt set(mut self, value) = 0
+     ╘═╛ Cannot restrict both accessors
+
+Error at line 33, column 3
+32 │ {
+33 │     pub get(self) = 1
+         ╘═╛ Cannot declare 'pub' members
+
+Error at line 40, column 3
+39 │ get(self) = 1
+40 │ mod pvt set(mut self, value) = 0
+     ╘═════╛ Cannot combine 'mod' and 'pvt'
+
+Error at line 46, column 28
+45 │ {
+46 │     value: set(mut self, value) = 0
+                                   ^ Expected ':' and a type
+
+Error at line 53, column 3
+52 │ {
+53 │     init(self) = 1
+         ╘══╛ Expected 'get' or 'set'
+
+Error at line 60, column 1
+59 │     value: get(self) -> i32
+60 │ }
+     ^ Expected '=' or '{'
+
+[compilation failed]

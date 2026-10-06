@@ -65,6 +65,8 @@ public enum TokenType
 	KeywordRef,
 	KeywordPvt,
 	KeywordSet,
+	KeywordGet,
+	KeywordProp,
 	
 	// Operators
 	OpLessLessLessEqual,
@@ -196,6 +198,8 @@ public static class TokenTypeInfo
 			[TokenType.KeywordRef] = new("ref", IsKeyword: true, IsContextual: true),
 			[TokenType.KeywordPvt] = new("pvt", IsKeyword: true, IsContextual: true),
 			[TokenType.KeywordSet] = new("set", IsKeyword: true, IsContextual: true),
+			[TokenType.KeywordGet] = new("get", IsKeyword: true, IsContextual: true),
+			[TokenType.KeywordProp] = new("prop", IsKeyword: true, IsContextual: true),
 			
 			[TokenType.OpLessLessLessEqual] = new("<<<=", IsOperator: true),
 			[TokenType.OpGreaterGreaterGreaterEqual] = new(">>>=", IsOperator: true),

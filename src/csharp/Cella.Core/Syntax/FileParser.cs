@@ -16,7 +16,7 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 	private static readonly Dictionary<string, TokenType> _memberContextualKeywords =
 		BuildContextualKeywords(TokenType.KeywordFun, TokenType.KeywordPub, TokenType.KeywordPvt, TokenType.KeywordMod,
 			TokenType.KeywordSet, TokenType.KeywordNew, TokenType.KeywordDrop, TokenType.KeywordOp,
-			TokenType.KeywordReq);
+			TokenType.KeywordReq, TokenType.KeywordGet, TokenType.KeywordProp);
 	
 	private static readonly HashSet<TokenType> _topLevelSyncTypes = [TokenType.OpSemicolon, TokenType.EndOfFile];
 	
@@ -29,6 +29,8 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 	private static readonly HashSet<TokenType> _blockKeywords = [TokenType.KeywordPvt, TokenType.KeywordMod];
 	
 	private static readonly HashSet<TokenType> _bindingKeywords = [TokenType.KeywordVal, TokenType.KeywordVar];
+	
+	private static readonly HashSet<TokenType> _accessorKeywords = [TokenType.KeywordGet, TokenType.KeywordSet];
 	
 	private static readonly HashSet<TokenType> _parameterModes = [TokenType.KeywordMut, TokenType.KeywordOwn];
 	
@@ -911,6 +913,10 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 		if (Match(ref index, out var bindingKeyword, _bindingKeywords))
 			return ParseStaticField(ref index, identifier, modifiers, bindingKeyword);
 		
+		if (StartsProperty(index))
+			return ParseDeclaration(ref index, identifier, "property",
+				(ref i) => ParseProperty(ref i, identifier, modifiers));
+		
 		if (!IsFunctionMember(index))
 		{
 			Report(identifier, "Cannot declare fields in enums");
@@ -992,6 +998,10 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 		if (Match(ref index, out var bindingKeyword, _bindingKeywords))
 			return ParseStaticField(ref index, identifier, modifiers, bindingKeyword);
 		
+		if (StartsProperty(index))
+			return ParseDeclaration(ref index, identifier, "property",
+				(ref i) => ParseProperty(ref i, identifier, modifiers));
+		
 		// TODO Casts, operator overloads
 		
 		// Fields
@@ -1012,6 +1022,154 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 	
 	private bool IsFunctionMember(int index) =>
 		Match(ref index, _memberContextualKeywords, TokenType.KeywordFun) && !Peek(index, TokenType.OpOpenBracket);
+	
+	private bool StartsProperty(int index)
+	{
+		if (Match(ref index, _memberContextualKeywords, TokenType.KeywordProp))
+			return IsOnSameLine(index) &&
+			       Tokens[index].Type is TokenType.Identifier or TokenType.KeywordImm or TokenType.KeywordMut;
+		
+		return Match(ref index, _memberContextualKeywords, _accessorKeywords) && IsOnSameLine(index) &&
+		       Tokens[index].Type is TokenType.OpOpenParen or TokenType.OpArrow or TokenType.OpEqual
+			       or TokenType.OpOpenBrace;
+	}
+	
+	private PropertyNode? ParseProperty(ref int index, Token identifier, DeclarationModifiers modifiers)
+	{
+		RejectWriteRestriction(modifiers, "properties");
+		if (!Match(ref index, out var keyword, _memberContextualKeywords, TokenType.KeywordProp))
+			return ParseAccessor(ref index, null, [], null) is { } accessor
+				? new(identifier, modifiers.Tokens, null, null, [accessor]) { Visibility = modifiers.Visibility }
+				: null;
+		
+		var type = ParseType(ref index);
+		var accessors = new List<FunctionNode>();
+		if (Match(ref index, out var openBrace, TokenType.OpOpenBrace))
+		{
+			while (!Match(ref index, TokenType.OpCloseBrace))
+			{
+				if (AtEnd(index))
+				{
+					Report(openBrace, "Expected '}' to close this block");
+					return null;
+				}
+				
+				if (ParsePropertyAccessor(ref index, type, modifiers.Visibility) is not { } accessor)
+					return null;
+				
+				accessors.Add(accessor);
+			}
+		}
+		
+		var restricted = accessors.Where(static accessor => accessor.Visibility is not null).ToList();
+		if (restricted.Count > 1)
+		{
+			foreach (var accessor in restricted)
+				Report(accessor.Visibility!.Value, "Cannot restrict both accessors");
+		}
+		
+		return new(identifier, modifiers.Tokens, keyword, type, accessors) { Visibility = modifiers.Visibility };
+	}
+	
+	private FunctionNode? ParsePropertyAccessor(ref int index, ITypeNode type, Token? propertyVisibility)
+	{
+		var keywords = new List<Token>();
+		while (Match(ref index, out var keyword, _memberContextualKeywords, _visibilityKeywords))
+			keywords.Add(keyword);
+		
+		var visibility = CheckVisibility(keywords, null, true);
+		if (keywords is [{ Type: not TokenType.KeywordPub } narrowed] && propertyVisibility is { } outer &&
+		    !IsNarrower(narrowed, outer))
+			Report(narrowed, $"Cannot use '{narrowed.Text}' in '{outer.Text}' properties");
+		
+		return ParseAccessor(ref index, type, keywords, visibility);
+	}
+	
+	private FunctionNode? ParseAccessor(ref int index, ITypeNode? propertyType, List<Token> modifiers,
+		Token? visibility)
+	{
+		if (!Match(ref index, out var keyword, _memberContextualKeywords, _accessorKeywords))
+		{
+			ReportExpected(index, "'get' or 'set'");
+			return null;
+		}
+		
+		if (ParseAccessorParameters(ref index, propertyType) is not var (receiver, parameters))
+			return null;
+		
+		var isGetter = keyword.Type == TokenType.KeywordGet;
+		var returnType = Match(ref index, TokenType.OpArrow) ? ParseType(ref index) : null;
+		if (isGetter && parameters.Count > 0)
+			Report(parameters[0].SourceLocation, "Getters cannot take parameters");
+		else if (!isGetter && parameters.Count != 1)
+			Report(parameters.Count > 1 ? parameters[1].SourceLocation : keyword.SourceLocation,
+				"Setters must take one parameter");
+		
+		if (!isGetter && returnType is not null)
+			Report(returnType.SourceLocation, "Setters cannot return values");
+		else if (isGetter && returnType is null && propertyType is null)
+			ReportExpected(index, "'->' and a type");
+		
+		var resultType = isGetter ? returnType ?? propertyType : null;
+		IStatementNode? body;
+		if (Match(ref index, TokenType.OpEqual))
+			body = ParseExpressionBody(ref index, resultType is null);
+		else if (Match(ref index, out var openBrace, TokenType.OpOpenBrace))
+			body = ParseBlockStatement(ref index, openBrace);
+		else
+		{
+			ReportExpected(index, "'=' or '{'");
+			return null;
+		}
+		
+		return body is null
+			? null
+			: new(keyword, modifiers, receiver, parameters, resultType, body, false) { Visibility = visibility };
+	}
+	
+	private (ReceiverNode? Receiver, List<ParameterNode> Parameters)? ParseAccessorParameters(ref int index,
+		ITypeNode? propertyType)
+	{
+		var parameters = new List<ParameterNode>();
+		if (!Match(ref index, out var openParen, TokenType.OpOpenParen))
+			return (null, parameters);
+		
+		var receiver = ParseReceiver(ref index);
+		if (Match(ref index, TokenType.OpCloseParen))
+			return (receiver, parameters);
+		
+		if (receiver is not null && !Match(ref index, TokenType.OpComma))
+		{
+			ReportExpected(index, "',' or ')'", openParen);
+			return null;
+		}
+		
+		do
+		{
+			Token? mode = Match(ref index, out var keyword, _parameterModes) ? keyword : null;
+			if (!Match(ref index, out var name, TokenType.Identifier))
+			{
+				ReportExpected(index, "a parameter name");
+				return null;
+			}
+			
+			if (Match(ref index, TokenType.OpColon))
+				parameters.Add(new(mode, name, ParseType(ref index), null));
+			else if (propertyType is not null)
+				parameters.Add(new(mode, name, propertyType, null));
+			else
+			{
+				ReportExpected(index, "':' and a type");
+				return null;
+			}
+		} while (Match(ref index, TokenType.OpComma));
+		
+		if (Match(ref index, TokenType.OpCloseParen))
+			return (receiver, parameters);
+		
+		ReportExpected(index, "',' or ')'", openParen);
+		return null;
+	}
 	
 	private List<Token> ParseFieldModifiers(ref int index)
 	{

@@ -1058,6 +1058,42 @@ public sealed class Lowerer
 		
 		public Value Visit(ResolvedAssignmentExpressionNode node) => LowerAssignment(node, true);
 		
+		public Value Visit(ResolvedPropertyExpressionNode node) => throw new InvalidOperationException();
+		
+		public Value Visit(ResolvedPropertyAssignmentExpressionNode node)
+		{
+			var location = node.Syntax.SourceLocation;
+			var receiver = node.Receiver is null ? null : LowerReceiver(node.Receiver);
+			Value current = new CallValue(node.Getter, PassReceiver(node.Getter, receiver), location);
+			if (MayEmit(node.Right))
+				current = CaptureAsAtomic(current, "current");
+			
+			var value = LowerBinOp(current, node.Operation, Consume(VisitNode(node.Right)), location);
+			return new CallValue(node.Setter, [..PassReceiver(node.Setter, receiver), value], location);
+		}
+		
+		private Value LowerReceiver(IResolvedExpressionNode node)
+		{
+			var value = VisitPlace(node);
+			return IsPlaceValue(value) ? StabilizeStorage(value) : StoreTemporary(value, "receiver");
+		}
+		
+		private List<Value> PassReceiver(FunctionInfo accessor, Value? receiver)
+		{
+			if (receiver is null)
+				return [];
+			
+			var mode = accessor.Signature.GetMode(0);
+			if (mode != ParameterMode.Mut && GetPassing(receiver.Type, mode) != Passing.Borrow)
+				return [receiver];
+			
+			return
+			[
+				new UnaryOpValue(_typePool.GetPointerType(receiver.Type), receiver, UnaryOperation.AddressOf,
+					receiver.SourceLocation)
+			];
+		}
+		
 		private Value LowerAssignment(ResolvedAssignmentExpressionNode node, bool isValue)
 		{
 			var left = VisitPlace(node.Left);

@@ -16,8 +16,6 @@ public sealed class ResolvedRecordNode
 	public IDeclarationNode Syntax { get; } = syntax;
 }
 
-// TODO Properties
-
 public sealed class ResolvedFieldNode
 (
 	FieldSymbol symbol,

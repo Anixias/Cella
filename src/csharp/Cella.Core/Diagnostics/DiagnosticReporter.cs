@@ -96,6 +96,10 @@ public static class DiagnosticReporter
 	public static Diagnostic ReportReadOnly(SourceLocation location, string name, Visibility visibility) =>
 		new(DiagnosticSeverity.Error, location, $"'{name}' is read-only outside its {DescribeScope(visibility, true)}");
 	
+	public static Diagnostic ReportWriteOnly(SourceLocation location, string name, Visibility visibility) =>
+		new(DiagnosticSeverity.Error, location,
+			$"'{name}' is write-only outside its {DescribeScope(visibility, true)}");
+	
 	private static string DescribeScope(Visibility visibility, bool isMember) =>
 		visibility != Visibility.Private ? "module" : isMember ? "type" : "file";
 	

@@ -48,6 +48,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	private readonly HashSet<LocalVariableSymbol> _repeatedBindings = [];
 	private readonly Dictionary<IResolvedExpressionNode, ImmutableArray<LocalVariableSymbol?>> _failedPatterns = [];
 	private readonly ExtSignatureTypes _extSignatureTypes;
+	private IExpressionNode? storeTarget;
 	private ResolutionContext CurrentResolutionContext => _resolutionContexts.Peek();
 	private Scope? CurrentScope => CurrentResolutionContext.LocalScope;
 	private TypeSymbol? CurrentTargetType => _targetTypes.TryPeek(out var result) ? result : null;
@@ -209,6 +210,13 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	
 	public IResolvedDeclarationNode Visit(ParameterNode node) => throw new InvalidOperationException();
 	
+	public IResolvedDeclarationNode Visit(PropertyNode node) => throw new InvalidOperationException();
+	
+	private IEnumerable<IResolvedDeclarationNode> VisitMember(IDeclarationNode member) =>
+		member is PropertyNode property
+			? property.Accessors.Select(accessor => VisitNode(accessor))
+			: [VisitNode(member)];
+	
 	public IResolvedDeclarationNode Visit(RecordNode node)
 	{
 		var record = (RecordSymbol)_symbolTable.DeclarationSymbols[node];
@@ -216,7 +224,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		
 		_resolutionContexts.Push(CurrentResolutionContext with { ContainingType = record });
 		foreach (var member in node.Members)
-			members.Add(VisitNode(member));
+			members.AddRange(VisitMember(member));
 		
 		_resolutionContexts.Pop();
 		return new ResolvedRecordNode(record, members, node);
@@ -229,7 +237,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		
 		_resolutionContexts.Push(CurrentResolutionContext with { ContainingType = enumType });
 		foreach (var member in node.Members)
-			members.Add(VisitNode(member));
+			members.AddRange(VisitMember(member));
 		
 		_resolutionContexts.Pop();
 		return new ResolvedEnumNode(enumType, members, node);
@@ -311,7 +319,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	public IResolvedExpressionNode Visit(CallExpressionNode node)
 	{
 		if (node.Target is AccessExpressionNode access && ResolveEnumType(access.Target) is { } enumType)
-			return DeclaresFunctionOrStaticField(enumType, access.Member.Text)
+			return DeclaresNonCaseMember(enumType, access.Member.Text)
 				? VisitStaticCall(node, access, enumType)
 				: VisitEnumCase(access, enumType, node);
 		
@@ -1052,10 +1060,10 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		if (IsInvalid(target))
 			return VisitIndirectCall(node, target);
 		
-		if (FindField(target.Type, access.Member.Text) is not null)
+		var owner = GetMemberOwner(target.Type, access.Member.Text);
+		if (FindField(target.Type, access.Member.Text) is not null || owner.GetProperty(access.Member.Text) is not null)
 			return VisitIndirectCall(node, ResolveAccess(access, target));
 		
-		var owner = GetMemberOwner(target.Type, access.Member.Text);
 		var functions = FindFunctions(owner, access.Member.Text);
 		var methods = functions.Where(static function => function.HasReceiver).ToArray();
 		if (methods.Length == 0)
@@ -1083,7 +1091,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		if (type is InvalidType)
 			return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
 		
-		if (type.GetStaticField(access.Member.Text) is not null)
+		if (type.GetStaticField(access.Member.Text) is not null || type.GetProperty(access.Member.Text) is not null)
 			return VisitIndirectCall(node, VisitStaticMember(access, type));
 		
 		var statics = FindStatics(type, access.Member.Text);
@@ -1111,6 +1119,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 				: Error(node, DiagnosticReporter.ReportHidden(node.Member.SourceLocation, field.Name, field.Visibility,
 					true), CurrentTargetType);
 		
+		if (type.GetProperty(node.Member.Text) is { } property)
+			return ResolvePropertyUse(node, node.Member.SourceLocation, property, type, null);
+		
 		var statics = FindStatics(type, node.Member.Text);
 		if (statics.Length == 0)
 			return Error(node, DescribeMissingStatic(type, node.Member.Text), CurrentTargetType,
@@ -1123,8 +1134,65 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 				statics.Select(static function => function.Visibility)), CurrentTargetType);
 	}
 	
-	private static bool DeclaresFunctionOrStaticField(TypeSymbol type, string name) =>
-		type.GetFunctions(name).Any() || type.GetStaticField(name) is not null;
+	private static bool DeclaresNonCaseMember(TypeSymbol type, string name) => type.GetFunctions(name).Any() ||
+	                                                                           type.GetStaticField(name) is not null ||
+	                                                                           type.GetProperty(name) is not null;
+	
+	private IResolvedExpressionNode ResolvePropertyUse(IExpressionNode node, SourceLocation member,
+		PropertySymbol property, TypeSymbol owner, IResolvedExpressionNode? receiver)
+	{
+		if (FindReceiverError(property.IsStatic, receiver) is { } receiverError)
+			return Error(node, receiverError, CurrentTargetType, member);
+		
+		if (!CanAccess(owner, property.Visibility))
+			return Error(node, DiagnosticReporter.ReportHidden(member, property.Name, property.Visibility, true),
+				CurrentTargetType);
+		
+		if (node == storeTarget)
+			return new ResolvedPropertyExpressionNode(property, owner, receiver, GetPropertyType(property), node);
+		
+		if (property.Getter is not FunctionAccessor { Function: var getter })
+			return Error(node, "Cannot read write-only properties", CurrentTargetType, member);
+		
+		return CanAccess(owner, getter.Visibility)
+			? CallAccessor(getter, receiver, [], node)
+			: Error(node, DiagnosticReporter.ReportWriteOnly(member, property.Name, getter.Visibility),
+				CurrentTargetType);
+	}
+	
+	private static string? FindReceiverError(bool isStatic,
+		IResolvedExpressionNode? receiver) => (isStatic, receiver) switch
+	{
+		(true, not null) => "Cannot use static properties through values",
+		(false, null) => "Cannot use properties through types",
+		_ => null
+	};
+	
+	private TypeSymbol GetPropertyType(PropertySymbol property)
+	{
+		if (property.Getter is FunctionAccessor { Function: var getter })
+			return GetFunctionInfo(getter).Signature.ReturnType;
+		
+		if (property.Setter is not FunctionAccessor { Function: var setter })
+			return NativeSymbols.Invalid;
+		
+		var signature = GetFunctionInfo(setter).Signature;
+		return signature.GetDeclaredType(signature.ParameterTypes.Length - 1);
+	}
+	
+	private ResolvedFunctionCallExpressionNode CallAccessor(FunctionSymbol accessor,
+		IResolvedExpressionNode? receiver, IEnumerable<IResolvedExpressionNode> arguments, IExpressionNode syntax)
+	{
+		var info = GetFunctionInfo(accessor);
+		TrackImportedFunction(info);
+		IEnumerable<IResolvedExpressionNode> receivers = receiver is null ? [] : [CreateReceiver(receiver, info)];
+		return new ResolvedFunctionCallExpressionNode(info, [..receivers, ..arguments], syntax);
+	}
+	
+	private static bool TakesMutSelf(FunctionInfo accessor) => accessor.Signature.GetMode(0) == ParameterMode.Mut;
+	
+	private static SourceLocation GetMemberLocation(IExpressionNode syntax) =>
+		syntax is AccessExpressionNode access ? access.Member.SourceLocation : syntax.SourceLocation;
 	
 	private FunctionSymbol[] FindAccessible(TypeSymbol owner, IEnumerable<FunctionSymbol> functions) =>
 		[..functions.Where(function => CanAccess(owner, function.Visibility))];
@@ -1176,12 +1244,13 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	}
 	
 	private bool DeclaresMember(TypeSymbol type, string name) =>
-		_typePool.ResolveMember(type, name) is not null || DeclaresFunctionOrStaticField(type, name);
+		_typePool.ResolveMember(type, name) is not null || DeclaresNonCaseMember(type, name);
 	
 	private bool DeclaresAccessibleMember(TypeSymbol type, string name) => _typePool.ResolveMember(type, name) switch
 	{
 		FieldSymbol field => CanAccess(type, field.Visibility),
 		null when type.GetStaticField(name) is { } global => CanAccess(type, global.Visibility),
+		null when type.GetProperty(name) is { } property => CanAccess(type, property.Visibility),
 		null => FindFunctions(type, name).Any(function => CanAccess(type, function.Function.Visibility)),
 		_ => true
 	};
@@ -1291,7 +1360,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	public IResolvedExpressionNode Visit(AccessExpressionNode node)
 	{
 		if (ResolveEnumType(node.Target) is { } enumType)
-			return DeclaresFunctionOrStaticField(enumType, node.Member.Text)
+			return DeclaresNonCaseMember(enumType, node.Member.Text)
 				? VisitStaticMember(node, enumType)
 				: VisitEnumCase(node, enumType, null);
 		
@@ -1328,6 +1397,8 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		
 		var memberName = node.Member.Text;
 		var resolutionContext = CurrentResolutionContext;
+		if (target.Type.GetProperty(memberName) is { } property)
+			return ResolvePropertyUse(node, node.Member.SourceLocation, property, target.Type, target);
 		
 		if (resolutionContext.TypePool.ResolveMember(target.Type, memberName) is not { } member)
 			return Error(node, FindFunctions(target.Type, memberName) switch
@@ -1541,7 +1612,8 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 				return false;
 			
 			case AccessExpressionNode access when context.TryResolveExpressionAsType(access.Target) is { } type:
-				return type is EnumSymbol enumType && enumType.GetStaticField(access.Member.Text) is null
+				return type is EnumSymbol enumType && enumType.GetStaticField(access.Member.Text) is null &&
+				       enumType.GetProperty(access.Member.Text) is null
 					? FindCase(enumType, access.Member) is not null
 					: HasMember(type, access.Member);
 			
@@ -1557,15 +1629,10 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	private bool HasMember(TypeSymbol type, Token member)
 	{
 		if (type.GetStaticField(member.Text) is { } global)
-		{
-			if (CanAccess(type, global.Visibility))
-				return true;
-			
-			Diagnostics.Add(DiagnosticReporter.ReportHidden(member.SourceLocation, member.Text, global.Visibility,
-				true));
-			
-			return false;
-		}
+			return IsAccessibleMember(type, member, global.Visibility);
+		
+		if (type.GetProperty(member.Text) is { } property)
+			return IsAccessibleMember(type, member, property.Visibility);
 		
 		switch (_typePool.ResolveMember(type, member.Text))
 		{
@@ -1582,6 +1649,15 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		Diagnostics.Add(new(DiagnosticSeverity.Error, member.SourceLocation,
 			$"Type '{type.Name}' has no member '{member.Text}'"));
 		
+		return false;
+	}
+	
+	private bool IsAccessibleMember(TypeSymbol type, Token member, Visibility visibility)
+	{
+		if (CanAccess(type, visibility))
+			return true;
+		
+		Diagnostics.Add(DiagnosticReporter.ReportHidden(member.SourceLocation, member.Text, visibility, true));
 		return false;
 	}
 	
@@ -1609,6 +1685,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			
 			case GlobalSymbol g:
 				return new ResolvedGlobalExpressionNode(g, _signatures.GetGlobalType(g), node);
+			
+			case PropertySymbol property:
+				return ResolvePropertyUse(node, node.SourceLocation, property, property.ContainingType!, null);
 			
 			case ParameterSymbol { Mode: ParameterMode.Mut } parameter:
 				var pointer = new ResolvedVarExpressionNode(parameter, _signatures.GetVariableType(parameter), node);
@@ -1953,7 +2032,13 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		if (IsAssignment(op.Type))
 		{
 			var isOwnStore = node.Left is OwnExpressionNode;
-			var left = VisitNode(node.Left is OwnExpressionNode target ? target.Value : node.Left, null);
+			var outerTarget = storeTarget;
+			storeTarget = node.Left is OwnExpressionNode target ? target.Value : node.Left;
+			var left = VisitNode(storeTarget, null);
+			storeTarget = outerTarget;
+			if (left is ResolvedPropertyExpressionNode property)
+				return ResolvePropertyAssignment(node, property, isOwnStore);
+			
 			if (left is ResolvedFunctionGroupExpressionNode)
 			{
 				VisitNode(node.Right, null);
@@ -2056,7 +2141,12 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	}
 	
 	private IResolvedExpressionNode ResolveCompoundAssignment(BinaryOpExpressionNode node, IResolvedExpressionNode left,
-		bool isOwnStore)
+		bool isOwnStore) => ResolveCompoundOperation(node, left) is var (right, operation)
+		? new ResolvedAssignmentExpressionNode(left.Type, left, node.Op, right, operation, node, isOwnStore)
+		: new ResolvedInvalidExpressionNode(node, CurrentTargetType);
+	
+	private (IResolvedExpressionNode Right, OperationImpl Operation)? ResolveCompoundOperation(
+		BinaryOpExpressionNode node, IResolvedExpressionNode left)
 	{
 		var candidates = _operatorRegistry.GetBinaryCandidates(node.Op.Type)
 			.Where(candidate => candidate.ReturnType == left.Type && candidate.ParameterTypes[0] == left.Type)
@@ -2065,24 +2155,78 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		var rightTypes = candidates.Select(static candidate => candidate.ParameterTypes[1]).Distinct().ToList();
 		var right = VisitNode(node.Right, rightTypes.Count == 1 ? rightTypes[0] : null);
 		if (AnyInvalid(left, right))
-			return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
+			return null;
 		
 		var args = new[] { left, right };
 		var resolutionSet = ResolveCallable(candidates, args, MaterializationMode.Overload);
 		if (resolutionSet.Count != 1)
 		{
-			var diagnostic = DiagnosticReporter.ReportBinaryOpMismatch(_operatorRegistry, left, node.Op, right);
-			return Error(node, diagnostic, CurrentTargetType);
+			Diagnostics.Add(DiagnosticReporter.ReportBinaryOpMismatch(_operatorRegistry, left, node.Op, right));
+			return null;
 		}
 		
 		var resolution = resolutionSet[0];
 		var resolvedRight = ApplyArgumentResolution(args, resolution)[1];
 		if (FindShiftRangeError(node, left.Type, resolvedRight) is { } rangeError)
-			return Error(node, rangeError, CurrentTargetType);
+		{
+			Diagnostics.Add(rangeError);
+			return null;
+		}
 		
-		var operation = (OperationImpl)resolution.Callable;
-		return new ResolvedAssignmentExpressionNode(left.Type, left, node.Op, resolvedRight, operation, node,
-			isOwnStore);
+		return (resolvedRight, (OperationImpl)resolution.Callable);
+	}
+	
+	private IResolvedExpressionNode ResolvePropertyAssignment(BinaryOpExpressionNode node,
+		ResolvedPropertyExpressionNode target, bool isOwnStore)
+	{
+		var property = target.Property;
+		var member = GetMemberLocation(target.Syntax);
+		if (isOwnStore)
+			return RejectAssignment(node, new(DiagnosticSeverity.Error, node.Left.SourceLocation,
+				"Cannot assign with 'own' except through pointers"));
+		
+		if (property.Setter is not FunctionAccessor { Function: var setter })
+			return RejectAssignment(node, new(DiagnosticSeverity.Error, target.Syntax.SourceLocation,
+				"Cannot reassign read-only properties"));
+		
+		if (FindReceiverError(setter.Kind == FunctionKind.Free, target.Receiver) is { } setterError)
+			return RejectAssignment(node, new(DiagnosticSeverity.Error, member, setterError));
+		
+		if (!CanAccess(target.Owner, setter.Visibility))
+			return RejectAssignment(node, DiagnosticReporter.ReportReadOnly(member, property.Name, setter.Visibility));
+		
+		var setterInfo = GetFunctionInfo(setter);
+		var valueType = setterInfo.Signature.GetDeclaredType(setterInfo.Signature.ParameterTypes.Length - 1);
+		if (node.Op.Type == TokenType.OpEqual)
+			return CallAccessor(setter, target.Receiver, [VisitNode(node.Right, valueType)], node);
+		
+		if (property.Getter is not FunctionAccessor { Function: var getter })
+			return RejectAssignment(node, new(DiagnosticSeverity.Error, member, "Cannot read write-only properties"));
+		
+		if (FindReceiverError(getter.Kind == FunctionKind.Free, target.Receiver) is { } getterError)
+			return RejectAssignment(node, new(DiagnosticSeverity.Error, member, getterError));
+		
+		if (!CanAccess(target.Owner, getter.Visibility))
+			return RejectAssignment(node, DiagnosticReporter.ReportWriteOnly(member, property.Name, getter.Visibility));
+		
+		var getterInfo = GetFunctionInfo(getter);
+		var receiver = target.Receiver is { } place && (TakesMutSelf(getterInfo) || TakesMutSelf(setterInfo))
+			? MakeWritable(place)
+			: target.Receiver;
+		
+		var current = CallAccessor(getter, receiver, [], target.Syntax);
+		if (current.Type != valueType || ResolveCompoundOperation(node, current) is not var (right, operation))
+			return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
+		
+		TrackImportedFunction(setterInfo);
+		return new ResolvedPropertyAssignmentExpressionNode(getterInfo, setterInfo, receiver, node.Op, right,
+			operation, node);
+	}
+	
+	private ResolvedInvalidExpressionNode RejectAssignment(BinaryOpExpressionNode node, Diagnostic diagnostic)
+	{
+		VisitNode(node.Right, null);
+		return Error(node, diagnostic, CurrentTargetType);
 	}
 	
 	public IResolvedExpressionNode Visit(ChainedExpressionNode node)

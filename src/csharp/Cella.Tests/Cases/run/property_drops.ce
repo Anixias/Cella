@@ -1,0 +1,55 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Token: rec
+{
+	id: i32
+
+	drop: op
+	{
+		printf("drop %d ", self.id)
+	}
+}
+
+Slot: rec
+{
+	held: Token
+
+	new: op(own token: Token)
+	{
+		self.held = token
+	}
+
+	token: prop Token
+	{
+		get(self) = Token(self.held.id + 100)
+		set(mut self, own value)
+		{
+			self.held = value
+		}
+	}
+
+	copy: set(mut self, value: Token)
+	{
+		self.held = Token(value.id + 10)
+	}
+
+	id: get(self) -> i32 = self.held.id
+}
+
+main: fun -> i32
+{
+	var slot = Slot(Token(1))
+	slot.token = Token(2)
+	printf("| %d ", slot.id)
+	val copy = slot.token
+	printf("| %d | %d ", copy.id, slot.token.id)
+	val kept = Token(3)
+	slot.copy = kept
+	printf("| %d %d |", slot.id, kept.id)
+	ret 0
+}

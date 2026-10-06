@@ -1,0 +1,131 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+clamp: fun(value: i32, low: i32, high: i32) -> i32
+{
+	if value < low
+		ret low
+
+	if value > high
+		ret high
+
+	ret value
+}
+
+double: fun(value: i32) -> i32 = value * 2
+
+Unit: rec
+{
+	hp: pvt i32
+	maxHp: i32
+	hits: pvt i32
+	created: pvt var i32 = 0
+
+	new: op(maxHp: i32)
+	{
+		self.hp = maxHp
+		self.maxHp = maxHp
+		created += 1
+	}
+
+	health: prop i32
+	{
+		get(self) = self.hp
+		set(mut self, value)
+		{
+			self.hp = clamp(value, 0, self.maxHp)
+		}
+	}
+
+	ratio: prop i32
+	{
+		get(self) -> i32 = self.hp * 100 / self.maxHp
+		set(mut self, value: i32)
+		{
+			self.hp = self.maxHp * value / 100
+		}
+	}
+
+	isAlive: get(self) -> bool = self.hp > 0
+
+	lookups: get(mut self) -> i32
+	{
+		self.hits += 1
+		ret self.hits
+	}
+
+	count: get -> i32 = created
+
+	reset: set(value: i32)
+	{
+		created = value
+	}
+
+	scaler: get(self) -> fun[i32 -> i32] = double
+
+	twice: fun -> i32 = count * 2
+
+	restart: fun
+	{
+		reset = 1
+	}
+}
+
+Item: rec
+{
+	power: i32
+}
+
+Inventory: rec
+{
+	items: pvt array[Item, 4]
+	length: pvt set usize
+
+	first: get(self) -> imm[Item] = imm self.items[0]
+
+	add: fun(mut self, item: Item)
+	{
+		self.items[self.length] = item
+		self.length += 1
+	}
+
+	drop: op
+	{
+	}
+}
+
+heal: fun(mut unit: Unit, amount: i32)
+{
+	if unit.isAlive
+		unit.health += amount
+}
+
+main: fun -> i32
+{
+	var hero = Unit(30)
+	hero.health -= 50
+	if !hero.isAlive
+		printf("down %d\n", hero.health)
+
+	hero.health = 5
+	heal(mut hero, 10)
+	printf("%d %d %d\n", hero.health, Unit.count, Unit.twice())
+	hero.ratio = 50
+	hero.ratio += 10
+	printf("%d %d %d\n", hero.health, hero.ratio, hero.scaler(hero.health))
+	val first = hero.lookups
+	printf("%d %d\n", first, hero.lookups)
+	val other = Unit(10)
+	Unit.reset = 7
+	printf("%d %d\n", Unit.count, other.health)
+	Unit.restart()
+	printf("%d %s %s\n", Unit.count, nameOf(hero.health), nameOf(Unit.count))
+	var bag = Inventory()
+	bag.add(Item(7))
+	printf("%d %zu\n", bag.first.power, bag.length)
+	ret 0
+}

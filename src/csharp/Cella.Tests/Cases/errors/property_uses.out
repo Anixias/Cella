@@ -1,0 +1,79 @@
+
+====== property_uses.ce ======
+
+Error at line 41, column 2
+40 │ {
+41 │     unit.level = 1
+         ╘════════╛ Cannot reassign read-only properties
+
+Error at line 42, column 2
+41 │ unit.level = 1
+42 │ Unit.count = 2
+     ╘════════╛ Cannot reassign read-only properties
+
+Error at line 43, column 18
+42 │ Unit.count = 2
+43 │ val loud = unit.volume
+                     ╘════╛ Cannot read write-only properties
+
+Error at line 44, column 7
+43 │ val loud = unit.volume
+44 │ unit.volume += 1
+          ╘════╛ Cannot read write-only properties
+
+Error at line 45, column 7
+44 │ unit.volume += 1
+45 │ unit.health = 3
+          ╘════╛ 'health' is read-only outside its type
+
+Error at line 46, column 19
+45 │ unit.health = 3
+46 │ val shown = unit.shield
+                      ╘════╛ 'shield' is write-only outside its type
+
+Error at line 47, column 7
+46 │ val shown = unit.shield
+47 │ unit.shield += 1
+          ╘════╛ 'shield' is write-only outside its type
+
+Error at line 48, column 20
+47 │ unit.shield += 1
+48 │ val secret = unit.secret
+                       ╘════╛ 'secret' is private to its type
+
+Error at line 49, column 19
+48 │ val secret = unit.secret
+49 │ val total = unit.count
+                      ╘═══╛ Cannot use static properties through values
+
+Error at line 50, column 19
+49 │ val total = unit.count
+50 │ val wrong = Unit.level
+                      ╘═══╛ Cannot use properties through types
+
+Error at line 51, column 26
+50 │ val wrong = Unit.level
+51 │ val names = nameOf(unit.secret)
+                             ╘════╛ 'secret' is private to its type
+
+Error at line 52, column 20
+51 │ val names = nameOf(unit.secret)
+52 │ val static = Unit.hidden
+                       ╘════╛ 'hidden' is private to its type
+
+Error at line 53, column 16
+52 │ val static = Unit.hidden
+53 │ unit.volume = "loud"
+                   ╘════╛ Cannot convert type 'string literal' to 'i32'
+
+Error at line 54, column 2
+53 │ unit.volume = "loud"
+54 │ own unit.volume = 5
+     ╘═════════════╛ Cannot assign with 'own' except through pointers
+
+Error at line 55, column 16
+54 │ own unit.volume = 5
+55 │ val result = (unit.volume = 6)
+                   ╘═════════════╛ 'unit.volume = 6' doesn't return a value
+
+[compilation failed]

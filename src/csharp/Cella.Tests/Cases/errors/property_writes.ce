@@ -1,0 +1,39 @@
+mod test
+
+Unit: rec
+{
+	hp: i32
+
+	health: prop i32
+	{
+		get(self) = self.hp
+		set(mut self, value)
+		{
+			self.hp = value
+		}
+	}
+}
+
+make: fun -> Unit = Unit(1)
+
+addOne: fun(mut value: i32)
+{
+	value += 1
+}
+
+writes: fun(unit: Unit)
+{
+	unit.health = 1
+	unit.health += 1
+	var other = Unit(2)
+	val view = imm other
+	view.health = 2
+	make().health = 3
+	addOne(mut unit.health)
+	val pointer = @unit.health
+	val borrowed = imm unit.health
+	val moved = own unit.health
+	unit.health
+}
+
+main: fun -> i32 = 0

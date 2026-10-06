@@ -124,6 +124,7 @@ public sealed class FunctionSymbol
 	public FunctionKind Kind { get; } = kind;
 	public SourceLocation Definition { get; } = syntax.SourceLocation;
 	public bool IsExternal => Kind == FunctionKind.External || Syntax is FunctionNode { IsExternal: true };
+	public PropertySymbol? Property { get; internal set; }
 }
 
 public abstract class TypeSymbol(string name, TypeSymbol? containingType = null, params IEnumerable<Symbol> children)
@@ -134,6 +135,7 @@ public abstract class TypeSymbol(string name, TypeSymbol? containingType = null,
 	
 	public virtual IEnumerable<MethodSymbol> GetFunctions(string name) => [];
 	public virtual GlobalSymbol? GetStaticField(string name) => null;
+	public virtual PropertySymbol? GetProperty(string name) => null;
 }
 
 public sealed class InvalidType : TypeSymbol
@@ -465,6 +467,7 @@ public sealed class RecordSymbol : TypeSymbol, IExportable
 	public RecordNode Node { get; }
 	public ImmutableArray<MemberSymbol> Members { get; }
 	public ImmutableArray<GlobalSymbol> StaticFields { get; init; } = [];
+	public ImmutableArray<PropertySymbol> Properties { get; init; } = [];
 	public ImmutableArray<TypeSymbol> NestedTypes { get; }
 	public Visibility Visibility { get; }
 	public bool HasDestructor => Members.Any(static m => m is MethodSymbol { Function.Kind: FunctionKind.Destructor });
@@ -475,6 +478,7 @@ public sealed class RecordSymbol : TypeSymbol, IExportable
 		.Where(m => m.Name == name && m.Function.Kind is FunctionKind.Method or FunctionKind.Free);
 	
 	public override GlobalSymbol? GetStaticField(string name) => StaticFields.FirstOrDefault(f => f.Name == name);
+	public override PropertySymbol? GetProperty(string name) => Properties.FirstOrDefault(p => p.Name == name);
 	
 	public RecordSymbol(string name, RecordNode node, IEnumerable<MemberSymbol> members,
 		IEnumerable<TypeSymbol> nestedTypes) : base(name)
@@ -492,6 +496,7 @@ public sealed class EnumSymbol : TypeSymbol, IExportable
 	public ImmutableArray<EnumCaseSymbol> Cases { get; }
 	public ImmutableArray<MethodSymbol> Functions { get; }
 	public ImmutableArray<GlobalSymbol> StaticFields { get; init; } = [];
+	public ImmutableArray<PropertySymbol> Properties { get; init; } = [];
 	public Visibility Visibility { get; }
 	public bool HasPayload => Cases.Any(static c => c.Fields.Length > 0);
 	public bool IsExternal => Node.IsExternal;
@@ -508,6 +513,7 @@ public sealed class EnumSymbol : TypeSymbol, IExportable
 	
 	public override IEnumerable<MethodSymbol> GetFunctions(string name) => Functions.Where(f => f.Name == name);
 	public override GlobalSymbol? GetStaticField(string name) => StaticFields.FirstOrDefault(f => f.Name == name);
+	public override PropertySymbol? GetProperty(string name) => Properties.FirstOrDefault(p => p.Name == name);
 }
 
 public sealed class EnumCaseSymbol(EnumCaseNode node, int index, IEnumerable<FieldSymbol> fields)
@@ -535,6 +541,10 @@ public sealed class PropertySymbol(string name) : TypedMemberSymbol(name)
 	public FieldSymbol? BackingField { get; init; }
 	public AccessorImpl? Getter { get; init; }
 	public AccessorImpl? Setter { get; init; }
+	public PropertyNode? Node { get; init; }
+	public Visibility Visibility { get; init; } = Visibility.Public;
+	public TypeSymbol? ContainingType { get; internal set; }
+	public bool IsStatic => (Getter ?? Setter) is FunctionAccessor { Function.Kind: FunctionKind.Free };
 }
 
 public sealed class IndexerSymbol(string name, IEnumerable<ParameterSymbol> parameters) : TypedMemberSymbol(name)

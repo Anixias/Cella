@@ -1,0 +1,78 @@
+mod test
+
+Node: pvt rec
+{
+	value: i32
+}
+
+Unit: rec
+{
+	hp: i32
+
+	health: prop i32
+	{
+		get(self) = self.hp
+	}
+
+	mana: prop i32
+	{
+		set(mut self, value) = 0
+	}
+
+	empty: prop i32
+
+	twice: prop i32
+	{
+		get(self) = 1
+		get(self) = 2
+		set(mut self, value) = 0
+	}
+
+	mixed: prop i32
+	{
+		get = 1
+		set(mut self, value) = 0
+	}
+
+	owned: prop i32
+	{
+		get(own self) = 1
+		set(own self, value) = 0
+	}
+
+	borrowed: set(mut self, mut value: i32) = 0
+
+	typed: prop i32
+	{
+		get(self) -> i64 = 1
+		set(mut self, value: u8) = 0
+	}
+
+	hp: get(self) -> i32 = 1
+
+	speed: get(self) -> i32 = 1
+
+	speed: set(mut self, value: i32) = 0
+
+	secret: prop Node
+	{
+		get(self) = Node(1)
+		set(mut self, value) = 0
+	}
+
+	hidden: get(self) -> Node = Node(1)
+
+	alias: prop imm[i32]
+	{
+		get(self) = imm self.hp
+		set(mut self, value) = 0
+	}
+}
+
+Kind: enum
+{
+	first
+	first: get -> i32 = 1
+}
+
+main: fun -> i32 = 0

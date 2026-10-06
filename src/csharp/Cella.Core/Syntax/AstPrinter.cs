@@ -288,6 +288,22 @@ public sealed class AstPrinter : ISyntaxNodeVisitor
 		VisitNode(node.Body, true);
 	}
 	
+	public void Visit(PropertyNode node)
+	{
+		StartLine();
+		_sb.Append("PropertyNode '").Append(node.Identifier.AsSpan()).Append('\'');
+		
+		if (node.Type is { } type)
+		{
+			_sb.Append(" (");
+			VisitNode(type, false);
+			_sb.Append(')');
+		}
+		
+		for (var i = 0; i < node.Accessors.Length; i++)
+			VisitNode(node.Accessors[i], i == node.Accessors.Length - 1);
+	}
+	
 	public void Visit(GenericTypeNode node) => _sb.Append(node.SourceLocation.GetText());
 	
 	public void Visit(FunctionTypeNode node) => _sb.Append(node.SourceLocation.GetText());

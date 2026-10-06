@@ -1,0 +1,62 @@
+mod test
+
+Unit: rec
+{
+	hp: i32
+
+	health: get(self, extra: i32) -> i32 = self.hp
+
+	volume: set(mut self) = 0
+
+	pitch: set(mut self, first: i32, second: i32) = 0
+
+	speed: set(mut self, value: i32) -> i32 = 0
+
+	label: get(self) = self.hp
+
+	armor: pvt set get(self) -> i32 = 1
+
+	mana: pvt prop i32
+	{
+		get(self) = 1
+		mod set(mut self, value) = 0
+	}
+
+	focus: prop i32
+	{
+		pvt get(self) = 1
+		pvt set(mut self, value) = 0
+	}
+
+	bonus: prop i32
+	{
+		pub get(self) = 1
+		set(mut self, value) = 0
+	}
+
+	boost: prop i32
+	{
+		get(self) = 1
+		mod pvt set(mut self, value) = 0
+	}
+}
+
+Untyped: rec
+{
+	value: set(mut self, value) = 0
+}
+
+Unknown: rec
+{
+	value: prop i32
+	{
+		init(self) = 1
+	}
+}
+
+Bodiless: rec
+{
+	value: get(self) -> i32
+}
+
+main: fun -> i32 = 0

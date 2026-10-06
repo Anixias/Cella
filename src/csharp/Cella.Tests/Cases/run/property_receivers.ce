@@ -1,0 +1,80 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+	malloc: fun(size: usize) -> ptr
+	free: fun(memory: ptr)
+}
+
+Trace: rec
+{
+	raw: pvt i32
+
+	value: prop i32
+	{
+		get(self)
+		{
+			printf("get ")
+			ret self.raw
+		}
+
+		set(mut self, value)
+		{
+			printf("set ")
+			self.raw = value
+		}
+	}
+}
+
+TraceBox: rec
+{
+	pointer: req ptr[Trace]
+
+	new: op(trace: Trace)
+	{
+		self.pointer = ptr[Trace](malloc(sizeOf(Trace)))
+		*self.pointer = trace
+	}
+
+	*: op(self) -> imm[Trace] = imm *self.pointer
+
+	*: op(mut self) -> mut[Trace] = mut *self.pointer
+
+	value: get(self) -> i32 = -1
+
+	drop: op
+	{
+		free(self.pointer)
+	}
+}
+
+index: fun -> usize
+{
+	printf("index ")
+	ret 1
+}
+
+amount: fun -> i32
+{
+	printf("amount ")
+	ret 5
+}
+
+main: fun -> i32
+{
+	var traces: array[Trace, 2]
+	traces[index()].value += amount()
+	printf("\n")
+	traces[index()].value = amount()
+	printf("\n")
+	val pointer = @traces[0]
+	pointer.value = 4
+	pointer.value *= 2
+	printf("\n")
+	var boxed = TraceBox(Trace())
+	(*boxed).value = 9
+	(*boxed).value -= 1
+	printf("\n%d %d %d %d\n", traces[0].value, traces[1].value, (*boxed).value, boxed.value)
+	ret 0
+}

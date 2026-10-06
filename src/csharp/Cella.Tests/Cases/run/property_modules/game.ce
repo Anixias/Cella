@@ -1,0 +1,62 @@
+mod game
+
+Unit: rec
+{
+	hp: pvt i32
+	plating: pvt i32
+	spawned: pvt var i32 = 0
+
+	new: op(hp: i32)
+	{
+		self.hp = hp
+		self.plating = 1
+		spawned += 1
+	}
+
+	health: prop i32
+	{
+		get(self) = self.hp
+		set(mut self, value)
+		{
+			self.hp = value
+		}
+	}
+
+	armor: prop i32
+	{
+		get(self) = self.plating
+		pvt set(mut self, value)
+		{
+			self.plating = value
+		}
+	}
+
+	total: get -> i32 = spawned
+
+	harden: fun(mut self)
+	{
+		self.armor += 2
+	}
+}
+
+Color: enum
+{
+	red
+	green
+	blue
+
+	picks: pvt var i32 = 0
+
+	picked: prop i32
+	{
+		get = picks
+		set(value)
+		{
+			picks = value
+		}
+	}
+
+	isWarm: get(self) -> bool = self == Color.red
+
+	code: get(self) -> i32 = i32(self) * 10 + picked
+}

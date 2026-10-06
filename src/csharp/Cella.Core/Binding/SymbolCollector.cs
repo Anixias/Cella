@@ -10,6 +10,7 @@ public sealed class SymbolCollector : IDeclarationNodeVisitor<Symbol>
 	private readonly List<Symbol> _symbolsInFile = [];
 	private readonly Stack<string> _typeStack = [];
 	private readonly Stack<Visibility> _typeVisibilities = [];
+	private readonly Stack<PropertyNode> _properties = [];
 	
 	public SymbolTable Build() => _builder.Build();
 	
@@ -94,9 +95,16 @@ public sealed class SymbolCollector : IDeclarationNodeVisitor<Symbol>
 		
 		// TODO Containing function
 		var isMember = _typeStack.TryPeek(out var typeName);
-		var name = isMember ? $"{typeName}.{node.Identifier.Text}" : node.Identifier.Text;
+		var isAccessor = _properties.TryPeek(out var property);
+		var name = isAccessor ? $"{typeName}.{property!.Identifier.Text}.{node.Identifier.Text}"
+			: isMember ? $"{typeName}.{node.Identifier.Text}"
+			: node.Identifier.Text;
+		
 		var kind = node.Receiver is null ? FunctionKind.Free : FunctionKind.Method;
-		var visibility = isMember ? GetMemberVisibility(node.Visibility) : Visibility.FromKeyword(node.Visibility);
+		var visibility = isMember
+			? GetMemberVisibility(node.Visibility ?? property?.Visibility)
+			: Visibility.FromKeyword(node.Visibility);
+		
 		var function = new FunctionSymbol(name, node, visibility, null, parameters, kind);
 		_builder.DeclarationSymbols[node] = function;
 		if (!isMember)
@@ -126,6 +134,32 @@ public sealed class SymbolCollector : IDeclarationNodeVisitor<Symbol>
 	
 	public Symbol Visit(ParameterNode node) => throw new InvalidOperationException();
 	
+	public Symbol Visit(PropertyNode node)
+	{
+		_properties.Push(node);
+		var accessors = node.Accessors.Select(accessor => (FunctionSymbol)VisitNode(accessor)).ToList();
+		_properties.Pop();
+		
+		var property = new PropertySymbol(node.Identifier.Text)
+		{
+			Node = node,
+			Getter = FindAccessor(accessors, TokenType.KeywordGet),
+			Setter = FindAccessor(accessors, TokenType.KeywordSet),
+			Visibility = GetMemberVisibility(node.Visibility)
+		};
+		
+		foreach (var accessor in accessors)
+			accessor.Property = property;
+		
+		_builder.DeclarationSymbols[node] = property;
+		return property;
+	}
+	
+	private static FunctionAccessor? FindAccessor(IEnumerable<FunctionSymbol> accessors, TokenType keyword) =>
+		accessors.FirstOrDefault(accessor => ((FunctionNode)accessor.Syntax).Identifier.Type == keyword) is { } function
+			? new(function)
+			: null;
+	
 	private Visibility GetMemberVisibility(Token? keyword) => keyword is null && _typeVisibilities.TryPeek(out var type)
 		? type switch
 		{
@@ -150,6 +184,7 @@ public sealed class SymbolCollector : IDeclarationNodeVisitor<Symbol>
 		// TODO Type parameters
 		var members = new List<MemberSymbol>(node.Members.Length);
 		var statics = new List<GlobalSymbol>();
+		var properties = new List<PropertySymbol>();
 		var types = new List<TypeSymbol>(node.Members.Length);
 		
 		foreach (var member in node.Members)
@@ -173,6 +208,10 @@ public sealed class SymbolCollector : IDeclarationNodeVisitor<Symbol>
 					statics.Add(s);
 					break;
 				
+				case PropertySymbol s:
+					properties.Add(s);
+					break;
+				
 				default:
 					// TODO Diagnostics?
 					break;
@@ -180,9 +219,17 @@ public sealed class SymbolCollector : IDeclarationNodeVisitor<Symbol>
 		}
 		
 		var name = node.Identifier.Text;
-		var record = new RecordSymbol(name, node, members, types) { StaticFields = [..statics] };
+		var record = new RecordSymbol(name, node, members, types)
+		{
+			StaticFields = [..statics],
+			Properties = [..properties]
+		};
+		
 		foreach (var field in statics)
 			field.ContainingType = record;
+		
+		foreach (var property in properties)
+			property.ContainingType = record;
 		
 		_builder.DeclarationSymbols[node] = record;
 		_symbolsInFile.Add(record);
@@ -209,6 +256,7 @@ public sealed class SymbolCollector : IDeclarationNodeVisitor<Symbol>
 		_typeVisibilities.Push(Visibility.FromKeyword(node.Visibility));
 		var functions = new List<MethodSymbol>();
 		var statics = new List<GlobalSymbol>();
+		var properties = new List<PropertySymbol>();
 		foreach (var member in node.Members)
 		{
 			switch (VisitNode(member))
@@ -220,14 +268,26 @@ public sealed class SymbolCollector : IDeclarationNodeVisitor<Symbol>
 				case GlobalSymbol global:
 					statics.Add(global);
 					break;
+				
+				case PropertySymbol property:
+					properties.Add(property);
+					break;
 			}
 		}
 		
 		_typeStack.Pop();
 		_typeVisibilities.Pop();
-		var symbol = new EnumSymbol(node, cases, functions) { StaticFields = [..statics] };
+		var symbol = new EnumSymbol(node, cases, functions)
+		{
+			StaticFields = [..statics],
+			Properties = [..properties]
+		};
+		
 		foreach (var field in statics)
 			field.ContainingType = symbol;
+		
+		foreach (var property in properties)
+			property.ContainingType = symbol;
 		
 		_builder.DeclarationSymbols[node] = symbol;
 		_symbolsInFile.Add(symbol);

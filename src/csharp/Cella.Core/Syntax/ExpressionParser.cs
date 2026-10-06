@@ -39,6 +39,7 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 		TokenType.KeywordMut,
 		TokenType.KeywordOwn,
 		TokenType.KeywordImm,
+		TokenType.KeywordSelf,
 		TokenType.KeywordRet,
 		TokenType.KeywordBreak,
 		TokenType.KeywordCont

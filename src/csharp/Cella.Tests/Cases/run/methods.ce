@@ -62,6 +62,11 @@ Point: rec
 		self.y += dy
 	}
 
+	encoded: fun(self) -> i32
+	{
+		ret self.x * 10 + self.y
+	}
+
 	countdown: fun(self, n: i32) -> i32
 	{
 		if n <= 0
@@ -117,7 +122,7 @@ main: fun -> i32
 	var point = Point.origin()
 	point.shift(2, 3)
 	printf("%d %d %d %d ", point.sum(), point.scaled(10).sum(), point.scaled(0.5).sum(), point.countdown(4))
-	printf("%d ", apply(Point.origin))
+	printf("%d %d ", apply(Point.origin), point.encoded())
 
 	var counter = Counter(1)
 	counter.bump()
