@@ -393,10 +393,15 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	}
 	
 	private IResolvedExpressionNode TakeOwnership(IResolvedExpressionNode value, IExpressionNode syntax,
-		EnumSymbol? enumType, bool isMut, IEnumerable<PatternNode?> patterns) =>
-		enumType is not null && !isMut && IsStored(value) && patterns.Any(pattern => MovesPayload(pattern, enumType))
+		EnumSymbol? enumType, bool isMut, IEnumerable<PatternNode?> patterns)
+	{
+		if (isMut)
+			return MakeWritable(value);
+		
+		return enumType is not null && IsStored(value) && patterns.Any(pattern => MovesPayload(pattern, enumType))
 			? new ResolvedOwnExpressionNode(value, syntax)
 			: value;
+	}
 	
 	private bool MovesPayload(PatternNode? pattern, EnumSymbol enumType)
 	{
@@ -920,7 +925,8 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	
 	private IResolvedExpressionNode CreateReceiver(IResolvedExpressionNode receiver, FunctionInfo method) =>
 		method.Signature.GetMode(0) == ParameterMode.Mut
-			? new ResolvedMutArgumentExpressionNode(receiver, _typePool.GetPointerType(receiver.Type), receiver.Syntax)
+			? new ResolvedMutArgumentExpressionNode(MakeWritable(receiver), _typePool.GetPointerType(receiver.Type),
+				receiver.Syntax)
 			: receiver;
 	
 	private IResolvedExpressionNode VisitArgument(IExpressionNode node)
@@ -935,7 +941,8 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		if (place.Type is UntypedType)
 			place = MaterializeAsDefault(place);
 		
-		return new ResolvedMutArgumentExpressionNode(place, _typePool.GetPointerType(place.Type), argument);
+		return new ResolvedMutArgumentExpressionNode(MakeWritable(place), _typePool.GetPointerType(place.Type),
+			argument);
 	}
 	
 	public IResolvedExpressionNode Visit(OwnExpressionNode node)
@@ -967,6 +974,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
 		
 		place = Decay(place);
+		if (node.IsMutable)
+			place = MakeWritable(place);
+		
 		return new ResolvedBorrowExpressionNode(place, _typePool.GetBorrowType(place.Type, node.IsMutable), false,
 			node);
 	}
@@ -1041,7 +1051,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		if (FindField(target.Type, access.Member.Text) is not null)
 			return VisitIndirectCall(node, ResolveAccess(access, target));
 		
-		var owner = GetMemberOwner(target.Type);
+		var owner = GetMemberOwner(target.Type, access.Member.Text);
 		var functions = FindFunctions(owner, access.Member.Text);
 		var methods = functions.Where(static function => function.HasReceiver).ToArray();
 		if (methods.Length == 0)
@@ -1102,10 +1112,71 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	private static MethodSymbol[] FindFunctions(TypeSymbol type, string name) => [..type.GetFunctions(name)];
 	
 	private FieldSymbol? FindField(TypeSymbol type, string name) =>
-		_typePool.ResolveMember(GetMemberOwner(type), name) as FieldSymbol;
+		_typePool.ResolveMember(GetMemberOwner(type, name), name) as FieldSymbol;
 	
-	private static TypeSymbol GetMemberOwner(TypeSymbol type) =>
-		type is PointerType { BaseType: var baseType } && baseType != NativeSymbols.Void ? baseType : type;
+	private TypeSymbol GetMemberOwner(TypeSymbol type, string name)
+	{
+		if (type is PointerType { BaseType: var baseType } && baseType != NativeSymbols.Void)
+			return baseType;
+		
+		if (_typePool.ResolveMember(type, name) is not null || FindFunctions(type, name).Length > 0)
+			return type;
+		
+		return GetDereferenceTarget(type) ?? type;
+	}
+	
+	private TypeSymbol? GetDereferenceTarget(TypeSymbol type) => FindDereferences(type)
+		.Select(dereference => GetFunctionInfo(dereference.Function).Signature.ReturnType)
+		.OfType<BorrowType>()
+		.FirstOrDefault()?.Target;
+	
+	private static IEnumerable<MethodSymbol> FindDereferences(TypeSymbol type) =>
+		type.GetFunctions("*").Where(static method => method.HasReceiver);
+	
+	private MethodSymbol? FindDereference(TypeSymbol type, ParameterMode mode) => FindDereferences(type)
+		.FirstOrDefault(method => GetFunctionInfo(method.Function).Signature is var signature &&
+		                          signature.GetMode(0) == mode && signature.ReturnType is BorrowType);
+	
+	private ResolvedFunctionCallExpressionNode CallDereference(IResolvedExpressionNode receiver,
+		MethodSymbol dereference, IExpressionNode syntax)
+	{
+		var info = GetFunctionInfo(dereference.Function);
+		TrackImportedFunction(info);
+		return new ResolvedFunctionCallExpressionNode(info, [CreateReceiver(receiver, info)], syntax);
+	}
+	
+	private IResolvedExpressionNode MakeWritable(IResolvedExpressionNode place)
+	{
+		switch (place)
+		{
+			case ResolvedAccessExpressionNode { Member: FieldSymbol } node:
+			{
+				var target = MakeWritable(node.Target);
+				return target == node.Target
+					? node
+					: new ResolvedAccessExpressionNode(target, node.Member, node.Type, node.Syntax);
+			}
+			
+			case ResolvedIndexerExpressionNode node:
+			{
+				var target = MakeWritable(node.Target);
+				return target == node.Target
+					? node
+					: new ResolvedIndexerExpressionNode(node.Type, target, node.Index, node.Syntax);
+			}
+			
+			case ResolvedUnaryOpExpressionNode
+				{
+					Operation.Op: TokenType.OpStar,
+					Operand: ResolvedFunctionCallExpressionNode { Arguments: [var receiver] } call
+				} when FindDereference(receiver.Type, ParameterMode.ReadOnly)?.Function == call.Function.Symbol &&
+				       FindDereference(receiver.Type, ParameterMode.Mut) is { } dereference:
+				return Decay(CallDereference(receiver, dereference, call.Syntax));
+			
+			default:
+				return place;
+		}
+	}
 	
 	private IResolvedExpressionNode VisitIndirectCall(CallExpressionNode node, IResolvedExpressionNode target)
 	{
@@ -1190,7 +1261,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			target = MaterializeAsDefault(target);
 		
 		target = Decay(target);
-		if (GetMemberOwner(target.Type) != target.Type)
+		if (GetMemberOwner(target.Type, node.Member.Text) != target.Type)
 			target = ResolveDereference(TokenType.OpStar, target, node.Target);
 		
 		var memberName = node.Member.Text;
@@ -1412,7 +1483,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			
 			case AccessExpressionNode access:
 				var target = Decay(VisitNode(access.Target, null));
-				return !IsInvalid(target) && HasMember(GetMemberOwner(target.Type), access.Member);
+				return !IsInvalid(target) && HasMember(GetMemberOwner(target.Type, access.Member.Text), access.Member);
 			
 			default:
 				return false;
@@ -1776,6 +1847,8 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		PointerType { BaseType: { } baseType } => baseType == NativeSymbols.Void
 			? Error(node, "Cannot dereference an untyped pointer; Cast to a typed pointer first", CurrentTargetType)
 			: new ResolvedUnaryOpExpressionNode(operand, new NativeImpl(opType, baseType), node),
+		var type when (FindDereference(type, ParameterMode.ReadOnly) ?? FindDereference(type, ParameterMode.Mut)) is
+			{ } dereference => Decay(CallDereference(operand, dereference, node)),
 		_ => Error(node, $"Cannot dereference type '{operand.Type.Name}'", CurrentTargetType)
 	};
 	
@@ -1803,6 +1876,8 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 				VisitNode(node.Right, null);
 				return Error(node, "Cannot reassign functions", CurrentTargetType, node.Left);
 			}
+			
+			left = MakeWritable(left);
 			
 			if (op.Type != TokenType.OpEqual)
 				return ResolveCompoundAssignment(node, Decay(MaterializeAsDefault(left)), isOwnStore);

@@ -277,15 +277,59 @@ public sealed class SignatureCollector
 			}
 		}
 		
+		var functions = node.Members.OfType<FunctionNode>().ToLookup(static f => f.Identifier.Type == TokenType.OpStar);
 		ReportMemberConflicts(record, [
 			..node.Members.OfType<FieldNode>().Select(static f => (f.Identifier, (FunctionNode?)null, true)),
-			..node.Members.OfType<FunctionNode>().Select(static f => (f.Identifier, (FunctionNode?)f, false))
+			..functions[false].Select(static f => (f.Identifier, (FunctionNode?)f, false))
 		]);
 		
+		ReportDereferences(record, [..functions[true]]);
 		_typePool.RegisterRecord(record);
 		_completedTypes.Add(record);
 		Exit();
 	}
+	
+	private void ReportDereferences(RecordSymbol record, List<FunctionNode> dereferences)
+	{
+		var valid = new List<(FunctionNode Node, FunctionSignature Signature)>();
+		foreach (var dereference in dereferences)
+		{
+			var signature = _builder.Functions[(FunctionSymbol)_symbolTable.DeclarationSymbols[dereference]].Signature;
+			if (signature.ReturnType is InvalidType)
+				continue;
+			
+			if (FindDereferenceError(dereference, signature) is var (location, message))
+				Diagnostics.Add(new(DiagnosticSeverity.Error, location, message));
+			else
+				valid.Add((dereference, signature));
+		}
+		
+		foreach (var sameMode in valid.GroupBy(static d => d.Signature.GetMode(0)).Where(static g => g.Count() > 1))
+		{
+			var message = $"'*' with '{DescribeReceiver(sameMode.Key)}' is declared more than once in '{record.Name}'";
+			Diagnostics.AddRange(sameMode.Select(d =>
+				new Diagnostic(DiagnosticSeverity.Error, d.Node.Identifier.SourceLocation, message)));
+		}
+		
+		if (valid.Select(static d => ((BorrowType)d.Signature.ReturnType).Target).Distinct().Count() > 1)
+			Diagnostics.AddRange(valid.Select(static d => new Diagnostic(DiagnosticSeverity.Error,
+				d.Node.ReturnType!.SourceLocation, "Cannot declare '*' operators with different target types")));
+	}
+	
+	private static (SourceLocation Location, string Message)? FindDereferenceError(FunctionNode node,
+		FunctionSignature signature) => node switch
+	{
+		{ Receiver: null } => (node.Identifier.SourceLocation, "Cannot declare '*' operators without 'self'"),
+		{ Receiver: { Mode: { Type: TokenType.KeywordOwn } } receiver } =>
+			(receiver.SourceLocation, "Cannot take 'own self' in '*' operators"),
+		{ Parameters: [var parameter, ..] } => (parameter.SourceLocation, "Cannot take parameters in '*' operators"),
+		_ when signature.ReturnType is BorrowType { IsMutable: var isMutable } &&
+		       isMutable == (signature.GetMode(0) == ParameterMode.Mut) => null,
+		_ => (node.ReturnType?.SourceLocation ?? node.Identifier.SourceLocation,
+			$"Cannot return '{signature.ReturnType.Name}' from '*' with '{DescribeReceiver(signature.GetMode(0))}'")
+	};
+	
+	private static string DescribeReceiver(ParameterMode mode) => mode == ParameterMode.Mut ? "mut self" : "self";
 	
 	private void ReportMemberConflicts(TypeSymbol type,
 		IEnumerable<(Token Name, FunctionNode? Function, bool IsField)> members)

@@ -1,0 +1,14 @@
+
+====== dereference_lookups.ce ======
+
+Error at line 39, column 40
+38 │ 
+39 │ deep: fun(outer: Outer) -> i32 = outer.id
+                                            ╘╛ Type 'BufferBox' has no member 'id'
+
+Error at line 41, column 42
+40 │ 
+41 │ notPointer: fun(value: Buffer) -> i32 = (*value).id
+                                              ╘════╛ Cannot dereference type 'Buffer'
+
+[compilation failed]

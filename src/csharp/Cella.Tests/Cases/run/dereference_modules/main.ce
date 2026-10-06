@@ -1,0 +1,23 @@
+mod test
+
+use pointers
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+main: fun -> i32
+{
+	var boxed = pointers.SlotBox(pointers.Slot.count(4))
+	match mut boxed.slot
+	{
+		count(value) => value += 1
+		empty => {}
+	}
+
+	val pointer = @boxed
+	(*pointer).slot = pointers.Slot.count(10 + boxed.value())
+	printf("%d %d\n", (**pointer).value(), boxed.value())
+	ret 0
+}

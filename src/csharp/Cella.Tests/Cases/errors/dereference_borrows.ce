@@ -1,0 +1,62 @@
+mod test
+
+ext
+{
+	malloc: fun(size: usize) -> ptr
+	free: fun(memory: ptr)
+}
+
+Buffer: rec
+{
+	id: i32
+
+	bump: fun(mut self)
+	{
+		self.id += 1
+	}
+
+	drop: op
+	{
+	}
+}
+
+BufferBox: rec
+{
+	pointer: req ptr[Buffer]
+
+	new: op(own buffer: Buffer)
+	{
+		self.pointer = ptr[Buffer](malloc(sizeOf(Buffer)))
+		own *self.pointer = buffer
+	}
+
+	*: op(self) -> imm[Buffer] = imm *self.pointer
+
+	*: op(mut self) -> mut[Buffer] = mut *self.pointer
+
+	drop: op
+	{
+		val buffer = own *self.pointer
+		free(self.pointer)
+	}
+}
+
+take: fun(own boxed: BufferBox)
+{
+}
+
+outlive: fun -> i32
+{
+	var boxed = BufferBox(Buffer(1))
+	val view = imm boxed.id
+	take(boxed)
+	ret view
+}
+
+escape: fun -> imm[i32]
+{
+	var boxed = BufferBox(Buffer(1))
+	ret imm boxed.id
+}
+
+main: fun -> i32 = 0

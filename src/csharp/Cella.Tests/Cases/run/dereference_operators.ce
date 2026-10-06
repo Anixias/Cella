@@ -1,0 +1,91 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+	malloc: fun(size: usize) -> ptr
+	free: fun(memory: ptr)
+}
+
+Buffer: rec
+{
+	id: i32
+
+	bump: fun(mut self)
+	{
+		self.id += 1
+	}
+
+	get: fun(self) -> i32 = self.id
+
+	drop: op
+	{
+		printf("drop %d ", self.id)
+	}
+}
+
+BufferBox: rec
+{
+	pointer: req ptr[Buffer]
+
+	new: op(own buffer: Buffer)
+	{
+		self.pointer = ptr[Buffer](malloc(sizeOf(Buffer)))
+		own *self.pointer = buffer
+	}
+
+	*: op(self) -> imm[Buffer] = imm *self.pointer
+
+	*: op(mut self) -> mut[Buffer] = mut *self.pointer
+
+	get: fun(self) -> i32 = -1
+
+	drop: op
+	{
+		val buffer = own *self.pointer
+		free(self.pointer)
+	}
+}
+
+Outer: rec
+{
+	pointer: req ptr[BufferBox]
+
+	new: op(own inner: BufferBox)
+	{
+		self.pointer = ptr[BufferBox](malloc(sizeOf(BufferBox)))
+		own *self.pointer = inner
+	}
+
+	*: op(self) -> imm[BufferBox] = imm *self.pointer
+
+	drop: op
+	{
+		val inner = own *self.pointer
+		free(self.pointer)
+	}
+}
+
+addTen: fun(mut value: i32)
+{
+	value += 10
+}
+
+read: fun(boxed: BufferBox) -> i32 = boxed.id + (*boxed).get()
+
+main: fun -> i32
+{
+	var b = BufferBox(Buffer(1))
+	printf("%d %d %d ", (*b).id, b.id, b.get())
+	b.id = 5
+	b.id += 1
+	b.bump()
+	addTen(mut b.id)
+	printf("%d %d ", (*b).get(), read(b))
+	*b = Buffer(9)
+	printf("%d ", b.id)
+
+	val outer = Outer(BufferBox(Buffer(20)))
+	printf("%d\n", (*outer).id)
+	ret 0
+}

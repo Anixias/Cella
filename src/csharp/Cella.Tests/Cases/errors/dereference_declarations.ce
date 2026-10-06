@@ -1,0 +1,64 @@
+mod test
+
+Buffer: rec
+{
+	id: i32
+}
+
+Static: rec
+{
+	pointer: req ptr[Buffer]
+
+	*: op -> imm[Buffer] = imm *ptr[Buffer](null)
+}
+
+Owned: rec
+{
+	pointer: req ptr[Buffer]
+
+	*: op(own self) -> imm[Buffer] = imm *self.pointer
+}
+
+Indexed: rec
+{
+	pointer: req ptr[Buffer]
+
+	*: op(self, index: i32) -> imm[Buffer] = imm *self.pointer
+}
+
+Plain: rec
+{
+	pointer: req ptr[Buffer]
+
+	*: op(self) -> Buffer = *self.pointer
+}
+
+Swapped: rec
+{
+	pointer: req ptr[Buffer]
+
+	*: op(self) -> mut[Buffer] = mut *self.pointer
+
+	*: op(mut self) -> imm[Buffer] = imm *self.pointer
+}
+
+Twice: rec
+{
+	pointer: req ptr[Buffer]
+
+	*: op(self) -> imm[Buffer] = imm *self.pointer
+
+	*: op(self) -> imm[Buffer] = imm *self.pointer
+}
+
+Mixed: rec
+{
+	pointer: req ptr[Buffer]
+	count: i32
+
+	*: op(self) -> imm[Buffer] = imm *self.pointer
+
+	*: op(mut self) -> mut[i32] = mut self.count
+}
+
+main: fun -> i32 = 0

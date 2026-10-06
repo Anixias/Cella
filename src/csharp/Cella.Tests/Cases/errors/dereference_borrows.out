@@ -1,0 +1,15 @@
+
+====== dereference_borrows.ce ======
+
+Error at line 53, column 6
+52 │ take(boxed)
+53 │ ret view
+         ╘══╛ Cannot use borrows of moved values
+            | Moved on line 52
+
+Error at line 59, column 6
+58 │ var boxed = BufferBox(Buffer(1))
+59 │ ret imm boxed.id
+         ╘══════════╛ Cannot return borrows of local variables
+
+[compilation failed]

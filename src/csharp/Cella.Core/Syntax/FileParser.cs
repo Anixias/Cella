@@ -764,6 +764,12 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 		if (Match(ref index, out var dropKeyword, _memberContextualKeywords, TokenType.KeywordDrop))
 			return ParseDestructor(ref index, dropKeyword);
 		
+		if (Match(ref index, out var star, TokenType.OpStar))
+			return ParseDeclaration(ref index, star, "operator", (ref i) =>
+				Match(ref i, TokenType.OpColon) && Match(ref i, _memberContextualKeywords, TokenType.KeywordOp)
+					? ParseFunction(ref i, star, [], false)
+					: null);
+		
 		if (!Match(ref index, out var identifier, TokenType.Identifier) || !Match(ref index, TokenType.OpColon))
 			return null;
 		

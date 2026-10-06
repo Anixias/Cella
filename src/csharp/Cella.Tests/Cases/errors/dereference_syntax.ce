@@ -1,0 +1,15 @@
+mod test
+
+Buffer: rec
+{
+	id: i32
+}
+
+Broken: rec
+{
+	pointer: req ptr[Buffer]
+
+	*: fun(self) -> imm[Buffer] = imm *self.pointer
+}
+
+main: fun -> i32 = 0

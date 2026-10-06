@@ -1,0 +1,44 @@
+mod pointers
+
+ext
+{
+	malloc: fun(size: usize) -> ptr
+	free: fun(memory: ptr)
+}
+
+Slot: enum
+{
+	empty
+	count(value: i32)
+}
+
+Cell: rec
+{
+	slot: Slot
+
+	value: fun(self) -> i32 = match self.slot
+	{
+		count(value) => value
+		empty => 0
+	}
+}
+
+SlotBox: rec
+{
+	pointer: req ptr[Cell]
+
+	new: op(slot: Slot)
+	{
+		self.pointer = ptr[Cell](malloc(sizeOf(Cell)))
+		*self.pointer = Cell(slot)
+	}
+
+	*: op(self) -> imm[Cell] = imm *self.pointer
+
+	*: op(mut self) -> mut[Cell] = mut *self.pointer
+
+	drop: op
+	{
+		free(self.pointer)
+	}
+}

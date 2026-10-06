@@ -1,0 +1,43 @@
+mod test
+
+Buffer: rec
+{
+	id: i32
+
+	bump: fun(mut self)
+	{
+		self.id += 1
+	}
+
+	drop: op
+	{
+	}
+}
+
+Outer: rec
+{
+	pointer: req ptr[BufferBox]
+
+	*: op(self) -> imm[BufferBox] = imm *self.pointer
+
+	drop: op
+	{
+	}
+}
+
+BufferBox: rec
+{
+	pointer: req ptr[Buffer]
+
+	*: op(self) -> imm[Buffer] = imm *self.pointer
+
+	drop: op
+	{
+	}
+}
+
+deep: fun(outer: Outer) -> i32 = outer.id
+
+notPointer: fun(value: Buffer) -> i32 = (*value).id
+
+main: fun -> i32 = 0

@@ -1,0 +1,54 @@
+
+====== dereference_declarations.ce ======
+
+Error at line 12, column 2
+11 │ 
+12 │ *: op -> imm[Buffer] = imm *ptr[Buffer](null)
+     ^ Cannot declare '*' operators without 'self'
+
+Error at line 19, column 12
+18 │ 
+19 │ *: op(own self) -> imm[Buffer] = imm *self.pointer
+               ╘══╛ Cannot take 'own self' in '*' operators
+
+Error at line 26, column 14
+25 │ 
+26 │ *: op(self, index: i32) -> imm[Buffer] = imm *self.pointer
+                 ╘═══╛ Cannot take parameters in '*' operators
+
+Error at line 33, column 17
+32 │ 
+33 │ *: op(self) -> Buffer = *self.pointer
+                    ╘════╛ Cannot return 'Buffer' from '*' with 'self'
+
+Error at line 40, column 17
+39 │ 
+40 │ *: op(self) -> mut[Buffer] = mut *self.pointer
+                    ╘═════════╛ Cannot return 'mut[Buffer]' from '*' with 'self'
+
+Error at line 42, column 21
+41 │ 
+42 │ *: op(mut self) -> imm[Buffer] = imm *self.pointer
+                        ╘═════════╛ Cannot return 'imm[Buffer]' from '*' with 'mut self'
+
+Error at line 49, column 2
+48 │ 
+49 │ *: op(self) -> imm[Buffer] = imm *self.pointer
+     ^ '*' with 'self' is declared more than once in 'Twice'
+
+Error at line 51, column 2
+50 │ 
+51 │ *: op(self) -> imm[Buffer] = imm *self.pointer
+     ^ '*' with 'self' is declared more than once in 'Twice'
+
+Error at line 59, column 17
+58 │ 
+59 │ *: op(self) -> imm[Buffer] = imm *self.pointer
+                    ╘═════════╛ Cannot declare '*' operators with different target types
+
+Error at line 61, column 21
+60 │ 
+61 │ *: op(mut self) -> mut[i32] = mut self.count
+                        ╘══════╛ Cannot declare '*' operators with different target types
+
+[compilation failed]
