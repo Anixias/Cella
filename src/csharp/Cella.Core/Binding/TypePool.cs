@@ -78,6 +78,9 @@ public sealed class TypePool
 	public bool PassesByPointer(TypeSymbol type, ParameterMode mode) =>
 		mode == ParameterMode.ReadOnly && NeedsDrop(type);
 	
+	public bool IsViewRecord(TypeSymbol type) => type is RecordSymbol { IsRef: true } or EnumSymbol { IsRef: true } &&
+	                                             IsCopy(type);
+	
 	public RecordSymbol? FindDestructor(TypeSymbol type) => FindDestructor(type, []);
 	
 	private RecordSymbol? FindDestructor(TypeSymbol type, HashSet<TypeSymbol> visited)

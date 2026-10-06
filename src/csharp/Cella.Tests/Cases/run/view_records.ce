@@ -1,0 +1,127 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Token: ref rec
+{
+	value: imm[i32]
+	index: usize
+}
+
+Lexer: ref rec
+{
+	items: imm[array[i32, 6]]
+	offset: usize
+
+	next: fun(mut self) -> Token
+	{
+		val token = Token(imm self.items[self.offset], self.offset)
+		self.offset += 1
+		ret token
+	}
+}
+
+Parser: ref rec
+{
+	lexer: Lexer
+	current: Token
+
+	new: op(lexer: Lexer)
+	{
+		self.lexer = lexer
+		self.current = self.lexer.next()
+	}
+
+	advance: fun(mut self) -> Token
+	{
+		val previous = self.current
+		self.current = self.lexer.next()
+		ret previous
+	}
+}
+
+Window: ref enum
+{
+	whole(items: imm[array[i32, 6]])
+	from(items: imm[array[i32, 6]], start: usize)
+
+	first: fun(mut self) -> imm[i32] = match self
+	{
+		whole(items) => imm items[0]
+		from(items, start) => imm items[start]
+	}
+
+	step: fun(mut self) -> imm[i32]
+	{
+		match mut self
+		{
+			from(items, start) =>
+			{
+				start += 1
+				ret imm items[start - 1]
+			}
+			whole(items) => ret imm items[0]
+		}
+	}
+}
+
+Counter: ref rec
+{
+	items: imm[array[i32, 6]]
+	count: i32
+
+	countRef: fun(mut self) -> mut[i32] = mut self.count
+
+	drop: op
+	{
+	}
+}
+
+first: fun(mut lexer: Lexer) -> Token = lexer.next()
+
+firstToken: fun(mut items: array[i32, 6]) -> Token
+{
+	var lexer = Lexer(items, 0)
+	ret lexer.next()
+}
+
+viaHelper: fun(mut items: array[i32, 6]) -> Token
+{
+	var lexer = Lexer(items, 1)
+	ret first(mut lexer)
+}
+
+main: fun -> i32
+{
+	var items = [10, 20, 30, 40, 50, 60]
+	var lexer = Lexer(items, 0)
+	val a = lexer.next()
+	val b = lexer.next()
+
+	var kept: Token = a
+	var shown: imm[i32] = a.value
+	var stepped: imm[i32] = a.value
+	{
+		var inner = Lexer(items, 4)
+		kept = inner.next()
+		var window = Window.from(items, 5)
+		shown = window.first()
+		var cursor = Window.from(items, 2)
+		cursor.step()
+		stepped = cursor.step()
+	}
+
+	var parser = Parser(Lexer(items, 2))
+	val c = parser.advance()
+	val d = parser.advance()
+	printf("%d %d %d %d %d %d %d ", a.value, b.value, kept.value, shown, stepped, c.value, d.value)
+
+	var counter = Counter(items, 7)
+	val count = counter.countRef()
+	count += 1
+	printf("%d %d %d\n", firstToken(mut items).value, viaHelper(mut items).value, counter.count)
+	ret 0
+}

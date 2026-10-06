@@ -1,0 +1,34 @@
+
+====== view_records.ce ======
+
+Error at line 8, column 43
+7 │ 
+8 │ offsetRef: fun(mut self) -> mut[usize] = mut self.offset
+                                             ╘═════════════╛ Cannot return borrows of view records
+
+Error at line 10, column 40
+ 9 │ 
+10 │ itself: fun(mut self) -> mut[Lexer] = mut self
+                                           ╘══════╛ Cannot return borrows of view records
+
+Error at line 19, column 41
+18 │ 
+19 │ itself: fun(mut self) -> mut[Window] = mut self
+                                            ╘══════╛ Cannot return borrows of view records
+
+Error at line 30, column 30
+29 │ {
+30 │     from(items, start) => ret mut start
+                                   ╘═══════╛ Cannot return borrows of view records
+
+Error at line 47, column 49
+46 │ 
+47 │ offsetOf: fun(mut lexer: Lexer) -> mut[usize] = mut lexer.offset
+                                                     ╘══════════════╛ Cannot return borrows of view records
+
+Error at line 52, column 6
+51 │ var counter = Counter(items, 0)
+52 │ ret counter.countRef()
+         ╘════════════════╛ Cannot return borrows of local variables
+
+[compilation failed]

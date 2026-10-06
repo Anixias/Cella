@@ -1,0 +1,55 @@
+mod test
+
+Lexer: ref rec
+{
+	items: imm[array[i32, 6]]
+	offset: usize
+
+	offsetRef: fun(mut self) -> mut[usize] = mut self.offset
+
+	itself: fun(mut self) -> mut[Lexer] = mut self
+
+	current: fun(mut self) -> imm[i32] = imm self.items[self.offset]
+}
+
+Window: ref enum
+{
+	whole(items: imm[array[i32, 6]])
+
+	itself: fun(mut self) -> mut[Window] = mut self
+}
+
+Range: ref enum
+{
+	from(items: imm[array[i32, 6]], start: usize)
+
+	startRef: fun(mut self) -> mut[usize]
+	{
+		match mut self
+		{
+			from(items, start) => ret mut start
+		}
+	}
+}
+
+Counter: ref rec
+{
+	items: imm[array[i32, 6]]
+	count: i32
+
+	countRef: fun(mut self) -> mut[i32] = mut self.count
+
+	drop: op
+	{
+	}
+}
+
+offsetOf: fun(mut lexer: Lexer) -> mut[usize] = mut lexer.offset
+
+countOf: fun(mut items: array[i32, 6]) -> mut[i32]
+{
+	var counter = Counter(items, 0)
+	ret counter.countRef()
+}
+
+main: fun -> i32 = 0

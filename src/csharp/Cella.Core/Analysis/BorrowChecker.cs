@@ -23,15 +23,15 @@ public sealed class BorrowChecker(TypePool typePool, DiagnosticList diagnostics)
 		Unstored,
 		Owned,
 		Copied,
-		Borrowed
+		Borrowed,
+		ViewRecord
 	}
 	
 	private readonly record struct Invalidation(Ending Ending, SourceLocation Location);
 	
 	private readonly HashSet<SourceLocation> _reported = [];
 	private HashSet<VariableSymbol> returned = [];
-	private HashSet<ParameterSymbol> borrowed = [];
-	private HashSet<ParameterSymbol> lenders = [];
+	private Dictionary<ParameterSymbol, Escape?> parameterEscapes = [];
 	private ParameterSymbol? receiver;
 	private ParameterSymbol? constructorSelf;
 	
@@ -44,8 +44,7 @@ public sealed class BorrowChecker(TypePool typePool, DiagnosticList diagnostics)
 		
 		constructorSelf = symbol.Kind == FunctionKind.Constructor ? receiver : null;
 		returned = GetReturned(function, events);
-		borrowed = GetBorrowed(function.Info);
-		lenders = GetLenders(function.Info);
+		parameterEscapes = GetParameterEscapes(function.Info);
 		foreach (var (block, entryState) in Solve(function, events))
 		{
 			var state = entryState.Copy();
@@ -154,13 +153,10 @@ public sealed class BorrowChecker(TypePool typePool, DiagnosticList diagnostics)
 	private static VariableSymbol? GetCopied(Value value) =>
 		(value is MoveValue move ? move.Place : value) is VariableValue variable ? variable.Variable.Symbol : null;
 	
-	private HashSet<ParameterSymbol> GetBorrowed(FunctionInfo function) =>
-		function.Symbol.Parameters.Where((_, i) => IsBorrowed(function.Signature, i)).ToHashSet();
-	
-	private HashSet<ParameterSymbol> GetLenders(FunctionInfo function) =>
+	private Dictionary<ParameterSymbol, Escape?> GetParameterEscapes(FunctionInfo function) =>
 		function.Symbol.Parameters
-			.Where((_, i) => IsBorrowed(function.Signature, i) && MayLend(function.Symbol, i))
-			.ToHashSet();
+			.Select((parameter, i) => (Parameter: parameter, Escape: GetEscape(function, i)))
+			.ToDictionary(static pair => pair.Parameter, static pair => pair.Escape);
 	
 	private void CheckUse(MemoryEvent memoryEvent, BorrowState state)
 	{
@@ -303,10 +299,7 @@ public sealed class BorrowChecker(TypePool typePool, DiagnosticList diagnostics)
 	
 	private Escape? FindEscape(VariableSymbol root) => root switch
 	{
-		ParameterSymbol parameter when lenders.Contains(parameter) => null,
-		ParameterSymbol { Mode: ParameterMode.Own } => Escape.Owned,
-		ParameterSymbol parameter when borrowed.Contains(parameter) => Escape.Borrowed,
-		ParameterSymbol => Escape.Copied,
+		ParameterSymbol parameter => parameterEscapes[parameter],
 		LocalVariableSymbol local => local.Name.StartsWith('.') ? Escape.Unstored : Escape.Local,
 		_ => null
 	};
@@ -317,7 +310,8 @@ public sealed class BorrowChecker(TypePool typePool, DiagnosticList diagnostics)
 		Escape.Unstored => "unstored values",
 		Escape.Owned => "'own' parameters",
 		Escape.Copied => "copied parameters",
-		_ => "parameters other than 'self'"
+		Escape.Borrowed => "parameters other than 'self'",
+		_ => "view records"
 	};
 	
 	private void Transfer(BorrowState state, MemoryEvent memoryEvent)
@@ -403,9 +397,13 @@ public sealed class BorrowChecker(TypePool typePool, DiagnosticList diagnostics)
 	private List<Place> ReadSources(Value place, BorrowState state)
 	{
 		if (EventLinearizer.GetPlace(place) is { } tracked)
-			return tracked.Root is LocalVariableSymbol { IsBorrowBinding: true } binding
-				? Expand([..state.Get(binding).Keys], state)
-				: [..state.Get(tracked.Root).Keys];
+			return tracked.Root switch
+			{
+				LocalVariableSymbol { IsBorrowBinding: true } binding when tracked.Path.IsEmpty =>
+					Expand([..state.Get(binding).Keys], state),
+				LocalVariableSymbol { IsBorrowBinding: true } binding => Held([..state.Get(binding).Keys], state),
+				var root => [..state.Get(root).Keys]
+			};
 		
 		return GetBase(place) switch
 		{
@@ -445,8 +443,7 @@ public sealed class BorrowChecker(TypePool typePool, DiagnosticList diagnostics)
 	{
 		var sources = new List<Place>();
 		for (var i = 0; i < arguments.Count && first + i < function.Signature.ParameterTypes.Length; i++)
-			sources.AddRange(ArgumentSources(arguments[i], IsBorrowed(function.Signature, first + i),
-				MayLend(function.Symbol, first + i), state));
+			sources.AddRange(ArgumentSources(arguments[i], GetEscape(function, first + i), state));
 		
 		return sources;
 	}
@@ -457,28 +454,35 @@ public sealed class BorrowChecker(TypePool typePool, DiagnosticList diagnostics)
 		var sources = new List<Place>();
 		for (var i = 0; i < call.Arguments.Length && i < type.ParameterTypes.Length; i++)
 			sources.AddRange(ArgumentSources(call.Arguments[i],
-				IsBorrowed(type.ParameterModes[i], type.GetDeclaredType(i)), true, state));
+				GetEscape(type.ParameterModes[i], type.GetDeclaredType(i), true), state));
 		
 		return sources;
 	}
 	
-	private List<Place> ArgumentSources(Value argument, bool isBorrowed, bool mayLend, BorrowState state)
+	private List<Place> ArgumentSources(Value argument, Escape? escape, BorrowState state)
 	{
 		var sources = Sources(argument, state);
-		if (!isBorrowed)
-			return sources;
-		
-		return mayLend ? Expand(sources, state) : Held(sources, state);
+		return escape switch
+		{
+			null => Expand(sources, state),
+			Escape.Borrowed or Escape.ViewRecord => Held(sources, state),
+			_ => sources
+		};
 	}
 	
-	private bool IsBorrowed(FunctionSignature signature, int index) =>
-		IsBorrowed(signature.GetMode(index), signature.GetDeclaredType(index));
+	private Escape? GetEscape(FunctionInfo function, int index) => GetEscape(function.Signature.GetMode(index),
+		function.Signature.GetDeclaredType(index), function.Symbol.Kind != FunctionKind.Method || index == 0);
 	
-	private bool IsBorrowed(ParameterMode mode, TypeSymbol declared) =>
-		mode == ParameterMode.Mut || typePool.PassesByPointer(declared, mode);
-	
-	private static bool MayLend(FunctionSymbol function, int index) =>
-		function.Kind != FunctionKind.Method || index == 0;
+	private Escape? GetEscape(ParameterMode mode, TypeSymbol declared, bool mayLend)
+	{
+		if (mode != ParameterMode.Mut && !typePool.PassesByPointer(declared, mode))
+			return mode == ParameterMode.Own ? Escape.Owned : Escape.Copied;
+		
+		if (!mayLend)
+			return Escape.Borrowed;
+		
+		return typePool.IsViewRecord(declared) ? Escape.ViewRecord : null;
+	}
 	
 	private static bool Overlaps(Place first, Place second) => first.Root == second.Root &&
 	                                                           !first.Path.Zip(second.Path).Any(static pair =>

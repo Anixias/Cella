@@ -78,7 +78,7 @@ Scope: ref rec
 	}
 }
 
-pick: fun(mut token: Token) -> str = token.text
+pick: fun(mut cursor: Cursor) -> str = cursor.text
 
 retarget: fun(mut token: Token, other: str)
 {
@@ -112,9 +112,9 @@ fill: fun(mut slot: Slot, other: str)
 	}
 }
 
-refill: fun(mut token: Token)
+refill: fun(mut cursor: Cursor)
 {
-	token.rest = pick(mut token)
+	cursor.rest = pick(mut cursor)
 }
 
 replaceWord: fun(mut words: array[str, 3], other: str)
@@ -130,6 +130,16 @@ retargetHeld: fun(pair: Pair, other: str)
 shuffleHeld: fun(mut pair: Pair)
 {
 	pair.token.text = pair.token.rest
+}
+
+Cursor: ref rec
+{
+	text: str
+	rest: str
+
+	drop: op
+	{
+	}
 }
 
 main: fun -> i32 = 0
