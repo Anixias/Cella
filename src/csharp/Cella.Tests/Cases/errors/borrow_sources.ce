@@ -1,0 +1,188 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Buffer: rec
+{
+	id: i32
+
+	drop: op
+	{
+	}
+}
+
+Enemy: rec
+{
+	name: Buffer
+	hp: i32
+}
+
+Effect: enum
+{
+	none
+	hold(buffer: Buffer)
+}
+
+Tally: ref rec
+{
+	count: mut[i32]
+	step: i32
+}
+
+Holder: ref rec
+{
+	buffer: imm[Buffer]
+}
+
+Scope: ref rec
+{
+	depth: mut[i32]
+
+	new: op(mut depth: i32)
+	{
+		self.depth = mut depth
+	}
+
+	drop: op
+	{
+		self.depth -= 1
+	}
+}
+
+Stats: rec
+{
+	kills: i32
+}
+
+kills: fun(mut stats: Stats) -> mut[i32]
+{
+	ret mut stats.kills
+}
+
+take: fun(own enemy: Enemy) {}
+
+make: fun(id: i32) -> Buffer = Buffer(id)
+
+useAfterMove: fun
+{
+	var buffer = Buffer(1)
+	val view = imm buffer
+	val copy = view
+	val moved = buffer
+	printf("%d %d\n", view.id, copy.id)
+}
+
+useAfterMoveIntoCall: fun
+{
+	val bat = Enemy(Buffer(3), 7)
+	val name = imm bat.name
+	take(bat)
+	printf("%d\n", name.id)
+}
+
+useAfterScope: fun
+{
+	var x = 0
+	var longest: imm[i32] = x
+	{
+		val temp = 5
+		longest = temp
+	}
+	printf("%d\n", longest)
+}
+
+useAfterReassign: fun
+{
+	var buffer = Buffer(1)
+	val first = imm buffer
+	buffer = Buffer(2)
+	printf("%d\n", first.id)
+}
+
+useAfterIteration: fun
+{
+	var x = 0
+	var last: imm[i32] = x
+	var i = 0
+	loop while i < 3
+	{
+		printf("%d\n", last)
+		val local = i
+		last = local
+		i += 1
+	}
+}
+
+useBindingAfterReassign: fun
+{
+	var effect = Effect.hold(Buffer(1))
+	match effect
+	{
+		hold(buffer) =>
+		{
+			effect = Effect.none
+			printf("%d\n", buffer.id)
+		}
+		none => {}
+	}
+}
+
+useRecordAfterMove: fun
+{
+	var count = 1
+	var tally = Tally(mut count, 5)
+	val moved = own count
+	printf("%d\n", tally.step)
+	tally.count += 1
+}
+
+useResultAfterMove: fun
+{
+	var stats = Stats(1)
+	val total = kills(mut stats)
+	val moved = own stats
+	total += 1
+}
+
+dropAfterMove: fun
+{
+	var depth = 0
+	val scope = Scope(mut depth)
+	val moved = own depth
+}
+
+useTemporary: fun
+{
+	val holder = Holder(make(3))
+	printf("%d\n", holder.buffer.id)
+}
+
+useThroughBorrow: fun
+{
+	var buffer = Buffer(1)
+	val outer = imm buffer
+	val inner = imm outer.id
+	var count = 1
+	var tally = Tally(mut count, 2)
+	val view = imm tally
+	val counter: mut[i32] = view.count
+	val moved = own buffer
+	val gone = own count
+	printf("%d %d\n", inner, counter)
+}
+
+storeThroughBorrow: fun
+{
+	var x = 1
+	var tally = Tally(mut x, 1)
+	val target = mut tally
+	var y = 2
+	target = Tally(mut y, 1)
+	val moved = own y
+	printf("%d\n", tally.count)
+}
+
+main: fun -> i32 = 0

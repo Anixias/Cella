@@ -1074,7 +1074,7 @@ public sealed class Lowerer
 			if (dropsOld)
 			{
 				value = Consume(CaptureAsAtomic(value, "assigned"));
-				currentBlock.Instructions.Add(new DropInstruction(left, node.Op.SourceLocation));
+				currentBlock.Instructions.Add(new DropInstruction(left, node.Op.SourceLocation, isReassignment: true));
 			}
 			
 			currentBlock.Instructions.Add(

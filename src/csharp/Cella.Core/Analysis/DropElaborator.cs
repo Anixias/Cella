@@ -64,11 +64,11 @@ public sealed class DropElaborator(TypePool typePool, Action<InitState, MemoryEv
 	private List<DropInstruction> Elaborate(DropInstruction drop, MovePath path, InitState state)
 	{
 		var drops = new List<DropInstruction>();
-		Elaborate(drop.Value, path, state, drop.SourceLocation, null, drops);
+		Elaborate(drop.Value, path, state, drop, null, drops);
 		return drops;
 	}
 	
-	private void Elaborate(Value value, MovePath path, InitState state, SourceLocation location, Value? guard,
+	private void Elaborate(Value value, MovePath path, InitState state, DropInstruction origin, Value? guard,
 		List<DropInstruction> drops)
 	{
 		if (!typePool.NeedsDrop(path.Type) || state.IsUninitialized(path))
@@ -76,19 +76,19 @@ public sealed class DropElaborator(TypePool typePool, Action<InitState, MemoryEv
 		
 		if (state.IsWhollyInitialized(path))
 		{
-			drops.Add(new DropInstruction(value, location, guard));
+			drops.Add(CreateDrop(value, origin, guard));
 			return;
 		}
 		
 		if (path.Children.Count == 0)
 		{
-			drops.Add(new DropInstruction(value, location, And(guard, ReadFlag(path))));
+			drops.Add(CreateDrop(value, origin, And(guard, ReadFlag(path))));
 			return;
 		}
 		
 		if (path.Type is RecordSymbol { HasDestructor: true } && GetWholeCondition(path, state) is { } whole)
 		{
-			drops.Add(new DropInstruction(value, location, And(guard, whole)));
+			drops.Add(CreateDrop(value, origin, And(guard, whole)));
 			guard = And(guard, new UnaryOpValue(NativeSymbols.Bool, whole, UnaryOperation.LogicalNot,
 				SourceLocation.None));
 		}
@@ -97,12 +97,14 @@ public sealed class DropElaborator(TypePool typePool, Action<InitState, MemoryEv
 		foreach (var (part, child) in GetParts(value, path).Reverse())
 		{
 			if (child is not null)
-				Elaborate(part, child, state, location, guard, drops);
+				Elaborate(part, child, state, origin, guard, drops);
 			else if (typePool.NeedsDrop(part.Type) && own.HasFlag(PathState.Initialized))
-				drops.Add(new DropInstruction(part, location,
-					own == PathState.Initialized ? guard : And(guard, ReadFlag(path))));
+				drops.Add(CreateDrop(part, origin, own == PathState.Initialized ? guard : And(guard, ReadFlag(path))));
 		}
 	}
+	
+	private static DropInstruction CreateDrop(Value value, DropInstruction origin, Value? guard) =>
+		new(value, origin.SourceLocation, guard, origin.IsReassignment);
 	
 	private Value? GetWholeCondition(MovePath path, InitState state)
 	{

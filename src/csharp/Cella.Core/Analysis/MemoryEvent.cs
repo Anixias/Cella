@@ -19,10 +19,14 @@ public enum DefineKind
 }
 
 public abstract record MemoryEvent(SourceLocation Location);
-public sealed record AccessEvent(Place Place, AccessKind Kind, SourceLocation Location) : MemoryEvent(Location);
-public sealed record WriteEvent(Place Place, SourceLocation Location) : MemoryEvent(Location);
 
-public sealed record DefineEvent(LocalVariableSymbol Local, DefineKind Kind, SourceLocation Location)
+public sealed record AccessEvent(Place Place, AccessKind Kind, SourceLocation Location, TypeSymbol Type)
+	: MemoryEvent(Location);
+
+public sealed record WriteEvent(Place Place, SourceLocation Location, Value Value) : MemoryEvent(Location);
+public sealed record IndirectWriteEvent(Value Target, Value Value, SourceLocation Location) : MemoryEvent(Location);
+
+public sealed record DefineEvent(LocalVariableSymbol Local, DefineKind Kind, SourceLocation Location, Value Value)
 	: MemoryEvent(Location);
 
 public sealed record DropEvent(Place Place, DropInstruction Instruction) : MemoryEvent(Instruction.SourceLocation);

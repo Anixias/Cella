@@ -1,0 +1,89 @@
+
+====== borrow_sources.ce ======
+
+Error at line 75, column 20
+74 │ val moved = buffer
+75 │ printf("%d %d\n", view.id, copy.id)
+                       ╘══╛ Cannot use borrows of moved values
+                          | Moved on line 74
+
+Error at line 75, column 29
+74 │ val moved = buffer
+75 │ printf("%d %d\n", view.id, copy.id)
+                                ╘══╛ Cannot use borrows of moved values
+                                   | Moved on line 74
+
+Error at line 83, column 17
+82 │ take(bat)
+83 │ printf("%d\n", name.id)
+                    ╘══╛ Cannot use borrows of moved values
+                       | Moved on line 82
+
+Error at line 94, column 17
+93 │ }
+94 │ printf("%d\n", longest)
+                    ╘═════╛ Cannot use borrows of dropped values
+                          | Dropped on line 93
+
+Error at line 102, column 17
+101 │ buffer = Buffer(2)
+102 │ printf("%d\n", first.id)
+                     ╘═══╛ Cannot use borrows of reassigned values
+                         | Reassigned on line 101
+
+Error at line 112, column 18
+111 │ {
+112 │     printf("%d\n", last)
+                         ╘══╛ Cannot use borrows of dropped values
+                            | Dropped on line 116
+
+Error at line 127, column 19
+126 │ effect = Effect.none
+127 │ printf("%d\n", buffer.id)
+                     ╘═══════╛ Cannot use borrows of reassigned values
+                             | Reassigned on line 126
+
+Error at line 139, column 2
+138 │ printf("%d\n", tally.step)
+139 │ tally.count += 1
+      ╘═════════╛ Cannot use borrows of moved values
+                | Moved on line 137
+
+Error at line 147, column 2
+146 │ val moved = own stats
+147 │ total += 1
+      ╘═══╛ Cannot use borrows of moved values
+          | Moved on line 146
+
+Error at line 155, column 1
+154 │     val moved = own depth
+155 │ }
+      ^ Cannot use borrows of moved values
+      | 'scope' is dropped here
+      | Moved on line 154
+
+Error at line 160, column 17
+159 │ val holder = Holder(make(3))
+160 │ printf("%d\n", holder.buffer.id)
+                     ╘═══════════╛ Cannot use borrows of dropped values
+                                 | Dropped on line 159
+
+Error at line 174, column 20
+173 │ val gone = own count
+174 │ printf("%d %d\n", inner, counter)
+                        ╘═══╛ Cannot use borrows of moved values
+                            | Moved on line 172
+
+Error at line 174, column 27
+173 │ val gone = own count
+174 │ printf("%d %d\n", inner, counter)
+                               ╘═════╛ Cannot use borrows of moved values
+                                     | Moved on line 173
+
+Error at line 185, column 17
+184 │ val moved = own y
+185 │ printf("%d\n", tally.count)
+                     ╘═════════╛ Cannot use borrows of moved values
+                               | Moved on line 184
+
+[compilation failed]

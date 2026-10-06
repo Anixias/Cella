@@ -66,7 +66,7 @@ public sealed class EventLinearizer
 					UndefValue => DefineKind.Undef,
 					DefaultValue => DefineKind.Default,
 					_ => DefineKind.Value
-				}, i.SourceLocation));
+				}, i.SourceLocation, i.Initializer));
 				
 				break;
 			
@@ -103,7 +103,9 @@ public sealed class EventLinearizer
 					AddValue(v.Right);
 					AddOperands(v.Left);
 					if (GetPlace(v.Left) is { } target)
-						events.Add(new WriteEvent(target, v.Left.SourceLocation));
+						events.Add(new WriteEvent(target, v.Left.SourceLocation, v.Right));
+					else if (IsPlace(v.Left))
+						events.Add(new IndirectWriteEvent(v.Left, v.Right, v.Left.SourceLocation));
 					
 					break;
 				
@@ -132,7 +134,7 @@ public sealed class EventLinearizer
 					AddValues(v.Arguments.Skip(1));
 					AddOperands(self);
 					if (GetPlace(self) is { } constructed)
-						events.Add(new WriteEvent(constructed, self.SourceLocation));
+						events.Add(new WriteEvent(constructed, self.SourceLocation, v));
 					
 					break;
 				
@@ -191,7 +193,7 @@ public sealed class EventLinearizer
 	{
 		AddOperands(place);
 		if (GetPlace(place) is { } target)
-			events.Add(new AccessEvent(target, kind, place.SourceLocation));
+			events.Add(new AccessEvent(target, kind, place.SourceLocation, place.Type));
 	}
 	
 	private void AddOperands(Value place)
@@ -234,7 +236,7 @@ public sealed class EventLinearizer
 		_ => false
 	};
 	
-	private static Place? GetPlace(Value value) => value switch
+	internal static Place? GetPlace(Value value) => value switch
 	{
 		VariableValue v => new(v.Variable.Symbol, []),
 		UnaryOpValue { Op: UnaryOperation.Dereference, Operand: VariableValue { Variable.Symbol: var symbol } } =>

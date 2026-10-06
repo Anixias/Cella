@@ -1,0 +1,107 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Buffer: rec
+{
+	id: i32
+
+	drop: op
+	{
+	}
+}
+
+Holder: rec
+{
+	first: Buffer
+	second: Buffer
+}
+
+Tally: ref rec
+{
+	count: mut[i32]
+}
+
+Effect: enum
+{
+	none
+	hold(buffer: Buffer)
+}
+
+Scope: ref rec
+{
+	depth: mut[i32]
+
+	new: op(mut depth: i32)
+	{
+		depth += 1
+		self.depth = mut depth
+	}
+
+	drop: op
+	{
+		self.depth -= 1
+	}
+}
+
+larger: fun(mut holder: Holder) -> imm[Buffer]
+{
+	if holder.first.id > holder.second.id
+		ret holder.first
+	ret holder.second
+}
+
+main: fun -> i32
+{
+	var holder = Holder(Buffer(1), Buffer(2))
+	val first = imm holder.first
+	val second = own holder.second
+	printf("%d ", first.id)
+
+	var x = 10
+	var r: imm[i32] = x
+	var i = 0
+	loop while i < 3
+	{
+		val local = i
+		r = local
+		printf("%d ", r)
+		i += 1
+	}
+
+	var values = [1, 2, 3]
+	val slot = imm values[1]
+	values[0] = 5
+	printf("%d ", slot)
+
+	var e = Effect.hold(Buffer(4))
+	var other = Effect.none
+	match e
+	{
+		hold(buffer) =>
+		{
+			other = Effect.hold(Buffer(5))
+			printf("%d ", buffer.id)
+		}
+		none => {}
+	}
+
+	var depth = 0
+	val outer = Scope(mut depth)
+	var count = 1
+	var tally = Tally(mut count)
+	tally.count += 1
+	{
+		var inner = 7
+		val view = imm inner
+		printf("%d ", view)
+	}
+
+	var both = Holder(Buffer(6), Buffer(9))
+	val big = larger(mut both)
+	printf("%d %d %d\n", big.id, depth, count)
+	ret 0
+}

@@ -41,9 +41,16 @@ public sealed class ExpressionInstruction(Value value) : IInstruction
 	public SourceLocation SourceLocation { get; } = value.SourceLocation;
 }
 
-public sealed class DropInstruction(Value value, SourceLocation sourceLocation, Value? guard = null) : IInstruction
+public sealed class DropInstruction
+(
+	Value value,
+	SourceLocation sourceLocation,
+	Value? guard = null,
+	bool isReassignment = false
+) : IInstruction
 {
 	public Value Value { get; } = value;
 	public SourceLocation SourceLocation { get; } = sourceLocation;
 	public Value? Guard { get; } = guard;
+	public bool IsReassignment { get; } = isReassignment;
 }
