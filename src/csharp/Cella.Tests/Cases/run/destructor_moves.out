@@ -1,0 +1,19 @@
+wrapper
+take 1
+drop 1
+--
+conditional
+drop 3
+take 2
+drop 2
+conditional
+--
+refilled
+drop 4
+drop 104
+--
+take 5
+drop 5
+two 6
+drop 6
+[exit code 0]

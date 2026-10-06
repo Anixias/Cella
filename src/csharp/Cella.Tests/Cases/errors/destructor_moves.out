@@ -1,0 +1,21 @@
+
+====== destructor_moves.ce ======
+
+Error at line 24, column 8
+23 │ take(own self.buffer)
+24 │ show(self)
+          ╘══╛ Cannot use partly moved values
+             | Moved on line 23
+
+Error at line 25, column 16
+24 │ show(self)
+25 │ self.count = self.buffer.id
+                  ╘════════════╛ Cannot use moved values
+                               | Moved on line 23
+
+Error at line 35, column 15
+34 │ {
+35 │     consume(own self)
+                     ╘══╛ Cannot move 'self' in destructors
+
+[compilation failed]

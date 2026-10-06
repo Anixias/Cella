@@ -3,8 +3,8 @@
 
 Error at line 24, column 12
 23 │ {
-24 │     take(own self.buffer)
-                  ╘═════════╛ Cannot leave 'mut' parameters partly moved
+24 │     take(own self.pair.left)
+                  ╘════════════╛ Cannot leave 'self' partly moved
 
 Error at line 33, column 11
 32 │ {
@@ -20,5 +20,10 @@ Error at line 44, column 16
 43 │ {
 44 │     val old = own buffer
                        ╘════╛ Cannot leave 'mut' parameters moved
+
+Error at line 68, column 12
+67 │ self.buffer = make(id)
+68 │ keep(own self)
+              ╘══╛ Cannot leave 'self' moved
 
 [compilation failed]

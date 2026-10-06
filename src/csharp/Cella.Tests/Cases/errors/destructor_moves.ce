@@ -1,0 +1,39 @@
+mod test
+
+Buffer: rec
+{
+	id: i32
+
+	drop: op
+	{
+	}
+}
+
+show: fun(wrapper: Wrapper) -> i32 = 0
+take: fun(own buffer: Buffer) -> i32 = buffer.id
+consume: fun(own whole: Whole) -> i32 = 0
+
+Wrapper: rec
+{
+	buffer: Buffer
+	count: i32
+
+	drop: op
+	{
+		take(own self.buffer)
+		show(self)
+		self.count = self.buffer.id
+	}
+}
+
+Whole: rec
+{
+	id: i32
+
+	drop: op
+	{
+		consume(own self)
+	}
+}
+
+main: fun -> i32 = 0

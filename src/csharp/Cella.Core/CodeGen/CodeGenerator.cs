@@ -591,7 +591,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 		foreach (var field in record.Members.OfType<FieldSymbol>().Reverse())
 		{
 			var fieldType = _typePool.GetTypeOfMember(field);
-			if (!_typePool.NeedsDrop(fieldType))
+			if (!_typePool.NeedsDrop(fieldType) || _typePool.IsMovedByDestructor(record, field))
 				continue;
 			
 			var index = (uint)_typePool.GetFieldIndex(record, field);

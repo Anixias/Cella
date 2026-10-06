@@ -1,0 +1,92 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Buffer: rec
+{
+	id: i32
+
+	drop: op
+	{
+		printf("drop %d\n", self.id)
+	}
+}
+
+Wrapper: rec
+{
+	buffer: Buffer
+
+	drop: op
+	{
+		printf("wrapper\n")
+		take(own self.buffer)
+	}
+}
+
+Conditional: rec
+{
+	flag: bool
+	buffer: Buffer
+
+	drop: op
+	{
+		if self.flag
+			take(own self.buffer)
+
+		printf("conditional\n")
+	}
+}
+
+Refilled: rec
+{
+	buffer: Buffer
+
+	drop: op
+	{
+		val old = own self.buffer
+		self.buffer = Buffer(old.id + 100)
+		printf("refilled\n")
+	}
+}
+
+Two: rec
+{
+	first: Buffer
+	second: Buffer
+
+	drop: op
+	{
+		take(own self.first)
+		printf("two %d\n", self.second.id)
+	}
+}
+
+take: fun(own buffer: Buffer) -> i32
+{
+	printf("take %d\n", buffer.id)
+	ret buffer.id
+}
+
+main: fun -> i32
+{
+	{
+		val wrapper = Wrapper(Buffer(1))
+	}
+	printf("--\n")
+	{
+		val yes = Conditional(true, Buffer(2))
+		val no = Conditional(false, Buffer(3))
+	}
+	printf("--\n")
+	{
+		val refilled = Refilled(Buffer(4))
+	}
+	printf("--\n")
+	{
+		val two = Two(Buffer(5), Buffer(6))
+	}
+	ret 0
+}

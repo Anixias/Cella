@@ -23,6 +23,7 @@ public sealed class TypePool
 	private readonly Dictionary<TypeSymbol, TypeFacts> _facts = [];
 	private readonly Dictionary<TypeSymbol, List<FunctionInfo>> _constructors = [];
 	private readonly Dictionary<TypeSymbol, FunctionInfo> _destructors = [];
+	private readonly Dictionary<TypeSymbol, IReadOnlySet<FieldSymbol>> _destructorMoves = [];
 	private readonly Dictionary<EnumSymbol, IntegerType> _tagTypes = [];
 	private readonly Dictionary<EnumCaseSymbol, BigInteger> _caseValues = [];
 	
@@ -51,6 +52,12 @@ public sealed class TypePool
 		Complete(type);
 		return _destructors.TryGetValue(type, out var info) ? info : null;
 	}
+	
+	public void SetDestructorMoves(TypeSymbol type, IReadOnlySet<FieldSymbol> fields) =>
+		_destructorMoves[type] = fields;
+	
+	public bool IsMovedByDestructor(TypeSymbol type, FieldSymbol field) =>
+		_destructorMoves.TryGetValue(type, out var fields) && fields.Contains(field);
 	
 	public bool NeedsDrop(TypeSymbol type) => GetFacts(type).NeedsDrop;
 	public bool IsCopy(TypeSymbol type) => GetFacts(type).IsCopy;

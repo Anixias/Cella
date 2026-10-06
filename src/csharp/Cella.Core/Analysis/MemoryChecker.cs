@@ -1,4 +1,5 @@
 ﻿using Cella.Core.Binding;
+using Cella.Core.Binding.Operations;
 using Cella.Core.Lowering;
 using Cella.Core.Symbols;
 using Cella.Core.Syntax.Nodes;
@@ -11,8 +12,15 @@ public sealed class MemoryChecker(TypePool typePool, DiagnosticList diagnostics)
 {
 	private readonly record struct Uninitialized(string Condition, IEnumerable<MoveSite> Moves);
 	
+	private ParameterSymbol? destructorSelf;
+	
 	public void Check(LoweredFunction function)
 	{
+		destructorSelf = function.Info.Symbol is { Kind: FunctionKind.Destructor, Parameters: [var self] }
+			? self
+			: null;
+		
+		AddDestructorExitDrops(function);
 		var events = EventLinearizer.Linearize(function);
 		var requiredFields = GetRequiredFields(function);
 		var paths = MovePaths.Build(function, events.Values.SelectMany(static e => e), requiredFields, typePool);
@@ -68,6 +76,32 @@ public sealed class MemoryChecker(TypePool typePool, DiagnosticList diagnostics)
 		
 		new DropElaborator(typePool, (state, memoryEvent) => Transfer(state, memoryEvent, paths))
 			.Elaborate(function, entryState, entryStates, drops);
+	}
+	
+	private void AddDestructorExitDrops(LoweredFunction function)
+	{
+		if (function.Info.Symbol is not { Kind: FunctionKind.Destructor, Parameters: [var self] } ||
+		    function.Info.Signature.GetDeclaredType(0) is not RecordSymbol record)
+			return;
+		
+		var movedFields = EventLinearizer.Linearize(function).Values
+			.SelectMany(static events => events)
+			.OfType<AccessEvent>()
+			.Where(access => access is { Kind: AccessKind.Move, Place.Path: [FieldProjection] } &&
+			                 access.Place.Root == self)
+			.Select(static access => ((FieldProjection)access.Place.Path[0]).Field)
+			.ToHashSet();
+		
+		typePool.SetDestructorMoves(record, movedFields);
+		var selfValue = new VariableValue(new(self, function.Info.Signature.ParameterTypes[0]), SourceLocation.None);
+		var target = new UnaryOpValue(record, selfValue, UnaryOperation.Dereference, SourceLocation.None);
+		var fields = typePool.GetMembers(record).OfType<FieldSymbol>().Where(movedFields.Contains).Reverse().ToList();
+		foreach (var block in function.Blocks.Where(static block => block.Terminator is ReturnTerminator))
+		{
+			block.Instructions.AddRange(fields.Select(field => new DropInstruction(
+				new AccessValue(typePool.GetTypeOfMember(field), target, field, SourceLocation.None),
+				SourceLocation.None)));
+		}
 	}
 	
 	private List<Place> GetRequiredFields(LoweredFunction function)
@@ -150,18 +184,24 @@ public sealed class MemoryChecker(TypePool typePool, DiagnosticList diagnostics)
 	private void CheckRefills(LoweredFunction function, InitState state, MovePaths paths,
 		HashSet<SourceLocation> reportedMoves)
 	{
-		foreach (var parameter in function.Info.Symbol.Parameters)
+		var symbol = function.Info.Symbol;
+		var receiver = symbol.Kind is FunctionKind.Constructor or FunctionKind.Destructor ? symbol.Parameters[0] : null;
+		foreach (var parameter in symbol.Parameters)
 		{
 			if (parameter.Mode != ParameterMode.Mut)
 				continue;
 			
 			var root = paths.GetRoot(parameter);
+			var subject = parameter == receiver ? "'self'" : "'mut' parameters";
 			foreach (var move in state.GetMoves(root))
 			{
+				if (parameter == destructorSelf && root.Children.Contains(move.Path))
+					continue;
+				
 				if (reportedMoves.Add(move.Location))
 					Report(move.Location, move.Path == root
-						? "Cannot leave 'mut' parameters moved"
-						: "Cannot leave 'mut' parameters partly moved", []);
+						? $"Cannot leave {subject} moved"
+						: $"Cannot leave {subject} partly moved", []);
 			}
 		}
 	}
@@ -172,6 +212,7 @@ public sealed class MemoryChecker(TypePool typePool, DiagnosticList diagnostics)
 			when !typePool.IsCopy(paths.GetRoot(parameter).Type) => "Cannot move read-only parameters",
 		LocalVariableSymbol { IsBorrowBinding: true } => "Cannot move pattern bindings",
 		_ when place.Path.Any(IsComputedIndex) => "Cannot move array elements at computed indices",
+		_ when place.Root == destructorSelf && place.Path.IsEmpty => "Cannot move 'self' in destructors",
 		ParameterSymbol { Mode: ParameterMode.Mut } => null,
 		_ => HasDestructorAbove(place, paths) ? "Cannot move fields out of values with destructors" : null
 	};

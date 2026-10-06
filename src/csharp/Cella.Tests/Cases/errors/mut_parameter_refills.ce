@@ -17,11 +17,11 @@ Pair: rec
 
 Wrapper: rec
 {
-	buffer: Buffer
+	pair: Pair
 
 	drop: op
 	{
-		take(own self.buffer)
+		take(own self.pair.left)
 	}
 }
 
@@ -54,6 +54,19 @@ swap: fun(mut pair: Pair)
 	val left = own pair.left
 	pair.left = own pair.right
 	pair.right = left
+}
+
+keep: fun(own built: Built) -> i32 = built.buffer.id
+
+Built: rec
+{
+	buffer: Buffer
+
+	new: op(id: i32)
+	{
+		self.buffer = make(id)
+		keep(own self)
+	}
 }
 
 main: fun -> i32 = 0
