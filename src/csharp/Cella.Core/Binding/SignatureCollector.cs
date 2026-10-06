@@ -470,7 +470,9 @@ public sealed class SignatureCollector
 		
 		var signature = new FunctionSignature([selfType], NativeSymbols.Void, false, GetModes(function));
 		var mangledName = Mangling.Mangle(function, signature, context.GetQualifiers());
-		_builder.Functions[function] = new FunctionInfo(mangledName, function, signature, scope, null, context.File);
+		var info = new FunctionInfo(mangledName, function, signature, scope, null, context.File);
+		_builder.Functions[function] = info;
+		_typePool.SetDestructor(context.ContainingType!, info);
 	}
 	
 	private FunctionInfo CollectFunction(FunctionSymbol function, FunctionNode node, ResolutionContext context)

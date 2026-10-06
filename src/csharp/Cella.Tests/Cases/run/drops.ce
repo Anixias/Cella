@@ -1,0 +1,207 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Buffer: rec
+{
+	id: i32
+
+	drop: op
+	{
+		printf("drop %d\n", self.id)
+	}
+}
+
+Pair: rec
+{
+	left: Buffer
+	right: Buffer
+}
+
+Outer: rec
+{
+	first: Buffer
+	second: Buffer
+
+	drop: op
+	{
+		printf("outer %d\n", self.first.id + self.second.id)
+	}
+}
+
+Incomplete: rec
+{
+	part: Buffer
+	count: i32
+
+	drop: op
+	{
+		printf("incomplete\n")
+	}
+}
+
+Effect: enum
+{
+	none
+	hold(buffer: Buffer)
+	pair(first: Buffer, second: Buffer)
+}
+
+Holder: rec
+{
+	buffer: Buffer
+	count: i32
+
+	new: op(id: i32)
+	{
+		self.buffer = Buffer(id)
+		self.count = 1
+	}
+}
+
+make: fun(id: i32) -> Buffer = Buffer(id)
+take: fun(own buffer: Buffer) -> i32 = buffer.id
+show: fun(buffer: Buffer) -> i32 = buffer.id
+effect: fun(id: i32) -> Effect = Effect.pair(make(id), make(id + 1))
+
+order: fun
+{
+	printf("-- order\n")
+	val a = make(1)
+	val b = make(2)
+	val c = make(3)
+}
+
+moves: fun(flag: bool)
+{
+	printf("-- moves %d\n", flag)
+	val a = make(10)
+	take(a)
+	val b = make(11)
+	if flag
+		take(b)
+
+	printf("end\n")
+}
+
+partial: fun
+{
+	printf("-- partial\n")
+	val pair = Pair(make(20), make(21))
+	take(pair.left)
+	printf("end\n")
+}
+
+outer: fun
+{
+	printf("-- outer\n")
+	val outer = Outer(make(30), make(31))
+}
+
+effects: fun
+{
+	printf("-- effects\n")
+	val none = Effect.none
+	val held = Effect.hold(make(40))
+	val pair = effect(41)
+}
+
+owned: fun
+{
+	printf("-- owned\n")
+	match effect(50)
+	{
+		pair(first, _) => printf("took %d\n", take(first))
+		else => {}
+	}
+
+	printf("end\n")
+}
+
+arrays: fun
+{
+	printf("-- arrays\n")
+	val buffers = [make(60), make(61), make(62)]
+}
+
+assigned: fun
+{
+	printf("-- assigned\n")
+	var b = make(70)
+	b = make(71)
+	printf("end\n")
+}
+
+temporaries: fun
+{
+	printf("-- temporaries\n")
+	printf("shown %d\n", show(make(80)))
+	printf("end\n")
+}
+
+looped: fun
+{
+	printf("-- looped\n")
+	var i = 0
+	loop while i < 3
+	{
+		val b = make(90 + i)
+		if i == 1
+			take(b)
+
+		i += 1
+	}
+}
+
+early: fun(flag: bool) -> i32
+{
+	printf("-- early %d\n", flag)
+	val a = make(100)
+	if flag
+		ret 1
+
+	val b = make(101)
+	ret 0
+}
+
+exact: fun(flag: bool)
+{
+	printf("-- exact %d\n", flag)
+	var b: Buffer
+	if flag
+		b.id = 110
+
+	var incomplete: Incomplete = undef
+	incomplete.part = make(111)
+}
+
+constructed: fun
+{
+	printf("-- constructed\n")
+	val holder = Holder(120)
+}
+
+main: fun -> i32
+{
+	order()
+	moves(true)
+	moves(false)
+	partial()
+	outer()
+	effects()
+	owned()
+	arrays()
+	assigned()
+	temporaries()
+	looped()
+	early(true)
+	early(false)
+	exact(true)
+	exact(false)
+	constructed()
+	printf("-- main\n")
+	ret 0
+}

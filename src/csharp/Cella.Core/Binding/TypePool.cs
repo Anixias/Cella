@@ -22,6 +22,7 @@ public sealed class TypePool
 	private readonly Dictionary<TypedMemberSymbol, TypeSymbol> _memberTypes = [];
 	private readonly Dictionary<TypeSymbol, TypeFacts> _facts = [];
 	private readonly Dictionary<TypeSymbol, List<FunctionInfo>> _constructors = [];
+	private readonly Dictionary<TypeSymbol, FunctionInfo> _destructors = [];
 	private readonly Dictionary<EnumSymbol, IntegerType> _tagTypes = [];
 	private readonly Dictionary<EnumCaseSymbol, BigInteger> _caseValues = [];
 	
@@ -41,6 +42,14 @@ public sealed class TypePool
 	{
 		Complete(type);
 		return _constructors.TryGetValue(type, out var list) ? list : [];
+	}
+	
+	public void SetDestructor(TypeSymbol type, FunctionInfo info) => _destructors[type] = info;
+	
+	public FunctionInfo? GetDestructor(TypeSymbol type)
+	{
+		Complete(type);
+		return _destructors.TryGetValue(type, out var info) ? info : null;
 	}
 	
 	public bool NeedsDrop(TypeSymbol type) => GetFacts(type).NeedsDrop;

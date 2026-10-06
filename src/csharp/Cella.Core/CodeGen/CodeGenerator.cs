@@ -56,6 +56,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 	private readonly LLVMPassBuilderOptionsRef _passBuilderOptions = LLVMPassBuilderOptionsRef.Create();
 	private readonly Dictionary<TypeSymbol, LLVMTypeRef> _typeMap = [];
 	private readonly Dictionary<FunctionInfo, LLVMFunctionInfo> _funMap = [];
+	private readonly Dictionary<TypeSymbol, LLVMValueRef> _dropGlue = [];
 	private readonly Dictionary<VariableInfo, LLVMValueRef> _varMap = [];
 	private readonly Dictionary<GlobalSymbol, LLVMValueRef> _globalMap = [];
 	private readonly LLVMValueRef _true = LLVMValueRef.CreateConstInt(LLVMTypeRef.Int1, 1uL);
@@ -137,6 +138,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 			BuildModule(llvmModule, llvmDiBuilder, module);
 			
 			_funMap.Clear();
+			_dropGlue.Clear();
 			_varMap.Clear();
 			_globalMap.Clear();
 			_typeMap.Clear();
@@ -181,6 +183,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 	}
 	
 	private static LLVMTypeRef OpaquePointer => LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0u);
+	private static LLVMTypeRef DropGlueType => LLVMTypeRef.CreateFunction(LLVMTypeRef.Void, [OpaquePointer]);
 	
 	private LLVMTypeRef MapParameterType(TypeSymbol type, ParameterMode mode) =>
 		_typePool.PassesByPointer(type, mode) ? OpaquePointer : MapTypeSymbol(type);
@@ -527,102 +530,134 @@ public sealed unsafe class CodeGenerator : IDisposable
 		while (value is ConversionValue conversion)
 			value = conversion.Source;
 		
-		switch (value.Type)
-		{
-			case ArrayType array:
-				EmitArrayDrop(value, array, builder);
-				break;
-			
-			case RecordSymbol record:
-				EmitRecordDrop(value, record, builder);
-				break;
-		}
-	}
-	
-	private void EmitArrayDrop(Value value, ArrayType array, LLVMBuilderRef builder)
-	{
-		if (!_typePool.NeedsDrop(array.ElementType))
-			return;
-		
-		if (array.Length < 0 || array.Length > int.MaxValue)
-			throw new InvalidOperationException(
-				$"Cannot drop array type '{array.Name}' with non-fixed or too-large length");
-		
-		var length = (int)array.Length;
-		
+		LLVMValueRef address;
 		if (IsAddressable(value))
 		{
-			for (var i = length - 1; i >= 0; i--)
-			{
-				var index = new ConstantValue(NativeSymbols.Int32, i);
-				var element = new IndexerValue(array.ElementType, value, index, value.SourceLocation);
-				EmitDrop(element, builder);
-			}
-			
-			return;
+			address = EmitAddress(value, builder);
+		}
+		else
+		{
+			address = BuildEntryAlloca(builder, MapTypeSymbol(value.Type), "dropped");
+			builder.BuildStore(EmitValue(value, builder), address);
 		}
 		
-		var aggregate = EmitValue(value, builder);
-		for (var i = length - 1; i >= 0; i--)
-		{
-			var elementValue = builder.BuildExtractValue(aggregate, (uint)i, $"drop.elem{i}");
-			EmitDropValue(elementValue, array.ElementType, builder);
-		}
+		EmitDropCall(value.Type, address, builder);
 	}
 	
-	private void EmitDropValue(LLVMValueRef value, TypeSymbol type, LLVMBuilderRef builder)
+	private void EmitDropCall(TypeSymbol type, LLVMValueRef address, LLVMBuilderRef builder) =>
+		builder.BuildCall2(DropGlueType, GetDropGlue(type), [address]);
+	
+	private LLVMValueRef GetDropGlue(TypeSymbol type)
 	{
+		if (_dropGlue.TryGetValue(type, out var glue))
+			return glue;
+		
+		glue = currentModule.AddFunction($"drop${type.Name}", DropGlueType);
+		glue.Linkage = LLVMLinkage.LLVMInternalLinkage;
+		_dropGlue[type] = glue;
+		
+		using var builder = currentModule.Context.CreateBuilder();
+		builder.PositionAtEnd(glue.AppendBasicBlock("entry"));
+		var address = glue.GetParam(0);
 		switch (type)
 		{
-			case ArrayType array:
-			{
-				if (!_typePool.NeedsDrop(array.ElementType))
-					break;
-				
-				if (array.Length < 0 || array.Length > int.MaxValue)
-					throw new InvalidOperationException(
-						$"Cannot drop array type '{array.Name}' with non-fixed or too-large length");
-				
-				var length = (int)array.Length;
-				for (var i = length - 1; i >= 0; i--)
-				{
-					var elementValue = builder.BuildExtractValue(value, (uint)i, $"drop.elem{i}");
-					EmitDropValue(elementValue, array.ElementType, builder);
-				}
-				
-				break;
-			}
-			
 			case RecordSymbol record:
-			{
-				foreach (var field in record.Members.OfType<FieldSymbol>().Reverse())
-				{
-					var fieldType = _typePool.GetTypeOfMember(field);
-					if (!_typePool.NeedsDrop(fieldType))
-						continue;
-					
-					var fieldIndex = (uint)_typePool.GetFieldIndex(record, field);
-					var fieldValue = builder.BuildExtractValue(value, fieldIndex, field.Name);
-					EmitDropValue(fieldValue, fieldType, builder);
-				}
-				
+				EmitRecordDropGlue(record, address, builder);
 				break;
-			}
+			
+			case EnumSymbol enumType:
+				EmitEnumDropGlue(enumType, address, builder);
+				break;
+			
+			case ArrayType array:
+				EmitArrayDropGlue(array, address, builder);
+				break;
 		}
+		
+		builder.BuildRetVoid();
+		return glue;
 	}
 	
-	private void EmitRecordDrop(Value value, RecordSymbol record, LLVMBuilderRef builder)
+	private void EmitRecordDropGlue(RecordSymbol record, LLVMValueRef address, LLVMBuilderRef builder)
 	{
-		// Records own their dropping fields; the record storage itself may be stack
-		// storage, a field, or a dereferenced pointer. Never free the record address.
+		if (_typePool.GetDestructor(record) is { } destructor)
+		{
+			GetFunctionValue(destructor);
+			var function = _funMap[destructor];
+			builder.BuildCall2(function.FunctionType, function.FunctionValue, [address]);
+		}
+		
+		var recordType = MapTypeSymbol(record);
 		foreach (var field in record.Members.OfType<FieldSymbol>().Reverse())
 		{
 			var fieldType = _typePool.GetTypeOfMember(field);
 			if (!_typePool.NeedsDrop(fieldType))
 				continue;
 			
-			EmitDrop(new AccessValue(fieldType, value, field, value.SourceLocation), builder);
+			var index = (uint)_typePool.GetFieldIndex(record, field);
+			EmitDropCall(fieldType, builder.BuildStructGEP2(recordType, address, index, field.Name), builder);
 		}
+	}
+	
+	private void EmitEnumDropGlue(EnumSymbol enumType, LLVMValueRef address, LLVMBuilderRef builder)
+	{
+		var glue = builder.InsertBlock.Parent;
+		var type = MapTypeSymbol(enumType);
+		var done = glue.AppendBasicBlock("done");
+		var droppedCases = enumType.Cases
+			.Where(enumCase => enumCase.Fields.Any(field => _typePool.NeedsDrop(_typePool.GetTypeOfMember(field))))
+			.DistinctBy(enumCase => _typePool.GetCaseValue(enumType, enumCase))
+			.ToList();
+		
+		var tagAddress = builder.BuildStructGEP2(type, address, 0, "tag.addr");
+		var tag = builder.BuildLoad2(MapTypeSymbol(_typePool.GetTagType(enumType)), tagAddress, "tag");
+		var dispatch = builder.BuildSwitch(tag, done, (uint)droppedCases.Count);
+		foreach (var enumCase in droppedCases)
+		{
+			var block = glue.AppendBasicBlock(enumCase.Name);
+			dispatch.AddCase(EmitCaseTag(enumType, enumCase), block);
+			builder.PositionAtEnd(block);
+			
+			var payload = builder.BuildStructGEP2(type, address, 1, "payload");
+			var payloadType = GetPayloadType(enumCase);
+			for (var i = enumCase.Fields.Length - 1; i >= 0; i--)
+			{
+				var field = enumCase.Fields[i];
+				var fieldType = _typePool.GetTypeOfMember(field);
+				if (_typePool.NeedsDrop(fieldType))
+					EmitDropCall(fieldType, builder.BuildStructGEP2(payloadType, payload, (uint)i, field.Name),
+						builder);
+			}
+			
+			builder.BuildBr(done);
+		}
+		
+		builder.PositionAtEnd(done);
+	}
+	
+	private void EmitArrayDropGlue(ArrayType array, LLVMValueRef address, LLVMBuilderRef builder)
+	{
+		if (array.Length.IsZero)
+			return;
+		
+		var glue = builder.InsertBlock.Parent;
+		var entry = builder.InsertBlock;
+		var loop = glue.AppendBasicBlock("loop");
+		var done = glue.AppendBasicBlock("done");
+		var indexType = MapTypeSymbol(NativeSymbols.UIntSize);
+		builder.BuildBr(loop);
+		
+		builder.PositionAtEnd(loop);
+		var index = builder.BuildPhi(indexType, "index");
+		var element = builder.BuildSub(index, LLVMValueRef.CreateConstInt(indexType, 1), "element");
+		var zero = LLVMValueRef.CreateConstInt(indexType, 0);
+		var elementAddress = builder.BuildGEP2(MapTypeSymbol(array), address, new[] { zero, element }, "elemptr");
+		EmitDropCall(array.ElementType, elementAddress, builder);
+		builder.BuildCondBr(builder.BuildICmp(LLVMIntPredicate.LLVMIntNE, element, zero), loop, done);
+		index.AddIncoming([LLVMValueRef.CreateConstInt(indexType, (ulong)array.Length), element],
+			[entry, builder.InsertBlock], 2);
+		
+		builder.PositionAtEnd(done);
 	}
 	
 	private void EmitTerminator(LLVMBuilderRef builder, IBlockTerminator terminator,

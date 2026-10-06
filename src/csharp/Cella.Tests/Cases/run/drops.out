@@ -1,0 +1,59 @@
+-- order
+drop 3
+drop 2
+drop 1
+-- moves 1
+drop 10
+drop 11
+end
+-- moves 0
+drop 10
+end
+drop 11
+-- partial
+drop 20
+end
+drop 21
+-- outer
+outer 61
+drop 31
+drop 30
+-- effects
+drop 42
+drop 41
+drop 40
+-- owned
+drop 50
+took 50
+drop 51
+end
+-- arrays
+drop 62
+drop 61
+drop 60
+-- assigned
+drop 70
+end
+drop 71
+-- temporaries
+shown 80
+drop 80
+end
+-- looped
+drop 90
+drop 91
+drop 92
+-- early 1
+drop 100
+-- early 0
+drop 101
+drop 100
+-- exact 1
+drop 111
+drop 110
+-- exact 0
+drop 111
+-- constructed
+drop 120
+-- main
+[exit code 0]
