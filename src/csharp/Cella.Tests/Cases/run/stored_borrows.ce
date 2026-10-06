@@ -1,0 +1,175 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Buffer: rec
+{
+	id: i32
+
+	drop: op
+	{
+	}
+}
+
+Token: ref rec
+{
+	text: str
+	rest: str
+}
+
+Tally: ref rec
+{
+	count: mut[i32]
+	step: i32
+}
+
+Slot: ref enum
+{
+	empty
+	held(text: str)
+}
+
+Label: ref rec
+{
+	text: str
+
+	new: op(text: str)
+	{
+		self.text = text
+	}
+}
+
+Scope: ref rec
+{
+	depth: mut[i32]
+
+	new: op(mut depth: i32)
+	{
+		depth += 1
+		self.depth = mut depth
+	}
+
+	drop: op
+	{
+		self.depth -= 1
+	}
+}
+
+first: fun(token: Token) -> str = token.text
+
+swap: fun(mut token: Token)
+{
+	val text = token.text
+	token.text = token.rest
+	token.rest = text
+}
+
+rebuild: fun(mut token: Token)
+{
+	token = Token(token.rest, token.text)
+}
+
+restore: fun(mut token: Token)
+{
+	val saved = token.text
+	token = Token("x", "y")
+	token.text = saved
+}
+
+refill: fun(mut token: Token)
+{
+	token.rest = first(token)
+}
+
+shift: fun(mut words: array[str, 3])
+{
+	words[0] = words[1]
+	words[1] = "new"
+}
+
+clear: fun(mut slot: Slot)
+{
+	match mut slot
+	{
+		held(text) => text = "cleared"
+		empty => {}
+	}
+}
+
+attach: fun(own token: Token, other: str) -> Token
+{
+	token.text = other
+	ret token
+}
+
+bump: fun(tally: Tally)
+{
+	tally.count += tally.step
+}
+
+measure: fun(other: str) -> i32
+{
+	var token = Token("a", "b")
+	val target = mut token
+	target.text = other
+	ret i32(token.text.byteLength)
+}
+
+show: fun(text: str)
+{
+	printf("%.*s ", i32(text.byteLength), text.data)
+}
+
+main: fun -> i32
+{
+	var token = Token("a", "b")
+	swap(mut token)
+	show(token.text)
+	rebuild(mut token)
+	show(token.text)
+
+	var saved = Token("c", "d")
+	restore(mut saved)
+	refill(mut saved)
+	show(saved.rest)
+
+	var words: array[str, 3] = ["x", "y", "z"]
+	shift(mut words)
+	show(words[0])
+	show(words[1])
+
+	var slot = Slot.held("full")
+	clear(mut slot)
+	match slot
+	{
+		held(text) => show(text)
+		empty => {}
+	}
+
+	show(attach(Token("e", "f"), "other").text)
+	show(Label("label").text)
+
+	var count = 1
+	val tally = Tally(mut count, 4)
+	bump(tally)
+
+	var depth = 0
+	{
+		val scope = Scope(mut depth)
+		printf("%d ", depth)
+	}
+
+	var buffer = Buffer(7)
+	val view = imm buffer
+	var steps = 0
+	var plain = Tally(mut steps, 0)
+	plain.step = view.id
+	val moved = own buffer
+	plain.count += plain.step
+
+	printf("%d %d %d %d\n", count, depth, steps, measure("four"))
+	ret 0
+}

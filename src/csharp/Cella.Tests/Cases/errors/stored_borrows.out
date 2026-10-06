@@ -1,0 +1,69 @@
+
+====== stored_borrows.ce ======
+
+Error at line 41, column 16
+40 │ var local = 1
+41 │ self.count = imm local
+                  ╘═══════╛ Cannot store borrows of local variables in 'self'
+
+Error at line 51, column 16
+50 │ {
+51 │     self.level = imm level
+                      ╘═══════╛ Cannot store borrows of copied parameters in 'self'
+
+Error at line 61, column 15
+60 │ {
+61 │     self.view = imm buffer
+                     ╘════════╛ Cannot store borrows of 'own' parameters in 'self'
+
+Error at line 77, column 16
+76 │ var spare = 0
+77 │ self.depth = mut spare
+                  ╘═══════╛ Cannot store new borrows in 'self'
+
+Error at line 85, column 15
+84 │ {
+85 │     token.text = other
+                      ╘═══╛ Cannot store new borrows in 'mut' parameters
+
+Error at line 90, column 10
+89 │ {
+90 │     token = other
+                 ╘═══╛ Cannot store new borrows in 'mut' parameters
+
+Error at line 97, column 16
+96 │ var local = 1
+97 │ tally.count = mut local
+                   ╘═══════╛ Cannot store new borrows in 'mut' parameters
+
+Error at line 103, column 16
+102 │ val target = mut token
+103 │ target.text = other
+                    ╘═══╛ Cannot store new borrows in 'mut' parameters
+
+Error at line 110, column 24
+109 │ {
+110 │     held(text) => text = other
+                               ╘═══╛ Cannot store new borrows in 'mut' parameters
+
+Error at line 117, column 15
+116 │ {
+117 │     token.rest = pick(mut token)
+                       ╘═════════════╛ Cannot store new borrows in 'mut' parameters
+
+Error at line 122, column 13
+121 │ {
+122 │     words[0] = other
+                     ╘═══╛ Cannot store new borrows in 'mut' parameters
+
+Error at line 127, column 20
+126 │ {
+127 │     pair.token.text = other
+                            ╘═══╛ Cannot store borrows through borrows from parameters
+
+Error at line 132, column 20
+131 │ {
+132 │     pair.token.text = pair.token.rest
+                            ╘═════════════╛ Cannot store borrows through borrows from parameters
+
+[compilation failed]

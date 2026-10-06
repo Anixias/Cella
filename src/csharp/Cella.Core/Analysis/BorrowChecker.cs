@@ -30,9 +30,14 @@ public sealed class BorrowChecker(TypePool typePool, DiagnosticList diagnostics)
 	private readonly HashSet<SourceLocation> _reported = [];
 	private HashSet<VariableSymbol> returned = [];
 	private HashSet<ParameterSymbol> lenders = [];
+	private ParameterSymbol? receiver;
+	private ParameterSymbol? constructorSelf;
 	
 	public void Check(LoweredFunction function, Dictionary<BasicBlock, List<MemoryEvent>> events)
 	{
+		var symbol = function.Info.Symbol;
+		receiver = symbol.Kind is FunctionKind.Constructor or FunctionKind.Destructor ? symbol.Parameters[0] : null;
+		constructorSelf = symbol.Kind == FunctionKind.Constructor ? receiver : null;
 		returned = GetReturned(function);
 		lenders = GetLenders(function);
 		foreach (var (block, entryState) in Solve(function, events))
@@ -41,6 +46,7 @@ public sealed class BorrowChecker(TypePool typePool, DiagnosticList diagnostics)
 			foreach (var memoryEvent in events[block])
 			{
 				CheckUse(memoryEvent, state);
+				CheckStore(memoryEvent, state);
 				Transfer(state, memoryEvent);
 			}
 		}
@@ -50,6 +56,7 @@ public sealed class BorrowChecker(TypePool typePool, DiagnosticList diagnostics)
 		Dictionary<BasicBlock, List<MemoryEvent>> events)
 	{
 		var order = CfgUtils.GetReversePostorder(function);
+		var initialState = CreateInitialState(function);
 		var entryStates = new Dictionary<BasicBlock, BorrowState>();
 		var exitStates = new Dictionary<BasicBlock, BorrowState>();
 		var changed = true;
@@ -58,7 +65,7 @@ public sealed class BorrowChecker(TypePool typePool, DiagnosticList diagnostics)
 			changed = false;
 			foreach (var block in order)
 			{
-				var state = new BorrowState();
+				var state = block == function.Blocks[0] ? initialState.Copy() : new BorrowState();
 				foreach (var predecessor in block.GetPredecessors())
 				{
 					if (exitStates.TryGetValue(predecessor, out var exitState))
@@ -80,6 +87,20 @@ public sealed class BorrowChecker(TypePool typePool, DiagnosticList diagnostics)
 		}
 		
 		return entryStates;
+	}
+	
+	private BorrowState CreateInitialState(LoweredFunction function)
+	{
+		var state = new BorrowState();
+		var signature = function.Info.Signature;
+		var parameters = function.Info.Symbol.Parameters;
+		for (var i = 0; i < parameters.Length; i++)
+		{
+			if (parameters[i] != constructorSelf && typePool.HoldsBorrows(signature.GetDeclaredType(i)))
+				state.Set(parameters[i], [new Place(new HeldBorrows(parameters[i]), [])]);
+		}
+		
+		return state;
 	}
 	
 	private static HashSet<VariableSymbol> GetReturned(LoweredFunction function)
@@ -165,24 +186,64 @@ public sealed class BorrowChecker(TypePool typePool, DiagnosticList diagnostics)
 	
 	private void CheckReturn(VariableSymbol value, SourceLocation location, BorrowState state)
 	{
-		var escapes = state.Get(value).Keys
-			.Select(source => FindEscape(source.Root))
-			.OfType<Escape>()
-			.ToList();
-		
-		if (escapes.Count == 0 || !_reported.Add(location))
+		if (FindEscape(state.Get(value).Keys) is { } escape && _reported.Add(location))
+			diagnostics.Add(new(DiagnosticSeverity.Error, location, $"Cannot return borrows of {Describe(escape)}"));
+	}
+	
+	private void CheckStore(MemoryEvent memoryEvent, BorrowState state)
+	{
+		switch (memoryEvent)
+		{
+			case WriteEvent { Place.Root: LocalVariableSymbol { IsBorrowBinding: true } binding } e:
+				CheckTargets([..state.Get(binding).Keys], Sources(e.Value, state), e.Value, e.Location, state);
+				break;
+			
+			case WriteEvent e:
+				CheckTargets([e.Place], Written(e, state), e.Value, e.Location, state);
+				break;
+			
+			case IndirectWriteEvent e when GetBase(e.Target) is UnaryOpValue
+			{
+				Op: UnaryOperation.Dereference,
+				Operand.Type: BorrowType
+			}:
+				CheckTargets(BorrowSources(e.Target, state), Sources(e.Value, state), e.Value, e.Location, state);
+				break;
+		}
+	}
+	
+	private void CheckTargets(List<Place> targets, List<Place> written, Value value, SourceLocation fallback,
+		BorrowState state)
+	{
+		if (written.Count == 0)
 			return;
 		
-		var subject = escapes.Min() switch
+		var location = value.SourceLocation == SourceLocation.None ? fallback : value.SourceLocation;
+		foreach (var root in targets.Select(static target => target.Root).Distinct())
 		{
-			Escape.Local => "local variables",
-			Escape.Unstored => "unstored values",
-			Escape.Owned => "'own' parameters",
-			_ => "copied parameters"
-		};
-		
-		diagnostics.Add(new(DiagnosticSeverity.Error, location, $"Cannot return borrows of {subject}"));
+			var message = root switch
+			{
+				ParameterSymbol parameter when parameter == constructorSelf => FindEscape(written) is { } escape
+					? $"Cannot store borrows of {Describe(escape)} in 'self'"
+					: null,
+				ParameterSymbol { Mode: ParameterMode.Mut } parameter when !IsHeld(written, parameter, state) =>
+					parameter == receiver
+						? "Cannot store new borrows in 'self'"
+						: "Cannot store new borrows in 'mut' parameters",
+				HeldBorrows => "Cannot store borrows through borrows from parameters",
+				_ => null
+			};
+			
+			if (message is not null && _reported.Add(location))
+				diagnostics.Add(new(DiagnosticSeverity.Error, location, message));
+		}
 	}
+	
+	private static bool IsHeld(List<Place> written, ParameterSymbol parameter, BorrowState state) =>
+		written.All(source => source.Root is HeldBorrows { Parameter: var owner } && owner == parameter ||
+		                      state.Get(parameter).ContainsKey(source));
+	
+	private Escape? FindEscape(IEnumerable<Place> sources) => sources.Select(source => FindEscape(source.Root)).Min();
 	
 	private Escape? FindEscape(VariableSymbol root) => root switch
 	{
@@ -191,6 +252,14 @@ public sealed class BorrowChecker(TypePool typePool, DiagnosticList diagnostics)
 		ParameterSymbol => Escape.Copied,
 		LocalVariableSymbol local => local.Name.StartsWith('.') ? Escape.Unstored : Escape.Local,
 		_ => null
+	};
+	
+	private static string Describe(Escape escape) => escape switch
+	{
+		Escape.Local => "local variables",
+		Escape.Unstored => "unstored values",
+		Escape.Owned => "'own' parameters",
+		_ => "copied parameters"
 	};
 	
 	private void Transfer(BorrowState state, MemoryEvent memoryEvent)
@@ -206,14 +275,10 @@ public sealed class BorrowChecker(TypePool typePool, DiagnosticList diagnostics)
 				break;
 			
 			case WriteEvent e:
-				var written = e.Value is CallValue { Function.Symbol.Kind: FunctionKind.Constructor } constructor
-					? CallSources(constructor.Function.Signature, [..constructor.Arguments.Skip(1)], 1, state)
-					: Sources(e.Value, state);
-				
 				if (e.Place.Path.IsEmpty)
-					state.Set(e.Place.Root, written);
+					state.Set(e.Place.Root, Written(e, state));
 				else
-					state.Add(e.Place.Root, written);
+					state.Add(e.Place.Root, Written(e, state));
 				
 				break;
 			
@@ -242,20 +307,37 @@ public sealed class BorrowChecker(TypePool typePool, DiagnosticList diagnostics)
 			state.Add(root, written);
 	}
 	
-	private List<Place> Sources(Value value, BorrowState state) => value switch
+	private List<Place> Written(WriteEvent write, BorrowState state) => write.Value switch
 	{
-		UnaryOpValue { Op: UnaryOperation.AddressOf } v => BorrowSources(v.Operand, state),
-		MoveValue v => ReadSources(v.Place, state),
-		VariableValue or AccessValue { Member: FieldSymbol } or IndexerValue or EnumPayloadValue
-			or UnaryOpValue { Op: UnaryOperation.Dereference } => ReadSources(value, state),
-		ConversionValue v => Sources(v.Source, state),
-		AssignValue v => ReadSources(v.Left, state),
-		CallValue v when typePool.HoldsBorrows(v.Type) => CallSources(v.Function.Signature, v.Arguments, 0, state),
-		IndirectCallValue v when typePool.HoldsBorrows(v.Type) => IndirectCallSources(v, state),
-		EnumValue v => [..v.Payload.SelectMany(payload => Sources(payload, state))],
-		ArrayValue v => [..v.Elements.SelectMany(element => Sources(element, state))],
-		_ => []
+		CallValue { Function: { Symbol.Kind: FunctionKind.Constructor, Signature: var signature } } constructor =>
+			CarriesSources(signature.GetDeclaredType(0))
+				? CallSources(signature, [..constructor.Arguments.Skip(1)], 1, state)
+				: [],
+		var value => Sources(value, state)
 	};
+	
+	private List<Place> Sources(Value value, BorrowState state)
+	{
+		if (!CarriesSources(value.Type))
+			return [];
+		
+		return value switch
+		{
+			UnaryOpValue { Op: UnaryOperation.AddressOf } v => BorrowSources(v.Operand, state),
+			MoveValue v => ReadSources(v.Place, state),
+			VariableValue or AccessValue { Member: FieldSymbol } or IndexerValue or EnumPayloadValue
+				or UnaryOpValue { Op: UnaryOperation.Dereference } => ReadSources(value, state),
+			ConversionValue v => Sources(v.Source, state),
+			AssignValue v => ReadSources(v.Left, state),
+			CallValue v when typePool.HoldsBorrows(v.Type) => CallSources(v.Function.Signature, v.Arguments, 0, state),
+			IndirectCallValue v when typePool.HoldsBorrows(v.Type) => IndirectCallSources(v, state),
+			EnumValue v => [..v.Payload.SelectMany(payload => Sources(payload, state))],
+			ArrayValue v => [..v.Elements.SelectMany(element => Sources(element, state))],
+			_ => []
+		};
+	}
+	
+	private bool CarriesSources(TypeSymbol type) => type is PointerType || typePool.HoldsBorrows(type);
 	
 	private List<Place> ReadSources(Value place, BorrowState state)
 	{
@@ -334,6 +416,11 @@ public sealed class BorrowChecker(TypePool typePool, DiagnosticList diagnostics)
 		(PayloadProjection a, PayloadProjection b) => a.Case == b.Case && a.Index != b.Index,
 		_ => false
 	};
+	
+	private sealed class HeldBorrows(ParameterSymbol parameter) : VariableSymbol(parameter.Name)
+	{
+		public ParameterSymbol Parameter { get; } = parameter;
+	}
 	
 	private sealed class PlaceComparer : IEqualityComparer<Place>
 	{

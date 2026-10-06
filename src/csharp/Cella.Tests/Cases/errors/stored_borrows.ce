@@ -1,0 +1,135 @@
+mod test
+
+Buffer: rec
+{
+	id: i32
+
+	drop: op
+	{
+	}
+}
+
+Token: ref rec
+{
+	text: str
+	rest: str
+}
+
+Tally: ref rec
+{
+	count: mut[i32]
+}
+
+Pair: ref rec
+{
+	token: mut[Token]
+}
+
+Slot: ref enum
+{
+	empty
+	held(text: str)
+}
+
+Counter: ref rec
+{
+	count: imm[i32]
+
+	new: op
+	{
+		var local = 1
+		self.count = imm local
+	}
+}
+
+Gauge: ref rec
+{
+	level: imm[i32]
+
+	new: op(level: i32)
+	{
+		self.level = imm level
+	}
+}
+
+Viewer: ref rec
+{
+	view: imm[Buffer]
+
+	new: op(own buffer: Buffer)
+	{
+		self.view = imm buffer
+	}
+}
+
+Scope: ref rec
+{
+	depth: mut[i32]
+
+	new: op(mut depth: i32)
+	{
+		self.depth = mut depth
+	}
+
+	drop: op
+	{
+		var spare = 0
+		self.depth = mut spare
+	}
+}
+
+pick: fun(mut token: Token) -> str = token.text
+
+retarget: fun(mut token: Token, other: str)
+{
+	token.text = other
+}
+
+replace: fun(mut token: Token, other: Token)
+{
+	token = other
+	token.text = token.rest
+}
+
+repoint: fun(mut tally: Tally)
+{
+	var local = 1
+	tally.count = mut local
+}
+
+retargetThroughBorrow: fun(mut token: Token, other: str)
+{
+	val target = mut token
+	target.text = other
+}
+
+fill: fun(mut slot: Slot, other: str)
+{
+	match mut slot
+	{
+		held(text) => text = other
+		empty => {}
+	}
+}
+
+refill: fun(mut token: Token)
+{
+	token.rest = pick(mut token)
+}
+
+replaceWord: fun(mut words: array[str, 3], other: str)
+{
+	words[0] = other
+}
+
+retargetHeld: fun(pair: Pair, other: str)
+{
+	pair.token.text = other
+}
+
+shuffleHeld: fun(mut pair: Pair)
+{
+	pair.token.text = pair.token.rest
+}
+
+main: fun -> i32 = 0
