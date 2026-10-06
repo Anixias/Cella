@@ -3,12 +3,18 @@ using Cella.Core.Text;
 
 namespace Cella.Core.Syntax.Nodes;
 
-public sealed class RecordNode(Token identifier, IEnumerable<Token> modifiers, IEnumerable<IDeclarationNode> members)
-	: IDeclarationNode
+public sealed class RecordNode
+(
+	Token identifier,
+	IEnumerable<Token> modifiers,
+	bool isRef,
+	IEnumerable<IDeclarationNode> members
+) : IDeclarationNode
 {
 	public SourceLocation SourceLocation { get; } = identifier.SourceLocation;
 	public Token Identifier { get; } = identifier;
 	public ImmutableArray<Token> Modifiers { get; } = modifiers.ToImmutableArray();
+	public bool IsRef { get; } = isRef;
 	public ImmutableArray<IDeclarationNode> Members { get; } = members.ToImmutableArray();
 }
 

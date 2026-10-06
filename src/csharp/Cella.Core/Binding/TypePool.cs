@@ -65,6 +65,16 @@ public sealed class TypePool
 	public bool HasDefault(TypeSymbol type) => GetFacts(type).HasDefault;
 	public bool HasDefault(FieldSymbol field) => !field.IsRequired && HasDefault(GetTypeOfMember(field));
 	
+	public bool HoldsBorrows(TypeSymbol type) => type switch
+	{
+		BorrowType => true,
+		StringType => type == NativeSymbols.Str,
+		RecordSymbol record => record.IsRef,
+		EnumSymbol enumType => enumType.IsRef,
+		ArrayType array => HoldsBorrows(array.ElementType),
+		_ => false
+	};
+	
 	public bool PassesByPointer(TypeSymbol type, ParameterMode mode) =>
 		mode == ParameterMode.ReadOnly && NeedsDrop(type);
 	

@@ -1,0 +1,73 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Token: ref rec
+{
+	text: str
+	line: i32
+}
+
+Counter: ref rec
+{
+	count: mut[i32]
+	token: Token
+}
+
+Target: ref enum
+{
+	none
+	unit(health: imm[i32])
+}
+
+Scope: ref rec
+{
+	depth: mut[i32]
+
+	new: op(mut depth: i32)
+	{
+		depth += 1
+		self.depth = mut depth
+	}
+
+	drop: op
+	{
+		self.depth -= 1
+	}
+}
+
+describe: fun(target: Target) -> i32 = match target
+{
+	unit(health) => health
+	none => -1
+}
+
+main: fun -> i32
+{
+	var kills = 2
+	var counter = Counter(mut kills, Token("enemy", 7))
+	counter.count += 3
+	val copy = counter
+	copy.count += 10
+	printf("%d %zu %d\n", kills, counter.token.text.byteLength, copy.token.line)
+
+	val hp = 40
+	val target = Target.unit(hp)
+	printf("%d %d\n", describe(target), describe(Target.none))
+
+	var depth = 0
+	{
+		val outer = Scope(mut depth)
+		printf("%d ", depth)
+		{
+			val inner = Scope(mut depth)
+			printf("%d ", depth)
+		}
+		printf("%d ", depth)
+	}
+	printf("%d\n", depth)
+	ret 0
+}

@@ -10,7 +10,7 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 {
 	private static readonly Dictionary<string, TokenType> _topLevelContextualKeywords =
 		BuildContextualKeywords(TokenType.KeywordMod, TokenType.KeywordFun, TokenType.KeywordUse, TokenType.KeywordPub,
-			TokenType.KeywordExt, TokenType.KeywordRec, TokenType.KeywordEnum);
+			TokenType.KeywordExt, TokenType.KeywordRec, TokenType.KeywordEnum, TokenType.KeywordRef);
 	
 	private static readonly Dictionary<string, TokenType> _memberContextualKeywords =
 		BuildContextualKeywords(TokenType.KeywordFun, TokenType.KeywordPub, TokenType.KeywordNew, TokenType.KeywordDrop,
@@ -137,12 +137,13 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 				}
 				
 				var modifiers = ParseDeclarationModifiers(ref index);
+				var isRef = Match(ref index, _topLevelContextualKeywords, TokenType.KeywordRef);
 				
 				// Record
 				if (Match(ref index, _topLevelContextualKeywords, TokenType.KeywordRec))
 				{
 					var record = ParseDeclaration(ref index, identifier, "record",
-						(ref i) => ParseRecord(ref i, identifier, modifiers));
+						(ref i) => ParseRecord(ref i, identifier, modifiers, isRef));
 					
 					if (record is null)
 					{
@@ -155,11 +156,11 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 				}
 				
 				var kindIndex = index;
-				var isExternal = Match(ref index, _topLevelContextualKeywords, TokenType.KeywordExt);
+				var isExternal = !isRef && Match(ref index, _topLevelContextualKeywords, TokenType.KeywordExt);
 				if (Match(ref index, _topLevelContextualKeywords, TokenType.KeywordEnum))
 				{
 					var enumNode = ParseDeclaration(ref index, identifier, "enum",
-						(ref i) => ParseEnum(ref i, identifier, modifiers, isExternal));
+						(ref i) => ParseEnum(ref i, identifier, modifiers, isExternal, isRef));
 					
 					if (enumNode is null)
 					{
@@ -168,6 +169,16 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 					}
 					
 					declarations.Add(enumNode);
+					continue;
+				}
+				
+				if (isRef)
+				{
+					Report(Tokens[index], "Expected 'rec' or 'enum' after 'ref'");
+					if (!AtEnd(index))
+						index++;
+					
+					ResyncTopLevel(ref index);
 					continue;
 				}
 				
@@ -593,14 +604,14 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 		return new(mode, identifier, type, defaultValue);
 	}
 	
-	private RecordNode? ParseRecord(ref int index, Token identifier, IEnumerable<Token> modifiers)
+	private RecordNode? ParseRecord(ref int index, Token identifier, IEnumerable<Token> modifiers, bool isRef)
 	{
 		// When this is called, the identifier and rec keyword are already consumed
 		// Caller is expected to resync in case of errors
 		
 		// Empty record
 		if (!Match(ref index, out var openBrace, TokenType.OpOpenBrace))
-			return new(identifier, modifiers, []);
+			return new(identifier, modifiers, isRef, []);
 		
 		var members = new List<IDeclarationNode>();
 		while (!Match(ref index, TokenType.OpCloseBrace))
@@ -621,10 +632,11 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 			members.Add(member);
 		}
 		
-		return new(identifier, modifiers, members);
+		return new(identifier, modifiers, isRef, members);
 	}
 	
-	private EnumNode? ParseEnum(ref int index, Token identifier, IEnumerable<Token> modifiers, bool isExternal)
+	private EnumNode? ParseEnum(ref int index, Token identifier, IEnumerable<Token> modifiers, bool isExternal,
+		bool isRef)
 	{
 		ITypeNode? tagType = null;
 		if (Match(ref index, out var openParen, TokenType.OpOpenParen))
@@ -638,7 +650,7 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 		}
 		
 		if (!Match(ref index, out var openBrace, TokenType.OpOpenBrace))
-			return new(identifier, modifiers, isExternal, tagType, []);
+			return new(identifier, modifiers, isExternal, isRef, tagType, []);
 		
 		var cases = new List<EnumCaseNode>();
 		while (!Match(ref index, TokenType.OpCloseBrace))
@@ -655,7 +667,7 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 			cases.Add(enumCase);
 		}
 		
-		return new(identifier, modifiers, isExternal, tagType, cases);
+		return new(identifier, modifiers, isExternal, isRef, tagType, cases);
 	}
 	
 	private EnumCaseNode? ParseEnumCase(ref int index)

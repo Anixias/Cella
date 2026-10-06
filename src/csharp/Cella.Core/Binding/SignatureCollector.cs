@@ -255,7 +255,12 @@ public sealed class SignatureCollector
 			switch (member)
 			{
 				case FieldNode field:
-					_typePool.RegisterMember(record, (FieldSymbol)symbol, context.ResolveType(field.Type));
+					var fieldType = context.ResolveType(field.Type);
+					_typePool.RegisterMember(record, (FieldSymbol)symbol, fieldType);
+					if (!node.IsRef && _typePool.HoldsBorrows(fieldType))
+						Diagnostics.Add(ReportStoredBorrow(field.Type, node.Identifier, node.Modifiers, "records",
+							"rec"));
+					
 					break;
 				
 				case ConstructorNode constructor:
@@ -301,7 +306,12 @@ public sealed class SignatureCollector
 			
 			ImmutableArray<TypeSymbol> types = [..enumCase.Fields.Select(f => context.ResolveType(f.Node!.Type))];
 			for (var i = 0; i < types.Length; i++)
+			{
 				_typePool.RegisterPayloadField(enumCase.Fields[i], types[i]);
+				if (!node.IsRef && _typePool.HoldsBorrows(types[i]))
+					Diagnostics.Add(ReportStoredBorrow(enumCase.Fields[i].Node!.Type, node.Identifier, node.Modifiers,
+						"enums", "enum"));
+			}
 			
 			payloads[enumCase] = types;
 		}
@@ -316,6 +326,16 @@ public sealed class SignatureCollector
 		_typePool.RegisterEnum(enumType, tagType, values);
 		_completedTypes.Add(enumType);
 		Exit();
+	}
+	
+	private static Diagnostic ReportStoredBorrow(ITypeNode type, Token name, IEnumerable<Token> modifiers,
+		string kinds, string keyword)
+	{
+		var prefix = string.Concat(modifiers.Select(static modifier => $"{modifier.Text} "));
+		return new(DiagnosticSeverity.Error, type.SourceLocation, $"Cannot store borrows in plain {kinds}")
+		{
+			Hints = [$"Did you mean '{name.Text}: {prefix}ref {keyword}'?"]
+		};
 	}
 	
 	private ImmutableArray<BigInteger> CollectCaseValues(EnumSymbol enumType, ResolutionContext context)

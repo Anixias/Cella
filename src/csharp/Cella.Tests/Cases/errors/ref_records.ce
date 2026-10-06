@@ -1,0 +1,31 @@
+mod test
+
+Token: ref rec
+{
+	text: str
+}
+
+Label: rec
+{
+	text: str
+}
+
+Counter: pub rec
+{
+	count: mut[i32]
+	step: i32
+}
+
+Holder: rec
+{
+	token: Token
+	values: array[imm[i32], 2]
+}
+
+Target: enum
+{
+	none
+	unit(health: imm[i32])
+}
+
+main: fun -> i32 = 0

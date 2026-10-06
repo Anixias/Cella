@@ -17,7 +17,7 @@ Stats: rec
 	deaths: i32
 }
 
-Tally: rec
+Tally: ref rec
 {
 	count: mut[i32]
 	step: i32

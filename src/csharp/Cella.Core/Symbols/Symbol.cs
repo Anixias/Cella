@@ -449,6 +449,7 @@ public sealed class RecordSymbol : TypeSymbol, IExportable
 	public ImmutableArray<TypeSymbol> NestedTypes { get; }
 	public Visibility Visibility { get; }
 	public bool HasDestructor => Members.Any(static m => m is MethodSymbol { Function.Kind: FunctionKind.Destructor });
+	public bool IsRef => Node.IsRef;
 	
 	public RecordSymbol(string name, RecordNode node, IEnumerable<MemberSymbol> members,
 		IEnumerable<TypeSymbol> nestedTypes) : base(name)
@@ -467,6 +468,7 @@ public sealed class EnumSymbol : TypeSymbol, IExportable
 	public Visibility Visibility { get; }
 	public bool HasPayload => Cases.Any(static c => c.Fields.Length > 0);
 	public bool IsExternal => Node.IsExternal;
+	public bool IsRef => Node.IsRef;
 	
 	public EnumSymbol(EnumNode node, IEnumerable<EnumCaseSymbol> cases) : base(node.Identifier.Text)
 	{

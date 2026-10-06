@@ -1,0 +1,14 @@
+
+====== ref_declaration_syntax.ce ======
+
+Error at line 3, column 12
+2 │ 
+3 │ First: ref fun -> i32 = 0
+               ╘═╛ Expected 'rec' or 'enum' after 'ref'
+
+Error at line 5, column 13
+4 │ 
+5 │ Second: ref ext enum
+                ╘═╛ Expected 'rec' or 'enum' after 'ref'
+
+[compilation failed]

@@ -1,0 +1,10 @@
+mod test
+
+First: ref fun -> i32 = 0
+
+Second: ref ext enum
+{
+	a
+}
+
+main: fun -> i32 = 0

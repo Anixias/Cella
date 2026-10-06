@@ -1,6 +1,6 @@
 mod test
 
-Tally: rec
+Tally: ref rec
 {
 	count: mut[i32]
 }

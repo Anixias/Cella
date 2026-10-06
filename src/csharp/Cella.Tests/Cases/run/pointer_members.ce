@@ -23,7 +23,7 @@ Node: rec
 	next: ptr[Node]
 }
 
-Unit: rec
+Unit: ref rec
 {
 	position: Point
 	effect: Effect
