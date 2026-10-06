@@ -17,6 +17,7 @@ public sealed class LoweredFunction(FunctionInfo info)
 			
 			default:
 			{
+				Blocks.RemoveUnreachable();
 				foreach (var block in Blocks)
 					block.FillTerminator(ReturnTerminator.Void);
 				

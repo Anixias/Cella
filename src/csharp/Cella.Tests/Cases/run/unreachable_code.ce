@@ -1,0 +1,76 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Buffer: rec
+{
+	id: i32
+
+	drop: op
+	{
+		printf("drop %d ", self.id)
+	}
+}
+
+count: fun(limit: i32) -> i32
+{
+	var i = 0
+	var total = 0
+	loop while i < limit
+	{
+		i += 1
+		if i == 2
+		{
+			cont
+			total += 100
+		}
+
+		if i == 4
+		{
+			break
+			val lost = Buffer(99)
+			total += lost.id
+		}
+
+		total += i
+	}
+
+	ret total
+}
+
+forever: fun -> i32
+{
+	var i = 0
+	loop
+	{
+		i += 1
+		if i > 3
+			ret i
+	}
+
+	printf("never\n")
+}
+
+held: fun -> i32
+{
+	val first = Buffer(1)
+	ret first.id
+	val second = Buffer(2)
+	printf("%d ", second.id)
+}
+
+elements: fun(fallback: Buffer) -> i32
+{
+	val views = [imm fallback, ret fallback.id]
+	ret views[0].id
+}
+
+main: fun -> i32
+{
+	printf("%d %d %d %d\n", count(10), forever(), held(), elements(Buffer(3)))
+	ret 0
+	printf("after\n")
+}

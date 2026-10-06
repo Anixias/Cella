@@ -141,9 +141,10 @@ internal static class Program
 	{
 		// Phase 1: File parsing
 		var outputType = project.Project.OutputType;
-		var (files, hasParseErrors) = await ProcessProject(project, ct);
+		var (files, parseDiagnostics) = await ProcessProject(project, ct);
+		var diagnostics = new List<DiagnosticList> { parseDiagnostics };
 		
-		if (hasParseErrors)
+		if (ReportErrors(diagnostics, project.Directory))
 			return new(new(project.Name, SymbolTable.Empty, SignatureTable.Empty, null), outputType, null, false);
 		
 		if (files.Length == 0)
@@ -189,12 +190,10 @@ internal static class Program
 		var assemblySymbol = signatureCollector.FinishAssembly(project.Name);
 		var errorResult = new AssemblyInfo(assemblySymbol, outputType, null, false);
 		
-		var signatureErrors = signatureCollector.Diagnostics.Errors.Concat(resolver.Diagnostics.Errors).ToArray();
-		if (signatureErrors.Length > 0)
-		{
-			PrintDiagnostics(signatureErrors, project.Directory);
+		diagnostics.Add(signatureCollector.Diagnostics);
+		diagnostics.Add(resolver.Diagnostics);
+		if (ReportErrors(diagnostics, project.Directory))
 			return errorResult;
-		}
 		
 		// Phase 3: Symbol resolution
 		ImmutableArray<ResolvedSourceFileInfo> resolvedFiles;
@@ -203,25 +202,20 @@ internal static class Program
 				.Select(sfi => new ResolvedSourceFileInfo(sfi.FilePath, resolver.Resolve(sfi.Ast), sfi.Source))
 				.ToImmutableArray();
 			
-			if (resolver.Diagnostics.ErrorCount > 0)
-			{
-				PrintDiagnostics(resolver.Diagnostics.Errors, project.Directory);
+			if (ReportErrors(diagnostics, project.Directory))
 				return errorResult;
-			}
 		}
 		
 		// Phase 4: Type checking
 		{
 			var typeChecker = new TypeChecker(signatureCollector.Evaluator, typePool);
+			diagnostics.Add(typeChecker.Diagnostics);
 			
 			foreach (var (_, resolvedAst, _) in resolvedFiles)
 				typeChecker.Check(resolvedAst);
 			
-			if (typeChecker.Diagnostics.ErrorCount > 0)
-			{
-				PrintDiagnostics(typeChecker.Diagnostics.Errors, project.Directory);
+			if (ReportErrors(diagnostics, project.Directory))
 				return errorResult;
-			}
 		}
 		
 		// Phase 5: Lowering
@@ -236,6 +230,7 @@ internal static class Program
 		// Phase 6: Control flow analysis
 		{
 			var cfgDiagnostics = new DiagnosticList();
+			diagnostics.Add(cfgDiagnostics);
 			var controlFlowAnalyzer = new ControlFlowAnalyzer(cfgDiagnostics);
 			var memoryChecker = new MemoryChecker(typePool, cfgDiagnostics);
 			
@@ -256,11 +251,10 @@ internal static class Program
 					Console.WriteLine(LoweredModulePrinter.Print(module));
 			}
 			
-			if (cfgDiagnostics.Count > 0)
-			{
-				PrintDiagnostics(cfgDiagnostics, project.Directory);
+			if (ReportErrors(diagnostics, project.Directory))
 				return errorResult;
-			}
+			
+			PrintDiagnostics(diagnostics.SelectMany(static list => list), project.Directory);
 		}
 		
 		// Phase 7: Code generation
@@ -337,11 +331,11 @@ internal static class Program
 		return new(assemblySymbol, outputType, outputPath, true);
 	}
 	
-	private static async Task<(ImmutableArray<SourceFileInfo> Files, bool HasErrors)> ProcessProject(
+	private static async Task<(ImmutableArray<SourceFileInfo> Files, DiagnosticList Diagnostics)> ProcessProject(
 		ProjectInfo project, CancellationToken ct = default)
 	{
 		var files = new ConcurrentBag<SourceFileInfo>();
-		var hasErrors = false;
+		var diagnostics = new DiagnosticList();
 		var filePaths = CellaProject.FindSourceFiles(project.Directory);
 		
 		foreach (var sourcePath in filePaths.AsParallel())
@@ -369,12 +363,8 @@ internal static class Program
 			var ast = parser.Parse();
 			ct.ThrowIfCancellationRequested();
 			
-			if (ast is null)
-			{
-				PrintDiagnostics(parser.Diagnostics.Errors, project.Directory);
-				hasErrors = true;
-			}
-			else
+			diagnostics.AddRange(parser.Diagnostics);
+			if (ast is not null)
 			{
 				// TODO Make opt-in via CLI flags
 				//Console.WriteLine(AstPrinter.Print(ast));
@@ -382,7 +372,16 @@ internal static class Program
 			}
 		}
 		
-		return (files.ToImmutableArray(), hasErrors);
+		return (files.ToImmutableArray(), diagnostics);
+	}
+	
+	private static bool ReportErrors(List<DiagnosticList> diagnostics, string directory)
+	{
+		if (diagnostics.All(static list => list.ErrorCount == 0))
+			return false;
+		
+		PrintDiagnostics(diagnostics.SelectMany(static list => list), directory);
+		return true;
 	}
 	
 	public static string GetOutputFileName(string baseName, TargetTriple target, ProjectOutputType outputType)

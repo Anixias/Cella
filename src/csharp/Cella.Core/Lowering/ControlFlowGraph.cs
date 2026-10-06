@@ -28,12 +28,27 @@ public sealed class ControlFlowGraph : IReadOnlyList<BasicBlock>
 		if (!_blocks.Remove(block))
 			return false;
 		
+		Unlink(block);
+		return true;
+	}
+	
+	public void RemoveUnreachable()
+	{
+		var reachable = FindReachable();
+		foreach (var block in _blocks.Where(block => !reachable.Contains(block)).ToList())
+		{
+			_blocks.Remove(block);
+			Unlink(block);
+		}
+	}
+	
+	private void Unlink(BasicBlock block)
+	{
 		if (_successors.Remove(block, out var successors))
 			foreach (var successor in successors)
 				RemovePredecessor(successor, block);
 		
 		_predecessors.Remove(block);
-		return true;
 	}
 	
 	public void SetTerminator(BasicBlock? block, IBlockTerminator terminator)
