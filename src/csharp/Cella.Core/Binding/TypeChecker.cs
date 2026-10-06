@@ -4,6 +4,7 @@ using Cella.Core.Binding.Conversions;
 using Cella.Core.Binding.Nodes;
 using Cella.Core.Binding.Operations;
 using Cella.Core.Symbols;
+using Cella.Core.Syntax.Nodes;
 using Cella.Core.Text;
 using Cella.Diagnostics;
 
@@ -378,6 +379,8 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool) 
 		else if (!IsDeferredWrite(node) && FindImmutableBinding(node.Left) is { } binding)
 			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Left.Syntax.SourceLocation,
 				$"Cannot reassign {DescribeImmutable(binding)}"));
+		else if (node.IsOwnStore)
+			CheckOwnStore(node);
 		
 		var expected = node.Left.Type;
 		var actual = node.Right.Type;
@@ -392,6 +395,16 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool) 
 		VisitNode(node.Right);
 		if (node.Operation is null)
 			CheckConsumed(node.Right);
+	}
+	
+	private void CheckOwnStore(ResolvedAssignmentExpressionNode node)
+	{
+		if (!IsThroughPointer(node.Left))
+			Diagnostics.Add(new(DiagnosticSeverity.Error, ((BinaryOpExpressionNode)node.Syntax).Left.SourceLocation,
+				"Cannot assign with 'own' except through pointers"));
+		else if (!typePool.NeedsDrop(node.Left.Type))
+			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Left.Syntax.SourceLocation,
+				$"Cannot move '{node.Left.Type.Name}' values into a pointer"));
 	}
 	
 	public void Visit(ResolvedBinaryOpExpressionNode node)

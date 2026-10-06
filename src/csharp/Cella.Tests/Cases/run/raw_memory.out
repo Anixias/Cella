@@ -1,0 +1,8 @@
+drop 1
+moved 2
+drop 2
+drop 3
+drop 4
+count 1
+drop 5
+[exit code 0]

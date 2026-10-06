@@ -1047,7 +1047,7 @@ public sealed class Lowerer
 		private Value LowerAssignment(ResolvedAssignmentExpressionNode node, bool isValue)
 		{
 			var left = VisitPlace(node.Left);
-			var dropsOld = _typePool.NeedsDrop(node.Type);
+			var dropsOld = !node.IsOwnStore && _typePool.NeedsDrop(node.Type);
 			
 			// Need to stabilize the left side first so it doesn't double-evaluate
 			var emits = MayEmit(node.Right);

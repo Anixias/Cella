@@ -1,0 +1,56 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+	malloc: fun(size: usize) -> ptr
+	free: fun(memory: ptr)
+}
+
+Buffer: rec
+{
+	id: i32
+
+	drop: op
+	{
+		printf("drop %d\n", self.id)
+	}
+}
+
+Holder: rec
+{
+	buffer: Buffer
+	count: i32
+}
+
+make: fun(id: i32) -> Buffer = Buffer(id)
+
+main: fun -> i32
+{
+	val p = ptr[Buffer](malloc(sizeOf(Buffer)))
+	own *p = make(1)
+	*p = make(2)
+	{
+		val moved = own *p
+		printf("moved %d\n", moved.id)
+	}
+
+	own *p = make(3)
+	{
+		val dead = own *p
+	}
+
+	free(p)
+
+	val h = ptr[Holder](malloc(sizeOf(Holder)))
+	own h.buffer = make(4)
+	h.count = 1
+	h.buffer = make(5)
+	printf("count %d\n", h.count)
+	{
+		val dead = own h.buffer
+	}
+
+	free(h)
+	ret 0
+}

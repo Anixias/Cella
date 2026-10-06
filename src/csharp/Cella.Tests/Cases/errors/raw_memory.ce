@@ -1,0 +1,37 @@
+mod test
+
+ext
+{
+	malloc: fun(size: usize) -> ptr
+}
+
+Buffer: rec
+{
+	id: i32
+
+	drop: op
+	{
+	}
+}
+
+Holder: rec
+{
+	buffer: Buffer
+
+	new: op(id: i32)
+	{
+		own self.buffer = Buffer(id)
+	}
+}
+
+make: fun(id: i32) -> Buffer = Buffer(id)
+
+main: fun -> i32
+{
+	var b = make(1)
+	own b = make(2)
+	val q = ptr[i32](malloc(4))
+	own *q = 5
+	own *q += 1
+	ret 0
+}

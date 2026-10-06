@@ -1666,7 +1666,8 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		var op = node.Op;
 		if (IsAssignment(op.Type))
 		{
-			var left = VisitNode(node.Left, null);
+			var isOwnStore = node.Left is OwnExpressionNode;
+			var left = VisitNode(node.Left is OwnExpressionNode target ? target.Value : node.Left, null);
 			if (left is ResolvedFunctionGroupExpressionNode)
 			{
 				VisitNode(node.Right, null);
@@ -1674,10 +1675,10 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			}
 			
 			if (op.Type != TokenType.OpEqual)
-				return ResolveCompoundAssignment(node, MaterializeAsDefault(left));
+				return ResolveCompoundAssignment(node, MaterializeAsDefault(left), isOwnStore);
 			
 			var right = VisitNode(node.Right, left.Type);
-			return new ResolvedAssignmentExpressionNode(left.Type, left, op, right, null, node);
+			return new ResolvedAssignmentExpressionNode(left.Type, left, op, right, null, node, isOwnStore);
 		}
 		else
 		{
@@ -1741,7 +1742,8 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		}
 	}
 	
-	private IResolvedExpressionNode ResolveCompoundAssignment(BinaryOpExpressionNode node, IResolvedExpressionNode left)
+	private IResolvedExpressionNode ResolveCompoundAssignment(BinaryOpExpressionNode node, IResolvedExpressionNode left,
+		bool isOwnStore)
 	{
 		var candidates = _operatorRegistry.GetBinaryCandidates(node.Op.Type)
 			.Where(candidate => candidate.ReturnType == left.Type && candidate.ParameterTypes[0] == left.Type)
@@ -1766,7 +1768,8 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			return Error(node, rangeError, CurrentTargetType);
 		
 		var operation = (OperationImpl)resolution.Callable;
-		return new ResolvedAssignmentExpressionNode(left.Type, left, node.Op, resolvedRight, operation, node);
+		return new ResolvedAssignmentExpressionNode(left.Type, left, node.Op, resolvedRight, operation, node,
+			isOwnStore);
 	}
 	
 	public IResolvedExpressionNode Visit(ChainedExpressionNode node)

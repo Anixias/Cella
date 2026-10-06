@@ -14,7 +14,7 @@ Error at line 33, column 11
 Error at line 34, column 2
 33 │ bump(mut own a)
 34 │ own a = Buffer(2)
-     ╘═══╛ Assignment target must be addressable
+     ╘═══╛ Cannot assign with 'own' except through pointers
 
 Error at line 35, column 2
 34 │ own a = Buffer(2)

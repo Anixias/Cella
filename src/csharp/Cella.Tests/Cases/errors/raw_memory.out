@@ -1,0 +1,24 @@
+
+====== raw_memory.ce ======
+
+Error at line 23, column 3
+22 │ {
+23 │     own self.buffer = Buffer(id)
+         ╘═════════════╛ Cannot assign with 'own' except through pointers
+
+Error at line 32, column 2
+31 │ var b = make(1)
+32 │ own b = make(2)
+     ╘═══╛ Cannot assign with 'own' except through pointers
+
+Error at line 34, column 6
+33 │ val q = ptr[i32](malloc(4))
+34 │ own *q = 5
+         ╘╛ Cannot move 'i32' values into a pointer
+
+Error at line 35, column 6
+34 │ own *q = 5
+35 │ own *q += 1
+         ╘╛ Cannot move 'i32' values into a pointer
+
+[compilation failed]

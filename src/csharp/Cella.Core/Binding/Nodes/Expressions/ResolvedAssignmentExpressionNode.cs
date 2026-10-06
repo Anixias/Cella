@@ -12,7 +12,8 @@ public sealed class ResolvedAssignmentExpressionNode
 	Token op,
 	IResolvedExpressionNode right,
 	OperationImpl? operation,
-	IExpressionNode syntax
+	IExpressionNode syntax,
+	bool isOwnStore
 ) : IResolvedExpressionNode
 {
 	public TypeSymbol Type { get; } = type;
@@ -21,4 +22,5 @@ public sealed class ResolvedAssignmentExpressionNode
 	public Token Op { get; } = op;
 	public IResolvedExpressionNode Right { get; } = right;
 	public OperationImpl? Operation { get; } = operation;
+	public bool IsOwnStore { get; } = isOwnStore;
 }
