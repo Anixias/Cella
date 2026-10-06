@@ -1,0 +1,79 @@
+
+====== returned_borrows.ce ======
+
+Error at line 41, column 6
+40 │ val x = 5
+41 │ ret imm x
+         ╘═══╛ Cannot return borrows of local variables
+
+Error at line 48, column 6
+47 │ val view = imm x
+48 │ ret view
+         ╘══╛ Cannot return borrows of local variables
+
+Error at line 54, column 6
+53 │ var stats = Stats(1)
+54 │ ret kills(mut stats)
+         ╘══════════════╛ Cannot return borrows of local variables
+
+Error at line 60, column 6
+59 │ var stats = Stats(1)
+60 │ ret get(mut stats)
+         ╘════════════╛ Cannot return borrows of local variables
+
+Error at line 66, column 6
+65 │ var count = 1
+66 │ ret Tally(mut count, 1)
+         ╘═════════════════╛ Cannot return borrows of local variables
+
+Error at line 73, column 6
+72 │ val tally = Tally(mut count, 1)
+73 │ ret tally
+         ╘═══╛ Cannot return borrows of local variables
+
+Error at line 82, column 6
+81 │     view = local
+82 │ ret view
+         ╘══╛ Cannot return borrows of local variables
+
+Error at line 90, column 23
+89 │ {
+90 │     hold(buffer) => ret buffer
+                             ╘════╛ Cannot return borrows of local variables
+
+Error at line 95, column 34
+94 │ 
+95 │ returnTemporary: fun -> Holder = Holder(make(3))
+                                      ╘═════════════╛ Cannot return borrows of unstored values
+
+Error at line 97, column 55
+96 │ 
+97 │ returnOwned: fun(own buffer: Buffer) -> imm[Buffer] = imm buffer
+                                                           ╘════════╛ Cannot return borrows of 'own' parameters
+
+Error at line 99, column 52
+98 │ 
+99 │ returnOwnedCopy: fun(own value: i32) -> imm[i32] = imm value
+                                                        ╘═══════╛ Cannot return borrows of 'own' parameters
+
+Error at line 104, column 7
+103 │ if a > b
+104 │     ret imm a
+              ╘═══╛ Cannot return borrows of copied parameters
+
+Error at line 105, column 6
+104 │     ret imm a
+105 │ ret imm b
+          ╘═══╛ Cannot return borrows of copied parameters
+
+Error at line 108, column 52
+107 │ 
+108 │ returnCopiedField: fun(tally: Tally) -> imm[i32] = imm tally.step
+                                                         ╘════════════╛ Cannot return borrows of copied parameters
+
+Error at line 110, column 48
+109 │ 
+110 │ returnCopiedText: fun(text: str) -> imm[str] = imm text
+                                                     ╘══════╛ Cannot return borrows of copied parameters
+
+[compilation failed]

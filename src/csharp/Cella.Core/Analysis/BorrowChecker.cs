@@ -17,12 +17,24 @@ public sealed class BorrowChecker(TypePool typePool, DiagnosticList diagnostics)
 		Dropped
 	}
 	
+	private enum Escape
+	{
+		Local,
+		Unstored,
+		Owned,
+		Copied
+	}
+	
 	private readonly record struct Invalidation(Ending Ending, SourceLocation Location);
 	
 	private readonly HashSet<SourceLocation> _reported = [];
+	private HashSet<VariableSymbol> returned = [];
+	private HashSet<ParameterSymbol> lenders = [];
 	
 	public void Check(LoweredFunction function, Dictionary<BasicBlock, List<MemoryEvent>> events)
 	{
+		returned = GetReturned(function);
+		lenders = GetLenders(function);
 		foreach (var (block, entryState) in Solve(function, events))
 		{
 			var state = entryState.Copy();
@@ -70,10 +82,35 @@ public sealed class BorrowChecker(TypePool typePool, DiagnosticList diagnostics)
 		return entryStates;
 	}
 	
+	private static HashSet<VariableSymbol> GetReturned(LoweredFunction function)
+	{
+		var roots = new HashSet<VariableSymbol>();
+		foreach (var block in function.Blocks)
+		{
+			if (block.Terminator is ReturnTerminator { Value: { } value } &&
+			    EventLinearizer.GetPlace(value is MoveValue move ? move.Place : value) is { } place)
+				roots.Add(place.Root);
+		}
+		
+		return roots;
+	}
+	
+	private HashSet<ParameterSymbol> GetLenders(LoweredFunction function)
+	{
+		var signature = function.Info.Signature;
+		return function.Info.Symbol.Parameters
+			.Where((_, i) => Lends(signature.GetMode(i), signature.GetDeclaredType(i)))
+			.ToHashSet();
+	}
+	
 	private void CheckUse(MemoryEvent memoryEvent, BorrowState state)
 	{
 		switch (memoryEvent)
 		{
+			case AccessEvent e when returned.Contains(e.Place.Root) && typePool.HoldsBorrows(e.Type):
+				CheckReturn(e.Place.Root, e.Location, state);
+				break;
+			
 			case AccessEvent e when e.Place.Root is LocalVariableSymbol { IsBorrowBinding: true } ||
 			                        typePool.HoldsBorrows(e.Type):
 				ReportEnded(e.Place.Root, e.Location, state, null);
@@ -124,6 +161,36 @@ public sealed class BorrowChecker(TypePool typePool, DiagnosticList diagnostics)
 		Ending.Moved => "Moved",
 		Ending.Reassigned => "Reassigned",
 		_ => "Dropped"
+	};
+	
+	private void CheckReturn(VariableSymbol value, SourceLocation location, BorrowState state)
+	{
+		var escapes = state.Get(value).Keys
+			.Select(source => FindEscape(source.Root))
+			.OfType<Escape>()
+			.ToList();
+		
+		if (escapes.Count == 0 || !_reported.Add(location))
+			return;
+		
+		var subject = escapes.Min() switch
+		{
+			Escape.Local => "local variables",
+			Escape.Unstored => "unstored values",
+			Escape.Owned => "'own' parameters",
+			_ => "copied parameters"
+		};
+		
+		diagnostics.Add(new(DiagnosticSeverity.Error, location, $"Cannot return borrows of {subject}"));
+	}
+	
+	private Escape? FindEscape(VariableSymbol root) => root switch
+	{
+		ParameterSymbol parameter when lenders.Contains(parameter) => null,
+		ParameterSymbol { Mode: ParameterMode.Own } => Escape.Owned,
+		ParameterSymbol => Escape.Copied,
+		LocalVariableSymbol local => local.Name.StartsWith('.') ? Escape.Unstored : Escape.Local,
+		_ => null
 	};
 	
 	private void Transfer(BorrowState state, MemoryEvent memoryEvent)
@@ -251,9 +318,10 @@ public sealed class BorrowChecker(TypePool typePool, DiagnosticList diagnostics)
 	}
 	
 	private List<Place> ArgumentSources(Value argument, ParameterMode mode, TypeSymbol declared, BorrowState state) =>
-		mode == ParameterMode.Mut || typePool.PassesByPointer(declared, mode)
-			? Expand(Sources(argument, state), state)
-			: Sources(argument, state);
+		Lends(mode, declared) ? Expand(Sources(argument, state), state) : Sources(argument, state);
+	
+	private bool Lends(ParameterMode mode, TypeSymbol declared) =>
+		mode == ParameterMode.Mut || typePool.PassesByPointer(declared, mode);
 	
 	private static bool Overlaps(Place first, Place second) => first.Root == second.Root &&
 	                                                           !first.Path.Zip(second.Path).Any(static pair =>

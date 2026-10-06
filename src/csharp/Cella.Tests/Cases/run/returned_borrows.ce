@@ -1,0 +1,142 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Buffer: rec
+{
+	id: i32
+
+	drop: op
+	{
+	}
+}
+
+Enemy: rec
+{
+	name: Buffer
+	hp: i32
+}
+
+Stats: rec
+{
+	kills: i32
+	deaths: i32
+}
+
+Tally: ref rec
+{
+	count: mut[i32]
+	step: i32
+}
+
+Effect: enum
+{
+	none
+	hold(buffer: Buffer)
+}
+
+Scope: ref rec
+{
+	depth: mut[i32]
+
+	new: op(mut depth: i32)
+	{
+		depth += 1
+		self.depth = mut depth
+	}
+
+	drop: op
+	{
+		self.depth -= 1
+	}
+}
+
+base: val i32 = 3
+
+kills: fun(mut stats: Stats) -> mut[i32] = mut stats.kills
+
+forward: fun(mut stats: Stats) -> mut[i32] = kills(mut stats)
+
+apply: fun(get: fun(mut Stats) -> mut[i32], mut stats: Stats) -> mut[i32] = get(mut stats)
+
+stronger: fun(a: Enemy, b: Enemy) -> imm[Enemy]
+{
+	if a.hp >= b.hp
+		ret imm a
+	ret imm b
+}
+
+name: fun(enemy: Enemy) -> imm[Buffer]
+{
+	val view = imm enemy
+	ret imm view.name
+}
+
+count: fun(tally: Tally) -> mut[i32] = tally.count
+
+pass: fun(tally: Tally) -> Tally = tally
+
+either: fun(mut a: i32, mut b: i32, flag: bool) -> imm[i32]
+{
+	var view: imm[i32] = a
+	if flag
+		view = b
+	ret view
+}
+
+payload: fun(mut effect: Effect, mut fallback: Buffer) -> imm[Buffer]
+{
+	match effect
+	{
+		hold(buffer) => ret buffer
+		none => ret fallback
+	}
+}
+
+enter: fun(mut depth: i32) -> Scope = Scope(mut depth)
+
+limit: fun -> imm[i32] = imm base
+
+greeting: fun -> str = "hello"
+
+main: fun -> i32
+{
+	var stats = Stats(1, 2)
+	val total = forward(mut stats)
+	total += 4
+	val again = apply(kills, mut stats)
+	again += 1
+	printf("%d ", stats.kills)
+
+	val first = Enemy(Buffer(1), 3)
+	val second = Enemy(Buffer(2), 5)
+	val best = stronger(first, second)
+	printf("%d %d ", best.name.id, name(first).id)
+
+	var x = 10
+	val tally = Tally(mut x, 2)
+	val counter = count(pass(tally))
+	counter += 1
+	printf("%d ", x)
+
+	var a = 1
+	var b = 2
+	printf("%d ", either(mut a, mut b, true))
+
+	var effect = Effect.hold(Buffer(7))
+	var fallback = Buffer(9)
+	printf("%d ", payload(mut effect, mut fallback).id)
+
+	var depth = 0
+	{
+		val scope = enter(mut depth)
+		printf("%d ", depth)
+	}
+
+	val text = greeting()
+	printf("%d %d %.*s\n", depth, limit(), i32(text.byteLength), text.data)
+	ret 0
+}

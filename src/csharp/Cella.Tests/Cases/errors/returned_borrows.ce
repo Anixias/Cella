@@ -1,0 +1,112 @@
+mod test
+
+Buffer: rec
+{
+	id: i32
+
+	drop: op
+	{
+	}
+}
+
+Stats: rec
+{
+	kills: i32
+}
+
+Tally: ref rec
+{
+	count: mut[i32]
+	step: i32
+}
+
+Holder: ref rec
+{
+	buffer: imm[Buffer]
+}
+
+Effect: enum
+{
+	none
+	hold(buffer: Buffer)
+}
+
+kills: fun(mut stats: Stats) -> mut[i32] = mut stats.kills
+
+make: fun(id: i32) -> Buffer = Buffer(id)
+
+returnBorrow: fun -> imm[i32]
+{
+	val x = 5
+	ret imm x
+}
+
+returnStoredBorrow: fun -> imm[i32]
+{
+	val x = 5
+	val view = imm x
+	ret view
+}
+
+returnCallResult: fun -> mut[i32]
+{
+	var stats = Stats(1)
+	ret kills(mut stats)
+}
+
+returnIndirectResult: fun(get: fun(mut Stats) -> mut[i32]) -> mut[i32]
+{
+	var stats = Stats(1)
+	ret get(mut stats)
+}
+
+returnRecord: fun -> Tally
+{
+	var count = 1
+	ret Tally(mut count, 1)
+}
+
+returnStoredRecord: fun -> Tally
+{
+	var count = 1
+	val tally = Tally(mut count, 1)
+	ret tally
+}
+
+returnEitherBorrow: fun(mut x: i32, flag: bool) -> imm[i32]
+{
+	var local = 4
+	var view: imm[i32] = x
+	if flag
+		view = local
+	ret view
+}
+
+returnBinding: fun(mut fallback: Buffer) -> imm[Buffer]
+{
+	val effect = Effect.hold(Buffer(1))
+	match effect
+	{
+		hold(buffer) => ret buffer
+		none => ret fallback
+	}
+}
+
+returnTemporary: fun -> Holder = Holder(make(3))
+
+returnOwned: fun(own buffer: Buffer) -> imm[Buffer] = imm buffer
+
+returnOwnedCopy: fun(own value: i32) -> imm[i32] = imm value
+
+returnCopied: fun(a: i32, b: i32) -> imm[i32]
+{
+	if a > b
+		ret imm a
+	ret imm b
+}
+
+returnCopiedField: fun(tally: Tally) -> imm[i32] = imm tally.step
+
+returnCopiedText: fun(text: str) -> imm[str] = imm text
+
+main: fun -> i32 = 0

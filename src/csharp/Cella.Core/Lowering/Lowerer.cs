@@ -549,11 +549,11 @@ public sealed class Lowerer
 			if (currentBlock is not { } block)
 				return;
 			
-			if (value is not null)
+			if (expression is not null && value is not null)
 			{
 				var returnSymbol = CreateTempSymbol(value.Type, "return");
 				block.Instructions.Add(new LocalVarInstruction(returnSymbol, value, location, scopeId: 0));
-				value = Consume(new VariableValue(new(returnSymbol, value.Type), location));
+				value = Consume(new VariableValue(new(returnSymbol, value.Type), expression.Syntax.SourceLocation));
 			}
 			
 			EmitScopeEndsToDepth(0);
