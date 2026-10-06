@@ -11,10 +11,6 @@ public sealed class MemoryChecker(TypePool typePool, DiagnosticList diagnostics)
 {
 	private readonly record struct Uninitialized(string Condition, IEnumerable<MoveSite> Moves);
 	
-	private readonly Dictionary<DropInstruction, DropState> _dropStates = [];
-	
-	public IReadOnlyDictionary<DropInstruction, DropState> DropStates => _dropStates;
-	
 	public void Check(LoweredFunction function)
 	{
 		var events = EventLinearizer.Linearize(function);
@@ -22,9 +18,12 @@ public sealed class MemoryChecker(TypePool typePool, DiagnosticList diagnostics)
 		var paths = MovePaths.Build(function, events.Values.SelectMany(static e => e), requiredFields, typePool);
 		var entryState = CreateEntryState(function, paths);
 		var reportedMoves = new HashSet<SourceLocation>();
+		var drops = new Dictionary<DropInstruction, (MovePath Path, InitState State)>();
 		InitState? returnState = null;
-		foreach (var (block, state) in SolveInitialization(function, events, paths, entryState))
+		var entryStates = SolveInitialization(function, events, paths, entryState);
+		foreach (var (block, blockEntryState) in entryStates)
 		{
+			var state = blockEntryState.Copy();
 			foreach (var memoryEvent in events[block])
 			{
 				switch (memoryEvent)
@@ -47,7 +46,7 @@ public sealed class MemoryChecker(TypePool typePool, DiagnosticList diagnostics)
 						break;
 					
 					case DropEvent drop when paths.Find(drop.Place) is { } path:
-						_dropStates[drop.Instruction] = state.GetDropState(path);
+						drops[drop.Instruction] = (path, state.Copy());
 						break;
 				}
 				
@@ -66,6 +65,9 @@ public sealed class MemoryChecker(TypePool typePool, DiagnosticList diagnostics)
 		
 		if (returnState is not null)
 			CheckRequiredFields(function, requiredFields, returnState, paths);
+		
+		new DropElaborator(typePool, (state, memoryEvent) => Transfer(state, memoryEvent, paths))
+			.Elaborate(function, entryState, entryStates, drops);
 	}
 	
 	private List<Place> GetRequiredFields(LoweredFunction function)
@@ -258,7 +260,11 @@ public sealed class MemoryChecker(TypePool typePool, DiagnosticList diagnostics)
 			state.Set(paths.GetRoot(parameter), PathState.Initialized);
 		
 		if (function.Info.Symbol is { Kind: FunctionKind.Constructor, Parameters: [var self, ..] })
-			SetDefaults(state, paths.GetRoot(self));
+		{
+			var root = paths.GetRoot(self);
+			state.Set(root, PathState.Unassigned);
+			ApplyPartDefaults(state, root);
+		}
 		
 		return state;
 	}
@@ -273,12 +279,18 @@ public sealed class MemoryChecker(TypePool typePool, DiagnosticList diagnostics)
 	{
 		foreach (var path in paths.FindAncestors(place))
 		{
-			if (path.Projection is FieldProjection { Field.IsRequired: true })
-				ApplyDefaults(state, path);
+			if (RequiresWrite(path))
+				ApplyPartDefaults(state, path);
 		}
 	}
 	
 	private void ApplyDefaults(InitState state, MovePath path)
+	{
+		if (!RequiresWrite(path))
+			ApplyPartDefaults(state, path);
+	}
+	
+	private void ApplyPartDefaults(InitState state, MovePath path)
 	{
 		if (typePool.HasDefault(path.Type))
 		{
@@ -290,11 +302,11 @@ public sealed class MemoryChecker(TypePool typePool, DiagnosticList diagnostics)
 			state.ApplyOwnDefault(path);
 		
 		foreach (var child in path.Children)
-		{
-			if (child.Projection is not FieldProjection { Field.IsRequired: true })
-				ApplyDefaults(state, child);
-		}
+			ApplyDefaults(state, child);
 	}
+	
+	private static bool RequiresWrite(MovePath path) => path is
+		{ Projection: FieldProjection { Field.IsRequired: true } } or { Type: RecordSymbol { HasDestructor: true } };
 	
 	private bool UntrackedPartsHaveDefaults(MovePath path) =>
 		path is { IsComplete: false, Type: RecordSymbol record } && typePool.GetMembers(record)
@@ -306,7 +318,7 @@ public sealed class MemoryChecker(TypePool typePool, DiagnosticList diagnostics)
 	{
 		switch (memoryEvent)
 		{
-			case DefineEvent { Kind: DefineKind.Zero } e:
+			case DefineEvent { Kind: DefineKind.Default } e:
 				SetDefaults(state, paths.GetRoot(e.Local));
 				break;
 			

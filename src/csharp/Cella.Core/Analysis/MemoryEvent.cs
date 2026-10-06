@@ -14,7 +14,7 @@ public enum AccessKind
 public enum DefineKind
 {
 	Value,
-	Zero,
+	Default,
 	Undef
 }
 

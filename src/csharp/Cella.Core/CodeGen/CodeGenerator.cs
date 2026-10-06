@@ -498,6 +498,19 @@ public sealed unsafe class CodeGenerator : IDisposable
 				break;
 			}
 			
+			case DropInstruction { Guard: { } guard } i:
+			{
+				var function = builder.InsertBlock.Parent;
+				var dropBlock = function.AppendBasicBlock("drop");
+				var doneBlock = function.AppendBasicBlock("drop_done");
+				builder.BuildCondBr(EmitValue(guard, builder), dropBlock, doneBlock);
+				builder.PositionAtEnd(dropBlock);
+				EmitDrop(i.Value, builder);
+				builder.BuildBr(doneBlock);
+				builder.PositionAtEnd(doneBlock);
+				break;
+			}
+			
 			case DropInstruction i:
 			{
 				EmitDrop(i.Value, builder);
@@ -666,7 +679,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 	private LLVMValueRef EmitValue(Value value, LLVMBuilderRef builder) => value switch
 	{
 		ConstantValue v => EmitConstant(v),
-		ZeroValue v => EmitZero(v),
+		ZeroValue or DefaultValue => EmitZero(value),
 		VariableValue v => builder.BuildLoad2(MapTypeSymbol(v.Type), _varMap[v.Variable], v.Variable.Symbol.Name),
 		GlobalValue v => EmitGlobalLoad(v.Global, builder),
 		MoveValue v => EmitValue(v.Place, builder),
@@ -860,7 +873,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 		return builder.BuildSDiv(byteDiff, elementSize, "ptrdiff.typed");
 	}
 	
-	private LLVMValueRef EmitZero(ZeroValue v) => LLVMValueRef.CreateConstNull(MapTypeSymbol(v.Type));
+	private LLVMValueRef EmitZero(Value v) => LLVMValueRef.CreateConstNull(MapTypeSymbol(v.Type));
 	
 	private LLVMValueRef EmitEnumValue(EnumValue v, LLVMBuilderRef builder)
 	{

@@ -65,6 +65,7 @@ public sealed class ConstantValue(TypeSymbol type, object? value) : Value(type, 
 
 // Used to zero-initialize memory
 public sealed class ZeroValue(TypeSymbol type) : Value(type, true, SourceLocation.None);
+public sealed class DefaultValue(TypeSymbol type) : Value(type, true, SourceLocation.None);
 public sealed class UndefValue(TypeSymbol type) : Value(type, true, SourceLocation.None);
 
 public sealed class VariableValue(VariableInfo variable, SourceLocation sourceLocation)

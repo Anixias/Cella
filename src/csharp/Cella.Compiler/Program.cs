@@ -249,7 +249,7 @@ internal static class Program
 				}
 				
 				if (verbose)
-					Console.WriteLine(LoweredModulePrinter.Print(module, memoryChecker.DropStates));
+					Console.WriteLine(LoweredModulePrinter.Print(module));
 			}
 			
 			if (cfgDiagnostics.Count > 0)

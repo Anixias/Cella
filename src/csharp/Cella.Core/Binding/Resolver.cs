@@ -734,7 +734,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	private IResolvedExpressionNode VisitRecordConstruction(CallExpressionNode node, RecordSymbol record)
 	{
 		var fields = _typePool.GetMembers(record).OfType<FieldSymbol>().ToArray();
-		var hasDefault = _typePool.HasDefault(record);
+		var hasDefault = fields.All(_typePool.HasDefault);
 		if (node.Arguments.Length != fields.Length && (node.Arguments.Length > 0 || !hasDefault))
 		{
 			var args = node.Arguments.Select(a => VisitNode(a, null)).ToArray();

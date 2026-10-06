@@ -13,15 +13,6 @@ public enum PathState : byte
 	Moved = 8
 }
 
-public enum Initialization
-{
-	Whole,
-	Partial,
-	Maybe,
-	None
-}
-
-public readonly record struct DropState(Initialization Initialization, PathState Uninitialized);
 public readonly record struct MoveSite(MovePath Path, SourceLocation Location);
 
 public sealed class InitState
@@ -95,8 +86,6 @@ public sealed class InitState
 	public IEnumerable<MoveSite> GetMoves(MovePath path) =>
 		_moves.Skip(path.Index).Take(path.End - path.Index).SelectMany(static moves => moves).Distinct();
 	
-	public DropState GetDropState(MovePath path) => new(Classify(path), GetUninitialized(path));
-	
 	private void Fill(MovePath path, PathState state, ImmutableHashSet<MoveSite> moves)
 	{
 		var count = path.End - path.Index;
@@ -113,27 +102,13 @@ public sealed class InitState
 		}
 	}
 	
-	private Initialization Classify(MovePath path)
-	{
-		if (IsWhollyInitialized(path))
-			return Initialization.Whole;
-		
-		if (IsUninitialized(path))
-			return Initialization.None;
-		
-		return IsInitialized(path) ? Initialization.Partial : Initialization.Maybe;
-	}
-	
-	private bool IsInitialized(MovePath path) => _states[path.Index] == PathState.Initialized ||
-	                                             path.IsComplete && path.Children.All(IsInitialized);
-	
 	public bool HasInitializedPart(MovePath path) =>
 		!path.IsComplete && _states[path.Index] == PathState.Initialized || path.Children.Any(HasInitializedPart);
 	
 	public bool IsWhollyInitialized(MovePath path) =>
 		(path.IsComplete || _states[path.Index] == PathState.Initialized) && path.Children.All(IsWhollyInitialized);
 	
-	private bool IsUninitialized(MovePath path) =>
+	public bool IsUninitialized(MovePath path) =>
 		(path.IsComplete || !_states[path.Index].HasFlag(PathState.Initialized)) && path.Children.All(IsUninitialized);
 	
 	public PathState GetUninitialized(MovePath path) => path.Children.Aggregate(

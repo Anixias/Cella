@@ -10,7 +10,7 @@ public sealed class EventLinearizer
 	private readonly Dictionary<int, List<LocalVariableSymbol>> _scopeLocals = [];
 	private List<MemoryEvent> events = [];
 	
-	private EventLinearizer(LoweredFunction function)
+	public EventLinearizer(LoweredFunction function)
 	{
 		foreach (var block in function.Blocks)
 		{
@@ -28,16 +28,23 @@ public sealed class EventLinearizer
 		return function.Blocks.ToDictionary(static b => b, linearizer.Linearize);
 	}
 	
-	private List<MemoryEvent> Linearize(BasicBlock block)
+	private List<MemoryEvent> Linearize(BasicBlock block) =>
+		[..block.Instructions.SelectMany(Linearize), ..Linearize(block.Terminator)];
+	
+	public List<MemoryEvent> Linearize(IInstruction instruction)
 	{
 		events = [];
-		foreach (var instruction in block.Instructions)
-			AddInstruction(instruction);
-		
-		switch (block.Terminator)
+		AddInstruction(instruction);
+		return events;
+	}
+	
+	public List<MemoryEvent> Linearize(IBlockTerminator terminator)
+	{
+		events = [];
+		switch (terminator)
 		{
-			case ConditionalBranchTerminator terminator:
-				AddValue(terminator.Condition);
+			case ConditionalBranchTerminator conditional:
+				AddValue(conditional.Condition);
 				break;
 			
 			case ReturnTerminator { Value: { } value }:
@@ -57,7 +64,7 @@ public sealed class EventLinearizer
 				events.Add(new DefineEvent(i.Symbol, i.Initializer switch
 				{
 					UndefValue => DefineKind.Undef,
-					ZeroValue => DefineKind.Zero,
+					DefaultValue => DefineKind.Default,
 					_ => DefineKind.Value
 				}, i.SourceLocation));
 				

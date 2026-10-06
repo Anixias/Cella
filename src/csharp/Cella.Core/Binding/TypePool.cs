@@ -76,7 +76,7 @@ public sealed class TypePool
 		{
 			RecordSymbol r => Combine(r.HasDestructor, GetParts(r)) with
 			{
-				HasDefault = GetMembers(r).OfType<FieldSymbol>().All(HasDefault)
+				HasDefault = !r.HasDestructor && GetMembers(r).OfType<FieldSymbol>().All(HasDefault)
 			},
 			EnumSymbol e => Combine(false, GetParts(e)) with { HasDefault = e.Cases is [{ Fields.IsEmpty: true }, ..] },
 			ArrayType => Combine(false, GetParts(type)),

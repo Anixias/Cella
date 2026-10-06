@@ -83,8 +83,61 @@ constructed: fun -> i32
 	ret wrapper.handler.callback(wrapper.handler.scale + 21)
 }
 
+Closer: rec
+{
+	id: i32
+
+	drop: op
+	{
+	}
+}
+
+Keeper: rec
+{
+	closer: Closer
+	count: i32
+}
+
+Guarded: rec
+{
+	handle: req i32
+	flags: i32
+
+	drop: op
+	{
+	}
+}
+
+describeCloser: fun(closer: Closer) -> i32 = closer.id
+describeKeeper: fun(keeper: Keeper) -> i32 = keeper.closer.id * 10 + keeper.count
+describeGuarded: fun(guarded: Guarded) -> i32 = guarded.handle * 10 + guarded.flags
+
+explicit: fun -> i32 = describeCloser(Closer())
+
+written: fun -> i32
+{
+	var closer: Closer
+	closer.id = 5
+	ret describeCloser(closer)
+}
+
+kept: fun -> i32
+{
+	var keeper: Keeper
+	keeper.closer.id = 7
+	ret describeKeeper(keeper)
+}
+
+guarded: fun -> i32
+{
+	var guarded: Guarded
+	guarded.handle = 8
+	ret describeGuarded(guarded)
+}
+
 main: fun -> i32
 {
 	printf("%d %d %d %d %d\n", local(), holder(), elements(), nested(), constructed())
+	printf("%d %d %d %d\n", explicit(), written(), kept(), guarded())
 	ret 0
 }

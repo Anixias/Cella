@@ -568,7 +568,7 @@ public sealed class Lowerer
 			{
 				{ Initializer: { } initializer } => Consume(VisitNode(initializer)),
 				{ Symbol.IsDeferred: true } => new UndefValue(node.Symbol.Type),
-				_ => new ZeroValue(node.Symbol.Type)
+				_ => new DefaultValue(node.Symbol.Type)
 			};
 			
 			if (currentBlock is { } block)
@@ -1273,7 +1273,7 @@ public sealed class Lowerer
 		
 		private bool IsStable(Value value) => value switch
 		{
-			ConstantValue or ZeroValue or UndefValue or FunctionReferenceValue => true,
+			ConstantValue or ZeroValue or DefaultValue or UndefValue or FunctionReferenceValue => true,
 			VariableValue { Variable.Symbol: LocalVariableSymbol symbol } =>
 				!symbol.IsMutable && !symbol.IsDeferred || _temporaries.Contains(symbol),
 			VariableValue { Variable.Symbol: ParameterSymbol { Mode: ParameterMode.Mut } } => true,

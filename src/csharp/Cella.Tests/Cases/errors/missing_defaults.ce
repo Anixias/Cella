@@ -125,4 +125,41 @@ wholeOuter: fun -> i32
 	ret describeOuter(outer)
 }
 
+Closer: rec
+{
+	id: i32
+
+	drop: op
+	{
+	}
+}
+
+Keeper: rec
+{
+	closer: Closer
+	count: i32
+}
+
+describeCloser: fun(closer: Closer) -> i32 = closer.id
+describeKeeper: fun(keeper: Keeper) -> i32 = keeper.count
+
+closer: fun -> i32
+{
+	var closer: Closer
+	ret describeCloser(closer)
+}
+
+closerField: fun -> i32
+{
+	var closer: Closer
+	ret closer.id
+}
+
+keeper: fun -> i32
+{
+	var keeper: Keeper
+	keeper.count = 1
+	ret describeKeeper(keeper)
+}
+
 main: fun -> i32 = 0

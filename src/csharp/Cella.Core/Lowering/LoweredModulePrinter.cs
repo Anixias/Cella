@@ -1,5 +1,4 @@
 ﻿using System.Text;
-using Cella.Core.Analysis;
 using Cella.Core.Binding.Operations;
 using Cella.Core.Symbols;
 
@@ -7,10 +6,7 @@ namespace Cella.Core.Lowering;
 
 public static class LoweredModulePrinter
 {
-	private static readonly (PathState State, string Name)[] _uninitializedNames =
-		[(PathState.Moved, "moved"), (PathState.Undef, "undef"), (PathState.Unassigned, "unassigned")];
-	
-	public static string Print(LoweredModule module, IReadOnlyDictionary<DropInstruction, DropState> dropStates)
+	public static string Print(LoweredModule module)
 	{
 		var sb = new StringBuilder();
 		
@@ -57,14 +53,13 @@ public static class LoweredModulePrinter
 				sb.Append('@').Append(global.Symbol.Name).Append(": ").Append(global.Type.Name).AppendLine();
 			
 			foreach (var function in file.Functions)
-				PrintFunction(sb, function, dropStates);
+				PrintFunction(sb, function);
 		}
 		
 		return sb.ToString();
 	}
 	
-	private static void PrintFunction(StringBuilder sb, LoweredFunction function,
-		IReadOnlyDictionary<DropInstruction, DropState> dropStates)
+	private static void PrintFunction(StringBuilder sb, LoweredFunction function)
 	{
 		sb.Append(function.Info.Symbol.Name).Append(':').AppendLine();
 		foreach (var block in function.Blocks)
@@ -98,8 +93,11 @@ public static class LoweredModulePrinter
 					case DropInstruction i:
 						sb.Append("drop ");
 						PrintValue(sb, i.Value);
-						if (dropStates.TryGetValue(i, out var state))
-							PrintDropState(sb, state);
+						if (i.Guard is { } guard)
+						{
+							sb.Append(" if ");
+							PrintValue(sb, guard);
+						}
 						
 						sb.AppendLine();
 						break;
@@ -156,23 +154,6 @@ public static class LoweredModulePrinter
 		}
 	}
 	
-	private static void PrintDropState(StringBuilder sb, DropState state)
-	{
-		if (state.Initialization == Initialization.Whole)
-			return;
-		
-		var reasons = string.Join(" or ", _uninitializedNames
-			.Where(name => state.Uninitialized.HasFlag(name.State))
-			.Select(static name => name.Name));
-		
-		sb.Append(state.Initialization switch
-		{
-			Initialization.Partial => $" [partly {reasons}]",
-			Initialization.Maybe => $" [maybe {reasons}]",
-			_ => $" [{reasons}]"
-		});
-	}
-	
 	private static void PrintValue(StringBuilder sb, Value value)
 	{
 		while (true)
@@ -203,6 +184,10 @@ public static class LoweredModulePrinter
 				
 				case ZeroValue v:
 					sb.Append("zero[").Append(v.Type.Name).Append(']');
+					break;
+				
+				case DefaultValue v:
+					sb.Append("default[").Append(v.Type.Name).Append(']');
 					break;
 				
 				case UndefValue v:
