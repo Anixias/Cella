@@ -4,61 +4,63 @@
 Error at line 26, column 20
 25 │ {
 26 │     onBuffer: ext fun[Buffer -> i32]
-                           ╘════╛ 'Buffer' has a destructor, so it can't be part of an 'ext' signature
+                           ╘════╛ Cannot use types with destructors in 'ext' signatures
 
 Error at line 32, column 20
 31 │ {
 32 │     show: fun(buffer: Buffer) -> i32
-                           ╘════╛ 'Buffer' has a destructor, so it can't be part of an 'ext' signature
+                           ╘════╛ Cannot use types with destructors in 'ext' signatures
 
 Error at line 33, column 24
 32 │ show: fun(buffer: Buffer) -> i32
 33 │ keep: fun(own buffer: Buffer)
-                           ╘════╛ 'Buffer' has a destructor, so it can't be part of an 'ext' signature
+                           ╘════╛ Cannot use types with destructors in 'ext' signatures
 
 Error at line 34, column 24
 33 │ keep: fun(own buffer: Buffer)
 34 │ fill: fun(mut buffer: Buffer)
-                           ╘════╛ 'Buffer' has a destructor, so it can't be part of an 'ext' signature
+                           ╘════╛ Cannot use types with destructors in 'ext' signatures
 
 Error at line 35, column 15
 34 │ fill: fun(mut buffer: Buffer)
 35 │ make: fun -> Buffer
-                  ╘════╛ 'Buffer' has a destructor, so it can't be part of an 'ext' signature
+                  ╘════╛ Cannot use types with destructors in 'ext' signatures
 
 Error at line 36, column 20
 35 │ make: fun -> Buffer
 36 │ hold: fun(holder: Holder)
-                       ╘════╛ 'Buffer' in 'Holder' has a destructor, so it can't be part of an 'ext' signature
+                       ╘════╛ Cannot use types with destructors in 'ext' signatures
+                            | 'Holder' contains 'Buffer'
 
 Error at line 37, column 20
 36 │ hold: fun(holder: Holder)
 37 │ send: fun(packet: Packet)
-                       ╘════╛ 'Buffer' in 'Packet' has a destructor, so it can't be part of an 'ext' signature
+                       ╘════╛ Cannot use types with destructors in 'ext' signatures
+                            | 'Packet' contains 'Buffer'
 
-Error at line 38, column 20
+Error at line 38, column 26
 37 │ send: fun(packet: Packet)
 38 │ all: fun(buffers: array[Buffer, 2])
-                       ╘══════════════╛ 'Buffer' in 'array[Buffer, 2]' has a destructor, so it can't be part of an 'ext' signature
+                             ╘════╛ Cannot use types with destructors in 'ext' signatures
 
 Error at line 39, column 34
 38 │ all: fun(buffers: array[Buffer, 2])
 39 │ register: fun(callback: ext fun[Buffer -> i32])
-                                     ╘════╛ 'Buffer' has a destructor, so it can't be part of an 'ext' signature
+                                     ╘════╛ Cannot use types with destructors in 'ext' signatures
 
 Error at line 43, column 23
 42 │ 
 43 │ echo: ext fun(buffer: Buffer) -> Buffer = buffer
-                           ╘════╛ 'Buffer' has a destructor, so it can't be part of an 'ext' signature
+                           ╘════╛ Cannot use types with destructors in 'ext' signatures
 
 Error at line 43, column 34
 42 │ 
 43 │ echo: ext fun(buffer: Buffer) -> Buffer = buffer
-                                      ╘════╛ 'Buffer' has a destructor, so it can't be part of an 'ext' signature
+                                      ╘════╛ Cannot use types with destructors in 'ext' signatures
 
 Error at line 44, column 40
 43 │ echo: ext fun(buffer: Buffer) -> Buffer = buffer
 44 │ forward: fun(callback: fun[ext fun[own Buffer]]) {}
-                                            ╘════╛ 'Buffer' has a destructor, so it can't be part of an 'ext' signature
+                                            ╘════╛ Cannot use types with destructors in 'ext' signatures
 
 [compilation failed]

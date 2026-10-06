@@ -4,16 +4,18 @@
 Error at line 19, column 24
 18 │ {
 19 │     var callback: ext fun[Buffer -> i32]
-                               ╘════╛ 'Buffer' has a destructor, so it can't be part of an 'ext' signature
+                               ╘════╛ Cannot use types with destructors in 'ext' signatures
 
 Error at line 20, column 30
 19 │ var callback: ext fun[Buffer -> i32]
 20 │ var nested: ptr[ext fun[mut Holder]]
-                                 ╘════╛ 'Buffer' in 'Holder' has a destructor, so it can't be part of an 'ext' signature
+                                 ╘════╛ Cannot use types with destructors in 'ext' signatures
+                                      | 'Holder' contains 'Buffer'
 
 Error at line 22, column 28
 21 │ var fine: ext fun[ptr[Buffer] -> i32]
 22 │ ret i32(sizeOf(ext fun[-> Holder]))
-                               ╘════╛ 'Buffer' in 'Holder' has a destructor, so it can't be part of an 'ext' signature
+                               ╘════╛ Cannot use types with destructors in 'ext' signatures
+                                    | 'Holder' contains 'Buffer'
 
 [compilation failed]

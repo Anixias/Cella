@@ -802,19 +802,19 @@ public sealed class SignatureCollector
 	
 	private void ReportPlainEnumsInExtSignatures()
 	{
-		foreach (var (type, location) in GetExtSignatureTypes())
-			ReportPlainEnum(type, location);
+		foreach (var (type, node) in GetExtSignatureTypes())
+			ReportPlainEnum(type, node);
 	}
 	
 	private void ReportDestructorsInExtSignatures()
 	{
-		foreach (var (type, location) in GetExtSignatureTypes())
-			_extSignatureTypes.Add(type, location);
+		foreach (var (type, node) in GetExtSignatureTypes())
+			_extSignatureTypes.Add(type, node);
 		
 		_extSignatureTypes.ReportDestructors(Diagnostics);
 	}
 	
-	private IEnumerable<(TypeSymbol Type, SourceLocation Location)> GetExtSignatureTypes()
+	private IEnumerable<(TypeSymbol Type, ITypeNode Node)> GetExtSignatureTypes()
 	{
 		foreach (var (function, info) in _builder.Functions)
 		{
@@ -829,22 +829,24 @@ public sealed class SignatureCollector
 			};
 			
 			for (var i = 0; i < parameters.Length; i++)
-				yield return (info.Signature.GetDeclaredType(i), parameters[i].Type.SourceLocation);
+				yield return (info.Signature.GetDeclaredType(i), parameters[i].Type);
 			
 			if (returnType is not null)
-				yield return (info.Signature.ReturnType, returnType.SourceLocation);
+				yield return (info.Signature.ReturnType, returnType);
 		}
 	}
 	
-	private void ReportPlainEnum(TypeSymbol type, SourceLocation location)
+	private void ReportPlainEnum(TypeSymbol type, ITypeNode node)
 	{
-		if (FindPlainEnum(type, []) is not { } plainEnum)
+		if (!HasPlainEnum(type))
 			return;
 		
-		var name = plainEnum == type ? $"'{type.Name}'" : $"'{plainEnum.Name}' in '{type.Name}'";
-		Diagnostics.Add(new(DiagnosticSeverity.Error, location,
-			$"{name} isn't an 'ext enum', so it can't be part of an 'ext' signature"));
+		var (located, location) = ExtSignatureTypes.Locate(type, node, HasPlainEnum);
+		Diagnostics.Add(ExtSignatureTypes.Report(location, "Cannot use plain enums in 'ext' signatures", located,
+			FindPlainEnum(located, [])!));
 	}
+	
+	private bool HasPlainEnum(TypeSymbol type) => FindPlainEnum(type, []) is not null;
 	
 	private EnumSymbol? FindPlainEnum(TypeSymbol type, HashSet<TypeSymbol> visited)
 	{
