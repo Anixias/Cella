@@ -1,0 +1,24 @@
+
+====== enum_method_declarations.ce ======
+
+Error at line 6, column 2
+5 │ none
+6 │ hit(amount: i32)
+    ╘═╛ 'hit' is declared more than once in 'Effect'
+
+Error at line 8, column 2
+7 │ 
+8 │ hit: fun(amount: i32) -> Effect = Effect.none
+    ╘═╛ 'hit' is declared more than once in 'Effect'
+
+Error at line 10, column 2
+ 9 │ 
+10 │ size: fun(self) -> i32 = 0
+     ╘══╛ 'Effect.size' is declared more than once with the same signature
+
+Error at line 11, column 2
+10 │ size: fun(self) -> i32 = 0
+11 │ size: fun(self) -> i32 = 1
+     ╘══╛ 'Effect.size' is declared more than once with the same signature
+
+[compilation failed]

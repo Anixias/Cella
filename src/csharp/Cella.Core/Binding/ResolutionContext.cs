@@ -39,9 +39,9 @@ public readonly struct ResolutionContext
 		return result;
 	}
 	
-	private static Symbol? ResolveStatic(RecordSymbol record, string name) => ResolveFrom(name,
+	private static Symbol? ResolveStatic(TypeSymbol type, string name) => ResolveFrom(name,
 	[
-		..record.GetFunctions(name)
+		..type.GetFunctions(name)
 			.Where(static function => !function.HasReceiver)
 			.Select(static function => function.Function)
 	]);
@@ -69,7 +69,7 @@ public readonly struct ResolutionContext
 			if (type.Children.TryGetValue(name, out var member))
 				return member;
 			
-			if (type is RecordSymbol record && ResolveStatic(record, name) is { } function)
+			if (ResolveStatic(type, name) is { } function)
 				return function;
 		}
 		

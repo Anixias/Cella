@@ -13,3 +13,17 @@ Square: rec
 		self.side += amount
 	}
 }
+
+Corner: enum
+{
+	top
+	bottom
+
+	opposite: fun(self) -> Corner = match self
+	{
+		top => Corner.bottom
+		bottom => Corner.top
+	}
+
+	first: fun -> Corner = Corner.top
+}

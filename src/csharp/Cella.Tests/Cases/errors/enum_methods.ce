@@ -1,0 +1,21 @@
+mod test
+
+Effect: enum
+{
+	none
+	hit(amount: i32)
+
+	make: fun -> Effect = Effect.none
+
+	size: fun(self) -> i32 = 0
+}
+
+main: fun -> i32
+{
+	val effect = Effect.none
+	Effect.size()
+	effect.make()
+	Effect.fly()
+	val f = effect.size
+	ret 0
+}

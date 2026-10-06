@@ -61,7 +61,13 @@ public sealed class Lowerer
 		currentFile?.Types.Add(node.Symbol);
 	}
 	
-	public void Visit(ResolvedEnumNode node) => currentFile?.Types.Add(node.Symbol);
+	public void Visit(ResolvedEnumNode node)
+	{
+		foreach (var function in node.Functions)
+			VisitNode(function);
+		
+		currentFile?.Types.Add(node.Symbol);
+	}
 	
 	public void Visit(ResolvedFieldNode node)
 	{

@@ -1,0 +1,19 @@
+
+====== enum_method_receivers.ce ======
+
+Error at line 15, column 3
+14 │ {
+15 │     self.bump()
+         ╘══╛ Cannot mutably borrow read-only parameters
+
+Error at line 22, column 2
+21 │ val effect = Effect.hit(1)
+22 │ effect.bump()
+     ╘════╛ Cannot mutably borrow values
+
+Error at line 23, column 2
+22 │ effect.bump()
+23 │ Effect.hit(2).bump()
+     ╘═══════════╛ Cannot mutably borrow unstored values
+
+[compilation failed]

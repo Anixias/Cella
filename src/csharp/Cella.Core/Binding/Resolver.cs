@@ -222,8 +222,18 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		return new ResolvedRecordNode(record, members, node);
 	}
 	
-	public IResolvedDeclarationNode Visit(EnumNode node) =>
-		new ResolvedEnumNode((EnumSymbol)_symbolTable.DeclarationSymbols[node], node);
+	public IResolvedDeclarationNode Visit(EnumNode node)
+	{
+		var enumType = (EnumSymbol)_symbolTable.DeclarationSymbols[node];
+		var functions = new List<IResolvedDeclarationNode>();
+		
+		_resolutionContexts.Push(CurrentResolutionContext with { ContainingType = enumType });
+		foreach (var function in node.Functions)
+			functions.Add(VisitNode(function));
+		
+		_resolutionContexts.Pop();
+		return new ResolvedEnumNode(enumType, functions, node);
+	}
 	
 	public IResolvedStatementNode Visit(BlockStatementNode node)
 	{
@@ -301,7 +311,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	public IResolvedExpressionNode Visit(CallExpressionNode node)
 	{
 		if (node.Target is AccessExpressionNode access && ResolveEnumType(access.Target) is { } enumType)
-			return VisitEnumCase(access, enumType, node);
+			return enumType.GetFunctions(access.Member.Text).Any()
+				? VisitStaticCall(node, access, enumType)
+				: VisitEnumCase(access, enumType, node);
 		
 		return CurrentResolutionContext.TryResolveExpressionAsType(node.Target) switch
 		{
@@ -1087,8 +1099,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			.Select(static function => function.Function)
 	];
 	
-	private static MethodSymbol[] FindFunctions(TypeSymbol type, string name) =>
-		type is RecordSymbol record ? [..record.GetFunctions(name)] : [];
+	private static MethodSymbol[] FindFunctions(TypeSymbol type, string name) => [..type.GetFunctions(name)];
 	
 	private FieldSymbol? FindField(TypeSymbol type, string name) =>
 		_typePool.ResolveMember(GetMemberOwner(type), name) as FieldSymbol;
@@ -1148,7 +1159,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	public IResolvedExpressionNode Visit(AccessExpressionNode node)
 	{
 		if (ResolveEnumType(node.Target) is { } enumType)
-			return VisitEnumCase(node, enumType, null);
+			return enumType.GetFunctions(node.Member.Text).Any()
+				? VisitStaticMember(node, enumType)
+				: VisitEnumCase(node, enumType, null);
 		
 		if (CurrentResolutionContext.ResolveModule(node.Target) is { } module)
 			return VisitModuleMember(node, module);

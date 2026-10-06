@@ -1,0 +1,9 @@
+mod test
+
+Effect: enum
+{
+	none
+	count: i32
+}
+
+main: fun -> i32 = 0

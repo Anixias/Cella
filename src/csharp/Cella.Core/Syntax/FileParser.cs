@@ -667,9 +667,10 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 		}
 		
 		if (!Match(ref index, out var openBrace, TokenType.OpOpenBrace))
-			return new(identifier, modifiers, isExternal, isRef, tagType, []);
+			return new(identifier, modifiers, isExternal, isRef, tagType, [], []);
 		
 		var cases = new List<EnumCaseNode>();
+		var functions = new List<FunctionNode>();
 		while (!Match(ref index, TokenType.OpCloseBrace))
 		{
 			if (AtEnd(index))
@@ -678,13 +679,37 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 				return null;
 			}
 			
+			if (Peek(index, TokenType.Identifier) && Peek(index + 1, TokenType.OpColon))
+			{
+				if (ParseEnumFunction(ref index) is not { } function)
+					return null;
+				
+				functions.Add(function);
+				continue;
+			}
+			
 			if (ParseEnumCase(ref index) is not { } enumCase)
 				return null;
 			
 			cases.Add(enumCase);
 		}
 		
-		return new(identifier, modifiers, isExternal, isRef, tagType, cases);
+		return new(identifier, modifiers, isExternal, isRef, tagType, cases, functions);
+	}
+	
+	private FunctionNode? ParseEnumFunction(ref int index)
+	{
+		var identifier = Tokens[index];
+		index += 2;
+		if (!IsFunctionMember(index))
+		{
+			Report(identifier, "Cannot declare fields in enums");
+			return null;
+		}
+		
+		Match(ref index, _memberContextualKeywords, TokenType.KeywordFun);
+		return ParseDeclaration(ref index, identifier, "function",
+			(ref i) => ParseFunction(ref i, identifier, [], false));
 	}
 	
 	private EnumCaseNode? ParseEnumCase(ref int index)

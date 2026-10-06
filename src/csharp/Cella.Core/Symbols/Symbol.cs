@@ -125,6 +125,8 @@ public abstract class TypeSymbol(string name, TypeSymbol? containingType = null,
 {
 	public TypeSymbol? ContainingType { get; } = containingType;
 	public ImmutableDictionary<string, Symbol> Children { get; } = children.ToImmutableDictionary(static s => s.Name);
+	
+	public virtual IEnumerable<MethodSymbol> GetFunctions(string name) => [];
 }
 
 public sealed class InvalidType : TypeSymbol
@@ -454,7 +456,7 @@ public sealed class RecordSymbol : TypeSymbol, IExportable
 	public bool HasDestructor => Members.Any(static m => m is MethodSymbol { Function.Kind: FunctionKind.Destructor });
 	public bool IsRef => Node.IsRef;
 	
-	public IEnumerable<MethodSymbol> GetFunctions(string name) => Members
+	public override IEnumerable<MethodSymbol> GetFunctions(string name) => Members
 		.OfType<MethodSymbol>()
 		.Where(m => m.Name == name && m.Function.Kind is FunctionKind.Method or FunctionKind.Free);
 	
@@ -472,17 +474,22 @@ public sealed class EnumSymbol : TypeSymbol, IExportable
 {
 	public EnumNode Node { get; }
 	public ImmutableArray<EnumCaseSymbol> Cases { get; }
+	public ImmutableArray<MethodSymbol> Functions { get; }
 	public Visibility Visibility { get; }
 	public bool HasPayload => Cases.Any(static c => c.Fields.Length > 0);
 	public bool IsExternal => Node.IsExternal;
 	public bool IsRef => Node.IsRef;
 	
-	public EnumSymbol(EnumNode node, IEnumerable<EnumCaseSymbol> cases) : base(node.Identifier.Text)
+	public EnumSymbol(EnumNode node, IEnumerable<EnumCaseSymbol> cases, IEnumerable<MethodSymbol> functions)
+		: base(node.Identifier.Text)
 	{
 		Node = node;
 		Cases = cases.ToImmutableArray();
+		Functions = functions.ToImmutableArray();
 		Visibility = Visibility.FromModifiers(node.Modifiers);
 	}
+	
+	public override IEnumerable<MethodSymbol> GetFunctions(string name) => Functions.Where(f => f.Name == name);
 }
 
 public sealed class EnumCaseSymbol(EnumCaseNode node, int index, IEnumerable<FieldSymbol> fields)

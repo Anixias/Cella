@@ -12,6 +12,6 @@ main: fun -> i32
 	var square = Square.unit()
 	square.grow(2)
 	val make = Square.unit
-	printf("%d %d\n", square.area(), make().area())
+	printf("%d %d %d\n", square.area(), make().area(), i32(Corner.first().opposite()))
 	ret 0
 }

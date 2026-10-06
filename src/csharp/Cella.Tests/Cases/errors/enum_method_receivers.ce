@@ -1,0 +1,25 @@
+mod test
+
+Effect: enum
+{
+	none
+	hit(amount: i32)
+
+	bump: fun(mut self)
+	{
+		self = Effect.none
+	}
+
+	peek: fun(self)
+	{
+		self.bump()
+	}
+}
+
+main: fun -> i32
+{
+	val effect = Effect.hit(1)
+	effect.bump()
+	Effect.hit(2).bump()
+	ret 0
+}

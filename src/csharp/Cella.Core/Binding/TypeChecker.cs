@@ -66,6 +66,8 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool) 
 	
 	public void Visit(ResolvedEnumNode node)
 	{
+		foreach (var function in node.Functions)
+			VisitNode(function);
 	}
 	
 	public void Visit(ResolvedMethodNode node) => VisitNode(node.FunctionNode);

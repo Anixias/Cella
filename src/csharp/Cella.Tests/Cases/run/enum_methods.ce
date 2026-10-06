@@ -1,0 +1,137 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Unit: rec
+{
+	hp: i32
+	maxHp: i32
+
+	takeDamage: fun(mut self, amount: i32)
+	{
+		self.hp -= amount
+	}
+
+	restore: fun(mut self, amount: i32)
+	{
+		self.hp += amount
+		if self.hp > self.maxHp
+			self.hp = self.maxHp
+	}
+}
+
+Effect: enum
+{
+	none
+	hit(amount: i32)
+	mend(amount: i32)
+
+	strong: fun(amount: i32) -> Effect = Effect.hit(amount * 2)
+
+	weak: fun -> Effect = Effect.mend(1)
+
+	applyTo: fun(self, mut target: Unit)
+	{
+		match self
+		{
+			hit(amount) => target.takeDamage(amount)
+			mend(amount) => target.restore(amount)
+			none => {}
+		}
+	}
+
+	size: fun(self) -> i32 = match self
+	{
+		hit(amount) => amount
+		mend(amount) => amount
+		none => 0
+	}
+
+	double: fun(mut self)
+	{
+		self = match self
+		{
+			hit(amount) => Effect.hit(amount * 2)
+			mend(amount) => Effect.mend(amount * 2)
+			none => Effect.none
+		}
+	}
+
+	release: fun(own self) -> i32 = self.size()
+
+	twice: fun(self) -> Effect = strong(self.size())
+}
+
+Color: ext enum
+{
+	red
+	green
+
+	next: fun(self) -> Color = match self
+	{
+		red => Color.green
+		else => Color.red
+	}
+}
+
+Buffer: rec
+{
+	id: i32
+
+	drop: op
+	{
+		printf("drop %d ", self.id)
+	}
+}
+
+Slot: enum
+{
+	empty
+	held(buffer: Buffer)
+	count(value: i32)
+
+	id: fun(self) -> i32 = match self
+	{
+		held(buffer) => buffer.id
+		count(value) => value
+		empty => 0
+	}
+
+	bump: fun(mut self)
+	{
+		match mut self
+		{
+			count(value) => value += 1
+			else => {}
+		}
+	}
+}
+
+main: fun -> i32
+{
+	var unit = Unit(20, 20)
+	val effect = Effect.strong(3)
+	effect.applyTo(mut unit)
+	printf("%d ", unit.hp)
+	Effect.weak().applyTo(mut unit)
+	printf("%d ", unit.hp)
+
+	var growing = Effect.hit(5)
+	growing.double()
+	printf("%d %d ", growing.size(), growing.twice().size())
+
+	val make = Effect.strong
+	printf("%d %d ", make(4).size(), Effect.none.size())
+
+	val color = Color.red
+	printf("%d %d\n", i32(color.next()), growing.release())
+
+	val slot = Slot.held(Buffer(7))
+	var counter = Slot.count(41)
+	counter.bump()
+	printf("%d %d\n", slot.id(), counter.id())
+	ret 0
+}

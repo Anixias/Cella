@@ -357,7 +357,7 @@ public sealed class AstPrinter : ISyntaxNodeVisitor
 		_sb.Append(node.IsExternal ? "ExternalEnumNode '" : "EnumNode '").Append(node.Identifier.AsSpan()).Append('\'');
 		
 		if (node.TagType is { } tagType)
-			VisitNode(tagType, node.Cases.IsEmpty);
+			VisitNode(tagType, node.Cases.IsEmpty && node.Functions.IsEmpty);
 		
 		for (var i = 0; i < node.Cases.Length; i++)
 		{
@@ -371,8 +371,11 @@ public sealed class AstPrinter : ISyntaxNodeVisitor
 				
 				if (enumCase.Value is { } value)
 					VisitNode(value, true);
-			}, i == node.Cases.Length - 1);
+			}, i == node.Cases.Length - 1 && node.Functions.IsEmpty);
 		}
+		
+		for (var i = 0; i < node.Functions.Length; i++)
+			VisitNode(node.Functions[i], i == node.Functions.Length - 1);
 	}
 	
 	public void Visit(MatchStatementNode node)

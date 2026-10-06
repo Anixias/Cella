@@ -198,11 +198,15 @@ public sealed class SignatureCollector
 			if (symbol is EnumSymbol { HasPayload: false } enumType)
 				_typePool.RegisterEnumConversions(enumType);
 			
-			if (declaration is not RecordNode record)
-				continue;
+			IEnumerable<IDeclarationNode> members = declaration switch
+			{
+				RecordNode record => record.Members,
+				EnumNode enumNode => enumNode.Functions,
+				_ => []
+			};
 			
-			var memberContext = context with { ContainingType = (RecordSymbol)symbol };
-			foreach (var member in record.Members)
+			var memberContext = context with { ContainingType = symbol as TypeSymbol };
+			foreach (var member in members)
 				_declarations[_symbolTable.DeclarationSymbols[member]] = new(member, memberContext);
 		}
 	}
@@ -273,33 +277,44 @@ public sealed class SignatureCollector
 			}
 		}
 		
-		ReportMemberConflicts(record, node);
+		ReportMemberConflicts(record, [
+			..node.Members.OfType<FieldNode>().Select(static f => (f.Identifier, (FunctionNode?)null, true)),
+			..node.Members.OfType<FunctionNode>().Select(static f => (f.Identifier, (FunctionNode?)f, false))
+		]);
+		
 		_typePool.RegisterRecord(record);
 		_completedTypes.Add(record);
 		Exit();
 	}
 	
-	private void ReportMemberConflicts(RecordSymbol record, RecordNode node)
+	private void ReportMemberConflicts(TypeSymbol type,
+		IEnumerable<(Token Name, FunctionNode? Function, bool IsField)> members)
 	{
-		var sameNames = node.Members
-			.Where(static member => member is FieldNode or FunctionNode)
-			.GroupBy(static member => GetIdentifier(member).Text)
+		var sameNames = members
+			.GroupBy(static member => member.Name.Text)
 			.Where(static sameName => sameName.Count() > 1);
 		
 		foreach (var sameName in sameNames)
 		{
-			if (sameName.All(static member => member is FunctionNode))
+			if (sameName.All(static member => member.Function is not null))
 			{
-				Diagnostics.AddRange(sameName.Select(member => FindConflict(member, sameName)).OfType<Diagnostic>());
+				var functions = sameName.Select(static member => member.Function!).ToList();
+				Diagnostics.AddRange(functions
+					.Select(function => FindConflict(function, functions))
+					.OfType<Diagnostic>());
+				
 				continue;
 			}
 			
-			var message = sameName.All(static member => member is FieldNode)
-				? $"Field '{sameName.Key}' is declared more than once in '{record.Name}'"
-				: $"'{sameName.Key}' is declared more than once in '{record.Name}'";
+			if (sameName.All(static member => member is { Function: null, IsField: false }))
+				continue;
+			
+			var message = sameName.All(static member => member.IsField)
+				? $"Field '{sameName.Key}' is declared more than once in '{type.Name}'"
+				: $"'{sameName.Key}' is declared more than once in '{type.Name}'";
 			
 			Diagnostics.AddRange(sameName.Select(member =>
-				new Diagnostic(DiagnosticSeverity.Error, GetIdentifier(member).SourceLocation, message)));
+				new Diagnostic(DiagnosticSeverity.Error, member.Name.SourceLocation, message)));
 		}
 	}
 	
@@ -347,6 +362,14 @@ public sealed class SignatureCollector
 		_typePool.RegisterEnum(enumType, tagType, values);
 		_completedTypes.Add(enumType);
 		Exit();
+		
+		foreach (var function in node.Functions)
+			Complete(_symbolTable.DeclarationSymbols[function]);
+		
+		ReportMemberConflicts(enumType, [
+			..node.Cases.Select(static c => (c.Identifier, (FunctionNode?)null, false)),
+			..node.Functions.Select(static f => (f.Identifier, (FunctionNode?)f, false))
+		]);
 	}
 	
 	private static Diagnostic ReportStoredBorrow(ITypeNode type, Token name, IEnumerable<Token> modifiers,
@@ -756,7 +779,6 @@ public sealed class SignatureCollector
 	
 	private static Token GetIdentifier(IDeclarationNode declaration) => declaration switch
 	{
-		FieldNode node => node.Identifier,
 		FunctionNode node => node.Identifier,
 		ExternalFunctionNode node => node.Identifier,
 		RecordNode node => node.Identifier,

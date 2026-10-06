@@ -1,0 +1,14 @@
+mod test
+
+Effect: enum
+{
+	none
+	hit(amount: i32)
+
+	hit: fun(amount: i32) -> Effect = Effect.none
+
+	size: fun(self) -> i32 = 0
+	size: fun(self) -> i32 = 1
+}
+
+main: fun -> i32 = 0

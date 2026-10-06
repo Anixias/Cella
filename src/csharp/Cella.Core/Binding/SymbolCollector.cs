@@ -180,7 +180,13 @@ public sealed class SymbolCollector : IDeclarationNodeVisitor<Symbol>
 		var cases = node.Cases.Select((e, i) =>
 			new EnumCaseSymbol(e, i, e.Payload.Select(f => (FieldSymbol)VisitNode(f))));
 		
-		var symbol = new EnumSymbol(node, cases);
+		_typeStack.Push(node.Identifier.Text);
+		var functions = node.Functions
+			.Select(function => new MethodSymbol(function.Identifier.Text, (FunctionSymbol)VisitNode(function)))
+			.ToList();
+		
+		_typeStack.Pop();
+		var symbol = new EnumSymbol(node, cases, functions);
 		_builder.DeclarationSymbols[node] = symbol;
 		_symbolsInFile.Add(symbol);
 		return symbol;
