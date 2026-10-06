@@ -19,4 +19,10 @@ Error at line 42, column 6
          ╘═════════╛ Cannot use partly moved values
                    | Moved on line 40
 
+Error at line 49, column 6
+48 │ val left = pair.left
+49 │ ret pair.left.id + pair.right.id + left.id
+         ╘══════════╛ Cannot use moved values
+                    | Moved on line 48
+
 [compilation failed]

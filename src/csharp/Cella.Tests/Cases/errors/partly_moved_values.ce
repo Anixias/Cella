@@ -42,4 +42,11 @@ elements: fun -> i32
 	ret items[i].id + items[1].id + first.id
 }
 
+constant: fun -> i32
+{
+	val pair = Pair(Buffer(1), Buffer(2))
+	val left = pair.left
+	ret pair.left.id + pair.right.id + left.id
+}
+
 main: fun -> i32 = 0

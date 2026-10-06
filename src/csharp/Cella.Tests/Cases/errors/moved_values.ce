@@ -50,4 +50,11 @@ reassigned: fun -> i32
 	ret a.id + b.id + c.id
 }
 
+constant: fun -> i32
+{
+	val a = Buffer(1)
+	take(a)
+	ret a.id
+}
+
 main: fun -> i32 = 0

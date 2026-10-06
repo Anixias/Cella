@@ -37,4 +37,10 @@ Error at line 50, column 6
          ╘══╛ Cannot use moved values
             | Moved on line 49
 
+Error at line 57, column 6
+56 │ take(a)
+57 │ ret a.id
+         ╘══╛ Cannot use moved values
+            | Moved on line 56
+
 [compilation failed]

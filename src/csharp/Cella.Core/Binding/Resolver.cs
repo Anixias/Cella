@@ -1596,7 +1596,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		
 		var symbol = new LocalVariableSymbol(node.Identifier, type, node.IsMutable)
 		{
-			ConstantValue = node.IsMutable || initializer is null ? null : _evaluator.Evaluate(initializer),
+			ConstantValue = node.IsMutable || initializer is null || !_typePool.IsCopy(type)
+				? null
+				: _evaluator.Evaluate(initializer),
 			IsDeferred = !node.IsMutable && initializer is null
 		};
 		
