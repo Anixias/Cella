@@ -2,6 +2,7 @@
 using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
 using System.Numerics;
+using System.Text;
 using Cella.Core.Binding;
 using Cella.Core.Binding.Constants;
 using Cella.Core.Binding.Conversions;
@@ -9,6 +10,7 @@ using Cella.Core.Binding.Operations;
 using Cella.Core.CodeGen.Extensions;
 using Cella.Core.Lowering;
 using Cella.Core.Symbols;
+using Cella.Core.Text;
 using LLVMSharp.Interop;
 
 // ReSharper disable StringLiteralTypo
@@ -65,6 +67,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 	private readonly Dictionary<byte[], LLVMValueRef> _stringPool = new(ByteArrayComparer.Instance);
 	private LLVMModuleRef currentModule;
 	private LLVMFunctionInfo currentFunction;
+	private LLVMValueRef panicFunction;
 	
 	public CodeGenerator(AssemblySymbol assemblySymbol, TypePool typePool, CodeGenConfig config)
 	{
@@ -139,6 +142,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 			
 			_funMap.Clear();
 			_dropGlue.Clear();
+			panicFunction = default;
 			_varMap.Clear();
 			_globalMap.Clear();
 			_typeMap.Clear();
@@ -184,6 +188,9 @@ public sealed unsafe class CodeGenerator : IDisposable
 	
 	private static LLVMTypeRef OpaquePointer => LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0u);
 	private static LLVMTypeRef DropGlueType => LLVMTypeRef.CreateFunction(LLVMTypeRef.Void, [OpaquePointer]);
+	
+	private static LLVMTypeRef PanicType =>
+		LLVMTypeRef.CreateFunction(LLVMTypeRef.Void, [OpaquePointer, LLVMTypeRef.Int32]);
 	
 	private LLVMTypeRef MapParameterType(TypeSymbol type, ParameterMode mode) =>
 		_typePool.PassesByPointer(type, mode) ? OpaquePointer : MapTypeSymbol(type);
@@ -947,7 +954,8 @@ public sealed unsafe class CodeGenerator : IDisposable
 		var to = (EnumSymbol)c.To;
 		var sourceType = (IntegerType)c.From;
 		if (!to.IsExternal)
-			TrapIf(builder.BuildNot(IsCaseValue(to, source, sourceType, builder)), builder);
+			PanicIf(builder.BuildNot(IsCaseValue(to, source, sourceType, builder)),
+				$"'{to.Name}' has no case with this value", v.SourceLocation, builder);
 		
 		var resized = ResizeInteger(source, MapTypeSymbol(_typePool.GetTagType(to)), sourceType.IsSigned, builder);
 		return builder.BuildInsertValue(LLVMValueRef.CreateConstNull(MapTypeSymbol(to)), resized, 0, to.Name);
@@ -1180,7 +1188,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 				builder.BuildMul(left, right),
 			
 			{ Op: BinaryOperation.Division or BinaryOperation.Modulo } =>
-				EmitIntegerDivision(v.Op, left, right, signed, builder),
+				EmitIntegerDivision(v.Op, left, right, signed, v.SourceLocation, builder),
 			
 			{ Op: BinaryOperation.Greater } => signed
 				? builder.BuildICmp(LLVMIntPredicate.LLVMIntSGT, left, right)
@@ -1224,11 +1232,12 @@ public sealed unsafe class CodeGenerator : IDisposable
 	}
 	
 	private LLVMValueRef EmitIntegerDivision(BinaryOperation op, LLVMValueRef left, LLVMValueRef right, bool signed,
-		LLVMBuilderRef builder)
+		SourceLocation location, LLVMBuilderRef builder)
 	{
 		var type = left.TypeOf;
 		var one = LLVMValueRef.CreateConstInt(type, 1);
-		TrapIf(builder.BuildICmp(LLVMIntPredicate.LLVMIntEQ, right, LLVMValueRef.CreateConstNull(type)), builder);
+		PanicIf(builder.BuildICmp(LLVMIntPredicate.LLVMIntEQ, right, LLVMValueRef.CreateConstNull(type)),
+			"division by zero", location, builder);
 		
 		if (!signed)
 		{
@@ -1249,26 +1258,78 @@ public sealed unsafe class CodeGenerator : IDisposable
 			return builder.BuildSRem(left, builder.BuildSelect(isMinusOne, one, right));
 		
 		var minimum = builder.BuildShl(one, LLVMValueRef.CreateConstInt(type, type.IntWidth - 1));
-		TrapIf(builder.BuildAnd(isMinusOne, builder.BuildICmp(LLVMIntPredicate.LLVMIntEQ, left, minimum)), builder);
+		PanicIf(builder.BuildAnd(isMinusOne, builder.BuildICmp(LLVMIntPredicate.LLVMIntEQ, left, minimum)),
+			"division overflow", location, builder);
+		
 		return builder.BuildSDiv(left, right);
 	}
 	
-	private void TrapIf(LLVMValueRef condition, LLVMBuilderRef builder)
+	private void PanicIf(LLVMValueRef condition, string message, SourceLocation location, LLVMBuilderRef builder)
 	{
 		if (condition.Handle == _false.Handle)
 			return;
 		
 		var function = builder.InsertBlock.Parent;
-		var trapBlock = function.AppendBasicBlock("trap");
-		var continueBlock = function.AppendBasicBlock("no_trap");
-		builder.BuildCondBr(condition, trapBlock, continueBlock);
+		var panicBlock = function.AppendBasicBlock("panic");
+		var continueBlock = function.AppendBasicBlock("no_panic");
+		builder.BuildCondBr(condition, panicBlock, continueBlock);
 		
-		builder.PositionAtEnd(trapBlock);
-		var trapType = LLVMTypeRef.CreateFunction(LLVMTypeRef.Void, []);
-		builder.BuildCall2(trapType, GetIntrinsic("llvm.trap", trapType), []);
+		builder.PositionAtEnd(panicBlock);
+		var text = $"Panic at {DescribeLocation(location)}: {message}\n";
+		var length = LLVMValueRef.CreateConstInt(LLVMTypeRef.Int32, (ulong)Encoding.UTF8.GetByteCount(text));
+		var messagePointer = builder.BuildGlobalStringPtr(text, "panic.message");
+		builder.BuildCall2(PanicType, GetPanicFunction(), [messagePointer, length]);
 		builder.BuildUnreachable();
 		
 		builder.PositionAtEnd(continueBlock);
+	}
+	
+	private string DescribeLocation(SourceLocation location)
+	{
+		var path = location.Source.FilePath;
+		if (_config.SourceRoot is { } root && Path.IsPathFullyQualified(path))
+			path = Path.GetRelativePath(root, path);
+		
+		var (line, column) = location.GetLineColumn();
+		return $"{path.Replace('\\', '/')}:{line}:{column}";
+	}
+	
+	private LLVMValueRef GetPanicFunction()
+	{
+		if (panicFunction.Handle != IntPtr.Zero)
+			return panicFunction;
+		
+		panicFunction = currentModule.AddFunction("panic", PanicType);
+		panicFunction.Linkage = LLVMLinkage.LLVMInternalLinkage;
+		using var builder = currentModule.Context.CreateBuilder();
+		builder.PositionAtEnd(panicFunction.AppendBasicBlock("entry"));
+		
+		var flushType = LLVMTypeRef.CreateFunction(LLVMTypeRef.Int32, [OpaquePointer]);
+		builder.BuildCall2(flushType, GetCFunction("fflush", flushType), [LLVMValueRef.CreateConstNull(OpaquePointer)]);
+		
+		var isWindows = TargetTriple.Contains("windows");
+		var countType = isWindows ? LLVMTypeRef.Int32 : MapTypeSymbol(NativeSymbols.UIntSize);
+		var writeType = LLVMTypeRef.CreateFunction(countType, [LLVMTypeRef.Int32, OpaquePointer, countType]);
+		var length = isWindows ? panicFunction.GetParam(1) : builder.BuildZExt(panicFunction.GetParam(1), countType);
+		var standardError = LLVMValueRef.CreateConstInt(LLVMTypeRef.Int32, 2);
+		builder.BuildCall2(writeType, GetCFunction(isWindows ? "_write" : "write", writeType),
+			[standardError, panicFunction.GetParam(0), length]);
+		
+		var abortType = LLVMTypeRef.CreateFunction(LLVMTypeRef.Void, []);
+		builder.BuildCall2(abortType, GetCFunction("abort", abortType), []);
+		builder.BuildUnreachable();
+		return panicFunction;
+	}
+	
+	private LLVMValueRef GetCFunction(string name, LLVMTypeRef type)
+	{
+		var function = currentModule.GetNamedFunction(name);
+		if (function.Handle != IntPtr.Zero)
+			return function;
+		
+		function = currentModule.AddFunction(name, type);
+		function.Linkage = LLVMLinkage.LLVMExternalLinkage;
+		return function;
 	}
 	
 	private LLVMValueRef EmitFloatBinaryOp(BinOpValue v, LLVMBuilderRef builder)
@@ -1367,7 +1428,6 @@ public sealed unsafe class CodeGenerator : IDisposable
 	{
 		var elemType = MapTypeSymbol(v.Type);
 		
-		// TODO Switch to BuildInBoundsGEP2 once compiler-generated bounds checks are implemented
 		switch (v.Target.Type)
 		{
 			case ArrayType a:
@@ -1386,8 +1446,14 @@ public sealed unsafe class CodeGenerator : IDisposable
 				
 				var index = EmitValue(v.Index, builder);
 				var zero = LLVMValueRef.CreateConstInt(LLVMTypeRef.Int32, 0);
-				var elemPtr = builder.BuildGEP2(arrayType, arrayPtr, new[] { zero, index }, "elemptr");
-				return (elemPtr, elemType);
+				if (!_config.BoundsChecks || a.Length.Sign < 0)
+					return (builder.BuildGEP2(arrayType, arrayPtr, new[] { zero, index }, "elemptr"), elemType);
+				
+				var length = LLVMValueRef.CreateConstInt(index.TypeOf, (ulong)a.Length);
+				PanicIf(builder.BuildICmp(LLVMIntPredicate.LLVMIntUGE, index, length), "index out of bounds",
+					v.SourceLocation, builder);
+				
+				return (builder.BuildInBoundsGEP2(arrayType, arrayPtr, new[] { zero, index }, "elemptr"), elemType);
 			}
 			
 			default:
@@ -1933,6 +1999,9 @@ public sealed record CodeGenConfig
 	OptimizeMode OptimizeMode
 )
 {
+	public bool BoundsChecks { get; init; } = true;
+	public string? SourceRoot { get; init; }
+	
 	public uint GetPointerSize() => GetDataLayout().PointerSize;
 	
 	public unsafe (string DataLayout, string TargetTriple, LLVMTargetMachineRef TargetMachine, uint PointerSize)

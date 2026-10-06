@@ -1,0 +1,5 @@
+first 10
+last 30
+[stderr]
+Panic at bounds_checks.ce:11:6: index out of bounds
+[exit code -1073740791]

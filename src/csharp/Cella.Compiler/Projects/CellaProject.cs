@@ -21,6 +21,9 @@ public sealed partial class CellaProject
 	public string? AssemblyName { get; init; }
 	
 	[TomlValueOnSerialized]
+	public bool? BoundsChecks { get; init; }
+	
+	[TomlValueOnSerialized]
 	public List<ProjectReference>? ProjectReferences { get; init; }
 	
 	public static IEnumerable<string> FindProjects(string directory) =>

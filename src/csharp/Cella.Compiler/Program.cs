@@ -169,7 +169,11 @@ internal static class Program
 		var objDir = Path.Combine(project.Directory, "obj");
 		var outputConfig = new OutputConfig(objDir, true, true);
 		var targetConfig = new TargetConfig(targetTriple.ToLlvm(), Features: targetTriple.ToLlvmFeatures());
-		var codeGenConfig = new CodeGenConfig(outputConfig, targetConfig, optimizeMode);
+		var codeGenConfig = new CodeGenConfig(outputConfig, targetConfig, optimizeMode)
+		{
+			BoundsChecks = project.Project.BoundsChecks ?? true,
+			SourceRoot = project.Directory
+		};
 		
 		var pointerBitSize = codeGenConfig.GetPointerSize() * 8;
 		

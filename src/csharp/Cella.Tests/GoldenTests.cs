@@ -66,9 +66,10 @@ public sealed class GoldenTests
 		{
 			CopySources(sourcePath, caseDirectory);
 			var projectPath = Path.Combine(caseDirectory, "test.celp");
-			await File.WriteAllTextAsync(projectPath,
-				"OutputType = \"Executable\"\nSystemLinkPreference = \"Dynamic\"\n",
-				cancellationToken);
+			if (!File.Exists(projectPath))
+				await File.WriteAllTextAsync(projectPath,
+					"OutputType = \"Executable\"\nSystemLinkPreference = \"Dynamic\"\n",
+					cancellationToken);
 			
 			var (compileExitCode, compileOutput) = await CompileAsync(projectPath, release, cancellationToken);
 			compileOutput = compileOutput.Replace(caseDirectory, "<case>");
@@ -100,6 +101,10 @@ public sealed class GoldenTests
 			Directory.CreateDirectory(Path.GetDirectoryName(target)!);
 			File.Copy(file, target);
 		}
+		
+		var project = Path.Combine(sourcePath, "test.celp");
+		if (File.Exists(project))
+			File.Copy(project, Path.Combine(caseDirectory, "test.celp"));
 	}
 	
 	private static async Task<(int ExitCode, string Output)> CompileAsync(string projectPath, bool release,

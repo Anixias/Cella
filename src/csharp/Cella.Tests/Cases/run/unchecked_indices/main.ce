@@ -1,0 +1,21 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Layout: rec
+{
+	values: array[i32, 2]
+	after: i32
+}
+
+read: fun(layout: Layout, index: usize) -> i32 = layout.values[index]
+
+main: fun -> i32
+{
+	val layout = Layout([1, 2], 77)
+	printf("%d %d\n", read(layout, 1), read(layout, 2))
+	ret 0
+}

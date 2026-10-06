@@ -1,0 +1,20 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+pick: fun(index: usize) -> i32
+{
+	val values = [10, 20, 30]
+	ret values[index]
+}
+
+main: fun -> i32
+{
+	printf("first %d\n", pick(0))
+	printf("last %d\n", pick(2))
+	printf("past %d\n", pick(3))
+	ret 0
+}

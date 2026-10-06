@@ -884,7 +884,7 @@ public sealed class Lowerer
 				return LowerShortCircuit(node.Left, node.Operation!.Op, node.Right);
 			
 			var operands = LowerOperands([node.Left, node.Right]);
-			return LowerBinOp(operands[0], node.Operation, operands[1]);
+			return LowerBinOp(operands[0], node.Operation, operands[1], node.Syntax.SourceLocation);
 		}
 		
 		private static bool IsShortCircuitOp(OperationImpl? op) =>
@@ -1056,7 +1056,10 @@ public sealed class Lowerer
 			
 			var current = node.Operation is not null && emits ? CaptureAsAtomic(left, "current") : left;
 			var right = Consume(VisitNode(node.Right));
-			var value = node.Operation is null ? right : LowerBinOp(current, node.Operation, right);
+			var value = node.Operation is null
+				? right
+				: LowerBinOp(current, node.Operation, right, node.Syntax.SourceLocation);
+			
 			if (currentBlock is null)
 				return left;
 			
@@ -1111,7 +1114,7 @@ public sealed class Lowerer
 					right = new VariableValue(new(tempSymbol, rightNode.Type), rightNode.Syntax.SourceLocation);
 				}
 				
-				var comparison = LowerBinOp(left, op, right);
+				var comparison = LowerBinOp(left, op, right, node.Syntax.SourceLocation);
 				
 				if (isLast)
 				{
@@ -1160,20 +1163,17 @@ public sealed class Lowerer
 			currentBlock = null;
 		}
 		
-		private Value LowerBinOp(Value left, OperationImpl? op, Value right) => op switch
+		private Value LowerBinOp(Value left, OperationImpl? op, Value right, SourceLocation location) => op switch
 		{
 			NativeImpl { ParameterTypes: [EnumSymbol enumType, _] } i => new BinOpValue(i.ReturnType,
 				new EnumTagValue(_typePool.GetTagType(enumType), left, left.SourceLocation),
 				new EnumTagValue(_typePool.GetTagType(enumType), right, right.SourceLocation),
-				ToBinaryOperation(i.Op), Join(left.SourceLocation, right.SourceLocation)),
-			NativeImpl i => new BinOpValue(i.ReturnType, left, right, ToBinaryOperation(i.Op),
-				Join(left.SourceLocation, right.SourceLocation)),
-			FunctionImpl i => new CallValue(i.Function, [left, right],
-				Join(left.SourceLocation, right.SourceLocation)),
+				ToBinaryOperation(i.Op), location),
+			NativeImpl i => new BinOpValue(i.ReturnType, left, right, ToBinaryOperation(i.Op), location),
+			FunctionImpl i => new CallValue(i.Function, [left, right], location),
 			PointerOffsetImpl i => new PointerOffsetValue(i.PointerType, left, right, ToBinaryOperation(i.Op),
-				Join(left.SourceLocation, right.SourceLocation)),
-			PointerDifferenceImpl i => new PointerDifferenceValue(left, right, i.PointerType,
-				Join(left.SourceLocation, right.SourceLocation)),
+				location),
+			PointerDifferenceImpl i => new PointerDifferenceValue(left, right, i.PointerType, location),
 			ConversionImpl i => LowerConversionBinOp(left, i, right),
 			_ => throw new InvalidOperationException()
 		};
