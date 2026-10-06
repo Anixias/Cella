@@ -1,0 +1,36 @@
+mod game
+
+ext
+{
+	printf: pvt fun(format: cstr, ...) -> i32
+}
+
+twice: mod fun(n: i32) -> i32 = n * 2
+
+triple: pvt fun(n: i32) -> i32 = n * 3
+
+bump: mod fun(n: i32) -> i32 = n + 1
+
+hits: mod var i32 = 20
+
+doubler: val fun[i32 -> i32] = twice
+
+table: val array[fun[i32 -> i32], 1] = [triple]
+
+Inner: pvt rec
+{
+	value: i32
+
+	drop: op
+	{
+		printf("inner %d dropped\n", self.value)
+	}
+}
+
+Outer: rec
+{
+	inner: pvt Inner
+
+	make: fun(value: i32) -> Outer = Outer(Inner(value))
+	read: fun(self) -> i32 = self.inner.value
+}

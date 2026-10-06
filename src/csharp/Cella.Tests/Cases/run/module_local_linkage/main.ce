@@ -1,0 +1,13 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+main: fun -> i32
+{
+	val outer = game.Outer.make(5)
+	printf("%d %d %d %d\n", game.doubler(4), game.table[0](3), game.count(), outer.read())
+	ret 0
+}

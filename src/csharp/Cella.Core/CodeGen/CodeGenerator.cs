@@ -65,6 +65,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 	private readonly LLVMValueRef _false = LLVMValueRef.CreateConstInt(LLVMTypeRef.Int1, 0uL);
 	private readonly HashSet<string> _externalLibraries = [];
 	private readonly Dictionary<byte[], LLVMValueRef> _stringPool = new(ByteArrayComparer.Instance);
+	private readonly HashSet<FunctionSymbol> _sharedFunctions;
 	private LLVMModuleRef currentModule;
 	private LLVMFunctionInfo currentFunction;
 	private LLVMValueRef panicFunction;
@@ -79,7 +80,24 @@ public sealed unsafe class CodeGenerator : IDisposable
 		(_dataLayoutStr, TargetTriple, _targetMachine, _pointerSize) = config.GetDataLayout();
 		_targetData = LLVMTargetDataRef.FromStringRepresentation(_dataLayoutStr);
 		_cAbi = new CAbi(_targetData, TargetTriple);
+		_sharedFunctions = assemblySymbol.SignatureTable.Globals.Values
+			.Where(static global => global.Symbol.Visibility is Visibility.Project or Visibility.Public)
+			.SelectMany(static global => FindFunctions(global.Value))
+			.ToHashSet();
 	}
+	
+	private static IEnumerable<FunctionSymbol> FindFunctions(Constant? constant) => constant switch
+	{
+		FunctionConstant c => [c.Function.Symbol],
+		RecordConstant c => c.Fields.SelectMany(FindFunctions),
+		ArrayConstant c => c.Elements.SelectMany(FindFunctions),
+		EnumConstant c => c.Payload.SelectMany(FindFunctions),
+		_ => []
+	};
+	
+	private bool IsObjectLocal(FunctionSymbol function) =>
+		function.Visibility is Visibility.Private or Visibility.Module && function.Kind != FunctionKind.Destructor &&
+		!_sharedFunctions.Contains(function);
 	
 	private LLVMErrorRef RunOptimizationPass(LLVMModuleRef module)
 	{
@@ -298,6 +316,10 @@ public sealed unsafe class CodeGenerator : IDisposable
 					// TODO Use ExternalLinkage if not building a DLL?
 					llvmFunction.DLLStorageClass = LLVMDLLStorageClass.LLVMDLLExportStorageClass;
 					llvmFunction.Linkage = LLVMLinkage.LLVMDLLExportLinkage;
+				}
+				else if (IsObjectLocal(function.Info.Symbol))
+				{
+					llvmFunction.Linkage = LLVMLinkage.LLVMInternalLinkage;
 				}
 				else
 				{
@@ -1645,6 +1667,10 @@ public sealed unsafe class CodeGenerator : IDisposable
 		{
 			global.DLLStorageClass = LLVMDLLStorageClass.LLVMDLLExportStorageClass;
 			global.Linkage = LLVMLinkage.LLVMDLLExportLinkage;
+		}
+		else if (info.Symbol.Visibility is Visibility.Private or Visibility.Module)
+		{
+			global.Linkage = LLVMLinkage.LLVMInternalLinkage;
 		}
 		else
 		{

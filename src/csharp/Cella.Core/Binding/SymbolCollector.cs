@@ -126,10 +126,14 @@ public sealed class SymbolCollector : IDeclarationNodeVisitor<Symbol>
 	
 	public Symbol Visit(ParameterNode node) => throw new InvalidOperationException();
 	
-	private Visibility GetMemberVisibility(Token? keyword) =>
-		keyword is null && _typeVisibilities.TryPeek(out var visibility) && visibility == Visibility.Public
-			? Visibility.Public
-			: Visibility.FromKeyword(keyword);
+	private Visibility GetMemberVisibility(Token? keyword) => keyword is null && _typeVisibilities.TryPeek(out var type)
+		? type switch
+		{
+			Visibility.Public => Visibility.Public,
+			Visibility.Project => Visibility.Project,
+			_ => Visibility.Module
+		}
+		: Visibility.FromKeyword(keyword);
 	
 	public static ParameterMode GetMode(Token? keyword) => keyword?.Type switch
 	{

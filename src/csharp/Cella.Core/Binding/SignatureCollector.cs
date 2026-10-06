@@ -135,6 +135,7 @@ public sealed class SignatureCollector
 		
 		var node = (GlobalNode)declaration.Node;
 		type = declaration.Context.ResolveType(node.Type);
+		ReportHiddenType(node.Type, type, global.Visibility, global.Name);
 		if (node.IsMutable && !IsScalar(type))
 			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Type.SourceLocation,
 				"Module variables must be numbers, 'bool' or 'char'"));
@@ -255,8 +256,12 @@ public sealed class SignatureCollector
 			switch (member)
 			{
 				case FieldNode field:
+					var fieldSymbol = (FieldSymbol)symbol;
 					var fieldType = context.ResolveType(field.Type);
-					_typePool.RegisterMember(record, (FieldSymbol)symbol, fieldType);
+					_typePool.RegisterMember(record, fieldSymbol, fieldType);
+					ReportHiddenType(field.Type, fieldType, GetEffectiveVisibility(fieldSymbol.Visibility, record),
+						field.Identifier.Text);
+					
 					if (!node.IsRef && _typePool.HoldsBorrows(fieldType))
 						Diagnostics.Add(ReportStoredBorrow(field.Type, node.Identifier, node.Modifiers, "records",
 							"rec"));
@@ -388,6 +393,7 @@ public sealed class SignatureCollector
 			for (var i = 0; i < types.Length; i++)
 			{
 				_typePool.RegisterPayloadField(enumCase.Fields[i], types[i]);
+				ReportHiddenType(enumCase.Fields[i].Node!.Type, types[i], enumType.Visibility, enumType.Name);
 				if (!node.IsRef && _typePool.HoldsBorrows(types[i]))
 					Diagnostics.Add(ReportStoredBorrow(enumCase.Fields[i].Node!.Type, node.Identifier, node.Modifiers,
 						"enums", "enum"));
@@ -415,6 +421,34 @@ public sealed class SignatureCollector
 			..node.Functions.Select(static f => (f.Identifier, (FunctionNode?)f, false))
 		]);
 	}
+	
+	private void ReportHiddenType(ITypeNode node, TypeSymbol type, Visibility visibility, string name)
+	{
+		if (FindHiddenType(type, visibility) is { } hidden)
+			Diagnostics.Add(new(DiagnosticSeverity.Error, node.SourceLocation,
+				$"'{hidden.Name}' is less visible than '{name}'"));
+	}
+	
+	private static TypeSymbol? FindHiddenType(TypeSymbol type, Visibility visibility) => type switch
+	{
+		PointerType pointer => FindHiddenType(pointer.BaseType, visibility),
+		BorrowType borrow => FindHiddenType(borrow.Target, visibility),
+		ArrayType array => FindHiddenType(array.ElementType, visibility),
+		FunctionType function => function.ParameterTypes.Append(function.ReturnType)
+			.Select(part => FindHiddenType(part, visibility))
+			.FirstOrDefault(static hidden => hidden is not null),
+		IExportable exportable when exportable.Visibility < visibility => type,
+		_ => null
+	};
+	
+	private static Visibility GetEffectiveVisibility(Visibility member, TypeSymbol owner)
+	{
+		var ownerVisibility = ModuleIndex.GetVisibility(owner);
+		return member < Visibility.Project && member < ownerVisibility ? member : ownerVisibility;
+	}
+	
+	private static Visibility GetEffectiveVisibility(FunctionSymbol function, ResolutionContext context) =>
+		context.ContainingType is { } owner ? GetEffectiveVisibility(function.Visibility, owner) : function.Visibility;
 	
 	private static Diagnostic ReportStoredBorrow(ITypeNode type, Token name, IEnumerable<Token> modifiers,
 		string kinds, string keyword)
@@ -536,6 +570,7 @@ public sealed class SignatureCollector
 	private void CollectConstructor(FunctionSymbol function, ConstructorNode node, ResolutionContext context)
 	{
 		var containingType = context.ContainingType!;
+		var visibility = GetEffectiveVisibility(function, context);
 		ReportDuplicateParameters(node.Parameters);
 		ReportBorrowParameters(node.Parameters, false);
 		
@@ -554,6 +589,7 @@ public sealed class SignatureCollector
 			var param = node.Parameters[i];
 			var paramSymbol = function.Parameters[i + 1]; // + 1 due to implicit self parameter
 			var paramType = _typePool.GetPassedType(context.ResolveType(param.Type), paramSymbol.Mode);
+			ReportHiddenType(param.Type, paramType, visibility, node.Keyword.Text);
 			
 			paramTypes.Add(paramType);
 			_builder.VariableTypes[paramSymbol] = paramType;
@@ -608,12 +644,14 @@ public sealed class SignatureCollector
 			scope.Define(self);
 		}
 		
+		var visibility = GetEffectiveVisibility(function, context);
 		var offset = paramTypes.Count;
 		for (var i = 0; i < node.Parameters.Length; i++)
 		{
 			var param = node.Parameters[i];
 			var paramSymbol = function.Parameters[i + offset];
 			var paramType = _typePool.GetPassedType(context.ResolveType(param.Type), paramSymbol.Mode);
+			ReportHiddenType(param.Type, paramType, visibility, node.Identifier.Text);
 			
 			paramTypes.Add(paramType);
 			_builder.VariableTypes[paramSymbol] = paramType;
@@ -625,6 +663,9 @@ public sealed class SignatureCollector
 			returnType = NativeSymbols.Void;
 		else
 			returnType = context.ResolveType(returnTypeSyntax);
+		
+		if (node.ReturnType is { } returnTypeNode)
+			ReportHiddenType(returnTypeNode, returnType, visibility, node.Identifier.Text);
 		
 		var signature = new FunctionSignature(paramTypes, returnType, false, GetModes(function));
 		
@@ -650,6 +691,7 @@ public sealed class SignatureCollector
 			var param = node.Parameters[i];
 			var paramSymbol = function.Parameters[i];
 			var paramType = _typePool.GetPassedType(context.ResolveType(param.Type), paramSymbol.Mode);
+			ReportHiddenType(param.Type, paramType, function.Visibility, node.Identifier.Text);
 			
 			paramTypes.Add(paramType);
 			_builder.VariableTypes[paramSymbol] = paramType;
@@ -660,6 +702,9 @@ public sealed class SignatureCollector
 			returnType = NativeSymbols.Void;
 		else
 			returnType = context.ResolveType(returnTypeSyntax);
+		
+		if (node.ReturnType is { } returnTypeNode)
+			ReportHiddenType(returnTypeNode, returnType, function.Visibility, node.Identifier.Text);
 		
 		var signature = new FunctionSignature(paramTypes, returnType, node.IsVariadic, GetModes(function));
 		return new(null, function, signature, null, node.Origin, context.File);

@@ -30,6 +30,5 @@ main: fun -> i32
 {
 	val node = Node(1)
 	printf("%d %d %d\n", helper(1), node.describe(), other())
-	printf("%d %d\n", game.describe(game.makeFirst()), game.describe(game.makeSecond()))
 	ret 0
 }

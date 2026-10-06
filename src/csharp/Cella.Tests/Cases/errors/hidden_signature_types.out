@@ -1,0 +1,94 @@
+
+====== hidden_signature_types.ce ======
+
+Error at line 5, column 20
+4 │ {
+5 │     native: fun(node: ptr[Node])
+                          ╘═══════╛ 'Node' is less visible than 'native'
+
+Error at line 25, column 8
+24 │ {
+25 │     copy: Shared
+               ╘════╛ 'Shared' is less visible than 'copy'
+
+Error at line 28, column 11
+27 │ secret: mod Secret
+28 │ pointer: ptr[Node]
+              ╘═══════╛ 'Node' is less visible than 'pointer'
+
+Error at line 33, column 8
+32 │ {
+33 │     node: Node
+               ╘══╛ 'Node' is less visible than 'node'
+
+Error at line 34, column 10
+33 │ node: Node
+34 │ secret: Secret
+             ╘════╛ 'Secret' is less visible than 'secret'
+
+Error at line 35, column 9
+34 │ secret: Secret
+35 │ nodes: array[Node, 2]
+            ╘════════════╛ 'Node' is less visible than 'nodes'
+
+Error at line 36, column 12
+35 │ nodes: array[Node, 2]
+36 │ callback: fun[Node -> i32]
+               ╘══════════════╛ 'Node' is less visible than 'callback'
+
+Error at line 38, column 16
+37 │ 
+38 │ new: op(node: Node)
+                   ╘══╛ 'Node' is less visible than 'new'
+
+Error at line 42, column 17
+41 │ 
+42 │ *: op(self) -> imm[Node] = imm self.node
+                    ╘═══════╛ 'Node' is less visible than '*'
+
+Error at line 43, column 26
+42 │ *: op(self) -> imm[Node] = imm self.node
+43 │ read: fun(self, secret: Secret) -> i32 = 0
+                             ╘════╛ 'Secret' is less visible than 'read'
+
+Error at line 44, column 15
+43 │ read: fun(self, secret: Secret) -> i32 = 0
+44 │ make: fun -> Node = Node(1)
+                  ╘══╛ 'Node' is less visible than 'make'
+
+Error at line 52, column 13
+51 │ empty
+52 │ leaf(node: Node)
+                ╘══╛ 'Node' is less visible than 'Tree'
+
+Error at line 64, column 8
+63 │ {
+64 │     node: Node
+               ╘══╛ 'Node' is less visible than 'node'
+
+Error at line 68, column 14
+67 │ 
+68 │ make: fun -> Node = Node(1)
+                  ╘══╛ 'Node' is less visible than 'make'
+
+Error at line 70, column 17
+69 │ 
+70 │ take: fun(node: Node) -> i32 = node.value
+                     ╘══╛ 'Node' is less visible than 'take'
+
+Error at line 72, column 23
+71 │ 
+72 │ expose: mod fun(node: Node) -> i32 = node.value
+                           ╘══╛ 'Node' is less visible than 'expose'
+
+Error at line 78, column 25
+77 │ 
+78 │ export: pub fun(shared: Shared) -> i32 = shared.value
+                             ╘════╛ 'Shared' is less visible than 'export'
+
+Error at line 80, column 13
+79 │ 
+80 │ origin: val Node = Node(0)
+                 ╘══╛ 'Node' is less visible than 'origin'
+
+[compilation failed]

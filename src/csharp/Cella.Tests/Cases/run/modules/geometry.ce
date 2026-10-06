@@ -9,7 +9,7 @@ sides: val usize = 3
 scaleBy: val i32 = 4
 counter: var i32 = 10
 
-Point: rec
+Point: pub rec
 {
 	x: i32
 	y: i32

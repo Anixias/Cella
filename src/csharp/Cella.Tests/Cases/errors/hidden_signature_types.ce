@@ -1,0 +1,82 @@
+mod test
+
+ext
+{
+	native: fun(node: ptr[Node])
+}
+
+Node: pvt rec
+{
+	value: i32
+}
+
+Secret: mod rec
+{
+	code: i32
+}
+
+Shared: rec
+{
+	value: i32
+}
+
+Exported: pub rec
+{
+	copy: Shared
+	hidden: pvt Node
+	secret: mod Secret
+	pointer: ptr[Node]
+}
+
+Holder: rec
+{
+	node: Node
+	secret: Secret
+	nodes: array[Node, 2]
+	callback: fun[Node -> i32]
+
+	new: op(node: Node)
+	{
+	}
+
+	*: op(self) -> imm[Node] = imm self.node
+	read: fun(self, secret: Secret) -> i32 = 0
+	make: fun -> Node = Node(1)
+	peek: mod fun(secret: Secret) -> i32 = 0
+	inner: pvt fun(node: Node) -> i32 = 0
+}
+
+Tree: enum
+{
+	empty
+	leaf(node: Node)
+}
+
+Local: pvt rec
+{
+	node: Node
+
+	make: fun -> Node = Node(1)
+}
+
+Grouped: mod rec
+{
+	node: Node
+	secret: Secret
+}
+
+make: fun -> Node = Node(1)
+
+take: fun(node: Node) -> i32 = node.value
+
+expose: mod fun(node: Node) -> i32 = node.value
+
+keep: pvt fun(node: Node) -> i32 = node.value
+
+share: mod fun(secret: Secret) -> i32 = secret.code
+
+export: pub fun(shared: Shared) -> i32 = shared.value
+
+origin: val Node = Node(0)
+
+main: fun -> i32 = 0

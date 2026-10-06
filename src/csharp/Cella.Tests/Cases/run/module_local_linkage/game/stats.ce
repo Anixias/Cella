@@ -1,0 +1,7 @@
+mod game
+
+count: fun -> i32
+{
+	hits = bump(hits)
+	ret twice(hits)
+}
