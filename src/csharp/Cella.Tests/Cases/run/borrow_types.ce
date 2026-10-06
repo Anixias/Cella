@@ -1,0 +1,132 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Point: rec
+{
+	x: i32
+	y: i32
+}
+
+Stats: rec
+{
+	kills: i32
+	deaths: i32
+}
+
+Tally: rec
+{
+	count: mut[i32]
+	step: i32
+}
+
+Effect: enum
+{
+	none
+	hit(amount: i32)
+}
+
+Buffer: rec
+{
+	id: i32
+
+	drop: op
+	{
+		printf("drop %d\n", self.id)
+	}
+}
+
+kills: fun(mut stats: Stats) -> mut[i32]
+{
+	ret mut stats.kills
+}
+
+pick: fun(mut point: Point, first: bool) -> imm[i32]
+{
+	if first
+		ret point.x
+	ret point.y
+}
+
+inc: fun(mut counter: i32)
+{
+	counter += 1
+}
+
+total: fun(point: Point) -> i32 = point.x * 10 + point.y
+
+sum: fun(point: Point) -> i32 = point.x + point.y
+
+bump: fun(mut tally: Tally)
+{
+	tally.count += tally.step
+}
+
+read: fun(buffer: Buffer) -> i32 = buffer.id
+
+make: fun(id: i32) -> Buffer = Buffer(id)
+
+main: fun -> i32
+{
+	var stats = Stats(1, 0)
+	val count = mut stats.kills
+	count += 1
+	kills(mut stats) += 1
+	count = count * 10
+	printf("%d %d\n", stats.kills, count)
+
+	var point = Point(3, 4)
+	val p = imm point
+	val x: imm[i32] = point.x
+	point.y = 40
+	printf("%d %d %d %d %d %d\n", p.x, p.y, sum(p), x + 1, total(point), total(p))
+
+	var a = 1
+	var b = 2
+	var r: imm[i32] = a
+	printf("%d ", r)
+	r = b
+	printf("%d ", r)
+	var m = mut a
+	m = 10
+	m = mut b
+	m = 20
+	printf("%d %d\n", a, b)
+
+	var n = 5
+	inc(mut n)
+	val alias = mut n
+	inc(mut alias)
+	val y = pick(mut point, false)
+	point.y = 9
+	printf("%d %d %d %d\n", n, y, pick(mut point, true), total(point))
+
+	var tally = Tally(mut a, 5)
+	bump(mut tally)
+	tally.count = mut b
+	bump(mut tally)
+	printf("%d %d %d\n", a, b, sizeOf(Tally))
+
+	var effect = Effect.hit(7)
+	val e = imm effect
+	val amount = match e
+	{
+		hit(damage) => damage
+		none => 0
+	}
+
+	val pair: array[imm[i32], 2] = [a, b]
+	val second = @pair[1]
+	printf("%d %d %d %d %d %d\n", amount, pair[0], pair[1], *second, sizeOf(imm[i32]), sizeOf(e))
+
+	var buffer = make(1)
+	val viewed = imm buffer
+	val owner = mut buffer
+	printf("read %d %d\n", read(viewed), viewed.id)
+	owner = make(2)
+	printf("now %d\n", buffer.id)
+	ret 0
+}

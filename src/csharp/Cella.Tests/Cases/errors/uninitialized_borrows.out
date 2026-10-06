@@ -1,0 +1,14 @@
+
+====== uninitialized_borrows.ce ======
+
+Error at line 11, column 17
+10 │ var r: imm[i32]
+11 │ printf("%d\n", r)
+                    ^ Cannot use uninitialized values
+
+Error at line 13, column 2
+12 │ var m: mut[i32]
+13 │ m = 5
+     ^ Cannot use uninitialized values
+
+[compilation failed]

@@ -1,0 +1,69 @@
+
+====== borrow_writes.ce ======
+
+Error at line 26, column 44
+25 │ 
+26 │ first: fun(mut point: Point) -> imm[i32] = make()
+                                                ╘════╛ Cannot borrow unstored values
+
+Error at line 32, column 2
+31 │ val r = imm p
+32 │ r.x = 5
+     ╘═╛ Cannot write through read-only borrows
+
+Error at line 33, column 2
+32 │ r.x = 5
+33 │ r.x += 1
+     ╘═╛ Cannot write through read-only borrows
+
+Error at line 34, column 14
+33 │ r.x += 1
+34 │ val m = mut r.x
+                 ╘═╛ Cannot mutably borrow through read-only borrows
+
+Error at line 37, column 14
+36 │ val v = 1
+37 │ val n = mut v
+                 ^ Cannot mutably borrow values
+
+Error at line 42, column 2
+41 │ val fixed = mut a
+42 │ fixed = mut b
+     ╘═══╛ Cannot reassign values
+
+Error at line 44, column 6
+43 │ var c: imm[i32] = a
+44 │ c = 5
+         ^ Cannot borrow unstored values
+
+Error at line 46, column 14
+45 │ 
+46 │ val t = imm make()
+                 ╘════╛ Cannot borrow unstored values
+
+Error at line 47, column 20
+46 │ val t = imm make()
+47 │ val s: imm[i32] = 5
+                       ^ Cannot borrow unstored values
+
+Error at line 48, column 14
+47 │ val s: imm[i32] = 5
+48 │ val g = imm counter
+                 ╘═════╛ Cannot borrow module variables
+
+Error at line 49, column 14
+48 │ val g = imm counter
+49 │ val h = mut counter
+                 ╘═════╛ Cannot mutably borrow module variables
+
+Error at line 53, column 23
+52 │ val viewed = imm buffer
+53 │ val copied: Buffer = viewed
+                          ╘════╛ Cannot move borrowed values
+
+Error at line 56, column 18
+55 │ val held = imm holder
+56 │ val taken = own held.buffer
+                     ╘═════════╛ Cannot move borrowed values
+
+[compilation failed]

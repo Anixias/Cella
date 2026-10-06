@@ -232,6 +232,10 @@ public sealed unsafe class CodeGenerator : IDisposable
 				return llvmPtrType;
 			}
 			
+			case BorrowType:
+				_typeMap[symbol] = OpaquePointer;
+				return OpaquePointer;
+			
 			case EnumSymbol enumType:
 				return CreateEnumType(enumType);
 			

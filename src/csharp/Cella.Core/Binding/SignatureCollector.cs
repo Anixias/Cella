@@ -429,6 +429,7 @@ public sealed class SignatureCollector
 	{
 		var containingType = context.ContainingType!;
 		ReportDuplicateParameters(node.Parameters);
+		ReportBorrowParameters(node.Parameters, false);
 		
 		var scope = new Scope();
 		var paramTypes = new List<TypeSymbol>(node.Parameters.Length + 1);
@@ -478,6 +479,7 @@ public sealed class SignatureCollector
 	private FunctionInfo CollectFunction(FunctionSymbol function, FunctionNode node, ResolutionContext context)
 	{
 		ReportDuplicateParameters(node.Parameters);
+		ReportBorrowParameters(node.Parameters, node.IsExternal);
 		
 		var scope = new Scope();
 		
@@ -515,6 +517,7 @@ public sealed class SignatureCollector
 		ResolutionContext context)
 	{
 		ReportDuplicateParameters(node.Parameters);
+		ReportBorrowParameters(node.Parameters, true);
 		
 		var paramTypes = new List<TypeSymbol>(node.Parameters.Length);
 		for (var i = 0; i < node.Parameters.Length; i++)
@@ -583,6 +586,16 @@ public sealed class SignatureCollector
 	private void ReportDuplicateParameters(IEnumerable<ParameterNode> parameters) =>
 		Diagnostics.AddRange(DiagnosticReporter.ReportDuplicates(parameters.Select(static p => p.Identifier),
 			static name => $"Parameter '{name}' is declared more than once"));
+	
+	private void ReportBorrowParameters(IEnumerable<ParameterNode> parameters, bool isExternal)
+	{
+		foreach (var parameter in parameters)
+		{
+			if (parameter.Type is BorrowTypeNode borrow)
+				Diagnostics.Add(DiagnosticReporter.ReportBorrowParameter(borrow, parameter.Identifier.Text,
+					parameter.Mode is not null, isExternal));
+		}
+	}
 	
 	private void ReportDuplicateDeclarations()
 	{

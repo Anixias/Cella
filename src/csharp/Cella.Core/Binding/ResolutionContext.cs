@@ -175,16 +175,31 @@ public readonly struct ResolutionContext
 		QualifiedTypeNode n => ResolveQualifiedType(n),
 		GenericTypeNode n => ResolveGenericType(n),
 		FunctionTypeNode n => ResolveFunctionType(n),
+		BorrowTypeNode n => ResolveBorrowType(ResolveType(n.Target), n.IsMutable),
 		_ => NativeSymbols.Invalid
 	};
+	
+	private TypeSymbol ResolveBorrowType(TypeSymbol target, bool isMutable) =>
+		target is InvalidType ? target : TypePool.GetBorrowType(target, isMutable);
 	
 	private FunctionType ResolveFunctionType(FunctionTypeNode node)
 	{
 		var modes = node.ParameterModes.Select(SymbolCollector.GetMode).ToArray();
-		var typePool = TypePool;
-		var parameterTypes = node.ParameterTypes
-			.Select(ResolveType)
-			.Select((type, i) => typePool.GetPassedType(type, modes[i]));
+		var parameterTypes = new TypeSymbol[node.ParameterTypes.Length];
+		for (var i = 0; i < parameterTypes.Length; i++)
+		{
+			var typeNode = node.ParameterTypes[i];
+			if (typeNode is BorrowTypeNode borrow)
+			{
+				Diagnostics.Add(DiagnosticReporter.ReportBorrowParameter(borrow, null,
+					node.ParameterModes[i] is not null, node.IsExternal));
+				
+				modes[i] = borrow.IsMutable ? ParameterMode.Mut : ParameterMode.ReadOnly;
+				typeNode = borrow.Target;
+			}
+			
+			parameterTypes[i] = TypePool.GetPassedType(ResolveType(typeNode), modes[i]);
+		}
 		
 		var returnType = node.ReturnType is { } returnTypeNode ? ResolveType(returnTypeNode) : NativeSymbols.Void;
 		var functionType = TypePool.GetFunctionType(node.IsExternal, parameterTypes, modes, returnType);
@@ -262,6 +277,8 @@ public readonly struct ResolutionContext
 		AccessExpressionNode a => ResolveModule(a.Target) is { } module
 			? ResolveMember(module, a.Member.Text) as TypeSymbol
 			: null,
+		BorrowExpressionNode { Value: ArrayExpressionNode { Values: [var element] } } b =>
+			TryResolveExpressionAsType(element) is { } target ? ResolveBorrowType(target, b.IsMutable) : null,
 		_ => null
 	};
 	

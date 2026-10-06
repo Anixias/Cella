@@ -1,0 +1,29 @@
+mod test
+
+ext
+{
+	puts: fun(text: imm[u8]) -> i32
+	frexp: fun(value: f64, exponent: mut[i32]) -> f64
+}
+
+Counter: rec
+{
+	count: i32
+	step: fun(imm[i32]) -> i32
+
+	new: op(start: mut[i32])
+	{
+		self.count = start
+	}
+}
+
+inc: fun(counter: mut[i32])
+{
+	counter += 1
+}
+
+look: fun(value: imm[i32]) -> i32 = value
+
+apply: fun(action: fun(mut[i32]), own target: imm[i32]) {}
+
+main: fun -> i32 = 0

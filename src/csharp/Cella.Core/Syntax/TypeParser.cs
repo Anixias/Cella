@@ -1,6 +1,7 @@
 ﻿using System.Collections.Immutable;
 using Cella.Core.Syntax.Nodes;
 using Cella.Core.Text;
+using Cella.Diagnostics;
 
 namespace Cella.Core.Syntax;
 
@@ -10,11 +11,15 @@ public sealed class TypeParser(ImmutableArray<Token> tokens) : BaseParser<ITypeN
 		new[] { TokenType.KeywordExt, TokenType.KeywordFun }.ToDictionary(static t => t.Representation);
 	
 	private static readonly HashSet<TokenType> _parameterModes = [TokenType.KeywordMut, TokenType.KeywordOwn];
+	private static readonly HashSet<TokenType> _borrowKeywords = [TokenType.KeywordImm, TokenType.KeywordMut];
 	
 	public override ITypeNode Parse(ref int index) => ParseType(ref index);
 	
 	private ITypeNode ParseType(ref int index)
 	{
+		if (Match(ref index, out var borrowKeyword, _borrowKeywords))
+			return ParseBorrowType(ref index, borrowKeyword);
+		
 		if (TryParseFunctionType(ref index) is { } functionType)
 			return functionType;
 		
@@ -47,6 +52,24 @@ public sealed class TypeParser(ImmutableArray<Token> tokens) : BaseParser<ITypeN
 		range = range.Join(closeBracket.SourceLocation.Range);
 		
 		return new GenericTypeNode(new(source, range), identifier, args);
+	}
+	
+	private BorrowTypeNode ParseBorrowType(ref int index, Token keyword)
+	{
+		if (!Match(ref index, TokenType.OpOpenBracket))
+			throw Expected(index, "'['");
+		
+		var target = ParseType(ref index);
+		if (!Match(ref index, out var closeBracket, TokenType.OpCloseBracket))
+			throw Expected(index, "']'");
+		
+		return new BorrowTypeNode(keyword, target, closeBracket);
+	}
+	
+	private ParseException Expected(int index, string expected)
+	{
+		var token = Tokens[Math.Min(index, Tokens.Length - 1)];
+		return new(new Diagnostic(DiagnosticSeverity.Error, token.SourceLocation, $"Expected {expected}"));
 	}
 	
 	private QualifiedTypeNode ParseQualifiedType(ref int index, Token first)
@@ -82,7 +105,8 @@ public sealed class TypeParser(ImmutableArray<Token> tokens) : BaseParser<ITypeN
 		{
 			do
 			{
-				parameterModes.Add(Match(ref index, out var mode, _parameterModes) ? mode : null);
+				var isBorrowType = Peek(index, TokenType.KeywordMut) && Peek(index + 1, TokenType.OpOpenBracket);
+				parameterModes.Add(!isBorrowType && Match(ref index, out var mode, _parameterModes) ? mode : null);
 				parameterTypes.Add(ParseType(ref index));
 			} while (Match(ref index, TokenType.OpComma));
 			
@@ -98,6 +122,9 @@ public sealed class TypeParser(ImmutableArray<Token> tokens) : BaseParser<ITypeN
 	
 	private IGenericArgumentNode ParseGenericArgument(ref int index)
 	{
+		if (Peek(index, TokenType.KeywordImm) || Peek(index, TokenType.KeywordMut))
+			return new TypeArgumentNode(ParseType(ref index));
+		
 		if (TryParseFunctionType(ref index) is { } functionType)
 			return new TypeArgumentNode(functionType);
 		

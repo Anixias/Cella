@@ -1,0 +1,27 @@
+mod test
+
+Tally: rec
+{
+	count: mut[i32]
+}
+
+inc: fun(mut counter: i32)
+{
+	counter += 1
+}
+
+main: fun -> i32
+{
+	var x = 1
+	var big: i64 = 2
+	val r = imm x
+	val m = mut x
+	inc(x)
+	inc(r)
+	inc(mut big)
+	inc(m)
+	val t = Tally()
+	val w: mut[i32] = r
+	val z: i32 = imm x
+	ret 0
+}

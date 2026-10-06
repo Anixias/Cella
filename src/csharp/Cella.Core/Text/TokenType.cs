@@ -47,6 +47,7 @@ public enum TokenType
 	KeywordIs,
 	KeywordMut,
 	KeywordOwn,
+	KeywordImm,
 	
 	// Contextual Keywords
 	KeywordMod,
@@ -60,6 +61,7 @@ public enum TokenType
 	KeywordDrop,
 	KeywordOp,
 	KeywordReq,
+	KeywordRef,
 	
 	// Operators
 	OpLessLessLessEqual,
@@ -174,6 +176,7 @@ public static class TokenTypeInfo
 			[TokenType.KeywordIs] = new("is", IsKeyword: true),
 			[TokenType.KeywordMut] = new("mut", IsKeyword: true),
 			[TokenType.KeywordOwn] = new("own", IsKeyword: true),
+			[TokenType.KeywordImm] = new("imm", IsKeyword: true),
 			
 			[TokenType.KeywordMod] = new("mod", IsKeyword: true, IsContextual: true),
 			[TokenType.KeywordFun] = new("fun", IsKeyword: true, IsContextual: true),
@@ -186,6 +189,7 @@ public static class TokenTypeInfo
 			[TokenType.KeywordDrop] = new("drop", IsKeyword: true, IsContextual: true),
 			[TokenType.KeywordOp] = new("op", IsKeyword: true, IsContextual: true),
 			[TokenType.KeywordReq] = new("req", IsKeyword: true, IsContextual: true),
+			[TokenType.KeywordRef] = new("ref", IsKeyword: true, IsContextual: true),
 			
 			[TokenType.OpLessLessLessEqual] = new("<<<=", IsOperator: true),
 			[TokenType.OpGreaterGreaterGreaterEqual] = new(">>>=", IsOperator: true),

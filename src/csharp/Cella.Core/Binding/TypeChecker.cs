@@ -169,6 +169,7 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool) 
 		
 		VisitNode(value);
 		CheckConsumed(value);
+		CheckBorrowedTemporary(value);
 	}
 	
 	public void Visit(ResolvedVarStatementNode node)
@@ -187,6 +188,7 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool) 
 			{
 				VisitNode(initializer);
 				CheckConsumed(initializer);
+				CheckBorrowedTemporary(initializer);
 			}
 		}
 		else if (expected == NativeSymbols.Invalid)
@@ -376,6 +378,9 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool) 
 		else if (!IsLValue(node.Left))
 			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Left.Syntax.SourceLocation,
 				"Assignment target must be addressable"));
+		else if (IsThroughReadOnlyBorrow(node.Left))
+			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Left.Syntax.SourceLocation,
+				"Cannot write through read-only borrows"));
 		else if (!IsDeferredWrite(node) && FindImmutableBinding(node.Left) is { } binding)
 			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Left.Syntax.SourceLocation,
 				$"Cannot reassign {DescribeImmutable(binding)}"));
@@ -393,8 +398,11 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool) 
 		
 		VisitNode(node.Left);
 		VisitNode(node.Right);
-		if (node.Operation is null)
-			CheckConsumed(node.Right);
+		if (node.Operation is not null)
+			return;
+		
+		CheckConsumed(node.Right);
+		CheckBorrowedTemporary(node.Right);
 	}
 	
 	private void CheckOwnStore(ResolvedAssignmentExpressionNode node)
@@ -512,6 +520,8 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool) 
 		else if (place is ResolvedGlobalExpressionNode { Symbol: var global })
 			Diagnostics.Add(new(DiagnosticSeverity.Error, location,
 				$"Cannot move module {(global.IsMutable ? "variables" : "values")}"));
+		else if (IsThroughBorrow(place))
+			Diagnostics.Add(new(DiagnosticSeverity.Error, location, "Cannot move borrowed values"));
 		else if (IsThroughPointer(place) && typePool.IsCopy(node.Value.Type))
 			Diagnostics.Add(new(DiagnosticSeverity.Error, location,
 				$"Cannot move '{node.Value.Type.Name}' values out of a pointer"));
@@ -522,10 +532,21 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool) 
 	private void CheckConsumed(IResolvedExpressionNode value)
 	{
 		var place = SkipAssignment(value);
-		if (value is not ResolvedOwnExpressionNode && IsLValue(place) && IsThroughPointer(place) &&
-		    !typePool.IsCopy(value.Type))
+		if (value is ResolvedOwnExpressionNode || !IsLValue(place) || typePool.IsCopy(value.Type))
+			return;
+		
+		if (IsThroughBorrow(place))
+			Diagnostics.Add(new(DiagnosticSeverity.Error, value.Syntax.SourceLocation, "Cannot move borrowed values"));
+		else if (IsThroughPointer(place))
 			Diagnostics.Add(new(DiagnosticSeverity.Error, value.Syntax.SourceLocation,
 				$"Cannot move '{value.Type.Name}' values out of a pointer implicitly"));
+	}
+	
+	private void CheckBorrowedTemporary(IResolvedExpressionNode value)
+	{
+		if (value is ResolvedBorrowExpressionNode { IsImplicit: true } borrow && !IsLValue(borrow.Place))
+			Diagnostics.Add(new(DiagnosticSeverity.Error, value.Syntax.SourceLocation,
+				"Cannot borrow unstored values"));
 	}
 	
 	private static IResolvedExpressionNode SkipAssignment(IResolvedExpressionNode value) =>
@@ -538,7 +559,24 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool) 
 		ResolvedUnaryOpExpressionNode { Operation.Op: TokenType.OpStar } n => n.Operand is not ResolvedVarExpressionNode
 		{
 			Symbol: ParameterSymbol { Mode: ParameterMode.Mut } or LocalVariableSymbol { IsBorrowBinding: true }
-		},
+		} && n.Operand.Type is not BorrowType,
+		_ => false
+	};
+	
+	private static bool IsThroughBorrow(IResolvedExpressionNode place) => place switch
+	{
+		ResolvedAccessExpressionNode n => IsThroughBorrow(n.Target),
+		ResolvedIndexerExpressionNode n => IsThroughBorrow(n.Target),
+		ResolvedUnaryOpExpressionNode { Operation.Op: TokenType.OpStar } n => n.Operand.Type is BorrowType,
+		_ => false
+	};
+	
+	private static bool IsThroughReadOnlyBorrow(IResolvedExpressionNode place) => place switch
+	{
+		ResolvedAccessExpressionNode { Member: FieldSymbol } n => IsThroughReadOnlyBorrow(n.Target),
+		ResolvedIndexerExpressionNode { Target.Type: ArrayType } n => IsThroughReadOnlyBorrow(n.Target),
+		ResolvedUnaryOpExpressionNode { Operation.Op: TokenType.OpStar, Operand.Type: BorrowType borrow } =>
+			!borrow.IsMutable,
 		_ => false
 	};
 	
@@ -548,6 +586,25 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool) 
 		VisitNode(node.Place);
 	}
 	
+	public void Visit(ResolvedBorrowExpressionNode node)
+	{
+		if (node.IsMutable)
+			CheckMutPlace(node.Place);
+		else if (!node.IsImplicit || IsLValue(node.Place))
+			CheckBorrowedPlace(node.Place);
+		
+		VisitNode(node.Place);
+	}
+	
+	private void CheckBorrowedPlace(IResolvedExpressionNode place)
+	{
+		var location = place.Syntax.SourceLocation;
+		if (!IsLValue(place))
+			Diagnostics.Add(new(DiagnosticSeverity.Error, location, "Cannot borrow unstored values"));
+		else if (place is ResolvedGlobalExpressionNode { Symbol.IsMutable: true })
+			Diagnostics.Add(new(DiagnosticSeverity.Error, location, "Cannot borrow module variables"));
+	}
+	
 	private void CheckMutPlace(IResolvedExpressionNode place)
 	{
 		var location = place.Syntax.SourceLocation;
@@ -555,6 +612,8 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool) 
 			Diagnostics.Add(new(DiagnosticSeverity.Error, location, "Cannot mutably borrow unstored values"));
 		else if (place is ResolvedGlobalExpressionNode { Symbol.IsMutable: true })
 			Diagnostics.Add(new(DiagnosticSeverity.Error, location, "Cannot mutably borrow module variables"));
+		else if (IsThroughReadOnlyBorrow(place))
+			Diagnostics.Add(new(DiagnosticSeverity.Error, location, "Cannot mutably borrow through read-only borrows"));
 		else if (FindImmutableBinding(place) is { } binding)
 			Diagnostics.Add(new(DiagnosticSeverity.Error, location,
 				$"Cannot mutably borrow {DescribeImmutable(binding)}"));

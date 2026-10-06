@@ -3,15 +3,17 @@ using Cella.Core.Syntax.Nodes;
 
 namespace Cella.Core.Binding.Nodes;
 
-public sealed class ResolvedMutArgumentExpressionNode
+public sealed class ResolvedBorrowExpressionNode
 (
 	IResolvedExpressionNode place,
-	PointerType type,
-	BorrowExpressionNode syntax
+	BorrowType type,
+	bool isImplicit,
+	IExpressionNode syntax
 ) : IResolvedExpressionNode
 {
 	public IResolvedExpressionNode Place { get; } = place;
 	public TypeSymbol Type { get; } = type;
-	public BorrowExpressionNode Argument { get; } = syntax;
+	public bool IsMutable { get; } = type.IsMutable;
+	public bool IsImplicit { get; } = isImplicit;
 	public IExpressionNode Syntax { get; } = syntax;
 }

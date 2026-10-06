@@ -1,0 +1,50 @@
+
+====== borrow_parameters.ce ======
+
+Error at line 5, column 18
+4 │ {
+5 │     puts: fun(text: imm[u8]) -> i32
+                        ╘═════╛ Cannot use borrow types for parameters
+
+Error at line 6, column 35
+5 │ puts: fun(text: imm[u8]) -> i32
+6 │ frexp: fun(value: f64, exponent: mut[i32]) -> f64
+                                     ╘══════╛ Cannot use borrow types for parameters
+                                            | Did you mean 'mut exponent: i32'?
+
+Error at line 12, column 12
+11 │ count: i32
+12 │ step: fun(imm[i32]) -> i32
+               ╘══════╛ Cannot use borrow types for parameters
+                      | 'i32' is already a read-only borrow
+
+Error at line 14, column 17
+13 │ 
+14 │ new: op(start: mut[i32])
+                    ╘══════╛ Cannot use borrow types for parameters
+                           | Did you mean 'mut start: i32'?
+
+Error at line 20, column 19
+19 │ 
+20 │ inc: fun(counter: mut[i32])
+                       ╘══════╛ Cannot use borrow types for parameters
+                              | Did you mean 'mut counter: i32'?
+
+Error at line 25, column 18
+24 │ 
+25 │ look: fun(value: imm[i32]) -> i32 = value
+                      ╘══════╛ Cannot use borrow types for parameters
+                             | 'value: i32' is already a read-only borrow
+
+Error at line 27, column 24
+26 │ 
+27 │ apply: fun(action: fun(mut[i32]), own target: imm[i32]) {}
+                            ╘══════╛ Cannot use borrow types for parameters
+                                   | Did you mean 'mut i32'?
+
+Error at line 27, column 47
+26 │ 
+27 │ apply: fun(action: fun(mut[i32]), own target: imm[i32]) {}
+                                                   ╘══════╛ Cannot use borrow types for parameters
+
+[compilation failed]

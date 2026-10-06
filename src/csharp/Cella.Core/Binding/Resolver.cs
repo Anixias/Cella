@@ -362,6 +362,13 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	private (IResolvedExpressionNode Value, EnumSymbol? Type) ResolveMatchedValue(IExpressionNode node)
 	{
 		var value = VisitNode(node, null);
+		if (value is ResolvedOwnExpressionNode { Type: BorrowType } owned)
+		{
+			Diagnostics.Add(new(DiagnosticSeverity.Error, node.SourceLocation, "Cannot move borrowed values"));
+			value = owned.Value;
+		}
+		
+		value = Decay(value);
 		if (value.Type is EnumSymbol enumType)
 			return (value, enumType);
 		
@@ -725,8 +732,12 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		if (arg.Type == targetType)
 			return arg;
 		
-		if (_conversionTable.FindExplicit(arg.Type, targetType) is { } conversion)
-			return new ResolvedConversionExpressionNode(arg, conversion, node);
+		var value = targetType is BorrowType ? arg : Decay(arg);
+		if (value.Type == targetType)
+			return value;
+		
+		if (_conversionTable.FindExplicit(value.Type, targetType) is { } conversion)
+			return new ResolvedConversionExpressionNode(value, conversion, node);
 		
 		return VisitConstructorCall(node, targetType, arg);
 	}
@@ -888,7 +899,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	
 	private IResolvedExpressionNode VisitArgument(IExpressionNode node)
 	{
-		if (node is not MutArgumentExpressionNode argument)
+		if (node is not BorrowExpressionNode { IsMutable: true } argument)
 			return VisitNode(node, null);
 		
 		var place = VisitNode(argument.Value, null);
@@ -920,11 +931,18 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		return value;
 	}
 	
-	public IResolvedExpressionNode Visit(MutArgumentExpressionNode node)
+	public IResolvedExpressionNode Visit(BorrowExpressionNode node)
 	{
-		VisitNode(node.Value, null);
-		return Error(node, "Only an argument to a 'mut' parameter can be marked 'mut'", CurrentTargetType,
-			node.Keyword.SourceLocation);
+		var place = VisitNode(node.Value, null);
+		if (!IsInvalid(place) && place.Type is UntypedType)
+			place = MaterializeAsDefault(place);
+		
+		if (IsInvalid(place))
+			return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
+		
+		place = Decay(place);
+		return new ResolvedBorrowExpressionNode(place, _typePool.GetBorrowType(place.Type, node.IsMutable), false,
+			node);
 	}
 	
 	private bool ReportArgumentModes(IReadOnlyList<ICallable> candidates, IReadOnlyList<IResolvedExpressionNode> args,
@@ -947,11 +965,14 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	{
 		var argument = arg as ResolvedMutArgumentExpressionNode;
 		var hasParameter = index < callable.ParameterTypes.Length;
-		var isMut = hasParameter && callable.GetMode(index) == ParameterMode.Mut;
+		var parameterType = hasParameter ? callable.ParameterTypes[index] : null;
+		var isMut = hasParameter && (callable.GetMode(index) == ParameterMode.Mut ||
+		                             parameterType is BorrowType { IsMutable: true });
+		
 		var name = hasParameter ? callable.GetParameterName(index) : null;
 		
 		if (argument is null)
-			return isMut
+			return isMut && !(arg.Type is BorrowType && parameterType is BorrowType)
 				? new(DiagnosticSeverity.Error, arg.Syntax.SourceLocation, "Cannot mutably borrow arguments implicitly")
 				: null;
 		
@@ -960,13 +981,23 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 				? "Only an argument to a 'mut' parameter can be marked 'mut'"
 				: $"'{name}' isn't a 'mut' parameter");
 		
-		if (callable.ParameterTypes[index] is not PointerType { BaseType: var declared } ||
-		    argument.Place.Type == declared)
+		if (GetMutTarget(parameterType, callable.GetMode(index)) is not { } declared ||
+		    IsMutPlaceOf(argument.Place, declared))
 			return null;
 		
 		return new(DiagnosticSeverity.Error, argument.Place.Syntax.SourceLocation,
 			$"Cannot mutably borrow '{argument.Place.Type.Name}' values as '{declared.Name}'");
 	}
+	
+	private static TypeSymbol? GetMutTarget(TypeSymbol? parameterType, ParameterMode mode) => parameterType switch
+	{
+		PointerType { BaseType: var declared } when mode == ParameterMode.Mut => declared,
+		BorrowType { IsMutable: true, Target: var target } => target,
+		_ => null
+	};
+	
+	private static bool IsMutPlaceOf(IResolvedExpressionNode place, TypeSymbol declared) =>
+		place.Type == declared || Decay(place).Type == declared;
 	
 	private static TypeSymbol GetArgumentType(IResolvedExpressionNode arg) =>
 		arg is ResolvedMutArgumentExpressionNode argument ? argument.Place.Type : arg.Type;
@@ -977,7 +1008,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		    CurrentResolutionContext.Resolve(name.Identifier.Text) is TypeSymbol)
 			return Error(node, "Member calls are not supported yet", CurrentTargetType, node.Target);
 		
-		var target = VisitNode(access.Target, null);
+		var target = Decay(VisitNode(access.Target, null));
 		if (IsInvalid(target))
 			return VisitIndirectCall(node, target);
 		
@@ -998,6 +1029,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		if (target.Type is UntypedType)
 			target = MaterializeAsDefault(target);
 		
+		target = Decay(target);
 		var args = node.Arguments.Select(VisitArgument).ToArray();
 		if (IsInvalid(target) || AnyInvalid(args))
 			return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
@@ -1020,7 +1052,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	
 	public IResolvedExpressionNode Visit(IndexerExpressionNode node)
 	{
-		var target = VisitNode(node.Target);
+		var target = Decay(VisitNode(node.Target));
 		if (IsInvalid(target))
 		{
 			foreach (var argument in node.Arguments)
@@ -1069,6 +1101,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		if (target is ResolvedLiteralExpressionNode { Type: UntypedType })
 			target = MaterializeAsDefault(target);
 		
+		target = Decay(target);
 		if (GetMemberOwner(target.Type) != target.Type)
 			target = ResolveDereference(TokenType.OpStar, target, node.Target);
 		
@@ -1285,7 +1318,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 					: HasMember(type, access.Member);
 			
 			case AccessExpressionNode access:
-				var target = VisitNode(access.Target, null);
+				var target = Decay(VisitNode(access.Target, null));
 				return !IsInvalid(target) && HasMember(GetMemberOwner(target.Type), access.Member);
 			
 			default:
@@ -1596,6 +1629,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		if (IsInvalid(operand))
 			return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
 		
+		operand = Decay(operand);
 		switch (op.Type)
 		{
 			// Special unary operators that aren't stored in the registry
@@ -1675,18 +1709,21 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			}
 			
 			if (op.Type != TokenType.OpEqual)
-				return ResolveCompoundAssignment(node, MaterializeAsDefault(left), isOwnStore);
+				return ResolveCompoundAssignment(node, Decay(MaterializeAsDefault(left)), isOwnStore);
+			
+			if (left.Type is BorrowType borrow)
+				return ResolveBorrowAssignment(node, left, borrow, isOwnStore);
 			
 			var right = VisitNode(node.Right, left.Type);
 			return new ResolvedAssignmentExpressionNode(left.Type, left, op, right, null, node, isOwnStore);
 		}
 		else
 		{
-			var left = VisitNode(node.Left, null);
+			var left = Decay(VisitNode(node.Left, null));
 			var isConjunction = op.Type == TokenType.OpAmpersandAmpersand;
-			var right = isConjunction
+			var right = Decay(isConjunction
 				? VisitInScope(node.Right, GetTrueBindings(left))
-				: VisitNode(node.Right, null);
+				: VisitNode(node.Right, null));
 			
 			if (isConjunction)
 				ReportRepeatedBindings(GetTrueBindings(left).Concat(GetTrueBindings(right)));
@@ -1742,6 +1779,28 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		}
 	}
 	
+	private IResolvedExpressionNode ResolveBorrowAssignment(BinaryOpExpressionNode node, IResolvedExpressionNode left,
+		BorrowType borrow, bool isOwnStore)
+	{
+		if (node.Right is BorrowExpressionNode)
+			return new ResolvedAssignmentExpressionNode(borrow, left, node.Op, VisitNode(node.Right, borrow), null,
+				node, isOwnStore);
+		
+		var right = VisitNode(node.Right, borrow.Target);
+		if (right is ResolvedUnaryOpExpressionNode
+		    {
+			    Operation.Op: TokenType.OpStar, Operand: { Type: BorrowType source } borrowed
+		    } && (source == borrow || !borrow.IsMutable && source.Target == borrow.Target))
+			right = CoerceToType(borrowed, borrow);
+		else if (!borrow.IsMutable && right is not ResolvedInvalidExpressionNode)
+			right = CoerceToType(right, borrow);
+		else
+			return new ResolvedAssignmentExpressionNode(borrow.Target, Decay(left), node.Op, right, null, node,
+				isOwnStore);
+		
+		return new ResolvedAssignmentExpressionNode(borrow, left, node.Op, right, null, node, isOwnStore);
+	}
+	
 	private IResolvedExpressionNode ResolveCompoundAssignment(BinaryOpExpressionNode node, IResolvedExpressionNode left,
 		bool isOwnStore)
 	{
@@ -1777,7 +1836,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		// We push null to allow sub-expressions to resolve naturally; then, we attempt to implicit cast to actual type
 		var operands = new List<IResolvedExpressionNode>(node.Operands.Length);
 		foreach (var operand in node.Operands)
-			operands.Add(VisitNode(operand, null));
+			operands.Add(Decay(VisitNode(operand, null)));
 		
 		// TODO Do we need common types anymore?
 		var commonType = UnifyTypes(operands);
@@ -1842,6 +1901,12 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		
 		if (IsInvalid(source) || IsInvalid(target))
 			return new ResolvedConversionExpressionNode(source, new IdentityConversion(target), source.Syntax);
+		
+		if (target is BorrowType { IsMutable: false } borrow && source.Type == borrow.Target)
+			return new ResolvedBorrowExpressionNode(source, borrow, true, source.Syntax);
+		
+		if (target is not BorrowType && Decay(source) is var decayed && decayed != source)
+			return ApplyImplicitConversion(decayed, target);
 		
 		if (_conversionTable.FindImplicit(source.Type, target) is { } conversion)
 			return new ResolvedConversionExpressionNode(source, conversion, source.Syntax);
@@ -2177,6 +2242,12 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		if (AnyInvalid(a, b))
 			return NativeSymbols.Invalid;
 		
+		if (a is BorrowType { Target: var aTarget } && aTarget == b)
+			return b;
+		
+		if (b is BorrowType { Target: var bTarget } && bTarget == a)
+			return a;
+		
 		if (_conversionTable.FindImplicit(a, b) is not null)
 			return b;
 		
@@ -2190,10 +2261,16 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	private IResolvedExpressionNode? CoerceToType(IResolvedExpressionNode? node, TypeSymbol target)
 	{
 		if (node?.Type is UntypedType)
-			node = MaterializeExpression(node, target);
+			node = MaterializeExpression(node,
+				target is BorrowType { IsMutable: false } borrow ? borrow.Target : target);
 		
 		return ApplyImplicitConversion(node, target);
 	}
+	
+	private static IResolvedExpressionNode Decay(IResolvedExpressionNode node) =>
+		node is not ResolvedBorrowExpressionNode { IsImplicit: false } && node.Type is BorrowType borrow
+			? new ResolvedUnaryOpExpressionNode(node, new NativeImpl(TokenType.OpStar, borrow.Target), node.Syntax)
+			: node;
 	
 	private TypeSymbol GetMemberType(MemberSymbol member) =>
 		_typePool.TryGetTypeOfMember(member, out var type) ? type : NativeSymbols.Invalid;
@@ -2303,7 +2380,8 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			if (target is not null && candidate.ReturnType != target)
 			{
 				var conversion = _conversionTable.FindImplicit(candidate.ReturnType, target);
-				if (conversion is null && candidate.ReturnType != NativeSymbols.Void)
+				if (conversion is null && candidate.ReturnType != NativeSymbols.Void &&
+				    candidate.ReturnType is not BorrowType && target is not BorrowType)
 					continue;
 				
 				// Exact returns beat converted returns, so set to a higher cost
@@ -2344,12 +2422,26 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			}
 			
 			var target = resolution.Callable.ParameterTypes[i];
+			if (arg is ResolvedMutArgumentExpressionNode argument)
+			{
+				result.Add(ApplyMutArgument(argument, target));
+				continue;
+			}
+			
+			var borrowed = target is BorrowType { IsMutable: false } borrow && arg.Type is not BorrowType
+				? borrow
+				: null;
 			
 			if (arg.Type is UntypedType)
-				arg = MaterializeExpression(arg, target);
+				arg = MaterializeExpression(arg, borrowed?.Target ?? target);
 			
 			if (arg.Type is UntypedType)
 				arg = MaterializeAsDefault(arg);
+			
+			if (borrowed is not null)
+				arg = new ResolvedBorrowExpressionNode(arg, borrowed, true, arg.Syntax);
+			else if (arg.Type is BorrowType && target is not BorrowType)
+				arg = Decay(arg);
 			
 			if (resolution.ArgumentConversions[i] is { } conversion)
 				arg = new ResolvedConversionExpressionNode(arg, conversion, arg.Syntax);
@@ -2360,6 +2452,24 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		return result;
 	}
 	
+	private IResolvedExpressionNode ApplyMutArgument(ResolvedMutArgumentExpressionNode argument, TypeSymbol target)
+	{
+		var declared = target switch
+		{
+			PointerType { BaseType: var baseType } => baseType,
+			BorrowType { Target: var borrowed } => borrowed,
+			_ => argument.Place.Type
+		};
+		
+		var place = argument.Place.Type == declared ? argument.Place : Decay(argument.Place);
+		if (target is BorrowType borrow)
+			return new ResolvedBorrowExpressionNode(place, borrow, false, argument.Syntax);
+		
+		return place == argument.Place
+			? argument
+			: new ResolvedMutArgumentExpressionNode(place, _typePool.GetPointerType(place.Type), argument.Argument);
+	}
+	
 	private IResolvedExpressionNode PromoteVariadicArgument(IResolvedExpressionNode arg)
 	{
 		if (arg.Type is UntypedStringType)
@@ -2368,6 +2478,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		if (arg.Type is UntypedType)
 			arg = MaterializeAsDefault(arg);
 		
+		arg = Decay(arg);
 		switch (arg.Type)
 		{
 			case NeverType:
@@ -2412,10 +2523,15 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	private (int Cost, Conversion? Conversion) MatchArg(IResolvedExpressionNode arg, TypeSymbol target,
 		ParameterMode parameterMode, MaterializationMode mode, bool ignoreModes)
 	{
-		if (parameterMode == ParameterMode.Mut)
-			return ignoreModes || arg is ResolvedMutArgumentExpressionNode && arg.Type == target
-				? (0, null)
-				: (int.MaxValue, null);
+		var mutTarget = arg.Type is BorrowType ? null : GetMutTarget(target, parameterMode);
+		if (parameterMode == ParameterMode.Mut || mutTarget is not null)
+		{
+			if (arg is ResolvedMutArgumentExpressionNode mutArgument && mutTarget is not null &&
+			    IsMutPlaceOf(mutArgument.Place, mutTarget))
+				return (mutArgument.Place.Type == mutTarget ? 0 : 1, null);
+			
+			return ignoreModes ? (0, null) : (int.MaxValue, null);
+		}
 		
 		if (arg is not ResolvedMutArgumentExpressionNode argument)
 			return MatchArg(arg, target, mode);
@@ -2428,6 +2544,20 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	{
 		if (arg.Type == target)
 			return (0, null);
+		
+		if (target is BorrowType { IsMutable: false } borrow && arg.Type is not BorrowType)
+		{
+			var (cost, _) = MatchArg(arg, borrow.Target, mode);
+			return arg.Type == borrow.Target || arg.Type is UntypedType && cost != int.MaxValue
+				? (cost + 1, null)
+				: (int.MaxValue, null);
+		}
+		
+		if (target is not BorrowType && Decay(arg) is var decayedArg && decayedArg != arg)
+		{
+			var (cost, decayedConversion) = MatchArg(decayedArg, target, mode);
+			return cost == int.MaxValue ? (cost, null) : (cost + 1, decayedConversion);
+		}
 		
 		if (arg.Type is UntypedType u)
 		{

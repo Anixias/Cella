@@ -872,6 +872,13 @@ public sealed class Lowerer
 		public Value Visit(ResolvedMutArgumentExpressionNode node) => new UnaryOpValue(node.Type,
 			VisitPlace(node.Place), UnaryOperation.AddressOf, node.Syntax.SourceLocation);
 		
+		public Value Visit(ResolvedBorrowExpressionNode node)
+		{
+			var value = VisitPlace(node.Place);
+			var place = IsPlaceValue(value) ? value : StoreTemporary(value, "borrow");
+			return new UnaryOpValue(node.Type, place, UnaryOperation.AddressOf, node.Syntax.SourceLocation);
+		}
+		
 		public Value Visit(ResolvedVarExpressionNode node) =>
 			new VariableValue(new(node.Symbol, node.Type), node.Syntax.SourceLocation);
 		
@@ -1026,6 +1033,7 @@ public sealed class Lowerer
 			ResolvedIndexerExpressionNode n => IsMaterialized(n.Target) || MayEmit(n.Target) || MayEmit(n.Index),
 			ResolvedUnaryOpExpressionNode n => MayEmit(n.Operand),
 			ResolvedMutArgumentExpressionNode n => MayEmit(n.Place),
+			ResolvedBorrowExpressionNode n => !IsPlace(n.Place) || MayEmit(n.Place),
 			ResolvedOwnExpressionNode n => MayEmit(n.Value),
 			ResolvedBinaryOpExpressionNode n => IsShortCircuitOp(n.Operation) || MayEmit(n.Left) || MayEmit(n.Right),
 			ResolvedFunctionCallExpressionNode n => MayEmitOperands(n.Arguments, GetArgumentPassing(n.Function, 0)),

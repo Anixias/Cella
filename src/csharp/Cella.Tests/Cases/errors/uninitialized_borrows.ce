@@ -1,0 +1,15 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+main: fun -> i32
+{
+	var r: imm[i32]
+	printf("%d\n", r)
+	var m: mut[i32]
+	m = 5
+	ret 0
+}

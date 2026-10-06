@@ -24,17 +24,17 @@ Error at line 33, column 7
 Error at line 34, column 20
 33 │ show(mut hp)
 34 │ val point = Point(mut hp)
-                       ╘═╛ Only an argument to a 'mut' parameter can be marked 'mut'
+                       ╘════╛ Cannot convert type 'mut[i32]' to 'i32'
 
 Error at line 35, column 26
 34 │ val point = Point(mut hp)
 35 │ val effect = Effect.hit(mut hp)
-                             ╘═╛ Only an argument to a 'mut' parameter can be marked 'mut'
+                             ╘════╛ Cannot convert type 'mut[i32]' to 'i32'
 
-Error at line 36, column 22
+Error at line 36, column 18
 35 │ val effect = Effect.hit(mut hp)
 36 │ val converted = i32(mut hp)
-                         ╘═╛ Only an argument to a 'mut' parameter can be marked 'mut'
+                     ╘═════════╛ No constructor for 'i32' accepts argument of type 'mut[i32]'
 
 Error at line 37, column 17
 36 │ val converted = i32(mut hp)

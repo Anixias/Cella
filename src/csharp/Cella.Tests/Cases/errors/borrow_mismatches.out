@@ -1,0 +1,40 @@
+
+====== borrow_mismatches.ce ======
+
+Error at line 19, column 6
+18 │ val m = mut x
+19 │ inc(x)
+         ^ Cannot mutably borrow arguments implicitly
+
+Error at line 20, column 6
+19 │ inc(x)
+20 │ inc(r)
+         ^ Cannot mutably borrow arguments implicitly
+
+Error at line 21, column 10
+20 │ inc(r)
+21 │ inc(mut big)
+             ╘═╛ Cannot mutably borrow 'i64' values as 'i32'
+
+Error at line 22, column 6
+21 │ inc(mut big)
+22 │ inc(m)
+         ^ Cannot mutably borrow arguments implicitly
+
+Error at line 23, column 10
+22 │ inc(m)
+23 │ val t = Tally()
+             ╘═════╛ No constructor for 'Tally' accepts these arguments
+                   | 'Tally' takes one argument for each field: count
+
+Error at line 24, column 20
+23 │ val t = Tally()
+24 │ val w: mut[i32] = r
+                       ^ Cannot convert type 'imm[i32]' to 'mut[i32]'
+
+Error at line 25, column 15
+24 │ val w: mut[i32] = r
+25 │ val z: i32 = imm x
+                  ╘═══╛ Cannot convert type 'imm[i32]' to 'i32'
+
+[compilation failed]

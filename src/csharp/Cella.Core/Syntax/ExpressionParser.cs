@@ -38,6 +38,7 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 		TokenType.KeywordMatch,
 		TokenType.KeywordMut,
 		TokenType.KeywordOwn,
+		TokenType.KeywordImm,
 		TokenType.KeywordRet,
 		TokenType.KeywordBreak,
 		TokenType.KeywordCont
@@ -95,6 +96,12 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 	[
 		TokenType.OpEqualEqual,
 		TokenType.OpBangEqual
+	];
+	
+	private static readonly HashSet<TokenType> _borrowKeywords =
+	[
+		TokenType.KeywordImm,
+		TokenType.KeywordMut
 	];
 	
 	private static readonly HashSet<TokenType> _bindingModes =
@@ -172,15 +179,28 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 	
 	private IExpressionNode ParseIs(ref int index)
 	{
-		Token? mode = Match(ref index, out var keyword, TokenType.KeywordMut) ? keyword : null;
-		var node = ParseComparison(ref index);
-		if (IsNextNewline(index) || !Match(ref index, TokenType.KeywordIs))
-			return mode is null ? node : throw Expected(index, "'is'");
+		var start = index;
+		if (Match(ref index, out var mode, TokenType.KeywordMut))
+		{
+			var value = ParseComparison(ref index);
+			if (!IsNextNewline(index) && Match(ref index, TokenType.KeywordIs))
+				return ParsePatternTest(ref index, mode, value);
+			
+			index = start;
+		}
 		
+		var node = ParseComparison(ref index);
+		return IsNextNewline(index) || !Match(ref index, TokenType.KeywordIs)
+			? node
+			: ParsePatternTest(ref index, null, node);
+	}
+	
+	private IsExpressionNode ParsePatternTest(ref int index, Token? mode, IExpressionNode value)
+	{
 		var pattern = ParsePattern(ref index);
-		var (source, range) = mode?.SourceLocation ?? node.SourceLocation;
+		var (source, range) = mode?.SourceLocation ?? value.SourceLocation;
 		range = range.Join(pattern.SourceLocation.Range);
-		return new IsExpressionNode(mode, node, pattern, new(source, range));
+		return new IsExpressionNode(mode, value, pattern, new(source, range));
 	}
 	
 	public PatternNode ParsePattern(ref int index)
@@ -332,6 +352,9 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 	{
 		if (Match(ref index, out var ownKeyword, TokenType.KeywordOwn))
 			return new OwnExpressionNode(ownKeyword, ParseUnary(ref index));
+		
+		if (Match(ref index, out var borrowKeyword, _borrowKeywords))
+			return new BorrowExpressionNode(borrowKeyword, ParseUnary(ref index));
 		
 		if (!Match(ref index, out var op, _unaryPrefixOps))
 			return ParsePrimary(ref index);
@@ -631,7 +654,7 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 	}
 	
 	private IExpressionNode ParseArgument(ref int index) => Match(ref index, out var keyword, TokenType.KeywordMut)
-		? new MutArgumentExpressionNode(keyword, ParseExpression(ref index))
+		? new BorrowExpressionNode(keyword, ParseExpression(ref index))
 		: ParseExpression(ref index);
 	
 	private IndexerExpressionNode ParseIndexerExpression(ref int index, IExpressionNode target, Token openBracket)

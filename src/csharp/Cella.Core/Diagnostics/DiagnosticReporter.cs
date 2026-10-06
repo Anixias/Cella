@@ -46,6 +46,24 @@ public static class DiagnosticReporter
 		};
 	}
 	
+	public static Diagnostic ReportBorrowParameter(BorrowTypeNode borrow, string? name, bool hasMode,
+		bool isExternal)
+	{
+		var target = borrow.Target.SourceLocation.GetText();
+		var parameter = name is null ? target : $"{name}: {target}";
+		string? hint = (hasMode, borrow.IsMutable, isExternal) switch
+		{
+			(false, true, _) => $"Did you mean 'mut {parameter}'?",
+			(false, false, false) => $"'{parameter}' is already a read-only borrow",
+			_ => null
+		};
+		
+		return new Diagnostic(DiagnosticSeverity.Error, borrow.SourceLocation, "Cannot use borrow types for parameters")
+		{
+			Hints = hint is null ? [] : [hint]
+		};
+	}
+	
 	public static Diagnostic ReportUndefinedSymbol(ISyntaxNode node, string missingName,
 		IEnumerable<string> availableNames) =>
 		ReportUndefined(node.SourceLocation, $"Symbol '{missingName}' not found in this scope", missingName,

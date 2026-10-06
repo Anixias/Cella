@@ -1,0 +1,58 @@
+mod test
+
+Point: rec
+{
+	x: i32
+}
+
+Buffer: rec
+{
+	id: i32
+
+	drop: op
+	{
+	}
+}
+
+Holder: rec
+{
+	buffer: Buffer
+}
+
+counter: var i32 = 0
+
+make: fun -> i32 = 4
+
+first: fun(mut point: Point) -> imm[i32] = make()
+
+main: fun -> i32
+{
+	var p = Point(1)
+	val r = imm p
+	r.x = 5
+	r.x += 1
+	val m = mut r.x
+
+	val v = 1
+	val n = mut v
+
+	var a = 1
+	var b = 2
+	val fixed = mut a
+	fixed = mut b
+	var c: imm[i32] = a
+	c = 5
+
+	val t = imm make()
+	val s: imm[i32] = 5
+	val g = imm counter
+	val h = mut counter
+
+	var buffer = Buffer(1)
+	val viewed = imm buffer
+	val copied: Buffer = viewed
+	var holder = Holder(Buffer(2))
+	val held = imm holder
+	val taken = own held.buffer
+	ret 0
+}

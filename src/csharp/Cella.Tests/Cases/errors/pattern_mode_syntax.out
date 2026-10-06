@@ -1,9 +1,9 @@
 
 ====== pattern_mode_syntax.ce ======
 
-Error at line 13, column 3
+Error at line 12, column 5
+11 │ var e = Effect.hit(1)
 12 │ if mut e
-13 │     ret 1
-         ╘═╛ Expected 'is'
+        ╘═══╛ Cannot convert type 'mut[Effect]' to 'bool'
 
 [compilation failed]

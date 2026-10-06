@@ -284,6 +284,8 @@ public sealed class AstPrinter : ISyntaxNodeVisitor
 	
 	public void Visit(FunctionTypeNode node) => _sb.Append(node.SourceLocation.GetText());
 	
+	public void Visit(BorrowTypeNode node) => _sb.Append(node.SourceLocation.GetText());
+	
 	public void Visit(IdentifierTypeNode node) => _sb.Append(node.Token.Text);
 	
 	public void Visit(QualifiedTypeNode node) => _sb.Append(node.SourceLocation.GetText());
@@ -514,10 +516,10 @@ public sealed class AstPrinter : ISyntaxNodeVisitor
 		_sb.Append("NameOfExpressionNode: ").Append(node.Name.SourceLocation.GetText());
 	}
 	
-	public void Visit(MutArgumentExpressionNode node)
+	public void Visit(BorrowExpressionNode node)
 	{
 		StartLine();
-		_sb.Append("MutArgumentExpressionNode");
+		_sb.Append("BorrowExpressionNode: ").Append(node.Keyword.Text);
 		VisitNode(node.Value, true);
 	}
 	

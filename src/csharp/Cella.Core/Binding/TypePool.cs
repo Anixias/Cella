@@ -18,6 +18,7 @@ public sealed class TypePool
 	private readonly Dictionary<TypeSymbol, OrderedDictionary<string, MemberSymbol>> _members = [];
 	private readonly Dictionary<(TypeSymbol, BigInteger), ArrayType> _arrayTypes = [];
 	private readonly Dictionary<TypeSymbol, PointerType> _pointerTypes = [];
+	private readonly Dictionary<(TypeSymbol, bool), BorrowType> _borrowTypes = [];
 	private readonly List<FunctionType> _functionTypes = [];
 	private readonly Dictionary<TypedMemberSymbol, TypeSymbol> _memberTypes = [];
 	private readonly Dictionary<TypeSymbol, TypeFacts> _facts = [];
@@ -99,7 +100,7 @@ public sealed class TypePool
 				HasDefault = FindCase(e, BigInteger.Zero) is { } zeroCase ? zeroCase.Fields.IsEmpty : e.IsExternal
 			},
 			ArrayType => Combine(false, GetParts(type)),
-			FunctionType => TypeFacts.Plain with { HasDefault = false },
+			FunctionType or BorrowType => TypeFacts.Plain with { HasDefault = false },
 			_ => TypeFacts.Plain
 		};
 		
@@ -203,6 +204,20 @@ public sealed class TypePool
 		CreatePointerArithmetic(ptrType);
 		
 		return ptrType;
+	}
+	
+	public BorrowType GetBorrowType(TypeSymbol target, bool isMutable)
+	{
+		if (_borrowTypes.TryGetValue((target, isMutable), out var existing))
+			return existing;
+		
+		var borrowType = new BorrowType(target, isMutable);
+		_borrowTypes[(target, isMutable)] = borrowType;
+		SizeTable.Register(borrowType, StorageSize.Ptr);
+		if (isMutable)
+			ConversionTable.Add(new FreeConversion(borrowType, GetBorrowType(target, false), ConversionKind.Implicit));
+		
+		return borrowType;
 	}
 	
 	public ArrayType GetArrayType(TypeSymbol elementType, BigInteger length)

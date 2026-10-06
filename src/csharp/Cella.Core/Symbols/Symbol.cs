@@ -357,6 +357,13 @@ public sealed class PointerType : TypeSymbol, IPrimitiveType
 	public PrimitiveTypeKind Kind { get; } = PrimitiveTypeKind.Pointer;
 }
 
+public sealed class BorrowType(TypeSymbol target, bool isMutable)
+	: TypeSymbol($"{(isMutable ? "mut" : "imm")}[{target.Name}]")
+{
+	public TypeSymbol Target { get; } = target;
+	public bool IsMutable { get; } = isMutable;
+}
+
 public sealed class ArrayType(TypeSymbol elementType, BigInteger length)
 	: TypeSymbol(length.Sign < 0 ? $"array[{elementType.Name}]" : $"array[{elementType.Name}, {length}]"),
 		IPrimitiveType
