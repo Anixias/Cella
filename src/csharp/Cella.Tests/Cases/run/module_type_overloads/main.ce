@@ -1,0 +1,13 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+main: fun -> i32
+{
+	printf("%d %d\n", shapes.size(second.Point(2, 3)), shapes.size(first.Point(1)))
+	printf("%d %d\n", shapes.size(first.Point(4)), shapes.size(second.Point(5, 6)))
+	ret 0
+}

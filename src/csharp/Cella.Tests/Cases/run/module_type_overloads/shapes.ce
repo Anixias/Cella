@@ -1,0 +1,5 @@
+mod shapes
+
+size: fun(point: first.Point) -> i32 = point.x
+
+size: fun(point: second.Point) -> i32 = point.x * 100 + point.y

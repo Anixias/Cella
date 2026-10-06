@@ -6,6 +6,7 @@ public sealed class ModuleIndex
 {
 	private readonly Dictionary<string, ModulePathSymbol> _paths = [];
 	private readonly Dictionary<Symbol, FileSymbol> _files = [];
+	private readonly Dictionary<Symbol, ModuleSymbol> _modules = [];
 	
 	public ModuleIndex(SymbolTable symbolTable, IEnumerable<SymbolTable> dependencies)
 	{
@@ -27,6 +28,8 @@ public sealed class ModuleIndex
 	
 	public static Visibility GetVisibility(Symbol symbol) =>
 		symbol is IExportable exportable ? exportable.Visibility : Visibility.Public;
+	
+	public ModuleSymbol? FindModule(Symbol symbol) => _modules.GetValueOrDefault(symbol);
 	
 	public string? FindPrivateFile(Symbol symbol) =>
 		GetVisibility(symbol) == Visibility.Private && _files.GetValueOrDefault(symbol) is { } file
@@ -75,6 +78,7 @@ public sealed class ModuleIndex
 				{
 					var isVisible = isLocal || symbol is IExportable { Visibility: Visibility.Public };
 					(isVisible ? path.Members : path.PrivateMembers).GetOrAdd(memberName).Add(symbol);
+					_modules[symbol] = module;
 				}
 			}
 		}

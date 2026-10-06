@@ -1,0 +1,6 @@
+mod first
+
+Point: rec
+{
+	x: i32
+}

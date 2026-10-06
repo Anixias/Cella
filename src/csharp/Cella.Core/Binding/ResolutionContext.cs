@@ -21,12 +21,10 @@ public readonly struct ResolutionContext
 	public ExtSignatureTypes? ExtSignatureTypes { get; init; }
 	public Func<IExpressionNode, ResolutionContext, Constant?>? EvaluateConstant { get; init; }
 	
-	public string Mangle(Symbol symbol) => Mangling.Mangle(symbol, FindPrivateFile, GetQualifiers());
+	public string Mangle(Symbol symbol) => Mangling.Mangle(symbol, Modules, GetQualifiers());
 	
 	public string Mangle(Symbol symbol, FunctionSignature signature) =>
-		Mangling.Mangle(symbol, signature, FindPrivateFile, GetQualifiers());
-	
-	private string? FindPrivateFile(Symbol symbol) => Modules?.FindPrivateFile(symbol);
+		Mangling.Mangle(symbol, signature, Modules, GetQualifiers());
 	
 	private List<string> GetQualifiers()
 	{
@@ -34,10 +32,10 @@ public readonly struct ResolutionContext
 		
 		// TODO Nested functions in functions not supported
 		for (var f = ContainingFunction; f is not null; f = f.Value.Symbol.ContainingFunction)
-			result.Add(Mangling.Mangle(f.Value.Symbol, f.Value.Signature, FindPrivateFile));
+			result.Add(Mangling.Mangle(f.Value.Symbol, f.Value.Signature, Modules));
 		
 		for (var t = ContainingType; t is not null; t = t.ContainingType)
-			result.Add(Mangling.Mangle(t, FindPrivateFile));
+			result.Add(Mangling.MangleName(t, Modules));
 		
 		result.Reverse();
 		

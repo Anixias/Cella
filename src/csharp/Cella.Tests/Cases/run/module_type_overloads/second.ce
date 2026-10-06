@@ -1,0 +1,7 @@
+mod second
+
+Point: rec
+{
+	x: i32
+	y: i32
+}
