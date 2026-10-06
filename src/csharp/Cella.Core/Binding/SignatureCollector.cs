@@ -135,10 +135,17 @@ public sealed class SignatureCollector
 		
 		var node = (GlobalNode)declaration.Node;
 		type = declaration.Context.ResolveType(node.Type);
-		ReportHiddenType(node.Type, type, global.Visibility, global.Name);
+		var visibility = global.ContainingType is { } owner
+			? GetEffectiveVisibility(global.Visibility, owner)
+			: global.Visibility;
+		
+		ReportHiddenType(node.Type, type, visibility, global.Name);
 		if (node.IsMutable && !IsScalar(type))
+		{
+			var kind = global.ContainingType is null ? "Module" : "Static";
 			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Type.SourceLocation,
-				"Module variables must be numbers, 'bool' or 'char'"));
+				$"{kind} variables must be numbers, 'bool' or 'char'"));
+		}
 		
 		_globalTypes[global] = type;
 		Exit();
@@ -202,7 +209,7 @@ public sealed class SignatureCollector
 			IEnumerable<IDeclarationNode> members = declaration switch
 			{
 				RecordNode record => record.Members,
-				EnumNode enumNode => enumNode.Functions,
+				EnumNode enumNode => enumNode.Members,
 				_ => []
 			};
 			
@@ -276,6 +283,9 @@ public sealed class SignatureCollector
 					CollectDestructor((FunctionSymbol)symbol, context);
 					break;
 				
+				case GlobalNode:
+					break;
+				
 				default:
 					Complete(symbol);
 					break;
@@ -285,6 +295,7 @@ public sealed class SignatureCollector
 		var functions = node.Members.OfType<FunctionNode>().ToLookup(static f => f.Identifier.Type == TokenType.OpStar);
 		ReportMemberConflicts(record, [
 			..node.Members.OfType<FieldNode>().Select(static f => (f.Identifier, (FunctionNode?)null, true)),
+			..node.Members.OfType<GlobalNode>().Select(static g => (g.Identifier, (FunctionNode?)null, true)),
 			..functions[false].Select(static f => (f.Identifier, (FunctionNode?)f, false))
 		]);
 		
@@ -292,6 +303,9 @@ public sealed class SignatureCollector
 		_typePool.RegisterRecord(record);
 		_completedTypes.Add(record);
 		Exit();
+		
+		foreach (var field in node.Members.OfType<GlobalNode>())
+			Complete(_symbolTable.DeclarationSymbols[field]);
 	}
 	
 	private void ReportDereferences(RecordSymbol record, List<FunctionNode> dereferences)
@@ -413,12 +427,13 @@ public sealed class SignatureCollector
 		_completedTypes.Add(enumType);
 		Exit();
 		
-		foreach (var function in node.Functions)
-			Complete(_symbolTable.DeclarationSymbols[function]);
+		foreach (var member in node.Members)
+			Complete(_symbolTable.DeclarationSymbols[member]);
 		
 		ReportMemberConflicts(enumType, [
 			..node.Cases.Select(static c => (c.Identifier, (FunctionNode?)null, false)),
-			..node.Functions.Select(static f => (f.Identifier, (FunctionNode?)f, false))
+			..node.Members.OfType<GlobalNode>().Select(static g => (g.Identifier, (FunctionNode?)null, true)),
+			..node.Members.OfType<FunctionNode>().Select(static f => (f.Identifier, (FunctionNode?)f, false))
 		]);
 	}
 	

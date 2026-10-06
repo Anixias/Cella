@@ -1,0 +1,34 @@
+
+====== static_field_uses.ce ======
+
+Error at line 11, column 32
+10 │ twice: pvt fun(value: i32) -> i32 = value * 2
+11 │ read: fun(self) -> i32 = self.maxHp
+                                   ╘═══╛ Cannot use static fields through values
+
+Error at line 14, column 40
+13 │ 
+14 │ through: fun(unit: Unit) -> i32 = unit.maxHp
+                                            ╘═══╛ Cannot use static fields through values
+
+Error at line 16, column 38
+15 │ 
+16 │ calls: fun(unit: Unit) -> i32 = unit.handler(1)
+                                          ╘═════╛ Cannot use static fields through values
+
+Error at line 18, column 27
+17 │ 
+18 │ hidden: fun -> i32 = Unit.label
+                               ╘═══╛ 'label' is private to its type
+
+Error at line 20, column 33
+19 │ 
+20 │ names: fun -> str = nameOf(Unit.label)
+                                     ╘═══╛ 'label' is private to its type
+
+Error at line 22, column 23
+21 │ 
+22 │ missing: fun -> i32 = maxHp
+                           ╘═══╛ Symbol 'maxHp' not found in this scope
+
+[compilation failed]

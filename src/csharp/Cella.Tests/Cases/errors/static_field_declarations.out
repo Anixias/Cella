@@ -1,0 +1,49 @@
+
+====== static_field_declarations.ce ======
+
+Error at line 10, column 2
+ 9 │ {
+10 │     maxHp: i32
+         ╘═══╛ Field 'maxHp' is declared more than once in 'Unit'
+
+Error at line 11, column 2
+10 │ maxHp: i32
+11 │ maxHp: val i32 = 1
+     ╘═══╛ Field 'maxHp' is declared more than once in 'Unit'
+
+Error at line 12, column 13
+11 │ maxHp: val i32 = 1
+12 │ names: var str = "a"
+                ╘═╛ Static variables must be numbers, 'bool' or 'char'
+
+Error at line 13, column 14
+12 │ names: var str = "a"
+13 │ secret: val Node = Node(1)
+                 ╘══╛ 'Node' is less visible than 'secret'
+
+Error at line 15, column 2
+14 │ hidden: pvt val Node = Node(2)
+15 │ cycle: val i32 = cycle + 1
+     ╘═══╛ 'cycle' depends on its own value
+
+Error at line 17, column 2
+16 │ 
+17 │ describe: fun -> i32 = 0
+     ╘══════╛ 'describe' is declared more than once in 'Unit'
+
+Error at line 18, column 2
+17 │ describe: fun -> i32 = 0
+18 │ describe: val i32 = 2
+     ╘══════╛ 'describe' is declared more than once in 'Unit'
+
+Error at line 23, column 2
+22 │ {
+23 │     first
+         ╘═══╛ 'first' is declared more than once in 'Kind'
+
+Error at line 24, column 2
+23 │ first
+24 │ first: val i32 = 1
+     ╘═══╛ 'first' is declared more than once in 'Kind'
+
+[compilation failed]

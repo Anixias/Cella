@@ -225,14 +225,14 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	public IResolvedDeclarationNode Visit(EnumNode node)
 	{
 		var enumType = (EnumSymbol)_symbolTable.DeclarationSymbols[node];
-		var functions = new List<IResolvedDeclarationNode>();
+		var members = new List<IResolvedDeclarationNode>();
 		
 		_resolutionContexts.Push(CurrentResolutionContext with { ContainingType = enumType });
-		foreach (var function in node.Functions)
-			functions.Add(VisitNode(function));
+		foreach (var member in node.Members)
+			members.Add(VisitNode(member));
 		
 		_resolutionContexts.Pop();
-		return new ResolvedEnumNode(enumType, functions, node);
+		return new ResolvedEnumNode(enumType, members, node);
 	}
 	
 	public IResolvedStatementNode Visit(BlockStatementNode node)
@@ -311,7 +311,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	public IResolvedExpressionNode Visit(CallExpressionNode node)
 	{
 		if (node.Target is AccessExpressionNode access && ResolveEnumType(access.Target) is { } enumType)
-			return enumType.GetFunctions(access.Member.Text).Any()
+			return DeclaresFunctionOrStaticField(enumType, access.Member.Text)
 				? VisitStaticCall(node, access, enumType)
 				: VisitEnumCase(access, enumType, node);
 		
@@ -1059,9 +1059,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		var functions = FindFunctions(owner, access.Member.Text);
 		var methods = functions.Where(static function => function.HasReceiver).ToArray();
 		if (methods.Length == 0)
-			return Error(node, functions.Length > 0
-					? "Cannot use static functions through values"
-					: $"Type '{owner.Name}' has no member '{access.Member.Text}'", CurrentTargetType,
+			return Error(node, DescribeMissingMember(owner, access.Member.Text), CurrentTargetType,
 				access.Member.SourceLocation);
 		
 		var accessible = methods.Where(method => CanAccess(owner, method.Function.Visibility)).ToArray();
@@ -1085,6 +1083,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		if (type is InvalidType)
 			return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
 		
+		if (type.GetStaticField(access.Member.Text) is not null)
+			return VisitIndirectCall(node, VisitStaticMember(access, type));
+		
 		var statics = FindStatics(type, access.Member.Text);
 		if (statics.Length == 0)
 			return Error(node, DescribeMissingStatic(type, access.Member.Text), CurrentTargetType,
@@ -1104,6 +1105,12 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		if (type is InvalidType)
 			return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
 		
+		if (type.GetStaticField(node.Member.Text) is { } field)
+			return CanAccess(type, field.Visibility)
+				? ResolveSymbolValue(node, field)
+				: Error(node, DiagnosticReporter.ReportHidden(node.Member.SourceLocation, field.Name, field.Visibility,
+					true), CurrentTargetType);
+		
 		var statics = FindStatics(type, node.Member.Text);
 		if (statics.Length == 0)
 			return Error(node, DescribeMissingStatic(type, node.Member.Text), CurrentTargetType,
@@ -1115,6 +1122,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			: Error(node, ReportHiddenMember(node.Member.SourceLocation, node.Member.Text,
 				statics.Select(static function => function.Visibility)), CurrentTargetType);
 	}
+	
+	private static bool DeclaresFunctionOrStaticField(TypeSymbol type, string name) =>
+		type.GetFunctions(name).Any() || type.GetStaticField(name) is not null;
 	
 	private FunctionSymbol[] FindAccessible(TypeSymbol owner, IEnumerable<FunctionSymbol> functions) =>
 		[..functions.Where(function => CanAccess(owner, function.Visibility))];
@@ -1129,6 +1139,11 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	private Diagnostic ReportUndefinedSymbol(ISyntaxNode node, string name) =>
 		CurrentResolutionContext.ReportHidden(name, node.SourceLocation) ??
 		DiagnosticReporter.ReportUndefinedSymbol(node, name, GetVisibleSymbolNames());
+	
+	private string DescribeMissingMember(TypeSymbol type, string name) =>
+		type.GetStaticField(name) is not null ? "Cannot use static fields through values"
+		: FindFunctions(type, name).Length > 0 ? "Cannot use static functions through values"
+		: $"Type '{type.Name}' has no member '{name}'";
 	
 	private string DescribeMissingStatic(TypeSymbol type, string name) =>
 		FindFunctions(type, name).Length > 0 ? "Cannot use methods through types"
@@ -1161,11 +1176,12 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	}
 	
 	private bool DeclaresMember(TypeSymbol type, string name) =>
-		_typePool.ResolveMember(type, name) is not null || FindFunctions(type, name).Length > 0;
+		_typePool.ResolveMember(type, name) is not null || DeclaresFunctionOrStaticField(type, name);
 	
 	private bool DeclaresAccessibleMember(TypeSymbol type, string name) => _typePool.ResolveMember(type, name) switch
 	{
 		FieldSymbol field => CanAccess(type, field.Visibility),
+		null when type.GetStaticField(name) is { } global => CanAccess(type, global.Visibility),
 		null => FindFunctions(type, name).Any(function => CanAccess(type, function.Function.Visibility)),
 		_ => true
 	};
@@ -1275,7 +1291,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	public IResolvedExpressionNode Visit(AccessExpressionNode node)
 	{
 		if (ResolveEnumType(node.Target) is { } enumType)
-			return enumType.GetFunctions(node.Member.Text).Any()
+			return DeclaresFunctionOrStaticField(enumType, node.Member.Text)
 				? VisitStaticMember(node, enumType)
 				: VisitEnumCase(node, enumType, null);
 		
@@ -1316,7 +1332,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		if (resolutionContext.TypePool.ResolveMember(target.Type, memberName) is not { } member)
 			return Error(node, FindFunctions(target.Type, memberName) switch
 			{
-				[] => $"Type '{target.Type.Name}' has no member '{memberName}'",
+				[] => DescribeMissingMember(target.Type, memberName),
 				var functions when functions.Any(static function => function.HasReceiver) =>
 					"Cannot use methods as values",
 				_ => "Cannot use static functions through values"
@@ -1525,7 +1541,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 				return false;
 			
 			case AccessExpressionNode access when context.TryResolveExpressionAsType(access.Target) is { } type:
-				return type is EnumSymbol enumType
+				return type is EnumSymbol enumType && enumType.GetStaticField(access.Member.Text) is null
 					? FindCase(enumType, access.Member) is not null
 					: HasMember(type, access.Member);
 			
@@ -1540,6 +1556,17 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	
 	private bool HasMember(TypeSymbol type, Token member)
 	{
+		if (type.GetStaticField(member.Text) is { } global)
+		{
+			if (CanAccess(type, global.Visibility))
+				return true;
+			
+			Diagnostics.Add(DiagnosticReporter.ReportHidden(member.SourceLocation, member.Text, global.Visibility,
+				true));
+			
+			return false;
+		}
+		
 		switch (_typePool.ResolveMember(type, member.Text))
 		{
 			case FieldSymbol field when !CanAccess(type, field.Visibility):

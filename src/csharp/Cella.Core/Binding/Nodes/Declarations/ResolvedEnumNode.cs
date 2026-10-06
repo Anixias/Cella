@@ -7,11 +7,11 @@ namespace Cella.Core.Binding.Nodes;
 public sealed class ResolvedEnumNode
 (
 	EnumSymbol symbol,
-	IEnumerable<IResolvedDeclarationNode> functions,
+	IEnumerable<IResolvedDeclarationNode> members,
 	IDeclarationNode syntax
 ) : IResolvedDeclarationNode
 {
 	public EnumSymbol Symbol { get; } = symbol;
-	public ImmutableArray<IResolvedDeclarationNode> Functions { get; } = functions.ToImmutableArray();
+	public ImmutableArray<IResolvedDeclarationNode> Members { get; } = members.ToImmutableArray();
 	public IDeclarationNode Syntax { get; } = syntax;
 }

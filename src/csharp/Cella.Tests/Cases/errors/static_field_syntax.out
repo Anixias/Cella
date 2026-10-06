@@ -1,0 +1,14 @@
+
+====== static_field_syntax.ce ======
+
+Error at line 5, column 13
+4 │ {
+5 │     value: val i32
+                   ╘═╛ Expected '=' and an initial value
+
+Error at line 10, column 9
+ 9 │ {
+10 │     value: pvt set val i32 = 1
+                ╘═════╛ Cannot use 'pvt set' on 'val' fields
+
+[compilation failed]

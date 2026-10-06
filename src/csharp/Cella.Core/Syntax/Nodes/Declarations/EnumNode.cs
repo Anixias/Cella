@@ -11,7 +11,7 @@ public sealed class EnumNode
 	bool isRef,
 	ITypeNode? tagType,
 	IEnumerable<EnumCaseNode> cases,
-	IEnumerable<FunctionNode> functions
+	IEnumerable<IDeclarationNode> members
 ) : IDeclarationNode
 {
 	public SourceLocation SourceLocation { get; } = identifier.SourceLocation;
@@ -22,7 +22,7 @@ public sealed class EnumNode
 	public bool IsRef { get; } = isRef;
 	public ITypeNode? TagType { get; } = tagType;
 	public ImmutableArray<EnumCaseNode> Cases { get; } = cases.ToImmutableArray();
-	public ImmutableArray<FunctionNode> Functions { get; } = functions.ToImmutableArray();
+	public ImmutableArray<IDeclarationNode> Members { get; } = members.ToImmutableArray();
 }
 
 public sealed class EnumCaseNode(Token identifier, IEnumerable<FieldNode> payload, IExpressionNode? value)

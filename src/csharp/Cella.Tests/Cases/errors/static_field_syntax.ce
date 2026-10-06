@@ -1,0 +1,18 @@
+mod test
+
+Missing: rec
+{
+	value: val i32
+}
+
+Fixed: rec
+{
+	value: pvt set val i32 = 1
+}
+
+Counter: rec
+{
+	value: mod set var i32 = 0
+}
+
+main: fun -> i32 = 0

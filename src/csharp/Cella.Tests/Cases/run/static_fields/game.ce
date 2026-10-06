@@ -1,0 +1,50 @@
+mod game
+
+Unit: rec
+{
+	hp: i32
+	maxHp: val i32 = 50
+	created: pvt set var i32 = 0
+	label: pvt val i32 = 7
+	origin: val Unit = Unit(0)
+
+	spawn: fun(hp: i32) -> Unit
+	{
+		created += 1
+		ret Unit(hp)
+	}
+
+	scaled: fun(self) -> i32 = self.hp * Unit.label + maxHp
+}
+
+Color: enum
+{
+	red
+	green
+	blue
+
+	count: val i32 = 3
+	picks: pvt var i32 = 0
+
+	pick: fun -> Color
+	{
+		picks += 1
+		ret Color.green
+	}
+
+	picked: fun -> i32 = picks
+}
+
+Pair: rec
+{
+	first: i32
+	second: i32
+
+	zero: val Pair = Pair(0, 0)
+	unit: val Pair = Pair(1, 1)
+	doubler: val fun[i32 -> i32] = twice
+	limit: val i32 = base * 2
+	base: pvt val i32 = 8
+
+	twice: pvt fun(value: i32) -> i32 = value * 2
+}

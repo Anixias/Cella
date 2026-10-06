@@ -133,6 +133,7 @@ public abstract class TypeSymbol(string name, TypeSymbol? containingType = null,
 	public ImmutableDictionary<string, Symbol> Children { get; } = children.ToImmutableDictionary(static s => s.Name);
 	
 	public virtual IEnumerable<MethodSymbol> GetFunctions(string name) => [];
+	public virtual GlobalSymbol? GetStaticField(string name) => null;
 }
 
 public sealed class InvalidType : TypeSymbol
@@ -400,11 +401,17 @@ public sealed class LocalVariableSymbol(Token identifier, TypeSymbol type, bool 
 }
 
 // TODO: Initializer? Or is that stored elsewhere?
-public sealed class GlobalSymbol(GlobalNode syntax) : VariableSymbol(syntax.Identifier.Text), IExportable
+public sealed class GlobalSymbol(GlobalNode syntax, Visibility visibility)
+	: VariableSymbol(syntax.Identifier.Text), IExportable
 {
 	public GlobalNode Syntax { get; } = syntax;
 	public bool IsMutable => Syntax.IsMutable;
-	public Visibility Visibility { get; } = Visibility.FromKeyword(syntax.Visibility);
+	public Visibility Visibility { get; } = visibility;
+	
+	public Visibility WriteVisibility { get; } =
+		syntax.WriteVisibility is { } write ? Visibility.FromKeyword(write) : visibility;
+	
+	public TypeSymbol? ContainingType { get; internal set; }
 	public SourceLocation Definition { get; } = syntax.SourceLocation;
 }
 
@@ -457,6 +464,7 @@ public sealed class RecordSymbol : TypeSymbol, IExportable
 {
 	public RecordNode Node { get; }
 	public ImmutableArray<MemberSymbol> Members { get; }
+	public ImmutableArray<GlobalSymbol> StaticFields { get; init; } = [];
 	public ImmutableArray<TypeSymbol> NestedTypes { get; }
 	public Visibility Visibility { get; }
 	public bool HasDestructor => Members.Any(static m => m is MethodSymbol { Function.Kind: FunctionKind.Destructor });
@@ -465,6 +473,8 @@ public sealed class RecordSymbol : TypeSymbol, IExportable
 	public override IEnumerable<MethodSymbol> GetFunctions(string name) => Members
 		.OfType<MethodSymbol>()
 		.Where(m => m.Name == name && m.Function.Kind is FunctionKind.Method or FunctionKind.Free);
+	
+	public override GlobalSymbol? GetStaticField(string name) => StaticFields.FirstOrDefault(f => f.Name == name);
 	
 	public RecordSymbol(string name, RecordNode node, IEnumerable<MemberSymbol> members,
 		IEnumerable<TypeSymbol> nestedTypes) : base(name)
@@ -481,6 +491,7 @@ public sealed class EnumSymbol : TypeSymbol, IExportable
 	public EnumNode Node { get; }
 	public ImmutableArray<EnumCaseSymbol> Cases { get; }
 	public ImmutableArray<MethodSymbol> Functions { get; }
+	public ImmutableArray<GlobalSymbol> StaticFields { get; init; } = [];
 	public Visibility Visibility { get; }
 	public bool HasPayload => Cases.Any(static c => c.Fields.Length > 0);
 	public bool IsExternal => Node.IsExternal;
@@ -496,6 +507,7 @@ public sealed class EnumSymbol : TypeSymbol, IExportable
 	}
 	
 	public override IEnumerable<MethodSymbol> GetFunctions(string name) => Functions.Where(f => f.Name == name);
+	public override GlobalSymbol? GetStaticField(string name) => StaticFields.FirstOrDefault(f => f.Name == name);
 }
 
 public sealed class EnumCaseSymbol(EnumCaseNode node, int index, IEnumerable<FieldSymbol> fields)

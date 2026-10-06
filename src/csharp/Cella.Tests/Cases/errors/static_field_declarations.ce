@@ -1,0 +1,27 @@
+mod test
+
+Node: pvt rec
+{
+	value: i32
+}
+
+Unit: rec
+{
+	maxHp: i32
+	maxHp: val i32 = 1
+	names: var str = "a"
+	secret: val Node = Node(1)
+	hidden: pvt val Node = Node(2)
+	cycle: val i32 = cycle + 1
+
+	describe: fun -> i32 = 0
+	describe: val i32 = 2
+}
+
+Kind: enum
+{
+	first
+	first: val i32 = 1
+}
+
+main: fun -> i32 = 0

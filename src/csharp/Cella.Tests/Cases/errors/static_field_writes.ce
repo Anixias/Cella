@@ -1,0 +1,32 @@
+mod test
+
+addOne: fun(mut value: i32)
+{
+	value += 1
+}
+
+Unit: rec
+{
+	hp: i32
+	maxHp: val i32 = 50
+	created: pvt set var i32 = 0
+	total: var i32 = 0
+	origin: val Unit = Unit(0)
+	clock: val i32 = now()
+
+	now: fun -> i32 = 1
+}
+
+writes: fun
+{
+	Unit.maxHp = 1
+	Unit.created = 5
+	Unit.created += 1
+	addOne(mut Unit.total)
+	val pointer = @Unit.total
+	val view = imm Unit.total
+	val moved = own Unit.origin
+	Unit.total += 1
+}
+
+main: fun -> i32 = 0

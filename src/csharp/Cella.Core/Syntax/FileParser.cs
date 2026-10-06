@@ -374,8 +374,8 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 	}
 	
 	private bool StartsMemberType(int index) =>
-		!AtEnd(index) && Tokens[index].Line == Tokens[index - 1].Line &&
-		Tokens[index].Type is TokenType.Identifier or TokenType.KeywordImm or TokenType.KeywordMut;
+		!AtEnd(index) && Tokens[index].Line == Tokens[index - 1].Line && Tokens[index].Type is TokenType.Identifier
+			or TokenType.KeywordImm or TokenType.KeywordMut or TokenType.KeywordVal or TokenType.KeywordVar;
 	
 	private static bool IsNarrower(Token write, Token read) =>
 		write.Type == TokenType.KeywordPvt && read.Type == TokenType.KeywordMod;
@@ -630,7 +630,20 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 		}
 		
 		var initializer = ParseExpression(ref index);
-		return new(identifier, modifiers.Tokens, keyword, type, initializer) { Visibility = modifiers.Visibility };
+		return new(identifier, modifiers.Tokens, keyword, type, initializer)
+		{
+			Visibility = modifiers.Visibility,
+			WriteVisibility = modifiers.WriteVisibility
+		};
+	}
+	
+	private GlobalNode? ParseStaticField(ref int index, Token identifier, DeclarationModifiers modifiers, Token keyword)
+	{
+		if (keyword.Type == TokenType.KeywordVal)
+			RejectWriteRestriction(modifiers, "'val' fields");
+		
+		return ParseDeclaration(ref index, identifier, "field",
+			(ref i) => ParseGlobal(ref i, identifier, modifiers, keyword));
 	}
 	
 	private ExternalFunctionNode? ParseExternalDeclaration(ref int index, string? origin, Token? block)
@@ -837,18 +850,18 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 			};
 		
 		var cases = new List<EnumCaseNode>();
-		var functions = new List<FunctionNode>();
-		if (!ParseEnumBody(ref index, openBrace, null, cases, functions))
+		var members = new List<IDeclarationNode>();
+		if (!ParseEnumBody(ref index, openBrace, null, cases, members))
 			return null;
 		
-		return new(identifier, modifiers.Tokens, isExternal, isRef, tagType, cases, functions)
+		return new(identifier, modifiers.Tokens, isExternal, isRef, tagType, cases, members)
 		{
 			Visibility = modifiers.Visibility
 		};
 	}
 	
 	private bool ParseEnumBody(ref int index, Token openBrace, Token? block, List<EnumCaseNode> cases,
-		List<FunctionNode> functions)
+		List<IDeclarationNode> members)
 	{
 		while (!Match(ref index, TokenType.OpCloseBrace))
 		{
@@ -863,7 +876,7 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 				if (block is { } outer)
 					Report(keyword, $"Cannot use '{keyword.Text}' in '{outer.Text}' blocks");
 				
-				if (!ParseEnumBody(ref index, blockBrace, block ?? keyword, cases, functions))
+				if (!ParseEnumBody(ref index, blockBrace, block ?? keyword, cases, members))
 					return false;
 				
 				continue;
@@ -871,10 +884,10 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 			
 			if (Peek(index, TokenType.Identifier) && Peek(index + 1, TokenType.OpColon))
 			{
-				if (ParseEnumFunction(ref index, block) is not { } function)
+				if (ParseEnumMember(ref index, block) is not { } member)
 					return false;
 				
-				functions.Add(function);
+				members.Add(member);
 				continue;
 			}
 			
@@ -890,11 +903,14 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 		return true;
 	}
 	
-	private FunctionNode? ParseEnumFunction(ref int index, Token? block)
+	private IDeclarationNode? ParseEnumMember(ref int index, Token? block)
 	{
 		var identifier = Tokens[index];
 		index += 2;
 		var modifiers = ParseMemberModifiers(ref index, block);
+		if (Match(ref index, out var bindingKeyword, _bindingKeywords))
+			return ParseStaticField(ref index, identifier, modifiers, bindingKeyword);
+		
 		if (!IsFunctionMember(index))
 		{
 			Report(identifier, "Cannot declare fields in enums");
@@ -972,6 +988,9 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 			return ParseDeclaration(ref index, identifier, "function",
 				(ref i) => ParseFunction(ref i, identifier, modifiers, false));
 		}
+		
+		if (Match(ref index, out var bindingKeyword, _bindingKeywords))
+			return ParseStaticField(ref index, identifier, modifiers, bindingKeyword);
 		
 		// TODO Casts, operator overloads
 		

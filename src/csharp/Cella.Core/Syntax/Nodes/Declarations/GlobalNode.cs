@@ -16,6 +16,7 @@ public sealed class GlobalNode
 	public Token Identifier { get; } = identifier;
 	public ImmutableArray<Token> Modifiers { get; } = modifiers.ToImmutableArray();
 	public Token? Visibility { get; init; }
+	public Token? WriteVisibility { get; init; }
 	public Token Keyword { get; } = keyword;
 	public ITypeNode Type { get; } = type;
 	public IExpressionNode Initializer { get; } = initializer;

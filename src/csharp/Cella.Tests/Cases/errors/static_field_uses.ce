@@ -1,0 +1,24 @@
+mod test
+
+Unit: rec
+{
+	hp: i32
+	maxHp: val i32 = 50
+	label: pvt val i32 = 7
+	handler: val fun[i32 -> i32] = twice
+
+	twice: pvt fun(value: i32) -> i32 = value * 2
+	read: fun(self) -> i32 = self.maxHp
+}
+
+through: fun(unit: Unit) -> i32 = unit.maxHp
+
+calls: fun(unit: Unit) -> i32 = unit.handler(1)
+
+hidden: fun -> i32 = Unit.label
+
+names: fun -> str = nameOf(Unit.label)
+
+missing: fun -> i32 = maxHp
+
+main: fun -> i32 = 0

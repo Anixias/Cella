@@ -1,0 +1,19 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+main: fun -> i32
+{
+	val a = game.Unit.spawn(10)
+	val b = game.Unit.spawn(20)
+	game.Color.pick()
+	game.Color.pick()
+	printf("%d %d %d %d\n", game.Unit.maxHp, game.Unit.created, a.scaled(), b.hp)
+	printf("%d %d %d %d\n", game.Color.count, game.Color.picked(), game.Pair.unit.first + game.Pair.zero.second,
+		game.Unit.origin.hp)
+	printf("%d %d\n", game.Pair.doubler(21), game.Pair.limit)
+	ret 0
+}

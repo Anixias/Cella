@@ -149,6 +149,7 @@ public sealed class SymbolCollector : IDeclarationNodeVisitor<Symbol>
 		
 		// TODO Type parameters
 		var members = new List<MemberSymbol>(node.Members.Length);
+		var statics = new List<GlobalSymbol>();
 		var types = new List<TypeSymbol>(node.Members.Length);
 		
 		foreach (var member in node.Members)
@@ -168,6 +169,10 @@ public sealed class SymbolCollector : IDeclarationNodeVisitor<Symbol>
 					types.Add(s);
 					break;
 				
+				case GlobalSymbol s:
+					statics.Add(s);
+					break;
+				
 				default:
 					// TODO Diagnostics?
 					break;
@@ -175,7 +180,10 @@ public sealed class SymbolCollector : IDeclarationNodeVisitor<Symbol>
 		}
 		
 		var name = node.Identifier.Text;
-		var record = new RecordSymbol(name, node, members, types);
+		var record = new RecordSymbol(name, node, members, types) { StaticFields = [..statics] };
+		foreach (var field in statics)
+			field.ContainingType = record;
+		
 		_builder.DeclarationSymbols[node] = record;
 		_symbolsInFile.Add(record);
 		_typeStack.Pop();
@@ -199,13 +207,28 @@ public sealed class SymbolCollector : IDeclarationNodeVisitor<Symbol>
 		
 		_typeStack.Push(node.Identifier.Text);
 		_typeVisibilities.Push(Visibility.FromKeyword(node.Visibility));
-		var functions = node.Functions
-			.Select(function => new MethodSymbol(function.Identifier.Text, (FunctionSymbol)VisitNode(function)))
-			.ToList();
+		var functions = new List<MethodSymbol>();
+		var statics = new List<GlobalSymbol>();
+		foreach (var member in node.Members)
+		{
+			switch (VisitNode(member))
+			{
+				case FunctionSymbol function:
+					functions.Add(new MethodSymbol(GetMemberName(member), function));
+					break;
+				
+				case GlobalSymbol global:
+					statics.Add(global);
+					break;
+			}
+		}
 		
 		_typeStack.Pop();
 		_typeVisibilities.Pop();
-		var symbol = new EnumSymbol(node, cases, functions);
+		var symbol = new EnumSymbol(node, cases, functions) { StaticFields = [..statics] };
+		foreach (var field in statics)
+			field.ContainingType = symbol;
+		
 		_builder.DeclarationSymbols[node] = symbol;
 		_symbolsInFile.Add(symbol);
 		return symbol;
@@ -213,9 +236,13 @@ public sealed class SymbolCollector : IDeclarationNodeVisitor<Symbol>
 	
 	public Symbol Visit(GlobalNode node)
 	{
-		var global = new GlobalSymbol(node);
+		var isMember = _typeStack.Count > 0;
+		var visibility = isMember ? GetMemberVisibility(node.Visibility) : Visibility.FromKeyword(node.Visibility);
+		var global = new GlobalSymbol(node, visibility);
 		_builder.DeclarationSymbols[node] = global;
-		_symbolsInFile.Add(global);
+		if (!isMember)
+			_symbolsInFile.Add(global);
+		
 		return global;
 	}
 	

@@ -74,6 +74,9 @@ public readonly struct ResolutionContext
 			if (type.Children.TryGetValue(name, out var member))
 				return member;
 			
+			if (type.GetStaticField(name) is { } field)
+				return field;
+			
 			if (ResolveStatic(type, name) is { } function)
 				return function;
 		}
