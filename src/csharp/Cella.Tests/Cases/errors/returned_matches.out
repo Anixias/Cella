@@ -1,0 +1,59 @@
+
+====== returned_matches.ce ======
+
+Error at line 32, column 12
+31 │ held(buffer) => buffer
+32 │ empty => fallback
+              ╘══════╛ Cannot return borrows of parameters other than 'self'
+
+Error at line 43, column 10
+42 │ hold(buffer) => buffer
+43 │ else => imm fallback
+             ╘══════════╛ Cannot return borrows of 'own' parameters
+
+Error at line 48, column 18
+47 │ {
+48 │     hold(buffer) => imm a
+                         ╘═══╛ Cannot return borrows of 'own' parameters
+
+Error at line 49, column 10
+48 │ hold(buffer) => imm a
+49 │ else => imm b
+             ╘═══╛ Cannot return borrows of 'own' parameters
+
+Error at line 58, column 11
+57 │ hold(buffer) => buffer
+58 │ else => imm fallback
+             ╘══════════╛ Cannot return borrows of 'own' parameters
+
+Error at line 67, column 19
+66 │ {
+67 │     count(value) => kills(mut stats)
+                         ╘══════════════╛ Cannot return borrows of local variables
+
+Error at line 68, column 11
+67 │ count(value) => kills(mut stats)
+68 │ else => kills(mut stats)
+             ╘══════════════╛ Cannot return borrows of local variables
+
+Error at line 74, column 18
+73 │ {
+74 │     count(value) => imm value
+                         ╘═══════╛ Cannot return borrows of local variables
+
+Error at line 75, column 10
+74 │ count(value) => imm value
+75 │ else => imm x
+             ╘═══╛ Cannot return borrows of copied parameters
+
+Error at line 80, column 18
+79 │ {
+80 │     hold(buffer) => buffer
+                         ╘════╛ Cannot return borrows of local variables
+
+Error at line 91, column 6
+90 │ }
+91 │ ret result
+         ╘════╛ Cannot return borrows of 'own' parameters
+
+[compilation failed]

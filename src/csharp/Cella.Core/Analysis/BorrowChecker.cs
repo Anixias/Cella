@@ -43,7 +43,7 @@ public sealed class BorrowChecker(TypePool typePool, DiagnosticList diagnostics)
 			: null;
 		
 		constructorSelf = symbol.Kind == FunctionKind.Constructor ? receiver : null;
-		returned = GetReturned(function);
+		returned = GetReturned(function, events);
 		borrowed = GetBorrowed(function.Info);
 		lenders = GetLenders(function.Info);
 		foreach (var (block, entryState) in Solve(function, events))
@@ -52,6 +52,7 @@ public sealed class BorrowChecker(TypePool typePool, DiagnosticList diagnostics)
 			foreach (var memoryEvent in events[block])
 			{
 				CheckUse(memoryEvent, state);
+				CheckReturn(memoryEvent, state);
 				CheckStore(memoryEvent, state);
 				Transfer(state, memoryEvent);
 			}
@@ -109,7 +110,8 @@ public sealed class BorrowChecker(TypePool typePool, DiagnosticList diagnostics)
 		return state;
 	}
 	
-	private static HashSet<VariableSymbol> GetReturned(LoweredFunction function)
+	private static HashSet<VariableSymbol> GetReturned(LoweredFunction function,
+		Dictionary<BasicBlock, List<MemoryEvent>> events)
 	{
 		var roots = new HashSet<VariableSymbol>();
 		foreach (var block in function.Blocks)
@@ -119,8 +121,38 @@ public sealed class BorrowChecker(TypePool typePool, DiagnosticList diagnostics)
 				roots.Add(place.Root);
 		}
 		
+		var memoryEvents = events.Values.SelectMany(static list => list).ToList();
+		var merged = memoryEvents
+			.OfType<DefineEvent>()
+			.Where(static e => e.Kind == DefineKind.Undef && e.Local.Name.StartsWith('.'))
+			.Select(static e => e.Local)
+			.ToHashSet();
+		
+		var changed = true;
+		while (changed)
+		{
+			changed = false;
+			foreach (var memoryEvent in memoryEvents)
+			{
+				if (GetCopy(memoryEvent) is { } copy && merged.Contains(copy.Source) && roots.Contains(copy.Target) &&
+				    roots.Add(copy.Source))
+					changed = true;
+			}
+		}
+		
 		return roots;
 	}
+	
+	private static (VariableSymbol Target, VariableSymbol Source)? GetCopy(MemoryEvent memoryEvent) =>
+		memoryEvent switch
+		{
+			DefineEvent e when GetCopied(e.Value) is { } source => (e.Local, source),
+			WriteEvent { Place.Path.IsEmpty: true } e when GetCopied(e.Value) is { } source => (e.Place.Root, source),
+			_ => null
+		};
+	
+	private static VariableSymbol? GetCopied(Value value) =>
+		(value is MoveValue move ? move.Place : value) is VariableValue variable ? variable.Variable.Symbol : null;
 	
 	private HashSet<ParameterSymbol> GetBorrowed(FunctionInfo function) =>
 		function.Symbol.Parameters.Where((_, i) => IsBorrowed(function.Signature, i)).ToHashSet();
@@ -134,12 +166,9 @@ public sealed class BorrowChecker(TypePool typePool, DiagnosticList diagnostics)
 	{
 		switch (memoryEvent)
 		{
-			case AccessEvent e when returned.Contains(e.Place.Root) && typePool.HoldsBorrows(e.Type):
-				CheckReturn(e.Place.Root, e.Location, state);
-				break;
-			
-			case AccessEvent e when e.Place.Root is LocalVariableSymbol { IsBorrowBinding: true } ||
-			                        typePool.HoldsBorrows(e.Type):
+			case AccessEvent e when !returned.Contains(e.Place.Root) &&
+			                        (e.Place.Root is LocalVariableSymbol { IsBorrowBinding: true } ||
+			                         typePool.HoldsBorrows(e.Type)):
 				ReportEnded(e.Place.Root, e.Location, state, null);
 				break;
 			
@@ -190,11 +219,31 @@ public sealed class BorrowChecker(TypePool typePool, DiagnosticList diagnostics)
 		_ => "Dropped"
 	};
 	
-	private void CheckReturn(VariableSymbol value, SourceLocation location, BorrowState state)
+	private void CheckReturn(MemoryEvent memoryEvent, BorrowState state)
 	{
-		if (FindEscape(state.Get(value).Keys) is { } escape && _reported.Add(location))
+		switch (memoryEvent)
+		{
+			case DefineEvent e when returned.Contains(e.Local) && !IsReturnedCopy(e.Value):
+				CheckEscape(Stored(e.Value, state), e.Value, e.Location);
+				break;
+			
+			case WriteEvent e when returned.Contains(e.Place.Root) && !IsReturnedCopy(e.Value):
+				CheckEscape(Written(e, state), e.Value, e.Location);
+				break;
+		}
+	}
+	
+	private bool IsReturnedCopy(Value value) => GetCopied(value) is { } copied && returned.Contains(copied);
+	
+	private void CheckEscape(List<Place> written, Value value, SourceLocation fallback)
+	{
+		var location = GetLocation(value, fallback);
+		if (FindEscape(written) is { } escape && _reported.Add(location))
 			diagnostics.Add(new(DiagnosticSeverity.Error, location, $"Cannot return borrows of {Describe(escape)}"));
 	}
+	
+	private static SourceLocation GetLocation(Value value, SourceLocation fallback) =>
+		value.SourceLocation == SourceLocation.None ? fallback : value.SourceLocation;
 	
 	private void CheckStore(MemoryEvent memoryEvent, BorrowState state)
 	{
@@ -224,7 +273,7 @@ public sealed class BorrowChecker(TypePool typePool, DiagnosticList diagnostics)
 		if (written.Count == 0)
 			return;
 		
-		var location = value.SourceLocation == SourceLocation.None ? fallback : value.SourceLocation;
+		var location = GetLocation(value, fallback);
 		foreach (var root in targets.Select(static target => target.Root).Distinct())
 		{
 			var message = root switch

@@ -1,0 +1,94 @@
+mod test
+
+Buffer: rec
+{
+	id: i32
+
+	drop: op
+	{
+	}
+}
+
+Stats: rec
+{
+	kills: i32
+}
+
+Effect: enum
+{
+	none
+	hold(buffer: Buffer)
+	count(value: i32)
+}
+
+Slot: enum
+{
+	empty
+	held(buffer: Buffer)
+
+	orElse: fun(self, fallback: Buffer) -> imm[Buffer] = match self
+	{
+		held(buffer) => buffer
+		empty => fallback
+	}
+}
+
+kills: fun(mut stats: Stats) -> mut[i32] = mut stats.kills
+
+make: fun -> Effect = Effect.hold(Buffer(1))
+
+pick: fun(effect: Effect, own fallback: Buffer) -> imm[Buffer] = match effect
+{
+	hold(buffer) => buffer
+	else => imm fallback
+}
+
+every: fun(effect: Effect, own a: Buffer, own b: Buffer) -> imm[Buffer] = match effect
+{
+	hold(buffer) => imm a
+	else => imm b
+}
+
+nested: fun(outer: Effect, inner: Effect, own fallback: Buffer) -> imm[Buffer] = match outer
+{
+	hold(buffer) => buffer
+	else => match inner
+	{
+		hold(buffer) => buffer
+		else => imm fallback
+	}
+}
+
+called: fun(effect: Effect) -> mut[i32]
+{
+	var stats = Stats(1)
+	ret match effect
+	{
+		count(value) => kills(mut stats)
+		else => kills(mut stats)
+	}
+}
+
+copied: fun(effect: Effect, x: i32) -> imm[i32] = match effect
+{
+	count(value) => imm value
+	else => imm x
+}
+
+owned: fun(fallback: Buffer) -> imm[Buffer] = match make()
+{
+	hold(buffer) => buffer
+	else => imm fallback
+}
+
+stored: fun(effect: Effect, own fallback: Buffer) -> imm[Buffer]
+{
+	val result: imm[Buffer] = match effect
+	{
+		hold(buffer) => buffer
+		else => imm fallback
+	}
+	ret result
+}
+
+main: fun -> i32 = 0
