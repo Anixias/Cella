@@ -4,7 +4,7 @@ ext
 {
 	abs: fun(value: i32) -> i32
 	printf: fun(format: cstr, ...) -> i32
-	qsort: fun(items: ptr, count: usize, size: usize, compare: ext fun(ptr, ptr) -> i32)
+	qsort: fun(items: ptr, count: usize, size: usize, compare: ext fun[ptr, ptr -> i32])
 }
 
 Pair: rec
@@ -40,10 +40,10 @@ swap: fun(pair: Pair) -> Pair = Pair(pair.y, pair.x)
 spread: fun(quad: Quad, scale: i32) -> Quad = Quad(quad.a * scale, quad.b * scale, quad.c * scale, quad.d * scale)
 swapNative: ext fun(pair: Pair) -> Pair = Pair(pair.y, pair.x)
 
-natives: val array[ext fun(i32) -> i32, 2] = [twice, double]
+natives: val array[ext fun[i32 -> i32], 2] = [twice, double]
 
-applyFun: fun(f: fun(i32) -> i32, x: i32) -> i32 = f(x)
-applyExt: fun(f: ext fun(i32) -> i32, x: i32) -> i32 = f(x)
+applyFun: fun(f: fun[i32 -> i32], x: i32) -> i32 = f(x)
+applyExt: fun(f: ext fun[i32 -> i32], x: i32) -> i32 = f(x)
 
 main: fun -> i32
 {
@@ -51,15 +51,15 @@ main: fun -> i32
 	qsort(@values, 5, sizeOf(i32), ascending)
 	printf("%d %d %d %d %d\n", values[0], values[1], values[2], values[3], values[4])
 
-	var native: ext fun(i32) -> i32 = double
-	var wrapped: fun(i32) -> i32 = twice
+	var native: ext fun[i32 -> i32] = double
+	var wrapped: fun[i32 -> i32] = twice
 	var index: usize = 1
 	printf("%d %d %d %d\n", native(8), wrapped(9), natives[0](5), natives[index](5))
 	printf("%d %d %d\n", applyFun(abs, -6), applyFun(twice, 3), applyExt(double, 21))
 
-	var swapper: ext fun(Pair) -> Pair = swap
-	var spreader: ext fun(Quad, i32) -> Quad = spread
-	var closureSwap: fun(Pair) -> Pair = swapNative
+	var swapper: ext fun[Pair -> Pair] = swap
+	var spreader: ext fun[Quad, i32 -> Quad] = spread
+	var closureSwap: fun[Pair -> Pair] = swapNative
 	var closureSpread = spread
 	var s = swapper(Pair(1, 2))
 	var q = spreader(Quad(1, 2, 3, 4), 10)

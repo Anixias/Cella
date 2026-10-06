@@ -4,7 +4,7 @@ ext
 {
 	abs: fun(value: i32) -> i32
 	printf: fun(format: cstr, ...) -> i32
-	qsort: fun(items: ptr, count: usize, size: usize, compare: ext fun(ptr, ptr) -> i32)
+	qsort: fun(items: ptr, count: usize, size: usize, compare: ext fun[ptr, ptr -> i32])
 }
 
 Pair: rec
@@ -23,7 +23,7 @@ Quad: rec
 
 Handler: rec
 {
-	callback: ext fun(i32) -> i32
+	callback: ext fun[i32 -> i32]
 	scale: i32
 }
 
@@ -51,9 +51,9 @@ log: ext fun(value: i32)
 	printf("logged %d\n", value)
 }
 
-apply: fun(f: ext fun(i32) -> i32, value: i32) -> i32 = f(value)
+apply: fun(f: ext fun[i32 -> i32], value: i32) -> i32 = f(value)
 
-pick: fun(which: i32) -> ext fun(i32, i32) -> i32
+pick: fun(which: i32) -> ext fun[i32, i32 -> i32]
 {
 	if which == 0
 		ret add
@@ -67,7 +67,7 @@ main: fun -> i32
 	printf("%d %d %d %d %d\n", values[0], values[1], values[2], values[3], values[4])
 
 	var f = twice
-	var g: ext fun(i32) -> i32 = abs
+	var g: ext fun[i32 -> i32] = abs
 	printf("%d %d %d %d\n", f(21), g(-5), apply(twice, 4), apply(abs, -9))
 	f = abs
 	printf("%d %d %d\n", f(-3), pick(0)(6, 3), pick(1)(6, 3))
@@ -82,7 +82,7 @@ main: fun -> i32
 
 	var handler = Handler(twice, 5)
 	var callback = handler.callback
-	var constant: ext fun -> i32 = answer
+	var constant: ext fun[-> i32] = answer
 	printf("%d %d\n", callback(handler.scale), constant())
 
 	var logger = log

@@ -1,0 +1,19 @@
+
+====== function_type_syntax.ce ======
+
+Error at line 3, column 18
+2 │ 
+3 │ apply: fun(f: fun(i32) -> i32) -> i32 = 0
+                     ^ Expected '['
+
+Error at line 5, column 22
+4 │ 
+5 │ pair: fun(f: fun[i32 i32]) = {}
+                         ╘═╛ Expected ']'
+
+Error at line 9, column 2
+8 │ {
+9 │     callback: fun(i32) -> i32
+        ╘══════╛ Invalid function declaration
+
+[compilation failed]

@@ -13,7 +13,7 @@ Effect: enum
 
 Handler: rec
 {
-	callback: fun(i32) -> i32
+	callback: fun[i32 -> i32]
 	scale: i32
 }
 
@@ -33,7 +33,7 @@ Wrapper: rec
 {
 	handler: Handler
 
-	new: op(f: fun(i32) -> i32)
+	new: op(f: fun[i32 -> i32])
 	{
 		self.handler.callback = f
 	}

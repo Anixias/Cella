@@ -14,7 +14,7 @@ Error at line 6, column 35
 
 Error at line 12, column 12
 11 │ count: i32
-12 │ step: fun(imm[i32]) -> i32
+12 │ step: fun[imm[i32] -> i32]
                ╘══════╛ Cannot use borrow types for parameters
                       | 'i32' is already a read-only borrow
 
@@ -38,13 +38,13 @@ Error at line 25, column 18
 
 Error at line 27, column 24
 26 │ 
-27 │ apply: fun(action: fun(mut[i32]), own target: imm[i32]) {}
+27 │ apply: fun(action: fun[mut[i32]], own target: imm[i32]) {}
                             ╘══════╛ Cannot use borrow types for parameters
                                    | Did you mean 'mut i32'?
 
 Error at line 27, column 47
 26 │ 
-27 │ apply: fun(action: fun(mut[i32]), own target: imm[i32]) {}
+27 │ apply: fun(action: fun[mut[i32]], own target: imm[i32]) {}
                                                    ╘══════╛ Cannot use borrow types for parameters
 
 [compilation failed]

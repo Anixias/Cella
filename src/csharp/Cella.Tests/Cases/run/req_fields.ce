@@ -25,7 +25,7 @@ Owner: rec
 
 Handler: rec
 {
-	callback: fun(i32) -> i32
+	callback: fun[i32 -> i32]
 	scale: i32
 }
 
@@ -80,7 +80,7 @@ Wrapper: rec
 {
 	handler: req Handler
 
-	new: op(f: fun(i32) -> i32)
+	new: op(f: fun[i32 -> i32])
 	{
 		self.handler.callback = f
 	}
@@ -88,7 +88,7 @@ Wrapper: rec
 
 Callback: rec
 {
-	run: req fun(i32) -> i32
+	run: req fun[i32 -> i32]
 }
 
 PointHolder: rec

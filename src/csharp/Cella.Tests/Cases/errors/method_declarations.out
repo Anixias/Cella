@@ -1,0 +1,29 @@
+
+====== method_declarations.ce ======
+
+Error at line 5, column 2
+4 │ {
+5 │     x: i32
+        ^ 'x' is declared more than once in 'Point'
+
+Error at line 8, column 2
+7 │ 
+8 │ x: fun(self) -> i32 = 0
+    ^ 'x' is declared more than once in 'Point'
+
+Error at line 10, column 2
+ 9 │ 
+10 │ scale: fun(self, factor: i32) -> i32 = self.y * factor
+     ╘═══╛ 'Point.scale' is declared more than once with the same signature
+
+Error at line 11, column 2
+10 │ scale: fun(self, factor: i32) -> i32 = self.y * factor
+11 │ scale: fun(self, factor: i32) -> i32 = 0
+     ╘═══╛ 'Point.scale' is declared more than once with the same signature
+
+Error at line 14, column 11
+13 │ 
+14 │ free: fun(self) -> i32 = 0
+               ╘══╛ Cannot take 'self' outside types
+
+[compilation failed]

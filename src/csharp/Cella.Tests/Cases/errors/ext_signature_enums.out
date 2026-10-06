@@ -28,11 +28,11 @@ Error at line 44, column 21
 
 Error at line 45, column 24
 44 │ post: fun(message: Message)
-45 │ onTeam: fun(callback: ext fun(Team) -> i32)
-                           ╘══════════════════╛ 'Team' in 'ext fun(Team) -> i32' isn't an 'ext enum', so it can't be part of an 'ext' signature
+45 │ onTeam: fun(callback: ext fun[Team -> i32])
+                           ╘══════════════════╛ 'Team' in 'ext fun[Team -> i32]' isn't an 'ext enum', so it can't be part of an 'ext' signature
 
 Error at line 46, column 18
-45 │ onTeam: fun(callback: ext fun(Team) -> i32)
+45 │ onTeam: fun(callback: ext fun[Team -> i32])
 46 │ walk: fun(node: Node)
                      ╘══╛ 'Team' in 'Node' isn't an 'ext enum', so it can't be part of an 'ext' signature
 

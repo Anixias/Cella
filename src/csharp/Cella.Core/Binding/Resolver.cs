@@ -211,12 +211,14 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	
 	public IResolvedDeclarationNode Visit(RecordNode node)
 	{
+		var record = (RecordSymbol)_symbolTable.DeclarationSymbols[node];
 		var members = new List<IResolvedDeclarationNode>();
 		
+		_resolutionContexts.Push(CurrentResolutionContext with { ContainingType = record });
 		foreach (var member in node.Members)
 			members.Add(VisitNode(member));
 		
-		var record = (RecordSymbol)_symbolTable.DeclarationSymbols[node];
+		_resolutionContexts.Pop();
 		return new ResolvedRecordNode(record, members, node);
 	}
 	
@@ -793,7 +795,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			return new ResolvedInvalidExpressionNode(node, targetType);
 		
 		var ctorCandidates = _typePool.GetConstructors(targetType)
-			.Select(info => new ConstructorCallable(info, targetType))
+			.Select(info => new ReceiverCallable(info, targetType))
 			.ToArray();
 		
 		var resolutionSet = ResolveCallable(ctorCandidates, args, MaterializationMode.Overload, targetType);
@@ -814,7 +816,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		}
 		
 		var resolution = resolutionSet[0];
-		var callable = (ConstructorCallable)resolution.Callable;
+		var callable = (ReceiverCallable)resolution.Callable;
 		var info = callable.Info;
 		
 		var resolvedArgs = ApplyArgumentResolution(args, resolution);
@@ -855,23 +857,23 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 				return VisitIndirectCall(node, VisitNode(node.Target, null));
 		}
 		
-		var functionName = GetName(node.Target);
 		var functionSymbols = GetFunctions(symbol);
-		
 		if (functionSymbols.Length == 0)
 			return VisitIndirectCall(node, VisitNode(node.Target, null));
 		
+		var candidates = functionSymbols.Select(GetFunctionInfo).Select(static info => new FunctionCallable(info));
+		return ResolveCall(node, GetName(node.Target), [..candidates], null);
+	}
+	
+	private IResolvedExpressionNode ResolveCall(CallExpressionNode node, string functionName, ICallable[] candidates,
+		IResolvedExpressionNode? receiver)
+	{
 		var args = new IResolvedExpressionNode[node.Arguments.Length];
 		for (var i = 0; i < node.Arguments.Length; i++)
 			args[i] = VisitArgument(node.Arguments[i]);
 		
 		if (AnyInvalid(args))
 			return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
-		
-		var candidates = functionSymbols
-			.Select(GetFunctionInfo)
-			.Select(static info => new FunctionCallable(info))
-			.ToArray();
 		
 		var resolutionSet = ResolveCallable(candidates, args, MaterializationMode.Overload, CurrentTargetType);
 		
@@ -887,15 +889,27 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 				node.Target);
 		
 		var resolution = resolutionSet[0];
-		var callable = (FunctionCallable)resolution.Callable;
-		var info = callable.Info;
+		var info = resolution.Callable switch
+		{
+			FunctionCallable callable => callable.Info,
+			ReceiverCallable callable => callable.Info,
+			_ => throw new InvalidOperationException()
+		};
 		
 		TrackImportedFunction(info);
 		
 		var resolvedArgs = ApplyArgumentResolution(args, resolution);
+		if (receiver is not null)
+			resolvedArgs.Insert(0, CreateReceiver(receiver, info));
+		
 		var result = new ResolvedFunctionCallExpressionNode(info, resolvedArgs, node);
 		return ApplyResultResolution(result, resolution);
 	}
+	
+	private IResolvedExpressionNode CreateReceiver(IResolvedExpressionNode receiver, FunctionInfo method) =>
+		method.Signature.GetMode(0) == ParameterMode.Mut
+			? new ResolvedMutArgumentExpressionNode(receiver, _typePool.GetPointerType(receiver.Type), receiver.Syntax)
+			: receiver;
 	
 	private IResolvedExpressionNode VisitArgument(IExpressionNode node)
 	{
@@ -976,8 +990,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 				? new(DiagnosticSeverity.Error, arg.Syntax.SourceLocation, "Cannot mutably borrow arguments implicitly")
 				: null;
 		
+		var keyword = ((BorrowExpressionNode)argument.Syntax).Keyword;
 		if (!isMut)
-			return new(DiagnosticSeverity.Error, argument.Argument.Keyword.SourceLocation, name is null
+			return new(DiagnosticSeverity.Error, keyword.SourceLocation, name is null
 				? "Only an argument to a 'mut' parameter can be marked 'mut'"
 				: $"'{name}' isn't a 'mut' parameter");
 		
@@ -1004,19 +1019,76 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	
 	private IResolvedExpressionNode VisitMemberCall(CallExpressionNode node, AccessExpressionNode access)
 	{
-		if (access.Target is VarExpressionNode name &&
-		    CurrentResolutionContext.Resolve(name.Identifier.Text) is TypeSymbol)
-			return Error(node, "Member calls are not supported yet", CurrentTargetType, node.Target);
+		if (CurrentResolutionContext.TryResolveExpressionAsType(access.Target) is { } type)
+			return VisitStaticCall(node, access, type);
 		
 		var target = Decay(VisitNode(access.Target, null));
 		if (IsInvalid(target))
 			return VisitIndirectCall(node, target);
 		
-		if (FindField(target.Type, access.Member.Text) is null)
-			return Error(node, "Member calls are not supported yet", CurrentTargetType, node.Target);
+		if (FindField(target.Type, access.Member.Text) is not null)
+			return VisitIndirectCall(node, ResolveAccess(access, target));
 		
-		return VisitIndirectCall(node, ResolveAccess(access, target));
+		var owner = GetMemberOwner(target.Type);
+		var functions = FindFunctions(owner, access.Member.Text);
+		var methods = functions.Where(static function => function.HasReceiver).ToArray();
+		if (methods.Length == 0)
+			return Error(node, functions.Length > 0
+					? "Cannot use static functions through values"
+					: $"Type '{owner.Name}' has no member '{access.Member.Text}'", CurrentTargetType,
+				access.Member.SourceLocation);
+		
+		if (owner != target.Type)
+			target = ResolveDereference(TokenType.OpStar, target, access.Target);
+		
+		var candidates = methods
+			.Select(method => GetFunctionInfo(method.Function))
+			.Select(static info => new ReceiverCallable(info, info.Signature.ReturnType));
+		
+		return ResolveCall(node, access.Member.Text, [..candidates], target);
 	}
+	
+	private IResolvedExpressionNode VisitStaticCall(CallExpressionNode node, AccessExpressionNode access,
+		TypeSymbol type)
+	{
+		if (type is InvalidType)
+			return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
+		
+		var statics = FindStatics(type, access.Member.Text);
+		if (statics.Length == 0)
+			return Error(node, DescribeMissingStatic(type, access.Member.Text), CurrentTargetType,
+				access.Member.SourceLocation);
+		
+		var candidates = statics.Select(GetFunctionInfo).Select(static info => new FunctionCallable(info));
+		return ResolveCall(node, GetName(node.Target), [..candidates], null);
+	}
+	
+	private IResolvedExpressionNode VisitStaticMember(AccessExpressionNode node, TypeSymbol type)
+	{
+		if (type is InvalidType)
+			return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
+		
+		var statics = FindStatics(type, node.Member.Text);
+		return statics.Length > 0
+			? ResolveFunctionValue(node, statics)
+			: Error(node, DescribeMissingStatic(type, node.Member.Text), CurrentTargetType,
+				node.Member.SourceLocation);
+	}
+	
+	private string DescribeMissingStatic(TypeSymbol type, string name) =>
+		FindFunctions(type, name).Length > 0 ? "Cannot use methods through types"
+		: FindField(type, name) is not null ? "Cannot use fields through types"
+		: $"Type '{type.Name}' has no member '{name}'";
+	
+	private static FunctionSymbol[] FindStatics(TypeSymbol type, string name) =>
+	[
+		..FindFunctions(type, name)
+			.Where(static function => !function.HasReceiver)
+			.Select(static function => function.Function)
+	];
+	
+	private static MethodSymbol[] FindFunctions(TypeSymbol type, string name) =>
+		type is RecordSymbol record ? [..record.GetFunctions(name)] : [];
 	
 	private FieldSymbol? FindField(TypeSymbol type, string name) =>
 		_typePool.ResolveMember(GetMemberOwner(type), name) as FieldSymbol;
@@ -1081,6 +1153,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		if (CurrentResolutionContext.ResolveModule(node.Target) is { } module)
 			return VisitModuleMember(node, module);
 		
+		if (CurrentResolutionContext.TryResolveExpressionAsType(node.Target) is { } type)
+			return VisitStaticMember(node, type);
+		
 		return ResolveAccess(node, VisitNode(node.Target));
 	}
 	
@@ -1109,8 +1184,13 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		var resolutionContext = CurrentResolutionContext;
 		
 		if (resolutionContext.TypePool.ResolveMember(target.Type, memberName) is not { } member)
-			return Error(node, $"Type '{target.Type.Name}' has no member '{memberName}'", CurrentTargetType,
-				node.Member.SourceLocation);
+			return Error(node, FindFunctions(target.Type, memberName) switch
+			{
+				[] => $"Type '{target.Type.Name}' has no member '{memberName}'",
+				var functions when functions.Any(static function => function.HasReceiver) =>
+					"Cannot use methods as values",
+				_ => "Cannot use static functions through values"
+			}, CurrentTargetType, node.Member.SourceLocation);
 		
 		var memberType = GetMemberType(member);
 		return new ResolvedAccessExpressionNode(target, member, memberType, node);
@@ -1399,11 +1479,12 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		_ => node.SourceLocation.GetText().ToString()
 	};
 	
-	private IResolvedExpressionNode ResolveFunctionValue(IExpressionNode node, Symbol symbol)
+	private IResolvedExpressionNode ResolveFunctionValue(IExpressionNode node, Symbol symbol) =>
+		ResolveFunctionValue(node, GetFunctions(symbol));
+	
+	private IResolvedExpressionNode ResolveFunctionValue(IExpressionNode node, FunctionSymbol[] functions)
 	{
 		var name = GetName(node);
-		var functions = GetFunctions(symbol);
-		
 		if (functions.Length == 0)
 			return Error(node, $"Reference to '{name}' is ambiguous", CurrentTargetType);
 		
@@ -2467,7 +2548,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		
 		return place == argument.Place
 			? argument
-			: new ResolvedMutArgumentExpressionNode(place, _typePool.GetPointerType(place.Type), argument.Argument);
+			: new ResolvedMutArgumentExpressionNode(place, _typePool.GetPointerType(place.Type), argument.Syntax);
 	}
 	
 	private IResolvedExpressionNode PromoteVariadicArgument(IResolvedExpressionNode arg)
@@ -2652,7 +2733,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		public ParameterMode GetMode(int index) => type.ParameterModes[index];
 	}
 	
-	private sealed class ConstructorCallable(FunctionInfo info, TypeSymbol type) : ICallable
+	private sealed class ReceiverCallable(FunctionInfo info, TypeSymbol type) : ICallable
 	{
 		public FunctionInfo Info { get; } = info;
 		

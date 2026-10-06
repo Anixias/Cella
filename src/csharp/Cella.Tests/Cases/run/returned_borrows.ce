@@ -60,7 +60,7 @@ kills: fun(mut stats: Stats) -> mut[i32] = mut stats.kills
 
 forward: fun(mut stats: Stats) -> mut[i32] = kills(mut stats)
 
-apply: fun(get: fun(mut Stats) -> mut[i32], mut stats: Stats) -> mut[i32] = get(mut stats)
+apply: fun(get: fun[mut Stats -> mut[i32]], mut stats: Stats) -> mut[i32] = get(mut stats)
 
 stronger: fun(a: Enemy, b: Enemy) -> imm[Enemy]
 {

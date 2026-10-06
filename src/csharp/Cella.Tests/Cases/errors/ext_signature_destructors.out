@@ -3,7 +3,7 @@
 
 Error at line 26, column 20
 25 │ {
-26 │     onBuffer: ext fun(Buffer) -> i32
+26 │     onBuffer: ext fun[Buffer -> i32]
                            ╘════╛ 'Buffer' has a destructor, so it can't be part of an 'ext' signature
 
 Error at line 32, column 20
@@ -43,7 +43,7 @@ Error at line 38, column 20
 
 Error at line 39, column 34
 38 │ all: fun(buffers: array[Buffer, 2])
-39 │ register: fun(callback: ext fun(Buffer) -> i32)
+39 │ register: fun(callback: ext fun[Buffer -> i32])
                                      ╘════╛ 'Buffer' has a destructor, so it can't be part of an 'ext' signature
 
 Error at line 43, column 23
@@ -58,7 +58,7 @@ Error at line 43, column 34
 
 Error at line 44, column 40
 43 │ echo: ext fun(buffer: Buffer) -> Buffer = buffer
-44 │ forward: fun(callback: fun(ext fun(own Buffer))) {}
+44 │ forward: fun(callback: fun[ext fun[own Buffer]]) {}
                                             ╘════╛ 'Buffer' has a destructor, so it can't be part of an 'ext' signature
 
 [compilation failed]

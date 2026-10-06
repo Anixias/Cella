@@ -1,0 +1,20 @@
+
+====== method_moves.ce ======
+
+Error at line 24, column 38
+23 │ 
+24 │ take: fun(mut self) -> Buffer = own self.buffer
+                                         ╘═════════╛ Cannot leave 'self' partly moved
+
+Error at line 34, column 15
+33 │ {
+34 │     self.text = other
+                     ╘═══╛ Cannot store new borrows in 'self'
+
+Error at line 47, column 2
+46 │ unit.release()
+47 │ unit.restore(2)
+     ╘══╛ Cannot use moved values
+        | Moved on line 46
+
+[compilation failed]

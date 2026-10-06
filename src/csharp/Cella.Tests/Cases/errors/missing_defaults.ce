@@ -19,7 +19,7 @@ Holder: rec
 
 Handler: rec
 {
-	callback: fun(i32) -> i32
+	callback: fun[i32 -> i32]
 	scale: i32
 }
 
@@ -56,7 +56,7 @@ array: fun -> i32
 
 callback: fun -> i32
 {
-	var f: fun(i32) -> i32
+	var f: fun[i32 -> i32]
 	ret f(1)
 }
 
@@ -69,21 +69,21 @@ handler: fun -> i32
 
 callbacks: fun -> i32
 {
-	var callbacks: array[fun(i32) -> i32, 2]
+	var callbacks: array[fun[i32 -> i32], 2]
 	callbacks[0] = abs
 	ret callbacks[1](4)
 }
 
 native: fun -> i32
 {
-	var f: ext fun(i32) -> i32
+	var f: ext fun[i32 -> i32]
 	ret f(-6)
 }
 
 Pair: rec
 {
-	first: fun(i32) -> i32
-	second: fun(i32) -> i32
+	first: fun[i32 -> i32]
+	second: fun[i32 -> i32]
 }
 
 Outer: rec

@@ -445,17 +445,17 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 		
 		// @TODO Diagnostics
 		
-		if (ParseFunctionSignature(ref index, false) is not { } signature)
+		if (ParseFunctionSignature(ref index, false, true) is not { } signature)
 			return null;
 		
-		var (parameters, returnType, _) = signature;
+		var (receiver, parameters, returnType, _) = signature;
 		
 		if (Match(ref index, TokenType.OpEqual))
 		{
 			if (ParseExpressionBody(ref index, returnType is null) is not { } statement)
 				return null;
 			
-			return new(identifier, modifiers, parameters, returnType, statement, isExternal);
+			return new(identifier, modifiers, receiver, parameters, returnType, statement, isExternal);
 		}
 		
 		if (!Match(ref index, out var openBraceToken, TokenType.OpOpenBrace))
@@ -464,7 +464,7 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 		if (ParseBlockStatement(ref index, openBraceToken) is not { } body)
 			return null;
 		
-		return new(identifier, modifiers, parameters, returnType, body, isExternal);
+		return new(identifier, modifiers, receiver, parameters, returnType, body, isExternal);
 	}
 	
 	private IStatementNode? ParseExpressionBody(ref int index, bool discardsValue)
@@ -506,27 +506,32 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 		if (!Match(ref index, _topLevelContextualKeywords, TokenType.KeywordFun))
 			return null;
 		
-		if (ParseFunctionSignature(ref index, true) is not { } signature)
+		if (ParseFunctionSignature(ref index, true, false) is not { } signature)
 			return null;
 		
-		var (parameters, returnType, isVariadic) = signature;
+		var (_, parameters, returnType, isVariadic) = signature;
 		return new(identifier, modifiers, parameters, returnType, isVariadic, origin);
 	}
 	
 	private List<ParameterNode>? ParseParameters(ref int index, bool optionalParentheses) =>
-		ParseParameters(ref index, optionalParentheses, false, out _);
+		ParseParameters(ref index, optionalParentheses, false, false, out _, out _);
 	
 	private List<ParameterNode>? ParseParameters(ref int index, bool optionalParentheses, bool allowVariadic,
-		out bool isVariadic)
+		bool allowReceiver, out bool isVariadic, out ReceiverNode? receiver)
 	{
 		isVariadic = false;
+		receiver = null;
 		var parameters = new List<ParameterNode>();
 		
 		// Parentheses are optional for function declarations
 		if (Match(ref index, TokenType.OpOpenParen))
 		{
+			receiver = allowReceiver ? ParseReceiver(ref index) : null;
 			if (Match(ref index, TokenType.OpCloseParen))
 				return parameters;
+			
+			if (receiver is not null && !Match(ref index, TokenType.OpComma))
+				return null;
 			
 			if (ParseParameterList(ref index, allowVariadic, out isVariadic) is not { } parameterList)
 				return null;
@@ -543,14 +548,26 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 		return parameters;
 	}
 	
-	private (List<ParameterNode> Parameters, ITypeNode? ReturnType, bool IsVariadic)? ParseFunctionSignature(
-		ref int index, bool allowVariadic)
+	private (ReceiverNode? Receiver, List<ParameterNode> Parameters, ITypeNode? ReturnType, bool IsVariadic)?
+		ParseFunctionSignature(ref int index, bool allowVariadic, bool allowReceiver)
 	{
-		if (ParseParameters(ref index, true, allowVariadic, out var isVariadic) is not { } parameters)
+		if (ParseParameters(ref index, true, allowVariadic, allowReceiver, out var isVariadic, out var receiver) is not
+		    { } parameters)
 			return null;
 		
 		var returnType = Match(ref index, TokenType.OpArrow) ? ParseType(ref index) : null;
-		return (parameters, returnType, isVariadic);
+		return (receiver, parameters, returnType, isVariadic);
+	}
+	
+	private ReceiverNode? ParseReceiver(ref int index)
+	{
+		var start = index;
+		Token? mode = Match(ref index, out var keyword, _parameterModes) ? keyword : null;
+		if (Match(ref index, out var self, TokenType.KeywordSelf))
+			return new(mode, self);
+		
+		index = start;
+		return null;
 	}
 	
 	private List<ParameterNode>? ParseParameterList(ref int index, bool allowVariadic, out bool isVariadic)
@@ -725,11 +742,21 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 		if (!Match(ref index, out var identifier, TokenType.Identifier) || !Match(ref index, TokenType.OpColon))
 			return null;
 		
-		// TODO Functions, casts, operator overloads
+		if (IsFunctionMember(index))
+		{
+			Match(ref index, _memberContextualKeywords, TokenType.KeywordFun);
+			return ParseDeclaration(ref index, identifier, "function",
+				(ref i) => ParseFunction(ref i, identifier, [], false));
+		}
+		
+		// TODO Casts, operator overloads
 		
 		// Fields
 		return ParseField(ref index, identifier, ParseFieldModifiers(ref index));
 	}
+	
+	private bool IsFunctionMember(int index) =>
+		Match(ref index, _memberContextualKeywords, TokenType.KeywordFun) && !Peek(index, TokenType.OpOpenBracket);
 	
 	private List<Token> ParseFieldModifiers(ref int index)
 	{
@@ -853,7 +880,7 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 		
 		// Named loops
 		var expr = ParseExpression(ref index);
-		if (expr is not VarExpressionNode var)
+		if (expr is not VarExpressionNode { Identifier.Type: TokenType.Identifier } var)
 			return new ExpressionStatementNode(expr);
 		
 		// Attempt to parse as loop, else backtrack

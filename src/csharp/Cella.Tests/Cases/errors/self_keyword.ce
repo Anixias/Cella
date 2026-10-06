@@ -1,0 +1,20 @@
+mod test
+
+first: fun(self: i32) -> i32 = 0
+
+second: fun -> i32
+{
+	val self = 1
+	ret 0
+}
+
+third: fun(other: i32) -> i32
+{
+	self: loop
+	{
+		break
+	}
+	ret other
+}
+
+main: fun -> i32 = 0

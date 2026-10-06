@@ -12,7 +12,7 @@ ext
 
 Handler: rec
 {
-	callback: fun(i32) -> i32
+	callback: fun[i32 -> i32]
 	scale: i32
 }
 
@@ -21,7 +21,7 @@ negate: fun(n: i32) -> i32 = -n
 
 pick: fun(flag: bool) -> i32
 {
-	var f: fun(i32) -> i32
+	var f: fun[i32 -> i32]
 	if flag
 		f = double
 	else
@@ -40,7 +40,7 @@ fields: fun -> i32
 
 table: fun -> i32
 {
-	var callbacks: array[fun(i32) -> i32, 2]
+	var callbacks: array[fun[i32 -> i32], 2]
 	callbacks[0] = double
 	callbacks[1] = negate
 	ret callbacks[0](4) + callbacks[1](1)
@@ -48,7 +48,7 @@ table: fun -> i32
 
 native: fun -> i32
 {
-	var f: ext fun(i32) -> i32
+	var f: ext fun[i32 -> i32]
 	f = abs
 	ret f(-6)
 }

@@ -1,10 +1,10 @@
 
 ====== member_call.ce ======
 
-Error at line 13, column 13
+Error at line 13, column 19
 12 │ var point: Point
 13 │ var size = point.size()
-                ╘════════╛ Member calls are not supported yet
+                      ╘══╛ Type 'Point' has no member 'size'
 
 Error at line 14, column 15
 13 │ var size = point.size()

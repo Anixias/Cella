@@ -255,14 +255,22 @@ public sealed class AstPrinter : ISyntaxNodeVisitor
 		
 		// TODO Modifiers
 		
-		if (node.Parameters.Length > 0)
+		if (node.Receiver is not null || node.Parameters.Length > 0)
 		{
 			_sb.Append(" (");
+			
+			if (node.Receiver is { } receiver)
+			{
+				if (receiver.Mode is { } mode)
+					_sb.Append(mode.AsSpan()).Append(' ');
+				
+				_sb.Append(receiver.Self.AsSpan());
+			}
 			
 			for (var i = 0; i < node.Parameters.Length; i++)
 			{
 				var param = node.Parameters[i];
-				if (i > 0)
+				if (i > 0 || node.Receiver is not null)
 					_sb.Append(", ");
 				
 				Visit(param);

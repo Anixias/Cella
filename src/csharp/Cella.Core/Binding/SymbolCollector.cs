@@ -78,7 +78,10 @@ public sealed class SymbolCollector : IDeclarationNodeVisitor<Symbol>
 	
 	public Symbol Visit(FunctionNode node)
 	{
-		var parameters = new List<ParameterSymbol>(node.Parameters.Length);
+		var parameters = new List<ParameterSymbol>(node.Parameters.Length + 1);
+		if (node.Receiver is { } receiver)
+			parameters.Add(new(receiver.Self) { Mode = GetMode(receiver.Mode) });
+		
 		foreach (var param in node.Parameters)
 		{
 			var paramSymbol = new ParameterSymbol(param.Identifier) { Mode = GetMode(param.Mode) };
@@ -87,10 +90,14 @@ public sealed class SymbolCollector : IDeclarationNodeVisitor<Symbol>
 		}
 		
 		// TODO Containing function
-		var name = node.Identifier.Text;
-		var function = new FunctionSymbol(name, node, node.Modifiers, null, parameters, FunctionKind.Free);
+		var isMember = _typeStack.TryPeek(out var typeName);
+		var name = isMember ? $"{typeName}.{node.Identifier.Text}" : node.Identifier.Text;
+		var kind = node.Receiver is null ? FunctionKind.Free : FunctionKind.Method;
+		var function = new FunctionSymbol(name, node, node.Modifiers, null, parameters, kind);
 		_builder.DeclarationSymbols[node] = function;
-		_symbolsInFile.Add(function);
+		if (!isMember)
+			_symbolsInFile.Add(function);
+		
 		return function;
 	}
 	
@@ -137,12 +144,8 @@ public sealed class SymbolCollector : IDeclarationNodeVisitor<Symbol>
 					members.Add(s);
 					break;
 				
-				case FunctionSymbol { Kind: FunctionKind.Constructor or FunctionKind.Destructor } s:
-					members.Add(new MethodSymbol(s, SelfReferenceKind.Mutable));
-					break;
-				
 				case FunctionSymbol s:
-					members.Add(new MethodSymbol(s, SelfReferenceKind.None)); // TODO Self reference
+					members.Add(new MethodSymbol(GetMemberName(member), s));
 					break;
 				
 				case TypeSymbol s:
@@ -163,6 +166,14 @@ public sealed class SymbolCollector : IDeclarationNodeVisitor<Symbol>
 		
 		return record;
 	}
+	
+	private static string GetMemberName(IDeclarationNode member) => member switch
+	{
+		FunctionNode function => function.Identifier.Text,
+		ConstructorNode constructor => constructor.Keyword.Text,
+		DestructorNode destructor => destructor.Keyword.Text,
+		_ => throw new InvalidOperationException()
+	};
 	
 	public Symbol Visit(EnumNode node)
 	{

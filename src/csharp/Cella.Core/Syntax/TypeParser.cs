@@ -93,15 +93,18 @@ public sealed class TypeParser(ImmutableArray<Token> tokens) : BaseParser<ITypeN
 		var start = index;
 		var first = Tokens[index];
 		var isExternal = Match(ref index, _functionKeywords, TokenType.KeywordExt);
-		if (!Match(ref index, out var end, _functionKeywords, TokenType.KeywordFun))
+		if (!Match(ref index, _functionKeywords, TokenType.KeywordFun))
 		{
 			index = start;
 			return null;
 		}
 		
+		if (!Match(ref index, TokenType.OpOpenBracket))
+			throw Expected(index, "'['");
+		
 		var parameterModes = new List<Token?>();
 		var parameterTypes = new List<ITypeNode>();
-		if (Match(ref index, TokenType.OpOpenParen) && !Match(ref index, out end, TokenType.OpCloseParen))
+		if (!Peek(index, TokenType.OpArrow) && !Peek(index, TokenType.OpCloseBracket))
 		{
 			do
 			{
@@ -109,14 +112,14 @@ public sealed class TypeParser(ImmutableArray<Token> tokens) : BaseParser<ITypeN
 				parameterModes.Add(!isBorrowType && Match(ref index, out var mode, _parameterModes) ? mode : null);
 				parameterTypes.Add(ParseType(ref index));
 			} while (Match(ref index, TokenType.OpComma));
-			
-			if (!Match(ref index, out end, TokenType.OpCloseParen))
-				throw new InvalidOperationException();
 		}
 		
 		var returnType = Match(ref index, TokenType.OpArrow) ? ParseType(ref index) : null;
+		if (!Match(ref index, out var closeBracket, TokenType.OpCloseBracket))
+			throw Expected(index, "']'");
+		
 		var (source, range) = first.SourceLocation;
-		range = range.Join((returnType?.SourceLocation ?? end.SourceLocation).Range);
+		range = range.Join(closeBracket.SourceLocation.Range);
 		return new FunctionTypeNode(new(source, range), isExternal, parameterModes, parameterTypes, returnType);
 	}
 	

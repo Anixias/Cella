@@ -186,7 +186,10 @@ public sealed class MemoryChecker(TypePool typePool, DiagnosticList diagnostics)
 		HashSet<SourceLocation> reportedMoves)
 	{
 		var symbol = function.Info.Symbol;
-		var receiver = symbol.Kind is FunctionKind.Constructor or FunctionKind.Destructor ? symbol.Parameters[0] : null;
+		var receiver = symbol.Kind is FunctionKind.Constructor or FunctionKind.Destructor or FunctionKind.Method
+			? symbol.Parameters[0]
+			: null;
+		
 		foreach (var parameter in symbol.Parameters)
 		{
 			if (parameter.Mode != ParameterMode.Mut)

@@ -1,0 +1,9 @@
+
+====== method_syntax.ce ======
+
+Error at line 7, column 2
+6 │ 
+7 │ sum: fun(self) -> i32
+    ╘═╛ Invalid function declaration
+
+[compilation failed]

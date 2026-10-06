@@ -54,7 +54,7 @@ returnCallResult: fun -> mut[i32]
 	ret kills(mut stats)
 }
 
-returnIndirectResult: fun(get: fun(mut Stats) -> mut[i32]) -> mut[i32]
+returnIndirectResult: fun(get: fun[mut Stats -> mut[i32]]) -> mut[i32]
 {
 	var stats = Stats(1)
 	ret get(mut stats)

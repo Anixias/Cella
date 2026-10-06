@@ -72,7 +72,7 @@ main: fun -> i32
 	printf("%d %d %d\n", i32(zero), zero == Format.rgba8, i32(Format(44)))
 	printf("%d %d\n", unknown is success, VkResult(1) == VkResult.notReady)
 
-	val call: ext fun(Event) -> i32 = handle
+	val call: ext fun[Event -> i32] = handle
 	printf("%d %d %d %d\n", call(Event.keyDown(6, true)), call(Event.keyUp(4, false)), call(Event.click(2, 3)),
 		call(Event.quit))
 	ret 0

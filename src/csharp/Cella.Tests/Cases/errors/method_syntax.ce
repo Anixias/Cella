@@ -1,0 +1,10 @@
+mod test
+
+Point: rec
+{
+	x: i32
+
+	sum: fun(self) -> i32
+}
+
+main: fun -> i32 = 0

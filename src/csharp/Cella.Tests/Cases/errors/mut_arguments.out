@@ -42,7 +42,7 @@ Error at line 37, column 17
                     ╘═╛ Only an argument to a 'mut' parameter can be marked 'mut'
 
 Error at line 39, column 11
-38 │ var callback: fun(i32) = show
+38 │ var callback: fun[i32] = show
 39 │ callback(mut hp)
               ╘═╛ Only an argument to a 'mut' parameter can be marked 'mut'
 
@@ -58,12 +58,12 @@ Error at line 42, column 8
 
 Error at line 43, column 30
 42 │ f(mut big, 3)
-43 │ var g: fun(ptr[i32], i32) = damage
-                                 ╘════╛ Cannot convert type 'fun(mut i32, i32)' to 'fun(ptr[i32], i32)'
+43 │ var g: fun[ptr[i32], i32] = damage
+                                 ╘════╛ Cannot convert type 'fun[mut i32, i32]' to 'fun[ptr[i32], i32]'
 
 Error at line 44, column 29
-43 │ var g: fun(ptr[i32], i32) = damage
-44 │ var h: fun(own i32, i32) = damage
-                                ╘════╛ Cannot convert type 'fun(mut i32, i32)' to 'fun(own i32, i32)'
+43 │ var g: fun[ptr[i32], i32] = damage
+44 │ var h: fun[own i32, i32] = damage
+                                ╘════╛ Cannot convert type 'fun[mut i32, i32]' to 'fun[own i32, i32]'
 
 [compilation failed]

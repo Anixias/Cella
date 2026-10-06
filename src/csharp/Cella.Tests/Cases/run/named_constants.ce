@@ -41,8 +41,8 @@ third: val i32 = table[2]
 far: val i32 = corners[1].y
 
 twice: ext fun(value: i32) -> i32 = value * 2
-handler: val ext fun(i32) -> i32 = twice
-handlers: val array[ext fun(i32) -> i32, 2] = [twice, abs]
+handler: val ext fun[i32 -> i32] = twice
+handlers: val array[ext fun[i32 -> i32], 2] = [twice, abs]
 
 sum: fun(values: array[i32, size]) -> i32 = values[0] + values[1] + values[2]
 total: fun(values: array[i32, 4]) -> i32 = values[0] + values[1] + values[2] + values[3]

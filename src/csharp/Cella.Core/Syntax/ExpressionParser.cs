@@ -403,6 +403,8 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 		}
 		else if (Match(ref index, out var identifier, TokenType.Identifier))
 			node = new VarExpressionNode(identifier);
+		else if (Match(ref index, out var self, TokenType.KeywordSelf))
+			node = new VarExpressionNode(self);
 		else if (Match(ref index, out var undef, TokenType.KeywordUndef))
 			node = ParseUndef(ref index, undef);
 		else if (Match(ref index, out var sizeOf, TokenType.KeywordSizeOf))

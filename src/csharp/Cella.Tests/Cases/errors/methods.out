@@ -1,0 +1,59 @@
+
+====== methods.ce ======
+
+Error at line 26, column 7
+25 │ {
+26 │     ret self
+             ╘══╛ Symbol 'self' not found in this scope
+
+Error at line 31, column 3
+30 │ {
+31 │     restore(1)
+         ╘════════╛ Symbol 'restore' not found in this scope
+
+Error at line 38, column 7
+37 │ var other = Unit.make(3)
+38 │ Unit.restore(1)
+          ╘═════╛ Cannot use methods through types
+
+Error at line 39, column 8
+38 │ Unit.restore(1)
+39 │ other.make(1)
+           ╘══╛ Cannot use static functions through values
+
+Error at line 40, column 8
+39 │ other.make(1)
+40 │ other.fly()
+           ╘═╛ Type 'Unit' has no member 'fly'
+
+Error at line 41, column 7
+40 │ other.fly()
+41 │ Unit.fly()
+          ╘═╛ Type 'Unit' has no member 'fly'
+
+Error at line 42, column 7
+41 │ Unit.fly()
+42 │ Unit.hp()
+          ╘╛ Cannot use fields through types
+
+Error at line 43, column 21
+42 │ Unit.hp()
+43 │ val method = other.restore
+                        ╘═════╛ Cannot use methods as values
+
+Error at line 44, column 23
+43 │ val method = other.restore
+44 │ val function = other.make
+                          ╘══╛ Cannot use static functions through values
+
+Error at line 45, column 2
+44 │ val function = other.make
+45 │ other.restore()
+     ╘═══════════╛ No overload of 'restore' accepts these arguments
+
+Error at line 47, column 16
+46 │ var amount = 2
+47 │ other.restore(mut amount)
+                   ╘═╛ 'amount' isn't a 'mut' parameter
+
+[compilation failed]

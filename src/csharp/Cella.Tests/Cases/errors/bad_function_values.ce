@@ -7,7 +7,7 @@ ext
 
 Handler: rec
 {
-	callback: fun(i32) -> i32
+	callback: fun[i32 -> i32]
 	scale: i32
 }
 
@@ -15,8 +15,8 @@ helper: fun(x: i32) -> i32 = x
 twice: ext fun(x: i32) -> i32 = x * 2
 over: fun(x: i32) -> i32 = x
 over: fun(x: f64) -> f64 = x
-apply: fun(f: fun(i32) -> i32, x: i32) -> i32 = f(x)
-apply: fun(f: fun(f64) -> f64, x: i32) -> i32 = x
+apply: fun(f: fun[i32 -> i32], x: i32) -> i32 = f(x)
+apply: fun(f: fun[f64 -> f64], x: i32) -> i32 = x
 
 main: fun -> i32
 {
@@ -27,20 +27,20 @@ main: fun -> i32
 	var e = f(true)
 	var n = 5
 	var g = n(1)
-	var h: ext fun(i32) -> i64 = twice
-	var k: fun(i32) -> i64 = over
+	var h: ext fun[i32 -> i64] = twice
+	var k: fun[i32 -> i64] = over
 	var x: i32 = helper
 	var closure = helper
-	var native: ext fun(i32) -> i32 = closure
+	var native: ext fun[i32 -> i32] = closure
 	var both = apply(over, 1)
 	var handler = Handler(helper, 2)
 	var s = handler.scale(5)
 	printf("%d\n", helper)
-	var none: fun(i32) -> i32 = null
-	var missing: ext fun(i32) -> i32 = null
+	var none: fun[i32 -> i32] = null
+	var missing: ext fun[i32 -> i32] = null
 	var raw = ptr(helper)
 	var boxed = ptr(closure)
 	var implicit: ptr = twice
-	var back: ext fun(i32) -> i32 = ptr(twice)
+	var back: ext fun[i32 -> i32] = ptr(twice)
 	ret 0
 }

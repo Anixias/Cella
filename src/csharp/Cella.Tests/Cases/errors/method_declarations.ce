@@ -1,0 +1,16 @@
+mod test
+
+Point: rec
+{
+	x: i32
+	y: i32
+
+	x: fun(self) -> i32 = 0
+
+	scale: fun(self, factor: i32) -> i32 = self.y * factor
+	scale: fun(self, factor: i32) -> i32 = 0
+}
+
+free: fun(self) -> i32 = 0
+
+main: fun -> i32 = 0

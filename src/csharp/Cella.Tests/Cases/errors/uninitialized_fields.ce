@@ -8,7 +8,7 @@ Effect: enum
 
 Handler: rec
 {
-	callback: fun(i32) -> i32
+	callback: fun[i32 -> i32]
 	scale: i32
 }
 
@@ -76,7 +76,7 @@ Pair: rec
 {
 	first: Effect
 	count: i32
-	second: fun(i32) -> i32
+	second: fun[i32 -> i32]
 
 	new: op()
 	{

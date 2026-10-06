@@ -239,10 +239,6 @@ public sealed class SignatureCollector
 			return;
 		
 		var node = (RecordNode)declaration.Node;
-		var fieldNames = node.Members.OfType<FieldNode>().Select(static f => f.Identifier);
-		Diagnostics.AddRange(DiagnosticReporter.ReportDuplicates(fieldNames,
-			name => $"Field '{name}' is declared more than once in '{record.Name}'"));
-		
 		var destructors = node.Members.OfType<DestructorNode>().Select(static d => d.Keyword);
 		Diagnostics.AddRange(DiagnosticReporter.ReportDuplicates(destructors,
 			name => $"'{name}' is declared more than once in '{record.Name}'"));
@@ -277,9 +273,34 @@ public sealed class SignatureCollector
 			}
 		}
 		
+		ReportMemberConflicts(record, node);
 		_typePool.RegisterRecord(record);
 		_completedTypes.Add(record);
 		Exit();
+	}
+	
+	private void ReportMemberConflicts(RecordSymbol record, RecordNode node)
+	{
+		var sameNames = node.Members
+			.Where(static member => member is FieldNode or FunctionNode)
+			.GroupBy(static member => GetIdentifier(member).Text)
+			.Where(static sameName => sameName.Count() > 1);
+		
+		foreach (var sameName in sameNames)
+		{
+			if (sameName.All(static member => member is FunctionNode))
+			{
+				Diagnostics.AddRange(sameName.Select(member => FindConflict(member, sameName)).OfType<Diagnostic>());
+				continue;
+			}
+			
+			var message = sameName.All(static member => member is FieldNode)
+				? $"Field '{sameName.Key}' is declared more than once in '{record.Name}'"
+				: $"'{sameName.Key}' is declared more than once in '{record.Name}'";
+			
+			Diagnostics.AddRange(sameName.Select(member =>
+				new Diagnostic(DiagnosticSeverity.Error, GetIdentifier(member).SourceLocation, message)));
+		}
 	}
 	
 	private void CompleteEnum(EnumSymbol enumType)
@@ -503,11 +524,28 @@ public sealed class SignatureCollector
 		
 		var scope = new Scope();
 		
-		var paramTypes = new List<TypeSymbol>(node.Parameters.Length);
+		var paramTypes = new List<TypeSymbol>(function.Parameters.Length);
+		if (node.Receiver is { } receiver)
+		{
+			var self = function.Parameters[0];
+			var selfType = context.ContainingType is { } owner
+				? _typePool.GetPassedType(owner, self.Mode)
+				: NativeSymbols.Invalid;
+			
+			if (context.ContainingType is null)
+				Diagnostics.Add(new(DiagnosticSeverity.Error, receiver.SourceLocation,
+					"Cannot take 'self' outside types"));
+			
+			paramTypes.Add(selfType);
+			_builder.VariableTypes[self] = selfType;
+			scope.Define(self);
+		}
+		
+		var offset = paramTypes.Count;
 		for (var i = 0; i < node.Parameters.Length; i++)
 		{
 			var param = node.Parameters[i];
-			var paramSymbol = function.Parameters[i];
+			var paramSymbol = function.Parameters[i + offset];
 			var paramType = _typePool.GetPassedType(context.ResolveType(param.Type), paramSymbol.Mode);
 			
 			paramTypes.Add(paramType);
@@ -718,6 +756,7 @@ public sealed class SignatureCollector
 	
 	private static Token GetIdentifier(IDeclarationNode declaration) => declaration switch
 	{
+		FieldNode node => node.Identifier,
 		FunctionNode node => node.Identifier,
 		ExternalFunctionNode node => node.Identifier,
 		RecordNode node => node.Identifier,

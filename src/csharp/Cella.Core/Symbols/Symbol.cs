@@ -334,9 +334,12 @@ public sealed class FunctionType : TypeSymbol
 		ImmutableArray<ParameterMode> parameterModes, TypeSymbol returnType)
 	{
 		var prefix = isExternal ? "ext fun" : "fun";
-		var parameters = parameterTypes.Select((type, i) => parameterModes[i].Describe(type));
-		var name = $"{prefix}({string.Join(", ", parameters)})";
-		return returnType == NativeSymbols.Void ? name : $"{name} -> {returnType.Name}";
+		var parameters = string.Join(", ", parameterTypes.Select((type, i) => parameterModes[i].Describe(type)));
+		var signature = returnType == NativeSymbols.Void ? parameters
+			: parameters.Length == 0 ? $"-> {returnType.Name}"
+			: $"{parameters} -> {returnType.Name}";
+		
+		return $"{prefix}[{signature}]";
 	}
 }
 
@@ -451,6 +454,10 @@ public sealed class RecordSymbol : TypeSymbol, IExportable
 	public bool HasDestructor => Members.Any(static m => m is MethodSymbol { Function.Kind: FunctionKind.Destructor });
 	public bool IsRef => Node.IsRef;
 	
+	public IEnumerable<MethodSymbol> GetFunctions(string name) => Members
+		.OfType<MethodSymbol>()
+		.Where(m => m.Name == name && m.Function.Kind is FunctionKind.Method or FunctionKind.Free);
+	
 	public RecordSymbol(string name, RecordNode node, IEnumerable<MemberSymbol> members,
 		IEnumerable<TypeSymbol> nestedTypes) : base(name)
 	{
@@ -510,11 +517,10 @@ public sealed class IndexerSymbol(string name, IEnumerable<ParameterSymbol> para
 	public AccessorImpl? Setter { get; init; }
 }
 
-public sealed class MethodSymbol(FunctionSymbol function, SelfReferenceKind selfReferenceKind)
-	: MemberSymbol(function.Name)
+public sealed class MethodSymbol(string name, FunctionSymbol function) : MemberSymbol(name)
 {
 	public FunctionSymbol Function { get; } = function;
-	public SelfReferenceKind SelfReferenceKind { get; } = selfReferenceKind;
+	public bool HasReceiver => Function.Kind is not FunctionKind.Free;
 }
 
 public abstract record AccessorImpl;
@@ -525,13 +531,6 @@ public sealed record FunctionAccessor(FunctionSymbol Function) : AccessorImpl;
 public sealed class AmbiguousSymbol(string name, IEnumerable<Symbol> candidates) : Symbol(name)
 {
 	public ImmutableArray<Symbol> Candidates { get; } = candidates.ToImmutableArray();
-}
-
-public enum SelfReferenceKind
-{
-	None,
-	Mutable,
-	Immutable
 }
 
 public enum NativeMemberIntrinsic

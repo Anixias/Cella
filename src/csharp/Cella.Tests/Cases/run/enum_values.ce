@@ -92,7 +92,7 @@ main: fun -> i32
 	var s: Small
 	printf("%d %d %d %d\n", i32(e), i32(s), i32(u8(Code.first)), i64(Result.unknown))
 
-	val swap: ext fun(Team) -> Team = flip
+	val swap: ext fun[Team -> Team] = flip
 	printf("%d %d\n", i32(swap(Team.red)), i32(swap(Team.blue)))
 	printf("%d %d %d %d\n", early, i32(sizeOf(lengths)), i32(back), back == Result.lost)
 	ret 0

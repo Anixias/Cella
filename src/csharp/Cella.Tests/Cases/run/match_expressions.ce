@@ -81,7 +81,7 @@ main: fun -> i32
 
 	var small: u8 = match role { fighter => 1  healer => 200  tank => 3 }
 	val big: i64 = match role { fighter => 1  else => 5_000_000_000 }
-	val f: fun(i32) -> i32 = match role { fighter => helper  else => other }
+	val f: fun[i32 -> i32] = match role { fighter => helper  else => other }
 	printf("%d %lld %d\n", small, big, f(2))
 
 	if match role { healer => true  else => false }

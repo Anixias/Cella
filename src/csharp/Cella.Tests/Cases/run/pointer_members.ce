@@ -27,7 +27,7 @@ Unit: ref rec
 {
 	position: Point
 	effect: Effect
-	callback: fun(i32) -> i32
+	callback: fun[i32 -> i32]
 	scores: array[i32, 3]
 	name: str
 }

@@ -12,3 +12,10 @@ public sealed class ParameterNode(Token? mode, Token identifier, ITypeNode type,
 	public ITypeNode Type { get; } = type;
 	public IExpressionNode? DefaultValue { get; } = defaultValue;
 }
+
+public sealed class ReceiverNode(Token? mode, Token self)
+{
+	public SourceLocation SourceLocation => Self.SourceLocation;
+	public Token? Mode { get; } = mode;
+	public Token Self { get; } = self;
+}

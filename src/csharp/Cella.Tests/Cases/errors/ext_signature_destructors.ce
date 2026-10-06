@@ -23,8 +23,8 @@ Packet: ext enum
 
 Callbacks: rec
 {
-	onBuffer: ext fun(Buffer) -> i32
-	onAddress: ext fun(ptr[Buffer]) -> i32
+	onBuffer: ext fun[Buffer -> i32]
+	onAddress: ext fun[ptr[Buffer] -> i32]
 }
 
 ext
@@ -36,11 +36,11 @@ ext
 	hold: fun(holder: Holder)
 	send: fun(packet: Packet)
 	all: fun(buffers: array[Buffer, 2])
-	register: fun(callback: ext fun(Buffer) -> i32)
+	register: fun(callback: ext fun[Buffer -> i32])
 	peek: fun(buffer: ptr[Buffer]) -> i32
 }
 
 echo: ext fun(buffer: Buffer) -> Buffer = buffer
-forward: fun(callback: fun(ext fun(own Buffer))) {}
+forward: fun(callback: fun[ext fun[own Buffer]]) {}
 
 main: fun -> i32 = 0

@@ -1,0 +1,49 @@
+mod test
+
+Buffer: rec
+{
+	id: i32
+
+	drop: op
+	{
+	}
+}
+
+Unit: rec
+{
+	hp: i32
+	buffer: Buffer
+
+	restore: fun(mut self, amount: i32)
+	{
+		self.hp += amount
+	}
+
+	release: fun(own self) -> i32 = self.buffer.id
+
+	take: fun(mut self) -> Buffer = own self.buffer
+}
+
+Cursor: ref rec
+{
+	text: str
+	word: str
+
+	retarget: fun(mut self, other: str)
+	{
+		self.text = other
+	}
+
+	advance: fun(mut self)
+	{
+		self.word = self.text
+	}
+}
+
+main: fun -> i32
+{
+	var unit = Unit(1, Buffer(1))
+	unit.release()
+	unit.restore(2)
+	ret 0
+}

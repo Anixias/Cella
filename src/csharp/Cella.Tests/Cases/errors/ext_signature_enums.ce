@@ -31,7 +31,7 @@ Message: ext enum
 
 Node: rec
 {
-	visit: ext fun(Node) -> i32
+	visit: ext fun[Node -> i32]
 	team: Team
 }
 
@@ -42,7 +42,7 @@ ext
 	sendPacket: fun(packet: Packet)
 	sendAll: fun(wrapper: Wrapper)
 	post: fun(message: Message)
-	onTeam: fun(callback: ext fun(Team) -> i32)
+	onTeam: fun(callback: ext fun[Team -> i32])
 	walk: fun(node: Node)
 	byPointer: fun(team: ptr[Team])
 	fine: fun(code: Code) -> Code

@@ -39,6 +39,13 @@ public readonly struct ResolutionContext
 		return result;
 	}
 	
+	private static Symbol? ResolveStatic(RecordSymbol record, string name) => ResolveFrom(name,
+	[
+		..record.GetFunctions(name)
+			.Where(static function => !function.HasReceiver)
+			.Select(static function => function.Function)
+	]);
+	
 	private static Symbol? ResolveFrom(string name, IReadOnlyCollection<Symbol> candidates) => candidates switch
 	{
 		{ Count: > 1 } => new AmbiguousSymbol(name, candidates),
@@ -58,8 +65,13 @@ public readonly struct ResolutionContext
 			return param;
 		
 		for (var type = ContainingType; type is not null; type = type.ContainingType)
+		{
 			if (type.Children.TryGetValue(name, out var member))
 				return member;
+			
+			if (type is RecordSymbol record && ResolveStatic(record, name) is { } function)
+				return function;
+		}
 		
 		foreach (var file in File.Module.Files)
 			if (file.Symbols.TryGetValue(name, out var fileSet))

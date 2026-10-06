@@ -18,11 +18,11 @@ Error at line 16, column 14
 
 Error at line 17, column 31
 16 │ val c = own Buffer(2)
-17 │ val d: fun(i32) -> i32 = own over
+17 │ val d: fun[i32 -> i32] = own over
                                   ╘══╛ Cannot move unstored values
 
 Error at line 18, column 19
-17 │ val d: fun(i32) -> i32 = own over
+17 │ val d: fun[i32 -> i32] = own over
 18 │ val e: ptr = own null
                       ╘══╛ Cannot move unstored values
 

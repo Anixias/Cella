@@ -35,12 +35,12 @@ main: fun -> i32
 	val effect = Effect.hit(mut hp)
 	val converted = i32(mut hp)
 	printf("%d\n", mut hp)
-	var callback: fun(i32) = show
+	var callback: fun[i32] = show
 	callback(mut hp)
 	val f = damage
 	f(hp, 3)
 	f(mut big, 3)
-	var g: fun(ptr[i32], i32) = damage
-	var h: fun(own i32, i32) = damage
+	var g: fun[ptr[i32], i32] = damage
+	var h: fun[own i32, i32] = damage
 	ret 0
 }

@@ -58,7 +58,7 @@ main: fun -> i32
 	bump()
 	handle(Effect.none)
 	handle(Effect.hit(9))
-	val callback: ext fun(i32) = record
+	val callback: ext fun[i32] = record
 	callback(counter + 40)
 	printf("%d\n", counter)
 

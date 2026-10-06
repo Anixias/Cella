@@ -30,7 +30,7 @@ ascending: fun(left: ptr, right: ptr) -> i32
 
 descending: ext fun(left: ptr, right: ptr) -> i32 = *ptr[i32](right) - *ptr[i32](left)
 
-compareUp: val ext fun(ptr, ptr) -> i32 = ascending
+compareUp: val ext fun[ptr, ptr -> i32] = ascending
 comparers: val array[ptr, 2] = [ptr(compareUp), ptr(descending)]
 
 main: fun -> i32
@@ -49,7 +49,7 @@ main: fun -> i32
 	qsort(@values, 5, sizeOf(i32), comparers[index])
 	printf("%d %d %d %d %d\n", values[0], values[1], values[2], values[3], values[4])
 
-	var compare: ext fun(ptr, ptr) -> i32 = ascending
+	var compare: ext fun[ptr, ptr -> i32] = ascending
 	qsort(@values, 5, sizeOf(i32), ptr(compare))
 	printf("%d %d %d %d %d\n", values[0], values[1], values[2], values[3], values[4])
 	printf("%d\n", ptr(compareUp) == comparers[0])

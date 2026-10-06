@@ -14,7 +14,7 @@ main: fun -> i32
 	val a = own make()
 	val b = own 7
 	val c = own Buffer(2)
-	val d: fun(i32) -> i32 = own over
+	val d: fun[i32 -> i32] = own over
 	val e: ptr = own null
 	val f = own (3 + 4)
 	ret 0

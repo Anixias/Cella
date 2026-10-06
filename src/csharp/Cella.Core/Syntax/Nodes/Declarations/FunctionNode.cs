@@ -16,6 +16,7 @@ public sealed class FunctionNode
 (
 	Token identifier,
 	IEnumerable<Token> modifiers,
+	ReceiverNode? receiver,
 	IEnumerable<ParameterNode> parameters,
 	ITypeNode? returnType,
 	IStatementNode body,
@@ -25,6 +26,7 @@ public sealed class FunctionNode
 	public SourceLocation SourceLocation => Identifier.SourceLocation;
 	public Token Identifier { get; } = identifier;
 	public ImmutableArray<Token> Modifiers { get; } = modifiers.ToImmutableArray();
+	public ReceiverNode? Receiver { get; } = receiver;
 	public ImmutableArray<ParameterNode> Parameters { get; } = parameters.ToImmutableArray();
 	public ITypeNode? ReturnType { get; } = returnType;
 	public IStatementNode Body { get; } = body;

@@ -1,0 +1,39 @@
+
+====== method_receivers.ce ======
+
+Error at line 28, column 3
+27 │ {
+28 │     self.restore(1)
+         ╘══╛ Cannot mutably borrow read-only parameters
+
+Error at line 29, column 3
+28 │ self.restore(1)
+29 │ self.hp = 0
+     ╘═════╛ Cannot reassign read-only parameters
+
+Error at line 35, column 2
+34 │ {
+35 │     unit.restore(1)
+         ╘══╛ Cannot mutably borrow read-only parameters
+
+Error at line 41, column 2
+40 │ val unit = Unit.make(1)
+41 │ unit.restore(1)
+     ╘══╛ Cannot mutably borrow values
+
+Error at line 42, column 2
+41 │ unit.restore(1)
+42 │ Unit.make(2).restore(1)
+     ╘══════════╛ Cannot mutably borrow unstored values
+
+Error at line 45, column 2
+44 │ val view = imm other
+45 │ view.restore(1)
+     ╘══╛ Cannot mutably borrow through read-only borrows
+
+Error at line 46, column 2
+45 │ view.restore(1)
+46 │ view.release()
+     ╘══╛ Cannot move borrowed values
+
+[compilation failed]

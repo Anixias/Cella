@@ -36,8 +36,8 @@ combine: ext fun(effect: Effect, extra: i32) -> Effect
 
 main: fun -> i32
 {
-	var flip: ext fun(Team, i32) -> Team = swap
-	var join: ext fun(Effect, i32) -> Effect = combine
+	var flip: ext fun[Team, i32 -> Team] = swap
+	var join: ext fun[Effect, i32 -> Effect] = combine
 	printf("%d\n", i32(flip(Team.red, 0) == Team.blue))
 
 	if join(Effect.hit(4), 77) is pair(first, second)

@@ -7,11 +7,10 @@ public sealed class ResolvedMutArgumentExpressionNode
 (
 	IResolvedExpressionNode place,
 	PointerType type,
-	BorrowExpressionNode syntax
+	IExpressionNode syntax
 ) : IResolvedExpressionNode
 {
 	public IResolvedExpressionNode Place { get; } = place;
 	public TypeSymbol Type { get; } = type;
-	public BorrowExpressionNode Argument { get; } = syntax;
 	public IExpressionNode Syntax { get; } = syntax;
 }

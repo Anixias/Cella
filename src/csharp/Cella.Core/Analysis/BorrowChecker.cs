@@ -36,7 +36,10 @@ public sealed class BorrowChecker(TypePool typePool, DiagnosticList diagnostics)
 	public void Check(LoweredFunction function, Dictionary<BasicBlock, List<MemoryEvent>> events)
 	{
 		var symbol = function.Info.Symbol;
-		receiver = symbol.Kind is FunctionKind.Constructor or FunctionKind.Destructor ? symbol.Parameters[0] : null;
+		receiver = symbol.Kind is FunctionKind.Constructor or FunctionKind.Destructor or FunctionKind.Method
+			? symbol.Parameters[0]
+			: null;
+		
 		constructorSelf = symbol.Kind == FunctionKind.Constructor ? receiver : null;
 		returned = GetReturned(function);
 		lenders = GetLenders(function);

@@ -1,0 +1,49 @@
+mod test
+
+Buffer: rec
+{
+	id: i32
+
+	drop: op
+	{
+	}
+}
+
+Unit: rec
+{
+	hp: i32
+	buffer: Buffer
+
+	make: fun(hp: i32) -> Unit = Unit(hp, Buffer(hp))
+
+	restore: fun(mut self, amount: i32)
+	{
+		self.hp += amount
+	}
+
+	create: fun -> Unit
+	{
+		ret self
+	}
+
+	heal: fun(mut self)
+	{
+		restore(1)
+	}
+}
+
+main: fun -> i32
+{
+	var other = Unit.make(3)
+	Unit.restore(1)
+	other.make(1)
+	other.fly()
+	Unit.fly()
+	Unit.hp()
+	val method = other.restore
+	val function = other.make
+	other.restore()
+	var amount = 2
+	other.restore(mut amount)
+	ret 0
+}

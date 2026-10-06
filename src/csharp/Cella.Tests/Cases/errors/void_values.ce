@@ -13,7 +13,7 @@ Effect: enum
 
 Handler: rec
 {
-	callback: fun()
+	callback: fun[]
 }
 
 greet: fun

@@ -9,7 +9,7 @@ ext
 Counter: rec
 {
 	count: i32
-	step: fun(imm[i32]) -> i32
+	step: fun[imm[i32] -> i32]
 
 	new: op(start: mut[i32])
 	{
@@ -24,6 +24,6 @@ inc: fun(counter: mut[i32])
 
 look: fun(value: imm[i32]) -> i32 = value
 
-apply: fun(action: fun(mut[i32]), own target: imm[i32]) {}
+apply: fun(action: fun[mut[i32]], own target: imm[i32]) {}
 
 main: fun -> i32 = 0

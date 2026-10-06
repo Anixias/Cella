@@ -1,0 +1,46 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+origin: fun -> i32 = 99
+
+Point: rec
+{
+	x: i32
+	y: i32
+	notify: fun[]
+	measure: fun[-> i32]
+
+	origin: fun -> Point = Point(0, 0, quiet, zero)
+
+	at: fun(x: i32, y: i32) -> Point = Point(x, y, quiet, zero)
+
+	quiet: fun = printf("")
+
+	zero: fun -> i32 = 0
+
+	diagonal: fun(n: i32) -> Point = at(n, n)
+
+	reset: fun(mut self)
+	{
+		val home = origin()
+		self.x = home.x
+		self.y = home.y
+	}
+
+	maker: fun(self) -> fun[i32, i32 -> Point] = at
+}
+
+main: fun -> i32
+{
+	var point = Point.diagonal(3)
+	printf("%d ", point.x + point.y)
+	point.reset()
+	val make = point.maker()
+	val other = make(4, 5)
+	printf("%d %d %d %d\n", point.x, other.y, origin(), point.measure())
+	ret 0
+}

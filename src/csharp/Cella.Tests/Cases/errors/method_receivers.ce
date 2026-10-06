@@ -1,0 +1,48 @@
+mod test
+
+Buffer: rec
+{
+	id: i32
+
+	drop: op
+	{
+	}
+}
+
+Unit: rec
+{
+	hp: i32
+	buffer: Buffer
+
+	make: fun(hp: i32) -> Unit = Unit(hp, Buffer(hp))
+
+	restore: fun(mut self, amount: i32)
+	{
+		self.hp += amount
+	}
+
+	release: fun(own self) -> i32 = self.buffer.id
+
+	heal: fun(self)
+	{
+		self.restore(1)
+		self.hp = 0
+	}
+}
+
+restoreCopy: fun(unit: Unit)
+{
+	unit.restore(1)
+}
+
+main: fun -> i32
+{
+	val unit = Unit.make(1)
+	unit.restore(1)
+	Unit.make(2).restore(1)
+	var other = Unit.make(3)
+	val view = imm other
+	view.restore(1)
+	view.release()
+	ret 0
+}

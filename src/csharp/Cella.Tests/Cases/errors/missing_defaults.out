@@ -22,7 +22,7 @@ Error at line 54, column 13
                 ╘════════╛ Cannot use uninitialized values
 
 Error at line 60, column 6
-59 │ var f: fun(i32) -> i32
+59 │ var f: fun[i32 -> i32]
 60 │ ret f(1)
          ^ Cannot use uninitialized values
 
@@ -37,7 +37,7 @@ Error at line 74, column 6
          ╘══════════╛ Cannot use uninitialized values
 
 Error at line 80, column 6
-79 │ var f: ext fun(i32) -> i32
+79 │ var f: ext fun[i32 -> i32]
 80 │ ret f(-6)
          ^ Cannot use uninitialized values
 

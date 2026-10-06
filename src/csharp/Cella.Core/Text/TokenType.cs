@@ -48,6 +48,7 @@ public enum TokenType
 	KeywordMut,
 	KeywordOwn,
 	KeywordImm,
+	KeywordSelf,
 	
 	// Contextual Keywords
 	KeywordMod,
@@ -177,6 +178,7 @@ public static class TokenTypeInfo
 			[TokenType.KeywordMut] = new("mut", IsKeyword: true),
 			[TokenType.KeywordOwn] = new("own", IsKeyword: true),
 			[TokenType.KeywordImm] = new("imm", IsKeyword: true),
+			[TokenType.KeywordSelf] = new("self", IsKeyword: true),
 			
 			[TokenType.KeywordMod] = new("mod", IsKeyword: true, IsContextual: true),
 			[TokenType.KeywordFun] = new("fun", IsKeyword: true, IsContextual: true),

@@ -1,0 +1,147 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Buffer: rec
+{
+	id: i32
+
+	drop: op
+	{
+		printf("drop %d ", self.id)
+	}
+}
+
+Unit: rec
+{
+	hp: i32
+	maxHp: i32
+	buffer: Buffer
+
+	make: fun(hp: i32) -> Unit = Unit(hp, hp, Buffer(hp))
+
+	isAlive: fun(self) -> bool = self.hp > 0
+
+	takeDamage: fun(mut self, amount: i32) -> i32
+	{
+		self.hp -= amount
+		ret amount
+	}
+
+	restore: fun(mut self, amount: i32)
+	{
+		self.hp += amount
+		if self.hp > self.maxHp
+			self.hp = self.maxHp
+	}
+
+	health: fun(mut self) -> mut[i32] = mut self.hp
+
+	release: fun(own self) -> i32 = self.buffer.id
+}
+
+Point: rec
+{
+	x: i32
+	y: i32
+
+	origin: fun -> Point = Point(0, 0)
+
+	sum: fun(self) -> i32 = self.x + self.y
+
+	scaled: fun(self, factor: i32) -> Point = Point(self.x * factor, self.y * factor)
+
+	scaled: fun(self, factor: f64) -> Point = Point(i32(f64(self.x) * factor), i32(f64(self.y) * factor))
+
+	shift: fun(mut self, dx: i32, dy: i32)
+	{
+		self.x += dx
+		self.y += dy
+	}
+
+	countdown: fun(self, n: i32) -> i32
+	{
+		if n <= 0
+			ret 0
+		ret n + self.countdown(n - 1)
+	}
+}
+
+Counter: rec
+{
+	value: i32
+
+	new: op(start: i32)
+	{
+		self.value = start
+		self.bump()
+	}
+
+	bump: fun(mut self)
+	{
+		self.value += 1
+	}
+
+	get: fun(self) -> i32 = self.value
+
+	log: fun(self) = printf("[%d] ", self.value)
+
+	drop: op
+	{
+		self.log()
+	}
+}
+
+Holder: enum
+{
+	none
+	held(counter: Counter)
+}
+
+apply: fun(make: fun[-> Point]) -> i32 = make().sum()
+
+main: fun -> i32
+{
+	var unit = Unit.make(10)
+	val dealt = unit.takeDamage(4)
+	unit.restore(1)
+	val health = unit.health()
+	health -= 2
+	printf("%d %d ", dealt, unit.hp)
+	if unit.isAlive()
+		printf("alive ")
+
+	var point = Point.origin()
+	point.shift(2, 3)
+	printf("%d %d %d %d ", point.sum(), point.scaled(10).sum(), point.scaled(0.5).sum(), point.countdown(4))
+	printf("%d ", apply(Point.origin))
+
+	var counter = Counter(1)
+	counter.bump()
+	val pointer = @counter
+	pointer.bump()
+	val borrow = mut counter
+	borrow.bump()
+	var counters = [Counter(5), Counter(7)]
+	counters[1].bump()
+	printf("%d %d %d ", counter.get(), counters[0].get(), counters[1].get())
+
+	var holder = Holder.held(Counter(20))
+	match mut holder
+	{
+		held(inner) => inner.bump()
+		none => {}
+	}
+	match holder
+	{
+		held(inner) => printf("%d ", inner.get())
+		none => {}
+	}
+
+	val id = unit.release()
+	printf("%d\n", id)
+	ret 0
+}
