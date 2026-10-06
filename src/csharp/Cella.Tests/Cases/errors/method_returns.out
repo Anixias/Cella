@@ -1,0 +1,66 @@
+
+====== method_returns.ce ======
+
+Error at line 45, column 8
+44 │ if a.hp >= b.hp
+45 │     ret imm a
+             ╘═══╛ Cannot return borrows of parameters other than 'self'
+
+Error at line 46, column 7
+45 │     ret imm a
+46 │ ret imm b
+         ╘═══╛ Cannot return borrows of parameters other than 'self'
+
+Error at line 49, column 51
+48 │ 
+49 │ count: fun(self, mut stats: Stats) -> mut[i32] = mut stats.kills
+                                                      ╘═════════════╛ Cannot return borrows of parameters other than 'self'
+
+Error at line 51, column 62
+50 │ 
+51 │ pickStronger: fun(self, a: Enemy, b: Enemy) -> imm[Enemy] = stronger(a, b)
+                                                                 ╘════════════╛ Cannot return borrows of parameters other than 'self'
+
+Error at line 53, column 56
+52 │ 
+53 │ countKills: fun(self, mut stats: Stats) -> mut[i32] = kills(mut stats)
+                                                           ╘══════════════╛ Cannot return borrows of parameters other than 'self'
+
+Error at line 55, column 54
+54 │ 
+55 │ leaderOf: fun(self, other: Referee) -> imm[Enemy] = other.leader()
+                                                         ╘════════════╛ Cannot return borrows of parameters other than 'self'
+
+Error at line 57, column 52
+56 │ 
+57 │ keep: fun(self, own enemy: Enemy) -> imm[Enemy] = imm enemy
+                                                       ╘═══════╛ Cannot return borrows of 'own' parameters
+
+Error at line 68, column 31
+67 │ 
+68 │ get: fun(self) -> imm[i32] = imm self.x
+                                  ╘════════╛ Cannot return borrows of copied parameters
+
+Error at line 70, column 36
+69 │ 
+70 │ take: fun(own self) -> imm[i32] = imm self.x
+                                       ╘════════╛ Cannot return borrows of 'own' parameters
+
+Error at line 83, column 17
+82 │ held(buffer) => ret buffer
+83 │ empty => ret fallback
+                  ╘══════╛ Cannot return borrows of parameters other than 'self'
+
+Error at line 97, column 7
+96 │ referee = Referee(1, Enemy(Buffer(2), 6))
+97 │ show(leader.name)
+          ╘════╛ Cannot use borrows of reassigned values
+               | Reassigned on line 96
+
+Error at line 102, column 7
+101 │ buffer = Buffer(4)
+102 │ show(got)
+           ╘═╛ Cannot use borrows of reassigned values
+             | Reassigned on line 101
+
+[compilation failed]

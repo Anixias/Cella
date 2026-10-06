@@ -1,0 +1,104 @@
+mod test
+
+Buffer: rec
+{
+	id: i32
+
+	drop: op
+	{
+	}
+}
+
+Enemy: rec
+{
+	name: Buffer
+	hp: i32
+}
+
+Stats: rec
+{
+	kills: i32
+}
+
+Label: ref rec
+{
+	buffer: imm[Buffer]
+}
+
+kills: fun(mut stats: Stats) -> mut[i32] = mut stats.kills
+
+stronger: fun(a: Enemy, b: Enemy) -> imm[Enemy]
+{
+	if a.hp >= b.hp
+		ret imm a
+	ret imm b
+}
+
+Referee: rec
+{
+	rounds: i32
+	best: Enemy
+
+	pick: fun(self, a: Enemy, b: Enemy) -> imm[Enemy]
+	{
+		if a.hp >= b.hp
+			ret imm a
+		ret imm b
+	}
+
+	count: fun(self, mut stats: Stats) -> mut[i32] = mut stats.kills
+
+	pickStronger: fun(self, a: Enemy, b: Enemy) -> imm[Enemy] = stronger(a, b)
+
+	countKills: fun(self, mut stats: Stats) -> mut[i32] = kills(mut stats)
+
+	leaderOf: fun(self, other: Referee) -> imm[Enemy] = other.leader()
+
+	keep: fun(self, own enemy: Enemy) -> imm[Enemy] = imm enemy
+
+	leader: fun(self) -> imm[Enemy] = imm self.best
+
+	bufferOf: fun(self, label: Label) -> imm[Buffer] = label.buffer
+}
+
+Point: rec
+{
+	x: i32
+
+	get: fun(self) -> imm[i32] = imm self.x
+
+	take: fun(own self) -> imm[i32] = imm self.x
+}
+
+Slot: enum
+{
+	empty
+	held(buffer: Buffer)
+
+	orElse: fun(self, fallback: Buffer) -> imm[Buffer]
+	{
+		match self
+		{
+			held(buffer) => ret buffer
+			empty => ret fallback
+		}
+	}
+}
+
+show: fun(buffer: Buffer)
+{
+}
+
+main: fun -> i32
+{
+	var referee = Referee(0, Enemy(Buffer(1), 5))
+	val leader = referee.leader()
+	referee = Referee(1, Enemy(Buffer(2), 6))
+	show(leader.name)
+
+	var buffer = Buffer(3)
+	val got = referee.bufferOf(Label(imm buffer))
+	buffer = Buffer(4)
+	show(got)
+	ret 0
+}
