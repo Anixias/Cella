@@ -18,6 +18,21 @@ Step: enum
 	skip
 }
 
+Buffer: rec
+{
+	id: i32
+
+	drop: op
+	{
+	}
+}
+
+Slot: enum
+{
+	empty
+	held(buffer: Buffer)
+}
+
 count: var i32 = 0
 
 total: fun(effects: array[Effect, 4]) -> i32
@@ -98,6 +113,53 @@ check: fun(ok: bool) -> i32
 	ret i32(checked)
 }
 
+firstId: fun(slots: array[Slot, 3]) -> i32
+{
+	var i: usize = 0
+	loop while i < 3
+	{
+		i += 1
+		val buffer: imm[Buffer] = match slots[i - 1]
+		{
+			held(buffer) => buffer
+			empty => cont
+		}
+
+		ret buffer.id
+	}
+
+	ret -1
+}
+
+idOf: fun(slot: Slot) -> i32
+{
+	val buffer: imm[Buffer] = match slot
+	{
+		held(buffer) => buffer
+		empty => ret -1
+	}
+
+	ret buffer.id * 10
+}
+
+pick: fun(slot: Slot, fallback: Buffer) -> imm[Buffer] = match slot
+{
+	held(buffer) => buffer
+	empty => ret imm fallback
+}
+
+bump: fun(mut slot: Slot) -> i32
+{
+	val buffer: mut[Buffer] = match mut slot
+	{
+		held(buffer) => mut buffer
+		empty => ret 0
+	}
+
+	buffer.id += 1
+	ret buffer.id
+}
+
 main: fun -> i32
 {
 	val effects = [Effect.hit(3), Effect.none, Effect.hit(60), Effect.hit(9)]
@@ -107,5 +169,11 @@ main: fun -> i32
 	tally(Effect.hit(2))
 	tally(Effect.none)
 	printf("%d %d %d\n", count, check(true), check(false))
+
+	val slots = [Slot.empty, Slot.held(Buffer(5)), Slot.held(Buffer(6))]
+	val fallback = Buffer(9)
+	var spare = Slot.held(Buffer(1))
+	printf("%d %d %d %d %d\n", firstId(slots), idOf(Slot.empty), idOf(slots[2]), pick(Slot.empty, fallback).id,
+		bump(mut spare))
 	ret 0
 }

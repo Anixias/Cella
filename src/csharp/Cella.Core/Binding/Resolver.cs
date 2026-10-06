@@ -2354,6 +2354,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	[return: NotNullIfNotNull(nameof(node))]
 	private IResolvedExpressionNode? CoerceToType(IResolvedExpressionNode? node, TypeSymbol target)
 	{
+		if (node?.Type is NeverType)
+			return MaterializeExpression(node, target);
+		
 		if (node?.Type is UntypedType)
 			node = MaterializeExpression(node,
 				target is BorrowType { IsMutable: false } borrow ? borrow.Target : target);
