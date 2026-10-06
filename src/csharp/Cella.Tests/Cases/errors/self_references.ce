@@ -1,0 +1,101 @@
+mod test
+
+Pair: ref rec
+{
+	value: i32
+	alias: mut[i32]
+	other: mut[i32]
+}
+
+Cell: ref rec
+{
+	value: i32
+	alias: mut[i32]
+
+	new: op(value: i32)
+	{
+		self.value = value
+		self.alias = mut self.value
+	}
+
+	drop: op
+	{
+		self.alias = mut self.value
+	}
+}
+
+Node: ref rec
+{
+	value: i32
+	link: imm[i32]
+}
+
+Link: ref enum
+{
+	none
+	to(target: mut[i32])
+}
+
+Holder: ref rec
+{
+	value: i32
+	link: Link
+}
+
+storeBorrow: fun
+{
+	var spare = 0
+	var pair = Pair(1, mut spare, mut spare)
+	pair.alias = mut pair.value
+	pair.other = pair.alias
+}
+
+storeStoredBorrow: fun
+{
+	var spare = 0
+	var pair = Pair(1, mut spare, mut spare)
+	val inner = mut pair.value
+	pair.alias = inner
+}
+
+storeThroughBorrow: fun
+{
+	var spare = 0
+	var pair = Pair(1, mut spare, mut spare)
+	val target = mut pair
+	target.alias = mut pair.value
+	target.other = mut target.value
+}
+
+storeInMutParameter: fun(mut pair: Pair)
+{
+	pair.alias = mut pair.value
+}
+
+storeInOwnParameter: fun(own pair: Pair) -> Pair
+{
+	pair.alias = mut pair.value
+	ret pair
+}
+
+replaceWhole: fun
+{
+	var spare = 0
+	var pair = Pair(1, mut spare, mut spare)
+	pair = Pair(2, mut pair.value, mut spare)
+}
+
+linkElements: fun
+{
+	var spare = 0
+	var nodes = [Node(1, spare), Node(2, spare)]
+	nodes[0].link = imm nodes[1].value
+}
+
+linkPayload: fun
+{
+	var holder = Holder(5, Link.none)
+	holder.link = Link.to(mut holder.value)
+}
+
+main: fun -> i32 = 0

@@ -49,7 +49,7 @@ Error at line 110, column 24
 Error at line 117, column 15
 116 │ {
 117 │     token.rest = pick(mut token)
-                       ╘═════════════╛ Cannot store new borrows in 'mut' parameters
+                       ╘═════════════╛ Cannot store borrows of values in themselves
 
 Error at line 122, column 13
 121 │ {

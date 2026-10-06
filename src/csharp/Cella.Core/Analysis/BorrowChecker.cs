@@ -195,7 +195,7 @@ public sealed class BorrowChecker(TypePool typePool, DiagnosticList diagnostics)
 		switch (memoryEvent)
 		{
 			case WriteEvent { Place.Root: LocalVariableSymbol { IsBorrowBinding: true } binding } e:
-				CheckTargets([..state.Get(binding).Keys], Sources(e.Value, state), e.Value, e.Location, state);
+				CheckTargets([..state.Get(binding).Keys], Stored(e.Value, state), e.Value, e.Location, state);
 				break;
 			
 			case WriteEvent e:
@@ -207,7 +207,7 @@ public sealed class BorrowChecker(TypePool typePool, DiagnosticList diagnostics)
 				Op: UnaryOperation.Dereference,
 				Operand.Type: BorrowType
 			}:
-				CheckTargets(BorrowSources(e.Target, state), Sources(e.Value, state), e.Value, e.Location, state);
+				CheckTargets(BorrowSources(e.Target, state), Stored(e.Value, state), e.Value, e.Location, state);
 				break;
 		}
 	}
@@ -223,6 +223,8 @@ public sealed class BorrowChecker(TypePool typePool, DiagnosticList diagnostics)
 		{
 			var message = root switch
 			{
+				HeldBorrows => "Cannot store borrows through borrows from parameters",
+				_ when written.Any(source => source.Root == root) => "Cannot store borrows of values in themselves",
 				ParameterSymbol parameter when parameter == constructorSelf => FindEscape(written) is { } escape
 					? $"Cannot store borrows of {Describe(escape)} in 'self'"
 					: null,
@@ -230,7 +232,6 @@ public sealed class BorrowChecker(TypePool typePool, DiagnosticList diagnostics)
 					parameter == receiver
 						? "Cannot store new borrows in 'self'"
 						: "Cannot store new borrows in 'mut' parameters",
-				HeldBorrows => "Cannot store borrows through borrows from parameters",
 				_ => null
 			};
 			
@@ -271,7 +272,7 @@ public sealed class BorrowChecker(TypePool typePool, DiagnosticList diagnostics)
 				break;
 			
 			case WriteEvent { Place: { Root: LocalVariableSymbol { IsBorrowBinding: true } binding } } e:
-				WriteThrough([..state.Get(binding).Keys], Sources(e.Value, state), state);
+				WriteThrough([..state.Get(binding).Keys], Stored(e.Value, state), state);
 				break;
 			
 			case WriteEvent e:
@@ -283,7 +284,7 @@ public sealed class BorrowChecker(TypePool typePool, DiagnosticList diagnostics)
 				break;
 			
 			case IndirectWriteEvent e:
-				WriteThrough(BorrowSources(e.Target, state), Sources(e.Value, state), state);
+				WriteThrough(BorrowSources(e.Target, state), Stored(e.Value, state), state);
 				break;
 			
 			case AccessEvent { Kind: AccessKind.Move } e:
@@ -310,11 +311,14 @@ public sealed class BorrowChecker(TypePool typePool, DiagnosticList diagnostics)
 	private List<Place> Written(WriteEvent write, BorrowState state) => write.Value switch
 	{
 		CallValue { Function: { Symbol.Kind: FunctionKind.Constructor, Signature: var signature } } constructor =>
-			CarriesSources(signature.GetDeclaredType(0))
+			typePool.HoldsBorrows(signature.GetDeclaredType(0))
 				? CallSources(signature, [..constructor.Arguments.Skip(1)], 1, state)
 				: [],
-		var value => Sources(value, state)
+		var value => Stored(value, state)
 	};
+	
+	private List<Place> Stored(Value value, BorrowState state) =>
+		typePool.HoldsBorrows(value.Type) ? Sources(value, state) : [];
 	
 	private List<Place> Sources(Value value, BorrowState state)
 	{
@@ -453,32 +457,22 @@ public sealed class BorrowChecker(TypePool typePool, DiagnosticList diagnostics)
 		
 		public void Set(VariableSymbol holder, List<Place> sources)
 		{
-			if (sources.Count == 0)
-			{
-				_holds.Remove(holder);
-				return;
-			}
-			
-			var fresh = new Dictionary<Place, ImmutableHashSet<Invalidation>>(PlaceComparer.Instance);
-			foreach (var source in sources)
-				fresh[source] = [];
-			
-			_holds[holder] = fresh;
+			_holds.Remove(holder);
+			Add(holder, sources);
 		}
 		
 		public void Add(VariableSymbol holder, List<Place> sources)
 		{
-			if (sources.Count == 0)
-				return;
-			
-			if (!_holds.TryGetValue(holder, out var own))
+			foreach (var source in sources.Where(source => source.Root != holder))
 			{
-				own = new(PlaceComparer.Instance);
-				_holds[holder] = own;
-			}
-			
-			foreach (var source in sources)
+				if (!_holds.TryGetValue(holder, out var own))
+				{
+					own = new(PlaceComparer.Instance);
+					_holds[holder] = own;
+				}
+				
 				own.TryAdd(source, []);
+			}
 		}
 		
 		public void Remove(VariableSymbol holder) => _holds.Remove(holder);

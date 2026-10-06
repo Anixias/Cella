@@ -1,0 +1,75 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Pair: ref rec
+{
+	value: i32
+	alias: mut[i32]
+	other: mut[i32]
+}
+
+ListHead: rec
+{
+	next: ptr[ListHead]
+	prev: ptr[ListHead]
+}
+
+relink: fun(mut pair: Pair)
+{
+	pair.other = pair.alias
+}
+
+initialize: fun(mut head: ListHead)
+{
+	head.next = @head
+	head.prev = @head
+}
+
+append: fun(mut head: ListHead, mut node: ListHead)
+{
+	node.next = @head
+	node.prev = head.prev
+	head.prev.next = @node
+	head.prev = @node
+}
+
+length: fun(head: ptr[ListHead]) -> i32
+{
+	var total = 0
+	var node = head.next
+	loop while node != head
+	{
+		total += 1
+		node = node.next
+	}
+	ret total
+}
+
+main: fun -> i32
+{
+	var spare = 0
+	var extra = 10
+	var pair = Pair(1, mut spare, mut spare)
+	pair.alias = mut extra
+	relink(mut pair)
+	pair.other += 5
+	val moved = pair
+	moved.alias += 1
+
+	var head = ListHead(null, null)
+	initialize(mut head)
+	var first = ListHead(null, null)
+	var second = ListHead(null, null)
+	append(mut head, mut first)
+	append(mut head, mut second)
+	var empty = ListHead(null, null)
+	empty.next = @empty
+	empty.prev = @empty
+
+	printf("%d %d %d %d %d\n", spare, extra, moved.value, length(@head), length(@empty))
+	ret 0
+}
