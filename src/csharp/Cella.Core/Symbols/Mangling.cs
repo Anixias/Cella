@@ -47,7 +47,7 @@ public static class Mangling
 	
 	private static string MangleType(TypeSymbol type, ModuleIndex? modules) => type switch
 	{
-		RecordSymbol { IsGenericInstance: true } instance =>
+		NamedTypeSymbol { IsGenericInstance: true } instance =>
 			$"{MangleType(instance.Definition, modules)}[{string.Join(", ",
 				instance.TypeArguments.Select(argument => MangleType(argument, modules)))}]",
 		PointerType { BaseType: var baseType } when baseType != NativeSymbols.Void =>

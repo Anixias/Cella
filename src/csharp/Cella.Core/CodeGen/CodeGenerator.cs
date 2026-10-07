@@ -452,7 +452,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 		foreach (var file in module.Files)
 		{
 			var globals = file.Globals.Where(static global =>
-				global.Symbol.ContainingType is not RecordSymbol { IsGenericDefinition: true });
+				global.Symbol.ContainingType is not NamedTypeSymbol { IsGenericDefinition: true });
 			
 			foreach (var global in globals)
 				DefineGlobal(global);
@@ -1843,7 +1843,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 		if (current.Globals.TryGetValue(info.Symbol, out var existing))
 			return existing;
 		
-		if (info.Symbol.ContainingType is RecordSymbol { IsGenericInstance: true } instance)
+		if (info.Symbol.ContainingType is NamedTypeSymbol { IsGenericInstance: true } instance)
 			return GetInstanceGlobal(info, instance);
 		
 		var global = DeclareGlobal(info);
@@ -1855,7 +1855,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 		return global;
 	}
 	
-	private LLVMValueRef GetInstanceGlobal(GlobalInfo info, RecordSymbol instance)
+	private LLVMValueRef GetInstanceGlobal(GlobalInfo info, NamedTypeSymbol instance)
 	{
 		if (_inputs.LibraryStatics.Contains(info.Symbol))
 		{
@@ -1895,10 +1895,10 @@ public sealed unsafe class CodeGenerator : IDisposable
 	
 	private GlobalInfo SubstituteGlobal(GlobalInfo info)
 	{
-		if (info.Symbol.ContainingType is not RecordSymbol owner || !TypePool.ContainsTypeParameters(owner))
+		if (info.Symbol.ContainingType is not NamedTypeSymbol owner || !TypePool.ContainsTypeParameters(owner))
 			return info;
 		
-		var instance = (RecordSymbol)Substitute(owner);
+		var instance = (NamedTypeSymbol)Substitute(owner);
 		return _typePool.InstantiateGlobal(instance.GetStaticField(info.Symbol.Name)!, _modules);
 	}
 	

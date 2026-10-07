@@ -15,7 +15,7 @@ constrained[T: copy]: rec
 	value: T
 }
 
-maybe[T]: enum
+maybe[T]: ext enum
 {
 	none
 }

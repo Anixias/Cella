@@ -1,0 +1,14 @@
+
+====== generic_enum_borrows.ce ======
+
+Error at line 10, column 10
+ 9 │ {
+10 │     self = option.some(value)
+                ╘════════════════╛ Cannot store new borrows in 'self'
+
+Error at line 17, column 6
+16 │ val local = 5
+17 │ ret option.some(imm local)
+         ╘════════════════════╛ Cannot return borrows of local variables
+
+[compilation failed]

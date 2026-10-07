@@ -1,0 +1,24 @@
+
+====== generic_enum_matches.ce ======
+
+Error at line 15, column 39
+14 │ 
+15 │ missing: fun(o: option[i32]) -> i32 = match o { some(v) => v }
+                                           ╘═══╛ This match doesn't handle every case of 'option[i32]': none
+
+Error at line 16, column 49
+15 │ missing: fun(o: option[i32]) -> i32 = match o { some(v) => v }
+16 │ foreign: fun(o: option[i32]) -> i32 = match o { result.ok(v) => v  else => 0 }
+                                                     ╘════╛ Expected a case of 'option[i32]'
+
+Error at line 17, column 49
+16 │ foreign: fun(o: option[i32]) -> i32 = match o { result.ok(v) => v  else => 0 }
+17 │ unknown: fun(o: option[i32]) -> i32 = match o { ok(v) => v  else => 0 }
+                                                     ╘╛ 'option[i32]' has no case 'ok'
+
+Error at line 18, column 49
+17 │ unknown: fun(o: option[i32]) -> i32 = match o { ok(v) => v  else => 0 }
+18 │ counted: fun(o: option[i32]) -> i32 = match o { some() => 0  none => 1 }
+                                                     ╘════╛ 'option[i32].some' holds 1 value: value
+
+[compilation failed]

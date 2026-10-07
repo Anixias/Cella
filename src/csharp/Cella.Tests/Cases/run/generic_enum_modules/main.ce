@@ -1,0 +1,17 @@
+mod test
+
+use shapes.option
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+main: fun -> i32
+{
+	val a = shapes.option.some(4)
+	val b: option[i32] = option.none
+	val c = option[i8].wrap(2)
+	printf("%d %d %d %d\n", shapes.read(a), shapes.read(b), shapes.option[i8].made, option[i32].made)
+	ret 0
+}

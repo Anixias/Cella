@@ -1,0 +1,59 @@
+
+====== generic_enum_uses.ce ======
+
+Error at line 19, column 12
+18 │ {
+19 │     val bare: option = option[i32].none
+                   ╘════╛ 'option' takes one type argument
+
+Error at line 20, column 16
+19 │ val bare: option = option[i32].none
+20 │ val unknown = option.none
+                   ╘════╛ Cannot infer 'T' for 'option'
+
+Error at line 21, column 16
+20 │ val unknown = option.none
+21 │ val tooMany = option.some(1, 2)
+                   ╘═══════════════╛ 'option.some' holds 1 value: value
+
+Error at line 22, column 23
+21 │ val tooMany = option.some(1, 2)
+22 │ val missing = option.nothing
+                          ╘═════╛ 'option' has no case 'nothing'
+
+Error at line 23, column 16
+22 │ val missing = option.nothing
+23 │ val statics = option.empty()
+                   ╘════╛ 'option' takes one type argument
+
+Error at line 24, column 18
+23 │ val statics = option.empty()
+24 │ val arguments = option[i32, i64].none
+                     ╘══════════════╛ 'option' takes one type argument
+
+Error at line 25, column 31
+24 │ val arguments = option[i32, i64].none
+25 │ val converted: option[i32] = option.some(true)
+                                  ╘═══════════════╛ Cannot convert type 'option[bool]' to 'option[i32]'
+
+Error at line 26, column 33
+25 │ val converted: option[i32] = option.some(true)
+26 │ val payload = option[i32].some(true)
+                                    ╘══╛ Cannot convert type 'bool' to 'i32'
+
+Error at line 27, column 13
+26 │ val payload = option[i32].some(true)
+27 │ val cast = option(1)
+                ╘════╛ 'option' takes one type argument
+
+Error at line 28, column 24
+27 │ val cast = option(1)
+28 │ val borrowed = strict[imm[i32]].none
+                           ╘══════╛ Cannot store borrows in 'T'
+
+Error at line 29, column 17
+28 │ val borrowed = strict[imm[i32]].none
+29 │ val inferred = strict.some("text")
+                    ╘════╛ Cannot store borrows in 'T'
+
+[compilation failed]

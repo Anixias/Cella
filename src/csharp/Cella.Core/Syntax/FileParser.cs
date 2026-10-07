@@ -231,8 +231,9 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 		
 		if (Match(ref index, _topLevelContextualKeywords, TokenType.KeywordEnum))
 		{
+			var enumTypeParameters = isExternal ? [] : typeParameters;
 			var enumNode = ParseDeclaration(ref index, identifier, "enum",
-				(ref i) => ParseEnum(ref i, identifier, modifiers, isExternal, isRef));
+				(ref i) => ParseEnum(ref i, identifier, modifiers, isExternal, isRef, enumTypeParameters));
 			
 			if (enumNode is null)
 				SkipDeclaration(ref index, declarationStart, insideBlock);
@@ -329,7 +330,7 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 	private string? DescribeTypeParameterError(int index, bool isExternal)
 	{
 		if (Match(ref index, _topLevelContextualKeywords, TokenType.KeywordEnum))
-			return "Generic enums are not supported yet";
+			return isExternal ? "Cannot declare type parameters on ext enums" : null;
 		
 		if (Match(ref index, _topLevelContextualKeywords, TokenType.KeywordFun))
 			return isExternal ? "Cannot declare type parameters on ext functions" : null;
@@ -905,7 +906,7 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 	}
 	
 	private EnumNode? ParseEnum(ref int index, Token identifier, DeclarationModifiers modifiers, bool isExternal,
-		bool isRef)
+		bool isRef, List<TypeParameterNode> typeParameters)
 	{
 		ITypeNode? tagType = null;
 		if (Match(ref index, out var openParen, TokenType.OpOpenParen))
@@ -921,7 +922,8 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 		if (!Match(ref index, out var openBrace, TokenType.OpOpenBrace))
 			return new(identifier, modifiers.Tokens, isExternal, isRef, tagType, [], [])
 			{
-				Visibility = modifiers.Visibility
+				Visibility = modifiers.Visibility,
+				TypeParameters = [..typeParameters]
 			};
 		
 		var cases = new List<EnumCaseNode>();
@@ -931,7 +933,8 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 		
 		return new(identifier, modifiers.Tokens, isExternal, isRef, tagType, cases, members)
 		{
-			Visibility = modifiers.Visibility
+			Visibility = modifiers.Visibility,
+			TypeParameters = [..typeParameters]
 		};
 	}
 	

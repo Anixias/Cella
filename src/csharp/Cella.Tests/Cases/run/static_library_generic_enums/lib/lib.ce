@@ -1,0 +1,55 @@
+mod lib
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+option[T]: pub enum
+{
+	none
+	some(value: T)
+
+	made: var i32 = 0
+
+	wrap: fun(own value: T) -> option[T]
+	{
+		made += 1
+		ret option.some(value)
+	}
+
+	orElse: fun(own self, own fallback: T) -> T
+	{
+		match own self
+		{
+			some(own v) => ret v
+			none => ret fallback
+		}
+	}
+
+	isSome: get(self) -> bool = self is some(_)
+}
+
+Token: pub rec
+{
+	id: i32
+
+	drop: op
+	{
+		printf("drop %d ", self.id)
+	}
+}
+
+first[T]: pub fun(own a: option[T], own b: option[T]) -> option[T]
+{
+	if a.isSome
+		ret a
+
+	ret b
+}
+
+libraryCount: pub fun -> i32
+{
+	val item = option[i32].wrap(1)
+	ret option[i32].made
+}

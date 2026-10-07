@@ -1,0 +1,46 @@
+mod test
+
+option[T]: enum
+{
+	none
+	some(value: T)
+}
+
+pair[T, T]: enum
+{
+	both(first: T, second: T)
+}
+
+wrapper[T]: enum
+{
+	one(value: T)
+
+	pick[T]: fun(self, other: T) -> i32 = 0
+}
+
+endless[T]: enum
+{
+	stop
+	more(next: endless[T])
+}
+
+growing[T]: enum
+{
+	stop
+	more(next: growing[ptr[T]])
+}
+
+Holder: rec
+{
+	name: option[imm[i32]]
+}
+
+Plain: enum
+{
+	nothing
+	held(value: option[str])
+}
+
+bare: fun(o: option) -> i32 = 0
+
+main: fun -> i32 = 0

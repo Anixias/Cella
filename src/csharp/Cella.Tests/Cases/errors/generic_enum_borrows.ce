@@ -1,0 +1,20 @@
+mod test
+
+option[T]: enum
+{
+	none
+	some(value: T)
+
+	put: fun(mut self, own value: T)
+	{
+		self = option.some(value)
+	}
+}
+
+leak: fun -> option[imm[i32]]
+{
+	val local = 5
+	ret option.some(imm local)
+}
+
+main: fun -> i32 = 0

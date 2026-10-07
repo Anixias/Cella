@@ -282,7 +282,7 @@ public readonly struct ResolutionContext
 	{
 		switch (Resolve(name.Text))
 		{
-			case RecordSymbol { IsGenericDefinition: true } generic:
+			case NamedTypeSymbol { IsGenericDefinition: true } generic:
 				Diagnostics.Add(ReportTypeArgumentCount(name.SourceLocation, generic));
 				break;
 			
@@ -310,7 +310,7 @@ public readonly struct ResolutionContext
 		var name = string.Join('.', node.Parts.Select(static p => p.Text));
 		switch (ResolveQualifiedName(node.Parts))
 		{
-			case RecordSymbol { IsGenericDefinition: true } generic:
+			case NamedTypeSymbol { IsGenericDefinition: true } generic:
 				Diagnostics.Add(ReportTypeArgumentCount(node.SourceLocation, generic));
 				break;
 			
@@ -378,7 +378,7 @@ public readonly struct ResolutionContext
 			_ => null
 		};
 		
-		if (symbol is RecordSymbol { IsGenericDefinition: true } definition)
+		if (symbol is NamedTypeSymbol { IsGenericDefinition: true } definition)
 			return InstantiateType(definition, [..node.Arguments.Select(ResolveTypeExpression)],
 				[..node.Arguments.Select(static argument => argument.SourceLocation)], node.SourceLocation);
 		
@@ -405,7 +405,7 @@ public readonly struct ResolutionContext
 		return TypePool.ResolveBuiltinGenericType(target.Identifier.Text, typeArgs);
 	}
 	
-	public static Diagnostic ReportTypeArgumentCount(SourceLocation location, RecordSymbol generic) =>
+	public static Diagnostic ReportTypeArgumentCount(SourceLocation location, NamedTypeSymbol generic) =>
 		ReportTypeArgumentCount(location, generic.Name, generic.TypeParameters.Length);
 	
 	public static Diagnostic ReportTypeArgumentCount(SourceLocation location, string name, int count) =>
@@ -418,7 +418,7 @@ public readonly struct ResolutionContext
 		_ => $"{count} type arguments"
 	};
 	
-	private TypeSymbol InstantiateType(RecordSymbol definition, IReadOnlyList<TypeSymbol> arguments,
+	private TypeSymbol InstantiateType(NamedTypeSymbol definition, IReadOnlyList<TypeSymbol> arguments,
 		IReadOnlyList<SourceLocation> locations, SourceLocation location)
 	{
 		if (arguments.Count != definition.TypeParameters.Length)
@@ -444,7 +444,7 @@ public readonly struct ResolutionContext
 	{
 		switch (TryResolveExpressionAsType(expression))
 		{
-			case RecordSymbol { IsGenericDefinition: true } generic when expression is not IndexerExpressionNode:
+			case NamedTypeSymbol { IsGenericDefinition: true } generic when expression is not IndexerExpressionNode:
 				Diagnostics.Add(ReportTypeArgumentCount(expression.SourceLocation, generic));
 				return NativeSymbols.Invalid;
 			
@@ -558,7 +558,7 @@ public readonly struct ResolutionContext
 		var symbol = node.Qualifiers.IsEmpty ? Resolve(name.Text) : ResolveQualifiedName([..node.Qualifiers, name]);
 		switch (symbol)
 		{
-			case RecordSymbol { IsGenericDefinition: true } definition:
+			case NamedTypeSymbol { IsGenericDefinition: true } definition:
 				return InstantiateType(definition, [..node.Arguments.Select(ResolveGenericTypeArgument)],
 					[..node.Arguments.Select(static argument => argument.SourceLocation)], node.SourceLocation);
 			

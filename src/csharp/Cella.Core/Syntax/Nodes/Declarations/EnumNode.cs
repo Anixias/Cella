@@ -23,6 +23,7 @@ public sealed class EnumNode
 	public ITypeNode? TagType { get; } = tagType;
 	public ImmutableArray<EnumCaseNode> Cases { get; } = cases.ToImmutableArray();
 	public ImmutableArray<IDeclarationNode> Members { get; } = members.ToImmutableArray();
+	public ImmutableArray<TypeParameterNode> TypeParameters { get; init; } = [];
 }
 
 public sealed class EnumCaseNode(Token identifier, IEnumerable<FieldNode> payload, IExpressionNode? value)

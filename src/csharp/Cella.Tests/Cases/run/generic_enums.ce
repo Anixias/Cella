@@ -1,0 +1,85 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+option[T]: enum
+{
+	none
+	some(value: T)
+}
+
+result[T, E]: enum(u8)
+{
+	ok(value: T) = 1
+	err(error: E) = 0
+}
+
+marker[T]: enum
+{
+	first
+	second
+}
+
+seven: val option[i32] = option.some(7)
+nothing: val option[i32] = option.none
+pairs: val array[option[i16], 2] = [option.some(3), option.none]
+unwrapped: val i32 = match seven { some(v) => v  none => 0 }
+
+read: fun(o: option[i32]) -> i32 = match o { some(v) => v  none => -1 }
+readQualified: fun(o: option[i32]) -> i32 = match o { option.some(v) => v * 10  option.none => 0 }
+
+half: fun(n: i32) -> result[i32, cstr]
+{
+	if n % 2 != 0
+		ret result.err("odd")
+
+	ret result.ok(n / 2)
+}
+
+describe: fun(r: result[i32, cstr])
+{
+	match r
+	{
+		ok(v) => printf("ok(%d) ", v)
+		err(e) => printf("err(%s) ", e)
+	}
+}
+
+depth: fun(o: option[option[i32]]) -> i32
+{
+	match o
+	{
+		some(inner) => ret match inner { some(v) => v  none => -2 }
+		none => ret -1
+	}
+}
+
+main: fun -> i32
+{
+	val a = option[i32].some(5)
+	val b = option.some(6)
+	val c: option[i32] = option.none
+	var zeroed: option[i32]
+	printf("%d %d %d %d %d %d %d\n", read(a), read(b), read(c), read(zeroed), read(seven), read(nothing),
+		readQualified(b))
+
+	val wide: option[i64] = option.some(9)
+	if wide is some(v) && v > 5
+		printf("wide %lld\n", v)
+
+	describe(half(10))
+	describe(half(3))
+	printf("\n")
+
+	printf("%d %d %d\n", depth(option.some(option.some(4))), depth(option.some(option[i32].none)),
+		depth(option[option[i32]].none))
+	printf("%d %d %d\n", i32(match pairs[0] { some(v) => v  none => 0 }), i32(pairs[1] is none), unwrapped)
+
+	val m = marker[u8].second
+	printf("%d %d %d\n", i32(m == marker[u8].second), i32(m), i32(marker[u8](0) == marker[u8].first))
+	printf("%d %d %d\n", i32(sizeOf(option[i32])), i32(sizeOf(option[i64])), i32(sizeOf(result[i8, i64])))
+	ret 0
+}

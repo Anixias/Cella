@@ -327,7 +327,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	{
 		if (node.Target is AccessExpressionNode access && ResolveEnumType(access.Target) is { } enumType)
 			return DeclaresNonCaseMember(enumType, access.Member.Text)
-				? VisitStaticCall(node, access, enumType)
+				? VisitStaticCall(node, access, RequireTypeArguments(enumType, access.Target))
 				: VisitEnumCase(access, enumType, node);
 		
 		if (CurrentResolutionContext.TryResolveExpressionAsType(node.Target) is not { } targetType)
@@ -348,6 +348,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	private IResolvedExpressionNode VisitEnumCase(AccessExpressionNode access, EnumSymbol enumType,
 		CallExpressionNode? call)
 	{
+		if (enumType.IsGenericDefinition && access.Target is not IndexerExpressionNode)
+			return VisitInferredEnumCase(access, enumType, call);
+		
 		IExpressionNode node = call is null ? access : call;
 		var arguments = call?.Arguments ?? [];
 		var enumCase = FindCase(enumType, access.Member);
@@ -364,6 +367,32 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		
 		var payload = arguments.Select((argument, i) => VisitNode(argument, payloadTypes[i]));
 		return new ResolvedEnumCaseExpressionNode(enumType, enumCase, payload, node);
+	}
+	
+	private IResolvedExpressionNode VisitInferredEnumCase(AccessExpressionNode access, EnumSymbol definition,
+		CallExpressionNode? call)
+	{
+		IExpressionNode node = call is null ? access : call;
+		var args = (call?.Arguments ?? []).Select(argument => VisitNode(argument, null)).ToArray();
+		if (FindCase(definition, access.Member) is not { } enumCase || AnyInvalid(args))
+			return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
+		
+		var payloadTypes = _typePool.GetPayloadTypes(definition, enumCase);
+		if (args.Length != payloadTypes.Length || call is not null && payloadTypes.IsEmpty)
+			return Error(node, ReportPayloadCount(node.SourceLocation, definition, enumCase), CurrentTargetType);
+		
+		var inputs = args.Select((arg, i) => CreateInferenceInput(payloadTypes[i], ParameterMode.Own, arg));
+		var result = _inference.Infer(definition.TypeParameters, inputs.OfType<InferenceInput>(), definition,
+			CurrentTargetType);
+		
+		var name = GetName(access.Target);
+		if (InstantiateInferred(result, definition, name, access.Target.SourceLocation) is not EnumSymbol instance)
+			return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
+		
+		var instanceCase = instance.Cases[enumCase.Index];
+		var instanceTypes = _typePool.GetPayloadTypes(instance, instanceCase);
+		var payload = args.Select((arg, i) => CoerceToType(arg, instanceTypes[i])!);
+		return new ResolvedEnumCaseExpressionNode(instance, instanceCase, payload, node);
 	}
 	
 	private EnumCaseSymbol? FindCase(EnumSymbol enumType, Token name)
@@ -508,7 +537,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		var symbol = typePath is [var name] ? context.Resolve(name.Text) : context.ResolveQualifiedName(typePath);
 		switch (symbol)
 		{
-			case not null when symbol == enumType:
+			case not null when symbol == enumType || symbol == enumType.Definition:
 				return true;
 			
 			case null when typePath is [var typeName]:
@@ -839,7 +868,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		var result = _inference.Infer(definition.TypeParameters, inputs.OfType<InferenceInput>(), definition,
 			CurrentTargetType);
 		
-		if (InstantiateInferred(result, definition, name, node.Target.SourceLocation) is not { } instance)
+		if (InstantiateInferred(result, definition, name, node.Target.SourceLocation) is not RecordSymbol instance)
 			return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
 		
 		return VisitRecordConstruction(node, instance, args);
@@ -882,7 +911,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		return ResolveConstructorCall(node, definition, args, [..candidates], null);
 	}
 	
-	private RecordSymbol? InstantiateInferred(InferenceResult result, RecordSymbol definition, string name,
+	private NamedTypeSymbol? InstantiateInferred(InferenceResult result, NamedTypeSymbol definition, string name,
 		SourceLocation location, List<Diagnostic>? failures = null)
 	{
 		var diagnostic = result.Succeeded
@@ -890,7 +919,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			: ReportInferenceFailure(result, name, location);
 		
 		if (diagnostic is null)
-			return _typePool.Instantiate(definition, result.Arguments) as RecordSymbol;
+			return _typePool.Instantiate(definition, result.Arguments) as NamedTypeSymbol;
 		
 		if (failures is null)
 			Diagnostics.Add(diagnostic);
@@ -1735,7 +1764,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	{
 		if (ResolveEnumType(node.Target) is { } enumType)
 			return DeclaresNonCaseMember(enumType, node.Member.Text)
-				? VisitStaticMember(node, enumType)
+				? VisitStaticMember(node, RequireTypeArguments(enumType, node.Target))
 				: VisitEnumCase(node, enumType, null);
 		
 		if (CurrentResolutionContext.ResolveModule(node.Target) is { } module)
@@ -2062,7 +2091,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 				return new ResolvedVarExpressionNode(v, v.Type, node);
 			
 			case GlobalSymbol g:
-				if (g.ContainingType is not RecordSymbol { TypeArguments.IsEmpty: false })
+				if (g.ContainingType is not NamedTypeSymbol { TypeArguments.IsEmpty: false })
 					TrackGenericReference(g);
 				
 				return new ResolvedGlobalExpressionNode(g, _signatures.GetGlobalType(g), node);
@@ -3148,7 +3177,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	
 	private TypeSymbol RequireTypeArguments(TypeSymbol type, IExpressionNode node)
 	{
-		if (type is not RecordSymbol { IsGenericDefinition: true } generic || node is IndexerExpressionNode)
+		if (type is not NamedTypeSymbol { IsGenericDefinition: true } generic || node is IndexerExpressionNode)
 			return type;
 		
 		Diagnostics.Add(ResolutionContext.ReportTypeArgumentCount(node.SourceLocation, generic));
@@ -3186,7 +3215,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	private static bool Mentions(TypeSymbol type, TypeParameterSymbol parameter) => type switch
 	{
 		TypeParameterSymbol other => other == parameter,
-		RecordSymbol record => record.TypeArguments.Any(argument => Mentions(argument, parameter)),
+		NamedTypeSymbol named => named.TypeArguments.Any(argument => Mentions(argument, parameter)),
 		PointerType pointer => Mentions(pointer.BaseType, parameter),
 		BorrowType borrow => Mentions(borrow.Target, parameter),
 		ArrayType array => Mentions(array.ElementType, parameter),

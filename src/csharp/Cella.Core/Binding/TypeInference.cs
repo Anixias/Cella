@@ -164,7 +164,7 @@ public sealed class TypeInference(ConversionTable conversions)
 					Unify(p.ElementType, a.ElementType, true);
 					break;
 				
-				case (RecordSymbol p, RecordSymbol a) when p.Definition == a.Definition:
+				case (NamedTypeSymbol p, NamedTypeSymbol a) when p.Definition == a.Definition:
 					for (var i = 0; i < p.TypeArguments.Length; i++)
 						Unify(p.TypeArguments[i], a.TypeArguments[i], true);
 					
@@ -189,7 +189,7 @@ public sealed class TypeInference(ConversionTable conversions)
 		private bool Mentions(TypeSymbol type) => type switch
 		{
 			TypeParameterSymbol parameter => parameters.Contains(parameter),
-			RecordSymbol record => record.TypeArguments.Any(Mentions),
+			NamedTypeSymbol named => named.TypeArguments.Any(Mentions),
 			PointerType pointer => Mentions(pointer.BaseType),
 			BorrowType borrow => Mentions(borrow.Target),
 			ArrayType array => Mentions(array.ElementType),

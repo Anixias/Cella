@@ -1,0 +1,60 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+option[T]: enum
+{
+	none
+	some(value: T)
+
+	clear: fun(mut self)
+	{
+		self = option[T].none
+	}
+}
+
+Token: rec
+{
+	id: i32
+
+	drop: op
+	{
+		printf("drop %d ", self.id)
+	}
+}
+
+holder[T]: rec
+{
+	item: option[T]
+	count: i32
+}
+
+make: fun(id: i32) -> option[Token]
+{
+	if id > 0
+		ret option.some(Token(id))
+
+	ret option.none
+}
+
+main: fun -> i32
+{
+	val a = make(1)
+	val b = make(0)
+	var c = make(2)
+	c = make(3)
+	match make(4)
+	{
+		some(t) => printf("got %d ", t.id)
+		none => printf("none ")
+	}
+
+	var held = holder(option.some(Token(5)), 1)
+	held.item.clear()
+	val empty = holder[Token]()
+	printf("%d | ", i32(empty.item is none))
+	ret 0
+}

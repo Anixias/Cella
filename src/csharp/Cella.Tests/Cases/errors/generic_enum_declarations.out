@@ -1,0 +1,51 @@
+
+====== generic_enum_declarations.ce ======
+
+Error at line 9, column 6
+8 │ 
+9 │ pair[T, T]: enum
+         ^ Type parameter 'T' is declared more than once
+
+Error at line 9, column 9
+8 │ 
+9 │ pair[T, T]: enum
+            ^ Type parameter 'T' is declared more than once
+
+Error at line 14, column 9
+13 │ 
+14 │ wrapper[T]: enum
+             ^ Type parameter 'T' is declared more than once
+
+Error at line 18, column 7
+17 │ 
+18 │ pick[T]: fun(self, other: T) -> i32 = 0
+          ^ Type parameter 'T' is declared more than once
+
+Error at line 24, column 13
+23 │ stop
+24 │ more(next: endless[T])
+                ╘════════╛ Payload 'next' of type 'endless' causes a cycle in the memory layout
+
+Error at line 30, column 13
+29 │ stop
+30 │ more(next: growing[ptr[T]])
+                ╘═════════════╛ Payload 'next' of type 'growing[ptr[T]]' causes a cycle in the memory layout
+
+Error at line 35, column 8
+34 │ {
+35 │     name: option[imm[i32]]
+               ╘══════════════╛ Cannot store borrows in plain records
+                              | Did you mean 'Holder: ref rec'?
+
+Error at line 41, column 14
+40 │ nothing
+41 │ held(value: option[str])
+                 ╘═════════╛ Cannot store borrows in plain enums
+                           | Did you mean 'Plain: ref enum'?
+
+Error at line 44, column 14
+43 │ 
+44 │ bare: fun(o: option) -> i32 = 0
+                  ╘════╛ 'option' takes one type argument
+
+[compilation failed]

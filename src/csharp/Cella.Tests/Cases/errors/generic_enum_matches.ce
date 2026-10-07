@@ -1,0 +1,20 @@
+mod test
+
+option[T]: enum
+{
+	none
+	some(value: T)
+}
+
+result[T, E]: enum
+{
+	ok(value: T)
+	err(error: E)
+}
+
+missing: fun(o: option[i32]) -> i32 = match o { some(v) => v }
+foreign: fun(o: option[i32]) -> i32 = match o { result.ok(v) => v  else => 0 }
+unknown: fun(o: option[i32]) -> i32 = match o { ok(v) => v  else => 0 }
+counted: fun(o: option[i32]) -> i32 = match o { some() => 0  none => 1 }
+
+main: fun -> i32 = 0

@@ -1,0 +1,17 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+main: fun -> i32
+{
+	val a = lib.option[i32].wrap(5)
+	val b = lib.option.some(lib.Token(7))
+	val c: lib.option[lib.Token] = lib.option.none
+	val d = lib.first(c, b)
+	printf("%d %d %d ", a.orElse(0), i32(d.isSome), lib.libraryCount())
+	printf("%d %d | ", lib.option[i32].made, lib.option[i64].made)
+	ret 0
+}

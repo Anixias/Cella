@@ -136,7 +136,7 @@ public sealed class SignatureCollector
 		if (_globalTypes.TryGetValue(global, out var type))
 			return type;
 		
-		if (global.ContainingType is RecordSymbol { IsGenericInstance: true } instance)
+		if (global.ContainingType is NamedTypeSymbol { IsGenericInstance: true } instance)
 			return _typePool.Substitute(GetGlobalType(instance.Definition.GetStaticField(global.Name)!),
 				TypePool.CreateMap(instance.Definition.TypeParameters, instance.TypeArguments));
 		
@@ -170,7 +170,7 @@ public sealed class SignatureCollector
 		if (_builder.Globals.TryGetValue(global, out var info))
 			return info;
 		
-		if (global.ContainingType is RecordSymbol { IsGenericInstance: true } instance)
+		if (global.ContainingType is NamedTypeSymbol { IsGenericInstance: true } instance)
 			return GetGlobalInfo(instance.Definition.GetStaticField(global.Name)!) is null
 				? null
 				: _typePool.InstantiateGlobal(global, Modules);
@@ -190,7 +190,7 @@ public sealed class SignatureCollector
 		
 		info = new GlobalInfo(mangledName, global, type, initializer, value, context.File);
 		_builder.Globals[global] = info;
-		if (global.ContainingType is RecordSymbol { IsGenericDefinition: true })
+		if (global.ContainingType is NamedTypeSymbol { IsGenericDefinition: true })
 			_typePool.RegisterGenericGlobal(info);
 		
 		Exit();
@@ -294,10 +294,7 @@ public sealed class SignatureCollector
 		Diagnostics.AddRange(DiagnosticReporter.ReportDuplicates(destructors,
 			name => $"'{name}' is declared more than once in '{record.Name}'"));
 		
-		Diagnostics.AddRange(DiagnosticReporter.ReportDuplicates(node.TypeParameters.Select(static p => p.Identifier),
-			static name => $"Type parameter '{name}' is declared more than once"));
-		
-		ReportReusedTypeParameters(node);
+		ReportTypeParameters(node.TypeParameters, node.Members);
 		
 		var storedTypes = new List<(ITypeNode Node, TypeSymbol Type)>();
 		foreach (var member in node.Members)
@@ -360,19 +357,23 @@ public sealed class SignatureCollector
 			Complete(_symbolTable.DeclarationSymbols[field]);
 	}
 	
-	private void ReportReusedTypeParameters(RecordNode node)
+	private void ReportTypeParameters(ImmutableArray<TypeParameterNode> typeParameters,
+		IEnumerable<IDeclarationNode> members)
 	{
-		var duplicates = node.TypeParameters
+		Diagnostics.AddRange(DiagnosticReporter.ReportDuplicates(typeParameters.Select(static p => p.Identifier),
+			static name => $"Type parameter '{name}' is declared more than once"));
+		
+		var duplicates = typeParameters
 			.GroupBy(static p => p.Identifier.Text)
 			.Where(static sameName => sameName.Count() > 1)
 			.Select(static sameName => sameName.Key)
 			.ToHashSet();
 		
 		var reported = new HashSet<string>();
-		foreach (var parameter in node.Members.OfType<FunctionNode>().SelectMany(static f => f.TypeParameters))
+		foreach (var parameter in members.OfType<FunctionNode>().SelectMany(static f => f.TypeParameters))
 		{
 			var name = parameter.Identifier.Text;
-			if (node.TypeParameters.Where(p => p.Identifier.Text == name).ToList() is not [_, ..] outer)
+			if (typeParameters.Where(p => p.Identifier.Text == name).ToList() is not [_, ..] outer)
 				continue;
 			
 			Diagnostics.Add(ReportDuplicateTypeParameter(parameter.Identifier));
@@ -465,12 +466,15 @@ public sealed class SignatureCollector
 		
 		var node = enumType.Node;
 		var context = declaration.Context;
+		var memberContext = context with { ContainingType = enumType };
 		if (node.Cases.IsEmpty)
 			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Identifier.SourceLocation,
 				$"'{enumType.Name}' needs at least one case"));
 		
 		Diagnostics.AddRange(DiagnosticReporter.ReportDuplicates(node.Cases.Select(static c => c.Identifier),
 			name => $"Case '{name}' is declared more than once in '{enumType.Name}'"));
+		
+		ReportTypeParameters(node.TypeParameters, node.Members);
 		
 		var payloads = new Dictionary<EnumCaseSymbol, ImmutableArray<TypeSymbol>>();
 		foreach (var enumCase in enumType.Cases)
@@ -479,12 +483,12 @@ public sealed class SignatureCollector
 				enumCase.Node.Payload.Select(static f => f.Identifier),
 				name => $"Payload '{name}' is declared more than once in '{enumCase.Name}'"));
 			
-			ImmutableArray<TypeSymbol> types = [..enumCase.Fields.Select(f => context.ResolveType(f.Node!.Type))];
+			ImmutableArray<TypeSymbol> types = [..enumCase.Fields.Select(f => memberContext.ResolveType(f.Node!.Type))];
 			for (var i = 0; i < types.Length; i++)
 			{
 				_typePool.RegisterPayloadField(enumCase.Fields[i], types[i]);
 				ReportHiddenType(enumCase.Fields[i].Node!.Type, types[i], enumType.Visibility, enumType.Name);
-				if (!node.IsRef && _typePool.HoldsBorrows(types[i]))
+				if (!node.IsRef && !TypePool.ContainsTypeParameters(types[i]) && _typePool.HoldsBorrows(types[i]))
 					Diagnostics.Add(ReportStoredBorrow(enumCase.Fields[i].Node!.Type, node.Identifier, node.Modifiers,
 						"enums", "enum"));
 			}
@@ -622,11 +626,12 @@ public sealed class SignatureCollector
 		FunctionType function => function.ParameterTypes.Append(function.ReturnType)
 			.Select(part => FindHiddenType(part, visibility))
 			.FirstOrDefault(static hidden => hidden is not null),
-		RecordSymbol { IsGenericInstance: true } instance => FindHiddenType(instance.Definition, visibility) ??
-		                                                     instance.TypeArguments
-			                                                     .Select(argument =>
-				                                                     FindHiddenType(argument, visibility))
-			                                                     .FirstOrDefault(static hidden => hidden is not null),
+		NamedTypeSymbol { IsGenericInstance: true } instance => FindHiddenType(instance.Definition, visibility) ??
+		                                                        instance.TypeArguments
+			                                                        .Select(argument =>
+				                                                        FindHiddenType(argument, visibility))
+			                                                        .FirstOrDefault(static hidden =>
+				                                                        hidden is not null),
 		IExportable exportable when exportable.Visibility < visibility => type,
 		_ => null
 	};
@@ -1244,7 +1249,7 @@ public sealed class SignatureCollector
 		IEnumerable<FieldSymbol> fields = type switch
 		{
 			RecordSymbol record => _typePool.GetMembers(record).OfType<FieldSymbol>(),
-			EnumSymbol enumType => enumType.Cases.SelectMany(static c => c.Fields),
+			EnumSymbol enumType => _typePool.GetPayloadFields(enumType),
 			_ => []
 		};
 		

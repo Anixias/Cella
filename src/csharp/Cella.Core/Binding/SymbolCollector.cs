@@ -278,6 +278,8 @@ public sealed class SymbolCollector : IDeclarationNodeVisitor<Symbol>
 		
 		_typeStack.Push(node.Identifier.Text);
 		_typeVisibilities.Push(Visibility.FromKeyword(node.Visibility));
+		var typeParameters = CreateTypeParameters(node.TypeParameters);
+		_typeParameters.Push(typeParameters);
 		var functions = new List<MethodSymbol>();
 		var statics = new List<GlobalSymbol>();
 		var properties = new List<PropertySymbol>();
@@ -301,7 +303,8 @@ public sealed class SymbolCollector : IDeclarationNodeVisitor<Symbol>
 		
 		_typeStack.Pop();
 		_typeVisibilities.Pop();
-		var symbol = new EnumSymbol(node, cases, functions)
+		_typeParameters.Pop();
+		var symbol = new EnumSymbol(node, cases, functions, typeParameters)
 		{
 			StaticFields = [..statics],
 			Properties = [..properties]

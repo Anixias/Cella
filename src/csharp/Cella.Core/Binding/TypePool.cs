@@ -27,9 +27,9 @@ public sealed class TypePool
 	private readonly Dictionary<TypeSymbol, IReadOnlySet<FieldSymbol>> _destructorMoves = [];
 	private readonly Dictionary<EnumSymbol, IntegerType> _tagTypes = [];
 	private readonly Dictionary<EnumCaseSymbol, BigInteger> _caseValues = [];
-	private readonly Dictionary<RecordSymbol, List<RecordSymbol>> _instances = [];
-	private readonly HashSet<RecordSymbol> _completedInstances = [];
-	private readonly HashSet<RecordSymbol> _borrowChecks = [];
+	private readonly Dictionary<NamedTypeSymbol, List<NamedTypeSymbol>> _instances = [];
+	private readonly HashSet<NamedTypeSymbol> _completedInstances = [];
+	private readonly HashSet<NamedTypeSymbol> _borrowChecks = [];
 	private readonly Dictionary<FunctionSymbol, List<FunctionInfo>> _functionInstances = [];
 	private readonly Dictionary<FunctionSymbol, FunctionInfo> _genericFunctions = [];
 	private readonly Dictionary<GlobalSymbol, GlobalInfo> _genericGlobals = [];
@@ -79,20 +79,19 @@ public sealed class TypePool
 		BorrowType => true,
 		TypeParameterSymbol parameter => !parameter.IsNoref,
 		StringType => type == NativeSymbols.Str,
-		RecordSymbol { TypeArguments.IsEmpty: false } record => record.IsRef || FieldsHoldBorrows(record),
-		RecordSymbol record => record.IsRef,
-		EnumSymbol enumType => enumType.IsRef,
+		NamedTypeSymbol { TypeArguments.IsEmpty: false } named => named.IsRef || PartsHoldBorrows(named),
+		NamedTypeSymbol named => named.IsRef,
 		ArrayType array => HoldsBorrows(array.ElementType),
 		_ => false
 	};
 	
-	private bool FieldsHoldBorrows(RecordSymbol record)
+	private bool PartsHoldBorrows(NamedTypeSymbol type)
 	{
-		if (!_borrowChecks.Add(record))
+		if (!_borrowChecks.Add(type))
 			return false;
 		
-		var holds = GetMembers(record).OfType<FieldSymbol>().Any(field => HoldsBorrows(GetTypeOfMember(field)));
-		_borrowChecks.Remove(record);
+		var holds = GetParts(type).Any(HoldsBorrows);
+		_borrowChecks.Remove(type);
 		return holds;
 	}
 	
@@ -318,6 +317,12 @@ public sealed class TypePool
 		return [..enumCase.Fields.Select(GetPayloadType)];
 	}
 	
+	public IEnumerable<FieldSymbol> GetPayloadFields(EnumSymbol enumType)
+	{
+		Complete(enumType);
+		return enumType.Cases.SelectMany(static enumCase => enumCase.Fields);
+	}
+	
 	private TypeSymbol GetPayloadType(FieldSymbol field) =>
 		_memberTypes.GetValueOrDefault(field) ?? NativeSymbols.Invalid;
 	
@@ -371,13 +376,13 @@ public sealed class TypePool
 	
 	private void Complete(TypeSymbol type)
 	{
-		if (type is RecordSymbol { IsGenericInstance: true } instance)
+		if (type is NamedTypeSymbol { IsGenericInstance: true } instance)
 			CompleteInstance(instance);
-		else if (type is RecordSymbol or EnumSymbol)
+		else if (type is NamedTypeSymbol)
 			TypeCompleter?.Invoke(type);
 	}
 	
-	public TypeSymbol Instantiate(RecordSymbol definition, ImmutableArray<TypeSymbol> typeArguments)
+	public TypeSymbol Instantiate(NamedTypeSymbol definition, ImmutableArray<TypeSymbol> typeArguments)
 	{
 		if (typeArguments.Any(static argument => argument is InvalidType) ||
 		    typeArguments.Max(GetInstanceDepth) >= MaxInstanceDepth)
@@ -390,15 +395,23 @@ public sealed class TypePool
 		if (instances.Find(instance => instance.TypeArguments.SequenceEqual(typeArguments)) is { } existing)
 			return existing;
 		
-		var members = definition.Members.Select(static member => member is FieldSymbol field
-			? new FieldSymbol(field.Name, field.Node, field.IsMutable)
-			: member);
-		
 		var statics = definition.StaticFields
 			.Select(static field => new GlobalSymbol(field.Syntax, field.Visibility))
 			.ToImmutableArray();
 		
-		var created = new RecordSymbol(definition, typeArguments, members) { StaticFields = statics };
+		NamedTypeSymbol created = definition switch
+		{
+			RecordSymbol record => new RecordSymbol(record, typeArguments, record.Members.Select(CopyMember))
+			{
+				StaticFields = statics
+			},
+			EnumSymbol enumType => new EnumSymbol(enumType, typeArguments, enumType.Cases.Select(CopyCase))
+			{
+				StaticFields = statics
+			},
+			_ => throw new InvalidOperationException()
+		};
+		
 		foreach (var field in statics)
 			field.ContainingType = created;
 		
@@ -406,9 +419,17 @@ public sealed class TypePool
 		return created;
 	}
 	
+	private static MemberSymbol CopyMember(MemberSymbol member) =>
+		member is FieldSymbol field ? CopyField(field) : member;
+	
+	private static EnumCaseSymbol CopyCase(EnumCaseSymbol enumCase) =>
+		new(enumCase.Node, enumCase.Index, enumCase.Fields.Select(CopyField));
+	
+	private static FieldSymbol CopyField(FieldSymbol field) => new(field.Name, field.Node, field.IsMutable);
+	
 	private static int GetInstanceDepth(TypeSymbol type) => type switch
 	{
-		RecordSymbol { IsGenericInstance: true } record => 1 + record.TypeArguments.Max(GetInstanceDepth),
+		NamedTypeSymbol { IsGenericInstance: true } named => 1 + named.TypeArguments.Max(GetInstanceDepth),
 		PointerType pointer => GetInstanceDepth(pointer.BaseType),
 		BorrowType borrow => GetInstanceDepth(borrow.Target),
 		ArrayType array => GetInstanceDepth(array.ElementType),
@@ -416,13 +437,27 @@ public sealed class TypePool
 		_ => 0
 	};
 	
-	private void CompleteInstance(RecordSymbol instance)
+	private void CompleteInstance(NamedTypeSymbol instance)
 	{
 		if (!_completedInstances.Add(instance))
 			return;
 		
-		var definition = instance.Definition;
-		var map = CreateMap(definition.TypeParameters, instance.TypeArguments);
+		var map = CreateMap(instance.Definition.TypeParameters, instance.TypeArguments);
+		switch (instance)
+		{
+			case RecordSymbol record:
+				CompleteRecordInstance(record, (RecordSymbol)record.Definition, map);
+				break;
+			
+			case EnumSymbol enumType:
+				CompleteEnumInstance(enumType, (EnumSymbol)enumType.Definition, map);
+				break;
+		}
+	}
+	
+	private void CompleteRecordInstance(RecordSymbol instance, RecordSymbol definition,
+		Dictionary<TypeParameterSymbol, TypeSymbol> map)
+	{
 		var fields = instance.Members
 			.OfType<FieldSymbol>()
 			.DistinctBy(static field => field.Name)
@@ -439,6 +474,23 @@ public sealed class TypePool
 			SetDestructor(instance, InstantiateFunction(destructor, instance.TypeArguments));
 	}
 	
+	private void CompleteEnumInstance(EnumSymbol instance, EnumSymbol definition,
+		Dictionary<TypeParameterSymbol, TypeSymbol> map)
+	{
+		for (var i = 0; i < definition.Cases.Length; i++)
+		{
+			var payloadTypes = GetPayloadTypes(definition, definition.Cases[i]);
+			for (var j = 0; j < payloadTypes.Length; j++)
+				RegisterPayloadField(instance.Cases[i].Fields[j], Substitute(payloadTypes[j], map));
+		}
+		
+		RegisterEnum(instance, GetTagType(definition),
+			[..definition.Cases.Select(enumCase => GetCaseValue(definition, enumCase))]);
+		
+		if (!instance.HasPayload)
+			RegisterEnumConversions(instance);
+	}
+	
 	public static Dictionary<TypeParameterSymbol, TypeSymbol> CreateMap(
 		IReadOnlyList<TypeParameterSymbol> parameters, IReadOnlyList<TypeSymbol> arguments) =>
 		parameters.Zip(arguments).ToDictionary(static pair => pair.First, static pair => pair.Second);
@@ -446,7 +498,7 @@ public sealed class TypePool
 	public static bool ContainsTypeParameters(TypeSymbol type) => type switch
 	{
 		TypeParameterSymbol => true,
-		RecordSymbol record => record.TypeArguments.Any(ContainsTypeParameters),
+		NamedTypeSymbol named => named.TypeArguments.Any(ContainsTypeParameters),
 		PointerType pointer => ContainsTypeParameters(pointer.BaseType),
 		BorrowType borrow => ContainsTypeParameters(borrow.Target),
 		ArrayType array => ContainsTypeParameters(array.ElementType),
@@ -460,8 +512,8 @@ public sealed class TypePool
 			: type switch
 			{
 				TypeParameterSymbol parameter => map.GetValueOrDefault(parameter, parameter),
-				RecordSymbol record => Instantiate(record.Definition,
-					[..record.TypeArguments.Select(argument => Substitute(argument, map))]),
+				NamedTypeSymbol named => Instantiate(named.Definition,
+					[..named.TypeArguments.Select(argument => Substitute(argument, map))]),
 				PointerType pointer => GetPointerType(Substitute(pointer.BaseType, map)),
 				BorrowType borrow => GetBorrowType(Substitute(borrow.Target, map), borrow.IsMutable),
 				ArrayType { Length.Sign: < 0 } array => new ArrayType(Substitute(array.ElementType, map), array.Length),
@@ -509,7 +561,7 @@ public sealed class TypePool
 		if (_globalInstances.TryGetValue(global, out var existing))
 			return existing;
 		
-		var instance = (RecordSymbol)global.ContainingType!;
+		var instance = (NamedTypeSymbol)global.ContainingType!;
 		var definition = _genericGlobals[instance.Definition.GetStaticField(global.Name)!];
 		var map = CreateMap(instance.Definition.TypeParameters, instance.TypeArguments);
 		var instantiated = definition with

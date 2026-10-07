@@ -1,0 +1,32 @@
+mod test
+
+option[T]: enum
+{
+	none
+	some(value: T)
+
+	empty: fun -> option[T] = option[T].none
+}
+
+strict[T: noref]: enum
+{
+	none
+	some(value: T)
+}
+
+uses: fun
+{
+	val bare: option = option[i32].none
+	val unknown = option.none
+	val tooMany = option.some(1, 2)
+	val missing = option.nothing
+	val statics = option.empty()
+	val arguments = option[i32, i64].none
+	val converted: option[i32] = option.some(true)
+	val payload = option[i32].some(true)
+	val cast = option(1)
+	val borrowed = strict[imm[i32]].none
+	val inferred = strict.some("text")
+}
+
+main: fun -> i32 = 0

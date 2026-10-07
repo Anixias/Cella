@@ -1,0 +1,90 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+option[T]: enum
+{
+	none
+	some(value: T)
+
+	isSome: get(self) -> bool = self is some(_)
+
+	orElse: fun(own self, own fallback: T) -> T
+	{
+		match own self
+		{
+			some(own v) => ret v
+			none => ret fallback
+		}
+	}
+
+	map[U]: fun(own self, change: fun[own T -> U]) -> option[U]
+	{
+		match own self
+		{
+			some(own v) => ret option.some(change(v))
+			none => ret option.none
+		}
+	}
+
+	empty: fun -> option[T] = option[T].none
+}
+
+slot[T: noref]: enum
+{
+	vacant
+	filled(value: T)
+
+	created: var i32 = 0
+
+	put: fun(mut self, own value: T)
+	{
+		match mut self
+		{
+			filled(current) => current = value
+			vacant => self = slot.filled(value)
+		}
+	}
+
+	make: fun(own value: T) -> slot[T]
+	{
+		created += 1
+		ret slot.filled(value)
+	}
+}
+
+double: fun(own n: i32) -> i64 = i64(n) * 2
+
+find[T]: fun(own value: T, present: bool) -> option[T]
+{
+	if present
+		ret option.some(value)
+
+	ret option.none
+}
+
+either[T]: fun(own first: option[T], own second: option[T]) -> option[T]
+{
+	if first.isSome
+		ret first
+
+	ret second
+}
+
+main: fun -> i32
+{
+	val a = option.some(21)
+	val b = a.map(double)
+	printf("%d %lld %d\n", i32(a.isSome), b.orElse(0), i32(option[i8].empty().isSome))
+	printf("%d %d %d\n", find(4, true).orElse(-1), find(4, false).orElse(-1),
+		either(option[i32].none, option.some(8)).orElse(0))
+
+	var s = slot[i32].make(1)
+	s.put(2)
+	val t = slot[i64].make(3)
+	printf("%d %d %d\n", match s { filled(v) => v  vacant => 0 }, slot[i32].created, slot[i64].created)
+	ret 0
+}

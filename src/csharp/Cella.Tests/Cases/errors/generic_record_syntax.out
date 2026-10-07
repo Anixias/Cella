@@ -18,8 +18,8 @@ Error at line 13, column 16
 
 Error at line 18, column 7
 17 │ 
-18 │ maybe[T]: enum
-           ^ Generic enums are not supported yet
+18 │ maybe[T]: ext enum
+           ^ Cannot declare type parameters on ext enums
 
 Error at line 23, column 7
 22 │ 

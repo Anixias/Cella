@@ -478,82 +478,101 @@ public sealed class LabelSymbol(Token identifier) : Symbol(identifier.Text)
 	public SourceLocation Definition { get; } = identifier.SourceLocation;
 }
 
-public sealed class RecordSymbol : TypeSymbol, IExportable
+public abstract class NamedTypeSymbol : TypeSymbol, IExportable
 {
-	public RecordNode Node { get; }
-	public ImmutableArray<MemberSymbol> Members { get; }
-	public ImmutableArray<GlobalSymbol> StaticFields { get; init; } = [];
-	public ImmutableArray<PropertySymbol> Properties { get; init; } = [];
-	public ImmutableArray<TypeSymbol> NestedTypes { get; }
 	public ImmutableArray<TypeParameterSymbol> TypeParameters { get; }
-	public RecordSymbol Definition { get; }
+	public NamedTypeSymbol Definition { get; }
 	public override ImmutableArray<TypeSymbol> TypeArguments { get; }
 	public override TypeSymbol OriginalDefinition => Definition;
 	public bool IsGenericDefinition => !TypeParameters.IsEmpty;
 	public bool IsGenericInstance => Definition != this;
+	public ImmutableArray<GlobalSymbol> StaticFields { get; init; } = [];
+	public ImmutableArray<PropertySymbol> Properties { get; init; } = [];
 	public Visibility Visibility { get; }
+	public abstract bool IsRef { get; }
+	
+	public override GlobalSymbol? GetStaticField(string name) => StaticFields.FirstOrDefault(f => f.Name == name);
+	public override PropertySymbol? GetProperty(string name) => Properties.FirstOrDefault(p => p.Name == name);
+	
+	protected NamedTypeSymbol(string name, Token? visibility, ImmutableArray<TypeParameterSymbol> typeParameters)
+		: base(name, null, typeParameters.DistinctBy(static p => p.Name))
+	{
+		TypeParameters = typeParameters;
+		Definition = this;
+		TypeArguments = [..typeParameters];
+		Visibility = Visibility.FromKeyword(visibility);
+	}
+	
+	protected NamedTypeSymbol(NamedTypeSymbol definition, ImmutableArray<TypeSymbol> typeArguments)
+		: base($"{definition.Name}[{string.Join(", ", typeArguments.Select(static a => a.Name))}]")
+	{
+		TypeParameters = [];
+		Definition = definition;
+		TypeArguments = typeArguments;
+		Visibility = definition.Visibility;
+		Properties = definition.Properties;
+	}
+}
+
+public sealed class RecordSymbol : NamedTypeSymbol
+{
+	public RecordNode Node { get; }
+	public ImmutableArray<MemberSymbol> Members { get; }
+	public ImmutableArray<TypeSymbol> NestedTypes { get; }
 	public bool HasDestructor => Members.Any(static m => m is MethodSymbol { Function.Kind: FunctionKind.Destructor });
-	public bool IsRef => Node.IsRef;
+	public override bool IsRef => Node.IsRef;
 	
 	public override IEnumerable<MethodSymbol> GetFunctions(string name) => Members
 		.OfType<MethodSymbol>()
 		.Where(m => m.Name == name && m.Function.Kind is FunctionKind.Method or FunctionKind.Free);
 	
-	public override GlobalSymbol? GetStaticField(string name) => StaticFields.FirstOrDefault(f => f.Name == name);
-	public override PropertySymbol? GetProperty(string name) => Properties.FirstOrDefault(p => p.Name == name);
-	
 	public RecordSymbol(string name, RecordNode node, IEnumerable<MemberSymbol> members,
 		IEnumerable<TypeSymbol> nestedTypes, ImmutableArray<TypeParameterSymbol> typeParameters)
-		: base(name, null, typeParameters.DistinctBy(static p => p.Name))
+		: base(name, node.Visibility, typeParameters)
 	{
 		Node = node;
 		Members = members.ToImmutableArray();
 		NestedTypes = nestedTypes.ToImmutableArray();
-		TypeParameters = typeParameters;
-		Definition = this;
-		TypeArguments = [..typeParameters];
-		Visibility = Visibility.FromKeyword(node.Visibility);
 	}
 	
 	public RecordSymbol(RecordSymbol definition, ImmutableArray<TypeSymbol> typeArguments,
 		IEnumerable<MemberSymbol> members)
-		: base($"{definition.Name}[{string.Join(", ", typeArguments.Select(static a => a.Name))}]")
+		: base(definition, typeArguments)
 	{
 		Node = definition.Node;
 		Members = members.ToImmutableArray();
 		NestedTypes = definition.NestedTypes;
-		Properties = definition.Properties;
-		TypeParameters = [];
-		Definition = definition;
-		TypeArguments = typeArguments;
-		Visibility = definition.Visibility;
 	}
 }
 
-public sealed class EnumSymbol : TypeSymbol, IExportable
+public sealed class EnumSymbol : NamedTypeSymbol
 {
 	public EnumNode Node { get; }
 	public ImmutableArray<EnumCaseSymbol> Cases { get; }
 	public ImmutableArray<MethodSymbol> Functions { get; }
-	public ImmutableArray<GlobalSymbol> StaticFields { get; init; } = [];
-	public ImmutableArray<PropertySymbol> Properties { get; init; } = [];
-	public Visibility Visibility { get; }
 	public bool HasPayload => Cases.Any(static c => c.Fields.Length > 0);
 	public bool IsExternal => Node.IsExternal;
-	public bool IsRef => Node.IsRef;
+	public override bool IsRef => Node.IsRef;
 	
-	public EnumSymbol(EnumNode node, IEnumerable<EnumCaseSymbol> cases, IEnumerable<MethodSymbol> functions)
-		: base(node.Identifier.Text)
+	public EnumSymbol(EnumNode node, IEnumerable<EnumCaseSymbol> cases, IEnumerable<MethodSymbol> functions,
+		ImmutableArray<TypeParameterSymbol> typeParameters)
+		: base(node.Identifier.Text, node.Visibility, typeParameters)
 	{
 		Node = node;
 		Cases = cases.ToImmutableArray();
 		Functions = functions.ToImmutableArray();
-		Visibility = Visibility.FromKeyword(node.Visibility);
+	}
+	
+	public EnumSymbol(EnumSymbol definition, ImmutableArray<TypeSymbol> typeArguments,
+		IEnumerable<EnumCaseSymbol> cases)
+		: base(definition, typeArguments)
+	{
+		Node = definition.Node;
+		Cases = cases.ToImmutableArray();
+		Functions = definition.Functions;
 	}
 	
 	public override IEnumerable<MethodSymbol> GetFunctions(string name) => Functions.Where(f => f.Name == name);
-	public override GlobalSymbol? GetStaticField(string name) => StaticFields.FirstOrDefault(f => f.Name == name);
-	public override PropertySymbol? GetProperty(string name) => Properties.FirstOrDefault(p => p.Name == name);
 }
 
 public sealed class EnumCaseSymbol(EnumCaseNode node, int index, IEnumerable<FieldSymbol> fields)

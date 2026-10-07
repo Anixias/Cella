@@ -1,0 +1,17 @@
+mod shapes
+
+option[T]: enum
+{
+	none
+	some(value: T)
+
+	made: var i32 = 0
+
+	wrap: fun(own value: T) -> option[T]
+	{
+		made += 1
+		ret option.some(value)
+	}
+}
+
+read: fun(o: option[i32]) -> i32 = match o { some(v) => v  none => -1 }

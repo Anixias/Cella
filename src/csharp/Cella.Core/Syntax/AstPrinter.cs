@@ -383,7 +383,9 @@ public sealed class AstPrinter : ISyntaxNodeVisitor
 	public void Visit(EnumNode node)
 	{
 		StartLine();
-		_sb.Append(node.IsExternal ? "ExternalEnumNode '" : "EnumNode '").Append(node.Identifier.AsSpan()).Append('\'');
+		_sb.Append(node.IsExternal ? "ExternalEnumNode '" : "EnumNode '").Append(node.Identifier.AsSpan());
+		AppendTypeParameters(node.TypeParameters);
+		_sb.Append('\'');
 		
 		if (node.TagType is { } tagType)
 			VisitNode(tagType, node.Cases.IsEmpty && node.Members.IsEmpty);
