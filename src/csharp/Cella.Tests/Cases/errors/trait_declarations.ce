@@ -1,0 +1,41 @@
+mod test
+
+Hash: trait
+{
+	x: i32
+	count: val i32 = 3
+	new: op(x: i32) { }
+	drop: op { }
+	helper: pvt fun(self) -> i32
+	hash: fun(self) -> u64
+	hash: fun(self) -> u64
+}
+
+Show: trait
+{
+	show: fun(self) -> i32
+}
+
+Size: trait
+{
+	size: fun(self) -> i32
+}
+
+Point: rec
+{
+	x: i32
+}
+
+Point: impl Show + Size
+{
+	show: fun(self) -> i32 = helper()
+	size: fun(self) -> i32 = 1
+	extra: fun(self) -> i32 = 2
+	helper: pvt fun -> i32 = 3
+	y: i32
+	count: val i32 = 3
+	new: op(x: i32, y: i32) { }
+	drop: op { }
+}
+
+main: fun -> i32 = 0

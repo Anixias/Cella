@@ -1,4 +1,5 @@
-﻿using Cella.Core.Text;
+﻿using System.Collections.Immutable;
+using Cella.Core.Text;
 
 namespace Cella.Core.Syntax.Nodes;
 
@@ -20,9 +21,10 @@ public sealed class ReceiverNode(Token? mode, Token self)
 	public Token Self { get; } = self;
 }
 
-public sealed class TypeParameterNode(Token identifier, Token? constraint)
+public sealed class TypeParameterNode(Token identifier, IEnumerable<Token> keywords, IEnumerable<ITypeNode> traits)
 {
 	public SourceLocation SourceLocation => Identifier.SourceLocation;
 	public Token Identifier { get; } = identifier;
-	public Token? Constraint { get; } = constraint;
+	public ImmutableArray<Token> Keywords { get; } = keywords.ToImmutableArray();
+	public ImmutableArray<ITypeNode> Traits { get; } = traits.ToImmutableArray();
 }

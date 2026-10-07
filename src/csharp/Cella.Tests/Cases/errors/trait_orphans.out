@@ -1,0 +1,14 @@
+
+====== main.ce ======
+
+Error at line 3, column 17
+2 │ 
+3 │ lib.Point: impl lib.Hash
+                    ╘══════╛ 'Hash' and 'Point' are both declared in other projects
+
+Error at line 8, column 10
+7 │ 
+8 │ u8: impl lib.Hash
+             ╘══════╛ 'Hash' and 'u8' are both declared in other projects
+
+[compilation failed]

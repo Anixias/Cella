@@ -91,7 +91,10 @@ public static class DiagnosticReporter
 	}
 	
 	public static Diagnostic ReportHidden(SourceLocation location, string name, Visibility visibility, bool isMember) =>
-		new(DiagnosticSeverity.Error, location, $"'{name}' is private to its {DescribeScope(visibility, isMember)}");
+		ReportHidden(location, name, DescribeScope(visibility, isMember));
+	
+	public static Diagnostic ReportHidden(SourceLocation location, string name, string scope) =>
+		new(DiagnosticSeverity.Error, location, $"'{name}' is private to its {scope}");
 	
 	public static Diagnostic ReportReadOnly(SourceLocation location, string name, Visibility visibility) =>
 		new(DiagnosticSeverity.Error, location, $"'{name}' is read-only outside its {DescribeScope(visibility, true)}");

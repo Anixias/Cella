@@ -1,0 +1,54 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Make: trait
+{
+	new: op(capacity: usize)
+}
+
+Fresh: trait
+{
+	new: op()
+}
+
+Buffer: rec impl Make
+{
+	size: usize
+	used: usize
+
+	new: op(capacity: usize)
+	{
+		self.size = capacity * 2
+		self.used = 1
+	}
+}
+
+Pair: rec impl Make + Fresh
+{
+	size: usize
+}
+
+Point: rec impl Fresh
+{
+	x: i32
+	y: i32
+}
+
+i32: impl Fresh
+
+build[T: Make]: fun -> T = T(64)
+
+blank[T: Fresh]: fun -> T = T()
+
+main: fun -> i32
+{
+	val b = build[Buffer]()
+	val p = build[Pair]()
+	printf("%llu %llu %llu\n", b.size, b.used, p.size)
+	printf("%d %d %d %llu\n", blank[Point]().x, blank[Point]().y, blank[i32](), blank[Pair]().size)
+	ret 0
+}

@@ -73,6 +73,18 @@ public sealed class Lowerer
 	{
 	}
 	
+	public void Visit(ResolvedTraitNode node)
+	{
+		foreach (var member in node.Members)
+			VisitNode(member);
+	}
+	
+	public void Visit(ResolvedImplNode node)
+	{
+		foreach (var member in node.Members)
+			VisitNode(member);
+	}
+	
 	public void Visit(ResolvedMethodNode node)
 	{
 		// TODO Handle self-reference?

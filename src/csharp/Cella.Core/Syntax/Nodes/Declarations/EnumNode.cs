@@ -26,6 +26,7 @@ public sealed class EnumNode
 	public ImmutableArray<TypeParameterNode> TypeParameters { get; init; } = [];
 	public ITypeNode? MatchedType { get; init; }
 	public bool IsMatch => MatchedType is not null;
+	public ImmutableArray<ITypeNode> Traits { get; init; } = [];
 }
 
 public sealed class EnumCaseNode

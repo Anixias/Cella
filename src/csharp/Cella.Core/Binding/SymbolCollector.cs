@@ -21,7 +21,7 @@ public sealed class SymbolCollector : IDeclarationNodeVisitor<Symbol>
 	
 	private static ImmutableArray<TypeParameterSymbol> CreateTypeParameters(
 		ImmutableArray<TypeParameterNode> parameters) => parameters
-		.Select(static parameter => new TypeParameterSymbol(parameter.Identifier, parameter.Constraint))
+		.Select(static parameter => new TypeParameterSymbol(parameter.Identifier.Text, parameter.Keywords))
 		.ToImmutableArray();
 	
 	public void Collect(IDeclarationNode root) => VisitNode(root);
@@ -320,6 +320,91 @@ public sealed class SymbolCollector : IDeclarationNodeVisitor<Symbol>
 		_symbolsInFile.Add(symbol);
 		return symbol;
 	}
+	
+	public Symbol Visit(TraitNode node)
+	{
+		var self = new TypeParameterSymbol("Self", []);
+		_typeStack.Push(node.Identifier.Text);
+		_typeVisibilities.Push(Visibility.FromKeyword(node.Visibility));
+		_typeParameters.Push([self]);
+		var (functions, properties, constructors) = CollectMembers(node.Members);
+		_typeStack.Pop();
+		_typeVisibilities.Pop();
+		_typeParameters.Pop();
+		
+		var trait = new TraitSymbol(node, self, functions, properties, constructors);
+		foreach (var function in GetMemberFunctions(functions, properties).Concat(constructors))
+			function.Trait = trait;
+		
+		foreach (var property in properties)
+		{
+			property.ContainingType = self;
+			property.Trait = trait;
+		}
+		
+		_builder.DeclarationSymbols[node] = trait;
+		_symbolsInFile.Add(trait);
+		return trait;
+	}
+	
+	public Symbol Visit(ImplNode node)
+	{
+		var typeParameters = CreateTypeParameters(node.TypeParameters);
+		var traits = string.Join("+", node.Traits.Select(static trait => trait.SourceLocation.GetText().ToString()));
+		_typeStack.Push($"{node.Target.SourceLocation.GetText().ToString()}.{traits}");
+		_typeVisibilities.Push(Visibility.Public);
+		_typeParameters.Push(typeParameters);
+		var (functions, properties, _) = CollectMembers(node.Members);
+		_typeStack.Pop();
+		_typeVisibilities.Pop();
+		_typeParameters.Pop();
+		
+		var impl = new ImplSymbol(node, typeParameters, functions, properties);
+		foreach (var function in GetMemberFunctions(functions, properties))
+			function.Impl = impl;
+		
+		foreach (var property in properties)
+			property.Impl = impl;
+		
+		_builder.DeclarationSymbols[node] = impl;
+		return impl;
+	}
+	
+	private (List<MethodSymbol> Functions, List<PropertySymbol> Properties, List<FunctionSymbol> Constructors)
+		CollectMembers(IEnumerable<IDeclarationNode> members)
+	{
+		var functions = new List<MethodSymbol>();
+		var properties = new List<PropertySymbol>();
+		var constructors = new List<FunctionSymbol>();
+		foreach (var member in members)
+		{
+			switch (VisitNode(member))
+			{
+				case FunctionSymbol { Kind: FunctionKind.Constructor } constructor:
+					constructors.Add(constructor);
+					break;
+				
+				case FunctionSymbol function:
+					functions.Add(new MethodSymbol(GetMemberName(member), function));
+					break;
+				
+				case PropertySymbol property:
+					properties.Add(property);
+					break;
+			}
+		}
+		
+		return (functions, properties, constructors);
+	}
+	
+	private static IEnumerable<FunctionSymbol> GetMemberFunctions(IEnumerable<MethodSymbol> functions,
+		IEnumerable<PropertySymbol> properties) =>
+	[
+		..functions.Select(static method => method.Function),
+		..properties.SelectMany(static property => new[] { property.Getter, property.Setter })
+			.OfType<FunctionAccessor>()
+			.Select(static accessor => accessor.Function)
+	];
 	
 	public Symbol Visit(GlobalNode node)
 	{

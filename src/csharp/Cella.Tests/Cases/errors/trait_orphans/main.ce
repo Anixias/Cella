@@ -1,0 +1,13 @@
+mod test
+
+lib.Point: impl lib.Hash
+{
+	hash: fun(self) -> u64 = 1
+}
+
+u8: impl lib.Hash
+{
+	hash: fun(self) -> u64 = 1
+}
+
+main: fun -> i32 = 0

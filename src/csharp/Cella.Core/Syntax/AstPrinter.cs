@@ -146,7 +146,8 @@ public sealed class AstPrinter : ISyntaxNodeVisitor
 			_sb.Append(')');
 		}
 		
-		VisitNode(node.Body, true);
+		if (node.Body is { } body)
+			VisitNode(body, true);
 	}
 	
 	public void Visit(DestructorNode node)
@@ -288,7 +289,8 @@ public sealed class AstPrinter : ISyntaxNodeVisitor
 			VisitNode(returnType, false);
 		}
 		
-		VisitNode(node.Body, true);
+		if (node.Body is { } body)
+			VisitNode(body, true);
 	}
 	
 	public void Visit(PropertyNode node)
@@ -362,9 +364,38 @@ public sealed class AstPrinter : ISyntaxNodeVisitor
 	private void AppendTypeParameters(ImmutableArray<TypeParameterNode> typeParameters)
 	{
 		if (!typeParameters.IsEmpty)
-			_sb.Append('[').AppendJoin(", ", typeParameters.Select(static p => p.Constraint is { } constraint
-				? $"{p.Identifier.Text}: {constraint.Text}"
-				: p.Identifier.Text)).Append(']');
+			_sb.Append('[').AppendJoin(", ", typeParameters.Select(DescribeTypeParameter)).Append(']');
+	}
+	
+	private static string DescribeTypeParameter(TypeParameterNode parameter)
+	{
+		var constraints = parameter.Keywords.Select(static keyword => keyword.Text)
+			.Concat(parameter.Traits.Select(static trait => trait.SourceLocation.GetText().ToString()))
+			.ToList();
+		
+		return constraints.Count == 0
+			? parameter.Identifier.Text
+			: $"{parameter.Identifier.Text}: {string.Join(" + ", constraints)}";
+	}
+	
+	public void Visit(TraitNode node)
+	{
+		StartLine();
+		_sb.Append("TraitNode '").Append(node.Identifier.AsSpan()).Append('\'');
+		for (var i = 0; i < node.Members.Length; i++)
+			VisitNode(node.Members[i], i == node.Members.Length - 1);
+	}
+	
+	public void Visit(ImplNode node)
+	{
+		StartLine();
+		_sb.Append("ImplNode '").Append(node.Target.SourceLocation.GetText());
+		AppendTypeParameters(node.TypeParameters);
+		_sb.Append("' ").AppendJoin(" + ",
+			node.Traits.Select(static trait => trait.SourceLocation.GetText().ToString()));
+		
+		for (var i = 0; i < node.Members.Length; i++)
+			VisitNode(node.Members[i], i == node.Members.Length - 1);
 	}
 	
 	public void Visit(RecordNode node)

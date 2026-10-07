@@ -1,0 +1,102 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Hash: trait
+{
+	hash: fun(self) -> u64
+	seed: fun -> u64
+	twice: fun(self) -> u64 = mix(self.hash()) + seed()
+	mix: pvt fun(value: u64) -> u64 = value * 2
+}
+
+Sized: trait
+{
+	size: get(self) -> i32
+	limit: prop i32
+	{
+		get(self)
+		set(mut self, value)
+	}
+}
+
+Counter: trait
+{
+	bump: fun(mut self)
+	count: fun(self) -> i32
+}
+
+Point: rec impl Hash + Sized
+{
+	x: i32
+	cap: i32
+
+	hash: fun(self) -> u64 = u64(self.x)
+	seed: fun -> u64 = 100
+	size: get(self) -> i32 = self.x * 2
+	limit: prop i32
+	{
+		get(self) = self.cap
+		set(mut self, value)
+		{
+			self.cap = value
+		}
+	}
+}
+
+Text: rec
+{
+	id: i32
+
+	drop: op
+	{
+		printf("drop %d\n", self.id)
+	}
+}
+
+Text: impl Hash + Counter
+{
+	hash: fun(self) -> u64 = u64(self.id * 3 + offset())
+	seed: fun -> u64 = 7
+	twice: fun(self) -> u64 = 1
+
+	bump: fun(mut self)
+	{
+		self.id += 10
+	}
+
+	count: fun(self) -> i32 = self.id
+	offset: pvt fun -> i32 = 1000
+}
+
+describe[T: Hash]: fun(value: T) -> u64 = value.hash() + T.seed() * 10000 + value.twice() * 100000000
+
+total[T: Sized]: fun(a: T, b: T) -> i32 = a.size + b.size
+
+grow[T: Sized]: fun(mut value: T)
+{
+	value.limit = value.limit + 5
+	value.limit += 1
+}
+
+bumpTwice[T: Counter]: fun(mut c: T) -> i32
+{
+	c.bump()
+	c.bump()
+	ret c.count()
+}
+
+main: fun -> i32
+{
+	var p = Point(5, 10)
+	var t = Text(4)
+	printf("%llu %llu %llu %llu\n", p.hash(), Point.seed(), p.twice(), t.hash())
+	printf("%llu %llu\n", describe(p), describe(t))
+	grow(mut p)
+	printf("%d %d %d\n", total(p, Point(1, 0)), p.cap, p.limit)
+	printf("%d %d\n", bumpTwice(mut t), t.count())
+	ret 0
+}

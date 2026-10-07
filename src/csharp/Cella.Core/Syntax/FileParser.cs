@@ -10,7 +10,8 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 {
 	private static readonly Dictionary<string, TokenType> _topLevelContextualKeywords =
 		BuildContextualKeywords(TokenType.KeywordMod, TokenType.KeywordUse, TokenType.KeywordPub, TokenType.KeywordPvt,
-			TokenType.KeywordExt, TokenType.KeywordRec, TokenType.KeywordEnum, TokenType.KeywordRef);
+			TokenType.KeywordExt, TokenType.KeywordRec, TokenType.KeywordEnum, TokenType.KeywordRef,
+			TokenType.KeywordTrait, TokenType.KeywordImpl);
 	
 	private static readonly Dictionary<string, TokenType> _memberContextualKeywords =
 		BuildContextualKeywords(TokenType.KeywordPub, TokenType.KeywordPvt, TokenType.KeywordMod, TokenType.KeywordSet,
@@ -55,6 +56,8 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 		tokenTypes.ToDictionary(static t => t.Representation);
 	
 	public DiagnosticList Diagnostics { get; } = new();
+	
+	private bool _allowsMissingBodies;
 	
 	private void Report(SourceLocation location, string message,
 		DiagnosticSeverity severity = DiagnosticSeverity.Error) =>
@@ -208,6 +211,7 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 		if (!Match(ref index, out var identifier, _topLevelContextualKeywords, TokenType.Identifier))
 			return false;
 		
+		var target = ParseImplTarget(ref index, identifier);
 		if (ParseTypeParameters(ref index) is not { } typeParameters)
 		{
 			ResyncTopLevel(ref index, insideBlock);
@@ -222,6 +226,45 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 		}
 		
 		var modifiers = ParseDeclarationModifiers(ref index, block);
+		if (Match(ref index, out var implKeyword, _topLevelContextualKeywords, TokenType.KeywordImpl))
+		{
+			if (modifiers.Tokens is [var modifier, ..])
+				Report(modifier, $"Cannot use '{modifier.Text}' on impl blocks");
+			
+			var impl = ParseDeclaration(ref index, identifier, "impl",
+				(ref i) => ParseImpl(ref i, target, implKeyword, typeParameters));
+			
+			if (impl is null)
+				SkipDeclaration(ref index, declarationStart, insideBlock);
+			else
+				declarations.Add(impl);
+			
+			return true;
+		}
+		
+		if (target is QualifiedTypeNode)
+		{
+			ReportExpected(index, "'impl'");
+			ResyncTopLevel(ref index, insideBlock);
+			return true;
+		}
+		
+		if (Match(ref index, _topLevelContextualKeywords, TokenType.KeywordTrait))
+		{
+			if (typeParameters is [var parameter, ..])
+				Report(parameter.SourceLocation, "Cannot declare type parameters on traits");
+			
+			var trait = ParseDeclaration(ref index, identifier, "trait",
+				(ref i) => ParseTrait(ref i, identifier, modifiers));
+			
+			if (trait is null)
+				SkipDeclaration(ref index, declarationStart, insideBlock);
+			else
+				declarations.Add(trait);
+			
+			return true;
+		}
+		
 		var isRef = Match(ref index, _topLevelContextualKeywords, TokenType.KeywordRef);
 		
 		// Record
@@ -319,20 +362,26 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 				return null;
 			}
 			
-			Token? constraint = null;
+			var keywords = new List<Token>();
+			var traits = new List<ITypeNode>();
 			if (Match(ref index, TokenType.OpColon))
 			{
-				if (!Match(ref index, out var keyword, _constraintKeywords, TokenType.KeywordNoref) &&
-				    !Match(ref index, out keyword, TokenType.KeywordNull))
+				do
 				{
-					ReportExpected(index, "'noref' or 'null'");
-					return null;
-				}
-				
-				constraint = keyword;
+					if (Match(ref index, out var keyword, _constraintKeywords, TokenType.KeywordNoref) ||
+					    Match(ref index, out keyword, TokenType.KeywordNull))
+						keywords.Add(keyword);
+					else if (Peek(index, TokenType.Identifier))
+						traits.Add(ParseType(ref index));
+					else
+					{
+						ReportExpected(index, "'noref', 'null' or a trait");
+						return null;
+					}
+				} while (Match(ref index, TokenType.OpPlus));
 			}
 			
-			parameters.Add(new(name, constraint));
+			parameters.Add(new(name, keywords, traits));
 		} while (Match(ref index, TokenType.OpComma));
 		
 		if (Match(ref index, TokenType.OpCloseBracket))
@@ -687,7 +736,13 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 		}
 		
 		if (!Match(ref index, out var openBraceToken, TokenType.OpOpenBrace))
-			return null;
+			return _allowsMissingBodies
+				? new(identifier, modifiers.Tokens, receiver, parameters, returnType, null, isExternal)
+				{
+					Visibility = modifiers.Visibility,
+					TypeParameters = [..typeParameters]
+				}
+				: null;
 		
 		if (ParseBlockStatement(ref index, openBraceToken) is not { } body)
 			return null;
@@ -875,6 +930,9 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 		// When this is called, the identifier and rec keyword are already consumed
 		// Caller is expected to resync in case of errors
 		
+		if (ParseImplementedTraits(ref index) is not { } traits)
+			return null;
+		
 		var members = new List<IDeclarationNode>();
 		if (Match(ref index, out var openBrace, TokenType.OpOpenBrace) &&
 		    !ParseMembers(ref index, openBrace, null, members))
@@ -883,8 +941,80 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 		return new(identifier, modifiers.Tokens, isRef, members)
 		{
 			Visibility = modifiers.Visibility,
-			TypeParameters = [..typeParameters]
+			TypeParameters = [..typeParameters],
+			Traits = [..traits]
 		};
+	}
+	
+	private ITypeNode ParseImplTarget(ref int index, Token identifier)
+	{
+		if (!Peek(index, TokenType.OpDot))
+			return new IdentifierTypeNode(identifier);
+		
+		var parts = new List<Token> { identifier };
+		while (IsOnSameLine(index) && Peek(index, TokenType.OpDot) && Peek(index + 1, TokenType.Identifier))
+		{
+			index++;
+			parts.Add(Tokens[index++]);
+		}
+		
+		var (source, range) = identifier.SourceLocation;
+		return new QualifiedTypeNode(new(source, range.Join(parts[^1].SourceLocation.Range)), parts);
+	}
+	
+	private List<ITypeNode>? ParseImplementedTraits(ref int index)
+	{
+		var traits = new List<ITypeNode>();
+		if (!IsOnSameLine(index) || !Match(ref index, _topLevelContextualKeywords, TokenType.KeywordImpl))
+			return traits;
+		
+		return ParseTraitNames(ref index, traits) ? traits : null;
+	}
+	
+	private bool ParseTraitNames(ref int index, List<ITypeNode> traits)
+	{
+		do
+		{
+			if (!Peek(index, TokenType.Identifier))
+			{
+				ReportExpected(index, "a trait");
+				return false;
+			}
+			
+			traits.Add(ParseType(ref index));
+		} while (Match(ref index, TokenType.OpPlus));
+		
+		return true;
+	}
+	
+	private TraitNode? ParseTrait(ref int index, Token identifier, DeclarationModifiers modifiers)
+	{
+		var members = new List<IDeclarationNode>();
+		if (Match(ref index, out var openBrace, TokenType.OpOpenBrace))
+		{
+			var outer = _allowsMissingBodies;
+			_allowsMissingBodies = true;
+			var parsed = ParseMembers(ref index, openBrace, null, members);
+			_allowsMissingBodies = outer;
+			if (!parsed)
+				return null;
+		}
+		
+		return new(identifier, modifiers.Tokens, members) { Visibility = modifiers.Visibility };
+	}
+	
+	private ImplNode? ParseImpl(ref int index, ITypeNode target, Token keyword, List<TypeParameterNode> typeParameters)
+	{
+		var traits = new List<ITypeNode>();
+		if (!ParseTraitNames(ref index, traits))
+			return null;
+		
+		var members = new List<IDeclarationNode>();
+		if (Match(ref index, out var openBrace, TokenType.OpOpenBrace) &&
+		    !ParseMembers(ref index, openBrace, null, members))
+			return null;
+		
+		return new(target, keyword, traits, members) { TypeParameters = [..typeParameters] };
 	}
 	
 	private bool ParseMembers(ref int index, Token openBrace, Token? block, List<IDeclarationNode> members)
@@ -943,12 +1073,16 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 			}
 		}
 		
+		if (ParseImplementedTraits(ref index) is not { } traits)
+			return null;
+		
 		if (!Match(ref index, out var openBrace, TokenType.OpOpenBrace))
 			return new(identifier, modifiers.Tokens, isExternal, isRef, tagType, [], [])
 			{
 				Visibility = modifiers.Visibility,
 				TypeParameters = [..typeParameters],
-				MatchedType = matchedType
+				MatchedType = matchedType,
+				Traits = [..traits]
 			};
 		
 		var cases = new List<EnumCaseNode>();
@@ -960,7 +1094,8 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 		{
 			Visibility = modifiers.Visibility,
 			TypeParameters = [..typeParameters],
-			MatchedType = matchedType
+			MatchedType = matchedType,
+			Traits = [..traits]
 		};
 	}
 	
@@ -1309,6 +1444,8 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 			body = ParseExpressionBody(ref index, resultType is null);
 		else if (Match(ref index, out var openBrace, TokenType.OpOpenBrace))
 			body = ParseBlockStatement(ref index, openBrace);
+		else if (_allowsMissingBodies)
+			return new(keyword, modifiers, receiver, parameters, resultType, null, false) { Visibility = visibility };
 		else
 		{
 			ReportExpected(index, "'=' or '{'");
@@ -1394,7 +1531,12 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 			return null;
 		
 		if (!Match(ref index, out var openBraceToken, TokenType.OpOpenBrace))
-			return null;
+			return _allowsMissingBodies
+				? new(newKeyword, modifiers.Tokens, parameters, null, newKeyword.SourceLocation)
+				{
+					Visibility = modifiers.Visibility
+				}
+				: null;
 		
 		if (ParseBlockStatement(ref index, openBraceToken) is not { } body)
 			return null;

@@ -1,0 +1,62 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Hash: trait
+{
+	hash: fun(self) -> u64
+	seed: fun -> u64
+}
+
+Fingerprint: trait
+{
+	hash: fun(self) -> u64
+	seed: fun -> u64
+}
+
+Zero: trait
+{
+	zero: fun -> Self
+}
+
+Point: rec
+{
+	x: i32
+}
+
+Point: impl Hash
+{
+	hash: fun(self) -> u64 = 1
+	seed: fun -> u64 = 2
+}
+
+Point: impl Fingerprint
+{
+	hash: fun(self) -> u64 = 3
+	seed: fun -> u64 = 4
+}
+
+Point: impl Zero
+{
+	zero: fun -> Point = Point(42)
+}
+
+i32: impl Zero
+{
+	zero: fun -> i32 = 0
+}
+
+make[T: Zero]: fun -> T = Zero(T).zero()
+
+main: fun -> i32
+{
+	val p = Point(1)
+	printf("%llu %llu %llu %llu\n", Hash(p).hash(), Fingerprint(p).hash(), Hash(Point).seed(),
+		Fingerprint(Point).seed())
+	val seed = Fingerprint(Point).seed
+	printf("%llu %d %d\n", seed(), make[i32](), make[Point]().x)
+	ret 0
+}

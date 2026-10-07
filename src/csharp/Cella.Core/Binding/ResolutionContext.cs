@@ -22,6 +22,8 @@ public readonly struct ResolutionContext
 	public Func<IExpressionNode, ResolutionContext, Constant?>? EvaluateConstant { get; init; }
 	public Dictionary<IndexerExpressionNode, TypeSymbol?>? GenericTypes { get; init; }
 	public ImmutableArray<TypeParameterSymbol> TypeParameters { get; init; }
+	public TraitSymbol? Trait { get; init; }
+	public ImplSymbol? ImplBlock { get; init; }
 	
 	public string Mangle(Symbol symbol) => Mangling.Mangle(symbol, Modules, GetQualifiers());
 	
@@ -53,6 +55,15 @@ public readonly struct ResolutionContext
 			.Select(static function => function.Function)
 	]);
 	
+	private static Symbol? ResolveStatic(IEnumerable<MethodSymbol> functions, IEnumerable<PropertySymbol> properties,
+		string name) =>
+		properties.FirstOrDefault(p => p.Name == name && p.IsStatic) ?? ResolveFrom(name,
+		[
+			..functions
+				.Where(function => function.Name == name && !function.HasReceiver)
+				.Select(static function => function.Function)
+		]);
+	
 	private static Symbol? ResolveFrom(string name, IReadOnlyCollection<Symbol> candidates) => candidates switch
 	{
 		{ Count: > 1 } => new AmbiguousSymbol(name, candidates),
@@ -83,6 +94,18 @@ public readonly struct ResolutionContext
 		
 		if (!TypeParameters.IsDefault && TypeParameters.FirstOrDefault(p => p.Name == name) is { } typeParameter)
 			return typeParameter;
+		
+		if (Trait is { } trait && name == trait.Self.Name)
+			return trait.Self;
+		
+		if (ImplBlock?.TypeParameters.FirstOrDefault(p => p.Name == name) is { } blockParameter)
+			return blockParameter;
+		
+		if (ImplBlock is { } impl && ResolveStatic(impl.Functions, impl.Properties, name) is { } blockMember)
+			return blockMember;
+		
+		if (Trait is { } owner && ResolveStatic(owner.Functions, owner.Properties, name) is { } traitMember)
+			return traitMember;
 		
 		for (var type = ContainingType; type is not null; type = type.ContainingType)
 		{
@@ -149,6 +172,56 @@ public readonly struct ResolutionContext
 		AccessExpressionNode a => ResolveModule(a.Target) is { } module
 			? ResolveMember(module, a.Member.Text) as ModulePathSymbol
 			: null,
+		_ => null
+	};
+	
+	public TraitSymbol? ResolveTrait(ITypeNode node)
+	{
+		var text = node.SourceLocation.GetText().ToString();
+		Symbol? symbol;
+		switch (node)
+		{
+			case IdentifierTypeNode identifier:
+				symbol = Resolve(identifier.Token.Text);
+				break;
+			
+			case QualifiedTypeNode qualified:
+				symbol = ResolveQualifiedName(qualified.Parts);
+				if (symbol is null)
+					return null;
+				
+				break;
+			
+			default:
+				Diagnostics.Add(new(DiagnosticSeverity.Error, node.SourceLocation, $"'{text}' is not a trait"));
+				return null;
+		}
+		
+		switch (symbol)
+		{
+			case TraitSymbol trait:
+				return trait;
+			
+			case null:
+				Diagnostics.Add(new(DiagnosticSeverity.Error, node.SourceLocation,
+					$"Trait '{text}' not found in this scope"));
+				
+				return null;
+			
+			case AmbiguousSymbol:
+				Diagnostics.Add(new(DiagnosticSeverity.Error, node.SourceLocation, $"'{text}' is ambiguous"));
+				return null;
+			
+			default:
+				Diagnostics.Add(new(DiagnosticSeverity.Error, node.SourceLocation, $"'{text}' is not a trait"));
+				return null;
+		}
+	}
+	
+	public Symbol? ResolveTypeName(ITypeNode node) => node switch
+	{
+		IdentifierTypeNode identifier => Resolve(identifier.Token.Text),
+		QualifiedTypeNode qualified => ResolveQualifiedName(qualified.Parts),
 		_ => null
 	};
 	

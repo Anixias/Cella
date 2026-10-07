@@ -1,0 +1,35 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Mine: rec impl lib.Hash
+{
+	n: i32
+
+	hash: fun(self) -> u64 = u64(self.n) * 100
+	seed: fun -> u64 = 9
+	==: op(a: Mine, b: Mine) -> bool = true
+}
+
+Mine: impl lib.Show
+{
+	show: fun(self) -> i32 = -self.n
+}
+
+local[T: lib.Hash]: fun(value: T) -> u64 = value.hash() + lib.Hash(T).seed()
+
+make[T: lib.Make]: fun -> T = T(4)
+
+same[T: lib.Hash]: fun(a: T, b: T) -> bool = a == b
+
+main: fun -> i32
+{
+	val p = lib.Point(5)
+	printf("%llu %llu %llu %llu\n", lib.describe(p), lib.describe(3), lib.describe(Mine(2)), local(p))
+	printf("%d %d %d %d\n", lib.render(p), lib.render(lib.box(p)), lib.render(Mine(4)), p.show())
+	printf("%d %d %d %llu\n", make[lib.Point]().x, i32(same(p, lib.Point(5))), i32(same(1, 2)), lib.Hash(p).twice())
+	ret 0
+}

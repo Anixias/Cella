@@ -1,0 +1,119 @@
+
+====== trait_uses.ce ======
+
+Error at line 22, column 21
+21 │ 
+22 │ peek: fun -> i32 = helper()
+                        ╘══════╛ 'helper' is private to its impl block
+
+Error at line 23, column 27
+22 │ peek: fun -> i32 = helper()
+23 │ poke: fun -> i32 = Point.helper()
+                              ╘════╛ 'helper' is private to its impl block
+
+Error at line 37, column 31
+36 │ {
+37 │     hash: fun(self) -> u64 = u64(helper())
+                                      ╘══════╛ 'helper' is private to its impl block
+
+Error at line 47, column 44
+46 │ 
+47 │ run[T: Hash]: fun(value: T) -> u64 = value.scale()
+                                                ╘═══╛ 'scale' is private to its trait
+
+Error at line 58, column 2
+57 │ val q = Plain(1)
+58 │ p.hash()
+     ╘════╛ Call to 'hash' is ambiguous
+
+Error at line 59, column 7
+58 │ p.hash()
+59 │ Hash(q).hash()
+          ^ 'Plain' doesn't implement 'Hash'
+
+Error at line 60, column 10
+59 │ Hash(q).hash()
+60 │ Hash(p).missing()
+             ╘═════╛ Trait 'Hash' has no member 'missing'
+
+Error at line 61, column 10
+60 │ Hash(p).missing()
+61 │ Hash(p).seed()
+             ╘══╛ Cannot use static functions through values
+
+Error at line 62, column 14
+61 │ Hash(p).seed()
+62 │ Hash(Point).hash()
+                 ╘══╛ Cannot use methods through types
+
+Error at line 63, column 10
+62 │ Hash(Point).hash()
+63 │ Hash(p).mix(2)
+             ╘═╛ Cannot use static functions through values
+
+Error at line 64, column 8
+63 │ Hash(p).mix(2)
+64 │ Point.helper()
+           ╘════╛ 'helper' is private to its impl block
+
+Error at line 65, column 4
+64 │ Point.helper()
+65 │ p.mix(2)
+       ╘═╛ Cannot use static functions through values
+
+Error at line 66, column 4
+65 │ p.mix(2)
+66 │ p.probe()
+       ╘═══╛ 'probe' is private to its impl block
+
+Error at line 67, column 4
+66 │ p.probe()
+67 │ p.depth
+       ╘═══╛ 'depth' is private to its impl block
+
+Error at line 68, column 4
+67 │ p.depth
+68 │ p.scale()
+       ╘═══╛ 'scale' is private to its trait
+
+Error at line 69, column 4
+68 │ p.scale()
+69 │ p.level
+       ╘═══╛ 'level' is private to its trait
+
+Error at line 70, column 14
+69 │ p.level
+70 │ Hash(Point).mix(2)
+                 ╘═╛ 'mix' is private to its trait
+
+Error at line 71, column 10
+70 │ Hash(Point).mix(2)
+71 │ Hash(p).scale()
+             ╘═══╛ 'scale' is private to its trait
+
+Error at line 72, column 2
+71 │ Hash(p).scale()
+72 │ check(q)
+     ╘═══╛ 'Plain' doesn't implement 'Hash'
+
+Error at line 73, column 2
+72 │ check(q)
+73 │ check(3)
+     ╘═══╛ 'i32' doesn't implement 'Hash'
+
+Error at line 74, column 12
+73 │ check(3)
+74 │ val bad = holder(q)
+               ╘════╛ 'Plain' doesn't implement 'Hash'
+
+Error at line 75, column 10
+74 │ val bad = holder(q)
+75 │ val h = Hash(p)
+             ╘══╛ Cannot use traits as values
+
+Error at line 76, column 10
+75 │ val h = Hash(p)
+76 │ val g = Hash
+             ╘══╛ Cannot use traits as values
+
+[compilation failed]

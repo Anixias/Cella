@@ -19,7 +19,7 @@ public sealed class FunctionNode
 	ReceiverNode? receiver,
 	IEnumerable<ParameterNode> parameters,
 	ITypeNode? returnType,
-	IStatementNode body,
+	IStatementNode? body,
 	bool isExternal
 ) : IFunctionNode
 {
@@ -30,7 +30,7 @@ public sealed class FunctionNode
 	public ReceiverNode? Receiver { get; } = receiver;
 	public ImmutableArray<ParameterNode> Parameters { get; } = parameters.ToImmutableArray();
 	public ITypeNode? ReturnType { get; } = returnType;
-	public IStatementNode Body { get; } = body;
+	public IStatementNode? Body { get; } = body;
 	public bool IsExternal { get; } = isExternal;
 	public ImmutableArray<TypeParameterNode> TypeParameters { get; init; } = [];
 }

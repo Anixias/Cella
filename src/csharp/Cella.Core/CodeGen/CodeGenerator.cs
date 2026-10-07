@@ -92,6 +92,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 		_sharedFunctions = assemblySymbol.SignatureTable.Globals.Values
 			.Where(static global => global.Symbol.Visibility is Visibility.Project or Visibility.Public)
 			.SelectMany(static global => FindFunctions(global.Value))
+			.Concat(typePool.GetWitnessFunctions())
 			.ToHashSet();
 	}
 	
@@ -905,6 +906,10 @@ public sealed unsafe class CodeGenerator : IDisposable
 	private LLVMValueRef EmitCall(CallValue v, LLVMBuilderRef builder)
 	{
 		var info = SubstituteFunction(v.Function);
+		if (FindWitness(info) is NativeWitness native)
+			return EmitNativeWitness(info, native, [..v.Arguments.Select(a => EmitValue(a, builder))],
+				v.SourceLocation, builder);
+		
 		GetFunctionValue(info);
 		var function = current.Functions[info];
 		var args = v.Arguments.Select(a => EmitValue(a, builder)).ToList();
@@ -2140,6 +2145,9 @@ public sealed unsafe class CodeGenerator : IDisposable
 		if (current.Functions.TryGetValue(function, out var existing))
 			return existing.FunctionValue;
 		
+		if (FindWitness(function) is { } witness)
+			return BuildWitness(function, witness);
+		
 		if (!function.TypeArguments.IsDefaultOrEmpty)
 			return Instantiate(function);
 		
@@ -2161,6 +2169,154 @@ public sealed unsafe class CodeGenerator : IDisposable
 		}
 		
 		return value;
+	}
+	
+	private Witness? FindWitness(FunctionInfo function)
+	{
+		if (function.Symbol.Trait is null || function.TypeArguments.IsDefaultOrEmpty ||
+		    TypePool.ContainsTypeParameters(function.TypeArguments[0]))
+			return null;
+		
+		var witness = _typePool.FindWitness(function.TypeArguments[0], function.Symbol);
+		return witness is FunctionWitness { Function: var target } && target == function.Symbol ? null : witness;
+	}
+	
+	private LLVMValueRef BuildWitness(FunctionInfo function, Witness witness)
+	{
+		var definition = _typePool.GetGenericDefinition(function.Symbol);
+		var name = Mangling.MangleInstantiation(definition.MangledName ?? function.Symbol.Name, function.Signature,
+			function.TypeArguments, _modules);
+		
+		var thunk = CreateFunction(current.Module, function, name);
+		var value = thunk.FunctionValue;
+		value.Linkage = LLVMLinkage.LLVMInternalLinkage;
+		
+		using var builder = current.Module.Context.CreateBuilder();
+		builder.PositionAtEnd(value.AppendBasicBlock("entry"));
+		var parameters = function.Signature.ParameterTypes.Select((_, i) => value.GetParam((uint)i)).ToList();
+		var result = witness switch
+		{
+			FunctionWitness target => CallWitness(function, target, parameters, builder),
+			NativeWitness native => EmitNativeWitness(function, native, parameters,
+				function.Symbol.Syntax.SourceLocation, builder),
+			MemberwiseWitness => EmitConstruction(function, parameters, true, builder),
+			DefaultWitness => EmitConstruction(function, parameters, false, builder),
+			_ => throw new InvalidOperationException()
+		};
+		
+		if (thunk.ReturnType.Kind == LLVMTypeKind.LLVMVoidTypeKind)
+			builder.BuildRetVoid();
+		else
+			builder.BuildRet(result);
+		
+		return value;
+	}
+	
+	private LLVMValueRef CallWitness(FunctionInfo function, FunctionWitness witness, List<LLVMValueRef> parameters,
+		LLVMBuilderRef builder)
+	{
+		var self = function.TypeArguments[0];
+		var arguments = _typePool.GetWitnessArguments(self, witness.Function, function.TypeArguments.Skip(1));
+		var target = _typePool.InstantiateFunction(witness.Info, arguments);
+		GetFunctionValue(target);
+		var callee = current.Functions[target];
+		var args = parameters.Select((parameter, i) => PassToWitness(function, target, i, parameter, builder)).ToList();
+		return callee.CSignature is { } signature
+			? EmitCCall(signature, callee.FunctionType, callee.FunctionValue, callee.ReturnType, args, builder)
+			: builder.BuildCall2(callee.FunctionType, callee.FunctionValue, args.ToArray());
+	}
+	
+	private LLVMValueRef PassToWitness(FunctionInfo function, FunctionInfo target, int index, LLVMValueRef value,
+		LLVMBuilderRef builder)
+	{
+		var mode = function.DeclaredSignature.GetMode(index);
+		var fromPointer = _typePool.PassesByPointer(function.DeclaredSignature.ParameterTypes[index], mode);
+		if (fromPointer == _typePool.PassesByPointer(target.DeclaredSignature.ParameterTypes[index], mode))
+			return value;
+		
+		var type = MapTypeSymbol(function.Signature.ParameterTypes[index]);
+		if (fromPointer)
+			return builder.BuildLoad2(type, value, "argument");
+		
+		var slot = BuildEntryAlloca(builder, type, "argument");
+		builder.BuildStore(value, slot);
+		return slot;
+	}
+	
+	private LLVMValueRef EmitNativeWitness(FunctionInfo function, NativeWitness witness, List<LLVMValueRef> parameters,
+		SourceLocation location, LLVMBuilderRef builder)
+	{
+		var operation = witness.Operation;
+		var operands = parameters
+			.Select(Value (parameter, i) =>
+				new VariableValue(BindWitnessParameter(function, i, parameter, builder), location))
+			.ToList();
+		
+		if (witness.IsCompound)
+		{
+			var place = new UnaryOpValue(operation.ReturnType, operands[0], UnaryOperation.Dereference, location);
+			var value = new BinOpValue(operation.ReturnType, place, operands[1],
+				OperationMapping.ToBinaryOperation(operation.Op), location);
+			
+			EmitValue(new AssignValue(operation.ReturnType, place, value, location), builder);
+			return default;
+		}
+		
+		if (operation.ParameterTypes[0] is EnumSymbol enumType)
+			operands =
+			[
+				..operands.Select(Value (operand) => new EnumTagValue(_typePool.GetTagType(enumType), operand,
+					location))
+			];
+		
+		Value result = operands is [var single]
+			? new UnaryOpValue(operation.ReturnType, single, OperationMapping.ToUnaryOperation(operation.Op), location)
+			: new BinOpValue(operation.ReturnType, operands[0], operands[1],
+				OperationMapping.ToBinaryOperation(operation.Op), location);
+		
+		return EmitValue(result, builder);
+	}
+	
+	private LLVMValueRef EmitConstruction(FunctionInfo function, List<LLVMValueRef> parameters, bool memberwise,
+		LLVMBuilderRef builder)
+	{
+		var location = function.Symbol.Syntax.SourceLocation;
+		var type = function.TypeArguments[0];
+		var self = new UnaryOpValue(type, new VariableValue(BindWitnessParameter(function, 0, parameters[0], builder),
+			location), UnaryOperation.Dereference, location);
+		
+		EmitValue(new AssignValue(type, self, new ZeroValue(type), location), builder);
+		if (!memberwise)
+			return default;
+		
+		var fields = _typePool.GetMembers(type).OfType<FieldSymbol>().ToList();
+		for (var i = 0; i < fields.Count; i++)
+		{
+			var fieldType = _typePool.GetTypeOfMember(fields[i]);
+			var value = new VariableValue(BindWitnessParameter(function, i + 1, parameters[i + 1], builder), location);
+			var field = new AccessValue(fieldType, self, fields[i], location);
+			EmitValue(new AssignValue(fieldType, field, value, location), builder);
+		}
+		
+		return default;
+	}
+	
+	private VariableInfo BindWitnessParameter(FunctionInfo function, int index, LLVMValueRef value,
+		LLVMBuilderRef builder)
+	{
+		var type = function.Signature.ParameterTypes[index];
+		var info = new VariableInfo(new ParameterSymbol($"${index}", function.Symbol.Syntax.SourceLocation), type);
+		if (_typePool.PassesByPointer(function.DeclaredSignature.ParameterTypes[index],
+			    function.DeclaredSignature.GetMode(index)))
+		{
+			current.Variables[info] = value;
+			return info;
+		}
+		
+		var slot = BuildEntryAlloca(builder, MapTypeSymbol(type), info.Symbol.Name);
+		builder.BuildStore(value, slot);
+		current.Variables[info] = slot;
+		return info;
 	}
 	
 	private LLVMValueRef Instantiate(FunctionInfo function)

@@ -1,0 +1,93 @@
+mod test
+
+Hash: trait
+{
+	hash: fun(self) -> u64
+	put: fun(mut self, value: i32)
+	==: op(a: Self, b: Self) -> bool
+}
+
+Sized: trait
+{
+	size: get(self) -> i32
+	limit: prop i32
+	{
+		get(self)
+		set(mut self, value)
+	}
+}
+
+Make: trait
+{
+	new: op(capacity: usize)
+	new: op(a: i32, b: i32)
+}
+
+Num: trait
+{
+	+: op(a: Self, b: Self) -> Self
+	~: op(self) -> Self
+}
+
+Missing: rec impl Hash
+{
+	x: i32
+}
+
+Wrong: rec impl Hash
+{
+	x: i32
+
+	hash: fun(self) -> i32 = 0
+	put: fun(self, value: i32) { }
+	==: op(a: Wrong, b: Wrong) -> bool = true
+}
+
+Box: rec impl Sized
+{
+	cap: i32
+
+	size: get(self) -> u8 = 0
+	limit: get(self) -> i32 = self.cap
+}
+
+Twice: rec impl Hash
+{
+	x: i32
+
+	hash: fun(self) -> u64 = 1
+	put: fun(mut self, value: i32) { }
+	==: op(a: Twice, b: Twice) -> bool = true
+}
+
+Twice: impl Hash
+{
+	hash: fun(self) -> u64 = 2
+}
+
+Both: rec impl Num + Num
+{
+	x: i32
+
+	+: op(a: Both, b: Both) -> Both = a
+	~: op(self) -> Both = self
+}
+
+Buffer: rec impl Make
+{
+	size: i32
+
+	new: op(capacity: i32)
+	{
+		self.size = capacity
+	}
+}
+
+Pair: rec impl Make
+{
+	size: u8
+}
+
+f64: impl Num
+
+main: fun -> i32 = 0

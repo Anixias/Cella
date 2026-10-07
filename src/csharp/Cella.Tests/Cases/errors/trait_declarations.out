@@ -1,0 +1,64 @@
+
+====== trait_declarations.ce ======
+
+Error at line 5, column 2
+4 │ {
+5 │     x: i32
+        ^ Cannot declare fields in traits
+
+Error at line 6, column 2
+5 │ x: i32
+6 │ count: val i32 = 3
+    ╘═══╛ Cannot declare static fields in traits
+
+Error at line 7, column 2
+6 │ count: val i32 = 3
+7 │ new: op(x: i32) { }
+    ╘═╛ Cannot declare constructor bodies in traits
+
+Error at line 8, column 2
+7 │ new: op(x: i32) { }
+8 │ drop: op { }
+    ╘══╛ Cannot declare destructors in traits
+
+Error at line 9, column 2
+8 │ drop: op { }
+9 │ helper: pvt fun(self) -> i32
+    ╘════╛ 'pvt' members need a body
+
+Error at line 10, column 2
+ 9 │ helper: pvt fun(self) -> i32
+10 │ hash: fun(self) -> u64
+     ╘══╛ 'Hash.hash' is declared more than once with the same signature
+
+Error at line 11, column 2
+10 │ hash: fun(self) -> u64
+11 │ hash: fun(self) -> u64
+     ╘══╛ 'Hash.hash' is declared more than once with the same signature
+
+Error at line 33, column 2
+32 │ size: fun(self) -> i32 = 1
+33 │ extra: fun(self) -> i32 = 2
+     ╘═══╛ 'extra' isn't a member of 'Show' or 'Size'
+
+Error at line 35, column 2
+34 │ helper: pvt fun -> i32 = 3
+35 │ y: i32
+     ^ Cannot declare fields in impl blocks
+
+Error at line 36, column 2
+35 │ y: i32
+36 │ count: val i32 = 3
+     ╘═══╛ Cannot declare static fields in impl blocks
+
+Error at line 37, column 2
+36 │ count: val i32 = 3
+37 │ new: op(x: i32, y: i32) { }
+     ╘═╛ Cannot declare constructors in impl blocks
+
+Error at line 38, column 2
+37 │ new: op(x: i32, y: i32) { }
+38 │ drop: op { }
+     ╘══╛ Cannot declare destructors in impl blocks
+
+[compilation failed]

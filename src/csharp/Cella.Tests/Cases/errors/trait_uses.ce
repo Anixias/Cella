@@ -1,0 +1,78 @@
+mod test
+
+Hash: trait
+{
+	hash: fun(self) -> u64
+	seed: fun -> u64
+	twice: fun(self) -> u64 = mix(self.hash())
+	mix: pvt fun(value: u64) -> u64 = value * 2
+	scale: pvt fun(self) -> u64 = self.hash()
+	level: pvt get(self) -> i32 = 1
+}
+
+Fingerprint: trait
+{
+	hash: fun(self) -> u64
+}
+
+Point: rec
+{
+	x: i32
+
+	peek: fun -> i32 = helper()
+	poke: fun -> i32 = Point.helper()
+}
+
+Point: impl Hash
+{
+	hash: fun(self) -> u64 = u64(helper())
+	seed: fun -> u64 = 2
+	helper: pvt fun -> i32 = 1
+	probe: pvt fun(self) -> i32 = 2
+	depth: pvt get(self) -> i32 = 3
+}
+
+Point: impl Fingerprint
+{
+	hash: fun(self) -> u64 = u64(helper())
+}
+
+Plain: rec
+{
+	x: i32
+}
+
+check[T: Hash]: fun(value: T) -> i32 = 1
+
+run[T: Hash]: fun(value: T) -> u64 = value.scale()
+
+holder[T: Hash + noref]: rec
+{
+	value: T
+}
+
+main: fun -> i32
+{
+	val p = Point(1)
+	val q = Plain(1)
+	p.hash()
+	Hash(q).hash()
+	Hash(p).missing()
+	Hash(p).seed()
+	Hash(Point).hash()
+	Hash(p).mix(2)
+	Point.helper()
+	p.mix(2)
+	p.probe()
+	p.depth
+	p.scale()
+	p.level
+	Hash(Point).mix(2)
+	Hash(p).scale()
+	check(q)
+	check(3)
+	val bad = holder(q)
+	val h = Hash(p)
+	val g = Hash
+	ret 0
+}

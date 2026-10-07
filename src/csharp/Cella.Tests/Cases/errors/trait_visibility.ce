@@ -1,0 +1,75 @@
+mod test
+
+Hash: trait
+{
+	hash: fun(self) -> u64
+	seed: fun -> u64
+	size: prop i32
+	{
+		get(self)
+		set(mut self, value)
+	}
+}
+
+Make: trait
+{
+	new: op(value: i32)
+}
+
+Point: pub rec impl Hash + Make
+{
+	x: i32
+
+	hash: pvt fun(self) -> u64 = 1
+	seed: mod fun -> u64 = 2
+	size: prop i32
+	{
+		get(self) = self.x
+		pvt set(mut self, value)
+		{
+			self.x = value
+		}
+	}
+
+	new: mod op(value: i32)
+	{
+		self.x = value
+	}
+}
+
+Other: rec
+{
+	x: i32
+}
+
+Other: impl Hash
+{
+	hash: mod fun(self) -> u64 = 1
+	seed: pvt fun -> u64 = 2
+	size: mod prop i32
+	{
+		get(self) = self.x
+		set(mut self, value)
+		{
+			self.x = value
+		}
+	}
+}
+
+Inner: mod rec impl Hash
+{
+	x: i32
+
+	hash: fun(self) -> u64 = 1
+	seed: mod fun -> u64 = 2
+	size: prop i32
+	{
+		get(self) = self.x
+		set(mut self, value)
+		{
+			self.x = value
+		}
+	}
+}
+
+main: fun -> i32 = 0

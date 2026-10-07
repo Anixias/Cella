@@ -36,6 +36,8 @@ public sealed class TypePool
 	private readonly Dictionary<FunctionSymbol, FunctionInfo> _genericFunctions = [];
 	private readonly Dictionary<GlobalSymbol, GlobalInfo> _genericGlobals = [];
 	private readonly Dictionary<GlobalSymbol, GlobalInfo> _globalInstances = [];
+	private readonly List<Conformance> _conformances = [];
+	private readonly Dictionary<TypeParameterSymbol, ImmutableArray<TraitSymbol>> _bounds = [];
 	private const int MaxInstanceDepth = 32;
 	
 	public TypePool(ConversionTable conversionTable, OperatorRegistry operatorRegistry, SizeTable sizeTable)
@@ -49,6 +51,64 @@ public sealed class TypePool
 	}
 	
 	public void AddConstructor(TypeSymbol type, FunctionInfo info) => _constructors.GetOrAdd(type).Add(info);
+	
+	public void AddConformance(Conformance conformance) => _conformances.Add(conformance);
+	
+	public IEnumerable<Conformance> FindConformances(TypeSymbol type) =>
+		_conformances.Where(conformance => Matches(conformance, type));
+	
+	public void SetBounds(TypeParameterSymbol parameter, ImmutableArray<TraitSymbol> traits) =>
+		_bounds[parameter] = traits;
+	
+	public ImmutableArray<TraitSymbol> GetBounds(TypeParameterSymbol parameter) =>
+		_bounds.GetValueOrDefault(parameter, []);
+	
+	public bool Conforms(TypeSymbol type, TraitSymbol trait) => type switch
+	{
+		InvalidType => true,
+		TypeParameterSymbol parameter => GetBounds(parameter).Contains(trait),
+		_ => FindConformance(type, trait) is not null
+	};
+	
+	public Conformance? FindConformance(TypeSymbol type, TraitSymbol trait) =>
+		_conformances.FirstOrDefault(conformance => conformance.Trait == trait && Matches(conformance, type));
+	
+	private bool Matches(Conformance conformance, TypeSymbol type)
+	{
+		if (type is TypeParameterSymbol || conformance.Target != type.OriginalDefinition)
+			return false;
+		
+		var arguments = type.TypeArguments;
+		return arguments.Length == conformance.Parameters.Length && conformance.Parameters
+			.Select((parameter, i) => GetBounds(parameter).All(bound => Conforms(arguments[i], bound)))
+			.All(static holds => holds);
+	}
+	
+	public IEnumerable<FunctionSymbol> GetWitnessFunctions() => _conformances
+		.SelectMany(static conformance => conformance.Witnesses.Values)
+		.OfType<FunctionWitness>()
+		.Select(static witness => witness.Function);
+	
+	public Witness? FindWitness(TypeSymbol self, FunctionSymbol requirement) =>
+		requirement.Trait is { } trait && FindConformance(self, trait) is { } conformance
+			? conformance.Witnesses.GetValueOrDefault(requirement)
+			: null;
+	
+	public ImmutableArray<TypeSymbol> GetWitnessArguments(TypeSymbol self, FunctionSymbol witness,
+		IEnumerable<TypeSymbol> declared)
+	{
+		if (witness.Trait is not null)
+			return [self, ..declared];
+		
+		if (witness.Impl is null || FindConformance(self, witness.Impl) is not { } conformance)
+			return [..self.TypeArguments, ..declared];
+		
+		var map = CreateMap(conformance.Parameters, self.TypeArguments);
+		return [..witness.Impl.TypeParameters.Select(parameter => map[parameter]), ..declared];
+	}
+	
+	private Conformance? FindConformance(TypeSymbol self, ImplSymbol impl) =>
+		_conformances.FirstOrDefault(conformance => conformance.Impl == impl && Matches(conformance, self));
 	
 	public IReadOnlyList<FunctionInfo> GetConstructors(TypeSymbol type)
 	{
@@ -356,6 +416,8 @@ public sealed class TypePool
 		InvalidType => null,
 		_ when parameter.IsNoref && HoldsBorrows(argument) => $"Cannot store borrows in '{parameter.Name}'",
 		_ when parameter.HasNull && !HasNull(argument) => $"'{argument.Name}' has no null",
+		_ when GetBounds(parameter).FirstOrDefault(trait => !Conforms(argument, trait)) is { } trait =>
+			$"'{argument.Name}' doesn't implement '{trait.Name}'",
 		_ => null
 	};
 	

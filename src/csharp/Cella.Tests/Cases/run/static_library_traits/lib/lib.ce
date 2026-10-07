@@ -1,0 +1,55 @@
+mod lib
+
+Hash: pub trait
+{
+	hash: fun(self) -> u64
+	seed: fun -> u64
+	==: op(a: Self, b: Self) -> bool
+	twice: fun(self) -> u64 = mix(self.hash()) + seed()
+	mix: pvt fun(value: u64) -> u64 = value * 2
+}
+
+Show: pub trait
+{
+	show: fun(self) -> i32
+}
+
+Make: pub trait
+{
+	new: op(value: i32)
+}
+
+Point: pub rec impl Hash + Make
+{
+	x: i32
+
+	hash: fun(self) -> u64 = u64(self.x)
+	seed: fun -> u64 = 1000
+	==: op(a: Point, b: Point) -> bool = a.x == b.x
+}
+
+Point: impl Show
+{
+	show: fun(self) -> i32 = self.x * offset()
+	offset: pvt fun -> i32 = 3
+}
+
+i32: impl Hash
+{
+	hash: fun(self) -> u64 = u64(self) + 7
+	seed: fun -> u64 = 5
+}
+
+box[T]: pub rec
+{
+	value: T
+}
+
+box[T: Show]: impl Show
+{
+	show: fun(self) -> i32 = self.value.show() + 1
+}
+
+describe[T: Hash]: pub fun(value: T) -> u64 = value.twice() + T.seed()
+
+render[T: Show]: pub fun(value: T) -> i32 = value.show()

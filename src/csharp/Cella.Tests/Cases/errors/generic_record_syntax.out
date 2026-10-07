@@ -6,15 +6,16 @@ Error at line 3, column 7
 3 │ empty[]: rec
           ^ Expected a type parameter name
 
-Error at line 8, column 9
-7 │ 
+Error at line 9, column 1
 8 │ open[T: rec
-            ╘═╛ Expected 'noref' or 'null'
+9 │ {
+    ^ Expected ',' or ']'
+    | To match the '[' on line 8
 
-Error at line 13, column 16
+Error at line 13, column 24
 12 │ 
-13 │ constrained[T: copy]: rec
-                    ╘══╛ Expected 'noref' or 'null'
+13 │ constrained[T: noref + 3]: rec
+                            ^ Expected 'noref', 'null' or a trait
 
 Error at line 18, column 7
 17 │ 

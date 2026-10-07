@@ -1,0 +1,69 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Hash: trait
+{
+	hash: fun(self) -> u64
+}
+
+Mapper: trait
+{
+	apply[U]: fun(self, change: fun[i32 -> U]) -> U
+}
+
+Point: rec impl Hash
+{
+	x: i32
+
+	hash: fun(self) -> u64 = u64(self.x)
+}
+
+box[T]: rec
+{
+	value: T
+}
+
+box[T: Hash]: impl Hash
+{
+	hash: fun(self) -> u64 = self.value.hash() + 1
+}
+
+pair[A, B]: rec impl Hash
+{
+	first: A
+	second: B
+
+	hash: fun(self) -> u64 = 2
+}
+
+holder[T: Hash]: rec
+{
+	value: T
+
+	digest: fun(self) -> u64 = self.value.hash() * 10
+}
+
+Cell: rec impl Mapper
+{
+	value: i32
+
+	apply[V]: fun(self, change: fun[i32 -> V]) -> V = change(self.value)
+}
+
+describe[T: Hash]: fun(value: T) -> u64 = value.hash()
+
+triple: fun(value: i32) -> i64 = value * 3
+
+run[T: Mapper]: fun(item: T) -> i64 = item.apply(triple)
+
+main: fun -> i32
+{
+	val b = box(Point(3))
+	printf("%llu %llu %llu %llu\n", b.hash(), describe(b), describe(box(b)), holder(Point(4)).digest())
+	printf("%llu %lld %lld\n", describe(pair(1, 2.5)), run(Cell(5)), Cell(2).apply[i64](triple))
+	ret 0
+}

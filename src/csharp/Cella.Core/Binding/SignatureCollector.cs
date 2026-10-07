@@ -2,6 +2,7 @@
 using System.Numerics;
 using Cella.Core.Binding.Constants;
 using Cella.Core.Binding.Nodes;
+using Cella.Core.Binding.Operations;
 using Cella.Core.Symbols;
 using Cella.Core.Syntax.Nodes;
 using Cella.Core.Text;
@@ -48,11 +49,17 @@ public sealed class SignatureCollector
 	private readonly Dictionary<GlobalSymbol, TypeSymbol> _globalTypes = [];
 	private readonly Dictionary<PropertySymbol, TypeSymbol> _propertyTypes = [];
 	private readonly HashSet<TypeSymbol> _completedTypes = [];
+	private readonly HashSet<Symbol> _completedSymbols = [];
 	private readonly List<(Symbol Symbol, bool IsValue)> _inProgress = [];
 	private readonly HashSet<Symbol> _cyclic = [];
 	private readonly List<FunctionInfo> _entryPoints = [];
 	private readonly ExtSignatureTypes _extSignatureTypes;
 	private readonly uint _pointerBitSize;
+	private readonly List<ImplSymbol> _impls = [];
+	private readonly Dictionary<ImplSymbol, TypeSymbol> _implTargets = [];
+	private readonly List<Conformance> _localConformances = [];
+	private readonly HashSet<FunctionSymbol> _witnessMembers = [];
+	private readonly HashSet<(SourceLocation, string)> _conformanceErrors = [];
 	private IConstantResolver? constants;
 	
 	public DiagnosticList Diagnostics { get; } = new();
@@ -82,11 +89,20 @@ public sealed class SignatureCollector
 			Register(file);
 		
 		foreach (var file in files)
+			RegisterConstraints(file);
+		
+		foreach (var impl in _impls)
+			RegisterImplMembers(impl);
+		
+		foreach (var file in files)
 			foreach (var declaration in file.Declarations)
 				Complete(_symbolTable.DeclarationSymbols[declaration]);
 		
+		CheckConformances();
 		_typePool.TypeCompleter = null;
 	}
+	
+	public TypeSymbol GetImplTarget(ImplSymbol impl) => _implTargets.GetValueOrDefault(impl, NativeSymbols.Invalid);
 	
 	public AssemblySymbol FinishAssembly(string name)
 	{
@@ -115,7 +131,11 @@ public sealed class SignatureCollector
 		
 		if (declaration.Node is ConstructorNode or DestructorNode)
 		{
-			CompleteRecord((RecordSymbol)declaration.Context.ContainingType!);
+			if (declaration.Context.Trait is { } trait)
+				CompleteTrait(trait);
+			else if (declaration.Context.ContainingType is RecordSymbol record)
+				CompleteRecord(record);
+			
 			return _builder.Functions.TryGetValue(function, out info) ? info : CreateInvalidInfo(function, declaration);
 		}
 		
@@ -241,14 +261,21 @@ public sealed class SignatureCollector
 			if (symbol is EnumSymbol { HasPayload: false, IsMatch: false } enumType)
 				_typePool.RegisterEnumConversions(enumType);
 			
+			if (symbol is ImplSymbol impl)
+				_impls.Add(impl);
+			
 			IEnumerable<IDeclarationNode> members = declaration switch
 			{
 				RecordNode record => record.Members,
 				EnumNode enumNode => enumNode.Members,
+				TraitNode trait => trait.Members,
 				_ => []
 			};
 			
-			var memberContext = context with { ContainingType = symbol as TypeSymbol };
+			var memberContext = symbol is TraitSymbol traitSymbol
+				? context with { ContainingType = traitSymbol.Self, Trait = traitSymbol }
+				: context with { ContainingType = symbol as TypeSymbol };
+			
 			foreach (var member in members)
 			{
 				var memberSymbol = _symbolTable.DeclarationSymbols[member];
@@ -259,6 +286,153 @@ public sealed class SignatureCollector
 				foreach (var accessor in property.Accessors)
 					_declarations[_symbolTable.DeclarationSymbols[accessor]] = new(accessor, memberContext);
 			}
+		}
+	}
+	
+	private void RegisterConstraints(FileNode node)
+	{
+		foreach (var declaration in node.Declarations)
+		{
+			var symbol = _symbolTable.DeclarationSymbols[declaration];
+			var context = _declarations[symbol].Context;
+			switch (declaration)
+			{
+				case RecordNode record:
+					RegisterBounds(record.TypeParameters, ((RecordSymbol)symbol).TypeParameters, context);
+					RegisterMemberBounds(record.Members);
+					RegisterConformances((NamedTypeSymbol)symbol, record.Traits, context);
+					break;
+				
+				case EnumNode enumNode:
+					RegisterBounds(enumNode.TypeParameters, ((EnumSymbol)symbol).TypeParameters, context);
+					RegisterMemberBounds(enumNode.Members);
+					RegisterConformances((NamedTypeSymbol)symbol, enumNode.Traits, context);
+					break;
+				
+				case FunctionNode function:
+					RegisterBounds(function.TypeParameters, ((FunctionSymbol)symbol).DeclaredTypeParameters, context);
+					break;
+				
+				case TraitNode traitNode:
+					var trait = (TraitSymbol)symbol;
+					_typePool.SetBounds(trait.Self, [trait]);
+					RegisterMemberBounds(traitNode.Members);
+					break;
+				
+				case ImplNode implNode:
+					RegisterImpl((ImplSymbol)symbol, implNode, context);
+					break;
+			}
+		}
+	}
+	
+	private void RegisterMemberBounds(IEnumerable<IDeclarationNode> members)
+	{
+		foreach (var member in members.OfType<FunctionNode>())
+		{
+			var function = (FunctionSymbol)_symbolTable.DeclarationSymbols[member];
+			RegisterBounds(member.TypeParameters, function.DeclaredTypeParameters, _declarations[function].Context);
+		}
+	}
+	
+	private void RegisterBounds(ImmutableArray<TypeParameterNode> nodes, ImmutableArray<TypeParameterSymbol> parameters,
+		ResolutionContext context)
+	{
+		for (var i = 0; i < nodes.Length && i < parameters.Length; i++)
+		{
+			ImmutableArray<TraitSymbol> traits = [..nodes[i].Traits.Select(context.ResolveTrait).OfType<TraitSymbol>()];
+			if (!traits.IsEmpty)
+				_typePool.SetBounds(parameters[i], traits);
+		}
+	}
+	
+	private void RegisterConformances(NamedTypeSymbol type, ImmutableArray<ITypeNode> traits, ResolutionContext context)
+	{
+		foreach (var traitNode in traits)
+		{
+			if (context.ResolveTrait(traitNode) is { } trait)
+				AddConformance(new(trait, type, type.TypeParameters, null, traitNode.SourceLocation));
+		}
+	}
+	
+	private void AddConformance(Conformance conformance)
+	{
+		_typePool.AddConformance(conformance);
+		_localConformances.Add(conformance);
+	}
+	
+	private void RegisterImpl(ImplSymbol impl, ImplNode node, ResolutionContext context)
+	{
+		RegisterBounds(node.TypeParameters, impl.TypeParameters, context);
+		if (ResolveImplTarget(impl, node, context) is not { } target)
+			return;
+		
+		_implTargets[impl] = target;
+		foreach (var traitNode in node.Traits)
+		{
+			if (context.ResolveTrait(traitNode) is { } trait)
+				AddConformance(new(trait, target, impl.TypeParameters, impl, traitNode.SourceLocation));
+		}
+	}
+	
+	private TypeSymbol? ResolveImplTarget(ImplSymbol impl, ImplNode node, ResolutionContext context)
+	{
+		var location = node.Target.SourceLocation;
+		var name = location.GetText().ToString();
+		switch (context.ResolveTypeName(node.Target))
+		{
+			case NamedTypeSymbol named when named.TypeParameters.Length == impl.TypeParameters.Length:
+				return named;
+			
+			case NamedTypeSymbol named:
+				Diagnostics.Add(ResolutionContext.ReportTypeArgumentCount(location, named));
+				return null;
+			
+			case PrimitiveType primitive when impl.TypeParameters.IsEmpty:
+				return primitive;
+			
+			case PrimitiveType:
+				Diagnostics.Add(new(DiagnosticSeverity.Error, location, $"'{name}' takes no type arguments"));
+				return null;
+			
+			case null when node.Target is IdentifierTypeNode:
+				Diagnostics.Add(new(DiagnosticSeverity.Error, location, $"Type '{name}' not found in this scope"));
+				return null;
+			
+			case null:
+				return null;
+			
+			default:
+				Diagnostics.Add(new(DiagnosticSeverity.Error, location, $"Cannot implement traits for '{name}'"));
+				return null;
+		}
+	}
+	
+	private void RegisterImplMembers(ImplSymbol impl)
+	{
+		var declaration = _declarations[impl];
+		var target = GetImplTarget(impl);
+		if (target is NamedTypeSymbol { IsGenericDefinition: true } definition)
+			target = _typePool.Instantiate(definition, [..impl.TypeParameters]);
+		
+		_implTargets[impl] = target;
+		foreach (var property in impl.Properties)
+			property.ContainingType = target;
+		
+		var memberContext = declaration.Context with { ContainingType = target, ImplBlock = impl };
+		foreach (var member in ((ImplNode)declaration.Node).Members)
+		{
+			var memberSymbol = _symbolTable.DeclarationSymbols[member];
+			_declarations[memberSymbol] = new(member, WithTypeParameters(memberContext, memberSymbol));
+			if (member is FunctionNode function)
+				RegisterBounds(function.TypeParameters, ((FunctionSymbol)memberSymbol).DeclaredTypeParameters,
+					_declarations[memberSymbol].Context);
+			
+			if (member is not PropertyNode property)
+				continue;
+			
+			foreach (var accessor in property.Accessors)
+				_declarations[_symbolTable.DeclarationSymbols[accessor]] = new(accessor, memberContext);
 		}
 	}
 	
@@ -293,6 +467,440 @@ public sealed class SignatureCollector
 			case PropertySymbol property:
 				CompleteProperty(property);
 				break;
+			
+			case TraitSymbol trait:
+				CompleteTrait(trait);
+				break;
+			
+			case ImplSymbol impl:
+				CompleteImpl(impl);
+				break;
+		}
+	}
+	
+	private void CompleteTrait(TraitSymbol trait)
+	{
+		if (!_declarations.TryGetValue(trait, out var declaration) || !_completedSymbols.Add(trait))
+			return;
+		
+		var node = (TraitNode)declaration.Node;
+		CompleteMembers(node.Members, "traits");
+		foreach (var constructor in node.Members.OfType<ConstructorNode>().Where(static c => c.Body is not null))
+			Diagnostics.Add(new(DiagnosticSeverity.Error, constructor.Keyword.SourceLocation,
+				"Cannot declare constructor bodies in traits"));
+		
+		foreach (var function in node.Members.OfType<FunctionNode>().Concat(node.Members.OfType<PropertyNode>()
+			         .SelectMany(static property => property.Accessors)))
+		{
+			var symbol = (FunctionSymbol)_symbolTable.DeclarationSymbols[function];
+			if (function.Body is null && symbol.Visibility == Visibility.Private)
+				Diagnostics.Add(new(DiagnosticSeverity.Error, function.Identifier.SourceLocation,
+					"'pvt' members need a body"));
+		}
+		
+		ReportMembers(trait.Name, trait.Self, node.Members);
+	}
+	
+	private void CompleteImpl(ImplSymbol impl)
+	{
+		if (!_declarations.TryGetValue(impl, out var declaration) || !_completedSymbols.Add(impl))
+			return;
+		
+		var node = (ImplNode)declaration.Node;
+		CompleteMembers(node.Members, "impl blocks");
+		var target = GetImplTarget(impl);
+		ReportMembers(target.Name, target, node.Members);
+	}
+	
+	private void CompleteMembers(IEnumerable<IDeclarationNode> members, string kind)
+	{
+		foreach (var member in members)
+		{
+			var symbol = _symbolTable.DeclarationSymbols[member];
+			var context = _declarations[symbol].Context;
+			switch (member)
+			{
+				case FieldNode field:
+					Diagnostics.Add(new(DiagnosticSeverity.Error, field.Identifier.SourceLocation,
+						$"Cannot declare fields in {kind}"));
+					
+					break;
+				
+				case GlobalNode global:
+					Diagnostics.Add(new(DiagnosticSeverity.Error, global.Identifier.SourceLocation,
+						$"Cannot declare static fields in {kind}"));
+					
+					break;
+				
+				case DestructorNode destructor:
+					Diagnostics.Add(new(DiagnosticSeverity.Error, destructor.Keyword.SourceLocation,
+						$"Cannot declare destructors in {kind}"));
+					
+					break;
+				
+				case ConstructorNode constructor when context.ImplBlock is not null:
+					Diagnostics.Add(new(DiagnosticSeverity.Error, constructor.Keyword.SourceLocation,
+						$"Cannot declare constructors in {kind}"));
+					
+					break;
+				
+				case ConstructorNode constructor:
+					if (!_builder.Functions.ContainsKey((FunctionSymbol)symbol))
+						CollectConstructor((FunctionSymbol)symbol, constructor, context);
+					
+					break;
+				
+				default:
+					Complete(symbol);
+					break;
+			}
+		}
+	}
+	
+	private void ReportMembers(string owner, TypeSymbol type, ImmutableArray<IDeclarationNode> members)
+	{
+		var functions = members.OfType<FunctionNode>().ToLookup(IsDereference);
+		ReportMemberConflicts(owner, [
+			..members.OfType<PropertyNode>()
+				.Select(static p => (p.Identifier, (FunctionNode?)null, MemberKind.Property)),
+			..functions[false].Select(static f => (f.Identifier, (FunctionNode?)f, MemberKind.Function))
+		]);
+		
+		ReportDereferences(type, [..functions[true]]);
+		ReportOperators(type, functions[false]);
+	}
+	
+	private void CheckConformances()
+	{
+		var duplicates = _localConformances.GroupBy(static c => (c.Target, c.Trait)).Where(static g => g.Count() > 1);
+		foreach (var same in duplicates)
+		{
+			foreach (var conformance in same)
+				Diagnostics.Add(new(DiagnosticSeverity.Error, conformance.Location,
+					$"'{conformance.Target.Name}' implements '{conformance.Trait.Name}' more than once"));
+		}
+		
+		foreach (var conformance in _localConformances)
+		{
+			if (conformance.Impl is not null && !IsLocal(conformance.Trait) && !IsLocal(conformance.Target))
+				Diagnostics.Add(new(DiagnosticSeverity.Error, conformance.Location,
+					$"'{conformance.Trait.Name}' and '{conformance.Target.Name}' are both declared in other projects"));
+			
+			MatchRequirements(conformance);
+		}
+		
+		foreach (var impl in _impls)
+			ReportUnmatchedMembers(impl);
+	}
+	
+	private TypeSymbol GetConformanceSelf(Conformance conformance) =>
+		conformance.Impl is { } impl ? GetImplTarget(impl) : conformance.Target;
+	
+	private void MatchRequirements(Conformance conformance)
+	{
+		var self = GetConformanceSelf(conformance);
+		if (self is InvalidType)
+			return;
+		
+		foreach (var (name, requirement) in GetRequirements(conformance.Trait))
+		{
+			var info = GetFunctionInfo(requirement);
+			var candidates = FindCandidates(conformance, self, name, requirement).ToList();
+			var matches = candidates
+				.Where(candidate => SignaturesMatch(candidate.Signature, info.Signature, requirement,
+					candidate.Function, conformance.Trait.Self, self))
+				.ToList();
+			
+			switch (matches.Count)
+			{
+				case 1:
+					conformance.Witnesses[requirement] =
+						new FunctionWitness(matches[0].Function, GetFunctionInfo(matches[0].Function));
+					
+					_witnessMembers.Add(matches[0].Function);
+					ReportNarrowWitness(conformance, self, name, matches[0].Function);
+					break;
+				
+				case > 1:
+					_witnessMembers.UnionWith(matches.Select(static match => match.Function));
+					foreach (var match in matches)
+						ReportConformance(GetFunctionLocation(match.Function),
+							$"'{conformance.Target.Name}.{name}' is declared more than once with the same signature");
+					
+					break;
+				
+				case 0 when requirement.Syntax is FunctionNode { Body: not null }:
+					conformance.Witnesses[requirement] = new FunctionWitness(requirement, info);
+					break;
+				
+				case 0 when FindNativeWitness(requirement, info.Signature, conformance.Trait.Self, self) is { } native:
+					conformance.Witnesses[requirement] = native;
+					break;
+				
+				case 0 when candidates.Count > 0:
+					foreach (var candidate in candidates)
+					{
+						_witnessMembers.Add(candidate.Function);
+						ReportConformance(GetFunctionLocation(candidate.Function),
+							$"'{name}' doesn't match '{conformance.Trait.Name}.{name}'");
+					}
+					
+					break;
+				
+				default:
+					ReportConformance(conformance.Location, DescribeMissingRequirement(conformance, self, name,
+						requirement));
+					
+					break;
+			}
+		}
+		
+		foreach (var constructor in conformance.Trait.Constructors)
+			MatchConstructor(conformance, self, constructor);
+	}
+	
+	private void ReportNarrowWitness(Conformance conformance, TypeSymbol self, string name, FunctionSymbol witness)
+	{
+		var floor = self is NamedTypeSymbol named
+			? (Visibility)Math.Max((int)named.Definition.Visibility, (int)Visibility.Module)
+			: Visibility.Public;
+		
+		if (witness.Visibility >= floor)
+			return;
+		
+		var keyword = GetVisibilityKeyword(witness);
+		var text = keyword?.Text ?? (witness.Visibility == Visibility.Private ? "pvt" : "mod");
+		ReportConformance(keyword?.SourceLocation ?? GetFunctionLocation(witness),
+			$"Cannot implement '{conformance.Trait.Name}.{name}' with '{text}' members");
+	}
+	
+	private static Token? GetVisibilityKeyword(FunctionSymbol function) => function.Syntax switch
+	{
+		FunctionNode { Visibility: { } keyword } => keyword,
+		ConstructorNode { Visibility: { } keyword } => keyword,
+		_ => function.Property?.Node?.Visibility
+	};
+	
+	private void ReportConformance(SourceLocation location, string message)
+	{
+		if (_conformanceErrors.Add((location, message)))
+			Diagnostics.Add(new(DiagnosticSeverity.Error, location, message));
+	}
+	
+	private static string DescribeMissingRequirement(Conformance conformance, TypeSymbol self, string name,
+		FunctionSymbol requirement)
+	{
+		var trait = conformance.Trait.Name;
+		if (requirement.Property is null || !HasProperty(conformance, name))
+			return $"'{self.Name}' needs '{trait}.{name}'";
+		
+		var accessor = GetAccessorKind(requirement) == "get" ? "getter" : "setter";
+		return $"'{self.Name}' needs a {accessor} for '{trait}.{name}'";
+	}
+	
+	private static bool HasProperty(Conformance conformance, string name) =>
+		conformance.Target.GetProperty(name) is not null ||
+		conformance.Impl?.Properties.Any(property => property.Name == name) == true;
+	
+	private void MatchConstructor(Conformance conformance, TypeSymbol self, FunctionSymbol requirement)
+	{
+		var trait = conformance.Trait;
+		var signature = GetFunctionInfo(requirement).Signature;
+		var declared = _typePool.GetConstructors(self);
+		var matches = declared
+			.Where(constructor => SignaturesMatch(constructor.Signature, signature, requirement, constructor.Symbol,
+				trait.Self, self))
+			.ToList();
+		
+		if (matches.Count > 0)
+		{
+			conformance.Witnesses[requirement] =
+				new FunctionWitness(matches[0].Symbol, GetFunctionInfo(matches[0].Symbol));
+			
+			ReportNarrowWitness(conformance, self, "new", matches[0].Symbol);
+			return;
+		}
+		
+		var expected = SubstituteSignature(signature, new() { [trait.Self] = self });
+		if (declared.Count == 0 && FindConstructionWitness(self, expected) is { } construction)
+		{
+			conformance.Witnesses[requirement] = construction;
+			return;
+		}
+		
+		if (declared.Count == 0)
+		{
+			ReportConformance(conformance.Location, $"'{self.Name}' needs '{trait.Name}.new'");
+			return;
+		}
+		
+		foreach (var constructor in declared)
+			ReportConformance(constructor.Symbol.Syntax is ConstructorNode node
+					? node.Keyword.SourceLocation
+					: conformance.Location, $"'new' doesn't match '{trait.Name}.new'");
+	}
+	
+	private Witness? FindConstructionWitness(TypeSymbol self, FunctionSignature expected)
+	{
+		var count = expected.ParameterTypes.Length - 1;
+		if (count == 0 && _typePool.HasDefault(self))
+			return new DefaultWitness();
+		
+		if (self is not RecordSymbol)
+			return null;
+		
+		var fields = _typePool.GetMembers(self).OfType<FieldSymbol>().ToList();
+		if (fields.Count != count)
+			return null;
+		
+		for (var i = 0; i < count; i++)
+		{
+			var type = _typePool.GetTypeOfMember(fields[i]);
+			var mode = expected.GetMode(i + 1);
+			if (mode == ParameterMode.Mut || expected.ParameterTypes[i + 1] != type ||
+			    mode == ParameterMode.ReadOnly && !_typePool.IsCopy(type))
+				return null;
+		}
+		
+		return new MemberwiseWitness();
+	}
+	
+	private static IEnumerable<(string Name, FunctionSymbol Function)> GetRequirements(TraitSymbol trait) =>
+	[
+		..trait.Functions
+			.Where(static method => method.Function.Kind != FunctionKind.Destructor &&
+			                        method.Function.Visibility != Visibility.Private)
+			.Select(static method => (method.Name, method.Function)),
+		..trait.Properties.SelectMany(static property => new[] { property.Getter, property.Setter }
+			.OfType<FunctionAccessor>()
+			.Where(static accessor => accessor.Function.Visibility != Visibility.Private)
+			.Select(accessor => (property.Name, accessor.Function)))
+	];
+	
+	private static string GetAccessorKind(FunctionSymbol accessor) => ((FunctionNode)accessor.Syntax).Identifier.Text;
+	
+	private IEnumerable<(FunctionSymbol Function, FunctionSignature Signature)> FindCandidates(Conformance conformance,
+		TypeSymbol self, string name, FunctionSymbol requirement)
+	{
+		var impl = conformance.Impl;
+		IEnumerable<FunctionSymbol> blockMembers = [];
+		IEnumerable<FunctionSymbol> typeMembers = [];
+		if (requirement.Property is { } property)
+		{
+			var kind = GetAccessorKind(requirement);
+			if (impl?.Properties.FirstOrDefault(p => p.Name == property.Name) is { } blockProperty)
+				blockMembers = FindAccessor(blockProperty, kind);
+			
+			if (conformance.Target.GetProperty(property.Name) is { } typeProperty)
+				typeMembers = FindAccessor(typeProperty, kind);
+		}
+		else
+		{
+			var memberName = name;
+			if (impl is not null)
+				blockMembers = impl.Functions.Where(m => m.Name == memberName).Select(static m => m.Function);
+			
+			typeMembers = conformance.Target.GetFunctions(memberName).Select(static m => m.Function);
+		}
+		
+		foreach (var member in blockMembers)
+			yield return (member, GetFunctionInfo(member).Signature);
+		
+		var map = conformance.Target is NamedTypeSymbol { IsGenericDefinition: true } definition && impl is not null
+			? TypePool.CreateMap(definition.TypeParameters, self.TypeArguments)
+			: [];
+		
+		foreach (var member in typeMembers)
+		{
+			var signature = GetFunctionInfo(member).Signature;
+			yield return (member, map.Count == 0 ? signature : SubstituteSignature(signature, map));
+		}
+	}
+	
+	private static IEnumerable<FunctionSymbol> FindAccessor(PropertySymbol property, string kind) =>
+		new[] { property.Getter, property.Setter }
+			.OfType<FunctionAccessor>()
+			.Select(static accessor => accessor.Function)
+			.Where(function => GetAccessorKind(function) == kind);
+	
+	private FunctionSignature SubstituteSignature(FunctionSignature signature,
+		Dictionary<TypeParameterSymbol, TypeSymbol> map) =>
+		new(signature.ParameterTypes.Select(type => _typePool.Substitute(type, map)),
+			_typePool.Substitute(signature.ReturnType, map), signature.IsVariadic, signature.ParameterModes);
+	
+	private bool SignaturesMatch(FunctionSignature candidate, FunctionSignature requirement,
+		FunctionSymbol requirementSymbol, FunctionSymbol candidateSymbol, TypeParameterSymbol traitSelf,
+		TypeSymbol self)
+	{
+		var declared = requirementSymbol.DeclaredTypeParameters;
+		var own = candidateSymbol.DeclaredTypeParameters;
+		if (declared.Length != own.Length)
+			return false;
+		
+		var map = new Dictionary<TypeParameterSymbol, TypeSymbol> { [traitSelf] = self };
+		for (var i = 0; i < declared.Length; i++)
+			map[declared[i]] = own[i];
+		
+		var expected = SubstituteSignature(requirement, map);
+		return expected.IsVariadic == candidate.IsVariadic && expected.ReturnType == candidate.ReturnType &&
+		       expected.ParameterTypes.SequenceEqual(candidate.ParameterTypes) &&
+		       Enumerable.Range(0, expected.ParameterTypes.Length)
+			       .All(i => expected.GetMode(i) == candidate.GetMode(i));
+	}
+	
+	private NativeWitness? FindNativeWitness(FunctionSymbol requirement, FunctionSignature signature,
+		TypeParameterSymbol traitSelf, TypeSymbol self)
+	{
+		if (self is not (PrimitiveType or EnumSymbol) || requirement.Syntax is not FunctionNode node ||
+		    node.Identifier.Type == TokenType.Identifier)
+			return null;
+		
+		var expected = SubstituteSignature(signature, new() { [traitSelf] = self });
+		var registry = _typePool.OperatorRegistry;
+		if (node.Receiver is not null && expected.ParameterTypes.Length == 2)
+			return expected.GetMode(0) == ParameterMode.Mut && registry.GetBinaryCandidates(node.Identifier.Type)
+				.OfType<NativeImpl>()
+				.FirstOrDefault(candidate => candidate.ReturnType == self && candidate.ParameterTypes[0] == self &&
+				                             candidate.ParameterTypes[1] == expected.ParameterTypes[1]) is { } compound
+				? new NativeWitness(compound, true)
+				: null;
+		
+		var candidates = node.Receiver is null
+			? registry.GetBinaryCandidates(node.Identifier.Type)
+			: registry.GetUnaryCandidates(node.Identifier.Type);
+		
+		return candidates.OfType<NativeImpl>().FirstOrDefault(candidate =>
+			candidate.ReturnType == expected.ReturnType &&
+			candidate.ParameterTypes.SequenceEqual(expected.ParameterTypes)) is { } native
+			? new NativeWitness(native)
+			: null;
+	}
+	
+	private static SourceLocation GetFunctionLocation(FunctionSymbol function) => function.Syntax switch
+	{
+		FunctionNode node => node.Identifier.SourceLocation,
+		_ => function.Syntax.SourceLocation
+	};
+	
+	private void ReportUnmatchedMembers(ImplSymbol impl)
+	{
+		var traits = _localConformances.Where(c => c.Impl == impl).Select(static c => $"'{c.Trait.Name}'").ToList();
+		if (traits.Count == 0)
+			return;
+		
+		var members = impl.Functions.Select(static method => (method.Name, method.Function)).Concat(impl.Properties
+			.SelectMany(static property => new[] { property.Getter, property.Setter }
+				.OfType<FunctionAccessor>()
+				.Select(accessor => (property.Name, accessor.Function))));
+		
+		foreach (var (name, function) in members)
+		{
+			if (function.Visibility == Visibility.Private || function.Kind == FunctionKind.Destructor ||
+			    _witnessMembers.Contains(function))
+				continue;
+			
+			Diagnostics.Add(new(DiagnosticSeverity.Error, GetFunctionLocation(function),
+				$"'{name}' isn't a member of {string.Join(" or ", traits)}"));
 		}
 	}
 	
@@ -345,7 +953,7 @@ public sealed class SignatureCollector
 		}
 		
 		var functions = node.Members.OfType<FunctionNode>().ToLookup(IsDereference);
-		ReportMemberConflicts(record, [
+		ReportMemberConflicts(record.Name, [
 			..node.Members.OfType<FieldNode>()
 				.Select(static f => (f.Identifier, (FunctionNode?)null, MemberKind.Field)),
 			..node.Members.OfType<GlobalNode>()
@@ -512,7 +1120,7 @@ public sealed class SignatureCollector
 		};
 	}
 	
-	private void ReportMemberConflicts(TypeSymbol type,
+	private void ReportMemberConflicts(string owner,
 		IEnumerable<(Token Name, FunctionNode? Function, MemberKind Kind)> members)
 	{
 		var sameNames = members
@@ -535,8 +1143,8 @@ public sealed class SignatureCollector
 				continue;
 			
 			var message = sameName.All(static member => member.Kind == MemberKind.Field)
-				? $"Field '{sameName.Key}' is declared more than once in '{type.Name}'"
-				: $"'{sameName.Key}' is declared more than once in '{type.Name}'";
+				? $"Field '{sameName.Key}' is declared more than once in '{owner}'"
+				: $"'{sameName.Key}' is declared more than once in '{owner}'";
 			
 			Diagnostics.AddRange(sameName.Select(member =>
 				new Diagnostic(DiagnosticSeverity.Error, member.Name.SourceLocation, message)));
@@ -605,7 +1213,7 @@ public sealed class SignatureCollector
 			Complete(_symbolTable.DeclarationSymbols[member]);
 		
 		var functions = node.Members.OfType<FunctionNode>().ToLookup(IsDereference);
-		ReportMemberConflicts(enumType, [
+		ReportMemberConflicts(enumType.Name, [
 			..node.Cases.Select(static c => (c.Identifier, (FunctionNode?)null, MemberKind.Case)),
 			..node.Members.OfType<GlobalNode>()
 				.Select(static g => (g.Identifier, (FunctionNode?)null, MemberKind.Field)),
@@ -1052,7 +1660,8 @@ public sealed class SignatureCollector
 		var info = new FunctionInfo(mangledName, function, signature, scope, null, context.File);
 		
 		_builder.Functions[function] = info;
-		_typePool.AddConstructor(containingType, info);
+		if (context.Trait is null)
+			_typePool.AddConstructor(containingType, info);
 	}
 	
 	private void CollectDestructor(FunctionSymbol function, ResolutionContext context)
@@ -1240,7 +1849,7 @@ public sealed class SignatureCollector
 		{
 			var declarationsByName = module.Files
 				.SelectMany(static file => file.Syntax.Declarations.Select(declaration => (file, declaration)))
-				.Where(d => _symbolTable.DeclarationSymbols.ContainsKey(d.declaration))
+				.Where(d => _symbolTable.DeclarationSymbols.ContainsKey(d.declaration) && d.declaration is not ImplNode)
 				.Select(d => (d.file, d.declaration, symbol: _symbolTable.DeclarationSymbols[d.declaration]))
 				.ToLookup(static d => d.symbol.Name);
 			
@@ -1317,7 +1926,7 @@ public sealed class SignatureCollector
 			var path = Modules.Find(module.Name)!;
 			var declarations = module.Files
 				.SelectMany(static f => f.Syntax.Declarations)
-				.Where(d => _symbolTable.DeclarationSymbols.ContainsKey(d));
+				.Where(d => _symbolTable.DeclarationSymbols.ContainsKey(d) && d is not ImplNode);
 			
 			foreach (var declaration in declarations)
 			{
@@ -1350,6 +1959,7 @@ public sealed class SignatureCollector
 		RecordNode node => node.Identifier,
 		EnumNode node => node.Identifier,
 		GlobalNode node => node.Identifier,
+		TraitNode node => node.Identifier,
 		_ => throw new InvalidOperationException()
 	};
 	
@@ -1387,7 +1997,7 @@ public sealed class SignatureCollector
 		
 		foreach (var candidate in candidates)
 		{
-			Diagnostics.Add(candidate.Symbol.DeclaredTypeParameters is [var first, ..]
+			Diagnostics.Add(candidate.Symbol.Syntax is FunctionNode { TypeParameters: [var first, ..] }
 				? new(DiagnosticSeverity.Error, first.Identifier.SourceLocation,
 					$"Cannot declare type parameters on '{_entryPointName}'")
 				: new(DiagnosticSeverity.Error, GetIdentifier(candidate.Symbol.Syntax).SourceLocation,

@@ -1,0 +1,29 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Secret: mod rec impl util.Hash
+{
+	x: i32
+
+	hash: fun(self) -> u64 = u64(self.x)
+}
+
+Hidden: pvt rec
+{
+	x: i32
+}
+
+Hidden: impl util.Hash
+{
+	hash: fun(self) -> u64 = u64(self.x * 10)
+}
+
+main: fun -> i32
+{
+	printf("%llu %llu\n", util.describe(Secret(5)), util.describe(Hidden(2)))
+	ret 0
+}

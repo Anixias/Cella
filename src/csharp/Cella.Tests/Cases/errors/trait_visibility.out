@@ -1,0 +1,39 @@
+
+====== trait_visibility.ce ======
+
+Error at line 23, column 8
+22 │ 
+23 │ hash: pvt fun(self) -> u64 = 1
+           ╘═╛ Cannot implement 'Hash.hash' with 'pvt' members
+
+Error at line 24, column 8
+23 │ hash: pvt fun(self) -> u64 = 1
+24 │ seed: mod fun -> u64 = 2
+           ╘═╛ Cannot implement 'Hash.seed' with 'mod' members
+
+Error at line 28, column 3
+27 │ get(self) = self.x
+28 │ pvt set(mut self, value)
+     ╘═╛ Cannot implement 'Hash.size' with 'pvt' members
+
+Error at line 34, column 7
+33 │ 
+34 │ new: mod op(value: i32)
+          ╘═╛ Cannot implement 'Make.new' with 'mod' members
+
+Error at line 47, column 8
+46 │ {
+47 │     hash: mod fun(self) -> u64 = 1
+               ╘═╛ Cannot implement 'Hash.hash' with 'mod' members
+
+Error at line 48, column 8
+47 │ hash: mod fun(self) -> u64 = 1
+48 │ seed: pvt fun -> u64 = 2
+           ╘═╛ Cannot implement 'Hash.seed' with 'pvt' members
+
+Error at line 49, column 8
+48 │ seed: pvt fun -> u64 = 2
+49 │ size: mod prop i32
+           ╘═╛ Cannot implement 'Hash.size' with 'mod' members
+
+[compilation failed]

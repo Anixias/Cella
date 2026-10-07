@@ -1,0 +1,84 @@
+
+====== trait_conformance.ce ======
+
+Error at line 32, column 19
+31 │ 
+32 │ Missing: rec impl Hash
+                       ╘══╛ 'Missing' needs 'Hash.hash'
+
+Error at line 32, column 19
+31 │ 
+32 │ Missing: rec impl Hash
+                       ╘══╛ 'Missing' needs 'Hash.put'
+
+Error at line 32, column 19
+31 │ 
+32 │ Missing: rec impl Hash
+                       ╘══╛ 'Missing' needs 'Hash.=='
+
+Error at line 41, column 2
+40 │ 
+41 │ hash: fun(self) -> i32 = 0
+     ╘══╛ 'hash' doesn't match 'Hash.hash'
+
+Error at line 42, column 2
+41 │ hash: fun(self) -> i32 = 0
+42 │ put: fun(self, value: i32) { }
+     ╘═╛ 'put' doesn't match 'Hash.put'
+
+Error at line 46, column 15
+45 │ 
+46 │ Box: rec impl Sized
+                   ╘═══╛ 'Box' needs a setter for 'Sized.limit'
+
+Error at line 50, column 8
+49 │ 
+50 │ size: get(self) -> u8 = 0
+           ╘═╛ 'size' doesn't match 'Sized.size'
+
+Error at line 54, column 17
+53 │ 
+54 │ Twice: rec impl Hash
+                     ╘══╛ 'Twice' implements 'Hash' more than once
+
+Error at line 58, column 2
+57 │ 
+58 │ hash: fun(self) -> u64 = 1
+     ╘══╛ 'Twice.hash' is declared more than once with the same signature
+
+Error at line 63, column 13
+62 │ 
+63 │ Twice: impl Hash
+                 ╘══╛ 'Twice' implements 'Hash' more than once
+
+Error at line 65, column 2
+64 │ {
+65 │     hash: fun(self) -> u64 = 2
+         ╘══╛ 'Twice.hash' is declared more than once with the same signature
+
+Error at line 68, column 16
+67 │ 
+68 │ Both: rec impl Num + Num
+                    ╘═╛ 'Both' implements 'Num' more than once
+
+Error at line 68, column 22
+67 │ 
+68 │ Both: rec impl Num + Num
+                          ╘═╛ 'Both' implements 'Num' more than once
+
+Error at line 80, column 2
+79 │ 
+80 │ new: op(capacity: i32)
+     ╘═╛ 'new' doesn't match 'Make.new'
+
+Error at line 86, column 16
+85 │ 
+86 │ Pair: rec impl Make
+                    ╘══╛ 'Pair' needs 'Make.new'
+
+Error at line 91, column 11
+90 │ 
+91 │ f64: impl Num
+               ╘═╛ 'f64' needs 'Num.~'
+
+[compilation failed]

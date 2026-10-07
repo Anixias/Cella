@@ -10,7 +10,7 @@ open[T: rec
 	value: T
 }
 
-constrained[T: copy]: rec
+constrained[T: noref + 3]: rec
 {
 	value: T
 }

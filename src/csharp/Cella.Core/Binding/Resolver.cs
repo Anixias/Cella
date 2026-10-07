@@ -178,11 +178,11 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		return result;
 	}
 	
-	public IResolvedDeclarationNode Visit(ConstructorNode node) => ResolveFunction(node, node.Body);
+	public IResolvedDeclarationNode Visit(ConstructorNode node) => ResolveFunction(node, node.Body!);
 	
 	public IResolvedDeclarationNode Visit(DestructorNode node) => ResolveFunction(node, node.Body);
 	
-	public IResolvedDeclarationNode Visit(FunctionNode node) => ResolveFunction(node, node.Body);
+	public IResolvedDeclarationNode Visit(FunctionNode node) => ResolveFunction(node, node.Body!);
 	
 	private ResolvedFunctionNode ResolveFunction(IDeclarationNode node, IStatementNode body)
 	{
@@ -250,6 +250,32 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		_resolutionContexts.Pop();
 		return new ResolvedEnumNode(enumType, members, node);
 	}
+	
+	public IResolvedDeclarationNode Visit(TraitNode node)
+	{
+		var trait = (TraitSymbol)_symbolTable.DeclarationSymbols[node];
+		_resolutionContexts.Push(CurrentResolutionContext with { ContainingType = trait.Self, Trait = trait });
+		var members = node.Members.SelectMany(VisitBodyMember).ToList();
+		_resolutionContexts.Pop();
+		return new ResolvedTraitNode(trait, members, node);
+	}
+	
+	public IResolvedDeclarationNode Visit(ImplNode node)
+	{
+		var impl = (ImplSymbol)_symbolTable.DeclarationSymbols[node];
+		var target = _signatures.GetImplTarget(impl);
+		_resolutionContexts.Push(CurrentResolutionContext with { ContainingType = target, ImplBlock = impl });
+		var members = node.Members.SelectMany(VisitBodyMember).ToList();
+		_resolutionContexts.Pop();
+		return new ResolvedImplNode(impl, target, members, node);
+	}
+	
+	private IEnumerable<IResolvedDeclarationNode> VisitBodyMember(IDeclarationNode member) => member switch
+	{
+		PropertyNode property => property.Accessors.Where(static a => a.Body is not null).Select(a => VisitNode(a)),
+		FunctionNode { Body: not null } function => [VisitNode(function)],
+		_ => []
+	};
 	
 	public IResolvedStatementNode Visit(BlockStatementNode node)
 	{
@@ -795,6 +821,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 				? VisitRecordConstruction(node, record)
 				: VisitConstructorCall(node, record, null);
 		
+		if (targetType is TypeParameterSymbol && GetConstructors(targetType).Count > 0)
+			return VisitConstructorCall(node, targetType, null);
+		
 		if (node.Arguments.Length != 1)
 			return VisitConstructorCall(node, targetType, null);
 		
@@ -908,7 +937,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		var accessible = constructors.Where(info => CanAccess(definition, info.Symbol.Visibility)).ToArray();
 		if (accessible.Length == 0)
 			return Error(node, ReportHiddenMember(node.SourceLocation, "new",
-				constructors.Select(static info => info.Symbol.Visibility)), CurrentTargetType);
+				constructors.Select(static info => info.Symbol)), CurrentTargetType);
 		
 		var failures = new List<Diagnostic>();
 		var candidates = new List<ICallable>();
@@ -960,9 +989,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	private IResolvedExpressionNode VisitConstructorCall(CallExpressionNode node, TypeSymbol targetType,
 		IResolvedExpressionNode? firstArg)
 	{
-		var constructors = _typePool.GetConstructors(targetType);
+		var constructors = GetConstructors(targetType);
 		var ctorCandidates = constructors
-			.Where(info => CanAccess(targetType, info.Symbol.Visibility))
+			.Where(info => CanAccess(targetType, info.Symbol))
 			.Select(info => new ReceiverCallable(info, targetType))
 			.ToArray();
 		
@@ -983,10 +1012,19 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		
 		if (ctorCandidates.Length == 0 && constructors.Count > 0)
 			return Error(node, ReportHiddenMember(node.SourceLocation, "new",
-				constructors.Select(static info => info.Symbol.Visibility)), targetType);
+				constructors.Select(static info => info.Symbol)), targetType);
 		
 		return ResolveConstructorCall(node, targetType, args, ctorCandidates, targetType);
 	}
+	
+	private IReadOnlyList<FunctionInfo> GetConstructors(TypeSymbol type) => type is TypeParameterSymbol parameter
+		?
+		[
+			.._typePool.GetBounds(parameter)
+				.SelectMany(static trait => trait.Constructors)
+				.Select(constructor => GetFunctionInfo(constructor, type))
+		]
+		: _typePool.GetConstructors(type);
 	
 	private IResolvedExpressionNode ResolveConstructorCall(CallExpressionNode node, TypeSymbol targetType,
 		IResolvedExpressionNode[] args, ICallable[] ctorCandidates, TypeSymbol? target)
@@ -1530,6 +1568,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	private IResolvedExpressionNode VisitMemberCall(CallExpressionNode node, AccessExpressionNode access,
 		IndexerExpressionNode? indexer = null)
 	{
+		if (FindTraitView(access.Target) is var (trait, view))
+			return VisitTraitCall(node, access, trait, view, indexer);
+		
 		if (CurrentResolutionContext.TryResolveExpressionAsType(access.Target) is { } type)
 			return VisitStaticCall(node, access, RequireTypeArguments(type, access.Target), indexer);
 		
@@ -1542,7 +1583,8 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			return VisitIndirectCall(node, target);
 		
 		var owner = GetMemberOwner(target.Type, access.Member.Text);
-		if (FindField(target.Type, access.Member.Text) is not null || owner.GetProperty(access.Member.Text) is not null)
+		if (FindField(target.Type, access.Member.Text) is not null ||
+		    GetPropertyMember(owner, access.Member.Text) is not null)
 			return VisitIndirectCall(node, Index(indexer, ResolveAccess(access, target)));
 		
 		var functions = FindFunctions(owner, access.Member.Text);
@@ -1551,10 +1593,10 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			return Error(node, DescribeMissingMember(owner, access.Member.Text), CurrentTargetType,
 				access.Member.SourceLocation);
 		
-		var accessible = methods.Where(method => CanAccess(owner, method.Function.Visibility)).ToArray();
+		var accessible = methods.Where(method => CanAccess(owner, method.Function)).ToArray();
 		if (accessible.Length == 0)
 			return Error(node, ReportHiddenMember(access.Member.SourceLocation, access.Member.Text,
-				methods.Select(static method => method.Function.Visibility)), CurrentTargetType);
+				methods.Select(static method => method.Function)), CurrentTargetType);
 		
 		if (owner != target.Type)
 			target = ResolveDereference(TokenType.OpStar, target, access.Target);
@@ -1580,7 +1622,8 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		if (type is InvalidType)
 			return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
 		
-		if (type.GetStaticField(access.Member.Text) is not null || type.GetProperty(access.Member.Text) is not null)
+		if (type.GetStaticField(access.Member.Text) is not null ||
+		    GetPropertyMember(type, access.Member.Text) is not null)
 			return VisitIndirectCall(node, Index(indexer, VisitStaticMember(access, type)));
 		
 		var statics = FindStatics(type, access.Member.Text);
@@ -1591,7 +1634,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		var accessible = FindAccessible(type, statics);
 		if (accessible.Length == 0)
 			return Error(node, ReportHiddenMember(access.Member.SourceLocation, access.Member.Text,
-				statics.Select(static function => function.Visibility)), CurrentTargetType);
+				statics), CurrentTargetType);
 		
 		var candidates = accessible
 			.Select(function => GetFunctionInfo(function, type))
@@ -1616,7 +1659,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 				: Error(node, DiagnosticReporter.ReportHidden(node.Member.SourceLocation, field.Name, field.Visibility,
 					true), CurrentTargetType);
 		
-		if (type.GetProperty(node.Member.Text) is { } property)
+		if (GetPropertyMember(type, node.Member.Text) is { } property)
 			return ResolvePropertyUse(node, node.Member.SourceLocation, property, type, null);
 		
 		var statics = FindStatics(type, node.Member.Text);
@@ -1628,12 +1671,12 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		return accessible.Length > 0
 			? ResolveFunctionValue(node, accessible, type)
 			: Error(node, ReportHiddenMember(node.Member.SourceLocation, node.Member.Text,
-				statics.Select(static function => function.Visibility)), CurrentTargetType);
+				statics), CurrentTargetType);
 	}
 	
-	private static bool DeclaresNonCaseMember(TypeSymbol type, string name) => type.GetFunctions(name).Any() ||
-	                                                                           type.GetStaticField(name) is not null ||
-	                                                                           type.GetProperty(name) is not null;
+	private bool DeclaresNonCaseMember(TypeSymbol type, string name) => GetMethods(type, name).Any() ||
+	                                                                    type.GetStaticField(name) is not null ||
+	                                                                    GetPropertyMember(type, name) is not null;
 	
 	private IResolvedExpressionNode ResolvePropertyUse(IExpressionNode node, SourceLocation member,
 		PropertySymbol property, TypeSymbol owner, IResolvedExpressionNode? receiver)
@@ -1641,8 +1684,8 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		if (FindReceiverError(property.IsStatic, receiver) is { } receiverError)
 			return Error(node, receiverError, CurrentTargetType, member);
 		
-		if (!CanAccess(owner, property.Visibility))
-			return Error(node, DiagnosticReporter.ReportHidden(member, property.Name, property.Visibility, true),
+		if (!CanAccess(owner, property))
+			return Error(node, ReportHidden(member, property.Name, property.Visibility, property.Trait, property.Impl),
 				CurrentTargetType);
 		
 		if (node == storeTarget)
@@ -1652,7 +1695,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		if (property.Getter is not FunctionAccessor { Function: var getter })
 			return Error(node, "Cannot read write-only properties", CurrentTargetType, member);
 		
-		return CanAccess(owner, getter.Visibility)
+		return CanAccess(owner, getter)
 			? CallAccessor(getter, owner, receiver, [], node)
 			: Error(node, DiagnosticReporter.ReportWriteOnly(member, property.Name, getter.Visibility),
 				CurrentTargetType);
@@ -1693,18 +1736,229 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		syntax is AccessExpressionNode access ? access.Member.SourceLocation : syntax.SourceLocation;
 	
 	private FunctionSymbol[] FindAccessible(TypeSymbol owner, IEnumerable<FunctionSymbol> functions) =>
-		[..functions.Where(function => CanAccess(owner, function.Visibility))];
+		[..functions.Where(function => CanAccess(owner, function))];
 	
 	private bool CanAccess(TypeSymbol owner, Visibility visibility) =>
 		CurrentResolutionContext.CanAccess(owner, visibility);
 	
+	private bool CanAccess(TypeSymbol owner, FunctionSymbol function) =>
+		CanAccess(owner, function.Visibility, function.Trait, function.Impl);
+	
+	private bool CanAccess(TypeSymbol owner, PropertySymbol property) =>
+		CanAccess(owner, property.Visibility, property.Trait, property.Impl);
+	
+	private bool CanAccess(TypeSymbol owner, Visibility visibility, TraitSymbol? trait, ImplSymbol? impl)
+	{
+		if (trait is null && impl is null)
+			return CanAccess(owner, visibility);
+		
+		var context = CurrentResolutionContext;
+		return visibility != Visibility.Private || (trait is null ? context.ImplBlock == impl : context.Trait == trait);
+	}
+	
+	private IEnumerable<MethodSymbol> GetMethods(TypeSymbol type, string name) =>
+		type.GetFunctions(name).Concat(GetTraitMethods(type, name));
+	
+	private IEnumerable<MethodSymbol> GetTraitMethods(TypeSymbol type, string name)
+	{
+		if (type is TypeParameterSymbol parameter)
+			return _typePool.GetBounds(parameter).SelectMany(trait => trait.GetFunctions(name));
+		
+		var conformances = GetVisibleConformances(type).ToList();
+		return conformances
+			.Select(static conformance => conformance.Impl)
+			.OfType<ImplSymbol>()
+			.Distinct()
+			.SelectMany(impl => impl.Functions.Where(method => method.Name == name))
+			.Concat(conformances.SelectMany(conformance => conformance.Trait.GetFunctions(name)
+				.Where(method => method.Function.Visibility == Visibility.Private ||
+				                 IsDefaultWitness(conformance, method.Function))));
+	}
+	
+	private static bool IsDefaultWitness(Conformance conformance, FunctionSymbol requirement) =>
+		conformance.Witnesses.GetValueOrDefault(requirement) is FunctionWitness { Function: var witness } &&
+		witness == requirement;
+	
+	private IEnumerable<Conformance> GetVisibleConformances(TypeSymbol type) => _typePool.FindConformances(type)
+		.Where(conformance => CurrentResolutionContext.IsVisible(conformance.Trait));
+	
+	private PropertySymbol? GetPropertyMember(TypeSymbol type, string name)
+	{
+		if (type.GetProperty(name) is { } property)
+			return property;
+		
+		if (type is TypeParameterSymbol parameter)
+			return _typePool.GetBounds(parameter)
+				.Select(trait => trait.GetProperty(name))
+				.OfType<PropertySymbol>()
+				.FirstOrDefault();
+		
+		var conformances = GetVisibleConformances(type).ToList();
+		return conformances
+			       .Select(conformance => conformance.Impl?.Properties.FirstOrDefault(p => p.Name == name))
+			       .OfType<PropertySymbol>()
+			       .FirstOrDefault() ??
+		       conformances
+			       .Select(conformance => conformance.Trait.GetProperty(name) is { } traitProperty &&
+			                              (traitProperty.Visibility == Visibility.Private ||
+			                               GetAccessors(traitProperty).Any(accessor =>
+				                               IsDefaultWitness(conformance, accessor)))
+				       ? traitProperty
+				       : null)
+			       .OfType<PropertySymbol>()
+			       .FirstOrDefault();
+	}
+	
+	private static IEnumerable<FunctionSymbol> GetAccessors(PropertySymbol property) =>
+		new[] { property.Getter, property.Setter }.OfType<FunctionAccessor>().Select(static a => a.Function);
+	
+	private (TraitSymbol Trait, IExpressionNode Argument)? FindTraitView(IExpressionNode node)
+	{
+		if (node is not CallExpressionNode { Arguments: [var argument] } call)
+			return null;
+		
+		var context = CurrentResolutionContext;
+		var symbol = call.Target switch
+		{
+			VarExpressionNode name => context.Resolve(name.Identifier.Text),
+			AccessExpressionNode access when context.ResolveModule(access.Target) is { } module =>
+				context.ResolveMember(module, access.Member.Text),
+			_ => null
+		};
+		
+		return symbol is TraitSymbol trait ? (trait, argument) : null;
+	}
+	
+	private IResolvedExpressionNode VisitTraitCall(CallExpressionNode node, AccessExpressionNode access,
+		TraitSymbol trait, IExpressionNode argument, IndexerExpressionNode? indexer)
+	{
+		var name = access.Member.Text;
+		var member = access.Member.SourceLocation;
+		IResolvedExpressionNode? receiver = null;
+		TypeSymbol self;
+		if (CurrentResolutionContext.TryResolveExpressionAsType(argument) is { } type)
+			self = RequireTypeArguments(type, argument);
+		else
+		{
+			receiver = Decay(VisitNode(argument, null));
+			self = receiver.Type;
+		}
+		
+		if (self is InvalidType)
+			return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
+		
+		if (!_typePool.Conforms(self, trait))
+			return Error(node, $"'{self.Name}' doesn't implement '{trait.Name}'", CurrentTargetType, argument);
+		
+		if (trait.GetProperty(name) is not null)
+			return VisitIndirectCall(node, Index(indexer, VisitTraitMember(access, trait, argument)));
+		
+		var functions = trait.GetFunctions(name).ToArray();
+		var matching = functions.Where(method => method.HasReceiver == receiver is not null).ToArray();
+		if (matching.Length == 0)
+			return Error(node, DescribeMissingTraitMember(trait, name, functions, receiver is not null),
+				CurrentTargetType, member);
+		
+		var accessible = matching.Where(method => CanAccess(self, method.Function)).ToArray();
+		if (accessible.Length == 0)
+			return Error(node, ReportHiddenMember(member, name,
+				matching.Select(static method => method.Function)), CurrentTargetType);
+		
+		ICallable[] candidates =
+		[
+			..accessible
+				.Select(method => GetFunctionInfo(method.Function, self))
+				.Select(info => receiver is null
+					? (ICallable)new FunctionCallable(info)
+					: new ReceiverCallable(info, info.Signature.ReturnType))
+		];
+		
+		if (indexer is null)
+			return ResolveCall(node, name, candidates, receiver);
+		
+		return ResolveTypeArguments(indexer) is { } typeArguments
+			? ResolveCall(node, name, candidates, receiver, typeArguments)
+			: new ResolvedInvalidExpressionNode(node, CurrentTargetType);
+	}
+	
+	private IResolvedExpressionNode VisitTraitMember(AccessExpressionNode node, TraitSymbol trait,
+		IExpressionNode argument)
+	{
+		var name = node.Member.Text;
+		var member = node.Member.SourceLocation;
+		IResolvedExpressionNode? receiver = null;
+		TypeSymbol self;
+		if (CurrentResolutionContext.TryResolveExpressionAsType(argument) is { } type)
+			self = RequireTypeArguments(type, argument);
+		else
+		{
+			receiver = Decay(VisitNode(argument, null));
+			self = receiver.Type;
+		}
+		
+		if (self is InvalidType)
+			return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
+		
+		if (!_typePool.Conforms(self, trait))
+			return Error(node, $"'{self.Name}' doesn't implement '{trait.Name}'", CurrentTargetType, argument);
+		
+		if (trait.GetProperty(name) is { } property)
+			return ResolvePropertyUse(node, member, property, self, receiver);
+		
+		var functions = trait.GetFunctions(name).ToArray();
+		if (receiver is not null)
+			return Error(node, functions.Any(static method => method.HasReceiver)
+				? "Cannot use methods as values"
+				: DescribeMissingTraitMember(trait, name, functions, true), CurrentTargetType, member);
+		
+		var statics = functions.Where(static method => !method.HasReceiver).Select(static m => m.Function).ToArray();
+		if (statics.Length == 0)
+			return Error(node, DescribeMissingTraitMember(trait, name, functions, false), CurrentTargetType, member);
+		
+		var accessible = FindAccessible(self, statics);
+		return accessible.Length > 0
+			? ResolveFunctionValue(node, accessible, self)
+			: Error(node, ReportHiddenMember(member, name, statics),
+				CurrentTargetType);
+	}
+	
+	private static string DescribeMissingTraitMember(TraitSymbol trait, string name, MethodSymbol[] functions,
+		bool throughValue) => functions.Length == 0 ? $"Trait '{trait.Name}' has no member '{name}'"
+		: throughValue ? "Cannot use static functions through values"
+		: "Cannot use methods through types";
+	
 	private static Diagnostic ReportHiddenMember(SourceLocation location, string name,
-		IEnumerable<Visibility> visibilities) =>
-		DiagnosticReporter.ReportHidden(location, name, visibilities.Max(), true);
+		IEnumerable<FunctionSymbol> functions)
+	{
+		var widest = functions.MaxBy(static function => function.Visibility)!;
+		return ReportHidden(location, name, widest.Visibility, widest.Trait, widest.Impl);
+	}
+	
+	private static Diagnostic ReportHidden(SourceLocation location, string name, Visibility visibility,
+		TraitSymbol? trait, ImplSymbol? impl) => (trait, impl) switch
+	{
+		(not null, _) when visibility == Visibility.Private => DiagnosticReporter.ReportHidden(location, name, "trait"),
+		(_, not null) when visibility == Visibility.Private =>
+			DiagnosticReporter.ReportHidden(location, name, "impl block"),
+		_ => DiagnosticReporter.ReportHidden(location, name, visibility, true)
+	};
 	
 	private Diagnostic ReportUndefinedSymbol(ISyntaxNode node, string name) =>
 		CurrentResolutionContext.ReportHidden(name, node.SourceLocation) ??
+		ReportHiddenStatic(name, node.SourceLocation) ??
 		DiagnosticReporter.ReportUndefinedSymbol(node, name, GetVisibleSymbolNames());
+	
+	private Diagnostic? ReportHiddenStatic(string name, SourceLocation location)
+	{
+		for (var type = CurrentResolutionContext.ContainingType; type is not null; type = type.ContainingType)
+		{
+			var hidden = FindStatics(type, name).Where(function => !CanAccess(type, function)).ToList();
+			if (hidden.Count > 0)
+				return ReportHiddenMember(location, name, hidden);
+		}
+		
+		return null;
+	}
 	
 	private string DescribeMissingMember(TypeSymbol type, string name) =>
 		type.GetStaticField(name) is not null ? "Cannot use static fields through values"
@@ -1716,14 +1970,14 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		: FindField(type, name) is not null ? "Cannot use fields through types"
 		: $"Type '{type.Name}' has no member '{name}'";
 	
-	private static FunctionSymbol[] FindStatics(TypeSymbol type, string name) =>
+	private FunctionSymbol[] FindStatics(TypeSymbol type, string name) =>
 	[
 		..FindFunctions(type, name)
 			.Where(static function => !function.HasReceiver)
 			.Select(static function => function.Function)
 	];
 	
-	private static MethodSymbol[] FindFunctions(TypeSymbol type, string name) => [..type.GetFunctions(name)];
+	private MethodSymbol[] FindFunctions(TypeSymbol type, string name) => [..GetMethods(type, name)];
 	
 	private FieldSymbol? FindField(TypeSymbol type, string name) =>
 		_typePool.ResolveMember(GetMemberOwner(type, name), name) as FieldSymbol;
@@ -1748,8 +2002,8 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	{
 		FieldSymbol field => CanAccess(type, field.Visibility),
 		null when type.GetStaticField(name) is { } global => CanAccess(type, global.Visibility),
-		null when type.GetProperty(name) is { } property => CanAccess(type, property.Visibility),
-		null => FindFunctions(type, name).Any(function => CanAccess(type, function.Function.Visibility)),
+		null when GetPropertyMember(type, name) is { } property => CanAccess(type, property),
+		null => FindFunctions(type, name).Any(function => CanAccess(type, function.Function)),
 		_ => true
 	};
 	
@@ -1758,8 +2012,8 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		.OfType<BorrowType>()
 		.FirstOrDefault()?.Target;
 	
-	private IEnumerable<MethodSymbol> FindDereferences(TypeSymbol type) => type.GetFunctions("*")
-		.Where(method => method.HasReceiver && CanAccess(type, method.Function.Visibility));
+	private IEnumerable<MethodSymbol> FindDereferences(TypeSymbol type) => GetMethods(type, "*")
+		.Where(method => method.HasReceiver && CanAccess(type, method.Function));
 	
 	private MethodSymbol? FindDereference(TypeSymbol type, ParameterMode mode) => FindDereferences(type)
 		.FirstOrDefault(method => GetFunctionInfo(method.Function, type).Signature is var signature &&
@@ -1921,6 +2175,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	
 	public IResolvedExpressionNode Visit(AccessExpressionNode node)
 	{
+		if (FindTraitView(node.Target) is var (trait, view))
+			return VisitTraitMember(node, trait, view);
+		
 		if (ResolveEnumType(node.Target) is { } enumType)
 			return DeclaresNonCaseMember(enumType, node.Member.Text)
 				? VisitStaticMember(node, RequireTypeArguments(enumType, node.Target))
@@ -1959,7 +2216,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		
 		var memberName = node.Member.Text;
 		var resolutionContext = CurrentResolutionContext;
-		if (target.Type.GetProperty(memberName) is { } property)
+		if (GetPropertyMember(target.Type, memberName) is { } property)
 			return ResolvePropertyUse(node, node.Member.SourceLocation, property, target.Type, target);
 		
 		if (resolutionContext.TypePool.ResolveMember(target.Type, memberName) is not { } member)
@@ -2177,7 +2434,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			
 			case AccessExpressionNode access when context.TryResolveExpressionAsType(access.Target) is { } type:
 				return type is EnumSymbol enumType && enumType.GetStaticField(access.Member.Text) is null &&
-				       enumType.GetProperty(access.Member.Text) is null
+				       GetPropertyMember(enumType, access.Member.Text) is null
 					? FindCase(enumType, access.Member) is not null
 					: HasMember(type, access.Member);
 			
@@ -2195,7 +2452,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		if (type.GetStaticField(member.Text) is { } global)
 			return IsAccessibleMember(type, member, global.Visibility);
 		
-		if (type.GetProperty(member.Text) is { } property)
+		if (GetPropertyMember(type, member.Text) is { } property)
 			return IsAccessibleMember(type, member, property.Visibility);
 		
 		switch (_typePool.ResolveMember(type, member.Text))
@@ -2271,6 +2528,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			
 			case ModulePathSymbol:
 				return Error(node, $"'{GetName(node)}' is a module, not a value", CurrentTargetType);
+			
+			case TraitSymbol:
+				return Error(node, "Cannot use traits as values", CurrentTargetType);
 			
 			default:
 				return Error(node, $"Symbol '{GetName(node)}' is not a variable", CurrentTargetType);
@@ -2617,9 +2877,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			: new ResolvedUnaryOpExpressionNode(operand, new NativeImpl(opType, baseType), node),
 		var type when (FindDereference(type, ParameterMode.ReadOnly) ?? FindDereference(type, ParameterMode.Mut)) is
 			{ } dereference => Decay(CallDereference(operand, dereference, node)),
-		var type when type.GetFunctions("*").Where(static method => method.HasReceiver).ToList() is
+		var type when GetMethods(type, "*").Where(static method => method.HasReceiver).ToList() is
 			{ Count: > 0 } hidden => Error(node, ReportHiddenMember(node.SourceLocation, "*",
-			hidden.Select(static method => method.Function.Visibility)), CurrentTargetType),
+			hidden.Select(static method => method.Function)), CurrentTargetType),
 		_ => Error(node, $"Cannot dereference type '{operand.Type.Name}'", CurrentTargetType)
 	};
 	
@@ -2768,13 +3028,13 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			: new ResolvedInvalidExpressionNode(node, CurrentTargetType);
 	}
 	
-	private static IEnumerable<(TypeSymbol Owner, FunctionSymbol Function)> FindOperators(TypeSymbol type,
-		string name) => type.GetFunctions(name)
-		.Where(static method => !method.HasReceiver)
-		.Select(method => (type, method.Function));
+	private IEnumerable<(TypeSymbol Owner, FunctionSymbol Function)> FindOperators(TypeSymbol type, string name) =>
+		GetMethods(type, name)
+			.Where(static method => !method.HasReceiver)
+			.Select(method => (type, method.Function));
 	
 	private IEnumerable<ICallable> FindOperatorCallables(TypeSymbol type, string name) => FindOperators(type, name)
-		.Where(entry => CanAccess(entry.Owner, entry.Function.Visibility))
+		.Where(entry => CanAccess(entry.Owner, entry.Function))
 		.Select(entry => new FunctionCallable(GetFunctionInfo(entry.Function, entry.Owner)));
 	
 	private IResolvedExpressionNode? ResolveDeclaredOperator(BinaryOpExpressionNode node, IResolvedExpressionNode left,
@@ -2789,13 +3049,13 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			return null;
 		
 		var candidates = declared
-			.Where(entry => CanAccess(entry.Owner, entry.Function.Visibility))
+			.Where(entry => CanAccess(entry.Owner, entry.Function))
 			.Select(entry => new FunctionCallable(GetFunctionInfo(entry.Function, entry.Owner)))
 			.ToArray();
 		
 		if (candidates.Length == 0)
 			return Error(node, ReportHiddenMember(node.Op.SourceLocation, name,
-				declared.Select(static entry => entry.Function.Visibility)), CurrentTargetType);
+				declared.Select(static entry => entry.Function)), CurrentTargetType);
 		
 		var args = new[] { left, right };
 		var resolutionSet = ResolveCallable(candidates, args, MaterializationMode.Overload);
@@ -2815,13 +3075,13 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	private IResolvedExpressionNode? ResolveDeclaredUnary(UnaryOpExpressionNode node, IResolvedExpressionNode operand)
 	{
 		var name = node.Op.Text;
-		var declared = operand.Type.GetFunctions(name).Where(static method => method.HasReceiver).ToList();
+		var declared = GetMethods(operand.Type, name).Where(static method => method.HasReceiver).ToList();
 		if (declared.Count == 0)
 			return null;
 		
-		if (declared.FirstOrDefault(method => CanAccess(operand.Type, method.Function.Visibility)) is not { } unary)
+		if (declared.FirstOrDefault(method => CanAccess(operand.Type, method.Function)) is not { } unary)
 			return Error(node, ReportHiddenMember(node.Op.SourceLocation, name,
-				declared.Select(static method => method.Function.Visibility)), CurrentTargetType);
+				declared.Select(static method => method.Function)), CurrentTargetType);
 		
 		var info = GetFunctionInfo(unary.Function, operand.Type);
 		TrackFunctionUse(info, node);
@@ -2831,21 +3091,21 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	private IResolvedExpressionNode? ResolveDeclaredCompound(BinaryOpExpressionNode node, IResolvedExpressionNode left)
 	{
 		var name = node.Op.Text;
-		var declared = left.Type.GetFunctions(name).Where(static method => method.HasReceiver).ToList();
+		var declared = GetMethods(left.Type, name).Where(static method => method.HasReceiver).ToList();
 		if (declared.Count == 0)
 			return null;
 		
 		ICallable[] candidates =
 		[
 			..declared
-				.Where(method => CanAccess(left.Type, method.Function.Visibility))
+				.Where(method => CanAccess(left.Type, method.Function))
 				.Select(method => GetFunctionInfo(method.Function, left.Type))
 				.Select(static info => new ReceiverCallable(info, info.Signature.ReturnType))
 		];
 		
 		if (candidates.Length == 0)
 			return RejectAssignment(node, ReportHiddenMember(node.Op.SourceLocation, name,
-				declared.Select(static method => method.Function.Visibility)));
+				declared.Select(static method => method.Function)));
 		
 		var right = VisitArgument(node.Right, ParameterTypesAt(candidates, 0));
 		if (IsInvalid(right))
@@ -2915,7 +3175,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		if (FindReceiverError(setter.Kind == FunctionKind.Free, target.Receiver) is { } setterError)
 			return RejectAssignment(node, new(DiagnosticSeverity.Error, member, setterError));
 		
-		if (!CanAccess(target.Owner, setter.Visibility))
+		if (!CanAccess(target.Owner, setter))
 			return RejectAssignment(node, DiagnosticReporter.ReportReadOnly(member, property.Name, setter.Visibility));
 		
 		var setterInfo = GetFunctionInfo(setter, target.Owner);
@@ -2929,7 +3189,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		if (FindReceiverError(getter.Kind == FunctionKind.Free, target.Receiver) is { } getterError)
 			return RejectAssignment(node, new(DiagnosticSeverity.Error, member, getterError));
 		
-		if (!CanAccess(target.Owner, getter.Visibility))
+		if (!CanAccess(target.Owner, getter))
 			return RejectAssignment(node, DiagnosticReporter.ReportWriteOnly(member, property.Name, getter.Visibility));
 		
 		var getterInfo = GetFunctionInfo(getter, target.Owner);
@@ -3028,7 +3288,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		return new ResolvedChainedExpressionNode(NativeSymbols.Bool, operands, links, node);
 	}
 	
-	private static bool DeclaresOperator(TypeSymbol left, TypeSymbol right, string name) =>
+	private bool DeclaresOperator(TypeSymbol left, TypeSymbol right, string name) =>
 		FindOperators(left, name).Any() || FindOperators(right, name).Any();
 	
 	private IResolvedExpressionNode ResolveDeclaredChain(ChainedExpressionNode node,
@@ -3053,13 +3313,13 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 				:
 				[
 					..declared
-						.Where(entry => CanAccess(entry.Owner, entry.Function.Visibility))
+						.Where(entry => CanAccess(entry.Owner, entry.Function))
 						.Select(entry => new FunctionCallable(GetFunctionInfo(entry.Function, entry.Owner)))
 				];
 			
 			if (candidates.Length == 0)
 				return Error(node, ReportHiddenMember(op.SourceLocation, op.Text,
-					declared.Select(static entry => entry.Function.Visibility)), CurrentTargetType);
+					declared.Select(static entry => entry.Function)), CurrentTargetType);
 			
 			var resolutionSet = ResolveCallable(candidates, args, MaterializationMode.Overload,
 				declared.Count == 0 ? NativeSymbols.Bool : null);
@@ -3567,7 +3827,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	private FunctionInfo GetFunctionInfo(FunctionSymbol function) => _signatures.GetFunctionInfo(function);
 	
 	private FunctionInfo GetFunctionInfo(FunctionSymbol function, TypeSymbol owner) => _typePool.InstantiateFunction(
-		GetFunctionInfo(function), [..owner.TypeArguments, ..function.DeclaredTypeParameters]);
+		GetFunctionInfo(function), _typePool.GetWitnessArguments(owner, function, function.DeclaredTypeParameters));
 	
 	private TypeSymbol RequireTypeArguments(TypeSymbol type, IExpressionNode node)
 	{

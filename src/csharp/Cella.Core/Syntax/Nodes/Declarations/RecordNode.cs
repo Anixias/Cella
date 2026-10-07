@@ -18,6 +18,7 @@ public sealed class RecordNode
 	public bool IsRef { get; } = isRef;
 	public ImmutableArray<IDeclarationNode> Members { get; } = members.ToImmutableArray();
 	public ImmutableArray<TypeParameterNode> TypeParameters { get; init; } = [];
+	public ImmutableArray<ITypeNode> Traits { get; init; } = [];
 }
 
 public sealed class FieldNode
@@ -40,7 +41,7 @@ public sealed class ConstructorNode
 	Token keyword,
 	IEnumerable<Token> modifiers,
 	IEnumerable<ParameterNode> parameters,
-	IStatementNode body,
+	IStatementNode? body,
 	SourceLocation sourceLocation
 ) : IDeclarationNode
 {
@@ -48,7 +49,7 @@ public sealed class ConstructorNode
 	public ImmutableArray<Token> Modifiers { get; } = modifiers.ToImmutableArray();
 	public Token? Visibility { get; init; }
 	public ImmutableArray<ParameterNode> Parameters { get; } = parameters.ToImmutableArray();
-	public IStatementNode Body { get; } = body;
+	public IStatementNode? Body { get; } = body;
 	public SourceLocation SourceLocation { get; } = sourceLocation;
 }
 

@@ -1,0 +1,16 @@
+mod lib
+
+Hash: pub trait
+{
+	hash: fun(self) -> u64
+}
+
+Point: pub rec
+{
+	x: i32
+}
+
+i32: impl Hash
+{
+	hash: fun(self) -> u64 = 1
+}

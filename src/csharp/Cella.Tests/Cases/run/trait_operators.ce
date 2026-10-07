@@ -1,0 +1,79 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Num: trait
+{
+	+: op(a: Self, b: Self) -> Self
+	*: op(a: Self, b: Self) -> Self
+	<: op(a: Self, b: Self) -> bool
+	==: op(a: Self, b: Self) -> bool
+	-: op(self) -> Self
+	+=: op(mut self, other: Self)
+}
+
+Eq: trait
+{
+	==: op(a: Self, b: Self) -> bool
+}
+
+Score: rec
+{
+	n: i32
+}
+
+Score: impl Num
+{
+	+: op(a: Score, b: Score) -> Score = Score(a.n + b.n)
+	*: op(a: Score, b: Score) -> Score = Score(a.n * b.n)
+	<: op(a: Score, b: Score) -> bool = a.n < b.n
+	==: op(a: Score, b: Score) -> bool = a.n == b.n
+	-: op(self) -> Score = Score(-self.n)
+
+	+=: op(mut self, other: Score)
+	{
+		self.n += other.n
+	}
+}
+
+i32: impl Num
+i64: impl Num
+f64: impl Num
+
+Color: enum impl Eq
+{
+	red
+	green
+}
+
+sum[T: Num + noref]: fun(a: T, b: T, c: T) -> T = a + b * c
+
+flip[T: Num + noref]: fun(own value: T) -> T = -value
+
+ordered[T: Num]: fun(a: T, b: T, c: T) -> bool = a < b < c
+
+same[T: Eq]: fun(a: T, b: T) -> bool = a == b
+
+gather[T: Num]: fun(mut total: T, own a: T, own b: T)
+{
+	total += a
+	total += b
+}
+
+main: fun -> i32
+{
+	printf("%d %lld %.1f %d\n", sum(1, 2, 3), sum[i64](-5, 2, 3), sum(0.5, 1.0, 2.0), sum(Score(1), Score(2), Score(3)).n)
+	printf("%d %.1f %d\n", flip(5), flip(2.5), flip(Score(7)).n)
+	printf("%d %d %d\n", i32(ordered(1, 2, 3)), i32(ordered(Score(3), Score(2), Score(5))),
+		i32(ordered(Score(1), Score(2), Score(5))))
+	printf("%d %d\n", i32(same(Color.red, Color.red)), i32(same(Color.red, Color.green)))
+	var s = Score(1)
+	gather(mut s, Score(2), Score(3))
+	var n = 10
+	gather(mut n, 20, 30)
+	printf("%d %d\n", s.n, n)
+	ret 0
+}

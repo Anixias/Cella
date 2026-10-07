@@ -125,6 +125,8 @@ public sealed class FunctionSymbol
 	public SourceLocation Definition { get; } = syntax.SourceLocation;
 	public bool IsExternal => Kind == FunctionKind.External || Syntax is FunctionNode { IsExternal: true };
 	public PropertySymbol? Property { get; internal set; }
+	public TraitSymbol? Trait { get; internal set; }
+	public ImplSymbol? Impl { get; internal set; }
 	public ImmutableArray<TypeParameterSymbol> TypeParameters { get; init; } = [];
 	public ImmutableArray<TypeParameterSymbol> DeclaredTypeParameters { get; init; } = [];
 }
@@ -143,11 +145,12 @@ public abstract class TypeSymbol(string name, TypeSymbol? containingType = null,
 	public virtual PropertySymbol? GetProperty(string name) => null;
 }
 
-public sealed class TypeParameterSymbol(Token identifier, Token? constraint) : TypeSymbol(identifier.Text)
+public sealed class TypeParameterSymbol(string name, IEnumerable<Token> keywords) : TypeSymbol(name)
 {
-	public Token Identifier { get; } = identifier;
-	public bool IsNoref { get; } = constraint?.Type == TokenType.KeywordNoref;
-	public bool HasNull { get; } = constraint?.Type == TokenType.KeywordNull;
+	private readonly ImmutableArray<Token> _keywords = keywords.ToImmutableArray();
+	
+	public bool IsNoref => _keywords.Any(static keyword => keyword.Type == TokenType.KeywordNoref);
+	public bool HasNull => _keywords.Any(static keyword => keyword.Type == TokenType.KeywordNull);
 }
 
 public sealed class InvalidType : TypeSymbol
@@ -612,6 +615,8 @@ public sealed class PropertySymbol(string name) : TypedMemberSymbol(name)
 	public PropertyNode? Node { get; init; }
 	public Visibility Visibility { get; init; } = Visibility.Public;
 	public TypeSymbol? ContainingType { get; internal set; }
+	public TraitSymbol? Trait { get; internal set; }
+	public ImplSymbol? Impl { get; internal set; }
 	public bool IsStatic => (Getter ?? Setter) is FunctionAccessor { Function.Kind: FunctionKind.Free };
 }
 
@@ -620,6 +625,40 @@ public sealed class IndexerSymbol(string name, IEnumerable<ParameterSymbol> para
 	public ImmutableArray<ParameterSymbol> Parameters { get; } = parameters.ToImmutableArray();
 	public AccessorImpl? Getter { get; init; }
 	public AccessorImpl? Setter { get; init; }
+}
+
+public sealed class TraitSymbol
+(
+	TraitNode node,
+	TypeParameterSymbol self,
+	IEnumerable<MethodSymbol> functions,
+	IEnumerable<PropertySymbol> properties,
+	IEnumerable<FunctionSymbol> constructors
+) : Symbol(node.Identifier.Text), IExportable
+{
+	public TraitNode Node { get; } = node;
+	public TypeParameterSymbol Self { get; } = self;
+	public ImmutableArray<MethodSymbol> Functions { get; } = functions.ToImmutableArray();
+	public ImmutableArray<PropertySymbol> Properties { get; } = properties.ToImmutableArray();
+	public ImmutableArray<FunctionSymbol> Constructors { get; } = constructors.ToImmutableArray();
+	public Visibility Visibility { get; } = Visibility.FromKeyword(node.Visibility);
+	
+	public IEnumerable<MethodSymbol> GetFunctions(string name) => Functions.Where(f => f.Name == name);
+	public PropertySymbol? GetProperty(string name) => Properties.FirstOrDefault(p => p.Name == name);
+}
+
+public sealed class ImplSymbol
+(
+	ImplNode node,
+	ImmutableArray<TypeParameterSymbol> typeParameters,
+	IEnumerable<MethodSymbol> functions,
+	IEnumerable<PropertySymbol> properties
+) : Symbol("impl")
+{
+	public ImplNode Node { get; } = node;
+	public ImmutableArray<TypeParameterSymbol> TypeParameters { get; } = typeParameters;
+	public ImmutableArray<MethodSymbol> Functions { get; } = functions.ToImmutableArray();
+	public ImmutableArray<PropertySymbol> Properties { get; } = properties.ToImmutableArray();
 }
 
 public sealed class MethodSymbol(string name, FunctionSymbol function) : MemberSymbol(name)

@@ -70,6 +70,24 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool, 
 	{
 	}
 	
+	public void Visit(ResolvedTraitNode node)
+	{
+		currentType = node.Symbol.Self;
+		foreach (var member in node.Members)
+			VisitNode(member);
+		
+		currentType = null;
+	}
+	
+	public void Visit(ResolvedImplNode node)
+	{
+		currentType = node.Target;
+		foreach (var member in node.Members)
+			VisitNode(member);
+		
+		currentType = null;
+	}
+	
 	public void Visit(ResolvedEnumNode node)
 	{
 		currentType = node.Symbol;

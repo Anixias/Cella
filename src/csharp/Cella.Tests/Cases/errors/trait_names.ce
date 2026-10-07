@@ -1,0 +1,48 @@
+mod test
+
+Hash: trait
+{
+	hash: fun(self) -> u64
+}
+
+Point: rec impl Hash + Shape + Missing
+{
+	x: i32
+
+	hash: fun(self) -> u64 = 1
+}
+
+Shape: rec
+{
+	x: i32
+}
+
+Nope: impl Hash
+{
+	hash: fun(self) -> u64 = 1
+}
+
+box[T]: rec
+{
+	value: T
+}
+
+box: impl Hash
+{
+	hash: fun(self) -> u64 = 1
+}
+
+i32[T]: impl Hash
+{
+	hash: fun(self) -> u64 = 1
+}
+
+test.Point: impl Missing
+
+apply: fun(value: Self) -> i32 = 0
+
+measure: fun(value: Hash) -> i32 = 0
+
+check[T: Shape]: fun(value: T) -> i32 = 0
+
+main: fun -> i32 = 0

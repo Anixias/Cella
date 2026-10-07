@@ -1,0 +1,49 @@
+
+====== trait_names.ce ======
+
+Error at line 8, column 24
+7 │ 
+8 │ Point: rec impl Hash + Shape + Missing
+                           ╘═══╛ 'Shape' is not a trait
+
+Error at line 8, column 32
+7 │ 
+8 │ Point: rec impl Hash + Shape + Missing
+                                   ╘═════╛ Trait 'Missing' not found in this scope
+
+Error at line 20, column 1
+19 │ 
+20 │ Nope: impl Hash
+     ╘══╛ Type 'Nope' not found in this scope
+
+Error at line 30, column 1
+29 │ 
+30 │ box: impl Hash
+     ╘═╛ 'box' takes one type argument
+
+Error at line 35, column 1
+34 │ 
+35 │ i32[T]: impl Hash
+     ╘═╛ 'i32' takes no type arguments
+
+Error at line 40, column 18
+39 │ 
+40 │ test.Point: impl Missing
+                      ╘═════╛ Trait 'Missing' not found in this scope
+
+Error at line 42, column 19
+41 │ 
+42 │ apply: fun(value: Self) -> i32 = 0
+                       ╘══╛ Type 'Self' not found in this scope
+
+Error at line 44, column 21
+43 │ 
+44 │ measure: fun(value: Hash) -> i32 = 0
+                         ╘══╛ 'Hash' is not a type
+
+Error at line 46, column 10
+45 │ 
+46 │ check[T: Shape]: fun(value: T) -> i32 = 0
+              ╘═══╛ 'Shape' is not a trait
+
+[compilation failed]
