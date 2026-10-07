@@ -1016,14 +1016,12 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 	
 	private EnumCaseNode? ParseEnumCase(ref int index)
 	{
-		var name = Tokens[index];
-		if (name.Type != TokenType.Identifier && !name.Type.IsKeyword)
+		if (!Match(ref index, out var name, TokenType.Identifier))
 		{
 			ReportExpected(index, "a case name");
 			return null;
 		}
 		
-		index++;
 		var payload = new List<FieldNode>();
 		if (Tokens[index].Line == name.Line && Match(ref index, out var openParen, TokenType.OpOpenParen))
 		{

@@ -206,13 +206,13 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 	
 	public PatternNode ParsePattern(ref int index)
 	{
-		if (!MatchName(ref index, out var first))
+		if (!Match(ref index, out var first, TokenType.Identifier))
 			throw Expected(index, "a case name");
 		
 		var names = new List<Token> { first };
-		while (names[^1].Type == TokenType.Identifier && !IsNextNewline(index) && Match(ref index, TokenType.OpDot))
+		while (!IsNextNewline(index) && Match(ref index, TokenType.OpDot))
 		{
-			if (!MatchName(ref index, out var name))
+			if (!Match(ref index, out var name, TokenType.Identifier))
 				throw Expected(index, "a case name");
 			
 			names.Add(name);
@@ -246,16 +246,6 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 		
 		range = range.Join(closeParen.SourceLocation.Range);
 		return new PatternNode(typePath, caseName, bindings, bindingModes, true, new(source, range));
-	}
-	
-	private bool MatchName(ref int index, out Token name)
-	{
-		name = Tokens[Math.Min(index, Tokens.Length - 1)];
-		if (AtEnd(index) || name.Type != TokenType.Identifier && !name.Type.IsKeyword)
-			return false;
-		
-		index++;
-		return true;
 	}
 	
 	private IExpressionNode ParseComparison(ref int index)
@@ -572,7 +562,7 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 		IExpressionNode name = new VarExpressionNode(first);
 		while (Match(ref index, TokenType.OpDot))
 		{
-			if (!MatchName(ref index, out var member))
+			if (!Match(ref index, out var member, TokenType.Identifier))
 				throw Expected(index, "a name");
 			
 			var (nameSource, nameRange) = name.SourceLocation;
@@ -600,7 +590,7 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 			// Access Expression
 			if (Match(ref index, TokenType.OpDot))
 			{
-				if (!MatchName(ref index, out var member))
+				if (!Match(ref index, out var member, TokenType.Identifier))
 				{
 					// TODO Diagnostic
 					index = startIndex;

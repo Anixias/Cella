@@ -14,13 +14,6 @@ Team: enum
 
 Role: enum { fighter  caster  healer }
 
-Json: enum
-{
-	null
-	true
-	false
-}
-
 Unit: rec
 {
 	hp: i32
@@ -79,14 +72,6 @@ main: fun -> i32
 	var unit = Unit(10, Team.green)
 	if unit.team == Team.green
 		printf("green unit with %d hp\n", unit.hp)
-
-	var json = Json.true
-	match json
-	{
-		null => printf("null\n")
-		Json.true => printf("true\n")
-		false => printf("false\n")
-	}
 
 	val folded = Team.red == Team.blue
 	printf("%d %d %d %d\n", i32(folded), i32(sizeOf(Team)), i32(sizeOf(Unit)), i32(sizeOf(array[Role, 5])))

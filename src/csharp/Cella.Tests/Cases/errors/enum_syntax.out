@@ -17,19 +17,24 @@ Error at line 17, column 1
      ^ Expected ',' or ')'
      | To match the '(' on line 16
 
-Error at line 28, column 11
-27 │ {
-28 │     fighter ret 1
+Error at line 26, column 2
+25 │ {
+26 │     null
+         ╘══╛ Expected a case name
+
+Error at line 33, column 11
+32 │ {
+33 │     fighter ret 1
                  ╘═╛ Expected '=>'
 
-Error at line 37, column 3
-36 │ match Role.fighter
-37 │     fighter => ret 1
+Error at line 42, column 3
+41 │ match Role.fighter
+42 │     fighter => ret 1
          ╘═════╛ Expected '{'
 
-Error at line 44, column 29
-43 │ {
-44 │     if Role.fighter is fighter(1)
+Error at line 49, column 29
+48 │ {
+49 │     if Role.fighter is fighter(1)
                                     ^ Expected a name or '_'
 
 [compilation failed]

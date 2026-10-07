@@ -1,0 +1,122 @@
+mod test
+
+use util.none
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+option[T]: enum
+{
+	none
+	some(value: T)
+
+	map[U]: fun(own self, change: fun[own T -> U]) -> option[U]
+	{
+		match own self
+		{
+			some(own v) => ret some(change(v))
+			none => ret none
+		}
+	}
+}
+
+Team: enum
+{
+	red
+	blue
+}
+
+Mode: enum
+{
+	idle
+	running(speed: i32)
+}
+
+Effect: enum
+{
+	calm
+	strike(damage: i32)
+}
+
+Holder: rec
+{
+	item: option[i32]
+	count: i32
+}
+
+Box: rec
+{
+	item: option[i32]
+
+	new: op(own item: option[i32])
+	{
+		self.item = item
+	}
+}
+
+pair[T]: rec
+{
+	item: option[T]
+	count: T
+}
+
+seven: val option[i32] = some(7)
+
+read: fun(o: option[i32]) -> i32 = match o { some(v) => v  none => -1 }
+readWide: fun(o: option[i64]) -> i64 = match o { some(v) => v  none => -1 }
+speed: fun(m: Mode) -> i32 = match m { running(s) => s  idle => 0 }
+damage: fun(e: Effect) -> i32 = match e { strike(d) => d  calm => 0 }
+show: fun(o: option[i32]) -> i32 = 1
+show: fun(t: Team) -> i32 = 2
+both[T]: fun(o: option[T], own fallback: T) -> T = fallback
+double: fun(own n: i32) -> i64 = i64(n) * 2
+some: fun(value: i32) -> i32 = value * 100
+
+half: fun(n: i32) -> option[i32]
+{
+	if n % 2 != 0
+		ret none
+
+	ret some(n / 2)
+}
+
+keep[T]: fun(own value: T, kept: bool) -> option[T]
+{
+	if kept
+		ret some(value)
+
+	ret none
+}
+
+main: fun -> i32
+{
+	val a: option[i32] = none
+	var b: option[i32] = some(3)
+	printf("%d %d %d %d %d ", read(a), read(b), read(seven), read(half(8)), read(half(3)))
+	b = none
+	printf("%d %d %d\n", read(b), read(keep(4, true)), read(keep(4, false)))
+
+	val modes: array[Mode, 2] = [idle, running(4)]
+	val nested: option[option[i32]] = some(none)
+	printf("%d %d %d\n", speed(modes[0]), speed(modes[1]), match nested { some(inner) => read(inner)  none => -2 })
+
+	val held = Holder(some(9), 1)
+	val box = Box(some(10))
+	val reader: fun[option[i32] -> i32] = read
+	val counted = pair(none, 3)
+	printf("%d %d %d %d %d ", read(held.item), read(box.item), reader(some(11)), both(none, 12),
+		match counted.item { some(v) => v  none => counted.count })
+
+	printf("%d %d %lld\n", show(none), show(blue), readWide(option.some(21).map(double)))
+
+	val team = Team.blue
+	printf("%d %d %d\n", i32(team == blue), i32(red == team), i32(team != blue))
+
+	val none = 3
+	val strike = Effect.strike(5)
+	val imported = util.none
+	printf("%d %d %d %d\n", read(none) + none, damage(strike), read(some(2)), read(imported))
+	ret 0
+}

@@ -62,6 +62,17 @@ public readonly struct ResolutionContext
 	
 	public Symbol? Resolve(string name)
 	{
+		if (ResolveNear(name) is { } symbol)
+			return symbol;
+		
+		if (Imports?.Resolve(name) is { Length: > 0 } imports)
+			return ResolveFrom(name, imports);
+		
+		return NativeSymbols.Resolve(name) ?? Modules?.Root.Children.GetValueOrDefault(name);
+	}
+	
+	public Symbol? ResolveNear(string name)
+	{
 		// TODO None of this will work with function overloads :(
 		
 		if (LocalScope?.Resolve(name) is { } localSymbol)
@@ -88,13 +99,7 @@ public readonly struct ResolutionContext
 				return function;
 		}
 		
-		if (ResolveFrom(name, [..GetModuleSymbols(name).Where(IsVisible)]) is { } moduleSymbol)
-			return moduleSymbol;
-		
-		if (Imports?.Resolve(name) is { Length: > 0 } imports)
-			return ResolveFrom(name, imports);
-		
-		return NativeSymbols.Resolve(name) ?? Modules?.Root.Children.GetValueOrDefault(name);
+		return ResolveFrom(name, [..GetModuleSymbols(name).Where(IsVisible)]);
 	}
 	
 	private IEnumerable<Symbol> GetModuleSymbols(string name) =>

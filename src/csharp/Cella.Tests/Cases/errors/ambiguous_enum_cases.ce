@@ -1,0 +1,29 @@
+mod test
+
+option[T]: enum
+{
+	none
+	some(value: T)
+}
+
+Team: enum
+{
+	red
+	blue
+}
+
+pick: fun(o: option[i32]) -> i32 = 0
+some: fun(value: i32) -> option[i32] = option.some(value)
+blue: val Team = Team.red
+
+locals: fun -> option[i32]
+{
+	val none = option[i32].some(1)
+	val picked = pick(none)
+	ret none
+}
+
+calls: fun -> i32 = pick(some(2))
+globals: fun -> bool = Team.red == blue
+
+main: fun -> i32 = 0

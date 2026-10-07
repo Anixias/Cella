@@ -48,6 +48,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	private readonly Stack<ResolutionContext> _resolutionContexts = [];
 	private readonly HashSet<LocalVariableSymbol> _repeatedBindings = [];
 	private readonly Dictionary<IResolvedExpressionNode, ImmutableArray<LocalVariableSymbol?>> _failedPatterns = [];
+	private readonly Dictionary<ResolvedCaseNameExpressionNode, IResolvedExpressionNode> _caseNameFallbacks = [];
 	private readonly ExtSignatureTypes _extSignatureTypes;
 	private readonly TypeInference _inference;
 	private readonly List<Instantiation> _instantiations = [];
@@ -325,6 +326,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	
 	public IResolvedExpressionNode Visit(CallExpressionNode node)
 	{
+		if (node.Target is VarExpressionNode callee && ResolveTargetCase(callee.Identifier, node) is { } targetCase)
+			return targetCase;
+		
 		if (node.Target is AccessExpressionNode access && ResolveEnumType(access.Target) is { } enumType)
 			return DeclaresNonCaseMember(enumType, access.Member.Text)
 				? VisitStaticCall(node, access, RequireTypeArguments(enumType, access.Target))
@@ -351,9 +355,14 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		if (enumType.IsGenericDefinition && access.Target is not IndexerExpressionNode)
 			return VisitInferredEnumCase(access, enumType, call);
 		
-		IExpressionNode node = call is null ? access : call;
+		return ResolveCase(access.Member, enumType, call, call is null ? access : call);
+	}
+	
+	private IResolvedExpressionNode ResolveCase(Token name, EnumSymbol enumType, CallExpressionNode? call,
+		IExpressionNode node)
+	{
 		var arguments = call?.Arguments ?? [];
-		var enumCase = FindCase(enumType, access.Member);
+		var enumCase = FindCase(enumType, name);
 		ImmutableArray<TypeSymbol> payloadTypes = enumCase is null ? [] : _typePool.GetPayloadTypes(enumType, enumCase);
 		
 		if (enumCase is null || arguments.Length != payloadTypes.Length || call is not null && payloadTypes.IsEmpty)
@@ -848,16 +857,17 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	
 	private IResolvedExpressionNode VisitInferredConstruction(CallExpressionNode node, RecordSymbol definition)
 	{
-		var args = node.Arguments.Select(VisitArgument).ToArray();
+		var constructors = _typePool.GetConstructors(definition);
+		var fields = _typePool.GetMembers(definition).OfType<FieldSymbol>().ToArray();
+		var callables = constructors.Select(constructor => new ReceiverCallable(constructor, definition)).ToArray();
+		var args = node.Arguments.Select((argument, i) => VisitArgument(argument, ExpectedAt(i))).ToArray();
 		if (AnyInvalid(args))
 			return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
 		
 		var name = GetName(node.Target);
-		var constructors = _typePool.GetConstructors(definition);
 		if (constructors.Count > 0)
 			return ResolveInferredConstructor(node, definition, name, args, constructors);
 		
-		var fields = _typePool.GetMembers(definition).OfType<FieldSymbol>().ToArray();
 		if (args.Length != fields.Length && args.Length > 0)
 			return VisitRecordConstruction(node, definition, args);
 		
@@ -872,6 +882,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
 		
 		return VisitRecordConstruction(node, instance, args);
+		
+		IEnumerable<TypeSymbol> ExpectedAt(int index) => constructors.Count > 0 ? ParameterTypesAt(callables, index)
+			: index < fields.Length ? [GetMemberType(fields[index])] : [];
 	}
 	
 	private IResolvedExpressionNode ResolveInferredConstructor(CallExpressionNode node, RecordSymbol definition,
@@ -932,6 +945,12 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	private IResolvedExpressionNode VisitConstructorCall(CallExpressionNode node, TypeSymbol targetType,
 		IResolvedExpressionNode? firstArg)
 	{
+		var constructors = _typePool.GetConstructors(targetType);
+		var ctorCandidates = constructors
+			.Where(info => CanAccess(targetType, info.Symbol.Visibility))
+			.Select(info => new ReceiverCallable(info, targetType))
+			.ToArray();
+		
 		var args = new IResolvedExpressionNode[node.Arguments.Length];
 		
 		var iStart = 0;
@@ -942,16 +961,10 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		}
 		
 		for (var i = iStart; i < node.Arguments.Length; i++)
-			args[i] = VisitArgument(node.Arguments[i]);
+			args[i] = VisitArgument(node.Arguments[i], ParameterTypesAt(ctorCandidates, i));
 		
 		if (AnyInvalid(args))
 			return new ResolvedInvalidExpressionNode(node, targetType);
-		
-		var constructors = _typePool.GetConstructors(targetType);
-		var ctorCandidates = constructors
-			.Where(info => CanAccess(targetType, info.Symbol.Visibility))
-			.Select(info => new ReceiverCallable(info, targetType))
-			.ToArray();
 		
 		if (ctorCandidates.Length == 0 && constructors.Count > 0)
 			return Error(node, ReportHiddenMember(node.SourceLocation, "new",
@@ -973,7 +986,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			if (ReportArgumentModes(ctorCandidates, args, target))
 				return new ResolvedInvalidExpressionNode(node, targetType);
 			
-			var message = args.Length == 1
+			var message = args is [not ResolvedCaseNameExpressionNode]
 				? $"No constructor for '{targetType.Name}' accepts argument of type '{GetArgumentType(args[0]).Name}'"
 				: $"No constructor for '{targetType.Name}' accepts these arguments";
 			
@@ -1162,6 +1175,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		{
 			ResolvedFunctionGroupExpressionNode { Group.Functions: [var single] } when
 				GetOpenTypeParameters(single).IsEmpty => new(parameter, GetNaturalType(single)) { IsExact = true },
+			ResolvedCaseNameExpressionNode => null,
 			_ when type is NeverType or FunctionGroupType or InvalidType => null,
 			_ when type is UntypedType literal => new(parameter, GetDefaultType(arg)) { Literal = literal },
 			_ => new(parameter, type)
@@ -1208,7 +1222,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	{
 		var args = new IResolvedExpressionNode[node.Arguments.Length];
 		for (var i = 0; i < node.Arguments.Length; i++)
-			args[i] = VisitArgument(node.Arguments[i]);
+			args[i] = VisitArgument(node.Arguments[i], ParameterTypesAt(candidates, i));
 		
 		if (AnyInvalid(args))
 			return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
@@ -1263,6 +1277,130 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			? new ResolvedMutArgumentExpressionNode(MakeWritable(receiver), _typePool.GetPointerType(receiver.Type),
 				receiver.Syntax)
 			: receiver;
+	
+	private IResolvedExpressionNode VisitArgument(IExpressionNode node, IEnumerable<TypeSymbol> expected) =>
+		VisitCaseName(node, expected) ?? VisitArgument(node);
+	
+	private IResolvedExpressionNode VisitOperand(IExpressionNode node, IEnumerable<ICallable> candidates, int index) =>
+		VisitCaseName(node, ParameterTypesAt(candidates, index)) ?? VisitNode(node, null);
+	
+	private ResolvedCaseNameExpressionNode? VisitCaseName(IExpressionNode node, IEnumerable<TypeSymbol> expected)
+	{
+		var name = node switch
+		{
+			VarExpressionNode variable => variable.Identifier,
+			CallExpressionNode { Target: VarExpressionNode callee } => callee.Identifier,
+			_ => default(Token?)
+		};
+		
+		return name is { } token && expected.Any(type => HasCase(type, token.Text))
+			? CreateCaseName(token, node)
+			: null;
+	}
+	
+	private ResolvedCaseNameExpressionNode CreateCaseName(Token name, IExpressionNode node)
+	{
+		var context = CurrentResolutionContext;
+		var near = context.ResolveNear(name.Text);
+		return new ResolvedCaseNameExpressionNode(name, near ?? context.Resolve(name.Text), near is not null, node);
+	}
+	
+	private static IEnumerable<TypeSymbol> ParameterTypesAt(IEnumerable<ICallable> candidates, int index) => candidates
+		.Where(candidate => index < candidate.ParameterTypes.Length)
+		.Select(candidate => candidate.ParameterTypes[index]);
+	
+	private static bool HasCase(TypeSymbol? type, string name) =>
+		type is EnumSymbol enumType && enumType.Cases.Any(enumCase => enumCase.Name == name);
+	
+	private IResolvedExpressionNode? ResolveTargetCase(Token name, IExpressionNode node)
+	{
+		if (CurrentTargetType is not EnumSymbol target || !HasCase(target, name.Text))
+			return null;
+		
+		var caseName = CreateCaseName(name, node);
+		return ChooseCase(target, caseName) == CaseChoice.Symbol ? null : ResolveCaseName(caseName, target);
+	}
+	
+	private IResolvedExpressionNode ResolveCaseName(ResolvedCaseNameExpressionNode caseName, TypeSymbol target)
+	{
+		if (target is not EnumSymbol enumType)
+			return GetFallback(caseName);
+		
+		return ChooseCase(enumType, caseName) switch
+		{
+			CaseChoice.Case => ResolveCase(caseName.Name, enumType, caseName.Syntax as CallExpressionNode,
+				caseName.Syntax),
+			CaseChoice.Ambiguous => Error(caseName.Syntax, $"'{caseName.Name.Text}' is ambiguous", target,
+				caseName.Name.SourceLocation),
+			_ => GetFallback(caseName)
+		};
+	}
+	
+	private CaseChoice ChooseCase(EnumSymbol enumType, ResolvedCaseNameExpressionNode caseName)
+	{
+		if (!HasCase(enumType, caseName.Name.Text))
+			return CaseChoice.Symbol;
+		
+		if (caseName.Symbol is not { } symbol)
+			return CaseChoice.Case;
+		
+		if (!IsViableCase(enumType, caseName))
+			return CaseChoice.Symbol;
+		
+		return caseName.IsNear && CouldProduce(symbol, caseName.Syntax is CallExpressionNode, enumType)
+			? CaseChoice.Ambiguous
+			: CaseChoice.Case;
+	}
+	
+	private static bool IsViableCase(EnumSymbol enumType, ResolvedCaseNameExpressionNode caseName) =>
+		enumType.Cases.FirstOrDefault(enumCase => enumCase.Name == caseName.Name.Text) is { } enumCase &&
+		(caseName.Syntax is CallExpressionNode call
+			? !enumCase.Fields.IsEmpty && call.Arguments.Length == enumCase.Fields.Length
+			: enumCase.Fields.IsEmpty);
+	
+	private IResolvedExpressionNode GetFallback(ResolvedCaseNameExpressionNode caseName)
+	{
+		if (!_caseNameFallbacks.TryGetValue(caseName, out var fallback))
+			_caseNameFallbacks[caseName] = fallback = VisitNode(caseName.Syntax, null);
+		
+		return fallback;
+	}
+	
+	private IResolvedExpressionNode ResolveUnmatched(IResolvedExpressionNode node) =>
+		node is ResolvedCaseNameExpressionNode caseName ? Decay(GetFallback(caseName)) : node;
+	
+	private bool CouldProduce(Symbol symbol, bool isCall, TypeSymbol target)
+	{
+		var valueType = GetValueType(symbol);
+		if (!isCall)
+			return valueType is not null && CouldConvert(valueType, target);
+		
+		return GetFunctions(symbol)
+			       .Any(function => CouldConvert(GetFunctionInfo(function).Signature.ReturnType, target)) ||
+		       valueType is FunctionType functionType && CouldConvert(functionType.ReturnType, target);
+	}
+	
+	private bool CouldConvert(TypeSymbol type, TypeSymbol target)
+	{
+		if (type is BorrowType borrow)
+			type = borrow.Target;
+		
+		return type == target || _conversionTable.FindImplicit(type, target) is not null ||
+		       TypePool.ContainsTypeParameters(type) && type.OriginalDefinition == target.OriginalDefinition;
+	}
+	
+	private TypeSymbol? GetValueType(Symbol symbol) => symbol switch
+	{
+		LocalVariableSymbol { IsBorrowBinding: true, Type: PointerType pointer } => pointer.BaseType,
+		LocalVariableSymbol local => local.Type,
+		GlobalSymbol global => _signatures.GetGlobalType(global),
+		ParameterSymbol { Mode: ParameterMode.Mut } parameter when
+			_signatures.GetVariableType(parameter) is PointerType pointer => pointer.BaseType,
+		VariableSymbol variable => _signatures.GetVariableType(variable),
+		PropertySymbol { Getter: FunctionAccessor { Function: var getter } } property =>
+			GetFunctionInfo(getter, property.ContainingType!).Signature.ReturnType,
+		_ => null
+	};
 	
 	private IResolvedExpressionNode VisitArgument(IExpressionNode node)
 	{
@@ -1655,14 +1793,16 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			target = MaterializeAsDefault(target);
 		
 		target = Decay(target);
-		var args = node.Arguments.Select(VisitArgument).ToArray();
+		ICallable[] candidates = target.Type is FunctionType type ? [new FunctionTypeCallable(type)] : [];
+		var args = node.Arguments.Select((argument, i) => VisitArgument(argument, ParameterTypesAt(candidates, i)))
+			.ToArray();
+		
 		if (IsInvalid(target) || AnyInvalid(args))
 			return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
 		
 		if (target.Type is not FunctionType functionType)
 			return Error(node, $"Cannot call a value of type '{target.Type.Name}'", CurrentTargetType, node.Target);
 		
-		ICallable[] candidates = [new FunctionTypeCallable(functionType)];
 		var resolutionSet = ResolveCallable(candidates, args, MaterializationMode.Overload);
 		
 		if (!resolutionSet.HasResult && ReportArgumentModes(candidates, args, null))
@@ -2070,6 +2210,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	
 	public IResolvedExpressionNode Visit(VarExpressionNode node)
 	{
+		if (ResolveTargetCase(node.Identifier, node) is { } targetCase)
+			return targetCase;
+		
 		var resolutionContext = CurrentResolutionContext;
 		var varName = node.Identifier.Text;
 		var symbol = resolutionContext.Resolve(varName);
@@ -2504,11 +2647,12 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		}
 		else
 		{
-			var left = Decay(VisitNode(node.Left, null));
+			var candidates = _operatorRegistry.GetBinaryCandidates(op.Type);
+			var left = Decay(VisitOperand(node.Left, candidates, 0));
 			var isConjunction = op.Type == TokenType.OpAmpersandAmpersand;
 			var right = Decay(isConjunction
 				? VisitInScope(node.Right, GetTrueBindings(left))
-				: VisitNode(node.Right, null));
+				: VisitOperand(node.Right, candidates, 1));
 			
 			if (isConjunction)
 				ReportRepeatedBindings(GetTrueBindings(left).Concat(GetTrueBindings(right)));
@@ -2536,7 +2680,6 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 				return Error(node, mismatch with { Hints = [hint] }, CurrentTargetType);
 			}
 			
-			var candidates = _operatorRegistry.GetBinaryCandidates(op.Type);
 			var args = new[] { left, right };
 			var resolutionSet = ResolveCallable(candidates, args, MaterializationMode.Overload,
 				CurrentTargetType);
@@ -2548,6 +2691,11 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			
 			if (!resolutionSet.HasResult)
 			{
+				left = ResolveUnmatched(left);
+				right = ResolveUnmatched(right);
+				if (AnyInvalid(left, right))
+					return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
+				
 				var diagnostic = DiagnosticReporter.ReportBinaryOpMismatch(_operatorRegistry, left, op, right);
 				return Error(node, diagnostic, CurrentTargetType);
 			}
@@ -2808,6 +2956,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	
 	private IResolvedExpressionNode MaterializeAsDefault(IResolvedExpressionNode node)
 	{
+		if (node is ResolvedCaseNameExpressionNode caseName)
+			return GetFallback(caseName);
+		
 		switch (node.Type)
 		{
 			case UntypedIntegerType when node is ResolvedLiteralExpressionNode literal:
@@ -2888,6 +3039,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	
 	private IResolvedExpressionNode MaterializeExpression(IResolvedExpressionNode node, TypeSymbol target)
 	{
+		if (node is ResolvedCaseNameExpressionNode caseName)
+			return ResolveCaseName(caseName, target);
+		
 		if (node is ResolvedFunctionGroupExpressionNode group)
 			return MaterializeFunction(group, target);
 		
@@ -3380,6 +3534,10 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 				continue;
 			}
 			
+			if (arg is ResolvedCaseNameExpressionNode caseName)
+				arg = ResolveCaseName(caseName,
+					target is BorrowType { IsMutable: false, Target: var readTarget } ? readTarget : target);
+			
 			var borrowed = target is BorrowType { IsMutable: false } borrow && arg.Type is not BorrowType
 				? borrow
 				: null;
@@ -3494,6 +3652,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	private (int Cost, Conversion? Conversion) MatchArg(IResolvedExpressionNode arg, TypeSymbol target,
 		MaterializationMode mode)
 	{
+		if (arg is ResolvedCaseNameExpressionNode caseName)
+			return MatchCaseName(caseName, target, mode);
+		
 		if (arg.Type == target)
 			return (0, null);
 		
@@ -3530,6 +3691,16 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		return conversion is null ? (Cost: int.MaxValue, null) : (conversion.Cost, conversion);
 	}
 	
+	private (int Cost, Conversion? Conversion) MatchCaseName(ResolvedCaseNameExpressionNode caseName,
+		TypeSymbol target, MaterializationMode mode)
+	{
+		var (read, borrowCost) = target is BorrowType { IsMutable: false } borrow ? (borrow.Target, 1) : (target, 0);
+		if (read is EnumSymbol enumType && ChooseCase(enumType, caseName) != CaseChoice.Symbol)
+			return (borrowCost + (IsViableCase(enumType, caseName) ? 0 : 1), null);
+		
+		return caseName.Symbol is null ? (int.MaxValue, null) : MatchArg(GetFallback(caseName), target, mode);
+	}
+	
 	private bool LiteralFits(ResolvedLiteralExpressionNode literal, TypeSymbol target) => (literal.Type, target) switch
 	{
 		(UntypedIntegerType, IntegerType type) => FitsInType((BigInteger)literal.Value!, type),
@@ -3537,6 +3708,13 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		(UntypedFloatType, FloatType type) => FitsInFloat((string)literal.Value!, type),
 		_ => true
 	};
+	
+	private enum CaseChoice
+	{
+		Case,
+		Symbol,
+		Ambiguous
+	}
 	
 	private readonly record struct CallableResolution
 	(

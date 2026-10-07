@@ -1,0 +1,21 @@
+mod test
+
+option[T]: enum
+{
+	none
+	some(value: T)
+}
+
+pick: fun(o: option[i32]) -> i32 = 0
+both[T]: fun(o: option[T]) -> i32 = 0
+
+shapes: fun
+{
+	val payload = pick(some)
+	val empty = pick(none(1))
+	val untyped = none
+	val generic = both(none)
+	val declared: option[i32] = nnone
+}
+
+main: fun -> i32 = 0

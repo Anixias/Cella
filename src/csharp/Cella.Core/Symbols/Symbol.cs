@@ -307,6 +307,13 @@ public sealed class UntypedStringType() : UntypedType("string literal")
 	}
 }
 
+public sealed class CaseNameType() : UntypedType("case name")
+{
+	public static CaseNameType Instance { get; } = new();
+	
+	public override int MaterializationCost(TypeSymbol target, MaterializationMode mode) => int.MaxValue;
+}
+
 public sealed class FunctionGroupType(string functionName, IEnumerable<FunctionInfo> functions, string name)
 	: UntypedType(name)
 {

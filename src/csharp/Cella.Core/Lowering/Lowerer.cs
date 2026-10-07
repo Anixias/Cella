@@ -815,6 +815,8 @@ public sealed class Lowerer
 		
 		public Value Visit(ResolvedFunctionGroupExpressionNode node) => throw new InvalidOperationException();
 		
+		public Value Visit(ResolvedCaseNameExpressionNode node) => throw new InvalidOperationException();
+		
 		public Value Visit(ResolvedFunctionReferenceExpressionNode node) =>
 			new FunctionReferenceValue(node.Function, node.Type, node.Syntax.SourceLocation);
 		

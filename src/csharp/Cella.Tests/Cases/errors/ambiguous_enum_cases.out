@@ -1,0 +1,24 @@
+
+====== ambiguous_enum_cases.ce ======
+
+Error at line 22, column 20
+21 │ val none = option[i32].some(1)
+22 │ val picked = pick(none)
+                       ╘══╛ 'none' is ambiguous
+
+Error at line 23, column 6
+22 │ val picked = pick(none)
+23 │ ret none
+         ╘══╛ 'none' is ambiguous
+
+Error at line 26, column 26
+25 │ 
+26 │ calls: fun -> i32 = pick(some(2))
+                              ╘══╛ 'some' is ambiguous
+
+Error at line 27, column 36
+26 │ calls: fun -> i32 = pick(some(2))
+27 │ globals: fun -> bool = Team.red == blue
+                                        ╘══╛ 'blue' is ambiguous
+
+[compilation failed]

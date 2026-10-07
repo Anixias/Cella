@@ -21,6 +21,11 @@ Role: enum
 	fighter
 }
 
+Json: enum
+{
+	null
+}
+
 missingArrow: fun -> i32
 {
 	match Role.fighter
