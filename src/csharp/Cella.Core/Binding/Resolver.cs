@@ -1533,6 +1533,10 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		if (CurrentResolutionContext.TryResolveExpressionAsType(access.Target) is { } type)
 			return VisitStaticCall(node, access, RequireTypeArguments(type, access.Target), indexer);
 		
+		if (access.Member.Type != TokenType.Identifier)
+			return Error(node, $"Cannot call '{access.Member.Text}' through a value", CurrentTargetType,
+				access.Member.SourceLocation);
+		
 		var target = Decay(VisitNode(access.Target, null));
 		if (IsInvalid(target))
 			return VisitIndirectCall(node, target);
@@ -2569,6 +2573,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			
 			default:
 			{
+				if (ResolveDeclaredUnary(node, operand) is { } declared)
+					return declared;
+				
 				if (op.Type == TokenType.OpMinus && operand.Type is IntegerType { IsSigned: false })
 				{
 					var negation = new Diagnostic(DiagnosticSeverity.Error, node.SourceLocation,
@@ -2665,13 +2672,16 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			var isConjunction = op.Type == TokenType.OpAmpersandAmpersand;
 			var right = Decay(isConjunction
 				? VisitInScope(node.Right, GetTrueBindings(left))
-				: VisitOperand(node.Right, candidates, 1));
+				: VisitOperand(node.Right, [..candidates, ..FindOperatorCallables(left.Type, op.Text)], 1));
 			
 			if (isConjunction)
 				ReportRepeatedBindings(GetTrueBindings(left).Concat(GetTrueBindings(right)));
 			
 			if (AnyInvalid(left, right))
 				return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
+			
+			if (ResolveDeclaredOperator(node, left, right) is { } declared)
+				return declared;
 			
 			if (op.Type == TokenType.OpPlus && IsString(left.Type) && IsString(right.Type))
 				return ConcatenateStrings(node, left, right);
@@ -2748,9 +2758,115 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	}
 	
 	private IResolvedExpressionNode ResolveCompoundAssignment(BinaryOpExpressionNode node, IResolvedExpressionNode left,
-		bool isOwnStore) => ResolveCompoundOperation(node, left) is var (right, operation)
-		? new ResolvedAssignmentExpressionNode(left.Type, left, node.Op, right, operation, node, isOwnStore)
-		: new ResolvedInvalidExpressionNode(node, CurrentTargetType);
+		bool isOwnStore)
+	{
+		if (ResolveDeclaredCompound(node, left) is { } declared)
+			return declared;
+		
+		return ResolveCompoundOperation(node, left) is var (right, operation)
+			? new ResolvedAssignmentExpressionNode(left.Type, left, node.Op, right, operation, node, isOwnStore)
+			: new ResolvedInvalidExpressionNode(node, CurrentTargetType);
+	}
+	
+	private static IEnumerable<(TypeSymbol Owner, FunctionSymbol Function)> FindOperators(TypeSymbol type,
+		string name) => type.GetFunctions(name)
+		.Where(static method => !method.HasReceiver)
+		.Select(method => (type, method.Function));
+	
+	private IEnumerable<ICallable> FindOperatorCallables(TypeSymbol type, string name) => FindOperators(type, name)
+		.Where(entry => CanAccess(entry.Owner, entry.Function.Visibility))
+		.Select(entry => new FunctionCallable(GetFunctionInfo(entry.Function, entry.Owner)));
+	
+	private IResolvedExpressionNode? ResolveDeclaredOperator(BinaryOpExpressionNode node, IResolvedExpressionNode left,
+		IResolvedExpressionNode right)
+	{
+		var name = node.Op.Text;
+		var declared = FindOperators(left.Type, name).ToList();
+		if (right.Type != left.Type)
+			declared.AddRange(FindOperators(right.Type, name));
+		
+		if (declared.Count == 0)
+			return null;
+		
+		var candidates = declared
+			.Where(entry => CanAccess(entry.Owner, entry.Function.Visibility))
+			.Select(entry => new FunctionCallable(GetFunctionInfo(entry.Function, entry.Owner)))
+			.ToArray();
+		
+		if (candidates.Length == 0)
+			return Error(node, ReportHiddenMember(node.Op.SourceLocation, name,
+				declared.Select(static entry => entry.Function.Visibility)), CurrentTargetType);
+		
+		var args = new[] { left, right };
+		var resolutionSet = ResolveCallable(candidates, args, MaterializationMode.Overload);
+		if (resolutionSet.IsAmbiguous)
+			return Error(node, $"Ambiguous operation '{name}' between '{left.Type.Name}' and '{right.Type.Name}'",
+				CurrentTargetType);
+		
+		if (!resolutionSet.HasResult)
+			return null;
+		
+		var resolution = resolutionSet[0];
+		var info = ((FunctionCallable)resolution.Callable).Info;
+		TrackFunctionUse(info, node);
+		return new ResolvedFunctionCallExpressionNode(info, ApplyArgumentResolution(args, resolution), node);
+	}
+	
+	private IResolvedExpressionNode? ResolveDeclaredUnary(UnaryOpExpressionNode node, IResolvedExpressionNode operand)
+	{
+		var name = node.Op.Text;
+		var declared = operand.Type.GetFunctions(name).Where(static method => method.HasReceiver).ToList();
+		if (declared.Count == 0)
+			return null;
+		
+		if (declared.FirstOrDefault(method => CanAccess(operand.Type, method.Function.Visibility)) is not { } unary)
+			return Error(node, ReportHiddenMember(node.Op.SourceLocation, name,
+				declared.Select(static method => method.Function.Visibility)), CurrentTargetType);
+		
+		var info = GetFunctionInfo(unary.Function, operand.Type);
+		TrackFunctionUse(info, node);
+		return new ResolvedFunctionCallExpressionNode(info, [CreateReceiver(operand, info)], node);
+	}
+	
+	private IResolvedExpressionNode? ResolveDeclaredCompound(BinaryOpExpressionNode node, IResolvedExpressionNode left)
+	{
+		var name = node.Op.Text;
+		var declared = left.Type.GetFunctions(name).Where(static method => method.HasReceiver).ToList();
+		if (declared.Count == 0)
+			return null;
+		
+		ICallable[] candidates =
+		[
+			..declared
+				.Where(method => CanAccess(left.Type, method.Function.Visibility))
+				.Select(method => GetFunctionInfo(method.Function, left.Type))
+				.Select(static info => new ReceiverCallable(info, info.Signature.ReturnType))
+		];
+		
+		if (candidates.Length == 0)
+			return RejectAssignment(node, ReportHiddenMember(node.Op.SourceLocation, name,
+				declared.Select(static method => method.Function.Visibility)));
+		
+		var right = VisitArgument(node.Right, ParameterTypesAt(candidates, 0));
+		if (IsInvalid(right))
+			return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
+		
+		var resolutionSet = ResolveCallable(candidates, [right], MaterializationMode.Overload);
+		if (resolutionSet.IsAmbiguous)
+			return Error(node, $"Ambiguous operation '{name}' between '{left.Type.Name}' and '{right.Type.Name}'",
+				CurrentTargetType);
+		
+		if (!resolutionSet.HasResult)
+			return Error(node, DiagnosticReporter.ReportBinaryOpMismatch(_operatorRegistry, left, node.Op, right),
+				CurrentTargetType);
+		
+		var resolution = resolutionSet[0];
+		var info = ((ReceiverCallable)resolution.Callable).Info;
+		TrackFunctionUse(info, node);
+		var args = ApplyArgumentResolution([right], resolution);
+		args.Insert(0, CreateReceiver(left, info));
+		return new ResolvedFunctionCallExpressionNode(info, args, node);
+	}
 	
 	private (IResolvedExpressionNode Right, OperationImpl Operation)? ResolveCompoundOperation(
 		BinaryOpExpressionNode node, IResolvedExpressionNode left)
@@ -2822,6 +2938,19 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			: target.Receiver;
 		
 		var current = CallAccessor(getter, target.Owner, receiver, [], target.Syntax);
+		if (current.Type == valueType && ResolveDeclaredCompound(node, current) is { } declared)
+		{
+			if (declared is not ResolvedFunctionCallExpressionNode { Arguments: [_, var value] } call)
+				return declared;
+			
+			TrackFunctionUse(setterInfo, node);
+			return new ResolvedPropertyAssignmentExpressionNode(getterInfo, setterInfo, receiver, node.Op, value, null,
+				node)
+			{
+				Compound = call.Function
+			};
+		}
+		
 		if (current.Type != valueType || ResolveCompoundOperation(node, current) is not var (right, operation))
 			return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
 		
@@ -2843,6 +2972,10 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		foreach (var operand in node.Operands)
 			operands.Add(Decay(VisitNode(operand, null)));
 		
+		if (Enumerable.Range(0, node.Ops.Length)
+		    .Any(i => DeclaresOperator(operands[i].Type, operands[i + 1].Type, node.Ops[i].Text)))
+			return ResolveDeclaredChain(node, operands);
+		
 		// TODO Do we need common types anymore?
 		var commonType = UnifyTypes(operands);
 		if (commonType is null)
@@ -2851,7 +2984,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		for (var i = 0; i < operands.Count; i++)
 			operands[i] = CoerceToType(operands[i], commonType);
 		
-		var operations = new List<OperationImpl?>(node.Ops.Length);
+		var links = new List<ChainLink>(node.Ops.Length);
 		for (var i = 0; i < operands.Count - 1; i++)
 		{
 			var left = operands[i];
@@ -2887,12 +3020,106 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			
 			operands[i] = resolvedArgs[0];
 			operands[i + 1] = resolvedArgs[1];
-			operations.Add((OperationImpl)resolution.Callable);
+			links.Add(new ChainLink((OperationImpl)resolution.Callable, null));
 		}
 		
 		// TODO Aggregate types with implicit AND?
 		
-		return new ResolvedChainedExpressionNode(NativeSymbols.Bool, operands, operations, node);
+		return new ResolvedChainedExpressionNode(NativeSymbols.Bool, operands, links, node);
+	}
+	
+	private static bool DeclaresOperator(TypeSymbol left, TypeSymbol right, string name) =>
+		FindOperators(left, name).Any() || FindOperators(right, name).Any();
+	
+	private IResolvedExpressionNode ResolveDeclaredChain(ChainedExpressionNode node,
+		List<IResolvedExpressionNode> operands)
+	{
+		if (AnyInvalid([..operands]))
+			return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
+		
+		var links = new List<ChainLink>(node.Ops.Length);
+		for (var i = 0; i < node.Ops.Length; i++)
+		{
+			var op = node.Ops[i];
+			var args = new[] { operands[i], operands[i + 1] };
+			var (source, range) = args[0].Syntax.SourceLocation;
+			var location = new SourceLocation(source, range.Join(args[1].Syntax.SourceLocation.Range));
+			var declared = FindOperators(args[0].Type, op.Text).ToList();
+			if (args[1].Type != args[0].Type)
+				declared.AddRange(FindOperators(args[1].Type, op.Text));
+			
+			ICallable[] candidates = declared.Count == 0
+				? [.._operatorRegistry.GetBinaryCandidates(op.Type)]
+				:
+				[
+					..declared
+						.Where(entry => CanAccess(entry.Owner, entry.Function.Visibility))
+						.Select(entry => new FunctionCallable(GetFunctionInfo(entry.Function, entry.Owner)))
+				];
+			
+			if (candidates.Length == 0)
+				return Error(node, ReportHiddenMember(op.SourceLocation, op.Text,
+					declared.Select(static entry => entry.Function.Visibility)), CurrentTargetType);
+			
+			var resolutionSet = ResolveCallable(candidates, args, MaterializationMode.Overload,
+				declared.Count == 0 ? NativeSymbols.Bool : null);
+			
+			if (resolutionSet.IsAmbiguous)
+				return Error(node,
+					$"Ambiguous operation '{op.Text}' between '{args[0].Type.Name}' and '{args[1].Type.Name}'",
+					CurrentTargetType, location);
+			
+			if (!resolutionSet.HasResult)
+				return Error(node, DiagnosticReporter.ReportBinaryOpMismatch(_operatorRegistry, args[0], op, args[1]),
+					CurrentTargetType);
+			
+			var resolution = resolutionSet[0];
+			if (resolution.Callable.ReturnType != NativeSymbols.Bool)
+				return Error(node, $"Cannot chain '{op.Text}' results of type '{resolution.Callable.ReturnType.Name}'",
+					CurrentTargetType, location);
+			
+			for (var j = 0; j < 2; j++)
+				operands[i + j] = MaterializeChainOperand(args[j], resolution.Callable.ParameterTypes[j]);
+			
+			var function = resolution.Callable is FunctionCallable callable ? callable.Info : (FunctionInfo?)null;
+			if (function is { } info && FindSharedMove(operands, i, info) is { } shared)
+				return Error(node, "Cannot move operands shared by two comparisons", CurrentTargetType,
+					shared.Syntax.SourceLocation);
+			
+			if (function is { } used)
+				TrackFunctionUse(used, node);
+			
+			links.Add(new ChainLink(resolution.Callable as OperationImpl, function)
+			{
+				LeftConversion = resolution.ArgumentConversions[0],
+				RightConversion = resolution.ArgumentConversions[1]
+			});
+		}
+		
+		return new ResolvedChainedExpressionNode(NativeSymbols.Bool, operands, links, node);
+	}
+	
+	private IResolvedExpressionNode MaterializeChainOperand(IResolvedExpressionNode operand, TypeSymbol target)
+	{
+		if (operand.Type is not UntypedType)
+			return operand;
+		
+		var materialized = MaterializeExpression(operand, target);
+		return materialized.Type is UntypedType ? MaterializeAsDefault(materialized) : materialized;
+	}
+	
+	private IResolvedExpressionNode? FindSharedMove(List<IResolvedExpressionNode> operands, int link,
+		FunctionInfo function)
+	{
+		for (var j = 0; j < 2; j++)
+		{
+			var index = link + j;
+			if (index > 0 && index < operands.Count - 1 && function.Signature.GetMode(j) == ParameterMode.Own &&
+			    !_typePool.IsCopy(operands[index].Type))
+				return operands[index];
+		}
+		
+		return null;
 	}
 	
 	[return: NotNullIfNotNull(nameof(source))]

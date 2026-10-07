@@ -1,0 +1,14 @@
+c 12
+drop 12
+same 1
+drop 5
+d 105
+drop 105
+e 103
+drop 103
+f -103
+drop -103
+drop 12
+drop 2
+drop 1
+[exit code 0]

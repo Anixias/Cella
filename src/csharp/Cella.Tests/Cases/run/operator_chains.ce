@@ -1,0 +1,43 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Fixed: rec
+{
+	raw: i32
+
+	<: op(a: Fixed, b: Fixed) -> bool = a.raw < b.raw
+	<=: op(a: Fixed, b: Fixed) -> bool = a.raw <= b.raw
+	<=: op(low: f32, x: Fixed) -> bool = i32(low * 256.0) <= x.raw
+	<: op(x: Fixed, high: f32) -> bool = x.raw < i32(high * 256.0)
+	<: op(low: i32, x: Fixed) -> bool = low * 256 < x.raw
+}
+
+calls: var i32 = 0
+
+fixed: fun(value: i32) -> Fixed
+{
+	calls += 1
+	ret Fixed(value)
+}
+
+main: fun -> i32
+{
+	val a = Fixed(1)
+	val b = Fixed(2)
+	val c = Fixed(3)
+	val t = Fixed(128)
+	printf("%d %d %d\n", i32(a < b < c), i32(c < b < a), i32(a <= a < b))
+	printf("%d %d\n", i32(0.0 <= t < 1.0), i32(0.0 <= Fixed(300) < 1.0))
+	val skipped = c < a < fixed(9)
+	printf("%d %d\n", i32(skipped), calls)
+	val counted = fixed(1) < fixed(2) < fixed(3)
+	printf("%d %d\n", i32(counted), calls)
+	var low = 0
+	val mixed = -1 < low < Fixed(512)
+	printf("%d\n", i32(mixed))
+	ret 0
+}

@@ -1,0 +1,20 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+main: fun -> i32
+{
+	val a = lib.Money(150)
+	val b = lib.Money(275)
+	var total = a + b * 2
+	total += lib.Money(5)
+	val back = -total
+	printf("%lld %d %lld\n", total.cents, i32(a == lib.Money(150)), back.cents)
+	val x = lib.tagged(1.5, 2)
+	val y = lib.tagged(0.5, 9)
+	printf("%d %d\n", i32(x < y), i32(y < x))
+	ret 0
+}

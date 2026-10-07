@@ -1,0 +1,99 @@
+
+====== operator_declarations.ce ======
+
+Error at line 7, column 9
+6 │ 
+7 │ ==: op(self, other: Point) -> bool = true
+           ╘══╛ Cannot take 'self' in '==' operators
+
+Error at line 8, column 2
+7 │ ==: op(self, other: Point) -> bool = true
+8 │ !=: op(a: Point) -> bool = true
+    ╘╛ '!=' operators need two parameters
+
+Error at line 9, column 2
+8 │ !=: op(a: Point) -> bool = true
+9 │ -: op(a: Point) -> Point = a
+    ^ '-' operators need 'self' or two parameters
+
+Error at line 10, column 2
+ 9 │ -: op(a: Point) -> Point = a
+10 │ ~: op(a: Point, b: Point) -> Point = a
+     ^ Cannot declare '~' operators without 'self'
+
+Error at line 11, column 2
+10 │ ~: op(a: Point, b: Point) -> Point = a
+11 │ +: op(a: i32, b: i32) -> i32 = a
+     ^ '+' operators need a 'Point' parameter
+
+Error at line 12, column 12
+11 │ +: op(a: i32, b: i32) -> i32 = a
+12 │ *: op(mut a: Point, b: Point) -> Point = b
+               ^ Cannot take 'mut' parameters in '*' operators
+
+Error at line 13, column 8
+12 │ *: op(mut a: Point, b: Point) -> Point = b
+13 │ /: op(self, other: Point) -> Point = other
+           ╘══╛ Cannot take 'self' in '/' operators
+
+Error at line 14, column 12
+13 │ /: op(self, other: Point) -> Point = other
+14 │ +: op(mut self) -> Point = self
+               ╘══╛ Cannot take 'mut self' in '+' operators
+
+Error at line 15, column 2
+14 │ +: op(mut self) -> Point = self
+15 │ <: op(a: Point, b: Point) -> bool = true
+     ^ 'Point.<' is declared more than once with the same signature
+
+Error at line 16, column 2
+15 │ <: op(a: Point, b: Point) -> bool = true
+16 │ <: op(a: Point, b: Point) -> bool = false
+     ^ 'Point.<' is declared more than once with the same signature
+
+Error at line 18, column 2
+17 │ 
+18 │ +=: op(a: Point, b: Point) { }
+     ╘╛ Cannot declare '+=' operators without 'mut self'
+
+Error at line 19, column 9
+18 │ +=: op(a: Point, b: Point) { }
+19 │ -=: op(self, other: Point) { }
+            ╘══╛ Cannot take 'self' in '-=' operators
+
+Error at line 20, column 13
+19 │ -=: op(self, other: Point) { }
+20 │ *=: op(own self, other: Point) { }
+                ╘══╛ Cannot take 'own self' in '*=' operators
+
+Error at line 21, column 2
+20 │ *=: op(own self, other: Point) { }
+21 │ /=: op(mut self) { }
+     ╘╛ '/=' operators need one parameter
+
+Error at line 22, column 36
+21 │ /=: op(mut self) { }
+22 │ %=: op(mut self, other: Point) -> Point = other
+                                       ╘═══╛ Cannot return values from '%=' operators
+
+Error at line 23, column 23
+22 │ %=: op(mut self, other: Point) -> Point = other
+23 │ &=: op(mut self, mut other: Point) { }
+                          ╘═══╛ Cannot take 'mut' parameters in '&=' operators
+
+Error at line 24, column 14
+23 │ &=: op(mut self, mut other: Point) { }
+24 │ *: op(self, other: Point) -> imm[i32] = self.x
+                 ╘═══╛ Cannot take parameters in '*' operators with 'self'
+
+Error at line 32, column 2
+31 │ 
+32 │ ==: op(a: i32, b: i32) -> bool = true
+     ╘╛ '==' operators need a 'Mode' parameter
+
+Error at line 33, column 12
+32 │ ==: op(a: i32, b: i32) -> bool = true
+33 │ -: op(mut self) -> Mode = idle
+               ╘══╛ Cannot take 'mut self' in '-' operators
+
+[compilation failed]

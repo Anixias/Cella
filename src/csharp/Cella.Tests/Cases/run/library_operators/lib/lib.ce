@@ -1,0 +1,24 @@
+mod lib
+
+Money: pub rec
+{
+	cents: i64
+
+	+: op(a: Money, b: Money) -> Money = Money(a.cents + b.cents)
+	*: op(a: Money, times: i64) -> Money = Money(a.cents * times)
+	==: op(a: Money, b: Money) -> bool = a.cents == b.cents
+	-: op(self) -> Money = Money(-self.cents)
+
+	+=: op(mut self, other: Money)
+	{
+		self.cents += other.cents
+	}
+}
+
+tagged[T]: pub rec
+{
+	value: T
+	tag: i32
+
+	<: op(a: tagged[T], b: tagged[T]) -> bool = a.tag < b.tag
+}

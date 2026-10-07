@@ -20,6 +20,21 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 	private static readonly Dictionary<string, TokenType> _constraintKeywords =
 		BuildContextualKeywords(TokenType.KeywordNoref);
 	
+	private static readonly HashSet<TokenType> _operatorNames =
+	[
+		TokenType.OpEqualEqual, TokenType.OpBangEqual, TokenType.OpLess, TokenType.OpLessEqual, TokenType.OpGreater,
+		TokenType.OpGreaterEqual, TokenType.OpPlus, TokenType.OpMinus, TokenType.OpStar, TokenType.OpSlash,
+		TokenType.OpPercent, TokenType.OpLessLess, TokenType.OpGreaterGreater, TokenType.OpLessLessLess,
+		TokenType.OpGreaterGreaterGreater, TokenType.OpAmpersand, TokenType.OpBar, TokenType.OpHat, TokenType.OpTilde,
+		TokenType.OpPlusEqual, TokenType.OpMinusEqual, TokenType.OpStarEqual, TokenType.OpSlashEqual,
+		TokenType.OpPercentEqual, TokenType.OpLessLessEqual, TokenType.OpGreaterGreaterEqual,
+		TokenType.OpLessLessLessEqual, TokenType.OpGreaterGreaterGreaterEqual, TokenType.OpAmpersandEqual,
+		TokenType.OpBarEqual, TokenType.OpHatEqual
+	];
+	
+	private static readonly HashSet<TokenType> _undeclarableOperators =
+		[TokenType.OpBang, TokenType.OpAmpersandAmpersand, TokenType.OpBarBar, TokenType.OpDot, TokenType.OpEqual];
+	
 	private static readonly HashSet<TokenType> _topLevelSyncTypes = [TokenType.OpSemicolon, TokenType.EndOfFile];
 	
 	private static readonly HashSet<TokenType> _topLevelKeywords =
@@ -971,6 +986,15 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 				continue;
 			}
 			
+			if (MatchOperatorName(ref index, out var symbol))
+			{
+				if (ParseOperatorMember(ref index, symbol, block) is not { } operatorMember)
+					return false;
+				
+				members.Add(operatorMember);
+				continue;
+			}
+			
 			if (StartsEnumMember(index))
 			{
 				if (ParseEnumMember(ref index, block) is not { } member)
@@ -1122,10 +1146,8 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 				? ParseDestructor(ref index, dropKeyword, block)
 				: null;
 		
-		if (Match(ref index, out var star, TokenType.OpStar))
-			return RejectTypeParameters(ref index, "operators")
-				? ParseDeclaration(ref index, star, "operator", (ref i) => ParseOperator(ref i, star, block))
-				: null;
+		if (MatchOperatorName(ref index, out var symbol))
+			return ParseOperatorMember(ref index, symbol, block);
 		
 		if (!Match(ref index, out var identifier, TokenType.Identifier) ||
 		    ParseTypeParameters(ref index) is not { } typeParameters || !Match(ref index, TokenType.OpColon))
@@ -1163,7 +1185,23 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 		Report(first.SourceLocation, $"Cannot declare type parameters on {kind}");
 	}
 	
-	private FunctionNode? ParseOperator(ref int index, Token star, Token? block)
+	private bool MatchOperatorName(ref int index, out Token symbol)
+	{
+		if (Peek(index + 1, TokenType.OpColon) && Match(ref index, out symbol, _undeclarableOperators))
+		{
+			Report(symbol, $"Cannot declare '{symbol.Text}' operators");
+			return true;
+		}
+		
+		return Match(ref index, out symbol, _operatorNames);
+	}
+	
+	private FunctionNode? ParseOperatorMember(ref int index, Token symbol, Token? block) =>
+		RejectTypeParameters(ref index, "operators")
+			? ParseDeclaration(ref index, symbol, "operator", (ref i) => ParseOperator(ref i, symbol, block))
+			: null;
+	
+	private FunctionNode? ParseOperator(ref int index, Token symbol, Token? block)
 	{
 		if (!Match(ref index, TokenType.OpColon))
 			return null;
@@ -1171,7 +1209,7 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 		var modifiers = ParseMemberModifiers(ref index, block);
 		RejectWriteRestriction(modifiers, "operators");
 		return Match(ref index, _memberContextualKeywords, TokenType.KeywordOp)
-			? ParseFunction(ref index, star, modifiers, false, [])
+			? ParseFunction(ref index, symbol, modifiers, false, [])
 			: null;
 	}
 	

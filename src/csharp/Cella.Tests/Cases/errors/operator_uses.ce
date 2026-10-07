@@ -1,0 +1,47 @@
+mod test
+
+Point: rec
+{
+	x: i32
+
+	==: op(a: Point, b: Point) -> bool = a.x == b.x
+	+: op(a: Point, b: Point) -> Point = Point(a.x + b.x)
+	<: op(a: Point, b: Point) -> bool = a.x < b.x
+	-: op(self) -> Point = Point(-self.x)
+
+	+=: op(mut self, other: Point)
+	{
+		self.x += other.x
+	}
+
+	*: pvt op(a: Point, b: Point) -> Point = a
+}
+
+Matrix: rec
+{
+	scale: i32
+
+	*: op(m: Matrix, v: Vector) -> Vector = Vector(v.x * m.scale)
+}
+
+Vector: rec
+{
+	x: i32
+
+	*: op(m: Matrix, v: Vector) -> Vector = Vector(v.x * m.scale + 1)
+}
+
+main: fun -> i32
+{
+	val a = Point(1)
+	val b = Point(2)
+	val c = Point(3)
+	val notEqual = a != b
+	var d = a
+	d -= b
+	val wrong: i32 = a + b
+	val hidden = a * b
+	val negated = a.-()
+	val product = Matrix(3) * Vector(5)
+	ret 0
+}

@@ -168,9 +168,9 @@ public sealed class ConstantEvaluator
 	
 	private Constant? FoldChain(ResolvedChainedExpressionNode node) => FoldAll(node.Operands, values =>
 	{
-		for (var i = 0; i < node.Ops.Length; i++)
+		for (var i = 0; i < node.Links.Length; i++)
 		{
-			if (node.Ops[i] is not { } operation ||
+			if (node.Links[i].Operation is not { } operation ||
 			    Apply(operation, values[i], values[i + 1], node.Type) is not BoolConstant result)
 				return null;
 			

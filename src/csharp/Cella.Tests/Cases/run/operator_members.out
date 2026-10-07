@@ -1,0 +1,13 @@
+sum 4.0 6.0
+diff 2.0 2.0
+scaled 2.0 4.0
+left 20.0 40.0
+literal 3.0 6.0
+neg -1.0 -2.0
+pos 3.0 4.0
+pick 5.0 10.0
+1 0 1 1
+compound 8.0 12.0
+14 8 6 48 3 243 2 1
+5
+[exit code 0]

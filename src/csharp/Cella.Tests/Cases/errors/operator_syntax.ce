@@ -1,0 +1,33 @@
+mod test
+
+Point: rec
+{
+	x: i32
+
+	!: op(self) -> bool = true
+}
+
+Other: rec
+{
+	x: i32
+
+	&&: op(a: Other, b: Other) -> bool = true
+}
+
+Third: rec
+{
+	x: i32
+
+	<[T]: op(a: Third, b: Third) -> bool = true
+}
+
+Fourth: enum
+{
+	none
+
+	||: op(a: Fourth, b: Fourth) -> bool = true
+	.: op(self) -> i32 = 0
+	=: op(mut self, other: Fourth) { }
+}
+
+main: fun -> i32 = 0

@@ -1,0 +1,34 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Text: rec
+{
+	id: i32
+
+	<: op(a: Text, b: Text) -> bool = a.id < b.id
+	<=: op(own a: Text, b: Text) -> bool = a.id <= b.id
+	>: op(a: Text, own b: Text) -> bool = a.id > b.id
+
+	drop: op
+	{
+		printf("drop %d\n", self.id)
+	}
+}
+
+main: fun -> i32
+{
+	val first = Text(1) < Text(2) < Text(3)
+	printf("first %d\n", i32(first))
+	val second = Text(5) < Text(4) < Text(6)
+	printf("second %d\n", i32(second))
+	val kept = Text(10)
+	val third = Text(7) <= kept < Text(20)
+	printf("third %d %d\n", i32(third), kept.id)
+	val fourth = Text(5) < Text(40) > Text(10)
+	printf("fourth %d\n", i32(fourth))
+	ret 0
+}

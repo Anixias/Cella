@@ -12,7 +12,7 @@ public sealed class ResolvedPropertyAssignmentExpressionNode
 	IResolvedExpressionNode? receiver,
 	Token op,
 	IResolvedExpressionNode right,
-	OperationImpl operation,
+	OperationImpl? operation,
 	IExpressionNode syntax
 ) : IResolvedExpressionNode
 {
@@ -21,7 +21,8 @@ public sealed class ResolvedPropertyAssignmentExpressionNode
 	public IResolvedExpressionNode? Receiver { get; } = receiver;
 	public Token Op { get; } = op;
 	public IResolvedExpressionNode Right { get; } = right;
-	public OperationImpl Operation { get; } = operation;
+	public OperationImpl? Operation { get; } = operation;
+	public FunctionInfo? Compound { get; init; }
 	public TypeSymbol Type { get; } = NativeSymbols.Void;
 	public IExpressionNode Syntax { get; } = syntax;
 }

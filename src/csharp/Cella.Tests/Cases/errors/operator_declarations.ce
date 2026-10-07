@@ -1,0 +1,36 @@
+mod test
+
+Point: rec
+{
+	x: i32
+
+	==: op(self, other: Point) -> bool = true
+	!=: op(a: Point) -> bool = true
+	-: op(a: Point) -> Point = a
+	~: op(a: Point, b: Point) -> Point = a
+	+: op(a: i32, b: i32) -> i32 = a
+	*: op(mut a: Point, b: Point) -> Point = b
+	/: op(self, other: Point) -> Point = other
+	+: op(mut self) -> Point = self
+	<: op(a: Point, b: Point) -> bool = true
+	<: op(a: Point, b: Point) -> bool = false
+
+	+=: op(a: Point, b: Point) { }
+	-=: op(self, other: Point) { }
+	*=: op(own self, other: Point) { }
+	/=: op(mut self) { }
+	%=: op(mut self, other: Point) -> Point = other
+	&=: op(mut self, mut other: Point) { }
+	*: op(self, other: Point) -> imm[i32] = self.x
+}
+
+Mode: enum
+{
+	idle
+	busy(load: i32)
+
+	==: op(a: i32, b: i32) -> bool = true
+	-: op(mut self) -> Mode = idle
+}
+
+main: fun -> i32 = 0

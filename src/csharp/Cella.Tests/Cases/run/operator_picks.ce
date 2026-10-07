@@ -1,0 +1,30 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Matrix: rec
+{
+	scale: i32
+
+	*: op(m: Matrix, v: Vector) -> Vector = Vector(v.x * m.scale)
+}
+
+Vector: rec
+{
+	x: i32
+
+	*: op(m: Matrix, v: Vector) -> Vector = Vector(v.x * m.scale + 1)
+}
+
+main: fun -> i32
+{
+	val m = Matrix(3)
+	val v = Vector(5)
+	val a = Matrix.*(m, v)
+	val b = Vector.*(m, v)
+	printf("%d %d\n", a.x, b.x)
+	ret 0
+}

@@ -24,8 +24,10 @@ public static class Mangling
 	public static string Mangle(Symbol symbol, ModuleIndex? modules, params IEnumerable<string> qualifierParts) =>
 		new StringBuilder().Append('?').AppendJoin('.', qualifierParts.Append(MangleName(symbol, modules))).ToString();
 	
-	public static string MangleName(Symbol symbol, ModuleIndex? modules) =>
-		modules?.FindPrivateFile(symbol) is { } file ? $"{symbol.Name}@{file}" : symbol.Name;
+	public static string MangleName(Symbol symbol, ModuleIndex? modules) => EscapeExportAliases(
+		modules?.FindPrivateFile(symbol) is { } file ? $"{symbol.Name}@{file}" : symbol.Name);
+	
+	private static string EscapeExportAliases(string name) => name.Replace('=', '$');
 	
 	public static string MangleInstantiation(string definitionName, FunctionSignature signature,
 		IEnumerable<TypeSymbol> typeArguments, ModuleIndex? modules)

@@ -1,0 +1,19 @@
+
+====== operator_mutation.ce ======
+
+Error at line 15, column 2
+14 │ {
+15 │     p += Point(1)
+         ^ Cannot mutably borrow read-only parameters
+
+Error at line 21, column 2
+20 │ val a = Point(1)
+21 │ a += Point(2)
+     ^ Cannot mutably borrow values
+
+Error at line 24, column 2
+23 │ val m = 6
+24 │ m += 1
+     ^ Cannot reassign values
+
+[compilation failed]

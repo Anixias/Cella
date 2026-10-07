@@ -1,0 +1,84 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Vector: rec
+{
+	x: f32
+	y: f32
+
+	+: op(a: Vector, b: Vector) -> Vector = Vector(a.x + b.x, a.y + b.y)
+	-: op(a: Vector, b: Vector) -> Vector = Vector(a.x - b.x, a.y - b.y)
+	*: op(v: Vector, scale: f32) -> Vector = Vector(v.x * scale, v.y * scale)
+	*: op(scale: f32, v: Vector) -> Vector = Vector(v.x * scale * 10.0, v.y * scale * 10.0)
+	-: op(self) -> Vector = Vector(-self.x, -self.y)
+	+: op(self) -> Vector = self
+	==: op(a: Vector, b: Vector) -> bool = a.x == b.x && a.y == b.y
+	!=: op(a: Vector, b: Vector) -> bool = a.x != b.x || a.y != b.y
+	<: op(a: Vector, b: Vector) -> bool = a.x * a.x + a.y * a.y < b.x * b.x + b.y * b.y
+
+	+=: op(mut self, other: Vector)
+	{
+		self.x += other.x
+		self.y += other.y
+	}
+
+	*=: op(mut self, scale: f32)
+	{
+		self.x *= scale
+		self.y *= scale
+	}
+}
+
+Flags: rec
+{
+	bits: u32
+
+	|: op(a: Flags, b: Flags) -> Flags = Flags(a.bits | b.bits)
+	&: op(a: Flags, b: Flags) -> Flags = Flags(a.bits & b.bits)
+	^: op(a: Flags, b: Flags) -> Flags = Flags(a.bits ^ b.bits)
+	<<: op(a: Flags, amount: u32) -> Flags = Flags(a.bits << amount)
+	>>: op(a: Flags, amount: u32) -> Flags = Flags(a.bits >> amount)
+	~: op(self) -> Flags = Flags(~self.bits)
+	%: op(a: Flags, b: Flags) -> u32 = a.bits % b.bits
+	/: op(a: Flags, b: Flags) -> u32 = a.bits / b.bits
+	|=: op(mut self, other: Flags)
+	{
+		self.bits = self.bits | other.bits
+	}
+}
+
+show: fun(label: cstr, v: Vector) = printf("%s %.1f %.1f\n", label, f64(v.x), f64(v.y))
+
+main: fun -> i32
+{
+	val a = Vector(1.0, 2.0)
+	val b = Vector(3.0, 4.0)
+	show("sum", a + b)
+	show("diff", b - a)
+	show("scaled", a * 2.0)
+	show("left", 2.0 * a)
+	show("literal", a * 3)
+	show("neg", -a)
+	show("pos", +b)
+	show("pick", Vector.*(a, 5.0))
+	printf("%d %d %d %d\n", i32(a == a), i32(a == b), i32(a != b), i32(a < b))
+
+	var c = a
+	c += b
+	c *= 2.0
+	show("compound", c)
+
+	val f = Flags(12)
+	val g = Flags(10)
+	printf("%u %u %u %u %u %u %u %u\n", (f | g).bits, (f & g).bits, (f ^ g).bits, (f << 2).bits, (f >> 2).bits,
+		(~f).bits & 255, f % g, f / g)
+
+	var h = Flags(1)
+	h |= Flags(4)
+	printf("%u\n", h.bits)
+	ret 0
+}

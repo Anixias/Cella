@@ -46,6 +46,28 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 		TokenType.KeywordCont
 	];
 	
+	private static readonly HashSet<TokenType> _binaryOperatorNames =
+	[
+		TokenType.OpEqualEqual,
+		TokenType.OpBangEqual,
+		TokenType.OpLess,
+		TokenType.OpLessEqual,
+		TokenType.OpGreater,
+		TokenType.OpGreaterEqual,
+		TokenType.OpPlus,
+		TokenType.OpMinus,
+		TokenType.OpStar,
+		TokenType.OpSlash,
+		TokenType.OpPercent,
+		TokenType.OpLessLess,
+		TokenType.OpGreaterGreater,
+		TokenType.OpLessLessLess,
+		TokenType.OpGreaterGreaterGreater,
+		TokenType.OpAmpersand,
+		TokenType.OpBar,
+		TokenType.OpHat
+	];
+	
 	private static readonly HashSet<TokenType> _shiftOps =
 	[
 		TokenType.OpLessLess,
@@ -595,7 +617,8 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 			// Access Expression
 			if (Match(ref index, TokenType.OpDot))
 			{
-				if (!Match(ref index, out var member, TokenType.Identifier))
+				if (!Match(ref index, out var member, TokenType.Identifier) &&
+				    !MatchOperatorName(ref index, out member))
 				{
 					// TODO Diagnostic
 					index = startIndex;
@@ -626,6 +649,13 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 		}
 		
 		return target;
+	}
+	
+	private bool MatchOperatorName(ref int index, out Token name)
+	{
+		name = default;
+		return Peek(index + 1, TokenType.OpOpenParen) && !IsNextNewline(index + 1) &&
+		       Match(ref index, out name, _binaryOperatorNames);
 	}
 	
 	private CallExpressionNode ParseCallExpression(ref int index, IExpressionNode target, Token openParen)

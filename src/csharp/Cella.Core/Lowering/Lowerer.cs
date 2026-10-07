@@ -1071,10 +1071,21 @@ public sealed class Lowerer
 			var location = node.Syntax.SourceLocation;
 			var receiver = node.Receiver is null ? null : LowerReceiver(node.Receiver);
 			Value current = new CallValue(node.Getter, PassReceiver(node.Getter, receiver), location);
+			if (node.Compound is { } compound)
+			{
+				var place = StoreTemporary(current, "current");
+				var args = LowerArguments([node.Right], compound, 1);
+				args.Insert(0, new UnaryOpValue(_typePool.GetPointerType(place.Type), place, UnaryOperation.AddressOf,
+					location));
+				
+				GetOrMakeBlock().Instructions.Add(new ExpressionInstruction(new CallValue(compound, args, location)));
+				return new CallValue(node.Setter, [..PassReceiver(node.Setter, receiver), Consume(place)], location);
+			}
+			
 			if (MayEmit(node.Right))
 				current = CaptureAsAtomic(current, "current");
 			
-			var value = LowerBinOp(current, node.Operation, Consume(VisitNode(node.Right)), location);
+			var value = LowerBinOp(current, node.Operation!, Consume(VisitNode(node.Right)), location);
 			return new CallValue(node.Setter, [..PassReceiver(node.Setter, receiver), value], location);
 		}
 		
@@ -1134,6 +1145,9 @@ public sealed class Lowerer
 		
 		public Value Visit(ResolvedChainedExpressionNode node)
 		{
+			if (node.Links.Any(static link => link.Function is not null))
+				return LowerDeclaredChain(node);
+			
 			var resultSymbol = CreateTempSymbol(NativeSymbols.Bool, "chain_result");
 			var block = GetOrMakeBlock();
 			block.Instructions.Add(new LocalVarInstruction(resultSymbol, new UndefValue(NativeSymbols.Bool),
@@ -1145,11 +1159,11 @@ public sealed class Lowerer
 			var left = VisitNode(node.Operands[0]);
 			GetOrMakeBlock();
 			
-			for (var i = 0; i < node.Ops.Length; i++)
+			for (var i = 0; i < node.Links.Length; i++)
 			{
-				var op = node.Ops[i];
+				var op = node.Links[i].Operation!;
 				var rightNode = node.Operands[i + 1];
-				var isLast = i == node.Ops.Length - 1;
+				var isLast = i == node.Links.Length - 1;
 				
 				if (!isLast || MayEmit(rightNode))
 					left = CaptureAsAtomic(left, "chain_left");
@@ -1202,6 +1216,82 @@ public sealed class Lowerer
 			
 			ContinueWith(mergeBlock);
 			return result;
+		}
+		
+		private Value LowerDeclaredChain(ResolvedChainedExpressionNode node)
+		{
+			var location = node.Syntax.SourceLocation;
+			var resultSymbol = CreateTempSymbol(NativeSymbols.Bool, "chain_result");
+			GetOrMakeBlock().Instructions.Add(new LocalVarInstruction(resultSymbol, new UndefValue(NativeSymbols.Bool),
+				location, CurrentScopeId));
+			
+			var result = new VariableValue(new(resultSymbol, NativeSymbols.Bool), location);
+			var mergeBlock = CreateBlock("chain_merge");
+			var left = HoldChainOperand(node.Operands[0]);
+			for (var i = 0; i < node.Links.Length; i++)
+			{
+				var link = node.Links[i];
+				var right = HoldChainOperand(node.Operands[i + 1]);
+				var comparison = link.Function is { } function
+					? new CallValue(function, [
+						PassChainOperand(left, function, 0, link.LeftConversion),
+						PassChainOperand(right, function, 1, link.RightConversion)
+					], location)
+					: LowerBinOp(ConvertChainOperand(left, link.LeftConversion), link.Operation!,
+						ConvertChainOperand(right, link.RightConversion), location);
+				
+				var block = GetOrMakeBlock();
+				if (i == node.Links.Length - 1)
+				{
+					block.Instructions.Add(new ExpressionInstruction(new AssignValue(NativeSymbols.Bool, result,
+						comparison, location)));
+					
+					block.SetTerminator(new BranchTerminator(mergeBlock, location));
+					continue;
+				}
+				
+				var nextBlock = CreateBlock("chain_next");
+				var falseBlock = CreateBlock("chain_false");
+				block.SetTerminator(new ConditionalBranchTerminator(comparison, nextBlock, falseBlock, location));
+				
+				currentBlock = falseBlock;
+				currentBlock.Instructions.Add(new ExpressionInstruction(new AssignValue(NativeSymbols.Bool, result,
+					ConstantValue.False, location)));
+				
+				currentBlock.SetTerminator(new BranchTerminator(mergeBlock, location));
+				currentBlock = nextBlock;
+				left = right;
+			}
+			
+			ContinueWith(mergeBlock);
+			return result;
+		}
+		
+		private Value HoldChainOperand(IResolvedExpressionNode operand)
+		{
+			var value = VisitNode(operand);
+			GetOrMakeBlock();
+			if (_typePool.IsCopy(value.Type))
+				return CaptureAsAtomic(value, "chain_operand");
+			
+			return IsPlaceValue(value) ? value : StoreTemporary(value, "chain_operand");
+		}
+		
+		private static Value ConvertChainOperand(Value operand, Conversion? conversion) =>
+			conversion is null ? operand : new ConversionValue(operand, conversion, operand.SourceLocation);
+		
+		private Value PassChainOperand(Value operand, FunctionInfo function, int index, Conversion? conversion)
+		{
+			var value = ConvertChainOperand(operand, conversion);
+			var signature = function.DeclaredSignature;
+			return GetPassing(signature.ParameterTypes[index], signature.GetMode(index)) switch
+			{
+				Passing.Borrow => new UnaryOpValue(_typePool.GetPointerType(value.Type),
+					IsPlaceValue(value) ? value : StoreTemporary(value, "borrow"), UnaryOperation.AddressOf,
+					value.SourceLocation),
+				Passing.Consume => Consume(value),
+				_ => value
+			};
 		}
 		
 		/// <summary>

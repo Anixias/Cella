@@ -1,0 +1,34 @@
+
+====== operator_uses.ce ======
+
+Error at line 39, column 17
+38 │ val c = Point(3)
+39 │ val notEqual = a != b
+                    ╘════╛ No operation defined for '!=' between 'Point' and 'Point'
+
+Error at line 41, column 2
+40 │ var d = a
+41 │ d -= b
+     ╘════╛ No operation defined for '-=' between 'Point' and 'Point'
+
+Error at line 42, column 19
+41 │ d -= b
+42 │ val wrong: i32 = a + b
+                      ╘═══╛ Cannot convert type 'Point' to 'i32'
+
+Error at line 43, column 17
+42 │ val wrong: i32 = a + b
+43 │ val hidden = a * b
+                    ^ '*' is private to its type
+
+Error at line 44, column 18
+43 │ val hidden = a * b
+44 │ val negated = a.-()
+                     ^ Cannot call '-' through a value
+
+Error at line 45, column 16
+44 │ val negated = a.-()
+45 │ val product = Matrix(3) * Vector(5)
+                   ╘═══════════════════╛ Ambiguous operation '*' between 'Matrix' and 'Vector'
+
+[compilation failed]

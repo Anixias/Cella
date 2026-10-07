@@ -1,0 +1,34 @@
+
+====== operator_syntax.ce ======
+
+Error at line 7, column 2
+6 │ 
+7 │ !: op(self) -> bool = true
+    ^ Cannot declare '!' operators
+
+Error at line 14, column 2
+13 │ 
+14 │ &&: op(a: Other, b: Other) -> bool = true
+     ╘╛ Cannot declare '&&' operators
+
+Error at line 21, column 4
+20 │ 
+21 │ <[T]: op(a: Third, b: Third) -> bool = true
+       ^ Cannot declare type parameters on operators
+
+Error at line 28, column 2
+27 │ 
+28 │ ||: op(a: Fourth, b: Fourth) -> bool = true
+     ╘╛ Cannot declare '||' operators
+
+Error at line 29, column 2
+28 │ ||: op(a: Fourth, b: Fourth) -> bool = true
+29 │ .: op(self) -> i32 = 0
+     ^ Cannot declare '.' operators
+
+Error at line 30, column 2
+29 │ .: op(self) -> i32 = 0
+30 │ =: op(mut self, other: Fourth) { }
+     ^ Cannot declare '=' operators
+
+[compilation failed]

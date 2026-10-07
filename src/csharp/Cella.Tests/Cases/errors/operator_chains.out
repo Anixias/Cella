@@ -1,0 +1,14 @@
+
+====== operator_chains.ce ======
+
+Error at line 35, column 25
+34 │ {
+35 │     val shared = Text(1) < Text(2) < Text(3)
+                                ╘═════╛ Cannot move operands shared by two comparisons
+
+Error at line 36, column 13
+35 │ val shared = Text(1) < Text(2) < Text(3)
+36 │ val mask = Vec(1) < Vec(2) < Vec(3)
+                ╘═════════════╛ Cannot chain '<' results of type 'Mask'
+
+[compilation failed]

@@ -1,0 +1,39 @@
+mod test
+
+Text: rec
+{
+	id: i32
+
+	<: op(own a: Text, own b: Text) -> bool = a.id < b.id
+
+	drop: op
+	{
+	}
+}
+
+Mask: rec
+{
+	bits: u8
+}
+
+Vec: rec
+{
+	x: i32
+
+	<: op(a: Vec, b: Vec) -> Mask = Mask(0)
+}
+
+Counter: rec
+{
+	n: i32
+
+	<: op(own a: Counter, own b: Counter) -> bool = a.n < b.n
+}
+
+main: fun -> i32
+{
+	val shared = Text(1) < Text(2) < Text(3)
+	val mask = Vec(1) < Vec(2) < Vec(3)
+	val copies = Counter(1) < Counter(2) < Counter(3)
+	ret 0
+}

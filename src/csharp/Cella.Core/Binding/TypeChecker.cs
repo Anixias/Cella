@@ -354,6 +354,7 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool, 
 		ResolvedUnaryOpExpressionNode => false,
 		ResolvedBinaryOpExpressionNode { Operation: NativeImpl or ConversionImpl } => true,
 		ResolvedBinaryOpExpressionNode => false,
+		ResolvedChainedExpressionNode n => n.Links.All(static link => link.Function is null),
 		_ => true
 	};
 	
@@ -437,7 +438,7 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool, 
 			VisitNode(receiver);
 		}
 		
-		if (node.Op.Type is TokenType.OpSlashEqual or TokenType.OpPercentEqual)
+		if (node.Operation is not null && node.Op.Type is TokenType.OpSlashEqual or TokenType.OpPercentEqual)
 			ReportZeroDivisor(node.Right);
 		
 		VisitNode(node.Right);
@@ -470,6 +471,18 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool, 
 	{
 		foreach (var operand in node.Operands)
 			VisitNode(operand);
+		
+		for (var i = 0; i < node.Links.Length; i++)
+		{
+			if (node.Links[i].Function is not { } function)
+				continue;
+			
+			for (var j = 0; j < 2; j++)
+			{
+				if (function.Signature.GetMode(j) == ParameterMode.Own)
+					CheckConsumed(node.Operands[i + j]);
+			}
+		}
 	}
 	
 	public void Visit(ResolvedConstructorCallExpressionNode node)

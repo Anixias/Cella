@@ -4,7 +4,7 @@
 Error at line 12, column 2
 11 │ 
 12 │ *: op -> imm[Buffer] = imm *ptr[Buffer](null)
-     ^ Cannot declare '*' operators without 'self'
+     ^ '*' operators need 'self' or two parameters
 
 Error at line 19, column 12
 18 │ 
@@ -14,7 +14,7 @@ Error at line 19, column 12
 Error at line 26, column 14
 25 │ 
 26 │ *: op(self, index: i32) -> imm[Buffer] = imm *self.pointer
-                 ╘═══╛ Cannot take parameters in '*' operators
+                 ╘═══╛ Cannot take parameters in '*' operators with 'self'
 
 Error at line 33, column 17
 32 │ 

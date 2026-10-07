@@ -1,0 +1,24 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+counted[T]: rec
+{
+	value: T
+	count: i32
+
+	<: op(a: counted[T], b: counted[T]) -> bool = a.count < b.count
+	+: op(own a: counted[T], extra: i32) -> counted[T] = counted(a.value, a.count + extra)
+}
+
+main: fun -> i32
+{
+	val a = counted(1.5, 3)
+	val b = counted(2.5, 7)
+	val c = a + 10
+	printf("%d %d %d\n", i32(a < b), i32(b < a), c.count)
+	ret 0
+}

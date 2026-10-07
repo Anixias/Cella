@@ -1,0 +1,74 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Vector: rec
+{
+	x: i32
+	y: i32
+
+	+=: op(mut self, other: Vector)
+	{
+		self.x += other.x
+		self.y += other.y
+	}
+
+	*=: op(mut self, scale: i32)
+	{
+		self.x *= scale
+		self.y *= scale
+	}
+}
+
+Text: rec
+{
+	id: i32
+
+	+=: op(mut self, own other: Text)
+	{
+		self.id += other.id
+	}
+
+	drop: op
+	{
+		printf("drop %d\n", self.id)
+	}
+}
+
+Body: rec
+{
+	position: Vector
+	label: Text
+	reads: i32
+
+	at: prop Vector
+	{
+		get(mut self)
+		{
+			self.reads += 1
+			ret self.position
+		}
+
+		set(mut self, value) { self.position = value }
+	}
+
+	name: prop Text
+	{
+		get(self) = Text(self.label.id)
+		set(mut self, own value) { self.label = value }
+	}
+}
+
+main: fun -> i32
+{
+	var body = Body(Vector(1, 2), Text(10), 0)
+	body.at += Vector(3, 4)
+	body.at *= 2
+	printf("%d %d %d\n", body.position.x, body.position.y, body.reads)
+	body.name += Text(5)
+	printf("name %d\n", body.label.id)
+	ret 0
+}

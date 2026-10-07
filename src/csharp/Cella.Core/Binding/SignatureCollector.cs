@@ -27,6 +27,17 @@ public sealed class SignatureCollector
 		Property
 	}
 	
+	private static readonly HashSet<TokenType> _unaryOperators =
+		[TokenType.OpPlus, TokenType.OpMinus, TokenType.OpTilde];
+	
+	private static readonly HashSet<TokenType> _compoundOperators =
+	[
+		TokenType.OpPlusEqual, TokenType.OpMinusEqual, TokenType.OpStarEqual, TokenType.OpSlashEqual,
+		TokenType.OpPercentEqual, TokenType.OpLessLessEqual, TokenType.OpGreaterGreaterEqual,
+		TokenType.OpLessLessLessEqual, TokenType.OpGreaterGreaterGreaterEqual, TokenType.OpAmpersandEqual,
+		TokenType.OpBarEqual, TokenType.OpHatEqual
+	];
+	
 	private readonly string? _entryPointName;
 	private readonly SymbolTable _symbolTable;
 	private readonly TypePool _typePool;
@@ -333,7 +344,7 @@ public sealed class SignatureCollector
 			}
 		}
 		
-		var functions = node.Members.OfType<FunctionNode>().ToLookup(static f => f.Identifier.Type == TokenType.OpStar);
+		var functions = node.Members.OfType<FunctionNode>().ToLookup(IsDereference);
 		ReportMemberConflicts(record, [
 			..node.Members.OfType<FieldNode>()
 				.Select(static f => (f.Identifier, (FunctionNode?)null, MemberKind.Field)),
@@ -345,6 +356,7 @@ public sealed class SignatureCollector
 		]);
 		
 		ReportDereferences(record, [..functions[true]]);
+		ReportOperators(record, functions[false]);
 		_typePool.RegisterRecord(record);
 		_completedTypes.Add(record);
 		Exit();
@@ -387,7 +399,10 @@ public sealed class SignatureCollector
 	private static Diagnostic ReportDuplicateTypeParameter(Token identifier) => new(DiagnosticSeverity.Error,
 		identifier.SourceLocation, $"Type parameter '{identifier.Text}' is declared more than once");
 	
-	private void ReportDereferences(RecordSymbol record, List<FunctionNode> dereferences)
+	private static bool IsDereference(FunctionNode node) =>
+		node is { Identifier.Type: TokenType.OpStar, Receiver: not null };
+	
+	private void ReportDereferences(TypeSymbol type, List<FunctionNode> dereferences)
 	{
 		var valid = new List<(FunctionNode Node, FunctionSignature Signature)>();
 		foreach (var dereference in dereferences)
@@ -404,7 +419,7 @@ public sealed class SignatureCollector
 		
 		foreach (var sameMode in valid.GroupBy(static d => d.Signature.GetMode(0)).Where(static g => g.Count() > 1))
 		{
-			var message = $"'*' with '{DescribeReceiver(sameMode.Key)}' is declared more than once in '{record.Name}'";
+			var message = $"'*' with '{DescribeReceiver(sameMode.Key)}' is declared more than once in '{type.Name}'";
 			Diagnostics.AddRange(sameMode.Select(d =>
 				new Diagnostic(DiagnosticSeverity.Error, d.Node.Identifier.SourceLocation, message)));
 		}
@@ -417,10 +432,10 @@ public sealed class SignatureCollector
 	private static (SourceLocation Location, string Message)? FindDereferenceError(FunctionNode node,
 		FunctionSignature signature) => node switch
 	{
-		{ Receiver: null } => (node.Identifier.SourceLocation, "Cannot declare '*' operators without 'self'"),
 		{ Receiver: { Mode: { Type: TokenType.KeywordOwn } } receiver } =>
 			(receiver.SourceLocation, "Cannot take 'own self' in '*' operators"),
-		{ Parameters: [var parameter, ..] } => (parameter.SourceLocation, "Cannot take parameters in '*' operators"),
+		{ Parameters: [var parameter, ..] } =>
+			(parameter.SourceLocation, "Cannot take parameters in '*' operators with 'self'"),
 		_ when signature.ReturnType is BorrowType { IsMutable: var isMutable } &&
 		       isMutable == (signature.GetMode(0) == ParameterMode.Mut) => null,
 		_ => (node.ReturnType?.SourceLocation ?? node.Identifier.SourceLocation,
@@ -428,6 +443,74 @@ public sealed class SignatureCollector
 	};
 	
 	private static string DescribeReceiver(ParameterMode mode) => mode == ParameterMode.Mut ? "mut self" : "self";
+	
+	private static string DescribeReceiver(ReceiverNode receiver) =>
+		receiver.Mode is { } mode ? $"{mode.Text} self" : "self";
+	
+	private void ReportOperators(TypeSymbol type, IEnumerable<FunctionNode> functions)
+	{
+		foreach (var node in functions.Where(static f => f.Identifier.Type != TokenType.Identifier))
+		{
+			var signature = _builder.Functions[(FunctionSymbol)_symbolTable.DeclarationSymbols[node]].Signature;
+			if (FindOperatorError(type, node, signature) is var (location, message))
+				Diagnostics.Add(new(DiagnosticSeverity.Error, location, message));
+		}
+	}
+	
+	private static (SourceLocation Location, string Message)? FindOperatorError(TypeSymbol type, FunctionNode node,
+		FunctionSignature signature)
+	{
+		var name = node.Identifier.Text;
+		if (_compoundOperators.Contains(node.Identifier.Type))
+			return FindCompoundOperatorError(node);
+		
+		if (node.Receiver is { } receiver)
+		{
+			if (!_unaryOperators.Contains(node.Identifier.Type))
+				return (receiver.SourceLocation, $"Cannot take '{DescribeReceiver(receiver)}' in '{name}' operators");
+			
+			if (node.Parameters is [var parameter, ..])
+				return (parameter.SourceLocation, $"Cannot take parameters in '{name}' operators with 'self'");
+			
+			return receiver.Mode?.Type == TokenType.KeywordMut
+				? (receiver.SourceLocation, $"Cannot take 'mut self' in '{name}' operators")
+				: null;
+		}
+		
+		if (node.Identifier.Type == TokenType.OpTilde)
+			return (node.Identifier.SourceLocation, $"Cannot declare '{name}' operators without 'self'");
+		
+		if (node.Parameters.Length != 2)
+			return (node.Identifier.SourceLocation,
+				_unaryOperators.Contains(node.Identifier.Type) || node.Identifier.Type == TokenType.OpStar
+					? $"'{name}' operators need 'self' or two parameters"
+					: $"'{name}' operators need two parameters");
+		
+		if (node.Parameters.FirstOrDefault(static p => p.Mode?.Type == TokenType.KeywordMut) is { } mutParameter)
+			return (mutParameter.SourceLocation, $"Cannot take 'mut' parameters in '{name}' operators");
+		
+		return signature.GetDeclaredType(0) == type || signature.GetDeclaredType(1) == type
+			? null
+			: (node.Identifier.SourceLocation, $"'{name}' operators need a '{type.Name}' parameter");
+	}
+	
+	private static (SourceLocation Location, string Message)? FindCompoundOperatorError(FunctionNode node)
+	{
+		var name = node.Identifier.Text;
+		return node switch
+		{
+			{ Receiver: null } =>
+				(node.Identifier.SourceLocation, $"Cannot declare '{name}' operators without 'mut self'"),
+			{ Receiver: { } receiver } when receiver.Mode?.Type != TokenType.KeywordMut =>
+				(receiver.SourceLocation, $"Cannot take '{DescribeReceiver(receiver)}' in '{name}' operators"),
+			{ Parameters.Length: not 1 } => (node.Identifier.SourceLocation, $"'{name}' operators need one parameter"),
+			{ ReturnType: { } returnType } =>
+				(returnType.SourceLocation, $"Cannot return values from '{name}' operators"),
+			{ Parameters: [{ Mode.Type: TokenType.KeywordMut } parameter] } =>
+				(parameter.SourceLocation, $"Cannot take 'mut' parameters in '{name}' operators"),
+			_ => null
+		};
+	}
 	
 	private void ReportMemberConflicts(TypeSymbol type,
 		IEnumerable<(Token Name, FunctionNode? Function, MemberKind Kind)> members)
@@ -521,15 +604,18 @@ public sealed class SignatureCollector
 		foreach (var member in node.Members)
 			Complete(_symbolTable.DeclarationSymbols[member]);
 		
+		var functions = node.Members.OfType<FunctionNode>().ToLookup(IsDereference);
 		ReportMemberConflicts(enumType, [
 			..node.Cases.Select(static c => (c.Identifier, (FunctionNode?)null, MemberKind.Case)),
 			..node.Members.OfType<GlobalNode>()
 				.Select(static g => (g.Identifier, (FunctionNode?)null, MemberKind.Field)),
 			..node.Members.OfType<PropertyNode>()
 				.Select(static p => (p.Identifier, (FunctionNode?)null, MemberKind.Property)),
-			..node.Members.OfType<FunctionNode>()
-				.Select(static f => (f.Identifier, (FunctionNode?)f, MemberKind.Function))
+			..functions[false].Select(static f => (f.Identifier, (FunctionNode?)f, MemberKind.Function))
 		]);
+		
+		ReportDereferences(enumType, [..functions[true]]);
+		ReportOperators(enumType, functions[false]);
 	}
 	
 	private void CompletePlainEnum(EnumSymbol enumType, ResolutionContext context,

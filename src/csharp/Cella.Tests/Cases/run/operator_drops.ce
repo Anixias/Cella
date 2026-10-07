@@ -1,0 +1,44 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Text: rec
+{
+	id: i32
+
+	+: op(a: Text, b: Text) -> Text = Text(a.id * 10 + b.id)
+	-: op(own a: Text, b: Text) -> Text = Text(a.id - b.id)
+	==: op(a: Text, b: Text) -> bool = a.id == b.id
+	-: op(own self) -> Text = Text(-self.id)
+
+	+=: op(mut self, own other: Text)
+	{
+		self.id += other.id
+	}
+
+	drop: op
+	{
+		printf("drop %d\n", self.id)
+	}
+}
+
+main: fun -> i32
+{
+	val a = Text(1)
+	val b = Text(2)
+	val c = a + b
+	printf("c %d\n", c.id)
+	val same = (a + b) == c
+	printf("same %d\n", i32(same))
+	var d = Text(100)
+	d += Text(5)
+	printf("d %d\n", d.id)
+	val e = d - b
+	printf("e %d\n", e.id)
+	val f = -e
+	printf("f %d\n", f.id)
+	ret 0
+}
