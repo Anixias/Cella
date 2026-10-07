@@ -1,0 +1,9 @@
+
+====== lib.ce ======
+
+Error at line 3, column 49
+2 │ 
+3 │ twice: pub fun(value: i32) -> i32 = value * 2 + offset
+                                                    ╘════╛ Symbol 'offset' not found in this scope
+
+[compilation failed]

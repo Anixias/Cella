@@ -67,14 +67,18 @@ internal static class Program
 		
 		foreach (var (project, dependencies) in projectDependencies)
 		{
-			var dependencyInfo = new List<AssemblyInfo>();
-			foreach (var dependency in dependencies)
-				if (projectSymbols.TryGetValue(dependency, out var assemblySymbol))
-					dependencyInfo.Add(assemblySymbol);
+			if (!dependencies.All(projectSymbols.ContainsKey))
+			{
+				succeeded = false;
+				continue;
+			}
 			
+			var dependencyInfo = dependencies.Select(dependency => projectSymbols[dependency]).ToList();
 			var assemblyInfo = await BuildProject(project, typePool, dependencyInfo, verbose, optimizeMode, cts.Token);
-			projectSymbols[project] = assemblyInfo;
-			succeeded &= assemblyInfo.Succeeded;
+			if (assemblyInfo.Succeeded)
+				projectSymbols[project] = assemblyInfo;
+			else
+				succeeded = false;
 		}
 		
 		return succeeded ? 0 : 1;
