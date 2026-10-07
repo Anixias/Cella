@@ -1,0 +1,33 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Square: rec impl lib.Shape
+{
+	side: f64
+
+	area: fun(self) -> f64 = self.side * self.side
+	grow: fun(mut self)
+	{
+		self.side *= 2.0
+	}
+}
+
+bump: fun(mut shape: dyn[lib.Shape]) = shape.grow()
+
+main: fun -> i32
+{
+	var c = lib.Circle(1.0)
+	var s = Square(3.0)
+	bump(mut c)
+	bump(mut s)
+	printf("%.1f %.1f %.1f %.1f\n", lib.describe(c), lib.describe(s), lib.erase(c), lib.erase(s))
+	printf("%d %d\n", i32(lib.isCircle(c)), i32(lib.isCircle(s)))
+	if dyn[lib.Shape](c) is circle: lib.Circle
+		printf("%.1f\n", circle.radius)
+
+	ret 0
+}

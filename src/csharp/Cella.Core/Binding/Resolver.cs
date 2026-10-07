@@ -456,7 +456,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		return new Diagnostic(DiagnosticSeverity.Error, location, message);
 	}
 	
-	private (IResolvedExpressionNode Value, EnumSymbol? Type) ResolveMatchedValue(IExpressionNode node)
+	private (IResolvedExpressionNode Value, EnumSymbol? Type, DynType? Dyn) ResolveMatchedValue(IExpressionNode node)
 	{
 		var value = VisitNode(node, null);
 		if (value is ResolvedOwnExpressionNode { Type: BorrowType } owned)
@@ -467,12 +467,15 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		
 		value = Decay(value);
 		if (value.Type is EnumSymbol enumType)
-			return (value, enumType);
+			return (value, enumType, null);
+		
+		if (value.Type is DynType dyn)
+			return (value, null, dyn);
 		
 		if (!IsInvalid(value))
 			Diagnostics.Add(new(DiagnosticSeverity.Error, node.SourceLocation, $"'{value.Type.Name}' is not an enum"));
 		
-		return (value, null);
+		return (value, null, null);
 	}
 	
 	private IResolvedExpressionNode TakeOwnership(IResolvedExpressionNode value, IExpressionNode syntax,
@@ -543,11 +546,56 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	}
 	
 	private ImmutableArray<LocalVariableSymbol?> CreateBindings(PatternNode pattern, IReadOnlyList<TypeSymbol>? types,
-		bool isMut, bool ownsValue) =>
-	[
-		..pattern.Bindings.Select((token, i) =>
-			CreateBinding(token, pattern.BindingModes[i], types?[i] ?? NativeSymbols.Invalid, isMut, ownsValue))
-	];
+		bool isMut, bool ownsValue) => pattern.TypeBinding is { } typeBinding
+		? [CreateBinding(typeBinding, null, NativeSymbols.Invalid, isMut, ownsValue)]
+		:
+		[
+			..pattern.Bindings.Select((token, i) =>
+				CreateBinding(token, pattern.BindingModes[i], types?[i] ?? NativeSymbols.Invalid, isMut, ownsValue))
+		];
+	
+	private ResolvedPattern? ResolveTypePattern(PatternNode pattern, DynType dyn, bool isMut)
+	{
+		if (pattern.HasParentheses)
+		{
+			Diagnostics.Add(new(DiagnosticSeverity.Error, pattern.SourceLocation, "Expected a type"));
+			return null;
+		}
+		
+		var context = CurrentResolutionContext;
+		var typeNode = pattern.Type ?? (pattern.TypePath.IsEmpty
+			? new IdentifierTypeNode(pattern.CaseName)
+			: new QualifiedTypeNode(pattern.SourceLocation, [..pattern.TypePath, pattern.CaseName]));
+		
+		var type = context.ResolveType(typeNode);
+		if (IsInvalid(type))
+			return null;
+		
+		if (type is DynType)
+		{
+			Diagnostics.Add(new(DiagnosticSeverity.Error, typeNode.SourceLocation, $"Cannot test for '{type.Name}'"));
+			return null;
+		}
+		
+		if (!_typePool.Conforms(type, dyn.Trait))
+		{
+			Diagnostics.Add(new(DiagnosticSeverity.Error, typeNode.SourceLocation,
+				$"'{type.Name}' doesn't implement '{dyn.Trait.Name}'"));
+			
+			return null;
+		}
+		
+		var binding = pattern.TypeBinding is { Text: not "_" } token
+			? new LocalVariableSymbol(token, _typePool.GetPointerType(type), false)
+			{
+				IsPatternBinding = true,
+				IsBorrowBinding = true,
+				IsMutBinding = isMut
+			}
+			: null;
+		
+		return new ResolvedPattern(null, [binding]) { TestedType = type };
+	}
 	
 	private LocalVariableSymbol? CreateBinding(Token token, Token? mode, TypeSymbol type, bool isMut, bool ownsValue)
 	{
@@ -665,11 +713,14 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	public IResolvedExpressionNode Visit(IsExpressionNode node)
 	{
 		var isMut = node.Mode is not null;
-		var (value, enumType) = ResolveMatchedValue(node.Value);
+		var (value, enumType, dyn) = ResolveMatchedValue(node.Value);
 		value = TakeOwnership(value, node.Value, enumType, isMut, [node.Pattern]);
 		var ownsValue = OwnsValue(value, enumType);
 		if (enumType is not null && ResolvePattern(node.Pattern, enumType, isMut, ownsValue) is { } pattern)
 			return new ResolvedIsExpressionNode(value, pattern, isMut || pattern.HasMutBindings, ownsValue, node);
+		
+		if (dyn is not null && ResolveTypePattern(node.Pattern, dyn, isMut) is { } typePattern)
+			return new ResolvedIsExpressionNode(value, typePattern, isMut, false, node);
 		
 		var invalid = new ResolvedInvalidExpressionNode(node, NativeSymbols.Bool);
 		_failedPatterns[invalid] = CreateBindings(node.Pattern, null, isMut, ownsValue);
@@ -679,17 +730,14 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	public IResolvedStatementNode Visit(MatchStatementNode node)
 	{
 		var isMut = node.Mode is not null;
-		var (value, enumType) = ResolveMatchedValue(node.Value);
+		var (value, enumType, dyn) = ResolveMatchedValue(node.Value);
 		value = TakeOwnership(value, node.Value, enumType, isMut, node.Arms.Select(static arm => arm.Pattern));
 		var ownsValue = OwnsValue(value, enumType);
 		var arms = new List<ResolvedMatchArm>(node.Arms.Length);
 		var summaries = new List<MatchArmSummary>(node.Arms.Length);
 		foreach (var arm in node.Arms)
 		{
-			var pattern = arm.Pattern is { } syntax && enumType is not null
-				? ResolvePattern(syntax, enumType, isMut, ownsValue)
-				: null;
-			
+			var pattern = arm.Pattern is { } syntax ? ResolveArmPattern(syntax, enumType, dyn, isMut, ownsValue) : null;
 			var bindings = pattern?.Bindings ??
 			               (arm.Pattern is { } failed ? CreateBindings(failed, null, isMut, ownsValue) : []);
 			
@@ -707,7 +755,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	{
 		var target = CurrentTargetType;
 		var isMut = node.Mode is not null;
-		var (value, enumType) = ResolveMatchedValue(node.Value);
+		var (value, enumType, dyn) = ResolveMatchedValue(node.Value);
 		value = TakeOwnership(value, node.Value, enumType, isMut, node.Arms.Select(static arm => arm.Pattern));
 		var ownsValue = OwnsValue(value, enumType);
 		var patterns = new List<ResolvedPattern?>(node.Arms.Length);
@@ -715,10 +763,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		var summaries = new List<MatchArmSummary>(node.Arms.Length);
 		foreach (var arm in node.Arms)
 		{
-			var pattern = arm.Pattern is { } syntax && enumType is not null
-				? ResolvePattern(syntax, enumType, isMut, ownsValue)
-				: null;
-			
+			var pattern = arm.Pattern is { } syntax ? ResolveArmPattern(syntax, enumType, dyn, isMut, ownsValue) : null;
 			var bindings = pattern?.Bindings ??
 			               (arm.Pattern is { } failed ? CreateBindings(failed, null, isMut, ownsValue) : []);
 			
@@ -730,6 +775,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		ReportArmConflicts(summaries);
 		if (enumType is not null)
 			ReportMissingCases(node.Keyword, enumType, summaries);
+		else if (dyn is not null && !summaries.Any(static arm => arm.IsElse))
+			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Keyword.SourceLocation,
+				$"This match doesn't handle every value of '{dyn.Name}'"));
 		
 		var type = target ?? UnifyTypes(values);
 		if (type is null)
@@ -752,11 +800,22 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		EnumCaseSymbol? Case,
 		BigInteger? Value,
 		SourceLocation Location
-	);
+	)
+	{
+		public TypeSymbol? Type { get; init; }
+	}
+	
+	private ResolvedPattern? ResolveArmPattern(PatternNode syntax, EnumSymbol? enumType, DynType? dyn, bool isMut,
+		bool ownsValue) => enumType is not null ? ResolvePattern(syntax, enumType, isMut, ownsValue)
+		: dyn is not null ? ResolveTypePattern(syntax, dyn, isMut)
+		: null;
 	
 	private MatchArmSummary SummarizeArm(PatternNode? syntax, ResolvedPattern? pattern, EnumSymbol? enumType,
 		SourceLocation location) => new(syntax is null, pattern?.Case,
-		pattern is null ? null : _typePool.GetCaseValue(enumType!, pattern.Case), location);
+		pattern?.Case is { } enumCase ? _typePool.GetCaseValue(enumType!, enumCase) : null, location)
+	{
+		Type = pattern?.TestedType
+	};
 	
 	private void ReportArmConflicts(IReadOnlyList<MatchArmSummary> arms)
 	{
@@ -769,6 +828,18 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		else if (elseArms.Count == 1 && !arms[^1].IsElse)
 		{
 			Diagnostics.Add(new(DiagnosticSeverity.Error, elseArms[0].Location, "'else' must be the last arm"));
+		}
+		
+		var repeatedTypes = arms
+			.Where(static arm => arm.Type is not null)
+			.GroupBy(static arm => arm.Type)
+			.Where(static sameType => sameType.Count() > 1);
+		
+		foreach (var sameType in repeatedTypes)
+		{
+			foreach (var arm in sameType)
+				Diagnostics.Add(new(DiagnosticSeverity.Error, arm.Location,
+					$"'{sameType.Key!.Name}' is matched more than once"));
 		}
 		
 		var repeated = arms
@@ -816,6 +887,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	
 	private IResolvedExpressionNode VisitTypeCall(CallExpressionNode node, TypeSymbol targetType)
 	{
+		if (targetType is DynType dyn)
+			return VisitDynConversion(node, dyn);
+		
 		if (targetType is RecordSymbol record)
 			return _typePool.GetConstructors(record).Count == 0
 				? VisitRecordConstruction(node, record)
@@ -861,6 +935,185 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			return new ResolvedConversionExpressionNode(value, conversion, node);
 		
 		return VisitConstructorCall(node, targetType, arg);
+	}
+	
+	private IResolvedExpressionNode VisitDynConversion(CallExpressionNode node, DynType dyn)
+	{
+		if (node.Arguments.Length != 1)
+			return VisitConstructorCall(node, dyn, null);
+		
+		var argument = VisitArgument(node.Arguments[0]);
+		if (IsInvalid(argument))
+			return new ResolvedInvalidExpressionNode(node, dyn);
+		
+		if (argument is ResolvedMutArgumentExpressionNode mutArgument)
+		{
+			var place = Decay(mutArgument.Place);
+			if (place.Type == dyn)
+				return place;
+			
+			if (CanErase(place.Type, dyn))
+				return Decay(Erase(new ResolvedBorrowExpressionNode(place, _typePool.GetBorrowType(place.Type, true),
+					false, mutArgument.Syntax), _typePool.GetBorrowType(dyn, true)));
+			
+			return Error(node, $"'{place.Type.Name}' doesn't implement '{dyn.Trait.Name}'", dyn, node.Arguments[0]);
+		}
+		
+		return ConvertToDyn(argument, dyn) ?? Error(node,
+			$"'{Decay(argument).Type.Name}' doesn't implement '{dyn.Trait.Name}'", dyn, node.Arguments[0]);
+	}
+	
+	private static bool IsDynTarget(TypeSymbol type) =>
+		type is DynType or BorrowType { Target: DynType } or PointerType { BaseType: DynType };
+	
+	private bool CanErase(TypeSymbol type, DynType dyn) =>
+		type is not (DynType or InvalidType) && _typePool.Conforms(type, dyn.Trait);
+	
+	private bool CanConvertToDyn(IResolvedExpressionNode source, TypeSymbol target) => target switch
+	{
+		DynType dyn => source.Type == dyn || source.Type switch
+		{
+			BorrowType { Target: var objectType } => objectType == dyn || CanErase(objectType, dyn),
+			var type => CanErase(type, dyn)
+		},
+		BorrowType { Target: DynType dyn, IsMutable: var isMutable } => source.Type switch
+		{
+			BorrowType { Target: var objectType } borrow => (borrow.IsMutable || !isMutable) &&
+			                                                (objectType == dyn || CanErase(objectType, dyn)),
+			var type => !isMutable && (type == dyn || CanErase(type, dyn))
+		},
+		PointerType { BaseType: DynType dyn } => source.Type is PointerType { BaseType: var baseType } &&
+		                                         CanErase(baseType, dyn),
+		_ => false
+	};
+	
+	private IResolvedExpressionNode? ConvertToDyn(IResolvedExpressionNode source, TypeSymbol target)
+	{
+		if (!CanConvertToDyn(source, target))
+			return null;
+		
+		var syntax = source.Syntax;
+		switch (target)
+		{
+			case DynType dyn when source.Type == dyn:
+				return source;
+			
+			case DynType dyn when source.Type is BorrowType { Target: var objectType, IsMutable: var isMutable }:
+				return Decay(objectType == dyn ? source : Erase(source, _typePool.GetBorrowType(dyn, isMutable)));
+			
+			case DynType dyn:
+				var borrow = _typePool.GetBorrowType(source.Type, false);
+				var borrowed = new ResolvedBorrowExpressionNode(source, borrow, true, syntax);
+				return Decay(Erase(borrowed, _typePool.GetBorrowType(dyn, false)));
+			
+			case BorrowType { Target: DynType dyn } borrowTarget when source.Type is BorrowType { Target: var t }:
+				return t == dyn
+					? new ResolvedConversionExpressionNode(source,
+						_conversionTable.FindImplicit(source.Type, borrowTarget)!, syntax)
+					: Erase(source, borrowTarget);
+			
+			case BorrowType { Target: DynType dyn } borrowTarget when source.Type == dyn:
+				return new ResolvedBorrowExpressionNode(source, borrowTarget, true, syntax);
+			
+			case BorrowType borrowTarget:
+				return Erase(new ResolvedBorrowExpressionNode(source, _typePool.GetBorrowType(source.Type, false), true,
+					syntax), borrowTarget);
+			
+			default:
+				return Erase(source, target);
+		}
+	}
+	
+	private IResolvedExpressionNode Erase(IResolvedExpressionNode pointer, TypeSymbol target)
+	{
+		var objectType = pointer.Type switch
+		{
+			BorrowType borrow => borrow.Target,
+			PointerType p => p.BaseType,
+			_ => throw new InvalidOperationException()
+		};
+		
+		var dyn = target switch
+		{
+			BorrowType { Target: DynType d } => d,
+			PointerType { BaseType: DynType d } => d,
+			_ => throw new InvalidOperationException()
+		};
+		
+		ImmutableArray<FunctionInfo> members =
+			[..GetDynMembers(dyn.Trait).Select(member => GetFunctionInfo(member, objectType))];
+		
+		return new ResolvedConversionExpressionNode(pointer,
+			new DynConversion(pointer.Type, target, objectType, members), pointer.Syntax);
+	}
+	
+	private ImmutableArray<FunctionSymbol> GetDynMembers(TraitSymbol trait)
+	{
+		if (_typePool.FindDynMembers(trait) is { } existing)
+			return existing;
+		
+		ImmutableArray<FunctionSymbol> members =
+		[
+			..trait.Functions
+				.Select(static method => method.Function)
+				.Concat(trait.Properties.SelectMany(GetAccessors))
+				.Where(IsDynCallable)
+		];
+		
+		_typePool.SetDynMembers(trait, members);
+		return members;
+	}
+	
+	private bool IsDynCallable(FunctionSymbol function)
+	{
+		if (function.Visibility == Visibility.Private || function.Kind != FunctionKind.Method ||
+		    !function.DeclaredTypeParameters.IsEmpty)
+			return false;
+		
+		var signature = GetFunctionInfo(function).Signature;
+		return signature.ParameterTypes.Length > 0 && signature.GetMode(0) != ParameterMode.Own && !signature
+			.ParameterTypes.Skip(1)
+			.Append(signature.ReturnType)
+			.Any(TypePool.ContainsTypeParameters);
+	}
+	
+	private IResolvedExpressionNode VisitDynCall(CallExpressionNode node, AccessExpressionNode access,
+		IResolvedExpressionNode target, DynType dyn, IndexerExpressionNode? indexer)
+	{
+		var name = access.Member.Text;
+		var member = access.Member.SourceLocation;
+		if (dyn.Trait.GetProperty(name) is not null)
+			return VisitIndirectCall(node, Index(indexer, ResolveAccess(access, target)));
+		
+		var functions = dyn.Trait.GetFunctions(name).ToArray();
+		if (functions.Length == 0)
+			return Error(node, $"Type '{dyn.Name}' has no member '{name}'", CurrentTargetType, member);
+		
+		var accessible = functions.Where(method => CanAccess(dyn, method.Function)).ToArray();
+		if (accessible.Length == 0)
+			return Error(node, ReportHiddenMember(member, name, functions.Select(static method => method.Function)),
+				CurrentTargetType);
+		
+		var members = GetDynMembers(dyn.Trait);
+		var callable = accessible.Where(method => members.Contains(method.Function)).ToArray();
+		if (callable.Length == 0)
+			return Error(node, accessible.Any(static method => method.HasReceiver)
+				? $"Cannot call '{name}' through '{dyn.Name}'"
+				: "Cannot use static functions through values", CurrentTargetType, member);
+		
+		ICallable[] candidates =
+		[
+			..callable
+				.Select(method => GetFunctionInfo(method.Function, dyn))
+				.Select(static info => new ReceiverCallable(info, info.Signature.ReturnType))
+		];
+		
+		if (indexer is null)
+			return ResolveCall(node, name, candidates, target);
+		
+		return ResolveTypeArguments(indexer) is { } typeArguments
+			? ResolveCall(node, name, candidates, target, typeArguments)
+			: new ResolvedInvalidExpressionNode(node, CurrentTargetType);
 	}
 	
 	private IResolvedExpressionNode VisitRecordConstruction(CallExpressionNode node, RecordSymbol record,
@@ -1523,7 +1776,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		return diagnostics.Count > 0;
 	}
 	
-	private static Diagnostic? ReportArgumentMode(ICallable callable, int index, IResolvedExpressionNode arg)
+	private Diagnostic? ReportArgumentMode(ICallable callable, int index, IResolvedExpressionNode arg)
 	{
 		var argument = arg as ResolvedMutArgumentExpressionNode;
 		var hasParameter = index < callable.ParameterTypes.Length;
@@ -1559,8 +1812,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		_ => null
 	};
 	
-	private static bool IsMutPlaceOf(IResolvedExpressionNode place, TypeSymbol declared) =>
-		place.Type == declared || Decay(place).Type == declared;
+	private bool IsMutPlaceOf(IResolvedExpressionNode place, TypeSymbol declared) =>
+		place.Type == declared || Decay(place).Type == declared ||
+		declared is DynType dyn && CanErase(Decay(place).Type, dyn);
 	
 	private static TypeSymbol GetArgumentType(IResolvedExpressionNode arg) =>
 		arg is ResolvedMutArgumentExpressionNode argument ? argument.Place.Type : arg.Type;
@@ -1583,6 +1837,11 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			return VisitIndirectCall(node, target);
 		
 		var owner = GetMemberOwner(target.Type, access.Member.Text);
+		if (owner is DynType dyn)
+			return VisitDynCall(node, access,
+				owner == target.Type ? target : ResolveDereference(TokenType.OpStar, target, access.Target), dyn,
+				indexer);
+		
 		if (FindField(target.Type, access.Member.Text) is not null ||
 		    GetPropertyMember(owner, access.Member.Text) is not null)
 			return VisitIndirectCall(node, Index(indexer, ResolveAccess(access, target)));
@@ -1695,6 +1954,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		if (property.Getter is not FunctionAccessor { Function: var getter })
 			return Error(node, "Cannot read write-only properties", CurrentTargetType, member);
 		
+		if (owner is DynType dyn && !GetDynMembers(dyn.Trait).Contains(getter))
+			return Error(node, $"Cannot use '{property.Name}' through '{dyn.Name}'", CurrentTargetType, member);
+		
 		return CanAccess(owner, getter)
 			? CallAccessor(getter, owner, receiver, [], node)
 			: Error(node, DiagnosticReporter.ReportWriteOnly(member, property.Name, getter.Visibility),
@@ -1761,6 +2023,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	
 	private IEnumerable<MethodSymbol> GetTraitMethods(TypeSymbol type, string name)
 	{
+		if (type is DynType dyn)
+			return dyn.Trait.GetFunctions(name).Where(method => GetDynMembers(dyn.Trait).Contains(method.Function));
+		
 		if (type is TypeParameterSymbol parameter)
 			return _typePool.GetBounds(parameter).SelectMany(trait => trait.GetFunctions(name));
 		
@@ -1786,6 +2051,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	{
 		if (type.GetProperty(name) is { } property)
 			return property;
+		
+		if (type is DynType dyn)
+			return dyn.Trait.GetProperty(name);
 		
 		if (type is TypeParameterSymbol parameter)
 			return _typePool.GetBounds(parameter)
@@ -1986,6 +2254,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	{
 		if (type is PointerType { BaseType: var baseType } && baseType != NativeSymbols.Void)
 			return baseType;
+		
+		if (type is DynType)
+			return type;
 		
 		if (DeclaresAccessibleMember(type, name))
 			return type;
@@ -2265,6 +2536,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 				values[i] = CoerceToType(values[i], elementType);
 		}
 		
+		if (elementType is DynType dyn)
+			return Error(node, $"Cannot use '{dyn.Name}' by value", null);
+		
 		var type = _typePool.GetArrayType(elementType, node.Values.Length);
 		return new ResolvedArrayExpressionNode(type, values, node);
 	}
@@ -2383,6 +2657,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		
 		if (TypePool.ContainsTypeParameters(target))
 			return new ResolvedSizeOfExpressionNode(target, node);
+		
+		if (target is DynType dyn)
+			return Error(node, $"Cannot use '{dyn.Name}' by value", NativeSymbols.UntypedInteger);
 		
 		if (IsInvalid(target) || _typePool.SizeTable.TryGetSize(target) is not { } size)
 			return new ResolvedInvalidExpressionNode(node);
@@ -2689,6 +2966,13 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		}
 		
 		type ??= initializer?.Type ?? NativeSymbols.Invalid;
+		if (TypePool.FindValueDyn(type) is { } valueDyn)
+		{
+			var location = node.Type?.SourceLocation ?? node.ExpressionNode!.SourceLocation;
+			Diagnostics.Add(new(DiagnosticSeverity.Error, location, $"Cannot use '{valueDyn.Name}' by value"));
+			
+			type = NativeSymbols.Invalid;
+		}
 		
 		var symbol = new LocalVariableSymbol(node.Identifier, type, node.IsMutable)
 		{
@@ -3172,6 +3456,13 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			return RejectAssignment(node, new(DiagnosticSeverity.Error, target.Syntax.SourceLocation,
 				"Cannot reassign read-only properties"));
 		
+		if (target.Owner is DynType dyn && (!GetDynMembers(dyn.Trait).Contains(setter) ||
+		                                    node.Op.Type != TokenType.OpEqual &&
+		                                    property.Getter is FunctionAccessor { Function: var read } &&
+		                                    !GetDynMembers(dyn.Trait).Contains(read)))
+			return RejectAssignment(node, new(DiagnosticSeverity.Error, member,
+				$"Cannot use '{property.Name}' through '{dyn.Name}'"));
+		
 		if (FindReceiverError(setter.Kind == FunctionKind.Free, target.Receiver) is { } setterError)
 			return RejectAssignment(node, new(DiagnosticSeverity.Error, member, setterError));
 		
@@ -3397,11 +3688,17 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		if (target is BorrowType { IsMutable: false } borrow && source.Type == borrow.Target)
 			return new ResolvedBorrowExpressionNode(source, borrow, true, source.Syntax);
 		
+		if (IsDynTarget(target) && ConvertToDyn(source, target) is { } dynValue)
+			return dynValue;
+		
 		if (target is not BorrowType && Decay(source) is var decayed && decayed != source)
 			return ApplyImplicitConversion(decayed, target);
 		
 		if (_conversionTable.FindImplicit(source.Type, target) is { } conversion)
 			return new ResolvedConversionExpressionNode(source, conversion, source.Syntax);
+		
+		if (IsDynTarget(target) && ConvertToDyn(source, target) is { } erased)
+			return erased;
 		
 		if (source is ResolvedFunctionGroupExpressionNode group)
 			return ReportFunctionMismatch(group, target);
@@ -4038,6 +4335,12 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 				arg = ResolveCaseName(caseName,
 					target is BorrowType { IsMutable: false, Target: var readTarget } ? readTarget : target);
 			
+			if (IsDynTarget(target) && arg.Type != target && ConvertToDyn(arg, target) is { } erased)
+			{
+				result.Add(erased);
+				continue;
+			}
+			
 			var borrowed = target is BorrowType { IsMutable: false } borrow && arg.Type is not BorrowType
 				? borrow
 				: null;
@@ -4072,6 +4375,14 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		};
 		
 		var place = argument.Place.Type == declared ? argument.Place : Decay(argument.Place);
+		if (declared is DynType && place.Type is not DynType && !IsInvalid(place))
+			return Erase(target is BorrowType
+					? new ResolvedBorrowExpressionNode(place, _typePool.GetBorrowType(place.Type, true), false,
+						argument.Syntax)
+					: new ResolvedMutArgumentExpressionNode(place, _typePool.GetPointerType(place.Type),
+						argument.Syntax),
+				target);
+		
 		if (target is BorrowType borrow)
 			return new ResolvedBorrowExpressionNode(place, borrow, false, argument.Syntax);
 		
@@ -4157,6 +4468,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		
 		if (arg.Type == target)
 			return (0, null);
+		
+		if (IsDynTarget(target))
+			return CanConvertToDyn(arg, target) ? (1, null) : (int.MaxValue, null);
 		
 		if (target is BorrowType { IsMutable: false } borrow && arg.Type is not BorrowType)
 		{

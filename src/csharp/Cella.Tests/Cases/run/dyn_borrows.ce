@@ -1,0 +1,63 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Shape: trait
+{
+	area: fun(self) -> f64
+	scale: fun(mut self, factor: f64)
+}
+
+Circle: rec impl Shape
+{
+	radius: f64
+
+	area: fun(self) -> f64 = self.radius * 10.0
+	scale: fun(mut self, factor: f64)
+	{
+		self.radius *= factor
+	}
+}
+
+Scene: ref rec
+{
+	focus: imm[dyn[Shape]]
+}
+
+Big: rec impl Shape
+{
+	r: f64
+
+	area: fun(self) -> f64 = self.r
+	scale: fun(mut self, factor: f64)
+	{
+		self.r *= factor
+	}
+
+	drop: op
+	{
+	}
+}
+
+pick: fun(a: Big, b: Big) -> imm[dyn[Shape]] = a
+
+main: fun -> i32
+{
+	var c = Circle(2.0)
+	val d = Circle(5.0)
+	val b: imm[dyn[Shape]] = c
+	printf("%.1f\n", b.area())
+	val scene = Scene(d)
+	printf("%.1f\n", scene.focus.area())
+	val m: mut[dyn[Shape]] = mut c
+	m.scale(3.0)
+	val big = Big(7.0)
+	printf("%.1f %.1f\n", c.radius, pick(big, Big(1.0)).area())
+	val p: ptr[dyn[Shape]] = @c
+	p.scale(2.0)
+	printf("%.1f %.1f\n", c.radius, p.area())
+	ret 0
+}

@@ -1,0 +1,14 @@
+mod test
+
+Shape: trait
+{
+	area: fun(self) -> f64
+}
+
+first: fun(shape: dyn) -> f64 = 0.0
+
+second: fun(shape: dyn[]) -> f64 = 0.0
+
+third: fun(shape: dyn[Shape) -> f64 = 0.0
+
+main: fun -> i32 = 0

@@ -41,6 +41,7 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 		TokenType.KeywordImm,
 		TokenType.KeywordSelf,
 		TokenType.KeywordFun,
+		TokenType.KeywordDyn,
 		TokenType.KeywordRet,
 		TokenType.KeywordBreak,
 		TokenType.KeywordCont
@@ -229,8 +230,21 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 	
 	public PatternNode ParsePattern(ref int index)
 	{
+		var start = index;
 		if (!Match(ref index, out var first, TokenType.Identifier))
 			throw Expected(index, "a case name");
+		
+		if (!IsNextNewline(index) && Match(ref index, TokenType.OpColon))
+		{
+			var type = ParseType(ref index);
+			var (bindingSource, bindingRange) = first.SourceLocation;
+			var location = new SourceLocation(bindingSource, bindingRange.Join(type.SourceLocation.Range));
+			return new PatternNode([], first, [], [], false, location)
+			{
+				Type = type,
+				TypeBinding = first
+			};
+		}
 		
 		var names = new List<Token> { first };
 		while (!IsNextNewline(index) && Match(ref index, TokenType.OpDot))
@@ -245,6 +259,13 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 		var typePath = names[..^1];
 		var (source, range) = first.SourceLocation;
 		range = range.Join(caseName.SourceLocation.Range);
+		if (!IsNextNewline(index) && Peek(index, TokenType.OpOpenBracket))
+		{
+			index = start;
+			var type = ParseType(ref index);
+			return new PatternNode(typePath, caseName, [], [], false, type.SourceLocation) { Type = type };
+		}
+		
 		if (IsNextNewline(index) || !Match(ref index, out var openParen, TokenType.OpOpenParen))
 			return new PatternNode(typePath, caseName, [], [], false, new(source, range));
 		
@@ -415,7 +436,7 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 				node = new ArrayExpressionNode(values, new(source, range));
 			}
 		}
-		else if (StartsFunctionType(index))
+		else if (StartsFunctionType(index) || Peek(index, TokenType.KeywordDyn))
 			node = new TypeExpressionNode(ParseType(ref index));
 		else if (Match(ref index, out var identifier, TokenType.Identifier))
 			node = new VarExpressionNode(identifier);

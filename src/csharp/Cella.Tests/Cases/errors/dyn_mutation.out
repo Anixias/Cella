@@ -1,0 +1,19 @@
+
+====== dyn_mutation.ce ======
+
+Error at line 22, column 2
+21 │ {
+22 │     shape.scale(2.0)
+         ╘═══╛ Cannot mutably borrow read-only parameters
+
+Error at line 30, column 2
+29 │ val b: imm[dyn[Shape]] = c
+30 │ b.scale(2.0)
+     ^ Cannot mutably borrow through read-only borrows
+
+Error at line 31, column 17
+30 │ b.scale(2.0)
+31 │ dyn[Shape](mut c).scale(1.0)
+                    ^ Cannot mutably borrow values
+
+[compilation failed]

@@ -20,6 +20,9 @@ public sealed class TypeParser(ImmutableArray<Token> tokens) : BaseParser<ITypeN
 		if (Match(ref index, out var borrowKeyword, _borrowKeywords))
 			return ParseBorrowType(ref index, borrowKeyword);
 		
+		if (Match(ref index, out var dynKeyword, TokenType.KeywordDyn))
+			return ParseDynType(ref index, dynKeyword);
+		
 		if (TryParseFunctionType(ref index) is { } functionType)
 			return functionType;
 		
@@ -66,6 +69,21 @@ public sealed class TypeParser(ImmutableArray<Token> tokens) : BaseParser<ITypeN
 			throw Expected(index, "']'");
 		
 		return new BorrowTypeNode(keyword, target, closeBracket);
+	}
+	
+	private DynTypeNode ParseDynType(ref int index, Token keyword)
+	{
+		if (!Match(ref index, TokenType.OpOpenBracket))
+			throw Expected(index, "'['");
+		
+		if (!Peek(index, TokenType.Identifier))
+			throw Expected(index, "a trait");
+		
+		var trait = ParseType(ref index);
+		if (!Match(ref index, out var closeBracket, TokenType.OpCloseBracket))
+			throw Expected(index, "']'");
+		
+		return new DynTypeNode(keyword, trait, closeBracket);
 	}
 	
 	private ParseException Expected(int index, string expected)
@@ -127,7 +145,7 @@ public sealed class TypeParser(ImmutableArray<Token> tokens) : BaseParser<ITypeN
 	
 	private IGenericArgumentNode ParseGenericArgument(ref int index)
 	{
-		if (Peek(index, TokenType.KeywordImm) || Peek(index, TokenType.KeywordMut))
+		if (Peek(index, TokenType.KeywordImm) || Peek(index, TokenType.KeywordMut) || Peek(index, TokenType.KeywordDyn))
 			return new TypeArgumentNode(ParseType(ref index));
 		
 		if (TryParseFunctionType(ref index) is { } functionType)

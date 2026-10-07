@@ -34,4 +34,6 @@ public sealed class PatternNode
 	public ImmutableArray<Token?> BindingModes { get; } = bindingModes.ToImmutableArray();
 	public bool HasParentheses { get; } = hasParentheses;
 	public SourceLocation SourceLocation { get; } = sourceLocation;
+	public ITypeNode? Type { get; init; }
+	public Token? TypeBinding { get; init; }
 }

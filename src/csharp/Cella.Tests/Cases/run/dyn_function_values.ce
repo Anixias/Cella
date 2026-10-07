@@ -1,0 +1,37 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Shape: trait
+{
+	area: fun(self) -> f64
+	scale: fun(mut self, factor: f64)
+}
+
+Circle: rec impl Shape
+{
+	radius: f64
+
+	area: fun(self) -> f64 = self.radius
+	scale: fun(mut self, factor: f64)
+	{
+		self.radius *= factor
+	}
+}
+
+describe: fun(shape: dyn[Shape]) -> f64 = shape.area()
+
+grow: fun(mut shape: dyn[Shape]) = shape.scale(3.0)
+
+main: fun -> i32
+{
+	val measure: fun[dyn[Shape] -> f64] = describe
+	val stretch: fun[mut dyn[Shape]] = grow
+	var c = Circle(2.0)
+	stretch(mut c)
+	printf("%.1f %.1f %.1f\n", measure(c), describe(Circle(5.0)), dyn[Shape](Circle(7.0)).area())
+	ret 0
+}

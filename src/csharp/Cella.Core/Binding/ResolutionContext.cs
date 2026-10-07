@@ -317,6 +317,7 @@ public readonly struct ResolutionContext
 		GenericTypeNode n => ResolveGenericType(n),
 		FunctionTypeNode n => ResolveFunctionType(n),
 		BorrowTypeNode n => ResolveBorrowType(ResolveType(n.Target), n.IsMutable),
+		DynTypeNode n => ResolveTrait(n.Trait) is { } trait ? TypePool.GetDynType(trait) : NativeSymbols.Invalid,
 		_ => NativeSymbols.Invalid
 	};
 	

@@ -1,0 +1,33 @@
+mod test
+
+Shape: trait
+{
+	area: fun(self) -> f64
+	scale: fun(mut self, factor: f64)
+}
+
+Circle: rec impl Shape
+{
+	radius: f64
+
+	area: fun(self) -> f64 = self.radius
+	scale: fun(mut self, factor: f64)
+	{
+		self.radius *= factor
+	}
+}
+
+describe: fun(shape: dyn[Shape]) -> f64
+{
+	shape.scale(2.0)
+	ret shape.area()
+}
+
+main: fun -> i32
+{
+	val c = Circle(1.0)
+	val b: imm[dyn[Shape]] = c
+	b.scale(2.0)
+	dyn[Shape](mut c).scale(1.0)
+	ret 0
+}

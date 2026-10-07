@@ -19,6 +19,8 @@ public sealed class TypePool
 	private readonly Dictionary<(TypeSymbol, BigInteger), ArrayType> _arrayTypes = [];
 	private readonly Dictionary<TypeSymbol, PointerType> _pointerTypes = [];
 	private readonly Dictionary<(TypeSymbol, bool), BorrowType> _borrowTypes = [];
+	private readonly Dictionary<TraitSymbol, DynType> _dynTypes = [];
+	private readonly Dictionary<TraitSymbol, ImmutableArray<FunctionSymbol>> _dynMembers = [];
 	private readonly List<FunctionType> _functionTypes = [];
 	private readonly Dictionary<TypedMemberSymbol, TypeSymbol> _memberTypes = [];
 	private readonly Dictionary<TypeSymbol, TypeFacts> _facts = [];
@@ -138,7 +140,7 @@ public sealed class TypePool
 	
 	public bool HoldsBorrows(TypeSymbol type) => type switch
 	{
-		BorrowType => true,
+		BorrowType or DynType => true,
 		TypeParameterSymbol parameter => !parameter.IsNoref,
 		StringType => type == NativeSymbols.Str,
 		NamedTypeSymbol { TypeArguments.IsEmpty: false } named => named.IsRef || PartsHoldBorrows(named),
@@ -196,7 +198,7 @@ public sealed class TypePool
 			},
 			ArrayType => Combine(false, GetParts(type)),
 			FunctionType or BorrowType => TypeFacts.Plain with { HasDefault = false },
-			TypeParameterSymbol => new(true, false, false),
+			TypeParameterSymbol or DynType => new(true, false, false),
 			_ => TypeFacts.Plain
 		};
 		
@@ -284,6 +286,12 @@ public sealed class TypePool
 		
 		var ptrType = new PointerType(baseType);
 		_pointerTypes[baseType] = ptrType;
+		if (baseType is DynType)
+		{
+			SizeTable.Register(ptrType, FatPointerSize);
+			return ptrType;
+		}
+		
 		SizeTable.Register(ptrType, StorageSize.Ptr);
 		
 		// All pointers can be implicitly converted to ptr / explicitly converted from ptr
@@ -309,12 +317,46 @@ public sealed class TypePool
 		
 		var borrowType = new BorrowType(target, isMutable);
 		_borrowTypes[(target, isMutable)] = borrowType;
-		SizeTable.Register(borrowType, StorageSize.Ptr);
+		SizeTable.Register(borrowType, target is DynType ? FatPointerSize : StorageSize.Ptr);
 		if (isMutable)
 			ConversionTable.Add(new FreeConversion(borrowType, GetBorrowType(target, false), ConversionKind.Implicit));
 		
 		return borrowType;
 	}
+	
+	private static ISize FatPointerSize => StorageSize.Sum(StorageSize.Ptr, StorageSize.Ptr);
+	
+	public static bool IsFatPointer(TypeSymbol type) =>
+		type is PointerType { BaseType: DynType } or BorrowType { Target: DynType };
+	
+	public DynType GetDynType(TraitSymbol trait)
+	{
+		if (_dynTypes.TryGetValue(trait, out var existing))
+			return existing;
+		
+		var dynType = new DynType(trait);
+		_dynTypes[trait] = dynType;
+		return dynType;
+	}
+	
+	public ImmutableArray<FunctionSymbol>? FindDynMembers(TraitSymbol trait) =>
+		_dynMembers.TryGetValue(trait, out var members) ? members : null;
+	
+	public void SetDynMembers(TraitSymbol trait, ImmutableArray<FunctionSymbol> members) =>
+		_dynMembers[trait] = members;
+	
+	public int GetDynSlot(TraitSymbol trait, FunctionSymbol member) => _dynMembers[trait].IndexOf(member);
+	
+	public static DynType? FindValueDyn(TypeSymbol type) => type switch
+	{
+		DynType dyn => dyn,
+		ArrayType array => FindValueDyn(array.ElementType),
+		FunctionType function => FindValueDyn(function.ReturnType) ?? function.ParameterTypes
+			.Where((_, i) => function.ParameterModes[i] == ParameterMode.Own)
+			.Select(FindValueDyn)
+			.FirstOrDefault(static dyn => dyn is not null),
+		_ => null
+	};
 	
 	public ArrayType GetArrayType(TypeSymbol elementType, BigInteger length)
 	{
@@ -414,6 +456,7 @@ public sealed class TypePool
 	public string? FindConstraintViolation(TypeParameterSymbol parameter, TypeSymbol argument) => argument switch
 	{
 		InvalidType => null,
+		DynType => $"Cannot use '{argument.Name}' by value",
 		_ when parameter.IsNoref && HoldsBorrows(argument) => $"Cannot store borrows in '{parameter.Name}'",
 		_ when parameter.HasNull && !HasNull(argument) => $"'{argument.Name}' has no null",
 		_ when GetBounds(parameter).FirstOrDefault(trait => !Conforms(argument, trait)) is { } trait =>

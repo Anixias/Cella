@@ -395,6 +395,12 @@ public sealed class Lowerer
 			IReadOnlyList<(ResolvedPattern? Pattern, SourceLocation Location)> arms, SourceLocation location,
 			bool ownsValue, Action<int> lowerArm)
 		{
+			if (value.Type is DynType)
+			{
+				LowerDynMatch(value, arms, location, lowerArm);
+				return;
+			}
+			
 			var scrutinee = LowerScrutinee(value);
 			var enumType = (EnumSymbol)scrutinee.Type;
 			var tagType = _typePool.GetTagType(enumType);
@@ -403,7 +409,7 @@ public sealed class Lowerer
 			var caseValues = enumType.Cases.Select(c => _typePool.GetCaseValue(enumType, c)).ToHashSet();
 			var coversEveryCase = !enumType.IsExternal && caseValues.SetEquals(arms
 				.Where(static arm => arm.Pattern is not null)
-				.Select(arm => _typePool.GetCaseValue(enumType, arm.Pattern!.Case)));
+				.Select(arm => _typePool.GetCaseValue(enumType, arm.Pattern!.Case!)));
 			
 			var testBlock = GetOrMakeBlock();
 			for (var i = 0; i < arms.Count; i++)
@@ -418,7 +424,7 @@ public sealed class Lowerer
 				else
 				{
 					nextBlock = isLast ? mergeBlock : CreateBlock("match_next");
-					var caseTag = MakeConstant(tagType, _typePool.GetCaseValue(enumType, pattern.Case));
+					var caseTag = MakeConstant(tagType, _typePool.GetCaseValue(enumType, pattern.Case!));
 					var test = new BinOpValue(NativeSymbols.Bool, tag, caseTag, BinaryOperation.Equal, location);
 					testBlock.SetTerminator(new ConditionalBranchTerminator(test, armBlock, nextBlock, location));
 				}
@@ -444,6 +450,68 @@ public sealed class Lowerer
 				testBlock.SetTerminator(new BranchTerminator(mergeBlock, location));
 			
 			ContinueWith(mergeBlock);
+		}
+		
+		private void LowerDynMatch(IResolvedExpressionNode value,
+			IReadOnlyList<(ResolvedPattern? Pattern, SourceLocation Location)> arms, SourceLocation location,
+			Action<int> lowerArm)
+		{
+			var address = LowerDynAddress(value);
+			var mergeBlock = CreateBlock("match_end");
+			var testBlock = GetOrMakeBlock();
+			for (var i = 0; i < arms.Count; i++)
+			{
+				var (pattern, armLocation) = arms[i];
+				var armBlock = CreateBlock("match_arm");
+				BasicBlock? nextBlock = null;
+				if (pattern is null)
+					testBlock.SetTerminator(new BranchTerminator(armBlock, location));
+				else
+				{
+					nextBlock = i == arms.Count - 1 ? mergeBlock : CreateBlock("match_next");
+					testBlock.SetTerminator(new ConditionalBranchTerminator(TestDyn(address, pattern), armBlock,
+						nextBlock, location));
+				}
+				
+				currentBlock = armBlock;
+				BeginScope(armLocation);
+				if (pattern is not null)
+					BindDyn(address, pattern);
+				
+				lowerArm(i);
+				EndCurrentScope();
+				currentBlock?.FillTerminator(new BranchTerminator(mergeBlock, location));
+				if (nextBlock is null)
+					break;
+				
+				testBlock = nextBlock;
+			}
+			
+			if (arms.Count == 0)
+				testBlock.SetTerminator(new BranchTerminator(mergeBlock, location));
+			
+			ContinueWith(mergeBlock);
+		}
+		
+		private Value LowerDynAddress(IResolvedExpressionNode node)
+		{
+			var place = LowerScrutinee(node);
+			return CaptureAsAtomic(new UnaryOpValue(_typePool.GetPointerType(place.Type), place,
+				UnaryOperation.AddressOf, place.SourceLocation), "dyn");
+		}
+		
+		private static ConversionValue TestDyn(Value address, ResolvedPattern pattern) =>
+			new(address, new DynTestConversion(address.Type, pattern.TestedType!), address.SourceLocation);
+		
+		private void BindDyn(Value address, ResolvedPattern pattern)
+		{
+			if (pattern.Bindings is not [{ } binding])
+				return;
+			
+			var location = binding.Identifier.SourceLocation;
+			GetOrMakeBlock().Instructions.Add(new LocalVarInstruction(binding,
+				new ConversionValue(address, new DynCastConversion(address.Type, binding.Type), location), location,
+				CurrentScopeId));
 		}
 		
 		private void LowerBranch(IResolvedExpressionNode condition, BasicBlock trueBlock, BasicBlock falseBlock)
@@ -473,12 +541,26 @@ public sealed class Lowerer
 						LowerBranch(node.Operand, falseBlock, trueBlock);
 						return;
 					
+					case ResolvedIsExpressionNode { Pattern: { HasBindings: true, TestedType: not null } } node:
+					{
+						var address = LowerDynAddress(node.Value);
+						var bindBlock = CreateBlock("is_bind");
+						GetOrMakeBlock().SetTerminator(new ConditionalBranchTerminator(TestDyn(address, node.Pattern),
+							bindBlock, falseBlock, location));
+						
+						currentBlock = bindBlock;
+						BindDyn(address, node.Pattern);
+						GetOrMakeBlock().SetTerminator(new BranchTerminator(trueBlock, location));
+						currentBlock = null;
+						return;
+					}
+					
 					case ResolvedIsExpressionNode { Pattern.HasBindings: true } node:
 					{
 						var scrutinee = LowerScrutinee(node.Value);
 						var bindBlock = CreateBlock("is_bind");
 						GetOrMakeBlock().SetTerminator(new ConditionalBranchTerminator(
-							TestCase(scrutinee, node.Pattern.Case), bindBlock, falseBlock, location));
+							TestCase(scrutinee, node.Pattern.Case!), bindBlock, falseBlock, location));
 						
 						currentBlock = bindBlock;
 						BindPayload(scrutinee, node.Pattern, node.OwnsValue);
@@ -516,12 +598,12 @@ public sealed class Lowerer
 		
 		private void BindPayload(Value scrutinee, ResolvedPattern pattern, bool ownsValue)
 		{
-			var payloadTypes = _typePool.GetPayloadTypes((EnumSymbol)scrutinee.Type, pattern.Case);
+			var payloadTypes = _typePool.GetPayloadTypes((EnumSymbol)scrutinee.Type, pattern.Case!);
 			for (var i = 0; i < pattern.Bindings.Length; i++)
 			{
 				var binding = pattern.Bindings[i];
 				var location = binding?.Identifier.SourceLocation ?? scrutinee.SourceLocation;
-				var payload = new EnumPayloadValue(payloadTypes[i], scrutinee, pattern.Case, i, location);
+				var payload = new EnumPayloadValue(payloadTypes[i], scrutinee, pattern.Case!, i, location);
 				var isMoved = ownsValue && _typePool.NeedsDrop(payloadTypes[i]);
 				switch (binding)
 				{
@@ -798,8 +880,28 @@ public sealed class Lowerer
 		public Value Visit(ResolvedIsExpressionNode node)
 		{
 			var location = node.Syntax.SourceLocation;
+			if (node.Pattern.TestedType is not null)
+			{
+				var address = LowerDynAddress(node.Value);
+				var dynTest = TestDyn(address, node.Pattern);
+				if (!node.Pattern.HasBindings)
+					return dynTest;
+				
+				var dynResult = StoreTemporary(dynTest, "is_result");
+				var dynBindBlock = CreateBlock("is_bind");
+				var dynMergeBlock = CreateBlock("is_merge");
+				GetOrMakeBlock().SetTerminator(new ConditionalBranchTerminator(dynResult, dynBindBlock, dynMergeBlock,
+					location));
+				
+				currentBlock = dynBindBlock;
+				BindDyn(address, node.Pattern);
+				GetOrMakeBlock().SetTerminator(new BranchTerminator(dynMergeBlock, location));
+				ContinueWith(dynMergeBlock);
+				return dynResult;
+			}
+			
 			var scrutinee = LowerScrutinee(node.Value);
-			var test = TestCase(scrutinee, node.Pattern.Case);
+			var test = TestCase(scrutinee, node.Pattern.Case!);
 			if (!node.Pattern.HasBindings)
 				return test;
 			

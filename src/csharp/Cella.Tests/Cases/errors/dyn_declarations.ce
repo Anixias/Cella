@@ -1,0 +1,37 @@
+mod test
+
+Shape: trait
+{
+	area: fun(self) -> f64
+}
+
+Secret: pvt trait
+{
+	area: fun(self) -> f64
+}
+
+Point: rec
+{
+	x: i32
+}
+
+Holder: rec
+{
+	shape: dyn[Shape]
+	shapes: array[dyn[Shape], 2]
+}
+
+ext
+{
+	show: fun(shape: ptr[dyn[Shape]])
+}
+
+make: fun -> dyn[Shape] = make()
+
+take: fun(own shape: dyn[Shape]) = take(shape)
+
+bad: fun(shape: dyn[Point]) -> i32 = 0
+
+reveal: pub fun(shape: dyn[Secret]) -> i32 = 0
+
+main: fun -> i32 = 0

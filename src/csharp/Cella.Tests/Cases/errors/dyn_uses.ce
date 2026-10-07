@@ -1,0 +1,87 @@
+mod test
+
+Shape: trait
+{
+	area: fun(self) -> f64
+	scale: fun(mut self, factor: f64)
+	label: fun -> i32
+	same: fun(self, other: Self) -> bool
+	map[T]: fun(self, own value: T) -> T
+	take: fun(own self) -> i32
+	twin: get(self) -> Self
+	mix: pvt fun(self) -> i32 = 1
+}
+
+Circle: rec impl Shape
+{
+	radius: f64
+
+	area: fun(self) -> f64 = self.radius
+	scale: fun(mut self, factor: f64)
+	{
+		self.radius *= factor
+	}
+
+	label: fun -> i32 = 1
+	same: fun(self, other: Circle) -> bool = true
+	map[T]: fun(self, own value: T) -> T = value
+	take: fun(own self) -> i32 = 1
+	twin: get(self) -> Circle = self
+}
+
+Plain: rec
+{
+	x: i32
+}
+
+box[T]: rec
+{
+	value: T
+}
+
+grow: fun(mut shape: dyn[Shape]) = shape.scale(2.0)
+
+describe: fun(shape: dyn[Shape]) -> f64
+{
+	shape.label()
+	shape.same(shape)
+	shape.map(1)
+	shape.take()
+	val t = shape.twin
+	shape.mix()
+	shape.scale(2.0)
+	shape.missing()
+	val copy = shape
+	val n = sizeOf(dyn[Shape])
+	val items = [shape]
+	if shape is p: Plain
+		ret 1.0
+
+	if shape is d: dyn[Shape]
+		ret 2.0
+
+	ret 0.0
+}
+
+main: fun -> i32
+{
+	val p = Plain(1)
+	describe(p)
+	describe(dyn[Shape](p))
+	val c = Circle(1.0)
+	grow(c)
+	val m = match dyn[Shape](c)
+	{
+		Circle => 1
+	}
+
+	match dyn[Shape](c)
+	{
+		Circle => {}
+		x: Circle => {}
+		else => {}
+	}
+
+	val b: box[dyn[Shape]] = box(c)
+	ret 0
+}

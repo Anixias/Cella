@@ -47,6 +47,8 @@ public static class Mangling
 		ModuleIndex? modules) =>
 		$"{definitionName}[{string.Join(", ", typeArguments.Select(argument => MangleType(argument, modules)))}]";
 	
+	public static string MangleTypeName(TypeSymbol type, ModuleIndex? modules) => MangleType(type, modules);
+	
 	private static string MangleType(TypeSymbol type, ModuleIndex? modules) => type switch
 	{
 		NamedTypeSymbol { IsGenericInstance: true } instance =>
@@ -55,6 +57,9 @@ public static class Mangling
 		PointerType { BaseType: var baseType } when baseType != NativeSymbols.Void =>
 			$"ptr[{MangleType(baseType, modules)}]",
 		BorrowType borrow => $"{(borrow.IsMutable ? "mut" : "imm")}[{MangleType(borrow.Target, modules)}]",
+		DynType dyn => modules?.FindModule(dyn.Trait) is { } traitModule
+			? $"dyn[{traitModule.ModuleName.Text}.{MangleName(dyn.Trait, modules)}]"
+			: dyn.Name,
 		ArrayType { Length.Sign: < 0 } array => $"array[{MangleType(array.ElementType, modules)}]",
 		ArrayType array => $"array[{MangleType(array.ElementType, modules)}, {array.Length}]",
 		FunctionType function => MangleFunctionType(function, modules),

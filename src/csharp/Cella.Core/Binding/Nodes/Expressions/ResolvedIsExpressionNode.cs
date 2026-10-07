@@ -21,9 +21,10 @@ public sealed class ResolvedIsExpressionNode
 	public IExpressionNode Syntax { get; } = syntax;
 }
 
-public sealed class ResolvedPattern(EnumCaseSymbol enumCase, IEnumerable<LocalVariableSymbol?> bindings)
+public sealed class ResolvedPattern(EnumCaseSymbol? enumCase, IEnumerable<LocalVariableSymbol?> bindings)
 {
-	public EnumCaseSymbol Case { get; } = enumCase;
+	public EnumCaseSymbol? Case { get; } = enumCase;
+	public TypeSymbol? TestedType { get; init; }
 	public ImmutableArray<LocalVariableSymbol?> Bindings { get; } = bindings.ToImmutableArray();
 	public bool HasBindings => Bindings.Any(static binding => binding is not null);
 	public bool HasMutBindings => Bindings.Any(static binding => binding is { IsMutBinding: true });

@@ -405,6 +405,11 @@ public sealed class BorrowType(TypeSymbol target, bool isMutable)
 	public bool IsMutable { get; } = isMutable;
 }
 
+public sealed class DynType(TraitSymbol trait) : TypeSymbol($"dyn[{trait.Name}]")
+{
+	public TraitSymbol Trait { get; } = trait;
+}
+
 public sealed class ArrayType(TypeSymbol elementType, BigInteger length)
 	: TypeSymbol(length.Sign < 0 ? $"array[{elementType.Name}]" : $"array[{elementType.Name}, {length}]"),
 		IPrimitiveType

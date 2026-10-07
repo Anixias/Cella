@@ -1,4 +1,5 @@
-﻿using Cella.Core.Symbols;
+﻿using System.Collections.Immutable;
+using Cella.Core.Symbols;
 
 namespace Cella.Core.Binding.Conversions;
 
@@ -46,6 +47,27 @@ public sealed class IntegerConversion(IntegerType from, IntegerType to, Conversi
 
 public sealed class FloatConversion(PrimitiveType from, PrimitiveType to, ConversionKind kind, int cost)
 	: Conversion(from, to, kind, cost, to is not IntegerType);
+
+public sealed class DynConversion
+(
+	TypeSymbol from,
+	TypeSymbol to,
+	TypeSymbol objectType,
+	ImmutableArray<FunctionInfo> members
+) : Conversion(from, to, ConversionKind.Implicit, 1, false)
+{
+	public TypeSymbol ObjectType { get; } = objectType;
+	public ImmutableArray<FunctionInfo> Members { get; } = members;
+}
+
+public sealed class DynTestConversion(TypeSymbol from, TypeSymbol tested)
+	: Conversion(from, NativeSymbols.Bool, ConversionKind.Explicit, 0, false)
+{
+	public TypeSymbol Tested { get; } = tested;
+}
+
+public sealed class DynCastConversion(TypeSymbol from, TypeSymbol to)
+	: Conversion(from, to, ConversionKind.Explicit, 0, false);
 
 // TODO Detect constant functions
 public sealed class FunctionConversion(FunctionInfo function, ConversionKind kind, int cost)

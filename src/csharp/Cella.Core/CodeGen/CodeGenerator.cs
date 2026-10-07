@@ -2,6 +2,7 @@
 using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
 using System.Numerics;
+using System.Security.Cryptography;
 using System.Text;
 using Cella.Core.Binding;
 using Cella.Core.Binding.Constants;
@@ -304,8 +305,13 @@ public sealed unsafe class CodeGenerator : IDisposable
 	private static LLVMTypeRef PanicType =>
 		LLVMTypeRef.CreateFunction(LLVMTypeRef.Void, [OpaquePointer, LLVMTypeRef.Int32]);
 	
+	private static LLVMTypeRef FatPointerType => LLVMTypeRef.CreateStruct([OpaquePointer, OpaquePointer], false);
+	
+	private static LLVMTypeRef MapPassedPointer(TypeSymbol declared) =>
+		declared is DynType ? FatPointerType : OpaquePointer;
+	
 	private LLVMTypeRef MapParameterType(TypeSymbol type, ParameterMode mode) =>
-		_typePool.PassesByPointer(type, mode) ? OpaquePointer : MapTypeSymbol(type);
+		_typePool.PassesByPointer(type, mode) ? MapPassedPointer(type) : MapTypeSymbol(type);
 	
 	private LLVMTypeRef[] MapParameterTypes(FunctionInfo function)
 	{
@@ -314,7 +320,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 		[
 			..function.Signature.ParameterTypes.Select((type, i) =>
 				_typePool.PassesByPointer(declared.ParameterTypes[i], declared.GetMode(i))
-					? OpaquePointer
+					? MapPassedPointer(declared.ParameterTypes[i])
 					: MapTypeSymbol(type))
 		];
 	}
@@ -368,8 +374,14 @@ public sealed unsafe class CodeGenerator : IDisposable
 			}
 			
 			case PointerType or BorrowType:
-				current.Types[symbol] = OpaquePointer;
-				return OpaquePointer;
+			{
+				var pointerType = TypePool.IsFatPointer(symbol) ? FatPointerType : OpaquePointer;
+				current.Types[symbol] = pointerType;
+				return pointerType;
+			}
+			
+			case DynType:
+				throw new InvalidOperationException($"'{symbol.Name}' has no size");
 			
 			case TypeParameterSymbol:
 				throw new InvalidOperationException($"Type parameter '{symbol.Name}' has no type argument");
@@ -421,7 +433,8 @@ public sealed unsafe class CodeGenerator : IDisposable
 			}
 			
 			// Create and map imported functions
-			foreach (var function in file.ImportedFunctions.Where(static function => !IsOpenGeneric(function)))
+			foreach (var function in file.ImportedFunctions.Where(static function =>
+				         !IsOpenGeneric(function) && FindDynDispatch(function) is null))
 				GetFunctionValue(function);
 			
 			// Create and map functions
@@ -903,9 +916,80 @@ public sealed unsafe class CodeGenerator : IDisposable
 		return EmitSizeConstant(new BigInteger((bits + 7) / 8), true);
 	}
 	
+	private static DynType? FindDynDispatch(FunctionInfo function) =>
+		function.Symbol.Trait is not null && !function.TypeArguments.IsDefaultOrEmpty &&
+		function.TypeArguments[0] is DynType dyn
+			? dyn
+			: null;
+	
+	private LLVMValueRef EmitDynCall(FunctionInfo info, DynType dyn, CallValue v, LLVMBuilderRef builder)
+	{
+		var args = v.Arguments.Select(a => EmitValue(a, builder)).ToArray();
+		var table = builder.BuildExtractValue(args[0], 1, "table");
+		args[0] = builder.BuildExtractValue(args[0], 0, "object");
+		var slot = (uint)_typePool.GetDynSlot(dyn.Trait, info.Symbol) + 1;
+		var entry = builder.BuildStructGEP2(GetDynTableType(dyn.Trait), table, slot, "entry");
+		var method = builder.BuildLoad2(OpaquePointer, entry, "method");
+		var parameterTypes = MapParameterTypes(info);
+		parameterTypes[0] = OpaquePointer;
+		var functionType = LLVMTypeRef.CreateFunction(MapTypeSymbol(info.Signature.ReturnType), parameterTypes);
+		return builder.BuildCall2(functionType, method, args);
+	}
+	
+	private LLVMTypeRef GetDynTableType(TraitSymbol trait) => LLVMTypeRef.CreateStruct(
+		[LLVMTypeRef.CreateInt(128), ..Enumerable.Repeat(OpaquePointer, _typePool.FindDynMembers(trait)!.Value.Length)],
+		false);
+	
+	private LLVMValueRef GetDynTable(DynConversion conversion)
+	{
+		var dyn = conversion.To switch
+		{
+			BorrowType { Target: DynType target } => target,
+			PointerType { BaseType: DynType target } => target,
+			_ => throw new InvalidOperationException()
+		};
+		
+		var objectType = Substitute(conversion.ObjectType);
+		var name = Mangling.MangleInstantiation($"?{Mangling.MangleTypeName(dyn, _modules)}", [objectType], _modules);
+		var existing = current.Module.GetNamedGlobal(name);
+		if (existing.Handle != IntPtr.Zero)
+			return existing;
+		
+		LLVMValueRef[] entries = [..conversion.Members.Select(GetFunctionValue)];
+		var table = current.Module.AddGlobal(GetDynTableType(dyn.Trait), name);
+		table.Initializer = LLVMValueRef.CreateConstStruct([EmitTypeId(objectType), ..entries], false);
+		table.IsGlobalConstant = true;
+		table.Linkage = LLVMLinkage.LLVMInternalLinkage;
+		return table;
+	}
+	
+	private LLVMValueRef EmitTypeId(TypeSymbol type)
+	{
+		var hash = SHA256.HashData(Encoding.UTF8.GetBytes(Mangling.MangleTypeName(type, _modules)));
+		return LLVMValueRef.CreateConstIntOfArbitraryPrecision(LLVMTypeRef.CreateInt(128),
+			[BinaryPrimitives.ReadUInt64LittleEndian(hash), BinaryPrimitives.ReadUInt64LittleEndian(hash.AsSpan(8))]);
+	}
+	
+	private LLVMValueRef EmitDynConversion(DynConversion conversion, ConversionValue v, LLVMBuilderRef builder)
+	{
+		var pointer = EmitValue(v.Source, builder);
+		var value = builder.BuildInsertValue(LLVMValueRef.CreateConstNull(FatPointerType), pointer, 0, "dyn");
+		return builder.BuildInsertValue(value, GetDynTable(conversion), 1, "dyn");
+	}
+	
+	private LLVMValueRef EmitDynTest(DynTestConversion conversion, ConversionValue v, LLVMBuilderRef builder)
+	{
+		var table = builder.BuildExtractValue(EmitValue(v.Source, builder), 1, "table");
+		var id = builder.BuildLoad2(LLVMTypeRef.CreateInt(128), table, "type");
+		return builder.BuildICmp(LLVMIntPredicate.LLVMIntEQ, id, EmitTypeId(Substitute(conversion.Tested)), "is");
+	}
+	
 	private LLVMValueRef EmitCall(CallValue v, LLVMBuilderRef builder)
 	{
 		var info = SubstituteFunction(v.Function);
+		if (FindDynDispatch(info) is { } dyn)
+			return EmitDynCall(info, dyn, v, builder);
+		
 		if (FindWitness(info) is NativeWitness native)
 			return EmitNativeWitness(info, native, [..v.Arguments.Select(a => EmitValue(a, builder))],
 				v.SourceLocation, builder);
@@ -1299,6 +1383,9 @@ public sealed unsafe class CodeGenerator : IDisposable
 		EnumConversion c => EmitEnumConversion(c, v, builder),
 		FreeConversion or MatchConversion => EmitValue(v.Source, builder),
 		FunctionConversion c => EmitValue(new CallValue(c.Function, [v.Source], v.SourceLocation), builder),
+		DynConversion c => EmitDynConversion(c, v, builder),
+		DynTestConversion c => EmitDynTest(c, v, builder),
+		DynCastConversion => builder.BuildExtractValue(EmitValue(v.Source, builder), 0, "object"),
 		_ => throw new InvalidOperationException()
 	};
 	

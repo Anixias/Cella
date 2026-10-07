@@ -1,0 +1,45 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Shape: trait
+{
+	area: fun(self) -> f64
+}
+
+Circle: rec impl Shape
+{
+	radius: f64
+
+	area: fun(self) -> f64 = self.radius
+}
+
+Text: rec impl Shape
+{
+	id: i32
+
+	area: fun(self) -> f64 = f64(self.id)
+
+	drop: op
+	{
+		printf("drop %d\n", self.id)
+	}
+}
+
+describe: fun(shape: dyn[Shape]) -> f64 = shape.area()
+
+erase[T: Shape]: fun(value: T) -> f64 = describe(value) + describe(dyn[Shape](value))
+
+same[T: Shape]: fun(shape: dyn[Shape]) -> bool = shape is T
+
+main: fun -> i32
+{
+	val c = Circle(2.0)
+	val t = Text(7)
+	printf("%.1f %.1f %.1f\n", erase(c), erase(t), describe(t))
+	printf("%d %d %d\n", i32(same[Circle](c)), i32(same[Text](c)), i32(same[Text](t)))
+	ret 0
+}

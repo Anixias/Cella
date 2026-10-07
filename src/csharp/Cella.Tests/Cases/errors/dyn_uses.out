@@ -1,0 +1,99 @@
+
+====== dyn_uses.ce ======
+
+Error at line 46, column 8
+45 │ {
+46 │     shape.label()
+               ╘═══╛ Cannot use static functions through values
+
+Error at line 47, column 8
+46 │ shape.label()
+47 │ shape.same(shape)
+           ╘══╛ Cannot call 'same' through 'dyn[Shape]'
+
+Error at line 48, column 8
+47 │ shape.same(shape)
+48 │ shape.map(1)
+           ╘═╛ Cannot call 'map' through 'dyn[Shape]'
+
+Error at line 49, column 8
+48 │ shape.map(1)
+49 │ shape.take()
+           ╘══╛ Cannot call 'take' through 'dyn[Shape]'
+
+Error at line 50, column 16
+49 │ shape.take()
+50 │ val t = shape.twin
+                   ╘══╛ Cannot use 'twin' through 'dyn[Shape]'
+
+Error at line 51, column 8
+50 │ val t = shape.twin
+51 │ shape.mix()
+           ╘═╛ 'mix' is private to its trait
+
+Error at line 53, column 8
+52 │ shape.scale(2.0)
+53 │ shape.missing()
+           ╘═════╛ Type 'dyn[Shape]' has no member 'missing'
+
+Error at line 54, column 13
+53 │ shape.missing()
+54 │ val copy = shape
+                ╘═══╛ Cannot use 'dyn[Shape]' by value
+
+Error at line 55, column 10
+54 │ val copy = shape
+55 │ val n = sizeOf(dyn[Shape])
+             ╘════════════════╛ Cannot use 'dyn[Shape]' by value
+
+Error at line 56, column 14
+55 │ val n = sizeOf(dyn[Shape])
+56 │ val items = [shape]
+                 ╘═════╛ Cannot use 'dyn[Shape]' by value
+
+Error at line 57, column 17
+56 │ val items = [shape]
+57 │ if shape is p: Plain
+                    ╘═══╛ 'Plain' doesn't implement 'Shape'
+
+Error at line 60, column 17
+59 │ 
+60 │ if shape is d: dyn[Shape]
+                    ╘════════╛ Cannot test for 'dyn[Shape]'
+
+Error at line 69, column 2
+68 │ val p = Plain(1)
+69 │ describe(p)
+     ╘══════╛ No overload of 'describe' accepts these arguments
+
+Error at line 70, column 22
+69 │ describe(p)
+70 │ describe(dyn[Shape](p))
+                         ^ 'Plain' doesn't implement 'Shape'
+
+Error at line 72, column 7
+71 │ val c = Circle(1.0)
+72 │ grow(c)
+          ^ Cannot mutably borrow arguments implicitly
+
+Error at line 73, column 10
+72 │ grow(c)
+73 │ val m = match dyn[Shape](c)
+             ╘═══╛ This match doesn't handle every value of 'dyn[Shape]'
+
+Error at line 80, column 3
+79 │ {
+80 │     Circle => {}
+         ╘════╛ 'Circle' is matched more than once
+
+Error at line 81, column 3
+80 │ Circle => {}
+81 │ x: Circle => {}
+     ╘═══════╛ 'Circle' is matched more than once
+
+Error at line 85, column 13
+84 │ 
+85 │ val b: box[dyn[Shape]] = box(c)
+                ╘════════╛ Cannot use 'dyn[Shape]' by value
+
+[compilation failed]

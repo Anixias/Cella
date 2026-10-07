@@ -1,0 +1,19 @@
+
+====== dyn_syntax.ce ======
+
+Error at line 8, column 22
+7 │ 
+8 │ first: fun(shape: dyn) -> f64 = 0.0
+                         ^ Expected '['
+
+Error at line 10, column 24
+ 9 │ 
+10 │ second: fun(shape: dyn[]) -> f64 = 0.0
+                            ^ Expected a trait
+
+Error at line 12, column 28
+11 │ 
+12 │ third: fun(shape: dyn[Shape) -> f64 = 0.0
+                                ^ Expected ']'
+
+[compilation failed]

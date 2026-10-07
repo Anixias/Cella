@@ -1,0 +1,50 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Shape: trait
+{
+	area: fun(self) -> f64
+}
+
+Circle: rec impl Shape
+{
+	radius: f64
+
+	area: fun(self) -> f64 = self.radius
+}
+
+box[T]: rec
+{
+	value: T
+}
+
+box[T: Shape]: impl Shape
+{
+	area: fun(self) -> f64 = self.value.area() * 10.0
+}
+
+classify: fun(shape: dyn[Shape]) -> i32
+{
+	if shape is wrapped: box[Circle]
+		ret i32(wrapped.value.radius) + 100
+
+	if shape is box[box[Circle]]
+		ret 200
+
+	ret i32(shape.area())
+}
+
+forward: fun(shape: dyn[Shape]) -> i32 = classify(shape)
+
+main: fun -> i32
+{
+	val c = Circle(3.0)
+	val b = box(c)
+	val bb = box(b)
+	printf("%d %d %d %d\n", classify(c), classify(b), classify(bb), forward(b))
+	ret 0
+}

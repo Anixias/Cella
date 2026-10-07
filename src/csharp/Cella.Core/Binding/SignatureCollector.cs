@@ -180,7 +180,7 @@ public sealed class SignatureCollector
 			return NativeSymbols.Invalid;
 		
 		var node = (GlobalNode)declaration.Node;
-		type = declaration.Context.ResolveType(node.Type);
+		type = RejectValueDyn(node.Type, declaration.Context.ResolveType(node.Type));
 		var visibility = global.ContainingType is { } owner
 			? GetEffectiveVisibility(global.Visibility, owner)
 			: global.Visibility;
@@ -927,7 +927,7 @@ public sealed class SignatureCollector
 			{
 				case FieldNode field:
 					var fieldSymbol = (FieldSymbol)symbol;
-					var fieldType = context.ResolveType(field.Type);
+					var fieldType = RejectValueDyn(field.Type, context.ResolveType(field.Type));
 					_typePool.RegisterMember(record, fieldSymbol, fieldType);
 					ReportHiddenType(field.Type, fieldType, GetEffectiveVisibility(fieldSymbol.Visibility, record),
 						field.Identifier.Text);
@@ -1188,7 +1188,11 @@ public sealed class SignatureCollector
 				continue;
 			}
 			
-			ImmutableArray<TypeSymbol> types = [..enumCase.Fields.Select(f => memberContext.ResolveType(f.Node!.Type))];
+			ImmutableArray<TypeSymbol> types =
+			[
+				..enumCase.Fields.Select(f => RejectValueDyn(f.Node!.Type, memberContext.ResolveType(f.Node!.Type)))
+			];
+			
 			for (var i = 0; i < types.Length; i++)
 			{
 				_typePool.RegisterPayloadField(enumCase.Fields[i], types[i]);
@@ -1457,7 +1461,7 @@ public sealed class SignatureCollector
 		
 		var context = _declarations[property].Context;
 		var owner = context.ContainingType!;
-		type = context.ResolveType(typeNode);
+		type = RejectValueDyn(typeNode, context.ResolveType(typeNode));
 		_propertyTypes[property] = type;
 		
 		var visibility = property.Node!.Accessors
@@ -1475,6 +1479,38 @@ public sealed class SignatureCollector
 			? GetPropertyType(property, shared)
 			: context.ResolveType(node);
 	
+	private TypeSymbol RejectValueDyn(ITypeNode node, TypeSymbol type, ParameterMode mode = ParameterMode.Own)
+	{
+		if (type is DynType && mode != ParameterMode.Own || TypePool.FindValueDyn(type) is not { } dyn)
+			return type;
+		
+		Diagnostics.Add(new(DiagnosticSeverity.Error, node.SourceLocation, $"Cannot use '{dyn.Name}' by value"));
+		return NativeSymbols.Invalid;
+	}
+	
+	private TypeSymbol RejectExtDyn(ITypeNode node, TypeSymbol type)
+	{
+		if (FindDyn(type) is not { } dyn)
+			return type;
+		
+		Diagnostics.Add(new(DiagnosticSeverity.Error, node.SourceLocation,
+			$"Cannot use '{dyn.Name}' in 'ext' signatures"));
+		
+		return NativeSymbols.Invalid;
+	}
+	
+	private static DynType? FindDyn(TypeSymbol type) => type switch
+	{
+		DynType dyn => dyn,
+		PointerType pointer => FindDyn(pointer.BaseType),
+		BorrowType borrow => FindDyn(borrow.Target),
+		ArrayType array => FindDyn(array.ElementType),
+		FunctionType function => function.ParameterTypes.Append(function.ReturnType)
+			.Select(FindDyn)
+			.FirstOrDefault(static dyn => dyn is not null),
+		_ => null
+	};
+	
 	private void ReportHiddenType(ITypeNode node, TypeSymbol type, Visibility visibility, string name)
 	{
 		if (FindHiddenType(type, visibility) is { } hidden)
@@ -1484,6 +1520,7 @@ public sealed class SignatureCollector
 	
 	private static TypeSymbol? FindHiddenType(TypeSymbol type, Visibility visibility) => type switch
 	{
+		DynType dyn => dyn.Trait.Visibility < visibility ? dyn : null,
 		PointerType pointer => FindHiddenType(pointer.BaseType, visibility),
 		BorrowType borrow => FindHiddenType(borrow.Target, visibility),
 		ArrayType array => FindHiddenType(array.ElementType, visibility),
@@ -1647,7 +1684,9 @@ public sealed class SignatureCollector
 		{
 			var param = node.Parameters[i];
 			var paramSymbol = function.Parameters[i + 1]; // + 1 due to implicit self parameter
-			var paramType = _typePool.GetPassedType(context.ResolveType(param.Type), paramSymbol.Mode);
+			var paramType = _typePool.GetPassedType(
+				RejectValueDyn(param.Type, context.ResolveType(param.Type), paramSymbol.Mode), paramSymbol.Mode);
+			
 			ReportHiddenType(param.Type, paramType, visibility, node.Keyword.Text);
 			
 			paramTypes.Add(paramType);
@@ -1715,7 +1754,8 @@ public sealed class SignatureCollector
 		{
 			var param = node.Parameters[i];
 			var paramSymbol = function.Parameters[i + offset];
-			var paramType = _typePool.GetPassedType(ResolveSignatureType(function, param.Type, context),
+			var paramType = _typePool.GetPassedType(
+				RejectValueDyn(param.Type, ResolveSignatureType(function, param.Type, context), paramSymbol.Mode),
 				paramSymbol.Mode);
 			
 			if (reportsHiddenTypes)
@@ -1730,7 +1770,7 @@ public sealed class SignatureCollector
 		if (node.ReturnType is not { } returnTypeSyntax)
 			returnType = NativeSymbols.Void;
 		else
-			returnType = ResolveSignatureType(function, returnTypeSyntax, context);
+			returnType = RejectValueDyn(returnTypeSyntax, ResolveSignatureType(function, returnTypeSyntax, context));
 		
 		if (reportsHiddenTypes && node.ReturnType is { } returnTypeNode)
 			ReportHiddenType(returnTypeNode, returnType, visibility, name);
@@ -1759,7 +1799,9 @@ public sealed class SignatureCollector
 		{
 			var param = node.Parameters[i];
 			var paramSymbol = function.Parameters[i];
-			var paramType = _typePool.GetPassedType(context.ResolveType(param.Type), paramSymbol.Mode);
+			var paramType = _typePool.GetPassedType(RejectExtDyn(param.Type, context.ResolveType(param.Type)),
+				paramSymbol.Mode);
+			
 			ReportHiddenType(param.Type, paramType, function.Visibility, node.Identifier.Text);
 			
 			paramTypes.Add(paramType);
@@ -1770,7 +1812,7 @@ public sealed class SignatureCollector
 		if (node.ReturnType is not { } returnTypeSyntax)
 			returnType = NativeSymbols.Void;
 		else
-			returnType = context.ResolveType(returnTypeSyntax);
+			returnType = RejectExtDyn(returnTypeSyntax, context.ResolveType(returnTypeSyntax));
 		
 		if (node.ReturnType is { } returnTypeNode)
 			ReportHiddenType(returnTypeNode, returnType, function.Visibility, node.Identifier.Text);

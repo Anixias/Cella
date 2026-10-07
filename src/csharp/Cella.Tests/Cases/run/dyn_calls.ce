@@ -1,0 +1,62 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Shape: trait
+{
+	area: fun(self) -> f64
+	scale: fun(mut self, factor: f64)
+	label: fun -> i32
+	twice: fun(self) -> f64 = self.area() * 2.0
+	sides: get(self) -> i32
+}
+
+Circle: rec impl Shape
+{
+	radius: f64
+
+	area: fun(self) -> f64 = self.radius * self.radius * 3.0
+	scale: fun(mut self, factor: f64)
+	{
+		self.radius *= factor
+	}
+
+	label: fun -> i32 = 1
+	sides: get(self) -> i32 = 0
+}
+
+Square: rec impl Shape
+{
+	side: f64
+
+	area: fun(self) -> f64 = self.side * self.side
+	scale: fun(mut self, factor: f64)
+	{
+		self.side *= factor
+	}
+
+	label: fun -> i32 = 2
+	sides: get(self) -> i32 = 4
+}
+
+describe: fun(shape: dyn[Shape]) -> f64 = shape.area() + shape.twice() * 10.0 + f64(shape.sides) * 1000.0
+
+grow: fun(mut shape: dyn[Shape]) -> f64
+{
+	shape.scale(2.0)
+	ret describe(dyn[Shape](shape))
+}
+
+main: fun -> i32
+{
+	var c = Circle(1.0)
+	var s = Square(3.0)
+	printf("%.1f %.1f\n", describe(c), describe(s))
+	printf("%.1f %.1f\n", grow(mut c), grow(mut s))
+	printf("%.1f %.1f %.1f\n", c.radius, s.side, describe(dyn[Shape](c)))
+	printf("%.1f\n", dyn[Shape](mut s).area())
+	ret 0
+}

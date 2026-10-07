@@ -54,7 +54,7 @@ public sealed class ConstantEvaluator
 		ResolvedEnumCaseExpressionNode n => FoldAll(n.Payload, values => new EnumConstant(n.Type, n.Case, values)),
 		ResolvedIsExpressionNode { Pattern.HasBindings: false } n => FoldAll([n.Value], values =>
 			values[0].Type is EnumSymbol enumType && GetTag(values[0]) is { } tag
-				? BoolConstant.From(tag == typePool.GetCaseValue(enumType, n.Pattern.Case))
+				? BoolConstant.From(tag == typePool.GetCaseValue(enumType, n.Pattern.Case!))
 				: null),
 		ResolvedMatchExpressionNode n => FoldMatch(n),
 		_ => null
@@ -67,7 +67,7 @@ public sealed class ConstantEvaluator
 			return value;
 		
 		if (value.Type is not EnumSymbol enumType || GetTag(value) is not { } tag || node.Arms.FirstOrDefault(arm =>
-			    arm.Pattern is null || typePool.GetCaseValue(enumType, arm.Pattern.Case) == tag) is not { } arm)
+			    arm.Pattern is null || typePool.GetCaseValue(enumType, arm.Pattern.Case!) == tag) is not { } arm)
 			return null;
 		
 		var bindings = arm.Pattern?.Bindings ?? [];

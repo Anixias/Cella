@@ -1,0 +1,25 @@
+mod lib
+
+Shape: pub trait
+{
+	area: fun(self) -> f64
+	grow: fun(mut self)
+	twice: fun(self) -> f64 = self.area() * 2.0
+}
+
+Circle: pub rec impl Shape
+{
+	radius: f64
+
+	area: fun(self) -> f64 = self.radius
+	grow: fun(mut self)
+	{
+		self.radius += 1.0
+	}
+}
+
+describe: pub fun(shape: dyn[Shape]) -> f64 = shape.twice()
+
+isCircle: pub fun(shape: dyn[Shape]) -> bool = shape is Circle
+
+erase[T: Shape]: pub fun(value: T) -> f64 = describe(value)
