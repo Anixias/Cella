@@ -40,6 +40,7 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 		TokenType.KeywordOwn,
 		TokenType.KeywordImm,
 		TokenType.KeywordSelf,
+		TokenType.KeywordFun,
 		TokenType.KeywordRet,
 		TokenType.KeywordBreak,
 		TokenType.KeywordCont
@@ -392,6 +393,8 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 				node = new ArrayExpressionNode(values, new(source, range));
 			}
 		}
+		else if (StartsFunctionType(index))
+			node = new TypeExpressionNode(ParseType(ref index));
 		else if (Match(ref index, out var identifier, TokenType.Identifier))
 			node = new VarExpressionNode(identifier);
 		else if (Match(ref index, out var self, TokenType.KeywordSelf))
@@ -413,6 +416,10 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 		
 		return ParsePostfix(ref index, node);
 	}
+	
+	private bool StartsFunctionType(int index) => Peek(index, TokenType.KeywordFun) ||
+	                                              Tokens[index] is { Type: TokenType.Identifier, Text: "ext" } &&
+	                                              Peek(index + 1, TokenType.KeywordFun) && !IsNextNewline(index + 1);
 	
 	private MatchExpressionNode ParseMatch(ref int index, Token keyword)
 	{
@@ -506,9 +513,7 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 		if (!Match(ref index, out var openParen, TokenType.OpOpenParen))
 			throw Expected(index, "'('");
 		
-		ISyntaxNode target = Tokens[index] is { Type: TokenType.Identifier, Text: "ext" or "fun" }
-			? ParseType(ref index)
-			: ParseExpression(ref index);
+		var target = ParseExpression(ref index);
 		
 		if (!Match(ref index, out var closeBracket, TokenType.OpCloseParen))
 			throw Expected(index, "')'", openParen);

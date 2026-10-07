@@ -1,0 +1,24 @@
+
+====== function_type_expressions.ce ======
+
+Error at line 15, column 13
+14 │ {
+15 │     val type = fun[i32 -> i32]
+                    ╘═════════════╛ 'fun[i32 -> i32]' is not a value
+
+Error at line 16, column 33
+15 │ val type = fun[i32 -> i32]
+16 │ val mismatch = fun[i64 -> i64](triple)
+                                    ╘════╛ Cannot convert type 'fun[i32 -> i32]' to 'fun[i64 -> i64]'
+
+Error at line 17, column 32
+16 │ val mismatch = fun[i64 -> i64](triple)
+17 │ val missing = fun[f32 -> f32](pick)
+                                   ╘══╛ No overload of 'pick' matches 'fun[f32 -> f32]'
+
+Error at line 19, column 15
+18 │ val holder = Holder(1)
+19 │ val record = fun[i32 -> i32](holder)
+                  ╘═════════════════════╛ No constructor for 'fun[i32 -> i32]' accepts argument of type 'Holder'
+
+[compilation failed]

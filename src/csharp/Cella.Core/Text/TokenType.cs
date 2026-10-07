@@ -49,10 +49,10 @@ public enum TokenType
 	KeywordOwn,
 	KeywordImm,
 	KeywordSelf,
+	KeywordFun,
 	
 	// Contextual Keywords
 	KeywordMod,
-	KeywordFun,
 	KeywordUse,
 	KeywordPub,
 	KeywordExt,
@@ -184,9 +184,9 @@ public static class TokenTypeInfo
 			[TokenType.KeywordOwn] = new("own", IsKeyword: true),
 			[TokenType.KeywordImm] = new("imm", IsKeyword: true),
 			[TokenType.KeywordSelf] = new("self", IsKeyword: true),
+			[TokenType.KeywordFun] = new("fun", IsKeyword: true),
 			
 			[TokenType.KeywordMod] = new("mod", IsKeyword: true, IsContextual: true),
-			[TokenType.KeywordFun] = new("fun", IsKeyword: true, IsContextual: true),
 			[TokenType.KeywordUse] = new("use", IsKeyword: true, IsContextual: true),
 			[TokenType.KeywordPub] = new("pub", IsKeyword: true, IsContextual: true),
 			[TokenType.KeywordExt] = new("ext", IsKeyword: true, IsContextual: true),

@@ -1,0 +1,17 @@
+mod test
+
+first: fun(fun: i32) -> i32 = 0
+
+second: fun -> i32
+{
+	val fun = 1
+	ret 0
+}
+
+Mode: enum
+{
+	idle
+	fun
+}
+
+main: fun -> i32 = 0

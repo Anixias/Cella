@@ -9,14 +9,13 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 	: BaseParser<FileNode>(tokens)
 {
 	private static readonly Dictionary<string, TokenType> _topLevelContextualKeywords =
-		BuildContextualKeywords(TokenType.KeywordMod, TokenType.KeywordFun, TokenType.KeywordUse, TokenType.KeywordPub,
-			TokenType.KeywordPvt, TokenType.KeywordExt, TokenType.KeywordRec, TokenType.KeywordEnum,
-			TokenType.KeywordRef);
+		BuildContextualKeywords(TokenType.KeywordMod, TokenType.KeywordUse, TokenType.KeywordPub, TokenType.KeywordPvt,
+			TokenType.KeywordExt, TokenType.KeywordRec, TokenType.KeywordEnum, TokenType.KeywordRef);
 	
 	private static readonly Dictionary<string, TokenType> _memberContextualKeywords =
-		BuildContextualKeywords(TokenType.KeywordFun, TokenType.KeywordPub, TokenType.KeywordPvt, TokenType.KeywordMod,
-			TokenType.KeywordSet, TokenType.KeywordNew, TokenType.KeywordDrop, TokenType.KeywordOp,
-			TokenType.KeywordReq, TokenType.KeywordGet, TokenType.KeywordProp);
+		BuildContextualKeywords(TokenType.KeywordPub, TokenType.KeywordPvt, TokenType.KeywordMod, TokenType.KeywordSet,
+			TokenType.KeywordNew, TokenType.KeywordDrop, TokenType.KeywordOp, TokenType.KeywordReq,
+			TokenType.KeywordGet, TokenType.KeywordProp);
 	
 	private static readonly Dictionary<string, TokenType> _constraintKeywords =
 		BuildContextualKeywords(TokenType.KeywordNoref);
@@ -268,7 +267,7 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 		}
 		
 		// Function
-		if (Match(ref index, _topLevelContextualKeywords, TokenType.KeywordFun))
+		if (Match(ref index, TokenType.KeywordFun))
 		{
 			var function = ParseDeclaration(ref index, identifier, "function",
 				(ref i) => ParseFunction(ref i, identifier, modifiers, isExternal, isExternal ? [] : typeParameters));
@@ -333,7 +332,7 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 		if (Match(ref index, _topLevelContextualKeywords, TokenType.KeywordEnum))
 			return isExternal ? "Cannot declare type parameters on ext enums" : null;
 		
-		if (Match(ref index, _topLevelContextualKeywords, TokenType.KeywordFun))
+		if (Match(ref index, TokenType.KeywordFun))
 			return isExternal ? "Cannot declare type parameters on ext functions" : null;
 		
 		return Match(ref index, _bindingKeywords) ? "Cannot declare type parameters on globals" : null;
@@ -448,7 +447,8 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 	
 	private bool StartsMemberType(int index) =>
 		!AtEnd(index) && Tokens[index].Line == Tokens[index - 1].Line && Tokens[index].Type is TokenType.Identifier
-			or TokenType.KeywordImm or TokenType.KeywordMut or TokenType.KeywordVal or TokenType.KeywordVar;
+			or TokenType.KeywordFun or TokenType.KeywordImm or TokenType.KeywordMut or TokenType.KeywordVal
+			or TokenType.KeywordVar;
 	
 	private static bool IsNarrower(Token write, Token read) =>
 		write.Type == TokenType.KeywordPvt && read.Type == TokenType.KeywordMod;
@@ -733,7 +733,7 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 		
 		var modifiers = ParseDeclarationModifiers(ref index, block);
 		
-		if (!Match(ref index, _topLevelContextualKeywords, TokenType.KeywordFun))
+		if (!Match(ref index, TokenType.KeywordFun))
 			return null;
 		
 		if (ParseFunctionSignature(ref index, true, false) is not { } signature)
@@ -1020,7 +1020,7 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 		}
 		
 		RejectWriteRestriction(modifiers, "functions");
-		Match(ref index, _memberContextualKeywords, TokenType.KeywordFun);
+		Match(ref index, TokenType.KeywordFun);
 		return ParseDeclaration(ref index, identifier, "function",
 			(ref i) => ParseFunction(ref i, identifier, modifiers, false, typeParameters));
 	}
@@ -1135,7 +1135,7 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 		if (IsFunctionMember(index))
 		{
 			RejectWriteRestriction(modifiers, "functions");
-			Match(ref index, _memberContextualKeywords, TokenType.KeywordFun);
+			Match(ref index, TokenType.KeywordFun);
 			return ParseDeclaration(ref index, identifier, "function",
 				(ref i) => ParseFunction(ref i, identifier, modifiers, false, typeParameters));
 		}
@@ -1176,13 +1176,13 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 	}
 	
 	private bool IsFunctionMember(int index) =>
-		Match(ref index, _memberContextualKeywords, TokenType.KeywordFun) && !Peek(index, TokenType.OpOpenBracket);
+		Match(ref index, TokenType.KeywordFun) && !Peek(index, TokenType.OpOpenBracket);
 	
 	private bool StartsProperty(int index)
 	{
 		if (Match(ref index, _memberContextualKeywords, TokenType.KeywordProp))
-			return IsOnSameLine(index) &&
-			       Tokens[index].Type is TokenType.Identifier or TokenType.KeywordImm or TokenType.KeywordMut;
+			return IsOnSameLine(index) && Tokens[index].Type is TokenType.Identifier or TokenType.KeywordFun
+				or TokenType.KeywordImm or TokenType.KeywordMut;
 		
 		return Match(ref index, _memberContextualKeywords, _accessorKeywords) && IsOnSameLine(index) &&
 		       Tokens[index].Type is TokenType.OpOpenParen or TokenType.OpArrow or TokenType.OpEqual
@@ -1329,7 +1329,8 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 	private List<Token> ParseFieldModifiers(ref int index)
 	{
 		var modifiers = new List<Token>();
-		if (Peek(index + 1, TokenType.Identifier) && Tokens[index + 1].Line == Tokens[index].Line &&
+		if ((Peek(index + 1, TokenType.Identifier) || Peek(index + 1, TokenType.KeywordFun)) &&
+		    Tokens[index + 1].Line == Tokens[index].Line &&
 		    Match(ref index, out var reqToken, _memberContextualKeywords, TokenType.KeywordReq))
 			modifiers.Add(reqToken);
 		
@@ -1735,7 +1736,7 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 	private bool FollowsFun(int index)
 	{
 		var keywordIndex = index - 1;
-		return Match(ref keywordIndex, _topLevelContextualKeywords, TokenType.KeywordFun);
+		return Match(ref keywordIndex, TokenType.KeywordFun);
 	}
 	
 	private bool StartsDeclarationOnLine(int index) =>

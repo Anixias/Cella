@@ -1,0 +1,34 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+triple: fun(n: i32) -> i32 = n * 3
+twice: fun(n: i32) -> i32 = n * 2
+
+Handler: rec
+{
+	callback: req fun[i32 -> i32]
+	scale: i32
+
+	helper: pvt fun(self) -> i32 = self.scale
+	current: prop fun[i32 -> i32]
+	{
+		get(self) = self.callback
+		set(mut self, value) { self.callback = value }
+	}
+
+	run: fun(self, n: i32) -> i32 = self.callback(n) + self.helper()
+}
+
+main: fun -> i32
+{
+	var h = Handler(triple, 1)
+	val first = h.run(2)
+	h.current = twice
+	val f = h.current
+	printf("%d %d %d\n", first, h.run(2), f(10))
+	ret 0
+}

@@ -1,0 +1,21 @@
+mod test
+
+pick: fun(n: i32) -> i32 = n + 1
+pick: fun(n: i64) -> i64 = n + 100
+
+triple: fun(n: i32) -> i32 = n * 3
+
+Holder: rec
+{
+	value: i32
+}
+
+main: fun -> i32
+{
+	val type = fun[i32 -> i32]
+	val mismatch = fun[i64 -> i64](triple)
+	val missing = fun[f32 -> f32](pick)
+	val holder = Holder(1)
+	val record = fun[i32 -> i32](holder)
+	ret 0
+}

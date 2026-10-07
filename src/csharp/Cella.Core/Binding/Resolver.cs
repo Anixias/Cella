@@ -805,6 +805,12 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		if (IsInvalid(arg))
 			return new ResolvedConversionExpressionNode(arg, new IdentityConversion(targetType), node);
 		
+		if (arg is ResolvedFunctionGroupExpressionNode group && targetType is FunctionType)
+		{
+			var reference = MaterializeFunction(group, targetType);
+			return reference == group ? ReportFunctionMismatch(group, targetType) : reference;
+		}
+		
 		if (arg.Type is UntypedType)
 		{
 			arg = MaterializeExpression(arg, targetType is EnumSymbol { IsMatch: true } matchEnum
@@ -2110,14 +2116,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	
 	public IResolvedExpressionNode Visit(SizeOfExpressionNode node)
 	{
-		var target = node.Target switch
-		{
-			ITypeNode type => CurrentResolutionContext.ResolveType(type),
-			IExpressionNode expression => CurrentResolutionContext.TryResolveExpressionAsType(expression) is { } type
-				? RequireTypeArguments(type, expression)
-				: MaterializeAsDefault(VisitNode(expression)).Type,
-			_ => NativeSymbols.Invalid
-		};
+		var target = CurrentResolutionContext.TryResolveExpressionAsType(node.Target) is { } type
+			? RequireTypeArguments(type, node.Target)
+			: MaterializeAsDefault(VisitNode(node.Target)).Type;
 		
 		if (TypePool.ContainsTypeParameters(target))
 			return new ResolvedSizeOfExpressionNode(target, node);
@@ -2130,6 +2131,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		
 		return new ResolvedLiteralExpressionNode(NativeSymbols.UntypedInteger, sizeInBytes, node);
 	}
+	
+	public IResolvedExpressionNode Visit(TypeExpressionNode node) =>
+		Error(node, $"'{node.SourceLocation.GetText()}' is not a value", CurrentTargetType);
 	
 	public IResolvedExpressionNode Visit(NameOfExpressionNode node)
 	{

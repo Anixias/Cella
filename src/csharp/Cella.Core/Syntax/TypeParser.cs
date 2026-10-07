@@ -7,8 +7,8 @@ namespace Cella.Core.Syntax;
 
 public sealed class TypeParser(ImmutableArray<Token> tokens) : BaseParser<ITypeNode>(tokens)
 {
-	private static readonly Dictionary<string, TokenType> _functionKeywords =
-		new[] { TokenType.KeywordExt, TokenType.KeywordFun }.ToDictionary(static t => t.Representation);
+	private static readonly Dictionary<string, TokenType> _externalKeywords =
+		new[] { TokenType.KeywordExt }.ToDictionary(static t => t.Representation);
 	
 	private static readonly HashSet<TokenType> _parameterModes = [TokenType.KeywordMut, TokenType.KeywordOwn];
 	private static readonly HashSet<TokenType> _borrowKeywords = [TokenType.KeywordImm, TokenType.KeywordMut];
@@ -94,8 +94,8 @@ public sealed class TypeParser(ImmutableArray<Token> tokens) : BaseParser<ITypeN
 	{
 		var start = index;
 		var first = Tokens[index];
-		var isExternal = Match(ref index, _functionKeywords, TokenType.KeywordExt);
-		if (!Match(ref index, _functionKeywords, TokenType.KeywordFun))
+		var isExternal = Match(ref index, _externalKeywords, TokenType.KeywordExt);
+		if (!Match(ref index, TokenType.KeywordFun))
 		{
 			index = start;
 			return null;

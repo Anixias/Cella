@@ -357,6 +357,7 @@ public readonly struct ResolutionContext
 			: null,
 		BorrowExpressionNode { Value: ArrayExpressionNode { Values: [var element] } } b =>
 			TryResolveExpressionAsType(element) is { } target ? ResolveBorrowType(target, b.IsMutable) : null,
+		TypeExpressionNode t => ResolveType(t.Type),
 		_ => null
 	};
 	

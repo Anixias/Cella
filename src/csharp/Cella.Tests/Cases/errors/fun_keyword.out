@@ -1,0 +1,19 @@
+
+====== fun_keyword.ce ======
+
+Error at line 3, column 1
+2 │ 
+3 │ first: fun(fun: i32) -> i32 = 0
+    ╘═══╛ Invalid function declaration
+
+Error at line 7, column 6
+6 │ {
+7 │     val fun = 1
+            ╘═╛ Expected a name after 'val'
+
+Error at line 14, column 2
+13 │ idle
+14 │ fun
+     ╘═╛ Expected a case name
+
+[compilation failed]
