@@ -19,3 +19,10 @@ public sealed class ReceiverNode(Token? mode, Token self)
 	public Token? Mode { get; } = mode;
 	public Token Self { get; } = self;
 }
+
+public sealed class TypeParameterNode(Token identifier, Token? constraint)
+{
+	public SourceLocation SourceLocation => Identifier.SourceLocation;
+	public Token Identifier { get; } = identifier;
+	public Token? Constraint { get; } = constraint;
+}

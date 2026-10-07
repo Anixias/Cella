@@ -125,6 +125,7 @@ public sealed class FunctionSymbol
 	public SourceLocation Definition { get; } = syntax.SourceLocation;
 	public bool IsExternal => Kind == FunctionKind.External || Syntax is FunctionNode { IsExternal: true };
 	public PropertySymbol? Property { get; internal set; }
+	public ImmutableArray<TypeParameterSymbol> TypeParameters { get; init; } = [];
 }
 
 public abstract class TypeSymbol(string name, TypeSymbol? containingType = null, params IEnumerable<Symbol> children)
@@ -133,9 +134,18 @@ public abstract class TypeSymbol(string name, TypeSymbol? containingType = null,
 	public TypeSymbol? ContainingType { get; } = containingType;
 	public ImmutableDictionary<string, Symbol> Children { get; } = children.ToImmutableDictionary(static s => s.Name);
 	
+	public virtual ImmutableArray<TypeSymbol> TypeArguments => [];
+	public virtual TypeSymbol OriginalDefinition => this;
+	
 	public virtual IEnumerable<MethodSymbol> GetFunctions(string name) => [];
 	public virtual GlobalSymbol? GetStaticField(string name) => null;
 	public virtual PropertySymbol? GetProperty(string name) => null;
+}
+
+public sealed class TypeParameterSymbol(Token identifier, bool isNoref) : TypeSymbol(identifier.Text)
+{
+	public Token Identifier { get; } = identifier;
+	public bool IsNoref { get; } = isNoref;
 }
 
 public sealed class InvalidType : TypeSymbol
@@ -469,6 +479,12 @@ public sealed class RecordSymbol : TypeSymbol, IExportable
 	public ImmutableArray<GlobalSymbol> StaticFields { get; init; } = [];
 	public ImmutableArray<PropertySymbol> Properties { get; init; } = [];
 	public ImmutableArray<TypeSymbol> NestedTypes { get; }
+	public ImmutableArray<TypeParameterSymbol> TypeParameters { get; }
+	public RecordSymbol Definition { get; }
+	public override ImmutableArray<TypeSymbol> TypeArguments { get; }
+	public override TypeSymbol OriginalDefinition => Definition;
+	public bool IsGenericDefinition => !TypeParameters.IsEmpty;
+	public bool IsGenericInstance => Definition != this;
 	public Visibility Visibility { get; }
 	public bool HasDestructor => Members.Any(static m => m is MethodSymbol { Function.Kind: FunctionKind.Destructor });
 	public bool IsRef => Node.IsRef;
@@ -481,12 +497,30 @@ public sealed class RecordSymbol : TypeSymbol, IExportable
 	public override PropertySymbol? GetProperty(string name) => Properties.FirstOrDefault(p => p.Name == name);
 	
 	public RecordSymbol(string name, RecordNode node, IEnumerable<MemberSymbol> members,
-		IEnumerable<TypeSymbol> nestedTypes) : base(name)
+		IEnumerable<TypeSymbol> nestedTypes, ImmutableArray<TypeParameterSymbol> typeParameters)
+		: base(name, null, typeParameters.DistinctBy(static p => p.Name))
 	{
 		Node = node;
 		Members = members.ToImmutableArray();
 		NestedTypes = nestedTypes.ToImmutableArray();
+		TypeParameters = typeParameters;
+		Definition = this;
+		TypeArguments = [..typeParameters];
 		Visibility = Visibility.FromKeyword(node.Visibility);
+	}
+	
+	public RecordSymbol(RecordSymbol definition, ImmutableArray<TypeSymbol> typeArguments,
+		IEnumerable<MemberSymbol> members)
+		: base($"{definition.Name}[{string.Join(", ", typeArguments.Select(static a => a.Name))}]")
+	{
+		Node = definition.Node;
+		Members = members.ToImmutableArray();
+		NestedTypes = definition.NestedTypes;
+		Properties = definition.Properties;
+		TypeParameters = [];
+		Definition = definition;
+		TypeArguments = typeArguments;
+		Visibility = definition.Visibility;
 	}
 }
 

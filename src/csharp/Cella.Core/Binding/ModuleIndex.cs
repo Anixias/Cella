@@ -49,6 +49,7 @@ public sealed class ModuleIndex
 	
 	public bool IsAccessible(TypeSymbol owner, Visibility visibility, FileSymbol from, TypeSymbol? within)
 	{
+		owner = owner.OriginalDefinition;
 		if (visibility == Visibility.Module)
 			return _files.GetValueOrDefault(owner)?.Module == from.Module;
 		
@@ -57,7 +58,7 @@ public sealed class ModuleIndex
 		
 		for (var type = within; type is not null; type = type.ContainingType)
 		{
-			if (type == owner)
+			if (type.OriginalDefinition == owner)
 				return true;
 		}
 		

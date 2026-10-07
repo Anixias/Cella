@@ -27,18 +27,17 @@ public sealed class TypeParser(ImmutableArray<Token> tokens) : BaseParser<ITypeN
 		if (!Match(ref index, out var identifier, TokenType.Identifier))
 			throw new InvalidOperationException();
 		
-		if (Peek(index, TokenType.OpDot))
-			return ParseQualifiedType(ref index, identifier);
-		
+		var qualified = Peek(index, TokenType.OpDot) ? ParseQualifiedType(ref index, identifier) : null;
+		var name = qualified?.Parts[^1] ?? identifier;
 		var startIndex = index;
 		if (!Match(ref index, out var openBracket, TokenType.OpOpenBracket))
-			return new IdentifierTypeNode(identifier);
+			return qualified ?? (ITypeNode)new IdentifierTypeNode(identifier);
 		
 		// Disallow the open bracket being on another line from the identifier; backtrack to unconsume open bracket
-		if (openBracket.Line != identifier.Line)
+		if (openBracket.Line != name.Line)
 		{
 			index = startIndex;
-			return new IdentifierTypeNode(identifier);
+			return qualified ?? (ITypeNode)new IdentifierTypeNode(identifier);
 		}
 		
 		var args = new List<IGenericArgumentNode> { ParseGenericArgument(ref index) };
@@ -51,7 +50,10 @@ public sealed class TypeParser(ImmutableArray<Token> tokens) : BaseParser<ITypeN
 		var (source, range) = identifier.SourceLocation;
 		range = range.Join(closeBracket.SourceLocation.Range);
 		
-		return new GenericTypeNode(new(source, range), identifier, args);
+		return new GenericTypeNode(new(source, range), name, args)
+		{
+			Qualifiers = qualified is null ? [] : qualified.Parts[..^1]
+		};
 	}
 	
 	private BorrowTypeNode ParseBorrowType(ref int index, Token keyword)

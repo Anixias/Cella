@@ -1,0 +1,107 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+	malloc: fun(size: usize) -> ptr
+	free: fun(memory: ptr)
+}
+
+Token: rec
+{
+	id: i32
+
+	drop: op
+	{
+		printf("drop %d ", self.id)
+	}
+}
+
+box[T]: rec
+{
+	pointer: req ptr[T]
+
+	new: op(own value: T)
+	{
+		self.pointer = ptr[T](malloc(sizeOf(T)))
+		own *self.pointer = value
+	}
+
+	drop: op
+	{
+		val value = own *self.pointer
+		free(self.pointer)
+	}
+}
+
+slots[T: noref]: rec
+{
+	items: array[T, 4]
+	count: usize
+
+	push: fun(mut self, own item: T)
+	{
+		self.items[self.count] = item
+		self.count += 1
+	}
+}
+
+stack[T: noref]: rec
+{
+	slots: slots[T]
+	pushes: i32
+
+	push: fun(mut self, own item: T)
+	{
+		self.slots.push(item)
+		self.pushes += 1
+	}
+
+	peek: fun(self) -> imm[T] = imm self.slots.items[self.slots.count - 1]
+
+	scratch: fun(own item: T) -> i32
+	{
+		val held = box[T](item)
+		ret 1
+	}
+}
+
+mapper[T: noref]: rec
+{
+	value: T
+	change: fun[T -> T]
+
+	apply: fun(mut self)
+	{
+		self.value = self.change(self.value)
+	}
+
+	wrap: fun(own value: T) -> pair[T, i32] = pair[T, i32](value, 1)
+
+	score: fun(value: T) -> i32 = 7
+}
+
+pair[A, B]: rec
+{
+	first: A
+	second: B
+}
+
+double: fun(value: i32) -> i32 = value * 2
+
+main: fun -> i32
+{
+	var numbers = stack[i64]()
+	numbers.push(10)
+	numbers.push(20)
+	printf("%lld %d %zu | ", numbers.peek(), numbers.pushes, numbers.slots.count)
+	printf("%d | ", stack[Token].scratch(Token(3)))
+	var doubler = mapper[i32](5, double)
+	doubler.apply()
+	doubler.apply()
+	val make: fun[own i32 -> pair[i32, i32]] = mapper[i32].wrap
+	val score: fun[i32 -> i32] = mapper[i32].score
+	val both = make(4)
+	printf("%d %d %d %d\n", doubler.value, both.first, both.second, score(3))
+	ret 0
+}

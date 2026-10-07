@@ -1,0 +1,46 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+counted[T]: rec
+{
+	value: T
+	made: var i32 = 0
+	limit: val i32 = 3
+	none: val ptr[T] = null
+	seed: pvt var i32 = 7
+
+	new: op(own value: T)
+	{
+		self.value = value
+		made += 1
+	}
+
+	total: get -> i32 = made
+
+	reseed: fun -> i32
+	{
+		seed += 1
+		ret seed
+	}
+
+	isEmpty: fun -> bool = none == null
+}
+
+main: fun -> i32
+{
+	val a = counted[i32](1)
+	val b = counted[i32](2)
+	val c = counted[i64](3)
+	counted[bool].made = 10
+	counted[i32].reseed()
+	printf("%d %d %d %d %d %d\n", counted[i32].made, counted[i64].made, counted[bool].total, counted[i8].limit,
+		counted[i32].reseed(), counted[i64].reseed())
+	if counted[i16].isEmpty() && counted[i32].none == null
+		printf("empty\n")
+
+	ret 0
+}

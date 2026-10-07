@@ -20,6 +20,7 @@ public readonly struct ResolutionContext
 	public DiagnosticList Diagnostics { get; init; }
 	public ExtSignatureTypes? ExtSignatureTypes { get; init; }
 	public Func<IExpressionNode, ResolutionContext, Constant?>? EvaluateConstant { get; init; }
+	public Dictionary<IndexerExpressionNode, TypeSymbol?>? GenericTypes { get; init; }
 	
 	public string Mangle(Symbol symbol) => Mangling.Mangle(symbol, Modules, GetQualifiers());
 	
@@ -275,6 +276,10 @@ public readonly struct ResolutionContext
 	{
 		switch (Resolve(name.Text))
 		{
+			case RecordSymbol { IsGenericDefinition: true } generic:
+				Diagnostics.Add(ReportTypeArgumentCount(name.SourceLocation, generic));
+				break;
+			
 			case TypeSymbol type:
 				return type;
 			
@@ -299,6 +304,10 @@ public readonly struct ResolutionContext
 		var name = string.Join('.', node.Parts.Select(static p => p.Text));
 		switch (ResolveQualifiedName(node.Parts))
 		{
+			case RecordSymbol { IsGenericDefinition: true } generic:
+				Diagnostics.Add(ReportTypeArgumentCount(node.SourceLocation, generic));
+				break;
+			
 			case TypeSymbol type:
 				return type;
 			
@@ -342,7 +351,31 @@ public readonly struct ResolutionContext
 	
 	private TypeSymbol? TryResolveGenericType(IndexerExpressionNode node)
 	{
-		// TODO AccessExpressionNode for module.GenericType[T]
+		if (GenericTypes?.TryGetValue(node, out var cached) == true)
+			return cached;
+		
+		var result = ResolveGenericExpression(node);
+		if (GenericTypes is { } genericTypes)
+			genericTypes[node] = result;
+		
+		return result;
+	}
+	
+	private TypeSymbol? ResolveGenericExpression(IndexerExpressionNode node)
+	{
+		var symbol = node.Target switch
+		{
+			VarExpressionNode variable => Resolve(variable.Identifier.Text),
+			AccessExpressionNode access => ResolveModule(access.Target) is { } module
+				? ResolveMember(module, access.Member.Text)
+				: null,
+			_ => null
+		};
+		
+		if (symbol is RecordSymbol { IsGenericDefinition: true } definition)
+			return InstantiateType(definition, [..node.Arguments.Select(ResolveTypeExpression)],
+				[..node.Arguments.Select(static argument => argument.SourceLocation)], node.SourceLocation);
+		
 		if (node.Target is not VarExpressionNode target ||
 		    Resolve(target.Identifier.Text) is not (null or TypeSymbol) ||
 		    !TypePool.BuiltinGenericTypeArguments.ContainsKey(target.Identifier.Text))
@@ -365,6 +398,63 @@ public readonly struct ResolutionContext
 		
 		return TypePool.ResolveBuiltinGenericType(target.Identifier.Text, typeArgs);
 	}
+	
+	public static Diagnostic ReportTypeArgumentCount(SourceLocation location, RecordSymbol generic) =>
+		new(DiagnosticSeverity.Error, location, $"'{generic.Name}' takes {DescribeTypeArguments(generic)}");
+	
+	private static string DescribeTypeArguments(RecordSymbol generic) => generic.TypeParameters.Length switch
+	{
+		0 => "no type arguments",
+		1 => "one type argument",
+		var count => $"{count} type arguments"
+	};
+	
+	private TypeSymbol InstantiateType(RecordSymbol definition, IReadOnlyList<TypeSymbol> arguments,
+		IReadOnlyList<SourceLocation> locations, SourceLocation location)
+	{
+		if (arguments.Count != definition.TypeParameters.Length)
+		{
+			Diagnostics.Add(ReportTypeArgumentCount(location, definition));
+			return NativeSymbols.Invalid;
+		}
+		
+		var typePool = TypePool;
+		var violations = definition.TypeParameters
+			.Select((parameter, i) => (Parameter: parameter, Index: i))
+			.Where(pair => pair.Parameter.IsNoref && typePool.HoldsBorrows(arguments[pair.Index]))
+			.ToList();
+		
+		foreach (var (parameter, index) in violations)
+			Diagnostics.Add(new(DiagnosticSeverity.Error, locations[index],
+				$"Cannot store borrows in '{parameter.Name}'"));
+		
+		return violations.Count > 0 ? NativeSymbols.Invalid : TypePool.Instantiate(definition, [..arguments]);
+	}
+	
+	private TypeSymbol ResolveTypeExpression(IExpressionNode expression)
+	{
+		switch (TryResolveExpressionAsType(expression))
+		{
+			case RecordSymbol { IsGenericDefinition: true } generic when expression is not IndexerExpressionNode:
+				Diagnostics.Add(ReportTypeArgumentCount(expression.SourceLocation, generic));
+				return NativeSymbols.Invalid;
+			
+			case { } type:
+				return type;
+			
+			default:
+				Report(expression, $"'{expression.SourceLocation.GetText()}' is not a type");
+				return NativeSymbols.Invalid;
+		}
+	}
+	
+	private TypeSymbol ResolveGenericTypeArgument(IGenericArgumentNode node) => node switch
+	{
+		TypeArgumentNode argument => ResolveType(argument.Type),
+		IdentifierArgumentNode argument => ResolveNamedType(argument.Identifier),
+		ExpressionArgumentNode argument => ResolveTypeExpression(argument.Expression),
+		_ => NativeSymbols.Invalid
+	};
 	
 	private TypeSymbol? ResolveTypeArgument(IGenericArgumentNode node) => node switch
 	{
@@ -423,13 +513,9 @@ public readonly struct ResolutionContext
 	private TypeSymbol ResolveGenericType(GenericTypeNode node)
 	{
 		var name = node.Identifier;
-		if (!TypePool.BuiltinGenericTypeArguments.TryGetValue(name.Text, out var expectedArguments))
-		{
-			Diagnostics.Add(DiagnosticReporter.ReportUndefinedType(name.SourceLocation, name.Text,
-				TypePool.BuiltinGenericTypeArguments.Keys));
-			
-			return NativeSymbols.Invalid;
-		}
+		if (!node.Qualifiers.IsEmpty ||
+		    !TypePool.BuiltinGenericTypeArguments.TryGetValue(name.Text, out var expectedArguments))
+			return ResolveUserGenericType(node);
 		
 		var typeArgs = new List<IGenericArgument>(node.Arguments.Length);
 		
@@ -454,6 +540,40 @@ public readonly struct ResolutionContext
 			return type;
 		
 		Diagnostics.Add(new(DiagnosticSeverity.Error, node.SourceLocation, $"'{name.Text}' takes {expectedArguments}"));
+		return NativeSymbols.Invalid;
+	}
+	
+	private TypeSymbol ResolveUserGenericType(GenericTypeNode node)
+	{
+		var name = node.Identifier;
+		var symbol = node.Qualifiers.IsEmpty ? Resolve(name.Text) : ResolveQualifiedName([..node.Qualifiers, name]);
+		switch (symbol)
+		{
+			case RecordSymbol { IsGenericDefinition: true } definition:
+				return InstantiateType(definition, [..node.Arguments.Select(ResolveGenericTypeArgument)],
+					[..node.Arguments.Select(static argument => argument.SourceLocation)], node.SourceLocation);
+			
+			case TypeSymbol type:
+				Diagnostics.Add(new(DiagnosticSeverity.Error, node.SourceLocation,
+					$"'{type.Name}' takes no type arguments"));
+				
+				break;
+			
+			case null when node.Qualifiers.IsEmpty:
+				Diagnostics.Add(ReportHidden(name.Text, name.SourceLocation) ??
+				                DiagnosticReporter.ReportUndefinedType(name.SourceLocation, name.Text,
+					                GetVisibleTypeNames().Concat(TypePool.BuiltinGenericTypeArguments.Keys)));
+				
+				break;
+			
+			case null:
+				break;
+			
+			default:
+				Diagnostics.Add(new(DiagnosticSeverity.Error, name.SourceLocation, $"'{name.Text}' is not a type"));
+				break;
+		}
+		
 		return NativeSymbols.Invalid;
 	}
 }

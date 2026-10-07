@@ -1,0 +1,48 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Token: rec
+{
+	id: i32
+
+	drop: op
+	{
+		printf("drop %d ", self.id)
+	}
+}
+
+consume: fun(own token: Token)
+{
+	printf("consume %d ", token.id)
+}
+
+guard[T]: rec
+{
+	value: T
+	label: Token
+
+	drop: op
+	{
+		consume(own self.label)
+	}
+}
+
+Inventory: rec
+{
+	main: guard[Token]
+	spare: guard[i32]
+
+	combine: fun(self, other: guard[Token]) -> i32 = self.main.value.id + other.value.id
+}
+
+main: fun -> i32
+{
+	val inventory = Inventory(guard[Token](Token(1), Token(2)), guard[i32](3, Token(4)))
+	val other = guard[Token](Token(6), Token(7))
+	printf("%d %zu | ", inventory.combine(other), sizeOf(guard[i64]))
+	ret 0
+}

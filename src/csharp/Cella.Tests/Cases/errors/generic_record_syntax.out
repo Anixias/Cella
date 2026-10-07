@@ -1,0 +1,34 @@
+
+====== generic_record_syntax.ce ======
+
+Error at line 3, column 7
+2 │ 
+3 │ empty[]: rec
+          ^ Expected a type parameter name
+
+Error at line 8, column 9
+7 │ 
+8 │ open[T: rec
+            ╘═╛ Expected 'noref'
+
+Error at line 13, column 16
+12 │ 
+13 │ constrained[T: copy]: rec
+                    ╘══╛ Expected 'noref'
+
+Error at line 18, column 6
+17 │ 
+18 │ swap[T]: fun(mut a: T, mut b: T)
+          ^ Generic functions are not supported yet
+
+Error at line 22, column 7
+21 │ 
+22 │ maybe[T]: enum
+           ^ Generic enums are not supported yet
+
+Error at line 27, column 7
+26 │ 
+27 │ limit[T]: val i32 = 3
+           ^ Cannot declare type parameters on globals
+
+[compilation failed]

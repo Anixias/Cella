@@ -27,6 +27,14 @@ public sealed class TypePool
 	private readonly Dictionary<TypeSymbol, IReadOnlySet<FieldSymbol>> _destructorMoves = [];
 	private readonly Dictionary<EnumSymbol, IntegerType> _tagTypes = [];
 	private readonly Dictionary<EnumCaseSymbol, BigInteger> _caseValues = [];
+	private readonly Dictionary<RecordSymbol, List<RecordSymbol>> _instances = [];
+	private readonly HashSet<RecordSymbol> _completedInstances = [];
+	private readonly HashSet<RecordSymbol> _borrowChecks = [];
+	private readonly Dictionary<FunctionSymbol, List<FunctionInfo>> _functionInstances = [];
+	private readonly Dictionary<FunctionSymbol, FunctionInfo> _genericFunctions = [];
+	private readonly Dictionary<GlobalSymbol, GlobalInfo> _genericGlobals = [];
+	private readonly Dictionary<GlobalSymbol, GlobalInfo> _globalInstances = [];
+	private const int MaxInstanceDepth = 32;
 	
 	public TypePool(ConversionTable conversionTable, OperatorRegistry operatorRegistry, SizeTable sizeTable)
 	{
@@ -58,7 +66,8 @@ public sealed class TypePool
 		_destructorMoves[type] = fields;
 	
 	public bool IsMovedByDestructor(TypeSymbol type, FieldSymbol field) =>
-		_destructorMoves.TryGetValue(type, out var fields) && fields.Contains(field);
+		_destructorMoves.TryGetValue(type.OriginalDefinition, out var fields) &&
+		fields.Any(moved => moved.Name == field.Name);
 	
 	public bool NeedsDrop(TypeSymbol type) => GetFacts(type).NeedsDrop;
 	public bool IsCopy(TypeSymbol type) => GetFacts(type).IsCopy;
@@ -68,12 +77,24 @@ public sealed class TypePool
 	public bool HoldsBorrows(TypeSymbol type) => type switch
 	{
 		BorrowType => true,
+		TypeParameterSymbol parameter => !parameter.IsNoref,
 		StringType => type == NativeSymbols.Str,
+		RecordSymbol { TypeArguments.IsEmpty: false } record => record.IsRef || FieldsHoldBorrows(record),
 		RecordSymbol record => record.IsRef,
 		EnumSymbol enumType => enumType.IsRef,
 		ArrayType array => HoldsBorrows(array.ElementType),
 		_ => false
 	};
+	
+	private bool FieldsHoldBorrows(RecordSymbol record)
+	{
+		if (!_borrowChecks.Add(record))
+			return false;
+		
+		var holds = GetMembers(record).OfType<FieldSymbol>().Any(field => HoldsBorrows(GetTypeOfMember(field)));
+		_borrowChecks.Remove(record);
+		return holds;
+	}
 	
 	public bool PassesByPointer(TypeSymbol type, ParameterMode mode) =>
 		mode == ParameterMode.ReadOnly && NeedsDrop(type);
@@ -114,6 +135,7 @@ public sealed class TypePool
 			},
 			ArrayType => Combine(false, GetParts(type)),
 			FunctionType or BorrowType => TypeFacts.Plain with { HasDefault = false },
+			TypeParameterSymbol => new(true, false, false),
 			_ => TypeFacts.Plain
 		};
 		
@@ -242,7 +264,8 @@ public sealed class TypePool
 		var arrayType = new ArrayType(elementType, length);
 		_arrayTypes[key] = arrayType;
 		CreateArrayMembers(arrayType);
-		SizeTable.Register(arrayType, () => StorageSize.Product(SizeTable.GetSize(elementType), length));
+		SizeTable.Register(arrayType,
+			() => StorageSize.Product(SizeTable.TryGetSize(elementType) ?? StorageSize.Const(0), length));
 		
 		// To pointer
 		var arrayPtrType = GetPointerType(arrayType);
@@ -334,8 +357,11 @@ public sealed class TypePool
 		return _members.GetValueOrDefault(type)?.GetValueOrDefault(name);
 	}
 	
-	public int GetFieldIndex(TypeSymbol type, MemberSymbol member) =>
-		_members[type].IndexOf(member.Name);
+	public int GetFieldIndex(TypeSymbol type, MemberSymbol member)
+	{
+		Complete(type);
+		return _members[type].IndexOf(member.Name);
+	}
 	
 	public IReadOnlyList<MemberSymbol> GetMembers(TypeSymbol type)
 	{
@@ -345,8 +371,156 @@ public sealed class TypePool
 	
 	private void Complete(TypeSymbol type)
 	{
-		if (type is RecordSymbol or EnumSymbol)
+		if (type is RecordSymbol { IsGenericInstance: true } instance)
+			CompleteInstance(instance);
+		else if (type is RecordSymbol or EnumSymbol)
 			TypeCompleter?.Invoke(type);
+	}
+	
+	public TypeSymbol Instantiate(RecordSymbol definition, ImmutableArray<TypeSymbol> typeArguments)
+	{
+		if (typeArguments.Any(static argument => argument is InvalidType) ||
+		    typeArguments.Max(GetInstanceDepth) >= MaxInstanceDepth)
+			return NativeSymbols.Invalid;
+		
+		if (typeArguments.SequenceEqual(definition.TypeParameters))
+			return definition;
+		
+		var instances = _instances.GetOrAdd(definition);
+		if (instances.Find(instance => instance.TypeArguments.SequenceEqual(typeArguments)) is { } existing)
+			return existing;
+		
+		var members = definition.Members.Select(static member => member is FieldSymbol field
+			? new FieldSymbol(field.Name, field.Node, field.IsMutable)
+			: member);
+		
+		var statics = definition.StaticFields
+			.Select(static field => new GlobalSymbol(field.Syntax, field.Visibility))
+			.ToImmutableArray();
+		
+		var created = new RecordSymbol(definition, typeArguments, members) { StaticFields = statics };
+		foreach (var field in statics)
+			field.ContainingType = created;
+		
+		instances.Add(created);
+		return created;
+	}
+	
+	private static int GetInstanceDepth(TypeSymbol type) => type switch
+	{
+		RecordSymbol { IsGenericInstance: true } record => 1 + record.TypeArguments.Max(GetInstanceDepth),
+		PointerType pointer => GetInstanceDepth(pointer.BaseType),
+		BorrowType borrow => GetInstanceDepth(borrow.Target),
+		ArrayType array => GetInstanceDepth(array.ElementType),
+		FunctionType function => function.ParameterTypes.Append(function.ReturnType).Max(GetInstanceDepth),
+		_ => 0
+	};
+	
+	private void CompleteInstance(RecordSymbol instance)
+	{
+		if (!_completedInstances.Add(instance))
+			return;
+		
+		var definition = instance.Definition;
+		var map = CreateMap(definition.TypeParameters, instance.TypeArguments);
+		var fields = instance.Members
+			.OfType<FieldSymbol>()
+			.DistinctBy(static field => field.Name)
+			.ToDictionary(static field => field.Name);
+		
+		foreach (var field in GetMembers(definition).OfType<FieldSymbol>())
+			RegisterMember(instance, fields[field.Name], Substitute(GetTypeOfMember(field), map));
+		
+		RegisterRecord(instance);
+		foreach (var constructor in GetConstructors(definition))
+			AddConstructor(instance, InstantiateFunction(constructor, instance.TypeArguments));
+		
+		if (GetDestructor(definition) is { } destructor)
+			SetDestructor(instance, InstantiateFunction(destructor, instance.TypeArguments));
+	}
+	
+	public static Dictionary<TypeParameterSymbol, TypeSymbol> CreateMap(
+		IReadOnlyList<TypeParameterSymbol> parameters, IReadOnlyList<TypeSymbol> arguments) =>
+		parameters.Zip(arguments).ToDictionary(static pair => pair.First, static pair => pair.Second);
+	
+	public static bool ContainsTypeParameters(TypeSymbol type) => type switch
+	{
+		TypeParameterSymbol => true,
+		RecordSymbol record => record.TypeArguments.Any(ContainsTypeParameters),
+		PointerType pointer => ContainsTypeParameters(pointer.BaseType),
+		BorrowType borrow => ContainsTypeParameters(borrow.Target),
+		ArrayType array => ContainsTypeParameters(array.ElementType),
+		FunctionType function => function.ParameterTypes.Append(function.ReturnType).Any(ContainsTypeParameters),
+		_ => false
+	};
+	
+	public TypeSymbol Substitute(TypeSymbol type, IReadOnlyDictionary<TypeParameterSymbol, TypeSymbol> map) =>
+		map.Count == 0 || !ContainsTypeParameters(type)
+			? type
+			: type switch
+			{
+				TypeParameterSymbol parameter => map.GetValueOrDefault(parameter, parameter),
+				RecordSymbol record => Instantiate(record.Definition,
+					[..record.TypeArguments.Select(argument => Substitute(argument, map))]),
+				PointerType pointer => GetPointerType(Substitute(pointer.BaseType, map)),
+				BorrowType borrow => GetBorrowType(Substitute(borrow.Target, map), borrow.IsMutable),
+				ArrayType { Length.Sign: < 0 } array => new ArrayType(Substitute(array.ElementType, map), array.Length),
+				ArrayType array => GetArrayType(Substitute(array.ElementType, map), array.Length),
+				FunctionType function => GetFunctionType(function.IsExternal,
+					function.ParameterTypes.Select(parameter => Substitute(parameter, map)), function.ParameterModes,
+					Substitute(function.ReturnType, map)),
+				_ => type
+			};
+	
+	public FunctionInfo InstantiateFunction(FunctionInfo function, ImmutableArray<TypeSymbol> typeArguments)
+	{
+		var parameters = function.Symbol.TypeParameters;
+		if (parameters.IsEmpty || typeArguments.SequenceEqual(parameters))
+			return function.TypeArguments.IsDefaultOrEmpty ? function : GetGenericDefinition(function.Symbol);
+		
+		var definition = function.TypeArguments.IsDefaultOrEmpty ? function : GetGenericDefinition(function.Symbol);
+		_genericFunctions[definition.Symbol] = definition;
+		var instances = _functionInstances.GetOrAdd(definition.Symbol);
+		var index = instances.FindIndex(instance => instance.TypeArguments.SequenceEqual(typeArguments));
+		if (index >= 0)
+			return instances[index];
+		
+		var map = CreateMap(parameters, typeArguments);
+		var signature = definition.Signature;
+		var instantiated = definition with
+		{
+			MangledName = null,
+			Signature = new FunctionSignature(signature.ParameterTypes.Select(type => Substitute(type, map)),
+				Substitute(signature.ReturnType, map), signature.IsVariadic, signature.ParameterModes),
+			TypeArguments = typeArguments,
+			Declared = signature
+		};
+		
+		instances.Add(instantiated);
+		return instantiated;
+	}
+	
+	public FunctionInfo GetGenericDefinition(FunctionSymbol function) => _genericFunctions[function];
+	
+	public void RegisterGenericGlobal(GlobalInfo definition) => _genericGlobals[definition.Symbol] = definition;
+	
+	public GlobalInfo InstantiateGlobal(GlobalSymbol global, ModuleIndex? modules)
+	{
+		if (_globalInstances.TryGetValue(global, out var existing))
+			return existing;
+		
+		var instance = (RecordSymbol)global.ContainingType!;
+		var definition = _genericGlobals[instance.Definition.GetStaticField(global.Name)!];
+		var map = CreateMap(instance.Definition.TypeParameters, instance.TypeArguments);
+		var instantiated = definition with
+		{
+			MangledName = Mangling.MangleInstantiation(definition.MangledName, instance.TypeArguments, modules),
+			Symbol = global,
+			Type = Substitute(definition.Type, map)
+		};
+		
+		_globalInstances[global] = instantiated;
+		return instantiated;
 	}
 	
 	public bool TryGetTypeOfMember(MemberSymbol member, [NotNullWhen(true)] out TypeSymbol? type)

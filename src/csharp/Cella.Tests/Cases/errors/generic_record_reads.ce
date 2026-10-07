@@ -1,0 +1,10 @@
+mod test
+
+box[T]: rec
+{
+	pointer: ptr[T]
+
+	read: fun(self) -> T = *self.pointer
+}
+
+main: fun -> i32 = 0

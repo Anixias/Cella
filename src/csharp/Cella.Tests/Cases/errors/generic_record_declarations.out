@@ -1,0 +1,30 @@
+
+====== generic_record_declarations.ce ======
+
+Error at line 13, column 7
+12 │ 
+13 │ twice[T, T]: rec
+           ^ Type parameter 'T' is declared more than once
+
+Error at line 13, column 10
+12 │ 
+13 │ twice[T, T]: rec
+              ^ Type parameter 'T' is declared more than once
+
+Error at line 20, column 9
+19 │ {
+20 │     inner: wrap[i32]
+                ╘═══════╛ Field 'inner' of type 'wrap[i32]' causes a cycle in the memory layout
+
+Error at line 25, column 8
+24 │ {
+25 │     pair: duo[imm[i32], i32]
+               ╘════════════════╛ Cannot store borrows in plain records
+                                | Did you mean 'holder: ref rec'?
+
+Error at line 34, column 22
+33 │ 
+34 │ take: pub fun(value: box[Node]) -> i32 = 0
+                          ╘═══════╛ 'Node' is less visible than 'take'
+
+[compilation failed]

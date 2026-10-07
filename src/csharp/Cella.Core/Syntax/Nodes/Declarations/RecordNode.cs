@@ -17,6 +17,7 @@ public sealed class RecordNode
 	public Token? Visibility { get; init; }
 	public bool IsRef { get; } = isRef;
 	public ImmutableArray<IDeclarationNode> Members { get; } = members.ToImmutableArray();
+	public ImmutableArray<TypeParameterNode> TypeParameters { get; init; } = [];
 }
 
 public sealed class FieldNode

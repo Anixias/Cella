@@ -1,4 +1,5 @@
-﻿using Cella.Core.Symbols;
+﻿using System.Collections.Immutable;
+using Cella.Core.Symbols;
 using Cella.Core.Syntax.Nodes;
 using Cella.Core.Text;
 
@@ -11,6 +12,10 @@ public sealed class SymbolCollector : IDeclarationNodeVisitor<Symbol>
 	private readonly Stack<string> _typeStack = [];
 	private readonly Stack<Visibility> _typeVisibilities = [];
 	private readonly Stack<PropertyNode> _properties = [];
+	private readonly Stack<ImmutableArray<TypeParameterSymbol>> _typeParameters = [];
+	
+	private ImmutableArray<TypeParameterSymbol> CurrentTypeParameters =>
+		_typeParameters.TryPeek(out var parameters) ? parameters : [];
 	
 	public SymbolTable Build() => _builder.Build();
 	
@@ -60,7 +65,10 @@ public sealed class SymbolCollector : IDeclarationNodeVisitor<Symbol>
 		
 		// Do not add to file symbols
 		var function = new FunctionSymbol(name, node, GetMemberVisibility(node.Visibility), null, parameters,
-			FunctionKind.Constructor);
+			FunctionKind.Constructor)
+		{
+			TypeParameters = CurrentTypeParameters
+		};
 		
 		_builder.DeclarationSymbols[node] = function;
 		return function;
@@ -75,7 +83,11 @@ public sealed class SymbolCollector : IDeclarationNodeVisitor<Symbol>
 		else
 			name = ".drop";
 		
-		var function = new FunctionSymbol(name, node, GetMemberVisibility(null), null, [self], FunctionKind.Destructor);
+		var function = new FunctionSymbol(name, node, GetMemberVisibility(null), null, [self], FunctionKind.Destructor)
+		{
+			TypeParameters = CurrentTypeParameters
+		};
+		
 		_builder.DeclarationSymbols[node] = function;
 		return function;
 	}
@@ -105,7 +117,11 @@ public sealed class SymbolCollector : IDeclarationNodeVisitor<Symbol>
 			? GetMemberVisibility(node.Visibility ?? property?.Visibility)
 			: Visibility.FromKeyword(node.Visibility);
 		
-		var function = new FunctionSymbol(name, node, visibility, null, parameters, kind);
+		var function = new FunctionSymbol(name, node, visibility, null, parameters, kind)
+		{
+			TypeParameters = CurrentTypeParameters
+		};
+		
 		_builder.DeclarationSymbols[node] = function;
 		if (!isMember)
 			_symbolsInFile.Add(function);
@@ -180,8 +196,11 @@ public sealed class SymbolCollector : IDeclarationNodeVisitor<Symbol>
 	{
 		_typeStack.Push(node.Identifier.Text);
 		_typeVisibilities.Push(Visibility.FromKeyword(node.Visibility));
+		var typeParameters = node.TypeParameters
+			.Select(static parameter => new TypeParameterSymbol(parameter.Identifier, parameter.Constraint is not null))
+			.ToImmutableArray();
 		
-		// TODO Type parameters
+		_typeParameters.Push(typeParameters);
 		var members = new List<MemberSymbol>(node.Members.Length);
 		var statics = new List<GlobalSymbol>();
 		var properties = new List<PropertySymbol>();
@@ -219,7 +238,7 @@ public sealed class SymbolCollector : IDeclarationNodeVisitor<Symbol>
 		}
 		
 		var name = node.Identifier.Text;
-		var record = new RecordSymbol(name, node, members, types)
+		var record = new RecordSymbol(name, node, members, types, typeParameters)
 		{
 			StaticFields = [..statics],
 			Properties = [..properties]
@@ -235,6 +254,7 @@ public sealed class SymbolCollector : IDeclarationNodeVisitor<Symbol>
 		_symbolsInFile.Add(record);
 		_typeStack.Pop();
 		_typeVisibilities.Pop();
+		_typeParameters.Pop();
 		
 		return record;
 	}

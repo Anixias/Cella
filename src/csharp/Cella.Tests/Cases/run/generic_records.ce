@@ -1,0 +1,105 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+	malloc: fun(size: usize) -> ptr
+	free: fun(memory: ptr)
+}
+
+Token: rec
+{
+	id: i32
+
+	drop: op
+	{
+		printf("drop %d ", self.id)
+	}
+}
+
+pair[A: noref, B: noref]: rec
+{
+	first: A
+	second: B
+
+	left: get(self) -> imm[A] = imm self.first
+
+	swapFirst: fun(mut self, own value: A) -> A
+	{
+		val old = own self.first
+		self.first = value
+		ret old
+	}
+
+	make: fun(own first: A, own second: B) -> pair[A, B] = pair[A, B](first, second)
+}
+
+box[T]: rec
+{
+	pointer: req ptr[T]
+
+	new: op(own value: T)
+	{
+		self.pointer = ptr[T](malloc(sizeOf(T)))
+		own *self.pointer = value
+	}
+
+	*: op(self) -> imm[T] = imm *self.pointer
+
+	*: op(mut self) -> mut[T] = mut *self.pointer
+
+	drop: op
+	{
+		val value = own *self.pointer
+		free(self.pointer)
+	}
+}
+
+buffer[T]: rec
+{
+	start: req ptr[T]
+	length: usize
+
+	new: op(length: usize)
+	{
+		self.start = ptr[T](malloc(sizeOf(T) * length))
+		self.length = length
+	}
+
+	set: fun(mut self, index: usize, own value: T)
+	{
+		own *(self.start + index) = value
+	}
+
+	get: fun(self, index: usize) -> imm[T] = imm *(self.start + index)
+
+	span: fun(self) -> isize = (self.start + self.length) - self.start
+
+	bytes: get -> usize = sizeOf(array[T, 3])
+
+	drop: op
+	{
+		free(self.start)
+	}
+}
+
+main: fun -> i32
+{
+	var numbers = pair[i32, i64](3, 4)
+	numbers.first += 1
+	printf("%d %lld | ", numbers.first, numbers.second)
+	var tokens = pair[Token, i32](Token(1), 2)
+	val old = tokens.swapFirst(Token(3))
+	printf("%d %d %d | ", old.id, tokens.left.id, tokens.second)
+	val made = pair[i32, Token].make(4, Token(5))
+	printf("%d %d | ", made.first, made.second.id)
+	var count = box[i32](5)
+	*count += 2
+	val nested = box[pair[i32, box[Token]]](pair[i32, box[Token]](6, box[Token](Token(7))))
+	printf("%d %d %d | ", *count, nested.first, nested.second.id)
+	var values = buffer[i16](4)
+	values.set(0, 3)
+	values.set(3, 9)
+	printf("%d %d %lld %zu\n", values.get(0), values.get(3), values.span(), buffer[i64].bytes)
+	ret 0
+}

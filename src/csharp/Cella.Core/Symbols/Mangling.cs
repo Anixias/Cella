@@ -27,8 +27,29 @@ public static class Mangling
 	public static string MangleName(Symbol symbol, ModuleIndex? modules) =>
 		modules?.FindPrivateFile(symbol) is { } file ? $"{symbol.Name}@{file}" : symbol.Name;
 	
+	public static string MangleInstantiation(string definitionName, FunctionSignature signature,
+		IEnumerable<TypeSymbol> typeArguments, ModuleIndex? modules)
+	{
+		var parameters = definitionName.IndexOf(':');
+		var sb = new StringBuilder(MangleInstantiation(parameters < 0 ? definitionName : definitionName[..parameters],
+			typeArguments, modules));
+		
+		if (signature.ParameterTypes.Length > 0)
+			sb.Append(':').AppendJoin('.',
+				signature.ParameterTypes.Select((_, i) => MangleParameter(signature, i, modules)));
+		
+		return sb.ToString();
+	}
+	
+	public static string MangleInstantiation(string definitionName, IEnumerable<TypeSymbol> typeArguments,
+		ModuleIndex? modules) =>
+		$"{definitionName}[{string.Join(", ", typeArguments.Select(argument => MangleType(argument, modules)))}]";
+	
 	private static string MangleType(TypeSymbol type, ModuleIndex? modules) => type switch
 	{
+		RecordSymbol { IsGenericInstance: true } instance =>
+			$"{MangleType(instance.Definition, modules)}[{string.Join(", ",
+				instance.TypeArguments.Select(argument => MangleType(argument, modules)))}]",
 		PointerType { BaseType: var baseType } when baseType != NativeSymbols.Void =>
 			$"ptr[{MangleType(baseType, modules)}]",
 		BorrowType borrow => $"{(borrow.IsMutable ? "mut" : "imm")}[{MangleType(borrow.Target, modules)}]",

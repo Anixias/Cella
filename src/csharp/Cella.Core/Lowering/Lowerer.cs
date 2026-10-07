@@ -861,6 +861,9 @@ public sealed class Lowerer
 		public Value Visit(ResolvedLiteralExpressionNode node) =>
 			MakeConstant(node.Type, node.Value);
 		
+		public Value Visit(ResolvedSizeOfExpressionNode node) =>
+			new SizeOfValue(node.Target, node.Syntax.SourceLocation);
+		
 		public Value Visit(ResolvedArrayExpressionNode node) => new ArrayValue((ArrayType)node.Type,
 			LowerOperands(node.Values, static _ => Passing.Consume), node.Syntax.SourceLocation);
 		
@@ -990,7 +993,7 @@ public sealed class Lowerer
 		
 		private Func<int, Passing> GetArgumentPassing(FunctionInfo function, int firstParameter)
 		{
-			var signature = function.Signature;
+			var signature = function.DeclaredSignature;
 			return i => firstParameter + i < signature.ParameterTypes.Length
 				? GetPassing(signature.ParameterTypes[firstParameter + i], signature.GetMode(firstParameter + i))
 				: Passing.Read;
@@ -1033,7 +1036,8 @@ public sealed class Lowerer
 		private bool MayEmit(IResolvedExpressionNode node) => node switch
 		{
 			ResolvedLiteralExpressionNode or ResolvedVarExpressionNode or ResolvedGlobalExpressionNode
-				or ResolvedFunctionReferenceExpressionNode or ResolvedUndefExpressionNode => false,
+				or ResolvedFunctionReferenceExpressionNode or ResolvedUndefExpressionNode
+				or ResolvedSizeOfExpressionNode => false,
 			ResolvedConversionExpressionNode n => MayEmit(n.Source),
 			ResolvedAccessExpressionNode n => IsMaterialized(n.Target) || MayEmit(n.Target),
 			ResolvedIndexerExpressionNode n => IsMaterialized(n.Target) || MayEmit(n.Target) || MayEmit(n.Index),
@@ -1083,8 +1087,9 @@ public sealed class Lowerer
 			if (receiver is null)
 				return [];
 			
-			var mode = accessor.Signature.GetMode(0);
-			if (mode != ParameterMode.Mut && GetPassing(receiver.Type, mode) != Passing.Borrow)
+			var signature = accessor.DeclaredSignature;
+			var mode = signature.GetMode(0);
+			if (mode != ParameterMode.Mut && GetPassing(signature.ParameterTypes[0], mode) != Passing.Borrow)
 				return [receiver];
 			
 			return
@@ -1323,7 +1328,7 @@ public sealed class Lowerer
 		
 		private bool IsStable(Value value) => value switch
 		{
-			ConstantValue or ZeroValue or DefaultValue or UndefValue or FunctionReferenceValue => true,
+			ConstantValue or ZeroValue or DefaultValue or UndefValue or FunctionReferenceValue or SizeOfValue => true,
 			VariableValue { Variable.Symbol: LocalVariableSymbol symbol } =>
 				!symbol.IsMutable && !symbol.IsDeferred || _temporaries.Contains(symbol),
 			VariableValue { Variable.Symbol: ParameterSymbol { Mode: ParameterMode.Mut } } => true,

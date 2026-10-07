@@ -56,22 +56,27 @@ public sealed unsafe class CodeGenerator : IDisposable
 	private readonly CAbi _cAbi;
 	private readonly uint _pointerSize;
 	private readonly LLVMPassBuilderOptionsRef _passBuilderOptions = LLVMPassBuilderOptionsRef.Create();
-	private readonly Dictionary<TypeSymbol, LLVMTypeRef> _typeMap = [];
-	private readonly Dictionary<FunctionInfo, LLVMFunctionInfo> _funMap = [];
-	private readonly Dictionary<TypeSymbol, LLVMValueRef> _dropGlue = [];
-	private readonly Dictionary<VariableInfo, LLVMValueRef> _varMap = [];
-	private readonly Dictionary<GlobalSymbol, LLVMValueRef> _globalMap = [];
 	private readonly LLVMValueRef _true = LLVMValueRef.CreateConstInt(LLVMTypeRef.Int1, 1uL);
 	private readonly LLVMValueRef _false = LLVMValueRef.CreateConstInt(LLVMTypeRef.Int1, 0uL);
-	private readonly HashSet<string> _externalLibraries = [];
-	private readonly Dictionary<byte[], LLVMValueRef> _stringPool = new(ByteArrayComparer.Instance);
 	private readonly HashSet<FunctionSymbol> _sharedFunctions;
-	private LLVMModuleRef currentModule;
+	private readonly ModuleIndex _modules;
+	private readonly Dictionary<FunctionSymbol, LoweredFunction> _genericBodies;
+	private readonly Dictionary<ModuleSymbol, ModuleState> _moduleStates = [];
+	private readonly Queue<(ModuleState Owner, FunctionInfo Info)> _pendingInstantiations = [];
+	private readonly Queue<(ModuleState Owner, GlobalInfo Info)> _pendingGlobals = [];
+	private readonly HashSet<string> _requestedInstantiations = [];
+	private readonly HashSet<GlobalSymbol> _requestedGlobals = [];
+	private ModuleState current = null!;
 	private LLVMFunctionInfo currentFunction;
-	private LLVMValueRef panicFunction;
 	
-	public CodeGenerator(AssemblySymbol assemblySymbol, TypePool typePool, CodeGenConfig config)
+	private IReadOnlyDictionary<TypeParameterSymbol, TypeSymbol> substitution =
+		new Dictionary<TypeParameterSymbol, TypeSymbol>();
+	
+	public CodeGenerator(AssemblySymbol assemblySymbol, TypePool typePool, CodeGenConfig config, ModuleIndex modules,
+		IEnumerable<LoweredFunction> genericFunctions)
 	{
+		_modules = modules;
+		_genericBodies = genericFunctions.ToDictionary(static function => function.Info.Symbol);
 		Init();
 		_passBuilderOptions.SetVerifyEach(true);
 		_assemblySymbol = assemblySymbol;
@@ -118,90 +123,132 @@ public sealed unsafe class CodeGenerator : IDisposable
 		// TODO Map address spaces based on target?
 		
 		var intSize = LLVMTypeRef.CreateInt(_pointerSize * 8);
-		_typeMap[NativeSymbols.Void] = LLVMTypeRef.Void;
-		_typeMap[NativeSymbols.VoidPtr] = LLVMTypeRef.CreatePointer(LLVMTypeRef.Void, 0u);
-		_typeMap[NativeSymbols.Int8] = LLVMTypeRef.Int8;
-		_typeMap[NativeSymbols.Int16] = LLVMTypeRef.Int16;
-		_typeMap[NativeSymbols.Int32] = LLVMTypeRef.Int32;
-		_typeMap[NativeSymbols.Int64] = LLVMTypeRef.Int64;
-		_typeMap[NativeSymbols.Int128] = LLVMTypeRef.Int128;
-		_typeMap[NativeSymbols.IntSize] = intSize;
-		_typeMap[NativeSymbols.UInt8] = LLVMTypeRef.Int8;
-		_typeMap[NativeSymbols.UInt16] = LLVMTypeRef.Int16;
-		_typeMap[NativeSymbols.UInt32] = LLVMTypeRef.Int32;
-		_typeMap[NativeSymbols.UInt64] = LLVMTypeRef.Int64;
-		_typeMap[NativeSymbols.UInt128] = LLVMTypeRef.Int128;
-		_typeMap[NativeSymbols.UIntSize] = intSize;
-		_typeMap[NativeSymbols.Float32] = LLVMTypeRef.Float;
-		_typeMap[NativeSymbols.Float64] = LLVMTypeRef.Double;
-		_typeMap[NativeSymbols.Char] = LLVMTypeRef.Int32;
-		_typeMap[NativeSymbols.Bool] = LLVMTypeRef.Int1;
-		_typeMap[NativeSymbols.Str] =
+		current.Types[NativeSymbols.Void] = LLVMTypeRef.Void;
+		current.Types[NativeSymbols.VoidPtr] = LLVMTypeRef.CreatePointer(LLVMTypeRef.Void, 0u);
+		current.Types[NativeSymbols.Int8] = LLVMTypeRef.Int8;
+		current.Types[NativeSymbols.Int16] = LLVMTypeRef.Int16;
+		current.Types[NativeSymbols.Int32] = LLVMTypeRef.Int32;
+		current.Types[NativeSymbols.Int64] = LLVMTypeRef.Int64;
+		current.Types[NativeSymbols.Int128] = LLVMTypeRef.Int128;
+		current.Types[NativeSymbols.IntSize] = intSize;
+		current.Types[NativeSymbols.UInt8] = LLVMTypeRef.Int8;
+		current.Types[NativeSymbols.UInt16] = LLVMTypeRef.Int16;
+		current.Types[NativeSymbols.UInt32] = LLVMTypeRef.Int32;
+		current.Types[NativeSymbols.UInt64] = LLVMTypeRef.Int64;
+		current.Types[NativeSymbols.UInt128] = LLVMTypeRef.Int128;
+		current.Types[NativeSymbols.UIntSize] = intSize;
+		current.Types[NativeSymbols.Float32] = LLVMTypeRef.Float;
+		current.Types[NativeSymbols.Float64] = LLVMTypeRef.Double;
+		current.Types[NativeSymbols.Char] = LLVMTypeRef.Int32;
+		current.Types[NativeSymbols.Bool] = LLVMTypeRef.Int1;
+		current.Types[NativeSymbols.Str] =
 			LLVMTypeRef.CreateStruct([intSize, LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0u)], false);
 		
-		_typeMap[NativeSymbols.CStr] = LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0u);
+		current.Types[NativeSymbols.CStr] = LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0u);
 	}
 	
-	public CodeGenResult Generate(LoweredModule module)
+	public List<CodeGenResult> Generate(IEnumerable<LoweredModule> modules)
 	{
-		MapNativeSymbols();
-		
-		using var llvmModule = LLVMModuleRef.CreateWithName(module.Symbol.Name);
-		llvmModule.Target = TargetTriple;
-		llvmModule.DataLayout = _dataLayoutStr;
-		currentModule = llvmModule;
-		var llvmDiBuilder = llvmModule.CreateDIBuilder();
+		var states = new List<ModuleState>();
 		try
 		{
-			string message;
+			foreach (var module in modules)
+				states.Add(CreateModuleState(module));
 			
-			// Build code
-			BuildModule(llvmModule, llvmDiBuilder, module);
-			
-			_funMap.Clear();
-			_dropGlue.Clear();
-			panicFunction = default;
-			_varMap.Clear();
-			_globalMap.Clear();
-			_typeMap.Clear();
-			
-			if (!llvmModule.TryVerify(LLVMVerifierFailureAction.LLVMAbortProcessAction, out message))
-				return CodeGenResult.Failure with { ErrorMessage = message };
-			
-			llvmDiBuilder.DIBuilderFinalize();
-			
-			if (!Directory.Exists(_config.OutputConfig.Directory))
-				Directory.CreateDirectory(_config.OutputConfig.Directory);
-			
-			if (_config.OutputConfig.EmitIR)
+			foreach (var state in states)
 			{
-				var irFilePath = Path.Combine(_config.OutputConfig.Directory, $"{module.Symbol.Name}.ll");
-				if (!llvmModule.TryPrintToFile(irFilePath, out message))
-					return CodeGenResult.Failure with { ErrorMessage = message };
+				current = state;
+				BuildModule(state.Lowered);
 			}
 			
-			if (_config.OutputConfig.EmitAssembly)
-			{
-				var assemblyFilePath = Path.Combine(_config.OutputConfig.Directory, $"{module.Symbol.Name}.s");
-				if (!_targetMachine.TryEmitToFile(llvmModule, assemblyFilePath, LLVMCodeGenFileType.LLVMAssemblyFile,
-					    out message))
-					return CodeGenResult.Failure with { ErrorMessage = message };
-			}
-			
-			var objectFilePath = Path.Combine(_config.OutputConfig.Directory, $"{module.Symbol.Name}.o");
-			if (_targetMachine.TryEmitToFile(llvmModule, objectFilePath, LLVMCodeGenFileType.LLVMObjectFile,
-				    out message))
-				return new(true, objectFilePath, null, _externalLibraries);
-			
-			return CodeGenResult.Failure with { ErrorMessage = message };
+			BuildInstantiations();
+			return [..states.Select(Finish)];
 		}
 		finally
 		{
-			_externalLibraries.Clear();
-			_stringPool.Clear();
-			LLVM.DisposeDIBuilder((LLVMOpaqueDIBuilder*)llvmDiBuilder.Handle);
-			currentModule = default;
+			foreach (var state in states)
+			{
+				LLVM.DisposeDIBuilder((LLVMOpaqueDIBuilder*)state.DiBuilder.Handle);
+				state.Module.Dispose();
+			}
+			
+			_moduleStates.Clear();
+			_requestedInstantiations.Clear();
+			_requestedGlobals.Clear();
+			current = null!;
 		}
+	}
+	
+	private ModuleState CreateModuleState(LoweredModule module)
+	{
+		var llvmModule = LLVMModuleRef.CreateWithName(module.Symbol.Name);
+		llvmModule.Target = TargetTriple;
+		llvmModule.DataLayout = _dataLayoutStr;
+		current = new ModuleState(module, llvmModule, llvmModule.CreateDIBuilder());
+		_moduleStates[module.Symbol] = current;
+		MapNativeSymbols();
+		return current;
+	}
+	
+	private void BuildInstantiations()
+	{
+		while (_pendingGlobals.Count > 0 || _pendingInstantiations.Count > 0)
+		{
+			while (_pendingGlobals.TryDequeue(out var global))
+			{
+				current = global.Owner;
+				GetGlobal(global.Info);
+			}
+			
+			if (!_pendingInstantiations.TryDequeue(out var pending))
+				continue;
+			
+			current = pending.Owner;
+			GetFunctionValue(pending.Info);
+			substitution = TypePool.CreateMap(pending.Info.Symbol.TypeParameters, pending.Info.TypeArguments);
+			BuildFunction(_genericBodies[pending.Info.Symbol], pending.Info);
+			substitution = new Dictionary<TypeParameterSymbol, TypeSymbol>();
+		}
+	}
+	
+	private CodeGenResult Finish(ModuleState state)
+	{
+		current = state;
+		var llvmModule = state.Module;
+		var name = state.Lowered.Symbol.Name;
+		if (state.EntryPoint is { } entryPoint)
+			BuildEntryPoint(llvmModule, entryPoint);
+		
+		RunOptimizationPass(llvmModule);
+		state.DiBuilder.DIBuilderFinalize();
+		
+		string message;
+		if (!llvmModule.TryVerify(LLVMVerifierFailureAction.LLVMAbortProcessAction, out message))
+			return CodeGenResult.Failure with { ErrorMessage = message };
+		
+		if (!Directory.Exists(_config.OutputConfig.Directory))
+			Directory.CreateDirectory(_config.OutputConfig.Directory);
+		
+		if (_config.OutputConfig.EmitIR)
+		{
+			var irFilePath = Path.Combine(_config.OutputConfig.Directory, $"{name}.ll");
+			if (!llvmModule.TryPrintToFile(irFilePath, out message))
+				return CodeGenResult.Failure with { ErrorMessage = message };
+		}
+		
+		if (_config.OutputConfig.EmitAssembly)
+		{
+			var assemblyFilePath = Path.Combine(_config.OutputConfig.Directory, $"{name}.s");
+			if (!_targetMachine.TryEmitToFile(llvmModule, assemblyFilePath, LLVMCodeGenFileType.LLVMAssemblyFile,
+				    out message))
+				return CodeGenResult.Failure with { ErrorMessage = message };
+		}
+		
+		var objectFilePath = Path.Combine(_config.OutputConfig.Directory, $"{name}.o");
+		if (_targetMachine.TryEmitToFile(llvmModule, objectFilePath, LLVMCodeGenFileType.LLVMObjectFile, out message))
+			return new(true, objectFilePath, null, state.ExternalLibraries);
+		
+		return CodeGenResult.Failure with { ErrorMessage = message };
 	}
 	
 	private static LLVMTypeRef OpaquePointer => LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0u);
@@ -213,12 +260,43 @@ public sealed unsafe class CodeGenerator : IDisposable
 	private LLVMTypeRef MapParameterType(TypeSymbol type, ParameterMode mode) =>
 		_typePool.PassesByPointer(type, mode) ? OpaquePointer : MapTypeSymbol(type);
 	
+	private LLVMTypeRef[] MapParameterTypes(FunctionInfo function)
+	{
+		var declared = function.DeclaredSignature;
+		return
+		[
+			..function.Signature.ParameterTypes.Select((type, i) =>
+				_typePool.PassesByPointer(declared.ParameterTypes[i], declared.GetMode(i))
+					? OpaquePointer
+					: MapTypeSymbol(type))
+		];
+	}
+	
+	private TypeSymbol Substitute(TypeSymbol type) => _typePool.Substitute(type, substitution);
+	
+	private static bool IsOpenGeneric(FunctionInfo function) =>
+		!function.Symbol.TypeParameters.IsEmpty && (function.TypeArguments.IsDefaultOrEmpty ||
+		                                            function.TypeArguments.Any(TypePool.ContainsTypeParameters));
+	
+	private FunctionInfo SubstituteFunction(FunctionInfo function)
+	{
+		if (substitution.Count == 0 || function.Symbol.TypeParameters.IsEmpty)
+			return function;
+		
+		IEnumerable<TypeSymbol> arguments = function.TypeArguments.IsDefaultOrEmpty
+			? function.Symbol.TypeParameters
+			: function.TypeArguments;
+		
+		return _typePool.InstantiateFunction(function, [..arguments.Select(Substitute)]);
+	}
+	
 	private LLVMTypeRef MapTypeSymbol(TypeSymbol? symbol)
 	{
 		if (symbol is null)
 			return LLVMTypeRef.Void;
 		
-		if (_typeMap.TryGetValue(symbol, out var type))
+		symbol = Substitute(symbol);
+		if (current.Types.TryGetValue(symbol, out var type))
 			return type;
 		
 		switch (symbol)
@@ -228,7 +306,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 				var elementType = MapTypeSymbol(arrayType.ElementType);
 				var length = (uint)arrayType.Length;
 				var llvmArray = LLVMTypeRef.CreateArray(elementType, length);
-				_typeMap[symbol] = llvmArray;
+				current.Types[symbol] = llvmArray;
 				return llvmArray;
 			}
 			
@@ -238,21 +316,16 @@ public sealed unsafe class CodeGenerator : IDisposable
 					? OpaquePointer
 					: LLVMTypeRef.CreateStruct([OpaquePointer, OpaquePointer], false);
 				
-				_typeMap[symbol] = llvmFunctionType;
+				current.Types[symbol] = llvmFunctionType;
 				return llvmFunctionType;
 			}
 			
-			case PointerType ptrType:
-			{
-				var baseType = MapTypeSymbol(ptrType.BaseType);
-				var llvmPtrType = LLVMTypeRef.CreatePointer(baseType, 0u);
-				_typeMap[symbol] = llvmPtrType;
-				return llvmPtrType;
-			}
-			
-			case BorrowType:
-				_typeMap[symbol] = OpaquePointer;
+			case PointerType or BorrowType:
+				current.Types[symbol] = OpaquePointer;
 				return OpaquePointer;
+			
+			case TypeParameterSymbol:
+				throw new InvalidOperationException($"Type parameter '{symbol.Name}' has no type argument");
 			
 			case EnumSymbol enumType:
 				return CreateEnumType(enumType);
@@ -263,7 +336,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 		}
 	}
 	
-	private void BuildModule(LLVMModuleRef llvmModule, LLVMDIBuilderRef llvmDiBuilder, LoweredModule module)
+	private void BuildModule(LoweredModule module)
 	{
 		var isOptimized = _config.OptimizeMode == OptimizeMode.Debug ? 0 : 1;
 		var dwarfLang = LLVMDWARFSourceLanguage.LLVMDWARFSourceLanguageC99;
@@ -283,16 +356,15 @@ public sealed unsafe class CodeGenerator : IDisposable
 				LLVMDWARFEmissionKind.LLVMDWARFEmissionFull, 0, 1, 0, "", "");
 		}*/
 		
-		LLVMFunctionInfo? entryPoint = null;
 		foreach (var file in module.Files)
 		{
 			// Create and map external functions
 			foreach (var function in file.ExternalFunctions)
 			{
 				if (function.Origin is { } origin)
-					_externalLibraries.Add(origin);
+					current.ExternalLibraries.Add(origin);
 				
-				var info = CreateFunction(llvmModule, function);
+				var info = CreateFunction(current.Module, function);
 				var llvmFunction = info.FunctionValue;
 				llvmFunction.Linkage = LLVMLinkage.LLVMExternalLinkage;
 				
@@ -302,13 +374,13 @@ public sealed unsafe class CodeGenerator : IDisposable
 			}
 			
 			// Create and map imported functions
-			foreach (var function in file.ImportedFunctions)
+			foreach (var function in file.ImportedFunctions.Where(static function => !IsOpenGeneric(function)))
 				GetFunctionValue(function);
 			
 			// Create and map functions
-			foreach (var function in file.Functions)
+			foreach (var function in file.Functions.Where(static function => !IsOpenGeneric(function.Info)))
 			{
-				var info = CreateFunction(llvmModule, function.Info);
+				var info = CreateFunction(current.Module, function.Info);
 				var llvmFunction = info.FunctionValue;
 				
 				if (function.Info.Symbol.Visibility == Visibility.Public)
@@ -327,37 +399,34 @@ public sealed unsafe class CodeGenerator : IDisposable
 				}
 				
 				if (_assemblySymbol.EntryPoint?.Symbol == function.Info.Symbol)
-					entryPoint = info;
+					current.EntryPoint = info;
 			}
 		}
 		
 		foreach (var file in module.Files)
-			foreach (var global in file.Globals)
+		{
+			var globals = file.Globals.Where(static global =>
+				global.Symbol.ContainingType is not RecordSymbol { IsGenericDefinition: true });
+			
+			foreach (var global in globals)
 				DefineGlobal(global);
+		}
 		
 		foreach (var file in module.Files)
 		{
 			// Build function bodies
-			foreach (var function in file.Functions)
-				BuildFunction(llvmModule, llvmDiBuilder, function);
+			foreach (var function in file.Functions.Where(static function => !IsOpenGeneric(function.Info)))
+				BuildFunction(function, function.Info);
 		}
-		
-		if (entryPoint is { } entry)
-			BuildEntryPoint(llvmModule, entry);
-		
-		// Optimize the module
-		RunOptimizationPass(llvmModule);
-		
-		llvmDiBuilder.DIBuilderFinalize();
 	}
 	
 	private LLVMTypeRef CreateType(TypeSymbol type)
 	{
-		if (_typeMap.TryGetValue(type, out var existing))
+		if (current.Types.TryGetValue(type, out var existing))
 			return existing;
 		
 		var typeRef = LLVMContextRef.Global.CreateNamedStruct(type.Name);
-		_typeMap[type] = typeRef;
+		current.Types[type] = typeRef;
 		
 		var fieldTypes = _typePool
 			.GetMembers(type)
@@ -374,7 +443,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 	private LLVMTypeRef CreateEnumType(EnumSymbol enumType)
 	{
 		var typeRef = LLVMContextRef.Global.CreateNamedStruct(enumType.Name);
-		_typeMap[enumType] = typeRef;
+		current.Types[enumType] = typeRef;
 		
 		var tagType = MapTypeSymbol(_typePool.GetTagType(enumType));
 		var payloadTypes = enumType.Cases.Where(static c => c.Fields.Length > 0).Select(GetPayloadType).ToList();
@@ -394,19 +463,15 @@ public sealed unsafe class CodeGenerator : IDisposable
 	private LLVMTypeRef GetPayloadType(EnumCaseSymbol enumCase) => LLVMTypeRef.CreateStruct(
 		[..enumCase.Fields.Select(field => MapTypeSymbol(_typePool.GetTypeOfMember(field)))], false);
 	
-	private LLVMFunctionInfo CreateFunction(LLVMModuleRef llvmModule, FunctionInfo function)
+	private LLVMFunctionInfo CreateFunction(LLVMModuleRef llvmModule, FunctionInfo function, string? name = null)
 	{
-		if (_funMap.TryGetValue(function, out var existing))
+		if (current.Functions.TryGetValue(function, out var existing))
 			return existing;
 		
 		var signature = function.Signature;
 		var symbol = function.Symbol;
 		var returnType = MapTypeSymbol(signature.ReturnType);
-		
-		var paramTypes = signature.ParameterTypes;
-		var paramLlvmTypes = new LLVMTypeRef[paramTypes.Length];
-		for (var i = 0; i < paramTypes.Length; i++)
-			paramLlvmTypes[i] = MapParameterType(paramTypes[i], signature.GetMode(i));
+		var paramLlvmTypes = MapParameterTypes(function);
 		
 		CSignature? cSignature = symbol.IsExternal
 			? _cAbi.Classify(paramLlvmTypes, returnType)
@@ -415,7 +480,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 		var functionType = cSignature?.CreateFunctionType(signature.IsVariadic)
 		                   ?? LLVMTypeRef.CreateFunction(returnType, paramLlvmTypes, signature.IsVariadic);
 		
-		var name = function.MangledName ?? symbol.Name;
+		name ??= function.MangledName ?? symbol.Name;
 		var declared = symbol.Kind == FunctionKind.External ? llvmModule.GetNamedFunction(name) : default;
 		var functionValue = declared.Handle != IntPtr.Zero ? declared : llvmModule.AddFunction(name, functionType);
 		if (cSignature is { Return: { Kind: CPassKind.Indirect } sret })
@@ -423,7 +488,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 		
 		var functionInfo = new LLVMFunctionInfo(functionValue, functionType, returnType, cSignature);
 		
-		_funMap.Add(function, functionInfo);
+		current.Functions.Add(function, functionInfo);
 		return functionInfo;
 	}
 	
@@ -441,9 +506,9 @@ public sealed unsafe class CodeGenerator : IDisposable
 			: result);
 	}
 	
-	private void BuildFunction(LLVMModuleRef llvmModule, LLVMDIBuilderRef llvmDiBuilder, LoweredFunction function)
+	private void BuildFunction(LoweredFunction function, FunctionInfo info)
 	{
-		currentFunction = _funMap[function.Info];
+		currentFunction = current.Functions[info];
 		var functionValue = currentFunction.FunctionValue;
 		var allocaBlock = functionValue.AppendBasicBlock("allocas");
 		
@@ -453,10 +518,10 @@ public sealed unsafe class CodeGenerator : IDisposable
 			blockMap.Add(block, functionValue.AppendBasicBlock(block.Label));
 		
 		// Build blocks
-		using var builder = llvmModule.Context.CreateBuilder();
+		using var builder = current.Module.Context.CreateBuilder();
 		builder.PositionAtEnd(allocaBlock);
 		foreach (var local in function.Blocks.SelectMany(static b => b.Instructions).OfType<LocalVarInstruction>())
-			_varMap[new(local.Symbol, local.Symbol.Type)] =
+			current.Variables[new(local.Symbol, local.Symbol.Type)] =
 				BuildEntryAlloca(builder, MapTypeSymbol(local.Symbol.Type), local.Symbol.Name);
 		
 		for (var i = 0; i < function.Blocks.Count; i++)
@@ -480,7 +545,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 					var paramLlvmValue = functionValue.GetParam(firstParameter + (uint)p);
 					if (_typePool.PassesByPointer(paramType, function.Info.Signature.GetMode(p)))
 					{
-						_varMap[paramInfo] = paramLlvmValue;
+						current.Variables[paramInfo] = paramLlvmValue;
 						continue;
 					}
 					
@@ -490,7 +555,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 					
 					var paramPtr = BuildEntryAlloca(builder, paramLlvmType, paramSymbol.Name);
 					builder.BuildStore(paramLlvmValue, paramPtr);
-					_varMap[paramInfo] = paramPtr;
+					current.Variables[paramInfo] = paramPtr;
 				}
 			}
 			
@@ -525,7 +590,8 @@ public sealed unsafe class CodeGenerator : IDisposable
 			case LocalVarInstruction i:
 			{
 				if (i.Initializer is not UndefValue)
-					builder.BuildStore(EmitValue(i.Initializer, builder), _varMap[new(i.Symbol, i.Symbol.Type)]);
+					builder.BuildStore(EmitValue(i.Initializer, builder),
+						current.Variables[new(i.Symbol, i.Symbol.Type)]);
 				
 				break;
 			}
@@ -579,19 +645,23 @@ public sealed unsafe class CodeGenerator : IDisposable
 		EmitDropCall(value.Type, address, builder);
 	}
 	
-	private void EmitDropCall(TypeSymbol type, LLVMValueRef address, LLVMBuilderRef builder) =>
-		builder.BuildCall2(DropGlueType, GetDropGlue(type), [address]);
+	private void EmitDropCall(TypeSymbol type, LLVMValueRef address, LLVMBuilderRef builder)
+	{
+		type = Substitute(type);
+		if (_typePool.NeedsDrop(type))
+			builder.BuildCall2(DropGlueType, GetDropGlue(type), [address]);
+	}
 	
 	private LLVMValueRef GetDropGlue(TypeSymbol type)
 	{
-		if (_dropGlue.TryGetValue(type, out var glue))
+		if (current.DropGlue.TryGetValue(type, out var glue))
 			return glue;
 		
-		glue = currentModule.AddFunction($"drop${type.Name}", DropGlueType);
+		glue = current.Module.AddFunction($"drop${type.Name}", DropGlueType);
 		glue.Linkage = LLVMLinkage.LLVMInternalLinkage;
-		_dropGlue[type] = glue;
+		current.DropGlue[type] = glue;
 		
-		using var builder = currentModule.Context.CreateBuilder();
+		using var builder = current.Module.Context.CreateBuilder();
 		builder.PositionAtEnd(glue.AppendBasicBlock("entry"));
 		var address = glue.GetParam(0);
 		switch (type)
@@ -618,7 +688,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 		if (_typePool.GetDestructor(record) is { } destructor)
 		{
 			GetFunctionValue(destructor);
-			var function = _funMap[destructor];
+			var function = current.Functions[destructor];
 			builder.BuildCall2(function.FunctionType, function.FunctionValue, [address]);
 		}
 		
@@ -750,7 +820,8 @@ public sealed unsafe class CodeGenerator : IDisposable
 	{
 		ConstantValue v => EmitConstant(v),
 		ZeroValue or DefaultValue => EmitZero(value),
-		VariableValue v => builder.BuildLoad2(MapTypeSymbol(v.Type), _varMap[v.Variable], v.Variable.Symbol.Name),
+		VariableValue v => builder.BuildLoad2(MapTypeSymbol(v.Type), current.Variables[v.Variable],
+			v.Variable.Symbol.Name),
 		GlobalValue v => EmitGlobalLoad(v.Global, builder),
 		MoveValue v => EmitValue(v.Place, builder),
 		BinOpValue v => EmitBinaryOp(v, builder),
@@ -768,12 +839,21 @@ public sealed unsafe class CodeGenerator : IDisposable
 		EnumValue v => EmitEnumValue(v, builder),
 		EnumTagValue v => EmitEnumTag(v, builder),
 		EnumPayloadValue v => EmitEnumPayload(v, builder),
+		SizeOfValue v => EmitSizeOf(v),
 		_ => throw new InvalidOperationException()
 	};
 	
+	private LLVMValueRef EmitSizeOf(SizeOfValue v)
+	{
+		var bits = _typePool.SizeTable.GetSize(Substitute(v.Target)).CountBits(_pointerSize * 8);
+		return EmitSizeConstant(new BigInteger((bits + 7) / 8), true);
+	}
+	
 	private LLVMValueRef EmitCall(CallValue v, LLVMBuilderRef builder)
 	{
-		var function = _funMap[v.Function];
+		var info = SubstituteFunction(v.Function);
+		GetFunctionValue(info);
+		var function = current.Functions[info];
 		var args = v.Arguments.Select(a => EmitValue(a, builder)).ToList();
 		if (function.CSignature is not { } signature)
 			return builder.BuildCall2(function.FunctionType, function.FunctionValue, args.ToArray());
@@ -783,13 +863,16 @@ public sealed unsafe class CodeGenerator : IDisposable
 	
 	private LLVMValueRef EmitIndirectCall(IndirectCallValue v, LLVMBuilderRef builder)
 	{
+		var functionType = (FunctionType)Substitute(v.FunctionType);
 		var target = EmitValue(v.Target, builder);
-		var args = v.Arguments.Select(a => EmitValue(a, builder)).ToList();
-		var returnType = MapTypeSymbol(v.FunctionType.ReturnType);
-		if (!v.FunctionType.IsExternal)
+		var args = v.Arguments.Select((a, i) => EmitIndirectArgument(a, v.FunctionType, functionType, i, builder))
+			.ToList();
+		
+		var returnType = MapTypeSymbol(functionType.ReturnType);
+		if (!functionType.IsExternal)
 		{
-			var parameterTypes = v.FunctionType.ParameterTypes
-				.Select((type, i) => MapParameterType(type, v.FunctionType.ParameterModes[i]));
+			var parameterTypes = functionType.ParameterTypes
+				.Select((type, i) => MapParameterType(type, functionType.ParameterModes[i]));
 			
 			var codeType = LLVMTypeRef.CreateFunction(returnType, [OpaquePointer, ..parameterTypes]);
 			var code = builder.BuildExtractValue(target, 0, "code");
@@ -797,8 +880,22 @@ public sealed unsafe class CodeGenerator : IDisposable
 			return builder.BuildCall2(codeType, code, [environment, ..args]);
 		}
 		
-		var signature = _cAbi.Classify(v.FunctionType.ParameterTypes.Select(MapTypeSymbol), returnType);
+		var signature = _cAbi.Classify(functionType.ParameterTypes.Select(MapTypeSymbol), returnType);
 		return EmitCCall(signature, signature.CreateFunctionType(false), target, returnType, args, builder);
+	}
+	
+	private LLVMValueRef EmitIndirectArgument(Value argument, FunctionType declared, FunctionType actual, int index,
+		LLVMBuilderRef builder)
+	{
+		var value = EmitValue(argument, builder);
+		if (index >= declared.ParameterTypes.Length)
+			return value;
+		
+		var mode = declared.ParameterModes[index];
+		var type = actual.ParameterTypes[index];
+		return _typePool.PassesByPointer(declared.ParameterTypes[index], mode) && !_typePool.PassesByPointer(type, mode)
+			? builder.BuildLoad2(MapTypeSymbol(type), value, "argument")
+			: value;
 	}
 	
 	private LLVMValueRef EmitCCall(CSignature signature, LLVMTypeRef functionType, LLVMValueRef callee,
@@ -932,7 +1029,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 		if (v.PointerType.BaseType == NativeSymbols.Void)
 			return byteDiff;
 		
-		var elementBits = _typePool.SizeTable.GetSize(v.PointerType.BaseType).CountBits(_pointerSize * 8);
+		var elementBits = _typePool.SizeTable.GetSize(Substitute(v.PointerType.BaseType)).CountBits(_pointerSize * 8);
 		var elementBytes = (elementBits + 7) / 8;
 		
 		if (elementBytes == 0)
@@ -1167,11 +1264,12 @@ public sealed unsafe class CodeGenerator : IDisposable
 	
 	private LLVMValueRef GetIntrinsic(string name, LLVMTypeRef functionType)
 	{
-		var function = currentModule.GetNamedFunction(name);
-		return function.Handle == IntPtr.Zero ? currentModule.AddFunction(name, functionType) : function;
+		var function = current.Module.GetNamedFunction(name);
+		return function.Handle == IntPtr.Zero ? current.Module.AddFunction(name, functionType) : function;
 	}
 	
-	private uint CountBits(TypeSymbol type) => _typePool.SizeTable.GetSize(type).CountBits(_pointerSize * 8);
+	private uint CountBits(TypeSymbol type) =>
+		_typePool.SizeTable.GetSize(Substitute(type)).CountBits(_pointerSize * 8);
 	
 	private LLVMValueRef EmitBinaryOp(BinOpValue v, LLVMBuilderRef builder)
 	{
@@ -1324,12 +1422,13 @@ public sealed unsafe class CodeGenerator : IDisposable
 	
 	private LLVMValueRef GetPanicFunction()
 	{
-		if (panicFunction.Handle != IntPtr.Zero)
-			return panicFunction;
+		if (current.PanicFunction.Handle != IntPtr.Zero)
+			return current.PanicFunction;
 		
-		panicFunction = currentModule.AddFunction("panic", PanicType);
+		var panicFunction = current.Module.AddFunction("panic", PanicType);
 		panicFunction.Linkage = LLVMLinkage.LLVMInternalLinkage;
-		using var builder = currentModule.Context.CreateBuilder();
+		current.PanicFunction = panicFunction;
+		using var builder = current.Module.Context.CreateBuilder();
 		builder.PositionAtEnd(panicFunction.AppendBasicBlock("entry"));
 		
 		var flushType = LLVMTypeRef.CreateFunction(LLVMTypeRef.Int32, [OpaquePointer]);
@@ -1351,11 +1450,11 @@ public sealed unsafe class CodeGenerator : IDisposable
 	
 	private LLVMValueRef GetCFunction(string name, LLVMTypeRef type)
 	{
-		var function = currentModule.GetNamedFunction(name);
+		var function = current.Module.GetNamedFunction(name);
 		if (function.Handle != IntPtr.Zero)
 			return function;
 		
-		function = currentModule.AddFunction(name, type);
+		function = current.Module.AddFunction(name, type);
 		function.Linkage = LLVMLinkage.LLVMExternalLinkage;
 		return function;
 	}
@@ -1493,7 +1592,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 	{
 		var targetPtr = EmitAddress(v.Target, builder);
 		var targetType = MapTypeSymbol(v.Target.Type);
-		var fieldIndex = (uint)_typePool.GetFieldIndex(v.Target.Type, v.Member);
+		var fieldIndex = (uint)_typePool.GetFieldIndex(Substitute(v.Target.Type), v.Member);
 		return builder.BuildStructGEP2(targetType, targetPtr, fieldIndex, v.Member.Name + ".addr");
 	}
 	
@@ -1523,7 +1622,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 		// TODO Fields could have been reordered to pack them
 		// TODO Also, GetFieldIndex is O(n), would probably want to cache the final indices in another dictionary
 		var target = EmitValue(v.Target, builder);
-		var fieldIndex = (uint)_typePool.GetFieldIndex(v.Target.Type, v.Member);
+		var fieldIndex = (uint)_typePool.GetFieldIndex(Substitute(v.Target.Type), v.Member);
 		return builder.BuildExtractValue(target, fieldIndex, v.Member.Name);
 	}
 	
@@ -1555,7 +1654,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 	
 	private LLVMValueRef EmitAddress(Value value, LLVMBuilderRef builder) => value switch
 	{
-		VariableValue v => _varMap[v.Variable],
+		VariableValue v => current.Variables[v.Variable],
 		GlobalValue v => GetGlobal(v.Global),
 		IndexerValue v => EmitIndexerAddress(v, builder).Ptr,
 		AccessValue v => EmitAccessAddress(v, builder),
@@ -1659,7 +1758,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 			? LLVMValueRef.CreateConstInt(LLVMTypeRef.Int8, flag.Value ? 1uL : 0uL)
 			: EmitStaticConstant(info.Value!);
 		
-		var global = currentModule.AddGlobal(initializer.TypeOf, info.MangledName);
+		var global = current.Module.AddGlobal(initializer.TypeOf, info.MangledName);
 		global.Initializer = initializer;
 		
 		global.IsGlobalConstant = !info.Symbol.IsMutable;
@@ -1677,15 +1776,19 @@ public sealed unsafe class CodeGenerator : IDisposable
 			global.Visibility = LLVMVisibility.LLVMHiddenVisibility;
 		}
 		
-		_globalMap[info.Symbol] = global;
+		current.Globals[info.Symbol] = global;
 	}
 	
 	private LLVMValueRef GetGlobal(GlobalInfo info)
 	{
-		if (_globalMap.TryGetValue(info.Symbol, out var existing))
+		info = SubstituteGlobal(info);
+		if (current.Globals.TryGetValue(info.Symbol, out var existing))
 			return existing;
 		
-		var global = currentModule.AddGlobal(GetGlobalStorageType(info), info.MangledName);
+		if (info.Symbol.ContainingType is RecordSymbol { IsGenericInstance: true } instance)
+			return GetInstanceGlobal(info, instance);
+		
+		var global = current.Module.AddGlobal(GetGlobalStorageType(info), info.MangledName);
 		global.IsGlobalConstant = !info.Symbol.IsMutable;
 		if (!_assemblySymbol.SignatureTable.Globals.ContainsKey(info.Symbol))
 		{
@@ -1697,8 +1800,39 @@ public sealed unsafe class CodeGenerator : IDisposable
 			global.Visibility = LLVMVisibility.LLVMHiddenVisibility;
 		}
 		
-		_globalMap[info.Symbol] = global;
+		current.Globals[info.Symbol] = global;
 		return global;
+	}
+	
+	private LLVMValueRef GetInstanceGlobal(GlobalInfo info, RecordSymbol instance)
+	{
+		var owner = _moduleStates.GetValueOrDefault(info.File.Module);
+		if (owner == current)
+		{
+			var outer = substitution;
+			substitution = TypePool.CreateMap(instance.Definition.TypeParameters, instance.TypeArguments);
+			DefineGlobal(info);
+			substitution = outer;
+			return current.Globals[info.Symbol];
+		}
+		
+		var global = current.Module.AddGlobal(GetGlobalStorageType(info), info.MangledName);
+		global.IsGlobalConstant = !info.Symbol.IsMutable;
+		global.Visibility = LLVMVisibility.LLVMHiddenVisibility;
+		current.Globals[info.Symbol] = global;
+		if (owner is not null && _requestedGlobals.Add(info.Symbol))
+			_pendingGlobals.Enqueue((owner, info));
+		
+		return global;
+	}
+	
+	private GlobalInfo SubstituteGlobal(GlobalInfo info)
+	{
+		if (info.Symbol.ContainingType is not RecordSymbol owner || !TypePool.ContainsTypeParameters(owner))
+			return info;
+		
+		var instance = (RecordSymbol)Substitute(owner);
+		return _typePool.InstantiateGlobal(instance.GetStaticField(info.Symbol.Name)!, _modules);
 	}
 	
 	private LLVMTypeRef GetGlobalStorageType(GlobalInfo info) =>
@@ -1706,6 +1840,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 	
 	private LLVMValueRef EmitGlobalLoad(GlobalInfo info, LLVMBuilderRef builder)
 	{
+		info = SubstituteGlobal(info);
 		var storageType = GetGlobalStorageType(info);
 		var load = builder.BuildLoad2(storageType, GetGlobal(info), info.Symbol.Name);
 		if (!info.Symbol.IsMutable)
@@ -1718,6 +1853,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 	
 	private void EmitGlobalStore(GlobalInfo info, LLVMValueRef value, LLVMBuilderRef builder)
 	{
+		info = SubstituteGlobal(info);
 		var storageType = GetGlobalStorageType(info);
 		if (info.Type == NativeSymbols.Bool)
 			value = builder.BuildZExt(value, storageType);
@@ -1732,6 +1868,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 	
 	private LLVMValueRef EmitFunctionReference(FunctionInfo function, TypeSymbol type)
 	{
+		function = SubstituteFunction(function);
 		if (type is FunctionType { IsExternal: false })
 		{
 			var environment = LLVMValueRef.CreateConstNull(OpaquePointer);
@@ -1743,25 +1880,38 @@ public sealed unsafe class CodeGenerator : IDisposable
 	
 	private LLVMValueRef GetClosureThunk(FunctionInfo function)
 	{
-		var name = $"{function.MangledName ?? function.Symbol.Name}$fun";
-		var existing = currentModule.GetNamedFunction(name);
+		GetFunctionValue(function);
+		var target = current.Functions[function];
+		var name = $"{target.FunctionValue.Name}$fun";
+		var existing = current.Module.GetNamedFunction(name);
 		if (existing.Handle != IntPtr.Zero)
 			return existing;
 		
-		GetFunctionValue(function);
-		var target = _funMap[function];
-		var declared = function.Signature;
-		var parameterTypes = declared.ParameterTypes
-			.Select((type, i) => MapParameterType(type, declared.GetMode(i)))
+		var actual = function.Signature;
+		var declared = function.DeclaredSignature;
+		var parameterTypes = actual.ParameterTypes
+			.Select((type, i) => MapParameterType(type, actual.GetMode(i)))
 			.ToArray();
 		
 		var thunkType = LLVMTypeRef.CreateFunction(target.ReturnType, [OpaquePointer, ..parameterTypes]);
-		var thunk = currentModule.AddFunction(name, thunkType);
+		var thunk = current.Module.AddFunction(name, thunkType);
 		thunk.Linkage = LLVMLinkage.LLVMInternalLinkage;
 		
-		using var builder = currentModule.Context.CreateBuilder();
+		using var builder = current.Module.Context.CreateBuilder();
 		builder.PositionAtEnd(thunk.AppendBasicBlock("entry"));
-		var args = parameterTypes.Select((_, i) => thunk.GetParam((uint)i + 1)).ToList();
+		var args = parameterTypes.Select((_, i) =>
+		{
+			var value = thunk.GetParam((uint)i + 1);
+			var mode = declared.GetMode(i);
+			if (!_typePool.PassesByPointer(declared.ParameterTypes[i], mode) ||
+			    _typePool.PassesByPointer(actual.ParameterTypes[i], mode))
+				return value;
+			
+			var slot = BuildEntryAlloca(builder, MapTypeSymbol(actual.ParameterTypes[i]), "argument");
+			builder.BuildStore(value, slot);
+			return slot;
+		}).ToList();
+		
 		var result = target.CSignature is { } signature
 			? EmitCCall(signature, target.FunctionType, target.FunctionValue, target.ReturnType, args, builder)
 			: builder.BuildCall2(target.FunctionType, target.FunctionValue, args.ToArray());
@@ -1776,23 +1926,23 @@ public sealed unsafe class CodeGenerator : IDisposable
 	
 	private LLVMValueRef GetExternalThunk(FunctionInfo function)
 	{
-		var name = $"{function.MangledName}$ext";
-		var existing = currentModule.GetNamedFunction(name);
+		GetFunctionValue(function);
+		var target = current.Functions[function];
+		var name = $"{target.FunctionValue.Name}$ext";
+		var existing = current.Module.GetNamedFunction(name);
 		if (existing.Handle != IntPtr.Zero)
 			return existing;
 		
-		GetFunctionValue(function);
-		var target = _funMap[function];
 		var parameterTypes = function.Signature.ParameterTypes.Select(MapTypeSymbol).ToArray();
 		var signature = _cAbi.Classify(parameterTypes, target.ReturnType);
-		var thunk = currentModule.AddFunction(name, signature.CreateFunctionType(false));
+		var thunk = current.Module.AddFunction(name, signature.CreateFunctionType(false));
 		thunk.Linkage = LLVMLinkage.LLVMInternalLinkage;
 		
 		var isIndirect = signature.Return.Kind == CPassKind.Indirect;
 		if (isIndirect)
 			AddSretAttribute(thunk, signature.Return.Type, false);
 		
-		using var builder = currentModule.Context.CreateBuilder();
+		using var builder = current.Module.Context.CreateBuilder();
 		builder.PositionAtEnd(thunk.AppendBasicBlock("entry"));
 		var first = isIndirect ? 1u : 0u;
 		var args = parameterTypes
@@ -1820,14 +1970,18 @@ public sealed unsafe class CodeGenerator : IDisposable
 	
 	private LLVMValueRef GetFunctionValue(FunctionInfo function)
 	{
-		if (_funMap.TryGetValue(function, out var existing))
+		function = SubstituteFunction(function);
+		if (current.Functions.TryGetValue(function, out var existing))
 			return existing.FunctionValue;
 		
-		var value = CreateFunction(currentModule, function).FunctionValue;
+		if (!function.TypeArguments.IsDefaultOrEmpty)
+			return Instantiate(function);
+		
+		var value = CreateFunction(current.Module, function).FunctionValue;
 		if (function.Symbol.Kind == FunctionKind.External)
 		{
 			if (function.Origin is { } origin)
-				_externalLibraries.Add(origin);
+				current.ExternalLibraries.Add(origin);
 			
 			value.Linkage = LLVMLinkage.LLVMExternalLinkage;
 		}
@@ -1840,6 +1994,25 @@ public sealed unsafe class CodeGenerator : IDisposable
 		{
 			value.Visibility = LLVMVisibility.LLVMHiddenVisibility;
 		}
+		
+		return value;
+	}
+	
+	private LLVMValueRef Instantiate(FunctionInfo function)
+	{
+		var definition = _typePool.GetGenericDefinition(function.Symbol);
+		var name = Mangling.MangleInstantiation(definition.MangledName ?? function.Symbol.Name, function.Signature,
+			function.TypeArguments, _modules);
+		
+		var value = CreateFunction(current.Module, function, name).FunctionValue;
+		var owner = _moduleStates.GetValueOrDefault(function.File.Module);
+		if (owner == current && IsObjectLocal(function.Symbol))
+			value.Linkage = LLVMLinkage.LLVMInternalLinkage;
+		else
+			value.Visibility = LLVMVisibility.LLVMHiddenVisibility;
+		
+		if (owner is not null && _requestedInstantiations.Add(name))
+			_pendingInstantiations.Enqueue((owner, function));
 		
 		return value;
 	}
@@ -1916,14 +2089,14 @@ public sealed unsafe class CodeGenerator : IDisposable
 	
 	private LLVMValueRef GetOrCreateStringGlobal(byte[] bytes)
 	{
-		if (_stringPool.TryGetValue(bytes, out var existing))
+		if (current.Strings.TryGetValue(bytes, out var existing))
 			return existing;
 		
 		var byteType = MapTypeSymbol(NativeSymbols.UInt8);
 		var byteValues = bytes.Select(b => LLVMValueRef.CreateConstInt(byteType, b));
 		var arrayValue = LLVMValueRef.CreateConstArray(byteType, [..byteValues]);
 		
-		var global = currentModule.AddGlobal(arrayValue.TypeOf, string.Empty);
+		var global = current.Module.AddGlobal(arrayValue.TypeOf, string.Empty);
 		global.Initializer = arrayValue;
 		global.IsGlobalConstant = true;
 		global.Linkage = LLVMLinkage.LLVMLinkerPrivateLinkage;
@@ -1932,7 +2105,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 		var ptr = LLVMValueRef.CreateConstInBoundsGEP2(byteType, global,
 			[LLVMValueRef.CreateConstInt(LLVMTypeRef.Int32, 0)]);
 		
-		_stringPool[bytes] = ptr;
+		current.Strings[bytes] = ptr;
 		return ptr;
 	}
 	

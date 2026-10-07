@@ -359,7 +359,13 @@ public sealed class AstPrinter : ISyntaxNodeVisitor
 	public void Visit(RecordNode node)
 	{
 		StartLine();
-		_sb.Append("RecordNode '").Append(node.Identifier.AsSpan()).Append('\'');
+		_sb.Append("RecordNode '").Append(node.Identifier.AsSpan());
+		if (!node.TypeParameters.IsEmpty)
+			_sb.Append('[').AppendJoin(", ", node.TypeParameters.Select(static p => p.Constraint is { } constraint
+				? $"{p.Identifier.Text}: {constraint.Text}"
+				: p.Identifier.Text)).Append(']');
+		
+		_sb.Append('\'');
 		
 		// TODO Modifiers
 		

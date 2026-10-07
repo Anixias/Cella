@@ -260,14 +260,19 @@ internal static class Program
 		// Phase 7: Code generation
 		string outputPath;
 		{
-			var codeGenerator = new CodeGenerator(assemblySymbol, typePool, codeGenConfig);
+			var genericFunctions = lowerer.Modules
+				.SelectMany(static module => module.Files)
+				.SelectMany(static file => file.Functions)
+				.Where(static function => !function.Info.Symbol.TypeParameters.IsEmpty);
+			
+			var codeGenerator = new CodeGenerator(assemblySymbol, typePool, codeGenConfig, signatureCollector.Modules,
+				genericFunctions);
 			
 			var externalLibraries = new HashSet<string>();
 			var objectFiles = new List<string>();
 			var codeGenFailed = false;
-			foreach (var module in lowerer.Modules)
+			foreach (var result in codeGenerator.Generate(lowerer.Modules))
 			{
-				var result = codeGenerator.Generate(module);
 				if (!result.IsSuccess)
 				{
 					Console.WriteLine($"Error: {result.ErrorMessage}");

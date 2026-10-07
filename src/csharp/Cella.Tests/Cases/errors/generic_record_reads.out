@@ -1,0 +1,9 @@
+
+====== generic_record_reads.ce ======
+
+Error at line 7, column 25
+6 │ 
+7 │ read: fun(self) -> T = *self.pointer
+                           ╘═══════════╛ Cannot move 'T' values out of a pointer implicitly
+
+[compilation failed]

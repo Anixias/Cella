@@ -1,0 +1,9 @@
+
+====== generic_record_operations.ce ======
+
+Error at line 7, column 24
+6 │ 
+7 │ add: fun(self) -> T = self.value + 1
+                          ╘════════════╛ No operation defined for '+' between 'T' and 'integer literal'
+
+[compilation failed]

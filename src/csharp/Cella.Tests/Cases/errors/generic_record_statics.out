@@ -1,0 +1,9 @@
+
+====== generic_record_statics.ce ======
+
+Error at line 6, column 20
+5 │ value: T
+6 │ size: val usize = sizeOf(T)
+                      ╘═══════╛ The initial value of 'size' must be a constant
+
+[compilation failed]

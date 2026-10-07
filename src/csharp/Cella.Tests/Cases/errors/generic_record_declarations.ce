@@ -1,0 +1,36 @@
+mod test
+
+Node: pvt rec
+{
+	value: i32
+}
+
+box[T]: pub rec
+{
+	value: T
+}
+
+twice[T, T]: rec
+{
+	value: T
+}
+
+wrap[T]: rec
+{
+	inner: wrap[i32]
+}
+
+holder: rec
+{
+	pair: duo[imm[i32], i32]
+}
+
+duo[A, B]: rec
+{
+	first: A
+	second: B
+}
+
+take: pub fun(value: box[Node]) -> i32 = 0
+
+main: fun -> i32 = 0

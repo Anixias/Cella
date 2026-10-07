@@ -136,6 +136,10 @@ public sealed class SignatureCollector
 		if (_globalTypes.TryGetValue(global, out var type))
 			return type;
 		
+		if (global.ContainingType is RecordSymbol { IsGenericInstance: true } instance)
+			return _typePool.Substitute(GetGlobalType(instance.Definition.GetStaticField(global.Name)!),
+				TypePool.CreateMap(instance.Definition.TypeParameters, instance.TypeArguments));
+		
 		if (!_declarations.TryGetValue(global, out var declaration))
 			return _dependencyTable.Globals[global].Type;
 		
@@ -166,6 +170,11 @@ public sealed class SignatureCollector
 		if (_builder.Globals.TryGetValue(global, out var info))
 			return info;
 		
+		if (global.ContainingType is RecordSymbol { IsGenericInstance: true } instance)
+			return GetGlobalInfo(instance.Definition.GetStaticField(global.Name)!) is null
+				? null
+				: _typePool.InstantiateGlobal(global, Modules);
+		
 		if (!_declarations.TryGetValue(global, out var declaration))
 			return _dependencyTable.Globals[global];
 		
@@ -181,6 +190,9 @@ public sealed class SignatureCollector
 		
 		info = new GlobalInfo(mangledName, global, type, initializer, value, context.File);
 		_builder.Globals[global] = info;
+		if (global.ContainingType is RecordSymbol { IsGenericDefinition: true })
+			_typePool.RegisterGenericGlobal(info);
+		
 		Exit();
 		return info;
 	}
@@ -201,7 +213,8 @@ public sealed class SignatureCollector
 			TypePool = _typePool,
 			Diagnostics = Diagnostics,
 			ExtSignatureTypes = _extSignatureTypes,
-			EvaluateConstant = EvaluateConstant
+			EvaluateConstant = EvaluateConstant,
+			GenericTypes = []
 		};
 		
 		var imports = CollectImports(node, context);
@@ -275,6 +288,10 @@ public sealed class SignatureCollector
 		Diagnostics.AddRange(DiagnosticReporter.ReportDuplicates(destructors,
 			name => $"'{name}' is declared more than once in '{record.Name}'"));
 		
+		Diagnostics.AddRange(DiagnosticReporter.ReportDuplicates(node.TypeParameters.Select(static p => p.Identifier),
+			static name => $"Type parameter '{name}' is declared more than once"));
+		
+		var storedTypes = new List<(ITypeNode Node, TypeSymbol Type)>();
 		foreach (var member in node.Members)
 		{
 			var symbol = _symbolTable.DeclarationSymbols[member];
@@ -289,10 +306,7 @@ public sealed class SignatureCollector
 					ReportHiddenType(field.Type, fieldType, GetEffectiveVisibility(fieldSymbol.Visibility, record),
 						field.Identifier.Text);
 					
-					if (!node.IsRef && _typePool.HoldsBorrows(fieldType))
-						Diagnostics.Add(ReportStoredBorrow(field.Type, node.Identifier, node.Modifiers, "records",
-							"rec"));
-					
+					storedTypes.Add((field.Type, fieldType));
 					break;
 				
 				case ConstructorNode constructor:
@@ -327,6 +341,12 @@ public sealed class SignatureCollector
 		_typePool.RegisterRecord(record);
 		_completedTypes.Add(record);
 		Exit();
+		
+		foreach (var (typeNode, type) in storedTypes)
+		{
+			if (!node.IsRef && !TypePool.ContainsTypeParameters(type) && _typePool.HoldsBorrows(type))
+				Diagnostics.Add(ReportStoredBorrow(typeNode, node.Identifier, node.Modifiers, "records", "rec"));
+		}
 		
 		foreach (var field in node.Members.OfType<GlobalNode>())
 			Complete(_symbolTable.DeclarationSymbols[field]);
@@ -570,6 +590,11 @@ public sealed class SignatureCollector
 		FunctionType function => function.ParameterTypes.Append(function.ReturnType)
 			.Select(part => FindHiddenType(part, visibility))
 			.FirstOrDefault(static hidden => hidden is not null),
+		RecordSymbol { IsGenericInstance: true } instance => FindHiddenType(instance.Definition, visibility) ??
+		                                                     instance.TypeArguments
+			                                                     .Select(argument =>
+				                                                     FindHiddenType(argument, visibility))
+			                                                     .FirstOrDefault(static hidden => hidden is not null),
 		IExportable exportable when exportable.Visibility < visibility => type,
 		_ => null
 	};
@@ -1163,7 +1188,7 @@ public sealed class SignatureCollector
 			if (GetStoredType(current) is not { } stored || !visited.Add(stored))
 				continue;
 			
-			if (stored == target)
+			if (stored.OriginalDefinition == target)
 				return true;
 			
 			foreach (var (_, fieldType) in GetStoredFields(stored))

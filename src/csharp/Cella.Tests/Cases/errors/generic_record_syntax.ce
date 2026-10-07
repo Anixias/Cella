@@ -1,0 +1,29 @@
+mod test
+
+empty[]: rec
+{
+	value: i32
+}
+
+open[T: rec
+{
+	value: T
+}
+
+constrained[T: copy]: rec
+{
+	value: T
+}
+
+swap[T]: fun(mut a: T, mut b: T)
+{
+}
+
+maybe[T]: enum
+{
+	none
+}
+
+limit[T]: val i32 = 3
+
+main: fun -> i32 = 0

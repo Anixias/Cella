@@ -1,4 +1,5 @@
-﻿using Cella.Core.Binding.Constants;
+﻿using System.Collections.Immutable;
+using Cella.Core.Binding.Constants;
 using Cella.Core.Binding.Nodes;
 using Cella.Core.Symbols;
 
@@ -12,7 +13,12 @@ public readonly record struct FunctionInfo
 	Scope? Scope,
 	string? Origin,
 	FileSymbol File
-);
+)
+{
+	public ImmutableArray<TypeSymbol> TypeArguments { get; init; } = [];
+	public FunctionSignature? Declared { get; init; }
+	public FunctionSignature DeclaredSignature => Declared ?? Signature;
+}
 
 public readonly record struct VariableInfo(VariableSymbol Symbol, TypeSymbol Type);
 

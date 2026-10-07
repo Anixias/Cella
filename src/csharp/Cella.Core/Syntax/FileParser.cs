@@ -18,6 +18,9 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 			TokenType.KeywordSet, TokenType.KeywordNew, TokenType.KeywordDrop, TokenType.KeywordOp,
 			TokenType.KeywordReq, TokenType.KeywordGet, TokenType.KeywordProp);
 	
+	private static readonly Dictionary<string, TokenType> _constraintKeywords =
+		BuildContextualKeywords(TokenType.KeywordNoref);
+	
 	private static readonly HashSet<TokenType> _topLevelSyncTypes = [TokenType.OpSemicolon, TokenType.EndOfFile];
 	
 	private static readonly HashSet<TokenType> _topLevelKeywords =
@@ -191,7 +194,12 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 		if (!Match(ref index, out var identifier, _topLevelContextualKeywords, TokenType.Identifier))
 			return false;
 		
-		// TODO Type parameters
+		if (ParseTypeParameters(ref index) is not { } typeParameters)
+		{
+			ResyncTopLevel(ref index, insideBlock);
+			return true;
+		}
+		
 		var colonIndex = index;
 		if (!Consume(ref index, _topLevelSyncTypes, TokenType.OpColon))
 		{
@@ -206,7 +214,7 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 		if (Match(ref index, _topLevelContextualKeywords, TokenType.KeywordRec))
 		{
 			var record = ParseDeclaration(ref index, identifier, "record",
-				(ref i) => ParseRecord(ref i, identifier, modifiers, isRef));
+				(ref i) => ParseRecord(ref i, identifier, modifiers, isRef, typeParameters));
 			
 			if (record is null)
 				SkipDeclaration(ref index, declarationStart, insideBlock);
@@ -218,6 +226,9 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 		
 		var kindIndex = index;
 		var isExternal = !isRef && Match(ref index, _topLevelContextualKeywords, TokenType.KeywordExt);
+		if (typeParameters is [var first, ..] && DescribeTypeParameterError(index) is { } typeParameterError)
+			Report(first.SourceLocation, typeParameterError);
+		
 		if (Match(ref index, _topLevelContextualKeywords, TokenType.KeywordEnum))
 		{
 			var enumNode = ParseDeclaration(ref index, identifier, "enum",
@@ -277,6 +288,53 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 		
 		ResyncTopLevel(ref index, insideBlock);
 		return true;
+	}
+	
+	private List<TypeParameterNode>? ParseTypeParameters(ref int index)
+	{
+		var parameters = new List<TypeParameterNode>();
+		if (!IsOnSameLine(index) || !Match(ref index, out var openBracket, TokenType.OpOpenBracket))
+			return parameters;
+		
+		do
+		{
+			if (!Match(ref index, out var name, TokenType.Identifier))
+			{
+				ReportExpected(index, "a type parameter name");
+				return null;
+			}
+			
+			Token? constraint = null;
+			if (Match(ref index, TokenType.OpColon))
+			{
+				if (!Match(ref index, out var keyword, _constraintKeywords, TokenType.KeywordNoref))
+				{
+					ReportExpected(index, "'noref'");
+					return null;
+				}
+				
+				constraint = keyword;
+			}
+			
+			parameters.Add(new(name, constraint));
+		} while (Match(ref index, TokenType.OpComma));
+		
+		if (Match(ref index, TokenType.OpCloseBracket))
+			return parameters;
+		
+		ReportExpected(index, "',' or ']'", openBracket);
+		return null;
+	}
+	
+	private string? DescribeTypeParameterError(int index)
+	{
+		if (Match(ref index, _topLevelContextualKeywords, TokenType.KeywordEnum))
+			return "Generic enums are not supported yet";
+		
+		if (Match(ref index, _topLevelContextualKeywords, TokenType.KeywordFun))
+			return "Generic functions are not supported yet";
+		
+		return Match(ref index, _bindingKeywords) ? "Cannot declare type parameters on globals" : null;
 	}
 	
 	private void ParseTopLevelBlock(ref int index, Token openBrace, Token block, List<IDeclarationNode> declarations)
@@ -781,20 +839,22 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 		return new(mode, identifier, type, defaultValue);
 	}
 	
-	private RecordNode? ParseRecord(ref int index, Token identifier, DeclarationModifiers modifiers, bool isRef)
+	private RecordNode? ParseRecord(ref int index, Token identifier, DeclarationModifiers modifiers, bool isRef,
+		List<TypeParameterNode> typeParameters)
 	{
 		// When this is called, the identifier and rec keyword are already consumed
 		// Caller is expected to resync in case of errors
 		
-		// Empty record
-		if (!Match(ref index, out var openBrace, TokenType.OpOpenBrace))
-			return new(identifier, modifiers.Tokens, isRef, []) { Visibility = modifiers.Visibility };
-		
 		var members = new List<IDeclarationNode>();
-		if (!ParseMembers(ref index, openBrace, null, members))
+		if (Match(ref index, out var openBrace, TokenType.OpOpenBrace) &&
+		    !ParseMembers(ref index, openBrace, null, members))
 			return null;
 		
-		return new(identifier, modifiers.Tokens, isRef, members) { Visibility = modifiers.Visibility };
+		return new(identifier, modifiers.Tokens, isRef, members)
+		{
+			Visibility = modifiers.Visibility,
+			TypeParameters = [..typeParameters]
+		};
 	}
 	
 	private bool ParseMembers(ref int index, Token openBrace, Token? block, List<IDeclarationNode> members)
@@ -1535,6 +1595,7 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 	{
 		var keywordIndex = index;
 		return Peek(index + 1, TokenType.OpColon) ||
+		       Peek(index + 1, TokenType.OpOpenBracket) && IsOnSameLine(index + 1) ||
 		       Match(ref keywordIndex, _topLevelContextualKeywords, _topLevelKeywords);
 	}
 	

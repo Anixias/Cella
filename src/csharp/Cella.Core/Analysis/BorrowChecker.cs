@@ -361,10 +361,12 @@ public sealed class BorrowChecker(TypePool typePool, DiagnosticList diagnostics)
 	
 	private List<Place> Written(WriteEvent write, BorrowState state) => write.Value switch
 	{
-		CallValue { Function: { Symbol.Kind: FunctionKind.Constructor, Signature: var signature } } constructor =>
-			typePool.HoldsBorrows(signature.GetDeclaredType(0))
-				? CallSources(constructor.Function, [..constructor.Arguments.Skip(1)], 1, state)
-				: [],
+		CallValue
+		{
+			Function: { Symbol.Kind: FunctionKind.Constructor, DeclaredSignature: var signature }
+		} constructor => typePool.HoldsBorrows(signature.GetDeclaredType(0))
+			? CallSources(constructor.Function, [..constructor.Arguments.Skip(1)], 1, state)
+			: [],
 		var value => Stored(value, state)
 	};
 	
@@ -442,7 +444,7 @@ public sealed class BorrowChecker(TypePool typePool, DiagnosticList diagnostics)
 		BorrowState state)
 	{
 		var sources = new List<Place>();
-		for (var i = 0; i < arguments.Count && first + i < function.Signature.ParameterTypes.Length; i++)
+		for (var i = 0; i < arguments.Count && first + i < function.DeclaredSignature.ParameterTypes.Length; i++)
 			sources.AddRange(ArgumentSources(arguments[i], GetEscape(function, first + i), state));
 		
 		return sources;
@@ -470,8 +472,9 @@ public sealed class BorrowChecker(TypePool typePool, DiagnosticList diagnostics)
 		};
 	}
 	
-	private Escape? GetEscape(FunctionInfo function, int index) => GetEscape(function.Signature.GetMode(index),
-		function.Signature.GetDeclaredType(index), function.Symbol.Kind != FunctionKind.Method || index == 0);
+	private Escape? GetEscape(FunctionInfo function, int index) => GetEscape(
+		function.DeclaredSignature.GetMode(index), function.DeclaredSignature.GetDeclaredType(index),
+		function.Symbol.Kind != FunctionKind.Method || index == 0);
 	
 	private Escape? GetEscape(ParameterMode mode, TypeSymbol declared, bool mayLend)
 	{

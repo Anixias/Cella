@@ -1,0 +1,50 @@
+
+====== generic_record_uses.ce ======
+
+Error at line 25, column 16
+24 │ {
+25 │     val tooMany = box[i32, i64](1)
+                       ╘═══════════╛ 'box' takes one type argument
+
+Error at line 26, column 12
+25 │ val tooMany = box[i32, i64](1)
+26 │ val bare: box = box[i32](1)
+               ╘═╛ 'box' takes one type argument
+
+Error at line 27, column 13
+26 │ val bare: box = box[i32](1)
+27 │ val plain: Point[i32] = Point(1)
+                ╘════════╛ 'Point' takes no type arguments
+
+Error at line 28, column 15
+27 │ val plain: Point[i32] = Point(1)
+28 │ val unknown: bx[i32] = box[i32](1)
+                  ╘╛ Type 'bx' not found in this scope
+                   | Did you mean 'box'?
+
+Error at line 29, column 13
+28 │ val unknown: bx[i32] = box[i32](1)
+29 │ val made = box(1)
+                ╘═╛ 'box' takes one type argument
+
+Error at line 30, column 19
+29 │ val made = box(1)
+30 │ val tokens: list[Token] = list[Token](Token("a"))
+                      ╘═══╛ Cannot store borrows in 'T'
+
+Error at line 30, column 33
+29 │ val made = box(1)
+30 │ val tokens: list[Token] = list[Token](Token("a"))
+                                    ╘═══╛ Cannot store borrows in 'T'
+
+Error at line 31, column 17
+30 │ val tokens: list[Token] = list[Token](Token("a"))
+31 │ val view: list[imm[i32]] = list[i32](1)
+                    ╘══════╛ Cannot store borrows in 'T'
+
+Error at line 32, column 18
+31 │ val view: list[imm[i32]] = list[i32](1)
+32 │ val nested: box[box] = box[i32](1)
+                     ╘═╛ 'box' takes one type argument
+
+[compilation failed]

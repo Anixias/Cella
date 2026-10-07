@@ -61,6 +61,12 @@ public sealed class ZeroValue(TypeSymbol type) : Value(type, true, SourceLocatio
 public sealed class DefaultValue(TypeSymbol type) : Value(type, true, SourceLocation.None);
 public sealed class UndefValue(TypeSymbol type) : Value(type, true, SourceLocation.None);
 
+public sealed class SizeOfValue(TypeSymbol target, SourceLocation sourceLocation)
+	: Value(NativeSymbols.UIntSize, false, sourceLocation)
+{
+	public TypeSymbol Target { get; } = target;
+}
+
 public sealed class VariableValue(VariableInfo variable, SourceLocation sourceLocation)
 	: Value(variable.Type, false, sourceLocation)
 {

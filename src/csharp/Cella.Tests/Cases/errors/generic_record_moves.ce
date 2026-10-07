@@ -1,0 +1,20 @@
+mod test
+
+box[T]: rec
+{
+	value: T
+
+	copy: fun(own self) -> T
+	{
+		val first = own self.value
+		val second = first
+		ret first
+	}
+
+	store: fun(mut self, own value: T)
+	{
+		self.value = value
+	}
+}
+
+main: fun -> i32 = 0

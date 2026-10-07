@@ -1,0 +1,13 @@
+mod util
+
+cell[T]: rec
+{
+	value: T
+	hits: i32
+
+	new: op(own value: T)
+	{
+		self.value = value
+		self.hits = 1
+	}
+}

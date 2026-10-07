@@ -1,0 +1,21 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+main: fun -> i32
+{
+	var counts: game.counter[i64] = game.counter[i64](5, 0)
+	counts.bump()
+	val other = game.counter[i8](1, 0)
+	val numbers = game.pair[i32, bool](1, true, 7)
+	if numbers.sameId(game.pair[i32, bool](3, false, 7)) && numbers.flippedId(game.pair[bool, i32](true, 2, 7))
+		printf("same ")
+
+	val wrapped = game.wrapper[i16](3)
+	printf("%lld %d %d %d %d %d %d\n", counts.value, other.value, game.peek(), game.counter[i64].created,
+		game.counter[i8].created, wrapped.hits(), wrapped.inner.value)
+	ret 0
+}

@@ -1,0 +1,10 @@
+mod test
+
+box[T]: rec
+{
+	value: T
+
+	add: fun(self) -> T = self.value + 1
+}
+
+main: fun -> i32 = 0

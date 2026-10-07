@@ -1,0 +1,9 @@
+mod test
+
+counted[T]: rec
+{
+	value: T
+	size: val usize = sizeOf(T)
+}
+
+main: fun -> i32 = 0

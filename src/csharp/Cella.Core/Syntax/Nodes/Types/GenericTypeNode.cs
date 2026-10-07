@@ -11,6 +11,7 @@ public sealed class GenericTypeNode
 ) : ITypeNode
 {
 	public Token Identifier { get; } = identifier;
+	public ImmutableArray<Token> Qualifiers { get; init; } = [];
 	public ImmutableArray<IGenericArgumentNode> Arguments { get; } = arguments.ToImmutableArray();
 	public SourceLocation SourceLocation { get; } = sourceLocation;
 }

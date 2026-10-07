@@ -1,0 +1,53 @@
+mod game
+
+step: mod fun(value: i32) -> i32 = value + 1
+
+counter[T]: rec
+{
+	value: T
+	steps: i32
+	created: var i32 = 0
+
+	bump: fun(mut self)
+	{
+		self.steps = step(self.steps)
+		created += 1
+	}
+}
+
+pair[A, B]: rec
+{
+	first: A
+	second: B
+	id: pvt i32
+
+	new: op(own first: A, own second: B, id: i32)
+	{
+		self.first = first
+		self.second = second
+		self.id = id
+	}
+
+	sameId: fun(self, other: pair[A, B]) -> bool = self.id == other.id
+
+	flippedId: fun(self, other: pair[B, A]) -> bool = self.id == other.id
+}
+
+wrapper[T: noref]: rec
+{
+	inner: util.cell[T]
+
+	new: op(own value: T)
+	{
+		self.inner = util.cell[T](value)
+	}
+
+	hits: fun(self) -> i32 = self.inner.hits
+}
+
+peek: fun -> i32
+{
+	var local = counter[i64](2, 0)
+	local.bump()
+	ret local.steps
+}
