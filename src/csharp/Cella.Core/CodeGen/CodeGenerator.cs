@@ -907,6 +907,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 		EnumTagValue v => EmitEnumTag(v, builder),
 		EnumPayloadValue v => EmitEnumPayload(v, builder),
 		SizeOfValue v => EmitSizeOf(v),
+		NewValue v => EmitNew(v, builder),
 		_ => throw new InvalidOperationException()
 	};
 	
@@ -914,6 +915,22 @@ public sealed unsafe class CodeGenerator : IDisposable
 	{
 		var bits = _typePool.SizeTable.GetSize(Substitute(v.Target)).CountBits(_pointerSize * 8);
 		return EmitSizeConstant(new BigInteger((bits + 7) / 8), true);
+	}
+	
+	private LLVMValueRef EmitNew(NewValue v, LLVMBuilderRef builder)
+	{
+		var type = Substitute(v.Type);
+		var llvmType = MapTypeSymbol(type);
+		if (_typePool.FindNewConstructor(type) is not { } constructor)
+			return LLVMValueRef.CreateConstNull(llvmType);
+		
+		var slot = BuildEntryAlloca(builder, llvmType, "new");
+		builder.BuildStore(LLVMValueRef.CreateConstNull(llvmType), slot);
+		var info = SubstituteFunction(constructor);
+		GetFunctionValue(info);
+		var function = current.Functions[info];
+		builder.BuildCall2(function.FunctionType, function.FunctionValue, [slot]);
+		return builder.BuildLoad2(llvmType, slot, "new");
 	}
 	
 	private static DynType? FindDynDispatch(FunctionInfo function) =>
@@ -927,8 +944,8 @@ public sealed unsafe class CodeGenerator : IDisposable
 		var args = v.Arguments.Select(a => EmitValue(a, builder)).ToArray();
 		var table = builder.BuildExtractValue(args[0], 1, "table");
 		args[0] = builder.BuildExtractValue(args[0], 0, "object");
-		var slot = (uint)_typePool.GetDynSlot(dyn.Trait, info.Symbol) + 1;
-		var entry = builder.BuildStructGEP2(GetDynTableType(dyn.Trait), table, slot, "entry");
+		var slot = (uint)_typePool.GetDynSlot(dyn.Trait!, info.Symbol) + 1;
+		var entry = builder.BuildStructGEP2(GetDynTableType(dyn.Trait!), table, slot, "entry");
 		var method = builder.BuildLoad2(OpaquePointer, entry, "method");
 		var parameterTypes = MapParameterTypes(info);
 		parameterTypes[0] = OpaquePointer;
@@ -942,21 +959,31 @@ public sealed unsafe class CodeGenerator : IDisposable
 	
 	private LLVMValueRef GetDynTable(DynConversion conversion)
 	{
-		var dyn = conversion.To switch
+		var declared = conversion.To switch
 		{
 			BorrowType { Target: DynType target } => target,
 			PointerType { BaseType: DynType target } => target,
 			_ => throw new InvalidOperationException()
 		};
 		
+		var dyn = (DynType)Substitute(declared);
+		var trait = dyn.Trait!;
 		var objectType = Substitute(conversion.ObjectType);
 		var name = Mangling.MangleInstantiation($"?{Mangling.MangleTypeName(dyn, _modules)}", [objectType], _modules);
 		var existing = current.Module.GetNamedGlobal(name);
 		if (existing.Handle != IntPtr.Zero)
 			return existing;
 		
-		LLVMValueRef[] entries = [..conversion.Members.Select(GetFunctionValue)];
-		var table = current.Module.AddGlobal(GetDynTableType(dyn.Trait), name);
+		var members = declared.Parameter is null
+			? conversion.Members
+			:
+			[
+				.._typePool.GetDynMemberInfos(trait).Select(member => _typePool.InstantiateFunction(member,
+					_typePool.GetWitnessArguments(objectType, member.Symbol, [])))
+			];
+		
+		LLVMValueRef[] entries = [..members.Select(GetFunctionValue)];
+		var table = current.Module.AddGlobal(GetDynTableType(trait), name);
 		table.Initializer = LLVMValueRef.CreateConstStruct([EmitTypeId(objectType), ..entries], false);
 		table.IsGlobalConstant = true;
 		table.Linkage = LLVMLinkage.LLVMInternalLinkage;
@@ -2288,6 +2315,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 				function.Symbol.Syntax.SourceLocation, builder),
 			MemberwiseWitness => EmitConstruction(function, parameters, true, builder),
 			DefaultWitness => EmitConstruction(function, parameters, false, builder),
+			ConversionWitness conversion => EmitConversionWitness(function, conversion.Conversion, parameters, builder),
 			_ => throw new InvalidOperationException()
 		};
 		
@@ -2385,6 +2413,19 @@ public sealed unsafe class CodeGenerator : IDisposable
 			EmitValue(new AssignValue(fieldType, field, value, location), builder);
 		}
 		
+		return default;
+	}
+	
+	private LLVMValueRef EmitConversionWitness(FunctionInfo function, Conversion conversion,
+		List<LLVMValueRef> parameters, LLVMBuilderRef builder)
+	{
+		var location = function.Symbol.Syntax.SourceLocation;
+		var type = function.TypeArguments[0];
+		var self = new UnaryOpValue(type, new VariableValue(BindWitnessParameter(function, 0, parameters[0], builder),
+			location), UnaryOperation.Dereference, location);
+		
+		var value = new VariableValue(BindWitnessParameter(function, 1, parameters[1], builder), location);
+		EmitValue(new AssignValue(type, self, new ConversionValue(value, conversion, location), location), builder);
 		return default;
 	}
 	

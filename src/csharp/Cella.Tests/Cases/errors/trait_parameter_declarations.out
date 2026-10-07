@@ -1,0 +1,24 @@
+
+====== trait_parameter_declarations.ce ======
+
+Error at line 18, column 31
+17 │ 
+18 │ asValue[K: trait]: fun(value: K) -> i32 = 0
+                                   ^ 'K' is not a type
+
+Error at line 20, column 37
+19 │ 
+20 │ asPointer[K: trait]: fun(value: ptr[K]) -> i32 = 0
+                                         ^ 'K' is not a type
+
+Error at line 22, column 26
+21 │ 
+22 │ first: fun(value: holder[i32]) -> i32 = 0
+                              ╘═╛ 'i32' is not a trait
+
+Error at line 24, column 24
+23 │ 
+24 │ second: fun(value: box[Shape]) -> i32 = 0
+                            ╘═══╛ 'Shape' is not a type
+
+[compilation failed]

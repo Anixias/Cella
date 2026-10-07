@@ -69,6 +69,7 @@ public enum TokenType
 	KeywordGet,
 	KeywordProp,
 	KeywordNoref,
+	KeywordCopy,
 	KeywordTrait,
 	KeywordImpl,
 	
@@ -206,6 +207,7 @@ public static class TokenTypeInfo
 			[TokenType.KeywordGet] = new("get", IsKeyword: true, IsContextual: true),
 			[TokenType.KeywordProp] = new("prop", IsKeyword: true, IsContextual: true),
 			[TokenType.KeywordNoref] = new("noref", IsKeyword: true, IsContextual: true),
+			[TokenType.KeywordCopy] = new("copy", IsKeyword: true, IsContextual: true),
 			[TokenType.KeywordTrait] = new("trait", IsKeyword: true, IsContextual: true),
 			[TokenType.KeywordImpl] = new("impl", IsKeyword: true, IsContextual: true),
 			

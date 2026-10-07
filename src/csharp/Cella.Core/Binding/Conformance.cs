@@ -1,4 +1,5 @@
 ﻿using System.Collections.Immutable;
+using Cella.Core.Binding.Conversions;
 using Cella.Core.Binding.Operations;
 using Cella.Core.Symbols;
 using Cella.Core.Text;
@@ -27,3 +28,4 @@ public sealed record FunctionWitness(FunctionSymbol Function, FunctionInfo Info)
 public sealed record NativeWitness(NativeImpl Operation, bool IsCompound = false) : Witness;
 public sealed record MemberwiseWitness : Witness;
 public sealed record DefaultWitness : Witness;
+public sealed record ConversionWitness(Conversion Conversion) : Witness;

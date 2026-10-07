@@ -1,0 +1,59 @@
+
+====== constraint_uses.ce ======
+
+Error at line 49, column 36
+48 │ 
+49 │ forward[T]: fun(value: T) -> i32 = twin(value)
+                                        ╘══╛ Cannot copy 'T'
+
+Error at line 51, column 38
+50 │ 
+51 │ relay[T]: fun(own value: T) -> i32 = hold(value)
+                                          ╘══╛ 'T' has no destructor
+
+Error at line 53, column 27
+52 │ 
+53 │ build[T]: fun -> T = make[T]()
+                               ^ 'T' has no constructor without parameters
+
+Error at line 55, column 22
+54 │ 
+55 │ blank[T]: fun -> T = T()
+                          ╘═╛ No constructor for 'T' accepts these arguments
+
+Error at line 59, column 2
+58 │ {
+59 │     twin(Text(1))
+         ╘══╛ Cannot copy 'Text'
+
+Error at line 60, column 2
+59 │ twin(Text(1))
+60 │ twin(pair(Text(1), 2))
+     ╘══╛ Cannot copy 'pair[Text, i32]'
+
+Error at line 61, column 2
+60 │ twin(pair(Text(1), 2))
+61 │ hold(5)
+     ╘══╛ 'i32' has no destructor
+
+Error at line 62, column 2
+61 │ hold(5)
+62 │ hold(pair(1, 2))
+     ╘══╛ 'pair[i32, i32]' has no destructor
+
+Error at line 63, column 7
+62 │ hold(pair(1, 2))
+63 │ make[Holder]()
+          ╘════╛ 'Holder' has no constructor without parameters
+
+Error at line 64, column 7
+63 │ make[Holder]()
+64 │ make[Sized]()
+          ╘═══╛ 'Sized' has no constructor without parameters
+
+Error at line 65, column 7
+64 │ make[Sized]()
+65 │ make[Secret]()
+          ╘════╛ 'Secret' has no constructor without parameters
+
+[compilation failed]

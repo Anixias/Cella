@@ -1,0 +1,67 @@
+mod test
+
+Text: rec
+{
+	id: i32
+
+	drop: op
+	{
+	}
+}
+
+Holder: rec
+{
+	value: req i32
+}
+
+Sized: rec
+{
+	n: i32
+
+	new: op(n: i32)
+	{
+		self.n = n
+	}
+}
+
+Secret: rec
+{
+	n: i32
+
+	new: pvt op()
+	{
+		self.n = 1
+	}
+}
+
+pair[A, B]: rec
+{
+	a: A
+	b: B
+}
+
+twin[T: copy]: fun(value: T) -> i32 = 1
+
+hold[T: drop]: fun(own value: T) -> i32 = 1
+
+make[T: new]: fun -> T = T()
+
+forward[T]: fun(value: T) -> i32 = twin(value)
+
+relay[T]: fun(own value: T) -> i32 = hold(value)
+
+build[T]: fun -> T = make[T]()
+
+blank[T]: fun -> T = T()
+
+main: fun -> i32
+{
+	twin(Text(1))
+	twin(pair(Text(1), 2))
+	hold(5)
+	hold(pair(1, 2))
+	make[Holder]()
+	make[Sized]()
+	make[Secret]()
+	ret 0
+}

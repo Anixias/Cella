@@ -1,0 +1,29 @@
+mod test
+
+Point: rec
+{
+	x: i32
+
+	drop: op
+	{
+	}
+}
+
+View: ref rec
+{
+	p: imm[Point]
+}
+
+pick[T: copy]: fun(a: T, b: T) -> T = a
+
+main: fun -> i32
+{
+	val outer = Point(1)
+	var r = View(outer)
+	{
+		val inner = Point(2)
+		r = pick(View(inner), View(inner))
+	}
+
+	ret r.p.x
+}

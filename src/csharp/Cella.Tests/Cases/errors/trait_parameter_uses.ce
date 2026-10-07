@@ -1,0 +1,44 @@
+mod test
+
+Shape: trait
+{
+	area: fun(self) -> f64
+}
+
+Circle: rec impl Shape
+{
+	r: f64
+
+	area: fun(self) -> f64 = self.r
+}
+
+Text: rec
+{
+	id: i32
+}
+
+call[K: trait]: fun(shape: dyn[K]) -> f64 = shape.area()
+
+test[K: trait]: fun(shape: dyn[K]) -> bool = shape is Circle
+
+erase[K: trait]: fun(circle: Circle) -> i32 = count[K](circle)
+
+count[K: trait]: fun(shape: dyn[K]) -> i32 = 1
+
+size[K: trait]: fun -> usize = sizeOf(K)
+
+construct[K: trait]: fun -> i32
+{
+	K()
+	ret 0
+}
+
+apply[K: trait, T: K]: fun(value: T) -> i32 = 0
+
+main: fun -> i32
+{
+	apply[Shape, Text](Text(1))
+	count[i32](Text(1))
+	count(Text(1))
+	ret 0
+}

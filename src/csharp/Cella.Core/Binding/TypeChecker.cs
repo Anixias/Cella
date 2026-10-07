@@ -806,6 +806,10 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool, 
 	{
 	}
 	
+	public void Visit(ResolvedNewExpressionNode node)
+	{
+	}
+	
 	public void Visit(ResolvedRecordExpressionNode node)
 	{
 		foreach (var (field, value) in node.Fields)

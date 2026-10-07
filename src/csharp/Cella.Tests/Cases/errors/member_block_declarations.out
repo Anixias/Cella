@@ -1,0 +1,64 @@
+
+====== member_block_declarations.ce ======
+
+Error at line 12, column 2
+11 │ {
+12 │     value: T
+         ╘═══╛ 'value' is declared more than once in 'box'
+
+Error at line 14, column 2
+13 │ 
+14 │ peek: fun(self) -> i32 = 1
+     ╘══╛ 'peek' is declared more than once with the same signature
+
+Error at line 20, column 2
+19 │ same: fun(self, other: box[T]) -> bool = self.value == other.value
+20 │ peek: fun(self) -> i32 = 2
+     ╘══╛ 'peek' is declared more than once with the same signature
+
+Error at line 21, column 2
+20 │ peek: fun(self) -> i32 = 2
+21 │ value: get(self) -> i32 = 4
+     ╘═══╛ 'value' is declared more than once in 'box'
+
+Error at line 22, column 2
+21 │ value: get(self) -> i32 = 4
+22 │ count: i32
+     ╘═══╛ Cannot declare fields in impl blocks
+
+Error at line 23, column 2
+22 │ count: i32
+23 │ total: val i32 = 0
+     ╘═══╛ Cannot declare static fields in impl blocks
+
+Error at line 25, column 2
+24 │ 
+25 │ new: op()
+     ╘═╛ Cannot declare constructors in impl blocks
+
+Error at line 29, column 2
+28 │ 
+29 │ drop: op
+     ╘══╛ Cannot declare destructors in impl blocks
+
+Error at line 39, column 8
+38 │ 
+39 │ Point: impl
+            ╘══╛ Cannot declare 'impl' blocks that add no bounds
+
+Error at line 44, column 9
+43 │ 
+44 │ box[T]: impl
+             ╘══╛ Cannot declare 'impl' blocks that add no bounds
+
+Error at line 49, column 1
+48 │ 
+49 │ i32: impl
+     ╘═╛ 'i32' is declared in another project
+
+Error at line 59, column 6
+58 │ 
+59 │ wrap[T: Eq]: impl
+          ^ Cannot store borrows in 'T'
+
+[compilation failed]

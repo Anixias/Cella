@@ -1,0 +1,56 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Ord: trait
+{
+	<: op(a: Self, b: Self) -> bool
+}
+
+i32: impl Ord
+f64: impl Ord
+
+pair[T]: rec
+{
+	a: T
+	b: T
+}
+
+Point: rec
+{
+	x: i32
+	y: i32
+}
+
+twin[T: copy]: fun(value: T) -> pair[T] = pair(value, value)
+
+largest[T: Ord + copy]: fun(a: T, b: T) -> T
+{
+	if a < b
+		ret b
+
+	ret a
+}
+
+fill[T: copy + noref]: fun(mut items: array[T, 3], value: T)
+{
+	items[0] = value
+	items[1] = value
+	items[2] = value
+}
+
+first[T: copy]: fun(values: pair[T]) -> T = values.a
+
+main: fun -> i32
+{
+	val p = twin(7)
+	val q = twin(Point(1, 2))
+	var items: array[f64, 3] = [0.0, 0.0, 0.0]
+	fill(mut items, 2.5)
+	printf("%d %d %d %d\n", p.a, p.b, q.b.y, first(q).x)
+	printf("%d %.1f %.1f\n", largest(3, 9), largest(4.5, 1.5), items[0] + items[1] + items[2])
+	ret 0
+}

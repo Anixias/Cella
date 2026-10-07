@@ -1,0 +1,14 @@
+
+====== constraint_syntax.ce ======
+
+Error at line 3, column 10
+2 │ 
+3 │ first[T: 3]: fun -> i32 = 0
+             ^ Expected a constraint
+
+Error at line 10, column 21
+ 9 │ 
+10 │ box[T: noref]: impl ,
+                         ^ Expected a trait or '{'
+
+[compilation failed]

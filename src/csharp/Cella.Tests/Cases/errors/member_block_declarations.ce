@@ -1,0 +1,64 @@
+mod test
+
+Eq: trait
+{
+	==: op(a: Self, b: Self) -> bool
+}
+
+i32: impl Eq
+
+box[T]: rec
+{
+	value: T
+
+	peek: fun(self) -> i32 = 1
+}
+
+box[T: Eq]: impl
+{
+	same: fun(self, other: box[T]) -> bool = self.value == other.value
+	peek: fun(self) -> i32 = 2
+	value: get(self) -> i32 = 4
+	count: i32
+	total: val i32 = 0
+
+	new: op()
+	{
+	}
+
+	drop: op
+	{
+	}
+}
+
+Point: rec
+{
+	x: i32
+}
+
+Point: impl
+{
+	norm: fun(self) -> i32 = 1
+}
+
+box[T]: impl
+{
+	extra: fun(self) -> i32 = 1
+}
+
+i32: impl
+{
+	twice: fun(self) -> i32 = 2
+}
+
+wrap[T: noref]: rec
+{
+	value: T
+}
+
+wrap[T: Eq]: impl
+{
+	same: fun(self) -> bool = true
+}
+
+main: fun -> i32 = 0

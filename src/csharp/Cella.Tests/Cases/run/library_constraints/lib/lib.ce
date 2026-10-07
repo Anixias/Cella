@@ -1,0 +1,43 @@
+mod lib
+
+Eq: pub trait
+{
+	==: op(a: Self, b: Self) -> bool
+}
+
+i32: impl Eq
+
+box[T]: pub rec
+{
+	value: T
+}
+
+box[T: Eq]: impl
+{
+	same: fun(self, other: box[T]) -> bool = self.value == other.value
+}
+
+cell[K: trait]: pub rec
+{
+	object: ptr[dyn[K]]
+
+	of[T: K]: fun(value: ptr[T]) -> cell[K] = cell[K](value)
+
+	*: op(self) -> imm[dyn[K]] = imm *self.object
+}
+
+holder[T]: pub rec
+{
+	count: i32
+
+	new: op()
+	{
+		self.count = 5
+	}
+}
+
+make[T: new]: pub fun -> T = T()
+
+twin[T: copy]: pub fun(value: T) -> box[T] = box(value)
+
+measure[K: trait, T: K]: pub fun(value: ptr[T], action: fun[dyn[K] -> f64]) -> f64 = action(*cell[K].of(value))

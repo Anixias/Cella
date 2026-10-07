@@ -149,8 +149,14 @@ public sealed class TypeParameterSymbol(string name, IEnumerable<Token> keywords
 {
 	private readonly ImmutableArray<Token> _keywords = keywords.ToImmutableArray();
 	
-	public bool IsNoref => _keywords.Any(static keyword => keyword.Type == TokenType.KeywordNoref);
-	public bool HasNull => _keywords.Any(static keyword => keyword.Type == TokenType.KeywordNull);
+	public bool IsNoref => Has(TokenType.KeywordNoref);
+	public bool HasNull => Has(TokenType.KeywordNull);
+	public bool IsCopy => Has(TokenType.KeywordCopy);
+	public bool HasDrop => Has(TokenType.KeywordDrop);
+	public bool HasNew => Has(TokenType.KeywordNew);
+	public bool IsTrait => Has(TokenType.KeywordTrait);
+	
+	private bool Has(TokenType keyword) => _keywords.Any(token => token.Type == keyword);
 }
 
 public sealed class InvalidType : TypeSymbol
@@ -405,7 +411,26 @@ public sealed class BorrowType(TypeSymbol target, bool isMutable)
 	public bool IsMutable { get; } = isMutable;
 }
 
-public sealed class DynType(TraitSymbol trait) : TypeSymbol($"dyn[{trait.Name}]")
+public sealed class DynType : TypeSymbol
+{
+	public DynType(TraitSymbol trait) : base($"dyn[{trait.Name}]")
+	{
+		Trait = trait;
+		TraitName = trait.Name;
+	}
+	
+	public DynType(TypeParameterSymbol parameter) : base($"dyn[{parameter.Name}]")
+	{
+		Parameter = parameter;
+		TraitName = parameter.Name;
+	}
+	
+	public TraitSymbol? Trait { get; }
+	public TypeParameterSymbol? Parameter { get; }
+	public string TraitName { get; }
+}
+
+public sealed class TraitType(TraitSymbol trait) : TypeSymbol(trait.Name)
 {
 	public TraitSymbol Trait { get; } = trait;
 }

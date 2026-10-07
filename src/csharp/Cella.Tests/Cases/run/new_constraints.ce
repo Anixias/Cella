@@ -1,0 +1,61 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Buffer: rec
+{
+	size: usize
+
+	new: op()
+	{
+		self.size = 16
+	}
+
+	new: op(size: usize)
+	{
+		self.size = size
+	}
+}
+
+Point: rec
+{
+	x: i32
+	y: i32
+}
+
+Color: enum
+{
+	red
+	green
+}
+
+holder[T]: rec
+{
+	count: i32
+
+	new: op()
+	{
+		self.count = 5
+	}
+}
+
+box[T]: rec
+{
+	value: T
+}
+
+make[T: new]: fun -> T = T()
+
+forward[T: new]: fun -> T = make[T]()
+
+main: fun -> i32
+{
+	val b = make[Buffer]()
+	val p = forward[Point]()
+	printf("%llu %d %d %d %.1f %d\n", b.size, p.x, p.y, make[i32](), make[f64](), i32(make[Color]() == red))
+	printf("%d %d\n", make[holder[i32]]().count, make[box[i32]]().value)
+	ret 0
+}

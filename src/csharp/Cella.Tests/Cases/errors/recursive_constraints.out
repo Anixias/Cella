@@ -1,0 +1,14 @@
+
+====== recursive_constraints.ce ======
+
+Error at line 24, column 13
+23 │ {
+24 │     next: cell[Bad]
+                    ╘═╛ Cannot copy 'Bad'
+
+Error at line 30, column 13
+29 │ {
+30 │     up: holder[Needy]
+                    ╘═══╛ 'Needy' has no constructor without parameters
+
+[compilation failed]

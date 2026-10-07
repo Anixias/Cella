@@ -393,8 +393,10 @@ public sealed class AstPrinter : ISyntaxNodeVisitor
 		StartLine();
 		_sb.Append("ImplNode '").Append(node.Target.SourceLocation.GetText());
 		AppendTypeParameters(node.TypeParameters);
-		_sb.Append("' ").AppendJoin(" + ",
-			node.Traits.Select(static trait => trait.SourceLocation.GetText().ToString()));
+		_sb.Append('\'');
+		if (!node.Traits.IsEmpty)
+			_sb.Append(' ').AppendJoin(" + ",
+				node.Traits.Select(static trait => trait.SourceLocation.GetText().ToString()));
 		
 		for (var i = 0; i < node.Members.Length; i++)
 			VisitNode(node.Members[i], i == node.Members.Length - 1);

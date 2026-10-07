@@ -1,0 +1,41 @@
+mod test
+
+use lib
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Shape: trait
+{
+	area: fun(self) -> f64
+}
+
+Circle: rec impl Shape
+{
+	r: f64
+
+	area: fun(self) -> f64 = self.r * 3.0
+}
+
+Counter: rec
+{
+	n: i32
+
+	new: op()
+	{
+		self.n = 9
+	}
+}
+
+describe: fun(shape: dyn[Shape]) -> f64 = shape.area()
+
+main: fun -> i32
+{
+	var c = Circle(2.0)
+	val b = lib.cell[Shape].of(@c)
+	printf("%.1f %d %d\n", b.area(), lib.make[Counter]().n, lib.make[lib.holder[i32]]().count)
+	printf("%d %.1f\n", i32(lib.box(4).same(lib.twin(4))), lib.measure[Shape, Circle](@c, describe))
+	ret 0
+}

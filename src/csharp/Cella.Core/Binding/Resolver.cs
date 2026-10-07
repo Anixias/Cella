@@ -63,7 +63,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		_typePool = typePool;
 		_extSignatureTypes = new(typePool);
 		_conversionTable = typePool.ConversionTable;
-		_inference = new(_conversionTable);
+		_inference = new(typePool);
 		_operatorRegistry = typePool.OperatorRegistry;
 		_pointerBitSize = pointerBitSize;
 		_symbolTable = symbolTable;
@@ -254,6 +254,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	public IResolvedDeclarationNode Visit(TraitNode node)
 	{
 		var trait = (TraitSymbol)_symbolTable.DeclarationSymbols[node];
+		GetDynMembers(trait);
 		_resolutionContexts.Push(CurrentResolutionContext with { ContainingType = trait.Self, Trait = trait });
 		var members = node.Members.SelectMany(VisitBodyMember).ToList();
 		_resolutionContexts.Pop();
@@ -577,10 +578,10 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			return null;
 		}
 		
-		if (!_typePool.Conforms(type, dyn.Trait))
+		if (!_typePool.Conforms(type, dyn))
 		{
 			Diagnostics.Add(new(DiagnosticSeverity.Error, typeNode.SourceLocation,
-				$"'{type.Name}' doesn't implement '{dyn.Trait.Name}'"));
+				$"'{type.Name}' doesn't implement '{dyn.TraitName}'"));
 			
 			return null;
 		}
@@ -895,6 +896,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 				? VisitRecordConstruction(node, record)
 				: VisitConstructorCall(node, record, null);
 		
+		if (targetType is TypeParameterSymbol { HasNew: true } && node.Arguments.Length == 0)
+			return new ResolvedNewExpressionNode(targetType, node);
+		
 		if (targetType is TypeParameterSymbol && GetConstructors(targetType).Count > 0)
 			return VisitConstructorCall(node, targetType, null);
 		
@@ -956,18 +960,18 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 				return Decay(Erase(new ResolvedBorrowExpressionNode(place, _typePool.GetBorrowType(place.Type, true),
 					false, mutArgument.Syntax), _typePool.GetBorrowType(dyn, true)));
 			
-			return Error(node, $"'{place.Type.Name}' doesn't implement '{dyn.Trait.Name}'", dyn, node.Arguments[0]);
+			return Error(node, $"'{place.Type.Name}' doesn't implement '{dyn.TraitName}'", dyn, node.Arguments[0]);
 		}
 		
 		return ConvertToDyn(argument, dyn) ?? Error(node,
-			$"'{Decay(argument).Type.Name}' doesn't implement '{dyn.Trait.Name}'", dyn, node.Arguments[0]);
+			$"'{Decay(argument).Type.Name}' doesn't implement '{dyn.TraitName}'", dyn, node.Arguments[0]);
 	}
 	
 	private static bool IsDynTarget(TypeSymbol type) =>
 		type is DynType or BorrowType { Target: DynType } or PointerType { BaseType: DynType };
 	
 	private bool CanErase(TypeSymbol type, DynType dyn) =>
-		type is not (DynType or InvalidType) && _typePool.Conforms(type, dyn.Trait);
+		type is not (DynType or InvalidType) && _typePool.Conforms(type, dyn);
 	
 	private bool CanConvertToDyn(IResolvedExpressionNode source, TypeSymbol target) => target switch
 	{
@@ -1040,8 +1044,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			_ => throw new InvalidOperationException()
 		};
 		
-		ImmutableArray<FunctionInfo> members =
-			[..GetDynMembers(dyn.Trait).Select(member => GetFunctionInfo(member, objectType))];
+		ImmutableArray<FunctionInfo> members = dyn.Trait is { } trait
+			? [..GetDynMembers(trait).Select(member => GetFunctionInfo(member, objectType))]
+			: [];
 		
 		return new ResolvedConversionExpressionNode(pointer,
 			new DynConversion(pointer.Type, target, objectType, members), pointer.Syntax);
@@ -1052,16 +1057,17 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		if (_typePool.FindDynMembers(trait) is { } existing)
 			return existing;
 		
-		ImmutableArray<FunctionSymbol> members =
+		ImmutableArray<FunctionInfo> members =
 		[
 			..trait.Functions
 				.Select(static method => method.Function)
 				.Concat(trait.Properties.SelectMany(GetAccessors))
 				.Where(IsDynCallable)
+				.Select(GetFunctionInfo)
 		];
 		
 		_typePool.SetDynMembers(trait, members);
-		return members;
+		return _typePool.FindDynMembers(trait)!.Value;
 	}
 	
 	private bool IsDynCallable(FunctionSymbol function)
@@ -1082,11 +1088,11 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	{
 		var name = access.Member.Text;
 		var member = access.Member.SourceLocation;
-		if (dyn.Trait.GetProperty(name) is not null)
+		if (dyn.Trait?.GetProperty(name) is not null)
 			return VisitIndirectCall(node, Index(indexer, ResolveAccess(access, target)));
 		
-		var functions = dyn.Trait.GetFunctions(name).ToArray();
-		if (functions.Length == 0)
+		var functions = dyn.Trait?.GetFunctions(name).ToArray() ?? [];
+		if (dyn.Trait is not { } trait || functions.Length == 0)
 			return Error(node, $"Type '{dyn.Name}' has no member '{name}'", CurrentTargetType, member);
 		
 		var accessible = functions.Where(method => CanAccess(dyn, method.Function)).ToArray();
@@ -1094,7 +1100,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			return Error(node, ReportHiddenMember(member, name, functions.Select(static method => method.Function)),
 				CurrentTargetType);
 		
-		var members = GetDynMembers(dyn.Trait);
+		var members = GetDynMembers(trait);
 		var callable = accessible.Where(method => members.Contains(method.Function)).ToArray();
 		if (callable.Length == 0)
 			return Error(node, accessible.Any(static method => method.HasReceiver)
@@ -1378,7 +1384,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	private TypeArgumentList? ResolveTypeArguments(IndexerExpressionNode node)
 	{
 		var context = CurrentResolutionContext;
-		var types = node.Arguments.Select(context.ResolveTypeExpression).ToImmutableArray();
+		var types = node.Arguments.Select(context.ResolveTypeArgumentExpression).ToImmutableArray();
 		return types.Any(static type => type is InvalidType)
 			? null
 			: new(types, [..node.Arguments.Select(static argument => argument.SourceLocation)], node.SourceLocation);
@@ -1438,7 +1444,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			locate = _ => location;
 		}
 		
-		if (ReportConstraintViolation(open, arguments, locate) is { } violation)
+		if (ReportConstraintViolation(open, arguments, locate, info) is { } violation)
 		{
 			failures.Add(violation);
 			return null;
@@ -1512,11 +1518,19 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		DiagnosticReporter.JoinNames([..types.Select(static type => type.Name)]);
 	
 	private Diagnostic? ReportConstraintViolation(ImmutableArray<TypeParameterSymbol> parameters,
-		IReadOnlyList<TypeSymbol> arguments, Func<int, SourceLocation> locate)
+		IReadOnlyList<TypeSymbol> arguments, Func<int, SourceLocation> locate, FunctionInfo? owner = null)
 	{
+		var map = TypePool.CreateMap(parameters, arguments);
+		if (owner is { TypeArguments.IsDefaultOrEmpty: false } info)
+		{
+			var outer = info.Symbol.TypeParameters.Length - info.Symbol.DeclaredTypeParameters.Length;
+			for (var i = 0; i < outer; i++)
+				map.TryAdd(info.Symbol.TypeParameters[i], info.TypeArguments[i]);
+		}
+		
 		for (var i = 0; i < parameters.Length; i++)
 		{
-			if (_typePool.FindConstraintViolation(parameters[i], arguments[i]) is { } message)
+			if (_typePool.FindConstraintViolation(parameters[i], arguments[i], map) is { } message)
 				return new(DiagnosticSeverity.Error, locate(i), message);
 		}
 		
@@ -1954,7 +1968,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		if (property.Getter is not FunctionAccessor { Function: var getter })
 			return Error(node, "Cannot read write-only properties", CurrentTargetType, member);
 		
-		if (owner is DynType dyn && !GetDynMembers(dyn.Trait).Contains(getter))
+		if (owner is DynType { Trait: { } trait } dyn && !GetDynMembers(trait).Contains(getter))
 			return Error(node, $"Cannot use '{property.Name}' through '{dyn.Name}'", CurrentTargetType, member);
 		
 		return CanAccess(owner, getter)
@@ -2015,7 +2029,10 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			return CanAccess(owner, visibility);
 		
 		var context = CurrentResolutionContext;
-		return visibility != Visibility.Private || (trait is null ? context.ImplBlock == impl : context.Trait == trait);
+		if (visibility == Visibility.Private)
+			return trait is null ? context.ImplBlock == impl : context.Trait == trait;
+		
+		return impl is not { Node.Traits.IsEmpty: true } || CanAccess(owner, visibility);
 	}
 	
 	private IEnumerable<MethodSymbol> GetMethods(TypeSymbol type, string name) =>
@@ -2024,16 +2041,15 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	private IEnumerable<MethodSymbol> GetTraitMethods(TypeSymbol type, string name)
 	{
 		if (type is DynType dyn)
-			return dyn.Trait.GetFunctions(name).Where(method => GetDynMembers(dyn.Trait).Contains(method.Function));
+			return dyn.Trait is { } dynTrait
+				? dynTrait.GetFunctions(name).Where(method => GetDynMembers(dynTrait).Contains(method.Function))
+				: [];
 		
 		if (type is TypeParameterSymbol parameter)
 			return _typePool.GetBounds(parameter).SelectMany(trait => trait.GetFunctions(name));
 		
 		var conformances = GetVisibleConformances(type).ToList();
-		return conformances
-			.Select(static conformance => conformance.Impl)
-			.OfType<ImplSymbol>()
-			.Distinct()
+		return GetImpls(conformances, type)
 			.SelectMany(impl => impl.Functions.Where(method => method.Name == name))
 			.Concat(conformances.SelectMany(conformance => conformance.Trait.GetFunctions(name)
 				.Where(method => method.Function.Visibility == Visibility.Private ||
@@ -2047,13 +2063,19 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	private IEnumerable<Conformance> GetVisibleConformances(TypeSymbol type) => _typePool.FindConformances(type)
 		.Where(conformance => CurrentResolutionContext.IsVisible(conformance.Trait));
 	
+	private IEnumerable<ImplSymbol> GetImpls(IEnumerable<Conformance> conformances, TypeSymbol type) => conformances
+		.Select(static conformance => conformance.Impl)
+		.OfType<ImplSymbol>()
+		.Concat(_typePool.FindMemberBlocks(type))
+		.Distinct();
+	
 	private PropertySymbol? GetPropertyMember(TypeSymbol type, string name)
 	{
 		if (type.GetProperty(name) is { } property)
 			return property;
 		
 		if (type is DynType dyn)
-			return dyn.Trait.GetProperty(name);
+			return dyn.Trait?.GetProperty(name);
 		
 		if (type is TypeParameterSymbol parameter)
 			return _typePool.GetBounds(parameter)
@@ -2062,8 +2084,8 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 				.FirstOrDefault();
 		
 		var conformances = GetVisibleConformances(type).ToList();
-		return conformances
-			       .Select(conformance => conformance.Impl?.Properties.FirstOrDefault(p => p.Name == name))
+		return GetImpls(conformances, type)
+			       .Select(impl => impl.Properties.FirstOrDefault(p => p.Name == name))
 			       .OfType<PropertySymbol>()
 			       .FirstOrDefault() ??
 		       conformances
@@ -2231,12 +2253,15 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	private string DescribeMissingMember(TypeSymbol type, string name) =>
 		type.GetStaticField(name) is not null ? "Cannot use static fields through values"
 		: FindFunctions(type, name).Length > 0 ? "Cannot use static functions through values"
-		: $"Type '{type.Name}' has no member '{name}'";
+		: DescribeAbsentMember(type, name);
 	
 	private string DescribeMissingStatic(TypeSymbol type, string name) =>
 		FindFunctions(type, name).Length > 0 ? "Cannot use methods through types"
 		: FindField(type, name) is not null ? "Cannot use fields through types"
-		: $"Type '{type.Name}' has no member '{name}'";
+		: DescribeAbsentMember(type, name);
+	
+	private string DescribeAbsentMember(TypeSymbol type, string name) =>
+		_typePool.FindBlockViolation(type, name) ?? $"Type '{type.Name}' has no member '{name}'";
 	
 	private FunctionSymbol[] FindStatics(TypeSymbol type, string name) =>
 	[
@@ -2404,7 +2429,8 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			if (open.Length != typeArguments.Types.Length)
 				continue;
 			
-			if (ReportConstraintViolation(open, typeArguments.Types, i => typeArguments.Locations[i]) is { } violation)
+			if (ReportConstraintViolation(open, typeArguments.Types, i => typeArguments.Locations[i], info) is
+			    { } violation)
 				return Error(node, violation, CurrentTargetType);
 			
 			infos.Add(InstantiateDeclared(info, typeArguments.Types));
@@ -2744,9 +2770,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 				return true;
 		}
 		
-		Diagnostics.Add(new(DiagnosticSeverity.Error, member.SourceLocation,
-			$"Type '{type.Name}' has no member '{member.Text}'"));
-		
+		Diagnostics.Add(new(DiagnosticSeverity.Error, member.SourceLocation, DescribeAbsentMember(type, member.Text)));
 		return false;
 	}
 	
@@ -2806,7 +2830,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			case ModulePathSymbol:
 				return Error(node, $"'{GetName(node)}' is a module, not a value", CurrentTargetType);
 			
-			case TraitSymbol:
+			case TraitSymbol or TypeParameterSymbol { IsTrait: true }:
 				return Error(node, "Cannot use traits as values", CurrentTargetType);
 			
 			default:
@@ -2898,7 +2922,8 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 				.Append(new(signature.ReturnType, type.ReturnType) { IsExact = true });
 			
 			var result = _inference.Infer(open, inputs, null, null);
-			if (!result.Succeeded || ReportConstraintViolation(open, result.Arguments, _ => default) is not null)
+			if (!result.Succeeded ||
+			    ReportConstraintViolation(open, result.Arguments, _ => default, function) is not null)
 				continue;
 			
 			var instantiated = InstantiateDeclared(function, result.Arguments);
@@ -3456,10 +3481,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			return RejectAssignment(node, new(DiagnosticSeverity.Error, target.Syntax.SourceLocation,
 				"Cannot reassign read-only properties"));
 		
-		if (target.Owner is DynType dyn && (!GetDynMembers(dyn.Trait).Contains(setter) ||
-		                                    node.Op.Type != TokenType.OpEqual &&
-		                                    property.Getter is FunctionAccessor { Function: var read } &&
-		                                    !GetDynMembers(dyn.Trait).Contains(read)))
+		var read = node.Op.Type == TokenType.OpEqual ? null : (property.Getter as FunctionAccessor)?.Function;
+		if (target.Owner is DynType { Trait: { } trait } dyn &&
+		    (!GetDynMembers(trait).Contains(setter) || read is not null && !GetDynMembers(trait).Contains(read)))
 			return RejectAssignment(node, new(DiagnosticSeverity.Error, member,
 				$"Cannot use '{property.Name}' through '{dyn.Name}'"));
 		

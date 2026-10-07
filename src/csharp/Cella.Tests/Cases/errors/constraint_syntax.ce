@@ -1,0 +1,12 @@
+mod test
+
+first[T: 3]: fun -> i32 = 0
+
+box[T]: rec
+{
+	value: T
+}
+
+box[T: noref]: impl ,
+
+main: fun -> i32 = 0

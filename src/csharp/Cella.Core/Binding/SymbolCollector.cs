@@ -350,8 +350,9 @@ public sealed class SymbolCollector : IDeclarationNodeVisitor<Symbol>
 	public Symbol Visit(ImplNode node)
 	{
 		var typeParameters = CreateTypeParameters(node.TypeParameters);
+		var target = node.Target.SourceLocation.GetText().ToString();
 		var traits = string.Join("+", node.Traits.Select(static trait => trait.SourceLocation.GetText().ToString()));
-		_typeStack.Push($"{node.Target.SourceLocation.GetText().ToString()}.{traits}");
+		_typeStack.Push(node.Traits.IsEmpty ? target : $"{target}.{traits}");
 		_typeVisibilities.Push(Visibility.Public);
 		_typeParameters.Push(typeParameters);
 		var (functions, properties, _) = CollectMembers(node.Members);

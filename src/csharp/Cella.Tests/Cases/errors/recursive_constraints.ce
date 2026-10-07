@@ -1,0 +1,34 @@
+mod test
+
+cell[T: copy]: rec
+{
+	value: ptr[T]
+}
+
+holder[T: new]: rec
+{
+	value: ptr[T]
+}
+
+Text: rec
+{
+	id: i32
+
+	drop: op
+	{
+	}
+}
+
+Bad: rec
+{
+	next: cell[Bad]
+	text: Text
+}
+
+Needy: rec
+{
+	up: holder[Needy]
+	count: req i32
+}
+
+main: fun -> i32 = 0

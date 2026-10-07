@@ -1,0 +1,33 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Text: rec
+{
+	id: i32
+
+	drop: op
+	{
+		printf("drop %d\n", self.id)
+	}
+}
+
+pair[A, B]: rec
+{
+	a: A
+	b: B
+}
+
+hold[T: drop]: fun(own value: T) -> i32 = 1
+
+pass[T: drop]: fun(own value: T) -> i32 = hold(value)
+
+main: fun -> i32
+{
+	printf("%d\n", hold(Text(1)))
+	printf("%d\n", pass(pair(Text(2), 5)))
+	ret 0
+}

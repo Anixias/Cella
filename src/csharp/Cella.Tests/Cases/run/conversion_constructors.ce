@@ -1,0 +1,46 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Wide: trait
+{
+	new: op(value: i64)
+}
+
+Small: trait
+{
+	new: op(value: i32)
+}
+
+Same: trait
+{
+	new: op(value: Self)
+}
+
+Color: enum
+{
+	red
+	green
+	blue
+}
+
+i32: impl Wide + Same
+f64: impl Wide
+u8: impl Wide
+Color: impl Small
+
+narrow[T: Wide]: fun(value: i64) -> T = T(value)
+
+pick[T: Small]: fun(value: i32) -> T = T(value)
+
+keep[T: Same]: fun(value: T) -> T = T(value)
+
+main: fun -> i32
+{
+	printf("%d %.1f %d\n", narrow[i32](300), narrow[f64](5), i32(narrow[u8](300)))
+	printf("%d %d\n", i32(pick[Color](2) == blue), keep(41) + 1)
+	ret 0
+}

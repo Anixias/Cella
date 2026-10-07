@@ -1,0 +1,39 @@
+
+====== constraint_declarations.ce ======
+
+Error at line 8, column 10
+7 │ 
+8 │ first[T: copy + drop]: fun -> i32 = 0
+             ╘══╛ Cannot combine 'copy' and 'drop'
+
+Error at line 8, column 17
+7 │ 
+8 │ first[T: copy + drop]: fun -> i32 = 0
+                    ╘══╛ Cannot combine 'copy' and 'drop'
+
+Error at line 10, column 11
+ 9 │ 
+10 │ second[K: trait + noref]: fun -> i32 = 0
+               ╘═══╛ Cannot combine 'trait' with other constraints
+
+Error at line 10, column 19
+ 9 │ 
+10 │ second[K: trait + noref]: fun -> i32 = 0
+                       ╘═══╛ Cannot combine 'trait' with other constraints
+
+Error at line 12, column 10
+11 │ 
+12 │ third[K: trait + Shape]: fun -> i32 = 0
+              ╘═══╛ Cannot combine 'trait' with other constraints
+
+Error at line 12, column 18
+11 │ 
+12 │ third[K: trait + Shape]: fun -> i32 = 0
+                      ╘═══╛ Cannot combine 'trait' with other constraints
+
+Error at line 14, column 14
+13 │ 
+14 │ fourth[T, U: T]: fun -> i32 = 0
+                  ^ 'T' is not a trait
+
+[compilation failed]

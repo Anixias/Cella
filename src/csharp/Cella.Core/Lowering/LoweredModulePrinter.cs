@@ -198,6 +198,10 @@ public static class LoweredModulePrinter
 					sb.Append("sizeOf(").Append(v.Target.Name).Append(')');
 					break;
 				
+				case NewValue v:
+					sb.Append("new[").Append(v.Type.Name).Append(']');
+					break;
+				
 				case VariableValue v:
 					sb.Append('$').Append(v.Variable.Symbol.Name);
 					break;

@@ -67,6 +67,8 @@ public sealed class SizeOfValue(TypeSymbol target, SourceLocation sourceLocation
 	public TypeSymbol Target { get; } = target;
 }
 
+public sealed class NewValue(TypeSymbol type, SourceLocation sourceLocation) : Value(type, false, sourceLocation);
+
 public sealed class VariableValue(VariableInfo variable, SourceLocation sourceLocation)
 	: Value(variable.Type, false, sourceLocation)
 {

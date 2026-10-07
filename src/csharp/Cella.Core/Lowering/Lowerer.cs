@@ -980,6 +980,8 @@ public sealed class Lowerer
 		public Value Visit(ResolvedSizeOfExpressionNode node) =>
 			new SizeOfValue(node.Target, node.Syntax.SourceLocation);
 		
+		public Value Visit(ResolvedNewExpressionNode node) => new NewValue(node.Type, node.Syntax.SourceLocation);
+		
 		public Value Visit(ResolvedArrayExpressionNode node) => new ArrayValue((ArrayType)node.Type,
 			LowerOperands(node.Values, static _ => Passing.Consume), node.Syntax.SourceLocation);
 		

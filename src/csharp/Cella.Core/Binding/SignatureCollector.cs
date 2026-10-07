@@ -1,6 +1,7 @@
 ﻿using System.Collections.Immutable;
 using System.Numerics;
 using Cella.Core.Binding.Constants;
+using Cella.Core.Binding.Conversions;
 using Cella.Core.Binding.Nodes;
 using Cella.Core.Binding.Operations;
 using Cella.Core.Symbols;
@@ -60,6 +61,7 @@ public sealed class SignatureCollector
 	private readonly List<Conformance> _localConformances = [];
 	private readonly HashSet<FunctionSymbol> _witnessMembers = [];
 	private readonly HashSet<(SourceLocation, string)> _conformanceErrors = [];
+	private readonly List<ConstraintCheck> _deferredChecks = [];
 	private IConstantResolver? constants;
 	
 	public DiagnosticList Diagnostics { get; } = new();
@@ -98,7 +100,9 @@ public sealed class SignatureCollector
 			foreach (var declaration in file.Declarations)
 				Complete(_symbolTable.DeclarationSymbols[declaration]);
 		
+		ReportDeferredChecks();
 		CheckConformances();
+		CheckMemberBlocks();
 		_typePool.TypeCompleter = null;
 	}
 	
@@ -247,7 +251,8 @@ public sealed class SignatureCollector
 			Diagnostics = Diagnostics,
 			ExtSignatureTypes = _extSignatureTypes,
 			EvaluateConstant = EvaluateConstant,
-			GenericTypes = []
+			GenericTypes = [],
+			DeferConstraintCheck = DeferConstraintCheck
 		};
 		
 		var imports = CollectImports(node, context);
@@ -298,13 +303,17 @@ public sealed class SignatureCollector
 			switch (declaration)
 			{
 				case RecordNode record:
-					RegisterBounds(record.TypeParameters, ((RecordSymbol)symbol).TypeParameters, context);
+					RegisterBounds(record.TypeParameters, ((RecordSymbol)symbol).TypeParameters,
+						context with { ContainingType = (RecordSymbol)symbol });
+					
 					RegisterMemberBounds(record.Members);
 					RegisterConformances((NamedTypeSymbol)symbol, record.Traits, context);
 					break;
 				
 				case EnumNode enumNode:
-					RegisterBounds(enumNode.TypeParameters, ((EnumSymbol)symbol).TypeParameters, context);
+					RegisterBounds(enumNode.TypeParameters, ((EnumSymbol)symbol).TypeParameters,
+						context with { ContainingType = (EnumSymbol)symbol });
+					
 					RegisterMemberBounds(enumNode.Members);
 					RegisterConformances((NamedTypeSymbol)symbol, enumNode.Traits, context);
 					break;
@@ -340,10 +349,38 @@ public sealed class SignatureCollector
 	{
 		for (var i = 0; i < nodes.Length && i < parameters.Length; i++)
 		{
-			ImmutableArray<TraitSymbol> traits = [..nodes[i].Traits.Select(context.ResolveTrait).OfType<TraitSymbol>()];
+			ReportConstraintConflicts(nodes[i]);
+			var bounds = nodes[i].Traits.Select(context.ResolveTraitReference).ToList();
+			ImmutableArray<TraitSymbol> traits = [..bounds.OfType<TraitSymbol>()];
+			ImmutableArray<TypeParameterSymbol> traitParameters = [..bounds.OfType<TypeParameterSymbol>()];
 			if (!traits.IsEmpty)
 				_typePool.SetBounds(parameters[i], traits);
+			
+			if (!traitParameters.IsEmpty)
+				_typePool.SetParameterBounds(parameters[i], traitParameters);
 		}
+	}
+	
+	private void ReportConstraintConflicts(TypeParameterNode node)
+	{
+		var keywords = node.Keywords;
+		if (keywords.Any(static keyword => keyword.Type == TokenType.KeywordTrait) &&
+		    keywords.Length + node.Traits.Length > 1)
+		{
+			foreach (var location in keywords.Select(static k => k.SourceLocation)
+				         .Concat(node.Traits.Select(static trait => trait.SourceLocation)))
+				Diagnostics.Add(new(DiagnosticSeverity.Error, location,
+					"Cannot combine 'trait' with other constraints"));
+			
+			return;
+		}
+		
+		var conflicting = keywords.Where(static k => k.Type is TokenType.KeywordCopy or TokenType.KeywordDrop).ToList();
+		if (conflicting.Select(static keyword => keyword.Type).Distinct().Count() < 2)
+			return;
+		
+		foreach (var keyword in conflicting)
+			Diagnostics.Add(new(DiagnosticSeverity.Error, keyword.SourceLocation, "Cannot combine 'copy' and 'drop'"));
 	}
 	
 	private void RegisterConformances(NamedTypeSymbol type, ImmutableArray<ITypeNode> traits, ResolutionContext context)
@@ -363,11 +400,14 @@ public sealed class SignatureCollector
 	
 	private void RegisterImpl(ImplSymbol impl, ImplNode node, ResolutionContext context)
 	{
-		RegisterBounds(node.TypeParameters, impl.TypeParameters, context);
+		RegisterBounds(node.TypeParameters, impl.TypeParameters, context with { ImplBlock = impl });
 		if (ResolveImplTarget(impl, node, context) is not { } target)
 			return;
 		
 		_implTargets[impl] = target;
+		if (node.Traits.IsEmpty)
+			_typePool.AddMemberBlock(impl, target);
+		
 		foreach (var traitNode in node.Traits)
 		{
 			if (context.ResolveTrait(traitNode) is { } trait)
@@ -747,7 +787,10 @@ public sealed class SignatureCollector
 			return new DefaultWitness();
 		
 		if (self is not RecordSymbol)
-			return null;
+			return count == 1 && IsConvertible(expected) && FindConversion(expected.ParameterTypes[1], self) is
+				{ } conversion
+				? new ConversionWitness(conversion)
+				: null;
 		
 		var fields = _typePool.GetMembers(self).OfType<FieldSymbol>().ToList();
 		if (fields.Count != count)
@@ -764,6 +807,16 @@ public sealed class SignatureCollector
 		
 		return new MemberwiseWitness();
 	}
+	
+	private bool IsConvertible(FunctionSignature expected) => expected.GetMode(1) switch
+	{
+		ParameterMode.Own => true,
+		ParameterMode.ReadOnly => _typePool.IsCopy(expected.ParameterTypes[1]),
+		_ => false
+	};
+	
+	private Conversion? FindConversion(TypeSymbol from, TypeSymbol to) =>
+		from == to ? new IdentityConversion(to) : _typePool.ConversionTable.FindExplicit(from, to);
 	
 	private static IEnumerable<(string Name, FunctionSymbol Function)> GetRequirements(TraitSymbol trait) =>
 	[
@@ -902,6 +955,159 @@ public sealed class SignatureCollector
 			Diagnostics.Add(new(DiagnosticSeverity.Error, GetFunctionLocation(function),
 				$"'{name}' isn't a member of {string.Join(" or ", traits)}"));
 		}
+	}
+	
+	private bool DeferConstraintCheck(ConstraintCheck check)
+	{
+		if (!MentionsPending(check.Argument))
+			return false;
+		
+		_deferredChecks.Add(check);
+		return true;
+	}
+	
+	private bool MentionsPending(TypeSymbol type) => type switch
+	{
+		NamedTypeSymbol named => _inProgress.Any(entry => entry.Symbol == named.Definition) ||
+		                         named.TypeArguments.Any(MentionsPending),
+		PointerType pointer => MentionsPending(pointer.BaseType),
+		BorrowType borrow => MentionsPending(borrow.Target),
+		ArrayType array => MentionsPending(array.ElementType),
+		FunctionType function => function.ParameterTypes.Append(function.ReturnType).Any(MentionsPending),
+		_ => false
+	};
+	
+	private void ReportDeferredChecks()
+	{
+		foreach (var check in _deferredChecks)
+		{
+			if (_typePool.FindConstraintViolation(check.Parameter, check.Argument, check.Map) is { } message)
+				Diagnostics.Add(new(DiagnosticSeverity.Error, check.Location, message));
+		}
+		
+		_deferredChecks.Clear();
+	}
+	
+	private void CheckMemberBlocks()
+	{
+		var blocks = _impls.Where(impl => ((ImplNode)_declarations[impl].Node).Traits.IsEmpty).ToList();
+		foreach (var impl in blocks)
+			CheckMemberBlock(impl, (ImplNode)_declarations[impl].Node);
+		
+		foreach (var sameType in blocks.GroupBy(impl => GetImplTarget(impl).OriginalDefinition))
+			ReportMemberBlockConflicts(sameType.Key, [..sameType]);
+	}
+	
+	private void CheckMemberBlock(ImplSymbol impl, ImplNode node)
+	{
+		var target = GetImplTarget(impl).OriginalDefinition;
+		if (target is InvalidType)
+			return;
+		
+		if (!IsLocal(target))
+		{
+			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Target.SourceLocation,
+				$"'{target.Name}' is declared in another project"));
+			
+			return;
+		}
+		
+		var declared = target is NamedTypeSymbol named ? named.TypeParameters : [];
+		var map = TypePool.CreateMap(declared, [..impl.TypeParameters]);
+		var violations = declared
+			.Select((parameter, i) => (Index: i,
+				Message: _typePool.FindConstraintViolation(parameter, impl.TypeParameters[i], map)))
+			.Where(static violation => violation.Message is not null)
+			.ToList();
+		
+		foreach (var (index, message) in violations)
+			Diagnostics.Add(new(DiagnosticSeverity.Error, node.TypeParameters[index].SourceLocation, message!));
+		
+		if (violations.Count == 0 &&
+		    !declared.Where((parameter, i) => AddsBound(parameter, impl.TypeParameters[i], map)).Any())
+			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Keyword.SourceLocation,
+				"Cannot declare 'impl' blocks that add no bounds"));
+	}
+	
+	private bool AddsBound(TypeParameterSymbol declared, TypeParameterSymbol block,
+		Dictionary<TypeParameterSymbol, TypeSymbol> map) =>
+		block.IsNoref && !declared.IsNoref || block.HasNull && !declared.HasNull || block.IsCopy && !declared.IsCopy ||
+		block.HasDrop && !declared.HasDrop || block.HasNew && !declared.HasNew ||
+		_typePool.GetBounds(block).Except(_typePool.GetBounds(declared)).Any() ||
+		_typePool.GetParameterBounds(block).Cast<TypeSymbol>()
+			.Except(_typePool.GetParameterBounds(declared).Select(bound => map[bound]))
+			.Any();
+	
+	private void ReportMemberBlockConflicts(TypeSymbol target, IReadOnlyList<ImplSymbol> blocks)
+	{
+		if (!_declarations.TryGetValue(target, out var declaration))
+			return;
+		
+		var declared = target is NamedTypeSymbol named ? named.TypeParameters : [];
+		var members = GetBodyMembers(declaration.Node)
+			.Select(static member => (member.Name, member.Function, Block: (ImplSymbol?)null))
+			.Concat(blocks.SelectMany(impl => GetBlockMembers(impl)
+				.Select(member => (member.Name, member.Function, Block: (ImplSymbol?)impl))))
+			.ToList();
+		
+		foreach (var sameName in members.GroupBy(static member => member.Name.Text))
+		{
+			if (sameName.All(static member => member.Block is null))
+				continue;
+			
+			foreach (var member in sameName)
+			{
+				var others = sameName.Where(other => other.Block != member.Block).ToList();
+				if (others.Count == 0)
+					continue;
+				
+				var message = member.Function is not { } function || others.Any(static other => other.Function is null)
+					? $"'{member.Name.Text}' is declared more than once in '{target.Name}'"
+					: DescribeConflict(member.Name.Text, GetDeclaredSignature(function, member.Block, declared),
+						others.Select(other => GetDeclaredSignature(other.Function!, other.Block, declared)));
+				
+				if (message is not null)
+					Diagnostics.Add(new(DiagnosticSeverity.Error, member.Name.SourceLocation, message));
+			}
+		}
+	}
+	
+	private IEnumerable<(Token Name, FunctionSymbol? Function)> GetBodyMembers(IDeclarationNode node)
+	{
+		ImmutableArray<IDeclarationNode> members = node switch
+		{
+			RecordNode record => record.Members,
+			EnumNode enumNode => enumNode.Members,
+			_ => []
+		};
+		
+		IEnumerable<(Token, FunctionSymbol?)> cases = node is EnumNode { Cases: var enumCases }
+			? enumCases.Select(static enumCase => (enumCase.Identifier, (FunctionSymbol?)null))
+			: [];
+		
+		return cases.Concat(members.Select(GetNamedMember).OfType<(Token, FunctionSymbol?)>());
+	}
+	
+	private IEnumerable<(Token Name, FunctionSymbol? Function)> GetBlockMembers(ImplSymbol impl) =>
+		((ImplNode)_declarations[impl].Node).Members.Select(GetNamedMember).OfType<(Token, FunctionSymbol?)>();
+	
+	private (Token Name, FunctionSymbol? Function)? GetNamedMember(IDeclarationNode member) => member switch
+	{
+		FieldNode field => (field.Identifier, null),
+		GlobalNode global => (global.Identifier, null),
+		PropertyNode property => (property.Identifier, null),
+		FunctionNode function when !IsDereference(function) =>
+			(function.Identifier, (FunctionSymbol)_symbolTable.DeclarationSymbols[function]),
+		_ => null
+	};
+	
+	private FunctionSignature GetDeclaredSignature(FunctionSymbol function, ImplSymbol? block,
+		ImmutableArray<TypeParameterSymbol> declared)
+	{
+		var signature = GetFunctionInfo(function).Signature;
+		return block is null
+			? signature
+			: SubstituteSignature(signature, TypePool.CreateMap(block.TypeParameters, [..declared]));
 	}
 	
 	private void CompleteRecord(RecordSymbol record)
@@ -1520,7 +1726,8 @@ public sealed class SignatureCollector
 	
 	private static TypeSymbol? FindHiddenType(TypeSymbol type, Visibility visibility) => type switch
 	{
-		DynType dyn => dyn.Trait.Visibility < visibility ? dyn : null,
+		DynType { Trait: { } trait } dyn => trait.Visibility < visibility ? dyn : null,
+		TraitType traitType => traitType.Trait.Visibility < visibility ? traitType : null,
 		PointerType pointer => FindHiddenType(pointer.BaseType, visibility),
 		BorrowType borrow => FindHiddenType(borrow.Target, visibility),
 		ArrayType array => FindHiddenType(array.ElementType, visibility),
@@ -1935,12 +2142,16 @@ public sealed class SignatureCollector
 		if (isExternal && others.Any(static s => s is FunctionSymbol { Kind: FunctionKind.External }))
 			return new(DiagnosticSeverity.Error, location, "'ext' functions cannot be overloaded");
 		
-		var signature = _builder.Functions[function].Signature;
-		var sameParameters = others
-			.Select(other => _builder.Functions[(FunctionSymbol)other].Signature)
-			.Where(other => HasSameParameters(other, signature))
-			.ToList();
+		var message = DescribeConflict(symbol.Name, _builder.Functions[function].Signature,
+			others.Select(other => _builder.Functions[(FunctionSymbol)other].Signature));
 		
+		return message is null ? null : new(DiagnosticSeverity.Error, location, message);
+	}
+	
+	private static string? DescribeConflict(string name, FunctionSignature signature,
+		IEnumerable<FunctionSignature> others)
+	{
+		var sameParameters = others.Where(other => HasSameParameters(other, signature)).ToList();
 		if (sameParameters.Count == 0)
 			return null;
 		
@@ -1949,16 +2160,14 @@ public sealed class SignatureCollector
 			.ToList();
 		
 		var sameReturn = sameParameters.Any(other => other.ReturnType == signature.ReturnType);
-		var message = (sameModes.Count > 0, sameReturn) switch
+		return (sameModes.Count > 0, sameReturn) switch
 		{
 			(true, _) when sameModes.Any(other => other.ReturnType == signature.ReturnType) =>
-				$"'{symbol.Name}' is declared more than once with the same signature",
-			(true, _) => $"'{symbol.Name}' overloads cannot differ only in return type",
-			(false, true) => $"'{symbol.Name}' overloads cannot differ only in parameter modes",
-			(false, false) => $"'{symbol.Name}' overloads cannot differ only in parameter modes and return type"
+				$"'{name}' is declared more than once with the same signature",
+			(true, _) => $"'{name}' overloads cannot differ only in return type",
+			(false, true) => $"'{name}' overloads cannot differ only in parameter modes",
+			(false, false) => $"'{name}' overloads cannot differ only in parameter modes and return type"
 		};
-		
-		return new(DiagnosticSeverity.Error, location, message);
 	}
 	
 	private void ReportModuleConflicts()

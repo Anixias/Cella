@@ -1,0 +1,52 @@
+mod test
+
+Eq: trait
+{
+	==: op(a: Self, b: Self) -> bool
+}
+
+Dup: trait
+{
+	dup: fun(self) -> Self
+}
+
+i32: impl Eq
+
+Text: rec
+{
+	id: i32
+
+	drop: op
+	{
+	}
+}
+
+box[T]: rec
+{
+	value: T
+}
+
+box[T: Eq]: impl
+{
+	same: fun(self, other: box[T]) -> bool = self.value == other.value
+	helper: pvt fun(self) -> i32 = 3
+	size: get(self) -> i32 = 4
+}
+
+box[T: copy]: impl Dup
+{
+	dup: fun(self) -> box[T] = box(self.value)
+}
+
+check[T]: fun(a: box[T]) -> bool = a.same(a)
+
+copies[T: Dup]: fun(value: T) -> T = value.dup()
+
+main: fun -> i32
+{
+	box(Text(1)).same(box(Text(2)))
+	box(3).helper()
+	box(Text(1)).size
+	copies(box(Text(1)))
+	ret 0
+}

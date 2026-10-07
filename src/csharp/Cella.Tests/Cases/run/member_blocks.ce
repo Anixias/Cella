@@ -1,0 +1,71 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Eq: trait
+{
+	==: op(a: Self, b: Self) -> bool
+}
+
+Dup: trait
+{
+	dup: fun(self) -> Self
+}
+
+i32: impl Eq
+
+box[T]: rec
+{
+	value: T
+
+	twice: fun(self) -> i32 = 2
+}
+
+box[T: Eq]: impl
+{
+	same: fun(self, other: box[T]) -> bool = self.value == other.value
+	matches: get(self) -> bool = self.same(self)
+	count: fun(self) -> i32 = self.helper()
+	helper: pvt fun(self) -> i32 = 3
+	==: op(a: box[T], b: box[T]) -> bool = a.value == b.value
+	equal: fun(a: T, b: T) -> bool = a == b
+	both: fun(self, other: box[T]) -> i32 = self.twice() + i32(self == other)
+}
+
+box[T: copy]: impl Dup
+{
+	dup: fun(self) -> box[T] = box(self.value)
+}
+
+option[T]: enum
+{
+	some(value: T)
+	none
+}
+
+option[T: Eq]: impl
+{
+	contains: fun(self, value: T) -> bool = match self
+	{
+		some(v) => v == value
+		none => false
+	}
+}
+
+check[T: Eq]: fun(a: box[T], b: box[T]) -> bool = a.same(b)
+
+copies[T: Dup]: fun(value: T) -> T = value.dup()
+
+main: fun -> i32
+{
+	val a = box(3)
+	val b = box(4)
+	printf("%d %d %d %d %d\n", i32(a.same(b)), i32(a.same(box(3))), i32(check(a, b)), i32(a.matches), a.count())
+	printf("%d %d %d %d\n", i32(a == box(3)), i32(box[i32].equal(1, 2)), a.both(box(3)), copies(b).value)
+	val o = option[i32].some(7)
+	printf("%d %d\n", i32(o.contains(7)), i32(option[i32].none.contains(7)))
+	ret 0
+}

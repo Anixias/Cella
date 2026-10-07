@@ -1,0 +1,16 @@
+mod test
+
+Shape: trait
+{
+	area: fun(self) -> f64
+}
+
+first[T: copy + drop]: fun -> i32 = 0
+
+second[K: trait + noref]: fun -> i32 = 0
+
+third[K: trait + Shape]: fun -> i32 = 0
+
+fourth[T, U: T]: fun -> i32 = 0
+
+main: fun -> i32 = 0

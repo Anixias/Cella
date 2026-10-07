@@ -1,0 +1,10 @@
+
+====== copy_borrows.ce ======
+
+Error at line 28, column 6
+27 │ 
+28 │ ret r.p.x
+         ╘═╛ Cannot use borrows of dropped values
+           | Dropped on line 26
+
+[compilation failed]

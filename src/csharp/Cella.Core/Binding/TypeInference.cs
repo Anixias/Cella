@@ -1,5 +1,4 @@
 ﻿using System.Collections.Immutable;
-using Cella.Core.Binding.Conversions;
 using Cella.Core.Symbols;
 
 namespace Cella.Core.Binding;
@@ -19,12 +18,12 @@ public sealed class InferenceResult
 	public bool Succeeded => Missing.IsEmpty && Conflicted is null;
 }
 
-public sealed class TypeInference(ConversionTable conversions)
+public sealed class TypeInference(TypePool typePool)
 {
 	public InferenceResult Infer(ImmutableArray<TypeParameterSymbol> parameters, IEnumerable<InferenceInput> inputs,
 		TypeSymbol? returnType, TypeSymbol? target)
 	{
-		var bounds = new Bounds(parameters);
+		var bounds = new Bounds(parameters, typePool);
 		foreach (var input in inputs)
 		{
 			if (input.Literal is { } literal)
@@ -44,7 +43,7 @@ public sealed class TypeInference(ConversionTable conversions)
 		
 		if (returnType is not null && target is not null && inferred.Any(static type => type is null))
 		{
-			var expected = new Bounds(parameters);
+			var expected = new Bounds(parameters, typePool);
 			expected.Unify(returnType, target, false);
 			for (var i = 0; i < parameters.Length; i++)
 				inferred[i] ??= Fix(expected.Exact[i], expected.Lower[i], out _);
@@ -116,9 +115,9 @@ public sealed class TypeInference(ConversionTable conversions)
 	}
 	
 	private bool ConvertsTo(TypeSymbol from, TypeSymbol to) =>
-		from == to || conversions.FindImplicit(from, to) is not null;
+		from == to || typePool.ConversionTable.FindImplicit(from, to) is not null;
 	
-	private sealed class Bounds(ImmutableArray<TypeParameterSymbol> parameters)
+	private sealed class Bounds(ImmutableArray<TypeParameterSymbol> parameters, TypePool typePool)
 	{
 		public List<TypeSymbol>[] Exact { get; } = [..parameters.Select(static _ => new List<TypeSymbol>())];
 		public List<TypeSymbol>[] Lower { get; } = [..parameters.Select(static _ => new List<TypeSymbol>())];
@@ -160,6 +159,14 @@ public sealed class TypeInference(ConversionTable conversions)
 					Unify(p.BaseType, a.BaseType, true);
 					break;
 				
+				case (DynType { Parameter: { } p }, DynType { Trait: { } a }):
+					Unify(p, typePool.GetTraitType(a), true);
+					break;
+				
+				case (DynType { Parameter: { } p }, DynType { Parameter: { } a }):
+					Unify(p, a, true);
+					break;
+				
 				case (ArrayType p, ArrayType a):
 					Unify(p.ElementType, a.ElementType, true);
 					break;
@@ -189,6 +196,7 @@ public sealed class TypeInference(ConversionTable conversions)
 		private bool Mentions(TypeSymbol type) => type switch
 		{
 			TypeParameterSymbol parameter => parameters.Contains(parameter),
+			DynType { Parameter: { } parameter } => parameters.Contains(parameter),
 			NamedTypeSymbol named => named.TypeArguments.Any(Mentions),
 			PointerType pointer => Mentions(pointer.BaseType),
 			BorrowType borrow => Mentions(borrow.Target),

@@ -57,15 +57,19 @@ public static class Mangling
 		PointerType { BaseType: var baseType } when baseType != NativeSymbols.Void =>
 			$"ptr[{MangleType(baseType, modules)}]",
 		BorrowType borrow => $"{(borrow.IsMutable ? "mut" : "imm")}[{MangleType(borrow.Target, modules)}]",
-		DynType dyn => modules?.FindModule(dyn.Trait) is { } traitModule
-			? $"dyn[{traitModule.ModuleName.Text}.{MangleName(dyn.Trait, modules)}]"
-			: dyn.Name,
+		DynType { Trait: { } trait } => $"dyn[{MangleTrait(trait, modules)}]",
+		TraitType traitType => MangleTrait(traitType.Trait, modules),
 		ArrayType { Length.Sign: < 0 } array => $"array[{MangleType(array.ElementType, modules)}]",
 		ArrayType array => $"array[{MangleType(array.ElementType, modules)}, {array.Length}]",
 		FunctionType function => MangleFunctionType(function, modules),
 		_ when modules?.FindModule(type) is { } module => $"{module.ModuleName.Text}.{MangleName(type, modules)}",
 		_ => type.Name
 	};
+	
+	private static string MangleTrait(TraitSymbol trait, ModuleIndex? modules) =>
+		modules?.FindModule(trait) is { } module
+			? $"{module.ModuleName.Text}.{MangleName(trait, modules)}"
+			: trait.Name;
 	
 	private static string MangleFunctionType(FunctionType function, ModuleIndex? modules)
 	{

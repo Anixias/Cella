@@ -18,8 +18,14 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 			TokenType.KeywordNew, TokenType.KeywordDrop, TokenType.KeywordOp, TokenType.KeywordReq,
 			TokenType.KeywordGet, TokenType.KeywordProp);
 	
+	private static readonly HashSet<TokenType> _constraintTypes =
+	[
+		TokenType.KeywordNoref, TokenType.KeywordCopy, TokenType.KeywordDrop, TokenType.KeywordNew,
+		TokenType.KeywordTrait
+	];
+	
 	private static readonly Dictionary<string, TokenType> _constraintKeywords =
-		BuildContextualKeywords(TokenType.KeywordNoref);
+		BuildContextualKeywords(_constraintTypes);
 	
 	private static readonly HashSet<TokenType> _operatorNames =
 	[
@@ -368,14 +374,14 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 			{
 				do
 				{
-					if (Match(ref index, out var keyword, _constraintKeywords, TokenType.KeywordNoref) ||
+					if (Match(ref index, out var keyword, _constraintKeywords, _constraintTypes) ||
 					    Match(ref index, out keyword, TokenType.KeywordNull))
 						keywords.Add(keyword);
 					else if (Peek(index, TokenType.Identifier))
 						traits.Add(ParseType(ref index));
 					else
 					{
-						ReportExpected(index, "'noref', 'null' or a trait");
+						ReportExpected(index, "a constraint");
 						return null;
 					}
 				} while (Match(ref index, TokenType.OpPlus));
@@ -1006,8 +1012,17 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 	private ImplNode? ParseImpl(ref int index, ITypeNode target, Token keyword, List<TypeParameterNode> typeParameters)
 	{
 		var traits = new List<ITypeNode>();
-		if (!ParseTraitNames(ref index, traits))
-			return null;
+		if (!Peek(index, TokenType.OpOpenBrace))
+		{
+			if (!Peek(index, TokenType.Identifier))
+			{
+				ReportExpected(index, "a trait or '{'");
+				return null;
+			}
+			
+			if (!ParseTraitNames(ref index, traits))
+				return null;
+		}
 		
 		var members = new List<IDeclarationNode>();
 		if (Match(ref index, out var openBrace, TokenType.OpOpenBrace) &&

@@ -1,0 +1,50 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+cell[T: copy]: rec
+{
+	value: ptr[T]
+}
+
+holder[T: new]: rec
+{
+	value: ptr[T]
+}
+
+guard[T: drop]: rec
+{
+	value: ptr[T]
+}
+
+Node: rec
+{
+	next: cell[Node]
+	x: i32
+}
+
+Leaf: rec
+{
+	up: holder[Leaf]
+	y: i32
+}
+
+Item: rec
+{
+	link: guard[Item]
+
+	drop: op
+	{
+	}
+}
+
+main: fun -> i32
+{
+	val n = Node(cell[Node](null), 1)
+	val l = Leaf(holder[Leaf](null), 2)
+	printf("%d %d\n", n.x, l.y)
+	ret 0
+}
