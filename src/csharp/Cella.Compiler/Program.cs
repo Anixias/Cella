@@ -134,7 +134,37 @@ internal static class Program
 		ProjectOutputType OutputType,
 		string? OutputPath,
 		bool Succeeded
-	);
+	)
+	{
+		public ImmutableArray<AssemblyInfo> Dependencies { get; init; } = [];
+		public ImmutableArray<LoweredFunction> GenericFunctions { get; init; } = [];
+		public IReadOnlySet<GlobalSymbol> ExportedStatics { get; init; } = ImmutableHashSet<GlobalSymbol>.Empty;
+	}
+	
+	private static ImmutableArray<AssemblyInfo> CollectDependencies(ImmutableArray<AssemblyInfo> dependencies)
+	{
+		var collected = new List<AssemblyInfo>();
+		var seen = new HashSet<AssemblySymbol>();
+		Collect(dependencies);
+		return [..collected];
+		
+		void Collect(ImmutableArray<AssemblyInfo> items)
+		{
+			foreach (var item in items)
+			{
+				if (!seen.Add(item.AssemblySymbol))
+					continue;
+				
+				collected.Add(item);
+				Collect(item.Dependencies);
+			}
+		}
+	}
+	
+	private static IEnumerable<Symbol> GetLibrarySymbols(AssemblyInfo library) =>
+		library.AssemblySymbol.SignatureTable.Functions.Keys
+			.Concat<Symbol>(library.AssemblySymbol.SignatureTable.Globals.Keys)
+			.Concat(library.ExportedStatics);
 	
 	private static async Task<AssemblyInfo> BuildProject(ProjectInfo project, TypePool typePool,
 		IEnumerable<AssemblyInfo> dependencies, bool verbose, OptimizeMode optimizeMode, CancellationToken ct = default)
@@ -162,6 +192,7 @@ internal static class Program
 		
 		var dependencyList = dependencies.ToImmutableArray();
 		var dependencySymbols = dependencyList.Select(static d => d.AssemblySymbol).ToImmutableArray();
+		var allDependencies = CollectDependencies(dependencyList);
 		
 		// TODO Should I make a dependency here on LLVM? This implies a Language Server would also have to do this
 		// We need to know the pointer size of the target for proper symbol resolution
@@ -173,7 +204,8 @@ internal static class Program
 		var codeGenConfig = new CodeGenConfig(outputConfig, targetConfig, optimizeMode)
 		{
 			BoundsChecks = project.Project.BoundsChecks ?? true,
-			SourceRoot = project.Directory
+			SourceRoot = project.Directory,
+			IsLibrary = outputType != ProjectOutputType.Executable
 		};
 		
 		var pointerBitSize = codeGenConfig.GetPointerSize() * 8;
@@ -260,14 +292,27 @@ internal static class Program
 		
 		// Phase 7: Code generation
 		string outputPath;
+		var genericFunctions = lowerer.Modules
+			.SelectMany(static module => module.Files)
+			.SelectMany(static file => file.Functions)
+			.Where(static function => !function.Info.Symbol.TypeParameters.IsEmpty)
+			.ToImmutableArray();
+		
+		IReadOnlySet<GlobalSymbol> exportedStatics;
 		{
-			var genericFunctions = lowerer.Modules
-				.SelectMany(static module => module.Files)
-				.SelectMany(static file => file.Functions)
-				.Where(static function => !function.Info.Symbol.TypeParameters.IsEmpty);
+			var inputs = new CodeGenInputs
+			{
+				GenericFunctions = [..genericFunctions, ..allDependencies.SelectMany(static d => d.GenericFunctions)],
+				GenericReferences = resolver.GenericReferences,
+				LibraryStatics = allDependencies.SelectMany(static d => d.ExportedStatics).ToHashSet(),
+				StaticLibrarySymbols = allDependencies
+					.Where(static d => d.OutputType == ProjectOutputType.StaticLibrary)
+					.SelectMany(GetLibrarySymbols)
+					.ToHashSet()
+			};
 			
 			var codeGenerator = new CodeGenerator(assemblySymbol, typePool, codeGenConfig, signatureCollector.Modules,
-				genericFunctions);
+				inputs);
 			
 			var externalLibraries = new HashSet<string>();
 			var objectFiles = new List<string>();
@@ -288,6 +333,7 @@ internal static class Program
 			if (codeGenFailed)
 				return errorResult;
 			
+			exportedStatics = codeGenerator.ExportedStatics;
 			var outputBaseName = project.Project.AssemblyName ?? project.Name;
 			var outputFileName = GetOutputFileName(outputBaseName, targetTriple, outputType);
 			var outputDir = Path.Combine(project.Directory, "bin");
@@ -298,7 +344,7 @@ internal static class Program
 			
 			// TODO Need a more robust way of getting libs
 			var libFiles = externalLibraries
-				.Concat(dependencyList.Select(static d => d.OutputPath))
+				.Concat(allDependencies.Select(static d => d.OutputPath))
 				.Select(static p => Path.ChangeExtension(p, ".lib"))
 				.WhereNot(string.IsNullOrEmpty)
 				.ToImmutableHashSet();
@@ -320,6 +366,9 @@ internal static class Program
 			
 			if (linkExitCode != 0)
 				return errorResult;
+			
+			if (outputType == ProjectOutputType.Executable)
+				CopySharedLibraries(allDependencies, outputDir);
 		}
 		
 		/*var userProgram = new Process
@@ -334,7 +383,19 @@ internal static class Program
 		await userProgram.WaitForExitAsync();
 		
 		Console.WriteLine($"User program finished with exit code {userProgram.ExitCode}");*/
-		return new(assemblySymbol, outputType, outputPath, true);
+		return new(assemblySymbol, outputType, outputPath, true)
+		{
+			Dependencies = dependencyList,
+			GenericFunctions = genericFunctions,
+			ExportedStatics = exportedStatics
+		};
+	}
+	
+	private static void CopySharedLibraries(ImmutableArray<AssemblyInfo> dependencies, string outputDir)
+	{
+		var libraries = dependencies.Where(static d => d.OutputType == ProjectOutputType.SharedLibrary);
+		foreach (var path in libraries.Select(static d => d.OutputPath).OfType<string>())
+			File.Copy(path, Path.Combine(outputDir, Path.GetFileName(path)), true);
 	}
 	
 	private static async Task<(ImmutableArray<SourceFileInfo> Files, DiagnosticList Diagnostics)> ProcessProject(

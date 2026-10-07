@@ -1,0 +1,2 @@
+OutputType = "StaticLibrary"
+SystemLinkPreference = "Dynamic"

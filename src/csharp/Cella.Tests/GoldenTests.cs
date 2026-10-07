@@ -95,16 +95,15 @@ public sealed class GoldenTests
 			return;
 		}
 		
-		foreach (var file in Directory.EnumerateFiles(sourcePath, "*.ce", SearchOption.AllDirectories))
+		var files = Directory.EnumerateFiles(sourcePath, "*.ce", SearchOption.AllDirectories)
+			.Concat(Directory.EnumerateFiles(sourcePath, "*.celp", SearchOption.AllDirectories));
+		
+		foreach (var file in files)
 		{
 			var target = Path.Combine(caseDirectory, Path.GetRelativePath(sourcePath, file));
 			Directory.CreateDirectory(Path.GetDirectoryName(target)!);
 			File.Copy(file, target);
 		}
-		
-		var project = Path.Combine(sourcePath, "test.celp");
-		if (File.Exists(project))
-			File.Copy(project, Path.Combine(caseDirectory, "test.celp"));
 	}
 	
 	private static async Task<(int ExitCode, string Output)> CompileAsync(string projectPath, bool release,

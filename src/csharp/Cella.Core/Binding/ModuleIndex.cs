@@ -6,6 +6,7 @@ public sealed class ModuleIndex
 {
 	private readonly Dictionary<string, ModulePathSymbol> _paths = [];
 	private readonly Dictionary<Symbol, FileSymbol> _files = [];
+	private readonly Dictionary<Symbol, FileSymbol> _dependencyFiles = [];
 	private readonly Dictionary<Symbol, ModuleSymbol> _modules = [];
 	
 	public ModuleIndex(SymbolTable symbolTable, IEnumerable<SymbolTable> dependencies)
@@ -15,11 +16,19 @@ public sealed class ModuleIndex
 		
 		Add(symbolTable, true);
 		foreach (var dependency in dependencies)
+		{
 			Add(dependency, false);
+			MapFiles(dependency, _dependencyFiles);
+		}
 		
+		MapFiles(symbolTable, _files);
+	}
+	
+	private static void MapFiles(SymbolTable symbolTable, Dictionary<Symbol, FileSymbol> files)
+	{
 		foreach (var file in symbolTable.ModuleSymbols.Values.SelectMany(static module => module.Files))
 			foreach (var symbol in file.Symbols.Values.SelectMany(static symbols => symbols))
-				_files[symbol] = file;
+				files[symbol] = file;
 	}
 	
 	public ModulePathSymbol Root { get; }
@@ -32,7 +41,8 @@ public sealed class ModuleIndex
 	public ModuleSymbol? FindModule(Symbol symbol) => _modules.GetValueOrDefault(symbol);
 	
 	public string? FindPrivateFile(Symbol symbol) =>
-		GetVisibility(symbol) == Visibility.Private && _files.GetValueOrDefault(symbol) is { } file
+		GetVisibility(symbol) == Visibility.Private &&
+		(_files.GetValueOrDefault(symbol) ?? _dependencyFiles.GetValueOrDefault(symbol)) is { } file
 			? file.Name.Replace('\\', '/')
 			: null;
 	

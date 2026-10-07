@@ -1,0 +1,14 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+main: fun -> i32
+{
+	val item = lib.counted[i32](2)
+	val other = lib.counted[i8](3)
+	printf("%d %d %d\n", lib.makeOne(), lib.counted[i32].made, lib.counted[i8].made)
+	ret 0
+}

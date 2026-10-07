@@ -1,0 +1,11 @@
+mod base
+
+peekStep: mod fun(value: i32) -> i32 = value * 10
+
+cell[T]: pub rec
+{
+	value: T
+	hits: i32
+
+	peek: fun(self) -> i32 = peekStep(self.hits)
+}

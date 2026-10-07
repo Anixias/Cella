@@ -61,7 +61,10 @@ public sealed unsafe class CodeGenerator : IDisposable
 	private readonly HashSet<FunctionSymbol> _sharedFunctions;
 	private readonly ModuleIndex _modules;
 	private readonly Dictionary<FunctionSymbol, LoweredFunction> _genericBodies;
+	private readonly CodeGenInputs _inputs;
 	private readonly Dictionary<ModuleSymbol, ModuleState> _moduleStates = [];
+	private readonly Dictionary<string, ModuleState> _foreignOwners = [];
+	private readonly HashSet<GlobalSymbol> _exportedStatics = [];
 	private readonly Queue<(ModuleState Owner, FunctionInfo Info)> _pendingInstantiations = [];
 	private readonly Queue<(ModuleState Owner, GlobalInfo Info)> _pendingGlobals = [];
 	private readonly HashSet<string> _requestedInstantiations = [];
@@ -73,10 +76,11 @@ public sealed unsafe class CodeGenerator : IDisposable
 		new Dictionary<TypeParameterSymbol, TypeSymbol>();
 	
 	public CodeGenerator(AssemblySymbol assemblySymbol, TypePool typePool, CodeGenConfig config, ModuleIndex modules,
-		IEnumerable<LoweredFunction> genericFunctions)
+		CodeGenInputs inputs)
 	{
 		_modules = modules;
-		_genericBodies = genericFunctions.ToDictionary(static function => function.Info.Symbol);
+		_inputs = inputs;
+		_genericBodies = inputs.GenericFunctions.ToDictionary(static function => function.Info.Symbol);
 		Init();
 		_passBuilderOptions.SetVerifyEach(true);
 		_assemblySymbol = assemblySymbol;
@@ -100,9 +104,50 @@ public sealed unsafe class CodeGenerator : IDisposable
 		_ => []
 	};
 	
+	public IReadOnlySet<GlobalSymbol> ExportedStatics => _exportedStatics;
+	
 	private bool IsObjectLocal(FunctionSymbol function) =>
 		function.Visibility is Visibility.Private or Visibility.Module && function.Kind != FunctionKind.Destructor &&
 		!_sharedFunctions.Contains(function);
+	
+	private bool IsExported(FunctionSymbol function) => function.Visibility == Visibility.Public ||
+	                                                    _config.IsLibrary &&
+	                                                    (function.Kind == FunctionKind.Destructor ||
+	                                                     _inputs.GenericReferences.Contains(function));
+	
+	private bool IsExported(GlobalSymbol global) => global.Visibility == Visibility.Public ||
+	                                                _config.IsLibrary && _inputs.GenericReferences.Contains(global);
+	
+	private void Import(LLVMValueRef value, Symbol symbol)
+	{
+		if (_inputs.StaticLibrarySymbols.Contains(symbol))
+			return;
+		
+		value.DLLStorageClass = LLVMDLLStorageClass.LLVMDLLImportStorageClass;
+		value.Linkage = LLVMLinkage.LLVMDLLImportLinkage;
+	}
+	
+	private void ShareDefinition(LLVMValueRef value, bool export)
+	{
+		value.Linkage = LLVMLinkage.LLVMWeakODRLinkage;
+		using var name = new MarshaledString(value.Name);
+		LLVM.SetComdat((LLVMOpaqueValue*)value.Handle,
+			LLVM.GetOrInsertComdat((LLVMOpaqueModule*)current.Module.Handle, name));
+		
+		if (export)
+			value.DLLStorageClass = LLVMDLLStorageClass.LLVMDLLExportStorageClass;
+		else
+			value.Visibility = LLVMVisibility.LLVMHiddenVisibility;
+	}
+	
+	private ModuleState FindOwner(ModuleSymbol module, string name)
+	{
+		if (_moduleStates.TryGetValue(module, out var owner))
+			return owner;
+		
+		_foreignOwners.TryAdd(name, current);
+		return _foreignOwners[name];
+	}
 	
 	private LLVMErrorRef RunOptimizationPass(LLVMModuleRef module)
 	{
@@ -173,6 +218,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 			}
 			
 			_moduleStates.Clear();
+			_foreignOwners.Clear();
 			_requestedInstantiations.Clear();
 			_requestedGlobals.Clear();
 			current = null!;
@@ -383,7 +429,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 				var info = CreateFunction(current.Module, function.Info);
 				var llvmFunction = info.FunctionValue;
 				
-				if (function.Info.Symbol.Visibility == Visibility.Public)
+				if (IsExported(function.Info.Symbol))
 				{
 					// TODO Use ExternalLinkage if not building a DLL?
 					llvmFunction.DLLStorageClass = LLVMDLLStorageClass.LLVMDLLExportStorageClass;
@@ -1754,15 +1800,8 @@ public sealed unsafe class CodeGenerator : IDisposable
 	
 	private void DefineGlobal(GlobalInfo info)
 	{
-		var initializer = info.Symbol.IsMutable && info.Value is BoolConstant flag
-			? LLVMValueRef.CreateConstInt(LLVMTypeRef.Int8, flag.Value ? 1uL : 0uL)
-			: EmitStaticConstant(info.Value!);
-		
-		var global = current.Module.AddGlobal(initializer.TypeOf, info.MangledName);
-		global.Initializer = initializer;
-		
-		global.IsGlobalConstant = !info.Symbol.IsMutable;
-		if (info.Symbol.Visibility == Visibility.Public)
+		var global = CreateGlobal(info);
+		if (IsExported(info.Symbol))
 		{
 			global.DLLStorageClass = LLVMDLLStorageClass.LLVMDLLExportStorageClass;
 			global.Linkage = LLVMLinkage.LLVMDLLExportLinkage;
@@ -1775,8 +1814,27 @@ public sealed unsafe class CodeGenerator : IDisposable
 		{
 			global.Visibility = LLVMVisibility.LLVMHiddenVisibility;
 		}
+	}
+	
+	private LLVMValueRef CreateGlobal(GlobalInfo info)
+	{
+		var initializer = info.Symbol.IsMutable && info.Value is BoolConstant flag
+			? LLVMValueRef.CreateConstInt(LLVMTypeRef.Int8, flag.Value ? 1uL : 0uL)
+			: EmitStaticConstant(info.Value!);
 		
+		var global = current.Module.AddGlobal(initializer.TypeOf, info.MangledName);
+		global.Initializer = initializer;
+		global.IsGlobalConstant = !info.Symbol.IsMutable;
 		current.Globals[info.Symbol] = global;
+		return global;
+	}
+	
+	private LLVMValueRef DeclareGlobal(GlobalInfo info)
+	{
+		var global = current.Module.AddGlobal(GetGlobalStorageType(info), info.MangledName);
+		global.IsGlobalConstant = !info.Symbol.IsMutable;
+		current.Globals[info.Symbol] = global;
+		return global;
 	}
 	
 	private LLVMValueRef GetGlobal(GlobalInfo info)
@@ -1788,39 +1846,48 @@ public sealed unsafe class CodeGenerator : IDisposable
 		if (info.Symbol.ContainingType is RecordSymbol { IsGenericInstance: true } instance)
 			return GetInstanceGlobal(info, instance);
 		
-		var global = current.Module.AddGlobal(GetGlobalStorageType(info), info.MangledName);
-		global.IsGlobalConstant = !info.Symbol.IsMutable;
+		var global = DeclareGlobal(info);
 		if (!_assemblySymbol.SignatureTable.Globals.ContainsKey(info.Symbol))
-		{
-			global.DLLStorageClass = LLVMDLLStorageClass.LLVMDLLImportStorageClass;
-			global.Linkage = LLVMLinkage.LLVMDLLImportLinkage;
-		}
+			Import(global, info.Symbol);
 		else if (info.Symbol.Visibility != Visibility.Public)
-		{
 			global.Visibility = LLVMVisibility.LLVMHiddenVisibility;
-		}
 		
-		current.Globals[info.Symbol] = global;
 		return global;
 	}
 	
 	private LLVMValueRef GetInstanceGlobal(GlobalInfo info, RecordSymbol instance)
 	{
-		var owner = _moduleStates.GetValueOrDefault(info.File.Module);
+		if (_inputs.LibraryStatics.Contains(info.Symbol))
+		{
+			var imported = DeclareGlobal(info);
+			Import(imported, info.Symbol);
+			return imported;
+		}
+		
+		var owner = FindOwner(info.File.Module, info.MangledName);
 		if (owner == current)
 		{
 			var outer = substitution;
 			substitution = TypePool.CreateMap(instance.Definition.TypeParameters, instance.TypeArguments);
-			DefineGlobal(info);
+			var defined = CreateGlobal(info);
 			substitution = outer;
-			return current.Globals[info.Symbol];
+			if (!_config.IsLibrary && _moduleStates.ContainsKey(info.File.Module) &&
+			    info.Symbol.Visibility is Visibility.Private or Visibility.Module)
+			{
+				defined.Linkage = LLVMLinkage.LLVMInternalLinkage;
+				return defined;
+			}
+			
+			ShareDefinition(defined, _config.IsLibrary);
+			if (_config.IsLibrary)
+				_exportedStatics.Add(info.Symbol);
+			
+			return defined;
 		}
 		
-		var global = current.Module.AddGlobal(GetGlobalStorageType(info), info.MangledName);
-		global.IsGlobalConstant = !info.Symbol.IsMutable;
+		var global = DeclareGlobal(info);
 		global.Visibility = LLVMVisibility.LLVMHiddenVisibility;
-		current.Globals[info.Symbol] = global;
-		if (owner is not null && _requestedGlobals.Add(info.Symbol))
+		if (_requestedGlobals.Add(info.Symbol))
 			_pendingGlobals.Enqueue((owner, info));
 		
 		return global;
@@ -1991,8 +2058,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 		}
 		else if (!_assemblySymbol.SignatureTable.Functions.ContainsKey(function.Symbol))
 		{
-			value.DLLStorageClass = LLVMDLLStorageClass.LLVMDLLImportStorageClass;
-			value.Linkage = LLVMLinkage.LLVMDLLImportLinkage;
+			Import(value, function.Symbol);
 		}
 		else if (function.Symbol.Visibility != Visibility.Public)
 		{
@@ -2009,13 +2075,16 @@ public sealed unsafe class CodeGenerator : IDisposable
 			function.TypeArguments, _modules);
 		
 		var value = CreateFunction(current.Module, function, name).FunctionValue;
-		var owner = _moduleStates.GetValueOrDefault(function.File.Module);
-		if (owner == current && IsObjectLocal(function.Symbol))
+		var owner = FindOwner(function.File.Module, name);
+		var hasBody = _genericBodies.ContainsKey(function.Symbol);
+		if (owner != current || !hasBody)
+			value.Visibility = LLVMVisibility.LLVMHiddenVisibility;
+		else if (_moduleStates.ContainsKey(function.File.Module) && IsObjectLocal(function.Symbol))
 			value.Linkage = LLVMLinkage.LLVMInternalLinkage;
 		else
-			value.Visibility = LLVMVisibility.LLVMHiddenVisibility;
+			ShareDefinition(value, false);
 		
-		if (owner is not null && _requestedInstantiations.Add(name))
+		if (hasBody && _requestedInstantiations.Add(name))
 			_pendingInstantiations.Enqueue((owner, function));
 		
 		return value;
@@ -2201,6 +2270,14 @@ public readonly struct CodeGenResult
 	}
 }
 
+public sealed record CodeGenInputs
+{
+	public IEnumerable<LoweredFunction> GenericFunctions { get; init; } = [];
+	public IReadOnlySet<Symbol> GenericReferences { get; init; } = ImmutableHashSet<Symbol>.Empty;
+	public IReadOnlySet<GlobalSymbol> LibraryStatics { get; init; } = ImmutableHashSet<GlobalSymbol>.Empty;
+	public IReadOnlySet<Symbol> StaticLibrarySymbols { get; init; } = ImmutableHashSet<Symbol>.Empty;
+}
+
 public sealed record CodeGenConfig
 (
 	OutputConfig OutputConfig,
@@ -2209,6 +2286,7 @@ public sealed record CodeGenConfig
 )
 {
 	public bool BoundsChecks { get; init; } = true;
+	public bool IsLibrary { get; init; }
 	public string? SourceRoot { get; init; }
 	
 	public uint GetPointerSize() => GetDataLayout().PointerSize;

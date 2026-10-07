@@ -1,0 +1,72 @@
+mod lib
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+	malloc: fun(size: usize) -> ptr
+	free: fun(memory: ptr)
+}
+
+step: mod fun(value: i32) -> i32 = value + 1
+
+total: var i32 = 0
+
+counter[T]: pub rec
+{
+	value: T
+	steps: i32
+
+	bump: fun(mut self)
+	{
+		self.steps = step(self.steps)
+		total += 1
+	}
+}
+
+box[T]: pub rec
+{
+	pointer: req ptr[T]
+
+	new: op(own value: T)
+	{
+		self.pointer = ptr[T](malloc(sizeOf(T)))
+		own *self.pointer = value
+	}
+
+	*: op(self) -> imm[T] = imm *self.pointer
+
+	drop: op
+	{
+		val value = own *self.pointer
+		free(self.pointer)
+		printf("free ")
+	}
+}
+
+make[T]: pub fun(own value: T) -> counter[T] = counter(value, 0)
+
+Inner: rec
+{
+	id: i32
+
+	drop: op
+	{
+		printf("inner %d ", self.id)
+	}
+}
+
+Outer: pub rec
+{
+	inner: pvt Inner
+
+	make: fun(id: i32) -> Outer = Outer(Inner(id))
+}
+
+selfCheck: pub fun -> i32
+{
+	var local = counter[i64](1, 0)
+	local.bump()
+	ret local.steps
+}
+
+totalBumps: pub fun -> i32 = total

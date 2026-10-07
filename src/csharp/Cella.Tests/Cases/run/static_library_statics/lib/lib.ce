@@ -1,0 +1,19 @@
+mod lib
+
+counted[T]: pub rec
+{
+	value: T
+	made: var i32 = 0
+
+	new: op(own value: T)
+	{
+		self.value = value
+		made += 1
+	}
+}
+
+makeOne: pub fun -> i32
+{
+	val item = counted[i32](1)
+	ret counted[i32].made
+}
