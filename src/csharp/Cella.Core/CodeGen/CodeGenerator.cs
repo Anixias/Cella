@@ -488,6 +488,13 @@ public sealed unsafe class CodeGenerator : IDisposable
 	
 	private LLVMTypeRef CreateEnumType(EnumSymbol enumType)
 	{
+		if (enumType.IsMatch)
+		{
+			var matchedType = MapTypeSymbol(_typePool.GetMatchedType(enumType));
+			current.Types[enumType] = matchedType;
+			return matchedType;
+		}
+		
 		var typeRef = LLVMContextRef.Global.CreateNamedStruct(enumType.Name);
 		current.Types[enumType] = typeRef;
 		
@@ -1090,6 +1097,9 @@ public sealed unsafe class CodeGenerator : IDisposable
 	
 	private LLVMValueRef EmitEnumValue(EnumValue v, LLVMBuilderRef builder)
 	{
+		if (Substitute(v.Type) is EnumSymbol { IsMatch: true } matchEnum)
+			return EmitMatchValue(matchEnum, v, builder);
+		
 		var enumType = MapTypeSymbol(v.Type);
 		var tag = EmitCaseTag((EnumSymbol)v.Type, v.Case);
 		if (v.Payload.IsEmpty)
@@ -1108,6 +1118,73 @@ public sealed unsafe class CodeGenerator : IDisposable
 		}
 		
 		return builder.BuildLoad2(enumType, slot, v.Case.Name);
+	}
+	
+	private LLVMValueRef EmitMatchValue(EnumSymbol enumType, EnumValue v, LLVMBuilderRef builder)
+	{
+		var enumCase = enumType.Cases[v.Case.Index];
+		if (v.Payload.IsEmpty)
+			return EmitMatchConstant(enumType, _typePool.GetMatchValues(enumType, enumCase)[0]);
+		
+		var value = EmitValue(v.Payload[0], builder);
+		var isElse = enumCase.Node.Else is not null;
+		var listed = EmitIsListed(enumType, value, isElse ? enumType.Cases : [enumCase], builder);
+		PanicIf(isElse ? listed : builder.BuildNot(listed), $"'{enumType.Name}.{enumCase.Name}' can't hold this value",
+			v.SourceLocation, builder);
+		
+		return value;
+	}
+	
+	private LLVMValueRef EmitIsListed(EnumSymbol enumType, LLVMValueRef value, IEnumerable<EnumCaseSymbol> cases,
+		LLVMBuilderRef builder)
+	{
+		var result = _false;
+		foreach (var pattern in cases.SelectMany(enumCase => _typePool.GetMatchValues(enumType, enumCase)))
+		{
+			var test = EmitMatchTest(enumType, value, pattern, builder);
+			result = result.Handle == _false.Handle ? test : builder.BuildOr(result, test);
+		}
+		
+		return result;
+	}
+	
+	private LLVMValueRef EmitMatchTag(EnumSymbol enumType, LLVMValueRef value, LLVMBuilderRef builder)
+	{
+		var tagType = _typePool.GetTagType(enumType);
+		var fallback = TypePool.GetElseCase(enumType) ?? enumType.Cases[^1];
+		var tag = EmitIntegerConstant(new IntegerConstant(tagType, fallback.Index));
+		foreach (var enumCase in enumType.Cases)
+		{
+			var caseTag = EmitIntegerConstant(new IntegerConstant(tagType, enumCase.Index));
+			foreach (var pattern in _typePool.GetMatchValues(enumType, enumCase))
+				tag = builder.BuildSelect(EmitMatchTest(enumType, value, pattern, builder), caseTag, tag, "tag");
+		}
+		
+		return tag;
+	}
+	
+	private LLVMValueRef EmitMatchTest(EnumSymbol enumType, LLVMValueRef value, BigInteger pattern,
+		LLVMBuilderRef builder)
+	{
+		if (_typePool.GetMatchedType(enumType) is FunctionType { IsExternal: false })
+			value = builder.BuildExtractValue(value, 0, "code");
+		
+		var expected = value.TypeOf.Kind == LLVMTypeKind.LLVMPointerTypeKind
+			? LLVMValueRef.CreateConstNull(value.TypeOf)
+			: EmitMatchConstant(enumType, pattern);
+		
+		return builder.BuildICmp(LLVMIntPredicate.LLVMIntEQ, value, expected, "listed");
+	}
+	
+	private LLVMValueRef EmitMatchConstant(EnumSymbol enumType, BigInteger pattern)
+	{
+		var matchedType = _typePool.GetMatchedType(enumType);
+		return matchedType switch
+		{
+			IntegerType integer => EmitIntegerConstant(new IntegerConstant(integer, pattern)),
+			_ when matchedType == NativeSymbols.Bool => pattern.IsZero ? _false : _true,
+			_ => LLVMValueRef.CreateConstNull(MapTypeSymbol(matchedType))
+		};
 	}
 	
 	private LLVMValueRef EmitCaseTag(EnumSymbol enumType, EnumCaseSymbol enumCase) => EmitIntegerConstant(
@@ -1166,6 +1243,9 @@ public sealed unsafe class CodeGenerator : IDisposable
 	
 	private LLVMValueRef EmitEnumTag(EnumTagValue v, LLVMBuilderRef builder)
 	{
+		if (Substitute(v.Target.Type) is EnumSymbol { IsMatch: true } matchEnum)
+			return EmitMatchTag(matchEnum, EmitValue(v.Target, builder), builder);
+		
 		if (!IsAddressable(v.Target))
 			return builder.BuildExtractValue(EmitValue(v.Target, builder), 0, "tag");
 		
@@ -1174,8 +1254,14 @@ public sealed unsafe class CodeGenerator : IDisposable
 		return builder.BuildLoad2(MapTypeSymbol(v.Type), address, "tag");
 	}
 	
-	private LLVMValueRef EmitEnumPayload(EnumPayloadValue v, LLVMBuilderRef builder) =>
-		builder.BuildLoad2(MapTypeSymbol(v.Type), EmitEnumPayloadAddress(v, builder), v.Case.Fields[v.Index].Name);
+	private LLVMValueRef EmitEnumPayload(EnumPayloadValue v, LLVMBuilderRef builder)
+	{
+		if (Substitute(v.Target.Type) is EnumSymbol { IsMatch: true })
+			return EmitValue(v.Target, builder);
+		
+		var name = v.Case.Fields[v.Index].Name;
+		return builder.BuildLoad2(MapTypeSymbol(v.Type), EmitEnumPayloadAddress(v, builder), name);
+	}
 	
 	private LLVMValueRef EmitEnumPayloadAddress(EnumPayloadValue v, LLVMBuilderRef builder)
 	{
@@ -1191,6 +1277,9 @@ public sealed unsafe class CodeGenerator : IDisposable
 			builder.BuildStore(EmitValue(v.Target, builder), address);
 		}
 		
+		if (Substitute(v.Target.Type) is EnumSymbol { IsMatch: true })
+			return address;
+		
 		var name = v.Case.Fields[v.Index].Name;
 		var payload = builder.BuildStructGEP2(enumType, address, 1, "payload");
 		return builder.BuildStructGEP2(GetPayloadType(v.Case), payload, (uint)v.Index, name + ".addr");
@@ -1203,7 +1292,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 		FloatConversion c => EmitFloatConversion(c, EmitValue(v.Source, builder), builder),
 		NativeConversion c => EmitNativeConversion(c, v, builder),
 		EnumConversion c => EmitEnumConversion(c, v, builder),
-		FreeConversion => EmitValue(v.Source, builder),
+		FreeConversion or MatchConversion => EmitValue(v.Source, builder),
 		FunctionConversion c => EmitValue(new CallValue(c.Function, [v.Source], v.SourceLocation), builder),
 		_ => throw new InvalidOperationException()
 	};
@@ -1330,6 +1419,12 @@ public sealed unsafe class CodeGenerator : IDisposable
 		
 		var left = EmitValue(v.Left, builder);
 		var right = EmitValue(v.Right, builder);
+		if (Substitute(v.Left.Type) is EnumSymbol { IsMatch: true } matchEnum)
+		{
+			left = EmitMatchTag(matchEnum, left, builder);
+			right = EmitMatchTag(matchEnum, right, builder);
+		}
+		
 		var signed = v.Left.Type is IntegerType { IsSigned: true };
 		
 		if (v.Left.Type is IntegerType { IsSigned: var leftSigned } &&
@@ -2119,6 +2214,11 @@ public sealed unsafe class CodeGenerator : IDisposable
 	
 	private LLVMValueRef EmitEnumConstant(EnumConstant constant)
 	{
+		if (Substitute(constant.Type) is EnumSymbol { IsMatch: true } matchEnum)
+			return constant.Payload is [var value]
+				? EmitStaticConstant(value)
+				: EmitMatchConstant(matchEnum, _typePool.GetMatchValues(matchEnum, constant.Case)[0]);
+		
 		var enumType = MapTypeSymbol(constant.Type);
 		var tag = EmitCaseTag((EnumSymbol)constant.Type, constant.Case);
 		if (constant.Payload.IsEmpty)
@@ -2137,6 +2237,9 @@ public sealed unsafe class CodeGenerator : IDisposable
 	
 	private LLVMValueRef EmitEnumTagConstant(EnumTagConstant constant)
 	{
+		if (Substitute(constant.Type) is EnumSymbol { IsMatch: true } matchEnum)
+			return EmitMatchConstant(matchEnum, constant.Tag);
+		
 		var enumType = (EnumSymbol)constant.Type;
 		var tag = EmitIntegerConstant(new IntegerConstant(_typePool.GetTagType(enumType), constant.Tag));
 		return EmitTagOnly(MapTypeSymbol(enumType), tag);

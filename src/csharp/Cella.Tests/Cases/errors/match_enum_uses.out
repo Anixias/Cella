@@ -1,0 +1,34 @@
+
+====== match_enum_uses.ce ======
+
+Error at line 22, column 45
+21 │ 
+22 │ unwrap[T: null]: fun(n: nullable[T]) -> T = T(n)
+                                                 ╘══╛ No constructor for 'T' accepts argument of type 'nullable[T]'
+
+Error at line 24, column 35
+23 │ 
+24 │ describe: fun(s: socket) -> i32 = match s { valid(h) => h }
+                                       ╘═══╛ This match doesn't handle every case of 'socket': invalid
+
+Error at line 28, column 10
+27 │ {
+28 │     val a = wrap(5)
+                 ╘══╛ 'i32' has no null
+
+Error at line 29, column 15
+28 │ val a = wrap(5)
+29 │ val b = wrap[Point](Point(1))
+                  ╘═══╛ 'Point' has no null
+
+Error at line 33, column 9
+32 │ {
+33 │     valid(h) => h = 4
+               ^ Cannot mutably borrow 'socket' payloads
+
+Error at line 37, column 12
+36 │ 
+37 │ val raw = f32(s)
+               ╘════╛ No constructor for 'f32' accepts argument of type 'socket'
+
+[compilation failed]

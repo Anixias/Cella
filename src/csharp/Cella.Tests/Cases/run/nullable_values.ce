@@ -1,0 +1,117 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+nullable[T: null]: enum match T
+{
+	none = null
+	some(value) = else
+
+	isSome: get(self) -> bool = self is some(_)
+
+	or: fun(own self, own fallback: T) -> T = match own self { some(own v) => v  none => fallback }
+}
+
+lent: ref enum match imm[i32]
+{
+	missing = null
+	found(value) = else
+}
+
+Node: rec
+{
+	value: i32
+}
+
+Handler: rec
+{
+	id: i32
+	callback: nullable[fun[i32 -> i32]]
+}
+
+Cell[T: null]: rec
+{
+	value: nullable[T]
+}
+
+wrap[T: null]: fun(own value: T) -> nullable[T] = some(value)
+
+triple: fun(n: i32) -> i32 = n * 3
+twice: fun(n: i32) -> i32 = n * 2
+
+readNode: fun(n: nullable[ptr[Node]]) -> i32 = match n { some(p) => p.value  none => -1 }
+
+find: fun(mut values: array[i32, 3], target: i32) -> nullable[imm[i32]]
+{
+	var i: usize = 0
+	loop while i < 3
+	{
+		if values[i] == target
+			ret some(imm values[i])
+
+		i += 1
+	}
+
+	ret none
+}
+
+pick: fun(mut values: array[i32, 3], index: usize) -> lent
+{
+	if index < 3
+		ret found(imm values[index])
+
+	ret missing
+}
+
+slot: fun(mut value: i32, give: bool) -> nullable[mut[i32]]
+{
+	if give
+		ret some(mut value)
+
+	ret none
+}
+
+main: fun -> i32
+{
+	var node = Node(5)
+	val a: nullable[ptr[Node]] = some(@node)
+	val b: nullable[ptr[Node]] = none
+	var c: nullable[ptr[Node]]
+	printf("%d %d %d %d %d\n", readNode(a), readNode(b), readNode(c), i32(a.isSome), i32(ptr[Node](b) == null))
+
+	var values = [10, 20, 30]
+	val hit = find(mut values, 20)
+	printf("%d %d\n", match hit { some(v) => v  none => -1 }, i32(find(mut values, 99) is none))
+
+	val got = pick(mut values, 1)
+	printf("%d %d %d\n", match got { found(v) => v  missing => -1 }, i32(pick(mut values, 7) is missing),
+		i32(sizeOf(lent)))
+
+	var total = 10
+	match slot(mut total, true)
+	{
+		some(r) => r += 5
+		none => printf("none\n")
+	}
+
+	printf("%d %d\n", total, i32(slot(mut total, false) is none))
+
+	var handler = Handler()
+	printf("%d %d\n", handler.id, i32(handler.callback is none))
+	handler.callback = some(triple)
+	val call = match handler.callback { some(f) => f(5)  none => -1 }
+	printf("%d %d\n", call, i32(sizeOf(Handler)))
+
+	var m = 6
+	val doubled: fun[i32 -> i32] = twice
+	val empty: nullable[fun[i32 -> i32]] = none
+	val cell = Cell[cstr]()
+	val text = Cell[cstr](some("text"))
+	printf("%d %d %d %d\n", *wrap(@m).or(@node.value), wrap(doubled).or(triple)(4), empty.or(triple)(4),
+		i32(cell.value is none))
+	printf("%s %s\n", text.value.or("?"), cell.value.or("?"))
+	ret 0
+}

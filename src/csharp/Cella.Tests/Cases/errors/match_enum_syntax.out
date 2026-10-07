@@ -1,0 +1,25 @@
+
+====== match_enum_syntax.ce ======
+
+Error at line 3, column 16
+2 │ 
+3 │ Code: ext enum match i32
+                   ╘═══╛ Cannot use 'match' on ext enums
+
+Error at line 11, column 12
+10 │ zero = 0
+11 │ rest(value: i32) = else
+               ^ Expected ')'
+               | To match the '(' on line 11
+
+Error at line 15, column 1
+14 │ untyped: enum match
+15 │ {
+     ^ Unexpected token
+
+Error at line 19, column 18
+18 │ 
+19 │ tagged: enum(u8) match i32
+                      ╘═══╛ Unexpected token
+
+[compilation failed]

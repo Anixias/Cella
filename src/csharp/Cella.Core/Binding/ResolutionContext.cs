@@ -434,13 +434,12 @@ public readonly struct ResolutionContext
 		
 		var typePool = TypePool;
 		var violations = definition.TypeParameters
-			.Select((parameter, i) => (Parameter: parameter, Index: i))
-			.Where(pair => pair.Parameter.IsNoref && typePool.HoldsBorrows(arguments[pair.Index]))
+			.Select((parameter, i) => (Message: typePool.FindConstraintViolation(parameter, arguments[i]), Index: i))
+			.Where(static pair => pair.Message is not null)
 			.ToList();
 		
-		foreach (var (parameter, index) in violations)
-			Diagnostics.Add(new(DiagnosticSeverity.Error, locations[index],
-				$"Cannot store borrows in '{parameter.Name}'"));
+		foreach (var (message, index) in violations)
+			Diagnostics.Add(new(DiagnosticSeverity.Error, locations[index], message!));
 		
 		return violations.Count > 0 ? NativeSymbols.Invalid : TypePool.Instantiate(definition, [..arguments]);
 	}

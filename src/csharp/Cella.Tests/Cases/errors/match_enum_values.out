@@ -1,0 +1,29 @@
+
+====== match_enum_values.ce ======
+
+Error at line 22, column 30
+21 │ 
+22 │ checked: val socket = valid(-1)
+                                  ^ 'socket.valid' can't hold -1
+
+Error at line 23, column 35
+22 │ checked: val socket = valid(-1)
+23 │ nothing: val nullable[ptr] = some(null)
+                                       ╘══╛ 'nullable[ptr].some' can't hold null
+
+Error at line 24, column 25
+23 │ nothing: val nullable[ptr] = some(null)
+24 │ oddly: val parity = odd(2)
+                             ^ 'parity.odd' can't hold 2
+
+Error at line 25, column 28
+24 │ oddly: val parity = odd(2)
+25 │ evenly: val parity = other(2)
+                                ^ 'parity.other' can't hold 2
+
+Error at line 31, column 29
+30 │ {
+31 │     val local: socket = valid(-1)
+                                    ^ 'socket.valid' can't hold -1
+
+[compilation failed]

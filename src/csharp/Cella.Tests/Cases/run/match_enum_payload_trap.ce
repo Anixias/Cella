@@ -1,0 +1,15 @@
+mod test
+
+nullable[T: null]: enum match T
+{
+	none = null
+	some(value) = else
+}
+
+wrap: fun(p: ptr) -> nullable[ptr] = some(p)
+
+main: fun -> i32
+{
+	val p = wrap(null)
+	ret 0
+}

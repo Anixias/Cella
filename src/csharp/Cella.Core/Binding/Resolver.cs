@@ -506,6 +506,13 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		
 		var bindings = CreateBindings(pattern, payloadTypes, isMut, ownsValue);
 		ReportRepeatedBindings(bindings.OfType<LocalVariableSymbol>());
+		if (enumType.IsMatch)
+		{
+			foreach (var binding in bindings.OfType<LocalVariableSymbol>().Where(static b => b.IsMutBinding))
+				Diagnostics.Add(new(DiagnosticSeverity.Error, binding.Identifier.SourceLocation,
+					$"Cannot mutably borrow '{enumType.Name}' payloads"));
+		}
+		
 		return new ResolvedPattern(enumCase, bindings);
 	}
 	
@@ -800,7 +807,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		
 		if (arg.Type is UntypedType)
 		{
-			arg = MaterializeExpression(arg, targetType);
+			arg = MaterializeExpression(arg, targetType is EnumSymbol { IsMatch: true } matchEnum
+				? _typePool.GetMatchedType(matchEnum)
+				: targetType);
 			
 			if (arg.Type is UntypedType)
 				arg = MaterializeAsDefault(arg);
@@ -928,7 +937,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		SourceLocation location, List<Diagnostic>? failures = null)
 	{
 		var diagnostic = result.Succeeded
-			? ReportStoredBorrows(definition.TypeParameters, result.Arguments, _ => location)
+			? ReportConstraintViolation(definition.TypeParameters, result.Arguments, _ => location)
 			: ReportInferenceFailure(result, name, location);
 		
 		if (diagnostic is null)
@@ -1132,7 +1141,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			locate = _ => location;
 		}
 		
-		if (ReportStoredBorrows(open, arguments, locate) is { } violation)
+		if (ReportConstraintViolation(open, arguments, locate) is { } violation)
 		{
 			failures.Add(violation);
 			return null;
@@ -1205,13 +1214,13 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	private static string JoinNames(IEnumerable<TypeSymbol> types) =>
 		DiagnosticReporter.JoinNames([..types.Select(static type => type.Name)]);
 	
-	private Diagnostic? ReportStoredBorrows(ImmutableArray<TypeParameterSymbol> parameters,
+	private Diagnostic? ReportConstraintViolation(ImmutableArray<TypeParameterSymbol> parameters,
 		IReadOnlyList<TypeSymbol> arguments, Func<int, SourceLocation> locate)
 	{
 		for (var i = 0; i < parameters.Length; i++)
 		{
-			if (parameters[i].IsNoref && _typePool.HoldsBorrows(arguments[i]))
-				return new(DiagnosticSeverity.Error, locate(i), $"Cannot store borrows in '{parameters[i].Name}'");
+			if (_typePool.FindConstraintViolation(parameters[i], arguments[i]) is { } message)
+				return new(DiagnosticSeverity.Error, locate(i), message);
 		}
 		
 		return null;
@@ -1860,7 +1869,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			if (open.Length != typeArguments.Types.Length)
 				continue;
 			
-			if (ReportStoredBorrows(open, typeArguments.Types, i => typeArguments.Locations[i]) is { } violation)
+			if (ReportConstraintViolation(open, typeArguments.Types, i => typeArguments.Locations[i]) is { } violation)
 				return Error(node, violation, CurrentTargetType);
 			
 			infos.Add(InstantiateDeclared(info, typeArguments.Types));
@@ -2344,7 +2353,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 				.Append(new(signature.ReturnType, type.ReturnType) { IsExact = true });
 			
 			var result = _inference.Infer(open, inputs, null, null);
-			if (!result.Succeeded || ReportStoredBorrows(open, result.Arguments, _ => default) is not null)
+			if (!result.Succeeded || ReportConstraintViolation(open, result.Arguments, _ => default) is not null)
 				continue;
 			
 			var instantiated = InstantiateDeclared(function, result.Arguments);

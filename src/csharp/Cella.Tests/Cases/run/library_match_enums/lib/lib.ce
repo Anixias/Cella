@@ -1,0 +1,45 @@
+mod lib
+
+nullable[T: null]: pub enum match T
+{
+	none = null
+	some(value) = else
+
+	isSome: get(self) -> bool = self is some(_)
+}
+
+socket: pub enum match i32
+{
+	invalid = -1
+	valid(handle) = else
+}
+
+parity: pub enum match u8
+{
+	even = 0, 2, 4
+	odd = 1, 3, 5
+	other(value) = else
+}
+
+open: pub fun(id: i32) -> socket
+{
+	if id < 0
+		ret invalid
+
+	ret valid(id * 10)
+}
+
+find: pub fun(items: ptr[i32], count: usize, target: i32) -> nullable[ptr[i32]]
+{
+	var i: usize = 0
+	loop while i < count
+	{
+		val item = items + i
+		if *item == target
+			ret some(item)
+
+		i += 1
+	}
+
+	ret none
+}

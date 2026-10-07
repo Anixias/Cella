@@ -143,10 +143,11 @@ public abstract class TypeSymbol(string name, TypeSymbol? containingType = null,
 	public virtual PropertySymbol? GetProperty(string name) => null;
 }
 
-public sealed class TypeParameterSymbol(Token identifier, bool isNoref) : TypeSymbol(identifier.Text)
+public sealed class TypeParameterSymbol(Token identifier, Token? constraint) : TypeSymbol(identifier.Text)
 {
 	public Token Identifier { get; } = identifier;
-	public bool IsNoref { get; } = isNoref;
+	public bool IsNoref { get; } = constraint?.Type == TokenType.KeywordNoref;
+	public bool HasNull { get; } = constraint?.Type == TokenType.KeywordNull;
 }
 
 public sealed class InvalidType : TypeSymbol
@@ -559,6 +560,7 @@ public sealed class EnumSymbol : NamedTypeSymbol
 	public ImmutableArray<MethodSymbol> Functions { get; }
 	public bool HasPayload => Cases.Any(static c => c.Fields.Length > 0);
 	public bool IsExternal => Node.IsExternal;
+	public bool IsMatch => Node.IsMatch;
 	public override bool IsRef => Node.IsRef;
 	
 	public EnumSymbol(EnumNode node, IEnumerable<EnumCaseSymbol> cases, IEnumerable<MethodSymbol> functions,

@@ -1,0 +1,110 @@
+
+====== match_enum_declarations.ce ======
+
+Error at line 3, column 20
+2 │ 
+3 │ floats: enum match f32
+                       ╘═╛ Cannot declare 'enum match f32'
+
+Error at line 8, column 19
+7 │ 
+8 │ texts: enum match str
+                      ╘═╛ Cannot declare 'enum match str'
+
+Error at line 15, column 9
+14 │ {
+15 │     none = null
+                ╘══╛ 'i32' has no null
+
+Error at line 21, column 9
+20 │ {
+21 │     zero = 0
+                ^ Only 'null' can be listed for 'ptr'
+
+Error at line 27, column 11
+26 │ {
+27 │     low = 1, 2
+                  ^ 2 is listed more than once
+
+Error at line 28, column 9
+27 │ low = 1, 2
+28 │ high = 2, 3
+            ^ 2 is listed more than once
+
+Error at line 34, column 8
+33 │ {
+34 │     low = 256
+               ╘═╛ Cannot convert type 'i32' to 'u8'
+
+Error at line 35, column 12
+34 │ low = 256
+35 │ high = 3, limit()
+               ╘═════╛ The value of 'high' must be a constant
+
+Error at line 41, column 17
+40 │ {
+41 │     first(value) = else
+                        ╘══╛ 'elses' can have only one 'else' case
+
+Error at line 42, column 18
+41 │ first(value) = else
+42 │ second(value) = else
+                     ╘══╛ 'elses' can have only one 'else' case
+
+Error at line 45, column 1
+44 │ 
+45 │ missing: enum match u16
+     ╘═════╛ 'missing' needs an 'else' case
+
+Error at line 50, column 1
+49 │ 
+50 │ flags: enum match bool
+     ╘═══╛ 'flags' needs an 'else' case
+
+Error at line 58, column 9
+57 │ zero = 0
+58 │ rest = else
+            ╘══╛ 'else' cases need a payload
+
+Error at line 63, column 2
+62 │ {
+63 │     zero
+         ╘══╛ Case 'zero' needs a value
+
+Error at line 69, column 9
+68 │ {
+69 │     none = null
+                ╘══╛ 'T' has no null
+
+Error at line 75, column 11
+74 │ {
+75 │     low = 0, 1
+                  ^ Cannot list several values outside 'enum match'
+
+Error at line 76, column 9
+75 │ low = 0, 1
+76 │ high = else
+            ╘══╛ Cannot use 'else' outside 'enum match'
+
+Error at line 79, column 22
+78 │ 
+79 │ borrowed: enum match imm[i32]
+                          ╘══════╛ Cannot store borrows in plain enums
+                                 | Did you mean 'borrowed: ref enum match'?
+
+Error at line 93, column 18
+92 │ {
+93 │     value: nullable[T]
+                         ^ 'T' has no null
+
+Error at line 98, column 41
+97 │ 
+98 │ first[T]: fun(own value: T) -> nullable[T] = some(value)
+                                             ^ 'T' has no null
+
+Error at line 100, column 30
+ 99 │ 
+100 │ count: fun(numbers: nullable[i32]) -> i32 = 0
+                                   ╘═╛ 'i32' has no null
+
+[compilation failed]

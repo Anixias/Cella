@@ -387,7 +387,7 @@ public sealed class AstPrinter : ISyntaxNodeVisitor
 		AppendTypeParameters(node.TypeParameters);
 		_sb.Append('\'');
 		
-		if (node.TagType is { } tagType)
+		if ((node.TagType ?? node.MatchedType) is { } tagType)
 			VisitNode(tagType, node.Cases.IsEmpty && node.Members.IsEmpty);
 		
 		for (var i = 0; i < node.Cases.Length; i++)
@@ -397,11 +397,14 @@ public sealed class AstPrinter : ISyntaxNodeVisitor
 			{
 				StartLine();
 				_sb.Append("Case '").Append(enumCase.Identifier.AsSpan()).Append('\'');
-				foreach (var field in enumCase.Payload)
-					VisitNode(field, field == enumCase.Payload[^1] && enumCase.Value is null);
+				if (enumCase.Else is not null)
+					_sb.Append(" else");
 				
-				if (enumCase.Value is { } value)
-					VisitNode(value, true);
+				foreach (var field in enumCase.Payload)
+					VisitNode(field, field == enumCase.Payload[^1] && enumCase.Values.IsEmpty);
+				
+				foreach (var value in enumCase.Values)
+					VisitNode(value, value == enumCase.Values[^1]);
 			}, i == node.Cases.Length - 1 && node.Members.IsEmpty);
 		}
 		

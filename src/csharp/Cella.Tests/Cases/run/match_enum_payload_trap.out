@@ -1,0 +1,3 @@
+[stderr]
+Panic at match_enum_payload_trap.ce:9:38: 'nullable[ptr].some' can't hold this value
+[exit code -1073740791]

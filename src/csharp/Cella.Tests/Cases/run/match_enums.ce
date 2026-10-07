@@ -1,0 +1,75 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+socket: enum match i32
+{
+	invalid = -1
+	valid(handle) = else
+}
+
+parity: enum match u8
+{
+	even = 0, 2,
+		4, 6
+	odd = 1, 3, 5, 7
+	other(value) = else
+}
+
+switch: enum match bool
+{
+	off = false
+	on = true
+}
+
+both: enum match bool
+{
+	any = false, true
+}
+
+Connection: rec
+{
+	id: i32
+	mode: switch
+}
+
+closed: val socket = invalid
+opened: val socket = valid(4)
+four: val parity = parity(4)
+sockets: val array[socket, 3] = [invalid, valid(2), socket(-1)]
+
+readSocket: fun(s: socket) -> i32 = match s { valid(h) => h  invalid => -100 }
+describe: fun(p: parity) -> i32 = match p { even => 0  odd => 1  other(v) => i32(v) }
+flip: fun(s: switch) -> switch = match s { on => off  off => on }
+
+main: fun -> i32
+{
+	var raw = 7
+	val s = socket(raw)
+	val bad = socket(-1)
+	printf("%d %d %d %d\n", readSocket(s), readSocket(bad), i32(s), readSocket(valid(9)))
+
+	var n: u8 = 4
+	val p = parity(n)
+	printf("%d %d %d %d %d\n", describe(p), describe(parity(3)), describe(parity(40)), i32(u8(p)), i32(p is even))
+
+	var t = true
+	val flag = switch(t)
+	val first = both(t)
+	val second = both(!t)
+	printf("%d %d %d %d %d\n", i32(flag == on), i32(bool(flag)), i32(flip(flag) == off), i32(first == second),
+		i32(bool(second)))
+
+	printf("%d %d %d %d\n", i32(closed), i32(opened), i32(u8(four)), i32(four is even))
+	printf("%d %d %d\n", i32(sockets[0]), readSocket(sockets[1]), i32(sockets[2] is invalid))
+
+	var current = socket(3)
+	current = match current { valid(_) => invalid  invalid => valid(0) }
+	val connection = Connection()
+	printf("%d %d %d\n", i32(current), connection.id, i32(connection.mode == off))
+	printf("%d %d %d\n", i32(sizeOf(socket)), i32(sizeOf(parity)), i32(sizeOf(switch)))
+	ret 0
+}

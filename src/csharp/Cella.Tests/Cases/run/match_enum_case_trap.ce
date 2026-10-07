@@ -1,0 +1,15 @@
+mod test
+
+parity: enum match u8
+{
+	even = 0, 2, 4
+	odd(value) = 1, 3, 5
+	other(value) = else
+}
+
+main: fun -> i32
+{
+	var n: u8 = 2
+	val p: parity = odd(n)
+	ret 0
+}

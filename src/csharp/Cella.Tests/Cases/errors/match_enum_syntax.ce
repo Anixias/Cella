@@ -1,0 +1,24 @@
+mod test
+
+Code: ext enum match i32
+{
+	zero = 0
+}
+
+typed: enum match i32
+{
+	zero = 0
+	rest(value: i32) = else
+}
+
+untyped: enum match
+{
+	zero = 0
+}
+
+tagged: enum(u8) match i32
+{
+	zero = 0
+}
+
+main: fun -> i32 = 0

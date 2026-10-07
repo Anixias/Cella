@@ -27,6 +27,8 @@ public sealed class TypePool
 	private readonly Dictionary<TypeSymbol, IReadOnlySet<FieldSymbol>> _destructorMoves = [];
 	private readonly Dictionary<EnumSymbol, IntegerType> _tagTypes = [];
 	private readonly Dictionary<EnumCaseSymbol, BigInteger> _caseValues = [];
+	private readonly Dictionary<EnumSymbol, TypeSymbol> _matchedTypes = [];
+	private readonly Dictionary<EnumCaseSymbol, ImmutableArray<BigInteger>> _matchValues = [];
 	private readonly Dictionary<NamedTypeSymbol, List<NamedTypeSymbol>> _instances = [];
 	private readonly HashSet<NamedTypeSymbol> _completedInstances = [];
 	private readonly HashSet<NamedTypeSymbol> _borrowChecks = [];
@@ -309,6 +311,54 @@ public sealed class TypePool
 		OperatorRegistry.Create(new NativeImpl(TokenType.OpBangEqual, NativeSymbols.Bool, enumType, enumType));
 	}
 	
+	public void RegisterMatchEnum(EnumSymbol enumType, TypeSymbol matchedType,
+		IReadOnlyList<ImmutableArray<BigInteger>> values)
+	{
+		_matchedTypes[enumType] = matchedType;
+		_tagTypes[enumType] = enumType.Cases.Length <= byte.MaxValue + 1 ? NativeSymbols.UInt8 : NativeSymbols.UInt32;
+		for (var i = 0; i < values.Count; i++)
+			_matchValues[enumType.Cases[i]] = values[i];
+		
+		SizeTable.Register(enumType, () => SizeTable.TryGetSize(matchedType) ?? StorageSize.Const(0));
+		ConversionTable.Add(new MatchConversion(matchedType, enumType));
+		if (matchedType is IntegerType or PointerType || matchedType == NativeSymbols.Bool ||
+		    matchedType == NativeSymbols.CStr)
+			ConversionTable.Add(new MatchConversion(enumType, matchedType));
+		
+		if (enumType.HasPayload)
+			return;
+		
+		OperatorRegistry.Create(new NativeImpl(TokenType.OpEqualEqual, NativeSymbols.Bool, enumType, enumType));
+		OperatorRegistry.Create(new NativeImpl(TokenType.OpBangEqual, NativeSymbols.Bool, enumType, enumType));
+	}
+	
+	public TypeSymbol GetMatchedType(EnumSymbol enumType)
+	{
+		Complete(enumType);
+		return _matchedTypes.GetValueOrDefault(enumType) ?? NativeSymbols.Invalid;
+	}
+	
+	public ImmutableArray<BigInteger> GetMatchValues(EnumSymbol enumType, EnumCaseSymbol enumCase)
+	{
+		Complete(enumType);
+		return _matchValues.GetValueOrDefault(enumCase, []);
+	}
+	
+	public static EnumCaseSymbol? GetElseCase(EnumSymbol enumType) =>
+		enumType.Cases.FirstOrDefault(static enumCase => enumCase.Node.Else is not null);
+	
+	public static bool HasNull(TypeSymbol type) => type is PointerType or FunctionType or BorrowType
+		                                               or TypeParameterSymbol { HasNull: true } ||
+	                                               type == NativeSymbols.CStr;
+	
+	public string? FindConstraintViolation(TypeParameterSymbol parameter, TypeSymbol argument) => argument switch
+	{
+		InvalidType => null,
+		_ when parameter.IsNoref && HoldsBorrows(argument) => $"Cannot store borrows in '{parameter.Name}'",
+		_ when parameter.HasNull && !HasNull(argument) => $"'{argument.Name}' has no null",
+		_ => null
+	};
+	
 	public void RegisterPayloadField(FieldSymbol field, TypeSymbol type) => _memberTypes[field] = type;
 	
 	public ImmutableArray<TypeSymbol> GetPayloadTypes(EnumSymbol enumType, EnumCaseSymbol enumCase)
@@ -347,8 +397,10 @@ public sealed class TypePool
 		return _caseValues.GetValueOrDefault(enumCase, enumCase.Index);
 	}
 	
-	public EnumCaseSymbol? FindCase(EnumSymbol enumType, BigInteger value) =>
-		enumType.Cases.FirstOrDefault(enumCase => GetCaseValue(enumType, enumCase) == value);
+	public EnumCaseSymbol? FindCase(EnumSymbol enumType, BigInteger value) => enumType.IsMatch
+		? enumType.Cases.FirstOrDefault(enumCase => GetMatchValues(enumType, enumCase).Contains(value)) ??
+		  GetElseCase(enumType)
+		: enumType.Cases.FirstOrDefault(enumCase => GetCaseValue(enumType, enumCase) == value);
 	
 	public void RegisterMember(TypeSymbol containingType, TypedMemberSymbol member, TypeSymbol memberType)
 	{
@@ -482,6 +534,14 @@ public sealed class TypePool
 			var payloadTypes = GetPayloadTypes(definition, definition.Cases[i]);
 			for (var j = 0; j < payloadTypes.Length; j++)
 				RegisterPayloadField(instance.Cases[i].Fields[j], Substitute(payloadTypes[j], map));
+		}
+		
+		if (definition.IsMatch)
+		{
+			RegisterMatchEnum(instance, Substitute(GetMatchedType(definition), map),
+				[..definition.Cases.Select(enumCase => GetMatchValues(definition, enumCase))]);
+			
+			return;
 		}
 		
 		RegisterEnum(instance, GetTagType(definition),

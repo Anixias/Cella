@@ -27,6 +27,9 @@ public sealed class FreeConversion(TypeSymbol from, TypeSymbol to, ConversionKin
 public sealed class EnumConversion(TypeSymbol from, TypeSymbol to)
 	: Conversion(from, to, ConversionKind.Explicit, 1, true);
 
+public sealed class MatchConversion(TypeSymbol from, TypeSymbol to)
+	: Conversion(from, to, ConversionKind.Explicit, 1, true);
+
 public sealed class NeverConversion(TypeSymbol to)
 	: Conversion(NativeSymbols.Never, to, ConversionKind.Implicit, 0, false);
 

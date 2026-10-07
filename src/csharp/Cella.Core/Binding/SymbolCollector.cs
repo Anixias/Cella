@@ -21,7 +21,7 @@ public sealed class SymbolCollector : IDeclarationNodeVisitor<Symbol>
 	
 	private static ImmutableArray<TypeParameterSymbol> CreateTypeParameters(
 		ImmutableArray<TypeParameterNode> parameters) => parameters
-		.Select(static parameter => new TypeParameterSymbol(parameter.Identifier, parameter.Constraint is not null))
+		.Select(static parameter => new TypeParameterSymbol(parameter.Identifier, parameter.Constraint))
 		.ToImmutableArray();
 	
 	public void Collect(IDeclarationNode root) => VisitNode(root);

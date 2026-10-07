@@ -510,6 +510,15 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool, 
 		VisitNode(node.Source);
 	}
 	
+	private static string DescribeMatchValue(Constant constant) => constant switch
+	{
+		IntegerConstant integer => integer.Value.ToString(),
+		BoolConstant flag => flag.Value ? "true" : "false",
+		ZeroConstant { Type: IntegerType } => "0",
+		ZeroConstant { Type: var type } when type == NativeSymbols.Bool => "false",
+		_ => "null"
+	};
+	
 	public void Visit(ResolvedFunctionCallExpressionNode node)
 	{
 		var args = node.Arguments;
@@ -706,6 +715,18 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool, 
 	
 	public void Visit(ResolvedEnumCaseExpressionNode node)
 	{
+		if (node.Type is EnumSymbol { IsMatch: true } enumType && node.Payload is [var payload] &&
+		    evaluator.Evaluate(payload) is { } constant and not InvalidConstant)
+		{
+			var holder = ConstantEvaluator.GetMatchValue(constant) is { } value
+				? typePool.FindCase(enumType, value)
+				: TypePool.GetElseCase(enumType);
+			
+			if (holder != node.Case)
+				Diagnostics.Add(new(DiagnosticSeverity.Error, payload.Syntax.SourceLocation,
+					$"'{enumType.Name}.{node.Case.Name}' can't hold {DescribeMatchValue(constant)}"));
+		}
+		
 		foreach (var value in node.Payload)
 		{
 			VisitNode(value);

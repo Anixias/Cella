@@ -87,8 +87,20 @@ public sealed class ConstantEvaluator
 	private BigInteger? GetTag(Constant constant) => constant switch
 	{
 		EnumConstant { Type: EnumSymbol enumType } value => typePool.GetCaseValue(enumType, value.Case),
+		EnumTagConstant { Type: EnumSymbol { IsMatch: true } enumType } value =>
+			typePool.FindCase(enumType, value.Tag)?.Index,
 		EnumTagConstant value => value.Tag,
+		ZeroConstant { Type: EnumSymbol { IsMatch: true } enumType } =>
+			typePool.FindCase(enumType, BigInteger.Zero)?.Index,
 		ZeroConstant { Type: EnumSymbol } => BigInteger.Zero,
+		_ => null
+	};
+	
+	public static BigInteger? GetMatchValue(Constant constant) => constant switch
+	{
+		IntegerConstant integer => integer.Value,
+		BoolConstant flag => flag.Value ? BigInteger.One : BigInteger.Zero,
+		NullConstant or ZeroConstant => BigInteger.Zero,
 		_ => null
 	};
 	
@@ -380,7 +392,39 @@ public sealed class ConstantEvaluator
 			typePool.FindCase(enumType, integer.Value) is { } enumCase
 				? new EnumConstant(enumType, enumCase, [])
 				: null,
+		(MatchConversion { To: EnumSymbol enumType }, _) => ToMatchEnum(enumType, value),
+		(MatchConversion { From: EnumSymbol enumType } c, _) => FromMatchEnum(enumType, c.To, value),
 		_ => null
+	};
+	
+	private Constant? ToMatchEnum(EnumSymbol enumType, Constant value)
+	{
+		var raw = GetMatchValue(value);
+		var enumCase = raw is { } listed ? typePool.FindCase(enumType, listed) : TypePool.GetElseCase(enumType);
+		return enumCase switch
+		{
+			null => null,
+			{ Fields.IsEmpty: false } => new EnumConstant(enumType, enumCase, [value]),
+			_ => raw is { } stored ? new EnumTagConstant(enumType, stored) : null
+		};
+	}
+	
+	private Constant? FromMatchEnum(EnumSymbol enumType, TypeSymbol matchedType, Constant value) => value switch
+	{
+		EnumConstant { Payload: [var payload] } => payload,
+		EnumConstant constant => typePool.GetMatchValues(enumType, constant.Case) is [var first, ..]
+			? MatchConstant(matchedType, first)
+			: null,
+		EnumTagConstant constant => MatchConstant(matchedType, constant.Tag),
+		ZeroConstant => Zero(matchedType),
+		_ => null
+	};
+	
+	private static Constant MatchConstant(TypeSymbol type, BigInteger value) => type switch
+	{
+		IntegerType => new IntegerConstant(type, value),
+		_ when type == NativeSymbols.Bool => BoolConstant.From(!value.IsZero),
+		_ => new NullConstant(type)
 	};
 	
 	private Constant ToEnum(EnumSymbol enumType, BigInteger tag) => typePool.FindCase(enumType, tag) is { } enumCase

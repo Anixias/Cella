@@ -1,0 +1,33 @@
+mod test
+
+nullable[T: null]: enum match T
+{
+	none = null
+	some(value) = else
+}
+
+socket: enum match i32
+{
+	invalid = -1
+	valid(handle) = else
+}
+
+parity: enum match u8
+{
+	even = 0, 2
+	odd(value) = 1, 3, 5
+	other(value) = else
+}
+
+checked: val socket = valid(-1)
+nothing: val nullable[ptr] = some(null)
+oddly: val parity = odd(2)
+evenly: val parity = other(2)
+fine: val parity = odd(3)
+spare: val parity = other(4)
+
+main: fun -> i32
+{
+	val local: socket = valid(-1)
+	ret 0
+}

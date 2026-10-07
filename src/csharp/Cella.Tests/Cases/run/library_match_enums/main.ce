@@ -1,0 +1,24 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+main: fun -> i32
+{
+	var values = [4, 8, 15]
+	val hit = lib.find(@values[0], 3, 8)
+	val miss = lib.find(@values[0], 3, 99)
+	val label: lib.nullable[cstr] = some("text")
+	printf("%d %d %d %d\n", match hit { some(p) => *p  none => -1 }, i32(miss is none), i32(hit.isSome),
+		i32(label.isSome))
+
+	val s = lib.open(3)
+	val bad = lib.open(-2)
+	printf("%d %d %d\n", match s { valid(h) => h  invalid => -1 }, i32(bad is invalid), i32(bad))
+
+	val p = lib.parity(4)
+	printf("%d %d\n", i32(p is even), i32(u8(p)))
+	ret 0
+}

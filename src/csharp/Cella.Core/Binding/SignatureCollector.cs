@@ -41,6 +41,7 @@ public sealed class SignatureCollector
 	private readonly HashSet<Symbol> _cyclic = [];
 	private readonly List<FunctionInfo> _entryPoints = [];
 	private readonly ExtSignatureTypes _extSignatureTypes;
+	private readonly uint _pointerBitSize;
 	private IConstantResolver? constants;
 	
 	public DiagnosticList Diagnostics { get; } = new();
@@ -54,6 +55,7 @@ public sealed class SignatureCollector
 		_symbolTable = symbolTable;
 		_typePool = typePool;
 		_extSignatureTypes = new(typePool);
+		_pointerBitSize = pointerBitSize;
 		_dependencies = dependencies.ToImmutableArray();
 		_dependencyTable = SignatureTable.Combine(_dependencies.Select(static a => a.SignatureTable));
 		Evaluator = new ConstantEvaluator(typePool, pointerBitSize, GetGlobalValue);
@@ -225,7 +227,7 @@ public sealed class SignatureCollector
 		{
 			var symbol = _symbolTable.DeclarationSymbols[declaration];
 			_declarations[symbol] = new(declaration, WithTypeParameters(context, symbol));
-			if (symbol is EnumSymbol { HasPayload: false } enumType)
+			if (symbol is EnumSymbol { HasPayload: false, IsMatch: false } enumType)
 				_typePool.RegisterEnumConversions(enumType);
 			
 			IEnumerable<IDeclarationNode> members = declaration switch
@@ -476,12 +478,24 @@ public sealed class SignatureCollector
 		
 		ReportTypeParameters(node.TypeParameters, node.Members);
 		
+		var matchedType = node.MatchedType is { } matchedNode
+			? ResolveMatchedType(enumType, matchedNode, memberContext)
+			: null;
+		
 		var payloads = new Dictionary<EnumCaseSymbol, ImmutableArray<TypeSymbol>>();
 		foreach (var enumCase in enumType.Cases)
 		{
 			Diagnostics.AddRange(DiagnosticReporter.ReportDuplicates(
 				enumCase.Node.Payload.Select(static f => f.Identifier),
 				name => $"Payload '{name}' is declared more than once in '{enumCase.Name}'"));
+			
+			if (matchedType is not null)
+			{
+				foreach (var field in enumCase.Fields)
+					_typePool.RegisterPayloadField(field, matchedType);
+				
+				continue;
+			}
 			
 			ImmutableArray<TypeSymbol> types = [..enumCase.Fields.Select(f => memberContext.ResolveType(f.Node!.Type))];
 			for (var i = 0; i < types.Length; i++)
@@ -496,14 +510,11 @@ public sealed class SignatureCollector
 			payloads[enumCase] = types;
 		}
 		
-		var values = CollectCaseValues(enumType, context);
-		var tagType = GetTagType(enumType, context, values);
-		ReportSharedValues(enumType, values, payloads);
-		if (!enumType.IsExternal && !node.Cases.IsEmpty && !values.Contains(BigInteger.Zero))
-			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Identifier.SourceLocation,
-				$"'{enumType.Name}' needs a case with the value 0"));
+		if (matchedType is null)
+			CompletePlainEnum(enumType, context, payloads);
+		else
+			CompleteMatchEnum(enumType, matchedType, context);
 		
-		_typePool.RegisterEnum(enumType, tagType, values);
 		_completedTypes.Add(enumType);
 		Exit();
 		
@@ -520,6 +531,165 @@ public sealed class SignatureCollector
 				.Select(static f => (f.Identifier, (FunctionNode?)f, MemberKind.Function))
 		]);
 	}
+	
+	private void CompletePlainEnum(EnumSymbol enumType, ResolutionContext context,
+		IReadOnlyDictionary<EnumCaseSymbol, ImmutableArray<TypeSymbol>> payloads)
+	{
+		var node = enumType.Node;
+		foreach (var enumCase in node.Cases)
+		{
+			if (enumCase.Values is [_, var second, ..])
+				Diagnostics.Add(new(DiagnosticSeverity.Error, second.SourceLocation,
+					"Cannot list several values outside 'enum match'"));
+			
+			if (enumCase.Else is { } elseKeyword)
+				Diagnostics.Add(new(DiagnosticSeverity.Error, elseKeyword.SourceLocation,
+					"Cannot use 'else' outside 'enum match'"));
+		}
+		
+		var values = CollectCaseValues(enumType, context);
+		var tagType = GetTagType(enumType, context, values);
+		ReportSharedValues(enumType, values, payloads);
+		if (!enumType.IsExternal && !node.Cases.IsEmpty && !values.Contains(BigInteger.Zero))
+			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Identifier.SourceLocation,
+				$"'{enumType.Name}' needs a case with the value 0"));
+		
+		_typePool.RegisterEnum(enumType, tagType, values);
+	}
+	
+	private TypeSymbol ResolveMatchedType(EnumSymbol enumType, ITypeNode node, ResolutionContext context)
+	{
+		var type = context.ResolveType(node);
+		if (!IsMatchable(type))
+		{
+			Diagnostics.Add(new(DiagnosticSeverity.Error, node.SourceLocation,
+				$"Cannot declare 'enum match {type.Name}'"));
+			
+			return NativeSymbols.Invalid;
+		}
+		
+		ReportHiddenType(node, type, enumType.Visibility, enumType.Name);
+		if (!enumType.IsRef && !TypePool.ContainsTypeParameters(type) && _typePool.HoldsBorrows(type))
+			Diagnostics.Add(ReportStoredBorrow(node, enumType.Node.Identifier, enumType.Node.Modifiers, "enums",
+				"enum match"));
+		
+		return type;
+	}
+	
+	private static bool IsMatchable(TypeSymbol type) =>
+		type is InvalidType or IntegerType or PointerType or FunctionType or BorrowType or TypeParameterSymbol ||
+		type == NativeSymbols.Bool || type == NativeSymbols.CStr;
+	
+	private void CompleteMatchEnum(EnumSymbol enumType, TypeSymbol matchedType, ResolutionContext context)
+	{
+		var values = new List<ImmutableArray<BigInteger>>();
+		var listings = new List<(BigInteger Value, IExpressionNode Node)>();
+		foreach (var enumCase in enumType.Cases)
+		{
+			var node = enumCase.Node;
+			if (node.Else is { } elseKeyword && enumCase.Fields.IsEmpty)
+				Diagnostics.Add(new(DiagnosticSeverity.Error, elseKeyword.SourceLocation,
+					"'else' cases need a payload"));
+			else if (node.Else is null && node.Values.IsEmpty)
+				Diagnostics.Add(new(DiagnosticSeverity.Error, node.Identifier.SourceLocation,
+					$"Case '{enumCase.Name}' needs a value"));
+			
+			var caseValues = new List<BigInteger>();
+			foreach (var expression in node.Values)
+			{
+				if (EvaluateMatchValue(enumCase, expression, matchedType, context) is not { } value)
+					continue;
+				
+				caseValues.Add(value);
+				listings.Add((value, expression));
+			}
+			
+			values.Add([..caseValues]);
+		}
+		
+		ReportMatchListings(enumType, matchedType, listings);
+		_typePool.RegisterMatchEnum(enumType, matchedType, values);
+	}
+	
+	private BigInteger? EvaluateMatchValue(EnumCaseSymbol enumCase, IExpressionNode expression,
+		TypeSymbol matchedType, ResolutionContext context)
+	{
+		var isNull = expression is LiteralExpressionNode { Token.Type: TokenType.KeywordNull };
+		if (matchedType is not (IntegerType or InvalidType) && matchedType != NativeSymbols.Bool)
+		{
+			if (isNull && TypePool.HasNull(matchedType))
+				return BigInteger.Zero;
+			
+			Diagnostics.Add(new(DiagnosticSeverity.Error, expression.SourceLocation, isNull
+				? $"'{matchedType.Name}' has no null"
+				: $"Only 'null' can be listed for '{matchedType.Name}'"));
+			
+			return null;
+		}
+		
+		if (isNull)
+		{
+			if (matchedType is not InvalidType)
+				Diagnostics.Add(new(DiagnosticSeverity.Error, expression.SourceLocation,
+					$"'{matchedType.Name}' has no null"));
+			
+			return null;
+		}
+		
+		var value = constants!.ResolveInitializer(expression, matchedType, context);
+		switch (Evaluator.Evaluate(value))
+		{
+			case IntegerConstant constant:
+				return constant.Value;
+			
+			case BoolConstant flag:
+				return flag.Value ? BigInteger.One : BigInteger.Zero;
+			
+			case null:
+				Diagnostics.Add(new(DiagnosticSeverity.Error, expression.SourceLocation,
+					$"The value of '{enumCase.Name}' must be a constant"));
+				
+				return null;
+			
+			default:
+				return null;
+		}
+	}
+	
+	private void ReportMatchListings(EnumSymbol enumType, TypeSymbol matchedType,
+		IReadOnlyList<(BigInteger Value, IExpressionNode Node)> listings)
+	{
+		foreach (var sameValue in listings.GroupBy(static listing => listing.Value).Where(static g => g.Count() > 1))
+		{
+			var message = $"{DescribeMatchValue(sameValue.Key, matchedType)} is listed more than once";
+			Diagnostics.AddRange(sameValue.Select(listing =>
+				new Diagnostic(DiagnosticSeverity.Error, listing.Node.SourceLocation, message)));
+		}
+		
+		var elseKeywords = enumType.Node.Cases.Select(static c => c.Else).OfType<Token>().ToList();
+		if (elseKeywords.Count > 1)
+			Diagnostics.AddRange(elseKeywords.Select(keyword => new Diagnostic(DiagnosticSeverity.Error,
+				keyword.SourceLocation, $"'{enumType.Name}' can have only one 'else' case")));
+		else if (elseKeywords.Count == 0 && matchedType is not InvalidType &&
+		         !CoversEveryValue(matchedType, listings.Select(static listing => listing.Value).ToHashSet()))
+			Diagnostics.Add(new(DiagnosticSeverity.Error, enumType.Node.Identifier.SourceLocation,
+				$"'{enumType.Name}' needs an 'else' case"));
+	}
+	
+	private static string DescribeMatchValue(BigInteger value, TypeSymbol matchedType) => matchedType switch
+	{
+		IntegerType => value.ToString(),
+		_ when matchedType == NativeSymbols.Bool => value.IsZero ? "false" : "true",
+		_ => "null"
+	};
+	
+	private bool CoversEveryValue(TypeSymbol matchedType, IReadOnlySet<BigInteger> values) => matchedType switch
+	{
+		IntegerType => values.Count == BigInteger.One << (int)_typePool.SizeTable.GetSize(matchedType)
+			.CountBits(_pointerBitSize),
+		_ when matchedType == NativeSymbols.Bool => values.Count == 2,
+		_ => false
+	};
 	
 	private void CompleteProperty(PropertySymbol property)
 	{
@@ -1189,7 +1359,7 @@ public sealed class SignatureCollector
 	
 	private EnumSymbol? FindPlainEnum(TypeSymbol type, HashSet<TypeSymbol> visited)
 	{
-		if (type is EnumSymbol { IsExternal: false } plainEnum)
+		if (type is EnumSymbol { IsExternal: false, IsMatch: false } plainEnum)
 			return plainEnum;
 		
 		if (!visited.Add(type))

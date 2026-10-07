@@ -1,0 +1,3 @@
+[stderr]
+Panic at match_enum_case_trap.ce:13:18: 'parity.odd' can't hold this value
+[exit code -1073740791]

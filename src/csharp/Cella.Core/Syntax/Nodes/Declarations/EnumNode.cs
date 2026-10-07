@@ -24,11 +24,21 @@ public sealed class EnumNode
 	public ImmutableArray<EnumCaseNode> Cases { get; } = cases.ToImmutableArray();
 	public ImmutableArray<IDeclarationNode> Members { get; } = members.ToImmutableArray();
 	public ImmutableArray<TypeParameterNode> TypeParameters { get; init; } = [];
+	public ITypeNode? MatchedType { get; init; }
+	public bool IsMatch => MatchedType is not null;
 }
 
-public sealed class EnumCaseNode(Token identifier, IEnumerable<FieldNode> payload, IExpressionNode? value)
+public sealed class EnumCaseNode
+(
+	Token identifier,
+	IEnumerable<FieldNode> payload,
+	IEnumerable<IExpressionNode> values,
+	Token? elseKeyword
+)
 {
 	public Token Identifier { get; } = identifier;
 	public ImmutableArray<FieldNode> Payload { get; } = payload.ToImmutableArray();
-	public IExpressionNode? Value { get; } = value;
+	public ImmutableArray<IExpressionNode> Values { get; } = values.ToImmutableArray();
+	public Token? Else { get; } = elseKeyword;
+	public IExpressionNode? Value => Values.IsEmpty ? null : Values[0];
 }

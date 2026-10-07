@@ -1,0 +1,55 @@
+mod test
+
+nullable[T: null]: enum match T
+{
+	none = null
+	some(value) = else
+}
+
+text: enum match cstr
+{
+	absent = null
+	present(value) = else
+}
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+	signal: fun(sig: i32, handler: nullable[ext fun[i32]]) -> nullable[ext fun[i32]]
+	raise: fun(sig: i32) -> i32
+	strchr: fun(source: cstr, c: i32) -> nullable[cstr]
+	getenv: fun(name: cstr) -> text
+}
+
+caught: var i32 = 0
+
+Handlers: rec
+{
+	interrupt: nullable[ext fun[i32]]
+}
+
+onSignal: ext fun(sig: i32)
+{
+	caught = sig
+}
+
+main: fun -> i32
+{
+	val previous = signal(2, some(onSignal))
+	val restored = signal(2, none)
+	signal(2, some(onSignal))
+	raise(2)
+	val restoredIsOurs = match restored { some(f) => ptr(f) == ptr(onSignal)  none => false }
+	printf("%d %d %d\n", caught, i32(previous is none), i32(restoredIsOurs))
+
+	val handlers = Handlers()
+	printf("%d %d\n", i32(handlers.interrupt is none), i32(sizeOf(Handlers)))
+
+	val rest = strchr("hello", 108)
+	val missing = strchr("hello", 122)
+	printf("%s %d\n", match rest { some(s) => s  none => "?" }, i32(cstr(missing) == null))
+
+	val unset = getenv("CELLA_TEST_UNSET_VARIABLE")
+	printf("%d\n", i32(unset is absent))
+	ret 0
+}

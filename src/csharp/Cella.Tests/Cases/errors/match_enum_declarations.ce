@@ -1,0 +1,102 @@
+mod test
+
+floats: enum match f32
+{
+	zero(value) = else
+}
+
+texts: enum match str
+{
+	any(value) = else
+}
+
+nulls: enum match i32
+{
+	none = null
+	some(value) = else
+}
+
+pointers: enum match ptr
+{
+	zero = 0
+	other(value) = else
+}
+
+repeats: enum match u8
+{
+	low = 1, 2
+	high = 2, 3
+	rest(value) = else
+}
+
+ranged: enum match u8
+{
+	low = 256
+	high = 3, limit()
+	rest(value) = else
+}
+
+elses: enum match u8
+{
+	first(value) = else
+	second(value) = else
+}
+
+missing: enum match u16
+{
+	low = 1
+}
+
+flags: enum match bool
+{
+	on = true
+}
+
+bare: enum match i32
+{
+	zero = 0
+	rest = else
+}
+
+unvalued: enum match i32
+{
+	zero
+	rest(value) = else
+}
+
+open[T]: enum match T
+{
+	none = null
+	some(value) = else
+}
+
+plain: enum
+{
+	low = 0, 1
+	high = else
+}
+
+borrowed: enum match imm[i32]
+{
+	none = null
+	some(value) = else
+}
+
+nullable[T: null]: enum match T
+{
+	none = null
+	some(value) = else
+}
+
+Cell[T]: rec
+{
+	value: nullable[T]
+}
+
+limit: fun -> u8 = 3
+
+first[T]: fun(own value: T) -> nullable[T] = some(value)
+
+count: fun(numbers: nullable[i32]) -> i32 = 0
+
+main: fun -> i32 = 0
