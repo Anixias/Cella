@@ -1,0 +1,9 @@
+
+====== generic_main.ce ======
+
+Error at line 3, column 6
+2 │ 
+3 │ main[T]: fun -> i32 = 0
+         ^ Cannot declare type parameters on 'main'
+
+[compilation failed]

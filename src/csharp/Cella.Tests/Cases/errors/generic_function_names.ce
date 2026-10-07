@@ -1,0 +1,16 @@
+mod test
+
+box[T]: rec
+{
+	value: T
+
+	map[T]: fun(self) -> i32 = 0
+
+	other[U, U]: fun(self) -> i32 = 0
+}
+
+twice[T, T]: fun -> i32 = 0
+
+misnamed[Item]: fun(value: Itme) -> i32 = 0
+
+main: fun -> i32 = 0

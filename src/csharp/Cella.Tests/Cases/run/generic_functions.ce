@@ -1,0 +1,73 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Token: rec
+{
+	id: i32
+
+	drop: op
+	{
+		printf("drop %d ", self.id)
+	}
+}
+
+swap[T: noref]: fun(mut a: T, mut b: T)
+{
+	val first = own a
+	a = own b
+	b = first
+}
+
+identity[T]: fun(own value: T) -> T = value
+
+pick[T]: fun(useFirst: bool, own a: T, own b: T) -> T
+{
+	if useFirst
+		ret a
+
+	ret b
+}
+
+describe: fun(value: i32) -> i32 = 1
+
+describe[T]: fun(value: T) -> i32 = 2
+
+consume[T]: fun(own value: T)
+{
+	printf("consume ")
+}
+
+countdown[T]: fun(own value: T, steps: i32) -> i32
+{
+	if steps == 0
+		ret 0
+
+	ret 1 + countdown(value, steps - 1)
+}
+
+size[T]: fun -> usize = sizeOf(T)
+
+main: fun -> i32
+{
+	var x = 1
+	var y = 2
+	swap(mut x, mut y)
+	val small: i32 = 3
+	val large: i64 = 4000000000
+	val widened = pick(false, small, large)
+	val literal = identity(5)
+	val targeted: i64 = identity(6)
+	val explicit = identity[i8](7)
+	val mixed = pick(true, large, 8)
+	val floats = pick(false, 1, 2.5)
+	printf("%d %d %lld %d %lld %d %lld %.1f | ", x, y, widened, literal, targeted, explicit, mixed, floats)
+	printf("%d %d %d | ", describe(5), describe(large), describe(true))
+	consume(Token(1))
+	printf("| %d | ", countdown(Token(2), 3))
+	printf("%zu %zu\n", size[i64](), size[Token]())
+	ret 0
+}

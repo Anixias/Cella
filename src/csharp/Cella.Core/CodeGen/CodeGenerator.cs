@@ -1888,7 +1888,6 @@ public sealed unsafe class CodeGenerator : IDisposable
 			return existing;
 		
 		var actual = function.Signature;
-		var declared = function.DeclaredSignature;
 		var parameterTypes = actual.ParameterTypes
 			.Select((type, i) => MapParameterType(type, actual.GetMode(i)))
 			.ToArray();
@@ -1899,18 +1898,9 @@ public sealed unsafe class CodeGenerator : IDisposable
 		
 		using var builder = current.Module.Context.CreateBuilder();
 		builder.PositionAtEnd(thunk.AppendBasicBlock("entry"));
-		var args = parameterTypes.Select((_, i) =>
-		{
-			var value = thunk.GetParam((uint)i + 1);
-			var mode = declared.GetMode(i);
-			if (!_typePool.PassesByPointer(declared.ParameterTypes[i], mode) ||
-			    _typePool.PassesByPointer(actual.ParameterTypes[i], mode))
-				return value;
-			
-			var slot = BuildEntryAlloca(builder, MapTypeSymbol(actual.ParameterTypes[i]), "argument");
-			builder.BuildStore(value, slot);
-			return slot;
-		}).ToList();
+		var args = parameterTypes
+			.Select((_, i) => PassAsDeclared(function, i, thunk.GetParam((uint)i + 1), builder))
+			.ToList();
 		
 		var result = target.CSignature is { } signature
 			? EmitCCall(signature, target.FunctionType, target.FunctionValue, target.ReturnType, args, builder)
@@ -1922,6 +1912,19 @@ public sealed unsafe class CodeGenerator : IDisposable
 			builder.BuildRet(result);
 		
 		return thunk;
+	}
+	
+	private LLVMValueRef PassAsDeclared(FunctionInfo function, int index, LLVMValueRef value, LLVMBuilderRef builder)
+	{
+		var mode = function.DeclaredSignature.GetMode(index);
+		var actual = function.Signature.ParameterTypes[index];
+		if (!_typePool.PassesByPointer(function.DeclaredSignature.ParameterTypes[index], mode) ||
+		    _typePool.PassesByPointer(actual, mode))
+			return value;
+		
+		var slot = BuildEntryAlloca(builder, MapTypeSymbol(actual), "argument");
+		builder.BuildStore(value, slot);
+		return slot;
 	}
 	
 	private LLVMValueRef GetExternalThunk(FunctionInfo function)
@@ -1948,6 +1951,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 		var args = parameterTypes
 			.Select((type, i) => ReceiveCArgument(signature.Parameters[i], thunk.GetParam(first + (uint)i), type,
 				builder))
+			.Select((value, i) => PassAsDeclared(function, i, value, builder))
 			.ToArray();
 		
 		var result = builder.BuildCall2(target.FunctionType, target.FunctionValue, args);

@@ -1,4 +1,5 @@
-﻿using System.Text;
+﻿using System.Collections.Immutable;
+using System.Text;
 using Cella.Core.Syntax.Nodes;
 
 namespace Cella.Core.Syntax;
@@ -251,7 +252,9 @@ public sealed class AstPrinter : ISyntaxNodeVisitor
 	public void Visit(FunctionNode node)
 	{
 		StartLine();
-		_sb.Append("FunctionNode '").Append(node.Identifier.AsSpan()).Append('\'');
+		_sb.Append("FunctionNode '").Append(node.Identifier.AsSpan());
+		AppendTypeParameters(node.TypeParameters);
+		_sb.Append('\'');
 		
 		// TODO Modifiers
 		
@@ -356,15 +359,19 @@ public sealed class AstPrinter : ISyntaxNodeVisitor
 		VisitNode(node.Type, false);
 	}
 	
+	private void AppendTypeParameters(ImmutableArray<TypeParameterNode> typeParameters)
+	{
+		if (!typeParameters.IsEmpty)
+			_sb.Append('[').AppendJoin(", ", typeParameters.Select(static p => p.Constraint is { } constraint
+				? $"{p.Identifier.Text}: {constraint.Text}"
+				: p.Identifier.Text)).Append(']');
+	}
+	
 	public void Visit(RecordNode node)
 	{
 		StartLine();
 		_sb.Append("RecordNode '").Append(node.Identifier.AsSpan());
-		if (!node.TypeParameters.IsEmpty)
-			_sb.Append('[').AppendJoin(", ", node.TypeParameters.Select(static p => p.Constraint is { } constraint
-				? $"{p.Identifier.Text}: {constraint.Text}"
-				: p.Identifier.Text)).Append(']');
-		
+		AppendTypeParameters(node.TypeParameters);
 		_sb.Append('\'');
 		
 		// TODO Modifiers

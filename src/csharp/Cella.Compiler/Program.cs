@@ -202,6 +202,7 @@ internal static class Program
 				.Select(sfi => new ResolvedSourceFileInfo(sfi.FilePath, resolver.Resolve(sfi.Ast), sfi.Source))
 				.ToImmutableArray();
 			
+			resolver.ReportInfiniteInstantiations();
 			if (ReportErrors(diagnostics, project.Directory))
 				return errorResult;
 		}

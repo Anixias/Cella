@@ -1,0 +1,36 @@
+mod test
+
+box[T]: rec
+{
+	value: T
+
+	deeper: fun(own self, depth: i32) -> i32
+	{
+		if depth == 0
+			ret 0
+
+		ret box(self).deeper(depth - 1)
+	}
+}
+
+add[T]: fun(value: T) -> T = value + 1
+
+grow[T]: fun(own value: T, depth: i32) -> i32
+{
+	if depth == 0
+		ret 0
+
+	ret grow(box(value), depth - 1)
+}
+
+first[T]: fun(own value: T, depth: i32) -> i32
+{
+	if depth == 0
+		ret 0
+
+	ret second(box(value), depth - 1)
+}
+
+second[U]: fun(own value: U, depth: i32) -> i32 = first(value, depth)
+
+main: fun -> i32 = grow(1, 3) + box(2).deeper(1) + first(3, 2)

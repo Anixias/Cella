@@ -1,0 +1,44 @@
+
+====== generic_function_inference.ce ======
+
+Error at line 21, column 10
+20 │ val count: i32 = 1
+21 │ val a = make()
+             ╘══╛ Cannot infer 'T' for 'make'
+
+Error at line 22, column 10
+21 │ val a = make()
+22 │ val b = same(count, true)
+             ╘══╛ Cannot infer 'T' for 'same' from 'i32' and 'bool'
+
+Error at line 23, column 10
+22 │ val b = same(count, true)
+23 │ val c = identity[i32, i64](1)
+             ╘════════════════╛ 'identity' takes one type argument
+
+Error at line 24, column 10
+23 │ val c = identity[i32, i64](1)
+24 │ val d = plain[i32](1)
+             ╘════════╛ 'plain' takes no type arguments
+
+Error at line 25, column 10
+24 │ val d = plain[i32](1)
+25 │ val e = keep(imm count)
+             ╘══╛ Cannot store borrows in 'T'
+
+Error at line 26, column 10
+25 │ val e = keep(imm count)
+26 │ val f = identity
+             ╘══════╛ Cannot infer 'T' for 'identity'
+
+Error at line 27, column 10
+26 │ val f = identity
+27 │ val g = box()
+             ╘═╛ Cannot infer 'T' for 'box'
+
+Error at line 28, column 15
+27 │ val g = box()
+28 │ val h = keep[imm[i32]](imm count)
+                  ╘══════╛ Cannot store borrows in 'T'
+
+[compilation failed]

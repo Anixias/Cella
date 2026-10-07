@@ -21,6 +21,7 @@ public readonly struct ResolutionContext
 	public ExtSignatureTypes? ExtSignatureTypes { get; init; }
 	public Func<IExpressionNode, ResolutionContext, Constant?>? EvaluateConstant { get; init; }
 	public Dictionary<IndexerExpressionNode, TypeSymbol?>? GenericTypes { get; init; }
+	public ImmutableArray<TypeParameterSymbol> TypeParameters { get; init; }
 	
 	public string Mangle(Symbol symbol) => Mangling.Mangle(symbol, Modules, GetQualifiers());
 	
@@ -66,9 +67,11 @@ public readonly struct ResolutionContext
 		if (LocalScope?.Resolve(name) is { } localSymbol)
 			return localSymbol;
 		
-		// TODO Also check type parameters
 		if (ContainingFunction?.Symbol.Parameters.FirstOrDefault(p => p.Name == name) is { } param)
 			return param;
+		
+		if (!TypeParameters.IsDefault && TypeParameters.FirstOrDefault(p => p.Name == name) is { } typeParameter)
+			return typeParameter;
 		
 		for (var type = ContainingType; type is not null; type = type.ContainingType)
 		{
@@ -199,10 +202,13 @@ public readonly struct ResolutionContext
 			foreach (var symbol in scope.Symbols)
 				yield return symbol;
 		
-		// TODO Also check type parameters
 		if (ContainingFunction is { } function)
 			foreach (var param in function.Symbol.Parameters)
 				yield return param;
+		
+		if (!TypeParameters.IsDefault)
+			foreach (var typeParameter in TypeParameters)
+				yield return typeParameter;
 		
 		for (var type = ContainingType; type is not null; type = type.ContainingType)
 			foreach (var child in type.Children.Values)
@@ -400,13 +406,16 @@ public readonly struct ResolutionContext
 	}
 	
 	public static Diagnostic ReportTypeArgumentCount(SourceLocation location, RecordSymbol generic) =>
-		new(DiagnosticSeverity.Error, location, $"'{generic.Name}' takes {DescribeTypeArguments(generic)}");
+		ReportTypeArgumentCount(location, generic.Name, generic.TypeParameters.Length);
 	
-	private static string DescribeTypeArguments(RecordSymbol generic) => generic.TypeParameters.Length switch
+	public static Diagnostic ReportTypeArgumentCount(SourceLocation location, string name, int count) =>
+		new(DiagnosticSeverity.Error, location, $"'{name}' takes {DescribeTypeArguments(count)}");
+	
+	private static string DescribeTypeArguments(int count) => count switch
 	{
 		0 => "no type arguments",
 		1 => "one type argument",
-		var count => $"{count} type arguments"
+		_ => $"{count} type arguments"
 	};
 	
 	private TypeSymbol InstantiateType(RecordSymbol definition, IReadOnlyList<TypeSymbol> arguments,
@@ -431,7 +440,7 @@ public readonly struct ResolutionContext
 		return violations.Count > 0 ? NativeSymbols.Invalid : TypePool.Instantiate(definition, [..arguments]);
 	}
 	
-	private TypeSymbol ResolveTypeExpression(IExpressionNode expression)
+	public TypeSymbol ResolveTypeExpression(IExpressionNode expression)
 	{
 		switch (TryResolveExpressionAsType(expression))
 		{

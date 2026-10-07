@@ -226,8 +226,8 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 		
 		var kindIndex = index;
 		var isExternal = !isRef && Match(ref index, _topLevelContextualKeywords, TokenType.KeywordExt);
-		if (typeParameters is [var first, ..] && DescribeTypeParameterError(index) is { } typeParameterError)
-			Report(first.SourceLocation, typeParameterError);
+		if (typeParameters is [var first, ..] && DescribeTypeParameterError(index, isExternal) is { } error)
+			Report(first.SourceLocation, error);
 		
 		if (Match(ref index, _topLevelContextualKeywords, TokenType.KeywordEnum))
 		{
@@ -270,7 +270,7 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 		if (Match(ref index, _topLevelContextualKeywords, TokenType.KeywordFun))
 		{
 			var function = ParseDeclaration(ref index, identifier, "function",
-				(ref i) => ParseFunction(ref i, identifier, modifiers, isExternal));
+				(ref i) => ParseFunction(ref i, identifier, modifiers, isExternal, isExternal ? [] : typeParameters));
 			
 			if (function is null)
 				SkipDeclaration(ref index, declarationStart, insideBlock);
@@ -326,15 +326,26 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 		return null;
 	}
 	
-	private string? DescribeTypeParameterError(int index)
+	private string? DescribeTypeParameterError(int index, bool isExternal)
 	{
 		if (Match(ref index, _topLevelContextualKeywords, TokenType.KeywordEnum))
 			return "Generic enums are not supported yet";
 		
 		if (Match(ref index, _topLevelContextualKeywords, TokenType.KeywordFun))
-			return "Generic functions are not supported yet";
+			return isExternal ? "Cannot declare type parameters on ext functions" : null;
 		
 		return Match(ref index, _bindingKeywords) ? "Cannot declare type parameters on globals" : null;
+	}
+	
+	private bool RejectTypeParameters(ref int index, string kind)
+	{
+		if (ParseTypeParameters(ref index) is not { } typeParameters)
+			return false;
+		
+		if (typeParameters is [var first, ..])
+			Report(first.SourceLocation, $"Cannot declare type parameters on {kind}");
+		
+		return true;
 	}
 	
 	private void ParseTopLevelBlock(ref int index, Token openBrace, Token block, List<IDeclarationNode> declarations)
@@ -634,7 +645,7 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 	}
 	
 	private FunctionNode? ParseFunction(ref int index, Token identifier, DeclarationModifiers modifiers,
-		bool isExternal)
+		bool isExternal, List<TypeParameterNode> typeParameters)
 	{
 		// When this is called, the identifier and fun keyword are already consumed
 		// Caller is expected to resync in case of errors
@@ -653,7 +664,8 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 			
 			return new(identifier, modifiers.Tokens, receiver, parameters, returnType, statement, isExternal)
 			{
-				Visibility = modifiers.Visibility
+				Visibility = modifiers.Visibility,
+				TypeParameters = [..typeParameters]
 			};
 		}
 		
@@ -665,7 +677,8 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 		
 		return new(identifier, modifiers.Tokens, receiver, parameters, returnType, body, isExternal)
 		{
-			Visibility = modifiers.Visibility
+			Visibility = modifiers.Visibility,
+			TypeParameters = [..typeParameters]
 		};
 	}
 	
@@ -713,7 +726,7 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 		if (!Match(ref index, out var identifier, _topLevelContextualKeywords, TokenType.Identifier))
 			return null;
 		
-		if (!Match(ref index, TokenType.OpColon))
+		if (!RejectTypeParameters(ref index, "ext functions") || !Match(ref index, TokenType.OpColon))
 			return null;
 		
 		var modifiers = ParseDeclarationModifiers(ref index, block);
@@ -944,7 +957,7 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 				continue;
 			}
 			
-			if (Peek(index, TokenType.Identifier) && Peek(index + 1, TokenType.OpColon))
+			if (StartsEnumMember(index))
 			{
 				if (ParseEnumMember(ref index, block) is not { } member)
 					return false;
@@ -965,11 +978,20 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 		return true;
 	}
 	
+	private bool StartsEnumMember(int index) => Peek(index, TokenType.Identifier) &&
+	                                            (Peek(index + 1, TokenType.OpColon) ||
+	                                             Peek(index + 1, TokenType.OpOpenBracket) && IsOnSameLine(index + 1));
+	
 	private IDeclarationNode? ParseEnumMember(ref int index, Token? block)
 	{
-		var identifier = Tokens[index];
-		index += 2;
+		var identifier = Tokens[index++];
+		if (ParseTypeParameters(ref index) is not { } typeParameters || !Match(ref index, TokenType.OpColon))
+			return null;
+		
 		var modifiers = ParseMemberModifiers(ref index, block);
+		if (!IsFunctionMember(index))
+			RejectMemberTypeParameters(typeParameters, index);
+		
 		if (Match(ref index, out var bindingKeyword, _bindingKeywords))
 			return ParseStaticField(ref index, identifier, modifiers, bindingKeyword);
 		
@@ -986,7 +1008,7 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 		RejectWriteRestriction(modifiers, "functions");
 		Match(ref index, _memberContextualKeywords, TokenType.KeywordFun);
 		return ParseDeclaration(ref index, identifier, "function",
-			(ref i) => ParseFunction(ref i, identifier, modifiers, false));
+			(ref i) => ParseFunction(ref i, identifier, modifiers, false, typeParameters));
 	}
 	
 	private EnumCaseNode? ParseEnumCase(ref int index)
@@ -1035,15 +1057,22 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 		// TODO Diagnostics
 		
 		if (Match(ref index, out var newKeyword, _memberContextualKeywords, TokenType.KeywordNew))
-			return ParseConstructor(ref index, newKeyword, block);
+			return RejectTypeParameters(ref index, "constructors")
+				? ParseConstructor(ref index, newKeyword, block)
+				: null;
 		
 		if (Match(ref index, out var dropKeyword, _memberContextualKeywords, TokenType.KeywordDrop))
-			return ParseDestructor(ref index, dropKeyword, block);
+			return RejectTypeParameters(ref index, "destructors")
+				? ParseDestructor(ref index, dropKeyword, block)
+				: null;
 		
 		if (Match(ref index, out var star, TokenType.OpStar))
-			return ParseDeclaration(ref index, star, "operator", (ref i) => ParseOperator(ref i, star, block));
+			return RejectTypeParameters(ref index, "operators")
+				? ParseDeclaration(ref index, star, "operator", (ref i) => ParseOperator(ref i, star, block))
+				: null;
 		
-		if (!Match(ref index, out var identifier, TokenType.Identifier) || !Match(ref index, TokenType.OpColon))
+		if (!Match(ref index, out var identifier, TokenType.Identifier) ||
+		    ParseTypeParameters(ref index) is not { } typeParameters || !Match(ref index, TokenType.OpColon))
 			return null;
 		
 		var modifiers = ParseMemberModifiers(ref index, block);
@@ -1052,9 +1081,10 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 			RejectWriteRestriction(modifiers, "functions");
 			Match(ref index, _memberContextualKeywords, TokenType.KeywordFun);
 			return ParseDeclaration(ref index, identifier, "function",
-				(ref i) => ParseFunction(ref i, identifier, modifiers, false));
+				(ref i) => ParseFunction(ref i, identifier, modifiers, false, typeParameters));
 		}
 		
+		RejectMemberTypeParameters(typeParameters, index);
 		if (Match(ref index, out var bindingKeyword, _bindingKeywords))
 			return ParseStaticField(ref index, identifier, modifiers, bindingKeyword);
 		
@@ -1068,6 +1098,15 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 		return ParseField(ref index, identifier, modifiers);
 	}
 	
+	private void RejectMemberTypeParameters(List<TypeParameterNode> typeParameters, int index)
+	{
+		if (typeParameters is not [var first, ..])
+			return;
+		
+		var kind = StartsProperty(index) ? "properties" : "fields";
+		Report(first.SourceLocation, $"Cannot declare type parameters on {kind}");
+	}
+	
 	private FunctionNode? ParseOperator(ref int index, Token star, Token? block)
 	{
 		if (!Match(ref index, TokenType.OpColon))
@@ -1076,7 +1115,7 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 		var modifiers = ParseMemberModifiers(ref index, block);
 		RejectWriteRestriction(modifiers, "operators");
 		return Match(ref index, _memberContextualKeywords, TokenType.KeywordOp)
-			? ParseFunction(ref index, star, modifiers, false)
+			? ParseFunction(ref index, star, modifiers, false, [])
 			: null;
 	}
 	

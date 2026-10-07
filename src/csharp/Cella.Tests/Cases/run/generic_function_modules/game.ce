@@ -1,0 +1,12 @@
+mod game
+
+counter[T]: rec
+{
+	value: T
+
+	count[U]: fun(own extra: U) -> i32 = helper()
+}
+
+helper: mod fun -> i32 = 9
+
+make[T]: fun(own value: T) -> counter[T] = counter(value)

@@ -1,0 +1,71 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+box[T]: rec
+{
+	value: T
+}
+
+pair[A, B]: rec
+{
+	first: A
+	second: B
+}
+
+cell[T]: rec
+{
+	value: T
+
+	new: op(own value: T)
+	{
+		self.value = value
+	}
+
+	map[U]: fun(own self, change: fun[own T -> U]) -> cell[U] = cell(change(own self.value))
+
+	combine[U]: fun(own first: T, own second: U) -> pair[T, U] = pair(first, second)
+}
+
+Holder: rec
+{
+	id: i32
+
+	wrap[T]: fun(self, own value: T) -> pair[T, i32] = pair(value, self.id)
+}
+
+Color: enum(u8)
+{
+	red
+	green
+
+	tag[T]: fun(self, own value: T) -> i32 = 5
+
+	make[T]: fun(own value: T) -> Color = Color.green
+}
+
+double: fun(own value: i32) -> i64 = value * 2
+
+nest[T]: fun(own value: T) -> box[box[T]] = box(box(value))
+
+main: fun -> i32
+{
+	val small = box(1)
+	val wide: box[i64] = box(2)
+	val both = pair(3, true)
+	val mapped = cell(4).map(double)
+	val explicit = cell(5).map[i64](double)
+	val combined = cell[i8].combine(6, 7)
+	val combine = cell[i8].combine[i16]
+	val held = Holder(8).wrap(9)
+	val nested = nest(10)
+	printf("%d %lld %d %lld %lld %d %d %d | ", small.value, wide.value, both.first, mapped.value, explicit.value,
+		combined.first, combined.second, combine(11, 12).second)
+	printf("%d %d %d | ", held.first, held.second, nested.value.value)
+	val color = Color.red
+	printf("%d %d %d\n", color.tag(true), color.tag[i8](3), Color.make(1.5) == Color.green)
+	ret 0
+}

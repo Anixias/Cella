@@ -32,6 +32,7 @@ public sealed class FunctionNode
 	public ITypeNode? ReturnType { get; } = returnType;
 	public IStatementNode Body { get; } = body;
 	public bool IsExternal { get; } = isExternal;
+	public ImmutableArray<TypeParameterNode> TypeParameters { get; init; } = [];
 }
 
 public sealed class ExternalFunctionNode

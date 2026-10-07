@@ -1,0 +1,30 @@
+mod test
+
+make[T]: fun -> i32 = 0
+
+same[T]: fun(own a: T, own b: T) -> i32 = 0
+
+identity[T]: fun(own value: T) -> T = value
+
+plain: fun(value: i32) -> i32 = value
+
+keep[T: noref]: fun(own value: T) -> i32 = 0
+
+box[T]: rec
+{
+	value: T
+}
+
+main: fun -> i32
+{
+	val count: i32 = 1
+	val a = make()
+	val b = same(count, true)
+	val c = identity[i32, i64](1)
+	val d = plain[i32](1)
+	val e = keep(imm count)
+	val f = identity
+	val g = box()
+	val h = keep[imm[i32]](imm count)
+	ret 0
+}

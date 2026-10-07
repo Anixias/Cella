@@ -224,7 +224,7 @@ public sealed class SignatureCollector
 		foreach (var declaration in node.Declarations)
 		{
 			var symbol = _symbolTable.DeclarationSymbols[declaration];
-			_declarations[symbol] = new(declaration, context);
+			_declarations[symbol] = new(declaration, WithTypeParameters(context, symbol));
 			if (symbol is EnumSymbol { HasPayload: false } enumType)
 				_typePool.RegisterEnumConversions(enumType);
 			
@@ -238,7 +238,8 @@ public sealed class SignatureCollector
 			var memberContext = context with { ContainingType = symbol as TypeSymbol };
 			foreach (var member in members)
 			{
-				_declarations[_symbolTable.DeclarationSymbols[member]] = new(member, memberContext);
+				var memberSymbol = _symbolTable.DeclarationSymbols[member];
+				_declarations[memberSymbol] = new(member, WithTypeParameters(memberContext, memberSymbol));
 				if (member is not PropertyNode property)
 					continue;
 				
@@ -247,6 +248,11 @@ public sealed class SignatureCollector
 			}
 		}
 	}
+	
+	private static ResolutionContext WithTypeParameters(ResolutionContext context, Symbol symbol) =>
+		symbol is FunctionSymbol { DeclaredTypeParameters: { IsEmpty: false } typeParameters }
+			? context with { TypeParameters = typeParameters }
+			: context;
 	
 	private Constant? EvaluateConstant(IExpressionNode expression, ResolutionContext context) =>
 		constants!.EvaluateConstant(expression, context);
@@ -290,6 +296,8 @@ public sealed class SignatureCollector
 		
 		Diagnostics.AddRange(DiagnosticReporter.ReportDuplicates(node.TypeParameters.Select(static p => p.Identifier),
 			static name => $"Type parameter '{name}' is declared more than once"));
+		
+		ReportReusedTypeParameters(node);
 		
 		var storedTypes = new List<(ITypeNode Node, TypeSymbol Type)>();
 		foreach (var member in node.Members)
@@ -351,6 +359,30 @@ public sealed class SignatureCollector
 		foreach (var field in node.Members.OfType<GlobalNode>())
 			Complete(_symbolTable.DeclarationSymbols[field]);
 	}
+	
+	private void ReportReusedTypeParameters(RecordNode node)
+	{
+		var duplicates = node.TypeParameters
+			.GroupBy(static p => p.Identifier.Text)
+			.Where(static sameName => sameName.Count() > 1)
+			.Select(static sameName => sameName.Key)
+			.ToHashSet();
+		
+		var reported = new HashSet<string>();
+		foreach (var parameter in node.Members.OfType<FunctionNode>().SelectMany(static f => f.TypeParameters))
+		{
+			var name = parameter.Identifier.Text;
+			if (node.TypeParameters.Where(p => p.Identifier.Text == name).ToList() is not [_, ..] outer)
+				continue;
+			
+			Diagnostics.Add(ReportDuplicateTypeParameter(parameter.Identifier));
+			if (!duplicates.Contains(name) && reported.Add(name))
+				Diagnostics.AddRange(outer.Select(static p => ReportDuplicateTypeParameter(p.Identifier)));
+		}
+	}
+	
+	private static Diagnostic ReportDuplicateTypeParameter(Token identifier) => new(DiagnosticSeverity.Error,
+		identifier.SourceLocation, $"Type parameter '{identifier.Text}' is declared more than once");
 	
 	private void ReportDereferences(RecordSymbol record, List<FunctionNode> dereferences)
 	{
@@ -780,6 +812,9 @@ public sealed class SignatureCollector
 	
 	private FunctionInfo CollectFunction(FunctionSymbol function, FunctionNode node, ResolutionContext context)
 	{
+		Diagnostics.AddRange(DiagnosticReporter.ReportDuplicates(node.TypeParameters.Select(static p => p.Identifier),
+			static name => $"Type parameter '{name}' is declared more than once"));
+		
 		ReportDuplicateParameters(node.Parameters);
 		ReportBorrowParameters(node.Parameters, node.IsExternal, function.Property?.Node?.Type);
 		
@@ -836,7 +871,8 @@ public sealed class SignatureCollector
 		var mangledName = context.Mangle(function, signature);
 		var info = new FunctionInfo(mangledName, function, signature, scope, null, context.File);
 		
-		if (_entryPointName is not null && function.Name == _entryPointName && IsEntryPoint(signature))
+		if (_entryPointName is not null && function.Name == _entryPointName && function.TypeParameters.IsEmpty &&
+		    IsEntryPoint(signature))
 			_entryPoints.Add(info);
 		
 		return info;
@@ -1089,8 +1125,13 @@ public sealed class SignatureCollector
 		}
 		
 		foreach (var candidate in candidates)
-			Diagnostics.Add(new(DiagnosticSeverity.Error, GetIdentifier(candidate.Symbol.Syntax).SourceLocation,
-				$"'{_entryPointName}' must have no parameters and return 'i32' or nothing"));
+		{
+			Diagnostics.Add(candidate.Symbol.DeclaredTypeParameters is [var first, ..]
+				? new(DiagnosticSeverity.Error, first.Identifier.SourceLocation,
+					$"Cannot declare type parameters on '{_entryPointName}'")
+				: new(DiagnosticSeverity.Error, GetIdentifier(candidate.Symbol.Syntax).SourceLocation,
+					$"'{_entryPointName}' must have no parameters and return 'i32' or nothing"));
+		}
 	}
 	
 	private void ReportPlainEnumsInExtSignatures()

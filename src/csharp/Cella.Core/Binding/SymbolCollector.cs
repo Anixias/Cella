@@ -19,6 +19,11 @@ public sealed class SymbolCollector : IDeclarationNodeVisitor<Symbol>
 	
 	public SymbolTable Build() => _builder.Build();
 	
+	private static ImmutableArray<TypeParameterSymbol> CreateTypeParameters(
+		ImmutableArray<TypeParameterNode> parameters) => parameters
+		.Select(static parameter => new TypeParameterSymbol(parameter.Identifier, parameter.Constraint is not null))
+		.ToImmutableArray();
+	
 	public void Collect(IDeclarationNode root) => VisitNode(root);
 	
 	private Symbol VisitNode(IDeclarationNode node) => ((IDeclarationNodeVisitor<Symbol>)this).Visit(node);
@@ -117,9 +122,11 @@ public sealed class SymbolCollector : IDeclarationNodeVisitor<Symbol>
 			? GetMemberVisibility(node.Visibility ?? property?.Visibility)
 			: Visibility.FromKeyword(node.Visibility);
 		
+		var typeParameters = CreateTypeParameters(node.TypeParameters);
 		var function = new FunctionSymbol(name, node, visibility, null, parameters, kind)
 		{
-			TypeParameters = CurrentTypeParameters
+			TypeParameters = CurrentTypeParameters.AddRange(typeParameters),
+			DeclaredTypeParameters = typeParameters
 		};
 		
 		_builder.DeclarationSymbols[node] = function;
@@ -196,10 +203,7 @@ public sealed class SymbolCollector : IDeclarationNodeVisitor<Symbol>
 	{
 		_typeStack.Push(node.Identifier.Text);
 		_typeVisibilities.Push(Visibility.FromKeyword(node.Visibility));
-		var typeParameters = node.TypeParameters
-			.Select(static parameter => new TypeParameterSymbol(parameter.Identifier, parameter.Constraint is not null))
-			.ToImmutableArray();
-		
+		var typeParameters = CreateTypeParameters(node.TypeParameters);
 		_typeParameters.Push(typeParameters);
 		var members = new List<MemberSymbol>(node.Members.Length);
 		var statics = new List<GlobalSymbol>();

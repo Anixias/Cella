@@ -126,6 +126,7 @@ public sealed class FunctionSymbol
 	public bool IsExternal => Kind == FunctionKind.External || Syntax is FunctionNode { IsExternal: true };
 	public PropertySymbol? Property { get; internal set; }
 	public ImmutableArray<TypeParameterSymbol> TypeParameters { get; init; } = [];
+	public ImmutableArray<TypeParameterSymbol> DeclaredTypeParameters { get; init; } = [];
 }
 
 public abstract class TypeSymbol(string name, TypeSymbol? containingType = null, params IEnumerable<Symbol> children)
@@ -316,14 +317,19 @@ public sealed class FunctionGroupType(string functionName, IEnumerable<FunctionI
 	{
 		foreach (var function in Functions)
 		{
-			var signature = function.Signature;
-			if (!signature.IsVariadic && signature.ReturnType == type.ReturnType &&
-			    signature.ParameterTypes.SequenceEqual(type.ParameterTypes) &&
-			    type.ParameterModes.Select((_, i) => signature.GetMode(i)).SequenceEqual(type.ParameterModes))
+			if (Matches(function, type))
 				return function;
 		}
 		
 		return null;
+	}
+	
+	public static bool Matches(FunctionInfo function, FunctionType type)
+	{
+		var signature = function.Signature;
+		return !signature.IsVariadic && signature.ReturnType == type.ReturnType &&
+		       signature.ParameterTypes.SequenceEqual(type.ParameterTypes) &&
+		       type.ParameterModes.Select((_, i) => signature.GetMode(i)).SequenceEqual(type.ParameterModes);
 	}
 	
 	public override int MaterializationCost(TypeSymbol target, MaterializationMode mode) =>

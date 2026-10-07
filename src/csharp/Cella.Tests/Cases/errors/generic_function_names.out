@@ -1,0 +1,40 @@
+
+====== generic_function_names.ce ======
+
+Error at line 3, column 5
+2 │ 
+3 │ box[T]: rec
+        ^ Type parameter 'T' is declared more than once
+
+Error at line 7, column 6
+6 │ 
+7 │ map[T]: fun(self) -> i32 = 0
+        ^ Type parameter 'T' is declared more than once
+
+Error at line 9, column 8
+8 │ 
+9 │ other[U, U]: fun(self) -> i32 = 0
+          ^ Type parameter 'U' is declared more than once
+
+Error at line 9, column 11
+8 │ 
+9 │ other[U, U]: fun(self) -> i32 = 0
+             ^ Type parameter 'U' is declared more than once
+
+Error at line 12, column 7
+11 │ 
+12 │ twice[T, T]: fun -> i32 = 0
+           ^ Type parameter 'T' is declared more than once
+
+Error at line 12, column 10
+11 │ 
+12 │ twice[T, T]: fun -> i32 = 0
+              ^ Type parameter 'T' is declared more than once
+
+Error at line 14, column 28
+13 │ 
+14 │ misnamed[Item]: fun(value: Itme) -> i32 = 0
+                                ╘══╛ Type 'Itme' not found in this scope
+                                   | Did you mean 'Item'?
+
+[compilation failed]

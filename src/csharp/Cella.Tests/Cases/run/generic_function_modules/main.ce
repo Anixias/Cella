@@ -1,0 +1,14 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+main: fun -> i32
+{
+	val made = game.make(5)
+	val other = game.make[i8](6)
+	printf("%d %d %d\n", made.value, other.value, game.counter[i64].count(7))
+	ret 0
+}

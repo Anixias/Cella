@@ -1,0 +1,24 @@
+mod test
+
+box[T]: rec
+{
+	value: T
+
+	new[V]: op(own value: T)
+	{
+		self.value = value
+	}
+
+	count[W]: i32
+
+	total[X]: var i32 = 0
+
+	size[Y]: get -> i32 = 0
+}
+
+ext
+{
+	native[T]: fun(value: i32) -> i32
+}
+
+main: fun -> i32 = 0

@@ -15,10 +15,6 @@ constrained[T: copy]: rec
 	value: T
 }
 
-swap[T]: fun(mut a: T, mut b: T)
-{
-}
-
 maybe[T]: enum
 {
 	none

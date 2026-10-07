@@ -1,0 +1,24 @@
+
+====== generic_function_bodies.ce ======
+
+Error at line 12, column 7
+11 │ 
+12 │ ret box(self).deeper(depth - 1)
+         ╘══════════════╛ Instantiating 'box.deeper' never ends
+
+Error at line 16, column 30
+15 │ 
+16 │ add[T]: fun(value: T) -> T = value + 1
+                                  ╘═══════╛ No operation defined for '+' between 'T' and 'integer literal'
+
+Error at line 23, column 6
+22 │ 
+23 │ ret grow(box(value), depth - 1)
+         ╘══╛ Instantiating 'grow' never ends
+
+Error at line 31, column 6
+30 │ 
+31 │ ret second(box(value), depth - 1)
+         ╘════╛ Instantiating 'second' never ends
+
+[compilation failed]

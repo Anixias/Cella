@@ -22,29 +22,24 @@ Error at line 28, column 15
                   ╘╛ Type 'bx' not found in this scope
                    | Did you mean 'box'?
 
-Error at line 29, column 13
+Error at line 29, column 19
 28 │ val unknown: bx[i32] = box[i32](1)
-29 │ val made = box(1)
-                ╘═╛ 'box' takes one type argument
-
-Error at line 30, column 19
-29 │ val made = box(1)
-30 │ val tokens: list[Token] = list[Token](Token("a"))
+29 │ val tokens: list[Token] = list[Token](Token("a"))
                       ╘═══╛ Cannot store borrows in 'T'
 
-Error at line 30, column 33
-29 │ val made = box(1)
-30 │ val tokens: list[Token] = list[Token](Token("a"))
+Error at line 29, column 33
+28 │ val unknown: bx[i32] = box[i32](1)
+29 │ val tokens: list[Token] = list[Token](Token("a"))
                                     ╘═══╛ Cannot store borrows in 'T'
 
-Error at line 31, column 17
-30 │ val tokens: list[Token] = list[Token](Token("a"))
-31 │ val view: list[imm[i32]] = list[i32](1)
+Error at line 30, column 17
+29 │ val tokens: list[Token] = list[Token](Token("a"))
+30 │ val view: list[imm[i32]] = list[i32](1)
                     ╘══════╛ Cannot store borrows in 'T'
 
-Error at line 32, column 18
-31 │ val view: list[imm[i32]] = list[i32](1)
-32 │ val nested: box[box] = box[i32](1)
+Error at line 31, column 18
+30 │ val view: list[imm[i32]] = list[i32](1)
+31 │ val nested: box[box] = box[i32](1)
                      ╘═╛ 'box' takes one type argument
 
 [compilation failed]
