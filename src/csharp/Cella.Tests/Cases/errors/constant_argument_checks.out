@@ -1,0 +1,19 @@
+
+====== constant_argument_checks.ce ======
+
+Error at line 7, column 19
+6 │ {
+7 │     val a = takesI32(-2147483648 / -1)
+                         ╘══════════════╛ Division overflows 'i32'
+
+Error at line 8, column 23
+7 │ val a = takesI32(-2147483648 / -1)
+8 │ val b = takesI32(1 / 0)
+                         ^ Division by zero
+
+Error at line 9, column 24
+8 │ val b = takesI32(1 / 0)
+9 │ val c = takesI32(7 % (2 - 2))
+                          ╘═══╛ Division by zero
+
+[compilation failed]

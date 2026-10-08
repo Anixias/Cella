@@ -18,6 +18,7 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool, 
 	private readonly Stack<TypeSymbol?> _returnTypeStack = [];
 	private int continueDepth;
 	private int breakDepth;
+	private int overflows;
 	private FileSymbol currentFile = null!;
 	private TypeSymbol? currentType;
 	
@@ -481,12 +482,39 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool, 
 		if (node.Operation is NativeImpl { Op: TokenType.OpSlash or TokenType.OpPercent })
 			ReportZeroDivisor(node.Right);
 		
-		if (node.Operation is NativeImpl { Op: TokenType.OpSlash } && IsOverflowingDivision(node))
-			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Syntax.SourceLocation,
-				$"Division overflows '{node.Type.Name}'"));
-		
+		var reported = overflows;
 		VisitNode(node.Left);
 		VisitNode(node.Right);
+		if (overflows > reported)
+			return;
+		
+		if (node.Operation is NativeImpl { Op: TokenType.OpSlash } && IsOverflowingDivision(node))
+			ReportOverflow(node, "Division");
+		else if (FindOverflowingOperation(node) is { } operation)
+			ReportOverflow(node, operation);
+	}
+	
+	private void ReportOverflow(IResolvedExpressionNode node, string operation)
+	{
+		overflows++;
+		Diagnostics.Add(new(DiagnosticSeverity.Error, node.Syntax.SourceLocation,
+			$"{operation} overflows '{node.Type.Name}'"));
+	}
+	
+	private string? FindOverflowingOperation(ResolvedBinaryOpExpressionNode node)
+	{
+		if (node is not { Operation: NativeImpl { Op: var op }, Type: IntegerType type } ||
+		    evaluator.Evaluate(node.Left) is not IntegerConstant { Value: var left } ||
+		    evaluator.Evaluate(node.Right) is not IntegerConstant { Value: var right })
+			return null;
+		
+		return op switch
+		{
+			TokenType.OpPlus when !evaluator.Fits(left + right, type) => "Addition",
+			TokenType.OpMinus when !evaluator.Fits(left - right, type) => "Subtraction",
+			TokenType.OpStar when !evaluator.Fits(left * right, type) => "Multiplication",
+			_ => null
+		};
 	}
 	
 	public void Visit(ResolvedChainedExpressionNode node)
@@ -853,7 +881,12 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool, 
 			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Operand.Syntax.SourceLocation,
 				$"Cannot take the address of {DescribeGlobals(global)}"));
 		
+		var reported = overflows;
 		VisitNode(node.Operand);
+		if (overflows == reported &&
+		    node is { Operation: NativeImpl { Op: TokenType.OpMinus }, Type: IntegerType type } &&
+		    evaluator.Evaluate(node.Operand) is IntegerConstant { Value: var value } && !evaluator.Fits(-value, type))
+			ReportOverflow(node, "Negation");
 	}
 	
 	// TODO Better diagnostics

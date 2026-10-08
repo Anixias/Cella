@@ -1,0 +1,54 @@
+
+====== constant_overflow.ce ======
+
+Error at line 3, column 17
+2 │ 
+3 │ limit: val u8 = 200 + 100
+                    ╘═══════╛ Addition overflows 'u8'
+
+Error at line 7, column 16
+6 │ {
+7 │     low: val i8 = -100 - 100
+                      ╘════════╛ Subtraction overflows 'i8'
+
+Error at line 14, column 18
+13 │ {
+14 │     val typed: u8 = 200 + 100
+                         ╘═══════╛ Addition overflows 'u8'
+
+Error at line 15, column 17
+14 │ val typed: u8 = 200 + 100
+15 │ val fallback = 2147483647 + 1
+                    ╘════════════╛ Addition overflows 'i32'
+
+Error at line 16, column 23
+15 │ val fallback = 2147483647 + 1
+16 │ val difference: u8 = 3 - 5
+                          ╘═══╛ Subtraction overflows 'u8'
+
+Error at line 17, column 20
+16 │ val difference: u8 = 3 - 5
+17 │ val product: i8 = 64 * 2
+                       ╘════╛ Multiplication overflows 'i8'
+
+Error at line 18, column 25
+17 │ val product: i8 = 64 * 2
+18 │ val argument = takesU8(200 + 100)
+                            ╘═══════╛ Addition overflows 'u8'
+
+Error at line 20, column 14
+19 │ val base: u8 = 200
+20 │ val local = base + 100
+                 ╘════════╛ Addition overflows 'u8'
+
+Error at line 22, column 16
+21 │ val smallest: i32 = -2147483648
+22 │ val negated = -smallest
+                   ╘═══════╛ Negation overflows 'i32'
+
+Error at line 23, column 20
+22 │ val negated = -smallest
+23 │ val nested: u8 = (200 + 100) - 100
+                       ╘═══════╛ Addition overflows 'u8'
+
+[compilation failed]

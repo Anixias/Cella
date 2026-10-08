@@ -1598,11 +1598,57 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 				receiver.Syntax)
 			: receiver;
 	
-	private IResolvedExpressionNode VisitArgument(IExpressionNode node, IEnumerable<TypeSymbol> expected) =>
-		VisitCaseName(node, expected) ?? VisitArgument(node);
+	private IResolvedExpressionNode VisitArgument(IExpressionNode node, IEnumerable<TypeSymbol> expected)
+	{
+		var types = expected.Distinct().ToList();
+		if (VisitCaseName(node, types) is { } caseName)
+			return caseName;
+		
+		return types is [var type] && IsNumeric(type) && IsConstantArithmetic(node)
+			? VisitTargeted(node, type)
+			: VisitArgument(node);
+	}
 	
-	private IResolvedExpressionNode VisitOperand(IExpressionNode node, IEnumerable<ICallable> candidates, int index) =>
-		VisitCaseName(node, ParameterTypesAt(candidates, index)) ?? VisitNode(node, null);
+	private IResolvedExpressionNode VisitTargeted(IExpressionNode node, TypeSymbol target)
+	{
+		_targetTypes.Push(target);
+		var result = ((IExpressionNodeVisitor<IResolvedExpressionNode>)this).Visit(node);
+		_targetTypes.Pop();
+		return result;
+	}
+	
+	private static bool IsNumeric(TypeSymbol type) => type is FloatType ||
+	                                                  type is IntegerType integer &&
+	                                                  NativeSymbols.PureIntegerTypes.Contains(integer);
+	
+	private static bool IsConstantArithmetic(IExpressionNode node) => node switch
+	{
+		BinaryOpExpressionNode { Op.Type: var op } binary when IsArithmetic(op) =>
+			IsConstantOperand(binary.Left) && IsConstantOperand(binary.Right),
+		UnaryOpExpressionNode { Op.Type: TokenType.OpMinus, Operand: LiteralExpressionNode } => false,
+		UnaryOpExpressionNode { Op.Type: TokenType.OpMinus or TokenType.OpPlus or TokenType.OpTilde } unary =>
+			IsConstantOperand(unary.Operand),
+		_ => false
+	};
+	
+	private static bool IsConstantOperand(IExpressionNode node) => node is LiteralExpressionNode
+	{
+		Token.Type: TokenType.IntegerLiteral or TokenType.FloatLiteral
+	} or SizeOfExpressionNode or AlignOfExpressionNode || IsConstantArithmetic(node);
+	
+	private static bool IsArithmetic(TokenType op) => op is TokenType.OpPlus or TokenType.OpMinus or TokenType.OpStar
+		or TokenType.OpSlash or TokenType.OpPercent or TokenType.OpLessLess or TokenType.OpGreaterGreater
+		or TokenType.OpLessLessLess or TokenType.OpGreaterGreaterGreater or TokenType.OpAmpersand or TokenType.OpBar
+		or TokenType.OpHat;
+	
+	private IResolvedExpressionNode VisitOperand(IExpressionNode node, IEnumerable<ICallable> candidates, int index,
+		TypeSymbol? target = null)
+	{
+		if (VisitCaseName(node, ParameterTypesAt(candidates, index)) is { } caseName)
+			return caseName;
+		
+		return target is not null && IsConstantArithmetic(node) ? VisitTargeted(node, target) : VisitNode(node, null);
+	}
 	
 	private ResolvedCaseNameExpressionNode? VisitCaseName(IExpressionNode node, IEnumerable<TypeSymbol> expected)
 	{
@@ -3230,7 +3276,11 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		if (isLiteral)
 			_unaryOpJobs.Push(new(op.Type));
 		
-		var operand = VisitNode(node.Operand, null);
+		var operand = op.Type is TokenType.OpMinus or TokenType.OpPlus or TokenType.OpTilde &&
+		              CurrentTargetType is { } target && IsNumeric(target) && IsConstantArithmetic(node.Operand)
+			? VisitTargeted(node.Operand, target)
+			: VisitNode(node.Operand, null);
+		
 		var consumed = isLiteral && _unaryOpJobs.Pop().Consumed;
 		
 		if (consumed)
@@ -3346,11 +3396,13 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		else
 		{
 			var candidates = _operatorRegistry.GetBinaryCandidates(op.Type);
-			var left = Decay(VisitOperand(node.Left, candidates, 0));
+			var target = IsArithmetic(op.Type) && CurrentTargetType is { } type && IsNumeric(type) ? type : null;
+			var left = Decay(VisitOperand(node.Left, candidates, 0, target));
 			var isConjunction = op.Type == TokenType.OpAmpersandAmpersand;
 			var right = Decay(isConjunction
 				? VisitInScope(node.Right, GetTrueBindings(left))
-				: VisitOperand(node.Right, [..candidates, ..FindOperatorCallables(left.Type, op.Text)], 1));
+				: VisitOperand(node.Right, [..candidates, ..FindOperatorCallables(left.Type, op.Text)], 1,
+					IsShiftOrRotate(op.Type) ? null : target));
 			
 			if (isConjunction)
 				ReportRepeatedBindings(GetTrueBindings(left).Concat(GetTrueBindings(right)));
@@ -3384,6 +3436,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			var args = new[] { left, right };
 			var resolutionSet = ResolveCallable(candidates, args, MaterializationMode.Overload,
 				CurrentTargetType);
+			
+			if (!resolutionSet.HasResult && CurrentTargetType is not null)
+				resolutionSet = ResolveCallable(candidates, args, MaterializationMode.Overload);
 			
 			if (resolutionSet.IsAmbiguous)
 				return Error(node,

@@ -1,0 +1,17 @@
+mod test
+
+takesI32: fun(value: i32) -> i32 = value
+takesU8: fun(value: u8) -> u8 = value
+takesSize: fun(value: usize) -> usize = value
+
+main: fun -> i32
+{
+	val a = takesI32(1 << 40)
+	val b = takesU8(1 << 9)
+	val c = takesU8(1.5 * 2)
+	val d = takesU8(300)
+	val e = takesU8(-5)
+	val count: i32 = 3
+	val f = takesSize(count * 2)
+	ret 0
+}

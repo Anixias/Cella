@@ -1,0 +1,9 @@
+mod test
+
+main: fun -> i32
+{
+	val count: i32 = 3
+	val size: usize = count * 2
+	val small: u8 = 1.5 * 2
+	ret 0
+}

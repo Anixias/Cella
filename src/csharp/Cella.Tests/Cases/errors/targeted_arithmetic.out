@@ -1,0 +1,14 @@
+
+====== targeted_arithmetic.ce ======
+
+Error at line 6, column 20
+5 │ val count: i32 = 3
+6 │ val size: usize = count * 2
+                      ╘═══════╛ Cannot convert type 'i32' to 'usize'
+
+Error at line 7, column 18
+6 │ val size: usize = count * 2
+7 │ val small: u8 = 1.5 * 2
+                    ╘═════╛ Cannot convert type 'f64' to 'u8'
+
+[compilation failed]

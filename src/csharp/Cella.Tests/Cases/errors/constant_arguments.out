@@ -1,0 +1,36 @@
+
+====== constant_arguments.ce ======
+
+Error at line 9, column 24
+8 │ {
+9 │     val a = takesI32(1 << 40)
+                              ╘╛ Shift amount 40 is out of range for 'i32'
+                               | 'i32' has 32 bits
+
+Error at line 10, column 23
+ 9 │ val a = takesI32(1 << 40)
+10 │ val b = takesU8(1 << 9)
+                          ^ Shift amount 9 is out of range for 'u8'
+                          | 'u8' has 8 bits
+
+Error at line 11, column 10
+10 │ val b = takesU8(1 << 9)
+11 │ val c = takesU8(1.5 * 2)
+             ╘═════╛ No overload of 'takesU8' accepts these arguments
+
+Error at line 12, column 10
+11 │ val c = takesU8(1.5 * 2)
+12 │ val d = takesU8(300)
+             ╘═════╛ No overload of 'takesU8' accepts these arguments
+
+Error at line 13, column 10
+12 │ val d = takesU8(300)
+13 │ val e = takesU8(-5)
+             ╘═════╛ No overload of 'takesU8' accepts these arguments
+
+Error at line 15, column 10
+14 │ val count: i32 = 3
+15 │ val f = takesSize(count * 2)
+             ╘═══════╛ No overload of 'takesSize' accepts these arguments
+
+[compilation failed]

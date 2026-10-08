@@ -1,0 +1,11 @@
+mod test
+
+takesI32: fun(value: i32) -> i32 = value
+
+main: fun -> i32
+{
+	val a = takesI32(-2147483648 / -1)
+	val b = takesI32(1 / 0)
+	val c = takesI32(7 % (2 - 2))
+	ret 0
+}

@@ -6,8 +6,8 @@ ext
 }
 
 maxI32: val i32 = 2147483647
-wrapAdd: val i32 = maxI32 + 1
-wrapMul: val u8 = u8(200) * u8(3)
+wrapAdd: val i32 = i32(i64(maxI32) + 1)
+wrapMul: val u8 = u8(200 * 3)
 divTrunc: val i32 = -7 / 2
 remSign: val i32 = -7 % 3
 minRem: val i32 = -2147483648 % -1
