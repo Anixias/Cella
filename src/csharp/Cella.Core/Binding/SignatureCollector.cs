@@ -447,7 +447,7 @@ public sealed class SignatureCollector
 				.Where((other, j) => j != i && HasSameParameters(other.Signature, signature))
 				.ToList();
 			
-			if (same.Count == 0 || signature.ParameterTypes.Any(static type => type is InvalidType))
+			if (same.Count == 0)
 				continue;
 			
 			var message = same.Any(other => other.Signature.ParameterModes.SequenceEqual(signature.ParameterModes))
@@ -640,6 +640,7 @@ public sealed class SignatureCollector
 		}
 		
 		ReportMembers(trait.Name, trait.Self, node.Members);
+		ReportConstructorConflicts(node.Members);
 	}
 	
 	private void CompleteImpl(ImplSymbol impl)
@@ -1235,6 +1236,7 @@ public sealed class SignatureCollector
 			..functions[false].Select(static f => (f.Identifier, (FunctionNode?)f, MemberKind.Function))
 		]);
 		
+		ReportConstructorConflicts(node.Members);
 		ReportPlaceOperators(record, functions[true]);
 		ReportOperators(record, functions[false]);
 		_typePool.RegisterRecord(record);
@@ -1495,6 +1497,14 @@ public sealed class SignatureCollector
 			Diagnostics.AddRange(sameName.Select(member =>
 				new Diagnostic(DiagnosticSeverity.Error, member.Name.SourceLocation, message)));
 		}
+	}
+	
+	private void ReportConstructorConflicts(ImmutableArray<IDeclarationNode> members)
+	{
+		List<IDeclarationNode> constructors = [..members.OfType<ConstructorNode>()];
+		Diagnostics.AddRange(constructors
+			.Select(constructor => FindConflict(constructor, constructors))
+			.OfType<Diagnostic>());
 	}
 	
 	private void CompleteEnum(EnumSymbol enumType)
@@ -2343,13 +2353,14 @@ public sealed class SignatureCollector
 	
 	private static bool HasSameParameters(FunctionSignature first, FunctionSignature second) =>
 		first.IsVariadic == second.IsVariadic && first.ParameterTypes.Length == second.ParameterTypes.Length &&
-		Enumerable.Range(0, first.ParameterTypes.Length)
-			.All(i => first.GetDeclaredType(i) == second.GetDeclaredType(i));
+		Enumerable.Range(0, first.ParameterTypes.Length).All(i =>
+			first.GetDeclaredType(i) is not InvalidType && first.GetDeclaredType(i) == second.GetDeclaredType(i));
 	
 	private static Token GetIdentifier(IDeclarationNode declaration) => declaration switch
 	{
 		FunctionNode node => node.Identifier,
 		ExternalFunctionNode node => node.Identifier,
+		ConstructorNode node => node.Keyword,
 		RecordNode node => node.Identifier,
 		EnumNode node => node.Identifier,
 		GlobalNode node => node.Identifier,

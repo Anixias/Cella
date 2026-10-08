@@ -1,0 +1,85 @@
+mod test
+
+Text: rec
+{
+	n: i32
+
+	new: op(value: i32)
+	{
+		self.n = value
+	}
+
+	new: op(value: i32)
+	{
+		self.n = value + 1
+	}
+
+	new: op(own value: i64)
+	{
+		self.n = 0
+	}
+
+	new: op(value: i64)
+	{
+		self.n = 0
+	}
+
+	new: op(mut value: u8)
+	{
+		self.n = 0
+	}
+
+	new: op(value: u8)
+	{
+		self.n = 0
+	}
+
+	new: op(first: i32, second: i32)
+	{
+		self.n = first
+	}
+}
+
+box[T]: rec
+{
+	value: T
+
+	new: op(value: T)
+	{
+		self.value = value
+	}
+
+	new: op(own value: T)
+	{
+		self.value = value
+	}
+}
+
+Make: trait
+{
+	new: op(value: i32)
+	new: op(value: i32)
+	new: op(own value: i64)
+	new: op(value: i64)
+}
+
+Unknown: rec
+{
+	n: i32
+
+	new: op(a: Missing)
+	{
+		self.n = 0
+	}
+
+	new: op(b: Other)
+	{
+		self.n = 0
+	}
+}
+
+lookup: fun(a: Missing) -> i32 = 0
+
+lookup: fun(b: Other) -> i32 = 0
+
+main: fun -> i32 = 0

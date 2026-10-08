@@ -1,0 +1,84 @@
+
+====== constructor_overloads.ce ======
+
+Error at line 7, column 2
+6 │ 
+7 │ new: op(value: i32)
+    ╘═╛ 'Text.new' is declared more than once with the same signature
+
+Error at line 12, column 2
+11 │ 
+12 │ new: op(value: i32)
+     ╘═╛ 'Text.new' is declared more than once with the same signature
+
+Error at line 17, column 2
+16 │ 
+17 │ new: op(own value: i64)
+     ╘═╛ 'Text.new' overloads cannot differ only in parameter modes
+
+Error at line 22, column 2
+21 │ 
+22 │ new: op(value: i64)
+     ╘═╛ 'Text.new' overloads cannot differ only in parameter modes
+
+Error at line 27, column 2
+26 │ 
+27 │ new: op(mut value: u8)
+     ╘═╛ 'Text.new' overloads cannot differ only in parameter modes
+
+Error at line 32, column 2
+31 │ 
+32 │ new: op(value: u8)
+     ╘═╛ 'Text.new' overloads cannot differ only in parameter modes
+
+Error at line 47, column 2
+46 │ 
+47 │ new: op(value: T)
+     ╘═╛ 'box.new' overloads cannot differ only in parameter modes
+
+Error at line 52, column 2
+51 │ 
+52 │ new: op(own value: T)
+     ╘═╛ 'box.new' overloads cannot differ only in parameter modes
+
+Error at line 60, column 2
+59 │ {
+60 │     new: op(value: i32)
+         ╘═╛ 'Make.new' is declared more than once with the same signature
+
+Error at line 61, column 2
+60 │ new: op(value: i32)
+61 │ new: op(value: i32)
+     ╘═╛ 'Make.new' is declared more than once with the same signature
+
+Error at line 62, column 2
+61 │ new: op(value: i32)
+62 │ new: op(own value: i64)
+     ╘═╛ 'Make.new' overloads cannot differ only in parameter modes
+
+Error at line 63, column 2
+62 │ new: op(own value: i64)
+63 │ new: op(value: i64)
+     ╘═╛ 'Make.new' overloads cannot differ only in parameter modes
+
+Error at line 70, column 13
+69 │ 
+70 │ new: op(a: Missing)
+                ╘═════╛ Type 'Missing' not found in this scope
+
+Error at line 75, column 13
+74 │ 
+75 │ new: op(b: Other)
+                ╘═══╛ Type 'Other' not found in this scope
+
+Error at line 81, column 16
+80 │ 
+81 │ lookup: fun(a: Missing) -> i32 = 0
+                    ╘═════╛ Type 'Missing' not found in this scope
+
+Error at line 83, column 16
+82 │ 
+83 │ lookup: fun(b: Other) -> i32 = 0
+                    ╘═══╛ Type 'Other' not found in this scope
+
+[compilation failed]
