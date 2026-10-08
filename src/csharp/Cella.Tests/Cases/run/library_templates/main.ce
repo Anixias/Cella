@@ -1,0 +1,19 @@
+mod test
+
+Point: rec impl lib.Display
+{
+	x: i32
+
+	print: fun(self) = lib.say("<{self.x}>")
+}
+
+main: fun -> i32
+{
+	val p = Point(4)
+	lib.say("point {p} and {7}\n")
+	lib.log(p)
+	lib.log(3)
+	val note = lib.Note("note {p}\n")
+	lib.read(note)
+	ret 0
+}

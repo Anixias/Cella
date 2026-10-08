@@ -496,6 +496,31 @@ public static class LoweredModulePrinter
 					sb.Append(']');
 					break;
 				}
+				
+				case FStrValue v:
+				{
+					sb.Append(v.Type.Name).Append('(');
+					if (v.Text is { } text)
+						PrintValue(sb, text);
+					else
+						sb.AppendJoin(", ", v.Texts.Select(static text => $"\"{text}\""));
+					
+					if (v.Values is { } values)
+					{
+						sb.Append(", ");
+						PrintValue(sb, values);
+					}
+					
+					sb.Append(')');
+					break;
+				}
+				
+				case FStrPartValue v:
+					PrintValue(sb, v.Target);
+					sb.Append('.').Append(v.Part.ToString().ToLowerInvariant()).Append('(');
+					PrintValue(sb, v.Index);
+					sb.Append(')');
+					break;
 			}
 			
 			break;

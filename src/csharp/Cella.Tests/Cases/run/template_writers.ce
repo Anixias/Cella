@@ -1,0 +1,87 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Writer: pub trait
+{
+	write: fun(mut self, text: str)
+}
+
+Display: pub trait
+{
+	show: fun(self, mut out: dyn[Writer], spec: str)
+}
+
+str: impl Display
+{
+	show: fun(self, mut out: dyn[Writer], spec: str) = out.write(self)
+}
+
+i32: impl Display
+{
+	show: fun(self, mut out: dyn[Writer], spec: str)
+	{
+		if self >= 10
+			(self / 10).show(mut out, spec)
+
+		out.write(digits[usize(self % 10)])
+	}
+}
+
+digits: val array[str, 10] = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
+
+write: fun(mut out: dyn[Writer], text: fstr[Display])
+{
+	var i: usize = 0
+	loop while i < text.holes
+	{
+		out.write(text.piece(i))
+		text.value(i).show(mut out, text.spec(i))
+		i += 1
+	}
+
+	out.write(text.piece(text.holes))
+}
+
+Line: rec impl Writer
+{
+	bytes: array[u8, 64]
+	length: usize
+
+	write: fun(mut self, text: str)
+	{
+		var i: usize = 0
+		loop while i < text.byteLength && self.length < 64
+		{
+			self.bytes[self.length] = text[i]
+			self.length += 1
+			i += 1
+		}
+	}
+}
+
+Console: rec impl Writer
+{
+	writes: i32
+
+	write: fun(mut self, text: str)
+	{
+		printf("%.*s", i32(text.byteLength), text.data)
+		self.writes += 1
+	}
+}
+
+main: fun -> i32
+{
+	var line = Line()
+	val hp = 42
+	write(mut line, "hp {hp}, name {"Ana"}, zero {0}")
+	printf("[%.*s] %d bytes\n", i32(line.length), @line.bytes[0], i32(line.length))
+	var console = Console(0)
+	write(mut console, "to the console {hp}\n")
+	printf("%d writes\n", console.writes)
+	ret 0
+}

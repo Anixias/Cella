@@ -1,0 +1,34 @@
+
+====== template_members.ce ======
+
+Error at line 11, column 21
+10 │ val i: i32 = 0
+11 │ val a = text.piece(i)
+                        ^ Cannot convert type 'i32' to 'usize'
+
+Error at line 12, column 15
+11 │ val a = text.piece(i)
+12 │ val b = text.piece
+                  ╘═══╛ Cannot use methods as values
+
+Error at line 13, column 10
+12 │ val b = text.piece
+13 │ val c = text.value(0, 1)
+             ╘════════╛ No overload of 'value' accepts these arguments
+
+Error at line 14, column 10
+13 │ val c = text.value(0, 1)
+14 │ val d = text.spec()
+             ╘═══════╛ No overload of 'spec' accepts these arguments
+
+Error at line 16, column 10
+15 │ var j: usize = 0
+16 │ val e = text.piece(mut j)
+             ╘════════╛ No overload of 'piece' accepts these arguments
+
+Error at line 17, column 15
+16 │ val e = text.piece(mut j)
+17 │ val f = text.missing(0)
+                  ╘═════╛ Type 'fstr[Display]' has no member 'missing'
+
+[compilation failed]

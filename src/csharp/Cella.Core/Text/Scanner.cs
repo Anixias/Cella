@@ -1,5 +1,6 @@
 ﻿using System.Buffers;
 using System.Collections;
+using System.Collections.Immutable;
 using System.Globalization;
 using System.Numerics;
 using System.Text;
@@ -355,11 +356,12 @@ public class Scanner : IScanner
 			if (character == '{' && !escaped)
 			{
 				isValid &= AddSegment(segments, segmentStart, end);
-				var (hole, next) = ScanHole(end + 1, line);
+				var (hole, next, isValidSpec) = ScanHole(end + 1, line);
 				end = next;
 				if (hole is null)
 					break;
 				
+				isValid &= isValidSpec;
 				holes.Add(hole.Value);
 				segmentStart = next;
 				continue;
@@ -384,34 +386,72 @@ public class Scanner : IScanner
 		return isValid;
 	}
 	
-	private (InterpolationHole? Hole, int End) ScanHole(int position, int line)
+	private (InterpolationHole? Hole, int End, bool IsValid) ScanHole(int position, int line)
 	{
 		var tokens = new List<Token>();
-		var depth = 0;
+		var braces = 0;
+		var brackets = 0;
 		while (true)
 		{
 			var (token, next) = ScanToken(position);
 			if (next <= position || token.Type is TokenType.EndOfFile or TokenType.Newline || token.Line != line)
-				return (null, position);
+				return (null, position, true);
 			
 			position = next;
 			if (token.Type.IsFiltered)
 				continue;
 			
-			if (token.Type == TokenType.OpCloseBrace)
+			switch (token.Type)
 			{
-				if (depth == 0)
-					return (new InterpolationHole([..tokens], token.SourceLocation), position);
+				case TokenType.OpCloseBrace when braces == 0:
+					return (new InterpolationHole([..tokens], token.SourceLocation, "", SourceLocation.None), position,
+						true);
 				
-				depth--;
-			}
-			else if (token.Type == TokenType.OpOpenBrace)
-			{
-				depth++;
+				case TokenType.OpColon when braces == 0 && brackets == 0:
+					return ScanSpec([..tokens], token.SourceLocation, position);
+				
+				case TokenType.OpOpenBrace:
+					braces++;
+					break;
+				
+				case TokenType.OpCloseBrace:
+					braces--;
+					break;
+				
+				case TokenType.OpOpenParen or TokenType.OpOpenBracket:
+					brackets++;
+					break;
+				
+				case TokenType.OpCloseParen or TokenType.OpCloseBracket when brackets > 0:
+					brackets--;
+					break;
 			}
 			
 			tokens.Add(token);
 		}
+	}
+	
+	private (InterpolationHole? Hole, int End, bool IsValid) ScanSpec(ImmutableArray<Token> tokens,
+		SourceLocation colon, int position)
+	{
+		var start = position;
+		var escaped = false;
+		while (position < Source.Length && Source[position] is not ('\n' or '\r'))
+		{
+			var character = Source[position];
+			if (character == '}' && !escaped)
+			{
+				var range = new TextRange(start, position);
+				var (spec, isValid) = UnescapeString(Source.GetText(range), true);
+				return (new InterpolationHole(tokens, colon, spec, new SourceLocation(Source, range)), position + 1,
+					isValid);
+			}
+			
+			escaped = character == '\\' && !escaped;
+			position++;
+		}
+		
+		return (null, position, true);
 	}
 	
 	private ScanResult CreateStringToken(TextRange range, List<string> segments, List<InterpolationHole> holes,

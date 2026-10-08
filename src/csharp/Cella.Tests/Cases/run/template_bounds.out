@@ -1,0 +1,4 @@
+piece 'no holes'
+[stderr]
+Panic at template_bounds.ce:17:13: index out of bounds
+[exit code -1073740791]

@@ -1,0 +1,20 @@
+mod test
+
+Display: trait
+{
+	print: fun(self)
+}
+
+show: fun(text: fstr[Display])
+{
+	val i: i32 = 0
+	val a = text.piece(i)
+	val b = text.piece
+	val c = text.value(0, 1)
+	val d = text.spec()
+	var j: usize = 0
+	val e = text.piece(mut j)
+	val f = text.missing(0)
+}
+
+main: fun -> i32 = 0

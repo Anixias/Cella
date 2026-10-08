@@ -1,0 +1,86 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Display: trait
+{
+	print: fun(self)
+}
+
+str: impl Display
+{
+	print: fun(self) = printf("%.*s", i32(self.byteLength), self.data)
+}
+
+i32: impl Display
+{
+	print: fun(self) = printf("%d", self)
+}
+
+f64: impl Display
+{
+	print: fun(self) = printf("%.2f", self)
+}
+
+say: fun(text: fstr[Display])
+{
+	var i: usize = 0
+	loop while i < text.holes
+	{
+		text.piece(i).print()
+		text.value(i).print()
+		i += 1
+	}
+
+	text.piece(text.holes).print()
+}
+
+log[T: Display]: fun(label: str, value: T) = say("{label}: {value}\n")
+
+count[K: trait]: fun(text: fstr[K]) -> usize = text.holes
+
+relay: fun(value: dyn[Display]) = say("relay {value}\n")
+
+Box: rec
+{
+	value: i32
+
+	doubled: get(self) -> i32 = self.value * 2
+}
+
+bump: fun(mut value: i32)
+{
+	value += 1
+	say("bumped {value}\n")
+}
+
+counter: var i32 = 10
+limit: val i32 = 99
+
+main: fun -> i32
+{
+	log("int", 5)
+	log("float", 2.5)
+	log[str]("text", "abc")
+	val n = 9
+	printf("%d\n", i32(count[Display]("{n} {n} {n}")))
+	relay(n)
+	val box = Box(5)
+	say("{counter} {limit} {box.doubled} {box.value}\n")
+	var m = 1
+	bump(mut m)
+	val items: array[i32, 3] = [7, 8, 9]
+	var i: usize = 0
+	loop while i < 3
+	{
+		say("item {i32(i)} = {items[i]}\n")
+		i += 1
+	}
+
+	val p: ptr[i32] = @counter
+	say("through {*p}\n")
+	ret 0
+}

@@ -22,6 +22,7 @@ public sealed class TypePool
 	private readonly Dictionary<TraitSymbol, DynType> _dynTypes = [];
 	private readonly Dictionary<TypeParameterSymbol, DynType> _parameterDynTypes = [];
 	private readonly Dictionary<TraitSymbol, TraitType> _traitTypes = [];
+	private readonly Dictionary<DynType, FStrType> _fstrTypes = [];
 	private readonly Dictionary<TraitSymbol, ImmutableArray<FunctionSymbol>> _dynMembers = [];
 	private readonly Dictionary<TraitSymbol, ImmutableArray<FunctionInfo>> _dynMemberInfos = [];
 	private readonly List<FunctionType> _functionTypes = [];
@@ -183,7 +184,7 @@ public sealed class TypePool
 	
 	public bool HoldsBorrows(TypeSymbol type) => type switch
 	{
-		BorrowType or DynType => true,
+		BorrowType or DynType or FStrType => true,
 		TypeParameterSymbol parameter => !parameter.IsNoref,
 		StringType => type == NativeSymbols.Str,
 		NamedTypeSymbol { TypeArguments.IsEmpty: false } named => named.IsRef || PartsHoldBorrows(named),
@@ -273,7 +274,7 @@ public sealed class TypePool
 				HasDefault = FindCase(e, BigInteger.Zero) is { } zeroCase ? zeroCase.Fields.IsEmpty : e.IsExternal
 			},
 			ArrayType => Combine(false, GetParts(type)),
-			FunctionType or BorrowType => TypeFacts.Plain with { HasDefault = false },
+			FunctionType or BorrowType or FStrType => TypeFacts.Plain with { HasDefault = false },
 			TypeParameterSymbol parameter => new(!parameter.IsCopy, parameter.IsCopy, false),
 			DynType => new(true, false, false),
 			_ => TypeFacts.Plain
@@ -303,7 +304,8 @@ public sealed class TypePool
 		new Dictionary<string, string>
 		{
 			["ptr"] = "one type argument",
-			["array"] = "an element type and an optional length"
+			["array"] = "an element type and an optional length",
+			["fstr"] = "one trait argument"
 		};
 	
 	public TypeSymbol? ResolveBuiltinGenericType(string name, IReadOnlyList<IGenericArgument> typeArgs) => name switch
@@ -424,6 +426,23 @@ public sealed class TypePool
 		var dynType = new DynType(parameter);
 		_parameterDynTypes[parameter] = dynType;
 		return dynType;
+	}
+	
+	public FStrType GetFStrType(DynType value)
+	{
+		if (_fstrTypes.TryGetValue(value, out var existing))
+			return existing;
+		
+		var fstrType = new FStrType(value);
+		_fstrTypes[value] = fstrType;
+		SizeTable.Register(fstrType, StorageSize.Sum(StorageSize.Ptr, StorageSize.Ptr, StorageSize.Ptr));
+		var holes = new PropertySymbol("holes")
+		{
+			Getter = new NativeAccessor(NativeMemberIntrinsic.FStrHoles)
+		};
+		
+		RegisterMember(fstrType, holes, NativeSymbols.UIntSize);
+		return fstrType;
 	}
 	
 	public TraitType GetTraitType(TraitSymbol trait)
@@ -793,6 +812,7 @@ public sealed class TypePool
 	public static bool ContainsTypeParameters(TypeSymbol type) => type switch
 	{
 		TypeParameterSymbol or DynType { Parameter: not null } => true,
+		FStrType fstr => ContainsTypeParameters(fstr.Value),
 		NamedTypeSymbol named => named.TypeArguments.Any(ContainsTypeParameters),
 		PointerType pointer => ContainsTypeParameters(pointer.BaseType),
 		BorrowType borrow => ContainsTypeParameters(borrow.Target),
@@ -813,6 +833,11 @@ public sealed class TypePool
 					TypeParameterSymbol argument => GetDynType(argument),
 					InvalidType argument => argument,
 					_ => type
+				},
+				FStrType fstr => Substitute(fstr.Value, map) switch
+				{
+					DynType dyn => GetFStrType(dyn),
+					var substituted => substituted
 				},
 				NamedTypeSymbol named => Instantiate(named.Definition,
 					[..named.TypeArguments.Select(argument => Substitute(argument, map))]),

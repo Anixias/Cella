@@ -167,6 +167,10 @@ public sealed class TypeInference(TypePool typePool)
 					Unify(p, a, true);
 					break;
 				
+				case (FStrType p, FStrType a):
+					Unify(p.Value, a.Value, true);
+					break;
+				
 				case (ArrayType p, ArrayType a):
 					Unify(p.ElementType, a.ElementType, true);
 					break;
@@ -197,6 +201,7 @@ public sealed class TypeInference(TypePool typePool)
 		{
 			TypeParameterSymbol parameter => parameters.Contains(parameter),
 			DynType { Parameter: { } parameter } => parameters.Contains(parameter),
+			FStrType fstr => Mentions(fstr.Value),
 			NamedTypeSymbol named => named.TypeArguments.Any(Mentions),
 			PointerType pointer => Mentions(pointer.BaseType),
 			BorrowType borrow => Mentions(borrow.Target),

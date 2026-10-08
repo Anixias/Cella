@@ -20,5 +20,6 @@ main: fun -> i32
 	val mixed = title + label
 	val number = "a" + 5
 	name += "x"
+	puts("spec {title:x}")
 	ret 0
 }

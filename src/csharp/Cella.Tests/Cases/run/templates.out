@@ -1,0 +1,9 @@
+Ana is at (3, 4) with 50 hp
+Ana
+ff 255 text Cella
+1 2 2
+3 holes: 'a' [] 'b' [x] 'c' [>8] 'd'
+2 holes: '' [a:b] ' { } ' [] ''
+0 holes: 'plain'
+0 holes: ''
+[exit code 0]

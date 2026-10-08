@@ -384,6 +384,10 @@ public readonly struct ResolutionContext
 			case TypeSymbol type:
 				return type;
 			
+			case null when TypePool.BuiltinGenericTypeArguments.ContainsKey(name.Text):
+				ReportBuiltinArguments(name.SourceLocation, name.Text);
+				break;
+			
 			case null:
 				ReportUndefinedType(name);
 				break;
@@ -499,6 +503,11 @@ public readonly struct ResolutionContext
 		    Resolve(target.Identifier.Text) is not (null or TypeSymbol) ||
 		    !TypePool.BuiltinGenericTypeArguments.ContainsKey(target.Identifier.Text))
 			return null;
+		
+		if (target.Identifier.Text == "fstr")
+			return node.Arguments is [var trait]
+				? CreateFStrType(trait)
+				: ReportBuiltinArguments(node.SourceLocation, target.Identifier.Text);
 		
 		var typeArgs = new List<IGenericArgument>(node.Arguments.Length);
 		foreach (var argument in node.Arguments)
@@ -666,6 +675,11 @@ public readonly struct ResolutionContext
 		    !TypePool.BuiltinGenericTypeArguments.TryGetValue(name.Text, out var expectedArguments))
 			return ResolveUserGenericType(node);
 		
+		if (name.Text == "fstr")
+			return node.Arguments is [var trait]
+				? ResolveFStrArgument(trait)
+				: ReportBuiltinArguments(node.SourceLocation, name.Text);
+		
 		var typeArgs = new List<IGenericArgument>(node.Arguments.Length);
 		
 		foreach (var arg in node.Arguments)
@@ -689,6 +703,41 @@ public readonly struct ResolutionContext
 			return type;
 		
 		Diagnostics.Add(new(DiagnosticSeverity.Error, node.SourceLocation, $"'{name.Text}' takes {expectedArguments}"));
+		return NativeSymbols.Invalid;
+	}
+	
+	private TypeSymbol ResolveFStrArgument(IGenericArgumentNode node) => node switch
+	{
+		TypeArgumentNode argument => CreateFStrType(GetTraitDyn(ResolveTraitReference(argument.Type))),
+		IdentifierArgumentNode argument =>
+			CreateFStrType(GetTraitDyn(ResolveTraitReference(new IdentifierTypeNode(argument.Identifier)))),
+		ExpressionArgumentNode argument => CreateFStrType(argument.Expression),
+		_ => NativeSymbols.Invalid
+	};
+	
+	private TypeSymbol CreateFStrType(IExpressionNode trait)
+	{
+		if (GetTraitDyn(FindNamed(trait)) is { } dyn)
+			return TypePool.GetFStrType(dyn);
+		
+		Report(trait, $"'{trait.SourceLocation.GetText()}' is not a trait");
+		return NativeSymbols.Invalid;
+	}
+	
+	private TypeSymbol CreateFStrType(DynType? dyn) => dyn is null ? NativeSymbols.Invalid : TypePool.GetFStrType(dyn);
+	
+	private DynType? GetTraitDyn(Symbol? trait) => trait switch
+	{
+		TraitSymbol symbol => TypePool.GetDynType(symbol),
+		TypeParameterSymbol { IsTrait: true } parameter => TypePool.GetDynType(parameter),
+		_ => null
+	};
+	
+	private TypeSymbol ReportBuiltinArguments(SourceLocation location, string name)
+	{
+		Diagnostics.Add(new(DiagnosticSeverity.Error, location,
+			$"'{name}' takes {TypePool.BuiltinGenericTypeArguments[name]}"));
+		
 		return NativeSymbols.Invalid;
 	}
 	

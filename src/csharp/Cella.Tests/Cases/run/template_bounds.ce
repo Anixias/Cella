@@ -1,0 +1,25 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Display: trait
+{
+	print: fun(self)
+}
+
+peek: fun(text: fstr[Display])
+{
+	val piece = text.piece(0)
+	printf("piece '%.*s'\n", i32(piece.byteLength), piece.data)
+	val spec = text.spec(0)
+	printf("spec '%.*s'\n", i32(spec.byteLength), spec.data)
+}
+
+main: fun -> i32
+{
+	peek("no holes")
+	ret 0
+}

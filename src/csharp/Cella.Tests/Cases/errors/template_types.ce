@@ -1,0 +1,42 @@
+mod test
+
+Display: trait
+{
+	print: fun(self)
+}
+
+Hidden: pvt trait
+{
+	print: fun(self)
+}
+
+ext
+{
+	log: fun(text: fstr[Display])
+}
+
+a: fun(text: fstr[i32])
+{
+}
+
+b: fun(text: fstr)
+{
+}
+
+c: fun(text: fstr[Display, Display])
+{
+}
+
+d: fun(text: fstr[Missing])
+{
+}
+
+e: pub fun(text: fstr[Display])
+{
+}
+
+f: fun(text: fstr[Hidden])
+{
+}
+
+main: fun -> i32 = 0

@@ -20,6 +20,21 @@ unterminated: fun -> str
 	ret "x{"a"
 }
 
+missingValue: fun -> str
+{
+	ret "x{:spec}y"
+}
+
+badSpec: fun -> str
+{
+	ret "x{"a":\q}y"
+}
+
+openSpec: fun -> str
+{
+	ret "x{"a":spec
+}
+
 main: fun -> i32
 {
 	ret 0

@@ -408,6 +408,27 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool, 
 		}
 	}
 	
+	public void Visit(ResolvedInterpolatedStringExpressionNode node)
+	{
+		foreach (var value in node.Values)
+			VisitNode(value);
+	}
+	
+	public void Visit(ResolvedFStrExpressionNode node)
+	{
+		if (node.Text is { } text)
+			VisitNode(text);
+		
+		foreach (var value in node.Values)
+			VisitNode(value);
+	}
+	
+	public void Visit(ResolvedFStrPartExpressionNode node)
+	{
+		VisitNode(node.Target);
+		VisitNode(node.Index);
+	}
+	
 	public void Visit(ResolvedAssignmentExpressionNode node)
 	{
 		if (node.Left is ResolvedAccessExpressionNode { Member: PropertySymbol { Setter: null } })

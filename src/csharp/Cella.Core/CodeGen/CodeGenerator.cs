@@ -7,6 +7,7 @@ using System.Text;
 using Cella.Core.Binding;
 using Cella.Core.Binding.Constants;
 using Cella.Core.Binding.Conversions;
+using Cella.Core.Binding.Nodes;
 using Cella.Core.Binding.Operations;
 using Cella.Core.CodeGen.Extensions;
 using Cella.Core.Lowering;
@@ -378,6 +379,15 @@ public sealed unsafe class CodeGenerator : IDisposable
 				var pointerType = TypePool.IsFatPointer(symbol) ? FatPointerType : OpaquePointer;
 				current.Types[symbol] = pointerType;
 				return pointerType;
+			}
+			
+			case FStrType:
+			{
+				var fstrType = LLVMTypeRef.CreateStruct(
+					[MapTypeSymbol(NativeSymbols.UIntSize), OpaquePointer, OpaquePointer], false);
+				
+				current.Types[symbol] = fstrType;
+				return fstrType;
 			}
 			
 			case DynType:
@@ -909,8 +919,65 @@ public sealed unsafe class CodeGenerator : IDisposable
 		SizeOfValue v => EmitSizeOf(v),
 		AlignOfValue v => EmitAlignOf(v),
 		NewValue v => EmitNew(v, builder),
+		FStrValue v => EmitFStr(v, builder),
+		FStrPartValue v => EmitFStrPart(v, builder),
 		_ => throw new InvalidOperationException()
 	};
+	
+	private LLVMValueRef EmitFStr(FStrValue v, LLVMBuilderRef builder)
+	{
+		var texts = v.Text is { } text ? EmitValue(text, builder) : CreateTextsGlobal(v.Texts);
+		var values = v.Values is { } array ? EmitValue(array, builder) : LLVMValueRef.CreateConstNull(OpaquePointer);
+		var result = builder.BuildInsertValue(MapTypeSymbol(v.Type).Undef, EmitSizeConstant(v.Holes, true), 0, "fstr");
+		result = builder.BuildInsertValue(result, texts, 1, "fstr");
+		return builder.BuildInsertValue(result, values, 2, "fstr");
+	}
+	
+	private LLVMValueRef CreateTextsGlobal(ImmutableArray<string> texts)
+	{
+		var lengthType = MapTypeSymbol(NativeSymbols.UIntSize);
+		var elements = texts.Select(text => Encoding.UTF8.GetBytes(text)).Select(bytes =>
+			LLVMValueRef.CreateConstStruct(
+				[LLVMValueRef.CreateConstInt(lengthType, (ulong)bytes.Length), GetOrCreateStringGlobal(bytes)], false));
+		
+		var array = LLVMValueRef.CreateConstArray(MapTypeSymbol(NativeSymbols.Str), [..elements]);
+		var global = current.Module.AddGlobal(array.TypeOf, "fstr.texts");
+		global.Initializer = array;
+		global.IsGlobalConstant = true;
+		global.Linkage = LLVMLinkage.LLVMPrivateLinkage;
+		global.HasUnnamedAddr = true;
+		return global;
+	}
+	
+	private LLVMValueRef EmitFStrPart(FStrPartValue v, LLVMBuilderRef builder)
+	{
+		var template = EmitValue(v.Target, builder);
+		var index = EmitValue(v.Index, builder);
+		if (_config.BoundsChecks)
+		{
+			var holes = builder.BuildExtractValue(template, 0, "holes");
+			var predicate = v.Part == FStrPart.Piece ? LLVMIntPredicate.LLVMIntUGT : LLVMIntPredicate.LLVMIntUGE;
+			PanicIf(builder.BuildICmp(predicate, index, holes), "index out of bounds", v.SourceLocation, builder);
+		}
+		
+		if (v.Part == FStrPart.Value)
+		{
+			var valueType = MapTypeSymbol(v.Type);
+			var values = builder.BuildExtractValue(template, 2, "values");
+			var valueAddress = builder.BuildInBoundsGEP2(valueType, values, new[] { index }, "value.addr");
+			return builder.BuildLoad2(valueType, valueAddress, "value");
+		}
+		
+		var two = LLVMValueRef.CreateConstInt(index.TypeOf, 2);
+		var position = builder.BuildMul(index, two, "position");
+		if (v.Part == FStrPart.Spec)
+			position = builder.BuildAdd(position, LLVMValueRef.CreateConstInt(index.TypeOf, 1), "position");
+		
+		var strType = MapTypeSymbol(NativeSymbols.Str);
+		var texts = builder.BuildExtractValue(template, 1, "texts");
+		var textAddress = builder.BuildInBoundsGEP2(strType, texts, new[] { position }, "text.addr");
+		return builder.BuildLoad2(strType, textAddress, "text");
+	}
 	
 	private LLVMValueRef EmitSizeOf(SizeOfValue v)
 	{

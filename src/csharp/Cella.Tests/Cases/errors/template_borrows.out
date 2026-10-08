@@ -1,0 +1,53 @@
+
+====== template_borrows.ce ======
+
+Error at line 40, column 38
+39 │ 
+40 │ make: fun(x: i32) -> fstr[Display] = "{x}"
+                                          ╘═══╛ Cannot return borrows of unstored values
+
+Error at line 45, column 6
+44 │ val local = 5
+45 │ ret "{local}"
+         ╘═══════╛ Cannot return borrows of local variables
+
+Error at line 48, column 44
+47 │ 
+48 │ fromStr: fun(text: str) -> fstr[Display] = text
+                                                ╘══╛ Cannot return borrows of copied parameters
+
+Error at line 56, column 17
+55 │ {
+56 │     message.text = "{count}"
+                        ╘═══════╛ Cannot store new borrows in 'mut' parameters
+
+Error at line 77, column 7
+76 │ 
+77 │ show(outer)
+          ╘═══╛ Cannot use borrows of dropped values
+              | Dropped on line 75
+
+Error at line 79, column 7
+78 │ val temp: fstr[Display] = "{compute()}"
+79 │ show(temp)
+          ╘══╛ Cannot use borrows of dropped values
+             | Dropped on line 78
+
+Error at line 84, column 8
+83 │ {
+84 │     show(last)
+              ╘══╛ Cannot use borrows of dropped values
+                 | Dropped on line 87
+
+Error at line 92, column 7
+91 │ take(buffer)
+92 │ show(held)
+          ╘══╛ Cannot use borrows of moved values
+             | Moved on line 91
+
+Error at line 94, column 9
+93 │ var later: Buffer
+94 │ show("{later}")
+            ╘═══╛ Cannot use uninitialized values
+
+[compilation failed]

@@ -1,0 +1,12 @@
+int: 5
+float: 2.50
+text: abc
+3
+relay 9
+10 99 10 5
+bumped 2
+item 0 = 7
+item 1 = 8
+item 2 = 9
+through 10
+[exit code 0]

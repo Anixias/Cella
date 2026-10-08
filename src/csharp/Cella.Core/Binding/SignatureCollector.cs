@@ -1787,9 +1787,9 @@ public sealed class SignatureCollector
 		return NativeSymbols.Invalid;
 	}
 	
-	private static DynType? FindDyn(TypeSymbol type) => type switch
+	private static TypeSymbol? FindDyn(TypeSymbol type) => type switch
 	{
-		DynType dyn => dyn,
+		DynType or FStrType => type,
 		PointerType pointer => FindDyn(pointer.BaseType),
 		BorrowType borrow => FindDyn(borrow.Target),
 		ArrayType array => FindDyn(array.ElementType),
@@ -1809,6 +1809,7 @@ public sealed class SignatureCollector
 	private static TypeSymbol? FindHiddenType(TypeSymbol type, Visibility visibility) => type switch
 	{
 		DynType { Trait: { } trait } dyn => trait.Visibility < visibility ? dyn : null,
+		FStrType { Value.Trait: { } trait } fstr => trait.Visibility < visibility ? fstr : null,
 		TraitType traitType => traitType.Trait.Visibility < visibility ? traitType : null,
 		PointerType pointer => FindHiddenType(pointer.BaseType, visibility),
 		BorrowType borrow => FindHiddenType(borrow.Target, visibility),

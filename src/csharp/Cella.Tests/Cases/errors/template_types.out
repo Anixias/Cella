@@ -1,0 +1,39 @@
+
+====== template_types.ce ======
+
+Error at line 15, column 17
+14 │ {
+15 │     log: fun(text: fstr[Display])
+                        ╘═══════════╛ Cannot use 'fstr[Display]' in 'ext' signatures
+
+Error at line 18, column 19
+17 │ 
+18 │ a: fun(text: fstr[i32])
+                       ╘═╛ 'i32' is not a trait
+
+Error at line 22, column 14
+21 │ 
+22 │ b: fun(text: fstr)
+                  ╘══╛ 'fstr' takes one trait argument
+
+Error at line 26, column 14
+25 │ 
+26 │ c: fun(text: fstr[Display, Display])
+                  ╘════════════════════╛ 'fstr' takes one trait argument
+
+Error at line 30, column 19
+29 │ 
+30 │ d: fun(text: fstr[Missing])
+                       ╘═════╛ Trait 'Missing' not found in this scope
+
+Error at line 34, column 18
+33 │ 
+34 │ e: pub fun(text: fstr[Display])
+                      ╘═══════════╛ 'fstr[Display]' is less visible than 'e'
+
+Error at line 38, column 14
+37 │ 
+38 │ f: fun(text: fstr[Hidden])
+                  ╘══════════╛ 'fstr[Hidden]' is less visible than 'f'
+
+[compilation failed]

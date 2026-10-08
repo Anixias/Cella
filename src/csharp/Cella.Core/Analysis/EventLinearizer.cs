@@ -177,6 +177,20 @@ public sealed class EventLinearizer
 				case ArrayValue v:
 					AddValues(v.Elements);
 					break;
+				
+				case FStrValue v:
+					if (v.Text is { } text)
+						AddValue(text);
+					
+					if (v.Values is { } values)
+						AddValue(values);
+					
+					break;
+				
+				case FStrPartValue v:
+					AddValue(v.Target);
+					value = v.Index;
+					continue;
 			}
 			
 			break;

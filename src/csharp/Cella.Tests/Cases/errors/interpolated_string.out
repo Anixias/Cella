@@ -51,4 +51,9 @@ Error at line 22, column 2
 22 │ name += "x"
      ╘═════════╛ No operation defined for '+=' between 'str' and 'string literal'
 
+Error at line 23, column 20
+22 │ name += "x"
+23 │ puts("spec {title:x}")
+                       ^ Cannot use format specs in constant strings
+
 [compilation failed]

@@ -49,6 +49,8 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	private readonly HashSet<LocalVariableSymbol> _repeatedBindings = [];
 	private readonly Dictionary<IResolvedExpressionNode, ImmutableArray<LocalVariableSymbol?>> _failedPatterns = [];
 	private readonly Dictionary<ResolvedCaseNameExpressionNode, IResolvedExpressionNode> _caseNameFallbacks = [];
+	private readonly Dictionary<ResolvedInterpolatedStringExpressionNode, IResolvedExpressionNode> _foldedStrings = [];
+	private readonly Dictionary<(IResolvedExpressionNode, FStrType), IResolvedExpressionNode> _templates = [];
 	private readonly ExtSignatureTypes _extSignatureTypes;
 	private readonly TypeInference _inference;
 	private readonly List<Instantiation> _instantiations = [];
@@ -128,7 +130,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		_targetTypes.Push(null);
 		var result = ((IExpressionNodeVisitor<IResolvedExpressionNode>)this).Visit(node);
 		_targetTypes.Pop();
-		return result;
+		return result is ResolvedInterpolatedStringExpressionNode ? MaterializeAsDefault(result) : result;
 	}
 	
 	private ResolvedInvalidExpressionNode ReportVoidValue(IResolvedExpressionNode node, TypeSymbol? type)
@@ -891,6 +893,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		if (targetType is DynType dyn)
 			return VisitDynConversion(node, dyn);
 		
+		if (targetType is FStrType && node.Arguments is [var text])
+			return VisitNode(text, targetType);
+		
 		if (targetType is RecordSymbol record)
 			return _typePool.GetConstructors(record).Count == 0
 				? VisitRecordConstruction(node, record)
@@ -973,27 +978,30 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	private bool CanErase(TypeSymbol type, DynType dyn) =>
 		type is not (DynType or InvalidType) && _typePool.Conforms(type, dyn);
 	
-	private bool CanConvertToDyn(IResolvedExpressionNode source, TypeSymbol target) => target switch
+	private bool CanConvertToDyn(TypeSymbol source, TypeSymbol target) => target switch
 	{
-		DynType dyn => source.Type == dyn || source.Type switch
+		DynType dyn => source == dyn || source switch
 		{
 			BorrowType { Target: var objectType } => objectType == dyn || CanErase(objectType, dyn),
 			var type => CanErase(type, dyn)
 		},
-		BorrowType { Target: DynType dyn, IsMutable: var isMutable } => source.Type switch
+		BorrowType { Target: DynType dyn, IsMutable: var isMutable } => source switch
 		{
 			BorrowType { Target: var objectType } borrow => (borrow.IsMutable || !isMutable) &&
 			                                                (objectType == dyn || CanErase(objectType, dyn)),
 			var type => !isMutable && (type == dyn || CanErase(type, dyn))
 		},
-		PointerType { BaseType: DynType dyn } => source.Type is PointerType { BaseType: var baseType } &&
+		PointerType { BaseType: DynType dyn } => source is PointerType { BaseType: var baseType } &&
 		                                         CanErase(baseType, dyn),
 		_ => false
 	};
 	
 	private IResolvedExpressionNode? ConvertToDyn(IResolvedExpressionNode source, TypeSymbol target)
 	{
-		if (!CanConvertToDyn(source, target))
+		if (source.Type is UntypedType && CanConvertToDyn(GetDefaultType(source), target))
+			source = MaterializeAsDefault(source);
+		
+		if (!CanConvertToDyn(source.Type, target))
 			return null;
 		
 		var syntax = source.Syntax;
@@ -1501,7 +1509,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		UntypedIntegerType => NativeSymbols.Int32,
 		UntypedFloatType => NativeSymbols.Float64,
 		UntypedNullType => NativeSymbols.VoidPtr,
-		UntypedStringType => NativeSymbols.Str,
+		UntypedStringType or InterpolatedStringType => NativeSymbols.Str,
 		var type => type
 	};
 	
@@ -1896,6 +1904,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		if (IsInvalid(target))
 			return VisitIndirectCall(node, target);
 		
+		if (target.Type is FStrType fstr && FindFStrPart(access.Member.Text) is { } part)
+			return ResolveFStrPart(node, access, target, fstr, part, indexer);
+		
 		var owner = GetMemberOwner(target.Type, access.Member.Text);
 		if (owner is DynType dyn)
 			return VisitDynCall(node, access,
@@ -1930,6 +1941,34 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		return ResolveTypeArguments(indexer) is { } typeArguments
 			? ResolveCall(node, access.Member.Text, [..candidates], target, typeArguments)
 			: new ResolvedInvalidExpressionNode(node, CurrentTargetType);
+	}
+	
+	private static FStrPart? FindFStrPart(string name) => name switch
+	{
+		"piece" => FStrPart.Piece,
+		"spec" => FStrPart.Spec,
+		"value" => FStrPart.Value,
+		_ => null
+	};
+	
+	private IResolvedExpressionNode ResolveFStrPart(CallExpressionNode node, AccessExpressionNode access,
+		IResolvedExpressionNode target, FStrType type, FStrPart part, IndexerExpressionNode? indexer)
+	{
+		if (indexer is not null || node.Arguments is not [var argument] || argument is BorrowExpressionNode)
+		{
+			foreach (var extra in node.Arguments)
+				VisitArgument(extra);
+			
+			return Error(node, $"No overload of '{access.Member.Text}' accepts these arguments", CurrentTargetType,
+				node.Target);
+		}
+		
+		var index = VisitNode(argument, NativeSymbols.UIntSize);
+		if (IsInvalid(index))
+			return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
+		
+		TypeSymbol resultType = part == FStrPart.Value ? _typePool.GetBorrowType(type.Value, false) : NativeSymbols.Str;
+		return new ResolvedFStrPartExpressionNode(resultType, target, part, index, node);
 	}
 	
 	private IResolvedExpressionNode Index(IndexerExpressionNode? indexer, IResolvedExpressionNode target) =>
@@ -2653,7 +2692,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		if (IsInvalid(target))
 			return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
 		
-		if (target is ResolvedLiteralExpressionNode { Type: UntypedType })
+		if (target is ResolvedLiteralExpressionNode { Type: UntypedType } or ResolvedInterpolatedStringExpressionNode)
 			target = MaterializeAsDefault(target);
 		
 		target = Decay(target);
@@ -2668,6 +2707,8 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		if (resolutionContext.TypePool.ResolveMember(target.Type, memberName) is not { } member)
 			return Error(node, FindFunctions(target.Type, memberName) switch
 			{
+				[] when target.Type is FStrType && FindFStrPart(memberName) is not null =>
+					"Cannot use methods as values",
 				[] => DescribeMissingMember(target.Type, memberName),
 				var functions when functions.Any(static function => function.HasReceiver) =>
 					"Cannot use methods as values",
@@ -2718,27 +2759,91 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		return new ResolvedArrayExpressionNode(type, values, node);
 	}
 	
-	public IResolvedExpressionNode Visit(InterpolatedStringExpressionNode node)
+	public IResolvedExpressionNode Visit(InterpolatedStringExpressionNode node) =>
+		new ResolvedInterpolatedStringExpressionNode(node.Values.Select(value => VisitNode(value, null)), node);
+	
+	private IResolvedExpressionNode FoldInterpolation(ResolvedInterpolatedStringExpressionNode node)
 	{
-		var text = new StringBuilder(node.Segments[0]);
+		if (_foldedStrings.TryGetValue(node, out var folded))
+			return folded;
+		
+		var syntax = node.Interpolation;
+		var text = new StringBuilder(syntax.Segments[0]);
 		var isValid = true;
 		for (var i = 0; i < node.Values.Length; i++)
 		{
-			if (FoldString(VisitNode(node.Values[i], null)) is { } value)
+			if (FoldString(node.Values[i]) is { } value)
 				text.Append(value);
 			else
 				isValid = false;
 			
-			text.Append(node.Segments[i + 1]);
+			if (syntax.Specs[i].Length > 0)
+			{
+				Diagnostics.Add(new(DiagnosticSeverity.Error, syntax.SpecLocations[i],
+					"Cannot use format specs in constant strings"));
+				
+				isValid = false;
+			}
+			
+			text.Append(syntax.Segments[i + 1]);
 		}
 		
-		return isValid
-			? new ResolvedLiteralExpressionNode(NativeSymbols.UntypedString, text.ToString(), node)
-			: new ResolvedInvalidExpressionNode(node, CurrentTargetType);
+		folded = isValid
+			? new ResolvedLiteralExpressionNode(NativeSymbols.UntypedString, text.ToString(), syntax)
+			: new ResolvedInvalidExpressionNode(syntax);
+		
+		_foldedStrings[node] = folded;
+		return folded;
 	}
+	
+	private IResolvedExpressionNode CreateTemplate(ResolvedInterpolatedStringExpressionNode node, FStrType type)
+	{
+		if (_templates.TryGetValue((node, type), out var existing))
+			return existing;
+		
+		var syntax = node.Interpolation;
+		var target = _typePool.GetBorrowType(type.Value, false);
+		var values = new List<IResolvedExpressionNode>(node.Values.Length);
+		foreach (var hole in node.Values)
+		{
+			var value = hole.Type is UntypedType ? MaterializeAsDefault(hole) : hole;
+			if (IsInvalid(value))
+				continue;
+			
+			if (value.Type == target)
+				values.Add(value);
+			else if (ConvertToDyn(value, target) is { } converted)
+				values.Add(converted);
+			else
+				Diagnostics.Add(new(DiagnosticSeverity.Error, hole.Syntax.SourceLocation,
+					$"'{Decay(value).Type.Name}' doesn't implement '{type.Value.TraitName}'"));
+		}
+		
+		var texts = new List<string> { syntax.Segments[0] };
+		for (var i = 0; i < syntax.Specs.Length; i++)
+		{
+			texts.Add(syntax.Specs[i]);
+			texts.Add(syntax.Segments[i + 1]);
+		}
+		
+		IResolvedExpressionNode template = values.Count == node.Values.Length
+			? new ResolvedFStrExpressionNode(type, texts, values, null, syntax)
+			: new ResolvedInvalidExpressionNode(syntax, type);
+		
+		_templates[(node, type)] = template;
+		return template;
+	}
+	
+	private ResolvedFStrExpressionNode CreateTextTemplate(IResolvedExpressionNode text, FStrType type) =>
+		_evaluator.Evaluate(text) is StringConstant constant
+			? new ResolvedFStrExpressionNode(type, [constant.Text], [], null, text.Syntax)
+			: new ResolvedFStrExpressionNode(type, [], [], text, text.Syntax);
 	
 	private string? FoldString(IResolvedExpressionNode value)
 	{
+		if (value is ResolvedInterpolatedStringExpressionNode interpolation)
+			value = FoldInterpolation(interpolation);
+		
 		if (IsInvalid(value))
 			return null;
 		
@@ -2766,7 +2871,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		}
 	}
 	
-	private static bool IsString(TypeSymbol type) => type is StringType or UntypedStringType;
+	private static bool IsString(TypeSymbol type) => type is StringType or UntypedStringType or InterpolatedStringType;
 	
 	private IResolvedExpressionNode ConcatenateStrings(BinaryOpExpressionNode node, IResolvedExpressionNode left,
 		IResolvedExpressionNode right)
@@ -3876,6 +3981,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		if (target is BorrowType { IsMutable: false } borrow && source.Type == borrow.Target)
 			return new ResolvedBorrowExpressionNode(source, borrow, true, source.Syntax);
 		
+		if (target is FStrType fstr && Decay(source).Type == NativeSymbols.Str)
+			return CreateTextTemplate(Decay(source), fstr);
+		
 		if (IsDynTarget(target) && ConvertToDyn(source, target) is { } dynValue)
 			return dynValue;
 		
@@ -3967,6 +4075,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			case UntypedStringType when node is ResolvedLiteralExpressionNode literal:
 				return MaterializeStr(literal);
 			
+			case InterpolatedStringType when node is ResolvedInterpolatedStringExpressionNode interpolation:
+				return MaterializeAsDefault(FoldInterpolation(interpolation));
+			
 			case FunctionGroupType when node is ResolvedFunctionGroupExpressionNode group:
 				return MaterializeFunctionAsDefault(group);
 			
@@ -4033,6 +4144,14 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		if (node.Type is NeverType)
 			return new ResolvedConversionExpressionNode(node, new NeverConversion(target), node.Syntax);
 		
+		if (node is ResolvedInterpolatedStringExpressionNode interpolation)
+			return target switch
+			{
+				FStrType fstr => CreateTemplate(interpolation, fstr),
+				StringType => MaterializeExpression(FoldInterpolation(interpolation), target),
+				_ => node
+			};
+		
 		if (node is not ResolvedLiteralExpressionNode literal)
 			return node;
 		
@@ -4045,6 +4164,8 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			UntypedStringType when target is StringType t => t == NativeSymbols.CStr
 				? MaterializeCStr(literal)
 				: MaterializeStr(literal),
+			UntypedStringType when target is FStrType t =>
+				new ResolvedFStrExpressionNode(t, [(string)literal.Value!], [], null, literal.Syntax),
 			_ => literal
 		};
 	}
@@ -4544,6 +4665,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			else if (arg.Type is BorrowType && target is not BorrowType)
 				arg = Decay(arg);
 			
+			if (target is FStrType fstr && arg.Type == NativeSymbols.Str)
+				arg = CreateTextTemplate(arg, fstr);
+			
 			if (resolution.ArgumentConversions[i] is { } conversion)
 				arg = new ResolvedConversionExpressionNode(arg, conversion, arg.Syntax);
 			
@@ -4581,7 +4705,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	
 	private IResolvedExpressionNode PromoteVariadicArgument(IResolvedExpressionNode arg)
 	{
-		if (arg.Type is UntypedStringType)
+		if (arg.Type is UntypedStringType or InterpolatedStringType)
 			arg = MaterializeExpression(arg, NativeSymbols.CStr);
 		
 		if (arg.Type is UntypedType)
@@ -4658,7 +4782,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			return (0, null);
 		
 		if (IsDynTarget(target))
-			return CanConvertToDyn(arg, target) ? (1, null) : (int.MaxValue, null);
+			return CanConvertToDyn(arg.Type is UntypedType ? GetDefaultType(arg) : arg.Type, target)
+				? (1, null)
+				: (int.MaxValue, null);
 		
 		if (target is BorrowType { IsMutable: false } borrow && arg.Type is not BorrowType)
 		{
@@ -4688,6 +4814,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			var cost = u.MaterializationCost(target, mode);
 			return (cost, null);
 		}
+		
+		if (target is FStrType && arg.Type == NativeSymbols.Str)
+			return (1, null);
 		
 		var conversion = _conversionTable.FindImplicit(arg.Type, target);
 		return conversion is null ? (Cost: int.MaxValue, null) : (conversion.Cost, conversion);

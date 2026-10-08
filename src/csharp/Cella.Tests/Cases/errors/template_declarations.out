@@ -1,0 +1,15 @@
+
+====== template_declarations.ce ======
+
+Error at line 10, column 8
+ 9 │ {
+10 │     text: fstr[Display]
+               ╘═══════════╛ Cannot store borrows in plain records
+                           | Did you mean 'Holder: ref rec'?
+
+Error at line 13, column 12
+12 │ 
+13 │ saved: var fstr[Display] = "x"
+                ╘═══════════╛ Cannot store borrows in module variables
+
+[compilation failed]

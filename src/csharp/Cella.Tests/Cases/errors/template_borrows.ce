@@ -1,0 +1,96 @@
+mod test
+
+Display: trait
+{
+	print: fun(self)
+}
+
+i32: impl Display
+{
+	print: fun(self)
+	{
+	}
+}
+
+str: impl Display
+{
+	print: fun(self)
+	{
+	}
+}
+
+Buffer: rec impl Display
+{
+	id: i32
+
+	print: fun(self)
+	{
+	}
+
+	drop: op
+	{
+	}
+}
+
+Message: ref rec
+{
+	text: fstr[Display]
+}
+
+make: fun(x: i32) -> fstr[Display] = "{x}"
+
+makeLocal: fun -> fstr[Display]
+{
+	val local = 5
+	ret "{local}"
+}
+
+fromStr: fun(text: str) -> fstr[Display] = text
+
+plain: fun -> fstr[Display] = "plain"
+
+pass: fun(text: fstr[Display]) -> fstr[Display] = text
+
+fill: fun(mut message: Message, count: i32)
+{
+	message.text = "{count}"
+}
+
+compute: fun -> i32 = 4
+
+take: fun(own buffer: Buffer)
+{
+}
+
+show: fun(text: fstr[Display])
+{
+}
+
+main: fun -> i32
+{
+	var outer: fstr[Display] = "start"
+	{
+		val inner = 3
+		outer = "{inner}"
+	}
+
+	show(outer)
+	val temp: fstr[Display] = "{compute()}"
+	show(temp)
+	var i = 0
+	var last: fstr[Display] = "none"
+	loop while i < 2
+	{
+		show(last)
+		last = "{i}"
+		i += 1
+	}
+
+	val buffer = Buffer(1)
+	val held: fstr[Display] = "{buffer}"
+	take(buffer)
+	show(held)
+	var later: Buffer
+	show("{later}")
+	ret 0
+}

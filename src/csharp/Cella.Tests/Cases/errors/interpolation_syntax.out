@@ -21,4 +21,19 @@ Error at line 20, column 6
 20 │     ret "x{"a"
              ╘════╛ Unterminated string literal
 
+Error at line 25, column 9
+24 │ {
+25 │     ret "x{:spec}y"
+                ^ Expected an expression
+
+Error at line 30, column 6
+29 │ {
+30 │     ret "x{"a":\q}y"
+             ╘══════════╛ Invalid escape sequence in string literal
+
+Error at line 35, column 6
+34 │ {
+35 │     ret "x{"a":spec
+             ╘═════════╛ Unterminated string literal
+
 [compilation failed]

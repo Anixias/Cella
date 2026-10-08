@@ -390,8 +390,22 @@ public sealed class BorrowChecker(TypePool typePool, DiagnosticList diagnostics)
 			IndirectCallValue v when typePool.HoldsBorrows(v.Type) => IndirectCallSources(v, state),
 			EnumValue v => [..v.Payload.SelectMany(payload => Sources(payload, state))],
 			ArrayValue v => [..v.Elements.SelectMany(element => Sources(element, state))],
+			FStrValue v => TemplateSources(v, state),
+			FStrPartValue v => Sources(v.Target, state),
 			_ => []
 		};
+	}
+	
+	private List<Place> TemplateSources(FStrValue template, BorrowState state)
+	{
+		var sources = new List<Place>();
+		if (template.Text is { } text)
+			sources.AddRange(Sources(text, state));
+		
+		if (template.Values is { } values)
+			sources.AddRange(Sources(values, state));
+		
+		return Expand(sources, state);
 	}
 	
 	private bool CarriesSources(TypeSymbol type) => type is PointerType || typePool.HoldsBorrows(type);

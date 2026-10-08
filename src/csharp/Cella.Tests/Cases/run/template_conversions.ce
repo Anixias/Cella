@@ -1,0 +1,95 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Display: trait
+{
+	print: fun(self)
+}
+
+str: impl Display
+{
+	print: fun(self) = printf("%.*s", i32(self.byteLength), self.data)
+}
+
+i32: impl Display
+{
+	print: fun(self) = printf("%d", self)
+}
+
+say: fun(text: fstr[Display])
+{
+	var i: usize = 0
+	loop while i < text.holes
+	{
+		text.piece(i).print()
+		text.value(i).print()
+		i += 1
+	}
+
+	text.piece(text.holes).print()
+}
+
+show: fun(text: str) = printf("str\n")
+show: fun(text: fstr[Display]) = printf("fstr with %d holes\n", i32(text.holes))
+
+Line: rec
+{
+	holes: usize
+
+	new: op(text: fstr[Display])
+	{
+		self.holes = text.holes
+		say(text)
+	}
+}
+
+Message: ref rec
+{
+	text: fstr[Display]
+}
+
+Label: ref rec
+{
+	text: str
+}
+
+deliver: fun(message: Message) = say(message.text)
+
+pass: fun(text: fstr[Display]) -> fstr[Display] = text
+
+first: fun(text: fstr[Display]) -> imm[dyn[Display]] = text.value(0)
+
+greeting: fun -> str = "hi\n"
+
+title: val str = "Cella"
+
+main: fun -> i32
+{
+	val name: str = "Ana"
+	val count = 3
+	show("plain")
+	show(name)
+	show("{title}")
+	show("{count}")
+	show("{name} {count}")
+	val line = Line("line {count}\n")
+	val explicit = fstr[Display]("explicit {count}\n")
+	val copy = explicit
+	say(pass(copy))
+	printf("%d %d\n", i32(line.holes), i32(copy.holes))
+	val message = Message("message {name}\n")
+	deliver(message)
+	first("{count}").print()
+	printf("\n")
+	val label = Label("from a field\n")
+	say(label.text)
+	say(greeting())
+	val constant = title
+	val fixed: fstr[Display] = constant
+	printf("%d holes in a constant\n", i32(fixed.holes))
+	ret 0
+}

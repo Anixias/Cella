@@ -1,0 +1,15 @@
+mod test
+
+Display: trait
+{
+	print: fun(self)
+}
+
+Holder: rec
+{
+	text: fstr[Display]
+}
+
+saved: var fstr[Display] = "x"
+
+main: fun -> i32 = 0

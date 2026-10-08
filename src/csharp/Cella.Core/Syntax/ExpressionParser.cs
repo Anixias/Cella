@@ -587,7 +587,9 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 		var values = interpolation.Holes.Select(static h =>
 			new ExpressionParser([..h.Tokens, new Token(TokenType.EndOfFile, h.Close)]).ParseHole());
 		
-		return new InterpolatedStringExpressionNode(interpolation.Segments, values, token.SourceLocation);
+		return new InterpolatedStringExpressionNode(interpolation.Segments, values,
+			interpolation.Holes.Select(static h => h.Spec), interpolation.Holes.Select(static h => h.SpecLocation),
+			token.SourceLocation);
 	}
 	
 	private IExpressionNode ParseHole()

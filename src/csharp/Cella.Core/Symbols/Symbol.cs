@@ -309,11 +309,30 @@ public sealed class UntypedStringType() : UntypedType("string literal")
 				if (target == NativeSymbols.CStr)
 					return 1;
 				
-				return int.MaxValue;
+				return target is FStrType ? 2 : int.MaxValue;
 			
 			default:
 				return int.MaxValue;
 		}
+	}
+}
+
+public sealed class InterpolatedStringType() : UntypedType("interpolated string")
+{
+	public static InterpolatedStringType Instance { get; } = new();
+	
+	public override int MaterializationCost(TypeSymbol target, MaterializationMode mode)
+	{
+		if (mode == MaterializationMode.Default)
+			return target == NativeSymbols.Str ? 0 : int.MaxValue;
+		
+		if (target is FStrType)
+			return 0;
+		
+		if (target == NativeSymbols.Str)
+			return 1;
+		
+		return target == NativeSymbols.CStr ? 2 : int.MaxValue;
 	}
 }
 
@@ -433,6 +452,11 @@ public sealed class DynType : TypeSymbol
 public sealed class TraitType(TraitSymbol trait) : TypeSymbol(trait.Name)
 {
 	public TraitSymbol Trait { get; } = trait;
+}
+
+public sealed class FStrType(DynType value) : TypeSymbol($"fstr[{value.TraitName}]")
+{
+	public DynType Value { get; } = value;
 }
 
 public sealed class ArrayType(TypeSymbol elementType, BigInteger length)
@@ -712,6 +736,7 @@ public enum NativeMemberIntrinsic
 	ArrayLength,
 	StrByteLength,
 	StrData,
+	FStrHoles,
 	ArrayIndexGet,
 	ArrayIndexSet,
 	SpanIndexGet,

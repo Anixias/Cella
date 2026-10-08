@@ -1,0 +1,13 @@
+mod test
+
+Display: trait
+{
+	print: fun(self)
+}
+
+show: fun(text: fstr[Display])
+{
+	text.holes = 2
+}
+
+main: fun -> i32 = 0

@@ -1,0 +1,34 @@
+
+====== template_holes.ce ======
+
+Error at line 29, column 8
+28 │ val c: cstr = "x"
+29 │ say("{p} {count}")
+           ^ 'Point' doesn't implement 'Display'
+
+Error at line 30, column 2
+29 │ say("{p} {count}")
+30 │ say(c)
+     ╘═╛ No overload of 'say' accepts these arguments
+
+Error at line 31, column 2
+30 │ say(c)
+31 │ say(5)
+     ╘═╛ No overload of 'say' accepts these arguments
+
+Error at line 32, column 15
+31 │ say(5)
+32 │ val a = fstr[Point]("x")
+                  ╘═══╛ 'Point' is not a trait
+
+Error at line 33, column 24
+32 │ val a = fstr[Point]("x")
+33 │ val b = fstr[Display](p)
+                           ^ Cannot convert type 'Point' to 'fstr[Display]'
+
+Error at line 34, column 10
+33 │ val b = fstr[Display](p)
+34 │ val d = fstr[Display]()
+             ╘═════════════╛ No constructor for 'fstr[Display]' accepts these arguments
+
+[compilation failed]

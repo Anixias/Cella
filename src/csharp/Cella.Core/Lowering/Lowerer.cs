@@ -988,6 +988,38 @@ public sealed class Lowerer
 		public Value Visit(ResolvedArrayExpressionNode node) => new ArrayValue((ArrayType)node.Type,
 			LowerOperands(node.Values, static _ => Passing.Consume), node.Syntax.SourceLocation);
 		
+		public Value Visit(ResolvedInterpolatedStringExpressionNode node) => throw new InvalidOperationException();
+		
+		public Value Visit(ResolvedFStrExpressionNode node)
+		{
+			var location = node.Syntax.SourceLocation;
+			var type = (FStrType)node.Type;
+			if (node.Text is { } text)
+				return new FStrValue(type, [], LowerBorrow(text), null, 0, location);
+			
+			if (node.Values.IsEmpty)
+				return new FStrValue(type, node.Texts, null, null, 0, location);
+			
+			var arrayType = _typePool.GetArrayType(_typePool.GetBorrowType(type.Value, false), node.Values.Length);
+			var symbol = CreateTempSymbol(arrayType, "fstr");
+			Declare(GetOrMakeBlock(), new LocalVarInstruction(symbol,
+				new ArrayValue(arrayType, LowerOperands(node.Values), location), location, BlockScopeId));
+			
+			var values = new UnaryOpValue(_typePool.GetPointerType(arrayType),
+				new VariableValue(new(symbol, arrayType), location), UnaryOperation.AddressOf, location);
+			
+			return new FStrValue(type, node.Texts, null, values, node.Values.Length, location);
+		}
+		
+		public Value Visit(ResolvedFStrPartExpressionNode node)
+		{
+			var target = VisitNode(node.Target);
+			if (MayEmit(node.Index))
+				target = CaptureAsAtomic(target, "target");
+			
+			return new FStrPartValue(node.Type, target, node.Part, VisitNode(node.Index), node.Syntax.SourceLocation);
+		}
+		
 		public Value Visit(ResolvedUnaryOpExpressionNode node)
 		{
 			var operand = node.Operation?.Op == TokenType.OpAt ? VisitPlace(node.Operand) : VisitNode(node.Operand);
@@ -1173,6 +1205,8 @@ public sealed class Lowerer
 			ResolvedIndirectCallExpressionNode n => MayEmitOperands([n.Target, ..n.Arguments],
 				GetOperandPassing(n.FunctionType)),
 			ResolvedArrayExpressionNode n => n.Values.Any(MayEmit),
+			ResolvedFStrExpressionNode n => !n.Values.IsEmpty ||
+			                                n.Text is { } text && (!IsPlace(text) || MayEmit(text)),
 			ResolvedEnumCaseExpressionNode n => n.Payload.Any(MayEmit),
 			_ => true
 		};

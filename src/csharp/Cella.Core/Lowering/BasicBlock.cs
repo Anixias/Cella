@@ -1,6 +1,7 @@
 ﻿using System.Collections.Immutable;
 using Cella.Core.Binding;
 using Cella.Core.Binding.Conversions;
+using Cella.Core.Binding.Nodes;
 using Cella.Core.Binding.Operations;
 using Cella.Core.Symbols;
 using Cella.Core.Text;
@@ -186,6 +187,36 @@ public sealed class ArrayValue : Value
 		Elements = elements.ToImmutableArray();
 		IsConstant = Elements.All(static e => e.IsConstant);
 	}
+}
+
+public sealed class FStrValue
+(
+	FStrType type,
+	IEnumerable<string> texts,
+	Value? text,
+	Value? values,
+	int holes,
+	SourceLocation sourceLocation
+) : Value(type, false, sourceLocation)
+{
+	public ImmutableArray<string> Texts { get; } = texts.ToImmutableArray();
+	public Value? Text { get; } = text;
+	public Value? Values { get; } = values;
+	public int Holes { get; } = holes;
+}
+
+public sealed class FStrPartValue
+(
+	TypeSymbol type,
+	Value target,
+	FStrPart part,
+	Value index,
+	SourceLocation sourceLocation
+) : Value(type, false, sourceLocation)
+{
+	public Value Target { get; } = target;
+	public FStrPart Part { get; } = part;
+	public Value Index { get; } = index;
 }
 
 #region Operations

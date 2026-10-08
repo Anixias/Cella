@@ -1,0 +1,36 @@
+mod test
+
+Display: trait
+{
+	print: fun(self)
+}
+
+i32: impl Display
+{
+	print: fun(self)
+	{
+	}
+}
+
+Point: rec
+{
+	x: i32
+}
+
+say: fun(text: fstr[Display])
+{
+}
+
+main: fun -> i32
+{
+	val p = Point(1)
+	val count = 2
+	val c: cstr = "x"
+	say("{p} {count}")
+	say(c)
+	say(5)
+	val a = fstr[Point]("x")
+	val b = fstr[Display](p)
+	val d = fstr[Display]()
+	ret 0
+}
