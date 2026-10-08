@@ -204,6 +204,11 @@ public sealed class EventLinearizer
 				AddBase(v.Target);
 				break;
 			
+			case IndexerValue { Target.Type: StringType } v:
+				AddValue(v.Target);
+				AddValue(v.Index);
+				break;
+			
 			case IndexerValue v:
 				AddBase(v.Target);
 				AddValue(v.Index);
@@ -231,6 +236,7 @@ public sealed class EventLinearizer
 	{
 		VariableValue or GlobalValue or UnaryOpValue { Op: UnaryOperation.Dereference } => true,
 		AccessValue v => IsPlace(v.Target),
+		IndexerValue { Target.Type: StringType } => true,
 		IndexerValue v => IsPlace(v.Target),
 		EnumPayloadValue v => IsPlace(v.Target),
 		_ => false
@@ -247,6 +253,7 @@ public sealed class EventLinearizer
 				_ => null
 			},
 		AccessValue { Member: FieldSymbol field } v => GetPlace(v.Target)?.Project(new FieldProjection(field)),
+		IndexerValue { Target.Type: StringType } => null,
 		IndexerValue v => GetPlace(v.Target)?.Project(new IndexProjection(GetConstantIndex(v.Index))),
 		EnumPayloadValue v => GetPlace(v.Target)?.Project(new PayloadProjection(v.Case, v.Index)),
 		_ => null

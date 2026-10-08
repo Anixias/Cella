@@ -1,0 +1,42 @@
+mod test
+
+Counter: rec
+{
+	count: i32
+
+	bump: fun(mut self)
+	{
+		self.count += 1
+	}
+}
+
+Bits: rec
+{
+	word: u64
+
+	[]: op(self, i: usize) -> bool = ((self.word >> u64(i)) & 1) != 0
+}
+
+Counters: rec
+{
+	values: array[Counter, 2]
+
+	[]: op(self, i: usize) -> Counter = self.values[i]
+}
+
+flip: fun(mut value: bool)
+{
+	value = !value
+}
+
+main: fun -> i32
+{
+	var bits = Bits(5)
+	bits[0] = true
+	flip(mut bits[1])
+	val borrowed = imm bits[2]
+	var counters = Counters([Counter(0), Counter(1)])
+	counters[0].bump()
+	counters[1].count = 4
+	ret 0
+}

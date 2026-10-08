@@ -1,0 +1,56 @@
+mod game
+
+Target: rec
+{
+	value: i32
+}
+
+Handle: rec
+{
+	target: req ptr[Target]
+
+	*: op(self) -> imm[Target] = imm *self.target
+	*: pvt op(mut self) -> mut[Target] = mut *self.target
+
+	bump: fun(mut self)
+	{
+		self.value += 1
+	}
+}
+
+Grid: rec
+{
+	cells: array[i32, 4]
+
+	[]: op(self, row: usize, column: usize) -> imm[i32] = imm self.cells[row * 2 + column]
+
+	[]: pvt op(mut self, row: usize, column: usize) -> mut[i32] = mut self.cells[row * 2 + column]
+
+	clear: fun(mut self)
+	{
+		self[0, 0] = 0
+		self[1, 1] += 1
+	}
+
+	drop: op
+	{
+	}
+}
+
+Board: rec
+{
+	cells: array[i32, 2]
+
+	[]: op(self, i: usize) -> imm[i32] = imm self.cells[i]
+
+	[]: mod op(mut self, i: usize) -> mut[i32] = mut self.cells[i]
+
+	drop: op
+	{
+	}
+}
+
+touch: fun(mut board: Board)
+{
+	board[0] = 1
+}

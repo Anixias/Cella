@@ -1,0 +1,29 @@
+mod test
+
+use game.*
+
+addOne: fun(mut value: i32)
+{
+	value += 1
+}
+
+pointers: fun(mut handle: Handle)
+{
+	handle.value = 1
+	*handle = Target(2)
+}
+
+grids: fun(mut grid: Grid)
+{
+	grid[0, 1] = 1
+	grid[1, 0] += 1
+	addOne(mut grid[1, 1])
+	val view = mut grid[0, 0]
+}
+
+boards: fun(mut board: Board)
+{
+	board[1] = 2
+}
+
+main: fun -> i32 = 0

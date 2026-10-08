@@ -16,8 +16,6 @@ main: fun -> i32
 	val c = p.z
 	val d = nameOf(p.z)
 	val e = null.x
-	var values = [1, 2]
-	val v = @values
-	val w = v[1]
+	val w = raw[1]
 	ret 0
 }

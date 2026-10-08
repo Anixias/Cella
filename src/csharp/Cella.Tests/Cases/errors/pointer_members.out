@@ -26,9 +26,9 @@ Error at line 18, column 15
 18 │ val e = null.x
                   ^ Type 'ptr' has no member 'x'
 
-Error at line 21, column 10
-20 │ val v = @values
-21 │ val w = v[1]
-             ^ Cannot index into type 'ptr[array[i32, 2]]'
+Error at line 19, column 10
+18 │ val e = null.x
+19 │ val w = raw[1]
+             ╘═╛ Cannot index into type 'ptr'
 
 [compilation failed]

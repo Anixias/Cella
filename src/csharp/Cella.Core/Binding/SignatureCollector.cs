@@ -599,14 +599,14 @@ public sealed class SignatureCollector
 	
 	private void ReportMembers(string owner, TypeSymbol type, ImmutableArray<IDeclarationNode> members)
 	{
-		var functions = members.OfType<FunctionNode>().ToLookup(IsDereference);
+		var functions = members.OfType<FunctionNode>().ToLookup(IsPlaceOperator);
 		ReportMemberConflicts(owner, [
 			..members.OfType<PropertyNode>()
 				.Select(static p => (p.Identifier, (FunctionNode?)null, MemberKind.Property)),
 			..functions[false].Select(static f => (f.Identifier, (FunctionNode?)f, MemberKind.Function))
 		]);
 		
-		ReportDereferences(type, [..functions[true]]);
+		ReportPlaceOperators(type, functions[true]);
 		ReportOperators(type, functions[false]);
 	}
 	
@@ -1096,7 +1096,7 @@ public sealed class SignatureCollector
 		FieldNode field => (field.Identifier, null),
 		GlobalNode global => (global.Identifier, null),
 		PropertyNode property => (property.Identifier, null),
-		FunctionNode function when !IsDereference(function) =>
+		FunctionNode function when !IsPlaceOperator(function) =>
 			(function.Identifier, (FunctionSymbol)_symbolTable.DeclarationSymbols[function]),
 		_ => null
 	};
@@ -1158,7 +1158,7 @@ public sealed class SignatureCollector
 			}
 		}
 		
-		var functions = node.Members.OfType<FunctionNode>().ToLookup(IsDereference);
+		var functions = node.Members.OfType<FunctionNode>().ToLookup(IsPlaceOperator);
 		ReportMemberConflicts(record.Name, [
 			..node.Members.OfType<FieldNode>()
 				.Select(static f => (f.Identifier, (FunctionNode?)null, MemberKind.Field)),
@@ -1169,7 +1169,7 @@ public sealed class SignatureCollector
 			..functions[false].Select(static f => (f.Identifier, (FunctionNode?)f, MemberKind.Function))
 		]);
 		
-		ReportDereferences(record, [..functions[true]]);
+		ReportPlaceOperators(record, functions[true]);
 		ReportOperators(record, functions[false]);
 		_typePool.RegisterRecord(record);
 		_completedTypes.Add(record);
@@ -1215,6 +1215,80 @@ public sealed class SignatureCollector
 	
 	private static bool IsDereference(FunctionNode node) =>
 		node is { Identifier.Type: TokenType.OpStar, Receiver: not null };
+	
+	private static bool IsIndexer(FunctionNode node) => node.Identifier.Type == TokenType.OpOpenBracket;
+	
+	private static bool IsPlaceOperator(FunctionNode node) => IsDereference(node) || IsIndexer(node);
+	
+	private void ReportPlaceOperators(TypeSymbol type, IEnumerable<FunctionNode> operators)
+	{
+		var indexers = operators.ToLookup(IsIndexer);
+		ReportDereferences(type, [..indexers[false]]);
+		ReportIndexers(type, [..indexers[true]]);
+	}
+	
+	private void ReportIndexers(TypeSymbol type, List<FunctionNode> indexers)
+	{
+		var valid = new List<(FunctionNode Node, FunctionSignature Signature)>();
+		foreach (var indexer in indexers)
+		{
+			var signature = _builder.Functions[(FunctionSymbol)_symbolTable.DeclarationSymbols[indexer]].Signature;
+			if (signature.ReturnType is InvalidType)
+				continue;
+			
+			if (FindIndexerError(indexer, signature) is var (location, message))
+				Diagnostics.Add(new(DiagnosticSeverity.Error, location, message));
+			else
+				valid.Add((indexer, signature));
+		}
+		
+		var sameModes = valid.GroupBy(static i => i.Signature.GetMode(0)).Where(static g => g.Count() > 1).ToList();
+		foreach (var sameMode in sameModes)
+		{
+			var message = $"'[]' with '{DescribeReceiver(sameMode.Key)}' is declared more than once in '{type.Name}'";
+			Diagnostics.AddRange(sameMode.Select(i =>
+				new Diagnostic(DiagnosticSeverity.Error, i.Node.Identifier.SourceLocation, message)));
+		}
+		
+		if (sameModes.Count > 0 || valid is not [var first, var second])
+			return;
+		
+		if (!HaveSameIndices(first.Signature, second.Signature))
+			Diagnostics.AddRange(valid.Select(static i => new Diagnostic(DiagnosticSeverity.Error,
+				i.Node.Identifier.SourceLocation, "Cannot declare '[]' operators with different parameters")));
+		
+		if (GetIndexedType(first.Signature) != GetIndexedType(second.Signature))
+			Diagnostics.AddRange(valid.Select(static i => new Diagnostic(DiagnosticSeverity.Error,
+				i.Node.ReturnType!.SourceLocation, "Cannot declare '[]' operators with different target types")));
+	}
+	
+	private static TypeSymbol GetIndexedType(FunctionSignature signature) =>
+		signature.ReturnType is BorrowType borrow ? borrow.Target : signature.ReturnType;
+	
+	private static bool IsIndexerResult(FunctionSignature signature) => signature.ReturnType switch
+	{
+		BorrowType { IsMutable: var isMutable } => isMutable == (signature.GetMode(0) == ParameterMode.Mut),
+		var type => signature.GetMode(0) != ParameterMode.Mut && type != NativeSymbols.Void
+	};
+	
+	private static bool HaveSameIndices(FunctionSignature first, FunctionSignature second) =>
+		first.ParameterTypes.Length == second.ParameterTypes.Length &&
+		Enumerable.Range(1, first.ParameterTypes.Length - 1).All(i =>
+			first.GetDeclaredType(i) == second.GetDeclaredType(i) && first.GetMode(i) == second.GetMode(i));
+	
+	private static (SourceLocation Location, string Message)? FindIndexerError(FunctionNode node,
+		FunctionSignature signature) => node switch
+	{
+		{ Receiver: null } => (node.Identifier.SourceLocation, "Cannot declare '[]' operators without 'self'"),
+		{ Receiver: { Mode: { Type: TokenType.KeywordOwn } } receiver } =>
+			(receiver.SourceLocation, "Cannot take 'own self' in '[]' operators"),
+		{ Parameters: [] } => (node.Identifier.SourceLocation, "'[]' operators need at least one parameter"),
+		_ when node.Parameters.FirstOrDefault(static p => p.Mode?.Type == TokenType.KeywordMut) is { } parameter =>
+			(parameter.SourceLocation, "Cannot take 'mut' parameters in '[]' operators"),
+		_ when IsIndexerResult(signature) => null,
+		_ => (node.ReturnType?.SourceLocation ?? node.Identifier.SourceLocation,
+			$"Cannot return '{signature.ReturnType.Name}' from '[]' with '{DescribeReceiver(signature.GetMode(0))}'")
+	};
 	
 	private void ReportDereferences(TypeSymbol type, List<FunctionNode> dereferences)
 	{
@@ -1422,7 +1496,7 @@ public sealed class SignatureCollector
 		foreach (var member in node.Members)
 			Complete(_symbolTable.DeclarationSymbols[member]);
 		
-		var functions = node.Members.OfType<FunctionNode>().ToLookup(IsDereference);
+		var functions = node.Members.OfType<FunctionNode>().ToLookup(IsPlaceOperator);
 		ReportMemberConflicts(enumType.Name, [
 			..node.Cases.Select(static c => (c.Identifier, (FunctionNode?)null, MemberKind.Case)),
 			..node.Members.OfType<GlobalNode>()
@@ -1432,7 +1506,7 @@ public sealed class SignatureCollector
 			..functions[false].Select(static f => (f.Identifier, (FunctionNode?)f, MemberKind.Function))
 		]);
 		
-		ReportDereferences(enumType, [..functions[true]]);
+		ReportPlaceOperators(enumType, functions[true]);
 		ReportOperators(enumType, functions[false]);
 	}
 	

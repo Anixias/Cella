@@ -1,0 +1,52 @@
+mod lib
+
+ext
+{
+	malloc: fun(size: usize) -> ptr
+	free: fun(memory: ptr)
+}
+
+list[T: noref + copy]: pub rec
+{
+	items: req ptr[T]
+	length: pvt set usize
+
+	new: op(length: usize, value: T)
+	{
+		self.items = ptr[T](malloc(sizeOf(T) * length))
+		self.length = length
+		var i: usize = 0
+		loop while i < length
+		{
+			self.items[i] = value
+			i += 1
+		}
+	}
+
+	[]: op(self, i: usize) -> imm[T] = imm self.items[i]
+
+	[]: op(mut self, i: usize) -> mut[T] = mut self.items[i]
+
+	drop: op
+	{
+		free(self.items)
+	}
+}
+
+Scores: pub rec
+{
+	values: array[i32, 3]
+
+	[]: op(self, i: usize) -> imm[i32] = imm self.values[i]
+
+	[]: pvt op(mut self, i: usize) -> mut[i32] = mut self.values[i]
+
+	reset: fun(mut self, i: usize)
+	{
+		self[i] = 0
+	}
+
+	drop: op
+	{
+	}
+}

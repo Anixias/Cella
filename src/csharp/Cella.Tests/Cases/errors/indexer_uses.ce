@@ -1,0 +1,93 @@
+mod test
+
+Grid: rec
+{
+	cells: array[i32, 4]
+
+	[]: op(self, row: usize, column: usize) -> imm[i32] = imm self.cells[row * 2 + column]
+
+	[]: pvt op(mut self, row: usize, column: usize) -> mut[i32] = mut self.cells[row * 2 + column]
+
+	drop: op
+	{
+	}
+}
+
+Pair: rec
+{
+	values: array[i32, 2]
+
+	[]: op(self, i: usize) -> i32 = self.values[i]
+
+	[]: pvt op(mut self, i: usize) -> mut[i32] = mut self.values[i]
+}
+
+Hidden: rec
+{
+	cells: array[i32, 4]
+
+	[]: pvt op(self, i: usize) -> imm[i32] = imm self.cells[i]
+
+	drop: op
+	{
+	}
+}
+
+Counter: rec
+{
+	count: i32
+
+	bump: fun(mut self)
+	{
+		self.count += 1
+	}
+}
+
+Counters: rec
+{
+	values: array[Counter, 2]
+
+	[]: op(self, i: usize) -> imm[Counter] = imm self.values[i]
+
+	[]: pvt op(mut self, i: usize) -> mut[Counter] = mut self.values[i]
+
+	drop: op
+	{
+	}
+}
+
+addTen: fun(mut value: i32)
+{
+	value += 10
+}
+
+main: fun -> i32
+{
+	var grid = Grid([1, 2, 3, 4])
+	grid[0, 1] = 5
+	grid[1, 1] += 1
+	addTen(mut grid[1, 0])
+	val borrowed = mut grid[0, 0]
+	val count = grid[1]
+	val typed = grid["a", 0]
+	var duo = Pair([1, 2])
+	duo[0] = 5
+	duo[1] += 1
+	val hidden = Hidden([1, 2, 3, 4])
+	val secret = hidden[0]
+	var counters = Counters([Counter(0), Counter(1)])
+	counters[0].bump()
+	counters[1].count = 2
+	val number = 5
+	val digit = number[0]
+	val raw: ptr = null
+	val byte = raw[0]
+	var values = [1, 2, 3]
+	val pair = values[0, 1]
+	val text = "abc"
+	val letters = text[0, 1]
+	val pointer = @values[0]
+	val near = pointer[1, 2]
+	val far = pointer[1.5]
+	ret 0
+}

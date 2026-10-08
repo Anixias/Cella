@@ -1,0 +1,20 @@
+
+====== indexer_borrows.ce ======
+
+Error at line 18, column 39
+17 │ 
+18 │ []: op(self, i: usize) -> imm[i32] = imm self.values[i]
+                                          ╘════════════════╛ Cannot return borrows of copied parameters
+
+Error at line 29, column 6
+28 │ 
+29 │ ret kept
+         ╘══╛ Cannot use borrows of dropped values
+            | Dropped on line 27
+
+Error at line 35, column 6
+34 │ val local = Buffer([3, 4])
+35 │ ret imm local[0]
+         ╘══════════╛ Cannot return borrows of local variables
+
+[compilation failed]

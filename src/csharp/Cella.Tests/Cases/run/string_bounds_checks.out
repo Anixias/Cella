@@ -1,0 +1,5 @@
+first a
+last c
+[stderr]
+Panic at string_bounds_checks.ce:8:44: index out of bounds
+[exit code -1073740791]

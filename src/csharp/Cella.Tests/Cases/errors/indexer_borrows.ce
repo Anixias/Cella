@@ -1,0 +1,38 @@
+mod test
+
+Buffer: rec
+{
+	values: array[i32, 2]
+
+	[]: op(self, i: usize) -> imm[i32] = imm self.values[i]
+
+	drop: op
+	{
+	}
+}
+
+Inline: rec
+{
+	values: array[i32, 2]
+
+	[]: op(self, i: usize) -> imm[i32] = imm self.values[i]
+}
+
+dangling: fun -> i32
+{
+	var kept = imm Buffer([7, 8])[0]
+	{
+		val inner = Buffer([1, 2])
+		kept = imm inner[1]
+	}
+
+	ret kept
+}
+
+escaping: fun -> imm[i32]
+{
+	val local = Buffer([3, 4])
+	ret imm local[0]
+}
+
+main: fun -> i32 = 0

@@ -1,0 +1,53 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Matrix: rec
+{
+	cells: array[f64, 4]
+
+	[]: op(self, row: usize, column: usize) -> imm[f64] = imm self.cells[row * 2 + column]
+
+	[]: op(mut self, row: usize, column: usize) -> mut[f64] = mut self.cells[row * 2 + column]
+
+	drop: op
+	{
+	}
+}
+
+Color: enum
+{
+	red
+	green
+	blue
+}
+
+Table: rec
+{
+	values: array[i32, 3]
+
+	[]: op(self, color: Color) -> imm[i32] = imm self.values[usize(color)]
+
+	[]: op(mut self, color: Color) -> mut[i32] = mut self.values[usize(color)]
+
+	drop: op
+	{
+	}
+}
+
+main: fun -> i32
+{
+	var m = Matrix([1.0, 2.0, 3.0, 4.0])
+	m[1, 0] = 7.5
+	m[0, 1] *= 3.0
+	printf("%.1f %.1f %.1f %.1f\n", m[0, 0], m[0, 1], m[1, 0], m[1, 1])
+
+	var table = Table([0, 0, 0])
+	table[green] = 4
+	table[Color.blue] += 2
+	printf("%d %d %d\n", table[red], table[green], table[blue])
+	ret 0
+}

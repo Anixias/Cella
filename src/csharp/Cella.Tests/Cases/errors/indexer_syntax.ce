@@ -1,0 +1,14 @@
+mod test
+
+Grid: rec
+{
+	pointer: req ptr[i32]
+
+	[][T]: op(self, i: T) -> imm[i32] = imm *self.pointer
+
+	[]: pvt set op(self, i: usize) -> imm[i32] = imm self.pointer[i]
+
+	[]: fun(self, i: usize) -> imm[i32] = imm self.pointer[i]
+}
+
+main: fun -> i32 = 0

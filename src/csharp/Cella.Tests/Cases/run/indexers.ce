@@ -1,0 +1,102 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+	malloc: fun(size: usize) -> ptr
+	free: fun(memory: ptr)
+}
+
+Counter: rec
+{
+	count: i32
+
+	bump: fun(mut self)
+	{
+		self.count += 1
+	}
+
+	get: fun(self) -> i32 = self.count
+}
+
+Shape: enum
+{
+	circle(radius: i32)
+	square(side: i32)
+}
+
+list[T: noref + copy]: rec
+{
+	items: req ptr[T]
+	length: pvt set usize
+
+	new: op(length: usize, value: T)
+	{
+		self.items = ptr[T](malloc(sizeOf(T) * length))
+		self.length = length
+		var i: usize = 0
+		loop while i < length
+		{
+			self.items[i] = value
+			i += 1
+		}
+	}
+
+	[]: op(self, i: usize) -> imm[T] = imm self.items[i]
+
+	[]: op(mut self, i: usize) -> mut[T] = mut self.items[i]
+
+	drop: op
+	{
+		free(self.items)
+	}
+}
+
+addTen: fun(mut value: i32)
+{
+	value += 10
+}
+
+sum: fun(values: list[i32]) -> i32 = values[0] + values[1] + values[2]
+
+main: fun -> i32
+{
+	var values = list[i32](3, 0)
+	values[0] = 5
+	values[1] = values[0] * 2
+	values[2] += 7
+	addTen(mut values[2])
+	val second = imm values[1]
+	val copy: i32 = second
+	printf("%d %d %d %d %d %d\n", values[0], values[1], values[2], sum(values), copy, -values[1])
+
+	var counters = list[Counter](2, Counter(0))
+	counters[1].bump()
+	counters[1].bump()
+	counters[0].count = 9
+	printf("%d %d\n", counters[0].get(), counters[1].count)
+
+	var rows = list[array[i32, 2]](2, [0, 0])
+	rows[1][0] = 5
+	rows[0][1] += rows[1][0] + 1
+	printf("%d %d %d\n", rows[0][1], rows[1][0], rows[1][1])
+
+	var shapes = list[Shape](2, Shape.circle(2))
+	shapes[1] = Shape.square(3)
+	match mut shapes[0]
+	{
+		circle(radius) => radius += 5
+		square(side) => side += 1
+	}
+
+	val size = match shapes[0]
+	{
+		circle(radius) => radius
+		square(side) => side
+	}
+
+	if shapes[1] is square(side)
+		printf("%d %d\n", size, side)
+
+	ret 0
+}

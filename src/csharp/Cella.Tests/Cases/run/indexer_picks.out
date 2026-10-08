@@ -1,0 +1,7 @@
+read | write | write | write | read | write 
+write | read | write | read 
+value | write | write | write | write 
+write | write 
+write | read 
+1 6 13 5 7 1 6 41 0
+[exit code 0]

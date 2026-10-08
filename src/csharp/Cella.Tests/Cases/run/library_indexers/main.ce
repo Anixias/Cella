@@ -1,0 +1,18 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+main: fun -> i32
+{
+	var values = lib.list[i32](3, 1)
+	values[1] = 5
+	values[2] += values[1]
+	printf("%d %d %d\n", values[0], values[1], values[2])
+	var scores = lib.Scores([4, 5, 6])
+	scores.reset(2)
+	printf("%d %d %d\n", scores[0], scores[1], scores[2])
+	ret 0
+}

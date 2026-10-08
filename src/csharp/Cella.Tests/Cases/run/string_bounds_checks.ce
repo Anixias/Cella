@@ -1,0 +1,16 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+pick: fun(text: str, index: usize) -> u8 = text[index]
+
+main: fun -> i32
+{
+	printf("first %c\n", pick("abc", 0))
+	printf("last %c\n", pick("abc", 2))
+	printf("past %c\n", pick("abc", 3))
+	ret 0
+}

@@ -45,9 +45,4 @@ builds: fun -> Plain = Plain(1, 2, 3)
 
 defaults: fun -> Plain = Plain()
 
-pointers: fun(mut handle: Handle)
-{
-	handle.value = 1
-}
-
 main: fun -> i32 = 0

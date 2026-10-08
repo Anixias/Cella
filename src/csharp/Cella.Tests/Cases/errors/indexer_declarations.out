@@ -1,0 +1,94 @@
+
+====== indexer_declarations.ce ======
+
+Error at line 7, column 2
+6 │ 
+7 │ []: op(i: usize) -> imm[i32] = imm *ptr[i32](null)
+    ╘╛ Cannot declare '[]' operators without 'self'
+
+Error at line 14, column 13
+13 │ 
+14 │ []: op(own self, i: usize) -> imm[i32] = imm self.pointer[i]
+                ╘══╛ Cannot take 'own self' in '[]' operators
+
+Error at line 21, column 2
+20 │ 
+21 │ []: op(self) -> imm[i32] = imm *self.pointer
+     ╘╛ '[]' operators need at least one parameter
+
+Error at line 28, column 19
+27 │ 
+28 │ []: op(self, mut i: usize) -> imm[i32] = imm self.pointer[i]
+                      ^ Cannot take 'mut' parameters in '[]' operators
+
+Error at line 35, column 32
+34 │ 
+35 │ []: op(mut self, i: usize) -> i32 = self.pointer[i]
+                                   ╘═╛ Cannot return 'i32' from '[]' with 'mut self'
+
+Error at line 42, column 2
+41 │ 
+42 │ []: op(self, i: usize)
+     ╘╛ Cannot return 'void' from '[]' with 'self'
+
+Error at line 51, column 28
+50 │ 
+51 │ []: op(self, i: usize) -> mut[i32] = mut self.pointer[i]
+                               ╘══════╛ Cannot return 'mut[i32]' from '[]' with 'self'
+
+Error at line 53, column 32
+52 │ 
+53 │ []: op(mut self, i: usize) -> imm[i32] = imm self.pointer[i]
+                                   ╘══════╛ Cannot return 'imm[i32]' from '[]' with 'mut self'
+
+Error at line 60, column 2
+59 │ 
+60 │ []: op(self, i: usize) -> imm[i32] = imm self.pointer[i]
+     ╘╛ '[]' with 'self' is declared more than once in 'Twice'
+
+Error at line 62, column 2
+61 │ 
+62 │ []: op(self, key: str) -> imm[i32] = imm self.pointer[0]
+     ╘╛ '[]' with 'self' is declared more than once in 'Twice'
+
+Error at line 69, column 2
+68 │ 
+69 │ []: op(self, i: usize) -> imm[i32] = imm self.pointer[i]
+     ╘╛ Cannot declare '[]' operators with different parameters
+
+Error at line 71, column 2
+70 │ 
+71 │ []: op(mut self, i: isize) -> mut[i32] = mut self.pointer[i]
+     ╘╛ Cannot declare '[]' operators with different parameters
+
+Error at line 79, column 28
+78 │ 
+79 │ []: op(self, i: usize) -> imm[i32] = imm self.pointer[i]
+                               ╘══════╛ Cannot declare '[]' operators with different target types
+
+Error at line 81, column 32
+80 │ 
+81 │ []: op(mut self, i: usize) -> mut[i64] = mut self.count
+                                   ╘══════╛ Cannot declare '[]' operators with different target types
+
+Error at line 88, column 28
+87 │ 
+88 │ []: op(self, i: usize) -> f32 = self.values[i]
+                               ╘═╛ Cannot declare '[]' operators with different target types
+
+Error at line 90, column 32
+89 │ 
+90 │ []: op(mut self, i: usize) -> mut[f64] = mut *ptr[f64](null)
+                                   ╘══════╛ Cannot declare '[]' operators with different target types
+
+Error at line 97, column 2
+96 │ 
+97 │ []: op(self) -> imm[i32] = imm *ptr[i32](null)
+     ╘╛ '[]' operators need at least one parameter
+
+Error at line 102, column 2
+101 │ {
+102 │     []: op(i: usize) -> imm[i32]
+          ╘╛ Cannot declare '[]' operators without 'self'
+
+[compilation failed]

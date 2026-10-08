@@ -54,24 +54,6 @@ Plain: rec
 	fixed: pvt set i32
 }
 
-Target: rec
-{
-	value: i32
-}
-
-Handle: rec
-{
-	target: req ptr[Target]
-
-	*: op(self) -> imm[Target] = imm *self.target
-	*: pvt op(mut self) -> mut[Target] = mut *self.target
-
-	bump: fun(mut self)
-	{
-		self.value += 1
-	}
-}
-
 touch: fun
 {
 	var counter = Counter()

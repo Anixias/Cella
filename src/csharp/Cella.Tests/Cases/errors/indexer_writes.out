@@ -1,0 +1,64 @@
+
+====== indexer_writes.ce ======
+
+Error at line 59, column 2
+58 │ var readings = Readings([1, 2])
+59 │ readings[0] = 5
+     ╘═════════╛ Cannot write through read-only borrows
+
+Error at line 60, column 13
+59 │ readings[0] = 5
+60 │ addTen(mut readings[1])
+                ╘═════════╛ Cannot mutably borrow through read-only borrows
+
+Error at line 62, column 14
+61 │ val slots = Slots([1, 2])
+62 │ val first = slots[0]
+                 ╘═══╛ Cannot mutably borrow values
+
+Error at line 64, column 18
+63 │ val boxes = Boxes([Buffer(1), Buffer(2)])
+64 │ val moved = own boxes[0]
+                     ╘══════╛ Cannot move borrowed values
+
+Error at line 65, column 15
+64 │ val moved = own boxes[0]
+65 │ val copied = boxes[1]
+                  ╘══════╛ Cannot move borrowed values
+
+Error at line 67, column 2
+66 │ var text = "abc"
+67 │ text[0] = 65
+     ╘═════╛ Cannot write through 'str'
+
+Error at line 68, column 2
+67 │ text[0] = 65
+68 │ text[1] += 1
+     ╘═════╛ Cannot write through 'str'
+
+Error at line 69, column 11
+68 │ text[1] += 1
+69 │ bump(mut text[1])
+              ╘═════╛ Cannot mutably borrow through 'str'
+
+Error at line 71, column 2
+70 │ val c: cstr = "xyz"
+71 │ c[0] = 66
+     ╘══╛ Cannot write through 'cstr'
+
+Error at line 72, column 19
+71 │ c[0] = 66
+72 │ val past = "abc"[3]
+                      ^ Index 3 is out of range for 'str'
+
+Error at line 74, column 17
+73 │ val end = c[3]
+74 │ val beyond = c[4]
+                    ^ Index 4 is out of range for 'cstr'
+
+Error at line 76, column 14
+75 │ val buffers = ptr[Buffer](malloc(sizeOf(array[Buffer, 2])))
+76 │ val taken = buffers[0]
+                 ╘════════╛ Cannot move 'Buffer' values out of a pointer implicitly
+
+[compilation failed]

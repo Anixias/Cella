@@ -1,0 +1,45 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+	malloc: fun(size: usize) -> ptr
+	free: fun(memory: ptr)
+}
+
+Buffer: rec
+{
+	id: i32
+
+	drop: op
+	{
+		printf("drop %d ", self.id)
+	}
+}
+
+second[T]: fun(items: ptr[T]) -> ptr[T] = @items[1]
+
+main: fun -> i32
+{
+	var values = [10, 20, 30, 40]
+	val p = @values[0]
+	p[1] = 25
+	p[2] += 5
+	val q = @values[2]
+	val n: i32 = 1
+	val u: usize = 3
+	printf("%d %d %d %d %d\n", p[0], p[1], q[-1], p[n], p[u])
+	val r = second(p)
+	printf("%d %d\n", *r, r[1])
+
+	val buffers = ptr[Buffer](malloc(sizeOf(array[Buffer, 2])))
+	own buffers[0] = Buffer(1)
+	own buffers[1] = Buffer(2)
+	buffers[0] = Buffer(3)
+	buffers[1].id += 10
+	val taken = own buffers[1]
+	printf("%d %d\n", buffers[0].id, taken.id)
+	val first = own buffers[0]
+	free(buffers)
+	ret 0
+}

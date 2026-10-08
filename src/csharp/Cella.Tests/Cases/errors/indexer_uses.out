@@ -1,0 +1,89 @@
+
+====== indexer_uses.ce ======
+
+Error at line 67, column 2
+66 │ var grid = Grid([1, 2, 3, 4])
+67 │ grid[0, 1] = 5
+     ╘════════╛ '[]' is read-only outside its type
+
+Error at line 68, column 2
+67 │ grid[0, 1] = 5
+68 │ grid[1, 1] += 1
+     ╘════════╛ '[]' is read-only outside its type
+
+Error at line 69, column 13
+68 │ grid[1, 1] += 1
+69 │ addTen(mut grid[1, 0])
+                ╘════════╛ '[]' is read-only outside its type
+
+Error at line 70, column 21
+69 │ addTen(mut grid[1, 0])
+70 │ val borrowed = mut grid[0, 0]
+                        ╘════════╛ '[]' is read-only outside its type
+
+Error at line 71, column 14
+70 │ val borrowed = mut grid[0, 0]
+71 │ val count = grid[1]
+                 ╘═════╛ Indexing 'Grid' takes 2 arguments
+
+Error at line 72, column 19
+71 │ val count = grid[1]
+72 │ val typed = grid["a", 0]
+                      ╘═╛ Cannot convert type 'string literal' to 'usize'
+
+Error at line 74, column 2
+73 │ var duo = Pair([1, 2])
+74 │ duo[0] = 5
+     ╘════╛ '[]' is read-only outside its type
+
+Error at line 75, column 2
+74 │ duo[0] = 5
+75 │ duo[1] += 1
+     ╘════╛ '[]' is read-only outside its type
+
+Error at line 77, column 15
+76 │ val hidden = Hidden([1, 2, 3, 4])
+77 │ val secret = hidden[0]
+                  ╘═══════╛ '[]' is private to its type
+
+Error at line 79, column 2
+78 │ var counters = Counters([Counter(0), Counter(1)])
+79 │ counters[0].bump()
+     ╘═════════╛ '[]' is read-only outside its type
+
+Error at line 80, column 2
+79 │ counters[0].bump()
+80 │ counters[1].count = 2
+     ╘═════════╛ '[]' is read-only outside its type
+
+Error at line 82, column 14
+81 │ val number = 5
+82 │ val digit = number[0]
+                 ╘════╛ Cannot index into type 'i32'
+
+Error at line 84, column 13
+83 │ val raw: ptr = null
+84 │ val byte = raw[0]
+                ╘═╛ Cannot index into type 'ptr'
+
+Error at line 86, column 13
+85 │ var values = [1, 2, 3]
+86 │ val pair = values[0, 1]
+                ╘══════════╛ Indexing 'array[i32, 3]' takes one argument
+
+Error at line 88, column 16
+87 │ val text = "abc"
+88 │ val letters = text[0, 1]
+                   ╘════════╛ Indexing 'str' takes one argument
+
+Error at line 90, column 13
+89 │ val pointer = @values[0]
+90 │ val near = pointer[1, 2]
+                ╘═══════════╛ Indexing 'ptr[i32]' takes one argument
+
+Error at line 91, column 20
+90 │ val near = pointer[1, 2]
+91 │ val far = pointer[1.5]
+                       ╘═╛ Cannot convert type 'float literal' to 'isize'
+
+[compilation failed]

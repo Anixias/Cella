@@ -1132,6 +1132,7 @@ public sealed class Lowerer
 		{
 			VariableValue or GlobalValue or UnaryOpValue { Op: UnaryOperation.Dereference } => true,
 			AccessValue v => IsPlaceValue(v.Target),
+			IndexerValue { Target.Type: StringType } => true,
 			IndexerValue v => IsPlaceValue(v.Target),
 			EnumPayloadValue v => IsPlaceValue(v.Target),
 			_ => false
@@ -1149,6 +1150,7 @@ public sealed class Lowerer
 		{
 			ResolvedVarExpressionNode => true,
 			ResolvedAccessExpressionNode { Member: FieldSymbol } n => IsPlace(n.Target),
+			ResolvedIndexerExpressionNode { Target.Type: StringType } => true,
 			ResolvedIndexerExpressionNode n => IsPlace(n.Target),
 			ResolvedUnaryOpExpressionNode { Operation.Op: TokenType.OpStar } => true,
 			_ => false

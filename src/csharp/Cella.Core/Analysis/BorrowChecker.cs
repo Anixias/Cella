@@ -422,9 +422,12 @@ public sealed class BorrowChecker(TypePool typePool, DiagnosticList diagnostics)
 				? [..state.Get(binding).Keys]
 				: [tracked];
 		
-		return GetBase(place) is UnaryOpValue { Op: UnaryOperation.Dereference } deref
-			? Sources(deref.Operand, state)
-			: [];
+		return GetBase(place) switch
+		{
+			UnaryOpValue { Op: UnaryOperation.Dereference } deref => Sources(deref.Operand, state),
+			IndexerValue element => Sources(element.Target, state),
+			_ => []
+		};
 	}
 	
 	private static List<Place> Expand(List<Place> sources, BorrowState state) => [..sources, ..Held(sources, state)];
@@ -435,7 +438,7 @@ public sealed class BorrowChecker(TypePool typePool, DiagnosticList diagnostics)
 	private static Value GetBase(Value place) => place switch
 	{
 		AccessValue { Member: FieldSymbol } v => GetBase(v.Target),
-		IndexerValue v => GetBase(v.Target),
+		IndexerValue { Target.Type: not StringType } v => GetBase(v.Target),
 		EnumPayloadValue v => GetBase(v.Target),
 		_ => place
 	};

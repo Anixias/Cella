@@ -1,0 +1,108 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+	malloc: fun(size: usize) -> ptr
+	free: fun(memory: ptr)
+}
+
+Vector3: rec
+{
+	values: array[f32, 3]
+
+	[]: op(self, i: usize) -> f32 = self.values[i]
+
+	[]: op(mut self, i: usize) -> mut[f32] = mut self.values[i]
+}
+
+Bits: rec
+{
+	words: req ptr[u64]
+
+	new: op
+	{
+		self.words = ptr[u64](malloc(8))
+		self.words[0] = 0
+	}
+
+	[]: op(self, i: usize) -> bool = ((self.words[0] >> u64(i)) & 1) != 0
+
+	set: fun(mut self, i: usize)
+	{
+		self.words[0] |= u64(1) << u64(i)
+	}
+
+	drop: op
+	{
+		free(self.words)
+	}
+}
+
+Shape: enum
+{
+	circle(radius: i32)
+	square(side: i32)
+}
+
+Shapes: rec
+{
+	values: array[Shape, 2]
+
+	[]: op(self, i: usize) -> Shape = self.values[i]
+
+	[]: op(mut self, i: usize) -> mut[Shape] = mut self.values[i]
+}
+
+Lookup: trait
+{
+	[]: op(self, i: usize) -> i32
+}
+
+Squares: rec impl Lookup
+{
+	[]: op(self, i: usize) -> i32 = i32(i * i)
+}
+
+scale: fun(mut value: f32)
+{
+	value *= 2.0
+}
+
+total[C: Lookup]: fun(items: C) -> i32 = items[1] + items[2]
+
+third: fun(items: dyn[Lookup]) -> i32 = items[3]
+
+main: fun -> i32
+{
+	var v = Vector3([1.0, 2.0, 3.0])
+	v[0] = 4.0
+	v[1] += 0.5
+	scale(mut v[2])
+	val w = v
+	printf("%.1f %.1f %.1f %.1f\n", v[0], v[1], v[2], w[0] + Vector3([1.0, 1.0, 1.0])[2])
+
+	var bits = Bits()
+	bits.set(3)
+	printf("%d %d\n", i32(bits[3]), i32(bits[2]))
+
+	var shapes = Shapes([Shape.circle(2), Shape.square(3)])
+	match mut shapes[0]
+	{
+		circle(radius) => radius += 5
+		square(side) => side += 1
+	}
+
+	val size = match shapes[0]
+	{
+		circle(radius) => radius
+		square(side) => side
+	}
+
+	if shapes[1] is square(side)
+		printf("%d %d\n", size, side)
+
+	val squares = Squares()
+	printf("%d %d %d\n", squares[4], total(squares), third(dyn[Lookup](squares)))
+	ret 0
+}

@@ -290,6 +290,7 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool, 
 		ResolvedVarExpressionNode => true,
 		ResolvedGlobalExpressionNode => true,
 		ResolvedAccessExpressionNode { Member: FieldSymbol } e => IsLValue(e.Target),
+		ResolvedIndexerExpressionNode { Target.Type: StringType } => true,
 		ResolvedIndexerExpressionNode e => IsLValue(e.Target),
 		ResolvedUnaryOpExpressionNode { Operation.Op: TokenType.OpStar } => true,
 		_ => false
@@ -419,6 +420,9 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool, 
 		else if (IsThroughReadOnlyBorrow(node.Left))
 			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Left.Syntax.SourceLocation,
 				"Cannot write through read-only borrows"));
+		else if (FindIndexedString(node.Left) is { } text)
+			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Left.Syntax.SourceLocation,
+				$"Cannot write through '{text.Name}'"));
 		else if (!IsDeferredWrite(node) && FindImmutableBinding(node.Left) is { } binding)
 			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Left.Syntax.SourceLocation,
 				$"Cannot reassign {DescribeImmutable(binding)}"));
@@ -684,6 +688,9 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool, 
 		_ => false
 	};
 	
+	private static TypeSymbol? FindIndexedString(IResolvedExpressionNode place) =>
+		place is ResolvedIndexerExpressionNode { Target.Type: StringType type } ? type : null;
+	
 	private static bool IsThroughReadOnlyBorrow(IResolvedExpressionNode place) => place switch
 	{
 		ResolvedAccessExpressionNode { Member: FieldSymbol } n => IsThroughReadOnlyBorrow(n.Target),
@@ -731,6 +738,8 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool, 
 			Diagnostics.Add(unwritable);
 		else if (IsThroughReadOnlyBorrow(place))
 			Diagnostics.Add(new(DiagnosticSeverity.Error, location, "Cannot mutably borrow through read-only borrows"));
+		else if (FindIndexedString(place) is { } text)
+			Diagnostics.Add(new(DiagnosticSeverity.Error, location, $"Cannot mutably borrow through '{text.Name}'"));
 		else if (FindImmutableBinding(place) is { } binding)
 			Diagnostics.Add(new(DiagnosticSeverity.Error, location,
 				$"Cannot mutably borrow {DescribeImmutable(binding)}"));
@@ -786,14 +795,22 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool, 
 	
 	public void Visit(ResolvedIndexerExpressionNode node)
 	{
-		if (node.Target.Type is ArrayType { Length.Sign: >= 0 } array &&
-		    evaluator.Evaluate(node.Index) is IntegerConstant { Value: var index } && index >= array.Length)
+		if (FindIndexLimit(node.Target) is { } limit &&
+		    evaluator.Evaluate(node.Index) is IntegerConstant { Value: var index } && index >= limit)
 			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Index.Syntax.SourceLocation,
-				$"Index {index} is out of range for '{array.Name}'"));
+				$"Index {index} is out of range for '{node.Target.Type.Name}'"));
 		
 		VisitNode(node.Target);
 		VisitNode(node.Index);
 	}
+	
+	private BigInteger? FindIndexLimit(IResolvedExpressionNode target) => target.Type switch
+	{
+		ArrayType { Length.Sign: >= 0 } array => array.Length,
+		StringType when evaluator.Evaluate(target) is StringConstant { Value: var text } &&
+		                ConstantEvaluator.GetBytes(text) is { } bytes => bytes.Length,
+		_ => null
+	};
 	
 	public void Visit(ResolvedInvalidExpressionNode node) =>
 		throw new InvalidOperationException();

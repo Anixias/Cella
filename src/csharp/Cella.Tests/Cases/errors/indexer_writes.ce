@@ -1,0 +1,78 @@
+mod test
+
+ext
+{
+	malloc: fun(size: usize) -> ptr
+}
+
+Buffer: rec
+{
+	id: i32
+
+	drop: op
+	{
+	}
+}
+
+Readings: rec
+{
+	values: array[i32, 2]
+
+	[]: op(self, i: usize) -> imm[i32] = imm self.values[i]
+
+	drop: op
+	{
+	}
+}
+
+Slots: rec
+{
+	values: array[i32, 2]
+
+	[]: op(mut self, i: usize) -> mut[i32] = mut self.values[i]
+}
+
+Boxes: rec
+{
+	values: array[Buffer, 2]
+
+	[]: op(self, i: usize) -> imm[Buffer] = imm self.values[i]
+
+	drop: op
+	{
+	}
+}
+
+addTen: fun(mut value: i32)
+{
+	value += 10
+}
+
+bump: fun(mut value: u8)
+{
+	value += 1
+}
+
+main: fun -> i32
+{
+	var readings = Readings([1, 2])
+	readings[0] = 5
+	addTen(mut readings[1])
+	val slots = Slots([1, 2])
+	val first = slots[0]
+	val boxes = Boxes([Buffer(1), Buffer(2)])
+	val moved = own boxes[0]
+	val copied = boxes[1]
+	var text = "abc"
+	text[0] = 65
+	text[1] += 1
+	bump(mut text[1])
+	val c: cstr = "xyz"
+	c[0] = 66
+	val past = "abc"[3]
+	val end = c[3]
+	val beyond = c[4]
+	val buffers = ptr[Buffer](malloc(sizeOf(array[Buffer, 2])))
+	val taken = buffers[0]
+	ret 0
+}

@@ -1,0 +1,23 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Vector: rec
+{
+	x: i32
+
+	-: op(self) -> Vector = Vector(-self.x * 10)
+}
+
+square: fun(x: i32) -> i32 = x * x
+
+main: fun -> i32
+{
+	val values = [10, 20, 30]
+	val v = -Vector(1)
+	printf("%d %d %d %d %d %d\n", -square(3), -values[1], -square(2) + 1, -(5), -5, v.x)
+	ret 0
+}

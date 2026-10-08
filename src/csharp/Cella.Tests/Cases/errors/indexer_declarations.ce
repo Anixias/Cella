@@ -1,0 +1,105 @@
+mod test
+
+Static: rec
+{
+	pointer: req ptr[i32]
+
+	[]: op(i: usize) -> imm[i32] = imm *ptr[i32](null)
+}
+
+Owned: rec
+{
+	pointer: req ptr[i32]
+
+	[]: op(own self, i: usize) -> imm[i32] = imm self.pointer[i]
+}
+
+Empty: rec
+{
+	pointer: req ptr[i32]
+
+	[]: op(self) -> imm[i32] = imm *self.pointer
+}
+
+Mutable: rec
+{
+	pointer: req ptr[i32]
+
+	[]: op(self, mut i: usize) -> imm[i32] = imm self.pointer[i]
+}
+
+Plain: rec
+{
+	pointer: req ptr[i32]
+
+	[]: op(mut self, i: usize) -> i32 = self.pointer[i]
+}
+
+Silent: rec
+{
+	pointer: req ptr[i32]
+
+	[]: op(self, i: usize)
+	{
+	}
+}
+
+Swapped: rec
+{
+	pointer: req ptr[i32]
+
+	[]: op(self, i: usize) -> mut[i32] = mut self.pointer[i]
+
+	[]: op(mut self, i: usize) -> imm[i32] = imm self.pointer[i]
+}
+
+Twice: rec
+{
+	pointer: req ptr[i32]
+
+	[]: op(self, i: usize) -> imm[i32] = imm self.pointer[i]
+
+	[]: op(self, key: str) -> imm[i32] = imm self.pointer[0]
+}
+
+Differing: rec
+{
+	pointer: req ptr[i32]
+
+	[]: op(self, i: usize) -> imm[i32] = imm self.pointer[i]
+
+	[]: op(mut self, i: isize) -> mut[i32] = mut self.pointer[i]
+}
+
+Mixed: rec
+{
+	pointer: req ptr[i32]
+	count: i64
+
+	[]: op(self, i: usize) -> imm[i32] = imm self.pointer[i]
+
+	[]: op(mut self, i: usize) -> mut[i64] = mut self.count
+}
+
+Widened: rec
+{
+	values: array[f32, 2]
+
+	[]: op(self, i: usize) -> f32 = self.values[i]
+
+	[]: op(mut self, i: usize) -> mut[f64] = mut *ptr[f64](null)
+}
+
+Sized: enum
+{
+	small
+
+	[]: op(self) -> imm[i32] = imm *ptr[i32](null)
+}
+
+Indexed: trait
+{
+	[]: op(i: usize) -> imm[i32]
+}
+
+main: fun -> i32 = 0

@@ -1343,6 +1343,15 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 			return true;
 		}
 		
+		if (Peek(index, TokenType.OpOpenBracket) && Peek(index + 1, TokenType.OpCloseBracket))
+		{
+			var (source, range) = Tokens[index].SourceLocation;
+			range = range.Join(Tokens[index + 1].SourceLocation.Range);
+			symbol = new Token(TokenType.OpOpenBracket, new SourceLocation(source, range), "[]");
+			index += 2;
+			return true;
+		}
+		
 		return Match(ref index, out symbol, _operatorNames);
 	}
 	

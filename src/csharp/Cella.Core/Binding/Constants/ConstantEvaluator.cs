@@ -209,8 +209,15 @@ public sealed class ConstantEvaluator
 	
 	private static Constant? Index(Constant target, Constant index)
 	{
-		if (index is not IntegerConstant { Value: var position } || target.Type is not ArrayType array ||
-		    position.Sign < 0 || position >= array.Length)
+		if (index is not IntegerConstant { Value: var position } || position.Sign < 0)
+			return null;
+		
+		if (target is StringConstant { Value: var text })
+			return GetBytes(text) is { } bytes && position < bytes.Length
+				? new IntegerConstant(NativeSymbols.UInt8, bytes[(int)position])
+				: null;
+		
+		if (target.Type is not ArrayType array || position >= array.Length)
 			return null;
 		
 		return target switch
@@ -220,6 +227,13 @@ public sealed class ConstantEvaluator
 			_ => null
 		};
 	}
+	
+	public static byte[]? GetBytes(object text) => text switch
+	{
+		StrValue str => str.Bytes,
+		byte[] bytes => bytes,
+		_ => null
+	};
 	
 	private Constant? Apply(OperationImpl implementation, Constant left, Constant right, TypeSymbol resultType)
 	{

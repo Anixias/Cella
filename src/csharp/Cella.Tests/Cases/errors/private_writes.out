@@ -71,9 +71,4 @@ Error at line 44, column 36
 44 │ builds: fun -> Plain = Plain(1, 2, 3)
                                         ^ 'fixed' is read-only outside its type
 
-Error at line 50, column 2
-49 │ {
-50 │     handle.value = 1
-         ╘══════════╛ Cannot write through read-only borrows
-
 [compilation failed]

@@ -1,0 +1,33 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+second: val u8 = "hello"[1]
+
+pick: fun(text: str, index: usize) -> u8 = text[index]
+
+byteAt: fun(text: cstr, index: usize) -> u8 = text[index]
+
+main: fun -> i32
+{
+	val s = "hello"
+	val c: cstr = "world"
+	val i: usize = 4
+	printf("%c %c %c %c %d\n", s[0], s[i], c[0], c[4], c[5])
+	printf("%c %c %c %c\n", second, pick("abc", 2), "xyz"[0], byteAt("cat", 1))
+	val b = imm s[1]
+	val borrowed: u8 = b
+	var total: u32 = 0
+	var j: usize = 0
+	loop while j < s.byteLength
+	{
+		total += s[j]
+		j += 1
+	}
+
+	printf("%c %u\n", borrowed, total)
+	ret 0
+}

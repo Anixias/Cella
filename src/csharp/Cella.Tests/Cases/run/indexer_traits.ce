@@ -1,0 +1,59 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+	malloc: fun(size: usize) -> ptr
+	free: fun(memory: ptr)
+}
+
+Indexed: trait
+{
+	[]: op(self, i: usize) -> imm[i32]
+}
+
+Palette: rec impl Indexed
+{
+	values: array[i32, 3]
+
+	[]: op(self, i: usize) -> imm[i32] = imm self.values[i]
+
+	drop: op
+	{
+	}
+}
+
+Storage: enum
+{
+	empty
+	heap(items: ptr[i32])
+
+	[]: op(self, i: usize) -> imm[i32] = match self
+	{
+		empty => imm *ptr[i32](null)
+		heap(items) => imm items[i]
+	}
+}
+
+Storage: impl Indexed
+{
+}
+
+total[C: Indexed]: fun(items: C) -> i32 = items[0] + items[1] + items[2]
+
+tenfold: fun(items: dyn[Indexed]) -> i32 = items[1] * 10
+
+main: fun -> i32
+{
+	val palette = Palette([1, 2, 3])
+	val items = ptr[i32](malloc(sizeOf(array[i32, 3])))
+	items[0] = 3
+	items[1] = 4
+	items[2] = 5
+	val storage = Storage.heap(items)
+	printf("%d %d %d %d\n", total(palette), total(storage), tenfold(dyn[Indexed](palette)),
+		tenfold(dyn[Indexed](storage)))
+
+	free(items)
+	ret 0
+}

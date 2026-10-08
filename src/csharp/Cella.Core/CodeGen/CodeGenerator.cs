@@ -1475,6 +1475,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 	{
 		VariableValue => true,
 		GlobalValue => true,
+		IndexerValue { Target.Type: StringType } => true,
 		IndexerValue v => IsAddressable(v.Target),
 		AccessValue v => IsAddressable(v.Target),
 		UnaryOpValue { Op: UnaryOperation.Dereference } => true,
@@ -1850,9 +1851,45 @@ public sealed unsafe class CodeGenerator : IDisposable
 				return (builder.BuildInBoundsGEP2(arrayType, arrayPtr, new[] { zero, index }, "elemptr"), elemType);
 			}
 			
+			case StringType when v.Target.Type == NativeSymbols.Str:
+			{
+				var (length, data) = EmitStrParts(v.Target, builder);
+				var index = EmitValue(v.Index, builder);
+				if (!_config.BoundsChecks)
+					return (builder.BuildGEP2(LLVMTypeRef.Int8, data, new[] { index }, "byteptr"), elemType);
+				
+				PanicIf(builder.BuildICmp(LLVMIntPredicate.LLVMIntUGE, index, length), "index out of bounds",
+					v.SourceLocation, builder);
+				
+				return (builder.BuildInBoundsGEP2(LLVMTypeRef.Int8, data, new[] { index }, "byteptr"), elemType);
+			}
+			
+			case StringType:
+			{
+				var data = EmitValue(v.Target, builder);
+				var index = EmitValue(v.Index, builder);
+				return (builder.BuildGEP2(LLVMTypeRef.Int8, data, new[] { index }, "byteptr"), elemType);
+			}
+			
 			default:
 				throw new InvalidOperationException();
 		}
+	}
+	
+	private (LLVMValueRef Length, LLVMValueRef Data) EmitStrParts(Value str, LLVMBuilderRef builder)
+	{
+		if (!IsAddressable(str))
+		{
+			var value = EmitValue(str, builder);
+			return (builder.BuildExtractValue(value, 0, "length"), builder.BuildExtractValue(value, 1, "data"));
+		}
+		
+		var strType = MapTypeSymbol(NativeSymbols.Str);
+		var address = EmitAddress(str, builder);
+		var lengthAddress = builder.BuildStructGEP2(strType, address, 0, "length.addr");
+		var dataAddress = builder.BuildStructGEP2(strType, address, 1, "data.addr");
+		return (builder.BuildLoad2(strType.StructGetTypeAtIndex(0), lengthAddress, "length"),
+			builder.BuildLoad2(strType.StructGetTypeAtIndex(1), dataAddress, "data"));
 	}
 	
 	private LLVMValueRef EmitAccessAddress(AccessValue v, LLVMBuilderRef builder)

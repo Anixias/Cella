@@ -1,0 +1,174 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Counter: rec
+{
+	count: i32
+
+	bump: fun(mut self)
+	{
+		self.count += 1
+	}
+
+	get: fun(self) -> i32 = self.count
+}
+
+Logged: rec
+{
+	values: array[i32, 2]
+
+	[]: op(self, i: usize) -> imm[i32]
+	{
+		printf("read ")
+		ret imm self.values[i]
+	}
+
+	[]: op(mut self, i: usize) -> mut[i32]
+	{
+		printf("write ")
+		ret mut self.values[i]
+	}
+
+	drop: op
+	{
+	}
+}
+
+Counters: rec
+{
+	values: array[Counter, 2]
+
+	[]: op(self, i: usize) -> imm[Counter]
+	{
+		printf("read ")
+		ret imm self.values[i]
+	}
+
+	[]: op(mut self, i: usize) -> mut[Counter]
+	{
+		printf("write ")
+		ret mut self.values[i]
+	}
+
+	drop: op
+	{
+	}
+}
+
+Pair: rec
+{
+	values: array[i32, 2]
+
+	[]: op(self, i: usize) -> i32
+	{
+		printf("value ")
+		ret self.values[i]
+	}
+
+	[]: op(mut self, i: usize) -> mut[i32]
+	{
+		printf("write ")
+		ret mut self.values[i]
+	}
+}
+
+Slots: rec
+{
+	values: array[i32, 2]
+
+	[]: op(mut self, i: usize) -> mut[i32]
+	{
+		printf("write ")
+		ret mut self.values[i]
+	}
+}
+
+Scores: rec
+{
+	values: array[i32, 3]
+
+	[]: op(self, i: usize) -> imm[i32]
+	{
+		printf("read ")
+		ret imm self.values[i]
+	}
+
+	[]: pvt op(mut self, i: usize) -> mut[i32]
+	{
+		printf("write ")
+		ret mut self.values[i]
+	}
+
+	reset: fun(mut self, i: usize)
+	{
+		self[i] = 0
+	}
+
+	drop: op
+	{
+	}
+}
+
+addTen: fun(mut value: i32)
+{
+	value += 10
+}
+
+main: fun -> i32
+{
+	var logged = Logged([1, 2])
+	val a = logged[0]
+	printf("| ")
+	logged[0] = 3
+	printf("| ")
+	logged[1] += 4
+	printf("| ")
+	addTen(mut logged[0])
+	printf("| ")
+	val b = imm logged[1]
+	val borrowed: i32 = b
+	printf("| ")
+	val c = mut logged[0]
+	val changed: i32 = c
+	printf("\n")
+
+	var counters = Counters([Counter(0), Counter(5)])
+	counters[0].bump()
+	printf("| ")
+	val d = counters[1].get()
+	printf("| ")
+	counters[1].count = 7
+	printf("| ")
+	val e = counters[1].count
+	printf("\n")
+
+	var pair = Pair([1, 2])
+	val h = pair[0]
+	printf("| ")
+	pair[0] = 3
+	printf("| ")
+	pair[1] += 4
+	printf("| ")
+	addTen(mut pair[0])
+	printf("| ")
+	val i = mut pair[1]
+	val viewed: i32 = i
+	printf("\n")
+
+	var slots = Slots([1, 2])
+	slots[0] += 40
+	printf("| ")
+	val f = slots[0]
+	printf("\n")
+
+	var scores = Scores([4, 5, 6])
+	scores.reset(1)
+	printf("| ")
+	val g = scores[1]
+	printf("\n%d %d %d %d %d %d %d %d %d\n", a, borrowed, changed, d, e, h, viewed, f, g)
+	ret 0
+}
