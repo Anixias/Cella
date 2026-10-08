@@ -14,6 +14,7 @@ public sealed class TypePool
 	public OperatorRegistry OperatorRegistry { get; }
 	public SizeTable SizeTable { get; }
 	public Action<TypeSymbol>? TypeCompleter { get; set; }
+	public Action<TraitSymbol>? TraitCompleter { get; set; }
 	
 	private readonly Dictionary<TypeSymbol, OrderedDictionary<string, MemberSymbol>> _members = [];
 	private readonly Dictionary<(TypeSymbol, BigInteger), ArrayType> _arrayTypes = [];
@@ -29,6 +30,7 @@ public sealed class TypePool
 	private readonly Dictionary<TypedMemberSymbol, TypeSymbol> _memberTypes = [];
 	private readonly Dictionary<TypeSymbol, TypeFacts> _facts = [];
 	private readonly Dictionary<TypeSymbol, List<FunctionInfo>> _constructors = [];
+	private readonly Dictionary<TraitSymbol, List<FunctionInfo>> _traitConstructors = [];
 	private readonly Dictionary<TypeSymbol, FunctionInfo> _destructors = [];
 	private readonly Dictionary<TypeSymbol, IReadOnlySet<FieldSymbol>> _destructorMoves = [];
 	private readonly Dictionary<EnumSymbol, IntegerType> _tagTypes = [];
@@ -45,6 +47,7 @@ public sealed class TypePool
 	private readonly List<Conformance> _conformances = [];
 	private readonly Dictionary<TypeParameterSymbol, ImmutableArray<TraitSymbol>> _bounds = [];
 	private readonly Dictionary<TypeParameterSymbol, ImmutableArray<TypeParameterSymbol>> _parameterBounds = [];
+	private readonly Dictionary<TypeParameterSymbol, ImmutableArray<FunctionInfo>> _constructorBounds = [];
 	private readonly List<(ImplSymbol Impl, TypeSymbol Target)> _memberBlocks = [];
 	private const int MaxInstanceDepth = 32;
 	
@@ -59,6 +62,9 @@ public sealed class TypePool
 	}
 	
 	public void AddConstructor(TypeSymbol type, FunctionInfo info) => _constructors.GetOrAdd(type).Add(info);
+	
+	public void AddTraitConstructor(TraitSymbol trait, FunctionInfo info) =>
+		_traitConstructors.GetOrAdd(trait).Add(info);
 	
 	public void AddConformance(Conformance conformance) => _conformances.Add(conformance);
 	
@@ -76,6 +82,12 @@ public sealed class TypePool
 	
 	public ImmutableArray<TypeParameterSymbol> GetParameterBounds(TypeParameterSymbol parameter) =>
 		_parameterBounds.GetValueOrDefault(parameter, []);
+	
+	public void SetConstructorBounds(TypeParameterSymbol parameter, ImmutableArray<FunctionInfo> constructors) =>
+		_constructorBounds[parameter] = constructors;
+	
+	public ImmutableArray<FunctionInfo> GetConstructorBounds(TypeParameterSymbol parameter) =>
+		_constructorBounds.GetValueOrDefault(parameter, []);
 	
 	public bool Conforms(TypeSymbol type, TraitSymbol trait) => type switch
 	{
@@ -158,9 +170,42 @@ public sealed class TypePool
 	
 	public IReadOnlyList<FunctionInfo> GetConstructors(TypeSymbol type)
 	{
+		if (type is TypeParameterSymbol parameter)
+			return GetParameterConstructors(parameter);
+		
 		Complete(type);
 		return _constructors.TryGetValue(type, out var list) ? list : [];
 	}
+	
+	private List<FunctionInfo> GetParameterConstructors(TypeParameterSymbol parameter)
+	{
+		var constructors = new List<FunctionInfo>();
+		var traitConstructors = GetBounds(parameter)
+			.SelectMany(GetTraitConstructors)
+			.Select(constructor => InstantiateFunction(constructor, [parameter]));
+		
+		foreach (var constructor in GetConstructorBounds(parameter).Concat(traitConstructors))
+		{
+			if (!constructors.Any(existing => MatchesConstructor(existing.Signature, constructor.Signature)))
+				constructors.Add(constructor);
+		}
+		
+		return constructors;
+	}
+	
+	private IEnumerable<FunctionInfo> GetTraitConstructors(TraitSymbol trait)
+	{
+		TraitCompleter?.Invoke(trait);
+		return _traitConstructors.TryGetValue(trait, out var constructors) ? constructors : [];
+	}
+	
+	public static bool MatchesConstructor(FunctionSignature candidate, FunctionSignature expected) =>
+		candidate.ParameterTypes.SequenceEqual(expected.ParameterTypes) &&
+		Enumerable.Range(0, expected.ParameterTypes.Length).All(i => candidate.GetMode(i) == expected.GetMode(i));
+	
+	public static string DescribeParameters(FunctionSignature constructor) => string.Join(", ",
+		Enumerable.Range(1, constructor.ParameterTypes.Length - 1)
+			.Select(i => constructor.GetMode(i).Describe(constructor.ParameterTypes[i])));
 	
 	public void SetDestructor(TypeSymbol type, FunctionInfo info) => _destructors[type] = info;
 	
@@ -237,7 +282,8 @@ public sealed class TypePool
 	public bool HasNew(TypeSymbol type) => type switch
 	{
 		InvalidType => true,
-		TypeParameterSymbol parameter => parameter.HasNew,
+		TypeParameterSymbol parameter => parameter.HasNew || GetParameterConstructors(parameter)
+			.Any(static constructor => constructor.Signature.ParameterTypes.Length == 1),
 		TraitType => false,
 		_ when GetConstructors(type).Count > 0 => FindNewConstructor(type) is not null,
 		RecordSymbol record => GetMembers(record).OfType<FieldSymbol>().All(HasDefault),
@@ -246,16 +292,77 @@ public sealed class TypePool
 	
 	public FunctionInfo? FindNewConstructor(TypeSymbol type)
 	{
-		var floor = type is NamedTypeSymbol named
-			? (Visibility)Math.Max((int)named.Definition.Visibility, (int)Visibility.Module)
-			: Visibility.Public;
-		
+		var floor = GetConstructorFloor(type);
 		return GetConstructors(type)
 			.Where(constructor => constructor.Signature.ParameterTypes.Length == 1 &&
 			                      constructor.Symbol.Visibility >= floor)
 			.Select(static constructor => (FunctionInfo?)constructor)
 			.FirstOrDefault();
 	}
+	
+	private static Visibility GetConstructorFloor(TypeSymbol type) => type is NamedTypeSymbol named
+		? (Visibility)Math.Max((int)named.Definition.Visibility, (int)Visibility.Module)
+		: Visibility.Public;
+	
+	public Witness? FindConstructorWitness(TypeSymbol type, FunctionSignature expected)
+	{
+		var declared = GetConstructors(type);
+		if (declared.Count == 0)
+			return FindConstructionWitness(type, expected);
+		
+		var floor = GetConstructorFloor(type);
+		return declared
+			.Where(constructor => constructor.Symbol.Visibility >= floor &&
+			                      MatchesConstructor(constructor.Signature, expected))
+			.Select(static constructor => new FunctionWitness(constructor.Symbol, constructor))
+			.FirstOrDefault();
+	}
+	
+	public Witness? FindConstructionWitness(TypeSymbol self, FunctionSignature expected)
+	{
+		var count = expected.ParameterTypes.Length - 1;
+		if (count == 0 && HasDefault(self))
+			return new DefaultWitness();
+		
+		if (self is not RecordSymbol)
+			return count == 1 && IsConvertible(expected) && FindConversion(expected.ParameterTypes[1], self) is
+				{ } conversion
+				? new ConversionWitness(conversion)
+				: null;
+		
+		var fields = GetMembers(self).OfType<FieldSymbol>().ToList();
+		if (fields.Count != count)
+			return null;
+		
+		for (var i = 0; i < count; i++)
+		{
+			var type = GetTypeOfMember(fields[i]);
+			var mode = expected.GetMode(i + 1);
+			if (mode == ParameterMode.Mut || expected.ParameterTypes[i + 1] != type ||
+			    mode == ParameterMode.ReadOnly && !IsCopy(type))
+				return null;
+		}
+		
+		return new MemberwiseWitness();
+	}
+	
+	private bool IsConvertible(FunctionSignature expected) => expected.GetMode(1) switch
+	{
+		ParameterMode.Own => true,
+		ParameterMode.ReadOnly => IsCopy(expected.ParameterTypes[1]),
+		_ => false
+	};
+	
+	private Conversion? FindConversion(TypeSymbol from, TypeSymbol to) =>
+		from == to ? new IdentityConversion(to) : ConversionTable.FindExplicit(from, to);
+	
+	private bool HasConstructor(TypeSymbol type, FunctionSignature expected) => type switch
+	{
+		InvalidType => true,
+		TypeParameterSymbol parameter => GetParameterConstructors(parameter)
+			.Any(constructor => MatchesConstructor(constructor.Signature, expected)),
+		_ => FindConstructorWitness(type, expected) is not null
+	};
 	
 	public RecordSymbol? FindDestructor(TypeSymbol type) => FindDestructor(type, []);
 	
@@ -602,6 +709,8 @@ public sealed class TypePool
 		_ when parameter.IsCopy && !IsCopy(argument) => $"Cannot copy '{argument.Name}'",
 		_ when parameter.HasDrop && !HasDestructor(argument) => $"'{argument.Name}' has no destructor",
 		_ when parameter.HasNew && !HasNew(argument) => $"'{argument.Name}' has no constructor without parameters",
+		_ when FindMissingConstructor(parameter, argument, map) is { } missing =>
+			$"'{argument.Name}' has no constructor taking '{missing}'",
 		_ when GetBounds(parameter).FirstOrDefault(trait => !Conforms(argument, trait)) is { } trait =>
 			$"'{argument.Name}' doesn't implement '{trait.Name}'",
 		_ when FindUnmetBound(parameter, argument, map) is { } trait =>
@@ -610,6 +719,23 @@ public sealed class TypePool
 	};
 	
 	public static bool IsTraitArgument(TypeSymbol type) => type is TraitType or TypeParameterSymbol { IsTrait: true };
+	
+	private string? FindMissingConstructor(TypeParameterSymbol parameter, TypeSymbol argument,
+		IReadOnlyDictionary<TypeParameterSymbol, TypeSymbol>? map)
+	{
+		var bounds = GetConstructorBounds(parameter);
+		if (bounds.IsEmpty)
+			return null;
+		
+		var substitution = map?.ToDictionary() ?? [];
+		substitution[parameter] = argument;
+		return bounds
+			.Select(bound => SubstituteSignature(bound.Signature, substitution))
+			.FirstOrDefault(expected => !expected.ParameterTypes.Any(static type => type is InvalidType) &&
+			                            !HasConstructor(argument, expected)) is { } missing
+			? DescribeParameters(missing)
+			: null;
+	}
 	
 	private string? FindUnmetBound(TypeParameterSymbol parameter, TypeSymbol argument,
 		IReadOnlyDictionary<TypeParameterSymbol, TypeSymbol>? map)
@@ -825,6 +951,19 @@ public sealed class TypePool
 		IReadOnlyList<TypeParameterSymbol> parameters, IReadOnlyList<TypeSymbol> arguments) =>
 		parameters.Zip(arguments).ToDictionary(static pair => pair.First, static pair => pair.Second);
 	
+	public static IEnumerable<TypeParameterSymbol> FindTypeParameters(TypeSymbol type) => type switch
+	{
+		TypeParameterSymbol parameter => [parameter],
+		DynType { Parameter: { } parameter } => [parameter],
+		FStrType fstr => FindTypeParameters(fstr.Value),
+		NamedTypeSymbol named => named.TypeArguments.SelectMany(FindTypeParameters),
+		PointerType pointer => FindTypeParameters(pointer.BaseType),
+		BorrowType borrow => FindTypeParameters(borrow.Target),
+		ArrayType array => FindTypeParameters(array.ElementType),
+		FunctionType function => function.ParameterTypes.Append(function.ReturnType).SelectMany(FindTypeParameters),
+		_ => []
+	};
+	
 	public static bool ContainsTypeParameters(TypeSymbol type) => type switch
 	{
 		TypeParameterSymbol or DynType { Parameter: not null } => true,
@@ -866,6 +1005,11 @@ public sealed class TypePool
 					Substitute(function.ReturnType, map)),
 				_ => type
 			};
+	
+	public FunctionSignature SubstituteSignature(FunctionSignature signature,
+		IReadOnlyDictionary<TypeParameterSymbol, TypeSymbol> map) =>
+		new(signature.ParameterTypes.Select(type => Substitute(type, map)), Substitute(signature.ReturnType, map),
+			signature.IsVariadic, signature.ParameterModes);
 	
 	public FunctionInfo InstantiateFunction(FunctionInfo function, ImmutableArray<TypeSymbol> typeArguments)
 	{

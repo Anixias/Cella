@@ -20,12 +20,11 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 	
 	private static readonly HashSet<TokenType> _constraintTypes =
 	[
-		TokenType.KeywordNoref, TokenType.KeywordCopy, TokenType.KeywordDrop, TokenType.KeywordNew,
-		TokenType.KeywordTrait
+		TokenType.KeywordNoref, TokenType.KeywordCopy, TokenType.KeywordDrop, TokenType.KeywordTrait
 	];
 	
 	private static readonly Dictionary<string, TokenType> _constraintKeywords =
-		BuildContextualKeywords(_constraintTypes);
+		BuildContextualKeywords(_constraintTypes.Append(TokenType.KeywordNew));
 	
 	private static readonly HashSet<TokenType> _operatorNames =
 	[
@@ -370,31 +369,99 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 			
 			var keywords = new List<Token>();
 			var traits = new List<ITypeNode>();
+			var constructors = new List<ConstructorConstraintNode>();
 			if (Match(ref index, TokenType.OpColon))
 			{
 				do
 				{
-					if (Match(ref index, out var keyword, _constraintKeywords, _constraintTypes) ||
-					    Match(ref index, out keyword, TokenType.KeywordNull) ||
-					    Match(ref index, out keyword, TokenType.KeywordAtomic))
+					if (Match(ref index, out var newKeyword, _constraintKeywords, TokenType.KeywordNew))
+					{
+						if (ParseConstructorConstraint(ref index, newKeyword) is not { } constructor)
+							return null;
+						
+						constructors.Add(constructor);
+					}
+					else if (Match(ref index, out var keyword, _constraintKeywords, _constraintTypes) ||
+					         Match(ref index, out keyword, TokenType.KeywordNull) ||
+					         Match(ref index, out keyword, TokenType.KeywordAtomic))
 						keywords.Add(keyword);
-					else if (Peek(index, TokenType.Identifier))
-						traits.Add(ParseType(ref index));
-					else
+					else if (!Peek(index, TokenType.Identifier))
 					{
 						ReportExpected(index, "a constraint");
 						return null;
 					}
+					else if (ParseConstraintType(ref index) is { } trait)
+						traits.Add(trait);
+					else
+						return null;
 				} while (Match(ref index, TokenType.OpPlus));
 			}
 			
-			parameters.Add(new(name, keywords, traits));
+			parameters.Add(new(name, keywords, traits, constructors));
 		} while (Match(ref index, TokenType.OpComma));
 		
 		if (Match(ref index, TokenType.OpCloseBracket))
 			return parameters;
 		
 		ReportExpected(index, "',' or ']'", openBracket);
+		return null;
+	}
+	
+	private ConstructorConstraintNode? ParseConstructorConstraint(ref int index, Token keyword)
+	{
+		if (!Match(ref index, out var openParen, TokenType.OpOpenParen))
+		{
+			ReportExpected(index, "'('");
+			return null;
+		}
+		
+		var modes = new List<Token?>();
+		var types = new List<ITypeNode>();
+		if (Match(ref index, out var closeParen, TokenType.OpCloseParen))
+			return new(keyword, modes, types, closeParen);
+		
+		do
+		{
+			var isBorrowType = Peek(index, TokenType.KeywordMut) && Peek(index + 1, TokenType.OpOpenBracket);
+			modes.Add(!isBorrowType && Match(ref index, out var mode, _parameterModes) ? mode : null);
+			if (!StartsType(index))
+			{
+				ReportExpected(index, "a type");
+				return null;
+			}
+			
+			if (ParseConstraintType(ref index) is not { } type)
+				return null;
+			
+			types.Add(type);
+		} while (Match(ref index, TokenType.OpComma));
+		
+		if (Match(ref index, out closeParen, TokenType.OpCloseParen))
+			return new(keyword, modes, types, closeParen);
+		
+		ReportExpected(index, "',' or ')'", openParen);
+		return null;
+	}
+	
+	private bool StartsType(int index) => Peek(index, TokenType.Identifier) || Peek(index, TokenType.KeywordImm) ||
+	                                      Peek(index, TokenType.KeywordMut) || Peek(index, TokenType.KeywordDyn) ||
+	                                      Peek(index, TokenType.KeywordFun);
+	
+	private ITypeNode? ParseConstraintType(ref int index)
+	{
+		try
+		{
+			return ParseType(ref index);
+		}
+		catch (ParseException e)
+		{
+			Diagnostics.Add(e.Diagnostic);
+		}
+		catch (InvalidOperationException)
+		{
+			ReportUnexpected(Tokens[Math.Min(index, Tokens.Length - 1)]);
+		}
+		
 		return null;
 	}
 	

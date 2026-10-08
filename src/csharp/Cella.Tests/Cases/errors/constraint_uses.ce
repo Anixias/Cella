@@ -44,7 +44,7 @@ twin[T: copy]: fun(value: T) -> i32 = 1
 
 hold[T: drop]: fun(own value: T) -> i32 = 1
 
-make[T: new]: fun -> T = T()
+make[T: new()]: fun -> T = T()
 
 forward[T]: fun(value: T) -> i32 = twin(value)
 

@@ -1,0 +1,86 @@
+mod test
+
+Point: rec
+{
+	x: i32
+	y: i32
+}
+
+Secret: rec
+{
+	n: i32
+
+	new: pvt op(value: i32)
+	{
+		self.n = value
+	}
+}
+
+Wide: rec
+{
+	n: i64
+
+	new: op(value: i64)
+	{
+		self.n = value
+	}
+}
+
+Owned: rec
+{
+	n: i32
+
+	new: op(own value: i32)
+	{
+		self.n = value
+	}
+}
+
+pair[T]: rec
+{
+	value: T
+}
+
+pair[T: new(i32)]: impl
+{
+	fresh: fun(self) -> T = T(1)
+}
+
+make[T: new(i32)]: fun -> T = T(5)
+
+duplicate[T: new(T)]: fun(value: T) -> T = T(value)
+
+taking[T: new(own str, mut i32)]: fun -> i32 = 0
+
+forward[T]: fun -> T = make[T]()
+
+text[T: new(str)]: fun -> T = T(5)
+
+unconstrained[T]: fun -> T = T(1)
+
+lost[T: new(i32)]: fun(own value: T) -> T = T(value)
+
+implicit[T: new(mut i32)]: fun -> T
+{
+	var n = 1
+	ret T(n)
+}
+
+marked[T: new(i32)]: fun -> T
+{
+	var n = 1
+	ret T(mut n)
+}
+
+main: fun -> i32
+{
+	make[Point]()
+	make[Secret]()
+	make[Wide]()
+	make[Owned]()
+	duplicate(Point(1, 2))
+	taking[Point]()
+	make[str]()
+	pair[Point](Point(1, 2)).fresh()
+	ret 0
+}

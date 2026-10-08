@@ -363,6 +363,8 @@ public sealed class AstPrinter : ISyntaxNodeVisitor
 		VisitNode(node.Type, false);
 	}
 	
+	public void Visit(ConstructorConstraintNode node) => _sb.Append(node.SourceLocation.GetText());
+	
 	private void AppendTypeParameters(ImmutableArray<TypeParameterNode> typeParameters)
 	{
 		if (!typeParameters.IsEmpty)
@@ -373,6 +375,8 @@ public sealed class AstPrinter : ISyntaxNodeVisitor
 	{
 		var constraints = parameter.Keywords.Select(static keyword => keyword.Text)
 			.Concat(parameter.Traits.Select(static trait => trait.SourceLocation.GetText().ToString()))
+			.Concat(parameter.Constructors.Select(static constructor =>
+				constructor.SourceLocation.GetText().ToString()))
 			.ToList();
 		
 		return constraints.Count == 0

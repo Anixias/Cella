@@ -1,0 +1,124 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Celsius: rec
+{
+	degrees: f64
+
+	new: op(degrees: i32)
+	{
+		self.degrees = f64(degrees) + 0.5
+	}
+}
+
+Point: rec
+{
+	x: i32
+	y: i32
+}
+
+Twice: rec
+{
+	n: i32
+
+	new: op(value: i32)
+	{
+		self.n = value * 10
+	}
+
+	new: op(other: Twice)
+	{
+		self.n = other.n + 1
+	}
+}
+
+Text: rec
+{
+	id: i32
+
+	new: op(id: i32)
+	{
+		self.id = id
+	}
+
+	new: op(other: Text)
+	{
+		self.id = other.id + 100
+	}
+
+	drop: op
+	{
+		printf("drop %d\n", self.id)
+	}
+}
+
+Holder: rec
+{
+	text: Text
+
+	new: op(own text: Text)
+	{
+		self.text = text
+	}
+}
+
+Counter: rec
+{
+	n: i32
+
+	new: op(mut source: i32)
+	{
+		source += 1
+		self.n = source
+	}
+}
+
+make[T: new(i32)]: fun -> T = T(5)
+
+pair[T: new(i32, i32)]: fun -> T = T(1, 2)
+
+both[T: new(i32) + new(T)]: fun(value: T) -> T
+{
+	val counted = T(5)
+	ret T(value)
+}
+
+convert[T: new(A) + new(B), A, B]: fun(a: A, b: B) -> T
+{
+	val first = T(a)
+	ret T(b)
+}
+
+duplicate[T: new(T)]: fun(value: T) -> T = T(value)
+
+take[T: new(own Text)]: fun(own value: Text) -> T = T(value)
+
+count[T: noref + new(mut i32)]: fun -> T
+{
+	var n = 10
+	val made = T(mut n)
+	printf("%d\n", n)
+	ret made
+}
+
+from[T: new(i32)]: fun(value: i32) -> T = T(value)
+
+main: fun -> i32
+{
+	val p = pair[Point]()
+	printf("%.1f %.1f %d %d %d\n", make[Celsius]().degrees, make[f64](), p.x, p.y, i32(make[u8]()))
+	printf("%d %d %d\n", both[i32](3), both[Twice](Twice(2)).n, convert[i32, i32, i32](1, 2))
+	val a = Text(1)
+	val b = duplicate(a)
+	val h = take[Holder](Text(7))
+	printf("%d %d %d\n", a.id, b.id, h.text.id)
+	printf("%d\n", count[Counter]().n)
+	val c: Celsius = from(21)
+	val build = from[Twice]
+	printf("%.1f %d\n", c.degrees, build(4).n)
+	ret 0
+}

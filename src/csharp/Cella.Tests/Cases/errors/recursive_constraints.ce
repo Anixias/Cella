@@ -5,7 +5,7 @@ cell[T: copy]: rec
 	value: ptr[T]
 }
 
-holder[T: new]: rec
+holder[T: new()]: rec
 {
 	value: ptr[T]
 }

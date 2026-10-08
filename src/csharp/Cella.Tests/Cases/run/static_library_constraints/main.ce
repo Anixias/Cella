@@ -29,7 +29,19 @@ Counter: rec
 	}
 }
 
+Gauge: rec
+{
+	level: i32
+
+	new: op(level: i32)
+	{
+		self.level = level + 1
+	}
+}
+
 describe: fun(shape: dyn[Shape]) -> f64 = shape.area()
+
+reading[T: new(i32)]: fun -> T = T(7)
 
 main: fun -> i32
 {
@@ -37,5 +49,7 @@ main: fun -> i32
 	val b = lib.cell[Shape].of(@c)
 	printf("%.1f %d %d\n", b.area(), lib.make[Counter]().n, lib.make[lib.holder[i32]]().count)
 	printf("%d %.1f\n", i32(lib.box(4).same(lib.twin(4))), lib.measure[Shape, Circle](@c, describe))
+	printf("%d %d %d %.1f\n", lib.build[Gauge](4).level, reading[lib.Meters]().value, lib.build[lib.Meters](2).value,
+		lib.build[f64](3))
 	ret 0
 }

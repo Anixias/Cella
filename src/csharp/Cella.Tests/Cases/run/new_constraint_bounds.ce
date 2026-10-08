@@ -1,0 +1,163 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Make: trait
+{
+	new: op(value: i32)
+}
+
+Empty: trait
+{
+	new: op()
+}
+
+Cell: rec impl Make + Empty
+{
+	n: i32
+
+	new: op(value: i32)
+	{
+		self.n = value + 1
+	}
+
+	new: op()
+	{
+		self.n = 77
+	}
+}
+
+First: trait
+{
+	new: op(value: i32)
+}
+
+Second: trait
+{
+	new: op(value: i32)
+}
+
+i32: impl First + Second
+{
+}
+
+Slot: rec
+{
+	size: usize
+
+	new: op(size: usize)
+	{
+		self.size = size * 2
+	}
+}
+
+pool[T: new(usize)]: rec
+{
+	first: T
+
+	new: op(size: usize)
+	{
+		self.first = T(size)
+	}
+
+	grow: fun(self, size: usize) -> T = T(size + 1)
+}
+
+box[T]: rec
+{
+	value: T
+}
+
+box[T: new(i32)]: impl
+{
+	fresh: fun(self) -> T = T(3)
+}
+
+wrapper[T]: rec
+{
+	n: i32
+
+	new: op(value: i32)
+	{
+		self.n = value + 40
+	}
+}
+
+holder[E]: rec
+{
+	value: E
+
+	make[T: new(E)]: fun(self) -> T = T(self.value)
+}
+
+Wrapped: rec
+{
+	n: i32
+
+	new: op(value: i32)
+	{
+		self.n = value
+	}
+
+	new: op(value: box[Wrapped])
+	{
+		self.n = value.value.n + 1
+	}
+}
+
+Shape: trait
+{
+	area: fun(self) -> i32
+}
+
+Square: rec impl Shape
+{
+	side: i32
+
+	area: fun(self) -> i32 = self.side * self.side
+}
+
+Report: rec
+{
+	value: i32
+
+	new: op(shape: ptr[dyn[Shape]])
+	{
+		self.value = shape.area()
+	}
+}
+
+make[T: new(i32)]: fun -> T = T(5)
+
+blank[T: new()]: fun -> T = T()
+
+forward[T: new(i32)]: fun -> T = make[T]()
+
+viaTrait[T: Make]: fun -> T = make[T]()
+
+viaEmpty[T: Empty]: fun -> T = blank[T]()
+
+both[T: Make + new(i32)]: fun -> T = T(9)
+
+twoTraits[T: First + Second]: fun -> T = T(6)
+
+nested[T: noref + new(i32) + new(box[T])]: fun -> T = T(box[T](T(4)))
+
+measure[K: trait, T: new(ptr[dyn[K]])]: fun(shape: ptr[dyn[K]]) -> T = T(shape)
+
+main: fun -> i32
+{
+	printf("%d %d %d %d %d\n", forward[Cell]().n, viaTrait[Cell]().n, viaEmpty[Cell]().n, both[Cell]().n,
+		twoTraits[i32]())
+	val p = pool[Slot](4)
+	val b = box[i64](1)
+	printf("%llu %llu %lld %d\n", p.first.size, p.grow(5).size, b.fresh(), make[wrapper[str]]().n)
+	var s = Square(3)
+	val shape: ptr[dyn[Shape]] = @s
+	val h = holder[i32](8)
+	printf("%.1f %d %d\n", h.make[f64](), nested[Wrapped]().n, measure[Shape, Report](shape).value)
+	ret 0
+}

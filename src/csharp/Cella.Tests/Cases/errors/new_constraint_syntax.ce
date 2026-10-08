@@ -1,0 +1,20 @@
+mod test
+
+first[T: new]: fun -> i32 = 0
+
+second[T: new + copy]: fun -> i32 = 0
+
+third[T: new(3)]: fun -> i32 = 0
+
+fourth[T: new(i32]: fun -> i32 = 0
+
+fifth[T: new(mut)]: fun -> i32 = 0
+
+sixth[T: new(box[)]: fun -> i32 = 0
+
+Box: rec
+{
+	make[T: new(]: fun -> i32 = 0
+}
+
+main: fun -> i32 = 0

@@ -1,0 +1,74 @@
+
+====== new_constraint_uses.ce ======
+
+Error at line 55, column 29
+54 │ 
+55 │ forward[T]: fun -> T = make[T]()
+                                 ^ 'T' has no constructor taking 'i32'
+
+Error at line 57, column 31
+56 │ 
+57 │ text[T: new(str)]: fun -> T = T(5)
+                                   ╘══╛ No constructor for 'T' accepts argument of type 'integer literal'
+
+Error at line 59, column 30
+58 │ 
+59 │ unconstrained[T]: fun -> T = T(1)
+                                  ╘══╛ No constructor for 'T' accepts argument of type 'i32'
+
+Error at line 61, column 45
+60 │ 
+61 │ lost[T: new(i32)]: fun(own value: T) -> T = T(value)
+                                                 ╘══════╛ No constructor for 'T' accepts argument of type 'T'
+
+Error at line 66, column 8
+65 │ var n = 1
+66 │ ret T(n)
+           ^ Cannot mutably borrow arguments implicitly
+
+Error at line 72, column 8
+71 │ var n = 1
+72 │ ret T(mut n)
+           ╘═╛ Only an argument to a 'mut' parameter can be marked 'mut'
+
+Error at line 77, column 7
+76 │ {
+77 │     make[Point]()
+              ╘═══╛ 'Point' has no constructor taking 'i32'
+
+Error at line 78, column 7
+77 │ make[Point]()
+78 │ make[Secret]()
+          ╘════╛ 'Secret' has no constructor taking 'i32'
+
+Error at line 79, column 7
+78 │ make[Secret]()
+79 │ make[Wide]()
+          ╘══╛ 'Wide' has no constructor taking 'i32'
+
+Error at line 80, column 7
+79 │ make[Wide]()
+80 │ make[Owned]()
+          ╘═══╛ 'Owned' has no constructor taking 'i32'
+
+Error at line 81, column 2
+80 │ make[Owned]()
+81 │ duplicate(Point(1, 2))
+     ╘═══════╛ 'Point' has no constructor taking 'Point'
+
+Error at line 82, column 9
+81 │ duplicate(Point(1, 2))
+82 │ taking[Point]()
+            ╘═══╛ 'Point' has no constructor taking 'own str, mut i32'
+
+Error at line 83, column 7
+82 │ taking[Point]()
+83 │ make[str]()
+          ╘═╛ 'str' has no constructor taking 'i32'
+
+Error at line 84, column 27
+83 │ make[str]()
+84 │ pair[Point](Point(1, 2)).fresh()
+                              ╘═══╛ 'Point' has no constructor taking 'i32'
+
+[compilation failed]

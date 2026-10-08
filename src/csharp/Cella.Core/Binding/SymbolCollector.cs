@@ -21,7 +21,9 @@ public sealed class SymbolCollector : IDeclarationNodeVisitor<Symbol>
 	
 	private static ImmutableArray<TypeParameterSymbol> CreateTypeParameters(
 		ImmutableArray<TypeParameterNode> parameters) => parameters
-		.Select(static parameter => new TypeParameterSymbol(parameter.Identifier.Text, parameter.Keywords))
+		.Select(static parameter => new TypeParameterSymbol(parameter.Identifier.Text, parameter.Keywords.Concat(
+			parameter.Constructors.Where(static constructor => constructor.Types.IsEmpty)
+				.Select(static constructor => constructor.Keyword))))
 		.ToImmutableArray();
 	
 	public void Collect(IDeclarationNode root) => VisitNode(root);
@@ -156,6 +158,8 @@ public sealed class SymbolCollector : IDeclarationNodeVisitor<Symbol>
 	}
 	
 	public Symbol Visit(ParameterNode node) => throw new InvalidOperationException();
+	
+	public Symbol Visit(ConstructorConstraintNode node) => throw new InvalidOperationException();
 	
 	public Symbol Visit(PropertyNode node)
 	{

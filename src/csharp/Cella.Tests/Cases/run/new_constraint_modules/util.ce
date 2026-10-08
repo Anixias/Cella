@@ -1,0 +1,5 @@
+mod util
+
+make[T: new(i32)]: fun -> T = T(5)
+
+blank[T: new()]: fun -> T = T()

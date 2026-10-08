@@ -111,7 +111,8 @@ public sealed unsafe class CodeGenerator : IDisposable
 	public IReadOnlySet<GlobalSymbol> ExportedStatics => _exportedStatics;
 	
 	private bool IsObjectLocal(FunctionSymbol function) =>
-		function.Visibility is Visibility.Private or Visibility.Module && function.Kind != FunctionKind.Destructor &&
+		function.Visibility is Visibility.Private or Visibility.Module &&
+		function.Kind is not (FunctionKind.Destructor or FunctionKind.Constructor) &&
 		!_sharedFunctions.Contains(function);
 	
 	private bool IsExported(FunctionSymbol function) => function.Visibility == Visibility.Public ||
@@ -2482,11 +2483,15 @@ public sealed unsafe class CodeGenerator : IDisposable
 	
 	private Witness? FindWitness(FunctionInfo function)
 	{
-		if (function.Symbol.Trait is null || function.TypeArguments.IsDefaultOrEmpty ||
-		    TypePool.ContainsTypeParameters(function.TypeArguments[0]))
+		if (function.Symbol.Trait is null && function.Symbol.Syntax is not ConstructorConstraintNode ||
+		    function.TypeArguments.IsDefaultOrEmpty || TypePool.ContainsTypeParameters(function.TypeArguments[0]))
 			return null;
 		
-		var witness = _typePool.FindWitness(function.TypeArguments[0], function.Symbol);
+		var self = function.TypeArguments[0];
+		var witness = function.Symbol.Trait is null
+			? _typePool.FindConstructorWitness(self, function.Signature)
+			: _typePool.FindWitness(self, function.Symbol);
+		
 		return witness is FunctionWitness { Function: var target } && target == function.Symbol ? null : witness;
 	}
 	
@@ -2526,7 +2531,8 @@ public sealed unsafe class CodeGenerator : IDisposable
 		LLVMBuilderRef builder)
 	{
 		var self = function.TypeArguments[0];
-		var arguments = _typePool.GetWitnessArguments(self, witness.Function, function.TypeArguments.Skip(1));
+		var declared = function.TypeArguments.TakeLast(function.Symbol.DeclaredTypeParameters.Length);
+		var arguments = _typePool.GetWitnessArguments(self, witness.Function, declared);
 		var target = _typePool.InstantiateFunction(witness.Info, arguments);
 		GetFunctionValue(target);
 		var callee = current.Functions[target];

@@ -62,6 +62,7 @@ public sealed class SignatureCollector
 	private readonly HashSet<FunctionSymbol> _witnessMembers = [];
 	private readonly HashSet<(SourceLocation, string)> _conformanceErrors = [];
 	private readonly List<ConstraintCheck> _deferredChecks = [];
+	private readonly List<(TypeParameterNode, TypeParameterSymbol, ResolutionContext)> _pendingConstructorBounds = [];
 	private readonly List<(GlobalSymbol Global, ITypeNode Node, TypeSymbol Type)> _variables = [];
 	private IConstantResolver? constants;
 	
@@ -87,6 +88,7 @@ public sealed class SignatureCollector
 	{
 		constants = constantResolver;
 		_typePool.TypeCompleter = Complete;
+		_typePool.TraitCompleter = CompleteTrait;
 		
 		foreach (var file in files)
 			Register(file);
@@ -97,6 +99,8 @@ public sealed class SignatureCollector
 		foreach (var impl in _impls)
 			RegisterImplMembers(impl);
 		
+		RegisterConstructorBounds();
+		
 		foreach (var file in files)
 			foreach (var declaration in file.Declarations)
 				Complete(_symbolTable.DeclarationSymbols[declaration]);
@@ -106,6 +110,7 @@ public sealed class SignatureCollector
 		CheckConformances();
 		CheckMemberBlocks();
 		_typePool.TypeCompleter = null;
+		_typePool.TraitCompleter = null;
 	}
 	
 	public TypeSymbol GetImplTarget(ImplSymbol impl) => _implTargets.GetValueOrDefault(impl, NativeSymbols.Invalid);
@@ -366,6 +371,90 @@ public sealed class SignatureCollector
 			
 			if (!traitParameters.IsEmpty)
 				_typePool.SetParameterBounds(parameters[i], traitParameters);
+			
+			if (!nodes[i].Constructors.IsEmpty)
+				_pendingConstructorBounds.Add((nodes[i], parameters[i], context));
+		}
+	}
+	
+	private void RegisterConstructorBounds()
+	{
+		foreach (var (node, parameter, context) in _pendingConstructorBounds)
+		{
+			var deferring = context with { DeferConstraintCheck = DeferAlways };
+			var constructors = node.Constructors
+				.Select(constructor => CollectConstructorBound(constructor, parameter, deferring))
+				.ToList();
+			
+			ReportRepeatedConstructors(node.Constructors, constructors);
+			_typePool.SetConstructorBounds(parameter,
+				[..constructors.Where(static constructor => constructor.Signature.ParameterTypes.Length > 1)]);
+		}
+		
+		_pendingConstructorBounds.Clear();
+	}
+	
+	private bool DeferAlways(ConstraintCheck check)
+	{
+		_deferredChecks.Add(check);
+		return true;
+	}
+	
+	private FunctionInfo CollectConstructorBound(ConstructorConstraintNode node, TypeParameterSymbol parameter,
+		ResolutionContext context)
+	{
+		var modes = node.Modes.Select(SymbolCollector.GetMode).ToArray();
+		var types = new List<TypeSymbol> { _typePool.GetPointerType(parameter) };
+		var parameters = new List<ParameterSymbol> { new("self", node.SourceLocation) { Mode = ParameterMode.Mut } };
+		for (var i = 0; i < node.Types.Length; i++)
+		{
+			var typeNode = node.Types[i];
+			if (typeNode is BorrowTypeNode borrow)
+			{
+				Diagnostics.Add(DiagnosticReporter.ReportBorrowParameter(borrow, null, node.Modes[i] is not null,
+					false));
+				
+				modes[i] = borrow.IsMutable ? ParameterMode.Mut : ParameterMode.ReadOnly;
+				typeNode = borrow.Target;
+			}
+			
+			var type = RejectValueDyn(typeNode, context.ResolveType(typeNode), modes[i]);
+			types.Add(_typePool.GetPassedType(type, modes[i]));
+			parameters.Add(new($"${i + 1}", typeNode.SourceLocation) { Mode = modes[i] });
+		}
+		
+		var symbol = new FunctionSymbol($"{parameter.Name}.new", node, Visibility.Public, null, parameters,
+			FunctionKind.Constructor)
+		{
+			TypeParameters =
+			[
+				parameter,
+				..types.SelectMany(TypePool.FindTypeParameters).Where(found => found != parameter).Distinct()
+			]
+		};
+		
+		var signature = new FunctionSignature(types, NativeSymbols.Void, false, [ParameterMode.Mut, ..modes]);
+		return new FunctionInfo(null, symbol, signature, null, null, context.File);
+	}
+	
+	private void ReportRepeatedConstructors(ImmutableArray<ConstructorConstraintNode> nodes,
+		IReadOnlyList<FunctionInfo> constructors)
+	{
+		for (var i = 0; i < nodes.Length; i++)
+		{
+			var signature = constructors[i].Signature;
+			var same = constructors
+				.Where((other, j) => j != i && HasSameParameters(other.Signature, signature))
+				.ToList();
+			
+			if (same.Count == 0 || signature.ParameterTypes.Any(static type => type is InvalidType))
+				continue;
+			
+			var message = same.Any(other => other.Signature.ParameterModes.SequenceEqual(signature.ParameterModes))
+				? $"'new({TypePool.DescribeParameters(signature)})' is required more than once"
+				: "'new' constraints cannot differ only in parameter modes";
+			
+			Diagnostics.Add(new(DiagnosticSeverity.Error, nodes[i].SourceLocation, message));
 		}
 	}
 	
@@ -373,10 +462,11 @@ public sealed class SignatureCollector
 	{
 		var keywords = node.Keywords;
 		if (keywords.Any(static keyword => keyword.Type == TokenType.KeywordTrait) &&
-		    keywords.Length + node.Traits.Length > 1)
+		    keywords.Length + node.Traits.Length + node.Constructors.Length > 1)
 		{
 			foreach (var location in keywords.Select(static k => k.SourceLocation)
-				         .Concat(node.Traits.Select(static trait => trait.SourceLocation)))
+				         .Concat(node.Traits.Select(static trait => trait.SourceLocation))
+				         .Concat(node.Constructors.Select(static constructor => constructor.SourceLocation)))
 				Diagnostics.Add(new(DiagnosticSeverity.Error, location,
 					"Cannot combine 'trait' with other constraints"));
 			
@@ -772,8 +862,10 @@ public sealed class SignatureCollector
 			return;
 		}
 		
-		var expected = SubstituteSignature(signature, new() { [trait.Self] = self });
-		if (declared.Count == 0 && FindConstructionWitness(self, expected) is { } construction)
+		var expected = _typePool.SubstituteSignature(signature,
+			new Dictionary<TypeParameterSymbol, TypeSymbol> { [trait.Self] = self });
+		
+		if (declared.Count == 0 && _typePool.FindConstructionWitness(self, expected) is { } construction)
 		{
 			conformance.Witnesses[requirement] = construction;
 			return;
@@ -790,44 +882,6 @@ public sealed class SignatureCollector
 					? node.Keyword.SourceLocation
 					: conformance.Location, $"'new' doesn't match '{trait.Name}.new'");
 	}
-	
-	private Witness? FindConstructionWitness(TypeSymbol self, FunctionSignature expected)
-	{
-		var count = expected.ParameterTypes.Length - 1;
-		if (count == 0 && _typePool.HasDefault(self))
-			return new DefaultWitness();
-		
-		if (self is not RecordSymbol)
-			return count == 1 && IsConvertible(expected) && FindConversion(expected.ParameterTypes[1], self) is
-				{ } conversion
-				? new ConversionWitness(conversion)
-				: null;
-		
-		var fields = _typePool.GetMembers(self).OfType<FieldSymbol>().ToList();
-		if (fields.Count != count)
-			return null;
-		
-		for (var i = 0; i < count; i++)
-		{
-			var type = _typePool.GetTypeOfMember(fields[i]);
-			var mode = expected.GetMode(i + 1);
-			if (mode == ParameterMode.Mut || expected.ParameterTypes[i + 1] != type ||
-			    mode == ParameterMode.ReadOnly && !_typePool.IsCopy(type))
-				return null;
-		}
-		
-		return new MemberwiseWitness();
-	}
-	
-	private bool IsConvertible(FunctionSignature expected) => expected.GetMode(1) switch
-	{
-		ParameterMode.Own => true,
-		ParameterMode.ReadOnly => _typePool.IsCopy(expected.ParameterTypes[1]),
-		_ => false
-	};
-	
-	private Conversion? FindConversion(TypeSymbol from, TypeSymbol to) =>
-		from == to ? new IdentityConversion(to) : _typePool.ConversionTable.FindExplicit(from, to);
 	
 	private static IEnumerable<(string Name, FunctionSymbol Function)> GetRequirements(TraitSymbol trait) =>
 	[
@@ -877,7 +931,7 @@ public sealed class SignatureCollector
 		foreach (var member in typeMembers)
 		{
 			var signature = GetFunctionInfo(member).Signature;
-			yield return (member, map.Count == 0 ? signature : SubstituteSignature(signature, map));
+			yield return (member, map.Count == 0 ? signature : _typePool.SubstituteSignature(signature, map));
 		}
 	}
 	
@@ -886,11 +940,6 @@ public sealed class SignatureCollector
 			.OfType<FunctionAccessor>()
 			.Select(static accessor => accessor.Function)
 			.Where(function => GetAccessorKind(function) == kind);
-	
-	private FunctionSignature SubstituteSignature(FunctionSignature signature,
-		Dictionary<TypeParameterSymbol, TypeSymbol> map) =>
-		new(signature.ParameterTypes.Select(type => _typePool.Substitute(type, map)),
-			_typePool.Substitute(signature.ReturnType, map), signature.IsVariadic, signature.ParameterModes);
 	
 	private bool SignaturesMatch(FunctionSignature candidate, FunctionSignature requirement,
 		FunctionSymbol requirementSymbol, FunctionSymbol candidateSymbol, TypeParameterSymbol traitSelf,
@@ -905,7 +954,7 @@ public sealed class SignatureCollector
 		for (var i = 0; i < declared.Length; i++)
 			map[declared[i]] = own[i];
 		
-		var expected = SubstituteSignature(requirement, map);
+		var expected = _typePool.SubstituteSignature(requirement, map);
 		return expected.IsVariadic == candidate.IsVariadic && expected.ReturnType == candidate.ReturnType &&
 		       expected.ParameterTypes.SequenceEqual(candidate.ParameterTypes) &&
 		       Enumerable.Range(0, expected.ParameterTypes.Length)
@@ -919,7 +968,9 @@ public sealed class SignatureCollector
 		    node.Identifier.Type == TokenType.Identifier)
 			return null;
 		
-		var expected = SubstituteSignature(signature, new() { [traitSelf] = self });
+		var expected = _typePool.SubstituteSignature(signature,
+			new Dictionary<TypeParameterSymbol, TypeSymbol> { [traitSelf] = self });
+		
 		var registry = _typePool.OperatorRegistry;
 		if (node.Receiver is not null && expected.ParameterTypes.Length == 2)
 			return expected.GetMode(0) == ParameterMode.Mut && registry.GetBinaryCandidates(node.Identifier.Type)
@@ -1045,6 +1096,9 @@ public sealed class SignatureCollector
 		block.IsNoref && !declared.IsNoref || block.HasNull && !declared.HasNull || block.IsCopy && !declared.IsCopy ||
 		block.HasDrop && !declared.HasDrop || block.HasNew && !declared.HasNew ||
 		block.IsAtomic && !declared.IsAtomic ||
+		_typePool.GetConstructorBounds(block).Any(constructor => !_typePool.GetConstructors(declared)
+			.Any(existing => TypePool.MatchesConstructor(_typePool.SubstituteSignature(existing.Signature, map),
+				constructor.Signature))) ||
 		_typePool.GetBounds(block).Except(_typePool.GetBounds(declared)).Any() ||
 		_typePool.GetParameterBounds(block).Cast<TypeSymbol>()
 			.Except(_typePool.GetParameterBounds(declared).Select(bound => map[bound]))
@@ -1119,7 +1173,7 @@ public sealed class SignatureCollector
 		var signature = GetFunctionInfo(function).Signature;
 		return block is null
 			? signature
-			: SubstituteSignature(signature, TypePool.CreateMap(block.TypeParameters, [..declared]));
+			: _typePool.SubstituteSignature(signature, TypePool.CreateMap(block.TypeParameters, [..declared]));
 	}
 	
 	private void CompleteRecord(RecordSymbol record)
@@ -1993,7 +2047,9 @@ public sealed class SignatureCollector
 		var info = new FunctionInfo(mangledName, function, signature, scope, null, context.File);
 		
 		_builder.Functions[function] = info;
-		if (context.Trait is null)
+		if (context.Trait is { } trait)
+			_typePool.AddTraitConstructor(trait, info);
+		else
 			_typePool.AddConstructor(containingType, info);
 	}
 	

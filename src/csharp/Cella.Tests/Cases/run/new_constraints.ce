@@ -47,9 +47,9 @@ box[T]: rec
 	value: T
 }
 
-make[T: new]: fun -> T = T()
+make[T: new()]: fun -> T = T()
 
-forward[T: new]: fun -> T = make[T]()
+forward[T: new()]: fun -> T = make[T]()
 
 main: fun -> i32
 {

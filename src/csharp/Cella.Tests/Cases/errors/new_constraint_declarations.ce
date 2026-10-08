@@ -1,0 +1,42 @@
+mod test
+
+Shape: trait
+{
+	area: fun(self) -> i32
+}
+
+box[T: new(i32)]: rec
+{
+	value: T
+}
+
+box[T: new(i32)]: impl
+{
+	same: fun(self) -> i32 = 0
+}
+
+first[T: new(i32) + new(i32)]: fun -> i32 = 0
+
+second[T: new(i32) + new(own i32)]: fun -> i32 = 0
+
+third[T: new() + new()]: fun -> i32 = 0
+
+fourth[T: new(U) + new(U), U]: fun -> i32 = 0
+
+fifth[T: new(U) + new(V), U, V]: fun -> i32 = 0
+
+sixth[T: new(Missing) + new(Other)]: fun -> i32 = 0
+
+seventh[K: trait + new(i32)]: fun -> i32 = 0
+
+eighth[T: new(imm[i32])]: fun -> i32 = 0
+
+ninth[T: new(mut[i32])]: fun -> i32 = 0
+
+tenth[T: new(own dyn[Shape])]: fun -> i32 = 0
+
+eleventh[T: new(dyn[Shape])]: fun -> i32 = 0
+
+wrap[T: new(box[T])]: fun -> i32 = 0
+
+main: fun -> i32 = 0

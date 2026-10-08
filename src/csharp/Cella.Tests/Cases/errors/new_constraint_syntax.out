@@ -1,0 +1,40 @@
+
+====== new_constraint_syntax.ce ======
+
+Error at line 3, column 13
+2 │ 
+3 │ first[T: new]: fun -> i32 = 0
+                ^ Expected '('
+
+Error at line 5, column 15
+4 │ 
+5 │ second[T: new + copy]: fun -> i32 = 0
+                  ^ Expected '('
+
+Error at line 7, column 14
+6 │ 
+7 │ third[T: new(3)]: fun -> i32 = 0
+                 ^ Expected a type
+
+Error at line 9, column 18
+8 │ 
+9 │ fourth[T: new(i32]: fun -> i32 = 0
+                     ^ Expected ',' or ')'
+                     | To match the '(' on line 9
+
+Error at line 11, column 17
+10 │ 
+11 │ fifth[T: new(mut)]: fun -> i32 = 0
+                     ^ Expected a type
+
+Error at line 13, column 18
+12 │ 
+13 │ sixth[T: new(box[)]: fun -> i32 = 0
+                      ^ Unexpected token
+
+Error at line 17, column 14
+16 │ {
+17 │     make[T: new(]: fun -> i32 = 0
+                     ^ Expected a type
+
+[compilation failed]

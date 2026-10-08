@@ -1,0 +1,29 @@
+mod test
+
+use util
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Score: mod rec
+{
+	n: i32
+
+	new: mod op(value: i32)
+	{
+		self.n = value + 30
+	}
+
+	new: mod op()
+	{
+		self.n = 12
+	}
+}
+
+main: fun -> i32
+{
+	printf("%d %d\n", util.make[Score]().n, util.blank[Score]().n)
+	ret 0
+}

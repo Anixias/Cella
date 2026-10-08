@@ -220,6 +220,8 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	
 	public IResolvedDeclarationNode Visit(ParameterNode node) => throw new InvalidOperationException();
 	
+	public IResolvedDeclarationNode Visit(ConstructorConstraintNode node) => throw new InvalidOperationException();
+	
 	public IResolvedDeclarationNode Visit(PropertyNode node) => throw new InvalidOperationException();
 	
 	private IEnumerable<IResolvedDeclarationNode> VisitMember(IDeclarationNode member) =>
@@ -904,7 +906,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		if (targetType is TypeParameterSymbol { HasNew: true } && node.Arguments.Length == 0)
 			return new ResolvedNewExpressionNode(targetType, node);
 		
-		if (targetType is TypeParameterSymbol && GetConstructors(targetType).Count > 0)
+		if (targetType is TypeParameterSymbol && _typePool.GetConstructors(targetType).Count > 0)
 			return VisitConstructorCall(node, targetType, null);
 		
 		if (node.Arguments.Length != 1)
@@ -1256,7 +1258,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	private IResolvedExpressionNode VisitConstructorCall(CallExpressionNode node, TypeSymbol targetType,
 		IResolvedExpressionNode? firstArg)
 	{
-		var constructors = GetConstructors(targetType);
+		var constructors = _typePool.GetConstructors(targetType);
 		var ctorCandidates = constructors
 			.Where(info => CanAccess(targetType, info.Symbol))
 			.Select(info => new ReceiverCallable(info, targetType))
@@ -1283,15 +1285,6 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		
 		return ResolveConstructorCall(node, targetType, args, ctorCandidates, targetType);
 	}
-	
-	private IReadOnlyList<FunctionInfo> GetConstructors(TypeSymbol type) => type is TypeParameterSymbol parameter
-		?
-		[
-			.._typePool.GetBounds(parameter)
-				.SelectMany(static trait => trait.Constructors)
-				.Select(constructor => GetFunctionInfo(constructor, type))
-		]
-		: _typePool.GetConstructors(type);
 	
 	private IResolvedExpressionNode ResolveConstructorCall(CallExpressionNode node, TypeSymbol targetType,
 		IResolvedExpressionNode[] args, ICallable[] ctorCandidates, TypeSymbol? target)
@@ -5045,7 +5038,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		
 		public TypeSymbol ReturnType { get; } = type;
 		public ParameterMode GetMode(int index) => Info.Signature.GetMode(index + 1);
-		public string GetParameterName(int index) => Info.Symbol.Parameters[index + 1].Name;
+		
+		public string? GetParameterName(int index) =>
+			Info.Symbol.Syntax is ConstructorConstraintNode ? null : Info.Symbol.Parameters[index + 1].Name;
 	}
 }
 

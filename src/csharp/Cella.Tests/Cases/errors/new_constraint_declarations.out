@@ -1,0 +1,91 @@
+
+====== new_constraint_declarations.ce ======
+
+Error at line 13, column 19
+12 │ 
+13 │ box[T: new(i32)]: impl
+                       ╘══╛ Cannot declare 'impl' blocks that add no bounds
+
+Error at line 18, column 10
+17 │ 
+18 │ first[T: new(i32) + new(i32)]: fun -> i32 = 0
+              ╘══════╛ 'new(i32)' is required more than once
+
+Error at line 18, column 21
+17 │ 
+18 │ first[T: new(i32) + new(i32)]: fun -> i32 = 0
+                         ╘══════╛ 'new(i32)' is required more than once
+
+Error at line 20, column 11
+19 │ 
+20 │ second[T: new(i32) + new(own i32)]: fun -> i32 = 0
+               ╘══════╛ 'new' constraints cannot differ only in parameter modes
+
+Error at line 20, column 22
+19 │ 
+20 │ second[T: new(i32) + new(own i32)]: fun -> i32 = 0
+                          ╘══════════╛ 'new' constraints cannot differ only in parameter modes
+
+Error at line 22, column 10
+21 │ 
+22 │ third[T: new() + new()]: fun -> i32 = 0
+              ╘═══╛ 'new()' is required more than once
+
+Error at line 22, column 18
+21 │ 
+22 │ third[T: new() + new()]: fun -> i32 = 0
+                      ╘═══╛ 'new()' is required more than once
+
+Error at line 24, column 11
+23 │ 
+24 │ fourth[T: new(U) + new(U), U]: fun -> i32 = 0
+               ╘════╛ 'new(U)' is required more than once
+
+Error at line 24, column 20
+23 │ 
+24 │ fourth[T: new(U) + new(U), U]: fun -> i32 = 0
+                        ╘════╛ 'new(U)' is required more than once
+
+Error at line 28, column 14
+27 │ 
+28 │ sixth[T: new(Missing) + new(Other)]: fun -> i32 = 0
+                  ╘═════╛ Type 'Missing' not found in this scope
+
+Error at line 28, column 29
+27 │ 
+28 │ sixth[T: new(Missing) + new(Other)]: fun -> i32 = 0
+                                 ╘═══╛ Type 'Other' not found in this scope
+
+Error at line 30, column 12
+29 │ 
+30 │ seventh[K: trait + new(i32)]: fun -> i32 = 0
+                ╘═══╛ Cannot combine 'trait' with other constraints
+
+Error at line 30, column 20
+29 │ 
+30 │ seventh[K: trait + new(i32)]: fun -> i32 = 0
+                        ╘══════╛ Cannot combine 'trait' with other constraints
+
+Error at line 32, column 15
+31 │ 
+32 │ eighth[T: new(imm[i32])]: fun -> i32 = 0
+                   ╘══════╛ Cannot use borrow types for parameters
+                          | 'i32' is already a read-only borrow
+
+Error at line 34, column 14
+33 │ 
+34 │ ninth[T: new(mut[i32])]: fun -> i32 = 0
+                  ╘══════╛ Cannot use borrow types for parameters
+                         | Did you mean 'mut i32'?
+
+Error at line 36, column 18
+35 │ 
+36 │ tenth[T: new(own dyn[Shape])]: fun -> i32 = 0
+                      ╘════════╛ Cannot use 'dyn[Shape]' by value
+
+Error at line 40, column 17
+39 │ 
+40 │ wrap[T: new(box[T])]: fun -> i32 = 0
+                     ^ 'T' has no constructor taking 'i32'
+
+[compilation failed]

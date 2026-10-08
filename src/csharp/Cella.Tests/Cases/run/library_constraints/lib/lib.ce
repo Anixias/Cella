@@ -36,7 +36,19 @@ holder[T]: pub rec
 	}
 }
 
-make[T: new]: pub fun -> T = T()
+make[T: new()]: pub fun -> T = T()
+
+Meters: pub rec
+{
+	value: i32
+
+	new: op(value: i32)
+	{
+		self.value = value * 100
+	}
+}
+
+build[T: new(i32)]: pub fun(value: i32) -> T = T(value)
 
 twin[T: copy]: pub fun(value: T) -> box[T] = box(value)
 
