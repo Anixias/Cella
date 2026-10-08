@@ -1,0 +1,54 @@
+mod test
+
+Buffer: rec
+{
+	id: i32
+
+	drop: op
+	{
+	}
+}
+
+Holder: rec
+{
+	buffer: Buffer
+}
+
+Slot: enum
+{
+	empty
+	full(buffer: Buffer)
+}
+
+Cache: rec
+{
+	kept: var Buffer = Buffer(0)
+}
+
+current: var Buffer = Buffer(1)
+holder: var Holder = Holder(Buffer(2))
+buffers: var array[Buffer, 2] = [Buffer(3), Buffer(4)]
+slot: var Slot = Slot.full(Buffer(5))
+origin: val Buffer = Buffer(6)
+
+take: fun(own buffer: Buffer)
+{
+}
+
+main: fun -> i32
+{
+	val a = own current
+	val b = current
+	take(current)
+	val c = holder.buffer
+	val d = own buffers[1]
+	match own slot
+	{
+		empty => {}
+		full(buffer) => take(buffer)
+	}
+
+	val e = Cache.kept
+	val f = origin
+	ret 0
+}

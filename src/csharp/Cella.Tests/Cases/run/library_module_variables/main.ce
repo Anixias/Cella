@@ -1,0 +1,17 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+main: fun -> i32
+{
+	lib.settings.width = 800
+	lib.flags[0] = true
+	val pointer = @lib.settings
+	pointer.height = 600
+	lib.running = !lib.running
+	printf("%d %d %d %d\n", lib.area(), i32(lib.flags[0]), i32(lib.flags[1]), i32(lib.running))
+	ret 0
+}

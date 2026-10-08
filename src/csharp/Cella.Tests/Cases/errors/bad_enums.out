@@ -56,9 +56,4 @@ Error at line 42, column 1
 42 │ Point: enum
      ╘═══╛ 'Point' is declared more than once in this module
 
-Error at line 47, column 14
-46 │ 
-47 │ current: var Team = Team.blue
-                  ╘══╛ Module variables must be numbers, 'bool' or 'char'
-
 [compilation failed]

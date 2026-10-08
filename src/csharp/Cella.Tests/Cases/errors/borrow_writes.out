@@ -46,16 +46,6 @@ Error at line 47, column 20
 47 │ val s: imm[i32] = 5
                        ^ Cannot borrow unstored values
 
-Error at line 48, column 14
-47 │ val s: imm[i32] = 5
-48 │ val g = imm counter
-                 ╘═════╛ Cannot borrow module variables
-
-Error at line 49, column 14
-48 │ val g = imm counter
-49 │ val h = mut counter
-                 ╘═════╛ Cannot mutably borrow module variables
-
 Error at line 53, column 23
 52 │ val viewed = imm buffer
 53 │ val copied: Buffer = viewed

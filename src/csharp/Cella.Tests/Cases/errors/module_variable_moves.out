@@ -1,0 +1,44 @@
+
+====== module_variable_moves.ce ======
+
+Error at line 40, column 14
+39 │ {
+40 │     val a = own current
+                     ╘═════╛ Cannot move module variables
+
+Error at line 41, column 10
+40 │ val a = own current
+41 │ val b = current
+             ╘═════╛ Cannot move module variables
+
+Error at line 42, column 7
+41 │ val b = current
+42 │ take(current)
+          ╘═════╛ Cannot move module variables
+
+Error at line 43, column 10
+42 │ take(current)
+43 │ val c = holder.buffer
+             ╘═══════════╛ Cannot move module variables
+
+Error at line 44, column 14
+43 │ val c = holder.buffer
+44 │ val d = own buffers[1]
+                 ╘════════╛ Cannot move module variables
+
+Error at line 45, column 12
+44 │ val d = own buffers[1]
+45 │ match own slot
+               ╘══╛ Cannot move module variables
+
+Error at line 51, column 10
+50 │ 
+51 │ val e = Cache.kept
+             ╘════════╛ Cannot move static variables
+
+Error at line 52, column 10
+51 │ val e = Cache.kept
+52 │ val f = origin
+             ╘════╛ Cannot move module values
+
+[compilation failed]

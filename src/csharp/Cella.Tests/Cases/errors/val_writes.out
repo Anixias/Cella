@@ -26,9 +26,4 @@ Error at line 22, column 2
 22 │ point.x = 4
      ╘═════╛ Cannot reassign values
 
-Error at line 23, column 11
-22 │ point.x = 4
-23 │ var p = @counter
-              ╘═════╛ Cannot take the address of module variables
-
 [compilation failed]

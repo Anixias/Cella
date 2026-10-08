@@ -46,11 +46,6 @@ Error at line 46, column 13
 46 │ damage(mut fixed, 3)
                 ╘═══╛ Cannot mutably borrow values
 
-Error at line 47, column 13
-46 │ damage(mut fixed, 3)
-47 │ damage(mut counter, 1)
-                ╘═════╛ Cannot mutably borrow module variables
-
 Error at line 48, column 13
 47 │ damage(mut counter, 1)
 48 │ damage(mut limit, 1)

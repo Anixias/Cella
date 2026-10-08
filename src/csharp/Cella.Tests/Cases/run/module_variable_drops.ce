@@ -1,0 +1,38 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Buffer: rec
+{
+	id: i32
+
+	drop: op
+	{
+		printf("drop %d ", self.id)
+	}
+}
+
+Cache: rec
+{
+	kept: var Buffer = Buffer(10)
+}
+
+current: var Buffer = Buffer(1)
+
+replace: fun(own next: Buffer)
+{
+	current = next
+}
+
+main: fun -> i32
+{
+	current = Buffer(2)
+	replace(Buffer(3))
+	current.id += 10
+	Cache.kept = Buffer(20)
+	printf("| %d %d\n", current.id, Cache.kept.id)
+	ret 0
+}

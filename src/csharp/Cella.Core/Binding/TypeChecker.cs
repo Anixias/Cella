@@ -627,7 +627,7 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool, 
 		var place = SkipAssignment(node.Value);
 		if (!IsLValue(place))
 			Diagnostics.Add(new(DiagnosticSeverity.Error, location, $"Cannot move {DescribeUnstored(place)}"));
-		else if (place is ResolvedGlobalExpressionNode { Symbol: var global })
+		else if (FindGlobal(place) is { } global)
 			Diagnostics.Add(new(DiagnosticSeverity.Error, location, $"Cannot move {DescribeGlobals(global)}"));
 		else if (IsThroughBorrow(place))
 			Diagnostics.Add(new(DiagnosticSeverity.Error, location, "Cannot move borrowed values"));
@@ -646,7 +646,10 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool, 
 		if (value is ResolvedOwnExpressionNode || !IsLValue(place) || typePool.IsCopy(value.Type))
 			return;
 		
-		if (IsThroughBorrow(place))
+		if (FindGlobal(place) is { } global)
+			Diagnostics.Add(new(DiagnosticSeverity.Error, value.Syntax.SourceLocation,
+				$"Cannot move {DescribeGlobals(global)}"));
+		else if (IsThroughBorrow(place))
 			Diagnostics.Add(new(DiagnosticSeverity.Error, value.Syntax.SourceLocation, "Cannot move borrowed values"));
 		else if (IsThroughPointer(place))
 			Diagnostics.Add(new(DiagnosticSeverity.Error, value.Syntax.SourceLocation,
@@ -683,6 +686,14 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool, 
 	
 	private static string DescribeUnstored(IResolvedExpressionNode place) =>
 		IsGetterCall(place) ? "properties" : "unstored values";
+	
+	private static GlobalSymbol? FindGlobal(IResolvedExpressionNode place) => place switch
+	{
+		ResolvedGlobalExpressionNode node => node.Symbol,
+		ResolvedAccessExpressionNode { Member: FieldSymbol } node => FindGlobal(node.Target),
+		ResolvedIndexerExpressionNode { Target.Type: ArrayType } node => FindGlobal(node.Target),
+		_ => null
+	};
 	
 	private static string DescribeGlobals(GlobalSymbol global) =>
 		$"{(global.ContainingType is null ? "module" : "static")} {(global.IsMutable ? "variables" : "values")}";
@@ -749,8 +760,6 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool, 
 		var location = place.Syntax.SourceLocation;
 		if (!IsLValue(place))
 			Diagnostics.Add(new(DiagnosticSeverity.Error, location, $"Cannot borrow {DescribeUnstored(place)}"));
-		else if (place is ResolvedGlobalExpressionNode { Symbol: { IsMutable: true } global })
-			Diagnostics.Add(new(DiagnosticSeverity.Error, location, $"Cannot borrow {DescribeGlobals(global)}"));
 	}
 	
 	private void CheckMutPlace(IResolvedExpressionNode place)
@@ -759,9 +768,6 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool, 
 		if (!IsLValue(place))
 			Diagnostics.Add(new(DiagnosticSeverity.Error, location,
 				$"Cannot mutably borrow {DescribeUnstored(place)}"));
-		else if (place is ResolvedGlobalExpressionNode { Symbol: { IsMutable: true } global })
-			Diagnostics.Add(new(DiagnosticSeverity.Error, location,
-				$"Cannot mutably borrow {DescribeGlobals(global)}"));
 		else if (ReportUnwritable(place) is { } unwritable)
 			Diagnostics.Add(unwritable);
 		else if (IsThroughReadOnlyBorrow(place))
@@ -876,10 +882,6 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool, 
 		if (node.Operation?.Op == TokenType.OpAt && !IsLValue(node.Operand))
 			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Operand.Syntax.SourceLocation,
 				$"Cannot take the address of {DescribeUnstored(node.Operand)}"));
-		else if (node is { Operation.Op: TokenType.OpAt } &&
-		         node.Operand is ResolvedGlobalExpressionNode { Symbol: { IsMutable: true } global })
-			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Operand.Syntax.SourceLocation,
-				$"Cannot take the address of {DescribeGlobals(global)}"));
 		
 		var reported = overflows;
 		VisitNode(node.Operand);

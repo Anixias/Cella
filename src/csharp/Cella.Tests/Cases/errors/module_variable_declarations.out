@@ -1,0 +1,24 @@
+
+====== module_variable_declarations.ce ======
+
+Error at line 10, column 15
+ 9 │ {
+10 │     pointer: var imm[i32] = imm fixed
+                      ╘══════╛ Cannot store borrows in static variables
+
+Error at line 14, column 11
+13 │ fixed: val i32 = 5
+14 │ name: var str = "a"
+               ╘═╛ Cannot store borrows in module variables
+
+Error at line 15, column 12
+14 │ name: var str = "a"
+15 │ label: var Label = Label("b")
+                ╘═══╛ Cannot store borrows in module variables
+
+Error at line 16, column 12
+15 │ label: var Label = Label("b")
+16 │ views: var array[str, 2] = ["c", "d"]
+                ╘═══════════╛ Cannot store borrows in module variables
+
+[compilation failed]

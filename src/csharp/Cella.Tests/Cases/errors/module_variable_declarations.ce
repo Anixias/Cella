@@ -1,0 +1,18 @@
+mod test
+
+Label: ref rec
+{
+	text: str
+}
+
+Holder: rec
+{
+	pointer: var imm[i32] = imm fixed
+}
+
+fixed: val i32 = 5
+name: var str = "a"
+label: var Label = Label("b")
+views: var array[str, 2] = ["c", "d"]
+
+main: fun -> i32 = 0

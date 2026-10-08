@@ -14,7 +14,7 @@ Error at line 11, column 2
 Error at line 12, column 13
 11 │ maxHp: val i32 = 1
 12 │ names: var str = "a"
-                ╘═╛ Static variables must be numbers, 'bool' or 'char'
+                ╘═╛ Cannot store borrows in static variables
 
 Error at line 13, column 14
 12 │ names: var str = "a"

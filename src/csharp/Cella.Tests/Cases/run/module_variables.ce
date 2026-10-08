@@ -1,0 +1,92 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Stats: rec
+{
+	hits: i32
+	misses: i32
+
+	bump: fun(mut self)
+	{
+		self.hits += 1
+	}
+
+	total: fun(self) -> i32 = self.hits + self.misses
+}
+
+Team: enum
+{
+	red
+	blue(score: i32)
+}
+
+Registry: rec
+{
+	count: var i32 = 0
+	last: var Stats = Stats(0, 0)
+}
+
+stats: var Stats = Stats(1, 2)
+values: var array[i32, 3] = [1, 2, 3]
+team: var Team = Team.blue(5)
+running: var bool = true
+cursor: var ptr[i32] = null
+handler: var fun[i32 -> i32] = double
+
+double: fun(value: i32) -> i32 = value * 2
+triple: fun(value: i32) -> i32 = value * 3
+
+addTen: fun(mut value: i32)
+{
+	value += 10
+}
+
+reset: fun(mut target: Stats)
+{
+	target = Stats(0, 0)
+}
+
+current: fun -> imm[Stats] = imm stats
+
+main: fun -> i32
+{
+	stats.hits += 4
+	stats.bump()
+	addTen(mut stats.misses)
+	printf("%d %d %d\n", stats.hits, stats.misses, stats.total())
+
+	values[1] = 20
+	addTen(mut values[2])
+	val pointer = @values[0]
+	*pointer = 7
+	printf("%d %d %d\n", values[0], values[1], values[2])
+
+	match mut team
+	{
+		red => {}
+		blue(score) => score += 1
+	}
+
+	if team is blue(score)
+		printf("%d\n", score)
+
+	running = !running
+	cursor = @values[1]
+	printf("%d %d\n", i32(running), *cursor)
+
+	handler = triple
+	printf("%d\n", handler(5))
+
+	Registry.count += 2
+	Registry.last.hits = 9
+	addTen(mut Registry.count)
+	val view = current()
+	val copy: i32 = view.hits
+	reset(mut stats)
+	printf("%d %d %d %d %d\n", Registry.count, Registry.last.hits, copy, stats.hits, current().misses)
+	ret 0
+}

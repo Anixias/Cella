@@ -1,0 +1,2 @@
+drop 1 drop 2 drop 10 | 13 20
+[exit code 0]

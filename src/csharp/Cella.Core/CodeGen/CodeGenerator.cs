@@ -1948,11 +1948,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 	private LLVMValueRef EmitAssignValue(AssignValue v, LLVMBuilderRef builder)
 	{
 		var right = EmitValue(v.Right, builder);
-		if (v.Left is GlobalValue global)
-			EmitGlobalStore(global.Global, right, builder);
-		else
-			builder.BuildStore(right, EmitAddress(v.Left, builder));
-		
+		builder.BuildStore(right, EmitAddress(v.Left, builder));
 		return right;
 	}
 	
@@ -2076,10 +2072,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 	
 	private LLVMValueRef CreateGlobal(GlobalInfo info)
 	{
-		var initializer = info.Symbol.IsMutable && info.Value is BoolConstant flag
-			? LLVMValueRef.CreateConstInt(LLVMTypeRef.Int8, flag.Value ? 1uL : 0uL)
-			: EmitStaticConstant(info.Value!);
-		
+		var initializer = EmitStaticConstant(info.Value!);
 		var global = current.Module.AddGlobal(initializer.TypeOf, info.MangledName);
 		global.Initializer = initializer;
 		global.IsGlobalConstant = !info.Symbol.IsMutable;
@@ -2089,7 +2082,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 	
 	private LLVMValueRef DeclareGlobal(GlobalInfo info)
 	{
-		var global = current.Module.AddGlobal(GetGlobalStorageType(info), info.MangledName);
+		var global = current.Module.AddGlobal(MapTypeSymbol(info.Type), info.MangledName);
 		global.IsGlobalConstant = !info.Symbol.IsMutable;
 		current.Globals[info.Symbol] = global;
 		return global;
@@ -2160,36 +2153,11 @@ public sealed unsafe class CodeGenerator : IDisposable
 		return _typePool.InstantiateGlobal(instance.GetStaticField(info.Symbol.Name)!, _modules);
 	}
 	
-	private LLVMTypeRef GetGlobalStorageType(GlobalInfo info) =>
-		info.Symbol.IsMutable && info.Type == NativeSymbols.Bool ? LLVMTypeRef.Int8 : MapTypeSymbol(info.Type);
-	
 	private LLVMValueRef EmitGlobalLoad(GlobalInfo info, LLVMBuilderRef builder)
 	{
 		info = SubstituteGlobal(info);
-		var storageType = GetGlobalStorageType(info);
-		var load = builder.BuildLoad2(storageType, GetGlobal(info), info.Symbol.Name);
-		if (!info.Symbol.IsMutable)
-			return load;
-		
-		MakeMonotonic(load);
-		load.Alignment = _targetData.ABIAlignmentOfType(storageType);
-		return info.Type == NativeSymbols.Bool ? builder.BuildTrunc(load, LLVMTypeRef.Int1) : load;
+		return builder.BuildLoad2(MapTypeSymbol(info.Type), GetGlobal(info), info.Symbol.Name);
 	}
-	
-	private void EmitGlobalStore(GlobalInfo info, LLVMValueRef value, LLVMBuilderRef builder)
-	{
-		info = SubstituteGlobal(info);
-		var storageType = GetGlobalStorageType(info);
-		if (info.Type == NativeSymbols.Bool)
-			value = builder.BuildZExt(value, storageType);
-		
-		var store = builder.BuildStore(value, GetGlobal(info));
-		MakeMonotonic(store);
-		store.Alignment = _targetData.ABIAlignmentOfType(storageType);
-	}
-	
-	private static void MakeMonotonic(LLVMValueRef instruction) =>
-		LLVM.SetOrdering((LLVMOpaqueValue*)instruction.Handle, LLVMAtomicOrdering.LLVMAtomicOrderingMonotonic);
 	
 	private LLVMValueRef EmitFunctionReference(FunctionInfo function, TypeSymbol type)
 	{

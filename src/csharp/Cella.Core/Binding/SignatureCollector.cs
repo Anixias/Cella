@@ -62,6 +62,7 @@ public sealed class SignatureCollector
 	private readonly HashSet<FunctionSymbol> _witnessMembers = [];
 	private readonly HashSet<(SourceLocation, string)> _conformanceErrors = [];
 	private readonly List<ConstraintCheck> _deferredChecks = [];
+	private readonly List<(GlobalSymbol Global, ITypeNode Node, TypeSymbol Type)> _variables = [];
 	private IConstantResolver? constants;
 	
 	public DiagnosticList Diagnostics { get; } = new();
@@ -101,6 +102,7 @@ public sealed class SignatureCollector
 				Complete(_symbolTable.DeclarationSymbols[declaration]);
 		
 		ReportDeferredChecks();
+		ReportBorrowingVariables();
 		CheckConformances();
 		CheckMemberBlocks();
 		_typePool.TypeCompleter = null;
@@ -190,12 +192,8 @@ public sealed class SignatureCollector
 			: global.Visibility;
 		
 		ReportHiddenType(node.Type, type, visibility, global.Name);
-		if (node.IsMutable && !IsScalar(type))
-		{
-			var kind = global.ContainingType is null ? "Module" : "Static";
-			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Type.SourceLocation,
-				$"{kind} variables must be numbers, 'bool' or 'char'"));
-		}
+		if (node.IsMutable)
+			_variables.Add((global, node.Type, type));
 		
 		_globalTypes[global] = type;
 		Exit();
@@ -237,8 +235,18 @@ public sealed class SignatureCollector
 	private Constant GetGlobalValue(GlobalSymbol global) =>
 		GetGlobalInfo(global) is { Value: { } value } ? value : InvalidConstant.Instance;
 	
-	private static bool IsScalar(TypeSymbol type) =>
-		type is IntegerType or FloatType or PrimitiveType { Kind: PrimitiveTypeKind.Bool } or InvalidType;
+	private void ReportBorrowingVariables()
+	{
+		foreach (var (global, node, type) in _variables)
+		{
+			if (TypePool.ContainsTypeParameters(type) || !_typePool.HoldsBorrows(type))
+				continue;
+			
+			var kind = global.ContainingType is null ? "module" : "static";
+			Diagnostics.Add(new(DiagnosticSeverity.Error, node.SourceLocation,
+				$"Cannot store borrows in {kind} variables"));
+		}
+	}
 	
 	private void Register(FileNode node)
 	{

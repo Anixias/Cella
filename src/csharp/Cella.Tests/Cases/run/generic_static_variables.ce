@@ -1,0 +1,33 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Pair: rec
+{
+	left: i32
+	right: i32
+}
+
+counter[T]: rec
+{
+	value: T
+	created: var Pair = Pair(0, 0)
+
+	new: op(own value: T)
+	{
+		self.value = value
+		counter[T].created.left += 1
+	}
+}
+
+main: fun -> i32
+{
+	val a = counter[i32](1)
+	val b = counter[i32](2)
+	val c = counter[f64](1.5)
+	printf("%d %d\n", counter[i32].created.left, counter[f64].created.left)
+	ret 0
+}

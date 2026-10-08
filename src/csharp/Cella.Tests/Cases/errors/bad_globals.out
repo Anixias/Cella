@@ -1,16 +1,6 @@
 
 ====== bad_globals.ce ======
 
-Error at line 8, column 13
-7 │ 
-8 │ record: var Point = Point()
-                ╘═══╛ Module variables must be numbers, 'bool' or 'char'
-
-Error at line 9, column 12
-8 │ record: var Point = Point()
-9 │ items: var array[i32, 2] = [1, 2]
-               ╘═══════════╛ Module variables must be numbers, 'bool' or 'char'
-
 Error at line 10, column 26
  9 │ items: var array[i32, 2] = [1, 2]
 10 │ negative: val array[i32, -1] = []

@@ -21,21 +21,6 @@ Error at line 24, column 7
 24 │ Unit.created += 1
           ╘═════╛ 'created' is read-only outside its type
 
-Error at line 25, column 13
-24 │ Unit.created += 1
-25 │ addOne(mut Unit.total)
-                ╘════════╛ Cannot mutably borrow static variables
-
-Error at line 26, column 17
-25 │ addOne(mut Unit.total)
-26 │ val pointer = @Unit.total
-                    ╘════════╛ Cannot take the address of static variables
-
-Error at line 27, column 17
-26 │ val pointer = @Unit.total
-27 │ val view = imm Unit.total
-                    ╘════════╛ Cannot borrow static variables
-
 Error at line 28, column 18
 27 │ val view = imm Unit.total
 28 │ val moved = own Unit.origin
