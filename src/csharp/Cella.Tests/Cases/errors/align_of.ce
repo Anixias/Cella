@@ -1,0 +1,33 @@
+mod test
+
+Shape: trait
+{
+	area: fun(self) -> f64
+}
+
+box[T]: rec
+{
+	value: T
+}
+
+greet: fun
+{
+}
+
+asDyn: fun -> usize = alignOf(dyn[Shape])
+
+asArray: fun -> usize = alignOf(array[dyn[Shape], 2])
+
+asTrait: fun -> usize = alignOf(Shape)
+
+asParameter[K: trait]: fun -> usize = alignOf(K)
+
+asGeneric: fun -> usize = alignOf(box)
+
+asVoid: fun -> usize = alignOf(greet())
+
+sizeParameter[K: trait]: fun -> usize = sizeOf(dyn[K])
+
+alignParameter[K: trait]: fun -> usize = alignOf(dyn[K])
+
+main: fun -> i32 = 0

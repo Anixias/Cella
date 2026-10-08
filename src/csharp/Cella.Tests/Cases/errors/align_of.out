@@ -1,0 +1,44 @@
+
+====== align_of.ce ======
+
+Error at line 17, column 23
+16 │ 
+17 │ asDyn: fun -> usize = alignOf(dyn[Shape])
+                           ╘═════════════════╛ Cannot use 'dyn[Shape]' by value
+
+Error at line 19, column 25
+18 │ 
+19 │ asArray: fun -> usize = alignOf(array[dyn[Shape], 2])
+                             ╘═══════════════════════════╛ Cannot use 'dyn[Shape]' by value
+
+Error at line 21, column 33
+20 │ 
+21 │ asTrait: fun -> usize = alignOf(Shape)
+                                     ╘═══╛ Cannot use traits as values
+
+Error at line 23, column 47
+22 │ 
+23 │ asParameter[K: trait]: fun -> usize = alignOf(K)
+                                                   ^ Cannot use traits as values
+
+Error at line 25, column 35
+24 │ 
+25 │ asGeneric: fun -> usize = alignOf(box)
+                                       ╘═╛ 'box' takes one type argument
+
+Error at line 27, column 32
+26 │ 
+27 │ asVoid: fun -> usize = alignOf(greet())
+                                    ╘═════╛ 'greet' doesn't return a value
+
+Error at line 29, column 41
+28 │ 
+29 │ sizeParameter[K: trait]: fun -> usize = sizeOf(dyn[K])
+                                             ╘════════════╛ Cannot use 'dyn[K]' by value
+
+Error at line 31, column 42
+30 │ 
+31 │ alignParameter[K: trait]: fun -> usize = alignOf(dyn[K])
+                                              ╘═════════════╛ Cannot use 'dyn[K]' by value
+
+[compilation failed]

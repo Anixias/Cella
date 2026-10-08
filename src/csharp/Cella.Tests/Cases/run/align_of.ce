@@ -1,0 +1,94 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Shape: trait
+{
+	area: fun(self) -> f64
+}
+
+Mixed: rec
+{
+	flag: bool
+	count: u16
+	total: f64
+}
+
+Bytes: rec
+{
+	a: u8
+	b: u8
+}
+
+Empty: rec
+{
+}
+
+Wide: rec
+{
+	pad: u8
+	value: i128
+}
+
+Payload: enum
+{
+	none
+	some(value: f64)
+}
+
+Small: enum
+{
+	red
+	green
+}
+
+View: ref rec
+{
+	shape: imm[dyn[Shape]]
+}
+
+Code: enum match u16
+{
+	ok = 0
+	fail = 1
+	other(value) = else
+}
+
+pair[A, B]: rec
+{
+	a: A
+	b: B
+}
+
+align[T]: fun -> usize = alignOf(T)
+
+alignUp: fun(offset: usize, alignment: usize) -> usize = (offset + alignment - 1) / alignment * alignment
+
+place[T]: fun(offset: usize) -> usize = alignUp(offset, alignOf(T))
+
+eight: val usize = alignOf(f64)
+
+lengths: val array[u8, alignOf(i32)] = [1, 2, 3, 4]
+
+main: fun -> i32
+{
+	printf("%d %d %d %d %d %d\n", alignOf(i8), alignOf(i16), alignOf(i32), alignOf(i64), alignOf(i128),
+		alignOf(usize))
+	printf("%d %d %d %d %d %d\n", alignOf(f32), alignOf(f64), alignOf(bool), alignOf(char), alignOf(str),
+		alignOf(cstr))
+	printf("%d %d %d %d %d\n", alignOf(Mixed), alignOf(Bytes), alignOf(Empty), alignOf(Wide),
+		alignOf(array[u16, 5]))
+	printf("%d %d %d %d %d\n", alignOf(Payload), alignOf(Small), alignOf(Code), alignOf(View),
+		alignOf(imm[dyn[Shape]]))
+	printf("%d %d %d %d\n", alignOf(ptr[u8]), alignOf(fun[i32 -> i32]), alignOf(ext fun[i32]),
+		alignOf(pair[u8, u16]))
+	val value: u16 = 7
+	printf("%d %d %d %d\n", alignOf(value), alignOf(3), alignOf(2.5), alignOf(Mixed(true, 1, 2.0)))
+	printf("%llu %llu %llu %llu\n", align[i32](), align[Wide](), align[pair[u8, f64]](), align[Payload]())
+	printf("%llu %llu %llu %llu\n", place[u8](3), place[i32](3), place[f64](3), place[Wide](17))
+	printf("%llu %llu\n", eight, lengths.length)
+	ret 0
+}

@@ -1,0 +1,7 @@
+mod lib
+
+alignUp: pub fun(offset: usize, alignment: usize) -> usize = (offset + alignment - 1) / alignment * alignment
+
+place[T]: pub fun(offset: usize) -> usize = alignUp(offset, alignOf(T))
+
+span[T]: pub fun(count: usize) -> usize = alignUp(sizeOf(T), alignOf(T)) * count

@@ -588,6 +588,13 @@ public sealed class AstPrinter : ISyntaxNodeVisitor
 		VisitNode(node.Target, true);
 	}
 	
+	public void Visit(AlignOfExpressionNode node)
+	{
+		StartLine();
+		_sb.Append("AlignOfExpressionNode");
+		VisitNode(node.Target, true);
+	}
+	
 	public void Visit(InterpolatedStringExpressionNode node)
 	{
 		StartLine();

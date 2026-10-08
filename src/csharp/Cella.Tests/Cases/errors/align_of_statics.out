@@ -1,0 +1,9 @@
+
+====== align_of_statics.ce ======
+
+Error at line 6, column 25
+5 │ value: T
+6 │ alignment: val usize = alignOf(T)
+                           ╘════════╛ The initial value of 'alignment' must be a constant
+
+[compilation failed]

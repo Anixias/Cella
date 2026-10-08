@@ -907,6 +907,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 		EnumTagValue v => EmitEnumTag(v, builder),
 		EnumPayloadValue v => EmitEnumPayload(v, builder),
 		SizeOfValue v => EmitSizeOf(v),
+		AlignOfValue v => EmitAlignOf(v),
 		NewValue v => EmitNew(v, builder),
 		_ => throw new InvalidOperationException()
 	};
@@ -914,6 +915,12 @@ public sealed unsafe class CodeGenerator : IDisposable
 	private LLVMValueRef EmitSizeOf(SizeOfValue v)
 	{
 		var bits = _typePool.SizeTable.GetSize(Substitute(v.Target)).CountBits(_pointerSize * 8);
+		return EmitSizeConstant(new BigInteger((bits + 7) / 8), true);
+	}
+	
+	private LLVMValueRef EmitAlignOf(AlignOfValue v)
+	{
+		var bits = _typePool.SizeTable.GetSize(Substitute(v.Target)).CountAlignmentBits(_pointerSize * 8);
 		return EmitSizeConstant(new BigInteger((bits + 7) / 8), true);
 	}
 	

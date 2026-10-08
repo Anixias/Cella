@@ -67,6 +67,12 @@ public sealed class SizeOfValue(TypeSymbol target, SourceLocation sourceLocation
 	public TypeSymbol Target { get; } = target;
 }
 
+public sealed class AlignOfValue(TypeSymbol target, SourceLocation sourceLocation)
+	: Value(NativeSymbols.UIntSize, false, sourceLocation)
+{
+	public TypeSymbol Target { get; } = target;
+}
+
 public sealed class NewValue(TypeSymbol type, SourceLocation sourceLocation) : Value(type, false, sourceLocation);
 
 public sealed class VariableValue(VariableInfo variable, SourceLocation sourceLocation)

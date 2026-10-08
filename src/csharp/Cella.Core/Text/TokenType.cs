@@ -29,6 +29,7 @@ public enum TokenType
 	KeywordNull,
 	KeywordUndef,
 	KeywordSizeOf,
+	KeywordAlignOf,
 	KeywordNameOf,
 	
 	// Global keywords
@@ -169,6 +170,7 @@ public static class TokenTypeInfo
 			[TokenType.KeywordNull] = new("null", IsKeyword: true, IsLiteral: true),
 			[TokenType.KeywordUndef] = new("undef", IsKeyword: true, IsLiteral: true),
 			[TokenType.KeywordSizeOf] = new("sizeOf", IsKeyword: true, IsLiteral: true),
+			[TokenType.KeywordAlignOf] = new("alignOf", IsKeyword: true, IsLiteral: true),
 			[TokenType.KeywordNameOf] = new("nameOf", IsKeyword: true, IsLiteral: true),
 			
 			[TokenType.KeywordRet] = new("ret", IsKeyword: true),

@@ -34,6 +34,7 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 		TokenType.OpOpenBracket,
 		TokenType.KeywordUndef,
 		TokenType.KeywordSizeOf,
+		TokenType.KeywordAlignOf,
 		TokenType.KeywordNameOf,
 		TokenType.KeywordMatch,
 		TokenType.KeywordMut,
@@ -446,6 +447,8 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 			node = ParseUndef(ref index, undef);
 		else if (Match(ref index, out var sizeOf, TokenType.KeywordSizeOf))
 			node = ParseSizeOf(ref index, sizeOf);
+		else if (Match(ref index, out var alignOf, TokenType.KeywordAlignOf))
+			node = ParseAlignOf(ref index, alignOf);
 		else if (Match(ref index, out var nameOf, TokenType.KeywordNameOf))
 			node = ParseNameOf(ref index, nameOf);
 		else if (Match(ref index, out var match, TokenType.KeywordMatch))
@@ -553,6 +556,18 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 	
 	private SizeOfExpressionNode ParseSizeOf(ref int index, Token token)
 	{
+		var target = ParseLayoutTarget(ref index, token, out var location);
+		return new SizeOfExpressionNode(token, target, location);
+	}
+	
+	private AlignOfExpressionNode ParseAlignOf(ref int index, Token token)
+	{
+		var target = ParseLayoutTarget(ref index, token, out var location);
+		return new AlignOfExpressionNode(token, target, location);
+	}
+	
+	private IExpressionNode ParseLayoutTarget(ref int index, Token token, out SourceLocation location)
+	{
 		if (!Match(ref index, out var openParen, TokenType.OpOpenParen))
 			throw Expected(index, "'('");
 		
@@ -562,8 +577,8 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 			throw Expected(index, "')'", openParen);
 		
 		var (source, range) = token.SourceLocation;
-		range = range.Join(closeBracket.SourceLocation.Range);
-		return new SizeOfExpressionNode(token, target, new(source, range));
+		location = new(source, range.Join(closeBracket.SourceLocation.Range));
+		return target;
 	}
 	
 	private static InterpolatedStringExpressionNode ParseInterpolatedString(Token token)

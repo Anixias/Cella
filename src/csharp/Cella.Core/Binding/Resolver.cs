@@ -2675,25 +2675,29 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		return new ResolvedUndefExpressionNode(type, node);
 	}
 	
-	public IResolvedExpressionNode Visit(SizeOfExpressionNode node)
+	public IResolvedExpressionNode Visit(SizeOfExpressionNode node) => ResolveLayout(node, node.Target, false);
+	
+	public IResolvedExpressionNode Visit(AlignOfExpressionNode node) => ResolveLayout(node, node.Target, true);
+	
+	private IResolvedExpressionNode ResolveLayout(IExpressionNode node, IExpressionNode targetNode, bool isAlignment)
 	{
-		var target = CurrentResolutionContext.TryResolveExpressionAsType(node.Target) is { } type
-			? RequireTypeArguments(type, node.Target)
-			: MaterializeAsDefault(VisitNode(node.Target)).Type;
+		var target = CurrentResolutionContext.TryResolveExpressionAsType(targetNode) is { } type
+			? RequireTypeArguments(type, targetNode)
+			: MaterializeAsDefault(VisitNode(targetNode)).Type;
+		
+		if (TypePool.FindValueDyn(target) is { } dyn)
+			return Error(node, $"Cannot use '{dyn.Name}' by value", CurrentTargetType);
 		
 		if (TypePool.ContainsTypeParameters(target))
-			return new ResolvedSizeOfExpressionNode(target, node);
-		
-		if (target is DynType dyn)
-			return Error(node, $"Cannot use '{dyn.Name}' by value", NativeSymbols.UntypedInteger);
+			return isAlignment
+				? new ResolvedAlignOfExpressionNode(target, node)
+				: new ResolvedSizeOfExpressionNode(target, node);
 		
 		if (IsInvalid(target) || _typePool.SizeTable.TryGetSize(target) is not { } size)
 			return new ResolvedInvalidExpressionNode(node);
 		
-		var sizeInBits = size.CountBits(_pointerBitSize);
-		var sizeInBytes = new BigInteger((sizeInBits + 7) / 8);
-		
-		return new ResolvedLiteralExpressionNode(NativeSymbols.UntypedInteger, sizeInBytes, node);
+		var bits = isAlignment ? size.CountAlignmentBits(_pointerBitSize) : size.CountBits(_pointerBitSize);
+		return new ResolvedLiteralExpressionNode(NativeSymbols.UntypedInteger, new BigInteger((bits + 7) / 8), node);
 	}
 	
 	public IResolvedExpressionNode Visit(TypeExpressionNode node) =>

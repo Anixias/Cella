@@ -1,0 +1,20 @@
+mod test
+
+use lib
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Wide: rec
+{
+	pad: u8
+	value: i128
+}
+
+main: fun -> i32
+{
+	printf("%llu %llu %llu %llu\n", lib.place[Wide](1), lib.place[u16](3), lib.span[Wide](2), lib.span[u8](5))
+	ret 0
+}
