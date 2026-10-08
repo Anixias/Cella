@@ -1,0 +1,32 @@
+mod test
+
+Color: enum
+{
+	red
+	new
+	drop
+
+	new: op()
+	{
+	}
+
+	drop: op
+	{
+	}
+
+	pvt
+	{
+		new: op(value: i32)
+		{
+		}
+	}
+
+	new[T]: op(value: T)
+	{
+	}
+
+	describe: fun(self) -> i32 = 1
+	count: i32
+}
+
+main: fun -> i32 = 0

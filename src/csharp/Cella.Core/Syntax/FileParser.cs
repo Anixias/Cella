@@ -56,6 +56,7 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 	private static readonly HashSet<TokenType> _accessorKeywords = [TokenType.KeywordGet, TokenType.KeywordSet];
 	
 	private static readonly HashSet<TokenType> _parameterModes = [TokenType.KeywordMut, TokenType.KeywordOwn];
+	private static readonly HashSet<TokenType> _lifecycleKeywords = [TokenType.KeywordNew, TokenType.KeywordDrop];
 	
 	private static Dictionary<string, TokenType> BuildContextualKeywords(params IEnumerable<TokenType> tokenTypes) =>
 		tokenTypes.ToDictionary(static t => t.Representation);
@@ -1213,6 +1214,16 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 				continue;
 			}
 			
+			if (StartsEnumMember(index) &&
+			    Match(ref index, out var lifecycleKeyword, _memberContextualKeywords, _lifecycleKeywords))
+			{
+				Report(lifecycleKeyword, $"Cannot declare {DescribeLifecycle(lifecycleKeyword)} in enums");
+				if (ParseLifecycleMember(ref index, lifecycleKeyword, block) is null)
+					return false;
+				
+				continue;
+			}
+			
 			if (StartsEnumMember(index))
 			{
 				if (ParseEnumMember(ref index, block) is not { } member)
@@ -1354,15 +1365,8 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 	{
 		// TODO Diagnostics
 		
-		if (Match(ref index, out var newKeyword, _memberContextualKeywords, TokenType.KeywordNew))
-			return RejectTypeParameters(ref index, "constructors")
-				? ParseConstructor(ref index, newKeyword, block)
-				: null;
-		
-		if (Match(ref index, out var dropKeyword, _memberContextualKeywords, TokenType.KeywordDrop))
-			return RejectTypeParameters(ref index, "destructors")
-				? ParseDestructor(ref index, dropKeyword, block)
-				: null;
+		if (Match(ref index, out var lifecycleKeyword, _memberContextualKeywords, _lifecycleKeywords))
+			return ParseLifecycleMember(ref index, lifecycleKeyword, block);
 		
 		if (MatchOperatorName(ref index, out var symbol))
 			return ParseOperatorMember(ref index, symbol, block);
@@ -1603,6 +1607,19 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 		
 		return modifiers;
 	}
+	
+	private IDeclarationNode? ParseLifecycleMember(ref int index, Token keyword, Token? block)
+	{
+		if (!RejectTypeParameters(ref index, DescribeLifecycle(keyword)))
+			return null;
+		
+		return keyword.Type == TokenType.KeywordNew
+			? ParseConstructor(ref index, keyword, block)
+			: ParseDestructor(ref index, keyword, block);
+	}
+	
+	private static string DescribeLifecycle(Token keyword) =>
+		keyword.Type == TokenType.KeywordNew ? "constructors" : "destructors";
 	
 	private ConstructorNode? ParseConstructor(ref int index, Token newKeyword, Token? block)
 	{
