@@ -1,0 +1,34 @@
+
+====== atomic_constraints.ce ======
+
+Error at line 3, column 10
+2 │ 
+3 │ first[T: atomic + drop]: fun(value: T)
+             ╘════╛ Cannot combine 'atomic' and 'drop'
+
+Error at line 3, column 19
+2 │ 
+3 │ first[T: atomic + drop]: fun(value: T)
+                      ╘══╛ Cannot combine 'atomic' and 'drop'
+
+Error at line 7, column 11
+6 │ 
+7 │ second[T: drop + copy + atomic]: fun(value: T)
+              ╘══╛ Cannot combine 'copy' and 'drop'
+
+Error at line 7, column 11
+6 │ 
+7 │ second[T: drop + copy + atomic]: fun(value: T)
+              ╘══╛ Cannot combine 'atomic' and 'drop'
+
+Error at line 7, column 18
+6 │ 
+7 │ second[T: drop + copy + atomic]: fun(value: T)
+                     ╘══╛ Cannot combine 'copy' and 'drop'
+
+Error at line 7, column 25
+6 │ 
+7 │ second[T: drop + copy + atomic]: fun(value: T)
+                            ╘════╛ Cannot combine 'atomic' and 'drop'
+
+[compilation failed]

@@ -1,0 +1,49 @@
+
+====== atomic_targets.ce ======
+
+Error at line 31, column 18
+30 │ val r = imm x
+31 │ val a = atomic *r
+                     ^ Cannot access values atomically through 'imm[i32]'
+
+Error at line 33, column 18
+32 │ val h = holder[i32](@x)
+33 │ val b = atomic *h
+                     ^ Cannot access values atomically through 'holder[i32]'
+
+Error at line 35, column 18
+34 │ val v: ptr = ptr(@x)
+35 │ val c = atomic *v
+                     ^ Cannot access values atomically through 'ptr'
+
+Error at line 38, column 17
+37 │ val pp: ptr[Point] = @point
+38 │ val d = atomic *pp
+                    ╘═╛ Cannot access 'Point' values atomically
+
+Error at line 41, column 17
+40 │ val ps: ptr[str] = @text
+41 │ val e = atomic *ps
+                    ╘═╛ Cannot access 'str' values atomically
+
+Error at line 44, column 17
+43 │ val pb: ptr[i128] = @big
+44 │ val f = atomic *pb
+                    ╘═╛ Cannot access 'i128' values atomically
+
+Error at line 47, column 17
+46 │ val pk: ptr[Kind] = @kind
+47 │ val g = atomic *pk
+                    ╘═╛ Cannot access 'Kind' values atomically
+
+Error at line 49, column 17
+48 │ val pd: ptr[dyn[Shape]] = ptr[dyn[Shape]](null)
+49 │ val i = atomic *pd
+                    ╘═╛ Cannot access 'dyn[Shape]' values atomically
+
+Error at line 51, column 17
+50 │ val q: ptr[fun[i32 -> i32]] = ptr[fun[i32 -> i32]](null)
+51 │ val j = atomic *q
+                    ╘╛ Cannot access 'fun[i32 -> i32]' values atomically
+
+[compilation failed]

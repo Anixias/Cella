@@ -1,0 +1,19 @@
+mod test
+
+noPointer: fun
+{
+	var x = 1
+	val a = atomic x
+}
+
+reversed: fun(p: ptr[i32])
+{
+	val a = atomic release acquire *p
+}
+
+reserved: fun
+{
+	val atomic = 5
+}
+
+main: fun -> i32 = 0

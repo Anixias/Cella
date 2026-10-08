@@ -383,12 +383,15 @@ public sealed class SignatureCollector
 			return;
 		}
 		
-		var conflicting = keywords.Where(static k => k.Type is TokenType.KeywordCopy or TokenType.KeywordDrop).ToList();
-		if (conflicting.Select(static keyword => keyword.Type).Distinct().Count() < 2)
+		if (keywords.All(static keyword => keyword.Type != TokenType.KeywordDrop))
 			return;
 		
-		foreach (var keyword in conflicting)
-			Diagnostics.Add(new(DiagnosticSeverity.Error, keyword.SourceLocation, "Cannot combine 'copy' and 'drop'"));
+		foreach (var copying in keywords.Where(static k => k.Type is TokenType.KeywordCopy or TokenType.KeywordAtomic))
+		{
+			var message = $"Cannot combine '{copying.Text}' and 'drop'";
+			foreach (var keyword in keywords.Where(k => k == copying || k.Type == TokenType.KeywordDrop))
+				Diagnostics.Add(new(DiagnosticSeverity.Error, keyword.SourceLocation, message));
+		}
 	}
 	
 	private void RegisterConformances(NamedTypeSymbol type, ImmutableArray<ITypeNode> traits, ResolutionContext context)
@@ -1041,6 +1044,7 @@ public sealed class SignatureCollector
 		Dictionary<TypeParameterSymbol, TypeSymbol> map) =>
 		block.IsNoref && !declared.IsNoref || block.HasNull && !declared.HasNull || block.IsCopy && !declared.IsCopy ||
 		block.HasDrop && !declared.HasDrop || block.HasNew && !declared.HasNew ||
+		block.IsAtomic && !declared.IsAtomic ||
 		_typePool.GetBounds(block).Except(_typePool.GetBounds(declared)).Any() ||
 		_typePool.GetParameterBounds(block).Cast<TypeSymbol>()
 			.Except(_typePool.GetParameterBounds(declared).Select(bound => map[bound]))

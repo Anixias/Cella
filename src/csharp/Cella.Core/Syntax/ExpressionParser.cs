@@ -43,6 +43,7 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 		TokenType.KeywordSelf,
 		TokenType.KeywordFun,
 		TokenType.KeywordDyn,
+		TokenType.KeywordAtomic,
 		TokenType.KeywordRet,
 		TokenType.KeywordBreak,
 		TokenType.KeywordCont
@@ -164,7 +165,17 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 			return left;
 		
 		var right = ParseExpression(ref index);
-		return new BinaryOpExpressionNode(left, op, right);
+		return left switch
+		{
+			AtomicExpressionNode { Place: not null, Op: null } atomic => atomic.Write(op, right),
+			BinaryOpExpressionNode
+				{
+					Op.Type: TokenType.OpEqualEqual,
+					Left: AtomicExpressionNode { Place: not null, Op: null } atomic
+				} comparison when op.Type == TokenType.OpEqual =>
+				atomic.CompareSwap(comparison.Op, comparison.Right, right),
+			_ => new BinaryOpExpressionNode(left, op, right)
+		};
 	}
 	
 	private IExpressionNode ParseLogicalOr(ref int index)
@@ -389,6 +400,9 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 		if (Match(ref index, out var ownKeyword, TokenType.KeywordOwn))
 			return new OwnExpressionNode(ownKeyword, ParseUnary(ref index));
 		
+		if (Match(ref index, out var atomicKeyword, TokenType.KeywordAtomic))
+			return ParseAtomic(ref index, atomicKeyword);
+		
 		if (Match(ref index, out var borrowKeyword, _borrowKeywords))
 			return new BorrowExpressionNode(borrowKeyword, ParseUnary(ref index));
 		
@@ -398,6 +412,51 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 		// TODO Should disallow newlines here
 		var operand = ParseUnary(ref index);
 		return new UnaryOpExpressionNode(op, operand);
+	}
+	
+	private AtomicExpressionNode ParseAtomic(ref int index, Token keyword)
+	{
+		var (ordering, orderingLocation) = ParseOrdering(ref index);
+		if (!IsNextNewline(index) && Peek(index, TokenType.OpStar))
+			return new AtomicExpressionNode(keyword, ordering, orderingLocation, ParseUnary(ref index), null, null,
+				null);
+		
+		if (!AtEnd(index) && !IsNextNewline(index))
+			throw Expected(index, "'*'");
+		
+		return new AtomicExpressionNode(keyword, ordering, orderingLocation, null, null, null, null);
+	}
+	
+	private (AtomicOrdering Ordering, SourceLocation? Location) ParseOrdering(ref int index)
+	{
+		if (AtEnd(index) || IsNextNewline(index) || Tokens[index] is not { Type: TokenType.Identifier } first)
+			return (AtomicOrdering.SequentiallyConsistent, null);
+		
+		switch (first.Text)
+		{
+			case "relaxed":
+				index++;
+				return (AtomicOrdering.Relaxed, first.SourceLocation);
+			
+			case "release":
+				index++;
+				return (AtomicOrdering.Release, first.SourceLocation);
+			
+			case "acquire":
+				index++;
+				if (AtEnd(index) || IsNextNewline(index) ||
+				    Tokens[index] is not { Type: TokenType.Identifier, Text: "release" } second)
+					return (AtomicOrdering.Acquire, first.SourceLocation);
+				
+				index++;
+				return (AtomicOrdering.AcquireRelease, first.SourceLocation with
+				{
+					Range = first.SourceLocation.Range.Join(second.SourceLocation.Range)
+				});
+			
+			default:
+				return (AtomicOrdering.SequentiallyConsistent, null);
+		}
 	}
 	
 	private IExpressionNode ParsePrimary(ref int index)

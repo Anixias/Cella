@@ -2,6 +2,7 @@
 using Cella.Core.Binding;
 using Cella.Core.Binding.Conversions;
 using Cella.Core.Binding.Nodes;
+using Cella.Core.Syntax.Nodes;
 using Cella.Core.Binding.Operations;
 using Cella.Core.Symbols;
 using Cella.Core.Text;
@@ -203,6 +204,26 @@ public sealed class FStrValue
 	public Value? Text { get; } = text;
 	public Value? Values { get; } = values;
 	public int Holes { get; } = holes;
+}
+
+public sealed class AtomicValue
+(
+	AtomicAccess access,
+	AtomicOrdering ordering,
+	Value? pointer,
+	BinaryOperation? operation,
+	Value? expected,
+	Value? value,
+	TypeSymbol type,
+	SourceLocation sourceLocation
+) : Value(type, false, sourceLocation)
+{
+	public AtomicAccess Access { get; } = access;
+	public AtomicOrdering Ordering { get; } = ordering;
+	public Value? Pointer { get; } = pointer;
+	public BinaryOperation? Operation { get; } = operation;
+	public Value? Expected { get; } = expected;
+	public Value? Operand { get; } = value;
 }
 
 public sealed class FStrPartValue

@@ -191,6 +191,10 @@ public sealed class EventLinearizer
 					AddValue(v.Target);
 					value = v.Index;
 					continue;
+				
+				case AtomicValue v:
+					AddValues(new[] { v.Pointer, v.Expected, v.Operand }.OfType<Value>());
+					break;
 			}
 			
 			break;

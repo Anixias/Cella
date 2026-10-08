@@ -304,6 +304,7 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool, 
 		ResolvedAssignmentExpressionNode => true,
 		ResolvedPropertyAssignmentExpressionNode => true,
 		ResolvedReturnExpressionNode or ResolvedBreakExpressionNode or ResolvedContinueExpressionNode => true,
+		ResolvedAtomicExpressionNode => true,
 		_ => false
 	};
 	
@@ -406,6 +407,18 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool, 
 			VisitNode(value);
 			CheckConsumed(value);
 		}
+	}
+	
+	public void Visit(ResolvedAtomicExpressionNode node)
+	{
+		if (node.Pointer is { } pointer)
+			VisitNode(pointer);
+		
+		if (node.Expected is { } expected)
+			VisitNode(expected);
+		
+		if (node.Value is { } value)
+			VisitNode(value);
 	}
 	
 	public void Visit(ResolvedInterpolatedStringExpressionNode node)

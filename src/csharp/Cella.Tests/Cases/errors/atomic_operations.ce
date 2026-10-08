@@ -1,0 +1,31 @@
+mod test
+
+Color: enum
+{
+	red
+	blue
+}
+
+main: fun -> i32
+{
+	var x = 1
+	val p: ptr[i32] = @x
+	atomic *p *= 2
+	atomic *p <<= 1
+	var flag = true
+	val pf: ptr[bool] = @flag
+	atomic *pf += true
+	var y = 2
+	var address: ptr[i32] = @y
+	val pa: ptr[ptr[i32]] = @address
+	atomic *pa += 1
+	var color = Color.red
+	val pc: ptr[Color] = @color
+	atomic *pc |= Color.blue
+	var real = 1.0
+	val pr: ptr[f64] = @real
+	atomic *pr &= 2.0
+	atomic *p = true
+	val swapped = atomic *p == true = 2
+	ret 0
+}

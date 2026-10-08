@@ -52,6 +52,7 @@ public enum TokenType
 	KeywordSelf,
 	KeywordFun,
 	KeywordDyn,
+	KeywordAtomic,
 	
 	// Contextual Keywords
 	KeywordMod,
@@ -192,6 +193,7 @@ public static class TokenTypeInfo
 			[TokenType.KeywordSelf] = new("self", IsKeyword: true),
 			[TokenType.KeywordFun] = new("fun", IsKeyword: true),
 			[TokenType.KeywordDyn] = new("dyn", IsKeyword: true),
+			[TokenType.KeywordAtomic] = new("atomic", IsKeyword: true),
 			
 			[TokenType.KeywordMod] = new("mod", IsKeyword: true, IsContextual: true),
 			[TokenType.KeywordUse] = new("use", IsKeyword: true, IsContextual: true),

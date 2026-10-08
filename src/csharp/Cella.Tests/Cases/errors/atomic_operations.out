@@ -1,0 +1,44 @@
+
+====== atomic_operations.ce ======
+
+Error at line 13, column 12
+12 │ val p: ptr[i32] = @x
+13 │ atomic *p *= 2
+               ╘╛ Cannot use '*=' atomically
+
+Error at line 14, column 12
+13 │ atomic *p *= 2
+14 │ atomic *p <<= 1
+               ╘═╛ Cannot use '<<=' atomically
+
+Error at line 17, column 13
+16 │ val pf: ptr[bool] = @flag
+17 │ atomic *pf += true
+                ╘╛ Cannot use '+=' atomically on 'bool'
+
+Error at line 21, column 13
+20 │ val pa: ptr[ptr[i32]] = @address
+21 │ atomic *pa += 1
+                ╘╛ Cannot use '+=' atomically on 'ptr[i32]'
+
+Error at line 24, column 13
+23 │ val pc: ptr[Color] = @color
+24 │ atomic *pc |= Color.blue
+                ╘╛ Cannot use '|=' atomically on 'Color'
+
+Error at line 27, column 13
+26 │ val pr: ptr[f64] = @real
+27 │ atomic *pr &= 2.0
+                ╘╛ Cannot use '&=' atomically on 'f64'
+
+Error at line 28, column 14
+27 │ atomic *pr &= 2.0
+28 │ atomic *p = true
+                 ╘══╛ Cannot convert type 'bool' to 'i32'
+
+Error at line 29, column 29
+28 │ atomic *p = true
+29 │ val swapped = atomic *p == true = 2
+                                ╘══╛ Cannot convert type 'bool' to 'i32'
+
+[compilation failed]

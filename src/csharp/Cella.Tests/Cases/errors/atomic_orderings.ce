@@ -1,0 +1,14 @@
+mod test
+
+main: fun -> i32
+{
+	var x = 1
+	val p: ptr[i32] = @x
+	val a = atomic release *p
+	val b = atomic acquire release *p
+	atomic acquire *p = 2
+	atomic acquire release *p = 3
+	atomic relaxed
+	val c = atomic acquire
+	ret 0
+}

@@ -515,6 +515,25 @@ public static class LoweredModulePrinter
 					break;
 				}
 				
+				case AtomicValue v:
+				{
+					sb.Append("atomic ").Append(v.Access.ToString().ToLowerInvariant()).Append(' ')
+						.Append(v.Ordering.ToString().ToLowerInvariant()).Append('(');
+					
+					var first = true;
+					foreach (var operand in new[] { v.Pointer, v.Expected, v.Operand }.OfType<Value>())
+					{
+						if (!first)
+							sb.Append(", ");
+						
+						PrintValue(sb, operand);
+						first = false;
+					}
+					
+					sb.Append(')');
+					break;
+				}
+				
 				case FStrPartValue v:
 					PrintValue(sb, v.Target);
 					sb.Append('.').Append(v.Part.ToString().ToLowerInvariant()).Append('(');

@@ -624,6 +624,18 @@ public sealed class AstPrinter : ISyntaxNodeVisitor
 		VisitNode(node.Value, true);
 	}
 	
+	public void Visit(AtomicExpressionNode node)
+	{
+		StartLine();
+		_sb.Append("AtomicExpressionNode: ").Append(node.Ordering);
+		if (node.Op is { } op)
+			_sb.Append(' ').Append(op.Text);
+		
+		IExpressionNode[] parts = [..new[] { node.Place, node.Expected, node.Value }.OfType<IExpressionNode>()];
+		for (var i = 0; i < parts.Length; i++)
+			VisitNode(parts[i], i == parts.Length - 1);
+	}
+	
 	public void Visit(VarExpressionNode node)
 	{
 		StartLine();

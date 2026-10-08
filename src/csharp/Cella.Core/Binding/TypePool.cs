@@ -203,6 +203,21 @@ public sealed class TypePool
 		return holds;
 	}
 	
+	public bool IsAtomic(TypeSymbol type) => type switch
+	{
+		InvalidType => true,
+		IntegerType { Kind: not (PrimitiveTypeKind.Int128 or PrimitiveTypeKind.UInt128) } => true,
+		FloatType => true,
+		PrimitiveType { Kind: PrimitiveTypeKind.Bool } => true,
+		StringType => type == NativeSymbols.CStr,
+		PointerType => !IsFatPointer(type),
+		FunctionType { IsExternal: true } => true,
+		EnumSymbol { IsMatch: true } enumType => IsAtomic(GetMatchedType(enumType)),
+		EnumSymbol enumType => !enumType.HasPayload,
+		TypeParameterSymbol parameter => parameter.IsAtomic,
+		_ => false
+	};
+	
 	public bool PassesByPointer(TypeSymbol type, ParameterMode mode) =>
 		mode == ParameterMode.ReadOnly && NeedsDrop(type);
 	
@@ -581,6 +596,7 @@ public sealed class TypePool
 		_ when parameter.IsTrait => IsTraitArgument(argument) ? null : $"'{argument.Name}' is not a trait",
 		_ when IsTraitArgument(argument) => $"'{argument.Name}' is not a type",
 		DynType => $"Cannot use '{argument.Name}' by value",
+		_ when parameter.IsAtomic && !IsAtomic(argument) => $"Cannot access '{argument.Name}' values atomically",
 		_ when parameter.IsNoref && HoldsBorrows(argument) => $"Cannot store borrows in '{parameter.Name}'",
 		_ when parameter.HasNull && !HasNull(argument) => $"'{argument.Name}' has no null",
 		_ when parameter.IsCopy && !IsCopy(argument) => $"Cannot copy '{argument.Name}'",

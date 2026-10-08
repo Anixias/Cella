@@ -1811,6 +1811,105 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		return value;
 	}
 	
+	public IResolvedExpressionNode Visit(AtomicExpressionNode node)
+	{
+		if (node.Place is not UnaryOpExpressionNode { Operand: var operand })
+			return node.Ordering == AtomicOrdering.Relaxed
+				? Error(node, "Cannot use 'relaxed' on fences", null, node.OrderingLocation!.Value)
+				: new ResolvedAtomicExpressionNode(AtomicAccess.Fence, node.Ordering, null, null, null, null,
+					NativeSymbols.Void, node);
+		
+		var resolved = VisitNode(operand, null);
+		var pointer = Decay(resolved.Type is UntypedType ? MaterializeAsDefault(resolved) : resolved);
+		if (IsInvalid(pointer))
+			return RejectAtomic(node, new ResolvedInvalidExpressionNode(node));
+		
+		if (pointer.Type is not PointerType { BaseType: var type } || type == NativeSymbols.Void)
+			return RejectAtomic(node, Error(node, $"Cannot access values atomically through '{resolved.Type.Name}'",
+				null, operand));
+		
+		if (!_typePool.IsAtomic(type))
+			return RejectAtomic(node, Error(node, $"Cannot access '{type.Name}' values atomically", null, node.Place));
+		
+		var access = node.Op?.Type switch
+		{
+			null => AtomicAccess.Load,
+			TokenType.OpEqual => AtomicAccess.Store,
+			TokenType.OpEqualEqual => AtomicAccess.CompareSwap,
+			_ => AtomicAccess.Modify
+		};
+		
+		if (FindOrderingError(access, node.Ordering) is { } orderingError)
+			return RejectAtomic(node, Error(node, orderingError, null, node.OrderingLocation!.Value));
+		
+		switch (access)
+		{
+			case AtomicAccess.Load:
+				return new ResolvedAtomicExpressionNode(access, node.Ordering, pointer, null, null, null, type, node);
+			
+			case AtomicAccess.Store:
+				var stored = VisitNode(node.Value!, type);
+				return new ResolvedAtomicExpressionNode(access, node.Ordering, pointer, null, null, stored, type, node);
+			
+			case AtomicAccess.CompareSwap:
+				var expected = VisitNode(node.Expected!, type);
+				var desired = VisitNode(node.Value!, type);
+				return new ResolvedAtomicExpressionNode(access, node.Ordering, pointer, null, expected, desired,
+					NativeSymbols.Bool, node);
+		}
+		
+		var op = node.Op!.Value;
+		if (FindAtomicOperation(op.Type, type) is not { } operation)
+			return RejectAtomic(node, Error(node, op.Type is TokenType.OpPlusEqual or TokenType.OpMinusEqual
+				or TokenType.OpAmpersandEqual or TokenType.OpBarEqual or TokenType.OpHatEqual
+				? $"Cannot use '{op.Text}' atomically on '{type.Name}'"
+				: $"Cannot use '{op.Text}' atomically", null, op.SourceLocation));
+		
+		var amount = VisitNode(node.Value!, type);
+		return new ResolvedAtomicExpressionNode(access, node.Ordering, pointer, operation, null, amount, type, node);
+	}
+	
+	private ResolvedInvalidExpressionNode RejectAtomic(AtomicExpressionNode node, ResolvedInvalidExpressionNode error)
+	{
+		if (node.Expected is { } expected)
+			VisitNode(expected, null);
+		
+		if (node.Value is { } value)
+			VisitNode(value, null);
+		
+		return error;
+	}
+	
+	private static string? FindOrderingError(AtomicAccess access, AtomicOrdering ordering) => (access, ordering) switch
+	{
+		(AtomicAccess.Load, AtomicOrdering.Release or AtomicOrdering.AcquireRelease) =>
+			$"Cannot use '{DescribeOrdering(ordering)}' on atomic loads",
+		(AtomicAccess.Store, AtomicOrdering.Acquire or AtomicOrdering.AcquireRelease) =>
+			$"Cannot use '{DescribeOrdering(ordering)}' on atomic stores",
+		_ => null
+	};
+	
+	private static string DescribeOrdering(AtomicOrdering ordering) => ordering switch
+	{
+		AtomicOrdering.Relaxed => "relaxed",
+		AtomicOrdering.Acquire => "acquire",
+		AtomicOrdering.Release => "release",
+		_ => "acquire release"
+	};
+	
+	private static BinaryOperation? FindAtomicOperation(TokenType op, TypeSymbol type) => (op, type) switch
+	{
+		(TokenType.OpPlusEqual, IntegerType or FloatType) => BinaryOperation.Addition,
+		(TokenType.OpMinusEqual, IntegerType or FloatType) => BinaryOperation.Subtraction,
+		(TokenType.OpAmpersandEqual, IntegerType or PrimitiveType { Kind: PrimitiveTypeKind.Bool }) =>
+			BinaryOperation.BitwiseAnd,
+		(TokenType.OpBarEqual, IntegerType or PrimitiveType { Kind: PrimitiveTypeKind.Bool }) =>
+			BinaryOperation.BitwiseOr,
+		(TokenType.OpHatEqual, IntegerType or PrimitiveType { Kind: PrimitiveTypeKind.Bool }) =>
+			BinaryOperation.BitwiseXor,
+		_ => null
+	};
+	
 	public IResolvedExpressionNode Visit(BorrowExpressionNode node)
 	{
 		var place = VisitNode(node.Value, null);

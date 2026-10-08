@@ -1,0 +1,53 @@
+mod test
+
+Shape: trait
+{
+	area: fun(self) -> i32
+}
+
+Point: rec
+{
+	x: i32
+	y: i32
+}
+
+Kind: enum
+{
+	none
+	some(value: i32)
+}
+
+holder[T]: rec
+{
+	value: ptr[T]
+
+	*: op(self) -> imm[T] = imm *self.value
+}
+
+main: fun -> i32
+{
+	var x = 1
+	val r = imm x
+	val a = atomic *r
+	val h = holder[i32](@x)
+	val b = atomic *h
+	val v: ptr = ptr(@x)
+	val c = atomic *v
+	var point = Point(1, 2)
+	val pp: ptr[Point] = @point
+	val d = atomic *pp
+	var text: str = "a"
+	val ps: ptr[str] = @text
+	val e = atomic *ps
+	var big: i128 = 1
+	val pb: ptr[i128] = @big
+	val f = atomic *pb
+	var kind = Kind.none
+	val pk: ptr[Kind] = @kind
+	val g = atomic *pk
+	val pd: ptr[dyn[Shape]] = ptr[dyn[Shape]](null)
+	val i = atomic *pd
+	val q: ptr[fun[i32 -> i32]] = ptr[fun[i32 -> i32]](null)
+	val j = atomic *q
+	ret 0
+}

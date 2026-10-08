@@ -1,0 +1,72 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+cell[T: atomic]: rec
+{
+	value: T
+
+	load: fun(self) -> T = atomic acquire *@self.value
+
+	store: fun(self, value: T)
+	{
+		atomic release *@self.value = value
+	}
+
+	compareSwap: fun(self, expected: T, desired: T) -> bool = atomic *@self.value == expected = desired
+
+	swap: fun(self, value: T) -> T
+	{
+		loop
+		{
+			val seen = atomic relaxed *@self.value
+			if atomic *@self.value == seen = value
+				ret seen
+		}
+	}
+
+	drop: op
+	{
+	}
+}
+
+Mode: enum
+{
+	idle
+	busy
+}
+
+exchange[T: atomic]: fun(address: ptr[T], value: T) -> T
+{
+	loop
+	{
+		val seen = atomic relaxed *address
+		if atomic *address == seen = value
+			ret seen
+	}
+}
+
+main: fun -> i32
+{
+	val number = cell[i32](1)
+	number.store(5)
+	val ok = number.compareSwap(5, 6)
+	val no = number.compareSwap(5, 7)
+	val old = number.swap(8)
+	printf("%d %d %d %d\n", number.load(), i32(ok), i32(no), old)
+	val flag = cell[bool](false)
+	printf("%d %d\n", i32(flag.compareSwap(false, true)), i32(flag.load()))
+	val mode = cell[Mode](Mode.idle)
+	mode.store(Mode.busy)
+	printf("%d\n", i32(mode.load() == Mode.busy))
+	var x = 3
+	var y = 4
+	val pointer = cell[ptr[i32]](@x)
+	printf("%d %d\n", *pointer.swap(@y), *pointer.load())
+	var total: u64 = 10
+	printf("%d %d\n", i32(exchange(@total, 20)), i32(total))
+	ret 0
+}

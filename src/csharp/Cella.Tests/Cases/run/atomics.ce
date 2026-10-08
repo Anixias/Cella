@@ -1,0 +1,112 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Color: enum(u8)
+{
+	red
+	green
+	blue
+}
+
+Parity: enum match bool
+{
+	odd = false
+	even = true
+}
+
+nullable[T: null]: enum match T
+{
+	none = null
+	some(value) = else
+}
+
+counter: var i32 = 10
+
+main: fun -> i32
+{
+	val p: ptr[i32] = @counter
+	val a = atomic *p
+	val b = atomic relaxed *p
+	val c = atomic acquire *p
+	atomic release *p = 20
+	atomic relaxed *p = 21
+	atomic *p = 22
+	val d = atomic *p += 5
+	val e = atomic relaxed *p -= 2
+	val f = atomic acquire *p &= 0xFF
+	val g = atomic release *p |= 0x100
+	val h = atomic acquire release *p ^= 1
+	val i = atomic *p == 0 = 99
+	val j = atomic *p == h = 7
+	atomic acquire
+	atomic release
+	atomic acquire release
+	atomic
+	printf("i32 %d %d %d %d %d %d %d %d %d %d %d\n", a, b, c, d, e, f, g, h, i32(i), i32(j), atomic *p)
+	val doubled = atomic *p * 2
+	if atomic acquire *p == 7
+		printf("load %d\n", doubled + atomic relaxed *p)
+
+	var flag = false
+	val pf: ptr[bool] = @flag
+	val swapped = atomic *pf == false = true
+	val o = atomic *pf |= false
+	val x = atomic *pf ^= true
+	printf("bool %d %d %d %d\n", i32(swapped), i32(o), i32(x), i32(atomic *pf))
+	var real = 1.5
+	val pr: ptr[f64] = @real
+	val sum = atomic *pr += 2.25
+	val diff = atomic relaxed *pr -= 0.75
+	val same = atomic *pr == 3.0 = 8.5
+	printf("f64 %.2f %.2f %d %.2f\n", sum, diff, i32(same), atomic *pr)
+	var small: u8 = 250
+	val ps: ptr[u8] = @small
+	val wrapped = atomic *ps += 10
+	printf("u8 %d %d\n", i32(wrapped), i32(atomic *ps))
+	var wide: i64 = 5000000000
+	val pw: ptr[i64] = @wide
+	printf("i64 %lld\n", atomic *pw += 1)
+	var size: usize = 7
+	val pz: ptr[usize] = @size
+	atomic *pz -= 3
+	printf("usize %d\n", i32(atomic *pz))
+	var letter = 'a'
+	val pl: ptr[char] = @letter
+	atomic *pl += 2
+	printf("char %c\n", i32(atomic *pl))
+	var target = 5
+	var other = 6
+	var address: ptr[i32] = @target
+	val pa: ptr[ptr[i32]] = @address
+	val moved = atomic *pa == @target = @other
+	printf("ptr %d %d\n", i32(moved), *(atomic acquire *pa))
+	var color = Color.red
+	val pc: ptr[Color] = @color
+	val changed = atomic *pc == Color.red = Color.blue
+	val now = atomic *pc
+	atomic *pc = Color.green
+	printf("enum %d %d %d\n", i32(changed), i32(now), i32(atomic *pc))
+	var parity = Parity.odd
+	val pp: ptr[Parity] = @parity
+	atomic *pp = Parity.even
+	printf("match bool %d\n", i32(atomic *pp == Parity.even = Parity.odd))
+	var slot: nullable[ptr[i32]] = none
+	val pn: ptr[nullable[ptr[i32]]] = @slot
+	val filled = atomic *pn == none = some(@target)
+	val found = match atomic acquire *pn
+	{
+		some(value) => *value
+		none => -1
+	}
+
+	printf("match ptr %d %d\n", i32(filled), found)
+	var text: cstr = "one"
+	val pt: ptr[cstr] = @text
+	atomic release *pt = "two"
+	printf("cstr %s\n", atomic acquire *pt)
+	ret 0
+}

@@ -1,0 +1,29 @@
+
+====== atomic_generics.ce ======
+
+Error at line 12, column 56
+11 │ 
+12 │ bump: fun(self, amount: T) -> T = atomic *@self.value += amount
+                                                           ╘╛ Cannot use '+=' atomically on 'T'
+
+Error at line 19, column 32
+18 │ 
+19 │ load: fun(self) -> T = atomic *@self.value
+                                   ╘══════════╛ Cannot access 'T' values atomically
+
+Error at line 24, column 15
+23 │ {
+24 │     val a = cell[Point](Point(1))
+                      ╘═══╛ Cannot access 'Point' values atomically
+
+Error at line 25, column 15
+24 │ val a = cell[Point](Point(1))
+25 │ val b = cell[str]("x")
+                  ╘═╛ Cannot access 'str' values atomically
+
+Error at line 26, column 15
+25 │ val b = cell[str]("x")
+26 │ val c = cell[i128](1)
+                  ╘══╛ Cannot access 'i128' values atomically
+
+[compilation failed]

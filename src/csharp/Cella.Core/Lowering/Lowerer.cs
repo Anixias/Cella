@@ -990,6 +990,16 @@ public sealed class Lowerer
 		
 		public Value Visit(ResolvedInterpolatedStringExpressionNode node) => throw new InvalidOperationException();
 		
+		public Value Visit(ResolvedAtomicExpressionNode node)
+		{
+			var operands = new[] { node.Pointer, node.Expected, node.Value };
+			var values = new Queue<Value>(LowerOperands([..operands.OfType<IResolvedExpressionNode>()]));
+			var lowered = operands.Select(operand => operand is null ? null : values.Dequeue()).ToArray();
+			
+			return new AtomicValue(node.Access, node.Ordering, lowered[0], node.Operation, lowered[1], lowered[2],
+				node.Type, node.Syntax.SourceLocation);
+		}
+		
 		public Value Visit(ResolvedFStrExpressionNode node)
 		{
 			var location = node.Syntax.SourceLocation;

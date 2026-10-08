@@ -1,0 +1,28 @@
+mod test
+
+Point: rec
+{
+	x: i32
+}
+
+cell[T: atomic]: rec
+{
+	value: T
+
+	bump: fun(self, amount: T) -> T = atomic *@self.value += amount
+}
+
+plain[T]: rec
+{
+	value: T
+
+	load: fun(self) -> T = atomic *@self.value
+}
+
+main: fun -> i32
+{
+	val a = cell[Point](Point(1))
+	val b = cell[str]("x")
+	val c = cell[i128](1)
+	ret 0
+}

@@ -1,0 +1,14 @@
+i32 10 10 10 27 25 25 281 280 0 1 7
+load 21
+bool 1 1 0 0
+f64 3.75 3.00 1 8.50
+u8 4 4
+i64 5000000001
+usize 4
+char c
+ptr 1 6
+enum 1 2 1
+match bool 1
+match ptr 1 5
+cstr two
+[exit code 0]

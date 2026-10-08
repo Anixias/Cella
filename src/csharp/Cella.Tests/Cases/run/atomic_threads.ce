@@ -1,0 +1,80 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+	CreateThread: fun(attributes: ptr, stackSize: usize, start: ext fun[ptr -> u32], parameter: ptr, flags: u32,
+		id: ptr) -> ptr
+	WaitForSingleObject: fun(handle: ptr, milliseconds: u32) -> u32
+	CloseHandle: fun(handle: ptr) -> i32
+}
+
+counter: var i64 = 0
+locked: var bool = false
+guarded: var i64 = 0
+data: var i32 = 0
+ready: var bool = false
+
+lock: fun
+{
+	loop while !(atomic acquire *@locked == false = true)
+	{
+	}
+}
+
+unlock: fun
+{
+	atomic release *@locked = false
+}
+
+work: ext fun(parameter: ptr) -> u32
+{
+	var i = 0
+	loop while i < 20000
+	{
+		atomic relaxed *@counter += 1
+		lock()
+		guarded += 1
+		unlock()
+		i += 1
+	}
+
+	ret 0
+}
+
+publish: ext fun(parameter: ptr) -> u32
+{
+	data = 42
+	atomic release *@ready = true
+	ret 0
+}
+
+main: fun -> i32
+{
+	var threads: array[ptr, 4]
+	var i: usize = 0
+	loop while i < 4
+	{
+		threads[i] = CreateThread(null, 0, work, null, 0, null)
+		i += 1
+	}
+
+	i = 0
+	loop while i < 4
+	{
+		WaitForSingleObject(threads[i], 0xFFFFFFFF)
+		CloseHandle(threads[i])
+		i += 1
+	}
+
+	printf("%lld %lld\n", atomic *@counter, guarded)
+	val publisher = CreateThread(null, 0, publish, null, 0, null)
+	loop while !(atomic acquire *@ready)
+	{
+	}
+
+	printf("%d\n", data)
+	WaitForSingleObject(publisher, 0xFFFFFFFF)
+	CloseHandle(publisher)
+	ret 0
+}

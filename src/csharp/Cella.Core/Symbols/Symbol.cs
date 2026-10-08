@@ -149,9 +149,10 @@ public sealed class TypeParameterSymbol(string name, IEnumerable<Token> keywords
 {
 	private readonly ImmutableArray<Token> _keywords = keywords.ToImmutableArray();
 	
-	public bool IsNoref => Has(TokenType.KeywordNoref);
+	public bool IsNoref => Has(TokenType.KeywordNoref) || IsAtomic;
 	public bool HasNull => Has(TokenType.KeywordNull);
-	public bool IsCopy => Has(TokenType.KeywordCopy);
+	public bool IsCopy => Has(TokenType.KeywordCopy) || IsAtomic;
+	public bool IsAtomic => Has(TokenType.KeywordAtomic);
 	public bool HasDrop => Has(TokenType.KeywordDrop);
 	public bool HasNew => Has(TokenType.KeywordNew);
 	public bool IsTrait => Has(TokenType.KeywordTrait);

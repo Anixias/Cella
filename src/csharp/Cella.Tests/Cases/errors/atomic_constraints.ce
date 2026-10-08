@@ -1,0 +1,11 @@
+mod test
+
+first[T: atomic + drop]: fun(value: T)
+{
+}
+
+second[T: drop + copy + atomic]: fun(value: T)
+{
+}
+
+main: fun -> i32 = 0

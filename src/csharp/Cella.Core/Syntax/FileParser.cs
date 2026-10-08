@@ -375,7 +375,8 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 				do
 				{
 					if (Match(ref index, out var keyword, _constraintKeywords, _constraintTypes) ||
-					    Match(ref index, out keyword, TokenType.KeywordNull))
+					    Match(ref index, out keyword, TokenType.KeywordNull) ||
+					    Match(ref index, out keyword, TokenType.KeywordAtomic))
 						keywords.Add(keyword);
 					else if (Peek(index, TokenType.Identifier))
 						traits.Add(ParseType(ref index));
