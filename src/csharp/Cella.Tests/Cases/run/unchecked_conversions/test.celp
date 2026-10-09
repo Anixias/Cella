@@ -1,0 +1,3 @@
+OutputType = "Executable"
+SystemLinkPreference = "Dynamic"
+OverflowChecks = false

@@ -1,0 +1,3 @@
+[stderr]
+Panic at conversion_overflow_trap.ce:8:33: conversion overflow
+[exit code -1073740791]

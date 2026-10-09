@@ -1,0 +1,31 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Code: enum(u16)
+{
+	none = 0
+	big = 300
+}
+
+integers: fun(wide: i32, byte: i32, negative: i32, size: isize, code: Code)
+{
+	printf("%d %d %u %llu %u %d\n", i32(u8(wide)), i32(i8(byte)), u32(negative), usize(size), u32(char(negative)),
+		i32(u8(code)))
+}
+
+floats: fun(huge: f64, nan: f64, over: f64, below: f64, big: f64)
+{
+	printf("%d %d %d %d %u %lld\n", i32(huge), i32(-huge), i32(nan), i32(u8(over)), u32(below), i64(big))
+}
+
+main: fun -> i32
+{
+	var zero = 0.0
+	integers(300, 200, -1, -1, Code.big)
+	floats(3.9e10, zero / zero, 300.0, -5.0, 9.5e18)
+	ret 0
+}

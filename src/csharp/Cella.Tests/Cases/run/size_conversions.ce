@@ -16,8 +16,8 @@ main: fun -> i32
 	cursor += 1
 	printf("%c %c %lld\n", *last, *cursor, end - text.data)
 
-	var negative: isize = -1
+	var signed: isize = 7
 	var length = text.byteLength
-	printf("%llu %lld\n", usize(negative), isize(length))
+	printf("%llu %lld\n", usize(signed), isize(length))
 	ret 0
 }

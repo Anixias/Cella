@@ -1,0 +1,14 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+toUnsigned: fun(value: i32) -> u32 = u32(value)
+
+main: fun -> i32
+{
+	printf("%u\n", toUnsigned(-1))
+	ret 0
+}

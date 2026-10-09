@@ -1597,7 +1597,8 @@ public sealed unsafe class CodeGenerator : IDisposable
 		if (c.From is EnumSymbol from)
 		{
 			var tag = builder.BuildExtractValue(source, 0, "tag");
-			return ResizeInteger(tag, MapTypeSymbol(c.To), _typePool.GetTagType(from).IsSigned, builder);
+			return ConvertInteger(tag, MapTypeSymbol(c.To), _typePool.GetTagType(from).IsSigned,
+				((IntegerType)c.To).IsSigned, v.SourceLocation, builder);
 		}
 		
 		var to = (EnumSymbol)c.To;
@@ -1689,8 +1690,9 @@ public sealed unsafe class CodeGenerator : IDisposable
 	private LLVMValueRef EmitConversion(ConversionValue v, LLVMBuilderRef builder) => v.Conversion switch
 	{
 		IdentityConversion => EmitValue(v.Source, builder),
-		IntegerConversion c => EmitIntegerConversion(c, EmitValue(v.Source, builder), builder),
-		FloatConversion c => EmitFloatConversion(c, EmitValue(v.Source, builder), builder),
+		IntegerConversion c => ConvertInteger(EmitValue(v.Source, builder), MapTypeSymbol(c.To), c.FromSigned,
+			c.ToSigned, v.SourceLocation, builder),
+		FloatConversion c => EmitFloatConversion(c, EmitValue(v.Source, builder), v.SourceLocation, builder),
 		NativeConversion c => EmitNativeConversion(c, v, builder),
 		EnumConversion c => EmitEnumConversion(c, v, builder),
 		FreeConversion or MatchConversion => EmitValue(v.Source, builder),
@@ -1762,8 +1764,27 @@ public sealed unsafe class CodeGenerator : IDisposable
 		_ => false
 	};
 	
-	private LLVMValueRef EmitIntegerConversion(IntegerConversion c, LLVMValueRef source, LLVMBuilderRef builder) =>
-		ResizeInteger(source, MapTypeSymbol(c.To), c.FromSigned, builder);
+	private LLVMValueRef ConvertInteger(LLVMValueRef source, LLVMTypeRef destType, bool fromSigned, bool toSigned,
+		SourceLocation location, LLVMBuilderRef builder)
+	{
+		var result = ResizeInteger(source, destType, fromSigned, builder);
+		var (fromBits, toBits) = (source.TypeOf.IntWidth, destType.IntWidth);
+		if (!_config.OverflowChecks || (fromSigned == toSigned ? toBits >= fromBits : !fromSigned && toBits > fromBits))
+			return result;
+		
+		var back = ResizeInteger(result, source.TypeOf, toSigned, builder);
+		var lost = builder.BuildICmp(LLVMIntPredicate.LLVMIntNE, back, source, "lost");
+		if (fromSigned != toSigned)
+		{
+			var signed = fromSigned ? source : result;
+			var zero = LLVMValueRef.CreateConstNull(signed.TypeOf);
+			var negative = builder.BuildICmp(LLVMIntPredicate.LLVMIntSLT, signed, zero, "negative");
+			lost = builder.BuildOr(lost, negative, "lost");
+		}
+		
+		PanicIf(lost, "conversion overflow", location, builder);
+		return result;
+	}
 	
 	private static LLVMValueRef ResizeInteger(LLVMValueRef source, LLVMTypeRef destType, bool isSigned,
 		LLVMBuilderRef builder)
@@ -1781,7 +1802,8 @@ public sealed unsafe class CodeGenerator : IDisposable
 			: builder.BuildZExt(source, destType);
 	}
 	
-	private LLVMValueRef EmitFloatConversion(FloatConversion c, LLVMValueRef source, LLVMBuilderRef builder)
+	private LLVMValueRef EmitFloatConversion(FloatConversion c, LLVMValueRef source, SourceLocation location,
+		LLVMBuilderRef builder)
 	{
 		var destType = MapTypeSymbol(c.To);
 		return (c.From, c.To) switch
@@ -1790,9 +1812,38 @@ public sealed unsafe class CodeGenerator : IDisposable
 			(FloatType, FloatType) => builder.BuildFPTrunc(source, destType),
 			(IntegerType { IsSigned: true }, _) => builder.BuildSIToFP(source, destType),
 			(IntegerType, _) => builder.BuildUIToFP(source, destType),
-			(_, IntegerType { IsSigned: var signed }) => BuildSaturatingFloatToInt(source, destType, signed, builder),
+			(_, IntegerType to) => EmitFloatToInteger(source, destType, to.IsSigned, location, builder),
 			_ => throw new InvalidOperationException()
 		};
+	}
+	
+	private LLVMValueRef EmitFloatToInteger(LLVMValueRef source, LLVMTypeRef destType, bool isSigned,
+		SourceLocation location, LLVMBuilderRef builder)
+	{
+		if (_config.OverflowChecks)
+			PanicIf(builder.BuildNot(FitsInteger(source, destType.IntWidth, isSigned, builder)), "conversion overflow",
+				location, builder);
+		
+		return BuildSaturatingFloatToInt(source, destType, isSigned, builder);
+	}
+	
+	private static LLVMValueRef FitsInteger(LLVMValueRef source, uint bits, bool isSigned, LLVMBuilderRef builder)
+	{
+		var upper = BigInteger.One << (int)(isSigned ? bits - 1 : bits);
+		var lower = isSigned ? -upper : BigInteger.Zero;
+		var below = lower - 1;
+		var exact = source.TypeOf.Kind == LLVMTypeKind.LLVMFloatTypeKind
+			? new BigInteger((float)below) == below
+			: new BigInteger((double)below) == below;
+		
+		var predicate = exact ? LLVMRealPredicate.LLVMRealOGT : LLVMRealPredicate.LLVMRealOGE;
+		var aboveLower = builder.BuildFCmp(predicate, source,
+			LLVMValueRef.CreateConstReal(source.TypeOf, (double)(exact ? below : lower)), "above");
+		
+		var belowUpper = builder.BuildFCmp(LLVMRealPredicate.LLVMRealOLT, source,
+			LLVMValueRef.CreateConstReal(source.TypeOf, (double)upper), "below");
+		
+		return builder.BuildAnd(aboveLower, belowUpper, "fits");
 	}
 	
 	private LLVMValueRef BuildSaturatingFloatToInt(LLVMValueRef source, LLVMTypeRef destType, bool isSigned,

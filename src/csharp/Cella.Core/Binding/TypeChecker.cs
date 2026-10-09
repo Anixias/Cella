@@ -1,4 +1,5 @@
-﻿using System.Numerics;
+﻿using System.Globalization;
+using System.Numerics;
 using Cella.Core.Binding.Constants;
 using Cella.Core.Binding.Conversions;
 using Cella.Core.Binding.Nodes;
@@ -620,8 +621,35 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool, 
 			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Source.Syntax.SourceLocation,
 				$"'{enumType.Name}' has no case with the value {value}"));
 		
+		var reported = overflows;
 		VisitNode(node.Source);
+		if (overflows > reported || FindLostConstant(node) is not { } lost)
+			return;
+		
+		overflows++;
+		Diagnostics.Add(new(DiagnosticSeverity.Error, node.Syntax.SourceLocation,
+			$"'{lost}' doesn't fit in '{node.Type.Name}'"));
 	}
+	
+	private string? FindLostConstant(ResolvedConversionExpressionNode node)
+	{
+		if (node is not { Type: IntegerType target } ||
+		    node.Conversion is not (IntegerConversion or FloatConversion or EnumConversion))
+			return null;
+		
+		return evaluator.Evaluate(node.Source) switch
+		{
+			IntegerConstant { Value: var value } when !evaluator.Fits(value, target) => value.ToString(),
+			FloatConstant { Value: var value } when !FitsInteger(value, target) =>
+				value.ToString(CultureInfo.InvariantCulture),
+			EnumConstant { Type: EnumSymbol enumType, Case: var enumCase } when
+				typePool.GetCaseValue(enumType, enumCase) is var tag && !evaluator.Fits(tag, target) => tag.ToString(),
+			_ => null
+		};
+	}
+	
+	private bool FitsInteger(double value, IntegerType type) =>
+		double.IsFinite(value) && evaluator.Fits(new BigInteger(Math.Truncate(value)), type);
 	
 	private static string DescribeMatchValue(Constant constant) => constant switch
 	{

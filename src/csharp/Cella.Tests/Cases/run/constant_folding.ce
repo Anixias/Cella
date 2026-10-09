@@ -6,8 +6,8 @@ ext
 }
 
 maxI32: val i32 = 2147483647
-wrapAdd: val i32 = i32(i64(maxI32) + 1)
-wrapMul: val u8 = u8(200 * 3)
+wrapAdd: val i32 = maxI32 +% 1
+wrapMul: val u8 = u8(200) *% 3
 divTrunc: val i32 = i32(-7) / 2
 remSign: val i32 = i32(-7) % 3
 minRem: val i32 = i32(-2147483648) % -1
@@ -26,13 +26,9 @@ sum32: val f32 = f32(0.1) + 0.2
 sum64: val f64 = f64(0.1) + 0.2
 quot32: val f32 = f32(1) / f32(3)
 rem64: val f64 = f64(-7.5) % 2.0
-big: val i32 = i32(3.9e10)
-small: val i32 = i32(-3.9e10)
-notANumber: val i32 = i32(0.0 / 0.0)
 truncated: val i64 = i64(-2.9)
 rounded: val f32 = f32(16777217)
 wide: val f64 = f64(9007199254740993)
-unsignedBig: val u8 = u8(300.0)
 nanCompare: val bool = (0.0 / 0.0) != (0.0 / 0.0)
 
 main: fun -> i32
@@ -63,16 +59,13 @@ main: fun -> i32
 	var three: f32 = 3
 	var r: f64 = -7.5
 	var two: f64 = 2.0
-	var hugeValue: f64 = 3.9e10
 	var zero: f64 = 0.0
 	var neg: f64 = -2.9
 	var odd: i64 = 16777217
 	var odd64: i64 = 9007199254740993
-	var over: f64 = 300.0
-	printf("%.9g %.9g|%.17g %.17g|%.9g %.9g|%.17g %.17g|%d %d|%d %d|%d %d|%lld %lld\n", sum32, x + y, sum64, u + v,
-		quot32, one / three, rem64, r % two, big, i32(hugeValue), small, i32(-hugeValue), notANumber,
-		i32(zero / zero), truncated, i64(neg))
-	printf("%.9g %.9g|%.17g %.17g|%u %u|%d %d\n", rounded, f32(odd), wide, f64(odd64), unsignedBig, u8(over),
-		nanCompare, (zero / zero) != (zero / zero))
+	printf("%.9g %.9g|%.17g %.17g|%.9g %.9g|%.17g %.17g|%lld %lld\n", sum32, x + y, sum64, u + v, quot32,
+		one / three, rem64, r % two, truncated, i64(neg))
+	printf("%.9g %.9g|%.17g %.17g|%d %d\n", rounded, f32(odd), wide, f64(odd64), nanCompare,
+		(zero / zero) != (zero / zero))
 	ret 0
 }

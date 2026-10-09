@@ -1,0 +1,14 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+toInt: fun(value: f64) -> i32 = i32(value)
+
+main: fun -> i32
+{
+	printf("%d\n", toInt(3e9))
+	ret 0
+}

@@ -1,0 +1,38 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Code: enum(u16)
+{
+	none = 0
+	small = 5
+	big = 300
+}
+
+low: fun(value: u32) -> u8 = u8(value & 0xFF)
+
+signedByte: fun(value: u8) -> i8 = i8(i16(value ^ 0x80) - 0x80)
+
+narrow: fun(value: i64) -> i32 = i32(value)
+
+unsigned: fun(value: i32) -> u32 = u32(value)
+
+toInt: fun(value: f64) -> i32 = i32(value)
+
+toByte: fun(value: f32) -> u8 = u8(value)
+
+tag: fun(code: Code) -> u8 = u8(code)
+
+letter: fun(value: i32) -> char = char(value)
+
+main: fun -> i32
+{
+	printf("%d %d %d %d\n", i32(low(300)), i32(low(0xFFFFFFFF)), i32(signedByte(255)), i32(signedByte(127)))
+	printf("%d %d %u %u\n", narrow(-2147483648), narrow(2147483647), unsigned(0), unsigned(2147483647))
+	printf("%d %d %d %d\n", toInt(-2147483648.5), toInt(2147483647.9), i32(toByte(255.9)), i32(toByte(-0.9)))
+	printf("%d %d %d %d\n", i32(tag(Code.small)), i32(letter(65)), i32(u8(255)), i32(i8(-128)))
+	ret 0
+}

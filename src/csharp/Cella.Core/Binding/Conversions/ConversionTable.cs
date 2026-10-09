@@ -85,10 +85,7 @@ public sealed class ConversionTable
 			else
 				table.Add(new IntegerConversion(intTypes[i].U, NativeSymbols.Char, ConversionKind.Explicit, 1));
 			
-			if (intTypes[i].S == NativeSymbols.Int32)
-				table.Add(new FreeConversion(NativeSymbols.Int32, NativeSymbols.Char, ConversionKind.Explicit));
-			else
-				table.Add(new IntegerConversion(intTypes[i].S, NativeSymbols.Char, ConversionKind.Explicit, 1));
+			table.Add(new IntegerConversion(intTypes[i].S, NativeSymbols.Char, ConversionKind.Explicit, 1));
 		}
 		
 		// Integer native size conversions
