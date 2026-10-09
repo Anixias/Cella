@@ -8,7 +8,7 @@ main: fun -> i32
 	var values: array[i32, 4]
 	values[last] = 1
 	var x = values[3] / (limit - 5)
-	var y = (-2147483647 - 1) / -1
+	var y = i32(-2147483647 - 1) / -1
 	var fine = values[last - 1]
 	ret fine
 }

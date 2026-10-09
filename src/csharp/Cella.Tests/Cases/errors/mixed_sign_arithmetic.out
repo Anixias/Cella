@@ -1,33 +1,33 @@
 
 ====== mixed_sign_arithmetic.ce ======
 
-Error at line 7, column 12
-6 │ var unsigned: u32 = 1
-7 │ var sum = signed + unsigned
-              ╘═══════════════╛ No operation defined for '+' between 'i32' and 'u32'
-                              | 'i32' can't represent every 'u32' value
+Error at line 8, column 12
+7 │ var huge: u128 = 1
+8 │ var sum = signed + huge
+              ╘═══════════╛ No operation defined for '+' between 'i32' and 'u128'
+                          | 'i32' can't represent every 'u128' value
 
-Error at line 8, column 13
-7 │ var sum = signed + unsigned
-8 │ var bits = signed & unsigned
-               ╘═══════════════╛ No operation defined for '&' between 'i32' and 'u32'
-                               | 'i32' can't represent every 'u32' value
+Error at line 9, column 13
+8 │ var sum = signed + huge
+9 │ var bits = signed & huge
+               ╘═══════════╛ No operation defined for '&' between 'i32' and 'u128'
+                           | 'i32' can't represent every 'u128' value
 
-Error at line 12, column 16
-11 │ var huge: u64 = 3
-12 │ var product = huge * wide
-                   ╘═════════╛ No operation defined for '*' between 'u64' and 'i64'
-                             | 'i64' can't represent every 'u64' value
+Error at line 13, column 16
+12 │ var size: usize = 3
+13 │ var product = size * wide
+                   ╘═════════╛ No operation defined for '*' between 'usize' and 'i64'
+                             | 'i64' can't represent every 'usize' value
 
-Error at line 15, column 13
-14 │ var letter = 'a'
-15 │ var next = letter + signed
+Error at line 16, column 13
+15 │ var letter = 'a'
+16 │ var next = letter + signed
                 ╘═════════════╛ No operation defined for '+' between 'char' and 'i32'
                               | 'i32' can't represent every 'char' value
 
-Error at line 16, column 21
-15 │ var next = letter + signed
-16 │ var forced: char = unsigned
+Error at line 17, column 21
+16 │ var next = letter + signed
+17 │ var forced: char = unsigned
                         ╘══════╛ Cannot convert type 'u32' to 'char'
 
 [compilation failed]

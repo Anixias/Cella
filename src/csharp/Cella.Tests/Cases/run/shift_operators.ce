@@ -22,7 +22,7 @@ main: fun -> i32
 
 	var small: u8 = 0xFF
 	var big: i64 = 300
-	var widened: u32 = small << 4
+	var widened: u32 = u32(small) << 4
 	var huge: u128 = 1
 	var size: usize = 1
 	printf("%u %d %d %llu %llu\n", widened, small << 4, small << big, u64(huge << 100 >> 96), size << 10)

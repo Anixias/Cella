@@ -1,0 +1,15 @@
+mod test
+
+takesU8: fun(value: u8) -> u8 = value
+
+main: fun -> i32
+{
+	val sum: u8 = 200 + 100
+	val difference: u8 = 3 - 5
+	val argument = takesU8(200 + 100)
+	val shiftedOut: u8 = 1 << 8
+	val doubled: i32 = (1 << 31) * 2
+	val inexact: f32 = 16777216 + 1
+	val fraction: i32 = 7 / 2.0
+	ret 0
+}

@@ -50,6 +50,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	private readonly Dictionary<IResolvedExpressionNode, ImmutableArray<LocalVariableSymbol?>> _failedPatterns = [];
 	private readonly Dictionary<ResolvedCaseNameExpressionNode, IResolvedExpressionNode> _caseNameFallbacks = [];
 	private readonly Dictionary<ResolvedInterpolatedStringExpressionNode, IResolvedExpressionNode> _foldedStrings = [];
+	private readonly Dictionary<ResolvedLiteralExpressionNode, LiteralFold> _literalFolds = [];
 	private readonly Dictionary<(IResolvedExpressionNode, FStrType), IResolvedExpressionNode> _templates = [];
 	private readonly ExtSignatureTypes _extSignatureTypes;
 	private readonly TypeInference _inference;
@@ -1541,7 +1542,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	private TypeSymbol GetDefaultType(IResolvedExpressionNode node) => node.Type switch
 	{
 		UntypedIntegerType when node is ResolvedLiteralExpressionNode literal =>
-			FindDefaultIntegerType((BigInteger)literal.Value!) ?? NativeSymbols.Int32,
+			FindDefaultIntegerType(literal) ?? NativeSymbols.Int32,
 		UntypedIntegerType => NativeSymbols.Int32,
 		UntypedFloatType => NativeSymbols.Float64,
 		UntypedNullType => NativeSymbols.VoidPtr,
@@ -1658,17 +1659,8 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			: receiver;
 	
 	private IResolvedExpressionNode VisitArgument(IExpressionNode node, IEnumerable<TypeSymbol> expected,
-		TypeSymbol? hint = null)
-	{
-		var types = expected.Distinct().ToList();
-		if (VisitCaseName(node, types) is { } caseName)
-			return caseName;
-		
-		if (types is [var type] && IsNumeric(type) && IsConstantArithmetic(node))
-			return VisitTargeted(node, type);
-		
-		return hint is null ? VisitArgument(node) : VisitHinted(node, hint);
-	}
+		TypeSymbol? hint = null) =>
+		VisitCaseName(node, expected) ?? (hint is null ? VisitArgument(node) : VisitHinted(node, hint));
 	
 	private IResolvedExpressionNode[] ResolveArguments(ImmutableArray<IExpressionNode> nodes,
 		IReadOnlyList<CallShape> shapes, out bool isAmbiguous,
@@ -1897,14 +1889,6 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			.All(static cost => cost != int.MaxValue);
 	}
 	
-	private IResolvedExpressionNode VisitTargeted(IExpressionNode node, TypeSymbol target)
-	{
-		_expectations.Push(new(target, false));
-		var result = ((IExpressionNodeVisitor<IResolvedExpressionNode>)this).Visit(node);
-		_expectations.Pop();
-		return result;
-	}
-	
 	private IResolvedExpressionNode VisitHinted(IExpressionNode node, TypeSymbol hint)
 	{
 		_expectations.Push(new(hint, true));
@@ -1919,38 +1903,8 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		}
 	}
 	
-	private static bool IsNumeric(TypeSymbol type) => type is FloatType ||
-	                                                  type is IntegerType integer &&
-	                                                  NativeSymbols.PureIntegerTypes.Contains(integer);
-	
-	private static bool IsConstantArithmetic(IExpressionNode node) => node switch
-	{
-		BinaryOpExpressionNode { Op.Type: var op } binary when IsArithmetic(op) =>
-			IsConstantOperand(binary.Left) && IsConstantOperand(binary.Right),
-		UnaryOpExpressionNode { Op.Type: TokenType.OpMinus, Operand: LiteralExpressionNode } => false,
-		UnaryOpExpressionNode { Op.Type: TokenType.OpMinus or TokenType.OpPlus or TokenType.OpTilde } unary =>
-			IsConstantOperand(unary.Operand),
-		_ => false
-	};
-	
-	private static bool IsConstantOperand(IExpressionNode node) => node is LiteralExpressionNode
-	{
-		Token.Type: TokenType.IntegerLiteral or TokenType.FloatLiteral
-	} or SizeOfExpressionNode or AlignOfExpressionNode || IsConstantArithmetic(node);
-	
-	private static bool IsArithmetic(TokenType op) => op is TokenType.OpPlus or TokenType.OpMinus or TokenType.OpStar
-		or TokenType.OpSlash or TokenType.OpPercent or TokenType.OpLessLess or TokenType.OpGreaterGreater
-		or TokenType.OpLessLessLess or TokenType.OpGreaterGreaterGreater or TokenType.OpAmpersand or TokenType.OpBar
-		or TokenType.OpHat;
-	
-	private IResolvedExpressionNode VisitOperand(IExpressionNode node, IEnumerable<ICallable> candidates, int index,
-		TypeSymbol? target = null)
-	{
-		if (VisitCaseName(node, ParameterTypesAt(candidates, index)) is { } caseName)
-			return caseName;
-		
-		return target is not null && IsConstantArithmetic(node) ? VisitTargeted(node, target) : VisitNode(node, null);
-	}
+	private IResolvedExpressionNode VisitOperand(IExpressionNode node, IEnumerable<ICallable> candidates, int index) =>
+		VisitCaseName(node, ParameterTypesAt(candidates, index)) ?? VisitNode(node, null);
 	
 	private ResolvedCaseNameExpressionNode? VisitCaseName(IExpressionNode node, IEnumerable<TypeSymbol> expected)
 	{
@@ -4000,11 +3954,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		if (isLiteral)
 			_unaryOpJobs.Push(new(op.Type));
 		
-		var operand = op.Type is TokenType.OpMinus or TokenType.OpPlus or TokenType.OpTilde &&
-		              CurrentTargetType is { } target && IsNumeric(target) && IsConstantArithmetic(node.Operand)
-			? VisitTargeted(node.Operand, target)
-			: VisitNode(node.Operand, null);
-		
+		var operand = VisitNode(node.Operand, null);
 		var consumed = isLiteral && _unaryOpJobs.Pop().Consumed;
 		
 		if (consumed)
@@ -4025,6 +3975,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			
 			default:
 			{
+				if (FoldLiteral(node, operand) is { } folded)
+					return folded;
+				
 				if (ResolveDeclaredUnary(node, operand) is { } declared)
 					return declared;
 				
@@ -4041,8 +3994,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 				
 				var candidates = _operatorRegistry.GetUnaryCandidates(op.Type);
 				var operandArray = new[] { operand };
-				var resolutionSet = ResolveCallable(candidates, operandArray, MaterializationMode.Overload,
-					CurrentTargetType);
+				var resolutionSet = ResolveCallable(candidates, operandArray, MaterializationMode.Overload);
 				
 				if (resolutionSet.IsAmbiguous)
 					return Error(node, $"Ambiguous operation '{op.Text}' on '{operand.Type.Name}'", CurrentTargetType);
@@ -4120,19 +4072,20 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		else
 		{
 			var candidates = _operatorRegistry.GetBinaryCandidates(op.Type);
-			var target = IsArithmetic(op.Type) && CurrentTargetType is { } type && IsNumeric(type) ? type : null;
-			var left = Decay(VisitOperand(node.Left, candidates, 0, target));
+			var left = Decay(VisitOperand(node.Left, candidates, 0));
 			var isConjunction = op.Type == TokenType.OpAmpersandAmpersand;
 			var right = Decay(isConjunction
 				? VisitInScope(node.Right, GetTrueBindings(left))
-				: VisitOperand(node.Right, [..candidates, ..FindOperatorCallables(left.Type, op.Text)], 1,
-					IsShiftOrRotate(op.Type) ? null : target));
+				: VisitOperand(node.Right, [..candidates, ..FindOperatorCallables(left.Type, op.Text)], 1));
 			
 			if (isConjunction)
 				ReportRepeatedBindings(GetTrueBindings(left).Concat(GetTrueBindings(right)));
 			
 			if (AnyInvalid(left, right))
 				return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
+			
+			if (FoldLiterals(node, left, right) is { } folded)
+				return folded;
 			
 			if (ResolveDeclaredOperator(node, left, right) is { } declared)
 				return declared;
@@ -4149,21 +4102,21 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			if (!IsShiftOrRotate(op.Type) &&
 			    FindLossyMixedSign(left.Type, right.Type) is var (signedType, unsignedType))
 			{
-				var hint = $"'{signedType.Name}' can't represent every '{unsignedType.Name}' value";
-				if (CountBits(signedType) > CountBits(unsignedType))
-					hint += signedType == NativeSymbols.IntSize ? " on 32-bit targets" : " on 64-bit targets";
+				if (FindMixedSignType(signedType, unsignedType) is not { } mixedType)
+				{
+					var hint = $"'{signedType.Name}' can't represent every '{unsignedType.Name}' value";
+					if (CountBits(signedType) > CountBits(unsignedType))
+						hint += signedType == NativeSymbols.IntSize ? " on 32-bit targets" : " on 64-bit targets";
+					
+					var mismatch = DiagnosticReporter.ReportBinaryOpMismatch(_operatorRegistry, left, op, right);
+					return Error(node, mismatch with { Hints = [hint] }, CurrentTargetType);
+				}
 				
-				var mismatch = DiagnosticReporter.ReportBinaryOpMismatch(_operatorRegistry, left, op, right);
-				return Error(node, mismatch with { Hints = [hint] }, CurrentTargetType);
+				candidates = [..candidates.Where(candidate => candidate.ParameterTypes.All(type => type == mixedType))];
 			}
 			
 			var args = new[] { left, right };
-			var resolutionSet = ResolveCallable(candidates, args, MaterializationMode.Overload,
-				CurrentTargetType);
-			
-			if (!resolutionSet.HasResult && CurrentTargetType is not null)
-				resolutionSet = ResolveCallable(candidates, args, MaterializationMode.Overload);
-			
+			var resolutionSet = ResolveCallable(candidates, args, MaterializationMode.Overload);
 			if (resolutionSet.IsAmbiguous)
 				return Error(node,
 					$"Ambiguous operation '{op.Text}' between '{left.Type.Name}' and '{right.Type.Name}'",
@@ -4191,6 +4144,156 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			return ApplyResultResolution(result, resolution);
 		}
 	}
+	
+	private ResolvedLiteralExpressionNode? FoldLiteral(UnaryOpExpressionNode node, IResolvedExpressionNode operand)
+	{
+		if (AsNumberLiteral(operand) is not { } literal)
+			return null;
+		
+		object? value = (node.Op.Type, literal.Value) switch
+		{
+			(TokenType.OpPlus, var number) => number,
+			(TokenType.OpMinus, BigInteger integer) => -integer,
+			(TokenType.OpMinus, double number) => -number,
+			(TokenType.OpMinus, string text) => text.StartsWith('-') ? text[1..] : $"-{text}",
+			(TokenType.OpTilde, BigInteger integer) => ~integer,
+			_ => null
+		};
+		
+		return value is null ? null : CreateFold(node, node.Op.Type, literal.Type, value, [literal]);
+	}
+	
+	private ResolvedLiteralExpressionNode? FoldLiterals(BinaryOpExpressionNode node, IResolvedExpressionNode left,
+		IResolvedExpressionNode right)
+	{
+		if (AsNumberLiteral(left) is not { } leftLiteral || AsNumberLiteral(right) is not { } rightLiteral)
+			return null;
+		
+		if (leftLiteral.Value is BigInteger leftInteger && rightLiteral.Value is BigInteger rightInteger)
+		{
+			var integer = node.Op.Type is TokenType.OpLessLessLess or TokenType.OpGreaterGreaterGreater
+				? FoldRotation(node.Op.Type, leftLiteral, rightInteger)
+				: FoldIntegers(node.Op.Type, leftInteger, rightInteger);
+			
+			return integer is { } value
+				? CreateFold(node, node.Op.Type, NativeSymbols.UntypedInteger, value, [leftLiteral, rightLiteral])
+				: null;
+		}
+		
+		return ToDouble(leftLiteral) is { } leftNumber && ToDouble(rightLiteral) is { } rightNumber &&
+		       FoldFloats(node.Op.Type, leftNumber, rightNumber) is { } number
+			? CreateFold(node, node.Op.Type, NativeSymbols.UntypedFloat, number, [leftLiteral, rightLiteral])
+			: null;
+	}
+	
+	private ResolvedLiteralExpressionNode CreateFold(IExpressionNode node, TokenType op, TypeSymbol type, object value,
+		ImmutableArray<ResolvedLiteralExpressionNode> operands)
+	{
+		var folded = new ResolvedLiteralExpressionNode(type, value, node);
+		if (type is UntypedIntegerType)
+			_literalFolds[folded] = new(op, operands);
+		
+		return folded;
+	}
+	
+	private static ResolvedLiteralExpressionNode? AsNumberLiteral(IResolvedExpressionNode node) =>
+		node is ResolvedLiteralExpressionNode { Type: UntypedIntegerType or UntypedFloatType } literal ? literal : null;
+	
+	private BigInteger? FoldIntegers(TokenType op, BigInteger left, BigInteger right) => op switch
+	{
+		TokenType.OpPlus => left + right,
+		TokenType.OpMinus => left - right,
+		TokenType.OpStar => left * right,
+		TokenType.OpSlash when !right.IsZero => BigInteger.Divide(left, right),
+		TokenType.OpPercent when !right.IsZero => BigInteger.Remainder(left, right),
+		TokenType.OpAmpersand => left & right,
+		TokenType.OpBar => left | right,
+		TokenType.OpHat => left ^ right,
+		TokenType.OpLessLess when IsFoldableShift(right) => left << (int)right,
+		TokenType.OpGreaterGreater when IsFoldableShift(right) => left >> (int)right,
+		_ => null
+	};
+	
+	private BigInteger? FoldRotation(TokenType op, ResolvedLiteralExpressionNode value, BigInteger amount) =>
+		FindDefaultIntegerType(value) is { } type
+			? _evaluator.Rotate(DefaultIntegerValue(value), amount, type, op == TokenType.OpLessLessLess)
+			: null;
+	
+	private bool IsFoldableShift(BigInteger amount) =>
+		amount.Sign >= 0 && amount < CountBits(NativeSymbols.UInt128);
+	
+	private static double? FoldFloats(TokenType op, double left, double right) => op switch
+	{
+		TokenType.OpPlus => left + right,
+		TokenType.OpMinus => left - right,
+		TokenType.OpStar => left * right,
+		TokenType.OpSlash => left / right,
+		TokenType.OpPercent => left % right,
+		_ => null
+	};
+	
+	private double? ToDouble(ResolvedLiteralExpressionNode literal) => literal.Type switch
+	{
+		UntypedFloatType => ParseFloatValue(literal.Value!, NativeSymbols.Float64),
+		_ when DefaultIntegerValue(literal) is var integer && IsExactInFloat(integer, NativeSymbols.Float64) =>
+			(double)integer,
+		_ => null
+	};
+	
+	private BigInteger? EvaluateIn(ResolvedLiteralExpressionNode literal, IntegerType type)
+	{
+		if (!_literalFolds.TryGetValue(literal, out var fold))
+			return literal.Value is BigInteger value && FitsInType(value, type) ? value : null;
+		
+		if (EvaluateIn(fold.Operands[0], type) is not { } left)
+			return null;
+		
+		if (fold.Operands.Length == 1)
+			return fold.Op switch
+			{
+				TokenType.OpMinus => IfFits(-left, type),
+				TokenType.OpTilde => _evaluator.Wrap(~left, type),
+				_ => left
+			};
+		
+		if (fold.Op is TokenType.OpLessLess or TokenType.OpGreaterGreater)
+		{
+			if (fold.Operands[1].Value is not BigInteger amount || amount.Sign < 0 || amount >= CountBits(type))
+				return null;
+			
+			return fold.Op == TokenType.OpLessLess ? _evaluator.Wrap(left << (int)amount, type) : left >> (int)amount;
+		}
+		
+		if (fold.Op is TokenType.OpLessLessLess or TokenType.OpGreaterGreaterGreater)
+			return _evaluator.Rotate(left, (BigInteger)fold.Operands[1].Value!, type,
+				fold.Op == TokenType.OpLessLessLess);
+		
+		if (EvaluateIn(fold.Operands[1], type) is not { } right)
+			return null;
+		
+		return fold.Op switch
+		{
+			TokenType.OpPlus => IfFits(left + right, type),
+			TokenType.OpMinus => IfFits(left - right, type),
+			TokenType.OpStar => IfFits(left * right, type),
+			TokenType.OpSlash when !right.IsZero => IfFits(BigInteger.Divide(left, right), type),
+			TokenType.OpPercent when !right.IsZero => BigInteger.Remainder(left, right),
+			TokenType.OpAmpersand => left & right,
+			TokenType.OpBar => left | right,
+			TokenType.OpHat => left ^ right,
+			_ => null
+		};
+	}
+	
+	private BigInteger? IfFits(BigInteger value, IntegerType type) => FitsInType(value, type) ? value : null;
+	
+	private BigInteger? IntegerValueIn(ResolvedLiteralExpressionNode literal, IntegerType type) =>
+		EvaluateIn(literal, type) ?? IfFits((BigInteger)literal.Value!, type);
+	
+	private BigInteger DefaultIntegerValue(ResolvedLiteralExpressionNode literal) =>
+		FindDefaultIntegerType(literal) is { } type && IntegerValueIn(literal, type) is { } value
+			? value
+			: (BigInteger)literal.Value!;
 	
 	private IResolvedExpressionNode ResolveBorrowAssignment(BinaryOpExpressionNode node, IResolvedExpressionNode left,
 		BorrowType borrow, bool isOwnStore)
@@ -4676,10 +4779,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		{
 			case UntypedIntegerType when node is ResolvedLiteralExpressionNode literal:
 			{
-				var value = (BigInteger)literal.Value!;
-				var targetType = FindDefaultIntegerType(value);
+				var targetType = FindDefaultIntegerType(literal);
 				return targetType is not null
-					? MaterializeLiteral(node.Syntax, targetType, value)
+					? MaterializeInteger(literal, targetType)
 					: Error(node.Syntax, "Integer literal too large to fit any type", targetType);
 			}
 			
@@ -4706,8 +4808,8 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		}
 	}
 	
-	private IntegerType? FindDefaultIntegerType(BigInteger value) => NativeSymbols.IntegerTypes
-		.Where(type => FitsInType(value, type))
+	private IntegerType? FindDefaultIntegerType(ResolvedLiteralExpressionNode literal) => NativeSymbols.IntegerTypes
+		.Where(type => IntegerValueIn(literal, type) is not null)
 		.Select(static type => (Type: type,
 			Cost: UntypedIntegerType.Instance.MaterializationCost(type, MaterializationMode.Default)))
 		.Where(static candidate => candidate.Cost != int.MaxValue)
@@ -4795,11 +4897,10 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		if (node.Type is not UntypedIntegerType)
 			return node;
 		
+		if (IntegerValueIn(node, target) is { } fitted)
+			return MaterializeLiteral(node.Syntax, target, fitted);
+		
 		var value = (BigInteger)node.Value!;
-		
-		if (FitsInType(value, target))
-			return MaterializeLiteral(node.Syntax, target, value);
-		
 		var fallback = SmallestFittingType(value);
 		return fallback is not null
 			? MaterializeLiteral(node.Syntax, fallback, value)
@@ -4809,7 +4910,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	private ResolvedLiteralExpressionNode MaterializeIntegerAsFloat(ResolvedLiteralExpressionNode node,
 		FloatType target)
 	{
-		var value = (BigInteger)node.Value!;
+		var value = DefaultIntegerValue(node);
 		return IsExactInFloat(value, target)
 			? new ResolvedLiteralExpressionNode(target, (double)value, node.Syntax)
 			: MaterializeInteger(node, NativeSymbols.Int32);
@@ -4817,18 +4918,22 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	
 	private IResolvedExpressionNode MaterializeFloat(ResolvedLiteralExpressionNode node, FloatType target)
 	{
-		var text = (string)node.Value!;
-		var type = FitsInFloat(text, target) ? target : NativeSymbols.Float64;
-		return FitsInFloat(text, type)
-			? new ResolvedLiteralExpressionNode(type, ParseFloatValue(text, type), node.Syntax)
+		var value = node.Value!;
+		var type = FitsInFloat(value, target) ? target : NativeSymbols.Float64;
+		return FitsInFloat(value, type)
+			? new ResolvedLiteralExpressionNode(type, ParseFloatValue(value, type), node.Syntax)
 			: Error(node.Syntax, "Float literal too large to fit any type", target);
 	}
 	
-	private static double ParseFloatValue(string text, FloatType type) => type == NativeSymbols.Float32
-		? float.Parse(text, CultureInfo.InvariantCulture)
-		: double.Parse(text, CultureInfo.InvariantCulture);
+	private static double ParseFloatValue(object value, FloatType type) => value switch
+	{
+		double number => type == NativeSymbols.Float32 ? (float)number : number,
+		_ when type == NativeSymbols.Float32 => float.Parse((string)value, CultureInfo.InvariantCulture),
+		_ => double.Parse((string)value, CultureInfo.InvariantCulture)
+	};
 	
-	private static bool FitsInFloat(string text, FloatType type) => double.IsFinite(ParseFloatValue(text, type));
+	private static bool FitsInFloat(object value, FloatType type) =>
+		double.IsFinite(ParseFloatValue(value, type)) || value is double number && !double.IsFinite(number);
 	
 	private static bool IsExactInFloat(BigInteger value, FloatType type)
 	{
@@ -4924,6 +5029,17 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		
 		var (signedType, unsignedType) = a.IsSigned ? (a, b) : (b, a);
 		return _conversionTable.FindImplicit(unsignedType, signedType) is null ? (signedType, unsignedType) : null;
+	}
+	
+	private IntegerType? FindMixedSignType(IntegerType signedType, IntegerType unsignedType)
+	{
+		if (signedType.Kind == PrimitiveTypeKind.IntSize ||
+		    unsignedType.Kind is PrimitiveTypeKind.UIntSize or PrimitiveTypeKind.Char)
+			return null;
+		
+		var bits = Math.Max(CountBits(signedType), CountBits(unsignedType) + 1);
+		return NativeSymbols.PureIntegerTypes.FirstOrDefault(type =>
+			type.IsSigned && type.Kind != PrimitiveTypeKind.IntSize && CountBits(type) >= bits);
 	}
 	
 	private TypeSymbol? UnifyTypes(IList<IResolvedExpressionNode> values)
@@ -5507,9 +5623,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	
 	private bool LiteralFits(ResolvedLiteralExpressionNode literal, TypeSymbol target) => (literal.Type, target) switch
 	{
-		(UntypedIntegerType, IntegerType type) => FitsInType((BigInteger)literal.Value!, type),
-		(UntypedIntegerType, FloatType type) => IsExactInFloat((BigInteger)literal.Value!, type),
-		(UntypedFloatType, FloatType type) => FitsInFloat((string)literal.Value!, type),
+		(UntypedIntegerType, IntegerType type) => IntegerValueIn(literal, type) is not null,
+		(UntypedIntegerType, FloatType type) => IsExactInFloat(DefaultIntegerValue(literal), type),
+		(UntypedFloatType, FloatType type) => FitsInFloat(literal.Value!, type),
 		_ => true
 	};
 	
@@ -5577,6 +5693,8 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	}
 	
 	private readonly record struct Expectation(TypeSymbol? Type, bool IsHint);
+	
+	private readonly record struct LiteralFold(TokenType Op, ImmutableArray<ResolvedLiteralExpressionNode> Operands);
 	
 	private sealed record CallShape
 	(

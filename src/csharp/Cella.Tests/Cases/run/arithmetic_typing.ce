@@ -1,0 +1,56 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Wide: rec
+{
+	value: i64
+}
+
+limit: val u8 = 300 - 100
+
+show: fun(value: i64) -> i64 = value
+product: fun(a: i32, b: i32) -> i64 = a * b
+
+run: fun(a: i32, b: i32, small: u8)
+{
+	val wrapped: i64 = a * b
+	val widened: i64 = i64(a) * b
+	var assigned: i64 = 0
+	assigned = a * b
+	printf("%lld %lld %lld %lld %lld %lld\n", wrapped, widened, assigned, show(a * b), Wide(a * b).value,
+		product(a, b))
+
+	val quotient: f64 = b / 4
+	val precise: f64 = f64(b) / 4
+	val scaled: f64 = b / 4.0
+	printf("%.2f %.2f %.2f\n", quotient, precise, scaled)
+
+	var total: u32 = 0
+	total += small * small
+	val sum: u32 = small + 1
+	val adapted = small + (200 + 50)
+	printf("%u %u %d\n", total, sum, adapted)
+}
+
+main: fun -> i32
+{
+	val ratio: f64 = 3 / 5
+	val fits: u8 = 300 - 100
+	val big: i64 = 3000000000 * 3
+	val nested: u8 = (200 + 100) - 100
+	val fallback = 2147483647 + 1
+	val shifted = 1 << 40
+	val lowest: i32 = -(1 << 31)
+	printf("%.2f %d %lld %d %lld %d %lld %d\n", ratio, fits, big, nested, fallback, sizeOf(fallback), shifted, lowest)
+
+	val mixed = 7 / 2 * 2.0
+	val half: f32 = 1.5 * 2
+	val infinite: f32 = 1.0 / 0.0
+	printf("%.2f %.2f %f %d\n", mixed, half, infinite, limit)
+	run(2000000000, 2, 255)
+	ret 0
+}

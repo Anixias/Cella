@@ -20,5 +20,25 @@ main: fun -> i32
 	var code: u32 = letter
 
 	printf("%d %lld %lld %u\n", sum, total, widened, code)
+
+	var negative: i8 = -100
+	var medium: u16 = 60000
+	var short: i16 = -30000
+	var signed: i32 = -2000000000
+	var big: u64 = 18000000000000000000
+	var signedWide: i64 = -9000000000000000000
+	var bytes = small + negative
+	var mixed = medium + negative
+	var halves = medium + short
+	var masked = small & negative
+	printf("%d %d %d %d %d %d %d %d\n", bytes, sizeOf(bytes), mixed, sizeOf(mixed), halves, sizeOf(halves), masked,
+		sizeOf(masked))
+
+	var words = count + signed
+	var product = count * signed
+	var quotient = count / signed
+	var longs = big + signedWide
+	printf("%lld %d %lld %d %lld %d %lld %d\n", words, sizeOf(words), product, sizeOf(product), quotient,
+		sizeOf(quotient), i64(longs), sizeOf(longs))
 	ret 0
 }

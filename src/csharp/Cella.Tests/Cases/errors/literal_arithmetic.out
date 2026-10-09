@@ -1,0 +1,39 @@
+
+====== literal_arithmetic.ce ======
+
+Error at line 7, column 16
+6 │ {
+7 │     val sum: u8 = 200 + 100
+                      ╘═══════╛ Cannot convert type 'i32' to 'u8'
+
+Error at line 8, column 23
+7 │ val sum: u8 = 200 + 100
+8 │ val difference: u8 = 3 - 5
+                         ╘═══╛ Cannot convert type 'i32' to 'u8'
+
+Error at line 9, column 17
+8 │ val difference: u8 = 3 - 5
+9 │ val argument = takesU8(200 + 100)
+                   ╘═════╛ No overload of 'takesU8' accepts these arguments
+
+Error at line 10, column 23
+ 9 │ val argument = takesU8(200 + 100)
+10 │ val shiftedOut: u8 = 1 << 8
+                          ╘════╛ Cannot convert type 'i32' to 'u8'
+
+Error at line 11, column 22
+10 │ val shiftedOut: u8 = 1 << 8
+11 │ val doubled: i32 = (1 << 31) * 2
+                         ╘══════════╛ Cannot convert type 'i64' to 'i32'
+
+Error at line 12, column 21
+11 │ val doubled: i32 = (1 << 31) * 2
+12 │ val inexact: f32 = 16777216 + 1
+                        ╘══════════╛ Cannot convert type 'i32' to 'f32'
+
+Error at line 13, column 22
+12 │ val inexact: f32 = 16777216 + 1
+13 │ val fraction: i32 = 7 / 2.0
+                         ╘═════╛ Cannot convert type 'float literal' to 'i32'
+
+[compilation failed]

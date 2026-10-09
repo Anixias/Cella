@@ -1,0 +1,45 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Flags: rec
+{
+	bits: u8
+}
+
+clear: fun(value: u8) -> u8 = value & ~5
+
+run: fun(a: u8)
+{
+	val masked: u8 = a & ~5
+	val flags = Flags(a & ~1)
+	val loose = a & ~5
+	printf("%d %d %d %d (size %d)\n", masked, flags.bits, clear(a), loose, sizeOf(loose))
+}
+
+main: fun -> i32
+{
+	val signBit: i32 = 1 << 31
+	val allOnes: u32 = ~0
+	val half: u32 = ~0 >> 1
+	val low: i8 = 1 << 7
+	val packed: i32 = (255 << 24) + 1193046
+	printf("%d %u %u %d %d\n", signBit, allOnes, half, low, packed)
+
+	val shifted: i32 = (1 << 31) >> 4
+	val natural = 1 << 31
+	val dropped: u8 = 3 << 7
+	val wide: i64 = 1 << 40
+	val lowest: i32 = -(1 << 31)
+	printf("%d %d (size %d) %d %lld %d\n", shifted, natural, sizeOf(natural), dropped, wide, lowest)
+
+	val turned: u8 = 1 <<< 9
+	val spun = 1 <<< 9
+	val back: u8 = 129 >>> 1
+	printf("%d %d %d\n", turned, spun, back)
+	run(255)
+	ret 0
+}

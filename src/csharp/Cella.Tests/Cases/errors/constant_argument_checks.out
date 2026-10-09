@@ -3,11 +3,11 @@
 
 Error at line 7, column 19
 6 │ {
-7 │     val a = takesI32(-2147483648 / -1)
-                         ╘══════════════╛ Division overflows 'i32'
+7 │     val a = takesI32(i32(-2147483648) / -1)
+                         ╘═══════════════════╛ Division overflows 'i32'
 
 Error at line 8, column 23
-7 │ val a = takesI32(-2147483648 / -1)
+7 │ val a = takesI32(i32(-2147483648) / -1)
 8 │ val b = takesI32(1 / 0)
                          ^ Division by zero
 

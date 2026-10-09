@@ -52,7 +52,7 @@ main: fun -> i32
 
 	var color = Color(255, 128, 0, 0.5)
 	var factor: u8 = 200
-	var wide = Wide(factor * factor)
+	var wide = Wide(u32(factor) * factor)
 	var counter = Counter(7)
 	var points = [Point(1, 1), Point(), Point(2, 3)]
 	printf("%d %d %d %.2f %u %d %d %d\n", color.r, color.g, color.b, color.alpha, wide.value, counter.count,

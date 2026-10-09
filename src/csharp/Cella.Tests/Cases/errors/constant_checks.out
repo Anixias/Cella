@@ -11,9 +11,9 @@ Error at line 10, column 23
 10 │ var x = values[3] / (limit - 5)
                           ╘═══════╛ Division by zero
 
-Error at line 11, column 11
+Error at line 11, column 10
 10 │ var x = values[3] / (limit - 5)
-11 │ var y = (-2147483647 - 1) / -1
-              ╘═══════════════════╛ Division overflows 'i32'
+11 │ var y = i32(-2147483647 - 1) / -1
+             ╘═══════════════════════╛ Division overflows 'i32'
 
 [compilation failed]

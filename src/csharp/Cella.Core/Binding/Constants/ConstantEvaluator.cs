@@ -132,7 +132,7 @@ public sealed class ConstantEvaluator
 	private static Constant? FoldLiteral(ResolvedLiteralExpressionNode node) => node.Type switch
 	{
 		IntegerType or UntypedIntegerType when node.IntegerValue is { } value => new IntegerConstant(node.Type, value),
-		FloatType when node.Value is double value => new FloatConstant(node.Type, value),
+		FloatType or UntypedFloatType when node.Value is double value => new FloatConstant(node.Type, value),
 		UntypedFloatType when node.Value is string text =>
 			new FloatConstant(node.Type, double.Parse(text, CultureInfo.InvariantCulture)),
 		PrimitiveType { Kind: PrimitiveTypeKind.Bool } when node.Value is bool value => BoolConstant.From(value),
@@ -340,18 +340,20 @@ public sealed class ConstantEvaluator
 			: Integer(valueType, value.Value >> (int)count);
 	}
 	
-	private Constant? Rotate(BinaryOperation operation, IntegerConstant value, IntegerConstant amount)
+	private Constant? Rotate(BinaryOperation operation, IntegerConstant value, IntegerConstant amount) =>
+		value.Type is IntegerType valueType
+			? Integer(valueType, Rotate(value.Value, amount.Value, valueType, operation == BinaryOperation.RotateLeft))
+			: null;
+	
+	public BigInteger Rotate(BigInteger value, BigInteger amount, IntegerType type, bool isLeft)
 	{
-		if (value.Type is not IntegerType valueType)
-			return null;
-		
-		var bits = (int)CountBits(valueType);
+		var bits = (int)CountBits(type);
 		var mask = (BigInteger.One << bits) - 1;
-		var pattern = value.Value & mask;
-		var forward = (int)Modulo(amount.Value, bits);
+		var pattern = value & mask;
+		var forward = (int)Modulo(amount, bits);
 		var backward = (bits - forward) % bits;
-		var (left, right) = operation == BinaryOperation.RotateLeft ? (forward, backward) : (backward, forward);
-		return Integer(valueType, ((pattern << left) | (pattern >> right)) & mask);
+		var (left, right) = isLeft ? (forward, backward) : (backward, forward);
+		return Wrap(((pattern << left) | (pattern >> right)) & mask, type);
 	}
 	
 	private static Constant? ApplyFloat(BinaryOperation operation, double left, double right, TypeSymbol resultType) =>
@@ -463,7 +465,7 @@ public sealed class ConstantEvaluator
 		_ => new ZeroConstant(type)
 	};
 	
-	private BigInteger Wrap(BigInteger value, IntegerType type)
+	public BigInteger Wrap(BigInteger value, IntegerType type)
 	{
 		var modulus = BigInteger.One << (int)CountBits(type);
 		var result = Modulo(value, modulus);

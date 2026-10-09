@@ -31,7 +31,7 @@ main: fun -> i32
 
 	var total: u32 = 0
 	var factor: u8 = 200
-	total += factor * factor
+	total += u32(factor) * factor
 	var letter = 'a'
 	letter += 1
 	printf("%u %c\n", total, letter)

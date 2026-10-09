@@ -1,26 +1,26 @@
 mod test
 
-limit: val u8 = 200 + 100
+limit: val u8 = u8(200) + 100
 
 Ranges: rec
 {
-	low: val i8 = -100 - 100
+	low: val i8 = i8(-100) - 100
 }
 
 takesU8: fun(value: u8) -> u8 = value
 
 main: fun -> i32
 {
-	val typed: u8 = 200 + 100
-	val fallback = 2147483647 + 1
-	val difference: u8 = 3 - 5
-	val product: i8 = 64 * 2
-	val argument = takesU8(200 + 100)
+	val typed: u8 = u8(200) + 100
+	val fallback = i32(2147483647) + 1
+	val difference: u8 = u8(3) - 5
+	val product: i8 = i8(64) * 2
+	val argument = takesU8(u8(200) + 100)
 	val base: u8 = 200
 	val local = base + 100
 	val smallest: i32 = -2147483648
 	val negated = -smallest
-	val nested: u8 = (200 + 100) - 100
-	val wide: i64 = 2147483647 * 4
+	val nested: u8 = (u8(200) + 100) - 100
+	val wide: i64 = i64(2147483647) * 4
 	ret 0
 }

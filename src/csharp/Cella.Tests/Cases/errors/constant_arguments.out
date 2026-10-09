@@ -1,17 +1,15 @@
 
 ====== constant_arguments.ce ======
 
-Error at line 9, column 24
+Error at line 9, column 10
 8 │ {
 9 │     val a = takesI32(1 << 40)
-                              ╘╛ Shift amount 40 is out of range for 'i32'
-                               | 'i32' has 32 bits
+                ╘══════╛ No overload of 'takesI32' accepts these arguments
 
-Error at line 10, column 23
+Error at line 10, column 10
  9 │ val a = takesI32(1 << 40)
 10 │ val b = takesU8(1 << 9)
-                          ^ Shift amount 9 is out of range for 'u8'
-                          | 'u8' has 8 bits
+             ╘═════╛ No overload of 'takesU8' accepts these arguments
 
 Error at line 11, column 10
 10 │ val b = takesU8(1 << 9)
