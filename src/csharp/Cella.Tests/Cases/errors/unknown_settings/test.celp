@@ -1,0 +1,17 @@
+OutputType = "Executable"
+SystemLinkPreference = "Dynamic"
+BoundChecks = false
+Optimize = true
+
+[Mystery]
+Value = 1
+
+[[ProjectReferences]]
+Pth = 'lib/lib.celp'
+
+[When.debug]
+OverflowCheck = true
+
+[[When.linux.ProjectReferences]]
+Path = 'missing/missing.celp'
+Optional = true

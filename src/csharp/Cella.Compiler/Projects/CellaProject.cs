@@ -14,6 +14,14 @@ public sealed partial class CellaProject
 	private const string ProjectSearchPattern = $"*{ProjectFileExtension}";
 	private const string SourceSearchPattern = $"*{SourceFileExtension}";
 	
+	private static readonly HashSet<string> _whenSettingNames =
+	[
+		nameof(OutputType), nameof(SystemLinkPreference), nameof(AssemblyName), nameof(BoundsChecks),
+		nameof(OverflowChecks), nameof(ProjectReferences), nameof(Flags)
+	];
+	
+	private static readonly HashSet<string> _settingNames = [.._whenSettingNames, nameof(When)];
+	
 	[TomlValueOnSerialized]
 	public required ProjectOutputType OutputType { get; init; }
 	
@@ -43,14 +51,56 @@ public sealed partial class CellaProject
 	// All cella files in or under the project directory belong to that project
 	public static IEnumerable<string> FindSourceFiles(string directory) => FindSourceFiles(directory, true);
 	
-	public static async Task<CellaProject> LoadAsync(Stream stream)
+	public static async Task<CellaProject> LoadAsync(Stream stream, string path, List<string> errors)
 	{
 		var document = await CsTomlSerializer.DeserializeAsync<TomlDocument>(stream);
-		var project = document.RootNode.GetValue<CellaProject>();
-		foreach (var (condition, settings) in document.RootNode["When"u8])
-			project.When[condition.ToString()!] = settings.GetValue<ProjectSettings>();
+		var root = document.RootNode;
+		ReportUnknownSettings(root, _settingNames, null, path, errors);
+		
+		var project = root.GetValue<CellaProject>();
+		project.ProjectReferences?.RemoveAll(static r => r.Path is null);
+		
+		foreach (var (key, node) in root["When"u8])
+		{
+			var condition = key.ToString()!;
+			ReportUnknownSettings(node, _whenSettingNames, condition, path, errors);
+			var settings = node.GetValue<ProjectSettings>();
+			settings.ProjectReferences?.RemoveAll(static r => r.Path is null);
+			project.When[condition] = settings;
+		}
 		
 		return project;
+	}
+	
+	private static void ReportUnknownSettings(TomlDocumentNode node, HashSet<string> names, string? condition,
+		string path, List<string> errors)
+	{
+		var place = condition is null ? "" : $" in {DescribeTable(condition)}";
+		foreach (var (key, _) in node)
+		{
+			if (!names.Contains(key.ToString()!))
+				errors.Add($"{path}: Unknown setting '{key}'{place}");
+		}
+		
+		var references = node["ProjectReferences"u8];
+		if (!references.TryGetArray(out var entries))
+			return;
+		
+		var table = condition is null ? "[[ProjectReferences]]" : $"[[When.\"{condition}\".ProjectReferences]]";
+		for (var i = 0; i < entries.Count; i++)
+		{
+			var hasPath = false;
+			foreach (var (key, _) in references[i])
+			{
+				if (key.ToString() == nameof(ProjectReference.Path))
+					hasPath = true;
+				else
+					errors.Add($"{path}: Unknown setting '{key}' in {table}");
+			}
+			
+			if (!hasPath)
+				errors.Add($"{path}: Missing 'Path' in {table}");
+		}
 	}
 	
 	public CellaProject Resolve(string path, IReadOnlyDictionary<string, bool> flags, List<string> errors)
@@ -152,5 +202,5 @@ public sealed partial class ProjectSettings
 public sealed partial record ProjectReference
 {
 	[TomlValueOnSerialized]
-	public required string Path { get; init; }
+	public string? Path { get; init; }
 }

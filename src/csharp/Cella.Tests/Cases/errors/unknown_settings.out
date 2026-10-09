@@ -1,0 +1,8 @@
+<case>\test.celp: Unknown setting 'BoundChecks'
+<case>\test.celp: Unknown setting 'Optimize'
+<case>\test.celp: Unknown setting 'Mystery'
+<case>\test.celp: Unknown setting 'Pth' in [[ProjectReferences]]
+<case>\test.celp: Missing 'Path' in [[ProjectReferences]]
+<case>\test.celp: Unknown setting 'OverflowCheck' in [When."debug"]
+<case>\test.celp: Unknown setting 'Optional' in [[When."linux".ProjectReferences]]
+[compilation failed]

@@ -195,7 +195,7 @@ internal static class Program
 			
 			CellaProject project;
 			await using (var stream = new FileStream(path, FileMode.Open))
-				project = await CellaProject.LoadAsync(stream);
+				project = await CellaProject.LoadAsync(stream, path, errors);
 			
 			project = project.Resolve(path, CreateFlags(project, targetTriple, optimizeMode, flagOverrides), errors);
 			var projectDirectory = Path.GetDirectoryName(path) ?? string.Empty;
@@ -210,7 +210,7 @@ internal static class Program
 			
 			foreach (var reference in references)
 			{
-				var dependencyPath = Path.GetFullPath(Path.Combine(projectDirectory, reference.Path));
+				var dependencyPath = Path.GetFullPath(Path.Combine(projectDirectory, reference.Path!));
 				
 				projectDependencies.GetOrAdd(projectInfo).Add(dependencyPath);
 				
