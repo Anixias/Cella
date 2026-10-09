@@ -62,6 +62,9 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 		TokenType.OpStar,
 		TokenType.OpSlash,
 		TokenType.OpPercent,
+		TokenType.OpPlusPercent,
+		TokenType.OpMinusPercent,
+		TokenType.OpStarPercent,
 		TokenType.OpLessLess,
 		TokenType.OpGreaterGreater,
 		TokenType.OpLessLessLess,
@@ -82,7 +85,9 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 	private static readonly HashSet<TokenType> _additiveOps =
 	[
 		TokenType.OpPlus,
-		TokenType.OpMinus
+		TokenType.OpMinus,
+		TokenType.OpPlusPercent,
+		TokenType.OpMinusPercent
 	];
 	
 	private static readonly HashSet<TokenType> _unaryPrefixOps =
@@ -100,6 +105,7 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 		TokenType.OpStar,
 		TokenType.OpSlash,
 		TokenType.OpPercent,
+		TokenType.OpStarPercent,
 	];
 	
 	private static readonly HashSet<TokenType> _assignmentOps =
@@ -109,6 +115,9 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 		TokenType.OpStarEqual,
 		TokenType.OpSlashEqual,
 		TokenType.OpPercentEqual,
+		TokenType.OpPlusPercentEqual,
+		TokenType.OpMinusPercentEqual,
+		TokenType.OpStarPercentEqual,
 		TokenType.OpAmpersandEqual,
 		TokenType.OpBarEqual,
 		TokenType.OpHatEqual,

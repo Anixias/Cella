@@ -36,7 +36,8 @@ public sealed class SignatureCollector
 	private static readonly HashSet<TokenType> _compoundOperators =
 	[
 		TokenType.OpPlusEqual, TokenType.OpMinusEqual, TokenType.OpStarEqual, TokenType.OpSlashEqual,
-		TokenType.OpPercentEqual, TokenType.OpLessLessEqual, TokenType.OpGreaterGreaterEqual,
+		TokenType.OpPercentEqual, TokenType.OpPlusPercentEqual, TokenType.OpMinusPercentEqual,
+		TokenType.OpStarPercentEqual, TokenType.OpLessLessEqual, TokenType.OpGreaterGreaterEqual,
 		TokenType.OpLessLessLessEqual, TokenType.OpGreaterGreaterGreaterEqual, TokenType.OpAmpersandEqual,
 		TokenType.OpBarEqual, TokenType.OpHatEqual
 	];

@@ -1,0 +1,67 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Clock: rec
+{
+	hours: u8
+
+	+%: op(a: Clock, b: Clock) -> Clock = Clock((a.hours + b.hours) % 24)
+
+	+%=: op(mut self, other: Clock)
+	{
+		self.hours = (self.hours + other.hours) % 24
+	}
+}
+
+Spin: trait
+{
+	+%: op(a: Self, b: Self) -> Self
+}
+
+u8: impl Spin
+i32: impl Spin
+
+turn[T: Spin]: fun(a: T, b: T) -> T = a +% b
+
+run: fun(a: u8, b: i32, c: u32, d: i128)
+{
+	val x = a +% 1
+	val y = b *% 2
+	val z = c -% 2
+	printf("%d (size %d) %d %u %lld\n", x, sizeOf(x), y, z, i64(d *% d))
+
+	var w: u8 = 250
+	w +%= 10
+	val added = w
+	w -%= 5
+	val subtracted = w
+	w *%= 2
+	printf("%d %d %d\n", added, subtracted, w)
+}
+
+main: fun -> i32
+{
+	run(255, 2000000000, 1, 170141183460469231731687303715884105727)
+
+	val typed: u8 = u8(200) +% 100
+	val literal: u8 = 200 +% 100
+	val natural = 2147483647 +% 1
+	val wide: i64 = 2147483647 +% 1
+	printf("%d %d %d (size %d) %lld\n", typed, literal, natural, sizeOf(natural), wide)
+
+	var late = Clock(20) +% Clock(6)
+	late +%= Clock(23)
+	val explicit = Clock.+%(Clock(1), Clock(2))
+	printf("%d %d %d %d\n", late.hours, explicit.hours, turn(u8(250), u8(10)), turn(2147483647, 1))
+
+	var count = 0
+	for i in u8(250)..=u8(255)
+		count += 1
+
+	printf("%d\n", count)
+	ret 0
+}

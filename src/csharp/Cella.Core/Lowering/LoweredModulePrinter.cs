@@ -238,6 +238,24 @@ public static class LoweredModulePrinter
 					value = v.Right;
 					continue;
 				
+				case BinOpValue { Op: BinaryOperation.WrappingAddition } v:
+					PrintValue(sb, v.Left);
+					sb.Append(" +% ");
+					value = v.Right;
+					continue;
+				
+				case BinOpValue { Op: BinaryOperation.WrappingSubtraction } v:
+					PrintValue(sb, v.Left);
+					sb.Append(" -% ");
+					value = v.Right;
+					continue;
+				
+				case BinOpValue { Op: BinaryOperation.WrappingMultiplication } v:
+					PrintValue(sb, v.Left);
+					sb.Append(" *% ");
+					value = v.Right;
+					continue;
+				
 				case BinOpValue { Op: BinaryOperation.Modulo } v:
 					PrintValue(sb, v.Left);
 					sb.Append(" % ");

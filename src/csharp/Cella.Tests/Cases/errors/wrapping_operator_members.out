@@ -1,0 +1,14 @@
+
+====== wrapping_operator_members.ce ======
+
+Error at line 7, column 2
+6 │ 
+7 │ +%=: op(other: Clock) -> Clock = other
+    ╘═╛ Cannot declare '+%=' operators without 'mut self'
+
+Error at line 8, column 2
+7 │ +%=: op(other: Clock) -> Clock = other
+8 │ *%: op(a: i32, b: i32) -> i32 = a
+    ╘╛ '*%' operators need a 'Clock' parameter
+
+[compilation failed]

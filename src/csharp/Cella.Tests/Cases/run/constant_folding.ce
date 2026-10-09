@@ -50,7 +50,7 @@ main: fun -> i32
 	var n: i32 = -1
 	var p: u32 = 1
 	var q: u128 = 18446744073709551615
-	printf("%d %d|%d %d|%d %d|%d %d|%d %d|%d %d|%d %d|%u %u\n", wrapAdd, a + 1, wrapMul, b * u8(3), divTrunc, c / 2,
+	printf("%d %d|%d %d|%d %d|%d %d|%d %d|%d %d|%d %d|%u %u\n", wrapAdd, a +% 1, wrapMul, b *% u8(3), divTrunc, c / 2,
 		remSign, c % 3, minRem, d % -1, shl, e << 31, sarNeg, f >> 2, shrU, g >> 3)
 	printf("%d %d|%d %d|%d %d|%d %d|%d|%llu %llu\n", rotl, h <<< 1, rotr, k >>> 1, notU, ~m, mixed, n < p, chain,
 		highWord, u64((q * q) >> 64))

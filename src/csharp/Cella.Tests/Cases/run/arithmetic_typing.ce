@@ -13,15 +13,15 @@ Wide: rec
 limit: val u8 = 300 - 100
 
 show: fun(value: i64) -> i64 = value
-product: fun(a: i32, b: i32) -> i64 = a * b
+product: fun(a: i32, b: i32) -> i64 = a *% b
 
 run: fun(a: i32, b: i32, small: u8)
 {
-	val wrapped: i64 = a * b
+	val wrapped: i64 = a *% b
 	val widened: i64 = i64(a) * b
 	var assigned: i64 = 0
-	assigned = a * b
-	printf("%lld %lld %lld %lld %lld %lld\n", wrapped, widened, assigned, show(a * b), Wide(a * b).value,
+	assigned = a *% b
+	printf("%lld %lld %lld %lld %lld %lld\n", wrapped, widened, assigned, show(a *% b), Wide(a *% b).value,
 		product(a, b))
 
 	val quotient: f64 = b / 4
@@ -30,9 +30,9 @@ run: fun(a: i32, b: i32, small: u8)
 	printf("%.2f %.2f %.2f\n", quotient, precise, scaled)
 
 	var total: u32 = 0
-	total += small * small
-	val sum: u32 = small + 1
-	val adapted = small + (200 + 50)
+	total += small *% small
+	val sum: u32 = small +% 1
+	val adapted = small +% (200 + 50)
 	printf("%u %u %d\n", total, sum, adapted)
 }
 

@@ -39,11 +39,13 @@ public sealed class GoldenTests
 	{
 		var cancellationToken = TestContext.Current.CancellationToken;
 		var updating = Environment.GetEnvironmentVariable(UpdateVariable) == "1";
-		if (updating && release)
+		var sourcePath = Path.Combine(_casesDirectory, name);
+		var releasePath = Path.ChangeExtension(sourcePath, ".release.out");
+		var hasReleaseOutput = release && File.Exists(releasePath);
+		if (updating && release && !hasReleaseOutput)
 			return;
 		
-		var sourcePath = Path.Combine(_casesDirectory, name);
-		var expectedPath = Path.ChangeExtension(sourcePath, ".out");
+		var expectedPath = hasReleaseOutput ? releasePath : Path.ChangeExtension(sourcePath, ".out");
 		var actual = await RunAsync(sourcePath, release, cancellationToken);
 		
 		if (updating)

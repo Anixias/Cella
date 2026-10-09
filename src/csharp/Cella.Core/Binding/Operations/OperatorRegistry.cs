@@ -21,9 +21,20 @@ public sealed class OperatorRegistry
 		TokenType.OpPercentEqual,
 	];
 	
+	private static readonly ImmutableArray<TokenType> _wrappingBinOps =
+	[
+		TokenType.OpPlusPercent,
+		TokenType.OpPlusPercentEqual,
+		TokenType.OpMinusPercent,
+		TokenType.OpMinusPercentEqual,
+		TokenType.OpStarPercent,
+		TokenType.OpStarPercentEqual,
+	];
+	
 	private static readonly ImmutableArray<TokenType> _numericBinOps =
 	[
 		.._arithmeticBinOps,
+		.._wrappingBinOps,
 		TokenType.OpAmpersand,
 		TokenType.OpAmpersandEqual,
 		TokenType.OpBar,

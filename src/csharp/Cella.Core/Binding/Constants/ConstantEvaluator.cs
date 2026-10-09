@@ -296,9 +296,9 @@ public sealed class ConstantEvaluator
 		var (a, b) = (left.Value, right.Value);
 		return operation switch
 		{
-			BinaryOperation.Addition => Integer(resultType, a + b),
-			BinaryOperation.Subtraction => Integer(resultType, a - b),
-			BinaryOperation.Multiplication => Integer(resultType, a * b),
+			BinaryOperation.Addition or BinaryOperation.WrappingAddition => Integer(resultType, a + b),
+			BinaryOperation.Subtraction or BinaryOperation.WrappingSubtraction => Integer(resultType, a - b),
+			BinaryOperation.Multiplication or BinaryOperation.WrappingMultiplication => Integer(resultType, a * b),
 			BinaryOperation.Division => b.IsZero ? null : Exact(resultType, BigInteger.Divide(a, b)),
 			BinaryOperation.Modulo => b.IsZero ? null : Exact(resultType, BigInteger.Remainder(a, b)),
 			BinaryOperation.Equal => BoolConstant.From(a == b),

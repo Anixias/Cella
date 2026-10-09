@@ -35,10 +35,12 @@ public sealed class FileParser
 	[
 		TokenType.OpEqualEqual, TokenType.OpBangEqual, TokenType.OpLess, TokenType.OpLessEqual, TokenType.OpGreater,
 		TokenType.OpGreaterEqual, TokenType.OpPlus, TokenType.OpMinus, TokenType.OpStar, TokenType.OpSlash,
-		TokenType.OpPercent, TokenType.OpLessLess, TokenType.OpGreaterGreater, TokenType.OpLessLessLess,
+		TokenType.OpPercent, TokenType.OpPlusPercent, TokenType.OpMinusPercent, TokenType.OpStarPercent,
+		TokenType.OpLessLess, TokenType.OpGreaterGreater, TokenType.OpLessLessLess,
 		TokenType.OpGreaterGreaterGreater, TokenType.OpAmpersand, TokenType.OpBar, TokenType.OpHat, TokenType.OpTilde,
 		TokenType.OpPlusEqual, TokenType.OpMinusEqual, TokenType.OpStarEqual, TokenType.OpSlashEqual,
-		TokenType.OpPercentEqual, TokenType.OpLessLessEqual, TokenType.OpGreaterGreaterEqual,
+		TokenType.OpPercentEqual, TokenType.OpPlusPercentEqual, TokenType.OpMinusPercentEqual,
+		TokenType.OpStarPercentEqual, TokenType.OpLessLessEqual, TokenType.OpGreaterGreaterEqual,
 		TokenType.OpLessLessLessEqual, TokenType.OpGreaterGreaterGreaterEqual, TokenType.OpAmpersandEqual,
 		TokenType.OpBarEqual, TokenType.OpHatEqual, TokenType.KeywordIn, TokenType.KeywordFor
 	];

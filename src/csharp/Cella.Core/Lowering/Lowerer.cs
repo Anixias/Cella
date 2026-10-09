@@ -805,7 +805,7 @@ public sealed class Lowerer
 		{
 			var (type, location) = (counter.Type, counter.SourceLocation);
 			var one = MakeConstant(type, BigInteger.One);
-			var sum = new BinOpValue(type, counter, one, BinaryOperation.Addition, location);
+			var sum = new BinOpValue(type, counter, one, BinaryOperation.WrappingAddition, location);
 			block.Instructions.Add(new ExpressionInstruction(new AssignValue(type, counter, sum, location)));
 			block.SetTerminator(new BranchTerminator(next, location));
 		}

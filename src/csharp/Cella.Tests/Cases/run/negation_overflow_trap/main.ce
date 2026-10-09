@@ -1,0 +1,5 @@
+mod test
+
+flip: fun(value: i8) -> i8 = -value
+
+main: fun -> i32 = i32(flip(-128))

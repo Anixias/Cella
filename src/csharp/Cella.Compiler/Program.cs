@@ -285,6 +285,7 @@ internal static class Program
 		var codeGenConfig = new CodeGenConfig(outputConfig, targetConfig, optimizeMode)
 		{
 			BoundsChecks = project.Project.BoundsChecks ?? true,
+			OverflowChecks = project.Project.OverflowChecks ?? optimizeMode == OptimizeMode.Debug,
 			SourceRoot = project.Directory,
 			IsLibrary = outputType != ProjectOutputType.Executable
 		};

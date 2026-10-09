@@ -1,0 +1,3 @@
+[stderr]
+Panic at addition_overflow_trap.ce:8:35: addition overflow
+[exit code -1073740791]

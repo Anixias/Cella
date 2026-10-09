@@ -1,0 +1,13 @@
+mod test
+
+main: fun -> i32
+{
+	val half = 1.5
+	val sum = half +% 2.0
+	var flag = true
+	flag +%= false
+	var value: i32 = 1
+	val pointer = @value
+	atomic relaxed *pointer +%= 1
+	ret 0
+}

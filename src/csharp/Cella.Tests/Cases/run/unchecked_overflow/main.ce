@@ -1,0 +1,19 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+run: fun(byte: u8, count: u32, big: i64, tiny: i8)
+{
+	var total = big
+	total *= big
+	printf("%d %u %lld %d\n", byte + 1, count - 2, total, -tiny)
+}
+
+main: fun -> i32
+{
+	run(255, 1, 3037000500, -128)
+	ret 0
+}

@@ -4036,6 +4036,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	
 	private static bool IsAssignment(TokenType op) => op is TokenType.OpEqual or TokenType.OpPlusEqual
 		or TokenType.OpMinusEqual or TokenType.OpStarEqual or TokenType.OpSlashEqual or TokenType.OpPercentEqual
+		or TokenType.OpPlusPercentEqual or TokenType.OpMinusPercentEqual or TokenType.OpStarPercentEqual
 		or TokenType.OpAmpersandEqual or TokenType.OpBarEqual or TokenType.OpHatEqual or TokenType.OpLessLessEqual
 		or TokenType.OpGreaterGreaterEqual or TokenType.OpLessLessLessEqual or TokenType.OpGreaterGreaterGreaterEqual;
 	
@@ -4201,9 +4202,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	
 	private BigInteger? FoldIntegers(TokenType op, BigInteger left, BigInteger right) => op switch
 	{
-		TokenType.OpPlus => left + right,
-		TokenType.OpMinus => left - right,
-		TokenType.OpStar => left * right,
+		TokenType.OpPlus or TokenType.OpPlusPercent => left + right,
+		TokenType.OpMinus or TokenType.OpMinusPercent => left - right,
+		TokenType.OpStar or TokenType.OpStarPercent => left * right,
 		TokenType.OpSlash when !right.IsZero => BigInteger.Divide(left, right),
 		TokenType.OpPercent when !right.IsZero => BigInteger.Remainder(left, right),
 		TokenType.OpAmpersand => left & right,
@@ -4276,6 +4277,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			TokenType.OpPlus => IfFits(left + right, type),
 			TokenType.OpMinus => IfFits(left - right, type),
 			TokenType.OpStar => IfFits(left * right, type),
+			TokenType.OpPlusPercent => _evaluator.Wrap(left + right, type),
+			TokenType.OpMinusPercent => _evaluator.Wrap(left - right, type),
+			TokenType.OpStarPercent => _evaluator.Wrap(left * right, type),
 			TokenType.OpSlash when !right.IsZero => IfFits(BigInteger.Divide(left, right), type),
 			TokenType.OpPercent when !right.IsZero => BigInteger.Remainder(left, right),
 			TokenType.OpAmpersand => left & right,

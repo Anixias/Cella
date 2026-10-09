@@ -1753,19 +1753,25 @@ public sealed unsafe class CodeGenerator : IDisposable
 		
 		return v switch
 		{
-			{ IsConstant: true, Op: BinaryOperation.Addition } =>
+			{
+					IsConstant: false, Op: BinaryOperation.Addition or BinaryOperation.Subtraction
+					or BinaryOperation.Multiplication
+				} when _config.OverflowChecks =>
+				EmitCheckedArithmetic(v.Op, left, right, signed, v.SourceLocation, builder),
+			
+			{ IsConstant: true, Op: BinaryOperation.Addition or BinaryOperation.WrappingAddition } =>
 				LLVMValueRef.CreateConstAdd(left, right),
-			{ Op: BinaryOperation.Addition } =>
+			{ Op: BinaryOperation.Addition or BinaryOperation.WrappingAddition } =>
 				builder.BuildAdd(left, right),
 			
-			{ IsConstant: true, Op: BinaryOperation.Subtraction } =>
+			{ IsConstant: true, Op: BinaryOperation.Subtraction or BinaryOperation.WrappingSubtraction } =>
 				LLVMValueRef.CreateConstSub(left, right),
-			{ Op: BinaryOperation.Subtraction } =>
+			{ Op: BinaryOperation.Subtraction or BinaryOperation.WrappingSubtraction } =>
 				builder.BuildSub(left, right),
 			
-			{ IsConstant: true, Op: BinaryOperation.Multiplication } =>
+			{ IsConstant: true, Op: BinaryOperation.Multiplication or BinaryOperation.WrappingMultiplication } =>
 				LLVMValueRef.CreateConstMul(left, right),
-			{ Op: BinaryOperation.Multiplication } =>
+			{ Op: BinaryOperation.Multiplication or BinaryOperation.WrappingMultiplication } =>
 				builder.BuildMul(left, right),
 			
 			{ Op: BinaryOperation.Division or BinaryOperation.Modulo } =>
@@ -1810,6 +1816,38 @@ public sealed unsafe class CodeGenerator : IDisposable
 			
 			_ => throw new InvalidOperationException()
 		};
+	}
+	
+	private LLVMValueRef EmitCheckedArithmetic(BinaryOperation op, LLVMValueRef left, LLVMValueRef right, bool signed,
+		SourceLocation location, LLVMBuilderRef builder)
+	{
+		var type = left.TypeOf;
+		var (name, message) = op switch
+		{
+			BinaryOperation.Addition => ("add", "addition overflow"),
+			BinaryOperation.Subtraction => ("sub", "subtraction overflow"),
+			_ => ("mul", "multiplication overflow")
+		};
+		
+		var resultType = LLVMTypeRef.CreateStruct([type, LLVMTypeRef.Int1], false);
+		var functionType = LLVMTypeRef.CreateFunction(resultType, [type, type]);
+		var intrinsic = GetIntrinsic($"llvm.{(signed ? 's' : 'u')}{name}.with.overflow.i{type.IntWidth}", functionType);
+		var result = builder.BuildCall2(functionType, intrinsic, [left, right]);
+		PanicIf(builder.BuildExtractValue(result, 1), message, location, builder);
+		return builder.BuildExtractValue(result, 0);
+	}
+	
+	private LLVMValueRef EmitCheckedNegation(UnaryOpValue v, LLVMBuilderRef builder)
+	{
+		var operand = EmitValue(v.Operand, builder);
+		var type = operand.TypeOf;
+		var minimum = builder.BuildShl(LLVMValueRef.CreateConstInt(type, 1),
+			LLVMValueRef.CreateConstInt(type, type.IntWidth - 1));
+		
+		PanicIf(builder.BuildICmp(LLVMIntPredicate.LLVMIntEQ, operand, minimum), "negation overflow", v.SourceLocation,
+			builder);
+		
+		return builder.BuildNeg(operand);
 	}
 	
 	private LLVMValueRef EmitIntegerDivision(BinaryOperation op, LLVMValueRef left, LLVMValueRef right, bool signed,
@@ -1984,6 +2022,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 		{ Op: UnaryOperation.Identity } => EmitValue(v.Operand, builder),
 		{ Op: UnaryOperation.Negation, Operand.Type: FloatType } => builder.BuildFNeg(EmitValue(v.Operand, builder)),
 		{ IsConstant: true, Op: UnaryOperation.Negation } => LLVMValueRef.CreateConstNeg(EmitValue(v.Operand, builder)),
+		{ Op: UnaryOperation.Negation } when _config.OverflowChecks => EmitCheckedNegation(v, builder),
 		{ Op: UnaryOperation.Negation } => builder.BuildNeg(EmitValue(v.Operand, builder)),
 		
 		{ IsConstant: true, Op: UnaryOperation.BitwiseNot } =>
@@ -2902,6 +2941,7 @@ public sealed record CodeGenConfig
 )
 {
 	public bool BoundsChecks { get; init; } = true;
+	public bool OverflowChecks { get; init; }
 	public bool IsLibrary { get; init; }
 	public string? SourceRoot { get; init; }
 	

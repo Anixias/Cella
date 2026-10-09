@@ -20,9 +20,9 @@ main: fun -> i32
 	var tiny: i8 = 127
 	var byte: u8 = 255
 	var short: u16 = 65535
-	var wrappedTiny = tiny + 1
-	var wrappedByte = byte + 1
-	var wrappedShort = short + 1
+	var wrappedTiny = tiny +% 1
+	var wrappedByte = byte +% 1
+	var wrappedShort = short +% 1
 	var widened: u32 = u32(byte) + 1
 	var outOfRange = tiny + 200
 	printf("%d %d %d %u %d\n", wrappedTiny, wrappedByte, wrappedShort, widened, outOfRange)

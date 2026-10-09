@@ -1,0 +1,5 @@
+mod test
+
+remaining: fun(total: u32, used: u32) -> u32 = total - used
+
+main: fun -> i32 = i32(remaining(1, 2))

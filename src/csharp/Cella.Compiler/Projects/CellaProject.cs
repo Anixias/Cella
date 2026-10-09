@@ -24,6 +24,9 @@ public sealed partial class CellaProject
 	public bool? BoundsChecks { get; init; }
 	
 	[TomlValueOnSerialized]
+	public bool? OverflowChecks { get; init; }
+	
+	[TomlValueOnSerialized]
 	public List<ProjectReference>? ProjectReferences { get; init; }
 	
 	[TomlValueOnSerialized]
