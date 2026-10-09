@@ -534,6 +534,13 @@ public sealed class AstPrinter : ISyntaxNodeVisitor
 		VisitNode(node.ExpressionNode, true);
 	}
 	
+	public void Visit(DropStatementNode node)
+	{
+		StartLine();
+		_sb.Append("DropStatementNode");
+		VisitNode(node.Target, true);
+	}
+	
 	public void Visit(IfStatementNode node)
 	{
 		StartLine();

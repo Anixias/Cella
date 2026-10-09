@@ -713,6 +713,12 @@ public sealed unsafe class CodeGenerator : IDisposable
 		while (value is ConversionValue conversion)
 			value = conversion.Source;
 		
+		if (value.Type is DynType)
+		{
+			EmitDynDrop(EmitAddress(value, builder), builder);
+			return;
+		}
+		
 		LLVMValueRef address;
 		if (IsAddressable(value))
 		{
@@ -1139,7 +1145,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 		var trait = _typePool.GetTraitType(info.Symbol.Trait!, TypePool.GetTraitArguments(info));
 		var table = EmitDynPath(dyn.Instance!, trait, builder.BuildExtractValue(args[0], 1, "table"), builder);
 		args[0] = builder.BuildExtractValue(args[0], 0, "object");
-		var slot = (uint)_typePool.GetDynSlot(trait.Trait, info.Symbol) + 1;
+		var slot = (uint)(_typePool.GetDynSlot(trait.Trait, info.Symbol) + DynTableHeader.Length);
 		var entry = builder.BuildStructGEP2(GetDynTableType(trait.Trait), table, slot, "entry");
 		var method = builder.BuildLoad2(OpaquePointer, entry, "method");
 		var parameterTypes = MapParameterTypes(info);
@@ -1154,7 +1160,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 		foreach (var next in _typePool.FindDynPath(from, to)!.Value)
 		{
 			var members = _typePool.FindDynMembers(owner.Trait)!.Value.Length;
-			var slot = (uint)(members + _typePool.GetDynRequirements(owner).IndexOf(next) + 1);
+			var slot = (uint)(DynTableHeader.Length + members + _typePool.GetDynRequirements(owner).IndexOf(next));
 			var entry = builder.BuildStructGEP2(GetDynTableType(owner.Trait), table, slot, "entry");
 			table = builder.BuildLoad2(OpaquePointer, entry, "table");
 			owner = next;
@@ -1163,11 +1169,49 @@ public sealed unsafe class CodeGenerator : IDisposable
 		return table;
 	}
 	
+	private LLVMTypeRef[] DynTableHeader =>
+	[
+		LLVMTypeRef.CreateInt(128), OpaquePointer, MapTypeSymbol(NativeSymbols.UIntSize),
+		MapTypeSymbol(NativeSymbols.UIntSize)
+	];
+	
 	private LLVMTypeRef GetDynTableType(TraitSymbol trait)
 	{
 		var entries = _typePool.FindDynMembers(trait)!.Value.Length + _typePool.GetDynRequirements(trait).Length;
-		return LLVMTypeRef.CreateStruct([LLVMTypeRef.CreateInt(128), ..Enumerable.Repeat(OpaquePointer, entries)],
-			false);
+		return LLVMTypeRef.CreateStruct([..DynTableHeader, ..Enumerable.Repeat(OpaquePointer, entries)], false);
+	}
+	
+	private void EmitDynDrop(LLVMValueRef pointer, LLVMBuilderRef builder)
+	{
+		var table = builder.BuildExtractValue(pointer, 1, "table");
+		var entry = builder.BuildStructGEP2(LLVMTypeRef.CreateStruct(DynTableHeader, false), table, 1, "entry");
+		var glue = builder.BuildLoad2(OpaquePointer, entry, "drop");
+		builder.BuildCall2(DropGlueType, glue, [builder.BuildExtractValue(pointer, 0, "object")]);
+	}
+	
+	private LLVMValueRef EmitDynLayout(DynLayoutConversion conversion, ConversionValue v, LLVMBuilderRef builder)
+	{
+		var table = builder.BuildExtractValue(EmitValue(v.Source, builder), 1, "table");
+		var header = LLVMTypeRef.CreateStruct(DynTableHeader, false);
+		var entry = builder.BuildStructGEP2(header, table, conversion.IsAlignment ? 3u : 2u, "entry");
+		return builder.BuildLoad2(MapTypeSymbol(NativeSymbols.UIntSize), entry, "layout");
+	}
+	
+	private LLVMValueRef GetObjectDropGlue(TypeSymbol objectType)
+	{
+		if (_typePool.NeedsDrop(objectType))
+			return GetDropGlue(objectType);
+		
+		var existing = current.Module.GetNamedFunction("drop$");
+		if (existing.Handle != IntPtr.Zero)
+			return existing;
+		
+		var glue = current.Module.AddFunction("drop$", DropGlueType);
+		glue.Linkage = LLVMLinkage.LLVMInternalLinkage;
+		using var builder = current.Module.Context.CreateBuilder();
+		builder.PositionAtEnd(glue.AppendBasicBlock("entry"));
+		builder.BuildRetVoid();
+		return glue;
 	}
 	
 	private static DynType GetDynTarget(TypeSymbol type) => type switch
@@ -1207,8 +1251,16 @@ public sealed unsafe class CodeGenerator : IDisposable
 				GetDynTable(required, objectType, GetDynMemberInfos(required, objectType)))
 		];
 		
+		var size = _typePool.SizeTable.GetSize(objectType);
 		var table = current.Module.AddGlobal(GetDynTableType(trait.Trait), name);
-		table.Initializer = LLVMValueRef.CreateConstStruct([EmitTypeId(objectType), ..entries], false);
+		table.Initializer = LLVMValueRef.CreateConstStruct(
+		[
+			EmitTypeId(objectType), GetObjectDropGlue(objectType),
+			EmitSizeConstant(new BigInteger((size.CountBits(_pointerSize * 8) + 7) / 8), true),
+			EmitSizeConstant(new BigInteger((size.CountAlignmentBits(_pointerSize * 8) + 7) / 8), true),
+			..entries
+		], false);
+		
 		table.IsGlobalConstant = true;
 		table.Linkage = LLVMLinkage.LLVMInternalLinkage;
 		return table;
@@ -1645,6 +1697,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 		FunctionConversion c => EmitValue(new CallValue(c.Function, [v.Source], v.SourceLocation), builder),
 		DynConversion c => EmitDynConversion(c, v, builder),
 		DynUpcastConversion c => EmitDynUpcast(c, v, builder),
+		DynLayoutConversion c => EmitDynLayout(c, v, builder),
 		DynTestConversion c => EmitDynTest(c, v, builder),
 		DynCastConversion => builder.BuildExtractValue(EmitValue(v.Source, builder), 0, "object"),
 		_ => throw new InvalidOperationException()

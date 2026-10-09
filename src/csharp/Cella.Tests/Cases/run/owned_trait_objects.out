@@ -1,0 +1,14 @@
+12.0 12.0 8
+0.0 16.0 40.0
+free 8 8
+free 16 8
+label 9 gone
+free 1 1
+kept 27.0
+free 8 8
+circle 3.0 gone
+27.0
+end
+free 8 8
+circle 2.0 gone
+[exit code 0]

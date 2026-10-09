@@ -361,6 +361,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	public IResolvedStatementNode Visit(ExpressionStatementNode node) =>
 		new ResolvedExpressionStatementNode(VisitDiscarded(node.ExpressionNode), node);
 	
+	public IResolvedStatementNode Visit(DropStatementNode node) =>
+		new ResolvedDropStatementNode(VisitNode(node.Target, null), node);
+	
 	public IResolvedExpressionNode Visit(CallExpressionNode node)
 	{
 		if (node.Target is VarExpressionNode callee && ResolveTargetCase(callee.Identifier, node) is { } targetCase)
@@ -3330,9 +3333,21 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	
 	private IResolvedExpressionNode ResolveLayout(IExpressionNode node, IExpressionNode targetNode, bool isAlignment)
 	{
-		var target = CurrentResolutionContext.TryResolveExpressionAsType(targetNode) is { } type
-			? RequireTypeArguments(type, targetNode)
-			: MaterializeAsDefault(VisitNode(targetNode)).Type;
+		TypeSymbol target;
+		if (CurrentResolutionContext.TryResolveExpressionAsType(targetNode) is { } type)
+			target = RequireTypeArguments(type, targetNode);
+		else
+		{
+			var value = MaterializeAsDefault(VisitNode(targetNode));
+			if (value.Type is DynType)
+			{
+				var borrow = _typePool.GetBorrowType(value.Type, false);
+				return new ResolvedConversionExpressionNode(new ResolvedBorrowExpressionNode(value, borrow, true,
+					value.Syntax), new DynLayoutConversion(borrow, isAlignment), node);
+			}
+			
+			target = value.Type;
+		}
 		
 		if (TypePool.FindValueDyn(target) is { } dyn)
 			return Error(node, $"Cannot use '{dyn.Name}' by value", CurrentTargetType);

@@ -23,8 +23,7 @@ public sealed class FileParser
 	
 	private static readonly Dictionary<string, TokenType> _memberContextualKeywords =
 		BuildContextualKeywords(TokenType.KeywordPub, TokenType.KeywordPvt, TokenType.KeywordMod, TokenType.KeywordSet,
-			TokenType.KeywordNew, TokenType.KeywordDrop, TokenType.KeywordOp, TokenType.KeywordReq,
-			TokenType.KeywordGet, TokenType.KeywordProp);
+			TokenType.KeywordOp, TokenType.KeywordReq, TokenType.KeywordGet, TokenType.KeywordProp);
 	
 	private static readonly HashSet<TokenType> _constraintTypes =
 	[
@@ -32,7 +31,7 @@ public sealed class FileParser
 	];
 	
 	private static readonly Dictionary<string, TokenType> _constraintKeywords =
-		BuildContextualKeywords(_constraintTypes.Append(TokenType.KeywordNew));
+		BuildContextualKeywords(_constraintTypes.Where(static type => type.IsContextual));
 	
 	private static readonly HashSet<TokenType> _operatorNames =
 	[
@@ -416,7 +415,7 @@ public sealed class FileParser
 			{
 				do
 				{
-					if (Match(ref index, out var newKeyword, _constraintKeywords, TokenType.KeywordNew))
+					if (Match(ref index, out var newKeyword, TokenType.KeywordNew))
 					{
 						if (ParseConstructorConstraint(ref index, newKeyword) is not { } constructor)
 							return null;
@@ -1413,8 +1412,7 @@ public sealed class FileParser
 				continue;
 			}
 			
-			if (StartsEnumMember(index) &&
-			    Match(ref index, out var lifecycleKeyword, _memberContextualKeywords, _lifecycleKeywords))
+			if (Match(ref index, out var lifecycleKeyword, _lifecycleKeywords))
 			{
 				Report(lifecycleKeyword, $"Cannot declare {DescribeLifecycle(lifecycleKeyword)} in enums");
 				if (ParseLifecycleMember(ref index, lifecycleKeyword, block) is null)
@@ -1564,7 +1562,7 @@ public sealed class FileParser
 	{
 		// TODO Diagnostics
 		
-		if (Match(ref index, out var lifecycleKeyword, _memberContextualKeywords, _lifecycleKeywords))
+		if (Match(ref index, out var lifecycleKeyword, _lifecycleKeywords))
 			return ParseLifecycleMember(ref index, lifecycleKeyword, block);
 		
 		if (MatchOperatorName(ref index, out var symbol))
@@ -1981,6 +1979,9 @@ public sealed class FileParser
 		if (Match(ref index, out var openBraceToken, TokenType.OpOpenBrace))
 			return ParseBlockStatement(ref index, openBraceToken);
 		
+		if (Match(ref index, out var dropToken, TokenType.KeywordDrop))
+			return ParseDropStatement(ref index, dropToken);
+		
 		// Named loops
 		var expr = ParseExpression(ref index);
 		if (expr is not VarExpressionNode { Identifier.Type: TokenType.Identifier } var)
@@ -1994,6 +1995,13 @@ public sealed class FileParser
 		
 		index = backtrackIndex;
 		return new ExpressionStatementNode(expr);
+	}
+	
+	private DropStatementNode ParseDropStatement(ref int index, Token keyword)
+	{
+		var target = ParseExpression(ref index);
+		var (source, range) = keyword.SourceLocation;
+		return new(keyword, target, new(source, range.Join(target.SourceLocation.Range)));
 	}
 	
 	private IStatementNode? ParseLoop(ref int index, Token keyword, Token? label) => keyword.Type switch

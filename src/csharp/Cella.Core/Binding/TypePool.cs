@@ -583,6 +583,7 @@ public sealed class TypePool
 		if (baseType is DynType)
 		{
 			SizeTable.Register(ptrType, FatPointerSize);
+			ConversionTable.Add(new DynCastConversion(ptrType, PointerType.VoidPtr, ConversionKind.Implicit, 1));
 			return ptrType;
 		}
 		

@@ -1,0 +1,65 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+	malloc: fun(size: usize) -> ptr
+	free: fun(memory: ptr)
+}
+
+Named: trait
+{
+	name: fun(self) -> i32
+}
+
+Shape: trait req Named
+{
+	area: fun(self) -> f64
+}
+
+Big: rec impl Named + Shape
+{
+	values: array[i64, 5]
+
+	name: fun(self) -> i32 = 1
+	area: fun(self) -> f64 = 1.0
+}
+
+Small: rec impl Named + Shape
+{
+	value: u16
+
+	name: fun(self) -> i32 = 2
+	area: fun(self) -> f64 = 2.0
+}
+
+cell[K: trait]: rec
+{
+	object: ptr[dyn[K]]
+
+	*: op(self) -> imm[dyn[K]] = imm *self.object
+}
+
+measure: fun(shape: dyn[Shape]) -> usize = sizeOf(shape) * 100 + alignOf(shape)
+
+named: fun(item: dyn[Named]) -> usize = sizeOf(item)
+
+main: fun -> i32
+{
+	val big = Big([1, 2, 3, 4, 5])
+	val small = Small(7)
+	printf("%zu %zu %zu %zu\n", measure(big), measure(small), named(dyn[Shape](big)), usize(sizeOf(Big)))
+	val memory = ptr[Small](malloc(sizeOf(Small)))
+	*memory = small
+	val shape: ptr[dyn[Shape]] = memory
+	val wrapped = cell[Shape](shape)
+	printf("%zu %zu %zu\n", sizeOf(*shape), alignOf(*wrapped), usize(sizeOf(shape)))
+	free(shape)
+	val other = ptr[Big](malloc(sizeOf(Big)))
+	*other = big
+	val shaped: ptr[dyn[Shape]] = other
+	val widened: ptr[dyn[Named]] = shaped
+	printf("%zu %d\n", sizeOf(*widened), widened.name())
+	free(ptr(widened))
+	ret 0
+}

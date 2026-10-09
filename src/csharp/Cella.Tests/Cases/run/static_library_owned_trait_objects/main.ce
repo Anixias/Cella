@@ -1,0 +1,29 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Square: rec impl lib.Shape
+{
+	side: f64
+	id: i32
+
+	area: fun(self) -> f64 = self.side * self.side
+	drop: op
+	{
+		printf("square %d gone\n", self.id)
+	}
+}
+
+main: fun -> i32
+{
+	val first = lib.circle(1.5)
+	{
+		val second = lib.boxed[lib.Shape].of(Square(2.0, 7))
+		printf("%.1f %.1f\n", first.area(), second.area())
+	}
+	printf("end\n")
+	ret 0
+}

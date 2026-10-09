@@ -335,6 +335,14 @@ public sealed class Lowerer
 			EndCurrentScope();
 		}
 		
+		public void Visit(ResolvedDropStatementNode node)
+		{
+			BeginScope(node.Syntax.SourceLocation, true);
+			var target = VisitPlace(node.Target);
+			currentBlock?.Instructions.Add(new DropInstruction(target, node.Syntax.SourceLocation));
+			EndCurrentScope();
+		}
+		
 		public void Visit(ResolvedIfStatementNode node)
 		{
 			BeginScope(node.Syntax.SourceLocation, true);

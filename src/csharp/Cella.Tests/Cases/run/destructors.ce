@@ -41,7 +41,6 @@ main: fun -> i32
 	val buffer = Buffer(16)
 	val handle = Handle(7)
 	val empty = Handle()
-	val drop = 3
-	printf("%zu %d %d %d\n", buffer.size, handle.id, empty.id, drop)
+	printf("%zu %d %d\n", buffer.size, handle.id, empty.id)
 	ret 0
 }

@@ -55,6 +55,8 @@ public enum TokenType
 	KeywordDyn,
 	KeywordAtomic,
 	KeywordWhen,
+	KeywordNew,
+	KeywordDrop,
 	
 	// Contextual Keywords
 	KeywordMod,
@@ -63,8 +65,6 @@ public enum TokenType
 	KeywordExt,
 	KeywordRec,
 	KeywordEnum,
-	KeywordNew,
-	KeywordDrop,
 	KeywordOp,
 	KeywordReq,
 	KeywordRef,
@@ -204,6 +204,8 @@ public static class TokenTypeInfo
 			[TokenType.KeywordDyn] = new("dyn", IsKeyword: true),
 			[TokenType.KeywordAtomic] = new("atomic", IsKeyword: true),
 			[TokenType.KeywordWhen] = new("when", IsKeyword: true),
+			[TokenType.KeywordNew] = new("new", IsKeyword: true),
+			[TokenType.KeywordDrop] = new("drop", IsKeyword: true),
 			
 			[TokenType.KeywordMod] = new("mod", IsKeyword: true, IsContextual: true),
 			[TokenType.KeywordUse] = new("use", IsKeyword: true, IsContextual: true),
@@ -211,8 +213,6 @@ public static class TokenTypeInfo
 			[TokenType.KeywordExt] = new("ext", IsKeyword: true, IsContextual: true),
 			[TokenType.KeywordRec] = new("rec", IsKeyword: true, IsContextual: true),
 			[TokenType.KeywordEnum] = new("enum", IsKeyword: true, IsContextual: true),
-			[TokenType.KeywordNew] = new("new", IsKeyword: true, IsContextual: true),
-			[TokenType.KeywordDrop] = new("drop", IsKeyword: true, IsContextual: true),
 			[TokenType.KeywordOp] = new("op", IsKeyword: true, IsContextual: true),
 			[TokenType.KeywordReq] = new("req", IsKeyword: true, IsContextual: true),
 			[TokenType.KeywordRef] = new("ref", IsKeyword: true, IsContextual: true),

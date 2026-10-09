@@ -1,0 +1,44 @@
+mod test
+
+Noisy: rec
+{
+	id: i32
+
+	drop: op
+	{
+	}
+}
+
+box[T]: rec
+{
+	pointer: ptr[T]
+
+	*: op(self) -> imm[T] = imm *self.pointer
+}
+
+plain[T: copy]: fun(memory: ptr[T])
+{
+	drop *memory
+}
+
+numbers: fun(memory: ptr[i32])
+{
+	drop *memory
+}
+
+throughBox: fun(b: box[Noisy])
+{
+	drop *b
+}
+
+local: fun(own value: Noisy)
+{
+	drop value
+}
+
+pointer: fun(memory: ptr[Noisy])
+{
+	drop memory
+}
+
+main: fun -> i32 = 0

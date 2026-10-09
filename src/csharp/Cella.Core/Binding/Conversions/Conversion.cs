@@ -69,8 +69,19 @@ public sealed class DynTestConversion(TypeSymbol from, TypeSymbol tested)
 	public TypeSymbol Tested { get; } = tested;
 }
 
-public sealed class DynCastConversion(TypeSymbol from, TypeSymbol to)
-	: Conversion(from, to, ConversionKind.Explicit, 0, false);
+public sealed class DynLayoutConversion(TypeSymbol from, bool isAlignment)
+	: Conversion(from, NativeSymbols.UIntSize, ConversionKind.Explicit, 0, false)
+{
+	public bool IsAlignment { get; } = isAlignment;
+}
+
+public sealed class DynCastConversion
+(
+	TypeSymbol from,
+	TypeSymbol to,
+	ConversionKind kind = ConversionKind.Explicit,
+	int cost = 0
+) : Conversion(from, to, kind, cost, false);
 
 // TODO Detect constant functions
 public sealed class FunctionConversion(FunctionInfo function, ConversionKind kind, int cost)

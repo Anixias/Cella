@@ -3,8 +3,6 @@ mod test
 Color: enum
 {
 	red
-	new
-	drop
 
 	new: op()
 	{

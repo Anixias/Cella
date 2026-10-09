@@ -1,0 +1,49 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+	malloc: fun(size: usize) -> ptr
+	free: fun(memory: ptr)
+}
+
+Noisy: rec
+{
+	id: i32
+
+	drop: op
+	{
+		printf("drop %d\n", self.id)
+	}
+}
+
+Holder: rec
+{
+	first: Noisy
+	second: Noisy
+}
+
+clear[T]: fun(memory: ptr[T])
+{
+	drop *memory
+}
+
+main: fun -> i32
+{
+	val p = ptr[Noisy](malloc(sizeOf(Noisy) * 2))
+	own *p = Noisy(1)
+	own *(p + 1) = Noisy(2)
+	drop *(p + 1)
+	printf("between\n")
+	clear(p)
+	free(p)
+	val pair = ptr[array[Noisy, 2]](malloc(sizeOf(array[Noisy, 2])))
+	own *pair = [Noisy(3), Noisy(4)]
+	drop *pair
+	free(pair)
+	val holder = ptr[Holder](malloc(sizeOf(Holder)))
+	own *holder = Holder(Noisy(5), Noisy(6))
+	drop *holder
+	free(holder)
+	ret 0
+}

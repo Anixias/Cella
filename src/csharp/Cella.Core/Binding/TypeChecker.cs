@@ -145,6 +145,22 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool, 
 		VisitNode(node.Expression);
 	}
 	
+	public void Visit(ResolvedDropStatementNode node)
+	{
+		var target = node.Target;
+		if (target is ResolvedInvalidExpressionNode)
+			return;
+		
+		if (!IsThroughPointer(target))
+			Diagnostics.Add(new(DiagnosticSeverity.Error, target.Syntax.SourceLocation,
+				"Cannot use 'drop' except through pointers"));
+		else if (target.Type is not DynType && !typePool.NeedsDrop(target.Type))
+			Diagnostics.Add(new(DiagnosticSeverity.Error, target.Syntax.SourceLocation,
+				$"'{target.Type.Name}' has no destructor"));
+		
+		VisitNode(target);
+	}
+	
 	public void Visit(ResolvedIfStatementNode node)
 	{
 		var conditionType = node.Condition.Type;
