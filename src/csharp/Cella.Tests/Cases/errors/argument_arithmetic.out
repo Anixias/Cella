@@ -1,0 +1,9 @@
+
+====== argument_arithmetic.ce ======
+
+Error at line 8, column 17
+7 │ val big: i32 = 2000000000
+8 │ val sum = show(big + big)
+                   ╘═══════╛ Addition overflows 'i32'
+
+[compilation failed]

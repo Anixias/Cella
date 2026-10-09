@@ -16,6 +16,7 @@ public sealed class DiagnosticList : IEnumerable<Diagnostic>
 	private readonly SortedList<LineColumnKey, List<Diagnostic>> _diagnostics = [];
 	private readonly SortedList<LineColumnKey, List<Diagnostic>> _errors = [];
 	private readonly SortedList<LineColumnKey, List<Diagnostic>> _warnings = [];
+	private List<Diagnostic>? _redirect;
 	
 	public DiagnosticList() : this([])
 	{
@@ -33,8 +34,21 @@ public sealed class DiagnosticList : IEnumerable<Diagnostic>
 		_warnings.Clear();
 	}
 	
+	public List<Diagnostic>? Redirect(List<Diagnostic>? target)
+	{
+		var previous = _redirect;
+		_redirect = target;
+		return previous;
+	}
+	
 	public void Add(Diagnostic diagnostic)
 	{
+		if (_redirect is { } redirect)
+		{
+			redirect.Add(diagnostic);
+			return;
+		}
+		
 		var key = new LineColumnKey(diagnostic.Line, diagnostic.Column);
 		_diagnostics.GetOrAdd(key).Add(diagnostic);
 		

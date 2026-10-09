@@ -24,15 +24,7 @@ public sealed class TypeInference(TypePool typePool)
 	public InferenceResult Infer(ImmutableArray<TypeParameterSymbol> parameters, IEnumerable<InferenceInput> inputs,
 		TypeSymbol? returnType, TypeSymbol? target)
 	{
-		var bounds = new Bounds(parameters);
-		foreach (var input in inputs)
-		{
-			if (input.Literal is { } literal)
-				bounds.AddLiteral(input.Parameter, input.Argument, literal);
-			else
-				bounds.Unify(input.Parameter, input.Argument, input.IsExact);
-		}
-		
+		var bounds = Collect(parameters, inputs);
 		var inferred = new TypeSymbol?[parameters.Length];
 		for (var i = 0; i < parameters.Length; i++)
 		{
@@ -42,14 +34,7 @@ public sealed class TypeInference(TypePool typePool)
 				return new() { Conflicted = parameters[i], Candidates = conflict };
 		}
 		
-		if (returnType is not null && target is not null && inferred.Any(static type => type is null))
-		{
-			var expected = new Bounds(parameters);
-			expected.Unify(returnType, target, false);
-			for (var i = 0; i < parameters.Length; i++)
-				inferred[i] ??= Fix(expected.Exact[i], expected.Lower[i], out _);
-		}
-		
+		FillFromTarget(parameters, inferred, null, returnType, target);
 		InferFromBounds(parameters, inferred);
 		
 		for (var i = 0; i < parameters.Length; i++)
@@ -67,6 +52,59 @@ public sealed class TypeInference(TypePool typePool)
 		return missing.IsEmpty
 			? new() { Arguments = [..inferred.Select(static type => type!)] }
 			: new() { Missing = missing };
+	}
+	
+	public ImmutableArray<TypeSymbol?> InferKnown(ImmutableArray<TypeParameterSymbol> parameters,
+		IEnumerable<InferenceInput> inputs, TypeSymbol? returnType, TypeSymbol? target,
+		IReadOnlyDictionary<TypeParameterSymbol, TypeSymbol>? chosen = null)
+	{
+		var bounds = Collect(parameters, inputs);
+		var inferred = new TypeSymbol?[parameters.Length];
+		var conflicted = new bool[parameters.Length];
+		for (var i = 0; i < parameters.Length; i++)
+		{
+			if (chosen?.GetValueOrDefault(parameters[i]) is { } type)
+			{
+				inferred[i] = type;
+				continue;
+			}
+			
+			inferred[i] = Fix(bounds.Exact[i], bounds.Lower[i], out var conflict);
+			conflicted[i] = !conflict.IsEmpty;
+		}
+		
+		FillFromTarget(parameters, inferred, conflicted, returnType, target);
+		InferFromBounds(parameters, inferred);
+		return [..inferred.Select((type, i) => conflicted[i] ? null : type)];
+	}
+	
+	private static Bounds Collect(ImmutableArray<TypeParameterSymbol> parameters, IEnumerable<InferenceInput> inputs)
+	{
+		var bounds = new Bounds(parameters);
+		foreach (var input in inputs)
+		{
+			if (input.Literal is { } literal)
+				bounds.AddLiteral(input.Parameter, input.Argument, literal);
+			else
+				bounds.Unify(input.Parameter, input.Argument, input.IsExact);
+		}
+		
+		return bounds;
+	}
+	
+	private void FillFromTarget(ImmutableArray<TypeParameterSymbol> parameters, TypeSymbol?[] inferred, bool[]? skipped,
+		TypeSymbol? returnType, TypeSymbol? target)
+	{
+		if (returnType is null || target is null || inferred.All(static type => type is not null))
+			return;
+		
+		var expected = new Bounds(parameters);
+		expected.Unify(returnType, target, false);
+		for (var i = 0; i < parameters.Length; i++)
+		{
+			if (skipped?[i] != true)
+				inferred[i] ??= Fix(expected.Exact[i], expected.Lower[i], out _);
+		}
 	}
 	
 	private void InferFromBounds(ImmutableArray<TypeParameterSymbol> parameters, TypeSymbol?[] inferred)

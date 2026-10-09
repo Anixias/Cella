@@ -1,0 +1,30 @@
+mod lib
+
+box[T]: pub rec
+{
+	value: T
+}
+
+pair[A, B]: pub rec
+{
+	a: A
+	b: B
+}
+
+option[T]: pub enum
+{
+	none
+	some(value: T)
+}
+
+wrap[T]: pub fun(own value: T) -> box[T] = box(value)
+
+both[T: copy]: pub fun(p: pair[T, T]) -> T = p.a
+
+total: pub fun(b: box[i64]) -> i64 = b.value
+
+pick: pub fun(o: option[box[i64]]) -> i64 = match o
+{
+	some(b) => b.value
+	none => -1
+}

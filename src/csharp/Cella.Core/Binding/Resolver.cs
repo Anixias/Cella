@@ -44,7 +44,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	private readonly BigInteger _usizeMaxValue;
 	private readonly Dictionary<FunctionSymbol, FunctionInfo> _importedFunctions = [];
 	private readonly Stack<UnaryOpJob> _unaryOpJobs = [];
-	private readonly Stack<TypeSymbol?> _targetTypes = [];
+	private readonly Stack<Expectation> _expectations = [];
 	private readonly Stack<ResolutionContext> _resolutionContexts = [];
 	private readonly HashSet<LocalVariableSymbol> _repeatedBindings = [];
 	private readonly Dictionary<IResolvedExpressionNode, ImmutableArray<LocalVariableSymbol?>> _failedPatterns = [];
@@ -56,9 +56,12 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	private readonly List<Instantiation> _instantiations = [];
 	private readonly HashSet<Symbol> _genericReferences = [];
 	private IExpressionNode? storeTarget;
+	private List<Action>? _journal;
+	private int _openCheckpoints;
 	private ResolutionContext CurrentResolutionContext => _resolutionContexts.Peek();
 	private Scope? CurrentScope => CurrentResolutionContext.LocalScope;
-	private TypeSymbol? CurrentTargetType => _targetTypes.TryPeek(out var result) ? result : null;
+	private TypeSymbol? CurrentTargetType => _expectations.TryPeek(out var top) && !top.IsHint ? top.Type : null;
+	private TypeSymbol? ExpectedType => _expectations.TryPeek(out var top) ? top.Type : null;
 	
 	public Resolver(SymbolTable symbolTable, SignatureCollector signatures, TypePool typePool, uint pointerBitSize)
 	{
@@ -108,7 +111,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	
 	private IResolvedExpressionNode VisitNode(IExpressionNode node, TypeSymbol? targetType)
 	{
-		_targetTypes.Push(targetType);
+		_expectations.Push(new(targetType, false));
 		try
 		{
 			var result = ((IExpressionNodeVisitor<IResolvedExpressionNode>)this).Visit(node);
@@ -121,15 +124,15 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		}
 		finally
 		{
-			_targetTypes.Pop();
+			_expectations.Pop();
 		}
 	}
 	
 	private IResolvedExpressionNode VisitDiscarded(IExpressionNode node)
 	{
-		_targetTypes.Push(null);
+		_expectations.Push(new(null, false));
 		var result = ((IExpressionNodeVisitor<IResolvedExpressionNode>)this).Visit(node);
-		_targetTypes.Pop();
+		_expectations.Pop();
 		return result is ResolvedInterpolatedStringExpressionNode ? MaterializeAsDefault(result) : result;
 	}
 	
@@ -415,7 +418,11 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		CallExpressionNode? call)
 	{
 		IExpressionNode node = call is null ? access : call;
-		var args = (call?.Arguments ?? []).Select(argument => VisitNode(argument, null)).ToArray();
+		var named = definition.Cases.FirstOrDefault(c => c.Name == access.Member.Text);
+		var shape = CreateShape(named is null ? [] : _typePool.GetPayloadTypes(definition, named), definition);
+		var args = ResolveArguments(call?.Arguments ?? [], [shape], out _, values => AcceptsInferred(shape, values),
+			(_, values) => AcceptsInferred(shape, values));
+		
 		if (FindCase(definition, access.Member) is not { } enumCase || AnyInvalid(args))
 			return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
 		
@@ -425,7 +432,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		
 		var inputs = args.Select((arg, i) => CreateInferenceInput(payloadTypes[i], ParameterMode.Own, arg));
 		var result = _inference.Infer(definition.TypeParameters, inputs.OfType<InferenceInput>(), definition,
-			CurrentTargetType);
+			ExpectedType);
 		
 		var name = GetName(access.Target);
 		if (InstantiateInferred(result, definition, name, access.Target.SourceLocation) is not EnumSymbol instance)
@@ -666,9 +673,12 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		{
 			foreach (var binding in sameName)
 			{
-				if (_repeatedBindings.Add(binding))
-					Diagnostics.Add(new(DiagnosticSeverity.Error, binding.Identifier.SourceLocation,
-						$"'{binding.Name}' is bound more than once"));
+				if (!_repeatedBindings.Add(binding))
+					continue;
+				
+				Journal(() => _repeatedBindings.Remove(binding));
+				Diagnostics.Add(new(DiagnosticSeverity.Error, binding.Identifier.SourceLocation,
+					$"'{binding.Name}' is bound more than once"));
 			}
 		}
 	}
@@ -1173,15 +1183,27 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	private IResolvedExpressionNode VisitInferredConstruction(CallExpressionNode node, RecordSymbol definition)
 	{
 		var constructors = _typePool.GetConstructors(definition);
+		var accessible = constructors.Where(info => CanAccess(definition, info.Symbol.Visibility)).ToArray();
 		var fields = _typePool.GetMembers(definition).OfType<FieldSymbol>().ToArray();
-		var callables = constructors.Select(constructor => new ReceiverCallable(constructor, definition)).ToArray();
-		var args = node.Arguments.Select((argument, i) => VisitArgument(argument, ExpectedAt(i))).ToArray();
+		var name = GetName(node.Target);
+		var location = node.Target.SourceLocation;
+		CallShape[] shapes = constructors.Count > 0
+			?
+			[
+				..accessible.Select(constructor =>
+					CreateShape(new ReceiverCallable(constructor, definition), definition.TypeParameters))
+			]
+			: [CreateShape([..fields.Select(GetMemberType)], definition)];
+		
+		var args = ResolveArguments(node.Arguments, shapes, out var isAmbiguous, Succeeds, Accepts);
 		if (AnyInvalid(args))
 			return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
 		
-		var name = GetName(node.Target);
+		if (isAmbiguous)
+			return Error(node, $"Conversion to '{definition.Name}' is ambiguous", definition, node);
+		
 		if (constructors.Count > 0)
-			return ResolveInferredConstructor(node, definition, name, args, constructors);
+			return ResolveInferredConstructor(node, definition, name, args, constructors, accessible);
 		
 		if (args.Length != fields.Length && args.Length > 0)
 			return VisitRecordConstruction(node, definition, args);
@@ -1191,52 +1213,72 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			: fields.Select((field, i) => CreateInferenceInput(GetMemberType(field), ParameterMode.Own, args[i]));
 		
 		var result = _inference.Infer(definition.TypeParameters, inputs.OfType<InferenceInput>(), definition,
-			CurrentTargetType);
+			ExpectedType);
 		
-		if (InstantiateInferred(result, definition, name, node.Target.SourceLocation) is not RecordSymbol instance)
+		if (InstantiateInferred(result, definition, name, location) is not RecordSymbol instance)
 			return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
 		
 		return VisitRecordConstruction(node, instance, args);
 		
-		IEnumerable<TypeSymbol> ExpectedAt(int index) => constructors.Count > 0 ? ParameterTypesAt(callables, index)
-			: index < fields.Length ? [GetMemberType(fields[index])] : [];
+		bool Succeeds(IResolvedExpressionNode[] values) => constructors.Count > 0
+			? ResolveCallable(InstantiateConstructors(values), values, MaterializationMode.Overload).HasResult
+			: AcceptsInferred(shapes[0], values);
+		
+		bool Accepts(int index, IResolvedExpressionNode[] values) => constructors.Count > 0
+			? InstantiateConstructor(definition, accessible[index], values, name, location, []) is { } callable &&
+			  ResolveCallable([callable], values, MaterializationMode.Overload).HasResult
+			: AcceptsInferred(shapes[0], values);
+		
+		ICallable[] InstantiateConstructors(IResolvedExpressionNode[] values) =>
+		[
+			..accessible
+				.Select(constructor => InstantiateConstructor(definition, constructor, values, name, location, []))
+				.OfType<ICallable>()
+		];
 	}
 	
 	private IResolvedExpressionNode ResolveInferredConstructor(CallExpressionNode node, RecordSymbol definition,
-		string name, IResolvedExpressionNode[] args, IReadOnlyList<FunctionInfo> constructors)
+		string name, IResolvedExpressionNode[] args, IReadOnlyList<FunctionInfo> constructors,
+		FunctionInfo[] accessible)
 	{
-		var accessible = constructors.Where(info => CanAccess(definition, info.Symbol.Visibility)).ToArray();
 		if (accessible.Length == 0)
 			return Error(node, ReportHiddenMember(node.SourceLocation, "new",
 				constructors.Select(static info => info.Symbol)), CurrentTargetType);
 		
 		var failures = new List<Diagnostic>();
-		var candidates = new List<ICallable>();
-		foreach (var constructor in accessible)
-		{
-			var callable = new ReceiverCallable(constructor, definition);
-			var inputs = args
-				.Take(callable.ParameterTypes.Length)
-				.Select((arg, i) => CreateInferenceInput(callable.ParameterTypes[i], callable.GetMode(i), arg));
-			
-			var result = _inference.Infer(definition.TypeParameters, inputs.OfType<InferenceInput>(), definition,
-				CurrentTargetType);
-			
-			var location = node.Target.SourceLocation;
-			if (InstantiateInferred(result, definition, name, location, failures) is not { } instance)
-				continue;
-			
-			var info = _typePool.GetConstructors(instance).First(info => info.Symbol == constructor.Symbol);
-			candidates.Add(new ReceiverCallable(info, instance));
-		}
+		var location = node.Target.SourceLocation;
+		ICallable[] candidates =
+		[
+			..accessible
+				.Select(constructor => InstantiateConstructor(definition, constructor, args, name, location, failures))
+				.OfType<ICallable>()
+		];
 		
-		if (candidates.Count == 0 && accessible.Length == 1 && failures is [var failure])
+		if (candidates.Length == 0 && accessible.Length == 1 && failures is [var failure])
 		{
 			Diagnostics.Add(failure);
 			return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
 		}
 		
-		return ResolveConstructorCall(node, definition, args, [..candidates], null);
+		return ResolveConstructorCall(node, definition, args, candidates, null);
+	}
+	
+	private ReceiverCallable? InstantiateConstructor(RecordSymbol definition, FunctionInfo constructor,
+		IReadOnlyList<IResolvedExpressionNode> args, string name, SourceLocation location, List<Diagnostic> failures)
+	{
+		var callable = new ReceiverCallable(constructor, definition);
+		var inputs = args
+			.Take(callable.ParameterTypes.Length)
+			.Select((arg, i) => CreateInferenceInput(callable.ParameterTypes[i], callable.GetMode(i), arg));
+		
+		var result = _inference.Infer(definition.TypeParameters, inputs.OfType<InferenceInput>(), definition,
+			ExpectedType);
+		
+		if (InstantiateInferred(result, definition, name, location, failures) is not { } instance)
+			return null;
+		
+		var info = _typePool.GetConstructors(instance).First(info => info.Symbol == constructor.Symbol);
+		return new ReceiverCallable(info, instance);
 	}
 	
 	private NamedTypeSymbol? InstantiateInferred(InferenceResult result, NamedTypeSymbol definition, string name,
@@ -1266,17 +1308,10 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			.Select(info => new ReceiverCallable(info, targetType))
 			.ToArray();
 		
-		var args = new IResolvedExpressionNode[node.Arguments.Length];
-		
-		var iStart = 0;
-		if (firstArg is not null)
-		{
-			iStart++;
-			args[0] = firstArg;
-		}
-		
-		for (var i = iStart; i < node.Arguments.Length; i++)
-			args[i] = VisitArgument(node.Arguments[i], ParameterTypesAt(ctorCandidates, i));
+		var shapes = ctorCandidates.Select(static candidate => CreateShape(candidate, [])).ToArray();
+		var args = ResolveArguments(node.Arguments, shapes, out var isAmbiguous,
+			values => Accepts(ctorCandidates, values), (index, values) => Accepts([ctorCandidates[index]], values),
+			firstArg);
 		
 		if (AnyInvalid(args))
 			return new ResolvedInvalidExpressionNode(node, targetType);
@@ -1285,7 +1320,13 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			return Error(node, ReportHiddenMember(node.SourceLocation, "new",
 				constructors.Select(static info => info.Symbol)), targetType);
 		
+		if (isAmbiguous)
+			return Error(node, $"Conversion to '{targetType.Name}' is ambiguous", targetType, node);
+		
 		return ResolveConstructorCall(node, targetType, args, ctorCandidates, targetType);
+		
+		bool Accepts(ICallable[] candidates, IResolvedExpressionNode[] values) =>
+			ResolveCallable(candidates, values, MaterializationMode.Overload, targetType).HasResult;
 	}
 	
 	private IResolvedExpressionNode ResolveConstructorCall(CallExpressionNode node, TypeSymbol targetType,
@@ -1435,7 +1476,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 				.Select((arg, i) => CreateInferenceInput(candidate.ParameterTypes[i], candidate.GetMode(i), arg));
 			
 			var result = _inference.Infer(open, inputs.OfType<InferenceInput>(), candidate.ReturnType,
-				CurrentTargetType);
+				ExpectedType);
 			
 			if (!result.Succeeded)
 			{
@@ -1543,20 +1584,19 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	private IResolvedExpressionNode ResolveCall(CallExpressionNode node, string functionName, ICallable[] candidates,
 		IResolvedExpressionNode? receiver, TypeArgumentList? typeArguments = null)
 	{
-		var args = new IResolvedExpressionNode[node.Arguments.Length];
-		for (var i = 0; i < node.Arguments.Length; i++)
-			args[i] = VisitArgument(node.Arguments[i], ParameterTypesAt(candidates, i));
+		var location = (node.Target is IndexerExpressionNode indexer ? indexer.Target : node.Target).SourceLocation;
+		var args = ResolveArguments(node.Arguments,
+			[..candidates.Select(candidate => GetCallShape(candidate, typeArguments))], out var isAmbiguous,
+			Succeeds, Accepts);
 		
 		if (AnyInvalid(args))
 			return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
 		
-		var failures = new List<Diagnostic>();
-		var location = (node.Target is IndexerExpressionNode indexer ? indexer.Target : node.Target).SourceLocation;
-		var specialized = candidates
-			.Select(candidate => Specialize(candidate, functionName, args, typeArguments, location, failures))
-			.OfType<ICallable>()
-			.ToArray();
+		if (isAmbiguous)
+			return Error(node, $"Call to '{functionName}' is ambiguous", CurrentTargetType, node.Target);
 		
+		var failures = new List<Diagnostic>();
+		var specialized = SpecializeAll(args, failures);
 		if (specialized.Length == 0 && candidates.Length == 1 && failures is [var failure])
 		{
 			Diagnostics.Add(failure);
@@ -1595,6 +1635,20 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		
 		var result = new ResolvedFunctionCallExpressionNode(info, resolvedArgs, node);
 		return isErased ? new ResolvedErasedCallExpressionNode(result) : ApplyResultResolution(result, resolution);
+		
+		ICallable[] SpecializeAll(IResolvedExpressionNode[] values, List<Diagnostic> failed) =>
+		[
+			..candidates
+				.Select(candidate => Specialize(candidate, functionName, values, typeArguments, location, failed))
+				.OfType<ICallable>()
+		];
+		
+		bool Succeeds(IResolvedExpressionNode[] values) => ResolveCallable(SpecializeAll(values, []), values,
+			MaterializationMode.Overload, CurrentTargetType).HasResult;
+		
+		bool Accepts(int index, IResolvedExpressionNode[] values) =>
+			Specialize(candidates[index], functionName, values, typeArguments, location, []) is { } callable &&
+			ResolveCallable([callable], values, MaterializationMode.Overload, CurrentTargetType).HasResult;
 	}
 	
 	private IResolvedExpressionNode CreateReceiver(IResolvedExpressionNode receiver, FunctionInfo method) =>
@@ -1603,23 +1657,266 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 				receiver.Syntax)
 			: receiver;
 	
-	private IResolvedExpressionNode VisitArgument(IExpressionNode node, IEnumerable<TypeSymbol> expected)
+	private IResolvedExpressionNode VisitArgument(IExpressionNode node, IEnumerable<TypeSymbol> expected,
+		TypeSymbol? hint = null)
 	{
 		var types = expected.Distinct().ToList();
 		if (VisitCaseName(node, types) is { } caseName)
 			return caseName;
 		
-		return types is [var type] && IsNumeric(type) && IsConstantArithmetic(node)
-			? VisitTargeted(node, type)
-			: VisitArgument(node);
+		if (types is [var type] && IsNumeric(type) && IsConstantArithmetic(node))
+			return VisitTargeted(node, type);
+		
+		return hint is null ? VisitArgument(node) : VisitHinted(node, hint);
+	}
+	
+	private IResolvedExpressionNode[] ResolveArguments(ImmutableArray<IExpressionNode> nodes,
+		IReadOnlyList<CallShape> shapes, out bool isAmbiguous,
+		Func<IResolvedExpressionNode[], bool>? succeeds = null,
+		Func<int, IResolvedExpressionNode[], bool>? accepts = null, IResolvedExpressionNode? first = null)
+	{
+		isAmbiguous = false;
+		var values = new IResolvedExpressionNode?[nodes.Length];
+		var deferred = new List<int>();
+		for (var i = 0; i < nodes.Length; i++)
+		{
+			if (i == 0 && first is not null)
+				values[i] = first;
+			else if (IsDeferred(nodes[i]))
+				deferred.Add(i);
+			else
+				values[i] = VisitArgument(nodes[i], ParameterTypesAt(shapes, i));
+		}
+		
+		if (deferred.Count == 0)
+			return values!;
+		
+		var checkpoint = OpenCheckpoint();
+		foreach (var i in deferred)
+			values[i] = VisitDeferred(nodes[i], i, shapes, [..shapes.Select(shape => ExpectedAt(shape, values, i))]);
+		
+		var resolved = values.Select(static value => value!).ToArray();
+		if (succeeds is null || accepts is null || AnyInvalid(resolved) ||
+		    shapes.Count < 2 && shapes.All(static shape => shape.Open.IsEmpty) || succeeds(resolved))
+		{
+			Commit(checkpoint);
+			return resolved;
+		}
+		
+		var retries = FindRetries(nodes, shapes, resolved, deferred, accepts);
+		var cheapest = retries.Select(static retry => retry.Cost).DefaultIfEmpty().Min();
+		var best = retries.Where(retry => retry.Cost == cheapest).ToList();
+		if (best is not [var (shape, hints, _)])
+		{
+			Commit(checkpoint);
+			isAmbiguous = best.Select(static retry => retry.Shape).Distinct().Count() > 1;
+			return resolved;
+		}
+		
+		Rollback(checkpoint);
+		foreach (var i in deferred)
+			resolved[i] = VisitDeferred(nodes[i], i, [shapes[shape]], [hints[i]]);
+		
+		return resolved;
+	}
+	
+	private IResolvedExpressionNode VisitDeferred(IExpressionNode node, int index, IReadOnlyList<CallShape> shapes,
+		IReadOnlyList<TypeSymbol?> expected)
+	{
+		var types = shapes
+			.Select((shape, i) => expected[i] ?? (index < shape.Parameters.Count ? shape.Parameters[index] : null))
+			.OfType<TypeSymbol>();
+		
+		var hint = expected.All(static type => type is not null) && expected.Distinct().Count() == 1
+			? expected[0]
+			: null;
+		
+		return VisitArgument(node, types, hint is BorrowType { IsMutable: false } borrow ? borrow.Target : hint);
+	}
+	
+	private List<(int Shape, TypeSymbol?[] Hints, int Cost)> FindRetries(ImmutableArray<IExpressionNode> nodes,
+		IReadOnlyList<CallShape> shapes, IResolvedExpressionNode[] values, List<int> deferred,
+		Func<int, IResolvedExpressionNode[], bool> accepts)
+	{
+		var settled = values.Select((value, i) => deferred.Contains(i) ? null : value).ToArray();
+		var retries = new List<(int Shape, TypeSymbol?[] Hints, int Cost)>();
+		for (var index = 0; index < shapes.Count; index++)
+		{
+			foreach (var hints in FindHintOptions(shapes[index], values, settled, deferred))
+			{
+				if (!retries.Any(retry => retry.Hints.SequenceEqual(hints)) && Fit(index, hints) is { } cost)
+					retries.Add((index, hints, cost));
+			}
+		}
+		
+		return retries;
+		
+		int? Fit(int index, TypeSymbol?[] hints)
+		{
+			var checkpoint = OpenCheckpoint();
+			try
+			{
+				var trial = values.ToArray();
+				foreach (var i in deferred)
+					trial[i] = VisitDeferred(nodes[i], i, [shapes[index]], [hints[i]]);
+				
+				return AnyInvalid(trial) || checkpoint.HasErrors || !accepts(index, trial)
+					? null
+					: deferred.Select(i => LiteralDistance(values[i].Type, trial[i].Type)).Aggregate(0, AddCosts);
+			}
+			finally
+			{
+				Rollback(checkpoint);
+			}
+		}
+	}
+	
+	private static int LiteralDistance(TypeSymbol natural, TypeSymbol chosen) => (natural, chosen) switch
+	{
+		_ when natural == chosen => 0,
+		(NamedTypeSymbol n, NamedTypeSymbol c) when n.Definition == c.Definition =>
+			n.TypeArguments.Zip(c.TypeArguments, LiteralDistance).Aggregate(0, AddCosts),
+		(ArrayType n, ArrayType c) when n.Length == c.Length => LiteralDistance(n.ElementType, c.ElementType),
+		(BorrowType n, BorrowType c) when n.IsMutable == c.IsMutable => LiteralDistance(n.Target, c.Target),
+		_ => FindLiteralType(natural)?.MaterializationCost(chosen, MaterializationMode.Overload) ?? int.MaxValue
+	};
+	
+	private static UntypedType? FindLiteralType(TypeSymbol type) => type switch
+	{
+		IntegerType { Kind: not PrimitiveTypeKind.Char } => UntypedIntegerType.Instance,
+		FloatType => UntypedFloatType.Instance,
+		StringType => UntypedStringType.Instance,
+		PointerType => UntypedNullType.Instance,
+		_ => null
+	};
+	
+	private static int AddCosts(int first, int second) =>
+		first == int.MaxValue || second == int.MaxValue ? int.MaxValue : first + second;
+	
+	private IEnumerable<TypeSymbol?[]> FindHintOptions(CallShape shape, IResolvedExpressionNode[] values,
+		IResolvedExpressionNode?[] settled, List<int> deferred)
+	{
+		List<IReadOnlyDictionary<TypeParameterSymbol, TypeSymbol>?> choices = [null];
+		var result = _inference.Infer(shape.Open, CreateInferenceInputs(shape, values), shape.ReturnType, ExpectedType);
+		if (result.Conflicted is { } parameter)
+			choices.AddRange(result.Candidates.Select(candidate =>
+				new Dictionary<TypeParameterSymbol, TypeSymbol> { [parameter] = candidate }));
+		
+		foreach (var choice in choices)
+		{
+			var hints = new TypeSymbol?[values.Length];
+			foreach (var i in deferred)
+				hints[i] = ExpectedAt(shape, settled, i, choice);
+			
+			if (deferred.Any(i => hints[i] is not null))
+				yield return hints;
+		}
+	}
+	
+	private TypeSymbol? ExpectedAt(CallShape shape, IReadOnlyList<IResolvedExpressionNode?> values, int index,
+		IReadOnlyDictionary<TypeParameterSymbol, TypeSymbol>? chosen = null)
+	{
+		if (index >= shape.Parameters.Count || shape.Modes[index] == ParameterMode.Mut ||
+		    shape.Parameters[index] is BorrowType { IsMutable: true })
+			return null;
+		
+		var parameter = shape.Parameters[index];
+		var open = TypePool.FindTypeParameters(parameter).Where(shape.Open.Contains).ToList();
+		if (open.Count == 0)
+			return parameter;
+		
+		var known = _inference.InferKnown(shape.Open, CreateInferenceInputs(shape, values), shape.ReturnType,
+			ExpectedType, chosen);
+		
+		var map = shape.Open
+			.Select((type, i) => (Parameter: type, Type: known[i]))
+			.Where(static entry => entry.Type is not null)
+			.ToDictionary(static entry => entry.Parameter, static entry => entry.Type!);
+		
+		return open.All(map.ContainsKey) ? _typePool.Substitute(parameter, map) : null;
+	}
+	
+	private IEnumerable<InferenceInput> CreateInferenceInputs(CallShape shape,
+		IReadOnlyList<IResolvedExpressionNode?> values) => values
+		.Take(shape.Parameters.Count)
+		.Select((value, i) => value is null ? null : CreateInferenceInput(shape.Parameters[i], shape.Modes[i], value))
+		.OfType<InferenceInput>();
+	
+	private bool IsDeferred(IExpressionNode node) => node switch
+	{
+		CallExpressionNode or ArrayExpressionNode => true,
+		VarExpressionNode name => CurrentResolutionContext.Resolve(name.Identifier.Text) is null,
+		_ => false
+	};
+	
+	private static IEnumerable<TypeSymbol> ParameterTypesAt(IEnumerable<CallShape> shapes, int index) => shapes
+		.Where(shape => index < shape.Parameters.Count)
+		.Select(shape => shape.Parameters[index]);
+	
+	private CallShape GetCallShape(ICallable candidate, TypeArgumentList? typeArguments)
+	{
+		FunctionInfo? info = candidate switch
+		{
+			FunctionCallable callable => callable.Info,
+			ReceiverCallable callable => callable.Info,
+			_ => null
+		};
+		
+		var open = info is { } declared ? GetOpenTypeParameters(declared) : [];
+		if (info is not { } function || open.IsEmpty || typeArguments is not { } explicitArguments ||
+		    explicitArguments.Types.Length != open.Length)
+			return CreateShape(candidate, open);
+		
+		var instantiated = InstantiateDeclared(function, explicitArguments.Types);
+		return CreateShape(candidate is FunctionCallable
+			? new FunctionCallable(instantiated)
+			: (ICallable)new ReceiverCallable(instantiated, instantiated.Signature.ReturnType), []);
+	}
+	
+	private static CallShape CreateShape(ICallable candidate, ImmutableArray<TypeParameterSymbol> open) => new(
+		candidate.ParameterTypes, open, candidate.ReturnType,
+		[..candidate.ParameterTypes.Select((_, i) => candidate.GetMode(i))]);
+	
+	private static CallShape CreateShape(ImmutableArray<TypeSymbol> parameters, NamedTypeSymbol definition) =>
+		new(parameters, definition.TypeParameters, definition, [..parameters.Select(static _ => ParameterMode.Own)]);
+	
+	private bool AcceptsInferred(CallShape shape, IResolvedExpressionNode[] args)
+	{
+		if (args.Length != shape.Parameters.Count)
+			return false;
+		
+		var result = _inference.Infer(shape.Open, CreateInferenceInputs(shape, args), shape.ReturnType, ExpectedType);
+		if (!result.Succeeded ||
+		    ReportConstraintViolation(shape.Open, result.Arguments, _ => SourceLocation.None) is not null)
+			return false;
+		
+		var map = TypePool.CreateMap(shape.Open, result.Arguments);
+		return args
+			.Select((arg, i) => MatchArg(arg, _typePool.Substitute(shape.Parameters[i], map), shape.Modes[i],
+				MaterializationMode.Overload, false).Cost)
+			.All(static cost => cost != int.MaxValue);
 	}
 	
 	private IResolvedExpressionNode VisitTargeted(IExpressionNode node, TypeSymbol target)
 	{
-		_targetTypes.Push(target);
+		_expectations.Push(new(target, false));
 		var result = ((IExpressionNodeVisitor<IResolvedExpressionNode>)this).Visit(node);
-		_targetTypes.Pop();
+		_expectations.Pop();
 		return result;
+	}
+	
+	private IResolvedExpressionNode VisitHinted(IExpressionNode node, TypeSymbol hint)
+	{
+		_expectations.Push(new(hint, true));
+		try
+		{
+			var result = ((IExpressionNodeVisitor<IResolvedExpressionNode>)this).Visit(node);
+			return result.Type == NativeSymbols.Void ? ReportVoidValue(result, null) : result;
+		}
+		finally
+		{
+			_expectations.Pop();
+		}
 	}
 	
 	private static bool IsNumeric(TypeSymbol type) => type is FloatType ||
@@ -2618,8 +2915,8 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		
 		target = Decay(target);
 		ICallable[] candidates = target.Type is FunctionType type ? [new FunctionTypeCallable(type)] : [];
-		var args = node.Arguments.Select((argument, i) => VisitArgument(argument, ParameterTypesAt(candidates, i)))
-			.ToArray();
+		var args = ResolveArguments(node.Arguments,
+			[..candidates.Select(static candidate => CreateShape(candidate, []))], out _);
 		
 		if (IsInvalid(target) || AnyInvalid(args))
 			return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
@@ -2855,7 +3152,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	{
 		var values = new List<IResolvedExpressionNode>(node.Values.Length);
 		
-		var elementType = (CurrentTargetType as ArrayType)?.ElementType;
+		var elementType = (ExpectedType as ArrayType)?.ElementType;
 		
 		foreach (var expression in node.Values)
 		{
@@ -3051,7 +3348,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	{
 		var resolutionContext = CurrentResolutionContext;
 		var type = node.Type is null
-			? _targetTypes.TryPeek(out var targetType) ? targetType ?? NativeSymbols.Invalid : NativeSymbols.Invalid
+			? CurrentTargetType ?? NativeSymbols.Invalid
 			: resolutionContext.ResolveType(node.Type);
 		
 		return new ResolvedUndefExpressionNode(type, node);
@@ -4774,14 +5071,15 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	private void TrackGenericReference(Symbol symbol)
 	{
 		if (CurrentResolutionContext.ContainingFunction is { Symbol.TypeParameters.IsEmpty: false } &&
-		    _signatures.IsLocal(symbol))
-			_genericReferences.Add(symbol);
+		    _signatures.IsLocal(symbol) && _genericReferences.Add(symbol))
+			Journal(() => _genericReferences.Remove(symbol));
 	}
 	
 	private void TrackFunctionUse(FunctionInfo info, IExpressionNode syntax)
 	{
-		if (!_signatures.IsLocal(info.Symbol) || info.File?.Module != CurrentResolutionContext.File.Module)
-			_importedFunctions.TryAdd(info.Symbol, info);
+		if ((!_signatures.IsLocal(info.Symbol) || info.File?.Module != CurrentResolutionContext.File.Module) &&
+		    _importedFunctions.TryAdd(info.Symbol, info))
+			Journal(() => _importedFunctions.Remove(info.Symbol));
 		
 		if (info.Symbol.TypeParameters.IsEmpty)
 			TrackGenericReference(info.Symbol);
@@ -4794,9 +5092,57 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		{
 			var argument = info.TypeArguments[i];
 			foreach (var parameter in caller.TypeParameters.Where(parameter => Mentions(argument, parameter)))
+			{
 				_instantiations.Add(new((caller, parameter), (info.Symbol, info.Symbol.TypeParameters[i]),
 					argument != parameter, syntax.SourceLocation));
+				
+				Journal(() => _instantiations.RemoveAt(_instantiations.Count - 1));
+			}
 		}
+	}
+	
+	private void Journal(Action undo) => _journal?.Add(undo);
+	
+	private Checkpoint OpenCheckpoint()
+	{
+		_journal ??= [];
+		_openCheckpoints++;
+		var redirects = new[] { Diagnostics, CurrentResolutionContext.Diagnostics }
+			.Distinct()
+			.Select(static list =>
+			{
+				var captured = new List<Diagnostic>();
+				return new Redirection(list, list.Redirect(captured), captured);
+			})
+			.ToList();
+		
+		return new(_journal.Count, redirects);
+	}
+	
+	private void Commit(Checkpoint checkpoint)
+	{
+		Close(checkpoint);
+		foreach (var redirection in checkpoint.Redirections)
+			redirection.List.AddRange(redirection.Captured);
+	}
+	
+	private void Rollback(Checkpoint checkpoint)
+	{
+		var journal = _journal!;
+		for (var i = journal.Count - 1; i >= checkpoint.JournalLength; i--)
+			journal[i]();
+		
+		journal.RemoveRange(checkpoint.JournalLength, journal.Count - checkpoint.JournalLength);
+		Close(checkpoint);
+	}
+	
+	private void Close(Checkpoint checkpoint)
+	{
+		foreach (var redirection in Enumerable.Reverse(checkpoint.Redirections))
+			redirection.List.Redirect(redirection.Previous);
+		
+		if (--_openCheckpoints == 0)
+			_journal = null;
 	}
 	
 	private static bool Mentions(TypeSymbol type, TypeParameterSymbol parameter) => type switch
@@ -5228,6 +5574,32 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			_resolutions = resolutions.ToImmutableArray();
 			Count = _resolutions.Length;
 		}
+	}
+	
+	private readonly record struct Expectation(TypeSymbol? Type, bool IsHint);
+	
+	private sealed record CallShape
+	(
+		IReadOnlyList<TypeSymbol> Parameters,
+		ImmutableArray<TypeParameterSymbol> Open,
+		TypeSymbol? ReturnType,
+		ImmutableArray<ParameterMode> Modes
+	);
+	
+	private readonly record struct Redirection
+	(
+		DiagnosticList List,
+		List<Diagnostic>? Previous,
+		List<Diagnostic> Captured
+	);
+	
+	private sealed class Checkpoint(int journalLength, List<Redirection> redirections)
+	{
+		public int JournalLength { get; } = journalLength;
+		public List<Redirection> Redirections { get; } = redirections;
+		
+		public bool HasErrors => Redirections.Any(static redirection =>
+			redirection.Captured.Any(static diagnostic => diagnostic.Severity == DiagnosticSeverity.Error));
 	}
 	
 	private readonly record struct TypeArgumentList

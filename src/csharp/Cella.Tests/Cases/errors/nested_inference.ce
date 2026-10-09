@@ -1,0 +1,52 @@
+mod test
+
+box[T]: rec
+{
+	value: T
+}
+
+pair[A, B]: rec
+{
+	a: A
+	b: B
+}
+
+option[T]: enum
+{
+	none
+	some(value: T)
+}
+
+Wide: rec
+{
+	kind: i32
+
+	new: op(p: pair[i64, f64])
+	{
+		self.kind = 1
+	}
+
+	new: op(p: pair[f64, i64])
+	{
+		self.kind = 2
+	}
+}
+
+wrap[T]: fun(own value: T) -> box[T] = box(value)
+takesBox64: fun(b: box[i64]) -> i64 = b.value
+take: fun(p: pair[i64, f64]) -> i32 = 1
+take: fun(p: pair[f64, i64]) -> i32 = 2
+both[T: copy]: fun(p: pair[T, T]) -> T = p.a
+
+main: fun -> i32
+{
+	val small: i32 = 1
+	val a = take(pair(1, 2))
+	val b = Wide(pair(1, 2))
+	val c = takesBox64(box("a"))
+	val d = takesBox64(wrap(small))
+	val e = takesBox64(box(small))
+	val f = both(pair(1, "s"))
+	val g = box(none)
+	ret 0
+}

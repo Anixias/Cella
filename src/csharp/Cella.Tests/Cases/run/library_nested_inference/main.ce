@@ -1,0 +1,17 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+main: fun -> i32
+{
+	val a = lib.total(lib.wrap(1))
+	val b = lib.total(lib.box(2))
+	val c = lib.both(lib.pair(3, i64(4)))
+	val d = lib.pick(lib.option.some(lib.box(5)))
+	val e = lib.pick(some(lib.wrap(6)))
+	printf("%lld %lld %lld %lld %lld\n", a, b, c, d, e)
+	ret 0
+}

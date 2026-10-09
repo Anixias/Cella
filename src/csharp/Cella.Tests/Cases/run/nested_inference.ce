@@ -1,0 +1,128 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+box[T]: rec
+{
+	value: T
+}
+
+pair[A, B]: rec
+{
+	a: A
+	b: B
+}
+
+option[T]: enum
+{
+	none
+	some(value: T)
+}
+
+Shelf[T: noref]: rec
+{
+	item: T
+
+	put: fun(mut self, own item: T)
+	{
+		self.item = item
+	}
+}
+
+Holder: rec
+{
+	b: box[i64]
+}
+
+Pick: rec
+{
+	kind: i32
+
+	new: op(b: box[i64])
+	{
+		self.kind = 64
+	}
+
+	new: op(b: box[str])
+	{
+		self.kind = 1
+	}
+}
+
+pairOf[T]: rec
+{
+	a: box[T]
+	b: box[T]
+}
+
+wrap[T]: fun(own value: T) -> box[T] = box(value)
+id[T]: fun(own value: T) -> T = value
+sizeOfArg[T]: fun(own value: T) -> usize = sizeOf(T)
+takesBox64: fun(b: box[i64]) -> i64 = b.value
+takesI64: fun(value: i64) -> i64 = value
+
+takesOpt64: fun(o: option[i64]) -> i64 = match o
+{
+	some(v) => v
+	none => -1
+}
+
+take: fun(b: box[i64]) -> i32 = 64
+take: fun(b: box[str]) -> i32 = 1
+twice: fun(value: i32) -> i32 = 32
+twice: fun(value: i64) -> i32 = 64
+both[T: copy]: fun(p: pair[T, T]) -> T = p.a
+first[T: copy]: fun(b: box[T]) -> T = b.value
+sumAll: fun(values: array[i64, 3]) -> i64 = values[0] + values[1] + values[2]
+boxes: fun(values: array[box[i64], 2]) -> i64 = values[0].value + values[1].value
+wideBox: fun(b: box[i64]) -> i32 = 64
+wideBox: fun(b: box[f64]) -> i32 = 1
+smallBox: fun(b: box[i8]) -> i32 = 8
+smallBox: fun(b: box[u8]) -> i32 = 2
+total: fun(values: array[i64, 2]) -> i32 = 64
+total: fun(values: array[f64, 2]) -> i32 = 1
+
+unwrapOr[T: copy]: fun(o: option[T], fallback: T) -> T = match o
+{
+	some(v) => v
+	none => fallback
+}
+
+relay[U: copy]: fun(value: U) -> U
+{
+	val inner = first(box(value))
+	ret unwrapOr(option.some(inner), value)
+}
+
+lift[U: copy]: fun(value: U) -> box[box[U]] = box(box(value))
+
+main: fun -> i32
+{
+	printf("%lld %lld\n", takesBox64(box(1)), takesBox64(wrap(2)))
+	printf("%lld %lld %lld\n", takesOpt64(option.some(3)), takesOpt64(some(4)), takesOpt64(none))
+
+	var shelf = Shelf[box[i64]](box[i64](0))
+	shelf.put(box(5))
+	printf("%lld %d %d\n", shelf.item.value, take(box(6)), take(box("a")))
+
+	val nested: box[option[i64]] = box(some(7))
+	printf("%lld %lld\n", unwrapOr(nested.value, 0), both(pair(1, i64(2))))
+
+	val y: i64 = first(box(8))
+	val r: box[i64] = id(box(9))
+	printf("%lld %lld %lld\n", y, r.value, takesBox64(id(box(10))))
+	printf("%lld %lld\n", sumAll([1, 2, 3]), boxes([box(4), box(5)]))
+
+	val f: fun[box[i64] -> i64] = takesBox64
+	printf("%lld %zu\n", f(box(11)), sizeOfArg(1))
+	printf("%lld %d\n", Holder(box(12)).b.value, Pick(box(13)).kind)
+
+	val p = pairOf(box(1), box(i64(2)))
+	printf("%zu %d %d\n", sizeOfArg(p.a.value), twice(1), takesI64(twice(1)))
+	printf("%lld %d %lld\n", relay(i64(14)), unwrapOr(none, 15), lift(i64(16)).value.value)
+	printf("%d %d %d\n", wideBox(box(17)), smallBox(box(18)), total([19, 20]))
+	ret 0
+}

@@ -1,0 +1,39 @@
+
+====== nested_inference.ce ======
+
+Error at line 44, column 10
+43 │ val small: i32 = 1
+44 │ val a = take(pair(1, 2))
+             ╘══╛ Call to 'take' is ambiguous
+
+Error at line 45, column 10
+44 │ val a = take(pair(1, 2))
+45 │ val b = Wide(pair(1, 2))
+             ╘══════════════╛ Conversion to 'Wide' is ambiguous
+
+Error at line 46, column 25
+45 │ val b = Wide(pair(1, 2))
+46 │ val c = takesBox64(box("a"))
+                            ╘═╛ Cannot convert type 'string literal' to 'i64'
+
+Error at line 47, column 10
+46 │ val c = takesBox64(box("a"))
+47 │ val d = takesBox64(wrap(small))
+             ╘════════╛ No overload of 'takesBox64' accepts these arguments
+
+Error at line 48, column 10
+47 │ val d = takesBox64(wrap(small))
+48 │ val e = takesBox64(box(small))
+             ╘════════╛ No overload of 'takesBox64' accepts these arguments
+
+Error at line 49, column 10
+48 │ val e = takesBox64(box(small))
+49 │ val f = both(pair(1, "s"))
+             ╘══╛ Cannot infer 'T' for 'both' from 'i32' and 'str'
+
+Error at line 50, column 14
+49 │ val f = both(pair(1, "s"))
+50 │ val g = box(none)
+                 ╘══╛ Symbol 'none' not found in this scope
+
+[compilation failed]
