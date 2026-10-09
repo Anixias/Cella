@@ -1,0 +1,75 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Source[T]: trait
+{
+	next: fun(mut self) -> T
+}
+
+Counted[T]: trait req Source[T]
+{
+	count: fun(self) -> i32
+}
+
+Steps: rec impl Source[i32] + Counted[i32]
+{
+	at: i32
+
+	next: fun(mut self) -> i32
+	{
+		self.at += 1
+		ret self.at
+	}
+
+	count: fun(self) -> i32 = self.at
+}
+
+Compare[T]: trait
+{
+	compare: fun(self, other: T) -> i32
+}
+
+Sortable: trait req Compare[Self]
+{
+	rank: fun(self) -> i32
+}
+
+Card: rec impl Compare[Card] + Sortable
+{
+	value: i32
+
+	compare: fun(self, other: Card) -> i32 = self.value - other.value
+	rank: fun(self) -> i32 = self.value * 10
+}
+
+take[T, S: Counted[T]]: fun(mut source: S) -> T = source.next()
+
+skip[S: Counted[i32]]: fun(mut source: S) -> i32
+{
+	source.next()
+	ret source.next() + source.count() * 100
+}
+
+pull: fun(mut source: dyn[Counted[i32]]) -> i32 = source.next() + source.count() * 100
+
+drain: fun(mut source: dyn[Source[i32]]) -> i32 = source.next()
+
+order[T: Sortable]: fun(a: T, b: T) -> i32 = a.compare(b) + a.rank()
+
+rankOf: fun(item: dyn[Sortable]) -> i32 = item.rank()
+
+main: fun -> i32
+{
+	var s = Steps(0)
+	val first = take(mut s)
+	val second = skip(mut s)
+	val third = pull(mut s)
+	val fourth = drain(mut dyn[Counted[i32]](mut s))
+	printf("%d %d %d %d %d\n", first, second, third, fourth, s.at)
+	printf("%d %d %d\n", order(Card(5), Card(3)), order(Card(1), Card(4)), rankOf(Card(2)))
+	ret 0
+}

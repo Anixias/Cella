@@ -18,6 +18,9 @@ public sealed class FileParser
 			TokenType.KeywordExt, TokenType.KeywordRec, TokenType.KeywordEnum, TokenType.KeywordRef,
 			TokenType.KeywordTrait, TokenType.KeywordImpl);
 	
+	private static readonly Dictionary<string, TokenType> _traitListKeywords =
+		BuildContextualKeywords(TokenType.KeywordImpl, TokenType.KeywordReq);
+	
 	private static readonly Dictionary<string, TokenType> _memberContextualKeywords =
 		BuildContextualKeywords(TokenType.KeywordPub, TokenType.KeywordPvt, TokenType.KeywordMod, TokenType.KeywordSet,
 			TokenType.KeywordNew, TokenType.KeywordDrop, TokenType.KeywordOp, TokenType.KeywordReq,
@@ -1173,7 +1176,7 @@ public sealed class FileParser
 		// When this is called, the identifier and rec keyword are already consumed
 		// Caller is expected to resync in case of errors
 		
-		if (ParseImplementedTraits(ref index) is not { } traits)
+		if (ParseTraitList(ref index, TokenType.KeywordImpl) is not { } traits)
 			return null;
 		
 		var members = new List<IDeclarationNode>();
@@ -1205,10 +1208,10 @@ public sealed class FileParser
 		return new QualifiedTypeNode(new(source, range.Join(parts[^1].SourceLocation.Range)), parts);
 	}
 	
-	private List<ITypeNode>? ParseImplementedTraits(ref int index)
+	private List<ITypeNode>? ParseTraitList(ref int index, TokenType keyword)
 	{
 		var traits = new List<ITypeNode>();
-		if (!IsOnSameLine(index) || !Match(ref index, _topLevelContextualKeywords, TokenType.KeywordImpl))
+		if (!IsOnSameLine(index) || !Match(ref index, _traitListKeywords, keyword))
 			return traits;
 		
 		return ParseTraitNames(ref index, traits) ? traits : null;
@@ -1233,6 +1236,9 @@ public sealed class FileParser
 	private TraitNode? ParseTrait(ref int index, Token identifier, DeclarationModifiers modifiers,
 		List<TypeParameterNode> typeParameters)
 	{
+		if (ParseTraitList(ref index, TokenType.KeywordReq) is not { } requiredTraits)
+			return null;
+		
 		var members = new List<IDeclarationNode>();
 		if (Match(ref index, out var openBrace, TokenType.OpOpenBrace))
 		{
@@ -1247,7 +1253,8 @@ public sealed class FileParser
 		return new(identifier, modifiers.Tokens, members)
 		{
 			Visibility = modifiers.Visibility,
-			TypeParameters = [..typeParameters]
+			TypeParameters = [..typeParameters],
+			RequiredTraits = [..requiredTraits]
 		};
 	}
 	
@@ -1339,7 +1346,7 @@ public sealed class FileParser
 			}
 		}
 		
-		if (ParseImplementedTraits(ref index) is not { } traits)
+		if (ParseTraitList(ref index, TokenType.KeywordImpl) is not { } traits)
 			return null;
 		
 		if (!Match(ref index, out var openBrace, TokenType.OpOpenBrace))

@@ -1,0 +1,21 @@
+mod test
+
+Eq: trait
+{
+	==: op(a: Self, b: Self) -> bool
+}
+
+Empty: trait req
+{
+}
+
+Trailing: trait req Eq +
+{
+}
+
+main: fun -> i32 = 0
+
+Ord: trait impl Eq
+{
+	<: op(a: Self, b: Self) -> bool
+}

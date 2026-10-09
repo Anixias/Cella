@@ -98,6 +98,8 @@ public sealed class SignatureCollector
 		foreach (var file in files)
 			RegisterConstraints(file);
 		
+		ReportRequirementCycles(files);
+		
 		foreach (var impl in _impls)
 			RegisterImplMembers(impl);
 		
@@ -339,10 +341,10 @@ public sealed class SignatureCollector
 				
 				case TraitNode traitNode:
 					var trait = (TraitSymbol)symbol;
+					var traitContext = context with { ContainingType = trait.Self, Trait = trait };
 					_typePool.SetBounds(trait.Self, [_typePool.GetTraitType(trait, [..trait.TypeParameters])]);
-					RegisterBounds(traitNode.TypeParameters, trait.TypeParameters,
-						context with { ContainingType = trait.Self, Trait = trait });
-					
+					RegisterBounds(traitNode.TypeParameters, trait.TypeParameters, traitContext);
+					RegisterRequiredTraits(trait, traitNode, traitContext);
 					RegisterMemberBounds(traitNode.Members);
 					break;
 				
@@ -370,8 +372,9 @@ public sealed class SignatureCollector
 		{
 			ReportConstraintConflicts(nodes[i]);
 			var bounds = nodes[i].Traits.Select(deferring.ResolveTraitReference).ToList();
-			ImmutableArray<TraitType> traits = [..bounds.OfType<TraitType>()];
-			ImmutableArray<TypeParameterSymbol> traitParameters = [..bounds.OfType<TypeParameterSymbol>()];
+			ReportRepeatedTraits(nodes[i].Traits, bounds);
+			ImmutableArray<TraitType> traits = [..bounds.OfType<TraitType>().Distinct()];
+			ImmutableArray<TypeParameterSymbol> traitParameters = [..bounds.OfType<TypeParameterSymbol>().Distinct()];
 			if (!traits.IsEmpty)
 				_typePool.SetBounds(parameters[i], traits);
 			
@@ -381,6 +384,67 @@ public sealed class SignatureCollector
 			if (!nodes[i].Constructors.IsEmpty)
 				_pendingConstructorBounds.Add((nodes[i], parameters[i], context));
 		}
+	}
+	
+	private void RegisterRequiredTraits(TraitSymbol trait, TraitNode node, ResolutionContext context)
+	{
+		var deferring = context with { DeferConstraintCheck = DeferAlways };
+		var required = node.RequiredTraits.Select(deferring.ResolveTrait).ToList();
+		ReportRepeatedTraits(node.RequiredTraits, required);
+		for (var i = 0; i < required.Count; i++)
+		{
+			if (required[i] is { } requiredTrait)
+				ReportHiddenType(node.RequiredTraits[i], requiredTrait, trait.Visibility, trait.Name);
+		}
+		
+		_typePool.SetRequiredTraits(trait, [..required.OfType<TraitType>().Distinct()]);
+	}
+	
+	private void ReportRepeatedTraits(ImmutableArray<ITypeNode> nodes, IReadOnlyList<TypeSymbol?> traits)
+	{
+		for (var i = 0; i < nodes.Length; i++)
+		{
+			if (traits[i] is { } trait && traits.Where((other, j) => j != i && other == trait).Any())
+				Diagnostics.Add(new(DiagnosticSeverity.Error, nodes[i].SourceLocation,
+					$"'{trait.Name}' is required more than once"));
+		}
+	}
+	
+	private void ReportRequirementCycles(IEnumerable<FileNode> files)
+	{
+		var cyclic = files
+			.SelectMany(static file => file.Declarations)
+			.Select(declaration => _symbolTable.DeclarationSymbols[declaration])
+			.OfType<TraitSymbol>()
+			.Where(RequiresItself)
+			.ToList();
+		
+		foreach (var trait in cyclic)
+		{
+			Diagnostics.Add(new(DiagnosticSeverity.Error, trait.Node.Identifier.SourceLocation,
+				$"'{trait.Name}' requires itself"));
+			
+			_typePool.SetRequiredTraits(trait, []);
+		}
+	}
+	
+	private bool RequiresItself(TraitSymbol trait)
+	{
+		var visited = new HashSet<TraitSymbol>();
+		var pending = new Stack<TraitType>(_typePool.GetRequiredTraits(trait));
+		while (pending.TryPop(out var current))
+		{
+			if (current.Trait == trait)
+				return true;
+			
+			if (!visited.Add(current.Trait))
+				continue;
+			
+			foreach (var required in _typePool.GetRequiredTraits(current.Trait))
+				pending.Push(required);
+		}
+		
+		return false;
 	}
 	
 	private void RegisterConstructorBounds()
@@ -736,10 +800,25 @@ public sealed class SignatureCollector
 					$"'{trait}' and '{conformance.Target.Name}' are both declared in other projects"));
 			
 			MatchRequirements(conformance);
+			CheckRequiredTraits(conformance);
 		}
 		
 		foreach (var impl in _impls)
 			ReportUnmatchedMembers(impl);
+	}
+	
+	private void CheckRequiredTraits(Conformance conformance)
+	{
+		var self = GetConformanceSelf(conformance);
+		if (self is InvalidType)
+			return;
+		
+		var trait = _typePool.GetTraitType(conformance.Trait, conformance.Arguments);
+		foreach (var required in _typePool.GetRequiredTraits(trait, self))
+		{
+			if (!_typePool.Conforms(self, required))
+				ReportConformance(conformance.Location, $"'{self.Name}' needs '{required.Name}'");
+		}
 	}
 	
 	private void ReportOverlaps(List<Conformance> conformances)

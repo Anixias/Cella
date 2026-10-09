@@ -1,0 +1,95 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Named: trait
+{
+	name: fun(self) -> i32
+	rename: fun(mut self, value: i32)
+	code: get(self) -> i32
+}
+
+Shape: trait req Named
+{
+	area: fun(self) -> f64
+	label: fun(self) -> i32 = self.name() * 2
+}
+
+Solid: trait req Shape
+{
+	volume: fun(self) -> f64
+}
+
+Circle: rec impl Named + Shape + Solid
+{
+	radius: f64
+	id: i32
+
+	name: fun(self) -> i32 = self.id
+	rename: fun(mut self, value: i32)
+	{
+		self.id = value
+	}
+
+	code: get(self) -> i32 = self.id + 100
+	area: fun(self) -> f64 = self.radius * self.radius * 3.0
+	volume: fun(self) -> f64 = self.area() * 2.0
+}
+
+Square: rec impl Named + Shape
+{
+	side: f64
+
+	name: fun(self) -> i32 = 4
+	rename: fun(mut self, value: i32)
+	{
+	}
+
+	code: get(self) -> i32 = 400
+	area: fun(self) -> f64 = self.side * self.side
+}
+
+cell[K: trait]: rec
+{
+	object: ptr[dyn[K]]
+}
+
+label: fun(item: dyn[Named]) -> i32 = item.name()
+
+relabel: fun(mut item: dyn[Named], value: i32)
+{
+	item.rename(value)
+}
+
+describe: fun(shape: dyn[Shape]) -> f64 = shape.area() + f64(shape.name() + label(shape) + shape.code)
+
+measure: fun(solid: dyn[Solid]) -> f64 = solid.volume() + describe(solid) + f64(label(solid) * 1000)
+
+grow: fun(mut solid: dyn[Solid])
+{
+	solid.rename(solid.name() + 1)
+	relabel(mut solid, solid.label())
+}
+
+apply[K: trait, T: K]: fun(value: T, action: fun[dyn[K] -> f64]) -> f64 = action(value)
+
+names: fun(item: cell[Named]) -> i32 = item.object.name()
+
+widen: fun(item: cell[Shape]) -> cell[Named] = cell[Named](item.object)
+
+main: fun -> i32
+{
+	var c = Circle(1.0, 7)
+	var s = Square(2.0)
+	printf("%.1f %.1f %.1f\n", describe(c), describe(s), measure(c))
+	grow(mut c)
+	printf("%d %.1f\n", c.id, apply[Solid, Circle](c, measure))
+	printf("%d %d %d\n", dyn[Named](dyn[Shape](c)).name(), label(dyn[Shape](dyn[Solid](c))),
+		names(widen(cell[Shape](@s))))
+	printf("%d %d %d\n", i32(dyn[Named](dyn[Shape](c)) is Circle), i32(dyn[Named](dyn[Shape](s)) is Circle),
+		i32(dyn[Shape](s) is Square))
+	ret 0
+}

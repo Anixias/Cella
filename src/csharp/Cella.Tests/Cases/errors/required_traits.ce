@@ -1,0 +1,65 @@
+mod test
+
+Eq: trait
+{
+	==: op(a: Self, b: Self) -> bool
+}
+
+Hash: trait
+{
+	hash: fun(self) -> u64
+}
+
+Ord: trait req Eq
+{
+	<: op(a: Self, b: Self) -> bool
+}
+
+Plain: rec impl Ord
+{
+	n: i32
+
+	<: op(a: Plain, b: Plain) -> bool = a.n < b.n
+}
+
+f64: impl Ord
+
+box[T]: rec
+{
+	value: T
+}
+
+box[T: Ord]: impl Ord
+{
+	<: op(a: box[T], b: box[T]) -> bool = a.value < b.value
+}
+
+box[T: Hash]: impl Eq
+{
+	==: op(a: box[T], b: box[T]) -> bool = true
+}
+
+Even: trait req Odd
+Odd: trait req Even
+Selfish: trait req Selfish
+
+Shown: pub trait req Eq
+
+Twice: trait req Eq + Eq
+
+twice[T: Eq + Eq]: fun(a: T, b: T) -> bool = a == b
+
+Missing: trait req Unknown
+NotTrait: trait req i32
+
+list[T: Ord]: rec
+{
+	value: T
+}
+
+list[T: Eq + Ord]: impl
+{
+	same: fun(self, other: T) -> bool = self.value == other
+}
+
+main: fun -> i32 = 0

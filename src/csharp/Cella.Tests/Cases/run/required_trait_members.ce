@@ -1,0 +1,83 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Zero: trait
+{
+	zero: fun -> Self
+	new: op(value: i32)
+	size: get(self) -> i32
+	twice: fun(self) -> i32 = self.size * 2
+}
+
+Num: trait req Zero
+{
+	+: op(a: Self, b: Self) -> Self
+	total: fun(self) -> i32 = self.twice() + self.size
+}
+
+Meter: rec impl Zero + Num
+{
+	n: i32
+
+	zero: fun -> Meter = Meter(0)
+	new: op(value: i32)
+	{
+		self.n = value
+	}
+
+	size: get(self) -> i32 = self.n
+	+: op(a: Meter, b: Meter) -> Meter = Meter(a.n + b.n)
+}
+
+Base: trait
+{
+	id: fun(self) -> i32
+}
+
+Left: trait req Base
+{
+	left: fun(self) -> i32 = self.id() + 1
+}
+
+Right: trait req Base
+{
+	right: fun(self) -> i32 = self.id() + 2
+}
+
+Both: trait req Left + Right
+{
+	sum: fun(self) -> i32 = self.left() + self.right() + self.id()
+}
+
+Item: rec impl Base + Left + Right + Both
+{
+	n: i32
+
+	id: fun(self) -> i32 = self.n
+}
+
+build[T: Num + noref]: fun(value: i32) -> T = T(value) + T.zero()
+
+report[T: Num]: fun(value: T) -> i32
+{
+	val picked = Zero(value).size
+	ret value.size + value.twice() * 10 + value.total() * 100 + picked * 1000
+}
+
+ids[T: Both]: fun(value: T) -> i32 = value.id() + value.left() * 10 + value.sum() * 100
+
+base: fun(item: dyn[Base]) -> i32 = item.id()
+
+through: fun(item: dyn[Both]) -> i32 = item.id() + item.left() * 10 + item.sum() * 100 + base(item) * 1000
+
+main: fun -> i32
+{
+	val m = build[Meter](3)
+	val item = Item(5)
+	printf("%d %d %d %d\n", m.n, report(m), ids(item), through(item))
+	ret 0
+}

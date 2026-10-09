@@ -1,0 +1,36 @@
+mod test
+
+Named: trait
+{
+	name: fun(self) -> i32
+}
+
+Shape: trait req Named
+{
+	name: fun(self) -> i32
+	area: fun(self) -> f64
+}
+
+Compare[T]: trait
+{
+	compare: fun(self, other: T) -> i32
+}
+
+Sortable: trait req Compare[Self]
+{
+	rank: fun(self) -> i32
+}
+
+show[T: Shape]: fun(value: T) -> i32 = value.name()
+
+pick[T: Shape]: fun(value: T) -> i32 = Named(value).name() + Shape(value).name()
+
+needsShape[T: Shape]: fun(value: T) -> f64 = value.area()
+
+fromNamed[T: Named]: fun(value: T) -> f64 = needsShape(value)
+
+narrow: fun(item: dyn[Named]) -> f64 = dyn[Shape](item).area()
+
+compareAll: fun(item: dyn[Sortable], other: dyn[Sortable]) -> i32 = item.compare(other)
+
+main: fun -> i32 = 0

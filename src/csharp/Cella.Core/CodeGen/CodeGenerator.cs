@@ -1136,10 +1136,11 @@ public sealed unsafe class CodeGenerator : IDisposable
 	private LLVMValueRef EmitDynCall(FunctionInfo info, DynType dyn, CallValue v, LLVMBuilderRef builder)
 	{
 		var args = v.Arguments.Select(a => EmitValue(a, builder)).ToArray();
-		var table = builder.BuildExtractValue(args[0], 1, "table");
+		var trait = _typePool.GetTraitType(info.Symbol.Trait!, TypePool.GetTraitArguments(info));
+		var table = EmitDynPath(dyn.Instance!, trait, builder.BuildExtractValue(args[0], 1, "table"), builder);
 		args[0] = builder.BuildExtractValue(args[0], 0, "object");
-		var slot = (uint)_typePool.GetDynSlot(dyn.Trait!, info.Symbol) + 1;
-		var entry = builder.BuildStructGEP2(GetDynTableType(dyn.Trait!), table, slot, "entry");
+		var slot = (uint)_typePool.GetDynSlot(trait.Trait, info.Symbol) + 1;
+		var entry = builder.BuildStructGEP2(GetDynTableType(trait.Trait), table, slot, "entry");
 		var method = builder.BuildLoad2(OpaquePointer, entry, "method");
 		var parameterTypes = MapParameterTypes(info);
 		parameterTypes[0] = OpaquePointer;
@@ -1147,37 +1148,66 @@ public sealed unsafe class CodeGenerator : IDisposable
 		return builder.BuildCall2(functionType, method, args);
 	}
 	
-	private LLVMTypeRef GetDynTableType(TraitSymbol trait) => LLVMTypeRef.CreateStruct(
-		[LLVMTypeRef.CreateInt(128), ..Enumerable.Repeat(OpaquePointer, _typePool.FindDynMembers(trait)!.Value.Length)],
-		false);
+	private LLVMValueRef EmitDynPath(TraitType from, TraitType to, LLVMValueRef table, LLVMBuilderRef builder)
+	{
+		var owner = from;
+		foreach (var next in _typePool.FindDynPath(from, to)!.Value)
+		{
+			var members = _typePool.FindDynMembers(owner.Trait)!.Value.Length;
+			var slot = (uint)(members + _typePool.GetDynRequirements(owner).IndexOf(next) + 1);
+			var entry = builder.BuildStructGEP2(GetDynTableType(owner.Trait), table, slot, "entry");
+			table = builder.BuildLoad2(OpaquePointer, entry, "table");
+			owner = next;
+		}
+		
+		return table;
+	}
+	
+	private LLVMTypeRef GetDynTableType(TraitSymbol trait)
+	{
+		var entries = _typePool.FindDynMembers(trait)!.Value.Length + _typePool.GetDynRequirements(trait).Length;
+		return LLVMTypeRef.CreateStruct([LLVMTypeRef.CreateInt(128), ..Enumerable.Repeat(OpaquePointer, entries)],
+			false);
+	}
+	
+	private static DynType GetDynTarget(TypeSymbol type) => type switch
+	{
+		BorrowType { Target: DynType target } => target,
+		PointerType { BaseType: DynType target } => target,
+		_ => throw new InvalidOperationException()
+	};
 	
 	private LLVMValueRef GetDynTable(DynConversion conversion)
 	{
-		var declared = conversion.To switch
-		{
-			BorrowType { Target: DynType target } => target,
-			PointerType { BaseType: DynType target } => target,
-			_ => throw new InvalidOperationException()
-		};
-		
-		var dyn = (DynType)Substitute(declared);
-		var trait = dyn.Trait!;
+		var declared = GetDynTarget(conversion.To);
+		var trait = GetDynTarget(Substitute(conversion.To)).Instance!;
 		var objectType = Substitute(conversion.ObjectType);
+		return GetDynTable(trait, objectType,
+			declared.Parameter is null ? conversion.Members : GetDynMemberInfos(trait, objectType));
+	}
+	
+	private ImmutableArray<FunctionInfo> GetDynMemberInfos(TraitType trait, TypeSymbol objectType) =>
+	[
+		.._typePool.GetDynMemberInfos(trait.Trait).Select(member => _typePool.InstantiateFunction(member,
+			_typePool.GetWitnessArguments(objectType, member.Symbol, trait.Arguments, [])))
+	];
+	
+	private LLVMValueRef GetDynTable(TraitType trait, TypeSymbol objectType, ImmutableArray<FunctionInfo> members)
+	{
+		var dyn = _typePool.GetDynType(trait);
 		var name = Mangling.MangleInstantiation($"?{Mangling.MangleTypeName(dyn, _modules)}", [objectType], _modules);
 		var existing = current.Module.GetNamedGlobal(name);
 		if (existing.Handle != IntPtr.Zero)
 			return existing;
 		
-		var members = declared.Parameter is null
-			? conversion.Members
-			:
-			[
-				.._typePool.GetDynMemberInfos(trait).Select(member => _typePool.InstantiateFunction(member,
-					_typePool.GetWitnessArguments(objectType, member.Symbol, dyn.TraitArguments, [])))
-			];
+		LLVMValueRef[] entries =
+		[
+			..members.Select(GetFunctionValue),
+			.._typePool.GetDynRequirements(trait).Select(required =>
+				GetDynTable(required, objectType, GetDynMemberInfos(required, objectType)))
+		];
 		
-		LLVMValueRef[] entries = [..members.Select(GetFunctionValue)];
-		var table = current.Module.AddGlobal(GetDynTableType(trait), name);
+		var table = current.Module.AddGlobal(GetDynTableType(trait.Trait), name);
 		table.Initializer = LLVMValueRef.CreateConstStruct([EmitTypeId(objectType), ..entries], false);
 		table.IsGlobalConstant = true;
 		table.Linkage = LLVMLinkage.LLVMInternalLinkage;
@@ -1196,6 +1226,15 @@ public sealed unsafe class CodeGenerator : IDisposable
 		var pointer = EmitValue(v.Source, builder);
 		var value = builder.BuildInsertValue(LLVMValueRef.CreateConstNull(FatPointerType), pointer, 0, "dyn");
 		return builder.BuildInsertValue(value, GetDynTable(conversion), 1, "dyn");
+	}
+	
+	private LLVMValueRef EmitDynUpcast(DynUpcastConversion conversion, ConversionValue v, LLVMBuilderRef builder)
+	{
+		var value = EmitValue(v.Source, builder);
+		var from = GetDynTarget(Substitute(conversion.From)).Instance!;
+		var to = GetDynTarget(Substitute(conversion.To)).Instance!;
+		var table = EmitDynPath(from, to, builder.BuildExtractValue(value, 1, "table"), builder);
+		return builder.BuildInsertValue(value, table, 1, "dyn");
 	}
 	
 	private LLVMValueRef EmitDynTest(DynTestConversion conversion, ConversionValue v, LLVMBuilderRef builder)
@@ -1605,6 +1644,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 		FreeConversion or MatchConversion => EmitValue(v.Source, builder),
 		FunctionConversion c => EmitValue(new CallValue(c.Function, [v.Source], v.SourceLocation), builder),
 		DynConversion c => EmitDynConversion(c, v, builder),
+		DynUpcastConversion c => EmitDynUpcast(c, v, builder),
 		DynTestConversion c => EmitDynTest(c, v, builder),
 		DynCastConversion => builder.BuildExtractValue(EmitValue(v.Source, builder), 0, "object"),
 		_ => throw new InvalidOperationException()

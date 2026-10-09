@@ -1,0 +1,88 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Eq: trait
+{
+	==: op(a: Self, b: Self) -> bool
+}
+
+Ord: trait req Eq
+{
+	<: op(a: Self, b: Self) -> bool
+	<=: op(a: Self, b: Self) -> bool = a < b || a == b
+}
+
+Version: rec impl Eq + Ord
+{
+	major: i32
+	minor: i32
+
+	==: op(a: Version, b: Version) -> bool = a.major == b.major && a.minor == b.minor
+	<: op(a: Version, b: Version) -> bool = a.major < b.major || a.major == b.major && a.minor < b.minor
+}
+
+i32: impl Eq + Ord
+
+box[T]: rec
+{
+	value: T
+}
+
+box[T: Eq]: impl Eq
+{
+	==: op(a: box[T], b: box[T]) -> bool = a.value == b.value
+}
+
+box[T: Ord]: impl Ord
+{
+	<: op(a: box[T], b: box[T]) -> bool = a.value < b.value
+}
+
+pair[T: Eq]: rec
+{
+	a: T
+	b: T
+
+	same: fun(self) -> bool = self.a == self.b
+}
+
+pair[T: Ord]: impl
+{
+	ordered: fun(self) -> bool = self.a <= self.b
+}
+
+same[T: Eq]: fun(a: T, b: T) -> bool = a == b
+
+within[T: Ord]: fun(value: T, low: T, high: T) -> bool = low <= value && value <= high
+
+isEdge[T: Ord]: fun(value: T, low: T, high: T) -> bool = value == low || same(value, high)
+
+either[T: Eq + Ord]: fun(a: T, b: T) -> bool = a == b || a < b
+
+least[T: Ord + copy]: fun(a: T, b: T) -> T
+{
+	if b < a
+		ret b
+
+	ret a
+}
+
+main: fun -> i32
+{
+	val low = Version(1, 0)
+	val mid = Version(1, 5)
+	val high = Version(2, 0)
+	printf("%d %d %d\n", i32(within(mid, low, high)), i32(within(high, low, mid)), i32(within(5, 1, 9)))
+	printf("%d %d %d %d\n", i32(isEdge(low, low, high)), i32(isEdge(high, low, high)), i32(isEdge(mid, low, high)),
+		i32(isEdge(1, 1, 9)))
+	printf("%d %d %d\n", i32(either(mid, high)), i32(either(3, 2)), i32(mid <= high))
+	val small = least(box(3), box(2))
+	printf("%d %d %d\n", small.value, i32(box(4) == box(4)), i32(within(box(2), box(1), box(3))))
+	val p = pair(1, 2)
+	printf("%d %d\n", i32(p.same()), i32(p.ordered()))
+	ret 0
+}

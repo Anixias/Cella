@@ -990,8 +990,13 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	private static bool IsDynTarget(TypeSymbol type) =>
 		type is DynType or BorrowType { Target: DynType } or PointerType { BaseType: DynType };
 	
-	private bool CanErase(TypeSymbol type, DynType dyn) =>
-		type is not (DynType or InvalidType) && _typePool.Conforms(type, dyn);
+	private bool CanErase(TypeSymbol type, DynType dyn) => type switch
+	{
+		DynType { Instance: { } from } => dyn.Instance is { } to &&
+		                                  _typePool.FindDynPath(from, to) is { IsEmpty: false },
+		DynType or InvalidType => false,
+		_ => _typePool.Conforms(type, dyn)
+	};
 	
 	private bool CanConvertToDyn(TypeSymbol source, TypeSymbol target) => target switch
 	{
@@ -1067,6 +1072,10 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			_ => throw new InvalidOperationException()
 		};
 		
+		if (objectType is DynType)
+			return new ResolvedConversionExpressionNode(pointer, new DynUpcastConversion(pointer.Type, target),
+				pointer.Syntax);
+		
 		ImmutableArray<FunctionInfo> members = dyn.Trait is { } trait
 			? [..GetDynMembers(trait).Select(member => GetFunctionInfo(member, objectType, dyn.TraitArguments))]
 			: [];
@@ -1093,6 +1102,12 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		return _typePool.FindDynMembers(trait)!.Value;
 	}
 	
+	private bool IsDynMember(FunctionSymbol function) =>
+		function.Trait is { } trait && GetDynMembers(trait).Contains(function);
+	
+	private IEnumerable<TraitType> GetDynTraits(DynType dyn) =>
+		dyn.Instance is { } trait ? _typePool.GetDynTraits(trait) : [];
+	
 	private bool IsDynCallable(FunctionSymbol function)
 	{
 		if (function.Visibility == Visibility.Private || function.Kind != FunctionKind.Method ||
@@ -1111,11 +1126,11 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	{
 		var name = access.Member.Text;
 		var member = access.Member.SourceLocation;
-		if (dyn.Trait?.GetProperty(name) is not null)
+		if (GetPropertyMember(dyn, name) is not null)
 			return VisitIndirectCall(node, Index(indexer, ResolveAccess(access, target)));
 		
-		var functions = dyn.Trait?.GetFunctions(name).ToArray() ?? [];
-		if (dyn.Trait is not { } trait || functions.Length == 0)
+		var functions = GetDynTraits(dyn).SelectMany(trait => GetInstanceMethods(trait, name)).ToArray();
+		if (functions.Length == 0)
 			return Error(node, $"Type '{dyn.Name}' has no member '{name}'", CurrentTargetType, member);
 		
 		var accessible = functions.Where(method => CanAccess(dyn, method.Function)).ToArray();
@@ -1123,8 +1138,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			return Error(node, ReportHiddenMember(member, name, functions.Select(static method => method.Function)),
 				CurrentTargetType);
 		
-		var members = GetDynMembers(trait);
-		var callable = accessible.Where(method => members.Contains(method.Function)).ToArray();
+		var callable = accessible.Where(method => IsDynMember(method.Function)).ToArray();
 		if (callable.Length == 0)
 			return Error(node, accessible.Any(static method => method.HasReceiver)
 				? $"Cannot call '{name}' through '{dyn.Name}'"
@@ -1133,7 +1147,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		ICallable[] candidates =
 		[
 			..callable
-				.Select(method => GetFunctionInfo(method.Function, dyn, dyn.TraitArguments))
+				.Select(method => GetFunctionInfo(method, dyn))
 				.Select(static info => new ReceiverCallable(info, info.Signature.ReturnType))
 		];
 		
@@ -2400,7 +2414,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		if (property.Getter is not FunctionAccessor { Function: var getter })
 			return Error(node, "Cannot read write-only properties", CurrentTargetType, member);
 		
-		if (owner is DynType { Trait: { } trait } dyn && !GetDynMembers(trait).Contains(getter))
+		if (owner is DynType dyn && !IsDynMember(getter))
 			return Error(node, $"Cannot use '{property.Name}' through '{dyn.Name}'", CurrentTargetType, member);
 		
 		return CanAccess(owner, getter)
@@ -2474,10 +2488,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	private IEnumerable<MethodSymbol> GetTraitMethods(TypeSymbol type, string name)
 	{
 		if (type is DynType dyn)
-			return dyn.Instance is { } dynTrait
-				? GetInstanceMethods(dynTrait, name)
-					.Where(method => GetDynMembers(dynTrait.Trait).Contains(method.Function))
-				: [];
+			return GetDynTraits(dyn)
+				.SelectMany(trait => GetInstanceMethods(trait, name))
+				.Where(method => IsDynMember(method.Function));
 		
 		if (type is TypeParameterSymbol parameter)
 			return _typePool.GetBounds(parameter).SelectMany(trait => GetInstanceMethods(trait, name));
@@ -2533,7 +2546,10 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			return property;
 		
 		if (type is DynType dyn)
-			return dyn.Instance is { } dynTrait ? GetInstanceProperty(dynTrait, name) : null;
+			return GetDynTraits(dyn)
+				.Select(trait => GetInstanceProperty(trait, name))
+				.OfType<PropertySymbol>()
+				.FirstOrDefault();
 		
 		if (type is TypeParameterSymbol parameter)
 			return _typePool.GetBounds(parameter)
@@ -4477,8 +4493,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 				"Cannot reassign read-only properties"));
 		
 		var read = node.Op.Type == TokenType.OpEqual ? null : (property.Getter as FunctionAccessor)?.Function;
-		if (target.Owner is DynType { Trait: { } trait } dyn &&
-		    (!GetDynMembers(trait).Contains(setter) || read is not null && !GetDynMembers(trait).Contains(read)))
+		if (target.Owner is DynType dyn && (!IsDynMember(setter) || read is not null && !IsDynMember(read)))
 			return RejectAssignment(node, new(DiagnosticSeverity.Error, member,
 				$"Cannot use '{property.Name}' through '{dyn.Name}'"));
 		
@@ -5480,7 +5495,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		};
 		
 		var place = argument.Place.Type == declared ? argument.Place : Decay(argument.Place);
-		if (declared is DynType && place.Type is not DynType && !IsInvalid(place))
+		if (declared is DynType && place.Type != declared && !IsInvalid(place))
 			return Erase(target is BorrowType
 					? new ResolvedBorrowExpressionNode(place, _typePool.GetBorrowType(place.Type, true), false,
 						argument.Syntax)

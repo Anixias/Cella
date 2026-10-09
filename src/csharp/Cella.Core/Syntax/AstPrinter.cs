@@ -393,6 +393,10 @@ public sealed class AstPrinter : ISyntaxNodeVisitor
 		_sb.Append("TraitNode '").Append(node.Identifier.AsSpan());
 		AppendTypeParameters(node.TypeParameters);
 		_sb.Append('\'');
+		if (!node.RequiredTraits.IsEmpty)
+			_sb.Append(" req ").AppendJoin(" + ",
+				node.RequiredTraits.Select(static trait => trait.SourceLocation.GetText().ToString()));
+		
 		for (var i = 0; i < node.Members.Length; i++)
 			VisitNode(node.Members[i], i == node.Members.Length - 1);
 	}

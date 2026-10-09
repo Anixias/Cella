@@ -16,4 +16,5 @@ public sealed class TraitNode
 	public Token? Visibility { get; init; }
 	public ImmutableArray<IDeclarationNode> Members { get; } = members.ToImmutableArray();
 	public ImmutableArray<TypeParameterNode> TypeParameters { get; init; } = [];
+	public ImmutableArray<ITypeNode> RequiredTraits { get; init; } = [];
 }

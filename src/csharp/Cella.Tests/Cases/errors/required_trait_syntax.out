@@ -1,0 +1,19 @@
+
+====== required_trait_syntax.ce ======
+
+Error at line 9, column 1
+8 │ Empty: trait req
+9 │ {
+    ^ Expected a trait
+
+Error at line 13, column 1
+12 │ Trailing: trait req Eq +
+13 │ {
+     ^ Expected a trait
+
+Error at line 18, column 12
+17 │ 
+18 │ Ord: trait impl Eq
+                ╘══╛ Unexpected token
+
+[compilation failed]

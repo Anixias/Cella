@@ -60,6 +60,9 @@ public sealed class DynConversion
 	public ImmutableArray<FunctionInfo> Members { get; } = members;
 }
 
+public sealed class DynUpcastConversion(TypeSymbol from, TypeSymbol to)
+	: Conversion(from, to, ConversionKind.Implicit, 1, false);
+
 public sealed class DynTestConversion(TypeSymbol from, TypeSymbol tested)
 	: Conversion(from, NativeSymbols.Bool, ConversionKind.Explicit, 0, false)
 {

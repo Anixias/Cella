@@ -1,0 +1,36 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Version: rec impl lib.Eq + lib.Ord
+{
+	major: i32
+
+	==: op(a: Version, b: Version) -> bool = a.major == b.major
+	<: op(a: Version, b: Version) -> bool = a.major < b.major
+}
+
+Square: rec impl lib.Named + lib.Shape
+{
+	side: f64
+
+	name: fun(self) -> i32 = 4
+	area: fun(self) -> f64 = self.side * self.side
+}
+
+same[T: lib.Eq]: fun(a: T, b: T) -> bool = a == b
+
+check[T: lib.Ord]: fun(a: T, b: T) -> bool = same(a, b) || a <= b
+
+main: fun -> i32
+{
+	val c = lib.Circle(1.0, 3)
+	val s = Square(2.0)
+	printf("%d %d %d\n", i32(lib.within(Version(2), Version(1), Version(3))), i32(lib.within(5, 1, 3)),
+		i32(check(Version(4), Version(2))))
+	printf("%.1f %.1f %d %d\n", lib.describe(c), lib.describe(s), lib.label(s), lib.label(dyn[lib.Shape](c)))
+	ret 0
+}

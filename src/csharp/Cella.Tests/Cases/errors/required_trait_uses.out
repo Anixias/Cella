@@ -1,0 +1,24 @@
+
+====== required_trait_uses.ce ======
+
+Error at line 24, column 40
+23 │ 
+24 │ show[T: Shape]: fun(value: T) -> i32 = value.name()
+                                            ╘════════╛ Call to 'name' is ambiguous
+
+Error at line 30, column 45
+29 │ 
+30 │ fromNamed[T: Named]: fun(value: T) -> f64 = needsShape(value)
+                                                 ╘════════╛ 'T' doesn't implement 'Shape'
+
+Error at line 32, column 51
+31 │ 
+32 │ narrow: fun(item: dyn[Named]) -> f64 = dyn[Shape](item).area()
+                                                       ╘══╛ 'dyn[Named]' doesn't implement 'Shape'
+
+Error at line 34, column 74
+33 │ 
+34 │ compareAll: fun(item: dyn[Sortable], other: dyn[Sortable]) -> i32 = item.compare(other)
+                                                                              ╘═════╛ Type 'dyn[Sortable]' has no member 'compare'
+
+[compilation failed]

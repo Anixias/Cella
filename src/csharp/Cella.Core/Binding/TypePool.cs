@@ -49,6 +49,7 @@ public sealed class TypePool
 	private readonly Dictionary<TypeParameterSymbol, ImmutableArray<TraitType>> _bounds = [];
 	private readonly Dictionary<TypeParameterSymbol, ImmutableArray<TypeParameterSymbol>> _parameterBounds = [];
 	private readonly Dictionary<TypeParameterSymbol, ImmutableArray<FunctionInfo>> _constructorBounds = [];
+	private readonly Dictionary<TraitSymbol, ImmutableArray<TraitType>> _requiredTraits = [];
 	private readonly List<(ImplSymbol Impl, TypeSymbol Target)> _memberBlocks = [];
 	private const int MaxInstanceDepth = 32;
 	
@@ -75,8 +76,11 @@ public sealed class TypePool
 	public void SetBounds(TypeParameterSymbol parameter, ImmutableArray<TraitType> traits) =>
 		_bounds[parameter] = traits;
 	
-	public ImmutableArray<TraitType> GetBounds(TypeParameterSymbol parameter) =>
+	public ImmutableArray<TraitType> GetDeclaredBounds(TypeParameterSymbol parameter) =>
 		_bounds.GetValueOrDefault(parameter, []);
+	
+	public ImmutableArray<TraitType> GetBounds(TypeParameterSymbol parameter) =>
+		AddRequiredTraits(GetDeclaredBounds(parameter), parameter);
 	
 	public void SetParameterBounds(TypeParameterSymbol parameter, ImmutableArray<TypeParameterSymbol> traits) =>
 		_parameterBounds[parameter] = traits;
@@ -89,6 +93,70 @@ public sealed class TypePool
 	
 	public ImmutableArray<FunctionInfo> GetConstructorBounds(TypeParameterSymbol parameter) =>
 		_constructorBounds.GetValueOrDefault(parameter, []);
+	
+	public void SetRequiredTraits(TraitSymbol trait, ImmutableArray<TraitType> required) =>
+		_requiredTraits[trait] = required;
+	
+	public ImmutableArray<TraitType> GetRequiredTraits(TraitSymbol trait) =>
+		_requiredTraits.GetValueOrDefault(trait, []);
+	
+	public IEnumerable<TraitType> GetRequiredTraits(TraitType trait, TypeSymbol self)
+	{
+		var map = CreateMap(trait.Trait.TypeParameters, trait.Arguments);
+		map[trait.Trait.Self] = self;
+		return GetRequiredTraits(trait.Trait).Select(required => SubstituteTrait(required, map));
+	}
+	
+	private ImmutableArray<TraitType> AddRequiredTraits(ImmutableArray<TraitType> traits, TypeSymbol self)
+	{
+		if (traits.All(trait => GetRequiredTraits(trait.Trait).IsEmpty))
+			return traits;
+		
+		var result = new OrderedSet<TraitType>();
+		var pending = new Queue<TraitType>(traits);
+		while (pending.TryDequeue(out var trait))
+		{
+			if (!result.Add(trait))
+				continue;
+			
+			foreach (var required in GetRequiredTraits(trait, self))
+				pending.Enqueue(required);
+		}
+		
+		return [..result];
+	}
+	
+	public ImmutableArray<TraitType> GetDynRequirements(TraitSymbol trait) =>
+		[..GetRequiredTraits(trait).Where(required => !FindTypeParameters(required).Contains(trait.Self))];
+	
+	public ImmutableArray<TraitType> GetDynRequirements(TraitType trait)
+	{
+		var map = CreateMap(trait.Trait.TypeParameters, trait.Arguments);
+		return [..GetDynRequirements(trait.Trait).Select(required => SubstituteTrait(required, map))];
+	}
+	
+	public IEnumerable<TraitType> GetDynTraits(TraitType trait) =>
+		WalkDynTraits(trait).Select(static entry => entry.Trait);
+	
+	public ImmutableArray<TraitType>? FindDynPath(TraitType from, TraitType to) => WalkDynTraits(from)
+		.Where(entry => entry.Trait == to)
+		.Select(static entry => (ImmutableArray<TraitType>?)entry.Path)
+		.FirstOrDefault();
+	
+	private IEnumerable<(TraitType Trait, ImmutableArray<TraitType> Path)> WalkDynTraits(TraitType trait)
+	{
+		var visited = new HashSet<TraitType> { trait };
+		var pending = new Queue<(TraitType Trait, ImmutableArray<TraitType> Path)>([(trait, [])]);
+		while (pending.TryDequeue(out var entry))
+		{
+			yield return entry;
+			foreach (var required in GetDynRequirements(entry.Trait))
+			{
+				if (visited.Add(required))
+					pending.Enqueue((required, [..entry.Path, required]));
+			}
+		}
+	}
 	
 	public bool Conforms(TypeSymbol type, TraitType trait) => type switch
 	{
@@ -756,7 +824,7 @@ public sealed class TypePool
 	{
 		var substitution = map?.ToDictionary() ?? [];
 		substitution[parameter] = argument;
-		return GetBounds(parameter)
+		return GetDeclaredBounds(parameter)
 			.Select(bound => SubstituteTrait(bound, substitution))
 			.FirstOrDefault(bound => !Conforms(argument, bound));
 	}
