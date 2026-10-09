@@ -1,0 +1,72 @@
+mod test
+
+option[T]: enum
+{
+	none
+	some(value: T)
+}
+
+Iterator[T]: trait
+{
+	next: fun(mut self) -> option[T]
+}
+
+Write[T]: trait
+{
+	write: fun(mut self, value: T)
+}
+
+Num: trait
+{
+	+: op(a: Self, b: Self) -> Self
+}
+
+Cloner[T]: trait
+{
+	copy: fun(self) -> Self
+	get: fun(self) -> T
+}
+
+Words: rec impl Iterator[str]
+{
+	x: i32
+
+	next: fun(mut self) -> option[str] = none
+}
+
+Console: rec impl Write[str] + Write[i32]
+{
+	x: i32
+
+	write: fun(mut self, value: str) { }
+	write: fun(mut self, value: i32) { }
+}
+
+flush[E, W: Write[E]]: fun(mut out: W) { }
+
+sum[T: Num, I: Iterator[T]]: fun(mut items: I) -> i32 = 0
+
+copyAll: fun(item: dyn[Cloner[i32]]) -> i32
+{
+	item.copy()
+	ret item.get()
+}
+
+cell[K: trait]: rec
+{
+	x: i32
+}
+
+main: fun -> i32
+{
+	var console = Console(0)
+	flush(mut console)
+	var words = Words(0)
+	sum(mut words)
+	Iterator(words).next()
+	Iterator[i32](words).next()
+	Write[i64](console).write(1)
+	val x: Iterator[i32] = undef
+	val c = cell[Iterator](1)
+	ret 0
+}

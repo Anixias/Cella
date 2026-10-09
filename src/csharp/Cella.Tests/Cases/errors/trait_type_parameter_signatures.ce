@@ -1,0 +1,34 @@
+mod test
+
+Iterator[T]: pub trait
+{
+	next: fun(mut self) -> T
+}
+
+Secret: mod rec
+{
+	x: i32
+}
+
+Point: rec
+{
+	x: i32
+}
+
+Maker: pub trait
+{
+	make: fun -> Point
+}
+
+Local: trait
+{
+	make: fun -> Point
+}
+
+needs[I: Iterator]: fun(items: I) { }
+
+view: fun(items: dyn[Iterator]) { }
+
+expose: pub fun(items: dyn[Iterator[Secret]]) { }
+
+main: fun -> i32 = 0

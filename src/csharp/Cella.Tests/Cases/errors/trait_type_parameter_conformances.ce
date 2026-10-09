@@ -1,0 +1,82 @@
+mod test
+
+option[T]: enum
+{
+	none
+	some(value: T)
+}
+
+Iterator[T]: trait
+{
+	next: fun(mut self) -> option[T]
+}
+
+From[T]: trait
+{
+	new: op(value: T)
+}
+
+Countdown: rec impl Iterator[i64]
+{
+	left: i32
+
+	next: fun(mut self) -> option[i32] = none
+}
+
+Empty: rec impl Iterator[i32]
+{
+	x: i32
+}
+
+Celsius: rec impl From[f32] + From[f32]
+{
+	degrees: f32
+}
+
+Tag[T]: trait
+{
+}
+
+box[T]: rec
+{
+	value: T
+}
+
+box[T]: impl Tag[T]
+{
+}
+
+box[T]: impl Tag[i32]
+{
+}
+
+box[T]: impl Tag[str]
+{
+}
+
+pair[A, B]: rec
+{
+	a: A
+	b: B
+}
+
+pair[A, B]: impl Tag[A]
+{
+}
+
+pair[X, Y]: impl Tag[Y]
+{
+}
+
+Console: rec
+{
+	x: i32
+}
+
+Console: impl Iterator[i32]
+{
+	next: fun(mut self) -> option[i32] = none
+	flush: fun(self) { }
+}
+
+main: fun -> i32 = 0

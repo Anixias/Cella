@@ -1,0 +1,56 @@
+mod test
+
+option[T]: enum
+{
+	none
+	some(value: T)
+}
+
+Iterator[T]: trait
+{
+	next: fun(mut self) -> option[T]
+	map[T]: fun(self) -> T
+}
+
+Pair[A, A]: trait
+{
+}
+
+Hash: trait
+{
+	hash: fun(self) -> u64
+}
+
+Ord: trait
+{
+	<: op(a: Self, b: Self) -> bool
+}
+
+Sorted[T: Ord]: trait
+{
+	first: fun(self) -> T
+}
+
+Plain: rec
+{
+	x: i32
+}
+
+Names: rec impl Sorted[Plain]
+{
+	first: fun(self) -> Plain = Plain(1)
+}
+
+Bare: rec impl Iterator
+{
+}
+
+Extra: rec impl Hash[i32]
+{
+}
+
+Unknown: rec impl Iterator[Missing]
+{
+}
+
+main: fun -> i32 = 0

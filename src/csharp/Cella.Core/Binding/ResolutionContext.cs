@@ -99,6 +99,9 @@ public readonly struct ResolutionContext
 		if (Trait is { } trait && name == trait.Self.Name)
 			return trait.Self;
 		
+		if (Trait?.TypeParameters.FirstOrDefault(p => p.Name == name) is { } traitParameter)
+			return traitParameter;
+		
 		if (ImplBlock?.TypeParameters.FirstOrDefault(p => p.Name == name) is { } blockParameter)
 			return blockParameter;
 		
@@ -176,9 +179,11 @@ public readonly struct ResolutionContext
 		_ => null
 	};
 	
-	public TraitSymbol? ResolveTrait(ITypeNode node)
+	public TraitType? ResolveTrait(ITypeNode node)
 	{
 		var text = node.SourceLocation.GetText().ToString();
+		var location = node.SourceLocation;
+		ImmutableArray<IGenericArgumentNode> arguments = [];
 		Symbol? symbol;
 		switch (node)
 		{
@@ -193,6 +198,17 @@ public readonly struct ResolutionContext
 				
 				break;
 			
+			case GenericTypeNode generic:
+				ImmutableArray<Token> parts = [..generic.Qualifiers, generic.Identifier];
+				text = string.Join('.', parts.Select(static part => part.Text));
+				location = GetSpan(parts);
+				symbol = generic.Qualifiers.IsEmpty ? Resolve(generic.Identifier.Text) : ResolveQualifiedName(parts);
+				if (symbol is null && !generic.Qualifiers.IsEmpty)
+					return null;
+				
+				arguments = generic.Arguments;
+				break;
+			
 			default:
 				Diagnostics.Add(new(DiagnosticSeverity.Error, node.SourceLocation, $"'{text}' is not a trait"));
 				return null;
@@ -201,25 +217,52 @@ public readonly struct ResolutionContext
 		switch (symbol)
 		{
 			case TraitSymbol trait:
-				return trait;
+				return InstantiateTrait(trait, [..arguments.Select(ResolveGenericTypeArgument)],
+					[..arguments.Select(static argument => argument.SourceLocation)], node.SourceLocation);
 			
 			case null:
-				Diagnostics.Add(new(DiagnosticSeverity.Error, node.SourceLocation,
-					$"Trait '{text}' not found in this scope"));
-				
+				Diagnostics.Add(new(DiagnosticSeverity.Error, location, $"Trait '{text}' not found in this scope"));
 				return null;
 			
 			case AmbiguousSymbol:
-				Diagnostics.Add(new(DiagnosticSeverity.Error, node.SourceLocation, $"'{text}' is ambiguous"));
+				Diagnostics.Add(new(DiagnosticSeverity.Error, location, $"'{text}' is ambiguous"));
 				return null;
 			
 			default:
-				Diagnostics.Add(new(DiagnosticSeverity.Error, node.SourceLocation, $"'{text}' is not a trait"));
+				Diagnostics.Add(new(DiagnosticSeverity.Error, location, $"'{text}' is not a trait"));
 				return null;
 		}
 	}
 	
-	public Symbol? ResolveTraitReference(ITypeNode node) =>
+	public TraitType? InstantiateTrait(TraitSymbol trait, IReadOnlyList<TypeSymbol> arguments,
+		IReadOnlyList<SourceLocation> locations, SourceLocation location)
+	{
+		if (arguments.Count != trait.TypeParameters.Length)
+		{
+			Diagnostics.Add(ReportTypeArgumentCount(location, trait.Name, trait.TypeParameters.Length));
+			return null;
+		}
+		
+		if (arguments.Any(static argument => argument is InvalidType))
+			return null;
+		
+		var map = TypePool.CreateMap(trait.TypeParameters, arguments);
+		var isValid = true;
+		for (var i = 0; i < arguments.Count; i++)
+		{
+			var parameter = trait.TypeParameters[i];
+			if (DeferConstraintCheck?.Invoke(new(parameter, arguments[i], map, locations[i])) == true ||
+			    TypePool.FindConstraintViolation(parameter, arguments[i], map) is not { } message)
+				continue;
+			
+			Diagnostics.Add(new(DiagnosticSeverity.Error, locations[i], message));
+			isValid = false;
+		}
+		
+		return isValid ? TypePool.GetTraitType(trait, [..arguments]) : null;
+	}
+	
+	public TypeSymbol? ResolveTraitReference(ITypeNode node) =>
 		node is IdentifierTypeNode identifier &&
 		Resolve(identifier.Token.Text) is TypeParameterSymbol { IsTrait: true } trait
 			? trait
@@ -326,7 +369,7 @@ public readonly struct ResolutionContext
 		BorrowTypeNode n => ResolveBorrowType(ResolveType(n.Target), n.IsMutable),
 		DynTypeNode n => ResolveTraitReference(n.Trait) switch
 		{
-			TraitSymbol trait => TypePool.GetDynType(trait),
+			TraitType trait => TypePool.GetDynType(trait),
 			TypeParameterSymbol trait => TypePool.GetDynType(trait),
 			_ => NativeSymbols.Invalid
 		},
@@ -462,15 +505,25 @@ public readonly struct ResolutionContext
 	private static TypeSymbol? AsType(Symbol? symbol) =>
 		symbol is TypeSymbol type and not TypeParameterSymbol { IsTrait: true } ? type : null;
 	
-	private TypeSymbol? AsTraitArgument(Symbol? symbol) => symbol switch
+	private TypeSymbol? AsTraitArgument(Symbol? symbol, SourceLocation location) => symbol switch
 	{
-		TraitSymbol trait => TypePool.GetTraitType(trait),
+		TraitSymbol trait => InstantiateTrait(trait, [], [], location) ?? (TypeSymbol)NativeSymbols.Invalid,
 		TypeParameterSymbol { IsTrait: true } trait => trait,
 		_ => null
 	};
 	
+	public TypeSymbol? ResolveTraitArgument(IExpressionNode expression) => expression switch
+	{
+		IndexerExpressionNode { Target: VarExpressionNode or AccessExpressionNode } indexer when
+			FindNamed(indexer.Target) is TraitSymbol trait => InstantiateTrait(trait,
+				[..indexer.Arguments.Select(ResolveTypeArgumentExpression)],
+				[..indexer.Arguments.Select(static argument => argument.SourceLocation)],
+				indexer.SourceLocation) ?? (TypeSymbol)NativeSymbols.Invalid,
+		_ => AsTraitArgument(FindNamed(expression), expression.SourceLocation)
+	};
+	
 	public TypeSymbol ResolveTypeArgumentExpression(IExpressionNode expression) =>
-		AsTraitArgument(FindNamed(expression)) ?? ResolveTypeExpression(expression);
+		ResolveTraitArgument(expression) ?? ResolveTypeExpression(expression);
 	
 	private TypeSymbol? TryResolveGenericType(IndexerExpressionNode node)
 	{
@@ -591,12 +644,15 @@ public readonly struct ResolutionContext
 	private TypeSymbol ResolveGenericTypeArgument(IGenericArgumentNode node) => node switch
 	{
 		TypeArgumentNode { Type: IdentifierTypeNode type } when
-			AsTraitArgument(Resolve(type.Token.Text)) is { } trait => trait,
+			AsTraitArgument(Resolve(type.Token.Text), type.SourceLocation) is { } trait => trait,
 		TypeArgumentNode { Type: QualifiedTypeNode type } when
-			AsTraitArgument(FindQualified(type.Parts)) is { } trait => trait,
+			AsTraitArgument(FindQualified(type.Parts), type.SourceLocation) is { } trait => trait,
+		TypeArgumentNode { Type: GenericTypeNode type } when FindQualified([..type.Qualifiers, type.Identifier]) is
+			TraitSymbol => ResolveTrait(type) ?? (TypeSymbol)NativeSymbols.Invalid,
 		TypeArgumentNode argument => ResolveType(argument.Type),
-		IdentifierArgumentNode argument => AsTraitArgument(Resolve(argument.Identifier.Text)) ??
-		                                   ResolveNamedType(argument.Identifier),
+		IdentifierArgumentNode argument =>
+			AsTraitArgument(Resolve(argument.Identifier.Text), argument.SourceLocation) ??
+			ResolveNamedType(argument.Identifier),
 		ExpressionArgumentNode argument => ResolveTypeArgumentExpression(argument.Expression),
 		_ => NativeSymbols.Invalid
 	};
@@ -717,18 +773,21 @@ public readonly struct ResolutionContext
 	
 	private TypeSymbol CreateFStrType(IExpressionNode trait)
 	{
-		if (GetTraitDyn(FindNamed(trait)) is { } dyn)
+		var argument = ResolveTraitArgument(trait);
+		if (GetTraitDyn(argument) is { } dyn)
 			return TypePool.GetFStrType(dyn);
 		
-		Report(trait, $"'{trait.SourceLocation.GetText()}' is not a trait");
+		if (argument is not InvalidType)
+			Report(trait, $"'{trait.SourceLocation.GetText()}' is not a trait");
+		
 		return NativeSymbols.Invalid;
 	}
 	
 	private TypeSymbol CreateFStrType(DynType? dyn) => dyn is null ? NativeSymbols.Invalid : TypePool.GetFStrType(dyn);
 	
-	private DynType? GetTraitDyn(Symbol? trait) => trait switch
+	private DynType? GetTraitDyn(TypeSymbol? trait) => trait switch
 	{
-		TraitSymbol symbol => TypePool.GetDynType(symbol),
+		TraitType instance => TypePool.GetDynType(instance),
 		TypeParameterSymbol { IsTrait: true } parameter => TypePool.GetDynType(parameter),
 		_ => null
 	};

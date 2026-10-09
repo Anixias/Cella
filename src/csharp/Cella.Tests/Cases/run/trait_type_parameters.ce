@@ -1,0 +1,210 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+option[T]: enum
+{
+	none
+	some(value: T)
+}
+
+Iterator[T]: trait
+{
+	next: fun(mut self) -> option[T]
+	skip: fun(mut self, count: i32)
+	{
+		var i = 0
+		loop while i < count
+		{
+			self.next()
+			i += 1
+		}
+	}
+}
+
+Num: trait
+{
+	zero: fun -> Self
+	+: op(a: Self, b: Self) -> Self
+}
+
+i32: impl Num
+{
+	zero: fun -> i32 = 0
+}
+
+Countdown: rec impl Iterator[i32]
+{
+	left: i32
+
+	next: fun(mut self) -> option[i32]
+	{
+		if self.left == 0
+			ret none
+
+		self.left -= 1
+		ret some(self.left + 1)
+	}
+}
+
+cursor[T: copy]: rec
+{
+	items: ptr[T]
+	length: usize
+	index: usize
+}
+
+cursor[T: copy]: impl Iterator[T]
+{
+	next: fun(mut self) -> option[T]
+	{
+		if self.index == self.length
+			ret none
+
+		self.index += 1
+		ret some(self.items[self.index - 1])
+	}
+}
+
+span[T: copy]: rec impl Iterator[T]
+{
+	first: T
+	count: i32
+
+	next: fun(mut self) -> option[T]
+	{
+		if self.count == 0
+			ret none
+
+		self.count -= 1
+		ret some(self.first)
+	}
+}
+
+sum[T: Num + noref, I: Iterator[T]]: fun(mut items: I) -> T
+{
+	var total = T.zero()
+	loop
+	{
+		match items.next()
+		{
+			some(value) => total = total + value
+			none => ret total
+		}
+	}
+}
+
+countAll[T, I: Iterator[T]]: fun(mut items: I) -> i32
+{
+	var count = 0
+	loop while items.next() is some(_)
+		count += 1
+
+	ret count
+}
+
+first[T, I: Iterator[T]]: fun(mut items: I) -> option[T] = items.next()
+
+second[I: Iterator[i32]]: fun(mut items: I) -> i32
+{
+	first(mut items)
+	ret match first(mut items)
+	{
+		some(value) => value
+		none => -1
+	}
+}
+
+Write[T]: trait
+{
+	write: fun(mut self, value: T)
+}
+
+Console: rec impl Write[str] + Write[i32]
+{
+	written: i32
+
+	write: fun(mut self, value: str)
+	{
+		printf("%.*s", i32(value.byteLength), value.data)
+		self.written += 1
+	}
+
+	write: fun(mut self, value: i32)
+	{
+		printf("%d", value)
+		self.written += 1
+	}
+}
+
+report[W: Write[str] + Write[i32]]: fun(mut out: W, score: i32)
+{
+	out.write("score: ")
+	out.write(score)
+}
+
+send[E, W: Write[E]]: fun(mut out: W, value: E) = out.write(value)
+
+From[T]: trait
+{
+	new: op(value: T)
+}
+
+Celsius: rec impl From[f32] + From[i32]
+{
+	degrees: f32
+
+	new: op(value: f32)
+	{
+		self.degrees = value
+	}
+
+	new: op(value: i32)
+	{
+		self.degrees = f32(value) * 10.0
+	}
+}
+
+convert[T, U: From[T]]: fun(value: T) -> U = U(value)
+
+Point: rec
+{
+	x: i32
+}
+
+Make: trait
+{
+	make: fun -> Point
+}
+
+Origin: rec impl Make
+{
+	x: i32
+
+	make: fun -> Point = Point(0)
+}
+
+main: fun -> i32
+{
+	var steps = Countdown(3)
+	var values = [10, 20, 30, 40]
+	var c = cursor[i32](@values[0], 4, 0)
+	c.skip(1)
+	var s = span(2.5, 3)
+	var more = Countdown(5)
+	printf("%d %d %d %d %d\n", sum(mut steps), second(mut c), countAll(mut c), countAll(mut s), second(mut more))
+
+	var console = Console(0)
+	report(mut console, 42)
+	send(mut console, " sent ")
+	send(mut console, 7)
+	Write[str](console).write(" picked\n")
+
+	val a = convert[f32, Celsius](1.5)
+	val b: Celsius = convert(4)
+	printf("%d %.1f %.1f %d\n", console.written, f64(a.degrees), f64(b.degrees), Origin.make().x)
+	ret 0
+}

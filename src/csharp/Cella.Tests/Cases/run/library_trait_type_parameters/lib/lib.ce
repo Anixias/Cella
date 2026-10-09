@@ -1,0 +1,109 @@
+mod lib
+
+option[T]: pub enum
+{
+	none
+	some(value: T)
+}
+
+Iterator[T]: pub trait
+{
+	next: fun(mut self) -> option[T]
+	skip: fun(mut self)
+	{
+		self.next()
+	}
+}
+
+Num: pub trait
+{
+	zero: fun -> Self
+	+: op(a: Self, b: Self) -> Self
+}
+
+i32: impl Num
+{
+	zero: fun -> i32 = 0
+}
+
+i64: impl Num
+{
+	zero: fun -> i64 = 0
+}
+
+Range: pub rec impl Iterator[i32]
+{
+	at: i32
+	end: i32
+
+	next: fun(mut self) -> option[i32]
+	{
+		if self.at >= self.end
+			ret none
+
+		self.at += 1
+		ret some(self.at - 1)
+	}
+}
+
+sum[T: Num + noref, I: Iterator[T]]: pub fun(mut items: I) -> T
+{
+	var total = T.zero()
+	loop
+	{
+		match items.next()
+		{
+			some(value) => total = total + value
+			none => ret total
+		}
+	}
+}
+
+drain: pub fun(mut items: dyn[Iterator[i32]]) -> i32
+{
+	var count = 0
+	loop while items.next() is some(_)
+		count += 1
+
+	ret count
+}
+
+Pair[A, B]: pub trait
+{
+	join: fun(self, a: A, b: B) -> i32
+}
+
+Point: pub rec
+{
+	x: i32
+}
+
+Point: impl Pair[i32, i64]
+{
+	join: fun(self, a: i32, b: i64) -> i32 = self.x + a + i32(b)
+}
+
+Point: impl Pair[i64, i32]
+{
+	join: fun(self, a: i64, b: i32) -> i32 = self.x * 100 + i32(a) + b
+}
+
+box[T]: pub rec
+{
+	value: T
+}
+
+box[T]: impl Pair[T, i32]
+{
+	join: fun(self, a: T, b: i32) -> i32 = b * 2
+}
+
+combine[A, B, P: Pair[A, B]]: pub fun(item: P, a: A, b: B) -> i32 = item.join(a, b)
+
+couple[A, B]: pub rec
+{
+	a: A
+	b: B
+}
+
+first: pub fun(value: couple[i32, f64]) -> i32 = value.a

@@ -433,10 +433,10 @@ public sealed class BorrowType(TypeSymbol target, bool isMutable)
 
 public sealed class DynType : TypeSymbol
 {
-	public DynType(TraitSymbol trait) : base($"dyn[{trait.Name}]")
+	public DynType(TraitType instance) : base($"dyn[{instance.Name}]")
 	{
-		Trait = trait;
-		TraitName = trait.Name;
+		Instance = instance;
+		TraitName = instance.Name;
 	}
 	
 	public DynType(TypeParameterSymbol parameter) : base($"dyn[{parameter.Name}]")
@@ -445,14 +445,20 @@ public sealed class DynType : TypeSymbol
 		TraitName = parameter.Name;
 	}
 	
-	public TraitSymbol? Trait { get; }
+	public TraitType? Instance { get; }
+	public TraitSymbol? Trait => Instance?.Trait;
+	public ImmutableArray<TypeSymbol> TraitArguments => Instance?.Arguments ?? [];
 	public TypeParameterSymbol? Parameter { get; }
 	public string TraitName { get; }
 }
 
-public sealed class TraitType(TraitSymbol trait) : TypeSymbol(trait.Name)
+public sealed class TraitType(TraitSymbol trait, ImmutableArray<TypeSymbol> arguments)
+	: TypeSymbol(arguments.IsEmpty
+		? trait.Name
+		: $"{trait.Name}[{string.Join(", ", arguments.Select(static argument => argument.Name))}]")
 {
 	public TraitSymbol Trait { get; } = trait;
+	public ImmutableArray<TypeSymbol> Arguments { get; } = arguments;
 }
 
 public sealed class FStrType(DynType value) : TypeSymbol($"fstr[{value.TraitName}]")
@@ -671,6 +677,7 @@ public sealed class PropertySymbol(string name) : TypedMemberSymbol(name)
 	public Visibility Visibility { get; init; } = Visibility.Public;
 	public TypeSymbol? ContainingType { get; internal set; }
 	public TraitSymbol? Trait { get; internal set; }
+	public ImmutableArray<TypeSymbol> TraitArguments { get; init; }
 	public ImplSymbol? Impl { get; internal set; }
 	public bool IsStatic => (Getter ?? Setter) is FunctionAccessor { Function.Kind: FunctionKind.Free };
 }
@@ -693,6 +700,7 @@ public sealed class TraitSymbol
 {
 	public TraitNode Node { get; } = node;
 	public TypeParameterSymbol Self { get; } = self;
+	public ImmutableArray<TypeParameterSymbol> TypeParameters { get; init; } = [];
 	public ImmutableArray<MethodSymbol> Functions { get; } = functions.ToImmutableArray();
 	public ImmutableArray<PropertySymbol> Properties { get; } = properties.ToImmutableArray();
 	public ImmutableArray<FunctionSymbol> Constructors { get; } = constructors.ToImmutableArray();
@@ -719,6 +727,7 @@ public sealed class ImplSymbol
 public sealed class MethodSymbol(string name, FunctionSymbol function) : MemberSymbol(name)
 {
 	public FunctionSymbol Function { get; } = function;
+	public ImmutableArray<TypeSymbol> TraitArguments { get; init; }
 	public bool HasReceiver => Function.Kind is not FunctionKind.Free;
 }
 

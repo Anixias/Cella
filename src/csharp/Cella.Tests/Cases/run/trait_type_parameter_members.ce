@@ -1,0 +1,169 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Holder[T]: trait
+{
+	current: get(self) -> T
+	limit: prop T
+	{
+		get(self)
+		set(mut self, value)
+	}
+}
+
+Box: rec
+{
+	whole: i64
+	part: f64
+}
+
+Box: impl Holder[i64]
+{
+	current: get(self) -> i64 = self.whole
+	limit: prop i64
+	{
+		get(self) = self.whole * 2
+		set(mut self, value)
+		{
+			self.whole = value
+		}
+	}
+}
+
+Box: impl Holder[f64]
+{
+	current: get(self) -> f64 = self.part
+	limit: prop f64
+	{
+		get(self) = self.part * 2.0
+		set(mut self, value)
+		{
+			self.part = value
+		}
+	}
+}
+
+read[T, H: Holder[T]]: fun(holder: H) -> T = holder.current
+
+bump[H: Holder[i64]]: fun(mut holder: H)
+{
+	holder.limit = holder.limit + 1
+}
+
+Add[R]: trait
+{
+	+: op(a: Self, b: R) -> Self
+}
+
+Vector: rec impl Add[Vector] + Add[f32]
+{
+	x: f32
+	y: f32
+
+	+: op(a: Vector, b: Vector) -> Vector = Vector(a.x + b.x, a.y + b.y)
+	+: op(a: Vector, b: f32) -> Vector = Vector(a.x + b, a.y + b)
+}
+
+i32: impl Add[i32]
+
+plus[R, T: Add[R]]: fun(a: T, b: R) -> T = a + b
+
+Eq[T]: trait
+{
+	==: op(a: Self, b: T) -> bool
+}
+
+Name: rec impl Eq[Name] + Eq[i32]
+{
+	id: i32
+
+	==: op(a: Name, b: Name) -> bool = a.id == b.id
+	==: op(a: Name, b: i32) -> bool = a.id == b
+}
+
+i32: impl Eq[i32]
+
+count[T: Eq[T]]: fun(items: ptr[T], length: usize, value: T) -> i32
+{
+	var found = 0
+	var i: usize = 0
+	loop while i < length
+	{
+		if items[i] == value
+			found += 1
+
+		i += 1
+	}
+
+	ret found
+}
+
+matches[K, T: Eq[K]]: fun(a: T, b: K) -> bool = a == b
+
+Factory[T]: trait
+{
+	make: fun -> T
+	twice: fun -> T = make()
+}
+
+Widget: rec
+{
+	x: i32
+}
+
+Widget: impl Factory[i32]
+{
+	make: fun -> i32 = 7
+}
+
+Widget: impl Factory[f64]
+{
+	make: fun -> f64 = 2.5
+}
+
+build[T, F: Factory[T]]: fun -> T = F.make()
+
+Mapper[T]: trait
+{
+	map[U]: fun(self, change: fun[T -> U]) -> U
+	keep: pvt fun(own value: T) -> T = value
+}
+
+Cell: rec impl Mapper[i32]
+{
+	value: i32
+
+	map[V]: fun(self, change: fun[i32 -> V]) -> V = change(self.value)
+}
+
+triple: fun(value: i32) -> i64 = value * 3
+
+half: fun(value: i32) -> f64 = f64(value) / 2.0
+
+run[T, M: Mapper[T]]: fun(item: M, change: fun[T -> i64]) -> i64 = item.map(change)
+
+main: fun -> i32
+{
+	var box = Box(3, 1.5)
+	bump(mut box)
+	printf("%lld %.1f %lld\n", read[i64, Box](box), read[f64, Box](box), Holder[i64](box).limit)
+
+	val v = plus(Vector(1.0, 2.0), Vector(3.0, 4.0))
+	val w = plus(v, f32(0.5))
+	printf("%.1f %.1f %d\n", f64(w.x), f64(w.y), plus(2, 3))
+
+	var names = [Name(1), Name(2), Name(1)]
+	var numbers = [5, 6, 5, 5]
+	printf("%d %d %d %d\n", count(@names[0], 3, Name(1)), count(@numbers[0], 4, 5), i32(matches(Name(3), 3)),
+		i32(matches(Name(3), Name(4))))
+
+	printf("%d %.1f %d %.1f\n", build[i32, Widget](), build[f64, Widget](), Factory[i32](Widget).make(),
+		Factory[f64](Widget).twice())
+
+	printf("%lld %.1f %lld\n", Cell(5).map(triple), Cell(3).map(half), run(Cell(2), triple))
+	ret 0
+}

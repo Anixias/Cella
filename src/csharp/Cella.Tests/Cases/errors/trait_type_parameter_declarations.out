@@ -1,0 +1,44 @@
+
+====== trait_type_parameter_declarations.ce ======
+
+Error at line 9, column 10
+8 │ 
+9 │ Iterator[T]: trait
+             ^ Type parameter 'T' is declared more than once
+
+Error at line 12, column 6
+11 │ next: fun(mut self) -> option[T]
+12 │ map[T]: fun(self) -> T
+         ^ Type parameter 'T' is declared more than once
+
+Error at line 15, column 6
+14 │ 
+15 │ Pair[A, A]: trait
+          ^ Type parameter 'A' is declared more than once
+
+Error at line 15, column 9
+14 │ 
+15 │ Pair[A, A]: trait
+             ^ Type parameter 'A' is declared more than once
+
+Error at line 39, column 24
+38 │ 
+39 │ Names: rec impl Sorted[Plain]
+                            ╘═══╛ 'Plain' doesn't implement 'Ord'
+
+Error at line 44, column 16
+43 │ 
+44 │ Bare: rec impl Iterator
+                    ╘══════╛ 'Iterator' takes one type argument
+
+Error at line 48, column 17
+47 │ 
+48 │ Extra: rec impl Hash[i32]
+                     ╘═══════╛ 'Hash' takes no type arguments
+
+Error at line 52, column 28
+51 │ 
+52 │ Unknown: rec impl Iterator[Missing]
+                                ╘═════╛ Type 'Missing' not found in this scope
+
+[compilation failed]

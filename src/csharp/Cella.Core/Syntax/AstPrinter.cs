@@ -390,7 +390,9 @@ public sealed class AstPrinter : ISyntaxNodeVisitor
 	public void Visit(TraitNode node)
 	{
 		StartLine();
-		_sb.Append("TraitNode '").Append(node.Identifier.AsSpan()).Append('\'');
+		_sb.Append("TraitNode '").Append(node.Identifier.AsSpan());
+		AppendTypeParameters(node.TypeParameters);
+		_sb.Append('\'');
 		for (var i = 0; i < node.Members.Length; i++)
 			VisitNode(node.Members[i], i == node.Members.Length - 1);
 	}

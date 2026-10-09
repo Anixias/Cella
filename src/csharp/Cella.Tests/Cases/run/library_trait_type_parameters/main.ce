@@ -1,0 +1,37 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Squares: rec impl lib.Iterator[i64]
+{
+	at: i64
+	end: i64
+
+	next: fun(mut self) -> lib.option[i64]
+	{
+		if self.at >= self.end
+			ret none
+
+		self.at += 1
+		ret some(self.at * self.at)
+	}
+}
+
+main: fun -> i32
+{
+	var range = lib.Range(1, 5)
+	range.skip()
+	var squares = Squares(0, 3)
+	val total = lib.sum(mut squares)
+	var more = lib.Range(0, 3)
+	lib.Iterator[i32](more).skip()
+	printf("%d %lld %d\n", lib.sum(mut range), total, lib.drain(mut more))
+	val p = lib.Point(1)
+	val b = lib.box(2.5)
+	printf("%d %d %d %d %d\n", p.join(2, i64(3)), lib.combine(p, i64(4), 5), lib.combine(b, 1.0, 7),
+		lib.Pair[i32, i64](p).join(1, 1), lib.first(lib.couple[i32, f64](3, 1.5)))
+	ret 0
+}

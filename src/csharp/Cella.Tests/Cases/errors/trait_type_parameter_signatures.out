@@ -1,0 +1,24 @@
+
+====== trait_type_parameter_signatures.ce ======
+
+Error at line 20, column 15
+19 │ {
+20 │     make: fun -> Point
+                      ╘═══╛ 'Point' is less visible than 'make'
+
+Error at line 28, column 10
+27 │ 
+28 │ needs[I: Iterator]: fun(items: I) { }
+              ╘══════╛ 'Iterator' takes one type argument
+
+Error at line 30, column 22
+29 │ 
+30 │ view: fun(items: dyn[Iterator]) { }
+                          ╘══════╛ 'Iterator' takes one type argument
+
+Error at line 32, column 24
+31 │ 
+32 │ expose: pub fun(items: dyn[Iterator[Secret]]) { }
+                            ╘═══════════════════╛ 'Secret' is less visible than 'expose'
+
+[compilation failed]

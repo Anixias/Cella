@@ -1,0 +1,54 @@
+
+====== trait_type_parameter_conformances.ce ======
+
+Error at line 23, column 2
+22 │ 
+23 │ next: fun(mut self) -> option[i32] = none
+     ╘══╛ 'next' doesn't match 'Iterator[i64].next'
+
+Error at line 26, column 17
+25 │ 
+26 │ Empty: rec impl Iterator[i32]
+                     ╘═══════════╛ 'Empty' needs 'Iterator[i32].next'
+
+Error at line 31, column 19
+30 │ 
+31 │ Celsius: rec impl From[f32] + From[f32]
+                       ╘═══════╛ 'Celsius' implements 'From[f32]' more than once
+
+Error at line 31, column 31
+30 │ 
+31 │ Celsius: rec impl From[f32] + From[f32]
+                                   ╘═══════╛ 'Celsius' implements 'From[f32]' more than once
+
+Error at line 45, column 14
+44 │ 
+45 │ box[T]: impl Tag[T]
+                  ╘════╛ 'box[i32]' implements 'Tag[i32]' more than once
+
+Error at line 49, column 14
+48 │ 
+49 │ box[T]: impl Tag[i32]
+                  ╘══════╛ 'box[i32]' implements 'Tag[i32]' more than once
+
+Error at line 53, column 14
+52 │ 
+53 │ box[T]: impl Tag[str]
+                  ╘══════╛ 'box[str]' implements 'Tag[str]' more than once
+
+Error at line 63, column 18
+62 │ 
+63 │ pair[A, B]: impl Tag[A]
+                      ╘════╛ 'pair[A, A]' implements 'Tag[A]' more than once
+
+Error at line 67, column 18
+66 │ 
+67 │ pair[X, Y]: impl Tag[Y]
+                      ╘════╛ 'pair[A, A]' implements 'Tag[A]' more than once
+
+Error at line 79, column 2
+78 │ next: fun(mut self) -> option[i32] = none
+79 │ flush: fun(self) { }
+     ╘═══╛ 'flush' isn't a member of 'Iterator[i32]'
+
+[compilation failed]

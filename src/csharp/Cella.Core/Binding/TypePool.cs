@@ -3,6 +3,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Numerics;
 using Cella.Core.Binding.Conversions;
 using Cella.Core.Binding.Operations;
+using Cella.Core.Collections;
 using Cella.Core.Symbols;
 using Cella.Core.Text;
 
@@ -20,9 +21,9 @@ public sealed class TypePool
 	private readonly Dictionary<(TypeSymbol, BigInteger), ArrayType> _arrayTypes = [];
 	private readonly Dictionary<TypeSymbol, PointerType> _pointerTypes = [];
 	private readonly Dictionary<(TypeSymbol, bool), BorrowType> _borrowTypes = [];
-	private readonly Dictionary<TraitSymbol, DynType> _dynTypes = [];
+	private readonly Dictionary<TraitType, DynType> _dynTypes = [];
 	private readonly Dictionary<TypeParameterSymbol, DynType> _parameterDynTypes = [];
-	private readonly Dictionary<TraitSymbol, TraitType> _traitTypes = [];
+	private readonly Dictionary<TraitSymbol, List<TraitType>> _traitTypes = [];
 	private readonly Dictionary<DynType, FStrType> _fstrTypes = [];
 	private readonly Dictionary<TraitSymbol, ImmutableArray<FunctionSymbol>> _dynMembers = [];
 	private readonly Dictionary<TraitSymbol, ImmutableArray<FunctionInfo>> _dynMemberInfos = [];
@@ -45,7 +46,7 @@ public sealed class TypePool
 	private readonly Dictionary<GlobalSymbol, GlobalInfo> _genericGlobals = [];
 	private readonly Dictionary<GlobalSymbol, GlobalInfo> _globalInstances = [];
 	private readonly List<Conformance> _conformances = [];
-	private readonly Dictionary<TypeParameterSymbol, ImmutableArray<TraitSymbol>> _bounds = [];
+	private readonly Dictionary<TypeParameterSymbol, ImmutableArray<TraitType>> _bounds = [];
 	private readonly Dictionary<TypeParameterSymbol, ImmutableArray<TypeParameterSymbol>> _parameterBounds = [];
 	private readonly Dictionary<TypeParameterSymbol, ImmutableArray<FunctionInfo>> _constructorBounds = [];
 	private readonly List<(ImplSymbol Impl, TypeSymbol Target)> _memberBlocks = [];
@@ -71,10 +72,10 @@ public sealed class TypePool
 	public IEnumerable<Conformance> FindConformances(TypeSymbol type) =>
 		_conformances.Where(conformance => Matches(conformance, type));
 	
-	public void SetBounds(TypeParameterSymbol parameter, ImmutableArray<TraitSymbol> traits) =>
+	public void SetBounds(TypeParameterSymbol parameter, ImmutableArray<TraitType> traits) =>
 		_bounds[parameter] = traits;
 	
-	public ImmutableArray<TraitSymbol> GetBounds(TypeParameterSymbol parameter) =>
+	public ImmutableArray<TraitType> GetBounds(TypeParameterSymbol parameter) =>
 		_bounds.GetValueOrDefault(parameter, []);
 	
 	public void SetParameterBounds(TypeParameterSymbol parameter, ImmutableArray<TypeParameterSymbol> traits) =>
@@ -89,9 +90,10 @@ public sealed class TypePool
 	public ImmutableArray<FunctionInfo> GetConstructorBounds(TypeParameterSymbol parameter) =>
 		_constructorBounds.GetValueOrDefault(parameter, []);
 	
-	public bool Conforms(TypeSymbol type, TraitSymbol trait) => type switch
+	public bool Conforms(TypeSymbol type, TraitType trait) => type switch
 	{
 		InvalidType => true,
+		_ when trait.Arguments.Any(static argument => argument is InvalidType) => true,
 		TypeParameterSymbol parameter => GetBounds(parameter).Contains(trait),
 		_ => FindConformance(type, trait) is not null
 	};
@@ -104,10 +106,23 @@ public sealed class TypePool
 	};
 	
 	public bool Conforms(TypeSymbol type, DynType dyn) =>
-		dyn.Trait is { } trait ? Conforms(type, trait) : Conforms(type, dyn.Parameter!);
+		dyn.Instance is { } trait ? Conforms(type, trait) : Conforms(type, dyn.Parameter!);
 	
-	public Conformance? FindConformance(TypeSymbol type, TraitSymbol trait) =>
-		_conformances.FirstOrDefault(conformance => conformance.Trait == trait && Matches(conformance, type));
+	public Conformance? FindConformance(TypeSymbol type, TraitType trait) => _conformances.FirstOrDefault(conformance =>
+		conformance.Trait == trait.Trait && Matches(conformance, type) &&
+		GetConformanceArguments(conformance, type).SequenceEqual(trait.Arguments));
+	
+	public ImmutableArray<TypeSymbol> GetConformanceArguments(Conformance conformance, TypeSymbol type)
+	{
+		if (conformance.Parameters.IsEmpty || conformance.Arguments.IsEmpty)
+			return conformance.Arguments;
+		
+		var map = CreateMap(conformance.Parameters, type.TypeArguments);
+		return [..conformance.Arguments.Select(argument => Substitute(argument, map))];
+	}
+	
+	public TraitType GetConformanceTrait(Conformance conformance, TypeSymbol type) =>
+		GetTraitType(conformance.Trait, GetConformanceArguments(conformance, type));
 	
 	private bool Matches(Conformance conformance, TypeSymbol type) =>
 		type is not TypeParameterSymbol && conformance.Target == type.OriginalDefinition &&
@@ -147,16 +162,25 @@ public sealed class TypePool
 		.OfType<FunctionWitness>()
 		.Select(static witness => witness.Function);
 	
-	public Witness? FindWitness(TypeSymbol self, FunctionSymbol requirement) =>
-		requirement.Trait is { } trait && FindConformance(self, trait) is { } conformance
+	public Witness? FindWitness(TypeSymbol self, FunctionSymbol requirement,
+		ImmutableArray<TypeSymbol> traitArguments) =>
+		requirement.Trait is { } trait && FindConformance(self, GetTraitType(trait, traitArguments)) is { } conformance
 			? conformance.Witnesses.GetValueOrDefault(requirement)
 			: null;
 	
+	public static ImmutableArray<TypeSymbol> GetTraitArguments(FunctionInfo function) =>
+		function.Symbol.Trait is { TypeParameters.Length: > 0 and var count } &&
+		!function.TypeArguments.IsDefaultOrEmpty
+			? function.TypeArguments.Slice(1, count)
+			: [];
+	
 	public ImmutableArray<TypeSymbol> GetWitnessArguments(TypeSymbol self, FunctionSymbol witness,
-		IEnumerable<TypeSymbol> declared)
+		ImmutableArray<TypeSymbol> traitArguments, IEnumerable<TypeSymbol> declared)
 	{
-		if (witness.Trait is not null)
-			return [self, ..declared];
+		if (witness.Trait is { } trait)
+			return traitArguments.IsDefault
+				? [self, ..trait.TypeParameters, ..declared]
+				: [self, ..traitArguments, ..declared];
 		
 		if (witness.Impl is null || FindConformance(self, witness.Impl) is not { } conformance)
 			return [..self.TypeArguments, ..declared];
@@ -180,9 +204,8 @@ public sealed class TypePool
 	private List<FunctionInfo> GetParameterConstructors(TypeParameterSymbol parameter)
 	{
 		var constructors = new List<FunctionInfo>();
-		var traitConstructors = GetBounds(parameter)
-			.SelectMany(GetTraitConstructors)
-			.Select(constructor => InstantiateFunction(constructor, [parameter]));
+		var traitConstructors = GetBounds(parameter).SelectMany(bound => GetTraitConstructors(bound.Trait)
+			.Select(constructor => InstantiateFunction(constructor, [parameter, ..bound.Arguments])));
 		
 		foreach (var constructor in GetConstructorBounds(parameter).Concat(traitConstructors))
 		{
@@ -532,7 +555,7 @@ public sealed class TypePool
 	public static bool IsFatPointer(TypeSymbol type) =>
 		type is PointerType { BaseType: DynType } or BorrowType { Target: DynType };
 	
-	public DynType GetDynType(TraitSymbol trait)
+	public DynType GetDynType(TraitType trait)
 	{
 		if (_dynTypes.TryGetValue(trait, out var existing))
 			return existing;
@@ -569,15 +592,21 @@ public sealed class TypePool
 		return fstrType;
 	}
 	
-	public TraitType GetTraitType(TraitSymbol trait)
+	public TraitType GetTraitType(TraitSymbol trait, ImmutableArray<TypeSymbol> arguments)
 	{
-		if (_traitTypes.TryGetValue(trait, out var existing))
+		var instances = _traitTypes.GetOrAdd(trait);
+		if (instances.Find(instance => instance.Arguments.SequenceEqual(arguments)) is { } existing)
 			return existing;
 		
-		var traitType = new TraitType(trait);
-		_traitTypes[trait] = traitType;
+		var traitType = new TraitType(trait, arguments);
+		instances.Add(traitType);
 		return traitType;
 	}
+	
+	public TraitType SubstituteTrait(TraitType trait, IReadOnlyDictionary<TypeParameterSymbol, TypeSymbol> map) =>
+		map.Count == 0 || trait.Arguments.IsEmpty
+			? trait
+			: GetTraitType(trait.Trait, [..trait.Arguments.Select(argument => Substitute(argument, map))]);
 	
 	public ImmutableArray<FunctionSymbol>? FindDynMembers(TraitSymbol trait) =>
 		_dynMembers.TryGetValue(trait, out var members) ? members : null;
@@ -713,7 +742,7 @@ public sealed class TypePool
 		_ when parameter.HasNew && !HasNew(argument) => $"'{argument.Name}' has no constructor without parameters",
 		_ when FindMissingConstructor(parameter, argument, map) is { } missing =>
 			$"'{argument.Name}' has no constructor taking '{missing}'",
-		_ when GetBounds(parameter).FirstOrDefault(trait => !Conforms(argument, trait)) is { } trait =>
+		_ when FindUnmetTrait(parameter, argument, map) is { } trait =>
 			$"'{argument.Name}' doesn't implement '{trait.Name}'",
 		_ when FindUnmetBound(parameter, argument, map) is { } trait =>
 			$"'{argument.Name}' doesn't implement '{trait}'",
@@ -721,6 +750,16 @@ public sealed class TypePool
 	};
 	
 	public static bool IsTraitArgument(TypeSymbol type) => type is TraitType or TypeParameterSymbol { IsTrait: true };
+	
+	private TraitType? FindUnmetTrait(TypeParameterSymbol parameter, TypeSymbol argument,
+		IReadOnlyDictionary<TypeParameterSymbol, TypeSymbol>? map)
+	{
+		var substitution = map?.ToDictionary() ?? [];
+		substitution[parameter] = argument;
+		return GetBounds(parameter)
+			.Select(bound => SubstituteTrait(bound, substitution))
+			.FirstOrDefault(bound => !Conforms(argument, bound));
+	}
 	
 	private string? FindMissingConstructor(TypeParameterSymbol parameter, TypeSymbol argument,
 		IReadOnlyDictionary<TypeParameterSymbol, TypeSymbol>? map)
@@ -746,7 +785,7 @@ public sealed class TypePool
 		{
 			switch (map?.GetValueOrDefault(bound) ?? bound)
 			{
-				case TraitType { Trait: var trait } when !Conforms(argument, trait):
+				case TraitType trait when !Conforms(argument, trait):
 					return trait.Name;
 				
 				case TypeParameterSymbol trait when !Conforms(argument, trait):
@@ -957,6 +996,8 @@ public sealed class TypePool
 	{
 		TypeParameterSymbol parameter => [parameter],
 		DynType { Parameter: { } parameter } => [parameter],
+		DynType { Instance: { } trait } => FindTypeParameters(trait),
+		TraitType trait => trait.Arguments.SelectMany(FindTypeParameters),
 		FStrType fstr => FindTypeParameters(fstr.Value),
 		NamedTypeSymbol named => named.TypeArguments.SelectMany(FindTypeParameters),
 		PointerType pointer => FindTypeParameters(pointer.BaseType),
@@ -969,6 +1010,8 @@ public sealed class TypePool
 	public static bool ContainsTypeParameters(TypeSymbol type) => type switch
 	{
 		TypeParameterSymbol or DynType { Parameter: not null } => true,
+		DynType { Instance: { } trait } => ContainsTypeParameters(trait),
+		TraitType trait => trait.Arguments.Any(ContainsTypeParameters),
 		FStrType fstr => ContainsTypeParameters(fstr.Value),
 		NamedTypeSymbol named => named.TypeArguments.Any(ContainsTypeParameters),
 		PointerType pointer => ContainsTypeParameters(pointer.BaseType),
@@ -986,11 +1029,13 @@ public sealed class TypePool
 				TypeParameterSymbol parameter => map.GetValueOrDefault(parameter, parameter),
 				DynType { Parameter: { } parameter } => map.GetValueOrDefault(parameter) switch
 				{
-					TraitType argument => GetDynType(argument.Trait),
+					TraitType argument => GetDynType(argument),
 					TypeParameterSymbol argument => GetDynType(argument),
 					InvalidType argument => argument,
 					_ => type
 				},
+				DynType { Instance: { } trait } => GetDynType(SubstituteTrait(trait, map)),
+				TraitType trait => SubstituteTrait(trait, map),
 				FStrType fstr => Substitute(fstr.Value, map) switch
 				{
 					DynType dyn => GetFStrType(dyn),
@@ -1007,6 +1052,61 @@ public sealed class TypePool
 					Substitute(function.ReturnType, map)),
 				_ => type
 			};
+	
+	public bool TryUnify(TypeSymbol first, TypeSymbol second, OrderedSet<TypeParameterSymbol> variables,
+		Dictionary<TypeParameterSymbol, TypeSymbol> bindings)
+	{
+		first = Substitute(first, bindings);
+		second = Substitute(second, bindings);
+		if (first == second)
+			return true;
+		
+		if (first is TypeParameterSymbol variable && variables.Contains(variable))
+			return second is TypeParameterSymbol later && variables.IndexOf(later) > variables.IndexOf(variable)
+				? Bind(later, first, bindings)
+				: Bind(variable, second, bindings);
+		
+		if (second is TypeParameterSymbol other && variables.Contains(other))
+			return Bind(other, first, bindings);
+		
+		return (first, second) switch
+		{
+			(NamedTypeSymbol a, NamedTypeSymbol b) => a.Definition == b.Definition &&
+			                                          TryUnify(a.TypeArguments, b.TypeArguments, variables, bindings),
+			(PointerType a, PointerType b) => TryUnify(a.BaseType, b.BaseType, variables, bindings),
+			(BorrowType a, BorrowType b) => a.IsMutable == b.IsMutable &&
+			                                TryUnify(a.Target, b.Target, variables, bindings),
+			(ArrayType a, ArrayType b) => a.Length == b.Length &&
+			                              TryUnify(a.ElementType, b.ElementType, variables, bindings),
+			(FunctionType a, FunctionType b) => a.IsExternal == b.IsExternal &&
+			                                    a.ParameterModes.SequenceEqual(b.ParameterModes) &&
+			                                    TryUnify([..a.ParameterTypes, a.ReturnType],
+				                                    [..b.ParameterTypes, b.ReturnType], variables, bindings),
+			(TraitType a, TraitType b) => a.Trait == b.Trait && TryUnify(a.Arguments, b.Arguments, variables, bindings),
+			(DynType { Instance: { } a }, DynType { Instance: { } b }) => TryUnify(a, b, variables, bindings),
+			(FStrType a, FStrType b) => TryUnify(a.Value, b.Value, variables, bindings),
+			_ => false
+		};
+	}
+	
+	private bool TryUnify(ImmutableArray<TypeSymbol> first, ImmutableArray<TypeSymbol> second,
+		OrderedSet<TypeParameterSymbol> variables, Dictionary<TypeParameterSymbol, TypeSymbol> bindings) =>
+		first.Length == second.Length &&
+		first.Zip(second).All(pair => TryUnify(pair.First, pair.Second, variables, bindings));
+	
+	private bool Bind(TypeParameterSymbol variable, TypeSymbol type,
+		Dictionary<TypeParameterSymbol, TypeSymbol> bindings)
+	{
+		if (FindTypeParameters(type).Contains(variable))
+			return false;
+		
+		var binding = new Dictionary<TypeParameterSymbol, TypeSymbol> { [variable] = type };
+		foreach (var key in bindings.Keys.ToList())
+			bindings[key] = Substitute(bindings[key], binding);
+		
+		bindings[variable] = type;
+		return true;
+	}
 	
 	public FunctionSignature SubstituteSignature(FunctionSignature signature,
 		IReadOnlyDictionary<TypeParameterSymbol, TypeSymbol> map) =>

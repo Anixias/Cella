@@ -1,0 +1,44 @@
+
+====== trait_type_parameter_uses.ce ======
+
+Error at line 51, column 7
+50 │ {
+51 │     item.copy()
+              ╘══╛ Cannot call 'copy' through 'dyn[Cloner[i32]]'
+
+Error at line 63, column 2
+62 │ var console = Console(0)
+63 │ flush(mut console)
+     ╘═══╛ Cannot infer 'E' for 'flush'
+
+Error at line 65, column 2
+64 │ var words = Words(0)
+65 │ sum(mut words)
+     ╘═╛ 'str' doesn't implement 'Num'
+
+Error at line 66, column 2
+65 │ sum(mut words)
+66 │ Iterator(words).next()
+     ╘══════╛ 'Iterator' takes one type argument
+
+Error at line 67, column 16
+66 │ Iterator(words).next()
+67 │ Iterator[i32](words).next()
+                   ╘═══╛ 'Words' doesn't implement 'Iterator[i32]'
+
+Error at line 68, column 13
+67 │ Iterator[i32](words).next()
+68 │ Write[i64](console).write(1)
+                ╘═════╛ 'Console' doesn't implement 'Write[i64]'
+
+Error at line 69, column 9
+68 │ Write[i64](console).write(1)
+69 │ val x: Iterator[i32] = undef
+            ╘══════╛ 'Iterator' is not a type
+
+Error at line 70, column 15
+69 │ val x: Iterator[i32] = undef
+70 │ val c = cell[Iterator](1)
+                  ╘══════╛ 'Iterator' takes one type argument
+
+[compilation failed]

@@ -1173,7 +1173,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 			:
 			[
 				.._typePool.GetDynMemberInfos(trait).Select(member => _typePool.InstantiateFunction(member,
-					_typePool.GetWitnessArguments(objectType, member.Symbol, [])))
+					_typePool.GetWitnessArguments(objectType, member.Symbol, dyn.TraitArguments, [])))
 			];
 		
 		LLVMValueRef[] entries = [..members.Select(GetFunctionValue)];
@@ -2496,7 +2496,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 		var self = function.TypeArguments[0];
 		var witness = function.Symbol.Trait is null
 			? _typePool.FindConstructorWitness(self, function.Signature)
-			: _typePool.FindWitness(self, function.Symbol);
+			: _typePool.FindWitness(self, function.Symbol, TypePool.GetTraitArguments(function));
 		
 		return witness is FunctionWitness { Function: var target } && target == function.Symbol ? null : witness;
 	}
@@ -2557,7 +2557,9 @@ public sealed unsafe class CodeGenerator : IDisposable
 	{
 		var self = function.TypeArguments[0];
 		var declared = function.TypeArguments.TakeLast(function.Symbol.DeclaredTypeParameters.Length);
-		var arguments = _typePool.GetWitnessArguments(self, witness.Function, declared);
+		var arguments = _typePool.GetWitnessArguments(self, witness.Function, TypePool.GetTraitArguments(function),
+			declared);
+		
 		var target = _typePool.InstantiateFunction(witness.Info, arguments);
 		GetFunctionValue(target);
 		var callee = current.Functions[target];

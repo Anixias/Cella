@@ -1,4 +1,5 @@
 ﻿using System.Collections.Immutable;
+using Cella.Core.Collections;
 using Cella.Core.Symbols;
 
 namespace Cella.Core.Binding;
@@ -23,7 +24,7 @@ public sealed class TypeInference(TypePool typePool)
 	public InferenceResult Infer(ImmutableArray<TypeParameterSymbol> parameters, IEnumerable<InferenceInput> inputs,
 		TypeSymbol? returnType, TypeSymbol? target)
 	{
-		var bounds = new Bounds(parameters, typePool);
+		var bounds = new Bounds(parameters);
 		foreach (var input in inputs)
 		{
 			if (input.Literal is { } literal)
@@ -43,11 +44,13 @@ public sealed class TypeInference(TypePool typePool)
 		
 		if (returnType is not null && target is not null && inferred.Any(static type => type is null))
 		{
-			var expected = new Bounds(parameters, typePool);
+			var expected = new Bounds(parameters);
 			expected.Unify(returnType, target, false);
 			for (var i = 0; i < parameters.Length; i++)
 				inferred[i] ??= Fix(expected.Exact[i], expected.Lower[i], out _);
 		}
+		
+		InferFromBounds(parameters, inferred);
 		
 		for (var i = 0; i < parameters.Length; i++)
 		{
@@ -64,6 +67,73 @@ public sealed class TypeInference(TypePool typePool)
 		return missing.IsEmpty
 			? new() { Arguments = [..inferred.Select(static type => type!)] }
 			: new() { Missing = missing };
+	}
+	
+	private void InferFromBounds(ImmutableArray<TypeParameterSymbol> parameters, TypeSymbol?[] inferred)
+	{
+		var progress = true;
+		while (progress && inferred.Any(static type => type is null))
+		{
+			progress = false;
+			for (var i = 0; i < parameters.Length; i++)
+			{
+				if (inferred[i] is not { } type || type is InvalidType)
+					continue;
+				
+				foreach (var bound in typePool.GetBounds(parameters[i]))
+				{
+					var known = parameters
+						.Select((parameter, j) => (Parameter: parameter, Type: inferred[j]))
+						.Where(static entry => entry.Type is not null)
+						.ToDictionary(static entry => entry.Parameter, static entry => entry.Type!);
+					
+					var expected = typePool.SubstituteTrait(bound, known);
+					var open = new OrderedSet<TypeParameterSymbol>(parameters
+						.Where((parameter, j) => inferred[j] is null &&
+						                         expected.Arguments.Any(argument =>
+							                         TypePool.FindTypeParameters(argument).Contains(parameter))));
+					
+					if (open.Count == 0)
+						continue;
+					
+					var matches = FindTraitArguments(type, bound.Trait)
+						.Select(arguments => Match(expected.Arguments, arguments, open))
+						.OfType<Dictionary<TypeParameterSymbol, TypeSymbol>>()
+						.ToList();
+					
+					if (matches is not [var match])
+						continue;
+					
+					for (var j = 0; j < parameters.Length; j++)
+					{
+						if (inferred[j] is not null || !match.TryGetValue(parameters[j], out var found))
+							continue;
+						
+						inferred[j] = found;
+						progress = true;
+					}
+				}
+			}
+		}
+	}
+	
+	private IEnumerable<ImmutableArray<TypeSymbol>> FindTraitArguments(TypeSymbol type, TraitSymbol trait) =>
+		type is TypeParameterSymbol parameter
+			? typePool.GetBounds(parameter)
+				.Where(bound => bound.Trait == trait)
+				.Select(static bound => bound.Arguments)
+			: typePool.FindConformances(type)
+				.Where(conformance => conformance.Trait == trait)
+				.Select(conformance => typePool.GetConformanceArguments(conformance, type));
+	
+	private Dictionary<TypeParameterSymbol, TypeSymbol>? Match(ImmutableArray<TypeSymbol> expected,
+		ImmutableArray<TypeSymbol> arguments, OrderedSet<TypeParameterSymbol> open)
+	{
+		var bindings = new Dictionary<TypeParameterSymbol, TypeSymbol>();
+		return expected.Length == arguments.Length &&
+		       expected.Zip(arguments).All(pair => typePool.TryUnify(pair.First, pair.Second, open, bindings))
+			? bindings
+			: null;
 	}
 	
 	private TypeSymbol? Fix(List<TypeSymbol> exact, List<TypeSymbol> lower, out ImmutableArray<TypeSymbol> conflict)
@@ -117,7 +187,7 @@ public sealed class TypeInference(TypePool typePool)
 	private bool ConvertsTo(TypeSymbol from, TypeSymbol to) =>
 		from == to || typePool.ConversionTable.FindImplicit(from, to) is not null;
 	
-	private sealed class Bounds(ImmutableArray<TypeParameterSymbol> parameters, TypePool typePool)
+	private sealed class Bounds(ImmutableArray<TypeParameterSymbol> parameters)
 	{
 		public List<TypeSymbol>[] Exact { get; } = [..parameters.Select(static _ => new List<TypeSymbol>())];
 		public List<TypeSymbol>[] Lower { get; } = [..parameters.Select(static _ => new List<TypeSymbol>())];
@@ -159,12 +229,22 @@ public sealed class TypeInference(TypePool typePool)
 					Unify(p.BaseType, a.BaseType, true);
 					break;
 				
-				case (DynType { Parameter: { } p }, DynType { Trait: { } a }):
-					Unify(p, typePool.GetTraitType(a), true);
+				case (DynType { Parameter: { } p }, DynType { Instance: { } a }):
+					Unify(p, a, true);
 					break;
 				
 				case (DynType { Parameter: { } p }, DynType { Parameter: { } a }):
 					Unify(p, a, true);
+					break;
+				
+				case (DynType { Instance: { } p }, DynType { Instance: { } a }):
+					Unify(p, a, true);
+					break;
+				
+				case (TraitType p, TraitType a) when p.Trait == a.Trait:
+					for (var i = 0; i < p.Arguments.Length; i++)
+						Unify(p.Arguments[i], a.Arguments[i], true);
+					
 					break;
 				
 				case (FStrType p, FStrType a):
@@ -201,6 +281,8 @@ public sealed class TypeInference(TypePool typePool)
 		{
 			TypeParameterSymbol parameter => parameters.Contains(parameter),
 			DynType { Parameter: { } parameter } => parameters.Contains(parameter),
+			DynType { Instance: { } trait } => Mentions(trait),
+			TraitType trait => trait.Arguments.Any(Mentions),
 			FStrType fstr => Mentions(fstr.Value),
 			NamedTypeSymbol named => named.TypeArguments.Any(Mentions),
 			PointerType pointer => Mentions(pointer.BaseType),

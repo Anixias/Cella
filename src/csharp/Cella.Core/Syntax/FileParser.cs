@@ -291,11 +291,8 @@ public sealed class FileParser
 		
 		if (Match(ref index, _topLevelContextualKeywords, TokenType.KeywordTrait))
 		{
-			if (typeParameters is [var parameter, ..])
-				Report(parameter.SourceLocation, "Cannot declare type parameters on traits");
-			
 			var trait = ParseDeclaration(ref index, identifier, "trait",
-				(ref i) => ParseTrait(ref i, identifier, modifiers));
+				(ref i) => ParseTrait(ref i, identifier, modifiers, typeParameters));
 			
 			if (trait is null)
 				SkipDeclaration(ref index, declarationStart, insideBlock);
@@ -1213,7 +1210,8 @@ public sealed class FileParser
 		return true;
 	}
 	
-	private TraitNode? ParseTrait(ref int index, Token identifier, DeclarationModifiers modifiers)
+	private TraitNode? ParseTrait(ref int index, Token identifier, DeclarationModifiers modifiers,
+		List<TypeParameterNode> typeParameters)
 	{
 		var members = new List<IDeclarationNode>();
 		if (Match(ref index, out var openBrace, TokenType.OpOpenBrace))
@@ -1226,7 +1224,11 @@ public sealed class FileParser
 				return null;
 		}
 		
-		return new(identifier, modifiers.Tokens, members) { Visibility = modifiers.Visibility };
+		return new(identifier, modifiers.Tokens, members)
+		{
+			Visibility = modifiers.Visibility,
+			TypeParameters = [..typeParameters]
+		};
 	}
 	
 	private ImplNode? ParseImpl(ref int index, ITypeNode target, Token keyword, List<TypeParameterNode> typeParameters)

@@ -330,15 +330,20 @@ public sealed class SymbolCollector : IDeclarationNodeVisitor<Symbol>
 	public Symbol Visit(TraitNode node)
 	{
 		var self = new TypeParameterSymbol("Self", []);
+		var typeParameters = CreateTypeParameters(node.TypeParameters);
 		_typeStack.Push(node.Identifier.Text);
 		_typeVisibilities.Push(Visibility.FromKeyword(node.Visibility));
-		_typeParameters.Push([self]);
+		_typeParameters.Push([self, ..typeParameters]);
 		var (functions, properties, constructors) = CollectMembers(node.Members);
 		_typeStack.Pop();
 		_typeVisibilities.Pop();
 		_typeParameters.Pop();
 		
-		var trait = new TraitSymbol(node, self, functions, properties, constructors);
+		var trait = new TraitSymbol(node, self, functions, properties, constructors)
+		{
+			TypeParameters = typeParameters
+		};
+		
 		foreach (var function in GetMemberFunctions(functions, properties).Concat(constructors))
 			function.Trait = trait;
 		

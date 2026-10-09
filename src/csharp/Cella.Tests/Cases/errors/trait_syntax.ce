@@ -20,9 +20,4 @@ Other: rec impl
 {
 }
 
-Shape[T]: trait
-{
-	area: fun(self) -> i32
-}
-
 main: fun -> i32 = 0

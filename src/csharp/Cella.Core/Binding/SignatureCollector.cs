@@ -4,6 +4,7 @@ using Cella.Core.Binding.Constants;
 using Cella.Core.Binding.Conversions;
 using Cella.Core.Binding.Nodes;
 using Cella.Core.Binding.Operations;
+using Cella.Core.Collections;
 using Cella.Core.Symbols;
 using Cella.Core.Syntax.Nodes;
 using Cella.Core.Text;
@@ -337,7 +338,10 @@ public sealed class SignatureCollector
 				
 				case TraitNode traitNode:
 					var trait = (TraitSymbol)symbol;
-					_typePool.SetBounds(trait.Self, [trait]);
+					_typePool.SetBounds(trait.Self, [_typePool.GetTraitType(trait, [..trait.TypeParameters])]);
+					RegisterBounds(traitNode.TypeParameters, trait.TypeParameters,
+						context with { ContainingType = trait.Self, Trait = trait });
+					
 					RegisterMemberBounds(traitNode.Members);
 					break;
 				
@@ -360,11 +364,12 @@ public sealed class SignatureCollector
 	private void RegisterBounds(ImmutableArray<TypeParameterNode> nodes, ImmutableArray<TypeParameterSymbol> parameters,
 		ResolutionContext context)
 	{
+		var deferring = context with { DeferConstraintCheck = DeferAlways };
 		for (var i = 0; i < nodes.Length && i < parameters.Length; i++)
 		{
 			ReportConstraintConflicts(nodes[i]);
-			var bounds = nodes[i].Traits.Select(context.ResolveTraitReference).ToList();
-			ImmutableArray<TraitSymbol> traits = [..bounds.OfType<TraitSymbol>()];
+			var bounds = nodes[i].Traits.Select(deferring.ResolveTraitReference).ToList();
+			ImmutableArray<TraitType> traits = [..bounds.OfType<TraitType>()];
 			ImmutableArray<TypeParameterSymbol> traitParameters = [..bounds.OfType<TypeParameterSymbol>()];
 			if (!traits.IsEmpty)
 				_typePool.SetBounds(parameters[i], traits);
@@ -486,10 +491,12 @@ public sealed class SignatureCollector
 	
 	private void RegisterConformances(NamedTypeSymbol type, ImmutableArray<ITypeNode> traits, ResolutionContext context)
 	{
+		var deferring = context with { ContainingType = type, DeferConstraintCheck = DeferAlways };
 		foreach (var traitNode in traits)
 		{
-			if (context.ResolveTrait(traitNode) is { } trait)
-				AddConformance(new(trait, type, type.TypeParameters, null, traitNode.SourceLocation));
+			if (deferring.ResolveTrait(traitNode) is { } trait)
+				AddConformance(new(trait.Trait, trait.Arguments, type, type.TypeParameters, null,
+					traitNode.SourceLocation));
 		}
 	}
 	
@@ -509,10 +516,12 @@ public sealed class SignatureCollector
 		if (node.Traits.IsEmpty)
 			_typePool.AddMemberBlock(impl, target);
 		
+		var deferring = context with { ImplBlock = impl, DeferConstraintCheck = DeferAlways };
 		foreach (var traitNode in node.Traits)
 		{
-			if (context.ResolveTrait(traitNode) is { } trait)
-				AddConformance(new(trait, target, impl.TypeParameters, impl, traitNode.SourceLocation));
+			if (deferring.ResolveTrait(traitNode) is { } trait)
+				AddConformance(new(trait.Trait, trait.Arguments, target, impl.TypeParameters, impl,
+					traitNode.SourceLocation));
 		}
 	}
 	
@@ -625,6 +634,7 @@ public sealed class SignatureCollector
 			return;
 		
 		var node = (TraitNode)declaration.Node;
+		ReportTypeParameters(node.TypeParameters, node.Members);
 		CompleteMembers(node.Members, "traits");
 		foreach (var constructor in node.Members.OfType<ConstructorNode>().Where(static c => c.Body is not null))
 			Diagnostics.Add(new(DiagnosticSeverity.Error, constructor.Keyword.SourceLocation,
@@ -714,19 +724,15 @@ public sealed class SignatureCollector
 	
 	private void CheckConformances()
 	{
-		var duplicates = _localConformances.GroupBy(static c => (c.Target, c.Trait)).Where(static g => g.Count() > 1);
-		foreach (var same in duplicates)
-		{
-			foreach (var conformance in same)
-				Diagnostics.Add(new(DiagnosticSeverity.Error, conformance.Location,
-					$"'{conformance.Target.Name}' implements '{conformance.Trait.Name}' more than once"));
-		}
+		foreach (var sameTrait in _localConformances.GroupBy(static c => (c.Target, c.Trait)))
+			ReportOverlaps([..sameTrait]);
 		
 		foreach (var conformance in _localConformances)
 		{
+			var trait = DescribeTrait(conformance);
 			if (conformance.Impl is not null && !IsLocal(conformance.Trait) && !IsLocal(conformance.Target))
 				Diagnostics.Add(new(DiagnosticSeverity.Error, conformance.Location,
-					$"'{conformance.Trait.Name}' and '{conformance.Target.Name}' are both declared in other projects"));
+					$"'{trait}' and '{conformance.Target.Name}' are both declared in other projects"));
 			
 			MatchRequirements(conformance);
 		}
@@ -735,8 +741,60 @@ public sealed class SignatureCollector
 			ReportUnmatchedMembers(impl);
 	}
 	
+	private void ReportOverlaps(List<Conformance> conformances)
+	{
+		foreach (var conformance in conformances)
+		{
+			var overlap = conformances
+				.Where(other => other != conformance)
+				.Select(other => FindOverlap(conformance, other))
+				.FirstOrDefault(static found => found is not null);
+			
+			if (overlap is var (target, trait))
+				Diagnostics.Add(new(DiagnosticSeverity.Error, conformance.Location,
+					$"'{target.Name}' implements '{trait.Name}' more than once"));
+		}
+	}
+	
+	private (TypeSymbol Target, TraitType Trait)? FindOverlap(Conformance conformance, Conformance other)
+	{
+		var renamed = TypePool.CreateMap(other.Parameters, [..conformance.Parameters]);
+		var bindings = new Dictionary<TypeParameterSymbol, TypeSymbol>();
+		var variables = new OrderedSet<TypeParameterSymbol>(conformance.Parameters);
+		for (var i = 0; i < conformance.Arguments.Length; i++)
+		{
+			var argument = _typePool.Substitute(other.Arguments[i], renamed);
+			if (!_typePool.TryUnify(conformance.Arguments[i], argument, variables, bindings))
+				return null;
+		}
+		
+		var definition = conformance.Target as NamedTypeSymbol;
+		var display = TypePool.CreateMap(conformance.Parameters, [..definition?.TypeParameters ?? []]);
+		var declared = _typePool.GetTraitType(conformance.Trait, conformance.Arguments);
+		var trait = _typePool.SubstituteTrait(_typePool.SubstituteTrait(declared, bindings), display);
+		
+		if (bindings.Count == 0 || definition is null)
+			return (conformance.Target, trait);
+		
+		return (_typePool.Instantiate(definition,
+		[
+			..conformance.Parameters.Select(parameter =>
+				_typePool.Substitute(bindings.GetValueOrDefault(parameter, parameter), display))
+		]), trait);
+	}
+	
+	private string DescribeTrait(Conformance conformance) =>
+		_typePool.GetTraitType(conformance.Trait, conformance.Arguments).Name;
+	
 	private TypeSymbol GetConformanceSelf(Conformance conformance) =>
 		conformance.Impl is { } impl ? GetImplTarget(impl) : conformance.Target;
+	
+	private static Dictionary<TypeParameterSymbol, TypeSymbol> CreateTraitMap(Conformance conformance, TypeSymbol self)
+	{
+		var map = TypePool.CreateMap(conformance.Trait.TypeParameters, conformance.Arguments);
+		map[conformance.Trait.Self] = self;
+		return map;
+	}
 	
 	private void MatchRequirements(Conformance conformance)
 	{
@@ -744,13 +802,15 @@ public sealed class SignatureCollector
 		if (self is InvalidType)
 			return;
 		
+		var trait = DescribeTrait(conformance);
+		var traitMap = CreateTraitMap(conformance, self);
 		foreach (var (name, requirement) in GetRequirements(conformance.Trait))
 		{
 			var info = GetFunctionInfo(requirement);
 			var candidates = FindCandidates(conformance, self, name, requirement).ToList();
 			var matches = candidates
 				.Where(candidate => SignaturesMatch(candidate.Signature, info.Signature, requirement,
-					candidate.Function, conformance.Trait.Self, self))
+					candidate.Function, traitMap))
 				.ToList();
 			
 			switch (matches.Count)
@@ -760,10 +820,10 @@ public sealed class SignatureCollector
 						new FunctionWitness(matches[0].Function, GetFunctionInfo(matches[0].Function));
 					
 					_witnessMembers.Add(matches[0].Function);
-					ReportNarrowWitness(conformance, self, name, matches[0].Function);
+					ReportNarrowWitness(trait, self, name, matches[0].Function);
 					if (matches[0].Function.Syntax is FunctionNode { When: not null })
 						ReportConformance(GetFunctionLocation(matches[0].Function),
-							$"Cannot implement '{conformance.Trait.Name}.{name}' with 'when' functions");
+							$"Cannot implement '{trait}.{name}' with 'when' functions");
 					
 					break;
 				
@@ -779,7 +839,7 @@ public sealed class SignatureCollector
 					conformance.Witnesses[requirement] = new FunctionWitness(requirement, info);
 					break;
 				
-				case 0 when FindNativeWitness(requirement, info.Signature, conformance.Trait.Self, self) is { } native:
+				case 0 when FindNativeWitness(requirement, info.Signature, traitMap, self) is { } native:
 					conformance.Witnesses[requirement] = native;
 					break;
 				
@@ -788,13 +848,13 @@ public sealed class SignatureCollector
 					{
 						_witnessMembers.Add(candidate.Function);
 						ReportConformance(GetFunctionLocation(candidate.Function),
-							$"'{name}' doesn't match '{conformance.Trait.Name}.{name}'");
+							$"'{name}' doesn't match '{trait}.{name}'");
 					}
 					
 					break;
 				
 				default:
-					ReportConformance(conformance.Location, DescribeMissingRequirement(conformance, self, name,
+					ReportConformance(conformance.Location, DescribeMissingRequirement(conformance, trait, self, name,
 						requirement));
 					
 					break;
@@ -802,10 +862,10 @@ public sealed class SignatureCollector
 		}
 		
 		foreach (var constructor in conformance.Trait.Constructors)
-			MatchConstructor(conformance, self, constructor);
+			MatchConstructor(conformance, trait, traitMap, self, constructor);
 	}
 	
-	private void ReportNarrowWitness(Conformance conformance, TypeSymbol self, string name, FunctionSymbol witness)
+	private void ReportNarrowWitness(string trait, TypeSymbol self, string name, FunctionSymbol witness)
 	{
 		var floor = self is NamedTypeSymbol named
 			? (Visibility)Math.Max((int)named.Definition.Visibility, (int)Visibility.Module)
@@ -817,7 +877,7 @@ public sealed class SignatureCollector
 		var keyword = GetVisibilityKeyword(witness);
 		var text = keyword?.Text ?? (witness.Visibility == Visibility.Private ? "pvt" : "mod");
 		ReportConformance(keyword?.SourceLocation ?? GetFunctionLocation(witness),
-			$"Cannot implement '{conformance.Trait.Name}.{name}' with '{text}' members");
+			$"Cannot implement '{trait}.{name}' with '{text}' members");
 	}
 	
 	private static Token? GetVisibilityKeyword(FunctionSymbol function) => function.Syntax switch
@@ -833,10 +893,9 @@ public sealed class SignatureCollector
 			Diagnostics.Add(new(DiagnosticSeverity.Error, location, message));
 	}
 	
-	private static string DescribeMissingRequirement(Conformance conformance, TypeSymbol self, string name,
-		FunctionSymbol requirement)
+	private static string DescribeMissingRequirement(Conformance conformance, string trait, TypeSymbol self,
+		string name, FunctionSymbol requirement)
 	{
-		var trait = conformance.Trait.Name;
 		if (requirement.Property is null || !HasProperty(conformance, name))
 			return $"'{self.Name}' needs '{trait}.{name}'";
 		
@@ -848,26 +907,24 @@ public sealed class SignatureCollector
 		conformance.Target.GetProperty(name) is not null ||
 		conformance.Impl?.Properties.Any(property => property.Name == name) == true;
 	
-	private void MatchConstructor(Conformance conformance, TypeSymbol self, FunctionSymbol requirement)
+	private void MatchConstructor(Conformance conformance, string trait,
+		Dictionary<TypeParameterSymbol, TypeSymbol> traitMap, TypeSymbol self, FunctionSymbol requirement)
 	{
-		var trait = conformance.Trait;
 		var signature = GetFunctionInfo(requirement).Signature;
 		var declared = _typePool.GetConstructors(self);
 		var matches = declared
 			.Where(constructor => SignaturesMatch(constructor.Signature, signature, requirement, constructor.Symbol,
-				trait.Self, self))
+				traitMap))
 			.ToList();
 		
 		if (matches.Count > 0)
 		{
 			conformance.Witnesses[requirement] = new FunctionWitness(matches[0].Symbol, matches[0]);
-			ReportNarrowWitness(conformance, self, "new", matches[0].Symbol);
+			ReportNarrowWitness(trait, self, "new", matches[0].Symbol);
 			return;
 		}
 		
-		var expected = _typePool.SubstituteSignature(signature,
-			new Dictionary<TypeParameterSymbol, TypeSymbol> { [trait.Self] = self });
-		
+		var expected = _typePool.SubstituteSignature(signature, traitMap);
 		var hidesConstruction = declared.Count > 0 && self is RecordSymbol;
 		if (!hidesConstruction && _typePool.FindConstructionWitness(self, expected) is { } construction)
 		{
@@ -877,14 +934,14 @@ public sealed class SignatureCollector
 		
 		if (!hidesConstruction)
 		{
-			ReportConformance(conformance.Location, $"'{self.Name}' needs '{trait.Name}.new'");
+			ReportConformance(conformance.Location, $"'{self.Name}' needs '{trait}.new'");
 			return;
 		}
 		
 		foreach (var constructor in declared)
 			ReportConformance(constructor.Symbol.Syntax is ConstructorNode node
 					? node.Keyword.SourceLocation
-					: conformance.Location, $"'new' doesn't match '{trait.Name}.new'");
+					: conformance.Location, $"'new' doesn't match '{trait}.new'");
 	}
 	
 	private static IEnumerable<(string Name, FunctionSymbol Function)> GetRequirements(TraitSymbol trait) =>
@@ -946,15 +1003,15 @@ public sealed class SignatureCollector
 			.Where(function => GetAccessorKind(function) == kind);
 	
 	private bool SignaturesMatch(FunctionSignature candidate, FunctionSignature requirement,
-		FunctionSymbol requirementSymbol, FunctionSymbol candidateSymbol, TypeParameterSymbol traitSelf,
-		TypeSymbol self)
+		FunctionSymbol requirementSymbol, FunctionSymbol candidateSymbol,
+		Dictionary<TypeParameterSymbol, TypeSymbol> traitMap)
 	{
 		var declared = requirementSymbol.DeclaredTypeParameters;
 		var own = candidateSymbol.DeclaredTypeParameters;
 		if (declared.Length != own.Length)
 			return false;
 		
-		var map = new Dictionary<TypeParameterSymbol, TypeSymbol> { [traitSelf] = self };
+		var map = new Dictionary<TypeParameterSymbol, TypeSymbol>(traitMap);
 		for (var i = 0; i < declared.Length; i++)
 			map[declared[i]] = own[i];
 		
@@ -966,14 +1023,13 @@ public sealed class SignatureCollector
 	}
 	
 	private NativeWitness? FindNativeWitness(FunctionSymbol requirement, FunctionSignature signature,
-		TypeParameterSymbol traitSelf, TypeSymbol self)
+		Dictionary<TypeParameterSymbol, TypeSymbol> traitMap, TypeSymbol self)
 	{
 		if (self is not (PrimitiveType or EnumSymbol) || requirement.Syntax is not FunctionNode node ||
 		    node.Identifier.Type == TokenType.Identifier)
 			return null;
 		
-		var expected = _typePool.SubstituteSignature(signature,
-			new Dictionary<TypeParameterSymbol, TypeSymbol> { [traitSelf] = self });
+		var expected = _typePool.SubstituteSignature(signature, traitMap);
 		
 		var registry = _typePool.OperatorRegistry;
 		if (node.Receiver is not null && expected.ParameterTypes.Length == 2)
@@ -1003,7 +1059,7 @@ public sealed class SignatureCollector
 	
 	private void ReportUnmatchedMembers(ImplSymbol impl)
 	{
-		var traits = _localConformances.Where(c => c.Impl == impl).Select(static c => $"'{c.Trait.Name}'").ToList();
+		var traits = _localConformances.Where(c => c.Impl == impl).Select(c => $"'{DescribeTrait(c)}'").ToList();
 		if (traits.Count == 0)
 			return;
 		
@@ -1103,7 +1159,9 @@ public sealed class SignatureCollector
 		_typePool.GetConstructorBounds(block).Any(constructor => !_typePool.GetConstructors(declared)
 			.Any(existing => TypePool.MatchesConstructor(_typePool.SubstituteSignature(existing.Signature, map),
 				constructor.Signature))) ||
-		_typePool.GetBounds(block).Except(_typePool.GetBounds(declared)).Any() ||
+		_typePool.GetBounds(block)
+			.Except(_typePool.GetBounds(declared).Select(bound => _typePool.SubstituteTrait(bound, map)))
+			.Any() ||
 		_typePool.GetParameterBounds(block).Cast<TypeSymbol>()
 			.Except(_typePool.GetParameterBounds(declared).Select(bound => map[bound]))
 			.Any();
@@ -1819,7 +1877,7 @@ public sealed class SignatureCollector
 			return type;
 		
 		var context = _declarations[property].Context;
-		var owner = context.ContainingType!;
+		var owner = GetVisibilityOwner(context)!;
 		type = RejectValueDyn(typeNode, context.ResolveType(typeNode));
 		_propertyTypes[property] = type;
 		
@@ -1879,9 +1937,11 @@ public sealed class SignatureCollector
 	
 	private static TypeSymbol? FindHiddenType(TypeSymbol type, Visibility visibility) => type switch
 	{
-		DynType { Trait: { } trait } dyn => trait.Visibility < visibility ? dyn : null,
-		FStrType { Value.Trait: { } trait } fstr => trait.Visibility < visibility ? fstr : null,
-		TraitType traitType => traitType.Trait.Visibility < visibility ? traitType : null,
+		DynType { Instance: { } trait } dyn =>
+			trait.Trait.Visibility < visibility ? dyn : FindHiddenArgument(trait, visibility),
+		FStrType { Value.Instance: { } trait } fstr =>
+			trait.Trait.Visibility < visibility ? fstr : FindHiddenArgument(trait, visibility),
+		TraitType trait => trait.Trait.Visibility < visibility ? trait : FindHiddenArgument(trait, visibility),
 		PointerType pointer => FindHiddenType(pointer.BaseType, visibility),
 		BorrowType borrow => FindHiddenType(borrow.Target, visibility),
 		ArrayType array => FindHiddenType(array.ElementType, visibility),
@@ -1898,14 +1958,23 @@ public sealed class SignatureCollector
 		_ => null
 	};
 	
-	private static Visibility GetEffectiveVisibility(Visibility member, TypeSymbol owner)
+	private static TypeSymbol? FindHiddenArgument(TraitType trait, Visibility visibility) => trait.Arguments
+		.Select(argument => FindHiddenType(argument, visibility))
+		.FirstOrDefault(static hidden => hidden is not null);
+	
+	private static Visibility GetEffectiveVisibility(Visibility member, Symbol owner)
 	{
 		var ownerVisibility = ModuleIndex.GetVisibility(owner);
 		return member < Visibility.Project && member < ownerVisibility ? member : ownerVisibility;
 	}
 	
 	private static Visibility GetEffectiveVisibility(FunctionSymbol function, ResolutionContext context) =>
-		context.ContainingType is { } owner ? GetEffectiveVisibility(function.Visibility, owner) : function.Visibility;
+		GetVisibilityOwner(context) is { } owner
+			? GetEffectiveVisibility(function.Visibility, owner)
+			: function.Visibility;
+	
+	private static Symbol? GetVisibilityOwner(ResolutionContext context) =>
+		(Symbol?)context.Trait ?? context.ContainingType;
 	
 	private static Diagnostic ReportStoredBorrow(ITypeNode type, Token name, IEnumerable<Token> modifiers,
 		string kinds, string keyword)

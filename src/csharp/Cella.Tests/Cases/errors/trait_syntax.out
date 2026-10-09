@@ -16,9 +16,4 @@ Error at line 20, column 1
 20 │ {
      ^ Expected a trait
 
-Error at line 23, column 7
-22 │ 
-23 │ Shape[T]: trait
-           ^ Cannot declare type parameters on traits
-
 [compilation failed]

@@ -9,6 +9,7 @@ namespace Cella.Core.Binding;
 public sealed class Conformance
 (
 	TraitSymbol trait,
+	ImmutableArray<TypeSymbol> arguments,
 	TypeSymbol target,
 	ImmutableArray<TypeParameterSymbol> parameters,
 	ImplSymbol? impl,
@@ -16,6 +17,7 @@ public sealed class Conformance
 )
 {
 	public TraitSymbol Trait { get; } = trait;
+	public ImmutableArray<TypeSymbol> Arguments { get; } = arguments;
 	public TypeSymbol Target { get; } = target;
 	public ImmutableArray<TypeParameterSymbol> Parameters { get; } = parameters;
 	public ImplSymbol? Impl { get; } = impl;

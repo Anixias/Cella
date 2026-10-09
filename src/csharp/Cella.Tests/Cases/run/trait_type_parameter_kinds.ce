@@ -1,0 +1,202 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+option[T]: enum
+{
+	none
+	some(value: T)
+}
+
+Iterator[T]: trait
+{
+	next: fun(mut self) -> option[T]
+}
+
+Countdown: rec impl Iterator[i32]
+{
+	left: i32
+
+	next: fun(mut self) -> option[i32]
+	{
+		if self.left == 0
+			ret none
+
+		self.left -= 1
+		ret some(self.left + 1)
+	}
+}
+
+Repeat: rec impl Iterator[i32]
+{
+	value: i32
+	times: i32
+
+	next: fun(mut self) -> option[i32]
+	{
+		if self.times == 0
+			ret none
+
+		self.times -= 1
+		ret some(self.value)
+	}
+}
+
+drain: fun(mut items: dyn[Iterator[i32]]) -> i32
+{
+	var total = 0
+	loop while items.next() is some(value)
+		total += value
+
+	ret total
+}
+
+kind: fun(items: dyn[Iterator[i32]]) -> i32 = match items
+{
+	Countdown => 1
+	Repeat => 2
+	else => 0
+}
+
+Cloner[T]: trait
+{
+	copy: fun(self) -> Self
+	get: fun(self) -> T
+}
+
+Value: rec impl Cloner[i32]
+{
+	x: i32
+
+	copy: fun(self) -> Value = Value(self.x)
+	get: fun(self) -> i32 = self.x * 3
+}
+
+peek: fun(item: dyn[Cloner[i32]]) -> i32 = item.get()
+
+Iterable[T, C: Iterator[T]]: trait
+{
+	iterate: fun(self) -> C
+}
+
+cursor[T: copy]: rec impl Iterator[T]
+{
+	items: ptr[T]
+	length: usize
+	index: usize
+
+	next: fun(mut self) -> option[T]
+	{
+		if self.index == self.length
+			ret none
+
+		self.index += 1
+		ret some(self.items[self.index - 1])
+	}
+}
+
+fixed[T: copy]: rec
+{
+	items: ptr[T]
+	length: usize
+}
+
+fixed[T: copy]: impl Iterable[T, cursor[T]]
+{
+	iterate: fun(self) -> cursor[T] = cursor[T](self.items, self.length, 0)
+}
+
+sum[I: Iterator[i32]]: fun(mut items: I) -> i32
+{
+	var total = 0
+	loop while items.next() is some(value)
+		total += value
+
+	ret total
+}
+
+total[C: Iterator[i32], S: Iterable[i32, C]]: fun(items: S) -> i32
+{
+	var cursor = items.iterate()
+	ret sum(mut cursor)
+}
+
+wrap[I]: rec
+{
+	inner: I
+}
+
+wrap[I: Iterator[i32]]: impl
+{
+	take: fun(mut self) -> i32 = match self.inner.next()
+	{
+		some(value) => value
+		none => -1
+	}
+}
+
+holder[I: Iterator[i32]]: rec
+{
+	inner: I
+}
+
+Show[T]: trait
+{
+	show: fun(self, extra: T)
+}
+
+i32: impl Show[i32]
+{
+	show: fun(self, extra: i32) = printf("%d", self + extra)
+}
+
+str: impl Show[i32]
+{
+	show: fun(self, extra: i32) = printf("%.*s", i32(self.byteLength), self.data)
+}
+
+say: fun(text: fstr[Show[i32]])
+{
+	var i: usize = 0
+	loop while i < text.holes
+	{
+		text.piece(i).show(0)
+		text.value(i).show(100)
+		i += 1
+	}
+
+	text.piece(text.holes).show(0)
+}
+
+view[K: trait]: ref rec
+{
+	item: imm[dyn[K]]
+}
+
+slot[K: trait, T: K]: rec
+{
+	value: T
+}
+
+main: fun -> i32
+{
+	var a = Countdown(4)
+	var b = Repeat(5, 2)
+	printf("%d %d %d %d %d\n", drain(mut a), drain(mut b), kind(a), kind(b), i32(dyn[Iterator[i32]](a) is Countdown))
+
+	val item = Value(2)
+	var values = [1, 2, 3, 4]
+	val scores = fixed[i32](@values[0], 4)
+	var w = wrap(Countdown(3))
+	val h = holder(Countdown(2))
+	printf("%d %d %d %d\n", peek(item), total(scores), w.take(), h.inner.left)
+
+	say("a {1} b {2}\n")
+	val v = view[Cloner[i32]](item)
+	val s = slot[Cloner[i32], Value](Value(5))
+	printf("%d %d\n", v.item.get(), s.value.get())
+	ret 0
+}
