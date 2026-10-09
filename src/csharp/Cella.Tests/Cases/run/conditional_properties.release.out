@@ -1,0 +1,4 @@
+42
+[stderr]
+Panic at main.ce:10:35: addition overflow
+[exit code -1073740791]

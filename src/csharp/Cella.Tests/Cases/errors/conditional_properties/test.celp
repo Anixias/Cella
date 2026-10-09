@@ -1,0 +1,24 @@
+OutputType = "Executable"
+SystemLinkPreference = "Dynamic"
+
+[When.debug]
+BoundsChecks = false
+OutputType = "SharedLibrary"
+
+[When.windows]
+BoundsChecks = true
+
+[When."debug && unknown"]
+OverflowChecks = true
+
+[When."debug &&"]
+OverflowChecks = true
+
+[When."(debug"]
+OverflowChecks = true
+
+[When."debug release"]
+OverflowChecks = true
+
+[When.release]
+Flags = { extra = true }

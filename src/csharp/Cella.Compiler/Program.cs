@@ -48,11 +48,15 @@ internal static class Program
 		}
 		
 		// Phase 0b: Dependency graph
+		var targetTriple = TargetTriple.FromHost(); // TODO Check CLI args for cross-compilation
 		var cts = new CancellationTokenSource();
+		var projectErrors = new List<string>();
 		Dictionary<ProjectInfo, ImmutableHashSet<ProjectInfo>> projectDependencies;
 		try
 		{
-			var dependencyGraph = await MapDependenciesAsync(projectPaths);
+			var dependencyGraph = await MapDependenciesAsync(projectPaths, targetTriple, optimizeMode, flagOverrides,
+				projectErrors);
+			
 			projectDependencies = dependencyGraph.GetResolutionOrder().ToDictionary(static p => p,
 				p => dependencyGraph.GetDependencies(p).ToImmutableHashSet());
 		}
@@ -63,8 +67,12 @@ internal static class Program
 			return 1;
 		}
 		
-		var targetTriple = TargetTriple.FromHost(); // TODO Check CLI args for cross-compilation
-		if (!ValidateFlags(projectDependencies.Keys, BuildFlags.Create(targetTriple, optimizeMode), flagOverrides))
+		var builtInFlags = BuildFlags.Create(targetTriple, optimizeMode);
+		var flagsValid = ValidateFlags(projectDependencies.Keys, builtInFlags, flagOverrides);
+		foreach (var error in projectErrors)
+			Console.WriteLine(error);
+		
+		if (!flagsValid || projectErrors.Count > 0)
 			return 1;
 		
 		var conversionTable = ConversionTable.CreateNative();
@@ -122,6 +130,16 @@ internal static class Program
 		return flags;
 	}
 	
+	private static Dictionary<string, bool> CreateFlags(CellaProject project, TargetTriple targetTriple,
+		OptimizeMode optimizeMode, IReadOnlyDictionary<string, bool> flagOverrides)
+	{
+		var flags = BuildFlags.Create(targetTriple, optimizeMode);
+		foreach (var (name, value) in project.Flags ?? [])
+			flags[name] = flagOverrides.GetValueOrDefault(name, value);
+		
+		return flags;
+	}
+	
 	private static bool ValidateFlags(IEnumerable<ProjectInfo> projects, IReadOnlyDictionary<string, bool> builtIn,
 		IReadOnlyDictionary<string, bool> overrides)
 	{
@@ -158,7 +176,9 @@ internal static class Program
 		return isValid;
 	}
 	
-	private static async Task<DependencyGraph<ProjectInfo>> MapDependenciesAsync(HashSet<string> projectPaths)
+	private static async Task<DependencyGraph<ProjectInfo>> MapDependenciesAsync(HashSet<string> projectPaths,
+		TargetTriple targetTriple, OptimizeMode optimizeMode, IReadOnlyDictionary<string, bool> flagOverrides,
+		List<string> errors)
 	{
 		var projectLookup = new Dictionary<string, ProjectInfo>();
 		var projectDependencies = new Dictionary<ProjectInfo, HashSet<string>>();
@@ -177,6 +197,7 @@ internal static class Program
 			await using (var stream = new FileStream(path, FileMode.Open))
 				project = await CellaProject.LoadAsync(stream);
 			
+			project = project.Resolve(path, CreateFlags(project, targetTriple, optimizeMode, flagOverrides), errors);
 			var projectDirectory = Path.GetDirectoryName(path) ?? string.Empty;
 			var projectName = Path.GetFileNameWithoutExtension(path);
 			var projectInfo = new ProjectInfo(path, projectDirectory, projectName, project);
@@ -250,10 +271,7 @@ internal static class Program
 	{
 		// Phase 1: File parsing
 		var outputType = project.Project.OutputType;
-		var flags = BuildFlags.Create(targetTriple, optimizeMode);
-		foreach (var (name, value) in project.Project.Flags ?? [])
-			flags[name] = flagOverrides.GetValueOrDefault(name, value);
-		
+		var flags = CreateFlags(project.Project, targetTriple, optimizeMode, flagOverrides);
 		var (files, parseDiagnostics) = await ProcessProject(project, flags, ct);
 		var diagnostics = new List<DiagnosticList> { parseDiagnostics };
 		

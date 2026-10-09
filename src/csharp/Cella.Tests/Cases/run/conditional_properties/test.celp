@@ -1,0 +1,17 @@
+OutputType = "Executable"
+SystemLinkPreference = "Dynamic"
+
+[Flags]
+strict = false
+
+[When.debug]
+OverflowChecks = false
+
+[When."release || strict"]
+OverflowChecks = true
+
+[[When.windows.ProjectReferences]]
+Path = 'lib/lib.celp'
+
+[[When."linux || macos".ProjectReferences]]
+Path = 'missing/missing.celp'

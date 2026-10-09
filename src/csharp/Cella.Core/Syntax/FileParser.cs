@@ -578,6 +578,19 @@ public sealed class FileParser
 		return false;
 	}
 	
+	public bool? ParseCondition()
+	{
+		var index = 0;
+		if (ParseCondition(ref index) is not { } value)
+			return null;
+		
+		if (AtEnd(index))
+			return value;
+		
+		ReportUnexpected(Tokens[index]);
+		return null;
+	}
+	
 	private bool? ParseCondition(ref int index)
 	{
 		if (ParseConjunction(ref index) is not { } value)
