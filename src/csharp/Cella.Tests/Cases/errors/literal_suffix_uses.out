@@ -1,0 +1,14 @@
+
+====== literal_suffix_uses.ce ======
+
+Error at line 5, column 10
+4 │ {
+5 │     val a = 200u8 + 100
+                ╘═════════╛ Addition overflows 'u8'
+
+Error at line 6, column 10
+5 │ val a = 200u8 + 100
+6 │ val b = 100i8 * 2
+            ╘═══════╛ Multiplication overflows 'i8'
+
+[compilation failed]

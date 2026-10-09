@@ -1,0 +1,85 @@
+
+====== literal_suffixes.ce ======
+
+Error at line 5, column 10
+4 │ {
+5 │     val a = 300u8
+                ╘═══╛ '300' doesn't fit in 'u8'
+
+Error at line 6, column 10
+5 │ val a = 300u8
+6 │ val b = 128i8
+            ╘═══╛ '128' doesn't fit in 'i8'
+
+Error at line 7, column 11
+6 │ val b = 128i8
+7 │ val c = -129i8
+             ╘═══╛ '-129' doesn't fit in 'i8'
+
+Error at line 8, column 10
+7 │ val c = -129i8
+8 │ val d = 0x100u8
+            ╘═════╛ '0x100' doesn't fit in 'u8'
+
+Error at line 9, column 10
+8 │ val d = 0x100u8
+9 │ val e = 1e100f32
+            ╘══════╛ '1e100' doesn't fit in 'f32'
+
+Error at line 10, column 10
+ 9 │ val e = 1e100f32
+10 │ val f = 1e400f64
+             ╘══════╛ '1e400' doesn't fit in 'f64'
+
+Error at line 11, column 10
+10 │ val f = 1e400f64
+11 │ val g = '€'u8
+             ╘═══╛ '€' doesn't fit in 'u8'
+
+Error at line 12, column 10
+11 │ val g = '€'u8
+12 │ val h = 1.5i32
+             ╘════╛ Cannot use 'i32' on float literals
+
+Error at line 13, column 10
+12 │ val h = 1.5i32
+13 │ val i = 'a'f32
+             ╘════╛ Cannot use 'f32' on char literals
+
+Error at line 14, column 10
+13 │ val i = 'a'f32
+14 │ val j = "abc"i32
+             ╘══════╛ Cannot use 'i32' on string literals
+
+Error at line 15, column 10
+14 │ val j = "abc"i32
+15 │ val k = "abc"f64
+             ╘══════╛ Cannot use 'f64' on string literals
+
+Error at line 16, column 10
+15 │ val k = "abc"f64
+16 │ val l = 3q
+             ╘╛ Invalid suffix 'q'
+
+Error at line 17, column 10
+16 │ val l = 3q
+17 │ val m = 0xFFu
+             ╘═══╛ Invalid suffix 'u'
+
+Error at line 18, column 10
+17 │ val m = 0xFFu
+18 │ val n = 2bool
+             ╘═══╛ Invalid suffix 'bool'
+
+Error at line 19, column 10
+18 │ val n = 2bool
+19 │ val o = 7char
+             ╘═══╛ Invalid suffix 'char'
+
+Error at line 20, column 10
+19 │ val o = 7char
+20 │ val p = -1u8
+             ╘══╛ Operator '-' cannot be applied to 'u8'
+                | 'u8' can't represent negative values
+
+[compilation failed]

@@ -10,6 +10,7 @@ public readonly record struct Token
 	public string Text { get; }
 	public string? Error { get; init; }
 	public InterpolatedString? Interpolation { get; init; }
+	public string? Suffix { get; init; }
 	public ReadOnlySpan<char> AsSpan() => Text.AsSpan();
 	public ReadOnlySpan<char> AsSourceSpan() => SourceLocation.GetText();
 	

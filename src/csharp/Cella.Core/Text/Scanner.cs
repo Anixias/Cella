@@ -156,11 +156,7 @@ public class Scanner : IScanner
 			tokenType = TokenType.FloatLiteral;
 		}
 		
-		// @TODO Suffix type markers
-		
-		var range = new TextRange(position, end);
-		var token = new Token(tokenType, Source, range);
-		return new ScanResult(token, end);
+		return CreateSuffixedToken(tokenType, position, end, ScanSuffix(end));
 	}
 	
 	private int ScanDigits(int position)
@@ -178,10 +174,34 @@ public class Scanner : IScanner
 		while (end < Source.Length && (char.IsLetterOrDigit(Source[end]) || Source[end] == '_'))
 			end++;
 		
-		var range = new TextRange(position, end);
-		var token = FindPrefixedNumberError(Source.GetText(new TextRange(position + 2, end)), isHex) is { } error
-			? new Token(TokenType.Invalid, Source, range) { Error = error }
-			: new Token(TokenType.IntegerLiteral, Source, range);
+		var suffix = Source.GetText(new TextRange(position + 2, end)).IndexOfAny('i', 'u');
+		var digitsEnd = suffix < 0 ? end : position + 2 + suffix;
+		if (FindPrefixedNumberError(Source.GetText(new TextRange(position + 2, digitsEnd)), isHex) is not { } error)
+			return CreateSuffixedToken(TokenType.IntegerLiteral, position, digitsEnd, end);
+		
+		var invalid = new Token(TokenType.Invalid, Source, new TextRange(position, end)) { Error = error };
+		return new ScanResult(invalid, end);
+	}
+	
+	private int ScanSuffix(int position)
+	{
+		if (position >= Source.Length || !char.IsLetter(Source[position]))
+			return position;
+		
+		var end = position + 1;
+		while (end < Source.Length && (char.IsLetterOrDigit(Source[end]) || Source[end] == '_'))
+			end++;
+		
+		return end;
+	}
+	
+	private ScanResult CreateSuffixedToken(TokenType type, int start, int valueEnd, int end, string? text = null)
+	{
+		var token = new Token(type, Source, new TextRange(start, end),
+			text ?? new string(Source.GetText(new TextRange(start, valueEnd))))
+		{
+			Suffix = end > valueEnd ? new string(Source.GetText(new TextRange(valueEnd, end))) : null
+		};
 		
 		return new ScanResult(token, end);
 	}
@@ -467,8 +487,19 @@ public class Scanner : IScanner
 			return new ScanResult(invalidToken, range.End);
 		}
 		
+		var suffixEnd = ScanSuffix(range.End);
 		if (holes.Count == 0)
-			return new ScanResult(new Token(TokenType.StringLiteral, Source, range, segments[0]), range.End);
+			return CreateSuffixedToken(TokenType.StringLiteral, range.Start, range.End, suffixEnd, segments[0]);
+		
+		if (suffixEnd > range.End)
+		{
+			var invalidToken = new Token(TokenType.Invalid, Source, range with { End = suffixEnd })
+			{
+				Error = $"Cannot use '{Source.GetText(new TextRange(range.End, suffixEnd))}' on interpolated strings"
+			};
+			
+			return new ScanResult(invalidToken, suffixEnd);
+		}
 		
 		var interpolatedToken = new Token(TokenType.InterpolatedStringLiteral, Source, range)
 		{
@@ -641,8 +672,7 @@ public class Scanner : IScanner
 			return new ScanResult(invalidToken, end);
 		}
 		
-		var token = new Token(TokenType.CharLiteral, Source, new TextRange(position, end), value.Result);
-		return new ScanResult(token, end);
+		return CreateSuffixedToken(TokenType.CharLiteral, position, end, ScanSuffix(end), value.Result);
 	}
 	
 	private static bool IsSingleRune(string text) =>

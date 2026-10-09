@@ -1,0 +1,9 @@
+
+====== literal_suffix_syntax.ce ======
+
+Error at line 6, column 10
+5 │ val x = 1
+6 │ val s = "a{x}"u8
+            ╘══════╛ Cannot use 'u8' on interpolated strings
+
+[compilation failed]

@@ -1,0 +1,8 @@
+mod test
+
+main: fun -> i32
+{
+	val a = 200u8 + 100
+	val b = 100i8 * 2
+	ret 0
+}

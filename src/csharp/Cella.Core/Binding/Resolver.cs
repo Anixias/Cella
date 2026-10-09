@@ -3293,6 +3293,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		if (node.Token.Type == TokenType.InvalidCharLiteral)
 			return Error(node, "Invalid character literal", CurrentTargetType);
 		
+		if (node.Token.Suffix is { } suffix)
+			return ResolveSuffixedLiteral(node, suffix);
+		
 		var valueSpan = node.Token.AsSpan();
 		
 		TypeSymbol? type = null;
@@ -4757,6 +4760,69 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			return ReportFunctionMismatch(group, target);
 		
 		return Error(source.Syntax, $"Cannot convert type '{source.Type.Name}' to '{target.Name}'", target);
+	}
+	
+	private IResolvedExpressionNode ResolveSuffixedLiteral(LiteralExpressionNode node, string suffix)
+	{
+		var type = NativeSymbols.Resolve(suffix) as PrimitiveType;
+		if (type is not (FloatType or IntegerType { Kind: not PrimitiveTypeKind.Char }))
+			return Error(node, $"Invalid suffix '{suffix}'", CurrentTargetType);
+		
+		return (node.Token.Type, type) switch
+		{
+			(TokenType.IntegerLiteral, IntegerType integer) => ResolveSuffixedInteger(node, integer),
+			(TokenType.IntegerLiteral or TokenType.FloatLiteral, FloatType floating) =>
+				ResolveSuffixedFloat(node, floating),
+			(TokenType.CharLiteral, IntegerType integer) => ResolveSuffixedChar(node, integer),
+			(TokenType.StringLiteral, IntegerType
+			{
+				Kind: PrimitiveTypeKind.UInt8 or PrimitiveTypeKind.UInt16 or PrimitiveTypeKind.UInt32
+			} unit) => ResolveCodeUnits(node, unit),
+			(TokenType.FloatLiteral, _) => Error(node, $"Cannot use '{suffix}' on float literals", CurrentTargetType),
+			(TokenType.CharLiteral, _) => Error(node, $"Cannot use '{suffix}' on char literals", CurrentTargetType),
+			_ => Error(node, $"Cannot use '{suffix}' on string literals", CurrentTargetType)
+		};
+	}
+	
+	private IResolvedExpressionNode ResolveSuffixedInteger(LiteralExpressionNode node, IntegerType type)
+	{
+		var text = type.IsSigned ? ConsumeNegation(node.Token.AsSpan()) : node.Token.Text;
+		return Scanner.TryParseInteger(text, out var value) && _evaluator.Fits(value, type)
+			? new ResolvedLiteralExpressionNode(type, value, node)
+			: Error(node, $"'{text}' doesn't fit in '{type.Name}'", CurrentTargetType);
+	}
+	
+	private IResolvedExpressionNode ResolveSuffixedFloat(LiteralExpressionNode node, FloatType type)
+	{
+		var text = ConsumeNegation(node.Token.AsSpan());
+		var value = ParseFloatValue(text.Replace("_", ""), type);
+		return double.IsFinite(value)
+			? new ResolvedLiteralExpressionNode(type, value, node)
+			: Error(node, $"'{text}' doesn't fit in '{type.Name}'", CurrentTargetType);
+	}
+	
+	private IResolvedExpressionNode ResolveSuffixedChar(LiteralExpressionNode node, IntegerType type)
+	{
+		var (_, code) = ParseChar(node.Token.AsSpan());
+		return _evaluator.Fits(code, type)
+			? new ResolvedLiteralExpressionNode(type, new BigInteger(code), node)
+			: Error(node, $"'{node.Token.Text}' doesn't fit in '{type.Name}'", CurrentTargetType);
+	}
+	
+	private ResolvedArrayExpressionNode ResolveCodeUnits(LiteralExpressionNode node, IntegerType type)
+	{
+		var text = node.Token.Text;
+		IEnumerable<BigInteger> units = type.Kind switch
+		{
+			PrimitiveTypeKind.UInt8 => Encoding.UTF8.GetBytes(text).Select(static unit => (BigInteger)unit),
+			PrimitiveTypeKind.UInt16 => text.Select(static unit => (BigInteger)unit),
+			_ => text.EnumerateRunes().Select(static rune => (BigInteger)rune.Value)
+		};
+		
+		ImmutableArray<IResolvedExpressionNode> values =
+			[..units.Select(unit => new ResolvedLiteralExpressionNode(type, unit, node))];
+		
+		return new ResolvedArrayExpressionNode(_typePool.GetArrayType(type, values.Length), values, node);
 	}
 	
 	private (TypeSymbol? Type, object? Value) ParseInteger(ReadOnlySpan<char> span)

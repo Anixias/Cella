@@ -800,7 +800,7 @@ public sealed class FileParser
 		string? origin;
 		if (Match(ref index, TokenType.OpOpenParen))
 		{
-			if (!Match(ref index, out var str, TokenType.StringLiteral))
+			if (!Match(ref index, out var str, TokenType.StringLiteral) || str.Suffix is not null)
 				return null;
 			
 			origin = str.Text;

@@ -1,0 +1,22 @@
+mod test
+
+main: fun -> i32
+{
+	val a = 300u8
+	val b = 128i8
+	val c = -129i8
+	val d = 0x100u8
+	val e = 1e100f32
+	val f = 1e400f64
+	val g = '€'u8
+	val h = 1.5i32
+	val i = 'a'f32
+	val j = "abc"i32
+	val k = "abc"f64
+	val l = 3q
+	val m = 0xFFu
+	val n = 2bool
+	val o = 7char
+	val p = -1u8
+	ret 0
+}

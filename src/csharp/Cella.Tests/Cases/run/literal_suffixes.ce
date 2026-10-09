@@ -1,0 +1,58 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Code: enum(u8)
+{
+	ok = 0u8
+	lost = 7u8
+}
+
+limit: val u16 = 500u16
+
+box[T]: rec
+{
+	value: T
+}
+
+pick: fun(value: u8) -> i32 = 8
+pick: fun(value: i32) -> i32 = 32
+
+take: fun(value: f32) -> i32 = 32
+take: fun(value: f64) -> i32 = 64
+
+main: fun -> i32
+{
+	val mask = 0xF0u8
+	val bits = 0b1010_1010u8
+	val big = 1_000_000_000_000u64
+	val low = -128i8
+	val lowest = -0x80i8
+	val size = 4usize
+	val wide = 170141183460469231731687303715884105727i128
+	printf("%d %d %llu %d %d %zu %d\n", i32(mask - 1), i32(bits), big, i32(low), i32(lowest), size,
+		i32(wide == 170141183460469231731687303715884105727i128))
+	val half = 0.5f32
+	val two = 2f32
+	val thousand = 1e3f64
+	val rounded = 16777217f32
+	printf("%d %d %d %.1f %.1f %.1f\n", take(half), take(two), take(1.5), thousand, f64(rounded), f64(-0.0f32))
+	val boxed = box(7u16)
+	printf("%d %zu %d %d %d %d\n", i32(boxed.value), sizeOf(boxed), i32(~0u8), i32(-5i16 * 3), pick(1u8), pick(1))
+	val cells: array[i32, 3u8] = [1, 2, 3]
+	printf("%d %d %zu %d\n", i32(Code.lost), i32(limit), cells.length, i32(1_000_u32))
+	printf("%d %d %d %d\n", i32('a'u8), i32('€'u16), '\n'i32, -'a'i32)
+	val magic = "GIF89a"u8
+	val accented = "hé"u8
+	val units = "hé"u16
+	val points = "h😀"u32
+	val empty = ""u8
+	printf("%zu %d %d\n", magic.length, i32(magic[0]), i32(magic[5]))
+	printf("%zu %d %d %d\n", accented.length, i32(accented[0]), i32(accented[1]), i32(accented[2]))
+	printf("%zu %d %d\n", units.length, i32(units[0]), i32(units[1]))
+	printf("%zu %d %d %zu\n", points.length, i32(points[0]), i32(points[1]), empty.length)
+	ret 0
+}

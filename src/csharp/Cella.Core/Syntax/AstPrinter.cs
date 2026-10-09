@@ -516,7 +516,7 @@ public sealed class AstPrinter : ISyntaxNodeVisitor
 	public void Visit(LiteralExpressionNode node)
 	{
 		StartLine();
-		_sb.Append("LiteralExpressionNode: ").Append(node.Token.AsSpan());
+		_sb.Append("LiteralExpressionNode: ").Append(node.Token.AsSpan()).Append(node.Token.Suffix);
 	}
 	
 	public void Visit(BinaryOpExpressionNode node)

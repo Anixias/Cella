@@ -1,0 +1,8 @@
+mod test
+
+main: fun -> i32
+{
+	val x = 1
+	val s = "a{x}"u8
+	ret 0
+}
