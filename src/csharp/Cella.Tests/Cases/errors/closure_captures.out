@@ -1,0 +1,29 @@
+
+====== closure_captures.ce ======
+
+Error at line 15, column 21
+14 │ val base = 10
+15 │ apply(fun(x) = x + base, 1)
+                        ╘══╛ Cannot capture 'base' in 'fun[i32 -> i32]'
+
+Error at line 17, column 47
+16 │ var values = [3, 1, 2]
+17 │ qsort(@values, 3, 4, fun(a, b) = (*a - *b) * base)
+                                                  ╘══╛ Cannot capture 'base' in 'ext fun[ptr[i32], ptr[i32] -> i32]'
+
+Error at line 18, column 39
+17 │ qsort(@values, 3, 4, fun(a, b) = (*a - *b) * base)
+18 │ call(fun -> i32 = apply(fun(x) = x + base, 1))
+                                          ╘══╛ Cannot capture 'base' in 'fun[i32 -> i32]'
+
+Error at line 20, column 27
+19 │ val closure = fun -> i32 = base
+20 │ val plain: fun[-> i32] = closure
+                              ╘═════╛ Cannot convert type 'ref fun[-> i32]' to 'fun[-> i32]'
+
+Error at line 21, column 2
+20 │ val plain: fun[-> i32] = closure
+21 │ keep(closure)
+     ╘══╛ Cannot store borrows in 'T'
+
+[compilation failed]

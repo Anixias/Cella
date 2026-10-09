@@ -1,0 +1,32 @@
+mod test
+
+Text: rec
+{
+	id: i32
+
+	drop: op
+	{
+	}
+}
+
+call: fun(f: ref fun[-> i32]) -> i32 = f()
+
+consume: fun(own text: Text) { }
+
+main: fun -> i32
+{
+	val text = Text(1)
+	call(fun -> i32
+	{
+		val moved = text
+		ret 0
+	})
+
+	call(fun -> i32
+	{
+		consume(text)
+		ret 0
+	})
+
+	ret 0
+}

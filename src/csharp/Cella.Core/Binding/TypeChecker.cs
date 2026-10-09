@@ -368,6 +368,7 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool, 
 	
 	private static string DescribeImmutable(VariableSymbol binding) => binding switch
 	{
+		LocalVariableSymbol { Captured: { } captured } => DescribeImmutable(captured),
 		LocalVariableSymbol { IsLoopBinding: true } => "read-only loop variables",
 		LocalVariableSymbol { IsPatternBinding: true } => "read-only pattern bindings",
 		ParameterSymbol => "read-only parameters",
@@ -696,6 +697,10 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool, 
 	}
 	
 	public void Visit(ResolvedFunctionReferenceExpressionNode node)
+	{
+	}
+	
+	public void Visit(ResolvedClosureExpressionNode node)
 	{
 	}
 	

@@ -1,0 +1,34 @@
+mod test
+
+call: fun(f: ref fun[-> i32]) -> i32 = f()
+
+bump: fun(mut value: i32)
+{
+	value += 1
+}
+
+watch: fun(limit: i32) -> i32 = call(fun -> i32
+{
+	limit = 2
+	ret limit
+})
+
+main: fun -> i32
+{
+	val base = 10
+	call(fun -> i32
+	{
+		base = 5
+		bump(mut base)
+		ret 0
+	})
+
+	for i in 0..3
+		call(fun -> i32
+		{
+			i += 1
+			ret i
+		})
+
+	ret 0
+}

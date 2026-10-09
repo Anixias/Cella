@@ -423,6 +423,25 @@ public static class LoweredModulePrinter
 					sb.Append(v.Function.Symbol.Name);
 					break;
 				
+				case ClosureValue v:
+				{
+					sb.Append(v.Function.Symbol.Name).Append('[');
+					for (var i = 0; i < v.Captures.Length; i++)
+					{
+						if (i > 0)
+							sb.Append(", ");
+						
+						PrintValue(sb, v.Captures[i]);
+					}
+					
+					sb.Append(']');
+					break;
+				}
+				
+				case EnvironmentValue v:
+					sb.Append("env[").Append(v.Index).Append(']');
+					break;
+				
 				case IndirectCallValue v:
 				{
 					sb.Append('(');

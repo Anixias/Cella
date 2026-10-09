@@ -57,6 +57,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	private readonly List<Instantiation> _instantiations = [];
 	private readonly HashSet<Symbol> _genericReferences = [];
 	private readonly List<ResolvedFunctionNode> _lambdas = [];
+	private readonly List<LambdaFrame> _lambdaFrames = [];
 	private IExpressionNode? storeTarget;
 	private List<Action>? _journal;
 	private int _openCheckpoints;
@@ -3608,36 +3609,43 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 				return Error(node, "Cannot infer the return type", expected);
 			
 			var checkpoint = OpenCheckpoint();
-			var draft = CreateLambdaInfo(node, outer, modes, types, NativeSymbols.Void);
-			_resolutionContexts.Push(CreateLambdaContext(outer, draft));
+			EnterLambda(outer, CreateLambdaInfo(node, outer, modes, types, NativeSymbols.Void), target);
 			var value = Decay(MaterializeAsDefault(VisitNode(probe, null)));
-			_resolutionContexts.Pop();
+			ExitLambda();
 			Rollback(checkpoint);
 			returnType = value.Type;
 		}
 		
 		var info = CreateLambdaInfo(node, outer, modes, types, returnType);
-		IResolvedExpressionNode result = returnType is InvalidType || types.Any(static type => type is InvalidType)
-			? new ResolvedInvalidExpressionNode(node, expected)
-			: new ResolvedFunctionGroupExpressionNode(new FunctionGroupType("fun", [info], GetNaturalType(info).Name),
-				node);
-		
+		var isInvalid = returnType is InvalidType || types.Any(static type => type is InvalidType);
 		if (!resolveBody)
-			return result;
+			return isInvalid ? new ResolvedInvalidExpressionNode(node, expected) : CreateLambdaGroup(info, node);
 		
-		_resolutionContexts.Push(CreateLambdaContext(outer, info));
+		var frame = EnterLambda(outer, info, target);
 		IResolvedNode body = node.ExpressionBody is { } expression
 			? VisitNode(new ExpressionStatementNode(returnType == NativeSymbols.Void
 				? expression
 				: new ReturnExpressionNode(expression.SourceLocation, expression)))
 			: VisitNode(node.BlockBody!);
 		
-		_resolutionContexts.Pop();
+		ExitLambda();
 		var function = new ResolvedFunctionNode(info, body, info.Symbol.Syntax);
 		_lambdas.Add(function);
 		Journal(() => _lambdas.Remove(function));
-		return result;
+		if (isInvalid)
+			return new ResolvedInvalidExpressionNode(node, expected);
+		
+		if (frame.Captures.Count == 0)
+			return CreateLambdaGroup(info, node);
+		
+		info.Symbol.Captures = [..frame.Captures.Select(static capture => capture.Binding)];
+		return new ResolvedClosureExpressionNode(info,
+			[..frame.Captures.Select(capture => ResolveSymbolValue(capture.Use, capture.Binding.Captured!))],
+			_typePool.GetFunctionType(false, types, modes, returnType, true), node);
 	}
+	
+	private ResolvedFunctionGroupExpressionNode CreateLambdaGroup(FunctionInfo info, LambdaExpressionNode node) =>
+		new(new FunctionGroupType("fun", [info], GetNaturalType(info).Name), node);
 	
 	private TypeSymbol GetExpectedParameterType(FunctionType target, int index, ParameterMode mode)
 	{
@@ -3684,17 +3692,79 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		return info;
 	}
 	
-	private static ResolutionContext CreateLambdaContext(ResolutionContext outer, FunctionInfo info) => outer with
+	private LambdaFrame EnterLambda(ResolutionContext outer, FunctionInfo info, FunctionType? target)
 	{
-		ContainingFunction = info,
-		LocalScope = info.Scope,
-		IsCaptured = name => IsOuterLocal(outer, name)
-	};
+		var frame = new LambdaFrame(outer, target);
+		_lambdaFrames.Add(frame);
+		_resolutionContexts.Push(outer with
+		{
+			ContainingFunction = info,
+			LocalScope = info.Scope,
+			Capture = name => (Symbol?)frame.Bindings.GetValueOrDefault(name) ??
+			                  (outer.ResolveNear(name) is LocalVariableSymbol or ParameterSymbol or CapturedSymbol
+				                  ? new CapturedSymbol(name)
+				                  : null)
+		});
+		
+		return frame;
+	}
 	
-	private static bool IsOuterLocal(ResolutionContext outer, string name) =>
-		outer.LocalScope?.Resolve(name) is LocalVariableSymbol or ParameterSymbol ||
-		outer.ContainingFunction?.Symbol.Parameters.Any(parameter => parameter.Name == name) == true ||
-		outer.IsCaptured?.Invoke(name) == true;
+	private void ExitLambda()
+	{
+		_resolutionContexts.Pop();
+		_lambdaFrames.RemoveAt(_lambdaFrames.Count - 1);
+	}
+	
+	private IResolvedExpressionNode ResolveCapture(VarExpressionNode node) =>
+		Capture(_lambdaFrames.Count - 1, node) is { } binding
+			? ResolveSymbolValue(node, binding)
+			: new ResolvedInvalidExpressionNode(node, CurrentTargetType);
+	
+	private LocalVariableSymbol? Capture(int level, VarExpressionNode node)
+	{
+		var frame = _lambdaFrames[level];
+		var name = node.Identifier.Text;
+		if (frame.Bindings.TryGetValue(name, out var existing))
+			return existing;
+		
+		if (frame.Target is { IsRef: false } target)
+		{
+			Diagnostics.Add(new(DiagnosticSeverity.Error, node.SourceLocation,
+				$"Cannot capture '{name}' in '{target.Name}'"));
+			
+			return null;
+		}
+		
+		var outer = frame.Outer.ResolveNear(name);
+		var captured = outer is CapturedSymbol ? Capture(level - 1, node) : outer as VariableSymbol;
+		if (captured is null)
+			return null;
+		
+		var binding = new LocalVariableSymbol(node.Identifier, _typePool.GetPointerType(GetValueType(captured)!), false)
+		{
+			IsBorrowBinding = true,
+			IsMutBinding = IsWritable(captured),
+			Captured = captured
+		};
+		
+		frame.Bindings[name] = binding;
+		frame.Captures.Add((binding, node));
+		Journal(() =>
+		{
+			frame.Bindings.Remove(name);
+			frame.Captures.RemoveAt(frame.Captures.Count - 1);
+		});
+		
+		return binding;
+	}
+	
+	private static bool IsWritable(VariableSymbol variable) => variable switch
+	{
+		LocalVariableSymbol { IsBorrowBinding: true } binding => binding.IsMutBinding,
+		LocalVariableSymbol local => local.IsMutable,
+		ParameterSymbol parameter => parameter.Mode != ParameterMode.ReadOnly,
+		_ => false
+	};
 	
 	public IResolvedExpressionNode Visit(VarExpressionNode node)
 	{
@@ -3746,8 +3816,8 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			case TraitSymbol or TypeParameterSymbol { IsTrait: true }:
 				return Error(node, "Cannot use traits as values", CurrentTargetType);
 			
-			case CapturedSymbol:
-				return Error(node, $"Cannot capture '{GetName(node)}'", CurrentTargetType);
+			case CapturedSymbol when node is VarExpressionNode variable:
+				return ResolveCapture(variable);
 			
 			default:
 				return Error(node, $"Symbol '{GetName(node)}' is not a variable", CurrentTargetType);
@@ -5936,7 +6006,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		
 		if (arg is ResolvedFunctionGroupExpressionNode group && target is FunctionType functionType)
 			return FindFunction(group.Group, functionType) is { } function
-				? (function.Symbol.IsExternal == functionType.IsExternal ? 0 : 1, null)
+				? ((function.Symbol.IsExternal == functionType.IsExternal ? 0 : 1) + (functionType.IsRef ? 1 : 0), null)
 				: (int.MaxValue, null);
 		
 		if (arg.Type is UntypedType u)
@@ -6055,6 +6125,14 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		ImmutableArray<ParameterMode?> Modes,
 		TypeSymbol? ReturnType
 	);
+	
+	private sealed class LambdaFrame(ResolutionContext outer, FunctionType? target)
+	{
+		public ResolutionContext Outer { get; } = outer;
+		public FunctionType? Target { get; } = target;
+		public Dictionary<string, LocalVariableSymbol> Bindings { get; } = [];
+		public List<(LocalVariableSymbol Binding, VarExpressionNode Use)> Captures { get; } = [];
+	}
 	
 	private readonly record struct Redirection
 	(

@@ -1,0 +1,23 @@
+mod test
+
+ext
+{
+	qsort: fun(base: ptr, count: usize, size: usize, compare: ext fun[ptr[i32], ptr[i32] -> i32])
+}
+
+apply: fun(f: fun[i32 -> i32], x: i32) -> i32 = f(x)
+call: fun(f: ref fun[-> i32]) -> i32 = f()
+keep[T: noref]: fun(own value: T) { }
+
+main: fun -> i32
+{
+	val base = 10
+	apply(fun(x) = x + base, 1)
+	var values = [3, 1, 2]
+	qsort(@values, 3, 4, fun(a, b) = (*a - *b) * base)
+	call(fun -> i32 = apply(fun(x) = x + base, 1))
+	val closure = fun -> i32 = base
+	val plain: fun[-> i32] = closure
+	keep(closure)
+	ret 0
+}

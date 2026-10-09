@@ -129,6 +129,7 @@ public sealed class FunctionSymbol
 	public ImplSymbol? Impl { get; internal set; }
 	public ImmutableArray<TypeParameterSymbol> TypeParameters { get; init; } = [];
 	public ImmutableArray<TypeParameterSymbol> DeclaredTypeParameters { get; init; } = [];
+	public ImmutableArray<LocalVariableSymbol> Captures { get; internal set; } = [];
 }
 
 public abstract class TypeSymbol(string name, TypeSymbol? containingType = null, params IEnumerable<Symbol> children)
@@ -371,22 +372,24 @@ public sealed class FunctionGroupType(string functionName, IEnumerable<FunctionI
 	
 	public override int MaterializationCost(TypeSymbol target, MaterializationMode mode) =>
 		target is FunctionType type && Find(type) is { } function
-			? function.Symbol.IsExternal == type.IsExternal ? 0 : 1
+			? (function.Symbol.IsExternal == type.IsExternal ? 0 : 1) + (type.IsRef ? 1 : 0)
 			: int.MaxValue;
 }
 
 public sealed class FunctionType : TypeSymbol
 {
 	public bool IsExternal { get; }
+	public bool IsRef { get; }
 	public ImmutableArray<TypeSymbol> ParameterTypes { get; }
 	public ImmutableArray<ParameterMode> ParameterModes { get; }
 	public TypeSymbol ReturnType { get; }
 	
-	public FunctionType(bool isExternal, ImmutableArray<TypeSymbol> parameterTypes,
+	public FunctionType(bool isExternal, bool isRef, ImmutableArray<TypeSymbol> parameterTypes,
 		ImmutableArray<ParameterMode> parameterModes, TypeSymbol returnType)
-		: base(BuildName(isExternal, parameterTypes, parameterModes, returnType))
+		: base(BuildName(isExternal, isRef, parameterTypes, parameterModes, returnType))
 	{
 		IsExternal = isExternal;
+		IsRef = isRef;
 		ParameterTypes = parameterTypes;
 		ParameterModes = parameterModes;
 		ReturnType = returnType;
@@ -394,10 +397,10 @@ public sealed class FunctionType : TypeSymbol
 	
 	public TypeSymbol GetDeclaredType(int index) => ParameterModes[index].GetDeclaredType(ParameterTypes[index]);
 	
-	private static string BuildName(bool isExternal, ImmutableArray<TypeSymbol> parameterTypes,
+	private static string BuildName(bool isExternal, bool isRef, ImmutableArray<TypeSymbol> parameterTypes,
 		ImmutableArray<ParameterMode> parameterModes, TypeSymbol returnType)
 	{
-		var prefix = isExternal ? "ext fun" : "fun";
+		var prefix = isExternal ? "ext fun" : isRef ? "ref fun" : "fun";
 		var parameters = string.Join(", ", parameterTypes.Select((type, i) => parameterModes[i].Describe(type)));
 		var signature = returnType == NativeSymbols.Void ? parameters
 			: parameters.Length == 0 ? $"-> {returnType.Name}"
@@ -488,6 +491,7 @@ public sealed class LocalVariableSymbol(Token identifier, TypeSymbol type, bool 
 	public bool IsMutBinding { get; init; }
 	public bool IsLoopBinding { get; init; }
 	public bool IsDeferred { get; init; }
+	public VariableSymbol? Captured { get; init; }
 	public Constant? ConstantValue { get; init; }
 }
 

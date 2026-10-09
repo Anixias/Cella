@@ -1,0 +1,16 @@
+mod test
+
+use lib
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+main: fun -> i32
+{
+	var sum = 0.0
+	lib.each([1.5, 2.5, 3.0], fun(value) { sum += value })
+	printf("%f %d %d\n", sum, lib.count(1.5, 3), lib.count(7, 2))
+	ret 0
+}

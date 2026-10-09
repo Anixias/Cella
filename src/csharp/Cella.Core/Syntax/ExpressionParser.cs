@@ -578,6 +578,8 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 	}
 	
 	private bool StartsFunctionType(int index) => Peek(index, TokenType.KeywordFun) ||
+	                                              Peek(index, TokenType.KeywordRef) &&
+	                                              Peek(index + 1, TokenType.KeywordFun) ||
 	                                              Tokens[index] is { Type: TokenType.Identifier, Text: "ext" } &&
 	                                              Peek(index + 1, TokenType.KeywordFun) && !IsNextNewline(index + 1);
 	

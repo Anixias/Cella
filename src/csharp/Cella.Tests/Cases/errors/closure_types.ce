@@ -1,0 +1,10 @@
+mod test
+
+Plain: rec
+{
+	run: ref fun[]
+}
+
+saved: var ref fun[] = fun { }
+
+main: fun -> i32 = 0

@@ -1,0 +1,14 @@
+
+====== closure_moves.ce ======
+
+Error at line 21, column 15
+20 │ {
+21 │     val moved = text
+                     ╘══╛ Cannot move captured variables
+
+Error at line 27, column 11
+26 │ {
+27 │     consume(text)
+                 ╘══╛ Cannot move captured variables
+
+[compilation failed]

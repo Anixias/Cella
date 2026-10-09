@@ -321,6 +321,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 		var declared = function.DeclaredSignature;
 		return
 		[
+			..function.Symbol.Captures.IsEmpty ? [] : new[] { OpaquePointer },
 			..function.Signature.ParameterTypes.Select((type, i) =>
 				_typePool.PassesByPointer(declared.ParameterTypes[i], declared.GetMode(i))
 					? MapPassedPointer(declared.ParameterTypes[i])
@@ -620,7 +621,9 @@ public sealed unsafe class CodeGenerator : IDisposable
 			{
 				var parameters = function.Info.Symbol.Parameters;
 				var signature = currentFunction.CSignature;
-				var firstParameter = signature?.Return.Kind == CPassKind.Indirect ? 1u : 0u;
+				var firstParameter = (signature?.Return.Kind == CPassKind.Indirect ? 1u : 0u) +
+				                     (function.Info.Symbol.Captures.IsEmpty ? 0u : 1u);
+				
 				for (var p = 0; p < parameters.Length; p++)
 				{
 					var paramSymbol = parameters[p];
@@ -924,6 +927,8 @@ public sealed unsafe class CodeGenerator : IDisposable
 		ConversionValue v => EmitConversion(v, builder),
 		CallValue v => EmitCall(v, builder),
 		FunctionReferenceValue v => EmitFunctionReference(v.Function, v.Type),
+		ClosureValue v => EmitClosure(v, builder),
+		EnvironmentValue v => EmitEnvironment(v, builder),
 		IndirectCallValue v => EmitIndirectCall(v, builder),
 		PointerOffsetValue v => EmitPointerOffset(v, builder),
 		PointerDifferenceValue v => EmitPointerDifference(v, builder),
@@ -2543,6 +2548,34 @@ public sealed unsafe class CodeGenerator : IDisposable
 		
 		return function.Symbol.IsExternal ? GetFunctionValue(function) : GetExternalThunk(function);
 	}
+	
+	private LLVMValueRef EmitClosure(ClosureValue closure, LLVMBuilderRef builder)
+	{
+		var environmentType = LLVMTypeRef.CreateArray(OpaquePointer, (uint)closure.Captures.Length);
+		var environment = BuildEntryAlloca(builder, environmentType, "environment");
+		for (var i = 0; i < closure.Captures.Length; i++)
+		{
+			var index = LLVMValueRef.CreateConstInt(LLVMTypeRef.Int32, (ulong)i);
+			var slot = builder.BuildGEP2(environmentType, environment, new[] { Int32Zero, index }, "capture");
+			builder.BuildStore(EmitValue(closure.Captures[i], builder), slot);
+		}
+		
+		var value = builder.BuildInsertValue(MapTypeSymbol(closure.Type).Undef, GetFunctionValue(closure.Function), 0,
+			"closure");
+		
+		return builder.BuildInsertValue(value, environment, 1, "closure");
+	}
+	
+	private LLVMValueRef EmitEnvironment(EnvironmentValue capture, LLVMBuilderRef builder)
+	{
+		var index = LLVMValueRef.CreateConstInt(LLVMTypeRef.Int32, (ulong)capture.Index);
+		var slot = builder.BuildGEP2(OpaquePointer, currentFunction.FunctionValue.GetParam(0), new[] { index },
+			"capture");
+		
+		return builder.BuildLoad2(OpaquePointer, slot, "capture");
+	}
+	
+	private static LLVMValueRef Int32Zero => LLVMValueRef.CreateConstInt(LLVMTypeRef.Int32, 0);
 	
 	private LLVMValueRef GetClosureThunk(FunctionInfo function)
 	{

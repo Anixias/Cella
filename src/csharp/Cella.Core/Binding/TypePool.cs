@@ -320,7 +320,7 @@ public sealed class TypePool
 	
 	public bool HoldsBorrows(TypeSymbol type) => type switch
 	{
-		BorrowType or DynType or FStrType => true,
+		BorrowType or DynType or FStrType or FunctionType { IsRef: true } => true,
 		TypeParameterSymbol parameter => !parameter.IsNoref,
 		StringType => type == NativeSymbols.Str,
 		NamedTypeSymbol { TypeArguments.IsEmpty: false } named => named.IsRef || PartsHoldBorrows(named),
@@ -328,6 +328,26 @@ public sealed class TypePool
 		ArrayType array => HoldsBorrows(array.ElementType),
 		_ => false
 	};
+	
+	public bool CanHoldClosures(TypeSymbol type) => type switch
+	{
+		FunctionType function => function.IsRef,
+		BorrowType borrow => CanHoldClosures(borrow.Target),
+		DynType => true,
+		ArrayType array => CanHoldClosures(array.ElementType),
+		NamedTypeSymbol named => HoldsBorrows(named) && PartsHoldClosures(named),
+		_ => false
+	};
+	
+	private bool PartsHoldClosures(NamedTypeSymbol type)
+	{
+		if (!_borrowChecks.Add(type))
+			return false;
+		
+		var holds = GetParts(type).Any(CanHoldClosures);
+		_borrowChecks.Remove(type);
+		return holds;
+	}
 	
 	private bool PartsHoldBorrows(NamedTypeSymbol type)
 	{
@@ -548,24 +568,29 @@ public sealed class TypePool
 	}
 	
 	public FunctionType GetFunctionType(bool isExternal, IEnumerable<TypeSymbol> parameterTypes,
-		IEnumerable<ParameterMode> parameterModes, TypeSymbol returnType)
+		IEnumerable<ParameterMode> parameterModes, TypeSymbol returnType, bool isRef = false)
 	{
 		var parameters = parameterTypes.ToImmutableArray();
 		var modes = parameterModes.ToImmutableArray();
-		var existing = _functionTypes.Find(type => type.IsExternal == isExternal && type.ReturnType == returnType &&
+		var existing = _functionTypes.Find(type => type.IsExternal == isExternal && type.IsRef == isRef &&
+		                                           type.ReturnType == returnType &&
 		                                           type.ParameterTypes.SequenceEqual(parameters) &&
 		                                           type.ParameterModes.SequenceEqual(modes));
 		
 		if (existing is not null)
 			return existing;
 		
-		var functionType = new FunctionType(isExternal, parameters, modes, returnType);
+		var functionType = new FunctionType(isExternal, isRef, parameters, modes, returnType);
 		_functionTypes.Add(functionType);
 		var size = isExternal ? StorageSize.Ptr : (ISize)StorageSize.Sum(StorageSize.Ptr, StorageSize.Ptr);
 		SizeTable.Register(functionType, size);
 		
 		if (isExternal)
 			ConversionTable.Add(new FreeConversion(functionType, NativeSymbols.VoidPtr, ConversionKind.Explicit));
+		
+		if (isRef)
+			ConversionTable.Add(new FreeConversion(GetFunctionType(false, parameters, modes, returnType), functionType,
+				ConversionKind.Implicit));
 		
 		return functionType;
 	}
@@ -1118,7 +1143,7 @@ public sealed class TypePool
 				ArrayType array => GetArrayType(Substitute(array.ElementType, map), array.Length),
 				FunctionType function => GetFunctionType(function.IsExternal,
 					function.ParameterTypes.Select(parameter => Substitute(parameter, map)), function.ParameterModes,
-					Substitute(function.ReturnType, map)),
+					Substitute(function.ReturnType, map), function.IsRef),
 				_ => type
 			};
 	
@@ -1147,7 +1172,7 @@ public sealed class TypePool
 			                                TryUnify(a.Target, b.Target, variables, bindings),
 			(ArrayType a, ArrayType b) => a.Length == b.Length &&
 			                              TryUnify(a.ElementType, b.ElementType, variables, bindings),
-			(FunctionType a, FunctionType b) => a.IsExternal == b.IsExternal &&
+			(FunctionType a, FunctionType b) => a.IsExternal == b.IsExternal && a.IsRef == b.IsRef &&
 			                                    a.ParameterModes.SequenceEqual(b.ParameterModes) &&
 			                                    TryUnify([..a.ParameterTypes, a.ReturnType],
 				                                    [..b.ParameterTypes, b.ReturnType], variables, bindings),

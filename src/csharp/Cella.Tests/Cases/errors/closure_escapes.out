@@ -1,0 +1,41 @@
+
+====== closure_escapes.ce ======
+
+Error at line 23, column 14
+22 │ {
+23 │     self.run = fun { val copy = base }
+                    ╘═════════════════════╛ Cannot store closures that capture variables in 'self'
+
+Error at line 32, column 6
+31 │ val base = 1
+32 │ ret fun = base
+         ╘════════╛ Cannot return closures that capture variables
+
+Error at line 35, column 44
+34 │ 
+35 │ show: fun(text: Text) -> ref fun[-> i32] = fun = text.id
+                                                ╘═══════════╛ Cannot return closures that capture variables
+
+Error at line 40, column 15
+39 │ val base = 1
+40 │ holder.run = fun { val copy = base }
+                  ╘═════════════════════╛ Cannot store new borrows in 'mut' parameters
+
+Error at line 46, column 6
+45 │ val base = 1
+46 │ ret Holder(fun { val copy = base })
+         ╘═════════════════════════════╛ Cannot return closures that capture variables
+
+Error at line 54, column 2
+53 │ consume(text)
+54 │ show()
+     ╘══╛ Cannot use borrows of moved values
+        | Moved on line 53
+
+Error at line 61, column 2
+60 │ 
+61 │ later()
+     ╘═══╛ Cannot use borrows of dropped values
+         | Dropped on line 59
+
+[compilation failed]

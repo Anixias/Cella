@@ -1,0 +1,18 @@
+mod lib
+
+call[T]: fun(f: ref fun[-> T]) -> T = f()
+
+each[T: copy]: pub fun(values: array[T, 3], visit: ref fun[T])
+{
+	for value in values
+		visit(value)
+}
+
+count[T: copy + noref]: pub fun(value: T, times: i32) -> i32
+{
+	var total = 0
+	for i in 0..times
+		total += call(fun -> i32 = i + 1)
+
+	ret call(fun -> i32 = total * 10)
+}

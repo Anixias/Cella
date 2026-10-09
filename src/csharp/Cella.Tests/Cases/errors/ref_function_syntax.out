@@ -1,0 +1,24 @@
+
+====== ref_function_syntax.ce ======
+
+Error at line 5, column 6
+4 │ {
+5 │     val ref = 1
+            ╘═╛ Expected a name after 'val'
+
+Error at line 8, column 25
+7 │ 
+8 │ notFunction: fun(x: ref i32)
+                            ╘═╛ Expected 'fun'
+
+Error at line 12, column 22
+11 │ 
+12 │ external: fun(f: ref ext fun[i32])
+                          ╘═╛ Expected 'fun'
+
+Error at line 16, column 28
+15 │ 
+16 │ parentheses: fun(f: ref fun(i32))
+                                ^ Expected '['
+
+[compilation failed]

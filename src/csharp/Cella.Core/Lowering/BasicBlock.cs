@@ -115,6 +115,23 @@ public sealed class FunctionReferenceValue(FunctionInfo function, TypeSymbol typ
 	public FunctionInfo Function { get; } = function;
 }
 
+public sealed class ClosureValue
+(
+	FunctionInfo function,
+	IEnumerable<Value> captures,
+	TypeSymbol type,
+	SourceLocation sourceLocation
+) : Value(type, false, sourceLocation)
+{
+	public FunctionInfo Function { get; } = function;
+	public ImmutableArray<Value> Captures { get; } = captures.ToImmutableArray();
+}
+
+public sealed class EnvironmentValue(int index, TypeSymbol type) : Value(type, false, SourceLocation.None)
+{
+	public int Index { get; } = index;
+}
+
 public sealed class IndirectCallValue
 (
 	Value target,

@@ -92,7 +92,7 @@ public static class Mangling
 			: parameters.Length == 0 ? $"-> {returnType}"
 			: $"{parameters} -> {returnType}";
 		
-		return $"{(function.IsExternal ? "ext fun" : "fun")}[{signature}]";
+		return $"{(function.IsExternal ? "ext fun" : function.IsRef ? "ref fun" : "fun")}[{signature}]";
 	}
 	
 	public static string Demangle(ReadOnlySpan<char> name)

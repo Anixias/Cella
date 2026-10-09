@@ -7,6 +7,7 @@ public sealed class FunctionTypeNode
 (
 	SourceLocation sourceLocation,
 	bool isExternal,
+	bool isRef,
 	IEnumerable<Token?> parameterModes,
 	IEnumerable<ITypeNode> parameterTypes,
 	ITypeNode? returnType
@@ -14,6 +15,7 @@ public sealed class FunctionTypeNode
 {
 	public SourceLocation SourceLocation { get; } = sourceLocation;
 	public bool IsExternal { get; } = isExternal;
+	public bool IsRef { get; } = isRef;
 	public ImmutableArray<Token?> ParameterModes { get; } = parameterModes.ToImmutableArray();
 	public ImmutableArray<ITypeNode> ParameterTypes { get; } = parameterTypes.ToImmutableArray();
 	public ITypeNode? ReturnType { get; } = returnType;

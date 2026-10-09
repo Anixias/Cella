@@ -1,0 +1,63 @@
+mod test
+
+Text: rec
+{
+	id: i32
+
+	drop: op
+	{
+	}
+}
+
+Holder: ref rec
+{
+	run: ref fun[]
+}
+
+Builder: ref rec
+{
+	run: ref fun[]
+
+	new: op(base: i32)
+	{
+		self.run = fun { val copy = base }
+	}
+}
+
+consume: fun(own text: Text) { }
+
+make: fun -> ref fun[-> i32]
+{
+	val base = 1
+	ret fun = base
+}
+
+show: fun(text: Text) -> ref fun[-> i32] = fun = text.id
+
+store: fun(mut holder: Holder)
+{
+	val base = 1
+	holder.run = fun { val copy = base }
+}
+
+wrap: fun -> Holder
+{
+	val base = 1
+	ret Holder(fun { val copy = base })
+}
+
+main: fun -> i32
+{
+	var text = Text(1)
+	val show = fun -> i32 = text.id
+	consume(text)
+	show()
+	text = Text(2)
+	show()
+	var later: ref fun[-> i32] = fun = 0
+	for i in 0..3
+		later = fun = i
+
+	later()
+	ret 0
+}

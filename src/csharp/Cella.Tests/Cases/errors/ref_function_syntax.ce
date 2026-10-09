@@ -1,0 +1,20 @@
+mod test
+
+named: fun
+{
+	val ref = 1
+}
+
+notFunction: fun(x: ref i32)
+{
+}
+
+external: fun(f: ref ext fun[i32])
+{
+}
+
+parentheses: fun(f: ref fun(i32))
+{
+}
+
+main: fun -> i32 = 0

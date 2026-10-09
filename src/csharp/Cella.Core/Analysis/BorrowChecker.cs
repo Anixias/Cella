@@ -19,6 +19,7 @@ public sealed class BorrowChecker(TypePool typePool, DiagnosticList diagnostics)
 	
 	private enum Escape
 	{
+		Closure,
 		Local,
 		Unstored,
 		Owned,
@@ -30,6 +31,7 @@ public sealed class BorrowChecker(TypePool typePool, DiagnosticList diagnostics)
 	private readonly record struct Invalidation(Ending Ending, SourceLocation Location);
 	
 	private readonly HashSet<SourceLocation> _reported = [];
+	private readonly ClosureEnvironment _environment = new();
 	private HashSet<VariableSymbol> returned = [];
 	private Dictionary<ParameterSymbol, Escape?> parameterEscapes = [];
 	private ParameterSymbol? receiver;
@@ -235,7 +237,9 @@ public sealed class BorrowChecker(TypePool typePool, DiagnosticList diagnostics)
 	{
 		var location = GetLocation(value, fallback);
 		if (FindEscape(written) is { } escape && _reported.Add(location))
-			diagnostics.Add(new(DiagnosticSeverity.Error, location, $"Cannot return borrows of {Describe(escape)}"));
+			diagnostics.Add(new(DiagnosticSeverity.Error, location, escape == Escape.Closure
+				? "Cannot return closures that capture variables"
+				: $"Cannot return borrows of {Describe(escape)}"));
 	}
 	
 	private static SourceLocation GetLocation(Value value, SourceLocation fallback) =>
@@ -276,9 +280,12 @@ public sealed class BorrowChecker(TypePool typePool, DiagnosticList diagnostics)
 			{
 				HeldBorrows => "Cannot store borrows through borrows from parameters",
 				_ when written.Any(source => source.Root == root) => "Cannot store borrows of values in themselves",
-				ParameterSymbol parameter when parameter == constructorSelf => FindEscape(written) is { } escape
-					? $"Cannot store borrows of {Describe(escape)} in 'self'"
-					: null,
+				ParameterSymbol parameter when parameter == constructorSelf => FindEscape(written) switch
+				{
+					Escape.Closure => "Cannot store closures that capture variables in 'self'",
+					{ } escape => $"Cannot store borrows of {Describe(escape)} in 'self'",
+					null => null
+				},
 				ParameterSymbol { Mode: ParameterMode.Mut } parameter when !IsHeld(written, parameter, state) =>
 					parameter == receiver
 						? "Cannot store new borrows in 'self'"
@@ -299,6 +306,7 @@ public sealed class BorrowChecker(TypePool typePool, DiagnosticList diagnostics)
 	
 	private Escape? FindEscape(VariableSymbol root) => root switch
 	{
+		ClosureEnvironment => Escape.Closure,
 		ParameterSymbol parameter => parameterEscapes[parameter],
 		LocalVariableSymbol local => local.Name.StartsWith('.') ? Escape.Unstored : Escape.Local,
 		_ => null
@@ -327,6 +335,7 @@ public sealed class BorrowChecker(TypePool typePool, DiagnosticList diagnostics)
 				break;
 			
 			case WriteEvent e:
+				state.Revive(e.Place);
 				if (e.Place.Path.IsEmpty)
 					state.Set(e.Place.Root, Written(e, state));
 				else
@@ -365,7 +374,8 @@ public sealed class BorrowChecker(TypePool typePool, DiagnosticList diagnostics)
 		{
 			Function: { Symbol.Kind: FunctionKind.Constructor, DeclaredSignature: var signature }
 		} constructor => typePool.HoldsBorrows(signature.GetDeclaredType(0))
-			? CallSources(constructor.Function, [..constructor.Arguments.Skip(1)], 1, state)
+			? Results(CallSources(constructor.Function, [..constructor.Arguments.Skip(1)], 1, state),
+				signature.GetDeclaredType(0))
 			: [],
 		var value => Stored(value, state)
 	};
@@ -386,14 +396,31 @@ public sealed class BorrowChecker(TypePool typePool, DiagnosticList diagnostics)
 				or UnaryOpValue { Op: UnaryOperation.Dereference } => ReadSources(value, state),
 			ConversionValue v => Sources(v.Source, state),
 			AssignValue v => ReadSources(v.Left, state),
-			CallValue v when typePool.HoldsBorrows(v.Type) => CallSources(v.Function, v.Arguments, 0, state),
-			IndirectCallValue v when typePool.HoldsBorrows(v.Type) => IndirectCallSources(v, state),
+			CallValue v when typePool.HoldsBorrows(v.Type) => Results(CallSources(v.Function, v.Arguments, 0, state),
+				v.Type),
+			IndirectCallValue v when typePool.HoldsBorrows(v.Type) => Results(IndirectCallSources(v, state), v.Type),
 			EnumValue v => [..v.Payload.SelectMany(payload => Sources(payload, state))],
 			ArrayValue v => [..v.Elements.SelectMany(element => Sources(element, state))],
 			FStrValue v => TemplateSources(v, state),
 			FStrPartValue v => Sources(v.Target, state),
+			ClosureValue v => [new Place(_environment, []), ..v.Captures.SelectMany(c => CaptureSources(c, state))],
 			_ => []
 		};
+	}
+	
+	private List<Place> Results(List<Place> sources, TypeSymbol type) => typePool.CanHoldClosures(type)
+		? sources
+		: [..sources.Where(static source => source.Root is not ClosureEnvironment)];
+	
+	private List<Place> CaptureSources(Value capture, BorrowState state)
+	{
+		if (capture is not UnaryOpValue { Op: UnaryOperation.AddressOf } address)
+			return [];
+		
+		var place = EventLinearizer.GetPlace(address.Operand);
+		return place is { Root: not LocalVariableSymbol { IsBorrowBinding: true } }
+			? [place.Project(new CaptureProjection())]
+			: BorrowSources(address.Operand, state);
 	}
 	
 	private List<Place> TemplateSources(FStrValue template, BorrowState state)
@@ -475,6 +502,11 @@ public sealed class BorrowChecker(TypePool typePool, DiagnosticList diagnostics)
 			sources.AddRange(ArgumentSources(call.Arguments[i],
 				GetEscape(type.ParameterModes[i], type.GetDeclaredType(i), true), state));
 		
+		if (type.IsRef)
+			sources.AddRange(Sources(call.Target, state)
+				.Where(static source => source.Root is not ClosureEnvironment)
+				.Select(static source => IsCapture(source) ? source with { Path = source.Path[..^1] } : source));
+		
 		return sources;
 	}
 	
@@ -504,6 +536,8 @@ public sealed class BorrowChecker(TypePool typePool, DiagnosticList diagnostics)
 		return typePool.IsViewRecord(declared) ? Escape.ViewRecord : null;
 	}
 	
+	private static bool IsCapture(Place source) => source.Path is [.., CaptureProjection];
+	
 	private static bool Overlaps(Place first, Place second) => first.Root == second.Root &&
 	                                                           !first.Path.Zip(second.Path).Any(static pair =>
 		                                                           AreDisjoint(pair.First, pair.Second));
@@ -520,6 +554,8 @@ public sealed class BorrowChecker(TypePool typePool, DiagnosticList diagnostics)
 	{
 		public ParameterSymbol Parameter { get; } = parameter;
 	}
+	
+	private sealed class ClosureEnvironment() : VariableSymbol("closure");
 	
 	private sealed class PlaceComparer : IEqualityComparer<Place>
 	{
@@ -574,10 +610,25 @@ public sealed class BorrowChecker(TypePool typePool, DiagnosticList diagnostics)
 		
 		public void End(Place place, Invalidation invalidation)
 		{
+			var isReassignment = invalidation.Ending == Ending.Reassigned;
 			foreach (var sources in _holds.Values)
 			{
-				foreach (var source in sources.Keys.Where(s => Overlaps(s, place)).ToList())
+				var ended = sources.Keys
+					.Where(source => Overlaps(source, place) && !(isReassignment && IsCapture(source)))
+					.ToList();
+				
+				foreach (var source in ended)
 					sources[source] = sources[source].Add(invalidation);
+			}
+		}
+		
+		public void Revive(Place place)
+		{
+			foreach (var sources in _holds.Values)
+			{
+				foreach (var source in sources.Keys.Where(s => IsCapture(s) && s.Root == place.Root &&
+				                                               s.Path[..^1].SequenceEqual(place.Path)).ToList())
+					sources[source] = [];
 			}
 		}
 		

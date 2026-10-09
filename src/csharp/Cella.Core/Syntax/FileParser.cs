@@ -486,7 +486,7 @@ public sealed class FileParser
 	
 	private bool StartsType(int index) => Peek(index, TokenType.Identifier) || Peek(index, TokenType.KeywordImm) ||
 	                                      Peek(index, TokenType.KeywordMut) || Peek(index, TokenType.KeywordDyn) ||
-	                                      Peek(index, TokenType.KeywordFun);
+	                                      Peek(index, TokenType.KeywordFun) || Peek(index, TokenType.KeywordRef);
 	
 	private ITypeNode? ParseConstraintType(ref int index)
 	{
@@ -730,8 +730,8 @@ public sealed class FileParser
 	
 	private bool StartsMemberType(int index) =>
 		!AtEnd(index) && Tokens[index].Line == Tokens[index - 1].Line && Tokens[index].Type is TokenType.Identifier
-			or TokenType.KeywordFun or TokenType.KeywordImm or TokenType.KeywordMut or TokenType.KeywordVal
-			or TokenType.KeywordVar;
+			or TokenType.KeywordFun or TokenType.KeywordRef or TokenType.KeywordImm or TokenType.KeywordMut
+			or TokenType.KeywordVal or TokenType.KeywordVar;
 	
 	private static bool IsNarrower(Token write, Token read) =>
 		write.Type == TokenType.KeywordPvt && read.Type == TokenType.KeywordMod;
@@ -1648,7 +1648,7 @@ public sealed class FileParser
 	{
 		if (Match(ref index, _memberContextualKeywords, TokenType.KeywordProp))
 			return IsOnSameLine(index) && Tokens[index].Type is TokenType.Identifier or TokenType.KeywordFun
-				or TokenType.KeywordImm or TokenType.KeywordMut;
+				or TokenType.KeywordRef or TokenType.KeywordImm or TokenType.KeywordMut;
 		
 		return Match(ref index, _memberContextualKeywords, _accessorKeywords) && IsOnSameLine(index) &&
 		       Tokens[index].Type is TokenType.OpOpenParen or TokenType.OpArrow or TokenType.OpEqual
@@ -1797,7 +1797,8 @@ public sealed class FileParser
 	private List<Token> ParseFieldModifiers(ref int index)
 	{
 		var modifiers = new List<Token>();
-		if ((Peek(index + 1, TokenType.Identifier) || Peek(index + 1, TokenType.KeywordFun)) &&
+		if ((Peek(index + 1, TokenType.Identifier) || Peek(index + 1, TokenType.KeywordFun) ||
+		     Peek(index + 1, TokenType.KeywordRef)) &&
 		    Tokens[index + 1].Line == Tokens[index].Line &&
 		    Match(ref index, out var reqToken, _memberContextualKeywords, TokenType.KeywordReq))
 			modifiers.Add(reqToken);

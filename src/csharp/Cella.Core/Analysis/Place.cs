@@ -9,6 +9,7 @@ public sealed record FieldProjection(FieldSymbol Field) : Projection;
 public sealed record IndexProjection(BigInteger? Index) : Projection;
 public sealed record PayloadProjection(EnumCaseSymbol Case, int Index) : Projection;
 public sealed record DerefProjection : Projection;
+public sealed record CaptureProjection : Projection;
 
 public sealed record Place(VariableSymbol Root, ImmutableArray<Projection> Path)
 {

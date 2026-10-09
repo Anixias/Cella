@@ -147,6 +147,10 @@ public sealed class EventLinearizer
 					AddValues(v.Arguments);
 					break;
 				
+				case ClosureValue v:
+					AddValues(v.Captures);
+					break;
+				
 				case ConversionValue v:
 					value = v.Source;
 					continue;

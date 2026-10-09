@@ -1,0 +1,143 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Text: rec
+{
+	id: i32
+
+	drop: op
+	{
+		printf("drop %d\n", self.id)
+	}
+}
+
+Maybe: enum
+{
+	some(value: Text)
+	none
+}
+
+Ticker: ref rec
+{
+	next: ref fun[-> i32]
+}
+
+Counter: rec
+{
+	count: i32
+
+	add: fun(self, x: i32) -> i32 = apply(fun(y) = y + self.count, x)
+
+	grow: fun(mut self, by: i32)
+	{
+		apply(fun(y)
+		{
+			self.count += y
+			ret 0
+		}, by)
+	}
+}
+
+Doubled: rec
+{
+	v: i32
+
+	new: op(x: i32)
+	{
+		self.v = call(fun = x * 2)
+	}
+}
+
+each: fun(values: array[i32, 3], visit: ref fun[i32])
+{
+	for value in values
+		visit(value)
+}
+
+apply: fun(f: ref fun[i32 -> i32], x: i32) -> i32 = f(x)
+
+call: fun(f: ref fun[-> i32]) -> i32 = f()
+
+generic[T]: fun(f: ref fun[-> T]) -> T = f()
+
+repeat[T: copy + noref]: fun(value: T) -> T = generic(fun = value)
+
+bump: fun(mut value: i32)
+{
+	value += 1
+}
+
+triple: fun(x: i32) -> i32 = x * 3
+
+main: fun -> i32
+{
+	val base = 10
+	var total = 0
+	each([1, 2, 3], fun(value) { total += value + base })
+
+	val tick = fun
+	{
+		total += 1
+		bump(mut total)
+	}
+
+	tick()
+
+	var name = Text(1)
+	val show = fun -> i32 = name.id
+	name = Text(2)
+	printf("%d %d\n", total, show())
+
+	var scale = 2
+	val scaled = fun(x: i32) -> i32 = x * scale
+	scale = 3
+	val widened: ref fun[i32 -> i32] = triple
+	printf("%d %d %d\n", scaled(5), widened(2), apply(triple, 3))
+
+	val outer = fun -> i32
+	{
+		val inner = 3
+		total += 10
+		ret call(fun = base + total + inner)
+	}
+
+	printf("%d %d\n", outer(), total)
+
+	var counter = Counter(5)
+	counter.grow(7)
+	printf("%d %d\n", counter.add(1), Doubled(21).v)
+
+	var count = 0
+	val ticker = Ticker(fun
+	{
+		count += 1
+		ret count
+	})
+
+	ticker.next()
+	printf("%d %d\n", ticker.next(), count)
+
+	var b = 2
+	val fs: array[ref fun[-> i32], 2] = [fun = base, fun = b]
+	b = 5
+	printf("%d %d\n", fs[0](), fs[1]())
+
+	val maybe = Maybe.some(Text(4))
+	match maybe
+	{
+		some(t) => printf("%d\n", call(fun = t.id))
+		none => printf("none\n")
+	}
+
+	val texts = [Text(6), Text(7)]
+	var sum = 0
+	for text in texts
+		sum += call(fun = text.id * 10)
+
+	printf("%d %d %f\n", sum, repeat(4), repeat(2.5))
+	ret 0
+}

@@ -25,7 +25,7 @@ public readonly struct ResolutionContext
 	public TraitSymbol? Trait { get; init; }
 	public ImplSymbol? ImplBlock { get; init; }
 	public Func<ConstraintCheck, bool>? DeferConstraintCheck { get; init; }
-	public Func<string, bool>? IsCaptured { get; init; }
+	public Func<string, Symbol?>? Capture { get; init; }
 	
 	public string Mangle(Symbol symbol) => Mangling.Mangle(symbol, Modules, GetQualifiers());
 	
@@ -94,8 +94,8 @@ public readonly struct ResolutionContext
 		if (ContainingFunction?.Symbol.Parameters.FirstOrDefault(p => p.Name == name) is { } param)
 			return param;
 		
-		if (IsCaptured?.Invoke(name) == true)
-			return new CapturedSymbol(name);
+		if (Capture?.Invoke(name) is { } captured)
+			return captured;
 		
 		if (!TypeParameters.IsDefault && TypeParameters.FirstOrDefault(p => p.Name == name) is { } typeParameter)
 			return typeParameter;
@@ -403,7 +403,7 @@ public readonly struct ResolutionContext
 		}
 		
 		var returnType = node.ReturnType is { } returnTypeNode ? ResolveType(returnTypeNode) : NativeSymbols.Void;
-		var functionType = TypePool.GetFunctionType(node.IsExternal, parameterTypes, modes, returnType);
+		var functionType = TypePool.GetFunctionType(node.IsExternal, parameterTypes, modes, returnType, node.IsRef);
 		if (functionType.IsExternal && ExtSignatureTypes is { } signatureTypes)
 		{
 			for (var i = 0; i < node.ParameterTypes.Length; i++)

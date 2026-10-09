@@ -179,6 +179,12 @@ public sealed class Lowerer
 		
 		private void LowerBody(ResolvedFunctionNode node, IResolvedStatementNode body)
 		{
+			var captures = node.FunctionInfo.Symbol.Captures;
+			var location = node.Syntax.SourceLocation;
+			for (var i = 0; i < captures.Length; i++)
+				Declare(GetOrMakeBlock(),
+					new LocalVarInstruction(captures[i], new EnvironmentValue(i, captures[i].Type), location));
+			
 			var signature = node.FunctionInfo.Signature;
 			var parameters = node.FunctionInfo.Symbol.Parameters
 				.Select((p, i) => new VariableInfo(p, signature.ParameterTypes[i]))
@@ -1017,6 +1023,13 @@ public sealed class Lowerer
 		
 		public Value Visit(ResolvedFunctionReferenceExpressionNode node) =>
 			new FunctionReferenceValue(node.Function, node.Type, node.Syntax.SourceLocation);
+		
+		public Value Visit(ResolvedClosureExpressionNode node) => new ClosureValue(node.Function,
+			node.Captures.Select(CaptureAddress), node.Type, node.Syntax.SourceLocation);
+		
+		private UnaryOpValue CaptureAddress(IResolvedExpressionNode capture) =>
+			new(_typePool.GetPointerType(capture.Type), VisitPlace(capture), UnaryOperation.AddressOf,
+				capture.Syntax.SourceLocation);
 		
 		public Value Visit(ResolvedIndirectCallExpressionNode node)
 		{

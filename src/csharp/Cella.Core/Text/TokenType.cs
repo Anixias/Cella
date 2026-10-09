@@ -206,6 +206,7 @@ public static class TokenTypeInfo
 			[TokenType.KeywordWhen] = new("when", IsKeyword: true),
 			[TokenType.KeywordNew] = new("new", IsKeyword: true),
 			[TokenType.KeywordDrop] = new("drop", IsKeyword: true),
+			[TokenType.KeywordRef] = new("ref", IsKeyword: true),
 			
 			[TokenType.KeywordMod] = new("mod", IsKeyword: true, IsContextual: true),
 			[TokenType.KeywordUse] = new("use", IsKeyword: true, IsContextual: true),
@@ -215,7 +216,6 @@ public static class TokenTypeInfo
 			[TokenType.KeywordEnum] = new("enum", IsKeyword: true, IsContextual: true),
 			[TokenType.KeywordOp] = new("op", IsKeyword: true, IsContextual: true),
 			[TokenType.KeywordReq] = new("req", IsKeyword: true, IsContextual: true),
-			[TokenType.KeywordRef] = new("ref", IsKeyword: true, IsContextual: true),
 			[TokenType.KeywordPvt] = new("pvt", IsKeyword: true, IsContextual: true),
 			[TokenType.KeywordSet] = new("set", IsKeyword: true, IsContextual: true),
 			[TokenType.KeywordGet] = new("get", IsKeyword: true, IsContextual: true),
