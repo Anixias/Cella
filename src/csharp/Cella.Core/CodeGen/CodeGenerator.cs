@@ -330,6 +330,9 @@ public sealed unsafe class CodeGenerator : IDisposable
 	
 	private TypeSymbol Substitute(TypeSymbol type) => _typePool.Substitute(type, substitution);
 	
+	private static bool IsEmitted(FunctionInfo function) =>
+		!IsOpenGeneric(function) && function.Symbol.Syntax is not FunctionNode { When.IsActive: false };
+	
 	private static bool IsOpenGeneric(FunctionInfo function) =>
 		!function.Symbol.TypeParameters.IsEmpty && (function.TypeArguments.IsDefaultOrEmpty ||
 		                                            function.TypeArguments.Any(TypePool.ContainsTypeParameters));
@@ -450,7 +453,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 				GetFunctionValue(function);
 			
 			// Create and map functions
-			foreach (var function in file.Functions.Where(static function => !IsOpenGeneric(function.Info)))
+			foreach (var function in file.Functions.Where(static function => IsEmitted(function.Info)))
 			{
 				var info = CreateFunction(current.Module, function.Info);
 				var llvmFunction = info.FunctionValue;
@@ -487,7 +490,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 		foreach (var file in module.Files)
 		{
 			// Build function bodies
-			foreach (var function in file.Functions.Where(static function => !IsOpenGeneric(function.Info)))
+			foreach (var function in file.Functions.Where(static function => IsEmitted(function.Info)))
 				BuildFunction(function, function.Info);
 		}
 	}

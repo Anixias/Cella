@@ -24,7 +24,12 @@ internal static class Program
 	{
 		var verbose = !args.Contains("--quiet");
 		var optimizeMode = args.Contains("--release") ? OptimizeMode.Release : OptimizeMode.Debug;
-		var sourcePath = args.FirstOrDefault(static a => !a.StartsWith("--"));
+		if (ParseFlagArguments(args) is not { } flagOverrides)
+			return 1;
+		
+		var sourcePath = args.Where((arg, i) => !arg.StartsWith("--") && (i == 0 || args[i - 1] != "--flag"))
+			.FirstOrDefault();
+		
 		if (sourcePath is null)
 			return 1;
 		
@@ -58,6 +63,10 @@ internal static class Program
 			return 1;
 		}
 		
+		var targetTriple = TargetTriple.FromHost(); // TODO Check CLI args for cross-compilation
+		if (!ValidateFlags(projectDependencies.Keys, BuildFlags.Create(targetTriple, optimizeMode), flagOverrides))
+			return 1;
+		
 		var conversionTable = ConversionTable.CreateNative();
 		var operatorRegistry = new OperatorRegistry();
 		var sizeTable = new SizeTable();
@@ -74,7 +83,9 @@ internal static class Program
 			}
 			
 			var dependencyInfo = dependencies.Select(dependency => projectSymbols[dependency]).ToList();
-			var assemblyInfo = await BuildProject(project, typePool, dependencyInfo, verbose, optimizeMode, cts.Token);
+			var assemblyInfo = await BuildProject(project, typePool, dependencyInfo, verbose, optimizeMode,
+				targetTriple, flagOverrides, cts.Token);
+			
 			if (assemblyInfo.Succeeded)
 				projectSymbols[project] = assemblyInfo;
 			else
@@ -82,6 +93,69 @@ internal static class Program
 		}
 		
 		return succeeded ? 0 : 1;
+	}
+	
+	private static Dictionary<string, bool>? ParseFlagArguments(string[] args)
+	{
+		var flags = new Dictionary<string, bool>();
+		for (var i = 0; i < args.Length; i++)
+		{
+			if (args[i] != "--flag")
+				continue;
+			
+			if (++i == args.Length)
+			{
+				Console.WriteLine("Expected a flag after '--flag'");
+				return null;
+			}
+			
+			var parts = args[i].Split('=', 2);
+			if (parts is [_, not ("true" or "false")])
+			{
+				Console.WriteLine($"Expected 'true' or 'false' for flag '{parts[0]}'");
+				return null;
+			}
+			
+			flags[parts[0]] = parts is [_] or [_, "true"];
+		}
+		
+		return flags;
+	}
+	
+	private static bool ValidateFlags(IEnumerable<ProjectInfo> projects, IReadOnlyDictionary<string, bool> builtIn,
+		IReadOnlyDictionary<string, bool> overrides)
+	{
+		var declared = new HashSet<string>();
+		var isValid = true;
+		foreach (var project in projects)
+		{
+			foreach (var name in project.Project.Flags?.Keys ?? Enumerable.Empty<string>())
+			{
+				var problem = builtIn.ContainsKey(name) ? $"Flag '{name}' is built in"
+					: BuildFlags.IsValidName(name) ? null
+					: $"'{name}' is not a valid flag name";
+				
+				if (problem is null)
+				{
+					declared.Add(name);
+					continue;
+				}
+				
+				Console.WriteLine($"{project.FilePath}: {problem}");
+				isValid = false;
+			}
+		}
+		
+		foreach (var name in overrides.Keys.Where(name => builtIn.ContainsKey(name) || !declared.Contains(name)))
+		{
+			Console.WriteLine(builtIn.ContainsKey(name)
+				? $"Cannot set built-in flag '{name}'"
+				: $"Flag '{name}' not found");
+			
+			isValid = false;
+		}
+		
+		return isValid;
 	}
 	
 	private static async Task<DependencyGraph<ProjectInfo>> MapDependenciesAsync(HashSet<string> projectPaths)
@@ -171,11 +245,16 @@ internal static class Program
 			.Concat(library.ExportedStatics);
 	
 	private static async Task<AssemblyInfo> BuildProject(ProjectInfo project, TypePool typePool,
-		IEnumerable<AssemblyInfo> dependencies, bool verbose, OptimizeMode optimizeMode, CancellationToken ct = default)
+		IEnumerable<AssemblyInfo> dependencies, bool verbose, OptimizeMode optimizeMode, TargetTriple targetTriple,
+		IReadOnlyDictionary<string, bool> flagOverrides, CancellationToken ct = default)
 	{
 		// Phase 1: File parsing
 		var outputType = project.Project.OutputType;
-		var (files, parseDiagnostics) = await ProcessProject(project, ct);
+		var flags = BuildFlags.Create(targetTriple, optimizeMode);
+		foreach (var (name, value) in project.Project.Flags ?? [])
+			flags[name] = flagOverrides.GetValueOrDefault(name, value);
+		
+		var (files, parseDiagnostics) = await ProcessProject(project, flags, ct);
 		var diagnostics = new List<DiagnosticList> { parseDiagnostics };
 		
 		if (ReportErrors(diagnostics, project.Directory))
@@ -200,8 +279,6 @@ internal static class Program
 		
 		// TODO Should I make a dependency here on LLVM? This implies a Language Server would also have to do this
 		// We need to know the pointer size of the target for proper symbol resolution
-		var targetTriple = TargetTriple.FromHost(); // TODO Check CLI args for cross-compilation
-		
 		var objDir = Path.Combine(project.Directory, "obj");
 		var outputConfig = new OutputConfig(objDir, true, true);
 		var targetConfig = new TargetConfig(targetTriple.ToLlvm(), Features: targetTriple.ToLlvmFeatures());
@@ -403,7 +480,7 @@ internal static class Program
 	}
 	
 	private static async Task<(ImmutableArray<SourceFileInfo> Files, DiagnosticList Diagnostics)> ProcessProject(
-		ProjectInfo project, CancellationToken ct = default)
+		ProjectInfo project, IReadOnlyDictionary<string, bool> flags, CancellationToken ct = default)
 	{
 		var files = new ConcurrentBag<SourceFileInfo>();
 		var diagnostics = new DiagnosticList();
@@ -430,12 +507,12 @@ internal static class Program
 			
 			var fileName = Path.GetRelativePath(project.Directory, sourcePath);
 			
-			var parser = new FileParser(tokens, fileName, sourcePath);
+			var parser = new FileParser(tokens, fileName, sourcePath, flags);
 			var ast = parser.Parse();
 			ct.ThrowIfCancellationRequested();
 			
 			diagnostics.AddRange(parser.Diagnostics);
-			if (ast is not null)
+			if (ast is { IsExcluded: false })
 			{
 				// TODO Make opt-in via CLI flags
 				//Console.WriteLine(AstPrinter.Print(ast));

@@ -5,8 +5,13 @@ using Cella.Diagnostics;
 
 namespace Cella.Core.Syntax;
 
-public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, string fullPath)
-	: BaseParser<FileNode>(tokens)
+public sealed class FileParser
+(
+	ImmutableArray<Token> tokens,
+	string fileName,
+	string fullPath,
+	IReadOnlyDictionary<string, bool> flags
+) : BaseParser<FileNode>(tokens)
 {
 	private static readonly Dictionary<string, TokenType> _topLevelContextualKeywords =
 		BuildContextualKeywords(TokenType.KeywordMod, TokenType.KeywordUse, TokenType.KeywordPub, TokenType.KeywordPvt,
@@ -103,6 +108,8 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 		
 		var moduleNameAllowed = true;
 		var importsAllowed = false;
+		var conditionAllowed = false;
+		var isIncluded = true;
 		
 		while (!AtEnd(index))
 		{
@@ -123,6 +130,7 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 				{
 					moduleNameAllowed = false;
 					importsAllowed = true;
+					conditionAllowed = true;
 				}
 				else
 				{
@@ -134,6 +142,21 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 			// Parse imports
 			if (Match(ref index, out var useToken, _topLevelContextualKeywords, TokenType.KeywordUse))
 			{
+				if (Match(ref index, TokenType.KeywordWhen))
+				{
+					if (!conditionAllowed)
+						Report(useToken, "'use when' must directly follow the module name");
+					
+					if (ParseCondition(ref index) is { } condition)
+						isIncluded &= condition;
+					else
+						ResyncTopLevel(ref index);
+					
+					conditionAllowed = false;
+					continue;
+				}
+				
+				conditionAllowed = false;
 				if (ParseImportExpression(ref index) is { } import)
 					imports.Add(import);
 				else
@@ -148,6 +171,7 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 			if (ParseTopLevelDeclaration(ref index, declarations, null))
 			{
 				importsAllowed = false;
+				conditionAllowed = false;
 				continue;
 			}
 			
@@ -182,7 +206,8 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 			FullPath = fullPath,
 			ModuleName = moduleName,
 			Imports = imports.ToImmutableArray(),
-			Declarations = declarations.ToImmutableArray()
+			Declarations = declarations.ToImmutableArray(),
+			IsExcluded = !isIncluded
 		};
 	}
 	
@@ -194,6 +219,15 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 				Report(keyword, $"Cannot use '{keyword.Text}' in '{outer.Text}' blocks");
 			
 			ParseTopLevelBlock(ref index, openBrace, block ?? keyword, declarations);
+			return true;
+		}
+		
+		if (Match(ref index, TokenType.KeywordWhen))
+		{
+			if (!ParseWhen(ref index, (ref int i, Token open, bool isActive) =>
+				    ParseTopLevelBlock(ref i, open, block, isActive ? declarations : [])))
+				ResyncTopLevel(ref index, block is not null);
+			
 			return true;
 		}
 		
@@ -488,14 +522,14 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 		return true;
 	}
 	
-	private void ParseTopLevelBlock(ref int index, Token openBrace, Token block, List<IDeclarationNode> declarations)
+	private bool ParseTopLevelBlock(ref int index, Token openBrace, Token? block, List<IDeclarationNode> declarations)
 	{
 		while (!Match(ref index, TokenType.OpCloseBrace))
 		{
 			if (AtEnd(index))
 			{
 				Report(openBrace, "Expected '}' to close this block");
-				return;
+				return false;
 			}
 			
 			if (ParseTopLevelDeclaration(ref index, declarations, block))
@@ -505,8 +539,99 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 			while (!AtEnd(index))
 				index++;
 			
-			return;
+			return false;
 		}
+		
+		return true;
+	}
+	
+	private delegate bool BranchParser(ref int index, Token openBrace, bool isActive);
+	
+	private bool ParseWhen(ref int index, BranchParser parseBranch)
+	{
+		var taken = false;
+		while (true)
+		{
+			if (ParseCondition(ref index) is not { } condition ||
+			    !ParseBranch(ref index, parseBranch, condition && !taken))
+				return false;
+			
+			taken |= condition;
+			if (!Match(ref index, TokenType.KeywordElse))
+				return true;
+			
+			if (!Match(ref index, TokenType.KeywordWhen))
+				return ParseBranch(ref index, parseBranch, !taken);
+		}
+	}
+	
+	private bool ParseBranch(ref int index, BranchParser parseBranch, bool isActive)
+	{
+		if (Match(ref index, out var openBrace, TokenType.OpOpenBrace))
+			return parseBranch(ref index, openBrace, isActive);
+		
+		ReportExpected(index, "'{'");
+		return false;
+	}
+	
+	private bool? ParseCondition(ref int index)
+	{
+		if (ParseConjunction(ref index) is not { } value)
+			return null;
+		
+		while (Match(ref index, TokenType.OpBarBar))
+		{
+			if (ParseConjunction(ref index) is not { } other)
+				return null;
+			
+			value |= other;
+		}
+		
+		return value;
+	}
+	
+	private bool? ParseConjunction(ref int index)
+	{
+		if (ParseFlag(ref index) is not { } value)
+			return null;
+		
+		while (Match(ref index, TokenType.OpAmpersandAmpersand))
+		{
+			if (ParseFlag(ref index) is not { } other)
+				return null;
+			
+			value &= other;
+		}
+		
+		return value;
+	}
+	
+	private bool? ParseFlag(ref int index)
+	{
+		if (Match(ref index, TokenType.OpBang))
+			return !ParseFlag(ref index);
+		
+		if (Match(ref index, out var openParen, TokenType.OpOpenParen))
+		{
+			var value = ParseCondition(ref index);
+			if (value is null || Match(ref index, TokenType.OpCloseParen))
+				return value;
+			
+			ReportExpected(index, "')'", openParen);
+			return null;
+		}
+		
+		if (!Match(ref index, out var name, TokenType.Identifier))
+		{
+			ReportExpected(index, "a flag");
+			return null;
+		}
+		
+		if (flags.TryGetValue(name.Text, out var flag))
+			return flag;
+		
+		Report(name, $"Flag '{name.Text}' not found");
+		return false;
 	}
 	
 	private bool IsVisibilityBlock(int index, IReadOnlyDictionary<string, TokenType> keywords) =>
@@ -671,12 +796,27 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 			return ParseExternalDeclaration(ref index, origin, block) is { } single ? [single] : null;
 		
 		var nodes = new List<IDeclarationNode>();
+		return ParseExternalBody(ref index, openBrace, origin, block, nodes) ? nodes : null;
+	}
+	
+	private bool ParseExternalBody(ref int index, Token openBrace, string? origin, Token? block,
+		List<IDeclarationNode> nodes)
+	{
 		while (!Match(ref index, TokenType.OpCloseBrace))
 		{
 			if (AtEnd(index))
 			{
 				Report(openBrace, "Expected '}' to close this block");
-				return null;
+				return false;
+			}
+			
+			if (Match(ref index, TokenType.KeywordWhen))
+			{
+				if (!ParseWhen(ref index, (ref int i, Token open, bool isActive) =>
+					    ParseExternalBody(ref i, open, origin, block, isActive ? nodes : [])))
+					return false;
+				
+				continue;
 			}
 			
 			if (ParseExternalDeclaration(ref index, origin, block) is not { } ext)
@@ -684,13 +824,13 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 				// TODO Diagnostics
 				SkipUntil(ref index, TokenType.OpCloseBrace);
 				SkipIf(ref index, TokenType.OpCloseBrace);
-				return null;
+				return false;
 			}
 			
 			nodes.Add(ext);
 		}
 		
-		return nodes;
+		return true;
 	}
 	
 	private ModuleName ParseModuleName(ref int index)
@@ -797,6 +937,14 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 			return null;
 		
 		var (receiver, parameters, returnType, _) = signature;
+		WhenClause? when = null;
+		if (IsOnSameLine(index) && Match(ref index, out var whenKeyword, TokenType.KeywordWhen))
+		{
+			if (ParseCondition(ref index) is not { } condition)
+				return null;
+			
+			when = new(whenKeyword, condition);
+		}
 		
 		if (Match(ref index, TokenType.OpEqual))
 		{
@@ -806,7 +954,8 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 			return new(identifier, modifiers.Tokens, receiver, parameters, returnType, statement, isExternal)
 			{
 				Visibility = modifiers.Visibility,
-				TypeParameters = [..typeParameters]
+				TypeParameters = [..typeParameters],
+				When = when
 			};
 		}
 		
@@ -815,7 +964,8 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 				? new(identifier, modifiers.Tokens, receiver, parameters, returnType, null, isExternal)
 				{
 					Visibility = modifiers.Visibility,
-					TypeParameters = [..typeParameters]
+					TypeParameters = [..typeParameters],
+					When = when
 				}
 				: null;
 		
@@ -825,7 +975,8 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 		return new(identifier, modifiers.Tokens, receiver, parameters, returnType, body, isExternal)
 		{
 			Visibility = modifiers.Visibility,
-			TypeParameters = [..typeParameters]
+			TypeParameters = [..typeParameters],
+			When = when
 		};
 	}
 	
@@ -1111,6 +1262,15 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 				return false;
 			}
 			
+			if (Match(ref index, TokenType.KeywordWhen))
+			{
+				if (!ParseWhen(ref index, (ref int i, Token open, bool isActive) =>
+					    ParseMembers(ref i, open, block, isActive ? members : [])))
+					return false;
+				
+				continue;
+			}
+			
 			if (MatchVisibilityBlock(ref index, _memberContextualKeywords, out var keyword, out var blockBrace))
 			{
 				if (block is { } outer)
@@ -1192,6 +1352,16 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 			{
 				Report(openBrace, "Expected '}' to close this block");
 				return false;
+			}
+			
+			if (Match(ref index, TokenType.KeywordWhen))
+			{
+				if (!ParseWhen(ref index, (ref int i, Token open, bool isActive) => isActive
+					    ? ParseEnumBody(ref i, open, block, matchedType, cases, members)
+					    : ParseEnumBody(ref i, open, block, matchedType, [], [])))
+					return false;
+				
+				continue;
 			}
 			
 			if (MatchVisibilityBlock(ref index, _memberContextualKeywords, out var keyword, out var blockBrace))
@@ -1708,29 +1878,56 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 		
 		// @TODO Replace with statement node type
 		var statements = new List<IStatementNode>();
-		
-		Token close;
-		while (!Match(ref index, out close, TokenType.OpCloseBrace))
-		{
-			if (AtEnd(index))
-			{
-				Report(open, "Expected '}' to close this block");
-				return null;
-			}
-			
-			if (ParseStatement(ref index) is not { } statement)
-			{
-				ResyncSimple(ref index);
-				return null;
-			}
-			
-			statements.Add(statement);
-		}
+		if (!ParseStatements(ref index, open, statements, out var close))
+			return null;
 		
 		var source = open.SourceLocation.Source;
 		var range = open.SourceLocation.Range.Join(close.SourceLocation.Range);
 		var sourceLocation = new SourceLocation(source, range);
 		return new(sourceLocation, statements.ToImmutableArray());
+	}
+	
+	private bool ParseStatements(ref int index, Token open, List<IStatementNode> statements, out Token close)
+	{
+		while (!Match(ref index, out close, TokenType.OpCloseBrace))
+		{
+			if (AtEnd(index))
+			{
+				Report(open, "Expected '}' to close this block");
+				return false;
+			}
+			
+			if (Match(ref index, TokenType.KeywordWhen))
+			{
+				if (!ParseWhen(ref index, (ref int i, Token branch, bool isActive) =>
+					    ParseStatements(ref i, branch, isActive ? statements : [], out _)))
+				{
+					ResyncSimple(ref index);
+					return false;
+				}
+				
+				continue;
+			}
+			
+			if (ParseStatement(ref index) is not { } statement)
+			{
+				ResyncSimple(ref index);
+				return false;
+			}
+			
+			statements.Add(statement);
+		}
+		
+		return true;
+	}
+	
+	private BlockStatementNode? ParseWhenStatement(ref int index, Token whenToken)
+	{
+		var statements = new List<IStatementNode>();
+		return ParseWhen(ref index, (ref int i, Token open, bool isActive) =>
+			ParseStatements(ref i, open, isActive ? statements : [], out _))
+			? new(Span(whenToken, Tokens[index - 1]), [..statements])
+			: null;
 	}
 	
 	private IStatementNode? ParseStatement(ref int index)
@@ -1739,6 +1936,9 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 		
 		if (Match(ref index, out var bindingToken, _bindingKeywords))
 			return ParseVarStatement(ref index, bindingToken);
+		
+		if (Match(ref index, out var whenToken, TokenType.KeywordWhen))
+			return ParseWhenStatement(ref index, whenToken);
 		
 		if (Match(ref index, out var ifToken, TokenType.KeywordIf))
 			return ParseIfStatement(ref index, ifToken);
@@ -1959,6 +2159,10 @@ public sealed class FileParser(ImmutableArray<Token> tokens, string fileName, st
 				case TokenType.OpCloseBrace:
 					braceCount--;
 					index++;
+					break;
+				
+				case TokenType.KeywordWhen when braceCount == 0:
+					loop = false;
 					break;
 				
 				case TokenType.Identifier:

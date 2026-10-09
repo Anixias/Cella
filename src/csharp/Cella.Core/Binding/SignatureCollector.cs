@@ -761,6 +761,10 @@ public sealed class SignatureCollector
 					
 					_witnessMembers.Add(matches[0].Function);
 					ReportNarrowWitness(conformance, self, name, matches[0].Function);
+					if (matches[0].Function.Syntax is FunctionNode { When: not null })
+						ReportConformance(GetFunctionLocation(matches[0].Function),
+							$"Cannot implement '{conformance.Trait.Name}.{name}' with 'when' functions");
+					
 					break;
 				
 				case > 1:
@@ -2081,6 +2085,7 @@ public sealed class SignatureCollector
 	
 	private FunctionInfo CollectFunction(FunctionSymbol function, FunctionNode node, ResolutionContext context)
 	{
+		ReportWhenFunction(node, context);
 		Diagnostics.AddRange(DiagnosticReporter.ReportDuplicates(node.TypeParameters.Select(static p => p.Identifier),
 			static name => $"Type parameter '{name}' is declared more than once"));
 		
@@ -2143,9 +2148,35 @@ public sealed class SignatureCollector
 		
 		if (_entryPointName is not null && function.Name == _entryPointName && function.TypeParameters.IsEmpty &&
 		    IsEntryPoint(signature))
+		{
 			_entryPoints.Add(info);
+			if (node.When is { } when)
+				Diagnostics.Add(new(DiagnosticSeverity.Error, when.Keyword.SourceLocation,
+					$"Cannot use 'when' on '{_entryPointName}'"));
+		}
 		
 		return info;
+	}
+	
+	private void ReportWhenFunction(FunctionNode node, ResolutionContext context)
+	{
+		if (node.When is not { } when)
+			return;
+		
+		if (node.Identifier.Type != TokenType.Identifier)
+			Diagnostics.Add(new(DiagnosticSeverity.Error, when.Keyword.SourceLocation,
+				"Cannot use 'when' on operators"));
+		else if (context.Trait is not null)
+			Diagnostics.Add(new(DiagnosticSeverity.Error, when.Keyword.SourceLocation, "Cannot use 'when' in traits"));
+		
+		if (node.ReturnType is { } returnType)
+			Diagnostics.Add(new(DiagnosticSeverity.Error, returnType.SourceLocation,
+				"Cannot return values from 'when' functions"));
+		
+		var modes = node.Parameters.Select(static parameter => parameter.Mode).Prepend(node.Receiver?.Mode);
+		foreach (var mode in modes.OfType<Token>().Where(static mode => mode.Type == TokenType.KeywordOwn))
+			Diagnostics.Add(new(DiagnosticSeverity.Error, mode.SourceLocation,
+				"Cannot take 'own' parameters in 'when' functions"));
 	}
 	
 	private FunctionInfo CollectExternalFunction(FunctionSymbol function, ExternalFunctionNode node,

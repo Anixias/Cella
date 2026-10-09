@@ -310,6 +310,9 @@ public sealed class Lowerer
 		
 		public void Visit(ResolvedExpressionStatementNode node)
 		{
+			if (node.Expression is ResolvedErasedCallExpressionNode)
+				return;
+			
 			BeginScope(node.Syntax.SourceLocation, true);
 			var expression = node.Expression is ResolvedAssignmentExpressionNode assignment
 				? LowerAssignment(assignment, false)
@@ -984,6 +987,8 @@ public sealed class Lowerer
 			new AlignOfValue(node.Target, node.Syntax.SourceLocation);
 		
 		public Value Visit(ResolvedNewExpressionNode node) => new NewValue(node.Type, node.Syntax.SourceLocation);
+		
+		public Value Visit(ResolvedErasedCallExpressionNode node) => new UndefValue(node.Type);
 		
 		public Value Visit(ResolvedArrayExpressionNode node) => new ArrayValue((ArrayType)node.Type,
 			LowerOperands(node.Values, static _ => Passing.Consume), node.Syntax.SourceLocation);

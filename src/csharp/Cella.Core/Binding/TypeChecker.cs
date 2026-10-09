@@ -305,6 +305,7 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool, 
 		ResolvedPropertyAssignmentExpressionNode => true,
 		ResolvedReturnExpressionNode or ResolvedBreakExpressionNode or ResolvedContinueExpressionNode => true,
 		ResolvedAtomicExpressionNode => true,
+		ResolvedErasedCallExpressionNode => true,
 		_ => false
 	};
 	
@@ -898,6 +899,8 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool, 
 	public void Visit(ResolvedNewExpressionNode node)
 	{
 	}
+	
+	public void Visit(ResolvedErasedCallExpressionNode node) => VisitNode(node.Call);
 	
 	public void Visit(ResolvedRecordExpressionNode node)
 	{

@@ -33,7 +33,10 @@ public sealed class FunctionNode
 	public IStatementNode? Body { get; } = body;
 	public bool IsExternal { get; } = isExternal;
 	public ImmutableArray<TypeParameterNode> TypeParameters { get; init; } = [];
+	public WhenClause? When { get; init; }
 }
+
+public sealed record WhenClause(Token Keyword, bool IsActive);
 
 public sealed class ExternalFunctionNode
 (

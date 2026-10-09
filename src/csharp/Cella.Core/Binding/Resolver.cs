@@ -1583,14 +1583,16 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			_ => throw new InvalidOperationException()
 		};
 		
-		TrackFunctionUse(info, node.Target);
+		var isErased = info.Symbol.Syntax is FunctionNode { When.IsActive: false };
+		if (!isErased)
+			TrackFunctionUse(info, node.Target);
 		
 		var resolvedArgs = ApplyArgumentResolution(args, resolution);
 		if (receiver is not null)
 			resolvedArgs.Insert(0, CreateReceiver(receiver, info));
 		
 		var result = new ResolvedFunctionCallExpressionNode(info, resolvedArgs, node);
-		return ApplyResultResolution(result, resolution);
+		return isErased ? new ResolvedErasedCallExpressionNode(result) : ApplyResultResolution(result, resolution);
 	}
 	
 	private IResolvedExpressionNode CreateReceiver(IResolvedExpressionNode receiver, FunctionInfo method) =>
@@ -3233,6 +3235,10 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		if (target is not FunctionType type || FindFunction(node.Group, type) is not { } function)
 			return node;
 		
+		if (function.Symbol.Syntax is FunctionNode { When: not null })
+			return Error(node.Syntax, $"'when' function '{node.Group.FunctionName}' can't be used as a value",
+				NativeSymbols.Invalid);
+		
 		TrackFunctionUse(function, node.Syntax);
 		return new ResolvedFunctionReferenceExpressionNode(function, type, node.Syntax);
 	}
@@ -3249,6 +3255,10 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		
 		if (function.Signature.IsVariadic)
 			return Error(node.Syntax, $"Variadic function '{group.FunctionName}' can't be used as a value",
+				NativeSymbols.Invalid);
+		
+		if (function.Symbol.Syntax is FunctionNode { When: not null })
+			return Error(node.Syntax, $"'when' function '{group.FunctionName}' can't be used as a value",
 				NativeSymbols.Invalid);
 		
 		TrackFunctionUse(function, node.Syntax);

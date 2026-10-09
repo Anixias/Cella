@@ -1,0 +1,33 @@
+mod test
+use when windws
+
+first: fun when
+{
+}
+
+second: fun when debug &&
+{
+}
+
+when windows
+	broken: fun -> i32 = 1
+
+when profiling
+{
+}
+
+when debug { } else debug { }
+
+named: fun
+{
+	val when = 1
+}
+
+main: fun -> i32
+{
+	when (debug
+	{
+	}
+
+	ret 0
+}

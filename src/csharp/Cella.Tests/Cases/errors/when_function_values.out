@@ -1,0 +1,24 @@
+
+====== when_function_values.ce ======
+
+Error at line 15, column 10
+14 │ {
+15 │     val f = trace
+                 ╘═══╛ 'when' function 'trace' can't be used as a value
+
+Error at line 16, column 8
+15 │ val f = trace
+16 │ apply(trace)
+           ╘═══╛ 'when' function 'trace' can't be used as a value
+
+Error at line 17, column 8
+16 │ apply(trace)
+17 │ apply(hidden)
+           ╘════╛ 'when' function 'hidden' can't be used as a value
+
+Error at line 18, column 9
+17 │ apply(hidden)
+18 │ hidden(missing)
+            ╘═════╛ Symbol 'missing' not found in this scope
+
+[compilation failed]

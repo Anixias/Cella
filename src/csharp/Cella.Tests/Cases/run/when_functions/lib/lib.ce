@@ -1,0 +1,16 @@
+mod lib
+
+ext
+{
+	printf: pvt fun(format: cstr, ...) -> i32
+}
+
+whisper: pub fun(value: i32) when verbose
+{
+	printf("whisper %d\n", value)
+}
+
+speak: pub fun(value: i32) when chatty
+{
+	printf("speak %d\n", value)
+}

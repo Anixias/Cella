@@ -1,0 +1,44 @@
+
+====== when_function_declarations.ce ======
+
+Error at line 6, column 23
+5 │ reset: fun(mut self)
+6 │ clear: fun(mut self) when debug
+                         ╘══╛ Cannot use 'when' in traits
+
+Error at line 13, column 2
+12 │ 
+13 │ reset: fun(mut self) when debug
+     ╘═══╛ Cannot implement 'Reset.reset' with 'when' functions
+
+Error at line 23, column 31
+22 │ 
+23 │ +: op(a: Meter, b: Meter) -> Meter when debug = Meter(a.n + b.n)
+                                  ╘═══╛ Cannot return values from 'when' functions
+
+Error at line 23, column 37
+22 │ 
+23 │ +: op(a: Meter, b: Meter) -> Meter when debug = Meter(a.n + b.n)
+                                        ╘══╛ Cannot use 'when' on operators
+
+Error at line 25, column 13
+24 │ 
+25 │ drain: fun(own self) when debug
+                ╘═╛ Cannot take 'own' parameters in 'when' functions
+
+Error at line 30, column 27
+29 │ 
+30 │ total: fun(value: i32) -> i32 when debug = value
+                               ╘═╛ Cannot return values from 'when' functions
+
+Error at line 32, column 11
+31 │ 
+32 │ take: fun(own text: str, mut count: i32) when debug
+               ╘═╛ Cannot take 'own' parameters in 'when' functions
+
+Error at line 36, column 11
+35 │ 
+36 │ main: fun when debug
+               ╘══╛ Cannot use 'when' on 'main'
+
+[compilation failed]

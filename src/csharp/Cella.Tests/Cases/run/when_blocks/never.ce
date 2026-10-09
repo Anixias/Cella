@@ -1,0 +1,4 @@
+mod test
+use when windows && linux
+
+platform: fun -> i32 = undefined()

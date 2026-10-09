@@ -1,0 +1,6 @@
+OutputType = "Executable"
+SystemLinkPreference = "Dynamic"
+
+[Flags]
+logging = true
+profiling = false

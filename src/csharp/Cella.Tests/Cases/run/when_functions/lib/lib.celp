@@ -1,0 +1,6 @@
+OutputType = "SharedLibrary"
+SystemLinkPreference = "Dynamic"
+
+[Flags]
+verbose = false
+chatty = true

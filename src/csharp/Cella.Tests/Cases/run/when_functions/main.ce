@@ -1,0 +1,114 @@
+mod test
+
+use lib
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+calls: var i32 = 0
+
+count: fun(value: i32) -> i32
+{
+	calls += 1
+	ret value
+}
+
+trace: fun(value: i32) when logging
+{
+	printf("trace %d\n", value)
+}
+
+measure: fun(value: i32) when profiling
+{
+	printf("measure %d\n", value)
+}
+
+show[T]: fun(value: T, code: i32) when profiling
+{
+	printf("show %d\n", code)
+}
+
+Show: trait
+{
+	code: fun(self) -> i32
+}
+
+i32: impl Show
+{
+	code: fun(self) -> i32 = self
+}
+
+Text: rec
+{
+	id: i32
+
+	drop: op
+	{
+		printf("drop %d\n", self.id)
+	}
+}
+
+log: fun(message: fstr[Show]) when logging
+{
+	printf("log %d holes\n", i32(message.holes))
+}
+
+keep: fun(text: Text) when profiling
+{
+	printf("keep %d\n", text.id)
+}
+
+Meter: rec
+{
+	n: i32
+
+	tick: fun(mut self, amount: i32) when profiling
+	{
+		self.n += amount
+	}
+
+	note: fun(self) when logging
+	{
+		printf("note %d\n", self.n)
+	}
+
+	report: fun when profiling
+	{
+		printf("report\n")
+	}
+}
+
+quiet: fun = measure(count(9))
+
+Kind: enum
+{
+	a
+	b
+}
+
+main: fun -> i32
+{
+	trace(count(1))
+	measure(count(2))
+	show(count(3), 4)
+	var m = Meter(5)
+	m.tick(count(6))
+	m.note()
+	Meter.report()
+	quiet()
+	match Kind.a
+	{
+		a => measure(count(7))
+		b => trace(8)
+	}
+
+	printf("%d %d\n", calls, m.n)
+	log("{calls} and {m.n}")
+	keep(Text(9))
+	lib.whisper(count(10))
+	lib.speak(count(11))
+	printf("%d\n", calls)
+	ret 0
+}

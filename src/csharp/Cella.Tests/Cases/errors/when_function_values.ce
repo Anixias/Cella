@@ -1,0 +1,20 @@
+mod test
+
+trace: fun(value: i32) when debug
+{
+}
+
+hidden: fun(value: i32) when release
+{
+}
+
+apply: fun(action: fun[i32]) = action(1)
+
+main: fun -> i32
+{
+	val f = trace
+	apply(trace)
+	apply(hidden)
+	hidden(missing)
+	ret 0
+}

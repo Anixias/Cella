@@ -1,0 +1,38 @@
+mod test
+
+Reset: trait
+{
+	reset: fun(mut self)
+	clear: fun(mut self) when debug
+}
+
+Meter: rec impl Reset
+{
+	n: i32
+
+	reset: fun(mut self) when debug
+	{
+		self.n = 0
+	}
+
+	clear: fun(mut self)
+	{
+		self.n = 0
+	}
+
+	+: op(a: Meter, b: Meter) -> Meter when debug = Meter(a.n + b.n)
+
+	drain: fun(own self) when debug
+	{
+	}
+}
+
+total: fun(value: i32) -> i32 when debug = value
+
+take: fun(own text: str, mut count: i32) when debug
+{
+}
+
+main: fun when debug
+{
+}

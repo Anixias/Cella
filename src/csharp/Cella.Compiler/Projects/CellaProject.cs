@@ -26,6 +26,9 @@ public sealed partial class CellaProject
 	[TomlValueOnSerialized]
 	public List<ProjectReference>? ProjectReferences { get; init; }
 	
+	[TomlValueOnSerialized]
+	public Dictionary<string, bool>? Flags { get; init; }
+	
 	public static IEnumerable<string> FindProjects(string directory) =>
 		Directory.EnumerateFiles(directory, ProjectSearchPattern, SearchOption.AllDirectories);
 	

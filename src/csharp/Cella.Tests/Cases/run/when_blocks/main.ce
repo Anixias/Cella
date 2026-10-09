@@ -1,0 +1,128 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+when windows
+{
+	ext("kernel32")
+	{
+		GetCurrentProcessId: fun -> u32
+	}
+
+	separator: val char = '\\'
+}
+else when linux || macos
+{
+	separator: val char = '/'
+}
+else
+{
+	separator: val char = '?'
+}
+
+when profiling
+{
+	missing: fun -> i32 = undefined()
+}
+
+Counter: rec
+{
+	n: i32
+
+	when logging
+	{
+		label: i32
+
+		describe: fun(self) -> i32 = self.n * 10 + self.label
+	}
+	else
+	{
+		describe: fun(self) -> i32 = self.n
+	}
+}
+
+Step: enum
+{
+	start
+
+	when logging && !profiling
+	{
+		traced
+	}
+
+	finish
+}
+
+ext
+{
+	puts: fun(text: cstr) -> i32
+
+	when profiling
+	{
+		missingSymbol: fun -> i32
+	}
+}
+
+Show: trait
+{
+	code: fun(self) -> i32
+
+	when profiling
+	{
+		extra: fun(self) -> i32
+	}
+}
+
+i32: impl Show
+{
+	code: fun(self) -> i32 = self
+}
+
+pvt
+{
+	when logging
+	{
+		helper: fun -> i32 = 3
+	}
+}
+
+when !profiling
+{
+	mod
+	{
+		other: fun -> i32 = 4
+	}
+}
+
+main: fun -> i32
+{
+	when logging
+	{
+		val prefix: cstr = "logging"
+	}
+	else
+	{
+		val prefix: cstr = "quiet"
+	}
+
+	val c = Counter(4, 2)
+	printf("%s %d %d %d\n", prefix, c.describe(), i32(Step.finish), i32(separator != '?'))
+	if c.n > 0
+		when debug || release
+		{
+			printf("one mode\n")
+		}
+
+	when (debug && release) || profiling
+	{
+		printf("never\n")
+		undefined()
+	}
+
+	val seven: i32 = 7
+	printf("%d %d %d %d\n", platform(), seven.code(), helper(), other())
+	ret 0
+}
