@@ -330,8 +330,11 @@ public sealed unsafe class CodeGenerator : IDisposable
 	
 	private TypeSymbol Substitute(TypeSymbol type) => _typePool.Substitute(type, substitution);
 	
-	private static bool IsEmitted(FunctionInfo function) =>
-		!IsOpenGeneric(function) && function.Symbol.Syntax is not FunctionNode { When.IsActive: false };
+	private static bool IsEmitted(FunctionInfo function) => !IsOpenGeneric(function) && IsActive(function.Symbol);
+	
+	private static bool IsActive(FunctionSymbol function) =>
+		function.Syntax is not FunctionNode { When.IsActive: false } &&
+		(function.ContainingFunction is not { } containing || IsActive(containing.Symbol));
 	
 	private static bool IsOpenGeneric(FunctionInfo function) =>
 		!function.Symbol.TypeParameters.IsEmpty && (function.TypeArguments.IsDefaultOrEmpty ||

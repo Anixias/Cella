@@ -1,0 +1,23 @@
+mod test
+
+use lib
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+	missing: fun -> i32
+}
+
+call: fun(f: fun[-> i32]) -> i32 = f()
+
+measure: fun when profiling
+{
+	call(fun = missing())
+}
+
+main: fun -> i32
+{
+	measure()
+	printf("%d %d %f %d\n", lib.twice(4), lib.same(5), lib.same(2.5), lib.shifted(1.5, 7))
+	ret 0
+}

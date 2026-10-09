@@ -7,6 +7,10 @@ namespace Cella.Core.Syntax;
 
 public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<IExpressionNode>(tokens)
 {
+	public delegate BlockStatementNode? BlockParser(ref int index, Token openBrace);
+	
+	private static readonly HashSet<TokenType> _parameterModes = [TokenType.KeywordMut, TokenType.KeywordOwn];
+	
 	private static readonly HashSet<TokenType> _literalTypes =
 	[
 		TokenType.KeywordTrue,
@@ -162,6 +166,8 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 		
 		return Tokens[next - 1].Line != Tokens[next].Line;
 	}
+	
+	public BlockParser? ParseBlock { get; init; }
 	
 	public override IExpressionNode Parse(ref int index) => ParseExpression(ref index);
 	private IExpressionNode ParseExpression(ref int index) => ParseAssignment(ref index);
@@ -505,6 +511,8 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 				node = new ArrayExpressionNode(values, new(source, range));
 			}
 		}
+		else if (!Peek(index + 1, TokenType.OpOpenBracket) && Match(ref index, out var lambda, TokenType.KeywordFun))
+			return ParseLambda(ref index, lambda);
 		else if (StartsFunctionType(index) || Peek(index, TokenType.KeywordDyn))
 			node = new TypeExpressionNode(ParseType(ref index));
 		else if (Match(ref index, out var identifier, TokenType.Identifier))
@@ -529,6 +537,44 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 			node = ParseLiteral(ref index);
 		
 		return ParsePostfix(ref index, node);
+	}
+	
+	private LambdaExpressionNode ParseLambda(ref int index, Token keyword)
+	{
+		var parameters = new List<LambdaParameterNode>();
+		if (Match(ref index, out var openParen, TokenType.OpOpenParen) && !Match(ref index, TokenType.OpCloseParen))
+		{
+			do
+				parameters.Add(ParseLambdaParameter(ref index));
+			while (Match(ref index, TokenType.OpComma));
+			
+			if (!Match(ref index, TokenType.OpCloseParen))
+				throw Expected(index, "',' or ')'", openParen);
+		}
+		
+		var returnType = Match(ref index, TokenType.OpArrow) ? ParseType(ref index) : null;
+		var (source, range) = keyword.SourceLocation;
+		if (Match(ref index, TokenType.OpEqual))
+		{
+			var expression = ParseExpression(ref index);
+			return new(keyword, parameters, returnType, expression, null,
+				new(source, range.Join(expression.SourceLocation.Range)));
+		}
+		
+		if (ParseBlock is null || !Match(ref index, out var openBrace, TokenType.OpOpenBrace))
+			throw Expected(index, ParseBlock is null ? "'='" : "'=' or '{'");
+		
+		var block = ParseBlock(ref index, openBrace) ?? new BlockStatementNode(openBrace.SourceLocation, []);
+		return new(keyword, parameters, returnType, null, block, new(source, range.Join(block.SourceLocation.Range)));
+	}
+	
+	private LambdaParameterNode ParseLambdaParameter(ref int index)
+	{
+		Token? mode = Match(ref index, out var keyword, _parameterModes) ? keyword : null;
+		if (!Match(ref index, out var identifier, TokenType.Identifier))
+			throw Expected(index, "a parameter name");
+		
+		return new(mode, identifier, Match(ref index, TokenType.OpColon) ? ParseType(ref index) : null);
 	}
 	
 	private bool StartsFunctionType(int index) => Peek(index, TokenType.KeywordFun) ||

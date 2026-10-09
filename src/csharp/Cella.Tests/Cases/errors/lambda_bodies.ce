@@ -1,0 +1,13 @@
+mod test
+
+each: fun(f: fun[i32]) = f(1)
+
+main: fun -> i32
+{
+	each(fun(x) = x * 2)
+	for i in 0..3
+		each(fun(x) { break })
+
+	fun(x: i32) -> i32 = x
+	ret 0
+}

@@ -1,0 +1,9 @@
+
+====== lambda_returns.ce ======
+
+Error at line 7, column 8
+6 │ {
+7 │     apply(fun(x)
+              ╘═╛ Not all paths return a value
+
+[compilation failed]

@@ -56,7 +56,7 @@ public sealed class TypeInference(TypePool typePool)
 	
 	public ImmutableArray<TypeSymbol?> InferKnown(ImmutableArray<TypeParameterSymbol> parameters,
 		IEnumerable<InferenceInput> inputs, TypeSymbol? returnType, TypeSymbol? target,
-		IReadOnlyDictionary<TypeParameterSymbol, TypeSymbol>? chosen = null)
+		IReadOnlyDictionary<TypeParameterSymbol, TypeSymbol>? chosen = null, bool fixLiterals = false)
 	{
 		var bounds = Collect(parameters, inputs);
 		var inferred = new TypeSymbol?[parameters.Length];
@@ -75,6 +75,12 @@ public sealed class TypeInference(TypePool typePool)
 		
 		FillFromTarget(parameters, inferred, conflicted, returnType, target);
 		InferFromBounds(parameters, inferred);
+		for (var i = 0; fixLiterals && i < parameters.Length; i++)
+		{
+			if (inferred[i] is null && bounds.Literals[i].Count > 0)
+				inferred[i] = FixLiterals(bounds.Literals[i], out _);
+		}
+		
 		return [..inferred.Select((type, i) => conflicted[i] ? null : type)];
 	}
 	

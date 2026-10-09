@@ -742,6 +742,8 @@ public sealed class NativeConstructorNode(NativeMemberIntrinsic intrinsic) : IDe
 	public SourceLocation SourceLocation => SourceLocation.None;
 }
 
+public sealed class CapturedSymbol(string name) : Symbol(name);
+
 // TODO Throw errors when symbols resolved as ambiguous
 public sealed class AmbiguousSymbol(string name, IEnumerable<Symbol> candidates) : Symbol(name)
 {

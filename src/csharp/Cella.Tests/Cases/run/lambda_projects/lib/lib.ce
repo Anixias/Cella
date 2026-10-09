@@ -1,0 +1,11 @@
+mod lib
+
+pass[T]: fun(f: fun[own T -> T], own x: T) -> T = f(x)
+
+offset: fun(x: i32) -> i32 = x + 1000
+
+twice: pub fun(x: i32) -> i32 = pass(fun(y) = y * 2, x)
+
+same[T]: pub fun(own x: T) -> T = pass(fun(y) = y, x)
+
+shifted[T]: pub fun(own x: T, n: i32) -> i32 = pass(fun(y) = offset(y), n)

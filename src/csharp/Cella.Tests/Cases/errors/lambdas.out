@@ -1,0 +1,84 @@
+
+====== lambdas.ce ======
+
+Error at line 14, column 53
+13 │ 
+14 │ add: fun(self, x: i32) -> i32 = apply(fun(y) = y + self.count, x)
+                                                        ╘══╛ Cannot capture 'self'
+
+Error at line 30, column 21
+29 │ val base = 10
+30 │ apply(fun(x) = x + base, 1)
+                        ╘══╛ Cannot capture 'base'
+
+Error at line 33, column 22
+32 │ for i in 0..3
+33 │     apply(fun(x) = x + i, 1)
+                            ^ Cannot capture 'i'
+
+Error at line 35, column 18
+34 │ 
+35 │ val loose = fun(x) = x
+                     ^ Cannot infer the type of 'x'
+
+Error at line 36, column 8
+35 │ val loose = fun(x) = x
+36 │ apply(fun(a, b) = a, 1)
+           ╘═══════════╛ 'fun[i32 -> i32]' takes one parameter
+
+Error at line 37, column 8
+36 │ apply(fun(a, b) = a, 1)
+37 │ apply(fun = 1, 1)
+           ╘═════╛ 'fun[i32 -> i32]' takes one parameter
+
+Error at line 38, column 11
+37 │ apply(fun = 1, 1)
+38 │ pair(fun(x, x) = x)
+              ^ Parameter 'x' is declared more than once
+
+Error at line 38, column 14
+37 │ apply(fun = 1, 1)
+38 │ pair(fun(x, x) = x)
+                 ^ Parameter 'x' is declared more than once
+
+Error at line 39, column 2
+38 │ pair(fun(x, x) = x)
+39 │ choose(fun(x) = x)
+     ╘════╛ Call to 'choose' is ambiguous
+
+Error at line 41, column 16
+40 │ choose(fun(x: i64) -> i64 = x)
+41 │ val counter = Counter(fun(x) = x)
+                   ╘═════════════════╛ Conversion to 'Counter' is ambiguous
+
+Error at line 42, column 15
+41 │ val counter = Counter(fun(x) = x)
+42 │ transform(1, fun(x) { ret x })
+                  ╘══════════════╛ Cannot infer the return type
+
+Error at line 43, column 2
+42 │ transform(1, fun(x) { ret x })
+43 │ apply(fun(mut x) { x += 1 }, 1)
+     ╘═══╛ No overload of 'apply' accepts these arguments
+
+Error at line 44, column 2
+43 │ apply(fun(mut x) { x += 1 }, 1)
+44 │ apply(fun(x: i64) = x, 1)
+     ╘═══╛ No overload of 'apply' accepts these arguments
+
+Error at line 45, column 23
+44 │ apply(fun(x: i64) = x, 1)
+45 │ val unknown = fun(x: Missing) = x
+                          ╘═════╛ Type 'Missing' not found in this scope
+
+Error at line 46, column 17
+45 │ val unknown = fun(x: Missing) = x
+46 │ apply(fun(x) = x > 0, 1)
+                    ╘═══╛ Cannot convert type 'bool' to 'i32'
+
+Error at line 47, column 2
+46 │ apply(fun(x) = x > 0, 1)
+47 │ missing(fun(x) = x)
+     ╘═════════════════╛ Symbol 'missing' not found in this scope
+
+[compilation failed]

@@ -25,6 +25,7 @@ public readonly struct ResolutionContext
 	public TraitSymbol? Trait { get; init; }
 	public ImplSymbol? ImplBlock { get; init; }
 	public Func<ConstraintCheck, bool>? DeferConstraintCheck { get; init; }
+	public Func<string, bool>? IsCaptured { get; init; }
 	
 	public string Mangle(Symbol symbol) => Mangling.Mangle(symbol, Modules, GetQualifiers());
 	
@@ -37,7 +38,7 @@ public readonly struct ResolutionContext
 		
 		// TODO Nested functions in functions not supported
 		for (var f = ContainingFunction; f is not null; f = f.Value.Symbol.ContainingFunction)
-			result.Add(Mangling.Mangle(f.Value.Symbol, f.Value.Signature, Modules));
+			result.Add(Mangling.MangleName(f.Value.Symbol, Modules));
 		
 		for (var t = ContainingType; t is not null; t = t.ContainingType)
 			result.Add(Mangling.MangleName(t, Modules));
@@ -92,6 +93,9 @@ public readonly struct ResolutionContext
 		
 		if (ContainingFunction?.Symbol.Parameters.FirstOrDefault(p => p.Name == name) is { } param)
 			return param;
+		
+		if (IsCaptured?.Invoke(name) == true)
+			return new CapturedSymbol(name);
 		
 		if (!TypeParameters.IsDefault && TypeParameters.FirstOrDefault(p => p.Name == name) is { } typeParameter)
 			return typeParameter;

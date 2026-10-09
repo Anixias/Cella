@@ -198,6 +198,8 @@ public sealed class SymbolCollector : IDeclarationNodeVisitor<Symbol>
 		}
 		: Visibility.FromKeyword(keyword);
 	
+	public Symbol Visit(LambdaDeclarationNode node) => throw new InvalidOperationException();
+	
 	public static ParameterMode GetMode(Token? keyword) => keyword?.Type switch
 	{
 		TokenType.KeywordMut => ParameterMode.Mut,

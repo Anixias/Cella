@@ -2170,7 +2170,9 @@ public sealed class FileParser
 		return new(new(source, range), identifier, type, initializer, isMutable);
 	}
 	
-	private IExpressionNode ParseExpression(ref int index) => new ExpressionParser(Tokens).Parse(ref index);
+	private IExpressionNode ParseExpression(ref int index) =>
+		new ExpressionParser(Tokens) { ParseBlock = ParseBlockStatement }.Parse(ref index);
+	
 	private ITypeNode ParseType(ref int index) => new TypeParser(Tokens).Parse(ref index);
 	
 	private void ResyncTopLevel(ref int index, bool insideBlock = false)

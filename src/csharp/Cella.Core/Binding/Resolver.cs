@@ -56,9 +56,11 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	private readonly TypeInference _inference;
 	private readonly List<Instantiation> _instantiations = [];
 	private readonly HashSet<Symbol> _genericReferences = [];
+	private readonly List<ResolvedFunctionNode> _lambdas = [];
 	private IExpressionNode? storeTarget;
 	private List<Action>? _journal;
 	private int _openCheckpoints;
+	private int _lambdaCount;
 	private ResolutionContext CurrentResolutionContext => _resolutionContexts.Peek();
 	private Scope? CurrentScope => CurrentResolutionContext.LocalScope;
 	private TypeSymbol? CurrentTargetType => _expectations.TryPeek(out var top) && !top.IsHint ? top.Type : null;
@@ -176,6 +178,8 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		foreach (var declaration in node.Declarations)
 			resolvedDeclarations.Add(VisitNode(declaration));
 		
+		resolvedDeclarations.AddRange(_lambdas.Where(lambda => lambda.FunctionInfo.File == file));
+		_lambdas.RemoveAll(lambda => lambda.FunctionInfo.File == file);
 		_resolutionContexts.Pop();
 		_extSignatureTypes.ReportDestructors(Diagnostics);
 		
@@ -223,6 +227,8 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	}
 	
 	public IResolvedDeclarationNode Visit(ParameterNode node) => throw new InvalidOperationException();
+	
+	public IResolvedDeclarationNode Visit(LambdaDeclarationNode node) => throw new InvalidOperationException();
 	
 	public IResolvedDeclarationNode Visit(NativeConstructorNode node) => throw new InvalidOperationException();
 	
@@ -1702,7 +1708,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		
 		var checkpoint = OpenCheckpoint();
 		foreach (var i in deferred)
-			values[i] = VisitDeferred(nodes[i], i, shapes, [..shapes.Select(shape => ExpectedAt(shape, values, i))]);
+			values[i] = nodes[i] is LambdaExpressionNode lambda
+				? VisitLambdaArgument(lambda, i, shapes, values)
+				: VisitDeferred(nodes[i], i, shapes, [..shapes.Select(shape => ExpectedAt(shape, values, i))]);
 		
 		var resolved = values.Select(static value => value!).ToArray();
 		if (succeeds is null || accepts is null || AnyInvalid(resolved) ||
@@ -1724,7 +1732,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		
 		Rollback(checkpoint);
 		foreach (var i in deferred)
-			resolved[i] = VisitDeferred(nodes[i], i, [shapes[shape]], [hints[i]]);
+			resolved[i] = nodes[i] is LambdaExpressionNode lambda
+				? VisitLambdaArgument(lambda, i, [shapes[shape]], resolved)
+				: VisitDeferred(nodes[i], i, [shapes[shape]], [hints[i]]);
 		
 		return resolved;
 	}
@@ -1767,7 +1777,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			{
 				var trial = values.ToArray();
 				foreach (var i in deferred)
-					trial[i] = VisitDeferred(nodes[i], i, [shapes[index]], [hints[i]]);
+					trial[i] = nodes[i] is LambdaExpressionNode lambda
+						? VisitLambdaArgument(lambda, i, [shapes[index]], trial, true)
+						: VisitDeferred(nodes[i], i, [shapes[index]], [hints[i]]);
 				
 				return AnyInvalid(trial) || checkpoint.HasErrors || !accepts(index, trial)
 					? null
@@ -1845,6 +1857,89 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		return open.All(map.ContainsKey) ? _typePool.Substitute(parameter, map) : null;
 	}
 	
+	private IResolvedExpressionNode VisitLambdaArgument(LambdaExpressionNode node, int index,
+		IReadOnlyList<CallShape> shapes, IReadOnlyList<IResolvedExpressionNode?> values, bool isTrial = false)
+	{
+		var settled = values.Select((value, i) => i == index ? null : value).ToList();
+		var annotations = ResolveAnnotations(node);
+		var expected = shapes
+			.Select(shape => ExpectLambda(shape, settled, index, annotations))
+			.OfType<FunctionType>()
+			.Distinct()
+			.ToList();
+		
+		var fitting = expected.Where(type => Fits(annotations, type)).ToList();
+		var target = fitting is [var single] ? single : expected is [var only] ? only : null;
+		return target is null && expected.Count > 1
+			? new ResolvedFunctionGroupExpressionNode(new FunctionGroupType("fun", [], "fun"), node)
+			: ResolveLambda(node, target, !isTrial);
+	}
+	
+	private FunctionType? ExpectLambda(CallShape shape, IReadOnlyList<IResolvedExpressionNode?> values, int index,
+		LambdaAnnotations annotations)
+	{
+		if (index >= shape.Parameters.Count || shape.Modes[index] == ParameterMode.Mut ||
+		    (shape.Parameters[index] is BorrowType { IsMutable: false } borrow
+			    ? borrow.Target
+			    : shape.Parameters[index]) is not FunctionType parameter)
+			return null;
+		
+		if (!TypePool.FindTypeParameters(parameter).Any(shape.Open.Contains))
+			return parameter;
+		
+		var inputs = CreateInferenceInputs(shape, values).Concat(CreateAnnotationInputs(parameter, annotations));
+		var known = _inference.InferKnown(shape.Open, inputs, shape.ReturnType, ExpectedType, fixLiterals: true);
+		var map = shape.Open
+			.Select((type, i) => (Parameter: type, Type: known[i]))
+			.Where(static entry => entry.Type is not null)
+			.ToDictionary(static entry => entry.Parameter, static entry => entry.Type!);
+		
+		return _typePool.Substitute(parameter, map) as FunctionType;
+	}
+	
+	private LambdaAnnotations ResolveAnnotations(LambdaExpressionNode node)
+	{
+		var checkpoint = OpenCheckpoint();
+		var context = CurrentResolutionContext;
+		var annotations = new LambdaAnnotations(
+			[..node.Parameters.Select(parameter => parameter.Type is { } type ? context.ResolveType(type) : null)],
+			[
+				..node.Parameters.Select(static parameter =>
+					parameter.Mode is { } mode ? SymbolCollector.GetMode(mode) : (ParameterMode?)null)
+			],
+			node.ReturnType is { } returnType ? context.ResolveType(returnType) : null);
+		
+		Rollback(checkpoint);
+		return annotations;
+	}
+	
+	private IEnumerable<InferenceInput> CreateAnnotationInputs(FunctionType parameter, LambdaAnnotations annotations)
+	{
+		if (parameter.ParameterTypes.Length != annotations.Types.Length)
+			yield break;
+		
+		for (var i = 0; i < annotations.Types.Length; i++)
+		{
+			if (annotations.Types[i] is not { } type || type is InvalidType)
+				continue;
+			
+			var mode = annotations.Modes[i] ?? parameter.ParameterModes[i];
+			yield return new(parameter.ParameterTypes[i], _typePool.GetPassedType(type, mode)) { IsExact = true };
+		}
+		
+		if (annotations.ReturnType is { } returnType and not InvalidType)
+			yield return new(parameter.ReturnType, returnType) { IsExact = true };
+	}
+	
+	private bool Fits(LambdaAnnotations annotations, FunctionType type) =>
+		type.ParameterTypes.Length == annotations.Types.Length &&
+		annotations.Types.Select((annotated, i) =>
+				(annotations.Modes[i] ?? type.ParameterModes[i]) == type.ParameterModes[i] &&
+				(annotated is null || !IsKnown(type.ParameterTypes[i]) ||
+				 _typePool.GetPassedType(annotated, type.ParameterModes[i]) == type.ParameterTypes[i]))
+			.All(static fits => fits) &&
+		(annotations.ReturnType is null || !IsKnown(type.ReturnType) || annotations.ReturnType == type.ReturnType);
+	
 	private IEnumerable<InferenceInput> CreateInferenceInputs(CallShape shape,
 		IReadOnlyList<IResolvedExpressionNode?> values) => values
 		.Take(shape.Parameters.Count)
@@ -1853,7 +1948,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	
 	private bool IsDeferred(IExpressionNode node) => node switch
 	{
-		CallExpressionNode or ArrayExpressionNode => true,
+		CallExpressionNode or ArrayExpressionNode or LambdaExpressionNode => true,
 		VarExpressionNode name => CurrentResolutionContext.Resolve(name.Identifier.Text) is null,
 		_ => false
 	};
@@ -3454,6 +3549,153 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		return false;
 	}
 	
+	public IResolvedExpressionNode Visit(LambdaExpressionNode node) => ResolveLambda(node, CurrentTargetType);
+	
+	private IResolvedExpressionNode ResolveLambda(LambdaExpressionNode node, TypeSymbol? expected,
+		bool resolveBody = true)
+	{
+		var outer = CurrentResolutionContext;
+		var target = (expected is BorrowType { IsMutable: false } borrow ? borrow.Target : expected) as FunctionType;
+		if (target is not null && target.ParameterTypes.Length != node.Parameters.Length)
+			return Error(node, $"'{target.Name}' takes {DescribeParameterCount(target.ParameterTypes.Length)}",
+				expected);
+		
+		Diagnostics.AddRange(DiagnosticReporter.ReportDuplicates(node.Parameters.Select(static p => p.Identifier),
+			static name => $"Parameter '{name}' is declared more than once"));
+		
+		var modes = new ParameterMode[node.Parameters.Length];
+		var types = new TypeSymbol[node.Parameters.Length];
+		for (var i = 0; i < node.Parameters.Length; i++)
+		{
+			var parameter = node.Parameters[i];
+			modes[i] = parameter.Mode is null && target is not null
+				? target.ParameterModes[i]
+				: SymbolCollector.GetMode(parameter.Mode);
+			
+			if (parameter.Type is BorrowTypeNode borrowType)
+				Diagnostics.Add(DiagnosticReporter.ReportBorrowParameter(borrowType, parameter.Identifier.Text,
+					parameter.Mode is not null, false));
+			
+			if (parameter.Type is { } typeNode)
+				types[i] = _typePool.GetPassedType(outer.ResolveType(typeNode), modes[i]);
+			else if (target is not null && IsKnown(target.ParameterTypes[i]))
+				types[i] = GetExpectedParameterType(target, i, modes[i]);
+			else
+			{
+				Diagnostics.Add(new(DiagnosticSeverity.Error, parameter.Identifier.SourceLocation,
+					$"Cannot infer the type of '{parameter.Identifier.Text}'"));
+				
+				types[i] = NativeSymbols.Invalid;
+			}
+		}
+		
+		var agrees = target is not null && types.Select((type, i) => modes[i] == target.ParameterModes[i] &&
+		                                                             (type == target.ParameterTypes[i] ||
+		                                                              !IsKnown(target.ParameterTypes[i])))
+			.All(static agrees => agrees);
+		
+		var returnType = node.ReturnType is { } returnNode
+			? outer.ResolveType(returnNode)
+			: !agrees
+				? NativeSymbols.Void
+				: IsKnown(target!.ReturnType)
+					? target.ReturnType
+					: null;
+		
+		if (returnType is null)
+		{
+			if (node.ExpressionBody is not { } probe)
+				return Error(node, "Cannot infer the return type", expected);
+			
+			var checkpoint = OpenCheckpoint();
+			var draft = CreateLambdaInfo(node, outer, modes, types, NativeSymbols.Void);
+			_resolutionContexts.Push(CreateLambdaContext(outer, draft));
+			var value = Decay(MaterializeAsDefault(VisitNode(probe, null)));
+			_resolutionContexts.Pop();
+			Rollback(checkpoint);
+			returnType = value.Type;
+		}
+		
+		var info = CreateLambdaInfo(node, outer, modes, types, returnType);
+		IResolvedExpressionNode result = returnType is InvalidType || types.Any(static type => type is InvalidType)
+			? new ResolvedInvalidExpressionNode(node, expected)
+			: new ResolvedFunctionGroupExpressionNode(new FunctionGroupType("fun", [info], GetNaturalType(info).Name),
+				node);
+		
+		if (!resolveBody)
+			return result;
+		
+		_resolutionContexts.Push(CreateLambdaContext(outer, info));
+		IResolvedNode body = node.ExpressionBody is { } expression
+			? VisitNode(new ExpressionStatementNode(returnType == NativeSymbols.Void
+				? expression
+				: new ReturnExpressionNode(expression.SourceLocation, expression)))
+			: VisitNode(node.BlockBody!);
+		
+		_resolutionContexts.Pop();
+		var function = new ResolvedFunctionNode(info, body, info.Symbol.Syntax);
+		_lambdas.Add(function);
+		Journal(() => _lambdas.Remove(function));
+		return result;
+	}
+	
+	private TypeSymbol GetExpectedParameterType(FunctionType target, int index, ParameterMode mode)
+	{
+		var type = target.ParameterTypes[index];
+		if (mode == target.ParameterModes[index])
+			return type;
+		
+		return _typePool.GetPassedType(target.ParameterModes[index] == ParameterMode.Mut && type is PointerType pointer
+			? pointer.BaseType
+			: type, mode);
+	}
+	
+	private static string DescribeParameterCount(int count) => count switch
+	{
+		0 => "no parameters",
+		1 => "one parameter",
+		_ => $"{count} parameters"
+	};
+	
+	private bool IsKnown(TypeSymbol type) => TypePool.FindTypeParameters(type)
+		.All(parameter => CurrentResolutionContext.Resolve(parameter.Name) == parameter);
+	
+	private FunctionInfo CreateLambdaInfo(LambdaExpressionNode node, ResolutionContext outer,
+		IReadOnlyList<ParameterMode> modes, IReadOnlyList<TypeSymbol> types, TypeSymbol returnType)
+	{
+		var parameters = node.Parameters
+			.Select((parameter, i) => new ParameterSymbol(parameter.Identifier) { Mode = modes[i] })
+			.ToList();
+		
+		var symbol = new FunctionSymbol($"lambda{++_lambdaCount}", new LambdaDeclarationNode(node), Visibility.Private,
+			outer.ContainingFunction, parameters, FunctionKind.Free)
+		{
+			TypeParameters = outer.ContainingFunction?.Symbol.TypeParameters ?? []
+		};
+		
+		var scope = new Scope();
+		foreach (var parameter in parameters)
+			scope.Define(parameter);
+		
+		var signature = new FunctionSignature(types, returnType, false, modes);
+		var info = new FunctionInfo(outer.Mangle(symbol, signature), symbol, signature, scope, null, outer.File);
+		_signatures.AddLambda(info);
+		Journal(() => _signatures.RemoveLambda(info));
+		return info;
+	}
+	
+	private static ResolutionContext CreateLambdaContext(ResolutionContext outer, FunctionInfo info) => outer with
+	{
+		ContainingFunction = info,
+		LocalScope = info.Scope,
+		IsCaptured = name => IsOuterLocal(outer, name)
+	};
+	
+	private static bool IsOuterLocal(ResolutionContext outer, string name) =>
+		outer.LocalScope?.Resolve(name) is LocalVariableSymbol or ParameterSymbol ||
+		outer.ContainingFunction?.Symbol.Parameters.Any(parameter => parameter.Name == name) == true ||
+		outer.IsCaptured?.Invoke(name) == true;
+	
 	public IResolvedExpressionNode Visit(VarExpressionNode node)
 	{
 		if (ResolveTargetCase(node.Identifier, node) is { } targetCase)
@@ -3503,6 +3745,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			
 			case TraitSymbol or TypeParameterSymbol { IsTrait: true }:
 				return Error(node, "Cannot use traits as values", CurrentTargetType);
+			
+			case CapturedSymbol:
+				return Error(node, $"Cannot capture '{GetName(node)}'", CurrentTargetType);
 			
 			default:
 				return Error(node, $"Symbol '{GetName(node)}' is not a variable", CurrentTargetType);
@@ -5802,6 +6047,13 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		ImmutableArray<TypeParameterSymbol> Open,
 		TypeSymbol? ReturnType,
 		ImmutableArray<ParameterMode> Modes
+	);
+	
+	private sealed record LambdaAnnotations
+	(
+		ImmutableArray<TypeSymbol?> Types,
+		ImmutableArray<ParameterMode?> Modes,
+		TypeSymbol? ReturnType
 	);
 	
 	private readonly record struct Redirection

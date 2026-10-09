@@ -1,0 +1,88 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Text: rec
+{
+	id: i32
+
+	drop: op
+	{
+		printf("drop %d\n", self.id)
+	}
+}
+
+Handler: rec
+{
+	run: fun[i32 -> i32]
+}
+
+Num: rec
+{
+	n: i32
+
+	+: op(a: Num, b: Num) -> Num = Num(apply(fun(x) = x * 10, a.n + b.n))
+}
+
+apply: fun(f: fun[i32 -> i32], x: i32) -> i32 = f(x)
+
+consume: fun(f: fun[own Text -> i32], own t: Text) -> i32 = f(t)
+
+inspect: fun(f: fun[Text -> i32], t: Text) -> i32 = f(t)
+
+make: fun -> fun[i32 -> i32] = fun(x) = x * 7
+
+choose: fun(flag: bool) -> fun[i32 -> i32]
+{
+	if flag
+		ret fun(x) = x + 100
+
+	ret fun(x) { ret x - 100 }
+}
+
+offset: fun(x: i32) -> i32 = apply(fun(y) = y + 1, x)
+offset: fun(x: i64) -> i32 = apply(fun(y) = y + 2, i32(x))
+
+handler: val fun[i32 -> i32] = fun(x) = x + 1
+table: val array[fun[i32 -> i32], 2] = [fun(x) = x * 2, fun(x) = x * 3]
+current: var fun[i32 -> i32] = fun(x) = x - 1
+
+main: fun -> i32
+{
+	printf("%d %d %d %d\n", handler(1), table[0](5), table[1](5), current(5))
+	current = handler
+	printf("%d\n", current(5))
+
+	val fs: array[fun[i32 -> i32], 3] = [fun(x) = x + 1, fun(x) = x * 2, fun(x) = x * x]
+	for f in fs
+		printf("%d ", f(5))
+
+	printf("\n")
+
+	val h = Handler(fun(x) = x - 3)
+	printf("%d\n", h.run(10))
+	printf("%d %d %d\n", make()(3), choose(true)(1), choose(false)(1))
+
+	var changing: fun[i32 -> i32] = fun(x) = x
+	changing = fun(x) = x * 10
+	printf("%d\n", changing(4))
+
+	val curried: fun[i32 -> fun[i32 -> i32]] = fun(x) = fun(y) = y * 2
+	val nested = fun(x: i32) -> fun[i32 -> i32] = fun(y) = y + 1
+	printf("%d %d\n", curried(1)(21), nested(0)(41))
+
+	printf("%d\n", consume(fun(t) = t.id * 10, Text(1)))
+	val kept = Text(2)
+	printf("%d\n", inspect(fun(t) = t.id * 10, kept))
+	printf("%d\n", consume(fun(own t)
+	{
+		val moved = t
+		ret moved.id
+	}, Text(3)))
+
+	printf("%d %d %d\n", (Num(1) + Num(2)).n, offset(1), offset(i64(1)))
+	ret 0
+}

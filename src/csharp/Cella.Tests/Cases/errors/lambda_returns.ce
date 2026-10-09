@@ -1,0 +1,14 @@
+mod test
+
+apply: fun(f: fun[i32 -> i32], x: i32) -> i32 = f(x)
+
+main: fun -> i32
+{
+	apply(fun(x)
+	{
+		if x > 0
+			ret 1
+	}, 1)
+
+	ret 0
+}

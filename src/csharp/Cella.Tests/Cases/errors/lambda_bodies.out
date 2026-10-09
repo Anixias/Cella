@@ -1,0 +1,19 @@
+
+====== lambda_bodies.ce ======
+
+Error at line 7, column 16
+6 │ {
+7 │     each(fun(x) = x * 2)
+                      ╘═══╛ Only assignments and function calls are allowed as statements
+
+Error at line 9, column 17
+8 │ for i in 0..3
+9 │     each(fun(x) { break })
+                      ╘═══╛ Breaks are only allowed within loops
+
+Error at line 11, column 2
+10 │ 
+11 │ fun(x: i32) -> i32 = x
+     ╘════════════════════╛ Only assignments and function calls are allowed as statements
+
+[compilation failed]

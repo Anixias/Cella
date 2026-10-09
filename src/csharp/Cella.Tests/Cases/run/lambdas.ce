@@ -1,0 +1,64 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+	qsort: fun(base: ptr, count: usize, size: usize, compare: ext fun[ptr[i32], ptr[i32] -> i32])
+}
+
+apply: fun(f: fun[i32 -> i32], x: i32) -> i32 = f(x)
+
+each: fun(values: array[i32, 3], visit: fun[i32])
+{
+	for value in values
+		visit(value)
+}
+
+bumpAll: fun(mut values: array[i32, 3], bump: fun[mut i32])
+{
+	for value in mut values
+		bump(mut value)
+}
+
+call: fun(f: fun[-> i32]) -> i32 = f()
+
+run: fun(f: fun[]) = f()
+
+transform[T, U]: fun(value: T, f: fun[T -> U]) -> U = f(value)
+
+pick: fun(f: fun[i32 -> i32], x: i32) -> i32 = f(x)
+pick: fun(f: fun[i32, i32 -> i32], x: i32) -> i32 = f(x, x)
+pick: fun(f: fun[str -> i32], x: str) -> i32 = f(x)
+
+main: fun -> i32
+{
+	printf("%d %d\n", apply(fun(x) = x * 2, 5), apply(fun(x) { ret x * x }, 5))
+	printf("%d %d\n", apply(fun(x: i32) -> i32 = x + 1, 5), apply(fun(x) -> i32 { ret x - 1 }, 5))
+	each([1, 2, 3], fun(value) { printf("%d ", value) })
+	printf("\n")
+
+	var values = [3, 1, 2]
+	bumpAll(mut values, fun(value) { value += 10 })
+	bumpAll(mut values, fun(mut value) { value *= 2 })
+	qsort(@values, 3, sizeOf(i32), fun(a, b) = *a - *b)
+	printf("%d %d %d\n", values[0], values[1], values[2])
+
+	val triple: fun[i32 -> i32] = fun(x) = x * 3
+	val square = fun(x: i32) -> i32 = x * x
+	val greet = fun(name: cstr) = printf("hi %s\n", name)
+	greet("there")
+	printf("%d %d\n", triple(4), square(5))
+
+	printf("%d %d %d\n", call(fun = 42), call(fun -> i32 = 43), call(fun -> i32 { ret 44 }))
+	run(fun { printf("ran\n") })
+	run(fun = printf("ran again\n"))
+
+	printf("%d %f\n", transform(20, fun(x) = x + 1), transform(3, fun(x) = f64(x) / 2.0))
+	printf("%lld %lld\n", transform(3, fun(x) -> i64 = x), transform(20, fun(x: i64) = x * 1000000000))
+	val widened: i64 = transform(7, fun(x) = x)
+	printf("%lld\n", widened)
+
+	printf("%d %d %d\n", pick(fun(a, b) = a * b, 6), pick(fun(s: str) -> i32 = 9, "text"), pick(fun(x) = x + 1, 1))
+	printf("%d\n", apply(fun(x) = apply(fun(y) = y * 3, x) + 1, 5))
+	ret 0
+}

@@ -66,6 +66,7 @@ public sealed class SignatureCollector
 	private readonly List<ConstraintCheck> _deferredChecks = [];
 	private readonly List<(TypeParameterNode, TypeParameterSymbol, ResolutionContext)> _pendingConstructorBounds = [];
 	private readonly List<(GlobalSymbol Global, ITypeNode Node, TypeSymbol Type)> _variables = [];
+	private readonly HashSet<FunctionSymbol> _lambdas = [];
 	private IConstantResolver? constants;
 	
 	public DiagnosticList Diagnostics { get; } = new();
@@ -132,7 +133,24 @@ public sealed class SignatureCollector
 		return new(name, _symbolTable, _builder.Build(), entryPoint);
 	}
 	
-	public bool IsLocal(Symbol symbol) => _declarations.ContainsKey(symbol);
+	public bool IsLocal(Symbol symbol) =>
+		_declarations.ContainsKey(symbol) || symbol is FunctionSymbol function && _lambdas.Contains(function);
+	
+	public void AddLambda(FunctionInfo info)
+	{
+		_lambdas.Add(info.Symbol);
+		_builder.Functions[info.Symbol] = info;
+		for (var i = 0; i < info.Symbol.Parameters.Length; i++)
+			_builder.VariableTypes[info.Symbol.Parameters[i]] = info.Signature.ParameterTypes[i];
+	}
+	
+	public void RemoveLambda(FunctionInfo info)
+	{
+		_lambdas.Remove(info.Symbol);
+		_builder.Functions.Remove(info.Symbol);
+		foreach (var parameter in info.Symbol.Parameters)
+			_builder.VariableTypes.Remove(parameter);
+	}
 	
 	public ImportEnvironment GetImports(FileSymbol file) => _builder.ImportEnvironments[file];
 	

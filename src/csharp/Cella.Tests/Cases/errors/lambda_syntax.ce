@@ -1,0 +1,18 @@
+mod test
+
+missingBody: fun
+{
+	val a = fun(x: i32)
+}
+
+unclosed: fun
+{
+	val b = fun(x: i32 = x
+}
+
+missingName: fun
+{
+	val c = fun(own) = 1
+}
+
+main: fun -> i32 = 0

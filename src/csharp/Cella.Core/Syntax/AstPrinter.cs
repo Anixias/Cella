@@ -513,6 +513,20 @@ public sealed class AstPrinter : ISyntaxNodeVisitor
 		VisitNode(node.Value, true);
 	}
 	
+	public void Visit(LambdaExpressionNode node)
+	{
+		StartLine();
+		_sb.Append("LambdaExpressionNode (").AppendJoin(", ",
+			node.Parameters.Select(static parameter => parameter.Identifier.Text)).Append(')');
+		
+		if (node.ExpressionBody is { } expression)
+			VisitNode(expression, true);
+		else if (node.BlockBody is { } block)
+			VisitNode(block, true);
+	}
+	
+	public void Visit(LambdaDeclarationNode node) => throw new InvalidOperationException();
+	
 	public void Visit(LiteralExpressionNode node)
 	{
 		StartLine();

@@ -1,0 +1,49 @@
+mod test
+
+apply: fun(f: fun[i32 -> i32], x: i32) -> i32 = f(x)
+pair: fun(f: fun[i32, i32 -> i32]) -> i32 = f(1, 2)
+choose: fun(f: fun[i32 -> i32]) -> i32 = f(1)
+choose: fun(f: fun[i64 -> i64]) -> i32 = 2
+transform[T, U]: fun(value: T, f: fun[T -> U]) -> U = f(value)
+limit: val i32 = 5
+
+Counter: rec
+{
+	count: i32
+
+	add: fun(self, x: i32) -> i32 = apply(fun(y) = y + self.count, x)
+
+	new: op(f: fun[i32 -> i32])
+	{
+		self.count = f(1)
+	}
+
+	new: op(f: fun[i64 -> i64])
+	{
+		self.count = 2
+	}
+}
+
+main: fun -> i32
+{
+	val base = 10
+	apply(fun(x) = x + base, 1)
+	apply(fun(x) = x + limit, 1)
+	for i in 0..3
+		apply(fun(x) = x + i, 1)
+
+	val loose = fun(x) = x
+	apply(fun(a, b) = a, 1)
+	apply(fun = 1, 1)
+	pair(fun(x, x) = x)
+	choose(fun(x) = x)
+	choose(fun(x: i64) -> i64 = x)
+	val counter = Counter(fun(x) = x)
+	transform(1, fun(x) { ret x })
+	apply(fun(mut x) { x += 1 }, 1)
+	apply(fun(x: i64) = x, 1)
+	val unknown = fun(x: Missing) = x
+	apply(fun(x) = x > 0, 1)
+	missing(fun(x) = x)
+	ret 0
+}
