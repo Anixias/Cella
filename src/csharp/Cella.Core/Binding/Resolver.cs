@@ -220,6 +220,8 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	
 	public IResolvedDeclarationNode Visit(ParameterNode node) => throw new InvalidOperationException();
 	
+	public IResolvedDeclarationNode Visit(NativeConstructorNode node) => throw new InvalidOperationException();
+	
 	public IResolvedDeclarationNode Visit(ConstructorConstraintNode node) => throw new InvalidOperationException();
 	
 	public IResolvedDeclarationNode Visit(PropertyNode node) => throw new InvalidOperationException();
@@ -4555,7 +4557,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	
 	private void TrackFunctionUse(FunctionInfo info, IExpressionNode syntax)
 	{
-		if (!_signatures.IsLocal(info.Symbol) || info.File.Module != CurrentResolutionContext.File.Module)
+		if (!_signatures.IsLocal(info.Symbol) || info.File?.Module != CurrentResolutionContext.File.Module)
 			_importedFunctions.TryAdd(info.Symbol, info);
 		
 		if (info.Symbol.TypeParameters.IsEmpty)

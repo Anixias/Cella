@@ -12,7 +12,7 @@ public readonly record struct FunctionInfo
 	FunctionSignature Signature,
 	Scope? Scope,
 	string? Origin,
-	FileSymbol File
+	FileSymbol? File
 )
 {
 	public ImmutableArray<TypeSymbol> TypeArguments { get; init; } = [];

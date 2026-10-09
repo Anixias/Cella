@@ -159,6 +159,8 @@ public sealed class SymbolCollector : IDeclarationNodeVisitor<Symbol>
 	
 	public Symbol Visit(ParameterNode node) => throw new InvalidOperationException();
 	
+	public Symbol Visit(NativeConstructorNode node) => throw new InvalidOperationException();
+	
 	public Symbol Visit(ConstructorConstraintNode node) => throw new InvalidOperationException();
 	
 	public Symbol Visit(PropertyNode node)

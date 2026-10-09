@@ -726,6 +726,12 @@ public abstract record AccessorImpl;
 public sealed record NativeAccessor(NativeMemberIntrinsic Intrinsic) : AccessorImpl;
 public sealed record FunctionAccessor(FunctionSymbol Function) : AccessorImpl;
 
+public sealed class NativeConstructorNode(NativeMemberIntrinsic intrinsic) : IDeclarationNode
+{
+	public NativeMemberIntrinsic Intrinsic { get; } = intrinsic;
+	public SourceLocation SourceLocation => SourceLocation.None;
+}
+
 // TODO Throw errors when symbols resolved as ambiguous
 public sealed class AmbiguousSymbol(string name, IEnumerable<Symbol> candidates) : Symbol(name)
 {
@@ -737,6 +743,7 @@ public enum NativeMemberIntrinsic
 	ArrayLength,
 	StrByteLength,
 	StrData,
+	StrNew,
 	FStrHoles,
 	ArrayIndexGet,
 	ArrayIndexSet,

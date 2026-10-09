@@ -1,0 +1,41 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+	malloc: fun(size: usize) -> ptr[u8]
+	free: fun(memory: ptr[u8])
+}
+
+String: rec
+{
+	data: ptr[u8]
+	length: usize
+
+	new: op(length: usize)
+	{
+		self.data = malloc(length)
+		self.length = length
+	}
+
+	asStr: fun(self) -> str = str(self.data, self.length)
+
+	drop: op
+	{
+		free(self.data)
+	}
+}
+
+local: fun -> str
+{
+	var buffer: array[u8, 4]
+	buffer[0] = 65
+	ret str(@buffer[0], 1)
+}
+
+main: fun -> i32
+{
+	val view = String(3).asStr()
+	printf("%d\n", i32(view.byteLength))
+	ret 0
+}

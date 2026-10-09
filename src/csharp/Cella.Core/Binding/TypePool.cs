@@ -285,7 +285,7 @@ public sealed class TypePool
 		TypeParameterSymbol parameter => parameter.HasNew || GetParameterConstructors(parameter)
 			.Any(static constructor => constructor.Signature.ParameterTypes.Length == 1),
 		TraitType => false,
-		_ when GetConstructors(type).Count > 0 => FindNewConstructor(type) is not null,
+		RecordSymbol when GetConstructors(type).Count > 0 => FindNewConstructor(type) is not null,
 		RecordSymbol record => GetMembers(record).OfType<FieldSymbol>().All(HasDefault),
 		_ => HasDefault(type)
 	};
@@ -307,15 +307,17 @@ public sealed class TypePool
 	public Witness? FindConstructorWitness(TypeSymbol type, FunctionSignature expected)
 	{
 		var declared = GetConstructors(type);
-		if (declared.Count == 0)
-			return FindConstructionWitness(type, expected);
-		
 		var floor = GetConstructorFloor(type);
-		return declared
+		var match = declared
 			.Where(constructor => constructor.Symbol.Visibility >= floor &&
 			                      MatchesConstructor(constructor.Signature, expected))
 			.Select(static constructor => new FunctionWitness(constructor.Symbol, constructor))
 			.FirstOrDefault();
+		
+		if (match is not null || declared.Count > 0 && type is RecordSymbol)
+			return match;
+		
+		return FindConstructionWitness(type, expected);
 	}
 	
 	public Witness? FindConstructionWitness(TypeSymbol self, FunctionSignature expected)
@@ -1119,6 +1121,21 @@ public sealed class TypePool
 		};
 		
 		RegisterMember(NativeSymbols.Str, data, ptrType);
+		
+		ParameterSymbol[] parameters =
+		[
+			new("self", SourceLocation.None) { Mode = ParameterMode.Mut },
+			new("data", SourceLocation.None),
+			new("byteLength", SourceLocation.None)
+		];
+		
+		var constructor = new FunctionSymbol("str.new", new NativeConstructorNode(NativeMemberIntrinsic.StrNew),
+			Visibility.Public, null, parameters, FunctionKind.Constructor);
+		
+		var signature = new FunctionSignature([GetPointerType(NativeSymbols.Str), ptrType, lengthType],
+			NativeSymbols.Void, false, [ParameterMode.Mut, ParameterMode.ReadOnly, ParameterMode.ReadOnly]);
+		
+		AddConstructor(NativeSymbols.Str, new FunctionInfo("str.new", constructor, signature, null, null, null));
 	}
 	
 	public void CreateArrayMembers(ArrayType type)

@@ -1,0 +1,61 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+	malloc: fun(size: usize) -> ptr[u8]
+	free: fun(memory: ptr[u8])
+	memcpy: fun(target: ptr[u8], source: ptr[u8], size: usize) -> ptr[u8]
+	strlen: fun(text: cstr) -> usize
+}
+
+String: rec
+{
+	data: ptr[u8]
+	length: usize
+
+	new: op(text: str)
+	{
+		self.data = malloc(text.byteLength)
+		self.length = text.byteLength
+		memcpy(self.data, text.data, text.byteLength)
+	}
+
+	asStr: fun(self) -> str = str(self.data, self.length)
+
+	drop: op
+	{
+		free(self.data)
+	}
+}
+
+Line: ref rec
+{
+	text: str
+}
+
+show: fun(text: str)
+{
+	printf("[%.*s]\n", i32(text.byteLength), text.data)
+}
+
+fromCstr: fun(text: cstr) -> str = str(text, strlen(text))
+
+slice: fun(text: str, start: usize, length: usize) -> str = str(text.data + start, length)
+
+main: fun -> i32
+{
+	val text: str = "hello world"
+	val word = str(text.data + 6, 5)
+	show(word)
+	show(slice(text, 0, 5))
+	printf("%c %d\n", i32(word[0]), i32(word.byteLength))
+	val owned = String("owned text")
+	val view = owned.asStr()
+	show(view)
+	show(fromCstr("from cstr"))
+	val line = Line(str(text.data, 4))
+	show(line.text)
+	show(str(text.data, 0))
+	ret 0
+}

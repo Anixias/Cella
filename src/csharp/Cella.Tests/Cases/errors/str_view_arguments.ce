@@ -1,0 +1,14 @@
+mod test
+
+main: fun -> i32
+{
+	val text: str = "abc"
+	val a = str(1, 2)
+	val b = str(text.data, -1)
+	val c = str(text.data)
+	val d = str(text.data, 1, 2)
+	val e = str(text, 2)
+	val n: i32 = 2
+	val f = str(text.data, n)
+	ret 0
+}

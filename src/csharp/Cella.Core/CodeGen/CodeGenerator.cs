@@ -2461,6 +2461,9 @@ public sealed unsafe class CodeGenerator : IDisposable
 		if (FindWitness(function) is { } witness)
 			return BuildWitness(function, witness);
 		
+		if (function.Symbol.Syntax is NativeConstructorNode native)
+			return BuildNativeConstructor(function, native);
+		
 		if (!function.TypeArguments.IsDefaultOrEmpty)
 			return Instantiate(function);
 		
@@ -2527,6 +2530,25 @@ public sealed unsafe class CodeGenerator : IDisposable
 		else
 			builder.BuildRet(result);
 		
+		return value;
+	}
+	
+	private LLVMValueRef BuildNativeConstructor(FunctionInfo function, NativeConstructorNode native)
+	{
+		var value = CreateFunction(current.Module, function).FunctionValue;
+		value.Linkage = LLVMLinkage.LLVMInternalLinkage;
+		using var builder = current.Module.Context.CreateBuilder();
+		builder.PositionAtEnd(value.AppendBasicBlock("entry"));
+		var result = native.Intrinsic switch
+		{
+			NativeMemberIntrinsic.StrNew => builder.BuildInsertValue(
+				builder.BuildInsertValue(MapTypeSymbol(NativeSymbols.Str).Undef, value.GetParam(2), 0, "str"),
+				value.GetParam(1), 1, "str"),
+			_ => throw new InvalidOperationException()
+		};
+		
+		builder.BuildStore(result, value.GetParam(0));
+		builder.BuildRetVoid();
 		return value;
 	}
 	
@@ -2658,11 +2680,12 @@ public sealed unsafe class CodeGenerator : IDisposable
 			function.TypeArguments, _modules);
 		
 		var value = CreateFunction(current.Module, function, name).FunctionValue;
-		var owner = FindOwner(function.File.Module, name);
+		var module = function.File!.Module;
+		var owner = FindOwner(module, name);
 		var hasBody = _genericBodies.ContainsKey(function.Symbol);
 		if (owner != current || !hasBody)
 			value.Visibility = LLVMVisibility.LLVMHiddenVisibility;
-		else if (_moduleStates.ContainsKey(function.File.Module) && IsObjectLocal(function.Symbol))
+		else if (_moduleStates.ContainsKey(module) && IsObjectLocal(function.Symbol))
 			value.Linkage = LLVMLinkage.LLVMInternalLinkage;
 		else
 			ShareDefinition(value, false);

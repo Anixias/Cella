@@ -1,5 +1,6 @@
 ﻿using System.Collections.Immutable;
 using System.Text;
+using Cella.Core.Symbols;
 using Cella.Core.Syntax.Nodes;
 
 namespace Cella.Core.Syntax;
@@ -364,6 +365,8 @@ public sealed class AstPrinter : ISyntaxNodeVisitor
 	}
 	
 	public void Visit(ConstructorConstraintNode node) => _sb.Append(node.SourceLocation.GetText());
+	
+	public void Visit(NativeConstructorNode node) => throw new InvalidOperationException();
 	
 	private void AppendTypeParameters(ImmutableArray<TypeParameterNode> typeParameters)
 	{

@@ -860,9 +860,7 @@ public sealed class SignatureCollector
 		
 		if (matches.Count > 0)
 		{
-			conformance.Witnesses[requirement] =
-				new FunctionWitness(matches[0].Symbol, GetFunctionInfo(matches[0].Symbol));
-			
+			conformance.Witnesses[requirement] = new FunctionWitness(matches[0].Symbol, matches[0]);
 			ReportNarrowWitness(conformance, self, "new", matches[0].Symbol);
 			return;
 		}
@@ -870,13 +868,14 @@ public sealed class SignatureCollector
 		var expected = _typePool.SubstituteSignature(signature,
 			new Dictionary<TypeParameterSymbol, TypeSymbol> { [trait.Self] = self });
 		
-		if (declared.Count == 0 && _typePool.FindConstructionWitness(self, expected) is { } construction)
+		var hidesConstruction = declared.Count > 0 && self is RecordSymbol;
+		if (!hidesConstruction && _typePool.FindConstructionWitness(self, expected) is { } construction)
 		{
 			conformance.Witnesses[requirement] = construction;
 			return;
 		}
 		
-		if (declared.Count == 0)
+		if (!hidesConstruction)
 		{
 			ReportConformance(conformance.Location, $"'{self.Name}' needs '{trait.Name}.new'");
 			return;
@@ -2407,7 +2406,7 @@ public sealed class SignatureCollector
 		if (_entryPoints.Count > 1)
 		{
 			var reportedAsDuplicates = _entryPoints.All(entryPoint => _entryPoints.Any(other => other != entryPoint &&
-				AreVisibleTogether(entryPoint.Symbol, entryPoint.File, other.Symbol, other.File)));
+				AreVisibleTogether(entryPoint.Symbol, entryPoint.File!, other.Symbol, other.File!)));
 			
 			if (reportedAsDuplicates)
 				return;

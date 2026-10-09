@@ -1,0 +1,43 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+FromParts: trait
+{
+	new: op(data: ptr[u8], byteLength: usize)
+}
+
+FromSelf: trait
+{
+	new: op(value: str)
+}
+
+str: impl FromParts + FromSelf
+{
+}
+
+build[T: new(ptr[u8], usize)]: fun(data: ptr[u8], length: usize) -> T = T(data, length)
+
+viaTrait[T: FromParts]: fun(data: ptr[u8], length: usize) -> T = T(data, length)
+
+same[T: new(own T)]: fun(own value: T) -> T = T(value)
+
+empty[T: new()]: fun -> T = T()
+
+again[T: FromSelf]: fun(value: str) -> T = T(value)
+
+main: fun -> i32
+{
+	val text: str = "constraint"
+	val a = build[str](text.data, 3)
+	val b = viaTrait[str](text.data + 3, 4)
+	val c = same(text)
+	val d = empty[str]()
+	val e = again[str](text)
+	printf("[%.*s] [%.*s] [%.*s] %d [%.*s]\n", i32(a.byteLength), a.data, i32(b.byteLength), b.data,
+		i32(c.byteLength), c.data, i32(d.byteLength), i32(e.byteLength), e.data)
+	ret 0
+}
