@@ -64,7 +64,7 @@ main: fun -> i32
 	var x = 10
 	var r: imm[i32] = x
 	var i = 0
-	loop while i < 3
+	while i < 3
 	{
 		val local = i
 		r = local

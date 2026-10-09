@@ -1,0 +1,163 @@
+mod test
+
+Point: rec
+{
+	x: i32
+}
+
+Ticker: rec
+{
+	left: i32
+
+	for: op(mut self) -> bool
+	{
+		self.left -= 1
+		ret self.left >= 0
+	}
+
+	pvt
+	{
+		*: op(self) -> imm[i32] = imm self.left
+	}
+
+	drop: op
+	{
+	}
+}
+
+Blank: rec
+{
+	left: i32
+
+	for: op(mut self) -> bool = false
+}
+
+Hidden: rec
+{
+	left: i32
+
+	pvt
+	{
+		for: op(mut self) -> bool = false
+	}
+}
+
+Plain: rec
+{
+	x: i32
+
+	in: op(self) -> Point = Point(self.x)
+
+	drop: op
+	{
+	}
+}
+
+Secret: rec
+{
+	x: i32
+
+	pvt
+	{
+		in: op(self) -> Ticker = Ticker(self.x)
+	}
+
+	drop: op
+	{
+	}
+}
+
+Closed: rec
+{
+	x: i32
+
+	in: op(self) -> Hidden = Hidden(self.x)
+
+	drop: op
+	{
+	}
+}
+
+ReadOnly: rec
+{
+	x: i32
+
+	in: op(self) -> Ticker = Ticker(self.x)
+
+	drop: op
+	{
+	}
+}
+
+WriteOnly: rec
+{
+	x: i32
+
+	in: op(mut self) -> Ticker = Ticker(self.x)
+}
+
+Steps: trait
+{
+	for: op(mut self) -> bool
+}
+
+walk: fun(steps: dyn[Steps])
+{
+	for _ in steps
+	{
+	}
+}
+
+main: fun -> i32
+{
+	for x in 5
+	{
+	}
+
+	for c in "abc"
+	{
+	}
+
+	for p in Point(1)
+	{
+	}
+
+	for p in Plain(1)
+	{
+	}
+
+	for x in Ticker(3)
+	{
+	}
+
+	for x in Blank(3)
+	{
+	}
+
+	for _ in Ticker(3)
+	{
+	}
+
+	for _ in Closed(1)
+	{
+	}
+
+	for x in Secret(1)
+	{
+	}
+
+	var r = ReadOnly(1)
+	for _ in mut r
+	{
+	}
+
+	var w = WriteOnly(1)
+	for _ in w
+	{
+	}
+
+	for x in missing
+		x = 1
+
+	ret 0
+}

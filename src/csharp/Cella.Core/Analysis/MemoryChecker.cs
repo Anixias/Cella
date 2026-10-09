@@ -214,6 +214,7 @@ public sealed class MemoryChecker(TypePool typePool, DiagnosticList diagnostics)
 	{
 		ParameterSymbol { Mode: ParameterMode.ReadOnly } parameter
 			when !typePool.IsCopy(paths.GetRoot(parameter).Type) => "Cannot move read-only parameters",
+		LocalVariableSymbol { IsLoopBinding: true } => "Cannot move loop variables",
 		LocalVariableSymbol { IsBorrowBinding: true } => "Cannot move pattern bindings",
 		_ when place.Path.Any(IsComputedIndex) => "Cannot move array elements at computed indices",
 		_ when place.Root == destructorSelf && place.Path.IsEmpty => "Cannot move 'self' in destructors",

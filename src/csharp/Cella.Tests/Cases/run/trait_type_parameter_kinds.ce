@@ -48,7 +48,7 @@ Repeat: rec impl Iterator[i32]
 drain: fun(mut items: dyn[Iterator[i32]]) -> i32
 {
 	var total = 0
-	loop while items.next() is some(value)
+	while items.next() is some(value)
 		total += value
 
 	ret total
@@ -112,7 +112,7 @@ fixed[T: copy]: impl Iterable[T, cursor[T]]
 sum[I: Iterator[i32]]: fun(mut items: I) -> i32
 {
 	var total = 0
-	loop while items.next() is some(value)
+	while items.next() is some(value)
 		total += value
 
 	ret total
@@ -161,7 +161,7 @@ str: impl Show[i32]
 say: fun(text: fstr[Show[i32]])
 {
 	var i: usize = 0
-	loop while i < text.holes
+	while i < text.holes
 	{
 		text.piece(i).show(0)
 		text.value(i).show(100)

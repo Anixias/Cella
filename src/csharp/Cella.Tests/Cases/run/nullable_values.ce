@@ -47,7 +47,7 @@ readNode: fun(n: nullable[ptr[Node]]) -> i32 = match n { some(p) => p.value  non
 find: fun(mut values: array[i32, 3], target: i32) -> nullable[imm[i32]]
 {
 	var i: usize = 0
-	loop while i < 3
+	while i < 3
 	{
 		if values[i] == target
 			ret some(imm values[i])

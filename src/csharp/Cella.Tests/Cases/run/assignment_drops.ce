@@ -63,7 +63,7 @@ main: fun -> i32
 	printf("%d %d %d %d\n", values[0].id, values[1].id, values[2].id, counter)
 
 	var i = 0
-	loop while i < 3
+	while i < 3
 	{
 		b = make(b.id + i)
 		i += 1

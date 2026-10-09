@@ -17,7 +17,7 @@ ready: var bool = false
 
 lock: fun
 {
-	loop while !(atomic acquire *@locked == false = true)
+	while !(atomic acquire *@locked == false = true)
 	{
 	}
 }
@@ -30,7 +30,7 @@ unlock: fun
 work: ext fun(parameter: ptr) -> u32
 {
 	var i = 0
-	loop while i < 20000
+	while i < 20000
 	{
 		atomic relaxed *@counter += 1
 		lock()
@@ -53,14 +53,14 @@ main: fun -> i32
 {
 	var threads: array[ptr, 4]
 	var i: usize = 0
-	loop while i < 4
+	while i < 4
 	{
 		threads[i] = CreateThread(null, 0, work, null, 0, null)
 		i += 1
 	}
 
 	i = 0
-	loop while i < 4
+	while i < 4
 	{
 		WaitForSingleObject(threads[i], 0xFFFFFFFF)
 		CloseHandle(threads[i])
@@ -69,7 +69,7 @@ main: fun -> i32
 
 	printf("%lld %lld\n", atomic *@counter, guarded)
 	val publisher = CreateThread(null, 0, publish, null, 0, null)
-	loop while !(atomic acquire *@ready)
+	while !(atomic acquire *@ready)
 	{
 	}
 

@@ -91,7 +91,7 @@ count[T: Eq[T]]: fun(items: ptr[T], length: usize, value: T) -> i32
 {
 	var found = 0
 	var i: usize = 0
-	loop while i < length
+	while i < length
 	{
 		if items[i] == value
 			found += 1

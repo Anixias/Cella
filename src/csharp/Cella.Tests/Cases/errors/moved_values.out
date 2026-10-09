@@ -26,7 +26,7 @@ Error at line 31, column 6
             | Moved on line 29
 
 Error at line 39, column 17
-38 │ loop for 3
+38 │ for _ in 0..3
 39 │     total += take(a)
                        ^ Cannot use moved values
                        | Moved here in an earlier iteration

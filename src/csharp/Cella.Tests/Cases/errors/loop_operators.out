@@ -1,0 +1,79 @@
+
+====== loop_operators.ce ======
+
+Error at line 19, column 2
+18 │ 
+19 │ in: op -> Cursor = Cursor(0)
+     ╘╛ Cannot declare 'in' operators without 'self'
+
+Error at line 20, column 13
+19 │ in: op -> Cursor = Cursor(0)
+20 │ in: op(own self) -> Cursor = Cursor(0)
+                ╘══╛ Cannot take 'own self' in 'in' operators
+
+Error at line 21, column 15
+20 │ in: op(own self) -> Cursor = Cursor(0)
+21 │ in: op(self, extra: i32) -> Cursor = Cursor(extra)
+                  ╘═══╛ Cannot take parameters in 'in' operators
+
+Error at line 22, column 2
+21 │ in: op(self, extra: i32) -> Cursor = Cursor(extra)
+22 │ in: op(self)
+     ╘╛ Cannot return 'void' from 'in' operators
+
+Error at line 31, column 18
+30 │ 
+31 │ in: op(self) -> imm[i32] = imm self.x
+                     ╘══════╛ Cannot return 'imm[i32]' from 'in' operators
+
+Error at line 32, column 2
+31 │ in: op(self) -> imm[i32] = imm self.x
+32 │ in: op(mut self) -> Cursor = Cursor(0)
+     ╘╛ 'in' with 'mut self' is declared more than once in 'Repeats'
+
+Error at line 33, column 2
+32 │ in: op(mut self) -> Cursor = Cursor(0)
+33 │ in: op(mut self) -> Cursor = Cursor(1)
+     ╘╛ 'in' with 'mut self' is declared more than once in 'Repeats'
+
+Error at line 44, column 2
+43 │ 
+44 │ for: op -> bool = true
+     ╘═╛ Cannot declare 'for' operators without 'mut self'
+
+Error at line 45, column 10
+44 │ for: op -> bool = true
+45 │ for: op(self) -> bool = true
+             ╘══╛ Cannot take 'self' in 'for' operators
+
+Error at line 46, column 14
+45 │ for: op(self) -> bool = true
+46 │ for: op(own self) -> bool = true
+                 ╘══╛ Cannot take 'own self' in 'for' operators
+
+Error at line 47, column 20
+46 │ for: op(own self) -> bool = true
+47 │ for: op(mut self, n: i32) -> bool = true
+                       ^ Cannot take parameters in 'for' operators
+
+Error at line 48, column 23
+47 │ for: op(mut self, n: i32) -> bool = true
+48 │ for: op(mut self) -> i32 = 1
+                          ╘═╛ Cannot return 'i32' from 'for' operators
+
+Error at line 49, column 2
+48 │ for: op(mut self) -> i32 = 1
+49 │ for: op(mut self)
+     ╘═╛ Cannot return 'void' from 'for' operators
+
+Error at line 58, column 2
+57 │ 
+58 │ for: op(mut self) -> bool = true
+     ╘═╛ 'for' with 'mut self' is declared more than once in 'Twice'
+
+Error at line 59, column 2
+58 │ for: op(mut self) -> bool = true
+59 │ for: op(mut self) -> bool = false
+     ╘═╛ 'for' with 'mut self' is declared more than once in 'Twice'
+
+[compilation failed]

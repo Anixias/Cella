@@ -1,0 +1,64 @@
+
+====== for_sources.ce ======
+
+Error at line 106, column 11
+105 │ {
+106 │     for _ in steps
+                   ╘═══╛ Cannot use 'dyn[Steps]' by value
+
+Error at line 113, column 11
+112 │ {
+113 │     for x in 5
+                   ^ Cannot iterate over 'i32'
+
+Error at line 117, column 11
+116 │ 
+117 │ for c in "abc"
+               ╘═══╛ Cannot iterate over 'str'
+
+Error at line 121, column 11
+120 │ 
+121 │ for p in Point(1)
+               ╘══════╛ Cannot iterate over 'Point'
+
+Error at line 125, column 11
+124 │ 
+125 │ for p in Plain(1)
+               ╘══════╛ 'Point' has no 'for' operator
+
+Error at line 129, column 6
+128 │ 
+129 │ for x in Ticker(3)
+          ^ '*' is private to its type
+
+Error at line 133, column 6
+132 │ 
+133 │ for x in Blank(3)
+          ^ 'Blank' has no '*' operator
+
+Error at line 141, column 11
+140 │ 
+141 │ for _ in Closed(1)
+               ╘═══════╛ 'for' is private to its type
+
+Error at line 145, column 11
+144 │ 
+145 │ for x in Secret(1)
+               ╘═══════╛ 'in' is private to its type
+
+Error at line 150, column 15
+149 │ var r = ReadOnly(1)
+150 │ for _ in mut r
+                   ^ Cannot iterate over 'ReadOnly' with 'mut'
+
+Error at line 155, column 11
+154 │ var w = WriteOnly(1)
+155 │ for _ in w
+               ^ Cannot iterate over 'WriteOnly' without 'mut'
+
+Error at line 159, column 11
+158 │ 
+159 │ for x in missing
+               ╘═════╛ Symbol 'missing' not found in this scope
+
+[compilation failed]

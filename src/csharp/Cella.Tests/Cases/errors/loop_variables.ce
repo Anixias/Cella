@@ -1,0 +1,60 @@
+mod test
+
+Countdown: rec
+{
+	left: i32
+
+	for: op(mut self) -> bool
+	{
+		self.left -= 1
+		ret self.left >= 0
+	}
+
+	*: op(self) -> imm[i32] = imm self.left
+
+	drop: op
+	{
+	}
+}
+
+inc: fun(mut value: i32)
+{
+	value += 1
+}
+
+main: fun -> i32
+{
+	for i in 0..3
+	{
+		i = 2
+		i += 1
+		inc(mut i)
+	}
+
+	var values = [1, 2]
+	for v in values
+		v = 5
+
+	val fixed = [1, 2]
+	for v in mut fixed
+	{
+	}
+
+	for v in mut [1, 2]
+	{
+	}
+
+	for x in Countdown(3)
+		x = 1
+
+	var c = Countdown(3)
+	for x in mut c
+		x = 1
+
+	val frozen = Countdown(3)
+	for _ in mut frozen
+	{
+	}
+
+	ret 0
+}

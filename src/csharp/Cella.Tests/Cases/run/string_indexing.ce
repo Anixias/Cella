@@ -22,7 +22,7 @@ main: fun -> i32
 	val borrowed: u8 = b
 	var total: u32 = 0
 	var j: usize = 0
-	loop while j < s.byteLength
+	while j < s.byteLength
 	{
 		total += s[j]
 		j += 1

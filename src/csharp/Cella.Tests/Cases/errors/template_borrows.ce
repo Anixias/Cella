@@ -79,7 +79,7 @@ main: fun -> i32
 	show(temp)
 	var i = 0
 	var last: fstr[Display] = "none"
-	loop while i < 2
+	while i < 2
 	{
 		show(last)
 		last = "{i}"

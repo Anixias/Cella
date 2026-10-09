@@ -114,7 +114,7 @@ cycle: fun(limit: i32) -> i32
 	var x = make(1)
 	var total = 0
 	var i = 0
-	loop while i < limit
+	while i < limit
 	{
 		i += 1
 		if i == 2
@@ -133,11 +133,11 @@ rounds: fun -> i32
 {
 	var total = 0
 	var outer = 0
-	loop while outer < 3
+	while outer < 3
 	{
 		val y = make(outer + 1)
 		var inner = 0
-		loop while inner < 2
+		while inner < 2
 		{
 			if inner == outer
 			{

@@ -42,7 +42,7 @@ Error at line 27, column 8
 
 Error at line 30, column 7
 29 │ val x = (7 +
-30 │ outer: loop while true
+30 │ outer: while true
           ^ Expected ')'
           | To match the '(' on line 29
 

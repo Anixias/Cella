@@ -6,20 +6,20 @@ Error at line 17, column 6
 17 │ if @make().x == null
          ╘══════╛ Cannot take the address of unstored values
 
-Error at line 20, column 21
+Error at line 20, column 16
 19 │ 
-20 │ loop while count / 0 > 0
-                        ^ Division by zero
+20 │ while count / 0 > 0
+                   ^ Division by zero
 
 Error at line 26, column 11
 25 │     count += 1
 26 │ } while @make().x == null
               ╘══════╛ Cannot take the address of unstored values
 
-Error at line 28, column 19
+Error at line 28, column 22
 27 │ 
-28 │ loop for count % 0
-                      ^ Division by zero
+28 │ for _ in 0..count % 0
+                         ^ Division by zero
 
 Error at line 32, column 6
 31 │ 

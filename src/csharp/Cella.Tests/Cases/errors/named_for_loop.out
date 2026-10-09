@@ -1,9 +1,0 @@
-
-====== named_for_loop.ce ======
-
-Error at line 5, column 10
-4 │ {
-5 │     search: for value in values
-                ╘═╛ 'for' loops are not supported yet
-
-[compilation failed]

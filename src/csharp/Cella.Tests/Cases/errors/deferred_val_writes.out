@@ -14,7 +14,7 @@ Error at line 30, column 2
      | Assigned on line 28
 
 Error at line 38, column 3
-37 │ loop for 3
+37 │ for _ in 0..3
 38 │     x = 1
          ^ Cannot reassign values
          | Assigned here in an earlier iteration

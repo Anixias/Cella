@@ -78,7 +78,7 @@ count: fun(limit: i32) -> i32
 	outer: loop
 	{
 		val x = make(steps)
-		loop while make(steps).id < limit
+		while make(steps).id < limit
 		{
 			val y = make(steps)
 			steps += 1
@@ -101,13 +101,13 @@ main: fun -> i32
 	printf("%d %d\n", count(4), count(10))
 
 	var i = 0
-	loop
+	do
 	{
 		i += 1
 	} while make(i).id < 3 && make(i + 1).id > 0
 
 	var total = 0
-	loop for make(3).id
+	for _ in 0..make(3).id
 		total += 2
 
 	make(1)

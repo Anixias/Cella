@@ -1,0 +1,93 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Counter: rec
+{
+	calls: i32
+}
+
+limit: fun(mut counter: Counter, value: i32) -> i32
+{
+	counter.calls += 1
+	ret value
+}
+
+find: fun(product: i32) -> i32
+{
+	for i in 1..10
+	{
+		for j in 1..10
+		{
+			if i * j == product
+				ret i * 10 + j
+		}
+	}
+
+	ret -1
+}
+
+main: fun -> i32
+{
+	var total = 0
+	for i in 0..5
+		total += i
+
+	for i in 1..=3
+		total += i * 100
+
+	for i in 5..2
+		total += 1000
+
+	for i in 4..=3
+		total += 1000
+
+	printf("%d\n", total)
+
+	val top: u8 = 255
+	var count = 0
+	for b in 250..=top
+		count += 1
+
+	val bottom: i8 = -128
+	for i in bottom..=bottom + 2
+		count += 10
+
+	val big: i64 = 9223372036854775807
+	for i in big - 2..big
+		count += 100
+
+	for _ in 0..4
+		count += 1000
+
+	printf("%d\n", count)
+
+	var counter = Counter(0)
+	var steps = 0
+	for i in 0..limit(mut counter, 4)
+		steps += 1
+
+	var bound: usize = 3
+	for i in 0..bound
+		bound += 1
+
+	printf("%d %d %d\n", steps, counter.calls, bound)
+
+	var odd = 0
+	for i in 0..10
+	{
+		if i % 2 == 0
+			cont
+
+		if i > 7
+			break
+
+		odd += i
+	}
+
+	printf("%d %d %d\n", odd, find(12), find(97))
+	ret 0
+}

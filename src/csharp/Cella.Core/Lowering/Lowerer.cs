@@ -97,7 +97,13 @@ public sealed class Lowerer
 	
 	private sealed class FunctionLowerer : IResolvedStatementNodeVisitor, IResolvedExpressionNodeVisitor<Value>
 	{
-		private readonly record struct LoopContext(BasicBlock BreakTarget, BasicBlock ContinueTarget, int ScopeDepth);
+		private readonly record struct LoopContext
+		(
+			BasicBlock BreakTarget,
+			BasicBlock ContinueTarget,
+			int BreakDepth,
+			int ContinueDepth
+		);
 		
 		private readonly LoweredFunction _function;
 		private readonly ConstantEvaluator _evaluator;
@@ -293,7 +299,7 @@ public sealed class Lowerer
 		public Value Visit(ResolvedBreakExpressionNode node)
 		{
 			var context = GetLoopContext(node.Label);
-			EmitScopeEndsToDepth(context.ScopeDepth);
+			EmitScopeEndsToDepth(context.BreakDepth);
 			GetOrMakeBlock().SetTerminator(new BranchTerminator(context.BreakTarget, node.Syntax.SourceLocation));
 			currentBlock = null;
 			return new UndefValue(node.Type);
@@ -302,7 +308,7 @@ public sealed class Lowerer
 		public Value Visit(ResolvedContinueExpressionNode node)
 		{
 			var context = GetLoopContext(node.Label);
-			EmitScopeEndsToDepth(context.ScopeDepth);
+			EmitScopeEndsToDepth(context.ContinueDepth);
 			GetOrMakeBlock().SetTerminator(new BranchTerminator(context.ContinueTarget, node.Syntax.SourceLocation));
 			currentBlock = null;
 			return new UndefValue(node.Type);
@@ -681,9 +687,9 @@ public sealed class Lowerer
 		}
 		
 		private void VisitInLoop(IResolvedStatementNode body, BasicBlock breakBlock, BasicBlock continueBlock,
-			LabelSymbol? label, int scopeDepth)
+			LabelSymbol? label, int breakDepth, int continueDepth)
 		{
-			var loopContext = new LoopContext(breakBlock, continueBlock, scopeDepth);
+			var loopContext = new LoopContext(breakBlock, continueBlock, breakDepth, continueDepth);
 			if (label is not null)
 				_loopsByLabel[label] = loopContext;
 			
@@ -703,7 +709,7 @@ public sealed class Lowerer
 			
 			// Body
 			currentBlock = bodyBlock;
-			VisitInLoop(node.Body, exitBlock, condBlock, node.Label, _activeScopes.Count);
+			VisitInLoop(node.Body, exitBlock, condBlock, node.Label, _activeScopes.Count, _activeScopes.Count);
 			currentBlock?.FillTerminator(new BranchTerminator(condBlock, node.Syntax.SourceLocation));
 			
 			// Condition
@@ -729,64 +735,131 @@ public sealed class Lowerer
 			
 			// Body
 			currentBlock = bodyBlock;
-			VisitInLoop(node.Body, exitBlock, bodyBlock, node.Label, _activeScopes.Count);
+			VisitInLoop(node.Body, exitBlock, bodyBlock, node.Label, _activeScopes.Count, _activeScopes.Count);
 			currentBlock?.FillTerminator(new BranchTerminator(bodyBlock, node.Syntax.SourceLocation));
 			
 			ContinueWith(exitBlock);
 		}
 		
-		public void Visit(ResolvedRepeatStatementNode node)
+		public void Visit(ResolvedRangeForStatementNode node)
 		{
 			var id = NextLoopId();
-			
-			// Create implicit counter variable initialized with count
-			BeginScope(node.Count.Syntax.SourceLocation, true);
-			var countValue = VisitNode(node.Count);
-			var counterSymbol = CreateTempSymbol(countValue.Type, $"repeat{id}$i");
-			var counterLocation = node.Count.Syntax.SourceLocation;
-			var block = GetOrMakeBlock();
-			block.Instructions.Add(new LocalVarInstruction(counterSymbol, countValue, counterLocation, BlockScopeId));
-			EndCurrentScope();
-			
-			var counterVar = new VariableValue(new(counterSymbol, countValue.Type), counterLocation);
-			var one = MakeConstant(countValue.Type, BigInteger.One);
-			var zero = MakeConstant(countValue.Type, BigInteger.Zero);
-			
-			var condBlock = CreateBlock($"repeat{id}_cond");
-			var bodyBlock = CreateBlock($"repeat{id}_body");
-			var latchBlock = CreateBlock($"repeat{id}_latch");
-			var exitBlock = CreateBlock($"repeat{id}_exit");
-			
-			block.SetTerminator(new BranchTerminator(condBlock, node.Syntax.SourceLocation));
-			
-			// Condition: counter > 0
-			currentBlock = condBlock;
-			var condition = new BinOpValue(countValue.Type, counterVar, zero, BinaryOperation.Greater, counterLocation);
-			currentBlock.SetTerminator(new ConditionalBranchTerminator(condition, bodyBlock, exitBlock,
-				node.Syntax.SourceLocation));
-			
-			// Body
-			currentBlock = bodyBlock;
-			VisitInLoop(node.Body, exitBlock, latchBlock, node.Label, _activeScopes.Count);
-			currentBlock?.FillTerminator(new BranchTerminator(latchBlock, node.Syntax.SourceLocation));
-			
-			// Latch: decrement counter, jump back to condition
-			if (latchBlock.HasPredecessor())
+			var location = node.Syntax.SourceLocation;
+			var breakDepth = _activeScopes.Count;
+			var scope = BeginScope(location, true);
+			if (node.Source is { Symbol: var source, Value: var sourceValue })
 			{
-				currentBlock = latchBlock;
-				var decrement = new AssignValue(countValue.Type, counterVar,
-					new BinOpValue(countValue.Type, counterVar, one, BinaryOperation.Subtraction, counterLocation),
-					counterLocation);
+				var address = sourceValue is ResolvedMutArgumentExpressionNode
+					? VisitNode(sourceValue)
+					: LowerBorrow(sourceValue);
 				
-				latchBlock.Instructions.Add(new ExpressionInstruction(decrement));
-				latchBlock.SetTerminator(new BranchTerminator(condBlock, node.Syntax.SourceLocation));
+				Declare(GetOrMakeBlock(), new LocalVarInstruction(source, address, location, scope.Id));
 			}
-			else
+			
+			var type = node.Counter.Type;
+			var counter = new VariableValue(new(node.Counter, type), location);
+			var start = VisitNode(node.Start);
+			Declare(GetOrMakeBlock(), new LocalVarInstruction(node.Counter, start, location, scope.Id));
+			var end = CaptureAsAtomic(VisitNode(node.End), "end");
+			
+			var condBlock = CreateBlock($"for{id}_cond");
+			var bodyBlock = CreateBlock($"for{id}_body");
+			var latchBlock = CreateBlock($"for{id}_latch");
+			var doneBlock = CreateBlock($"for{id}_done");
+			var exitBlock = CreateBlock($"for{id}_exit");
+			
+			GetOrMakeBlock().SetTerminator(new BranchTerminator(condBlock, location));
+			condBlock.SetTerminator(new ConditionalBranchTerminator(new BinOpValue(NativeSymbols.Bool, counter, end,
+					node.IsInclusive ? BinaryOperation.LessEqual : BinaryOperation.Less, location), bodyBlock,
+				doneBlock,
+				location));
+			
+			currentBlock = bodyBlock;
+			LowerIteration(node.Element, node.Body, exitBlock, latchBlock, node.Label, breakDepth);
+			currentBlock?.FillTerminator(new BranchTerminator(latchBlock, location));
+			
+			if (!latchBlock.HasPredecessor())
 			{
 				_function.Blocks.Remove(latchBlock);
 			}
+			else if (node.IsInclusive)
+			{
+				var stepBlock = CreateBlock($"for{id}_step");
+				latchBlock.SetTerminator(new ConditionalBranchTerminator(new BinOpValue(NativeSymbols.Bool, counter,
+					end, BinaryOperation.Equal, location), doneBlock, stepBlock, location));
+				
+				Increment(stepBlock, counter, bodyBlock);
+			}
+			else
+			{
+				Increment(latchBlock, counter, condBlock);
+			}
 			
+			currentBlock = doneBlock;
+			EndCurrentScope();
+			doneBlock.SetTerminator(new BranchTerminator(exitBlock, location));
 			ContinueWith(exitBlock);
+		}
+		
+		private void Increment(BasicBlock block, VariableValue counter, BasicBlock next)
+		{
+			var (type, location) = (counter.Type, counter.SourceLocation);
+			var one = MakeConstant(type, BigInteger.One);
+			var sum = new BinOpValue(type, counter, one, BinaryOperation.Addition, location);
+			block.Instructions.Add(new ExpressionInstruction(new AssignValue(type, counter, sum, location)));
+			block.SetTerminator(new BranchTerminator(next, location));
+		}
+		
+		public void Visit(ResolvedCursorForStatementNode node)
+		{
+			var id = NextLoopId();
+			var location = node.Syntax.SourceLocation;
+			var breakDepth = _activeScopes.Count;
+			var scope = BeginScope(location, true);
+			var (cursor, cursorValue) = node.Cursor;
+			var value = VisitNode(cursorValue);
+			Declare(GetOrMakeBlock(), new LocalVarInstruction(cursor, cursor.IsBorrowBinding ? value : Consume(value),
+				location, scope.Id));
+			
+			var condBlock = CreateBlock($"for{id}_cond");
+			var bodyBlock = CreateBlock($"for{id}_body");
+			var doneBlock = CreateBlock($"for{id}_done");
+			var exitBlock = CreateBlock($"for{id}_exit");
+			
+			GetOrMakeBlock().SetTerminator(new BranchTerminator(condBlock, location));
+			currentBlock = condBlock;
+			LowerBranch(node.Step, bodyBlock, doneBlock);
+			
+			currentBlock = bodyBlock;
+			LowerIteration(node.Element, node.Body, exitBlock, condBlock, node.Label, breakDepth);
+			currentBlock?.FillTerminator(new BranchTerminator(condBlock, location));
+			
+			currentBlock = doneBlock;
+			EndCurrentScope();
+			doneBlock.SetTerminator(new BranchTerminator(exitBlock, location));
+			ContinueWith(exitBlock);
+		}
+		
+		private void LowerIteration(ResolvedLoopVariable? element, IResolvedStatementNode body, BasicBlock exitBlock,
+			BasicBlock continueBlock, LabelSymbol? label, int breakDepth)
+		{
+			var continueDepth = _activeScopes.Count;
+			if (element is null)
+			{
+				VisitInLoop(body, exitBlock, continueBlock, label, breakDepth, continueDepth);
+				return;
+			}
+			
+			var (symbol, place) = element;
+			var location = symbol.Identifier.SourceLocation;
+			var scope = BeginScope(location);
+			var value = VisitNode(place);
+			Declare(GetOrMakeBlock(), new LocalVarInstruction(symbol, symbol.IsBorrowBinding
+				? new UnaryOpValue(symbol.Type, value, UnaryOperation.AddressOf, location)
+				: value, location, scope.Id));
+			
+			VisitInLoop(body, exitBlock, continueBlock, label, breakDepth, continueDepth);
+			EndCurrentScope();
 		}
 		
 		private ConstantValue MakeConstant(TypeSymbol type, object? value)
@@ -830,7 +903,7 @@ public sealed class Lowerer
 			
 			// Body
 			currentBlock = bodyBlock;
-			VisitInLoop(node.Body, exitBlock, condBlock, node.Label, scopeDepth);
+			VisitInLoop(node.Body, exitBlock, condBlock, node.Label, scopeDepth, scopeDepth);
 			EndCurrentScope();
 			currentBlock?.FillTerminator(new BranchTerminator(condBlock, node.Syntax.SourceLocation));
 			

@@ -1,0 +1,64 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+main: fun -> i32
+{
+	var i = 0
+	while i < 3
+		i += 1
+
+	var j = 0
+	do
+	{
+		j += 5
+	} while j < 3
+
+	var k = 0
+	do
+		k += 2
+	while k < 7
+
+	printf("%d %d %d\n", i, j, k)
+
+	var rounds = 0
+	outer: loop
+	{
+		rounds += 1
+		inner: for n in 0..10
+		{
+			if n == 2
+				cont outer
+
+			if rounds > 3
+				break outer
+
+			if n == 1
+				cont inner
+		}
+	}
+
+	var m = 0
+	counting: while m < 10
+	{
+		m += 1
+		if m == 4
+			break counting
+	}
+
+	var tries = 0
+	again: do
+	{
+		tries += 1
+		if tries < 3
+			cont again
+
+		break again
+	} while true
+
+	printf("%d %d %d\n", rounds, m, tries)
+	ret 0
+}

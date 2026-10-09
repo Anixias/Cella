@@ -1,0 +1,76 @@
+mod test
+
+Name: rec
+{
+	id: i32
+
+	drop: op
+	{
+	}
+}
+
+Countdown: rec
+{
+	left: i32
+
+	for: op(mut self) -> bool
+	{
+		self.left -= 1
+		ret self.left >= 0
+	}
+
+	*: op(self) -> imm[i32] = imm self.left
+
+	drop: op
+	{
+	}
+}
+
+take: fun(own name: Name)
+{
+}
+
+takeAll: fun(own names: array[Name, 2])
+{
+}
+
+finish: fun(own countdown: Countdown)
+{
+}
+
+walk: fun(countdown: Countdown) -> i32
+{
+	var total = 0
+	for x in countdown
+		total += x
+
+	ret total
+}
+
+main: fun -> i32
+{
+	var names = [Name(1), Name(2)]
+	for name in names
+		take(own name)
+
+	for name in mut names
+	{
+		val copy = name
+	}
+
+	var group = [Name(3), Name(4)]
+	for name in group
+		takeAll(own group)
+
+	var c = Countdown(3)
+	for x in c
+	{
+	}
+
+	finish(own c)
+	var d = Countdown(3)
+	for x in mut d
+		finish(own d)
+
+	ret 0
+}

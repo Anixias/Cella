@@ -711,14 +711,14 @@ public sealed class SignatureCollector
 	
 	private void ReportMembers(string owner, TypeSymbol type, ImmutableArray<IDeclarationNode> members)
 	{
-		var functions = members.OfType<FunctionNode>().ToLookup(IsPlaceOperator);
+		var functions = members.OfType<FunctionNode>().ToLookup(IsModeOperator);
 		ReportMemberConflicts(owner, [
 			..members.OfType<PropertyNode>()
 				.Select(static p => (p.Identifier, (FunctionNode?)null, MemberKind.Property)),
 			..functions[false].Select(static f => (f.Identifier, (FunctionNode?)f, MemberKind.Function))
 		]);
 		
-		ReportPlaceOperators(type, functions[true]);
+		ReportModeOperators(type, functions[true]);
 		ReportOperators(type, functions[false]);
 	}
 	
@@ -1224,7 +1224,7 @@ public sealed class SignatureCollector
 		FieldNode field => (field.Identifier, null),
 		GlobalNode global => (global.Identifier, null),
 		PropertyNode property => (property.Identifier, null),
-		FunctionNode function when !IsPlaceOperator(function) =>
+		FunctionNode function when !IsModeOperator(function) =>
 			(function.Identifier, (FunctionSymbol)_symbolTable.DeclarationSymbols[function]),
 		_ => null
 	};
@@ -1286,7 +1286,7 @@ public sealed class SignatureCollector
 			}
 		}
 		
-		var functions = node.Members.OfType<FunctionNode>().ToLookup(IsPlaceOperator);
+		var functions = node.Members.OfType<FunctionNode>().ToLookup(IsModeOperator);
 		ReportMemberConflicts(record.Name, [
 			..node.Members.OfType<FieldNode>()
 				.Select(static f => (f.Identifier, (FunctionNode?)null, MemberKind.Field)),
@@ -1298,7 +1298,7 @@ public sealed class SignatureCollector
 		]);
 		
 		ReportConstructorConflicts(node.Members);
-		ReportPlaceOperators(record, functions[true]);
+		ReportModeOperators(record, functions[true]);
 		ReportOperators(record, functions[false]);
 		_typePool.RegisterRecord(record);
 		_completedTypes.Add(record);
@@ -1347,14 +1347,73 @@ public sealed class SignatureCollector
 	
 	private static bool IsIndexer(FunctionNode node) => node.Identifier.Type == TokenType.OpOpenBracket;
 	
-	private static bool IsPlaceOperator(FunctionNode node) => IsDereference(node) || IsIndexer(node);
+	private static bool IsLoopOperator(FunctionNode node) =>
+		node.Identifier.Type is TokenType.KeywordIn or TokenType.KeywordFor;
 	
-	private void ReportPlaceOperators(TypeSymbol type, IEnumerable<FunctionNode> operators)
+	private static bool IsModeOperator(FunctionNode node) =>
+		IsDereference(node) || IsIndexer(node) || IsLoopOperator(node);
+	
+	private void ReportModeOperators(TypeSymbol type, IEnumerable<FunctionNode> operators)
 	{
-		var indexers = operators.ToLookup(IsIndexer);
-		ReportDereferences(type, [..indexers[false]]);
-		ReportIndexers(type, [..indexers[true]]);
+		var kinds = operators.ToLookup(static o => o.Identifier.Type);
+		ReportDereferences(type, [..kinds[TokenType.OpStar]]);
+		ReportIndexers(type, [..kinds[TokenType.OpOpenBracket]]);
+		ReportLoopOperators(type, [..kinds[TokenType.KeywordIn], ..kinds[TokenType.KeywordFor]]);
 	}
+	
+	private void ReportLoopOperators(TypeSymbol type, List<FunctionNode> operators)
+	{
+		var valid = new List<(FunctionNode Node, FunctionSignature Signature)>();
+		foreach (var node in operators)
+		{
+			var signature = _builder.Functions[(FunctionSymbol)_symbolTable.DeclarationSymbols[node]].Signature;
+			if (signature.ReturnType is InvalidType)
+				continue;
+			
+			if (FindLoopOperatorError(node, signature) is var (location, message))
+				Diagnostics.Add(new(DiagnosticSeverity.Error, location, message));
+			else
+				valid.Add((node, signature));
+		}
+		
+		var sameModes = valid
+			.GroupBy(static o => (o.Node.Identifier.Text, o.Signature.GetMode(0)))
+			.Where(static g => g.Count() > 1);
+		
+		foreach (var sameMode in sameModes)
+		{
+			var (name, mode) = sameMode.Key;
+			var message = $"'{name}' with '{DescribeReceiver(mode)}' is declared more than once in '{type.Name}'";
+			Diagnostics.AddRange(sameMode.Select(o =>
+				new Diagnostic(DiagnosticSeverity.Error, o.Node.Identifier.SourceLocation, message)));
+		}
+	}
+	
+	private static (SourceLocation Location, string Message)? FindLoopOperatorError(FunctionNode node,
+		FunctionSignature signature)
+	{
+		var name = node.Identifier.Text;
+		var isStep = node.Identifier.Type == TokenType.KeywordFor;
+		return node switch
+		{
+			{ Receiver: null } => (node.Identifier.SourceLocation,
+				$"Cannot declare '{name}' operators without '{(isStep ? "mut self" : "self")}'"),
+			{ Receiver: { Mode.Type: TokenType.KeywordOwn } receiver } =>
+				(receiver.SourceLocation, $"Cannot take 'own self' in '{name}' operators"),
+			{ Receiver: { Mode: null } receiver } when isStep =>
+				(receiver.SourceLocation, "Cannot take 'self' in 'for' operators"),
+			{ Parameters: [var parameter, ..] } =>
+				(parameter.SourceLocation, $"Cannot take parameters in '{name}' operators"),
+			_ when !IsLoopOperatorResult(isStep, signature.ReturnType) =>
+				(node.ReturnType?.SourceLocation ?? node.Identifier.SourceLocation,
+					$"Cannot return '{signature.ReturnType.Name}' from '{name}' operators"),
+			_ => null
+		};
+	}
+	
+	private static bool IsLoopOperatorResult(bool isStep, TypeSymbol type) => isStep
+		? type == NativeSymbols.Bool
+		: type != NativeSymbols.Void && type is not BorrowType;
 	
 	private void ReportIndexers(TypeSymbol type, List<FunctionNode> indexers)
 	{
@@ -1633,7 +1692,7 @@ public sealed class SignatureCollector
 		foreach (var member in node.Members)
 			Complete(_symbolTable.DeclarationSymbols[member]);
 		
-		var functions = node.Members.OfType<FunctionNode>().ToLookup(IsPlaceOperator);
+		var functions = node.Members.OfType<FunctionNode>().ToLookup(IsModeOperator);
 		ReportMemberConflicts(enumType.Name, [
 			..node.Cases.Select(static c => (c.Identifier, (FunctionNode?)null, MemberKind.Case)),
 			..node.Members.OfType<GlobalNode>()
@@ -1643,7 +1702,7 @@ public sealed class SignatureCollector
 			..functions[false].Select(static f => (f.Identifier, (FunctionNode?)f, MemberKind.Function))
 		]);
 		
-		ReportPlaceOperators(enumType, functions[true]);
+		ReportModeOperators(enumType, functions[true]);
 		ReportOperators(enumType, functions[false]);
 	}
 	

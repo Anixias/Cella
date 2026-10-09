@@ -1,0 +1,165 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Bag: rec
+{
+	items: array[i32, 4]
+	count: usize
+
+	in: op(self) -> BagCursor = BagCursor(imm self, 0, 0)
+	in: op(mut self) -> BagEditor = BagEditor(mut self, 0, 0)
+
+	drop: op
+	{
+		printf("[bag]")
+	}
+}
+
+BagCursor: ref rec
+{
+	bag: imm[Bag]
+	current: usize
+	next: usize
+
+	for: op(mut self) -> bool
+	{
+		self.current = self.next
+		self.next += 1
+		ret self.current < self.bag.count
+	}
+
+	*: op(self) -> imm[i32] = imm self.bag.items[self.current]
+}
+
+BagEditor: ref rec
+{
+	bag: mut[Bag]
+	current: usize
+	next: usize
+
+	for: op(mut self) -> bool
+	{
+		self.current = self.next
+		self.next += 1
+		ret self.current < self.bag.count
+	}
+
+	*: op(self) -> imm[i32] = imm self.bag.items[self.current]
+	*: op(mut self) -> mut[i32] = mut self.bag.items[self.current]
+}
+
+Countdown: rec
+{
+	left: i32
+
+	for: op(mut self) -> bool
+	{
+		self.left -= 1
+		ret self.left >= 0
+	}
+
+	*: op(self) -> imm[i32] = imm self.left
+
+	drop: op
+	{
+		printf("[done %d]", self.left)
+	}
+}
+
+Steps: rec
+{
+	left: i32
+
+	for: op(mut self) -> bool
+	{
+		self.left -= 1
+		ret self.left >= 0
+	}
+
+	*: op(mut self) -> mut[i32] = mut self.left
+}
+
+make: fun -> Bag = Bag([1, 2, 3, 4], 4)
+
+find: fun(target: i32) -> i32
+{
+	for x in Countdown(10)
+	{
+		if x == target
+			ret x * 2
+	}
+
+	ret -1
+}
+
+main: fun -> i32
+{
+	var bag = Bag([1, 2, 3, 4], 3)
+	var total = 0
+	for x in bag
+		total += x
+
+	for x in mut bag
+		x += 10
+
+	for x in bag
+		printf("%d ", x)
+
+	printf("%d\n", total)
+
+	for x in make()
+		printf("%d ", x)
+
+	printf("\n")
+
+	for x in Countdown(3)
+		printf("%d ", x)
+
+	printf("\n")
+
+	for x in Countdown(5)
+	{
+		if x == 3
+			cont
+
+		if x == 1
+			break
+
+		printf("%d ", x)
+	}
+
+	printf("\n%d\n", find(4))
+
+	var c = Countdown(6)
+	for x in mut c
+	{
+		if x == 4
+			break
+	}
+
+	printf("\nleft %d\n", c.left)
+
+	for _ in mut c
+		printf(".")
+
+	printf("\nleft %d\n", c.left)
+
+	var s = Steps(3)
+	var seen = 0
+	for x in s
+		seen += x
+
+	var skipped = 0
+	for x in mut s
+	{
+		x -= 1
+		skipped += 1
+	}
+
+	printf("%d %d %d\n", seen, skipped, s.left)
+	ret 0
+}

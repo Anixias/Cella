@@ -1,0 +1,74 @@
+mod lib
+
+Cursor[T]: pub trait
+{
+	for: op(mut self) -> bool
+	*: op(self) -> imm[T]
+}
+
+Bag: pub rec
+{
+	items: array[i32, 4]
+	count: usize
+
+	in: op(self) -> BagCursor = BagCursor(imm self, 0, 0)
+	in: op(mut self) -> BagEditor = BagEditor(mut self, 0, 0)
+
+	drop: op
+	{
+	}
+}
+
+BagCursor: pub ref rec impl Cursor[i32]
+{
+	bag: imm[Bag]
+	current: usize
+	next: usize
+
+	for: op(mut self) -> bool
+	{
+		self.current = self.next
+		self.next += 1
+		ret self.current < self.bag.count
+	}
+
+	*: op(self) -> imm[i32] = imm self.bag.items[self.current]
+}
+
+BagEditor: pub ref rec
+{
+	bag: mut[Bag]
+	current: usize
+	next: usize
+
+	for: op(mut self) -> bool
+	{
+		self.current = self.next
+		self.next += 1
+		ret self.current < self.bag.count
+	}
+
+	*: op(mut self) -> mut[i32] = mut self.bag.items[self.current]
+}
+
+make: pub fun -> Bag = Bag([1, 2, 3, 4], 4)
+
+view: pub fun(bag: Bag) -> i32 = sum(BagCursor(imm bag, 0, 0))
+
+sum[C: Cursor[i32]]: pub fun(own cursor: C) -> i32
+{
+	var total = 0
+	for x in cursor
+		total += x
+
+	ret total
+}
+
+count: pub fun(mut cursor: dyn[Cursor[i32]]) -> i32
+{
+	var n = 0
+	for _ in mut cursor
+		n += 1
+
+	ret n
+}

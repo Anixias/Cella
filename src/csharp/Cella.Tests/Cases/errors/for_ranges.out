@@ -1,0 +1,24 @@
+
+====== for_ranges.ce ======
+
+Error at line 7, column 11
+6 │ val b: u64 = 5
+7 │ for i in a..b
+             ╘══╛ Range bounds have incompatible types: 'i32', 'u64'
+
+Error at line 11, column 11
+10 │ 
+11 │ for f in 0.0..1.5
+              ╘══════╛ Range bounds must be integers
+
+Error at line 15, column 11
+14 │ 
+15 │ for c in 'a'..='z'
+              ╘═══════╛ Range bounds must be integers
+
+Error at line 19, column 11
+18 │ 
+19 │ for i in mut 0..3
+              ╘═╛ Cannot iterate over ranges with 'mut'
+
+[compilation failed]

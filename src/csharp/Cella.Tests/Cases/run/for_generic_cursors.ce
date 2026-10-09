@@ -1,0 +1,114 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Cursor[T]: trait
+{
+	for: op(mut self) -> bool
+	*: op(self) -> imm[T]
+}
+
+Collection[T, C: Cursor[T]]: trait
+{
+	in: op(self) -> C
+}
+
+Name: rec
+{
+	id: i32
+
+	drop: op
+	{
+	}
+}
+
+Steps: rec impl Cursor[i32]
+{
+	left: i32
+
+	for: op(mut self) -> bool
+	{
+		self.left -= 1
+		ret self.left >= 0
+	}
+
+	*: op(self) -> imm[i32] = imm self.left
+
+	drop: op
+	{
+	}
+}
+
+Roster: rec impl Collection[Name, RosterCursor]
+{
+	names: array[Name, 3]
+
+	in: op(self) -> RosterCursor = RosterCursor(imm self, 0, 0)
+}
+
+RosterCursor: ref rec impl Cursor[Name]
+{
+	roster: imm[Roster]
+	current: usize
+	next: usize
+
+	for: op(mut self) -> bool
+	{
+		self.current = self.next
+		self.next += 1
+		ret self.current < 3
+	}
+
+	*: op(self) -> imm[Name] = imm self.roster.names[self.current]
+}
+
+total[C: Cursor[i32]]: fun(own cursor: C) -> i32
+{
+	var sum = 0
+	for x in cursor
+		sum += x
+
+	ret sum
+}
+
+drain[C: Cursor[i32]]: fun(mut cursor: C) -> i32
+{
+	var count = 0
+	for _ in mut cursor
+		count += 1
+
+	ret count
+}
+
+walk: fun(mut cursor: dyn[Cursor[i32]]) -> i32
+{
+	var sum = 0
+	for x in mut cursor
+		sum += x * 10
+
+	ret sum
+}
+
+ids[S: Collection[Name, C], C: Cursor[Name]]: fun(collection: S) -> i32
+{
+	var sum = 0
+	for name in collection
+		sum = sum * 10 + name.id
+
+	ret sum
+}
+
+main: fun -> i32
+{
+	var steps = Steps(4)
+	val counted = drain(mut steps)
+	var other = Steps(3)
+	printf("%d %d %d %d\n", total(Steps(4)), counted, walk(mut other), steps.left)
+
+	val roster = Roster([Name(1), Name(2), Name(3)])
+	printf("%d\n", ids(roster))
+	ret 0
+}

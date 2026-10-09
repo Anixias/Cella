@@ -54,7 +54,7 @@ Looped: rec
 	new: op(count: i32)
 	{
 		var i = 0
-		loop while i < count
+		while i < count
 		{
 			self.effect = Effect.hit(i)
 			i += 1

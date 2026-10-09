@@ -107,7 +107,7 @@ useAfterIteration: fun
 	var x = 0
 	var last: imm[i32] = x
 	var i = 0
-	loop while i < 3
+	while i < 3
 	{
 		printf("%d\n", last)
 		val local = i

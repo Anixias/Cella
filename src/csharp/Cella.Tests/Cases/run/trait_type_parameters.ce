@@ -17,7 +17,7 @@ Iterator[T]: trait
 	skip: fun(mut self, count: i32)
 	{
 		var i = 0
-		loop while i < count
+		while i < count
 		{
 			self.next()
 			i += 1
@@ -100,7 +100,7 @@ sum[T: Num + noref, I: Iterator[T]]: fun(mut items: I) -> T
 countAll[T, I: Iterator[T]]: fun(mut items: I) -> i32
 {
 	var count = 0
-	loop while items.next() is some(_)
+	while items.next() is some(_)
 		count += 1
 
 	ret count

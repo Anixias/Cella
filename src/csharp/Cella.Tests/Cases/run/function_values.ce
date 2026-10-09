@@ -64,7 +64,7 @@ main: fun -> i32
 
 	var table = [double, triple, f]
 	var i: usize = 0
-	loop while i < table.length
+	while i < table.length
 	{
 		printf("%d ", table[i](10))
 		i += 1

@@ -16,7 +16,7 @@ list[T: noref + copy]: pub rec
 		self.items = ptr[T](malloc(sizeOf(T) * length))
 		self.length = length
 		var i: usize = 0
-		loop while i < length
+		while i < length
 		{
 			self.items[i] = value
 			i += 1

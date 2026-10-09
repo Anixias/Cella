@@ -35,7 +35,7 @@ repeated: fun -> i32
 {
 	val a = make(1)
 	var total = 0
-	loop for 3
+	for _ in 0..3
 		total += take(a)
 
 	ret total

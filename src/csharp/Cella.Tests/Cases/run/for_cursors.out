@@ -1,0 +1,12 @@
+11 12 13 6
+1 2 3 4 [bag]
+2 1 0 [done -1]
+4 2 [done 1][done 4]
+8
+
+left 4
+....
+left -1
+3 2 -2
+[done -1][bag]
+[exit code 0]

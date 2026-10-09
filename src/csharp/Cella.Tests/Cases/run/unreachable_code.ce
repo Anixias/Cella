@@ -19,7 +19,7 @@ count: fun(limit: i32) -> i32
 {
 	var i = 0
 	var total = 0
-	loop while i < limit
+	while i < limit
 	{
 		i += 1
 		if i == 2

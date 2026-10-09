@@ -146,7 +146,7 @@ looped: fun
 {
 	printf("-- looped\n")
 	var i = 0
-	loop while i < 3
+	while i < 3
 	{
 		val b = make(90 + i)
 		if i == 1

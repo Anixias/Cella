@@ -32,7 +32,7 @@ open: pub fun(id: i32) -> socket
 find: pub fun(items: ptr[i32], count: usize, target: i32) -> nullable[ptr[i32]]
 {
 	var i: usize = 0
-	loop while i < count
+	while i < count
 	{
 		val item = items + i
 		if *item == target

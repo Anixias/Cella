@@ -62,7 +62,7 @@ sum[T: Num + noref, I: Iterator[T]]: pub fun(mut items: I) -> T
 drain: pub fun(mut items: dyn[Iterator[i32]]) -> i32
 {
 	var count = 0
-	loop while items.next() is some(_)
+	while items.next() is some(_)
 		count += 1
 
 	ret count

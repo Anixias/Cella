@@ -12,17 +12,17 @@ Error at line 15, column 3
          ╘════════════╛ Declarations cannot be whole bodies
 
 Error at line 18, column 3
-17 │ loop while ready
+17 │ while ready
 18 │     var third = 3
          ╘═══════════╛ Declarations cannot be whole bodies
 
 Error at line 21, column 3
-20 │ loop
+20 │ do
 21 │     var fourth = 4
          ╘════════════╛ Declarations cannot be whole bodies
 
 Error at line 25, column 3
-24 │ loop for 2
+24 │ for _ in 0..2
 25 │     var fifth = 5
          ╘═══════════╛ Declarations cannot be whole bodies
 

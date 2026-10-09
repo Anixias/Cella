@@ -31,20 +31,6 @@ public sealed class ResolvedDoWhileStatementNode
 	public IStatementNode Syntax { get; } = syntax;
 }
 
-public sealed class ResolvedRepeatStatementNode
-(
-	IResolvedExpressionNode count,
-	IResolvedStatementNode body,
-	LabelSymbol? label,
-	IStatementNode syntax
-) : IResolvedStatementNode
-{
-	public IResolvedExpressionNode Count { get; } = count;
-	public IResolvedStatementNode Body { get; } = body;
-	public LabelSymbol? Label { get; } = label;
-	public IStatementNode Syntax { get; } = syntax;
-}
-
 public sealed class ResolvedLoopStatementNode(IResolvedStatementNode body, LabelSymbol? label, IStatementNode syntax)
 	: IResolvedStatementNode
 {

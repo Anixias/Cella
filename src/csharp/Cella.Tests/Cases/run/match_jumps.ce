@@ -39,7 +39,7 @@ total: fun(effects: array[Effect, 4]) -> i32
 {
 	var sum = 0
 	var i: usize = 0
-	loop while i < 4
+	while i < 4
 	{
 		val effect = effects[i]
 		i += 1
@@ -61,7 +61,7 @@ total: fun(effects: array[Effect, 4]) -> i32
 first: fun(effects: array[Effect, 4]) -> i32
 {
 	var i: usize = 0
-	loop while i < 4
+	while i < 4
 	{
 		val amount = match effects[i] { hit(n) => ret n  none => 0 }
 		i += usize(amount) + 1
@@ -80,12 +80,12 @@ walk: fun(steps: array[Step, 5]) -> i32
 {
 	var weight = 0
 	var i: usize = 0
-	outer: loop while i < 5
+	outer: while i < 5
 	{
 		val step = steps[i]
 		i += 1
 		var j = 0
-		loop while j < 3
+		while j < 3
 		{
 			j += 1
 			weight += match step
@@ -116,7 +116,7 @@ check: fun(ok: bool) -> i32
 firstId: fun(slots: array[Slot, 3]) -> i32
 {
 	var i: usize = 0
-	loop while i < 3
+	while i < 3
 	{
 		i += 1
 		val buffer: imm[Buffer] = match slots[i - 1]

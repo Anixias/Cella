@@ -42,18 +42,18 @@ main: fun -> i32
 		printf("%d\n", b.id)
 
 	var i = 0
-	loop while make(i).id < 3
+	while make(i).id < 3
 	{
 		i += 1
 	}
 
-	loop
+	do
 	{
 		i += 10
 	} while make(i).id < 30
 
 	var total = 0
-	loop for make(3).id
+	for _ in 0..make(3).id
 	{
 		total += 1
 	}

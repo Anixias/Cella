@@ -34,7 +34,7 @@ branches: fun(flag: bool) -> i32
 looped: fun -> i32
 {
 	val x: i32
-	loop for 3
+	for _ in 0..3
 		x = 1
 
 	ret 0

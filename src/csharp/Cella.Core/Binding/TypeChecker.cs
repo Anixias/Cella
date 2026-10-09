@@ -234,12 +234,7 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool, 
 				$"Invalid condition type '{conditionType.Name}': Expected type '{NativeSymbols.Bool.Name}'"));
 		
 		VisitNode(node.Condition);
-		
-		continueDepth++;
-		breakDepth++;
-		VisitNode(node.Body);
-		breakDepth--;
-		continueDepth--;
+		VisitLoopBody(node.Body);
 	}
 	
 	public void Visit(ResolvedDoWhileStatementNode node)
@@ -250,35 +245,40 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool, 
 				$"Invalid condition type '{conditionType.Name}': Expected type '{NativeSymbols.Bool.Name}'"));
 		
 		VisitNode(node.Condition);
-		
-		continueDepth++;
-		breakDepth++;
-		VisitNode(node.Body);
-		breakDepth--;
-		continueDepth--;
+		VisitLoopBody(node.Body);
 	}
 	
-	public void Visit(ResolvedLoopStatementNode node)
+	public void Visit(ResolvedLoopStatementNode node) => VisitLoopBody(node.Body);
+	
+	public void Visit(ResolvedRangeForStatementNode node)
+	{
+		VisitNode(node.Start);
+		VisitNode(node.End);
+		if (node.Source is { } source)
+			VisitNode(source.Value);
+		
+		if (node.Element is { } element)
+			VisitNode(element.Value);
+		
+		VisitLoopBody(node.Body);
+	}
+	
+	public void Visit(ResolvedCursorForStatementNode node)
+	{
+		VisitNode(node.Cursor.Value);
+		CheckConsumed(node.Cursor.Value);
+		VisitNode(node.Step);
+		if (node.Element is { } element)
+			VisitNode(element.Value);
+		
+		VisitLoopBody(node.Body);
+	}
+	
+	private void VisitLoopBody(IResolvedStatementNode body)
 	{
 		continueDepth++;
 		breakDepth++;
-		VisitNode(node.Body);
-		breakDepth--;
-		continueDepth--;
-	}
-	
-	public void Visit(ResolvedRepeatStatementNode node)
-	{
-		var countType = node.Count.Type;
-		if (!IsIntegralType(countType))
-			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Count.Syntax.SourceLocation,
-				$"Invalid count type '{countType.Name}': Expected an integral type"));
-		
-		VisitNode(node.Count);
-		
-		continueDepth++;
-		breakDepth++;
-		VisitNode(node.Body);
+		VisitNode(body);
 		breakDepth--;
 		continueDepth--;
 	}
@@ -313,8 +313,6 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool, 
 	{
 		Function.Symbol: { Property.Getter: FunctionAccessor { Function: var getter } } function
 	} && getter == function;
-	
-	private bool IsIntegralType(TypeSymbol type) => type is IntegerType;
 	
 	private void ReportZeroDivisor(IResolvedExpressionNode divisor)
 	{
@@ -353,6 +351,7 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool, 
 	
 	private static string DescribeImmutable(VariableSymbol binding) => binding switch
 	{
+		LocalVariableSymbol { IsLoopBinding: true } => "read-only loop variables",
 		LocalVariableSymbol { IsPatternBinding: true } => "read-only pattern bindings",
 		ParameterSymbol => "read-only parameters",
 		_ => "values"

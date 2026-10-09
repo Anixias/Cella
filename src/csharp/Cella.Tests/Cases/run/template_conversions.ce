@@ -23,7 +23,7 @@ i32: impl Display
 say: fun(text: fstr[Display])
 {
 	var i: usize = 0
-	loop while i < text.holes
+	while i < text.holes
 	{
 		text.piece(i).print()
 		text.value(i).print()

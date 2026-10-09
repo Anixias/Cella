@@ -41,7 +41,7 @@ length: fun(head: ptr[ListHead]) -> i32
 {
 	var total = 0
 	var node = head.next
-	loop while node != head
+	while node != head
 	{
 		total += 1
 		node = node.next

@@ -1,0 +1,38 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Down: rec impl lib.Cursor[i32]
+{
+	left: i32
+
+	for: op(mut self) -> bool
+	{
+		self.left -= 1
+		ret self.left >= 0
+	}
+
+	*: op(self) -> imm[i32] = imm self.left
+
+	drop: op
+	{
+	}
+}
+
+main: fun -> i32
+{
+	var bag = lib.make()
+	for x in mut bag
+		x *= 3
+
+	var total = 0
+	for x in bag
+		total += x
+
+	var down = Down(5)
+	printf("%d %d %d %d\n", total, lib.view(bag), lib.sum(Down(4)), lib.count(mut down))
+	ret 0
+}

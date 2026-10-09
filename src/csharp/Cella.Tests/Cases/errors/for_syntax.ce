@@ -1,0 +1,28 @@
+mod test
+
+missingName: fun
+{
+	for in 0..3
+	{
+	}
+}
+
+missingIn: fun
+{
+	for x 0..3
+	{
+	}
+}
+
+missingWhile: fun -> i32
+{
+	var i = 0
+	do
+	{
+		i += 1
+	}
+
+	ret i
+}
+
+main: fun -> i32 = 0

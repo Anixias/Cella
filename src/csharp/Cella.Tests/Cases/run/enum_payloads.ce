@@ -156,7 +156,7 @@ main: fun -> i32
 	var first = Node.link(1, @middle)
 	var current = first
 	var total = 0
-	loop while current is link(value, next)
+	while current is link(value, next)
 	{
 		total += value
 		current = *next
@@ -167,7 +167,7 @@ main: fun -> i32
 	var items = [Wide.small(7), Wide.big(170141183460469231731687303715884105727), Wide.flags(true, false)]
 	var sum = 0
 	var i: usize = 0
-	loop while i < items.length
+	while i < items.length
 	{
 		match items[i]
 		{

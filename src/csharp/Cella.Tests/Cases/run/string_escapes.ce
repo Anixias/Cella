@@ -9,7 +9,7 @@ dump: fun(text: str)
 {
 	var bytes = text.data
 	var remaining = text.byteLength
-	loop while remaining > 0
+	while remaining > 0
 	{
 		printf(" %02x", *bytes)
 		bytes = bytes + 1

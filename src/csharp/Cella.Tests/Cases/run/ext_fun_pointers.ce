@@ -74,7 +74,7 @@ main: fun -> i32
 
 	var table = [add, sub, mul]
 	var i: usize = 0
-	loop while i < 3
+	while i < 3
 	{
 		printf("%d ", table[i](6, 3))
 		i += 1

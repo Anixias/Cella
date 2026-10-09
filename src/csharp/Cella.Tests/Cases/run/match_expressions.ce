@@ -88,7 +88,7 @@ main: fun -> i32
 		printf("healer\n")
 
 	var count = 0
-	loop while match role { fighter => false  else => count < 3 }
+	while match role { fighter => false  else => count < 3 }
 		count += 1
 
 	val local = match Mode.slow(2) { fast => 1  slow(factor) => factor + 10 }

@@ -27,7 +27,7 @@ sixth: fun -> i32 = call(
 seventh: fun -> i32
 {
 	val x = (7 +
-	outer: loop while true
+	outer: while true
 	{
 		break outer
 	}

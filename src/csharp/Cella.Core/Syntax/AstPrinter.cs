@@ -702,15 +702,24 @@ public sealed class AstPrinter : ISyntaxNodeVisitor
 		VisitNode(node.Body, true);
 	}
 	
-	public void Visit(RepeatStatementNode node)
+	public void Visit(ForStatementNode node)
 	{
 		StartLine();
-		_sb.Append("RepeatStatementNode");
+		_sb.Append("ForStatementNode '").Append(node.Binding.Text).Append('\'');
 		
 		if (node.Label is { } label)
 			_sb.Append(" '").Append(label.Text).Append('\'');
 		
-		VisitNode(node.Count, false);
+		if (node.Mode is { } mode)
+			_sb.Append(' ').Append(mode.Text);
+		
+		if (node.RangeOperator is { } rangeOperator)
+			_sb.Append(' ').Append(rangeOperator.Text);
+		
+		VisitNode(node.Source, false);
+		if (node.End is { } end)
+			VisitNode(end, false);
+		
 		VisitNode(node.Body, true);
 	}
 	

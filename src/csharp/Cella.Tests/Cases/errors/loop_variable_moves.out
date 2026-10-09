@@ -1,0 +1,49 @@
+
+====== loop_variable_moves.ce ======
+
+Error at line 44, column 11
+43 │ var total = 0
+44 │ for x in countdown
+              ╘═══════╛ Cannot move read-only parameters
+
+Error at line 54, column 12
+53 │ for name in names
+54 │     take(own name)
+                  ╘══╛ Cannot move loop variables
+
+Error at line 58, column 14
+57 │ {
+58 │     val copy = name
+                    ╘══╛ Cannot move loop variables
+
+Error at line 62, column 14
+61 │ var group = [Name(3), Name(4)]
+62 │ for name in group
+                 ╘═══╛ Cannot use borrows of moved values
+                     | Moved on line 63
+
+Error at line 63, column 15
+62 │ for name in group
+63 │     takeAll(own group)
+                     ╘═══╛ Cannot use moved values
+                         | Moved here in an earlier iteration
+
+Error at line 70, column 13
+69 │ 
+70 │ finish(own c)
+                ^ Cannot use moved values
+                | Moved on line 66
+
+Error at line 72, column 15
+71 │ var d = Countdown(3)
+72 │ for x in mut d
+                  ^ Cannot use borrows of moved values
+                  | Moved on line 73
+
+Error at line 73, column 14
+72 │ for x in mut d
+73 │     finish(own d)
+                    ^ Cannot use moved values
+                    | Moved here in an earlier iteration
+
+[compilation failed]

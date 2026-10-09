@@ -1,0 +1,111 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Name: rec
+{
+	id: i32
+
+	drop: op
+	{
+		printf("drop %d\n", self.id)
+	}
+}
+
+Point: rec
+{
+	x: i32
+	y: i32
+}
+
+Grid: rec
+{
+	cells: array[array[i32, 2], 2]
+
+	total: fun(self) -> i32
+	{
+		var sum = 0
+		for row in self.cells
+		{
+			for cell in row
+				sum += cell
+		}
+
+		ret sum
+	}
+
+	double: fun(mut self)
+	{
+		for row in mut self.cells
+		{
+			for cell in mut row
+				cell *= 2
+		}
+	}
+}
+
+digits: fun -> array[i32, 3] = [4, 5, 6]
+
+names: fun -> array[Name, 2] = [Name(7), Name(8)]
+
+fill: fun(mut values: array[i32, 3], value: i32)
+{
+	for v in mut values
+		v = value
+}
+
+largest: fun(names: array[Name, 3]) -> i32
+{
+	var best: imm[Name] = names[0]
+	for name in names
+	{
+		if name.id > best.id
+			best = name
+	}
+
+	ret best.id
+}
+
+main: fun -> i32
+{
+	var values = [1, 2, 3]
+	var total = 0
+	for v in values
+		total += v
+
+	for v in mut values
+		v *= 10
+
+	for v in values
+		total += v
+
+	for v in digits()
+		total += v * 100
+
+	printf("%d\n", total)
+
+	var filled = [0, 0, 0]
+	fill(mut filled, 7)
+	var grid = Grid([[1, 2], [3, 4]])
+	grid.double()
+	var points = [Point(1, 2), Point(3, 4)]
+	for p in mut points
+		p.y += p.x
+
+	var empty: array[i32, 0]
+	for v in empty
+		total += 1
+
+	printf("%d %d %d %d\n", filled[0] + filled[2], grid.total(), points[1].y, total)
+
+	val group = [Name(3), Name(9), Name(5)]
+	printf("%d\n", largest(group))
+	for name in names()
+		printf("name %d\n", name.id)
+
+	printf("done\n")
+	ret 0
+}

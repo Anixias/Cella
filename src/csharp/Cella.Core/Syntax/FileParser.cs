@@ -40,7 +40,7 @@ public sealed class FileParser
 		TokenType.OpPlusEqual, TokenType.OpMinusEqual, TokenType.OpStarEqual, TokenType.OpSlashEqual,
 		TokenType.OpPercentEqual, TokenType.OpLessLessEqual, TokenType.OpGreaterGreaterEqual,
 		TokenType.OpLessLessLessEqual, TokenType.OpGreaterGreaterGreaterEqual, TokenType.OpAmpersandEqual,
-		TokenType.OpBarEqual, TokenType.OpHatEqual
+		TokenType.OpBarEqual, TokenType.OpHatEqual, TokenType.KeywordIn, TokenType.KeywordFor
 	];
 	
 	private static readonly HashSet<TokenType> _undeclarableOperators =
@@ -57,6 +57,11 @@ public sealed class FileParser
 	private static readonly HashSet<TokenType> _blockKeywords = [TokenType.KeywordPvt, TokenType.KeywordMod];
 	
 	private static readonly HashSet<TokenType> _bindingKeywords = [TokenType.KeywordVal, TokenType.KeywordVar];
+	
+	private static readonly HashSet<TokenType> _loopKeywords =
+		[TokenType.KeywordFor, TokenType.KeywordWhile, TokenType.KeywordDo, TokenType.KeywordLoop];
+	
+	private static readonly HashSet<TokenType> _rangeOperators = [TokenType.OpDotDot, TokenType.OpDotDotEqual];
 	
 	private static readonly HashSet<TokenType> _accessorKeywords = [TokenType.KeywordGet, TokenType.KeywordSet];
 	
@@ -1945,11 +1950,8 @@ public sealed class FileParser
 		if (Match(ref index, out var ifToken, TokenType.KeywordIf))
 			return ParseIfStatement(ref index, ifToken);
 		
-		if (Match(ref index, out var forToken, TokenType.KeywordFor))
-			return ParseForStatement(ref index, forToken);
-		
-		if (Match(ref index, out var loopToken, TokenType.KeywordLoop))
-			return ParseLoopStatement(ref index, loopToken);
+		if (Match(ref index, out var loopToken, _loopKeywords))
+			return ParseLoop(ref index, loopToken, null);
 		
 		if (Match(ref index, out var matchToken, TokenType.KeywordMatch))
 			return ParseMatchStatement(ref index, matchToken);
@@ -1965,74 +1967,75 @@ public sealed class FileParser
 		// Attempt to parse as loop, else backtrack
 		var backtrackIndex = index;
 		
-		if (Match(ref index, TokenType.OpColon))
-		{
-			if (Match(ref index, out var namedForToken, TokenType.KeywordFor))
-				return ParseForStatement(ref index, namedForToken, var.Identifier);
-			
-			if (Match(ref index, out var namedLoopToken, TokenType.KeywordLoop))
-				return ParseLoopStatement(ref index, namedLoopToken, var.Identifier);
-		}
+		if (Match(ref index, TokenType.OpColon) && Match(ref index, out var namedLoopToken, _loopKeywords))
+			return ParseLoop(ref index, namedLoopToken, var.Identifier);
 		
 		index = backtrackIndex;
 		return new ExpressionStatementNode(expr);
 	}
 	
-	private IStatementNode? ParseForStatement(ref int index, Token forToken, Token? labelToken = null)
+	private IStatementNode? ParseLoop(ref int index, Token keyword, Token? label) => keyword.Type switch
 	{
-		Report(forToken, "'for' loops are not supported yet");
-		return null;
+		TokenType.KeywordFor => ParseForStatement(ref index, keyword, label),
+		TokenType.KeywordWhile => ParseWhileStatement(ref index, keyword, label),
+		TokenType.KeywordDo => ParseDoStatement(ref index, keyword, label),
+		_ => ParseLoopStatement(ref index, keyword, label)
+	};
+	
+	private static SourceLocation SpanLoop(Token keyword, Token? label, SourceLocation end)
+	{
+		var (source, range) = (label ?? keyword).SourceLocation;
+		return new(source, range.Join(end.Range));
 	}
 	
-	private IStatementNode? ParseLoopStatement(ref int index, Token loopToken, Token? labelToken = null)
+	private ForStatementNode? ParseForStatement(ref int index, Token keyword, Token? label)
 	{
-		// TODO Diagnostics
-		
-		var (source, range) = loopToken.SourceLocation;
-		if (labelToken is { } label)
-			range = range.Join(label.SourceLocation.Range);
-		
-		// While-loop:
-		if (Match(ref index, TokenType.KeywordWhile))
+		if (!Match(ref index, out var binding, TokenType.Identifier))
 		{
-			var condition = ParseExpression(ref index);
-			
-			if (ParseStatement(ref index) is not { } body)
-				return null;
-			
-			range = range.Join(body.SourceLocation.Range);
-			return new WhileStatementNode(new(source, range), condition, body, labelToken);
+			ReportExpected(index, "a name");
+			return null;
 		}
 		
-		// Repeat loop:
-		if (Match(ref index, TokenType.KeywordFor))
+		if (!Match(ref index, TokenType.KeywordIn))
 		{
-			var count = ParseExpression(ref index);
-			
-			if (ParseStatement(ref index) is not { } body)
-				return null;
-			
-			range = range.Join(body.SourceLocation.Range);
-			return new RepeatStatementNode(new(source, range), count, body, labelToken);
+			ReportExpected(index, "'in'");
+			return null;
 		}
 		
-		// Other loops
-		if (ParseStatement(ref index) is not { } statement)
+		Token? mode = Match(ref index, out var mut, TokenType.KeywordMut) ? mut : null;
+		var source = ParseExpression(ref index);
+		Token? rangeOperator = Match(ref index, out var op, _rangeOperators) ? op : null;
+		var end = rangeOperator is null ? null : ParseExpression(ref index);
+		return ParseStatement(ref index) is { } body
+			? new(SpanLoop(keyword, label, body.SourceLocation), binding, mode, source, rangeOperator, end, body, label)
+			: null;
+	}
+	
+	private WhileStatementNode? ParseWhileStatement(ref int index, Token keyword, Token? label)
+	{
+		var condition = ParseExpression(ref index);
+		return ParseStatement(ref index) is { } body
+			? new(SpanLoop(keyword, label, body.SourceLocation), condition, body, label)
+			: null;
+	}
+	
+	private DoWhileStatementNode? ParseDoStatement(ref int index, Token keyword, Token? label)
+	{
+		if (ParseStatement(ref index) is not { } body)
 			return null;
 		
-		// Do-While loop:
-		if (Match(ref index, TokenType.KeywordWhile))
+		if (!Match(ref index, TokenType.KeywordWhile))
 		{
-			var condition = ParseExpression(ref index);
-			
-			range = range.Join(condition.SourceLocation.Range);
-			return new DoWhileStatementNode(new(source, range), statement, condition, labelToken);
+			ReportExpected(index, "'while'");
+			return null;
 		}
 		
-		// Infinite loop:
-		range = range.Join(statement.SourceLocation.Range);
-		return new LoopStatementNode(new(source, range), statement, labelToken);
+		var condition = ParseExpression(ref index);
+		return new(SpanLoop(keyword, label, condition.SourceLocation), body, condition, label);
 	}
+	
+	private LoopStatementNode? ParseLoopStatement(ref int index, Token keyword, Token? label) =>
+		ParseStatement(ref index) is { } body ? new(SpanLoop(keyword, label, body.SourceLocation), body, label) : null;
 	
 	private IfStatementNode? ParseIfStatement(ref int index, Token ifToken)
 	{

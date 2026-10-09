@@ -3,10 +3,10 @@ mod test
 main: fun -> i32
 {
 	var x = 0
-	outer: loop while x < 10
+	outer: while x < 10
 	{
 		x += 1
-		loop while x < 5
+		while x < 5
 		{
 			if x == 1
 				break 5

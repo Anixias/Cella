@@ -1,0 +1,62 @@
+mod test
+
+Cursor: rec
+{
+	left: i32
+
+	for: op(mut self) -> bool = false
+	*: op(self) -> imm[i32] = imm self.left
+
+	drop: op
+	{
+	}
+}
+
+Sources: rec
+{
+	x: i32
+
+	in: op -> Cursor = Cursor(0)
+	in: op(own self) -> Cursor = Cursor(0)
+	in: op(self, extra: i32) -> Cursor = Cursor(extra)
+	in: op(self)
+	{
+	}
+}
+
+Repeats: rec
+{
+	x: i32
+
+	in: op(self) -> imm[i32] = imm self.x
+	in: op(mut self) -> Cursor = Cursor(0)
+	in: op(mut self) -> Cursor = Cursor(1)
+
+	drop: op
+	{
+	}
+}
+
+Steps: rec
+{
+	x: i32
+
+	for: op -> bool = true
+	for: op(self) -> bool = true
+	for: op(own self) -> bool = true
+	for: op(mut self, n: i32) -> bool = true
+	for: op(mut self) -> i32 = 1
+	for: op(mut self)
+	{
+	}
+}
+
+Twice: rec
+{
+	x: i32
+
+	for: op(mut self) -> bool = true
+	for: op(mut self) -> bool = false
+}
+
+main: fun -> i32 = 0

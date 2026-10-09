@@ -1,0 +1,49 @@
+
+====== loop_variables.ce ======
+
+Error at line 29, column 3
+28 │ {
+29 │     i = 2
+         ^ Cannot reassign read-only loop variables
+
+Error at line 30, column 3
+29 │ i = 2
+30 │ i += 1
+     ^ Cannot reassign read-only loop variables
+
+Error at line 31, column 11
+30 │ i += 1
+31 │ inc(mut i)
+             ^ Cannot mutably borrow read-only loop variables
+
+Error at line 36, column 3
+35 │ for v in values
+36 │     v = 5
+         ^ Cannot reassign read-only loop variables
+
+Error at line 39, column 15
+38 │ val fixed = [1, 2]
+39 │ for v in mut fixed
+                  ╘═══╛ Cannot mutably borrow values
+
+Error at line 43, column 15
+42 │ 
+43 │ for v in mut [1, 2]
+                  ╘════╛ Cannot mutably borrow unstored values
+
+Error at line 48, column 3
+47 │ for x in Countdown(3)
+48 │     x = 1
+         ^ Cannot reassign read-only loop variables
+
+Error at line 52, column 3
+51 │ for x in mut c
+52 │     x = 1
+         ^ Cannot reassign read-only loop variables
+
+Error at line 55, column 15
+54 │ val frozen = Countdown(3)
+55 │ for _ in mut frozen
+                  ╘════╛ Cannot mutably borrow values
+
+[compilation failed]

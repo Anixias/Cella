@@ -14,14 +14,14 @@ main: fun -> i32
 	else
 		val second = 2
 
-	loop while ready
+	while ready
 		var third = 3
 
-	loop
+	do
 		var fourth = 4
 	while ready
 
-	loop for 2
+	for _ in 0..2
 		var fifth = 5
 
 	loop

@@ -45,7 +45,7 @@ main: fun -> i32
 	printf("%d\n", i32(text.byteLength))
 
 	var count = 0
-	outer: loop while count < 1
+	outer: while count < 1
 	{
 		printf("%s\n", nameOf(outer))
 		count += 1

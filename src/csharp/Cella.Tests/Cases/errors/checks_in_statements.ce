@@ -17,15 +17,15 @@ check: fun -> i32
 	if @make().x == null
 		ret 1
 
-	loop while count / 0 > 0
+	while count / 0 > 0
 		count -= 1
 
-	loop
+	do
 	{
 		count += 1
 	} while @make().x == null
 
-	loop for count % 0
+	for _ in 0..count % 0
 	{
 	}
 
