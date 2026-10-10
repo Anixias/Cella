@@ -1,0 +1,22 @@
+mod test
+
+ext
+{
+	abs: fun(value: i32) -> i32
+}
+
+Runner: trait
+{
+	run: fun(self, f: fun[i32 -> i32]) -> i32
+	make: fun(self) -> ext fun[i32 -> i32]
+}
+
+Plain: rec impl Runner
+{
+	base: i32
+
+	run: fun(self, f: ext fun[i32 -> i32]) -> i32 = f(self.base)
+	make: fun(self) -> fun[i32 -> i32] = abs
+}
+
+main: fun -> i32 = 0

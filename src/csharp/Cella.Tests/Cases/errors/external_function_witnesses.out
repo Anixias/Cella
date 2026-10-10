@@ -1,0 +1,14 @@
+
+====== external_function_witnesses.ce ======
+
+Error at line 18, column 2
+17 │ 
+18 │ run: fun(self, f: ext fun[i32 -> i32]) -> i32 = f(self.base)
+     ╘═╛ 'run' doesn't match 'Runner.run'
+
+Error at line 19, column 2
+18 │ run: fun(self, f: ext fun[i32 -> i32]) -> i32 = f(self.base)
+19 │ make: fun(self) -> fun[i32 -> i32] = abs
+     ╘══╛ 'make' doesn't match 'Runner.make'
+
+[compilation failed]

@@ -319,12 +319,13 @@ public sealed class TypePool
 	}
 	
 	public static bool MatchesConstructor(FunctionSignature candidate, FunctionSignature expected,
-		bool allowsOwned = false) => ParametersMatch(candidate, expected, allowsOwned);
+		bool allowsStandIns = false) => ParametersMatch(candidate, expected, allowsStandIns);
 	
-	public static bool ParametersMatch(FunctionSignature candidate, FunctionSignature expected, bool allowsOwned) =>
+	public static bool ParametersMatch(FunctionSignature candidate, FunctionSignature expected,
+		bool allowsStandIns) =>
 		candidate.ParameterTypes.Length == expected.ParameterTypes.Length &&
-		Enumerable.Range(0, expected.ParameterTypes.Length).All(i => allowsOwned
-			? candidate.GetMode(i).CanStandIn(candidate.ParameterTypes[i], expected.GetMode(i),
+		Enumerable.Range(0, expected.ParameterTypes.Length).All(i => allowsStandIns
+			? candidate.GetMode(i).CanStandInOrAdapt(candidate.ParameterTypes[i], expected.GetMode(i),
 				expected.ParameterTypes[i])
 			: candidate.ParameterTypes[i] == expected.ParameterTypes[i] && candidate.GetMode(i) == expected.GetMode(i));
 	
@@ -502,7 +503,8 @@ public sealed class TypePool
 		{
 			var type = GetTypeOfMember(fields[i]);
 			var mode = expected.GetMode(i + 1);
-			if (mode == ParameterMode.Mut || expected.ParameterTypes[i + 1] != type ||
+			var given = expected.ParameterTypes[i + 1];
+			if (mode == ParameterMode.Mut || given != type && !FunctionType.CanAdapt(given, type) ||
 			    mode == ParameterMode.ReadOnly && !IsCopy(type))
 				return null;
 		}

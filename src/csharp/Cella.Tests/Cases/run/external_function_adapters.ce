@@ -1,0 +1,59 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+	abs: fun(value: i32) -> i32
+}
+
+Runner: trait
+{
+	run: fun(self, f: ext fun[i32 -> i32]) -> i32
+	make: fun(self) -> fun[i32 -> i32]
+}
+
+Plain: rec impl Runner
+{
+	base: i32
+
+	run: fun(self, f: fun[i32 -> i32]) -> i32 = f(self.base)
+	make: fun(self) -> ext fun[i32 -> i32] = abs
+}
+
+Holder: rec
+{
+	f: fun[i32 -> i32]
+}
+
+Wrapper: rec
+{
+	value: i32
+
+	new: op(f: fun[i32 -> i32])
+	{
+		self.value = f(-12)
+	}
+}
+
+pick: fun -> ext fun[i32 -> i32] = abs
+
+takesFun: fun(f: fun[i32 -> i32]) -> i32 = f(-5)
+
+consume: fun(maker: fun[-> fun[i32 -> i32]]) -> i32 = maker()(-6)
+
+viaTrait[T: Runner]: fun(value: T) -> i32 = value.run(pick()) + value.make()(-1)
+
+viaDyn: fun(value: dyn[Runner]) -> i32 = value.run(pick())
+
+build[T: new(ext fun[i32 -> i32])]: fun -> T = T(pick())
+
+main: fun -> i32
+{
+	val maker: fun[-> fun[i32 -> i32]] = pick
+	val adapter: fun[ext fun[i32 -> i32] -> i32] = takesFun
+	printf("functions %d %d %d\n", maker()(-4), adapter(pick()), consume(pick))
+	val plain = Plain(-7)
+	printf("traits %d %d\n", viaTrait(plain), viaDyn(plain))
+	printf("constructors %d %d\n", build[Holder]().f(-11), build[Wrapper]().value)
+	ret 0
+}

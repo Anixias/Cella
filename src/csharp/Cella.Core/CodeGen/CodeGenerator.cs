@@ -2697,7 +2697,8 @@ public sealed unsafe class CodeGenerator : IDisposable
 		if (type is FunctionType { IsExternal: false })
 		{
 			var environment = LLVMValueRef.CreateConstNull(OpaquePointer);
-			return LLVMValueRef.CreateConstStruct([GetClosureThunk(function), environment], false);
+			return LLVMValueRef.CreateConstStruct([GetClosureThunk(function, (FunctionType)Substitute(type)),
+				environment], false);
 		}
 		
 		return function.Symbol.IsExternal ? GetFunctionValue(function) : GetExternalThunk(function);
@@ -2747,41 +2748,55 @@ public sealed unsafe class CodeGenerator : IDisposable
 	
 	private static LLVMValueRef Int32Zero => LLVMValueRef.CreateConstInt(LLVMTypeRef.Int32, 0);
 	
-	private LLVMValueRef GetClosureThunk(FunctionInfo function)
+	private LLVMValueRef GetClosureThunk(FunctionInfo function, FunctionType type)
 	{
 		GetFunctionValue(function);
 		var target = current.Functions[function];
-		var name = $"{target.FunctionValue.Name}$fun";
+		var actual = function.Signature;
+		var adapts = FunctionType.CanAdapt(actual.ReturnType, type.ReturnType) || actual.ParameterTypes
+			.Where((parameter, i) => FunctionType.CanAdapt(type.ParameterTypes[i], parameter))
+			.Any();
+		
+		var name = adapts
+			? $"{target.FunctionValue.Name}$fun${Mangling.MangleTypeName(type, _modules)}"
+			: $"{target.FunctionValue.Name}$fun";
+		
 		var existing = current.Module.GetNamedFunction(name);
 		if (existing.Handle != IntPtr.Zero)
 			return existing;
 		
-		var actual = function.Signature;
-		var parameterTypes = actual.ParameterTypes
-			.Select((type, i) => MapParameterType(type, actual.GetMode(i)))
-			.ToArray();
+		var parameterTypes = adapts
+			? MapCallParameters(type).ToArray()
+			: actual.ParameterTypes.Select((parameter, i) => MapParameterType(parameter, actual.GetMode(i))).ToArray();
 		
-		var thunkType = LLVMTypeRef.CreateFunction(target.ReturnType, [OpaquePointer, ..parameterTypes]);
-		var thunk = current.Module.AddFunction(name, thunkType);
+		var returnType = adapts ? MapTypeSymbol(type.ReturnType) : target.ReturnType;
+		var thunk = current.Module.AddFunction(name,
+			LLVMTypeRef.CreateFunction(returnType, [OpaquePointer, ..parameterTypes]));
+		
 		thunk.Linkage = LLVMLinkage.LLVMInternalLinkage;
-		
 		using var builder = current.Module.Context.CreateBuilder();
 		builder.PositionAtEnd(thunk.AppendBasicBlock("entry"));
 		var args = parameterTypes
-			.Select((_, i) => PassAsDeclared(function, i, thunk.GetParam((uint)i + 1), builder))
+			.Select((_, i) => PassAsDeclared(function, i, AdaptFunction(type.ParameterTypes[i],
+				actual.ParameterTypes[i], thunk.GetParam((uint)i + 1), builder), builder))
 			.ToList();
 		
 		var result = target.CSignature is { } signature
 			? EmitCCall(signature, target.FunctionType, target.FunctionValue, target.ReturnType, args, builder)
 			: builder.BuildCall2(target.FunctionType, target.FunctionValue, args.ToArray());
 		
-		if (target.ReturnType.Kind == LLVMTypeKind.LLVMVoidTypeKind)
+		if (returnType.Kind == LLVMTypeKind.LLVMVoidTypeKind)
 			builder.BuildRetVoid();
 		else
-			builder.BuildRet(result);
+			builder.BuildRet(AdaptFunction(actual.ReturnType, type.ReturnType, result, builder));
 		
 		return thunk;
 	}
+	
+	private LLVMValueRef AdaptFunction(TypeSymbol from, TypeSymbol to, LLVMValueRef value, LLVMBuilderRef builder) =>
+		Substitute(from) is FunctionType source && Substitute(to) is var target && FunctionType.CanAdapt(source, target)
+			? BuildFunctionValue(MapTypeSymbol(target), GetExternalCallThunk(source), value, builder)
+			: value;
 	
 	private LLVMValueRef PassAsDeclared(FunctionInfo function, int index, LLVMValueRef value, LLVMBuilderRef builder)
 	{
@@ -2952,10 +2967,16 @@ public sealed unsafe class CodeGenerator : IDisposable
 		var target = _typePool.InstantiateFunction(witness.Info, arguments);
 		GetFunctionValue(target);
 		var callee = current.Functions[target];
-		var args = parameters.Select((parameter, i) => PassToWitness(function, target, i, parameter, builder)).ToList();
-		return callee.CSignature is { } signature
+		var args = parameters
+			.Select((parameter, i) => AdaptFunction(function.Signature.ParameterTypes[i],
+				target.Signature.ParameterTypes[i], PassToWitness(function, target, i, parameter, builder), builder))
+			.ToList();
+		
+		var result = callee.CSignature is { } signature
 			? EmitCCall(signature, callee.FunctionType, callee.FunctionValue, callee.ReturnType, args, builder)
 			: builder.BuildCall2(callee.FunctionType, callee.FunctionValue, args.ToArray());
+		
+		return AdaptFunction(target.Signature.ReturnType, function.Signature.ReturnType, result, builder);
 	}
 	
 	private LLVMValueRef PassToWitness(FunctionInfo function, FunctionInfo target, int index, LLVMValueRef value,
@@ -3025,7 +3046,13 @@ public sealed unsafe class CodeGenerator : IDisposable
 		for (var i = 0; i < fields.Count; i++)
 		{
 			var fieldType = _typePool.GetTypeOfMember(fields[i]);
-			var value = new VariableValue(BindWitnessParameter(function, i + 1, parameters[i + 1], builder), location);
+			Value value = new VariableValue(BindWitnessParameter(function, i + 1, parameters[i + 1], builder),
+				location);
+			
+			if (value.Type is FunctionType source && fieldType is FunctionType target &&
+			    FunctionType.CanAdapt(source, target))
+				value = new ConversionValue(value, new ExternalFunctionConversion(source, target), location);
+			
 			var field = new AccessValue(fieldType, self, fields[i], location);
 			EmitValue(new AssignValue(fieldType, field, value, location), builder);
 		}

@@ -1183,7 +1183,7 @@ public sealed class SignatureCollector
 	
 	private bool SignaturesMatch(FunctionSignature candidate, FunctionSignature requirement,
 		FunctionSymbol requirementSymbol, FunctionSymbol candidateSymbol,
-		Dictionary<TypeParameterSymbol, TypeSymbol> traitMap, bool allowsOwned = false)
+		Dictionary<TypeParameterSymbol, TypeSymbol> traitMap, bool allowsStandIns = false)
 	{
 		var declared = requirementSymbol.DeclaredTypeParameters;
 		var own = candidateSymbol.DeclaredTypeParameters;
@@ -1195,8 +1195,10 @@ public sealed class SignatureCollector
 			map[declared[i]] = own[i];
 		
 		var expected = _typePool.SubstituteSignature(requirement, map);
-		return expected.IsVariadic == candidate.IsVariadic && expected.ReturnType == candidate.ReturnType &&
-		       TypePool.ParametersMatch(candidate, expected, allowsOwned);
+		return expected.IsVariadic == candidate.IsVariadic &&
+		       (expected.ReturnType == candidate.ReturnType ||
+		        allowsStandIns && FunctionType.CanAdapt(candidate.ReturnType, expected.ReturnType)) &&
+		       TypePool.ParametersMatch(candidate, expected, allowsStandIns);
 	}
 	
 	private NativeWitness? FindNativeWitness(FunctionSymbol requirement, FunctionSignature signature,

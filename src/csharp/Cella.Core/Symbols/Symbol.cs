@@ -354,27 +354,39 @@ public sealed class FunctionGroupType(string functionName, IEnumerable<FunctionI
 	
 	public FunctionInfo? Find(FunctionType type) => Find(type, false) ?? Find(type, true);
 	
-	private FunctionInfo? Find(FunctionType type, bool allowsOwned)
+	private FunctionInfo? Find(FunctionType type, bool allowsStandIns)
 	{
 		foreach (var function in Functions)
 		{
-			if (Matches(function, type, allowsOwned))
+			if (Matches(function, type, allowsStandIns))
 				return function;
 		}
 		
 		return null;
 	}
 	
-	public static bool Matches(FunctionInfo function, FunctionType type, bool allowsOwned = false)
+	public static bool Matches(FunctionInfo function, FunctionType type, bool allowsStandIns = false)
 	{
 		var signature = function.Signature;
-		return !signature.IsVariadic && signature.ReturnType == type.ReturnType &&
-		       signature.ParameterTypes.Length == type.ParameterTypes.Length &&
-		       Enumerable.Range(0, type.ParameterTypes.Length).All(i => allowsOwned
-			       ? signature.GetMode(i).CanStandIn(signature.ParameterTypes[i], type.ParameterModes[i],
-				       type.ParameterTypes[i])
-			       : signature.GetMode(i) == type.ParameterModes[i] &&
-			         signature.ParameterTypes[i] == type.ParameterTypes[i]);
+		var adapts = allowsStandIns && !type.IsExternal;
+		return !signature.IsVariadic && signature.ParameterTypes.Length == type.ParameterTypes.Length &&
+		       (signature.ReturnType == type.ReturnType ||
+		        adapts && FunctionType.CanAdapt(signature.ReturnType, type.ReturnType)) &&
+		       Enumerable.Range(0, type.ParameterTypes.Length).All(i => ParameterMatches(signature, type, i,
+			       allowsStandIns, adapts));
+	}
+	
+	private static bool ParameterMatches(FunctionSignature signature, FunctionType type, int index,
+		bool allowsStandIns, bool adapts)
+	{
+		var mode = signature.GetMode(index);
+		var parameter = signature.ParameterTypes[index];
+		if (!allowsStandIns)
+			return mode == type.ParameterModes[index] && parameter == type.ParameterTypes[index];
+		
+		return adapts
+			? mode.CanStandInOrAdapt(parameter, type.ParameterModes[index], type.ParameterTypes[index])
+			: mode.CanStandIn(parameter, type.ParameterModes[index], type.ParameterTypes[index]);
 	}
 	
 	public override int MaterializationCost(TypeSymbol target, MaterializationMode mode) =>
@@ -410,6 +422,10 @@ public sealed class FunctionType : TypeSymbol
 	public static bool CanStandIn(FunctionType source, FunctionType target) =>
 		!source.IsExternal && !target.IsExternal && (!source.IsRef || target.IsRef) &&
 		SignatureStandsIn(source, target);
+	
+	public static bool CanAdapt(TypeSymbol source, TypeSymbol target) =>
+		source is FunctionType { IsExternal: true } external && target is FunctionType { IsExternal: false } function &&
+		SignatureStandsIn(external, function);
 	
 	public static bool SignatureStandsIn(FunctionType source, FunctionType target) =>
 		source.ReturnType == target.ReturnType && source.ParameterTypes.Length == target.ParameterTypes.Length &&
@@ -570,6 +586,11 @@ public static class ParameterModeExtensions
 		expectedType is FunctionType { IsRef: false, IsExternal: false } owned &&
 		borrowed.ReturnType == owned.ReturnType && borrowed.ParameterTypes.SequenceEqual(owned.ParameterTypes) &&
 		borrowed.ParameterModes.SequenceEqual(owned.ParameterModes);
+	
+	public static bool CanStandInOrAdapt(this ParameterMode mode, TypeSymbol type, ParameterMode expectedMode,
+		TypeSymbol expectedType) =>
+		mode.CanStandIn(type, expectedMode, expectedType) || mode != ParameterMode.Mut &&
+		expectedMode != ParameterMode.Mut && FunctionType.CanAdapt(expectedType, type);
 	
 	public static string Describe(this ParameterMode mode, TypeSymbol passedType) => mode switch
 	{

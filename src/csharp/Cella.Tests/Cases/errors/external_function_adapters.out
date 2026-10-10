@@ -1,0 +1,19 @@
+
+====== external_function_adapters.ce ======
+
+Error at line 18, column 42
+17 │ {
+18 │     val back: fun[-> ext fun[i32 -> i32]] = returnsFun
+                                                 ╘════════╛ Cannot convert type 'fun[-> fun[i32 -> i32]]' to 'fun[-> ext fun[i32 -> i32]]'
+
+Error at line 19, column 43
+18 │ val back: fun[-> ext fun[i32 -> i32]] = returnsFun
+19 │ val wrong: fun[fun[i32 -> i32] -> i32] = takesExt
+                                              ╘══════╛ Cannot convert type 'fun[ext fun[i32 -> i32] -> i32]' to 'fun[fun[i32 -> i32] -> i32]'
+
+Error at line 21, column 39
+20 │ val original = pick
+21 │ val value: fun[-> fun[i32 -> i32]] = original
+                                          ╘══════╛ Cannot convert type 'fun[-> ext fun[i32 -> i32]]' to 'fun[-> fun[i32 -> i32]]'
+
+[compilation failed]

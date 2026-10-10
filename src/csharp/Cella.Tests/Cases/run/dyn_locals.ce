@@ -39,6 +39,13 @@ boxed[K: trait]: rec
 	}
 }
 
+Point: rec
+{
+	x: i32
+	y: i32
+	z: i32
+}
+
 describe: fun(shape: dyn[Shape]) -> i32
 {
 	val same = shape
@@ -67,9 +74,19 @@ functions: fun
 	printf("functions %d\n", v)
 }
 
+sizes: fun
+{
+	val box = boxed[Shape].of(Square(3))
+	val shape = *box
+	val point = Point(1, 2, 3)
+	val looked = imm point
+	printf("sizes %d %d %d\n", i32(sizeOf(shape)), i32(sizeOf(point)), i32(sizeOf(looked)))
+}
+
 main: fun -> i32
 {
 	shapes()
 	functions()
+	sizes()
 	ret 0
 }

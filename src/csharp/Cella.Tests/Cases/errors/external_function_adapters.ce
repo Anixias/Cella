@@ -1,0 +1,23 @@
+mod test
+
+ext
+{
+	abs: fun(value: i32) -> i32
+}
+
+negate: fun(x: i32) -> i32 = -x
+
+returnsFun: fun -> fun[i32 -> i32] = negate
+
+takesExt: fun(f: ext fun[i32 -> i32]) -> i32 = f(-5)
+
+pick: fun -> ext fun[i32 -> i32] = abs
+
+main: fun -> i32
+{
+	val back: fun[-> ext fun[i32 -> i32]] = returnsFun
+	val wrong: fun[fun[i32 -> i32] -> i32] = takesExt
+	val original = pick
+	val value: fun[-> fun[i32 -> i32]] = original
+	ret 0
+}

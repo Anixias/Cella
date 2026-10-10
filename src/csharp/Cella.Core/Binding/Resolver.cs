@@ -3508,7 +3508,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			target = RequireTypeArguments(type, targetNode);
 		else
 		{
-			var value = MaterializeAsDefault(VisitNode(targetNode));
+			var value = Decay(MaterializeAsDefault(VisitNode(targetNode)));
 			if (value.Type is DynType)
 			{
 				var borrow = _typePool.GetBorrowType(value.Type, false);
