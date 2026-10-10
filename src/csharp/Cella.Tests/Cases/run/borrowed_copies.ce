@@ -1,0 +1,95 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Line: ref rec
+{
+	text: str
+}
+
+Ref: ref rec
+{
+	line: imm[Line]
+}
+
+Holder[T]: rec
+{
+	value: T
+
+	*: op(self) -> imm[T] = imm self.value
+}
+
+Slot[T]: rec
+{
+	value: T
+
+	as: op(self) -> imm[T] = imm self.value
+}
+
+dereferenced[T: copy]: fun(holder: Holder[T]) -> T
+{
+	val value: T = *holder
+	ret value
+}
+
+direct[T: copy]: fun(holder: Holder[T]) -> T = *holder
+
+converted[T: copy]: fun(slot: Slot[T]) -> T
+{
+	val value: T = slot
+	ret value
+}
+
+throughView[T: copy]: fun(holder: Holder[T]) -> T
+{
+	val view = imm holder
+	val inner: T = *view
+	ret inner
+}
+
+throughField: fun -> str
+{
+	val line = Line("field")
+	val view: imm[Line] = imm line
+	val text: str = view.text
+	ret text
+}
+
+throughPointer: fun -> Line
+{
+	var line = Line("pointer")
+	val pointer = @line
+	val copy: Line = *pointer
+	ret copy
+}
+
+throughParameter: fun(source: Ref) -> Line
+{
+	val copy: Line = source.line
+	ret copy
+}
+
+show: fun(text: str)
+{
+	printf("%.*s\n", i32(text.byteLength), text.data)
+}
+
+main: fun -> i32
+{
+	printf("%d %d %d %d\n", dereferenced(Holder(1)), direct(Holder(2)), converted(Slot(3)), throughView(Holder(4)))
+	show(dereferenced(Holder(Line("generic"))).text)
+	show(throughField())
+	show(throughPointer().text)
+	val line = Line("parameter")
+	show(throughParameter(Ref(imm line)).text)
+	var original = Line("before")
+	val pointer = @original
+	val copy: Line = *pointer
+	original = Line("after")
+	show(copy.text)
+	show(original.text)
+	ret 0
+}

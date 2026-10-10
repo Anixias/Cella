@@ -1,0 +1,54 @@
+mod test
+
+Line: ref rec
+{
+	text: str
+}
+
+Ref: ref rec
+{
+	line: imm[Line]
+}
+
+Holder[T]: rec
+{
+	value: T
+
+	*: op(self) -> imm[T] = imm self.value
+}
+
+Sink: ref rec
+{
+	line: Line
+
+	take: fun(mut self, source: Ref)
+	{
+		self.line = source.line
+	}
+
+	takeHeld: fun(mut self, holder: Holder[Line])
+	{
+		self.line = *holder
+	}
+}
+
+throughPointer: fun -> Line
+{
+	val buffer = [u8(97), u8(98)]
+	var line = Line(str(@buffer[0], 2))
+	val pointer = @line
+	val copy: Line = *pointer
+	ret copy
+}
+
+throughOperator: fun -> Line
+{
+	val buffer = [u8(97), u8(98)]
+	val holder = Holder(Line(str(@buffer[0], 2)))
+	val line: Line = *holder
+	ret line
+}
+
+borrowed[T: copy]: fun(holder: Holder[T]) -> imm[T] = imm *holder
+
+main: fun -> i32 = 0

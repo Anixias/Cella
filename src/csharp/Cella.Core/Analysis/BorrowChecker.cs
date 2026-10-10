@@ -483,7 +483,7 @@ public sealed class BorrowChecker(TypePool typePool, DiagnosticList diagnostics)
 		
 		return GetBase(place) switch
 		{
-			UnaryOpValue { Op: UnaryOperation.Dereference } deref => Expand(Sources(deref.Operand, state), state),
+			UnaryOpValue { Op: UnaryOperation.Dereference } deref => Pointed(Sources(deref.Operand, state), state),
 			var root when root != place => Sources(root, state),
 			_ => []
 		};
@@ -507,10 +507,14 @@ public sealed class BorrowChecker(TypePool typePool, DiagnosticList diagnostics)
 		};
 	}
 	
-	private static List<Place> Expand(List<Place> sources, BorrowState state) => [..sources, ..Held(sources, state)];
+	private static List<Place> Expand(List<Place> sources, BorrowState state) =>
+		[..sources, ..Held(sources, state)];
 	
 	private static List<Place> Held(List<Place> sources, BorrowState state) =>
 		[..sources.SelectMany(s => state.Get(s.Root).Keys)];
+	
+	private static List<Place> Pointed(List<Place> sources, BorrowState state) =>
+		[..sources.Where(static s => s.Root is HeldBorrows), ..Held(sources, state)];
 	
 	private static Value GetBase(Value place) => place switch
 	{
