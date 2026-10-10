@@ -281,6 +281,10 @@ public sealed class TypeInference(TypePool typePool)
 					Unify(p, a, true);
 					break;
 				
+				case (DynType { Parameter: { } p }, DynType { Function: { } a }):
+					Unify(p, a, true);
+					break;
+				
 				case (DynType { Instance: { } p }, DynType { Instance: { } a }):
 					Unify(p, a, true);
 					break;
@@ -305,8 +309,9 @@ public sealed class TypeInference(TypePool typePool)
 					
 					break;
 				
-				case (FunctionType, ClosureType a):
-					Unify(parameter, a.Signature, exact);
+				case (FunctionType, ClosureType or TypeParameterSymbol or DynType) when
+					typePool.GetCallableSignatures(argument) is [var signature]:
+					Unify(parameter, signature, exact);
 					break;
 				
 				case (FunctionType p, FunctionType a) when p.ParameterTypes.Length == a.ParameterTypes.Length:
@@ -337,6 +342,7 @@ public sealed class TypeInference(TypePool typePool)
 			TypeParameterSymbol parameter => parameters.Contains(parameter),
 			DynType { Parameter: { } parameter } => parameters.Contains(parameter),
 			DynType { Instance: { } trait } => Mentions(trait),
+			DynType { Function: { } function } => Mentions(function),
 			TraitType trait => trait.Arguments.Any(Mentions),
 			FStrType fstr => Mentions(fstr.Value),
 			NamedTypeSymbol named => named.TypeArguments.Any(Mentions),

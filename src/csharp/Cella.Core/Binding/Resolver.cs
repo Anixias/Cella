@@ -1873,16 +1873,14 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		var target = fitting is [var single] ? single : expected is [var only] ? only : null;
 		return target is null && expected.Count > 1
 			? new ResolvedFunctionGroupExpressionNode(new FunctionGroupType("fun", [], "fun"), node)
-			: ResolveLambda(node, target, !isTrial);
+			: ResolveLambda(node, target, !isTrial, true);
 	}
 	
 	private FunctionType? ExpectLambda(CallShape shape, IReadOnlyList<IResolvedExpressionNode?> values, int index,
 		LambdaAnnotations annotations)
 	{
 		if (index >= shape.Parameters.Count || shape.Modes[index] == ParameterMode.Mut ||
-		    (shape.Parameters[index] is BorrowType { IsMutable: false } borrow
-			    ? borrow.Target
-			    : shape.Parameters[index]) is not FunctionType parameter)
+		    GetExpectedFunction(shape.Parameters[index], shape) is not FunctionType parameter)
 			return null;
 		
 		if (!TypePool.FindTypeParameters(parameter).Any(shape.Open.Contains))
@@ -1897,6 +1895,22 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		
 		return _typePool.Substitute(parameter, map) as FunctionType;
 	}
+	
+	private TypeSymbol GetExpectedFunction(TypeSymbol parameter, CallShape shape) => parameter switch
+	{
+		BorrowType { IsMutable: false } borrow => borrow.Target,
+		TypeParameterSymbol bounded when FindFunctionBound(bounded, shape) is { } bound =>
+			_typePool.GetRefFunctionType(bound),
+		_ => parameter
+	};
+	
+	private FunctionType? FindFunctionBound(TypeParameterSymbol parameter, CallShape shape) =>
+		_typePool.GetFunctionBounds(parameter) is [var bound]
+			? bound
+			: _typePool.GetParameterBounds(parameter)
+				.Select(trait => shape.Outer.GetValueOrDefault(trait))
+				.OfType<FunctionType>()
+				.FirstOrDefault();
 	
 	private LambdaAnnotations ResolveAnnotations(LambdaExpressionNode node)
 	{
@@ -1980,7 +1994,28 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	
 	private static CallShape CreateShape(ICallable candidate, ImmutableArray<TypeParameterSymbol> open) => new(
 		candidate.ParameterTypes, open, candidate.ReturnType,
-		[..candidate.ParameterTypes.Select((_, i) => candidate.GetMode(i))]);
+		[..candidate.ParameterTypes.Select((_, i) => candidate.GetMode(i))])
+	{
+		Outer = candidate switch
+		{
+			FunctionCallable callable => GetOuterArguments(callable.Info),
+			ReceiverCallable callable => GetOuterArguments(callable.Info),
+			_ => []
+		}
+	};
+	
+	private static Dictionary<TypeParameterSymbol, TypeSymbol> GetOuterArguments(FunctionInfo info)
+	{
+		var outer = new Dictionary<TypeParameterSymbol, TypeSymbol>();
+		if (info.TypeArguments.IsDefaultOrEmpty)
+			return outer;
+		
+		var count = info.Symbol.TypeParameters.Length - info.Symbol.DeclaredTypeParameters.Length;
+		for (var i = 0; i < count && i < info.TypeArguments.Length; i++)
+			outer[info.Symbol.TypeParameters[i]] = info.TypeArguments[i];
+		
+		return outer;
+	}
 	
 	private static CallShape CreateShape(ImmutableArray<TypeSymbol> parameters, NamedTypeSymbol definition) =>
 		new(parameters, definition.TypeParameters, definition, [..parameters.Select(static _ => ParameterMode.Own)]);
@@ -3002,11 +3037,8 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		if (target.Type is UntypedType)
 			target = MaterializeAsDefault(target);
 		
-		target = Decay(target);
-		if (target.Type is ClosureType closure)
-			target = new ResolvedConversionExpressionNode(target,
-				_conversionTable.FindImplicit(closure, _typePool.GetClosureSignature(closure))!, target.Syntax);
-		
+		var callee = Decay(target);
+		target = ResolveCallTarget(callee);
 		ICallable[] candidates = target.Type is FunctionType type ? [new FunctionTypeCallable(type)] : [];
 		var args = ResolveArguments(node.Arguments,
 			[..candidates.Select(static candidate => CreateShape(candidate, []))], out _);
@@ -3015,7 +3047,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
 		
 		if (target.Type is not FunctionType functionType)
-			return Error(node, $"Cannot call a value of type '{target.Type.Name}'", CurrentTargetType, node.Target);
+			return Error(node, $"Cannot call a value of type '{callee.Type.Name}'", CurrentTargetType, node.Target);
 		
 		var resolutionSet = ResolveCallable(candidates, args, MaterializationMode.Overload);
 		
@@ -3023,11 +3055,25 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
 		
 		if (!resolutionSet.HasResult)
-			return Error(node, $"'{GetDisplayName(target)}' doesn't accept these arguments", CurrentTargetType,
+			return Error(node, $"'{GetDisplayName(callee)}' doesn't accept these arguments", CurrentTargetType,
 				node.Target);
 		
 		var resolvedArgs = ApplyArgumentResolution(args, resolutionSet[0]);
 		return new ResolvedIndirectCallExpressionNode(target, resolvedArgs, functionType, node);
+	}
+	
+	private IResolvedExpressionNode ResolveCallTarget(IResolvedExpressionNode callee, bool dereferences = true)
+	{
+		if (callee.Type is FunctionType)
+			return callee;
+		
+		if (_typePool.GetCallableSignatures(callee.Type) is [var signature])
+			return new ResolvedConversionExpressionNode(callee,
+				_conversionTable.FindImplicit(callee.Type, _typePool.GetRefFunctionType(signature))!, callee.Syntax);
+		
+		return dereferences && FindDereference(callee.Type, ParameterMode.ReadOnly) is not null
+			? ResolveCallTarget(ResolveDereference(TokenType.OpStar, callee, callee.Syntax), false)
+			: callee;
 	}
 	
 	public IResolvedExpressionNode Visit(IndexerExpressionNode node) =>
@@ -3578,13 +3624,13 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	public IResolvedExpressionNode Visit(LambdaExpressionNode node) => ResolveLambda(node, CurrentTargetType);
 	
 	private IResolvedExpressionNode ResolveLambda(LambdaExpressionNode node, TypeSymbol? expected,
-		bool resolveBody = true)
+		bool resolveBody = true, bool isArgument = false)
 	{
 		var outer = CurrentResolutionContext;
 		var target = (expected is BorrowType { IsMutable: false } borrow ? borrow.Target : expected) as FunctionType;
 		if (target is not null && target.ParameterTypes.Length != node.Parameters.Length)
-			return Error(node, $"'{target.Name}' takes {DescribeParameterCount(target.ParameterTypes.Length)}",
-				expected);
+			return Error(node, $"'{(isArgument ? target.PlainName : target.Name)}' takes " +
+			                   DescribeParameterCount(target.ParameterTypes.Length), expected);
 		
 		Diagnostics.AddRange(DiagnosticReporter.ReportDuplicates(node.Parameters.Select(static p => p.Identifier),
 			static name => $"Parameter '{name}' is declared more than once"));
@@ -5102,12 +5148,8 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		IsBorrowedFunctionParameter(node) && node.Type is FunctionType function &&
 		_typePool.GetPlainFunctionType(function) == target;
 	
-	private static string GetDisplayName(IResolvedExpressionNode node) => node switch
-	{
-		ResolvedConversionExpressionNode { Conversion: ClosureConversion closure } => closure.From.Name,
-		_ when IsBorrowedFunctionParameter(node) && node.Type is FunctionType function => function.PlainName,
-		_ => node.Type.Name
-	};
+	private static string GetDisplayName(IResolvedExpressionNode node) =>
+		IsBorrowedFunctionParameter(node) && node.Type is FunctionType function ? function.PlainName : node.Type.Name;
 	
 	[return: NotNullIfNotNull(nameof(source))]
 	private IResolvedExpressionNode? ApplyImplicitConversion(IResolvedExpressionNode? source, TypeSymbol target)
@@ -6192,7 +6234,11 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		ImmutableArray<TypeParameterSymbol> Open,
 		TypeSymbol? ReturnType,
 		ImmutableArray<ParameterMode> Modes
-	);
+	)
+	{
+		public IReadOnlyDictionary<TypeParameterSymbol, TypeSymbol> Outer { get; init; } =
+			new Dictionary<TypeParameterSymbol, TypeSymbol>();
+	}
 	
 	private sealed record LambdaAnnotations
 	(

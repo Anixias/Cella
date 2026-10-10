@@ -409,6 +409,9 @@ public sealed class FunctionType : TypeSymbol
 	
 	public static bool CanStandIn(FunctionType source, FunctionType target) =>
 		!source.IsExternal && !target.IsExternal && (!source.IsRef || target.IsRef) &&
+		SignatureStandsIn(source, target);
+	
+	public static bool SignatureStandsIn(FunctionType source, FunctionType target) =>
 		source.ReturnType == target.ReturnType && source.ParameterTypes.Length == target.ParameterTypes.Length &&
 		Enumerable.Range(0, source.ParameterTypes.Length).All(i => source.ParameterModes[i]
 			.CanStandIn(source.ParameterTypes[i], target.ParameterModes[i], target.ParameterTypes[i]));
@@ -478,7 +481,14 @@ public sealed class DynType : TypeSymbol
 		TraitName = parameter.Name;
 	}
 	
+	public DynType(FunctionType function) : base($"dyn[{function.Name}]")
+	{
+		Function = function;
+		TraitName = function.Name;
+	}
+	
 	public TraitType? Instance { get; }
+	public FunctionType? Function { get; }
 	public TraitSymbol? Trait => Instance?.Trait;
 	public ImmutableArray<TypeSymbol> TraitArguments => Instance?.Arguments ?? [];
 	public TypeParameterSymbol? Parameter { get; }

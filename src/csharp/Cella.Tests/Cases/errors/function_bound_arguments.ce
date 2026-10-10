@@ -1,0 +1,51 @@
+mod test
+
+ext
+{
+	malloc: fun(size: usize) -> ptr
+	free: fun(memory: ptr)
+}
+
+boxed[K: trait]: rec
+{
+	object: pvt ptr[dyn[K]]
+
+	of[T: K + noref]: fun(own value: T) -> boxed[K]
+	{
+		val memory = ptr[T](malloc(sizeOf(T)))
+		own *memory = value
+		ret boxed[K](memory)
+	}
+
+	*: op(self) -> imm[dyn[K]] = imm *self.object
+
+	drop: op
+	{
+		drop *self.object
+		free(self.object)
+	}
+}
+
+twice[F: fun[i32 -> i32]]: fun(f: F, x: i32) -> i32 = f(f(x))
+
+misuse[F: fun[i32 -> i32]]: fun(f: F) -> i32 = f(true)
+
+holder[K: trait]: rec
+{
+	value: i32
+}
+
+answer: fun -> i32 = 42
+
+main: fun -> i32
+{
+	val wrong = twice(5, 1)
+	val fewer = twice(fun = 4, 1)
+	val bad = holder[ref fun[-> i32]](1)
+	var count = 0
+	val borrowing = boxed[fun[-> i32]].of(fun -> i32 = count)
+	val next = boxed[fun[-> i32]].of(answer)
+	next(5)
+	val n: i32 = *next
+	ret 0
+}

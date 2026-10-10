@@ -1015,15 +1015,15 @@ public sealed class Lowerer
 		}
 		
 		public Value Visit(ResolvedConversionExpressionNode node) => new ConversionValue(
-			node.Conversion is ClosureConversion ? BorrowClosure(node.Source) : VisitNode(node.Source),
+			node.Conversion is CallableConversion ? BorrowCallable(node.Source) : VisitNode(node.Source),
 			node.Conversion, node.Syntax.SourceLocation);
 		
-		private UnaryOpValue BorrowClosure(IResolvedExpressionNode closure)
+		private UnaryOpValue BorrowCallable(IResolvedExpressionNode callable)
 		{
-			var value = VisitPlace(closure);
-			var place = IsPlaceValue(value) ? value : StoreTemporary(value, "closure");
-			return new(_typePool.GetBorrowType(closure.Type, false), place, UnaryOperation.AddressOf,
-				closure.Syntax.SourceLocation);
+			var value = VisitPlace(callable);
+			var place = IsPlaceValue(value) ? value : StoreTemporary(value, "callable");
+			return new(_typePool.GetBorrowType(callable.Type, false), place, UnaryOperation.AddressOf,
+				callable.Syntax.SourceLocation);
 		}
 		
 		public Value Visit(ResolvedFunctionCallExpressionNode node) => new CallValue(node.Function,

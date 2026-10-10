@@ -1,0 +1,111 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+	malloc: fun(size: usize) -> ptr
+	free: fun(memory: ptr)
+	abs: fun(value: i32) -> i32
+}
+
+Texture: rec
+{
+	id: i32
+
+	drop: op
+	{
+		printf("free texture %d\n", self.id)
+	}
+}
+
+boxed[K: trait]: rec
+{
+	object: pvt ptr[dyn[K]]
+
+	of[T: K + noref]: fun(own value: T) -> boxed[K]
+	{
+		val memory = ptr[T](malloc(sizeOf(T)))
+		own *memory = value
+		ret boxed[K](memory)
+	}
+
+	*: op(self) -> imm[dyn[K]] = imm *self.object
+
+	drop: op
+	{
+		drop *self.object
+		free(self.object)
+	}
+}
+
+each: fun(values: array[i32, 3], visit: fun[i32])
+{
+	for value in values
+		visit(value)
+}
+
+makeCounter: fun(start: i32) -> boxed[fun[-> i32]]
+{
+	var count = start
+	ret boxed[fun[-> i32]].of(own fun -> i32
+	{
+		count += 1
+		ret count
+	})
+}
+
+makeBox[T: copy + noref]: fun(value: T) -> boxed[fun[-> T]]
+{
+	ret boxed[fun[-> T]].of(own fun -> T = value)
+}
+
+pick: fun -> ext fun[i32 -> i32] = abs
+
+answer: fun -> i32 = 42
+
+counters: fun
+{
+	val next = makeCounter(10)
+	next()
+	val second = (*next)()
+	printf("counters %d %d\n", second, next())
+}
+
+sources: fun
+{
+	val plain = boxed[fun[-> i32]].of(answer)
+	val external = boxed[fun[i32 -> i32]].of(pick())
+	val made = makeBox(2.5)
+	val step = 2
+	val add = boxed[fun[i32 -> i32]].of(own fun(x) = x + step)
+	printf("sources %d %d %d %d\n", plain(), external(-6), i32(made() * 2.0), add(1))
+}
+
+textures: fun
+{
+	val grass = Texture(7)
+	val show = boxed[fun[i32]].of(own fun(value: i32) { printf("textures %d %d\n", grass.id, value) })
+	each([1, 2, 3], *show)
+	printf("textures end\n")
+}
+
+modes: fun
+{
+	val step = 2
+	val bump = boxed[fun[mut i32]].of(own fun(mut value: i32) { value += step })
+	var v = 1
+	bump(mut v)
+	bump(mut v)
+	val target: ref fun[mut i32] = *bump
+	target(mut v)
+	printf("modes %d\n", v)
+}
+
+main: fun -> i32
+{
+	counters()
+	sources()
+	textures()
+	modes()
+	ret 0
+}

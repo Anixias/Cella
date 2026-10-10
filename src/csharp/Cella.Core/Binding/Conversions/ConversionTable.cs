@@ -6,6 +6,8 @@ public sealed class ConversionTable
 {
 	private readonly Dictionary<(TypeSymbol From, TypeSymbol To), Conversion> _conversions = [];
 	
+	public Func<TypeSymbol, IEnumerable<FunctionType>>? CallableSignatures { get; set; }
+	
 	public void Add(Conversion conversion) => _conversions[(conversion.From, conversion.To)] = conversion;
 	
 	public IEnumerable<Conversion> FindAllImplicit(TypeSymbol type)
@@ -24,32 +26,41 @@ public sealed class ConversionTable
 	public Conversion? FindImplicit(TypeSymbol from, TypeSymbol to) =>
 		_conversions.TryGetValue((from, to), out var conversion)
 			? conversion.Kind == ConversionKind.Implicit ? conversion : null
-			: FindFunctionConversion(from, to) ?? FindClosureConversion(from, to);
+			: FindFunctionConversion(from, to) ?? FindCallableConversion(from, to);
 	
 	// TODO Chaining?
 	public Conversion? FindExplicit(TypeSymbol from, TypeSymbol to) =>
 		_conversions.GetValueOrDefault((from, to)) ?? FindFunctionConversion(from, to) ??
-		FindClosureConversion(from, to);
+		FindCallableConversion(from, to);
 	
-	private ClosureConversion? FindClosureConversion(TypeSymbol from, TypeSymbol to)
+	private CallableConversion? FindCallableConversion(TypeSymbol from, TypeSymbol to)
 	{
-		if (from is not ClosureType closure || to is not FunctionType { IsRef: true } target ||
-		    !FunctionType.CanStandIn(closure.Signature, target))
+		if (from is not (ClosureType or TypeParameterSymbol or DynType) ||
+		    to is not FunctionType { IsRef: true } target || !IsCallableAs(from, target))
 			return null;
 		
-		var conversion = new ClosureConversion(closure, target);
+		var conversion = new CallableConversion(from, target);
 		Add(conversion);
 		return conversion;
 	}
 	
+	private bool IsCallableAs(TypeSymbol type, FunctionType function) => CallableSignatures?.Invoke(type)
+		.Any(signature => FunctionType.SignatureStandsIn(signature, function)) == true;
+	
 	private Conversion? FindFunctionConversion(TypeSymbol from, TypeSymbol to)
 	{
-		if (from is not FunctionType source || to is not FunctionType target || source == target ||
-		    !FunctionType.CanStandIn(source, target))
+		if (from is not FunctionType source || to is not FunctionType target || source == target)
 			return null;
 		
-		var conversion = new FreeConversion(from, to, ConversionKind.Implicit);
-		Add(conversion);
+		Conversion? conversion = FunctionType.CanStandIn(source, target)
+			? new FreeConversion(from, to, ConversionKind.Implicit)
+			: source.IsExternal && !target.IsExternal && FunctionType.SignatureStandsIn(source, target)
+				? new ExternalFunctionConversion(source, target)
+				: null;
+		
+		if (conversion is not null)
+			Add(conversion);
+		
 		return conversion;
 	}
 	

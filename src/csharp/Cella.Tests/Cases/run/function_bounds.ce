@@ -1,0 +1,86 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+	abs: fun(value: i32) -> i32
+}
+
+twice[F: fun[i32 -> i32]]: fun(f: F, x: i32) -> i32 = f(f(x))
+
+apply[F: fun[i32]]: fun(f: F, x: i32) = f(x)
+
+each: fun(values: array[i32, 3], visit: fun[i32])
+{
+	for value in values
+		apply(visit, value)
+}
+
+forward[G: fun[i32 -> i32]]: fun(g: G, x: i32) -> i32 = twice(g, x)
+
+run: fun(f: fun[i32 -> i32]) -> i32 = f(5)
+
+viaBound[F: fun[i32 -> i32]]: fun(f: F) -> i32 = run(f) + 1
+
+applyTo[T, F: fun[T -> i32]]: fun(f: F, x: T) -> i32 = f(x)
+
+relay: fun(callback: ext fun[i32 -> i32]) -> i32 = twice(callback, -5)
+
+pick: fun -> ext fun[i32 -> i32] = abs
+
+keep: fun(own f: fun[i32 -> i32]) -> i32 = f(-8)
+
+Counter[F: fun[-> i32]]: rec
+{
+	next: F
+
+	take: fun(self) -> i32 = self.next() * 10
+}
+
+double: fun(x: i32) -> i32 = x * 2
+
+callables: fun
+{
+	val step = 3
+	val byCopy = twice(own fun(x: i32) -> i32 = x + step, 1)
+	val borrowing = twice(fun(x) = x + step, 1)
+	printf("callables %d %d %d %d\n", byCopy, twice(double, 1), borrowing, twice(abs, -5))
+}
+
+forwarding: fun
+{
+	var total = 0
+	each([1, 2, 3], fun(value) { total += value })
+	val step = 2
+	val doubled = viaBound(own fun(x: i32) -> i32 = x * step)
+	printf("forwarding %d %d %d %d\n", total, forward(double, 3), doubled, applyTo(fun(x) = x + step, 40))
+}
+
+externals: fun
+{
+	val callback = pick()
+	val stored: fun[i32 -> i32] = callback
+	printf("externals %d %d %d %d\n", relay(callback), run(callback), keep(callback), stored(-9))
+}
+
+counters: fun
+{
+	var count = 0
+	val counter = Counter(own fun -> i32
+	{
+		count += 1
+		ret count
+	})
+
+	counter.next()
+	printf("counters %d %d\n", counter.next(), counter.take())
+}
+
+main: fun -> i32
+{
+	callables()
+	forwarding()
+	externals()
+	counters()
+	ret 0
+}

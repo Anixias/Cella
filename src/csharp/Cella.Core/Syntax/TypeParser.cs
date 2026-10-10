@@ -76,7 +76,8 @@ public sealed class TypeParser(ImmutableArray<Token> tokens) : BaseParser<ITypeN
 		if (!Match(ref index, TokenType.OpOpenBracket))
 			throw Expected(index, "'['");
 		
-		if (!Peek(index, TokenType.Identifier))
+		if (!Peek(index, TokenType.Identifier) && !Peek(index, TokenType.KeywordFun) &&
+		    !Peek(index, TokenType.KeywordRef))
 			throw Expected(index, "a trait");
 		
 		var trait = ParseType(ref index);

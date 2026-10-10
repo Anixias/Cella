@@ -29,6 +29,8 @@ public sealed class TypePool
 	private readonly Dictionary<TraitSymbol, ImmutableArray<FunctionInfo>> _dynMemberInfos = [];
 	private readonly List<FunctionType> _functionTypes = [];
 	private readonly List<ClosureType> _closureTypes = [];
+	private readonly Dictionary<FunctionType, DynType> _functionDynTypes = [];
+	private readonly Dictionary<TypeParameterSymbol, ImmutableArray<FunctionType>> _functionBounds = [];
 	private readonly Dictionary<TypedMemberSymbol, TypeSymbol> _memberTypes = [];
 	private readonly Dictionary<TypeSymbol, TypeFacts> _facts = [];
 	private readonly Dictionary<TypeSymbol, List<FunctionInfo>> _constructors = [];
@@ -60,6 +62,7 @@ public sealed class TypePool
 		OperatorRegistry = operatorRegistry;
 		SizeTable = sizeTable;
 		SizeTable.Completer = Complete;
+		ConversionTable.CallableSignatures = type => GetCallableSignatures(type);
 		
 		CreateNativeMembers();
 	}
@@ -85,6 +88,26 @@ public sealed class TypePool
 	
 	public void SetParameterBounds(TypeParameterSymbol parameter, ImmutableArray<TypeParameterSymbol> traits) =>
 		_parameterBounds[parameter] = traits;
+	
+	public void SetFunctionBounds(TypeParameterSymbol parameter, ImmutableArray<FunctionType> functions) =>
+		_functionBounds[parameter] = functions;
+	
+	public ImmutableArray<FunctionType> GetFunctionBounds(TypeParameterSymbol parameter) =>
+		_functionBounds.GetValueOrDefault(parameter, []);
+	
+	public ImmutableArray<FunctionType> GetCallableSignatures(TypeSymbol type) => type switch
+	{
+		ClosureType closure => [closure.Signature],
+		FunctionType function => [function],
+		TypeParameterSymbol parameter => GetFunctionBounds(parameter),
+		DynType { Function: { } function } => [function],
+		_ => []
+	};
+	
+	public bool IsCallableAs(TypeSymbol type, FunctionType function) => type is InvalidType ||
+	                                                                    GetCallableSignatures(type).Any(signature =>
+		                                                                    FunctionType.SignatureStandsIn(signature,
+			                                                                    function));
 	
 	public ImmutableArray<TypeParameterSymbol> GetParameterBounds(TypeParameterSymbol parameter) =>
 		_parameterBounds.GetValueOrDefault(parameter, []);
@@ -174,8 +197,12 @@ public sealed class TypePool
 		_ => false
 	};
 	
-	public bool Conforms(TypeSymbol type, DynType dyn) =>
-		dyn.Instance is { } trait ? Conforms(type, trait) : Conforms(type, dyn.Parameter!);
+	public bool Conforms(TypeSymbol type, DynType dyn) => dyn switch
+	{
+		{ Instance: { } trait } => Conforms(type, trait),
+		{ Function: { } function } => IsCallableAs(type, function),
+		_ => Conforms(type, dyn.Parameter!)
+	};
 	
 	public Conformance? FindConformance(TypeSymbol type, TraitType trait) => _conformances.FirstOrDefault(conformance =>
 		conformance.Trait == trait.Trait && Matches(conformance, type) &&
@@ -610,9 +637,6 @@ public sealed class TypePool
 		return closure;
 	}
 	
-	public FunctionType GetClosureSignature(ClosureType closure) => GetFunctionType(false,
-		closure.Signature.ParameterTypes, closure.Signature.ParameterModes, closure.Signature.ReturnType, true);
-	
 	public FunctionType GetFunctionType(bool isExternal, IEnumerable<TypeSymbol> parameterTypes,
 		IEnumerable<ParameterMode> parameterModes, TypeSymbol returnType, bool isRef = false)
 	{
@@ -707,6 +731,16 @@ public sealed class TypePool
 		
 		var dynType = new DynType(trait);
 		_dynTypes[trait] = dynType;
+		return dynType;
+	}
+	
+	public DynType GetDynType(FunctionType function)
+	{
+		if (_functionDynTypes.TryGetValue(function, out var existing))
+			return existing;
+		
+		var dynType = new DynType(function);
+		_functionDynTypes[function] = dynType;
 		return dynType;
 	}
 	
@@ -876,7 +910,9 @@ public sealed class TypePool
 		IReadOnlyDictionary<TypeParameterSymbol, TypeSymbol>? map = null) => argument switch
 	{
 		InvalidType => null,
-		_ when parameter.IsTrait => IsTraitArgument(argument) ? null : $"'{argument.Name}' is not a trait",
+		_ when parameter.IsTrait => IsTraitArgument(argument) || IsFunctionTrait(argument)
+			? null
+			: $"'{argument.Name}' is not a trait",
 		_ when IsTraitArgument(argument) => $"'{argument.Name}' is not a type",
 		DynType => $"Cannot use '{argument.Name}' by value",
 		_ when parameter.IsAtomic && !IsAtomic(argument) => $"Cannot access '{argument.Name}' values atomically",
@@ -891,10 +927,24 @@ public sealed class TypePool
 			$"'{argument.Name}' doesn't implement '{trait.Name}'",
 		_ when FindUnmetBound(parameter, argument, map) is { } trait =>
 			$"'{argument.Name}' doesn't implement '{trait}'",
+		_ when FindUnmetFunction(parameter, argument, map) is { } function =>
+			$"'{argument.Name}' doesn't implement '{function.Name}'",
 		_ => null
 	};
 	
+	private FunctionType? FindUnmetFunction(TypeParameterSymbol parameter, TypeSymbol argument,
+		IReadOnlyDictionary<TypeParameterSymbol, TypeSymbol>? map)
+	{
+		var substitution = map?.ToDictionary() ?? [];
+		substitution[parameter] = argument;
+		return GetFunctionBounds(parameter)
+			.Select(bound => SubstituteFunctionType(bound, substitution))
+			.FirstOrDefault(bound => !IsCallableAs(argument, bound));
+	}
+	
 	public static bool IsTraitArgument(TypeSymbol type) => type is TraitType or TypeParameterSymbol { IsTrait: true };
+	
+	public static bool IsFunctionTrait(TypeSymbol type) => type is FunctionType { IsExternal: false, IsRef: false };
 	
 	private TraitType? FindUnmetTrait(TypeParameterSymbol parameter, TypeSymbol argument,
 		IReadOnlyDictionary<TypeParameterSymbol, TypeSymbol>? map)
@@ -935,6 +985,9 @@ public sealed class TypePool
 				
 				case TypeParameterSymbol trait when !Conforms(argument, trait):
 					return trait.Name;
+				
+				case FunctionType function when !IsCallableAs(argument, function):
+					return function.Name;
 			}
 		}
 		
@@ -1142,6 +1195,7 @@ public sealed class TypePool
 		TypeParameterSymbol parameter => [parameter],
 		DynType { Parameter: { } parameter } => [parameter],
 		DynType { Instance: { } trait } => FindTypeParameters(trait),
+		DynType { Function: { } function } => FindTypeParameters(function),
 		TraitType trait => trait.Arguments.SelectMany(FindTypeParameters),
 		FStrType fstr => FindTypeParameters(fstr.Value),
 		NamedTypeSymbol named => named.TypeArguments.SelectMany(FindTypeParameters),
@@ -1164,6 +1218,7 @@ public sealed class TypePool
 	{
 		TypeParameterSymbol or DynType { Parameter: not null } => true,
 		DynType { Instance: { } trait } => ContainsTypeParameters(trait),
+		DynType { Function: { } function } => ContainsTypeParameters(function),
 		TraitType trait => trait.Arguments.Any(ContainsTypeParameters),
 		FStrType fstr => ContainsTypeParameters(fstr.Value),
 		NamedTypeSymbol named => named.TypeArguments.Any(ContainsTypeParameters),
@@ -1187,10 +1242,12 @@ public sealed class TypePool
 				{
 					TraitType argument => GetDynType(argument),
 					TypeParameterSymbol argument => GetDynType(argument),
+					FunctionType argument => GetDynType(argument),
 					InvalidType argument => argument,
 					_ => type
 				},
 				DynType { Instance: { } trait } => GetDynType(SubstituteTrait(trait, map)),
+				DynType { Function: { } function } => GetDynType(SubstituteFunctionType(function, map)),
 				TraitType trait => SubstituteTrait(trait, map),
 				FStrType fstr => Substitute(fstr.Value, map) switch
 				{
@@ -1252,6 +1309,7 @@ public sealed class TypePool
 				                                    [..b.ParameterTypes, b.ReturnType], variables, bindings),
 			(TraitType a, TraitType b) => a.Trait == b.Trait && TryUnify(a.Arguments, b.Arguments, variables, bindings),
 			(DynType { Instance: { } a }, DynType { Instance: { } b }) => TryUnify(a, b, variables, bindings),
+			(DynType { Function: { } a }, DynType { Function: { } b }) => TryUnify(a, b, variables, bindings),
 			(FStrType a, FStrType b) => TryUnify(a.Value, b.Value, variables, bindings),
 			_ => false
 		};
@@ -1259,6 +1317,9 @@ public sealed class TypePool
 	
 	public FunctionType GetPlainFunctionType(FunctionType function) =>
 		GetFunctionType(function.IsExternal, function.ParameterTypes, function.ParameterModes, function.ReturnType);
+	
+	public FunctionType GetRefFunctionType(FunctionType function) =>
+		GetFunctionType(false, function.ParameterTypes, function.ParameterModes, function.ReturnType, true);
 	
 	private FunctionType SubstituteFunctionType(FunctionType function,
 		IReadOnlyDictionary<TypeParameterSymbol, TypeSymbol> map)

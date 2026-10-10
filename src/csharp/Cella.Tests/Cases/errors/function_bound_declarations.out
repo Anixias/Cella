@@ -1,0 +1,34 @@
+
+====== function_bound_declarations.ce ======
+
+Error at line 3, column 9
+2 │ 
+3 │ both[F: fun[i32] + fun[bool]]: fun(f: F) = f(1)
+            ╘══════╛ Cannot require more than one function type
+
+Error at line 3, column 20
+2 │ 
+3 │ both[F: fun[i32] + fun[bool]]: fun(f: F) = f(1)
+                       ╘═══════╛ Cannot require more than one function type
+
+Error at line 5, column 13
+4 │ 
+5 │ external[F: ext fun[i32]]: fun(f: F) = f(1)
+                ╘══════════╛ 'ext fun[i32]' is not a trait
+
+Error at line 7, column 13
+6 │ 
+7 │ borrowed[F: ref fun[i32]]: fun(f: F) = f(1)
+                ╘══════════╛ 'ref fun[i32]' is not a trait
+
+Error at line 9, column 14
+8 │ 
+9 │ call: fun(f: dyn[fun[-> i32]]) -> i32 = f()
+                 ╘══════════════╛ Cannot use 'dyn' with function types
+
+Error at line 13, column 14
+12 │ {
+13 │     object: ptr[dyn[ext fun[]]]
+                     ╘════════════╛ Cannot use 'dyn' with function types
+
+[compilation failed]

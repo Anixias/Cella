@@ -426,7 +426,8 @@ public sealed class FileParser
 					         Match(ref index, out keyword, TokenType.KeywordNull) ||
 					         Match(ref index, out keyword, TokenType.KeywordAtomic))
 						keywords.Add(keyword);
-					else if (!Peek(index, TokenType.Identifier))
+					else if (!Peek(index, TokenType.Identifier) && !Peek(index, TokenType.KeywordFun) &&
+					         !Peek(index, TokenType.KeywordRef))
 					{
 						ReportExpected(index, "a constraint");
 						return null;

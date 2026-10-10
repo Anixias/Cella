@@ -1,0 +1,9 @@
+counters 12 13
+sources 42 6 5 3
+textures 7 1
+textures 7 2
+textures 7 3
+textures end
+free texture 7
+modes 7
+[exit code 0]

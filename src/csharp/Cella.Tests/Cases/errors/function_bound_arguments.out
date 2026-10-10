@@ -1,0 +1,39 @@
+
+====== function_bound_arguments.ce ======
+
+Error at line 31, column 48
+30 │ 
+31 │ misuse[F: fun[i32 -> i32]]: fun(f: F) -> i32 = f(true)
+                                                    ^ 'F' doesn't accept these arguments
+
+Error at line 42, column 14
+41 │ {
+42 │     val wrong = twice(5, 1)
+                     ╘═══╛ 'i32' doesn't implement 'fun[i32 -> i32]'
+
+Error at line 43, column 20
+42 │ val wrong = twice(5, 1)
+43 │ val fewer = twice(fun = 4, 1)
+                       ╘═════╛ 'fun[i32 -> i32]' takes one parameter
+
+Error at line 44, column 19
+43 │ val fewer = twice(fun = 4, 1)
+44 │ val bad = holder[ref fun[-> i32]](1)
+                      ╘═════════════╛ 'ref fun[-> i32]' is not a trait
+
+Error at line 46, column 18
+45 │ var count = 0
+46 │ val borrowing = boxed[fun[-> i32]].of(fun -> i32 = count)
+                     ╘═══════════════════╛ Cannot store borrows in 'T'
+
+Error at line 48, column 2
+47 │ val next = boxed[fun[-> i32]].of(answer)
+48 │ next(5)
+     ╘══╛ 'boxed[fun[-> i32]]' doesn't accept these arguments
+
+Error at line 49, column 15
+48 │ next(5)
+49 │ val n: i32 = *next
+                  ╘═══╛ Cannot convert type 'dyn[fun[-> i32]]' to 'i32'
+
+[compilation failed]

@@ -266,11 +266,31 @@ public readonly struct ResolutionContext
 		return isValid ? TypePool.GetTraitType(trait, [..arguments]) : null;
 	}
 	
-	public TypeSymbol? ResolveTraitReference(ITypeNode node) =>
-		node is IdentifierTypeNode identifier &&
-		Resolve(identifier.Token.Text) is TypeParameterSymbol { IsTrait: true } trait
-			? trait
-			: ResolveTrait(node);
+	public TypeSymbol? ResolveTraitReference(ITypeNode node) => node switch
+	{
+		FunctionTypeNode function => ResolveFunctionTrait(function),
+		IdentifierTypeNode identifier
+			when Resolve(identifier.Token.Text) is TypeParameterSymbol { IsTrait: true } trait => trait,
+		_ => ResolveTrait(node)
+	};
+	
+	private FunctionType? ResolveFunctionTrait(FunctionTypeNode node)
+	{
+		switch (ResolveType(node))
+		{
+			case FunctionType function when TypePool.IsFunctionTrait(function):
+				return function;
+			
+			case FunctionType function:
+				Diagnostics.Add(new(DiagnosticSeverity.Error, node.SourceLocation,
+					$"'{function.Name}' is not a trait"));
+				
+				return null;
+			
+			default:
+				return null;
+		}
+	}
 	
 	public Symbol? ResolveTypeName(ITypeNode node) => node switch
 	{
@@ -371,6 +391,7 @@ public readonly struct ResolutionContext
 		GenericTypeNode n => ResolveGenericType(n),
 		FunctionTypeNode n => ResolveFunctionType(n),
 		BorrowTypeNode n => ResolveBorrowType(ResolveType(n.Target), n.IsMutable),
+		DynTypeNode { Trait: FunctionTypeNode } n => ReportFunctionDyn(n),
 		DynTypeNode n => ResolveTraitReference(n.Trait) switch
 		{
 			TraitType trait => TypePool.GetDynType(trait),
@@ -382,6 +403,12 @@ public readonly struct ResolutionContext
 	
 	private TypeSymbol ResolveBorrowType(TypeSymbol target, bool isMutable) =>
 		target is InvalidType ? target : TypePool.GetBorrowType(target, isMutable);
+	
+	private TypeSymbol ReportFunctionDyn(DynTypeNode node)
+	{
+		Diagnostics.Add(new(DiagnosticSeverity.Error, node.SourceLocation, "Cannot use 'dyn' with function types"));
+		return NativeSymbols.Invalid;
+	}
 	
 	private FunctionType ResolveFunctionType(FunctionTypeNode node)
 	{

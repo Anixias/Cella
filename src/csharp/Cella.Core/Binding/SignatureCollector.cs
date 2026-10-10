@@ -398,8 +398,16 @@ public sealed class SignatureCollector
 			_boundLists.Add((nodes[i].Traits, bounds, parameters[i]));
 			ImmutableArray<TraitType> traits = [..bounds.OfType<TraitType>().Distinct()];
 			ImmutableArray<TypeParameterSymbol> traitParameters = [..bounds.OfType<TypeParameterSymbol>().Distinct()];
+			ImmutableArray<FunctionType> functions = [..bounds.OfType<FunctionType>().Distinct()];
 			if (!traits.IsEmpty)
 				_typePool.SetBounds(parameters[i], traits);
+			
+			if (functions.Length > 1)
+				foreach (var node in nodes[i].Traits.Where((_, j) => bounds[j] is FunctionType))
+					Diagnostics.Add(new(DiagnosticSeverity.Error, node.SourceLocation,
+						"Cannot require more than one function type"));
+			else if (!functions.IsEmpty)
+				_typePool.SetFunctionBounds(parameters[i], functions);
 			
 			if (!traitParameters.IsEmpty)
 				_typePool.SetParameterBounds(parameters[i], traitParameters);

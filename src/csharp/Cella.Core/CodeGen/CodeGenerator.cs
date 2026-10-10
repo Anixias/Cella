@@ -1256,10 +1256,45 @@ public sealed unsafe class CodeGenerator : IDisposable
 	private LLVMValueRef GetDynTable(DynConversion conversion)
 	{
 		var declared = GetDynTarget(conversion.To);
-		var trait = GetDynTarget(Substitute(conversion.To)).Instance!;
+		var target = GetDynTarget(Substitute(conversion.To));
 		var objectType = Substitute(conversion.ObjectType);
+		if (target.Function is { } function)
+			return GetFunctionDynTable(target, function, objectType);
+		
+		var trait = target.Instance!;
 		return GetDynTable(trait, objectType,
 			declared.Parameter is null ? conversion.Members : GetDynMemberInfos(trait, objectType));
+	}
+	
+	private LLVMTypeRef FunctionDynTableType => LLVMTypeRef.CreateStruct([..DynTableHeader, OpaquePointer], false);
+	
+	private LLVMValueRef GetFunctionDynTable(DynType dyn, FunctionType function, TypeSymbol objectType)
+	{
+		var name = Mangling.MangleInstantiation($"?{Mangling.MangleTypeName(dyn, _modules)}", [objectType], _modules);
+		var existing = current.Module.GetNamedGlobal(name);
+		if (existing.Handle != IntPtr.Zero)
+			return existing;
+		
+		var call = objectType switch
+		{
+			ClosureType closure => GetFunctionValue(closure.Function),
+			FunctionType stored => GetStoredCallThunk(function, stored),
+			_ => throw new InvalidOperationException()
+		};
+		
+		var size = _typePool.SizeTable.GetSize(objectType);
+		var table = current.Module.AddGlobal(FunctionDynTableType, name);
+		table.Initializer = LLVMValueRef.CreateConstStruct(
+		[
+			EmitTypeId(objectType), GetObjectDropGlue(objectType),
+			EmitSizeConstant(new BigInteger((size.CountBits(_pointerSize * 8) + 7) / 8), true),
+			EmitSizeConstant(new BigInteger((size.CountAlignmentBits(_pointerSize * 8) + 7) / 8), true),
+			call
+		], false);
+		
+		table.IsGlobalConstant = true;
+		table.Linkage = LLVMLinkage.LLVMInternalLinkage;
+		return table;
 	}
 	
 	private ImmutableArray<FunctionInfo> GetDynMemberInfos(TraitType trait, TypeSymbol objectType) =>
@@ -1734,18 +1769,102 @@ public sealed unsafe class CodeGenerator : IDisposable
 		DynLayoutConversion c => EmitDynLayout(c, v, builder),
 		DynTestConversion c => EmitDynTest(c, v, builder),
 		DynCastConversion => builder.BuildExtractValue(EmitValue(v.Source, builder), 0, "object"),
-		ClosureConversion c => EmitClosureConversion(c, v, builder),
+		CallableConversion c => EmitCallableConversion(c, v, builder),
+		ExternalFunctionConversion c => BuildFunctionValue(MapTypeSymbol(c.To),
+			GetExternalCallThunk((FunctionType)Substitute(c.From)), EmitValue(v.Source, builder), builder),
 		_ => throw new InvalidOperationException()
 	};
 	
-	private LLVMValueRef EmitClosureConversion(ClosureConversion conversion, ConversionValue v,
+	private LLVMValueRef EmitCallableConversion(CallableConversion conversion, ConversionValue v,
 		LLVMBuilderRef builder)
 	{
-		var closure = (ClosureType)Substitute(conversion.From);
-		var value = builder.BuildInsertValue(MapTypeSymbol(conversion.To).Undef, GetFunctionValue(closure.Function), 0,
-			"closure");
+		var address = EmitValue(v.Source, builder);
+		var type = MapTypeSymbol(conversion.To);
+		switch (Substitute(conversion.From))
+		{
+			case ClosureType closure:
+				return BuildFunctionValue(type, GetFunctionValue(closure.Function), address, builder);
+			
+			case FunctionType { IsExternal: true } external:
+				return BuildFunctionValue(type, GetExternalCallThunk(external),
+					builder.BuildLoad2(OpaquePointer, address, "function"), builder);
+			
+			case FunctionType:
+				return builder.BuildLoad2(type, address, "function");
+			
+			case DynType { Function: not null }:
+				var table = builder.BuildExtractValue(address, 1, "table");
+				var entry = builder.BuildStructGEP2(FunctionDynTableType, table, (uint)DynTableHeader.Length, "entry");
+				return BuildFunctionValue(type, builder.BuildLoad2(OpaquePointer, entry, "code"),
+					builder.BuildExtractValue(address, 0, "object"), builder);
+			
+			default:
+				throw new InvalidOperationException();
+		}
+	}
+	
+	private static LLVMValueRef BuildFunctionValue(LLVMTypeRef type, LLVMValueRef code, LLVMValueRef environment,
+		LLVMBuilderRef builder)
+	{
+		var value = builder.BuildInsertValue(type.Undef, code, 0, "function");
+		return builder.BuildInsertValue(value, environment, 1, "function");
+	}
+	
+	private LLVMValueRef GetExternalCallThunk(FunctionType external) =>
+		GetCallThunk($"call${Mangling.MangleTypeName(external, _modules)}", external, (builder, environment, args) =>
+			EmitExternalCall(external, environment, args, builder));
+	
+	private LLVMValueRef GetStoredCallThunk(FunctionType signature, FunctionType stored) => GetCallThunk(
+		$"call${Mangling.MangleTypeName(signature, _modules)}${Mangling.MangleTypeName(stored, _modules)}", signature,
+		(builder, environment, args) =>
+		{
+			if (stored.IsExternal)
+				return EmitExternalCall(stored, builder.BuildLoad2(OpaquePointer, environment, "function"), args,
+					builder);
+			
+			var function = builder.BuildLoad2(MapTypeSymbol(stored), environment, "function");
+			var codeType = LLVMTypeRef.CreateFunction(MapTypeSymbol(signature.ReturnType),
+				[OpaquePointer, ..MapCallParameters(signature)]);
+			
+			return builder.BuildCall2(codeType, builder.BuildExtractValue(function, 0, "code"),
+				[builder.BuildExtractValue(function, 1, "env"), ..args]);
+		});
+	
+	private LLVMValueRef GetCallThunk(string name, FunctionType signature,
+		Func<LLVMBuilderRef, LLVMValueRef, LLVMValueRef[], LLVMValueRef> emitCall)
+	{
+		var existing = current.Module.GetNamedFunction(name);
+		if (existing.Handle != IntPtr.Zero)
+			return existing;
 		
-		return builder.BuildInsertValue(value, EmitValue(v.Source, builder), 1, "closure");
+		var returnType = MapTypeSymbol(signature.ReturnType);
+		LLVMTypeRef[] parameterTypes = [..MapCallParameters(signature)];
+		var thunk = current.Module.AddFunction(name,
+			LLVMTypeRef.CreateFunction(returnType, [OpaquePointer, ..parameterTypes]));
+		
+		thunk.Linkage = LLVMLinkage.LLVMInternalLinkage;
+		using var builder = current.Module.Context.CreateBuilder();
+		builder.PositionAtEnd(thunk.AppendBasicBlock("entry"));
+		var result = emitCall(builder, thunk.GetParam(0),
+			[..parameterTypes.Select((_, i) => thunk.GetParam((uint)i + 1))]);
+		
+		if (returnType.Kind == LLVMTypeKind.LLVMVoidTypeKind)
+			builder.BuildRetVoid();
+		else
+			builder.BuildRet(result);
+		
+		return thunk;
+	}
+	
+	private IEnumerable<LLVMTypeRef> MapCallParameters(FunctionType signature) =>
+		signature.ParameterTypes.Select((type, i) => MapParameterType(type, signature.ParameterModes[i]));
+	
+	private LLVMValueRef EmitExternalCall(FunctionType external, LLVMValueRef function, LLVMValueRef[] args,
+		LLVMBuilderRef builder)
+	{
+		var returnType = MapTypeSymbol(external.ReturnType);
+		var signature = _cAbi.Classify(external.ParameterTypes.Select(MapTypeSymbol), returnType);
+		return EmitCCall(signature, signature.CreateFunctionType(false), function, returnType, [..args], builder);
 	}
 	
 	private LLVMValueRef EmitNativeConversion(NativeConversion c, ConversionValue v, LLVMBuilderRef builder)

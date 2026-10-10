@@ -58,6 +58,7 @@ public static class Mangling
 			$"ptr[{MangleType(baseType, modules)}]",
 		BorrowType borrow => $"{(borrow.IsMutable ? "mut" : "imm")}[{MangleType(borrow.Target, modules)}]",
 		DynType { Instance: { } trait } => $"dyn[{MangleTrait(trait, modules)}]",
+		DynType { Function: { } function } => $"dyn[{MangleFunctionType(function, modules)}]",
 		FStrType { Value.Instance: { } trait } => $"fstr[{MangleTrait(trait, modules)}]",
 		TraitType trait => MangleTrait(trait, modules),
 		ArrayType { Length.Sign: < 0 } array => $"array[{MangleType(array.ElementType, modules)}]",
