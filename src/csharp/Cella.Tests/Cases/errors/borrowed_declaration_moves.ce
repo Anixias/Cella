@@ -45,6 +45,14 @@ typed: fun(texture: Texture)
 	val moved = own texture
 }
 
+reassigned: fun -> i32
+{
+	var texture = Texture(3)
+	val viewed = (texture = Texture(4))
+	texture = Texture(5)
+	ret viewed.id
+}
+
 leak: fun -> imm[Texture]
 {
 	val held = TextureBox(Texture(1))

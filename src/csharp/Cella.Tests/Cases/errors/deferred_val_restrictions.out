@@ -16,4 +16,9 @@ Error at line 20, column 11
 20 │ bump(mut later)
               ╘═══╛ Cannot mutably borrow values
 
+Error at line 21, column 12
+20 │ bump(mut later)
+21 │ bump(mut (later = 3))
+               ╘═══════╛ Cannot mutably borrow values
+
 [compilation failed]

@@ -11,15 +11,21 @@ Error at line 45, column 18
 45 │ val moved = own texture
                      ╘═════╛ Cannot move read-only parameters
 
-Error at line 52, column 6
-51 │ val inside = *held
-52 │ ret inside
+Error at line 53, column 6
+52 │ texture = Texture(5)
+53 │ ret viewed.id
+         ╘════╛ Cannot use borrows of reassigned values
+              | Reassigned on line 52
+
+Error at line 60, column 6
+59 │ val inside = *held
+60 │ ret inside
          ╘════╛ Cannot return borrows of local variables
 
-Error at line 60, column 17
-59 │ keep(own held)
-60 │ printf("%d\n", inside.id)
+Error at line 68, column 17
+67 │ keep(own held)
+68 │ printf("%d\n", inside.id)
                     ╘════╛ Cannot use borrows of moved values
-                         | Moved on line 59
+                         | Moved on line 67
 
 [compilation failed]

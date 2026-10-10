@@ -805,7 +805,8 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool, 
 	
 	private void CheckBorrowedTemporary(IResolvedExpressionNode value)
 	{
-		if (value is ResolvedBorrowExpressionNode { IsImplicit: true } borrow && !IsLValue(borrow.Place))
+		if (value is ResolvedBorrowExpressionNode { IsImplicit: true } borrow &&
+		    !IsLValue(SkipAssignment(borrow.Place)))
 			Diagnostics.Add(new(DiagnosticSeverity.Error, value.Syntax.SourceLocation,
 				$"Cannot borrow {DescribeUnstored(borrow.Place)}"));
 	}
@@ -863,14 +864,20 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool, 
 	private void CheckBorrowedPlace(IResolvedExpressionNode place)
 	{
 		var location = place.Syntax.SourceLocation;
-		if (!IsLValue(place))
+		if (!IsLValue(SkipAssignment(place)))
 			Diagnostics.Add(new(DiagnosticSeverity.Error, location, $"Cannot borrow {DescribeUnstored(place)}"));
 	}
 	
 	private void CheckMutPlace(IResolvedExpressionNode place)
 	{
 		var location = place.Syntax.SourceLocation;
-		if (!IsLValue(place))
+		if (place is ResolvedAssignmentExpressionNode assignment)
+		{
+			if (IsDeferredWrite(assignment) && FindImmutableBinding(assignment.Left) is { } deferred)
+				Diagnostics.Add(new(DiagnosticSeverity.Error, location,
+					$"Cannot mutably borrow {DescribeImmutable(deferred)}"));
+		}
+		else if (!IsLValue(place))
 			Diagnostics.Add(new(DiagnosticSeverity.Error, location,
 				$"Cannot mutably borrow {DescribeUnstored(place)}"));
 		else if (ReportUnwritable(place) is { } unwritable)
@@ -986,7 +993,7 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool, 
 	
 	public void Visit(ResolvedUnaryOpExpressionNode node)
 	{
-		if (node.Operation?.Op == TokenType.OpAt && !IsLValue(node.Operand))
+		if (node.Operation?.Op == TokenType.OpAt && !IsLValue(SkipAssignment(node.Operand)))
 			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Operand.Syntax.SourceLocation,
 				$"Cannot take the address of {DescribeUnstored(node.Operand)}"));
 		

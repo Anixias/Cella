@@ -4114,8 +4114,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	}
 	
 	private bool BorrowsWhenDeclared(IResolvedExpressionNode value) =>
-		value.Type is DynType ||
-		!_typePool.IsCopy(value.Type) && value is not ResolvedAssignmentExpressionNode && IsStored(value);
+		value.Type is DynType || !_typePool.IsCopy(value.Type) && IsStored(value);
 	
 	public IResolvedStatementNode Visit(WhileStatementNode node)
 	{

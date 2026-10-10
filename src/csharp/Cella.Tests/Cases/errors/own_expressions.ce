@@ -49,6 +49,6 @@ main: fun -> i32
 	val implicit: Buffer = h.buffer
 	val whole: Holder = *h
 	val given = take(h.buffer)
-	val replaced = (h.buffer = Buffer(8))
+	val replaced: Buffer = (h.buffer = Buffer(8))
 	ret 0
 }

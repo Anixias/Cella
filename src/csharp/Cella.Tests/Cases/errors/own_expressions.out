@@ -71,9 +71,9 @@ Error at line 51, column 19
 51 │ val given = take(h.buffer)
                       ╘══════╛ Cannot move 'Buffer' values implicitly
 
-Error at line 52, column 18
+Error at line 52, column 26
 51 │ val given = take(h.buffer)
-52 │ val replaced = (h.buffer = Buffer(8))
-                     ╘══════════════════╛ Cannot move 'Buffer' values implicitly
+52 │ val replaced: Buffer = (h.buffer = Buffer(8))
+                             ╘══════════════════╛ Cannot move 'Buffer' values implicitly
 
 [compilation failed]

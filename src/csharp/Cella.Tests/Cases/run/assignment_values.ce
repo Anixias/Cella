@@ -22,6 +22,7 @@ Holder: rec
 show: fun(buffer: Buffer) -> i32 = buffer.id
 same: fun(buffer: Buffer, address: ptr[Buffer]) -> i32 = i32(@buffer == address)
 take: fun(own buffer: Buffer) -> i32 = buffer.id
+grow: fun(mut buffer: Buffer) = buffer.id += 10
 
 main: fun -> i32
 {
@@ -36,6 +37,19 @@ main: fun -> i32
 	var a = Buffer(0)
 	a = own (b = Buffer(9))
 	printf("%d\n", a.id)
+
+	var e = Buffer(13)
+	val viewed = (e = Buffer(14))
+	printf("%d %d\n", viewed.id, same(viewed, @e))
+	val typed: imm[Buffer] = (e = Buffer(15))
+	printf("%d\n", typed.id)
+	val marked: imm[Buffer] = imm (e = Buffer(16))
+	printf("%d\n", marked.id)
+	grow(mut (e = Buffer(17)))
+	printf("%d\n", e.id)
+	val changed = mut (e = Buffer(18))
+	changed.id = 19
+	printf("%d %d\n", e.id, i32(@(e = Buffer(20)) == @e))
 
 	var x = 0
 	var y = 0

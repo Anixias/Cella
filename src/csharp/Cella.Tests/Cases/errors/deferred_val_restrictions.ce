@@ -18,6 +18,7 @@ main: fun -> i32
 	pair.left = 1
 	later += 1
 	bump(mut later)
+	bump(mut (later = 3))
 	later = 2
 	ret later
 }
