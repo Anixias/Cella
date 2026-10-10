@@ -51,7 +51,7 @@ describe: fun(shape: dyn[Shape]) -> f64
 	shape.mix()
 	shape.scale(2.0)
 	shape.missing()
-	val copy = shape
+	val copy: dyn[Shape] = shape
 	val n = sizeOf(dyn[Shape])
 	val items = [shape]
 	if shape is p: Plain

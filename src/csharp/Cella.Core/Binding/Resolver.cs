@@ -4083,6 +4083,10 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 				return Error(node, "Unsized array type requires an initializer");
 		}
 		
+		if (type is null && initializer?.Type is DynType dyn)
+			initializer = new ResolvedBorrowExpressionNode(initializer, _typePool.GetBorrowType(dyn, false), true,
+				initializer.Syntax);
+		
 		type ??= initializer?.Type ?? NativeSymbols.Invalid;
 		if (TypePool.FindValueDyn(type) is { } valueDyn)
 		{

@@ -1,0 +1,75 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+	malloc: fun(size: usize) -> ptr
+	free: fun(memory: ptr)
+}
+
+Shape: trait
+{
+	area: fun(self) -> i32
+}
+
+Square: rec impl Shape
+{
+	side: i32
+
+	area: fun(self) -> i32 = self.side * self.side
+}
+
+boxed[K: trait]: rec
+{
+	object: pvt ptr[dyn[K]]
+
+	of[T: K + noref]: fun(own value: T) -> boxed[K]
+	{
+		val memory = ptr[T](malloc(sizeOf(T)))
+		own *memory = value
+		ret boxed[K](memory)
+	}
+
+	*: op(self) -> imm[dyn[K]] = imm *self.object
+
+	drop: op
+	{
+		drop *self.object
+		free(self.object)
+	}
+}
+
+describe: fun(shape: dyn[Shape]) -> i32
+{
+	val same = shape
+	ret same.area()
+}
+
+shapes: fun
+{
+	val box = boxed[Shape].of(Square(3))
+	val other = boxed[Shape].of(Square(4))
+	val shape = *box
+	var current = *box
+	printf("shapes %d %d %d\n", shape.area(), current.area(), describe(shape))
+	current = *other
+	printf("shapes %d %d\n", current.area(), describe(Square(5)))
+}
+
+functions: fun
+{
+	val step = 2
+	val bump = boxed[fun[mut i32]].of(own fun(mut value: i32) { value += step })
+	val target = *bump
+	var v = 1
+	target(mut v)
+	bump(mut v)
+	printf("functions %d\n", v)
+}
+
+main: fun -> i32
+{
+	shapes()
+	functions()
+	ret 0
+}

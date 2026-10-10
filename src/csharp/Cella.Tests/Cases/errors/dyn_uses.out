@@ -36,13 +36,13 @@ Error at line 53, column 8
 53 │ shape.missing()
            ╘═════╛ Type 'dyn[Shape]' has no member 'missing'
 
-Error at line 54, column 13
+Error at line 54, column 12
 53 │ shape.missing()
-54 │ val copy = shape
-                ╘═══╛ Cannot use 'dyn[Shape]' by value
+54 │ val copy: dyn[Shape] = shape
+               ╘════════╛ Cannot use 'dyn[Shape]' by value
 
 Error at line 55, column 10
-54 │ val copy = shape
+54 │ val copy: dyn[Shape] = shape
 55 │ val n = sizeOf(dyn[Shape])
              ╘════════════════╛ Cannot use 'dyn[Shape]' by value
 

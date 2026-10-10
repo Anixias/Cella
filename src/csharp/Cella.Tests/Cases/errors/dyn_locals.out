@@ -1,0 +1,15 @@
+
+====== dyn_locals.ce ======
+
+Error at line 48, column 6
+47 │ val shape = *box
+48 │ ret shape
+         ╘═══╛ Cannot return borrows of local variables
+
+Error at line 56, column 17
+55 │ keep(box)
+56 │ printf("%d\n", shape.area())
+                    ╘═══╛ Cannot use borrows of moved values
+                        | Moved on line 55
+
+[compilation failed]

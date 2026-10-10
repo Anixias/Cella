@@ -1,0 +1,58 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+	malloc: fun(size: usize) -> ptr
+	free: fun(memory: ptr)
+}
+
+Shape: trait
+{
+	area: fun(self) -> i32
+}
+
+Square: rec impl Shape
+{
+	side: i32
+
+	area: fun(self) -> i32 = self.side * self.side
+}
+
+boxed[K: trait]: rec
+{
+	object: pvt ptr[dyn[K]]
+
+	of[T: K + noref]: fun(own value: T) -> boxed[K]
+	{
+		val memory = ptr[T](malloc(sizeOf(T)))
+		own *memory = value
+		ret boxed[K](memory)
+	}
+
+	*: op(self) -> imm[dyn[K]] = imm *self.object
+
+	drop: op
+	{
+		drop *self.object
+		free(self.object)
+	}
+}
+
+keep: fun(own box: boxed[Shape]) = printf("kept\n")
+
+leak: fun -> imm[dyn[Shape]]
+{
+	val box = boxed[Shape].of(Square(3))
+	val shape = *box
+	ret shape
+}
+
+main: fun -> i32
+{
+	val box = boxed[Shape].of(Square(3))
+	val shape = *box
+	keep(box)
+	printf("%d\n", shape.area())
+	ret 0
+}
