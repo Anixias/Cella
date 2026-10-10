@@ -1,0 +1,116 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+	malloc: fun(size: usize) -> ptr
+	free: fun(memory: ptr)
+}
+
+Texture: rec
+{
+	id: i32
+
+	drop: op
+	{
+	}
+}
+
+TextureBox: rec
+{
+	pointer: pvt ptr[Texture]
+
+	new: op(own texture: Texture)
+	{
+		self.pointer = ptr[Texture](malloc(sizeOf(Texture)))
+		own *self.pointer = own texture
+	}
+
+	*: op(self) -> imm[Texture] = imm *self.pointer
+
+	drop: op
+	{
+		drop *self.pointer
+		free(self.pointer)
+	}
+}
+
+Holder: rec
+{
+	box: TextureBox
+}
+
+Slot: enum
+{
+	empty
+	full(box: TextureBox)
+}
+
+loops: fun
+{
+	var boxes = [TextureBox(Texture(1)), TextureBox(Texture(2))]
+	for box in mut boxes
+	{
+		val inside = *box
+		box = TextureBox(Texture(3))
+		printf("%d\n", inside.id)
+	}
+}
+
+fields: fun
+{
+	var holders = [Holder(TextureBox(Texture(4))), Holder(TextureBox(Texture(5)))]
+	for holder in mut holders
+	{
+		val inside = *holder.box
+		holder.box = TextureBox(Texture(6))
+		printf("%d\n", inside.id)
+	}
+}
+
+matches: fun
+{
+	var slot = Slot.full(TextureBox(Texture(7)))
+	match mut slot
+	{
+		full(box) =>
+		{
+			val inside = *box
+			box = TextureBox(Texture(8))
+			printf("%d\n", inside.id)
+		}
+		empty => {}
+	}
+}
+
+payloads: fun
+{
+	var slots = [Slot.full(TextureBox(Texture(9))), Slot.empty]
+	for slot in mut slots
+	{
+		match mut slot
+		{
+			full(box) =>
+			{
+				slot = Slot.empty
+				printf("%d\n", box.id)
+			}
+			empty => {}
+		}
+	}
+}
+
+captures: fun
+{
+	var held = TextureBox(Texture(10))
+	val replace = fun
+	{
+		val inside = *held
+		held = TextureBox(Texture(11))
+		printf("%d\n", inside.id)
+	}
+
+	replace()
+}
+
+main: fun -> i32 = 0

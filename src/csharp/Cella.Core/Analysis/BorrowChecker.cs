@@ -32,6 +32,8 @@ public sealed class BorrowChecker(TypePool typePool, DiagnosticList diagnostics)
 	
 	private readonly HashSet<SourceLocation> _reported = [];
 	private readonly ClosureEnvironment _environment = new();
+	private readonly Dictionary<LocalVariableSymbol, BindingTarget> _targets = [];
+	private readonly Dictionary<LocalVariableSymbol, BindingTarget> _formerTargets = [];
 	private HashSet<VariableSymbol> returned = [];
 	private Dictionary<ParameterSymbol, Escape?> parameterEscapes = [];
 	private ParameterSymbol? receiver;
@@ -270,23 +272,24 @@ public sealed class BorrowChecker(TypePool typePool, DiagnosticList diagnostics)
 	private void CheckTargets(List<Place> targets, List<Place> written, Value value, SourceLocation fallback,
 		BorrowState state)
 	{
-		if (written.Count == 0)
+		var origins = written.Where(static source => source.Root is not BindingTarget).ToList();
+		if (origins.Count == 0)
 			return;
 		
 		var location = GetLocation(value, fallback);
-		foreach (var root in targets.Select(static target => target.Root).Distinct())
+		foreach (var root in Roots(targets))
 		{
 			var message = root switch
 			{
 				HeldBorrows => "Cannot store borrows through borrows from parameters",
-				_ when written.Any(source => source.Root == root) => "Cannot store borrows of values in themselves",
-				ParameterSymbol parameter when parameter == constructorSelf => FindEscape(written) switch
+				_ when origins.Any(source => source.Root == root) => "Cannot store borrows of values in themselves",
+				ParameterSymbol parameter when parameter == constructorSelf => FindEscape(origins) switch
 				{
 					Escape.Closure => "Cannot store closures that capture variables in 'self'",
 					{ } escape => $"Cannot store borrows of {Describe(escape)} in 'self'",
 					null => null
 				},
-				ParameterSymbol { Mode: ParameterMode.Mut } parameter when !IsHeld(written, parameter, state) =>
+				ParameterSymbol { Mode: ParameterMode.Mut } parameter when !IsHeld(origins, parameter, state) =>
 					parameter == receiver
 						? "Cannot store new borrows in 'self'"
 						: "Cannot store new borrows in 'mut' parameters",
@@ -297,6 +300,11 @@ public sealed class BorrowChecker(TypePool typePool, DiagnosticList diagnostics)
 				diagnostics.Add(new(DiagnosticSeverity.Error, location, message));
 		}
 	}
+	
+	private static IEnumerable<VariableSymbol> Roots(List<Place> targets) => targets
+		.Select(static target => target.Root)
+		.Where(static root => root is not BindingTarget)
+		.Distinct();
 	
 	private static bool IsHeld(List<Place> written, ParameterSymbol parameter, BorrowState state) =>
 		written.All(source => source.Root is HeldBorrows { Parameter: var owner } && owner == parameter ||
@@ -327,6 +335,7 @@ public sealed class BorrowChecker(TypePool typePool, DiagnosticList diagnostics)
 		switch (memoryEvent)
 		{
 			case DefineEvent e:
+				ForgetTarget(e.Local, state);
 				state.Set(e.Local, Sources(e.Value, state));
 				break;
 			
@@ -352,19 +361,41 @@ public sealed class BorrowChecker(TypePool typePool, DiagnosticList diagnostics)
 				break;
 			
 			case DropEvent e:
-				state.End(e.Place, new(e.Instruction.IsReassignment ? Ending.Reassigned : Ending.Dropped, e.Location));
+				End(e.Place, new(e.Instruction.IsReassignment ? Ending.Reassigned : Ending.Dropped, e.Location), state);
 				break;
 			
 			case StorageDeadEvent e:
+				ForgetTarget(e.Local, state);
 				state.End(new(e.Local, []), new(Ending.Dropped, e.Location));
 				state.Remove(e.Local);
 				break;
 		}
 	}
 	
+	private void End(Place place, Invalidation invalidation, BorrowState state)
+	{
+		state.End(place, invalidation);
+		if (FindTarget(place) is { } target)
+			state.End(target, invalidation);
+	}
+	
+	private Place? FindTarget(Place place) => place is
+	{
+		Root: LocalVariableSymbol { IsBorrowBinding: true } binding,
+		Path: [DerefProjection, .. var path]
+	}
+		? new(_targets.GetOrAdd(binding), path)
+		: null;
+	
+	private void ForgetTarget(LocalVariableSymbol local, BorrowState state)
+	{
+		if (_targets.TryGetValue(local, out var target))
+			state.Retarget(target, _formerTargets.GetOrAdd(local));
+	}
+	
 	private static void WriteThrough(List<Place> targets, List<Place> written, BorrowState state)
 	{
-		foreach (var root in targets.Select(static t => t.Root).Distinct())
+		foreach (var root in Roots(targets))
 			state.Add(root, written);
 	}
 	
@@ -390,7 +421,8 @@ public sealed class BorrowChecker(TypePool typePool, DiagnosticList diagnostics)
 		
 		return value switch
 		{
-			UnaryOpValue { Op: UnaryOperation.AddressOf } v => BorrowSources(v.Operand, state),
+			UnaryOpValue { Op: UnaryOperation.AddressOf } v =>
+				[..BorrowSources(v.Operand, state), ..TargetSources(v.Operand)],
 			MoveValue v => ReadSources(v.Place, state),
 			VariableValue or AccessValue { Member: FieldSymbol } or IndexerValue or EnumPayloadValue
 				or UnaryOpValue { Op: UnaryOperation.Dereference } => ReadSources(value, state),
@@ -456,6 +488,9 @@ public sealed class BorrowChecker(TypePool typePool, DiagnosticList diagnostics)
 			_ => []
 		};
 	}
+	
+	private List<Place> TargetSources(Value place) =>
+		EventLinearizer.GetPlace(place) is { } tracked && FindTarget(tracked) is { } target ? [target] : [];
 	
 	private List<Place> BorrowSources(Value place, BorrowState state)
 	{
@@ -558,6 +593,8 @@ public sealed class BorrowChecker(TypePool typePool, DiagnosticList diagnostics)
 	
 	private sealed class ClosureEnvironment() : VariableSymbol("closure");
 	
+	private sealed class BindingTarget() : VariableSymbol("target");
+	
 	private sealed class PlaceComparer : IEqualityComparer<Place>
 	{
 		public static PlaceComparer Instance { get; } = new();
@@ -608,6 +645,22 @@ public sealed class BorrowChecker(TypePool typePool, DiagnosticList diagnostics)
 		}
 		
 		public void Remove(VariableSymbol holder) => _holds.Remove(holder);
+		
+		public void Retarget(VariableSymbol from, VariableSymbol to)
+		{
+			foreach (var sources in _holds.Values)
+			{
+				foreach (var source in sources.Keys.Where(source => source.Root == from).ToList())
+				{
+					var invalidations = sources[source];
+					var moved = source with { Root = to };
+					sources.Remove(source);
+					sources[moved] = sources.TryGetValue(moved, out var existing)
+						? existing.Union(invalidations)
+						: invalidations;
+				}
+			}
+		}
 		
 		public void End(Place place, Invalidation invalidation)
 		{

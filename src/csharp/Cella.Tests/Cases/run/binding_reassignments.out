@@ -1,0 +1,18 @@
+before 1
+free 1
+before 2
+free 2
+free 3
+after 4 4
+free 3
+after 4 4
+free 4
+kept 4
+free 7
+match 8
+first 4
+free 8
+free 5
+free 6
+free 4
+[exit code 0]
