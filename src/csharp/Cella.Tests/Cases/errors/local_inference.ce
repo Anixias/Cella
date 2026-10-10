@@ -1,0 +1,49 @@
+mod test
+
+wide: fun(value: u16) -> i32 = 0
+signed: fun(value: i16) -> i32 = 0
+float: fun(value: f32) -> i32 = 0
+narrow: fun(value: u8) -> i32 = 0
+
+ext
+{
+	puts: fun(text: cstr) -> i32
+}
+
+main: fun -> i32
+{
+	val twoWay = 7
+	wide(twoWay)
+	signed(twoWay)
+
+	val threeWay = 7
+	wide(threeWay)
+	signed(threeWay)
+	float(threeWay)
+
+	var big: i32 = 1000
+	var stored = 7
+	stored = big
+	narrow(stored)
+
+	var a: u16 = 1
+	var b: i16 = 2
+	var written = 0
+	written = a
+	written = b
+
+	var tooBig = 300
+	val byte: u8 = tooBig
+
+	val untyped = fun(x) = x * 2
+	val unknown = nowhere
+
+	val text = "hi"
+	puts(text)
+	val number = i32(text)
+
+	val values = [1, 2, 300]
+	val first = values[0]
+	narrow(first)
+	ret 0
+}

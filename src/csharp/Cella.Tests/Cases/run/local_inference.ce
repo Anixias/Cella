@@ -1,0 +1,148 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+	puts: fun(text: cstr) -> i32
+}
+
+option[T]: enum
+{
+	none
+	some(value: T)
+}
+
+ring[T, N: val usize]: rec
+{
+	items: array[T, N]
+}
+
+wide: fun(value: u16) -> i32 = i32(value)
+narrow: fun(value: u8) -> i32 = i32(value)
+large: fun(value: i64) -> i32 = i32(value)
+pick: fun(value: u8) -> i32 = 8
+pick: fun(value: i64) -> i32 = 64
+same[T: copy]: fun(a: T, b: T) -> T = a
+bytes: fun(values: array[u8, 3]) -> i32 = i32(values[0]) + i32(values[1]) + i32(values[2])
+apply: fun(f: fun[i32 -> i32]) -> i32 = f(21)
+check: fun(value: option[i32]) -> i32 = match value { none => 7  some(v) => v }
+twice: fun(x: i32) -> i32 = x * 2
+twice: fun(x: f64) -> f64 = x * 2.0
+run: fun(visit: fun[]) = visit()
+size: fun(value: i32) -> usize = 2
+
+bump: fun(mut value: u8)
+{
+	value += 1
+}
+
+counter: val fun[-> usize] = fun()
+{
+	var i = 0
+	ret i
+}
+
+reads: fun
+{
+	val n = 3
+	var buffer: array[u8, n + 1] = undef
+	val values = [10, 20, 30]
+	var i = 0
+	var sum = 0
+	while i < values.length
+	{
+		sum += values[i]
+		i += 1
+	}
+
+	val shared = 7
+	printf("reads %d %d %d %d %d\n", i32(buffer.length), sum, i32(sizeOf(i)), wide(shared) + narrow(shared),
+		i32(sizeOf(shared)))
+}
+
+writes: fun
+{
+	var small: u8 = 1
+	var medium: u16 = 2
+	var x = 0
+	x = small
+	x = medium
+	var y = 0
+	y = small
+	printf("writes %d %d %d\n", i32(sizeOf(x)), large(y), i32(sizeOf(y)))
+}
+
+forms: fun
+{
+	var target = 5
+	var pointer = null
+	pointer = @target
+	val greeting = "hi"
+	puts(greeting + "!")
+	val values = [1, 2, 3]
+	val double = fun(x) = x * 2
+	val nothing = none
+	val five = some(5)
+	val f = twice
+	printf("forms %d %d %d %d %d %d\n", *pointer, bytes(values), apply(double), check(nothing), check(five),
+		apply(f))
+}
+
+rules: fun
+{
+	val values = [10, 20, 30]
+	val x = 3
+	val index = 1
+	val copy = index
+	var count = 0
+	bump(mut count)
+	var byte: u8 = 4
+	val n = 2
+	val y = same(n, byte)
+	val z = same(index, 5)
+	val r = ring[i32, x]()
+	printf("rules %d %d %d %d %d %d %d %d\n", pick(x), i32(sizeOf(x)), values[copy], i32(count),
+		i32(sizeOf(y)), values[z], i32(r.items.length), i32(index))
+}
+
+loops: fun
+{
+	val values = [10, 20, 30]
+	var sum = 0
+	for i in 0..3
+		sum += values[i]
+
+	var total = 0
+	run(fun() { total += size(4) })
+	printf("loops %d %d %d %d\n", sum, i32(total), i32(sizeOf(total)), i32(counter()))
+}
+
+elements: fun
+{
+	val values = [1, 2, 3]
+	val grid = [[1, 2], [3, 4]]
+	val looped = [4, 5, 6]
+	var sum = 0
+	for value in looped
+		sum += narrow(value)
+
+	var small: u16 = 9
+	var written = [1, 2, 3]
+	written[0] = small
+	val x = 3
+	val y = 4
+	printf("elements %d %d %d %d %d %d %d %d %d\n", narrow(values[0]), i32(sizeOf(values)), narrow(grid[1][0]),
+		i32(sizeOf(grid)), sum, i32(sizeOf(looped)), i32(sizeOf(written)), wide(x) + i32(u8(x)), i32(f64(y)) +
+		i32(sizeOf(y)))
+}
+
+main: fun -> i32
+{
+	reads()
+	writes()
+	forms()
+	rules()
+	loops()
+	elements()
+	ret 0
+}

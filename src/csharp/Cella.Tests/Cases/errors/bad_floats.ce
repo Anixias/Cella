@@ -2,7 +2,7 @@ mod test
 
 main: fun -> i32
 {
-	var half = 1.5
+	var half: f64 = 1.5
 	var wide: i64 = 3
 	var a: f32 = 16_777_217
 	var b: f32 = half

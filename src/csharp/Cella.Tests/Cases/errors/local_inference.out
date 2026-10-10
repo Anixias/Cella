@@ -1,0 +1,49 @@
+
+====== local_inference.ce ======
+
+Error at line 15, column 6
+14 │ {
+15 │     val twoWay = 7
+             ╘════╛ Cannot infer the type of 'twoWay' from 'u16' and 'i16'
+
+Error at line 19, column 6
+18 │ 
+19 │ val threeWay = 7
+         ╘══════╛ Cannot infer the type of 'threeWay' from 'u16', 'i16' and 'f32'
+
+Error at line 25, column 6
+24 │ var big: i32 = 1000
+25 │ var stored = 7
+         ╘════╛ Cannot infer the type of 'stored' from 'u8' and 'i32'
+
+Error at line 31, column 6
+30 │ var b: i16 = 2
+31 │ var written = 0
+         ╘═════╛ Cannot infer the type of 'written' from 'u16' and 'i16'
+
+Error at line 35, column 15
+34 │ 
+35 │ var tooBig = 300
+                  ╘═╛ Cannot convert type 'i32' to 'u8'
+
+Error at line 38, column 20
+37 │ 
+38 │ val untyped = fun(x) = x * 2
+                       ^ Cannot infer the type of 'x'
+
+Error at line 39, column 16
+38 │ val untyped = fun(x) = x * 2
+39 │ val unknown = nowhere
+                   ╘═════╛ Symbol 'nowhere' not found in this scope
+
+Error at line 41, column 6
+40 │ 
+41 │ val text = "hi"
+         ╘══╛ Cannot infer the type of 'text' from 'cstr' and 'i32'
+
+Error at line 45, column 22
+44 │ 
+45 │ val values = [1, 2, 300]
+                         ╘═╛ Cannot convert type 'i32' to 'u8'
+
+[compilation failed]

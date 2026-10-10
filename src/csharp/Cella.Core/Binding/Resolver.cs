@@ -64,6 +64,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	private List<Action>? _journal;
 	private int _openCheckpoints;
 	private int _lambdaCount;
+	private LocalSurvey? _survey;
+	private IReadOnlyDictionary<ISyntaxNode, TypeSymbol>? _settledTypes;
+	private IExpressionNode? _placeTarget;
 	private ResolutionContext CurrentResolutionContext => _resolutionContexts.Peek();
 	private Scope? CurrentScope => CurrentResolutionContext.LocalScope;
 	private TypeSymbol? CurrentTargetType => _expectations.TryPeek(out var top) && !top.IsHint ? top.Type : null;
@@ -94,7 +97,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		ResolutionContext context)
 	{
 		_resolutionContexts.Push(context);
-		var result = VisitNode(initializer, type);
+		var result = InferLocals(() => VisitNode(initializer, type));
 		_resolutionContexts.Pop();
 		return result;
 	}
@@ -210,10 +213,244 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		};
 		
 		_resolutionContexts.Push(resolutionContext);
-		var resolvedBody = VisitNode(body);
+		var resolvedBody = InferLocals(() => VisitNode(body));
 		_resolutionContexts.Pop();
 		
 		return new ResolvedFunctionNode(info, resolvedBody, node);
+	}
+	
+	private T InferLocals<T>(Func<T> resolve)
+	{
+		if (_survey is not null || _settledTypes is not null)
+			return resolve();
+		
+		var genericTypes = CurrentResolutionContext.GenericTypes;
+		var cachedTypes = genericTypes?.Keys.ToHashSet();
+		var lambdaCount = _lambdaCount;
+		var checkpoint = OpenCheckpoint();
+		var survey = _survey = new LocalSurvey();
+		var surveyed = resolve();
+		_survey = null;
+		if (!survey.HasLocals)
+		{
+			Commit(checkpoint);
+			return surveyed;
+		}
+		
+		var settlement = survey.Settle(ConvertsInOneStep, CastsInOneStep);
+		Rollback(checkpoint);
+		_lambdaCount = lambdaCount;
+		foreach (var key in genericTypes?.Keys.Except(cachedTypes!).ToList() ?? [])
+			genericTypes!.Remove(key);
+		
+		foreach (var (local, types) in settlement.Conflicts)
+			Diagnostics.Add(new(DiagnosticSeverity.Error, local.Identifier.SourceLocation,
+				$"Cannot infer the type of '{local.Identifier.Text}' from {JoinNames(types)}"));
+		
+		_settledTypes = settlement.Types;
+		var result = resolve();
+		_settledTypes = null;
+		return result;
+	}
+	
+	private bool ConvertsInOneStep(TypeSymbol from, TypeSymbol to) =>
+		from == to || _conversionTable.FindImplicit(from, to) is not null ||
+		FindUserConversion(from, null, ParameterMode.ReadOnly, to) is { IsAmbiguous: false };
+	
+	private bool CastsInOneStep(TypeSymbol from, TypeSymbol to) =>
+		from == to || _conversionTable.FindExplicit(from, to) is not null ||
+		FindUserConversion(from, null, ParameterMode.ReadOnly, to, true) is { IsAmbiguous: false } ||
+		_typePool.GetConstructors(to).Any(constructor => constructor.Signature.ParameterTypes is [var parameter] &&
+		                                                 parameter == from);
+	
+	private OpenLocal DeclareOpen(OpenLocal local, IEnumerable<IResolvedExpressionNode> values)
+	{
+		var survey = _survey!;
+		local = survey.Declare(local);
+		var linked = values
+			.SelectMany(value => survey.GetTracked(value))
+			.Where(static tracked => tracked.IsWhole)
+			.Select(static tracked => tracked.Local)
+			.Distinct();
+		
+		foreach (var other in linked)
+			Link(local, other);
+		
+		return local;
+	}
+	
+	private void Link(OpenLocal local, OpenLocal other)
+	{
+		if (_survey is not { } survey || local == other)
+			return;
+		
+		survey.Add(new(local, LocalUseKind.Link, null, other));
+		Journal(survey.RemoveLast);
+	}
+	
+	private void RecordUse(OpenLocal local, TypeSymbol type, LocalUseKind kind)
+	{
+		if (_survey is not { } survey || IsInvalid(type) || ContainsUntyped(type))
+			return;
+		
+		survey.Add(new(local, kind, type, null));
+		Journal(survey.RemoveLast);
+	}
+	
+	private static bool ContainsUntyped(TypeSymbol type) => type switch
+	{
+		UntypedType => true,
+		PointerType pointer => ContainsUntyped(pointer.BaseType),
+		BorrowType borrow => ContainsUntyped(borrow.Target),
+		ArrayType array => ContainsUntyped(array.ElementType),
+		FunctionType function => function.ParameterTypes.Append(function.ReturnType).Any(ContainsUntyped),
+		_ => type.TypeArguments.Any(ContainsUntyped)
+	};
+	
+	private void RecordMaterialization(IResolvedExpressionNode node, TypeSymbol target)
+	{
+		if (_survey is not { } survey || survey.IsDefaulted(node))
+			return;
+		
+		var type = target is BorrowType { IsMutable: false } borrow ? borrow.Target : target;
+		if (!CouldBecome(node, type))
+			return;
+		
+		foreach (var tracked in survey.GetTracked(node))
+			RecordUse(tracked.Local, Wrap(type, tracked.Lengths), LocalUseKind.Read);
+	}
+	
+	private void RecordCast(IResolvedExpressionNode node, TypeSymbol target)
+	{
+		if (_survey is not { } survey)
+			return;
+		
+		survey.MarkDefaulted(node);
+		foreach (var tracked in survey.GetTracked(node).Where(static tracked => tracked.IsWhole))
+			RecordUse(tracked.Local, target, LocalUseKind.Cast);
+	}
+	
+	private TypeSymbol Wrap(TypeSymbol type, ImmutableArray<BigInteger> lengths)
+	{
+		for (var i = lengths.Length - 1; i >= 0; i--)
+			type = _typePool.GetArrayType(type, lengths[i]);
+		
+		return type;
+	}
+	
+	private OpenLocal? FindElement(IResolvedExpressionNode array)
+	{
+		foreach (var tracked in _survey?.GetTracked(array) ?? [])
+		{
+			var syntax = tracked.Local.Initializer as ArrayExpressionNode;
+			for (var i = 0; i < tracked.Lengths.Length && syntax is not null; i++)
+				syntax = syntax.Values is [ArrayExpressionNode inner, ..] ? inner : null;
+			
+			if (syntax is { Values: [var element, ..] })
+				return new(tracked.Local.Declaration, tracked.Local.Identifier, element, tracked.Local.Context)
+				{
+					Owner = tracked.Local,
+					Lengths = [..tracked.Lengths, syntax.Values.Length]
+				};
+		}
+		
+		return null;
+	}
+	
+	private static bool CouldBecome(IResolvedExpressionNode node, TypeSymbol type) => node switch
+	{
+		ResolvedCaseNameExpressionNode => type is EnumSymbol,
+		_ => node.Type is UntypedType untyped &&
+		     untyped.MaterializationCost(type, MaterializationMode.Overload) != int.MaxValue
+	};
+	
+	private bool IsOpenValue(IResolvedExpressionNode value) =>
+		!IsInvalid(value) &&
+		value.Type is UntypedType and not (NeverType or FunctionGroupType { Functions.Length: 1 }) ||
+		!_survey!.GetTracked(value).IsEmpty;
+	
+	private bool IsOpenSyntax(IExpressionNode node) => node switch
+	{
+		LiteralExpressionNode { Token: { Suffix: null, Type: var type } } => type is TokenType.IntegerLiteral
+			or TokenType.FloatLiteral or TokenType.StringLiteral or TokenType.KeywordNull,
+		InterpolatedStringExpressionNode => true,
+		ArrayExpressionNode array => !array.Values.IsEmpty && array.Values.All(IsOpenSyntax),
+		LambdaExpressionNode lambda => lambda.Parameters.Any(static parameter => parameter.Type is null),
+		UnaryOpExpressionNode { Op.Type: TokenType.OpMinus } unary => IsOpenSyntax(unary.Operand),
+		VarExpressionNode name when FindOpenLocal(name) is not null => true,
+		_ => IsCaseNameSyntax(node)
+	};
+	
+	private OpenLocal? FindOpenLocal(VarExpressionNode name) =>
+		_survey is { } survey && CurrentResolutionContext.Resolve(name.Identifier.Text) is LocalVariableSymbol local
+			? survey.Find(local)
+			: null;
+	
+	private bool IsCaseNameSyntax(IExpressionNode node) => GetCaseToken(node) is { } name &&
+	                                                       CurrentResolutionContext.Resolve(name.Text) is null;
+	
+	private static Token? GetCaseToken(IExpressionNode node) => node switch
+	{
+		VarExpressionNode variable => variable.Identifier,
+		CallExpressionNode { Target: VarExpressionNode callee } => callee.Identifier,
+		_ => null
+	};
+	
+	private bool NeedsTarget(IExpressionNode initializer) => initializer switch
+	{
+		ArrayExpressionNode or LambdaExpressionNode => true,
+		VarExpressionNode name when FindOpenLocal(name) is { } other => other.IsCaseName ||
+		                                                                NeedsTarget(other.Initializer),
+		_ => false
+	};
+	
+	private OpenLocal? FindOpenPlace(IResolvedExpressionNode node) =>
+		_survey is { } survey && node is ResolvedVarExpressionNode { Symbol: LocalVariableSymbol local }
+			? survey.Find(local)
+			: null;
+	
+	private IResolvedExpressionNode Substitute(OpenLocal local)
+	{
+		var expected = ExpectedType;
+		_resolutionContexts.Push(local.Context);
+		var value = local switch
+		{
+			{ IsCaseName: true } => CreateCaseName(GetCaseToken(local.Initializer)!.Value, local.Initializer),
+			{ Initializer: LambdaExpressionNode lambda } => ResolveLambda(lambda, expected as FunctionType),
+			_ => ((IExpressionNodeVisitor<IResolvedExpressionNode>)this).Visit(local.Initializer)
+		};
+		
+		_resolutionContexts.Pop();
+		var tracked = local.Tracked;
+		if (expected is not null && !IsInvalid(value) && value.Type is not UntypedType)
+			RecordUse(tracked.Local,
+				Wrap(local.Initializer is LambdaExpressionNode ? expected : value.Type, tracked.Lengths),
+				LocalUseKind.Read);
+		
+		_survey!.Track(value, [tracked]);
+		return value;
+	}
+	
+	private ImmutableArray<TrackedLocal> FindStoredLocals(IResolvedExpressionNode node) =>
+		FindOpenPlace(node) is { } open ? [open.Tracked] : _survey?.GetTracked(node) ?? [];
+	
+	private IResolvedExpressionNode RecordStore(BinaryOpExpressionNode node, ImmutableArray<TrackedLocal> places)
+	{
+		var value = VisitNode(node.Right, null);
+		var linked = _survey!.GetTracked(value);
+		foreach (var place in places.Where(static place => place.IsWhole))
+		{
+			foreach (var other in linked.Where(static other => other.IsWhole))
+				Link(place.Local, other.Local);
+		}
+		
+		if (linked.IsEmpty && !IsInvalid(value))
+		{
+			foreach (var place in places)
+				RecordUse(place.Local, Wrap(Decay(value).Type, place.Lengths), LocalUseKind.Write);
+		}
+		
+		return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
 	}
 	
 	public IResolvedDeclarationNode Visit(ExternalFunctionNode node)
@@ -939,6 +1176,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		
 		// Don't push targetType; we're trying to find a CAST to targetType, not a targetType itself
 		var arg = VisitNode(node.Arguments[0], null);
+		RecordCast(arg, targetType);
 		
 		// If the argument has an invalid type, we don't want to cascade useless errors; assume identity conversion
 		if (IsInvalid(arg))
@@ -1581,6 +1819,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			
 			arguments = result.Arguments;
 			locate = _ => location;
+			MarkDefaultedArguments(open, candidate, args);
 		}
 		
 		if (ReportConstraintViolation(open, arguments, locate, info) is { } violation)
@@ -1593,6 +1832,31 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		return candidate is FunctionCallable
 			? new FunctionCallable(instantiated) { IsGeneric = true }
 			: new ReceiverCallable(instantiated, instantiated.Signature.ReturnType) { IsGeneric = true };
+	}
+	
+	private void MarkDefaultedArguments(ImmutableArray<TypeParameterSymbol> open, ICallable candidate,
+		IReadOnlyList<IResolvedExpressionNode> args)
+	{
+		if (_survey is not { } survey)
+			return;
+		
+		var count = Math.Min(args.Count, candidate.ParameterTypes.Length);
+		foreach (var parameter in open)
+		{
+			if (ExpectedType is not null && Mentions(candidate.ReturnType, parameter))
+				continue;
+			
+			var inputs = Enumerable.Range(0, count)
+				.Where(i => Mentions(candidate.ParameterTypes[i], parameter))
+				.Select(i => args[i])
+				.ToList();
+			
+			if (inputs.All(static input => input.Type is UntypedType))
+				inputs.ForEach(survey.MarkDefaulted);
+		}
+		
+		static bool Mentions(TypeSymbol type, TypeParameterSymbol parameter) =>
+			TypePool.FindTypeParameters(type).Contains(parameter);
 	}
 	
 	private FunctionInfo InstantiateLike(FunctionInfo info, FunctionInfo model)
@@ -2063,7 +2327,8 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	private bool IsDeferred(IExpressionNode node) => node switch
 	{
 		CallExpressionNode or ArrayExpressionNode or LambdaExpressionNode => true,
-		VarExpressionNode name => CurrentResolutionContext.Resolve(name.Identifier.Text) is null,
+		VarExpressionNode name => CurrentResolutionContext.Resolve(name.Identifier.Text) is null ||
+		                          FindOpenLocal(name) is { } open && (open.IsCaseName || NeedsTarget(open.Initializer)),
 		_ => false
 	};
 	
@@ -2192,6 +2457,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	
 	private IResolvedExpressionNode ResolveCaseName(ResolvedCaseNameExpressionNode caseName, TypeSymbol target)
 	{
+		RecordMaterialization(caseName, target);
 		if (target is not EnumSymbol enumType)
 			return GetFallback(caseName);
 		
@@ -2277,7 +2543,10 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		if (node is not BorrowExpressionNode { IsMutable: true } argument)
 			return VisitNode(node, null);
 		
+		var outerTarget = _placeTarget;
+		_placeTarget = argument.Value;
 		var place = VisitNode(argument.Value, null);
+		_placeTarget = outerTarget;
 		if (IsInvalid(place))
 			return new ResolvedInvalidExpressionNode(argument);
 		
@@ -3284,7 +3553,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			return RejectIndexing(node, Error(node, DescribeIndexCount(target.Type, 1), elementType));
 		
 		var index = VisitNode(node.Arguments[0], NativeSymbols.UIntSize);
-		return new ResolvedIndexerExpressionNode(elementType, target, index, node);
+		return FindElement(target) is { } element
+			? Substitute(element)
+			: new ResolvedIndexerExpressionNode(elementType, target, index, node);
 	}
 	
 	private IResolvedExpressionNode ResolvePointerIndexing(IndexerExpressionNode node, IResolvedExpressionNode target,
@@ -3581,6 +3852,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
 		
 		var text = new ResolvedLiteralExpressionNode(NativeSymbols.UntypedString, leftText + rightText, node);
+		_survey?.Track(text, _survey.GetTracked(left).Concat(_survey.GetTracked(right)));
 		var type = left.Type as StringType ?? right.Type as StringType;
 		return type is null ? text : MaterializeExpression(text, type);
 	}
@@ -3943,10 +4215,25 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		_lambdaFrames.RemoveAt(_lambdaFrames.Count - 1);
 	}
 	
-	private IResolvedExpressionNode ResolveCapture(VarExpressionNode node) =>
-		Capture(_lambdaFrames.Count - 1, node) is { } binding
+	private IResolvedExpressionNode ResolveCapture(VarExpressionNode node)
+	{
+		if (_survey is { } survey && FindCapturedLocal(_lambdaFrames.Count - 1, node.Identifier.Text) is { } local &&
+		    survey.Find(local) is { } open)
+			return node == storeTarget || node == _placeTarget
+				? new ResolvedVarExpressionNode(local, local.Type, node)
+				: Substitute(open);
+		
+		return Capture(_lambdaFrames.Count - 1, node) is { } binding
 			? ResolveSymbolValue(node, binding)
 			: new ResolvedInvalidExpressionNode(node, CurrentTargetType);
+	}
+	
+	private LocalVariableSymbol? FindCapturedLocal(int level, string name) =>
+		_lambdaFrames[level].Outer.ResolveNear(name) switch
+		{
+			CapturedSymbol when level > 0 => FindCapturedLocal(level - 1, name),
+			var outer => outer as LocalVariableSymbol
+		};
 	
 	private LocalVariableSymbol? Capture(int level, VarExpressionNode node)
 	{
@@ -4016,6 +4303,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			case LocalVariableSymbol { IsBorrowBinding: true, Type: PointerType } binding:
 				return ResolveDereference(TokenType.OpStar, new ResolvedVarExpressionNode(binding, binding.Type, node),
 					node);
+			
+			case LocalVariableSymbol v when _survey?.Find(v) is { } open && node != storeTarget && node != _placeTarget:
+				return Substitute(open);
 			
 			case LocalVariableSymbol v:
 				return new ResolvedVarExpressionNode(v, v.Type, node);
@@ -4196,15 +4486,25 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		if (node.Type is { } specifiedType)
 			type = resolutionContext.ResolveType(specifiedType);
 		else
-			type = null;
+			type = _settledTypes?.GetValueOrDefault(node);
 		
+		OpenLocal? open = null;
 		IResolvedExpressionNode? initializer;
 		if (node.ExpressionNode is not { } initializerNode)
 			initializer = null;
-		else if (type is null)
-			initializer = MaterializeAsDefault(VisitNode(initializerNode, null));
-		else
+		else if (type is not null)
 			initializer = VisitNode(initializerNode, type);
+		else
+		{
+			var value = VisitNode(initializerNode, null);
+			if (_survey is not null && (IsOpenValue(value) || IsOpenSyntax(initializerNode)))
+				open = DeclareOpen(new(node, node.Identifier, initializerNode, resolutionContext)
+				{
+					IsCaseName = IsCaseNameSyntax(initializerNode)
+				}, [value]);
+			
+			initializer = MaterializeAsDefault(value);
+		}
 		
 		if (type is null && initializer is not null && BorrowsWhenDeclared(initializer))
 			initializer = new ResolvedBorrowExpressionNode(initializer,
@@ -4232,6 +4532,8 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		};
 		
 		resolutionContext.LocalScope!.Define(symbol);
+		if (open is not null)
+			_survey!.Bind(symbol, open);
 		
 		return new ResolvedVarStatementNode(symbol, initializer, node);
 	}
@@ -4320,7 +4622,13 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			Diagnostics.Add(new(DiagnosticSeverity.Error, mode.SourceLocation,
 				"Cannot iterate over ranges with 'mut'"));
 		
-		var type = AnyInvalid(bounds[0], bounds[1]) ? NativeSymbols.Invalid : UnifyTypes(bounds);
+		var open = _settledTypes is null && _survey is not null && bounds.All(IsOpenValue)
+			? DeclareOpen(new(node, node.Binding, node.Source, CurrentResolutionContext) { IsCounter = true }, bounds)
+			: null;
+		
+		var type = _settledTypes?.GetValueOrDefault(node) ??
+		           (AnyInvalid(bounds[0], bounds[1]) ? NativeSymbols.Invalid : UnifyTypes(bounds));
+		
 		if (type is not (InvalidType or IntegerType { Kind: not PrimitiveTypeKind.Char }))
 		{
 			var (source, range) = node.Source.SourceLocation;
@@ -4333,6 +4641,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		}
 		
 		var binding = CreateLoopBinding(node.Binding, type, false, false);
+		if (open is not null && binding is not null)
+			_survey!.Bind(binding, open);
+		
 		if (type is InvalidType)
 			return InvalidHeader(node, binding);
 		
@@ -4407,6 +4718,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		
 		var elementType = array.ElementType;
 		var binding = CreateLoopBinding(node.Binding, elementType, isMut || !_typePool.IsCopy(elementType), isMut);
+		if (!isMut && binding is not null && FindElement(source) is { } open)
+			_survey!.Bind(binding, open);
+		
 		var element = binding is null
 			? null
 			: new ResolvedLoopVariable(binding, new ResolvedIndexerExpressionNode(elementType,
@@ -4545,7 +4859,12 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		if (isLiteral)
 			_unaryOpJobs.Push(new(op.Type));
 		
+		var outerTarget = _placeTarget;
+		if (op.Type == TokenType.OpAt)
+			_placeTarget = node.Operand;
+		
 		var operand = VisitNode(node.Operand, null);
+		_placeTarget = outerTarget;
 		var consumed = isLiteral && _unaryOpJobs.Pop().Consumed;
 		
 		if (consumed)
@@ -4641,6 +4960,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			storeTarget = node.Left is OwnExpressionNode target ? target.Value : node.Left;
 			var left = VisitNode(storeTarget, null);
 			storeTarget = outerTarget;
+			if (FindStoredLocals(left) is [_, ..] stored)
+				return RecordStore(node, stored);
+			
 			if (left is ResolvedPropertyExpressionNode property)
 				return ResolvePropertyAssignment(node, property, isOwnStore);
 			
@@ -4678,6 +5000,12 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			
 			if (FoldLiterals(node, left, right) is { } folded)
 				return folded;
+			
+			if (_survey is { } survey && left.Type is UntypedType && right.Type is UntypedType)
+			{
+				survey.MarkDefaulted(left);
+				survey.MarkDefaulted(right);
+			}
 			
 			if (ResolveDeclaredOperator(node, left, right) is { } declared)
 				return declared;
@@ -4785,6 +5113,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		if (type is UntypedIntegerType)
 			_literalFolds[folded] = new(op, operands);
 		
+		_survey?.Track(folded, operands.SelectMany(operand => _survey.GetTracked(operand)));
 		return folded;
 	}
 	
@@ -5548,6 +5877,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	
 	private IResolvedExpressionNode MaterializeExpression(IResolvedExpressionNode node, TypeSymbol target)
 	{
+		RecordMaterialization(node, target);
 		if (node is ResolvedCaseNameExpressionNode caseName)
 			return ResolveCaseName(caseName, target);
 		
@@ -6176,6 +6506,12 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			_ => argument.Place.Type
 		};
 		
+		if (FindOpenPlace(argument.Place) is { } open)
+		{
+			RecordUse(open, declared, LocalUseKind.Read);
+			RecordUse(open, declared, LocalUseKind.Write);
+		}
+		
 		var place = argument.Place.Type == declared ? argument.Place : Decay(argument.Place);
 		if (declared is DynType && place.Type != declared && !IsInvalid(place))
 			return Erase(target is BorrowType
@@ -6431,6 +6767,10 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		var mutTarget = arg.Type is BorrowType ? null : GetMutTarget(target, parameterMode);
 		if (parameterMode == ParameterMode.Mut || mutTarget is not null)
 		{
+			if (arg is ResolvedMutArgumentExpressionNode { Place: var place } && mutTarget is not null &&
+			    FindOpenPlace(place) is not null)
+				return (0, null);
+			
 			if (arg is ResolvedMutArgumentExpressionNode mutArgument && mutTarget is not null &&
 			    IsMutPlaceOf(mutArgument.Place, mutTarget))
 				return (mutArgument.Place.Type == mutTarget ? 0 : 1, null);
