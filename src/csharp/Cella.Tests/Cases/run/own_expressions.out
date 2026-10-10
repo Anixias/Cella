@@ -1,3 +1,16 @@
+
+====== own_expressions.ce ======
+
+Hint at line 37, column 43
+36 │ take: fun(own buffer: Buffer) -> i32 = buffer.id
+37 │ give: fun(own buffer: Buffer) -> Buffer = own buffer
+                                               ╘═╛ Redundant 'own'
+
+Hint at line 80, column 6
+79 │ var status = 0
+80 │ ret own status
+         ╘═╛ Redundant 'own'
+
 6 7 8
 1 0
 10 12

@@ -16,7 +16,7 @@ show: fun(buffer: Buffer) -> i32 = buffer.id
 again: fun -> Buffer
 {
 	val a = make(1)
-	take(a)
+	take(own a)
 	take(a)
 	show(a)
 	ret a
@@ -26,7 +26,7 @@ sometimes: fun(flag: bool) -> i32
 {
 	val a = make(1)
 	if flag
-		take(a)
+		take(own a)
 
 	ret a.id
 }
@@ -44,16 +44,16 @@ repeated: fun -> i32
 reassigned: fun -> i32
 {
 	var a = make(1)
-	val b = a
+	val b = own a
 	a = make(2)
-	val c = (a = make(3))
+	val c = own (a = make(3))
 	ret a.id + b.id + c.id
 }
 
 constant: fun -> i32
 {
 	val a = Buffer(1)
-	take(a)
+	take(own a)
 	ret a.id
 }
 

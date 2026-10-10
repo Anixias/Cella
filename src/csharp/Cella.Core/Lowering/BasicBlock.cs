@@ -92,6 +92,7 @@ public sealed class GlobalValue(GlobalInfo global, SourceLocation sourceLocation
 public sealed class MoveValue(Value place) : Value(place.Type, false, place.SourceLocation)
 {
 	public Value Place { get; } = place;
+	public bool IsImplicit { get; init; }
 }
 
 public sealed class ConversionValue(Value source, Conversion conversion, SourceLocation sourceLocation)

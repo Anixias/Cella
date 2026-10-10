@@ -9,9 +9,9 @@ Box[T]: rec
 {
 	value: T
 
-	map[U]: fun(own self, change: fun[own T -> U]) -> Box[U] = Box(change(self.value))
+	map[U]: fun(own self, change: fun[own T -> U]) -> Box[U] = Box(change(own self.value))
 
-	twice: fun(own self, change: fun[own T -> T]) -> T = change(change(self.value))
+	twice: fun(own self, change: fun[own T -> T]) -> T = change(change(own self.value))
 
 	same: fun(own self) -> Box[T] = self.map(fun(x) = x)
 }
@@ -32,24 +32,24 @@ Player: rec impl Scored
 
 apply: fun(f: fun[i32 -> i32], x: i32) -> i32 = f(x)
 
-pass[T]: fun(f: fun[own T -> T], own x: T) -> T = f(x)
+pass[T]: fun(f: fun[own T -> T], own x: T) -> T = f(own x)
 
 call[T]: fun(f: fun[-> T]) -> T = f()
 
-same[T]: fun(own x: T) -> T = pass(fun(y) = y, x)
+same[T]: fun(own x: T) -> T = pass(fun(y) = y, own x)
 
 last[T]: fun(own x: T, own y: T) -> T = pass(fun(z: T) -> T
 {
-	val w: T = z
+	val w: T = own z
 	ret w
-}, y)
+}, own y)
 
-deep[T]: fun(own x: T) -> T = pass(fun(y) = pass(fun(z) = z, y), x)
+deep[T]: fun(own x: T) -> T = pass(fun(y) = pass(fun(z) = z, own y), own x)
 
 both[T]: fun(own x: T, own y: T) -> T
 {
-	val a = pass(fun(v) = v, x)
-	val b = pass(fun(v) = v, y)
+	val a = pass(fun(v) = v, own x)
+	val b = pass(fun(v) = v, own y)
 	if call(fun -> i32 = 7) == 7
 		ret b
 

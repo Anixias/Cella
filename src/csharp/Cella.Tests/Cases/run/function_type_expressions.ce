@@ -22,7 +22,7 @@ Cell[T]: rec
 	value: T
 }
 
-wrap[T]: fun(own value: T) -> option[T] = some(value)
+wrap[T]: fun(own value: T) -> option[T] = some(own value)
 
 pick: fun(n: i32) -> i32 = n + 1
 pick: fun(n: i64) -> i64 = n + 100

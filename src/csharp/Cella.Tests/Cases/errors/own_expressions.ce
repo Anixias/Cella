@@ -46,8 +46,8 @@ main: fun -> i32
 	val stored = own (counter = 5)
 	val through = own (*q = 7)
 
-	val implicit = h.buffer
-	val whole = *h
+	val implicit: Buffer = h.buffer
+	val whole: Holder = *h
 	val given = take(h.buffer)
 	val replaced = (h.buffer = Buffer(8))
 	ret 0

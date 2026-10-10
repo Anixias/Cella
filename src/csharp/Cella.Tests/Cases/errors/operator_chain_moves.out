@@ -2,13 +2,13 @@
 ====== operator_chain_moves.ce ======
 
 Error at line 22, column 6
-21 │ val sure = first <= Owned(4) < Owned(5)
+21 │ val sure = own first <= Owned(4) < Owned(5)
 22 │ ret last.id + first.id
          ╘═════╛ Cannot use moved values
                | Moved on line 19
 
 Error at line 22, column 16
-21 │ val sure = first <= Owned(4) < Owned(5)
+21 │ val sure = own first <= Owned(4) < Owned(5)
 22 │ ret last.id + first.id
                    ╘══════╛ Cannot use moved values
                           | Moved on line 21

@@ -28,7 +28,7 @@ Shelf[T: noref]: rec
 
 	put: fun(mut self, own item: T)
 	{
-		self.item = item
+		self.item = own item
 	}
 }
 
@@ -58,7 +58,7 @@ pairOf[T]: rec
 	b: box[T]
 }
 
-wrap[T]: fun(own value: T) -> box[T] = box(value)
+wrap[T]: fun(own value: T) -> box[T] = box(own value)
 id[T]: fun(own value: T) -> T = value
 sizeOfArg[T]: fun(own value: T) -> usize = sizeOf(T)
 takesBox64: fun(b: box[i64]) -> i64 = b.value

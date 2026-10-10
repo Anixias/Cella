@@ -58,6 +58,11 @@ look: fun(texture: Texture) -> i32
 	ret same.id
 }
 
+give: fun(own texture: Texture) -> Texture
+{
+	ret own texture
+}
+
 main: fun -> i32
 {
 	val double = own fun(x: i32) -> i32 = x * 2

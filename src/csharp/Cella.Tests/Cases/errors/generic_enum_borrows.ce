@@ -7,7 +7,7 @@ option[T]: enum
 
 	put: fun(mut self, own value: T)
 	{
-		self = option.some(value)
+		self = option.some(own value)
 	}
 }
 

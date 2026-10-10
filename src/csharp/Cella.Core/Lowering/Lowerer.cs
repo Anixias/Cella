@@ -115,6 +115,7 @@ public sealed class Lowerer
 		private readonly HashSet<int> _temporaryScopes = [];
 		private readonly Dictionary<int, List<VariableInfo>> _scopeDrops = [];
 		private readonly HashSet<LocalVariableSymbol> _temporaries = [];
+		private readonly HashSet<IResolvedExpressionNode> _returnedValues = [];
 		private BasicBlock? currentBlock;
 		private ulong nextLoopId;
 		private ulong nextTempId;
@@ -394,6 +395,7 @@ public sealed class Lowerer
 		public Value Visit(ResolvedMatchExpressionNode node)
 		{
 			var location = node.Syntax.SourceLocation;
+			var isReturned = _returnedValues.Contains(node);
 			VariableValue? result = null;
 			if (node.Type is not NeverType)
 			{
@@ -408,7 +410,10 @@ public sealed class Lowerer
 				location, node.OwnsValue, index =>
 				{
 					var arm = node.Arms[index].Value;
-					var value = Consume(VisitNode(arm));
+					if (isReturned)
+						_returnedValues.Add(arm);
+					
+					var value = Consume(VisitNode(arm), isImplicit: !isReturned && NamesPlace(arm));
 					if (result is not null)
 						currentBlock?.Instructions.Add(new ExpressionInstruction(
 							new AssignValue(node.Type, result, value, arm.Syntax.SourceLocation)));
@@ -671,6 +676,9 @@ public sealed class Lowerer
 		private void LowerReturn(IResolvedExpressionNode? expression, SourceLocation location)
 		{
 			GetOrMakeBlock();
+			if (expression is not null)
+				_returnedValues.Add(expression);
+			
 			var value = expression is null ? null : Consume(VisitNode(expression));
 			if (currentBlock is not { } block)
 				return;
@@ -692,7 +700,7 @@ public sealed class Lowerer
 			BeginScope(node.Syntax.SourceLocation, true);
 			var value = node switch
 			{
-				{ Initializer: { } initializer } => Consume(VisitNode(initializer)),
+				{ Initializer: { } initializer } => Consume(VisitNode(initializer), NamesPlace(initializer)),
 				{ Symbol.IsDeferred: true } => new UndefValue(node.Symbol.Type),
 				_ => new DefaultValue(node.Symbol.Type)
 			};
@@ -835,8 +843,8 @@ public sealed class Lowerer
 			var scope = BeginScope(location, true);
 			var (cursor, cursorValue) = node.Cursor;
 			var value = VisitNode(cursorValue);
-			Declare(GetOrMakeBlock(), new LocalVarInstruction(cursor, cursor.IsBorrowBinding ? value : Consume(value),
-				location, scope.Id));
+			Declare(GetOrMakeBlock(), new LocalVarInstruction(cursor,
+				cursor.IsBorrowBinding ? value : Consume(value, NamesPlace(cursorValue)), location, scope.Id));
 			
 			var condBlock = CreateBlock($"for{id}_cond");
 			var bodyBlock = CreateBlock($"for{id}_body");
@@ -958,7 +966,7 @@ public sealed class Lowerer
 			var result = new VariableValue(new(resultSymbol, node.Type), sourceLocation);
 			foreach (var (field, value) in node.Fields)
 			{
-				var fieldValue = Consume(VisitNode(value));
+				var fieldValue = Consume(VisitNode(value), NamesPlace(value));
 				var target = new AccessValue(fieldValue.Type, result, field, sourceLocation);
 				GetOrMakeBlock().Instructions.Add(
 					new ExpressionInstruction(new AssignValue(fieldValue.Type, target, fieldValue, sourceLocation)));
@@ -1244,7 +1252,7 @@ public sealed class Lowerer
 		}
 		
 		private List<Value> LowerOperands(IReadOnlyList<IResolvedExpressionNode> operands,
-			Func<int, Passing>? passing = null)
+			Func<int, Passing>? passing = null, bool hasReceiver = false)
 		{
 			var values = new List<Value>(operands.Count);
 			var passings = new List<Passing>(operands.Count);
@@ -1264,7 +1272,7 @@ public sealed class Lowerer
 				values.Add(passings[i] switch
 				{
 					Passing.Borrow => LowerBorrow(operand),
-					Passing.Consume => Consume(VisitNode(operand)),
+					Passing.Consume => Consume(VisitNode(operand), (i > 0 || !hasReceiver) && NamesPlace(operand)),
 					_ => VisitNode(operand)
 				});
 			}
@@ -1273,7 +1281,8 @@ public sealed class Lowerer
 		}
 		
 		private List<Value> LowerArguments(IReadOnlyList<IResolvedExpressionNode> arguments, FunctionInfo function,
-			int firstParameter) => LowerOperands(arguments, GetArgumentPassing(function, firstParameter));
+			int firstParameter) => LowerOperands(arguments, GetArgumentPassing(function, firstParameter),
+			firstParameter == 0 && function.Symbol.Kind == FunctionKind.Method);
 		
 		private Func<int, Passing> GetArgumentPassing(FunctionInfo function, int firstParameter)
 		{
@@ -1288,8 +1297,10 @@ public sealed class Lowerer
 			: mode == ParameterMode.Own ? Passing.Consume
 			: Passing.Read;
 		
-		private Value Consume(Value value) =>
-			!_typePool.IsCopy(value.Type) && IsPlaceValue(value) ? new MoveValue(value) : value;
+		private Value Consume(Value value, bool isImplicit = false) =>
+			!_typePool.IsCopy(value.Type) && IsPlaceValue(value)
+				? new MoveValue(value) { IsImplicit = isImplicit }
+				: value;
 		
 		private static bool IsPlaceValue(Value value) => value switch
 		{
@@ -1318,6 +1329,9 @@ public sealed class Lowerer
 			ResolvedUnaryOpExpressionNode { Operation.Op: TokenType.OpStar } => true,
 			_ => false
 		};
+		
+		private static bool NamesPlace(IResolvedExpressionNode node) =>
+			IsPlace(node is ResolvedAssignmentExpressionNode assignment ? assignment.Left : node);
 		
 		private bool MayEmit(IResolvedExpressionNode node) => node switch
 		{
@@ -1409,7 +1423,7 @@ public sealed class Lowerer
 				left = StabilizeStorage(left);
 			
 			var current = node.Operation is not null && emits ? CaptureAsAtomic(left, "current") : left;
-			var right = Consume(VisitNode(node.Right));
+			var right = Consume(VisitNode(node.Right), NamesPlace(node.Right));
 			var value = node.Operation is null
 				? right
 				: LowerBinOp(current, node.Operation, right, node.Syntax.SourceLocation);
@@ -1520,8 +1534,8 @@ public sealed class Lowerer
 				var right = HoldChainOperand(node.Operands[i + 1]);
 				var comparison = link.Function is { } function
 					? new CallValue(function, [
-						PassChainOperand(left, function, 0, link.LeftConversion),
-						PassChainOperand(right, function, 1, link.RightConversion)
+						PassChainOperand(left, function, 0, link.LeftConversion, NamesPlace(node.Operands[i])),
+						PassChainOperand(right, function, 1, link.RightConversion, NamesPlace(node.Operands[i + 1]))
 					], location)
 					: LowerBinOp(ConvertChainOperand(left, link.LeftConversion), link.Operation!,
 						ConvertChainOperand(right, link.RightConversion), location);
@@ -1566,7 +1580,8 @@ public sealed class Lowerer
 		private static Value ConvertChainOperand(Value operand, Conversion? conversion) =>
 			conversion is null ? operand : new ConversionValue(operand, conversion, operand.SourceLocation);
 		
-		private Value PassChainOperand(Value operand, FunctionInfo function, int index, Conversion? conversion)
+		private Value PassChainOperand(Value operand, FunctionInfo function, int index, Conversion? conversion,
+			bool isPlace)
 		{
 			var value = ConvertChainOperand(operand, conversion);
 			var signature = function.DeclaredSignature;
@@ -1575,7 +1590,7 @@ public sealed class Lowerer
 				Passing.Borrow => new UnaryOpValue(_typePool.GetPointerType(value.Type),
 					IsPlaceValue(value) ? value : StoreTemporary(value, "borrow"), UnaryOperation.AddressOf,
 					value.SourceLocation),
-				Passing.Consume => Consume(value),
+				Passing.Consume => Consume(value, isPlace),
 				_ => value
 			};
 		}

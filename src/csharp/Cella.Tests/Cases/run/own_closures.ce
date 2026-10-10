@@ -88,7 +88,7 @@ textures: fun
 	val second = Texture(2)
 	val show = own fun { printf("textures %d %d\n", second.id, first.id) }
 	show()
-	val moved = show
+	val moved = own show
 	moved()
 	printf("textures end\n")
 }

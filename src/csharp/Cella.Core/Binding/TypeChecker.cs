@@ -217,7 +217,29 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool, 
 		VisitNode(value);
 		CheckConsumed(value);
 		CheckBorrowedTemporary(value);
+		ReportRedundantOwn(value);
 	}
+	
+	private void ReportRedundantOwn(IResolvedExpressionNode value)
+	{
+		if (value is ResolvedMatchExpressionNode match)
+		{
+			foreach (var arm in match.Arms)
+				ReportRedundantOwn(arm.Value);
+		}
+		else if (value is ResolvedOwnExpressionNode { Syntax: OwnExpressionNode syntax } owned &&
+		         IsOwnedLocally(owned.Value))
+			Diagnostics.Add(new(DiagnosticSeverity.Hint, syntax.Keyword.SourceLocation, "Redundant 'own'"));
+	}
+	
+	private static bool IsOwnedLocally(IResolvedExpressionNode place) => place switch
+	{
+		ResolvedAccessExpressionNode { Member: FieldSymbol } node => IsOwnedLocally(node.Target),
+		ResolvedIndexerExpressionNode { Target.Type: ArrayType } node => IsOwnedLocally(node.Target),
+		ResolvedVarExpressionNode { Symbol: LocalVariableSymbol { IsBorrowBinding: false } } or
+			ResolvedVarExpressionNode { Symbol: ParameterSymbol { Mode: ParameterMode.Own } } => true,
+		_ => false
+	};
 	
 	public void Visit(ResolvedVarStatementNode node)
 	{
@@ -736,7 +758,7 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool, 
 			Diagnostics.Add(new(DiagnosticSeverity.Error, value.Syntax.SourceLocation, "Cannot move borrowed values"));
 		else if (IsThroughPointer(place))
 			Diagnostics.Add(new(DiagnosticSeverity.Error, value.Syntax.SourceLocation,
-				$"Cannot move '{value.Type.Name}' values out of a pointer implicitly"));
+				$"Cannot move '{value.Type.Name}' values implicitly"));
 		else if (ReportUnwritable(place) is { } unwritable)
 			Diagnostics.Add(unwritable);
 	}

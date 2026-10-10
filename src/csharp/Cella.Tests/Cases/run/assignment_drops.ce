@@ -69,7 +69,7 @@ main: fun -> i32
 		i += 1
 	}
 
-	b = give(b)
+	b = give(own b)
 	printf("%d\n", b.id)
 	ret 0
 }

@@ -10,7 +10,7 @@ option[T]: enum
 	wrap: fun(own value: T) -> option[T]
 	{
 		made += 1
-		ret option.some(value)
+		ret option.some(own value)
 	}
 }
 

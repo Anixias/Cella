@@ -31,7 +31,7 @@ BufferBox: rec
 	new: op(own buffer: Buffer)
 	{
 		self.pointer = ptr[Buffer](malloc(sizeOf(Buffer)))
-		own *self.pointer = buffer
+		own *self.pointer = own buffer
 	}
 
 	*: op(self) -> imm[Buffer] = imm *self.pointer
@@ -54,7 +54,7 @@ Outer: rec
 	new: op(own inner: BufferBox)
 	{
 		self.pointer = ptr[BufferBox](malloc(sizeOf(BufferBox)))
-		own *self.pointer = inner
+		own *self.pointer = own inner
 	}
 
 	*: op(self) -> imm[BufferBox] = imm *self.pointer

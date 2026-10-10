@@ -79,10 +79,10 @@ moves: fun(flag: bool)
 {
 	printf("-- moves %d\n", flag)
 	val a = make(10)
-	take(a)
+	take(own a)
 	val b = make(11)
 	if flag
-		take(b)
+		take(own b)
 
 	printf("end\n")
 }
@@ -91,7 +91,7 @@ partial: fun
 {
 	printf("-- partial\n")
 	val pair = Pair(make(20), make(21))
-	take(pair.left)
+	take(own pair.left)
 	printf("end\n")
 }
 
@@ -114,7 +114,7 @@ owned: fun
 	printf("-- owned\n")
 	match effect(50)
 	{
-		pair(first, _) => printf("took %d\n", take(first))
+		pair(first, _) => printf("took %d\n", take(own first))
 		else => {}
 	}
 
@@ -150,7 +150,7 @@ looped: fun
 	{
 		val b = make(90 + i)
 		if i == 1
-			take(b)
+			take(own b)
 
 		i += 1
 	}

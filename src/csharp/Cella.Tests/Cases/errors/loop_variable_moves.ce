@@ -63,7 +63,7 @@ main: fun -> i32
 		takeAll(own group)
 
 	var c = Countdown(3)
-	for x in c
+	for x in own c
 	{
 	}
 

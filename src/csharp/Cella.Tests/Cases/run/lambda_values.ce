@@ -29,7 +29,7 @@ Num: rec
 
 apply: fun(f: fun[i32 -> i32], x: i32) -> i32 = f(x)
 
-consume: fun(f: fun[own Text -> i32], own t: Text) -> i32 = f(t)
+consume: fun(f: fun[own Text -> i32], own t: Text) -> i32 = f(own t)
 
 inspect: fun(f: fun[Text -> i32], t: Text) -> i32 = f(t)
 
@@ -79,7 +79,7 @@ main: fun -> i32
 	printf("%d\n", inspect(fun(t) = t.id * 10, kept))
 	printf("%d\n", consume(fun(own t)
 	{
-		val moved = t
+		val moved = own t
 		ret moved.id
 	}, Text(3)))
 

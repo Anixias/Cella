@@ -24,7 +24,7 @@ TextureBox: rec
 	new: op(own texture: Texture)
 	{
 		self.pointer = ptr[Texture](malloc(sizeOf(Texture)))
-		own *self.pointer = texture
+		own *self.pointer = own texture
 	}
 
 	*: op(self) -> imm[Texture] = imm *self.pointer

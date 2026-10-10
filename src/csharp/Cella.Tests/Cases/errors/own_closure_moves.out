@@ -39,7 +39,7 @@ Error at line 65, column 23
                                 | Moved here in an earlier iteration
 
 Error at line 72, column 6
-71 │ val second = first
+71 │ val second = own first
 72 │ ret first(1)
          ╘═══╛ Cannot use moved values
              | Moved on line 71

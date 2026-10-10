@@ -26,7 +26,7 @@ used: fun -> i32
 	val effect = make(1)
 	match own effect
 	{
-		hold(buffer) => take(buffer)
+		hold(buffer) => take(own buffer)
 		else => {}
 	}
 
@@ -41,7 +41,7 @@ parameter: fun(effect: Effect) -> i32
 {
 	match effect
 	{
-		hold(own buffer) => ret take(buffer)
+		hold(own buffer) => ret take(own buffer)
 		else => ret 0
 	}
 }

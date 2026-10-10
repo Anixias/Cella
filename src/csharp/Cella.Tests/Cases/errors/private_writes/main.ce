@@ -32,7 +32,7 @@ moves: fun
 {
 	var box = Box.make()
 	val taken = own box.inner
-	val copied = box.inner
+	val copied: Inner = box.inner
 }
 
 modules: fun

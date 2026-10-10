@@ -30,7 +30,7 @@ box[T]: pub rec
 	new: op(own value: T)
 	{
 		self.pointer = ptr[T](malloc(sizeOf(T)))
-		own *self.pointer = value
+		own *self.pointer = own value
 	}
 
 	*: op(self) -> imm[T] = imm *self.pointer
@@ -43,7 +43,7 @@ box[T]: pub rec
 	}
 }
 
-make[T]: pub fun(own value: T) -> counter[T] = counter(value, 0)
+make[T]: pub fun(own value: T) -> counter[T] = counter(own value, 0)
 
 Inner: rec
 {

@@ -1,0 +1,106 @@
+mod test
+
+Texture: rec
+{
+	id: i32
+
+	drop: op
+	{
+	}
+}
+
+Sprite: rec
+{
+	texture: Texture
+}
+
+Shelf: rec
+{
+	stored: Texture
+
+	store: fun(mut self, own texture: Texture)
+	{
+		self.stored = own texture
+	}
+}
+
+Slot: enum
+{
+	empty
+	full(texture: Texture)
+}
+
+Countdown: rec
+{
+	value: i32
+
+	for: op(mut self) -> bool
+	{
+		self.value -= 1
+		ret self.value >= 0
+	}
+
+	*: op(self) -> imm[i32] = imm self.value
+
+	drop: op
+	{
+	}
+}
+
+take: fun(own texture: Texture) -> i32 = texture.id
+
+look: fun(texture: Texture) -> i32 = take(texture)
+
+sites: fun(apply: fun[own Texture -> i32])
+{
+	val a = Texture(1)
+	take(a)
+	val b = Texture(2)
+	val sprite = Sprite(b)
+	val c = Texture(3)
+	val slot = Slot.full(c)
+	val d = Texture(4)
+	val e = Texture(5)
+	val textures = [d, e]
+	var current = Texture(6)
+	val next = Texture(7)
+	current = next
+	val f = Texture(8)
+	val typed: Texture = f
+	val g = Texture(9)
+	apply(g)
+	var shelf = Shelf(Texture(10))
+	val h = Texture(11)
+	shelf.store(h)
+	val cursor = Countdown(2)
+	for left in cursor
+	{
+	}
+}
+
+arms: fun(own slot: Slot, own fallback: Texture) -> i32
+{
+	val chosen = match own slot
+	{
+		full(own texture) => texture
+		empty => fallback
+	}
+
+	ret chosen.id
+}
+
+twice: fun
+{
+	val texture = Texture(12)
+	take(texture)
+	take(texture)
+}
+
+loops: fun
+{
+	val textures = [Texture(13), Texture(14)]
+	for texture in textures
+		take(texture)
+}
+
+main: fun -> i32 = 0

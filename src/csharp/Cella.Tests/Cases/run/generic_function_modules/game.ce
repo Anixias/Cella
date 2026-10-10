@@ -9,4 +9,4 @@ counter[T]: rec
 
 helper: mod fun -> i32 = 9
 
-make[T]: fun(own value: T) -> counter[T] = counter(value)
+make[T]: fun(own value: T) -> counter[T] = counter(own value)

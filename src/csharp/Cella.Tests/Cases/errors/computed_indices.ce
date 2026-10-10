@@ -21,10 +21,10 @@ show: fun(buffer: Buffer) -> i32 = buffer.id
 moves: fun(i: usize) -> i32
 {
 	var items = [make(1), make(2), make(3)]
-	val picked = items[i]
+	val picked = own items[i]
 	val shown = show(items[i])
-	val first = items[0]
-	ret picked.id + shown + first.id + take(items[2])
+	val first = own items[0]
+	ret picked.id + shown + first.id + take(own items[2])
 }
 
 parameter: fun(mut items: array[Buffer, 2], i: usize) -> i32 = take(own items[i])
@@ -33,7 +33,7 @@ large: fun -> i32
 {
 	var items: array[Buffer, 100] = undef
 	items[70] = make(1)
-	ret take(items[70])
+	ret take(own items[70])
 }
 
 writes: fun(i: usize) -> i32
@@ -50,7 +50,7 @@ writes: fun(i: usize) -> i32
 moved: fun(i: usize) -> i32
 {
 	var items = [make(1), make(2)]
-	val other = items
+	val other = own items
 	items[i] = make(3)
 	ret other[0].id
 }

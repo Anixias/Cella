@@ -16,7 +16,7 @@ option[T]: enum
 	{
 		match own self
 		{
-			some(own v) => ret some(change(v))
+			some(own v) => ret some(change(own v))
 			none => ret none
 		}
 	}
@@ -85,7 +85,7 @@ half: fun(n: i32) -> option[i32]
 keep[T]: fun(own value: T, kept: bool) -> option[T]
 {
 	if kept
-		ret some(value)
+		ret some(own value)
 
 	ret none
 }

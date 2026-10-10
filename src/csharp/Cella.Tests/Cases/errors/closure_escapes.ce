@@ -50,7 +50,7 @@ main: fun -> i32
 {
 	var text = Text(1)
 	val show = fun -> i32 = text.id
-	consume(text)
+	consume(own text)
 	show()
 	text = Text(2)
 	show()

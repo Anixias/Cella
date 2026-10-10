@@ -2,7 +2,7 @@
 ====== partly_moved_values.ce ======
 
 Error at line 25, column 19
-24 │ val left = pair.left
+24 │ val left = own pair.left
 25 │ val total = show(pair) + pair.right.id + left.id
                       ╘══╛ Cannot use partly moved values
                          | Moved on line 24
@@ -20,7 +20,7 @@ Error at line 42, column 6
                    | Moved on line 40
 
 Error at line 49, column 6
-48 │ val left = pair.left
+48 │ val left = own pair.left
 49 │ ret pair.left.id + pair.right.id + left.id
          ╘══════════╛ Cannot use moved values
                     | Moved on line 48

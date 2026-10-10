@@ -150,6 +150,8 @@ public sealed class MemoryChecker(TypePool typePool, DiagnosticList diagnostics)
 		if (FindUninitialized(access.Place, state, paths) is { } uninitialized)
 			Report(access.Location, $"Cannot use {uninitialized.Condition} values",
 				DescribeMoves(access.Location, uninitialized.Moves));
+		else if (access.IsImplicit)
+			Report(access.Location, $"Cannot move '{access.Type.Name}' values implicitly", []);
 	}
 	
 	private void CheckDeferredWrite(WriteEvent write, InitState state, MovePaths paths)

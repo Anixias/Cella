@@ -2,7 +2,7 @@
 ====== moved_values.ce ======
 
 Error at line 20, column 7
-19 │ take(a)
+19 │ take(own a)
 20 │ take(a)
           ^ Cannot use moved values
           | Moved on line 19
@@ -32,13 +32,13 @@ Error at line 39, column 17
                        | Moved here in an earlier iteration
 
 Error at line 50, column 6
-49 │ val c = (a = make(3))
+49 │ val c = own (a = make(3))
 50 │ ret a.id + b.id + c.id
          ╘══╛ Cannot use moved values
             | Moved on line 49
 
 Error at line 57, column 6
-56 │ take(a)
+56 │ take(own a)
 57 │ ret a.id
          ╘══╛ Cannot use moved values
             | Moved on line 56

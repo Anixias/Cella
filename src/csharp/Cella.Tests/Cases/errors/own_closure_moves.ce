@@ -68,6 +68,6 @@ main: fun -> i32
 
 	val step = 3
 	val first = own fun(x: i32) -> i32 = x + step
-	val second = first
+	val second = own first
 	ret first(1)
 }

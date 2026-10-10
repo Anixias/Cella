@@ -3,8 +3,8 @@
 
 Error at line 10, column 10
  9 │ {
-10 │     self = option.some(value)
-                ╘════════════════╛ Cannot store new borrows in 'self'
+10 │     self = option.some(own value)
+                ╘════════════════════╛ Cannot store new borrows in 'self'
 
 Error at line 17, column 6
 16 │ val local = 5

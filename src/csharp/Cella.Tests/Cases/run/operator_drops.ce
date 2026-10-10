@@ -36,7 +36,7 @@ main: fun -> i32
 	var d = Text(100)
 	d += Text(5)
 	printf("d %d\n", d.id)
-	val e = d - b
+	val e = own d - b
 	printf("e %d\n", e.id)
 	val f = -e
 	printf("f %d\n", f.id)

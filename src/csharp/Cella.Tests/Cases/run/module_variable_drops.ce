@@ -24,7 +24,7 @@ current: var Buffer = Buffer(1)
 
 replace: fun(own next: Buffer)
 {
-	current = next
+	current = own next
 }
 
 main: fun -> i32

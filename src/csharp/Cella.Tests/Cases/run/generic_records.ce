@@ -27,11 +27,11 @@ pair[A: noref, B: noref]: rec
 	swapFirst: fun(mut self, own value: A) -> A
 	{
 		val old = own self.first
-		self.first = value
+		self.first = own value
 		ret old
 	}
 
-	make: fun(own first: A, own second: B) -> pair[A, B] = pair[A, B](first, second)
+	make: fun(own first: A, own second: B) -> pair[A, B] = pair[A, B](own first, own second)
 }
 
 box[T]: rec
@@ -41,7 +41,7 @@ box[T]: rec
 	new: op(own value: T)
 	{
 		self.pointer = ptr[T](malloc(sizeOf(T)))
-		own *self.pointer = value
+		own *self.pointer = own value
 	}
 
 	*: op(self) -> imm[T] = imm *self.pointer
@@ -68,7 +68,7 @@ buffer[T]: rec
 
 	set: fun(mut self, index: usize, own value: T)
 	{
-		own *(self.start + index) = value
+		own *(self.start + index) = own value
 	}
 
 	get: fun(self, index: usize) -> imm[T] = imm *(self.start + index)

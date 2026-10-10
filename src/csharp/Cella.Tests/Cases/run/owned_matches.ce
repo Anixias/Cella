@@ -29,7 +29,7 @@ rvalue: fun -> i32
 {
 	match make(1)
 	{
-		hold(buffer) => ret take(buffer)
+		hold(buffer) => ret take(own buffer)
 		else => ret 0
 	}
 }
@@ -39,7 +39,7 @@ moved: fun -> i32
 	val effect = Effect.pair(Buffer(2), Buffer(3))
 	match own effect
 	{
-		pair(first, _) => ret take(first)
+		pair(first, _) => ret take(own first)
 		else => ret 0
 	}
 }
@@ -53,7 +53,7 @@ bindings: fun -> i32
 		hold(var buffer) =>
 		{
 			buffer.id += 10
-			total = take(buffer)
+			total = take(own buffer)
 		}
 		else => {}
 	}
@@ -80,14 +80,14 @@ copies: fun -> i32
 condition: fun -> i32
 {
 	if make(6) is hold(buffer)
-		ret take(buffer)
+		ret take(own buffer)
 
 	ret 0
 }
 
 value: fun -> i32 = match make(7)
 {
-	hold(buffer) => take(buffer)
+	hold(buffer) => take(own buffer)
 	else => 0
 }
 

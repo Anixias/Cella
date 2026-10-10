@@ -1,3 +1,3 @@
 mod middle
 
-wrap[T]: pub fun(own value: T) -> i32 = base.cell(value, 4).peek()
+wrap[T]: pub fun(own value: T) -> i32 = base.cell(own value, 4).peek()

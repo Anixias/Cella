@@ -26,7 +26,7 @@ boxed[K: trait]: rec
 	of[T: K + noref]: fun(own value: T) -> boxed[K]
 	{
 		val memory = ptr[T](malloc(sizeOf(T)))
-		own *memory = value
+		own *memory = own value
 		ret boxed[K](memory)
 	}
 

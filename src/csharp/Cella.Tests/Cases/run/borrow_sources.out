@@ -1,2 +1,10 @@
+
+====== borrow_sources.ce ======
+
+Hint at line 60, column 14
+59 │ var holder = Holder(Buffer(1), Buffer(2))
+60 │ val first = imm holder.first
+                 ╘═╛ Redundant 'imm'
+
 1 0 1 2 2 4 7 9 1 2
 [exit code 0]

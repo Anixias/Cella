@@ -1,13 +1,13 @@
 
 ====== destructor_fields.ce ======
 
-Error at line 49, column 15
+Error at line 49, column 19
 48 │ val holder = Holder(make(1), 2)
-49 │ val buffer = holder.buffer
-                  ╘═══════════╛ Cannot move fields out of values with destructors
+49 │ val buffer = own holder.buffer
+                      ╘═══════════╛ Cannot move fields out of values with destructors
 
 Error at line 50, column 18
-49 │ val buffer = holder.buffer
+49 │ val buffer = own holder.buffer
 50 │ val count = own holder.count
                      ╘══════════╛ Cannot move fields out of values with destructors
 

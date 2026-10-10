@@ -88,7 +88,7 @@ main: fun -> i32
 
 	val buffer = Buffer(1)
 	val held: fstr[Display] = "{buffer}"
-	take(buffer)
+	take(own buffer)
 	show(held)
 	var later: Buffer
 	show("{later}")

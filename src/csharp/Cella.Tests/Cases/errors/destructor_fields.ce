@@ -46,7 +46,7 @@ take: fun(own buffer: Buffer) -> i32 = buffer.id
 local: fun -> i32
 {
 	val holder = Holder(make(1), 2)
-	val buffer = holder.buffer
+	val buffer = own holder.buffer
 	val count = own holder.count
 	val copied = holder.count
 	ret buffer.id + count + copied + holder.buffer.id
@@ -63,8 +63,8 @@ owned: fun(own holder: Holder) -> i32 = take(holder.buffer)
 whole: fun -> i32
 {
 	val outer = Outer(Holder(make(1), 2), make(3))
-	val holder = outer.holder
-	val spare = outer.spare
+	val holder = own outer.holder
+	val spare = own outer.spare
 	ret holder.count + spare.id
 }
 

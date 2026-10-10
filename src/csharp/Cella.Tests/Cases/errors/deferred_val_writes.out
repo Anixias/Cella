@@ -30,7 +30,7 @@ Error at line 55, column 6
          ^ Cannot use uninitialized values
 
 Error at line 63, column 2
-62 │ take(b)
+62 │ take(own b)
 63 │ b = make(2)
      ^ Cannot reassign values
      | Assigned on line 61

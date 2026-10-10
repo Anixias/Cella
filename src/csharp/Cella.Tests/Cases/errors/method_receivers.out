@@ -26,6 +26,11 @@ Error at line 42, column 2
 42 │ Unit.make(2).restore(1)
      ╘══════════╛ Cannot mutably borrow unstored values
 
+Hint at line 44, column 13
+43 │ var other = Unit.make(3)
+44 │ val view = imm other
+                ╘═╛ Redundant 'imm'
+
 Error at line 45, column 2
 44 │ val view = imm other
 45 │ view.restore(1)

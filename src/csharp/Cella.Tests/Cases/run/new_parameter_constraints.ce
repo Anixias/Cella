@@ -62,7 +62,7 @@ Holder: rec
 
 	new: op(own text: Text)
 	{
-		self.text = text
+		self.text = own text
 	}
 }
 
@@ -95,7 +95,7 @@ convert[T: new(A) + new(B), A, B]: fun(a: A, b: B) -> T
 
 duplicate[T: new(T)]: fun(value: T) -> T = T(value)
 
-take[T: new(own Text)]: fun(own value: Text) -> T = T(value)
+take[T: new(own Text)]: fun(own value: Text) -> T = T(own value)
 
 count[T: noref + new(mut i32)]: fun -> T
 {

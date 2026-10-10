@@ -37,7 +37,7 @@ Cell[T: null]: rec
 	value: nullable[T]
 }
 
-wrap[T: null]: fun(own value: T) -> nullable[T] = some(value)
+wrap[T: null]: fun(own value: T) -> nullable[T] = some(own value)
 
 triple: fun(n: i32) -> i32 = n * 3
 twice: fun(n: i32) -> i32 = n * 2

@@ -7,7 +7,7 @@ counted[T]: pub rec
 
 	new: op(own value: T)
 	{
-		self.value = value
+		self.value = own value
 		made += 1
 	}
 }

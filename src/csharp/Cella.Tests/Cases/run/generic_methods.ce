@@ -22,19 +22,19 @@ cell[T]: rec
 
 	new: op(own value: T)
 	{
-		self.value = value
+		self.value = own value
 	}
 
 	map[U]: fun(own self, change: fun[own T -> U]) -> cell[U] = cell(change(own self.value))
 
-	combine[U]: fun(own first: T, own second: U) -> pair[T, U] = pair(first, second)
+	combine[U]: fun(own first: T, own second: U) -> pair[T, U] = pair(own first, own second)
 }
 
 Holder: rec
 {
 	id: i32
 
-	wrap[T]: fun(self, own value: T) -> pair[T, i32] = pair(value, self.id)
+	wrap[T]: fun(self, own value: T) -> pair[T, i32] = pair(own value, self.id)
 }
 
 Color: enum(u8)
@@ -49,7 +49,7 @@ Color: enum(u8)
 
 double: fun(own value: i32) -> i64 = value * 2
 
-nest[T]: fun(own value: T) -> box[box[T]] = box(box(value))
+nest[T]: fun(own value: T) -> box[box[T]] = box(box(own value))
 
 main: fun -> i32
 {

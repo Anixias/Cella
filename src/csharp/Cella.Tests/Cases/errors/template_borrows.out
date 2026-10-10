@@ -40,7 +40,7 @@ Error at line 84, column 8
                  | Dropped on line 87
 
 Error at line 92, column 7
-91 │ take(buffer)
+91 │ take(own buffer)
 92 │ show(held)
           ╘══╛ Cannot use borrows of moved values
              | Moved on line 91

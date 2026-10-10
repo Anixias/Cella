@@ -27,7 +27,7 @@ Error at line 46, column 6
          ╘═════════════════════════════╛ Cannot return closures that capture variables
 
 Error at line 54, column 2
-53 │ consume(text)
+53 │ consume(own text)
 54 │ show()
      ╘══╛ Cannot use borrows of moved values
         | Moved on line 53

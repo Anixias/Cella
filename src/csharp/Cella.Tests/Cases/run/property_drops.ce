@@ -21,7 +21,7 @@ Slot: rec
 
 	new: op(own token: Token)
 	{
-		self.held = token
+		self.held = own token
 	}
 
 	token: prop Token
@@ -29,7 +29,7 @@ Slot: rec
 		get(self) = Token(self.held.id + 100)
 		set(mut self, own value)
 		{
-			self.held = value
+			self.held = own value
 		}
 	}
 

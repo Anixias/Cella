@@ -1,10 +1,10 @@
 
 ====== computed_indices.ce ======
 
-Error at line 24, column 15
+Error at line 24, column 19
 23 │ var items = [make(1), make(2), make(3)]
-24 │ val picked = items[i]
-                  ╘══════╛ Cannot move array elements at computed indices
+24 │ val picked = own items[i]
+                      ╘══════╛ Cannot move array elements at computed indices
 
 Error at line 30, column 73
 29 │ 
@@ -22,7 +22,7 @@ Error at line 44, column 2
      ╘══════╛ Cannot assign elements of partly initialized arrays at computed indices
 
 Error at line 54, column 2
-53 │ val other = items
+53 │ val other = own items
 54 │ items[i] = make(3)
      ╘══════╛ Cannot assign elements of moved arrays at computed indices
             | Moved on line 53

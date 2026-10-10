@@ -59,7 +59,7 @@ moved: fun -> i32
 {
 	val b: Buffer
 	b = make(1)
-	take(b)
+	take(own b)
 	b = make(2)
 	ret b.id
 }

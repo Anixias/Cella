@@ -17,7 +17,7 @@ Error at line 52, column 6
          ╘════╛ Cannot return borrows of local variables
 
 Error at line 60, column 17
-59 │ keep(held)
+59 │ keep(own held)
 60 │ printf("%d\n", inside.id)
                     ╘════╛ Cannot use borrows of moved values
                          | Moved on line 59

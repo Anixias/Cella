@@ -53,7 +53,7 @@ swap: fun(mut pair: Pair)
 {
 	val left = own pair.left
 	pair.left = own pair.right
-	pair.right = left
+	pair.right = own left
 }
 
 keep: fun(own built: Built) -> i32 = built.buffer.id

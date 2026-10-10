@@ -27,7 +27,7 @@ BufferBox: rec
 	new: op(own buffer: Buffer)
 	{
 		self.pointer = ptr[Buffer](malloc(sizeOf(Buffer)))
-		own *self.pointer = buffer
+		own *self.pointer = own buffer
 	}
 
 	*: op(self) -> imm[Buffer] = imm *self.pointer
@@ -49,7 +49,7 @@ outlive: fun -> i32
 {
 	var boxed = BufferBox(Buffer(1))
 	val view = imm boxed.id
-	take(boxed)
+	take(own boxed)
 	ret view
 }
 

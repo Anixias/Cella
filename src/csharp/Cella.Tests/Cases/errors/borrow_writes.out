@@ -46,10 +46,20 @@ Error at line 47, column 20
 47 │ val s: imm[i32] = 5
                        ^ Cannot borrow unstored values
 
+Hint at line 52, column 15
+51 │ var buffer = Buffer(1)
+52 │ val viewed = imm buffer
+                  ╘═╛ Redundant 'imm'
+
 Error at line 53, column 23
 52 │ val viewed = imm buffer
 53 │ val copied: Buffer = viewed
                           ╘════╛ Cannot move borrowed values
+
+Hint at line 55, column 13
+54 │ var holder = Holder(Buffer(2))
+55 │ val held = imm holder
+                ╘═╛ Redundant 'imm'
 
 Error at line 56, column 18
 55 │ val held = imm holder

@@ -1,0 +1,159 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Texture: rec
+{
+	id: i32
+
+	drop: op
+	{
+		printf("free %d\n", self.id)
+	}
+}
+
+Point: rec
+{
+	x: i32
+	y: i32
+}
+
+Player: rec
+{
+	skin: Texture
+	hp: i32
+
+	retire: fun(own self) -> i32 = self.skin.id
+}
+
+Sprite: rec
+{
+	texture: Texture
+
+	drop: op
+	{
+		printf("free sprite\n")
+	}
+}
+
+Slot: enum
+{
+	empty
+	full(texture: Texture)
+}
+
+Countdown: rec
+{
+	value: i32
+
+	for: op(mut self) -> bool
+	{
+		self.value -= 1
+		ret self.value >= 0
+	}
+
+	*: op(self) -> imm[i32] = imm self.value
+
+	drop: op
+	{
+		printf("free cursor\n")
+	}
+}
+
+take: fun(own texture: Texture) -> i32 = texture.id
+
+shift: fun(own point: Point) -> i32 = point.x + point.y
+
+count: fun(textures: array[Texture, 2]) -> i32 = textures[0].id + textures[1].id
+
+pass: fun(own texture: Texture) -> Texture = texture
+
+choose: fun(own slot: Slot, own fallback: Texture) -> Texture = match own slot
+{
+	full(own texture) => texture
+	empty => fallback
+}
+
+swap: fun(mut a: Texture, mut b: Texture)
+{
+	val kept = own a
+	a = own b
+	b = own kept
+}
+
+arguments: fun
+{
+	val texture = Texture(1)
+	val point = Point(2, 3)
+	printf("arguments %d %d %d\n", take(own texture), take(Texture(2)), shift(point))
+}
+
+storing: fun
+{
+	val a = Texture(3)
+	val b = Texture(4)
+	val sprite = Sprite(own a)
+	val slot = Slot.full(own b)
+	var current = Texture(5)
+	val next = Texture(6)
+	current = own next
+	val typed: Texture = own current
+	printf("storing %d\n", typed.id)
+}
+
+declarations: fun
+{
+	val original = Texture(7)
+	val view = original
+	printf("view %d %d\n", view.id, original.id)
+	val taken = own original
+	printf("taken %d\n", taken.id)
+	val textures = [Texture(8), Texture(9)]
+	var i: usize = 1
+	val first = textures[0]
+	val picked = textures[i]
+	printf("textures %d %d %d\n", first.id, picked.id, count(textures))
+	val player = Player(Texture(10), 5)
+	val skin = player.skin
+	printf("skin %d %d\n", skin.id, player.retire())
+	val sprite = Sprite(Texture(11))
+	val inner = sprite.texture
+	printf("sprite %d\n", inner.id)
+}
+
+returns: fun
+{
+	val kept = pass(Texture(12))
+	val chosen = choose(Slot.full(Texture(13)), Texture(14))
+	val spare = choose(Slot.empty, Texture(15))
+	printf("returns %d %d %d\n", kept.id, chosen.id, spare.id)
+}
+
+swaps: fun
+{
+	var x = Texture(16)
+	var y = Texture(17)
+	swap(mut x, mut y)
+	printf("swaps %d %d\n", x.id, y.id)
+}
+
+loops: fun
+{
+	val cursor = Countdown(2)
+	for left in own cursor
+		printf("left %d\n", left)
+}
+
+main: fun -> i32
+{
+	arguments()
+	storing()
+	declarations()
+	returns()
+	swaps()
+	loops()
+	ret 0
+}

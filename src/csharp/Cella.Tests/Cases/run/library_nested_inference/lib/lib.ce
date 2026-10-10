@@ -17,7 +17,7 @@ option[T]: pub enum
 	some(value: T)
 }
 
-wrap[T]: pub fun(own value: T) -> box[T] = box(value)
+wrap[T]: pub fun(own value: T) -> box[T] = box(own value)
 
 both[T: copy]: pub fun(p: pair[T, T]) -> T = p.a
 

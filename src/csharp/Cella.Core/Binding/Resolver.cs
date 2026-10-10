@@ -4083,11 +4083,12 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 				return Error(node, "Unsized array type requires an initializer");
 		}
 		
-		if (type is null && initializer is not null && IsBorrowedValue(initializer))
+		if (type is null && initializer is not null && BorrowsWhenDeclared(initializer))
 			initializer = new ResolvedBorrowExpressionNode(initializer,
 				_typePool.GetBorrowType(initializer.Type, false), true, initializer.Syntax);
 		else if (type is null && initializer is ResolvedBorrowExpressionNode { IsImplicit: false } borrow &&
-		         borrow.Syntax is BorrowExpressionNode { IsMutable: false } syntax && IsBorrowedValue(borrow.Place))
+		         borrow.Syntax is BorrowExpressionNode { IsMutable: false } syntax &&
+		         BorrowsWhenDeclared(borrow.Place))
 			Diagnostics.Add(new(DiagnosticSeverity.Hint, syntax.Keyword.SourceLocation, "Redundant 'imm'"));
 		
 		type ??= initializer?.Type ?? NativeSymbols.Invalid;
@@ -4112,22 +4113,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		return new ResolvedVarStatementNode(symbol, initializer, node);
 	}
 	
-	private bool IsBorrowedValue(IResolvedExpressionNode value) =>
-		value.Type is DynType || !_typePool.IsCopy(value.Type) && IsBorrowedPlace(value);
-	
-	private static bool IsBorrowedPlace(IResolvedExpressionNode place) => place switch
-	{
-		ResolvedAccessExpressionNode { Member: FieldSymbol } node => IsBorrowedPlace(node.Target),
-		ResolvedIndexerExpressionNode { Target.Type: ArrayType } node => IsBorrowedPlace(node.Target),
-		ResolvedUnaryOpExpressionNode { Operation.Op: TokenType.OpStar, Operand: var operand } =>
-			operand is { Type: BorrowType } or ResolvedVarExpressionNode
-			{
-				Symbol: LocalVariableSymbol { IsBorrowBinding: true }
-			},
-		ResolvedVarExpressionNode { Symbol: ParameterSymbol { Mode: ParameterMode.ReadOnly } } => true,
-		ResolvedGlobalExpressionNode => true,
-		_ => false
-	};
+	private bool BorrowsWhenDeclared(IResolvedExpressionNode value) =>
+		value.Type is DynType ||
+		!_typePool.IsCopy(value.Type) && value is not ResolvedAssignmentExpressionNode && IsStored(value);
 	
 	public IResolvedStatementNode Visit(WhileStatementNode node)
 	{

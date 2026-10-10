@@ -16,8 +16,8 @@ Owned: rec
 main: fun -> i32
 {
 	val last = Owned(9)
-	val maybe = Owned(1) < Owned(20) > last
+	val maybe = Owned(1) < Owned(20) > own last
 	val first = Owned(3)
-	val sure = first <= Owned(4) < Owned(5)
+	val sure = own first <= Owned(4) < Owned(5)
 	ret last.id + first.id
 }

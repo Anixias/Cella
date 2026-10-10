@@ -1,2 +1,10 @@
+
+====== stored_borrows.ce ======
+
+Hint at line 166, column 13
+165 │ var buffer = Buffer(7)
+166 │ val view = imm buffer
+                 ╘═╛ Redundant 'imm'
+
 b a c y new cleared other label 1 5 0 7 4
 [exit code 0]

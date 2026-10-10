@@ -1,0 +1,32 @@
+free 1
+free 2
+arguments 1 2 5
+free 5
+storing 6
+free 6
+free 4
+free sprite
+free 3
+view 7 7
+taken 7
+textures 8 9 17
+free 10
+skin 10 10
+sprite 11
+free sprite
+free 11
+free 9
+free 8
+free 7
+free 14
+returns 12 13 15
+free 15
+free 13
+free 12
+swaps 17 16
+free 16
+free 17
+left 1
+left 0
+free cursor
+[exit code 0]

@@ -19,7 +19,7 @@ swap[T: noref]: fun(mut a: T, mut b: T)
 {
 	val first = own a
 	a = own b
-	b = first
+	b = own first
 }
 
 identity[T]: fun(own value: T) -> T = value
@@ -46,7 +46,7 @@ countdown[T]: fun(own value: T, steps: i32) -> i32
 	if steps == 0
 		ret 0
 
-	ret 1 + countdown(value, steps - 1)
+	ret 1 + countdown(own value, steps - 1)
 }
 
 size[T]: fun -> usize = sizeOf(T)

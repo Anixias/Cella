@@ -73,6 +73,6 @@ main: fun -> i32
 	val end = c[3]
 	val beyond = c[4]
 	val buffers = ptr[Buffer](malloc(sizeOf(array[Buffer, 2])))
-	val taken = buffers[0]
+	val taken: Buffer = buffers[0]
 	ret 0
 }

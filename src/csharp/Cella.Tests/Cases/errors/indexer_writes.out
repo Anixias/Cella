@@ -56,9 +56,9 @@ Error at line 74, column 17
 74 │ val beyond = c[4]
                     ^ Index 4 is out of range for 'cstr'
 
-Error at line 76, column 14
+Error at line 76, column 22
 75 │ val buffers = ptr[Buffer](malloc(sizeOf(array[Buffer, 2])))
-76 │ val taken = buffers[0]
-                 ╘════════╛ Cannot move 'Buffer' values out of a pointer implicitly
+76 │ val taken: Buffer = buffers[0]
+                         ╘════════╛ Cannot move 'Buffer' values implicitly
 
 [compilation failed]

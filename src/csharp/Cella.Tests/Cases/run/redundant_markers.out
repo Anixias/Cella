@@ -28,9 +28,14 @@ Hint at line 57, column 13
 57 │     val same = imm texture
                     ╘═╛ Redundant 'imm'
 
-Hint at line 63, column 15
+Hint at line 63, column 6
 62 │ {
-63 │     val double = own fun(x: i32) -> i32 = x * 2
+63 │     ret own texture
+             ╘═╛ Redundant 'own'
+
+Hint at line 68, column 15
+67 │ {
+68 │     val double = own fun(x: i32) -> i32 = x * 2
                       ╘═╛ Redundant 'own'
 
 8

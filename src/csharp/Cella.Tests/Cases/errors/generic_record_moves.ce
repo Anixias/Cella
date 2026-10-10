@@ -7,13 +7,13 @@ box[T]: rec
 	copy: fun(own self) -> T
 	{
 		val first = own self.value
-		val second = first
+		val second = own first
 		ret first
 	}
 
 	store: fun(mut self, own value: T)
 	{
-		self.value = value
+		self.value = own value
 	}
 }
 

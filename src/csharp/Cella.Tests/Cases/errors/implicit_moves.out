@@ -1,0 +1,85 @@
+
+====== implicit_moves.ce ======
+
+Error at line 52, column 43
+51 │ 
+52 │ look: fun(texture: Texture) -> i32 = take(texture)
+                                               ╘═════╛ Cannot move read-only parameters
+
+Error at line 57, column 7
+56 │ val a = Texture(1)
+57 │ take(a)
+          ^ Cannot move 'Texture' values implicitly
+
+Error at line 59, column 22
+58 │ val b = Texture(2)
+59 │ val sprite = Sprite(b)
+                         ^ Cannot move 'Texture' values implicitly
+
+Error at line 61, column 23
+60 │ val c = Texture(3)
+61 │ val slot = Slot.full(c)
+                          ^ Cannot move 'Texture' values implicitly
+
+Error at line 64, column 18
+63 │ val e = Texture(5)
+64 │ val textures = [d, e]
+                     ^ Cannot move 'Texture' values implicitly
+
+Error at line 64, column 21
+63 │ val e = Texture(5)
+64 │ val textures = [d, e]
+                        ^ Cannot move 'Texture' values implicitly
+
+Error at line 67, column 12
+66 │ val next = Texture(7)
+67 │ current = next
+               ╘══╛ Cannot move 'Texture' values implicitly
+
+Error at line 69, column 23
+68 │ val f = Texture(8)
+69 │ val typed: Texture = f
+                          ^ Cannot move 'Texture' values implicitly
+
+Error at line 71, column 8
+70 │ val g = Texture(9)
+71 │ apply(g)
+           ^ Cannot move 'Texture' values implicitly
+
+Error at line 74, column 14
+73 │ val h = Texture(11)
+74 │ shelf.store(h)
+                 ^ Cannot move 'Texture' values implicitly
+
+Error at line 76, column 14
+75 │ val cursor = Countdown(2)
+76 │ for left in cursor
+                 ╘════╛ Cannot move 'Countdown' values implicitly
+
+Error at line 85, column 24
+84 │ {
+85 │     full(own texture) => texture
+                              ╘═════╛ Cannot move 'Texture' values implicitly
+
+Error at line 86, column 12
+85 │ full(own texture) => texture
+86 │ empty => fallback
+              ╘══════╛ Cannot move 'Texture' values implicitly
+
+Error at line 95, column 7
+94 │ val texture = Texture(12)
+95 │ take(texture)
+          ╘═════╛ Cannot move 'Texture' values implicitly
+
+Error at line 96, column 7
+95 │ take(texture)
+96 │ take(texture)
+          ╘═════╛ Cannot use moved values
+                | Moved on line 95
+
+Error at line 103, column 8
+102 │ for texture in textures
+103 │     take(texture)
+               ╘═════╛ Cannot move loop variables
+
+[compilation failed]

@@ -25,7 +25,7 @@ option[T]: enum
 	{
 		match own self
 		{
-			some(own v) => ret option.some(change(v))
+			some(own v) => ret option.some(change(own v))
 			none => ret option.none
 		}
 	}
@@ -44,15 +44,15 @@ slot[T: noref]: enum
 	{
 		match mut self
 		{
-			filled(current) => current = value
-			vacant => self = slot.filled(value)
+			filled(current) => current = own value
+			vacant => self = slot.filled(own value)
 		}
 	}
 
 	make: fun(own value: T) -> slot[T]
 	{
 		created += 1
-		ret slot.filled(value)
+		ret slot.filled(own value)
 	}
 }
 
@@ -61,7 +61,7 @@ double: fun(own n: i32) -> i64 = i64(n) * 2
 find[T]: fun(own value: T, present: bool) -> option[T]
 {
 	if present
-		ret option.some(value)
+		ret option.some(own value)
 
 	ret option.none
 }

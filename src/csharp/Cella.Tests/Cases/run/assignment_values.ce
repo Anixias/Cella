@@ -30,11 +30,11 @@ main: fun -> i32
 	printf("%d %d %d\n", show(b = Buffer(3)), same(b = Buffer(4), @b),
 		same(holder.buffer = Buffer(5), @holder.buffer))
 
-	val c = (b = Buffer(6))
-	printf("%d %d %d\n", c.id, (b = Buffer(7)).id, take(b = Buffer(8)))
+	val c = own (b = Buffer(6))
+	printf("%d %d %d\n", c.id, (b = Buffer(7)).id, take(own (b = Buffer(8))))
 
 	var a = Buffer(0)
-	a = b = Buffer(9)
+	a = own (b = Buffer(9))
 	printf("%d\n", a.id)
 
 	var x = 0

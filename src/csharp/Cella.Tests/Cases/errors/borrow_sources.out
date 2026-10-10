@@ -1,20 +1,30 @@
 
 ====== borrow_sources.ce ======
 
+Hint at line 72, column 13
+71 │ var buffer = Buffer(1)
+72 │ val view = imm buffer
+                ╘═╛ Redundant 'imm'
+
 Error at line 75, column 20
-74 │ val moved = buffer
+74 │ val moved = own buffer
 75 │ printf("%d %d\n", view.id, copy.id)
                        ╘══╛ Cannot use borrows of moved values
                           | Moved on line 74
 
 Error at line 75, column 29
-74 │ val moved = buffer
+74 │ val moved = own buffer
 75 │ printf("%d %d\n", view.id, copy.id)
                                 ╘══╛ Cannot use borrows of moved values
                                    | Moved on line 74
 
+Hint at line 81, column 13
+80 │ val bat = Enemy(Buffer(3), 7)
+81 │ val name = imm bat.name
+                ╘═╛ Redundant 'imm'
+
 Error at line 83, column 17
-82 │ take(bat)
+82 │ take(own bat)
 83 │ printf("%d\n", name.id)
                     ╘══╛ Cannot use borrows of moved values
                        | Moved on line 82
@@ -24,6 +34,11 @@ Error at line 94, column 17
 94 │ printf("%d\n", longest)
                     ╘═════╛ Cannot use borrows of dropped values
                           | Dropped on line 93
+
+Hint at line 100, column 14
+ 99 │ var buffer = Buffer(1)
+100 │ val first = imm buffer
+                  ╘═╛ Redundant 'imm'
 
 Error at line 102, column 17
 101 │ buffer = Buffer(2)
@@ -67,6 +82,11 @@ Error at line 160, column 17
 160 │ printf("%d\n", holder.buffer.id)
                      ╘═══════════╛ Cannot use borrows of dropped values
                                  | Dropped on line 159
+
+Hint at line 166, column 14
+165 │ var buffer = Buffer(1)
+166 │ val outer = imm buffer
+                  ╘═╛ Redundant 'imm'
 
 Error at line 174, column 20
 173 │ val gone = own count

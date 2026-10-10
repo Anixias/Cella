@@ -20,8 +20,14 @@ public enum DefineKind
 
 public abstract record MemoryEvent(SourceLocation Location);
 
-public sealed record AccessEvent(Place Place, AccessKind Kind, SourceLocation Location, TypeSymbol Type)
-	: MemoryEvent(Location);
+public sealed record AccessEvent
+(
+	Place Place,
+	AccessKind Kind,
+	SourceLocation Location,
+	TypeSymbol Type,
+	bool IsImplicit = false
+) : MemoryEvent(Location);
 
 public sealed record WriteEvent(Place Place, SourceLocation Location, Value Value) : MemoryEvent(Location);
 public sealed record IndirectWriteEvent(Value Target, Value Value, SourceLocation Location) : MemoryEvent(Location);

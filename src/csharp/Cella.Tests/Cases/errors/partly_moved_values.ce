@@ -21,7 +21,7 @@ show: fun(pair: Pair) -> i32 = pair.left.id
 whole: fun -> Pair
 {
 	val pair = Pair(make(1), make(2))
-	val left = pair.left
+	val left = own pair.left
 	val total = show(pair) + pair.right.id + left.id
 	ret pair
 }
@@ -29,7 +29,7 @@ whole: fun -> Pair
 refilled: fun -> Pair
 {
 	var pair = Pair(make(1), make(2))
-	val left = pair.left
+	val left = own pair.left
 	pair.left = make(left.id + 1)
 	ret pair
 }
@@ -37,7 +37,7 @@ refilled: fun -> Pair
 elements: fun -> i32
 {
 	var items = [make(1), make(2)]
-	val first = items[0]
+	val first = own items[0]
 	var i: usize = 1
 	ret items[i].id + items[1].id + first.id
 }
@@ -45,7 +45,7 @@ elements: fun -> i32
 constant: fun -> i32
 {
 	val pair = Pair(Buffer(1), Buffer(2))
-	val left = pair.left
+	val left = own pair.left
 	ret pair.left.id + pair.right.id + left.id
 }
 

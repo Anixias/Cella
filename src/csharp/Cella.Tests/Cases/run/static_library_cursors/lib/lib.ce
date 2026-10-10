@@ -58,7 +58,7 @@ view: pub fun(bag: Bag) -> i32 = sum(BagCursor(imm bag, 0, 0))
 sum[C: Cursor[i32]]: pub fun(own cursor: C) -> i32
 {
 	var total = 0
-	for x in cursor
+	for x in own cursor
 		total += x
 
 	ret total

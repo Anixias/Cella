@@ -15,7 +15,7 @@ option[T]: pub enum
 	wrap: fun(own value: T) -> option[T]
 	{
 		made += 1
-		ret option.some(value)
+		ret option.some(own value)
 	}
 
 	orElse: fun(own self, own fallback: T) -> T

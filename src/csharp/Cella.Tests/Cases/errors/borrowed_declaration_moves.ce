@@ -23,7 +23,7 @@ TextureBox: rec
 	new: op(own texture: Texture)
 	{
 		self.pointer = ptr[Texture](malloc(sizeOf(Texture)))
-		own *self.pointer = texture
+		own *self.pointer = own texture
 	}
 
 	*: op(self) -> imm[Texture] = imm *self.pointer
@@ -56,7 +56,7 @@ main: fun -> i32
 {
 	val held = TextureBox(Texture(2))
 	val inside = *held
-	keep(held)
+	keep(own held)
 	printf("%d\n", inside.id)
 	ret 0
 }

@@ -23,7 +23,7 @@ build[T: new(ptr[u8], usize)]: fun(data: ptr[u8], length: usize) -> T = T(data, 
 
 viaTrait[T: FromParts]: fun(data: ptr[u8], length: usize) -> T = T(data, length)
 
-same[T: new(own T)]: fun(own value: T) -> T = T(value)
+same[T: new(own T)]: fun(own value: T) -> T = T(own value)
 
 empty[T: new()]: fun -> T = T()
 

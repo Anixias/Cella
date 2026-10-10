@@ -41,7 +41,7 @@ sometimes: fun(flag: bool) -> i32
 	val a = make(1)
 	var total = 0
 	if flag
-		total += take(a)
+		total += take(own a)
 
 	ret total
 }
@@ -49,14 +49,14 @@ sometimes: fun(flag: bool) -> i32
 partly: fun -> i32
 {
 	var p = Pair(make(1), make(2))
-	val left = p.left
+	val left = own p.left
 	ret left.id + p.right.id
 }
 
 refilled: fun -> i32
 {
 	var p = Pair(make(1), make(2))
-	val old = p.left
+	val old = own p.left
 	p.left = make(old.id + 10)
 	ret p.left.id + old.id + p.right.id
 }
@@ -79,16 +79,16 @@ wholeFromFields: fun -> i32
 	var q: Pair = undef
 	q.left = make(5)
 	q.right = make(6)
-	val whole = q
+	val whole = own q
 	ret whole.left.id + whole.right.id
 }
 
 nested: fun -> i32
 {
 	var n = Nest(Pair(make(1), make(2)), make(3))
-	val right = n.pair.right
+	val right = own n.pair.right
 	n.pair.right = make(right.id + 4)
-	val tail = n.tail
+	val tail = own n.tail
 	ret n.pair.left.id + n.pair.right.id + right.id + tail.id
 }
 
@@ -120,7 +120,7 @@ cycle: fun(limit: i32) -> i32
 		if i == 2
 			cont
 
-		total += take(x)
+		total += take(own x)
 		x = make(i)
 		if total > 4
 			break
@@ -141,7 +141,7 @@ rounds: fun -> i32
 		{
 			if inner == outer
 			{
-				total += take(y)
+				total += take(own y)
 				break
 			}
 
@@ -159,9 +159,9 @@ early: fun(flag: bool) -> i32
 	val a = make(5)
 	val b = make(6)
 	if flag
-		ret take(a)
+		ret take(own a)
 
-	ret take(b) + a.id
+	ret take(own b) + a.id
 }
 
 matched: fun(effect: Effect) -> i32
@@ -170,7 +170,7 @@ matched: fun(effect: Effect) -> i32
 	match effect
 	{
 		hold(buffer) => ret buffer.id
-		count(n) => ret n + take(spare)
+		count(n) => ret n + take(own spare)
 		else => {}
 	}
 
@@ -186,7 +186,7 @@ swapIn: fun(mut pair: Pair, id: i32) -> i32
 
 reowned: fun(own buffer: Buffer) -> i32
 {
-	val first = take(buffer)
+	val first = take(own buffer)
 	buffer = make(first + 1)
 	ret buffer.id
 }
@@ -197,9 +197,9 @@ choose: fun(flag: bool) -> i32
 	val b = make(9)
 	var chosen: Buffer = undef
 	if flag
-		chosen = a
+		chosen = own a
 	else
-		chosen = b
+		chosen = own b
 
 	ret chosen.id
 }

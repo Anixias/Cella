@@ -24,7 +24,7 @@ box[T]: rec
 	new: op(own value: T)
 	{
 		self.pointer = ptr[T](malloc(sizeOf(T)))
-		own *self.pointer = value
+		own *self.pointer = own value
 	}
 
 	drop: op
@@ -41,7 +41,7 @@ slots[T: noref]: rec
 
 	push: fun(mut self, own item: T)
 	{
-		self.items[self.count] = item
+		self.items[self.count] = own item
 		self.count += 1
 	}
 }
@@ -53,7 +53,7 @@ stack[T: noref]: rec
 
 	push: fun(mut self, own item: T)
 	{
-		self.slots.push(item)
+		self.slots.push(own item)
 		self.pushes += 1
 	}
 
@@ -61,7 +61,7 @@ stack[T: noref]: rec
 
 	scratch: fun(own item: T) -> i32
 	{
-		val held = box[T](item)
+		val held = box[T](own item)
 		ret 1
 	}
 }
@@ -76,7 +76,7 @@ mapper[T: noref]: rec
 		self.value = self.change(self.value)
 	}
 
-	wrap: fun(own value: T) -> pair[T, i32] = pair[T, i32](value, 1)
+	wrap: fun(own value: T) -> pair[T, i32] = pair[T, i32](own value, 1)
 
 	score: fun(value: T) -> i32 = 7
 }

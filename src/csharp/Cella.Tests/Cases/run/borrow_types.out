@@ -1,3 +1,11 @@
+
+====== borrow_types.ce ======
+
+Hint at line 126, column 15
+125 │ var buffer = make(1)
+126 │ val viewed = imm buffer
+                   ╘═╛ Redundant 'imm'
+
 30 30
 3 40 43 4 70 70
 1 2 10 20

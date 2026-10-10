@@ -51,10 +51,10 @@ Error at line 34, column 22
 34 │ val taken = own box.inner
                          ╘═══╛ 'inner' is read-only outside its type
 
-Error at line 35, column 19
+Error at line 35, column 26
 34 │ val taken = own box.inner
-35 │ val copied = box.inner
-                      ╘═══╛ 'inner' is read-only outside its type
+35 │ val copied: Inner = box.inner
+                             ╘═══╛ 'inner' is read-only outside its type
 
 Error at line 41, column 10
 40 │ var counter = Counter()

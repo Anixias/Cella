@@ -68,7 +68,7 @@ RosterCursor: ref rec impl Cursor[Name]
 total[C: Cursor[i32]]: fun(own cursor: C) -> i32
 {
 	var sum = 0
-	for x in cursor
+	for x in own cursor
 		sum += x
 
 	ret sum

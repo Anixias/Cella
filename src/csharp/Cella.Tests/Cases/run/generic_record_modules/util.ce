@@ -7,7 +7,7 @@ cell[T]: rec
 
 	new: op(own value: T)
 	{
-		self.value = value
+		self.value = own value
 		self.hits = 1
 	}
 }

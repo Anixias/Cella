@@ -19,11 +19,11 @@ probe[T]: rec
 
 offset[T]: fun(own value: T) -> usize
 {
-	var p = probe[T](0, value)
+	var p = probe[T](0, own value)
 	ret usize(@p.value) - usize(@p)
 }
 
-check[T]: fun(own value: T) -> i32 = i32(offset(value) == alignOf(T) && sizeOf(probe[T]) % alignOf(T) == 0)
+check[T]: fun(own value: T) -> i32 = i32(offset(own value) == alignOf(T) && sizeOf(probe[T]) % alignOf(T) == 0)
 
 main: fun -> i32
 {

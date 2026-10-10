@@ -11,7 +11,7 @@ score[T]: fun(value: T) -> i32 = 7
 
 apply: fun(value: i32, change: fun[own i32 -> i32]) -> i32 = change(value)
 
-applyTwice[T]: fun(own value: T, change: fun[own T -> T]) -> T = change(change(value))
+applyTwice[T]: fun(own value: T, change: fun[own T -> T]) -> T = change(change(own value))
 
 call: fun(callback: ext fun[i32 -> i32], value: i32) -> i32 = callback(value)
 

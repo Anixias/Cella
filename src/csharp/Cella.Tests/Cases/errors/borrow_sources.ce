@@ -71,7 +71,7 @@ useAfterMove: fun
 	var buffer = Buffer(1)
 	val view = imm buffer
 	val copy = view
-	val moved = buffer
+	val moved = own buffer
 	printf("%d %d\n", view.id, copy.id)
 }
 
@@ -79,7 +79,7 @@ useAfterMoveIntoCall: fun
 {
 	val bat = Enemy(Buffer(3), 7)
 	val name = imm bat.name
-	take(bat)
+	take(own bat)
 	printf("%d\n", name.id)
 }
 
