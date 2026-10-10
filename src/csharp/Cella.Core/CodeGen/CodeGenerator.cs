@@ -2697,8 +2697,10 @@ public sealed unsafe class CodeGenerator : IDisposable
 		if (type is FunctionType { IsExternal: false })
 		{
 			var environment = LLVMValueRef.CreateConstNull(OpaquePointer);
-			return LLVMValueRef.CreateConstStruct([GetClosureThunk(function, (FunctionType)Substitute(type)),
-				environment], false);
+			return LLVMValueRef.CreateConstStruct([
+				GetClosureThunk(function, (FunctionType)Substitute(type)),
+				environment
+			], false);
 		}
 		
 		return function.Symbol.IsExternal ? GetFunctionValue(function) : GetExternalThunk(function);
