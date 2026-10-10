@@ -110,14 +110,14 @@ public static class StorageSize
 	
 	extension(ISize size)
 	{
-		public uint CountBits(uint pointerSize) => size switch
+		public BigInteger CountBits(uint pointerSize) => size switch
 		{
-			ConstSize s => (uint)s.Value * 8,
+			ConstSize s => s.Value * 8,
 			PointerSize => pointerSize,
 			SumSize s => CountSumBits(s.Sizes, pointerSize),
 			MaxSize s => Align(s.Sizes.Max(s => s.CountBits(pointerSize)), CountMaxAlignmentBits(s.Sizes, pointerSize)),
-			ProductSize s => (uint)(s.Count * s.Size.CountBits(pointerSize)),
-			_ => 0u
+			ProductSize s => s.Count * s.Size.CountBits(pointerSize),
+			_ => BigInteger.Zero
 		};
 		
 		public uint CountAlignmentBits(uint pointerSize) => size switch
@@ -131,9 +131,9 @@ public static class StorageSize
 		};
 	}
 	
-	private static uint CountSumBits(ImmutableArray<ISize> sizes, uint pointerSize)
+	private static BigInteger CountSumBits(ImmutableArray<ISize> sizes, uint pointerSize)
 	{
-		var offset = 0u;
+		var offset = BigInteger.Zero;
 		foreach (var size in sizes)
 			offset = Align(offset, size.CountAlignmentBits(pointerSize)) + size.CountBits(pointerSize);
 		
@@ -143,7 +143,7 @@ public static class StorageSize
 	private static uint CountMaxAlignmentBits(ImmutableArray<ISize> sizes, uint pointerSize) =>
 		sizes.Aggregate(8u, (alignment, size) => Math.Max(alignment, size.CountAlignmentBits(pointerSize)));
 	
-	private static uint Align(uint bits, uint alignment) => (bits + alignment - 1) / alignment * alignment;
+	private static BigInteger Align(BigInteger bits, uint alignment) => (bits + alignment - 1) / alignment * alignment;
 }
 
 public readonly record struct ConstSize(int Value) : ISize;

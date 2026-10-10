@@ -733,17 +733,29 @@ public readonly struct ResolutionContext
 	}
 	
 	private TypeSymbol InstantiateType(NamedTypeSymbol definition, IReadOnlyList<TypeSymbol> arguments,
-		IReadOnlyList<SourceLocation> locations, SourceLocation location) =>
-		CheckGenericArguments(definition.Name, definition.TypeParameters, arguments, locations, location)
-			? TypePool.Instantiate(definition, [..arguments])
-			: NativeSymbols.Invalid;
+		IReadOnlyList<SourceLocation> locations, SourceLocation location)
+	{
+		if (!CheckGenericArguments(definition.Name, definition.TypeParameters, arguments, locations, location))
+			return NativeSymbols.Invalid;
+		
+		var type = TypePool.Instantiate(definition, [..arguments]);
+		if (arguments.Any(static argument => argument is ValueArgumentType))
+			TypePool.SizeChecks.Add((type, location));
+		
+		return type;
+	}
 	
 	private TypeSymbol InstantiateArray(IReadOnlyList<TypeSymbol> arguments, IReadOnlyList<SourceLocation> locations,
-		SourceLocation location) =>
-		CheckGenericArguments("array", TypePool.ArrayParameters, arguments, locations, location) &&
-		arguments is [not InvalidType and var element, not InvalidType and var length]
-			? TypePool.GetArrayType(element, length)
-			: NativeSymbols.Invalid;
+		SourceLocation location)
+	{
+		if (!CheckGenericArguments("array", TypePool.ArrayParameters, arguments, locations, location) ||
+		    arguments is not [not InvalidType and var element, not InvalidType and var length])
+			return NativeSymbols.Invalid;
+		
+		var type = TypePool.GetArrayType(element, length);
+		TypePool.SizeChecks.Add((type, location));
+		return type;
+	}
 	
 	public TypeSymbol ResolveTypeExpression(IExpressionNode expression) =>
 		CheckTypeExpression(expression, TryResolveExpressionAsType(expression));

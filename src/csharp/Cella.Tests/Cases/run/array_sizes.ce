@@ -1,0 +1,36 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Res: rec
+{
+	id: i32
+
+	drop: op
+	{
+		printf("%d ", self.id)
+	}
+}
+
+consume: fun(own item: Res) {}
+
+last: fun(data: ptr[array[u8, 5000000000]]) -> u8 = (*data)[4999999999]
+
+partly: fun(own items: array[Res, 6])
+{
+	consume(own items[1])
+	consume(own items[4])
+}
+
+main: fun -> i32
+{
+	printf("%zu %zu %zu\n", sizeOf(array[u8, 600000000]), sizeOf(array[u64, 1000000000000]),
+		sizeOf(array[u8, 9223372036854775807]))
+
+	partly([Res(0), Res(1), Res(2), Res(3), Res(4), Res(5)])
+	printf("\n")
+	ret 0
+}

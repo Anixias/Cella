@@ -367,8 +367,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 			case ArrayType arrayType:
 			{
 				var elementType = MapTypeSymbol(arrayType.ElementType);
-				var length = (uint)arrayType.Length;
-				var llvmArray = LLVMTypeRef.CreateArray(elementType, length);
+				var llvmArray = LLVMTypeRef.CreateArray2(elementType, (ulong)arrayType.Length);
 				current.Types[symbol] = llvmArray;
 				return llvmArray;
 			}
@@ -716,6 +715,25 @@ public sealed unsafe class CodeGenerator : IDisposable
 				break;
 			}
 			
+			case DropElementsInstruction { Guard: { } guard } i:
+			{
+				var function = builder.InsertBlock.Parent;
+				var dropBlock = function.AppendBasicBlock("drop");
+				var doneBlock = function.AppendBasicBlock("drop_done");
+				builder.BuildCondBr(EmitValue(guard, builder), dropBlock, doneBlock);
+				builder.PositionAtEnd(dropBlock);
+				EmitElementDrops(i, builder);
+				builder.BuildBr(doneBlock);
+				builder.PositionAtEnd(doneBlock);
+				break;
+			}
+			
+			case DropElementsInstruction i:
+			{
+				EmitElementDrops(i, builder);
+				break;
+			}
+			
 			default:
 				throw new InvalidOperationException();
 		}
@@ -856,15 +874,36 @@ public sealed unsafe class CodeGenerator : IDisposable
 		builder.PositionAtEnd(done);
 	}
 	
-	private void EmitArrayDropGlue(ArrayType array, LLVMValueRef address, LLVMBuilderRef builder)
+	private void EmitArrayDropGlue(ArrayType array, LLVMValueRef address, LLVMBuilderRef builder) =>
+		EmitElementDrops(array, address, BigInteger.Zero, array.Length, builder);
+	
+	private void EmitElementDrops(DropElementsInstruction instruction, LLVMBuilderRef builder)
 	{
-		if (array.Length.IsZero)
+		var array = (ArrayType)Substitute(instruction.Array.Type);
+		LLVMValueRef address;
+		if (IsAddressable(instruction.Array))
+		{
+			address = EmitAddress(instruction.Array, builder);
+		}
+		else
+		{
+			address = BuildEntryAlloca(builder, MapTypeSymbol(array), "dropped");
+			builder.BuildStore(EmitValue(instruction.Array, builder), address);
+		}
+		
+		EmitElementDrops(array, address, instruction.Start, instruction.Count, builder);
+	}
+	
+	private void EmitElementDrops(ArrayType array, LLVMValueRef address, BigInteger start, BigInteger count,
+		LLVMBuilderRef builder)
+	{
+		if (count.IsZero || !_typePool.NeedsDrop(Substitute(array.ElementType)))
 			return;
 		
-		var glue = builder.InsertBlock.Parent;
+		var function = builder.InsertBlock.Parent;
 		var entry = builder.InsertBlock;
-		var loop = glue.AppendBasicBlock("loop");
-		var done = glue.AppendBasicBlock("done");
+		var loop = function.AppendBasicBlock("loop");
+		var done = function.AppendBasicBlock("done");
 		var indexType = MapTypeSymbol(NativeSymbols.UIntSize);
 		builder.BuildBr(loop);
 		
@@ -872,10 +911,11 @@ public sealed unsafe class CodeGenerator : IDisposable
 		var index = builder.BuildPhi(indexType, "index");
 		var element = builder.BuildSub(index, LLVMValueRef.CreateConstInt(indexType, 1), "element");
 		var zero = LLVMValueRef.CreateConstInt(indexType, 0);
+		var first = LLVMValueRef.CreateConstInt(indexType, (ulong)start);
 		var elementAddress = builder.BuildGEP2(MapTypeSymbol(array), address, new[] { zero, element }, "elemptr");
 		EmitDropCall(array.ElementType, elementAddress, builder);
-		builder.BuildCondBr(builder.BuildICmp(LLVMIntPredicate.LLVMIntNE, element, zero), loop, done);
-		index.AddIncoming([LLVMValueRef.CreateConstInt(indexType, (ulong)array.Length), element],
+		builder.BuildCondBr(builder.BuildICmp(LLVMIntPredicate.LLVMIntNE, element, first), loop, done);
+		index.AddIncoming([LLVMValueRef.CreateConstInt(indexType, (ulong)(start + count)), element],
 			[entry, builder.InsertBlock], 2);
 		
 		builder.PositionAtEnd(done);
@@ -1141,7 +1181,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 	private LLVMValueRef EmitSizeOf(SizeOfValue v)
 	{
 		var bits = _typePool.SizeTable.GetSize(Substitute(v.Target)).CountBits(_pointerSize * 8);
-		return EmitSizeConstant(new BigInteger((bits + 7) / 8), true);
+		return EmitSizeConstant((bits + 7) / 8, true);
 	}
 	
 	private LLVMValueRef EmitValueParameter(ValueParameterValue v) => Substitute(v.Parameter) is ValueArgumentType value
@@ -1292,7 +1332,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 		table.Initializer = LLVMValueRef.CreateConstStruct(
 		[
 			EmitTypeId(objectType), GetObjectDropGlue(objectType),
-			EmitSizeConstant(new BigInteger((size.CountBits(_pointerSize * 8) + 7) / 8), true),
+			EmitSizeConstant((size.CountBits(_pointerSize * 8) + 7) / 8, true),
 			EmitSizeConstant(new BigInteger((size.CountAlignmentBits(_pointerSize * 8) + 7) / 8), true),
 			call
 		], false);
@@ -1328,7 +1368,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 		table.Initializer = LLVMValueRef.CreateConstStruct(
 		[
 			EmitTypeId(objectType), GetObjectDropGlue(objectType),
-			EmitSizeConstant(new BigInteger((size.CountBits(_pointerSize * 8) + 7) / 8), true),
+			EmitSizeConstant((size.CountBits(_pointerSize * 8) + 7) / 8, true),
 			EmitSizeConstant(new BigInteger((size.CountAlignmentBits(_pointerSize * 8) + 7) / 8), true),
 			..entries
 		], false);
@@ -2029,7 +2069,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 	}
 	
 	private uint CountBits(TypeSymbol type) =>
-		_typePool.SizeTable.GetSize(Substitute(type)).CountBits(_pointerSize * 8);
+		(uint)_typePool.SizeTable.GetSize(Substitute(type)).CountBits(_pointerSize * 8);
 	
 	private LLVMValueRef EmitBinaryOp(BinOpValue v, LLVMBuilderRef builder)
 	{

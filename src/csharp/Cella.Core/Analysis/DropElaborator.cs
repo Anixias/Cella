@@ -61,15 +61,15 @@ public sealed class DropElaborator(TypePool typePool, Action<InitState, MemoryEv
 		function.Blocks[0].Instructions.InsertRange(0, initializers);
 	}
 	
-	private List<DropInstruction> Elaborate(DropInstruction drop, MovePath path, InitState state)
+	private List<IInstruction> Elaborate(DropInstruction drop, MovePath path, InitState state)
 	{
-		var drops = new List<DropInstruction>();
+		var drops = new List<IInstruction>();
 		Elaborate(drop.Value, path, state, drop, null, drops);
 		return drops;
 	}
 	
 	private void Elaborate(Value value, MovePath path, InitState state, DropInstruction origin, Value? guard,
-		List<DropInstruction> drops)
+		List<IInstruction> drops)
 	{
 		if (!typePool.NeedsDrop(path.Type) || state.IsUninitialized(path))
 			return;
@@ -94,6 +94,12 @@ public sealed class DropElaborator(TypePool typePool, Action<InitState, MemoryEv
 		}
 		
 		var own = state.GetOwnState(path);
+		if (path.Type is ArrayType { Length.Sign: >= 0 } array)
+		{
+			ElaborateElements(value, path, array, state, origin, guard, drops);
+			return;
+		}
+		
 		foreach (var (part, child) in GetParts(value, path).Reverse())
 		{
 			if (child is not null)
@@ -102,6 +108,45 @@ public sealed class DropElaborator(TypePool typePool, Action<InitState, MemoryEv
 				drops.Add(CreateDrop(part, origin, own == PathState.Initialized ? guard : And(guard, ReadFlag(path))));
 		}
 	}
+	
+	private void ElaborateElements(Value value, MovePath path, ArrayType array, InitState state, DropInstruction origin,
+		Value? guard, List<IInstruction> drops)
+	{
+		var own = state.GetOwnState(path);
+		var dropsRest = typePool.NeedsDrop(array.ElementType) && own.HasFlag(PathState.Initialized);
+		var restGuard = dropsRest && own != PathState.Initialized ? And(guard, ReadFlag(path)) : guard;
+		var children = path.Children
+			.Select(static child => (Child: child, Index: (child.Projection as IndexProjection)?.Index))
+			.Where(static entry => entry.Index is not null)
+			.OrderByDescending(static entry => entry.Index!.Value);
+		
+		var end = array.Length;
+		foreach (var (child, index) in children)
+		{
+			if (dropsRest)
+				DropElements(value, array, index!.Value + 1, end - index.Value - 1, origin, restGuard, drops);
+			
+			Elaborate(GetElement(value, array, index!.Value), child, state, origin, guard, drops);
+			end = index.Value;
+		}
+		
+		if (dropsRest)
+			DropElements(value, array, BigInteger.Zero, end, origin, restGuard, drops);
+	}
+	
+	private static void DropElements(Value value, ArrayType array, BigInteger start, BigInteger count,
+		DropInstruction origin, Value? guard, List<IInstruction> drops)
+	{
+		if (count.IsZero)
+			return;
+		
+		drops.Add(count.IsOne
+			? CreateDrop(GetElement(value, array, start), origin, guard)
+			: new DropElementsInstruction(value, start, count, origin.SourceLocation, guard));
+	}
+	
+	private static IndexerValue GetElement(Value value, ArrayType array, BigInteger index) =>
+		new(array.ElementType, value, new ConstantValue(NativeSymbols.UIntSize, index), value.SourceLocation);
 	
 	private static DropInstruction CreateDrop(Value value, DropInstruction origin, Value? guard) =>
 		new(value, origin.SourceLocation, guard, origin.IsReassignment);
@@ -139,10 +184,6 @@ public sealed class DropElaborator(TypePool typePool, Action<InitState, MemoryEv
 			.OfType<FieldSymbol>()
 			.Select(field => ((Value)new AccessValue(typePool.GetTypeOfMember(field), value, field,
 				value.SourceLocation), path.GetChild(new FieldProjection(field)))),
-		ArrayType { Length.Sign: >= 0 } array => Enumerable.Range(0, (int)array.Length)
-			.Select(index => ((Value)new IndexerValue(array.ElementType, value,
-					new ConstantValue(NativeSymbols.UIntSize, new BigInteger(index)), value.SourceLocation),
-				path.GetChild(new IndexProjection(index)))),
 		_ => []
 	};
 	

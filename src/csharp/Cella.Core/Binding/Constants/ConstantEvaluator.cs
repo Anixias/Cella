@@ -521,5 +521,5 @@ public sealed class ConstantEvaluator
 		return BigInteger.Clamp(new BigInteger(Math.Truncate(value)), minimum, maximum);
 	}
 	
-	private uint CountBits(TypeSymbol type) => typePool.SizeTable.GetSize(type).CountBits(pointerBitSize);
+	private uint CountBits(TypeSymbol type) => (uint)typePool.SizeTable.GetSize(type).CountBits(pointerBitSize);
 }

@@ -17,6 +17,7 @@ public sealed class TypePool
 	public Action<TypeSymbol>? TypeCompleter { get; set; }
 	public Action<TraitSymbol>? TraitCompleter { get; set; }
 	public Func<BigInteger, IntegerType, bool>? IntegerFits { get; set; }
+	public List<(TypeSymbol Type, SourceLocation Location)> SizeChecks { get; } = [];
 	
 	private readonly Dictionary<TypeSymbol, OrderedDictionary<string, MemberSymbol>> _members = [];
 	private readonly Dictionary<(TypeSymbol, BigInteger), ArrayType> _arrayTypes = [];
@@ -909,6 +910,13 @@ public sealed class TypePool
 		
 		return argument;
 	}
+	
+	public bool IsTooLarge(TypeSymbol type, uint pointerBits) => !ContainsTypeParameters(type) &&
+	                                                             (type is ArrayType { Length: var length } &&
+	                                                              length > ulong.MaxValue ||
+	                                                              SizeTable.TryGetSize(type) is { } size &&
+	                                                              (size.CountBits(pointerBits) + 7) / 8 >=
+	                                                              BigInteger.One << ((int)pointerBits - 1));
 	
 	public TypeSymbol GetLengthArgument(ArrayType array) =>
 		array.LengthParameter ?? (TypeSymbol)GetValueArgument(array.Length);

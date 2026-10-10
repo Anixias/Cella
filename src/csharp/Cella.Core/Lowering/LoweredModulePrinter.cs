@@ -90,6 +90,19 @@ public static class LoweredModulePrinter
 						sb.AppendLine();
 						break;
 					
+					case DropElementsInstruction i:
+						sb.Append("drop ");
+						PrintValue(sb, i.Array);
+						sb.Append($"[{i.Start}..{i.Start + i.Count}]");
+						if (i.Guard is { } elementsGuard)
+						{
+							sb.Append(" if ");
+							PrintValue(sb, elementsGuard);
+						}
+						
+						sb.AppendLine();
+						break;
+					
 					case DropInstruction i:
 						sb.Append("drop ");
 						PrintValue(sb, i.Value);

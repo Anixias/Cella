@@ -1,0 +1,21 @@
+mod test
+
+Holder: rec
+{
+	items: array[u64, 2305843009213693952]
+}
+
+ring[T, N: val usize]: rec
+{
+	items: array[T, N]
+}
+
+take: fun(items: array[u8, 9223372036854775808]) {}
+
+main: fun -> i32
+{
+	var a: array[u16, 4611686018427387904] = undef
+	val n = sizeOf(array[array[u8, 4294967296], 4294967296])
+	val r = ring[u64, 2305843009213693952]()
+	ret 0
+}

@@ -1,0 +1,29 @@
+
+====== array_sizes.ce ======
+
+Error at line 5, column 9
+4 │ {
+5 │     items: array[u64, 2305843009213693952]
+               ╘═════════════════════════════╛ 'array[u64, 2305843009213693952]' is too large
+
+Error at line 13, column 18
+12 │ 
+13 │ take: fun(items: array[u8, 9223372036854775808]) {}
+                      ╘════════════════════════════╛ 'array[u8, 9223372036854775808]' is too large
+
+Error at line 17, column 9
+16 │ {
+17 │     var a: array[u16, 4611686018427387904] = undef
+                ╘═════════════════════════════╛ 'array[u16, 4611686018427387904]' is too large
+
+Error at line 18, column 17
+17 │ var a: array[u16, 4611686018427387904] = undef
+18 │ val n = sizeOf(array[array[u8, 4294967296], 4294967296])
+                    ╘══════════════════════════════════════╛ 'array[array[u8, 4294967296], 4294967296]' is too large
+
+Error at line 19, column 10
+18 │ val n = sizeOf(array[array[u8, 4294967296], 4294967296])
+19 │ val r = ring[u64, 2305843009213693952]()
+             ╘════════════════════════════╛ 'ring[u64, 2305843009213693952]' is too large
+
+[compilation failed]

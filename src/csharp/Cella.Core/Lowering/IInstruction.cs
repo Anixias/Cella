@@ -1,4 +1,5 @@
-﻿using Cella.Core.Symbols;
+﻿using System.Numerics;
+using Cella.Core.Symbols;
 using Cella.Core.Text;
 
 namespace Cella.Core.Lowering;
@@ -39,6 +40,22 @@ public sealed class ExpressionInstruction(Value value) : IInstruction
 {
 	public Value Value { get; } = value;
 	public SourceLocation SourceLocation { get; } = value.SourceLocation;
+}
+
+public sealed class DropElementsInstruction
+(
+	Value array,
+	BigInteger start,
+	BigInteger count,
+	SourceLocation sourceLocation,
+	Value? guard
+) : IInstruction
+{
+	public Value Array { get; } = array;
+	public BigInteger Start { get; } = start;
+	public BigInteger Count { get; } = count;
+	public SourceLocation SourceLocation { get; } = sourceLocation;
+	public Value? Guard { get; } = guard;
 }
 
 public sealed class DropInstruction

@@ -60,6 +60,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	private readonly HashSet<Symbol> _genericReferences = [];
 	private readonly List<ResolvedFunctionNode> _lambdas = [];
 	private readonly List<LambdaFrame> _lambdaFrames = [];
+	private readonly HashSet<SourceLocation> _sizeCheckLocations = [];
 	private IExpressionNode? storeTarget;
 	private List<Action>? _journal;
 	private int _openCheckpoints;
@@ -188,10 +189,22 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		_lambdas.RemoveAll(lambda => lambda.FunctionInfo.File == file);
 		_resolutionContexts.Pop();
 		_extSignatureTypes.ReportDestructors(Diagnostics);
+		ReportTooLargeTypes();
 		
 		var result = new ResolvedFileNode(file, resolvedDeclarations, _importedFunctions.Values, node);
 		_importedFunctions.Clear();
 		return result;
+	}
+	
+	private void ReportTooLargeTypes()
+	{
+		foreach (var (type, location) in _typePool.SizeChecks)
+		{
+			if (_sizeCheckLocations.Add(location) && _typePool.IsTooLarge(type, _pointerBitSize))
+				Diagnostics.Add(new(DiagnosticSeverity.Error, location, $"'{type.Name}' is too large"));
+		}
+		
+		_typePool.SizeChecks.Clear();
 	}
 	
 	public IResolvedDeclarationNode Visit(ConstructorNode node) => ResolveFunction(node, node.Body!);
@@ -3933,7 +3946,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			return new ResolvedInvalidExpressionNode(node);
 		
 		var bits = isAlignment ? size.CountAlignmentBits(_pointerBitSize) : size.CountBits(_pointerBitSize);
-		return new ResolvedLiteralExpressionNode(NativeSymbols.UntypedInteger, new BigInteger((bits + 7) / 8), node);
+		return new ResolvedLiteralExpressionNode(NativeSymbols.UntypedInteger, (bits + 7) / 8, node);
 	}
 	
 	public IResolvedExpressionNode Visit(TypeExpressionNode node) =>
@@ -6572,7 +6585,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		}
 	}
 	
-	private uint CountBits(TypeSymbol type) => _typePool.SizeTable.GetSize(type).CountBits(_pointerBitSize);
+	private uint CountBits(TypeSymbol type) => (uint)_typePool.SizeTable.GetSize(type).CountBits(_pointerBitSize);
 	
 	private IResolvedExpressionNode ApplyResultResolution(IResolvedExpressionNode node,
 		CallableResolution resolution) => resolution.ResultConversion switch
