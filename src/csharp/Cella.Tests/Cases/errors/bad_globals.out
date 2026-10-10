@@ -1,15 +1,15 @@
 
 ====== bad_globals.ce ======
 
-Error at line 10, column 26
+Error at line 10, column 27
  9 │ items: var array[i32, 2] = [1, 2]
 10 │ negative: val array[i32, -1] = []
-                              ╘╛ Array length can't be negative
+                               ^ Cannot convert type 'i32' to 'usize'
 
 Error at line 11, column 28
 10 │ negative: val array[i32, -1] = []
 11 │ fractional: val array[i32, 1.5] = []
-                                ╘═╛ Array length must be an integer
+                                ╘═╛ Cannot convert type 'float literal' to 'usize'
 
 Error at line 12, column 21
 11 │ fractional: val array[i32, 1.5] = []

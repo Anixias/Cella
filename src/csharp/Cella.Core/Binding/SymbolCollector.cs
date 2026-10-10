@@ -23,7 +23,10 @@ public sealed class SymbolCollector : IDeclarationNodeVisitor<Symbol>
 		ImmutableArray<TypeParameterNode> parameters) => parameters
 		.Select(static parameter => new TypeParameterSymbol(parameter.Identifier.Text, parameter.Keywords.Concat(
 			parameter.Constructors.Where(static constructor => constructor.Types.IsEmpty)
-				.Select(static constructor => constructor.Keyword))))
+				.Select(static constructor => constructor.Keyword)))
+		{
+			IsValue = parameter.ValueType is not null
+		})
 		.ToImmutableArray();
 	
 	public void Collect(IDeclarationNode root) => VisitNode(root);

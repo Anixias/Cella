@@ -1,0 +1,94 @@
+
+====== value_parameter_uses.ce ======
+
+Error at line 30, column 9
+29 │ {
+30 │     val x: N = 1
+                ^ 'N' is not a type
+
+Error at line 31, column 10
+30 │ val x: N = 1
+31 │ val y = N()
+             ^ Cannot call a value of type 'usize'
+
+Error at line 32, column 12
+31 │ val y = N()
+32 │ val z = N.length
+               ╘════╛ Type 'usize' has no member 'length'
+
+Error at line 44, column 28
+43 │ {
+44 │     var negative: array[i32, -1] = undef
+                                   ^ Cannot convert type 'i32' to 'usize'
+
+Error at line 45, column 24
+44 │ var negative: array[i32, -1] = undef
+45 │ var typed: array[i32, count] = undef
+                           ╘═══╛ Cannot convert type 'i32' to 'usize'
+
+Error at line 46, column 12
+45 │ var typed: array[i32, count] = undef
+46 │ var bare: array[i32] = [1, 2]
+               ╘════════╛ 'array' takes 2 generic arguments
+
+Error at line 47, column 21
+46 │ var bare: array[i32] = [1, 2]
+47 │ val r = ring[i32, -1]()
+                        ^ Cannot convert type 'i32' to 'usize'
+
+Error at line 48, column 20
+47 │ val r = ring[i32, -1]()
+48 │ val s = ring[i32, count]()
+                       ╘═══╛ Cannot convert type 'i32' to 'usize'
+
+Error at line 49, column 29
+48 │ val s = ring[i32, count]()
+49 │ val t = sizeOf(array[i32, -2])
+                                ^ Cannot convert type 'i32' to 'usize'
+
+Error at line 50, column 27
+49 │ val t = sizeOf(array[i32, -2])
+50 │ val u = ring[i32, 300]().slots()
+                              ╘═══╛ '300' doesn't fit in 'u8'
+
+Error at line 52, column 15
+51 │ var huge: array[i32, 300] = undef
+52 │ val v = huge.doubled()
+                  ╘═════╛ Type 'array[i32, 300]' has no member 'doubled'
+
+Error at line 57, column 15
+56 │ {
+57 │     val a = ring[16, i32]()
+                      ╘╛ '16' is not a type
+
+Error at line 57, column 19
+56 │ {
+57 │     val a = ring[16, i32]()
+                          ╘═╛ 'i32' is not a constant
+
+Error at line 58, column 16
+57 │ val a = ring[16, i32]()
+58 │ val b = small[300]()
+                   ╘═╛ Cannot convert type 'i32' to 'u8'
+
+Error at line 59, column 10
+58 │ val b = small[300]()
+59 │ val c = ring[i32]()
+             ╘═══════╛ 'ring' takes 2 generic arguments
+
+Error at line 60, column 16
+59 │ val c = ring[i32]()
+60 │ val d = small[1.5]()
+                   ╘═╛ Cannot convert type 'float literal' to 'u8'
+
+Error at line 61, column 8
+60 │ val d = small[1.5]()
+61 │ typed[4](1)
+           ^ '4' is not a type
+
+Error at line 63, column 6
+62 │ var big: array[i32, 300] = undef
+63 │ ret tiny(big)
+         ╘══╛ '300' doesn't fit in 'u8'
+
+[compilation failed]

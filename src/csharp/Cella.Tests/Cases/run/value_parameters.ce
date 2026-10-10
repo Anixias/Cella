@@ -1,0 +1,122 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+count: val usize = 2
+
+ring[T: noref, N: val usize]: rec
+{
+	items: array[T, N]
+	used: usize
+
+	push: fun(mut self, own value: T)
+	{
+		self.items[self.used] = own value
+		self.used += 1
+	}
+
+	capacity: get(self) -> usize = N
+}
+
+ring[T: noref, N: val u8]: impl
+{
+	slots: fun(self) -> u8 = N
+}
+
+holder[N: val usize]: rec
+{
+	items: array[i32, N]
+}
+
+Slot[N: val u8]: enum
+{
+	empty
+	full(values: array[i32, N])
+}
+
+Sized[N: val usize]: trait
+{
+	size: fun(self) -> usize
+}
+
+Crate: rec impl Sized[3]
+{
+	value: i32
+
+	size: fun(self) -> usize = 3
+}
+
+sum[N: val usize]: fun(values: array[i32, N]) -> i32
+{
+	var total = 0
+	for value in values
+		total += value
+
+	ret total + i32(N)
+}
+
+echo[N: val usize]: fun(values: array[i32, N]) -> array[i32, N] = values
+
+zeros[N: val usize]: fun -> array[i32, N] = holder[N]().items
+
+scaled[N: val usize]: fun(values: array[i32, N]) -> usize = N * 10
+
+first[T: copy, N: val usize]: fun(values: array[T, N]) -> T = values[0]
+
+make[N: val usize]: fun -> ring[i32, N] = ring[i32, N]()
+
+wrap[N: val usize]: fun(values: array[i32, N]) -> ring[i32, N]
+{
+	var result = make[N]()
+	for value in values
+		result.push(value)
+
+	ret result
+}
+
+measure[T: Sized[3]]: fun(item: T) -> usize = item.size()
+
+records: fun
+{
+	var small = ring[i32, 4]()
+	small.items[3] = 7
+	val other = ring[u8, count * 2]()
+	printf("ring %d %d %d %d %d\n", i32(small.capacity), small.items[3], i32(other.items.length),
+		i32(sizeOf(ring[i64, 3])), i32(small.slots()))
+}
+
+functions: fun
+{
+	val three = [1, 2, 3]
+	val five = [1, 2, 3, 4, 5]
+	val made: array[i32, 4] = zeros()
+	val explicit = zeros[2]()
+	val echoed = echo[3](three)
+	printf("functions %d %d %d %d %d %d %d\n", sum(three), sum(five), i32(made.length), i32(explicit.length),
+		first(five), i32(scaled(three)), echoed[2])
+}
+
+nested: fun
+{
+	val built = wrap([5, 6, 7])
+	val slot = Slot[2].full([8, 9])
+	val second = match slot
+	{
+		full(values) => values[1]
+		empty => 0
+	}
+
+	printf("nested %d %d %d %d %d\n", i32(built.capacity), built.items[2], i32(built.used), second,
+		i32(measure(Crate(1))))
+}
+
+main: fun -> i32
+{
+	records()
+	functions()
+	nested()
+	ret 0
+}

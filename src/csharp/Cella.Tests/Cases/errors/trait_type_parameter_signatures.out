@@ -9,12 +9,12 @@ Error at line 20, column 15
 Error at line 28, column 10
 27 │ 
 28 │ needs[I: Iterator]: fun(items: I) { }
-              ╘══════╛ 'Iterator' takes one type argument
+              ╘══════╛ 'Iterator' takes one generic argument
 
 Error at line 30, column 22
 29 │ 
 30 │ view: fun(items: dyn[Iterator]) { }
-                          ╘══════╛ 'Iterator' takes one type argument
+                          ╘══════╛ 'Iterator' takes one generic argument
 
 Error at line 32, column 24
 31 │ 

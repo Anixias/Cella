@@ -39,7 +39,7 @@ Mode: enum
 
 mode: val Mode = Mode.slow(3)
 size: val i32 = match mode { fast => 4  slow(factor) => factor * 8 }
-table: val array[i32, match Mode.fast { fast => 2  slow(factor) => factor }] = [5, 6]
+table: val array[i32, match Mode.fast { fast => 2  slow(factor) => usize(factor) }] = [5, 6]
 
 damage: fun(role: Role) -> i32 = match role
 {

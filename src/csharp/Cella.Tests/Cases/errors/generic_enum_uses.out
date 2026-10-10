@@ -4,7 +4,7 @@
 Error at line 19, column 12
 18 │ {
 19 │     val bare: option = option[i32].none
-                   ╘════╛ 'option' takes one type argument
+                   ╘════╛ 'option' takes one generic argument
 
 Error at line 20, column 16
 19 │ val bare: option = option[i32].none
@@ -24,12 +24,12 @@ Error at line 22, column 23
 Error at line 23, column 16
 22 │ val missing = option.nothing
 23 │ val statics = option.empty()
-                   ╘════╛ 'option' takes one type argument
+                   ╘════╛ 'option' takes one generic argument
 
 Error at line 24, column 18
 23 │ val statics = option.empty()
 24 │ val arguments = option[i32, i64].none
-                     ╘══════════════╛ 'option' takes one type argument
+                     ╘══════════════╛ 'option' takes one generic argument
 
 Error at line 25, column 31
 24 │ val arguments = option[i32, i64].none
@@ -44,7 +44,7 @@ Error at line 26, column 33
 Error at line 27, column 13
 26 │ val payload = option[i32].some(true)
 27 │ val cast = option(1)
-                ╘════╛ 'option' takes one type argument
+                ╘════╛ 'option' takes one generic argument
 
 Error at line 28, column 24
 27 │ val cast = option(1)

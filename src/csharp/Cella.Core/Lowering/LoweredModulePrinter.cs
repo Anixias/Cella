@@ -198,6 +198,10 @@ public static class LoweredModulePrinter
 					sb.Append("sizeOf(").Append(v.Target.Name).Append(')');
 					break;
 				
+				case ValueParameterValue v:
+					sb.Append(v.Parameter.Name);
+					break;
+				
 				case AlignOfValue v:
 					sb.Append("alignOf(").Append(v.Target.Name).Append(')');
 					break;

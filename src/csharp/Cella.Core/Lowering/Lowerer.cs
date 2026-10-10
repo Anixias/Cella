@@ -1109,6 +1109,9 @@ public sealed class Lowerer
 		public Value Visit(ResolvedSizeOfExpressionNode node) =>
 			new SizeOfValue(node.Target, node.Syntax.SourceLocation);
 		
+		public Value Visit(ResolvedValueParameterExpressionNode node) =>
+			new ValueParameterValue(node.Parameter, node.Type, node.Syntax.SourceLocation);
+		
 		public Value Visit(ResolvedAlignOfExpressionNode node) =>
 			new AlignOfValue(node.Target, node.Syntax.SourceLocation);
 		
@@ -1339,7 +1342,8 @@ public sealed class Lowerer
 		{
 			ResolvedLiteralExpressionNode or ResolvedVarExpressionNode or ResolvedGlobalExpressionNode
 				or ResolvedFunctionReferenceExpressionNode or ResolvedUndefExpressionNode
-				or ResolvedSizeOfExpressionNode or ResolvedAlignOfExpressionNode => false,
+				or ResolvedSizeOfExpressionNode or ResolvedAlignOfExpressionNode
+				or ResolvedValueParameterExpressionNode => false,
 			ResolvedConversionExpressionNode n => MayEmit(n.Source),
 			ResolvedAccessExpressionNode n => IsMaterialized(n.Target) || MayEmit(n.Target),
 			ResolvedIndexerExpressionNode n => IsMaterialized(n.Target) || MayEmit(n.Target) || MayEmit(n.Index),
@@ -1724,7 +1728,7 @@ public sealed class Lowerer
 		private bool IsStable(Value value) => value switch
 		{
 			ConstantValue or ZeroValue or DefaultValue or UndefValue or FunctionReferenceValue or SizeOfValue
-				or AlignOfValue => true,
+				or AlignOfValue or ValueParameterValue => true,
 			VariableValue { Variable.Symbol: LocalVariableSymbol symbol } =>
 				!symbol.IsMutable && !symbol.IsDeferred || _temporaries.Contains(symbol),
 			VariableValue { Variable.Symbol: ParameterSymbol { Mode: ParameterMode.Mut } } => true,

@@ -16,9 +16,12 @@ public sealed class TypePool
 	public SizeTable SizeTable { get; }
 	public Action<TypeSymbol>? TypeCompleter { get; set; }
 	public Action<TraitSymbol>? TraitCompleter { get; set; }
+	public Func<BigInteger, IntegerType, bool>? IntegerFits { get; set; }
 	
 	private readonly Dictionary<TypeSymbol, OrderedDictionary<string, MemberSymbol>> _members = [];
 	private readonly Dictionary<(TypeSymbol, BigInteger), ArrayType> _arrayTypes = [];
+	private readonly Dictionary<(TypeSymbol, TypeParameterSymbol), ArrayType> _parametricArrayTypes = [];
+	private readonly Dictionary<BigInteger, ValueArgumentType> _valueArguments = [];
 	private readonly Dictionary<TypeSymbol, PointerType> _pointerTypes = [];
 	private readonly Dictionary<(TypeSymbol, bool), BorrowType> _borrowTypes = [];
 	private readonly Dictionary<TraitType, DynType> _dynTypes = [];
@@ -217,16 +220,24 @@ public sealed class TypePool
 		if (conformance.Parameters.IsEmpty || conformance.Arguments.IsEmpty)
 			return conformance.Arguments;
 		
-		var map = CreateMap(conformance.Parameters, type.TypeArguments);
+		var map = CreateMap(conformance.Parameters, GetShapeArguments(type));
 		return [..conformance.Arguments.Select(argument => Substitute(argument, map))];
 	}
 	
 	public TraitType GetConformanceTrait(Conformance conformance, TypeSymbol type) =>
 		GetTraitType(conformance.Trait, GetConformanceArguments(conformance, type));
 	
-	private bool Matches(Conformance conformance, TypeSymbol type) =>
-		type is not TypeParameterSymbol && conformance.Target == type.OriginalDefinition &&
-		Satisfies(conformance.Parameters, type.TypeArguments);
+	private bool Matches(Conformance conformance, TypeSymbol type) => type is not TypeParameterSymbol &&
+	                                                                  (conformance.Target is ArrayType
+		                                                                  ? type is ArrayType
+		                                                                  : conformance.Target ==
+		                                                                    type.OriginalDefinition) &&
+	                                                                  Satisfies(conformance.Parameters,
+		                                                                  GetShapeArguments(type));
+	
+	private ImmutableArray<TypeSymbol> GetShapeArguments(TypeSymbol type) => type is ArrayType array
+		? [array.ElementType, GetLengthArgument(array)]
+		: type.TypeArguments;
 	
 	private bool Satisfies(ImmutableArray<TypeParameterSymbol> parameters, ImmutableArray<TypeSymbol> arguments) =>
 		arguments.Length == parameters.Length && FindViolation(parameters, arguments) is null;
@@ -285,7 +296,7 @@ public sealed class TypePool
 		if (witness.Impl is null || FindConformance(self, witness.Impl) is not { } conformance)
 			return [..self.TypeArguments, ..declared];
 		
-		var map = CreateMap(conformance.Parameters, self.TypeArguments);
+		var map = CreateMap(conformance.Parameters, GetShapeArguments(self));
 		return [..witness.Impl.TypeParameters.Select(parameter => map[parameter]), ..declared];
 	}
 	
@@ -635,21 +646,16 @@ public sealed class TypePool
 	public static IReadOnlyDictionary<string, string> BuiltinGenericTypeArguments { get; } =
 		new Dictionary<string, string>
 		{
-			["ptr"] = "one type argument",
-			["array"] = "an element type and an optional length",
+			["ptr"] = "one generic argument",
+			["array"] = "2 generic arguments",
 			["fstr"] = "one trait argument"
 		};
 	
-	public TypeSymbol? ResolveBuiltinGenericType(string name, IReadOnlyList<IGenericArgument> typeArgs) => name switch
-	{
-		"ptr" when typeArgs.Count == 0 => NativeSymbols.VoidPtr,
-		"ptr" when typeArgs is [GenericTypeArgument { Type: { } t }] => GetPointerType(t),
-		"array" when typeArgs is [GenericTypeArgument { Type: { } t }, GenericConstArgument { Value: var v }] =>
-			GetArrayType(t, v),
-		"array" when typeArgs is [GenericTypeArgument { Type: { } t }] =>
-			new ArrayType(t, BigInteger.MinusOne), // Don't use GetArrayType; we don't want to actually create it
-		_ => null
-	};
+	public static ImmutableArray<TypeParameterSymbol> ArrayParameters { get; } =
+	[
+		new("T", []),
+		new("N", []) { IsValue = true, ValueType = NativeSymbols.UIntSize }
+	];
 	
 	private void CreatePointerArithmetic(PointerType ptrType)
 	{
@@ -875,6 +881,38 @@ public sealed class TypePool
 		return arrayType;
 	}
 	
+	public TypeSymbol GetArrayType(TypeSymbol elementType, TypeSymbol length) => length switch
+	{
+		ValueArgumentType { Value.Sign: >= 0 } value => GetArrayType(elementType, value.Value),
+		TypeParameterSymbol { IsValue: true } parameter => GetParametricArrayType(elementType, parameter),
+		_ => NativeSymbols.Invalid
+	};
+	
+	public ArrayType GetParametricArrayType(TypeSymbol elementType, TypeParameterSymbol length)
+	{
+		if (_parametricArrayTypes.TryGetValue((elementType, length), out var existing))
+			return existing;
+		
+		var arrayType = new ArrayType(elementType, BigInteger.MinusOne, length);
+		_parametricArrayTypes[(elementType, length)] = arrayType;
+		CreateArrayMembers(arrayType);
+		ConversionTable.Add(new NativeConversion(GetPointerType(arrayType), GetPointerType(elementType),
+			ConversionKind.Implicit, 1));
+		
+		return arrayType;
+	}
+	
+	public ValueArgumentType GetValueArgument(BigInteger value)
+	{
+		if (!_valueArguments.TryGetValue(value, out var argument))
+			_valueArguments[value] = argument = new ValueArgumentType(value);
+		
+		return argument;
+	}
+	
+	public TypeSymbol GetLengthArgument(ArrayType array) =>
+		array.LengthParameter ?? (TypeSymbol)GetValueArgument(array.Length);
+	
 	public void RegisterRecord(RecordSymbol record) => SizeTable.Register(record, () =>
 	{
 		var fieldSizes = GetMembers(record)
@@ -957,6 +995,8 @@ public sealed class TypePool
 		_ when parameter.IsTrait => IsTraitArgument(argument) || IsFunctionTrait(argument)
 			? null
 			: $"'{argument.Name}' is not a trait",
+		_ when parameter.IsValue => FindValueViolation(parameter, argument),
+		ValueArgumentType or TypeParameterSymbol { IsValue: true } => $"'{argument.Name}' is not a type",
 		_ when IsTraitArgument(argument) => $"'{argument.Name}' is not a type",
 		DynType => $"Cannot use '{argument.Name}' by value",
 		_ when parameter.IsAtomic && !IsAtomic(argument) => $"Cannot access '{argument.Name}' values atomically",
@@ -975,6 +1015,21 @@ public sealed class TypePool
 			$"'{argument.Name}' doesn't implement '{function.Name}'",
 		_ => null
 	};
+	
+	private string? FindValueViolation(TypeParameterSymbol parameter, TypeSymbol argument) =>
+		(argument, parameter.ValueType) switch
+		{
+			(_, null or InvalidType) => null,
+			(ValueArgumentType value, IntegerType type) when IntegerFits?.Invoke(value.Value, type) == false =>
+				$"'{value.Value}' doesn't fit in '{type.Name}'",
+			(ValueArgumentType, _) => null,
+			(TypeParameterSymbol { IsValue: true, ValueType: var type }, var expected)
+				when type is null or InvalidType || type == expected ||
+				     ConversionTable.FindImplicit(type, expected) is not null => null,
+			(TypeParameterSymbol { IsValue: true, ValueType: { } type }, var expected) =>
+				$"Cannot convert type '{type.Name}' to '{expected.Name}'",
+			_ => $"'{argument.Name}' is not a constant"
+		};
 	
 	private FunctionType? FindUnmetFunction(TypeParameterSymbol parameter, TypeSymbol argument,
 		IReadOnlyDictionary<TypeParameterSymbol, TypeSymbol>? map)
@@ -1245,6 +1300,7 @@ public sealed class TypePool
 		NamedTypeSymbol named => named.TypeArguments.SelectMany(FindTypeParameters),
 		PointerType pointer => FindTypeParameters(pointer.BaseType),
 		BorrowType borrow => FindTypeParameters(borrow.Target),
+		ArrayType { LengthParameter: { } length } array => FindTypeParameters(array.ElementType).Append(length),
 		ArrayType array => FindTypeParameters(array.ElementType),
 		FunctionType function => function.ParameterTypes.Append(function.ReturnType).SelectMany(FindTypeParameters),
 		ClosureType closure => closure.CaptureTypes
@@ -1268,7 +1324,7 @@ public sealed class TypePool
 		NamedTypeSymbol named => named.TypeArguments.Any(ContainsTypeParameters),
 		PointerType pointer => ContainsTypeParameters(pointer.BaseType),
 		BorrowType borrow => ContainsTypeParameters(borrow.Target),
-		ArrayType array => ContainsTypeParameters(array.ElementType),
+		ArrayType array => array.LengthParameter is not null || ContainsTypeParameters(array.ElementType),
 		FunctionType function => function.ParameterTypes.Append(function.ReturnType).Any(ContainsTypeParameters),
 		ClosureType closure => closure.CaptureTypes.Any(ContainsTypeParameters) ||
 		                       ContainsTypeParameters(closure.Signature) ||
@@ -1302,7 +1358,8 @@ public sealed class TypePool
 					[..named.TypeArguments.Select(argument => Substitute(argument, map))]),
 				PointerType pointer => GetPointerType(Substitute(pointer.BaseType, map)),
 				BorrowType borrow => GetBorrowType(Substitute(borrow.Target, map), borrow.IsMutable),
-				ArrayType { Length.Sign: < 0 } array => new ArrayType(Substitute(array.ElementType, map), array.Length),
+				ArrayType { LengthParameter: { } length } array =>
+					GetArrayType(Substitute(array.ElementType, map), map.GetValueOrDefault(length, length)),
 				ArrayType array => GetArrayType(Substitute(array.ElementType, map), array.Length),
 				FunctionType function => SubstituteFunctionType(function, map),
 				ClosureType closure => SubstituteClosure(closure, map),
@@ -1345,7 +1402,7 @@ public sealed class TypePool
 			(PointerType a, PointerType b) => TryUnify(a.BaseType, b.BaseType, variables, bindings),
 			(BorrowType a, BorrowType b) => a.IsMutable == b.IsMutable &&
 			                                TryUnify(a.Target, b.Target, variables, bindings),
-			(ArrayType a, ArrayType b) => a.Length == b.Length &&
+			(ArrayType a, ArrayType b) => TryUnify(GetLengthArgument(a), GetLengthArgument(b), variables, bindings) &&
 			                              TryUnify(a.ElementType, b.ElementType, variables, bindings),
 			(FunctionType a, FunctionType b) => a.IsExternal == b.IsExternal && a.IsRef == b.IsRef &&
 			                                    a.ParameterModes.SequenceEqual(b.ParameterModes) &&
@@ -1558,7 +1615,3 @@ public sealed class TypePool
 		public static TypeFacts Plain => new(false, true, true);
 	}
 }
-
-public interface IGenericArgument;
-public sealed record GenericTypeArgument(TypeSymbol Type) : IGenericArgument;
-public sealed record GenericConstArgument(BigInteger Value) : IGenericArgument;

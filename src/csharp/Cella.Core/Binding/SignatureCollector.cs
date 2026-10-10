@@ -15,7 +15,7 @@ namespace Cella.Core.Binding;
 public interface IConstantResolver
 {
 	IResolvedExpressionNode ResolveInitializer(IExpressionNode initializer, TypeSymbol type, ResolutionContext context);
-	Constant? EvaluateConstant(IExpressionNode expression, ResolutionContext context);
+	Constant? EvaluateConstant(IExpressionNode expression, ResolutionContext context, TypeSymbol? targetType);
 }
 
 public sealed class SignatureCollector
@@ -86,6 +86,7 @@ public sealed class SignatureCollector
 		_dependencies = dependencies.ToImmutableArray();
 		_dependencyTable = SignatureTable.Combine(_dependencies.Select(static a => a.SignatureTable));
 		Evaluator = new ConstantEvaluator(typePool, pointerBitSize, GetGlobalValue);
+		typePool.IntegerFits = Evaluator.Fits;
 		Modules = new ModuleIndex(symbolTable, _dependencies.Select(static a => a.SymbolTable));
 	}
 	
@@ -117,7 +118,7 @@ public sealed class SignatureCollector
 		ReportDeferredChecks();
 		ReportBorrowingVariables();
 		CheckConformances();
-		CheckMemberBlocks();
+		CheckImplBlocks();
 		_typePool.TypeCompleter = null;
 		_typePool.TraitCompleter = null;
 	}
@@ -392,6 +393,9 @@ public sealed class SignatureCollector
 		var deferring = context with { DeferConstraintCheck = DeferAlways };
 		for (var i = 0; i < nodes.Length && i < parameters.Length; i++)
 		{
+			if (nodes[i].ValueType is { } valueType)
+				parameters[i].ValueType = ResolveValueType(valueType, context);
+			
 			ReportConstraintConflicts(nodes[i]);
 			var bounds = nodes[i].Traits.Select(deferring.ResolveTraitReference).ToList();
 			ReportRepeatedTraits(nodes[i].Traits, bounds);
@@ -415,6 +419,16 @@ public sealed class SignatureCollector
 			if (!nodes[i].Constructors.IsEmpty)
 				_pendingConstructorBounds.Add((nodes[i], parameters[i], context));
 		}
+	}
+	
+	private TypeSymbol ResolveValueType(ITypeNode node, ResolutionContext context)
+	{
+		var type = context.ResolveType(node);
+		if (type is IntegerType { Kind: not PrimitiveTypeKind.Char } or InvalidType)
+			return type;
+		
+		Diagnostics.Add(new(DiagnosticSeverity.Error, node.SourceLocation, "Value parameters need an integer type"));
+		return NativeSymbols.Invalid;
 	}
 	
 	private void RegisterRequiredTraits(TraitSymbol trait, TraitNode node, ResolutionContext context)
@@ -687,15 +701,18 @@ public sealed class SignatureCollector
 				return named;
 			
 			case NamedTypeSymbol named:
-				Diagnostics.Add(ResolutionContext.ReportTypeArgumentCount(location, named));
+				Diagnostics.Add(ResolutionContext.ReportGenericArgumentCount(location, named));
 				return null;
 			
 			case PrimitiveType primitive when impl.TypeParameters.IsEmpty:
 				return primitive;
 			
 			case PrimitiveType:
-				Diagnostics.Add(new(DiagnosticSeverity.Error, location, $"'{name}' takes no type arguments"));
+				Diagnostics.Add(new(DiagnosticSeverity.Error, location, $"'{name}' takes no generic arguments"));
 				return null;
+			
+			case null when node.Target is IdentifierTypeNode { Token.Text: "array" }:
+				return ResolveArrayImplTarget(impl, node);
 			
 			case null when node.Target is IdentifierTypeNode:
 				Diagnostics.Add(new(DiagnosticSeverity.Error, location, $"Type '{name}' not found in this scope"));
@@ -708,6 +725,22 @@ public sealed class SignatureCollector
 				Diagnostics.Add(new(DiagnosticSeverity.Error, location, $"Cannot implement traits for '{name}'"));
 				return null;
 		}
+	}
+	
+	private TypeSymbol? ResolveArrayImplTarget(ImplSymbol impl, ImplNode node)
+	{
+		var declared = TypePool.ArrayParameters;
+		if (impl.TypeParameters.Length != declared.Length)
+		{
+			Diagnostics.Add(ResolutionContext.ReportGenericArgumentCount(node.Target.SourceLocation, "array",
+				declared.Length));
+			
+			return null;
+		}
+		
+		return ReportParameterViolations(declared, impl, node)
+			? _typePool.GetArrayType(impl.TypeParameters[0], impl.TypeParameters[1])
+			: null;
 	}
 	
 	private void RegisterImplMembers(ImplSymbol impl)
@@ -743,8 +776,8 @@ public sealed class SignatureCollector
 			? context with { TypeParameters = typeParameters }
 			: context;
 	
-	private Constant? EvaluateConstant(IExpressionNode expression, ResolutionContext context) =>
-		constants!.EvaluateConstant(expression, context);
+	private Constant? EvaluateConstant(IExpressionNode expression, ResolutionContext context, TypeSymbol? targetType) =>
+		constants!.EvaluateConstant(expression, context, targetType);
 	
 	private void Complete(Symbol symbol)
 	{
@@ -1295,9 +1328,15 @@ public sealed class SignatureCollector
 		_deferredChecks.Clear();
 	}
 	
-	private void CheckMemberBlocks()
+	private void CheckImplBlocks()
 	{
 		var blocks = _impls.Where(impl => ((ImplNode)_declarations[impl].Node).Traits.IsEmpty).ToList();
+		foreach (var impl in _impls.Except(blocks))
+		{
+			if (GetImplTarget(impl).OriginalDefinition is NamedTypeSymbol named)
+				ReportParameterViolations(named.TypeParameters, impl, (ImplNode)_declarations[impl].Node);
+		}
+		
 		foreach (var impl in blocks)
 			CheckMemberBlock(impl, (ImplNode)_declarations[impl].Node);
 		
@@ -1321,23 +1360,32 @@ public sealed class SignatureCollector
 		
 		var declared = target is NamedTypeSymbol named ? named.TypeParameters : [];
 		var map = TypePool.CreateMap(declared, [..impl.TypeParameters]);
-		var violations = declared
-			.Select((parameter, i) => (Index: i,
-				Message: _typePool.FindConstraintViolation(parameter, impl.TypeParameters[i], map)))
-			.Where(static violation => violation.Message is not null)
-			.ToList();
-		
-		foreach (var (index, message) in violations)
-			Diagnostics.Add(new(DiagnosticSeverity.Error, node.TypeParameters[index].SourceLocation, message!));
-		
-		if (violations.Count == 0 &&
+		if (ReportParameterViolations(declared, impl, node) &&
 		    !declared.Where((parameter, i) => AddsBound(parameter, impl.TypeParameters[i], map)).Any())
 			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Keyword.SourceLocation,
 				"Cannot declare 'impl' blocks that add no bounds"));
 	}
 	
+	private bool ReportParameterViolations(ImmutableArray<TypeParameterSymbol> declared, ImplSymbol impl,
+		ImplNode node)
+	{
+		var map = TypePool.CreateMap(declared, [..impl.TypeParameters]);
+		var isValid = true;
+		for (var i = 0; i < declared.Length; i++)
+		{
+			if (_typePool.FindConstraintViolation(declared[i], impl.TypeParameters[i], map) is not { } message)
+				continue;
+			
+			Diagnostics.Add(new(DiagnosticSeverity.Error, node.TypeParameters[i].SourceLocation, message));
+			isValid = false;
+		}
+		
+		return isValid;
+	}
+	
 	private bool AddsBound(TypeParameterSymbol declared, TypeParameterSymbol block,
 		Dictionary<TypeParameterSymbol, TypeSymbol> map) =>
+		block.IsValue && block.ValueType != declared.ValueType ||
 		block.IsNoref && !declared.IsNoref || block.HasNull && !declared.HasNull || block.IsCopy && !declared.IsCopy ||
 		block.HasDrop && !declared.HasDrop || block.HasNew && !declared.HasNew ||
 		block.IsAtomic && !declared.IsAtomic ||
@@ -1546,6 +1594,7 @@ public sealed class SignatureCollector
 	
 	private void ReportModeOperators(TypeSymbol type, IEnumerable<FunctionNode> operators)
 	{
+		ReportOperatorParameters(operators);
 		var kinds = operators.ToLookup(static o => o.Identifier.Type);
 		ReportDereferences(type, [..kinds[TokenType.OpStar]]);
 		ReportIndexers(type, [..kinds[TokenType.OpOpenBracket]]);
@@ -1731,9 +1780,10 @@ public sealed class SignatureCollector
 				new Diagnostic(DiagnosticSeverity.Error, i.Node.Identifier.SourceLocation, message)));
 		}
 		
-		if (sameModes.Count > 0 || valid is not [var first, var second])
+		if (sameModes.Count > 0 || valid is not [var first, var aligned])
 			return;
 		
+		var second = aligned with { Signature = AlignTypeParameters(first.Node, aligned.Node, aligned.Signature) };
 		if (!HaveSameIndices(first.Signature, second.Signature))
 			Diagnostics.AddRange(valid.Select(static i => new Diagnostic(DiagnosticSeverity.Error,
 				i.Node.Identifier.SourceLocation, "Cannot declare '[]' operators with different parameters")));
@@ -1741,6 +1791,15 @@ public sealed class SignatureCollector
 		if (GetIndexedType(first.Signature) != GetIndexedType(second.Signature))
 			Diagnostics.AddRange(valid.Select(static i => new Diagnostic(DiagnosticSeverity.Error,
 				i.Node.ReturnType!.SourceLocation, "Cannot declare '[]' operators with different target types")));
+	}
+	
+	private FunctionSignature AlignTypeParameters(FunctionNode model, FunctionNode node, FunctionSignature signature)
+	{
+		var from = ((FunctionSymbol)_symbolTable.DeclarationSymbols[node]).DeclaredTypeParameters;
+		var to = ((FunctionSymbol)_symbolTable.DeclarationSymbols[model]).DeclaredTypeParameters;
+		return from.IsEmpty || from.Length != to.Length
+			? signature
+			: _typePool.SubstituteSignature(signature, TypePool.CreateMap(from, [..to]));
 	}
 	
 	private static TypeSymbol GetIndexedType(FunctionSignature signature) =>
@@ -1816,8 +1875,28 @@ public sealed class SignatureCollector
 	private static string DescribeReceiver(ReceiverNode receiver) =>
 		receiver.Mode is { } mode ? $"{mode.Text} self" : "self";
 	
+	private void ReportOperatorParameters(IEnumerable<FunctionNode> operators)
+	{
+		foreach (var node in operators.Where(static node => !node.TypeParameters.IsEmpty))
+		{
+			var function = (FunctionSymbol)_symbolTable.DeclarationSymbols[node];
+			var operands = _builder.Functions[function].Signature.ParameterTypes.Skip(node.Receiver is null ? 0 : 1);
+			var inferred = operands.SelectMany(TypePool.FindTypeParameters).ToHashSet();
+			for (var i = 0; i < node.TypeParameters.Length && i < function.DeclaredTypeParameters.Length; i++)
+			{
+				if (inferred.Contains(function.DeclaredTypeParameters[i]))
+					continue;
+				
+				var parameter = node.TypeParameters[i].Identifier;
+				Diagnostics.Add(new(DiagnosticSeverity.Error, parameter.SourceLocation,
+					$"Cannot infer '{parameter.Text}' from the operands of '{node.Identifier.Text}'"));
+			}
+		}
+	}
+	
 	private void ReportOperators(TypeSymbol type, IEnumerable<FunctionNode> functions)
 	{
+		ReportOperatorParameters(functions.Where(static f => f.Identifier.Type != TokenType.Identifier));
 		foreach (var node in functions.Where(static f => f.Identifier.Type != TokenType.Identifier))
 		{
 			var signature = _builder.Functions[(FunctionSymbol)_symbolTable.DeclarationSymbols[node]].Signature;
@@ -1858,7 +1937,7 @@ public sealed class SignatureCollector
 		if (node.Parameters.FirstOrDefault(static p => p.Mode?.Type == TokenType.KeywordMut) is { } mutParameter)
 			return (mutParameter.SourceLocation, $"Cannot take 'mut' parameters in '{name}' operators");
 		
-		return signature.GetDeclaredType(0) == type || signature.GetDeclaredType(1) == type
+		return type is InvalidType || signature.GetDeclaredType(0) == type || signature.GetDeclaredType(1) == type
 			? null
 			: (node.Identifier.SourceLocation, $"'{name}' operators need a '{type.Name}' parameter");
 	}

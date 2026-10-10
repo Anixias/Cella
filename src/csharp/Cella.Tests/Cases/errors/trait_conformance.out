@@ -81,4 +81,9 @@ Error at line 91, column 11
 91 │ f64: impl Num
                ╘═╛ 'f64' needs 'Num.~'
 
+Error at line 103, column 7
+102 │ 
+103 │ keyed[T]: impl Named
+            ^ 'T' doesn't implement 'Hash'
+
 [compilation failed]

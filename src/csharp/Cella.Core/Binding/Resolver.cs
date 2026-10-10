@@ -99,10 +99,10 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		return result;
 	}
 	
-	public Constant? EvaluateConstant(IExpressionNode expression, ResolutionContext context)
+	public Constant? EvaluateConstant(IExpressionNode expression, ResolutionContext context, TypeSymbol? targetType)
 	{
 		_resolutionContexts.Push(context);
-		var result = VisitNode(expression, null);
+		var result = VisitNode(expression, targetType);
 		_resolutionContexts.Pop();
 		return _evaluator.Evaluate(result);
 	}
@@ -1204,7 +1204,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		if (indexer is null)
 			return ResolveCall(node, name, candidates, target);
 		
-		return ResolveTypeArguments(indexer) is { } typeArguments
+		return ResolveTypeArguments(indexer, candidates) is { } typeArguments
 			? ResolveCall(node, name, candidates, target, typeArguments)
 			: new ResolvedInvalidExpressionNode(node, CurrentTargetType);
 	}
@@ -1490,18 +1490,42 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	}
 	
 	private IResolvedExpressionNode ResolveExplicitCall(CallExpressionNode node, IndexerExpressionNode indexer,
-		string name, FunctionInfo[] functions) => ResolveTypeArguments(indexer) is { } typeArguments
+		string name, FunctionInfo[] functions) => ResolveTypeArguments(indexer, functions) is { } typeArguments
 		? ResolveCall(node, name, [..functions.Select(static info => new FunctionCallable(info))], null, typeArguments)
 		: new ResolvedInvalidExpressionNode(node, CurrentTargetType);
 	
-	private TypeArgumentList? ResolveTypeArguments(IndexerExpressionNode node)
+	private TypeArgumentList? ResolveTypeArguments(IndexerExpressionNode node, IEnumerable<ICallable> candidates) =>
+		ResolveTypeArguments(node, candidates.Select(static candidate => candidate switch
+		{
+			FunctionCallable callable => callable.Info,
+			ReceiverCallable callable => callable.Info,
+			_ => (FunctionInfo?)null
+		}).OfType<FunctionInfo>());
+	
+	private TypeArgumentList? ResolveTypeArguments(IndexerExpressionNode node, IEnumerable<FunctionInfo> functions)
 	{
 		var context = CurrentResolutionContext;
-		var types = node.Arguments.Select(context.ResolveTypeArgumentExpression).ToImmutableArray();
+		var shapes = functions
+			.Select(GetOpenTypeParameters)
+			.Where(open => open.Length == node.Arguments.Length)
+			.ToList();
+		
+		var types = node.Arguments
+			.Select((argument, i) => context.ResolveGenericArgumentExpression(argument, FindSharedParameter(shapes, i)))
+			.ToImmutableArray();
+		
 		return types.Any(static type => type is InvalidType)
 			? null
 			: new(types, [..node.Arguments.Select(static argument => argument.SourceLocation)], node.SourceLocation);
 	}
+	
+	private static TypeParameterSymbol?
+		FindSharedParameter(List<ImmutableArray<TypeParameterSymbol>> shapes, int index) =>
+		shapes is [var first, ..] && shapes.All(shape => shape[index].IsValue == first[index].IsValue &&
+		                                                 shape[index].IsTrait == first[index].IsTrait &&
+		                                                 shape[index].ValueType == first[index].ValueType)
+			? first[index]
+			: null;
 	
 	private ICallable? Specialize(ICallable candidate, string name, IReadOnlyList<IResolvedExpressionNode> args,
 		TypeArgumentList? typeArguments, SourceLocation location, List<Diagnostic> failures)
@@ -1531,7 +1555,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		{
 			if (explicitArguments.Types.Length != open.Length)
 			{
-				failures.Add(ResolutionContext.ReportTypeArgumentCount(explicitArguments.Location, name, open.Length));
+				failures.Add(
+					ResolutionContext.ReportGenericArgumentCount(explicitArguments.Location, name, open.Length));
+				
 				return null;
 			}
 			
@@ -1567,6 +1593,34 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		return candidate is FunctionCallable
 			? new FunctionCallable(instantiated) { IsGeneric = true }
 			: new ReceiverCallable(instantiated, instantiated.Signature.ReturnType) { IsGeneric = true };
+	}
+	
+	private FunctionInfo InstantiateLike(FunctionInfo info, FunctionInfo model)
+	{
+		var count = info.Symbol.DeclaredTypeParameters.Length;
+		return GetOpenTypeParameters(info).IsEmpty || model.TypeArguments.Length < count
+			? info
+			: InstantiateDeclared(info, model.TypeArguments.TakeLast(count));
+	}
+	
+	private FunctionInfo? InferConversion(FunctionInfo info, TypeSymbol type, ResolvedLiteralExpressionNode? literal)
+	{
+		var open = GetOpenTypeParameters(info);
+		if (open.IsEmpty)
+			return info;
+		
+		var parameter = info.Signature.ParameterTypes[0];
+		IEnumerable<InferenceInput?> inputs =
+		[
+			literal is null
+				? new InferenceInput(parameter, type)
+				: CreateInferenceInput(parameter, info.Signature.GetMode(0), literal)
+		];
+		
+		var result = _inference.Infer(open, inputs.OfType<InferenceInput>(), info.Signature.ReturnType, null);
+		return result.Succeeded && ReportConstraintViolation(open, result.Arguments, static _ => default, info) is null
+			? InstantiateDeclared(info, result.Arguments)
+			: null;
 	}
 	
 	private static ImmutableArray<TypeParameterSymbol> GetOpenTypeParameters(FunctionInfo info)
@@ -1842,7 +1896,8 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		_ when natural == chosen => 0,
 		(NamedTypeSymbol n, NamedTypeSymbol c) when n.Definition == c.Definition =>
 			n.TypeArguments.Zip(c.TypeArguments, LiteralDistance).Aggregate(0, AddCosts),
-		(ArrayType n, ArrayType c) when n.Length == c.Length => LiteralDistance(n.ElementType, c.ElementType),
+		(ArrayType n, ArrayType c) when n.Length == c.Length && n.LengthParameter == c.LengthParameter =>
+			LiteralDistance(n.ElementType, c.ElementType),
 		(BorrowType n, BorrowType c) when n.IsMutable == c.IsMutable => LiteralDistance(n.Target, c.Target),
 		_ => FindLiteralType(natural)?.MaterializationCost(chosen, MaterializationMode.Overload) ?? int.MaxValue
 	};
@@ -2498,7 +2553,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		if (indexer is null)
 			return ResolveCall(node, access.Member.Text, [..candidates], target);
 		
-		return ResolveTypeArguments(indexer) is { } typeArguments
+		return ResolveTypeArguments(indexer, candidates) is { } typeArguments
 			? ResolveCall(node, access.Member.Text, [..candidates], target, typeArguments)
 			: new ResolvedInvalidExpressionNode(node, CurrentTargetType);
 	}
@@ -2561,7 +2616,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		if (indexer is null)
 			return ResolveCall(node, GetName(access), [..candidates], null);
 		
-		return ResolveTypeArguments(indexer) is { } typeArguments
+		return ResolveTypeArguments(indexer, candidates) is { } typeArguments
 			? ResolveCall(node, GetName(access), [..candidates], null, typeArguments)
 			: new ResolvedInvalidExpressionNode(node, CurrentTargetType);
 	}
@@ -2842,7 +2897,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		if (indexer is null)
 			return ResolveCall(node, name, candidates, receiver);
 		
-		return ResolveTypeArguments(indexer) is { } typeArguments
+		return ResolveTypeArguments(indexer, candidates) is { } typeArguments
 			? ResolveCall(node, name, candidates, receiver, typeArguments)
 			: new ResolvedInvalidExpressionNode(node, CurrentTargetType);
 	}
@@ -3061,7 +3116,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		var receiver = call.Arguments[0];
 		if (FindPlaceOperator(receiver.Type, name, ParameterMode.Mut) is { } writer)
 		{
-			var info = GetFunctionInfo(writer, receiver.Type);
+			var info = InstantiateLike(GetFunctionInfo(writer, receiver.Type), call.Function);
 			TrackFunctionUse(info, call.Syntax);
 			return Decay(new ResolvedFunctionCallExpressionNode(info,
 				[CreateReceiver(receiver, info), ..call.Arguments.Skip(1)], call.Syntax));
@@ -3155,14 +3210,19 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		if (methods.Length == 0)
 			return null;
 		
-		if (ResolveTypeArguments(node) is not { } typeArguments)
+		FunctionInfo[] declared =
+		[
+			..methods.Select(method =>
+				owner is null ? GetFunctionInfo(method.Function) : GetFunctionInfo(method, owner))
+		];
+		
+		if (ResolveTypeArguments(node, declared) is not { } typeArguments)
 			return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
 		
 		var name = GetName(node.Target);
 		var infos = new List<FunctionInfo>();
-		foreach (var method in methods)
+		foreach (var info in declared)
 		{
-			var info = owner is null ? GetFunctionInfo(method.Function) : GetFunctionInfo(method, owner);
 			var open = GetOpenTypeParameters(info);
 			if (open.Length != typeArguments.Types.Length)
 				continue;
@@ -3180,9 +3240,10 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		
 		var location = node.SourceLocation;
 		return Error(node, methods is [var single]
-			? ResolutionContext.ReportTypeArgumentCount(location, name, single.Function.DeclaredTypeParameters.Length)
+			? ResolutionContext.ReportGenericArgumentCount(location, name,
+				single.Function.DeclaredTypeParameters.Length)
 			: new(DiagnosticSeverity.Error, location,
-				$"No overload of '{name}' takes {typeArguments.Types.Length} type arguments"), CurrentTargetType);
+				$"No overload of '{name}' takes {typeArguments.Types.Length} generic arguments"), CurrentTargetType);
 	}
 	
 	private IResolvedExpressionNode ResolveIndexing(IndexerExpressionNode node, IResolvedExpressionNode target)
@@ -3256,6 +3317,29 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		if (node.Arguments.Length != parameterTypes.Length - 1)
 			return RejectIndexing(node, Error(node, DescribeIndexCount(type, parameterTypes.Length - 1),
 				CurrentTargetType));
+		
+		if (!GetOpenTypeParameters(info).IsEmpty)
+		{
+			var checkpoint = OpenCheckpoint();
+			var trial = node.Arguments.Select(argument => VisitNode(argument, null)).ToList();
+			if (AnyInvalid([..trial]))
+			{
+				Commit(checkpoint);
+				return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
+			}
+			
+			Rollback(checkpoint);
+			var failures = new List<Diagnostic>();
+			if (Specialize(new ReceiverCallable(info, info.Signature.ReturnType), "[]", trial, null,
+				    node.SourceLocation, failures) is not ReceiverCallable specialized)
+			{
+				Diagnostics.AddRange(failures);
+				return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
+			}
+			
+			info = specialized.Info;
+			parameterTypes = info.Signature.ParameterTypes;
+		}
 		
 		var indices = node.Arguments.Select((argument, i) => VisitNode(argument, parameterTypes[i + 1])).ToList();
 		if (AnyInvalid([..indices]))
@@ -3958,6 +4042,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			case ModulePathSymbol:
 				return Error(node, $"'{GetName(node)}' is a module, not a value", CurrentTargetType);
 			
+			case TypeParameterSymbol { IsValue: true } parameter:
+				return new ResolvedValueParameterExpressionNode(parameter, node);
+			
 			case TraitSymbol or TypeParameterSymbol { IsTrait: true }:
 				return Error(node, "Cannot use traits as values", CurrentTargetType);
 			
@@ -4112,22 +4199,12 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			type = null;
 		
 		IResolvedExpressionNode? initializer;
-		if (node.ExpressionNode is { } initializerNode)
-		{
-			initializer = type is null
-				? MaterializeAsDefault(VisitNode(initializerNode, null))
-				: VisitNode(initializerNode, type);
-			
-			if (type is ArrayType a && a.Length < 0 && initializer.Type is ArrayType)
-				type = initializer.Type;
-		}
-		else
-		{
+		if (node.ExpressionNode is not { } initializerNode)
 			initializer = null;
-			
-			if (type is ArrayType a && a.Length < 0)
-				return Error(node, "Unsized array type requires an initializer");
-		}
+		else if (type is null)
+			initializer = MaterializeAsDefault(VisitNode(initializerNode, null));
+		else
+			initializer = VisitNode(initializerNode, type);
 		
 		if (type is null && initializer is not null && BorrowsWhenDeclared(initializer))
 			initializer = new ResolvedBorrowExpressionNode(initializer,
@@ -4279,7 +4356,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		
 		var isMut = node.Mode is not null;
 		var type = source.Type;
-		if (type is ArrayType { Length.Sign: >= 0 } array)
+		if (type is ArrayType array)
 			return ResolveArrayIteration(node, source, array, isMut);
 		
 		if (FindLoopOperators(type, "in") is [_, ..] collection)
@@ -4324,7 +4401,10 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		
 		var index = new LocalVariableSymbol(HiddenName(node.Binding, "index"), NativeSymbols.UIntSize, false);
 		var start = MaterializeLiteral(syntax, NativeSymbols.UIntSize, BigInteger.Zero);
-		var end = MaterializeLiteral(syntax, NativeSymbols.UIntSize, array.Length);
+		var end = array.LengthParameter is { } length
+			? ConvertLength(new ResolvedValueParameterExpressionNode(length, syntax))
+			: MaterializeLiteral(syntax, NativeSymbols.UIntSize, array.Length);
+		
 		var elementType = array.ElementType;
 		var binding = CreateLoopBinding(node.Binding, elementType, isMut || !_typePool.IsCopy(elementType), isMut);
 		var element = binding is null
@@ -4335,6 +4415,12 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		return new(binding, (body, label) => new ResolvedRangeForStatementNode(index, start, end, false,
 			new(sourceSymbol, sourceValue), element, body, label, node));
 	}
+	
+	private IResolvedExpressionNode ConvertLength(IResolvedExpressionNode length) =>
+		length.Type == NativeSymbols.UIntSize || IsInvalid(length)
+			? length
+			: new ResolvedConversionExpressionNode(length,
+				_conversionTable.FindExplicit(length.Type, NativeSymbols.UIntSize)!, length.Syntax);
 	
 	private ForHeader ResolveCollection(ForStatementNode node, IResolvedExpressionNode source,
 		List<MethodSymbol> operators, bool isMut)
@@ -4857,16 +4943,23 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		if (declared.Count == 0)
 			return null;
 		
-		var candidates = declared
+		var accessible = declared
 			.Where(entry => CanAccess(entry.Owner, entry.Method.Function))
 			.Select(entry => new FunctionCallable(GetFunctionInfo(entry.Method, entry.Owner)))
 			.ToArray();
 		
-		if (candidates.Length == 0)
+		if (accessible.Length == 0)
 			return Error(node, ReportHiddenMember(node.Op.SourceLocation, name,
 				declared.Select(static entry => entry.Method.Function)), CurrentTargetType);
 		
 		var args = new[] { left, right };
+		ICallable[] candidates =
+		[
+			..accessible
+				.Select(candidate => Specialize(candidate, name, args, null, node.Op.SourceLocation, []))
+				.OfType<ICallable>()
+		];
+		
 		var resolutionSet = ResolveCallable(candidates, args, MaterializationMode.Overload);
 		if (resolutionSet.IsAmbiguous)
 			return Error(node, $"Ambiguous operation '{name}' between '{left.Type.Name}' and '{right.Type.Name}'",
@@ -4919,6 +5012,13 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		var right = VisitArgument(node.Right, ParameterTypesAt(candidates, 0));
 		if (IsInvalid(right))
 			return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
+		
+		candidates =
+		[
+			..candidates
+				.Select(candidate => Specialize(candidate, name, [right], null, node.Op.SourceLocation, []))
+				.OfType<ICallable>()
+		];
 		
 		var resolutionSet = ResolveCallable(candidates, [right], MaterializationMode.Overload);
 		if (resolutionSet.IsAmbiguous)
@@ -5771,7 +5871,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		if (type is not NamedTypeSymbol { IsGenericDefinition: true } generic || node is IndexerExpressionNode)
 			return type;
 		
-		Diagnostics.Add(ResolutionContext.ReportTypeArgumentCount(node.SourceLocation, generic));
+		Diagnostics.Add(ResolutionContext.ReportGenericArgumentCount(node.SourceLocation, generic));
 		return NativeSymbols.Invalid;
 	}
 	
@@ -6183,6 +6283,8 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			..use == ParameterMode.Mut
 				? []
 				: GetInwardConversions(target)
+					.Select(info => InferConversion(info, type, literal))
+					.OfType<FunctionInfo>()
 					.Select(info => (Info: info,
 						Cost: MatchConversionSource(type, literal, info.Signature.ParameterTypes[0])))
 					.Where(static candidate => candidate.Cost < int.MaxValue)
@@ -6277,7 +6379,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		return
 		[
 			..FindOutwardConversions(value.Type, use, target, true)
-				.Concat(GetInwardConversions(target))
+				.Concat(GetInwardConversions(target)
+					.Select(info => InferConversion(info, value.Type, value as ResolvedLiteralExpressionNode))
+					.OfType<FunctionInfo>())
 				.Select(info => new ConversionCallable(info, target))
 		];
 	}

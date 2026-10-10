@@ -1,11 +1,6 @@
 
 ====== indexer_syntax.ce ======
 
-Error at line 7, column 5
-6 │ 
-7 │ [][T]: op(self, i: T) -> imm[i32] = imm *self.pointer
-       ^ Cannot declare type parameters on operators
-
 Error at line 9, column 6
 8 │ 
 9 │ []: pvt set op(self, i: usize) -> imm[i32] = imm self.pointer[i]

@@ -1,0 +1,81 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+view[T]: ref rec
+{
+	data: pvt ptr[T]
+	length: pvt set usize
+
+	new: op(data: ptr[T], length: usize)
+	{
+		self.data = data
+		self.length = length
+	}
+
+	as[N: val usize]: op(values: array[T, N]) -> view[T] = view[T](@values, N)
+
+	[]: op(self, i: usize) -> imm[T] = imm self.data[i]
+}
+
+Total: rec
+{
+	value: i32
+
+	+[N: val usize]: op(a: Total, values: array[i32, N]) -> Total
+	{
+		var sum = a.value
+		for value in values
+			sum += value
+
+		ret Total(sum)
+	}
+
+	+=[N: val usize]: op(mut self, values: array[i32, N])
+	{
+		for value in values
+			self.value += value
+	}
+}
+
+Grid: rec
+{
+	cells: array[i32, 9]
+
+	[][N: val usize]: op(self, at: array[usize, N]) -> imm[i32] = imm self.cells[at[0] * 3 + at[N - 1]]
+	[][N: val usize]: op(mut self, at: array[usize, N]) -> mut[i32] = mut self.cells[at[0] * 3 + at[N - 1]]
+
+	drop: op
+	{
+	}
+}
+
+sum: fun(values: view[i32]) -> i32
+{
+	var total = 0
+	var i: usize = 0
+	while i < values.length
+	{
+		total += values[i]
+		i += 1
+	}
+
+	ret total
+}
+
+main: fun -> i32
+{
+	val three = [1, 2, 3]
+	val five = [1, 2, 3, 4, 5]
+	printf("views %d %d\n", sum(three), sum(five))
+	val start = Total(1)
+	var total = start + [2, 3]
+	total += [4, 5, 6]
+	var grid = Grid([0, 0, 0, 0, 0, 0, 0, 0, 0])
+	grid[[1, 2]] = 7
+	printf("operators %d %d %d\n", total.value, grid[[1, 2]], grid.cells[5])
+	ret 0
+}

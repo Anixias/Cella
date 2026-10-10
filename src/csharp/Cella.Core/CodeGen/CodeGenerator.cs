@@ -961,6 +961,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 		EnumPayloadValue v => EmitEnumPayload(v, builder),
 		SizeOfValue v => EmitSizeOf(v),
 		AlignOfValue v => EmitAlignOf(v),
+		ValueParameterValue v => EmitValueParameter(v),
 		NewValue v => EmitNew(v, builder),
 		FStrValue v => EmitFStr(v, builder),
 		FStrPartValue v => EmitFStrPart(v, builder),
@@ -1142,6 +1143,10 @@ public sealed unsafe class CodeGenerator : IDisposable
 		var bits = _typePool.SizeTable.GetSize(Substitute(v.Target)).CountBits(_pointerSize * 8);
 		return EmitSizeConstant(new BigInteger((bits + 7) / 8), true);
 	}
+	
+	private LLVMValueRef EmitValueParameter(ValueParameterValue v) => Substitute(v.Parameter) is ValueArgumentType value
+		? EmitIntegerConstant(new IntegerConstant(v.Type, value.Value))
+		: throw new InvalidOperationException($"Value parameter '{v.Parameter.Name}' has no value");
 	
 	private LLVMValueRef EmitAlignOf(AlignOfValue v)
 	{
@@ -2355,7 +2360,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 	{
 		var elemType = MapTypeSymbol(v.Type);
 		
-		switch (v.Target.Type)
+		switch (Substitute(v.Target.Type))
 		{
 			case ArrayType a:
 			{
@@ -2373,7 +2378,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 				
 				var index = EmitValue(v.Index, builder);
 				var zero = LLVMValueRef.CreateConstInt(LLVMTypeRef.Int32, 0);
-				if (!_config.BoundsChecks || a.Length.Sign < 0)
+				if (!_config.BoundsChecks)
 					return (builder.BuildGEP2(arrayType, arrayPtr, new[] { zero, index }, "elemptr"), elemType);
 				
 				var length = LLVMValueRef.CreateConstInt(index.TypeOf, (ulong)a.Length);
@@ -2440,7 +2445,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 			case PropertySymbol { Getter: NativeAccessor getter }:
 				switch (getter.Intrinsic)
 				{
-					case NativeMemberIntrinsic.ArrayLength when v.Target.Type is ArrayType arrayType:
+					case NativeMemberIntrinsic.ArrayLength when Substitute(v.Target.Type) is ArrayType arrayType:
 						return EmitSizeConstant(arrayType.Length, true);
 				}
 				

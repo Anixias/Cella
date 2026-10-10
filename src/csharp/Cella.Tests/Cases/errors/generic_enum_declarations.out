@@ -46,6 +46,6 @@ Error at line 41, column 14
 Error at line 44, column 14
 43 │ 
 44 │ bare: fun(o: option) -> i32 = 0
-                  ╘════╛ 'option' takes one type argument
+                  ╘════╛ 'option' takes one generic argument
 
 [compilation failed]

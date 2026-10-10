@@ -139,7 +139,7 @@ public sealed class DropElaborator(TypePool typePool, Action<InitState, MemoryEv
 			.OfType<FieldSymbol>()
 			.Select(field => ((Value)new AccessValue(typePool.GetTypeOfMember(field), value, field,
 				value.SourceLocation), path.GetChild(new FieldProjection(field)))),
-		ArrayType array => Enumerable.Range(0, (int)array.Length)
+		ArrayType { Length.Sign: >= 0 } array => Enumerable.Range(0, (int)array.Length)
 			.Select(index => ((Value)new IndexerValue(array.ElementType, value,
 					new ConstantValue(NativeSymbols.UIntSize, new BigInteger(index)), value.SourceLocation),
 				path.GetChild(new IndexProjection(index)))),

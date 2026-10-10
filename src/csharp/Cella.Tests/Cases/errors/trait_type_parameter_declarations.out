@@ -29,12 +29,12 @@ Error at line 39, column 24
 Error at line 44, column 16
 43 │ 
 44 │ Bare: rec impl Iterator
-                    ╘══════╛ 'Iterator' takes one type argument
+                    ╘══════╛ 'Iterator' takes one generic argument
 
 Error at line 48, column 17
 47 │ 
 48 │ Extra: rec impl Hash[i32]
-                     ╘═══════╛ 'Hash' takes no type arguments
+                     ╘═══════╛ 'Hash' takes no generic arguments
 
 Error at line 52, column 28
 51 │ 

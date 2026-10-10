@@ -1,0 +1,60 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Eq: trait
+{
+	==: op(a: Self, b: Self) -> bool
+}
+
+Counted: trait
+{
+	count: fun(self) -> usize
+}
+
+i32: impl Eq
+
+array[T: Eq, N: val usize]: impl Eq
+{
+	==: op(a: array[T, N], b: array[T, N]) -> bool
+	{
+		for i in 0..N
+		{
+			if !(a[i] == b[i])
+				ret false
+		}
+
+		ret true
+	}
+}
+
+array[T, N: val usize]: impl Counted
+{
+	count: fun(self) -> usize = N
+}
+
+Short: trait
+{
+	doubled: fun(self) -> u8
+}
+
+array[T, N: val u8]: impl Short
+{
+	doubled: fun(self) -> u8 = N * 2
+}
+
+same[T: Eq]: fun(a: T, b: T) -> bool = a == b
+
+counted[T: Counted]: fun(item: T) -> usize = item.count()
+
+main: fun -> i32
+{
+	printf("%d %d %d\n", i32(same([1, 2], [1, 2])), i32(same([1, 2, 3], [1, 2, 4])),
+		i32(same([[1, 2], [3, 4]], [[1, 2], [3, 4]])))
+
+	printf("%d %d %d\n", i32(counted([7, 8, 9])), i32([1, 2, 3, 4].count()), i32([5, 6].doubled()))
+	ret 0
+}

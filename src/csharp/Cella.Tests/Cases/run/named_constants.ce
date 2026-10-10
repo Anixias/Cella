@@ -51,7 +51,7 @@ main: fun -> i32
 {
 	var values: array[i32, size] = [1, 2, 3]
 	var buffer = Buffer()
-	val count = 2
+	val count: usize = 2
 	var small: array[u8, count + 1]
 	printf("%d %d %zu %zu %zu %zu\n", sum(values), buffer.data[5], buffer.data.length, small.length, pairSize,
 		sizeOf(Holder))
@@ -62,7 +62,7 @@ main: fun -> i32
 		total(table))
 
 	val point = Point(5, 7)
-	var grid: array[u8, point.y]
+	var grid: array[u8, usize(point.y)]
 	printf("%d %d %d %d %zu\n", handler(21), handlers[0](4), handlers[1](-7), point.x, grid.length)
 	ret 0
 }

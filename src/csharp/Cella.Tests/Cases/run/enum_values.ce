@@ -51,7 +51,7 @@ Team: enum(i32)
 
 limit: val i32 = 40
 early: val i32 = i32(Late.b) + i32(Result(2))
-lengths: val array[u8, i32(Late.b)] = [1, 2, 3, 4, 5, 6, 7]
+lengths: val array[u8, usize(Late.b)] = [1, 2, 3, 4, 5, 6, 7]
 back: val Result = Result(-1)
 
 Late: enum

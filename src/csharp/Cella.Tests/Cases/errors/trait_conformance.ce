@@ -90,4 +90,19 @@ Pair: rec impl Make
 
 f64: impl Num
 
+keyed[T: Hash]: rec
+{
+	key: T
+}
+
+Named: trait
+{
+	name: fun(self) -> i32
+}
+
+keyed[T]: impl Named
+{
+	name: fun(self) -> i32 = 0
+}
+
 main: fun -> i32 = 0

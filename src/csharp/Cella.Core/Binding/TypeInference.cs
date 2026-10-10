@@ -301,6 +301,9 @@ public sealed class TypeInference(TypePool typePool)
 				
 				case (ArrayType p, ArrayType a):
 					Unify(p.ElementType, a.ElementType, true);
+					if (p.LengthParameter is { } length)
+						Unify(length, typePool.GetLengthArgument(a), true);
+					
 					break;
 				
 				case (NamedTypeSymbol p, NamedTypeSymbol a) when p.Definition == a.Definition:
@@ -348,7 +351,8 @@ public sealed class TypeInference(TypePool typePool)
 			NamedTypeSymbol named => named.TypeArguments.Any(Mentions),
 			PointerType pointer => Mentions(pointer.BaseType),
 			BorrowType borrow => Mentions(borrow.Target),
-			ArrayType array => Mentions(array.ElementType),
+			ArrayType array => array.LengthParameter is { } length && parameters.Contains(length) ||
+			                   Mentions(array.ElementType),
 			FunctionType function => function.ParameterTypes.Append(function.ReturnType).Any(Mentions),
 			_ => false
 		};

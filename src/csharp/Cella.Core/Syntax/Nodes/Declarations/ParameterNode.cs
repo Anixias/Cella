@@ -34,6 +34,7 @@ public sealed class TypeParameterNode
 	public ImmutableArray<Token> Keywords { get; } = keywords.ToImmutableArray();
 	public ImmutableArray<ITypeNode> Traits { get; } = traits.ToImmutableArray();
 	public ImmutableArray<ConstructorConstraintNode> Constructors { get; } = constructors.ToImmutableArray();
+	public ITypeNode? ValueType { get; init; }
 }
 
 public sealed class ConstructorConstraintNode

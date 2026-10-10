@@ -414,7 +414,14 @@ public sealed class FileParser
 			var keywords = new List<Token>();
 			var traits = new List<ITypeNode>();
 			var constructors = new List<ConstructorConstraintNode>();
-			if (Match(ref index, TokenType.OpColon))
+			ITypeNode? valueType = null;
+			var hasConstraints = Match(ref index, TokenType.OpColon);
+			if (hasConstraints && Match(ref index, TokenType.KeywordVal))
+			{
+				if ((valueType = ParseConstraintType(ref index)) is null)
+					return null;
+			}
+			else if (hasConstraints)
 			{
 				do
 				{
@@ -442,7 +449,7 @@ public sealed class FileParser
 				} while (Match(ref index, TokenType.OpPlus));
 			}
 			
-			parameters.Add(new(name, keywords, traits, constructors));
+			parameters.Add(new(name, keywords, traits, constructors) { ValueType = valueType });
 		} while (Match(ref index, TokenType.OpComma));
 		
 		if (Match(ref index, TokenType.OpCloseBracket))
@@ -1622,7 +1629,7 @@ public sealed class FileParser
 			return true;
 		}
 		
-		if (Peek(index + 1, TokenType.OpColon) &&
+		if ((Peek(index + 1, TokenType.OpColon) || Peek(index + 1, TokenType.OpOpenBracket)) &&
 		    Match(ref index, out symbol, _conversionKeywords, TokenType.KeywordAs))
 			return true;
 		
@@ -1639,11 +1646,13 @@ public sealed class FileParser
 	}
 	
 	private FunctionNode? ParseOperatorMember(ref int index, Token symbol, Token? block) =>
-		RejectTypeParameters(ref index, "operators")
-			? ParseDeclaration(ref index, symbol, "operator", (ref i) => ParseOperator(ref i, symbol, block))
+		ParseTypeParameters(ref index) is { } typeParameters
+			? ParseDeclaration(ref index, symbol, "operator",
+				(ref i) => ParseOperator(ref i, symbol, block, typeParameters))
 			: null;
 	
-	private FunctionNode? ParseOperator(ref int index, Token symbol, Token? block)
+	private FunctionNode? ParseOperator(ref int index, Token symbol, Token? block,
+		List<TypeParameterNode> typeParameters)
 	{
 		if (!Match(ref index, TokenType.OpColon))
 			return null;
@@ -1651,7 +1660,7 @@ public sealed class FileParser
 		var modifiers = ParseMemberModifiers(ref index, block);
 		RejectWriteRestriction(modifiers, "operators");
 		return Match(ref index, _memberContextualKeywords, TokenType.KeywordOp)
-			? ParseFunction(ref index, symbol, modifiers, false, [])
+			? ParseFunction(ref index, symbol, modifiers, false, typeParameters)
 			: null;
 	}
 	

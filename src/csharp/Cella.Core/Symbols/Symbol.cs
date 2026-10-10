@@ -162,6 +162,8 @@ public sealed class TypeParameterSymbol(string name, IEnumerable<Token> keywords
 	public bool HasDrop => Has(TokenType.KeywordDrop);
 	public bool HasNew => Has(TokenType.KeywordNew);
 	public bool IsTrait => Has(TokenType.KeywordTrait);
+	public bool IsValue { get; init; }
+	public TypeSymbol? ValueType { get; internal set; }
 	
 	private bool Has(TokenType keyword) => _keywords.Any(token => token.Type == keyword);
 }
@@ -529,13 +531,20 @@ public sealed class FStrType(DynType value) : TypeSymbol($"fstr[{value.TraitName
 	public DynType Value { get; } = value;
 }
 
-public sealed class ArrayType(TypeSymbol elementType, BigInteger length)
-	: TypeSymbol(length.Sign < 0 ? $"array[{elementType.Name}]" : $"array[{elementType.Name}, {length}]"),
-		IPrimitiveType
+public sealed class ArrayType(TypeSymbol elementType, BigInteger length, TypeParameterSymbol? lengthParameter = null)
+	: TypeSymbol(lengthParameter is not null
+		? $"array[{elementType.Name}, {lengthParameter.Name}]"
+		: $"array[{elementType.Name}, {length}]"), IPrimitiveType
 {
 	public TypeSymbol ElementType { get; } = elementType;
 	public BigInteger Length { get; } = length;
+	public TypeParameterSymbol? LengthParameter { get; } = lengthParameter;
 	public PrimitiveTypeKind Kind { get; } = PrimitiveTypeKind.Array;
+}
+
+public sealed class ValueArgumentType(BigInteger value) : TypeSymbol(value.ToString())
+{
+	public BigInteger Value { get; } = value;
 }
 
 public abstract class VariableSymbol(string name) : Symbol(name);

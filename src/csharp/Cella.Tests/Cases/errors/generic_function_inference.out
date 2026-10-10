@@ -14,12 +14,12 @@ Error at line 22, column 10
 Error at line 23, column 10
 22 │ val b = same(count, true)
 23 │ val c = identity[i32, i64](1)
-             ╘════════════════╛ 'identity' takes one type argument
+             ╘════════════════╛ 'identity' takes one generic argument
 
 Error at line 24, column 10
 23 │ val c = identity[i32, i64](1)
 24 │ val d = plain[i32](1)
-             ╘════════╛ 'plain' takes no type arguments
+             ╘════════╛ 'plain' takes no generic arguments
 
 Error at line 25, column 10
 24 │ val d = plain[i32](1)

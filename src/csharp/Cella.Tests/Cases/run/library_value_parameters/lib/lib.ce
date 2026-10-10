@@ -1,0 +1,28 @@
+mod lib
+
+ring[T, N: val usize]: pub rec
+{
+	items: array[T, N]
+	used: usize
+
+	capacity: get(self) -> usize = N
+}
+
+total[N: val usize]: pub fun(values: array[i32, N]) -> i32
+{
+	var sum = 0
+	for value in values
+		sum += value
+
+	ret sum
+}
+
+Measured: pub trait
+{
+	measure: fun(self) -> usize
+}
+
+array[T, N: val usize]: impl Measured
+{
+	measure: fun(self) -> usize = N * 100
+}

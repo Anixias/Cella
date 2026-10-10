@@ -1,0 +1,64 @@
+mod test
+
+ring[T, N: val usize]: rec
+{
+	items: array[T, N]
+}
+
+ring[T, N: val u8]: impl
+{
+	slots: fun(self) -> u8 = N
+}
+
+Short: trait
+{
+	doubled: fun(self) -> u8
+}
+
+array[T, N: val u8]: impl Short
+{
+	doubled: fun(self) -> u8 = N * 2
+}
+
+small[N: val u8]: rec
+{
+	items: array[i32, N]
+}
+
+misuse[N: val usize]: fun -> usize
+{
+	val x: N = 1
+	val y = N()
+	val z = N.length
+	ret N
+}
+
+typed[T]: fun(value: T) {}
+
+tiny[N: val u8]: fun(values: array[i32, N]) -> i32 = 0
+
+count: val i32 = 3
+
+lengths: fun
+{
+	var negative: array[i32, -1] = undef
+	var typed: array[i32, count] = undef
+	var bare: array[i32] = [1, 2]
+	val r = ring[i32, -1]()
+	val s = ring[i32, count]()
+	val t = sizeOf(array[i32, -2])
+	val u = ring[i32, 300]().slots()
+	var huge: array[i32, 300] = undef
+	val v = huge.doubled()
+}
+
+main: fun -> i32
+{
+	val a = ring[16, i32]()
+	val b = small[300]()
+	val c = ring[i32]()
+	val d = small[1.5]()
+	typed[4](1)
+	var big: array[i32, 300] = undef
+	ret tiny(big)
+}

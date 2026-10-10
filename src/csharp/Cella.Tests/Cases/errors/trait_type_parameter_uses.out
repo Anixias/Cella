@@ -19,7 +19,7 @@ Error at line 65, column 2
 Error at line 66, column 2
 65 │ sum(mut words)
 66 │ Iterator(words).next()
-     ╘══════╛ 'Iterator' takes one type argument
+     ╘══════╛ 'Iterator' takes one generic argument
 
 Error at line 67, column 16
 66 │ Iterator(words).next()
@@ -39,6 +39,6 @@ Error at line 69, column 9
 Error at line 70, column 15
 69 │ val x: Iterator[i32] = undef
 70 │ val c = cell[Iterator](1)
-                  ╘══════╛ 'Iterator' takes one type argument
+                  ╘══════╛ 'Iterator' takes one generic argument
 
 [compilation failed]

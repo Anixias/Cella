@@ -1,0 +1,68 @@
+mod test
+
+Eq: trait
+{
+	==: op(a: Self, b: Self) -> bool
+}
+
+grow[N: val usize]: fun(values: array[i32, N]) -> array[i32, N + 1] = undef
+
+doubled[N: val usize]: rec
+{
+	items: array[i32, N * 2]
+}
+
+signed[N: val i32]: rec
+{
+	items: array[i32, N]
+}
+
+floaty[N: val f64]: rec
+{
+	value: i32
+}
+
+lettered[N: val char]: rec
+{
+	value: i32
+}
+
+Vector: rec
+{
+	x: i32
+
+	+[N: val usize]: op(a: Vector, b: Vector) -> Vector = a
+	[][N: val usize]: op(self, i: usize) -> i32 = 0
+}
+
+array[T]: impl Eq
+{
+	==: op(a: array[T, 1], b: array[T, 1]) -> bool = true
+}
+
+Sized: trait
+{
+	size: fun(self) -> usize
+}
+
+array[N: val usize, T]: impl Sized
+{
+	size: fun(self) -> usize = 0
+}
+
+array[T, N: val i32]: impl Sized
+{
+	size: fun(self) -> usize = 0
+}
+
+ring[T, N: val usize]: rec
+{
+	items: array[T, N]
+}
+
+ring[N: val usize, T]: impl Sized
+{
+	size: fun(self) -> usize = 0
+}
+
+main: fun -> i32 = 0

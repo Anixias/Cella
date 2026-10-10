@@ -969,6 +969,10 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool, 
 	{
 	}
 	
+	public void Visit(ResolvedValueParameterExpressionNode node)
+	{
+	}
+	
 	public void Visit(ResolvedAlignOfExpressionNode node)
 	{
 	}

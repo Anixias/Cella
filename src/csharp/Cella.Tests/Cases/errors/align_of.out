@@ -6,10 +6,10 @@ Error at line 17, column 23
 17 │ asDyn: fun -> usize = alignOf(dyn[Shape])
                            ╘═════════════════╛ Cannot use 'dyn[Shape]' by value
 
-Error at line 19, column 25
+Error at line 19, column 39
 18 │ 
 19 │ asArray: fun -> usize = alignOf(array[dyn[Shape], 2])
-                             ╘═══════════════════════════╛ Cannot use 'dyn[Shape]' by value
+                                           ╘════════╛ Cannot use 'dyn[Shape]' by value
 
 Error at line 21, column 33
 20 │ 
@@ -24,7 +24,7 @@ Error at line 23, column 47
 Error at line 25, column 35
 24 │ 
 25 │ asGeneric: fun -> usize = alignOf(box)
-                                       ╘═╛ 'box' takes one type argument
+                                       ╘═╛ 'box' takes one generic argument
 
 Error at line 27, column 32
 26 │ 

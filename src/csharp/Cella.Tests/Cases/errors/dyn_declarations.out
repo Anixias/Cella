@@ -6,10 +6,10 @@ Error at line 20, column 9
 20 │     shape: dyn[Shape]
                 ╘════════╛ Cannot use 'dyn[Shape]' by value
 
-Error at line 21, column 10
+Error at line 21, column 16
 20 │ shape: dyn[Shape]
 21 │ shapes: array[dyn[Shape], 2]
-             ╘══════════════════╛ Cannot use 'dyn[Shape]' by value
+                   ╘════════╛ Cannot use 'dyn[Shape]' by value
 
 Error at line 26, column 19
 25 │ {

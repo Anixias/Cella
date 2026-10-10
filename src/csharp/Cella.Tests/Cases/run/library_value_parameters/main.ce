@@ -1,0 +1,14 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+main: fun -> i32
+{
+	val small = lib.ring[i32, 5]()
+	val values = [1, 2, 3, 4]
+	printf("%d %d %d\n", i32(small.capacity), lib.total(values), i32(values.measure()))
+	ret 0
+}

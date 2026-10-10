@@ -64,7 +64,9 @@ public static class Mangling
 		DynType { Function: { } function } => $"dyn[{MangleFunctionType(function, modules)}]",
 		FStrType { Value.Instance: { } trait } => $"fstr[{MangleTrait(trait, modules)}]",
 		TraitType trait => MangleTrait(trait, modules),
-		ArrayType { Length.Sign: < 0 } array => $"array[{MangleType(array.ElementType, modules)}]",
+		ArrayType { LengthParameter: { } length } array =>
+			$"array[{MangleType(array.ElementType, modules)}, {length.Name}]",
+		ValueArgumentType value => value.Value.ToString(),
 		ArrayType array => $"array[{MangleType(array.ElementType, modules)}, {array.Length}]",
 		FunctionType function => MangleFunctionType(function, modules),
 		ClosureType { Function.TypeArguments.IsDefaultOrEmpty: true } closure => $"own[{closure.DefinitionName}]",
