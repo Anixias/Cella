@@ -117,7 +117,7 @@ public sealed class TypeParser(ImmutableArray<Token> tokens) : BaseParser<ITypeN
 			throw Expected(index, "'fun'");
 		
 		var isExternal = !isRef && Match(ref index, _externalKeywords, TokenType.KeywordExt);
-		if (!Match(ref index, TokenType.KeywordFun))
+		if (!Match(ref index, out var keyword, TokenType.KeywordFun))
 		{
 			index = start;
 			return null;
@@ -144,7 +144,8 @@ public sealed class TypeParser(ImmutableArray<Token> tokens) : BaseParser<ITypeN
 		
 		var (source, range) = first.SourceLocation;
 		range = range.Join(closeBracket.SourceLocation.Range);
-		return new FunctionTypeNode(new(source, range), isExternal, isRef, parameterModes, parameterTypes, returnType);
+		return new FunctionTypeNode(new(source, range), keyword, isExternal, isRef, parameterModes, parameterTypes,
+			returnType);
 	}
 	
 	private IGenericArgumentNode ParseGenericArgument(ref int index)

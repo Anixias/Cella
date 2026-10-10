@@ -2291,6 +2291,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	private bool ReportArgumentModes(IReadOnlyList<ICallable> candidates, IReadOnlyList<IResolvedExpressionNode> args,
 		TypeSymbol? target)
 	{
+		if (ReportMovedFunctionParameters(candidates, args))
+			return true;
+		
 		var relaxed = ResolveCallable(candidates, args, MaterializationMode.Overload, target, true);
 		if (relaxed.Count != 1)
 			return false;
@@ -2298,6 +2301,23 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		var diagnostics = args
 			.Select((arg, i) => ReportArgumentMode(relaxed[0].Callable, i, arg))
 			.OfType<Diagnostic>()
+			.ToList();
+		
+		Diagnostics.AddRange(diagnostics);
+		return diagnostics.Count > 0;
+	}
+	
+	private bool ReportMovedFunctionParameters(IReadOnlyList<ICallable> candidates,
+		IReadOnlyList<IResolvedExpressionNode> args)
+	{
+		if (candidates is not [var callable])
+			return false;
+		
+		var diagnostics = args
+			.Where((arg, i) => i < callable.ParameterTypes.Length &&
+			                   IsMovedFunctionParameter(arg, callable.ParameterTypes[i]))
+			.Select(static arg => new Diagnostic(DiagnosticSeverity.Error, arg.Syntax.SourceLocation,
+				"Cannot move read-only parameters"))
 			.ToList();
 		
 		Diagnostics.AddRange(diagnostics);
@@ -2999,7 +3019,8 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
 		
 		if (!resolutionSet.HasResult)
-			return Error(node, $"'{functionType.Name}' doesn't accept these arguments", CurrentTargetType, node.Target);
+			return Error(node, $"'{GetDisplayName(target)}' doesn't accept these arguments", CurrentTargetType,
+				node.Target);
 		
 		var resolvedArgs = ApplyArgumentResolution(args, resolutionSet[0]);
 		return new ResolvedIndirectCallExpressionNode(target, resolvedArgs, functionType, node);
@@ -3576,6 +3597,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			if (parameter.Type is BorrowTypeNode borrowType)
 				Diagnostics.Add(DiagnosticReporter.ReportBorrowParameter(borrowType, parameter.Identifier.Text,
 					parameter.Mode is not null, false));
+			else if (parameter.Type is FunctionTypeNode { IsRef: true } refType)
+				Diagnostics.Add(DiagnosticReporter.ReportRefFunctionParameter(refType, parameter.Identifier.Text,
+					parameter.Mode is not null, false));
 			
 			if (parameter.Type is { } typeNode)
 				types[i] = _typePool.GetPassedType(outer.ResolveType(typeNode), modes[i]);
@@ -3921,7 +3945,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 				continue;
 			
 			var instantiated = InstantiateDeclared(function, result.Arguments);
-			if (FunctionGroupType.Matches(instantiated, type))
+			if (FunctionGroupType.Matches(instantiated, type, true))
 				return instantiated;
 		}
 		
@@ -5041,6 +5065,17 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		return null;
 	}
 	
+	private static bool IsBorrowedFunctionParameter(IResolvedExpressionNode node) =>
+		node is ResolvedVarExpressionNode { Symbol: ParameterSymbol { Mode: ParameterMode.ReadOnly } } &&
+		node.Type is FunctionType { IsRef: true, IsExternal: false };
+	
+	private bool IsMovedFunctionParameter(IResolvedExpressionNode node, TypeSymbol target) =>
+		IsBorrowedFunctionParameter(node) && node.Type is FunctionType function &&
+		_typePool.GetPlainFunctionType(function) == target;
+	
+	private static string GetDisplayName(IResolvedExpressionNode node) =>
+		IsBorrowedFunctionParameter(node) && node.Type is FunctionType function ? function.PlainName : node.Type.Name;
+	
 	[return: NotNullIfNotNull(nameof(source))]
 	private IResolvedExpressionNode? ApplyImplicitConversion(IResolvedExpressionNode? source, TypeSymbol target)
 	{
@@ -5073,6 +5108,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		
 		if (source is ResolvedFunctionGroupExpressionNode group)
 			return ReportFunctionMismatch(group, target);
+		
+		if (IsMovedFunctionParameter(source, target))
+			return Error(source.Syntax, "Cannot move read-only parameters", target);
 		
 		return Error(source.Syntax, $"Cannot convert type '{source.Type.Name}' to '{target.Name}'", target);
 	}
@@ -6006,7 +6044,8 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		
 		if (arg is ResolvedFunctionGroupExpressionNode group && target is FunctionType functionType)
 			return FindFunction(group.Group, functionType) is { } function
-				? ((function.Symbol.IsExternal == functionType.IsExternal ? 0 : 1) + (functionType.IsRef ? 1 : 0), null)
+				? ((function.Symbol.IsExternal == functionType.IsExternal ? 0 : 1) + (functionType.IsRef ? 1 : 0) +
+				   (FunctionGroupType.Matches(function, functionType) ? 0 : 1), null)
 				: (int.MaxValue, null);
 		
 		if (arg.Type is UntypedType u)

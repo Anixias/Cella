@@ -1,0 +1,60 @@
+
+====== function_parameter_moves.ce ======
+
+Error at line 9, column 18
+8 │ {
+9 │     self.onClick = onClick
+                       ╘═════╛ Cannot move read-only parameters
+
+Error at line 25, column 41
+24 │ get(self) = self.handler
+25 │ set(mut self, value) { self.handler = value }
+                                           ╘═══╛ Cannot move read-only parameters
+
+Error at line 41, column 19
+40 │ {
+41 │     button.onClick = onClick
+                          ╘═════╛ Cannot move read-only parameters
+
+Error at line 46, column 10
+45 │ {
+46 │     saved = onClick
+                 ╘═════╛ Cannot move read-only parameters
+
+Error at line 47, column 7
+46 │ saved = onClick
+47 │ keep(onClick)
+          ╘═════╛ Cannot move read-only parameters
+
+Error at line 48, column 21
+47 │ keep(onClick)
+48 │ val local: fun[] = onClick
+                        ╘═════╛ Cannot move read-only parameters
+
+Error at line 51, column 38
+50 │ 
+51 │ back: fun(onClick: fun[]) -> fun[] = onClick
+                                          ╘═════╛ Cannot move read-only parameters
+
+Error at line 53, column 44
+52 │ 
+53 │ wrap: fun(onClick: fun[]) -> Plain = Plain(onClick)
+                                                ╘═════╛ Cannot move read-only parameters
+
+Error at line 57, column 2
+56 │ {
+57 │     visit(1, 2)
+         ╘═══╛ 'fun[i32]' doesn't accept these arguments
+
+Error at line 62, column 22
+61 │ {
+62 │     val lambda = fun(f: ref fun[i32]) { }
+                             ╘══════════╛ Cannot use borrow types for parameters
+                                        | 'f: fun[i32]' is already a read-only borrow
+
+Error at line 64, column 24
+63 │ val base = 1
+64 │ keep(fun { val copy = base })
+                           ╘══╛ Cannot capture 'base' in 'fun[]'
+
+[compilation failed]

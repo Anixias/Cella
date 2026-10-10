@@ -17,7 +17,7 @@ Handler: rec
 	current: prop fun[i32 -> i32]
 	{
 		get(self) = self.callback
-		set(mut self, value) { self.callback = value }
+		set(mut self, own value) { self.callback = value }
 	}
 
 	run: fun(self, n: i32) -> i32 = self.callback(n) + self.helper()

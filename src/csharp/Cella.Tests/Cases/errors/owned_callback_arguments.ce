@@ -1,0 +1,54 @@
+mod test
+
+Box[T]: rec
+{
+	value: T
+
+	show: fun(self, other: T) -> i32 = 5
+}
+
+Holder: rec
+{
+	value: i32
+
+	new: op(own f: fun[-> i32])
+	{
+		self.value = f()
+	}
+}
+
+fill[T: copy + noref]: fun(mut items: array[T, 3], value: T)
+{
+	items[0] = value
+}
+
+build[T: new(fun[-> i32])]: fun -> i32 = 0
+
+pick[T: copy]: fun(a: T, b: T) -> T = b
+
+look[T]: fun(value: T) -> i32 = 7
+
+forward: fun(mut handlers: array[fun[-> i32], 3], visit: fun[-> i32])
+{
+	fill[fun[-> i32]](mut handlers, visit)
+}
+
+run: fun(callback: fun[-> i32]) -> i32 = callback()
+
+answer: fun -> i32 = 42
+
+saved: var fun[-> i32] = answer
+
+main: fun -> i32
+{
+	var handlers: array[fun[-> i32], 3] = [answer, answer, answer]
+	val base = 3
+	fill[fun[-> i32]](mut handlers, fun = base)
+	saved = pick[fun[-> i32]](answer, fun = base)
+	val box = Box[fun[-> i32]](answer)
+	box.show(fun = base)
+	val borrowing: fun[fun[-> i32] -> i32] = look[fun[-> i32]]
+	val owning: fun[own fun[-> i32] -> i32] = run
+	val back: fun[fun[-> i32] -> i32] = owning
+	ret build[Holder]()
+}

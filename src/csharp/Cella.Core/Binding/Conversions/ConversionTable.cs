@@ -22,13 +22,24 @@ public sealed class ConversionTable
 	
 	// TODO Chaining?
 	public Conversion? FindImplicit(TypeSymbol from, TypeSymbol to) =>
-		_conversions.TryGetValue((from, to), out var conversion) && conversion.Kind == ConversionKind.Implicit
-			? conversion
-			: null;
+		_conversions.TryGetValue((from, to), out var conversion)
+			? conversion.Kind == ConversionKind.Implicit ? conversion : null
+			: FindFunctionConversion(from, to);
 	
 	// TODO Chaining?
 	public Conversion? FindExplicit(TypeSymbol from, TypeSymbol to) =>
-		_conversions.GetValueOrDefault((from, to));
+		_conversions.GetValueOrDefault((from, to)) ?? FindFunctionConversion(from, to);
+	
+	private FreeConversion? FindFunctionConversion(TypeSymbol from, TypeSymbol to)
+	{
+		if (from is not FunctionType source || to is not FunctionType target || source == target ||
+		    !FunctionType.CanStandIn(source, target))
+			return null;
+		
+		var conversion = new FreeConversion(from, to, ConversionKind.Implicit);
+		Add(conversion);
+		return conversion;
+	}
 	
 	public static ConversionTable CreateNative()
 	{

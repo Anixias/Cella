@@ -64,6 +64,19 @@ public static class DiagnosticReporter
 		};
 	}
 	
+	public static Diagnostic ReportRefFunctionParameter(FunctionTypeNode function, string? name, bool hasMode,
+		bool isExternal)
+	{
+		var (source, range) = function.SourceLocation;
+		var target = source.GetText(new TextRange(function.Keyword.SourceLocation.Range.Start, range.End)).ToString();
+		var parameter = name is null ? target : $"{name}: {target}";
+		return new Diagnostic(DiagnosticSeverity.Error, function.SourceLocation,
+			"Cannot use borrow types for parameters")
+		{
+			Hints = hasMode || isExternal ? [] : [$"'{parameter}' is already a read-only borrow"]
+		};
+	}
+	
 	public static Diagnostic ReportUndefinedSymbol(ISyntaxNode node, string missingName,
 		IEnumerable<string> availableNames) =>
 		ReportUndefined(node.SourceLocation, $"Symbol '{missingName}' not found in this scope", missingName,

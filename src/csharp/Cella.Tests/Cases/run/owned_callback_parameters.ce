@@ -1,0 +1,77 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Sink[T]: trait
+{
+	take: fun(self, value: T) -> i32
+}
+
+Store[T: copy + noref]: trait
+{
+	put: fun(self, value: T) -> i32
+}
+
+Caller: rec impl Sink[fun[-> i32]] + Store[fun[-> i32]]
+{
+	base: i32
+
+	take: fun(self, value: fun[-> i32]) -> i32 = value() + self.base
+	put: fun(self, value: fun[-> i32]) -> i32 = value() * self.base
+}
+
+Holder: rec
+{
+	value: i32
+
+	new: op(f: fun[-> i32])
+	{
+		self.value = f()
+	}
+}
+
+fill[T: copy + noref]: fun(mut items: array[T, 3], value: T)
+{
+	items[0] = value
+	items[1] = value
+	items[2] = value
+}
+
+apply[T]: fun(f: fun[T -> i32], x: T) -> i32 = f(x)
+
+look[T]: fun(value: T) -> i32 = 7
+
+build[T: new(own fun[-> i32])]: fun -> T = T(answer)
+
+feed[T, S: Sink[T]]: fun(sink: S, value: T) -> i32 = sink.take(value)
+
+viaDyn: fun(sink: dyn[Sink[fun[-> i32]]]) -> i32 = sink.take(seven)
+
+run: fun(callback: fun[-> i32]) -> i32 = callback() + 1
+
+answer: fun -> i32 = 42
+
+seven: fun -> i32 = 7
+
+main: fun -> i32
+{
+	val caller = Caller(2)
+	val base = 3
+	printf("%d %d %d %d\n", caller.take(answer), caller.take(fun = base), caller.put(seven), viaDyn(caller))
+
+	var handlers: array[fun[-> i32], 3] = [answer, answer, answer]
+	fill(mut handlers, seven)
+	val keep: fun[mut array[fun[-> i32], 3], own fun[-> i32]] = fill[fun[-> i32]]
+	keep(mut handlers, answer)
+	val f: fun[own fun[-> i32] -> i32] = look[fun[-> i32]]
+	printf("%d %d %d %d\n", handlers[0](), apply(run, answer), feed(caller, seven), f(answer))
+
+	val borrowing: fun[fun[-> i32] -> i32] = run
+	val owning: fun[own fun[-> i32] -> i32] = borrowing
+	val named: fun[own fun[-> i32] -> i32] = run
+	printf("%d %d %d\n", owning(seven), named(answer), build[Holder]().value)
+	ret 0
+}

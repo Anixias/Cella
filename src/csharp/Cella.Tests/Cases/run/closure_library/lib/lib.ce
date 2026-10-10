@@ -1,8 +1,8 @@
 mod lib
 
-call[T]: fun(f: ref fun[-> T]) -> T = f()
+call[T]: fun(f: fun[-> T]) -> T = f()
 
-each[T: copy]: pub fun(values: array[T, 3], visit: ref fun[T])
+each[T: copy]: pub fun(values: array[T, 3], visit: fun[T])
 {
 	for value in values
 		visit(value)

@@ -6,6 +6,7 @@ namespace Cella.Core.Syntax.Nodes;
 public sealed class FunctionTypeNode
 (
 	SourceLocation sourceLocation,
+	Token keyword,
 	bool isExternal,
 	bool isRef,
 	IEnumerable<Token?> parameterModes,
@@ -14,6 +15,7 @@ public sealed class FunctionTypeNode
 ) : ITypeNode
 {
 	public SourceLocation SourceLocation { get; } = sourceLocation;
+	public Token Keyword { get; } = keyword;
 	public bool IsExternal { get; } = isExternal;
 	public bool IsRef { get; } = isRef;
 	public ImmutableArray<Token?> ParameterModes { get; } = parameterModes.ToImmutableArray();

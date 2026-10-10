@@ -1,0 +1,35 @@
+mod test
+
+ext
+{
+	register: fun(callback: ref fun[i32])
+}
+
+Holder: rec
+{
+	new: op(f: ref fun[i32])
+	{
+	}
+}
+
+visit: fun(f: ref fun[i32])
+{
+}
+
+keep: fun(own f: ref fun[i32])
+{
+}
+
+change: fun(mut f: ref fun[i32])
+{
+}
+
+typed: fun(f: fun[ref fun[i32]])
+{
+}
+
+build[A: new(ref fun[i32])]: fun
+{
+}
+
+main: fun -> i32 = 0

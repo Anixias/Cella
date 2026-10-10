@@ -80,7 +80,7 @@ Wrapper: rec
 {
 	handler: req Handler
 
-	new: op(f: fun[i32 -> i32])
+	new: op(own f: fun[i32 -> i32])
 	{
 		self.handler.callback = f
 	}

@@ -290,9 +290,15 @@ public sealed class TypePool
 		return _traitConstructors.TryGetValue(trait, out var constructors) ? constructors : [];
 	}
 	
-	public static bool MatchesConstructor(FunctionSignature candidate, FunctionSignature expected) =>
-		candidate.ParameterTypes.SequenceEqual(expected.ParameterTypes) &&
-		Enumerable.Range(0, expected.ParameterTypes.Length).All(i => candidate.GetMode(i) == expected.GetMode(i));
+	public static bool MatchesConstructor(FunctionSignature candidate, FunctionSignature expected,
+		bool allowsOwned = false) => ParametersMatch(candidate, expected, allowsOwned);
+	
+	public static bool ParametersMatch(FunctionSignature candidate, FunctionSignature expected, bool allowsOwned) =>
+		candidate.ParameterTypes.Length == expected.ParameterTypes.Length &&
+		Enumerable.Range(0, expected.ParameterTypes.Length).All(i => allowsOwned
+			? candidate.GetMode(i).CanStandIn(candidate.ParameterTypes[i], expected.GetMode(i),
+				expected.ParameterTypes[i])
+			: candidate.ParameterTypes[i] == expected.ParameterTypes[i] && candidate.GetMode(i) == expected.GetMode(i));
 	
 	public static string DescribeParameters(FunctionSignature constructor) => string.Join(", ",
 		Enumerable.Range(1, constructor.ParameterTypes.Length - 1)
@@ -419,9 +425,10 @@ public sealed class TypePool
 	{
 		var declared = GetConstructors(type);
 		var floor = GetConstructorFloor(type);
-		var match = declared
-			.Where(constructor => constructor.Symbol.Visibility >= floor &&
-			                      MatchesConstructor(constructor.Signature, expected))
+		var visible = declared.Where(constructor => constructor.Symbol.Visibility >= floor).ToList();
+		var match = visible
+			.Where(constructor => MatchesConstructor(constructor.Signature, expected))
+			.Concat(visible.Where(constructor => MatchesConstructor(constructor.Signature, expected, true)))
 			.Select(static constructor => new FunctionWitness(constructor.Symbol, constructor))
 			.FirstOrDefault();
 		
@@ -473,7 +480,7 @@ public sealed class TypePool
 	{
 		InvalidType => true,
 		TypeParameterSymbol parameter => GetParameterConstructors(parameter)
-			.Any(constructor => MatchesConstructor(constructor.Signature, expected)),
+			.Any(constructor => MatchesConstructor(constructor.Signature, expected, true)),
 		_ => FindConstructorWitness(type, expected) is not null
 	};
 	
@@ -595,8 +602,13 @@ public sealed class TypePool
 		return functionType;
 	}
 	
-	public TypeSymbol GetPassedType(TypeSymbol type, ParameterMode mode) =>
-		mode == ParameterMode.Mut && type is not InvalidType ? GetPointerType(type) : type;
+	public TypeSymbol GetPassedType(TypeSymbol type, ParameterMode mode) => (mode, type) switch
+	{
+		(ParameterMode.Mut, not InvalidType) => GetPointerType(type),
+		(ParameterMode.ReadOnly, FunctionType { IsExternal: false, IsRef: false } function) =>
+			GetFunctionType(false, function.ParameterTypes, function.ParameterModes, function.ReturnType, true),
+		_ => type
+	};
 	
 	public PointerType GetPointerType(TypeSymbol baseType)
 	{
@@ -1141,9 +1153,7 @@ public sealed class TypePool
 				BorrowType borrow => GetBorrowType(Substitute(borrow.Target, map), borrow.IsMutable),
 				ArrayType { Length.Sign: < 0 } array => new ArrayType(Substitute(array.ElementType, map), array.Length),
 				ArrayType array => GetArrayType(Substitute(array.ElementType, map), array.Length),
-				FunctionType function => GetFunctionType(function.IsExternal,
-					function.ParameterTypes.Select(parameter => Substitute(parameter, map)), function.ParameterModes,
-					Substitute(function.ReturnType, map), function.IsRef),
+				FunctionType function => SubstituteFunctionType(function, map),
 				_ => type
 			};
 	
@@ -1183,6 +1193,36 @@ public sealed class TypePool
 		};
 	}
 	
+	public FunctionType GetPlainFunctionType(FunctionType function) =>
+		GetFunctionType(function.IsExternal, function.ParameterTypes, function.ParameterModes, function.ReturnType);
+	
+	private FunctionType SubstituteFunctionType(FunctionType function,
+		IReadOnlyDictionary<TypeParameterSymbol, TypeSymbol> map)
+	{
+		var (types, modes) = SubstituteParameters(function.ParameterTypes, function.ParameterModes, map);
+		return GetFunctionType(function.IsExternal, types, modes, Substitute(function.ReturnType, map), function.IsRef);
+	}
+	
+	private (TypeSymbol[] Types, ParameterMode[] Modes) SubstituteParameters(ImmutableArray<TypeSymbol> types,
+		IReadOnlyList<ParameterMode> modes, IReadOnlyDictionary<TypeParameterSymbol, TypeSymbol> map)
+	{
+		var substitutedTypes = new TypeSymbol[types.Length];
+		var substitutedModes = new ParameterMode[types.Length];
+		for (var i = 0; i < types.Length; i++)
+		{
+			var mode = i < modes.Count ? modes[i] : ParameterMode.ReadOnly;
+			var type = Substitute(types[i], map);
+			if (mode == ParameterMode.ReadOnly && types[i] is TypeParameterSymbol &&
+			    type is FunctionType { IsExternal: false, IsRef: false })
+				mode = ParameterMode.Own;
+			
+			substitutedTypes[i] = type;
+			substitutedModes[i] = mode;
+		}
+		
+		return (substitutedTypes, substitutedModes);
+	}
+	
 	private bool TryUnify(ImmutableArray<TypeSymbol> first, ImmutableArray<TypeSymbol> second,
 		OrderedSet<TypeParameterSymbol> variables, Dictionary<TypeParameterSymbol, TypeSymbol> bindings) =>
 		first.Length == second.Length &&
@@ -1203,9 +1243,11 @@ public sealed class TypePool
 	}
 	
 	public FunctionSignature SubstituteSignature(FunctionSignature signature,
-		IReadOnlyDictionary<TypeParameterSymbol, TypeSymbol> map) =>
-		new(signature.ParameterTypes.Select(type => Substitute(type, map)), Substitute(signature.ReturnType, map),
-			signature.IsVariadic, signature.ParameterModes);
+		IReadOnlyDictionary<TypeParameterSymbol, TypeSymbol> map)
+	{
+		var (types, modes) = SubstituteParameters(signature.ParameterTypes, signature.ParameterModes, map);
+		return new(types, Substitute(signature.ReturnType, map), signature.IsVariadic, modes);
+	}
 	
 	public FunctionInfo InstantiateFunction(FunctionInfo function, ImmutableArray<TypeSymbol> typeArguments)
 	{
@@ -1225,8 +1267,7 @@ public sealed class TypePool
 		var instantiated = definition with
 		{
 			MangledName = null,
-			Signature = new FunctionSignature(signature.ParameterTypes.Select(type => Substitute(type, map)),
-				Substitute(signature.ReturnType, map), signature.IsVariadic, signature.ParameterModes),
+			Signature = SubstituteSignature(signature, map),
 			TypeArguments = typeArguments,
 			Declared = signature
 		};

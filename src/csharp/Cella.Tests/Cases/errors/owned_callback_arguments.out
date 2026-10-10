@@ -1,0 +1,39 @@
+
+====== owned_callback_arguments.ce ======
+
+Error at line 33, column 34
+32 │ {
+33 │     fill[fun[-> i32]](mut handlers, visit)
+                                         ╘═══╛ Cannot move read-only parameters
+
+Error at line 46, column 40
+45 │ val base = 3
+46 │ fill[fun[-> i32]](mut handlers, fun = base)
+                                           ╘══╛ Cannot capture 'base' in 'fun[-> i32]'
+
+Error at line 47, column 42
+46 │ fill[fun[-> i32]](mut handlers, fun = base)
+47 │ saved = pick[fun[-> i32]](answer, fun = base)
+                                             ╘══╛ Cannot capture 'base' in 'fun[-> i32]'
+
+Error at line 49, column 17
+48 │ val box = Box[fun[-> i32]](answer)
+49 │ box.show(fun = base)
+                    ╘══╛ Cannot capture 'base' in 'fun[-> i32]'
+
+Error at line 50, column 43
+49 │ box.show(fun = base)
+50 │ val borrowing: fun[fun[-> i32] -> i32] = look[fun[-> i32]]
+                                              ╘═══════════════╛ Cannot convert type 'fun[own fun[-> i32] -> i32]' to 'fun[fun[-> i32] -> i32]'
+
+Error at line 52, column 38
+51 │ val owning: fun[own fun[-> i32] -> i32] = run
+52 │ val back: fun[fun[-> i32] -> i32] = owning
+                                         ╘════╛ Cannot convert type 'fun[own fun[-> i32] -> i32]' to 'fun[fun[-> i32] -> i32]'
+
+Error at line 53, column 12
+52 │ val back: fun[fun[-> i32] -> i32] = owning
+53 │ ret build[Holder]()
+               ╘════╛ 'Holder' has no constructor taking 'fun[-> i32]'
+
+[compilation failed]

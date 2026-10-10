@@ -1,0 +1,43 @@
+
+====== ref_function_parameters.ce ======
+
+Error at line 5, column 26
+4 │ {
+5 │     register: fun(callback: ref fun[i32])
+                                ╘══════════╛ Cannot use borrow types for parameters
+
+Error at line 10, column 13
+ 9 │ {
+10 │     new: op(f: ref fun[i32])
+                    ╘══════════╛ Cannot use borrow types for parameters
+                               | 'f: fun[i32]' is already a read-only borrow
+
+Error at line 15, column 15
+14 │ 
+15 │ visit: fun(f: ref fun[i32])
+                   ╘══════════╛ Cannot use borrow types for parameters
+                              | 'f: fun[i32]' is already a read-only borrow
+
+Error at line 19, column 18
+18 │ 
+19 │ keep: fun(own f: ref fun[i32])
+                      ╘══════════╛ Cannot use borrow types for parameters
+
+Error at line 23, column 20
+22 │ 
+23 │ change: fun(mut f: ref fun[i32])
+                        ╘══════════╛ Cannot use borrow types for parameters
+
+Error at line 27, column 19
+26 │ 
+27 │ typed: fun(f: fun[ref fun[i32]])
+                       ╘══════════╛ Cannot use borrow types for parameters
+                                  | 'fun[i32]' is already a read-only borrow
+
+Error at line 31, column 14
+30 │ 
+31 │ build[A: new(ref fun[i32])]: fun
+                  ╘══════════╛ Cannot use borrow types for parameters
+                             | 'fun[i32]' is already a read-only borrow
+
+[compilation failed]

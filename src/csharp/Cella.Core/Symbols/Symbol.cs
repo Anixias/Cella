@@ -351,28 +351,35 @@ public sealed class FunctionGroupType(string functionName, IEnumerable<FunctionI
 	public string FunctionName { get; } = functionName;
 	public ImmutableArray<FunctionInfo> Functions { get; } = functions.ToImmutableArray();
 	
-	public FunctionInfo? Find(FunctionType type)
+	public FunctionInfo? Find(FunctionType type) => Find(type, false) ?? Find(type, true);
+	
+	private FunctionInfo? Find(FunctionType type, bool allowsOwned)
 	{
 		foreach (var function in Functions)
 		{
-			if (Matches(function, type))
+			if (Matches(function, type, allowsOwned))
 				return function;
 		}
 		
 		return null;
 	}
 	
-	public static bool Matches(FunctionInfo function, FunctionType type)
+	public static bool Matches(FunctionInfo function, FunctionType type, bool allowsOwned = false)
 	{
 		var signature = function.Signature;
 		return !signature.IsVariadic && signature.ReturnType == type.ReturnType &&
-		       signature.ParameterTypes.SequenceEqual(type.ParameterTypes) &&
-		       type.ParameterModes.Select((_, i) => signature.GetMode(i)).SequenceEqual(type.ParameterModes);
+		       signature.ParameterTypes.Length == type.ParameterTypes.Length &&
+		       Enumerable.Range(0, type.ParameterTypes.Length).All(i => allowsOwned
+			       ? signature.GetMode(i).CanStandIn(signature.ParameterTypes[i], type.ParameterModes[i],
+				       type.ParameterTypes[i])
+			       : signature.GetMode(i) == type.ParameterModes[i] &&
+			         signature.ParameterTypes[i] == type.ParameterTypes[i]);
 	}
 	
 	public override int MaterializationCost(TypeSymbol target, MaterializationMode mode) =>
 		target is FunctionType type && Find(type) is { } function
-			? (function.Symbol.IsExternal == type.IsExternal ? 0 : 1) + (type.IsRef ? 1 : 0)
+			? (function.Symbol.IsExternal == type.IsExternal ? 0 : 1) + (type.IsRef ? 1 : 0) +
+			  (Matches(function, type) ? 0 : 1)
 			: int.MaxValue;
 }
 
@@ -383,6 +390,7 @@ public sealed class FunctionType : TypeSymbol
 	public ImmutableArray<TypeSymbol> ParameterTypes { get; }
 	public ImmutableArray<ParameterMode> ParameterModes { get; }
 	public TypeSymbol ReturnType { get; }
+	public string PlainName { get; }
 	
 	public FunctionType(bool isExternal, bool isRef, ImmutableArray<TypeSymbol> parameterTypes,
 		ImmutableArray<ParameterMode> parameterModes, TypeSymbol returnType)
@@ -393,9 +401,16 @@ public sealed class FunctionType : TypeSymbol
 		ParameterTypes = parameterTypes;
 		ParameterModes = parameterModes;
 		ReturnType = returnType;
+		PlainName = isRef ? BuildName(isExternal, false, parameterTypes, parameterModes, returnType) : Name;
 	}
 	
 	public TypeSymbol GetDeclaredType(int index) => ParameterModes[index].GetDeclaredType(ParameterTypes[index]);
+	
+	public static bool CanStandIn(FunctionType source, FunctionType target) =>
+		!source.IsExternal && !target.IsExternal && (!source.IsRef || target.IsRef) &&
+		source.ReturnType == target.ReturnType && source.ParameterTypes.Length == target.ParameterTypes.Length &&
+		Enumerable.Range(0, source.ParameterTypes.Length).All(i => source.ParameterModes[i]
+			.CanStandIn(source.ParameterTypes[i], target.ParameterModes[i], target.ParameterTypes[i]));
 	
 	private static string BuildName(bool isExternal, bool isRef, ImmutableArray<TypeSymbol> parameterTypes,
 		ImmutableArray<ParameterMode> parameterModes, TypeSymbol returnType)
@@ -522,10 +537,20 @@ public static class ParameterModeExtensions
 	public static TypeSymbol GetDeclaredType(this ParameterMode mode, TypeSymbol passedType) =>
 		mode == ParameterMode.Mut && passedType is PointerType pointer ? pointer.BaseType : passedType;
 	
+	public static bool CanStandIn(this ParameterMode mode, TypeSymbol type, ParameterMode expectedMode,
+		TypeSymbol expectedType) =>
+		mode == expectedMode && type == expectedType ||
+		mode == ParameterMode.ReadOnly && expectedMode == ParameterMode.Own &&
+		type is FunctionType { IsRef: true, IsExternal: false } borrowed &&
+		expectedType is FunctionType { IsRef: false, IsExternal: false } owned &&
+		borrowed.ReturnType == owned.ReturnType && borrowed.ParameterTypes.SequenceEqual(owned.ParameterTypes) &&
+		borrowed.ParameterModes.SequenceEqual(owned.ParameterModes);
+	
 	public static string Describe(this ParameterMode mode, TypeSymbol passedType) => mode switch
 	{
 		ParameterMode.Mut => $"mut {mode.GetDeclaredType(passedType).Name}",
 		ParameterMode.Own => $"own {passedType.Name}",
+		_ when passedType is FunctionType function => function.PlainName,
 		_ => passedType.Name
 	};
 }

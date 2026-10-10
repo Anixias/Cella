@@ -1,21 +1,6 @@
 
 ====== lambdas.ce ======
 
-Error at line 14, column 53
-13 │ 
-14 │ add: fun(self, x: i32) -> i32 = apply(fun(y) = y + self.count, x)
-                                                        ╘══╛ Cannot capture 'self' in 'fun[i32 -> i32]'
-
-Error at line 30, column 21
-29 │ val base = 10
-30 │ apply(fun(x) = x + base, 1)
-                        ╘══╛ Cannot capture 'base' in 'fun[i32 -> i32]'
-
-Error at line 33, column 22
-32 │ for i in 0..3
-33 │     apply(fun(x) = x + i, 1)
-                            ^ Cannot capture 'i' in 'fun[i32 -> i32]'
-
 Error at line 35, column 18
 34 │ 
 35 │ val loose = fun(x) = x
@@ -24,12 +9,12 @@ Error at line 35, column 18
 Error at line 36, column 8
 35 │ val loose = fun(x) = x
 36 │ apply(fun(a, b) = a, 1)
-           ╘═══════════╛ 'fun[i32 -> i32]' takes one parameter
+           ╘═══════════╛ 'ref fun[i32 -> i32]' takes one parameter
 
 Error at line 37, column 8
 36 │ apply(fun(a, b) = a, 1)
 37 │ apply(fun = 1, 1)
-           ╘═════╛ 'fun[i32 -> i32]' takes one parameter
+           ╘═════╛ 'ref fun[i32 -> i32]' takes one parameter
 
 Error at line 38, column 11
 37 │ apply(fun = 1, 1)

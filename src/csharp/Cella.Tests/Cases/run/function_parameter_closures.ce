@@ -1,0 +1,119 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+option[T]: enum
+{
+	none
+	some(value: T)
+}
+
+Button: rec
+{
+	onClick: fun[]
+
+	new: op(own onClick: fun[])
+	{
+		self.onClick = onClick
+	}
+}
+
+Panel: rec
+{
+	handler: fun[i32 -> i32]
+
+	action: prop fun[i32 -> i32]
+	{
+		get(self) = self.handler
+		set(mut self, own value) { self.handler = value }
+	}
+}
+
+Filter: ref rec
+{
+	keep: ref fun[i32 -> bool]
+}
+
+beep: fun
+{
+	printf("beep\n")
+}
+
+double: fun(x: i32) -> i32 = x * 2
+
+each: fun(values: array[i32, 3], visit: fun[i32])
+{
+	for value in values
+		visit(value)
+}
+
+scaled: fun(values: array[i32, 3], factor: i32, visit: fun[i32])
+{
+	each(values, visit)
+	each(values, fun(value) { visit(value * factor) })
+}
+
+pick: fun(first: bool, a: fun[-> i32], b: fun[-> i32]) -> ref fun[-> i32]
+{
+	if first
+		ret a
+
+	ret b
+}
+
+filter: fun(keep: fun[i32 -> bool]) -> Filter = Filter(keep)
+
+transform[T, U]: fun(value: T, f: fun[T -> U]) -> U = f(value)
+
+twice: fun(f: fun[fun[i32], i32], visit: fun[i32])
+{
+	f(visit, 1)
+	f(visit, 2)
+}
+
+maybe: fun(callback: option[ref fun[i32]], value: i32)
+{
+	if callback is some(f)
+		f(value)
+}
+
+attach: fun(mut button: Button, own onClick: fun[])
+{
+	button.onClick = onClick
+}
+
+main: fun -> i32
+{
+	var total = 0
+	each([1, 2, 3], fun(value) { total += value })
+	scaled([1, 2, 3], 10, fun(value) { total += value })
+	printf("%d\n", total)
+
+	val run = each
+	run([4, 5, 6], fun(value) { total += value })
+	val visitor = fun(visit: fun[i32], value: i32) = visit(value * 100)
+	twice(visitor, fun(value) { total += value })
+	maybe(some(fun(value) { total += value }), 1000)
+	maybe(none, 5)
+	printf("%d\n", total)
+
+	val base = 7
+	val chosen = pick(false, fun = base, fun = base + 1)
+	val big = filter(fun(x) = x > base)
+	printf("%d %d %d %d %d\n", chosen(), i32(big.keep(9)), i32(big.keep(3)), transform(3, fun(x) = x + base),
+		transform(4, double))
+
+	var button = Button(beep)
+	button.onClick()
+	attach(mut button, fun { printf("click\n") })
+	button.onClick()
+
+	var panel = Panel(double)
+	panel.action = fun(x) = x + 1
+	val action = panel.action
+	printf("%d\n", action(5))
+	ret 0
+}

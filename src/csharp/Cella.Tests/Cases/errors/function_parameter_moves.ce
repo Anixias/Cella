@@ -1,0 +1,66 @@
+mod test
+
+Button: rec
+{
+	onClick: fun[]
+
+	new: op(onClick: fun[])
+	{
+		self.onClick = onClick
+	}
+}
+
+Plain: rec
+{
+	onClick: fun[]
+}
+
+Panel: rec
+{
+	handler: fun[i32 -> i32]
+
+	action: prop fun[i32 -> i32]
+	{
+		get(self) = self.handler
+		set(mut self, value) { self.handler = value }
+	}
+}
+
+saved: var fun[] = beep
+
+beep: fun
+{
+}
+
+keep: fun(own onClick: fun[])
+{
+}
+
+attach: fun(mut button: Button, onClick: fun[])
+{
+	button.onClick = onClick
+}
+
+remember: fun(onClick: fun[])
+{
+	saved = onClick
+	keep(onClick)
+	val local: fun[] = onClick
+}
+
+back: fun(onClick: fun[]) -> fun[] = onClick
+
+wrap: fun(onClick: fun[]) -> Plain = Plain(onClick)
+
+call: fun(visit: fun[i32])
+{
+	visit(1, 2)
+}
+
+main: fun -> i32
+{
+	val lambda = fun(f: ref fun[i32]) { }
+	val base = 1
+	keep(fun { val copy = base })
+	ret 0
+}

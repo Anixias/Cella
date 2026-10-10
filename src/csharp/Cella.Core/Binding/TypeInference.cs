@@ -84,9 +84,9 @@ public sealed class TypeInference(TypePool typePool)
 		return [..inferred.Select((type, i) => conflicted[i] ? null : type)];
 	}
 	
-	private static Bounds Collect(ImmutableArray<TypeParameterSymbol> parameters, IEnumerable<InferenceInput> inputs)
+	private Bounds Collect(ImmutableArray<TypeParameterSymbol> parameters, IEnumerable<InferenceInput> inputs)
 	{
-		var bounds = new Bounds(parameters);
+		var bounds = new Bounds(parameters, typePool);
 		foreach (var input in inputs)
 		{
 			if (input.Literal is { } literal)
@@ -104,7 +104,7 @@ public sealed class TypeInference(TypePool typePool)
 		if (returnType is null || target is null || inferred.All(static type => type is not null))
 			return;
 		
-		var expected = new Bounds(parameters);
+		var expected = new Bounds(parameters, typePool);
 		expected.Unify(returnType, target, false);
 		for (var i = 0; i < parameters.Length; i++)
 		{
@@ -231,7 +231,7 @@ public sealed class TypeInference(TypePool typePool)
 	private bool ConvertsTo(TypeSymbol from, TypeSymbol to) =>
 		from == to || typePool.ConversionTable.FindImplicit(from, to) is not null;
 	
-	private sealed class Bounds(ImmutableArray<TypeParameterSymbol> parameters)
+	private sealed class Bounds(ImmutableArray<TypeParameterSymbol> parameters, TypePool typePool)
 	{
 		public List<TypeSymbol>[] Exact { get; } = [..parameters.Select(static _ => new List<TypeSymbol>())];
 		public List<TypeSymbol>[] Lower { get; } = [..parameters.Select(static _ => new List<TypeSymbol>())];
@@ -307,7 +307,7 @@ public sealed class TypeInference(TypePool typePool)
 				
 				case (FunctionType p, FunctionType a) when p.ParameterTypes.Length == a.ParameterTypes.Length:
 					for (var i = 0; i < p.ParameterTypes.Length; i++)
-						Unify(p.ParameterTypes[i], a.ParameterTypes[i], true);
+						Unify(p.ParameterTypes[i], GetParameterArgument(p, i, a.ParameterTypes[i]), true);
 					
 					Unify(p.ReturnType, a.ReturnType, true);
 					break;
@@ -317,6 +317,13 @@ public sealed class TypeInference(TypePool typePool)
 					break;
 			}
 		}
+		
+		private TypeSymbol GetParameterArgument(FunctionType parameter, int index, TypeSymbol argument) =>
+			parameter.ParameterModes[index] == ParameterMode.ReadOnly &&
+			parameter.ParameterTypes[index] is TypeParameterSymbol &&
+			argument is FunctionType { IsRef: true, IsExternal: false } function
+				? typePool.GetPlainFunctionType(function)
+				: argument;
 		
 		private int IndexOf(TypeSymbol type) =>
 			type is TypeParameterSymbol parameter ? parameters.IndexOf(parameter) : -1;

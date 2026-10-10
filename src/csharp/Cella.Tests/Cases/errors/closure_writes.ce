@@ -1,6 +1,6 @@
 mod test
 
-call: fun(f: ref fun[-> i32]) -> i32 = f()
+call: fun(f: fun[-> i32]) -> i32 = f()
 
 bump: fun(mut value: i32)
 {

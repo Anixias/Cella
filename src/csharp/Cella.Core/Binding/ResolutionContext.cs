@@ -398,6 +398,9 @@ public readonly struct ResolutionContext
 				modes[i] = borrow.IsMutable ? ParameterMode.Mut : ParameterMode.ReadOnly;
 				typeNode = borrow.Target;
 			}
+			else if (typeNode is FunctionTypeNode { IsRef: true } function)
+				Diagnostics.Add(DiagnosticReporter.ReportRefFunctionParameter(function, null,
+					node.ParameterModes[i] is not null, node.IsExternal));
 			
 			parameterTypes[i] = TypePool.GetPassedType(ResolveType(typeNode), modes[i]);
 		}

@@ -505,6 +505,9 @@ public sealed class SignatureCollector
 				modes[i] = borrow.IsMutable ? ParameterMode.Mut : ParameterMode.ReadOnly;
 				typeNode = borrow.Target;
 			}
+			else if (typeNode is FunctionTypeNode { IsRef: true } function)
+				Diagnostics.Add(DiagnosticReporter.ReportRefFunctionParameter(function, null, node.Modes[i] is not null,
+					false));
 			
 			var type = RejectValueDyn(typeNode, context.ResolveType(typeNode), modes[i]);
 			types.Add(_typePool.GetPassedType(type, modes[i]));
@@ -911,6 +914,12 @@ public sealed class SignatureCollector
 					candidate.Function, traitMap))
 				.ToList();
 			
+			if (matches.Count == 0)
+				matches = candidates
+					.Where(candidate => SignaturesMatch(candidate.Signature, info.Signature, requirement,
+						candidate.Function, traitMap, true))
+					.ToList();
+			
 			switch (matches.Count)
 			{
 				case 1:
@@ -1015,6 +1024,12 @@ public sealed class SignatureCollector
 				traitMap))
 			.ToList();
 		
+		if (matches.Count == 0)
+			matches = declared
+				.Where(constructor => SignaturesMatch(constructor.Signature, signature, requirement, constructor.Symbol,
+					traitMap, true))
+				.ToList();
+		
 		if (matches.Count > 0)
 		{
 			conformance.Witnesses[requirement] = new FunctionWitness(matches[0].Symbol, matches[0]);
@@ -1102,7 +1117,7 @@ public sealed class SignatureCollector
 	
 	private bool SignaturesMatch(FunctionSignature candidate, FunctionSignature requirement,
 		FunctionSymbol requirementSymbol, FunctionSymbol candidateSymbol,
-		Dictionary<TypeParameterSymbol, TypeSymbol> traitMap)
+		Dictionary<TypeParameterSymbol, TypeSymbol> traitMap, bool allowsOwned = false)
 	{
 		var declared = requirementSymbol.DeclaredTypeParameters;
 		var own = candidateSymbol.DeclaredTypeParameters;
@@ -1115,9 +1130,7 @@ public sealed class SignatureCollector
 		
 		var expected = _typePool.SubstituteSignature(requirement, map);
 		return expected.IsVariadic == candidate.IsVariadic && expected.ReturnType == candidate.ReturnType &&
-		       expected.ParameterTypes.SequenceEqual(candidate.ParameterTypes) &&
-		       Enumerable.Range(0, expected.ParameterTypes.Length)
-			       .All(i => expected.GetMode(i) == candidate.GetMode(i));
+		       TypePool.ParametersMatch(candidate, expected, allowsOwned);
 	}
 	
 	private NativeWitness? FindNativeWitness(FunctionSymbol requirement, FunctionSignature signature,
@@ -2489,13 +2502,19 @@ public sealed class SignatureCollector
 	{
 		foreach (var parameter in parameters)
 		{
-			if (parameter.Type is not BorrowTypeNode borrow)
+			var diagnostic = parameter.Type switch
+			{
+				BorrowTypeNode borrow => DiagnosticReporter.ReportBorrowParameter(borrow, parameter.Identifier.Text,
+					parameter.Mode is not null, isExternal),
+				FunctionTypeNode { IsRef: true } function => DiagnosticReporter.ReportRefFunctionParameter(function,
+					parameter.Identifier.Text, parameter.Mode is not null, isExternal),
+				_ => null
+			};
+			
+			if (diagnostic is null)
 				continue;
 			
-			var diagnostic = DiagnosticReporter.ReportBorrowParameter(borrow, parameter.Identifier.Text,
-				parameter.Mode is not null, isExternal);
-			
-			Diagnostics.Add(borrow == sharedType
+			Diagnostics.Add(parameter.Type == sharedType
 				? new(DiagnosticSeverity.Error, parameter.Identifier.SourceLocation, diagnostic.Message)
 				: diagnostic);
 		}

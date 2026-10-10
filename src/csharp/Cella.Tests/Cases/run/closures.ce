@@ -52,17 +52,17 @@ Doubled: rec
 	}
 }
 
-each: fun(values: array[i32, 3], visit: ref fun[i32])
+each: fun(values: array[i32, 3], visit: fun[i32])
 {
 	for value in values
 		visit(value)
 }
 
-apply: fun(f: ref fun[i32 -> i32], x: i32) -> i32 = f(x)
+apply: fun(f: fun[i32 -> i32], x: i32) -> i32 = f(x)
 
-call: fun(f: ref fun[-> i32]) -> i32 = f()
+call: fun(f: fun[-> i32]) -> i32 = f()
 
-generic[T]: fun(f: ref fun[-> T]) -> T = f()
+generic[T]: fun(f: fun[-> T]) -> T = f()
 
 repeat[T: copy + noref]: fun(value: T) -> T = generic(fun = value)
 
