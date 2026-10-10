@@ -1,0 +1,63 @@
+mod test
+
+Source: rec
+{
+	id: i32
+
+	as: op(self) -> ViaAs = ViaAs(self.id)
+	new: op(self) -> ViaNew = ViaNew(self.id)
+}
+
+ViaAs: rec
+{
+	id: i32
+}
+
+ViaNew: rec
+{
+	id: i32
+}
+
+ViaStatic: rec
+{
+	id: i32
+
+	as: op(value: Source) -> ViaStatic = ViaStatic(value.id)
+}
+
+FromSource: trait
+{
+	new: op(value: Source)
+}
+
+ViaAs: impl FromSource
+
+ViaNew: impl FromSource
+
+ViaStatic: impl FromSource
+
+Implicit: trait
+{
+	as: op(self) -> i32
+}
+
+Explicit: trait
+{
+	new: op(self) -> i32
+}
+
+ExplicitOnly: rec impl Implicit
+{
+	value: i32
+
+	new: op(self) -> i32 = self.value
+}
+
+ImplicitOnly: rec impl Explicit
+{
+	value: i32
+
+	as: op(self) -> i32 = self.value
+}
+
+main: fun -> i32 = 0

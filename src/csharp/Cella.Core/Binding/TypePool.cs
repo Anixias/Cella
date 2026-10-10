@@ -34,6 +34,7 @@ public sealed class TypePool
 	private readonly Dictionary<TypedMemberSymbol, TypeSymbol> _memberTypes = [];
 	private readonly Dictionary<TypeSymbol, TypeFacts> _facts = [];
 	private readonly Dictionary<TypeSymbol, List<FunctionInfo>> _constructors = [];
+	private readonly Dictionary<TypeSymbol, List<FunctionInfo>> _explicitConversions = [];
 	private readonly Dictionary<TraitSymbol, List<FunctionInfo>> _traitConstructors = [];
 	private readonly Dictionary<TypeSymbol, FunctionInfo> _destructors = [];
 	private readonly Dictionary<TypeSymbol, IReadOnlySet<FieldSymbol>> _destructorMoves = [];
@@ -68,6 +69,9 @@ public sealed class TypePool
 	}
 	
 	public void AddConstructor(TypeSymbol type, FunctionInfo info) => _constructors.GetOrAdd(type).Add(info);
+	
+	public void AddExplicitConversion(TypeSymbol type, FunctionInfo info) =>
+		_explicitConversions.GetOrAdd(type).Add(info);
 	
 	public void AddTraitConstructor(TraitSymbol trait, FunctionInfo info) =>
 		_traitConstructors.GetOrAdd(trait).Add(info);
@@ -477,10 +481,48 @@ public sealed class TypePool
 			.Select(static constructor => new FunctionWitness(constructor.Symbol, constructor))
 			.FirstOrDefault();
 		
-		if (match is not null || declared.Count > 0 && type is RecordSymbol)
+		if (match is not null)
 			return match;
 		
-		return FindConstructionWitness(type, expected);
+		if (declared.Count > 0 && type is RecordSymbol)
+			return FindConversionWitness(type, expected);
+		
+		return FindConstructionWitness(type, expected) ?? FindConversionWitness(type, expected);
+	}
+	
+	public Witness? FindConversionWitness(TypeSymbol self, FunctionSignature expected)
+	{
+		if (expected.ParameterTypes.Length != 2 || expected.GetMode(1) == ParameterMode.Mut)
+			return null;
+		
+		var source = expected.ParameterTypes[1];
+		var canConsume = expected.GetMode(1) == ParameterMode.Own || IsCopy(source);
+		return GetExplicitConversions(source)
+			.Where(conversion => conversion.Signature.ReturnType == self &&
+			                     conversion.Symbol.Visibility >= GetConstructorFloor(source) &&
+			                     (canConsume || conversion.Signature.GetMode(0) != ParameterMode.Own))
+			.Select(static conversion =>
+				new ConversionWitness(new FunctionConversion(conversion, ConversionKind.Explicit, 0)))
+			.FirstOrDefault();
+	}
+	
+	private IReadOnlyList<FunctionInfo> GetExplicitConversions(TypeSymbol type)
+	{
+		Complete(type);
+		if (_explicitConversions.TryGetValue(type, out var list))
+			return list;
+		
+		if (type is not NamedTypeSymbol { IsGenericInstance: true } instance)
+			return [];
+		
+		list =
+		[
+			..GetExplicitConversions(instance.Definition)
+				.Select(conversion => InstantiateFunction(conversion, instance.TypeArguments))
+		];
+		
+		_explicitConversions[type] = list;
+		return list;
 	}
 	
 	public Witness? FindConstructionWitness(TypeSymbol self, FunctionSignature expected)

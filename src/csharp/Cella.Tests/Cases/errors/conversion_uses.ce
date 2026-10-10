@@ -1,0 +1,107 @@
+mod test
+
+Fixed: rec
+{
+	raw: i32
+
+	new: op(self) -> i32 = self.raw >> 16
+	as: op(self) -> f64 = f64(self.raw) / 65536.0
+}
+
+Name: rec
+{
+	id: i32
+
+	as: op(value: Source) -> Name = Name(value.id)
+}
+
+Source: rec
+{
+	id: i32
+
+	as: op(self) -> Name = Name(self.id)
+}
+
+Label: rec
+{
+	id: i32
+
+	new: op(id: i32)
+	{
+		self.id = id
+	}
+
+	new: op(value: Origin)
+	{
+		self.id = value.id
+	}
+}
+
+Origin: rec
+{
+	id: i32
+
+	new: op(self) -> Label = Label(1)
+}
+
+Arg: enum
+{
+	int(value: i64)
+
+	as: op(value: i64) -> Arg = int(value)
+}
+
+Secret: rec
+{
+	value: i32
+
+	as: pvt op(self) -> i32 = self.value
+}
+
+Sprite: rec
+{
+	hp: i32
+}
+
+Handle: rec
+{
+	sprite: Sprite
+
+	as: op(self) -> imm[Sprite] = imm self.sprite
+	as: op(mut self) -> mut[Sprite] = mut self.sprite
+}
+
+takeInt: fun(value: i32) {}
+
+takeName: fun(name: Name) {}
+
+log: fun(arg: Arg) {}
+
+heal: fun(mut sprite: Sprite) {}
+
+main: fun -> i32
+{
+	val fixed = Fixed(1 << 16)
+	val implicit: i32 = fixed
+	takeInt(fixed)
+
+	val source = Source(1)
+	val named: Name = source
+	val explicit = Name(source)
+	takeName(source)
+	val label = Label(Origin(2))
+
+	val count: i32 = 5
+	log(count)
+	val arg: Arg = count
+
+	val secret: i32 = Secret(3)
+
+	var handle = Handle(Sprite(4))
+	heal(handle)
+	val hp = handle.hp
+
+	val viaName = fixed.as()
+	val viaType = Arg.as(5)
+	ret 0
+}

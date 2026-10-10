@@ -1,0 +1,24 @@
+
+====== conversion_requirements.ce ======
+
+Error at line 33, column 13
+32 │ 
+33 │ ViaAs: impl FromSource
+                 ╘════════╛ 'ViaAs' needs 'FromSource.new'
+
+Error at line 37, column 17
+36 │ 
+37 │ ViaStatic: impl FromSource
+                     ╘════════╛ 'ViaStatic' needs 'FromSource.new'
+
+Error at line 49, column 24
+48 │ 
+49 │ ExplicitOnly: rec impl Implicit
+                            ╘══════╛ 'ExplicitOnly' needs 'Implicit.as'
+
+Error at line 56, column 24
+55 │ 
+56 │ ImplicitOnly: rec impl Explicit
+                            ╘══════╛ 'ImplicitOnly' needs 'Explicit.new'
+
+[compilation failed]

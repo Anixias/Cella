@@ -124,6 +124,10 @@ public sealed class FunctionSymbol
 	public FunctionKind Kind { get; } = kind;
 	public SourceLocation Definition { get; } = syntax.SourceLocation;
 	public bool IsExternal => Kind == FunctionKind.External || Syntax is FunctionNode { IsExternal: true };
+	
+	public bool IsConversion =>
+		Syntax is FunctionNode { Identifier.Type: TokenType.KeywordAs or TokenType.KeywordNew };
+	
 	public PropertySymbol? Property { get; internal set; }
 	public TraitSymbol? Trait { get; internal set; }
 	public ImplSymbol? Impl { get; internal set; }

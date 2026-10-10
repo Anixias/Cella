@@ -1,0 +1,8 @@
+show 3
+wide 3000
+show 3
+dyn wide 3000
+count 8
+fixed 5 5
+1.5 2.5 3 6
+[exit code 0]

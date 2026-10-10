@@ -15,4 +15,5 @@ public sealed class ResolvedFunctionCallExpressionNode
 	public ImmutableArray<IResolvedExpressionNode> Arguments { get; } = arguments.ToImmutableArray();
 	public TypeSymbol Type { get; } = function.Signature.ReturnType;
 	public IExpressionNode Syntax { get; } = syntax;
+	public bool IsConversion { get; init; }
 }

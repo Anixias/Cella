@@ -1,0 +1,65 @@
+mod test
+
+ext
+{
+	malloc: fun(size: usize) -> ptr[u8]
+	free: fun(memory: ptr[u8])
+}
+
+String: rec
+{
+	data: pvt ptr[u8]
+	length: pvt usize
+
+	new: op(text: str)
+	{
+		self.data = malloc(text.byteLength)
+		self.length = text.byteLength
+	}
+
+	as: op(self) -> str = str(self.data, self.length)
+
+	drop: op
+	{
+		free(self.data)
+	}
+}
+
+Buffer: rec
+{
+	size: i32
+
+	drop: op
+	{
+	}
+}
+
+Text: rec
+{
+	size: i32
+
+	as: op(own self) -> Buffer = Buffer(self.size)
+
+	drop: op
+	{
+	}
+}
+
+send: fun(own buffer: Buffer) {}
+
+local: fun -> str
+{
+	val name = String("local")
+	ret name
+}
+
+main: fun -> i32
+{
+	val text = Text(1)
+	send(text)
+	val other = Text(2)
+	val buffer = Buffer(other)
+	val view: str = String("temp")
+	val length = view.byteLength
+	ret 0
+}

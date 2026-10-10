@@ -1,0 +1,22 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+show: fun(value: f64)
+{
+	printf("%.1f\n", value)
+}
+
+main: fun -> i32
+{
+	val warm: lib.Celsius = 21.5
+	show(warm)
+	val rounded = i32(warm)
+	val holder = lib.Holder[i32](7)
+	val inside: i32 = holder
+	printf("%d %d\n", rounded, inside)
+	ret 0
+}

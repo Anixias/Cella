@@ -1035,7 +1035,9 @@ public sealed class Lowerer
 		}
 		
 		public Value Visit(ResolvedFunctionCallExpressionNode node) => new CallValue(node.Function,
-			LowerArguments(node.Arguments, node.Function, 0), node.Syntax.SourceLocation);
+			node.IsConversion
+				? LowerOperands(node.Arguments, GetArgumentPassing(node.Function, 0))
+				: LowerArguments(node.Arguments, node.Function, 0), node.Syntax.SourceLocation);
 		
 		public Value Visit(ResolvedFunctionGroupExpressionNode node) => throw new InvalidOperationException();
 		

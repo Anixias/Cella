@@ -1,0 +1,134 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+	malloc: fun(size: usize) -> ptr
+	free: fun(memory: ptr)
+}
+
+Sprite: rec
+{
+	hp: i32
+}
+
+Item: rec
+{
+	id: i32
+
+	drop: op
+	{
+		printf("drop item %d\n", self.id)
+	}
+}
+
+Slot[T]: rec
+{
+	value: T
+
+	as: op(self) -> imm[T] = imm self.value
+	as: op(mut self) -> mut[T] = mut self.value
+}
+
+box[T]: rec
+{
+	pointer: pvt ptr[T]
+
+	new: op(own value: T)
+	{
+		self.pointer = ptr[T](malloc(sizeOf(T)))
+		own *self.pointer = own value
+	}
+
+	new: op(own self) -> T
+	{
+		val value = own *self.pointer
+		free(self.pointer)
+		self.pointer = ptr[T](null)
+		ret value
+	}
+
+	drop: op
+	{
+		if self.pointer != null
+		{
+			drop *self.pointer
+			free(self.pointer)
+		}
+	}
+}
+
+Buffer: rec
+{
+	size: i32
+
+	drop: op
+	{
+		printf("drop buffer %d\n", self.size)
+	}
+}
+
+Text: rec
+{
+	size: i32
+
+	as: op(own self) -> Buffer = Buffer(self.size)
+
+	drop: op
+	{
+		printf("drop text %d\n", self.size)
+	}
+}
+
+draw: fun(sprite: Sprite)
+{
+	printf("draw %d\n", sprite.hp)
+}
+
+heal: fun(mut sprite: Sprite)
+{
+	sprite.hp += 10
+}
+
+send: fun(own buffer: Buffer)
+{
+	printf("send %d\n", buffer.size)
+}
+
+unbox[T]: fun(own boxed: box[T]) -> T = T(own boxed)
+
+views: fun
+{
+	var hero = Slot(Sprite(5))
+	draw(hero)
+	heal(mut hero)
+	draw(hero)
+}
+
+consuming: fun
+{
+	val text = Text(1)
+	send(own text)
+	send(Text(2))
+	val kept: Buffer = Text(3)
+	val other = Text(4)
+	val moved: Buffer = own other
+	printf("kept %d %d\n", kept.size, moved.size)
+}
+
+unboxing: fun
+{
+	val boxed = box(Item(1))
+	val item = unbox(own boxed)
+	printf("unboxed %d\n", item.id)
+	val direct = Item(box(Item(2)))
+	printf("unboxed %d\n", direct.id)
+}
+
+main: fun -> i32
+{
+	views()
+	consuming()
+	unboxing()
+	ret 0
+}

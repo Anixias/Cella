@@ -76,6 +76,7 @@ public enum TokenType
 	KeywordCopy,
 	KeywordTrait,
 	KeywordImpl,
+	KeywordAs,
 	
 	// Operators
 	OpLessLessLessEqual,
@@ -224,6 +225,7 @@ public static class TokenTypeInfo
 			[TokenType.KeywordCopy] = new("copy", IsKeyword: true, IsContextual: true),
 			[TokenType.KeywordTrait] = new("trait", IsKeyword: true, IsContextual: true),
 			[TokenType.KeywordImpl] = new("impl", IsKeyword: true, IsContextual: true),
+			[TokenType.KeywordAs] = new("as", IsKeyword: true, IsContextual: true),
 			
 			[TokenType.OpLessLessLessEqual] = new("<<<=", IsOperator: true),
 			[TokenType.OpGreaterGreaterGreaterEqual] = new(">>>=", IsOperator: true),

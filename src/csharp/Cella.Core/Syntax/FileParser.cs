@@ -33,6 +33,9 @@ public sealed class FileParser
 	private static readonly Dictionary<string, TokenType> _constraintKeywords =
 		BuildContextualKeywords(_constraintTypes.Where(static type => type.IsContextual));
 	
+	private static readonly Dictionary<string, TokenType> _conversionKeywords =
+		BuildContextualKeywords(TokenType.KeywordAs);
+	
 	private static readonly HashSet<TokenType> _operatorNames =
 	[
 		TokenType.OpEqualEqual, TokenType.OpBangEqual, TokenType.OpLess, TokenType.OpLessEqual, TokenType.OpGreater,
@@ -1415,9 +1418,15 @@ public sealed class FileParser
 			
 			if (Match(ref index, out var lifecycleKeyword, _lifecycleKeywords))
 			{
-				Report(lifecycleKeyword, $"Cannot declare {DescribeLifecycle(lifecycleKeyword)} in enums");
-				if (ParseLifecycleMember(ref index, lifecycleKeyword, block) is null)
+				var isConversion = lifecycleKeyword.Type == TokenType.KeywordNew && StartsConversion(index);
+				if (!isConversion)
+					Report(lifecycleKeyword, $"Cannot declare {DescribeLifecycle(lifecycleKeyword)} in enums");
+				
+				if (ParseLifecycleMember(ref index, lifecycleKeyword, block) is not { } lifecycleMember)
 					return false;
+				
+				if (isConversion)
+					members.Add(lifecycleMember);
 				
 				continue;
 			}
@@ -1612,6 +1621,10 @@ public sealed class FileParser
 			Report(symbol, $"Cannot declare '{symbol.Text}' operators");
 			return true;
 		}
+		
+		if (Peek(index + 1, TokenType.OpColon) &&
+		    Match(ref index, out symbol, _conversionKeywords, TokenType.KeywordAs))
+			return true;
 		
 		if (Peek(index, TokenType.OpOpenBracket) && Peek(index + 1, TokenType.OpCloseBracket))
 		{
@@ -1820,27 +1833,31 @@ public sealed class FileParser
 	private static string DescribeLifecycle(Token keyword) =>
 		keyword.Type == TokenType.KeywordNew ? "constructors" : "destructors";
 	
-	private ConstructorNode? ParseConstructor(ref int index, Token newKeyword, Token? block)
+	private IDeclarationNode? ParseConstructor(ref int index, Token newKeyword, Token? block)
 	{
 		// When this is called, the identifier and fun keyword are already consumed
 		// Caller is expected to resync in case of errors
 		
 		// @TODO Diagnostics
 		
+		var isConversion = StartsConversion(index);
 		if (!Match(ref index, TokenType.OpColon))
 			return null;
 		
 		var modifiers = ParseMemberModifiers(ref index, block);
-		RejectWriteRestriction(modifiers, "constructors");
+		RejectWriteRestriction(modifiers, isConversion ? "operators" : "constructors");
 		if (!Match(ref index, _memberContextualKeywords, TokenType.KeywordOp))
 			return null;
+		
+		if (isConversion)
+			return ParseFunction(ref index, newKeyword, modifiers, false, []);
 		
 		if (ParseParameters(ref index, true) is not { } parameters)
 			return null;
 		
 		if (!Match(ref index, out var openBraceToken, TokenType.OpOpenBrace))
 			return _allowsMissingBodies
-				? new(newKeyword, modifiers.Tokens, parameters, null, newKeyword.SourceLocation)
+				? new ConstructorNode(newKeyword, modifiers.Tokens, parameters, null, newKeyword.SourceLocation)
 				{
 					Visibility = modifiers.Visibility
 				}
@@ -1852,10 +1869,27 @@ public sealed class FileParser
 		var (source, range) = newKeyword.SourceLocation;
 		range = range.Join(body.SourceLocation.Range);
 		
-		return new(newKeyword, modifiers.Tokens, parameters, body, new(source, range))
+		return new ConstructorNode(newKeyword, modifiers.Tokens, parameters, body, new(source, range))
 		{
 			Visibility = modifiers.Visibility
 		};
+	}
+	
+	private bool StartsConversion(int index)
+	{
+		if (!Match(ref index, TokenType.OpColon))
+			return false;
+		
+		while (Match(ref index, _memberContextualKeywords, _visibilityKeywords) ||
+		       Match(ref index, _memberContextualKeywords, TokenType.KeywordSet))
+			continue;
+		
+		if (!Match(ref index, _memberContextualKeywords, TokenType.KeywordOp) ||
+		    !Match(ref index, TokenType.OpOpenParen))
+			return false;
+		
+		Match(ref index, _parameterModes);
+		return Peek(index, TokenType.KeywordSelf);
 	}
 	
 	private DestructorNode? ParseDestructor(ref int index, Token dropKeyword, Token? block)

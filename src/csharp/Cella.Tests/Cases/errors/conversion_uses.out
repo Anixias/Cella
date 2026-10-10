@@ -1,0 +1,69 @@
+
+====== conversion_uses.ce ======
+
+Error at line 85, column 22
+84 │ val fixed = Fixed(1 << 16)
+85 │ val implicit: i32 = fixed
+                         ╘═══╛ Cannot convert type 'Fixed' to 'i32'
+
+Error at line 86, column 2
+85 │ val implicit: i32 = fixed
+86 │ takeInt(fixed)
+     ╘═════╛ No overload of 'takeInt' accepts these arguments
+
+Error at line 89, column 20
+88 │ val source = Source(1)
+89 │ val named: Name = source
+                       ╘════╛ Conversion from 'Source' to 'Name' is ambiguous
+
+Error at line 90, column 17
+89 │ val named: Name = source
+90 │ val explicit = Name(source)
+                    ╘══════════╛ Conversion to 'Name' is ambiguous
+
+Error at line 91, column 11
+90 │ val explicit = Name(source)
+91 │ takeName(source)
+              ╘════╛ Conversion from 'Source' to 'Name' is ambiguous
+
+Error at line 92, column 14
+91 │ takeName(source)
+92 │ val label = Label(Origin(2))
+                 ╘══════════════╛ Conversion to 'Label' is ambiguous
+
+Error at line 95, column 2
+94 │ val count: i32 = 5
+95 │ log(count)
+     ╘═╛ No overload of 'log' accepts these arguments
+
+Error at line 96, column 17
+95 │ log(count)
+96 │ val arg: Arg = count
+                    ╘═══╛ Cannot convert type 'i32' to 'Arg'
+
+Error at line 98, column 20
+97 │ 
+98 │ val secret: i32 = Secret(3)
+                       ╘═══════╛ Cannot convert type 'Secret' to 'i32'
+
+Error at line 101, column 7
+100 │ var handle = Handle(Sprite(4))
+101 │ heal(handle)
+           ╘════╛ Cannot mutably borrow arguments implicitly
+
+Error at line 102, column 18
+101 │ heal(handle)
+102 │ val hp = handle.hp
+                      ╘╛ Type 'Handle' has no member 'hp'
+
+Error at line 104, column 22
+103 │ 
+104 │ val viaName = fixed.as()
+                          ╘╛ Type 'Fixed' has no member 'as'
+
+Error at line 105, column 20
+104 │ val viaName = fixed.as()
+105 │ val viaType = Arg.as(5)
+                        ╘╛ 'Arg' has no case 'as'
+
+[compilation failed]

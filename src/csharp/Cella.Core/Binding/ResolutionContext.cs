@@ -53,7 +53,7 @@ public readonly struct ResolutionContext
 	private static Symbol? ResolveStatic(TypeSymbol type, string name) => ResolveFrom(name,
 	[
 		..type.GetFunctions(name)
-			.Where(static function => !function.HasReceiver)
+			.Where(static function => !function.HasReceiver && !function.Function.IsConversion)
 			.Select(static function => function.Function)
 	]);
 	
@@ -62,7 +62,7 @@ public readonly struct ResolutionContext
 		properties.FirstOrDefault(p => p.Name == name && p.IsStatic) ?? ResolveFrom(name,
 		[
 			..functions
-				.Where(function => function.Name == name && !function.HasReceiver)
+				.Where(function => function.Name == name && !function.HasReceiver && !function.Function.IsConversion)
 				.Select(static function => function.Function)
 		]);
 	

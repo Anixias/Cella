@@ -1,0 +1,28 @@
+mod test
+
+Sprite: rec
+{
+	hp: i32
+}
+
+Handle: rec
+{
+	sprite: Sprite
+
+	as: op(self) -> imm[Sprite] = imm self.sprite
+	as: op(mut self) -> mut[Sprite] = mut self.sprite
+}
+
+heal: fun(mut sprite: Sprite) {}
+
+read: fun(handle: Handle)
+{
+	heal(mut handle)
+}
+
+main: fun -> i32
+{
+	val handle = Handle(Sprite(1))
+	heal(mut handle)
+	ret 0
+}

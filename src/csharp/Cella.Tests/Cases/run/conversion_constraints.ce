@@ -1,0 +1,104 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Numeric: trait
+{
+	as: op(self) -> i32
+	new: op(self) -> i64
+}
+
+FromInt: trait
+{
+	as: op(value: i32) -> Self
+}
+
+FromFixed: trait
+{
+	new: op(value: Fixed)
+}
+
+Meter: rec impl Numeric
+{
+	value: i32
+
+	as: op(self) -> i32 = self.value
+	new: op(self) -> i64 = i64(self.value) * 1000
+}
+
+Count: rec impl FromInt
+{
+	value: i32
+
+	as: op(value: i32) -> Count = Count(value * 2)
+}
+
+Fixed: rec
+{
+	raw: i32
+
+	new: op(self) -> i32 = self.raw >> 16
+}
+
+Meters: rec
+{
+	value: f64
+
+	new: op(value: f64)
+	{
+		self.value = value
+	}
+
+	as: op(value: f64) -> Meters = Meters(value)
+}
+
+i32: impl FromFixed
+
+show: fun(value: i32)
+{
+	printf("show %d\n", value)
+}
+
+report[T: Numeric]: fun(item: T)
+{
+	show(item)
+	printf("wide %lld\n", i64(item))
+}
+
+viaDyn: fun(item: dyn[Numeric])
+{
+	show(item)
+	printf("dyn wide %lld\n", i64(item))
+}
+
+make[T: FromInt]: fun(value: i32) -> T
+{
+	val made: T = value
+	ret made
+}
+
+convert[T: new(Fixed)]: fun(value: Fixed) -> T = T(value)
+
+build[T: FromFixed]: fun(value: Fixed) -> T = T(value)
+
+main: fun -> i32
+{
+	val meter = Meter(3)
+	report(meter)
+	viaDyn(dyn[Numeric](meter))
+	val count: Count = make(4)
+	printf("count %d\n", count.value)
+	val half = Fixed(5 << 16)
+	val whole: i32 = convert(half)
+	val built: i32 = build(half)
+	printf("fixed %d %d\n", whole, built)
+	val explicit = Meters(1.5)
+	val implicit: Meters = 2.5
+	val made = Count(3)
+	val converted: Count = 3
+	printf("%.1f %.1f %d %d\n", explicit.value, implicit.value, made.value, converted.value)
+	ret 0
+}

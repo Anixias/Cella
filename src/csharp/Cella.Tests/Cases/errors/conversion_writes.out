@@ -1,0 +1,14 @@
+
+====== conversion_writes.ce ======
+
+Error at line 20, column 11
+19 │ {
+20 │     heal(mut handle)
+                  ╘════╛ Cannot mutably borrow read-only parameters
+
+Error at line 26, column 11
+25 │ val handle = Handle(Sprite(1))
+26 │ heal(mut handle)
+              ╘════╛ Cannot mutably borrow values
+
+[compilation failed]

@@ -1,0 +1,14 @@
+
+====== conversion_constraints.ce ======
+
+Error at line 33, column 21
+32 │ val source = Source(1)
+33 │ val viaAs: ViaAs = convert(source)
+                        ╘═════╛ 'ViaAs' has no constructor taking 'Source'
+
+Error at line 35, column 29
+34 │ val viaNew: ViaNew = convert(source)
+35 │ val viaStatic: ViaStatic = convert(source)
+                                ╘═════╛ 'ViaStatic' has no constructor taking 'Source'
+
+[compilation failed]

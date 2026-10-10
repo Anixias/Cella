@@ -1,0 +1,104 @@
+
+====== conversion_declarations.ce ======
+
+Error at line 7, column 15
+6 │ 
+7 │ as: op(self, extra: i32) -> i32 = 1
+                 ╘═══╛ Cannot take parameters in 'as' operators with 'self'
+
+Error at line 8, column 18
+7 │ as: op(self, extra: i32) -> i32 = 1
+8 │ as: op(self) -> Text = self
+                    ╘══╛ Cannot convert 'Text' to itself
+
+Error at line 9, column 22
+8 │ as: op(self) -> Text = self
+9 │ as: op(mut self) -> i32 = 1
+                        ╘═╛ Cannot return 'i32' from 'as' with 'mut self'
+
+Error at line 10, column 18
+ 9 │ as: op(mut self) -> i32 = 1
+10 │ as: op(self) -> mut[i32] = mut self.value
+                     ╘══════╛ Cannot return 'mut[i32]' from 'as' with 'self'
+
+Error at line 11, column 22
+10 │ as: op(self) -> mut[i32] = mut self.value
+11 │ as: op(own self) -> imm[i32] = imm self.value
+                         ╘══════╛ Cannot return 'imm[i32]' from 'as' with 'own self'
+
+Error at line 12, column 2
+11 │ as: op(own self) -> imm[i32] = imm self.value
+12 │ as: op(a: i32, b: i32) -> Text = Text(a)
+     ╘╛ 'as' operators need 'self' or one parameter
+
+Error at line 13, column 13
+12 │ as: op(a: i32, b: i32) -> Text = Text(a)
+13 │ as: op(mut a: i32) -> Text = Text(a)
+                ^ Cannot take 'mut' parameters in 'as' operators
+
+Error at line 14, column 20
+13 │ as: op(mut a: i32) -> Text = Text(a)
+14 │ as: op(a: i64) -> i32 = 1
+                       ╘═╛ Cannot return 'i32' from 'as' operators without 'self'
+
+Error at line 15, column 9
+14 │ as: op(a: i64) -> i32 = 1
+15 │ as: op(a: Text) -> Text = a
+            ^ Cannot convert 'Text' to itself
+
+Error at line 16, column 2
+15 │ as: op(a: Text) -> Text = a
+16 │ as: op(a: u8) -> Text = Text(1)
+     ╘╛ Conversion from 'u8' is declared more than once in 'Text'
+
+Error at line 17, column 2
+16 │ as: op(a: u8) -> Text = Text(1)
+17 │ as: op(own a: u8) -> Text = Text(2)
+     ╘╛ Conversion from 'u8' is declared more than once in 'Text'
+
+Error at line 18, column 2
+17 │ as: op(own a: u8) -> Text = Text(2)
+18 │ as: op(self) -> u16 = 1
+     ╘╛ Conversion to 'u16' with 'self' is declared more than once in 'Text'
+
+Error at line 19, column 2
+18 │ as: op(self) -> u16 = 1
+19 │ as: op(self) -> u16 = 2
+     ╘╛ Conversion to 'u16' with 'self' is declared more than once in 'Text'
+
+Error at line 20, column 2
+19 │ as: op(self) -> u16 = 2
+20 │ as: op(self) -> u32 = 1
+     ╘╛ Cannot declare both 'as' and 'new' conversions to 'u32'
+
+Error at line 21, column 2
+20 │ as: op(self) -> u32 = 1
+21 │ new: op(own self) -> u32 = 1
+     ╘═╛ Cannot declare both 'as' and 'new' conversions to 'u32'
+
+Error at line 22, column 2
+21 │ new: op(own self) -> u32 = 1
+22 │ as: op(self) {}
+     ╘╛ 'as' operators need a return type
+
+Error at line 23, column 16
+22 │ as: op(self) {}
+23 │ new: op(self, extra: i32) -> i64 = 1
+                   ╘═══╛ Cannot take parameters in 'new' operators with 'self'
+
+Error at line 24, column 19
+23 │ new: op(self, extra: i32) -> i64 = 1
+24 │ new: op(self) -> imm[Text] = imm self
+                      ╘═══════╛ Cannot convert 'Text' to itself
+
+Error at line 36, column 2
+35 │ 
+36 │ as: op(self) -> i64 = 1
+     ╘╛ 'as' doesn't match 'Numeric.as'
+
+Error at line 39, column 19
+38 │ 
+39 │ Missing: rec impl Numeric
+                       ╘═════╛ 'Missing' needs 'Numeric.as'
+
+[compilation failed]

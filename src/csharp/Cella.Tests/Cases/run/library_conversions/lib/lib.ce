@@ -1,0 +1,17 @@
+mod lib
+
+Celsius: pub rec
+{
+	degrees: f64
+
+	as: op(self) -> f64 = self.degrees
+	new: op(self) -> i32 = i32(self.degrees)
+	as: op(value: f64) -> Celsius = Celsius(value)
+}
+
+Holder[T]: pub rec
+{
+	value: T
+
+	as: op(self) -> imm[T] = imm self.value
+}

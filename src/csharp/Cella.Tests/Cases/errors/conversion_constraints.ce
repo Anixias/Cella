@@ -1,0 +1,37 @@
+mod test
+
+Source: rec
+{
+	id: i32
+
+	as: op(self) -> ViaAs = ViaAs(self.id)
+	new: op(self) -> ViaNew = ViaNew(self.id)
+}
+
+ViaAs: rec
+{
+	id: i32
+}
+
+ViaNew: rec
+{
+	id: i32
+}
+
+ViaStatic: rec
+{
+	id: i32
+
+	as: op(value: Source) -> ViaStatic = ViaStatic(value.id)
+}
+
+convert[T: new(Source)]: fun(value: Source) -> T = T(value)
+
+main: fun -> i32
+{
+	val source = Source(1)
+	val viaAs: ViaAs = convert(source)
+	val viaNew: ViaNew = convert(source)
+	val viaStatic: ViaStatic = convert(source)
+	ret 0
+}

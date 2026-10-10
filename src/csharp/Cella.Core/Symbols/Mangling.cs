@@ -9,6 +9,9 @@ public static class Mangling
 		params IEnumerable<string> qualifierParts)
 	{
 		var sb = new StringBuilder(Mangle(symbol, modules, qualifierParts));
+		if (symbol is FunctionSymbol { IsConversion: true })
+			sb.Append("->").Append(MangleType(signature.ReturnType, modules));
+		
 		if (signature.ParameterTypes.Length > 0)
 			sb.Append(':').AppendJoin('.',
 				signature.ParameterTypes.Select((_, i) => MangleParameter(signature, i, modules)));

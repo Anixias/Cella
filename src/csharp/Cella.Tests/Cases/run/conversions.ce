@@ -1,0 +1,176 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+	malloc: fun(size: usize) -> ptr[u8]
+	free: fun(memory: ptr[u8])
+	memcpy: fun(target: ptr[u8], source: ptr[u8], size: usize) -> ptr[u8]
+}
+
+String: rec
+{
+	data: pvt ptr[u8]
+	length: pvt usize
+
+	new: op(text: str)
+	{
+		self.data = malloc(text.byteLength)
+		self.length = text.byteLength
+		memcpy(self.data, text.data, text.byteLength)
+	}
+
+	as: op(self) -> str = str(self.data, self.length)
+
+	drop: op
+	{
+		printf("free %.*s\n", i32(self.length), self.data)
+		free(self.data)
+	}
+}
+
+Fixed: rec
+{
+	raw: pvt i32
+
+	new: op(value: i32)
+	{
+		self.raw = value << 16
+	}
+
+	new: op(self) -> i32 = self.raw >> 16
+	new: op(self) -> f64 = f64(self.raw) / 65536.0
+}
+
+Meters: rec
+{
+	value: f64
+}
+
+Feet: rec
+{
+	value: f64
+
+	new: op(self) -> Meters = Meters(self.value * 0.5)
+}
+
+Arg: ref enum
+{
+	int(value: i64)
+	text(value: str)
+
+	as: op(value: i64) -> Arg = int(value)
+	as: op(value: str) -> Arg = text(value)
+}
+
+Name: rec
+{
+	id: i32
+
+	as: op(self) -> i32 = self.id
+}
+
+Flag: rec
+{
+	on: bool
+
+	as: op(self) -> bool = self.on
+}
+
+Line: ref rec
+{
+	text: str
+}
+
+show: fun(text: str)
+{
+	printf("[%.*s]\n", i32(text.byteLength), text.data)
+}
+
+makeString: fun -> String = String("made")
+
+log: fun(arg: Arg)
+{
+	match arg
+	{
+		int(value) => printf("int %lld\n", value)
+		text(value) => printf("text %.*s\n", i32(value.byteLength), value.data)
+	}
+}
+
+makeArg: fun -> Arg = 6
+
+pick: fun(value: i32)
+{
+	printf("i32 %d\n", value)
+}
+
+pick: fun(value: Name)
+{
+	printf("Name %d\n", value.id)
+}
+
+only: fun(value: i32)
+{
+	printf("only %d\n", value)
+}
+
+same[T: copy]: fun(value: T) -> T = value
+
+strings: fun
+{
+	val name = String("Ada")
+	show(name)
+	show(str(name))
+	val view: str = name
+	show(view)
+	show(String("temp"))
+	show(makeString())
+	var line = Line("line")
+	line.text = name
+	show(line.text)
+	show(Line(name).text)
+}
+
+numbers: fun
+{
+	val half = Fixed(3)
+	val whole = i32(half)
+	val precise = f64(half)
+	val length = Meters(Feet(10.0))
+	printf("%d %.1f %.1f\n", whole, precise, length.value)
+}
+
+arguments: fun
+{
+	log(5)
+	log("hello")
+	val big: i64 = 7
+	log(big)
+	var arg: Arg = 8
+	log(arg)
+	arg = 9
+	log(arg)
+	log(Arg(10))
+	log(makeArg())
+}
+
+choices: fun
+{
+	val name = Name(4)
+	pick(name)
+	only(name)
+	printf("same %d\n", same(name).id)
+	printf("sum %d\n", name + 1)
+	if Flag(true)
+		printf("flag\n")
+}
+
+main: fun -> i32
+{
+	strings()
+	numbers()
+	arguments()
+	choices()
+	ret 0
+}

@@ -28,6 +28,8 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	public DiagnosticList Diagnostics { get; } = new();
 	public IReadOnlySet<Symbol> GenericReferences => _genericReferences;
 	
+	private const int UserConversionCost = 100;
+	
 	private static readonly NativeConversion _boolPromotion =
 		new(NativeSymbols.Bool, NativeSymbols.Int32, ConversionKind.Implicit, 0);
 	
@@ -923,7 +925,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		
 		if (targetType is RecordSymbol record)
 			return _typePool.GetConstructors(record).Count == 0
-				? VisitRecordConstruction(node, record)
+				? VisitRecordConversion(node, record) ?? VisitRecordConstruction(node, record)
 				: VisitConstructorCall(node, record, null);
 		
 		if (targetType is TypeParameterSymbol { HasNew: true } && node.Arguments.Length == 0)
@@ -954,6 +956,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 				? _typePool.GetMatchedType(matchEnum)
 				: targetType);
 			
+			if (arg.Type is UntypedType && FindUserConversion(arg, targetType, true) is { } literalConversion)
+				return ApplyUserConversion(arg, literalConversion, node);
+			
 			if (arg.Type is UntypedType)
 				arg = MaterializeAsDefault(arg);
 		}
@@ -968,7 +973,42 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		if (_conversionTable.FindExplicit(value.Type, targetType) is { } conversion)
 			return new ResolvedConversionExpressionNode(value, conversion, node);
 		
+		if (FindUserConversion(arg, targetType, true) is { } userConversion)
+			return ApplyUserConversion(arg, userConversion, node);
+		
 		return VisitConstructorCall(node, targetType, arg);
+	}
+	
+	private IResolvedExpressionNode? VisitRecordConversion(CallExpressionNode node, RecordSymbol record)
+	{
+		if (node.Arguments is not [var argument] || argument is LambdaExpressionNode or BorrowExpressionNode ||
+		    record.IsGenericDefinition)
+			return null;
+		
+		var checkpoint = OpenCheckpoint();
+		var arg = VisitNode(argument, null);
+		var conversions = FindConversionCallables([arg], record);
+		if (conversions.Length == 0)
+		{
+			Rollback(checkpoint);
+			return null;
+		}
+		
+		Commit(checkpoint);
+		var fields = _typePool.GetMembers(record).OfType<FieldSymbol>().ToArray();
+		ICallable[] candidates = fields is [var field]
+			? [new FieldsCallable([GetMemberType(field)], record), ..conversions]
+			: conversions;
+		
+		var resolutionSet = PreferConstruction(ResolveCallable(candidates, [arg], MaterializationMode.Overload,
+			record));
+		
+		if (resolutionSet.IsAmbiguous)
+			return Error(node, $"Conversion to '{record.Name}' is ambiguous", record, node);
+		
+		return resolutionSet is { HasResult: true } && resolutionSet[0].Callable is ConversionCallable conversion
+			? CallConversion(conversion.Info, ApplyArgumentResolution([arg], resolutionSet[0])[0], node)
+			: VisitRecordConstruction(node, record, [arg]);
 	}
 	
 	private IResolvedExpressionNode VisitDynConversion(CallExpressionNode node, DynType dyn)
@@ -1357,7 +1397,8 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	private IResolvedExpressionNode ResolveConstructorCall(CallExpressionNode node, TypeSymbol targetType,
 		IResolvedExpressionNode[] args, ICallable[] ctorCandidates, TypeSymbol? target)
 	{
-		var resolutionSet = ResolveCallable(ctorCandidates, args, MaterializationMode.Overload, target);
+		ICallable[] candidates = [..ctorCandidates, ..FindConversionCallables(args, targetType)];
+		var resolutionSet = PreferConstruction(ResolveCallable(candidates, args, MaterializationMode.Overload, target));
 		
 		if (resolutionSet.IsAmbiguous)
 			return Error(node, $"Conversion to '{targetType.Name}' is ambiguous", targetType, node);
@@ -1375,6 +1416,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		}
 		
 		var resolution = resolutionSet[0];
+		if (resolution.Callable is ConversionCallable conversion)
+			return CallConversion(conversion.Info, ApplyArgumentResolution(args, resolution)[0], node);
+		
 		var callable = (ReceiverCallable)resolution.Callable;
 		var info = callable.Info;
 		
@@ -2156,6 +2200,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			type = borrow.Target;
 		
 		return type == target || _conversionTable.FindImplicit(type, target) is not null ||
+		       FindUserConversion(type, null, ParameterMode.ReadOnly, target) is not null ||
 		       TypePool.ContainsTypeParameters(type) && type.OriginalDefinition == target.OriginalDefinition;
 	}
 	
@@ -2547,7 +2592,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 				statics.Select(static method => method.Function)), CurrentTargetType);
 	}
 	
-	private bool DeclaresNonCaseMember(TypeSymbol type, string name) => GetMethods(type, name).Any() ||
+	private bool DeclaresNonCaseMember(TypeSymbol type, string name) => FindFunctions(type, name).Length > 0 ||
 	                                                                    type.GetStaticField(name) is not null ||
 	                                                                    GetPropertyMember(type, name) is not null;
 	
@@ -2904,7 +2949,8 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	private MethodSymbol[] FindStatics(TypeSymbol type, string name) =>
 		[..FindFunctions(type, name).Where(static function => !function.HasReceiver)];
 	
-	private MethodSymbol[] FindFunctions(TypeSymbol type, string name) => [..GetMethods(type, name)];
+	private MethodSymbol[] FindFunctions(TypeSymbol type, string name) =>
+		[..GetMethods(type, name).Where(static method => !method.Function.IsConversion)];
 	
 	private FieldSymbol? FindField(TypeSymbol type, string name) =>
 		_typePool.ResolveMember(GetMemberOwner(type, name), name) as FieldSymbol;
@@ -5189,6 +5235,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		if (_conversionTable.FindImplicit(source.Type, target) is { } conversion)
 			return new ResolvedConversionExpressionNode(source, conversion, source.Syntax);
 		
+		if (FindUserConversion(source, target) is { } userConversion)
+			return ApplyUserConversion(source, userConversion);
+		
 		if (IsDynTarget(target) && ConvertToDyn(source, target) is { } erased)
 			return erased;
 		
@@ -5897,7 +5946,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 				var (cost, conversion) = MatchArg(args[i], candidate.ParameterTypes[i], candidate.GetMode(i), mode,
 					ignoreModes);
 				
-				if (cost == int.MaxValue)
+				if (cost == int.MaxValue || candidate is ConversionCallable && conversion is not null)
 				{
 					valid = false;
 					break;
@@ -5920,7 +5969,11 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			
 			if (target is not null && candidate.ReturnType != target)
 			{
-				var conversion = _conversionTable.FindImplicit(candidate.ReturnType, target);
+				var conversion = _conversionTable.FindImplicit(candidate.ReturnType, target) ??
+				                 (candidate.ReturnType is BorrowType
+					                 ? null
+					                 : FindUserConversion(candidate.ReturnType, null, ParameterMode.ReadOnly, target));
+				
 				if (conversion is null && candidate.ReturnType != NativeSymbols.Void &&
 				    candidate.ReturnType is not BorrowType && target is not BorrowType)
 					continue;
@@ -5965,6 +6018,12 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			}
 			
 			var target = resolution.Callable.ParameterTypes[i];
+			if (resolution.ArgumentConversions[i] is FunctionConversion userConversion)
+			{
+				result.Add(ApplyArgumentConversion(arg, userConversion, target));
+				continue;
+			}
+			
 			if (arg is ResolvedMutArgumentExpressionNode argument)
 			{
 				result.Add(ApplyMutArgument(argument, target));
@@ -6080,9 +6139,187 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	private uint CountBits(TypeSymbol type) => _typePool.SizeTable.GetSize(type).CountBits(_pointerBitSize);
 	
 	private IResolvedExpressionNode ApplyResultResolution(IResolvedExpressionNode node,
-		CallableResolution resolution) => resolution.ResultConversion is { } conversion
-		? new ResolvedConversionExpressionNode(node, conversion, node.Syntax)
-		: node;
+		CallableResolution resolution) => resolution.ResultConversion switch
+	{
+		FunctionConversion userConversion => ApplyUserConversion(node, userConversion),
+		{ } conversion => new ResolvedConversionExpressionNode(node, conversion, node.Syntax),
+		null => node
+	};
+	
+	private IResolvedExpressionNode ApplyArgumentConversion(IResolvedExpressionNode arg, FunctionConversion conversion,
+		TypeSymbol target)
+	{
+		var converted = ApplyUserConversion(arg, conversion);
+		return arg is ResolvedMutArgumentExpressionNode argument && !IsInvalid(converted)
+			? ApplyMutArgument(new ResolvedMutArgumentExpressionNode(converted,
+				_typePool.GetPointerType(converted.Type), argument.Syntax), target)
+			: converted;
+	}
+	
+	private FunctionConversion? FindUserConversion(IResolvedExpressionNode source, TypeSymbol target,
+		bool isExplicit = false)
+	{
+		var (value, use) = source switch
+		{
+			ResolvedMutArgumentExpressionNode argument => (Decay(argument.Place), ParameterMode.Mut),
+			ResolvedOwnExpressionNode owned => (Decay(owned.Value), ParameterMode.Own),
+			_ => (Decay(source), ParameterMode.ReadOnly)
+		};
+		
+		return IsInvalid(value)
+			? null
+			: FindUserConversion(value.Type, value as ResolvedLiteralExpressionNode, use, target, isExplicit);
+	}
+	
+	private FunctionConversion? FindUserConversion(TypeSymbol type, ResolvedLiteralExpressionNode? literal,
+		ParameterMode use, TypeSymbol target, bool isExplicit = false)
+	{
+		if (IsInvalid(type) || IsInvalid(target))
+			return null;
+		
+		List<(FunctionInfo Info, int Cost)> candidates =
+		[
+			..FindOutwardConversions(type, use, target, isExplicit).Select(static info => (Info: info, Cost: 0)),
+			..use == ParameterMode.Mut
+				? []
+				: GetInwardConversions(target)
+					.Select(info => (Info: info,
+						Cost: MatchConversionSource(type, literal, info.Signature.ParameterTypes[0])))
+					.Where(static candidate => candidate.Cost < int.MaxValue)
+		];
+		
+		if (candidates.Count == 0)
+			return null;
+		
+		var cheapest = candidates.Min(static candidate => candidate.Cost);
+		var best = candidates.Where(candidate => candidate.Cost == cheapest).ToList();
+		return new FunctionConversion(best[0].Info, isExplicit ? ConversionKind.Explicit : ConversionKind.Implicit,
+			UserConversionCost + cheapest)
+		{
+			IsAmbiguous = best.Count > 1
+		};
+	}
+	
+	private int MatchConversionSource(TypeSymbol type, ResolvedLiteralExpressionNode? literal, TypeSymbol parameter)
+	{
+		if (type == parameter)
+			return 0;
+		
+		return type is UntypedType untyped && (literal is null || LiteralFits(literal, parameter))
+			? untyped.MaterializationCost(parameter, MaterializationMode.Overload)
+			: int.MaxValue;
+	}
+	
+	private List<FunctionInfo> FindOutwardConversions(TypeSymbol type, ParameterMode use, TypeSymbol target,
+		bool isExplicit)
+	{
+		if (type is UntypedType)
+			return [];
+		
+		var matching = GetMethods(type, "as")
+			.Concat(isExplicit ? GetMethods(type, "new") : [])
+			.Where(method => method.Function is { IsConversion: true, Kind: FunctionKind.Method } &&
+			                 CanAccess(type, method.Function))
+			.Select(method => GetFunctionInfo(method, type))
+			.Where(info => info.Signature.ParameterTypes.Length == 1 &&
+			               Produces(info.Signature.ReturnType, target, use == ParameterMode.Mut))
+			.ToList();
+		
+		ParameterMode[] modes = use switch
+		{
+			ParameterMode.Mut => [ParameterMode.Mut],
+			ParameterMode.Own => [ParameterMode.Own, ParameterMode.ReadOnly],
+			_ => [ParameterMode.ReadOnly, ParameterMode.Own]
+		};
+		
+		return modes
+			.Select(mode => matching.Where(info => info.Signature.GetMode(0) == mode).ToList())
+			.FirstOrDefault(static infos => infos.Count > 0) ?? [];
+	}
+	
+	private static bool Produces(TypeSymbol result, TypeSymbol target, bool isMutable) => isMutable
+		? result is BorrowType { IsMutable: true } borrow && borrow.Target == target
+		: result == target || result is BorrowType { IsMutable: false } view && view.Target == target;
+	
+	private IEnumerable<FunctionInfo> GetInwardConversions(TypeSymbol target) =>
+		target is BorrowType or UntypedType or NamedTypeSymbol { IsGenericDefinition: true }
+			? []
+			: GetMethods(target, "as")
+				.Where(method => method.Function is { IsConversion: true, Kind: FunctionKind.Free } &&
+				                 CanAccess(target, method.Function))
+				.Select(method => GetFunctionInfo(method, target))
+				.Where(info => info.Signature.ParameterTypes.Length == 1 && info.Signature.ReturnType == target);
+	
+	private static ResolutionSet PreferConstruction(ResolutionSet resolutionSet)
+	{
+		if (!resolutionSet.IsAmbiguous)
+			return resolutionSet;
+		
+		var winners = Enumerable.Range(0, resolutionSet.Count).Select(i => resolutionSet[i]).ToList();
+		var kept = winners
+			.Where(static winner => winner.Callable is not ConversionCallable { Info.Symbol.Kind: FunctionKind.Free })
+			.ToList();
+		
+		return kept is [{ Callable: not ConversionCallable } only] ? ResolutionSet.Single(only) : resolutionSet;
+	}
+	
+	private ConversionCallable[] FindConversionCallables(IReadOnlyList<IResolvedExpressionNode> args,
+		TypeSymbol target)
+	{
+		if (args is not [var arg] || arg is ResolvedMutArgumentExpressionNode || IsInvalid(arg) || IsInvalid(target) ||
+		    target is NamedTypeSymbol { IsGenericDefinition: true })
+			return [];
+		
+		var (value, use) = arg is ResolvedOwnExpressionNode owned
+			? (Decay(owned.Value), ParameterMode.Own)
+			: (Decay(arg), ParameterMode.ReadOnly);
+		
+		return
+		[
+			..FindOutwardConversions(value.Type, use, target, true)
+				.Concat(GetInwardConversions(target))
+				.Select(info => new ConversionCallable(info, target))
+		];
+	}
+	
+	private IResolvedExpressionNode ApplyUserConversion(IResolvedExpressionNode source, FunctionConversion conversion,
+		IExpressionNode? syntax = null)
+	{
+		if (!conversion.IsAmbiguous)
+			return CallConversion(conversion.Function, source, syntax ?? source.Syntax);
+		
+		var from = Decay(source is ResolvedMutArgumentExpressionNode argument ? argument.Place : source).Type;
+		var to = conversion.To is BorrowType borrow ? borrow.Target : conversion.To;
+		return Error(syntax ?? source.Syntax, $"Conversion from '{from.Name}' to '{to.Name}' is ambiguous", to);
+	}
+	
+	private IResolvedExpressionNode CallConversion(FunctionInfo info, IResolvedExpressionNode source,
+		IExpressionNode syntax)
+	{
+		TrackFunctionUse(info, syntax);
+		if (info.Symbol.Kind == FunctionKind.Free)
+		{
+			var value = source.Type is UntypedType
+				? MaterializeExpression(source, info.Signature.ParameterTypes[0])
+				: source is ResolvedOwnExpressionNode
+					? source
+					: Decay(source);
+			
+			return new ResolvedFunctionCallExpressionNode(info, [value], syntax) { IsConversion = true };
+		}
+		
+		var receiver = source switch
+		{
+			ResolvedMutArgumentExpressionNode argument => argument.Place,
+			ResolvedOwnExpressionNode => source,
+			_ => Decay(source)
+		};
+		
+		return Decay(new ResolvedFunctionCallExpressionNode(info, [CreateReceiver(receiver, info)], syntax)
+		{
+			IsConversion = true
+		});
+	}
 	
 	private (int Cost, Conversion? Conversion) MatchArg(IResolvedExpressionNode arg, TypeSymbol target,
 		ParameterMode parameterMode, MaterializationMode mode, bool ignoreModes)
@@ -6093,6 +6330,10 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			if (arg is ResolvedMutArgumentExpressionNode mutArgument && mutTarget is not null &&
 			    IsMutPlaceOf(mutArgument.Place, mutTarget))
 				return (mutArgument.Place.Type == mutTarget ? 0 : 1, null);
+			
+			if (arg is ResolvedMutArgumentExpressionNode && mutTarget is not null &&
+			    FindUserConversion(arg, mutTarget) is { } mutConversion)
+				return (mutConversion.Cost, mutConversion);
 			
 			return ignoreModes ? (0, null) : (int.MaxValue, null);
 		}
@@ -6144,14 +6385,20 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 				return (int.MaxValue, null);
 			
 			var cost = u.MaterializationCost(target, mode);
-			return (cost, null);
+			return cost == int.MaxValue && FindUserConversion(arg, target) is { } literalConversion
+				? (literalConversion.Cost, literalConversion)
+				: (cost, null);
 		}
 		
 		if (target is FStrType && arg.Type == NativeSymbols.Str)
 			return (1, null);
 		
-		var conversion = _conversionTable.FindImplicit(arg.Type, target);
-		return conversion is null ? (Cost: int.MaxValue, null) : (conversion.Cost, conversion);
+		if (_conversionTable.FindImplicit(arg.Type, target) is { } conversion)
+			return (conversion.Cost, conversion);
+		
+		return FindUserConversion(arg, target) is { } userConversion
+			? (userConversion.Cost, userConversion)
+			: (int.MaxValue, null);
 	}
 	
 	private (int Cost, Conversion? Conversion) MatchCaseName(ResolvedCaseNameExpressionNode caseName,
@@ -6314,6 +6561,21 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		public ImmutableArray<TypeSymbol> ParameterTypes => type.ParameterTypes;
 		public TypeSymbol ReturnType => type.ReturnType;
 		public ParameterMode GetMode(int index) => type.ParameterModes[index];
+	}
+	
+	private sealed class ConversionCallable(FunctionInfo info, TypeSymbol target) : ICallable
+	{
+		public FunctionInfo Info { get; } = info;
+		public ImmutableArray<TypeSymbol> ParameterTypes => Info.Signature.ParameterTypes;
+		public TypeSymbol ReturnType { get; } = target;
+		public ParameterMode GetMode(int index) => Info.Signature.GetMode(index);
+	}
+	
+	private sealed class FieldsCallable(ImmutableArray<TypeSymbol> fields, TypeSymbol record) : ICallable
+	{
+		public ImmutableArray<TypeSymbol> ParameterTypes { get; } = fields;
+		public TypeSymbol ReturnType { get; } = record;
+		public ParameterMode GetMode(int index) => ParameterMode.Own;
 	}
 	
 	private sealed class ReceiverCallable(FunctionInfo info, TypeSymbol type) : ICallable

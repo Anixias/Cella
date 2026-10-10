@@ -1111,6 +1111,12 @@ public sealed class SignatureCollector
 			return;
 		}
 		
+		if (_typePool.FindConversionWitness(self, expected) is { } conversion)
+		{
+			conformance.Witnesses[requirement] = conversion;
+			return;
+		}
+		
 		if (!hidesConstruction)
 		{
 			ReportConformance(conformance.Location, $"'{self.Name}' needs '{trait}.new'");
@@ -1205,7 +1211,7 @@ public sealed class SignatureCollector
 		Dictionary<TypeParameterSymbol, TypeSymbol> traitMap, TypeSymbol self)
 	{
 		if (self is not (PrimitiveType or EnumSymbol) || requirement.Syntax is not FunctionNode node ||
-		    node.Identifier.Type == TokenType.Identifier)
+		    node.Identifier.Type == TokenType.Identifier || IsConversion(node))
 			return null;
 		
 		var expected = _typePool.SubstituteSignature(signature, traitMap);
@@ -1532,8 +1538,11 @@ public sealed class SignatureCollector
 	private static bool IsLoopOperator(FunctionNode node) =>
 		node.Identifier.Type is TokenType.KeywordIn or TokenType.KeywordFor;
 	
+	private static bool IsConversion(FunctionNode node) =>
+		node.Identifier.Type is TokenType.KeywordAs or TokenType.KeywordNew;
+	
 	private static bool IsModeOperator(FunctionNode node) =>
-		IsDereference(node) || IsIndexer(node) || IsLoopOperator(node);
+		IsDereference(node) || IsIndexer(node) || IsLoopOperator(node) || IsConversion(node);
 	
 	private void ReportModeOperators(TypeSymbol type, IEnumerable<FunctionNode> operators)
 	{
@@ -1541,7 +1550,109 @@ public sealed class SignatureCollector
 		ReportDereferences(type, [..kinds[TokenType.OpStar]]);
 		ReportIndexers(type, [..kinds[TokenType.OpOpenBracket]]);
 		ReportLoopOperators(type, [..kinds[TokenType.KeywordIn], ..kinds[TokenType.KeywordFor]]);
+		ReportConversions(type, [..kinds[TokenType.KeywordAs], ..kinds[TokenType.KeywordNew]]);
 	}
+	
+	private void ReportConversions(TypeSymbol type, List<FunctionNode> conversions)
+	{
+		var outward = new List<(FunctionNode Node, FunctionSignature Signature)>();
+		var inward = new List<(FunctionNode Node, FunctionSignature Signature)>();
+		foreach (var conversion in conversions)
+		{
+			var info = _builder.Functions[(FunctionSymbol)_symbolTable.DeclarationSymbols[conversion]];
+			var signature = info.Signature;
+			if (signature.ReturnType is InvalidType || signature.ParameterTypes.Any(static p => p is InvalidType))
+				continue;
+			
+			if (FindConversionError(type, conversion, signature) is var (location, message))
+			{
+				Diagnostics.Add(new(DiagnosticSeverity.Error, location, message));
+				continue;
+			}
+			
+			(conversion.Receiver is null ? inward : outward).Add((conversion, signature));
+			if (conversion.Identifier.Type == TokenType.KeywordNew &&
+			    type is (RecordSymbol or EnumSymbol) and not NamedTypeSymbol { IsGenericInstance: true })
+				_typePool.AddExplicitConversion(type, info);
+		}
+		
+		foreach (var sameTarget in outward.GroupBy(static c => GetIndexedType(c.Signature)))
+		{
+			if (sameTarget.Select(static c => c.Node.Identifier.Type).Distinct().Count() > 1)
+			{
+				var message = $"Cannot declare both 'as' and 'new' conversions to '{sameTarget.Key.Name}'";
+				Diagnostics.AddRange(sameTarget.Select(c =>
+					new Diagnostic(DiagnosticSeverity.Error, c.Node.Identifier.SourceLocation, message)));
+				
+				continue;
+			}
+			
+			var sameModes = sameTarget.GroupBy(static c => c.Signature.GetMode(0)).Where(static g => g.Count() > 1);
+			foreach (var sameMode in sameModes)
+			{
+				var receiver = DescribeConversionReceiver(sameMode.Key);
+				var message = $"Conversion to '{sameTarget.Key.Name}' with '{receiver}' is declared more than " +
+				              $"once in '{type.Name}'";
+				
+				Diagnostics.AddRange(sameMode.Select(c =>
+					new Diagnostic(DiagnosticSeverity.Error, c.Node.Identifier.SourceLocation, message)));
+			}
+		}
+		
+		var sameSources = inward.GroupBy(static c => c.Signature.ParameterTypes[0]).Where(static g => g.Count() > 1);
+		foreach (var sameSource in sameSources)
+		{
+			var message = $"Conversion from '{sameSource.Key.Name}' is declared more than once in '{type.Name}'";
+			Diagnostics.AddRange(sameSource.Select(c =>
+				new Diagnostic(DiagnosticSeverity.Error, c.Node.Identifier.SourceLocation, message)));
+		}
+	}
+	
+	private static (SourceLocation Location, string Message)? FindConversionError(TypeSymbol type, FunctionNode node,
+		FunctionSignature signature)
+	{
+		var name = node.Identifier.Text;
+		var result = signature.ReturnType;
+		var resultLocation = node.ReturnType?.SourceLocation ?? node.Identifier.SourceLocation;
+		if (node.Receiver is null)
+		{
+			return node switch
+			{
+				{ Parameters.Length: not 1 } =>
+					(node.Identifier.SourceLocation, $"'{name}' operators need 'self' or one parameter"),
+				{ Parameters: [{ Mode.Type: TokenType.KeywordMut } parameter] } =>
+					(parameter.SourceLocation, $"Cannot take 'mut' parameters in '{name}' operators"),
+				{ ReturnType: null } => (node.Identifier.SourceLocation, $"'{name}' operators need a return type"),
+				_ when result != type =>
+					(resultLocation, $"Cannot return '{result.Name}' from '{name}' operators without 'self'"),
+				_ when signature.ParameterTypes[0] == type =>
+					(node.Parameters[0].SourceLocation, $"Cannot convert '{type.Name}' to itself"),
+				_ => null
+			};
+		}
+		
+		var mode = signature.GetMode(0);
+		return node switch
+		{
+			{ Parameters: [var parameter, ..] } =>
+				(parameter.SourceLocation, $"Cannot take parameters in '{name}' operators with 'self'"),
+			{ ReturnType: null } => (node.Identifier.SourceLocation, $"'{name}' operators need a return type"),
+			_ when result is BorrowType { IsMutable: var isMutable } && (isMutable != (mode == ParameterMode.Mut) ||
+			                                                             mode == ParameterMode.Own) ||
+			       result is not BorrowType && mode == ParameterMode.Mut =>
+				(resultLocation,
+					$"Cannot return '{result.Name}' from '{name}' with '{DescribeConversionReceiver(mode)}'"),
+			_ when GetIndexedType(signature) == type => (resultLocation, $"Cannot convert '{type.Name}' to itself"),
+			_ => null
+		};
+	}
+	
+	private static string DescribeConversionReceiver(ParameterMode mode) => mode switch
+	{
+		ParameterMode.Mut => "mut self",
+		ParameterMode.Own => "own self",
+		_ => "self"
+	};
 	
 	private void ReportLoopOperators(TypeSymbol type, List<FunctionNode> operators)
 	{

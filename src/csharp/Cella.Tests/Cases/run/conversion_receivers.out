@@ -1,0 +1,18 @@
+draw 5
+draw 15
+drop text 1
+send 1
+drop buffer 1
+drop text 2
+send 2
+drop buffer 2
+drop text 3
+drop text 4
+kept 3 4
+drop buffer 4
+drop buffer 3
+unboxed 1
+unboxed 2
+drop item 2
+drop item 1
+[exit code 0]

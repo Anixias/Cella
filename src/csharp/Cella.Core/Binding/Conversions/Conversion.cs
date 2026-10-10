@@ -94,6 +94,7 @@ public sealed class FunctionConversion(FunctionInfo function, ConversionKind kin
 	: Conversion(function.Signature.ParameterTypes[0], function.Signature.ReturnType, kind, cost, false)
 {
 	public FunctionInfo Function { get; } = function;
+	public bool IsAmbiguous { get; init; }
 }
 
 [TreeVisitor<Conversion>]

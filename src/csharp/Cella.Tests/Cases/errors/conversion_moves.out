@@ -1,0 +1,25 @@
+
+====== conversion_moves.ce ======
+
+Error at line 53, column 6
+52 │ val name = String("local")
+53 │ ret name
+         ╘══╛ Cannot return borrows of local variables
+
+Error at line 59, column 7
+58 │ val text = Text(1)
+59 │ send(text)
+          ╘══╛ Cannot move 'Text' values implicitly
+
+Error at line 61, column 22
+60 │ val other = Text(2)
+61 │ val buffer = Buffer(other)
+                         ╘═══╛ Cannot move 'Text' values implicitly
+
+Error at line 63, column 15
+62 │ val view: str = String("temp")
+63 │ val length = view.byteLength
+                  ╘══╛ Cannot use borrows of dropped values
+                     | Dropped on line 62
+
+[compilation failed]
