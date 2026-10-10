@@ -21,10 +21,10 @@ Error at line 64, column 18
 64 │ val moved = own boxes[0]
                      ╘══════╛ Cannot move borrowed values
 
-Error at line 65, column 15
+Error at line 65, column 23
 64 │ val moved = own boxes[0]
-65 │ val copied = boxes[1]
-                  ╘══════╛ Cannot move borrowed values
+65 │ val copied: Buffer = boxes[1]
+                          ╘══════╛ Cannot move borrowed values
 
 Error at line 67, column 2
 66 │ var text = "abc"

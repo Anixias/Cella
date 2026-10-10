@@ -18,7 +18,7 @@ main: fun -> i32
 	val text = Text(1)
 	call(fun -> i32
 	{
-		val moved = text
+		val moved: Text = text
 		ret 0
 	})
 

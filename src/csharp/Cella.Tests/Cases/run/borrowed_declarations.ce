@@ -1,0 +1,161 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+	malloc: fun(size: usize) -> ptr
+	free: fun(memory: ptr)
+}
+
+Texture: rec
+{
+	id: i32
+
+	drop: op
+	{
+		printf("free %d\n", self.id)
+	}
+}
+
+TextureBox: rec
+{
+	pointer: pvt ptr[Texture]
+
+	new: op(own texture: Texture)
+	{
+		self.pointer = ptr[Texture](malloc(sizeOf(Texture)))
+		own *self.pointer = texture
+	}
+
+	*: op(self) -> imm[Texture] = imm *self.pointer
+
+	drop: op
+	{
+		drop *self.pointer
+		free(self.pointer)
+	}
+}
+
+Shelf: rec
+{
+	textures: array[Texture, 2]
+
+	[]: op(self, i: usize) -> imm[Texture] = imm self.textures[i]
+
+	first: fun(self) -> i32
+	{
+		val texture = self.textures[0]
+		ret texture.id
+	}
+}
+
+Slot: enum
+{
+	empty
+	full(texture: Texture)
+}
+
+shared: val Texture = Texture(15)
+
+look: fun(texture: Texture) -> i32
+{
+	val same = texture
+	ret same.id
+}
+
+pick: fun(textures: array[Texture, 2], second: bool) -> i32
+{
+	var chosen = textures[0]
+	if second
+		chosen = textures[1]
+
+	ret chosen.id
+}
+
+measure[T]: fun(value: T) -> usize
+{
+	val same = value
+	ret sizeOf(same)
+}
+
+boxes: fun
+{
+	val held = TextureBox(Texture(1))
+	val inside = *held
+	printf("box %d %d\n", inside.id, held.id)
+}
+
+parameters: fun
+{
+	val texture = Texture(2)
+	val textures = [Texture(3), Texture(4)]
+	printf("parameters %d %d %d %d\n", look(texture), pick(textures, false), pick(textures, true),
+		i32(measure(texture)))
+}
+
+bindings: fun
+{
+	val textures = [Texture(5), Texture(6)]
+	for texture in textures
+	{
+		val same = texture
+		printf("loop %d\n", same.id)
+	}
+
+	var changed = [Texture(7), Texture(8)]
+	for texture in mut changed
+	{
+		texture.id += 10
+		val same = texture
+		printf("mut loop %d\n", same.id)
+	}
+
+	val slot = Slot.full(Texture(9))
+	match slot
+	{
+		full(texture) =>
+		{
+			val same = texture
+			printf("match %d\n", same.id)
+		}
+		empty => {}
+	}
+}
+
+captures: fun
+{
+	val texture = Texture(10)
+	val show = fun
+	{
+		val same = texture
+		printf("closure %d\n", same.id)
+	}
+
+	show()
+	val owned = Texture(11)
+	val kept = own fun
+	{
+		val same = owned
+		printf("own closure %d\n", same.id)
+	}
+
+	kept()
+}
+
+others: fun
+{
+	val shelf = Shelf([Texture(12), Texture(13)])
+	val item = shelf[1]
+	val global = shared
+	printf("others %d %d %d\n", item.id, shelf.first(), global.id)
+}
+
+main: fun -> i32
+{
+	boxes()
+	parameters()
+	bindings()
+	captures()
+	others()
+	ret 0
+}

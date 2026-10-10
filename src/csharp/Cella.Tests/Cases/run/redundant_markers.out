@@ -23,9 +23,14 @@ Hint at line 53, column 11
                ╘╛ Redundant 'Eq'
                 | Required by 'Ord'
 
-Hint at line 57, column 15
+Hint at line 57, column 13
 56 │ {
-57 │     val double = own fun(x: i32) -> i32 = x * 2
+57 │     val same = imm texture
+                    ╘═╛ Redundant 'imm'
+
+Hint at line 63, column 15
+62 │ {
+63 │     val double = own fun(x: i32) -> i32 = x * 2
                       ╘═╛ Redundant 'own'
 
 8

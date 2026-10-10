@@ -73,7 +73,7 @@ writeValue: fun -> i32
 
 moveOut: fun(boxed: BufferBox) -> i32
 {
-	val buffer = *boxed
+	val buffer: Buffer = *boxed
 	ret buffer.id
 }
 

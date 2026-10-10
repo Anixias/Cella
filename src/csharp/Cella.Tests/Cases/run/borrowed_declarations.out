@@ -1,0 +1,24 @@
+box 1 1
+free 1
+parameters 2 3 4 4
+free 4
+free 3
+free 2
+loop 5
+loop 6
+mut loop 17
+mut loop 18
+match 9
+free 9
+free 18
+free 17
+free 6
+free 5
+closure 10
+own closure 11
+free 11
+free 10
+others 13 12 15
+free 13
+free 12
+[exit code 0]

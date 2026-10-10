@@ -1,0 +1,25 @@
+
+====== borrowed_declaration_moves.ce ======
+
+Error at line 44, column 22
+43 │ {
+44 │     val same: Texture = texture
+                             ╘═════╛ Cannot move read-only parameters
+
+Error at line 45, column 18
+44 │ val same: Texture = texture
+45 │ val moved = own texture
+                     ╘═════╛ Cannot move read-only parameters
+
+Error at line 52, column 6
+51 │ val inside = *held
+52 │ ret inside
+         ╘════╛ Cannot return borrows of local variables
+
+Error at line 60, column 17
+59 │ keep(held)
+60 │ printf("%d\n", inside.id)
+                    ╘════╛ Cannot use borrows of moved values
+                         | Moved on line 59
+
+[compilation failed]

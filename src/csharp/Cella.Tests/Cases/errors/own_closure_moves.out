@@ -22,10 +22,10 @@ Error at line 51, column 17
                     ╘═══╛ Cannot use moved values
                         | Moved on line 49
 
-Error at line 54, column 35
+Error at line 54, column 44
 53 │ val grass = Texture(1)
-54 │ val take = own fun { val moved = grass }
-                                      ╘═══╛ Cannot move captured variables
+54 │ val take = own fun { val moved: Texture = grass }
+                                               ╘═══╛ Cannot move captured variables
 
 Error at line 59, column 24
 58 │ {

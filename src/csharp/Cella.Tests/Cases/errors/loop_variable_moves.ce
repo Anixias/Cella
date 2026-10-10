@@ -55,7 +55,7 @@ main: fun -> i32
 
 	for name in mut names
 	{
-		val copy = name
+		val copy: Name = name
 	}
 
 	var group = [Name(3), Name(4)]

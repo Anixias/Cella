@@ -52,6 +52,12 @@ Wrapper[T]: rec
 
 within[T: Eq + Ord]: fun(value: T, low: T) -> bool = low < value || value == low
 
+look: fun(texture: Texture) -> i32
+{
+	val same = imm texture
+	ret same.id
+}
+
 main: fun -> i32
 {
 	val double = own fun(x: i32) -> i32 = x * 2

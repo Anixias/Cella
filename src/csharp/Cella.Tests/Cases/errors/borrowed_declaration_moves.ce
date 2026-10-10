@@ -1,0 +1,62 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+	malloc: fun(size: usize) -> ptr
+	free: fun(memory: ptr)
+}
+
+Texture: rec
+{
+	id: i32
+
+	drop: op
+	{
+	}
+}
+
+TextureBox: rec
+{
+	pointer: pvt ptr[Texture]
+
+	new: op(own texture: Texture)
+	{
+		self.pointer = ptr[Texture](malloc(sizeOf(Texture)))
+		own *self.pointer = texture
+	}
+
+	*: op(self) -> imm[Texture] = imm *self.pointer
+
+	drop: op
+	{
+		drop *self.pointer
+		free(self.pointer)
+	}
+}
+
+keep: fun(own box: TextureBox)
+{
+}
+
+typed: fun(texture: Texture)
+{
+	val same: Texture = texture
+	val moved = own texture
+}
+
+leak: fun -> imm[Texture]
+{
+	val held = TextureBox(Texture(1))
+	val inside = *held
+	ret inside
+}
+
+main: fun -> i32
+{
+	val held = TextureBox(Texture(2))
+	val inside = *held
+	keep(held)
+	printf("%d\n", inside.id)
+	ret 0
+}

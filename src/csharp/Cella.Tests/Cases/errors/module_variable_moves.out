@@ -6,23 +6,23 @@ Error at line 40, column 14
 40 │     val a = own current
                      ╘═════╛ Cannot move module variables
 
-Error at line 41, column 10
+Error at line 41, column 18
 40 │ val a = own current
-41 │ val b = current
-             ╘═════╛ Cannot move module variables
+41 │ val b: Buffer = current
+                     ╘═════╛ Cannot move module variables
 
 Error at line 42, column 7
-41 │ val b = current
+41 │ val b: Buffer = current
 42 │ take(current)
           ╘═════╛ Cannot move module variables
 
-Error at line 43, column 10
+Error at line 43, column 18
 42 │ take(current)
-43 │ val c = holder.buffer
-             ╘═══════════╛ Cannot move module variables
+43 │ val c: Buffer = holder.buffer
+                     ╘═══════════╛ Cannot move module variables
 
 Error at line 44, column 14
-43 │ val c = holder.buffer
+43 │ val c: Buffer = holder.buffer
 44 │ val d = own buffers[1]
                  ╘════════╛ Cannot move module variables
 
@@ -31,14 +31,14 @@ Error at line 45, column 12
 45 │ match own slot
                ╘══╛ Cannot move module variables
 
-Error at line 51, column 10
+Error at line 51, column 18
 50 │ 
-51 │ val e = Cache.kept
-             ╘════════╛ Cannot move static variables
+51 │ val e: Buffer = Cache.kept
+                     ╘════════╛ Cannot move static variables
 
-Error at line 52, column 10
-51 │ val e = Cache.kept
-52 │ val f = origin
-             ╘════╛ Cannot move module values
+Error at line 52, column 18
+51 │ val e: Buffer = Cache.kept
+52 │ val f: Buffer = origin
+                     ╘════╛ Cannot move module values
 
 [compilation failed]

@@ -1,0 +1,34 @@
+mod test
+
+Texture: rec
+{
+	id: i32
+
+	drop: op
+	{
+	}
+}
+
+take: fun(own texture: Texture)
+{
+}
+
+pass: fun(texture: Texture) -> Texture
+{
+	val same = texture
+	ret same
+}
+
+consume: fun(texture: Texture)
+{
+	val same = texture
+	take(same)
+}
+
+change: fun(texture: Texture)
+{
+	var same = texture
+	same.id = 5
+}
+
+main: fun -> i32 = 0

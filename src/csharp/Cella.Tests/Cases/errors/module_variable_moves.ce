@@ -38,9 +38,9 @@ take: fun(own buffer: Buffer)
 main: fun -> i32
 {
 	val a = own current
-	val b = current
+	val b: Buffer = current
 	take(current)
-	val c = holder.buffer
+	val c: Buffer = holder.buffer
 	val d = own buffers[1]
 	match own slot
 	{
@@ -48,7 +48,7 @@ main: fun -> i32
 		full(buffer) => take(buffer)
 	}
 
-	val e = Cache.kept
-	val f = origin
+	val e: Buffer = Cache.kept
+	val f: Buffer = origin
 	ret 0
 }

@@ -51,7 +51,7 @@ main: fun -> i32
 	printf("%d\n", total)
 
 	val grass = Texture(1)
-	val take = own fun { val moved = grass }
+	val take = own fun { val moved: Texture = grass }
 
 	var count = 0
 	each([1, 2, 3], fun(value)

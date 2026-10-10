@@ -1,0 +1,19 @@
+
+====== borrowed_declarations.ce ======
+
+Error at line 19, column 6
+18 │ val same = texture
+19 │ ret same
+         ╘══╛ Cannot move borrowed values
+
+Error at line 25, column 7
+24 │ val same = texture
+25 │ take(same)
+          ╘══╛ Cannot move borrowed values
+
+Error at line 31, column 2
+30 │ var same = texture
+31 │ same.id = 5
+     ╘═════╛ Cannot write through read-only borrows
+
+[compilation failed]

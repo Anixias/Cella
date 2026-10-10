@@ -21,9 +21,9 @@ Error at line 70, column 2
 70 │ boxed.id = 2
      ╘═══╛ Cannot mutably borrow values
 
-Error at line 76, column 15
+Error at line 76, column 23
 75 │ {
-76 │     val buffer = *boxed
-                      ╘════╛ Cannot move borrowed values
+76 │     val buffer: Buffer = *boxed
+                              ╘════╛ Cannot move borrowed values
 
 [compilation failed]
