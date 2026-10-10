@@ -28,6 +28,7 @@ public sealed class TypePool
 	private readonly Dictionary<TraitSymbol, ImmutableArray<FunctionSymbol>> _dynMembers = [];
 	private readonly Dictionary<TraitSymbol, ImmutableArray<FunctionInfo>> _dynMemberInfos = [];
 	private readonly List<FunctionType> _functionTypes = [];
+	private readonly List<ClosureType> _closureTypes = [];
 	private readonly Dictionary<TypedMemberSymbol, TypeSymbol> _memberTypes = [];
 	private readonly Dictionary<TypeSymbol, TypeFacts> _facts = [];
 	private readonly Dictionary<TypeSymbol, List<FunctionInfo>> _constructors = [];
@@ -324,9 +325,24 @@ public sealed class TypePool
 	public bool HasDefault(TypeSymbol type) => GetFacts(type).HasDefault;
 	public bool HasDefault(FieldSymbol field) => !field.IsRequired && HasDefault(GetTypeOfMember(field));
 	
+	public bool HasDefaultPart(TypeSymbol type) => HasDefaultPart(type, []);
+	
+	private bool HasDefaultPart(TypeSymbol type, HashSet<TypeSymbol> visited) => type switch
+	{
+		TypeParameterSymbol or InvalidType => true,
+		_ when HasDefault(type) => true,
+		RecordSymbol { HasDestructor: true } => false,
+		RecordSymbol record => visited.Add(record) && GetMembers(record)
+			.OfType<FieldSymbol>()
+			.Any(field => !field.IsRequired && HasDefaultPart(GetTypeOfMember(field), visited)),
+		ArrayType array => HasDefaultPart(array.ElementType, visited),
+		_ => false
+	};
+	
 	public bool HoldsBorrows(TypeSymbol type) => type switch
 	{
 		BorrowType or DynType or FStrType or FunctionType { IsRef: true } => true,
+		ClosureType closure => closure.CaptureTypes.Any(HoldsBorrows),
 		TypeParameterSymbol parameter => !parameter.IsNoref,
 		StringType => type == NativeSymbols.Str,
 		NamedTypeSymbol { TypeArguments.IsEmpty: false } named => named.IsRef || PartsHoldBorrows(named),
@@ -338,6 +354,7 @@ public sealed class TypePool
 	public bool CanHoldClosures(TypeSymbol type) => type switch
 	{
 		FunctionType function => function.IsRef,
+		ClosureType closure => closure.CaptureTypes.Any(CanHoldClosures),
 		BorrowType borrow => CanHoldClosures(borrow.Target),
 		DynType => true,
 		ArrayType array => CanHoldClosures(array.ElementType),
@@ -516,6 +533,7 @@ public sealed class TypePool
 				HasDefault = FindCase(e, BigInteger.Zero) is { } zeroCase ? zeroCase.Fields.IsEmpty : e.IsExternal
 			},
 			ArrayType => Combine(false, GetParts(type)),
+			ClosureType => Combine(false, GetParts(type)) with { IsCopy = false, HasDefault = false },
 			FunctionType or BorrowType or FStrType => TypeFacts.Plain with { HasDefault = false },
 			TypeParameterSymbol parameter => new(!parameter.IsCopy, parameter.IsCopy, false),
 			DynType => new(true, false, false),
@@ -531,6 +549,7 @@ public sealed class TypePool
 		RecordSymbol r => GetMembers(r).OfType<FieldSymbol>().Select(GetTypeOfMember),
 		EnumSymbol e => e.Cases.SelectMany(c => GetPayloadTypes(e, c)),
 		ArrayType array => [array.ElementType],
+		ClosureType closure => closure.CaptureTypes,
 		_ => []
 	};
 	
@@ -573,6 +592,26 @@ public sealed class TypePool
 		
 		OperatorRegistry.Create(new PointerDifferenceImpl(ptrType));
 	}
+	
+	public ClosureType GetClosureType(FunctionInfo function, ImmutableArray<TypeSymbol> captureTypes,
+		FunctionType signature, string definitionName)
+	{
+		var existing = _closureTypes.Find(type => type.Function == function && type.Signature == signature &&
+		                                          type.CaptureTypes.SequenceEqual(captureTypes));
+		
+		if (existing is not null)
+			return existing;
+		
+		var closure = new ClosureType(function, captureTypes, signature, definitionName);
+		_closureTypes.Add(closure);
+		SizeTable.Register(closure, () => StorageSize.Sum(captureTypes
+			.Select(type => SizeTable.TryGetSize(type) ?? StorageSize.Const(0))));
+		
+		return closure;
+	}
+	
+	public FunctionType GetClosureSignature(ClosureType closure) => GetFunctionType(false,
+		closure.Signature.ParameterTypes, closure.Signature.ParameterModes, closure.Signature.ReturnType, true);
 	
 	public FunctionType GetFunctionType(bool isExternal, IEnumerable<TypeSymbol> parameterTypes,
 		IEnumerable<ParameterMode> parameterModes, TypeSymbol returnType, bool isRef = false)
@@ -1110,8 +1149,16 @@ public sealed class TypePool
 		BorrowType borrow => FindTypeParameters(borrow.Target),
 		ArrayType array => FindTypeParameters(array.ElementType),
 		FunctionType function => function.ParameterTypes.Append(function.ReturnType).SelectMany(FindTypeParameters),
+		ClosureType closure => closure.CaptureTypes
+			.SelectMany(FindTypeParameters)
+			.Concat(FindTypeParameters(closure.Signature))
+			.Concat(GetLambdaArguments(closure.Function).SelectMany(FindTypeParameters))
+			.Distinct(),
 		_ => []
 	};
+	
+	private static IEnumerable<TypeSymbol> GetLambdaArguments(FunctionInfo function) =>
+		function.TypeArguments.IsDefaultOrEmpty ? function.Symbol.TypeParameters : function.TypeArguments;
 	
 	public static bool ContainsTypeParameters(TypeSymbol type) => type switch
 	{
@@ -1124,6 +1171,9 @@ public sealed class TypePool
 		BorrowType borrow => ContainsTypeParameters(borrow.Target),
 		ArrayType array => ContainsTypeParameters(array.ElementType),
 		FunctionType function => function.ParameterTypes.Append(function.ReturnType).Any(ContainsTypeParameters),
+		ClosureType closure => closure.CaptureTypes.Any(ContainsTypeParameters) ||
+		                       ContainsTypeParameters(closure.Signature) ||
+		                       GetLambdaArguments(closure.Function).Any(ContainsTypeParameters),
 		_ => false
 	};
 	
@@ -1154,8 +1204,22 @@ public sealed class TypePool
 				ArrayType { Length.Sign: < 0 } array => new ArrayType(Substitute(array.ElementType, map), array.Length),
 				ArrayType array => GetArrayType(Substitute(array.ElementType, map), array.Length),
 				FunctionType function => SubstituteFunctionType(function, map),
+				ClosureType closure => SubstituteClosure(closure, map),
 				_ => type
 			};
+	
+	private ClosureType SubstituteClosure(ClosureType closure, IReadOnlyDictionary<TypeParameterSymbol, TypeSymbol> map)
+	{
+		var function = closure.Function.Symbol.TypeParameters.IsEmpty
+			? closure.Function
+			: InstantiateFunction(closure.Function, [
+				..GetLambdaArguments(closure.Function).Select(argument =>
+					Substitute(argument, map))
+			]);
+		
+		return GetClosureType(function, [..closure.CaptureTypes.Select(type => Substitute(type, map))],
+			SubstituteFunctionType(closure.Signature, map), closure.DefinitionName);
+	}
 	
 	public bool TryUnify(TypeSymbol first, TypeSymbol second, OrderedSet<TypeParameterSymbol> variables,
 		Dictionary<TypeParameterSymbol, TypeSymbol> bindings)

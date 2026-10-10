@@ -1,0 +1,23 @@
+mod test
+
+Point: rec
+{
+	x: i32
+	y: i32
+}
+
+main: fun -> i32
+{
+	val base = 1
+	val point = Point(1, 2)
+	var count = 0
+	val step = own fun -> i32
+	{
+		base = 3
+		point.x = 5
+		count += 1
+		ret count
+	}
+
+	ret step()
+}

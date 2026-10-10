@@ -383,6 +383,13 @@ public sealed unsafe class CodeGenerator : IDisposable
 				return llvmFunctionType;
 			}
 			
+			case ClosureType closure:
+			{
+				var closureType = LLVMTypeRef.CreateStruct([..closure.CaptureTypes.Select(MapTypeSymbol)], false);
+				current.Types[symbol] = closureType;
+				return closureType;
+			}
+			
 			case PointerType or BorrowType:
 			{
 				var pointerType = TypePool.IsFatPointer(symbol) ? FatPointerType : OpaquePointer;
@@ -771,6 +778,10 @@ public sealed unsafe class CodeGenerator : IDisposable
 			case ArrayType array:
 				EmitArrayDropGlue(array, address, builder);
 				break;
+			
+			case ClosureType closure:
+				EmitClosureDropGlue(closure, address, builder);
+				break;
 		}
 		
 		builder.BuildRetVoid();
@@ -795,6 +806,17 @@ public sealed unsafe class CodeGenerator : IDisposable
 			
 			var index = (uint)_typePool.GetFieldIndex(record, field);
 			EmitDropCall(fieldType, builder.BuildStructGEP2(recordType, address, index, field.Name), builder);
+		}
+	}
+	
+	private void EmitClosureDropGlue(ClosureType closure, LLVMValueRef address, LLVMBuilderRef builder)
+	{
+		var closureType = MapTypeSymbol(closure);
+		for (var i = closure.CaptureTypes.Length - 1; i >= 0; i--)
+		{
+			if (_typePool.NeedsDrop(closure.CaptureTypes[i]))
+				EmitDropCall(closure.CaptureTypes[i], builder.BuildStructGEP2(closureType, address, (uint)i, "capture"),
+					builder);
 		}
 	}
 	
@@ -929,6 +951,8 @@ public sealed unsafe class CodeGenerator : IDisposable
 		FunctionReferenceValue v => EmitFunctionReference(v.Function, v.Type),
 		ClosureValue v => EmitClosure(v, builder),
 		EnvironmentValue v => EmitEnvironment(v, builder),
+		OwnClosureValue v => EmitOwnClosure(v, builder),
+		ClosureFieldValue v => EmitClosureField(v, builder),
 		IndirectCallValue v => EmitIndirectCall(v, builder),
 		PointerOffsetValue v => EmitPointerOffset(v, builder),
 		PointerDifferenceValue v => EmitPointerDifference(v, builder),
@@ -1710,8 +1734,19 @@ public sealed unsafe class CodeGenerator : IDisposable
 		DynLayoutConversion c => EmitDynLayout(c, v, builder),
 		DynTestConversion c => EmitDynTest(c, v, builder),
 		DynCastConversion => builder.BuildExtractValue(EmitValue(v.Source, builder), 0, "object"),
+		ClosureConversion c => EmitClosureConversion(c, v, builder),
 		_ => throw new InvalidOperationException()
 	};
+	
+	private LLVMValueRef EmitClosureConversion(ClosureConversion conversion, ConversionValue v,
+		LLVMBuilderRef builder)
+	{
+		var closure = (ClosureType)Substitute(conversion.From);
+		var value = builder.BuildInsertValue(MapTypeSymbol(conversion.To).Undef, GetFunctionValue(closure.Function), 0,
+			"closure");
+		
+		return builder.BuildInsertValue(value, EmitValue(v.Source, builder), 1, "closure");
+	}
 	
 	private LLVMValueRef EmitNativeConversion(NativeConversion c, ConversionValue v, LLVMBuilderRef builder)
 	{
@@ -2564,6 +2599,22 @@ public sealed unsafe class CodeGenerator : IDisposable
 			"closure");
 		
 		return builder.BuildInsertValue(value, environment, 1, "closure");
+	}
+	
+	private LLVMValueRef EmitOwnClosure(OwnClosureValue closure, LLVMBuilderRef builder)
+	{
+		var value = MapTypeSymbol(closure.Type).Undef;
+		for (var i = 0; i < closure.Captures.Length; i++)
+			value = builder.BuildInsertValue(value, EmitValue(closure.Captures[i], builder), (uint)i, "closure");
+		
+		return value;
+	}
+	
+	private LLVMValueRef EmitClosureField(ClosureFieldValue capture, LLVMBuilderRef builder)
+	{
+		var environmentType = LLVMTypeRef.CreateStruct([..capture.Fields.Select(MapTypeSymbol)], false);
+		return builder.BuildStructGEP2(environmentType, currentFunction.FunctionValue.GetParam(0), (uint)capture.Index,
+			"capture");
 	}
 	
 	private LLVMValueRef EmitEnvironment(EnvironmentValue capture, LLVMBuilderRef builder)

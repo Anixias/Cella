@@ -66,6 +66,12 @@ Error at line 53, column 21
 53 │ NotTrait: trait req i32
                          ╘═╛ 'i32' is not a trait
 
+Hint at line 60, column 9
+59 │ 
+60 │ list[T: Eq + Ord]: impl
+             ╘╛ Redundant 'Eq'
+              | Required by 'Ord'
+
 Error at line 60, column 20
 59 │ 
 60 │ list[T: Eq + Ord]: impl

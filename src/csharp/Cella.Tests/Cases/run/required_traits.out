@@ -1,3 +1,12 @@
+
+====== required_traits.ce ======
+
+Hint at line 64, column 11
+63 │ 
+64 │ either[T: Eq + Ord]: fun(a: T, b: T) -> bool = a == b || a < b
+               ╘╛ Redundant 'Eq'
+                | Required by 'Ord'
+
 1 0 1
 1 1 0 1
 1 0 1

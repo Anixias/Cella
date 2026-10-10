@@ -1,0 +1,47 @@
+
+====== own_closure_moves.ce ======
+
+Error at line 26, column 39
+25 │ {
+26 │     val shown = own fun { printf("%d\n", texture.id) }
+                                              ╘═════╛ Cannot move read-only parameters
+
+Error at line 34, column 3
+33 │ {
+34 │     count += 1
+         ╘═══╛ Cannot leave 'mut' parameters moved
+
+Error at line 43, column 6
+42 │ {
+43 │     ret own fun(x) = x + bonus
+             ╘════════════════════╛ Cannot return borrows of unstored values
+
+Error at line 51, column 17
+50 │ add(5)
+51 │ printf("%d\n", total)
+                    ╘═══╛ Cannot use moved values
+                        | Moved on line 49
+
+Error at line 54, column 35
+53 │ val grass = Texture(1)
+54 │ val take = own fun { val moved = grass }
+                                      ╘═══╛ Cannot move captured variables
+
+Error at line 59, column 24
+58 │ {
+59 │     val next = own fun { count += value }
+                              ╘═══╛ Cannot move captured variables
+
+Error at line 65, column 23
+64 │ {
+65 │     val hit = own fun { hits += 1 }
+                             ╘══╛ Cannot use moved values
+                                | Moved here in an earlier iteration
+
+Error at line 72, column 6
+71 │ val second = first
+72 │ ret first(1)
+         ╘═══╛ Cannot use moved values
+             | Moved on line 71
+
+[compilation failed]

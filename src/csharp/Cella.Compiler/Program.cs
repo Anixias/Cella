@@ -23,6 +23,7 @@ internal static class Program
 	public static async Task<int> Main(string[] args)
 	{
 		var verbose = !args.Contains("--quiet");
+		var showHints = args.Contains("--hints");
 		var optimizeMode = args.Contains("--release") ? OptimizeMode.Release : OptimizeMode.Debug;
 		if (ParseFlagArguments(args) is not { } flagOverrides)
 			return 1;
@@ -91,7 +92,7 @@ internal static class Program
 			}
 			
 			var dependencyInfo = dependencies.Select(dependency => projectSymbols[dependency]).ToList();
-			var assemblyInfo = await BuildProject(project, typePool, dependencyInfo, verbose, optimizeMode,
+			var assemblyInfo = await BuildProject(project, typePool, dependencyInfo, verbose, showHints, optimizeMode,
 				targetTriple, flagOverrides, cts.Token);
 			
 			if (assemblyInfo.Succeeded)
@@ -266,8 +267,8 @@ internal static class Program
 			.Concat(library.ExportedStatics);
 	
 	private static async Task<AssemblyInfo> BuildProject(ProjectInfo project, TypePool typePool,
-		IEnumerable<AssemblyInfo> dependencies, bool verbose, OptimizeMode optimizeMode, TargetTriple targetTriple,
-		IReadOnlyDictionary<string, bool> flagOverrides, CancellationToken ct = default)
+		IEnumerable<AssemblyInfo> dependencies, bool verbose, bool showHints, OptimizeMode optimizeMode,
+		TargetTriple targetTriple, IReadOnlyDictionary<string, bool> flagOverrides, CancellationToken ct = default)
 	{
 		// Phase 1: File parsing
 		var outputType = project.Project.OutputType;
@@ -275,7 +276,7 @@ internal static class Program
 		var (files, parseDiagnostics) = await ProcessProject(project, flags, ct);
 		var diagnostics = new List<DiagnosticList> { parseDiagnostics };
 		
-		if (ReportErrors(diagnostics, project.Directory))
+		if (ReportErrors(diagnostics, project.Directory, showHints))
 			return new(new(project.Name, SymbolTable.Empty, SignatureTable.Empty, null), outputType, null, false);
 		
 		if (files.Length == 0)
@@ -324,7 +325,7 @@ internal static class Program
 		
 		diagnostics.Add(signatureCollector.Diagnostics);
 		diagnostics.Add(resolver.Diagnostics);
-		if (ReportErrors(diagnostics, project.Directory))
+		if (ReportErrors(diagnostics, project.Directory, showHints))
 			return errorResult;
 		
 		// Phase 3: Symbol resolution
@@ -335,7 +336,7 @@ internal static class Program
 				.ToImmutableArray();
 			
 			resolver.ReportInfiniteInstantiations();
-			if (ReportErrors(diagnostics, project.Directory))
+			if (ReportErrors(diagnostics, project.Directory, showHints))
 				return errorResult;
 		}
 		
@@ -347,7 +348,7 @@ internal static class Program
 			foreach (var (_, resolvedAst, _) in resolvedFiles)
 				typeChecker.Check(resolvedAst);
 			
-			if (ReportErrors(diagnostics, project.Directory))
+			if (ReportErrors(diagnostics, project.Directory, showHints))
 				return errorResult;
 		}
 		
@@ -384,10 +385,10 @@ internal static class Program
 					Console.WriteLine(LoweredModulePrinter.Print(module));
 			}
 			
-			if (ReportErrors(diagnostics, project.Directory))
+			if (ReportErrors(diagnostics, project.Directory, showHints))
 				return errorResult;
 			
-			PrintDiagnostics(diagnostics.SelectMany(static list => list), project.Directory);
+			PrintDiagnostics(diagnostics.SelectMany(static list => list), project.Directory, showHints);
 		}
 		
 		// Phase 7: Code generation
@@ -542,12 +543,12 @@ internal static class Program
 		return (files.ToImmutableArray(), diagnostics);
 	}
 	
-	private static bool ReportErrors(List<DiagnosticList> diagnostics, string directory)
+	private static bool ReportErrors(List<DiagnosticList> diagnostics, string directory, bool showHints)
 	{
 		if (diagnostics.All(static list => list.ErrorCount == 0))
 			return false;
 		
-		PrintDiagnostics(diagnostics.SelectMany(static list => list), directory);
+		PrintDiagnostics(diagnostics.SelectMany(static list => list), directory, showHints);
 		return true;
 	}
 	
@@ -589,9 +590,10 @@ internal static class Program
 	
 	private const int TabWidth = 4;
 	
-	private static void PrintDiagnostics(IEnumerable<Diagnostic> diagnostics, string? rootDirectory)
+	private static void PrintDiagnostics(IEnumerable<Diagnostic> diagnostics, string? rootDirectory, bool showHints)
 	{
 		var diagnosticsByFile = diagnostics
+			.Where(diagnostic => showHints || diagnostic.Severity != DiagnosticSeverity.Hint)
 			.GroupBy(static d => d.SourceLocation.Source.FilePath)
 			.ToDictionary(static g => g.Key, static g => g
 				.OrderBy(static d => d.Line)

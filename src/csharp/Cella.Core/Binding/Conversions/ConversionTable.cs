@@ -24,13 +24,25 @@ public sealed class ConversionTable
 	public Conversion? FindImplicit(TypeSymbol from, TypeSymbol to) =>
 		_conversions.TryGetValue((from, to), out var conversion)
 			? conversion.Kind == ConversionKind.Implicit ? conversion : null
-			: FindFunctionConversion(from, to);
+			: FindFunctionConversion(from, to) ?? FindClosureConversion(from, to);
 	
 	// TODO Chaining?
 	public Conversion? FindExplicit(TypeSymbol from, TypeSymbol to) =>
-		_conversions.GetValueOrDefault((from, to)) ?? FindFunctionConversion(from, to);
+		_conversions.GetValueOrDefault((from, to)) ?? FindFunctionConversion(from, to) ??
+		FindClosureConversion(from, to);
 	
-	private FreeConversion? FindFunctionConversion(TypeSymbol from, TypeSymbol to)
+	private ClosureConversion? FindClosureConversion(TypeSymbol from, TypeSymbol to)
+	{
+		if (from is not ClosureType closure || to is not FunctionType { IsRef: true } target ||
+		    !FunctionType.CanStandIn(closure.Signature, target))
+			return null;
+		
+		var conversion = new ClosureConversion(closure, target);
+		Add(conversion);
+		return conversion;
+	}
+	
+	private Conversion? FindFunctionConversion(TypeSymbol from, TypeSymbol to)
 	{
 		if (from is not FunctionType source || to is not FunctionType target || source == target ||
 		    !FunctionType.CanStandIn(source, target))

@@ -404,6 +404,7 @@ public sealed class BorrowChecker(TypePool typePool, DiagnosticList diagnostics)
 			FStrValue v => TemplateSources(v, state),
 			FStrPartValue v => Sources(v.Target, state),
 			ClosureValue v => [new Place(_environment, []), ..v.Captures.SelectMany(c => CaptureSources(c, state))],
+			OwnClosureValue v => [..v.Captures.SelectMany(capture => Sources(capture, state))],
 			_ => []
 		};
 	}

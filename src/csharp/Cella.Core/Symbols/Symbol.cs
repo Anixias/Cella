@@ -130,6 +130,7 @@ public sealed class FunctionSymbol
 	public ImmutableArray<TypeParameterSymbol> TypeParameters { get; init; } = [];
 	public ImmutableArray<TypeParameterSymbol> DeclaredTypeParameters { get; init; } = [];
 	public ImmutableArray<LocalVariableSymbol> Captures { get; internal set; } = [];
+	public bool OwnsCaptures { get; internal set; }
 }
 
 public abstract class TypeSymbol(string name, TypeSymbol? containingType = null, params IEnumerable<Symbol> children)
@@ -423,6 +424,20 @@ public sealed class FunctionType : TypeSymbol
 		
 		return $"{prefix}[{signature}]";
 	}
+}
+
+public sealed class ClosureType
+(
+	FunctionInfo function,
+	ImmutableArray<TypeSymbol> captureTypes,
+	FunctionType signature,
+	string definitionName
+) : TypeSymbol($"own {signature.Name}")
+{
+	public FunctionInfo Function { get; } = function;
+	public ImmutableArray<TypeSymbol> CaptureTypes { get; } = captureTypes;
+	public FunctionType Signature { get; } = signature;
+	public string DefinitionName { get; } = definitionName;
 }
 
 public sealed class PointerType : TypeSymbol, IPrimitiveType

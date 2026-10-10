@@ -305,6 +305,10 @@ public sealed class TypeInference(TypePool typePool)
 					
 					break;
 				
+				case (FunctionType, ClosureType a):
+					Unify(parameter, a.Signature, exact);
+					break;
+				
 				case (FunctionType p, FunctionType a) when p.ParameterTypes.Length == a.ParameterTypes.Length:
 					for (var i = 0; i < p.ParameterTypes.Length; i++)
 						Unify(p.ParameterTypes[i], GetParameterArgument(p, i, a.ParameterTypes[i]), true);

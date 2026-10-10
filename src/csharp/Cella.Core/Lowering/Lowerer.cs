@@ -181,9 +181,12 @@ public sealed class Lowerer
 		{
 			var captures = node.FunctionInfo.Symbol.Captures;
 			var location = node.Syntax.SourceLocation;
+			var fields = captures.Select(static capture => ((PointerType)capture.Type).BaseType).ToArray();
+			
 			for (var i = 0; i < captures.Length; i++)
-				Declare(GetOrMakeBlock(),
-					new LocalVarInstruction(captures[i], new EnvironmentValue(i, captures[i].Type), location));
+				Declare(GetOrMakeBlock(), new LocalVarInstruction(captures[i], node.FunctionInfo.Symbol.OwnsCaptures
+					? new ClosureFieldValue(i, fields, captures[i].Type)
+					: new EnvironmentValue(i, captures[i].Type), location));
 			
 			var signature = node.FunctionInfo.Signature;
 			var parameters = node.FunctionInfo.Symbol.Parameters
@@ -1011,8 +1014,17 @@ public sealed class Lowerer
 			return result;
 		}
 		
-		public Value Visit(ResolvedConversionExpressionNode node) =>
-			new ConversionValue(VisitNode(node.Source), node.Conversion, node.Syntax.SourceLocation);
+		public Value Visit(ResolvedConversionExpressionNode node) => new ConversionValue(
+			node.Conversion is ClosureConversion ? BorrowClosure(node.Source) : VisitNode(node.Source),
+			node.Conversion, node.Syntax.SourceLocation);
+		
+		private UnaryOpValue BorrowClosure(IResolvedExpressionNode closure)
+		{
+			var value = VisitPlace(closure);
+			var place = IsPlaceValue(value) ? value : StoreTemporary(value, "closure");
+			return new(_typePool.GetBorrowType(closure.Type, false), place, UnaryOperation.AddressOf,
+				closure.Syntax.SourceLocation);
+		}
 		
 		public Value Visit(ResolvedFunctionCallExpressionNode node) => new CallValue(node.Function,
 			LowerArguments(node.Arguments, node.Function, 0), node.Syntax.SourceLocation);
@@ -1024,8 +1036,18 @@ public sealed class Lowerer
 		public Value Visit(ResolvedFunctionReferenceExpressionNode node) =>
 			new FunctionReferenceValue(node.Function, node.Type, node.Syntax.SourceLocation);
 		
-		public Value Visit(ResolvedClosureExpressionNode node) => new ClosureValue(node.Function,
-			node.Captures.Select(CaptureAddress), node.Type, node.Syntax.SourceLocation);
+		public Value Visit(ResolvedClosureExpressionNode node) => node.Type is ClosureType closure
+			? new OwnClosureValue(node.Function,
+				node.Captures.Select((capture, i) => CaptureValue(capture, node.Function.Symbol.Captures[i])), closure,
+				node.Syntax.SourceLocation)
+			: new ClosureValue(node.Function, node.Captures.Select(CaptureAddress), node.Type,
+				node.Syntax.SourceLocation);
+		
+		private Value CaptureValue(IResolvedExpressionNode capture, LocalVariableSymbol binding)
+		{
+			var value = VisitPlace(capture);
+			return binding.IsMutBinding || !_typePool.IsCopy(capture.Type) ? new MoveValue(value) : value;
+		}
 		
 		private UnaryOpValue CaptureAddress(IResolvedExpressionNode capture) =>
 			new(_typePool.GetPointerType(capture.Type), VisitPlace(capture), UnaryOperation.AddressOf,

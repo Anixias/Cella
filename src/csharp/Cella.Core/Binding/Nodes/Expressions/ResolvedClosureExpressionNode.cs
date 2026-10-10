@@ -8,7 +8,7 @@ public sealed class ResolvedClosureExpressionNode
 (
 	FunctionInfo function,
 	IEnumerable<IResolvedExpressionNode> captures,
-	FunctionType type,
+	TypeSymbol type,
 	IExpressionNode syntax
 ) : IResolvedExpressionNode
 {

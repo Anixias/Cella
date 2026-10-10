@@ -1,0 +1,146 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Texture: rec
+{
+	id: i32
+
+	drop: op
+	{
+		printf("free texture %d\n", self.id)
+	}
+}
+
+each: fun(values: array[i32, 3], visit: fun[i32])
+{
+	for value in values
+		visit(value)
+}
+
+apply: fun(f: fun[i32 -> i32], x: i32) -> i32 = f(x)
+
+infer[T]: fun(f: fun[T -> i32], x: T) -> i32 = f(x)
+
+look[T]: fun(value: T) -> i32 = 7
+
+size[T]: fun(value: T) -> usize = sizeOf(T)
+
+keep[T: copy + noref]: fun(value: T) -> T
+{
+	val get = own fun -> T = value
+	ret get()
+}
+
+bump: fun(mut count: i32) -> i32
+{
+	val next = own fun -> i32
+	{
+		count += 1
+		ret count
+	}
+
+	count = 100
+	ret next() + next()
+}
+
+copies: fun
+{
+	var step = 3
+	val add = own fun(x: i32) -> i32 = x + step
+	step = 100
+	printf("copies %d %d\n", add(1), step)
+}
+
+counts: fun
+{
+	var count = 10
+	val next = own fun -> i32
+	{
+		count += 1
+		ret count
+	}
+
+	next()
+	printf("counts %d\n", next())
+}
+
+tallies: fun
+{
+	var sum = 0
+	val tally = own fun(value: i32) -> i32
+	{
+		sum += value
+		ret sum
+	}
+
+	val first = apply(tally, 5)
+	val second = infer(tally, 2)
+	printf("tallies %d %d %d\n", first, second, tally(1))
+}
+
+textures: fun
+{
+	val first = Texture(1)
+	val second = Texture(2)
+	val show = own fun { printf("textures %d %d\n", second.id, first.id) }
+	show()
+	val moved = show
+	moved()
+	printf("textures end\n")
+}
+
+nests: fun
+{
+	var count = 0
+	val next = own fun -> i32
+	{
+		each([1, 2, 3], fun(value) { count += value })
+		ret count
+	}
+
+	val first = next()
+	printf("nests %d %d\n", first, next())
+}
+
+generics: fun
+{
+	val step = 3
+	val other = 4
+	val add = own fun(x: i32) -> i32 = x + step + other
+	val borrowed: ref fun[i32 -> i32] = add
+	printf("generics %d %d %d %d %d %d\n", look(add), i32(size(add)), keep(5), i32(keep(2.5)), borrowed(1), step)
+}
+
+arguments: fun
+{
+	var seen = 0
+	each([1, 2, 3], own fun(value)
+	{
+		seen += value
+		printf("arguments %d\n", seen)
+	})
+}
+
+parameters: fun
+{
+	var value = 5
+	val result = bump(mut value)
+	printf("parameters %d %d\n", result, value)
+}
+
+main: fun -> i32
+{
+	copies()
+	counts()
+	tallies()
+	textures()
+	nests()
+	generics()
+	arguments()
+	parameters()
+	ret 0
+}

@@ -1,0 +1,29 @@
+
+====== own_closure_types.ce ======
+
+Error at line 10, column 9
+ 9 │ var pick = own fun -> i32 = base
+10 │ pick = own fun -> i32 = other
+            ╘════════════════════╛ Cannot convert between 'own fun' closures
+
+Error at line 11, column 17
+10 │ pick = own fun -> i32 = other
+11 │ keep(own fun = base)
+                    ╘══╛ Cannot capture 'base' in 'fun[-> i32]'
+
+Error at line 12, column 27
+11 │ keep(own fun = base)
+12 │ val plain: fun[-> i32] = pick
+                              ╘══╛ Cannot convert type 'own fun[-> i32]' to 'fun[-> i32]'
+
+Error at line 13, column 35
+12 │ val plain: fun[-> i32] = pick
+13 │ val wrong: ref fun[i32 -> i32] = pick
+                                      ╘══╛ Cannot convert type 'own fun[-> i32]' to 'ref fun[i32 -> i32]'
+
+Error at line 14, column 2
+13 │ val wrong: ref fun[i32 -> i32] = pick
+14 │ pick(5)
+     ╘══╛ 'own fun[-> i32]' doesn't accept these arguments
+
+[compilation failed]

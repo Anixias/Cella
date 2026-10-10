@@ -1,0 +1,32 @@
+
+====== redundant_markers.ce ======
+
+Hint at line 18, column 25
+17 │ 
+18 │ Sorted: trait req Ord + Eq
+                             ╘╛ Redundant 'Eq'
+                              | Required by 'Ord'
+
+Hint at line 41, column 12
+40 │ {
+41 │     callback: req fun[]
+                   ╘═╛ Redundant 'req'
+
+Hint at line 42, column 11
+41 │ callback: req fun[]
+42 │ texture: req Texture
+              ╘═╛ Redundant 'req'
+
+Hint at line 53, column 11
+52 │ 
+53 │ within[T: Eq + Ord]: fun(value: T, low: T) -> bool = low < value || value == low
+               ╘╛ Redundant 'Eq'
+                | Required by 'Ord'
+
+Hint at line 57, column 15
+56 │ {
+57 │     val double = own fun(x: i32) -> i32 = x * 2
+                      ╘═╛ Redundant 'own'
+
+8
+[exit code 0]

@@ -1,0 +1,15 @@
+copies 4 100
+counts 12
+tallies 5 7 8
+textures 2 1
+textures 2 1
+textures end
+free texture 2
+free texture 1
+nests 6 12
+generics 7 8 5 2 8 3
+arguments 1
+arguments 3
+arguments 6
+parameters 13 100
+[exit code 0]

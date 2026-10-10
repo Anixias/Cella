@@ -63,6 +63,9 @@ public static class Mangling
 		ArrayType { Length.Sign: < 0 } array => $"array[{MangleType(array.ElementType, modules)}]",
 		ArrayType array => $"array[{MangleType(array.ElementType, modules)}, {array.Length}]",
 		FunctionType function => MangleFunctionType(function, modules),
+		ClosureType { Function.TypeArguments.IsDefaultOrEmpty: true } closure => $"own[{closure.DefinitionName}]",
+		ClosureType closure =>
+			$"own[{MangleInstantiation(closure.DefinitionName, closure.Function.TypeArguments, modules)}]",
 		_ when modules?.FindModule(type) is { } module => $"{module.ModuleName.Text}.{MangleName(type, modules)}",
 		_ => type.Name
 	};

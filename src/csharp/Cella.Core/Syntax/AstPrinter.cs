@@ -516,7 +516,7 @@ public sealed class AstPrinter : ISyntaxNodeVisitor
 	public void Visit(LambdaExpressionNode node)
 	{
 		StartLine();
-		_sb.Append("LambdaExpressionNode (").AppendJoin(", ",
+		_sb.Append(node.Own is null ? "LambdaExpressionNode (" : "LambdaExpressionNode own (").AppendJoin(", ",
 			node.Parameters.Select(static parameter => parameter.Identifier.Text)).Append(')');
 		
 		if (node.ExpressionBody is { } expression)

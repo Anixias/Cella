@@ -3003,6 +3003,10 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			target = MaterializeAsDefault(target);
 		
 		target = Decay(target);
+		if (target.Type is ClosureType closure)
+			target = new ResolvedConversionExpressionNode(target,
+				_conversionTable.FindImplicit(closure, _typePool.GetClosureSignature(closure))!, target.Syntax);
+		
 		ICallable[] candidates = target.Type is FunctionType type ? [new FunctionTypeCallable(type)] : [];
 		var args = ResolveArguments(node.Arguments,
 			[..candidates.Select(static candidate => CreateShape(candidate, []))], out _);
@@ -3660,13 +3664,37 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			return new ResolvedInvalidExpressionNode(node, expected);
 		
 		if (frame.Captures.Count == 0)
+		{
+			if (node.Own is { } own && !frame.RejectsCaptures)
+				Diagnostics.Add(new(DiagnosticSeverity.Hint, own.SourceLocation, "Redundant 'own'"));
+			
 			return CreateLambdaGroup(info, node);
+		}
 		
-		info.Symbol.Captures = [..frame.Captures.Select(static capture => capture.Binding)];
+		List<(LocalVariableSymbol Binding, VarExpressionNode Use)> captures = node.Own is null
+			? frame.Captures
+			: [..frame.Captures.OrderBy(static capture => GetDeclarationStart(capture.Binding))];
+		
+		info.Symbol.Captures = [..captures.Select(static capture => capture.Binding)];
+		info.Symbol.OwnsCaptures = node.Own is not null;
+		var signature = _typePool.GetFunctionType(false, types, modes, returnType, node.Own is null);
+		var type = node.Own is null
+			? signature
+			: (TypeSymbol)_typePool.GetClosureType(info,
+				[..captures.Select(static capture => ((PointerType)capture.Binding.Type).BaseType)], signature,
+				info.MangledName!);
+		
 		return new ResolvedClosureExpressionNode(info,
-			[..frame.Captures.Select(capture => ResolveSymbolValue(capture.Use, capture.Binding.Captured!))],
-			_typePool.GetFunctionType(false, types, modes, returnType, true), node);
+			[..captures.Select(capture => ResolveSymbolValue(capture.Use, capture.Binding.Captured!))], type, node);
 	}
+	
+	private static int GetDeclarationStart(VariableSymbol variable) => variable switch
+	{
+		LocalVariableSymbol { Captured: { } captured } => GetDeclarationStart(captured),
+		LocalVariableSymbol local => local.Identifier.SourceLocation.Range.Start,
+		ParameterSymbol parameter => parameter.Definition.Range.Start,
+		_ => 0
+	};
 	
 	private ResolvedFunctionGroupExpressionNode CreateLambdaGroup(FunctionInfo info, LambdaExpressionNode node) =>
 		new(new FunctionGroupType("fun", [info], GetNaturalType(info).Name), node);
@@ -3756,6 +3784,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			Diagnostics.Add(new(DiagnosticSeverity.Error, node.SourceLocation,
 				$"Cannot capture '{name}' in '{target.Name}'"));
 			
+			frame.RejectsCaptures = true;
 			return null;
 		}
 		
@@ -5073,8 +5102,12 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		IsBorrowedFunctionParameter(node) && node.Type is FunctionType function &&
 		_typePool.GetPlainFunctionType(function) == target;
 	
-	private static string GetDisplayName(IResolvedExpressionNode node) =>
-		IsBorrowedFunctionParameter(node) && node.Type is FunctionType function ? function.PlainName : node.Type.Name;
+	private static string GetDisplayName(IResolvedExpressionNode node) => node switch
+	{
+		ResolvedConversionExpressionNode { Conversion: ClosureConversion closure } => closure.From.Name,
+		_ when IsBorrowedFunctionParameter(node) && node.Type is FunctionType function => function.PlainName,
+		_ => node.Type.Name
+	};
 	
 	[return: NotNullIfNotNull(nameof(source))]
 	private IResolvedExpressionNode? ApplyImplicitConversion(IResolvedExpressionNode? source, TypeSymbol target)
@@ -5111,6 +5144,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		
 		if (IsMovedFunctionParameter(source, target))
 			return Error(source.Syntax, "Cannot move read-only parameters", target);
+		
+		if (source.Type is ClosureType && target is ClosureType)
+			return Error(source.Syntax, "Cannot convert between 'own fun' closures", target);
 		
 		return Error(source.Syntax, $"Cannot convert type '{source.Type.Name}' to '{target.Name}'", target);
 	}
@@ -6171,6 +6207,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		public FunctionType? Target { get; } = target;
 		public Dictionary<string, LocalVariableSymbol> Bindings { get; } = [];
 		public List<(LocalVariableSymbol Binding, VarExpressionNode Use)> Captures { get; } = [];
+		public bool RejectsCaptures { get; set; }
 	}
 	
 	private readonly record struct Redirection

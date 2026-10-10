@@ -119,7 +119,10 @@ public sealed class GoldenTests
 			var output = new StringWriter();
 			Console.SetOut(output);
 			Console.SetError(output);
-			string[] arguments = release ? [projectPath, "--quiet", "--release"] : [projectPath, "--quiet"];
+			string[] arguments = release
+				? [projectPath, "--quiet", "--hints", "--release"]
+				: [projectPath, "--quiet", "--hints"];
+			
 			var exitCode = await Program.Main(arguments);
 			return (exitCode, output.ToString());
 		}

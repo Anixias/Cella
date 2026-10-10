@@ -1,0 +1,60 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Eq: trait
+{
+	==: op(a: Self, b: Self) -> bool
+}
+
+Ord: trait req Eq
+{
+	<: op(a: Self, b: Self) -> bool
+}
+
+Sorted: trait req Ord + Eq
+{
+	first: fun(self) -> i32
+}
+
+Texture: rec
+{
+	id: i32
+
+	drop: op
+	{
+		printf("free texture %d\n", self.id)
+	}
+}
+
+Handler: rec
+{
+	callback: fun[]
+	scale: f32
+}
+
+Holder: rec
+{
+	callback: req fun[]
+	texture: req Texture
+	handler: req Handler
+	handle: req i32
+	pointer: req ptr[i32]
+}
+
+Wrapper[T]: rec
+{
+	value: req T
+}
+
+within[T: Eq + Ord]: fun(value: T, low: T) -> bool = low < value || value == low
+
+main: fun -> i32
+{
+	val double = own fun(x: i32) -> i32 = x * 2
+	printf("%d\n", double(4))
+	ret 0
+}

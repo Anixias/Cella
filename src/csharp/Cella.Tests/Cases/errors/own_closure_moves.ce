@@ -1,0 +1,73 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Texture: rec
+{
+	id: i32
+
+	drop: op
+	{
+		printf("free texture %d\n", self.id)
+	}
+}
+
+each: fun(values: array[i32, 3], visit: fun[i32])
+{
+	for value in values
+		visit(value)
+}
+
+show: fun(texture: Texture)
+{
+	val shown = own fun { printf("%d\n", texture.id) }
+	shown()
+}
+
+bump: fun(mut count: i32) -> i32
+{
+	val next = own fun -> i32
+	{
+		count += 1
+		ret count
+	}
+
+	ret next()
+}
+
+adder: fun(bonus: i32) -> ref fun[i32 -> i32]
+{
+	ret own fun(x) = x + bonus
+}
+
+main: fun -> i32
+{
+	var total = 0
+	val add = own fun(value: i32) { total += value }
+	add(5)
+	printf("%d\n", total)
+
+	val grass = Texture(1)
+	val take = own fun { val moved = grass }
+
+	var count = 0
+	each([1, 2, 3], fun(value)
+	{
+		val next = own fun { count += value }
+	})
+
+	var hits = 0
+	for i in 0..3
+	{
+		val hit = own fun { hits += 1 }
+		hit()
+	}
+
+	val step = 3
+	val first = own fun(x: i32) -> i32 = x + step
+	val second = first
+	ret first(1)
+}

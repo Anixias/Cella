@@ -65,6 +65,8 @@ public sealed class SignatureCollector
 	private readonly HashSet<(SourceLocation, string)> _conformanceErrors = [];
 	private readonly List<ConstraintCheck> _deferredChecks = [];
 	private readonly List<(TypeParameterNode, TypeParameterSymbol, ResolutionContext)> _pendingConstructorBounds = [];
+	private readonly List<(ImmutableArray<ITypeNode>, List<TypeSymbol?>, TypeSymbol)> _boundLists = [];
+	private readonly List<(FieldNode, TypeSymbol)> _requiredFields = [];
 	private readonly List<(GlobalSymbol Global, ITypeNode Node, TypeSymbol Type)> _variables = [];
 	private readonly HashSet<FunctionSymbol> _lambdas = [];
 	private IConstantResolver? constants;
@@ -104,12 +106,14 @@ public sealed class SignatureCollector
 		foreach (var impl in _impls)
 			RegisterImplMembers(impl);
 		
+		ReportRedundantBounds();
 		RegisterConstructorBounds();
 		
 		foreach (var file in files)
 			foreach (var declaration in file.Declarations)
 				Complete(_symbolTable.DeclarationSymbols[declaration]);
 		
+		ReportRedundantRequirements();
 		ReportDeferredChecks();
 		ReportBorrowingVariables();
 		CheckConformances();
@@ -391,6 +395,7 @@ public sealed class SignatureCollector
 			ReportConstraintConflicts(nodes[i]);
 			var bounds = nodes[i].Traits.Select(deferring.ResolveTraitReference).ToList();
 			ReportRepeatedTraits(nodes[i].Traits, bounds);
+			_boundLists.Add((nodes[i].Traits, bounds, parameters[i]));
 			ImmutableArray<TraitType> traits = [..bounds.OfType<TraitType>().Distinct()];
 			ImmutableArray<TypeParameterSymbol> traitParameters = [..bounds.OfType<TypeParameterSymbol>().Distinct()];
 			if (!traits.IsEmpty)
@@ -409,6 +414,7 @@ public sealed class SignatureCollector
 		var deferring = context with { DeferConstraintCheck = DeferAlways };
 		var required = node.RequiredTraits.Select(deferring.ResolveTrait).ToList();
 		ReportRepeatedTraits(node.RequiredTraits, required);
+		_boundLists.Add((node.RequiredTraits, [..required], trait.Self));
 		for (var i = 0; i < required.Count; i++)
 		{
 			if (required[i] is { } requiredTrait)
@@ -425,6 +431,58 @@ public sealed class SignatureCollector
 			if (traits[i] is { } trait && traits.Where((other, j) => j != i && other == trait).Any())
 				Diagnostics.Add(new(DiagnosticSeverity.Error, nodes[i].SourceLocation,
 					$"'{trait.Name}' is required more than once"));
+		}
+	}
+	
+	private void ReportRedundantBounds()
+	{
+		foreach (var (nodes, bounds, self) in _boundLists)
+		{
+			for (var i = 0; i < nodes.Length; i++)
+			{
+				if (bounds[i] is not TraitType bound || bounds.Count(other => other == bound) > 1)
+					continue;
+				
+				var requirer = bounds
+					.OfType<TraitType>()
+					.FirstOrDefault(other => other != bound && Requires(other, bound, self));
+				
+				if (requirer is not null)
+					Diagnostics.Add(new(DiagnosticSeverity.Hint, nodes[i].SourceLocation, $"Redundant '{bound.Name}'")
+					{
+						Hints = [$"Required by '{requirer.Name}'"]
+					});
+			}
+		}
+	}
+	
+	private bool Requires(TraitType trait, TraitType required, TypeSymbol self)
+	{
+		var visited = new HashSet<TraitType>();
+		var pending = new Queue<TraitType>(_typePool.GetRequiredTraits(trait, self));
+		while (pending.TryDequeue(out var current))
+		{
+			if (current == required)
+				return true;
+			
+			if (!visited.Add(current))
+				continue;
+			
+			foreach (var next in _typePool.GetRequiredTraits(current, self))
+				pending.Enqueue(next);
+		}
+		
+		return false;
+	}
+	
+	private void ReportRedundantRequirements()
+	{
+		foreach (var (node, type) in _requiredFields)
+		{
+			if (!_typePool.HasDefaultPart(type))
+				Diagnostics.Add(new(DiagnosticSeverity.Hint,
+					node.Modifiers.First(static modifier => modifier.Type == TokenType.KeywordReq).SourceLocation,
+					"Redundant 'req'"));
 		}
 	}
 	
@@ -1374,6 +1432,9 @@ public sealed class SignatureCollector
 					var fieldSymbol = (FieldSymbol)symbol;
 					var fieldType = RejectValueDyn(field.Type, context.ResolveType(field.Type));
 					_typePool.RegisterMember(record, fieldSymbol, fieldType);
+					if (fieldSymbol.IsRequired)
+						_requiredFields.Add((field, fieldType));
+					
 					ReportHiddenType(field.Type, fieldType, GetEffectiveVisibility(fieldSymbol.Visibility, record),
 						field.Identifier.Text);
 					

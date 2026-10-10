@@ -1,0 +1,14 @@
+
+====== own_closure_writes.ce ======
+
+Error at line 16, column 3
+15 │ {
+16 │     base = 3
+         ╘══╛ Cannot reassign values
+
+Error at line 17, column 3
+16 │ base = 3
+17 │ point.x = 5
+     ╘═════╛ Cannot reassign values
+
+[compilation failed]

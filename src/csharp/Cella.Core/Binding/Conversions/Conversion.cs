@@ -83,6 +83,9 @@ public sealed class DynCastConversion
 	int cost = 0
 ) : Conversion(from, to, kind, cost, false);
 
+public sealed class ClosureConversion(ClosureType from, FunctionType to)
+	: Conversion(from, to, ConversionKind.Implicit, 1, false);
+
 // TODO Detect constant functions
 public sealed class FunctionConversion(FunctionInfo function, ConversionKind kind, int cost)
 	: Conversion(function.Signature.ParameterTypes[0], function.Signature.ReturnType, kind, cost, false)

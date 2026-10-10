@@ -413,7 +413,9 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 	private IExpressionNode ParseUnary(ref int index)
 	{
 		if (Match(ref index, out var ownKeyword, TokenType.KeywordOwn))
-			return new OwnExpressionNode(ownKeyword, ParseUnary(ref index));
+			return !Peek(index + 1, TokenType.OpOpenBracket) && Match(ref index, out var lambda, TokenType.KeywordFun)
+				? ParseLambda(ref index, lambda, ownKeyword)
+				: new OwnExpressionNode(ownKeyword, ParseUnary(ref index));
 		
 		if (Match(ref index, out var atomicKeyword, TokenType.KeywordAtomic))
 			return ParseAtomic(ref index, atomicKeyword);
@@ -539,7 +541,7 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 		return ParsePostfix(ref index, node);
 	}
 	
-	private LambdaExpressionNode ParseLambda(ref int index, Token keyword)
+	private LambdaExpressionNode ParseLambda(ref int index, Token keyword, Token? own = null)
 	{
 		var parameters = new List<LambdaParameterNode>();
 		if (Match(ref index, out var openParen, TokenType.OpOpenParen) && !Match(ref index, TokenType.OpCloseParen))
@@ -553,19 +555,22 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 		}
 		
 		var returnType = Match(ref index, TokenType.OpArrow) ? ParseType(ref index) : null;
-		var (source, range) = keyword.SourceLocation;
+		var (source, range) = (own ?? keyword).SourceLocation;
 		if (Match(ref index, TokenType.OpEqual))
 		{
 			var expression = ParseExpression(ref index);
 			return new(keyword, parameters, returnType, expression, null,
-				new(source, range.Join(expression.SourceLocation.Range)));
+				new(source, range.Join(expression.SourceLocation.Range))) { Own = own };
 		}
 		
 		if (ParseBlock is null || !Match(ref index, out var openBrace, TokenType.OpOpenBrace))
 			throw Expected(index, ParseBlock is null ? "'='" : "'=' or '{'");
 		
 		var block = ParseBlock(ref index, openBrace) ?? new BlockStatementNode(openBrace.SourceLocation, []);
-		return new(keyword, parameters, returnType, null, block, new(source, range.Join(block.SourceLocation.Range)));
+		return new(keyword, parameters, returnType, null, block, new(source, range.Join(block.SourceLocation.Range)))
+		{
+			Own = own
+		};
 	}
 	
 	private LambdaParameterNode ParseLambdaParameter(ref int index)

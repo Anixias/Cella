@@ -1,2 +1,10 @@
+
+====== function_type_members.ce ======
+
+Hint at line 13, column 12
+12 │ {
+13 │     callback: req fun[i32 -> i32]
+                   ╘═╛ Redundant 'req'
+
 7 5 20
 [exit code 0]

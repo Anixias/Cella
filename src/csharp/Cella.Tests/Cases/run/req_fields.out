@@ -1,3 +1,11 @@
+
+====== req_fields.ce ======
+
+Hint at line 91, column 7
+90 │ {
+91 │     run: req fun[i32 -> i32]
+              ╘═╛ Redundant 'req'
+
 71 50 60 33
 4 5 5 0 3 2
 7 12 16 30

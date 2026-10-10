@@ -1,0 +1,16 @@
+mod test
+
+keep: fun(own f: fun[-> i32]) -> i32 = f()
+
+main: fun -> i32
+{
+	val base = 1
+	val other = 2
+	var pick = own fun -> i32 = base
+	pick = own fun -> i32 = other
+	keep(own fun = base)
+	val plain: fun[-> i32] = pick
+	val wrong: ref fun[i32 -> i32] = pick
+	pick(5)
+	ret pick()
+}

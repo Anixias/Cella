@@ -132,6 +132,25 @@ public sealed class EnvironmentValue(int index, TypeSymbol type) : Value(type, f
 	public int Index { get; } = index;
 }
 
+public sealed class OwnClosureValue
+(
+	FunctionInfo function,
+	IEnumerable<Value> captures,
+	ClosureType type,
+	SourceLocation sourceLocation
+) : Value(type, false, sourceLocation)
+{
+	public FunctionInfo Function { get; } = function;
+	public ImmutableArray<Value> Captures { get; } = captures.ToImmutableArray();
+}
+
+public sealed class ClosureFieldValue(int index, IEnumerable<TypeSymbol> fields, TypeSymbol type)
+	: Value(type, false, SourceLocation.None)
+{
+	public int Index { get; } = index;
+	public ImmutableArray<TypeSymbol> Fields { get; } = fields.ToImmutableArray();
+}
+
 public sealed class IndirectCallValue
 (
 	Value target,
