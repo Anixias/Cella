@@ -1,0 +1,159 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Table: rec
+{
+	items: array[i32, 200000]
+}
+
+table: var Table = Table()
+backup: var Table = Table()
+
+pick: fun(items: array[i32, 200000]) -> i32 = items[5] + items[199999]
+
+pickTable: fun -> i32 = pick(table.items)
+
+saveTable: fun
+{
+	backup = table
+}
+
+Block: rec
+{
+	id: i32
+	items: array[i64, 4000]
+}
+
+bump: fun(block: Block) -> Block
+{
+	var copy = block
+	copy.id += 1
+	copy.items[3999] = 5
+	ret copy
+}
+
+total: fun(items: array[i64, 4000]) -> i64
+{
+	var sum: i64 = 0
+	var i: usize = 0
+	while i < 4000
+	{
+		sum += items[i]
+		i += 1
+	}
+
+	ret sum
+}
+
+Grid: rec
+{
+	cells: array[u8, 64]
+}
+
+clear: fun(mut grid: Grid)
+{
+	grid.cells[1] = 0
+}
+
+touch: fun(grid: Grid) -> u8
+{
+	var local = grid
+	local.cells[1] = 99
+	ret local.cells[1]
+}
+
+Shape: enum
+{
+	none
+	poly(points: array[f64, 6], count: i32)
+	dot(x: f64)
+}
+
+make: fun(n: i32) -> Shape
+{
+	if n == 0
+		ret Shape.none
+
+	if n == 1
+		ret Shape.dot(2.5)
+
+	ret Shape.poly([1.0, 2.0, 3.0, 4.0, 5.0, 6.0], n)
+}
+
+describe: fun(shape: Shape)
+{
+	if shape is poly(points, count)
+		printf("poly %d %.1f\n", count, points[5])
+	else if shape is dot(x)
+		printf("dot %.1f\n", x)
+	else
+		printf("none\n")
+}
+
+Pair[T]: rec
+{
+	left: T
+	right: T
+}
+
+swap[T]: fun(own pair: Pair[T]) -> Pair[T] = Pair[T](own pair.right, own pair.left)
+
+Numbers: rec
+{
+	items: array[i32, 1000]
+}
+
+fill: fun(value: i32) -> array[i32, 1000]
+{
+	var numbers = Numbers()
+	var i: usize = 0
+	while i < 1000
+	{
+		numbers.items[i] = value + i32(i)
+		i += 1
+	}
+
+	ret numbers.items
+}
+
+main: fun -> i32
+{
+	table.items[5] = 2
+	table.items[199999] = 3
+	saveTable()
+	table.items[5] = 10
+	printf("%d %d %d\n", pickTable(), backup.items[5], table.items[5])
+
+	var block = Block()
+	block.id = 1
+	block.items[0] = 2
+	val next = bump(block)
+	printf("%d %d %lld %lld %lld\n", block.id, next.id, next.items[3999], block.items[0], total(next.items))
+
+	var grid = Grid()
+	grid.cells[1] = 7
+	printf("%d ", touch(grid))
+	printf("%d ", grid.cells[1])
+	clear(mut grid)
+	printf("%d\n", grid.cells[1])
+
+	describe(make(0))
+	describe(make(1))
+	val shape = make(3)
+	val copied = shape
+	describe(copied)
+
+	val p = Pair[array[i32, 8]]([1, 2, 3, 4, 5, 6, 7, 8], [9, 10, 11, 12, 13, 14, 15, 16])
+	val q = swap(own p)
+	val pickPair = fun(index: usize) -> i32 = q.left[index] + q.right[index]
+	printf("%d %d %d\n", q.left[0], q.right[7], pickPair(3))
+
+	val a = fill(10)
+	val b = fill(a[999])
+	printf("%d %d\n", a[999], b[999])
+	ret 0
+}

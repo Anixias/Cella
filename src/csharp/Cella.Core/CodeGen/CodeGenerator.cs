@@ -25,13 +25,16 @@ internal readonly record struct LLVMFunctionInfo
 	LLVMValueRef FunctionValue,
 	LLVMTypeRef FunctionType,
 	LLVMTypeRef ReturnType,
-	CSignature? CSignature
+	CSignature? CSignature,
+	uint? ResultParameter = null
 );
 
 // Create type definitions/forward declarations
 // Then, create function definitions/forward declarations
 public sealed unsafe class CodeGenerator : IDisposable
 {
+	private const ulong LargeValueBytes = 16;
+	
 	private static bool isInitialized;
 	
 	public static void Init()
@@ -72,6 +75,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 	private readonly Queue<(ModuleState Owner, GlobalInfo Info)> _pendingGlobals = [];
 	private readonly HashSet<string> _requestedInstantiations = [];
 	private readonly HashSet<GlobalSymbol> _requestedGlobals = [];
+	private readonly Dictionary<TypeSymbol, bool> _largeTypes = [];
 	private ModuleState current = null!;
 	private LLVMFunctionInfo currentFunction;
 	
@@ -290,7 +294,8 @@ public sealed unsafe class CodeGenerator : IDisposable
 		if (_config.OutputConfig.EmitAssembly)
 		{
 			var assemblyFilePath = Path.Combine(_config.OutputConfig.Directory, $"{name}.s");
-			if (!_targetMachine.TryEmitToFile(llvmModule, assemblyFilePath, LLVMCodeGenFileType.LLVMAssemblyFile,
+			using var assemblyModule = llvmModule.Clone();
+			if (!_targetMachine.TryEmitToFile(assemblyModule, assemblyFilePath, LLVMCodeGenFileType.LLVMAssemblyFile,
 				    out message))
 				return CodeGenResult.Failure with { ErrorMessage = message };
 		}
@@ -314,9 +319,11 @@ public sealed unsafe class CodeGenerator : IDisposable
 		declared is DynType ? FatPointerType : OpaquePointer;
 	
 	private LLVMTypeRef MapParameterType(TypeSymbol type, ParameterMode mode) =>
-		_typePool.PassesByPointer(type, mode) ? MapPassedPointer(type) : MapTypeSymbol(type);
+		_typePool.PassesByPointer(type, mode) ? MapPassedPointer(type) : MapValueType(type);
 	
-	private LLVMTypeRef[] MapParameterTypes(FunctionInfo function)
+	private LLVMTypeRef[] MapParameterTypes(FunctionInfo function) => MapParameterTypes(function, MapValueType);
+	
+	private LLVMTypeRef[] MapParameterTypes(FunctionInfo function, Func<TypeSymbol, LLVMTypeRef> mapValue)
 	{
 		var declared = function.DeclaredSignature;
 		return
@@ -325,7 +332,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 			..function.Signature.ParameterTypes.Select((type, i) =>
 				_typePool.PassesByPointer(declared.ParameterTypes[i], declared.GetMode(i))
 					? MapPassedPointer(declared.ParameterTypes[i])
-					: MapTypeSymbol(type))
+					: mapValue(type))
 		];
 	}
 	
@@ -566,11 +573,13 @@ public sealed unsafe class CodeGenerator : IDisposable
 		var paramLlvmTypes = MapParameterTypes(function);
 		
 		CSignature? cSignature = symbol.IsExternal
-			? _cAbi.Classify(paramLlvmTypes, returnType)
+			? _cAbi.Classify(MapParameterTypes(function, MapTypeSymbol), returnType)
 			: null;
 		
-		var functionType = cSignature?.CreateFunctionType(signature.IsVariadic)
-		                   ?? LLVMTypeRef.CreateFunction(returnType, paramLlvmTypes, signature.IsVariadic);
+		var leading = symbol.Captures.IsEmpty ? 0 : 1;
+		var functionType = cSignature?.CreateFunctionType(signature.IsVariadic) ??
+		                   CreateInternalFunctionType(signature.ReturnType, paramLlvmTypes.Take(leading),
+			                   paramLlvmTypes.Skip(leading), signature.IsVariadic);
 		
 		name ??= function.MangledName ?? symbol.Name;
 		var declared = symbol.Kind == FunctionKind.External ? llvmModule.GetNamedFunction(name) : default;
@@ -578,7 +587,8 @@ public sealed unsafe class CodeGenerator : IDisposable
 		if (cSignature is { Return: { Kind: CPassKind.Indirect } sret })
 			AddSretAttribute(functionValue, sret.Type, false);
 		
-		var functionInfo = new LLVMFunctionInfo(functionValue, functionType, returnType, cSignature);
+		var functionInfo = new LLVMFunctionInfo(functionValue, functionType, returnType, cSignature,
+			cSignature is null && IsLarge(signature.ReturnType) ? (uint)leading : null);
 		
 		current.Functions.Add(function, functionInfo);
 		return functionInfo;
@@ -628,7 +638,8 @@ public sealed unsafe class CodeGenerator : IDisposable
 				var parameters = function.Info.Symbol.Parameters;
 				var signature = currentFunction.CSignature;
 				var firstParameter = (signature?.Return.Kind == CPassKind.Indirect ? 1u : 0u) +
-				                     (function.Info.Symbol.Captures.IsEmpty ? 0u : 1u);
+				                     (function.Info.Symbol.Captures.IsEmpty ? 0u : 1u) +
+				                     (currentFunction.ResultParameter is null ? 0u : 1u);
 				
 				for (var p = 0; p < parameters.Length; p++)
 				{
@@ -643,13 +654,10 @@ public sealed unsafe class CodeGenerator : IDisposable
 						continue;
 					}
 					
-					var paramLlvmType = MapTypeSymbol(paramType);
 					if (signature is { Parameters: var passes })
-						paramLlvmValue = ReceiveCArgument(passes[p], paramLlvmValue, paramLlvmType, builder);
+						paramLlvmValue = ReceiveCArgument(passes[p], paramType, paramLlvmValue, builder);
 					
-					var paramPtr = BuildEntryAlloca(builder, paramLlvmType, paramSymbol.Name);
-					builder.BuildStore(paramLlvmValue, paramPtr);
-					current.Variables[paramInfo] = paramPtr;
+					current.Variables[paramInfo] = SpillValue(builder, paramType, paramLlvmValue, paramSymbol.Name);
 				}
 			}
 			
@@ -668,8 +676,128 @@ public sealed unsafe class CodeGenerator : IDisposable
 	private static LLVMValueRef BuildEntryAlloca(LLVMBuilderRef builder, LLVMTypeRef type, string name)
 	{
 		using var allocaBuilder = type.Context.CreateBuilder();
-		allocaBuilder.PositionAtEnd(builder.InsertBlock.Parent.EntryBasicBlock);
+		var entry = builder.InsertBlock.Parent.EntryBasicBlock;
+		if (entry.Terminator is { Handle: not 0 } terminator)
+			allocaBuilder.PositionBefore(terminator);
+		else
+			allocaBuilder.PositionAtEnd(entry);
+		
 		return allocaBuilder.BuildAlloca(type, name);
+	}
+	
+	private bool IsLarge(TypeSymbol type)
+	{
+		type = Substitute(type);
+		if (_largeTypes.TryGetValue(type, out var isLarge))
+			return isLarge;
+		
+		isLarge = type is RecordSymbol or ArrayType or EnumSymbol { IsMatch: false } &&
+		          MapTypeSymbol(type) is
+			          { Kind: LLVMTypeKind.LLVMStructTypeKind or LLVMTypeKind.LLVMArrayTypeKind } mapped &&
+		          _targetData.ABISizeOfType(mapped) > LargeValueBytes;
+		
+		_largeTypes[type] = isLarge;
+		return isLarge;
+	}
+	
+	private LLVMTypeRef MapValueType(TypeSymbol type) => IsLarge(type) ? OpaquePointer : MapTypeSymbol(type);
+	
+	private LLVMValueRef LoadValue(LLVMBuilderRef builder, TypeSymbol type, LLVMValueRef address, string name)
+	{
+		var mapped = MapTypeSymbol(type);
+		if (!IsLarge(type))
+			return builder.BuildLoad2(mapped, address, name);
+		
+		var copy = BuildEntryAlloca(builder, mapped, name);
+		CopyValue(builder, mapped, copy, address);
+		return copy;
+	}
+	
+	private void StoreValue(LLVMBuilderRef builder, TypeSymbol type, LLVMValueRef value, LLVMValueRef address)
+	{
+		if (IsLarge(type))
+			CopyValue(builder, MapTypeSymbol(type), address, value);
+		else
+			builder.BuildStore(value, address);
+	}
+	
+	private LLVMValueRef SpillValue(LLVMBuilderRef builder, TypeSymbol type, LLVMValueRef value, string name)
+	{
+		if (IsLarge(type))
+			return value;
+		
+		var slot = BuildEntryAlloca(builder, MapTypeSymbol(type), name);
+		builder.BuildStore(value, slot);
+		return slot;
+	}
+	
+	private LLVMValueRef LoadSsa(LLVMBuilderRef builder, TypeSymbol type, LLVMValueRef value) =>
+		IsLarge(type) ? builder.BuildLoad2(MapTypeSymbol(type), value, "value") : value;
+	
+	private LLVMValueRef EmitZeroed(LLVMBuilderRef builder, TypeSymbol type, string name)
+	{
+		var mapped = MapTypeSymbol(type);
+		if (!IsLarge(type))
+			return LLVMValueRef.CreateConstNull(mapped);
+		
+		var slot = BuildEntryAlloca(builder, mapped, name);
+		builder.BuildMemSet(slot, LLVMValueRef.CreateConstInt(LLVMTypeRef.Int8, 0), EmitByteCount(mapped),
+			_targetData.ABIAlignmentOfType(mapped));
+		
+		return slot;
+	}
+	
+	private void CopyValue(LLVMBuilderRef builder, LLVMTypeRef type, LLVMValueRef destination, LLVMValueRef source)
+	{
+		var alignment = _targetData.ABIAlignmentOfType(type);
+		builder.BuildMemCpy(destination, alignment, source, alignment, EmitByteCount(type));
+	}
+	
+	private LLVMValueRef EmitByteCount(LLVMTypeRef type) =>
+		LLVMValueRef.CreateConstInt(MapTypeSymbol(NativeSymbols.UIntSize), _targetData.ABISizeOfType(type));
+	
+	private LLVMValueRef ExtractField(LLVMBuilderRef builder, TypeSymbol aggregate, LLVMValueRef value, uint index,
+		TypeSymbol field, string name)
+	{
+		if (!IsLarge(aggregate))
+			return builder.BuildExtractValue(value, index, name);
+		
+		var address = builder.BuildStructGEP2(MapTypeSymbol(aggregate), value, index, name + ".addr");
+		return LoadValue(builder, field, address, name);
+	}
+	
+	private LLVMTypeRef CreateInternalFunctionType(TypeSymbol returnType, IEnumerable<LLVMTypeRef> leading,
+		IEnumerable<LLVMTypeRef> parameters, bool isVariadic = false) => IsLarge(returnType)
+		? LLVMTypeRef.CreateFunction(LLVMTypeRef.Void, [..leading, OpaquePointer, ..parameters], isVariadic)
+		: LLVMTypeRef.CreateFunction(MapTypeSymbol(returnType), [..leading, ..parameters], isVariadic);
+	
+	private LLVMValueRef BuildInternalCall(LLVMBuilderRef builder, LLVMTypeRef functionType, LLVMValueRef callee,
+		TypeSymbol returnType, IEnumerable<LLVMValueRef> leading, IEnumerable<LLVMValueRef> args)
+	{
+		if (!IsLarge(returnType))
+			return builder.BuildCall2(functionType, callee, [..leading, ..args]);
+		
+		var slot = BuildEntryAlloca(builder, MapTypeSymbol(returnType), "result");
+		builder.BuildCall2(functionType, callee, [..leading, slot, ..args]);
+		return slot;
+	}
+	
+	private void EmitThunkReturn(LLVMValueRef thunk, TypeSymbol type, LLVMValueRef result, uint resultParameter,
+		LLVMBuilderRef builder)
+	{
+		if (IsLarge(type))
+		{
+			StoreValue(builder, type, result, thunk.GetParam(resultParameter));
+			builder.BuildRetVoid();
+		}
+		else if (MapTypeSymbol(type).Kind == LLVMTypeKind.LLVMVoidTypeKind)
+		{
+			builder.BuildRetVoid();
+		}
+		else
+		{
+			builder.BuildRet(result);
+		}
 	}
 	
 	private void EmitInstruction(LLVMBuilderRef builder, IInstruction instruction,
@@ -684,7 +812,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 			case LocalVarInstruction i:
 			{
 				if (i.Initializer is not UndefValue)
-					builder.BuildStore(EmitValue(i.Initializer, builder),
+					StoreValue(builder, i.Symbol.Type, EmitValue(i.Initializer, builder),
 						current.Variables[new(i.Symbol, i.Symbol.Type)]);
 				
 				break;
@@ -757,8 +885,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 		}
 		else
 		{
-			address = BuildEntryAlloca(builder, MapTypeSymbol(value.Type), "dropped");
-			builder.BuildStore(EmitValue(value, builder), address);
+			address = SpillValue(builder, value.Type, EmitValue(value, builder), "dropped");
 		}
 		
 		EmitDropCall(value.Type, address, builder);
@@ -887,8 +1014,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 		}
 		else
 		{
-			address = BuildEntryAlloca(builder, MapTypeSymbol(array), "dropped");
-			builder.BuildStore(EmitValue(instruction.Array, builder), address);
+			address = SpillValue(builder, array, EmitValue(instruction.Array, builder), "dropped");
 		}
 		
 		EmitElementDrops(array, address, instruction.Start, instruction.Count, builder);
@@ -930,7 +1056,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 				if (term.Value is not { } value)
 					builder.BuildRetVoid();
 				else
-					EmitReturn(EmitValue(value, builder), builder);
+					EmitReturn(value.Type, EmitValue(value, builder), builder);
 				
 				break;
 			
@@ -953,17 +1079,24 @@ public sealed unsafe class CodeGenerator : IDisposable
 		}
 	}
 	
-	private void EmitReturn(LLVMValueRef value, LLVMBuilderRef builder)
+	private void EmitReturn(TypeSymbol type, LLVMValueRef value, LLVMBuilderRef builder)
 	{
+		if (currentFunction.ResultParameter is { } result)
+		{
+			StoreValue(builder, type, value, currentFunction.FunctionValue.GetParam(result));
+			builder.BuildRetVoid();
+			return;
+		}
+		
 		switch (currentFunction.CSignature?.Return)
 		{
 			case { Kind: CPassKind.Indirect }:
-				builder.BuildStore(value, currentFunction.FunctionValue.GetParam(0));
+				StoreValue(builder, type, value, currentFunction.FunctionValue.GetParam(0));
 				builder.BuildRetVoid();
 				break;
 			
 			case { } pass:
-				builder.BuildRet(PassCArgument(pass, value, builder));
+				builder.BuildRet(PassCArgument(pass, type, value, builder));
 				break;
 			
 			default:
@@ -974,10 +1107,10 @@ public sealed unsafe class CodeGenerator : IDisposable
 	
 	private LLVMValueRef EmitValue(Value value, LLVMBuilderRef builder) => value switch
 	{
+		ConstantValue { Value: null } v when IsLarge(v.Type) => EmitZeroed(builder, v.Type, "zero"),
 		ConstantValue v => EmitConstant(v),
-		ZeroValue or DefaultValue => EmitZero(value),
-		VariableValue v => builder.BuildLoad2(MapTypeSymbol(v.Type), current.Variables[v.Variable],
-			v.Variable.Symbol.Name),
+		ZeroValue or DefaultValue => EmitZeroed(builder, value.Type, "zero"),
+		VariableValue v => LoadValue(builder, v.Type, current.Variables[v.Variable], v.Variable.Symbol.Name),
 		GlobalValue v => EmitGlobalLoad(v.Global, builder),
 		MoveValue v => EmitValue(v.Place, builder),
 		BinOpValue v => EmitBinaryOp(v, builder),
@@ -1088,7 +1221,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 	{
 		PrimitiveType { Kind: PrimitiveTypeKind.Bool } => builder.BuildZExt(value, LLVMTypeRef.Int8, "atomic"),
 		EnumSymbol { IsMatch: true } enumType => ToAtomic(value, _typePool.GetMatchedType(enumType), builder),
-		EnumSymbol => builder.BuildExtractValue(value, 0, "tag"),
+		EnumSymbol enumType => ExtractField(builder, enumType, value, 0, _typePool.GetTagType(enumType), "tag"),
 		_ => value
 	};
 	
@@ -1096,7 +1229,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 	{
 		PrimitiveType { Kind: PrimitiveTypeKind.Bool } => builder.BuildTrunc(value, LLVMTypeRef.Int1, "value"),
 		EnumSymbol { IsMatch: true } enumType => FromAtomic(value, _typePool.GetMatchedType(enumType), builder),
-		EnumSymbol enumType => builder.BuildInsertValue(MapTypeSymbol(enumType).Undef, value, 0, "value"),
+		EnumSymbol enumType => EmitTagged(enumType, value, builder),
 		_ => value
 	};
 	
@@ -1161,10 +1294,9 @@ public sealed unsafe class CodeGenerator : IDisposable
 		
 		if (v.Part == FStrPart.Value)
 		{
-			var valueType = MapTypeSymbol(v.Type);
 			var values = builder.BuildExtractValue(template, 2, "values");
-			var valueAddress = builder.BuildInBoundsGEP2(valueType, values, new[] { index }, "value.addr");
-			return builder.BuildLoad2(valueType, valueAddress, "value");
+			var valueAddress = builder.BuildInBoundsGEP2(MapTypeSymbol(v.Type), values, new[] { index }, "value.addr");
+			return LoadValue(builder, v.Type, valueAddress, "value");
 		}
 		
 		var two = LLVMValueRef.CreateConstInt(index.TypeOf, 2);
@@ -1197,17 +1329,15 @@ public sealed unsafe class CodeGenerator : IDisposable
 	private LLVMValueRef EmitNew(NewValue v, LLVMBuilderRef builder)
 	{
 		var type = Substitute(v.Type);
-		var llvmType = MapTypeSymbol(type);
 		if (_typePool.FindNewConstructor(type) is not { } constructor)
-			return LLVMValueRef.CreateConstNull(llvmType);
+			return EmitZeroed(builder, type, "new");
 		
-		var slot = BuildEntryAlloca(builder, llvmType, "new");
-		builder.BuildStore(LLVMValueRef.CreateConstNull(llvmType), slot);
+		var slot = SpillValue(builder, type, EmitZeroed(builder, type, "new"), "new");
 		var info = SubstituteFunction(constructor);
 		GetFunctionValue(info);
 		var function = current.Functions[info];
 		builder.BuildCall2(function.FunctionType, function.FunctionValue, [slot]);
-		return builder.BuildLoad2(llvmType, slot, "new");
+		return IsLarge(type) ? slot : builder.BuildLoad2(MapTypeSymbol(type), slot, "new");
 	}
 	
 	private static DynType? FindDynDispatch(FunctionInfo function) =>
@@ -1227,8 +1357,8 @@ public sealed unsafe class CodeGenerator : IDisposable
 		var method = builder.BuildLoad2(OpaquePointer, entry, "method");
 		var parameterTypes = MapParameterTypes(info);
 		parameterTypes[0] = OpaquePointer;
-		var functionType = LLVMTypeRef.CreateFunction(MapTypeSymbol(info.Signature.ReturnType), parameterTypes);
-		return builder.BuildCall2(functionType, method, args);
+		var functionType = CreateInternalFunctionType(info.Signature.ReturnType, [], parameterTypes);
+		return BuildInternalCall(builder, functionType, method, info.Signature.ReturnType, [], args);
 	}
 	
 	private LLVMValueRef EmitDynPath(TraitType from, TraitType to, LLVMValueRef table, LLVMBuilderRef builder)
@@ -1422,9 +1552,11 @@ public sealed unsafe class CodeGenerator : IDisposable
 		var function = current.Functions[info];
 		var args = v.Arguments.Select(a => EmitValue(a, builder)).ToList();
 		if (function.CSignature is not { } signature)
-			return builder.BuildCall2(function.FunctionType, function.FunctionValue, args.ToArray());
+			return BuildInternalCall(builder, function.FunctionType, function.FunctionValue, info.Signature.ReturnType,
+				[], args);
 		
-		return EmitCCall(signature, function.FunctionType, function.FunctionValue, function.ReturnType, args, builder);
+		return EmitCCall(signature, function.FunctionType, function.FunctionValue, info.Signature.ParameterTypes,
+			info.Signature.ReturnType, args, builder);
 	}
 	
 	private LLVMValueRef EmitIndirectCall(IndirectCallValue v, LLVMBuilderRef builder)
@@ -1440,14 +1572,15 @@ public sealed unsafe class CodeGenerator : IDisposable
 			var parameterTypes = functionType.ParameterTypes
 				.Select((type, i) => MapParameterType(type, functionType.ParameterModes[i]));
 			
-			var codeType = LLVMTypeRef.CreateFunction(returnType, [OpaquePointer, ..parameterTypes]);
+			var codeType = CreateInternalFunctionType(functionType.ReturnType, [OpaquePointer], parameterTypes);
 			var code = builder.BuildExtractValue(target, 0, "code");
 			var environment = builder.BuildExtractValue(target, 1, "env");
-			return builder.BuildCall2(codeType, code, [environment, ..args]);
+			return BuildInternalCall(builder, codeType, code, functionType.ReturnType, [environment], args);
 		}
 		
 		var signature = _cAbi.Classify(functionType.ParameterTypes.Select(MapTypeSymbol), returnType);
-		return EmitCCall(signature, signature.CreateFunctionType(false), target, returnType, args, builder);
+		return EmitCCall(signature, signature.CreateFunctionType(false), target, functionType.ParameterTypes,
+			functionType.ReturnType, args, builder);
 	}
 	
 	private LLVMValueRef EmitIndirectArgument(Value argument, FunctionType declared, FunctionType actual, int index,
@@ -1460,15 +1593,16 @@ public sealed unsafe class CodeGenerator : IDisposable
 		var mode = declared.ParameterModes[index];
 		var type = actual.ParameterTypes[index];
 		return _typePool.PassesByPointer(declared.ParameterTypes[index], mode) && !_typePool.PassesByPointer(type, mode)
-			? builder.BuildLoad2(MapTypeSymbol(type), value, "argument")
+			? LoadValue(builder, type, value, "argument")
 			: value;
 	}
 	
 	private LLVMValueRef EmitCCall(CSignature signature, LLVMTypeRef functionType, LLVMValueRef callee,
-		LLVMTypeRef returnType, List<LLVMValueRef> args, LLVMBuilderRef builder)
+		IReadOnlyList<TypeSymbol> parameterTypes, TypeSymbol returnType, List<LLVMValueRef> args,
+		LLVMBuilderRef builder)
 	{
 		for (var i = 0; i < signature.Parameters.Length; i++)
-			args[i] = PassCArgument(signature.Parameters[i], args[i], builder);
+			args[i] = PassCArgument(signature.Parameters[i], parameterTypes[i], args[i], builder);
 		
 		var returnSlot = default(LLVMValueRef);
 		if (signature.Return.Kind == CPassKind.Indirect)
@@ -1484,33 +1618,33 @@ public sealed unsafe class CodeGenerator : IDisposable
 			{
 				var slot = BuildEntryAlloca(builder, signature.Return.Type, "coerce");
 				builder.BuildStore(result, slot);
-				return builder.BuildLoad2(returnType, slot);
+				return IsLarge(returnType) ? slot : builder.BuildLoad2(MapTypeSymbol(returnType), slot);
 			}
 			
 			case CPassKind.Indirect:
 				AddSretAttribute(result, signature.Return.Type, true);
-				return builder.BuildLoad2(signature.Return.Type, returnSlot);
+				return IsLarge(returnType) ? returnSlot : builder.BuildLoad2(signature.Return.Type, returnSlot);
 			
 			default:
 				return result;
 		}
 	}
 	
-	private static LLVMValueRef PassCArgument(CPass pass, LLVMValueRef value, LLVMBuilderRef builder)
+	private LLVMValueRef PassCArgument(CPass pass, TypeSymbol type, LLVMValueRef value, LLVMBuilderRef builder)
 	{
 		switch (pass.Kind)
 		{
 			case CPassKind.Integer:
 			{
 				var slot = BuildEntryAlloca(builder, pass.Type, "coerce");
-				builder.BuildStore(value, slot);
+				StoreValue(builder, type, value, slot);
 				return builder.BuildLoad2(pass.Type, slot);
 			}
 			
 			case CPassKind.Indirect:
 			{
 				var copy = BuildIndirectSlot(builder, pass.Type);
-				builder.BuildStore(value, copy);
+				StoreValue(builder, type, value, copy);
 				return copy;
 			}
 			
@@ -1519,8 +1653,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 		}
 	}
 	
-	private static LLVMValueRef ReceiveCArgument(CPass pass, LLVMValueRef value, LLVMTypeRef type,
-		LLVMBuilderRef builder)
+	private LLVMValueRef ReceiveCArgument(CPass pass, TypeSymbol type, LLVMValueRef value, LLVMBuilderRef builder)
 	{
 		switch (pass.Kind)
 		{
@@ -1528,11 +1661,11 @@ public sealed unsafe class CodeGenerator : IDisposable
 			{
 				var slot = BuildEntryAlloca(builder, pass.Type, "coerce");
 				builder.BuildStore(value, slot);
-				return builder.BuildLoad2(type, slot);
+				return IsLarge(type) ? slot : builder.BuildLoad2(MapTypeSymbol(type), slot);
 			}
 			
 			case CPassKind.Indirect:
-				return builder.BuildLoad2(type, value);
+				return IsLarge(type) ? value : builder.BuildLoad2(MapTypeSymbol(type), value);
 			
 			default:
 				return value;
@@ -1606,8 +1739,6 @@ public sealed unsafe class CodeGenerator : IDisposable
 		return builder.BuildSDiv(byteDiff, elementSize, "ptrdiff.typed");
 	}
 	
-	private LLVMValueRef EmitZero(Value v) => LLVMValueRef.CreateConstNull(MapTypeSymbol(v.Type));
-	
 	private LLVMValueRef EmitEnumValue(EnumValue v, LLVMBuilderRef builder)
 	{
 		if (Substitute(v.Type) is EnumSymbol { IsMatch: true } matchEnum)
@@ -1616,21 +1747,27 @@ public sealed unsafe class CodeGenerator : IDisposable
 		var enumType = MapTypeSymbol(v.Type);
 		var tag = EmitCaseTag((EnumSymbol)v.Type, v.Case);
 		if (v.Payload.IsEmpty)
-			return builder.BuildInsertValue(LLVMValueRef.CreateConstNull(enumType), tag, 0, v.Case.Name);
+			return EmitTagged((EnumSymbol)v.Type, tag, builder);
 		
-		var slot = BuildEntryAlloca(builder, enumType, v.Case.Name);
-		builder.BuildStore(LLVMValueRef.CreateConstNull(enumType), slot);
+		var slot = SpillValue(builder, v.Type, EmitZeroed(builder, v.Type, v.Case.Name), v.Case.Name);
 		builder.BuildStore(tag, builder.BuildStructGEP2(enumType, slot, 0, "tag.addr"));
-		
 		var payloadType = GetPayloadType(v.Case);
 		var payload = builder.BuildStructGEP2(enumType, slot, 1, "payload");
 		for (var i = 0; i < v.Payload.Length; i++)
-		{
-			var value = EmitValue(v.Payload[i], builder);
-			builder.BuildStore(value, builder.BuildStructGEP2(payloadType, payload, (uint)i, v.Case.Fields[i].Name));
-		}
+			StoreValue(builder, v.Payload[i].Type, EmitValue(v.Payload[i], builder),
+				builder.BuildStructGEP2(payloadType, payload, (uint)i, v.Case.Fields[i].Name));
 		
-		return builder.BuildLoad2(enumType, slot, v.Case.Name);
+		return IsLarge(v.Type) ? slot : builder.BuildLoad2(enumType, slot, v.Case.Name);
+	}
+	
+	private LLVMValueRef EmitTagged(EnumSymbol type, LLVMValueRef tag, LLVMBuilderRef builder)
+	{
+		if (!IsLarge(type))
+			return builder.BuildInsertValue(LLVMValueRef.CreateConstNull(MapTypeSymbol(type)), tag, 0, type.Name);
+		
+		var slot = EmitZeroed(builder, type, type.Name);
+		builder.BuildStore(tag, builder.BuildStructGEP2(MapTypeSymbol(type), slot, 0, "tag.addr"));
+		return slot;
 	}
 	
 	private LLVMValueRef EmitMatchValue(EnumSymbol enumType, EnumValue v, LLVMBuilderRef builder)
@@ -1708,7 +1845,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 		var source = EmitValue(v.Source, builder);
 		if (c.From is EnumSymbol from)
 		{
-			var tag = builder.BuildExtractValue(source, 0, "tag");
+			var tag = ExtractField(builder, from, source, 0, _typePool.GetTagType(from), "tag");
 			return ConvertInteger(tag, MapTypeSymbol(c.To), _typePool.GetTagType(from).IsSigned,
 				((IntegerType)c.To).IsSigned, v.SourceLocation, builder);
 		}
@@ -1720,7 +1857,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 				$"'{to.Name}' has no case with this value", v.SourceLocation, builder);
 		
 		var resized = ResizeInteger(source, MapTypeSymbol(_typePool.GetTagType(to)), sourceType.IsSigned, builder);
-		return builder.BuildInsertValue(LLVMValueRef.CreateConstNull(MapTypeSymbol(to)), resized, 0, to.Name);
+		return EmitTagged(to, resized, builder);
 	}
 	
 	private LLVMValueRef IsCaseValue(EnumSymbol enumType, LLVMValueRef value, IntegerType type,
@@ -1761,7 +1898,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 			return EmitMatchTag(matchEnum, EmitValue(v.Target, builder), builder);
 		
 		if (!IsAddressable(v.Target))
-			return builder.BuildExtractValue(EmitValue(v.Target, builder), 0, "tag");
+			return ExtractField(builder, v.Target.Type, EmitValue(v.Target, builder), 0, v.Type, "tag");
 		
 		var enumType = MapTypeSymbol(v.Target.Type);
 		var address = builder.BuildStructGEP2(enumType, EmitAddress(v.Target, builder), 0, "tag.addr");
@@ -1774,7 +1911,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 			return EmitValue(v.Target, builder);
 		
 		var name = v.Case.Fields[v.Index].Name;
-		return builder.BuildLoad2(MapTypeSymbol(v.Type), EmitEnumPayloadAddress(v, builder), name);
+		return LoadValue(builder, v.Type, EmitEnumPayloadAddress(v, builder), name);
 	}
 	
 	private LLVMValueRef EmitEnumPayloadAddress(EnumPayloadValue v, LLVMBuilderRef builder)
@@ -1787,8 +1924,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 		}
 		else
 		{
-			address = BuildEntryAlloca(builder, enumType, "scrutinee");
-			builder.BuildStore(EmitValue(v.Target, builder), address);
+			address = SpillValue(builder, v.Target.Type, EmitValue(v.Target, builder), "scrutinee");
 		}
 		
 		if (Substitute(v.Target.Type) is EnumSymbol { IsMatch: true })
@@ -1868,11 +2004,11 @@ public sealed unsafe class CodeGenerator : IDisposable
 					builder);
 			
 			var function = builder.BuildLoad2(MapTypeSymbol(stored), environment, "function");
-			var codeType = LLVMTypeRef.CreateFunction(MapTypeSymbol(signature.ReturnType),
-				[OpaquePointer, ..MapCallParameters(signature)]);
+			var codeType = CreateInternalFunctionType(signature.ReturnType, [OpaquePointer],
+				MapCallParameters(signature));
 			
-			return builder.BuildCall2(codeType, builder.BuildExtractValue(function, 0, "code"),
-				[builder.BuildExtractValue(function, 1, "env"), ..args]);
+			return BuildInternalCall(builder, codeType, builder.BuildExtractValue(function, 0, "code"),
+				signature.ReturnType, [builder.BuildExtractValue(function, 1, "env")], args);
 		});
 	
 	private LLVMValueRef GetCallThunk(string name, FunctionType signature,
@@ -1882,22 +2018,18 @@ public sealed unsafe class CodeGenerator : IDisposable
 		if (existing.Handle != IntPtr.Zero)
 			return existing;
 		
-		var returnType = MapTypeSymbol(signature.ReturnType);
 		LLVMTypeRef[] parameterTypes = [..MapCallParameters(signature)];
 		var thunk = current.Module.AddFunction(name,
-			LLVMTypeRef.CreateFunction(returnType, [OpaquePointer, ..parameterTypes]));
+			CreateInternalFunctionType(signature.ReturnType, [OpaquePointer], parameterTypes));
 		
 		thunk.Linkage = LLVMLinkage.LLVMInternalLinkage;
 		using var builder = current.Module.Context.CreateBuilder();
 		builder.PositionAtEnd(thunk.AppendBasicBlock("entry"));
+		var first = IsLarge(signature.ReturnType) ? 2u : 1u;
 		var result = emitCall(builder, thunk.GetParam(0),
-			[..parameterTypes.Select((_, i) => thunk.GetParam((uint)i + 1))]);
+			[..parameterTypes.Select((_, i) => thunk.GetParam((uint)i + first))]);
 		
-		if (returnType.Kind == LLVMTypeKind.LLVMVoidTypeKind)
-			builder.BuildRetVoid();
-		else
-			builder.BuildRet(result);
-		
+		EmitThunkReturn(thunk, signature.ReturnType, result, 1, builder);
 		return thunk;
 	}
 	
@@ -1909,7 +2041,8 @@ public sealed unsafe class CodeGenerator : IDisposable
 	{
 		var returnType = MapTypeSymbol(external.ReturnType);
 		var signature = _cAbi.Classify(external.ParameterTypes.Select(MapTypeSymbol), returnType);
-		return EmitCCall(signature, signature.CreateFunctionType(false), function, returnType, [..args], builder);
+		return EmitCCall(signature, signature.CreateFunctionType(false), function, external.ParameterTypes,
+			external.ReturnType, [..args], builder);
 	}
 	
 	private LLVMValueRef EmitNativeConversion(NativeConversion c, ConversionValue v, LLVMBuilderRef builder)
@@ -2385,15 +2518,15 @@ public sealed unsafe class CodeGenerator : IDisposable
 		{ Op: UnaryOperation.LogicalNot } => builder.BuildNot(EmitValue(v.Operand, builder)),
 		
 		{ Op: UnaryOperation.AddressOf } => EmitAddress(v.Operand, builder),
-		{ Op: UnaryOperation.Dereference } => builder.BuildLoad2(MapTypeSymbol(v.Type), EmitValue(v.Operand, builder)),
+		{ Op: UnaryOperation.Dereference } => LoadValue(builder, v.Type, EmitValue(v.Operand, builder), "deref"),
 		
 		_ => throw new InvalidOperationException()
 	};
 	
 	private LLVMValueRef EmitIndexer(IndexerValue v, LLVMBuilderRef builder)
 	{
-		var (elemPtr, elemType) = EmitIndexerAddress(v, builder);
-		return builder.BuildLoad2(elemType, elemPtr, "elem");
+		var (elemPtr, _) = EmitIndexerAddress(v, builder);
+		return LoadValue(builder, v.Type, elemPtr, "elem");
 	}
 	
 	private (LLVMValueRef Ptr, LLVMTypeRef ElemType) EmitIndexerAddress(IndexerValue v, LLVMBuilderRef builder)
@@ -2412,8 +2545,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 				}
 				else
 				{
-					arrayPtr = BuildEntryAlloca(builder, arrayType, "array");
-					builder.BuildStore(EmitValue(v.Target, builder), arrayPtr);
+					arrayPtr = SpillValue(builder, a, EmitValue(v.Target, builder), "array");
 				}
 				
 				var index = EmitValue(v.Index, builder);
@@ -2496,24 +2628,47 @@ public sealed unsafe class CodeGenerator : IDisposable
 		if (IsAddressable(v.Target))
 		{
 			var fieldAddress = EmitAccessAddress(v, builder);
-			var fieldType = MapTypeSymbol(_typePool.GetTypeOfMember((TypedMemberSymbol)v.Member));
-			return builder.BuildLoad2(fieldType, fieldAddress, v.Member.Name);
+			return LoadValue(builder, _typePool.GetTypeOfMember((TypedMemberSymbol)v.Member), fieldAddress,
+				v.Member.Name);
 		}
 		
 		// TODO Fields could have been reordered to pack them
 		// TODO Also, GetFieldIndex is O(n), would probably want to cache the final indices in another dictionary
 		var target = EmitValue(v.Target, builder);
 		var fieldIndex = (uint)_typePool.GetFieldIndex(Substitute(v.Target.Type), v.Member);
-		return builder.BuildExtractValue(target, fieldIndex, v.Member.Name);
+		return ExtractField(builder, v.Target.Type, target, fieldIndex, v.Type, v.Member.Name);
 	}
 	
 	private LLVMValueRef EmitArrayValue(ArrayValue value, LLVMBuilderRef builder)
 	{
 		var arrayType = MapTypeSymbol(value.ArrayType);
-		
 		if (value.IsConstant)
-			return LLVMValueRef.CreateConstArray(MapTypeSymbol(value.ArrayType.ElementType),
-				[..value.Elements.Select(e => EmitValue(e, builder))]);
+		{
+			var constant = EmitArrayConstant(value, builder);
+			if (!IsLarge(value.ArrayType))
+				return constant;
+			
+			var global = current.Module.AddGlobal(arrayType, "array");
+			global.Initializer = constant;
+			global.IsGlobalConstant = true;
+			global.Linkage = LLVMLinkage.LLVMPrivateLinkage;
+			global.HasUnnamedAddr = true;
+			return LoadValue(builder, value.ArrayType, global, "array");
+		}
+		
+		if (IsLarge(value.ArrayType))
+		{
+			var slot = BuildEntryAlloca(builder, arrayType, "array");
+			var elementType = value.ArrayType.ElementType;
+			for (var i = 0; i < value.Elements.Length; i++)
+			{
+				var index = LLVMValueRef.CreateConstInt(LLVMTypeRef.Int32, (ulong)i);
+				StoreValue(builder, elementType, EmitValue(value.Elements[i], builder),
+					builder.BuildGEP2(arrayType, slot, new[] { Int32Zero, index }, "element"));
+			}
+			
+			return slot;
+		}
 		
 		var agg = arrayType.Undef;
 		for (uint i = 0; i < value.Elements.Length; i++)
@@ -2522,10 +2677,21 @@ public sealed unsafe class CodeGenerator : IDisposable
 		return agg;
 	}
 	
+	private LLVMValueRef EmitArrayConstant(ArrayValue value, LLVMBuilderRef builder) =>
+		LLVMValueRef.CreateConstArray(MapTypeSymbol(value.ArrayType.ElementType),
+		[
+			..value.Elements.Select(element => element switch
+			{
+				ArrayValue { IsConstant: true } array => EmitArrayConstant(array, builder),
+				ConstantValue { Value: null } => LLVMValueRef.CreateConstNull(MapTypeSymbol(element.Type)),
+				_ => EmitValue(element, builder)
+			})
+		]);
+	
 	private LLVMValueRef EmitAssignValue(AssignValue v, LLVMBuilderRef builder)
 	{
 		var right = EmitValue(v.Right, builder);
-		builder.BuildStore(right, EmitAddress(v.Left, builder));
+		StoreValue(builder, v.Left.Type, right, EmitAddress(v.Left, builder));
 		return right;
 	}
 	
@@ -2733,7 +2899,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 	private LLVMValueRef EmitGlobalLoad(GlobalInfo info, LLVMBuilderRef builder)
 	{
 		info = SubstituteGlobal(info);
-		return builder.BuildLoad2(MapTypeSymbol(info.Type), GetGlobal(info), info.Symbol.Name);
+		return LoadValue(builder, info.Type, GetGlobal(info), info.Symbol.Name);
 	}
 	
 	private LLVMValueRef EmitFunctionReference(FunctionInfo function, TypeSymbol type)
@@ -2772,7 +2938,10 @@ public sealed unsafe class CodeGenerator : IDisposable
 	{
 		var value = MapTypeSymbol(closure.Type).Undef;
 		for (var i = 0; i < closure.Captures.Length; i++)
-			value = builder.BuildInsertValue(value, EmitValue(closure.Captures[i], builder), (uint)i, "closure");
+		{
+			var capture = LoadSsa(builder, closure.Captures[i].Type, EmitValue(closure.Captures[i], builder));
+			value = builder.BuildInsertValue(value, capture, (uint)i, "closure");
+		}
 		
 		return value;
 	}
@@ -2816,26 +2985,26 @@ public sealed unsafe class CodeGenerator : IDisposable
 			? MapCallParameters(type).ToArray()
 			: actual.ParameterTypes.Select((parameter, i) => MapParameterType(parameter, actual.GetMode(i))).ToArray();
 		
-		var returnType = adapts ? MapTypeSymbol(type.ReturnType) : target.ReturnType;
+		var returnType = adapts ? type.ReturnType : actual.ReturnType;
 		var thunk = current.Module.AddFunction(name,
-			LLVMTypeRef.CreateFunction(returnType, [OpaquePointer, ..parameterTypes]));
+			CreateInternalFunctionType(returnType, [OpaquePointer], parameterTypes));
 		
 		thunk.Linkage = LLVMLinkage.LLVMInternalLinkage;
 		using var builder = current.Module.Context.CreateBuilder();
 		builder.PositionAtEnd(thunk.AppendBasicBlock("entry"));
+		var first = IsLarge(returnType) ? 2u : 1u;
 		var args = parameterTypes
 			.Select((_, i) => PassAsDeclared(function, i, AdaptFunction(type.ParameterTypes[i],
-				actual.ParameterTypes[i], thunk.GetParam((uint)i + 1), builder), builder))
+				actual.ParameterTypes[i], thunk.GetParam((uint)i + first), builder), builder))
 			.ToList();
 		
 		var result = target.CSignature is { } signature
-			? EmitCCall(signature, target.FunctionType, target.FunctionValue, target.ReturnType, args, builder)
-			: builder.BuildCall2(target.FunctionType, target.FunctionValue, args.ToArray());
+			? EmitCCall(signature, target.FunctionType, target.FunctionValue, actual.ParameterTypes, actual.ReturnType,
+				args, builder)
+			: BuildInternalCall(builder, target.FunctionType, target.FunctionValue, actual.ReturnType, [], args);
 		
-		if (returnType.Kind == LLVMTypeKind.LLVMVoidTypeKind)
-			builder.BuildRetVoid();
-		else
-			builder.BuildRet(AdaptFunction(actual.ReturnType, type.ReturnType, result, builder));
+		EmitThunkReturn(thunk, returnType, AdaptFunction(actual.ReturnType, type.ReturnType, result, builder), 1,
+			builder);
 		
 		return thunk;
 	}
@@ -2853,9 +3022,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 		    _typePool.PassesByPointer(actual, mode))
 			return value;
 		
-		var slot = BuildEntryAlloca(builder, MapTypeSymbol(actual), "argument");
-		builder.BuildStore(value, slot);
-		return slot;
+		return SpillValue(builder, actual, value, "argument");
 	}
 	
 	private LLVMValueRef GetExternalThunk(FunctionInfo function)
@@ -2879,25 +3046,26 @@ public sealed unsafe class CodeGenerator : IDisposable
 		using var builder = current.Module.Context.CreateBuilder();
 		builder.PositionAtEnd(thunk.AppendBasicBlock("entry"));
 		var first = isIndirect ? 1u : 0u;
-		var args = parameterTypes
-			.Select((type, i) => ReceiveCArgument(signature.Parameters[i], thunk.GetParam(first + (uint)i), type,
+		var args = function.Signature.ParameterTypes
+			.Select((type, i) => ReceiveCArgument(signature.Parameters[i], type, thunk.GetParam(first + (uint)i),
 				builder))
 			.Select((value, i) => PassAsDeclared(function, i, value, builder))
 			.ToArray();
 		
-		var result = builder.BuildCall2(target.FunctionType, target.FunctionValue, args);
+		var returnType = function.Signature.ReturnType;
+		var result = BuildInternalCall(builder, target.FunctionType, target.FunctionValue, returnType, [], args);
 		if (target.ReturnType.Kind == LLVMTypeKind.LLVMVoidTypeKind)
 		{
 			builder.BuildRetVoid();
 		}
 		else if (isIndirect)
 		{
-			builder.BuildStore(result, thunk.GetParam(0));
+			StoreValue(builder, returnType, result, thunk.GetParam(0));
 			builder.BuildRetVoid();
 		}
 		else
 		{
-			builder.BuildRet(PassCArgument(signature.Return, result, builder));
+			builder.BuildRet(PassCArgument(signature.Return, returnType, result, builder));
 		}
 		
 		return thunk;
@@ -2964,7 +3132,8 @@ public sealed unsafe class CodeGenerator : IDisposable
 		
 		using var builder = current.Module.Context.CreateBuilder();
 		builder.PositionAtEnd(value.AppendBasicBlock("entry"));
-		var parameters = function.Signature.ParameterTypes.Select((_, i) => value.GetParam((uint)i)).ToList();
+		var first = thunk.ResultParameter is null ? 0u : 1u;
+		var parameters = function.Signature.ParameterTypes.Select((_, i) => value.GetParam((uint)i + first)).ToList();
 		var result = witness switch
 		{
 			FunctionWitness target => CallWitness(function, target, parameters, builder),
@@ -2976,10 +3145,19 @@ public sealed unsafe class CodeGenerator : IDisposable
 			_ => throw new InvalidOperationException()
 		};
 		
-		if (thunk.ReturnType.Kind == LLVMTypeKind.LLVMVoidTypeKind)
+		if (thunk.ResultParameter is { } resultParameter)
+		{
+			StoreValue(builder, function.Signature.ReturnType, result, value.GetParam(resultParameter));
 			builder.BuildRetVoid();
+		}
+		else if (thunk.ReturnType.Kind == LLVMTypeKind.LLVMVoidTypeKind)
+		{
+			builder.BuildRetVoid();
+		}
 		else
+		{
 			builder.BuildRet(result);
+		}
 		
 		return value;
 	}
@@ -3020,8 +3198,10 @@ public sealed unsafe class CodeGenerator : IDisposable
 			.ToList();
 		
 		var result = callee.CSignature is { } signature
-			? EmitCCall(signature, callee.FunctionType, callee.FunctionValue, callee.ReturnType, args, builder)
-			: builder.BuildCall2(callee.FunctionType, callee.FunctionValue, args.ToArray());
+			? EmitCCall(signature, callee.FunctionType, callee.FunctionValue, target.Signature.ParameterTypes,
+				target.Signature.ReturnType, args, builder)
+			: BuildInternalCall(builder, callee.FunctionType, callee.FunctionValue, target.Signature.ReturnType, [],
+				args);
 		
 		return AdaptFunction(target.Signature.ReturnType, function.Signature.ReturnType, result, builder);
 	}
@@ -3034,13 +3214,10 @@ public sealed unsafe class CodeGenerator : IDisposable
 		if (fromPointer == _typePool.PassesByPointer(target.DeclaredSignature.ParameterTypes[index], mode))
 			return value;
 		
-		var type = MapTypeSymbol(function.Signature.ParameterTypes[index]);
-		if (fromPointer)
-			return builder.BuildLoad2(type, value, "argument");
-		
-		var slot = BuildEntryAlloca(builder, type, "argument");
-		builder.BuildStore(value, slot);
-		return slot;
+		var type = function.Signature.ParameterTypes[index];
+		return fromPointer
+			? LoadValue(builder, type, value, "argument")
+			: SpillValue(builder, type, value, "argument");
 	}
 	
 	private LLVMValueRef EmitNativeWitness(FunctionInfo function, NativeWitness witness, List<LLVMValueRef> parameters,
@@ -3132,9 +3309,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 			return info;
 		}
 		
-		var slot = BuildEntryAlloca(builder, MapTypeSymbol(type), info.Symbol.Name);
-		builder.BuildStore(value, slot);
-		current.Variables[info] = slot;
+		current.Variables[info] = SpillValue(builder, type, value, info.Symbol.Name);
 		return info;
 	}
 	
