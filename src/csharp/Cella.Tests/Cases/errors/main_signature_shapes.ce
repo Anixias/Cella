@@ -1,0 +1,19 @@
+mod test
+
+view[T]: ref rec
+{
+	data: pvt ptr[T]
+	length: pvt set usize
+
+	new: op(data: ptr[T], length: usize)
+	{
+		self.data = data
+		self.length = length
+	}
+}
+
+main: fun(mut args: view[str]) -> i32 = 0
+
+main: fun(args: ptr[str], count: i32) -> i32 = 0
+
+main: fun(args: ptr[str], count: usize, extra: i32) -> i32 = 0

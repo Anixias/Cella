@@ -482,6 +482,15 @@ public sealed class TypePool
 		? (Visibility)Math.Max((int)named.Definition.Visibility, (int)Visibility.Module)
 		: Visibility.Public;
 	
+	public Witness? FindArgumentsWitness(TypeSymbol type)
+	{
+		var witness = FindConstructorWitness(type,
+			new FunctionSignature([GetPointerType(type), GetPointerType(NativeSymbols.Str), NativeSymbols.UIntSize],
+				NativeSymbols.Void, false, [ParameterMode.Mut, ParameterMode.ReadOnly, ParameterMode.ReadOnly]));
+		
+		return witness is FunctionWitness or MemberwiseWitness ? witness : null;
+	}
+	
 	public Witness? FindConstructorWitness(TypeSymbol type, FunctionSignature expected)
 	{
 		var declared = GetConstructors(type);

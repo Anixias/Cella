@@ -271,9 +271,6 @@ public sealed unsafe class CodeGenerator : IDisposable
 		current = state;
 		var llvmModule = state.Module;
 		var name = state.Lowered.Symbol.Name;
-		if (state.EntryPoint is { } entryPoint)
-			BuildEntryPoint(llvmModule, entryPoint);
-		
 		RunOptimizationPass(llvmModule);
 		state.DiBuilder.DIBuilderFinalize();
 		
@@ -510,6 +507,9 @@ public sealed unsafe class CodeGenerator : IDisposable
 			foreach (var function in file.Functions.Where(static function => IsEmitted(function.Info)))
 				BuildFunction(function, function.Info);
 		}
+		
+		if (current.EntryPoint is { } entryPoint && _assemblySymbol.EntryPoint is { } entryInfo)
+			BuildEntryPoint(entryPoint, entryInfo.Signature);
 	}
 	
 	private LLVMTypeRef CreateType(TypeSymbol type)
@@ -594,18 +594,122 @@ public sealed unsafe class CodeGenerator : IDisposable
 		return functionInfo;
 	}
 	
-	private static void BuildEntryPoint(LLVMModuleRef llvmModule, LLVMFunctionInfo entryPoint)
+	private void BuildEntryPoint(LLVMFunctionInfo entryPoint, FunctionSignature signature)
 	{
-		var main = llvmModule.AddFunction("main", LLVMTypeRef.CreateFunction(LLVMTypeRef.Int32, []));
-		main.Linkage = LLVMLinkage.LLVMExternalLinkage;
+		var takesArguments = !signature.ParameterTypes.IsEmpty;
+		var isWide = takesArguments && TargetTriple.Contains("windows");
+		var main = current.Module.AddFunction(isWide ? "wmain" : "main", LLVMTypeRef.CreateFunction(LLVMTypeRef.Int32,
+			takesArguments ? [LLVMTypeRef.Int32, OpaquePointer] : []));
 		
-		using var builder = llvmModule.Context.CreateBuilder();
+		main.Linkage = LLVMLinkage.LLVMExternalLinkage;
+		using var builder = current.Module.Context.CreateBuilder();
 		builder.PositionAtEnd(main.AppendBasicBlock("entry"));
 		
-		var result = builder.BuildCall2(entryPoint.FunctionType, entryPoint.FunctionValue, []);
+		LLVMValueRef[] arguments = [];
+		Action? cleanup = null;
+		if (takesArguments)
+		{
+			var (strings, count) = EmitArguments(main, isWide, builder);
+			if (signature.ParameterTypes.Length == 2)
+				arguments = [strings, count];
+			else
+				arguments = [EmitArgumentsValue(signature, strings, count, builder, out cleanup)];
+		}
+		
+		var result = builder.BuildCall2(entryPoint.FunctionType, entryPoint.FunctionValue, arguments);
+		cleanup?.Invoke();
 		builder.BuildRet(entryPoint.ReturnType.Kind == LLVMTypeKind.LLVMVoidTypeKind
 			? LLVMValueRef.CreateConstInt(LLVMTypeRef.Int32, 0)
 			: result);
+	}
+	
+	private (LLVMValueRef Strings, LLVMValueRef Count) EmitArguments(LLVMValueRef main, bool isWide,
+		LLVMBuilderRef builder)
+	{
+		var sizeType = MapTypeSymbol(NativeSymbols.UIntSize);
+		var strType = MapTypeSymbol(NativeSymbols.Str);
+		var count = builder.BuildZExt(main.GetParam(0), sizeType, "count");
+		var strings = builder.BuildArrayAlloca(strType, count, "arguments");
+		var entry = builder.InsertBlock;
+		var header = main.AppendBasicBlock("argument");
+		var body = main.AppendBasicBlock("argument.body");
+		var done = main.AppendBasicBlock("arguments.done");
+		builder.BuildBr(header);
+		
+		builder.PositionAtEnd(header);
+		var index = builder.BuildPhi(sizeType, "index");
+		builder.BuildCondBr(builder.BuildICmp(LLVMIntPredicate.LLVMIntULT, index, count, "more"), body, done);
+		
+		builder.PositionAtEnd(body);
+		var source = builder.BuildLoad2(OpaquePointer,
+			builder.BuildGEP2(OpaquePointer, main.GetParam(1), new[] { index }, "source.addr"), "source");
+		
+		var (data, length) = isWide ? EmitUtf8Argument(source, builder) : EmitByteArgument(source, builder);
+		var text = builder.BuildInsertValue(strType.Undef, length, 0, "text");
+		text = builder.BuildInsertValue(text, data, 1, "text");
+		builder.BuildStore(text, builder.BuildGEP2(strType, strings, new[] { index }, "text.addr"));
+		var next = builder.BuildAdd(index, LLVMValueRef.CreateConstInt(sizeType, 1), "next");
+		builder.BuildBr(header);
+		
+		index.AddIncoming([LLVMValueRef.CreateConstInt(sizeType, 0), next], [entry, builder.InsertBlock], 2);
+		builder.PositionAtEnd(done);
+		return (strings, count);
+	}
+	
+	private (LLVMValueRef Data, LLVMValueRef Length) EmitByteArgument(LLVMValueRef source, LLVMBuilderRef builder)
+	{
+		var sizeType = MapTypeSymbol(NativeSymbols.UIntSize);
+		var lengthType = LLVMTypeRef.CreateFunction(sizeType, [OpaquePointer]);
+		return (source, builder.BuildCall2(lengthType, GetCFunction("strlen", lengthType), new[] { source }, "length"));
+	}
+	
+	private (LLVMValueRef Data, LLVMValueRef Length) EmitUtf8Argument(LLVMValueRef source, LLVMBuilderRef builder)
+	{
+		var int32 = LLVMTypeRef.Int32;
+		var convertType = LLVMTypeRef.CreateFunction(int32,
+			[int32, int32, OpaquePointer, int32, OpaquePointer, int32, OpaquePointer, OpaquePointer]);
+		
+		var convert = GetCFunction("WideCharToMultiByte", convertType);
+		var utf8 = LLVMValueRef.CreateConstInt(int32, 65001);
+		var zero = LLVMValueRef.CreateConstInt(int32, 0);
+		var terminated = LLVMValueRef.CreateConstInt(int32, unchecked((ulong)-1), true);
+		var none = LLVMValueRef.CreateConstNull(OpaquePointer);
+		var size = builder.BuildCall2(convertType, convert,
+			new[] { utf8, zero, source, terminated, none, zero, none, none }, "size");
+		
+		var data = builder.BuildArrayAlloca(LLVMTypeRef.Int8, size, "data");
+		builder.BuildCall2(convertType, convert, [utf8, zero, source, terminated, data, size, none, none]);
+		var length = builder.BuildSub(size, LLVMValueRef.CreateConstInt(int32, 1), "length");
+		return (data, builder.BuildZExt(length, MapTypeSymbol(NativeSymbols.UIntSize), "length"));
+	}
+	
+	private LLVMValueRef EmitArgumentsValue(FunctionSignature signature, LLVMValueRef strings, LLVMValueRef count,
+		LLVMBuilderRef builder, out Action? cleanup)
+	{
+		var type = signature.GetDeclaredType(0);
+		var mode = signature.GetMode(0);
+		var slot = SpillValue(builder, type, EmitZeroed(builder, type, "arguments"), "arguments");
+		switch (_typePool.FindArgumentsWitness(type))
+		{
+			case FunctionWitness { Info: var constructor }:
+			{
+				GetFunctionValue(constructor);
+				var function = current.Functions[constructor];
+				builder.BuildCall2(function.FunctionType, function.FunctionValue, [slot, strings, count]);
+				break;
+			}
+			
+			case MemberwiseWitness:
+			{
+				var mapped = MapTypeSymbol(type);
+				builder.BuildStore(strings, builder.BuildStructGEP2(mapped, slot, 0, "data"));
+				builder.BuildStore(count, builder.BuildStructGEP2(mapped, slot, 1, "length"));
+				break;
+			}
+		}
+		
+		cleanup = mode == ParameterMode.Own ? null : () => EmitDropCall(type, slot, builder);
+		return _typePool.PassesByPointer(type, mode) ? slot : LoadValue(builder, type, slot, "arguments");
 	}
 	
 	private void BuildFunction(LoweredFunction function, FunctionInfo info)

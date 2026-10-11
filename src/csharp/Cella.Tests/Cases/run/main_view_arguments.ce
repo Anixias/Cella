@@ -1,0 +1,34 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+view[T]: ref rec
+{
+	data: pvt ptr[T]
+	length: pvt set usize
+
+	new: op(data: ptr[T], length: usize)
+	{
+		self.data = data
+		self.length = length
+	}
+
+	[]: op(self, i: usize) -> imm[T] = imm self.data[i]
+}
+
+main: fun(args: view[str]) -> i32
+{
+	printf("%zu", args.length)
+	var i: usize = 1
+	while i < args.length
+	{
+		printf(" %zu", args[i].byteLength)
+		i += 1
+	}
+
+	printf(" first=%d\n", i32(args[0].byteLength > 0))
+	ret 3
+}

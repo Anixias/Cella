@@ -1,0 +1,18 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Args: rec
+{
+	data: ptr[str]
+	count: usize
+}
+
+main: fun(args: Args) -> i32
+{
+	printf("%zu %zu\n", args.count, args.data[args.count - 1].byteLength)
+	ret 0
+}

@@ -2906,7 +2906,11 @@ public sealed class SignatureCollector
 	
 	private void ReportEntryPoint()
 	{
-		if (_entryPointName is null || _entryPoints.Count == 1)
+		if (_entryPointName is null)
+			return;
+		
+		_entryPoints.RemoveAll(entryPoint => !BuildsArguments(entryPoint.Signature));
+		if (_entryPoints.Count == 1)
 			return;
 		
 		if (_entryPoints.Count > 1)
@@ -2942,7 +2946,11 @@ public sealed class SignatureCollector
 				? new(DiagnosticSeverity.Error, first.Identifier.SourceLocation,
 					$"Cannot declare type parameters on '{_entryPointName}'")
 				: new(DiagnosticSeverity.Error, GetIdentifier(candidate.Symbol.Syntax).SourceLocation,
-					$"'{_entryPointName}' must have no parameters and return 'i32' or nothing"));
+					candidate.Signature.ReturnType != NativeSymbols.Void &&
+					candidate.Signature.ReturnType != NativeSymbols.Int32
+						? $"'{_entryPointName}' must return 'i32' or nothing"
+						: $"'{_entryPointName}' must take no parameters, 'ptr[str]' and 'usize', or one parameter " +
+						  "that meets 'new(ptr[str], usize)'"));
 		}
 	}
 	
@@ -3072,23 +3080,20 @@ public sealed class SignatureCollector
 		_ => null
 	};
 	
-	private static bool IsEntryPoint(FunctionSignature signature)
-	{
-		// To be an entry point, it must return void or i32 and have either no parameters or take an array of strings
-		// TODO Not complete; also, allow async returns?
-		
-		// TODO Do we allow other integer return types?
-		var returnType = signature.ReturnType;
-		if (returnType != NativeSymbols.Void && returnType != NativeSymbols.Int32)
-			return false;
-		
-		// TODO Allow view of strings as parameter
-		var paramTypes = signature.ParameterTypes;
-		if (paramTypes.Length > 0)
-			return false;
-		
-		return true;
-	}
+	private static bool IsEntryPoint(FunctionSignature signature) =>
+		(signature.ReturnType == NativeSymbols.Void || signature.ReturnType == NativeSymbols.Int32) &&
+		signature.ParameterModes.All(static mode => mode != ParameterMode.Mut) &&
+		signature.ParameterTypes switch
+		{
+			[] or [_] => true,
+			[PointerType { BaseType: var element }, var count] => element == NativeSymbols.Str &&
+			                                                      count == NativeSymbols.UIntSize,
+			_ => false
+		};
+	
+	private bool BuildsArguments(FunctionSignature signature) => signature.ParameterTypes is not [var type] ||
+	                                                             type is InvalidType ||
+	                                                             _typePool.FindArgumentsWitness(type) is not null;
 	
 	private ImportEnvironment CollectImports(FileNode node, ResolutionContext context)
 	{

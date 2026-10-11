@@ -79,7 +79,12 @@ public sealed class GoldenTests
 				return Transcript(compileOutput, "[compilation failed]");
 			
 			var executablePath = Path.Combine(caseDirectory, "bin", OperatingSystem.IsWindows() ? "test.exe" : "test");
-			var (exitCode, output, error) = await ExecuteAsync(executablePath, cancellationToken);
+			var argumentsPath = Path.ChangeExtension(sourcePath, ".args");
+			string[] arguments = File.Exists(argumentsPath)
+				? await File.ReadAllLinesAsync(argumentsPath, cancellationToken)
+				: [];
+			
+			var (exitCode, output, error) = await ExecuteAsync(executablePath, arguments, cancellationToken);
 			var errorSection = error.Length > 0 ? $"[stderr]\n{error}" : "";
 			return Transcript(compileOutput, output, errorSection, $"[exit code {exitCode}]");
 		}
@@ -135,9 +140,9 @@ public sealed class GoldenTests
 	}
 	
 	private static async Task<(int ExitCode, string Output, string Error)> ExecuteAsync(string executablePath,
-		CancellationToken cancellationToken)
+		IEnumerable<string> arguments, CancellationToken cancellationToken)
 	{
-		using var process = Process.Start(new ProcessStartInfo(executablePath)
+		using var process = Process.Start(new ProcessStartInfo(executablePath, arguments)
 		{
 			RedirectStandardOutput = true,
 			RedirectStandardError = true,

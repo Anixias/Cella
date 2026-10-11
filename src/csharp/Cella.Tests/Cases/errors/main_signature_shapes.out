@@ -1,0 +1,19 @@
+
+====== main_signature_shapes.ce ======
+
+Error at line 15, column 1
+14 │ 
+15 │ main: fun(mut args: view[str]) -> i32 = 0
+     ╘══╛ 'main' must take no parameters, 'ptr[str]' and 'usize', or one parameter that meets 'new(ptr[str], usize)'
+
+Error at line 17, column 1
+16 │ 
+17 │ main: fun(args: ptr[str], count: i32) -> i32 = 0
+     ╘══╛ 'main' must take no parameters, 'ptr[str]' and 'usize', or one parameter that meets 'new(ptr[str], usize)'
+
+Error at line 19, column 1
+18 │ 
+19 │ main: fun(args: ptr[str], count: usize, extra: i32) -> i32 = 0
+     ╘══╛ 'main' must take no parameters, 'ptr[str]' and 'usize', or one parameter that meets 'new(ptr[str], usize)'
+
+[compilation failed]
