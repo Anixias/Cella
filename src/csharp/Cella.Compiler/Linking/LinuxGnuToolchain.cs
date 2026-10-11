@@ -1,13 +1,13 @@
 ﻿namespace Cella.Compiler.Linking;
 
-public sealed class LinuxGnuToolchain(string root) : Toolchain(root)
+public sealed class LinuxGnuToolchain(string root) : Toolchain
 {
 	public override string LldFlavor => "gnu";
 	
 	private readonly string _sysrootDir = Path.Combine(root, "sysroot");
 	private readonly string _libDir = Path.Combine(root, "sysroot", "usr", "lib");
 	
-	public override Dictionary<string, string?> GetLinkerEnvironmentVars(LinkRequest request) => [];
+	public override Dictionary<string, string?> GetLinkerEnvironmentVars() => [];
 	
 	public override List<string> GetLinkerArgs(LinkRequest request)
 	{

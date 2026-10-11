@@ -10,18 +10,6 @@ public sealed class ConversionTable
 	
 	public void Add(Conversion conversion) => _conversions[(conversion.From, conversion.To)] = conversion;
 	
-	public IEnumerable<Conversion> FindAllImplicit(TypeSymbol type)
-	{
-		foreach (var ((from, _), conversion) in _conversions)
-		{
-			if (from != type)
-				continue;
-			
-			if (conversion.Kind == ConversionKind.Implicit)
-				yield return conversion;
-		}
-	}
-	
 	// TODO Chaining?
 	public Conversion? FindImplicit(TypeSymbol from, TypeSymbol to) =>
 		_conversions.TryGetValue((from, to), out var conversion)

@@ -1,11 +1,10 @@
 ﻿namespace Cella.Compiler.Linking;
 
-public abstract class Toolchain(string root)
+public abstract class Toolchain
 {
-	public string Root { get; } = root;
 	public abstract string LldFlavor { get; }
 	
-	public abstract Dictionary<string, string?> GetLinkerEnvironmentVars(LinkRequest request);
+	public abstract Dictionary<string, string?> GetLinkerEnvironmentVars();
 	public abstract List<string> GetLinkerArgs(LinkRequest request);
 	
 	public static Toolchain FromTargetTriple(TargetTriple targetTriple, string toolchainsDirectory)
@@ -17,13 +16,13 @@ public abstract class Toolchain(string root)
 		var arch = targetTriple.Arch;
 		
 		if (arch.Equals(TargetTriple.ArchTypes.Wasm64, StringComparison.OrdinalIgnoreCase))
-			throw new NotSupportedException(); //return LinkerFlavor.Wasm;
+			throw new NotSupportedException();
 		
 		if (os.Equals(TargetTriple.OsTypes.Windows, StringComparison.OrdinalIgnoreCase))
 			return new WindowsMsvcToolchain(toolchainRoot);
 		
 		if (os.Equals(TargetTriple.OsTypes.MacOsX, StringComparison.OrdinalIgnoreCase))
-			throw new NotSupportedException(); // return LinkerFlavor.MachO;
+			throw new NotSupportedException();
 		
 		return new LinuxGnuToolchain(toolchainRoot);
 	}

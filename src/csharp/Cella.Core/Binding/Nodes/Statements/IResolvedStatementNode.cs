@@ -10,9 +10,6 @@ public interface IResolvedStatementNode : IResolvedNode
 [TreeVisitor<IResolvedStatementNode>]
 public partial interface IResolvedStatementNodeVisitor;
 
-[TreeVisitor<IResolvedStatementNode>]
-public partial interface IResolvedStatementNodeVisitor<out T>;
-
 public sealed class ResolvedInvalidStatementNode(IStatementNode syntax) : IResolvedStatementNode
 {
 	public IStatementNode Syntax { get; } = syntax;

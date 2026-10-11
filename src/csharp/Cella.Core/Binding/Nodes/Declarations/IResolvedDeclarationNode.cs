@@ -9,11 +9,3 @@ public interface IResolvedDeclarationNode : IResolvedNode
 
 [TreeVisitor<IResolvedDeclarationNode>]
 public partial interface IResolvedDeclarationNodeVisitor;
-
-[TreeVisitor<IResolvedDeclarationNode>]
-public partial interface IResolvedDeclarationNodeVisitor<out T>;
-
-public sealed class ResolvedInvalidDeclarationNode(IDeclarationNode node) : IResolvedDeclarationNode
-{
-	public IDeclarationNode Syntax { get; } = node;
-}

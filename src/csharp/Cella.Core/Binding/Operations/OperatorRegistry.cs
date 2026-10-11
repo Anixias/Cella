@@ -223,17 +223,10 @@ public abstract class OperationImpl(TokenType op, TypeSymbol result, params IEnu
 public sealed class NativeImpl(TokenType op, TypeSymbol result, params IEnumerable<TypeSymbol> parameters)
 	: OperationImpl(op, result, parameters);
 
-public sealed class FunctionImpl(TokenType op, FunctionInfo function)
-	: OperationImpl(op, function.Signature.ReturnType, function.Signature.ParameterTypes)
-{
-	public FunctionInfo Function { get; } = function;
-}
-
 public sealed class PointerOffsetImpl(TokenType op, PointerType pointerType, TypeSymbol offsetType)
 	: OperationImpl(op, pointerType, pointerType, offsetType)
 {
 	public PointerType PointerType { get; } = pointerType;
-	public TypeSymbol OffsetType { get; } = offsetType;
 }
 
 public sealed class PointerDifferenceImpl(PointerType pointerType)

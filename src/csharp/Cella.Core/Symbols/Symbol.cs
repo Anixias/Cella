@@ -787,13 +787,6 @@ public sealed class PropertySymbol(string name) : TypedMemberSymbol(name)
 	public bool IsStatic => (Getter ?? Setter) is FunctionAccessor { Function.Kind: FunctionKind.Free };
 }
 
-public sealed class IndexerSymbol(string name, IEnumerable<ParameterSymbol> parameters) : TypedMemberSymbol(name)
-{
-	public ImmutableArray<ParameterSymbol> Parameters { get; } = parameters.ToImmutableArray();
-	public AccessorImpl? Getter { get; init; }
-	public AccessorImpl? Setter { get; init; }
-}
-
 public sealed class TraitSymbol
 (
 	TraitNode node,
@@ -861,10 +854,5 @@ public enum NativeMemberIntrinsic
 	StrByteLength,
 	StrData,
 	StrNew,
-	FStrHoles,
-	ArrayIndexGet,
-	ArrayIndexSet,
-	SpanIndexGet,
-	SpanIndexSet,
-	ViewIndexGet
+	FStrHoles
 }

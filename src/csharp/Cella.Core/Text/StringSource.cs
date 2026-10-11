@@ -57,9 +57,6 @@ public sealed class StringSource : ISource
 		return lines.ToImmutableArray();
 	}
 	
-	public ReadOnlySpan<char> GetText() => _text;
-	public ReadOnlySpan<char> GetText(int line) => GetText(GetLineRange(line));
-	
 	public ReadOnlySpan<char> GetText(TextRange range)
 	{
 		if (!range.IsValid || range.Start >= _text.Length || range.End > _text.Length)

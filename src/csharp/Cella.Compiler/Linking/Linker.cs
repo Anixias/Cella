@@ -50,7 +50,7 @@ public sealed class Linker(string rootPath, bool verbose)
 			}
 		};
 		
-		var environmentVars = toolchain.GetLinkerEnvironmentVars(request);
+		var environmentVars = toolchain.GetLinkerEnvironmentVars();
 		foreach (var (key, value) in environmentVars)
 			process.StartInfo.Environment[key] = value;
 		

@@ -11,8 +11,3 @@ public interface ISyntaxNode
 public partial interface ISyntaxNodeVisitor
 {
 }
-
-[TreeVisitor<ISyntaxNode>]
-public partial interface ISyntaxNodeVisitor<out T>
-{
-}

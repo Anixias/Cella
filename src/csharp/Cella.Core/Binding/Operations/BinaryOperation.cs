@@ -24,7 +24,5 @@ public enum BinaryOperation
 	RotateLeft,
 	RotateRight,
 	LogicalAnd,
-	LogicalOr,
-	
-	Count
+	LogicalOr
 }

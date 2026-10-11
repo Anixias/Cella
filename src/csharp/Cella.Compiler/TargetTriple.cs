@@ -23,15 +23,6 @@ public readonly record struct TargetTriple(string Os, string Arch, string? Abi)
 		public const string Wasm64 = "wasm64";
 	}
 	
-	public static TargetTriple Parse(string targetTriple)
-	{
-		var parts = targetTriple.ToLowerInvariant().Split('-');
-		if (parts.Length is < 2 or > 3)
-			throw new FormatException();
-		
-		return new(parts[0], parts[1], parts.Length < 3 ? null : parts[2]);
-	}
-	
 	public string ToLlvm()
 	{
 		var llvmArch = Arch switch

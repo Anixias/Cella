@@ -453,7 +453,7 @@ internal static class Program
 			const string toolchainDir = @"C:\cella\toolchains";
 			var linker = new Linker(@"C:\cella\", verbose);
 			var linkPreference = project.Project.SystemLinkPreference;
-			var linkRequest = new LinkRequest(outputType, objectFiles, outputPath, toolchainDir, libFiles!)
+			var linkRequest = new LinkRequest(outputType, objectFiles, outputPath, libFiles!)
 			{
 				LinkPreference = linkPreference,
 				DebugInfo = codeGenConfig.DebugInfo,
@@ -473,18 +473,6 @@ internal static class Program
 				CopySharedLibraries(allDependencies, outputDir);
 		}
 		
-		/*var userProgram = new Process
-		{
-			StartInfo =
-			{
-				FileName = outputPath
-			}
-		};
-		
-		userProgram.Start();
-		await userProgram.WaitForExitAsync();
-		
-		Console.WriteLine($"User program finished with exit code {userProgram.ExitCode}");*/
 		return new(assemblySymbol, outputType, outputPath, true)
 		{
 			Dependencies = dependencyList,
@@ -523,10 +511,6 @@ internal static class Program
 			var source = new StringSource(sourceString, sourcePath);
 			var scanner = new FilteredScanner(source);
 			
-			// TEMP
-			/*foreach (var token in scanner)
-				Console.WriteLine(token);*/
-			
 			// TODO Change parser to retrieve tokens as needed
 			var tokens = scanner.ToImmutableArray();
 			ct.ThrowIfCancellationRequested();
@@ -539,11 +523,7 @@ internal static class Program
 			
 			diagnostics.AddRange(parser.Diagnostics);
 			if (ast is { IsExcluded: false })
-			{
-				// TODO Make opt-in via CLI flags
-				//Console.WriteLine(AstPrinter.Print(ast));
 				files.Add(ast);
-			}
 		}
 		
 		return (files.ToImmutableArray(), diagnostics);

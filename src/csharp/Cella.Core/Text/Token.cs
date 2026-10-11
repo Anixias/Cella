@@ -12,7 +12,6 @@ public readonly record struct Token
 	public InterpolatedString? Interpolation { get; init; }
 	public string? Suffix { get; init; }
 	public ReadOnlySpan<char> AsSpan() => Text.AsSpan();
-	public ReadOnlySpan<char> AsSourceSpan() => SourceLocation.GetText();
 	
 	public Token(TokenType type, ISource source, TextRange textRange, string? text = null)
 		: this(type, new(source, textRange), text)

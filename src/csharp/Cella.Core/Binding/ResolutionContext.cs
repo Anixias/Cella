@@ -646,9 +646,6 @@ public readonly struct ResolutionContext
 		_ => AsTraitArgument(FindNamed(expression), expression.SourceLocation)
 	};
 	
-	public TypeSymbol ResolveTypeArgumentExpression(IExpressionNode expression) =>
-		ResolveTraitArgument(expression) ?? ResolveTypeExpression(expression);
-	
 	public TypeSymbol ResolveGenericArgumentExpression(IExpressionNode expression, TypeParameterSymbol? parameter)
 	{
 		var named = expression is VarExpressionNode or AccessExpressionNode ? FindNamed(expression) : null;

@@ -53,7 +53,7 @@ public sealed class FileParser
 	private static readonly HashSet<TokenType> _undeclarableOperators =
 		[TokenType.OpBang, TokenType.OpAmpersandAmpersand, TokenType.OpBarBar, TokenType.OpDot, TokenType.OpEqual];
 	
-	private static readonly HashSet<TokenType> _topLevelSyncTypes = [TokenType.OpSemicolon, TokenType.EndOfFile];
+	private static readonly HashSet<TokenType> _topLevelSyncTypes = [TokenType.EndOfFile];
 	
 	private static readonly HashSet<TokenType> _topLevelKeywords =
 		[TokenType.KeywordMod, TokenType.KeywordUse, TokenType.KeywordExt, TokenType.KeywordPvt];
@@ -1345,7 +1345,7 @@ public sealed class FileParser
 			// TODO Diagnostics
 			if (ParseMember(ref index, block) is not { } member)
 			{
-				ResyncSimple(ref index);
+				SkipToEnd(ref index);
 				return false;
 			}
 			
@@ -1996,7 +1996,7 @@ public sealed class FileParser
 				if (!ParseWhen(ref index, (ref i, branch, isActive) =>
 					    ParseStatements(ref i, branch, isActive ? statements : [], out _)))
 				{
-					ResyncSimple(ref index);
+					SkipToEnd(ref index);
 					return false;
 				}
 				
@@ -2005,7 +2005,7 @@ public sealed class FileParser
 			
 			if (ParseStatement(ref index) is not { } statement)
 			{
-				ResyncSimple(ref index);
+				SkipToEnd(ref index);
 				return false;
 			}
 			
@@ -2339,11 +2339,7 @@ public sealed class FileParser
 	private bool StartsDeclarationOnLine(int index) =>
 		Tokens[index].Line != Tokens[index - 1].Line && StartsTopLevelDeclaration(index);
 	
-	private void ResyncSimple(ref int index)
-	{
-		SkipUntil(ref index, TokenType.OpSemicolon);
-		SkipIf(ref index, TokenType.OpSemicolon);
-	}
+	private void SkipToEnd(ref int index) => SkipUntil(ref index, TokenType.EndOfFile);
 	
 	private void SkipIf(ref int index, TokenType type)
 	{

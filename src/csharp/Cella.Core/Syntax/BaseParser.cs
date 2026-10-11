@@ -59,9 +59,6 @@ public abstract class BaseParser<T>(ImmutableArray<Token> tokens) : IParser<T>
 		return true;
 	}
 	
-	protected void SkipUntil(ref int index, IReadOnlySet<TokenType> types) =>
-		SkipUntil(ref index, null, types);
-	
 	protected void SkipUntil(ref int index, IReadOnlyDictionary<string, TokenType>? contextualTypes,
 		IReadOnlySet<TokenType> types)
 	{
@@ -94,42 +91,11 @@ public abstract class BaseParser<T>(ImmutableArray<Token> tokens) : IParser<T>
 		}
 	}
 	
-	protected bool Consume(ref int index, IReadOnlySet<TokenType> syncTypes, IReadOnlySet<TokenType> types) =>
-		Consume(ref index, out _, null, syncTypes, types);
-	
-	protected bool Consume(ref int index, out Token token, IReadOnlySet<TokenType> syncTypes,
-		IReadOnlySet<TokenType> types) =>
-		Consume(ref index, out token, null, syncTypes, types);
-	
-	protected bool Consume(ref int index, IReadOnlyDictionary<string, TokenType>? contextualTypes,
-		IReadOnlySet<TokenType> syncTypes, IReadOnlySet<TokenType> types) =>
-		Consume(ref index, out _, contextualTypes, syncTypes, types);
-	
-	protected bool Consume(ref int index, out Token token, IReadOnlyDictionary<string, TokenType>? contextualTypes,
-		IReadOnlySet<TokenType> syncTypes, IReadOnlySet<TokenType> types)
-	{
-		if (!TryGetToken(index, contextualTypes, out token))
-			return false;
-		
-		if (!types.Contains(token.Type))
-		{
-			SkipUntil(ref index, contextualTypes, syncTypes);
-			return false;
-		}
-		
-		index++;
-		return true;
-	}
-	
 	protected bool Consume(ref int index, IReadOnlySet<TokenType> syncTypes, TokenType type) =>
 		Consume(ref index, out _, null, syncTypes, type);
 	
 	protected bool Consume(ref int index, out Token token, IReadOnlySet<TokenType> syncTypes, TokenType type) =>
 		Consume(ref index, out token, null, syncTypes, type);
-	
-	protected bool Consume(ref int index, IReadOnlyDictionary<string, TokenType>? contextualTypes,
-		IReadOnlySet<TokenType> syncTypes, TokenType type) =>
-		Consume(ref index, out _, contextualTypes, syncTypes, type);
 	
 	protected bool Consume(ref int index, out Token token, IReadOnlyDictionary<string, TokenType>? contextualTypes,
 		IReadOnlySet<TokenType> syncTypes, TokenType type)

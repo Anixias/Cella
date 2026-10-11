@@ -114,7 +114,6 @@ public enum TokenType
 	OpAmpersandAmpersand,
 	OpBarBar,
 	OpColon,
-	OpSemicolon,
 	OpOpenParen,
 	OpCloseParen,
 	OpOpenBracket,
@@ -144,11 +143,9 @@ public static class TokenTypeInfo
 	private sealed record TokenMetadata
 	(
 		string Representation,
-		bool IsInvalid = false,
 		bool IsKeyword = false,
 		bool IsContextual = false,
 		bool IsOperator = false,
-		bool IsLiteral = false,
 		bool IsFiltered = false
 	);
 	
@@ -160,8 +157,8 @@ public static class TokenTypeInfo
 	{
 		_metadata = new Dictionary<TokenType, TokenMetadata>
 		{
-			[TokenType.EndOfFile] = new("end of file", IsInvalid: true),
-			[TokenType.Invalid] = new("invalid", IsInvalid: true),
+			[TokenType.EndOfFile] = new("end of file"),
+			[TokenType.Invalid] = new("invalid"),
 			[TokenType.Identifier] = new("identifier"),
 			
 			[TokenType.Whitespace] = new("whitespace", IsFiltered: true),
@@ -169,20 +166,20 @@ public static class TokenTypeInfo
 			[TokenType.LineComment] = new("line comment", IsFiltered: true),
 			[TokenType.BlockComment] = new("block comment", IsFiltered: true),
 			
-			[TokenType.IntegerLiteral] = new("integer literal", IsLiteral: true),
-			[TokenType.FloatLiteral] = new("float literal", IsLiteral: true),
-			[TokenType.StringLiteral] = new("string literal", IsLiteral: true),
-			[TokenType.InterpolatedStringLiteral] = new("interpolated string literal", IsLiteral: true),
-			[TokenType.CharLiteral] = new("char literal", IsLiteral: true),
-			[TokenType.InvalidCharLiteral] = new("invalid char literal", IsLiteral: true, IsInvalid: true),
+			[TokenType.IntegerLiteral] = new("integer literal"),
+			[TokenType.FloatLiteral] = new("float literal"),
+			[TokenType.StringLiteral] = new("string literal"),
+			[TokenType.InterpolatedStringLiteral] = new("interpolated string literal"),
+			[TokenType.CharLiteral] = new("char literal"),
+			[TokenType.InvalidCharLiteral] = new("invalid char literal"),
 			
-			[TokenType.KeywordTrue] = new("true", IsKeyword: true, IsLiteral: true),
-			[TokenType.KeywordFalse] = new("false", IsKeyword: true, IsLiteral: true),
-			[TokenType.KeywordNull] = new("null", IsKeyword: true, IsLiteral: true),
-			[TokenType.KeywordUndef] = new("undef", IsKeyword: true, IsLiteral: true),
-			[TokenType.KeywordSizeOf] = new("sizeOf", IsKeyword: true, IsLiteral: true),
-			[TokenType.KeywordAlignOf] = new("alignOf", IsKeyword: true, IsLiteral: true),
-			[TokenType.KeywordNameOf] = new("nameOf", IsKeyword: true, IsLiteral: true),
+			[TokenType.KeywordTrue] = new("true", IsKeyword: true),
+			[TokenType.KeywordFalse] = new("false", IsKeyword: true),
+			[TokenType.KeywordNull] = new("null", IsKeyword: true),
+			[TokenType.KeywordUndef] = new("undef", IsKeyword: true),
+			[TokenType.KeywordSizeOf] = new("sizeOf", IsKeyword: true),
+			[TokenType.KeywordAlignOf] = new("alignOf", IsKeyword: true),
+			[TokenType.KeywordNameOf] = new("nameOf", IsKeyword: true),
 			
 			[TokenType.KeywordRet] = new("ret", IsKeyword: true),
 			[TokenType.KeywordVar] = new("var", IsKeyword: true),
@@ -263,7 +260,6 @@ public static class TokenTypeInfo
 			[TokenType.OpAmpersandAmpersand] = new("&&", IsOperator: true),
 			[TokenType.OpBarBar] = new("||", IsOperator: true),
 			[TokenType.OpColon] = new(":", IsOperator: true),
-			[TokenType.OpSemicolon] = new(";", IsOperator: true),
 			[TokenType.OpOpenParen] = new("(", IsOperator: true),
 			[TokenType.OpCloseParen] = new(")", IsOperator: true),
 			[TokenType.OpOpenBracket] = new("[", IsOperator: true),
@@ -303,11 +299,7 @@ public static class TokenTypeInfo
 	extension(TokenType t)
 	{
 		public string Representation => _metadata[t].Representation;
-		public bool IsInvalid => _metadata[t].IsInvalid;
-		public bool IsKeyword => _metadata[t].IsKeyword;
 		public bool IsContextual => _metadata[t].IsContextual;
-		public bool IsOperator => _metadata[t].IsOperator;
-		public bool IsLiteral => _metadata[t].IsLiteral;
 		public bool IsFiltered => _metadata[t].IsFiltered;
 		
 		public static TokenType? GetKeyword(string text) => _keywords.TryGetValue(text, out var type) ? type : null;

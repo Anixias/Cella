@@ -56,9 +56,6 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool, 
 		_returnTypeStack.Pop();
 	}
 	
-	public void Visit(ResolvedInvalidDeclarationNode node) =>
-		throw new InvalidOperationException();
-	
 	public void Visit(ResolvedRecordNode node)
 	{
 		currentType = node.Symbol;
@@ -98,8 +95,6 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool, 
 		
 		currentType = null;
 	}
-	
-	public void Visit(ResolvedMethodNode node) => VisitNode(node.FunctionNode);
 	
 	public void Visit(ResolvedExternalFunctionNode node)
 	{

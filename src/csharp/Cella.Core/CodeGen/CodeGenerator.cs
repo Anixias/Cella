@@ -462,7 +462,6 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 			
 			default:
 				return CreateType(symbol);
-			//throw new InvalidOperationException($"Type '{symbol.Name}' not mapped in LLVM");
 		}
 	}
 	
@@ -481,8 +480,6 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 				llvmFunction.Linkage = LLVMLinkage.LLVMExternalLinkage;
 				
 				// TODO On Windows, check for DLL Import metadata/annotation/attribute
-				// llvmFunction.DLLStorageClass = LLVMDLLStorageClass.LLVMDLLImportStorageClass;
-				// llvmFunction.Linkage = LLVMLinkage.LLVMDLLImportLinkage;
 			}
 			
 			// Create and map imported functions

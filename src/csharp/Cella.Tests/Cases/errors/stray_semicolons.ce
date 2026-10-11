@@ -1,0 +1,9 @@
+mod test
+
+value: val i32 = 1;
+
+main: fun -> i32
+{
+	val x = value;
+	ret x
+}

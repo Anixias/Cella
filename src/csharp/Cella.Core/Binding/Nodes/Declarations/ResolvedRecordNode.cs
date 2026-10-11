@@ -27,11 +27,3 @@ public sealed class ResolvedFieldNode
 	public TypeSymbol Type { get; } = type;
 	public IDeclarationNode Syntax { get; } = syntax;
 }
-
-public sealed class ResolvedMethodNode(MethodSymbol symbol, ResolvedFunctionNode functionNode, IDeclarationNode syntax)
-	: IResolvedDeclarationNode
-{
-	public MethodSymbol Symbol { get; } = symbol;
-	public ResolvedFunctionNode FunctionNode { get; } = functionNode;
-	public IDeclarationNode Syntax { get; } = syntax;
-}

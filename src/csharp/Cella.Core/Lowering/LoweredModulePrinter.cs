@@ -505,19 +505,6 @@ public static class LoweredModulePrinter
 					PrintValue(sb, v.Target);
 					sb.Append('[');
 					PrintValue(sb, v.Index);
-					
-					// TODO Multi-dimensional?
-					/*var firstArg = true;
-					foreach (var arg in v.Index)
-					{
-						if (firstArg)
-							firstArg = false;
-						else
-							sb.Append(", ");
-					
-						PrintValue(sb, arg);
-					}*/
-					
 					sb.Append(']');
 					break;
 				}

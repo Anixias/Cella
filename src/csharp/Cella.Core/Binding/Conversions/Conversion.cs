@@ -96,9 +96,3 @@ public sealed class FunctionConversion(FunctionInfo function, ConversionKind kin
 	public FunctionInfo Function { get; } = function;
 	public bool IsAmbiguous { get; init; }
 }
-
-[TreeVisitor<Conversion>]
-public partial interface IConversionVisitor;
-
-[TreeVisitor<Conversion>]
-public partial interface IConversionVisitor<out T>;

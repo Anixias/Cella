@@ -3,7 +3,7 @@ using Cella.Core.CodeGen;
 
 namespace Cella.Compiler.Linking;
 
-public sealed class WindowsMsvcToolchain(string root) : Toolchain(root)
+public sealed class WindowsMsvcToolchain(string root) : Toolchain
 {
 	public override string LldFlavor => "link";
 	
@@ -11,7 +11,7 @@ public sealed class WindowsMsvcToolchain(string root) : Toolchain(root)
 	private readonly string _ucrtLibDir = Path.Combine(root, "ucrt");
 	private readonly string _umLibDir = Path.Combine(root, "um");
 	
-	public override Dictionary<string, string?> GetLinkerEnvironmentVars(LinkRequest request) => new()
+	public override Dictionary<string, string?> GetLinkerEnvironmentVars() => new()
 	{
 		["LIB"] = string.Join(';', _msvcLibDir, _ucrtLibDir, _umLibDir),
 		["LINK"] = string.Empty,

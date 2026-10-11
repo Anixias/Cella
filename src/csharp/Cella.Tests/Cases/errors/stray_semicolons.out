@@ -1,0 +1,9 @@
+
+====== stray_semicolons.ce ======
+
+Error at line 3, column 19
+2 │ 
+3 │ value: val i32 = 1;
+                      ^ Unexpected character ';'
+
+[compilation failed]

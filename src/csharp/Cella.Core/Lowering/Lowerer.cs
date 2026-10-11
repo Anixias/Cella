@@ -18,10 +18,8 @@ public sealed class Lowerer
 ) : IResolvedDeclarationNodeVisitor
 {
 	public IReadOnlyCollection<LoweredModule> Modules => _modules.Values;
-	public IReadOnlyCollection<LoweredFile> Files => _files.Values;
 	
 	private readonly Dictionary<ModuleSymbol, LoweredModule> _modules = [];
-	private readonly Dictionary<FileSymbol, LoweredFile> _files = [];
 	private LoweredFile? currentFile;
 	
 	public void Lower(IResolvedDeclarationNode root) => VisitNode(root);
@@ -38,7 +36,6 @@ public sealed class Lowerer
 		}
 		
 		currentFile = new LoweredFile(node.Symbol);
-		_files[node.Symbol] = currentFile;
 		loweredModule.Files.Add(currentFile);
 		currentFile.ImportedFunctions.AddRange(node.ImportedFunctions);
 		
@@ -50,8 +47,6 @@ public sealed class Lowerer
 	
 	public void Visit(ResolvedFunctionNode node) =>
 		currentFile?.Functions.Add(FunctionLowerer.Lower(node, evaluator, typePool, getGlobalInfo));
-	
-	public void Visit(ResolvedInvalidDeclarationNode node) => throw new InvalidOperationException();
 	
 	public void Visit(ResolvedRecordNode node)
 	{
@@ -83,12 +78,6 @@ public sealed class Lowerer
 	{
 		foreach (var member in node.Members)
 			VisitNode(member);
-	}
-	
-	public void Visit(ResolvedMethodNode node)
-	{
-		// TODO Handle self-reference?
-		VisitNode(node.FunctionNode);
 	}
 	
 	public void Visit(ResolvedExternalFunctionNode node) => currentFile?.ExternalFunctions.Add(node.FunctionInfo);
@@ -1653,7 +1642,6 @@ public sealed class Lowerer
 				new EnumTagValue(_typePool.GetTagType(enumType), right, right.SourceLocation),
 				ToBinaryOperation(i.Op), location),
 			NativeImpl i => new BinOpValue(i.ReturnType, left, right, ToBinaryOperation(i.Op), location),
-			FunctionImpl i => new CallValue(i.Function, [left, right], location),
 			PointerOffsetImpl i => new PointerOffsetValue(i.PointerType, left, right, ToBinaryOperation(i.Op),
 				location),
 			PointerDifferenceImpl i => new PointerDifferenceValue(left, right, i.PointerType, location),
@@ -1664,7 +1652,6 @@ public sealed class Lowerer
 		{
 			NativeImpl native => new UnaryOpValue(native.ReturnType, operand, ToUnaryOperation(native.Op),
 				operand.SourceLocation),
-			FunctionImpl function => new CallValue(function.Function, [operand], operand.SourceLocation),
 			_ => throw new InvalidOperationException()
 		};
 		

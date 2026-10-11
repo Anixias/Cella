@@ -112,18 +112,4 @@ public static class Mangling
 		
 		return $"{(function.IsExternal ? "ext fun" : function.IsRef ? "ref fun" : "fun")}[{signature}]";
 	}
-	
-	public static string Demangle(ReadOnlySpan<char> name)
-	{
-		var nameStart = name.IndexOf('?');
-		var nameEnd = name.IndexOf(':');
-		
-		if (nameStart < 0)
-			return new(name);
-		
-		if (nameEnd < 0)
-			nameEnd = name.Length;
-		
-		return name[(nameStart + 1)..nameEnd].ToString();
-	}
 }
