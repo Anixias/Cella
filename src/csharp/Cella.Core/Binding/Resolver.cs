@@ -1501,18 +1501,21 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	{
 		var constructors = _typePool.GetConstructors(definition);
 		var accessible = constructors.Where(info => CanAccess(definition, info.Symbol.Visibility)).ToArray();
+		ReceiverCallable[] unpacked =
+			[..accessible.Select(constructor => new ReceiverCallable(constructor, definition))];
+		
+		if (RejectSpread(node, unpacked) is { } rejected)
+			return rejected;
+		
+		var callables = Pack(unpacked, node.Arguments).Cast<ReceiverCallable>().ToArray();
 		var fields = _typePool.GetMembers(definition).OfType<FieldSymbol>().ToArray();
 		var name = GetName(node.Target);
 		var location = node.Target.SourceLocation;
 		CallShape[] shapes = constructors.Count > 0
-			?
-			[
-				..accessible.Select(constructor =>
-					CreateShape(new ReceiverCallable(constructor, definition), definition.TypeParameters))
-			]
+			? [..callables.Select(callable => CreateShape(callable, definition.TypeParameters))]
 			: [CreateShape([..fields.Select(GetMemberType)], definition)];
 		
-		var args = ResolveArguments(node.Arguments, shapes, out var isAmbiguous, Succeeds, Accepts);
+		var args = ResolveArguments(Unspread(node.Arguments), shapes, out var isAmbiguous, Succeeds, Accepts);
 		if (AnyInvalid(args))
 			return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
 		
@@ -1520,7 +1523,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			return Error(node, $"Conversion to '{definition.Name}' is ambiguous", definition, node);
 		
 		if (constructors.Count > 0)
-			return ResolveInferredConstructor(node, definition, name, args, constructors, accessible);
+			return ResolveInferredConstructor(node, definition, name, args, constructors, accessible, callables);
 		
 		if (args.Length != fields.Length && args.Length > 0)
 			return VisitRecordConstruction(node, definition, args);
@@ -1542,21 +1545,21 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			: AcceptsInferred(shapes[0], values);
 		
 		bool Accepts(int index, IResolvedExpressionNode[] values) => constructors.Count > 0
-			? InstantiateConstructor(definition, accessible[index], values, name, location, []) is { } callable &&
+			? InstantiateConstructor(definition, callables[index], values, name, location, []) is { } callable &&
 			  ResolveCallable([callable], values, MaterializationMode.Overload).HasResult
 			: AcceptsInferred(shapes[0], values);
 		
 		ICallable[] InstantiateConstructors(IResolvedExpressionNode[] values) =>
 		[
-			..accessible
-				.Select(constructor => InstantiateConstructor(definition, constructor, values, name, location, []))
+			..callables
+				.Select(callable => InstantiateConstructor(definition, callable, values, name, location, []))
 				.OfType<ICallable>()
 		];
 	}
 	
 	private IResolvedExpressionNode ResolveInferredConstructor(CallExpressionNode node, RecordSymbol definition,
 		string name, IResolvedExpressionNode[] args, IReadOnlyList<FunctionInfo> constructors,
-		FunctionInfo[] accessible)
+		FunctionInfo[] accessible, ReceiverCallable[] callables)
 	{
 		if (accessible.Length == 0)
 			return Error(node, ReportHiddenMember(node.SourceLocation, "new",
@@ -1566,12 +1569,12 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		var location = node.Target.SourceLocation;
 		ICallable[] candidates =
 		[
-			..accessible
-				.Select(constructor => InstantiateConstructor(definition, constructor, args, name, location, failures))
+			..callables
+				.Select(callable => InstantiateConstructor(definition, callable, args, name, location, failures))
 				.OfType<ICallable>()
 		];
 		
-		if (candidates.Length == 0 && accessible.Length == 1 && failures is [var failure])
+		if (candidates.Length == 0 && callables.Length == 1 && failures is [var failure])
 		{
 			Diagnostics.Add(failure);
 			return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
@@ -1580,10 +1583,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		return ResolveConstructorCall(node, definition, args, candidates, null);
 	}
 	
-	private ReceiverCallable? InstantiateConstructor(RecordSymbol definition, FunctionInfo constructor,
+	private ReceiverCallable? InstantiateConstructor(RecordSymbol definition, ReceiverCallable callable,
 		IReadOnlyList<IResolvedExpressionNode> args, string name, SourceLocation location, List<Diagnostic> failures)
 	{
-		var callable = new ReceiverCallable(constructor, definition);
 		var inputs = args
 			.Take(callable.ParameterTypes.Length)
 			.Select((arg, i) => CreateInferenceInput(callable.ParameterTypes[i], callable.GetMode(i), arg));
@@ -1594,8 +1596,8 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		if (InstantiateInferred(result, definition, name, location, failures) is not { } instance)
 			return null;
 		
-		var info = _typePool.GetConstructors(instance).First(info => info.Symbol == constructor.Symbol);
-		return new ReceiverCallable(info, instance);
+		var info = _typePool.GetConstructors(instance).First(info => info.Symbol == callable.Info.Symbol);
+		return new ReceiverCallable(info, instance, Repack(callable, info));
 	}
 	
 	private NamedTypeSymbol? InstantiateInferred(InferenceResult result, NamedTypeSymbol definition, string name,
@@ -1620,24 +1622,30 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		IResolvedExpressionNode? firstArg)
 	{
 		var constructors = _typePool.GetConstructors(targetType);
-		var ctorCandidates = constructors
-			.Where(info => CanAccess(targetType, info.Symbol))
-			.Select(info => new ReceiverCallable(info, targetType))
-			.ToArray();
+		ReceiverCallable[] accessible =
+		[
+			..constructors
+				.Where(info => CanAccess(targetType, info.Symbol))
+				.Select(info => new ReceiverCallable(info, targetType))
+		];
 		
+		if (RejectSpread(node, accessible) is { } rejected)
+			return rejected;
+		
+		var ctorCandidates = Pack(accessible, node.Arguments);
 		if (firstArg is null && node.Arguments is [ArrayExpressionNode literal] &&
 		    FindConvertedElementType(targetType, literal.Values.Length) is not null)
 			firstArg = VisitHinted(literal, targetType);
 		
 		var shapes = ctorCandidates.Select(static candidate => CreateShape(candidate, [])).ToArray();
-		var args = ResolveArguments(node.Arguments, shapes, out var isAmbiguous,
+		var args = ResolveArguments(Unspread(node.Arguments), shapes, out var isAmbiguous,
 			values => Accepts(ctorCandidates, values), (index, values) => Accepts([ctorCandidates[index]], values),
 			firstArg);
 		
 		if (AnyInvalid(args))
 			return new ResolvedInvalidExpressionNode(node, targetType);
 		
-		if (ctorCandidates.Length == 0 && constructors.Count > 0)
+		if (accessible.Length == 0 && constructors.Count > 0)
 			return Error(node, ReportHiddenMember(node.SourceLocation, "new",
 				constructors.Select(static info => info.Symbol)), targetType);
 		
@@ -1679,6 +1687,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		var info = callable.Info;
 		
 		var resolvedArgs = ApplyArgumentResolution(args, resolution);
+		if (GetPacking(callable) is { } packing)
+			PackArguments(resolvedArgs, info, packing, node);
+		
 		var result = new ResolvedConstructorCallExpressionNode(info, resolvedArgs, callable.ReturnType, node);
 		
 		if (resolution.ResultConversion is { } resultConversion && resultConversion.To != targetType)
@@ -1848,8 +1859,11 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		
 		var instantiated = InstantiateDeclared(info, arguments);
 		return candidate is FunctionCallable
-			? new FunctionCallable(instantiated) { IsGeneric = true }
-			: new ReceiverCallable(instantiated, instantiated.Signature.ReturnType) { IsGeneric = true };
+			? new FunctionCallable(instantiated, Repack(candidate, instantiated)) { IsGeneric = true }
+			: new ReceiverCallable(instantiated, instantiated.Signature.ReturnType, Repack(candidate, instantiated))
+			{
+				IsGeneric = true
+			};
 	}
 	
 	private void MarkDefaultedArguments(ImmutableArray<TypeParameterSymbol> open, ICallable candidate,
@@ -2045,7 +2059,11 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		IResolvedExpressionNode? receiver, TypeArgumentList? typeArguments = null)
 	{
 		var location = (node.Target is IndexerExpressionNode indexer ? indexer.Target : node.Target).SourceLocation;
-		var args = ResolveArguments(node.Arguments,
+		if (RejectSpread(node, candidates) is { } rejected)
+			return rejected;
+		
+		candidates = Pack(candidates, node.Arguments);
+		var args = ResolveArguments(Unspread(node.Arguments),
 			[..candidates.Select(candidate => GetCallShape(candidate, typeArguments))], out var isAmbiguous,
 			Succeeds, Accepts);
 		
@@ -2090,6 +2108,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			TrackFunctionUse(info, node.Target);
 		
 		var resolvedArgs = ApplyArgumentResolution(args, resolution);
+		if (GetPacking(resolution.Callable) is { } packing)
+			PackArguments(resolvedArgs, info, packing, node);
+		
 		if (receiver is not null)
 			resolvedArgs.Insert(0, CreateReceiver(receiver, info));
 		
@@ -2109,6 +2130,112 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		bool Accepts(int index, IResolvedExpressionNode[] values) =>
 			Specialize(candidates[index], functionName, values, typeArguments, location, []) is { } callable &&
 			ResolveCallable([callable], values, MaterializationMode.Overload, CurrentTargetType).HasResult;
+	}
+	
+	private ResolvedInvalidExpressionNode? RejectSpread(CallExpressionNode node, ICallable[] candidates)
+	{
+		var index = FindSpread(node.Arguments);
+		if (index < 0)
+			return null;
+		
+		var spread = node.Arguments[index];
+		var variadic = candidates.Where(static candidate => candidate.HasVariadicParameter).ToList();
+		if (variadic.Count == 0)
+			return Error(node, "Cannot spread arguments into calls without variadic parameters", CurrentTargetType,
+				spread);
+		
+		if (variadic.Any(candidate => index == candidate.ParameterTypes.Length - 1 &&
+		                              node.Arguments.Length == index + 1))
+			return null;
+		
+		return variadic.Any(candidate => index >= candidate.ParameterTypes.Length - 1)
+			? Error(node, "Cannot combine spread arguments with other variadic arguments", CurrentTargetType, spread)
+			: null;
+	}
+	
+	private static ImmutableArray<IExpressionNode> Unspread(ImmutableArray<IExpressionNode> arguments) =>
+		[..arguments.Select(static argument => argument is SpreadExpressionNode spread ? spread.Value : argument)];
+	
+	private static int FindSpread(ImmutableArray<IExpressionNode> arguments) => arguments
+		.Select(static (argument, i) => argument is SpreadExpressionNode ? i : -1)
+		.FirstOrDefault(static i => i >= 0, -1);
+	
+	private ICallable[] Pack(ICallable[] candidates, ImmutableArray<IExpressionNode> arguments)
+	{
+		var spread = FindSpread(arguments);
+		return [..candidates.Select(candidate => Pack(candidate, arguments.Length, spread)).OfType<ICallable>()];
+	}
+	
+	private ICallable? Pack(ICallable candidate, int count, int spread)
+	{
+		if (!candidate.HasVariadicParameter)
+			return spread < 0 ? candidate : null;
+		
+		var last = candidate.ParameterTypes.Length - 1;
+		if (spread >= 0)
+			return spread == last && count == last + 1 ? candidate : null;
+		
+		if (count < last || _typePool.FindVariadicElement(candidate.ParameterTypes[last]) is not { } element)
+			return null;
+		
+		var packing = new Packing(element, count - last);
+		return candidate switch
+		{
+			FunctionCallable callable => new FunctionCallable(callable.Info, packing)
+				{ IsGeneric = callable.IsGeneric },
+			ReceiverCallable callable => new ReceiverCallable(callable.Info, callable.ReturnType, packing)
+			{
+				IsGeneric = callable.IsGeneric
+			},
+			_ => candidate
+		};
+	}
+	
+	private static Packing? GetPacking(ICallable callable) => callable switch
+	{
+		FunctionCallable function => function.Packing,
+		ReceiverCallable receiver => receiver.Packing,
+		_ => null
+	};
+	
+	private Packing? Repack(ICallable candidate, FunctionInfo info) =>
+		GetPacking(candidate) is { Count: var count } &&
+		_typePool.FindVariadicElement(info.Signature.ParameterTypes[^1]) is { } element
+			? new Packing(element, count)
+			: null;
+	
+	private void PackArguments(List<IResolvedExpressionNode> args, FunctionInfo function, Packing packing,
+		CallExpressionNode node)
+	{
+		var start = args.Count - packing.Count;
+		var values = args.GetRange(start, packing.Count);
+		args.RemoveRange(start, packing.Count);
+		args.Add(CreatePack(function.Signature.ParameterTypes[^1], packing.Element, values,
+			values is [var first, ..] ? first.Syntax : node));
+	}
+	
+	private IResolvedExpressionNode CreatePack(TypeSymbol type, TypeSymbol element,
+		IReadOnlyList<IResolvedExpressionNode> values, IExpressionNode syntax)
+	{
+		IResolvedExpressionNode[] parts =
+		[
+			new ResolvedPackExpressionNode(_typePool.GetPointerType(element), element, values, syntax),
+			MaterializeLiteral(syntax, NativeSymbols.UIntSize, values.Count)
+		];
+		
+		switch (_typePool.FindRunWitness(type, element))
+		{
+			case FunctionWitness { Info: var constructor }:
+				TrackFunctionUse(constructor, syntax);
+				return new ResolvedConstructorCallExpressionNode(constructor, parts, type, syntax);
+			
+			case MemberwiseWitness when type is RecordSymbol record:
+				return new ResolvedRecordExpressionNode(record,
+					_typePool.GetMembers(record).OfType<FieldSymbol>().Zip(parts), syntax);
+			
+			default:
+				return new ResolvedInvalidExpressionNode(syntax, type);
+		}
 	}
 	
 	private IResolvedExpressionNode CreateReceiver(IResolvedExpressionNode receiver, FunctionInfo method) =>
@@ -2425,8 +2552,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		
 		var instantiated = InstantiateDeclared(function, explicitArguments.Types);
 		return CreateShape(candidate is FunctionCallable
-			? new FunctionCallable(instantiated)
-			: (ICallable)new ReceiverCallable(instantiated, instantiated.Signature.ReturnType), []);
+			? new FunctionCallable(instantiated, Repack(candidate, instantiated))
+			: (ICallable)new ReceiverCallable(instantiated, instantiated.Signature.ReturnType,
+				Repack(candidate, instantiated)), []);
 	}
 	
 	private static CallShape CreateShape(ICallable candidate, ImmutableArray<TypeParameterSymbol> open) => new(
@@ -2747,6 +2875,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			BinaryOperation.BitwiseXor,
 		_ => null
 	};
+	
+	public IResolvedExpressionNode Visit(SpreadExpressionNode node) =>
+		Error(node, "Cannot spread arguments into calls without variadic parameters", CurrentTargetType);
 	
 	public IResolvedExpressionNode Visit(BorrowExpressionNode node)
 	{
@@ -4504,7 +4635,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			return Error(node.Syntax, ReportInferenceFailure(new() { Missing = open }, group.FunctionName,
 				node.Syntax.SourceLocation), NativeSymbols.Invalid);
 		
-		if (function.Signature.IsVariadic)
+		if (function.Signature.IsVariadic || function.Signature.HasVariadicParameter)
 			return Error(node.Syntax, $"Variadic function '{group.FunctionName}' can't be used as a value",
 				NativeSymbols.Invalid);
 		
@@ -4525,7 +4656,8 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		{
 			var signature = function.Signature;
 			var open = GetOpenTypeParameters(function);
-			if (open.IsEmpty || signature.IsVariadic || signature.ParameterTypes.Length != type.ParameterTypes.Length)
+			if (open.IsEmpty || signature.IsVariadic || signature.HasVariadicParameter ||
+			    signature.ParameterTypes.Length != type.ParameterTypes.Length)
 				continue;
 			
 			var inputs = signature.ParameterTypes
@@ -4551,7 +4683,8 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		var group = node.Group;
 		var message = group.Functions switch
 		{
-			[{ Signature.IsVariadic: true }] => $"Variadic function '{group.FunctionName}' can't be used as a value",
+			[{ Signature.IsVariadic: true } or { Signature.HasVariadicParameter: true }] =>
+				$"Variadic function '{group.FunctionName}' can't be used as a value",
 			[_] => $"Cannot convert type '{group.Name}' to '{target.Name}'",
 			_ => $"No overload of '{group.FunctionName}' matches '{target.Name}'"
 		};
@@ -6528,8 +6661,8 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 				resultConversion = conversion;
 			}
 			
-			var totalCost = new CallableCost(resultRank, conversionCost, materializationCost, resultCost,
-				candidate.IsGeneric ? 1 : 0);
+			var totalCost = new CallableCost(GetPacking(candidate) is null ? 0 : 1, resultRank, conversionCost,
+				materializationCost, resultCost, candidate.IsGeneric ? 1 : 0);
 			
 			options.Add(new(candidate, totalCost, resultConversion, argumentConversions));
 		}
@@ -7045,6 +7178,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	
 	private readonly record struct CallableCost
 	(
+		int PackRank,
 		int ResultRank,
 		int ConversionCost,
 		int MaterializationCost,
@@ -7054,6 +7188,10 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	{
 		public int CompareTo(CallableCost other)
 		{
+			var packRankComparison = PackRank.CompareTo(other.PackRank);
+			if (packRankComparison != 0)
+				return packRankComparison;
+			
 			var resultRankComparison = ResultRank.CompareTo(other.ResultRank);
 			if (resultRankComparison != 0)
 				return resultRankComparison;
@@ -7154,15 +7292,25 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		SourceLocation Location
 	);
 	
-	private sealed class FunctionCallable(FunctionInfo info) : ICallable
+	private readonly record struct Packing(TypeSymbol Element, int Count);
+	
+	private static ImmutableArray<TypeSymbol> Expand(ImmutableArray<TypeSymbol> parameters, Packing? packing) =>
+		packing is { } packed ? [..parameters[..^1], ..Enumerable.Repeat(packed.Element, packed.Count)] : parameters;
+	
+	private sealed class FunctionCallable(FunctionInfo info, Packing? packing = null) : ICallable
 	{
 		public FunctionInfo Info { get; } = info;
+		public Packing? Packing { get; } = packing;
 		public bool IsGeneric { get; init; }
-		public ImmutableArray<TypeSymbol> ParameterTypes => Info.Signature.ParameterTypes;
+		public ImmutableArray<TypeSymbol> ParameterTypes { get; } = Expand(info.Signature.ParameterTypes, packing);
 		public TypeSymbol ReturnType => Info.Signature.ReturnType;
 		public bool IsVariadic => Info.Signature.IsVariadic;
-		public ParameterMode GetMode(int index) => Info.Signature.GetMode(index);
-		public string GetParameterName(int index) => Info.Symbol.Parameters[index].Name;
+		public bool HasVariadicParameter => Info.Signature.HasVariadicParameter;
+		public ParameterMode GetMode(int index) => Info.Signature.GetMode(Unpack(index));
+		public string GetParameterName(int index) => Info.Symbol.Parameters[Unpack(index)].Name;
+		
+		private int Unpack(int index) =>
+			Packing is null ? index : Math.Min(index, Info.Signature.ParameterTypes.Length - 1);
 	}
 	
 	private sealed class FunctionTypeCallable(FunctionType type) : ICallable
@@ -7187,19 +7335,24 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		public ParameterMode GetMode(int index) => ParameterMode.Own;
 	}
 	
-	private sealed class ReceiverCallable(FunctionInfo info, TypeSymbol type) : ICallable
+	private sealed class ReceiverCallable(FunctionInfo info, TypeSymbol type, Packing? packing = null) : ICallable
 	{
 		public FunctionInfo Info { get; } = info;
+		public Packing? Packing { get; } = packing;
 		public bool IsGeneric { get; init; }
 		
 		public ImmutableArray<TypeSymbol> ParameterTypes { get; } =
-			info.Signature.ParameterTypes.Skip(1).ToImmutableArray(); // Skip implicit self
+			Expand([..info.Signature.ParameterTypes.Skip(1)], packing); // Skip implicit self
 		
 		public TypeSymbol ReturnType { get; } = type;
-		public ParameterMode GetMode(int index) => Info.Signature.GetMode(index + 1);
+		public bool HasVariadicParameter => Info.Signature.HasVariadicParameter;
+		public ParameterMode GetMode(int index) => Info.Signature.GetMode(Unpack(index) + 1);
 		
 		public string? GetParameterName(int index) =>
-			Info.Symbol.Syntax is ConstructorConstraintNode ? null : Info.Symbol.Parameters[index + 1].Name;
+			Info.Symbol.Syntax is ConstructorConstraintNode ? null : Info.Symbol.Parameters[Unpack(index) + 1].Name;
+		
+		private int Unpack(int index) =>
+			Packing is null ? index : Math.Min(index, Info.Signature.ParameterTypes.Length - 2);
 	}
 }
 
@@ -7208,6 +7361,7 @@ public interface ICallable
 	ImmutableArray<TypeSymbol> ParameterTypes { get; }
 	TypeSymbol ReturnType { get; }
 	bool IsVariadic => false;
+	bool HasVariadicParameter => false;
 	bool IsGeneric => false;
 	ParameterMode GetMode(int index) => ParameterMode.ReadOnly;
 	string? GetParameterName(int index) => null;

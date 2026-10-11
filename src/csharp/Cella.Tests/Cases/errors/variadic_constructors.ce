@@ -1,0 +1,62 @@
+mod test
+
+view[T]: ref rec
+{
+	data: pvt ptr[T]
+	length: pvt set usize
+
+	new: op(data: ptr[T], length: usize)
+	{
+		self.data = data
+		self.length = length
+	}
+}
+
+Maker: trait
+{
+	new: op(...values: view[i32])
+}
+
+Plain: rec impl Maker
+{
+	sum: i32
+
+	new: op(values: view[i32])
+	{
+	}
+}
+
+Many: rec
+{
+	sum: i32
+
+	new: op(...values: view[i32])
+	{
+	}
+
+	new: op(values: view[i32])
+	{
+	}
+
+	new: op(mut ...values: view[i32])
+	{
+	}
+}
+
+Packs: rec
+{
+	sum: i32
+
+	new: op(...values: view[i32])
+	{
+	}
+}
+
+Needs[T: new(view[i32])]: rec
+{
+	value: i32
+}
+
+takes: fun(needs: Needs[Packs]) {}
+
+main: fun -> i32 = 0

@@ -1,0 +1,118 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+view[T]: ref rec
+{
+	data: pvt ptr[T]
+	length: pvt set usize
+
+	new: op(data: ptr[T], length: usize)
+	{
+		self.data = data
+		self.length = length
+	}
+
+	as[N: val usize]: op(values: array[T, N]) -> view[T] = view[T](@values, N)
+
+	[]: op(self, i: usize) -> imm[T] = imm self.data[i]
+}
+
+Arg: ref enum
+{
+	int(value: i32)
+	text(value: str)
+
+	as: op(value: i32) -> Arg = int(value)
+	as: op(value: str) -> Arg = text(value)
+}
+
+sum: fun(...values: view[i32]) -> i32
+{
+	var total = 0
+	for value in 0..values.length
+		total += values[value]
+
+	ret total
+}
+
+print: fun(template: str, ...args: view[Arg])
+{
+	printf("%.*s:", i32(template.byteLength), template.data)
+	for i in 0..args.length
+	{
+		match args[i]
+		{
+			int(value) => printf(" %d", value)
+			text(value) => printf(" %.*s", i32(value.byteLength), value.data)
+		}
+	}
+
+	printf("\n")
+}
+
+log: fun(template: str, ...args: view[Arg])
+{
+	printf("[log] ")
+	print(template, ...args)
+}
+
+last[T: copy]: fun(first: T, ...rest: view[T]) -> T
+{
+	if rest.length == 0
+		ret first
+
+	ret rest[rest.length - 1]
+}
+
+count[T]: fun(...values: view[T]) -> usize = values.length
+
+f: fun(x: i32)
+{
+	printf("one %d\n", x)
+}
+
+f: fun(...xs: view[i32])
+{
+	printf("many %zu\n", xs.length)
+}
+
+Counter: rec
+{
+	total: usize
+
+	add: fun(mut self, ...values: view[i32])
+	{
+		self.total += values.length
+	}
+}
+
+main: fun -> i32
+{
+	printf("%d %d %d\n", sum(), sum(5), sum(1, 2, 3, 4))
+
+	val name = "Ada"
+	val hp = 30
+	print("% has % hp", name, hp)
+	print("none")
+	log("% %", 1, "two")
+
+	val three = [1, 2, 3]
+	printf("%d %d\n", sum(...three), sum(...[4, 5]))
+
+	printf("%d %.1f %d\n", last(3, 9, 2), last(1.5, 0.5), last(7))
+	printf("%zu %zu\n", count(1, 2), count[str]())
+
+	f(1)
+	f(1, 2)
+	f()
+
+	var counter = Counter(0)
+	counter.add(1, 2, 3)
+	counter.add()
+	printf("%zu\n", counter.total)
+	ret 0
+}

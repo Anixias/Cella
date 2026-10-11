@@ -1,0 +1,14 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+twice: fun(...values: lib.view[i32]) -> i32 = lib.total(...values) * 2
+
+main: fun -> i32
+{
+	printf("%d %d %d\n", lib.total(1, 2, 3), twice(4, 5), lib.total())
+	ret 0
+}

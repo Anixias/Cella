@@ -1,0 +1,62 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+view[T]: ref rec
+{
+	data: pvt ptr[T]
+	length: pvt set usize
+
+	new: op(data: ptr[T], length: usize)
+	{
+		self.data = data
+		self.length = length
+	}
+
+	[]: op(self, i: usize) -> imm[T] = imm self.data[i]
+}
+
+Name: rec
+{
+	id: i32
+
+	drop: op
+	{
+		printf("drop %d\n", self.id)
+	}
+}
+
+count: fun(...names: view[Name]) -> usize = names.length
+
+say: fun(n: i32) -> i32
+{
+	printf("%d ", n)
+	ret n
+}
+
+show: fun(first: i32, ...rest: view[i32])
+{
+	printf("| %d", first)
+	for i in 0..rest.length
+		printf(" %d", rest[i])
+
+	printf("\n")
+}
+
+main: fun -> i32
+{
+	val first = Name(1)
+	printf("%zu\n", count(Name(2), Name(3)))
+	printf("after\n")
+	printf("%zu\n", count(own first))
+	printf("moved\n")
+
+	show(say(1), say(2), say(3))
+	for i in 0..3
+		show(i, i, i * 2, 7)
+
+	ret 0
+}

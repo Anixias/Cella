@@ -9,12 +9,14 @@ public sealed class FunctionSignature
 	IEnumerable<TypeSymbol> parameterTypes,
 	TypeSymbol returnType,
 	bool isVariadic = false,
-	IEnumerable<ParameterMode>? parameterModes = null
+	IEnumerable<ParameterMode>? parameterModes = null,
+	bool hasVariadicParameter = false
 ) : ICallable
 {
 	public ImmutableArray<TypeSymbol> ParameterTypes { get; } = parameterTypes.ToImmutableArray();
 	public TypeSymbol ReturnType { get; } = returnType;
 	public bool IsVariadic { get; } = isVariadic;
+	public bool HasVariadicParameter { get; } = hasVariadicParameter;
 	public ImmutableArray<ParameterMode> ParameterModes { get; } = parameterModes?.ToImmutableArray() ?? [];
 	
 	public ParameterMode GetMode(int index) =>

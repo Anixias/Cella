@@ -375,7 +375,8 @@ public sealed class FunctionGroupType(string functionName, IEnumerable<FunctionI
 	{
 		var signature = function.Signature;
 		var adapts = allowsStandIns && !type.IsExternal;
-		return !signature.IsVariadic && signature.ParameterTypes.Length == type.ParameterTypes.Length &&
+		return !signature.IsVariadic && !signature.HasVariadicParameter &&
+		       signature.ParameterTypes.Length == type.ParameterTypes.Length &&
 		       (signature.ReturnType == type.ReturnType ||
 		        adapts && FunctionType.CanAdapt(signature.ReturnType, type.ReturnType)) &&
 		       Enumerable.Range(0, type.ParameterTypes.Length).All(i => ParameterMatches(signature, type, i,

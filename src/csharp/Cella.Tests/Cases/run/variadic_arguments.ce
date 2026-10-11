@@ -1,0 +1,93 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+view[T]: ref rec
+{
+	data: pvt ptr[T]
+	length: pvt set usize
+
+	new: op(data: ptr[T], length: usize)
+	{
+		self.data = data
+		self.length = length
+	}
+
+	[]: op(self, i: usize) -> imm[T] = imm self.data[i]
+}
+
+Effect: enum
+{
+	none
+	hit(amount: i32)
+}
+
+Sink: trait
+{
+	put: fun(self, ...values: view[i32]) -> usize
+}
+
+Box: rec impl Sink
+{
+	id: i32
+
+	put: fun(self, ...values: view[i32]) -> usize = values.length
+}
+
+bytes: fun(...values: view[u8]) -> i32
+{
+	var total = 0
+	for i in 0..values.length
+		total += i32(values[i])
+
+	ret total
+}
+
+apply: fun(start: i32, ...steps: view[fun[i32 -> i32]]) -> i32
+{
+	var value = start
+	for i in 0..steps.length
+		value = steps[i](value)
+
+	ret value
+}
+
+hits: fun(...effects: view[Effect]) -> i32
+{
+	var total = 0
+	for i in 0..effects.length
+	{
+		if effects[i] is hit(n)
+			total += n
+	}
+
+	ret total
+}
+
+sum: fun(...values: view[i32]) -> i32
+{
+	var total = 0
+	for i in 0..values.length
+		total += values[i]
+
+	ret total
+}
+
+through[T: Sink]: fun(sink: T) -> usize = sink.put(1, 2, 3)
+
+dynamic: fun(sink: ptr[dyn[Sink]]) -> usize = (*sink).put(4, 5)
+
+main: fun -> i32
+{
+	printf("%d\n", bytes(200, 50, 5))
+	printf("%d\n", apply(3, fun(x) = x + 1, fun(x) = x * 10))
+	printf("%d\n", hits(hit(3), none, hit(4)))
+	printf("%d\n", sum(sum(1, 2), sum(), 4))
+
+	var box = Box(1)
+	printf("%zu %zu %zu\n", box.put(), through(box), dynamic(@box))
+	ret 0
+}

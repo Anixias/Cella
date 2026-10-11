@@ -360,6 +360,9 @@ public sealed class AstPrinter : ISyntaxNodeVisitor
 		if (node.Mode is { } mode)
 			_sb.Append(mode.AsSpan()).Append(' ');
 		
+		if (node.IsVariadic)
+			_sb.Append("...");
+		
 		_sb.Append(node.Identifier.AsSpan()).Append(": ");
 		VisitNode(node.Type, false);
 	}
@@ -655,6 +658,13 @@ public sealed class AstPrinter : ISyntaxNodeVisitor
 	{
 		StartLine();
 		_sb.Append("OwnExpressionNode");
+		VisitNode(node.Value, true);
+	}
+	
+	public void Visit(SpreadExpressionNode node)
+	{
+		StartLine();
+		_sb.Append("SpreadExpressionNode");
 		VisitNode(node.Value, true);
 	}
 	

@@ -1,0 +1,87 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+view[T]: ref rec
+{
+	data: pvt ptr[T]
+	length: pvt set usize
+
+	new: op(data: ptr[T], length: usize)
+	{
+		self.data = data
+		self.length = length
+	}
+
+	[]: op(self, i: usize) -> imm[T] = imm self.data[i]
+}
+
+Run: rec
+{
+	data: ptr[u8]
+	count: usize
+}
+
+Big: rec
+{
+	a: i64
+	b: i64
+	c: i64
+}
+
+Wide: rec
+{
+	data: ptr[Big]
+	count: usize
+	extra: i64
+
+	new: op(data: ptr[Big], count: usize)
+	{
+		self.data = data
+		self.count = count
+		self.extra = 99
+	}
+}
+
+Sized: rec
+{
+	data: ptr[i32]
+	count: usize
+}
+
+Maker: trait
+{
+	new: op(data: ptr[i32], count: usize)
+	size: fun(self) -> usize
+}
+
+Sized: impl Maker
+{
+	size: fun(self) -> usize = self.count + usize(self.data[1])
+}
+
+total: fun(...bytes: Run) -> usize = bytes.count + usize(bytes.data[0])
+
+sum: fun(...values: view[Big]) -> i64
+{
+	var total: i64 = 0
+	for i in 0..values.length
+		total += values[i].a + values[i].c
+
+	ret total
+}
+
+wide: fun(...values: Wide) -> i64 = i64(values.count) + values.extra
+
+made[R: Maker]: fun(...values: R) -> usize = values.size()
+
+main: fun -> i32
+{
+	printf("%zu\n", total(4, 2, 3))
+	printf("%lld %lld\n", sum(Big(1, 2, 3), Big(10, 20, 30)), wide(Big(0, 0, 0)))
+	printf("%zu\n", made[Sized](1, 2))
+	ret 0
+}

@@ -840,9 +840,15 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 		return new(target, arguments, target.SourceLocation with { Range = range });
 	}
 	
-	private IExpressionNode ParseArgument(ref int index) => Match(ref index, out var keyword, TokenType.KeywordMut)
-		? new BorrowExpressionNode(keyword, ParseExpression(ref index))
-		: ParseExpression(ref index);
+	private IExpressionNode ParseArgument(ref int index)
+	{
+		if (Match(ref index, out var keyword, TokenType.KeywordMut))
+			return new BorrowExpressionNode(keyword, ParseExpression(ref index));
+		
+		return Match(ref index, out var ellipsis, TokenType.OpDotDotDot)
+			? new SpreadExpressionNode(ellipsis, ParseExpression(ref index))
+			: ParseExpression(ref index);
+	}
 	
 	private IndexerExpressionNode ParseIndexerExpression(ref int index, IExpressionNode target, Token openBracket)
 	{

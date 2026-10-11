@@ -1141,7 +1141,7 @@ public sealed class FileParser
 		
 		while (Match(ref index, TokenType.OpComma))
 		{
-			if (allowVariadic && Match(ref index, TokenType.OpDotDotDot))
+			if (allowVariadic && !Peek(index + 1, TokenType.Identifier) && Match(ref index, TokenType.OpDotDotDot))
 			{
 				isVariadic = true;
 				break;
@@ -1161,6 +1161,7 @@ public sealed class FileParser
 		// TODO Diagnostics
 		
 		Token? mode = Match(ref index, out var keyword, _parameterModes) ? keyword : null;
+		Token? ellipsis = Match(ref index, out var dots, TokenType.OpDotDotDot) ? dots : null;
 		
 		// TODO Attempt resync 
 		if (!Match(ref index, out var identifier, TokenType.Identifier))
@@ -1174,10 +1175,10 @@ public sealed class FileParser
 		var type = ParseType(ref index);
 		
 		if (!Match(ref index, TokenType.OpEqual))
-			return new(mode, identifier, type, null);
+			return new(mode, identifier, type, null) { Ellipsis = ellipsis };
 		
 		var defaultValue = ParseExpression(ref index);
-		return new(mode, identifier, type, defaultValue);
+		return new(mode, identifier, type, defaultValue) { Ellipsis = ellipsis };
 	}
 	
 	private RecordNode? ParseRecord(ref int index, Token identifier, DeclarationModifiers modifiers, bool isRef,

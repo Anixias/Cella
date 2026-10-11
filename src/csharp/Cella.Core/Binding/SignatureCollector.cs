@@ -68,6 +68,7 @@ public sealed class SignatureCollector
 	private readonly List<(ImmutableArray<ITypeNode>, List<TypeSymbol?>, TypeSymbol)> _boundLists = [];
 	private readonly List<(FieldNode, TypeSymbol)> _requiredFields = [];
 	private readonly List<(GlobalSymbol Global, ITypeNode Node, TypeSymbol Type)> _variables = [];
+	private readonly List<(TypeSymbol Type, ITypeNode Node)> _variadicTypes = [];
 	private readonly HashSet<FunctionSymbol> _lambdas = [];
 	private IConstantResolver? constants;
 	
@@ -119,6 +120,7 @@ public sealed class SignatureCollector
 		ReportBorrowingVariables();
 		CheckConformances();
 		CheckImplBlocks();
+		ReportVariadicTypes();
 		_typePool.TypeCompleter = null;
 		_typePool.TraitCompleter = null;
 	}
@@ -1235,6 +1237,7 @@ public sealed class SignatureCollector
 		
 		var expected = _typePool.SubstituteSignature(requirement, map);
 		return expected.IsVariadic == candidate.IsVariadic &&
+		       expected.HasVariadicParameter == candidate.HasVariadicParameter &&
 		       (expected.ReturnType == candidate.ReturnType ||
 		        allowsStandIns && FunctionType.CanAdapt(candidate.ReturnType, expected.ReturnType)) &&
 		       TypePool.ParametersMatch(candidate, expected, allowsStandIns);
@@ -2530,6 +2533,7 @@ public sealed class SignatureCollector
 		var visibility = GetEffectiveVisibility(function, context);
 		ReportDuplicateParameters(node.Parameters);
 		ReportBorrowParameters(node.Parameters, false);
+		ReportVariadicParameters(node.Parameters, null);
 		
 		var scope = new Scope();
 		var paramTypes = new List<TypeSymbol>(node.Parameters.Length + 1);
@@ -2555,7 +2559,9 @@ public sealed class SignatureCollector
 			scope.Define(paramSymbol);
 		}
 		
-		var signature = new FunctionSignature(paramTypes, NativeSymbols.Void, false, GetModes(function));
+		var signature = new FunctionSignature(paramTypes, NativeSymbols.Void, false, GetModes(function),
+			TakesVariadicParameter(node.Parameters, paramTypes));
+		
 		var mangledName = context.Mangle(function, signature);
 		var info = new FunctionInfo(mangledName, function, signature, scope, null, context.File);
 		
@@ -2590,6 +2596,9 @@ public sealed class SignatureCollector
 		
 		ReportDuplicateParameters(node.Parameters);
 		ReportBorrowParameters(node.Parameters, node.IsExternal, function.Property?.Node?.Type);
+		ReportVariadicParameters(node.Parameters, node.IsExternal ? "'ext' functions"
+			: node.Identifier.Type != TokenType.Identifier ? "operators"
+			: null);
 		
 		var scope = new Scope();
 		
@@ -2639,7 +2648,10 @@ public sealed class SignatureCollector
 		if (reportsHiddenTypes && node.ReturnType is { } returnTypeNode)
 			ReportHiddenType(returnTypeNode, returnType, visibility, name);
 		
-		var signature = new FunctionSignature(paramTypes, returnType, false, GetModes(function));
+		var hasVariadicParameter = !node.IsExternal && node.Identifier.Type == TokenType.Identifier &&
+		                           TakesVariadicParameter(node.Parameters, paramTypes);
+		
+		var signature = new FunctionSignature(paramTypes, returnType, false, GetModes(function), hasVariadicParameter);
 		
 		// TODO Disable mangling if indicated
 		var mangledName = context.Mangle(function, signature);
@@ -2683,6 +2695,7 @@ public sealed class SignatureCollector
 	{
 		ReportDuplicateParameters(node.Parameters);
 		ReportBorrowParameters(node.Parameters, true);
+		ReportTypedVariadics(node);
 		
 		var paramTypes = new List<TypeSymbol>(node.Parameters.Length);
 		for (var i = 0; i < node.Parameters.Length; i++)
@@ -2752,6 +2765,74 @@ public sealed class SignatureCollector
 		};
 		
 		Diagnostics.Add(new(DiagnosticSeverity.Error, identifier.SourceLocation, message));
+	}
+	
+	private void ReportVariadicParameters(ImmutableArray<ParameterNode> parameters, string? place)
+	{
+		for (var i = 0; i < parameters.Length; i++)
+		{
+			if (parameters[i].Ellipsis is not { } ellipsis)
+				continue;
+			
+			if (place is not null)
+				Diagnostics.Add(new(DiagnosticSeverity.Error, ellipsis.SourceLocation,
+					$"Cannot take variadic parameters in {place}"));
+			
+			if (parameters[i].Mode is { } mode)
+				Diagnostics.Add(new(DiagnosticSeverity.Error, mode.SourceLocation,
+					$"Cannot take '{mode.Text}' variadic parameters"));
+			
+			if (i + 1 < parameters.Length)
+				Diagnostics.Add(new(DiagnosticSeverity.Error, parameters[i + 1].Identifier.SourceLocation,
+					"Cannot take parameters after variadic parameters"));
+		}
+	}
+	
+	private bool TakesVariadicParameter(ImmutableArray<ParameterNode> parameters, List<TypeSymbol> types)
+	{
+		if (parameters is not [.., { IsVariadic: true } last])
+			return false;
+		
+		if (last.Mode is null)
+			_variadicTypes.Add((types[^1], last.Type));
+		
+		return true;
+	}
+	
+	private void ReportTypedVariadics(ExternalFunctionNode node)
+	{
+		foreach (var parameter in node.Parameters)
+		{
+			if (parameter.Ellipsis is not { } ellipsis)
+				continue;
+			
+			var (source, range) = ellipsis.SourceLocation;
+			Diagnostics.Add(new(DiagnosticSeverity.Error, new(source, range.Join(parameter.Type.SourceLocation.Range)),
+				"Cannot take typed variadic parameters in 'ext' functions")
+			{
+				Hints = node.Parameters is [_, _, ..] && parameter == node.Parameters[^1] && !node.IsVariadic
+					? ["Did you mean '...'?"]
+					: []
+			});
+		}
+	}
+	
+	private void ReportVariadicTypes()
+	{
+		foreach (var (type, node) in _variadicTypes.Where(static entry => entry.Type is not InvalidType))
+		{
+			var message = _typePool.FindRunElements(type).Count switch
+			{
+				0 => $"'{type.Name}' doesn't meet 'new(ptr[T], usize)'",
+				1 => null,
+				_ => $"'{type.Name}' meets 'new(ptr[T], usize)' more than once"
+			};
+			
+			if (message is not null)
+				Diagnostics.Add(new(DiagnosticSeverity.Error, node.SourceLocation, message));
+		}
+		
+		_variadicTypes.Clear();
 	}
 	
 	private void ReportDuplicateParameters(IEnumerable<ParameterNode> parameters) =>
@@ -3082,6 +3163,7 @@ public sealed class SignatureCollector
 	
 	private static bool IsEntryPoint(FunctionSignature signature) =>
 		(signature.ReturnType == NativeSymbols.Void || signature.ReturnType == NativeSymbols.Int32) &&
+		!signature.HasVariadicParameter &&
 		signature.ParameterModes.All(static mode => mode != ParameterMode.Mut) &&
 		signature.ParameterTypes switch
 		{

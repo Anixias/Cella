@@ -3,7 +3,7 @@ using Cella.Core.Text;
 
 namespace Cella.Core.Syntax.Nodes;
 
-// TODO Variadic, more complex type
+// TODO More complex type
 public sealed class ParameterNode(Token? mode, Token identifier, ITypeNode type, IExpressionNode? defaultValue)
 	: IDeclarationNode
 {
@@ -12,6 +12,8 @@ public sealed class ParameterNode(Token? mode, Token identifier, ITypeNode type,
 	public Token Identifier { get; } = identifier;
 	public ITypeNode Type { get; } = type;
 	public IExpressionNode? DefaultValue { get; } = defaultValue;
+	public Token? Ellipsis { get; init; }
+	public bool IsVariadic => Ellipsis is not null;
 }
 
 public sealed class ReceiverNode(Token? mode, Token self)

@@ -1,0 +1,73 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+view[T]: ref rec
+{
+	data: pvt ptr[T]
+	length: pvt set usize
+
+	new: op(data: ptr[T], length: usize)
+	{
+		self.data = data
+		self.length = length
+	}
+
+	[]: op(self, i: usize) -> imm[T] = imm self.data[i]
+}
+
+Totals: rec
+{
+	sum: i32
+
+	new: op(...values: view[i32])
+	{
+		for i in 0..values.length
+			self.sum += values[i]
+	}
+}
+
+bag[T: copy]: rec
+{
+	count: usize
+	first: T
+
+	new: op(first: T, ...rest: view[T])
+	{
+		self.count = rest.length + 1
+		self.first = first
+	}
+}
+
+Maker: trait
+{
+	new: op(...values: view[i32])
+	total: fun(self) -> i32
+}
+
+Totals: impl Maker
+{
+	total: fun(self) -> i32 = self.sum
+}
+
+make[T: Maker]: fun -> i32 = T(4, 5, 6).total()
+
+again: fun(...values: view[i32]) -> i32 = Totals(...values).sum
+
+main: fun -> i32
+{
+	val totals = Totals(1, 2, 3)
+	val empty = Totals()
+	printf("%d %d\n", totals.sum, empty.sum)
+
+	val numbers = bag(4, 5, 6)
+	val texts = bag[str]("x")
+	val floats = bag(1.5)
+	printf("%zu %d %zu %zu %.1f\n", numbers.count, numbers.first, texts.count, floats.count, floats.first)
+
+	printf("%d %d\n", make[Totals](), again(7, 8))
+	ret 0
+}

@@ -1,0 +1,34 @@
+mod test
+
+view[T]: ref rec
+{
+	data: pvt ptr[T]
+	length: pvt set usize
+
+	new: op(data: ptr[T], length: usize)
+	{
+		self.data = data
+		self.length = length
+	}
+}
+
+Name: rec
+{
+	id: i32
+
+	drop: op
+	{
+	}
+}
+
+take: fun(...names: view[Name]) {}
+
+first: fun(...values: view[i32]) -> view[i32] = values
+
+main: fun -> i32
+{
+	val name = Name(1)
+	take(name)
+	val kept = first(1, 2)
+	ret 0
+}

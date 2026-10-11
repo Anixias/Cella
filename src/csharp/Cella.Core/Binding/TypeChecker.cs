@@ -449,6 +449,15 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool, 
 		}
 	}
 	
+	public void Visit(ResolvedPackExpressionNode node)
+	{
+		foreach (var value in node.Values)
+		{
+			VisitNode(value);
+			CheckConsumed(value);
+		}
+	}
+	
 	public void Visit(ResolvedAtomicExpressionNode node)
 	{
 		if (node.Pointer is { } pointer)

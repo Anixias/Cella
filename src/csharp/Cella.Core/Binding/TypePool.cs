@@ -335,7 +335,8 @@ public sealed class TypePool
 	}
 	
 	public static bool MatchesConstructor(FunctionSignature candidate, FunctionSignature expected,
-		bool allowsStandIns = false) => ParametersMatch(candidate, expected, allowsStandIns);
+		bool allowsStandIns = false) => candidate.HasVariadicParameter == expected.HasVariadicParameter &&
+		                                ParametersMatch(candidate, expected, allowsStandIns);
 	
 	public static bool ParametersMatch(FunctionSignature candidate, FunctionSignature expected,
 		bool allowsStandIns) =>
@@ -482,13 +483,43 @@ public sealed class TypePool
 		? (Visibility)Math.Max((int)named.Definition.Visibility, (int)Visibility.Module)
 		: Visibility.Public;
 	
-	public Witness? FindArgumentsWitness(TypeSymbol type)
+	public Witness? FindArgumentsWitness(TypeSymbol type) => FindRunWitness(type, NativeSymbols.Str);
+	
+	public Witness? FindRunWitness(TypeSymbol type, TypeSymbol element)
 	{
-		var witness = FindConstructorWitness(type,
-			new FunctionSignature([GetPointerType(type), GetPointerType(NativeSymbols.Str), NativeSymbols.UIntSize],
-				NativeSymbols.Void, false, [ParameterMode.Mut, ParameterMode.ReadOnly, ParameterMode.ReadOnly]));
+		var expected = new FunctionSignature([GetPointerType(type), GetPointerType(element), NativeSymbols.UIntSize],
+			NativeSymbols.Void, false, [ParameterMode.Mut, ParameterMode.ReadOnly, ParameterMode.ReadOnly]);
 		
+		if (type is TypeParameterSymbol)
+			return GetConstructors(type).FirstOrDefault(constructor =>
+				MatchesConstructor(constructor.Signature, expected, true)) is { } bound
+				? new FunctionWitness(bound.Symbol, bound)
+				: null;
+		
+		var witness = FindConstructorWitness(type, expected);
 		return witness is FunctionWitness or MemberwiseWitness ? witness : null;
+	}
+	
+	public TypeSymbol? FindVariadicElement(TypeSymbol type) => FindRunElements(type) is [var element] ? element : null;
+	
+	public IReadOnlyList<TypeSymbol> FindRunElements(TypeSymbol type)
+	{
+		var constructors = GetConstructors(type);
+		IEnumerable<ImmutableArray<TypeSymbol>> shapes = constructors.Count > 0 || type is not RecordSymbol
+			? constructors.Select(static constructor => constructor.Signature.ParameterTypes.RemoveAt(0))
+			: [[..GetMembers(type).OfType<FieldSymbol>().Select(GetTypeOfMember)]];
+		
+		return
+		[
+			..shapes
+				.Select(static shape => shape is [PointerType { BaseType: var element }, var count] &&
+				                        count == NativeSymbols.UIntSize
+					? element
+					: null)
+				.OfType<TypeSymbol>()
+				.Distinct()
+				.Where(element => FindRunWitness(type, element) is not null)
+		];
 	}
 	
 	public Witness? FindConstructorWitness(TypeSymbol type, FunctionSignature expected)
@@ -513,7 +544,8 @@ public sealed class TypePool
 	
 	public Witness? FindConversionWitness(TypeSymbol self, FunctionSignature expected)
 	{
-		if (expected.ParameterTypes.Length != 2 || expected.GetMode(1) == ParameterMode.Mut)
+		if (expected.ParameterTypes.Length != 2 || expected.GetMode(1) == ParameterMode.Mut ||
+		    expected.HasVariadicParameter)
 			return null;
 		
 		var source = expected.ParameterTypes[1];
@@ -548,6 +580,9 @@ public sealed class TypePool
 	
 	public Witness? FindConstructionWitness(TypeSymbol self, FunctionSignature expected)
 	{
+		if (expected.HasVariadicParameter)
+			return null;
+		
 		var count = expected.ParameterTypes.Length - 1;
 		if (count == 0 && HasDefault(self))
 			return new DefaultWitness();
@@ -1489,7 +1524,8 @@ public sealed class TypePool
 		IReadOnlyDictionary<TypeParameterSymbol, TypeSymbol> map)
 	{
 		var (types, modes) = SubstituteParameters(signature.ParameterTypes, signature.ParameterModes, map);
-		return new(types, Substitute(signature.ReturnType, map), signature.IsVariadic, modes);
+		return new(types, Substitute(signature.ReturnType, map), signature.IsVariadic, modes,
+			signature.HasVariadicParameter);
 	}
 	
 	public FunctionInfo InstantiateFunction(FunctionInfo function, ImmutableArray<TypeSymbol> typeArguments)

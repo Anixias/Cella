@@ -1,0 +1,57 @@
+mod test
+
+view[T]: ref rec
+{
+	data: pvt ptr[T]
+	length: pvt set usize
+
+	new: op(data: ptr[T], length: usize)
+	{
+		self.data = data
+		self.length = length
+	}
+}
+
+Bytes: rec
+{
+	new: op(data: ptr[u8], length: usize)
+	{
+	}
+
+	new: op(data: ptr[i8], length: usize)
+	{
+	}
+
+	+: op(self, ...rest: view[i32]) -> i32 = 0
+}
+
+ext
+{
+	format: fun(text: cstr, ...values: view[i32]) -> i32
+	counted: fun(...values: view[i32], count: i32)
+	alone: fun(...values: view[i32])
+}
+
+Sink: trait
+{
+	put: fun(self, ...values: view[i32]) -> usize
+}
+
+Box: rec impl Sink
+{
+	id: i32
+
+	put: fun(self, values: view[i32]) -> usize = values.length
+}
+
+plain: fun(...values: i32) {}
+after: fun(...values: view[i32], last: i32) {}
+both: fun(...first: view[i32], ...second: view[i32]) {}
+writes: fun(mut ...values: view[i32]) {}
+owns: fun(own ...values: view[i32]) {}
+bytes: fun(...values: Bytes) {}
+compare: ext fun(...values: view[i32]) -> i32 = 0
+same: fun(values: view[i32]) {}
+same: fun(...values: view[i32]) {}
+
+main: fun(...args: view[str]) -> i32 = 0

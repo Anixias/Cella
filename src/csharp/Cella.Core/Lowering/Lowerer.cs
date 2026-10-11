@@ -1122,6 +1122,21 @@ public sealed class Lowerer
 		public Value Visit(ResolvedArrayExpressionNode node) => new ArrayValue((ArrayType)node.Type,
 			LowerOperands(node.Values, static _ => Passing.Consume), node.Syntax.SourceLocation);
 		
+		public Value Visit(ResolvedPackExpressionNode node)
+		{
+			var location = node.Syntax.SourceLocation;
+			var arrayType = _typePool.GetArrayType(node.ElementType, node.Values.Length);
+			var values = StoreTemporary(new ArrayValue(arrayType,
+				LowerOperands(node.Values, static _ => Passing.Consume),
+				location), "pack");
+			
+			var pointer = new UnaryOpValue(_typePool.GetPointerType(arrayType), values, UnaryOperation.AddressOf,
+				location);
+			
+			return new ConversionValue(pointer, _typePool.ConversionTable.FindImplicit(pointer.Type, node.Type)!,
+				location);
+		}
+		
 		public Value Visit(ResolvedInterpolatedStringExpressionNode node) => throw new InvalidOperationException();
 		
 		public Value Visit(ResolvedAtomicExpressionNode node)
