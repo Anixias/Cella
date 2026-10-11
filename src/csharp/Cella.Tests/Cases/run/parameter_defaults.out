@@ -1,0 +1,18 @@
+a.txt 0 4096
+b.txt 1 4096
+c.txt 1 12
+1.5 1 anon c 3 4
+2.5 0 named c 3 4
+hit 7 1 3 10
+none
+0 1 6 5
+9 0
+1 0
+1 2
+2 1
+3 5 1
+log 1
+log 0
+16 4 2
+42 255
+[exit code 0]

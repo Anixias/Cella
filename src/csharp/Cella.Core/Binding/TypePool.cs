@@ -1525,7 +1525,7 @@ public sealed class TypePool
 	{
 		var (types, modes) = SubstituteParameters(signature.ParameterTypes, signature.ParameterModes, map);
 		return new(types, Substitute(signature.ReturnType, map), signature.IsVariadic, modes,
-			signature.HasVariadicParameter);
+			signature.HasVariadicParameter, signature.Defaults);
 	}
 	
 	public FunctionInfo InstantiateFunction(FunctionInfo function, ImmutableArray<TypeSymbol> typeArguments)

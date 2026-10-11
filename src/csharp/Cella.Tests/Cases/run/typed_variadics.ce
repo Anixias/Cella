@@ -70,9 +70,9 @@ last[T: copy]: fun(first: T, ...rest: view[T]) -> T
 
 count[T]: fun(...values: view[T]) -> usize = values.length
 
-f: fun(x: i32)
+f: fun(x: str)
 {
-	printf("one %d\n", x)
+	printf("one %.*s\n", i32(x.byteLength), x.data)
 }
 
 f: fun(...xs: view[i32])
@@ -106,6 +106,7 @@ main: fun -> i32
 	printf("%d %.1f %d\n", last(3, 9, 2), last(1.5, 0.5), last(7))
 	printf("%zu %zu\n", count(1, 2), count[str]())
 
+	f("x")
 	f(1)
 	f(1, 2)
 	f()

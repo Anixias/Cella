@@ -1,0 +1,12 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+main: fun -> i32
+{
+	printf("%lld %lld %lld\n", lib.area(), lib.area(lib.Size(1, 2, 0, 0)), lib.area(lib.Size(1, 2, 0, 0), 0))
+	ret 0
+}

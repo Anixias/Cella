@@ -7,8 +7,13 @@ using Cella.Core.Text;
 
 namespace Cella.Core.Binding;
 
-public sealed class OpenLocal(ISyntaxNode declaration, Token identifier, IExpressionNode initializer,
-	ResolutionContext context)
+public sealed class OpenLocal
+(
+	ISyntaxNode declaration,
+	Token identifier,
+	IExpressionNode initializer,
+	ResolutionContext context
+)
 {
 	public ISyntaxNode Declaration { get; } = declaration;
 	public Token Identifier { get; } = identifier;
@@ -100,6 +105,7 @@ public sealed class LocalSurvey
 			var targets = FindTypes(members, LocalUseKind.Cast, false);
 			var choice = Choose(reads, writes, type => targets.Where(target => !casts(type, target)).ToList(),
 				converts, out var conflicting);
+			
 			if (choice is null && conflicting.IsDefault)
 				continue;
 			

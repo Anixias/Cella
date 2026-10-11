@@ -1,0 +1,15 @@
+mod lib
+
+Size: pub rec
+{
+	width: i32
+	height: i32
+	depth: i64
+	extra: i64
+}
+
+hidden: pvt val Size = Size(800, 600, 3, 4)
+hiddenCount: pvt val i32 = 7
+
+area: pub fun(size: Size = hidden, scale: i32 = hiddenCount) -> i64 =
+	i64(size.width) * i64(size.height) + size.depth + size.extra + i64(scale)

@@ -1,0 +1,176 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+	strtol: fun(text: cstr, end: ptr[ptr[u8]] = null, base: i32 = 10) -> i64
+}
+
+view[T]: ref rec
+{
+	data: pvt ptr[T]
+	length: pvt set usize
+
+	new: op(data: ptr[T], length: usize)
+	{
+		self.data = data
+		self.length = length
+	}
+}
+
+nullable[T: null]: enum match T
+{
+	none = null
+	some(value) = else
+}
+
+Mode: enum
+{
+	read
+	write
+}
+
+Effect: enum
+{
+	none
+	hit(amount: i32)
+}
+
+Point: rec
+{
+	x: i32
+	y: i32
+}
+
+Big: rec
+{
+	a: i64
+	b: i64
+	c: i64
+}
+
+origin: val Point = Point(3, 4)
+limit: val usize = 4096
+corners: val array[i32, 3] = [1, 2, 3]
+big: val Big = Big(1, 2, 3)
+
+double: fun(x: i32) -> i32 = x * 2
+
+open: fun(path: str, mode: Mode = read, size: usize = limit)
+{
+	printf("%.*s %d %zu\n", i32(path.byteLength), path.data, i32(mode == write), size)
+}
+
+scaled: fun(scale: f64 = 1.5, flag: bool = true, name: str = "anon", raw: cstr = "c", at: Point = origin)
+{
+	printf("%.1f %d %.*s %s %d %d\n", scale, i32(flag), i32(name.byteLength), name.data, raw, at.x, at.y)
+}
+
+effects: fun(effect: Effect = Effect.hit(7), pointer: ptr[i32] = null, values: array[i32, 3] = corners,
+	apply: fun[i32 -> i32] = double)
+{
+	if effect is hit(n)
+		printf("hit %d %d %d %d\n", n, i32(pointer == null), values[2], apply(5))
+	else
+		printf("none\n")
+}
+
+maybe: fun(value: nullable[ptr[i32]] = none) -> i32 = i32(value is some(_))
+
+sum: fun(value: Big = big) -> i64 = value.a + value.b + value.c
+
+owned: fun(own name: str = "owned") -> usize = name.byteLength
+
+count: fun(first: i32 = 9, ...rest: view[i32])
+{
+	printf("%d %zu\n", first, rest.length)
+}
+
+wide: fun(x: i64, y: i32 = 0) -> i32 = 1
+wide: fun(x: i32) -> i32 = 2
+
+pick[T: copy]: fun(value: T, fallback: ptr[T] = null) -> T
+{
+	if fallback != null
+		ret *fallback
+
+	ret value
+}
+
+typed[T]: fun(x: ptr[T] = null) -> i32 = i32(x == null)
+
+Level: enum
+{
+	info
+	warn
+}
+
+Logger: trait
+{
+	log: fun(self, level: Level)
+}
+
+Console: rec impl Logger
+{
+	id: i32
+
+	log: fun(self, level: Level = warn)
+	{
+		printf("log %d\n", i32(level == warn))
+	}
+}
+
+through[T: Logger]: fun(logger: T) = logger.log(info)
+
+Counter: rec
+{
+	total: i32
+	at: Point
+
+	new: op(start: i32 = 10, at: Point = origin)
+	{
+		self.total = start
+		self.at = at
+	}
+
+	add: fun(mut self, amount: i32 = 1)
+	{
+		self.total += amount
+	}
+}
+
+main: fun -> i32
+{
+	open("a.txt")
+	open("b.txt", write)
+	open("c.txt", write, 12)
+	scaled()
+	scaled(2.5, false, "named")
+	effects()
+	effects(Effect.none)
+
+	var n = 3
+	printf("%d %d %lld %zu\n", maybe(), maybe(some(@n)), sum(), owned())
+
+	count()
+	count(1)
+	count(1, 2, 3)
+
+	val large: i64 = 5
+	printf("%d %d\n", wide(1), wide(large))
+
+	var five = 5
+	printf("%d %d %d\n", pick(3), pick(3, @five), typed[i32]())
+
+	val console = Console(1)
+	console.log()
+	through(console)
+
+	var counter = Counter()
+	counter.add()
+	counter.add(5)
+	printf("%d %d %d\n", counter.total, counter.at.y, Counter(2).total)
+
+	printf("%lld %lld\n", strtol("42"), strtol("ff", null, 16))
+	ret 0
+}

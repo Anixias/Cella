@@ -1,0 +1,49 @@
+mod test
+
+view[T]: ref rec
+{
+	data: pvt ptr[T]
+	length: pvt set usize
+
+	new: op(data: ptr[T], length: usize)
+	{
+		self.data = data
+		self.length = length
+	}
+}
+
+defaulted: fun(x: i32 = 5) {}
+defaulted: fun() {}
+
+packed: fun(x: i32) {}
+packed: fun(...xs: view[i32]) {}
+
+empty: fun() {}
+empty: fun(...xs: view[i32]) {}
+
+head: fun(template: str) {}
+head: fun(template: str, ...args: view[i32]) {}
+
+both: fun(x: i32 = 0) {}
+both: fun(...xs: view[i32]) {}
+
+Counter: rec
+{
+	total: i32
+
+	new: op(start: i32 = 0)
+	{
+	}
+
+	new: op
+	{
+	}
+}
+
+distinct: fun(x: str) {}
+distinct: fun(...xs: view[i32]) {}
+
+typed: fun(a: i32, b: i32 = 0) {}
+typed: fun(a: i32, b: str) {}
+
+main: fun -> i32 = 0

@@ -2559,8 +2559,11 @@ public sealed class SignatureCollector
 			scope.Define(paramSymbol);
 		}
 		
+		var defaults = CollectDefaults(node.Parameters, paramTypes[1..], context,
+			context.Trait is null ? null : "traits");
+		
 		var signature = new FunctionSignature(paramTypes, NativeSymbols.Void, false, GetModes(function),
-			TakesVariadicParameter(node.Parameters, paramTypes));
+			TakesVariadicParameter(node.Parameters, paramTypes), defaults);
 		
 		var mangledName = context.Mangle(function, signature);
 		var info = new FunctionInfo(mangledName, function, signature, scope, null, context.File);
@@ -2651,7 +2654,13 @@ public sealed class SignatureCollector
 		var hasVariadicParameter = !node.IsExternal && node.Identifier.Type == TokenType.Identifier &&
 		                           TakesVariadicParameter(node.Parameters, paramTypes);
 		
-		var signature = new FunctionSignature(paramTypes, returnType, false, GetModes(function), hasVariadicParameter);
+		var defaults = CollectDefaults(node.Parameters, paramTypes[offset..], context,
+			context.Trait is not null ? "traits"
+			: node.Identifier.Type != TokenType.Identifier ? "operators"
+			: null);
+		
+		var signature = new FunctionSignature(paramTypes, returnType, false, GetModes(function), hasVariadicParameter,
+			defaults);
 		
 		// TODO Disable mangling if indicated
 		var mangledName = context.Mangle(function, signature);
@@ -2720,7 +2729,10 @@ public sealed class SignatureCollector
 		if (node.ReturnType is { } returnTypeNode)
 			ReportHiddenType(returnTypeNode, returnType, function.Visibility, node.Identifier.Text);
 		
-		var signature = new FunctionSignature(paramTypes, returnType, node.IsVariadic, GetModes(function));
+		var defaults = CollectDefaults(node.Parameters, paramTypes, context, null);
+		var signature = new FunctionSignature(paramTypes, returnType, node.IsVariadic, GetModes(function), false,
+			defaults);
+		
 		return new(null, function, signature, null, node.Origin, context.File);
 	}
 	
@@ -2786,6 +2798,66 @@ public sealed class SignatureCollector
 				Diagnostics.Add(new(DiagnosticSeverity.Error, parameters[i + 1].Identifier.SourceLocation,
 					"Cannot take parameters after variadic parameters"));
 		}
+	}
+	
+	private List<Constant> CollectDefaults(ImmutableArray<ParameterNode> parameters, List<TypeSymbol> types,
+		ResolutionContext context, string? place)
+	{
+		var defaults = new List<Constant>();
+		for (var i = 0; i < parameters.Length; i++)
+		{
+			var parameter = parameters[i];
+			if (parameter.DefaultValue is not { } value)
+			{
+				if (defaults.Count > 0 && !parameter.IsVariadic)
+				{
+					Diagnostics.Add(new(DiagnosticSeverity.Error, parameter.Identifier.SourceLocation,
+						"Cannot take parameters without defaults after parameters with defaults"));
+					
+					defaults.Clear();
+				}
+				
+				continue;
+			}
+			
+			if (place is not null)
+			{
+				Diagnostics.Add(new(DiagnosticSeverity.Error, value.SourceLocation,
+					$"Cannot declare defaults in {place}"));
+				
+				continue;
+			}
+			
+			if (parameter.IsVariadic)
+			{
+				Diagnostics.Add(new(DiagnosticSeverity.Error, value.SourceLocation,
+					"Cannot declare defaults for variadic parameters"));
+				
+				continue;
+			}
+			
+			if (parameter.Mode is { Type: TokenType.KeywordMut })
+			{
+				Diagnostics.Add(new(DiagnosticSeverity.Error, value.SourceLocation,
+					"Cannot declare defaults for 'mut' parameters"));
+				
+				defaults.Add(InvalidConstant.Instance);
+				continue;
+			}
+			
+			var type = types[i];
+			var constant = type is InvalidType
+				? InvalidConstant.Instance
+				: Evaluator.Evaluate(constants!.ResolveInitializer(value, type, context));
+			
+			if (constant is null)
+				Diagnostics.Add(new(DiagnosticSeverity.Error, value.SourceLocation,
+					$"The default value of '{parameter.Identifier.Text}' must be a constant"));
+			
+			defaults.Add(constant ?? InvalidConstant.Instance);
+		}
+		
+		return defaults;
 	}
 	
 	private bool TakesVariadicParameter(ImmutableArray<ParameterNode> parameters, List<TypeSymbol> types)
@@ -2918,12 +2990,14 @@ public sealed class SignatureCollector
 		return message is null ? null : new(DiagnosticSeverity.Error, location, message);
 	}
 	
-	private static string? DescribeConflict(string name, FunctionSignature signature,
-		IEnumerable<FunctionSignature> others)
+	private string? DescribeConflict(string name, FunctionSignature signature, IEnumerable<FunctionSignature> others)
 	{
-		var sameParameters = others.Where(other => HasSameParameters(other, signature)).ToList();
+		var overloads = others.ToList();
+		var sameParameters = overloads.Where(other => HasSameParameters(other, signature)).ToList();
 		if (sameParameters.Count == 0)
-			return null;
+			return overloads.Any(other => AcceptsSameArguments(signature, other))
+				? $"'{name}' overloads cannot accept the same arguments"
+				: null;
 		
 		var sameModes = sameParameters
 			.Where(other => other.ParameterModes.SequenceEqual(signature.ParameterModes))
@@ -2967,6 +3041,31 @@ public sealed class SignatureCollector
 	private static Diagnostic ReportModuleConflict(SourceLocation location, ModulePathSymbol parent, string name) =>
 		new(DiagnosticSeverity.Error, location,
 			$"'{parent.Path}.{name}' is both a module and a member of '{parent.Path}'");
+	
+	private bool AcceptsSameArguments(FunctionSignature first, FunctionSignature second) =>
+		!first.IsVariadic && !second.IsVariadic &&
+		Enumerable.Range(0, Math.Max(first.ParameterTypes.Length, second.ParameterTypes.Length) + 1).Any(count =>
+			FindArgumentTypes(first, count) is { } firstTypes && FindArgumentTypes(second, count) is { } secondTypes &&
+			firstTypes.SequenceEqual(secondTypes));
+	
+	private TypeSymbol[]? FindArgumentTypes(FunctionSignature signature, int count)
+	{
+		var fixedCount = signature.FixedCount;
+		if (count < fixedCount - signature.Defaults.Length || count > fixedCount && !signature.HasVariadicParameter)
+			return null;
+		
+		var element = signature.HasVariadicParameter
+			? _typePool.FindVariadicElement(signature.ParameterTypes[^1])
+			: null;
+		
+		if (signature.HasVariadicParameter && element is null)
+			return null;
+		
+		TypeSymbol[] types =
+			[..Enumerable.Range(0, count).Select(i => i < fixedCount ? signature.GetDeclaredType(i) : element!)];
+		
+		return types.Any(static type => type is InvalidType) ? null : types;
+	}
 	
 	private static bool HasSameParameters(FunctionSignature first, FunctionSignature second) =>
 		first.IsVariadic == second.IsVariadic && first.ParameterTypes.Length == second.ParameterTypes.Length &&
