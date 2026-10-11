@@ -1656,7 +1656,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		
 		if (!resolutionSet.HasResult)
 		{
-			if (ReportArgumentModes(ctorCandidates, args, target))
+			if (ReportArgumentModes(candidates, args, target))
 				return new ResolvedInvalidExpressionNode(node, targetType);
 			
 			var message = args is [not ResolvedCaseNameExpressionNode]
@@ -1890,7 +1890,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		IEnumerable<InferenceInput?> inputs =
 		[
 			literal is null
-				? new InferenceInput(parameter, type)
+				? new InferenceInput(info.Signature.GetDeclaredType(0), type)
 				: CreateInferenceInput(parameter, info.Signature.GetMode(0), literal)
 		];
 		
@@ -2752,7 +2752,8 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		var name = hasParameter ? callable.GetParameterName(index) : null;
 		
 		if (argument is null)
-			return isMut && !(arg.Type is BorrowType && parameterType is BorrowType)
+			return isMut && !(arg.Type is BorrowType && parameterType is BorrowType) ||
+			       !isMut && parameterType is not null && NeedsLending(arg, parameterType, callable.GetMode(index))
 				? new(DiagnosticSeverity.Error, arg.Syntax.SourceLocation, "Cannot mutably borrow arguments implicitly")
 				: null;
 		
@@ -6610,7 +6611,8 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		TypeSymbol target)
 	{
 		var converted = ApplyUserConversion(arg, conversion);
-		return arg is ResolvedMutArgumentExpressionNode argument && !IsInvalid(converted)
+		return arg is ResolvedMutArgumentExpressionNode argument &&
+		       conversion.Function.Symbol.Kind != FunctionKind.Free && !IsInvalid(converted)
 			? ApplyMutArgument(new ResolvedMutArgumentExpressionNode(converted,
 				_typePool.GetPointerType(converted.Type), argument.Syntax), target)
 			: converted;
@@ -6643,6 +6645,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			..use == ParameterMode.Mut
 				? []
 				: GetInwardConversions(target)
+					.Where(static info => info.Signature.GetMode(0) != ParameterMode.Mut)
 					.Select(info => InferConversion(info, type, literal))
 					.OfType<FunctionInfo>()
 					.Select(info => (Info: info,
@@ -6728,9 +6731,19 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	private ConversionCallable[] FindConversionCallables(IReadOnlyList<IResolvedExpressionNode> args,
 		TypeSymbol target)
 	{
-		if (args is not [var arg] || arg is ResolvedMutArgumentExpressionNode || IsInvalid(arg) || IsInvalid(target) ||
+		if (args is not [var arg] || IsInvalid(arg) || IsInvalid(target) ||
 		    target is NamedTypeSymbol { IsGenericDefinition: true })
 			return [];
+		
+		if (arg is ResolvedMutArgumentExpressionNode argument)
+			return
+			[
+				..GetInwardConversions(target)
+					.Where(static info => info.Signature.GetMode(0) == ParameterMode.Mut)
+					.Select(info => InferConversion(info, Decay(argument.Place).Type, null))
+					.OfType<FunctionInfo>()
+					.Select(info => new ConversionCallable(info, target))
+			];
 		
 		var (value, use) = arg is ResolvedOwnExpressionNode owned
 			? (Decay(owned.Value), ParameterMode.Own)
@@ -6763,11 +6776,14 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		TrackFunctionUse(info, syntax);
 		if (info.Symbol.Kind == FunctionKind.Free)
 		{
-			var value = source.Type is UntypedType
-				? MaterializeExpression(source, info.Signature.ParameterTypes[0])
-				: source is ResolvedOwnExpressionNode
-					? source
-					: Decay(source);
+			var value = source switch
+			{
+				{ Type: UntypedType } => MaterializeExpression(source, info.Signature.ParameterTypes[0]),
+				ResolvedMutArgumentExpressionNode argument =>
+					ApplyMutArgument(argument, info.Signature.ParameterTypes[0]),
+				ResolvedOwnExpressionNode => source,
+				_ => Decay(source)
+			};
 			
 			return new ResolvedFunctionCallExpressionNode(info, [value], syntax) { IsConversion = true };
 		}
@@ -6807,9 +6823,39 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		}
 		
 		if (arg is not ResolvedMutArgumentExpressionNode argument)
-			return MatchArg(arg, target, mode);
+			return ignoreModes && NeedsLending(arg, target, parameterMode)
+				? (FindLendingConversion(arg, target)!.Cost, null)
+				: MatchArg(arg, target, mode);
+		
+		if (parameterMode == ParameterMode.ReadOnly && FindLendingConversion(argument.Place, target) is { } lending)
+			return (lending.Cost, lending);
 		
 		return ignoreModes ? MatchArg(argument.Place, target, mode) : (int.MaxValue, null);
+	}
+	
+	private bool NeedsLending(IResolvedExpressionNode arg, TypeSymbol target, ParameterMode parameterMode) =>
+		parameterMode == ParameterMode.ReadOnly && MatchArg(arg, target, MaterializationMode.Overload).Cost ==
+		int.MaxValue && FindLendingConversion(arg, target) is not null;
+	
+	private FunctionConversion? FindLendingConversion(IResolvedExpressionNode place, TypeSymbol target)
+	{
+		var type = Decay(place).Type;
+		if (IsInvalid(type) || IsInvalid(target) || type is UntypedType)
+			return null;
+		
+		var conversions = GetInwardConversions(target)
+			.Where(static info => info.Signature.GetMode(0) == ParameterMode.Mut)
+			.Select(info => InferConversion(info, type, null))
+			.OfType<FunctionInfo>()
+			.Where(info => info.Signature.GetDeclaredType(0) == type)
+			.ToList();
+		
+		return conversions.Count == 0
+			? null
+			: new FunctionConversion(conversions[0], ConversionKind.Implicit, UserConversionCost)
+			{
+				IsAmbiguous = conversions.Count > 1
+			};
 	}
 	
 	private (int Cost, Conversion? Conversion) MatchArg(IResolvedExpressionNode arg, TypeSymbol target,

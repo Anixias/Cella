@@ -1,0 +1,27 @@
+mod test
+
+span[T]: ref rec
+{
+	data: pvt ptr[T]
+	length: pvt set usize
+
+	new: op(data: ptr[T], length: usize)
+	{
+		self.data = data
+		self.length = length
+	}
+
+	as[N: val usize]: op(mut values: array[T, N]) -> span[T] = span[T](@values, N)
+}
+
+fill: fun(values: span[i32], value: i32) {}
+
+keep: fun(values: span[i32]) -> span[i32] = values
+
+local: fun -> span[i32]
+{
+	var items = [1, 2]
+	ret keep(mut items)
+}
+
+main: fun -> i32 = 0

@@ -1,0 +1,9 @@
+
+====== mut_conversion_borrows.ce ======
+
+Error at line 24, column 6
+23 │ var items = [1, 2]
+24 │ ret keep(mut items)
+         ╘═════════════╛ Cannot return borrows of local variables
+
+[compilation failed]

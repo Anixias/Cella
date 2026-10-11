@@ -10,7 +10,6 @@ Text: rec
 	as: op(self) -> mut[i32] = mut self.value
 	as: op(own self) -> imm[i32] = imm self.value
 	as: op(a: i32, b: i32) -> Text = Text(a)
-	as: op(mut a: i32) -> Text = Text(a)
 	as: op(a: i64) -> i32 = 1
 	as: op(a: Text) -> Text = a
 	as: op(a: u8) -> Text = Text(1)

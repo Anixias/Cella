@@ -1669,8 +1669,6 @@ public sealed class SignatureCollector
 			{
 				{ Parameters.Length: not 1 } =>
 					(node.Identifier.SourceLocation, $"'{name}' operators need 'self' or one parameter"),
-				{ Parameters: [{ Mode.Type: TokenType.KeywordMut } parameter] } =>
-					(parameter.SourceLocation, $"Cannot take 'mut' parameters in '{name}' operators"),
 				{ ReturnType: null } => (node.Identifier.SourceLocation, $"'{name}' operators need a return type"),
 				_ when result != type =>
 					(resultLocation, $"Cannot return '{result.Name}' from '{name}' operators without 'self'"),

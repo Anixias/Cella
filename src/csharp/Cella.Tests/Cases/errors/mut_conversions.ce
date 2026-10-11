@@ -1,0 +1,47 @@
+mod test
+
+span[T]: ref rec
+{
+	data: pvt ptr[T]
+	length: pvt set usize
+
+	new: op(data: ptr[T], length: usize)
+	{
+		self.data = data
+		self.length = length
+	}
+
+	as[N: val usize]: op(mut values: array[T, N]) -> span[T] = span[T](@values, N)
+}
+
+view[T]: ref rec
+{
+	data: pvt ptr[T]
+	length: pvt set usize
+
+	new: op(data: ptr[T], length: usize)
+	{
+		self.data = data
+		self.length = length
+	}
+
+	as[N: val usize]: op(values: array[T, N]) -> view[T] = view[T](@values, N)
+}
+
+fill: fun(values: span[i32], value: i32) {}
+
+read: fun(values: view[i32]) {}
+
+grow: fun(mut values: span[i32]) {}
+
+main: fun -> i32
+{
+	var three: array[i32, 3] = [1, 2, 3]
+	var four: array[i32, 4] = [1, 2, 3, 4]
+	fill(three, 7)
+	val s = span[i32](four)
+	val t: span[i32] = four
+	read(mut four)
+	grow(mut three)
+	ret 0
+}

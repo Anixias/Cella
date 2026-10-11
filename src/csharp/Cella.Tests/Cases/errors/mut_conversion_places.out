@@ -1,0 +1,14 @@
+
+====== mut_conversion_places.ce ======
+
+Error at line 19, column 49
+18 │ 
+19 │ readOnly: fun(values: array[i32, 2]) = fill(mut values, 1)
+                                                     ╘════╛ Cannot mutably borrow read-only parameters
+
+Error at line 24, column 11
+23 │ val fixed: array[i32, 2] = [1, 2]
+24 │ fill(mut fixed, 7)
+              ╘═══╛ Cannot mutably borrow values
+
+[compilation failed]

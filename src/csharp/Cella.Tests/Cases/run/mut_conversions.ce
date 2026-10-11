@@ -1,0 +1,85 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+view[T]: ref rec
+{
+	data: pvt ptr[T]
+	length: pvt set usize
+
+	new: op(data: ptr[T], length: usize)
+	{
+		self.data = data
+		self.length = length
+	}
+
+	as[N: val usize]: op(values: array[T, N]) -> view[T] = view[T](@values, N)
+
+	[]: op(self, i: usize) -> imm[T] = imm self.data[i]
+}
+
+span[T]: ref rec
+{
+	data: pvt ptr[T]
+	length: pvt set usize
+
+	new: op(data: ptr[T], length: usize)
+	{
+		self.data = data
+		self.length = length
+	}
+
+	as[N: val usize]: op(mut values: array[T, N]) -> span[T] = span[T](@values, N)
+
+	[]: op(self, i: usize) -> mut[T] = mut self.data[i]
+}
+
+fill: fun(values: span[i32], value: i32)
+{
+	var i: usize = 0
+	while i < values.length
+	{
+		values[i] = value
+		i += 1
+	}
+}
+
+process: fun(values: view[i32]) -> i32 = values[0]
+
+process: fun(values: span[i32]) -> i32
+{
+	values[0] = -1
+	ret 1
+}
+
+Grid: rec
+{
+	cells: array[i32, 4]
+}
+
+reset: fun(mut values: array[i32, 4]) = fill(mut values, 0)
+
+main: fun -> i32
+{
+	var three = [1, 2, 3]
+	var five = [1, 2, 3, 4, 5]
+	fill(mut three, 7)
+	fill(mut five, 9)
+	printf("%d %d %d %d\n", three[0], three[2], five[0], five[4])
+
+	var four = [1, 2, 3, 4]
+	val s = span[i32](mut four)
+	s[1] = 20
+	printf("%d ", four[1])
+	var grid = Grid([1, 1, 1, 1])
+	fill(mut grid.cells, 5)
+	reset(mut four)
+	printf("%d %d %d\n", s[1], four[3], grid.cells[2])
+
+	var pair = [8, 9]
+	printf("%d %d %d\n", process(pair), process(mut pair), pair[0])
+	ret 0
+}

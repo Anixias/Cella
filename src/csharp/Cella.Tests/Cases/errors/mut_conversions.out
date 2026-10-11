@@ -1,0 +1,29 @@
+
+====== mut_conversions.ce ======
+
+Error at line 41, column 7
+40 │ var four: array[i32, 4] = [1, 2, 3, 4]
+41 │ fill(three, 7)
+          ╘═══╛ Cannot mutably borrow arguments implicitly
+
+Error at line 42, column 20
+41 │ fill(three, 7)
+42 │ val s = span[i32](four)
+                       ╘══╛ Cannot mutably borrow arguments implicitly
+
+Error at line 43, column 21
+42 │ val s = span[i32](four)
+43 │ val t: span[i32] = four
+                        ╘══╛ Cannot convert type 'array[i32, 4]' to 'span[i32]'
+
+Error at line 44, column 7
+43 │ val t: span[i32] = four
+44 │ read(mut four)
+          ╘═╛ 'values' isn't a 'mut' parameter
+
+Error at line 45, column 11
+44 │ read(mut four)
+45 │ grow(mut three)
+              ╘═══╛ Cannot mutably borrow 'array[i32, 3]' values as 'span[i32]'
+
+[compilation failed]
