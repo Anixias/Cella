@@ -1368,6 +1368,7 @@ public sealed class Lowerer
 		
 		private bool MayEmit(IResolvedExpressionNode node) => node switch
 		{
+			{ Type: NeverType } => true,
 			ResolvedLiteralExpressionNode or ResolvedVarExpressionNode or ResolvedGlobalExpressionNode
 				or ResolvedFunctionReferenceExpressionNode or ResolvedUndefExpressionNode
 				or ResolvedSizeOfExpressionNode or ResolvedAlignOfExpressionNode

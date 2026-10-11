@@ -1,0 +1,39 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+	fflush: fun(stream: ptr) -> i32
+	abort: fun -> never
+}
+
+Pair: rec
+{
+	left: i32
+	right: i32
+}
+
+fail: fun(message: str) -> never
+{
+	printf("Panic: %.*s\n", i32(message.byteLength), message.data)
+	fflush(null)
+	abort()
+}
+
+note: fun(name: str) -> i32
+{
+	printf("%.*s\n", i32(name.byteLength), name.data)
+	ret 1
+}
+
+sum: fun(values: array[i32, 2]) -> i32 = values[0] + values[1]
+
+total: fun(first: i32, pair: Pair) -> i32 = first + pair.left + pair.right
+
+main: fun -> i32
+{
+	printf("%d\n", total(note("first"), Pair(note("second"),
+		note("third") + sum([note("fourth"), fail("deep in operands")]))))
+
+	ret 0
+}

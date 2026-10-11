@@ -1,0 +1,14 @@
+
+====== never_operands.ce ======
+
+Warning at line 35, column 38
+34 │ {
+35 │     printf("%d\n", total(note("first"), Pair(note("second"),
+                                             ^ Unreachable code
+
+first
+second
+third
+fourth
+Panic: deep in operands
+[exit code -1073740791]
