@@ -1,0 +1,42 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+ext("kernel32")
+{
+	RtlLookupFunctionEntry: fun(pc: ptr, base: ptr, history: ptr) -> ptr
+}
+
+fib: ext fun(n: i32) -> i32
+{
+	if n < 2
+	{
+		ret n
+	}
+
+	ret fib(n - 1) + fib(n - 2)
+}
+
+report: ext fun(name: cstr, function: ptr)
+{
+	var base: u64 = 0
+	if RtlLookupFunctionEntry(function, @base, null) == null
+	{
+		printf("%s: no unwind entry\n", name)
+	}
+	else
+	{
+		printf("%s: unwind entry\n", name)
+	}
+}
+
+main: fun -> i32
+{
+	report("fib", ptr(fib))
+	report("report", ptr(report))
+	printf("%d\n", fib(20))
+	ret 0
+}

@@ -274,6 +274,7 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 		current = state;
 		var llvmModule = state.Module;
 		var name = state.Lowered.Symbol.Name;
+		AddUnwindTables(llvmModule);
 		state.DiBuilder.DIBuilderFinalize();
 		
 		string message;
@@ -308,6 +309,22 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 			return new(true, objectFilePath, null, state.ExternalLibraries);
 		
 		return CodeGenResult.Failure with { ErrorMessage = message };
+	}
+	
+	private void AddUnwindTables(LLVMModuleRef module)
+	{
+		const uint asynchronous = 2;
+		AddModuleFlag("uwtable", asynchronous);
+		using var name = new MarshaledString("uwtable");
+		var attribute = LLVM.CreateEnumAttribute((LLVMOpaqueContext*)module.Context.Handle,
+			LLVM.GetEnumAttributeKindForName(name, (nuint)name.Length), asynchronous);
+		
+		for (var function = module.FirstFunction; function.Handle != IntPtr.Zero; function = function.NextFunction)
+		{
+			if (function.BasicBlocksCount > 0)
+				LLVM.AddAttributeAtIndex((LLVMOpaqueValue*)function.Handle,
+					LLVMAttributeIndex.LLVMAttributeFunctionIndex, attribute);
+		}
 	}
 	
 	private static LLVMTypeRef OpaquePointer => LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0u);
