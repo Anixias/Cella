@@ -1,0 +1,29 @@
+
+====== conversion_temporaries.ce ======
+
+Error at line 19, column 26
+18 │ 
+19 │ back: fun -> view[i32] = [5, 6]
+                              ╘════╛ Cannot return borrows of unstored values
+
+Error at line 23, column 21
+22 │ {
+23 │     val a: view[u16] = [1, 400]
+                            ╘══════╛ Cannot borrow unstored values
+
+Error at line 24, column 20
+23 │ val a: view[u16] = [1, 400]
+24 │ val b = view[u16]([1, 400])
+                       ╘══════╛ Cannot borrow unstored values
+
+Error at line 25, column 21
+24 │ val b = view[u16]([1, 400])
+25 │ val c: view[i32] = make()
+                        ╘════╛ Cannot borrow unstored values
+
+Error at line 28, column 6
+27 │ var d: view[i32] = four
+28 │ d = [7, 8]
+         ╘════╛ Cannot borrow unstored values
+
+[compilation failed]

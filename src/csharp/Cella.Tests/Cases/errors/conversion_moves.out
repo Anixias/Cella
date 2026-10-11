@@ -16,10 +16,9 @@ Error at line 61, column 22
 61 │ val buffer = Buffer(other)
                          ╘═══╛ Cannot move 'Text' values implicitly
 
-Error at line 63, column 15
+Error at line 62, column 18
+61 │ val buffer = Buffer(other)
 62 │ val view: str = String("temp")
-63 │ val length = view.byteLength
-                  ╘══╛ Cannot use borrows of dropped values
-                     | Dropped on line 62
+                     ╘════════════╛ Cannot borrow unstored values
 
 [compilation failed]

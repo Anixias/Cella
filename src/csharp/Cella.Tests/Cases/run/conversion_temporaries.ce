@@ -1,0 +1,67 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+view[T]: ref rec
+{
+	data: pvt ptr[T]
+	length: pvt set usize
+
+	new: op(data: ptr[T], length: usize)
+	{
+		self.data = data
+		self.length = length
+	}
+
+	as[N: val usize]: op(values: array[T, N]) -> view[T] = view[T](@values, N)
+
+	[]: op(self, i: usize) -> imm[T] = imm self.data[i]
+}
+
+span[T]: ref rec
+{
+	data: pvt ptr[T]
+	length: pvt set usize
+
+	new: op(data: ptr[T], length: usize)
+	{
+		self.data = data
+		self.length = length
+	}
+
+	as[N: val usize]: op(mut values: array[T, N]) -> span[T] = span[T](@values, N)
+
+	as: op(self) -> view[T] = view[T](self.data, self.length)
+}
+
+Text: rec
+{
+	size: i32
+
+	as: op(value: i32) -> Text = Text(value)
+}
+
+Grid: rec
+{
+	cells: array[i32, 4]
+}
+
+first: fun(values: view[i32]) -> i32 = values[0]
+
+second: fun(values: view[u16]) -> u16 = values[1]
+
+main: fun -> i32
+{
+	var four = [1, 2, 3, 4]
+	val a: view[i32] = four
+	val grid = Grid([5, 6, 7, 8])
+	val b: view[i32] = grid.cells
+	val c: view[i32] = span[i32](mut four)
+	val d: span[i32] = mut four
+	val t: Text = 9
+	printf("%d %d %d %d %d %d\n", a[1], b[2], c[3], first([4, 5]), second(view[u16]([1, 400])), t.size)
+	ret 0
+}

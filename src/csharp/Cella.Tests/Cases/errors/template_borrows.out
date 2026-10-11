@@ -27,11 +27,10 @@ Error at line 77, column 7
           ╘═══╛ Cannot use borrows of dropped values
               | Dropped on line 75
 
-Error at line 79, column 7
+Error at line 78, column 30
+77 │ show(outer)
 78 │ val temp: fstr[Display] = "{compute()}"
-79 │ show(temp)
-          ╘══╛ Cannot use borrows of dropped values
-             | Dropped on line 78
+                                 ╘═══════╛ Cannot borrow unstored values
 
 Error at line 84, column 8
 83 │ {

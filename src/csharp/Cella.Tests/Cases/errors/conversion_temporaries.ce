@@ -1,0 +1,30 @@
+mod test
+
+view[T]: ref rec
+{
+	data: pvt ptr[T]
+	length: pvt set usize
+
+	new: op(data: ptr[T], length: usize)
+	{
+		self.data = data
+		self.length = length
+	}
+
+	as[N: val usize]: op(values: array[T, N]) -> view[T] = view[T](@values, N)
+}
+
+make: fun -> array[i32, 2] = [1, 2]
+
+back: fun -> view[i32] = [5, 6]
+
+main: fun -> i32
+{
+	val a: view[u16] = [1, 400]
+	val b = view[u16]([1, 400])
+	val c: view[i32] = make()
+	var four = [1, 2, 3, 4]
+	var d: view[i32] = four
+	d = [7, 8]
+	ret 0
+}

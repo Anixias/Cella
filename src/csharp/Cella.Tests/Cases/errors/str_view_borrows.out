@@ -6,10 +6,9 @@ Error at line 33, column 6
 33 │ ret str(@buffer[0], 1)
          ╘════════════════╛ Cannot return borrows of local variables
 
-Error at line 39, column 21
-38 │ val view = String(3).asStr()
-39 │ printf("%d\n", i32(view.byteLength))
-                        ╘══╛ Cannot use borrows of dropped values
-                           | Dropped on line 38
+Error at line 38, column 13
+37 │ {
+38 │     val view = String(3).asStr()
+                    ╘═══════╛ Cannot borrow unstored values
 
 [compilation failed]

@@ -77,11 +77,10 @@ Error at line 155, column 1
       | 'scope' is dropped here
       | Moved on line 154
 
-Error at line 160, column 17
-159 │ val holder = Holder(make(3))
-160 │ printf("%d\n", holder.buffer.id)
-                     ╘═══════════╛ Cannot use borrows of dropped values
-                                 | Dropped on line 159
+Error at line 159, column 22
+158 │ {
+159 │     val holder = Holder(make(3))
+                              ╘═════╛ Cannot borrow unstored values
 
 Hint at line 166, column 14
 165 │ var buffer = Buffer(1)

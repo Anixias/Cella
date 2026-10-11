@@ -34,6 +34,10 @@ public sealed class BorrowChecker(TypePool typePool, DiagnosticList diagnostics)
 	private readonly ClosureEnvironment _environment = new();
 	private readonly Dictionary<LocalVariableSymbol, BindingTarget> _targets = [];
 	private readonly Dictionary<LocalVariableSymbol, BindingTarget> _formerTargets = [];
+	private readonly Dictionary<LocalVariableSymbol, SourceLocation> _temporaries = [];
+	private readonly Dictionary<LocalVariableSymbol, List<SourceLocation>> _temporaryEnds = [];
+	private readonly List<(LocalVariableSymbol Temporary, List<LocalVariableSymbol> Holders)> _dying = [];
+	private readonly HashSet<SourceLocation> _reportedEnds = [];
 	private HashSet<VariableSymbol> returned = [];
 	private Dictionary<ParameterSymbol, Escape?> parameterEscapes = [];
 	private ParameterSymbol? receiver;
@@ -54,11 +58,17 @@ public sealed class BorrowChecker(TypePool typePool, DiagnosticList diagnostics)
 			var state = entryState.Copy();
 			foreach (var memoryEvent in events[block])
 			{
+				if (memoryEvent is not StorageDeadEvent)
+					ReportDeadTemporaries(state);
+				
 				CheckUse(memoryEvent, state);
 				CheckReturn(memoryEvent, state);
 				CheckStore(memoryEvent, state);
+				CheckTemporary(memoryEvent, state);
 				Transfer(state, memoryEvent);
 			}
+			
+			ReportDeadTemporaries(state);
 		}
 	}
 	
@@ -186,6 +196,7 @@ public sealed class BorrowChecker(TypePool typePool, DiagnosticList diagnostics)
 	{
 		var endings = state.Get(holder).Values
 			.SelectMany(static invalidations => invalidations)
+			.Where(invalidation => !_reportedEnds.Contains(invalidation.Location))
 			.Distinct()
 			.OrderBy(static invalidation => invalidation.Location.Range.Start)
 			.ToList();
@@ -218,6 +229,51 @@ public sealed class BorrowChecker(TypePool typePool, DiagnosticList diagnostics)
 		Ending.Reassigned => "Reassigned",
 		_ => "Dropped"
 	};
+	
+	private void CheckTemporary(MemoryEvent memoryEvent, BorrowState state)
+	{
+		switch (memoryEvent)
+		{
+			case DefineEvent { Local: var defined } e when IsTemporary(defined) && !typePool.HoldsBorrows(defined.Type):
+				_temporaries[defined] = GetLocation(e.Value, e.Location);
+				break;
+			
+			case DropEvent { Place: { Root: LocalVariableSymbol dropped, Path.IsEmpty: true } } e
+				when IsTemporary(dropped):
+				_temporaryEnds.GetOrAdd(dropped).Add(e.Location);
+				break;
+			
+			case StorageDeadEvent { Local: var temporary } e when _temporaries.ContainsKey(temporary):
+				_temporaryEnds.GetOrAdd(temporary).Add(e.Location);
+				var holders = state.FindHolders(temporary)
+					.OfType<LocalVariableSymbol>()
+					.Where(static holder => !IsTemporary(holder))
+					.ToList();
+				
+				if (holders.Count > 0)
+					_dying.Add((temporary, holders));
+				
+				break;
+		}
+	}
+	
+	private void ReportDeadTemporaries(BorrowState state)
+	{
+		foreach (var (temporary, holders) in _dying)
+		{
+			if (!state.FindHolders(temporary).Any(holders.Contains<VariableSymbol>))
+				continue;
+			
+			_reportedEnds.UnionWith(_temporaryEnds[temporary]);
+			if (_reported.Add(_temporaries[temporary]))
+				diagnostics.Add(new(DiagnosticSeverity.Error, _temporaries[temporary],
+					"Cannot borrow unstored values"));
+		}
+		
+		_dying.Clear();
+	}
+	
+	private static bool IsTemporary(LocalVariableSymbol local) => local.Name.StartsWith('.');
 	
 	private void CheckReturn(MemoryEvent memoryEvent, BorrowState state)
 	{
@@ -649,6 +705,10 @@ public sealed class BorrowChecker(TypePool typePool, DiagnosticList diagnostics)
 		}
 		
 		public void Remove(VariableSymbol holder) => _holds.Remove(holder);
+		
+		public IEnumerable<VariableSymbol> FindHolders(VariableSymbol root) => _holds
+			.Where(entry => entry.Value.Keys.Any(source => source.Root == root))
+			.Select(static entry => entry.Key);
 		
 		public void Retarget(VariableSymbol from, VariableSymbol to)
 		{

@@ -1238,7 +1238,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			return null;
 		
 		var checkpoint = OpenCheckpoint();
-		var arg = VisitNode(argument, null);
+		var arg = argument is ArrayExpressionNode ? VisitHinted(argument, record) : VisitNode(argument, null);
 		var conversions = FindConversionCallables([arg], record);
 		if (conversions.Length == 0)
 		{
@@ -1624,6 +1624,10 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			.Where(info => CanAccess(targetType, info.Symbol))
 			.Select(info => new ReceiverCallable(info, targetType))
 			.ToArray();
+		
+		if (firstArg is null && node.Arguments is [ArrayExpressionNode literal] &&
+		    FindConvertedElementType(targetType, literal.Values.Length) is not null)
+			firstArg = VisitHinted(literal, targetType);
 		
 		var shapes = ctorCandidates.Select(static candidate => CreateShape(candidate, [])).ToArray();
 		var args = ResolveArguments(node.Arguments, shapes, out var isAmbiguous,
