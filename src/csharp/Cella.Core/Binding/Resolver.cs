@@ -1248,7 +1248,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		
 		Commit(checkpoint);
 		var fields = _typePool.GetMembers(record).OfType<FieldSymbol>().ToArray();
-		ICallable[] candidates = fields is [var field]
+		ICallable[] candidates = fields is [var field] && !record.IsUnion
 			? [new FieldsCallable([GetMemberType(field)], record), ..conversions]
 			: conversions;
 		
@@ -1466,6 +1466,14 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	{
 		var fields = _typePool.GetMembers(record).OfType<FieldSymbol>().ToArray();
 		var hasDefault = fields.All(_typePool.HasDefault);
+		if (record.IsUnion && node.Arguments.Length > 0)
+		{
+			var args = resolvedArgs ?? node.Arguments.Select(a => VisitNode(a, null)).ToArray();
+			return AnyInvalid(args)
+				? new ResolvedInvalidExpressionNode(node, record)
+				: Error(node, $"No constructor for '{record.Name}' accepts these arguments", record, node);
+		}
+		
 		if (node.Arguments.Length != fields.Length && (node.Arguments.Length > 0 || !hasDefault))
 		{
 			var args = resolvedArgs ?? node.Arguments.Select(a => VisitNode(a, null)).ToArray();
@@ -4442,6 +4450,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		info.Symbol.OwnsCaptures = node.Own is not null;
 		var signature = _typePool.GetFunctionType(false, types, modes, returnType, node.Own is null, false,
 			takesVariadic);
+		
 		var type = node.Own is null
 			? signature
 			: (TypeSymbol)_typePool.GetClosureType(info,

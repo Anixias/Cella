@@ -15,8 +15,8 @@ public sealed class FileParser
 {
 	private static readonly Dictionary<string, TokenType> _topLevelContextualKeywords =
 		BuildContextualKeywords(TokenType.KeywordMod, TokenType.KeywordUse, TokenType.KeywordPub, TokenType.KeywordPvt,
-			TokenType.KeywordExt, TokenType.KeywordRec, TokenType.KeywordEnum, TokenType.KeywordRef,
-			TokenType.KeywordTrait, TokenType.KeywordImpl);
+			TokenType.KeywordExt, TokenType.KeywordRec, TokenType.KeywordEnum, TokenType.KeywordUnion,
+			TokenType.KeywordRef, TokenType.KeywordTrait, TokenType.KeywordImpl);
 	
 	private static readonly Dictionary<string, TokenType> _traitListKeywords =
 		BuildContextualKeywords(TokenType.KeywordImpl, TokenType.KeywordReq);
@@ -314,18 +314,37 @@ public sealed class FileParser
 			return true;
 		}
 		
-		var isRef = Match(ref index, _topLevelContextualKeywords, TokenType.KeywordRef);
+		var isRef = Match(ref index, out var refKeyword, _topLevelContextualKeywords, TokenType.KeywordRef);
 		
 		// Record
 		if (Match(ref index, _topLevelContextualKeywords, TokenType.KeywordRec))
 		{
 			var record = ParseDeclaration(ref index, identifier, "record",
-				(ref i) => ParseRecord(ref i, identifier, modifiers, isRef, typeParameters));
+				(ref i) => ParseRecord(ref i, identifier, modifiers, isRef, false, typeParameters));
 			
 			if (record is null)
 				SkipDeclaration(ref index, declarationStart, insideBlock);
 			else
 				declarations.Add(record);
+			
+			return true;
+		}
+		
+		if (Match(ref index, _topLevelContextualKeywords, TokenType.KeywordUnion))
+		{
+			if (isRef)
+				Report(refKeyword, "Cannot declare 'ref' unions");
+			
+			if (typeParameters is [var parameter, ..])
+				Report(parameter.SourceLocation, "Cannot declare type parameters on unions");
+			
+			var union = ParseDeclaration(ref index, identifier, "union",
+				(ref i) => ParseRecord(ref i, identifier, modifiers, false, true, []));
+			
+			if (union is null)
+				SkipDeclaration(ref index, declarationStart, insideBlock);
+			else
+				declarations.Add(union);
 			
 			return true;
 		}
@@ -1182,7 +1201,7 @@ public sealed class FileParser
 	}
 	
 	private RecordNode? ParseRecord(ref int index, Token identifier, DeclarationModifiers modifiers, bool isRef,
-		List<TypeParameterNode> typeParameters)
+		bool isUnion, List<TypeParameterNode> typeParameters)
 	{
 		// When this is called, the identifier and rec keyword are already consumed
 		// Caller is expected to resync in case of errors
@@ -1199,7 +1218,8 @@ public sealed class FileParser
 		{
 			Visibility = modifiers.Visibility,
 			TypeParameters = [..typeParameters],
-			Traits = [..traits]
+			Traits = [..traits],
+			IsUnion = isUnion
 		};
 	}
 	

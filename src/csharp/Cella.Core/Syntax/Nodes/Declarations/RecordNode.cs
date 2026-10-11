@@ -19,6 +19,7 @@ public sealed class RecordNode
 	public ImmutableArray<IDeclarationNode> Members { get; } = members.ToImmutableArray();
 	public ImmutableArray<TypeParameterNode> TypeParameters { get; init; } = [];
 	public ImmutableArray<ITypeNode> Traits { get; init; } = [];
+	public bool IsUnion { get; init; }
 }
 
 public sealed class FieldNode

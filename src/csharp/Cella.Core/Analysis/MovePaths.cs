@@ -146,14 +146,14 @@ public sealed class MovePaths
 	
 	private TypeSymbol? GetPartType(TypeSymbol type, Projection projection) => (type, projection) switch
 	{
-		(RecordSymbol, FieldProjection p) => _typePool.GetTypeOfMember(p.Field),
+		(RecordSymbol { IsUnion: false }, FieldProjection p) => _typePool.GetTypeOfMember(p.Field),
 		(ArrayType a, IndexProjection { Index: { } index }) when index >= 0 && index < a.Length => a.ElementType,
 		_ => null
 	};
 	
 	private int CountParts(TypeSymbol type) => type switch
 	{
-		RecordSymbol r => _typePool.GetMembers(r).OfType<FieldSymbol>().Count(),
+		RecordSymbol { IsUnion: false } r => _typePool.GetMembers(r).OfType<FieldSymbol>().Count(),
 		ArrayType a when a.Length.Sign >= 0 && a.Length <= int.MaxValue => (int)a.Length,
 		_ => 0
 	};

@@ -1,0 +1,13 @@
+mod test
+
+Bits: union
+{
+	float: f32
+	raw: u32
+}
+
+main: fun -> i32
+{
+	val made = Bits(1)
+	ret 0
+}

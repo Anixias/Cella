@@ -278,6 +278,7 @@ public sealed class EventLinearizer
 				LocalVariableSymbol { IsBorrowBinding: true } => new(symbol, [new DerefProjection()]),
 				_ => null
 			},
+		AccessValue { Target.Type: RecordSymbol { IsUnion: true } } v => GetPlace(v.Target),
 		AccessValue { Member: FieldSymbol field } v => GetPlace(v.Target)?.Project(new FieldProjection(field)),
 		IndexerValue { Target.Type: StringType } => null,
 		IndexerValue v => GetPlace(v.Target)?.Project(new IndexProjection(GetConstantIndex(v.Index))),

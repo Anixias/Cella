@@ -1,0 +1,9 @@
+
+====== union_construction.ce ======
+
+Error at line 11, column 13
+10 │ {
+11 │     val made = Bits(1)
+                    ╘═════╛ No constructor for 'Bits' accepts these arguments
+
+[compilation failed]

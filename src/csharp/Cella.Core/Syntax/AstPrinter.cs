@@ -421,7 +421,7 @@ public sealed class AstPrinter : ISyntaxNodeVisitor
 	public void Visit(RecordNode node)
 	{
 		StartLine();
-		_sb.Append("RecordNode '").Append(node.Identifier.AsSpan());
+		_sb.Append(node.IsUnion ? "UnionNode '" : "RecordNode '").Append(node.Identifier.AsSpan());
 		AppendTypeParameters(node.TypeParameters);
 		_sb.Append('\'');
 		

@@ -458,6 +458,7 @@ public sealed class FunctionType : TypeSymbol
 		var parameters = string.Join(", ", parameterTypes
 			.Select((type, i) => (i == last ? "..." : "") + parameterModes[i].Describe(type))
 			.Concat(isVariadic ? ["..."] : []));
+		
 		var signature = returnType == NativeSymbols.Void ? parameters
 			: parameters.Length == 0 ? $"-> {returnType.Name}"
 			: $"{parameters} -> {returnType.Name}";
@@ -696,6 +697,7 @@ public sealed class RecordSymbol : NamedTypeSymbol
 	public ImmutableArray<MemberSymbol> Members { get; }
 	public ImmutableArray<TypeSymbol> NestedTypes { get; }
 	public bool HasDestructor => Members.Any(static m => m is MethodSymbol { Function.Kind: FunctionKind.Destructor });
+	public bool IsUnion => Node.IsUnion;
 	public override bool IsRef => Node.IsRef;
 	
 	public override IEnumerable<MethodSymbol> GetFunctions(string name) => Members

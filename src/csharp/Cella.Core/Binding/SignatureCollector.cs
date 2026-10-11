@@ -1512,6 +1512,12 @@ public sealed class SignatureCollector
 					CollectConstructor((FunctionSymbol)symbol, constructor, context);
 					break;
 				
+				case DestructorNode destructor when record.IsUnion:
+					Diagnostics.Add(new(DiagnosticSeverity.Error, destructor.Keyword.SourceLocation,
+						"Cannot declare destructors in unions"));
+					
+					break;
+				
 				case DestructorNode:
 					CollectDestructor((FunctionSymbol)symbol, context);
 					break;
@@ -1543,14 +1549,38 @@ public sealed class SignatureCollector
 		_completedTypes.Add(record);
 		Exit();
 		
-		foreach (var (typeNode, type) in storedTypes)
+		if (record.IsUnion)
+			ReportUnionMembers(node);
+		else
 		{
-			if (!node.IsRef && !TypePool.ContainsTypeParameters(type) && _typePool.HoldsBorrows(type))
-				Diagnostics.Add(ReportStoredBorrow(typeNode, node.Identifier, node.Modifiers, "records", "rec"));
+			foreach (var (typeNode, type) in storedTypes)
+			{
+				if (!node.IsRef && !TypePool.ContainsTypeParameters(type) && _typePool.HoldsBorrows(type))
+					Diagnostics.Add(ReportStoredBorrow(typeNode, node.Identifier, node.Modifiers, "records", "rec"));
+			}
 		}
 		
 		foreach (var field in node.Members.OfType<GlobalNode>())
 			Complete(_symbolTable.DeclarationSymbols[field]);
+	}
+	
+	private void ReportUnionMembers(RecordNode node)
+	{
+		foreach (var field in node.Members.OfType<FieldNode>())
+		{
+			var symbol = (FieldSymbol)_symbolTable.DeclarationSymbols[field];
+			var type = _typePool.GetTypeOfMember(symbol);
+			var message = type is InvalidType ? null
+				: symbol.IsRequired ? "Cannot declare required fields in unions"
+				: _typePool.HoldsBorrows(type) ? "Cannot store borrows in unions"
+				: _typePool.NeedsDrop(type) ? "Cannot store values with destructors in unions"
+				: !_typePool.HasDefault(type) ? "Cannot store values without defaults in unions"
+				: null;
+			
+			if (message is not null)
+				Diagnostics.Add(new(DiagnosticSeverity.Error,
+					symbol.IsRequired ? field.Identifier.SourceLocation : field.Type.SourceLocation, message));
+		}
 	}
 	
 	private void ReportTypeParameters(ImmutableArray<TypeParameterNode> typeParameters,

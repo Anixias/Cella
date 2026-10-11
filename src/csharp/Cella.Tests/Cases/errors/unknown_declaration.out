@@ -8,7 +8,7 @@ Error at line 3, column 10
 
 Error at line 5, column 8
 4 │ 
-5 │ Shape: union
-           ╘═══╛ Unknown declaration type
+5 │ Shape: struct
+           ╘════╛ Unknown declaration type
 
 [compilation failed]

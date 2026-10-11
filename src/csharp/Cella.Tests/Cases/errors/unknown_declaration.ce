@@ -2,7 +2,7 @@ mod test
 
 counter: static i32 = 0
 
-Shape: union
+Shape: struct
 {
 	sides: i32
 }

@@ -505,9 +505,10 @@ public sealed class TypePool
 	public IReadOnlyList<TypeSymbol> FindRunElements(TypeSymbol type)
 	{
 		var constructors = GetConstructors(type);
-		IEnumerable<ImmutableArray<TypeSymbol>> shapes = constructors.Count > 0 || type is not RecordSymbol
-			? constructors.Select(static constructor => constructor.Signature.ParameterTypes.RemoveAt(0))
-			: [[..GetMembers(type).OfType<FieldSymbol>().Select(GetTypeOfMember)]];
+		IEnumerable<ImmutableArray<TypeSymbol>> shapes =
+			constructors.Count > 0 || type is not RecordSymbol { IsUnion: false }
+				? constructors.Select(static constructor => constructor.Signature.ParameterTypes.RemoveAt(0))
+				: [[..GetMembers(type).OfType<FieldSymbol>().Select(GetTypeOfMember)]];
 		
 		return
 		[
@@ -594,7 +595,7 @@ public sealed class TypePool
 				: null;
 		
 		var fields = GetMembers(self).OfType<FieldSymbol>().ToList();
-		if (fields.Count != count)
+		if (fields.Count != count || ((RecordSymbol)self).IsUnion)
 			return null;
 		
 		for (var i = 0; i < count; i++)
@@ -750,6 +751,7 @@ public sealed class TypePool
 		
 		var functionType = new FunctionType(isExternal, isRef, parameters, modes, returnType, isVariadic,
 			hasVariadicParameter);
+		
 		_functionTypes.Add(functionType);
 		var size = isExternal ? StorageSize.Ptr : (ISize)StorageSize.Sum(StorageSize.Ptr, StorageSize.Ptr);
 		SizeTable.Register(functionType, size);
@@ -976,9 +978,12 @@ public sealed class TypePool
 		var fieldSizes = GetMembers(record)
 			.OfType<FieldSymbol>()
 			.Select(GetTypeOfMember)
-			.Select(type => SizeTable.TryGetSize(type) ?? StorageSize.Const(0));
+			.Select(type => SizeTable.TryGetSize(type) ?? StorageSize.Const(0))
+			.ToList();
 		
-		return StorageSize.Sum(fieldSizes);
+		return !record.IsUnion ? StorageSize.Sum(fieldSizes)
+			: fieldSizes.Count > 0 ? StorageSize.Max(fieldSizes)
+			: StorageSize.Const(0);
 	});
 	
 	public void RegisterEnum(EnumSymbol enumType, IntegerType tagType, IReadOnlyList<BigInteger> values)

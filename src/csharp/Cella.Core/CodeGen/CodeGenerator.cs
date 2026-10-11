@@ -527,9 +527,23 @@ public sealed unsafe class CodeGenerator : IDisposable
 			.Select(MapTypeSymbol)
 			.ToArray();
 		
+		if (type is RecordSymbol { IsUnion: true })
+		{
+			typeRef.StructSetBody(fieldTypes.Length == 0 ? [] : [CreateUnionStorage(fieldTypes)], false);
+			return typeRef;
+		}
+		
 		// TODO Allow controlling packed?
 		typeRef.StructSetBody(fieldTypes, false);
 		return typeRef;
+	}
+	
+	private LLVMTypeRef CreateUnionStorage(LLVMTypeRef[] memberTypes)
+	{
+		var alignment = memberTypes.Max(type => _targetData.ABIAlignmentOfType(type));
+		var size = memberTypes.Max(type => _targetData.ABISizeOfType(type));
+		var count = (uint)((size + alignment - 1) / alignment);
+		return LLVMTypeRef.CreateArray(LLVMTypeRef.CreateInt(alignment * 8), count);
 	}
 	
 	private LLVMTypeRef CreateEnumType(EnumSymbol enumType)
@@ -2708,6 +2722,9 @@ public sealed unsafe class CodeGenerator : IDisposable
 	private LLVMValueRef EmitAccessAddress(AccessValue v, LLVMBuilderRef builder)
 	{
 		var targetPtr = EmitAddress(v.Target, builder);
+		if (Substitute(v.Target.Type) is RecordSymbol { IsUnion: true })
+			return targetPtr;
+		
 		var targetType = MapTypeSymbol(v.Target.Type);
 		var fieldIndex = (uint)_typePool.GetFieldIndex(Substitute(v.Target.Type), v.Member);
 		return builder.BuildStructGEP2(targetType, targetPtr, fieldIndex, v.Member.Name + ".addr");
@@ -2739,6 +2756,9 @@ public sealed unsafe class CodeGenerator : IDisposable
 		// TODO Fields could have been reordered to pack them
 		// TODO Also, GetFieldIndex is O(n), would probably want to cache the final indices in another dictionary
 		var target = EmitValue(v.Target, builder);
+		if (Substitute(v.Target.Type) is RecordSymbol { IsUnion: true } union)
+			return LoadValue(builder, v.Type, SpillValue(builder, union, target, "union"), v.Member.Name);
+		
 		var fieldIndex = (uint)_typePool.GetFieldIndex(Substitute(v.Target.Type), v.Member);
 		return ExtractField(builder, v.Target.Type, target, fieldIndex, v.Type, v.Member.Name);
 	}

@@ -1,0 +1,123 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+ClearColor: union
+{
+	floats: array[f32, 4]
+	ints: array[i32, 4]
+	uints: array[u32, 4]
+
+	new: op(red: f32, green: f32, blue: f32)
+	{
+		self.floats = [red, green, blue, 1.0]
+	}
+
+	alpha: fun(self) -> f32 = self.floats[3]
+}
+
+Bits: union
+{
+	float: f32
+	raw: u32
+}
+
+Mixed: union
+{
+	small: u8
+	wide: i64
+	pair: array[u16, 3]
+}
+
+Flags: union
+{
+	raw: u32
+
+	visible: prop bool
+	{
+		get(self) = (self.raw & 1) != 0
+		set(mut self, value) { self.raw = (self.raw & ~1) | u32(value) }
+	}
+
+	layer: prop u32
+	{
+		get(self) = (self.raw >> 2) & 15
+		set(mut self, value) { self.raw = (self.raw & ~(15 << 2)) | ((value & 15) << 2) }
+	}
+}
+
+MouseInput: rec
+{
+	x: i32
+	y: i32
+	buttons: u32
+}
+
+KeyInput: rec
+{
+	key: u16
+	scan: u16
+	flags: u32
+	time: u64
+}
+
+InputData: union
+{
+	mouse: MouseInput
+	keyboard: KeyInput
+}
+
+Input: rec
+{
+	kind: u32
+	data: InputData
+}
+
+empty: val Bits = Bits()
+
+makeBits: fun(value: f32) -> Bits
+{
+	var bits = Bits()
+	bits.float = value
+	ret bits
+}
+
+passed: ext fun(bits: Bits, color: ClearColor) -> u32 = bits.raw + color.uints[0]
+
+main: fun -> i32
+{
+	printf("%d %d %d %d %d %d\n", i32(sizeOf(ClearColor)), i32(alignOf(ClearColor)), i32(sizeOf(Bits)),
+		i32(sizeOf(Mixed)), i32(alignOf(Mixed)), i32(sizeOf(InputData)))
+
+	var bits = Bits()
+	bits.float = 1.0
+	printf("%x %x %x\n", bits.raw, makeBits(2.0).raw, empty.raw)
+	bits.raw = 0x40490fdb
+	printf("%.5f\n", f64(bits.float))
+
+	var color = ClearColor(0.5, 0.25, 0.125)
+	printf("%.3f %.1f %x\n", f64(color.floats[1]), f64(color.alpha()), color.uints[3])
+	color.ints[0] = 7
+	printf("%d %d\n", color.ints[0], i32(color.floats[0] > 0.0))
+
+	var flags = Flags()
+	flags.visible = true
+	flags.layer = 5
+	printf("%d %d %u\n", i32(flags.visible), flags.layer, flags.raw)
+
+	var input = Input(1, InputData())
+	input.data.keyboard.key = 65
+	input.data.keyboard.time = 99
+	printf("%d %d %d\n", input.data.mouse.x, input.data.keyboard.key, i32(sizeOf(Input)))
+
+	var mixed = Mixed()
+	mixed.wide = -1
+	printf("%d %d\n", i32(mixed.small), i32(mixed.pair[2]))
+
+	val zeroed = ClearColor(0.0, 0.0, 0.0)
+	printf("%u\n", passed(makeBits(1.0), zeroed))
+	ret 0
+}

@@ -435,6 +435,7 @@ public readonly struct ResolutionContext
 		var returnType = node.ReturnType is { } returnTypeNode ? ResolveType(returnTypeNode) : NativeSymbols.Void;
 		var functionType = TypePool.GetFunctionType(node.IsExternal, parameterTypes, modes, returnType, node.IsRef,
 			node.Variadic is not null, TakesVariadicParameter(node, parameterTypes));
+		
 		if (functionType.IsExternal && ExtSignatureTypes is { } signatureTypes)
 		{
 			for (var i = 0; i < node.ParameterTypes.Length; i++)

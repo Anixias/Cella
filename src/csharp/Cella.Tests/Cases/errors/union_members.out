@@ -1,0 +1,29 @@
+
+====== union_members.ce ======
+
+Error at line 20, column 8
+19 │ {
+20 │     text: view[u8]
+               ╘══════╛ Cannot store borrows in unions
+
+Error at line 21, column 8
+20 │ text: view[u8]
+21 │ name: Name
+           ╘══╛ Cannot store values with destructors in unions
+
+Error at line 22, column 12
+21 │ name: Name
+22 │ callback: fun[i32]
+               ╘══════╛ Cannot store values without defaults in unions
+
+Error at line 23, column 2
+22 │ callback: fun[i32]
+23 │ count: req i32
+     ╘═══╛ Cannot declare required fields in unions
+
+Error at line 26, column 2
+25 │ 
+26 │ drop: op
+     ╘══╛ Cannot declare destructors in unions
+
+[compilation failed]
