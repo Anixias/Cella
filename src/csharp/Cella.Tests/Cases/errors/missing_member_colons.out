@@ -1,0 +1,34 @@
+
+====== missing_member_colons.ce ======
+
+Error at line 5, column 4
+4 │ {
+5 │     x i32
+          ╘═╛ Expected ':' after identifier
+
+Error at line 10, column 6
+ 9 │ {
+10 │     get fun(self) -> i32 = 0
+             ╘═╛ Expected ':' after identifier
+
+Error at line 15, column 9
+14 │ {
+15 │     get[T] fun(self) -> i32 = 0
+                ╘═╛ Expected ':' after identifier
+
+Error at line 20, column 6
+19 │ {
+20 │     new op()
+             ╘╛ Expected ':' after 'new'
+
+Error at line 27, column 7
+26 │ {
+27 │     drop op()
+              ╘╛ Expected ':' after 'drop'
+
+Error at line 34, column 4
+33 │ {
+34 │     + op(self, other: Operator) -> Operator = other
+           ╘╛ Expected ':' after '+'
+
+[compilation failed]

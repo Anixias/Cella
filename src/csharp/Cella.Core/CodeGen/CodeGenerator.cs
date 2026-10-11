@@ -3704,7 +3704,12 @@ public sealed record CodeGenConfig
 	public bool DebugInfo { get; init; }
 	public string? SourceRoot { get; init; }
 	
-	public uint GetPointerSize() => GetDataLayout().PointerSize;
+	public uint GetPointerSize()
+	{
+		var (_, _, targetMachine, pointerSize) = GetDataLayout();
+		targetMachine.Dispose();
+		return pointerSize;
+	}
 	
 	public unsafe (string DataLayout, string TargetTriple, LLVMTargetMachineRef TargetMachine, uint PointerSize)
 		GetDataLayout()

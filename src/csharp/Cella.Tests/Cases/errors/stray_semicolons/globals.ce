@@ -1,0 +1,3 @@
+mod test
+
+value: val i32 = 1;

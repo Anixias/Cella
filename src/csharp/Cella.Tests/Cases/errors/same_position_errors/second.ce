@@ -1,0 +1,3 @@
+mod test
+
+other: val i32 = 1 / 0

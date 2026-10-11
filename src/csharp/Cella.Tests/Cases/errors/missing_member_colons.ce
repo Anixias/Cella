@@ -1,0 +1,40 @@
+mod test
+
+Field: rec
+{
+	x i32
+}
+
+Method: rec
+{
+	get fun(self) -> i32 = 0
+}
+
+Generic: rec
+{
+	get[T] fun(self) -> i32 = 0
+}
+
+Constructor: rec
+{
+	new op()
+	{
+	}
+}
+
+Destructor: rec
+{
+	drop op()
+	{
+	}
+}
+
+Operator: rec
+{
+	+ op(self, other: Operator) -> Operator = other
+}
+
+main: fun -> i32
+{
+	ret 0
+}

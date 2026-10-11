@@ -1606,9 +1606,20 @@ public sealed class FileParser
 		if (MatchOperatorName(ref index, out var symbol))
 			return ParseOperatorMember(ref index, symbol, block);
 		
-		if (!Match(ref index, out var identifier, TokenType.Identifier) ||
-		    ParseTypeParameters(ref index) is not { } typeParameters || !Match(ref index, TokenType.OpColon))
+		if (!Match(ref index, out var identifier, TokenType.Identifier))
+		{
+			ReportUnexpected(Tokens[index]);
 			return null;
+		}
+		
+		if (ParseTypeParameters(ref index) is not { } typeParameters)
+			return null;
+		
+		if (!Match(ref index, TokenType.OpColon))
+		{
+			Report(Tokens[index], "Expected ':' after identifier");
+			return null;
+		}
 		
 		var modifiers = ParseMemberModifiers(ref index, block);
 		if (IsFunctionMember(index))
@@ -1676,7 +1687,10 @@ public sealed class FileParser
 		List<TypeParameterNode> typeParameters)
 	{
 		if (!Match(ref index, TokenType.OpColon))
+		{
+			Report(Tokens[index], $"Expected ':' after '{symbol.Text}'");
 			return null;
+		}
 		
 		var modifiers = ParseMemberModifiers(ref index, block);
 		RejectWriteRestriction(modifiers, "operators");
@@ -1872,7 +1886,10 @@ public sealed class FileParser
 		
 		var isConversion = StartsConversion(index);
 		if (!Match(ref index, TokenType.OpColon))
+		{
+			Report(Tokens[index], $"Expected ':' after '{newKeyword.Text}'");
 			return null;
+		}
 		
 		var modifiers = ParseMemberModifiers(ref index, block);
 		RejectWriteRestriction(modifiers, isConversion ? "operators" : "constructors");
@@ -1926,7 +1943,10 @@ public sealed class FileParser
 	private DestructorNode? ParseDestructor(ref int index, Token dropKeyword, Token? block)
 	{
 		if (!Match(ref index, TokenType.OpColon))
+		{
+			Report(Tokens[index], $"Expected ':' after '{dropKeyword.Text}'");
 			return null;
+		}
 		
 		var modifiers = ParseMemberModifiers(ref index, block);
 		RejectWriteRestriction(modifiers, "destructors");

@@ -1,9 +1,35 @@
 
-====== stray_semicolons.ce ======
+====== globals.ce ======
 
 Error at line 3, column 19
 2 │ 
 3 │ value: val i32 = 1;
                       ^ Unexpected character ';'
+
+
+====== members.ce ======
+
+Error at line 5, column 8
+4 │ {
+5 │     x: i32;
+              ^ Unexpected character ';'
+
+Error at line 11, column 24
+10 │ {
+11 │     area: fun(self) -> i32;
+                               ^ Unexpected character ';'
+
+Error at line 16, column 41
+15 │ {
+16 │     sum: fun(self) -> i32 = self.x + self.y;
+                                                ^ Unexpected character ';'
+
+
+====== statements.ce ======
+
+Error at line 5, column 11
+4 │ {
+5 │     val x = 1;
+                 ^ Unexpected character ';'
 
 [compilation failed]

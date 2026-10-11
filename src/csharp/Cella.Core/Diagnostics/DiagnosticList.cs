@@ -5,13 +5,13 @@ namespace Cella.Diagnostics;
 
 public sealed class DiagnosticList : IEnumerable<Diagnostic>
 {
-	public int Count => _diagnostics.Count;
+	public int Count { get; private set; }
 	
 	public IEnumerable<Diagnostic> Errors => _errors.Values.SelectMany(static d => d);
 	public IEnumerable<Diagnostic> Warnings => _warnings.Values.SelectMany(static d => d);
 	
-	public int ErrorCount => _errors.Count;
-	public int WarningCount => _warnings.Count;
+	public int ErrorCount { get; private set; }
+	public int WarningCount { get; private set; }
 	
 	private readonly SortedList<LineColumnKey, List<Diagnostic>> _diagnostics = [];
 	private readonly SortedList<LineColumnKey, List<Diagnostic>> _errors = [];
@@ -32,6 +32,9 @@ public sealed class DiagnosticList : IEnumerable<Diagnostic>
 		_diagnostics.Clear();
 		_errors.Clear();
 		_warnings.Clear();
+		Count = 0;
+		ErrorCount = 0;
+		WarningCount = 0;
 	}
 	
 	public List<Diagnostic>? Redirect(List<Diagnostic>? target)
@@ -51,15 +54,18 @@ public sealed class DiagnosticList : IEnumerable<Diagnostic>
 		
 		var key = new LineColumnKey(diagnostic.Line, diagnostic.Column);
 		_diagnostics.GetOrAdd(key).Add(diagnostic);
+		Count++;
 		
 		switch (diagnostic.Severity)
 		{
 			case DiagnosticSeverity.Error:
 				_errors.GetOrAdd(key).Add(diagnostic);
+				ErrorCount++;
 				break;
 			
 			case DiagnosticSeverity.Warning:
 				_warnings.GetOrAdd(key).Add(diagnostic);
+				WarningCount++;
 				break;
 		}
 	}

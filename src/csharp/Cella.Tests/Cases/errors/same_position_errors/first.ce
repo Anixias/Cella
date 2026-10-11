@@ -1,0 +1,8 @@
+mod test
+
+first: val i32 = 1 / 0
+
+main: fun -> i32
+{
+	ret first
+}

@@ -411,8 +411,8 @@ internal static class Program
 					.ToHashSet()
 			};
 			
-			var codeGenerator = new CodeGenerator(assemblySymbol, typePool, codeGenConfig, signatureCollector.Modules,
-				inputs);
+			using var codeGenerator = new CodeGenerator(assemblySymbol, typePool, codeGenConfig,
+				signatureCollector.Modules, inputs);
 			
 			var externalLibraries = new HashSet<string>();
 			var objectFiles = new List<string>();
