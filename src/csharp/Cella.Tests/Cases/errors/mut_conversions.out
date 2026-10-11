@@ -14,7 +14,7 @@ Error at line 42, column 20
 Error at line 43, column 21
 42 │ val s = span[i32](four)
 43 │ val t: span[i32] = four
-                        ╘══╛ Cannot convert type 'array[i32, 4]' to 'span[i32]'
+                        ╘══╛ Cannot mutably borrow arguments implicitly
 
 Error at line 44, column 7
 43 │ val t: span[i32] = four

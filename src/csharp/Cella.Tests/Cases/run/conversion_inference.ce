@@ -1,0 +1,87 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+view[T]: ref rec
+{
+	data: pvt ptr[T]
+	length: pvt set usize
+
+	new: op(data: ptr[T], length: usize)
+	{
+		self.data = data
+		self.length = length
+	}
+
+	as[N: val usize]: op(values: array[T, N]) -> view[T] = view[T](@values, N)
+
+	[]: op(self, i: usize) -> imm[T] = imm self.data[i]
+}
+
+span[T]: ref rec
+{
+	data: pvt ptr[T]
+	length: pvt set usize
+
+	new: op(data: ptr[T], length: usize)
+	{
+		self.data = data
+		self.length = length
+	}
+
+	as[N: val usize]: op(mut values: array[T, N]) -> span[T] = span[T](@values, N)
+
+	as: op(self) -> view[T] = view[T](self.data, self.length)
+
+	[]: op(self, i: usize) -> mut[T] = mut self.data[i]
+}
+
+count[T]: fun(values: view[T]) -> usize = values.length
+
+last[T]: fun(values: view[T]) -> imm[T] = values[values.length - 1]
+
+setFirst[T: noref]: fun(values: span[T], own value: T)
+{
+	values[0] = own value
+}
+
+second: fun(values: view[u16]) -> u16 = values[1]
+
+setByte: fun(values: span[u8], value: u8)
+{
+	values[0] = value
+}
+
+whole: fun(mut values: array[i32, 4]) -> span[i32] = mut values
+
+main: fun -> i32
+{
+	var four = [1, 2, 3, 4]
+	val five: array[i64, 5] = [1, 2, 3, 4, 50]
+	val s = span[i32](mut four)
+	printf("%zu %zu %zu %lld\n", count(four), count(s), count(five), last(five))
+
+	setFirst(mut four, 7)
+	printf("%d %d %d\n", four[0], four[3], last([1, 2, 9]))
+
+	printf("%d ", second([1, 400]))
+	val words = [1, 500]
+	printf("%d ", second(words))
+	var bytes = [1, 2, 3]
+	setByte(mut bytes, 200)
+	printf("%d\n", bytes[0])
+
+	val t: span[i32] = mut four
+	t[1] = 11
+	var u: span[i32] = mut four
+	var other = [5, 6]
+	u = mut other
+	u[0] = 12
+	val w = whole(mut four)
+	w[2] = 13
+	printf("%d %d %d\n", four[1], other[0], four[2])
+	ret 0
+}

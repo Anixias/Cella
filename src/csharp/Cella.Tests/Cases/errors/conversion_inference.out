@@ -1,0 +1,29 @@
+
+====== conversion_inference.ce ======
+
+Error at line 54, column 21
+53 │ var four: array[i32, 4] = [1, 2, 3, 4]
+54 │ val t: span[i32] = four
+                        ╘══╛ Cannot mutably borrow arguments implicitly
+
+Error at line 56, column 6
+55 │ var u: span[i32] = mut four
+56 │ u = four
+         ╘══╛ Cannot mutably borrow arguments implicitly
+
+Error at line 58, column 6
+57 │ 
+58 │ val words = [1, 2]
+         ╘═══╛ Cannot infer the type of 'words' from 'array[u16, 2]' and 'array[u8, 2]'
+
+Error at line 63, column 2
+62 │ var bytes = [1, 2]
+63 │ take(mut bytes)
+     ╘══╛ No overload of 'take' accepts these arguments
+
+Error at line 65, column 10
+64 │ 
+65 │ val n = count(5)
+             ╘═══╛ Cannot infer 'T' for 'count'
+
+[compilation failed]

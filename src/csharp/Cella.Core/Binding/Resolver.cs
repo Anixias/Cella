@@ -7,6 +7,7 @@ using Cella.Core.Binding.Constants;
 using Cella.Core.Binding.Conversions;
 using Cella.Core.Binding.Nodes;
 using Cella.Core.Binding.Operations;
+using Cella.Core.Collections;
 using Cella.Core.Symbols;
 using Cella.Core.Syntax.Nodes;
 using Cella.Core.Text;
@@ -1934,8 +1935,63 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			ResolvedCaseNameExpressionNode => null,
 			_ when type is NeverType or FunctionGroupType or InvalidType => null,
 			_ when type is UntypedType literal => new(parameter, GetDefaultType(arg)) { Literal = literal },
-			_ => new(parameter, type)
+			_ => ConvertForInference(parameter, type, arg is ResolvedMutArgumentExpressionNode) ?? new(parameter, type)
 		};
+	}
+	
+	private InferenceInput? ConvertForInference(TypeSymbol parameter, TypeSymbol type, bool isMut)
+	{
+		var open = new OrderedSet<TypeParameterSymbol>(TypePool.FindTypeParameters(parameter));
+		if (open.Count == 0 || _typePool.TryUnify(parameter, type, open, []))
+			return null;
+		
+		var results = FindInwardResults(parameter, type, isMut, open)
+			.Concat(isMut ? [] : FindOutwardResults(parameter, type, open))
+			.Distinct()
+			.ToList();
+		
+		return results is [var only] ? new InferenceInput(parameter, only) : null;
+	}
+	
+	private IEnumerable<TypeSymbol> FindInwardResults(TypeSymbol parameter, TypeSymbol type, bool isMut,
+		OrderedSet<TypeParameterSymbol> open)
+	{
+		foreach (var info in GetInwardConversions(parameter))
+		{
+			if (info.Signature.GetMode(0) == ParameterMode.Mut != isMut)
+				continue;
+			
+			var variables = new OrderedSet<TypeParameterSymbol>([..open, ..GetOpenTypeParameters(info)]);
+			var bindings = new Dictionary<TypeParameterSymbol, TypeSymbol>();
+			if (_typePool.TryUnify(info.Signature.GetDeclaredType(0), type, variables, bindings))
+				yield return _typePool.Substitute(info.Signature.ReturnType, bindings);
+		}
+	}
+	
+	private IEnumerable<TypeSymbol> FindOutwardResults(TypeSymbol parameter, TypeSymbol type,
+		OrderedSet<TypeParameterSymbol> open)
+	{
+		if (type is UntypedType)
+			yield break;
+		
+		foreach (var method in GetMethods(type, "as"))
+		{
+			if (method.Function is not { IsConversion: true, Kind: FunctionKind.Method } ||
+			    !CanAccess(type, method.Function))
+				continue;
+			
+			var info = GetFunctionInfo(method, type);
+			if (info.Signature is not { ParameterTypes.Length: 1 } signature ||
+			    signature.GetMode(0) == ParameterMode.Mut || !GetOpenTypeParameters(info).IsEmpty)
+				continue;
+			
+			var result = signature.ReturnType is BorrowType { IsMutable: false } view
+				? view.Target
+				: signature.ReturnType;
+			
+			if (result is not BorrowType && _typePool.TryUnify(parameter, result, open, []))
+				yield return result;
+		}
 	}
 	
 	private TypeSymbol GetDefaultType(IResolvedExpressionNode node) => node.Type switch
@@ -3707,7 +3763,12 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	{
 		var values = new List<IResolvedExpressionNode>(node.Values.Length);
 		
-		var elementType = (ExpectedType as ArrayType)?.ElementType;
+		var elementType = ExpectedType switch
+		{
+			ArrayType array => array.ElementType,
+			{ } expected => FindConvertedElementType(expected, node.Values.Length),
+			null => null
+		};
 		
 		foreach (var expression in node.Values)
 		{
@@ -3737,6 +3798,22 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		
 		var type = _typePool.GetArrayType(elementType, node.Values.Length);
 		return new ResolvedArrayExpressionNode(type, values, node);
+	}
+	
+	private TypeSymbol? FindConvertedElementType(TypeSymbol target, int length)
+	{
+		var elementTypes = GetInwardConversions(target)
+			.Where(static info => info.Signature.GetMode(0) != ParameterMode.Mut)
+			.Where(info => info.Signature.GetDeclaredType(0) is ArrayType source &&
+			               (source.LengthParameter is not null || source.Length == length) &&
+			               !TypePool.FindTypeParameters(source.ElementType)
+				               .Intersect(GetOpenTypeParameters(info))
+				               .Any())
+			.Select(static info => ((ArrayType)info.Signature.GetDeclaredType(0)).ElementType)
+			.Distinct()
+			.ToList();
+		
+		return elementTypes is [var only] ? only : null;
 	}
 	
 	public IResolvedExpressionNode Visit(InterpolatedStringExpressionNode node) =>
@@ -5683,6 +5760,11 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		if (IsDynTarget(target) && ConvertToDyn(source, target) is { } dynValue)
 			return dynValue;
 		
+		if (source is ResolvedBorrowExpressionNode { IsMutable: true, IsImplicit: false } borrowed &&
+		    FindLendingConversion(borrowed.Place, target) is { } lending)
+			return ApplyUserConversion(new ResolvedMutArgumentExpressionNode(borrowed.Place,
+				_typePool.GetPointerType(borrowed.Place.Type), source.Syntax), lending);
+		
 		if (target is not BorrowType && Decay(source) is var decayed && decayed != source)
 			return ApplyImplicitConversion(decayed, target);
 		
@@ -5691,6 +5773,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		
 		if (FindUserConversion(source, target) is { } userConversion)
 			return ApplyUserConversion(source, userConversion);
+		
+		if (FindLendingConversion(source, target) is not null)
+			return Error(source.Syntax, "Cannot mutably borrow arguments implicitly", target);
 		
 		if (IsDynTarget(target) && ConvertToDyn(source, target) is { } erased)
 			return erased;
@@ -6843,11 +6928,13 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		if (IsInvalid(type) || IsInvalid(target) || type is UntypedType)
 			return null;
 		
+		var isOpen = FindOpenPlace(Decay(place)) is not null;
 		var conversions = GetInwardConversions(target)
 			.Where(static info => info.Signature.GetMode(0) == ParameterMode.Mut)
 			.Select(info => InferConversion(info, type, null))
 			.OfType<FunctionInfo>()
-			.Where(info => info.Signature.GetDeclaredType(0) == type)
+			.Where(info => info.Signature.GetDeclaredType(0) is var source &&
+			               (source == type || isOpen && HaveSameLength(source, type)))
 			.ToList();
 		
 		return conversions.Count == 0
@@ -6857,6 +6944,10 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 				IsAmbiguous = conversions.Count > 1
 			};
 	}
+	
+	private static bool HaveSameLength(TypeSymbol first, TypeSymbol second) =>
+		first is ArrayType { LengthParameter: null } a && second is ArrayType { LengthParameter: null } b &&
+		a.Length == b.Length;
 	
 	private (int Cost, Conversion? Conversion) MatchArg(IResolvedExpressionNode arg, TypeSymbol target,
 		MaterializationMode mode)
