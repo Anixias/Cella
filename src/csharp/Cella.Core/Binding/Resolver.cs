@@ -5126,7 +5126,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		}
 		
 		var element = Decay(CallOperator(ReadCursor(), dereference, syntax));
-		var isWritable = isMut && ReturnsWritable(dereference, type);
+		var isWritable = ReturnsWritable(dereference, type) &&
+		                 (isMut || TakesReceiver(dereference, type, ParameterMode.ReadOnly));
+		
 		var binding = CreateLoopBinding(node.Binding, element.Type, isWritable || !_typePool.IsCopy(element.Type),
 			isWritable)!;
 		

@@ -1,0 +1,14 @@
+
+====== writable_cursors.ce ======
+
+Error at line 33, column 3
+32 │ for x in Steps(3)
+33 │     x = 1
+         ^ Cannot reassign read-only loop variables
+
+Error at line 36, column 3
+35 │ for x in Editor(3)
+36 │     x = 1
+         ^ Cannot reassign read-only loop variables
+
+[compilation failed]

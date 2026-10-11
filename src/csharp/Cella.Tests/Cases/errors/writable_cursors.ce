@@ -1,0 +1,47 @@
+mod test
+
+Steps: rec
+{
+	left: i32
+
+	for: op(mut self) -> bool
+	{
+		self.left -= 1
+		ret self.left >= 0
+	}
+
+	*: op(mut self) -> mut[i32] = mut self.left
+}
+
+Editor: rec
+{
+	left: i32
+
+	for: op(mut self) -> bool
+	{
+		self.left -= 1
+		ret self.left >= 0
+	}
+
+	*: op(self) -> imm[i32] = imm self.left
+	*: op(mut self) -> mut[i32] = mut self.left
+}
+
+main: fun -> i32
+{
+	for x in Steps(3)
+		x = 1
+
+	for x in Editor(3)
+		x = 1
+
+	var steps = Steps(3)
+	for x in mut steps
+		x = 1
+
+	var editor = Editor(3)
+	for x in mut editor
+		x = 1
+
+	ret 0
+}

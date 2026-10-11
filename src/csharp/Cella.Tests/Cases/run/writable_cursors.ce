@@ -1,0 +1,80 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Point: rec
+{
+	x: i32
+	y: i32
+}
+
+span[T]: ref rec
+{
+	data: pvt ptr[T]
+	length: pvt set usize
+
+	new: op(data: ptr[T], length: usize)
+	{
+		self.data = data
+		self.length = length
+	}
+
+	as[N: val usize]: op(mut values: array[T, N]) -> span[T] = span[T](ptr[T](ptr(@values)), N)
+
+	in: op(self) -> spanCursor[T] = spanCursor[T](self.data, self.length, 0, 0)
+}
+
+spanCursor[T]: ref rec
+{
+	data: ptr[T]
+	length: usize
+	current: usize
+	next: usize
+
+	for: op(mut self) -> bool
+	{
+		self.current = self.next
+		self.next += 1
+		ret self.current < self.length
+	}
+
+	*: op(self) -> mut[T] = mut *(self.data + self.current)
+}
+
+double: fun(values: span[i32])
+{
+	for value in values
+	{
+		value *= 2
+	}
+}
+
+shift: fun(points: span[Point], by: i32)
+{
+	for point in points
+	{
+		point.x += by
+		point.y -= by
+	}
+}
+
+main: fun -> i32
+{
+	var numbers = [1, 2, 3]
+	double(mut numbers)
+	val all: span[i32] = mut numbers
+	for value in all
+	{
+		value += 1
+	}
+
+	printf("%d %d %d\n", numbers[0], numbers[1], numbers[2])
+
+	var points = [Point(1, 1), Point(5, 5)]
+	shift(mut points, 2)
+	printf("%d %d %d %d\n", points[0].x, points[0].y, points[1].x, points[1].y)
+	ret 0
+}
