@@ -236,39 +236,10 @@ public sealed class ConstantEvaluator
 		_ => null
 	};
 	
-	private Constant? Apply(OperationImpl implementation, Constant left, Constant right, TypeSymbol resultType)
-	{
-		switch (implementation)
-		{
-			case NativeImpl native:
-				return Apply(OperationMapping.ToBinaryOperation(native.Op), left, right, resultType);
-			
-			case ConversionImpl conversion:
-			{
-				var convertedLeft = conversion.ParameterConversions[0] is { } leftConversion
-					? Convert(left, leftConversion)
-					: left;
-				
-				var convertedRight = conversion.ParameterConversions[1] is { } rightConversion
-					? Convert(right, rightConversion)
-					: right;
-				
-				if (convertedLeft is null || convertedRight is null)
-					return null;
-				
-				var intermediateType = conversion.ResultConversion?.From ?? conversion.ReturnType;
-				var result = Apply(OperationMapping.ToBinaryOperation(conversion.Op), convertedLeft, convertedRight,
-					intermediateType);
-				
-				return result is not null && conversion.ResultConversion is { } resultConversion
-					? Convert(result, resultConversion)
-					: result;
-			}
-			
-			default:
-				return null;
-		}
-	}
+	private Constant? Apply(OperationImpl implementation, Constant left, Constant right, TypeSymbol resultType) =>
+		implementation is NativeImpl native
+			? Apply(OperationMapping.ToBinaryOperation(native.Op), left, right, resultType)
+			: null;
 	
 	private Constant? Apply(BinaryOperation operation, Constant left, Constant right, TypeSymbol resultType) =>
 		(left, right) switch

@@ -134,6 +134,7 @@ public sealed class FunctionSymbol
 	public ImplSymbol? Impl { get; internal set; }
 	public ImmutableArray<TypeParameterSymbol> TypeParameters { get; init; } = [];
 	public ImmutableArray<TypeParameterSymbol> DeclaredTypeParameters { get; init; } = [];
+	public ImmutableArray<NamePart> QualifiedName { get; internal set; } = [];
 	public ImmutableArray<LocalVariableSymbol> Captures { get; internal set; } = [];
 	public bool OwnsCaptures { get; internal set; }
 }
@@ -633,19 +634,16 @@ public static class ParameterModeExtensions
 
 public sealed class ParameterSymbol : VariableSymbol
 {
-	public Token Identifier { get; }
 	public SourceLocation Definition { get; }
 	public ParameterMode Mode { get; init; }
 	
 	public ParameterSymbol(Token identifier) : base(identifier.Text)
 	{
-		Identifier = identifier;
 		Definition = identifier.SourceLocation;
 	}
 	
 	public ParameterSymbol(string name, SourceLocation definition) : base(name)
 	{
-		Identifier = default;
 		Definition = definition;
 	}
 }

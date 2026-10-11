@@ -1,5 +1,4 @@
 ﻿using System.Collections.Immutable;
-using Cella.Core.Binding.Conversions;
 using Cella.Core.Symbols;
 using Cella.Core.Text;
 
@@ -241,18 +240,4 @@ public sealed class PointerDifferenceImpl(PointerType pointerType)
 	: OperationImpl(TokenType.OpMinus, NativeSymbols.IntSize, pointerType, pointerType)
 {
 	public PointerType PointerType { get; } = pointerType;
-}
-
-public sealed class ConversionImpl
-(
-	TokenType op,
-	TypeSymbol result,
-	params IReadOnlyList<(TypeSymbol Type, Conversion? Conversion)> parameters
-)
-	: OperationImpl(op, result, parameters.Select(static p => p.Type))
-{
-	public ImmutableArray<Conversion?> ParameterConversions { get; } = parameters.Select(static p => p.Conversion)
-		.ToImmutableArray();
-	
-	public Conversion? ResultConversion { get; init; }
 }

@@ -413,7 +413,7 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool, 
 		ResolvedUnaryOpExpressionNode { Operation: NativeImpl { Op: not (TokenType.OpAt or TokenType.OpStar) } } =>
 			true,
 		ResolvedUnaryOpExpressionNode => false,
-		ResolvedBinaryOpExpressionNode { Operation: NativeImpl or ConversionImpl } => true,
+		ResolvedBinaryOpExpressionNode { Operation: NativeImpl } => true,
 		ResolvedBinaryOpExpressionNode => false,
 		ResolvedChainedExpressionNode n => n.Links.All(static link => link.Function is null),
 		_ => true

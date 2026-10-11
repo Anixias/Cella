@@ -18,7 +18,27 @@ public readonly record struct FunctionInfo
 	public ImmutableArray<TypeSymbol> TypeArguments { get; init; } = [];
 	public FunctionSignature? Declared { get; init; }
 	public FunctionSignature DeclaredSignature => Declared ?? Signature;
-	public ImmutableArray<NamePart> QualifiedName { get; init; } = [];
+	
+	public bool Equals(FunctionInfo other) =>
+		MangledName == other.MangledName && Symbol == other.Symbol && Signature == other.Signature &&
+		Scope == other.Scope && Origin == other.Origin && File == other.File && Declared == other.Declared &&
+		TypeArguments.AsSpan().SequenceEqual(other.TypeArguments.AsSpan());
+	
+	public override int GetHashCode()
+	{
+		var hash = new HashCode();
+		hash.Add(MangledName);
+		hash.Add(Symbol);
+		hash.Add(Signature);
+		hash.Add(Scope);
+		hash.Add(Origin);
+		hash.Add(File);
+		hash.Add(Declared);
+		foreach (var argument in TypeArguments.AsSpan())
+			hash.Add(argument);
+		
+		return hash.ToHashCode();
+	}
 }
 
 public readonly record struct NamePart(string Name, ImmutableArray<TypeSymbol> Arguments);

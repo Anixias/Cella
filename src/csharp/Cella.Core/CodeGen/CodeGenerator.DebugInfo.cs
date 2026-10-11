@@ -334,14 +334,14 @@ public sealed unsafe partial class CodeGenerator
 	
 	private string GetDisplayName(FunctionInfo function)
 	{
-		if (function.QualifiedName.IsDefaultOrEmpty)
+		if (function.Symbol.QualifiedName.IsDefaultOrEmpty)
 			return function.MangledName ?? function.Symbol.Name;
 		
 		var map = function.TypeArguments.IsDefaultOrEmpty
 			? []
 			: TypePool.CreateMap(function.Symbol.TypeParameters, function.TypeArguments);
 		
-		return string.Join('.', function.QualifiedName.Select(part => part.Arguments.IsEmpty
+		return string.Join('.', function.Symbol.QualifiedName.Select(part => part.Arguments.IsEmpty
 			? part.Name
 			: $"{part.Name}[{string.Join(", ", part.Arguments.Select(argument =>
 				Substitute(_typePool.Substitute(argument, map)).Name))}]"));

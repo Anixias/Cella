@@ -286,8 +286,8 @@ internal static class Program
 		SymbolTable symbolTable;
 		{
 			var symbolCollector = new SymbolCollector();
-			foreach (var info in files)
-				symbolCollector.Collect(info.Ast);
+			foreach (var ast in files)
+				symbolCollector.Collect(ast);
 			
 			symbolTable = symbolCollector.Build();
 		}
@@ -319,7 +319,7 @@ internal static class Program
 			pointerBitSize);
 		
 		var resolver = new Resolver(symbolTable, signatureCollector, typePool, pointerBitSize);
-		signatureCollector.Collect(files.Select(static info => info.Ast).ToArray(), resolver);
+		signatureCollector.Collect([..files], resolver);
 		
 		var assemblySymbol = signatureCollector.FinishAssembly(project.Name);
 		var errorResult = new AssemblyInfo(assemblySymbol, outputType, null, false);
@@ -330,11 +330,9 @@ internal static class Program
 			return errorResult;
 		
 		// Phase 3: Symbol resolution
-		ImmutableArray<ResolvedSourceFileInfo> resolvedFiles;
+		ImmutableArray<ResolvedFileNode> resolvedFiles;
 		{
-			resolvedFiles = files
-				.Select(sfi => new ResolvedSourceFileInfo(sfi.FilePath, resolver.Resolve(sfi.Ast), sfi.Source))
-				.ToImmutableArray();
+			resolvedFiles = [..files.Select(resolver.Resolve)];
 			
 			resolver.ReportInfiniteInstantiations();
 			if (ReportErrors(diagnostics, project.Directory, showHints))
@@ -346,7 +344,7 @@ internal static class Program
 			var typeChecker = new TypeChecker(signatureCollector.Evaluator, typePool, signatureCollector.Modules);
 			diagnostics.Add(typeChecker.Diagnostics);
 			
-			foreach (var (_, resolvedAst, _) in resolvedFiles)
+			foreach (var resolvedAst in resolvedFiles)
 				typeChecker.Check(resolvedAst);
 			
 			if (ReportErrors(diagnostics, project.Directory, showHints))
@@ -358,7 +356,7 @@ internal static class Program
 			g => signatureCollector.GetGlobalInfo(g)!.Value);
 		
 		{
-			foreach (var (_, resolvedAst, _) in resolvedFiles)
+			foreach (var resolvedAst in resolvedFiles)
 				lowerer.Lower(resolvedAst);
 		}
 		
@@ -507,10 +505,10 @@ internal static class Program
 		}
 	}
 	
-	private static async Task<(ImmutableArray<SourceFileInfo> Files, DiagnosticList Diagnostics)> ProcessProject(
+	private static async Task<(ImmutableArray<FileNode> Files, DiagnosticList Diagnostics)> ProcessProject(
 		ProjectInfo project, IReadOnlyDictionary<string, bool> flags, CancellationToken ct = default)
 	{
-		var files = new ConcurrentBag<SourceFileInfo>();
+		var files = new ConcurrentBag<FileNode>();
 		var diagnostics = new DiagnosticList();
 		var filePaths = CellaProject.FindSourceFiles(project.Directory);
 		
@@ -544,7 +542,7 @@ internal static class Program
 			{
 				// TODO Make opt-in via CLI flags
 				//Console.WriteLine(AstPrinter.Print(ast));
-				files.Add(new(sourcePath, ast, source));
+				files.Add(ast);
 			}
 		}
 		
@@ -859,6 +857,3 @@ internal readonly record struct ProjectInfo
 	string Name,
 	CellaProject Project
 );
-
-internal readonly record struct SourceFileInfo(string FilePath, FileNode Ast, ISource Source);
-internal readonly record struct ResolvedSourceFileInfo(string FilePath, ResolvedFileNode Ast, ISource Source);

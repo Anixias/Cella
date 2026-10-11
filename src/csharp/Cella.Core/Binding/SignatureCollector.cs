@@ -2598,10 +2598,8 @@ public sealed class SignatureCollector
 			TakesVariadicParameter(node.Parameters, paramTypes), defaults);
 		
 		var mangledName = context.Mangle(function, signature);
-		var info = new FunctionInfo(mangledName, function, signature, scope, null, context.File)
-		{
-			QualifiedName = context.Qualify(function)
-		};
+		function.QualifiedName = context.Qualify(function);
+		var info = new FunctionInfo(mangledName, function, signature, scope, null, context.File);
 		
 		_builder.Functions[function] = info;
 		if (context.Trait is { } trait)
@@ -2621,10 +2619,8 @@ public sealed class SignatureCollector
 		
 		var signature = new FunctionSignature([selfType], NativeSymbols.Void, false, GetModes(function));
 		var mangledName = context.Mangle(function, signature);
-		var info = new FunctionInfo(mangledName, function, signature, scope, null, context.File)
-		{
-			QualifiedName = context.Qualify(function)
-		};
+		function.QualifiedName = context.Qualify(function);
+		var info = new FunctionInfo(mangledName, function, signature, scope, null, context.File);
 		
 		_builder.Functions[function] = info;
 		_typePool.SetDestructor(context.ContainingType!, info);
@@ -2704,10 +2700,8 @@ public sealed class SignatureCollector
 		
 		// TODO Disable mangling if indicated
 		var mangledName = context.Mangle(function, signature);
-		var info = new FunctionInfo(mangledName, function, signature, scope, null, context.File)
-		{
-			QualifiedName = context.Qualify(function)
-		};
+		function.QualifiedName = context.Qualify(function);
+		var info = new FunctionInfo(mangledName, function, signature, scope, null, context.File);
 		
 		if (_entryPointName is not null && function.Name == _entryPointName && function.TypeParameters.IsEmpty &&
 		    IsEntryPoint(signature))
