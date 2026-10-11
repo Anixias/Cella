@@ -129,12 +129,22 @@ public sealed class TypeParser(ImmutableArray<Token> tokens) : BaseParser<ITypeN
 		
 		var parameterModes = new List<Token?>();
 		var parameterTypes = new List<ITypeNode>();
+		var ellipses = new List<Token?>();
+		Token? variadic = null;
 		if (!Peek(index, TokenType.OpArrow) && !Peek(index, TokenType.OpCloseBracket))
 		{
 			do
 			{
+				if (isExternal && Peek(index, TokenType.OpDotDotDot) &&
+				    (Peek(index + 1, TokenType.OpArrow) || Peek(index + 1, TokenType.OpCloseBracket)))
+				{
+					variadic = Tokens[index++];
+					break;
+				}
+				
 				var isBorrowType = Peek(index, TokenType.KeywordMut) && Peek(index + 1, TokenType.OpOpenBracket);
 				parameterModes.Add(!isBorrowType && Match(ref index, out var mode, _parameterModes) ? mode : null);
+				ellipses.Add(Match(ref index, out var ellipsis, TokenType.OpDotDotDot) ? ellipsis : null);
 				parameterTypes.Add(ParseType(ref index));
 			} while (Match(ref index, TokenType.OpComma));
 		}
@@ -146,7 +156,11 @@ public sealed class TypeParser(ImmutableArray<Token> tokens) : BaseParser<ITypeN
 		var (source, range) = first.SourceLocation;
 		range = range.Join(closeBracket.SourceLocation.Range);
 		return new FunctionTypeNode(new(source, range), keyword, isExternal, isRef, parameterModes, parameterTypes,
-			returnType);
+			returnType)
+		{
+			Ellipses = [..ellipses],
+			Variadic = variadic
+		};
 	}
 	
 	private IGenericArgumentNode ParseGenericArgument(ref int index)

@@ -1069,7 +1069,7 @@ public sealed class Lowerer
 			return new IndirectCallValue(operands[0], operands.Skip(1), node.FunctionType, node.Syntax.SourceLocation);
 		}
 		
-		private Func<int, Passing> GetOperandPassing(FunctionType type) => i => i == 0
+		private Func<int, Passing> GetOperandPassing(FunctionType type) => i => i == 0 || i > type.ParameterTypes.Length
 			? Passing.Read
 			: GetPassing(type.ParameterTypes[i - 1], type.ParameterModes[i - 1]);
 		

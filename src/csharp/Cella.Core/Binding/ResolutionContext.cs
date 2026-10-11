@@ -433,7 +433,8 @@ public readonly struct ResolutionContext
 		}
 		
 		var returnType = node.ReturnType is { } returnTypeNode ? ResolveType(returnTypeNode) : NativeSymbols.Void;
-		var functionType = TypePool.GetFunctionType(node.IsExternal, parameterTypes, modes, returnType, node.IsRef);
+		var functionType = TypePool.GetFunctionType(node.IsExternal, parameterTypes, modes, returnType, node.IsRef,
+			node.Variadic is not null, TakesVariadicParameter(node, parameterTypes));
 		if (functionType.IsExternal && ExtSignatureTypes is { } signatureTypes)
 		{
 			for (var i = 0; i < node.ParameterTypes.Length; i++)
@@ -444,6 +445,59 @@ public readonly struct ResolutionContext
 		}
 		
 		return functionType;
+	}
+	
+	private bool TakesVariadicParameter(FunctionTypeNode node, TypeSymbol[] types)
+	{
+		var takesVariadic = false;
+		for (var i = 0; i < node.Ellipses.Length; i++)
+		{
+			if (node.Ellipses[i] is not { } ellipsis)
+				continue;
+			
+			if (node.IsExternal)
+			{
+				var (source, range) = ellipsis.SourceLocation;
+				Diagnostics.Add(new(DiagnosticSeverity.Error,
+					new(source, range.Join(node.ParameterTypes[i].SourceLocation.Range)),
+					"Cannot take typed variadic parameters in 'ext' functions")
+				{
+					Hints = i > 0 && i == node.Ellipses.Length - 1 && node.Variadic is null
+						? ["Did you mean '...'?"]
+						: []
+				});
+			}
+			else if (node.ParameterModes[i] is { } mode)
+				Diagnostics.Add(new(DiagnosticSeverity.Error, mode.SourceLocation,
+					$"Cannot take '{mode.Text}' variadic parameters"));
+			
+			if (i + 1 < node.ParameterTypes.Length)
+				Diagnostics.Add(new(DiagnosticSeverity.Error, node.ParameterTypes[i + 1].SourceLocation,
+					"Cannot take parameters after variadic parameters"));
+			else if (!node.IsExternal && node.ParameterModes[i] is null)
+				takesVariadic = ReportVariadicType(types[i], node.ParameterTypes[i]);
+		}
+		
+		return takesVariadic;
+	}
+	
+	private bool ReportVariadicType(TypeSymbol type, ITypeNode node)
+	{
+		if (type is InvalidType)
+			return false;
+		
+		var message = TypePool.FindRunElements(type).Count switch
+		{
+			0 => $"'{type.Name}' doesn't meet 'new(ptr[T], usize)'",
+			1 => null,
+			_ => $"'{type.Name}' meets 'new(ptr[T], usize)' more than once"
+		};
+		
+		if (message is null)
+			return true;
+		
+		Diagnostics.Add(new(DiagnosticSeverity.Error, node.SourceLocation, message));
+		return false;
 	}
 	
 	private TypeSymbol ResolveNamedType(Token name)

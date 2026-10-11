@@ -1688,7 +1688,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		
 		var resolvedArgs = ApplyArgumentResolution(args, resolution);
 		if (GetForm(callable) is { } form)
-			CompleteArguments(resolvedArgs, info, form, node);
+			CompleteArguments(resolvedArgs, info.Signature.ParameterTypes, info.Signature.Defaults, form, node);
 		
 		var result = new ResolvedConstructorCallExpressionNode(info, resolvedArgs, callable.ReturnType, node);
 		
@@ -2109,7 +2109,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		
 		var resolvedArgs = ApplyArgumentResolution(args, resolution);
 		if (GetForm(resolution.Callable) is { } form)
-			CompleteArguments(resolvedArgs, info, form, node);
+			CompleteArguments(resolvedArgs, info.Signature.ParameterTypes, info.Signature.Defaults, form, node);
 		
 		if (receiver is not null)
 			resolvedArgs.Insert(0, CreateReceiver(receiver, info));
@@ -2168,16 +2168,17 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	
 	private ICallable? Shape(ICallable candidate, int count, int spread)
 	{
-		if (GetInfo(candidate) is not { Signature: var signature })
+		var isVariadic = candidate.HasVariadicParameter;
+		var defaults = GetInfo(candidate)?.Signature.Defaults.Length ?? 0;
+		if (!isVariadic && defaults == 0)
 			return spread < 0 ? candidate : null;
 		
-		var isVariadic = signature.HasVariadicParameter;
 		var fixedCount = candidate.ParameterTypes.Length - (isVariadic ? 1 : 0);
 		if (spread >= 0)
 			return isVariadic && spread == fixedCount && count == fixedCount + 1 ? candidate : null;
 		
 		var omitted = Math.Max(fixedCount - count, 0);
-		if (omitted > signature.Defaults.Length || !isVariadic && omitted == 0)
+		if (omitted > defaults || !isVariadic && omitted == 0)
 			return candidate;
 		
 		TypeSymbol? element = null;
@@ -2192,6 +2193,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			{
 				IsGeneric = callable.IsGeneric
 			},
+			FunctionTypeCallable callable => new FunctionTypeCallable(callable.Type, form),
 			_ => candidate
 		};
 	}
@@ -2207,6 +2209,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	{
 		FunctionCallable function => function.Form,
 		ReceiverCallable receiver => receiver.Form,
+		FunctionTypeCallable type => type.Form,
 		_ => null
 	};
 	
@@ -2219,21 +2222,19 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		null => null
 	};
 	
-	private void CompleteArguments(List<IResolvedExpressionNode> args, FunctionInfo function, CallForm form,
-		CallExpressionNode node)
+	private void CompleteArguments(List<IResolvedExpressionNode> args, ImmutableArray<TypeSymbol> parameterTypes,
+		ImmutableArray<Constant> defaults, CallForm form, CallExpressionNode node)
 	{
-		var signature = function.Signature;
 		var packed = args.GetRange(args.Count - form.Packed, form.Packed);
 		args.RemoveRange(args.Count - form.Packed, form.Packed);
 		
-		var fixedCount = signature.FixedCount;
-		var firstDefault = fixedCount - signature.Defaults.Length;
+		var fixedCount = parameterTypes.Length - (form.Element is null ? 0 : 1);
+		var firstDefault = fixedCount - defaults.Length;
 		for (var i = fixedCount - form.Omitted; i < fixedCount; i++)
-			args.Add(MaterializeConstant(signature.Defaults[i - firstDefault], signature.ParameterTypes[i], node));
+			args.Add(MaterializeConstant(defaults[i - firstDefault], parameterTypes[i], node));
 		
 		if (form.Element is { } element)
-			args.Add(CreatePack(signature.ParameterTypes[^1], element, packed,
-				packed is [var first, ..] ? first.Syntax : node));
+			args.Add(CreatePack(parameterTypes[^1], element, packed, packed is [var first, ..] ? first.Syntax : node));
 	}
 	
 	private IResolvedExpressionNode MaterializeConstant(Constant constant, TypeSymbol type, IExpressionNode syntax)
@@ -3695,7 +3696,11 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		var callee = Decay(target);
 		target = ResolveCallTarget(callee);
 		ICallable[] candidates = target.Type is FunctionType type ? [new FunctionTypeCallable(type)] : [];
-		var args = ResolveArguments(node.Arguments,
+		if (RejectSpread(node, candidates) is { } rejected)
+			return rejected;
+		
+		candidates = Shape(candidates, node.Arguments);
+		var args = ResolveArguments(Unspread(node.Arguments),
 			[..candidates.Select(static candidate => CreateShape(candidate, []))], out _);
 		
 		if (IsInvalid(target) || AnyInvalid(args))
@@ -3714,6 +3719,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 				node.Target);
 		
 		var resolvedArgs = ApplyArgumentResolution(args, resolutionSet[0]);
+		if (GetForm(resolutionSet[0].Callable) is { } form)
+			CompleteArguments(resolvedArgs, functionType.ParameterTypes, [], form, node);
+		
 		return new ResolvedIndirectCallExpressionNode(target, resolvedArgs, functionType, node);
 	}
 	
@@ -4377,6 +4385,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		                                                              !IsKnown(target.ParameterTypes[i])))
 			.All(static agrees => agrees);
 		
+		var takesVariadic = target is { HasVariadicParameter: true } && types[^1] == target.ParameterTypes[^1];
 		var returnType = node.ReturnType is { } returnNode
 			? outer.ResolveType(returnNode)
 			: !agrees
@@ -4391,14 +4400,14 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 				return Error(node, "Cannot infer the return type", expected);
 			
 			var checkpoint = OpenCheckpoint();
-			EnterLambda(outer, CreateLambdaInfo(node, outer, modes, types, NativeSymbols.Void), target);
+			EnterLambda(outer, CreateLambdaInfo(node, outer, modes, types, NativeSymbols.Void, takesVariadic), target);
 			var value = Decay(MaterializeAsDefault(VisitNode(probe, null)));
 			ExitLambda();
 			Rollback(checkpoint);
 			returnType = value.Type;
 		}
 		
-		var info = CreateLambdaInfo(node, outer, modes, types, returnType);
+		var info = CreateLambdaInfo(node, outer, modes, types, returnType, takesVariadic);
 		var isInvalid = returnType is InvalidType || types.Any(static type => type is InvalidType);
 		if (!resolveBody)
 			return isInvalid ? new ResolvedInvalidExpressionNode(node, expected) : CreateLambdaGroup(info, node);
@@ -4431,7 +4440,8 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		
 		info.Symbol.Captures = [..captures.Select(static capture => capture.Binding)];
 		info.Symbol.OwnsCaptures = node.Own is not null;
-		var signature = _typePool.GetFunctionType(false, types, modes, returnType, node.Own is null);
+		var signature = _typePool.GetFunctionType(false, types, modes, returnType, node.Own is null, false,
+			takesVariadic);
 		var type = node.Own is null
 			? signature
 			: (TypeSymbol)_typePool.GetClosureType(info,
@@ -4475,7 +4485,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		.All(parameter => CurrentResolutionContext.Resolve(parameter.Name) == parameter);
 	
 	private FunctionInfo CreateLambdaInfo(LambdaExpressionNode node, ResolutionContext outer,
-		IReadOnlyList<ParameterMode> modes, IReadOnlyList<TypeSymbol> types, TypeSymbol returnType)
+		IReadOnlyList<ParameterMode> modes, IReadOnlyList<TypeSymbol> types, TypeSymbol returnType, bool takesVariadic)
 	{
 		var parameters = node.Parameters
 			.Select((parameter, i) => new ParameterSymbol(parameter.Identifier) { Mode = modes[i] })
@@ -4491,7 +4501,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		foreach (var parameter in parameters)
 			scope.Define(parameter);
 		
-		var signature = new FunctionSignature(types, returnType, false, modes);
+		var signature = new FunctionSignature(types, returnType, false, modes, takesVariadic);
 		var info = new FunctionInfo(outer.Mangle(symbol, signature), symbol, signature, scope, null, outer.File);
 		_signatures.AddLambda(info);
 		Journal(() => _signatures.RemoveLambda(info));
@@ -4689,7 +4699,8 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	{
 		var signature = function.Signature;
 		return _typePool.GetFunctionType(function.Symbol.IsExternal, signature.ParameterTypes,
-			signature.ParameterTypes.Select((_, i) => signature.GetMode(i)), signature.ReturnType);
+			signature.ParameterTypes.Select((_, i) => signature.GetMode(i)), signature.ReturnType, false,
+			signature.IsVariadic, signature.HasVariadicParameter);
 	}
 	
 	private IResolvedExpressionNode MaterializeFunction(ResolvedFunctionGroupExpressionNode node, TypeSymbol target)
@@ -4715,10 +4726,6 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			return Error(node.Syntax, ReportInferenceFailure(new() { Missing = open }, group.FunctionName,
 				node.Syntax.SourceLocation), NativeSymbols.Invalid);
 		
-		if (function.Signature.IsVariadic || function.Signature.HasVariadicParameter)
-			return Error(node.Syntax, $"Variadic function '{group.FunctionName}' can't be used as a value",
-				NativeSymbols.Invalid);
-		
 		if (function.Symbol.Syntax is FunctionNode { When: not null })
 			return Error(node.Syntax, $"'when' function '{group.FunctionName}' can't be used as a value",
 				NativeSymbols.Invalid);
@@ -4736,8 +4743,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		{
 			var signature = function.Signature;
 			var open = GetOpenTypeParameters(function);
-			if (open.IsEmpty || signature.IsVariadic || signature.HasVariadicParameter ||
-			    signature.ParameterTypes.Length != type.ParameterTypes.Length)
+			if (open.IsEmpty || signature.ParameterTypes.Length != type.ParameterTypes.Length)
 				continue;
 			
 			var inputs = signature.ParameterTypes
@@ -4763,8 +4769,6 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		var group = node.Group;
 		var message = group.Functions switch
 		{
-			[{ Signature.IsVariadic: true } or { Signature.HasVariadicParameter: true }] =>
-				$"Variadic function '{group.FunctionName}' can't be used as a value",
 			[_] => $"Cannot convert type '{group.Name}' to '{target.Name}'",
 			_ => $"No overload of '{group.FunctionName}' matches '{target.Name}'"
 		};
@@ -7398,11 +7402,17 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			Form is null ? index : Math.Min(index, Info.Signature.ParameterTypes.Length - 1);
 	}
 	
-	private sealed class FunctionTypeCallable(FunctionType type) : ICallable
+	private sealed class FunctionTypeCallable(FunctionType type, CallForm? form = null) : ICallable
 	{
-		public ImmutableArray<TypeSymbol> ParameterTypes => type.ParameterTypes;
-		public TypeSymbol ReturnType => type.ReturnType;
-		public ParameterMode GetMode(int index) => type.ParameterModes[index];
+		public FunctionType Type { get; } = type;
+		public CallForm? Form { get; } = form;
+		public ImmutableArray<TypeSymbol> ParameterTypes { get; } = Expand(type.ParameterTypes, form);
+		public TypeSymbol ReturnType => Type.ReturnType;
+		public bool IsVariadic => Type.IsVariadic;
+		public bool HasVariadicParameter => Type.HasVariadicParameter;
+		
+		public ParameterMode GetMode(int index) =>
+			Type.ParameterModes[Form is null ? index : Math.Min(index, Type.ParameterModes.Length - 1)];
 	}
 	
 	private sealed class ConversionCallable(FunctionInfo info, TypeSymbol target) : ICallable

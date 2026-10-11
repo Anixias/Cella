@@ -3,92 +3,87 @@
 
 Error at line 23, column 10
 22 │ {
-23 │     var b = printf
-                 ╘════╛ Variadic function 'printf' can't be used as a value
+23 │     var c = over
+                 ╘══╛ Reference to 'over' is ambiguous
 
-Error at line 24, column 10
-23 │ var b = printf
-24 │ var c = over
-             ╘══╛ Reference to 'over' is ambiguous
+Error at line 25, column 10
+24 │ var f = twice
+25 │ var d = f(1, 2)
+             ^ 'ext fun[i32 -> i32]' doesn't accept these arguments
 
 Error at line 26, column 10
-25 │ var f = twice
-26 │ var d = f(1, 2)
+25 │ var d = f(1, 2)
+26 │ var e = f(true)
              ^ 'ext fun[i32 -> i32]' doesn't accept these arguments
 
-Error at line 27, column 10
-26 │ var d = f(1, 2)
-27 │ var e = f(true)
-             ^ 'ext fun[i32 -> i32]' doesn't accept these arguments
-
-Error at line 29, column 10
-28 │ var n = 5
-29 │ var g = n(1)
+Error at line 28, column 10
+27 │ var n = 5
+28 │ var g = n(1)
              ^ Cannot call a value of type 'i32'
 
-Error at line 30, column 31
-29 │ var g = n(1)
-30 │ var h: ext fun[i32 -> i64] = twice
+Error at line 29, column 31
+28 │ var g = n(1)
+29 │ var h: ext fun[i32 -> i64] = twice
                                   ╘═══╛ Cannot convert type 'ext fun[i32 -> i32]' to 'ext fun[i32 -> i64]'
 
-Error at line 31, column 27
-30 │ var h: ext fun[i32 -> i64] = twice
-31 │ var k: fun[i32 -> i64] = over
+Error at line 30, column 27
+29 │ var h: ext fun[i32 -> i64] = twice
+30 │ var k: fun[i32 -> i64] = over
                               ╘══╛ No overload of 'over' matches 'fun[i32 -> i64]'
 
-Error at line 32, column 15
-31 │ var k: fun[i32 -> i64] = over
-32 │ var x: i32 = helper
+Error at line 31, column 15
+30 │ var k: fun[i32 -> i64] = over
+31 │ var x: i32 = helper
                   ╘════╛ Cannot convert type 'fun[i32 -> i32]' to 'i32'
 
-Error at line 34, column 36
-33 │ var closure = helper
-34 │ var native: ext fun[i32 -> i32] = closure
+Error at line 33, column 36
+32 │ var closure = helper
+33 │ var native: ext fun[i32 -> i32] = closure
                                        ╘═════╛ Cannot convert type 'fun[i32 -> i32]' to 'ext fun[i32 -> i32]'
 
-Error at line 35, column 13
-34 │ var native: ext fun[i32 -> i32] = closure
-35 │ var both = apply(over, 1)
+Error at line 34, column 13
+33 │ var native: ext fun[i32 -> i32] = closure
+34 │ var both = apply(over, 1)
                 ╘═══╛ Call to 'apply' is ambiguous
 
-Error at line 37, column 10
-36 │ var handler = Handler(helper, 2)
-37 │ var s = handler.scale(5)
+Error at line 36, column 10
+35 │ var handler = Handler(helper, 2)
+36 │ var s = handler.scale(5)
              ╘═══════════╛ Cannot call a value of type 'i32'
 
-Error at line 38, column 17
-37 │ var s = handler.scale(5)
-38 │ printf("%d\n", helper)
+Error at line 37, column 17
+36 │ var s = handler.scale(5)
+37 │ printf("%d\n", helper)
                     ╘════╛ Cannot pass 'fun[i32 -> i32]' values to variadic functions
 
-Error at line 39, column 30
-38 │ printf("%d\n", helper)
-39 │ var none: fun[i32 -> i32] = null
+Error at line 38, column 30
+37 │ printf("%d\n", helper)
+38 │ var none: fun[i32 -> i32] = null
                                  ╘══╛ Cannot convert type 'null' to 'fun[i32 -> i32]'
 
-Error at line 40, column 37
-39 │ var none: fun[i32 -> i32] = null
-40 │ var missing: ext fun[i32 -> i32] = null
+Error at line 39, column 37
+38 │ var none: fun[i32 -> i32] = null
+39 │ var missing: ext fun[i32 -> i32] = null
                                         ╘══╛ Cannot convert type 'null' to 'ext fun[i32 -> i32]'
 
-Error at line 41, column 12
-40 │ var missing: ext fun[i32 -> i32] = null
-41 │ var raw = ptr(helper)
+Error at line 40, column 12
+39 │ var missing: ext fun[i32 -> i32] = null
+40 │ var raw = ptr(helper)
                ╘═════════╛ No constructor for 'ptr' accepts argument of type 'fun[i32 -> i32]'
 
-Error at line 42, column 14
-41 │ var raw = ptr(helper)
-42 │ var boxed = ptr(closure)
+Error at line 41, column 14
+40 │ var raw = ptr(helper)
+41 │ var boxed = ptr(closure)
                  ╘══════════╛ No constructor for 'ptr' accepts argument of type 'fun[i32 -> i32]'
 
-Error at line 43, column 22
-42 │ var boxed = ptr(closure)
-43 │ var implicit: ptr = twice
+Error at line 42, column 22
+41 │ var boxed = ptr(closure)
+42 │ var implicit: ptr = twice
                          ╘═══╛ Cannot convert type 'ext fun[i32 -> i32]' to 'ptr'
 
-Error at line 44, column 34
-43 │ var implicit: ptr = twice
-44 │ var back: ext fun[i32 -> i32] = ptr(twice)
+Error at line 43, column 34
+42 │ var implicit: ptr = twice
+43 │ var back: ext fun[i32 -> i32] = ptr(twice)
                                      ╘════════╛ Cannot convert type 'ptr' to 'ext fun[i32 -> i32]'
 
 [compilation failed]

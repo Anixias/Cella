@@ -1,0 +1,30 @@
+
+====== variadic_function_types.ce ======
+
+Error at line 15, column 36
+14 │ 
+15 │ typed: fun(callback: ext fun[cstr, ...view[i32]]) {}
+                                        ╘══════════╛ Cannot take typed variadic parameters in 'ext' functions
+                                                   | Did you mean '...'?
+
+Error at line 16, column 30
+15 │ typed: fun(callback: ext fun[cstr, ...view[i32]]) {}
+16 │ alone: fun(callback: ext fun[...view[i32]]) {}
+                                  ╘══════════╛ Cannot take typed variadic parameters in 'ext' functions
+
+Error at line 17, column 40
+16 │ alone: fun(callback: ext fun[...view[i32]]) {}
+17 │ after: fun(callback: fun[...view[i32], i32]) {}
+                                            ╘═╛ Cannot take parameters after variadic parameters
+
+Error at line 18, column 27
+17 │ after: fun(callback: fun[...view[i32], i32]) {}
+18 │ writes: fun(callback: fun[mut ...view[i32]]) {}
+                               ╘═╛ Cannot take 'mut' variadic parameters
+
+Error at line 19, column 29
+18 │ writes: fun(callback: fun[mut ...view[i32]]) {}
+19 │ plain: fun(callback: fun[...i32]) {}
+                                 ╘═╛ 'i32' doesn't meet 'new(ptr[T], usize)'
+
+[compilation failed]

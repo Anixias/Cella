@@ -1,0 +1,31 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+view[T]: ref rec
+{
+	data: pvt ptr[T]
+	length: pvt set usize
+
+	new: op(data: ptr[T], length: usize)
+	{
+		self.data = data
+		self.length = length
+	}
+}
+
+sum: fun(...values: view[i32]) -> i32 = 0
+plain: fun(values: view[i32]) -> i32 = 0
+
+main: fun -> i32
+{
+	val packed: fun[view[i32] -> i32] = sum
+	val unpacked: fun[...view[i32] -> i32] = plain
+	val fixed: ext fun[cstr -> i32] = printf
+	val cella: fun[cstr, ...view[i32] -> i32] = printf
+	val lambda: fun[...view[i32] -> i32] = fun(values: i32) = values
+	ret 0
+}

@@ -733,11 +733,14 @@ public sealed class TypePool
 	}
 	
 	public FunctionType GetFunctionType(bool isExternal, IEnumerable<TypeSymbol> parameterTypes,
-		IEnumerable<ParameterMode> parameterModes, TypeSymbol returnType, bool isRef = false)
+		IEnumerable<ParameterMode> parameterModes, TypeSymbol returnType, bool isRef = false, bool isVariadic = false,
+		bool hasVariadicParameter = false)
 	{
 		var parameters = parameterTypes.ToImmutableArray();
 		var modes = parameterModes.ToImmutableArray();
 		var existing = _functionTypes.Find(type => type.IsExternal == isExternal && type.IsRef == isRef &&
+		                                           type.IsVariadic == isVariadic &&
+		                                           type.HasVariadicParameter == hasVariadicParameter &&
 		                                           type.ReturnType == returnType &&
 		                                           type.ParameterTypes.SequenceEqual(parameters) &&
 		                                           type.ParameterModes.SequenceEqual(modes));
@@ -745,7 +748,8 @@ public sealed class TypePool
 		if (existing is not null)
 			return existing;
 		
-		var functionType = new FunctionType(isExternal, isRef, parameters, modes, returnType);
+		var functionType = new FunctionType(isExternal, isRef, parameters, modes, returnType, isVariadic,
+			hasVariadicParameter);
 		_functionTypes.Add(functionType);
 		var size = isExternal ? StorageSize.Ptr : (ISize)StorageSize.Sum(StorageSize.Ptr, StorageSize.Ptr);
 		SizeTable.Register(functionType, size);
@@ -754,7 +758,9 @@ public sealed class TypePool
 			ConversionTable.Add(new FreeConversion(functionType, NativeSymbols.VoidPtr, ConversionKind.Explicit));
 		
 		if (isRef)
-			ConversionTable.Add(new FreeConversion(GetFunctionType(false, parameters, modes, returnType), functionType,
+			ConversionTable.Add(new FreeConversion(
+				GetFunctionType(false, parameters, modes, returnType, false, isVariadic, hasVariadicParameter),
+				functionType,
 				ConversionKind.Implicit));
 		
 		return functionType;
@@ -764,7 +770,7 @@ public sealed class TypePool
 	{
 		(ParameterMode.Mut, not InvalidType) => GetPointerType(type),
 		(ParameterMode.ReadOnly, FunctionType { IsExternal: false, IsRef: false } function) =>
-			GetFunctionType(false, function.ParameterTypes, function.ParameterModes, function.ReturnType, true),
+			GetRefFunctionType(function),
 		_ => type
 	};
 	
@@ -1457,6 +1463,8 @@ public sealed class TypePool
 			(ArrayType a, ArrayType b) => TryUnify(GetLengthArgument(a), GetLengthArgument(b), variables, bindings) &&
 			                              TryUnify(a.ElementType, b.ElementType, variables, bindings),
 			(FunctionType a, FunctionType b) => a.IsExternal == b.IsExternal && a.IsRef == b.IsRef &&
+			                                    a.IsVariadic == b.IsVariadic &&
+			                                    a.HasVariadicParameter == b.HasVariadicParameter &&
 			                                    a.ParameterModes.SequenceEqual(b.ParameterModes) &&
 			                                    TryUnify([..a.ParameterTypes, a.ReturnType],
 				                                    [..b.ParameterTypes, b.ReturnType], variables, bindings),
@@ -1469,16 +1477,19 @@ public sealed class TypePool
 	}
 	
 	public FunctionType GetPlainFunctionType(FunctionType function) =>
-		GetFunctionType(function.IsExternal, function.ParameterTypes, function.ParameterModes, function.ReturnType);
+		GetFunctionType(function.IsExternal, function.ParameterTypes, function.ParameterModes, function.ReturnType,
+			false, function.IsVariadic, function.HasVariadicParameter);
 	
 	public FunctionType GetRefFunctionType(FunctionType function) =>
-		GetFunctionType(false, function.ParameterTypes, function.ParameterModes, function.ReturnType, true);
+		GetFunctionType(false, function.ParameterTypes, function.ParameterModes, function.ReturnType, true,
+			function.IsVariadic, function.HasVariadicParameter);
 	
 	private FunctionType SubstituteFunctionType(FunctionType function,
 		IReadOnlyDictionary<TypeParameterSymbol, TypeSymbol> map)
 	{
 		var (types, modes) = SubstituteParameters(function.ParameterTypes, function.ParameterModes, map);
-		return GetFunctionType(function.IsExternal, types, modes, Substitute(function.ReturnType, map), function.IsRef);
+		return GetFunctionType(function.IsExternal, types, modes, Substitute(function.ReturnType, map), function.IsRef,
+			function.IsVariadic, function.HasVariadicParameter);
 	}
 	
 	private (TypeSymbol[] Types, ParameterMode[] Modes) SubstituteParameters(ImmutableArray<TypeSymbol> types,

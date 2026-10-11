@@ -20,7 +20,6 @@ apply: fun(f: fun[f64 -> f64], x: i32) -> i32 = x
 
 main: fun -> i32
 {
-	var b = printf
 	var c = over
 	var f = twice
 	var d = f(1, 2)

@@ -1683,8 +1683,8 @@ public sealed unsafe class CodeGenerator : IDisposable
 		}
 		
 		var signature = _cAbi.Classify(functionType.ParameterTypes.Select(MapTypeSymbol), returnType);
-		return EmitCCall(signature, signature.CreateFunctionType(false), target, functionType.ParameterTypes,
-			functionType.ReturnType, args, builder);
+		return EmitCCall(signature, signature.CreateFunctionType(functionType.IsVariadic), target,
+			functionType.ParameterTypes, functionType.ReturnType, args, builder);
 	}
 	
 	private LLVMValueRef EmitIndirectArgument(Value argument, FunctionType declared, FunctionType actual, int index,

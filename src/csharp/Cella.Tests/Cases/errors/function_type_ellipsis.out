@@ -1,0 +1,9 @@
+
+====== function_type_ellipsis.ce ======
+
+Error at line 3, column 35
+2 │ 
+3 │ takes: fun(callback: fun[cstr, ...]) {}
+                                      ^ Unexpected token
+
+[compilation failed]

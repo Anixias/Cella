@@ -25,7 +25,6 @@ main: fun -> i32
 {
 	val v = view[i32](null, 0)
 	var n = 1
-	val f = all
 	all(1, ...v)
 	all(...v, 1)
 	all(...v, ...v)

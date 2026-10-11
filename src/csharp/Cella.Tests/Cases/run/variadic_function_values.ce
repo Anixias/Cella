@@ -1,0 +1,90 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+view[T]: ref rec
+{
+	data: pvt ptr[T]
+	length: pvt set usize
+
+	new: op(data: ptr[T], length: usize)
+	{
+		self.data = data
+		self.length = length
+	}
+
+	as[N: val usize]: op(values: array[T, N]) -> view[T] = view[T](@values, N)
+
+	[]: op(self, i: usize) -> imm[T] = imm self.data[i]
+}
+
+Arg: ref enum
+{
+	int(value: i32)
+	text(value: str)
+
+	as: op(value: i32) -> Arg = int(value)
+	as: op(value: str) -> Arg = text(value)
+}
+
+print: fun(template: str, ...args: view[Arg])
+{
+	printf("%.*s:", i32(template.byteLength), template.data)
+	for i in 0..args.length
+	{
+		match args[i]
+		{
+			int(value) => printf(" %d", value)
+			text(value) => printf(" %.*s", i32(value.byteLength), value.data)
+		}
+	}
+
+	printf("\n")
+}
+
+sum: fun(...values: view[i32]) -> i32
+{
+	var total = 0
+	for i in 0..values.length
+		total += values[i]
+
+	ret total
+}
+
+forward: fun(sink: fun[str, ...view[Arg]], template: str, ...args: view[Arg])
+{
+	sink(template, ...args)
+	sink("extra", 7)
+}
+
+apply[T: copy + noref]: fun(f: fun[...view[T] -> T], a: T, b: T) -> T = f(a, b)
+
+bound[F: fun[...view[i32] -> i32]]: fun(f: F) -> i32 = f(4, 5, 6)
+
+main: fun -> i32
+{
+	val out: ext fun[cstr, ... -> i32] = printf
+	out("%d %s %.1f\n", 5, "x", f32(1.5))
+	val natural = printf
+	natural("%d\n", 9)
+
+	val sink: fun[str, ...view[Arg]] = print
+	sink("one", 1, "two")
+	sink("none")
+	forward(print, "fw", 3, "four")
+
+	val total = sum
+	printf("%d %d %d %d\n", total(1, 2, 3), total(), total(...[4, 5]), apply(sum, 20, 22))
+
+	val lambda: fun[str, ...view[Arg]] = fun(template, args) = printf("lambda %zu\n", args.length)
+	lambda("x", 1, 2, 3)
+
+	var offset = 100
+	val counted: ref fun[...view[i32] -> i32] = fun(values) = i32(values.length) + offset
+	printf("%d %d %d\n", counted(1, 2), bound(sum), bound(fun(values) = i32(values.length) * 10))
+	printf("%d\n", bound(own fun(values) = i32(values.length) + offset))
+	ret 0
+}

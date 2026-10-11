@@ -21,4 +21,6 @@ public sealed class FunctionTypeNode
 	public ImmutableArray<Token?> ParameterModes { get; } = parameterModes.ToImmutableArray();
 	public ImmutableArray<ITypeNode> ParameterTypes { get; } = parameterTypes.ToImmutableArray();
 	public ITypeNode? ReturnType { get; } = returnType;
+	public ImmutableArray<Token?> Ellipses { get; init; } = [];
+	public Token? Variadic { get; init; }
 }

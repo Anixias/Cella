@@ -375,7 +375,8 @@ public sealed class FunctionGroupType(string functionName, IEnumerable<FunctionI
 	{
 		var signature = function.Signature;
 		var adapts = allowsStandIns && !type.IsExternal;
-		return !signature.IsVariadic && !signature.HasVariadicParameter &&
+		return signature.IsVariadic == type.IsVariadic &&
+		       signature.HasVariadicParameter == type.HasVariadicParameter &&
 		       signature.ParameterTypes.Length == type.ParameterTypes.Length &&
 		       (signature.ReturnType == type.ReturnType ||
 		        adapts && FunctionType.CanAdapt(signature.ReturnType, type.ReturnType)) &&
@@ -410,18 +411,26 @@ public sealed class FunctionType : TypeSymbol
 	public ImmutableArray<TypeSymbol> ParameterTypes { get; }
 	public ImmutableArray<ParameterMode> ParameterModes { get; }
 	public TypeSymbol ReturnType { get; }
+	public bool IsVariadic { get; }
+	public bool HasVariadicParameter { get; }
 	public string PlainName { get; }
 	
 	public FunctionType(bool isExternal, bool isRef, ImmutableArray<TypeSymbol> parameterTypes,
-		ImmutableArray<ParameterMode> parameterModes, TypeSymbol returnType)
-		: base(BuildName(isExternal, isRef, parameterTypes, parameterModes, returnType))
+		ImmutableArray<ParameterMode> parameterModes, TypeSymbol returnType, bool isVariadic = false,
+		bool hasVariadicParameter = false)
+		: base(BuildName(isExternal, isRef, parameterTypes, parameterModes, returnType, isVariadic,
+			hasVariadicParameter))
 	{
 		IsExternal = isExternal;
 		IsRef = isRef;
 		ParameterTypes = parameterTypes;
 		ParameterModes = parameterModes;
 		ReturnType = returnType;
-		PlainName = isRef ? BuildName(isExternal, false, parameterTypes, parameterModes, returnType) : Name;
+		IsVariadic = isVariadic;
+		HasVariadicParameter = hasVariadicParameter;
+		PlainName = isRef
+			? BuildName(isExternal, false, parameterTypes, parameterModes, returnType, isVariadic, hasVariadicParameter)
+			: Name;
 	}
 	
 	public TypeSymbol GetDeclaredType(int index) => ParameterModes[index].GetDeclaredType(ParameterTypes[index]);
@@ -435,15 +444,20 @@ public sealed class FunctionType : TypeSymbol
 		SignatureStandsIn(external, function);
 	
 	public static bool SignatureStandsIn(FunctionType source, FunctionType target) =>
+		source.IsVariadic == target.IsVariadic && source.HasVariadicParameter == target.HasVariadicParameter &&
 		source.ReturnType == target.ReturnType && source.ParameterTypes.Length == target.ParameterTypes.Length &&
 		Enumerable.Range(0, source.ParameterTypes.Length).All(i => source.ParameterModes[i]
 			.CanStandIn(source.ParameterTypes[i], target.ParameterModes[i], target.ParameterTypes[i]));
 	
 	private static string BuildName(bool isExternal, bool isRef, ImmutableArray<TypeSymbol> parameterTypes,
-		ImmutableArray<ParameterMode> parameterModes, TypeSymbol returnType)
+		ImmutableArray<ParameterMode> parameterModes, TypeSymbol returnType, bool isVariadic,
+		bool hasVariadicParameter)
 	{
 		var prefix = isExternal ? "ext fun" : isRef ? "ref fun" : "fun";
-		var parameters = string.Join(", ", parameterTypes.Select((type, i) => parameterModes[i].Describe(type)));
+		var last = hasVariadicParameter ? parameterTypes.Length - 1 : -1;
+		var parameters = string.Join(", ", parameterTypes
+			.Select((type, i) => (i == last ? "..." : "") + parameterModes[i].Describe(type))
+			.Concat(isVariadic ? ["..."] : []));
 		var signature = returnType == NativeSymbols.Void ? parameters
 			: parameters.Length == 0 ? $"-> {returnType.Name}"
 			: $"{parameters} -> {returnType.Name}";

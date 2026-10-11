@@ -1,54 +1,49 @@
 
 ====== variadic_calls.ce ======
 
-Error at line 28, column 10
+Error at line 28, column 9
 27 │ var n = 1
-28 │ val f = all
-             ╘═╛ Variadic function 'all' can't be used as a value
-
-Error at line 29, column 9
-28 │ val f = all
-29 │ all(1, ...v)
+28 │ all(1, ...v)
             ╘══╛ Cannot combine spread arguments with other variadic arguments
 
+Error at line 29, column 6
+28 │ all(1, ...v)
+29 │ all(...v, 1)
+         ╘══╛ Cannot combine spread arguments with other variadic arguments
+
 Error at line 30, column 6
-29 │ all(1, ...v)
-30 │ all(...v, 1)
+29 │ all(...v, 1)
+30 │ all(...v, ...v)
          ╘══╛ Cannot combine spread arguments with other variadic arguments
 
-Error at line 31, column 6
-30 │ all(...v, 1)
-31 │ all(...v, ...v)
-         ╘══╛ Cannot combine spread arguments with other variadic arguments
-
-Error at line 32, column 2
-31 │ all(...v, ...v)
-32 │ fixed(...v)
+Error at line 31, column 2
+30 │ all(...v, ...v)
+31 │ fixed(...v)
      ╘═══╛ No overload of 'fixed' accepts these arguments
 
-Error at line 33, column 9
-32 │ fixed(...v)
-33 │ strlen(...v)
+Error at line 32, column 9
+31 │ fixed(...v)
+32 │ strlen(...v)
             ╘══╛ Cannot spread arguments into calls without variadic parameters
 
-Error at line 34, column 20
-33 │ strlen(...v)
-34 │ val w = view[i32](...v)
+Error at line 33, column 20
+32 │ strlen(...v)
+33 │ val w = view[i32](...v)
                        ╘══╛ Cannot spread arguments into calls without variadic parameters
 
-Error at line 35, column 6
-34 │ val w = view[i32](...v)
-35 │ all(mut n)
+Error at line 34, column 6
+33 │ val w = view[i32](...v)
+34 │ all(mut n)
          ╘═╛ 'values' isn't a 'mut' parameter
 
-Error at line 36, column 2
-35 │ all(mut n)
-36 │ all(v)
+Error at line 35, column 2
+34 │ all(mut n)
+35 │ all(v)
      ╘═╛ No overload of 'all' accepts these arguments
 
-Error at line 37, column 2
-36 │ all(v)
-37 │ bytes(1, 300)
+Error at line 36, column 2
+35 │ all(v)
+36 │ bytes(1, 300)
      ╘═══╛ No overload of 'bytes' accepts these arguments
 
 [compilation failed]

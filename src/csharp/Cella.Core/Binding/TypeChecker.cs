@@ -943,7 +943,7 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool, 
 		for (var i = 0; i < node.Arguments.Length; i++)
 		{
 			VisitNode(node.Arguments[i]);
-			if (node.FunctionType.ParameterModes[i] == ParameterMode.Own)
+			if (i < node.FunctionType.ParameterModes.Length && node.FunctionType.ParameterModes[i] == ParameterMode.Own)
 				CheckConsumed(node.Arguments[i]);
 		}
 	}
