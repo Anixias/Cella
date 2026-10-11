@@ -598,8 +598,11 @@ public static class LoweredModulePrinter
 						.Append(v.Ordering.ToString().ToLowerInvariant()).Append('(');
 					
 					var first = true;
-					foreach (var operand in new[] { v.Pointer, v.Expected, v.Operand }.OfType<Value>())
+					foreach (var operand in new[] { v.Pointer, v.Expected, v.Operand })
 					{
+						if (operand is null)
+							continue;
+						
 						if (!first)
 							sb.Append(", ");
 						

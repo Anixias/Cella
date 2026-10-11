@@ -116,7 +116,7 @@ public sealed class DropElaborator(TypePool typePool, Action<InitState, MemoryEv
 		var dropsRest = typePool.NeedsDrop(array.ElementType) && own.HasFlag(PathState.Initialized);
 		var restGuard = dropsRest && own != PathState.Initialized ? And(guard, ReadFlag(path)) : guard;
 		var children = path.Children
-			.Select(static child => (Child: child, Index: (child.Projection as IndexProjection)?.Index))
+			.Select(static child => (child, (child.Projection as IndexProjection)?.Index))
 			.Where(static entry => entry.Index is not null)
 			.OrderByDescending(static entry => entry.Index!.Value);
 		

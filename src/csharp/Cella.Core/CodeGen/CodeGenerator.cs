@@ -158,7 +158,7 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 		return _foreignOwners[name];
 	}
 	
-	private LLVMErrorRef RunOptimizationPass(LLVMModuleRef module)
+	private string? RunOptimizationPass(LLVMModuleRef module)
 	{
 		using var passStr = new MarshaledString(_config.OptimizeMode switch
 		{
@@ -166,10 +166,21 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 			_ => "default<O0>"
 		});
 		
-		var errorHandle = LLVM.RunPasses((LLVMOpaqueModule*)module.Handle, passStr,
+		var error = LLVM.RunPasses((LLVMOpaqueModule*)module.Handle, passStr,
 			(LLVMOpaqueTargetMachine*)_targetMachine.Handle, (LLVMOpaquePassBuilderOptions*)_passBuilderOptions.Handle);
 		
-		return new LLVMErrorRef((nint)errorHandle);
+		if (error == null)
+			return null;
+		
+		var message = LLVM.GetErrorMessage(error);
+		try
+		{
+			return SpanExtensions.AsString(message);
+		}
+		finally
+		{
+			LLVM.DisposeErrorMessage(message);
+		}
 	}
 	
 	private void MapNativeSymbols()
@@ -282,7 +293,9 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 		if (!llvmModule.TryVerify(LLVMVerifierFailureAction.LLVMAbortProcessAction, out message))
 			return CodeGenResult.Failure with { ErrorMessage = message };
 		
-		RunOptimizationPass(llvmModule);
+		if (RunOptimizationPass(llvmModule) is { } passError)
+			return CodeGenResult.Failure with { ErrorMessage = passError };
+		
 		if (!llvmModule.TryVerify(LLVMVerifierFailureAction.LLVMAbortProcessAction, out message))
 			return CodeGenResult.Failure with { ErrorMessage = message };
 		
@@ -798,7 +811,7 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 			}
 			
 			foreach (var instruction in block.Instructions)
-				EmitInstruction(builder, instruction, blockMap);
+				EmitInstruction(builder, instruction);
 			
 			EmitTerminator(builder, block.Terminator, blockMap);
 		}
@@ -938,8 +951,7 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 		}
 	}
 	
-	private void EmitInstruction(LLVMBuilderRef builder, IInstruction instruction,
-		Dictionary<BasicBlock, LLVMBasicBlockRef> blockMap)
+	private void EmitInstruction(LLVMBuilderRef builder, IInstruction instruction)
 	{
 		SetLocation(builder, instruction.SourceLocation);
 		switch (instruction)
@@ -1294,7 +1306,7 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 	{
 		var ordering = MapOrdering(v.Ordering);
 		if (v.Pointer is not { } pointer)
-			return builder.BuildFence(ordering, false, "");
+			return builder.BuildFence(ordering, false);
 		
 		var valueType = ((PointerType)Substitute(pointer.Type)).BaseType;
 		var atomicType = GetAtomicType(valueType);

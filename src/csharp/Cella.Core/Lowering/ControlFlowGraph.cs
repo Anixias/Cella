@@ -107,19 +107,6 @@ public sealed class ControlFlowGraph : IReadOnlyList<BasicBlock>
 		}
 	}
 	
-	private void AddSuccessor(BasicBlock block, BasicBlock successor) =>
-		_successors.GetOrAdd(block).Add(successor);
-	
-	private void RemoveSuccessor(BasicBlock block, BasicBlock successor)
-	{
-		if (!_successors.TryGetValue(block, out var successors))
-			return;
-		
-		successors.Remove(successor);
-		if (successors.Count == 0)
-			_successors.Remove(block);
-	}
-	
 	private void AddPredecessor(BasicBlock block, BasicBlock predecessor) =>
 		_predecessors.GetOrAdd(block).Add(predecessor);
 	

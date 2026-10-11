@@ -1,7 +1,6 @@
 ﻿using System.Collections.Immutable;
 using System.Numerics;
 using Cella.Core.Binding.Constants;
-using Cella.Core.Binding.Conversions;
 using Cella.Core.Binding.Nodes;
 using Cella.Core.Binding.Operations;
 using Cella.Core.Collections;
@@ -45,7 +44,6 @@ public sealed class SignatureCollector
 	private readonly string? _entryPointName;
 	private readonly SymbolTable _symbolTable;
 	private readonly TypePool _typePool;
-	private readonly ImmutableArray<AssemblySymbol> _dependencies;
 	private readonly SignatureTable _dependencyTable;
 	private readonly SignatureTable.Builder _builder = new();
 	private readonly Dictionary<Symbol, Declaration> _declarations = [];
@@ -84,11 +82,11 @@ public sealed class SignatureCollector
 		_typePool = typePool;
 		_extSignatureTypes = new(typePool);
 		_pointerBitSize = pointerBitSize;
-		_dependencies = dependencies.ToImmutableArray();
-		_dependencyTable = SignatureTable.Combine(_dependencies.Select(static a => a.SignatureTable));
+		var dependencyList = dependencies.ToImmutableArray();
+		_dependencyTable = SignatureTable.Combine(dependencyList.Select(static a => a.SignatureTable));
 		Evaluator = new ConstantEvaluator(typePool, pointerBitSize, GetGlobalValue);
 		typePool.IntegerFits = Evaluator.Fits;
-		Modules = new ModuleIndex(symbolTable, _dependencies.Select(static a => a.SymbolTable));
+		Modules = new ModuleIndex(symbolTable, dependencyList.Select(static a => a.SymbolTable));
 	}
 	
 	public void Collect(IReadOnlyCollection<FileNode> files, IConstantResolver constantResolver)
@@ -905,7 +903,7 @@ public sealed class SignatureCollector
 			..functions[false].Select(static f => (f.Identifier, (FunctionNode?)f, MemberKind.Function))
 		]);
 		
-		ReportModeOperators(type, functions[true]);
+		ReportModeOperators(type, [..functions[true]]);
 		ReportOperators(type, functions[false]);
 	}
 	
@@ -1398,7 +1396,7 @@ public sealed class SignatureCollector
 		_typePool.GetBounds(block)
 			.Except(_typePool.GetBounds(declared).Select(bound => _typePool.SubstituteTrait(bound, map)))
 			.Any() ||
-		_typePool.GetParameterBounds(block).Cast<TypeSymbol>()
+		_typePool.GetParameterBounds(block)
 			.Except(_typePool.GetParameterBounds(declared).Select(bound => map[bound]))
 			.Any();
 	
@@ -1543,7 +1541,7 @@ public sealed class SignatureCollector
 		]);
 		
 		ReportConstructorConflicts(node.Members);
-		ReportModeOperators(record, functions[true]);
+		ReportModeOperators(record, [..functions[true]]);
 		ReportOperators(record, functions[false]);
 		_typePool.RegisterRecord(record);
 		_completedTypes.Add(record);
@@ -1625,7 +1623,7 @@ public sealed class SignatureCollector
 	private static bool IsModeOperator(FunctionNode node) =>
 		IsDereference(node) || IsIndexer(node) || IsLoopOperator(node) || IsConversion(node);
 	
-	private void ReportModeOperators(TypeSymbol type, IEnumerable<FunctionNode> operators)
+	private void ReportModeOperators(TypeSymbol type, IReadOnlyList<FunctionNode> operators)
 	{
 		ReportOperatorParameters(operators);
 		var kinds = operators.ToLookup(static o => o.Identifier.Type);
@@ -1929,8 +1927,9 @@ public sealed class SignatureCollector
 	
 	private void ReportOperators(TypeSymbol type, IEnumerable<FunctionNode> functions)
 	{
-		ReportOperatorParameters(functions.Where(static f => f.Identifier.Type != TokenType.Identifier));
-		foreach (var node in functions.Where(static f => f.Identifier.Type != TokenType.Identifier))
+		var operators = functions.Where(static f => f.Identifier.Type != TokenType.Identifier).ToList();
+		ReportOperatorParameters(operators);
+		foreach (var node in operators)
 		{
 			var signature = _builder.Functions[(FunctionSymbol)_symbolTable.DeclarationSymbols[node]].Signature;
 			if (FindOperatorError(type, node, signature) is var (location, message))
@@ -2107,7 +2106,7 @@ public sealed class SignatureCollector
 			..functions[false].Select(static f => (f.Identifier, (FunctionNode?)f, MemberKind.Function))
 		]);
 		
-		ReportModeOperators(enumType, functions[true]);
+		ReportModeOperators(enumType, [..functions[true]]);
 		ReportOperators(enumType, functions[false]);
 	}
 	

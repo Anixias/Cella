@@ -261,7 +261,7 @@ public sealed class BorrowChecker(TypePool typePool, DiagnosticList diagnostics)
 	{
 		foreach (var (temporary, holders) in _dying)
 		{
-			if (!state.FindHolders(temporary).Any(holders.Contains<VariableSymbol>))
+			if (!state.FindHolders(temporary).Any(holders.Contains))
 				continue;
 			
 			_reportedEnds.UnionWith(_temporaryEnds[temporary]);

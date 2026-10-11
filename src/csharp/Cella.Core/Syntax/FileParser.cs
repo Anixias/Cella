@@ -80,7 +80,7 @@ public sealed class FileParser
 	
 	public DiagnosticList Diagnostics { get; } = new();
 	
-	private bool _allowsMissingBodies;
+	private bool allowsMissingBodies;
 	
 	private void Report(SourceLocation location, string message,
 		DiagnosticSeverity severity = DiagnosticSeverity.Error) =>
@@ -236,7 +236,7 @@ public sealed class FileParser
 		
 		if (Match(ref index, TokenType.KeywordWhen))
 		{
-			if (!ParseWhen(ref index, (ref int i, Token open, bool isActive) =>
+			if (!ParseWhen(ref index, (ref i, open, isActive) =>
 				    ParseTopLevelBlock(ref i, open, block, isActive ? declarations : [])))
 				ResyncTopLevel(ref index, block is not null);
 			
@@ -861,7 +861,7 @@ public sealed class FileParser
 			
 			if (Match(ref index, TokenType.KeywordWhen))
 			{
-				if (!ParseWhen(ref index, (ref int i, Token open, bool isActive) =>
+				if (!ParseWhen(ref index, (ref i, open, isActive) =>
 					    ParseExternalBody(ref i, open, origin, block, isActive ? nodes : [])))
 					return false;
 				
@@ -1009,7 +1009,7 @@ public sealed class FileParser
 		}
 		
 		if (!Match(ref index, out var openBraceToken, TokenType.OpOpenBrace))
-			return _allowsMissingBodies
+			return allowsMissingBodies
 				? new(identifier, modifiers.Tokens, receiver, parameters, returnType, null, isExternal)
 				{
 					Visibility = modifiers.Visibility,
@@ -1273,10 +1273,10 @@ public sealed class FileParser
 		var members = new List<IDeclarationNode>();
 		if (Match(ref index, out var openBrace, TokenType.OpOpenBrace))
 		{
-			var outer = _allowsMissingBodies;
-			_allowsMissingBodies = true;
+			var outer = allowsMissingBodies;
+			allowsMissingBodies = true;
 			var parsed = ParseMembers(ref index, openBrace, null, members);
-			_allowsMissingBodies = outer;
+			allowsMissingBodies = outer;
 			if (!parsed)
 				return null;
 		}
@@ -1324,7 +1324,7 @@ public sealed class FileParser
 			
 			if (Match(ref index, TokenType.KeywordWhen))
 			{
-				if (!ParseWhen(ref index, (ref int i, Token open, bool isActive) =>
+				if (!ParseWhen(ref index, (ref i, open, isActive) =>
 					    ParseMembers(ref i, open, block, isActive ? members : [])))
 					return false;
 				
@@ -1416,7 +1416,7 @@ public sealed class FileParser
 			
 			if (Match(ref index, TokenType.KeywordWhen))
 			{
-				if (!ParseWhen(ref index, (ref int i, Token open, bool isActive) => isActive
+				if (!ParseWhen(ref index, (ref i, open, isActive) => isActive
 					    ? ParseEnumBody(ref i, open, block, matchedType, cases, members)
 					    : ParseEnumBody(ref i, open, block, matchedType, [], [])))
 					return false;
@@ -1781,7 +1781,7 @@ public sealed class FileParser
 			body = ParseExpressionBody(ref index, resultType is null);
 		else if (Match(ref index, out var openBrace, TokenType.OpOpenBrace))
 			body = ParseBlockStatement(ref index, openBrace);
-		else if (_allowsMissingBodies)
+		else if (allowsMissingBodies)
 			return new(keyword, modifiers, receiver, parameters, resultType, null, false) { Visibility = visibility };
 		else
 		{
@@ -1886,7 +1886,7 @@ public sealed class FileParser
 			return null;
 		
 		if (!Match(ref index, out var openBraceToken, TokenType.OpOpenBrace))
-			return _allowsMissingBodies
+			return allowsMissingBodies
 				? new ConstructorNode(newKeyword, modifiers.Tokens, parameters, null, newKeyword.SourceLocation)
 				{
 					Visibility = modifiers.Visibility
@@ -1912,7 +1912,8 @@ public sealed class FileParser
 		
 		while (Match(ref index, _memberContextualKeywords, _visibilityKeywords) ||
 		       Match(ref index, _memberContextualKeywords, TokenType.KeywordSet))
-			continue;
+		{
+		}
 		
 		if (!Match(ref index, _memberContextualKeywords, TokenType.KeywordOp) ||
 		    !Match(ref index, TokenType.OpOpenParen))
@@ -1992,7 +1993,7 @@ public sealed class FileParser
 			
 			if (Match(ref index, TokenType.KeywordWhen))
 			{
-				if (!ParseWhen(ref index, (ref int i, Token branch, bool isActive) =>
+				if (!ParseWhen(ref index, (ref i, branch, isActive) =>
 					    ParseStatements(ref i, branch, isActive ? statements : [], out _)))
 				{
 					ResyncSimple(ref index);
@@ -2017,7 +2018,7 @@ public sealed class FileParser
 	private BlockStatementNode? ParseWhenStatement(ref int index, Token whenToken)
 	{
 		var statements = new List<IStatementNode>();
-		return ParseWhen(ref index, (ref int i, Token open, bool isActive) =>
+		return ParseWhen(ref index, (ref i, open, isActive) =>
 			ParseStatements(ref i, open, isActive ? statements : [], out _))
 			? new(Span(whenToken, Tokens[index - 1]), [..statements])
 			: null;

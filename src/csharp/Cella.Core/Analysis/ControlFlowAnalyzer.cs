@@ -42,7 +42,7 @@ public sealed class ControlFlowAnalyzer(DiagnosticList diagnostics)
 		if (returnType == NativeSymbols.Void)
 			return true;
 		
-		if (GetMinimalPaths(function).All(static path => path.Type is not BlockPathType.Undefined))
+		if (GetMinimalPaths(function).All(static path => path is not BlockPathType.Undefined))
 			return true;
 		
 		diagnostics.Add(new(DiagnosticSeverity.Error, function.Info.Symbol.Definition, returnType is NeverType
@@ -60,14 +60,10 @@ public sealed class ControlFlowAnalyzer(DiagnosticList diagnostics)
 		Loops
 	}
 	
-	private readonly record struct BlockPath(BlockPathType Type, OrderedSet<BasicBlock> Path);
-	
 	/// <summary>
-	/// Returns all minimal paths through a function body. Minimal means that the paths returned will not loop. If a
-	/// returned path has type <see cref="BlockPathType.Loops"/>, it ends at the block that would have then
-	/// looped back to a previously-visited block. It will only contain distinct blocks.
+	/// Returns how each minimal path through a function body ends. Minimal means that the paths will not loop.
 	/// </summary>
-	private static IEnumerable<BlockPath> GetMinimalPaths(LoweredFunction function)
+	private static IEnumerable<BlockPathType> GetMinimalPaths(LoweredFunction function)
 	{
 		if (function.Blocks.Count == 0)
 			yield break;
@@ -78,7 +74,7 @@ public sealed class ControlFlowAnalyzer(DiagnosticList diagnostics)
 			yield return path;
 	}
 	
-	private static IEnumerable<BlockPath> Explore(BasicBlock current, OrderedSet<BasicBlock> path)
+	private static IEnumerable<BlockPathType> Explore(BasicBlock current, OrderedSet<BasicBlock> path)
 	{
 		while (true)
 		{
@@ -87,7 +83,7 @@ public sealed class ControlFlowAnalyzer(DiagnosticList diagnostics)
 				// Loop
 				if (!path.Add(target))
 				{
-					yield return new(BlockPathType.Loops, path);
+					yield return BlockPathType.Loops;
 					yield break;
 				}
 				
@@ -98,15 +94,15 @@ public sealed class ControlFlowAnalyzer(DiagnosticList diagnostics)
 			switch (current.Terminator)
 			{
 				case UndefinedTerminator:
-					yield return new(BlockPathType.Undefined, path);
+					yield return BlockPathType.Undefined;
 					yield break;
 				
 				case ReturnTerminator:
-					yield return new(BlockPathType.Returns, path);
+					yield return BlockPathType.Returns;
 					yield break;
 				
 				case UnreachableTerminator:
-					yield return new(BlockPathType.Stops, path);
+					yield return BlockPathType.Stops;
 					yield break;
 				
 				case ConditionalBranchTerminator term:
@@ -118,7 +114,7 @@ public sealed class ControlFlowAnalyzer(DiagnosticList diagnostics)
 					// Infinite loop
 					if (trueLoops && falseLoops)
 					{
-						yield return new(BlockPathType.Loops, path);
+						yield return BlockPathType.Loops;
 						yield break;
 					}
 					

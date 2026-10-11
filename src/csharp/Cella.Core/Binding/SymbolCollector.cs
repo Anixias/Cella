@@ -248,10 +248,6 @@ public sealed class SymbolCollector : IDeclarationNodeVisitor<Symbol>
 				case PropertySymbol s:
 					properties.Add(s);
 					break;
-				
-				default:
-					// TODO Diagnostics?
-					break;
 			}
 		}
 		

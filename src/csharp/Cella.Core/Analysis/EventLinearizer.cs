@@ -201,7 +201,7 @@ public sealed class EventLinearizer
 					continue;
 				
 				case AtomicValue v:
-					AddValues(new[] { v.Pointer, v.Expected, v.Operand }.OfType<Value>());
+					AddValues([v.Pointer, v.Expected, v.Operand]);
 					break;
 			}
 			
@@ -209,10 +209,13 @@ public sealed class EventLinearizer
 		}
 	}
 	
-	private void AddValues(IEnumerable<Value> values)
+	private void AddValues(IEnumerable<Value?> values)
 	{
 		foreach (var value in values)
-			AddValue(value);
+		{
+			if (value is not null)
+				AddValue(value);
+		}
 	}
 	
 	private void AddAccess(Value place, AccessKind kind, bool isImplicit = false)

@@ -1,4 +1,5 @@
-﻿using System.Globalization;
+﻿using System.Diagnostics.CodeAnalysis;
+using System.Globalization;
 using System.Numerics;
 using Cella.Core.Binding.Conversions;
 using Cella.Core.Binding.Nodes;
@@ -356,6 +357,8 @@ public sealed class ConstantEvaluator
 		return Wrap(((pattern << left) | (pattern >> right)) & mask, type);
 	}
 	
+	[SuppressMessage("ReSharper", "CompareOfFloatsByEqualityOperator",
+		Justification = "Folded float comparisons must match the exact IEEE comparison the program makes at run time")]
 	private static Constant? ApplyFloat(BinaryOperation operation, double left, double right, TypeSymbol resultType) =>
 		operation switch
 		{
