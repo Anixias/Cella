@@ -379,7 +379,7 @@ public sealed class SymbolCollector : IDeclarationNodeVisitor<Symbol>
 		_typeVisibilities.Pop();
 		_typeParameters.Pop();
 		
-		var impl = new ImplSymbol(node, typeParameters, functions, properties);
+		var impl = new ImplSymbol(node, typeParameters, functions, properties) { TraitNames = traits };
 		foreach (var function in GetMemberFunctions(functions, properties))
 			function.Impl = impl;
 		

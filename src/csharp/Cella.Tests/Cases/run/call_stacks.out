@@ -3,7 +3,7 @@ test.Pair[i32].visit main.ce:108
 test.walk main.ce:117
 test.walk main.ce:120
 test.main.lambda1 main.ce:125
-test.main.lambda1 main.ce:125
+test.main.lambda1 (adapter) main.ce:125
 test.main main.ce:127
 main main.ce:123
 3

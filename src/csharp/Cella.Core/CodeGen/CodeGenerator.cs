@@ -360,11 +360,13 @@ public sealed unsafe class CodeGenerator : IDisposable
 			? []
 			: TypePool.CreateMap(function.Symbol.TypeParameters, function.TypeArguments);
 		
-		return string.Join('.', function.QualifiedName.Select(part => part.TypeParameters.IsEmpty
+		return string.Join('.', function.QualifiedName.Select(part => part.Arguments.IsEmpty
 			? part.Name
-			: $"{part.Name}[{string.Join(", ", part.TypeParameters.Select(parameter =>
-				Substitute(map.GetValueOrDefault(parameter, parameter)).Name))}]"));
+			: $"{part.Name}[{string.Join(", ", part.Arguments.Select(argument =>
+				Substitute(_typePool.Substitute(argument, map)).Name))}]"));
 	}
+	
+	private string GetAdapterName(FunctionInfo function) => $"{GetDisplayName(function)} (adapter)";
 	
 	private void BuildInstantiations()
 	{
@@ -3219,7 +3221,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 			CreateInternalFunctionType(returnType, [OpaquePointer], parameterTypes));
 		
 		thunk.Linkage = LLVMLinkage.LLVMInternalLinkage;
-		using var builder = CreateGeneratedBuilder(thunk, GetDisplayName(function), function.Symbol.Definition);
+		using var builder = CreateGeneratedBuilder(thunk, GetAdapterName(function), function.Symbol.Definition);
 		var first = IsLarge(returnType) ? 2u : 1u;
 		var args = parameterTypes
 			.Select((_, i) => PassAsDeclared(function, i, AdaptFunction(type.ParameterTypes[i],
@@ -3271,7 +3273,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 		if (isIndirect)
 			AddSretAttribute(thunk, signature.Return.Type, false);
 		
-		using var builder = CreateGeneratedBuilder(thunk, GetDisplayName(function), function.Symbol.Definition);
+		using var builder = CreateGeneratedBuilder(thunk, GetAdapterName(function), function.Symbol.Definition);
 		var first = isIndirect ? 1u : 0u;
 		var args = function.Signature.ParameterTypes
 			.Select((type, i) => ReceiveCArgument(signature.Parameters[i], type, thunk.GetParam(first + (uint)i),
@@ -3357,7 +3359,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 		var value = thunk.FunctionValue;
 		value.Linkage = LLVMLinkage.LLVMInternalLinkage;
 		
-		using var builder = CreateGeneratedBuilder(value, GetDisplayName(function), function.Symbol.Definition);
+		using var builder = CreateGeneratedBuilder(value, GetAdapterName(function), function.Symbol.Definition);
 		var first = thunk.ResultParameter is null ? 0u : 1u;
 		var parameters = function.Signature.ParameterTypes.Select((_, i) => value.GetParam((uint)i + first)).ToList();
 		var result = witness switch

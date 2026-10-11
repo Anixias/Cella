@@ -36,11 +36,13 @@ public readonly struct ResolutionContext
 		..GetModuleParts().Select(static part => new NamePart(part, [])),
 		..GetContainers().Select(static container => container switch
 		{
-			FunctionSymbol f => new NamePart(f.DeclaredName, f.DeclaredTypeParameters),
-			NamedTypeSymbol t => new NamePart(t.Name, t.TypeParameters),
+			FunctionSymbol f => new NamePart(f.DeclaredName, [..f.DeclaredTypeParameters]),
+			NamedTypeSymbol t => new NamePart(t.Definition.Name, t.TypeArguments),
+			TraitSymbol t => new NamePart(t.Name, [..t.TypeParameters]),
+			ImplSymbol i => new NamePart(i.TraitNames, []),
 			_ => new NamePart(container.Name, [])
 		}),
-		new(function.DeclaredName, function.DeclaredTypeParameters)
+		new(function.DeclaredName, [..function.DeclaredTypeParameters])
 	];
 	
 	private List<string> GetQualifiers()
@@ -59,8 +61,11 @@ public readonly struct ResolutionContext
 		for (var f = ContainingFunction; f is not null; f = f.Value.Symbol.ContainingFunction)
 			result.Add(f.Value.Symbol);
 		
+		if (ImplBlock is { TraitNames: not "" } impl)
+			result.Add(impl);
+		
 		for (var t = ContainingType; t is not null; t = t.ContainingType)
-			result.Add(t);
+			result.Add(Trait is { } trait && t == trait.Self ? trait : t);
 		
 		result.Reverse();
 		return result;

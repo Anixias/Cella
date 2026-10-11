@@ -826,6 +826,7 @@ public sealed class ImplSymbol
 ) : Symbol("impl")
 {
 	public ImplNode Node { get; } = node;
+	public string TraitNames { get; init; } = "";
 	public ImmutableArray<TypeParameterSymbol> TypeParameters { get; } = typeParameters;
 	public ImmutableArray<MethodSymbol> Functions { get; } = functions.ToImmutableArray();
 	public ImmutableArray<PropertySymbol> Properties { get; } = properties.ToImmutableArray();

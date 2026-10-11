@@ -21,7 +21,7 @@ public readonly record struct FunctionInfo
 	public ImmutableArray<NamePart> QualifiedName { get; init; } = [];
 }
 
-public readonly record struct NamePart(string Name, ImmutableArray<TypeParameterSymbol> TypeParameters);
+public readonly record struct NamePart(string Name, ImmutableArray<TypeSymbol> Arguments);
 public readonly record struct VariableInfo(VariableSymbol Symbol, TypeSymbol Type);
 
 public readonly record struct GlobalInfo

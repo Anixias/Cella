@@ -27,8 +27,17 @@ public static class Mangling
 	public static string Mangle(Symbol symbol, ModuleIndex? modules, params IEnumerable<string> qualifierParts) =>
 		new StringBuilder().Append('?').AppendJoin('.', qualifierParts.Append(MangleName(symbol, modules))).ToString();
 	
-	public static string MangleName(Symbol symbol, ModuleIndex? modules) => EscapeExportSyntax(
-		modules?.FindPrivateFile(symbol) is { } file ? $"{symbol.Name}@{file}" : symbol.Name);
+	public static string MangleName(Symbol symbol, ModuleIndex? modules)
+	{
+		var name = symbol switch
+		{
+			FunctionSymbol function => function.DeclaredName,
+			ImplSymbol impl => impl.TraitNames,
+			_ => symbol.Name
+		};
+		
+		return EscapeExportSyntax(modules?.FindPrivateFile(symbol) is { } file ? $"{name}@{file}" : name);
+	}
 	
 	private static string EscapeExportSyntax(string name) => name.Replace('=', '$').Replace(',', ';');
 	
