@@ -1,0 +1,340 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+	strrchr: fun(text: ptr, character: i32) -> ptr
+}
+
+ext("kernel32")
+{
+	GetCurrentProcess: fun -> ptr
+	GetModuleFileNameA: fun(module: ptr, path: ptr, size: u32) -> u32
+	RtlCaptureStackBackTrace: fun(skip: u32, count: u32, frames: ptr, hash: ptr) -> u16
+	LocalFree: fun(memory: ptr) -> ptr
+}
+
+ext("dbghelp")
+{
+	SymInitialize: fun(process: ptr, path: ptr, invade: i32) -> i32
+	SymSetContext: fun(process: ptr, frame: ptr, context: ptr) -> i32
+	SymEnumSymbols: fun(process: ptr, base: u64, mask: cstr, callback: ext fun[ptr, u32, ptr -> i32], context: ptr)
+		-> i32
+	SymGetTypeInfo: fun(process: ptr, base: u64, id: u32, kind: i32, info: ptr) -> i32
+}
+
+Path: rec
+{
+	text: array[u8, 520]
+}
+
+StackFrame: rec
+{
+	instruction: u64
+	rest: array[u64, 15]
+}
+
+Children: rec
+{
+	count: u32
+	start: u32
+	ids: array[u32, 32]
+}
+
+SymbolInfo: rec
+{
+	sizeOfStruct: u32
+	typeIndex: u32
+	reserved: array[u64, 2]
+	index: u32
+	size: u32
+	modBase: u64
+	flags: u32
+	value: u64
+	address: u64
+	register: u32
+	scope: u32
+	tag: u32
+	nameLength: u32
+	maxNameLength: u32
+	name: array[u8, 256]
+}
+
+process: var ptr = null
+moduleBase: var u64 = 0
+
+typeInfo: fun(id: u32, kind: i32) -> u64
+{
+	var result: u64 = 0
+	if SymGetTypeInfo(process, moduleBase, id, kind, @result) == 0
+	{
+		ret 0xffffffff
+	}
+
+	ret result
+}
+
+printName: fun(id: u32) -> bool
+{
+	var name: ptr = null
+	if SymGetTypeInfo(process, moduleBase, id, 1, @name) == 0
+	{
+		ret false
+	}
+
+	printf("%ls", name)
+	LocalFree(name)
+	ret true
+}
+
+printBase: fun(kind: u64, length: u64)
+{
+	if kind == 6
+	{
+		printf("i%llu", length * 8)
+	}
+	else if kind == 7
+	{
+		printf("u%llu", length * 8)
+	}
+	else if kind == 8
+	{
+		printf("f%llu", length * 8)
+	}
+	else if kind == 10
+	{
+		printf("bool")
+	}
+	else if kind == 33
+	{
+		printf("char")
+	}
+	else if kind == 1
+	{
+		printf("void")
+	}
+	else
+	{
+		printf("base%llu:%llu", kind, length)
+	}
+}
+
+printType: fun(id: u32, depth: i32)
+{
+	val tag = typeInfo(id, 0)
+	if tag == 14
+	{
+		if typeInfo(id, 31) != 0
+		{
+			printf("ref ")
+		}
+		else
+		{
+			printf("ptr ")
+		}
+
+		printType(u32(typeInfo(id, 3)), depth)
+		ret
+	}
+
+	if tag == 15
+	{
+		printf("array[")
+		printType(u32(typeInfo(id, 3)), depth)
+		printf(", %llu]", typeInfo(id, 12))
+		ret
+	}
+
+	if tag == 16
+	{
+		printBase(typeInfo(id, 5), typeInfo(id, 2))
+		ret
+	}
+
+	if !printName(id)
+	{
+		printf("tag%llu", tag)
+	}
+
+	if depth > 0 && (tag == 11 || tag == 12)
+	{
+		printChildren(id, tag, depth - 1)
+	}
+}
+
+printChildren: fun(id: u32, tag: u64, depth: i32)
+{
+	var children = Children()
+	children.count = u32(typeInfo(id, 13))
+	if children.count == 0 || children.count > 32
+	{
+		ret
+	}
+
+	if SymGetTypeInfo(process, moduleBase, id, 7, @children) == 0
+	{
+		ret
+	}
+
+	printf(" \{")
+	var i: u32 = 0
+	while i < children.count
+	{
+		val child = children.ids[usize(i)]
+		if i > 0
+		{
+			printf(", ")
+		}
+
+		printName(child)
+		if tag == 11
+		{
+			printf(": ")
+			printType(u32(typeInfo(child, 3)), depth)
+			printf(" @%llu", typeInfo(child, 10))
+		}
+
+		i += 1
+	}
+
+	printf("}")
+}
+
+onSymbol: ext fun(symbol: ptr, size: u32, context: ptr) -> i32
+{
+	val info = ptr[SymbolInfo](symbol)
+	moduleBase = (*info).modBase
+	if (*info).flags & 64 != 0
+	{
+		printf("  param ")
+	}
+	else
+	{
+		printf("  local ")
+	}
+
+	printf("%s: ", @(*info).name)
+	printType((*info).typeIndex, 2)
+	printf("\n")
+	ret 1
+}
+
+listLocals: fun
+{
+	process = GetCurrentProcess()
+	var path = Path()
+	GetModuleFileNameA(null, @path, 520)
+	*ptr[u8](strrchr(@path, 92)) = 0
+	SymInitialize(process, @path, 1)
+
+	var frames: array[u64, 2] = [0, 0]
+	RtlCaptureStackBackTrace(0, 2, @frames, null)
+	var frame = StackFrame()
+	frame.instruction = frames[1] - 1
+	SymSetContext(process, @frame, null)
+	SymEnumSymbols(process, 0, "*", onSymbol, null)
+}
+
+Color: enum
+{
+	red
+	green
+	blue
+}
+
+Shape: enum
+{
+	circle(radius: f64)
+	square(side: i32)
+	empty
+}
+
+Code: enum match u16
+{
+	ok = 0
+	fail = 1
+	other(value) = else
+}
+
+Show: trait
+{
+	show: fun(self)
+}
+
+i32: impl Show
+{
+	show: fun(self) = printf("%d\n", self)
+}
+
+Pair[T: copy + noref]: rec
+{
+	left: T
+	right: T
+}
+
+Bits: union
+{
+	float: f32
+	raw: u32
+}
+
+Node: rec
+{
+	value: i32
+	next: ptr[Node]
+}
+
+Name: rec
+{
+	id: i32
+
+	drop: op
+	{
+	}
+}
+
+inspect: fun(mut total: i32, pair: Pair[i32], name: Name, big: array[i64, 8]) -> i32
+{
+	val x = 1
+	if x > 0
+	{
+		val x = 2
+		printf("inspect\n")
+		listLocals()
+		total += x + pair.right + name.id + i32(big[7])
+	}
+
+	ret total
+}
+
+main: fun -> i32
+{
+	val color = Color.green
+	val shape = Shape.circle(2.5)
+	val code = Code.fail
+	val letter = 'x'
+	val flag = true
+	var bits = Bits()
+	var node = Node(7, null)
+	val text = "hello"
+	val numbers = [1, 2, 3]
+	val first = imm numbers[0]
+	var total = 10
+	val scale = 3
+	val bump = fun(y: i32) -> i32
+	{
+		printf("lambda\n")
+		listLocals()
+		ret y * scale
+	}
+
+	val owned = own fun(z: i32) -> i32 = z * scale
+	val shown: imm[dyn[Show]] = imm scale
+	val name = Name(4)
+	printf("main\n")
+	listLocals()
+	val result = inspect(mut total, Pair[i32](1, 2), name, [1, 2, 3, 4, 5, 6, 7, 8])
+	printf("%d %d %d %d\n", result, bump(2), first, owned(1))
+	shown.show()
+	ret 0
+}

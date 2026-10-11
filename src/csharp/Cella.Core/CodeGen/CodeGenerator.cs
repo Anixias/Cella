@@ -31,7 +31,7 @@ internal readonly record struct LLVMFunctionInfo
 
 // Create type definitions/forward declarations
 // Then, create function definitions/forward declarations
-public sealed unsafe class CodeGenerator : IDisposable
+public sealed unsafe partial class CodeGenerator : IDisposable
 {
 	private const ulong LargeValueBytes = 16;
 	
@@ -248,126 +248,6 @@ public sealed unsafe class CodeGenerator : IDisposable
 		return current;
 	}
 	
-	private bool UsesCodeView => TargetTriple.Contains("windows");
-	
-	private void StartDebugInfo(LoweredModule module)
-	{
-		AddModuleFlag("Debug Info Version", LLVM.DebugMetadataVersion());
-		if (UsesCodeView)
-			AddModuleFlag("CodeView", 1);
-		else
-			AddModuleFlag("Dwarf Version", 5);
-		
-		var path = module.Files.Select(static file => file.Symbol.FullPath).Order(StringComparer.Ordinal)
-			.FirstOrDefault() ?? module.Symbol.Name;
-		
-		current.DebugFile = GetDebugFile(path);
-		current.DiBuilder.CreateCompileUnit(LLVMDWARFSourceLanguage.LLVMDWARFSourceLanguageC, current.DebugFile,
-			"Cella", IsOptimized, "", 0, "", LLVMDWARFEmissionKind.LLVMDWARFEmissionLineTablesOnly, 0, 0, 0, "", "");
-	}
-	
-	private int IsOptimized => _config.OptimizeMode == OptimizeMode.Release ? 1 : 0;
-	
-	private void AddModuleFlag(string name, uint value)
-	{
-		using var key = new MarshaledString(name);
-		var constant = LLVMValueRef.CreateConstInt(LLVMTypeRef.Int32, value);
-		LLVM.AddModuleFlag((LLVMOpaqueModule*)current.Module.Handle,
-			LLVMModuleFlagBehavior.LLVMModuleFlagBehaviorWarning, key, (nuint)key.Length,
-			LLVM.ValueAsMetadata((LLVMOpaqueValue*)constant.Handle));
-	}
-	
-	private LLVMMetadataRef GetDebugFile(string path)
-	{
-		if (current.DebugFiles.TryGetValue(path, out var file))
-			return file;
-		
-		file = current.DiBuilder.CreateFile(Path.GetFileName(path), Path.GetDirectoryName(path) ?? "");
-		current.DebugFiles[path] = file;
-		return file;
-	}
-	
-	private static bool HasSource(SourceLocation location) => !string.IsNullOrEmpty(location.Source.FilePath);
-	
-	private LLVMMetadataRef DescribeFunction(LLVMValueRef function, string name, SourceLocation location,
-		bool isGenerated)
-	{
-		var file = HasSource(location) ? GetDebugFile(location.Source.FilePath) : current.DebugFile;
-		var line = HasSource(location) ? (uint)location.GetLineColumn().Line : 0u;
-		var type = current.DiBuilder.CreateSubroutineType(file, [], LLVMDIFlags.LLVMDIFlagZero);
-		var isLocal = function.Linkage is LLVMLinkage.LLVMInternalLinkage or LLVMLinkage.LLVMPrivateLinkage ? 1 : 0;
-		var subprogram = current.DiBuilder.CreateFunction(file, name, function.Name, file, line, type, isLocal, 1, line,
-			isGenerated ? LLVMDIFlags.LLVMDIFlagArtificial : LLVMDIFlags.LLVMDIFlagZero, IsOptimized);
-		
-		LLVM.SetSubprogram((LLVMOpaqueValue*)function.Handle, (LLVMOpaqueMetadata*)subprogram.Handle);
-		return subprogram;
-	}
-	
-	private LLVMBuilderRef CreateGeneratedBuilder(LLVMValueRef function, string name, SourceLocation location)
-	{
-		var builder = current.Module.Context.CreateBuilder();
-		builder.PositionAtEnd(function.AppendBasicBlock("entry"));
-		if (!_config.DebugInfo)
-			return builder;
-		
-		var subprogram = DescribeFunction(function, name, location, true);
-		SetDebugLocation(builder, HasSource(location) ? (uint)location.GetLineColumn().Line : 0u, 0u, subprogram);
-		return builder;
-	}
-	
-	private void SetLocation(LLVMBuilderRef builder, SourceLocation location)
-	{
-		if (!_config.DebugInfo || !HasSource(location))
-			return;
-		
-		var subprogram = LLVM.GetSubprogram((LLVMOpaqueValue*)builder.InsertBlock.Parent.Handle);
-		if (subprogram is null)
-			return;
-		
-		var file = GetDebugFile(location.Source.FilePath);
-		var scope = LLVM.DIScopeGetFile(subprogram) == (LLVMOpaqueMetadata*)file.Handle
-			? subprogram
-			: LLVM.DIBuilderCreateLexicalBlockFile((LLVMOpaqueDIBuilder*)current.DiBuilder.Handle, subprogram,
-				(LLVMOpaqueMetadata*)file.Handle, 0);
-		
-		var (line, column) = location.GetLineColumn();
-		SetDebugLocation(builder, (uint)line, UsesCodeView ? 0u : (uint)column, scope);
-	}
-	
-	private void SetDebugLocation(LLVMBuilderRef builder, uint line, uint column, LLVMMetadataRef scope) =>
-		LLVM.SetCurrentDebugLocation2((LLVMOpaqueBuilder*)builder.Handle,
-			LLVM.DIBuilderCreateDebugLocation((LLVMOpaqueContext*)current.Module.Context.Handle, line, column,
-				(LLVMOpaqueMetadata*)scope.Handle, null));
-	
-	private LLVMValueRef EmitAt(SourceLocation location, LLVMBuilderRef builder, Func<LLVMValueRef> emit)
-	{
-		if (!_config.DebugInfo)
-			return emit();
-		
-		var previous = LLVM.GetCurrentDebugLocation2((LLVMOpaqueBuilder*)builder.Handle);
-		SetLocation(builder, location);
-		var value = emit();
-		LLVM.SetCurrentDebugLocation2((LLVMOpaqueBuilder*)builder.Handle, previous);
-		return value;
-	}
-	
-	private string GetDisplayName(FunctionInfo function)
-	{
-		if (function.QualifiedName.IsDefaultOrEmpty)
-			return function.MangledName ?? function.Symbol.Name;
-		
-		var map = function.TypeArguments.IsDefaultOrEmpty
-			? []
-			: TypePool.CreateMap(function.Symbol.TypeParameters, function.TypeArguments);
-		
-		return string.Join('.', function.QualifiedName.Select(part => part.Arguments.IsEmpty
-			? part.Name
-			: $"{part.Name}[{string.Join(", ", part.Arguments.Select(argument =>
-				Substitute(_typePool.Substitute(argument, map)).Name))}]"));
-	}
-	
-	private string GetAdapterName(FunctionInfo function) => $"{GetDisplayName(function)} (adapter)";
-	
 	private void BuildInstantiations()
 	{
 		while (_pendingGlobals.Count > 0 || _pendingInstantiations.Count > 0)
@@ -395,9 +275,12 @@ public sealed unsafe class CodeGenerator : IDisposable
 		var llvmModule = state.Module;
 		var name = state.Lowered.Symbol.Name;
 		state.DiBuilder.DIBuilderFinalize();
-		RunOptimizationPass(llvmModule);
 		
 		string message;
+		if (!llvmModule.TryVerify(LLVMVerifierFailureAction.LLVMAbortProcessAction, out message))
+			return CodeGenResult.Failure with { ErrorMessage = message };
+		
+		RunOptimizationPass(llvmModule);
 		if (!llvmModule.TryVerify(LLVMVerifierFailureAction.LLVMAbortProcessAction, out message))
 			return CodeGenResult.Failure with { ErrorMessage = message };
 		
@@ -835,7 +718,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 		currentFunction = current.Functions[info];
 		var functionValue = currentFunction.FunctionValue;
 		if (_config.DebugInfo)
-			DescribeFunction(functionValue, GetDisplayName(info), info.Symbol.Definition, false);
+			StartFunctionDebugInfo(function, info, functionValue);
 		
 		var allocaBlock = functionValue.AppendBasicBlock("allocas");
 		
@@ -856,6 +739,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 			var block = function.Blocks[i];
 			var llvmBlock = blockMap[block];
 			builder.PositionAtEnd(llvmBlock);
+			EnterBlock(block);
 			
 			// First block allocates stack variables for parameters
 			if (i == 0)
@@ -874,16 +758,16 @@ public sealed unsafe class CodeGenerator : IDisposable
 					var paramInfo = new VariableInfo(paramSymbol, paramType);
 					
 					var paramLlvmValue = functionValue.GetParam(firstParameter + (uint)p);
-					if (_typePool.PassesByPointer(paramType, function.Info.Signature.GetMode(p)))
+					if (!_typePool.PassesByPointer(paramType, function.Info.Signature.GetMode(p)))
 					{
-						current.Variables[paramInfo] = paramLlvmValue;
-						continue;
+						if (signature is { Parameters: var passes })
+							paramLlvmValue = ReceiveCArgument(passes[p], paramType, paramLlvmValue, builder);
+						
+						paramLlvmValue = SpillValue(builder, paramType, paramLlvmValue, paramSymbol.Name);
 					}
 					
-					if (signature is { Parameters: var passes })
-						paramLlvmValue = ReceiveCArgument(passes[p], paramType, paramLlvmValue, builder);
-					
-					current.Variables[paramInfo] = SpillValue(builder, paramType, paramLlvmValue, paramSymbol.Name);
+					current.Variables[paramInfo] = paramLlvmValue;
+					DeclareParameter(paramSymbol, p, function.Info.Signature, paramLlvmValue, builder);
 				}
 			}
 			
@@ -894,10 +778,11 @@ public sealed unsafe class CodeGenerator : IDisposable
 		}
 		
 		builder.PositionAtEnd(allocaBlock);
+		currentScope = currentSubprogram;
 		SetLocation(builder, info.Symbol.Definition);
-		builder.BuildBr(blockMap[function.Blocks[0]]);
-		
-		functionValue.VerifyFunction(LLVMVerifierFailureAction.LLVMAbortProcessAction);
+		var entryBranch = builder.BuildBr(blockMap[function.Blocks[0]]);
+		if (_config.DebugInfo)
+			FinishFunctionDebugInfo(entryBranch);
 	}
 	
 	private static LLVMValueRef BuildEntryAlloca(LLVMBuilderRef builder, LLVMTypeRef type, string name)
@@ -1033,15 +918,20 @@ public sealed unsafe class CodeGenerator : IDisposable
 		SetLocation(builder, instruction.SourceLocation);
 		switch (instruction)
 		{
-			case BeginScopeInstruction:
-			case EndScopeInstruction:
+			case BeginScopeInstruction i:
+				BeginScope(i);
+				break;
+			
+			case EndScopeInstruction i:
+				EndScope(i);
 				break;
 			
 			case LocalVarInstruction i:
 			{
+				var storage = current.Variables[new(i.Symbol, i.Symbol.Type)];
+				DeclareLocal(i, storage);
 				if (i.Initializer is not UndefValue)
-					StoreValue(builder, i.Symbol.Type, EmitValue(i.Initializer, builder),
-						current.Variables[new(i.Symbol, i.Symbol.Type)]);
+					StoreValue(builder, i.Symbol.Type, EmitValue(i.Initializer, builder), storage);
 				
 				break;
 			}
@@ -3051,6 +2941,9 @@ public sealed unsafe class CodeGenerator : IDisposable
 		global.Initializer = initializer;
 		global.IsGlobalConstant = !info.Symbol.IsMutable;
 		current.Globals[info.Symbol] = global;
+		if (_config.DebugInfo)
+			DescribeGlobal(info, global);
+		
 		return global;
 	}
 	

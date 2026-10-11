@@ -1,0 +1,31 @@
+main
+  local color: test.Color {red, green, blue}
+  local shape: test.Shape {case: test.Shape.case {circle, square, empty} @0, circle: test.Shape.circle {radius: f64 @0} @8, square: test.Shape.square {side: i32 @0} @8}
+  local code: test.Code {ok, fail}
+  local letter: char
+  local flag: bool
+  local bits: test.Bits {float: f32 @0, raw: u32 @0}
+  local node: test.Node {value: i32 @0, next: ptr test.Node {value: i32 @0, next: ptr test.Node @8} @8}
+  local text: str {length: u64 @0, data: ptr u8 @8}
+  local numbers: array[i32, 3]
+  local first: ref i32
+  local total: i32
+  local scale: i32
+  local bump: ref fun[i32 -> i32] {code: ptr tag13 @0, env: ptr void @8}
+  local owned: own fun[i32 -> i32] {scale: i32 @0}
+  local shown: imm[dyn[Show]] {data: ptr void @0, table: ptr void @8}
+  local name: test.Name {id: i32 @0}
+  local result: i32
+inspect
+  param total: ref i32
+  param pair: test.Pair[i32] {left: i32 @0, right: i32 @4}
+  param name: ref test.Name {id: i32 @0}
+  param big: ref array[i64, 8]
+  local x: i32
+  local x: i32
+lambda
+  param y: i32
+  local scale: ref i32
+26 6 1 3
+3
+[exit code 0]

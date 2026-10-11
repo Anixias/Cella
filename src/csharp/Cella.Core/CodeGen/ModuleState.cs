@@ -21,4 +21,5 @@ internal sealed class ModuleState(LoweredModule lowered, LLVMModuleRef module, L
 	public LLVMFunctionInfo? EntryPoint { get; set; }
 	public LLVMMetadataRef DebugFile { get; set; }
 	public Dictionary<string, LLVMMetadataRef> DebugFiles { get; } = [];
+	public Dictionary<TypeSymbol, LLVMMetadataRef> DebugTypes { get; } = [];
 }
