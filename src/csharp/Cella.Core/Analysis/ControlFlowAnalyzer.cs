@@ -38,24 +38,16 @@ public sealed class ControlFlowAnalyzer(DiagnosticList diagnostics)
 	
 	private bool AllPathsReturn(LoweredFunction function)
 	{
-		if (function.Info.Signature.ReturnType == NativeSymbols.Void)
+		var returnType = function.Info.Signature.ReturnType;
+		if (returnType == NativeSymbols.Void)
 			return true;
 		
-		var allPathsReturn = true;
-		foreach (var path in GetMinimalPaths(function))
-		{
-			if (path.Type is not BlockPathType.Undefined)
-				continue;
-			
-			allPathsReturn = false;
-			break;
-		}
-		
-		if (allPathsReturn)
+		if (GetMinimalPaths(function).All(static path => path.Type is not BlockPathType.Undefined))
 			return true;
 		
-		diagnostics.Add(new(DiagnosticSeverity.Error, function.Info.Symbol.Definition,
-			"Not all paths return a value"));
+		diagnostics.Add(new(DiagnosticSeverity.Error, function.Info.Symbol.Definition, returnType is NeverType
+			? $"'{function.Info.Symbol.Name}' can reach its end"
+			: "Not all paths return a value"));
 		
 		return false;
 	}
@@ -64,6 +56,7 @@ public sealed class ControlFlowAnalyzer(DiagnosticList diagnostics)
 	{
 		Undefined,
 		Returns,
+		Stops,
 		Loops
 	}
 	
@@ -89,6 +82,19 @@ public sealed class ControlFlowAnalyzer(DiagnosticList diagnostics)
 	{
 		while (true)
 		{
+			if (GetOnlyTarget(current.Terminator) is { } target)
+			{
+				// Loop
+				if (!path.Add(target))
+				{
+					yield return new(BlockPathType.Loops, path);
+					yield break;
+				}
+				
+				current = target;
+				continue;
+			}
+			
 			switch (current.Terminator)
 			{
 				case UndefinedTerminator:
@@ -99,18 +105,9 @@ public sealed class ControlFlowAnalyzer(DiagnosticList diagnostics)
 					yield return new(BlockPathType.Returns, path);
 					yield break;
 				
-				case BranchTerminator term:
-					var target = term.Target;
-					
-					// Loop
-					if (!path.Add(target))
-					{
-						yield return new(BlockPathType.Loops, path);
-						yield break;
-					}
-					
-					current = target;
-					continue;
+				case UnreachableTerminator:
+					yield return new(BlockPathType.Stops, path);
+					yield break;
 				
 				case ConditionalBranchTerminator term:
 					var trueTarget = term.TrueTarget;
@@ -159,4 +156,12 @@ public sealed class ControlFlowAnalyzer(DiagnosticList diagnostics)
 			break;
 		}
 	}
+	
+	private static BasicBlock? GetOnlyTarget(IBlockTerminator terminator) => terminator switch
+	{
+		BranchTerminator branch => branch.Target,
+		ConditionalBranchTerminator { Condition: ConstantValue { Value: bool taken } } branch =>
+			taken ? branch.TrueTarget : branch.FalseTarget,
+		_ => null
+	};
 }

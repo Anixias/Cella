@@ -178,6 +178,7 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 		
 		var intSize = LLVMTypeRef.CreateInt(_pointerSize * 8);
 		current.Types[NativeSymbols.Void] = LLVMTypeRef.Void;
+		current.Types[NativeSymbols.Never] = LLVMTypeRef.Void;
 		current.Types[NativeSymbols.VoidPtr] = LLVMTypeRef.CreatePointer(LLVMTypeRef.Void, 0u);
 		current.Types[NativeSymbols.Int8] = LLVMTypeRef.Int8;
 		current.Types[NativeSymbols.Int16] = LLVMTypeRef.Int16;
@@ -315,16 +316,21 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 	{
 		const uint asynchronous = 2;
 		AddModuleFlag("uwtable", asynchronous);
-		using var name = new MarshaledString("uwtable");
-		var attribute = LLVM.CreateEnumAttribute((LLVMOpaqueContext*)module.Context.Handle,
-			LLVM.GetEnumAttributeKindForName(name, (nuint)name.Length), asynchronous);
-		
 		for (var function = module.FirstFunction; function.Handle != IntPtr.Zero; function = function.NextFunction)
 		{
 			if (function.BasicBlocksCount > 0)
-				LLVM.AddAttributeAtIndex((LLVMOpaqueValue*)function.Handle,
-					LLVMAttributeIndex.LLVMAttributeFunctionIndex, attribute);
+				AddFunctionAttribute(function, "uwtable", asynchronous);
 		}
+	}
+	
+	private static void AddFunctionAttribute(LLVMValueRef function, string name, ulong value = 0)
+	{
+		using var attributeName = new MarshaledString(name);
+		var attribute = LLVM.CreateEnumAttribute((LLVMOpaqueContext*)function.TypeOf.Context.Handle,
+			LLVM.GetEnumAttributeKindForName(attributeName, (nuint)attributeName.Length), value);
+		
+		LLVM.AddAttributeAtIndex((LLVMOpaqueValue*)function.Handle, LLVMAttributeIndex.LLVMAttributeFunctionIndex,
+			attribute);
 	}
 	
 	private static LLVMTypeRef OpaquePointer => LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0u);
@@ -605,6 +611,9 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 		var functionValue = declared.Handle != IntPtr.Zero ? declared : llvmModule.AddFunction(name, functionType);
 		if (cSignature is { Return: { Kind: CPassKind.Indirect } sret })
 			AddSretAttribute(functionValue, sret.Type, false);
+		
+		if (signature.ReturnType is NeverType)
+			AddFunctionAttribute(functionValue, "noreturn");
 		
 		var functionInfo = new LLVMFunctionInfo(functionValue, functionType, returnType, cSignature,
 			cSignature is null && IsLarge(signature.ReturnType) ? (uint)leading : null);
@@ -1207,6 +1216,10 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 			// This happens with an empty function body
 			case UndefinedTerminator:
 				builder.BuildRetVoid();
+				break;
+			
+			case UnreachableTerminator:
+				builder.BuildUnreachable();
 				break;
 			
 			default:

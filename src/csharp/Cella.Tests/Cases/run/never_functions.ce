@@ -1,0 +1,107 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+	fflush: fun(stream: ptr) -> i32
+	abort: fun -> never
+}
+
+Choice: enum
+{
+	some(value: i32)
+	none
+}
+
+Failure: trait
+{
+	fail: fun(self, message: str) -> never
+}
+
+Loud: rec impl Failure
+{
+	level: i32
+
+	fail: fun(self, message: str) -> never = panic(message)
+}
+
+panic: fun(message: str) -> never
+{
+	printf("Panic: %.*s\n", i32(message.byteLength), message.data)
+	fflush(null)
+	abort()
+}
+
+relay: fun(message: str) -> never = panic(message)
+
+counter: var i32 = 0
+
+spin: fun -> never
+{
+	while true
+	{
+		counter += 1
+		if counter == 3
+		{
+			panic("spun three times")
+		}
+	}
+}
+
+pick: fun(n: i32) -> i32
+{
+	if n == 0
+	{
+		ret 10
+	}
+
+	panic("bad pick")
+}
+
+unwrap: fun(choice: Choice) -> i32 = match choice
+{
+	some(value) => value
+	none => relay("unwrap of none")
+}
+
+firstPositive: fun(values: array[i32, 3]) -> i32
+{
+	var i = 0
+	while true
+	{
+		if values[usize(i)] > 0
+		{
+			ret values[usize(i)]
+		}
+
+		i += 1
+	}
+}
+
+failWith[T: Failure]: fun(handler: T) -> i32
+{
+	handler.fail("generic failure")
+}
+
+main: fun -> i32
+{
+	val handler: fun[str -> never] = panic
+	val local = fun(message: str) -> never = panic(message)
+	printf("%d %d %d\n", pick(0), unwrap(Choice.some(4)), firstPositive([0, -1, 7]))
+	if counter > 0
+	{
+		handler("from a function value")
+	}
+
+	if counter > 1
+	{
+		local("from a lambda")
+	}
+
+	if counter > 2
+	{
+		failWith(Loud(1))
+	}
+
+	spin()
+}

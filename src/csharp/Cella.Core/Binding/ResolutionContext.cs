@@ -406,6 +406,11 @@ public readonly struct ResolutionContext
 				yield return module;
 	}
 	
+	public TypeSymbol ResolveReturnType(ITypeNode node) =>
+		node is IdentifierTypeNode { Token.Text: "never" } && Resolve("never") is null
+			? NativeSymbols.Never
+			: ResolveType(node);
+	
 	public TypeSymbol ResolveType(ITypeNode node) => node switch
 	{
 		IdentifierTypeNode n => ResolveNamedType(n.Token),
@@ -454,7 +459,7 @@ public readonly struct ResolutionContext
 			parameterTypes[i] = TypePool.GetPassedType(ResolveType(typeNode), modes[i]);
 		}
 		
-		var returnType = node.ReturnType is { } returnTypeNode ? ResolveType(returnTypeNode) : NativeSymbols.Void;
+		var returnType = node.ReturnType is { } returnTypeNode ? ResolveReturnType(returnTypeNode) : NativeSymbols.Void;
 		var functionType = TypePool.GetFunctionType(node.IsExternal, parameterTypes, modes, returnType, node.IsRef,
 			node.Variadic is not null, TakesVariadicParameter(node, parameterTypes));
 		
@@ -540,6 +545,12 @@ public readonly struct ResolutionContext
 			
 			case null when TypePool.BuiltinGenericTypeArguments.ContainsKey(name.Text):
 				ReportBuiltinArguments(name.SourceLocation, name.Text);
+				break;
+			
+			case null when name.Text == "never":
+				Diagnostics.Add(new(DiagnosticSeverity.Error, name.SourceLocation,
+					"'never' can only be a return type"));
+				
 				break;
 			
 			case null:

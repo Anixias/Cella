@@ -1034,10 +1034,22 @@ public sealed class Lowerer
 				callable.Syntax.SourceLocation);
 		}
 		
-		public Value Visit(ResolvedFunctionCallExpressionNode node) => new CallValue(node.Function,
+		public Value Visit(ResolvedFunctionCallExpressionNode node) => Diverge(new CallValue(node.Function,
 			node.IsConversion
 				? LowerOperands(node.Arguments, GetArgumentPassing(node.Function, 0))
-				: LowerArguments(node.Arguments, node.Function, 0), node.Syntax.SourceLocation);
+				: LowerArguments(node.Arguments, node.Function, 0), node.Syntax.SourceLocation));
+		
+		private Value Diverge(Value call)
+		{
+			if (call.Type is not NeverType)
+				return call;
+			
+			var block = GetOrMakeBlock();
+			block.Instructions.Add(new ExpressionInstruction(call));
+			block.SetTerminator(new UnreachableTerminator(call.SourceLocation));
+			currentBlock = null;
+			return new UndefValue(call.Type);
+		}
 		
 		public Value Visit(ResolvedFunctionGroupExpressionNode node) => throw new InvalidOperationException();
 		
@@ -1066,7 +1078,8 @@ public sealed class Lowerer
 		public Value Visit(ResolvedIndirectCallExpressionNode node)
 		{
 			var operands = LowerOperands([node.Target, ..node.Arguments], GetOperandPassing(node.FunctionType));
-			return new IndirectCallValue(operands[0], operands.Skip(1), node.FunctionType, node.Syntax.SourceLocation);
+			return Diverge(new IndirectCallValue(operands[0], operands.Skip(1), node.FunctionType,
+				node.Syntax.SourceLocation));
 		}
 		
 		private Func<int, Passing> GetOperandPassing(FunctionType type) => i => i == 0 || i > type.ParameterTypes.Length
@@ -1182,7 +1195,7 @@ public sealed class Lowerer
 		public Value Visit(ResolvedUnaryOpExpressionNode node)
 		{
 			var operand = node.Operation?.Op == TokenType.OpAt ? VisitPlace(node.Operand) : VisitNode(node.Operand);
-			return LowerUnaryOp(operand, node.Operation);
+			return Diverge(LowerUnaryOp(operand, node.Operation));
 		}
 		
 		public Value Visit(ResolvedUndefExpressionNode node) =>
@@ -1212,7 +1225,7 @@ public sealed class Lowerer
 				return LowerShortCircuit(node.Left, node.Operation!.Op, node.Right);
 			
 			var operands = LowerOperands([node.Left, node.Right]);
-			return LowerBinOp(operands[0], node.Operation, operands[1], node.Syntax.SourceLocation);
+			return Diverge(LowerBinOp(operands[0], node.Operation, operands[1], node.Syntax.SourceLocation));
 		}
 		
 		private static bool IsShortCircuitOp(OperationImpl? op) =>

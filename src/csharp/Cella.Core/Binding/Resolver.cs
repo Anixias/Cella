@@ -572,6 +572,17 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		if (CurrentResolutionContext.ContainingFunction is not { } function)
 			return Error(node, "Returns are only allowed within functions", null);
 		
+		if (function.Signature.ReturnType is NeverType)
+		{
+			var value = node.Value is { } returned ? VisitDiscarded(returned) : null;
+			return value switch
+			{
+				{ Type: NeverType } => new ResolvedReturnExpressionNode(value, node),
+				{ Type: InvalidType } => new ResolvedInvalidExpressionNode(node),
+				_ => Error(node, $"Cannot return from '{function.Symbol.Name}'", null)
+			};
+		}
+		
 		if (node.Value is not { } expression)
 			return new ResolvedReturnExpressionNode(null, node);
 		
@@ -2574,7 +2585,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 				..node.Parameters.Select(static parameter =>
 					parameter.Mode is { } mode ? SymbolCollector.GetMode(mode) : (ParameterMode?)null)
 			],
-			node.ReturnType is { } returnType ? context.ResolveType(returnType) : null);
+			node.ReturnType is { } returnType ? context.ResolveReturnType(returnType) : null);
 		
 		Rollback(checkpoint);
 		return annotations;
@@ -2810,7 +2821,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		if (type is BorrowType borrow)
 			type = borrow.Target;
 		
-		return type == target || _conversionTable.FindImplicit(type, target) is not null ||
+		return type == target || type is NeverType || _conversionTable.FindImplicit(type, target) is not null ||
 		       FindUserConversion(type, null, ParameterMode.ReadOnly, target) is not null ||
 		       TypePool.ContainsTypeParameters(type) && type.OriginalDefinition == target.OriginalDefinition;
 	}
@@ -4395,7 +4406,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		
 		var takesVariadic = target is { HasVariadicParameter: true } && types[^1] == target.ParameterTypes[^1];
 		var returnType = node.ReturnType is { } returnNode
-			? outer.ResolveType(returnNode)
+			? outer.ResolveReturnType(returnNode)
 			: !agrees
 				? NativeSymbols.Void
 				: IsKnown(target!.ReturnType)
@@ -6741,7 +6752,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			var resultCost = 0;
 			Conversion? resultConversion = null;
 			
-			if (target is not null && candidate.ReturnType != target)
+			if (target is not null && candidate.ReturnType != target && candidate.ReturnType is not NeverType)
 			{
 				var conversion = _conversionTable.FindImplicit(candidate.ReturnType, target) ??
 				                 (candidate.ReturnType is BorrowType

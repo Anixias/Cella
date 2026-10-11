@@ -83,14 +83,14 @@ public sealed unsafe partial class CodeGenerator
 		HasSource(location) ? GetDebugFile(location.Source.FilePath) : current.DebugFile;
 	
 	private LLVMMetadataRef DescribeFunction(LLVMValueRef function, string name, SourceLocation location,
-		bool isGenerated, LLVMMetadataRef[] signature)
+		LLVMDIFlags flags, LLVMMetadataRef[] signature)
 	{
 		var file = GetDebugFile(location);
 		var line = GetLine(location);
 		var type = current.DiBuilder.CreateSubroutineType(file, signature, LLVMDIFlags.LLVMDIFlagZero);
 		var isLocal = function.Linkage is LLVMLinkage.LLVMInternalLinkage or LLVMLinkage.LLVMPrivateLinkage ? 1 : 0;
 		var subprogram = current.DiBuilder.CreateFunction(file, name, function.Name, file, line, type, isLocal, 1, line,
-			isGenerated ? LLVMDIFlags.LLVMDIFlagArtificial : LLVMDIFlags.LLVMDIFlagZero, IsOptimized);
+			flags, IsOptimized);
 		
 		LLVM.SetSubprogram((LLVMOpaqueValue*)function.Handle, (LLVMOpaqueMetadata*)subprogram.Handle);
 		return subprogram;
@@ -103,7 +103,7 @@ public sealed unsafe partial class CodeGenerator
 		if (!_config.DebugInfo)
 			return builder;
 		
-		var subprogram = DescribeFunction(function, name, location, true, []);
+		var subprogram = DescribeFunction(function, name, location, LLVMDIFlags.LLVMDIFlagArtificial, []);
 		SetDebugLocation(builder, GetLine(location), 0u, subprogram);
 		return builder;
 	}
@@ -117,7 +117,8 @@ public sealed unsafe partial class CodeGenerator
 			..signature.ParameterTypes.Select((_, i) => GetDebugType(signature.GetDeclaredType(i)))
 		];
 		
-		currentSubprogram = DescribeFunction(value, GetDisplayName(info), info.Symbol.Definition, false, types);
+		var flags = signature.ReturnType is NeverType ? LLVMDIFlags.LLVMDIFlagNoReturn : LLVMDIFlags.LLVMDIFlagZero;
+		currentSubprogram = DescribeFunction(value, GetDisplayName(info), info.Symbol.Definition, flags, types);
 		currentScope = currentSubprogram;
 		_lexicalBlocks.Clear();
 		_declarations.Clear();
@@ -366,7 +367,7 @@ public sealed unsafe partial class CodeGenerator
 	
 	private LLVMMetadataRef CreateDebugType(TypeSymbol type, LLVMMetadataRef scope) => type switch
 	{
-		_ when type == NativeSymbols.Void => default,
+		_ when type == NativeSymbols.Void || type == NativeSymbols.Never => default,
 		_ when type == NativeSymbols.Bool => CreateBasicType(type, DwarfBoolean),
 		_ when type == NativeSymbols.Char => CreateBasicType(type, DwarfUtf),
 		_ when type == NativeSymbols.Str => CreateStructType(type, scope,

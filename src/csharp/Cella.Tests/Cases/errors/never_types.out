@@ -1,0 +1,29 @@
+
+====== never_types.ce ======
+
+Error at line 5, column 9
+4 │ {
+5 │     value: never
+               ╘═══╛ 'never' can only be a return type
+
+Error at line 8, column 19
+7 │ 
+8 │ takes: fun(value: never)
+                      ╘═══╛ 'never' can only be a return type
+
+Error at line 12, column 25
+11 │ 
+12 │ pointer: fun(value: ptr[never])
+                             ╘═══╛ 'never' can only be a return type
+
+Error at line 16, column 29
+15 │ 
+16 │ elements: fun(values: array[never, 2])
+                                 ╘═══╛ 'never' can only be a return type
+
+Error at line 20, column 28
+19 │ 
+20 │ callback: fun(handler: fun[never])
+                                ╘═══╛ 'never' can only be a return type
+
+[compilation failed]

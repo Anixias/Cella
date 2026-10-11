@@ -355,6 +355,11 @@ public sealed class UndefinedTerminator : IBlockTerminator
 	}
 }
 
+public sealed class UnreachableTerminator(SourceLocation sourceLocation) : IBlockTerminator
+{
+	public SourceLocation SourceLocation { get; } = sourceLocation;
+}
+
 public sealed class ReturnTerminator : IBlockTerminator
 {
 	public static ReturnTerminator Void { get; } = new(null, SourceLocation.None);

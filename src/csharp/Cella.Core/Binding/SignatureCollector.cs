@@ -2355,10 +2355,13 @@ public sealed class SignatureCollector
 		return type;
 	}
 	
-	private TypeSymbol ResolveSignatureType(FunctionSymbol function, ITypeNode node, ResolutionContext context) =>
+	private TypeSymbol ResolveSignatureType(FunctionSymbol function, ITypeNode node, ResolutionContext context,
+		bool isReturn = false) =>
 		function.Property is { Node.Type: { } shared } property && node == shared
 			? GetPropertyType(property, shared)
-			: context.ResolveType(node);
+			: isReturn
+				? context.ResolveReturnType(node)
+				: context.ResolveType(node);
 	
 	private TypeSymbol RejectValueDyn(ITypeNode node, TypeSymbol type, ParameterMode mode = ParameterMode.Own)
 	{
@@ -2683,7 +2686,8 @@ public sealed class SignatureCollector
 		if (node.ReturnType is not { } returnTypeSyntax)
 			returnType = NativeSymbols.Void;
 		else
-			returnType = RejectValueDyn(returnTypeSyntax, ResolveSignatureType(function, returnTypeSyntax, context));
+			returnType = RejectValueDyn(returnTypeSyntax,
+				ResolveSignatureType(function, returnTypeSyntax, context, isReturn: true));
 		
 		if (reportsHiddenTypes && node.ReturnType is { } returnTypeNode)
 			ReportHiddenType(returnTypeNode, returnType, visibility, name);
@@ -2764,7 +2768,7 @@ public sealed class SignatureCollector
 		if (node.ReturnType is not { } returnTypeSyntax)
 			returnType = NativeSymbols.Void;
 		else
-			returnType = RejectExtDyn(returnTypeSyntax, context.ResolveType(returnTypeSyntax));
+			returnType = RejectExtDyn(returnTypeSyntax, context.ResolveReturnType(returnTypeSyntax));
 		
 		if (node.ReturnType is { } returnTypeNode)
 			ReportHiddenType(returnTypeNode, returnType, function.Visibility, node.Identifier.Text);

@@ -1,0 +1,28 @@
+mod test
+
+ext
+{
+	abort: fun -> never
+}
+
+falls: fun(n: i32) -> never
+{
+	if n == 0
+	{
+		abort()
+	}
+}
+
+breaks: fun -> never
+{
+	while true
+	{
+		break
+	}
+}
+
+empty: fun -> never
+{
+}
+
+main: fun -> i32 = 0

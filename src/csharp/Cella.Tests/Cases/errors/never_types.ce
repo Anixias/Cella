@@ -1,0 +1,24 @@
+mod test
+
+Holder: rec
+{
+	value: never
+}
+
+takes: fun(value: never)
+{
+}
+
+pointer: fun(value: ptr[never])
+{
+}
+
+elements: fun(values: array[never, 2])
+{
+}
+
+callback: fun(handler: fun[never])
+{
+}
+
+main: fun -> i32 = 0

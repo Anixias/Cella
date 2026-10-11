@@ -1,4 +1,6 @@
 ﻿using Cella.Core.Binding;
+using Cella.Core.Symbols;
+using Cella.Core.Text;
 
 namespace Cella.Core.Lowering;
 
@@ -18,8 +20,12 @@ public sealed class LoweredFunction(FunctionInfo info)
 			default:
 			{
 				Blocks.RemoveUnreachable();
+				IBlockTerminator exit = Info.Signature.ReturnType == NativeSymbols.Void
+					? ReturnTerminator.Void
+					: new UnreachableTerminator(SourceLocation.None);
+				
 				foreach (var block in Blocks)
-					block.FillTerminator(ReturnTerminator.Void);
+					block.FillTerminator(exit);
 				
 				break;
 			}

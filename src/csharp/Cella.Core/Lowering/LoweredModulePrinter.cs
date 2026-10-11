@@ -136,6 +136,10 @@ public static class LoweredModulePrinter
 					sb.AppendLine("<ERR>");
 					break;
 				
+				case UnreachableTerminator:
+					sb.AppendLine("unreachable");
+					break;
+				
 				case ReturnTerminator returnTerminator:
 					sb.Append("ret");
 					
