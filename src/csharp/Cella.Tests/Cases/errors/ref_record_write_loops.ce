@@ -1,0 +1,41 @@
+mod test
+
+view[T]: ref rec
+{
+	data: pvt ptr[T]
+	length: pvt set usize
+
+	new: op(data: ptr[T], length: usize)
+	{
+		self.data = data
+		self.length = length
+	}
+
+	in: op(self) -> viewCursor[T] = viewCursor[T](self.data, self.length)
+}
+
+viewCursor[T]: ref rec
+{
+	data: pvt ptr[T]
+	left: pvt usize
+
+	new: op(data: ptr[T], left: usize)
+	{
+		self.data = data
+		self.left = left
+	}
+
+	for: op(mut self) -> bool = self.left > 0
+
+	*: op(self) -> imm[T] = imm *self.data
+}
+
+main: fun -> i32
+{
+	val four = [1, 2, 3, 4]
+	val v = view[i32](@four, 4)
+	for x in mut v
+		x = 0
+
+	ret 0
+}

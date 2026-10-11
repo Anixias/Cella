@@ -1,0 +1,19 @@
+mod test
+
+Holder: rec
+{
+	data: ptr[i32]
+
+	[]: op(self, i: usize) -> mut[i32] = mut self.data[i]
+	*: op(self) -> mut[i32] = mut *self.data
+}
+
+Reader: ref rec
+{
+	data: ptr[i32]
+
+	[]: op(mut self, i: usize) -> imm[i32] = imm self.data[i]
+	*: op(mut self) -> imm[i32] = imm *self.data
+}
+
+main: fun -> i32 = 0

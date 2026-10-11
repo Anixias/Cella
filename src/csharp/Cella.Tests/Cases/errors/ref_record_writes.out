@@ -1,0 +1,24 @@
+
+====== ref_record_writes.ce ======
+
+Error at line 7, column 28
+6 │ 
+7 │ []: op(self, i: usize) -> mut[i32] = mut self.data[i]
+                              ╘══════╛ Cannot return 'mut[i32]' from '[]' with 'self'
+
+Error at line 8, column 17
+7 │ []: op(self, i: usize) -> mut[i32] = mut self.data[i]
+8 │ *: op(self) -> mut[i32] = mut *self.data
+                   ╘══════╛ Cannot return 'mut[i32]' from '*' with 'self'
+
+Error at line 15, column 32
+14 │ 
+15 │ []: op(mut self, i: usize) -> imm[i32] = imm self.data[i]
+                                   ╘══════╛ Cannot return 'imm[i32]' from '[]' with 'mut self'
+
+Error at line 16, column 21
+15 │ []: op(mut self, i: usize) -> imm[i32] = imm self.data[i]
+16 │ *: op(mut self) -> imm[i32] = imm *self.data
+                        ╘══════╛ Cannot return 'imm[i32]' from '*' with 'mut self'
+
+[compilation failed]

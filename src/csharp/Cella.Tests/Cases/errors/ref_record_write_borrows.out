@@ -1,0 +1,15 @@
+
+====== ref_record_write_borrows.ce ======
+
+Error at line 21, column 6
+20 │ val s = span[i32](@items, 2)
+21 │ ret mut s[0]
+         ╘══════╛ Cannot return borrows of local variables
+
+Error at line 32, column 2
+31 │ 
+32 │ s[0] = 3
+     ^ Cannot use borrows of dropped values
+     | Dropped on line 30
+
+[compilation failed]

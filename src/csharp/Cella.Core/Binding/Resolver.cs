@@ -4756,6 +4756,11 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		var mode = isMut ? ParameterMode.Mut : ParameterMode.ReadOnly;
 		var location = node.Source.SourceLocation;
 		var sameMode = operators.Where(method => TakesReceiver(method, type, mode)).ToList();
+		if (isMut && sameMode.Count == 0)
+			sameMode = operators.Where(method => TakesReceiver(method, type, ParameterMode.ReadOnly) &&
+			                                     LendsWritably(GetFunctionInfo(method, type).Signature.ReturnType))
+				.ToList();
+		
 		if (sameMode.FirstOrDefault(method => CanAccess(type, method.Function)) is not { } method)
 			return sameMode.Count > 0
 				? RejectIteration(node, ReportHiddenMember(location, "in", sameMode.Select(static m => m.Function)))
@@ -4798,7 +4803,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		}
 		
 		var element = Decay(CallOperator(ReadCursor(), dereference, syntax));
-		var isWritable = isMut && TakesReceiver(dereference, type, ParameterMode.Mut);
+		var isWritable = isMut && ReturnsWritable(dereference, type);
 		var binding = CreateLoopBinding(node.Binding, element.Type, isWritable || !_typePool.IsCopy(element.Type),
 			isWritable)!;
 		
@@ -4812,6 +4817,12 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	
 	private List<MethodSymbol> FindLoopOperators(TypeSymbol type, string name) =>
 		[..GetMethods(type, name).Where(static method => method.HasReceiver)];
+	
+	private bool LendsWritably(TypeSymbol cursor) =>
+		FindDereferences(cursor).Any(dereference => ReturnsWritable(dereference, cursor));
+	
+	private bool ReturnsWritable(MethodSymbol method, TypeSymbol type) =>
+		GetFunctionInfo(method, type).Signature.ReturnType is BorrowType { IsMutable: true };
 	
 	private ForHeader RejectIteration(ForStatementNode node, string message, SourceLocation location) =>
 		RejectIteration(node, new Diagnostic(DiagnosticSeverity.Error, location, message));

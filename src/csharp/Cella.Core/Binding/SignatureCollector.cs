@@ -1766,7 +1766,7 @@ public sealed class SignatureCollector
 			if (signature.ReturnType is InvalidType)
 				continue;
 			
-			if (FindIndexerError(indexer, signature) is var (location, message))
+			if (FindIndexerError(type, indexer, signature) is var (location, message))
 				Diagnostics.Add(new(DiagnosticSeverity.Error, location, message));
 			else
 				valid.Add((indexer, signature));
@@ -1805,18 +1805,21 @@ public sealed class SignatureCollector
 	private static TypeSymbol GetIndexedType(FunctionSignature signature) =>
 		signature.ReturnType is BorrowType borrow ? borrow.Target : signature.ReturnType;
 	
-	private static bool IsIndexerResult(FunctionSignature signature) => signature.ReturnType switch
+	private static bool IsIndexerResult(TypeSymbol type, FunctionSignature signature) => signature.ReturnType switch
 	{
-		BorrowType { IsMutable: var isMutable } => isMutable == (signature.GetMode(0) == ParameterMode.Mut),
-		var type => signature.GetMode(0) != ParameterMode.Mut && type != NativeSymbols.Void
+		BorrowType borrow => IsPlaceResult(type, borrow, signature.GetMode(0)),
+		var result => signature.GetMode(0) != ParameterMode.Mut && result != NativeSymbols.Void
 	};
+	
+	private static bool IsPlaceResult(TypeSymbol type, BorrowType result, ParameterMode mode) =>
+		result.IsMutable == (mode == ParameterMode.Mut) || result.IsMutable && type is NamedTypeSymbol { IsRef: true };
 	
 	private static bool HaveSameIndices(FunctionSignature first, FunctionSignature second) =>
 		first.ParameterTypes.Length == second.ParameterTypes.Length &&
 		Enumerable.Range(1, first.ParameterTypes.Length - 1).All(i =>
 			first.GetDeclaredType(i) == second.GetDeclaredType(i) && first.GetMode(i) == second.GetMode(i));
 	
-	private static (SourceLocation Location, string Message)? FindIndexerError(FunctionNode node,
+	private static (SourceLocation Location, string Message)? FindIndexerError(TypeSymbol type, FunctionNode node,
 		FunctionSignature signature) => node switch
 	{
 		{ Receiver: null } => (node.Identifier.SourceLocation, "Cannot declare '[]' operators without 'self'"),
@@ -1825,7 +1828,7 @@ public sealed class SignatureCollector
 		{ Parameters: [] } => (node.Identifier.SourceLocation, "'[]' operators need at least one parameter"),
 		_ when node.Parameters.FirstOrDefault(static p => p.Mode?.Type == TokenType.KeywordMut) is { } parameter =>
 			(parameter.SourceLocation, "Cannot take 'mut' parameters in '[]' operators"),
-		_ when IsIndexerResult(signature) => null,
+		_ when IsIndexerResult(type, signature) => null,
 		_ => (node.ReturnType?.SourceLocation ?? node.Identifier.SourceLocation,
 			$"Cannot return '{signature.ReturnType.Name}' from '[]' with '{DescribeReceiver(signature.GetMode(0))}'")
 	};
@@ -1839,7 +1842,7 @@ public sealed class SignatureCollector
 			if (signature.ReturnType is InvalidType)
 				continue;
 			
-			if (FindDereferenceError(dereference, signature) is var (location, message))
+			if (FindDereferenceError(type, dereference, signature) is var (location, message))
 				Diagnostics.Add(new(DiagnosticSeverity.Error, location, message));
 			else
 				valid.Add((dereference, signature));
@@ -1857,15 +1860,14 @@ public sealed class SignatureCollector
 				d.Node.ReturnType!.SourceLocation, "Cannot declare '*' operators with different target types")));
 	}
 	
-	private static (SourceLocation Location, string Message)? FindDereferenceError(FunctionNode node,
+	private static (SourceLocation Location, string Message)? FindDereferenceError(TypeSymbol type, FunctionNode node,
 		FunctionSignature signature) => node switch
 	{
 		{ Receiver: { Mode: { Type: TokenType.KeywordOwn } } receiver } =>
 			(receiver.SourceLocation, "Cannot take 'own self' in '*' operators"),
 		{ Parameters: [var parameter, ..] } =>
 			(parameter.SourceLocation, "Cannot take parameters in '*' operators with 'self'"),
-		_ when signature.ReturnType is BorrowType { IsMutable: var isMutable } &&
-		       isMutable == (signature.GetMode(0) == ParameterMode.Mut) => null,
+		_ when signature.ReturnType is BorrowType borrow && IsPlaceResult(type, borrow, signature.GetMode(0)) => null,
 		_ => (node.ReturnType?.SourceLocation ?? node.Identifier.SourceLocation,
 			$"Cannot return '{signature.ReturnType.Name}' from '*' with '{DescribeReceiver(signature.GetMode(0))}'")
 	};

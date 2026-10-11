@@ -1,0 +1,168 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+span[T]: ref rec
+{
+	data: pvt ptr[T]
+	length: pvt set usize
+
+	new: op(data: ptr[T], length: usize)
+	{
+		self.data = data
+		self.length = length
+	}
+
+	[]: op(self, i: usize) -> mut[T] = mut self.data[i]
+
+	in: op(self) -> spanCursor[T] = spanCursor[T](self.data, self.length)
+}
+
+spanCursor[T]: ref rec
+{
+	data: pvt ptr[T]
+	left: pvt usize
+	started: pvt bool
+
+	new: op(data: ptr[T], left: usize)
+	{
+		self.data = data
+		self.left = left
+		self.started = false
+	}
+
+	for: op(mut self) -> bool
+	{
+		if self.started
+		{
+			self.data = self.data + 1
+			self.left -= 1
+		}
+
+		self.started = true
+		ret self.left > 0
+	}
+
+	*: op(self) -> mut[T] = mut *self.data
+}
+
+handle[T]: ref rec
+{
+	target: pvt ptr[T]
+
+	new: op(target: ptr[T])
+	{
+		self.target = target
+	}
+
+	*: op(self) -> mut[T] = mut *self.target
+}
+
+cell[T]: ref rec
+{
+	target: pvt ptr[T]
+	writes: usize
+
+	new: op(target: ptr[T])
+	{
+		self.target = target
+		self.writes = 0
+	}
+
+	*: op(self) -> mut[T] = mut *self.target
+
+	*: op(mut self) -> mut[T]
+	{
+		self.writes += 1
+		ret mut *self.target
+	}
+}
+
+Point: rec
+{
+	x: i32
+	y: i32
+
+	bump: fun(mut self)
+	{
+		self.x += 100
+	}
+}
+
+double: fun(values: span[i32])
+{
+	var i: usize = 0
+	while i < values.length
+	{
+		values[i] *= 2
+		i += 1
+	}
+}
+
+set: fun(mut target: i32, value: i32)
+{
+	target = value
+}
+
+zero: fun(values: span[i32])
+{
+	for value in mut values
+		value = 0
+}
+
+sum: fun(values: span[i32]) -> i32
+{
+	var total = 0
+	for value in values
+		total += value
+
+	ret total
+}
+
+first: fun(values: span[i32]) -> mut[i32] = mut values[0]
+
+move: fun(at: handle[Point])
+{
+	at.x += 1
+	(*at).y = 9
+}
+
+main: fun -> i32
+{
+	var four = [1, 2, 3, 4]
+	val s = span[i32](@four, 4)
+	s[0] = 10
+	double(s)
+	set(mut s[3], 77)
+	printf("%d %d %d %d %d\n", four[0], four[1], s[2], four[3], sum(s))
+
+	val x = first(s)
+	x = 8
+	printf("%d %d\n", four[0], s[0])
+
+	zero(s)
+	printf("%d %d\n", four[0], four[3])
+
+	var points = [Point(1, 0), Point(2, 0)]
+	val p = span[Point](@points, 2)
+	p[0].x = 5
+	p[1].bump()
+	printf("%d %d\n", points[0].x, points[1].x)
+
+	var point = Point(1, 2)
+	val h = handle[Point](@point)
+	move(h)
+	*h = Point((*h).x + 10, (*h).y)
+	printf("%d %d\n", point.x, point.y)
+
+	var value = 1
+	val fixed = cell[i32](@value)
+	var counted = cell[i32](@value)
+	*counted = 3
+	*counted += 1
+	printf("%d %d %zu %zu\n", value, *fixed, fixed.writes, counted.writes)
+	ret 0
+}

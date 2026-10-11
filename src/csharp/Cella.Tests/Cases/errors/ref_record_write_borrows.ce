@@ -1,0 +1,34 @@
+mod test
+
+span[T]: ref rec
+{
+	data: pvt ptr[T]
+	length: pvt set usize
+
+	new: op(data: ptr[T], length: usize)
+	{
+		self.data = data
+		self.length = length
+	}
+
+	[]: op(self, i: usize) -> mut[T] = mut self.data[i]
+}
+
+local: fun -> mut[i32]
+{
+	var items = [1, 2]
+	val s = span[i32](@items, 2)
+	ret mut s[0]
+}
+
+main: fun -> i32
+{
+	var s: span[i32] = undef
+	{
+		var inner = [1, 2]
+		s = span[i32](@inner, 2)
+	}
+
+	s[0] = 3
+	ret 0
+}
