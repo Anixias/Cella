@@ -118,6 +118,7 @@ public sealed class FunctionSymbol
 	: Symbol(name), IExportable
 {
 	public IDeclarationNode Syntax { get; } = syntax;
+	public string DeclaredName { get; init; } = name;
 	public Visibility Visibility { get; } = visibility;
 	public FunctionInfo? ContainingFunction { get; } = containingFunction;
 	public ImmutableArray<ParameterSymbol> Parameters { get; } = parameters.ToImmutableArray();

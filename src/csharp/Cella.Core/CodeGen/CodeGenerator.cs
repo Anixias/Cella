@@ -242,7 +242,128 @@ public sealed unsafe class CodeGenerator : IDisposable
 		current = new ModuleState(module, llvmModule, llvmModule.CreateDIBuilder());
 		_moduleStates[module.Symbol] = current;
 		MapNativeSymbols();
+		if (_config.DebugInfo)
+			StartDebugInfo(module);
+		
 		return current;
+	}
+	
+	private bool UsesCodeView => TargetTriple.Contains("windows");
+	
+	private void StartDebugInfo(LoweredModule module)
+	{
+		AddModuleFlag("Debug Info Version", LLVM.DebugMetadataVersion());
+		if (UsesCodeView)
+			AddModuleFlag("CodeView", 1);
+		else
+			AddModuleFlag("Dwarf Version", 5);
+		
+		var path = module.Files.Select(static file => file.Symbol.FullPath).Order(StringComparer.Ordinal)
+			.FirstOrDefault() ?? module.Symbol.Name;
+		
+		current.DebugFile = GetDebugFile(path);
+		current.DiBuilder.CreateCompileUnit(LLVMDWARFSourceLanguage.LLVMDWARFSourceLanguageC, current.DebugFile,
+			"Cella", IsOptimized, "", 0, "", LLVMDWARFEmissionKind.LLVMDWARFEmissionLineTablesOnly, 0, 0, 0, "", "");
+	}
+	
+	private int IsOptimized => _config.OptimizeMode == OptimizeMode.Release ? 1 : 0;
+	
+	private void AddModuleFlag(string name, uint value)
+	{
+		using var key = new MarshaledString(name);
+		var constant = LLVMValueRef.CreateConstInt(LLVMTypeRef.Int32, value);
+		LLVM.AddModuleFlag((LLVMOpaqueModule*)current.Module.Handle,
+			LLVMModuleFlagBehavior.LLVMModuleFlagBehaviorWarning, key, (nuint)key.Length,
+			LLVM.ValueAsMetadata((LLVMOpaqueValue*)constant.Handle));
+	}
+	
+	private LLVMMetadataRef GetDebugFile(string path)
+	{
+		if (current.DebugFiles.TryGetValue(path, out var file))
+			return file;
+		
+		file = current.DiBuilder.CreateFile(Path.GetFileName(path), Path.GetDirectoryName(path) ?? "");
+		current.DebugFiles[path] = file;
+		return file;
+	}
+	
+	private static bool HasSource(SourceLocation location) => !string.IsNullOrEmpty(location.Source.FilePath);
+	
+	private LLVMMetadataRef DescribeFunction(LLVMValueRef function, string name, SourceLocation location,
+		bool isGenerated)
+	{
+		var file = HasSource(location) ? GetDebugFile(location.Source.FilePath) : current.DebugFile;
+		var line = HasSource(location) ? (uint)location.GetLineColumn().Line : 0u;
+		var type = current.DiBuilder.CreateSubroutineType(file, [], LLVMDIFlags.LLVMDIFlagZero);
+		var isLocal = function.Linkage is LLVMLinkage.LLVMInternalLinkage or LLVMLinkage.LLVMPrivateLinkage ? 1 : 0;
+		var subprogram = current.DiBuilder.CreateFunction(file, name, function.Name, file, line, type, isLocal, 1, line,
+			isGenerated ? LLVMDIFlags.LLVMDIFlagArtificial : LLVMDIFlags.LLVMDIFlagZero, IsOptimized);
+		
+		LLVM.SetSubprogram((LLVMOpaqueValue*)function.Handle, (LLVMOpaqueMetadata*)subprogram.Handle);
+		return subprogram;
+	}
+	
+	private LLVMBuilderRef CreateGeneratedBuilder(LLVMValueRef function, string name, SourceLocation location)
+	{
+		var builder = current.Module.Context.CreateBuilder();
+		builder.PositionAtEnd(function.AppendBasicBlock("entry"));
+		if (!_config.DebugInfo)
+			return builder;
+		
+		var subprogram = DescribeFunction(function, name, location, true);
+		SetDebugLocation(builder, HasSource(location) ? (uint)location.GetLineColumn().Line : 0u, 0u, subprogram);
+		return builder;
+	}
+	
+	private void SetLocation(LLVMBuilderRef builder, SourceLocation location)
+	{
+		if (!_config.DebugInfo || !HasSource(location))
+			return;
+		
+		var subprogram = LLVM.GetSubprogram((LLVMOpaqueValue*)builder.InsertBlock.Parent.Handle);
+		if (subprogram is null)
+			return;
+		
+		var file = GetDebugFile(location.Source.FilePath);
+		var scope = LLVM.DIScopeGetFile(subprogram) == (LLVMOpaqueMetadata*)file.Handle
+			? subprogram
+			: LLVM.DIBuilderCreateLexicalBlockFile((LLVMOpaqueDIBuilder*)current.DiBuilder.Handle, subprogram,
+				(LLVMOpaqueMetadata*)file.Handle, 0);
+		
+		var (line, column) = location.GetLineColumn();
+		SetDebugLocation(builder, (uint)line, UsesCodeView ? 0u : (uint)column, scope);
+	}
+	
+	private void SetDebugLocation(LLVMBuilderRef builder, uint line, uint column, LLVMMetadataRef scope) =>
+		LLVM.SetCurrentDebugLocation2((LLVMOpaqueBuilder*)builder.Handle,
+			LLVM.DIBuilderCreateDebugLocation((LLVMOpaqueContext*)current.Module.Context.Handle, line, column,
+				(LLVMOpaqueMetadata*)scope.Handle, null));
+	
+	private LLVMValueRef EmitAt(SourceLocation location, LLVMBuilderRef builder, Func<LLVMValueRef> emit)
+	{
+		if (!_config.DebugInfo)
+			return emit();
+		
+		var previous = LLVM.GetCurrentDebugLocation2((LLVMOpaqueBuilder*)builder.Handle);
+		SetLocation(builder, location);
+		var value = emit();
+		LLVM.SetCurrentDebugLocation2((LLVMOpaqueBuilder*)builder.Handle, previous);
+		return value;
+	}
+	
+	private string GetDisplayName(FunctionInfo function)
+	{
+		if (function.QualifiedName.IsDefaultOrEmpty)
+			return function.MangledName ?? function.Symbol.Name;
+		
+		var map = function.TypeArguments.IsDefaultOrEmpty
+			? []
+			: TypePool.CreateMap(function.Symbol.TypeParameters, function.TypeArguments);
+		
+		return string.Join('.', function.QualifiedName.Select(part => part.TypeParameters.IsEmpty
+			? part.Name
+			: $"{part.Name}[{string.Join(", ", part.TypeParameters.Select(parameter =>
+				Substitute(map.GetValueOrDefault(parameter, parameter)).Name))}]"));
 	}
 	
 	private void BuildInstantiations()
@@ -271,8 +392,8 @@ public sealed unsafe class CodeGenerator : IDisposable
 		current = state;
 		var llvmModule = state.Module;
 		var name = state.Lowered.Symbol.Name;
-		RunOptimizationPass(llvmModule);
 		state.DiBuilder.DIBuilderFinalize();
+		RunOptimizationPass(llvmModule);
 		
 		string message;
 		if (!llvmModule.TryVerify(LLVMVerifierFailureAction.LLVMAbortProcessAction, out message))
@@ -426,24 +547,6 @@ public sealed unsafe class CodeGenerator : IDisposable
 	
 	private void BuildModule(LoweredModule module)
 	{
-		var isOptimized = _config.OptimizeMode == OptimizeMode.Debug ? 0 : 1;
-		var dwarfLang = LLVMDWARFSourceLanguage.LLVMDWARFSourceLanguageC99;
-		
-		/*foreach (var file in module.Files)
-		{
-			LLVMMetadataRef fileMetadata;
-			{
-				var fullPath = file.Symbol.FullPath;
-				var fileName = Path.GetFileName(fullPath);
-				var directory = Path.GetDirectoryName(fullPath)?.Replace('\\', '/') ?? string.Empty;
-				fileMetadata = llvmDiBuilder.CreateFile(fileName, directory);
-			}
-		
-			// TODO Emit debug info for types, functions, etc.
-			var compileUnit = llvmDiBuilder.CreateCompileUnit(dwarfLang, fileMetadata, "", isOptimized, "", 0, "",
-				LLVMDWARFEmissionKind.LLVMDWARFEmissionFull, 0, 1, 0, "", "");
-		}*/
-		
 		foreach (var file in module.Files)
 		{
 			// Create and map external functions
@@ -509,7 +612,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 		}
 		
 		if (current.EntryPoint is { } entryPoint && _assemblySymbol.EntryPoint is { } entryInfo)
-			BuildEntryPoint(entryPoint, entryInfo.Signature);
+			BuildEntryPoint(entryPoint, entryInfo.Signature, entryInfo.Symbol.Definition);
 	}
 	
 	private LLVMTypeRef CreateType(TypeSymbol type)
@@ -608,7 +711,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 		return functionInfo;
 	}
 	
-	private void BuildEntryPoint(LLVMFunctionInfo entryPoint, FunctionSignature signature)
+	private void BuildEntryPoint(LLVMFunctionInfo entryPoint, FunctionSignature signature, SourceLocation location)
 	{
 		var takesArguments = !signature.ParameterTypes.IsEmpty;
 		var isWide = takesArguments && TargetTriple.Contains("windows");
@@ -616,8 +719,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 			takesArguments ? [LLVMTypeRef.Int32, OpaquePointer] : []));
 		
 		main.Linkage = LLVMLinkage.LLVMExternalLinkage;
-		using var builder = current.Module.Context.CreateBuilder();
-		builder.PositionAtEnd(main.AppendBasicBlock("entry"));
+		using var builder = CreateGeneratedBuilder(main, main.Name, location);
 		
 		LLVMValueRef[] arguments = [];
 		Action? cleanup = null;
@@ -730,6 +832,9 @@ public sealed unsafe class CodeGenerator : IDisposable
 	{
 		currentFunction = current.Functions[info];
 		var functionValue = currentFunction.FunctionValue;
+		if (_config.DebugInfo)
+			DescribeFunction(functionValue, GetDisplayName(info), info.Symbol.Definition, false);
+		
 		var allocaBlock = functionValue.AppendBasicBlock("allocas");
 		
 		// Create blocks
@@ -753,6 +858,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 			// First block allocates stack variables for parameters
 			if (i == 0)
 			{
+				SetLocation(builder, info.Symbol.Definition);
 				var parameters = function.Info.Symbol.Parameters;
 				var signature = currentFunction.CSignature;
 				var firstParameter = (signature?.Return.Kind == CPassKind.Indirect ? 1u : 0u) +
@@ -786,6 +892,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 		}
 		
 		builder.PositionAtEnd(allocaBlock);
+		SetLocation(builder, info.Symbol.Definition);
 		builder.BuildBr(blockMap[function.Blocks[0]]);
 		
 		functionValue.VerifyFunction(LLVMVerifierFailureAction.LLVMAbortProcessAction);
@@ -921,6 +1028,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 	private void EmitInstruction(LLVMBuilderRef builder, IInstruction instruction,
 		Dictionary<BasicBlock, LLVMBasicBlockRef> blockMap)
 	{
+		SetLocation(builder, instruction.SourceLocation);
 		switch (instruction)
 		{
 			case BeginScopeInstruction:
@@ -1025,8 +1133,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 		glue.Linkage = LLVMLinkage.LLVMInternalLinkage;
 		current.DropGlue[type] = glue;
 		
-		using var builder = current.Module.Context.CreateBuilder();
-		builder.PositionAtEnd(glue.AppendBasicBlock("entry"));
+		using var builder = CreateGeneratedBuilder(glue, glue.Name, SourceLocation.None);
 		var address = glue.GetParam(0);
 		switch (type)
 		{
@@ -1168,6 +1275,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 	private void EmitTerminator(LLVMBuilderRef builder, IBlockTerminator terminator,
 		Dictionary<BasicBlock, LLVMBasicBlockRef> blockMap)
 	{
+		SetLocation(builder, terminator.SourceLocation);
 		switch (terminator)
 		{
 			case ReturnTerminator term:
@@ -1238,13 +1346,13 @@ public sealed unsafe class CodeGenerator : IDisposable
 		AccessValue v => EmitAccessValue(v, builder),
 		ArrayValue v => EmitArrayValue(v, builder),
 		ConversionValue v => EmitConversion(v, builder),
-		CallValue v => EmitCall(v, builder),
+		CallValue v => EmitAt(v.SourceLocation, builder, () => EmitCall(v, builder)),
 		FunctionReferenceValue v => EmitFunctionReference(v.Function, v.Type),
 		ClosureValue v => EmitClosure(v, builder),
 		EnvironmentValue v => EmitEnvironment(v, builder),
 		OwnClosureValue v => EmitOwnClosure(v, builder),
 		ClosureFieldValue v => EmitClosureField(v, builder),
-		IndirectCallValue v => EmitIndirectCall(v, builder),
+		IndirectCallValue v => EmitAt(v.SourceLocation, builder, () => EmitIndirectCall(v, builder)),
 		PointerOffsetValue v => EmitPointerOffset(v, builder),
 		PointerDifferenceValue v => EmitPointerDifference(v, builder),
 		EnumValue v => EmitEnumValue(v, builder),
@@ -1533,8 +1641,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 		
 		var glue = current.Module.AddFunction("drop$", DropGlueType);
 		glue.Linkage = LLVMLinkage.LLVMInternalLinkage;
-		using var builder = current.Module.Context.CreateBuilder();
-		builder.PositionAtEnd(glue.AppendBasicBlock("entry"));
+		using var builder = CreateGeneratedBuilder(glue, glue.Name, SourceLocation.None);
 		builder.BuildRetVoid();
 		return glue;
 	}
@@ -2141,8 +2248,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 			CreateInternalFunctionType(signature.ReturnType, [OpaquePointer], parameterTypes));
 		
 		thunk.Linkage = LLVMLinkage.LLVMInternalLinkage;
-		using var builder = current.Module.Context.CreateBuilder();
-		builder.PositionAtEnd(thunk.AppendBasicBlock("entry"));
+		using var builder = CreateGeneratedBuilder(thunk, name, SourceLocation.None);
 		var first = IsLarge(signature.ReturnType) ? 2u : 1u;
 		var result = emitCall(builder, thunk.GetParam(0),
 			[..parameterTypes.Select((_, i) => thunk.GetParam((uint)i + first))]);
@@ -2523,8 +2629,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 		var panicFunction = current.Module.AddFunction("panic", PanicType);
 		panicFunction.Linkage = LLVMLinkage.LLVMInternalLinkage;
 		current.PanicFunction = panicFunction;
-		using var builder = current.Module.Context.CreateBuilder();
-		builder.PositionAtEnd(panicFunction.AppendBasicBlock("entry"));
+		using var builder = CreateGeneratedBuilder(panicFunction, panicFunction.Name, SourceLocation.None);
 		
 		var flushType = LLVMTypeRef.CreateFunction(LLVMTypeRef.Int32, [OpaquePointer]);
 		builder.BuildCall2(flushType, GetCFunction("fflush", flushType), [LLVMValueRef.CreateConstNull(OpaquePointer)]);
@@ -3114,8 +3219,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 			CreateInternalFunctionType(returnType, [OpaquePointer], parameterTypes));
 		
 		thunk.Linkage = LLVMLinkage.LLVMInternalLinkage;
-		using var builder = current.Module.Context.CreateBuilder();
-		builder.PositionAtEnd(thunk.AppendBasicBlock("entry"));
+		using var builder = CreateGeneratedBuilder(thunk, GetDisplayName(function), function.Symbol.Definition);
 		var first = IsLarge(returnType) ? 2u : 1u;
 		var args = parameterTypes
 			.Select((_, i) => PassAsDeclared(function, i, AdaptFunction(type.ParameterTypes[i],
@@ -3167,8 +3271,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 		if (isIndirect)
 			AddSretAttribute(thunk, signature.Return.Type, false);
 		
-		using var builder = current.Module.Context.CreateBuilder();
-		builder.PositionAtEnd(thunk.AppendBasicBlock("entry"));
+		using var builder = CreateGeneratedBuilder(thunk, GetDisplayName(function), function.Symbol.Definition);
 		var first = isIndirect ? 1u : 0u;
 		var args = function.Signature.ParameterTypes
 			.Select((type, i) => ReceiveCArgument(signature.Parameters[i], type, thunk.GetParam(first + (uint)i),
@@ -3254,8 +3357,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 		var value = thunk.FunctionValue;
 		value.Linkage = LLVMLinkage.LLVMInternalLinkage;
 		
-		using var builder = current.Module.Context.CreateBuilder();
-		builder.PositionAtEnd(value.AppendBasicBlock("entry"));
+		using var builder = CreateGeneratedBuilder(value, GetDisplayName(function), function.Symbol.Definition);
 		var first = thunk.ResultParameter is null ? 0u : 1u;
 		var parameters = function.Signature.ParameterTypes.Select((_, i) => value.GetParam((uint)i + first)).ToList();
 		var result = witness switch
@@ -3290,8 +3392,7 @@ public sealed unsafe class CodeGenerator : IDisposable
 	{
 		var value = CreateFunction(current.Module, function).FunctionValue;
 		value.Linkage = LLVMLinkage.LLVMInternalLinkage;
-		using var builder = current.Module.Context.CreateBuilder();
-		builder.PositionAtEnd(value.AppendBasicBlock("entry"));
+		using var builder = CreateGeneratedBuilder(value, GetDisplayName(function), SourceLocation.None);
 		var result = native.Intrinsic switch
 		{
 			NativeMemberIntrinsic.StrNew => builder.BuildInsertValue(
@@ -3666,6 +3767,7 @@ public sealed record CodeGenConfig
 	public bool BoundsChecks { get; init; } = true;
 	public bool OverflowChecks { get; init; }
 	public bool IsLibrary { get; init; }
+	public bool DebugInfo { get; init; }
 	public string? SourceRoot { get; init; }
 	
 	public uint GetPointerSize() => GetDataLayout().PointerSize;

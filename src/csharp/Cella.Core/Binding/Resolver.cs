@@ -4511,7 +4511,11 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			scope.Define(parameter);
 		
 		var signature = new FunctionSignature(types, returnType, false, modes, takesVariadic);
-		var info = new FunctionInfo(outer.Mangle(symbol, signature), symbol, signature, scope, null, outer.File);
+		var info = new FunctionInfo(outer.Mangle(symbol, signature), symbol, signature, scope, null, outer.File)
+		{
+			QualifiedName = outer.Qualify(symbol)
+		};
+		
 		_signatures.AddLambda(info);
 		Journal(() => _signatures.RemoveLambda(info));
 		return info;

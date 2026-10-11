@@ -31,21 +31,38 @@ public readonly struct ResolutionContext
 	public string Mangle(Symbol symbol, FunctionSignature signature) =>
 		Mangling.Mangle(symbol, signature, Modules, GetQualifiers());
 	
+	public ImmutableArray<NamePart> Qualify(FunctionSymbol function) =>
+	[
+		..GetModuleParts().Select(static part => new NamePart(part, [])),
+		..GetContainers().Select(static container => container switch
+		{
+			FunctionSymbol f => new NamePart(f.DeclaredName, f.DeclaredTypeParameters),
+			NamedTypeSymbol t => new NamePart(t.Name, t.TypeParameters),
+			_ => new NamePart(container.Name, [])
+		}),
+		new(function.DeclaredName, function.DeclaredTypeParameters)
+	];
+	
 	private List<string> GetQualifiers()
 	{
-		var result = new List<string>();
+		var modules = Modules;
+		return [..GetModuleParts(), ..GetContainers().Select(container => Mangling.MangleName(container, modules))];
+	}
+	
+	private string[] GetModuleParts() => File.Module.ModuleName.Text.Split('.');
+	
+	private List<Symbol> GetContainers()
+	{
+		var result = new List<Symbol>();
 		
 		// TODO Nested functions in functions not supported
 		for (var f = ContainingFunction; f is not null; f = f.Value.Symbol.ContainingFunction)
-			result.Add(Mangling.MangleName(f.Value.Symbol, Modules));
+			result.Add(f.Value.Symbol);
 		
 		for (var t = ContainingType; t is not null; t = t.ContainingType)
-			result.Add(Mangling.MangleName(t, Modules));
+			result.Add(t);
 		
 		result.Reverse();
-		
-		var moduleParts = File.Module.ModuleName.Text.Split('.');
-		result.InsertRange(0, moduleParts);
 		return result;
 	}
 	

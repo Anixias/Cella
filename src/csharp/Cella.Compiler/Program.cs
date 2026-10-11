@@ -305,6 +305,7 @@ internal static class Program
 		{
 			BoundsChecks = project.Project.BoundsChecks ?? true,
 			OverflowChecks = project.Project.OverflowChecks ?? optimizeMode == OptimizeMode.Debug,
+			DebugInfo = project.Project.DebugInfo ?? true,
 			SourceRoot = project.Directory,
 			IsLibrary = outputType != ProjectOutputType.Executable
 		};
@@ -456,7 +457,9 @@ internal static class Program
 			var linkPreference = project.Project.SystemLinkPreference;
 			var linkRequest = new LinkRequest(outputType, objectFiles, outputPath, toolchainDir, libFiles!)
 			{
-				LinkPreference = linkPreference
+				LinkPreference = linkPreference,
+				DebugInfo = codeGenConfig.DebugInfo,
+				OptimizeMode = optimizeMode
 			};
 			
 			var linkerToolchain = Toolchain.FromTargetTriple(targetTriple, toolchainDir);
@@ -496,7 +499,12 @@ internal static class Program
 	{
 		var libraries = dependencies.Where(static d => d.OutputType == ProjectOutputType.SharedLibrary);
 		foreach (var path in libraries.Select(static d => d.OutputPath).OfType<string>())
+		{
 			File.Copy(path, Path.Combine(outputDir, Path.GetFileName(path)), true);
+			var symbols = Path.ChangeExtension(path, ".pdb");
+			if (File.Exists(symbols))
+				File.Copy(symbols, Path.Combine(outputDir, Path.GetFileName(symbols)), true);
+		}
 	}
 	
 	private static async Task<(ImmutableArray<SourceFileInfo> Files, DiagnosticList Diagnostics)> ProcessProject(

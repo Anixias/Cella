@@ -77,6 +77,7 @@ public sealed class SymbolCollector : IDeclarationNodeVisitor<Symbol>
 		var function = new FunctionSymbol(name, node, GetMemberVisibility(node.Visibility), null, parameters,
 			FunctionKind.Constructor)
 		{
+			DeclaredName = "new",
 			TypeParameters = CurrentTypeParameters
 		};
 		
@@ -95,6 +96,7 @@ public sealed class SymbolCollector : IDeclarationNodeVisitor<Symbol>
 		
 		var function = new FunctionSymbol(name, node, GetMemberVisibility(null), null, [self], FunctionKind.Destructor)
 		{
+			DeclaredName = "drop",
 			TypeParameters = CurrentTypeParameters
 		};
 		
@@ -130,6 +132,7 @@ public sealed class SymbolCollector : IDeclarationNodeVisitor<Symbol>
 		var typeParameters = CreateTypeParameters(node.TypeParameters);
 		var function = new FunctionSymbol(name, node, visibility, null, parameters, kind)
 		{
+			DeclaredName = isAccessor ? $"{property!.Identifier.Text}.{node.Identifier.Text}" : node.Identifier.Text,
 			TypeParameters = CurrentTypeParameters.AddRange(typeParameters),
 			DeclaredTypeParameters = typeParameters
 		};

@@ -1,5 +1,6 @@
 ﻿using System.Collections.Immutable;
 using Cella.Compiler.Projects;
+using Cella.Core.CodeGen;
 
 namespace Cella.Compiler.Linking;
 
@@ -18,4 +19,6 @@ public sealed class LinkRequest
 	public string ToolchainsDirectory { get; } = toolchainsDirectory;
 	public ImmutableArray<string> LibFiles { get; } = libFiles.ToImmutableArray();
 	public SystemLinkPreference LinkPreference { get; init; } = SystemLinkPreference.Dynamic;
+	public bool DebugInfo { get; init; }
+	public OptimizeMode OptimizeMode { get; init; }
 }

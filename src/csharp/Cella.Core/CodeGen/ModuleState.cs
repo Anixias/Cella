@@ -19,4 +19,6 @@ internal sealed class ModuleState(LoweredModule lowered, LLVMModuleRef module, L
 	public HashSet<string> ExternalLibraries { get; } = [];
 	public LLVMValueRef PanicFunction { get; set; }
 	public LLVMFunctionInfo? EntryPoint { get; set; }
+	public LLVMMetadataRef DebugFile { get; set; }
+	public Dictionary<string, LLVMMetadataRef> DebugFiles { get; } = [];
 }

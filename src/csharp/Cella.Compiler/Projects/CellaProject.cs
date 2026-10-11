@@ -17,7 +17,7 @@ public sealed partial class CellaProject
 	private static readonly HashSet<string> _whenSettingNames =
 	[
 		nameof(OutputType), nameof(SystemLinkPreference), nameof(AssemblyName), nameof(BoundsChecks),
-		nameof(OverflowChecks), nameof(ProjectReferences), nameof(Flags)
+		nameof(OverflowChecks), nameof(DebugInfo), nameof(ProjectReferences), nameof(Flags)
 	];
 	
 	private static readonly HashSet<string> _settingNames = [.._whenSettingNames, nameof(When)];
@@ -36,6 +36,9 @@ public sealed partial class CellaProject
 	
 	[TomlValueOnSerialized]
 	public bool? OverflowChecks { get; init; }
+	
+	[TomlValueOnSerialized]
+	public bool? DebugInfo { get; init; }
 	
 	[TomlValueOnSerialized]
 	public List<ProjectReference>? ProjectReferences { get; init; }
@@ -134,6 +137,8 @@ public sealed partial class CellaProject
 				errors) ?? BoundsChecks,
 			OverflowChecks = Override(path, matching, static settings => settings.OverflowChecks,
 				nameof(OverflowChecks), errors) ?? OverflowChecks,
+			DebugInfo = Override(path, matching, static settings => settings.DebugInfo, nameof(DebugInfo), errors) ??
+			            DebugInfo,
 			ProjectReferences =
 			[
 				..ProjectReferences ?? [],
@@ -190,6 +195,9 @@ public sealed partial class ProjectSettings
 	
 	[TomlValueOnSerialized]
 	public bool? OverflowChecks { get; init; }
+	
+	[TomlValueOnSerialized]
+	public bool? DebugInfo { get; init; }
 	
 	[TomlValueOnSerialized]
 	public List<ProjectReference>? ProjectReferences { get; init; }

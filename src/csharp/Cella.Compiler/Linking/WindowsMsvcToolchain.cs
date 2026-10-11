@@ -1,4 +1,5 @@
 ﻿using Cella.Compiler.Projects;
+using Cella.Core.CodeGen;
 
 namespace Cella.Compiler.Linking;
 
@@ -29,6 +30,13 @@ public sealed class WindowsMsvcToolchain(string root) : Toolchain(root)
 			args.Add("/dll");
 		
 		args.Add($"/out:{request.OutputFile}");
+		
+		if (request.DebugInfo && request.OutputType is ProjectOutputType.Executable or ProjectOutputType.SharedLibrary)
+		{
+			args.AddRange(["/debug", "/pdbaltpath:%_PDB%", "/opt:ref"]);
+			if (request.OptimizeMode == OptimizeMode.Release)
+				args.Add("/opt:icf");
+		}
 		
 		args.AddRange(request.InputFiles);
 		

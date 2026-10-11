@@ -18,8 +18,10 @@ public readonly record struct FunctionInfo
 	public ImmutableArray<TypeSymbol> TypeArguments { get; init; } = [];
 	public FunctionSignature? Declared { get; init; }
 	public FunctionSignature DeclaredSignature => Declared ?? Signature;
+	public ImmutableArray<NamePart> QualifiedName { get; init; } = [];
 }
 
+public readonly record struct NamePart(string Name, ImmutableArray<TypeParameterSymbol> TypeParameters);
 public readonly record struct VariableInfo(VariableSymbol Symbol, TypeSymbol Type);
 
 public readonly record struct GlobalInfo
