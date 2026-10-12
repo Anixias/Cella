@@ -28,6 +28,8 @@ public static class Mangling
 		new StringBuilder().Append('?').Append(QualifyAssembly(modules?.AssemblyName))
 			.AppendJoin('.', qualifierParts.Append(MangleName(symbol, modules))).ToString();
 	
+	public static string MangleStaticRegistry(string assemblyName) => $"?{QualifyAssembly(assemblyName)}.statics";
+	
 	private static string QualifyAssembly(string? assemblyName) =>
 		assemblyName is null ? "" : $"{EscapeExportSyntax(assemblyName)}!";
 	

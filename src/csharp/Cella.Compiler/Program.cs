@@ -417,6 +417,11 @@ internal static class Program
 				StaticLibrarySymbols = allDependencies
 					.Where(static d => d.OutputType == ProjectOutputType.StaticLibrary)
 					.SelectMany(GetLibrarySymbols)
+					.ToHashSet(),
+				SharedAssemblies = allDependencies
+					.Where(static d => d.OutputType == ProjectOutputType.SharedLibrary)
+					.Select(static d => d.AssemblySymbol.Name)
+					.Concat(outputType == ProjectOutputType.SharedLibrary ? [project.Name] : [])
 					.ToHashSet()
 			};
 			

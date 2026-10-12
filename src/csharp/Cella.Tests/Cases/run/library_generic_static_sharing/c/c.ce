@@ -1,0 +1,24 @@
+mod c
+
+Point: pub rec
+{
+	x: i32
+	y: i32
+}
+
+cell[T]: pub rec
+{
+	hits: var i32 = 0
+	origin: var Point = Point(5, 7)
+
+	bump: fun -> i32
+	{
+		hits += 1
+		ret hits
+	}
+}
+
+add: pub fun(mut p: Point, k: i32)
+{
+	p.y += k
+}

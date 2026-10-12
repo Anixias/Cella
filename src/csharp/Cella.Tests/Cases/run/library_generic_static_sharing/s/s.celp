@@ -1,0 +1,4 @@
+OutputType = "StaticLibrary"
+
+[[ProjectReferences]]
+Path = '../c/c.celp'
