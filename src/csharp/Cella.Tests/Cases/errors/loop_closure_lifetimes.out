@@ -1,0 +1,16 @@
+
+====== loop_closure_lifetimes.ce ======
+
+Error at line 19, column 6
+18 │ 
+19 │ ret first() + last()
+         ╘═══╛ Cannot use closures from an earlier loop iteration
+             | Made on line 11
+
+Error at line 19, column 16
+18 │ 
+19 │ ret first() + last()
+                   ╘══╛ Cannot use closures from an earlier loop iteration
+                      | Made on line 11
+
+[compilation failed]

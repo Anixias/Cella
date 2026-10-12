@@ -14,7 +14,8 @@ public sealed class BorrowChecker(TypePool typePool, DiagnosticList diagnostics)
 	{
 		Moved,
 		Reassigned,
-		Dropped
+		Dropped,
+		Iteration
 	}
 	
 	private enum Escape
@@ -137,7 +138,7 @@ public sealed class BorrowChecker(TypePool typePool, DiagnosticList diagnostics)
 		var memoryEvents = events.Values.SelectMany(static list => list).ToList();
 		var merged = memoryEvents
 			.OfType<DefineEvent>()
-			.Where(static e => e.Kind == DefineKind.Undef && e.Local.Name.StartsWith('.'))
+			.Where(static e => e.Kind == DefineKind.Undef && IsTemporary(e.Local))
 			.Select(static e => e.Local)
 			.ToHashSet();
 		
@@ -204,10 +205,14 @@ public sealed class BorrowChecker(TypePool typePool, DiagnosticList diagnostics)
 		if (endings.Count == 0 || !_reported.Add(location))
 			return;
 		
+		if (endings.Any(static invalidation => invalidation.Ending == Ending.Iteration))
+			endings = [..endings.Where(static invalidation => invalidation.Ending == Ending.Iteration)];
+		
 		var message = endings[0].Ending switch
 		{
 			Ending.Moved => "Cannot use borrows of moved values",
 			Ending.Reassigned => "Cannot use borrows of reassigned values",
+			Ending.Iteration => "Cannot use closures from an earlier loop iteration",
 			_ => "Cannot use borrows of dropped values"
 		};
 		
@@ -227,6 +232,7 @@ public sealed class BorrowChecker(TypePool typePool, DiagnosticList diagnostics)
 	{
 		Ending.Moved => "Moved",
 		Ending.Reassigned => "Reassigned",
+		Ending.Iteration => "Made",
 		_ => "Dropped"
 	};
 	
@@ -273,7 +279,8 @@ public sealed class BorrowChecker(TypePool typePool, DiagnosticList diagnostics)
 		_dying.Clear();
 	}
 	
-	private static bool IsTemporary(LocalVariableSymbol local) => local.Name.StartsWith('.');
+	private static bool IsTemporary(LocalVariableSymbol local) =>
+		local.Name.StartsWith('.') && !local.IsClosureEnvironment;
 	
 	private void CheckReturn(MemoryEvent memoryEvent, BorrowState state)
 	{
@@ -371,6 +378,7 @@ public sealed class BorrowChecker(TypePool typePool, DiagnosticList diagnostics)
 	private Escape? FindEscape(VariableSymbol root) => root switch
 	{
 		ClosureEnvironment => Escape.Closure,
+		LocalVariableSymbol { IsClosureEnvironment: true } => null,
 		ParameterSymbol parameter => parameterEscapes[parameter],
 		LocalVariableSymbol local => local.Name.StartsWith('.') ? Escape.Unstored : Escape.Local,
 		_ => null
@@ -422,7 +430,10 @@ public sealed class BorrowChecker(TypePool typePool, DiagnosticList diagnostics)
 			
 			case StorageDeadEvent e:
 				ForgetTarget(e.Local, state);
-				state.End(new(e.Local, []), new(Ending.Dropped, e.Location));
+				state.End(new(e.Local, []), e.Local is LocalVariableSymbol { IsClosureEnvironment: true } environment
+					? new(Ending.Iteration, environment.Identifier.SourceLocation)
+					: new(Ending.Dropped, e.Location));
+				
 				state.Remove(e.Local);
 				break;
 		}
@@ -491,7 +502,12 @@ public sealed class BorrowChecker(TypePool typePool, DiagnosticList diagnostics)
 			ArrayValue v => [..v.Elements.SelectMany(element => Sources(element, state))],
 			FStrValue v => TemplateSources(v, state),
 			FStrPartValue v => Sources(v.Target, state),
-			ClosureValue v => [new Place(_environment, []), ..v.Captures.SelectMany(c => CaptureSources(c, state))],
+			ClosureValue v =>
+			[
+				new Place(_environment, []),
+				..v.Environment is { } environment ? [new Place(environment, [])] : Array.Empty<Place>(),
+				..v.Captures.SelectMany(c => CaptureSources(c, state))
+			],
 			OwnClosureValue v => [..v.Captures.SelectMany(capture => Sources(capture, state))],
 			_ => []
 		};

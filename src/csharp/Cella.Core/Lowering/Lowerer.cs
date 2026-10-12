@@ -1054,7 +1054,28 @@ public sealed class Lowerer
 				node.Captures.Select((capture, i) => CaptureValue(capture, node.Function.Symbol.Captures[i])), closure,
 				node.Syntax.SourceLocation)
 			: new ClosureValue(node.Function, node.Captures.Select(CaptureAddress), node.Type,
-				node.Syntax.SourceLocation);
+				node.Syntax.SourceLocation)
+			{
+				Environment = DeclareIterationEnvironment(node.Syntax.SourceLocation)
+			};
+		
+		private LocalVariableSymbol? DeclareIterationEnvironment(SourceLocation location)
+		{
+			if (!_loopStack.TryPeek(out var loop) || _activeScopes.Count <= loop.ContinueDepth)
+				return null;
+			
+			var scope = _activeScopes.Reverse().ElementAt(loop.ContinueDepth);
+			var symbol = new LocalVariableSymbol(new(TokenType.Identifier, location, ".closure"),
+				NativeSymbols.Bool, false)
+			{
+				IsClosureEnvironment = true
+			};
+			
+			Declare(GetOrMakeBlock(), new LocalVarInstruction(symbol, new UndefValue(NativeSymbols.Bool), location,
+				scope.Id));
+			
+			return symbol;
+		}
 		
 		private Value CaptureValue(IResolvedExpressionNode capture, LocalVariableSymbol binding)
 		{

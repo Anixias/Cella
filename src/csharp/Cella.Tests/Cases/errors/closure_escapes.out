@@ -35,7 +35,7 @@ Error at line 54, column 2
 Error at line 61, column 2
 60 │ 
 61 │ later()
-     ╘═══╛ Cannot use borrows of dropped values
-         | Dropped on line 59
+     ╘═══╛ Cannot use closures from an earlier loop iteration
+         | Made on line 59
 
 [compilation failed]

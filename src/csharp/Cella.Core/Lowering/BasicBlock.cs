@@ -132,6 +132,7 @@ public sealed class ClosureValue
 {
 	public FunctionInfo Function { get; } = function;
 	public ImmutableArray<Value> Captures { get; } = captures.ToImmutableArray();
+	public LocalVariableSymbol? Environment { get; init; }
 }
 
 public sealed class EnvironmentValue(int index, TypeSymbol type) : Value(type, false, SourceLocation.None)
