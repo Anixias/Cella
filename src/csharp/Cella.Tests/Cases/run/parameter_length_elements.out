@@ -1,0 +1,28 @@
+drop 3
+drop 2
+got 1
+drop 7
+drop 6
+drop 4
+got 5
+made
+drop 9
+drop 7
+kept
+drop 11
+drop 10
+drop 25
+kept
+drop 26
+drop 24
+drop 23
+drop 22
+drop 21
+drop 20
+drop 30
+99 31
+drop 31
+drop 99
+drop 5
+drop 1
+[exit code 0]

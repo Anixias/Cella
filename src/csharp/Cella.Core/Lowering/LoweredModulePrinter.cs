@@ -93,7 +93,7 @@ public static class LoweredModulePrinter
 					case DropElementsInstruction i:
 						sb.Append("drop ");
 						PrintValue(sb, i.Array);
-						sb.Append($"[{i.Start}..{i.Start + i.Count}]");
+						sb.Append(i.Count is { } count ? $"[{i.Start}..{i.Start + count}]" : $"[{i.Start}..]");
 						if (i.Guard is { } elementsGuard)
 						{
 							sb.Append(" if ");

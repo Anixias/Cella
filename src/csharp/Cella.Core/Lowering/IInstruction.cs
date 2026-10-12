@@ -46,14 +46,14 @@ public sealed class DropElementsInstruction
 (
 	Value array,
 	BigInteger start,
-	BigInteger count,
+	BigInteger? count,
 	SourceLocation sourceLocation,
 	Value? guard
 ) : IInstruction
 {
 	public Value Array { get; } = array;
 	public BigInteger Start { get; } = start;
-	public BigInteger Count { get; } = count;
+	public BigInteger? Count { get; } = count;
 	public SourceLocation SourceLocation { get; } = sourceLocation;
 	public Value? Guard { get; } = guard;
 }

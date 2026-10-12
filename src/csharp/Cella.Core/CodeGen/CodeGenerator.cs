@@ -1009,6 +1009,9 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 				break;
 			}
 			
+			case DropInstruction i when IsMissingElement(i.Value):
+				break;
+			
 			case DropInstruction { Guard: { } guard } i:
 			{
 				var function = builder.InsertBlock.Parent;
@@ -1051,6 +1054,17 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 				throw new InvalidOperationException();
 		}
 	}
+	
+	private bool IsMissingElement(Value value) => value switch
+	{
+		IndexerValue { Index: ConstantValue { Value: BigInteger index } } v
+			when Substitute(v.Target.Type) is ArrayType { Length.Sign: >= 0 } array && index >= array.Length => true,
+		IndexerValue v => IsMissingElement(v.Target),
+		AccessValue v => IsMissingElement(v.Target),
+		EnumPayloadValue v => IsMissingElement(v.Target),
+		ConversionValue v => IsMissingElement(v.Source),
+		_ => false
+	};
 	
 	private void EmitDrop(Value value, LLVMBuilderRef builder)
 	{
@@ -1191,6 +1205,11 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 	private void EmitElementDrops(DropElementsInstruction instruction, LLVMBuilderRef builder)
 	{
 		var array = (ArrayType)Substitute(instruction.Array.Type);
+		var available = BigInteger.Max(array.Length - instruction.Start, BigInteger.Zero);
+		var count = BigInteger.Min(instruction.Count ?? available, available);
+		if (count.IsZero)
+			return;
+		
 		LLVMValueRef address;
 		if (IsAddressable(instruction.Array))
 		{
@@ -1201,7 +1220,7 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 			address = SpillValue(builder, array, EmitValue(instruction.Array, builder), "dropped");
 		}
 		
-		EmitElementDrops(array, address, instruction.Start, instruction.Count, builder);
+		EmitElementDrops(array, address, instruction.Start, count, builder);
 	}
 	
 	private void EmitElementDrops(ArrayType array, LLVMValueRef address, BigInteger start, BigInteger count,

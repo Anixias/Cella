@@ -1,0 +1,61 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Token: rec
+{
+	id: i32
+
+	drop: op
+	{
+		printf("drop %d\n", self.id)
+	}
+}
+
+take: fun(own t: Token)
+{
+}
+
+firstOf[N: val usize]: fun(own values: array[Token, N]) -> Token = values[0]
+
+middleOf[N: val usize]: fun(own values: array[Token, N]) -> Token = values[1]
+
+make[N: val usize]: fun
+{
+	var arr: array[Token, N] = undef
+	arr[0] = Token(7)
+	arr[2] = Token(9)
+	printf("made\n")
+}
+
+maybe[N: val usize]: fun(own values: array[Token, N], deep: bool)
+{
+	if deep
+		take(own values[5])
+
+	printf("kept\n")
+}
+
+swapFirst[N: val usize]: fun(mut values: array[Token, N])
+{
+	take(own values[0])
+	values[0] = Token(99)
+}
+
+main: fun -> i32
+{
+	val t = firstOf([Token(1), Token(2), Token(3)])
+	printf("got %d\n", t.id)
+	val m = middleOf([Token(4), Token(5), Token(6), Token(7)])
+	printf("got %d\n", m.id)
+	make[3]()
+	maybe([Token(10), Token(11)], false)
+	maybe([Token(20), Token(21), Token(22), Token(23), Token(24), Token(25), Token(26)], true)
+	var values = [Token(30), Token(31)]
+	swapFirst(mut values)
+	printf("%d %d\n", values[0].id, values[1].id)
+	ret 0
+}

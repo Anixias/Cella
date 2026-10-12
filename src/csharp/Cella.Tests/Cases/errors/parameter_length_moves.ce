@@ -1,0 +1,43 @@
+mod test
+
+Token: rec
+{
+	id: i32
+
+	drop: op
+	{
+	}
+}
+
+take: fun(own t: Token)
+{
+}
+
+takeAll[N: val usize]: fun(own values: array[Token, N])
+{
+}
+
+twice[N: val usize]: fun(own values: array[Token, N])
+{
+	take(own values[0])
+	take(own values[0])
+}
+
+peek[N: val usize]: fun(own values: array[Token, N]) -> i32
+{
+	take(own values[0])
+	ret values[0].id
+}
+
+both[N: val usize]: fun(own values: array[Token, N])
+{
+	take(own values[0])
+	takeAll(own values)
+}
+
+steal[N: val usize]: fun(mut values: array[Token, N])
+{
+	take(own values[0])
+}
+
+main: fun -> i32 = 0
