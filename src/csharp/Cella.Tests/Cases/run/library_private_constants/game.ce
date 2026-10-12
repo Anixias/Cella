@@ -1,0 +1,5 @@
+mod game
+
+helper: pvt fun(x: i32) -> i32 = x * 2
+
+apply: fun(x: i32, f: fun[i32 -> i32] = helper) -> i32 = f(x)

@@ -1,0 +1,8 @@
+mod test
+
+main: fun -> i32
+{
+	val x = u32('a') + u32(4294967295)
+	val d = 5 / i32(u32('a') - 97)
+	ret 0
+}

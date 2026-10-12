@@ -467,6 +467,8 @@ public sealed class ConstantEvaluator
 		(NativeConversion { To: IntegerType } c, BoolConstant flag) =>
 			new IntegerConstant(c.To, flag.Value ? BigInteger.One : BigInteger.Zero),
 		(FreeConversion c, NullConstant) => new NullConstant(c.To),
+		(FreeConversion c, IntegerConstant integer) when c.From == NativeSymbols.Char || c.To == NativeSymbols.Char =>
+			new IntegerConstant(c.To, integer.Value),
 		(FreeConversion { From: FunctionType } c, FunctionConstant function) =>
 			new FunctionConstant(function.Function, c.To),
 		(EnumConversion { To: IntegerType to }, var constant) when GetTag(constant) is { } tag => Integer(to, tag),

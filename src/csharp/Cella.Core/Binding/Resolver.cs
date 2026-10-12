@@ -2649,6 +2649,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	private bool IsDeferred(IExpressionNode node) => node switch
 	{
 		CallExpressionNode or ArrayExpressionNode or LambdaExpressionNode => true,
+		AccessExpressionNode => FindGenericCaseEnum(node) is not null,
 		VarExpressionNode name => CurrentResolutionContext.Resolve(name.Identifier.Text) is null ||
 		                          FindOpenLocal(name) is { } open && (open.IsCaseName || NeedsTarget(open.Initializer)),
 		_ => false
@@ -2738,8 +2739,28 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		}
 	}
 	
-	private IResolvedExpressionNode VisitOperand(IExpressionNode node, IEnumerable<ICallable> candidates, int index) =>
-		VisitCaseName(node, ParameterTypesAt(candidates, index)) ?? VisitNode(node, null);
+	private IResolvedExpressionNode VisitOperand(IExpressionNode node, IEnumerable<ICallable> candidates, int index)
+	{
+		var expected = ParameterTypesAt(candidates, index).ToList();
+		if (VisitCaseName(node, expected) is { } caseName)
+			return caseName;
+		
+		return FindGenericCaseEnum(node) is { } definition && expected.OfType<EnumSymbol>()
+			.Where(type => type.OriginalDefinition == definition)
+			.Distinct()
+			.ToList() is [var target]
+			? VisitNode(node, target)
+			: VisitNode(node, null);
+	}
+	
+	private EnumSymbol? FindGenericCaseEnum(IExpressionNode node) =>
+		node is AccessExpressionNode access &&
+		CurrentResolutionContext.TryResolveExpressionAsType(access.Target) is EnumSymbol
+		{
+			IsGenericDefinition: true
+		} definition
+			? definition
+			: null;
 	
 	private ResolvedCaseNameExpressionNode? VisitCaseName(IExpressionNode node, IEnumerable<TypeSymbol> expected)
 	{

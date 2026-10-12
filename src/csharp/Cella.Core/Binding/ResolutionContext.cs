@@ -773,9 +773,11 @@ public readonly struct ResolutionContext
 					[..node.Arguments.Select(static argument => argument.SourceLocation)], node.SourceLocation);
 			
 			default:
-				return node.Arguments is [var argument] && TryResolveExpressionAsType(argument) is { } baseType
-					? baseType is InvalidType ? baseType : TypePool.GetPointerType(baseType)
-					: null;
+				if (node.Arguments is not [var argument] || TryResolveExpressionAsType(argument) is not { } found)
+					return null;
+				
+				var baseType = CheckTypeExpression(argument, found);
+				return baseType is InvalidType ? baseType : TypePool.GetPointerType(baseType);
 		}
 	}
 	
@@ -896,8 +898,8 @@ public readonly struct ResolutionContext
 		TypeArgumentNode t => ResolveType(t.Type),
 		IdentifierArgumentNode i => Resolve(i.Identifier.Text) switch
 		{
-			null or TypeParameterSymbol { IsTrait: true } or TypeParameterSymbol { IsValue: true } =>
-				ResolveNamedType(i.Identifier),
+			null or TypeParameterSymbol { IsTrait: true } or TypeParameterSymbol { IsValue: true }
+				or NamedTypeSymbol { IsGenericDefinition: true } => ResolveNamedType(i.Identifier),
 			var symbol => symbol as TypeSymbol
 		},
 		ExpressionArgumentNode e => TryResolveExpressionAsType(e.Expression),

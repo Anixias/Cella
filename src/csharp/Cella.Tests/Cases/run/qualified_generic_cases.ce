@@ -1,0 +1,46 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+option[T]: enum
+{
+	none
+	some(value: T)
+
+	==: op(a: option[T], b: option[T]) -> bool = match a
+	{
+		none => b is none
+		else => false
+	}
+}
+
+read: fun(o: option[i32]) -> i32 = match o
+{
+	some(v) => v
+	none => -1
+}
+
+both[T]: fun(a: option[T], b: option[T]) -> i32 = 2
+
+Reader: rec
+{
+	k: i32
+
+	read: fun(self, o: option[i64]) -> i64 = match o
+	{
+		some(v) => v
+		none => -2
+	}
+}
+
+main: fun -> i32
+{
+	val r = Reader(1)
+	val a = option[i32].none
+	printf("%d %lld %d %d %d\n", read(option.none), r.read(option.none), both(option.some(5), option.none),
+		read(option.some(7)), i32(a == option.none))
+	ret 0
+}

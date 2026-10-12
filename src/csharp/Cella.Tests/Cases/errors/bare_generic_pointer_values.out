@@ -1,0 +1,19 @@
+
+====== bare_generic_pointer_values.ce ======
+
+Error at line 11, column 13
+10 │ var x = 1
+11 │ var p: ptr[box]
+                ╘═╛ 'box' takes one generic argument
+
+Error at line 12, column 14
+11 │ var p: ptr[box]
+12 │ val q = ptr[box](@x)
+                 ╘═╛ 'box' takes one generic argument
+
+Error at line 13, column 17
+12 │ val q = ptr[box](@x)
+13 │ val r: box[ptr[box]] = undef
+                    ╘═╛ 'box' takes one generic argument
+
+[compilation failed]

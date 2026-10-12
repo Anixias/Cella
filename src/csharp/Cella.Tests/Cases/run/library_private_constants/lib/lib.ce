@@ -1,0 +1,18 @@
+mod lib
+
+Ops: pub rec
+{
+	run: fun[i32 -> i32]
+
+	doubler: val fun[i32 -> i32] = twice
+}
+
+twice: pvt fun(v: i32) -> i32 = v * 2
+
+ops: pub val Ops = Ops(twice)
+
+lambda: pub val fun[i32 -> i32] = fun(x: i32) -> i32 = x * 3
+
+apply: pub fun(x: i32, f: fun[i32 -> i32] = fun(y: i32) -> i32 = y + 100) -> i32 = f(x)
+
+helped: pub fun(x: i32, f: fun[i32 -> i32] = twice) -> i32 = f(x)

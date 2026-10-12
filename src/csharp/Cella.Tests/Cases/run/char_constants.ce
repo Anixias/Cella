@@ -1,0 +1,18 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+letter: val char = 'a'
+code: val u32 = letter
+code2: val u32 = u32(letter)
+back: val char = char(u32(66))
+wide: val u64 = letter
+
+main: fun -> i32
+{
+	printf("%u %u %u %llu\n", code, code2, back, wide)
+	ret 0
+}

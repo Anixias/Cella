@@ -1,0 +1,13 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+main: fun -> i32
+{
+	printf("%d %d %d %d %d %d\n", lib.ops.run(1), lib.Ops.doubler(2), lib.lambda(3), lib.apply(4), lib.helped(5),
+		game.apply(6))
+	ret 0
+}

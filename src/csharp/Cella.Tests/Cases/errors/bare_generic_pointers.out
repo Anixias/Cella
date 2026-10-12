@@ -1,0 +1,14 @@
+
+====== bare_generic_pointers.ce ======
+
+Error at line 10, column 9
+ 9 │ {
+10 │     p: ptr[box]
+                ╘═╛ 'box' takes one generic argument
+
+Error at line 13, column 18
+12 │ 
+13 │ take: fun(p: ptr[box]) -> i32 = 0
+                      ╘═╛ 'box' takes one generic argument
+
+[compilation failed]

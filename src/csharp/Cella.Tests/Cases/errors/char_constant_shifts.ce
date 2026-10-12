@@ -1,0 +1,7 @@
+mod test
+
+main: fun -> i32
+{
+	val s = u32(1) << u32('a')
+	ret 0
+}

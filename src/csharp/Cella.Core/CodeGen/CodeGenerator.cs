@@ -109,6 +109,8 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 		_sharedFunctions = assemblySymbol.SignatureTable.Globals.Values
 			.Where(static global => global.Symbol.Visibility is Visibility.Project or Visibility.Public)
 			.SelectMany(static global => FindFunctions(global.Value))
+			.Concat(assemblySymbol.SignatureTable.Functions.Values
+				.SelectMany(static function => function.Signature.Defaults.SelectMany(FindFunctions)))
 			.Concat(typePool.GetWitnessFunctions())
 			.ToHashSet();
 	}
@@ -132,7 +134,8 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 	private bool IsExported(FunctionSymbol function) => function.Visibility == Visibility.Public ||
 	                                                    _config.IsLibrary &&
 	                                                    (function.Kind == FunctionKind.Destructor ||
-	                                                     _inputs.GenericReferences.Contains(function));
+	                                                     _inputs.GenericReferences.Contains(function) ||
+	                                                     _sharedFunctions.Contains(function));
 	
 	private bool IsExported(GlobalSymbol global) => global.Visibility == Visibility.Public ||
 	                                                _config.IsLibrary && _inputs.GenericReferences.Contains(global);
@@ -2460,10 +2463,8 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 		
 		return v switch
 		{
-			{
-					IsConstant: false, Op: BinaryOperation.Addition or BinaryOperation.Subtraction
-					or BinaryOperation.Multiplication
-				} when _config.OverflowChecks =>
+			{ Op: BinaryOperation.Addition or BinaryOperation.Subtraction or BinaryOperation.Multiplication }
+				when _config.OverflowChecks =>
 				EmitCheckedArithmetic(v.Op, left, right, signed, v.SourceLocation, builder),
 			
 			{ IsConstant: true, Op: BinaryOperation.Addition or BinaryOperation.WrappingAddition } =>
