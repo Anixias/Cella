@@ -2002,12 +2002,15 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 		if (v.PointerType.BaseType == NativeSymbols.Void)
 			return byteDiff;
 		
-		var elementBits = _typePool.SizeTable.GetSize(Substitute(v.PointerType.BaseType)).CountBits(_pointerSize * 8);
+		var element = Substitute(v.PointerType.BaseType);
+		var elementBits = _typePool.SizeTable.GetSize(element).CountBits(_pointerSize * 8);
 		var elementBytes = (elementBits + 7) / 8;
 		
 		if (elementBytes == 0)
-			throw new InvalidOperationException("Cannot subtract pointers to zero-sized type " +
-			                                    v.PointerType.BaseType.Name);
+		{
+			PanicIf(_true, $"cannot subtract pointers to zero-size type '{element.Name}'", v.SourceLocation, builder);
+			return LLVMValueRef.CreateConstNull(isize);
+		}
 		
 		var elementSize = EmitSizeConstant(elementBytes, false);
 		return builder.BuildSDiv(byteDiff, elementSize, "ptrdiff.typed");

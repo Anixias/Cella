@@ -1,0 +1,18 @@
+mod test
+
+Empty: rec
+{
+}
+
+main: fun -> i32
+{
+	var marks: array[Empty, 3]
+	val first = @marks[0]
+	val last = @marks[2]
+	val gap = last - first
+	var none: array[i32, 0]
+	val p = @none
+	val same = p - p
+	val after = (first + 1) - first
+	ret 0
+}

@@ -85,6 +85,10 @@ public sealed class ConstantEvaluator
 	
 	public bool IsZero(IResolvedExpressionNode divisor) => Evaluate(divisor) is IntegerConstant { Value.IsZero: true };
 	
+	public bool HasNoSize(TypeSymbol type) => !TypePool.ContainsTypeParameters(type) &&
+	                                          typePool.SizeTable.TryGetSize(type) is { } size &&
+	                                          size.CountBits(pointerBitSize).IsZero;
+	
 	public string? FindOverflowingOperation(ResolvedBinaryOpExpressionNode node)
 	{
 		if (node is not { Operation: NativeImpl { Op: var op }, Type: IntegerType type } ||

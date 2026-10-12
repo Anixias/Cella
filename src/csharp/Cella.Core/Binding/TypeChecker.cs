@@ -547,6 +547,11 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool, 
 		if (node.Operation is NativeImpl { Op: TokenType.OpSlash or TokenType.OpPercent })
 			ReportZeroDivisor(node.Right);
 		
+		if (node.Operation is PointerDifferenceImpl { PointerType.BaseType: var element } &&
+		    element != NativeSymbols.Void && element != NativeSymbols.Invalid && evaluator.HasNoSize(element))
+			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Syntax.SourceLocation,
+				$"Cannot subtract pointers to zero-size type '{element.Name}'"));
+		
 		var reported = overflows;
 		VisitNode(node.Left);
 		VisitNode(node.Right);

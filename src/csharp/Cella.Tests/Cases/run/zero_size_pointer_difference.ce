@@ -1,0 +1,31 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Empty: rec
+{
+}
+
+count[T]: fun(begin: ptr[T], end: ptr[T]) -> isize = end - begin
+
+guarded[T]: fun(begin: ptr[T], end: ptr[T]) -> isize
+{
+	if sizeOf(T) == 0
+		ret 0
+
+	ret end - begin
+}
+
+main: fun -> i32
+{
+	var numbers: array[i32, 4]
+	var marks: array[Empty, 3]
+	var raw = ptr(@numbers[0])
+	printf("%lld %lld %lld %lld\n", count(@numbers[0], @numbers[3]), guarded(@numbers[1], @numbers[3]),
+		guarded(@marks[0], @marks[2]), (raw + 8) - raw)
+	printf("%lld\n", count(@marks[0], @marks[2]))
+	ret 0
+}

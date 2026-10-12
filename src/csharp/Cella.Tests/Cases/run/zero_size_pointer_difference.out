@@ -1,0 +1,4 @@
+3 2 0 8
+[stderr]
+Panic at zero_size_pointer_difference.ce:12:54: cannot subtract pointers to zero-size type 'Empty'
+[exit code -1073740791]
