@@ -387,7 +387,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	{
 		LiteralExpressionNode { Token: { Suffix: null, Type: var type } } => type is TokenType.IntegerLiteral
 			or TokenType.FloatLiteral or TokenType.StringLiteral or TokenType.KeywordNull,
-		InterpolatedStringExpressionNode => true,
+		InterpolatedStringExpressionNode or UndefExpressionNode { Type: null } => true,
 		ArrayExpressionNode array => !array.Values.IsEmpty && array.Values.All(IsOpenSyntax),
 		LambdaExpressionNode lambda => lambda.Parameters.Any(static parameter => parameter.Type is null),
 		UnaryOpExpressionNode { Op.Type: TokenType.OpMinus } unary => IsOpenSyntax(unary.Operand),
@@ -4241,11 +4241,10 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	
 	public IResolvedExpressionNode Visit(UndefExpressionNode node)
 	{
-		var resolutionContext = CurrentResolutionContext;
-		var type = node.Type is null
-			? CurrentTargetType ?? NativeSymbols.Invalid
-			: resolutionContext.ResolveType(node.Type);
+		if (node.Type is null && CurrentTargetType is null)
+			return Error(node, "'undef' may only be used as a variable initializer", null);
 		
+		var type = node.Type is null ? CurrentTargetType! : CurrentResolutionContext.ResolveType(node.Type);
 		return new ResolvedUndefExpressionNode(type, node);
 	}
 	
@@ -4846,6 +4845,13 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			initializer = null;
 		else if (type is not null)
 			initializer = VisitNode(initializerNode, type);
+		else if (survey is null && initializerNode is UndefExpressionNode { Type: null })
+		{
+			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Identifier.SourceLocation,
+				$"Cannot infer the type of '{node.Identifier.Text}'"));
+			
+			initializer = new ResolvedUndefExpressionNode(NativeSymbols.Invalid, initializerNode);
+		}
 		else
 		{
 			var value = VisitNode(initializerNode, null);

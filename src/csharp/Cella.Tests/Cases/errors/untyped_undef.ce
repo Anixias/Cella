@@ -1,0 +1,21 @@
+mod test
+
+take: fun(value: i32) {}
+
+inferred: fun -> i32
+{
+	var settled = undef
+	settled = 5
+	ret settled
+}
+
+main: fun -> i32
+{
+	val unsettled = undef
+	var conflicting = undef
+	conflicting = 7
+	conflicting = "seven"
+	take(undef)
+	val sum = 1 + undef
+	ret inferred()
+}
