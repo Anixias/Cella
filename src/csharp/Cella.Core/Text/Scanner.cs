@@ -326,7 +326,7 @@ public class Scanner : IScanner
 	private bool TryScanOperator(int position, out ScanResult op)
 	{
 		var end = position;
-		while (end < Source.Length)
+		while (end < Source.Length && end - position < TokenType.LongestOperator)
 		{
 			var c = Source[end];
 			if (char.IsLetterOrDigit(c) || char.IsWhiteSpace(c) || c == '_')

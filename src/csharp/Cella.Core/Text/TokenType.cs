@@ -152,6 +152,7 @@ public static class TokenTypeInfo
 	private static readonly ImmutableDictionary<TokenType, TokenMetadata> _metadata;
 	private static readonly ImmutableDictionary<string, TokenType> _keywords;
 	private static readonly ImmutableDictionary<string, TokenType> _operators;
+	private static readonly int _longestOperator;
 	
 	static TokenTypeInfo()
 	{
@@ -290,6 +291,7 @@ public static class TokenTypeInfo
 		_operators = _metadata.Where(static kvp => kvp.Value.IsOperator)
 			.ToImmutableDictionary(KeySelector, ElementSelector);
 		
+		_longestOperator = _operators.Keys.Max(static text => text.Length);
 		return;
 		
 		static string KeySelector(KeyValuePair<TokenType, TokenMetadata> kvp) => kvp.Value.Representation;
@@ -304,5 +306,6 @@ public static class TokenTypeInfo
 		
 		public static TokenType? GetKeyword(string text) => _keywords.TryGetValue(text, out var type) ? type : null;
 		public static TokenType? GetOperator(string text) => _operators.TryGetValue(text, out var type) ? type : null;
+		public static int LongestOperator => _longestOperator;
 	}
 }
