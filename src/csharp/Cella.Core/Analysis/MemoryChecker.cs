@@ -157,12 +157,15 @@ public sealed class MemoryChecker(TypePool typePool, DiagnosticList diagnostics)
 			Report(access.Location, $"Cannot move '{access.Type.Name}' values implicitly", []);
 	}
 	
+	private static bool IsDeferredRoot(Place place) =>
+		place is { Root: LocalVariableSymbol { IsDeferred: true }, Path.IsEmpty: true };
+	
 	private void CheckDeferredWrite(WriteEvent write, InitState state, MovePaths paths)
 	{
-		if (write.Place is not { Root: LocalVariableSymbol { IsDeferred: true } local, Path.IsEmpty: true })
+		if (!IsDeferredRoot(write.Place))
 			return;
 		
-		var path = paths.GetRoot(local);
+		var path = paths.GetRoot(write.Place.Root);
 		if ((state.GetOwnState(path) & (PathState.Initialized | PathState.Moved)) != 0)
 			Report(write.Location, "Cannot reassign values",
 				DescribeSites(write.Location, state.GetOwnWrites(path), "Assigned"));
@@ -384,8 +387,13 @@ public sealed class MemoryChecker(TypePool typePool, DiagnosticList diagnostics)
 			
 			case WriteEvent e:
 				ApplyRequiredDefaults(state, e.Place, paths);
-				if (paths.Find(e.Place) is { } target)
+				if (paths.Find(e.Place) is not { } target)
+					break;
+				
+				if (IsDeferredRoot(e.Place))
 					state.Write(target, e.Location);
+				else
+					state.Set(target, PathState.Initialized);
 				
 				break;
 			

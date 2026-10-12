@@ -96,13 +96,17 @@ public sealed class LocalSurvey
 		
 		var types = new Dictionary<ISyntaxNode, TypeSymbol>();
 		var conflicts = new List<(OpenLocal, ImmutableArray<TypeSymbol>)>();
+		var uses = _uses
+			.Where(use => parents.ContainsKey(use.Local))
+			.ToLookup(use => FindRoot(parents, use.Local));
+		
 		foreach (var group in _locals.Values.GroupBy(local => FindRoot(parents, local)))
 		{
-			var members = group.ToHashSet();
-			var isCounter = members.Any(static local => local.IsCounter);
-			var reads = FindTypes(members, LocalUseKind.Read, isCounter);
-			var writes = FindTypes(members, LocalUseKind.Write, isCounter);
-			var targets = FindTypes(members, LocalUseKind.Cast, false);
+			var groupUses = uses[group.Key].ToList();
+			var isCounter = group.Any(static local => local.IsCounter);
+			var reads = FindTypes(groupUses, LocalUseKind.Read, isCounter);
+			var writes = FindTypes(groupUses, LocalUseKind.Write, isCounter);
+			var targets = FindTypes(groupUses, LocalUseKind.Cast, false);
 			var choice = Choose(reads, writes, type => targets.Where(target => !casts(type, target)).ToList(),
 				converts, out var conflicting);
 			
@@ -120,8 +124,8 @@ public sealed class LocalSurvey
 		return new(types, conflicts);
 	}
 	
-	private List<TypeSymbol> FindTypes(HashSet<OpenLocal> members, LocalUseKind kind, bool isCounter) => _uses
-		.Where(use => use.Kind == kind && members.Contains(use.Local))
+	private static List<TypeSymbol> FindTypes(IEnumerable<LocalUse> uses, LocalUseKind kind, bool isCounter) => uses
+		.Where(use => use.Kind == kind)
 		.Select(static use => use.Type!)
 		.Where(type => !isCounter || type is IntegerType { Kind: not PrimitiveTypeKind.Char })
 		.Distinct()

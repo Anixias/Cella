@@ -1,0 +1,9 @@
+mod test
+
+sum[N: val usize]: fun(values: array[u8, N]) -> i32 = 0
+
+main: fun -> i32
+{
+	val values = [100, 200, 250]
+	ret sum([100, 300]) + sum(values)
+}

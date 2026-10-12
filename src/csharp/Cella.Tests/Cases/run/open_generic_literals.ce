@@ -1,0 +1,62 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+box[T]: rec
+{
+	v: T
+}
+
+option[T]: enum
+{
+	none
+	some(value: T)
+}
+
+sum[N: val usize]: fun(values: array[u8, N]) -> i32
+{
+	var t = 0
+	for v in values
+		t += i32(v)
+	ret t
+}
+
+total[N: val usize]: fun(values: array[f32, N]) -> f32
+{
+	var t: f32 = 0
+	for v in values
+		t += v
+	ret t
+}
+
+boxes[N: val usize]: fun(values: array[box[i64], N]) -> i64
+{
+	var t: i64 = 0
+	for v in values
+		t += v.v
+	ret t
+}
+
+count[T]: fun(o: option[T]) -> i32 = match o
+{
+	some(v) => 1
+	none => 0
+}
+
+both[T]: fun(a: option[T], b: option[T]) -> i32 = count(a) + count(b)
+
+pick[T: copy]: fun(o: option[T], fallback: T) -> T = match o
+{
+	some(v) => v
+	none => fallback
+}
+
+main: fun -> i32
+{
+	printf("%d %f %lld\n", sum([100, 200, 250]), f64(total([1.5, 2.5])), boxes([box(1), box(2)]))
+	printf("%d %d %d %f\n", count(some(5)), both(some(1), none), both(none, some(2.5)), pick(some(2.5), 1.0))
+	ret 0
+}

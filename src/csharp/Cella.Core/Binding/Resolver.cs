@@ -670,7 +670,8 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		CallExpressionNode? call)
 	{
 		if (enumType.IsGenericDefinition && access.Target is not IndexerExpressionNode)
-			return VisitInferredEnumCase(access, enumType, call);
+			return VisitInferredEnumCase(access.Member, GetName(access.Target), access.Target.SourceLocation,
+				enumType, call, call is null ? access : call);
 		
 		return ResolveCase(access.Member, enumType, call, call is null ? access : call);
 	}
@@ -695,16 +696,15 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		return new ResolvedEnumCaseExpressionNode(enumType, enumCase, payload, node);
 	}
 	
-	private IResolvedExpressionNode VisitInferredEnumCase(AccessExpressionNode access, EnumSymbol definition,
-		CallExpressionNode? call)
+	private IResolvedExpressionNode VisitInferredEnumCase(Token member, string name, SourceLocation location,
+		EnumSymbol definition, CallExpressionNode? call, IExpressionNode node)
 	{
-		IExpressionNode node = call is null ? access : call;
-		var named = definition.Cases.FirstOrDefault(c => c.Name == access.Member.Text);
+		var named = definition.Cases.FirstOrDefault(c => c.Name == member.Text);
 		var shape = CreateShape(named is null ? [] : _typePool.GetPayloadTypes(definition, named), definition);
 		var args = ResolveArguments(call?.Arguments ?? [], [shape], out _, values => AcceptsInferred(shape, values),
 			(_, values) => AcceptsInferred(shape, values));
 		
-		if (FindCase(definition, access.Member) is not { } enumCase || AnyInvalid(args))
+		if (FindCase(definition, member) is not { } enumCase || AnyInvalid(args))
 			return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
 		
 		var payloadTypes = _typePool.GetPayloadTypes(definition, enumCase);
@@ -715,8 +715,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		var result = _inference.Infer(definition.TypeParameters, inputs.OfType<InferenceInput>(), definition,
 			ExpectedType);
 		
-		var name = GetName(access.Target);
-		if (InstantiateInferred(result, definition, name, access.Target.SourceLocation) is not EnumSymbol instance)
+		if (InstantiateInferred(result, definition, name, location) is not EnumSymbol instance)
 			return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
 		
 		var instanceCase = instance.Cases[enumCase.Index];
@@ -2406,7 +2405,11 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		foreach (var i in deferred)
 			values[i] = nodes[i] is LambdaExpressionNode lambda
 				? VisitLambdaArgument(lambda, i, shapes, values)
-				: VisitDeferred(nodes[i], i, shapes, [..shapes.Select(shape => ExpectedAt(shape, values, i))]);
+				: VisitDeferred(nodes[i], i, shapes,
+				[
+					..shapes.Select(shape =>
+						ExpectedAt(shape, values, i) ?? ExpectArrayLiteral(shape, values, i, nodes[i]))
+				]);
 		
 		var resolved = values.Select(static value => value!).ToArray();
 		if (succeeds is null || accepts is null || AnyInvalid(resolved) ||
@@ -2438,6 +2441,13 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	private IResolvedExpressionNode VisitDeferred(IExpressionNode node, int index, IReadOnlyList<CallShape> shapes,
 		IReadOnlyList<TypeSymbol?> expected)
 	{
+		if (FindOpenCaseEnum(node, index, shapes, expected) is { } definition)
+		{
+			var call = (CallExpressionNode)node;
+			var callee = ((VarExpressionNode)call.Target).Identifier;
+			return VisitInferredEnumCase(callee, definition.Name, callee.SourceLocation, definition, call, node);
+		}
+		
 		var types = shapes
 			.Select((shape, i) => expected[i] ?? (index < shape.Parameters.Count ? shape.Parameters[index] : null))
 			.OfType<TypeSymbol>();
@@ -2447,6 +2457,41 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			: null;
 		
 		return VisitArgument(node, types, hint is BorrowType { IsMutable: false } borrow ? borrow.Target : hint);
+	}
+	
+	private EnumSymbol? FindOpenCaseEnum(IExpressionNode node, int index, IReadOnlyList<CallShape> shapes,
+		IReadOnlyList<TypeSymbol?> expected)
+	{
+		if (node is not CallExpressionNode { Target: VarExpressionNode callee } ||
+		    CurrentResolutionContext.Resolve(callee.Identifier.Text) is not null)
+			return null;
+		
+		var definitions = shapes
+			.Select((shape, i) => expected[i] is null && index < shape.Parameters.Count &&
+			                      shape.Parameters[index] is EnumSymbol { IsGenericInstance: true } enumType &&
+			                      HasCase(enumType, callee.Identifier.Text) &&
+			                      TypePool.FindTypeParameters(enumType).Any(shape.Open.Contains)
+				? (EnumSymbol)enumType.OriginalDefinition
+				: null)
+			.Distinct()
+			.ToList();
+		
+		return definitions is [{ } definition] ? definition : null;
+	}
+	
+	private TypeSymbol? ExpectArrayLiteral(CallShape shape, IReadOnlyList<IResolvedExpressionNode?> values, int index,
+		IExpressionNode node)
+	{
+		if (node is not ArrayExpressionNode literal || index >= shape.Parameters.Count ||
+		    shape.Modes[index] == ParameterMode.Mut)
+			return null;
+		
+		return _typePool.Substitute(shape.Parameters[index], GetKnownArguments(shape, values)) is ArrayType
+		{
+			LengthParameter: { } length, ElementType: var element
+		} && shape.Open.Contains(length) && !TypePool.FindTypeParameters(element).Any(shape.Open.Contains)
+			? _typePool.GetArrayType(element, literal.Values.Length)
+			: null;
 	}
 	
 	private List<(int Shape, TypeSymbol?[] Hints, int Cost)> FindRetries(ImmutableArray<IExpressionNode> nodes,
@@ -2543,15 +2588,21 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		if (open.Count == 0)
 			return parameter;
 		
+		var map = GetKnownArguments(shape, values, chosen);
+		return open.All(map.ContainsKey) ? _typePool.Substitute(parameter, map) : null;
+	}
+	
+	private Dictionary<TypeParameterSymbol, TypeSymbol> GetKnownArguments(CallShape shape,
+		IReadOnlyList<IResolvedExpressionNode?> values,
+		IReadOnlyDictionary<TypeParameterSymbol, TypeSymbol>? chosen = null)
+	{
 		var known = _inference.InferKnown(shape.Open, CreateInferenceInputs(shape, values), shape.ReturnType,
 			ExpectedType, chosen);
 		
-		var map = shape.Open
+		return shape.Open
 			.Select((type, i) => (Parameter: type, Type: known[i]))
 			.Where(static entry => entry.Type is not null)
 			.ToDictionary(static entry => entry.Parameter, static entry => entry.Type!);
-		
-		return open.All(map.ContainsKey) ? _typePool.Substitute(parameter, map) : null;
 	}
 	
 	private IResolvedExpressionNode VisitLambdaArgument(LambdaExpressionNode node, int index,

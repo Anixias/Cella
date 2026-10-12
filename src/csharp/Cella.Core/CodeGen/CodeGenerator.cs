@@ -99,7 +99,6 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 		_inputs = inputs;
 		_genericBodies = inputs.GenericFunctions.ToDictionary(static function => function.Info.Symbol);
 		Init();
-		_passBuilderOptions.SetVerifyEach(true);
 		_assemblySymbol = assemblySymbol;
 		_typePool = typePool;
 		_config = config;
@@ -890,7 +889,7 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 		if (_largeTypes.TryGetValue(type, out var isLarge))
 			return isLarge;
 		
-		isLarge = type is RecordSymbol or ArrayType or EnumSymbol { IsMatch: false } &&
+		isLarge = type is RecordSymbol or ArrayType or EnumSymbol { IsMatch: false } or ClosureType &&
 		          MapTypeSymbol(type) is
 			          { Kind: LLVMTypeKind.LLVMStructTypeKind or LLVMTypeKind.LLVMArrayTypeKind } mapped &&
 		          _targetData.ABISizeOfType(mapped) > LargeValueBytes;
@@ -3400,7 +3399,18 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 	
 	private LLVMValueRef EmitOwnClosure(OwnClosureValue closure, LLVMBuilderRef builder)
 	{
-		var value = MapTypeSymbol(closure.Type).Undef;
+		var closureType = MapTypeSymbol(closure.Type);
+		if (IsLarge(closure.Type))
+		{
+			var slot = BuildEntryAlloca(builder, closureType, "closure");
+			for (var i = 0; i < closure.Captures.Length; i++)
+				StoreValue(builder, closure.Captures[i].Type, EmitValue(closure.Captures[i], builder),
+					builder.BuildStructGEP2(closureType, slot, (uint)i, "capture"));
+			
+			return slot;
+		}
+		
+		var value = closureType.Undef;
 		for (var i = 0; i < closure.Captures.Length; i++)
 		{
 			var capture = LoadSsa(builder, closure.Captures[i].Type, EmitValue(closure.Captures[i], builder));
