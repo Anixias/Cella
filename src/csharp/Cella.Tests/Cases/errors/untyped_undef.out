@@ -1,24 +1,14 @@
 
 ====== untyped_undef.ce ======
 
-Error at line 14, column 6
-13 │ {
-14 │     val unsettled = undef
+Error at line 12, column 6
+11 │ {
+12 │     val unsettled = undef
              ╘═══════╛ Cannot infer the type of 'unsettled'
 
-Error at line 15, column 6
-14 │ val unsettled = undef
-15 │ var conflicting = undef
+Error at line 13, column 6
+12 │ val unsettled = undef
+13 │ var conflicting = undef
          ╘═════════╛ Cannot infer the type of 'conflicting'
-
-Error at line 18, column 7
-17 │ conflicting = "seven"
-18 │ take(undef)
-          ╘═══╛ 'undef' may only be used as a variable initializer
-
-Error at line 19, column 16
-18 │ take(undef)
-19 │ val sum = 1 + undef
-                   ╘═══╛ 'undef' may only be used as a variable initializer
 
 [compilation failed]

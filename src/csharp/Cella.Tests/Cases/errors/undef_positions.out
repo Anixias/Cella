@@ -1,0 +1,14 @@
+
+====== undef_positions.ce ======
+
+Error at line 7, column 7
+6 │ {
+7 │     take(undef)
+             ╘═══╛ 'undef' may only be used as a variable initializer
+
+Error at line 8, column 16
+7 │ take(undef)
+8 │ val sum = 1 + undef
+                  ╘═══╛ 'undef' may only be used as a variable initializer
+
+[compilation failed]

@@ -4241,10 +4241,10 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	
 	public IResolvedExpressionNode Visit(UndefExpressionNode node)
 	{
-		if (node.Type is null && CurrentTargetType is null)
-			return Error(node, "'undef' may only be used as a variable initializer", null);
+		var type = node.Type is null
+			? CurrentTargetType ?? UntypedUndefType.Instance
+			: CurrentResolutionContext.ResolveType(node.Type);
 		
-		var type = node.Type is null ? CurrentTargetType! : CurrentResolutionContext.ResolveType(node.Type);
 		return new ResolvedUndefExpressionNode(type, node);
 	}
 	
@@ -6202,6 +6202,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			case FunctionGroupType when node is ResolvedFunctionGroupExpressionNode group:
 				return MaterializeFunctionAsDefault(group);
 			
+			case UntypedUndefType:
+				return Error(node.Syntax, "'undef' may only be used as a variable initializer", null);
+			
 			default:
 				return node;
 		}
@@ -6265,6 +6268,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		
 		if (node.Type is NeverType)
 			return new ResolvedConversionExpressionNode(node, new NeverConversion(target), node.Syntax);
+		
+		if (node is ResolvedUndefExpressionNode { Type: UntypedUndefType })
+			return new ResolvedUndefExpressionNode(target, node.Syntax);
 		
 		if (node is ResolvedInterpolatedStringExpressionNode interpolation)
 			return target switch

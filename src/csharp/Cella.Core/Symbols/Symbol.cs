@@ -305,6 +305,14 @@ public sealed class UntypedNullType() : UntypedType("null")
 	};
 }
 
+public sealed class UntypedUndefType() : UntypedType("undef")
+{
+	public static UntypedUndefType Instance { get; } = new();
+	
+	public override int MaterializationCost(TypeSymbol target, MaterializationMode mode) =>
+		mode == MaterializationMode.Overload ? 0 : int.MaxValue;
+}
+
 public sealed class UntypedStringType() : UntypedType("string literal")
 {
 	public static UntypedStringType Instance { get; } = new();

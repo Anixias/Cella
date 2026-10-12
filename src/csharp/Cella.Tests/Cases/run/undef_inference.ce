@@ -1,0 +1,42 @@
+mod test
+
+Counter: rec
+{
+	base: i32
+
+	add: fun(self, value: u16) -> i32 = self.base + i32(value)
+}
+
+widen: fun(value: i64) -> i32 = i32(value / 2)
+
+fromReturn: fun -> i32
+{
+	var value = undef
+	value = 5
+	ret value
+}
+
+fromArgument: fun -> i32
+{
+	var value = undef
+	value = 8
+	ret widen(value)
+}
+
+fromMethod: fun -> i32
+{
+	val counter = Counter(10)
+	var value = undef
+	value = 3
+	ret counter.add(value)
+}
+
+fromDeclaration: fun -> i32
+{
+	var value = undef
+	value = 6
+	val wide: i64 = value
+	ret i32(wide)
+}
+
+main: fun -> i32 = fromReturn() + fromArgument() + fromMethod() + fromDeclaration()

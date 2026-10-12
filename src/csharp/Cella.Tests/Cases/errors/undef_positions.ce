@@ -1,0 +1,10 @@
+mod test
+
+take: fun(value: i32) {}
+
+main: fun -> i32
+{
+	take(undef)
+	val sum = 1 + undef
+	ret 0
+}
