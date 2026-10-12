@@ -1,0 +1,42 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Text: rec
+{
+	id: i32
+
+	drop: op
+	{
+		printf("drop %d\n", self.id)
+	}
+}
+
+Holder: ref rec
+{
+	t: imm[Text]
+	k: i32
+}
+
+consume: fun(own t: Text)
+{
+}
+
+main: fun -> i32
+{
+	val text = Text(1)
+	val r: imm[Text] = imm text
+	val f = fun -> i32 = r.id
+	printf("%d\n", f())
+	var h = Holder(text, 5)
+	val q = imm h
+	printf("%d %d\n", q.t.id, q.k)
+	val other = Text(2)
+	h = Holder(other, 6)
+	printf("%d\n", q.t.id)
+	consume(own text)
+	ret 0
+}

@@ -201,8 +201,7 @@ public sealed class BorrowChecker(TypePool typePool, DiagnosticList diagnostics)
 	
 	private void ReportEnded(VariableSymbol holder, SourceLocation location, BorrowState state, string? context)
 	{
-		var endings = state.Get(holder).Values
-			.SelectMany(static invalidations => invalidations)
+		var endings = GetEndings(holder, state, [])
 			.Where(invalidation => !_reportedEnds.Contains(invalidation.Location))
 			.Distinct()
 			.OrderBy(static invalidation => invalidation.Location.Range.Start)
@@ -232,6 +231,16 @@ public sealed class BorrowChecker(TypePool typePool, DiagnosticList diagnostics)
 		{
 			Hints = context is null ? [..hints] : [context, ..hints]
 		});
+	}
+	
+	private static IEnumerable<Invalidation> GetEndings(VariableSymbol holder, BorrowState state,
+		HashSet<VariableSymbol> visited)
+	{
+		if (!visited.Add(holder))
+			return [];
+		
+		return state.Get(holder).SelectMany(entry =>
+			entry.Value.Concat(GetEndings(entry.Key.Root, state, visited))).ToList();
 	}
 	
 	private static string Describe(Ending ending) => ending switch

@@ -1,0 +1,34 @@
+
+====== held_borrow_endings.ce ======
+
+Error at line 32, column 6
+31 │ consume(own a)
+32 │ ret r.t.id
+         ^ Cannot use borrows of moved values
+         | Moved on line 31
+
+Error at line 45, column 6
+44 │ 
+45 │ ret r.n
+         ^ Cannot use borrows of dropped values
+         | Dropped on line 43
+
+Error at line 58, column 6
+57 │ 
+58 │ ret f()
+         ^ Cannot use borrows of dropped values
+         | Dropped on line 56
+
+Error at line 67, column 6
+66 │ consume(own text)
+67 │ ret f()
+         ^ Cannot use borrows of moved values
+         | Moved on line 66
+
+Error at line 76, column 6
+75 │ consume(own text)
+76 │ ret outer()
+         ╘═══╛ Cannot use borrows of moved values
+             | Moved on line 75
+
+[compilation failed]
