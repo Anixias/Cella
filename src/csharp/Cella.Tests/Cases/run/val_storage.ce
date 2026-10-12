@@ -1,0 +1,49 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+cell[T: atomic]: rec
+{
+	value: T
+
+	load: fun(self) -> T = atomic acquire *@self.value
+
+	store: fun(self, value: T)
+	{
+		atomic release *@self.value = value
+	}
+
+	drop: op
+	{
+	}
+}
+
+Stats: rec
+{
+	hits: val cell[i32] = cell[i32](0)
+}
+
+counter: val cell[i32] = cell[i32](0)
+
+table: val array[i32, 3] = [10, 20, 30]
+
+sum: fun(p: ptr[i32], n: i32) -> i32
+{
+	var total = 0
+	for i in 0..n
+		total += p[i]
+
+	ret total
+}
+
+main: fun -> i32
+{
+	counter.store(5)
+	Stats.hits.store(7)
+	val local = 8
+	printf("%d %d %d %d\n", counter.load(), Stats.hits.load(), sum(@table[0], 3), atomic acquire *@local)
+	ret 0
+}

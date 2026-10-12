@@ -3030,7 +3030,7 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 		var initializer = EmitStaticConstant(info.Value!);
 		var global = current.Module.AddGlobal(initializer.TypeOf, info.MangledName);
 		global.Initializer = initializer;
-		global.IsGlobalConstant = !info.Symbol.IsMutable;
+		global.IsGlobalConstant = IsReadOnly(info);
 		current.Globals[info.Symbol] = global;
 		if (_config.DebugInfo)
 			DescribeGlobal(info, global);
@@ -3041,10 +3041,12 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 	private LLVMValueRef DeclareGlobal(GlobalInfo info)
 	{
 		var global = current.Module.AddGlobal(MapTypeSymbol(info.Type), info.MangledName);
-		global.IsGlobalConstant = !info.Symbol.IsMutable;
+		global.IsGlobalConstant = IsReadOnly(info);
 		current.Globals[info.Symbol] = global;
 		return global;
 	}
+	
+	private bool IsReadOnly(GlobalInfo info) => !info.Symbol.IsMutable && !_typePool.NeedsDrop(info.Type);
 	
 	private LLVMValueRef GetGlobal(GlobalInfo info)
 	{

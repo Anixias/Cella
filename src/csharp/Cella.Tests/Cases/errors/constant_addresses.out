@@ -1,0 +1,34 @@
+
+====== constant_addresses.ce ======
+
+Error at line 15, column 2
+14 │ val pair = Pair(1, 2)
+15 │ *@limit = 5
+     ╘═════╛ Cannot write through the address of constants
+
+Error at line 16, column 2
+15 │ *@limit = 5
+16 │ *@local = 6
+     ╘═════╛ Cannot write through the address of constants
+
+Error at line 17, column 2
+16 │ *@local = 6
+17 │ *@pair.a = 9
+     ╘══════╛ Cannot write through the address of constants
+
+Error at line 18, column 10
+17 │ *@pair.a = 9
+18 │ atomic *@limit += 1
+             ╘════╛ Cannot write through the address of constants
+
+Error at line 19, column 18
+18 │ atomic *@limit += 1
+19 │ atomic release *@local = 2
+                     ╘════╛ Cannot write through the address of constants
+
+Error at line 20, column 24
+19 │ atomic release *@local = 2
+20 │ val swapped = atomic *@limit == 4 = 5
+                           ╘════╛ Cannot write through the address of constants
+
+[compilation failed]

@@ -434,6 +434,11 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool, 
 	
 	public void Visit(ResolvedAtomicExpressionNode node)
 	{
+		if (node.Access is not (AtomicAccess.Load or AtomicAccess.Fence) && node.Pointer is { } target &&
+		    AddressesConstant(target))
+			Diagnostics.Add(new(DiagnosticSeverity.Error, target.Syntax.SourceLocation,
+				"Cannot write through the address of constants"));
+		
 		if (node.Pointer is { } pointer)
 			VisitNode(pointer);
 		
@@ -478,6 +483,9 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool, 
 		else if (IsThroughReadOnlyBorrow(node.Left))
 			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Left.Syntax.SourceLocation,
 				"Cannot write through read-only borrows"));
+		else if (IsThroughConstantAddress(node.Left))
+			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Left.Syntax.SourceLocation,
+				"Cannot write through the address of constants"));
 		else if (FindIndexedString(node.Left) is { } text)
 			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Left.Syntax.SourceLocation,
 				$"Cannot write through '{text.Name}'"));
@@ -780,6 +788,28 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool, 
 	
 	private static TypeSymbol? FindIndexedString(IResolvedExpressionNode place) =>
 		place is ResolvedIndexerExpressionNode { Target.Type: StringType type } ? type : null;
+	
+	private bool IsThroughConstantAddress(IResolvedExpressionNode place) => place switch
+	{
+		ResolvedAccessExpressionNode { Member: FieldSymbol } n => IsThroughConstantAddress(n.Target),
+		ResolvedIndexerExpressionNode { Target.Type: ArrayType } n => IsThroughConstantAddress(n.Target),
+		ResolvedUnaryOpExpressionNode { Operation.Op: TokenType.OpStar } n => AddressesConstant(n.Operand),
+		_ => false
+	};
+	
+	private bool AddressesConstant(IResolvedExpressionNode pointer) =>
+		pointer is ResolvedUnaryOpExpressionNode { Operation.Op: TokenType.OpAt } address &&
+		IsConstantPlace(address.Operand);
+	
+	private bool IsConstantPlace(IResolvedExpressionNode place) => place switch
+	{
+		ResolvedVarExpressionNode { Symbol: LocalVariableSymbol { IsMutable: false, IsBorrowBinding: false } } n =>
+			!typePool.NeedsDrop(n.Type),
+		ResolvedGlobalExpressionNode { Symbol.IsMutable: false } n => !typePool.NeedsDrop(n.Type),
+		ResolvedAccessExpressionNode { Member: FieldSymbol } n => IsConstantPlace(n.Target),
+		ResolvedIndexerExpressionNode { Target.Type: ArrayType } n => IsConstantPlace(n.Target),
+		_ => false
+	};
 	
 	private static bool IsThroughReadOnlyBorrow(IResolvedExpressionNode place) => place switch
 	{
