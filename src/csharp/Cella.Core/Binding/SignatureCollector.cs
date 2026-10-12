@@ -271,7 +271,7 @@ public sealed class SignatureCollector
 	{
 		foreach (var (global, node, type) in _variables)
 		{
-			if (TypePool.ContainsTypeParameters(type) || !_typePool.HoldsBorrows(type))
+			if (!_typePool.HoldsBorrows(type))
 				continue;
 			
 			var kind = global.ContainingType is null ? "module" : "static";

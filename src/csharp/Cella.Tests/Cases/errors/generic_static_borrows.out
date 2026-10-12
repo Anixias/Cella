@@ -1,0 +1,9 @@
+
+====== generic_static_borrows.ce ======
+
+Error at line 17, column 12
+16 │ value: T
+17 │ last: var Slot[T] = Slot[T].empty
+               ╘═════╛ Cannot store borrows in static variables
+
+[compilation failed]
