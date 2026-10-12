@@ -346,6 +346,35 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 			attribute);
 	}
 	
+	private static void AddBoolExtensions(LLVMValueRef value, CSignature signature, bool isCall)
+	{
+		var first = signature.Return.Kind == CPassKind.Indirect ? 2 : 1;
+		if (IsCBool(signature.Return))
+			AddExtension(value, LLVMAttributeIndex.LLVMAttributeReturnIndex, isCall);
+		
+		for (var i = 0; i < signature.Parameters.Length; i++)
+		{
+			if (IsCBool(signature.Parameters[i]))
+				AddExtension(value, (LLVMAttributeIndex)(first + i), isCall);
+		}
+	}
+	
+	private static bool IsCBool(CPass pass) => pass.Kind == CPassKind.Direct &&
+	                                           pass.Type.Kind == LLVMTypeKind.LLVMIntegerTypeKind &&
+	                                           pass.Type.IntWidth == 1;
+	
+	private static void AddExtension(LLVMValueRef value, LLVMAttributeIndex index, bool isCall)
+	{
+		using var name = new MarshaledString("zeroext");
+		var attribute = LLVM.CreateEnumAttribute((LLVMOpaqueContext*)value.TypeOf.Context.Handle,
+			LLVM.GetEnumAttributeKindForName(name, (nuint)name.Length), 0);
+		
+		if (isCall)
+			LLVM.AddCallSiteAttribute((LLVMOpaqueValue*)value.Handle, index, attribute);
+		else
+			LLVM.AddAttributeAtIndex((LLVMOpaqueValue*)value.Handle, index, attribute);
+	}
+	
 	private static LLVMTypeRef OpaquePointer => LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0u);
 	private static LLVMTypeRef DropGlueType => LLVMTypeRef.CreateFunction(LLVMTypeRef.Void, [OpaquePointer]);
 	
@@ -621,6 +650,9 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 		var functionValue = declared.Handle != IntPtr.Zero ? declared : llvmModule.AddFunction(name, functionType);
 		if (cSignature is { Return: { Kind: CPassKind.Indirect } sret })
 			AddSretAttribute(functionValue, sret.Type, false);
+		
+		if (cSignature is { } boolSignature)
+			AddBoolExtensions(functionValue, boolSignature, false);
 		
 		if (signature.ReturnType is NeverType)
 			AddFunctionAttribute(functionValue, "noreturn");
@@ -1768,6 +1800,7 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 		}
 		
 		var result = builder.BuildCall2(functionType, callee, args.ToArray());
+		AddBoolExtensions(result, signature, true);
 		switch (signature.Return.Kind)
 		{
 			case CPassKind.Integer:
@@ -3204,6 +3237,8 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 		var isIndirect = signature.Return.Kind == CPassKind.Indirect;
 		if (isIndirect)
 			AddSretAttribute(thunk, signature.Return.Type, false);
+		
+		AddBoolExtensions(thunk, signature, false);
 		
 		using var builder = CreateGeneratedBuilder(thunk, GetAdapterName(function), function.Symbol.Definition);
 		var first = isIndirect ? 1u : 0u;
