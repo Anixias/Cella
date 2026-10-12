@@ -109,7 +109,11 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		_resolutionContexts.Push(context);
 		var result = VisitNode(expression, targetType);
 		_resolutionContexts.Pop();
-		return _evaluator.Evaluate(result);
+		if (targetType is null || _evaluator.FindConstantError(result) is not { } error)
+			return _evaluator.Evaluate(result);
+		
+		Diagnostics.Add(error);
+		return InvalidConstant.Instance;
 	}
 	
 	private IResolvedDeclarationNode VisitNode(IDeclarationNode node) =>

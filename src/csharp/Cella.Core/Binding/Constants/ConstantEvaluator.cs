@@ -5,6 +5,8 @@ using Cella.Core.Binding.Conversions;
 using Cella.Core.Binding.Nodes;
 using Cella.Core.Binding.Operations;
 using Cella.Core.Symbols;
+using Cella.Core.Text;
+using Cella.Diagnostics;
 
 namespace Cella.Core.Binding.Constants;
 
@@ -56,6 +58,73 @@ public sealed class ConstantEvaluator
 	};
 	
 	public bool Fits(BigInteger value, IntegerType type) => Wrap(value, type) == value;
+	
+	public Diagnostic? FindConstantError(IResolvedExpressionNode node)
+	{
+		foreach (var operand in GetOperands(node))
+		{
+			if (FindConstantError(operand) is { } error)
+				return error;
+		}
+		
+		var (location, message) = node switch
+		{
+			ResolvedBinaryOpExpressionNode { Operation: NativeImpl { Op: TokenType.OpSlash or TokenType.OpPercent } } n
+				when IsZero(n.Right) => (n.Right.Syntax.SourceLocation, "Division by zero"),
+			ResolvedBinaryOpExpressionNode n when FindOverflowingOperation(n) is { } operation =>
+				(n.Syntax.SourceLocation, $"{operation} overflows '{n.Type.Name}'"),
+			ResolvedUnaryOpExpressionNode n when OverflowsNegation(n) =>
+				(n.Syntax.SourceLocation, $"Negation overflows '{n.Type.Name}'"),
+			ResolvedConversionExpressionNode n when FindLostConstant(n) is { } lost =>
+				(n.Syntax.SourceLocation, $"'{lost}' doesn't fit in '{n.Type.Name}'"),
+			_ => (default(SourceLocation), null)
+		};
+		
+		return message is null ? null : new Diagnostic(DiagnosticSeverity.Error, location, message);
+	}
+	
+	public bool IsZero(IResolvedExpressionNode divisor) => Evaluate(divisor) is IntegerConstant { Value.IsZero: true };
+	
+	public string? FindOverflowingOperation(ResolvedBinaryOpExpressionNode node)
+	{
+		if (node is not { Operation: NativeImpl { Op: var op }, Type: IntegerType type } ||
+		    Evaluate(node.Left) is not IntegerConstant { Value: var left } ||
+		    Evaluate(node.Right) is not IntegerConstant { Value: var right })
+			return null;
+		
+		return op switch
+		{
+			TokenType.OpPlus when !Fits(left + right, type) => "Addition",
+			TokenType.OpMinus when !Fits(left - right, type) => "Subtraction",
+			TokenType.OpStar when !Fits(left * right, type) => "Multiplication",
+			TokenType.OpSlash when type.IsSigned && right == BigInteger.MinusOne && !Fits(-left, type) => "Division",
+			_ => null
+		};
+	}
+	
+	public bool OverflowsNegation(ResolvedUnaryOpExpressionNode node) =>
+		node is { Operation: NativeImpl { Op: TokenType.OpMinus }, Type: IntegerType type } &&
+		Evaluate(node.Operand) is IntegerConstant { Value: var value } && !Fits(-value, type);
+	
+	public string? FindLostConstant(ResolvedConversionExpressionNode node)
+	{
+		if (node is not { Type: IntegerType target } ||
+		    node.Conversion is not (IntegerConversion or FloatConversion or EnumConversion))
+			return null;
+		
+		return Evaluate(node.Source) switch
+		{
+			IntegerConstant { Value: var value } when !Fits(value, target) => value.ToString(),
+			FloatConstant { Value: var value } when !FitsInteger(value, target) =>
+				value.ToString(CultureInfo.InvariantCulture),
+			EnumConstant { Type: EnumSymbol enumType, Case: var enumCase } when
+				typePool.GetCaseValue(enumType, enumCase) is var tag && !Fits(tag, target) => tag.ToString(),
+			_ => null
+		};
+	}
+	
+	private bool FitsInteger(double value, IntegerType type) =>
+		double.IsFinite(value) && Fits(new BigInteger(Math.Truncate(value)), type);
 	
 	private Constant? Fold(IResolvedExpressionNode node) => node switch
 	{

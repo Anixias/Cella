@@ -1,0 +1,31 @@
+mod test
+
+kb: val u16 = 1024
+
+Buffer: rec
+{
+	data: array[u8, kb * 64]
+}
+
+Ring[N: val u8]: rec
+{
+	x: i32
+}
+
+Code: enum(u16)
+{
+	a = 0
+	b = u8(200) + 100
+	c = u8(300)
+}
+
+added: fun(x: u8 = u8(200) + 100) -> u8 = x
+negated: fun(x: i8 = -i8(-128)) -> i8 = x
+truncated: fun(x: i32 = i32(3e10)) -> i32 = x
+divided: fun(x: i32 = 5 / 0) -> i32 = x
+
+main: fun -> i32
+{
+	val ring = Ring[u8(200) + 100](1)
+	ret 0
+}

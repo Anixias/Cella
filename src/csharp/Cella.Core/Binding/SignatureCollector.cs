@@ -779,6 +779,15 @@ public sealed class SignatureCollector
 	private Constant? EvaluateConstant(IExpressionNode expression, ResolutionContext context, TypeSymbol? targetType) =>
 		constants!.EvaluateConstant(expression, context, targetType);
 	
+	private Constant? EvaluateChecked(IResolvedExpressionNode value)
+	{
+		if (Evaluator.FindConstantError(value) is not { } error)
+			return Evaluator.Evaluate(value);
+		
+		Diagnostics.Add(error);
+		return InvalidConstant.Instance;
+	}
+	
 	private void Complete(Symbol symbol)
 	{
 		switch (symbol)
@@ -2215,7 +2224,7 @@ public sealed class SignatureCollector
 		}
 		
 		var value = constants!.ResolveInitializer(expression, matchedType, context);
-		switch (Evaluator.Evaluate(value))
+		switch (EvaluateChecked(value))
 		{
 			case IntegerConstant constant:
 				return constant.Value;
@@ -2479,7 +2488,7 @@ public sealed class SignatureCollector
 		ResolutionContext context)
 	{
 		var value = constants!.ResolveInitializer(expression, NativeSymbols.Int128, context);
-		switch (Evaluator.Evaluate(value))
+		switch (EvaluateChecked(value))
 		{
 			case IntegerConstant constant:
 				return constant.Value;
@@ -2885,7 +2894,7 @@ public sealed class SignatureCollector
 			var type = types[i];
 			var constant = type is InvalidType
 				? InvalidConstant.Instance
-				: Evaluator.Evaluate(constants!.ResolveInitializer(value, type, context));
+				: EvaluateChecked(constants!.ResolveInitializer(value, type, context));
 			
 			if (constant is null)
 				Diagnostics.Add(new(DiagnosticSeverity.Error, value.SourceLocation,

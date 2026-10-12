@@ -350,14 +350,9 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool, 
 	
 	private void ReportZeroDivisor(IResolvedExpressionNode divisor)
 	{
-		if (evaluator.Evaluate(divisor) is IntegerConstant { Value.IsZero: true })
+		if (evaluator.IsZero(divisor))
 			Diagnostics.Add(new(DiagnosticSeverity.Error, divisor.Syntax.SourceLocation, "Division by zero"));
 	}
-	
-	private bool IsOverflowingDivision(ResolvedBinaryOpExpressionNode node) =>
-		node.Type is IntegerType { IsSigned: true } type &&
-		evaluator.Evaluate(node.Right) is IntegerConstant { Value: var divisor } && divisor == BigInteger.MinusOne &&
-		evaluator.Evaluate(node.Left) is IntegerConstant { Value: var dividend } && !evaluator.Fits(-dividend, type);
 	
 	private static VariableSymbol? FindImmutableBinding(IResolvedExpressionNode place) => place switch
 	{
@@ -551,9 +546,7 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool, 
 		if (overflows > reported)
 			return;
 		
-		if (node.Operation is NativeImpl { Op: TokenType.OpSlash } && IsOverflowingDivision(node))
-			ReportOverflow(node, "Division");
-		else if (FindOverflowingOperation(node) is { } operation)
+		if (evaluator.FindOverflowingOperation(node) is { } operation)
 			ReportOverflow(node, operation);
 	}
 	
@@ -562,22 +555,6 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool, 
 		overflows++;
 		Diagnostics.Add(new(DiagnosticSeverity.Error, node.Syntax.SourceLocation,
 			$"{operation} overflows '{node.Type.Name}'"));
-	}
-	
-	private string? FindOverflowingOperation(ResolvedBinaryOpExpressionNode node)
-	{
-		if (node is not { Operation: NativeImpl { Op: var op }, Type: IntegerType type } ||
-		    evaluator.Evaluate(node.Left) is not IntegerConstant { Value: var left } ||
-		    evaluator.Evaluate(node.Right) is not IntegerConstant { Value: var right })
-			return null;
-		
-		return op switch
-		{
-			TokenType.OpPlus when !evaluator.Fits(left + right, type) => "Addition",
-			TokenType.OpMinus when !evaluator.Fits(left - right, type) => "Subtraction",
-			TokenType.OpStar when !evaluator.Fits(left * right, type) => "Multiplication",
-			_ => null
-		};
 	}
 	
 	public void Visit(ResolvedChainedExpressionNode node)
@@ -635,33 +612,13 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool, 
 		
 		var reported = overflows;
 		VisitNode(node.Source);
-		if (overflows > reported || FindLostConstant(node) is not { } lost)
+		if (overflows > reported || evaluator.FindLostConstant(node) is not { } lost)
 			return;
 		
 		overflows++;
 		Diagnostics.Add(new(DiagnosticSeverity.Error, node.Syntax.SourceLocation,
 			$"'{lost}' doesn't fit in '{node.Type.Name}'"));
 	}
-	
-	private string? FindLostConstant(ResolvedConversionExpressionNode node)
-	{
-		if (node is not { Type: IntegerType target } ||
-		    node.Conversion is not (IntegerConversion or FloatConversion or EnumConversion))
-			return null;
-		
-		return evaluator.Evaluate(node.Source) switch
-		{
-			IntegerConstant { Value: var value } when !evaluator.Fits(value, target) => value.ToString(),
-			FloatConstant { Value: var value } when !FitsInteger(value, target) =>
-				value.ToString(CultureInfo.InvariantCulture),
-			EnumConstant { Type: EnumSymbol enumType, Case: var enumCase } when
-				typePool.GetCaseValue(enumType, enumCase) is var tag && !evaluator.Fits(tag, target) => tag.ToString(),
-			_ => null
-		};
-	}
-	
-	private bool FitsInteger(double value, IntegerType type) =>
-		double.IsFinite(value) && evaluator.Fits(new BigInteger(Math.Truncate(value)), type);
 	
 	private static string DescribeMatchValue(Constant constant) => constant switch
 	{
@@ -992,9 +949,7 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool, 
 		
 		var reported = overflows;
 		VisitNode(node.Operand);
-		if (overflows == reported &&
-		    node is { Operation: NativeImpl { Op: TokenType.OpMinus }, Type: IntegerType type } &&
-		    evaluator.Evaluate(node.Operand) is IntegerConstant { Value: var value } && !evaluator.Fits(-value, type))
+		if (overflows == reported && evaluator.OverflowsNegation(node))
 			ReportOverflow(node, "Negation");
 	}
 	
