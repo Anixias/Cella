@@ -44,11 +44,21 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 		
 		isInitialized = true;
 		LLVM.LinkInMCJIT();
-		LLVM.InitializeAllTargetInfos();
-		LLVM.InitializeAllTargets();
-		LLVM.InitializeAllTargetMCs();
-		LLVM.InitializeAllAsmParsers();
-		LLVM.InitializeAllAsmPrinters();
+		LLVM.InitializeX86TargetInfo();
+		LLVM.InitializeX86Target();
+		LLVM.InitializeX86TargetMC();
+		LLVM.InitializeX86AsmParser();
+		LLVM.InitializeX86AsmPrinter();
+		LLVM.InitializeAArch64TargetInfo();
+		LLVM.InitializeAArch64Target();
+		LLVM.InitializeAArch64TargetMC();
+		LLVM.InitializeAArch64AsmParser();
+		LLVM.InitializeAArch64AsmPrinter();
+		LLVM.InitializeWebAssemblyTargetInfo();
+		LLVM.InitializeWebAssemblyTarget();
+		LLVM.InitializeWebAssemblyTargetMC();
+		LLVM.InitializeWebAssemblyAsmParser();
+		LLVM.InitializeWebAssemblyAsmPrinter();
 	}
 	
 	public string TargetTriple { get; }
@@ -2466,8 +2476,6 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 			{ Op: BinaryOperation.Subtraction or BinaryOperation.WrappingSubtraction } =>
 				builder.BuildSub(left, right),
 			
-			{ IsConstant: true, Op: BinaryOperation.Multiplication or BinaryOperation.WrappingMultiplication } =>
-				LLVMValueRef.CreateConstMul(left, right),
 			{ Op: BinaryOperation.Multiplication or BinaryOperation.WrappingMultiplication } =>
 				builder.BuildMul(left, right),
 			

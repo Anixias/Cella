@@ -24,7 +24,7 @@ public static unsafe class Extensions
 	
 	extension(LLVMTypeRef type)
 	{
-		public static LLVMTypeRef Int128 => LLVM.Int128Type();
+		public static LLVMTypeRef Int128 => LLVMTypeRef.CreateInt(128);
 	}
 	
 	extension(LLVMBuilderRef builder)

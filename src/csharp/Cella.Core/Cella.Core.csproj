@@ -15,8 +15,8 @@
   </ItemGroup>
   
   <ItemGroup>
-    <PackageReference Include="libLLVM" Version="20.1.2"/>
-    <PackageReference Include="LLVMSharp" Version="20.1.2"/>
+    <PackageReference Include="libLLVM" Version="22.1.8"/>
+    <PackageReference Include="LLVMSharp" Version="22.1.8"/>
   </ItemGroup>
 
 </Project>
