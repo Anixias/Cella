@@ -12,6 +12,8 @@ public sealed class MemoryChecker(TypePool typePool, DiagnosticList diagnostics)
 {
 	private readonly record struct Uninitialized(string Condition, IEnumerable<MoveSite> Moves);
 	
+	private readonly HashSet<(SourceLocation, string)> _reported = [];
+	
 	private ParameterSymbol? destructorSelf;
 	
 	public void Check(LoweredFunction function)
@@ -251,8 +253,11 @@ public sealed class MemoryChecker(TypePool typePool, DiagnosticList diagnostics)
 		return false;
 	}
 	
-	private void Report(SourceLocation location, string message, IEnumerable<string> hints) =>
-		diagnostics.Add(new(DiagnosticSeverity.Error, location, message) { Hints = [..hints] });
+	private void Report(SourceLocation location, string message, IEnumerable<string> hints)
+	{
+		if (_reported.Add((location, message)))
+			diagnostics.Add(new(DiagnosticSeverity.Error, location, message) { Hints = [..hints] });
+	}
 	
 	private static IEnumerable<string> DescribeMoves(SourceLocation location, IEnumerable<MoveSite> moves) =>
 		DescribeSites(location, moves.Select(static move => move.Location), "Moved");

@@ -1,0 +1,59 @@
+mod test
+
+Item: rec
+{
+	id: i32
+
+	drop: op
+	{
+	}
+
+	poke: fun(mut self, own other: Item)
+	{
+	}
+}
+
+Holder: rec
+{
+	inner: Item
+	other: Item
+}
+
+view: fun(item: Item, own owned: Item)
+{
+}
+
+change: fun(mut item: Item, own owned: Item)
+{
+}
+
+store: fun(mut holder: Holder, own item: Item)
+{
+}
+
+run: fun(f: fun[-> i32], own owned: Item)
+{
+}
+
+main: fun -> i32
+{
+	var item = Item(1)
+	view(item, own item)
+
+	var changed = Item(2)
+	change(mut changed, own changed)
+
+	var poked = Item(3)
+	poked.poke(own poked)
+
+	var holder = Holder(Item(4), Item(5))
+	store(mut holder, own holder.other)
+
+	val captured = Item(6)
+	run(fun -> i32 = captured.id, own captured)
+
+	val first = Item(7)
+	val second = Item(8)
+	view(first, own second)
+	ret 0
+}

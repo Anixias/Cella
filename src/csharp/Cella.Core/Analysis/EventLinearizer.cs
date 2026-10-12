@@ -131,7 +131,7 @@ public sealed class EventLinearizer
 					Function.Symbol.Kind: FunctionKind.Constructor,
 					Arguments: [UnaryOpValue { Op: UnaryOperation.AddressOf, Operand: var self }, ..]
 				} v:
-					AddValues(v.Arguments.Skip(1));
+					AddArguments([..v.Arguments.Skip(1)]);
 					AddOperands(self);
 					if (GetPlace(self) is { } constructed)
 						events.Add(new WriteEvent(constructed, self.SourceLocation, v));
@@ -139,12 +139,12 @@ public sealed class EventLinearizer
 					break;
 				
 				case CallValue v:
-					AddValues(v.Arguments);
+					AddArguments(v.Arguments);
 					break;
 				
 				case IndirectCallValue v:
 					AddValue(v.Target);
-					AddValues(v.Arguments);
+					AddArguments(v.Arguments);
 					break;
 				
 				case ClosureValue v:
@@ -208,6 +208,24 @@ public sealed class EventLinearizer
 			break;
 		}
 	}
+	
+	private void AddArguments(IReadOnlyList<Value> arguments)
+	{
+		AddValues(arguments);
+		foreach (var lent in arguments.SkipLast(1).SelectMany(FindLent))
+		{
+			if (GetPlace(lent) is { } place)
+				events.Add(new AccessEvent(place, AccessKind.Read, lent.SourceLocation, lent.Type));
+		}
+	}
+	
+	private static IEnumerable<Value> FindLent(Value argument) => argument switch
+	{
+		UnaryOpValue { Op: UnaryOperation.AddressOf } v => [v.Operand],
+		ConversionValue v => FindLent(v.Source),
+		ClosureValue v => v.Captures.SelectMany(FindLent),
+		_ => []
+	};
 	
 	private void AddValues(IEnumerable<Value?> values)
 	{
