@@ -1,0 +1,37 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Hash: trait
+{
+	hash: fun(self) -> u64
+}
+
+Apply: trait
+{
+	keep[U: copy]: fun(self, value: U) -> U
+	tagged[U: Hash]: fun(self, value: U) -> i32
+	loose[U: noref]: fun(self, value: U) -> i32
+	cap[N: val usize]: fun(self) -> usize
+}
+
+Point: rec impl Apply
+{
+	x: i32
+
+	keep[V: copy]: fun(self, value: V) -> V = value
+	tagged[V: Hash]: fun(self, value: V) -> i32 = 1
+	loose[V]: fun(self, value: V) -> i32 = 2
+	cap[M: val usize]: fun(self) -> usize = M
+}
+
+run[T: Apply]: fun(item: T) -> i32 = item.keep(5) + item.loose(1) + i32(item.cap[3]())
+
+main: fun -> i32
+{
+	printf("%d\n", run(Point(1)))
+	ret 0
+}

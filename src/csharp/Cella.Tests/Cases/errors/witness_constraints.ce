@@ -1,0 +1,28 @@
+mod test
+
+Hash: trait
+{
+	hash: fun(self) -> u64
+}
+
+Apply: trait
+{
+	keep[U]: fun(self, value: U) -> U
+	tagged[U]: fun(self, value: U) -> i32
+	plain[U]: fun(self, value: U) -> i32
+	cap[N: val usize]: fun(self) -> usize
+	other[N: val usize]: fun(self) -> usize
+}
+
+Point: rec impl Apply
+{
+	x: i32
+
+	keep[V: copy]: fun(self, value: V) -> V = value
+	tagged[V: Hash]: fun(self, value: V) -> i32 = 1
+	plain[V: noref]: fun(self, value: V) -> i32 = 2
+	cap[M: val u8]: fun(self) -> usize = 3
+	other[M]: fun(self) -> usize = 4
+}
+
+main: fun -> i32 = 0

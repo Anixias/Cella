@@ -1239,8 +1239,18 @@ public sealed class SignatureCollector
 			return false;
 		
 		var map = new Dictionary<TypeParameterSymbol, TypeSymbol>(traitMap);
+		var toRequirement = new Dictionary<TypeParameterSymbol, TypeSymbol>();
 		for (var i = 0; i < declared.Length; i++)
+		{
 			map[declared[i]] = own[i];
+			toRequirement[own[i]] = declared[i];
+		}
+		
+		for (var i = 0; i < declared.Length; i++)
+		{
+			if (!ConstraintsAllowed(own[i], declared[i], toRequirement, traitMap))
+				return false;
+		}
 		
 		var expected = _typePool.SubstituteSignature(requirement, map);
 		return expected.IsVariadic == candidate.IsVariadic &&
@@ -1248,6 +1258,45 @@ public sealed class SignatureCollector
 		       (expected.ReturnType == candidate.ReturnType ||
 		        allowsStandIns && FunctionType.CanAdapt(candidate.ReturnType, expected.ReturnType)) &&
 		       TypePool.ParametersMatch(candidate, expected, allowsStandIns);
+	}
+	
+	private bool ConstraintsAllowed(TypeParameterSymbol own, TypeParameterSymbol required,
+		Dictionary<TypeParameterSymbol, TypeSymbol> toRequirement, Dictionary<TypeParameterSymbol, TypeSymbol> traitMap)
+	{
+		if (own.IsValue != required.IsValue || own.IsValue && own.ValueType != required.ValueType)
+			return false;
+		
+		if (own.IsNoref && !required.IsNoref || own.IsCopy && !required.IsCopy || own.HasDrop && !required.HasDrop ||
+		    own.HasNull && !required.HasNull || own.IsAtomic && !required.IsAtomic || own.HasNew && !required.HasNew)
+			return false;
+		
+		var bounds = _typePool.GetBounds(required).Select(bound => _typePool.Substitute(bound, traitMap)).ToList();
+		if (_typePool.GetDeclaredBounds(own).Any(bound => !bounds.Contains(_typePool.Substitute(bound, toRequirement))))
+			return false;
+		
+		var parameterBounds = _typePool.GetParameterBounds(required)
+			.Select(bound => _typePool.Substitute(bound, traitMap))
+			.ToList();
+		
+		if (_typePool.GetParameterBounds(own)
+		    .Any(bound => !parameterBounds.Contains(_typePool.Substitute(bound, toRequirement))))
+			return false;
+		
+		var functionBounds = _typePool.GetFunctionBounds(required)
+			.Select(bound => _typePool.Substitute(bound, traitMap))
+			.ToList();
+		
+		if (_typePool.GetFunctionBounds(own)
+		    .Any(bound => !functionBounds.Contains(_typePool.Substitute(bound, toRequirement))))
+			return false;
+		
+		var constructorBounds = _typePool.GetConstructorBounds(required)
+			.Select(bound => _typePool.SubstituteSignature(bound.Signature, traitMap))
+			.ToList();
+		
+		return _typePool.GetConstructorBounds(own)
+			.Select(bound => _typePool.SubstituteSignature(bound.Signature, toRequirement))
+			.All(signature => constructorBounds.Any(other => TypePool.ParametersMatch(signature, other, false)));
 	}
 	
 	private NativeWitness? FindNativeWitness(FunctionSymbol requirement, FunctionSignature signature,
