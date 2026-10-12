@@ -774,10 +774,27 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		if (isMut)
 			return MakeWritable(value);
 		
-		return enumType is not null && IsStored(value) && patterns.Any(pattern => MovesPayload(pattern, enumType))
-			? new ResolvedOwnExpressionNode(value, syntax)
-			: value;
+		if (enumType is null || !IsStored(value) || !patterns.Any(pattern => MovesPayload(pattern, enumType)))
+			return value;
+		
+		if (!ReadsThroughPointer(value))
+			return new ResolvedOwnExpressionNode(value, syntax);
+		
+		Diagnostics.Add(new(DiagnosticSeverity.Error, syntax.SourceLocation,
+			$"Cannot move '{enumType.Name}' values implicitly"));
+		
+		return value;
 	}
+	
+	private static bool ReadsThroughPointer(IResolvedExpressionNode value) => value switch
+	{
+		ResolvedUnaryOpExpressionNode { Operation.Op: TokenType.OpStar } => true,
+		ResolvedAccessExpressionNode { Member: FieldSymbol } e => e.Target.Type is PointerType ||
+		                                                          ReadsThroughPointer(e.Target),
+		ResolvedIndexerExpressionNode e => e.Target.Type is PointerType || ReadsThroughPointer(e.Target),
+		ResolvedAssignmentExpressionNode e => ReadsThroughPointer(e.Left),
+		_ => false
+	};
 	
 	private bool MovesPayload(PatternNode? pattern, EnumSymbol enumType)
 	{

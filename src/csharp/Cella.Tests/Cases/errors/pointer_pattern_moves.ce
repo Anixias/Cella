@@ -1,0 +1,51 @@
+mod test
+
+Buffer: rec
+{
+	id: i32
+
+	drop: op
+	{
+	}
+}
+
+Effect: enum
+{
+	none
+	hold(buffer: Buffer)
+}
+
+Holder: rec
+{
+	effect: Effect
+}
+
+main: fun -> i32
+{
+	var effect = Effect.hold(Buffer(1))
+	val pointer = @effect
+	match *pointer
+	{
+		hold(var buffer) => {}
+		else => {}
+	}
+
+	if *pointer is hold(own buffer)
+	{
+	}
+
+	var holder = Holder(Effect.hold(Buffer(2)))
+	val held = @holder
+	if held.effect is hold(var buffer)
+	{
+	}
+
+	match own *pointer
+	{
+		hold(var buffer) => {}
+		else => {}
+	}
+
+	own *pointer = Effect.none
+	ret 0
+}

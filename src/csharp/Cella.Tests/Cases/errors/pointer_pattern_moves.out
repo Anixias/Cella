@@ -1,0 +1,19 @@
+
+====== pointer_pattern_moves.ce ======
+
+Error at line 27, column 8
+26 │ val pointer = @effect
+27 │ match *pointer
+           ╘══════╛ Cannot move 'Effect' values implicitly
+
+Error at line 33, column 5
+32 │ 
+33 │ if *pointer is hold(own buffer)
+        ╘══════╛ Cannot move 'Effect' values implicitly
+
+Error at line 39, column 5
+38 │ val held = @holder
+39 │ if held.effect is hold(var buffer)
+        ╘═════════╛ Cannot move 'Effect' values implicitly
+
+[compilation failed]
