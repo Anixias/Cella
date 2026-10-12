@@ -292,6 +292,7 @@ public sealed class EventLinearizer
 	internal static Place? GetPlace(Value value) => value switch
 	{
 		VariableValue v => new(v.Variable.Symbol, []),
+		GlobalValue v => new(v.Global.Symbol, []),
 		UnaryOpValue { Op: UnaryOperation.Dereference, Operand: VariableValue { Variable.Symbol: var symbol } } =>
 			symbol switch
 			{

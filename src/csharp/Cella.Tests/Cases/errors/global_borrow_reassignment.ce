@@ -1,0 +1,40 @@
+mod test
+
+Buffer: rec
+{
+	id: i32
+
+	drop: op
+	{
+	}
+}
+
+Cache: rec
+{
+	kept: var Buffer = Buffer(1)
+}
+
+current: var Buffer = Buffer(2)
+items: var array[Buffer, 2] = [Buffer(3), Buffer(4)]
+
+main: fun -> i32
+{
+	val view = imm current
+	current = Buffer(5)
+	val moduleId = view.id
+
+	val implicit = current
+	current = Buffer(6)
+	val implicitId = implicit.id
+
+	val cached = imm Cache.kept
+	Cache.kept = Buffer(7)
+	val cachedId = cached.id
+
+	val first = items[0]
+	items[0] = Buffer(8)
+	val firstId = first.id
+
+	val fresh = imm current
+	ret fresh.id
+}

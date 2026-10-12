@@ -1,0 +1,43 @@
+
+====== global_borrow_reassignment.ce ======
+
+Hint at line 22, column 13
+21 │ {
+22 │     val view = imm current
+                    ╘═╛ Redundant 'imm'
+
+Error at line 24, column 17
+23 │ current = Buffer(5)
+24 │ val moduleId = view.id
+                    ╘══╛ Cannot use borrows of reassigned values
+                       | Reassigned on line 23
+
+Error at line 28, column 19
+27 │ current = Buffer(6)
+28 │ val implicitId = implicit.id
+                      ╘══════╛ Cannot use borrows of reassigned values
+                             | Reassigned on line 27
+
+Hint at line 30, column 15
+29 │ 
+30 │ val cached = imm Cache.kept
+                  ╘═╛ Redundant 'imm'
+
+Error at line 32, column 17
+31 │ Cache.kept = Buffer(7)
+32 │ val cachedId = cached.id
+                    ╘════╛ Cannot use borrows of reassigned values
+                         | Reassigned on line 31
+
+Error at line 36, column 16
+35 │ items[0] = Buffer(8)
+36 │ val firstId = first.id
+                   ╘═══╛ Cannot use borrows of reassigned values
+                       | Reassigned on line 35
+
+Hint at line 38, column 14
+37 │ 
+38 │ val fresh = imm current
+                 ╘═╛ Redundant 'imm'
+
+[compilation failed]
