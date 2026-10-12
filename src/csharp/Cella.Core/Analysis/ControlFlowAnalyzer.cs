@@ -1,5 +1,4 @@
-﻿using Cella.Core.Collections;
-using Cella.Core.Lowering;
+﻿using Cella.Core.Lowering;
 using Cella.Core.Symbols;
 using Cella.Diagnostics;
 
@@ -42,7 +41,7 @@ public sealed class ControlFlowAnalyzer(DiagnosticList diagnostics)
 		if (returnType == NativeSymbols.Void)
 			return true;
 		
-		if (GetMinimalPaths(function).All(static path => path is not BlockPathType.Undefined))
+		if (!CanFallOffEnd(function))
 			return true;
 		
 		diagnostics.Add(new(DiagnosticSeverity.Error, function.Info.Symbol.Definition, returnType is NeverType
@@ -52,106 +51,32 @@ public sealed class ControlFlowAnalyzer(DiagnosticList diagnostics)
 		return false;
 	}
 	
-	private enum BlockPathType
-	{
-		Undefined,
-		Returns,
-		Stops,
-		Loops
-	}
-	
-	/// <summary>
-	/// Returns how each minimal path through a function body ends. Minimal means that the paths will not loop.
-	/// </summary>
-	private static IEnumerable<BlockPathType> GetMinimalPaths(LoweredFunction function)
+	private static bool CanFallOffEnd(LoweredFunction function)
 	{
 		if (function.Blocks.Count == 0)
-			yield break;
+			return false;
 		
-		var entry = function.Blocks[0];
-		var initialPath = new OrderedSet<BasicBlock> { entry };
-		foreach (var path in Explore(entry, initialPath))
-			yield return path;
+		var visited = new HashSet<BasicBlock> { function.Blocks[0] };
+		var pending = new Stack<BasicBlock>(visited);
+		while (pending.TryPop(out var block))
+		{
+			if (block.Terminator is UndefinedTerminator)
+				return true;
+			
+			foreach (var target in GetTargets(block.Terminator))
+				if (visited.Add(target))
+					pending.Push(target);
+		}
+		
+		return false;
 	}
 	
-	private static IEnumerable<BlockPathType> Explore(BasicBlock current, OrderedSet<BasicBlock> path)
-	{
-		while (true)
-		{
-			if (GetOnlyTarget(current.Terminator) is { } target)
-			{
-				// Loop
-				if (!path.Add(target))
-				{
-					yield return BlockPathType.Loops;
-					yield break;
-				}
-				
-				current = target;
-				continue;
-			}
-			
-			switch (current.Terminator)
-			{
-				case UndefinedTerminator:
-					yield return BlockPathType.Undefined;
-					yield break;
-				
-				case ReturnTerminator:
-					yield return BlockPathType.Returns;
-					yield break;
-				
-				case UnreachableTerminator:
-					yield return BlockPathType.Stops;
-					yield break;
-				
-				case ConditionalBranchTerminator term:
-					var trueTarget = term.TrueTarget;
-					var falseTarget = term.FalseTarget;
-					var trueLoops = path.Contains(trueTarget);
-					var falseLoops = path.Contains(falseTarget);
-					
-					// Infinite loop
-					if (trueLoops && falseLoops)
-					{
-						yield return BlockPathType.Loops;
-						yield break;
-					}
-					
-					// If only one branch is going to be explored, we allow mutation of the path parameter
-					var allowModification = trueLoops != falseLoops;
-					
-					if (!trueLoops)
-					{
-						var newPath = allowModification
-							? path
-							: new OrderedSet<BasicBlock>(path);
-						
-						newPath.Add(trueTarget);
-						
-						foreach (var subpath in Explore(trueTarget, newPath))
-							yield return subpath;
-					}
-					
-					if (!falseLoops)
-					{
-						var newPath = allowModification
-							? path
-							: new OrderedSet<BasicBlock>(path);
-						
-						newPath.Add(falseTarget);
-						
-						current = falseTarget;
-						path = newPath;
-						continue;
-					}
-					
-					yield break;
-			}
-			
-			break;
-		}
-	}
+	private static IEnumerable<BasicBlock> GetTargets(IBlockTerminator terminator) =>
+		GetOnlyTarget(terminator) is { } only
+			? [only]
+			: terminator is ConditionalBranchTerminator branch
+				? [branch.TrueTarget, branch.FalseTarget]
+				: [];
 	
 	private static BasicBlock? GetOnlyTarget(IBlockTerminator terminator) => terminator switch
 	{
