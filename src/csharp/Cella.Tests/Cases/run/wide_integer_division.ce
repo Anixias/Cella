@@ -1,0 +1,64 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+sa0: var i128 = 170141183460469231731687303715884105727
+sb0: var i128 = 3
+sa1: var i128 = -170141183460469231731687303715884105727
+sb1: var i128 = 7
+sa2: var i128 = 123456789012345678901234567890
+sb2: var i128 = -987654321
+sa3: var i128 = -99999999999999999999999999999
+sb3: var i128 = -18446744073709551629
+ua0: var u128 = 340282366920938463463374607431768211455
+ub0: var u128 = 18446744073709551629
+ua1: var u128 = 340282366920938463463374607431768211455
+ub1: var u128 = 10
+ua2: var u128 = 18446744073709551616
+ub2: var u128 = 3
+
+showSigned: fun(x: i128)
+{
+	printf("%lld %llu\n", i64(x >> 64), u64(x & 18446744073709551615))
+}
+
+showUnsigned: fun(x: u128)
+{
+	printf("%llu %llu\n", u64(x >> 64), u64(x & 18446744073709551615))
+}
+
+main: fun -> i32
+{
+	val a0 = sa0
+	val b0 = sb0
+	showSigned(a0 / b0)
+	showSigned(a0 % b0)
+	val a1 = sa1
+	val b1 = sb1
+	showSigned(a1 / b1)
+	showSigned(a1 % b1)
+	val a2 = sa2
+	val b2 = sb2
+	showSigned(a2 / b2)
+	showSigned(a2 % b2)
+	val a3 = sa3
+	val b3 = sb3
+	showSigned(a3 / b3)
+	showSigned(a3 % b3)
+	val c0 = ua0
+	val d0 = ub0
+	showUnsigned(c0 / d0)
+	showUnsigned(c0 % d0)
+	val c1 = ua1
+	val d1 = ub1
+	showUnsigned(c1 / d1)
+	showUnsigned(c1 % d1)
+	val c2 = ua2
+	val d2 = ub2
+	showUnsigned(c2 / d2)
+	showUnsigned(c2 % d2)
+	ret 0
+}

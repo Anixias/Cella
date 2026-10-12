@@ -19,7 +19,12 @@ public abstract class Toolchain
 			throw new NotSupportedException();
 		
 		if (os.Equals(TargetTriple.OsTypes.Windows, StringComparison.OrdinalIgnoreCase))
-			return new WindowsMsvcToolchain(toolchainRoot);
+			return new WindowsMsvcToolchain(toolchainRoot, $"clang_rt.builtins-{arch switch
+			{
+				TargetTriple.ArchTypes.X86 => "i386",
+				TargetTriple.ArchTypes.Arm64 => "aarch64",
+				_ => "x86_64"
+			}}.lib");
 		
 		if (os.Equals(TargetTriple.OsTypes.MacOsX, StringComparison.OrdinalIgnoreCase))
 			throw new NotSupportedException();
