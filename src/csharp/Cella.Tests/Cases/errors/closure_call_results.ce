@@ -1,0 +1,20 @@
+mod test
+
+Text: rec
+{
+	id: i32
+
+	drop: op
+	{
+	}
+}
+
+call: fun(f: fun[-> imm[Text]]) -> imm[Text] = f()
+
+main: fun -> i32
+{
+	var t = Text(1)
+	val r = call(fun -> imm[Text] = t)
+	t = Text(2)
+	ret r.id
+}

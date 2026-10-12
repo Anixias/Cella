@@ -559,7 +559,10 @@ public sealed class BorrowChecker(TypePool typePool, DiagnosticList diagnostics)
 	
 	private List<Place> Results(List<Place> sources, TypeSymbol type) => typePool.CanHoldClosures(type)
 		? sources
-		: [..sources.Where(static source => source.Root is not ClosureEnvironment)];
+		: [..sources.Where(static source => source.Root is not ClosureEnvironment).Select(Uncaptured)];
+	
+	private static Place Uncaptured(Place source) =>
+		IsCapture(source) ? source with { Path = source.Path[..^1] } : source;
 	
 	private List<Place> CaptureSources(Value capture, BorrowState state)
 	{
@@ -661,7 +664,7 @@ public sealed class BorrowChecker(TypePool typePool, DiagnosticList diagnostics)
 		if (type.IsRef)
 			sources.AddRange(Sources(call.Target, state)
 				.Where(static source => source.Root is not ClosureEnvironment)
-				.Select(static source => IsCapture(source) ? source with { Path = source.Path[..^1] } : source));
+				.Select(Uncaptured));
 		
 		return sources;
 	}

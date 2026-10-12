@@ -1,0 +1,10 @@
+
+====== closure_call_results.ce ======
+
+Error at line 19, column 6
+18 │ t = Text(2)
+19 │ ret r.id
+         ^ Cannot use borrows of reassigned values
+         | Reassigned on line 18
+
+[compilation failed]
