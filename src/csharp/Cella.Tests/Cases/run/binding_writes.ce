@@ -1,0 +1,46 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Buffer: rec
+{
+	id: i32
+
+	drop: op
+	{
+		printf("drop %d\n", self.id)
+	}
+}
+
+Effect: enum
+{
+	none
+	hold(buffer: Buffer)
+}
+
+main: fun -> i32
+{
+	var e = Effect.hold(Buffer(1))
+	match mut e
+	{
+		hold(b) =>
+		{
+			b = Buffer(2)
+			b.id = 5
+			b = Buffer(6)
+		}
+		else => {}
+	}
+
+	var arr = [Buffer(7), Buffer(8)]
+	for b in mut arr
+		b.id = b.id + 10
+
+	printf("%d %d\n", arr[0].id, arr[1].id)
+	e = Effect.none
+	printf("end\n")
+	ret 0
+}

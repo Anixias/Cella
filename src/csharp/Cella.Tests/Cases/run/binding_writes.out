@@ -1,0 +1,8 @@
+drop 1
+drop 5
+17 18
+drop 6
+end
+drop 18
+drop 17
+[exit code 0]

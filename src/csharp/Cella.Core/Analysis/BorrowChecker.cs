@@ -183,6 +183,11 @@ public sealed class BorrowChecker(TypePool typePool, DiagnosticList diagnostics)
 				ReportEnded(e.Place.Root, e.Location, state, null);
 				break;
 			
+			case WriteEvent { Place.Root: LocalVariableSymbol { IsBorrowBinding: true } binding } e
+				when !returned.Contains(binding):
+				ReportEnded(binding, e.Location, state, null);
+				break;
+			
 			case DropEvent { Instruction.Value.Type: var type } e
 				when typePool.NeedsDrop(type) && typePool.HoldsBorrows(type):
 				var isNamed = e.Place.Path.IsEmpty && !e.Instruction.IsReassignment &&
