@@ -181,7 +181,8 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			Diagnostics = Diagnostics,
 			ExtSignatureTypes = _extSignatureTypes,
 			EvaluateConstant = EvaluateConstant,
-			GenericTypes = []
+			GenericTypes = [],
+			TrackInstance = TrackTypeInstance
 		};
 		
 		_importedFunctions.Clear();
@@ -1649,7 +1650,11 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			: ReportInferenceFailure(result, name, location);
 		
 		if (diagnostic is null)
-			return _typePool.Instantiate(definition, result.Arguments) as NamedTypeSymbol;
+		{
+			var instance = _typePool.Instantiate(definition, result.Arguments);
+			TrackTypeInstance(CurrentResolutionContext, instance, location);
+			return instance as NamedTypeSymbol;
+		}
 		
 		if (failures is null)
 			Diagnostics.Add(diagnostic);
@@ -6720,24 +6725,128 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		if (info.Symbol.TypeParameters.IsEmpty)
 			TrackGenericReference(info.Symbol);
 		
-		if (CurrentResolutionContext.ContainingFunction is not { Symbol: { TypeParameters.IsEmpty: false } caller } ||
-		    info.TypeArguments.IsDefaultOrEmpty)
+		if (FindGenericCaller(CurrentResolutionContext) is not { } caller || info.TypeArguments.IsDefaultOrEmpty)
 			return;
-		
-		while (caller is { Syntax: LambdaDeclarationNode, ContainingFunction.Symbol: var enclosing })
-			caller = enclosing;
 		
 		for (var i = 0; i < info.TypeArguments.Length; i++)
 		{
 			var argument = info.TypeArguments[i];
 			foreach (var parameter in caller.TypeParameters.Where(parameter => Mentions(argument, parameter)))
-			{
-				_instantiations.Add(new((caller, parameter), (info.Symbol, info.Symbol.TypeParameters[i]),
+				AddInstantiation(new((caller, parameter), (info.Symbol, info.Symbol.TypeParameters[i]),
 					argument != parameter, syntax.SourceLocation));
+		}
+	}
+	
+	private static FunctionSymbol? FindGenericCaller(ResolutionContext context)
+	{
+		if (context.ContainingFunction is not { Symbol: { TypeParameters.IsEmpty: false } caller })
+			return null;
+		
+		while (caller is { Syntax: LambdaDeclarationNode, ContainingFunction.Symbol: var enclosing })
+			caller = enclosing;
+		
+		return caller;
+	}
+	
+	private void TrackTypeInstance(ResolutionContext context, TypeSymbol type, SourceLocation location)
+	{
+		if (FindGenericCaller(context) is { } caller)
+			RecordInstantiations(caller, caller.TypeParameters, type, location);
+	}
+	
+	private void RecordInstantiations(Symbol owner, ImmutableArray<TypeParameterSymbol> parameters, TypeSymbol type,
+		SourceLocation location)
+	{
+		switch (type)
+		{
+			case NamedTypeSymbol { Definition.IsGenericDefinition: true } named:
+				for (var i = 0; i < named.TypeArguments.Length; i++)
+				{
+					var argument = named.TypeArguments[i];
+					foreach (var parameter in parameters.Where(parameter => Mentions(argument, parameter)))
+						AddInstantiation(new((owner, parameter), (named.Definition, named.Definition.TypeParameters[i]),
+							argument != parameter, location));
+					
+					RecordInstantiations(owner, parameters, argument, location);
+				}
 				
-				Journal(() => _instantiations.RemoveAt(_instantiations.Count - 1));
+				break;
+			
+			case PointerType pointer:
+				RecordInstantiations(owner, parameters, pointer.BaseType, location);
+				break;
+			
+			case BorrowType borrow:
+				RecordInstantiations(owner, parameters, borrow.Target, location);
+				break;
+			
+			case ArrayType array:
+				RecordInstantiations(owner, parameters, array.ElementType, location);
+				break;
+			
+			case FunctionType function:
+				foreach (var part in function.ParameterTypes.Append(function.ReturnType))
+					RecordInstantiations(owner, parameters, part, location);
+				
+				break;
+		}
+	}
+	
+	private void RecordDeclarationInstantiations()
+	{
+		foreach (var symbol in _symbolTable.DeclarationSymbols.Values)
+		{
+			switch (symbol)
+			{
+				case NamedTypeSymbol { IsGenericDefinition: true } definition:
+					RecordFieldInstantiations(definition);
+					break;
+				
+				case FunctionSymbol { TypeParameters.IsEmpty: false, Syntax: FunctionNode node } function:
+					RecordSignatureInstantiations(function, node);
+					break;
 			}
 		}
+	}
+	
+	private void RecordFieldInstantiations(NamedTypeSymbol definition)
+	{
+		IEnumerable<FieldSymbol> fields = definition switch
+		{
+			RecordSymbol record => _typePool.GetMembers(record).OfType<FieldSymbol>(),
+			EnumSymbol enumType => _typePool.GetPayloadFields(enumType),
+			_ => []
+		};
+		
+		foreach (var field in fields)
+		{
+			if (field.Node is { } node && _typePool.TryGetTypeOfMember(field, out var type))
+				RecordInstantiations(definition, definition.TypeParameters, type, node.Type.SourceLocation);
+		}
+		
+		if (_typePool.GetDestructor(definition) is not { Symbol: var destructor })
+			return;
+		
+		foreach (var parameter in definition.TypeParameters.Where(destructor.TypeParameters.Contains))
+			AddInstantiation(new((definition, parameter), (destructor, parameter), false, destructor.Definition));
+	}
+	
+	private void RecordSignatureInstantiations(FunctionSymbol function, FunctionNode node)
+	{
+		var signature = _signatures.GetFunctionInfo(function).Signature;
+		var offset = signature.ParameterTypes.Length - node.Parameters.Length;
+		for (var i = 0; i < node.Parameters.Length && offset >= 0; i++)
+			RecordInstantiations(function, function.TypeParameters, signature.GetDeclaredType(i + offset),
+				node.Parameters[i].Type.SourceLocation);
+		
+		if (node.ReturnType is { } returnType)
+			RecordInstantiations(function, function.TypeParameters, signature.ReturnType, returnType.SourceLocation);
+	}
+	
+	private void AddInstantiation(Instantiation instantiation)
+	{
+		_instantiations.Add(instantiation);
+		Journal(() => _instantiations.RemoveAt(_instantiations.Count - 1));
 	}
 	
 	private void Journal(Action undo) => journal?.Add(undo);
@@ -6798,10 +6907,11 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	
 	public void ReportInfiniteInstantiations()
 	{
+		RecordDeclarationInstantiations();
 		var edges = _instantiations.ToLookup(static instantiation => instantiation.From);
-		var components = new Dictionary<(FunctionSymbol, TypeParameterSymbol), int>();
-		var indices = new Dictionary<(FunctionSymbol, TypeParameterSymbol), (int Index, int Low)>();
-		var stack = new Stack<(FunctionSymbol, TypeParameterSymbol)>();
+		var components = new Dictionary<(Symbol, TypeParameterSymbol), int>();
+		var indices = new Dictionary<(Symbol, TypeParameterSymbol), (int Index, int Low)>();
+		var stack = new Stack<(Symbol, TypeParameterSymbol)>();
 		var count = 0;
 		
 		foreach (var node in _instantiations.Select(static instantiation => instantiation.From))
@@ -6818,11 +6928,11 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		
 		foreach (var instantiation in locations)
 			Diagnostics.Add(new(DiagnosticSeverity.Error, instantiation.Location,
-				$"Instantiating '{instantiation.To.Function.Name}' never ends"));
+				$"Instantiating '{instantiation.To.Owner.Name}' never ends"));
 		
 		return;
 		
-		void Connect((FunctionSymbol, TypeParameterSymbol) node)
+		void Connect((Symbol, TypeParameterSymbol) node)
 		{
 			var index = indices.Count;
 			indices[node] = (index, index);
@@ -6844,7 +6954,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 				return;
 			
 			var component = count++;
-			(FunctionSymbol, TypeParameterSymbol) member;
+			(Symbol, TypeParameterSymbol) member;
 			do
 			{
 				member = stack.Pop();
@@ -7536,8 +7646,8 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	
 	private readonly record struct Instantiation
 	(
-		(FunctionSymbol Function, TypeParameterSymbol Parameter) From,
-		(FunctionSymbol Function, TypeParameterSymbol Parameter) To,
+		(Symbol Owner, TypeParameterSymbol Parameter) From,
+		(Symbol Owner, TypeParameterSymbol Parameter) To,
 		bool IsExpansive,
 		SourceLocation Location
 	);

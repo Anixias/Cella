@@ -25,6 +25,7 @@ public readonly struct ResolutionContext
 	public ImplSymbol? ImplBlock { get; init; }
 	public Func<ConstraintCheck, bool>? DeferConstraintCheck { get; init; }
 	public Func<string, Symbol?>? Capture { get; init; }
+	public Action<ResolutionContext, TypeSymbol, SourceLocation>? TrackInstance { get; init; }
 	
 	public string Mangle(Symbol symbol) => Mangling.Mangle(symbol, Modules, GetQualifiers());
 	
@@ -829,6 +830,7 @@ public readonly struct ResolutionContext
 			return NativeSymbols.Invalid;
 		
 		var type = TypePool.Instantiate(definition, [..arguments]);
+		TrackInstance?.Invoke(this, type, location);
 		if (arguments.Any(static argument => argument is ValueArgumentType))
 			TypePool.SizeChecks.Add((type, location));
 		

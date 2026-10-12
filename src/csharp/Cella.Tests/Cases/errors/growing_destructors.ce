@@ -1,0 +1,25 @@
+mod test
+
+box[T]: rec
+{
+	value: T
+
+	drop: op
+	{
+		val next = box[ptr[T]](null)
+	}
+}
+
+cell[T]: rec
+{
+	value: ptr[T]
+
+	drop: op
+	{
+		val next = deeper(self)
+	}
+}
+
+deeper[T]: fun(c: cell[T]) -> cell[ptr[T]] = cell[ptr[T]](null)
+
+main: fun -> i32 = 0

@@ -60,7 +60,6 @@ public sealed class TypePool
 	private readonly Dictionary<TypeParameterSymbol, ImmutableArray<FunctionInfo>> _constructorBounds = [];
 	private readonly Dictionary<TraitSymbol, ImmutableArray<TraitType>> _requiredTraits = [];
 	private readonly List<(ImplSymbol Impl, TypeSymbol Target)> _memberBlocks = [];
-	private const int MaxInstanceDepth = 32;
 	
 	public TypePool(ConversionTable conversionTable, OperatorRegistry operatorRegistry, SizeTable sizeTable)
 	{
@@ -1234,8 +1233,7 @@ public sealed class TypePool
 	
 	public TypeSymbol Instantiate(NamedTypeSymbol definition, ImmutableArray<TypeSymbol> typeArguments)
 	{
-		if (typeArguments.Any(static argument => argument is InvalidType) ||
-		    typeArguments.Max(GetInstanceDepth) >= MaxInstanceDepth)
+		if (typeArguments.Any(static argument => argument is InvalidType))
 			return NativeSymbols.Invalid;
 		
 		if (typeArguments.SequenceEqual(definition.TypeParameters))
@@ -1276,16 +1274,6 @@ public sealed class TypePool
 		new(enumCase.Node, enumCase.Index, enumCase.Fields.Select(CopyField));
 	
 	private static FieldSymbol CopyField(FieldSymbol field) => new(field.Name, field.Node, field.IsMutable);
-	
-	private static int GetInstanceDepth(TypeSymbol type) => type switch
-	{
-		NamedTypeSymbol { IsGenericInstance: true } named => 1 + named.TypeArguments.Max(GetInstanceDepth),
-		PointerType pointer => GetInstanceDepth(pointer.BaseType),
-		BorrowType borrow => GetInstanceDepth(borrow.Target),
-		ArrayType array => GetInstanceDepth(array.ElementType),
-		FunctionType function => function.ParameterTypes.Append(function.ReturnType).Max(GetInstanceDepth),
-		_ => 0
-	};
 	
 	private void CompleteInstance(NamedTypeSymbol instance)
 	{
@@ -1592,7 +1580,8 @@ public sealed class TypePool
 			? constant
 			: constant switch
 			{
-				FunctionConstant c => new FunctionConstant(SubstituteFunction(c.Function, map), Substitute(c.Type, map)),
+				FunctionConstant c => new FunctionConstant(SubstituteFunction(c.Function, map),
+					Substitute(c.Type, map)),
 				RecordConstant c => new RecordConstant(Substitute(c.Type, map),
 					c.Fields.Select(field => SubstituteConstant(field, map))),
 				ArrayConstant c => new ArrayConstant((ArrayType)Substitute(c.ArrayType, map),

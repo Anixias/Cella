@@ -1,0 +1,19 @@
+
+====== growing_destructors.ce ======
+
+Error at line 9, column 14
+8 │ {
+9 │     val next = box[ptr[T]](null)
+                   ╘═════════╛ Instantiating 'box' never ends
+
+Error at line 23, column 31
+22 │ 
+23 │ deeper[T]: fun(c: cell[T]) -> cell[ptr[T]] = cell[ptr[T]](null)
+                                   ╘══════════╛ Instantiating 'cell' never ends
+
+Error at line 23, column 46
+22 │ 
+23 │ deeper[T]: fun(c: cell[T]) -> cell[ptr[T]] = cell[ptr[T]](null)
+                                                  ╘══════════╛ Instantiating 'cell' never ends
+
+[compilation failed]

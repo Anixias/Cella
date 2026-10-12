@@ -1,0 +1,31 @@
+mod test
+
+nest[T]: rec
+{
+	inner: ptr[nest[array[T, 1]]]
+	v: T
+}
+
+node[T]: rec
+{
+	value: T
+	next: ptr[node[ptr[T]]]
+}
+
+growing[T]: enum
+{
+	stop
+	more(value: T, next: ptr[growing[ptr[T]]])
+}
+
+a[T]: rec
+{
+	b: ptr[b[T]]
+}
+
+b[T]: rec
+{
+	a: ptr[a[array[T, 2]]]
+}
+
+main: fun -> i32 = 0

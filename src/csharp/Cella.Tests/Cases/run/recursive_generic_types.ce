@@ -1,0 +1,59 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+node[T]: rec
+{
+	value: T
+	next: ptr[node[T]]
+}
+
+a[T]: rec
+{
+	b: ptr[b[T]]
+	v: T
+}
+
+b[T]: rec
+{
+	a: ptr[a[T]]
+}
+
+swap[A, B]: rec
+{
+	next: ptr[swap[B, A]]
+	a: A
+}
+
+box[T]: rec
+{
+	value: T
+
+	wrap: fun(self) -> box[ptr[T]] = box[ptr[T]](null)
+
+	drop: op
+	{
+	}
+}
+
+tree[T]: enum
+{
+	leaf(value: T)
+	node(left: ptr[tree[T]], right: ptr[tree[T]])
+}
+
+main: fun -> i32
+{
+	var first = node(1, null)
+	var second = node(2, @first)
+	var x: a[i64]
+	var s: swap[i32, f64]
+	val b = box(1)
+	val w = b.wrap()
+	val t = tree[i32].leaf(3)
+	printf("%d %d\n", second.value, (*second.next).value)
+	ret 0
+}

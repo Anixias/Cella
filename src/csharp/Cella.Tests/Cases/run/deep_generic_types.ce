@@ -1,0 +1,20 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+box[T]: rec
+{
+	v: T
+	n: u8
+}
+
+main: fun -> i32
+{
+	var x: box[box[box[box[box[box[box[box[box[box[box[box[box[box[box[box[box[box[box[box[box[box[box[box[box[box[box[box[box[box[box[box[box[box[box[box[box[box[box[box[i32]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+	x.n = 3
+	printf("%d %zu\n", i32(x.n), sizeOf(box[box[box[box[box[box[box[box[box[box[box[box[box[box[box[box[box[box[box[box[box[box[box[box[box[box[box[box[box[box[box[box[box[box[box[box[box[box[box[box[i32]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]))
+	ret 0
+}

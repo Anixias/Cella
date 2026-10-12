@@ -1,0 +1,24 @@
+
+====== growing_generic_types.ce ======
+
+Error at line 5, column 9
+4 │ {
+5 │     inner: ptr[nest[array[T, 1]]]
+               ╘════════════════════╛ Instantiating 'nest' never ends
+
+Error at line 12, column 8
+11 │ value: T
+12 │ next: ptr[node[ptr[T]]]
+           ╘═══════════════╛ Instantiating 'node' never ends
+
+Error at line 18, column 23
+17 │ stop
+18 │ more(value: T, next: ptr[growing[ptr[T]]])
+                          ╘══════════════════╛ Instantiating 'growing' never ends
+
+Error at line 28, column 5
+27 │ {
+28 │     a: ptr[a[array[T, 2]]]
+            ╘═════════════════╛ Instantiating 'a' never ends
+
+[compilation failed]
