@@ -1,0 +1,14 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+main: fun -> i32
+{
+	lib.Box[i32].bump()
+	lib.Box[i32].bump()
+	printf("%zu %zu %zu %d\n", lib.Box[i32].size(), lib.Box[f64].size(), lib.measure(1), lib.Box[i32].count)
+	ret 0
+}

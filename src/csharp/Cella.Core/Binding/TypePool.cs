@@ -1,6 +1,7 @@
 ﻿using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
 using System.Numerics;
+using Cella.Core.Binding.Constants;
 using Cella.Core.Binding.Conversions;
 using Cella.Core.Binding.Operations;
 using Cella.Core.Collections;
@@ -1573,6 +1574,40 @@ public sealed class TypePool
 	
 	public FunctionInfo GetGenericDefinition(FunctionSymbol function) => _genericFunctions[function];
 	
+	public FunctionInfo SubstituteFunction(FunctionInfo function,
+		IReadOnlyDictionary<TypeParameterSymbol, TypeSymbol> map)
+	{
+		if (function.Symbol.TypeParameters.IsEmpty)
+			return function;
+		
+		IEnumerable<TypeSymbol> arguments = function.TypeArguments.IsDefaultOrEmpty
+			? function.Symbol.TypeParameters
+			: function.TypeArguments;
+		
+		return InstantiateFunction(function, [..arguments.Select(argument => Substitute(argument, map))]);
+	}
+	
+	public Constant SubstituteConstant(Constant constant, IReadOnlyDictionary<TypeParameterSymbol, TypeSymbol> map) =>
+		map.Count == 0
+			? constant
+			: constant switch
+			{
+				FunctionConstant c => new FunctionConstant(SubstituteFunction(c.Function, map), Substitute(c.Type, map)),
+				RecordConstant c => new RecordConstant(Substitute(c.Type, map),
+					c.Fields.Select(field => SubstituteConstant(field, map))),
+				ArrayConstant c => new ArrayConstant((ArrayType)Substitute(c.ArrayType, map),
+					c.Elements.Select(element => SubstituteConstant(element, map))),
+				EnumConstant c => new EnumConstant(Substitute(c.Type, map), c.Case,
+					c.Payload.Select(value => SubstituteConstant(value, map))),
+				IntegerConstant c => new IntegerConstant(Substitute(c.Type, map), c.Value),
+				FloatConstant c => new FloatConstant(Substitute(c.Type, map), c.Value),
+				NullConstant c => new NullConstant(Substitute(c.Type, map)),
+				StringConstant c => new StringConstant(Substitute(c.Type, map), c.Value),
+				EnumTagConstant c => new EnumTagConstant(Substitute(c.Type, map), c.Tag),
+				ZeroConstant c => new ZeroConstant(Substitute(c.Type, map)),
+				_ => constant
+			};
+	
 	public void RegisterGenericGlobal(GlobalInfo definition) => _genericGlobals[definition.Symbol] = definition;
 	
 	public GlobalInfo InstantiateGlobal(GlobalSymbol global, ModuleIndex? modules)
@@ -1587,7 +1622,8 @@ public sealed class TypePool
 		{
 			MangledName = Mangling.MangleInstantiation(definition.MangledName, instance.TypeArguments, modules),
 			Symbol = global,
-			Type = Substitute(definition.Type, map)
+			Type = Substitute(definition.Type, map),
+			Value = definition.Value is { } value ? SubstituteConstant(value, map) : null
 		};
 		
 		_globalInstances[global] = instantiated;

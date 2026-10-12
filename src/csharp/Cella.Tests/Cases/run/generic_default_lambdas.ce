@@ -1,0 +1,29 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+measure[T]: fun(value: T, f: fun[-> usize] = fun = sizeOf(T)) -> usize = f()
+
+apply[T: copy]: fun(value: T, f: fun[T -> T] = fun(x) = x) -> T = f(value)
+
+same[T: copy]: fun(v: T) -> T = v
+
+pass[T: copy]: fun(value: T, f: fun[T -> T] = same[T]) -> T = f(value)
+
+Pair[T: copy]: rec
+{
+	a: T
+
+	with: fun(self, f: fun[T -> T] = fun(x) = x) -> T = f(self.a)
+	size[U: copy]: fun(self, u: U, f: fun[U -> i32] = fun(v) = i32(sizeOf(U)) + i32(sizeOf(T))) -> i32 = f(u)
+}
+
+main: fun -> i32
+{
+	printf("%zu %zu %d %f %d\n", measure(1), measure(2.0), apply(7), apply(2.5), pass(8))
+	printf("%d %d\n", Pair(9).with(), Pair(1).size(2.0))
+	ret 0
+}

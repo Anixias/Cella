@@ -1730,7 +1730,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		
 		var resolvedArgs = ApplyArgumentResolution(args, resolution);
 		if (GetForm(callable) is { } form)
-			CompleteArguments(resolvedArgs, info.Signature.ParameterTypes, info.Signature.Defaults, form, node);
+			CompleteArguments(resolvedArgs, info, form, node);
 		
 		var result = new ResolvedConstructorCallExpressionNode(info, resolvedArgs, callable.ReturnType, node);
 		
@@ -2150,7 +2150,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		
 		var resolvedArgs = ApplyArgumentResolution(args, resolution);
 		if (GetForm(resolution.Callable) is { } form)
-			CompleteArguments(resolvedArgs, info.Signature.ParameterTypes, info.Signature.Defaults, form, node);
+			CompleteArguments(resolvedArgs, info, form, node);
 		
 		if (receiver is not null)
 			resolvedArgs.Insert(0, CreateReceiver(receiver, info));
@@ -2262,6 +2262,17 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			: null,
 		null => null
 	};
+	
+	private void CompleteArguments(List<IResolvedExpressionNode> args, FunctionInfo info, CallForm form,
+		CallExpressionNode node)
+	{
+		var map = info.TypeArguments.IsDefaultOrEmpty
+			? []
+			: TypePool.CreateMap(info.Symbol.TypeParameters, info.TypeArguments);
+		
+		CompleteArguments(args, info.Signature.ParameterTypes,
+			[..info.Signature.Defaults.Select(value => _typePool.SubstituteConstant(value, map))], form, node);
+	}
 	
 	private void CompleteArguments(List<IResolvedExpressionNode> args, ImmutableArray<TypeSymbol> parameterTypes,
 		ImmutableArray<Constant> defaults, CallForm form, CallExpressionNode node)
@@ -4593,7 +4604,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		var symbol = new FunctionSymbol($"lambda{++lambdaCount}", new LambdaDeclarationNode(node), Visibility.Private,
 			outer.ContainingFunction, parameters, FunctionKind.Free)
 		{
-			TypeParameters = outer.ContainingFunction?.Symbol.TypeParameters ?? []
+			TypeParameters = outer.ContainingFunction?.Symbol.TypeParameters ?? GetEnclosingTypeParameters(outer)
 		};
 		
 		var scope = new Scope();
@@ -4608,6 +4619,12 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		Journal(() => _signatures.RemoveLambda(info));
 		return info;
 	}
+	
+	private static ImmutableArray<TypeParameterSymbol> GetEnclosingTypeParameters(ResolutionContext context) =>
+	[
+		..context.ContainingType is NamedTypeSymbol { IsGenericDefinition: true } type ? type.TypeParameters : [],
+		..context.TypeParameters.IsDefault ? [] : context.TypeParameters
+	];
 	
 	private LambdaFrame EnterLambda(ResolutionContext outer, FunctionInfo info, FunctionType? target)
 	{
@@ -6655,6 +6672,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		if (CurrentResolutionContext.ContainingFunction is not { Symbol: { TypeParameters.IsEmpty: false } caller } ||
 		    info.TypeArguments.IsDefaultOrEmpty)
 			return;
+		
+		while (caller is { Syntax: LambdaDeclarationNode, ContainingFunction.Symbol: var enclosing })
+			caller = enclosing;
 		
 		for (var i = 0; i < info.TypeArguments.Length; i++)
 		{

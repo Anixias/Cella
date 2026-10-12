@@ -1,0 +1,48 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Box[T]: rec
+{
+	value: T
+
+	size: val fun[-> usize] = fun = sizeOf(T)
+	local: val fun[-> i32] = fun -> i32
+	{
+		var x: T
+		ret i32(sizeOf(T))
+	}
+
+	count: var i32 = 0
+	bump: val fun[] = fun { count += 1 }
+	resize: var fun[-> usize] = fun = alignOf(T)
+}
+
+Pick[T: copy]: rec
+{
+	value: T
+
+	identity: fun(v: T) -> T = v
+	handler: val fun[T -> T] = identity
+}
+
+Ring[N: val usize]: rec
+{
+	items: array[i32, N]
+
+	capacity: val fun[-> usize] = fun -> usize = N
+}
+
+main: fun -> i32
+{
+	Box[i32].bump()
+	Box[i32].bump()
+	Box[u8].bump()
+	printf("%zu %zu %d %d\n", Box[i32].size(), Box[f64].size(), Box[i64].local(), Box[u8].local())
+	printf("%d %d %zu\n", Box[i32].count, Box[u8].count, Box[i16].resize())
+	printf("%d %zu %zu\n", Pick[i32].handler(4), Ring[4].capacity(), Ring[9].capacity())
+	ret 0
+}

@@ -3755,8 +3755,25 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 			location), UnaryOperation.Dereference, location);
 		
 		var value = new VariableValue(BindWitnessParameter(function, 1, parameters[1], builder), location);
-		EmitValue(new AssignValue(type, self, new ConversionValue(value, conversion, location), location), builder);
+		Value converted = conversion is FunctionConversion { Function: var target }
+			? new CallValue(target, [PassConversionSource(target, value, location)], location)
+			: new ConversionValue(value, conversion, location);
+		
+		EmitValue(new AssignValue(type, self, converted, location), builder);
+		if (function.DeclaredSignature.GetMode(1) == ParameterMode.Own &&
+		    conversion is FunctionConversion { Function: var lending } &&
+		    lending.DeclaredSignature.GetMode(0) != ParameterMode.Own)
+			EmitDrop(value, builder);
+		
 		return default;
+	}
+	
+	private Value PassConversionSource(FunctionInfo conversion, VariableValue source, SourceLocation location)
+	{
+		var signature = conversion.DeclaredSignature;
+		return _typePool.PassesByPointer(signature.ParameterTypes[0], signature.GetMode(0))
+			? new UnaryOpValue(_typePool.GetPointerType(source.Type), source, UnaryOperation.AddressOf, location)
+			: source;
 	}
 	
 	private VariableInfo BindWitnessParameter(FunctionInfo function, int index, LLVMValueRef value,

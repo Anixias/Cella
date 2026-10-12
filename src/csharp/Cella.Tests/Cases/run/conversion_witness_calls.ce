@@ -1,0 +1,52 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Source: rec
+{
+	id: i32
+
+	drop: op
+	{
+		printf("drop %d\n", self.id)
+	}
+
+	new: op(self) -> Target = Target(self.id)
+}
+
+Target: rec
+{
+	id: i32
+}
+
+FromSource: trait
+{
+	new: op(own s: Source)
+}
+
+Target: impl FromSource {}
+
+wrap[T]: rec
+{
+	v: T
+
+	new: op(self) -> i64 = 42
+}
+
+lend[T: new(Source)]: fun(value: Source) -> T = T(value)
+take[T: new(own Source)]: fun(own value: Source) -> T = T(own value)
+make[T: FromSource]: fun(own value: Source) -> T = T(own value)
+unwrap[R: new(wrap[i32])]: fun(w: wrap[i32]) -> R = R(w)
+
+main: fun -> i32
+{
+	val s = Source(1)
+	val a: Target = lend(s)
+	val b: Target = take(Source(2))
+	val c: Target = make(Source(3))
+	printf("%d %d %d %lld\n", a.id, b.id, c.id, unwrap[i64](wrap[i32](5)))
+	ret 0
+}
