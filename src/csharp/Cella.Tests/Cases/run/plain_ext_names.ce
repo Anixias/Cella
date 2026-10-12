@@ -1,0 +1,21 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+	GetModuleHandleA: fun(name: ptr) -> ptr
+	GetProcAddress: fun(module: ptr, name: cstr) -> ptr
+}
+
+answer: pub ext fun(x: i32) -> i32 = x * 2
+
+hidden: ext fun -> i32 = 1
+
+main: fun -> i32
+{
+	val module = GetModuleHandleA(null)
+	var address = GetProcAddress(module, "answer")
+	val call = *ptr[ext fun[i32 -> i32]](ptr(@address))
+	printf("%d %d\n", call(21), i32(GetProcAddress(module, "hidden") == null))
+	ret 0
+}

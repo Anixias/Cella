@@ -1,0 +1,16 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+main: fun -> i32
+{
+	val a = s.bump()
+	val b = d.viaDll()
+	s.Counter[i32].count += 1000
+	val c = s.bump()
+	printf("%d %d %d %d %d\n", a, b, c, s.Counter[i32].count, s.scaled(1.5, 4))
+	ret 0
+}

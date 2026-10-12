@@ -1,0 +1,5 @@
+mod d
+
+run: pub ext fun -> i32 = 2
+
+call: pub fun -> i32 = s.run()

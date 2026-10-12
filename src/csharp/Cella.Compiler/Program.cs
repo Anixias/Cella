@@ -290,7 +290,38 @@ internal static class Program
 		public ImmutableArray<AssemblyInfo> Dependencies { get; init; } = [];
 		public ImmutableArray<LoweredFunction> GenericFunctions { get; init; } = [];
 		public IReadOnlySet<GlobalSymbol> ExportedStatics { get; init; } = ImmutableHashSet<GlobalSymbol>.Empty;
+		public IReadOnlySet<Symbol> Exports { get; init; } = ImmutableHashSet<Symbol>.Empty;
+		public ImmutableArray<ExportName> ExportNames { get; init; } = [];
+		public ImmutableArray<string> PlainNames { get; init; } = [];
+		public ImmutableArray<string> ContainedLibraries { get; init; } = [];
+		public string Name => AssemblySymbol.Name;
 	}
+	
+	private static Dictionary<string, List<AssemblyInfo>> FindProviders(ImmutableArray<AssemblyInfo> dependencies) =>
+		dependencies
+			.Where(static dependency => dependency.OutputType != ProjectOutputType.StaticLibrary)
+			.SelectMany(static dependency => dependency.ContainedLibraries
+				.Select(library => (Library: library, Provider: dependency)))
+			.GroupBy(static pair => pair.Library)
+			.ToDictionary(static group => group.Key,
+				static group => group.Select(static pair => pair.Provider).DistinctBy(static p => p.Name).ToList());
+	
+	private static string DescribeProjects(IReadOnlyList<string> names) => names.Count == 2
+		? $"both '{names[0]}' and '{names[1]}'"
+		: $"{string.Join(", ", names.SkipLast(1).Select(static name => $"'{name}'"))} and '{names[^1]}'";
+	
+	private static ImmutableArray<string> GetPlainNames(AssemblySymbol assembly) =>
+	[
+		..assembly.SymbolTable.DeclarationSymbols.Values
+			.OfType<FunctionSymbol>()
+			.Where(static function => function is
+			{
+				Visibility: Visibility.Public,
+				Syntax: FunctionNode { IsExternal: true }
+			})
+			.Select(static function => function.Name)
+			.Distinct()
+	];
 	
 	private static ImmutableArray<AssemblyInfo> CollectDependencies(ImmutableArray<AssemblyInfo> dependencies)
 	{
@@ -354,6 +385,30 @@ internal static class Program
 		var dependencyList = dependencies.ToImmutableArray();
 		var dependencySymbols = dependencyList.Select(static d => d.AssemblySymbol).ToImmutableArray();
 		var allDependencies = CollectDependencies(dependencyList);
+		var providers = FindProviders(allDependencies);
+		if (outputType != ProjectOutputType.StaticLibrary)
+		{
+			var duplicated = providers
+				.Where(static pair => pair.Value.Count > 1)
+				.Select(static pair =>
+					$"'{pair.Key}' is linked into {DescribeProjects([..pair.Value.Select(static p => p.Name)])}")
+				.ToList();
+			
+			if (duplicated.Count > 0)
+			{
+				foreach (var problem in duplicated)
+					Console.WriteLine($"{project.FilePath}: {problem}");
+				
+				return new(new(project.Name, SymbolTable.Empty, SignatureTable.Empty, null), outputType, null, false);
+			}
+		}
+		
+		var contained = outputType == ProjectOutputType.StaticLibrary
+			? []
+			: allDependencies
+				.Where(dependency => dependency.OutputType == ProjectOutputType.StaticLibrary &&
+				                     !providers.ContainsKey(dependency.Name))
+				.ToList();
 		
 		// TODO Should I make a dependency here on LLVM? This implies a Language Server would also have to do this
 		// We need to know the pointer size of the target for proper symbol resolution
@@ -467,20 +522,30 @@ internal static class Program
 			.ToImmutableArray();
 		
 		IReadOnlySet<GlobalSymbol> exportedStatics;
+		var exports = new ExportSurface(assemblySymbol, typePool, genericFunctions).Symbols;
+		ImmutableArray<ExportName> exportNames;
+		var plainNames = GetPlainNames(assemblySymbol);
 		{
 			var inputs = new CodeGenInputs
 			{
 				GenericFunctions = [..genericFunctions, ..allDependencies.SelectMany(static d => d.GenericFunctions)],
-				GenericReferences = resolver.GenericReferences,
+				Exports = exports,
 				LibraryStatics = allDependencies.SelectMany(static d => d.ExportedStatics).ToHashSet(),
 				StaticLibrarySymbols = allDependencies
-					.Where(static d => d.OutputType == ProjectOutputType.StaticLibrary)
+					.Where(d => d.OutputType == ProjectOutputType.StaticLibrary && !providers.ContainsKey(d.Name))
 					.SelectMany(GetLibrarySymbols)
 					.ToHashSet(),
-				SharedAssemblies = allDependencies
+				DynamicAssemblies = allDependencies
 					.Where(static d => d.OutputType != ProjectOutputType.StaticLibrary)
-					.Select(static d => d.AssemblySymbol.Name)
-					.Concat(outputType != ProjectOutputType.StaticLibrary ? [project.Name] : [])
+					.Select(static d => d.Name)
+					.Concat(providers.Keys)
+					.ToHashSet(),
+				HostedRegistries = contained
+					.Where(static library => library.Exports.Any(static symbol => symbol is GlobalSymbol
+					{
+						ContainingType: NamedTypeSymbol { IsGenericDefinition: true }
+					}))
+					.Select(static library => library.Name)
 					.ToHashSet()
 			};
 			
@@ -507,6 +572,7 @@ internal static class Program
 				return errorResult;
 			
 			exportedStatics = codeGenerator.ExportedStatics;
+			exportNames = [..codeGenerator.ExportNames];
 			var outputBaseName = project.Project.AssemblyName ?? project.Name;
 			var outputFileName = GetOutputFileName(outputBaseName, targetTriple, outputType);
 			var outputDir = Path.Combine(project.Directory, "bin");
@@ -515,9 +581,38 @@ internal static class Program
 			if (!Directory.Exists(outputDir))
 				Directory.CreateDirectory(outputDir);
 			
+			var conflicts = contained
+				.SelectMany(static library => library.PlainNames.Select(name => (Name: name, Owner: library.Name)))
+				.Concat(plainNames.Select(name => (Name: name, Owner: project.Name)))
+				.GroupBy(static pair => pair.Name)
+				.Where(static sameName => sameName.Count() > 1)
+				.Select(static sameName =>
+					$"'{sameName.Key}' is exported by {DescribeProjects([..sameName.Select(static pair => pair.Owner)])}")
+				.ToList();
+			
+			if (conflicts.Count > 0)
+			{
+				foreach (var problem in conflicts)
+					Console.WriteLine($"{project.FilePath}: {problem}");
+				
+				return errorResult;
+			}
+			
+			string? moduleDefinition = null;
+			var reexports = contained.SelectMany(static library => library.ExportNames).Distinct().ToList();
+			if (reexports.Count > 0)
+			{
+				moduleDefinition = Path.Combine(objDir, $"{project.Name}.def");
+				await File.WriteAllLinesAsync(moduleDefinition,
+					["EXPORTS", ..reexports.Select(static name => $"\t\"{name.Name}\"{(name.IsData ? " DATA" : "")}")],
+					ct);
+			}
+			
 			// TODO Need a more robust way of getting libs
 			var libFiles = externalLibraries
-				.Concat(allDependencies.Select(static d => d.OutputPath))
+				.Concat(allDependencies
+					.Where(d => d.OutputType != ProjectOutputType.StaticLibrary || !providers.ContainsKey(d.Name))
+					.Select(static d => d.OutputPath))
 				.Select(static p => Path.ChangeExtension(p, ".lib"))
 				.WhereNot(string.IsNullOrEmpty)
 				.Distinct()
@@ -531,7 +626,8 @@ internal static class Program
 			{
 				LinkPreference = linkPreference,
 				DebugInfo = codeGenConfig.DebugInfo,
-				OptimizeMode = optimizeMode
+				OptimizeMode = optimizeMode,
+				ModuleDefinition = moduleDefinition
 			};
 			
 			var linkerToolchain = Toolchain.FromTargetTriple(targetTriple, toolchainDir);
@@ -551,7 +647,11 @@ internal static class Program
 		{
 			Dependencies = dependencyList,
 			GenericFunctions = genericFunctions,
-			ExportedStatics = exportedStatics
+			ExportedStatics = exportedStatics,
+			Exports = exports,
+			ExportNames = exportNames,
+			PlainNames = plainNames,
+			ContainedLibraries = [..contained.Select(static library => library.Name)]
 		};
 	}
 	

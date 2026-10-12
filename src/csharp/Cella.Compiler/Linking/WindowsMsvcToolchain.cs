@@ -40,6 +40,8 @@ public sealed class WindowsMsvcToolchain(string root, string builtinsLibrary) : 
 		}
 		
 		args.AddRange(request.InputFiles);
+		if (request.ModuleDefinition is { } definition)
+			args.Add($"/def:{definition}");
 		
 		if (request.OutputType is ProjectOutputType.Executable or ProjectOutputType.SharedLibrary)
 		{

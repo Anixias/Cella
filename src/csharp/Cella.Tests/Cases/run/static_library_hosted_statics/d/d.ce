@@ -1,0 +1,7 @@
+mod d
+
+viaDll: pub fun -> i32
+{
+	s.Counter[i32].count += 100
+	ret s.bump()
+}

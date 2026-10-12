@@ -27,7 +27,6 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	}
 	
 	public DiagnosticList Diagnostics { get; } = new();
-	public IReadOnlySet<Symbol> GenericReferences => _genericReferences;
 	
 	private const int UserConversionCost = 100;
 	
@@ -58,7 +57,6 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	private readonly ExtSignatureTypes _extSignatureTypes;
 	private readonly TypeInference _inference;
 	private readonly List<Instantiation> _instantiations = [];
-	private readonly HashSet<Symbol> _genericReferences = [];
 	private readonly List<ResolvedFunctionNode> _lambdas = [];
 	private readonly HashSet<IExpressionNode> _resolvingFallbacks = [];
 	private readonly List<LambdaFrame> _lambdaFrames = [];
@@ -4802,9 +4800,6 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 				return new ResolvedVarExpressionNode(v, v.Type, node);
 			
 			case GlobalSymbol g:
-				if (g.ContainingType is not NamedTypeSymbol { TypeArguments.IsEmpty: false })
-					TrackGenericReference(g);
-				
 				return new ResolvedGlobalExpressionNode(g, _signatures.GetGlobalType(g), node);
 			
 			case PropertySymbol property:
@@ -6709,21 +6704,11 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		return NativeSymbols.Invalid;
 	}
 	
-	private void TrackGenericReference(Symbol symbol)
-	{
-		if (CurrentResolutionContext.ContainingFunction is { Symbol.TypeParameters.IsEmpty: false } &&
-		    _signatures.IsLocal(symbol) && _genericReferences.Add(symbol))
-			Journal(() => _genericReferences.Remove(symbol));
-	}
-	
 	private void TrackFunctionUse(FunctionInfo info, IExpressionNode syntax)
 	{
 		if ((!_signatures.IsLocal(info.Symbol) || info.File?.Module != CurrentResolutionContext.File.Module) &&
 		    _importedFunctions.TryAdd(info.Symbol, info))
 			Journal(() => _importedFunctions.Remove(info.Symbol));
-		
-		if (info.Symbol.TypeParameters.IsEmpty)
-			TrackGenericReference(info.Symbol);
 		
 		if (FindGenericCaller(CurrentResolutionContext) is not { } caller || info.TypeArguments.IsDefaultOrEmpty)
 			return;

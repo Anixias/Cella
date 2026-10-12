@@ -1,0 +1,3 @@
+mod tools
+
+run: ext fun -> i32 = 3

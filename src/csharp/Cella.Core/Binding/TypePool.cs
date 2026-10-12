@@ -274,6 +274,20 @@ public sealed class TypePool
 		.OfType<FunctionWitness>()
 		.Select(static witness => witness.Function);
 	
+	public IEnumerable<FunctionSymbol> GetWitnessFunctions(TypeSymbol definition) => _conformances
+		.Where(conformance => conformance.Target.OriginalDefinition == definition)
+		.SelectMany(static conformance => conformance.Witnesses.Values)
+		.OfType<FunctionWitness>()
+		.Select(static witness => witness.Function);
+	
+	public IEnumerable<ImplSymbol> GetMemberBlocks(TypeSymbol definition) => _memberBlocks
+		.Where(block => block.Target == definition)
+		.Select(static block => block.Impl);
+	
+	public IReadOnlyList<(ImplSymbol Impl, TypeSymbol Target)> MemberBlocks => _memberBlocks;
+	
+	public IReadOnlyList<Conformance> Conformances => _conformances;
+	
 	public Witness? FindWitness(TypeSymbol self, FunctionSymbol requirement,
 		ImmutableArray<TypeSymbol> traitArguments) =>
 		requirement.Trait is { } trait && FindConformance(self, GetTraitType(trait, traitArguments)) is { } conformance

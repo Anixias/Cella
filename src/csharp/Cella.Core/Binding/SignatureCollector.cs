@@ -132,6 +132,7 @@ public sealed class SignatureCollector
 	public AssemblySymbol FinishAssembly(string name)
 	{
 		ReportDuplicateDeclarations();
+		ReportPlainNameConflicts();
 		ReportModuleConflicts();
 		ReportLayoutCycles();
 		ReportEntryPoint();
@@ -3033,6 +3034,24 @@ public sealed class SignatureCollector
 				}
 			}
 		}
+	}
+	
+	private void ReportPlainNameConflicts()
+	{
+		var exported = _symbolTable.DeclarationSymbols.Values
+			.OfType<FunctionSymbol>()
+			.Where(static function => function is
+			{
+				Visibility: Visibility.Public,
+				Syntax: FunctionNode { IsExternal: true }
+			})
+			.GroupBy(static function => function.Name)
+			.Where(sameName =>
+				sameName.Select(function => _builder.Functions[function].File?.Module).Distinct().Count() > 1);
+		
+		foreach (var function in exported.SelectMany(static sameName => sameName))
+			Diagnostics.Add(new(DiagnosticSeverity.Error, ((FunctionNode)function.Syntax).Identifier.SourceLocation,
+				$"'{function.Name}' is exported from more than one module"));
 	}
 	
 	private static bool AreVisibleTogether(Symbol first, FileSymbol firstFile, Symbol second, FileSymbol secondFile) =>

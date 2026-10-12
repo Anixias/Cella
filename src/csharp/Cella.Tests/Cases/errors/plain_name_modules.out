@@ -1,0 +1,17 @@
+
+====== game.ce ======
+
+Error at line 3, column 1
+2 │ 
+3 │ run: pub ext fun -> i32 = 1
+    ╘═╛ 'run' is exported from more than one module
+
+
+====== ui.ce ======
+
+Error at line 3, column 1
+2 │ 
+3 │ run: pub ext fun -> i32 = 2
+    ╘═╛ 'run' is exported from more than one module
+
+[compilation failed]

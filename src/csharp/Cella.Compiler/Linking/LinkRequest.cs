@@ -19,4 +19,5 @@ public sealed class LinkRequest
 	public SystemLinkPreference LinkPreference { get; init; } = SystemLinkPreference.Dynamic;
 	public bool DebugInfo { get; init; }
 	public OptimizeMode OptimizeMode { get; init; }
+	public string? ModuleDefinition { get; init; }
 }
