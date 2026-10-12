@@ -1,0 +1,41 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Slot: rec
+{
+	n: i32
+
+	drop: op
+	{
+		printf("drop %d\n", self.n)
+	}
+}
+
+Choice: enum
+{
+	none
+	some(slot: Slot)
+}
+
+field: fun -> i32 = Slot(1).n
+
+main: fun -> i32
+{
+	printf("%d\n", field())
+	printf("%d\n", [Slot(2), Slot(3)][1].n)
+	if Slot(4).n == 4
+		printf("four\n")
+
+	val picked = match Choice.some(Slot(5))
+	{
+		some(s) => s.n
+		none => 0
+	}
+
+	printf("%d\n", picked)
+	ret 0
+}

@@ -1,0 +1,93 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Part: rec
+{
+	id: i32
+
+	drop: op
+	{
+		printf("drop part %d\n", self.id)
+	}
+}
+
+Pair: rec
+{
+	a: Part
+	b: Part
+
+	drop: op
+	{
+		printf("drop pair %d %d\n", self.a.id, self.b.id)
+	}
+}
+
+Built: rec
+{
+	id: i32
+
+	new: op(id: i32)
+	{
+		self.id = id
+	}
+
+	drop: op
+	{
+		printf("drop built %d\n", self.id)
+	}
+}
+
+Step: enum
+{
+	go
+	stop
+}
+
+stepFor: fun(i: i32) -> Step
+{
+	if i == 1
+		ret Step.stop
+
+	ret Step.go
+}
+
+memberwise: fun -> i32
+{
+	val pair = Pair(Part(1), ret 2)
+	ret pair.a.id
+}
+
+declared: fun -> i32
+{
+	val built = Built(ret 3)
+	ret built.id
+}
+
+looped: fun -> i32
+{
+	var count = 0
+	for i in 0..3
+	{
+		val pair = Pair(Part(i), match stepFor(i)
+		{
+			go => Part(9)
+			stop => break
+		})
+
+		count += 1
+	}
+
+	ret count
+}
+
+main: fun -> i32
+{
+	printf("%d\n", memberwise())
+	printf("%d\n", declared())
+	printf("%d\n", looped())
+	ret 0
+}

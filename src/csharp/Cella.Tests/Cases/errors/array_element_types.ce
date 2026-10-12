@@ -1,0 +1,16 @@
+mod test
+
+Point: rec
+{
+	x: i32
+}
+
+main: fun -> i32
+{
+	val point = Point(1)
+	val count: i32 = 5
+	val values = [count, point]
+	val mixed = [1, "two"]
+	val unknown = [1, missing]
+	ret 0
+}

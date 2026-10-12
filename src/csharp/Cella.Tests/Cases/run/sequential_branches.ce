@@ -1,0 +1,89 @@
+mod test
+
+step: fun(start: i32) -> i32
+{
+	var x = start
+	if x == 0
+		x += 2
+	if x == 1
+		x += 2
+	if x == 2
+		x += 2
+	if x == 3
+		x += 2
+	if x == 4
+		x += 2
+	if x == 5
+		x += 2
+	if x == 6
+		x += 2
+	if x == 7
+		x += 2
+	if x == 8
+		x += 2
+	if x == 9
+		x += 2
+	if x == 10
+		x += 2
+	if x == 11
+		x += 2
+	if x == 12
+		x += 2
+	if x == 13
+		x += 2
+	if x == 14
+		x += 2
+	if x == 15
+		x += 2
+	if x == 16
+		x += 2
+	if x == 17
+		x += 2
+	if x == 18
+		x += 2
+	if x == 19
+		x += 2
+	if x == 20
+		x += 2
+	if x == 21
+		x += 2
+	if x == 22
+		x += 2
+	if x == 23
+		x += 2
+	if x == 24
+		x += 2
+	if x == 25
+		x += 2
+	if x == 26
+		x += 2
+	if x == 27
+		x += 2
+	if x == 28
+		x += 2
+	if x == 29
+		x += 2
+	if x == 30
+		x += 2
+	if x == 31
+		x += 2
+	if x == 32
+		x += 2
+	if x == 33
+		x += 2
+	if x == 34
+		x += 2
+	if x == 35
+		x += 2
+	if x == 36
+		x += 2
+	if x == 37
+		x += 2
+	if x == 38
+		x += 2
+	if x == 39
+		x += 2
+	ret x
+}
+
+main: fun -> i32 = step(0)

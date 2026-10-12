@@ -1,0 +1,59 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Item: rec
+{
+	id: i32
+
+	drop: op
+	{
+		printf("drop %d\n", self.id)
+	}
+}
+
+Found: enum
+{
+	none
+	one(item: Item)
+}
+
+pick: fun(i: i32) -> Found
+{
+	if i == 0
+		ret Found.one(Item(10))
+
+	ret Found.none
+}
+
+main: fun -> i32
+{
+	var i = 0
+	while i < 2 && Item(i).id >= 0
+		i += 1
+
+	for k in 0..3
+	{
+		var later: Item = undef
+		if k == 0
+			later = Item(20)
+	}
+
+	for k in 0..3
+	{
+		var zeroed: Item
+		if k == 0
+			zeroed = Item(30)
+	}
+
+	for k in 0..3
+	{
+		if pick(k) is one(found)
+			printf("found %d\n", found.id)
+	}
+
+	ret 0
+}

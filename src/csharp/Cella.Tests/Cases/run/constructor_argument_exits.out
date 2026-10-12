@@ -1,0 +1,22 @@
+
+====== constructor_argument_exits.ce ======
+
+Warning at line 60, column 13
+59 │ {
+60 │     val pair = Pair(Part(1), ret 2)
+                    ^ Unreachable code
+
+Warning at line 66, column 14
+65 │ {
+66 │     val built = Built(ret 3)
+                     ^ Unreachable code
+
+drop part 1
+2
+3
+drop pair 0 9
+drop part 9
+drop part 0
+drop part 1
+1
+[exit code 0]

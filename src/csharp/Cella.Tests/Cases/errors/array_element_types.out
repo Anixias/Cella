@@ -1,0 +1,19 @@
+
+====== array_element_types.ce ======
+
+Error at line 12, column 15
+11 │ val count: i32 = 5
+12 │ val values = [count, point]
+                  ╘════════════╛ The elements of this array have incompatible types: 'i32', 'Point'
+
+Error at line 13, column 14
+12 │ val values = [count, point]
+13 │ val mixed = [1, "two"]
+                 ╘════════╛ The elements of this array have incompatible types: 'i32', 'str'
+
+Error at line 14, column 20
+13 │ val mixed = [1, "two"]
+14 │ val unknown = [1, missing]
+                       ╘═════╛ Symbol 'missing' not found in this scope
+
+[compilation failed]
