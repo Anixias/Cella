@@ -26,7 +26,7 @@ public class Scanner : IScanner
 		if (char.IsWhiteSpace(character))
 			return ScanWhiteSpace(position);
 		
-		if (char.IsDigit(character))
+		if (char.IsAsciiDigit(character))
 			return ScanNumber(position);
 		
 		if (char.IsLetter(character) || character == '_')
@@ -130,7 +130,7 @@ public class Scanner : IScanner
 		var end = ScanDigits(position + 1);
 		var tokenType = TokenType.IntegerLiteral;
 		
-		if (end + 1 < Source.Length && Source[end] == '.' && char.IsDigit(Source[end + 1]))
+		if (end + 1 < Source.Length && Source[end] == '.' && char.IsAsciiDigit(Source[end + 1]))
 		{
 			end = ScanDigits(end + 1);
 			tokenType = TokenType.FloatLiteral;
@@ -142,7 +142,7 @@ public class Scanner : IScanner
 			if (exponent < Source.Length && Source[exponent] is '+' or '-')
 				exponent++;
 			
-			if (exponent >= Source.Length || !char.IsDigit(Source[exponent]))
+			if (exponent >= Source.Length || !char.IsAsciiDigit(Source[exponent]))
 			{
 				var invalid = new Token(TokenType.Invalid, Source, new TextRange(position, exponent))
 				{
@@ -161,7 +161,7 @@ public class Scanner : IScanner
 	
 	private int ScanDigits(int position)
 	{
-		while (position < Source.Length && (char.IsDigit(Source[position]) || Source[position] == '_'))
+		while (position < Source.Length && (char.IsAsciiDigit(Source[position]) || Source[position] == '_'))
 			position++;
 		
 		return position;
