@@ -1,0 +1,12 @@
+mod test
+
+make[T: new(i32)]: fun -> T = T(42)
+
+main: fun -> i32
+{
+	val u = make[game.Unit]()
+	val l = make[game.Locked]()
+	val s = make[game.Scoped]()
+	val o = make[game.Open]()
+	ret 0
+}

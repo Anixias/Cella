@@ -1,0 +1,29 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+apply[T, U, F: fun[T -> U]]: fun(value: T, change: F) -> U = change(value)
+
+twice: fun(x: i32) -> i64 = i64(x) * 2
+
+Mapped[T, U, F: fun[T -> U]]: rec
+{
+	f: F
+	value: T
+
+	get: fun(self) -> U = self.f(self.value)
+}
+
+main: fun -> i32
+{
+	val factor = 3
+	printf("%d %lld %d\n", apply(4, fun(x: i32) -> i32 = x * 2), apply(5, twice),
+		apply(6, own fun(x: i32) -> i32 = x * factor))
+	printf("%f %d\n", apply(7, fun(x: i32) -> f64 = f64(x) / 2.0), apply(8, fun(x: i32) = x + 1))
+	val m = Mapped(own fun(x: i32) -> i64 = i64(x + factor), 10)
+	printf("%lld\n", m.get())
+	ret 0
+}

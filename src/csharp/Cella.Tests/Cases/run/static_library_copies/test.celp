@@ -1,0 +1,8 @@
+OutputType = "Executable"
+SystemLinkPreference = "Dynamic"
+
+[[ProjectReferences]]
+Path = 'd/d.celp'
+
+[[ProjectReferences]]
+Path = 's/s.celp'

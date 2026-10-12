@@ -1,0 +1,9 @@
+
+====== memberwise_trait_private_fields.ce ======
+
+Error at line 8, column 18
+7 │ 
+8 │ Hidden: rec impl Make
+                     ╘══╛ 'Hidden' needs 'Make.new'
+
+[compilation failed]

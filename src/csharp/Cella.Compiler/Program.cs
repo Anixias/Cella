@@ -95,7 +95,7 @@ internal static class Program
 		}
 		
 		var projectDependencies = dependencyGraph.GetResolutionOrder().ToDictionary(static p => p,
-			p => dependencyGraph.GetDependencies(p).ToImmutableHashSet());
+			p => dependencyGraph.GetDependencies(p).ToImmutableArray());
 		
 		var builtInFlags = BuildFlags.Create(targetTriple, optimizeMode);
 		var flagsValid = ValidateFlags(projectDependencies.Keys, builtInFlags, flagOverrides);
@@ -366,7 +366,7 @@ internal static class Program
 			OverflowChecks = project.Project.OverflowChecks ?? optimizeMode == OptimizeMode.Debug,
 			DebugInfo = project.Project.DebugInfo ?? true,
 			SourceRoot = project.Directory,
-			IsLibrary = outputType != ProjectOutputType.Executable
+			ExportsSymbols = outputType != ProjectOutputType.StaticLibrary
 		};
 		
 		var pointerBitSize = codeGenConfig.GetPointerSize() * 8;
@@ -478,9 +478,9 @@ internal static class Program
 					.SelectMany(GetLibrarySymbols)
 					.ToHashSet(),
 				SharedAssemblies = allDependencies
-					.Where(static d => d.OutputType == ProjectOutputType.SharedLibrary)
+					.Where(static d => d.OutputType != ProjectOutputType.StaticLibrary)
 					.Select(static d => d.AssemblySymbol.Name)
-					.Concat(outputType == ProjectOutputType.SharedLibrary ? [project.Name] : [])
+					.Concat(outputType != ProjectOutputType.StaticLibrary ? [project.Name] : [])
 					.ToHashSet()
 			};
 			
@@ -520,7 +520,8 @@ internal static class Program
 				.Concat(allDependencies.Select(static d => d.OutputPath))
 				.Select(static p => Path.ChangeExtension(p, ".lib"))
 				.WhereNot(string.IsNullOrEmpty)
-				.ToImmutableHashSet();
+				.Distinct()
+				.ToList();
 			
 			// TODO Toolchains and linker paths should be grabbed from environment variables, compiler installation location
 			const string toolchainDir = @"C:\cella\toolchains";
@@ -556,7 +557,7 @@ internal static class Program
 	
 	private static void CopySharedLibraries(ImmutableArray<AssemblyInfo> dependencies, string outputDir)
 	{
-		var libraries = dependencies.Where(static d => d.OutputType == ProjectOutputType.SharedLibrary);
+		var libraries = dependencies.Where(static d => d.OutputType != ProjectOutputType.StaticLibrary);
 		foreach (var path in libraries.Select(static d => d.OutputPath).OfType<string>())
 		{
 			File.Copy(path, Path.Combine(outputDir, Path.GetFileName(path)), true);

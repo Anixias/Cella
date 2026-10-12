@@ -483,6 +483,9 @@ public sealed class TypePool
 		? (Visibility)Math.Max((int)named.Definition.Visibility, (int)Visibility.Module)
 		: Visibility.Public;
 	
+	private static bool IsVisibleWithType(TypeSymbol type, Visibility member) =>
+		member >= Visibility.Project || member == Visibility.Module && GetConstructorFloor(type) == Visibility.Module;
+	
 	public Witness? FindArgumentsWitness(TypeSymbol type) => FindRunWitness(type, NativeSymbols.Str);
 	
 	public Witness? FindRunWitness(TypeSymbol type, TypeSymbol element)
@@ -604,7 +607,8 @@ public sealed class TypePool
 			var mode = expected.GetMode(i + 1);
 			var given = expected.ParameterTypes[i + 1];
 			if (mode == ParameterMode.Mut || given != type && !FunctionType.CanAdapt(given, type) ||
-			    mode == ParameterMode.ReadOnly && !IsCopy(type))
+			    mode == ParameterMode.ReadOnly && !IsCopy(type) || !IsVisibleWithType(self, fields[i].Visibility) ||
+			    !IsVisibleWithType(self, fields[i].WriteVisibility))
 				return null;
 		}
 		

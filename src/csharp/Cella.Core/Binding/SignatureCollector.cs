@@ -1488,7 +1488,8 @@ public sealed class SignatureCollector
 				var message = member.Function is not { } function || others.Any(static other => other.Function is null)
 					? $"'{member.Name.Text}' is declared more than once in '{target.Name}'"
 					: DescribeConflict(member.Name.Text, GetDeclaredSignature(function, member.Block, declared),
-						others.Select(other => GetDeclaredSignature(other.Function!, other.Block, declared)));
+						others.Select(other => AlignTypeParameters(function, other.Function!,
+							GetDeclaredSignature(other.Function!, other.Block, declared))));
 				
 				if (message is not null)
 					Diagnostics.Add(new(DiagnosticSeverity.Error, member.Name.SourceLocation, message));
@@ -3060,10 +3061,65 @@ public sealed class SignatureCollector
 			return new(DiagnosticSeverity.Error, location, "'ext' functions cannot be overloaded");
 		
 		var message = DescribeConflict(symbol.Name, _builder.Functions[function].Signature,
-			others.Select(other => _builder.Functions[(FunctionSymbol)other].Signature));
+			others.Cast<FunctionSymbol>().Select(other =>
+				AlignTypeParameters(function, other, _builder.Functions[other].Signature)));
 		
 		return message is null ? null : new(DiagnosticSeverity.Error, location, message);
 	}
+	
+	private FunctionSignature AlignTypeParameters(FunctionSymbol function, FunctionSymbol other,
+		FunctionSignature signature)
+	{
+		var mine = function.DeclaredTypeParameters;
+		var theirs = other.DeclaredTypeParameters;
+		if (mine.IsEmpty || mine.Length != theirs.Length)
+			return signature;
+		
+		var map = TypePool.CreateMap(theirs, mine);
+		return mine.Zip(theirs).All(pair => HaveSameConstraints(pair.First, pair.Second, map))
+			? _typePool.SubstituteSignature(signature, map)
+			: signature;
+	}
+	
+	private bool HaveSameConstraints(TypeParameterSymbol first, TypeParameterSymbol second,
+		IReadOnlyDictionary<TypeParameterSymbol, TypeSymbol> map) =>
+		first.IsNoref == second.IsNoref && first.HasNull == second.HasNull && first.IsCopy == second.IsCopy &&
+		first.IsAtomic == second.IsAtomic && first.HasDrop == second.HasDrop && first.HasNew == second.HasNew &&
+		first.IsTrait == second.IsTrait && first.IsValue == second.IsValue &&
+		first.ValueType == (second.ValueType is { } valueType ? _typePool.Substitute(valueType, map) : null) &&
+		HaveSameBounds(_typePool.GetDeclaredBounds(first),
+			_typePool.GetDeclaredBounds(second).Select(bound => _typePool.SubstituteTrait(bound, map))) &&
+		_typePool.GetParameterBounds(first).ToHashSet<TypeSymbol>()
+			.SetEquals(_typePool.GetParameterBounds(second).Select(bound => _typePool.Substitute(bound, map))) &&
+		_typePool.GetFunctionBounds(first).ToHashSet<TypeSymbol>()
+			.SetEquals(_typePool.GetFunctionBounds(second).Select(bound => _typePool.Substitute(bound, map))) &&
+		HaveSameConstructors(_typePool.GetConstructors(first), _typePool.GetConstructors(second), map);
+	
+	private static bool HaveSameBounds(IEnumerable<TraitType> first, IEnumerable<TraitType> second)
+	{
+		var remaining = second.ToList();
+		foreach (var bound in first)
+		{
+			var index = remaining.FindIndex(other =>
+				other.Trait == bound.Trait && other.Arguments.SequenceEqual(bound.Arguments));
+			
+			if (index < 0)
+				return false;
+			
+			remaining.RemoveAt(index);
+		}
+		
+		return remaining.Count == 0;
+	}
+	
+	private bool HaveSameConstructors(IReadOnlyList<FunctionInfo> first, IReadOnlyList<FunctionInfo> second,
+		IReadOnlyDictionary<TypeParameterSymbol, TypeSymbol> map) =>
+		first.Count == second.Count && first.Zip(second).All(pair =>
+		{
+			var other = _typePool.SubstituteSignature(pair.Second.Signature, map);
+			return pair.First.Signature.ParameterModes.SequenceEqual(other.ParameterModes) &&
+			       pair.First.Signature.ParameterTypes.Skip(1).SequenceEqual(other.ParameterTypes.Skip(1));
+		});
 	
 	private string? DescribeConflict(string name, FunctionSignature signature, IEnumerable<FunctionSignature> others)
 	{

@@ -1,0 +1,9 @@
+mod s
+
+state: pub var i32 = 0
+
+bump: pub fun -> i32
+{
+	state += 1
+	ret state
+}

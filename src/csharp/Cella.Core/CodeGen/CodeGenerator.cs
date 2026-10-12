@@ -128,16 +128,19 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 	private bool IsObjectLocal(FunctionSymbol function) =>
 		function.Visibility is Visibility.Private or Visibility.Module &&
 		function.Kind is not (FunctionKind.Destructor or FunctionKind.Constructor) && !function.OwnsCaptures &&
-		!_sharedFunctions.Contains(function);
+		!IsShared(function);
 	
-	private bool IsExported(FunctionSymbol function) => function.Visibility == Visibility.Public ||
-	                                                    _config.IsLibrary &&
-	                                                    (function.Kind == FunctionKind.Destructor ||
-	                                                     _inputs.GenericReferences.Contains(function) ||
-	                                                     _sharedFunctions.Contains(function));
+	private bool IsShared(FunctionSymbol function) => function.Visibility == Visibility.Public ||
+	                                                  function.Kind == FunctionKind.Destructor ||
+	                                                  _sharedFunctions.Contains(function) ||
+	                                                  _inputs.GenericReferences.Contains(function);
 	
-	private bool IsExported(GlobalSymbol global) => global.Visibility == Visibility.Public ||
-	                                                _config.IsLibrary && _inputs.GenericReferences.Contains(global);
+	private bool IsExported(FunctionSymbol function) => _config.ExportsSymbols && IsShared(function);
+	
+	private bool IsShared(GlobalSymbol global) => global.Visibility == Visibility.Public ||
+	                                              _inputs.GenericReferences.Contains(global);
+	
+	private bool IsExported(GlobalSymbol global) => _config.ExportsSymbols && IsShared(global);
 	
 	private void Import(LLVMValueRef value, Symbol symbol)
 	{
@@ -3034,7 +3037,7 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 			global.DLLStorageClass = LLVMDLLStorageClass.LLVMDLLExportStorageClass;
 			global.Linkage = LLVMLinkage.LLVMDLLExportLinkage;
 		}
-		else if (info.Symbol.Visibility is Visibility.Private or Visibility.Module)
+		else if (info.Symbol.Visibility is Visibility.Private or Visibility.Module && !IsShared(info.Symbol))
 		{
 			global.Linkage = LLVMLinkage.LLVMInternalLinkage;
 		}
@@ -3101,16 +3104,8 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 			substitution = TypePool.CreateMap(instance.Definition.TypeParameters, instance.TypeArguments);
 			var defined = CreateGlobal(info);
 			substitution = outer;
-			if (!_config.IsLibrary && _moduleStates.ContainsKey(info.File.Module) &&
-			    info.Symbol.Visibility is Visibility.Private or Visibility.Module)
-			{
-				defined.Linkage = LLVMLinkage.LLVMInternalLinkage;
-				return defined;
-			}
-			
-			ShareDefinition(defined, _config.IsLibrary);
-			if (_config.IsLibrary)
-				_exportedStatics.Add(info.Symbol);
+			ShareDefinition(defined, _config.ExportsSymbols);
+			_exportedStatics.Add(info.Symbol);
 			
 			return defined;
 		}
@@ -4031,7 +4026,7 @@ public sealed record CodeGenConfig
 {
 	public bool BoundsChecks { get; init; } = true;
 	public bool OverflowChecks { get; init; }
-	public bool IsLibrary { get; init; }
+	public bool ExportsSymbols { get; init; }
 	public bool DebugInfo { get; init; }
 	public string? SourceRoot { get; init; }
 	

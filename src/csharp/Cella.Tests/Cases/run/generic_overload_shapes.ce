@@ -1,0 +1,26 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Show: trait
+{
+	show: fun(self) -> i32
+}
+
+pick[T]: fun(x: T, y: T) -> i32 = 2
+pick[T]: fun(x: T) -> i32 = 1
+
+pair[T, U]: fun(x: T, y: U) -> i32 = 3
+pair[T]: fun(x: T, y: T, z: T) -> i32 = 4
+
+shown[T: Show]: fun(x: T) -> i32 = 5
+shown[T]: fun(x: T, y: i32) -> i32 = 6
+
+main: fun -> i32
+{
+	printf("%d %d %d %d %d\n", pick(1), pick(1, 2), pair(1, 2.0), pair(1, 2, 3), shown(1, 2))
+	ret 0
+}

@@ -126,39 +126,58 @@ public sealed class TypeInference(TypePool typePool)
 				
 				foreach (var bound in typePool.GetBounds(parameters[i]))
 				{
-					var known = parameters
-						.Select((parameter, j) => (Parameter: parameter, Type: inferred[j]))
-						.Where(static entry => entry.Type is not null)
-						.ToDictionary(static entry => entry.Parameter, static entry => entry.Type!);
-					
-					var expected = typePool.SubstituteTrait(bound, known);
-					var open = new OrderedSet<TypeParameterSymbol>(parameters
-						.Where((parameter, j) => inferred[j] is null &&
-						                         expected.Arguments.Any(argument =>
-							                         TypePool.FindTypeParameters(argument).Contains(parameter))));
-					
-					if (open.Count == 0)
-						continue;
-					
-					var matches = FindTraitArguments(type, bound.Trait)
-						.Select(arguments => Match(expected.Arguments, arguments, open))
-						.OfType<Dictionary<TypeParameterSymbol, TypeSymbol>>()
-						.ToList();
-					
-					if (matches is not [var match])
-						continue;
-					
-					for (var j = 0; j < parameters.Length; j++)
-					{
-						if (inferred[j] is not null || !match.TryGetValue(parameters[j], out var found))
-							continue;
-						
-						inferred[j] = found;
-						progress = true;
-					}
+					var expected = typePool.SubstituteTrait(bound, GetKnown(parameters, inferred));
+					progress |= Settle(parameters, inferred, expected.Arguments,
+						FindTraitArguments(type, bound.Trait));
+				}
+				
+				foreach (var bound in typePool.GetFunctionBounds(parameters[i]))
+				{
+					var expected = (FunctionType)typePool.Substitute(bound, GetKnown(parameters, inferred));
+					progress |= Settle(parameters, inferred, [..expected.ParameterTypes, expected.ReturnType],
+						typePool.GetCallableSignatures(type)
+							.Select(static signature => (ImmutableArray<TypeSymbol>)
+								[..signature.ParameterTypes, signature.ReturnType]));
 				}
 			}
 		}
+	}
+	
+	private static Dictionary<TypeParameterSymbol, TypeSymbol> GetKnown(ImmutableArray<TypeParameterSymbol> parameters,
+		TypeSymbol?[] inferred) => parameters
+		.Select((parameter, j) => (Parameter: parameter, Type: inferred[j]))
+		.Where(static entry => entry.Type is not null)
+		.ToDictionary(static entry => entry.Parameter, static entry => entry.Type!);
+	
+	private bool Settle(ImmutableArray<TypeParameterSymbol> parameters, TypeSymbol?[] inferred,
+		ImmutableArray<TypeSymbol> expected, IEnumerable<ImmutableArray<TypeSymbol>> candidates)
+	{
+		var open = new OrderedSet<TypeParameterSymbol>(parameters
+			.Where((parameter, j) => inferred[j] is null &&
+			                         expected.Any(type => TypePool.FindTypeParameters(type).Contains(parameter))));
+		
+		if (open.Count == 0)
+			return false;
+		
+		var matches = candidates
+			.Select(arguments => Match(expected, arguments, open))
+			.OfType<Dictionary<TypeParameterSymbol, TypeSymbol>>()
+			.ToList();
+		
+		if (matches is not [var match])
+			return false;
+		
+		var progress = false;
+		for (var j = 0; j < parameters.Length; j++)
+		{
+			if (inferred[j] is not null || !match.TryGetValue(parameters[j], out var found))
+				continue;
+			
+			inferred[j] = found;
+			progress = true;
+		}
+		
+		return progress;
 	}
 	
 	private IEnumerable<ImmutableArray<TypeSymbol>> FindTraitArguments(TypeSymbol type, TraitSymbol trait) =>

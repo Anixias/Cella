@@ -1,0 +1,31 @@
+mod test
+
+Show: trait
+{
+	show: fun(self) -> i32
+}
+
+same[T]: fun(x: T) {}
+same[U]: fun(x: U) {}
+
+defaults[T]: fun(x: T, y: i32 = 0) {}
+defaults[T]: fun(x: T) {}
+
+modes[T]: fun(mut x: T) {}
+modes[T]: fun(x: T) {}
+
+results[T]: fun(x: T) -> i32 = 1
+results[T]: fun(x: T) -> i64 = 2
+
+bounded[T: Show]: fun(x: T) {}
+bounded[U: Show]: fun(x: U) {}
+
+Box: rec
+{
+	v: i32
+
+	put[T]: fun(self, v: T) {}
+	put[U]: fun(self, v: U) {}
+}
+
+main: fun -> i32 = 0

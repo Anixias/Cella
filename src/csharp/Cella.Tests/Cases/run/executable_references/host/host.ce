@@ -1,0 +1,9 @@
+mod host
+
+helper: pvt fun(x: i32) -> i32 = x * 10
+
+add: pub fun(a: i32, b: i32) -> i32 = a + b
+
+scaled[T]: pub fun(value: T, x: i32) -> i32 = helper(x)
+
+main: fun -> i32 = 0

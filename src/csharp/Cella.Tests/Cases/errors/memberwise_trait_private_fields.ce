@@ -1,0 +1,13 @@
+mod test
+
+Make: trait
+{
+	new: op(v: i32)
+}
+
+Hidden: rec impl Make
+{
+	hp: pvt i32
+}
+
+main: fun -> i32 = 0

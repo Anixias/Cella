@@ -1,0 +1,24 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Open: rec
+{
+	hp: i32
+}
+
+Inner: mod rec
+{
+	hp: mod i32
+}
+
+make[T: new(i32)]: fun(v: i32) -> T = T(v)
+
+main: fun -> i32
+{
+	printf("%d %d\n", make[Open](42).hp, make[Inner](7).hp)
+	ret 0
+}

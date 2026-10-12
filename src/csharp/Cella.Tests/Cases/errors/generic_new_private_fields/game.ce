@@ -1,0 +1,21 @@
+mod game
+
+Unit: rec
+{
+	hp: pvt i32
+}
+
+Locked: rec
+{
+	hp: pvt set i32
+}
+
+Scoped: rec
+{
+	hp: mod i32
+}
+
+Open: rec
+{
+	hp: i32
+}

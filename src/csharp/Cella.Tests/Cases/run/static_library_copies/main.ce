@@ -1,0 +1,15 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+main: fun -> i32
+{
+	val a = s.bump()
+	val b = d.viaDll()
+	val c = s.bump()
+	printf("%d %d %d\n", a, b, c)
+	ret 0
+}
