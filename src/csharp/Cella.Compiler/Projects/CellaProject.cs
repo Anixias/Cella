@@ -53,6 +53,13 @@ public sealed partial class CellaProject
 	public static IEnumerable<string> FindProjects(string directory) =>
 		Directory.EnumerateFiles(directory, ProjectSearchPattern, SearchOption.AllDirectories);
 	
+	public static IEnumerable<string> FindSiblingProjects(string path) => Directory
+		.EnumerateFiles(Path.GetDirectoryName(path) ?? ".", ProjectSearchPattern)
+		.Where(other => !Path.GetFullPath(other).Equals(Path.GetFullPath(path), StringComparison.OrdinalIgnoreCase))
+		.Select(Path.GetFileName)
+		.OfType<string>()
+		.Order(StringComparer.Ordinal);
+	
 	// All cella files in or under the project directory belong to that project
 	public static IEnumerable<string> FindSourceFiles(string directory) => FindSourceFiles(directory, true);
 	

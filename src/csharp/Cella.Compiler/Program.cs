@@ -206,6 +206,9 @@ internal static class Program
 			if (loaded is null)
 				continue;
 			
+			if (CellaProject.FindSiblingProjects(path).Select(static name => $"'{name}'").ToList() is [_, ..] siblings)
+				errors.Add($"{path}: Cannot share a directory with {string.Join(", ", siblings)}");
+			
 			var project = loaded.Resolve(path, CreateFlags(loaded, targetTriple, optimizeMode, flagOverrides), errors);
 			var projectDirectory = Path.GetDirectoryName(path) ?? string.Empty;
 			var projectName = Path.GetFileNameWithoutExtension(path);
