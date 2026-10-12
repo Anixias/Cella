@@ -1,0 +1,22 @@
+mod base
+
+Point: pub rec
+{
+	x: i32
+
+	twice: fun(self) -> i32 = self.x * 2
+}
+
+box[T: copy]: pub rec
+{
+	value: T
+
+	get: fun(self) -> T = self.value
+}
+
+Named: pub trait
+{
+	name: fun(self) -> i32
+
+	twice: fun(self) -> i32 = self.name() * 2
+}

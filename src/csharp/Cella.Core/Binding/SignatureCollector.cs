@@ -75,7 +75,8 @@ public sealed class SignatureCollector
 	public ModuleIndex Modules { get; }
 	
 	public SignatureCollector(string assemblyName, string? entryPointName, SymbolTable symbolTable,
-		TypePool typePool, IEnumerable<AssemblySymbol> dependencies, uint pointerBitSize)
+		TypePool typePool, IEnumerable<AssemblySymbol> dependencies, IEnumerable<AssemblySymbol> indirectDependencies,
+		uint pointerBitSize)
 	{
 		_entryPointName = entryPointName;
 		_symbolTable = symbolTable;
@@ -83,10 +84,13 @@ public sealed class SignatureCollector
 		_extSignatureTypes = new(typePool);
 		_pointerBitSize = pointerBitSize;
 		var dependencyList = dependencies.ToImmutableArray();
-		_dependencyTable = SignatureTable.Combine(dependencyList.Select(static a => a.SignatureTable));
+		var indirectList = indirectDependencies.ToImmutableArray();
+		_dependencyTable = SignatureTable.Combine(dependencyList.Concat(indirectList)
+			.Select(static a => a.SignatureTable));
+		
 		Evaluator = new ConstantEvaluator(typePool, pointerBitSize, GetGlobalValue);
 		typePool.IntegerFits = Evaluator.Fits;
-		Modules = new ModuleIndex(assemblyName, symbolTable, dependencyList);
+		Modules = new ModuleIndex(assemblyName, symbolTable, dependencyList, indirectList);
 	}
 	
 	public void Collect(IReadOnlyCollection<FileNode> files, IConstantResolver constantResolver)

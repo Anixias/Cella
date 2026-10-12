@@ -1,0 +1,15 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+main: fun -> i32
+{
+	val p = middle.makePoint()
+	val b = middle.makeBox()
+	val t = middle.Thing()
+	printf("%d %d %d %d\n", p.x, p.twice(), b.get(), t.twice())
+	ret 0
+}

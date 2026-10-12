@@ -10,7 +10,8 @@ public sealed class ModuleIndex
 	private readonly Dictionary<Symbol, ModuleSymbol> _modules = [];
 	private readonly Dictionary<Symbol, string> _assemblies = [];
 	
-	public ModuleIndex(string assemblyName, SymbolTable symbolTable, IEnumerable<AssemblySymbol> dependencies)
+	public ModuleIndex(string assemblyName, SymbolTable symbolTable, IEnumerable<AssemblySymbol> dependencies,
+		IEnumerable<AssemblySymbol> indirectDependencies)
 	{
 		AssemblyName = assemblyName;
 		Root = new ModulePathSymbol(string.Empty, null);
@@ -20,6 +21,12 @@ public sealed class ModuleIndex
 		foreach (var dependency in dependencies)
 		{
 			Add(dependency.SymbolTable, dependency.Name, false);
+			MapFiles(dependency.SymbolTable, _dependencyFiles);
+		}
+		
+		foreach (var dependency in indirectDependencies)
+		{
+			Record(dependency.SymbolTable, dependency.Name);
 			MapFiles(dependency.SymbolTable, _dependencyFiles);
 		}
 		
@@ -79,6 +86,21 @@ public sealed class ModuleIndex
 		}
 		
 		return false;
+	}
+	
+	private void Record(SymbolTable symbolTable, string assemblyName)
+	{
+		foreach (var module in symbolTable.ModuleSymbols.Values)
+		{
+			if (!symbolTable.SymbolsByModule.TryGetValue(module, out var members))
+				continue;
+			
+			foreach (var symbol in members.Values.SelectMany(static symbols => symbols))
+			{
+				_modules[symbol] = module;
+				_assemblies[symbol] = assemblyName;
+			}
+		}
 	}
 	
 	private void Add(SymbolTable symbolTable, string assemblyName, bool isLocal)

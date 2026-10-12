@@ -1,0 +1,10 @@
+mod middle
+
+makePoint: pub fun -> base.Point = base.Point(3)
+
+makeBox: pub fun -> base.box[i32] = base.box(5)
+
+Thing: pub rec impl base.Named
+{
+	name: fun(self) -> i32 = 7
+}
