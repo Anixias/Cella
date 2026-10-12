@@ -6,7 +6,7 @@ namespace Cella.Core.CodeGen;
 internal enum CPassKind
 {
 	Direct,
-	Integer,
+	Coerced,
 	Indirect
 }
 
@@ -34,10 +34,16 @@ internal sealed class CAbi(LLVMTargetDataRef targetData, string targetTriple)
 	private readonly bool _isWindowsX64 = targetTriple.StartsWith("x86_64-") && targetTriple.Contains("-windows");
 	
 	public CSignature Classify(IEnumerable<LLVMTypeRef> parameterTypes, LLVMTypeRef returnType) =>
-		new(parameterTypes.Select(ClassifyValue).ToImmutableArray(), ClassifyValue(returnType));
+		new(parameterTypes.Select(type => ClassifyValue(type, false)).ToImmutableArray(),
+			ClassifyValue(returnType, true));
 	
-	private CPass ClassifyValue(LLVMTypeRef type)
+	private CPass ClassifyValue(LLVMTypeRef type, bool isReturn)
 	{
+		if (_isWindowsX64 && type is { Kind: LLVMTypeKind.LLVMIntegerTypeKind, IntWidth: 128 })
+			return isReturn
+				? new(CPassKind.Coerced, LLVMTypeRef.CreateVector(LLVMTypeRef.Int64, 2))
+				: new(CPassKind.Indirect, type);
+		
 		if (type.Kind is not (LLVMTypeKind.LLVMStructTypeKind or LLVMTypeKind.LLVMArrayTypeKind))
 			return new(CPassKind.Direct, type);
 		
@@ -47,7 +53,7 @@ internal sealed class CAbi(LLVMTargetDataRef targetData, string targetTriple)
 		
 		var size = targetData.ABISizeOfType(type);
 		return size is 1 or 2 or 4 or 8
-			? new(CPassKind.Integer, LLVMTypeRef.CreateInt((uint)size * 8))
+			? new(CPassKind.Coerced, LLVMTypeRef.CreateInt((uint)size * 8))
 			: new(CPassKind.Indirect, type);
 	}
 }

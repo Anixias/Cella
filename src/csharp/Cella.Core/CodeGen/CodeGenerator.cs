@@ -1803,7 +1803,7 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 		AddBoolExtensions(result, signature, true);
 		switch (signature.Return.Kind)
 		{
-			case CPassKind.Integer:
+			case CPassKind.Coerced:
 			{
 				var slot = BuildEntryAlloca(builder, signature.Return.Type, "coerce");
 				builder.BuildStore(result, slot);
@@ -1823,7 +1823,7 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 	{
 		switch (pass.Kind)
 		{
-			case CPassKind.Integer:
+			case CPassKind.Coerced:
 			{
 				var slot = BuildEntryAlloca(builder, pass.Type, "coerce");
 				StoreValue(builder, type, value, slot);
@@ -1846,7 +1846,7 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 	{
 		switch (pass.Kind)
 		{
-			case CPassKind.Integer:
+			case CPassKind.Coerced:
 			{
 				var slot = BuildEntryAlloca(builder, pass.Type, "coerce");
 				builder.BuildStore(value, slot);
