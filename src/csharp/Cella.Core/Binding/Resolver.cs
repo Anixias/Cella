@@ -4035,8 +4035,19 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		}
 		else
 		{
-			// TODO Diagnostic: incompatible element types
-			elementType = UnifyTypes(values) ?? NativeSymbols.Invalid;
+			elementType = UnifyTypes(values);
+			if (elementType is null)
+			{
+				if (!values.Any(static value => value.Type is InvalidType))
+				{
+					var types = string.Join(", ", values.Select(static v => $"'{v.Type.Name}'").Distinct());
+					Diagnostics.Add(new(DiagnosticSeverity.Error, node.SourceLocation,
+						$"The elements of this array have incompatible types: {types}"));
+				}
+				
+				elementType = NativeSymbols.Invalid;
+			}
+			
 			for (var i = 0; i < values.Count; i++)
 				values[i] = CoerceToType(values[i], elementType);
 		}
