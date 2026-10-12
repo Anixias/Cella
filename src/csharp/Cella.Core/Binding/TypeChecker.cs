@@ -254,9 +254,6 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool, 
 				CheckBorrowedTemporary(initializer);
 			}
 		}
-		else if (expected == NativeSymbols.Invalid)
-			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Syntax.SourceLocation,
-				"Implicitly-typed local variable must have an initializer"));
 	}
 	
 	public void Visit(ResolvedWhileStatementNode node)

@@ -1,0 +1,42 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Display: trait
+{
+	print: fun(self)
+}
+
+bool: impl Display
+{
+	print: fun(self) = printf("%d\n", i32(self))
+}
+
+i32: impl Display
+{
+	print: fun(self) = printf("%d\n", self)
+}
+
+Mode: enum
+{
+	idle
+	busy
+}
+
+say: fun(text: fstr[Display]) = text.value(0).print()
+
+main: fun -> i32
+{
+	val a = true
+	val b = false
+	val x = 2
+	val mode = Mode.busy
+	say("{a && b}")
+	say("{a || b}")
+	say("{1 < x < 3}")
+	say("{match mode { idle => 10  busy => 20 }}")
+	ret 0
+}

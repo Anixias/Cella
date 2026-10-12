@@ -742,7 +742,8 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 		if (!Match(ref index, out var openParen, TokenType.OpOpenParen))
 			throw Expected(index, "'('");
 		
-		if (!Match(ref index, out var first, TokenType.Identifier))
+		if (!Match(ref index, out var first, TokenType.Identifier) &&
+		    !Match(ref index, out first, TokenType.KeywordSelf))
 			throw Expected(index, "a name");
 		
 		IExpressionNode name = new VarExpressionNode(first);

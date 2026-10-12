@@ -1176,8 +1176,8 @@ public sealed class Lowerer
 			
 			var arrayType = _typePool.GetArrayType(_typePool.GetBorrowType(type.Value, false), node.Values.Length);
 			var symbol = CreateTempSymbol(arrayType, "fstr");
-			Declare(GetOrMakeBlock(), new LocalVarInstruction(symbol,
-				new ArrayValue(arrayType, LowerOperands(node.Values), location), location, BlockScopeId));
+			var elements = new ArrayValue(arrayType, LowerOperands(node.Values), location);
+			Declare(GetOrMakeBlock(), new LocalVarInstruction(symbol, elements, location, BlockScopeId));
 			
 			var values = new UnaryOpValue(_typePool.GetPointerType(arrayType),
 				new VariableValue(new(symbol, arrayType), location), UnaryOperation.AddressOf, location);

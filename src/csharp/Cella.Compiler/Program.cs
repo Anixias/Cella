@@ -20,7 +20,31 @@ namespace Cella.Compiler;
 
 internal static class Program
 {
-	public static async Task<int> Main(string[] args)
+	private const int CompilerStackSize = 256 * 1024 * 1024;
+	
+	public static Task<int> Main(string[] args)
+	{
+		var result = new TaskCompletionSource<int>();
+		var thread = new Thread(() =>
+		{
+			var context = new CompilerSynchronizationContext();
+			SynchronizationContext.SetSynchronizationContext(context);
+			var run = RunAsync(args);
+			run.ContinueWith(_ => context.Complete(), TaskScheduler.Default);
+			context.Run();
+			if (run.IsFaulted)
+				result.SetException(run.Exception!.InnerExceptions);
+			else if (run.IsCanceled)
+				result.SetCanceled();
+			else
+				result.SetResult(run.Result);
+		}, CompilerStackSize);
+		
+		thread.Start();
+		return result.Task;
+	}
+	
+	private static async Task<int> RunAsync(string[] args)
 	{
 		var verbose = !args.Contains("--quiet");
 		var showHints = args.Contains("--hints");

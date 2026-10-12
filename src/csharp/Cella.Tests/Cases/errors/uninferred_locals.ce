@@ -1,0 +1,36 @@
+mod test
+
+box[T]: rec
+{
+	value: T
+}
+
+first[T: copy, N: val usize]: fun(values: array[T, N]) -> box[T] = box(values[0])
+
+untyped: fun -> i32
+{
+	var p
+	ret p + 1
+}
+
+missingEquals: fun -> i32
+{
+	var buffer = [u8(1), u8(2)]
+	val q  @buffer
+	ret i32(q[0])
+}
+
+selfNamed: fun -> i32
+{
+	var pair = pair(1)
+	ret pair
+}
+
+emptyArrays: fun -> i32
+{
+	val e = []
+	val b = first([])
+	ret 0
+}
+
+main: fun -> i32 = 0

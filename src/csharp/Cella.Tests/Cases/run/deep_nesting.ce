@@ -1,0 +1,2021 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+pick: fun(n: i32) -> i32
+{
+	if n == 0
+		ret 0
+	else if n == 1
+		ret 1
+	else if n == 2
+		ret 2
+	else if n == 3
+		ret 3
+	else if n == 4
+		ret 4
+	else if n == 5
+		ret 5
+	else if n == 6
+		ret 6
+	else if n == 7
+		ret 7
+	else if n == 8
+		ret 8
+	else if n == 9
+		ret 9
+	else if n == 10
+		ret 10
+	else if n == 11
+		ret 11
+	else if n == 12
+		ret 12
+	else if n == 13
+		ret 13
+	else if n == 14
+		ret 14
+	else if n == 15
+		ret 15
+	else if n == 16
+		ret 16
+	else if n == 17
+		ret 17
+	else if n == 18
+		ret 18
+	else if n == 19
+		ret 19
+	else if n == 20
+		ret 20
+	else if n == 21
+		ret 21
+	else if n == 22
+		ret 22
+	else if n == 23
+		ret 23
+	else if n == 24
+		ret 24
+	else if n == 25
+		ret 25
+	else if n == 26
+		ret 26
+	else if n == 27
+		ret 27
+	else if n == 28
+		ret 28
+	else if n == 29
+		ret 29
+	else if n == 30
+		ret 30
+	else if n == 31
+		ret 31
+	else if n == 32
+		ret 32
+	else if n == 33
+		ret 33
+	else if n == 34
+		ret 34
+	else if n == 35
+		ret 35
+	else if n == 36
+		ret 36
+	else if n == 37
+		ret 37
+	else if n == 38
+		ret 38
+	else if n == 39
+		ret 39
+	else if n == 40
+		ret 40
+	else if n == 41
+		ret 41
+	else if n == 42
+		ret 42
+	else if n == 43
+		ret 43
+	else if n == 44
+		ret 44
+	else if n == 45
+		ret 45
+	else if n == 46
+		ret 46
+	else if n == 47
+		ret 47
+	else if n == 48
+		ret 48
+	else if n == 49
+		ret 49
+	else if n == 50
+		ret 50
+	else if n == 51
+		ret 51
+	else if n == 52
+		ret 52
+	else if n == 53
+		ret 53
+	else if n == 54
+		ret 54
+	else if n == 55
+		ret 55
+	else if n == 56
+		ret 56
+	else if n == 57
+		ret 57
+	else if n == 58
+		ret 58
+	else if n == 59
+		ret 59
+	else if n == 60
+		ret 60
+	else if n == 61
+		ret 61
+	else if n == 62
+		ret 62
+	else if n == 63
+		ret 63
+	else if n == 64
+		ret 64
+	else if n == 65
+		ret 65
+	else if n == 66
+		ret 66
+	else if n == 67
+		ret 67
+	else if n == 68
+		ret 68
+	else if n == 69
+		ret 69
+	else if n == 70
+		ret 70
+	else if n == 71
+		ret 71
+	else if n == 72
+		ret 72
+	else if n == 73
+		ret 73
+	else if n == 74
+		ret 74
+	else if n == 75
+		ret 75
+	else if n == 76
+		ret 76
+	else if n == 77
+		ret 77
+	else if n == 78
+		ret 78
+	else if n == 79
+		ret 79
+	else if n == 80
+		ret 80
+	else if n == 81
+		ret 81
+	else if n == 82
+		ret 82
+	else if n == 83
+		ret 83
+	else if n == 84
+		ret 84
+	else if n == 85
+		ret 85
+	else if n == 86
+		ret 86
+	else if n == 87
+		ret 87
+	else if n == 88
+		ret 88
+	else if n == 89
+		ret 89
+	else if n == 90
+		ret 90
+	else if n == 91
+		ret 91
+	else if n == 92
+		ret 92
+	else if n == 93
+		ret 93
+	else if n == 94
+		ret 94
+	else if n == 95
+		ret 95
+	else if n == 96
+		ret 96
+	else if n == 97
+		ret 97
+	else if n == 98
+		ret 98
+	else if n == 99
+		ret 99
+	else if n == 100
+		ret 0
+	else if n == 101
+		ret 1
+	else if n == 102
+		ret 2
+	else if n == 103
+		ret 3
+	else if n == 104
+		ret 4
+	else if n == 105
+		ret 5
+	else if n == 106
+		ret 6
+	else if n == 107
+		ret 7
+	else if n == 108
+		ret 8
+	else if n == 109
+		ret 9
+	else if n == 110
+		ret 10
+	else if n == 111
+		ret 11
+	else if n == 112
+		ret 12
+	else if n == 113
+		ret 13
+	else if n == 114
+		ret 14
+	else if n == 115
+		ret 15
+	else if n == 116
+		ret 16
+	else if n == 117
+		ret 17
+	else if n == 118
+		ret 18
+	else if n == 119
+		ret 19
+	else if n == 120
+		ret 20
+	else if n == 121
+		ret 21
+	else if n == 122
+		ret 22
+	else if n == 123
+		ret 23
+	else if n == 124
+		ret 24
+	else if n == 125
+		ret 25
+	else if n == 126
+		ret 26
+	else if n == 127
+		ret 27
+	else if n == 128
+		ret 28
+	else if n == 129
+		ret 29
+	else if n == 130
+		ret 30
+	else if n == 131
+		ret 31
+	else if n == 132
+		ret 32
+	else if n == 133
+		ret 33
+	else if n == 134
+		ret 34
+	else if n == 135
+		ret 35
+	else if n == 136
+		ret 36
+	else if n == 137
+		ret 37
+	else if n == 138
+		ret 38
+	else if n == 139
+		ret 39
+	else if n == 140
+		ret 40
+	else if n == 141
+		ret 41
+	else if n == 142
+		ret 42
+	else if n == 143
+		ret 43
+	else if n == 144
+		ret 44
+	else if n == 145
+		ret 45
+	else if n == 146
+		ret 46
+	else if n == 147
+		ret 47
+	else if n == 148
+		ret 48
+	else if n == 149
+		ret 49
+	else if n == 150
+		ret 50
+	else if n == 151
+		ret 51
+	else if n == 152
+		ret 52
+	else if n == 153
+		ret 53
+	else if n == 154
+		ret 54
+	else if n == 155
+		ret 55
+	else if n == 156
+		ret 56
+	else if n == 157
+		ret 57
+	else if n == 158
+		ret 58
+	else if n == 159
+		ret 59
+	else if n == 160
+		ret 60
+	else if n == 161
+		ret 61
+	else if n == 162
+		ret 62
+	else if n == 163
+		ret 63
+	else if n == 164
+		ret 64
+	else if n == 165
+		ret 65
+	else if n == 166
+		ret 66
+	else if n == 167
+		ret 67
+	else if n == 168
+		ret 68
+	else if n == 169
+		ret 69
+	else if n == 170
+		ret 70
+	else if n == 171
+		ret 71
+	else if n == 172
+		ret 72
+	else if n == 173
+		ret 73
+	else if n == 174
+		ret 74
+	else if n == 175
+		ret 75
+	else if n == 176
+		ret 76
+	else if n == 177
+		ret 77
+	else if n == 178
+		ret 78
+	else if n == 179
+		ret 79
+	else if n == 180
+		ret 80
+	else if n == 181
+		ret 81
+	else if n == 182
+		ret 82
+	else if n == 183
+		ret 83
+	else if n == 184
+		ret 84
+	else if n == 185
+		ret 85
+	else if n == 186
+		ret 86
+	else if n == 187
+		ret 87
+	else if n == 188
+		ret 88
+	else if n == 189
+		ret 89
+	else if n == 190
+		ret 90
+	else if n == 191
+		ret 91
+	else if n == 192
+		ret 92
+	else if n == 193
+		ret 93
+	else if n == 194
+		ret 94
+	else if n == 195
+		ret 95
+	else if n == 196
+		ret 96
+	else if n == 197
+		ret 97
+	else if n == 198
+		ret 98
+	else if n == 199
+		ret 99
+	else if n == 200
+		ret 0
+	else if n == 201
+		ret 1
+	else if n == 202
+		ret 2
+	else if n == 203
+		ret 3
+	else if n == 204
+		ret 4
+	else if n == 205
+		ret 5
+	else if n == 206
+		ret 6
+	else if n == 207
+		ret 7
+	else if n == 208
+		ret 8
+	else if n == 209
+		ret 9
+	else if n == 210
+		ret 10
+	else if n == 211
+		ret 11
+	else if n == 212
+		ret 12
+	else if n == 213
+		ret 13
+	else if n == 214
+		ret 14
+	else if n == 215
+		ret 15
+	else if n == 216
+		ret 16
+	else if n == 217
+		ret 17
+	else if n == 218
+		ret 18
+	else if n == 219
+		ret 19
+	else if n == 220
+		ret 20
+	else if n == 221
+		ret 21
+	else if n == 222
+		ret 22
+	else if n == 223
+		ret 23
+	else if n == 224
+		ret 24
+	else if n == 225
+		ret 25
+	else if n == 226
+		ret 26
+	else if n == 227
+		ret 27
+	else if n == 228
+		ret 28
+	else if n == 229
+		ret 29
+	else if n == 230
+		ret 30
+	else if n == 231
+		ret 31
+	else if n == 232
+		ret 32
+	else if n == 233
+		ret 33
+	else if n == 234
+		ret 34
+	else if n == 235
+		ret 35
+	else if n == 236
+		ret 36
+	else if n == 237
+		ret 37
+	else if n == 238
+		ret 38
+	else if n == 239
+		ret 39
+	else if n == 240
+		ret 40
+	else if n == 241
+		ret 41
+	else if n == 242
+		ret 42
+	else if n == 243
+		ret 43
+	else if n == 244
+		ret 44
+	else if n == 245
+		ret 45
+	else if n == 246
+		ret 46
+	else if n == 247
+		ret 47
+	else if n == 248
+		ret 48
+	else if n == 249
+		ret 49
+	else if n == 250
+		ret 50
+	else if n == 251
+		ret 51
+	else if n == 252
+		ret 52
+	else if n == 253
+		ret 53
+	else if n == 254
+		ret 54
+	else if n == 255
+		ret 55
+	else if n == 256
+		ret 56
+	else if n == 257
+		ret 57
+	else if n == 258
+		ret 58
+	else if n == 259
+		ret 59
+	else if n == 260
+		ret 60
+	else if n == 261
+		ret 61
+	else if n == 262
+		ret 62
+	else if n == 263
+		ret 63
+	else if n == 264
+		ret 64
+	else if n == 265
+		ret 65
+	else if n == 266
+		ret 66
+	else if n == 267
+		ret 67
+	else if n == 268
+		ret 68
+	else if n == 269
+		ret 69
+	else if n == 270
+		ret 70
+	else if n == 271
+		ret 71
+	else if n == 272
+		ret 72
+	else if n == 273
+		ret 73
+	else if n == 274
+		ret 74
+	else if n == 275
+		ret 75
+	else if n == 276
+		ret 76
+	else if n == 277
+		ret 77
+	else if n == 278
+		ret 78
+	else if n == 279
+		ret 79
+	else if n == 280
+		ret 80
+	else if n == 281
+		ret 81
+	else if n == 282
+		ret 82
+	else if n == 283
+		ret 83
+	else if n == 284
+		ret 84
+	else if n == 285
+		ret 85
+	else if n == 286
+		ret 86
+	else if n == 287
+		ret 87
+	else if n == 288
+		ret 88
+	else if n == 289
+		ret 89
+	else if n == 290
+		ret 90
+	else if n == 291
+		ret 91
+	else if n == 292
+		ret 92
+	else if n == 293
+		ret 93
+	else if n == 294
+		ret 94
+	else if n == 295
+		ret 95
+	else if n == 296
+		ret 96
+	else if n == 297
+		ret 97
+	else if n == 298
+		ret 98
+	else if n == 299
+		ret 99
+	else if n == 300
+		ret 0
+	else if n == 301
+		ret 1
+	else if n == 302
+		ret 2
+	else if n == 303
+		ret 3
+	else if n == 304
+		ret 4
+	else if n == 305
+		ret 5
+	else if n == 306
+		ret 6
+	else if n == 307
+		ret 7
+	else if n == 308
+		ret 8
+	else if n == 309
+		ret 9
+	else if n == 310
+		ret 10
+	else if n == 311
+		ret 11
+	else if n == 312
+		ret 12
+	else if n == 313
+		ret 13
+	else if n == 314
+		ret 14
+	else if n == 315
+		ret 15
+	else if n == 316
+		ret 16
+	else if n == 317
+		ret 17
+	else if n == 318
+		ret 18
+	else if n == 319
+		ret 19
+	else if n == 320
+		ret 20
+	else if n == 321
+		ret 21
+	else if n == 322
+		ret 22
+	else if n == 323
+		ret 23
+	else if n == 324
+		ret 24
+	else if n == 325
+		ret 25
+	else if n == 326
+		ret 26
+	else if n == 327
+		ret 27
+	else if n == 328
+		ret 28
+	else if n == 329
+		ret 29
+	else if n == 330
+		ret 30
+	else if n == 331
+		ret 31
+	else if n == 332
+		ret 32
+	else if n == 333
+		ret 33
+	else if n == 334
+		ret 34
+	else if n == 335
+		ret 35
+	else if n == 336
+		ret 36
+	else if n == 337
+		ret 37
+	else if n == 338
+		ret 38
+	else if n == 339
+		ret 39
+	else if n == 340
+		ret 40
+	else if n == 341
+		ret 41
+	else if n == 342
+		ret 42
+	else if n == 343
+		ret 43
+	else if n == 344
+		ret 44
+	else if n == 345
+		ret 45
+	else if n == 346
+		ret 46
+	else if n == 347
+		ret 47
+	else if n == 348
+		ret 48
+	else if n == 349
+		ret 49
+	else if n == 350
+		ret 50
+	else if n == 351
+		ret 51
+	else if n == 352
+		ret 52
+	else if n == 353
+		ret 53
+	else if n == 354
+		ret 54
+	else if n == 355
+		ret 55
+	else if n == 356
+		ret 56
+	else if n == 357
+		ret 57
+	else if n == 358
+		ret 58
+	else if n == 359
+		ret 59
+	else if n == 360
+		ret 60
+	else if n == 361
+		ret 61
+	else if n == 362
+		ret 62
+	else if n == 363
+		ret 63
+	else if n == 364
+		ret 64
+	else if n == 365
+		ret 65
+	else if n == 366
+		ret 66
+	else if n == 367
+		ret 67
+	else if n == 368
+		ret 68
+	else if n == 369
+		ret 69
+	else if n == 370
+		ret 70
+	else if n == 371
+		ret 71
+	else if n == 372
+		ret 72
+	else if n == 373
+		ret 73
+	else if n == 374
+		ret 74
+	else if n == 375
+		ret 75
+	else if n == 376
+		ret 76
+	else if n == 377
+		ret 77
+	else if n == 378
+		ret 78
+	else if n == 379
+		ret 79
+	else if n == 380
+		ret 80
+	else if n == 381
+		ret 81
+	else if n == 382
+		ret 82
+	else if n == 383
+		ret 83
+	else if n == 384
+		ret 84
+	else if n == 385
+		ret 85
+	else if n == 386
+		ret 86
+	else if n == 387
+		ret 87
+	else if n == 388
+		ret 88
+	else if n == 389
+		ret 89
+	else if n == 390
+		ret 90
+	else if n == 391
+		ret 91
+	else if n == 392
+		ret 92
+	else if n == 393
+		ret 93
+	else if n == 394
+		ret 94
+	else if n == 395
+		ret 95
+	else if n == 396
+		ret 96
+	else if n == 397
+		ret 97
+	else if n == 398
+		ret 98
+	else if n == 399
+		ret 99
+	else if n == 400
+		ret 0
+	else if n == 401
+		ret 1
+	else if n == 402
+		ret 2
+	else if n == 403
+		ret 3
+	else if n == 404
+		ret 4
+	else if n == 405
+		ret 5
+	else if n == 406
+		ret 6
+	else if n == 407
+		ret 7
+	else if n == 408
+		ret 8
+	else if n == 409
+		ret 9
+	else if n == 410
+		ret 10
+	else if n == 411
+		ret 11
+	else if n == 412
+		ret 12
+	else if n == 413
+		ret 13
+	else if n == 414
+		ret 14
+	else if n == 415
+		ret 15
+	else if n == 416
+		ret 16
+	else if n == 417
+		ret 17
+	else if n == 418
+		ret 18
+	else if n == 419
+		ret 19
+	else if n == 420
+		ret 20
+	else if n == 421
+		ret 21
+	else if n == 422
+		ret 22
+	else if n == 423
+		ret 23
+	else if n == 424
+		ret 24
+	else if n == 425
+		ret 25
+	else if n == 426
+		ret 26
+	else if n == 427
+		ret 27
+	else if n == 428
+		ret 28
+	else if n == 429
+		ret 29
+	else if n == 430
+		ret 30
+	else if n == 431
+		ret 31
+	else if n == 432
+		ret 32
+	else if n == 433
+		ret 33
+	else if n == 434
+		ret 34
+	else if n == 435
+		ret 35
+	else if n == 436
+		ret 36
+	else if n == 437
+		ret 37
+	else if n == 438
+		ret 38
+	else if n == 439
+		ret 39
+	else if n == 440
+		ret 40
+	else if n == 441
+		ret 41
+	else if n == 442
+		ret 42
+	else if n == 443
+		ret 43
+	else if n == 444
+		ret 44
+	else if n == 445
+		ret 45
+	else if n == 446
+		ret 46
+	else if n == 447
+		ret 47
+	else if n == 448
+		ret 48
+	else if n == 449
+		ret 49
+	else if n == 450
+		ret 50
+	else if n == 451
+		ret 51
+	else if n == 452
+		ret 52
+	else if n == 453
+		ret 53
+	else if n == 454
+		ret 54
+	else if n == 455
+		ret 55
+	else if n == 456
+		ret 56
+	else if n == 457
+		ret 57
+	else if n == 458
+		ret 58
+	else if n == 459
+		ret 59
+	else if n == 460
+		ret 60
+	else if n == 461
+		ret 61
+	else if n == 462
+		ret 62
+	else if n == 463
+		ret 63
+	else if n == 464
+		ret 64
+	else if n == 465
+		ret 65
+	else if n == 466
+		ret 66
+	else if n == 467
+		ret 67
+	else if n == 468
+		ret 68
+	else if n == 469
+		ret 69
+	else if n == 470
+		ret 70
+	else if n == 471
+		ret 71
+	else if n == 472
+		ret 72
+	else if n == 473
+		ret 73
+	else if n == 474
+		ret 74
+	else if n == 475
+		ret 75
+	else if n == 476
+		ret 76
+	else if n == 477
+		ret 77
+	else if n == 478
+		ret 78
+	else if n == 479
+		ret 79
+	else if n == 480
+		ret 80
+	else if n == 481
+		ret 81
+	else if n == 482
+		ret 82
+	else if n == 483
+		ret 83
+	else if n == 484
+		ret 84
+	else if n == 485
+		ret 85
+	else if n == 486
+		ret 86
+	else if n == 487
+		ret 87
+	else if n == 488
+		ret 88
+	else if n == 489
+		ret 89
+	else if n == 490
+		ret 90
+	else if n == 491
+		ret 91
+	else if n == 492
+		ret 92
+	else if n == 493
+		ret 93
+	else if n == 494
+		ret 94
+	else if n == 495
+		ret 95
+	else if n == 496
+		ret 96
+	else if n == 497
+		ret 97
+	else if n == 498
+		ret 98
+	else if n == 499
+		ret 99
+	else if n == 500
+		ret 0
+	else if n == 501
+		ret 1
+	else if n == 502
+		ret 2
+	else if n == 503
+		ret 3
+	else if n == 504
+		ret 4
+	else if n == 505
+		ret 5
+	else if n == 506
+		ret 6
+	else if n == 507
+		ret 7
+	else if n == 508
+		ret 8
+	else if n == 509
+		ret 9
+	else if n == 510
+		ret 10
+	else if n == 511
+		ret 11
+	else if n == 512
+		ret 12
+	else if n == 513
+		ret 13
+	else if n == 514
+		ret 14
+	else if n == 515
+		ret 15
+	else if n == 516
+		ret 16
+	else if n == 517
+		ret 17
+	else if n == 518
+		ret 18
+	else if n == 519
+		ret 19
+	else if n == 520
+		ret 20
+	else if n == 521
+		ret 21
+	else if n == 522
+		ret 22
+	else if n == 523
+		ret 23
+	else if n == 524
+		ret 24
+	else if n == 525
+		ret 25
+	else if n == 526
+		ret 26
+	else if n == 527
+		ret 27
+	else if n == 528
+		ret 28
+	else if n == 529
+		ret 29
+	else if n == 530
+		ret 30
+	else if n == 531
+		ret 31
+	else if n == 532
+		ret 32
+	else if n == 533
+		ret 33
+	else if n == 534
+		ret 34
+	else if n == 535
+		ret 35
+	else if n == 536
+		ret 36
+	else if n == 537
+		ret 37
+	else if n == 538
+		ret 38
+	else if n == 539
+		ret 39
+	else if n == 540
+		ret 40
+	else if n == 541
+		ret 41
+	else if n == 542
+		ret 42
+	else if n == 543
+		ret 43
+	else if n == 544
+		ret 44
+	else if n == 545
+		ret 45
+	else if n == 546
+		ret 46
+	else if n == 547
+		ret 47
+	else if n == 548
+		ret 48
+	else if n == 549
+		ret 49
+	else if n == 550
+		ret 50
+	else if n == 551
+		ret 51
+	else if n == 552
+		ret 52
+	else if n == 553
+		ret 53
+	else if n == 554
+		ret 54
+	else if n == 555
+		ret 55
+	else if n == 556
+		ret 56
+	else if n == 557
+		ret 57
+	else if n == 558
+		ret 58
+	else if n == 559
+		ret 59
+	else if n == 560
+		ret 60
+	else if n == 561
+		ret 61
+	else if n == 562
+		ret 62
+	else if n == 563
+		ret 63
+	else if n == 564
+		ret 64
+	else if n == 565
+		ret 65
+	else if n == 566
+		ret 66
+	else if n == 567
+		ret 67
+	else if n == 568
+		ret 68
+	else if n == 569
+		ret 69
+	else if n == 570
+		ret 70
+	else if n == 571
+		ret 71
+	else if n == 572
+		ret 72
+	else if n == 573
+		ret 73
+	else if n == 574
+		ret 74
+	else if n == 575
+		ret 75
+	else if n == 576
+		ret 76
+	else if n == 577
+		ret 77
+	else if n == 578
+		ret 78
+	else if n == 579
+		ret 79
+	else if n == 580
+		ret 80
+	else if n == 581
+		ret 81
+	else if n == 582
+		ret 82
+	else if n == 583
+		ret 83
+	else if n == 584
+		ret 84
+	else if n == 585
+		ret 85
+	else if n == 586
+		ret 86
+	else if n == 587
+		ret 87
+	else if n == 588
+		ret 88
+	else if n == 589
+		ret 89
+	else if n == 590
+		ret 90
+	else if n == 591
+		ret 91
+	else if n == 592
+		ret 92
+	else if n == 593
+		ret 93
+	else if n == 594
+		ret 94
+	else if n == 595
+		ret 95
+	else if n == 596
+		ret 96
+	else if n == 597
+		ret 97
+	else if n == 598
+		ret 98
+	else if n == 599
+		ret 99
+	else if n == 600
+		ret 0
+	else if n == 601
+		ret 1
+	else if n == 602
+		ret 2
+	else if n == 603
+		ret 3
+	else if n == 604
+		ret 4
+	else if n == 605
+		ret 5
+	else if n == 606
+		ret 6
+	else if n == 607
+		ret 7
+	else if n == 608
+		ret 8
+	else if n == 609
+		ret 9
+	else if n == 610
+		ret 10
+	else if n == 611
+		ret 11
+	else if n == 612
+		ret 12
+	else if n == 613
+		ret 13
+	else if n == 614
+		ret 14
+	else if n == 615
+		ret 15
+	else if n == 616
+		ret 16
+	else if n == 617
+		ret 17
+	else if n == 618
+		ret 18
+	else if n == 619
+		ret 19
+	else if n == 620
+		ret 20
+	else if n == 621
+		ret 21
+	else if n == 622
+		ret 22
+	else if n == 623
+		ret 23
+	else if n == 624
+		ret 24
+	else if n == 625
+		ret 25
+	else if n == 626
+		ret 26
+	else if n == 627
+		ret 27
+	else if n == 628
+		ret 28
+	else if n == 629
+		ret 29
+	else if n == 630
+		ret 30
+	else if n == 631
+		ret 31
+	else if n == 632
+		ret 32
+	else if n == 633
+		ret 33
+	else if n == 634
+		ret 34
+	else if n == 635
+		ret 35
+	else if n == 636
+		ret 36
+	else if n == 637
+		ret 37
+	else if n == 638
+		ret 38
+	else if n == 639
+		ret 39
+	else if n == 640
+		ret 40
+	else if n == 641
+		ret 41
+	else if n == 642
+		ret 42
+	else if n == 643
+		ret 43
+	else if n == 644
+		ret 44
+	else if n == 645
+		ret 45
+	else if n == 646
+		ret 46
+	else if n == 647
+		ret 47
+	else if n == 648
+		ret 48
+	else if n == 649
+		ret 49
+	else if n == 650
+		ret 50
+	else if n == 651
+		ret 51
+	else if n == 652
+		ret 52
+	else if n == 653
+		ret 53
+	else if n == 654
+		ret 54
+	else if n == 655
+		ret 55
+	else if n == 656
+		ret 56
+	else if n == 657
+		ret 57
+	else if n == 658
+		ret 58
+	else if n == 659
+		ret 59
+	else if n == 660
+		ret 60
+	else if n == 661
+		ret 61
+	else if n == 662
+		ret 62
+	else if n == 663
+		ret 63
+	else if n == 664
+		ret 64
+	else if n == 665
+		ret 65
+	else if n == 666
+		ret 66
+	else if n == 667
+		ret 67
+	else if n == 668
+		ret 68
+	else if n == 669
+		ret 69
+	else if n == 670
+		ret 70
+	else if n == 671
+		ret 71
+	else if n == 672
+		ret 72
+	else if n == 673
+		ret 73
+	else if n == 674
+		ret 74
+	else if n == 675
+		ret 75
+	else if n == 676
+		ret 76
+	else if n == 677
+		ret 77
+	else if n == 678
+		ret 78
+	else if n == 679
+		ret 79
+	else if n == 680
+		ret 80
+	else if n == 681
+		ret 81
+	else if n == 682
+		ret 82
+	else if n == 683
+		ret 83
+	else if n == 684
+		ret 84
+	else if n == 685
+		ret 85
+	else if n == 686
+		ret 86
+	else if n == 687
+		ret 87
+	else if n == 688
+		ret 88
+	else if n == 689
+		ret 89
+	else if n == 690
+		ret 90
+	else if n == 691
+		ret 91
+	else if n == 692
+		ret 92
+	else if n == 693
+		ret 93
+	else if n == 694
+		ret 94
+	else if n == 695
+		ret 95
+	else if n == 696
+		ret 96
+	else if n == 697
+		ret 97
+	else if n == 698
+		ret 98
+	else if n == 699
+		ret 99
+	else if n == 700
+		ret 0
+	else if n == 701
+		ret 1
+	else if n == 702
+		ret 2
+	else if n == 703
+		ret 3
+	else if n == 704
+		ret 4
+	else if n == 705
+		ret 5
+	else if n == 706
+		ret 6
+	else if n == 707
+		ret 7
+	else if n == 708
+		ret 8
+	else if n == 709
+		ret 9
+	else if n == 710
+		ret 10
+	else if n == 711
+		ret 11
+	else if n == 712
+		ret 12
+	else if n == 713
+		ret 13
+	else if n == 714
+		ret 14
+	else if n == 715
+		ret 15
+	else if n == 716
+		ret 16
+	else if n == 717
+		ret 17
+	else if n == 718
+		ret 18
+	else if n == 719
+		ret 19
+	else if n == 720
+		ret 20
+	else if n == 721
+		ret 21
+	else if n == 722
+		ret 22
+	else if n == 723
+		ret 23
+	else if n == 724
+		ret 24
+	else if n == 725
+		ret 25
+	else if n == 726
+		ret 26
+	else if n == 727
+		ret 27
+	else if n == 728
+		ret 28
+	else if n == 729
+		ret 29
+	else if n == 730
+		ret 30
+	else if n == 731
+		ret 31
+	else if n == 732
+		ret 32
+	else if n == 733
+		ret 33
+	else if n == 734
+		ret 34
+	else if n == 735
+		ret 35
+	else if n == 736
+		ret 36
+	else if n == 737
+		ret 37
+	else if n == 738
+		ret 38
+	else if n == 739
+		ret 39
+	else if n == 740
+		ret 40
+	else if n == 741
+		ret 41
+	else if n == 742
+		ret 42
+	else if n == 743
+		ret 43
+	else if n == 744
+		ret 44
+	else if n == 745
+		ret 45
+	else if n == 746
+		ret 46
+	else if n == 747
+		ret 47
+	else if n == 748
+		ret 48
+	else if n == 749
+		ret 49
+	else if n == 750
+		ret 50
+	else if n == 751
+		ret 51
+	else if n == 752
+		ret 52
+	else if n == 753
+		ret 53
+	else if n == 754
+		ret 54
+	else if n == 755
+		ret 55
+	else if n == 756
+		ret 56
+	else if n == 757
+		ret 57
+	else if n == 758
+		ret 58
+	else if n == 759
+		ret 59
+	else if n == 760
+		ret 60
+	else if n == 761
+		ret 61
+	else if n == 762
+		ret 62
+	else if n == 763
+		ret 63
+	else if n == 764
+		ret 64
+	else if n == 765
+		ret 65
+	else if n == 766
+		ret 66
+	else if n == 767
+		ret 67
+	else if n == 768
+		ret 68
+	else if n == 769
+		ret 69
+	else if n == 770
+		ret 70
+	else if n == 771
+		ret 71
+	else if n == 772
+		ret 72
+	else if n == 773
+		ret 73
+	else if n == 774
+		ret 74
+	else if n == 775
+		ret 75
+	else if n == 776
+		ret 76
+	else if n == 777
+		ret 77
+	else if n == 778
+		ret 78
+	else if n == 779
+		ret 79
+	else if n == 780
+		ret 80
+	else if n == 781
+		ret 81
+	else if n == 782
+		ret 82
+	else if n == 783
+		ret 83
+	else if n == 784
+		ret 84
+	else if n == 785
+		ret 85
+	else if n == 786
+		ret 86
+	else if n == 787
+		ret 87
+	else if n == 788
+		ret 88
+	else if n == 789
+		ret 89
+	else if n == 790
+		ret 90
+	else if n == 791
+		ret 91
+	else if n == 792
+		ret 92
+	else if n == 793
+		ret 93
+	else if n == 794
+		ret 94
+	else if n == 795
+		ret 95
+	else if n == 796
+		ret 96
+	else if n == 797
+		ret 97
+	else if n == 798
+		ret 98
+	else if n == 799
+		ret 99
+	else if n == 800
+		ret 0
+	else if n == 801
+		ret 1
+	else if n == 802
+		ret 2
+	else if n == 803
+		ret 3
+	else if n == 804
+		ret 4
+	else if n == 805
+		ret 5
+	else if n == 806
+		ret 6
+	else if n == 807
+		ret 7
+	else if n == 808
+		ret 8
+	else if n == 809
+		ret 9
+	else if n == 810
+		ret 10
+	else if n == 811
+		ret 11
+	else if n == 812
+		ret 12
+	else if n == 813
+		ret 13
+	else if n == 814
+		ret 14
+	else if n == 815
+		ret 15
+	else if n == 816
+		ret 16
+	else if n == 817
+		ret 17
+	else if n == 818
+		ret 18
+	else if n == 819
+		ret 19
+	else if n == 820
+		ret 20
+	else if n == 821
+		ret 21
+	else if n == 822
+		ret 22
+	else if n == 823
+		ret 23
+	else if n == 824
+		ret 24
+	else if n == 825
+		ret 25
+	else if n == 826
+		ret 26
+	else if n == 827
+		ret 27
+	else if n == 828
+		ret 28
+	else if n == 829
+		ret 29
+	else if n == 830
+		ret 30
+	else if n == 831
+		ret 31
+	else if n == 832
+		ret 32
+	else if n == 833
+		ret 33
+	else if n == 834
+		ret 34
+	else if n == 835
+		ret 35
+	else if n == 836
+		ret 36
+	else if n == 837
+		ret 37
+	else if n == 838
+		ret 38
+	else if n == 839
+		ret 39
+	else if n == 840
+		ret 40
+	else if n == 841
+		ret 41
+	else if n == 842
+		ret 42
+	else if n == 843
+		ret 43
+	else if n == 844
+		ret 44
+	else if n == 845
+		ret 45
+	else if n == 846
+		ret 46
+	else if n == 847
+		ret 47
+	else if n == 848
+		ret 48
+	else if n == 849
+		ret 49
+	else if n == 850
+		ret 50
+	else if n == 851
+		ret 51
+	else if n == 852
+		ret 52
+	else if n == 853
+		ret 53
+	else if n == 854
+		ret 54
+	else if n == 855
+		ret 55
+	else if n == 856
+		ret 56
+	else if n == 857
+		ret 57
+	else if n == 858
+		ret 58
+	else if n == 859
+		ret 59
+	else if n == 860
+		ret 60
+	else if n == 861
+		ret 61
+	else if n == 862
+		ret 62
+	else if n == 863
+		ret 63
+	else if n == 864
+		ret 64
+	else if n == 865
+		ret 65
+	else if n == 866
+		ret 66
+	else if n == 867
+		ret 67
+	else if n == 868
+		ret 68
+	else if n == 869
+		ret 69
+	else if n == 870
+		ret 70
+	else if n == 871
+		ret 71
+	else if n == 872
+		ret 72
+	else if n == 873
+		ret 73
+	else if n == 874
+		ret 74
+	else if n == 875
+		ret 75
+	else if n == 876
+		ret 76
+	else if n == 877
+		ret 77
+	else if n == 878
+		ret 78
+	else if n == 879
+		ret 79
+	else if n == 880
+		ret 80
+	else if n == 881
+		ret 81
+	else if n == 882
+		ret 82
+	else if n == 883
+		ret 83
+	else if n == 884
+		ret 84
+	else if n == 885
+		ret 85
+	else if n == 886
+		ret 86
+	else if n == 887
+		ret 87
+	else if n == 888
+		ret 88
+	else if n == 889
+		ret 89
+	else if n == 890
+		ret 90
+	else if n == 891
+		ret 91
+	else if n == 892
+		ret 92
+	else if n == 893
+		ret 93
+	else if n == 894
+		ret 94
+	else if n == 895
+		ret 95
+	else if n == 896
+		ret 96
+	else if n == 897
+		ret 97
+	else if n == 898
+		ret 98
+	else if n == 899
+		ret 99
+	else if n == 900
+		ret 0
+	else if n == 901
+		ret 1
+	else if n == 902
+		ret 2
+	else if n == 903
+		ret 3
+	else if n == 904
+		ret 4
+	else if n == 905
+		ret 5
+	else if n == 906
+		ret 6
+	else if n == 907
+		ret 7
+	else if n == 908
+		ret 8
+	else if n == 909
+		ret 9
+	else if n == 910
+		ret 10
+	else if n == 911
+		ret 11
+	else if n == 912
+		ret 12
+	else if n == 913
+		ret 13
+	else if n == 914
+		ret 14
+	else if n == 915
+		ret 15
+	else if n == 916
+		ret 16
+	else if n == 917
+		ret 17
+	else if n == 918
+		ret 18
+	else if n == 919
+		ret 19
+	else if n == 920
+		ret 20
+	else if n == 921
+		ret 21
+	else if n == 922
+		ret 22
+	else if n == 923
+		ret 23
+	else if n == 924
+		ret 24
+	else if n == 925
+		ret 25
+	else if n == 926
+		ret 26
+	else if n == 927
+		ret 27
+	else if n == 928
+		ret 28
+	else if n == 929
+		ret 29
+	else if n == 930
+		ret 30
+	else if n == 931
+		ret 31
+	else if n == 932
+		ret 32
+	else if n == 933
+		ret 33
+	else if n == 934
+		ret 34
+	else if n == 935
+		ret 35
+	else if n == 936
+		ret 36
+	else if n == 937
+		ret 37
+	else if n == 938
+		ret 38
+	else if n == 939
+		ret 39
+	else if n == 940
+		ret 40
+	else if n == 941
+		ret 41
+	else if n == 942
+		ret 42
+	else if n == 943
+		ret 43
+	else if n == 944
+		ret 44
+	else if n == 945
+		ret 45
+	else if n == 946
+		ret 46
+	else if n == 947
+		ret 47
+	else if n == 948
+		ret 48
+	else if n == 949
+		ret 49
+	else if n == 950
+		ret 50
+	else if n == 951
+		ret 51
+	else if n == 952
+		ret 52
+	else if n == 953
+		ret 53
+	else if n == 954
+		ret 54
+	else if n == 955
+		ret 55
+	else if n == 956
+		ret 56
+	else if n == 957
+		ret 57
+	else if n == 958
+		ret 58
+	else if n == 959
+		ret 59
+	else if n == 960
+		ret 60
+	else if n == 961
+		ret 61
+	else if n == 962
+		ret 62
+	else if n == 963
+		ret 63
+	else if n == 964
+		ret 64
+	else if n == 965
+		ret 65
+	else if n == 966
+		ret 66
+	else if n == 967
+		ret 67
+	else if n == 968
+		ret 68
+	else if n == 969
+		ret 69
+	else if n == 970
+		ret 70
+	else if n == 971
+		ret 71
+	else if n == 972
+		ret 72
+	else if n == 973
+		ret 73
+	else if n == 974
+		ret 74
+	else if n == 975
+		ret 75
+	else if n == 976
+		ret 76
+	else if n == 977
+		ret 77
+	else if n == 978
+		ret 78
+	else if n == 979
+		ret 79
+	else if n == 980
+		ret 80
+	else if n == 981
+		ret 81
+	else if n == 982
+		ret 82
+	else if n == 983
+		ret 83
+	else if n == 984
+		ret 84
+	else if n == 985
+		ret 85
+	else if n == 986
+		ret 86
+	else if n == 987
+		ret 87
+	else if n == 988
+		ret 88
+	else if n == 989
+		ret 89
+	else if n == 990
+		ret 90
+	else if n == 991
+		ret 91
+	else if n == 992
+		ret 92
+	else if n == 993
+		ret 93
+	else if n == 994
+		ret 94
+	else if n == 995
+		ret 95
+	else if n == 996
+		ret 96
+	else if n == 997
+		ret 97
+	else if n == 998
+		ret 98
+	else if n == 999
+		ret 99
+	else
+		ret -1
+}
+
+sum: fun(a: i32) -> i32 = a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a + a
+
+main: fun -> i32
+{
+	val nested = ((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((7))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))
+	printf("%d %d %d\n", pick(957), sum(2), nested)
+	ret 0
+}

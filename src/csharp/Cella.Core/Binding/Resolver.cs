@@ -60,6 +60,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	private readonly List<Instantiation> _instantiations = [];
 	private readonly HashSet<Symbol> _genericReferences = [];
 	private readonly List<ResolvedFunctionNode> _lambdas = [];
+	private readonly HashSet<IExpressionNode> _resolvingFallbacks = [];
 	private readonly List<LambdaFrame> _lambdaFrames = [];
 	private readonly HashSet<SourceLocation> _sizeCheckLocations = [];
 	private IExpressionNode? storeTarget;
@@ -2817,9 +2818,14 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	
 	private IResolvedExpressionNode GetFallback(ResolvedCaseNameExpressionNode caseName)
 	{
-		if (!_caseNameFallbacks.TryGetValue(caseName, out var fallback))
-			_caseNameFallbacks[caseName] = fallback = VisitNode(caseName.Syntax, null);
+		if (_caseNameFallbacks.TryGetValue(caseName, out var fallback))
+			return fallback;
 		
+		if (!_resolvingFallbacks.Add(caseName.Syntax))
+			return new ResolvedInvalidExpressionNode(caseName.Syntax);
+		
+		_caseNameFallbacks[caseName] = fallback = VisitNode(caseName.Syntax, null);
+		_resolvingFallbacks.Remove(caseName.Syntax);
 		return fallback;
 	}
 	
@@ -4047,6 +4053,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		
 		if (values.Count == 0)
 		{
+			if (elementType is null && ExpectedType is not InvalidType)
+				Diagnostics.Add(new(DiagnosticSeverity.Error, node.SourceLocation, "Cannot infer the type of '[]'"));
+			
 			elementType ??= NativeSymbols.Invalid;
 		}
 		else if (elementType is not null)
@@ -4370,6 +4379,15 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		
 		if (GetPropertyMember(type, member.Text) is { } property)
 			return IsAccessibleMember(type, member, property.Visibility);
+		
+		if (GetMethods(type, member.Text).Select(static method => method.Function).ToList() is [_, ..] functions)
+		{
+			if (functions.Any(function => CanAccess(type, function)))
+				return true;
+			
+			Diagnostics.Add(ReportHiddenMember(member.SourceLocation, member.Text, functions));
+			return false;
+		}
 		
 		switch (_typePool.ResolveMember(type, member.Text))
 		{
@@ -4895,6 +4913,10 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		         borrow.Syntax is BorrowExpressionNode { IsMutable: false } syntax &&
 		         BorrowsWhenDeclared(borrow.Place))
 			Diagnostics.Add(new(DiagnosticSeverity.Hint, syntax.Keyword.SourceLocation, "Redundant 'imm'"));
+		
+		if (type is null && initializer is null)
+			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Identifier.SourceLocation,
+				$"Cannot infer the type of '{node.Identifier.Text}'"));
 		
 		type ??= initializer?.Type ?? NativeSymbols.Invalid;
 		if (TypePool.FindValueDyn(type) is { } valueDyn)

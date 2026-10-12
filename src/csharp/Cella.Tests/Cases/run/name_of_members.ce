@@ -1,0 +1,24 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Point: rec
+{
+	x: i32
+
+	len: fun(self) -> i32 = self.x
+
+	name: fun(self) -> cstr = nameOf(self)
+}
+
+main: fun -> i32
+{
+	val p = Point(1)
+	val a: cstr = nameOf(p.len)
+	val b: cstr = nameOf(Point.len)
+	printf("%s %s %s\n", a, b, p.name())
+	ret 0
+}
