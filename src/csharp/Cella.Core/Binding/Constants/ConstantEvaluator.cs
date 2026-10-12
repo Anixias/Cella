@@ -31,6 +31,30 @@ public sealed class ConstantEvaluator
 		return result;
 	}
 	
+	public Constant? EvaluateWithoutDrops(IResolvedExpressionNode node) =>
+		Evaluate(node) is { } value && !BuildsDroppedValue(node) ? value : null;
+	
+	private bool BuildsDroppedValue(IResolvedExpressionNode node) =>
+		node is ResolvedRecordExpressionNode or ResolvedArrayExpressionNode or ResolvedEnumCaseExpressionNode &&
+		typePool.NeedsDrop(node.Type) || GetOperands(node).Any(BuildsDroppedValue) ||
+		node is ResolvedMatchExpressionNode match && match.Arms.Any(arm => BuildsDroppedValue(arm.Value));
+	
+	public static IEnumerable<IResolvedExpressionNode> GetOperands(IResolvedExpressionNode node) => node switch
+	{
+		ResolvedUnaryOpExpressionNode n => [n.Operand],
+		ResolvedBinaryOpExpressionNode n => [n.Left, n.Right],
+		ResolvedChainedExpressionNode n => n.Operands,
+		ResolvedConversionExpressionNode n => [n.Source],
+		ResolvedAccessExpressionNode n => [n.Target],
+		ResolvedIndexerExpressionNode n => [n.Target, n.Index],
+		ResolvedRecordExpressionNode n => n.Fields.Select(static f => f.Value),
+		ResolvedEnumCaseExpressionNode n => n.Payload,
+		ResolvedIsExpressionNode n => [n.Value],
+		ResolvedMatchExpressionNode n => [n.Value],
+		ResolvedArrayExpressionNode n => n.Values,
+		_ => []
+	};
+	
 	public bool Fits(BigInteger value, IntegerType type) => Wrap(value, type) == value;
 	
 	private Constant? Fold(IResolvedExpressionNode node) => node switch

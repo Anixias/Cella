@@ -199,7 +199,7 @@ public sealed class Lowerer
 		private void VisitNode(IResolvedStatementNode node) => ((IResolvedStatementNodeVisitor)this).Visit(node);
 		
 		private Value VisitNode(IResolvedExpressionNode node) =>
-			LowerConstant(_evaluator.Evaluate(node), node.Syntax.SourceLocation) ?? VisitPlace(node);
+			LowerConstant(_evaluator.EvaluateWithoutDrops(node), node.Syntax.SourceLocation) ?? VisitPlace(node);
 		
 		private Value VisitPlace(IResolvedExpressionNode node) =>
 			((IResolvedExpressionNodeVisitor<Value>)this).Visit(node);
@@ -537,7 +537,7 @@ public sealed class Lowerer
 		private void LowerBranch(IResolvedExpressionNode condition, BasicBlock trueBlock, BasicBlock falseBlock)
 		{
 			var location = condition.Syntax.SourceLocation;
-			if (_evaluator.Evaluate(condition) is null)
+			if (_evaluator.EvaluateWithoutDrops(condition) is null)
 			{
 				switch (condition)
 				{

@@ -400,7 +400,8 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool, 
 		if (!CanFold(node))
 			return node;
 		
-		return GetOperands(node).Select(FindNonConstant).FirstOrDefault(static n => n is not null) ?? node;
+		return ConstantEvaluator.GetOperands(node).Select(FindNonConstant).FirstOrDefault(static n => n is not null) ??
+		       node;
 	}
 	
 	private static bool CanFold(IResolvedExpressionNode node) => node switch
@@ -412,22 +413,6 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool, 
 		ResolvedBinaryOpExpressionNode => false,
 		ResolvedChainedExpressionNode n => n.Links.All(static link => link.Function is null),
 		_ => true
-	};
-	
-	private static IEnumerable<IResolvedExpressionNode> GetOperands(IResolvedExpressionNode node) => node switch
-	{
-		ResolvedUnaryOpExpressionNode n => [n.Operand],
-		ResolvedBinaryOpExpressionNode n => [n.Left, n.Right],
-		ResolvedChainedExpressionNode n => n.Operands,
-		ResolvedConversionExpressionNode n => [n.Source],
-		ResolvedAccessExpressionNode n => [n.Target],
-		ResolvedIndexerExpressionNode n => [n.Target, n.Index],
-		ResolvedRecordExpressionNode n => n.Fields.Select(static f => f.Value),
-		ResolvedEnumCaseExpressionNode n => n.Payload,
-		ResolvedIsExpressionNode n => [n.Value],
-		ResolvedMatchExpressionNode n => [n.Value],
-		ResolvedArrayExpressionNode n => n.Values,
-		_ => []
 	};
 	
 	public void Visit(ResolvedAccessExpressionNode node)
