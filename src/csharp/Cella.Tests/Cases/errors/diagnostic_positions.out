@@ -1,0 +1,19 @@
+
+====== end_blank_lines.ce ======
+
+Error at line 3, column 29
+2 │ 
+3 │ value: fun -> i32 = add(1, 2
+                                ^ Expected ')'
+                                | To match the '(' on line 3
+
+
+====== unclosed_brace.ce ======
+
+Error at line 6, column 2
+5 │ f: fun(e: E) -> i32 = match e
+6 │ {
+     ^ Expected '}'
+     | To match the '{' on line 6
+
+[compilation failed]

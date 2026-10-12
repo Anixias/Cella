@@ -80,9 +80,9 @@ public static class Mangling
 		FStrType { Value.Instance: { } trait } => $"fstr[{MangleTrait(trait, modules)}]",
 		TraitType trait => MangleTrait(trait, modules),
 		ArrayType { LengthParameter: { } length } array =>
-			$"array[{MangleType(array.ElementType, modules)}, {length.Name}]",
+			$"array[{MangleType(array.ElementType, modules)};{length.Name}]",
 		ValueArgumentType value => value.Value.ToString(),
-		ArrayType array => $"array[{MangleType(array.ElementType, modules)}, {array.Length}]",
+		ArrayType array => $"array[{MangleType(array.ElementType, modules)};{array.Length}]",
 		FunctionType function => MangleFunctionType(function, modules),
 		ClosureType { Function.TypeArguments.IsDefaultOrEmpty: true } closure => $"own[{closure.DefinitionName}]",
 		ClosureType closure =>

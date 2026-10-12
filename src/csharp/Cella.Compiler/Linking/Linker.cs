@@ -38,15 +38,10 @@ public sealed class Linker(string rootPath, bool verbose)
 		
 		var linkerPath = Path.Combine(rootPath, linkerName);
 		
-		using var process = new Process
-		{
-			StartInfo =
-			{
-				FileName = linkerPath,
-				RedirectStandardError = true,
-				UseShellExecute = false
-			}
-		};
+		using var process = new Process();
+		process.StartInfo.FileName = linkerPath;
+		process.StartInfo.RedirectStandardError = true;
+		process.StartInfo.UseShellExecute = false;
 		
 		foreach (var arg in args)
 			process.StartInfo.ArgumentList.Add(arg);

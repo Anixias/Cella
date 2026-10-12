@@ -71,7 +71,7 @@ public sealed class StringSource : ISource
 			return (0, 0);
 		
 		if (position >= _text.Length)
-			return (_lines.Length, _lines.Length > 0 ? _lines[^1].Length : 0);
+			return (_lines.Length, _lines.Length > 0 ? _lines[^1].Length + 1 : 0);
 		
 		var low = 0;
 		var high = _lines.Length - 1;

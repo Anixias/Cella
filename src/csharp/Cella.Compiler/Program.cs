@@ -624,9 +624,8 @@ internal static class Program
 		
 		if (!range.IsValid)
 		{
-			var sourceLength = source.Length;
-			var pos = sourceLength > 0 ? sourceLength - 1 : 0;
-			range = new(pos, pos + 1);
+			var end = source.GetText(new(0, source.Length)).TrimEnd().Length;
+			range = new(end, end);
 		}
 		
 		var (severityColor, severityLabel) = severity switch
@@ -746,9 +745,10 @@ internal static class Program
 			WriteColored(diagnostic.Message, severityColor);
 			Console.WriteLine();
 			
+			var pipeColumn = hlVisStart + Math.Max(arrowCount, 1) - 1;
 			foreach (var hint in diagnostic.Hints)
 			{
-				WriteColored($"{gutter}   {new string(' ', hlVisEnd - 1)}| ", ConsoleColor.DarkGray);
+				WriteColored($"{gutter}   {new string(' ', pipeColumn)}| ", ConsoleColor.DarkGray);
 				WriteColored(hint, suggestionColor);
 				Console.WriteLine();
 			}

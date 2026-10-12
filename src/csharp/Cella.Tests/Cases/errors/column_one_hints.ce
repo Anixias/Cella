@@ -1,0 +1,29 @@
+mod test
+
+Text: rec
+{
+	id: i32
+
+	drop: op
+	{
+	}
+}
+
+Holder: ref rec
+{
+	text: imm[Text]
+
+	drop: op
+	{
+		val id = self.text.id
+	}
+}
+
+main: fun -> i32
+{
+	val first = Text(0)
+	var h = Holder(imm first)
+	val t = Text(1)
+	h.text = imm t
+	ret 0
+}

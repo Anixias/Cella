@@ -1,0 +1,16 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+local: pub fun(values: array[i32, 2]) -> i32 = values[0] + values[1]
+
+main: fun -> i32
+{
+	val grid = lib.Grid([1, 2, 3, 4])
+	var pair = [7, 8]
+	printf("%d %d %d %d\n", grid.total([5, 6]), lib.sum([1, 2, 3]), lib.first(@pair), local([1, 2]))
+	ret 0
+}

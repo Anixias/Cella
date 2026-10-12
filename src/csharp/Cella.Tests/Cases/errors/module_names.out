@@ -24,7 +24,7 @@ Error at line 1, column 5
 
 Error at line 1, column 1
 1 │ mod
-    ╘╛ Expected a module name
+    ╘═╛ Expected a module name
 
 
 ====== twice.ce ======

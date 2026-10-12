@@ -1,0 +1,11 @@
+
+====== column_one_hints.ce ======
+
+Error at line 29, column 1
+28 │     ret 0
+29 │ }
+     ^ Cannot use borrows of dropped values
+     | 'h' is dropped here
+     | Dropped here in an earlier iteration
+
+[compilation failed]

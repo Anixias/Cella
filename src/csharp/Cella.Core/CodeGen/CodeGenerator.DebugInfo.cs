@@ -574,7 +574,9 @@ public sealed unsafe partial class CodeGenerator
 		IEnumerable<(string Name, BigInteger Value)> cases)
 	{
 		var mapped = MapTypeSymbol(tagType);
-		LLVMMetadataRef[] enumerators = [..cases.Select(enumCase => CreateEnumerator(enumCase.Name, enumCase.Value))];
+		LLVMMetadataRef[] enumerators =
+			[..cases.Select(enumCase => CreateEnumerator(enumCase.Name, enumCase.Value, tagType, mapped.IntWidth))];
+		
 		var (file, line) = GetDeclarationSite(enumType);
 		using var typeName = new MarshaledString(name);
 		fixed (LLVMMetadataRef* elements = enumerators)
@@ -586,11 +588,23 @@ public sealed unsafe partial class CodeGenerator
 		}
 	}
 	
-	private LLVMMetadataRef CreateEnumerator(string name, BigInteger value)
+	private LLVMMetadataRef CreateEnumerator(string name, BigInteger value, IntegerType tagType, uint bits)
 	{
 		using var enumeratorName = new MarshaledString(name);
-		var isUnsigned = value > long.MaxValue;
-		return LLVM.DIBuilderCreateEnumerator(DiBuilder, enumeratorName, (nuint)enumeratorName.Length,
-			isUnsigned ? (long)(ulong)value : (long)value, isUnsigned ? 1 : 0);
+		if (value >= long.MinValue && value <= ulong.MaxValue)
+		{
+			var isUnsigned = value > long.MaxValue;
+			return LLVM.DIBuilderCreateEnumerator(DiBuilder, enumeratorName, (nuint)enumeratorName.Length,
+				isUnsigned ? (long)(ulong)value : (long)value, isUnsigned ? 1 : 0);
+		}
+		
+		var pattern = value & ((BigInteger.One << (int)bits) - 1);
+		var words = new ulong[(bits + 63) / 64];
+		for (var i = 0; i < words.Length; i++)
+			words[i] = (ulong)((pattern >> (64 * i)) & ulong.MaxValue);
+		
+		fixed (ulong* data = words)
+			return LLVM.DIBuilderCreateEnumeratorOfArbitraryPrecision(DiBuilder, enumeratorName,
+				(nuint)enumeratorName.Length, bits, data, tagType.IsSigned ? 0 : 1);
 	}
 }

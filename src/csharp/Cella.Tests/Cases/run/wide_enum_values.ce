@@ -1,0 +1,47 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Signed: enum(i128)
+{
+	zero
+	big = 170141183460469231731687303715884105727
+	low = -9223372036854775809
+}
+
+Unsigned: enum(u128)
+{
+	none
+	first = 18446744073709551616
+}
+
+Auto: enum
+{
+	none
+	first = 18446744073709551615
+	second
+}
+
+Wide: enum match i128
+{
+	zero = 0
+	huge = 170141183460469231731687303715884105727
+	rest(v) = else
+}
+
+pick: fun(s: Signed, u: Unsigned, a: Auto) -> i32 =
+	i32(s == Signed.big) + i32(u == Unsigned.first) + i32(a == Auto.second)
+
+main: fun -> i32
+{
+	val s = Signed.big
+	val l = Signed.low
+	val u = Unsigned.first
+	val a = Auto.second
+	val w = Wide(170141183460469231731687303715884105727)
+	printf("%d %d %d\n", pick(s, u, a), i32(l == Signed.low), i32(w is huge))
+	ret 0
+}

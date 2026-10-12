@@ -1,0 +1,5 @@
+mod test.blank
+
+value: fun -> i32 = add(1, 2
+
+

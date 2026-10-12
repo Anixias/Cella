@@ -1,0 +1,21 @@
+mod test
+
+stop: fun -> never
+{
+	loop
+	{
+	}
+}
+
+sizes: fun -> usize
+{
+	val a = sizeOf(stop())
+	loop
+	{
+		val b = alignOf(break)
+	}
+
+	ret sizeOf(ret 3)
+}
+
+main: fun -> i32 = 0

@@ -4299,6 +4299,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 				? new ResolvedAlignOfExpressionNode(target, node)
 				: new ResolvedSizeOfExpressionNode(target, node);
 		
+		if (target is NeverType)
+			return Error(node, $"'{target.Name}' has no {(isAlignment ? "alignment" : "size")}", CurrentTargetType);
+		
 		if (IsInvalid(target) || _typePool.SizeTable.TryGetSize(target) is not { } size)
 			return new ResolvedInvalidExpressionNode(node);
 		

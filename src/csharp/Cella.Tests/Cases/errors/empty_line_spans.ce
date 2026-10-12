@@ -1,0 +1,13 @@
+mod test
+
+main: fun -> i32
+{
+	var x: i32 = 3
+	val p = @x
+	if p ==
+
+		x
+		ret 1
+
+	ret 0
+}
