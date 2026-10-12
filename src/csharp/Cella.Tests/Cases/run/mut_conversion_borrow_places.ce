@@ -1,0 +1,46 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Sprite: rec
+{
+	hp: i32
+}
+
+Slot: rec
+{
+	value: Sprite
+
+	as: op(self) -> imm[Sprite] = imm self.value
+	as: op(mut self) -> mut[Sprite] = mut self.value
+
+	drop: op
+	{
+	}
+}
+
+Holder: ref rec
+{
+	slot: mut[Slot]
+}
+
+heal: fun(mut s: Sprite)
+{
+	s.hp += 10
+}
+
+look: fun(s: Sprite) -> i32 = s.hp
+
+main: fun -> i32
+{
+	var slot = Slot(Sprite(1))
+	val m = mut slot
+	heal(mut m)
+	val r = Holder(mut slot)
+	heal(mut r.slot)
+	printf("%d %d\n", slot.value.hp, look(m))
+	ret 0
+}

@@ -1,0 +1,17 @@
+mod test
+
+use lib.*
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+main: fun -> i32
+{
+	val step = 10
+	val adder = boxed[fun[i32 -> i32]].of(own fun(x: i32) -> i32 = x + step)
+	val counter = Counter(own fun -> i32 = step * 2)
+	printf("%d %d\n", adder(5), counter.get())
+	ret 0
+}

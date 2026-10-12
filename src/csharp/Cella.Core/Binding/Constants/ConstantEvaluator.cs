@@ -75,8 +75,8 @@ public sealed class ConstantEvaluator
 				(n.Syntax.SourceLocation, $"{operation} overflows '{n.Type.Name}'"),
 			ResolvedUnaryOpExpressionNode n when OverflowsNegation(n) =>
 				(n.Syntax.SourceLocation, $"Negation overflows '{n.Type.Name}'"),
-			ResolvedConversionExpressionNode n when FindLostConstant(n) is { } lost =>
-				(n.Syntax.SourceLocation, $"'{lost}' doesn't fit in '{n.Type.Name}'"),
+			ResolvedConversionExpressionNode n when FindLostConstant(n) is var (lost, target) =>
+				(n.Syntax.SourceLocation, $"'{lost}' doesn't fit in '{target.Name}'"),
 			_ => (default(SourceLocation), null)
 		};
 		
@@ -106,13 +106,20 @@ public sealed class ConstantEvaluator
 		node is { Operation: NativeImpl { Op: TokenType.OpMinus }, Type: IntegerType type } &&
 		Evaluate(node.Operand) is IntegerConstant { Value: var value } && !Fits(-value, type);
 	
-	public string? FindLostConstant(ResolvedConversionExpressionNode node)
+	public (string Value, IntegerType Target)? FindLostConstant(ResolvedConversionExpressionNode node)
 	{
-		if (node is not { Type: IntegerType target } ||
-		    node.Conversion is not (IntegerConversion or FloatConversion or EnumConversion))
+		var target = node switch
+		{
+			{ Type: IntegerType type, Conversion: IntegerConversion or FloatConversion or EnumConversion } => type,
+			{ Type: EnumSymbol { IsExternal: true } enumType, Conversion: EnumConversion } =>
+				typePool.GetTagType(enumType),
+			_ => null
+		};
+		
+		if (target is null)
 			return null;
 		
-		return Evaluate(node.Source) switch
+		string? lost = Evaluate(node.Source) switch
 		{
 			IntegerConstant { Value: var value } when !Fits(value, target) => value.ToString(),
 			FloatConstant { Value: var value } when !FitsInteger(value, target) =>
@@ -121,6 +128,8 @@ public sealed class ConstantEvaluator
 				typePool.GetCaseValue(enumType, enumCase) is var tag && !Fits(tag, target) => tag.ToString(),
 			_ => null
 		};
+		
+		return lost is null ? null : (lost, target);
 	}
 	
 	private bool FitsInteger(double value, IntegerType type) =>

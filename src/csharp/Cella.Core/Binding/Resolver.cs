@@ -194,7 +194,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		resolvedDeclarations.AddRange(_lambdas.Where(lambda => lambda.FunctionInfo.File == file));
 		_lambdas.RemoveAll(lambda => lambda.FunctionInfo.File == file);
 		_resolutionContexts.Pop();
-		_extSignatureTypes.ReportDestructors(Diagnostics);
+		_extSignatureTypes.Report(Diagnostics);
 		ReportTooLargeTypes();
 		
 		var result = new ResolvedFileNode(file, resolvedDeclarations, _importedFunctions.Values, node);
@@ -7196,7 +7196,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		
 		var receiver = source switch
 		{
-			ResolvedMutArgumentExpressionNode argument => argument.Place,
+			ResolvedMutArgumentExpressionNode argument => Decay(argument.Place),
 			ResolvedOwnExpressionNode => source,
 			_ => Decay(source)
 		};

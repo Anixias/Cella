@@ -1,0 +1,24 @@
+
+====== ext_enum_constant_tags.ce ======
+
+Error at line 16, column 20
+15 │ 
+16 │ high: val Format = Format(300)
+                        ╘═════════╛ '300' doesn't fit in 'u8'
+
+Error at line 20, column 13
+19 │ {
+20 │     val wide = Format(293)
+                    ╘═════════╛ '293' doesn't fit in 'u8'
+
+Error at line 21, column 17
+20 │ val wide = Format(293)
+21 │ val negative = Format(-1)
+                    ╘════════╛ '-1' doesn't fit in 'u8'
+
+Error at line 22, column 15
+21 │ val negative = Format(-1)
+22 │ val result = Result(4294967298)
+                  ╘════════════════╛ '4294967298' doesn't fit in 'i32'
+
+[compilation failed]

@@ -136,7 +136,7 @@ public sealed class SignatureCollector
 		ReportLayoutCycles();
 		ReportEntryPoint();
 		ReportPlainEnumsInExtSignatures();
-		ReportDestructorsInExtSignatures();
+		ReportExtSignatureTypes();
 		
 		FunctionInfo? entryPoint = _entryPoints.Count == 1 ? _entryPoints[0] : null;
 		return new(name, _symbolTable, _builder.Build(), entryPoint);
@@ -2433,29 +2433,6 @@ public sealed class SignatureCollector
 		return NativeSymbols.Invalid;
 	}
 	
-	private TypeSymbol RejectExtDyn(ITypeNode node, TypeSymbol type)
-	{
-		if (FindDyn(type) is not { } dyn)
-			return type;
-		
-		Diagnostics.Add(new(DiagnosticSeverity.Error, node.SourceLocation,
-			$"Cannot use '{dyn.Name}' in 'ext' signatures"));
-		
-		return NativeSymbols.Invalid;
-	}
-	
-	private static TypeSymbol? FindDyn(TypeSymbol type) => type switch
-	{
-		DynType or FStrType => type,
-		PointerType pointer => FindDyn(pointer.BaseType),
-		BorrowType borrow => FindDyn(borrow.Target),
-		ArrayType array => FindDyn(array.ElementType),
-		FunctionType function => function.ParameterTypes.Append(function.ReturnType)
-			.Select(FindDyn)
-			.FirstOrDefault(static dyn => dyn is not null),
-		_ => null
-	};
-	
 	private void ReportHiddenType(ITypeNode node, TypeSymbol type, Visibility visibility, string name)
 	{
 		if (FindHiddenType(type, visibility) is { } hidden)
@@ -2810,8 +2787,7 @@ public sealed class SignatureCollector
 		{
 			var param = node.Parameters[i];
 			var paramSymbol = function.Parameters[i];
-			var paramType = _typePool.GetPassedType(RejectExtDyn(param.Type, context.ResolveType(param.Type)),
-				paramSymbol.Mode);
+			var paramType = _typePool.GetPassedType(context.ResolveType(param.Type), paramSymbol.Mode);
 			
 			ReportHiddenType(param.Type, paramType, function.Visibility, node.Identifier.Text);
 			
@@ -2823,7 +2799,7 @@ public sealed class SignatureCollector
 		if (node.ReturnType is not { } returnTypeSyntax)
 			returnType = NativeSymbols.Void;
 		else
-			returnType = RejectExtDyn(returnTypeSyntax, context.ResolveReturnType(returnTypeSyntax));
+			returnType = context.ResolveReturnType(returnTypeSyntax);
 		
 		if (node.ReturnType is { } returnTypeNode)
 			ReportHiddenType(returnTypeNode, returnType, function.Visibility, node.Identifier.Text);
@@ -3239,12 +3215,12 @@ public sealed class SignatureCollector
 			ReportPlainEnum(type, node);
 	}
 	
-	private void ReportDestructorsInExtSignatures()
+	private void ReportExtSignatureTypes()
 	{
 		foreach (var (type, node) in GetExtSignatureTypes())
 			_extSignatureTypes.Add(type, node);
 		
-		_extSignatureTypes.ReportDestructors(Diagnostics);
+		_extSignatureTypes.Report(Diagnostics);
 	}
 	
 	private IEnumerable<(TypeSymbol Type, ITypeNode Node)> GetExtSignatureTypes()
@@ -3262,19 +3238,24 @@ public sealed class SignatureCollector
 			};
 			
 			for (var i = 0; i < parameters.Length; i++)
-				yield return (info.Signature.GetDeclaredType(i), parameters[i].Type);
+			{
+				if (!IsWrittenBorrow(parameters[i].Type))
+					yield return (info.Signature.GetDeclaredType(i), parameters[i].Type);
+			}
 			
 			if (returnType is not null)
 				yield return (info.Signature.ReturnType, returnType);
 		}
 	}
 	
+	private static bool IsWrittenBorrow(ITypeNode node) => node is BorrowTypeNode or FunctionTypeNode { IsRef: true };
+	
 	private void ReportPlainEnum(TypeSymbol type, ITypeNode node)
 	{
 		if (!HasPlainEnum(type))
 			return;
 		
-		var (located, location) = ExtSignatureTypes.Locate(type, node, HasPlainEnum);
+		var (located, _, location) = ExtSignatureTypes.Locate(type, node, HasPlainEnum);
 		Diagnostics.Add(ExtSignatureTypes.Report(location, "Cannot use plain enums in 'ext' signatures", located,
 			FindPlainEnum(located, [])!));
 	}

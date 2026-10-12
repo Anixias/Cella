@@ -466,7 +466,10 @@ public readonly struct ResolutionContext
 		if (functionType.IsExternal && ExtSignatureTypes is { } signatureTypes)
 		{
 			for (var i = 0; i < node.ParameterTypes.Length; i++)
-				signatureTypes.Add(functionType.GetDeclaredType(i), node.ParameterTypes[i]);
+			{
+				if (node.ParameterTypes[i] is not (BorrowTypeNode or FunctionTypeNode { IsRef: true }))
+					signatureTypes.Add(functionType.GetDeclaredType(i), node.ParameterTypes[i]);
+			}
 			
 			if (node.ReturnType is not null)
 				signatureTypes.Add(returnType, node.ReturnType);

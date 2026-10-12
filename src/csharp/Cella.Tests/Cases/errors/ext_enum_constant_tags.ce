@@ -1,0 +1,25 @@
+mod test
+
+Format: ext enum(u8)
+{
+	zero
+	rgba8 = 37
+}
+
+Result: ext enum
+{
+	success
+	notReady
+	timeout
+}
+
+high: val Format = Format(300)
+
+main: fun -> i32
+{
+	val wide = Format(293)
+	val negative = Format(-1)
+	val result = Result(4294967298)
+	val fits = Format(255)
+	ret 0
+}

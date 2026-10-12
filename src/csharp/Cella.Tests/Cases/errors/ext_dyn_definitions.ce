@@ -1,0 +1,16 @@
+mod test
+
+Shape: trait
+{
+	area: fun(self) -> i32
+}
+
+Holder: rec
+{
+	visit: ext fun[ptr[dyn[Shape]] -> i32]
+}
+
+visit: ext fun(shape: dyn[Shape]) -> i32 = shape.area()
+visitAddress: ext fun(shape: ptr[dyn[Shape]]) -> i32 = 0
+
+main: fun -> i32 = 0

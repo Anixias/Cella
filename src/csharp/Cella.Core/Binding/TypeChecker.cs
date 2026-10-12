@@ -616,12 +616,12 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool, 
 		
 		var reported = overflows;
 		VisitNode(node.Source);
-		if (overflows > reported || evaluator.FindLostConstant(node) is not { } lost)
+		if (overflows > reported || evaluator.FindLostConstant(node) is not var (lost, target))
 			return;
 		
 		overflows++;
 		Diagnostics.Add(new(DiagnosticSeverity.Error, node.Syntax.SourceLocation,
-			$"'{lost}' doesn't fit in '{node.Type.Name}'"));
+			$"'{lost}' doesn't fit in '{target.Name}'"));
 	}
 	
 	private static string DescribeMatchValue(Constant constant) => constant switch

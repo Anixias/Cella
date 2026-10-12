@@ -1,0 +1,22 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Result: ext enum
+{
+	success
+	notReady
+	timeout
+}
+
+convert: fun(value: i64) -> Result = Result(value)
+
+main: fun -> i32
+{
+	printf("%d\n", i32(convert(2)))
+	printf("%d\n", i32(convert(4294967298)))
+	ret 0
+}

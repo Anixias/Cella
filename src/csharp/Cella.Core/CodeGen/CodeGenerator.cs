@@ -128,7 +128,7 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 	
 	private bool IsObjectLocal(FunctionSymbol function) =>
 		function.Visibility is Visibility.Private or Visibility.Module &&
-		function.Kind is not (FunctionKind.Destructor or FunctionKind.Constructor) &&
+		function.Kind is not (FunctionKind.Destructor or FunctionKind.Constructor) && !function.OwnsCaptures &&
 		!_sharedFunctions.Contains(function);
 	
 	private bool IsExported(FunctionSymbol function) => function.Visibility == Visibility.Public ||
@@ -2083,7 +2083,12 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 			PanicIf(builder.BuildNot(IsCaseValue(to, source, sourceType, builder)),
 				$"'{to.Name}' has no case with this value", v.SourceLocation, builder);
 		
-		var resized = ResizeInteger(source, MapTypeSymbol(_typePool.GetTagType(to)), sourceType.IsSigned, builder);
+		var tagType = _typePool.GetTagType(to);
+		var resized = to.IsExternal
+			? ConvertInteger(source, MapTypeSymbol(tagType), sourceType.IsSigned, tagType.IsSigned, v.SourceLocation,
+				builder)
+			: ResizeInteger(source, MapTypeSymbol(tagType), sourceType.IsSigned, builder);
+		
 		return EmitTagged(to, resized, builder);
 	}
 	

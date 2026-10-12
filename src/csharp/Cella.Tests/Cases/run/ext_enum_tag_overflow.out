@@ -1,0 +1,4 @@
+2
+[stderr]
+Panic at ext_enum_tag_overflow.ce:15:38: conversion overflow
+[exit code -1073740791]
