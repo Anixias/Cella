@@ -40,9 +40,7 @@ public sealed class DropElaborator(TypePool typePool, Action<InitState, MemoryEv
 				if (state is null)
 					continue;
 				
-				var updates = Update(state, linearizer.Linearize(instruction));
-				if (instruction is not EndScopeInstruction)
-					instructions.AddRange(updates);
+				instructions.AddRange(Update(state, linearizer.Linearize(instruction)));
 			}
 			
 			if (state is not null)
