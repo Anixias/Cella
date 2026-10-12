@@ -1,0 +1,9 @@
+
+====== chain_conversion_moves.ce ======
+
+Error at line 27, column 26
+26 │ {
+27 │     val shared = Value(1) < Owned(2) < Value(3)
+                                 ╘══════╛ Cannot move operands shared by two comparisons
+
+[compilation failed]

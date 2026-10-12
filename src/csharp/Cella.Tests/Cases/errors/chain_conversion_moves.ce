@@ -1,0 +1,29 @@
+mod test
+
+Value: rec
+{
+	x: i32
+
+	<: op(a: Value, b: Value) -> bool = a.x < b.x
+
+	drop: op
+	{
+	}
+}
+
+Owned: rec
+{
+	n: i32
+
+	as: op(own self) -> Value = Value(self.n)
+
+	drop: op
+	{
+	}
+}
+
+main: fun -> i32
+{
+	val shared = Value(1) < Owned(2) < Value(3)
+	ret 0
+}

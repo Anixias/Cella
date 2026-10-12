@@ -1,0 +1,56 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Value: rec
+{
+	x: i32
+
+	<: op(a: Value, b: Value) -> bool = a.x < b.x
+
+	drop: op
+	{
+		printf("drop value %d\n", self.x)
+	}
+}
+
+Owned: rec
+{
+	n: i32
+
+	as: op(own self) -> Value = Value(self.n)
+
+	drop: op
+	{
+		printf("drop owned %d\n", self.n)
+	}
+}
+
+Lent: rec
+{
+	n: i32
+
+	as: op(self) -> Value = Value(self.n)
+
+	drop: op
+	{
+		printf("drop lent %d\n", self.n)
+	}
+}
+
+main: fun -> i32
+{
+	val last = Value(1) < Value(2) < Owned(3)
+	printf("last %d\n", last)
+
+	val owned = Owned(9)
+	val named = Value(1) < Value(2) < own owned
+	printf("named %d\n", named)
+
+	val middle = Value(1) < Lent(2) < Value(3)
+	printf("middle %d\n", middle)
+	ret 0
+}

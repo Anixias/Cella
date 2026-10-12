@@ -5957,7 +5957,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 				operands[i + j] = MaterializeChainOperand(args[j], resolution.Callable.ParameterTypes[j]);
 			
 			var function = resolution.Callable is FunctionCallable callable ? callable.Info : (FunctionInfo?)null;
-			if (function is { } info && FindSharedMove(operands, i, info) is { } shared)
+			if (FindSharedMove(operands, i, function, resolution.ArgumentConversions) is { } shared)
 				return Error(node, "Cannot move operands shared by two comparisons", CurrentTargetType,
 					shared.Syntax.SourceLocation);
 			
@@ -5984,13 +5984,16 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	}
 	
 	private IResolvedExpressionNode? FindSharedMove(List<IResolvedExpressionNode> operands, int link,
-		FunctionInfo function)
+		FunctionInfo? function, IReadOnlyList<Conversion?> conversions)
 	{
 		for (var j = 0; j < 2; j++)
 		{
 			var index = link + j;
-			if (index > 0 && index < operands.Count - 1 && function.Signature.GetMode(j) == ParameterMode.Own &&
-			    !_typePool.IsCopy(operands[index].Type))
+			var moves = function?.Signature.GetMode(j) == ParameterMode.Own ||
+			            conversions[j] is FunctionConversion { Function.Signature: var signature } &&
+			            signature.GetMode(0) == ParameterMode.Own;
+			
+			if (index > 0 && index < operands.Count - 1 && moves && !_typePool.IsCopy(operands[index].Type))
 				return operands[index];
 		}
 		

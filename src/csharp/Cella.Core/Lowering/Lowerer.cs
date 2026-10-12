@@ -1553,8 +1553,9 @@ public sealed class Lowerer
 						PassChainOperand(left, function, 0, link.LeftConversion, NamesPlace(node.Operands[i])),
 						PassChainOperand(right, function, 1, link.RightConversion, NamesPlace(node.Operands[i + 1]))
 					], location)
-					: LowerBinOp(ConvertChainOperand(left, link.LeftConversion), link.Operation!,
-						ConvertChainOperand(right, link.RightConversion), location);
+					: LowerBinOp(ConvertChainOperand(left, link.LeftConversion, NamesPlace(node.Operands[i])),
+						link.Operation!, ConvertChainOperand(right, link.RightConversion,
+							NamesPlace(node.Operands[i + 1])), location);
 				
 				var block = GetOrMakeBlock();
 				if (i == node.Links.Length - 1)
@@ -1593,13 +1594,20 @@ public sealed class Lowerer
 			return IsPlaceValue(value) ? value : StoreTemporary(value, "chain_operand");
 		}
 		
-		private static Value ConvertChainOperand(Value operand, Conversion? conversion) =>
-			conversion is null ? operand : new ConversionValue(operand, conversion, operand.SourceLocation);
+		private Value ConvertChainOperand(Value operand, Conversion? conversion, bool isPlace) => conversion switch
+		{
+			null => operand,
+			FunctionConversion { Function: var function } =>
+				new CallValue(function, [PassChainArgument(operand, function, 0, isPlace)], operand.SourceLocation),
+			_ => new ConversionValue(operand, conversion, operand.SourceLocation)
+		};
 		
 		private Value PassChainOperand(Value operand, FunctionInfo function, int index, Conversion? conversion,
-			bool isPlace)
+			bool isPlace) => PassChainArgument(ConvertChainOperand(operand, conversion, isPlace), function, index,
+			isPlace && conversion is null);
+		
+		private Value PassChainArgument(Value value, FunctionInfo function, int index, bool isPlace)
 		{
-			var value = ConvertChainOperand(operand, conversion);
 			var signature = function.DeclaredSignature;
 			return GetPassing(signature.ParameterTypes[index], signature.GetMode(index)) switch
 			{
