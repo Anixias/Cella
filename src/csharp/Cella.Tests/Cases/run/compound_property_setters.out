@@ -1,0 +1,9 @@
+drop 1
+drop 106
+held 106
+drop 106
+held 1108
+drop 106
+count 106
+drop 1108
+[exit code 0]

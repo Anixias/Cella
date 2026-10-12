@@ -1,0 +1,70 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Token: rec
+{
+	id: i32
+
+	drop: op
+	{
+		printf("drop %d\n", self.id)
+	}
+
+	+=: op(mut self, k: i32)
+	{
+		self.id += k
+	}
+}
+
+Slot: rec
+{
+	held: Token
+
+	token: prop Token
+	{
+		get(self) = Token(self.held.id + 100)
+		set(mut self, value)
+		{
+			self.held = Token(value.id)
+		}
+	}
+
+	owned: prop Token
+	{
+		get(self) = Token(self.held.id + 1000)
+		set(mut self, own value)
+		{
+			self.held = own value
+		}
+	}
+}
+
+Registry: rec
+{
+	count: var i32 = 1
+
+	token: prop Token
+	{
+		get = Token(count + 100)
+		set(value)
+		{
+			count = value.id
+		}
+	}
+}
+
+main: fun -> i32
+{
+	var slot = Slot(Token(1))
+	slot.token += 5
+	printf("held %d\n", slot.held.id)
+	slot.owned += 2
+	printf("held %d\n", slot.held.id)
+	Registry.token += 5
+	printf("count %d\n", Registry.count)
+	ret 0
+}

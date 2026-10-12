@@ -1410,13 +1410,16 @@ public sealed class Lowerer
 			Value current = new CallValue(node.Getter, PassReceiver(node.Getter, receiver), location);
 			if (node.Compound is { } compound)
 			{
+				var valueIndex = node.Setter.DeclaredSignature.ParameterTypes.Length - 1;
 				var place = StoreTemporary(current, "current");
 				var args = LowerArguments([node.Right], compound, 1);
 				args.Insert(0, new UnaryOpValue(_typePool.GetPointerType(place.Type), place, UnaryOperation.AddressOf,
 					location));
 				
 				GetOrMakeBlock().Instructions.Add(new ExpressionInstruction(new CallValue(compound, args, location)));
-				return new CallValue(node.Setter, [..PassReceiver(node.Setter, receiver), Consume(place)], location);
+				return new CallValue(node.Setter,
+					[..PassReceiver(node.Setter, receiver), PassChainArgument(place, node.Setter, valueIndex, false)],
+					location);
 			}
 			
 			if (MayEmit(node.Right))
