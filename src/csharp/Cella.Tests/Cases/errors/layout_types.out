@@ -1,0 +1,19 @@
+
+====== layout_types.ce ======
+
+Error at line 9, column 24
+8 │ 
+9 │ concrete: fun -> i32 = sizeOf(P)
+                           ╘═══════╛ Cannot convert type 'usize' to 'i32'
+
+Error at line 11, column 26
+10 │ 
+11 │ generic[T]: fun -> i32 = alignOf(T)
+                              ╘════════╛ Cannot convert type 'usize' to 'i32'
+
+Error at line 15, column 18
+14 │ {
+15 │     val small: u8 = sizeOf(P)
+                         ╘═══════╛ Cannot convert type 'usize' to 'u8'
+
+[compilation failed]

@@ -1,0 +1,17 @@
+mod test
+
+P: rec
+{
+	a: i64
+	b: i64
+}
+
+concrete: fun -> i32 = sizeOf(P)
+
+generic[T]: fun -> i32 = alignOf(T)
+
+main: fun -> i32
+{
+	val small: u8 = sizeOf(P)
+	ret 0
+}

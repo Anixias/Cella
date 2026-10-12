@@ -1,0 +1,23 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+P: rec
+{
+	a: i64
+	b: i64
+}
+
+sizeOfT[T]: fun -> usize = sizeOf(T)
+
+main: fun -> i32
+{
+	val m = sizeOf(P)
+	val bytes: array[u8, alignOf(i32)] = [1, 2, 3, 4]
+	printf("%zu %zu %zu %zu\n", sizeOf(P), alignOf(P), sizeOf(P) + 1, m * 2)
+	printf("%d %zu %zu\n", i32(sizeOf(P)), sizeOfT[P](), sizeOf(bytes))
+	ret 0
+}

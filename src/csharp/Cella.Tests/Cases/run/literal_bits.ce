@@ -17,7 +17,7 @@ run: fun(a: u8)
 	val masked: u8 = a & ~5
 	val flags = Flags(a & ~1)
 	val loose = a & ~5
-	printf("%d %d %d %d (size %d)\n", masked, flags.bits, clear(a), loose, sizeOf(loose))
+	printf("%d %d %d %d (size %zu)\n", masked, flags.bits, clear(a), loose, sizeOf(loose))
 }
 
 main: fun -> i32
@@ -34,7 +34,7 @@ main: fun -> i32
 	val dropped: u8 = 3 << 7
 	val wide: i64 = 1 << 40
 	val lowest: i32 = -(1 << 31)
-	printf("%d %d (size %d) %d %lld %d\n", shifted, natural, sizeOf(natural), dropped, wide, lowest)
+	printf("%d %d (size %zu) %d %lld %d\n", shifted, natural, sizeOf(natural), dropped, wide, lowest)
 
 	val turned: u8 = 1 <<< 9
 	val spun = 1 <<< 9

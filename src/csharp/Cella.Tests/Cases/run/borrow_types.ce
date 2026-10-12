@@ -108,7 +108,7 @@ main: fun -> i32
 	bump(mut tally)
 	tally.count = mut b
 	bump(mut tally)
-	printf("%d %d %d\n", a, b, sizeOf(Tally))
+	printf("%d %d %zu\n", a, b, sizeOf(Tally))
 
 	var effect = Effect.hit(7)
 	val e = imm effect
@@ -120,7 +120,7 @@ main: fun -> i32
 
 	val pair: array[imm[i32], 2] = [a, b]
 	val second = @pair[1]
-	printf("%d %d %d %d %d %d\n", amount, pair[0], pair[1], *second, sizeOf(imm[i32]), sizeOf(e))
+	printf("%d %d %d %d %zu %zu\n", amount, pair[0], pair[1], *second, sizeOf(imm[i32]), sizeOf(e))
 
 	var buffer = make(1)
 	val viewed = imm buffer

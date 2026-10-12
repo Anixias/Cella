@@ -20,5 +20,5 @@ Point: rec
 
 main: fun -> i32
 {
-	ret sizeOf(Shape)
+	ret i32(sizeOf(Shape))
 }

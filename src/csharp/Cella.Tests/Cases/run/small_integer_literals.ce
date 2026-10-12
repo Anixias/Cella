@@ -26,7 +26,7 @@ main: fun -> i32
 	var widened: u32 = u32(byte) + 1
 	var outOfRange = tiny + 200
 	printf("%d %d %d %u %d\n", wrappedTiny, wrappedByte, wrappedShort, widened, outOfRange)
-	printf("%d %d %d %d\n", sizeOf(wrappedTiny), sizeOf(wrappedByte), sizeOf(wrappedShort), sizeOf(outOfRange))
+	printf("%zu %zu %zu %zu\n", sizeOf(wrappedTiny), sizeOf(wrappedByte), sizeOf(wrappedShort), sizeOf(outOfRange))
 
 	var count: i32 = 0
 	printf("%d\n", pick(count, 5))

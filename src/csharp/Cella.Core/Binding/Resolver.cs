@@ -4303,7 +4303,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			return new ResolvedInvalidExpressionNode(node);
 		
 		var bits = isAlignment ? size.CountAlignmentBits(_pointerBitSize) : size.CountBits(_pointerBitSize);
-		return new ResolvedLiteralExpressionNode(NativeSymbols.UntypedInteger, (bits + 7) / 8, node);
+		return new ResolvedLiteralExpressionNode(NativeSymbols.UIntSize, (bits + 7) / 8, node);
 	}
 	
 	public IResolvedExpressionNode Visit(TypeExpressionNode node) =>

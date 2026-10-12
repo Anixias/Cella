@@ -32,7 +32,7 @@ main: fun -> i32
 	var b = single + half
 	var c = single * 2
 	var d = byte * single
-	printf("%.2f %.2f %.2f %.2f %d %d\n", a, b, c, d, sizeOf(b), sizeOf(c))
+	printf("%.2f %.2f %.2f %.2f %zu %zu\n", a, b, c, d, sizeOf(b), sizeOf(c))
 
 	var zero = 0.0
 	var nan = zero / zero

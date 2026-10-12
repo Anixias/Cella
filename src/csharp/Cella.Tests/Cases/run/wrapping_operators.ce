@@ -32,7 +32,7 @@ run: fun(a: u8, b: i32, c: u32, d: i128)
 	val x = a +% 1
 	val y = b *% 2
 	val z = c -% 2
-	printf("%d (size %d) %d %u %lld\n", x, sizeOf(x), y, z, i64(d *% d))
+	printf("%d (size %zu) %d %u %lld\n", x, sizeOf(x), y, z, i64(d *% d))
 
 	var w: u8 = 250
 	w +%= 10
@@ -51,7 +51,7 @@ main: fun -> i32
 	val literal: u8 = 200 +% 100
 	val natural = 2147483647 +% 1
 	val wide: i64 = 2147483647 +% 1
-	printf("%d %d %d (size %d) %lld\n", typed, literal, natural, sizeOf(natural), wide)
+	printf("%d %d %d (size %zu) %lld\n", typed, literal, natural, sizeOf(natural), wide)
 
 	var late = Clock(20) +% Clock(6)
 	late +%= Clock(23)

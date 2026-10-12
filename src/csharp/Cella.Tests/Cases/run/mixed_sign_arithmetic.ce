@@ -31,14 +31,14 @@ main: fun -> i32
 	var mixed = medium + negative
 	var halves = medium + short
 	var masked = small & negative
-	printf("%d %d %d %d %d %d %d %d\n", bytes, sizeOf(bytes), mixed, sizeOf(mixed), halves, sizeOf(halves), masked,
+	printf("%d %zu %d %zu %d %zu %d %zu\n", bytes, sizeOf(bytes), mixed, sizeOf(mixed), halves, sizeOf(halves), masked,
 		sizeOf(masked))
 
 	var words = count + signed
 	var product = count * signed
 	var quotient = count / signed
 	var longs = big + signedWide
-	printf("%lld %d %lld %d %lld %d %lld %d\n", words, sizeOf(words), product, sizeOf(product), quotient,
+	printf("%lld %zu %lld %zu %lld %zu %lld %zu\n", words, sizeOf(words), product, sizeOf(product), quotient,
 		sizeOf(quotient), i64(longs), sizeOf(longs))
 	ret 0
 }
