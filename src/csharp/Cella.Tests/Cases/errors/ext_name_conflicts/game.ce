@@ -1,0 +1,4 @@
+mod game
+
+run: pub ext fun -> i32 = 1
+counter: pub ext("run") var i32 = 0

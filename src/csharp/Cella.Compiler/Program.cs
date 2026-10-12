@@ -313,13 +313,13 @@ internal static class Program
 	private static ImmutableArray<string> GetPlainNames(AssemblySymbol assembly) =>
 	[
 		..assembly.SymbolTable.DeclarationSymbols.Values
-			.OfType<FunctionSymbol>()
-			.Where(static function => function is
+			.Select(static symbol => symbol switch
 			{
-				Visibility: Visibility.Public,
-				Syntax: FunctionNode { IsExternal: true }
+				FunctionSymbol { Syntax: FunctionNode } function => function.ExternalName,
+				GlobalSymbol { IsImport: false } global => global.ExternalName,
+				_ => null
 			})
-			.Select(static function => function.Name)
+			.OfType<string>()
 			.Distinct()
 	];
 	
@@ -587,7 +587,7 @@ internal static class Program
 				.GroupBy(static pair => pair.Name)
 				.Where(static sameName => sameName.Count() > 1)
 				.Select(static sameName =>
-					$"'{sameName.Key}' is exported by {DescribeProjects([..sameName.Select(static pair => pair.Owner)])}")
+					$"'{sameName.Key}' is defined by {DescribeProjects([..sameName.Select(static pair => pair.Owner)])}")
 				.ToList();
 			
 			if (conflicts.Count > 0)

@@ -256,9 +256,17 @@ public sealed class SignatureCollector
 		
 		var node = (GlobalNode)declaration.Node;
 		var context = declaration.Context;
-		var initializer = constants!.ResolveInitializer(node.Initializer, type, context);
-		var value = type is InvalidType ? InvalidConstant.Instance : Evaluator.Evaluate(initializer);
-		var mangledName = context.Mangle(global);
+		var initializer = node.Initializer is { } expression
+			? constants!.ResolveInitializer(expression, type, context)
+			: null;
+		
+		var value = type is InvalidType
+			? InvalidConstant.Instance
+			: initializer is null
+				? null
+				: Evaluator.Evaluate(initializer);
+		
+		var mangledName = global.IsImport ? global.ExternalName! : context.Mangle(global);
 		
 		info = new GlobalInfo(mangledName, global, type, initializer, value, context.File);
 		_builder.Globals[global] = info;
@@ -3038,21 +3046,29 @@ public sealed class SignatureCollector
 	
 	private void ReportPlainNameConflicts()
 	{
-		var exported = _symbolTable.DeclarationSymbols.Values
-			.OfType<FunctionSymbol>()
-			.Where(static function => function is
-			{
-				Visibility: Visibility.Public,
-				Syntax: FunctionNode { IsExternal: true }
-			})
-			.GroupBy(static function => function.Name)
-			.Where(sameName =>
-				sameName.Select(function => _builder.Functions[function].File?.Module).Distinct().Count() > 1);
+		var definitions = _symbolTable.DeclarationSymbols.Values
+			.SelectMany(FindExternalDefinitions)
+			.GroupBy(static definition => definition.Name)
+			.Where(static sameName => sameName
+				.Select(static definition => (definition.Module, definition.Identifier.Text))
+				.Distinct()
+				.Count() > 1);
 		
-		foreach (var function in exported.SelectMany(static sameName => sameName))
-			Diagnostics.Add(new(DiagnosticSeverity.Error, ((FunctionNode)function.Syntax).Identifier.SourceLocation,
-				$"'{function.Name}' is exported from more than one module"));
+		foreach (var definition in definitions.SelectMany(static sameName => sameName))
+			Diagnostics.Add(new(DiagnosticSeverity.Error, definition.Identifier.SourceLocation,
+				$"'{definition.Name}' is defined by more than one 'ext' declaration"));
 	}
+	
+	private IEnumerable<ExternalDefinition> FindExternalDefinitions(Symbol symbol) => symbol switch
+	{
+		FunctionSymbol { Syntax: FunctionNode node, ExternalName: { } name } function =>
+			[new(name, node.Identifier, _builder.Functions[function].File?.Module)],
+		GlobalSymbol { IsImport: false, ExternalName: { } name } global =>
+			[new(name, global.Syntax.Identifier, GetGlobalInfo(global)?.File.Module)],
+		_ => []
+	};
+	
+	private readonly record struct ExternalDefinition(string Name, Token Identifier, ModuleSymbol? Module);
 	
 	private static bool AreVisibleTogether(Symbol first, FileSymbol firstFile, Symbol second, FileSymbol secondFile) =>
 		firstFile.Module == secondFile.Module && (firstFile == secondFile ||
@@ -3300,6 +3316,12 @@ public sealed class SignatureCollector
 	
 	private IEnumerable<(TypeSymbol Type, ITypeNode Node)> GetExtSignatureTypes()
 	{
+		foreach (var (global, info) in _builder.Globals)
+		{
+			if (global.IsExternal)
+				yield return (info.Type, global.Syntax.Type);
+		}
+		
 		foreach (var (function, info) in _builder.Functions)
 		{
 			if (!function.IsExternal)

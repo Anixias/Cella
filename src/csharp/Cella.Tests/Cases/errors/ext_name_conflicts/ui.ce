@@ -1,0 +1,3 @@
+mod ui
+
+start: ext("run") fun -> i32 = 2

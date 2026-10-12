@@ -1,0 +1,19 @@
+
+====== ext_name_syntax.ce ======
+
+Error at line 5, column 17
+4 │ {
+5 │     value: var i32 = 4
+                       ^ Cannot initialize values in 'ext' blocks
+
+Error at line 8, column 11
+7 │ 
+8 │ Kind: ext("kind") enum
+              ╘════╛ Cannot name 'ext' enums
+
+Error at line 14, column 12
+13 │ 
+14 │ blank: ext("") val i32 = 0
+                ╘╛ Cannot use empty 'ext' names
+
+[compilation failed]

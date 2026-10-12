@@ -1,0 +1,28 @@
+mod test
+
+Shape: trait
+{
+	area: fun(self) -> i32
+}
+
+Buffer: rec
+{
+	data: ptr
+
+	drop: op
+	{
+	}
+}
+
+Team: enum
+{
+	red
+	blue
+}
+
+buffer: ext val Buffer = Buffer(null)
+team: ext var Team = Team.red
+callback: ext val fun[-> i32] = fun = 1
+shape: ext val ptr[dyn[Shape]] = null
+
+main: fun -> i32 = 0

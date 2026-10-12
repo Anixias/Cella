@@ -126,6 +126,14 @@ public sealed class FunctionSymbol
 	public SourceLocation Definition { get; } = syntax.SourceLocation;
 	public bool IsExternal => Kind == FunctionKind.External || Syntax is FunctionNode { IsExternal: true };
 	
+	public string? ExternalName => Syntax switch
+	{
+		ExternalFunctionNode node => node.ExternalName?.Text ?? Name,
+		FunctionNode { IsExternal: true } node =>
+			node.ExternalName?.Text ?? (Visibility == Visibility.Public ? Name : null),
+		_ => null
+	};
+	
 	public bool IsConversion =>
 		Syntax is FunctionNode { Identifier.Type: TokenType.KeywordAs or TokenType.KeywordNew };
 	
@@ -604,6 +612,12 @@ public sealed class GlobalSymbol(GlobalNode syntax, Visibility visibility)
 	
 	public TypeSymbol? ContainingType { get; internal set; }
 	public SourceLocation Definition { get; } = syntax.SourceLocation;
+	public bool IsExternal => Syntax.IsExternal;
+	public bool IsImport => Syntax is { IsExternal: true, Initializer: null };
+	
+	public string? ExternalName => Syntax.IsExternal
+		? Syntax.ExternalName?.Text ?? (IsImport || Visibility == Visibility.Public ? Name : null)
+		: null;
 }
 
 public enum ParameterMode

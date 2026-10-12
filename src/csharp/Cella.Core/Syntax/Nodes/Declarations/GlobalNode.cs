@@ -9,7 +9,7 @@ public sealed class GlobalNode
 	IEnumerable<Token> modifiers,
 	Token keyword,
 	ITypeNode type,
-	IExpressionNode initializer
+	IExpressionNode? initializer
 ) : IDeclarationNode
 {
 	public SourceLocation SourceLocation => Identifier.SourceLocation;
@@ -19,6 +19,8 @@ public sealed class GlobalNode
 	public Token? WriteVisibility { get; init; }
 	public Token Keyword { get; } = keyword;
 	public ITypeNode Type { get; } = type;
-	public IExpressionNode Initializer { get; } = initializer;
+	public IExpressionNode? Initializer { get; } = initializer;
 	public bool IsMutable => Keyword.Type == TokenType.KeywordVar;
+	public bool IsExternal { get; init; }
+	public Token? ExternalName { get; init; }
 }

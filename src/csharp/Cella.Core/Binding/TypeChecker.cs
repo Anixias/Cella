@@ -101,11 +101,14 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool, 
 	
 	public void Visit(ResolvedGlobalNode node)
 	{
+		if (node.Info.Initializer is not { } initializer)
+			return;
+		
 		var errorCount = Diagnostics.ErrorCount;
-		VisitNode(node.Info.Initializer);
+		VisitNode(initializer);
 		
 		if (node.Info.Value is null && Diagnostics.ErrorCount == errorCount &&
-		    FindNonConstant(node.Info.Initializer) is { } blocking)
+		    FindNonConstant(initializer) is { } blocking)
 			Diagnostics.Add(new(DiagnosticSeverity.Error, blocking.Syntax.SourceLocation,
 				$"The initial value of '{node.Info.Symbol.Name}' must be a constant"));
 	}
@@ -802,7 +805,8 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool, 
 	{
 		ResolvedVarExpressionNode { Symbol: LocalVariableSymbol { IsMutable: false, IsBorrowBinding: false } } n =>
 			!typePool.NeedsDrop(n.Type),
-		ResolvedGlobalExpressionNode { Symbol.IsMutable: false } n => !typePool.NeedsDrop(n.Type),
+		ResolvedGlobalExpressionNode { Symbol: { IsMutable: false, IsExternal: false } } n =>
+			!typePool.NeedsDrop(n.Type),
 		ResolvedAccessExpressionNode { Member: FieldSymbol } n => IsConstantPlace(n.Target),
 		ResolvedIndexerExpressionNode { Target.Type: ArrayType } n => IsConstantPlace(n.Target),
 		_ => false

@@ -1,0 +1,16 @@
+mod test
+
+ext
+{
+	value: var i32 = 4
+}
+
+Kind: ext("kind") enum
+{
+	a
+	b
+}
+
+blank: ext("") val i32 = 0
+
+main: fun -> i32 = 0

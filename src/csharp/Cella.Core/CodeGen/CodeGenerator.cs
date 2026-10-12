@@ -156,17 +156,39 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 			value.Visibility = LLVMVisibility.LLVMHiddenVisibility;
 	}
 	
-	private void AddPlainName(LLVMFunctionInfo function, string name)
+	private void AddExternalName(LLVMValueRef target, LLVMTypeRef type, string name, bool isData, bool isPublic)
 	{
-		using var marshaled = new MarshaledString(name);
+		using var empty = new MarshaledString(string.Empty);
 		var alias = new LLVMValueRef((IntPtr)LLVM.AddAlias2((LLVMOpaqueModule*)current.Module.Handle,
-			(LLVMOpaqueType*)function.FunctionType.Handle, 0, (LLVMOpaqueValue*)function.FunctionValue.Handle,
-			marshaled));
+			(LLVMOpaqueType*)type.Handle, 0, (LLVMOpaqueValue*)target.Handle, empty));
+		
+		var declared = isData ? current.Module.GetNamedGlobal(name) : current.Module.GetNamedFunction(name);
+		if (declared.Handle != IntPtr.Zero)
+		{
+			declared.ReplaceAllUsesWith(alias);
+			foreach (var (function, info) in current.Functions.Where(pair => pair.Value.FunctionValue == declared)
+				         .ToList())
+				current.Functions[function] = info with { FunctionValue = alias };
+			
+			foreach (var global in current.Globals.Where(pair => pair.Value == declared).Select(static pair => pair.Key)
+				         .ToList())
+				current.Globals[global] = alias;
+			
+			if (isData)
+				declared.DeleteGlobal();
+			else
+				declared.DeleteFunction();
+		}
+		
+		alias.Name = name;
+		
+		if (!isPublic)
+			return;
 		
 		if (_config.ExportsSymbols)
 			alias.DLLStorageClass = LLVMDLLStorageClass.LLVMDLLExportStorageClass;
 		
-		_exportNames.Add(new(name, false));
+		_exportNames.Add(new(name, isData));
 	}
 	
 	private ModuleState FindOwner(ModuleSymbol module, string name)
@@ -574,9 +596,9 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 				if (_inputs.Exports.Contains(function.Info.Symbol))
 					_exportNames.Add(new(llvmFunction.Name, false));
 				
-				if (function.Info.Symbol is
-				    { Visibility: Visibility.Public, Syntax: FunctionNode { IsExternal: true } })
-					AddPlainName(info, function.Info.Symbol.Name);
+				if (function.Info.Symbol is { Syntax: FunctionNode, ExternalName: { } externalName } symbol)
+					AddExternalName(info.FunctionValue, info.FunctionType, externalName, false,
+						symbol.Visibility == Visibility.Public);
 				
 				if (_assemblySymbol.EntryPoint?.Symbol == function.Info.Symbol)
 					current.EntryPoint = info;
@@ -588,7 +610,7 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 			var globals = file.Globals.Where(static global =>
 				global.Symbol.ContainingType is not NamedTypeSymbol { IsGenericDefinition: true });
 			
-			foreach (var global in globals)
+			foreach (var global in globals.Where(static global => !global.Symbol.IsImport))
 				DefineGlobal(global);
 		}
 		
@@ -686,16 +708,19 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 		                   CreateInternalFunctionType(signature.ReturnType, paramLlvmTypes.Take(leading),
 			                   paramLlvmTypes.Skip(leading), signature.IsVariadic);
 		
-		name ??= function.MangledName ?? symbol.Name;
-		var declared = symbol.Kind == FunctionKind.External ? llvmModule.GetNamedFunction(name) : default;
+		name ??= function.MangledName ?? (symbol.Kind == FunctionKind.External ? symbol.ExternalName : null) ??
+			symbol.Name;
+		
+		var declared = symbol.Kind == FunctionKind.External ? FindNamedFunction(llvmModule, name) : default;
 		var functionValue = declared.Handle != IntPtr.Zero ? declared : llvmModule.AddFunction(name, functionType);
-		if (cSignature is { Return: { Kind: CPassKind.Indirect } sret })
+		var isFunction = functionValue.IsAFunction.Handle != IntPtr.Zero;
+		if (isFunction && cSignature is { Return: { Kind: CPassKind.Indirect } sret })
 			AddSretAttribute(functionValue, sret.Type, false);
 		
-		if (cSignature is { } boolSignature)
+		if (isFunction && cSignature is { } boolSignature)
 			AddBoolExtensions(functionValue, boolSignature, false);
 		
-		if (signature.ReturnType is NeverType)
+		if (isFunction && signature.ReturnType is NeverType)
 			AddFunctionAttribute(functionValue, "noreturn");
 		
 		var functionInfo = new LLVMFunctionInfo(functionValue, functionType, returnType, cSignature,
@@ -3069,6 +3094,10 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 		{
 			global.Visibility = LLVMVisibility.LLVMHiddenVisibility;
 		}
+		
+		if (info.Symbol.ExternalName is { } externalName)
+			AddExternalName(global, MapTypeSymbol(info.Type), externalName, true,
+				info.Symbol.Visibility == Visibility.Public);
 	}
 	
 	private LLVMValueRef CreateGlobal(GlobalInfo info)
@@ -3084,15 +3113,31 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 		return global;
 	}
 	
+	private static LLVMValueRef FindNamedFunction(LLVMModuleRef module, string name)
+	{
+		var function = module.GetNamedFunction(name);
+		return function.Handle != IntPtr.Zero ? function : FindNamedAlias(module, name);
+	}
+	
+	private static LLVMValueRef FindNamedAlias(LLVMModuleRef module, string name)
+	{
+		using var marshaled = new MarshaledString(name);
+		return new((IntPtr)LLVM.GetNamedGlobalAlias((LLVMOpaqueModule*)module.Handle, marshaled, (nuint)name.Length));
+	}
+	
 	private LLVMValueRef DeclareGlobal(GlobalInfo info)
 	{
+		if (info.Symbol.IsImport && FindNamedAlias(current.Module, info.MangledName) is { Handle: not 0 } alias)
+			return current.Globals[info.Symbol] = alias;
+		
 		var global = current.Module.AddGlobal(MapTypeSymbol(info.Type), info.MangledName);
 		global.IsGlobalConstant = IsReadOnly(info);
 		current.Globals[info.Symbol] = global;
 		return global;
 	}
 	
-	private bool IsReadOnly(GlobalInfo info) => !info.Symbol.IsMutable && !_typePool.NeedsDrop(info.Type);
+	private bool IsReadOnly(GlobalInfo info) =>
+		!info.Symbol.IsMutable && !info.Symbol.IsExternal && !_typePool.NeedsDrop(info.Type);
 	
 	private LLVMValueRef GetGlobal(GlobalInfo info)
 	{
@@ -3104,7 +3149,15 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 			return GetInstanceGlobal(info, instance);
 		
 		var global = DeclareGlobal(info);
-		if (!_assemblySymbol.SignatureTable.Globals.ContainsKey(info.Symbol))
+		if (info.Symbol.IsImport)
+		{
+			if (global.IsAGlobalAlias.Handle != IntPtr.Zero)
+				return global;
+			
+			global.DLLStorageClass = LLVMDLLStorageClass.LLVMDLLImportStorageClass;
+			global.Linkage = LLVMLinkage.LLVMDLLImportLinkage;
+		}
+		else if (!_assemblySymbol.SignatureTable.Globals.ContainsKey(info.Symbol))
 			Import(global, info.Symbol);
 		else if (info.Symbol.Visibility != Visibility.Public)
 			global.Visibility = LLVMVisibility.LLVMHiddenVisibility;

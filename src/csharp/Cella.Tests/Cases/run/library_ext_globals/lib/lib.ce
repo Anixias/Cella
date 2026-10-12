@@ -1,0 +1,9 @@
+mod lib
+
+counter: pub ext var i32 = 40
+
+bump: pub fun -> i32
+{
+	counter += 1
+	ret counter
+}

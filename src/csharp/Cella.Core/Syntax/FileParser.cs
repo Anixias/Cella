@@ -348,11 +348,18 @@ public sealed class FileParser
 		
 		var kindIndex = index;
 		var isExternal = !isRef && Match(ref index, _topLevelContextualKeywords, TokenType.KeywordExt);
+		var externalName = isExternal && Tokens[index].Type == TokenType.OpOpenParen
+			? ParseExternalName(ref index)
+			: null;
+		
 		if (typeParameters is [var first, ..] && DescribeTypeParameterError(index, isExternal) is { } error)
 			Report(first.SourceLocation, error);
 		
 		if (Match(ref index, _topLevelContextualKeywords, TokenType.KeywordEnum))
 		{
+			if (externalName is { } enumName)
+				Report(enumName, "Cannot name 'ext' enums");
+			
 			var enumTypeParameters = isExternal ? [] : typeParameters;
 			var enumNode = ParseDeclaration(ref index, identifier, "enum",
 				(ref i) => ParseEnum(ref i, identifier, modifiers, isExternal, isRef, enumTypeParameters));
@@ -376,10 +383,10 @@ public sealed class FileParser
 		}
 		
 		// Global
-		if (!isExternal && Match(ref index, out var bindingKeyword, _bindingKeywords))
+		if (Match(ref index, out var bindingKeyword, _bindingKeywords))
 		{
 			var global = ParseDeclaration(ref index, identifier, "global",
-				(ref i) => ParseGlobal(ref i, identifier, modifiers, bindingKeyword));
+				(ref i) => ParseGlobal(ref i, identifier, modifiers, bindingKeyword, isExternal, externalName));
 			
 			if (global is null)
 				SkipDeclaration(ref index, declarationStart, insideBlock);
@@ -393,7 +400,8 @@ public sealed class FileParser
 		if (Match(ref index, TokenType.KeywordFun))
 		{
 			var function = ParseDeclaration(ref index, identifier, "function",
-				(ref i) => ParseFunction(ref i, identifier, modifiers, isExternal, isExternal ? [] : typeParameters));
+				(ref i) => ParseFunction(ref i, identifier, modifiers, isExternal, isExternal ? [] : typeParameters,
+					externalName));
 			
 			if (function is null)
 				SkipDeclaration(ref index, declarationStart, insideBlock);
@@ -978,7 +986,7 @@ public sealed class FileParser
 	}
 	
 	private FunctionNode? ParseFunction(ref int index, Token identifier, DeclarationModifiers modifiers,
-		bool isExternal, List<TypeParameterNode> typeParameters)
+		bool isExternal, List<TypeParameterNode> typeParameters, Token? externalName = null)
 	{
 		// When this is called, the identifier and fun keyword are already consumed
 		// Caller is expected to resync in case of errors
@@ -1007,7 +1015,8 @@ public sealed class FileParser
 			{
 				Visibility = modifiers.Visibility,
 				TypeParameters = [..typeParameters],
-				When = when
+				When = when,
+				ExternalName = externalName
 			};
 		}
 		
@@ -1017,7 +1026,8 @@ public sealed class FileParser
 				{
 					Visibility = modifiers.Visibility,
 					TypeParameters = [..typeParameters],
-					When = when
+					When = when,
+					ExternalName = externalName
 				}
 				: null;
 		
@@ -1027,6 +1037,7 @@ public sealed class FileParser
 		return new(identifier, modifiers.Tokens, receiver, parameters, returnType, body, isExternal)
 		{
 			Visibility = modifiers.Visibility,
+			ExternalName = externalName,
 			TypeParameters = [..typeParameters],
 			When = when
 		};
@@ -1043,7 +1054,8 @@ public sealed class FileParser
 			: new ReturnExpressionNode(expression.SourceLocation, expression));
 	}
 	
-	private GlobalNode? ParseGlobal(ref int index, Token identifier, DeclarationModifiers modifiers, Token keyword)
+	private GlobalNode? ParseGlobal(ref int index, Token identifier, DeclarationModifiers modifiers, Token keyword,
+		bool isExternal = false, Token? externalName = null)
 	{
 		var type = ParseType(ref index);
 		if (!Match(ref index, TokenType.OpEqual))
@@ -1056,8 +1068,36 @@ public sealed class FileParser
 		return new(identifier, modifiers.Tokens, keyword, type, initializer)
 		{
 			Visibility = modifiers.Visibility,
-			WriteVisibility = modifiers.WriteVisibility
+			WriteVisibility = modifiers.WriteVisibility,
+			IsExternal = isExternal,
+			ExternalName = externalName
 		};
+	}
+	
+	private Token? ParseExternalName(ref int index)
+	{
+		if (!Match(ref index, TokenType.OpOpenParen))
+		{
+			ReportExpected(index, "'('");
+			return null;
+		}
+		
+		if (!Match(ref index, out var name, TokenType.StringLiteral) || name.Suffix is not null)
+		{
+			ReportExpected(index, "a name");
+			return null;
+		}
+		
+		if (!Match(ref index, TokenType.OpCloseParen))
+		{
+			ReportExpected(index, "')'");
+			return null;
+		}
+		
+		if (name.Text.Length == 0)
+			Report(name, "Cannot use empty 'ext' names");
+		
+		return name;
 	}
 	
 	private GlobalNode? ParseStaticField(ref int index, Token identifier, DeclarationModifiers modifiers, Token keyword)
@@ -1069,7 +1109,7 @@ public sealed class FileParser
 			(ref i) => ParseGlobal(ref i, identifier, modifiers, keyword));
 	}
 	
-	private ExternalFunctionNode? ParseExternalDeclaration(ref int index, string? origin, Token? block)
+	private IDeclarationNode? ParseExternalDeclaration(ref int index, string? origin, Token? block)
 	{
 		// TODO Diagnostics
 		
@@ -1080,6 +1120,31 @@ public sealed class FileParser
 			return null;
 		
 		var modifiers = ParseDeclarationModifiers(ref index, block);
+		Token? externalName = null;
+		if (Match(ref index, _topLevelContextualKeywords, TokenType.KeywordExt))
+		{
+			externalName = ParseExternalName(ref index);
+			if (externalName is null)
+				return null;
+		}
+		
+		if (Match(ref index, out var keyword, _bindingKeywords))
+		{
+			var type = ParseType(ref index);
+			if (Match(ref index, out var equals, TokenType.OpEqual))
+			{
+				Report(equals, "Cannot initialize values in 'ext' blocks");
+				ParseExpression(ref index);
+			}
+			
+			return new GlobalNode(identifier, modifiers.Tokens, keyword, type, null)
+			{
+				Visibility = modifiers.Visibility,
+				WriteVisibility = modifiers.WriteVisibility,
+				IsExternal = true,
+				ExternalName = externalName
+			};
+		}
 		
 		if (!Match(ref index, TokenType.KeywordFun))
 			return null;
@@ -1088,9 +1153,10 @@ public sealed class FileParser
 			return null;
 		
 		var (_, parameters, returnType, isVariadic) = signature;
-		return new(identifier, modifiers.Tokens, parameters, returnType, isVariadic, origin)
+		return new ExternalFunctionNode(identifier, modifiers.Tokens, parameters, returnType, isVariadic, origin)
 		{
-			Visibility = modifiers.Visibility
+			Visibility = modifiers.Visibility,
+			ExternalName = externalName
 		};
 	}
 	

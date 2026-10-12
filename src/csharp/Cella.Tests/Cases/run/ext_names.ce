@@ -1,0 +1,35 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+	printLine: ext("puts") fun(text: cstr) -> i32
+	GetModuleHandleA: fun(name: ptr) -> ptr
+	GetProcAddress: fun(module: ptr, name: cstr) -> ptr
+	shared: ext("counter") var i32
+	viaName: ext("hidden_symbol") fun -> i32
+}
+
+answer: pub ext("cella_answer") fun(x: i32) -> i32 = x * 2
+hidden: ext("hidden_symbol") fun -> i32 = 17
+counter: pub ext var i32 = 5
+gpuHint: pub ext("NvOptimusEnablement") val u32 = 1
+plainHint: ext val u32 = 3
+
+main: fun -> i32
+{
+	printLine("hello")
+	val module = GetModuleHandleA(null)
+	var address = GetProcAddress(module, "cella_answer")
+	val call = *ptr[ext fun[i32 -> i32]](ptr(@address))
+	val data = ptr[u32](GetProcAddress(module, "NvOptimusEnablement"))
+	printf("%d %d %d %u\n", call(21), i32(GetProcAddress(module, "answer") == null),
+		i32(GetProcAddress(module, "hidden_symbol") == null), *data)
+	shared = 9
+	counter += 1
+	printf("%d %d %d\n", counter, shared, viaName())
+	var p = ptr[u32](@plainHint)
+	*p = 7
+	printf("%u %u\n", plainHint, gpuHint)
+	ret 0
+}

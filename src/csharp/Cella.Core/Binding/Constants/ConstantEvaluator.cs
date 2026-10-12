@@ -146,7 +146,8 @@ public sealed class ConstantEvaluator
 		ResolvedVarExpressionNode { Symbol: LocalVariableSymbol symbol } when
 			_bindings.TryGetValue(symbol, out var bound) => bound,
 		ResolvedVarExpressionNode { Symbol: LocalVariableSymbol { ConstantValue: { } value } } => value,
-		ResolvedGlobalExpressionNode { Symbol: { IsMutable: false } global } n when !typePool.NeedsDrop(n.Type) =>
+		ResolvedGlobalExpressionNode { Symbol: { IsMutable: false, IsExternal: false } global } n
+			when !typePool.NeedsDrop(n.Type) =>
 			getGlobalValue(global),
 		ResolvedAccessExpressionNode n => FoldAccess(n),
 		ResolvedIndexerExpressionNode n => FoldAll([n.Target, n.Index], values => Index(values[0], values[1])),

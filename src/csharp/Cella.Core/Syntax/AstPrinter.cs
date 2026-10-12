@@ -165,7 +165,8 @@ public sealed class AstPrinter : ISyntaxNodeVisitor
 		_sb.Append(" (");
 		VisitNode(node.Type, false);
 		_sb.Append(')');
-		VisitNode(node.Initializer, true);
+		if (node.Initializer is { } initializer)
+			VisitNode(initializer, true);
 	}
 	
 	public void Visit(FieldNode node)

@@ -49,7 +49,7 @@ public readonly record struct GlobalInfo
 	string MangledName,
 	GlobalSymbol Symbol,
 	TypeSymbol Type,
-	IResolvedExpressionNode Initializer,
+	IResolvedExpressionNode? Initializer,
 	Constant? Value,
 	FileSymbol File
 );

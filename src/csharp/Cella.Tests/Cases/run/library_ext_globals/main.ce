@@ -1,0 +1,18 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+ext
+{
+	counter: var i32
+}
+
+main: fun -> i32
+{
+	counter += 1
+	printf("%d %d %d\n", counter, lib.bump(), lib.counter)
+	ret 0
+}

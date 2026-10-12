@@ -1,2 +1,2 @@
-<case>\d\d.celp: 'run' is exported by both 's' and 'd'
+<case>\d\d.celp: 'run' is defined by both 's' and 'd'
 [compilation failed]

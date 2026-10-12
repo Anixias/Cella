@@ -32,6 +32,7 @@ public sealed class FunctionNode
 	public ITypeNode? ReturnType { get; } = returnType;
 	public IStatementNode? Body { get; } = body;
 	public bool IsExternal { get; } = isExternal;
+	public Token? ExternalName { get; init; }
 	public ImmutableArray<TypeParameterNode> TypeParameters { get; init; } = [];
 	public WhenClause? When { get; init; }
 }
@@ -56,4 +57,5 @@ public sealed class ExternalFunctionNode
 	public ITypeNode? ReturnType { get; } = returnType;
 	public bool IsVariadic { get; } = isVariadic;
 	public string? Origin { get; } = origin;
+	public Token? ExternalName { get; init; }
 }

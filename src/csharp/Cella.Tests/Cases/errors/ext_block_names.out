@@ -1,0 +1,9 @@
+
+====== ext_block_names.ce ======
+
+Error at line 5, column 13
+4 │ {
+5 │     value: ext var i32
+                   ╘═╛ Expected '('
+
+[compilation failed]
