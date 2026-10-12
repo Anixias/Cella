@@ -1,0 +1,16 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+main: fun -> i32
+{
+	printf("helpers %d %d %d\n", util.helper(), alib.helped(), blib.helped())
+	printf("picks %d %d %d\n", util.pick(5), alib.picked(), blib.picked())
+	val local = util.Res(1)
+	alib.make()
+	blib.make()
+	ret 0
+}

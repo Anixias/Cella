@@ -25,7 +25,11 @@ public static class Mangling
 			: MangleType(signature.ParameterTypes[index], modules);
 	
 	public static string Mangle(Symbol symbol, ModuleIndex? modules, params IEnumerable<string> qualifierParts) =>
-		new StringBuilder().Append('?').AppendJoin('.', qualifierParts.Append(MangleName(symbol, modules))).ToString();
+		new StringBuilder().Append('?').Append(QualifyAssembly(modules?.AssemblyName))
+			.AppendJoin('.', qualifierParts.Append(MangleName(symbol, modules))).ToString();
+	
+	private static string QualifyAssembly(string? assemblyName) =>
+		assemblyName is null ? "" : $"{EscapeExportSyntax(assemblyName)}!";
 	
 	public static string MangleName(Symbol symbol, ModuleIndex? modules)
 	{
@@ -81,14 +85,15 @@ public static class Mangling
 		ClosureType { Function.TypeArguments.IsDefaultOrEmpty: true } closure => $"own[{closure.DefinitionName}]",
 		ClosureType closure =>
 			$"own[{MangleInstantiation(closure.DefinitionName, closure.Function.TypeArguments, modules)}]",
-		_ when modules?.FindModule(type) is { } module => $"{module.ModuleName.Text}.{MangleName(type, modules)}",
+		_ when modules?.FindModule(type) is { } module =>
+			$"{QualifyAssembly(modules.FindAssembly(type))}{module.ModuleName.Text}.{MangleName(type, modules)}",
 		_ => type.Name
 	};
 	
 	private static string MangleTrait(TraitType trait, ModuleIndex? modules)
 	{
 		var name = modules?.FindModule(trait.Trait) is { } module
-			? $"{module.ModuleName.Text}.{MangleName(trait.Trait, modules)}"
+			? $"{QualifyAssembly(modules.FindAssembly(trait.Trait))}{module.ModuleName.Text}.{MangleName(trait.Trait, modules)}"
 			: trait.Trait.Name;
 		
 		return trait.Arguments.IsEmpty

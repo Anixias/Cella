@@ -1,0 +1,21 @@
+mod util
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+helper: fun -> i32 = 10
+
+pick[T]: fun(x: T) -> i32 = 200
+
+Res: rec
+{
+	first: i32
+	second: i32
+
+	drop: op
+	{
+		printf("a drop %d %d\n", self.first, self.second)
+	}
+}

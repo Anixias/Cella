@@ -1,0 +1,20 @@
+mod util
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+helper: fun -> i32 = 1
+
+pick[T]: fun(x: T) -> i32 = 100
+
+Res: rec
+{
+	id: i32
+
+	drop: op
+	{
+		printf("program drop %d\n", self.id)
+	}
+}

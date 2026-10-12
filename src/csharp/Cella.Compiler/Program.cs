@@ -315,8 +315,8 @@ internal static class Program
 		// Phase 2b: Signature collection
 		// TODO Allow configuring entry point name?
 		var entryPointName = outputType == ProjectOutputType.Executable ? "main" : null;
-		var signatureCollector = new SignatureCollector(entryPointName, symbolTable, typePool, dependencySymbols,
-			pointerBitSize);
+		var signatureCollector = new SignatureCollector(project.Name, entryPointName, symbolTable, typePool,
+			dependencySymbols, pointerBitSize);
 		
 		var resolver = new Resolver(symbolTable, signatureCollector, typePool, pointerBitSize);
 		signatureCollector.Collect([..files], resolver);

@@ -8,21 +8,25 @@ public sealed class ModuleIndex
 	private readonly Dictionary<Symbol, FileSymbol> _files = [];
 	private readonly Dictionary<Symbol, FileSymbol> _dependencyFiles = [];
 	private readonly Dictionary<Symbol, ModuleSymbol> _modules = [];
+	private readonly Dictionary<Symbol, string> _assemblies = [];
 	
-	public ModuleIndex(SymbolTable symbolTable, IEnumerable<SymbolTable> dependencies)
+	public ModuleIndex(string assemblyName, SymbolTable symbolTable, IEnumerable<AssemblySymbol> dependencies)
 	{
+		AssemblyName = assemblyName;
 		Root = new ModulePathSymbol(string.Empty, null);
 		_paths[string.Empty] = Root;
 		
-		Add(symbolTable, true);
+		Add(symbolTable, assemblyName, true);
 		foreach (var dependency in dependencies)
 		{
-			Add(dependency, false);
-			MapFiles(dependency, _dependencyFiles);
+			Add(dependency.SymbolTable, dependency.Name, false);
+			MapFiles(dependency.SymbolTable, _dependencyFiles);
 		}
 		
 		MapFiles(symbolTable, _files);
 	}
+	
+	public string AssemblyName { get; }
 	
 	private static void MapFiles(SymbolTable symbolTable, Dictionary<Symbol, FileSymbol> files)
 	{
@@ -39,6 +43,8 @@ public sealed class ModuleIndex
 		symbol is IExportable exportable ? exportable.Visibility : Visibility.Public;
 	
 	public ModuleSymbol? FindModule(Symbol symbol) => _modules.GetValueOrDefault(symbol);
+	
+	public string? FindAssembly(Symbol symbol) => _assemblies.GetValueOrDefault(symbol);
 	
 	public string? FindPrivateFile(Symbol symbol) =>
 		GetVisibility(symbol) == Visibility.Private &&
@@ -75,7 +81,7 @@ public sealed class ModuleIndex
 		return false;
 	}
 	
-	private void Add(SymbolTable symbolTable, bool isLocal)
+	private void Add(SymbolTable symbolTable, string assemblyName, bool isLocal)
 	{
 		foreach (var (name, module) in symbolTable.ModuleSymbols)
 		{
@@ -90,6 +96,7 @@ public sealed class ModuleIndex
 					var isVisible = isLocal || symbol is IExportable { Visibility: Visibility.Public };
 					(isVisible ? path.Members : path.PrivateMembers).GetOrAdd(memberName).Add(symbol);
 					_modules[symbol] = module;
+					_assemblies[symbol] = assemblyName;
 				}
 			}
 		}

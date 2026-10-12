@@ -74,8 +74,8 @@ public sealed class SignatureCollector
 	public ConstantEvaluator Evaluator { get; }
 	public ModuleIndex Modules { get; }
 	
-	public SignatureCollector(string? entryPointName, SymbolTable symbolTable, TypePool typePool,
-		IEnumerable<AssemblySymbol> dependencies, uint pointerBitSize)
+	public SignatureCollector(string assemblyName, string? entryPointName, SymbolTable symbolTable,
+		TypePool typePool, IEnumerable<AssemblySymbol> dependencies, uint pointerBitSize)
 	{
 		_entryPointName = entryPointName;
 		_symbolTable = symbolTable;
@@ -86,7 +86,7 @@ public sealed class SignatureCollector
 		_dependencyTable = SignatureTable.Combine(dependencyList.Select(static a => a.SignatureTable));
 		Evaluator = new ConstantEvaluator(typePool, pointerBitSize, GetGlobalValue);
 		typePool.IntegerFits = Evaluator.Fits;
-		Modules = new ModuleIndex(symbolTable, dependencyList.Select(static a => a.SymbolTable));
+		Modules = new ModuleIndex(assemblyName, symbolTable, dependencyList);
 	}
 	
 	public void Collect(IReadOnlyCollection<FileNode> files, IConstantResolver constantResolver)

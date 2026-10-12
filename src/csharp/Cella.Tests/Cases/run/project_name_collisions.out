@@ -1,0 +1,6 @@
+helpers 1 10 20
+picks 100 200 300
+a drop 2 3
+b drop 4
+program drop 1
+[exit code 0]
