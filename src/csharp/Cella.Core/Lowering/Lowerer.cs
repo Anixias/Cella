@@ -927,6 +927,7 @@ public sealed class Lowerer
 		public Value Visit(ResolvedConstructorCallExpressionNode node)
 		{
 			var sourceLocation = node.Syntax.SourceLocation;
+			var arguments = LowerArguments(node.Arguments, node.Function, 1);
 			
 			var resultSymbol = CreateTempSymbol(node.Type, ".cons__mem");
 			Declare(GetOrMakeBlock(),
@@ -937,7 +938,8 @@ public sealed class Lowerer
 			var selfType = node.Function.Signature.ParameterTypes[0];
 			var self = new UnaryOpValue(selfType, result, UnaryOperation.AddressOf, sourceLocation);
 			
-			LowerConstructor(node.Function, self, node.Arguments, sourceLocation);
+			GetOrMakeBlock().Instructions
+				.Add(new ExpressionInstruction(new CallValue(node.Function, [self, ..arguments], sourceLocation)));
 			
 			return result;
 		}
@@ -948,14 +950,14 @@ public sealed class Lowerer
 				return new ZeroValue(node.Type);
 			
 			var sourceLocation = node.Syntax.SourceLocation;
+			var values = LowerOperands([..node.Fields.Select(static f => f.Value)], static _ => Passing.Consume);
 			var resultSymbol = CreateTempSymbol(node.Type, ".record");
 			Declare(GetOrMakeBlock(),
 				new LocalVarInstruction(resultSymbol, new ZeroValue(node.Type), sourceLocation, CurrentScopeId));
 			
 			var result = new VariableValue(new(resultSymbol, node.Type), sourceLocation);
-			foreach (var (field, value) in node.Fields)
+			foreach (var ((field, _), fieldValue) in node.Fields.Zip(values))
 			{
-				var fieldValue = Consume(VisitNode(value), NamesPlace(value));
 				var target = new AccessValue(fieldValue.Type, result, field, sourceLocation);
 				GetOrMakeBlock().Instructions.Add(
 					new ExpressionInstruction(new AssignValue(fieldValue.Type, target, fieldValue, sourceLocation)));
@@ -1074,16 +1076,6 @@ public sealed class Lowerer
 		private Func<int, Passing> GetOperandPassing(FunctionType type) => i => i == 0 || i > type.ParameterTypes.Length
 			? Passing.Read
 			: GetPassing(type.ParameterTypes[i - 1], type.ParameterModes[i - 1]);
-		
-		private void LowerConstructor(FunctionInfo constructor, Value self,
-			IReadOnlyList<IResolvedExpressionNode> arguments, SourceLocation sourceLocation)
-		{
-			var args = new List<Value> { self };
-			args.AddRange(LowerArguments(arguments, constructor, 1));
-			
-			GetOrMakeBlock().Instructions
-				.Add(new ExpressionInstruction(new CallValue(constructor, args, sourceLocation)));
-		}
 		
 		public Value Visit(ResolvedIndexerExpressionNode node)
 		{
