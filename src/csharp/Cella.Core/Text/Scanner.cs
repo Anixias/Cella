@@ -95,7 +95,7 @@ public class Scanner : IScanner
 		if (Source[end] == '\r')
 			end++;
 		
-		if (Source[end] == '\n')
+		if (end < Source.Length && Source[end] == '\n')
 			end++;
 		
 		var range = new TextRange(position, end);

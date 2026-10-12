@@ -119,6 +119,7 @@ public sealed class FileParser
 		var imports = new List<ImportExpression>();
 		
 		var moduleNameAllowed = true;
+		var hasModuleKeyword = false;
 		var importsAllowed = false;
 		var conditionAllowed = false;
 		var isIncluded = true;
@@ -129,26 +130,20 @@ public sealed class FileParser
 			if (!IsVisibilityBlock(index, _topLevelContextualKeywords) &&
 			    Match(ref index, _topLevelContextualKeywords, TokenType.KeywordMod))
 			{
-				try
-				{
-					moduleName = ParseModuleName(ref index);
-				}
-				catch (Exception e)
-				{
-					Report(moduleName.SourceLocation, $"Failed to parse module name: {e.Message}");
-				}
-				
+				hasModuleKeyword = true;
+				var parsed = ParseModuleName(ref index);
 				if (moduleNameAllowed)
 				{
 					moduleNameAllowed = false;
 					importsAllowed = true;
 					conditionAllowed = true;
+					if (parsed is { } name)
+						moduleName = name;
 				}
-				else
-				{
-					Report(moduleName.SourceLocation, "Module name must precede all other declarations or imports");
-					continue;
-				}
+				else if (parsed is { } misplaced)
+					Report(misplaced.SourceLocation, "Module name must precede all other declarations or imports");
+				
+				continue;
 			}
 			
 			// Parse imports
@@ -194,7 +189,9 @@ public sealed class FileParser
 		
 		if (moduleName == default)
 		{
-			Report("All files must begin with a module name (mod a.b.c)");
+			if (!hasModuleKeyword)
+				Report("All files must begin with a module name (mod a.b.c)");
+			
 			return null;
 		}
 		
@@ -882,12 +879,18 @@ public sealed class FileParser
 		return true;
 	}
 	
-	private ModuleName ParseModuleName(ref int index)
+	private ModuleName? ParseModuleName(ref int index)
 	{
 		var parts = new List<Token>();
-		
-		if (!Consume(ref index, out var firstPart, _topLevelSyncTypes, TokenType.Identifier))
-			throw new Exception(); // TODO
+		if (!IsOnSameLine(index) || !Match(ref index, out var firstPart, TokenType.Identifier))
+		{
+			var isOnSameLine = IsOnSameLine(index);
+			ReportExpected(isOnSameLine ? index : index - 1, "a module name");
+			if (isOnSameLine)
+				ResyncTopLevel(ref index);
+			
+			return null;
+		}
 		
 		parts.Add(firstPart);
 		

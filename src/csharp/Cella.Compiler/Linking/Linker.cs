@@ -33,33 +33,34 @@ public sealed class Linker(string rootPath, bool verbose)
 		
 		args.AddRange(toolchain.GetLinkerArgs(request));
 		
-		var argStr = string.Join(" ", args);
 		if (verbose)
-			Console.WriteLine($"Linker starting with arguments: {argStr}");
+			Console.WriteLine($"Linker starting with arguments: {string.Join(" ", args)}");
 		
 		var linkerPath = Path.Combine(rootPath, linkerName);
 		
-		var process = new Process
+		using var process = new Process
 		{
 			StartInfo =
 			{
 				FileName = linkerPath,
-				Arguments = argStr,
 				RedirectStandardError = true,
 				UseShellExecute = false
 			}
 		};
+		
+		foreach (var arg in args)
+			process.StartInfo.ArgumentList.Add(arg);
 		
 		var environmentVars = toolchain.GetLinkerEnvironmentVars();
 		foreach (var (key, value) in environmentVars)
 			process.StartInfo.Environment[key] = value;
 		
 		process.Start();
-		
+		var errors = process.StandardError.ReadToEndAsync();
 		await process.WaitForExitAsync();
 		
 		if (process.ExitCode != 0)
-			await Console.Error.WriteLineAsync(await process.StandardError.ReadToEndAsync());
+			await Console.Error.WriteLineAsync(await errors);
 		
 		return process.ExitCode;
 	}

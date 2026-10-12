@@ -1,0 +1,3 @@
+mod
+
+other: val i32 = 2
