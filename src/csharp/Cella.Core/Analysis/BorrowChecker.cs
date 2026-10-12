@@ -425,15 +425,15 @@ public sealed class BorrowChecker
 		switch (memoryEvent)
 		{
 			case WriteEvent { Place.Root: LocalVariableSymbol { IsBorrowBinding: true } binding } e:
-				CheckTargets([..state.Get(binding).Keys], Stored(e.Value, state), e.Value, e.Location, state);
+				CheckTargets([..state.Get(binding).Keys], Stored(e.Value, state), e.Value, e.Location);
 				break;
 			
 			case WriteEvent e:
-				CheckTargets([e.Place], Written(e, state), e.Value, e.Location, state);
+				CheckTargets([e.Place], Written(e, state), e.Value, e.Location);
 				break;
 			
 			case IndirectWriteEvent e when IsBorrowWrite(e):
-				CheckTargets(BorrowSources(e.Target, state), Stored(e.Value, state), e.Value, e.Location, state);
+				CheckTargets(BorrowSources(e.Target, state), Stored(e.Value, state), e.Value, e.Location);
 				break;
 			
 			case ClosureEvent e when closureSummaries.TryGetValue(e.Closure.Function.Symbol, out var summary):
@@ -441,7 +441,7 @@ public sealed class BorrowChecker
 				{
 					var targets = ResolveCapture(e.Closure, effect.Target, effect.TargetHeld, state);
 					var origins = ResolveCapture(e.Closure, effect.Source, effect.SourceHeld, state);
-					CheckTargets(targets, origins, e.Closure, e.Location, state);
+					CheckTargets(targets, origins, e.Closure, e.Location);
 					if (Roots(targets).Any(returned.Contains))
 						CheckEscape(origins, e.Closure, e.Location);
 				}
@@ -520,8 +520,7 @@ public sealed class BorrowChecker
 		Operand.Type: BorrowType
 	};
 	
-	private void CheckTargets(List<Place> targets, List<Place> written, Value value, SourceLocation fallback,
-		BorrowState state)
+	private void CheckTargets(List<Place> targets, List<Place> written, Value value, SourceLocation fallback)
 	{
 		var origins = written.Where(static source => source.Root is not BindingTarget).ToList();
 		if (origins.Count == 0)
@@ -670,7 +669,7 @@ public sealed class BorrowChecker
 			
 			case StorageDeadEvent e:
 				ForgetTarget(e.Local, state);
-				state.End(new(e.Local, []), e.Local is LocalVariableSymbol { IsClosureEnvironment: true } environment
+				state.End(new(e.Local, []), e.Local is { IsClosureEnvironment: true } environment
 					? new(Ending.Iteration, environment.Identifier.SourceLocation)
 					: new(Ending.Dropped, e.Location));
 				
