@@ -37,3 +37,4 @@ public sealed record DefineEvent(LocalVariableSymbol Local, DefineKind Kind, Sou
 
 public sealed record DropEvent(Place Place, DropInstruction Instruction) : MemoryEvent(Instruction.SourceLocation);
 public sealed record StorageDeadEvent(LocalVariableSymbol Local, SourceLocation Location) : MemoryEvent(Location);
+public sealed record ClosureEvent(ClosureValue Closure) : MemoryEvent(Closure.SourceLocation);

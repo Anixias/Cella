@@ -1,0 +1,57 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Token: ref rec
+{
+	text: str
+}
+
+Box: rec
+{
+	id: i32
+
+	drop: op
+	{
+		printf("drop %d\n", self.id)
+	}
+}
+
+call: fun(f: fun[]) = f()
+
+main: fun -> i32
+{
+	val a = 1
+	var p: imm[i32] = imm a
+	val b = 5
+	call(fun { p = imm b })
+	printf("%d\n", p)
+
+	val other = "z"
+	var t = Token("a")
+	val f = fun { t.text = other }
+	f()
+	printf("%.*s\n", i32(t.text.byteLength), t.text.data)
+
+	var count = 0
+	call(fun { count += 1 })
+	var q: imm[i32] = imm a
+	val g = fun { q = p }
+	g()
+	printf("%d %d\n", count, q)
+
+	call(fun { call(fun { p = imm a }) })
+	printf("%d\n", p)
+
+	var held = Box(1)
+	val replace = fun { held = Box(2) }
+	val before = held
+	printf("%d\n", before.id)
+	replace()
+	val after = held
+	printf("%d\n", after.id)
+	ret 0
+}

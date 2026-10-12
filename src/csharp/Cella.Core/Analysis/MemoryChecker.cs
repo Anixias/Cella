@@ -13,6 +13,7 @@ public sealed class MemoryChecker(TypePool typePool, DiagnosticList diagnostics)
 	private readonly record struct Uninitialized(string Condition, IEnumerable<MoveSite> Moves);
 	
 	private readonly HashSet<(SourceLocation, string)> _reported = [];
+	private readonly Dictionary<FunctionSymbol, BorrowChecker.ClosureSummary> _closureSummaries = [];
 	
 	private ParameterSymbol? destructorSelf;
 	
@@ -76,7 +77,7 @@ public sealed class MemoryChecker(TypePool typePool, DiagnosticList diagnostics)
 		if (returnState is not null)
 			CheckRequiredFields(function, requiredFields, returnState, paths);
 		
-		new BorrowChecker(typePool, diagnostics).Check(function, events);
+		new BorrowChecker(typePool, diagnostics, _closureSummaries).Check(function, events);
 		new DropElaborator(typePool, (state, memoryEvent) => Transfer(state, memoryEvent, paths))
 			.Elaborate(function, entryState, entryStates, drops);
 	}

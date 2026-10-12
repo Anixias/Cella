@@ -149,6 +149,7 @@ public sealed class EventLinearizer
 				
 				case ClosureValue v:
 					AddValues(v.Captures);
+					events.Add(new ClosureEvent(v));
 					break;
 				
 				case OwnClosureValue v:

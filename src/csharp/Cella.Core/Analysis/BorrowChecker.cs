@@ -8,8 +8,19 @@ using Cella.Diagnostics;
 
 namespace Cella.Core.Analysis;
 
-public sealed class BorrowChecker(TypePool typePool, DiagnosticList diagnostics)
+public sealed class BorrowChecker
+(
+	TypePool typePool,
+	DiagnosticList diagnostics,
+	Dictionary<FunctionSymbol, BorrowChecker.ClosureSummary> closureSummaries
+)
 {
+	public readonly record struct ClosureEffect(int Target, bool TargetHeld, int Source, bool SourceHeld);
+	
+	public readonly record struct ClosureEnding(int Capture, ImmutableArray<Projection> Path, bool IsDrop);
+	
+	public sealed record ClosureSummary(ImmutableArray<ClosureEffect> Stores, ImmutableArray<ClosureEnding> Endings);
+	
 	private enum Ending
 	{
 		Moved,
@@ -32,7 +43,10 @@ public sealed class BorrowChecker(TypePool typePool, DiagnosticList diagnostics)
 	private readonly record struct Invalidation(Ending Ending, SourceLocation Location);
 	
 	private readonly HashSet<SourceLocation> _reported = [];
-	private readonly ClosureEnvironment _environment = new();
+	private readonly Dictionary<ClosureValue, ClosureEnvironment> _environments = [];
+	private readonly Dictionary<ClosureValue, ClosureSummary> _closures = [];
+	private readonly HashSet<ClosureEffect> _effects = [];
+	private readonly List<ClosureEnding> _endings = [];
 	private readonly Dictionary<LocalVariableSymbol, BindingTarget> _targets = [];
 	private readonly Dictionary<LocalVariableSymbol, BindingTarget> _formerTargets = [];
 	private readonly Dictionary<LocalVariableSymbol, SourceLocation> _temporaries = [];
@@ -44,6 +58,10 @@ public sealed class BorrowChecker(TypePool typePool, DiagnosticList diagnostics)
 	private Dictionary<ParameterSymbol, Escape?> parameterEscapes = [];
 	private ParameterSymbol? receiver;
 	private ParameterSymbol? constructorSelf;
+	private ImmutableArray<CapturedVariable> captureSlots = [];
+	private ImmutableArray<CapturedBorrows> captureHeld = [];
+	private ImmutableArray<LocalVariableSymbol> currentCaptures = [];
+	private bool exportsEffects;
 	
 	public void Check(LoweredFunction function, Dictionary<BasicBlock, List<MemoryEvent>> events)
 	{
@@ -53,6 +71,14 @@ public sealed class BorrowChecker(TypePool typePool, DiagnosticList diagnostics)
 			: null;
 		
 		constructorSelf = symbol.Kind == FunctionKind.Constructor ? receiver : null;
+		var shared = new CapturedVariable("captures", -1);
+		captureSlots = symbol.OwnsCaptures
+			? [..symbol.Captures.Select(_ => shared)]
+			: [..symbol.Captures.Select(static (capture, i) => new CapturedVariable(capture.Name, i))];
+		
+		captureHeld = [..symbol.Captures.Select(static (capture, i) => new CapturedBorrows(capture.Name, i))];
+		exportsEffects = !symbol.Captures.IsEmpty && !symbol.OwnsCaptures;
+		currentCaptures = symbol.Captures;
 		returned = GetReturned(function, events);
 		parameterEscapes = GetParameterEscapes(function.Info);
 		foreach (var (block, entryState) in Solve(function, events))
@@ -67,10 +93,72 @@ public sealed class BorrowChecker(TypePool typePool, DiagnosticList diagnostics)
 				CheckReturn(memoryEvent, state);
 				CheckStore(memoryEvent, state);
 				CheckTemporary(memoryEvent, state);
+				CollectEnding(memoryEvent);
 				Transfer(state, memoryEvent);
 			}
 			
 			ReportDeadTemporaries(state);
+			CollectEffects(state);
+		}
+		
+		if (exportsEffects)
+			closureSummaries[symbol] = new([.._effects], [.._endings]);
+	}
+	
+	private void CollectEnding(MemoryEvent memoryEvent)
+	{
+		switch (memoryEvent)
+		{
+			case DropEvent e:
+				CollectEnding(e.Place, true);
+				break;
+			
+			case WriteEvent e:
+				CollectEnding(e.Place, false);
+				break;
+		}
+	}
+	
+	private void CollectEnding(Place place, bool isDrop)
+	{
+		if (place is { Root: LocalVariableSymbol { Captured: not null } binding, Path: [DerefProjection, .. var path] })
+			AddEnding(currentCaptures.IndexOf(binding), path, isDrop);
+	}
+	
+	private void AddEnding(int capture, ImmutableArray<Projection> path, bool isDrop)
+	{
+		if (exportsEffects && capture >= 0 && !_endings.Any(ending => ending.Capture == capture &&
+		                                                              ending.IsDrop == isDrop &&
+		                                                              ending.Path.SequenceEqual(path)))
+			_endings.Add(new(capture, path, isDrop));
+	}
+	
+	private void CollectEffects(BorrowState state)
+	{
+		if (!exportsEffects)
+			return;
+		
+		for (var i = 0; i < captureSlots.Length; i++)
+		{
+			foreach (var source in state.Get(captureSlots[i]).Keys)
+				AddEffect(i, false, source);
+			
+			foreach (var source in state.Get(captureHeld[i]).Keys)
+				AddEffect(i, true, source);
+		}
+	}
+	
+	private void AddEffect(int target, bool isHeld, Place source)
+	{
+		switch (source.Root)
+		{
+			case CapturedVariable captured:
+				_effects.Add(new(target, isHeld, captured.Index, false));
+				break;
+			
+			case CapturedBorrows held when isHeld || held.Index != target:
+				_effects.Add(new(target, isHeld, held.Index, true));
+				break;
 		}
 	}
 	
@@ -120,6 +208,13 @@ public sealed class BorrowChecker(TypePool typePool, DiagnosticList diagnostics)
 		{
 			if (parameters[i] != constructorSelf && typePool.HoldsBorrows(signature.GetDeclaredType(i)))
 				state.Set(parameters[i], [new Place(new HeldBorrows(parameters[i]), [])]);
+		}
+		
+		var captures = function.Info.Symbol.Captures;
+		for (var i = 0; i < captures.Length; i++)
+		{
+			if (typePool.HoldsBorrows(((PointerType)captures[i].Type).BaseType))
+				state.Add(captureSlots[i], [new Place(captureHeld[i], [])]);
 		}
 		
 		return state;
@@ -340,7 +435,83 @@ public sealed class BorrowChecker(TypePool typePool, DiagnosticList diagnostics)
 			case IndirectWriteEvent e when IsBorrowWrite(e):
 				CheckTargets(BorrowSources(e.Target, state), Stored(e.Value, state), e.Value, e.Location, state);
 				break;
+			
+			case ClosureEvent e when closureSummaries.TryGetValue(e.Closure.Function.Symbol, out var summary):
+				foreach (var effect in summary.Stores)
+				{
+					var targets = ResolveCapture(e.Closure, effect.Target, effect.TargetHeld, state);
+					var origins = ResolveCapture(e.Closure, effect.Source, effect.SourceHeld, state);
+					CheckTargets(targets, origins, e.Closure, e.Location, state);
+					if (Roots(targets).Any(returned.Contains))
+						CheckEscape(origins, e.Closure, e.Location);
+				}
+				
+				break;
 		}
+	}
+	
+	private List<Place> ResolveCapture(ClosureValue closure, int index, bool isHeld, BorrowState state) =>
+		closure.Captures[index] is UnaryOpValue { Op: UnaryOperation.AddressOf } address
+			? isHeld ? ReadSources(address.Operand, state) : BorrowSources(address.Operand, state)
+			: [];
+	
+	private void ApplyEffects(ClosureValue closure, ImmutableArray<ClosureEffect> effects, BorrowState state)
+	{
+		foreach (var effect in effects)
+			WriteThrough(ResolveCapture(closure, effect.Target, effect.TargetHeld, state),
+				ResolveCapture(closure, effect.Source, effect.SourceHeld, state), state);
+	}
+	
+	private void ApplyLiveClosures(BorrowState state, MemoryEvent memoryEvent)
+	{
+		foreach (var (closure, summary) in _closures)
+		{
+			if (!_environments.TryGetValue(closure, out var environment) || !state.IsBorrowed(environment))
+				continue;
+			
+			ApplyEffects(closure, summary.Stores, state);
+			if (memoryEvent is AccessEvent access && Reaches(access.Place.Root, environment, state))
+				ApplyEndings(closure, summary.Endings, access.Location, state);
+		}
+	}
+	
+	private void ApplyEndings(ClosureValue closure, ImmutableArray<ClosureEnding> endings, SourceLocation location,
+		BorrowState state)
+	{
+		foreach (var ending in endings)
+		{
+			foreach (var target in ResolveCapture(closure, ending.Capture, false, state))
+			{
+				var place = target with { Path = target.Path.AddRange(ending.Path) };
+				var invalidation = new Invalidation(Ending.Reassigned, location);
+				if (ending.IsDrop)
+					End(place, invalidation, state);
+				else
+					state.EndPayloads(place, invalidation);
+				
+				if (place.Root is CapturedVariable captured)
+					AddEnding(captured.Index, place.Path, ending.IsDrop);
+			}
+		}
+	}
+	
+	private static bool Reaches(VariableSymbol holder, VariableSymbol root, BorrowState state)
+	{
+		var visited = new HashSet<VariableSymbol>();
+		var pending = new Stack<VariableSymbol>([holder]);
+		while (pending.TryPop(out var current))
+		{
+			if (current == root)
+				return true;
+			
+			if (!visited.Add(current))
+				continue;
+			
+			foreach (var source in state.Get(current).Keys)
+				pending.Push(source.Root);
+		}
+		
+		return false;
 	}
 	
 	private static bool IsBorrowWrite(IndirectWriteEvent write) => GetBase(write.Target) is UnaryOpValue
@@ -374,6 +545,7 @@ public sealed class BorrowChecker(TypePool typePool, DiagnosticList diagnostics)
 					parameter == receiver
 						? "Cannot store new borrows in 'self'"
 						: "Cannot store new borrows in 'mut' parameters",
+				CapturedVariable or CapturedBorrows => DescribeCaptureStore(origins),
 				_ => null
 			};
 			
@@ -418,6 +590,25 @@ public sealed class BorrowChecker(TypePool typePool, DiagnosticList diagnostics)
 		LocalVariableSymbol { IsClosureEnvironment: true } => null,
 		ParameterSymbol parameter => parameterEscapes[parameter],
 		LocalVariableSymbol local => local.Name.StartsWith('.') ? Escape.Unstored : Escape.Local,
+		_ => null
+	};
+	
+	private static string? DescribeCaptureStore(List<Place> origins) =>
+		origins.Select(static source => FindCaptureEscape(source.Root)).Min() switch
+		{
+			Escape.Closure => "Cannot store closures that capture variables in captured variables",
+			Escape.Local => "Cannot store borrows of local variables in captured variables",
+			Escape.Unstored => "Cannot store borrows of unstored values in captured variables",
+			not null => "Cannot store borrows of parameters in captured variables",
+			null => null
+		};
+	
+	private static Escape? FindCaptureEscape(VariableSymbol root) => root switch
+	{
+		ClosureEnvironment => Escape.Closure,
+		LocalVariableSymbol { IsClosureEnvironment: true } => null,
+		LocalVariableSymbol local => local.Name.StartsWith('.') ? Escape.Unstored : Escape.Local,
+		ParameterSymbol or HeldBorrows => Escape.Borrowed,
 		_ => null
 	};
 	
@@ -472,6 +663,11 @@ public sealed class BorrowChecker(TypePool typePool, DiagnosticList diagnostics)
 				End(e.Place, new(e.Instruction.IsReassignment ? Ending.Reassigned : Ending.Dropped, e.Location), state);
 				break;
 			
+			case ClosureEvent e when closureSummaries.TryGetValue(e.Closure.Function.Symbol, out var summary):
+				_closures[e.Closure] = summary;
+				ApplyEffects(e.Closure, summary.Stores, state);
+				break;
+			
 			case StorageDeadEvent e:
 				ForgetTarget(e.Local, state);
 				state.End(new(e.Local, []), e.Local is LocalVariableSymbol { IsClosureEnvironment: true } environment
@@ -481,6 +677,8 @@ public sealed class BorrowChecker(TypePool typePool, DiagnosticList diagnostics)
 				state.Remove(e.Local);
 				break;
 		}
+		
+		ApplyLiveClosures(state, memoryEvent);
 	}
 	
 	private void End(Place place, Invalidation invalidation, BorrowState state)
@@ -546,9 +744,11 @@ public sealed class BorrowChecker(TypePool typePool, DiagnosticList diagnostics)
 			ArrayValue v => [..v.Elements.SelectMany(element => Sources(element, state))],
 			FStrValue v => TemplateSources(v, state),
 			FStrPartValue v => Sources(v.Target, state),
+			EnvironmentValue v => [new Place(captureSlots[v.Index], [])],
+			ClosureFieldValue v => [new Place(captureSlots[v.Index], [])],
 			ClosureValue v =>
 			[
-				new Place(_environment, []),
+				new Place(_environments.GetOrAdd(v), []),
 				..v.Environment is { } environment ? [new Place(environment, [])] : Array.Empty<Place>(),
 				..v.Captures.SelectMany(c => CaptureSources(c, state))
 			],
@@ -716,6 +916,16 @@ public sealed class BorrowChecker(TypePool typePool, DiagnosticList diagnostics)
 	
 	private sealed class ClosureEnvironment() : VariableSymbol("closure");
 	
+	private sealed class CapturedVariable(string name, int index) : VariableSymbol(name)
+	{
+		public int Index { get; } = index;
+	}
+	
+	private sealed class CapturedBorrows(string name, int index) : VariableSymbol(name)
+	{
+		public int Index { get; } = index;
+	}
+	
 	private sealed class BindingTarget() : VariableSymbol("target");
 	
 	private sealed class PlaceComparer : IEqualityComparer<Place>
@@ -768,6 +978,9 @@ public sealed class BorrowChecker(TypePool typePool, DiagnosticList diagnostics)
 		}
 		
 		public void Remove(VariableSymbol holder) => _holds.Remove(holder);
+		
+		public bool IsBorrowed(VariableSymbol root) =>
+			_holds.Values.Any(sources => sources.Keys.Any(source => source.Root == root));
 		
 		public IEnumerable<VariableSymbol> FindHolders(VariableSymbol root) => _holds
 			.Where(entry => entry.Value.Keys.Any(source => source.Root == root))

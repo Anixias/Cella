@@ -369,6 +369,7 @@ internal static class Program
 			
 			foreach (var module in lowerer.Modules)
 			{
+				var checkable = new List<LoweredFunction>();
 				foreach (var file in module.Files)
 				{
 					foreach (var function in file.Functions)
@@ -376,9 +377,12 @@ internal static class Program
 						var allPathsReturn = controlFlowAnalyzer.Analyze(function);
 						function.Normalize();
 						if (allPathsReturn)
-							memoryChecker.Check(function);
+							checkable.Add(function);
 					}
 				}
+				
+				foreach (var function in checkable.OrderBy(static function => function.Info.Symbol.Captures.IsEmpty))
+					memoryChecker.Check(function);
 				
 				if (verbose)
 					Console.WriteLine(LoweredModulePrinter.Print(module));

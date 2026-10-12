@@ -1,0 +1,145 @@
+mod test
+
+Token: ref rec
+{
+	text: str
+}
+
+Tally: ref rec
+{
+	count: imm[i32]
+}
+
+Box: rec
+{
+	id: i32
+
+	drop: op
+	{
+	}
+}
+
+Effect: enum
+{
+	none
+	hit(n: i32)
+}
+
+call: fun(f: fun[]) = f()
+
+apply: fun(mut t: Tally, f: fun[mut Tally]) = f(mut t)
+
+localIntoCapture: fun -> i32
+{
+	val zero = 0
+	var p: imm[i32] = imm zero
+	call(fun
+	{
+		val local = 9
+		p = imm local
+	})
+
+	ret p
+}
+
+closureIntoCapture: fun -> i32
+{
+	val base = 1
+	var g = fun -> i32 = base
+	call(fun
+	{
+		g = fun -> i32 = base
+	})
+
+	ret g()
+}
+
+parameterIntoCapture: fun -> i32
+{
+	val zero = 0
+	var p: imm[i32] = imm zero
+	val f = fun(x: i32) { p = imm x }
+	f(5)
+	ret p
+}
+
+scopeEnded: fun -> i32
+{
+	var t = Token("a")
+	{
+		var buffer = [u8(66), u8(67)]
+		val local = str(@buffer[0], 2)
+		val f = fun { t.text = local }
+		f()
+	}
+
+	ret i32(t.text.byteLength)
+}
+
+retarget: fun(mut t: Token)
+{
+	var buffer = [u8(66), u8(67)]
+	val local = str(@buffer[0], 2)
+	val f = fun { t.text = local }
+	f()
+}
+
+returned: fun -> Token
+{
+	var t = Token("a")
+	var buffer = [u8(66), u8(67)]
+	val local = str(@buffer[0], 2)
+	val f = fun { t.text = local }
+	f()
+	ret t
+}
+
+lambdaParameterStore: fun -> i32
+{
+	var outer = 1
+	var t = Tally(outer)
+	{
+		var local = 77
+		apply(mut t, fun(mut tt: Tally) { tt.count = imm local })
+	}
+
+	ret t.count
+}
+
+nested: fun -> i32
+{
+	val a = 1
+	var p: imm[i32] = imm a
+	{
+		val b = 2
+		call(fun { call(fun { p = imm b }) })
+	}
+
+	ret p
+}
+
+reassigned: fun -> i32
+{
+	var held = Box(1)
+	val replace = fun { held = Box(2) }
+	val inside = held
+	call(replace)
+	ret inside.id
+}
+
+caseChanged: fun -> i32
+{
+	var e = Effect.hit(1)
+	val reset = fun { e = Effect.none }
+	match mut e
+	{
+		hit(n) =>
+		{
+			reset()
+			ret n
+		}
+		else => ret 0
+	}
+}
+
+main: fun -> i32 = 0

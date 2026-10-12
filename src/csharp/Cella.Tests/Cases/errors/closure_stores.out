@@ -1,0 +1,58 @@
+
+====== closure_stores.ce ======
+
+Error at line 39, column 7
+38 │ val local = 9
+39 │ p = imm local
+         ╘═══════╛ Cannot store borrows of local variables in captured variables
+
+Error at line 51, column 7
+50 │ {
+51 │     g = fun -> i32 = base
+             ╘═══════════════╛ Cannot store closures that capture variables in captured variables
+
+Error at line 61, column 28
+60 │ var p: imm[i32] = imm zero
+61 │ val f = fun(x: i32) { p = imm x }
+                               ╘═══╛ Cannot store borrows of parameters in captured variables
+
+Error at line 76, column 10
+75 │ 
+76 │ ret i32(t.text.byteLength)
+             ╘════╛ Cannot use borrows of dropped values
+                  | Dropped on line 74
+
+Error at line 83, column 10
+82 │ val local = str(@buffer[0], 2)
+83 │ val f = fun { t.text = local }
+             ╘════════════════════╛ Cannot store new borrows in 'mut' parameters
+
+Error at line 94, column 6
+93 │ f()
+94 │ ret t
+         ^ Cannot return borrows of local variables
+
+Error at line 103, column 48
+102 │ var local = 77
+103 │ apply(mut t, fun(mut tt: Tally) { tt.count = imm local })
+                                                   ╘═══════╛ Cannot store new borrows in 'mut' parameters
+
+Error at line 118, column 6
+117 │ 
+118 │ ret p
+          ^ Cannot use borrows of dropped values
+          | Dropped on line 116
+
+Error at line 127, column 6
+126 │ call(replace)
+127 │ ret inside.id
+          ╘════╛ Cannot use borrows of reassigned values
+               | Reassigned on line 126
+
+Error at line 139, column 8
+138 │ reset()
+139 │ ret n
+          ^ Cannot use borrows of reassigned values
+          | Reassigned on line 138
+
+[compilation failed]
