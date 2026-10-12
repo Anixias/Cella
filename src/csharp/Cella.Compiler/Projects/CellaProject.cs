@@ -3,6 +3,8 @@ using Cella.Compiler.Linking;
 using Cella.Core.Syntax;
 using Cella.Core.Text;
 using CsToml;
+using CsToml.Error;
+using CsToml.Values;
 
 namespace Cella.Compiler.Projects;
 
@@ -54,11 +56,33 @@ public sealed partial class CellaProject
 	// All cella files in or under the project directory belong to that project
 	public static IEnumerable<string> FindSourceFiles(string directory) => FindSourceFiles(directory, true);
 	
-	public static async Task<CellaProject> LoadAsync(Stream stream, string path, List<string> errors)
+	public static bool IsProjectFile(string path) =>
+		Path.GetExtension(path).Equals(ProjectFileExtension, StringComparison.OrdinalIgnoreCase);
+	
+	public static async Task<CellaProject?> LoadAsync(Stream stream, string path, List<string> errors)
 	{
-		var document = await CsTomlSerializer.DeserializeAsync<TomlDocument>(stream);
+		TomlDocument document;
+		try
+		{
+			document = await CsTomlSerializer.DeserializeAsync<TomlDocument>(stream);
+		}
+		catch (CsTomlSerializeException e)
+		{
+			errors.AddRange((e.ParseExceptions ?? []).Select(error =>
+				$"{path}:{error.LineNumber}: {(error.InnerException ?? error).Message}"));
+			
+			return null;
+		}
+		
 		var root = document.RootNode;
 		ReportUnknownSettings(root, _settingNames, null, path, errors);
+		var reported = errors.Count;
+		CheckTypes(root, null, path, errors);
+		if (!root["OutputType"u8].HasValue)
+			errors.Add($"{path}: Missing '{nameof(OutputType)}'");
+		
+		if (errors.Count > reported)
+			return null;
 		
 		var project = root.GetValue<CellaProject>();
 		project.ProjectReferences?.RemoveAll(static r => r.Path is null);
@@ -75,6 +99,111 @@ public sealed partial class CellaProject
 		return project;
 	}
 	
+	private static void CheckTypes(TomlDocumentNode node, string? condition, string path, List<string> errors)
+	{
+		var place = condition is null ? "" : $" in {DescribeTable(condition)}";
+		foreach (var (key, value) in node)
+		{
+			var name = key.ToString()!;
+			switch (name)
+			{
+				case nameof(OutputType):
+					CheckChoice<ProjectOutputType>(value, name, place, path, errors);
+					break;
+				
+				case nameof(SystemLinkPreference):
+					CheckChoice<SystemLinkPreference>(value, name, place, path, errors);
+					break;
+				
+				case nameof(AssemblyName) when value.ValueType != TomlValueType.String:
+					errors.Add($"{path}: '{name}'{place} must be a string");
+					break;
+				
+				case nameof(BoundsChecks) or nameof(OverflowChecks) or nameof(DebugInfo)
+					when value.ValueType != TomlValueType.Boolean:
+					errors.Add($"{path}: '{name}'{place} must be true or false");
+					break;
+				
+				case nameof(ProjectReferences):
+					CheckReferences(value, condition, path, errors);
+					break;
+				
+				case nameof(Flags):
+					CheckFlags(value, condition, path, errors);
+					break;
+				
+				case nameof(When) when condition is null:
+					CheckConditions(value, path, errors);
+					break;
+			}
+		}
+	}
+	
+	private static void CheckChoice<T>(TomlDocumentNode value, string name, string place, string path,
+		List<string> errors) where T : struct, Enum
+	{
+		if (value.ValueType != TomlValueType.String)
+			errors.Add($"{path}: '{name}'{place} must be a string");
+		else if (!Enum.GetNames<T>().Contains(value.GetString()))
+			errors.Add($"{path}: '{value.GetString()}' is not a valid '{name}'{place}");
+	}
+	
+	private static void CheckReferences(TomlDocumentNode value, string? condition, string path, List<string> errors)
+	{
+		var table = DescribeReferences(condition);
+		if (!value.TryGetArray(out var entries))
+		{
+			errors.Add($"{path}: '{nameof(ProjectReferences)}' must be written as {table} tables");
+			return;
+		}
+		
+		for (var i = 0; i < entries.Count; i++)
+		{
+			var entry = value[i];
+			if (!entry.HasNodeOnly)
+				errors.Add($"{path}: '{nameof(ProjectReferences)}' must be written as {table} tables");
+			else if (entry["Path"u8] is { HasValue: true, ValueType: not TomlValueType.String })
+				errors.Add($"{path}: 'Path' in {table} must be a string");
+		}
+	}
+	
+	private static void CheckFlags(TomlDocumentNode value, string? condition, string path, List<string> errors)
+	{
+		var table = condition is null ? "[Flags]" : $"[When.\"{condition}\".Flags]";
+		if (!value.HasNodeOnly)
+		{
+			errors.Add($"{path}: {table} must be a table");
+			return;
+		}
+		
+		foreach (var (flag, setting) in value)
+		{
+			if (setting.ValueType != TomlValueType.Boolean)
+				errors.Add($"{path}: '{flag}' in {table} must be true or false");
+		}
+	}
+	
+	private static void CheckConditions(TomlDocumentNode value, string path, List<string> errors)
+	{
+		if (!value.HasNodeOnly)
+		{
+			errors.Add($"{path}: '{nameof(When)}' must be a table");
+			return;
+		}
+		
+		foreach (var (key, settings) in value)
+		{
+			var condition = key.ToString()!;
+			if (settings.HasNodeOnly)
+				CheckTypes(settings, condition, path, errors);
+			else
+				errors.Add($"{path}: {DescribeTable(condition)} must be a table");
+		}
+	}
+	
+	private static string DescribeReferences(string? condition) =>
+		condition is null ? "[[ProjectReferences]]" : $"[[When.\"{condition}\".ProjectReferences]]";
+	
 	private static void ReportUnknownSettings(TomlDocumentNode node, HashSet<string> names, string? condition,
 		string path, List<string> errors)
 	{
@@ -89,7 +218,7 @@ public sealed partial class CellaProject
 		if (!references.TryGetArray(out var entries))
 			return;
 		
-		var table = condition is null ? "[[ProjectReferences]]" : $"[[When.\"{condition}\".ProjectReferences]]";
+		var table = DescribeReferences(condition);
 		for (var i = 0; i < entries.Count; i++)
 		{
 			var hasPath = false;

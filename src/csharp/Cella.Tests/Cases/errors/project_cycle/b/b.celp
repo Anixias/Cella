@@ -1,0 +1,4 @@
+OutputType = "SharedLibrary"
+
+[[ProjectReferences]]
+Path = '../a/a.celp'

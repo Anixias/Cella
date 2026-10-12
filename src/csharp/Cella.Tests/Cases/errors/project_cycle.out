@@ -1,0 +1,2 @@
+Project references form a cycle: a.celp -> b.celp -> a.celp
+[compilation failed]

@@ -81,6 +81,39 @@ public class DependencyGraph<T> where T : notnull
 			throw new InvalidOperationException("The dependency graph contains a cycle and cannot be resolved.");
 	}
 	
+	public List<T> FindCycle()
+	{
+		var finished = new Dictionary<T, bool>();
+		var path = new List<T>();
+		foreach (var node in _nodes)
+		{
+			if (Visit(node) is { } cycle)
+				return cycle;
+		}
+		
+		return [];
+		
+		List<T>? Visit(T node)
+		{
+			if (finished.TryGetValue(node, out var isFinished))
+				return isFinished
+					? null
+					: [..path.SkipWhile(entry => !EqualityComparer<T>.Default.Equals(entry, node))];
+			
+			finished[node] = false;
+			path.Add(node);
+			foreach (var dependency in GetDependencies(node))
+			{
+				if (Visit(dependency) is { } cycle)
+					return cycle;
+			}
+			
+			path.RemoveAt(path.Count - 1);
+			finished[node] = true;
+			return null;
+		}
+	}
+	
 	public IEnumerable<T> GetDependencies(T item)
 	{
 		if (!_dependencies.TryGetValue(item, out var dependencies))

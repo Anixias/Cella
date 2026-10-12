@@ -1,0 +1,17 @@
+OutputType = "Program"
+SystemLinkPreference = "Fast"
+AssemblyName = 5
+DebugInfo = "yes"
+BoundsChecks = "no"
+
+[Flags]
+logging = "yes"
+nested = { a = true }
+
+[[ProjectReferences]]
+Path = 5
+
+[When.debug]
+SystemLinkPreference = "Sometimes"
+OverflowChecks = 1
+Flags = { x = "yes" }

@@ -1,0 +1,4 @@
+<case>\test.celp: Project 'missing/missing.celp' not found
+<case>\test.celp: Project 'lib' not found
+<case>\test.celp: 'lib/lib.ce' is not a project file
+[compilation failed]

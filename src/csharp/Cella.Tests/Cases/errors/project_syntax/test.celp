@@ -1,0 +1,7 @@
+OutputType = "Executable"
+
+[When.debug]
+DebugInfo = true
+
+[When."debug"]
+DebugInfo = false

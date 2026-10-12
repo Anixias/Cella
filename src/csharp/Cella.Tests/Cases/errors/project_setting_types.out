@@ -1,0 +1,12 @@
+<case>\test.celp: 'Program' is not a valid 'OutputType'
+<case>\test.celp: 'Fast' is not a valid 'SystemLinkPreference'
+<case>\test.celp: 'AssemblyName' must be a string
+<case>\test.celp: 'DebugInfo' must be true or false
+<case>\test.celp: 'BoundsChecks' must be true or false
+<case>\test.celp: 'logging' in [Flags] must be true or false
+<case>\test.celp: 'nested' in [Flags] must be true or false
+<case>\test.celp: 'Path' in [[ProjectReferences]] must be a string
+<case>\test.celp: 'Sometimes' is not a valid 'SystemLinkPreference' in [When."debug"]
+<case>\test.celp: 'OverflowChecks' in [When."debug"] must be true or false
+<case>\test.celp: 'x' in [When."debug".Flags] must be true or false
+[compilation failed]

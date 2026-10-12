@@ -1,0 +1,10 @@
+OutputType = "Executable"
+
+[[ProjectReferences]]
+Path = 'missing/missing.celp'
+
+[[ProjectReferences]]
+Path = 'lib'
+
+[[ProjectReferences]]
+Path = 'lib/lib.ce'

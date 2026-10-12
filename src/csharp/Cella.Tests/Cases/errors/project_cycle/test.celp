@@ -1,0 +1,4 @@
+OutputType = "Executable"
+
+[[ProjectReferences]]
+Path = 'a/a.celp'

@@ -1,0 +1,3 @@
+<case>\test.celp:7: Table Header 'When."debug"' is already defined.
+<case>\test.celp:7: Key 'DebugInfo' is already defined.
+[compilation failed]

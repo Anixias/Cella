@@ -39,6 +39,11 @@ internal static class Program
 		
 		if (Directory.Exists(sourcePath))
 			projectPaths.UnionWith(CellaProject.FindProjects(sourcePath));
+		else if (File.Exists(sourcePath) && !CellaProject.IsProjectFile(sourcePath))
+		{
+			Console.WriteLine($"'{sourcePath}' is not a project file");
+			return 1;
+		}
 		else if (File.Exists(sourcePath))
 			projectPaths.Add(sourcePath);
 		
@@ -52,21 +57,21 @@ internal static class Program
 		var targetTriple = TargetTriple.FromHost(); // TODO Check CLI args for cross-compilation
 		var cts = new CancellationTokenSource();
 		var projectErrors = new List<string>();
-		Dictionary<ProjectInfo, ImmutableHashSet<ProjectInfo>> projectDependencies;
-		try
+		var dependencyGraph = await MapDependenciesAsync(projectPaths, targetTriple, optimizeMode, flagOverrides,
+			projectErrors);
+		
+		if (dependencyGraph.FindCycle() is [_, ..] cycle)
 		{
-			var dependencyGraph = await MapDependenciesAsync(projectPaths, targetTriple, optimizeMode, flagOverrides,
-				projectErrors);
+			foreach (var error in projectErrors)
+				Console.WriteLine(error);
 			
-			projectDependencies = dependencyGraph.GetResolutionOrder().ToDictionary(static p => p,
-				p => dependencyGraph.GetDependencies(p).ToImmutableHashSet());
-		}
-		catch (InvalidOperationException e)
-		{
-			// TEMP
-			Console.WriteLine(e.Message);
+			var names = cycle.Append(cycle[0]).Select(static project => Path.GetFileName(project.FilePath));
+			Console.WriteLine($"Project references form a cycle: {string.Join(" -> ", names)}");
 			return 1;
 		}
+		
+		var projectDependencies = dependencyGraph.GetResolutionOrder().ToDictionary(static p => p,
+			p => dependencyGraph.GetDependencies(p).ToImmutableHashSet());
 		
 		var builtInFlags = BuildFlags.Create(targetTriple, optimizeMode);
 		var flagsValid = ValidateFlags(projectDependencies.Keys, builtInFlags, flagOverrides);
@@ -194,11 +199,14 @@ internal static class Program
 			if (!processedPaths.Add(path))
 				continue;
 			
-			CellaProject project;
+			CellaProject? loaded;
 			await using (var stream = new FileStream(path, FileMode.Open))
-				project = await CellaProject.LoadAsync(stream, path, errors);
+				loaded = await CellaProject.LoadAsync(stream, path, errors);
 			
-			project = project.Resolve(path, CreateFlags(project, targetTriple, optimizeMode, flagOverrides), errors);
+			if (loaded is null)
+				continue;
+			
+			var project = loaded.Resolve(path, CreateFlags(loaded, targetTriple, optimizeMode, flagOverrides), errors);
 			var projectDirectory = Path.GetDirectoryName(path) ?? string.Empty;
 			var projectName = Path.GetFileNameWithoutExtension(path);
 			var projectInfo = new ProjectInfo(path, projectDirectory, projectName, project);
@@ -212,6 +220,17 @@ internal static class Program
 			foreach (var reference in references)
 			{
 				var dependencyPath = Path.GetFullPath(Path.Combine(projectDirectory, reference.Path!));
+				if (!File.Exists(dependencyPath))
+				{
+					errors.Add($"{path}: Project '{reference.Path}' not found");
+					continue;
+				}
+				
+				if (!CellaProject.IsProjectFile(dependencyPath))
+				{
+					errors.Add($"{path}: '{reference.Path}' is not a project file");
+					continue;
+				}
 				
 				projectDependencies.GetOrAdd(projectInfo).Add(dependencyPath);
 				
@@ -222,8 +241,13 @@ internal static class Program
 		
 		// Map project dependencies
 		foreach (var (project, dependencies) in projectDependencies)
+		{
 			foreach (var dependency in dependencies)
-				graph.AddDependency(project, projectLookup[dependency]);
+			{
+				if (projectLookup.TryGetValue(dependency, out var target))
+					graph.AddDependency(project, target);
+			}
+		}
 		
 		return graph;
 	}
@@ -280,7 +304,15 @@ internal static class Program
 			return new(new(project.Name, SymbolTable.Empty, SignatureTable.Empty, null), outputType, null, false);
 		
 		if (files.Length == 0)
-			return new(new(project.Name, SymbolTable.Empty, SignatureTable.Empty, null), outputType, null, true);
+		{
+			if (outputType != ProjectOutputType.Executable)
+				return new(new(project.Name, SymbolTable.Empty, SignatureTable.Empty, null), outputType, null, true);
+			
+			PrintDiagnostics([new(DiagnosticSeverity.Error, SourceLocation.None, "The program has no 'main' function")],
+				project.Directory, showHints);
+			
+			return new(new(project.Name, SymbolTable.Empty, SignatureTable.Empty, null), outputType, null, false);
+		}
 		
 		// Phase 2a: Symbol collection
 		SymbolTable symbolTable;
