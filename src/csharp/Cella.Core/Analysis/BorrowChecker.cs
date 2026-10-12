@@ -322,15 +322,17 @@ public sealed class BorrowChecker(TypePool typePool, DiagnosticList diagnostics)
 				CheckTargets([e.Place], Written(e, state), e.Value, e.Location, state);
 				break;
 			
-			case IndirectWriteEvent e when GetBase(e.Target) is UnaryOpValue
-			{
-				Op: UnaryOperation.Dereference,
-				Operand.Type: BorrowType
-			}:
+			case IndirectWriteEvent e when IsBorrowWrite(e):
 				CheckTargets(BorrowSources(e.Target, state), Stored(e.Value, state), e.Value, e.Location, state);
 				break;
 		}
 	}
+	
+	private static bool IsBorrowWrite(IndirectWriteEvent write) => GetBase(write.Target) is UnaryOpValue
+	{
+		Op: UnaryOperation.Dereference,
+		Operand.Type: BorrowType
+	};
 	
 	private void CheckTargets(List<Place> targets, List<Place> written, Value value, SourceLocation fallback,
 		BorrowState state)
@@ -408,6 +410,7 @@ public sealed class BorrowChecker(TypePool typePool, DiagnosticList diagnostics)
 				break;
 			
 			case WriteEvent e:
+				state.EndPayloads(e.Place, new(Ending.Reassigned, e.Location));
 				state.Revive(e.Place);
 				if (e.Place.Path.IsEmpty)
 					state.Set(e.Place.Root, Written(e, state));
@@ -417,6 +420,12 @@ public sealed class BorrowChecker(TypePool typePool, DiagnosticList diagnostics)
 				break;
 			
 			case IndirectWriteEvent e:
+				if (IsBorrowWrite(e))
+				{
+					foreach (var target in BorrowSources(e.Target, state))
+						state.EndPayloads(target, new(Ending.Reassigned, e.Location));
+				}
+				
 				WriteThrough(BorrowSources(e.Target, state), Stored(e.Value, state), state);
 				break;
 			
@@ -752,6 +761,18 @@ public sealed class BorrowChecker(TypePool typePool, DiagnosticList diagnostics)
 					.ToList();
 				
 				foreach (var source in ended)
+					sources[source] = sources[source].Add(invalidation);
+			}
+		}
+		
+		public void EndPayloads(Place place, Invalidation invalidation)
+		{
+			foreach (var sources in _holds.Values)
+			{
+				foreach (var source in sources.Keys.Where(source => Overlaps(source, place) &&
+				                                                    source.Path.Skip(place.Path.Length)
+					                                                    .Any(static projection =>
+						                                                    projection is PayloadProjection)).ToList())
 					sources[source] = sources[source].Add(invalidation);
 			}
 		}

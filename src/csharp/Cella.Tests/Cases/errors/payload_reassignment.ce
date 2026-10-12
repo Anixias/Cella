@@ -1,0 +1,79 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Value: enum
+{
+	num(x: i64)
+	pointer(p: ptr[i32])
+}
+
+Effect: enum
+{
+	none
+	hit(n: i32)
+}
+
+Box: rec
+{
+	e: Effect
+	k: i32
+}
+
+main: fun -> i32
+{
+	var target = 5
+	var v = Value.pointer(@target)
+	match mut v
+	{
+		pointer(p) =>
+		{
+			v = Value.num(77)
+			printf("%d\n", *p)
+		}
+		else => {}
+	}
+
+	var e = Effect.hit(1)
+	if e is hit(mut n)
+	{
+		e = Effect.none
+		printf("%d\n", n)
+	}
+
+	val r: mut[i32] = match mut e
+	{
+		hit(n) => mut n
+		none => ret 0
+	}
+
+	e = Effect.none
+	printf("%d\n", r)
+
+	val m = mut e
+	match mut e
+	{
+		hit(n) =>
+		{
+			m = Effect.none
+			printf("%d\n", n)
+		}
+		else => {}
+	}
+
+	var b = Box(Effect.hit(1), 2)
+	match mut b.e
+	{
+		hit(n) =>
+		{
+			b = Box(Effect.none, 4)
+			printf("%d\n", n)
+		}
+		else => {}
+	}
+
+	ret 0
+}
