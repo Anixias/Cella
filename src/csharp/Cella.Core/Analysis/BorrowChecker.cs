@@ -39,6 +39,7 @@ public sealed class BorrowChecker(TypePool typePool, DiagnosticList diagnostics)
 	private readonly Dictionary<LocalVariableSymbol, List<SourceLocation>> _temporaryEnds = [];
 	private readonly List<(LocalVariableSymbol Temporary, List<LocalVariableSymbol> Holders)> _dying = [];
 	private readonly HashSet<SourceLocation> _reportedEnds = [];
+	private readonly Dictionary<ParameterSymbol, HashSet<Place>> _reportedStores = [];
 	private HashSet<VariableSymbol> returned = [];
 	private Dictionary<ParameterSymbol, Escape?> parameterEscapes = [];
 	private ParameterSymbol? receiver;
@@ -359,26 +360,46 @@ public sealed class BorrowChecker(TypePool typePool, DiagnosticList diagnostics)
 					{ } escape => $"Cannot store borrows of {Describe(escape)} in 'self'",
 					null => null
 				},
-				ParameterSymbol { Mode: ParameterMode.Mut } parameter when !IsHeld(origins, parameter, state) =>
+				ParameterSymbol { Mode: ParameterMode.Mut } parameter when !IsHeld(origins, parameter) &&
+				                                                           !WasReported(origins, parameter) =>
 					parameter == receiver
 						? "Cannot store new borrows in 'self'"
 						: "Cannot store new borrows in 'mut' parameters",
 				_ => null
 			};
 			
-			if (message is not null && _reported.Add(location))
+			if (message is null)
+				continue;
+			
+			if (root is ParameterSymbol stored)
+				ReportedStores(stored).UnionWith(origins);
+			
+			if (_reported.Add(location))
 				diagnostics.Add(new(DiagnosticSeverity.Error, location, message));
 		}
 	}
+	
+	private HashSet<Place> ReportedStores(ParameterSymbol parameter)
+	{
+		if (!_reportedStores.TryGetValue(parameter, out var stores))
+		{
+			stores = new(PlaceComparer.Instance);
+			_reportedStores[parameter] = stores;
+		}
+		
+		return stores;
+	}
+	
+	private bool WasReported(List<Place> written, ParameterSymbol parameter) =>
+		_reportedStores.TryGetValue(parameter, out var stores) && written.All(stores.Contains);
 	
 	private static IEnumerable<VariableSymbol> Roots(List<Place> targets) => targets
 		.Select(static target => target.Root)
 		.Where(static root => root is not BindingTarget)
 		.Distinct();
 	
-	private static bool IsHeld(List<Place> written, ParameterSymbol parameter, BorrowState state) =>
-		written.All(source => source.Root is HeldBorrows { Parameter: var owner } && owner == parameter ||
-		                      state.Get(parameter).ContainsKey(source));
+	private static bool IsHeld(List<Place> written, ParameterSymbol parameter) =>
+		written.All(source => source.Root is HeldBorrows { Parameter: var owner } && owner == parameter);
 	
 	private Escape? FindEscape(IEnumerable<Place> sources) => sources.Select(source => FindEscape(source.Root)).Min();
 	

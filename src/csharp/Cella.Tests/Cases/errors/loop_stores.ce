@@ -1,0 +1,54 @@
+mod test
+
+Words: ref rec
+{
+	items: array[str, 2]
+
+	fill: fun(mut self, other: str)
+	{
+		for w in mut self.items
+			w = other
+	}
+}
+
+Slot: ref enum
+{
+	none
+	text(s: str)
+}
+
+replaceAll: fun(mut words: array[str, 2], other: str)
+{
+	for w in mut words
+		w = other
+}
+
+replaceFirst: fun(mut words: array[str, 2], other: str)
+{
+	var i = 0
+	while i < 2
+	{
+		words[0] = other
+		i += 1
+	}
+}
+
+fillSlots: fun(mut slots: array[Slot, 2], other: str)
+{
+	for slot in mut slots
+	{
+		match mut slot
+		{
+			text(s) => s = other
+			else => {}
+		}
+	}
+}
+
+fillStatic: fun(mut words: array[str, 2])
+{
+	for w in mut words
+		w = "q"
+}
+
+main: fun -> i32 = 0

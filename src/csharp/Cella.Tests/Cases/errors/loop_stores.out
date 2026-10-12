@@ -1,0 +1,24 @@
+
+====== loop_stores.ce ======
+
+Error at line 10, column 8
+ 9 │ for w in mut self.items
+10 │     w = other
+             ╘═══╛ Cannot store new borrows in 'self'
+
+Error at line 23, column 7
+22 │ for w in mut words
+23 │     w = other
+             ╘═══╛ Cannot store new borrows in 'mut' parameters
+
+Error at line 31, column 14
+30 │ {
+31 │     words[0] = other
+                    ╘═══╛ Cannot store new borrows in 'mut' parameters
+
+Error at line 42, column 19
+41 │ {
+42 │     text(s) => s = other
+                        ╘═══╛ Cannot store new borrows in 'mut' parameters
+
+[compilation failed]
