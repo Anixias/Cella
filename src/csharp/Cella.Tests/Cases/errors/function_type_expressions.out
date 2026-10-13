@@ -4,7 +4,7 @@
 Error at line 15, column 13
 14 │ {
 15 │     val type = fun[i32 -> i32]
-                    ╘═════════════╛ 'fun[i32 -> i32]' is not a value
+                    ╘═════════════╛ Cannot use types as values
 
 Error at line 16, column 33
 15 │ val type = fun[i32 -> i32]

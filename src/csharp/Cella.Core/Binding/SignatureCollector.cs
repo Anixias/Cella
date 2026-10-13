@@ -1140,6 +1140,10 @@ public sealed class SignatureCollector
 					
 					break;
 				
+				case 0 when FindOtherKindMember(conformance, name, requirement) is { } other:
+					ReportConformance(other, $"'{name}' doesn't match '{trait}.{name}'");
+					break;
+				
 				default:
 					ReportConformance(conformance.Location, DescribeMissingRequirement(conformance, trait, self, name,
 						requirement));
@@ -1188,6 +1192,31 @@ public sealed class SignatureCollector
 		
 		var accessor = GetAccessorKind(requirement) == "get" ? "getter" : "setter";
 		return $"'{self.Name}' needs a {accessor} for '{trait}.{name}'";
+	}
+	
+	private SourceLocation? FindOtherKindMember(Conformance conformance, string name, FunctionSymbol requirement)
+	{
+		if (requirement.Property is not null && HasProperty(conformance, name))
+			return null;
+		
+		if (requirement.Property is null &&
+		    (conformance.Impl?.Properties.FirstOrDefault(property => property.Name == name) ??
+		     conformance.Target.GetProperty(name)) is { Node: { } property })
+			return property.SourceLocation;
+		
+		if (requirement.Property is not null &&
+		    (conformance.Impl?.Functions.Where(function => function.Name == name) ?? [])
+		    .Concat(conformance.Target.GetFunctions(name))
+		    .FirstOrDefault() is { } method)
+		{
+			_witnessMembers.Add(method.Function);
+			return GetFunctionLocation(method.Function);
+		}
+		
+		return conformance.Target is RecordSymbol record &&
+		       record.Members.OfType<FieldSymbol>().FirstOrDefault(field => field.Name == name) is { Node: { } field }
+			? field.SourceLocation
+			: null;
 	}
 	
 	private static bool HasProperty(Conformance conformance, string name) =>
@@ -3541,10 +3570,11 @@ public sealed class SignatureCollector
 	private ImportEnvironment CollectImports(FileNode node, ResolutionContext context)
 	{
 		var imports = new List<Symbol>();
+		var hidden = new List<Symbol>();
 		var explicitImports = new List<(Symbol Symbol, Token Name, string Module)>();
 		foreach (var importExpression in node.Imports)
 		{
-			var collected = CollectImport(importExpression, context);
+			var collected = CollectImport(importExpression, context, hidden);
 			imports.AddRange(collected);
 			if (importExpression.Import is TokenImport or ListImport)
 				explicitImports.AddRange(collected.Select(symbol =>
@@ -3552,7 +3582,7 @@ public sealed class SignatureCollector
 		}
 		
 		_explicitImports.Add((explicitImports, context));
-		return new(imports, explicitImports.Select(static entry => entry.Symbol));
+		return new(imports, explicitImports.Select(static entry => entry.Symbol), hidden);
 	}
 	
 	private static Token FindImportName(ImportExpression import, Symbol symbol) => import.Import switch
@@ -3594,12 +3624,20 @@ public sealed class SignatureCollector
 		}
 	}
 	
-	private List<Symbol> CollectImport(ImportExpression import, ResolutionContext context)
+	private List<Symbol> CollectImport(ImportExpression import, ResolutionContext context, List<Symbol> hidden)
 	{
 		var path = import.ModuleName.Parts;
 		var symbol = context.ResolveMembers(Modules.Root, path, 0);
 		if (symbol is ModulePathSymbol module)
+		{
+			if (import.Import is FullImport)
+				hidden.AddRange(module.Members.Values
+					.Concat(module.PrivateMembers.Values)
+					.SelectMany(static members => members)
+					.Where(member => !context.IsVisible(member)));
+			
 			return CollectImport(module, import.Import, context);
+		}
 		
 		if (symbol is not null)
 			Diagnostics.Add(ResolutionContext.ReportNotModule(symbol, path));

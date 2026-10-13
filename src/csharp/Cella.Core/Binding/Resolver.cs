@@ -3975,7 +3975,15 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	}
 	
 	public IResolvedExpressionNode Visit(IndexerExpressionNode node) =>
-		ResolveExplicitFunctionValue(node) ?? ResolveIndexing(node, VisitNode(node.Target));
+		ResolveExplicitFunctionValue(node) ?? RejectTypeValue(node) ?? ResolveIndexing(node, VisitNode(node.Target));
+	
+	private IResolvedExpressionNode? RejectTypeValue(IndexerExpressionNode node) =>
+		node.Target is VarExpressionNode or AccessExpressionNode &&
+		CurrentResolutionContext.TryResolveExpressionAsType(node) is { } type
+			? type is InvalidType
+				? new ResolvedInvalidExpressionNode(node, CurrentTargetType)
+				: Error(node, "Cannot use types as values", CurrentTargetType)
+			: null;
 	
 	private IResolvedExpressionNode? ResolveExplicitFunctionValue(IndexerExpressionNode node)
 	{
@@ -4543,7 +4551,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	}
 	
 	public IResolvedExpressionNode Visit(TypeExpressionNode node) =>
-		Error(node, $"'{node.SourceLocation.GetText()}' is not a value", CurrentTargetType);
+		Error(node, "Cannot use types as values", CurrentTargetType);
 	
 	public IResolvedExpressionNode Visit(NameOfExpressionNode node)
 	{
@@ -5012,7 +5020,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 				return ResolveFunctionValue(node, symbol);
 			
 			case ModulePathSymbol:
-				return Error(node, $"'{GetName(node)}' is a module, not a value", CurrentTargetType);
+				return Error(node, "Cannot use modules as values", CurrentTargetType);
 			
 			case TypeParameterSymbol { IsValue: true } parameter:
 				return new ResolvedValueParameterExpressionNode(parameter, node);
@@ -5022,6 +5030,12 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			
 			case CapturedSymbol when node is VarExpressionNode variable:
 				return ResolveCapture(variable);
+			
+			case TypeSymbol:
+				return Error(node, "Cannot use types as values", CurrentTargetType);
+			
+			case LabelSymbol:
+				return Error(node, "Cannot use labels as values", CurrentTargetType);
 			
 			default:
 				return Error(node, $"Symbol '{GetName(node)}' is not a variable", CurrentTargetType);

@@ -1,0 +1,5 @@
+mod test
+
+use game.*
+
+main: fun -> i32 = tool() + secret()

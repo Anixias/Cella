@@ -180,7 +180,7 @@ public readonly struct ResolutionContext
 	
 	public Diagnostic? ReportHidden(string name, SourceLocation location)
 	{
-		foreach (var symbol in GetModuleSymbols(name))
+		foreach (var symbol in GetModuleSymbols(name).Concat(Imports?.ResolveHidden(name) ?? []))
 		{
 			if (!IsVisible(symbol))
 				return DiagnosticReporter.ReportHidden(location, name, ModuleIndex.GetVisibility(symbol), false);
@@ -263,7 +263,9 @@ public readonly struct ResolutionContext
 					[..arguments.Select(static argument => argument.SourceLocation)], node.SourceLocation);
 			
 			case null:
-				Diagnostics.Add(new(DiagnosticSeverity.Error, location, $"Trait '{text}' not found in this scope"));
+				Diagnostics.Add(ReportHidden(text, location) ??
+				                new(DiagnosticSeverity.Error, location, $"Trait '{text}' not found in this scope"));
+				
 				return null;
 			
 			case AmbiguousSymbol:

@@ -1,0 +1,17 @@
+mod test
+
+Shape: trait
+{
+	area: fun(imm self) -> i32
+}
+
+Thing: rec impl Shape
+{
+	area: fun(imm self) -> i32 = 3
+}
+
+main: fun -> i32
+{
+	val d = dyn[Shape](Thing())
+	ret d.area()
+}

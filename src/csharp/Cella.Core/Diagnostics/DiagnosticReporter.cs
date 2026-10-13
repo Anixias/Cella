@@ -1,4 +1,5 @@
 ﻿using System.Collections.Immutable;
+using Cella.Core.Binding;
 using Cella.Core.Binding.Nodes;
 using Cella.Core.Binding.Operations;
 using Cella.Core.Symbols;
@@ -101,8 +102,8 @@ public static class DiagnosticReporter
 		if (module.Parent is null)
 			return ReportUndefinedModule(location, missingName, module.Children.Keys);
 		
-		if (module.PrivateMembers.ContainsKey(missingName))
-			return new(DiagnosticSeverity.Error, location, $"'{module.Path}.{missingName}' isn't public");
+		if (module.PrivateMembers.TryGetValue(missingName, out var hidden))
+			return ReportHidden(location, $"{module.Path}.{missingName}", hidden.Max(ModuleIndex.GetVisibility), false);
 		
 		return ReportUndefined(location, $"Module '{module.Path}' has no member '{missingName}'", missingName,
 			memberNames.Concat(module.Children.Keys));
@@ -121,8 +122,12 @@ public static class DiagnosticReporter
 		new(DiagnosticSeverity.Error, location,
 			$"'{name}' is write-only outside its {DescribeScope(visibility, true)}");
 	
-	private static string DescribeScope(Visibility visibility, bool isMember) =>
-		visibility != Visibility.Private ? "module" : isMember ? "type" : "file";
+	private static string DescribeScope(Visibility visibility, bool isMember) => visibility switch
+	{
+		Visibility.Project => "project",
+		Visibility.Private => isMember ? "type" : "file",
+		_ => "module"
+	};
 	
 	public static Diagnostic ReportUndefinedCase(SourceLocation location, string enumName, string missingName,
 		IEnumerable<string> caseNames) =>

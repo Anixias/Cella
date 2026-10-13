@@ -1,0 +1,40 @@
+mod test
+
+f: fun -> bool = true
+
+negate: fun -> i32
+{
+	val a = 5
+	val b: i32 = -
+	f()
+	ret b
+}
+
+invert: fun -> i32
+{
+	val ok = !
+	f()
+	ret 0
+}
+
+borrow: fun -> i32
+{
+	var a = 1
+	val b = imm
+	a = 2
+	ret 0
+}
+
+Box: rec
+{
+	limit: i32
+}
+
+increment: fun -> i32
+{
+	var box = Box(1)
+	box.limit++
+	ret 0
+}
+
+main: fun -> i32 = 0

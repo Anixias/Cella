@@ -420,21 +420,23 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 		if (Match(ref index, out var ownKeyword, TokenType.KeywordOwn))
 			return !Peek(index + 1, TokenType.OpOpenBracket) && Match(ref index, out var lambda, TokenType.KeywordFun)
 				? ParseLambda(ref index, lambda, ownKeyword)
-				: new OwnExpressionNode(ownKeyword, ParseUnary(ref index));
+				: new OwnExpressionNode(ownKeyword, ParseOperand(ref index));
 		
 		if (Match(ref index, out var atomicKeyword, TokenType.KeywordAtomic))
 			return ParseAtomic(ref index, atomicKeyword);
 		
 		if (!StartsBorrowType(index) && Match(ref index, out var borrowKeyword, _borrowKeywords))
-			return new BorrowExpressionNode(borrowKeyword, ParseUnary(ref index));
+			return new BorrowExpressionNode(borrowKeyword, ParseOperand(ref index));
 		
 		if (!Match(ref index, out var op, _unaryPrefixOps))
 			return ParsePrimary(ref index);
 		
-		// TODO Should disallow newlines here
-		var operand = ParseUnary(ref index);
+		var operand = ParseOperand(ref index);
 		return new UnaryOpExpressionNode(op, operand);
 	}
+	
+	private IExpressionNode ParseOperand(ref int index) =>
+		AtEnd(index) || IsNextNewline(index) ? throw Expected(index - 1, "an expression") : ParseUnary(ref index);
 	
 	private AtomicExpressionNode ParseAtomic(ref int index, Token keyword)
 	{

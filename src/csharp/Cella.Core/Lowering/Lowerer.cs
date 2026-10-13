@@ -1263,7 +1263,7 @@ public sealed class Lowerer
 		public Value Visit(ResolvedBorrowExpressionNode node)
 		{
 			var value = VisitPlace(node.Place);
-			var place = IsPlaceValue(value) ? value : StoreTemporary(value, "borrow");
+			var place = IsPlaceValue(value) ? value : StoreTemporary(value, "borrow", node.Place.Syntax.SourceLocation);
 			return new UnaryOpValue(node.Type, place, UnaryOperation.AddressOf, node.Syntax.SourceLocation);
 		}
 		

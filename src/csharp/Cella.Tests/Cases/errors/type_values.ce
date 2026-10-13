@@ -1,0 +1,54 @@
+mod test
+
+Point: rec
+{
+	x: i32
+}
+
+box[T]: rec
+{
+	x: T
+}
+
+named: fun -> i32
+{
+	val a = Point
+	ret 0
+}
+
+primitive: fun -> i32
+{
+	val a = i32
+	ret 0
+}
+
+generic: fun -> i32
+{
+	val a = box[i32]
+	ret 0
+}
+
+array_type: fun -> i32
+{
+	val a = array[i32, 3]
+	ret 0
+}
+
+parameter[T]: fun(imm x: T) -> i32
+{
+	val a = T
+	ret 0
+}
+
+label: fun -> i32
+{
+	outer: loop
+	{
+		val a = outer
+		break
+	}
+
+	ret 0
+}
+
+main: fun -> i32 = parameter(1)

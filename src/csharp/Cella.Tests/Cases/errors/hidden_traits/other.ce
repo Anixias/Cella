@@ -1,0 +1,6 @@
+mod test
+
+Hidden: pvt trait
+{
+	go: fun(imm self) -> i32
+}

@@ -1,0 +1,19 @@
+
+====== trait_member_kinds.ce ======
+
+Error at line 17, column 2
+16 │ 
+17 │ size: fun(imm self) -> i32 = self.x
+     ╘══╛ 'size' doesn't match 'Sized.size'
+
+Error at line 24, column 2
+23 │ 
+24 │ count: get(imm self) -> i32 = self.x
+     ╘═══╛ 'count' doesn't match 'Counted.count'
+
+Error at line 29, column 2
+28 │ {
+29 │     size: i32
+         ╘══╛ 'size' doesn't match 'Sized.size'
+
+[compilation failed]

@@ -1,0 +1,24 @@
+
+====== prefix_operator_line_end.ce ======
+
+Error at line 8, column 15
+7 │ val a = 5
+8 │ val b: i32 = -
+                 ^ Expected an expression
+
+Error at line 15, column 11
+14 │ {
+15 │     val ok = !
+                  ^ Expected an expression
+
+Error at line 23, column 10
+22 │ var a = 1
+23 │ val b = imm
+             ╘═╛ Expected an expression
+
+Error at line 36, column 12
+35 │ var box = Box(1)
+36 │ box.limit++
+               ^ Expected an expression
+
+[compilation failed]

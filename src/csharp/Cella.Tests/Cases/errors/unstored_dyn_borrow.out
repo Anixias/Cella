@@ -1,0 +1,9 @@
+
+====== unstored_dyn_borrow.ce ======
+
+Error at line 15, column 21
+14 │ {
+15 │     val d = dyn[Shape](Thing())
+                            ╘═════╛ Cannot borrow unstored values
+
+[compilation failed]

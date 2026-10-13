@@ -132,6 +132,9 @@ internal static class Program
 		var typePool = new TypePool(conversionTable, operatorRegistry, sizeTable);
 		var projectSymbols = new Dictionary<ProjectInfo, AssemblyInfo>();
 		var succeeded = true;
+		var displayRoot = Directory.Exists(sourcePath)
+			? Path.GetFullPath(sourcePath)
+			: Path.GetDirectoryName(Path.GetFullPath(sourcePath));
 		
 		foreach (var (project, dependencies) in projectDependencies)
 		{
@@ -143,7 +146,7 @@ internal static class Program
 			
 			var dependencyInfo = dependencies.Select(dependency => projectSymbols[dependency]).ToList();
 			var assemblyInfo = await BuildProject(project, typePool, dependencyInfo, verbose, showHints, optimizeMode,
-				targetTriple, flagOverrides, cts.Token);
+				targetTriple, flagOverrides, displayRoot, cts.Token);
 			
 			if (assemblyInfo.Succeeded)
 				projectSymbols[project] = assemblyInfo;
@@ -407,7 +410,8 @@ internal static class Program
 	
 	private static async Task<AssemblyInfo> BuildProject(ProjectInfo project, TypePool typePool,
 		IEnumerable<AssemblyInfo> dependencies, bool verbose, bool showHints, OptimizeMode optimizeMode,
-		TargetTriple targetTriple, IReadOnlyDictionary<string, bool> flagOverrides, CancellationToken ct = default)
+		TargetTriple targetTriple, IReadOnlyDictionary<string, bool> flagOverrides, string? displayRoot,
+		CancellationToken ct = default)
 	{
 		// Phase 1: File parsing
 		var outputType = project.Project.OutputType;
@@ -415,7 +419,7 @@ internal static class Program
 		var (files, parseDiagnostics) = await ProcessProject(project, flags, ct);
 		var diagnostics = new List<DiagnosticList> { parseDiagnostics };
 		
-		if (ReportErrors(diagnostics, project.Directory, showHints))
+		if (ReportErrors(diagnostics, displayRoot, showHints))
 			return new(new(project.Name, SymbolTable.Empty, SignatureTable.Empty, null), outputType, null, false);
 		
 		if (files.Length == 0)
@@ -424,7 +428,7 @@ internal static class Program
 				return new(new(project.Name, SymbolTable.Empty, SignatureTable.Empty, null), outputType, null, true);
 			
 			PrintDiagnostics([new(DiagnosticSeverity.Error, SourceLocation.None, "The program has no 'main' function")],
-				project.Directory, showHints);
+				displayRoot, showHints);
 			
 			return new(new(project.Name, SymbolTable.Empty, SignatureTable.Empty, null), outputType, null, false);
 		}
@@ -502,7 +506,7 @@ internal static class Program
 		
 		diagnostics.Add(signatureCollector.Diagnostics);
 		diagnostics.Add(resolver.Diagnostics);
-		if (ReportErrors(diagnostics, project.Directory, showHints))
+		if (ReportErrors(diagnostics, displayRoot, showHints))
 			return errorResult;
 		
 		// Phase 3: Symbol resolution
@@ -511,7 +515,7 @@ internal static class Program
 			resolvedFiles = [..files.Select(resolver.Resolve)];
 			
 			resolver.ReportInfiniteInstantiations();
-			if (ReportErrors(diagnostics, project.Directory, showHints))
+			if (ReportErrors(diagnostics, displayRoot, showHints))
 				return errorResult;
 		}
 		
@@ -523,7 +527,7 @@ internal static class Program
 			foreach (var resolvedAst in resolvedFiles)
 				typeChecker.Check(resolvedAst);
 			
-			if (ReportErrors(diagnostics, project.Directory, showHints))
+			if (ReportErrors(diagnostics, displayRoot, showHints))
 				return errorResult;
 		}
 		
@@ -564,10 +568,10 @@ internal static class Program
 					Console.WriteLine(LoweredModulePrinter.Print(module));
 			}
 			
-			if (ReportErrors(diagnostics, project.Directory, showHints))
+			if (ReportErrors(diagnostics, displayRoot, showHints))
 				return errorResult;
 			
-			PrintDiagnostics(diagnostics.SelectMany(static list => list), project.Directory, showHints);
+			PrintDiagnostics(diagnostics.SelectMany(static list => list), displayRoot, showHints);
 		}
 		
 		// Phase 7: Code generation
@@ -787,7 +791,7 @@ internal static class Program
 		return null;
 	}
 	
-	private static bool ReportErrors(List<DiagnosticList> diagnostics, string directory, bool showHints)
+	private static bool ReportErrors(List<DiagnosticList> diagnostics, string? directory, bool showHints)
 	{
 		if (diagnostics.All(static list => list.ErrorCount == 0))
 			return false;

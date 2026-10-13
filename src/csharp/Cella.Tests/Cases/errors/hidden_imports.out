@@ -1,0 +1,14 @@
+
+====== main.ce ======
+
+Error at line 5, column 20
+4 │ 
+5 │ main: fun -> i32 = tool() + secret()
+                       ╘════╛ 'tool' is private to its module
+
+Error at line 5, column 29
+4 │ 
+5 │ main: fun -> i32 = tool() + secret()
+                                ╘══════╛ 'secret' is private to its file
+
+[compilation failed]

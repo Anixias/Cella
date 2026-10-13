@@ -1,0 +1,32 @@
+mod test
+
+Sized: trait
+{
+	size: get(imm self) -> i32
+}
+
+Counted: trait
+{
+	count: fun(imm self) -> i32
+}
+
+Method: rec impl Sized
+{
+	x: i32
+
+	size: fun(imm self) -> i32 = self.x
+}
+
+Getter: rec impl Counted
+{
+	x: i32
+
+	count: get(imm self) -> i32 = self.x
+}
+
+Field: rec impl Sized
+{
+	size: i32
+}
+
+main: fun -> i32 = 0
