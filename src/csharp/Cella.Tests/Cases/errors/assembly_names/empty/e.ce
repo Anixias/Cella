@@ -1,0 +1,3 @@
+mod e
+
+pub one: fun -> i32 = 1

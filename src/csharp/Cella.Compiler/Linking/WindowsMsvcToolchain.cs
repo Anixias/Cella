@@ -30,6 +30,9 @@ public sealed class WindowsMsvcToolchain(string root, string builtinsLibrary) : 
 		if (request.OutputType == ProjectOutputType.SharedLibrary)
 			args.Add("/dll");
 		
+		if (request.OutputType is ProjectOutputType.Executable or ProjectOutputType.SharedLibrary)
+			args.Add("/Brepro");
+		
 		args.Add($"/out:{request.OutputFile}");
 		
 		if (request.DebugInfo && request.OutputType is ProjectOutputType.Executable or ProjectOutputType.SharedLibrary)

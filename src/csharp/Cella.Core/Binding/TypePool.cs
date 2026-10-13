@@ -1417,6 +1417,18 @@ public sealed class TypePool
 		IReadOnlyList<TypeParameterSymbol> parameters, IReadOnlyList<TypeSymbol> arguments) =>
 		parameters.Zip(arguments).ToDictionary(static pair => pair.First, static pair => pair.Second);
 	
+	public static bool ContainsInvalid(TypeSymbol type) => type switch
+	{
+		InvalidType => true,
+		NamedTypeSymbol named => named.TypeArguments.Any(ContainsInvalid),
+		PointerType pointer => ContainsInvalid(pointer.BaseType),
+		BorrowType borrow => ContainsInvalid(borrow.Target),
+		ArrayType array => ContainsInvalid(array.ElementType),
+		FStrType fstr => ContainsInvalid(fstr.Value),
+		FunctionType function => function.ParameterTypes.Append(function.ReturnType).Any(ContainsInvalid),
+		_ => false
+	};
+	
 	public static IEnumerable<TypeParameterSymbol> FindTypeParameters(TypeSymbol type) => type switch
 	{
 		TypeParameterSymbol parameter => [parameter],

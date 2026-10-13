@@ -1,0 +1,3 @@
+mod b
+
+pub two: fun -> i32 = 2

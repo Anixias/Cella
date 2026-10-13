@@ -126,6 +126,10 @@ public sealed partial class CellaProject
 					errors.Add($"{path}: '{name}'{place} must be a string");
 					break;
 				
+				case nameof(AssemblyName) when !IsFileName(value.GetString()):
+					errors.Add($"{path}: '{name}'{place} must be a file name");
+					break;
+				
 				case nameof(BoundsChecks) or nameof(OverflowChecks) or nameof(DebugInfo)
 					when value.ValueType != TomlValueType.Boolean:
 					errors.Add($"{path}: '{name}'{place} must be true or false");
@@ -294,6 +298,9 @@ public sealed partial class CellaProject
 		
 		return setters.Count == 1 ? select(setters[0].Settings) : default;
 	}
+	
+	private static bool IsFileName(string name) => name.Trim().Length > 0 && name is not ("." or "..") &&
+	                                               name.IndexOfAny(Path.GetInvalidFileNameChars()) < 0;
 	
 	private static string DescribeTable(string condition) => $"[When.\"{condition}\"]";
 	

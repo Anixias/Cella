@@ -1,0 +1,10 @@
+OutputType = "Executable"
+
+[[ProjectReferences]]
+Path = 'a/x.celp'
+
+[[ProjectReferences]]
+Path = 'b/x.celp'
+
+[[ProjectReferences]]
+Path = 'c/c.celp'

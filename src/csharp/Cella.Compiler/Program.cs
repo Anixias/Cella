@@ -1,5 +1,4 @@
 ﻿using System.Buffers;
-using System.Collections.Concurrent;
 using System.Collections.Immutable;
 using System.Text;
 using Cella.Compiler.Linking;
@@ -118,7 +117,9 @@ internal static class Program
 			p => dependencyGraph.GetDependencies(p).ToImmutableArray());
 		
 		var builtInFlags = BuildFlags.Create(targetTriple, optimizeMode);
-		var flagsValid = ValidateFlags(projectDependencies.Keys, builtInFlags, flagOverrides);
+		var flagsValid = ValidateFlags(projectDependencies.Keys, builtInFlags, flagOverrides) &
+		                 ValidateOutputNames(projectDependencies);
+		
 		foreach (var error in projectErrors)
 			Console.WriteLine(error);
 		
@@ -153,6 +154,42 @@ internal static class Program
 		return succeeded ? 0 : 1;
 	}
 	
+	private static string GetOutputBaseName(ProjectInfo project) => project.Project.AssemblyName ?? project.Name;
+	
+	private static bool ValidateOutputNames(Dictionary<ProjectInfo, ImmutableArray<ProjectInfo>> dependencies)
+	{
+		var reported = new HashSet<string>();
+		foreach (var project in dependencies.Keys)
+		{
+			var closure = new HashSet<ProjectInfo>();
+			var pending = new Stack<ProjectInfo>([project]);
+			while (pending.TryPop(out var next))
+			{
+				if (closure.Add(next))
+					foreach (var dependency in dependencies.GetValueOrDefault(next, []))
+						pending.Push(dependency);
+			}
+			
+			var clashes = closure
+				.GroupBy(GetOutputBaseName, StringComparer.OrdinalIgnoreCase)
+				.Where(static sameName => sameName.Count() > 1)
+				.OrderBy(static sameName => sameName.Key, StringComparer.OrdinalIgnoreCase);
+			
+			foreach (var sameName in clashes)
+			{
+				var paths = sameName.Select(static clash => $"'{clash.FilePath}'").Order(StringComparer.Ordinal)
+					.ToList();
+				
+				var described = $"{string.Join(", ", paths[..^1])} and {paths[^1]}";
+				if (reported.Add(described))
+					Console.WriteLine(
+						$"Projects {described} {(paths.Count == 2 ? "both" : "all")} build '{sameName.Key}'");
+			}
+		}
+		
+		return reported.Count == 0;
+	}
+	
 	private static Dictionary<string, bool>? ParseFlagArguments(string[] args)
 	{
 		var flags = new Dictionary<string, bool>();
@@ -161,7 +198,7 @@ internal static class Program
 			if (args[i] != "--flag")
 				continue;
 			
-			if (++i == args.Length)
+			if (++i == args.Length || args[i].StartsWith("--"))
 			{
 				Console.WriteLine("Expected a flag after '--flag'");
 				return null;
@@ -593,7 +630,7 @@ internal static class Program
 			
 			exportedStatics = codeGenerator.ExportedStatics;
 			exportNames = [..codeGenerator.ExportNames];
-			var outputBaseName = project.Project.AssemblyName ?? project.Name;
+			var outputBaseName = GetOutputBaseName(project);
 			var outputFileName = GetOutputFileName(outputBaseName, targetTriple, outputType);
 			var outputDir = Path.Combine(project.Directory, "bin");
 			outputPath = Path.Combine(outputDir, outputFileName);
@@ -696,42 +733,41 @@ internal static class Program
 	private static async Task<(ImmutableArray<FileNode> Files, DiagnosticList Diagnostics)> ProcessProject(
 		ProjectInfo project, IReadOnlyDictionary<string, bool> flags, CancellationToken ct = default)
 	{
-		var files = new ConcurrentBag<FileNode>();
+		var files = new List<FileNode>();
 		var diagnostics = new DiagnosticList();
-		var filePaths = CellaProject.FindSourceFiles(project.Directory);
-		
-		foreach (var sourcePath in filePaths.AsParallel())
+		foreach (var path in CellaProject.FindSourceFiles(project.Directory).Order(StringComparer.Ordinal))
 		{
-			ct.ThrowIfCancellationRequested();
-			
-			// TODO Create some kind of StreamSource so the entire file doesn't have to be loaded into memory
-			var bytes = await File.ReadAllBytesAsync(sourcePath, ct);
-			ct.ThrowIfCancellationRequested();
-			
-			using var reader = new StreamReader(new MemoryStream(bytes), Encoding.UTF8, true);
-			var source = new StringSource(await reader.ReadToEndAsync(ct), sourcePath);
-			if (FindInvalidUtf8(bytes) is { } offset)
-				diagnostics.Add(new(DiagnosticSeverity.Error,
-					new SourceLocation(source, new TextRange(offset, offset + 1)), "Invalid UTF-8"));
-			
-			var scanner = new FilteredScanner(source);
-			
-			// TODO Change parser to retrieve tokens as needed
-			var tokens = scanner.ToImmutableArray();
-			ct.ThrowIfCancellationRequested();
-			
-			var fileName = Path.GetRelativePath(project.Directory, sourcePath);
-			
-			var parser = new FileParser(tokens, fileName, sourcePath, flags);
-			var ast = parser.Parse();
-			ct.ThrowIfCancellationRequested();
-			
-			diagnostics.AddRange(parser.Diagnostics);
+			var (ast, fileDiagnostics) = await ParseFile(project, flags, path, ct);
+			diagnostics.AddRange(fileDiagnostics);
 			if (ast is { IsExcluded: false })
 				files.Add(ast);
 		}
 		
-		return (files.ToImmutableArray(), diagnostics);
+		return ([..files], diagnostics);
+	}
+	
+	private static async Task<(FileNode? Ast, List<Diagnostic> Diagnostics)> ParseFile(ProjectInfo project,
+		IReadOnlyDictionary<string, bool> flags, string sourcePath, CancellationToken ct)
+	{
+		// TODO Create some kind of StreamSource so the entire file doesn't have to be loaded into memory
+		var bytes = await File.ReadAllBytesAsync(sourcePath, ct);
+		ct.ThrowIfCancellationRequested();
+		
+		using var reader = new StreamReader(new MemoryStream(bytes), Encoding.UTF8, true);
+		var source = new StringSource(await reader.ReadToEndAsync(ct), sourcePath);
+		var diagnostics = new List<Diagnostic>();
+		if (FindInvalidUtf8(bytes) is { } offset)
+			diagnostics.Add(new(DiagnosticSeverity.Error, new SourceLocation(source, new TextRange(offset, offset + 1)),
+				"Invalid UTF-8"));
+		
+		// TODO Change parser to retrieve tokens as needed
+		var tokens = new FilteredScanner(source).ToImmutableArray();
+		ct.ThrowIfCancellationRequested();
+		
+		var parser = new FileParser(tokens, Path.GetRelativePath(project.Directory, sourcePath), sourcePath, flags);
+		var ast = parser.Parse();
+		diagnostics.AddRange(parser.Diagnostics);
+		return (ast, diagnostics);
 	}
 	
 	private static int? FindInvalidUtf8(byte[] bytes)

@@ -1,0 +1,7 @@
+OutputType = "Executable"
+
+[[ProjectReferences]]
+Path = 'empty/empty.celp'
+
+[[ProjectReferences]]
+Path = 'escaped/escaped.celp'

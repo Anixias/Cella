@@ -1,0 +1,16 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+f[T]: fun(imm value: T) -> i32 = 1
+
+main: fun -> i32
+{
+	val x = []
+	printf("%d\n", x)
+	val y = x[0]
+	ret f([])
+}

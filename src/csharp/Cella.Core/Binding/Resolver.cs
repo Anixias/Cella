@@ -7251,7 +7251,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			case PrimitiveType { Kind: PrimitiveTypeKind.CStr }:
 				return arg;
 			
-			case InvalidType:
+			case var type when TypePool.ContainsInvalid(type):
 				return arg;
 			
 			default:

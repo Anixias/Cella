@@ -1,0 +1,3 @@
+Projects '<case>\c\c.celp' and '<case>\test.celp' both build 'test'
+Projects '<case>\a\x.celp' and '<case>\b\x.celp' both build 'x'
+[compilation failed]
