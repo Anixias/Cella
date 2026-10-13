@@ -1,0 +1,39 @@
+
+====== ext_constraint_arguments.ce ======
+
+Error at line 35, column 64
+34 │ 
+35 │ outer[U]: fun(f: ext fun[i32 -> i32], value: U) -> i32 = visit[U](undef, null)
+                                                                    ^ Cannot use 'U' in 'ext' signatures
+
+Error at line 39, column 23
+38 │ {
+39 │     var f: ext fun[array[T, 2] -> i32]
+                              ^ Cannot use 'T' in 'ext' signatures
+
+Error at line 40, column 31
+39 │ var f: ext fun[array[T, 2] -> i32]
+40 │ val g = fun(x: T) -> ext fun[T -> i32] = undef
+                                  ^ Cannot use 'T' in 'ext' signatures
+
+Error at line 46, column 2
+45 │ {
+46 │     call(same, Token(4))
+         ╘══╛ Cannot use 'Token' in 'ext' signatures
+
+Error at line 47, column 7
+46 │ call(same, Token(4))
+47 │ call[Bundle](undef, Bundle(Token(1)))
+          ╘════╛ Cannot use 'Bundle' in 'ext' signatures
+
+Error at line 48, column 7
+47 │ call[Bundle](undef, Bundle(Token(1)))
+48 │ call[fun[i32 -> i32]](undef, fun(n: i32) -> i32 = n)
+          ╘═════════════╛ Cannot use 'fun[i32 -> i32]' in 'ext' signatures
+
+Error at line 49, column 8
+48 │ call[fun[i32 -> i32]](undef, fun(n: i32) -> i32 = n)
+49 │ visit[fstr[Display]](undef, null)
+           ╘═══════════╛ Cannot use 'fstr[Display]' in 'ext' signatures
+
+[compilation failed]

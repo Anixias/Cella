@@ -23,6 +23,13 @@ public sealed class ExtSignatureTypes(TypePool typePool)
 					diagnostics.Add(new(DiagnosticSeverity.Error, location,
 						$"Cannot use '{GetWrittenName(foreign, located, locatedNode)}' in 'ext' signatures"));
 			}
+			else if (FindUnconstrained(type) is { } parameter)
+			{
+				var (_, _, location) = Locate(type, node, static part => FindUnconstrained(part) is not null);
+				if (reported.Add(location))
+					diagnostics.Add(new(DiagnosticSeverity.Error, location,
+						$"Cannot use '{parameter.Name}' in 'ext' signatures"));
+			}
 			else if (HasDestructor(type))
 			{
 				var (located, _, location) = Locate(type, node, HasDestructor);
@@ -44,7 +51,22 @@ public sealed class ExtSignatureTypes(TypePool typePool)
 	
 	private static bool IsForeign(TypeSymbol type) => FindForeign(type) is not null;
 	
-	private static TypeSymbol? FindForeign(TypeSymbol type) => type switch
+	public static TypeParameterSymbol? FindUnconstrained(TypeSymbol type) => type switch
+	{
+		TypeParameterSymbol { IsValue: false, IsExt: false } parameter => parameter,
+		PointerType pointer => FindUnconstrained(pointer.BaseType),
+		BorrowType borrow => FindUnconstrained(borrow.Target),
+		ArrayType array => FindUnconstrained(array.ElementType),
+		FunctionType function => function.ParameterTypes.Append(function.ReturnType)
+			.Select(FindUnconstrained)
+			.FirstOrDefault(static found => found is not null),
+		NamedTypeSymbol named => named.TypeArguments
+			.Select(FindUnconstrained)
+			.FirstOrDefault(static found => found is not null),
+		_ => null
+	};
+	
+	public static TypeSymbol? FindForeign(TypeSymbol type) => type switch
 	{
 		DynType or FStrType or FunctionType { IsExternal: false } => type,
 		PointerType pointer => FindDyn(pointer.BaseType),
@@ -100,6 +122,17 @@ public sealed class ExtSignatureTypes(TypePool typePool)
 			
 			case (ArrayType array, GenericTypeNode { Arguments: [var element, ..] }):
 				yield return (array.ElementType, (element as TypeArgumentNode)?.Type, element.SourceLocation);
+				break;
+			
+			case (PointerType pointer, GenericTypeNode { Arguments: [var target] }):
+				yield return (pointer.BaseType, (target as TypeArgumentNode)?.Type, target.SourceLocation);
+				break;
+			
+			case (NamedTypeSymbol named, GenericTypeNode generic):
+				for (var i = 0; i < generic.Arguments.Length && i < named.TypeArguments.Length; i++)
+					yield return (named.TypeArguments[i], (generic.Arguments[i] as TypeArgumentNode)?.Type,
+						generic.Arguments[i].SourceLocation);
+				
 				break;
 		}
 	}

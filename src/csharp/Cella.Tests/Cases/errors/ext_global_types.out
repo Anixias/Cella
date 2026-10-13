@@ -16,9 +16,9 @@ Error at line 25, column 19
 25 │ callback: ext val fun[-> i32] = fun = 1
                        ╘═════════╛ Cannot use 'fun[-> i32]' in 'ext' signatures
 
-Error at line 26, column 16
+Error at line 26, column 20
 25 │ callback: ext val fun[-> i32] = fun = 1
 26 │ shape: ext val ptr[dyn[Shape]] = null
-                    ╘═════════════╛ Cannot use 'dyn[Shape]' in 'ext' signatures
+                        ╘════════╛ Cannot use 'dyn[Shape]' in 'ext' signatures
 
 [compilation failed]

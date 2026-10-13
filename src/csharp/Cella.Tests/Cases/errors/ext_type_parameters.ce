@@ -1,0 +1,26 @@
+mod test
+
+Pair[T]: rec
+{
+	first: T
+	second: T
+}
+
+call[T]: fun(f: ext fun[T -> i32], value: T) -> i32 = f(value)
+
+holder[T]: rec
+{
+	cb: ext fun[T -> i32]
+}
+
+make[T]: fun(cb: ext fun[i32 -> T]) -> T = cb(3)
+
+visit[T]: fun(f: ext fun[ptr[T] -> i32], items: ptr[T]) -> i32 = f(items)
+
+pairs[T]: fun(f: ext fun[Pair[T] -> i32]) -> i32 = 0
+
+sized[N: val usize]: fun(f: ext fun[ptr[array[i32, N]] -> i32]) -> i32 = 0
+
+both[T: ext + drop]: fun(own value: T) -> i32 = 0
+
+main: fun -> i32 = 0

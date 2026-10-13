@@ -167,8 +167,9 @@ public sealed class TypeParameterSymbol(string name, IEnumerable<Token> keywords
 	
 	public bool IsNoref => Has(TokenType.KeywordNoref) || IsAtomic;
 	public bool HasNull => Has(TokenType.KeywordNull);
-	public bool IsCopy => Has(TokenType.KeywordCopy) || IsAtomic;
+	public bool IsCopy => Has(TokenType.KeywordCopy) || IsAtomic || IsExt;
 	public bool IsAtomic => Has(TokenType.KeywordAtomic);
+	public bool IsExt => Has(TokenType.KeywordExt);
 	public bool HasDrop => Has(TokenType.KeywordDrop);
 	public bool HasNew => Has(TokenType.KeywordNew);
 	public bool IsTrait => Has(TokenType.KeywordTrait);

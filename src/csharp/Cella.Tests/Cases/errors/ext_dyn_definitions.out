@@ -1,19 +1,19 @@
 
 ====== ext_dyn_definitions.ce ======
 
-Error at line 10, column 17
+Error at line 10, column 21
  9 │ {
 10 │     visit: ext fun[ptr[dyn[Shape]] -> i32]
-                        ╘═════════════╛ Cannot use 'dyn[Shape]' in 'ext' signatures
+                            ╘════════╛ Cannot use 'dyn[Shape]' in 'ext' signatures
 
 Error at line 13, column 23
 12 │ 
 13 │ visit: ext fun(shape: dyn[Shape]) -> i32 = shape.area()
                            ╘════════╛ Cannot use 'dyn[Shape]' in 'ext' signatures
 
-Error at line 14, column 30
+Error at line 14, column 34
 13 │ visit: ext fun(shape: dyn[Shape]) -> i32 = shape.area()
 14 │ visitAddress: ext fun(shape: ptr[dyn[Shape]]) -> i32 = 0
-                                  ╘═════════════╛ Cannot use 'dyn[Shape]' in 'ext' signatures
+                                      ╘════════╛ Cannot use 'dyn[Shape]' in 'ext' signatures
 
 [compilation failed]

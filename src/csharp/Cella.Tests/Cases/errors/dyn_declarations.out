@@ -11,10 +11,10 @@ Error at line 21, column 16
 21 │ shapes: array[dyn[Shape], 2]
                    ╘════════╛ Cannot use 'dyn[Shape]' by value
 
-Error at line 26, column 19
+Error at line 26, column 23
 25 │ {
 26 │     show: fun(shape: ptr[dyn[Shape]])
-                          ╘═════════════╛ Cannot use 'dyn[Shape]' in 'ext' signatures
+                              ╘════════╛ Cannot use 'dyn[Shape]' in 'ext' signatures
 
 Error at line 29, column 14
 28 │ 

@@ -660,7 +660,8 @@ public sealed class SignatureCollector
 		if (keywords.All(static keyword => keyword.Type != TokenType.KeywordDrop))
 			return;
 		
-		foreach (var copying in keywords.Where(static k => k.Type is TokenType.KeywordCopy or TokenType.KeywordAtomic))
+		foreach (var copying in keywords.Where(static k =>
+			         k.Type is TokenType.KeywordCopy or TokenType.KeywordAtomic or TokenType.KeywordExt))
 		{
 			var message = $"Cannot combine '{copying.Text}' and 'drop'";
 			foreach (var keyword in keywords.Where(k => k == copying || k.Type == TokenType.KeywordDrop))
@@ -1280,7 +1281,8 @@ public sealed class SignatureCollector
 			return false;
 		
 		if (own.IsNoref && !required.IsNoref || own.IsCopy && !required.IsCopy || own.HasDrop && !required.HasDrop ||
-		    own.HasNull && !required.HasNull || own.IsAtomic && !required.IsAtomic || own.HasNew && !required.HasNew)
+		    own.HasNull && !required.HasNull || own.IsAtomic && !required.IsAtomic || own.HasNew && !required.HasNew ||
+		    own.IsExt && !required.IsExt)
 			return false;
 		
 		var bounds = _typePool.GetBounds(required).Select(bound => _typePool.Substitute(bound, traitMap)).ToList();
@@ -1460,7 +1462,7 @@ public sealed class SignatureCollector
 		block.IsValue && block.ValueType != declared.ValueType ||
 		block.IsNoref && !declared.IsNoref || block.HasNull && !declared.HasNull || block.IsCopy && !declared.IsCopy ||
 		block.HasDrop && !declared.HasDrop || block.HasNew && !declared.HasNew ||
-		block.IsAtomic && !declared.IsAtomic ||
+		block.IsAtomic && !declared.IsAtomic || block.IsExt && !declared.IsExt ||
 		_typePool.GetConstructorBounds(block).Any(constructor => !_typePool.GetConstructors(declared)
 			.Any(existing => TypePool.MatchesConstructor(_typePool.SubstituteSignature(existing.Signature, map),
 				constructor.Signature))) ||
@@ -3120,6 +3122,7 @@ public sealed class SignatureCollector
 		IReadOnlyDictionary<TypeParameterSymbol, TypeSymbol> map) =>
 		first.IsNoref == second.IsNoref && first.HasNull == second.HasNull && first.IsCopy == second.IsCopy &&
 		first.IsAtomic == second.IsAtomic && first.HasDrop == second.HasDrop && first.HasNew == second.HasNew &&
+		first.IsExt == second.IsExt &&
 		first.IsTrait == second.IsTrait && first.IsValue == second.IsValue &&
 		first.ValueType == (second.ValueType is { } valueType ? _typePool.Substitute(valueType, map) : null) &&
 		HaveSameBounds(_typePool.GetDeclaredBounds(first),

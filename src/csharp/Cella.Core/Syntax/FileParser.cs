@@ -27,7 +27,8 @@ public sealed class FileParser
 	
 	private static readonly HashSet<TokenType> _constraintTypes =
 	[
-		TokenType.KeywordNoref, TokenType.KeywordCopy, TokenType.KeywordDrop, TokenType.KeywordTrait
+		TokenType.KeywordNoref, TokenType.KeywordCopy, TokenType.KeywordDrop, TokenType.KeywordTrait,
+		TokenType.KeywordExt
 	];
 	
 	private static readonly Dictionary<string, TokenType> _constraintKeywords =
@@ -421,6 +422,9 @@ public sealed class FileParser
 		return true;
 	}
 	
+	private bool StartsExternalFunctionType(int index) =>
+		Match(ref index, _constraintKeywords, TokenType.KeywordExt) && Peek(index, TokenType.KeywordFun);
+	
 	private List<TypeParameterNode>? ParseTypeParameters(ref int index)
 	{
 		var parameters = new List<TypeParameterNode>();
@@ -456,9 +460,10 @@ public sealed class FileParser
 						
 						constructors.Add(constructor);
 					}
-					else if (Match(ref index, out var keyword, _constraintKeywords, _constraintTypes) ||
-					         Match(ref index, out keyword, TokenType.KeywordNull) ||
-					         Match(ref index, out keyword, TokenType.KeywordAtomic))
+					else if (!StartsExternalFunctionType(index) &&
+					         (Match(ref index, out var keyword, _constraintKeywords, _constraintTypes) ||
+					          Match(ref index, out keyword, TokenType.KeywordNull) ||
+					          Match(ref index, out keyword, TokenType.KeywordAtomic)))
 						keywords.Add(keyword);
 					else if (!Peek(index, TokenType.Identifier) && !Peek(index, TokenType.KeywordFun) &&
 					         !Peek(index, TokenType.KeywordRef))

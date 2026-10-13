@@ -1,0 +1,49 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Point: rec
+{
+	x: i32
+	y: i32
+}
+
+Pair[T: ext]: rec
+{
+	first: T
+	second: T
+}
+
+call[T: ext]: fun(f: ext fun[T -> i32], value: T) -> i32
+{
+	val copy = value
+	ret f(copy)
+}
+
+holder[T: ext]: rec
+{
+	cb: ext fun[T -> i32]
+}
+
+visit[T: ext]: fun(f: ext fun[ptr[T] -> i32], items: ptr[T]) -> i32 = f(items)
+
+pairs[T: ext]: fun(f: ext fun[Pair[T] -> i32], pair: Pair[T]) -> i32 = f(pair)
+
+outer[U: ext]: fun(f: ext fun[U -> i32], value: U) -> i32 = call(f, value) + 1
+
+twice: ext fun(x: i32) -> i32 = x * 2
+sum: ext fun(p: Point) -> i32 = p.x + p.y
+first: ext fun(p: ptr[Point]) -> i32 = p.x
+both: ext fun(pair: Pair[i32]) -> i32 = pair.first * pair.second
+
+main: fun -> i32
+{
+	var points = [Point(3, 4), Point(5, 6)]
+	val h = holder[Point](sum)
+	printf("%d %d %d %d %d %d\n", call(twice, 21), call(sum, Point(1, 2)), h.cb(Point(10, 20)),
+		visit(first, @points[1]), pairs(both, Pair(6, 7)), outer(twice, 4))
+	ret 0
+}

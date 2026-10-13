@@ -1065,6 +1065,10 @@ public sealed class TypePool
 	public static EnumCaseSymbol? GetElseCase(EnumSymbol enumType) =>
 		enumType.Cases.FirstOrDefault(static enumCase => enumCase.Node.Else is not null);
 	
+	private bool IsExtCompatible(TypeSymbol type) => ExtSignatureTypes.FindForeign(type) is null &&
+	                                                 ExtSignatureTypes.FindUnconstrained(type) is null &&
+	                                                 FindDestructor(type) is null;
+	
 	public static bool HasNull(TypeSymbol type) => type is PointerType or FunctionType or BorrowType
 		                                               or TypeParameterSymbol { HasNull: true } ||
 	                                               type == NativeSymbols.CStr;
@@ -1081,6 +1085,7 @@ public sealed class TypePool
 		_ when IsTraitArgument(argument) => $"'{argument.Name}' is not a type",
 		DynType => $"Cannot use '{argument.Name}' by value",
 		_ when parameter.IsAtomic && !IsAtomic(argument) => $"Cannot access '{argument.Name}' values atomically",
+		_ when parameter.IsExt && !IsExtCompatible(argument) => $"Cannot use '{argument.Name}' in 'ext' signatures",
 		_ when parameter.IsNoref && HoldsBorrows(argument) => $"Cannot store borrows in '{parameter.Name}'",
 		_ when parameter.HasNull && !HasNull(argument) => $"'{argument.Name}' has no null",
 		_ when parameter.IsCopy && !IsCopy(argument) => $"Cannot copy '{argument.Name}'",
