@@ -128,6 +128,8 @@ public sealed class Lowerer
 		private ulong NextLoopId() => nextLoopId++;
 		private ulong NextTempId() => nextTempId++;
 		
+		private StatementStart? currentStatement;
+		
 		private BasicBlock GetOrMakeBlock() => currentBlock ??= CreateBlock("block");
 		
 		private BasicBlock CreateBlock(string hint)
@@ -290,9 +292,18 @@ public sealed class Lowerer
 		public void Visit(ResolvedBlockStatementNode node)
 		{
 			BeginScope(node.Syntax.SourceLocation);
+			var parent = currentStatement;
+			StatementStart? previous = null;
 			foreach (var statement in node.Statements)
+			{
+				currentStatement = previous =
+					new StatementStart(statement.Syntax.SourceLocation, GetOrMakeBlock(), parent, previous);
+				
+				_function.Statements.Add(currentStatement);
 				VisitNode(statement);
+			}
 			
+			currentStatement = parent;
 			EndCurrentScope();
 		}
 		

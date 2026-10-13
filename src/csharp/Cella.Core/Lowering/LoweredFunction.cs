@@ -4,10 +4,19 @@ using Cella.Core.Text;
 
 namespace Cella.Core.Lowering;
 
+public sealed record StatementStart
+(
+	SourceLocation Location,
+	BasicBlock Block,
+	StatementStart? Parent,
+	StatementStart? Previous
+);
+
 public sealed class LoweredFunction(FunctionInfo info)
 {
 	public FunctionInfo Info { get; } = info;
 	public ControlFlowGraph Blocks { get; } = new();
+	public List<StatementStart> Statements { get; } = [];
 	
 	public void Normalize()
 	{

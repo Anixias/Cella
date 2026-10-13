@@ -1225,6 +1225,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		if (targetType is TypeParameterSymbol && _typePool.GetConstructors(targetType).Count > 0)
 			return VisitConstructorCall(node, targetType, null);
 		
+		if (node.Arguments.Length == 0 && _typePool.HasNew(targetType))
+			return new ResolvedNewExpressionNode(targetType, node);
+		
 		if (node.Arguments.Length != 1)
 			return VisitConstructorCall(node, targetType, null);
 		
@@ -3230,6 +3233,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 				access.Member.SourceLocation);
 		
 		var target = Decay(VisitNode(access.Target, null));
+		if (target is ResolvedLiteralExpressionNode { Type: UntypedType })
+			target = MaterializeAsDefault(target);
+		
 		if (IsInvalid(target))
 			return VisitIndirectCall(node, target);
 		
@@ -5634,6 +5640,10 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			
 			if (!resolutionSet.HasResult)
 			{
+				if ((left.Type is UntypedType || right.Type is UntypedType) &&
+				    ResolveDeclaredOperator(node, DefaultLiteral(left), DefaultLiteral(right)) is { } defaulted)
+					return defaulted;
+				
 				left = ResolveUnmatched(left);
 				right = ResolveUnmatched(right);
 				if (AnyInvalid(left, right))
@@ -6121,6 +6131,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		
 		return new ResolvedChainedExpressionNode(NativeSymbols.Bool, operands, links, node);
 	}
+	
+	private IResolvedExpressionNode DefaultLiteral(IResolvedExpressionNode operand) =>
+		operand is ResolvedLiteralExpressionNode { Type: UntypedType } ? MaterializeAsDefault(operand) : operand;
 	
 	private bool DeclaresOperator(TypeSymbol left, TypeSymbol right, string name) =>
 		FindOperators(left, name).Any() || FindOperators(right, name).Any();

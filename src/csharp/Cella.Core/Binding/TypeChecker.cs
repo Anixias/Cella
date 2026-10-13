@@ -335,6 +335,7 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool, 
 	{
 		ResolvedFunctionCallExpressionNode call => !IsGetterCall(call), // TODO Warn if function is pure?
 		ResolvedIndirectCallExpressionNode => true,
+		ResolvedConstructorCallExpressionNode => true,
 		ResolvedAssignmentExpressionNode => true,
 		ResolvedPropertyAssignmentExpressionNode => true,
 		ResolvedReturnExpressionNode or ResolvedBreakExpressionNode or ResolvedContinueExpressionNode => true,

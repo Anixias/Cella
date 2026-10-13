@@ -1,0 +1,49 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+both: fun(c: bool) -> i32
+{
+	if c
+	{
+		ret 1
+		printf("dead1\n")
+	}
+	else
+	{
+		ret 2
+		printf("dead2\n")
+	}
+	printf("dead3\n")
+	ret 3
+}
+
+looped: fun(c: bool) -> i32
+{
+	while true
+	{
+		if c
+		{
+			ret 1
+			printf("a\n")
+		}
+		ret 2
+		printf("b\n")
+	}
+}
+
+nested: fun(c: bool) -> i32
+{
+	ret 1
+	if c
+	{
+		printf("x\n")
+		printf("y\n")
+	}
+	printf("z\n")
+}
+
+main: fun -> i32 = both(true) + looped(false) + nested(true)

@@ -1,10 +1,10 @@
 
 ====== never_operands.ce ======
 
-Warning at line 35, column 38
-34 │ {
-35 │     printf("%d\n", total(note("first"), Pair(note("second"),
-                                             ^ Unreachable code
+Warning at line 38, column 2
+37 │ 
+38 │ ret 0
+     ^ Unreachable code
 
 first
 second

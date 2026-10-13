@@ -15,21 +15,16 @@ public sealed class ControlFlowAnalyzer(DiagnosticList diagnostics)
 	private void DetectUnreachableCode(LoweredFunction function)
 	{
 		var reachableBlocks = function.Blocks.FindReachable();
-		var unreachableRegion = false;
+		var unreachable = function.Statements.Where(statement => !reachableBlocks.Contains(statement.Block))
+			.ToHashSet();
 		
-		foreach (var block in function.Blocks)
+		foreach (var statement in function.Statements)
 		{
-			if (reachableBlocks.Contains(block))
-			{
-				unreachableRegion = false;
-				continue;
-			}
-			
-			if (unreachableRegion)
+			if (!unreachable.Contains(statement) || statement.Parent is { } parent && unreachable.Contains(parent) ||
+			    statement.Previous is { } previous && unreachable.Contains(previous))
 				continue;
 			
-			unreachableRegion = true;
-			var (source, range) = block.GetSourceLocation();
+			var (source, range) = statement.Location;
 			range = new(range.Start, range.Start); // Empty length to avoid coloring first character only
 			diagnostics.Add(DiagnosticReporter.ReportUnreachableCode(new(source, range)));
 		}

@@ -1,0 +1,33 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Show: trait
+{
+	show: fun(imm self) -> i32
+}
+
+Eq: trait
+{
+	==: op(imm a: Self, imm b: Self) -> bool
+}
+
+str: impl Show + Eq
+{
+	show: fun(self) -> i32 = i32(self.byteLength)
+	==: op(a: str, b: str) -> bool = a.byteLength == b.byteLength
+}
+
+i32: impl Show
+{
+	show: fun(self) -> i32 = self * 2
+}
+
+main: fun -> i32
+{
+	printf("%d %d %d %d\n", "abcd".show(), 21.show(), i32("abc" == "xyz"), i32("ab" == "xyz"))
+	ret 0
+}

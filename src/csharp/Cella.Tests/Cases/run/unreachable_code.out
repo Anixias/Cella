@@ -1,10 +1,10 @@
 
 ====== unreachable_code.ce ======
 
-Warning at line 28, column 10
+Warning at line 28, column 4
 27 │ cont
 28 │ total += 100
-           ^ Unreachable code
+     ^ Unreachable code
 
 Warning at line 34, column 4
 33 │ break
