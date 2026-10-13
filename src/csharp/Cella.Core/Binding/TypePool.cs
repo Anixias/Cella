@@ -432,6 +432,16 @@ public sealed class TypePool
 		_ => false
 	};
 	
+	public bool HoldsPointers(TypeSymbol type) => HoldsPointers(type, []);
+	
+	private bool HoldsPointers(TypeSymbol type, HashSet<TypeSymbol> visited) => type switch
+	{
+		PointerType => true,
+		ArrayType array => HoldsPointers(array.ElementType, visited),
+		RecordSymbol or EnumSymbol => visited.Add(type) && GetParts(type).Any(part => HoldsPointers(part, visited)),
+		_ => false
+	};
+	
 	public bool HoldsBorrows(TypeSymbol type) => type switch
 	{
 		BorrowType or DynType or FStrType or FunctionType { IsRef: true } => true,

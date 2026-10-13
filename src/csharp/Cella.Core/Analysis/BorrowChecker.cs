@@ -401,7 +401,7 @@ public sealed class BorrowChecker
 				break;
 			
 			case WriteEvent e when returned.Contains(e.Place.Root) && !IsReturnedCopy(e.Value):
-				CheckEscape(Written(e, state), e.Value, e.Location);
+				CheckEscape(Written(e, state, typePool.HoldsBorrows), e.Value, e.Location);
 				break;
 		}
 	}
@@ -429,7 +429,7 @@ public sealed class BorrowChecker
 				break;
 			
 			case WriteEvent e:
-				CheckTargets([e.Place], Written(e, state), e.Value, e.Location);
+				CheckTargets([e.Place], Written(e, state, typePool.HoldsBorrows), e.Value, e.Location);
 				break;
 			
 			case IndirectWriteEvent e when IsBorrowWrite(e):
@@ -638,9 +638,9 @@ public sealed class BorrowChecker
 				state.EndPayloads(e.Place, new(Ending.Reassigned, e.Location));
 				state.Revive(e.Place);
 				if (e.Place.Path.IsEmpty)
-					state.Set(e.Place.Root, Written(e, state));
+					state.Set(e.Place.Root, Written(e, state, CarriesSources));
 				else
-					state.Add(e.Place.Root, Written(e, state));
+					state.Add(e.Place.Root, Written(e, state, CarriesSources));
 				
 				break;
 			
@@ -707,17 +707,18 @@ public sealed class BorrowChecker
 			state.Add(root, written);
 	}
 	
-	private List<Place> Written(WriteEvent write, BorrowState state) => write.Value switch
-	{
-		CallValue
+	private List<Place> Written(WriteEvent write, BorrowState state, Func<TypeSymbol, bool> tracks) =>
+		write.Value switch
 		{
-			Function: { Symbol.Kind: FunctionKind.Constructor, DeclaredSignature: var signature }
-		} constructor => typePool.HoldsBorrows(signature.GetDeclaredType(0))
-			? Results(CallSources(constructor.Function, [..constructor.Arguments.Skip(1)], 1, state),
-				signature.GetDeclaredType(0))
-			: [],
-		var value => Stored(value, state)
-	};
+			CallValue
+			{
+				Function: { Symbol.Kind: FunctionKind.Constructor, DeclaredSignature: var signature }
+			} constructor => tracks(signature.GetDeclaredType(0))
+				? Results(CallSources(constructor.Function, [..constructor.Arguments.Skip(1)], 1, state),
+					signature.GetDeclaredType(0))
+				: [],
+			var value => tracks(value.Type) ? Sources(value, state) : []
+		};
 	
 	private List<Place> Stored(Value value, BorrowState state) =>
 		typePool.HoldsBorrows(value.Type) ? Sources(value, state) : [];
@@ -735,6 +736,12 @@ public sealed class BorrowChecker
 			VariableValue or AccessValue { Member: FieldSymbol } or IndexerValue or EnumPayloadValue
 				or UnaryOpValue { Op: UnaryOperation.Dereference } => ReadSources(value, state),
 			ConversionValue v => Sources(v.Source, state),
+			PointerOffsetValue v => Sources(v.Pointer, state),
+			AccessValue
+				{
+					Member: PropertySymbol { Getter: NativeAccessor { Intrinsic: NativeMemberIntrinsic.StrData } }
+				} v =>
+				Sources(v.Target, state),
 			AssignValue v => ReadSources(v.Left, state),
 			CallValue v when typePool.HoldsBorrows(v.Type) => Results(CallSources(v.Function, v.Arguments, 0, state),
 				v.Type),
@@ -786,7 +793,7 @@ public sealed class BorrowChecker
 		return Expand(sources, state);
 	}
 	
-	private bool CarriesSources(TypeSymbol type) => type is PointerType || typePool.HoldsBorrows(type);
+	private bool CarriesSources(TypeSymbol type) => typePool.HoldsPointers(type) || typePool.HoldsBorrows(type);
 	
 	private List<Place> ReadSources(Value place, BorrowState state)
 	{

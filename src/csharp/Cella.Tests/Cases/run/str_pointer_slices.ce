@@ -1,0 +1,51 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Raw: rec
+{
+	p: ptr[u8]
+}
+
+Node: rec
+{
+	next: ptr[Node]
+	id: i32
+}
+
+view: fun(p: ptr[u8]) -> str = str(p + 1, 2)
+
+fromRaw: fun(r: Raw) -> str = str(r.p, 2)
+
+slice: fun(text: str) -> str = str(text.data + 1, 2)
+
+literal: fun -> str = str("hello".data + 1, 3)
+
+pointerToLocal: fun -> i32
+{
+	var value = 7
+	var p: ptr[i32] = null
+	p = @value
+	ret *p
+}
+
+main: fun -> i32
+{
+	var buffer = [u8(65), u8(66), u8(67)]
+	val a = view(@buffer[0])
+	val b = fromRaw(Raw(@buffer[0]))
+	val c = slice("xyz")
+	val d = literal()
+	var p: ptr[u8] = null
+	p = @buffer[1]
+	val e = str(p, 1)
+	var head = Node(null, 1)
+	head.next = @head
+	printf("%.*s %.*s %.*s %.*s %.*s %d %d\n", i32(a.byteLength), a.data, i32(b.byteLength), b.data,
+		i32(c.byteLength), c.data, i32(d.byteLength), d.data, i32(e.byteLength), e.data, head.next.id,
+		pointerToLocal())
+	ret 0
+}
