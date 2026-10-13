@@ -1,6 +1,7 @@
 ﻿using System.Collections.Immutable;
 using System.Numerics;
 using Cella.Core.Binding.Constants;
+using Cella.Core.Binding.Conversions;
 using Cella.Core.Binding.Nodes;
 using Cella.Core.Binding.Operations;
 using Cella.Core.Collections;
@@ -692,6 +693,11 @@ public sealed class SignatureCollector
 	
 	private void RegisterImpl(ImplSymbol impl, ImplNode node, ResolutionContext context)
 	{
+		impl.TargetArguments =
+		[
+			..node.TypeParameters.Select((entry, i) => ResolveTargetArgument(entry, context) ?? impl.TypeParameters[i])
+		];
+		
 		RegisterBounds(node.TypeParameters, impl.TypeParameters, context with { ImplBlock = impl });
 		if (ResolveImplTarget(impl, node, context) is not { } target)
 			return;
@@ -707,6 +713,15 @@ public sealed class SignatureCollector
 				AddConformance(new(trait.Trait, trait.Arguments, target, impl.TypeParameters, impl,
 					traitNode.SourceLocation));
 		}
+	}
+	
+	private static TypeSymbol? ResolveTargetArgument(TypeParameterNode entry, ResolutionContext context)
+	{
+		if (entry is not { Keywords.IsEmpty: true, Traits.IsEmpty: true, Constructors.IsEmpty: true, ValueType: null })
+			return null;
+		
+		var name = new IdentifierTypeNode(entry.Identifier);
+		return context.ResolveTypeName(name) is TypeSymbol ? context.ResolveType(name) : null;
 	}
 	
 	private TypeSymbol? ResolveImplTarget(ImplSymbol impl, ImplNode node, ResolutionContext context)
@@ -757,7 +772,7 @@ public sealed class SignatureCollector
 		}
 		
 		return ReportParameterViolations(declared, impl, node)
-			? _typePool.GetArrayType(impl.TypeParameters[0], impl.TypeParameters[1])
+			? _typePool.GetArrayType(impl.TargetArguments[0], impl.TargetArguments[1])
 			: null;
 	}
 	
@@ -766,7 +781,7 @@ public sealed class SignatureCollector
 		var declaration = _declarations[impl];
 		var target = GetImplTarget(impl);
 		if (target is NamedTypeSymbol { IsGenericDefinition: true } definition)
-			target = _typePool.Instantiate(definition, [..impl.TypeParameters]);
+			target = _typePool.Instantiate(definition, [..impl.TargetArguments]);
 		
 		_implTargets[impl] = target;
 		foreach (var property in impl.Properties)
@@ -988,6 +1003,17 @@ public sealed class SignatureCollector
 		var renamed = TypePool.CreateMap(other.Parameters, [..conformance.Parameters]);
 		var bindings = new Dictionary<TypeParameterSymbol, TypeSymbol>();
 		var variables = new OrderedSet<TypeParameterSymbol>(conformance.Parameters);
+		var pattern = GetPattern(conformance);
+		var otherPattern = GetPattern(other);
+		if (pattern.Length != otherPattern.Length)
+			return null;
+		
+		for (var i = 0; i < pattern.Length; i++)
+		{
+			if (!_typePool.TryUnify(pattern[i], _typePool.Substitute(otherPattern[i], renamed), variables, bindings))
+				return null;
+		}
+		
 		for (var i = 0; i < conformance.Arguments.Length; i++)
 		{
 			var argument = _typePool.Substitute(other.Arguments[i], renamed);
@@ -1000,15 +1026,18 @@ public sealed class SignatureCollector
 		var declared = _typePool.GetTraitType(conformance.Trait, conformance.Arguments);
 		var trait = _typePool.SubstituteTrait(_typePool.SubstituteTrait(declared, bindings), display);
 		
-		if (bindings.Count == 0 || definition is null)
+		if (definition is null ||
+		    bindings.Count == 0 && pattern.All(static argument => argument is TypeParameterSymbol))
 			return (conformance.Target, trait);
 		
 		return (_typePool.Instantiate(definition,
 		[
-			..conformance.Parameters.Select(parameter =>
-				_typePool.Substitute(bindings.GetValueOrDefault(parameter, parameter), display))
+			..pattern.Select(argument => _typePool.Substitute(_typePool.Substitute(argument, bindings), display))
 		]), trait);
 	}
+	
+	private static ImmutableArray<TypeSymbol> GetPattern(Conformance conformance) =>
+		conformance.Impl?.TargetArguments ?? [..conformance.Parameters];
 	
 	private string DescribeTrait(Conformance conformance) =>
 		_typePool.GetTraitType(conformance.Trait, conformance.Arguments).Name;
@@ -1438,8 +1467,10 @@ public sealed class SignatureCollector
 		
 		var declared = target is NamedTypeSymbol named ? named.TypeParameters : [];
 		var map = TypePool.CreateMap(declared, [..impl.TypeParameters]);
-		if (ReportParameterViolations(declared, impl, node) &&
-		    !declared.Where((parameter, i) => AddsBound(parameter, impl.TypeParameters[i], map)).Any())
+		if (ReportParameterViolations(declared, impl, node) && !declared
+			    .Where((parameter, i) => impl.TargetArguments[i] is not TypeParameterSymbol ||
+			                             AddsBound(parameter, impl.TypeParameters[i], map))
+			    .Any())
 			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Keyword.SourceLocation,
 				"Cannot declare 'impl' blocks that add no bounds"));
 	}
@@ -1447,11 +1478,11 @@ public sealed class SignatureCollector
 	private bool ReportParameterViolations(ImmutableArray<TypeParameterSymbol> declared, ImplSymbol impl,
 		ImplNode node)
 	{
-		var map = TypePool.CreateMap(declared, [..impl.TypeParameters]);
+		var map = TypePool.CreateMap(declared, [..impl.TargetArguments]);
 		var isValid = true;
 		for (var i = 0; i < declared.Length; i++)
 		{
-			if (_typePool.FindConstraintViolation(declared[i], impl.TypeParameters[i], map) is not { } message)
+			if (_typePool.FindConstraintViolation(declared[i], impl.TargetArguments[i], map) is not { } message)
 				continue;
 			
 			Diagnostics.Add(new(DiagnosticSeverity.Error, node.TypeParameters[i].SourceLocation, message));
@@ -1722,7 +1753,8 @@ public sealed class SignatureCollector
 			if (signature.ReturnType is InvalidType || signature.ParameterTypes.Any(static p => p is InvalidType))
 				continue;
 			
-			if (FindConversionError(type, conversion, signature) is var (location, message))
+			if ((FindConversionError(type, conversion, signature) ??
+			     FindBuiltInConversion(type, conversion, signature)) is var (location, message))
 			{
 				Diagnostics.Add(new(DiagnosticSeverity.Error, location, message));
 				continue;
@@ -1802,6 +1834,25 @@ public sealed class SignatureCollector
 			_ => null
 		};
 	}
+	
+	private (SourceLocation Location, string Message)? FindBuiltInConversion(TypeSymbol type, FunctionNode node,
+		FunctionSignature signature)
+	{
+		if (node.Receiver is null)
+			return IsBuiltIn(signature.ParameterTypes[0], type)
+				? (node.Parameters[0].SourceLocation,
+					$"Conversion from '{signature.ParameterTypes[0].Name}' is built in")
+				: null;
+		
+		var result = signature.ReturnType;
+		return result is not BorrowType && IsBuiltIn(type, result)
+			? (node.ReturnType?.SourceLocation ?? node.Identifier.SourceLocation,
+				$"Conversion to '{result.Name}' is built in")
+			: null;
+	}
+	
+	private bool IsBuiltIn(TypeSymbol from, TypeSymbol to) =>
+		_typePool.ConversionTable.FindExplicit(from, to) is not (null or FunctionConversion);
 	
 	private static string DescribeConversionReceiver(ParameterMode mode) => mode switch
 	{

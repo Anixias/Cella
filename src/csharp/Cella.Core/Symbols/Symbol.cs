@@ -847,8 +847,11 @@ public sealed class ImplSymbol
 	public ImplNode Node { get; } = node;
 	public string TraitNames { get; init; } = "";
 	public ImmutableArray<TypeParameterSymbol> TypeParameters { get; } = typeParameters;
+	public ImmutableArray<TypeSymbol> TargetArguments { get; set; } = [..typeParameters];
 	public ImmutableArray<MethodSymbol> Functions { get; } = functions.ToImmutableArray();
 	public ImmutableArray<PropertySymbol> Properties { get; } = properties.ToImmutableArray();
+	
+	public bool Declares(TypeParameterSymbol parameter) => TargetArguments.Contains(parameter);
 }
 
 public sealed class MethodSymbol(string name, FunctionSymbol function) : MemberSymbol(name)

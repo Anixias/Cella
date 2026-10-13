@@ -1,0 +1,82 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Hash: trait
+{
+	hash: fun(imm self) -> u64
+}
+
+Show: trait
+{
+	show: fun(imm self) -> i32
+}
+
+Tag: trait
+{
+	tag: fun(imm self) -> i32
+}
+
+Point: rec
+{
+	x: i32
+}
+
+box[T]: rec
+{
+	value: T
+}
+
+pair[A, B]: rec
+{
+	first: A
+	second: B
+}
+
+i32: impl Hash
+{
+	hash: fun(self) -> u64 = u64(self)
+}
+
+box[i32]: impl Show
+{
+	show: fun(self) -> i32 = i32(sizeOf(i32)) + self.value
+}
+
+box[f64]: impl Show
+{
+	show: fun(self) -> i32 = 100
+}
+
+box[K: Hash]: impl Tag
+{
+	tag: fun(imm self) -> i32 = 7
+}
+
+pair[T, Point]: impl Show
+{
+	show: fun(imm self) -> i32 = self.second.x * 10
+}
+
+pair[i32, i32]: impl
+{
+	sum: fun(self) -> i32 = self.first + self.second
+}
+
+total[T: Show]: fun(imm value: T) -> i32 = value.show()
+
+viaDyn: fun(imm value: dyn[Show]) -> i32 = value.show()
+
+main: fun -> i32
+{
+	val small = box(5)
+	val wide = box(2.5)
+	val p = pair(1.5, Point(4))
+	val q = pair(2, 3)
+	printf("%d %d %d %d\n", small.show(), wide.show(), total(imm small), viaDyn(imm wide))
+	printf("%d %d %d %d %d\n", p.show(), total(imm p), viaDyn(imm p), q.sum(), box(3).tag())
+	ret 0
+}

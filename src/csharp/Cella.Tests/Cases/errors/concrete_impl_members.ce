@@ -1,0 +1,34 @@
+mod test
+
+Hash: trait
+{
+	hash: fun(imm self) -> u64
+}
+
+box[T]: rec
+{
+	value: T
+}
+
+i32: impl Hash
+{
+	hash: fun(self) -> u64 = u64(self)
+}
+
+box[u8]: impl
+{
+	small: fun(self) -> u8 = self.value
+}
+
+box[K: Hash]: impl
+{
+	hashed: fun(imm self) -> u64 = 3
+}
+
+main: fun -> i32
+{
+	val fine = box(u8(1)).small() + u8(box(2).hashed())
+	val a = box(2.5).small()
+	val b = box(2.5).hashed()
+	ret 0
+}

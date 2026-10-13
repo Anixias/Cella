@@ -1,0 +1,69 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Name: rec
+{
+	id: i32
+
+	drop: op
+	{
+	}
+}
+
+Bag: rec
+{
+	items: array[Name, 3]
+	loops: i32
+
+	in: op(mut self) -> BagCursor
+	{
+		self.loops += 1
+		ret BagCursor(mut self.loops, imm self.items, 0, 0)
+	}
+}
+
+BagCursor: ref rec
+{
+	loops: mut[i32]
+	items: imm[array[Name, 3]]
+	current: usize
+	next: usize
+
+	for: op(mut self) -> bool
+	{
+		self.current = self.next
+		self.next += 1
+		ret self.current < 3
+	}
+
+	*: op(imm self) -> imm[Name] = imm self.items[self.current]
+
+	drop: op
+	{
+		self.loops -= 1
+	}
+}
+
+largest: fun(mut bag: Bag) -> i32
+{
+	var best: imm[Name] = bag.items[0]
+	for name in mut bag
+	{
+		if name.id > best.id
+			best = name
+	}
+
+	printf("open loops %d\n", bag.loops)
+	ret best.id
+}
+
+main: fun -> i32
+{
+	var bag = Bag([Name(4), Name(9), Name(2)], 0)
+	printf("%d\n", largest(mut bag))
+	ret 0
+}

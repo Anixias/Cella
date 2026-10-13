@@ -9,6 +9,16 @@
     <RuntimeIdentifier Condition="'$(RuntimeIdentifier)' == ''">$(NETCoreSdkRuntimeIdentifier)</RuntimeIdentifier>
   </PropertyGroup>
   
+  <PropertyGroup>
+    <CellaToolchainDirectory Condition="'$(CellaToolchainDirectory)' == ''">C:\cella\</CellaToolchainDirectory>
+    <CreateHardLinksForAdditionalFilesIfPossible>true</CreateHardLinksForAdditionalFilesIfPossible>
+  </PropertyGroup>
+
+  <ItemGroup Condition="Exists('$(CellaToolchainDirectory)')">
+    <None Include="$(CellaToolchainDirectory)**\*" Link="%(RecursiveDir)%(Filename)%(Extension)"
+          CopyToOutputDirectory="PreserveNewest" Visible="false"/>
+  </ItemGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\Cella.Core\Cella.Core.csproj"/>
   </ItemGroup>

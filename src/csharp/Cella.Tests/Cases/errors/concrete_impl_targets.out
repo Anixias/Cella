@@ -1,0 +1,19 @@
+
+====== concrete_impl_targets.ce ======
+
+Error at line 23, column 14
+22 │ 
+23 │ box[T]: impl Tag
+                  ╘═╛ 'box[i32]' implements 'Tag' more than once
+
+Error at line 28, column 16
+27 │ 
+28 │ box[i32]: impl Tag
+                    ╘═╛ 'box[i32]' implements 'Tag' more than once
+
+Error at line 33, column 6
+32 │ 
+33 │ list[Token]: impl
+          ╘═══╛ Cannot store borrows in 'T'
+
+[compilation failed]

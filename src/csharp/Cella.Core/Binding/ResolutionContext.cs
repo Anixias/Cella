@@ -129,7 +129,8 @@ public readonly struct ResolutionContext
 		if (Trait?.TypeParameters.FirstOrDefault(p => p.Name == name) is { } traitParameter)
 			return traitParameter;
 		
-		if (ImplBlock?.TypeParameters.FirstOrDefault(p => p.Name == name) is { } blockParameter)
+		if (ImplBlock is { } block && block.TypeParameters.FirstOrDefault(p => p.Name == name && block.Declares(p)) is
+			    { } blockParameter)
 			return blockParameter;
 		
 		if (ImplBlock is { } impl && ResolveStatic(impl.Functions, impl.Properties, name) is { } blockMember)

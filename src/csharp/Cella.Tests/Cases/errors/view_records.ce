@@ -32,23 +32,27 @@ Range: ref enum
 	}
 }
 
+Guard: rec
+{
+	drop: op
+	{
+	}
+}
+
 Counter: ref rec
 {
 	items: imm[array[i32, 6]]
 	count: i32
+	guard: Guard
 
 	countRef: fun(mut self) -> mut[i32] = mut self.count
-
-	drop: op
-	{
-	}
 }
 
 offsetOf: fun(mut lexer: Lexer) -> mut[usize] = mut lexer.offset
 
 countOf: fun(mut items: array[i32, 6]) -> mut[i32]
 {
-	var counter = Counter(items, 0)
+	var counter = Counter(items, 0, Guard())
 	ret counter.countRef()
 }
 

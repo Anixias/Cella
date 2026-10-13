@@ -136,10 +136,7 @@ Cursor: ref rec
 {
 	text: str
 	rest: str
-
-	drop: op
-	{
-	}
+	owner: Buffer
 }
 
 main: fun -> i32 = 0

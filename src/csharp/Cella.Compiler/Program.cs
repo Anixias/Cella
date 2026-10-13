@@ -618,9 +618,7 @@ internal static class Program
 				.Distinct()
 				.ToList();
 			
-			// TODO Toolchains and linker paths should be grabbed from environment variables, compiler installation location
-			const string toolchainDir = @"C:\cella\toolchains";
-			var linker = new Linker(@"C:\cella\", verbose);
+			var linker = new Linker(AppContext.BaseDirectory, verbose);
 			var linkPreference = project.Project.SystemLinkPreference;
 			var linkRequest = new LinkRequest(outputType, objectFiles, outputPath, libFiles!)
 			{
@@ -636,7 +634,9 @@ internal static class Program
 				return errorResult;
 			}
 			
-			var linkerToolchain = Toolchain.FromTargetTriple(targetTriple, toolchainDir);
+			var linkerToolchain = Toolchain.FromTargetTriple(targetTriple,
+				Path.Combine(AppContext.BaseDirectory, "toolchains"));
+			
 			var linkExitCode = await linker.LinkAsync(linkRequest, linkerToolchain);
 			
 			if (verbose || linkExitCode != 0)

@@ -1,0 +1,38 @@
+mod test
+
+Tag: trait
+{
+	tag: fun(imm self) -> i32
+}
+
+Token: ref rec
+{
+	id: i32
+}
+
+box[T]: rec
+{
+	value: T
+}
+
+list[T: noref]: rec
+{
+	value: T
+}
+
+box[T]: impl Tag
+{
+	tag: fun(imm self) -> i32 = 1
+}
+
+box[i32]: impl Tag
+{
+	tag: fun(self) -> i32 = 2
+}
+
+list[Token]: impl
+{
+	get: fun(self) -> i32 = 1
+}
+
+main: fun -> i32 = 0

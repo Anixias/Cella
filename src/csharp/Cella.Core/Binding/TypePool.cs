@@ -235,8 +235,14 @@ public sealed class TypePool
 		                                                                  ? type is ArrayType
 		                                                                  : conformance.Target ==
 		                                                                    type.OriginalDefinition) &&
+	                                                                  Fits(conformance.Impl, GetShapeArguments(type)) &&
 	                                                                  Satisfies(conformance.Parameters,
 		                                                                  GetShapeArguments(type));
+	
+	private static bool Fits(ImplSymbol? impl, ImmutableArray<TypeSymbol> arguments) => impl is null ||
+		impl.TargetArguments.Length == arguments.Length && impl.TargetArguments
+			.Zip(arguments)
+			.All(static pair => pair.First is TypeParameterSymbol || pair.First == pair.Second);
 	
 	private ImmutableArray<TypeSymbol> GetShapeArguments(TypeSymbol type) => type is ArrayType array
 		? [array.ElementType, GetLengthArgument(array)]
@@ -257,7 +263,7 @@ public sealed class TypePool
 	public IEnumerable<ImplSymbol> FindMemberBlocks(TypeSymbol type) => type is TypeParameterSymbol
 		? []
 		: _memberBlocks
-			.Where(block => block.Target == type.OriginalDefinition &&
+			.Where(block => block.Target == type.OriginalDefinition && Fits(block.Impl, type.TypeArguments) &&
 			                Satisfies(block.Impl.TypeParameters, type.TypeArguments))
 			.Select(static block => block.Impl);
 	
@@ -266,6 +272,7 @@ public sealed class TypePool
 		: _memberBlocks
 			.Where(block => block.Target == type.OriginalDefinition &&
 			                block.Impl.TypeParameters.Length == type.TypeArguments.Length &&
+			                Fits(block.Impl, type.TypeArguments) &&
 			                (block.Impl.Functions.Any(method => method.Name == name) ||
 			                 block.Impl.Properties.Any(property => property.Name == name)))
 			.Select(block => FindViolation(block.Impl.TypeParameters, type.TypeArguments))
@@ -506,7 +513,7 @@ public sealed class TypePool
 		PassesByPointer(function.DeclaredSignature.GetMode(index));
 	
 	public bool IsViewRecord(TypeSymbol type) => type is RecordSymbol { IsRef: true } or EnumSymbol { IsRef: true } &&
-	                                             IsCopy(type);
+	                                             GetParts(type).All(IsCopy);
 	
 	public bool HasDestructor(TypeSymbol type) => HasDestructor(type, []);
 	
