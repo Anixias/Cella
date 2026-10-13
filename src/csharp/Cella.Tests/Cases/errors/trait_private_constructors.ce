@@ -1,0 +1,10 @@
+mod test
+
+Make: trait
+{
+	new: pvt op(value: i32)
+	new: mod op(value: i64)
+	new: op(value: bool)
+}
+
+main: fun -> i32 = 0

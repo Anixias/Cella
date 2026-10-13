@@ -1,0 +1,17 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+transform[T, U]: fun(own value: T, f: fun[own T -> U]) -> U = f(own value)
+
+main: fun -> i32
+{
+	printf("%d\n", transform(1, fun(x) { ret x + 1 }))
+	val r = transform(2, fun(x) { ret x * 2 })
+	printf("%d\n", r)
+	val s: i64 = r
+	ret 0
+}

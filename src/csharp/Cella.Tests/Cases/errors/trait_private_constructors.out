@@ -1,0 +1,9 @@
+
+====== trait_private_constructors.ce ======
+
+Error at line 5, column 7
+4 │ {
+5 │     new: pvt op(value: i32)
+             ╘═╛ Cannot declare 'pvt' constructors in traits
+
+[compilation failed]

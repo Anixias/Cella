@@ -443,7 +443,7 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 			return new AtomicExpressionNode(keyword, ordering, orderingLocation, ParseUnary(ref index), null, null,
 				null);
 		
-		if (!AtEnd(index) && !IsNextNewline(index))
+		if (!AtEnd(index) && !IsNextNewline(index) && !Peek(index, TokenType.OpCloseBrace))
 			throw Expected(index, "'*'");
 		
 		return new AtomicExpressionNode(keyword, ordering, orderingLocation, null, null, null, null);

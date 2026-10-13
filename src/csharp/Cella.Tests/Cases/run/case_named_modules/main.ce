@@ -1,0 +1,15 @@
+mod test
+
+use Geometry
+use geometry
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+main: fun -> i32
+{
+	printf("%d %d\n", Geometry.area(), geometry.area())
+	ret 0
+}

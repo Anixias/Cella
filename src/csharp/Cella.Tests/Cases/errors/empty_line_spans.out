@@ -4,15 +4,10 @@
 Error at line 7, column 5
 6 │ val p = @x
 7 │ if p ==
-       ╘══╛ No operation defined for '==' between 'ptr[i32]' and 'i32'
-          | Did you mean '*p == x'?
-
+       ╘══╛
 8 │ 
-    ^ No operation defined for '==' between 'ptr[i32]' and 'i32'
-    | Did you mean '*p == x'?
-
 9 │     x
-    ╘═══╛ No operation defined for '==' between 'ptr[i32]' and 'i32'
+        ^ No operation defined for '==' between 'ptr[i32]' and 'i32'
         | Did you mean '*p == x'?
 
 [compilation failed]

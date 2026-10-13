@@ -1,0 +1,16 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+main: fun -> i32
+{
+	var x = 1
+	if x > 0 { atomic acquire }
+	while x < 3 { x += 1  atomic }
+	if x == 3 { atomic acquire release }
+	printf("%d\n", x)
+	ret 0
+}

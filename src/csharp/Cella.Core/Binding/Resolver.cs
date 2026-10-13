@@ -1571,7 +1571,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
 		
 		if (isAmbiguous)
-			return Error(node, $"Conversion to '{definition.Name}' is ambiguous", definition, node);
+			return Error(node, $"Conversion to '{definition.Name}' is ambiguous", CurrentTargetType, node);
 		
 		if (constructors.Count > 0)
 			return ResolveInferredConstructor(node, definition, name, args, constructors, accessible, callables);
@@ -1718,20 +1718,21 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	{
 		ICallable[] candidates = [..ctorCandidates, ..FindConversionCallables(args, targetType)];
 		var resolutionSet = PreferConstruction(ResolveCallable(candidates, args, MaterializationMode.Overload, target));
+		var recovery = target ?? CurrentTargetType;
 		
 		if (resolutionSet.IsAmbiguous)
-			return Error(node, $"Conversion to '{targetType.Name}' is ambiguous", targetType, node);
+			return Error(node, $"Conversion to '{targetType.Name}' is ambiguous", recovery, node);
 		
 		if (!resolutionSet.HasResult)
 		{
 			if (ReportArgumentModes(candidates, args, target))
-				return new ResolvedInvalidExpressionNode(node, targetType);
+				return new ResolvedInvalidExpressionNode(node, recovery);
 			
 			var message = args is [not ResolvedCaseNameExpressionNode]
 				? $"No constructor for '{targetType.Name}' accepts argument of type '{GetArgumentType(args[0]).Name}'"
 				: $"No constructor for '{targetType.Name}' accepts these arguments";
 			
-			return Error(node, message, targetType, node);
+			return Error(node, message, recovery, node);
 		}
 		
 		var resolution = resolutionSet[0];
@@ -3248,7 +3249,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 				owner == target.Type ? target : ResolveDereference(TokenType.OpStar, target, access.Target), dyn,
 				indexer);
 		
-		if (FindField(target.Type, access.Member.Text) is not null ||
+		if (_typePool.ResolveMember(owner, access.Member.Text) is FieldSymbol or PropertySymbol ||
 		    GetPropertyMember(owner, access.Member.Text) is not null)
 			return VisitIndirectCall(node, Index(indexer, ResolveAccess(access, target)));
 		
@@ -4632,7 +4633,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		if (returnType is null)
 		{
 			if (node.ExpressionBody is not { } probe)
-				return Error(node, "Cannot infer the return type", expected);
+				return Error(node, "Cannot infer the return type", null);
 			
 			var checkpoint = OpenCheckpoint();
 			EnterLambda(outer, CreateLambdaInfo(node, outer, modes, types, NativeSymbols.Void, takesVariadic), target);

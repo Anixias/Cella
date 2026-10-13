@@ -284,7 +284,8 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 				EmitStaticRegistry();
 			}
 			
-			return [..states.Select(Finish)];
+			var fileNames = GetFileNames(states);
+			return [..states.Select(state => Finish(state, fileNames[state]))];
 		}
 		finally
 		{
@@ -337,10 +338,18 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 		}
 	}
 	
+	private static Dictionary<ModuleState, string> GetFileNames(List<ModuleState> states) => states
+		.GroupBy(static state => state.Lowered.Symbol.Name, StringComparer.OrdinalIgnoreCase)
+		.SelectMany(static group => group
+			.OrderBy(static state => state.Lowered.Symbol.Name, StringComparer.Ordinal)
+			.Select(static (state, index) => (State: state,
+				Name: index == 0 ? state.Lowered.Symbol.Name : $"{state.Lowered.Symbol.Name}-{index}")))
+		.ToDictionary(static entry => entry.State, static entry => entry.Name);
+	
 	private static string DescribeInvalidModule(string module, string message) =>
 		$"Internal compiler error: invalid code generated for module '{module}'{Environment.NewLine}{message.TrimEnd()}";
 	
-	private CodeGenResult Finish(ModuleState state)
+	private CodeGenResult Finish(ModuleState state, string fileName)
 	{
 		current = state;
 		var llvmModule = state.Module;
@@ -363,21 +372,21 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 		
 		if (_config.OutputConfig.EmitIR)
 		{
-			var irFilePath = Path.Combine(_config.OutputConfig.Directory, $"{name}.ll");
+			var irFilePath = Path.Combine(_config.OutputConfig.Directory, $"{fileName}.ll");
 			if (!llvmModule.TryPrintToFile(irFilePath, out message))
 				return CodeGenResult.Failure with { ErrorMessage = message };
 		}
 		
 		if (_config.OutputConfig.EmitAssembly)
 		{
-			var assemblyFilePath = Path.Combine(_config.OutputConfig.Directory, $"{name}.s");
+			var assemblyFilePath = Path.Combine(_config.OutputConfig.Directory, $"{fileName}.s");
 			using var assemblyModule = llvmModule.Clone();
 			if (!_targetMachine.TryEmitToFile(assemblyModule, assemblyFilePath, LLVMCodeGenFileType.LLVMAssemblyFile,
 				    out message))
 				return CodeGenResult.Failure with { ErrorMessage = message };
 		}
 		
-		var objectFilePath = Path.Combine(_config.OutputConfig.Directory, $"{name}.o");
+		var objectFilePath = Path.Combine(_config.OutputConfig.Directory, $"{fileName}.o");
 		if (_targetMachine.TryEmitToFile(llvmModule, objectFilePath, LLVMCodeGenFileType.LLVMObjectFile, out message))
 			return new(true, objectFilePath, null, state.ExternalLibraries);
 		

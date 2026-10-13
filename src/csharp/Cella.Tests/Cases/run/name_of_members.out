@@ -1,2 +1,2 @@
-len len self
+len len self x make
 [exit code 0]

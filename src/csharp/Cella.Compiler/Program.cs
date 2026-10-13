@@ -946,7 +946,7 @@ internal static class Program
 			var rawLine = rawLines[i];
 			var hlVisStart = lineNum == startLine
 				? Math.Max(0, VisualColumn(rawLine, startCol - 1) - commonLeading)
-				: 0;
+				: LeadingVisualWidth(stripped);
 			
 			var hlVisEnd = lineNum == endLine
 				? Math.Max(0, VisualColumn(rawLine, endCol - 1) - commonLeading)
@@ -973,20 +973,30 @@ internal static class Program
 			
 			Console.WriteLine();
 			
+			var arrowCount = Math.Max(0, hlVisEnd - hlVisStart);
+			var isLast = lineNum == endLine;
+			if (!isLast && arrowCount == 0)
+				continue;
+			
 			var gutter = new string(' ', gutterWidth);
 			WriteColored($"{gutter}   ", ConsoleColor.DarkGray);
 			Console.Write(new string(' ', hlVisStart));
 			
-			var arrowCount = Math.Max(0, hlVisEnd - hlVisStart);
 			var arrowLine = arrowCount switch
 			{
-				> 2 => '╘' + new string('═', arrowCount - 2) + "╛ ",
-				2 => "╘╛ ",
-				_ => "^ "
+				> 2 => '╘' + new string('═', arrowCount - 2) + '╛',
+				2 => "╘╛",
+				_ => "^"
 			};
 			
 			WriteColored(arrowLine, severityColor);
-			WriteColored(diagnostic.Message, severityColor);
+			if (!isLast)
+			{
+				Console.WriteLine();
+				continue;
+			}
+			
+			WriteColored($" {diagnostic.Message}", severityColor);
 			Console.WriteLine();
 			
 			var pipeColumn = hlVisStart + Math.Max(arrowCount, 1) - 1;

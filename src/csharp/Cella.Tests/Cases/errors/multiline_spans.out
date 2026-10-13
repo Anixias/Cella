@@ -1,0 +1,20 @@
+
+====== multiline_spans.ce ======
+
+Error at line 7, column 5
+6 │ val p = @x
+7 │ if p ==
+       ╘══╛
+8 │     x
+        ^ No operation defined for '==' between 'ptr[i32]' and 'i32'
+        | Did you mean '*p == x'?
+
+Error at line 10, column 16
+ 9 │     ret 1
+10 │ val q: bool = p ==
+                   ╘══╛
+11 │     x ==
+         ^ No operation defined for '==' between 'ptr[i32]' and 'i32'
+         | Did you mean '*p == x'?
+
+[compilation failed]

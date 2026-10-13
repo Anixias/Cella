@@ -867,6 +867,11 @@ public sealed class SignatureCollector
 			Diagnostics.Add(new(DiagnosticSeverity.Error, constructor.Keyword.SourceLocation,
 				"Cannot declare constructor bodies in traits"));
 		
+		foreach (var constructor in node.Members.OfType<ConstructorNode>())
+			if (constructor.Visibility is { Type: TokenType.KeywordPvt } visibility)
+				Diagnostics.Add(new(DiagnosticSeverity.Error, visibility.SourceLocation,
+					"Cannot declare 'pvt' constructors in traits"));
+		
 		foreach (var function in node.Members.OfType<FunctionNode>().Concat(node.Members.OfType<PropertyNode>()
 			         .SelectMany(static property => property.Accessors)))
 		{

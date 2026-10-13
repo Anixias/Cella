@@ -1,0 +1,17 @@
+mod test
+
+Display: trait
+{
+	print: fun(imm self)
+}
+
+main: fun -> i32
+{
+	val s: str = "abc"
+	val a = s.byteLength()
+	val arr = [1, 2]
+	val b = arr.length()
+	val text: fstr[Display] = "abc"
+	val c = text.holes()
+	ret 0
+}
