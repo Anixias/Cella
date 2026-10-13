@@ -723,7 +723,6 @@ public sealed class RecordSymbol : NamedTypeSymbol
 {
 	public RecordNode Node { get; }
 	public ImmutableArray<MemberSymbol> Members { get; }
-	public ImmutableArray<TypeSymbol> NestedTypes { get; }
 	public bool HasDestructor => Members.Any(static m => m is MethodSymbol { Function.Kind: FunctionKind.Destructor });
 	public bool IsUnion => Node.IsUnion;
 	public override bool IsRef => Node.IsRef;
@@ -733,12 +732,11 @@ public sealed class RecordSymbol : NamedTypeSymbol
 		.Where(m => m.Name == name && m.Function.Kind is FunctionKind.Method or FunctionKind.Free);
 	
 	public RecordSymbol(string name, RecordNode node, IEnumerable<MemberSymbol> members,
-		IEnumerable<TypeSymbol> nestedTypes, ImmutableArray<TypeParameterSymbol> typeParameters)
+		ImmutableArray<TypeParameterSymbol> typeParameters)
 		: base(name, node.Visibility, typeParameters)
 	{
 		Node = node;
 		Members = members.ToImmutableArray();
-		NestedTypes = nestedTypes.ToImmutableArray();
 	}
 	
 	public RecordSymbol(RecordSymbol definition, ImmutableArray<TypeSymbol> typeArguments,
@@ -747,7 +745,6 @@ public sealed class RecordSymbol : NamedTypeSymbol
 	{
 		Node = definition.Node;
 		Members = members.ToImmutableArray();
-		NestedTypes = definition.NestedTypes;
 	}
 }
 

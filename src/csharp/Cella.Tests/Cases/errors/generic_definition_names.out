@@ -1,0 +1,24 @@
+
+====== generic_definition_names.ce ======
+
+Error at line 16, column 8
+15 │ head: T
+16 │ tail: list[T]
+           ╘═════╛ Field 'tail' of type 'list[T]' causes a cycle in the memory layout
+
+Error at line 19, column 18
+18 │ 
+19 │ box[T]: rec impl Make
+                      ╘══╛ 'box[T]' needs 'Make.new'
+
+Error at line 24, column 14
+23 │ 
+24 │ box[T]: impl Show
+                  ╘══╛ 'box[T]' implements 'Show' more than once
+
+Error at line 29, column 14
+28 │ 
+29 │ box[U]: impl Show
+                  ╘══╛ 'box[T]' implements 'Show' more than once
+
+[compilation failed]

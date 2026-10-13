@@ -993,7 +993,8 @@ public sealed class SignatureCollector
 		foreach (var required in _typePool.GetRequiredTraits(trait, self))
 		{
 			if (!_typePool.Conforms(self, required))
-				ReportConformance(conformance.Location, $"'{self.Name}' needs '{required.Name}'");
+				ReportConformance(conformance.Location,
+					$"'{DiagnosticReporter.DescribeType(self)}' needs '{required.Name}'");
 		}
 	}
 	
@@ -1008,7 +1009,7 @@ public sealed class SignatureCollector
 			
 			if (overlap is var (target, trait))
 				Diagnostics.Add(new(DiagnosticSeverity.Error, conformance.Location,
-					$"'{target.Name}' implements '{trait.Name}' more than once"));
+					$"'{DiagnosticReporter.DescribeType(target)}' implements '{trait.Name}' more than once"));
 		}
 	}
 	
@@ -1187,11 +1188,12 @@ public sealed class SignatureCollector
 	private static string DescribeMissingRequirement(Conformance conformance, string trait, TypeSymbol self,
 		string name, FunctionSymbol requirement)
 	{
+		var described = DiagnosticReporter.DescribeType(self);
 		if (requirement.Property is null || !HasProperty(conformance, name))
-			return $"'{self.Name}' needs '{trait}.{name}'";
+			return $"'{described}' needs '{trait}.{name}'";
 		
 		var accessor = GetAccessorKind(requirement) == "get" ? "getter" : "setter";
-		return $"'{self.Name}' needs a {accessor} for '{trait}.{name}'";
+		return $"'{described}' needs a {accessor} for '{trait}.{name}'";
 	}
 	
 	private SourceLocation? FindOtherKindMember(Conformance conformance, string name, FunctionSymbol requirement)
@@ -1262,7 +1264,7 @@ public sealed class SignatureCollector
 		
 		if (!hidesConstruction)
 		{
-			ReportConformance(conformance.Location, $"'{self.Name}' needs '{trait}.new'");
+			ReportConformance(conformance.Location, $"'{DiagnosticReporter.DescribeType(self)}' needs '{trait}.new'");
 			return;
 		}
 		
@@ -3505,7 +3507,7 @@ public sealed class SignatureCollector
 				
 				var kind = type is EnumSymbol ? "Payload" : "Field";
 				Diagnostics.Add(new(DiagnosticSeverity.Error, field.Node!.Type.SourceLocation,
-					$"{kind} '{field.Name}' of type '{fieldType.Name}' causes a cycle in the memory layout"));
+					$"{kind} '{field.Name}' of type '{DiagnosticReporter.DescribeType(fieldType)}' causes a cycle in the memory layout"));
 			}
 		}
 	}

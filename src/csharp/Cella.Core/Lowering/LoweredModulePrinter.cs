@@ -171,6 +171,25 @@ public static class LoweredModulePrinter
 		}
 	}
 	
+	private static string EscapeBytes(byte[] bytes)
+	{
+		var sb = new StringBuilder();
+		foreach (var b in bytes.AsSpan(0, bytes.Length > 0 && bytes[^1] == 0 ? bytes.Length - 1 : bytes.Length))
+		{
+			sb.Append(b switch
+			{
+				(byte)'"' => "\\\"",
+				(byte)'\\' => "\\\\",
+				(byte)'\n' => "\\n",
+				(byte)'\t' => "\\t",
+				< 0x20 or >= 0x7F => $"\\x{b:X2}",
+				_ => ((char)b).ToString()
+			});
+		}
+		
+		return sb.ToString();
+	}
+	
 	private static void PrintValue(StringBuilder sb, Value value)
 	{
 		while (true)
@@ -182,6 +201,8 @@ public static class LoweredModulePrinter
 					
 					if (v.Value is null)
 						sb.Append("null");
+					else if (v.Value is byte[] bytes)
+						sb.Append('"').Append(EscapeBytes(bytes)).Append('"');
 					else
 						sb.Append(v.Value);
 					

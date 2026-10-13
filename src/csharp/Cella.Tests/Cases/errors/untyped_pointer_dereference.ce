@@ -1,0 +1,24 @@
+mod test
+
+read: fun -> i32
+{
+	val p: ptr = null
+	val x = *p
+	ret 0
+}
+
+take: fun -> i32
+{
+	val p: ptr = null
+	val x = own *p
+	ret 0
+}
+
+destroy: fun -> i32
+{
+	val raw: ptr = null
+	drop *raw
+	ret 0
+}
+
+main: fun -> i32 = 0

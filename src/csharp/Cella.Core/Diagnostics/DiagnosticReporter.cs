@@ -133,6 +133,10 @@ public static class DiagnosticReporter
 		IEnumerable<string> caseNames) =>
 		ReportUndefined(location, $"'{enumName}' has no case '{missingName}'", missingName, caseNames);
 	
+	public static string DescribeType(TypeSymbol type) => type is NamedTypeSymbol { IsGenericDefinition: true } generic
+		? $"{generic.Name}[{string.Join(", ", generic.TypeParameters.Select(static parameter => parameter.Name))}]"
+		: type.Name;
+	
 	public static string JoinNames(IReadOnlyList<string> names) => names.Count == 1
 		? $"'{names[0]}'"
 		: $"{string.Join(", ", names.Take(names.Count - 1).Select(static name => $"'{name}'"))} and '{names[^1]}'";

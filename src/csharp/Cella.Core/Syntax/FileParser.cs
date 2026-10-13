@@ -110,17 +110,8 @@ public sealed class FileParser
 		});
 	}
 	
-	private void Report(string message, DiagnosticSeverity severity = DiagnosticSeverity.Error) =>
-		Diagnostics.Add(new(severity, new(Tokens[0].SourceLocation.Source, TextRange.Empty), message));
-	
 	public override FileNode? Parse(ref int index)
 	{
-		if (Tokens.Length == 0)
-		{
-			Report("Cannot parse empty file");
-			return null;
-		}
-		
 		// Setup
 		var (source, range) = Tokens[0].SourceLocation;
 		
@@ -221,7 +212,7 @@ public sealed class FileParser
 		if (moduleName == default)
 		{
 			if (!hasModuleKeyword)
-				Report("All files must begin with a module name (mod a.b.c)");
+				Report(Tokens[0], "All files must begin with a module name");
 			
 			return null;
 		}
@@ -1158,7 +1149,7 @@ public sealed class FileParser
 		}
 		
 		var initializer = ParseExpression(ref index);
-		return new(identifier, modifiers.Tokens, keyword, type, initializer)
+		return new(identifier, keyword, type, initializer)
 		{
 			Visibility = modifiers.Visibility,
 			WriteVisibility = modifiers.WriteVisibility,
@@ -1235,7 +1226,7 @@ public sealed class FileParser
 				ParseExpression(ref index);
 			}
 			
-			return new GlobalNode(identifier, modifiers.Tokens, keyword, type, null)
+			return new GlobalNode(identifier, keyword, type, null)
 			{
 				Visibility = modifiers.Visibility,
 				WriteVisibility = modifiers.WriteVisibility,

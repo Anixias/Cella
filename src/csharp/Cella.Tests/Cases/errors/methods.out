@@ -4,12 +4,12 @@
 Error at line 26, column 7
 25 │ {
 26 │     ret self
-             ╘══╛ Symbol 'self' not found in this scope
+             ╘══╛ Cannot use 'self' in static functions
 
 Error at line 31, column 3
 30 │ {
 31 │     restore(1)
-         ╘════════╛ Symbol 'restore' not found in this scope
+         ╘════════╛ Cannot call methods without a receiver
 
 Error at line 38, column 7
 37 │ var other = Unit.make(3)

@@ -28,9 +28,7 @@ public sealed class BasicBlock(string label, ControlFlowGraph owner)
 			Owner.SetTerminator(this, terminator);
 	}
 	
-	public bool HasSuccessor() => Owner.HasSuccessor(this);
 	public bool HasPredecessor() => Owner.HasPredecessor(this);
-	public IReadOnlySet<BasicBlock> GetSuccessors() => Owner.GetSuccessors(this);
 	public IReadOnlySet<BasicBlock> GetPredecessors() => Owner.GetPredecessors(this);
 	
 	public SourceLocation GetSourceLocation() => Instructions

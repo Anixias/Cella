@@ -6,10 +6,10 @@ Error at line 12, column 11
 12 │     break 5
                ^ Expression must be a label
 
-Error at line 15, column 5
+Error at line 15, column 10
 14 │ if x == 2
 15 │     cont nowhere
-         ╘══════════╛ Symbol 'nowhere' not found in this scope
+              ╘═════╛ Symbol 'nowhere' not found in this scope
 
 Error at line 18, column 11
 17 │ if x == 3

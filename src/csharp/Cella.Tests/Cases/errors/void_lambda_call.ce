@@ -1,0 +1,11 @@
+mod test
+
+main: fun -> i32
+{
+	val x = (fun
+	{
+		val y = 1
+	})()
+
+	ret 0
+}

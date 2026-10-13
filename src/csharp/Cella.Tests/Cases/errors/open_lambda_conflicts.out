@@ -1,0 +1,9 @@
+
+====== open_lambda_conflicts.ce ======
+
+Error at line 8, column 6
+7 │ {
+8 │     val double = fun(x) = x * 2
+            ╘════╛ Cannot infer the type of 'double' from 'fun[i32 -> i32]' and 'fun[i64 -> i64]'
+
+[compilation failed]

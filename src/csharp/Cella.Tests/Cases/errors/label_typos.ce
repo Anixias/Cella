@@ -1,0 +1,24 @@
+mod test
+
+misspelled: fun -> i32
+{
+	outer: while true
+	{
+		break outr
+	}
+
+	ret 0
+}
+
+variable: fun -> i32
+{
+	val outre = 1
+	outer: while true
+	{
+		break outre
+	}
+
+	ret 0
+}
+
+main: fun -> i32 = 0

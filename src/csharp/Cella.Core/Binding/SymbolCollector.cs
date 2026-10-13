@@ -231,7 +231,6 @@ public sealed class SymbolCollector : IDeclarationNodeVisitor<Symbol>
 		var members = new List<MemberSymbol>(node.Members.Length);
 		var statics = new List<GlobalSymbol>();
 		var properties = new List<PropertySymbol>();
-		var types = new List<TypeSymbol>(node.Members.Length);
 		
 		foreach (var member in node.Members)
 		{
@@ -246,10 +245,6 @@ public sealed class SymbolCollector : IDeclarationNodeVisitor<Symbol>
 					members.Add(new MethodSymbol(GetMemberName(member), s));
 					break;
 				
-				case TypeSymbol s:
-					types.Add(s);
-					break;
-				
 				case GlobalSymbol s:
 					statics.Add(s);
 					break;
@@ -261,7 +256,7 @@ public sealed class SymbolCollector : IDeclarationNodeVisitor<Symbol>
 		}
 		
 		var name = node.Identifier.Text;
-		var record = new RecordSymbol(name, node, members, types, typeParameters)
+		var record = new RecordSymbol(name, node, members, typeParameters)
 		{
 			StaticFields = [..statics],
 			Properties = [..properties]

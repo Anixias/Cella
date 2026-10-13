@@ -1,0 +1,15 @@
+
+====== void_lambda_call.ce ======
+
+Error at line 5, column 11
+4 │ {
+5 │     val x = (fun
+                 ╘═╛
+6 │     {
+        ^
+7 │         val y = 1
+            ╘═══════╛
+8 │     })()
+        ╘══╛ 'fun' doesn't return a value
+
+[compilation failed]

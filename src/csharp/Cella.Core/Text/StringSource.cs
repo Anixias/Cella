@@ -70,6 +70,9 @@ public sealed class StringSource : ISource
 		if (position < 0)
 			return (0, 0);
 		
+		if (_lines.IsEmpty)
+			return (1, 1);
+		
 		if (position >= _text.Length)
 			return (_lines.Length, _lines.Length > 0 ? _lines[^1].Length + 1 : 0);
 		

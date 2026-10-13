@@ -120,14 +120,8 @@ public sealed class ControlFlowGraph : IReadOnlyList<BasicBlock>
 			_predecessors.Remove(block);
 	}
 	
-	public bool HasSuccessor(BasicBlock block) =>
-		_successors.TryGetValue(block, out var successors) && successors.Count > 0;
-	
 	public bool HasPredecessor(BasicBlock block) =>
 		_predecessors.TryGetValue(block, out var predecessors) && predecessors.Count > 0;
-	
-	public IReadOnlySet<BasicBlock> GetSuccessors(BasicBlock block) =>
-		_successors.TryGetValue(block, out var successors) ? successors : _emptyBlockSet;
 	
 	public IReadOnlySet<BasicBlock> GetPredecessors(BasicBlock block) =>
 		_predecessors.TryGetValue(block, out var predecessors) ? predecessors : _emptyBlockSet;

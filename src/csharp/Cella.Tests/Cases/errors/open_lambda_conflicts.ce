@@ -1,0 +1,12 @@
+mod test
+
+apply: fun(f: fun[i32 -> i32], x: i32) -> i32 = f(x)
+applyLong: fun(f: fun[i64 -> i64], x: i64) -> i64 = f(x)
+
+main: fun -> i32
+{
+	val double = fun(x) = x * 2
+	val a = apply(double, 4)
+	val b = applyLong(double, 5)
+	ret 0
+}

@@ -155,7 +155,12 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	private ResolvedInvalidExpressionNode ReportVoidValue(IResolvedExpressionNode node, TypeSymbol? type)
 	{
 		var function = node.Syntax is CallExpressionNode call ? call.Target : node.Syntax;
-		return Error(node.Syntax, $"'{function.SourceLocation.GetText()}' doesn't return a value", type);
+		var text = function is LambdaExpressionNode
+			? "fun"
+			: string.Join(' ', function.SourceLocation.GetText().ToString()
+				.Split((char[])[' ', '\t', '\r', '\n'], StringSplitOptions.RemoveEmptyEntries));
+		
+		return Error(node.Syntax, $"'{text}' doesn't return a value", type);
 	}
 	
 	public IResolvedDeclarationNode Visit(FieldNode node)
@@ -265,11 +270,17 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		foreach (var key in genericTypes?.Keys.Except(cachedTypes!).ToList() ?? [])
 			genericTypes!.Remove(key);
 		
+		var settled = settlement.Types.ToDictionary();
 		foreach (var (local, types) in settlement.Conflicts)
+		{
 			Diagnostics.Add(new(DiagnosticSeverity.Error, local.Identifier.SourceLocation,
-				$"Cannot infer the type of '{local.Identifier.Text}' from {JoinNames(types)}"));
+				$"Cannot infer the type of '{local.Identifier.Text}' from {JoinWrittenNames(types)}"));
+			
+			if (local.Initializer is LambdaExpressionNode)
+				settled[local.Declaration] = NativeSymbols.Invalid;
+		}
 		
-		settledTypes = settlement.Types;
+		settledTypes = settled;
 		var result = resolve();
 		settledTypes = null;
 		return result;
@@ -630,7 +641,12 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		var name = varExpr.Identifier.Text;
 		if (CurrentResolutionContext.Resolve(name) is not { } symbol)
 		{
-			var diagnostic = DiagnosticReporter.ReportUndefinedSymbol(node, name, GetVisibleSymbolNames());
+			var labels = CurrentResolutionContext.GetAllSymbols()
+				.OfType<LabelSymbol>()
+				.Select(static label => label.Name)
+				.Distinct();
+			
+			var diagnostic = DiagnosticReporter.ReportUndefinedSymbol(labelNode, name, labels);
 			return (null, Error(node, diagnostic, null));
 		}
 		
@@ -2105,6 +2121,13 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	
 	private static string JoinNames(IEnumerable<TypeSymbol> types) =>
 		DiagnosticReporter.JoinNames([..types.Select(static type => type.Name)]);
+	
+	private static string JoinWrittenNames(IEnumerable<TypeSymbol> types) =>
+		DiagnosticReporter.JoinNames([
+			..types.Select(static type => type is FunctionType function
+				? function.PlainName
+				: type.Name)
+		]);
 	
 	private Diagnostic? ReportConstraintViolation(ImmutableArray<TypeParameterSymbol> parameters,
 		IReadOnlyList<TypeSymbol> arguments, Func<int, SourceLocation> locate, FunctionInfo? owner = null)
@@ -3740,7 +3763,23 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	private Diagnostic ReportUndefinedSymbol(ISyntaxNode node, string name) =>
 		CurrentResolutionContext.ReportHidden(name, node.SourceLocation) ??
 		ReportHiddenStatic(name, node.SourceLocation) ??
+		ReportMisplacedName(node.SourceLocation, name) ??
 		DiagnosticReporter.ReportUndefinedSymbol(node, name, GetVisibleSymbolNames());
+	
+	private Diagnostic? ReportMisplacedName(SourceLocation location, string name)
+	{
+		var message = name switch
+		{
+			"never" => "'never' can only be a return type",
+			"self" when CurrentResolutionContext.ContainingType is not null => "Cannot use 'self' in static functions",
+			_ when CurrentResolutionContext.ContainingType is { } type &&
+			       GetMethods(type, name).Any(static method => method.HasReceiver) =>
+				"Cannot call methods without a receiver",
+			_ => null
+		};
+		
+		return message is null ? null : new(DiagnosticSeverity.Error, location, message);
+	}
 	
 	private Diagnostic? ReportHiddenStatic(string name, SourceLocation location)
 	{
@@ -5225,6 +5264,8 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		IResolvedExpressionNode? initializer;
 		if (node.ExpressionNode is not { } initializerNode)
 			initializer = null;
+		else if (type is InvalidType && initializerNode is LambdaExpressionNode)
+			initializer = new ResolvedInvalidExpressionNode(initializerNode, type);
 		else if (type is not null)
 			initializer = VisitNode(initializerNode, type);
 		else if (survey is null && initializerNode is UndefExpressionNode { Type: null })
@@ -5693,7 +5734,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		IExpressionNode node) => operand.Type switch
 	{
 		PointerType { BaseType: { } baseType } => baseType == NativeSymbols.Void
-			? Error(node, "Cannot dereference an untyped pointer; Cast to a typed pointer first", CurrentTargetType)
+			? Error(node, "Cannot dereference untyped pointers", CurrentTargetType)
 			: new ResolvedUnaryOpExpressionNode(operand, new NativeImpl(opType, baseType), node),
 		var type when (FindDereference(type, ParameterMode.ReadOnly) ?? FindDereference(type, ParameterMode.Mut)) is
 			{ } dereference => IsAmbiguousOperator(type, dereference)

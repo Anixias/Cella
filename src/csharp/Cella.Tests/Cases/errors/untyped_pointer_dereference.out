@@ -1,0 +1,19 @@
+
+====== untyped_pointer_dereference.ce ======
+
+Error at line 6, column 10
+5 │ val p: ptr = null
+6 │ val x = *p
+            ╘╛ Cannot dereference untyped pointers
+
+Error at line 13, column 14
+12 │ val p: ptr = null
+13 │ val x = own *p
+                 ╘╛ Cannot dereference untyped pointers
+
+Error at line 20, column 7
+19 │ val raw: ptr = null
+20 │ drop *raw
+          ╘══╛ Cannot dereference untyped pointers
+
+[compilation failed]

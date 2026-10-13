@@ -699,6 +699,12 @@ public readonly struct ResolutionContext
 	
 	private TypeSymbol ResolveValueExpression(IExpressionNode expression, TypeParameterSymbol? parameter)
 	{
+		if (IsUndeclaredNever(expression))
+		{
+			Report(expression, "'never' can only be a return type");
+			return NativeSymbols.Invalid;
+		}
+		
 		if (parameter is { IsValue: false })
 		{
 			Report(expression,
@@ -739,6 +745,9 @@ public readonly struct ResolutionContext
 				return NativeSymbols.Invalid;
 		}
 	}
+	
+	private bool IsUndeclaredNever(IExpressionNode expression) =>
+		expression is VarExpressionNode { Identifier.Text: "never" } && FindNamed(expression) is null;
 	
 	private bool MentionsValueParameter(IExpressionNode expression) => expression switch
 	{
@@ -806,10 +815,10 @@ public readonly struct ResolutionContext
 					[..node.Arguments.Select(static argument => argument.SourceLocation)], node.SourceLocation);
 			
 			default:
-				if (node.Arguments is not [var argument] || TryResolveExpressionAsType(argument) is not { } found)
+				if (node.Arguments is not [var argument])
 					return null;
 				
-				var baseType = CheckTypeExpression(argument, found);
+				var baseType = CheckTypeExpression(argument, TryResolveExpressionAsType(argument));
 				return baseType is InvalidType ? baseType : TypePool.GetPointerType(baseType);
 		}
 	}
@@ -893,7 +902,10 @@ public readonly struct ResolutionContext
 				return type;
 			
 			default:
-				Report(expression, $"'{expression.SourceLocation.GetText()}' is not a type");
+				Report(expression, IsUndeclaredNever(expression)
+					? "'never' can only be a return type"
+					: $"'{expression.SourceLocation.GetText()}' is not a type");
+				
 				return NativeSymbols.Invalid;
 		}
 	}
@@ -962,10 +974,24 @@ public readonly struct ResolutionContext
 					[..node.Arguments.Select(static argument => argument.SourceLocation)], node.SourceLocation);
 			
 			default:
-				return node.Arguments is [var argument] && ResolveTypeArgument(argument) is { } baseType
-					? baseType is InvalidType ? baseType : TypePool.GetPointerType(baseType)
-					: ReportBuiltinArguments(node.SourceLocation, name.Text);
+				if (node.Arguments is not [var argument])
+					return ReportBuiltinArguments(node.SourceLocation, name.Text);
+				
+				var baseType = ResolveTypeArgument(argument) ?? ReportNotType(argument);
+				return baseType is InvalidType ? baseType : TypePool.GetPointerType(baseType);
 		}
+	}
+	
+	private TypeSymbol ReportNotType(IGenericArgumentNode node)
+	{
+		Diagnostics.Add(new(DiagnosticSeverity.Error, node.SourceLocation, node is ExpressionArgumentNode
+		{
+			Expression: var expression
+		} && IsUndeclaredNever(expression)
+			? "'never' can only be a return type"
+			: $"'{node.SourceLocation.GetText()}' is not a type"));
+		
+		return NativeSymbols.Invalid;
 	}
 	
 	private TypeSymbol ResolveFStrArgument(IGenericArgumentNode node) => node switch

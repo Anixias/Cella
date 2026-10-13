@@ -1,0 +1,34 @@
+mod test
+
+Show: trait
+{
+	show: fun(imm self) -> i32
+}
+
+Make: trait
+{
+	new: op(value: i32)
+}
+
+list[T]: rec
+{
+	head: T
+	tail: list[T]
+}
+
+box[T]: rec impl Make
+{
+	value: T
+}
+
+box[T]: impl Show
+{
+	show: fun(imm self) -> i32 = 1
+}
+
+box[U]: impl Show
+{
+	show: fun(imm self) -> i32 = 2
+}
+
+main: fun -> i32 = 0

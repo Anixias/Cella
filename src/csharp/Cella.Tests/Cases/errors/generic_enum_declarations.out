@@ -24,7 +24,7 @@ Error at line 18, column 7
 Error at line 24, column 13
 23 │ stop
 24 │ more(next: endless[T])
-                ╘════════╛ Payload 'next' of type 'endless' causes a cycle in the memory layout
+                ╘════════╛ Payload 'next' of type 'endless[T]' causes a cycle in the memory layout
 
 Error at line 30, column 13
 29 │ stop
