@@ -218,7 +218,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	
 	public IResolvedDeclarationNode Visit(ConstructorNode node) => ResolveFunction(node, node.Body!);
 	
-	public IResolvedDeclarationNode Visit(DestructorNode node) => ResolveFunction(node, node.Body);
+	public IResolvedDeclarationNode Visit(DestructorNode node) => ResolveFunction(node, node.Body!);
 	
 	public IResolvedDeclarationNode Visit(FunctionNode node) => ResolveFunction(node, node.Body!);
 	
@@ -3208,10 +3208,17 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 				: $"'{name}' isn't an 'imm' parameter");
 		
 		if (argument is null)
-			return isMut && !(arg.Type is BorrowType && parameterType is BorrowType) ||
-			       !isMut && parameterType is not null && NeedsLending(arg, parameterType, callable.GetMode(index))
+		{
+			if (isMut && !(arg.Type is BorrowType && parameterType is BorrowType))
+				return new(DiagnosticSeverity.Error, arg.Syntax.SourceLocation,
+					arg is ResolvedAssignmentExpressionNode || TypeChecker.IsLValue(arg)
+						? "Cannot mutably borrow arguments implicitly"
+						: $"Cannot mutably borrow {TypeChecker.DescribeUnstored(arg)}");
+			
+			return !isMut && parameterType is not null && NeedsLending(arg, parameterType, callable.GetMode(index))
 				? new(DiagnosticSeverity.Error, arg.Syntax.SourceLocation, "Cannot mutably borrow arguments implicitly")
 				: null;
+		}
 		
 		var keyword = ((BorrowExpressionNode)argument.Syntax).Keyword;
 		if (!isMut)
@@ -5044,6 +5051,10 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		TypeSymbol target)
 	{
 		var group = node.Group;
+		if (group.Functions.Any(static function => function.Signature.ParameterTypes
+			    .Append(function.Signature.ReturnType).Any(TypePool.ContainsInvalid)))
+			return new ResolvedInvalidExpressionNode(node.Syntax, target);
+		
 		if (group.Functions is [var only] && target is FunctionType type &&
 		    InferFunctionValue(only, type) is { } result &&
 		    ReportConstraintViolation(GetOpenTypeParameters(only), result.Arguments,

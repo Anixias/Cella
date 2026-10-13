@@ -320,7 +320,7 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool, 
 	// TEMP Will need implicit conversions, subtyping, traits/interfaces, constraints, etc.
 	private bool AreTypesCompatible(TypeSymbol? expected, TypeSymbol? actual) => expected == actual;
 	
-	private bool IsLValue(IResolvedExpressionNode expression) => expression switch
+	internal static bool IsLValue(IResolvedExpressionNode expression) => expression switch
 	{
 		ResolvedVarExpressionNode => true,
 		ResolvedGlobalExpressionNode => true,
@@ -768,7 +768,7 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool, 
 	private static SourceLocation GetMemberLocation(IExpressionNode syntax) =>
 		syntax is AccessExpressionNode access ? access.Member.SourceLocation : syntax.SourceLocation;
 	
-	private static string DescribeUnstored(IResolvedExpressionNode place) =>
+	internal static string DescribeUnstored(IResolvedExpressionNode place) =>
 		IsGetterCall(place) ? "properties" : "unstored values";
 	
 	private static GlobalSymbol? FindGlobal(IResolvedExpressionNode place) => place switch

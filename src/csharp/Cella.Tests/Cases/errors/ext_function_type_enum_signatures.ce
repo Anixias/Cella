@@ -1,0 +1,12 @@
+mod test
+
+Team: enum { red  blue }
+
+Holder: rec
+{
+	cb: ext fun[Team -> i32]
+}
+
+register: fun(cb: ext fun[-> Team]) {}
+
+main: fun -> i32 = 0

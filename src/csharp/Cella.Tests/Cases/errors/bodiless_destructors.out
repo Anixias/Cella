@@ -1,0 +1,14 @@
+
+====== bodiless_destructors.ce ======
+
+Error at line 7, column 1
+6 │     drop: op
+7 │ }
+    ^ Expected '{'
+
+Error at line 17, column 1
+16 │     drop: op
+17 │ }
+     ^ Expected '{'
+
+[compilation failed]

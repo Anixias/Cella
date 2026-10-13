@@ -1,0 +1,14 @@
+mod test
+
+Team: enum { red  blue }
+
+pick[T: ext]: fun(f: ext fun[i32 -> T]) -> i32 = 0
+
+main: fun -> i32
+{
+	var f: ext fun[Team -> i32]
+	var g: ptr[ext fun[mut Team]]
+	var fine: ext fun[ptr[Team] -> i32]
+	val n = pick[Team](null)
+	ret i32(sizeOf(ext fun[array[Team, 2]]))
+}

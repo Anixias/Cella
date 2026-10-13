@@ -6,6 +6,16 @@ Hint at line 91, column 7
 91 │     run: req fun[i32 -> i32]
               ╘═╛ Redundant 'req'
 
+Hint at line 96, column 9
+95 │ {
+96 │     value: req imm[i32]
+                ╘═╛ Redundant 'req'
+
+Hint at line 97, column 8
+96 │ value: req imm[i32]
+97 │ slot: req mut[i32]
+           ╘═╛ Redundant 'req'
+
 71 50 60 33
 4 5 5 0 3 2
 7 12 16 30

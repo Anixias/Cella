@@ -1124,7 +1124,30 @@ public sealed class TypePool
 	
 	private bool IsExtCompatible(TypeSymbol type) => ExtSignatureTypes.FindForeign(type) is null &&
 	                                                 ExtSignatureTypes.FindUnconstrained(type) is null &&
-	                                                 FindDestructor(type) is null;
+	                                                 FindDestructor(type) is null && FindPlainEnum(type) is null;
+	
+	public EnumSymbol? FindPlainEnum(TypeSymbol type) => FindPlainEnum(type, []);
+	
+	private EnumSymbol? FindPlainEnum(TypeSymbol type, HashSet<TypeSymbol> visited)
+	{
+		if (type is EnumSymbol { IsExternal: false, IsMatch: false } plainEnum)
+			return plainEnum;
+		
+		if (!visited.Add(type))
+			return null;
+		
+		IEnumerable<TypeSymbol> parts = type switch
+		{
+			EnumSymbol enumType => enumType.Cases.SelectMany(c => GetPayloadTypes(enumType, c)),
+			RecordSymbol record => GetMembers(record).OfType<FieldSymbol>().Select(GetTypeOfMember),
+			ArrayType array => [array.ElementType],
+			FunctionType { IsExternal: true } function =>
+				[..function.ParameterTypes.Select((_, i) => function.GetDeclaredType(i)), function.ReturnType],
+			_ => []
+		};
+		
+		return parts.Select(part => FindPlainEnum(part, visited)).FirstOrDefault(static found => found is not null);
+	}
 	
 	public static bool HasNull(TypeSymbol type) => type is PointerType or FunctionType or BorrowType
 		                                               or TypeParameterSymbol { HasNull: true } ||

@@ -1,0 +1,29 @@
+mod test
+
+ext
+{
+	trace: fun(text: cstr) when debug
+}
+
+Point: rec
+{
+	x: i32
+
+	new: op(x: i32) when debug
+	{
+		self.x = x
+	}
+
+	drop: op when debug
+	{
+	}
+
+	y: get(imm self) -> i32 when debug = self.x
+
+	z: set(mut self, value: i32) when release
+	{
+		self.x = value
+	}
+}
+
+main: fun -> i32 = 0

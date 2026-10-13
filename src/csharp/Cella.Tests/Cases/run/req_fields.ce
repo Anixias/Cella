@@ -91,6 +91,12 @@ Callback: rec
 	run: req fun[i32 -> i32]
 }
 
+Viewed: ref rec
+{
+	value: req imm[i32]
+	slot: req mut[i32]
+}
+
 PointHolder: rec
 {
 	pos: req Point

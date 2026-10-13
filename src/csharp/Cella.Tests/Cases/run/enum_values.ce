@@ -43,7 +43,7 @@ Effect: enum
 	heal(amount: i32) = 9
 }
 
-Team: enum(i32)
+Team: ext enum(i32)
 {
 	red = 0
 	blue = 7
@@ -67,7 +67,7 @@ describe: fun(effect: Effect) -> i32 = match effect
 	heal(n) => -n
 }
 
-flip: fun(team: Team) -> Team = match team { red => Team.blue  blue => Team.red }
+flip: fun(team: Team) -> Team = match team { red => Team.blue  else => Team.red }
 
 main: fun -> i32
 {

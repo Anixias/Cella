@@ -14,8 +14,17 @@ public sealed class ExtSignatureTypes(TypePool typePool)
 	public void Report(DiagnosticList diagnostics)
 	{
 		var reported = new HashSet<SourceLocation>();
+		var enums = new HashSet<SourceLocation>();
 		foreach (var (type, node) in _types)
 		{
+			if (HasPlainEnum(type))
+			{
+				var (located, _, location) = Locate(type, node, HasPlainEnum);
+				if (enums.Add(location))
+					diagnostics.Add(Report(location, "Cannot use plain enums in 'ext' signatures", located,
+						typePool.FindPlainEnum(located)!));
+			}
+			
 			if (FindForeign(type) is { } foreign)
 			{
 				var (located, locatedNode, location) = Locate(type, node, IsForeign);
@@ -43,6 +52,8 @@ public sealed class ExtSignatureTypes(TypePool typePool)
 	}
 	
 	private bool HasDestructor(TypeSymbol type) => typePool.FindDestructor(type) is not null;
+	
+	private bool HasPlainEnum(TypeSymbol type) => typePool.FindPlainEnum(type) is not null;
 	
 	private static string GetWrittenName(TypeSymbol foreign, TypeSymbol located, ITypeNode? node) =>
 		foreign is FunctionType function && foreign == located && node is FunctionTypeNode { IsRef: false }

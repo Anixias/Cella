@@ -1,0 +1,7 @@
+mod test
+
+f: fun(g: fun[i32 -> i32] = 5) -> i32 = 0
+
+h: fun(x: i32, g: fun[i32, fun[i32 -> i32] -> i32] = h) -> i32 = x
+
+main: fun -> i32 = 0

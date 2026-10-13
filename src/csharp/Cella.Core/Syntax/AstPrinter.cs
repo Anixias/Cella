@@ -155,7 +155,8 @@ public sealed class AstPrinter : ISyntaxNodeVisitor
 	{
 		StartLine();
 		_sb.Append("DestructorNode");
-		VisitNode(node.Body, true);
+		if (node.Body is { } body)
+			VisitNode(body, true);
 	}
 	
 	public void Visit(GlobalNode node)

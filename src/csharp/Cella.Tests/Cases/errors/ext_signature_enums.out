@@ -1,6 +1,12 @@
 
 ====== ext_signature_enums.ce ======
 
+Error at line 34, column 17
+33 │ {
+34 │     visit: ext fun[Node -> i32]
+                        ╘══╛ Cannot use plain enums in 'ext' signatures
+                           | 'Node' contains 'Team'
+
 Error at line 40, column 22
 39 │ {
 40 │     currentTeam: fun -> Team

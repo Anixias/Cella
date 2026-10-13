@@ -1,0 +1,9 @@
+
+====== trait_bodiless_destructors.ce ======
+
+Error at line 5, column 2
+4 │ {
+5 │     drop: op
+        ╘══╛ Cannot declare destructors in traits
+
+[compilation failed]

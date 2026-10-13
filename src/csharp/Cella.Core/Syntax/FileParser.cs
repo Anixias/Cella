@@ -1164,6 +1164,7 @@ public sealed class FileParser
 		if (ParseFunctionSignature(ref index, true, false) is not { } signature)
 			return null;
 		
+		RejectWhen(ref index, "'ext' functions");
 		var (_, parameters, returnType, isVariadic) = signature;
 		return new ExternalFunctionNode(identifier, modifiers.Tokens, parameters, returnType, isVariadic, origin)
 		{
@@ -1878,6 +1879,7 @@ public sealed class FileParser
 			ReportExpected(index, "'->' and a type");
 		
 		var resultType = isGetter ? returnType ?? propertyType : null;
+		RejectWhen(ref index, isGetter ? "getters" : "setters");
 		IStatementNode? body;
 		if (Match(ref index, TokenType.OpEqual))
 			body = ParseExpressionBody(ref index, resultType is null);
@@ -1943,9 +1945,7 @@ public sealed class FileParser
 	private List<Token> ParseFieldModifiers(ref int index)
 	{
 		var modifiers = new List<Token>();
-		if ((Peek(index + 1, TokenType.Identifier) || Peek(index + 1, TokenType.KeywordFun) ||
-		     Peek(index + 1, TokenType.KeywordRef)) &&
-		    Tokens[index + 1].Line == Tokens[index].Line &&
+		if (StartsType(index + 1) && Tokens[index + 1].Line == Tokens[index].Line &&
 		    Match(ref index, out var reqToken, _memberContextualKeywords, TokenType.KeywordReq))
 			modifiers.Add(reqToken);
 		
@@ -1990,6 +1990,7 @@ public sealed class FileParser
 		if (ParseParameters(ref index, true) is not { } parameters)
 			return null;
 		
+		RejectWhen(ref index, "constructors");
 		if (!Match(ref index, out var openBraceToken, TokenType.OpOpenBrace))
 			return allowsMissingBodies
 				? new ConstructorNode(newKeyword, modifiers.Tokens, parameters, null, newKeyword.SourceLocation)
@@ -2008,6 +2009,15 @@ public sealed class FileParser
 		{
 			Visibility = modifiers.Visibility
 		};
+	}
+	
+	private void RejectWhen(ref int index, string kind)
+	{
+		if (!IsOnSameLine(index) || !Match(ref index, out var whenKeyword, TokenType.KeywordWhen))
+			return;
+		
+		Report(whenKeyword, $"Cannot use 'when' on {kind}");
+		ParseCondition(ref index);
 	}
 	
 	private bool StartsConversion(int index)
@@ -2051,8 +2061,15 @@ public sealed class FileParser
 		if (parameters.Count > 0)
 			Report(parameters[0].SourceLocation, "Destructors cannot take parameters");
 		
+		RejectWhen(ref index, "destructors");
 		if (!Match(ref index, out var openBraceToken, TokenType.OpOpenBrace))
+		{
+			if (allowsMissingBodies)
+				return new(dropKeyword, null, dropKeyword.SourceLocation);
+			
+			ReportExpected(index, "'{'");
 			return null;
+		}
 		
 		if (ParseBlockStatement(ref index, openBraceToken) is not { } body)
 			return null;

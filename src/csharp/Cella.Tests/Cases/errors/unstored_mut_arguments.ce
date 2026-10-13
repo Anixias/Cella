@@ -1,0 +1,21 @@
+mod test
+
+Counter: rec
+{
+	n: i32
+}
+
+bump: fun(mut c: Counter) -> i32
+{
+	c.n += 1
+	ret c.n
+}
+
+main: fun -> i32
+{
+	var c = Counter(1)
+	val a = bump(Counter(4))
+	val b = bump(mut Counter(4))
+	val d = bump(c)
+	ret a + b + d
+}

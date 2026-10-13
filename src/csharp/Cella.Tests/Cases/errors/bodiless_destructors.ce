@@ -1,0 +1,19 @@
+mod test
+
+Point: rec
+{
+	x: i32
+	drop: op
+}
+
+Other: rec
+{
+	y: i32
+}
+
+Other: impl
+{
+	drop: op
+}
+
+main: fun -> i32 = 0

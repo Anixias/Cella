@@ -1,0 +1,9 @@
+mod test
+
+Hash: trait
+{
+	drop: op
+	hash: fun(imm self) -> u64
+}
+
+main: fun -> i32 = 0

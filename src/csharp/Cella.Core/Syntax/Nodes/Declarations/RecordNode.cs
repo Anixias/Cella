@@ -57,11 +57,11 @@ public sealed class ConstructorNode
 public sealed class DestructorNode
 (
 	Token keyword,
-	IStatementNode body,
+	IStatementNode? body,
 	SourceLocation sourceLocation
 ) : IDeclarationNode
 {
 	public Token Keyword { get; } = keyword;
-	public IStatementNode Body { get; } = body;
+	public IStatementNode? Body { get; } = body;
 	public SourceLocation SourceLocation { get; } = sourceLocation;
 }
