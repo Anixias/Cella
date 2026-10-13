@@ -1,0 +1,37 @@
+mod test
+
+Buffer: rec
+{
+	id: i32
+
+	drop: op
+	{
+	}
+}
+
+take: fun(own b: Buffer)
+{
+}
+
+consume: fun(own b: Buffer) -> i32 = b.id
+
+trace: fun(id: i32) when release
+{
+}
+
+show: fun(imm b: Buffer) when release
+{
+}
+
+main: fun -> i32
+{
+	val a = Buffer(1)
+	take(own a)
+	show(imm a)
+	val x: i32
+	trace(x)
+	x = 1
+	val b = Buffer(2)
+	trace(consume(own b))
+	ret b.id
+}

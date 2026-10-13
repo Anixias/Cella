@@ -1,0 +1,21 @@
+
+====== erased_call_arguments.ce ======
+
+Error at line 30, column 11
+29 │ take(own a)
+30 │ show(imm a)
+              ^ Cannot use moved values
+              | Moved on line 29
+
+Error at line 32, column 8
+31 │ val x: i32
+32 │ trace(x)
+           ^ Cannot use uninitialized values
+
+Error at line 36, column 6
+35 │ trace(consume(own b))
+36 │ ret b.id
+         ╘══╛ Cannot use moved values
+            | Moved on line 35
+
+[compilation failed]

@@ -216,6 +216,9 @@ public sealed class ExportSurface
 	
 	private void ReachFunction(FunctionInfo info)
 	{
+		if (!CodeGenerator.IsActive(info.Symbol))
+			return;
+		
 		Reach(info.Symbol);
 		if (!info.TypeArguments.IsDefaultOrEmpty)
 			foreach (var argument in info.TypeArguments)

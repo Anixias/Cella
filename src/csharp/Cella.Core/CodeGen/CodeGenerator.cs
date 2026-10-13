@@ -476,7 +476,7 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 	
 	private static bool IsEmitted(FunctionInfo function) => !IsOpenGeneric(function) && IsActive(function.Symbol);
 	
-	private static bool IsActive(FunctionSymbol function) =>
+	internal static bool IsActive(FunctionSymbol function) =>
 		function.Syntax is not FunctionNode { When.IsActive: false } &&
 		(function.ContainingFunction is not { } containing || IsActive(containing.Symbol));
 	
@@ -1827,6 +1827,11 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 	private LLVMValueRef EmitCall(CallValue v, LLVMBuilderRef builder)
 	{
 		var info = SubstituteFunction(v.Function);
+		if (!IsActive(info.Symbol))
+			return info.Signature.ReturnType == NativeSymbols.Void
+				? default
+				: EmitZeroed(builder, info.Signature.ReturnType, "erased");
+		
 		if (FindDynDispatch(info) is { } dyn)
 			return EmitDynCall(info, dyn, v, builder);
 		

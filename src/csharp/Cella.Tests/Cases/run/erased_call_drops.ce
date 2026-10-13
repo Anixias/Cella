@@ -1,0 +1,31 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Buffer: rec
+{
+	id: i32
+
+	drop: op
+	{
+		printf("drop %d\n", self.id)
+	}
+}
+
+consume: fun(own b: Buffer) -> i32 = b.id
+
+trace: fun(id: i32) when release
+{
+	printf("trace %d\n", id)
+}
+
+main: fun -> i32
+{
+	val b = Buffer(1)
+	trace(consume(own b))
+	printf("end\n")
+	ret 0
+}

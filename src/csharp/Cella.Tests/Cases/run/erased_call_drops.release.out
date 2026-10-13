@@ -1,0 +1,4 @@
+drop 1
+trace 1
+end
+[exit code 0]

@@ -327,8 +327,11 @@ public sealed class Lowerer
 		
 		public void Visit(ResolvedExpressionStatementNode node)
 		{
-			if (node.Expression is ResolvedErasedCallExpressionNode)
+			if (node.Expression is ResolvedErasedCallExpressionNode erased)
+			{
+				LowerErasedCall(erased);
 				return;
+			}
 			
 			BeginScope(node.Syntax.SourceLocation, true);
 			var expression = node.Expression is ResolvedAssignmentExpressionNode assignment
@@ -1153,7 +1156,35 @@ public sealed class Lowerer
 		
 		public Value Visit(ResolvedNewExpressionNode node) => new NewValue(node.Type, node.Syntax.SourceLocation);
 		
-		public Value Visit(ResolvedErasedCallExpressionNode node) => new UndefValue(node.Type);
+		public Value Visit(ResolvedErasedCallExpressionNode node)
+		{
+			LowerErasedCall(node);
+			return new UndefValue(node.Type);
+		}
+		
+		private void LowerErasedCall(ResolvedErasedCallExpressionNode node)
+		{
+			var location = node.Syntax.SourceLocation;
+			var erasedBlock = CreateBlock("erased");
+			var afterBlock = CreateBlock("after_erased");
+			GetOrMakeBlock().SetTerminator(new ConditionalBranchTerminator(new ConstantValue(NativeSymbols.Bool, false),
+				erasedBlock, afterBlock, location));
+			
+			currentBlock = erasedBlock;
+			BeginScope(location, true);
+			var call = VisitNode(node.Call);
+			if (currentBlock is not null)
+			{
+				if (_typePool.NeedsDrop(call.Type))
+					StoreTemporary(call, "discard");
+				else
+					currentBlock.Instructions.Add(new ExpressionInstruction(call));
+			}
+			
+			EndCurrentScope();
+			currentBlock?.FillTerminator(new BranchTerminator(afterBlock, location));
+			ContinueWith(afterBlock);
+		}
 		
 		public Value Visit(ResolvedArrayExpressionNode node) => new ArrayValue((ArrayType)node.Type,
 			LowerOperands(node.Values, static _ => Passing.Consume), node.Syntax.SourceLocation);
