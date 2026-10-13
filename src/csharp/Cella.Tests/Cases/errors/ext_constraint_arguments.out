@@ -4,7 +4,8 @@
 Error at line 35, column 68
 34 │ 
 35 │ outer[U]: fun(f: ext fun[i32 -> i32], imm value: U) -> i32 = visit[U](undef, null)
-                                                                        ^ Cannot use 'U' in 'ext' signatures
+                                                                        ^ 'visit' requires 'T: ext'
+                                                                        | 'U' can't be used in 'ext' signatures
 
 Error at line 39, column 23
 38 │ {
@@ -19,21 +20,25 @@ Error at line 40, column 35
 Error at line 46, column 2
 45 │ {
 46 │     call(same, Token(4))
-         ╘══╛ Cannot use 'Token' in 'ext' signatures
+         ╘══╛ 'call' requires 'T: ext'
+            | 'Token' can't be used in 'ext' signatures
 
 Error at line 47, column 7
 46 │ call(same, Token(4))
 47 │ call[Bundle](undef, Bundle(Token(1)))
-          ╘════╛ Cannot use 'Bundle' in 'ext' signatures
+          ╘════╛ 'call' requires 'T: ext'
+               | 'Bundle' can't be used in 'ext' signatures
 
 Error at line 48, column 7
 47 │ call[Bundle](undef, Bundle(Token(1)))
 48 │ call[fun[i32 -> i32]](undef, fun(n: i32) -> i32 = n)
-          ╘═════════════╛ Cannot use 'fun[i32 -> i32]' in 'ext' signatures
+          ╘═════════════╛ 'call' requires 'T: ext'
+                        | 'fun[i32 -> i32]' can't be used in 'ext' signatures
 
 Error at line 49, column 8
 48 │ call[fun[i32 -> i32]](undef, fun(n: i32) -> i32 = n)
 49 │ visit[fstr[Display]](undef, null)
-           ╘═══════════╛ Cannot use 'fstr[Display]' in 'ext' signatures
+           ╘═══════════╛ 'visit' requires 'T: ext'
+                       | 'fstr[Display]' can't be used in 'ext' signatures
 
 [compilation failed]

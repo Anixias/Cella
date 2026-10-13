@@ -24,7 +24,8 @@ Error at line 15, column 9
 Error at line 39, column 24
 38 │ 
 39 │ Names: rec impl Sorted[Plain]
-                            ╘═══╛ 'Plain' doesn't implement 'Ord'
+                            ╘═══╛ 'Sorted' requires 'T: Ord'
+                                | 'Plain' doesn't implement 'Ord'
 
 Error at line 44, column 16
 43 │ 

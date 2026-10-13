@@ -20,14 +20,22 @@ public sealed class SymbolCollector : IDeclarationNodeVisitor<Symbol>
 	public SymbolTable Build() => _builder.Build();
 	
 	private static ImmutableArray<TypeParameterSymbol> CreateTypeParameters(
-		ImmutableArray<TypeParameterNode> parameters) => parameters
-		.Select(static parameter => new TypeParameterSymbol(parameter.Identifier.Text, parameter.Keywords.Concat(
+		ImmutableArray<TypeParameterNode> parameters, string owner) => parameters
+		.Select(parameter => new TypeParameterSymbol(parameter.Identifier.Text, parameter.Keywords.Concat(
 			parameter.Constructors.Where(static constructor => constructor.Types.IsEmpty)
 				.Select(static constructor => constructor.Keyword)))
 		{
-			IsValue = parameter.ValueType is not null
+			IsValue = parameter.ValueType is not null,
+			Owner = owner
 		})
 		.ToImmutableArray();
+	
+	private static string GetImplOwner(ITypeNode target) => target switch
+	{
+		GenericTypeNode generic => generic.Identifier.Text,
+		IdentifierTypeNode identifier => identifier.Token.Text,
+		_ => target.SourceLocation.GetText().ToString()
+	};
 	
 	public void Collect(IDeclarationNode root) => VisitNode(root);
 	
@@ -129,7 +137,7 @@ public sealed class SymbolCollector : IDeclarationNodeVisitor<Symbol>
 			? GetMemberVisibility(node.Visibility ?? property?.Visibility)
 			: Visibility.FromKeyword(node.Visibility);
 		
-		var typeParameters = CreateTypeParameters(node.TypeParameters);
+		var typeParameters = CreateTypeParameters(node.TypeParameters, node.Identifier.Text);
 		var function = new FunctionSymbol(name, node, visibility, null, parameters, kind)
 		{
 			DeclaredName = isAccessor ? $"{property!.Identifier.Text}.{node.Identifier.Text}" : node.Identifier.Text,
@@ -218,7 +226,7 @@ public sealed class SymbolCollector : IDeclarationNodeVisitor<Symbol>
 	{
 		_typeStack.Push(node.Identifier.Text);
 		_typeVisibilities.Push(Visibility.FromKeyword(node.Visibility));
-		var typeParameters = CreateTypeParameters(node.TypeParameters);
+		var typeParameters = CreateTypeParameters(node.TypeParameters, node.Identifier.Text);
 		_typeParameters.Push(typeParameters);
 		var members = new List<MemberSymbol>(node.Members.Length);
 		var statics = new List<GlobalSymbol>();
@@ -289,7 +297,7 @@ public sealed class SymbolCollector : IDeclarationNodeVisitor<Symbol>
 		
 		_typeStack.Push(node.Identifier.Text);
 		_typeVisibilities.Push(Visibility.FromKeyword(node.Visibility));
-		var typeParameters = CreateTypeParameters(node.TypeParameters);
+		var typeParameters = CreateTypeParameters(node.TypeParameters, node.Identifier.Text);
 		_typeParameters.Push(typeParameters);
 		var functions = new List<MethodSymbol>();
 		var statics = new List<GlobalSymbol>();
@@ -335,7 +343,7 @@ public sealed class SymbolCollector : IDeclarationNodeVisitor<Symbol>
 	public Symbol Visit(TraitNode node)
 	{
 		var self = new TypeParameterSymbol("Self", []);
-		var typeParameters = CreateTypeParameters(node.TypeParameters);
+		var typeParameters = CreateTypeParameters(node.TypeParameters, node.Identifier.Text);
 		_typeStack.Push(node.Identifier.Text);
 		_typeVisibilities.Push(Visibility.FromKeyword(node.Visibility));
 		_typeParameters.Push([self, ..typeParameters]);
@@ -365,7 +373,7 @@ public sealed class SymbolCollector : IDeclarationNodeVisitor<Symbol>
 	
 	public Symbol Visit(ImplNode node)
 	{
-		var typeParameters = CreateTypeParameters(node.TypeParameters);
+		var typeParameters = CreateTypeParameters(node.TypeParameters, GetImplOwner(node.Target));
 		var target = node.Target.SourceLocation.GetText().ToString();
 		var traits = string.Join("+", node.Traits.Select(static trait => trait.SourceLocation.GetText().ToString()));
 		_typeStack.Push(node.Traits.IsEmpty ? target : $"{target}.{traits}");

@@ -2117,8 +2117,8 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		
 		for (var i = 0; i < parameters.Length; i++)
 		{
-			if (_typePool.FindConstraintViolation(parameters[i], arguments[i], map) is { } message)
-				return new(DiagnosticSeverity.Error, locate(i), message);
+			if (_typePool.FindConstraintViolation(parameters[i], arguments[i], map) is { } violation)
+				return violation.At(locate(i));
 		}
 		
 		return null;
@@ -3723,17 +3723,17 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		return null;
 	}
 	
-	private string DescribeMissingMember(TypeSymbol type, string name) =>
+	private DiagnosticText DescribeMissingMember(TypeSymbol type, string name) =>
 		type.GetStaticField(name) is not null ? "Cannot use static fields through values"
 		: FindFunctions(type, name).Length > 0 ? "Cannot use static functions through values"
 		: DescribeAbsentMember(type, name);
 	
-	private string DescribeMissingStatic(TypeSymbol type, string name) =>
+	private DiagnosticText DescribeMissingStatic(TypeSymbol type, string name) =>
 		FindFunctions(type, name).Length > 0 ? "Cannot use methods through types"
 		: FindField(type, name) is not null ? "Cannot use fields through types"
 		: DescribeAbsentMember(type, name);
 	
-	private string DescribeAbsentMember(TypeSymbol type, string name) =>
+	private DiagnosticText DescribeAbsentMember(TypeSymbol type, string name) =>
 		_typePool.FindBlockViolation(type, name) ?? $"Type '{type.Name}' has no member '{name}'";
 	
 	private MethodSymbol[] FindStatics(TypeSymbol type, string name) =>
@@ -4556,7 +4556,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 				return true;
 		}
 		
-		Diagnostics.Add(new(DiagnosticSeverity.Error, member.SourceLocation, DescribeAbsentMember(type, member.Text)));
+		Diagnostics.Add(DescribeAbsentMember(type, member.Text).At(member.SourceLocation));
 		return false;
 	}
 	
@@ -6778,6 +6778,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		Diagnostics.Add(new(DiagnosticSeverity.Error, sourceLocation, message));
 		return new(node, type);
 	}
+	
+	private ResolvedInvalidExpressionNode Error(IExpressionNode node, DiagnosticText text, TypeSymbol? type,
+		SourceLocation sourceLocation) => Error(node, text.At(sourceLocation), type);
 	
 	private static bool IsInvalid(TypeSymbol type) => type is InvalidType;
 	private static bool AnyInvalid(params TypeSymbol[] types) => types.Any(IsInvalid);

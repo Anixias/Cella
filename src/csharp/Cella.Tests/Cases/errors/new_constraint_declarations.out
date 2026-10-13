@@ -86,6 +86,7 @@ Error at line 36, column 18
 Error at line 40, column 17
 39 │ 
 40 │ wrap[T: new(box[T])]: fun -> i32 = 0
-                     ^ 'T' has no constructor taking 'i32'
+                     ^ 'box' requires 'T: new(i32)'
+                     | 'T' has no constructor taking 'i32'
 
 [compilation failed]

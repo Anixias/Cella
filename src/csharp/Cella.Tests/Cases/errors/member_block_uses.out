@@ -4,12 +4,14 @@
 Error at line 41, column 42
 40 │ 
 41 │ check[T]: fun(imm a: box[T]) -> bool = a.same(a)
-                                              ╘══╛ 'T' doesn't implement 'Eq'
+                                              ╘══╛ 'same' requires 'T: Eq'
+                                                 | 'T' doesn't implement 'Eq'
 
 Error at line 47, column 15
 46 │ {
 47 │     box(Text(1)).same(box(Text(2)))
-                      ╘══╛ 'Text' doesn't implement 'Eq'
+                      ╘══╛ 'same' requires 'T: Eq'
+                         | 'Text' doesn't implement 'Eq'
 
 Error at line 48, column 9
 47 │ box(Text(1)).same(box(Text(2)))
@@ -19,11 +21,13 @@ Error at line 48, column 9
 Error at line 49, column 15
 48 │ box(3).helper()
 49 │ box(Text(1)).size
-                  ╘══╛ 'Text' doesn't implement 'Eq'
+                  ╘══╛ 'size' requires 'T: Eq'
+                     | 'Text' doesn't implement 'Eq'
 
 Error at line 50, column 2
 49 │ box(Text(1)).size
 50 │ copies(box(Text(1)))
-     ╘════╛ 'box[Text]' doesn't implement 'Dup'
+     ╘════╛ 'copies' requires 'T: Dup'
+          | 'box[Text]' doesn't implement 'Dup'
 
 [compilation failed]

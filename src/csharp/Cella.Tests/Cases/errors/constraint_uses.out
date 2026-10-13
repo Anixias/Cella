@@ -4,17 +4,20 @@
 Error at line 49, column 84
 48 │ 
 49 │ forward[T]: fun(imm value: T) -> i32 = imm imm imm imm imm imm imm imm imm imm imm twin(value)
-                                                                                        ╘══╛ Cannot copy 'T'
+                                                                                        ╘══╛ 'twin' requires 'T: copy'
+                                                                                           | 'T' can't be copied
 
 Error at line 51, column 38
 50 │ 
 51 │ relay[T]: fun(own value: T) -> i32 = hold(value)
-                                          ╘══╛ 'T' has no destructor
+                                          ╘══╛ 'hold' requires 'T: drop'
+                                             | 'T' has no destructor
 
 Error at line 53, column 27
 52 │ 
 53 │ build[T]: fun -> T = make[T]()
-                               ^ 'T' has no constructor without parameters
+                               ^ 'make' requires 'T: new()'
+                               | 'T' has no constructor without parameters
 
 Error at line 55, column 22
 54 │ 
@@ -24,36 +27,43 @@ Error at line 55, column 22
 Error at line 59, column 46
 58 │ {
 59 │     imm imm imm imm imm imm imm imm imm imm imm twin(Text(1))
-                                                     ╘══╛ Cannot copy 'Text'
+                                                     ╘══╛ 'twin' requires 'T: copy'
+                                                        | 'Text' can't be copied
 
 Error at line 60, column 46
 59 │ imm imm imm imm imm imm imm imm imm imm imm twin(Text(1))
 60 │ imm imm imm imm imm imm imm imm imm imm imm twin(pair(Text(1), 2))
-                                                 ╘══╛ Cannot copy 'pair[Text, i32]'
+                                                 ╘══╛ 'twin' requires 'T: copy'
+                                                    | 'pair[Text, i32]' can't be copied
 
 Error at line 61, column 2
 60 │ imm imm imm imm imm imm imm imm imm imm imm twin(pair(Text(1), 2))
 61 │ hold(5)
-     ╘══╛ 'i32' has no destructor
+     ╘══╛ 'hold' requires 'T: drop'
+        | 'i32' has no destructor
 
 Error at line 62, column 2
 61 │ hold(5)
 62 │ hold(pair(1, 2))
-     ╘══╛ 'pair[i32, i32]' has no destructor
+     ╘══╛ 'hold' requires 'T: drop'
+        | 'pair[i32, i32]' has no destructor
 
 Error at line 63, column 7
 62 │ hold(pair(1, 2))
 63 │ make[Holder]()
-          ╘════╛ 'Holder' has no constructor without parameters
+          ╘════╛ 'make' requires 'T: new()'
+               | 'Holder' has no constructor without parameters
 
 Error at line 64, column 7
 63 │ make[Holder]()
 64 │ make[Sized]()
-          ╘═══╛ 'Sized' has no constructor without parameters
+          ╘═══╛ 'make' requires 'T: new()'
+              | 'Sized' has no constructor without parameters
 
 Error at line 65, column 7
 64 │ make[Sized]()
 65 │ make[Secret]()
-          ╘════╛ 'Secret' has no constructor without parameters
+          ╘════╛ 'make' requires 'T: new()'
+               | 'Secret' has no constructor without parameters
 
 [compilation failed]

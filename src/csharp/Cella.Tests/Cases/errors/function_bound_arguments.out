@@ -9,7 +9,8 @@ Error at line 31, column 52
 Error at line 42, column 14
 41 │ {
 42 │     val wrong = twice(5, 1)
-                     ╘═══╛ 'i32' doesn't implement 'fun[i32 -> i32]'
+                     ╘═══╛ 'twice' requires 'F: fun[i32 -> i32]'
+                         | 'i32' doesn't implement 'fun[i32 -> i32]'
 
 Error at line 43, column 20
 42 │ val wrong = twice(5, 1)
@@ -24,7 +25,8 @@ Error at line 44, column 19
 Error at line 46, column 18
 45 │ var count = 0
 46 │ val borrowing = boxed[fun[-> i32]].of(fun -> i32 = count)
-                     ╘═══════════════════╛ Cannot store borrows in 'T'
+                     ╘═══════════════════╛ 'of' requires 'T: noref'
+                                         | 'ref fun[-> i32]' holds borrows
 
 Error at line 48, column 2
 47 │ val next = boxed[fun[-> i32]].of(answer)

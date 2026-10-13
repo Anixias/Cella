@@ -14,6 +14,7 @@ Error at line 28, column 16
 Error at line 33, column 6
 32 │ 
 33 │ list[Token]: impl
-          ╘═══╛ Cannot store borrows in 'T'
+          ╘═══╛ 'list' requires 'T: noref'
+              | 'Token' holds borrows
 
 [compilation failed]

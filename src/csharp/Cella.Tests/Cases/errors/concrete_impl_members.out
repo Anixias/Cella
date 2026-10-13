@@ -9,6 +9,7 @@ Error at line 31, column 19
 Error at line 32, column 19
 31 │ val a = box(2.5).small()
 32 │ val b = box(2.5).hashed()
-                      ╘════╛ 'f64' doesn't implement 'Hash'
+                      ╘════╛ 'hashed' requires 'K: Hash'
+                           | 'f64' doesn't implement 'Hash'
 
 [compilation failed]

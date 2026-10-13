@@ -14,12 +14,14 @@ Error at line 24, column 35
 Error at line 28, column 10
 27 │ {
 28 │     val a = wrap(5)
-                 ╘══╛ 'i32' has no null
+                 ╘══╛ 'wrap' requires 'T: null'
+                    | 'i32' has no null
 
 Error at line 29, column 15
 28 │ val a = wrap(5)
 29 │ val b = wrap[Point](Point(1))
-                  ╘═══╛ 'Point' has no null
+                  ╘═══╛ 'wrap' requires 'T: null'
+                      | 'Point' has no null
 
 Error at line 33, column 9
 32 │ {

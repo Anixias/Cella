@@ -251,10 +251,11 @@ public sealed class TypePool
 	private bool Satisfies(ImmutableArray<TypeParameterSymbol> parameters, ImmutableArray<TypeSymbol> arguments) =>
 		arguments.Length == parameters.Length && FindViolation(parameters, arguments) is null;
 	
-	private string? FindViolation(ImmutableArray<TypeParameterSymbol> parameters, ImmutableArray<TypeSymbol> arguments)
+	private DiagnosticText? FindViolation(ImmutableArray<TypeParameterSymbol> parameters,
+		ImmutableArray<TypeSymbol> arguments, string? owner = null)
 	{
 		var map = CreateMap(parameters, arguments);
-		return parameters.Select((parameter, i) => FindConstraintViolation(parameter, arguments[i], map))
+		return parameters.Select((parameter, i) => FindConstraintViolation(parameter, arguments[i], map, owner))
 			.FirstOrDefault(static violation => violation is not null);
 	}
 	
@@ -267,7 +268,7 @@ public sealed class TypePool
 			                Satisfies(block.Impl.TypeParameters, type.TypeArguments))
 			.Select(static block => block.Impl);
 	
-	public string? FindBlockViolation(TypeSymbol type, string name) => type is TypeParameterSymbol
+	public DiagnosticText? FindBlockViolation(TypeSymbol type, string name) => type is TypeParameterSymbol
 		? null
 		: _memberBlocks
 			.Where(block => block.Target == type.OriginalDefinition &&
@@ -275,7 +276,7 @@ public sealed class TypePool
 			                Fits(block.Impl, type.TypeArguments) &&
 			                (block.Impl.Functions.Any(method => method.Name == name) ||
 			                 block.Impl.Properties.Any(property => property.Name == name)))
-			.Select(block => FindViolation(block.Impl.TypeParameters, type.TypeArguments))
+			.Select(block => FindViolation(block.Impl.TypeParameters, type.TypeArguments, name))
 			.FirstOrDefault(static violation => violation is not null);
 	
 	public IEnumerable<FunctionSymbol> GetWitnessFunctions() => _conformances
@@ -449,15 +450,18 @@ public sealed class TypePool
 		_ => false
 	};
 	
-	public bool HoldsBorrows(TypeSymbol type) => type switch
+	public bool HoldsBorrows(TypeSymbol type) => HoldsBorrows(type, true);
+	
+	private bool HoldsBorrows(TypeSymbol type, bool countsParameters) => type switch
 	{
 		BorrowType or DynType or FStrType or FunctionType { IsRef: true } => true,
-		ClosureType closure => closure.CaptureTypes.Any(HoldsBorrows),
-		TypeParameterSymbol parameter => !parameter.IsNoref,
+		ClosureType closure => closure.CaptureTypes.Any(capture => HoldsBorrows(capture, countsParameters)),
+		TypeParameterSymbol parameter => countsParameters && !parameter.IsNoref,
 		StringType => type == NativeSymbols.Str,
-		NamedTypeSymbol { TypeArguments.IsEmpty: false } named => named.IsRef || PartsHoldBorrows(named),
+		NamedTypeSymbol { TypeArguments.IsEmpty: false } named => named.IsRef ||
+		                                                          PartsHoldBorrows(named, countsParameters),
 		NamedTypeSymbol named => named.IsRef,
-		ArrayType array => HoldsBorrows(array.ElementType),
+		ArrayType array => HoldsBorrows(array.ElementType, countsParameters),
 		_ => false
 	};
 	
@@ -482,12 +486,12 @@ public sealed class TypePool
 		return holds;
 	}
 	
-	private bool PartsHoldBorrows(NamedTypeSymbol type)
+	private bool PartsHoldBorrows(NamedTypeSymbol type, bool countsParameters)
 	{
 		if (!_borrowChecks.Add(type))
 			return false;
 		
-		var holds = GetParts(type).Any(HoldsBorrows);
+		var holds = GetParts(type).Any(part => HoldsBorrows(part, countsParameters));
 		_borrowChecks.Remove(type);
 		return holds;
 	}
@@ -1126,8 +1130,8 @@ public sealed class TypePool
 		                                               or TypeParameterSymbol { HasNull: true } ||
 	                                               type == NativeSymbols.CStr;
 	
-	public string? FindConstraintViolation(TypeParameterSymbol parameter, TypeSymbol argument,
-		IReadOnlyDictionary<TypeParameterSymbol, TypeSymbol>? map = null) => argument switch
+	public DiagnosticText? FindConstraintViolation(TypeParameterSymbol parameter, TypeSymbol argument,
+		IReadOnlyDictionary<TypeParameterSymbol, TypeSymbol>? map = null, string? owner = null) => argument switch
 	{
 		InvalidType => null,
 		_ when parameter.IsTrait => IsTraitArgument(argument) || IsFunctionTrait(argument)
@@ -1137,23 +1141,51 @@ public sealed class TypePool
 		ValueArgumentType or TypeParameterSymbol { IsValue: true } => $"'{argument.Name}' is not a type",
 		_ when IsTraitArgument(argument) => $"'{argument.Name}' is not a type",
 		DynType => $"Cannot use '{argument.Name}' by value",
-		_ when parameter.IsAtomic && !IsAtomic(argument) => $"Cannot access '{argument.Name}' values atomically",
-		_ when parameter.IsExt && !IsExtCompatible(argument) => $"Cannot use '{argument.Name}' in 'ext' signatures",
-		_ when parameter.IsNoref && HoldsBorrows(argument) => $"Cannot store borrows in '{parameter.Name}'",
-		_ when parameter.HasNull && !HasNull(argument) => $"'{argument.Name}' has no null",
-		_ when parameter.IsCopy && !IsCopy(argument) => $"Cannot copy '{argument.Name}'",
-		_ when parameter.HasDrop && !HasDestructor(argument) => $"'{argument.Name}' has no destructor",
-		_ when parameter.HasNew && !HasNew(argument) => $"'{argument.Name}' has no constructor without parameters",
-		_ when FindMissingConstructor(parameter, argument, map) is { } missing =>
-			$"'{argument.Name}' has no constructor taking '{missing}'",
-		_ when FindUnmetTrait(parameter, argument, map) is { } trait =>
-			$"'{argument.Name}' doesn't implement '{trait.Name}'",
-		_ when FindUnmetBound(parameter, argument, map) is { } trait =>
-			$"'{argument.Name}' doesn't implement '{trait}'",
-		_ when FindUnmetFunction(parameter, argument, map) is { } function =>
-			$"'{argument.Name}' doesn't implement '{function.Name}'",
+		_ when FindUnmetRequirement(parameter, argument, map) is (var requirement, var hint) =>
+			new DiagnosticText(
+				$"'{owner ?? parameter.Owner ?? parameter.Name}' requires '{parameter.Name}: {requirement}'",
+				hint),
 		_ => null
 	};
+	
+	private (string Requirement, string Hint)? FindUnmetRequirement(TypeParameterSymbol parameter,
+		TypeSymbol argument, IReadOnlyDictionary<TypeParameterSymbol, TypeSymbol>? map)
+	{
+		var name = argument.Name;
+		if (parameter.IsAtomic && !IsAtomic(argument))
+			return ("atomic", $"'{name}' can't be accessed atomically");
+		
+		if (parameter.IsExt && !IsExtCompatible(argument))
+			return ("ext", $"'{name}' can't be used in 'ext' signatures");
+		
+		if (parameter.IsNoref && HoldsBorrows(argument))
+			return ("noref", HoldsBorrows(argument, false) ? $"'{name}' holds borrows" : $"'{name}' may hold borrows");
+		
+		if (parameter.HasNull && !HasNull(argument))
+			return ("null", $"'{name}' has no null");
+		
+		if (parameter.IsCopy && !IsCopy(argument))
+			return ("copy", $"'{name}' can't be copied");
+		
+		if (parameter.HasDrop && !HasDestructor(argument))
+			return ("drop", $"'{name}' has no destructor");
+		
+		if (parameter.HasNew && !HasNew(argument))
+			return ("new()", $"'{name}' has no constructor without parameters");
+		
+		if (FindMissingConstructor(parameter, argument, map) is { } missing)
+			return ($"new({missing})", $"'{name}' has no constructor taking '{missing}'");
+		
+		if (FindUnmetTrait(parameter, argument, map) is { } trait)
+			return (trait.Name, $"'{name}' doesn't implement '{trait.Name}'");
+		
+		if (FindUnmetBound(parameter, argument, map) is { } bound)
+			return (bound, $"'{name}' doesn't implement '{bound}'");
+		
+		return FindUnmetFunction(parameter, argument, map) is { } function
+			? (function.Name, $"'{name}' doesn't implement '{function.Name}'")
+			: null;
+	}
 	
 	private string? FindValueViolation(TypeParameterSymbol parameter, TypeSymbol argument) =>
 		(argument, parameter.ValueType) switch

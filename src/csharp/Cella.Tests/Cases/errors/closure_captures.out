@@ -24,6 +24,7 @@ Error at line 25, column 27
 Error at line 26, column 2
 25 │ val plain: fun[-> i32] = closure
 26 │ keep(closure)
-     ╘══╛ Cannot store borrows in 'T'
+     ╘══╛ 'keep' requires 'T: noref'
+        | 'ref fun[-> i32]' holds borrows
 
 [compilation failed]

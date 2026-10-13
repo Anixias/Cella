@@ -29,7 +29,8 @@ Error at line 32, column 2
 Error at line 40, column 15
 39 │ {
 40 │     apply[Shape, Text](Text(1))
-                      ╘══╛ 'Text' doesn't implement 'Shape'
+                      ╘══╛ 'apply' requires 'T: Shape'
+                         | 'Text' doesn't implement 'Shape'
 
 Error at line 41, column 8
 40 │ apply[Shape, Text](Text(1))

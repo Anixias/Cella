@@ -4,11 +4,13 @@
 Error at line 24, column 13
 23 │ {
 24 │     next: cell[Bad]
-                    ╘═╛ Cannot copy 'Bad'
+                    ╘═╛ 'cell' requires 'T: copy'
+                      | 'Bad' can't be copied
 
 Error at line 30, column 13
 29 │ {
 30 │     up: holder[Needy]
-                    ╘═══╛ 'Needy' has no constructor without parameters
+                    ╘═══╛ 'holder' requires 'T: new()'
+                        | 'Needy' has no constructor without parameters
 
 [compilation failed]

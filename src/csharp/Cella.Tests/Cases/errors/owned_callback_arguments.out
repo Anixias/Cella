@@ -34,6 +34,7 @@ Error at line 52, column 38
 Error at line 53, column 12
 52 │ val back: fun[fun[-> i32] -> i32] = owning
 53 │ ret build[Holder]()
-               ╘════╛ 'Holder' has no constructor taking 'fun[-> i32]'
+               ╘════╛ 'build' requires 'T: new(fun[-> i32])'
+                    | 'Holder' has no constructor taking 'fun[-> i32]'
 
 [compilation failed]

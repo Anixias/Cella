@@ -1433,8 +1433,8 @@ public sealed class SignatureCollector
 	{
 		foreach (var check in _deferredChecks)
 		{
-			if (_typePool.FindConstraintViolation(check.Parameter, check.Argument, check.Map) is { } message)
-				Diagnostics.Add(new(DiagnosticSeverity.Error, check.Location, message));
+			if (_typePool.FindConstraintViolation(check.Parameter, check.Argument, check.Map) is { } violation)
+				Diagnostics.Add(violation.At(check.Location));
 		}
 		
 		_deferredChecks.Clear();
@@ -1487,10 +1487,10 @@ public sealed class SignatureCollector
 		var isValid = true;
 		for (var i = 0; i < declared.Length; i++)
 		{
-			if (_typePool.FindConstraintViolation(declared[i], impl.TargetArguments[i], map) is not { } message)
+			if (_typePool.FindConstraintViolation(declared[i], impl.TargetArguments[i], map) is not { } violation)
 				continue;
 			
-			Diagnostics.Add(new(DiagnosticSeverity.Error, node.TypeParameters[i].SourceLocation, message));
+			Diagnostics.Add(violation.At(node.TypeParameters[i].SourceLocation));
 			isValid = false;
 		}
 		

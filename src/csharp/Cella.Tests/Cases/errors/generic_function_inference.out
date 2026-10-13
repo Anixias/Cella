@@ -24,7 +24,8 @@ Error at line 24, column 10
 Error at line 25, column 10
 24 │ val d = plain[i32](1)
 25 │ val e = keep(imm count)
-             ╘══╛ Cannot store borrows in 'T'
+             ╘══╛ 'keep' requires 'T: noref'
+                | 'imm[i32]' holds borrows
 
 Error at line 26, column 10
 25 │ val e = keep(imm count)
@@ -39,6 +40,7 @@ Error at line 27, column 10
 Error at line 28, column 15
 27 │ val g = box()
 28 │ val h = keep[imm[i32]](imm count)
-                  ╘══════╛ Cannot store borrows in 'T'
+                  ╘══════╛ 'keep' requires 'T: noref'
+                         | 'imm[i32]' holds borrows
 
 [compilation failed]

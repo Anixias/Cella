@@ -1,0 +1,22 @@
+
+====== noref_arguments.ce ======
+
+Error at line 15, column 14
+14 │ {
+15 │     inner: cell[T]
+                     ^ 'cell' requires 'Element: noref'
+                     | 'T' may hold borrows
+
+Error at line 16, column 16
+15 │ inner: cell[T]
+16 │ other: copier[T]
+                   ^ 'copier' requires 'Element: copy'
+                   | 'T' can't be copied
+
+Error at line 17, column 20
+16 │ other: copier[T]
+17 │ nested: cell[cell[T]]
+                       ^ 'cell' requires 'Element: noref'
+                       | 'T' may hold borrows
+
+[compilation failed]

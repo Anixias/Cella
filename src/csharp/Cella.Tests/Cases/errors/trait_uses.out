@@ -94,17 +94,20 @@ Error at line 71, column 10
 Error at line 72, column 2
 71 │ Hash(p).scale()
 72 │ check(q)
-     ╘═══╛ 'Plain' doesn't implement 'Hash'
+     ╘═══╛ 'check' requires 'T: Hash'
+         | 'Plain' doesn't implement 'Hash'
 
 Error at line 73, column 2
 72 │ check(q)
 73 │ check(3)
-     ╘═══╛ 'i32' doesn't implement 'Hash'
+     ╘═══╛ 'check' requires 'T: Hash'
+         | 'i32' doesn't implement 'Hash'
 
 Error at line 74, column 12
 73 │ check(3)
 74 │ val bad = holder(q)
-               ╘════╛ 'Plain' doesn't implement 'Hash'
+               ╘════╛ 'holder' requires 'T: Hash'
+                    | 'Plain' doesn't implement 'Hash'
 
 Error at line 75, column 10
 74 │ val bad = holder(q)

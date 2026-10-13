@@ -29,6 +29,7 @@ Error at line 41, column 10
 Error at line 60, column 25
 59 │ 
 60 │ takes: fun(needs: Needs[Packs]) {}
-                             ╘═══╛ 'Packs' has no constructor taking 'view[i32]'
+                             ╘═══╛ 'Needs' requires 'T: new(view[i32])'
+                                 | 'Packs' has no constructor taking 'view[i32]'
 
 [compilation failed]

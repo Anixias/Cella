@@ -14,7 +14,8 @@ Error at line 63, column 2
 Error at line 65, column 2
 64 │ var words = Words(0)
 65 │ sum(mut words)
-     ╘═╛ 'str' doesn't implement 'Num'
+     ╘═╛ 'sum' requires 'T: Num'
+       | 'str' doesn't implement 'Num'
 
 Error at line 66, column 2
 65 │ sum(mut words)

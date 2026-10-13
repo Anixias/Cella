@@ -9,7 +9,8 @@ Error at line 24, column 44
 Error at line 30, column 49
 29 │ 
 30 │ fromNamed[T: Named]: fun(imm value: T) -> f64 = needsShape(value)
-                                                     ╘════════╛ 'T' doesn't implement 'Shape'
+                                                     ╘════════╛ 'needsShape' requires 'T: Shape'
+                                                              | 'T' doesn't implement 'Shape'
 
 Error at line 32, column 55
 31 │ 

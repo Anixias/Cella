@@ -59,6 +59,7 @@ Error at line 49, column 1
 Error at line 59, column 6
 58 │ 
 59 │ wrap[T: Eq]: impl
-          ^ Cannot store borrows in 'T'
+          ^ 'wrap' requires 'T: noref'
+          | 'T' may hold borrows
 
 [compilation failed]

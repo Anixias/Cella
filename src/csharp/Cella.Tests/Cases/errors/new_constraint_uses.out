@@ -4,7 +4,8 @@
 Error at line 55, column 29
 54 │ 
 55 │ forward[T]: fun -> T = make[T]()
-                                 ^ 'T' has no constructor taking 'i32'
+                                 ^ 'make' requires 'T: new(i32)'
+                                 | 'T' has no constructor taking 'i32'
 
 Error at line 57, column 31
 56 │ 
@@ -34,41 +35,49 @@ Error at line 72, column 8
 Error at line 77, column 7
 76 │ {
 77 │     make[Point]()
-              ╘═══╛ 'Point' has no constructor taking 'i32'
+              ╘═══╛ 'make' requires 'T: new(i32)'
+                  | 'Point' has no constructor taking 'i32'
 
 Error at line 78, column 7
 77 │ make[Point]()
 78 │ make[Secret]()
-          ╘════╛ 'Secret' has no constructor taking 'i32'
+          ╘════╛ 'make' requires 'T: new(i32)'
+               | 'Secret' has no constructor taking 'i32'
 
 Error at line 79, column 7
 78 │ make[Secret]()
 79 │ make[Wide]()
-          ╘══╛ 'Wide' has no constructor taking 'i32'
+          ╘══╛ 'make' requires 'T: new(i32)'
+             | 'Wide' has no constructor taking 'i32'
 
 Error at line 80, column 7
 79 │ make[Wide]()
 80 │ make[Owned]()
-          ╘═══╛ 'Owned' has no constructor taking 'i32'
+          ╘═══╛ 'make' requires 'T: new(i32)'
+              | 'Owned' has no constructor taking 'i32'
 
 Error at line 81, column 2
 80 │ make[Owned]()
 81 │ duplicate(Point(1, 2))
-     ╘═══════╛ 'Point' has no constructor taking 'Point'
+     ╘═══════╛ 'duplicate' requires 'T: new(Point)'
+             | 'Point' has no constructor taking 'Point'
 
 Error at line 82, column 9
 81 │ duplicate(Point(1, 2))
 82 │ taking[Point]()
-            ╘═══╛ 'Point' has no constructor taking 'own str, mut i32'
+            ╘═══╛ 'taking' requires 'T: new(own str, mut i32)'
+                | 'Point' has no constructor taking 'own str, mut i32'
 
 Error at line 83, column 7
 82 │ taking[Point]()
 83 │ make[str]()
-          ╘═╛ 'str' has no constructor taking 'i32'
+          ╘═╛ 'make' requires 'T: new(i32)'
+            | 'str' has no constructor taking 'i32'
 
 Error at line 84, column 27
 83 │ make[str]()
 84 │ pair[Point](Point(1, 2)).fresh()
-                              ╘═══╛ 'Point' has no constructor taking 'i32'
+                              ╘═══╛ 'fresh' requires 'T: new(i32)'
+                                  | 'Point' has no constructor taking 'i32'
 
 [compilation failed]

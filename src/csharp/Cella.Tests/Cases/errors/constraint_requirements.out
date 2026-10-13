@@ -1,0 +1,46 @@
+
+====== constraint_requirements.ce ======
+
+Error at line 61, column 14
+60 │ {
+61 │     val p: pair[Token, Token] = undef
+                     ╘═══╛ 'pair' requires 'A: noref'
+                         | 'Token' holds borrows
+
+Error at line 63, column 16
+62 │ val q: pair[i32, Token] = undef
+63 │ val c: copier[Guard] = undef
+                   ╘═══╛ 'copier' requires 'Element: copy'
+                       | 'Guard' can't be copied
+
+Error at line 64, column 17
+63 │ val c: copier[Guard] = undef
+64 │ val d: dropper[i32] = undef
+                    ╘═╛ 'dropper' requires 'Element: drop'
+                      | 'i32' has no destructor
+
+Error at line 65, column 18
+64 │ val d: dropper[i32] = undef
+65 │ val n: nullable[i32] = undef
+                     ╘═╛ 'nullable' requires 'Element: null'
+                       | 'i32' has no null
+
+Error at line 66, column 15
+65 │ val n: nullable[i32] = undef
+66 │ val m = make[Point]()
+                  ╘═══╛ 'make' requires 'T: new()'
+                      | 'Point' has no constructor without parameters
+
+Error at line 67, column 16
+66 │ val m = make[Point]()
+67 │ val b = build[bool]()
+                   ╘══╛ 'build' requires 'T: new(i32)'
+                      | 'bool' has no constructor taking 'i32'
+
+Error at line 68, column 10
+67 │ val b = build[bool]()
+68 │ val s = smallest(Point(1), Point(2))
+             ╘══════╛ 'smallest' requires 'T: Ord'
+                    | 'Point' doesn't implement 'Ord'
+
+[compilation failed]

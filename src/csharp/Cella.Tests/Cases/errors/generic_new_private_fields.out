@@ -4,16 +4,19 @@
 Error at line 7, column 15
 6 │ {
 7 │     val u = make[game.Unit]()
-                     ╘═══════╛ 'Unit' has no constructor taking 'i32'
+                     ╘═══════╛ 'make' requires 'T: new(i32)'
+                             | 'Unit' has no constructor taking 'i32'
 
 Error at line 8, column 15
 7 │ val u = make[game.Unit]()
 8 │ val l = make[game.Locked]()
-                 ╘═════════╛ 'Locked' has no constructor taking 'i32'
+                 ╘═════════╛ 'make' requires 'T: new(i32)'
+                           | 'Locked' has no constructor taking 'i32'
 
 Error at line 9, column 15
 8 │ val l = make[game.Locked]()
 9 │ val s = make[game.Scoped]()
-                 ╘═════════╛ 'Scoped' has no constructor taking 'i32'
+                 ╘═════════╛ 'make' requires 'T: new(i32)'
+                           | 'Scoped' has no constructor taking 'i32'
 
 [compilation failed]

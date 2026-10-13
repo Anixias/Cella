@@ -25,17 +25,20 @@ Error at line 28, column 15
 Error at line 29, column 19
 28 │ val unknown: bx[i32] = box[i32](1)
 29 │ val tokens: list[Token] = list[Token](Token("a"))
-                      ╘═══╛ Cannot store borrows in 'T'
+                      ╘═══╛ 'list' requires 'T: noref'
+                          | 'Token' holds borrows
 
 Error at line 29, column 33
 28 │ val unknown: bx[i32] = box[i32](1)
 29 │ val tokens: list[Token] = list[Token](Token("a"))
-                                    ╘═══╛ Cannot store borrows in 'T'
+                                    ╘═══╛ 'list' requires 'T: noref'
+                                        | 'Token' holds borrows
 
 Error at line 30, column 17
 29 │ val tokens: list[Token] = list[Token](Token("a"))
 30 │ val view: list[imm[i32]] = list[i32](1)
-                    ╘══════╛ Cannot store borrows in 'T'
+                    ╘══════╛ 'list' requires 'T: noref'
+                           | 'imm[i32]' holds borrows
 
 Error at line 31, column 18
 30 │ val view: list[imm[i32]] = list[i32](1)

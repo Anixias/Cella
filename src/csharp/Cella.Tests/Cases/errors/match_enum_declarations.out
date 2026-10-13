@@ -95,16 +95,19 @@ Error at line 79, column 22
 Error at line 93, column 18
 92 │ {
 93 │     value: nullable[T]
-                         ^ 'T' has no null
+                         ^ 'nullable' requires 'T: null'
+                         | 'T' has no null
 
 Error at line 98, column 41
 97 │ 
 98 │ first[T]: fun(own value: T) -> nullable[T] = some(value)
-                                             ^ 'T' has no null
+                                             ^ 'nullable' requires 'T: null'
+                                             | 'T' has no null
 
 Error at line 100, column 30
  99 │ 
 100 │ count: fun(numbers: nullable[i32]) -> i32 = 0
-                                   ╘═╛ 'i32' has no null
+                                   ╘═╛ 'nullable' requires 'T: null'
+                                     | 'i32' has no null
 
 [compilation failed]

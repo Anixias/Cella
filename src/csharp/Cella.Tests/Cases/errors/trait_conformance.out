@@ -84,6 +84,7 @@ Error at line 91, column 11
 Error at line 103, column 7
 102 │ 
 103 │ keyed[T]: impl Named
-            ^ 'T' doesn't implement 'Hash'
+            ^ 'keyed' requires 'T: Hash'
+            | 'T' doesn't implement 'Hash'
 
 [compilation failed]

@@ -14,16 +14,19 @@ Error at line 19, column 36
 Error at line 24, column 15
 23 │ {
 24 │     val a = cell[Point](Point(1))
-                      ╘═══╛ Cannot access 'Point' values atomically
+                      ╘═══╛ 'cell' requires 'T: atomic'
+                          | 'Point' can't be accessed atomically
 
 Error at line 25, column 15
 24 │ val a = cell[Point](Point(1))
 25 │ val b = cell[str]("x")
-                  ╘═╛ Cannot access 'str' values atomically
+                  ╘═╛ 'cell' requires 'T: atomic'
+                    | 'str' can't be accessed atomically
 
 Error at line 26, column 15
 25 │ val b = cell[str]("x")
 26 │ val c = cell[i128](1)
-                  ╘══╛ Cannot access 'i128' values atomically
+                  ╘══╛ 'cell' requires 'T: atomic'
+                     | 'i128' can't be accessed atomically
 
 [compilation failed]

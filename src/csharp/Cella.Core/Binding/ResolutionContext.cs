@@ -283,10 +283,10 @@ public readonly struct ResolutionContext
 		{
 			var parameter = trait.TypeParameters[i];
 			if (DeferConstraintCheck?.Invoke(new(parameter, arguments[i], map, locations[i])) == true ||
-			    TypePool.FindConstraintViolation(parameter, arguments[i], map) is not { } message)
+			    TypePool.FindConstraintViolation(parameter, arguments[i], map) is not { } violation)
 				continue;
 			
-			Diagnostics.Add(new(DiagnosticSeverity.Error, locations[i], message));
+			Diagnostics.Add(violation.At(locations[i]));
 			isValid = false;
 		}
 		
@@ -819,10 +819,10 @@ public readonly struct ResolutionContext
 		{
 			var parameter = parameters[i];
 			if (DeferConstraintCheck?.Invoke(new(parameter, arguments[i], map, locations[i])) == true ||
-			    TypePool.FindConstraintViolation(parameter, arguments[i], map) is not { } message)
+			    TypePool.FindConstraintViolation(parameter, arguments[i], map) is not { } violation)
 				continue;
 			
-			Diagnostics.Add(new(DiagnosticSeverity.Error, locations[i], message));
+			Diagnostics.Add(violation.At(locations[i]));
 			isValid = false;
 		}
 		

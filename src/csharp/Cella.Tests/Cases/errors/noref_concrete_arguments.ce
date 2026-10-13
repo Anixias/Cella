@@ -1,0 +1,33 @@
+mod test
+
+cell[Element: noref]: rec
+{
+	value: Element
+}
+
+wrap[T]: rec
+{
+	value: T
+}
+
+wrap[T: noref]: impl
+{
+	size: fun(imm self) -> i32 = 1
+}
+
+Token: ref rec
+{
+	text: imm[i32]
+}
+
+keep[T: noref]: fun(own value: T) -> T = own value
+
+main: fun -> i32
+{
+	val tokens: cell[Token] = undef
+	val kept = keep("lit")
+	val n = 5
+	val w = wrap(Token(imm n))
+	val size = w.size()
+	ret 0
+}

@@ -1,0 +1,22 @@
+
+====== noref_concrete_arguments.ce ======
+
+Error at line 27, column 19
+26 │ {
+27 │     val tokens: cell[Token] = undef
+                          ╘═══╛ 'cell' requires 'Element: noref'
+                              | 'Token' holds borrows
+
+Error at line 28, column 13
+27 │ val tokens: cell[Token] = undef
+28 │ val kept = keep("lit")
+                ╘══╛ 'keep' requires 'T: noref'
+                   | 'str' holds borrows
+
+Error at line 31, column 15
+30 │ val w = wrap(Token(imm n))
+31 │ val size = w.size()
+                  ╘══╛ 'size' requires 'T: noref'
+                     | 'Token' holds borrows
+
+[compilation failed]

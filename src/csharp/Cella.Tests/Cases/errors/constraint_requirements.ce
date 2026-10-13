@@ -1,0 +1,70 @@
+mod test
+
+Ord: trait
+{
+	<: op(imm a: Self, imm b: Self) -> bool
+}
+
+pair[A: noref, B]: rec
+{
+	a: A
+	b: B
+}
+
+copier[Element: copy]: rec
+{
+	value: Element
+}
+
+dropper[Element: drop]: rec
+{
+	value: Element
+}
+
+nullable[Element: null]: rec
+{
+	value: Element
+}
+
+Guard: rec
+{
+	id: i32
+
+	drop: op
+	{
+	}
+}
+
+Token: ref rec
+{
+	text: imm[i32]
+}
+
+Point: rec
+{
+	x: i32
+
+	new: op(x: i32)
+	{
+		self.x = x
+	}
+}
+
+make[T: new()]: fun -> T = T()
+
+build[T: new(i32)]: fun -> T = T(1)
+
+smallest[T: Ord + copy]: fun(a: T, b: T) -> T = a
+
+main: fun -> i32
+{
+	val p: pair[Token, Token] = undef
+	val q: pair[i32, Token] = undef
+	val c: copier[Guard] = undef
+	val d: dropper[i32] = undef
+	val n: nullable[i32] = undef
+	val m = make[Point]()
+	val b = build[bool]()
+	val s = smallest(Point(1), Point(2))
+	ret 0
+}
