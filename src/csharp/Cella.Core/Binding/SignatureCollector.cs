@@ -1443,7 +1443,8 @@ public sealed class SignatureCollector
 	private void CheckImplBlocks()
 	{
 		var blocks = _impls.Where(impl => ((ImplNode)_declarations[impl].Node).Traits.IsEmpty).ToList();
-		foreach (var impl in _impls.Except(blocks))
+		var conformances = _impls.Except(blocks).ToList();
+		foreach (var impl in conformances)
 		{
 			if (GetImplTarget(impl).OriginalDefinition is NamedTypeSymbol named)
 				ReportParameterViolations(named.TypeParameters, impl, (ImplNode)_declarations[impl].Node);
@@ -1453,7 +1454,8 @@ public sealed class SignatureCollector
 			CheckMemberBlock(impl, (ImplNode)_declarations[impl].Node);
 		
 		foreach (var sameType in blocks.GroupBy(impl => GetImplTarget(impl).OriginalDefinition))
-			ReportMemberBlockConflicts(sameType.Key, [..sameType]);
+			ReportMemberBlockConflicts(sameType.Key, [..sameType],
+				[..conformances.Where(impl => GetImplTarget(impl).OriginalDefinition == sameType.Key)]);
 	}
 	
 	private void CheckMemberBlock(ImplSymbol impl, ImplNode node)
@@ -1513,7 +1515,8 @@ public sealed class SignatureCollector
 			.Except(_typePool.GetParameterBounds(declared).Select(bound => map[bound]))
 			.Any();
 	
-	private void ReportMemberBlockConflicts(TypeSymbol target, IReadOnlyList<ImplSymbol> blocks)
+	private void ReportMemberBlockConflicts(TypeSymbol target, IReadOnlyList<ImplSymbol> blocks,
+		IReadOnlyList<ImplSymbol> conformances)
 	{
 		if (!_declarations.TryGetValue(target, out var declaration))
 			return;
@@ -1521,18 +1524,23 @@ public sealed class SignatureCollector
 		var declared = target is NamedTypeSymbol named ? named.TypeParameters : [];
 		var members = GetBodyMembers(declaration.Node)
 			.Select(static member => (member.Name, member.Function, Block: (ImplSymbol?)null))
-			.Concat(blocks.SelectMany(impl => GetBlockMembers(impl)
+			.Concat(blocks.Concat(conformances).SelectMany(impl => GetBlockMembers(impl)
 				.Select(member => (member.Name, member.Function, Block: (ImplSymbol?)impl))))
 			.ToList();
 		
 		foreach (var sameName in members.GroupBy(static member => member.Name.Text))
 		{
-			if (sameName.All(static member => member.Block is null))
+			if (!sameName.Any(member => member.Block is { } block && blocks.Contains(block)))
 				continue;
 			
 			foreach (var member in sameName)
 			{
-				var others = sameName.Where(other => other.Block != member.Block).ToList();
+				var isMemberBlock = member.Block is { } own && blocks.Contains(own);
+				var others = sameName.Where(other => other.Block != member.Block &&
+				                                     (isMemberBlock || other.Block is { } block &&
+					                                     blocks.Contains(block)))
+					.ToList();
+				
 				if (others.Count == 0)
 					continue;
 				

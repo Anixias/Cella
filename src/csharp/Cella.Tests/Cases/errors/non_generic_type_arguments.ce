@@ -1,0 +1,22 @@
+mod test
+
+Point: rec
+{
+	x: i32
+	n: var i32 = 3
+}
+
+U: union
+{
+	a: i32
+	b: f32
+}
+
+main: fun -> i32
+{
+	val b = Point[u8](1)
+	val c = Point[i32].n
+	val u = U[i32]()
+	val d = i32[u8](1)
+	ret b.x
+}

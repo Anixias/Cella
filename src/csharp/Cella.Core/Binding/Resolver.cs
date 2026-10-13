@@ -2638,6 +2638,14 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	{
 		var settled = values.Select((value, i) => i == index ? null : value).ToList();
 		var annotations = ResolveAnnotations(node);
+		if (annotations.Types.Any(static type => type is InvalidType) || annotations.ReturnType is InvalidType)
+		{
+			if (!isTrial)
+				ReportAnnotations(node);
+			
+			return new ResolvedInvalidExpressionNode(node);
+		}
+		
 		var expected = shapes
 			.Select(shape => ExpectLambda(shape, settled, index, annotations))
 			.OfType<FunctionType>()
@@ -2701,6 +2709,19 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		
 		Rollback(checkpoint);
 		return annotations;
+	}
+	
+	private void ReportAnnotations(LambdaExpressionNode node)
+	{
+		var context = CurrentResolutionContext;
+		foreach (var parameter in node.Parameters)
+		{
+			if (parameter.Type is { } type)
+				context.ResolveType(type);
+		}
+		
+		if (node.ReturnType is { } returnType)
+			context.ResolveReturnType(returnType);
 	}
 	
 	private IEnumerable<InferenceInput> CreateAnnotationInputs(FunctionType parameter, LambdaAnnotations annotations)
@@ -4984,18 +5005,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		
 		foreach (var function in group.Functions)
 		{
-			var signature = function.Signature;
-			var open = GetOpenTypeParameters(function);
-			if (open.IsEmpty || signature.ParameterTypes.Length != type.ParameterTypes.Length)
-				continue;
-			
-			var inputs = signature.ParameterTypes
-				.Select((parameter, i) => new InferenceInput(parameter, type.ParameterTypes[i]) { IsExact = true })
-				.Append(new(signature.ReturnType, type.ReturnType) { IsExact = true });
-			
-			var result = _inference.Infer(open, inputs, null, null);
-			if (!result.Succeeded ||
-			    ReportConstraintViolation(open, result.Arguments, _ => default, function) is not null)
+			if (InferFunctionValue(function, type) is not { } result ||
+			    ReportConstraintViolation(GetOpenTypeParameters(function), result.Arguments, _ => default, function)
+				    is not null)
 				continue;
 			
 			var instantiated = InstantiateDeclared(function, result.Arguments);
@@ -5013,10 +5025,31 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		return null;
 	}
 	
+	private InferenceResult? InferFunctionValue(FunctionInfo function, FunctionType type)
+	{
+		var signature = function.Signature;
+		var open = GetOpenTypeParameters(function);
+		if (open.IsEmpty || signature.ParameterTypes.Length != type.ParameterTypes.Length)
+			return null;
+		
+		var inputs = signature.ParameterTypes
+			.Select((parameter, i) => new InferenceInput(parameter, type.ParameterTypes[i]) { IsExact = true })
+			.Append(new(signature.ReturnType, type.ReturnType) { IsExact = true });
+		
+		var result = _inference.Infer(open, inputs, null, null);
+		return result.Succeeded ? result : null;
+	}
+	
 	private ResolvedInvalidExpressionNode ReportFunctionMismatch(ResolvedFunctionGroupExpressionNode node,
 		TypeSymbol target)
 	{
 		var group = node.Group;
+		if (group.Functions is [var only] && target is FunctionType type &&
+		    InferFunctionValue(only, type) is { } result &&
+		    ReportConstraintViolation(GetOpenTypeParameters(only), result.Arguments,
+			    _ => node.Syntax.SourceLocation, only) is { } violation)
+			return Error(node.Syntax, violation, target);
+		
 		var message = group.Functions switch
 		{
 			[_] => $"Cannot convert type '{group.Name}' to '{target.Name}'",

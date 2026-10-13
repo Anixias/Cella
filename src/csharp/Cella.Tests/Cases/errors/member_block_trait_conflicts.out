@@ -1,0 +1,14 @@
+
+====== member_block_trait_conflicts.ce ======
+
+Error at line 25, column 2
+24 │ {
+25 │     hash: fun(imm self) -> u64 = 1
+         ╘══╛ 'hash' is declared more than once with the same signature
+
+Error at line 31, column 2
+30 │ {
+31 │     hash: fun(imm self) -> u64 = 2
+         ╘══╛ 'hash' is declared more than once with the same signature
+
+[compilation failed]

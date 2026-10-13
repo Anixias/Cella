@@ -1,0 +1,9 @@
+
+====== lambda_block_recovery.ce ======
+
+Error at line 7, column 7
+6 │ {
+7 │     var : i32 = 1
+            ^ Expected a name after 'var'
+
+[compilation failed]

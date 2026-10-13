@@ -765,6 +765,16 @@ public readonly struct ResolutionContext
 				ResolveGenericArguments(node.Arguments, definition.TypeParameters, ResolveGenericArgumentExpression),
 				[..node.Arguments.Select(static argument => argument.SourceLocation)], node.SourceLocation);
 		
+		if (symbol is TypeSymbol type && !IsNonType(type) && (node.Target is not VarExpressionNode named ||
+		                                                      !TypePool.BuiltinGenericTypeArguments.ContainsKey(
+			                                                      named.Identifier.Text)))
+		{
+			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Target.SourceLocation,
+				$"'{type.Name}' takes no generic arguments"));
+			
+			return NativeSymbols.Invalid;
+		}
+		
 		if (node.Target is not VarExpressionNode target ||
 		    Resolve(target.Identifier.Text) is not (null or TypeSymbol) ||
 		    !TypePool.BuiltinGenericTypeArguments.ContainsKey(target.Identifier.Text))

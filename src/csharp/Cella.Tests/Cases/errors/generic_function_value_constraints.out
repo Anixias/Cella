@@ -1,0 +1,16 @@
+
+====== generic_function_value_constraints.ce ======
+
+Error at line 28, column 33
+27 │ {
+28 │     val g: fun[imm Point -> i32] = h
+                                        ^ 'h' requires 'T: Hash'
+                                        | 'Point' doesn't implement 'Hash'
+
+Error at line 29, column 35
+28 │ val g: fun[imm Point -> i32] = h
+29 │ val k: fun[own Guard -> Guard] = keep
+                                      ╘══╛ 'keep' requires 'T: copy'
+                                         | 'Guard' can't be copied
+
+[compilation failed]

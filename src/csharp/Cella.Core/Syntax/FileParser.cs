@@ -78,6 +78,8 @@ public sealed class FileParser
 	
 	private static readonly HashSet<TokenType> _lifecycleKeywords = [TokenType.KeywordNew, TokenType.KeywordDrop];
 	
+	private bool skippedToEnd;
+	
 	private static Dictionary<string, TokenType> BuildContextualKeywords(params IEnumerable<TokenType> tokenTypes) =>
 		tokenTypes.ToDictionary(static t => t.Representation);
 	
@@ -225,7 +227,8 @@ public sealed class FileParser
 		};
 	}
 	
-	private bool ParseTopLevelDeclaration(ref int index, List<IDeclarationNode> declarations, Token? block)
+	private bool ParseTopLevelDeclaration(ref int index, List<IDeclarationNode> declarations, Token? block,
+		bool insideBraces = false)
 	{
 		if (MatchVisibilityBlock(ref index, _topLevelContextualKeywords, out var keyword, out var openBrace))
 		{
@@ -240,12 +243,12 @@ public sealed class FileParser
 		{
 			if (!ParseWhen(ref index, (ref i, open, isActive) =>
 				    ParseTopLevelBlock(ref i, open, block, isActive ? declarations : [])))
-				ResyncTopLevel(ref index, block is not null);
+				ResyncTopLevel(ref index, insideBraces);
 			
 			return true;
 		}
 		
-		var insideBlock = block is not null;
+		var insideBlock = insideBraces;
 		
 		// Parse external declarations
 		var externalStart = index;
@@ -580,17 +583,15 @@ public sealed class FileParser
 		{
 			if (AtEnd(index))
 			{
-				Report(openBrace, "Expected '}' to close this block");
+				ReportUnclosed(openBrace);
 				return false;
 			}
 			
-			if (ParseTopLevelDeclaration(ref index, declarations, block))
+			if (ParseTopLevelDeclaration(ref index, declarations, block, true))
 				continue;
 			
 			ReportUnexpected(Tokens[index]);
-			while (!AtEnd(index))
-				index++;
-			
+			SkipToEnd(ref index);
 			return false;
 		}
 		
@@ -871,7 +872,7 @@ public sealed class FileParser
 		{
 			if (AtEnd(index))
 			{
-				Report(openBrace, "Expected '}' to close this block");
+				ReportUnclosed(openBrace);
 				return false;
 			}
 			
@@ -1398,7 +1399,7 @@ public sealed class FileParser
 		{
 			if (AtEnd(index))
 			{
-				Report(openBrace, "Expected '}' to close this block");
+				ReportUnclosed(openBrace);
 				return false;
 			}
 			
@@ -1490,7 +1491,7 @@ public sealed class FileParser
 		{
 			if (AtEnd(index))
 			{
-				Report(openBrace, "Expected '}' to close this block");
+				ReportUnclosed(openBrace);
 				return false;
 			}
 			
@@ -1816,7 +1817,7 @@ public sealed class FileParser
 			{
 				if (AtEnd(index))
 				{
-					Report(openBrace, "Expected '}' to close this block");
+					ReportUnclosed(openBrace);
 					return null;
 				}
 				
@@ -2094,7 +2095,7 @@ public sealed class FileParser
 		{
 			if (AtEnd(index))
 			{
-				Report(open, "Expected '}' to close this block");
+				ReportUnclosed(open);
 				return false;
 			}
 			
@@ -2282,7 +2283,7 @@ public sealed class FileParser
 		{
 			if (AtEnd(index))
 			{
-				Report(openBrace, "Expected '}' to close this block");
+				ReportUnclosed(openBrace);
 				return null;
 			}
 			
@@ -2446,7 +2447,17 @@ public sealed class FileParser
 	private bool StartsDeclarationOnLine(int index) =>
 		Tokens[index].Line != Tokens[index - 1].Line && StartsTopLevelDeclaration(index);
 	
-	private void SkipToEnd(ref int index) => SkipUntil(ref index, TokenType.EndOfFile);
+	private void SkipToEnd(ref int index)
+	{
+		SkipUntil(ref index, TokenType.EndOfFile);
+		skippedToEnd = true;
+	}
+	
+	private void ReportUnclosed(Token openBrace)
+	{
+		if (!skippedToEnd)
+			Report(openBrace, "Expected '}' to close this block");
+	}
 	
 	private void SkipIf(ref int index, TokenType type)
 	{

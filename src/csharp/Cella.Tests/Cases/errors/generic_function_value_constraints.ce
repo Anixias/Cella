@@ -1,0 +1,31 @@
+mod test
+
+Hash: trait
+{
+	hash: fun(imm self) -> u64
+}
+
+Point: rec
+{
+	x: i32
+}
+
+h[T: Hash]: fun(imm x: T) -> i32 = 1
+
+keep[T: copy]: fun(own x: T) -> T = own x
+
+Guard: rec
+{
+	id: i32
+
+	drop: op
+	{
+	}
+}
+
+main: fun -> i32
+{
+	val g: fun[imm Point -> i32] = h
+	val k: fun[own Guard -> Guard] = keep
+	ret 0
+}

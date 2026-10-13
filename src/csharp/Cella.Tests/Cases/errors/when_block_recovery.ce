@@ -1,0 +1,14 @@
+mod test
+
+when debug
+{
+	counter: static i32 = 0
+}
+else
+{
+	other: fun -> i32 = 1
+}
+
+helper: fun -> i32 = 2
+
+main: fun -> i32 = helper()

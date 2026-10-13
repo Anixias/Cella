@@ -1,0 +1,9 @@
+
+====== when_block_recovery.ce ======
+
+Error at line 5, column 11
+4 │ {
+5 │     counter: static i32 = 0
+                 ╘════╛ Unknown declaration type
+
+[compilation failed]
