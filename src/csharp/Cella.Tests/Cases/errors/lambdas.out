@@ -41,15 +41,15 @@ Error at line 42, column 15
 42 │ transform(1, fun(x) { ret x })
                   ╘══════════════╛ Cannot infer the return type
 
-Error at line 43, column 2
+Error at line 43, column 8
 42 │ transform(1, fun(x) { ret x })
 43 │ apply(fun(mut x) { x += 1 }, 1)
-     ╘═══╛ No overload of 'apply' accepts these arguments
+           ╘═══════════════════╛ Cannot convert type 'fun[mut i32]' to 'ref fun[i32 -> i32]'
 
-Error at line 44, column 2
+Error at line 44, column 8
 43 │ apply(fun(mut x) { x += 1 }, 1)
 44 │ apply(fun(x: i64) = x, 1)
-     ╘═══╛ No overload of 'apply' accepts these arguments
+           ╘═════════════╛ Cannot convert type 'fun[i64]' to 'ref fun[i32 -> i32]'
 
 Error at line 45, column 23
 44 │ apply(fun(x: i64) = x, 1)

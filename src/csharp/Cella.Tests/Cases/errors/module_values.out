@@ -35,7 +35,7 @@ Error at line 10, column 10
 Error at line 11, column 2
 10 │ val t = geometry.Point
 11 │ geometry.area(1)
-     ╘═══════════╛ No overload of 'geometry.area' accepts these arguments
+     ╘═══════════╛ 'geometry.area' takes 2 arguments
 
 Error at line 13, column 15
 12 │ val effect = geometry.Effect.none

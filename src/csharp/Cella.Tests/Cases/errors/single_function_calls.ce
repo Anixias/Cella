@@ -1,0 +1,43 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+add: fun(a: i32, b: i32) -> i32 = a + b
+takesU8: fun(value: u8) -> u8 = value
+opt: fun(a: i32, b: i32 = 1, c: i32 = 2) -> i32 = a + b + c
+id[T]: fun(own a: T) -> T = own a
+
+Point: rec
+{
+	x: i32
+	shift: fun(imm self, by: i32) -> i32 = self.x + by
+}
+
+double: fun(x: i32) -> i32 = x * 2
+
+main: fun -> i32
+{
+	val fn: fun[i32 -> i32] = double
+	val n = fn(true)
+	val o = fn()
+	val big: i32 = 5
+	val p = Point(1)
+	val a = add(1)
+	val b = add(1, 2, 3)
+	val c = add(true, 2)
+	val d = add(1, "x")
+	val e = takesU8(big)
+	val f = takesU8(300)
+	val g = takesU8(1.5)
+	val s: str = add(1, 2)
+	val h = opt()
+	val i = opt(1, 2, 3, 4)
+	val j = printf()
+	val k = id[u8](300)
+	val l = p.shift()
+	val m = p.shift(true)
+	ret 0
+}

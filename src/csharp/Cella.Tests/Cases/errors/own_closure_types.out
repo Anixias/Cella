@@ -24,6 +24,6 @@ Error at line 13, column 35
 Error at line 14, column 2
 13 │ val wrong: ref fun[i32 -> i32] = pick
 14 │ pick(5)
-     ╘══╛ 'own fun[-> i32]' doesn't accept these arguments
+     ╘══╛ 'pick' takes no arguments
 
 [compilation failed]

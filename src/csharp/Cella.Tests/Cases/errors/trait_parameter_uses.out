@@ -11,10 +11,10 @@ Error at line 22, column 59
 22 │ test[K: trait]: fun(imm shape: dyn[K]) -> bool = shape is Circle
                                                                ╘════╛ 'Circle' doesn't implement 'K'
 
-Error at line 24, column 47
+Error at line 24, column 56
 23 │ 
 24 │ erase[K: trait]: fun(circle: Circle) -> i32 = count[K](circle)
-                                                   ╘══════╛ No overload of 'count' accepts these arguments
+                                                            ╘════╛ Cannot convert type 'Circle' to 'dyn[K]'
 
 Error at line 28, column 39
 27 │ 

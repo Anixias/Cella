@@ -11,10 +11,10 @@ Error at line 8, column 23
 8 │ val difference: u8 = 3 - 5
                          ╘═══╛ Cannot convert type 'i32' to 'u8'
 
-Error at line 9, column 17
+Error at line 9, column 25
 8 │ val difference: u8 = 3 - 5
 9 │ val argument = takesU8(200 + 100)
-                   ╘═════╛ No overload of 'takesU8' accepts these arguments
+                           ╘═══════╛ Cannot convert type 'i32' to 'u8'
 
 Error at line 10, column 23
  9 │ val argument = takesU8(200 + 100)

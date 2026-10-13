@@ -16,10 +16,10 @@ Error at line 58, column 6
 58 │ val words = [1, 2]
          ╘═══╛ Cannot infer the type of 'words' from 'array[u16, 2]' and 'array[u8, 2]'
 
-Error at line 63, column 2
+Error at line 63, column 7
 62 │ var bytes = [1, 2]
 63 │ take(mut bytes)
-     ╘══╛ No overload of 'take' accepts these arguments
+          ╘═══════╛ Cannot convert type 'ptr[array[i32, 2]]' to 'triple'
 
 Error at line 65, column 10
 64 │ 

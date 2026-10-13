@@ -49,7 +49,7 @@ Error at line 44, column 23
 Error at line 45, column 2
 44 │ val function = other.make
 45 │ other.restore()
-     ╘═══════════╛ No overload of 'restore' accepts these arguments
+     ╘═══════════╛ 'restore' takes one argument
 
 Error at line 47, column 16
 46 │ var amount = 2

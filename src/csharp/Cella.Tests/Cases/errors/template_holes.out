@@ -6,15 +6,15 @@ Error at line 29, column 8
 29 │ say("{p} {count}")
            ^ 'Point' doesn't implement 'Display'
 
-Error at line 30, column 2
+Error at line 30, column 6
 29 │ say("{p} {count}")
 30 │ say(c)
-     ╘═╛ No overload of 'say' accepts these arguments
+         ^ Cannot convert type 'cstr' to 'fstr[Display]'
 
-Error at line 31, column 2
+Error at line 31, column 6
 30 │ say(c)
 31 │ say(5)
-     ╘═╛ No overload of 'say' accepts these arguments
+         ^ Cannot convert type 'integer literal' to 'fstr[Display]'
 
 Error at line 32, column 15
 31 │ say(5)

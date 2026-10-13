@@ -19,7 +19,7 @@ Error at line 30, column 6
 Error at line 31, column 2
 30 │ all(...v, ...v)
 31 │ fixed(...v)
-     ╘═══╛ No overload of 'fixed' accepts these arguments
+     ╘═══╛ 'fixed' doesn't accept these arguments
 
 Error at line 32, column 9
 31 │ fixed(...v)
@@ -36,14 +36,14 @@ Error at line 34, column 6
 34 │ all(mut n)
          ╘═╛ 'values' isn't a 'mut' parameter
 
-Error at line 35, column 2
+Error at line 35, column 6
 34 │ all(mut n)
 35 │ all(v)
-     ╘═╛ No overload of 'all' accepts these arguments
+         ^ Cannot convert type 'view[i32]' to 'i32'
 
-Error at line 36, column 2
+Error at line 36, column 11
 35 │ all(v)
 36 │ bytes(1, 300)
-     ╘═══╛ No overload of 'bytes' accepts these arguments
+              ╘═╛ Cannot convert type 'i32' to 'u8'
 
 [compilation failed]

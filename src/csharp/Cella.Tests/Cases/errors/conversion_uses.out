@@ -6,10 +6,10 @@ Error at line 85, column 22
 85 │ val implicit: i32 = fixed
                          ╘═══╛ Cannot convert type 'Fixed' to 'i32'
 
-Error at line 86, column 2
+Error at line 86, column 10
 85 │ val implicit: i32 = fixed
 86 │ takeInt(fixed)
-     ╘═════╛ No overload of 'takeInt' accepts these arguments
+             ╘═══╛ Cannot convert type 'Fixed' to 'i32'
 
 Error at line 89, column 20
 88 │ val source = Source(1)
@@ -31,10 +31,10 @@ Error at line 92, column 14
 92 │ val label = Label(Origin(2))
                  ╘══════════════╛ Conversion to 'Label' is ambiguous
 
-Error at line 95, column 2
+Error at line 95, column 6
 94 │ val count: i32 = 5
 95 │ log(count)
-     ╘═╛ No overload of 'log' accepts these arguments
+         ╘═══╛ Cannot convert type 'i32' to 'Arg'
 
 Error at line 96, column 17
 95 │ log(count)

@@ -16,15 +16,15 @@ Error at line 46, column 25
 46 │ val c = takesBox64(box("a"))
                             ╘═╛ Cannot convert type 'string literal' to 'i64'
 
-Error at line 47, column 10
+Error at line 47, column 21
 46 │ val c = takesBox64(box("a"))
 47 │ val d = takesBox64(wrap(small))
-             ╘════════╛ No overload of 'takesBox64' accepts these arguments
+                        ╘═════════╛ Cannot convert type 'box[i32]' to 'box[i64]'
 
-Error at line 48, column 10
+Error at line 48, column 21
 47 │ val d = takesBox64(wrap(small))
 48 │ val e = takesBox64(box(small))
-             ╘════════╛ No overload of 'takesBox64' accepts these arguments
+                        ╘════════╛ Cannot convert type 'box[i32]' to 'box[i64]'
 
 Error at line 49, column 10
 48 │ val e = takesBox64(box(small))

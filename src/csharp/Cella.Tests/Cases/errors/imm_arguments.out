@@ -16,10 +16,10 @@ Error at line 42, column 30
 42 │ val back: fun[i32 -> i32] = look
                                  ╘══╛ Cannot convert type 'fun[imm i32 -> i32]' to 'fun[i32 -> i32]'
 
-Error at line 43, column 14
+Error at line 43, column 19
 42 │ val back: fun[i32 -> i32] = look
 43 │ val fifth = call(look)
-                 ╘══╛ No overload of 'call' accepts these arguments
+                      ╘══╛ Cannot convert type 'fun[imm i32 -> i32]' to 'ref fun[i32 -> i32]'
 
 Error at line 44, column 20
 43 │ val fifth = call(look)

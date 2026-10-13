@@ -1,0 +1,84 @@
+
+====== single_function_calls.ce ======
+
+Error at line 24, column 13
+23 │ val fn: fun[i32 -> i32] = double
+24 │ val n = fn(true)
+                ╘══╛ Cannot convert type 'bool' to 'i32'
+
+Error at line 25, column 10
+24 │ val n = fn(true)
+25 │ val o = fn()
+             ╘╛ 'fn' takes one argument
+
+Error at line 28, column 10
+27 │ val p = Point(1)
+28 │ val a = add(1)
+             ╘═╛ 'add' takes 2 arguments
+
+Error at line 29, column 10
+28 │ val a = add(1)
+29 │ val b = add(1, 2, 3)
+             ╘═╛ 'add' takes 2 arguments
+
+Error at line 30, column 14
+29 │ val b = add(1, 2, 3)
+30 │ val c = add(true, 2)
+                 ╘══╛ Cannot convert type 'bool' to 'i32'
+
+Error at line 31, column 17
+30 │ val c = add(true, 2)
+31 │ val d = add(1, "x")
+                    ╘═╛ Cannot convert type 'string literal' to 'i32'
+
+Error at line 32, column 18
+31 │ val d = add(1, "x")
+32 │ val e = takesU8(big)
+                     ╘═╛ Cannot convert type 'i32' to 'u8'
+
+Error at line 33, column 18
+32 │ val e = takesU8(big)
+33 │ val f = takesU8(300)
+                     ╘═╛ Cannot convert type 'i32' to 'u8'
+
+Error at line 34, column 18
+33 │ val f = takesU8(300)
+34 │ val g = takesU8(1.5)
+                     ╘═╛ Cannot convert type 'float literal' to 'u8'
+
+Error at line 35, column 15
+34 │ val g = takesU8(1.5)
+35 │ val s: str = add(1, 2)
+                  ╘═══════╛ Cannot convert type 'i32' to 'str'
+
+Error at line 36, column 10
+35 │ val s: str = add(1, 2)
+36 │ val h = opt()
+             ╘═╛ 'opt' takes 1 to 3 arguments
+
+Error at line 37, column 10
+36 │ val h = opt()
+37 │ val i = opt(1, 2, 3, 4)
+             ╘═╛ 'opt' takes 1 to 3 arguments
+
+Error at line 38, column 10
+37 │ val i = opt(1, 2, 3, 4)
+38 │ val j = printf()
+             ╘════╛ 'printf' takes at least one argument
+
+Error at line 39, column 17
+38 │ val j = printf()
+39 │ val k = id[u8](300)
+                    ╘═╛ Cannot convert type 'i32' to 'u8'
+
+Error at line 40, column 10
+39 │ val k = id[u8](300)
+40 │ val l = p.shift()
+             ╘═════╛ 'shift' takes one argument
+
+Error at line 41, column 18
+40 │ val l = p.shift()
+41 │ val m = p.shift(true)
+                     ╘══╛ Cannot convert type 'bool' to 'i32'
+
+[compilation failed]

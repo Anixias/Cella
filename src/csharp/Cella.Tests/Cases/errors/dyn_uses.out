@@ -61,10 +61,10 @@ Error at line 60, column 17
 60 │ if shape is d: dyn[Shape]
                     ╘════════╛ Cannot test for 'dyn[Shape]'
 
-Error at line 69, column 2
+Error at line 69, column 11
 68 │ val p = Plain(1)
 69 │ describe(p)
-     ╘══════╛ No overload of 'describe' accepts these arguments
+              ^ Cannot convert type 'Plain' to 'dyn[Shape]'
 
 Error at line 70, column 22
 69 │ describe(p)

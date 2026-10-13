@@ -2158,7 +2158,12 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		if (!resolutionSet.HasResult && ReportArgumentModes(specialized, args, CurrentTargetType))
 			return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
 		
-		// TODO If only one candidate, we could report the unmatched arguments instead of the whole function?
+		if (!resolutionSet.HasResult && candidates is [var only])
+			return ReportSingleMismatch(node, functionName, only, specialized is [var single] ? single : null, args,
+				location)
+				? new ResolvedInvalidExpressionNode(node, CurrentTargetType)
+				: Error(node, $"'{functionName}' doesn't accept these arguments", CurrentTargetType, node.Target);
+		
 		if (!resolutionSet.HasResult)
 			return Error(node, $"No overload of '{functionName}' accepts these arguments", CurrentTargetType,
 				node.Target);
@@ -3936,6 +3941,12 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		if (!resolutionSet.HasResult && ReportArgumentModes(candidates, args, null))
 			return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
 		
+		if (!resolutionSet.HasResult && candidates is [var only] &&
+		    ReportSingleMismatch(node, node.Target is VarExpressionNode or AccessExpressionNode
+			    ? node.Target.SourceLocation.GetText().ToString()
+			    : GetDisplayName(callee), only, only, args, node.Target.SourceLocation))
+			return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
+		
 		if (!resolutionSet.HasResult)
 			return Error(node, $"'{GetDisplayName(callee)}' doesn't accept these arguments", CurrentTargetType,
 				node.Target);
@@ -4766,6 +4777,60 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			? pointer.BaseType
 			: type, mode);
 	}
+	
+	private bool ReportSingleMismatch(CallExpressionNode node, string name, ICallable original, ICallable? callable,
+		IResolvedExpressionNode[] args, SourceLocation location)
+	{
+		if (FindSpread(node.Arguments) >= 0)
+			return false;
+		
+		var hasRest = original.IsVariadic || original.HasVariadicParameter;
+		var fixedCount = original.ParameterTypes.Length - (original.HasVariadicParameter ? 1 : 0);
+		var minimum = fixedCount - (GetInfo(original)?.Signature.Defaults.Length ?? 0);
+		if (args.Length < minimum || !hasRest && args.Length > fixedCount)
+		{
+			Diagnostics.Add(new(DiagnosticSeverity.Error, location,
+				$"'{name}' takes {DescribeArgumentCount(minimum, hasRest ? null : fixedCount)}"));
+			
+			return true;
+		}
+		
+		if (callable is null)
+			return false;
+		
+		if (CurrentTargetType is { } target &&
+		    ResolveCallable([callable], args, MaterializationMode.Overload).HasResult)
+		{
+			Diagnostics.Add(new(DiagnosticSeverity.Error, node.SourceLocation,
+				$"Cannot convert type '{callable.ReturnType.Name}' to '{target.Name}'"));
+			
+			return true;
+		}
+		
+		for (var i = 0; i < Math.Min(args.Length, callable.ParameterTypes.Length); i++)
+		{
+			var parameterType = callable.ParameterTypes[i];
+			if (MatchArg(args[i], parameterType, callable.GetMode(i), MaterializationMode.Overload, false).Cost !=
+			    int.MaxValue)
+				continue;
+			
+			return CoerceToType(args[i], parameterType) is ResolvedInvalidExpressionNode;
+		}
+		
+		return false;
+	}
+	
+	private static string DescribeArgumentCount(int minimum, int? maximum) => maximum switch
+	{
+		null => minimum == 1 ? "at least one argument" : $"at least {minimum} arguments",
+		_ when maximum != minimum => $"{minimum} to {maximum} arguments",
+		_ => minimum switch
+		{
+			0 => "no arguments",
+			1 => "one argument",
+			_ => $"{minimum} arguments"
+		}
+	};
 	
 	private static string DescribeParameterCount(int count) => count switch
 	{

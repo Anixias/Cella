@@ -44,7 +44,7 @@ Error at line 53, column 44
 Error at line 57, column 2
 56 │ {
 57 │     visit(1, 2)
-         ╘═══╛ 'fun[i32]' doesn't accept these arguments
+         ╘═══╛ 'visit' takes one argument
 
 Error at line 62, column 22
 61 │ {

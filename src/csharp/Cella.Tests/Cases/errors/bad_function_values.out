@@ -9,12 +9,12 @@ Error at line 23, column 10
 Error at line 25, column 10
 24 │ var f = twice
 25 │ var d = f(1, 2)
-             ^ 'ext fun[i32 -> i32]' doesn't accept these arguments
+             ^ 'f' takes one argument
 
-Error at line 26, column 10
+Error at line 26, column 12
 25 │ var d = f(1, 2)
 26 │ var e = f(true)
-             ^ 'ext fun[i32 -> i32]' doesn't accept these arguments
+               ╘══╛ Cannot convert type 'bool' to 'i32'
 
 Error at line 28, column 10
 27 │ var n = 5
