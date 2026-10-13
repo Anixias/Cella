@@ -1,0 +1,22 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+run: fun(f: fun[i32])
+{
+	f(1)
+}
+
+main: fun -> i32
+{
+	val flag = true
+	val x = 5
+	printf("%s\n", "{flag}")
+	printf("%d\n", 340282366920938463463374607431768211456)
+	val length = "a {x}".byteLength
+	run(fun(value) { ret value })
+	ret 0
+}

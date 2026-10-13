@@ -19,7 +19,7 @@ Error at line 21, column 15
 Error at line 22, column 2
 21 │ in: op(self, extra: i32) -> Cursor = Cursor(extra)
 22 │ in: op(self)
-     ╘╛ Cannot return 'void' from 'in' operators
+     ╘╛ 'in' operators need a return type
 
 Error at line 31, column 22
 30 │ 
@@ -64,7 +64,7 @@ Error at line 48, column 23
 Error at line 49, column 2
 48 │ for: op(mut self) -> i32 = 1
 49 │ for: op(mut self)
-     ╘═╛ Cannot return 'void' from 'for' operators
+     ╘═╛ 'for' operators need a return type
 
 Error at line 58, column 2
 57 │ 

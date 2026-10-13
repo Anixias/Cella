@@ -15,7 +15,7 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool, 
 {
 	public DiagnosticList Diagnostics { get; } = new();
 	
-	private readonly Stack<TypeSymbol?> _returnTypeStack = [];
+	private readonly Stack<(TypeSymbol? Type, FunctionSymbol Function)> _returns = [];
 	private int continueDepth;
 	private int breakDepth;
 	private int overflows;
@@ -50,9 +50,9 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool, 
 		if (node.Body is not IResolvedStatementNode statement)
 			return;
 		
-		_returnTypeStack.Push(returnType);
+		_returns.Push((returnType, node.FunctionInfo.Symbol));
 		VisitNode(statement);
-		_returnTypeStack.Pop();
+		_returns.Pop();
 	}
 	
 	public void Visit(ResolvedRecordNode node)
@@ -201,12 +201,13 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool, 
 	
 	public void Visit(ResolvedReturnExpressionNode node)
 	{
-		var expected = _returnTypeStack.Peek();
+		var (expected, function) = _returns.Peek();
 		var actual = node.Value?.Type ?? NativeSymbols.Void;
 		
 		if (!AreTypesCompatible(expected, actual))
-			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Syntax.SourceLocation,
-				$"Cannot return value of type '{actual.Name}': Expected type '{expected?.Name ?? "void"}'"));
+			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Syntax.SourceLocation, node.Value is null
+				? $"{DiagnosticReporter.DescribeFunction(function, true)} must return a value"
+				: $"Cannot return value of type '{actual.Name}': Expected type '{expected?.Name ?? "void"}'"));
 		
 		if (node.Value is not { } value)
 			return;

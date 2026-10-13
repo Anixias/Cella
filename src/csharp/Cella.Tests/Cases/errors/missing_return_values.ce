@@ -1,0 +1,13 @@
+mod test
+
+apply: fun(f: fun[-> i32]) -> i32 = f()
+
+answer: fun -> i32
+{
+	ret
+}
+
+main: fun -> i32
+{
+	ret apply(fun { ret })
+}

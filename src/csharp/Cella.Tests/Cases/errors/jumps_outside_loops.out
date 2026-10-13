@@ -4,7 +4,7 @@
 Error at line 11, column 2
 10 │ {
 11 │     ret
-         ╘═╛ Cannot return value of type 'void': Expected type 'i32'
+         ╘═╛ 'answer' must return a value
 
 Error at line 17, column 31
 16 │ val r = Role.fighter

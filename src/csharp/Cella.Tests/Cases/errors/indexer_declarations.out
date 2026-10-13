@@ -29,7 +29,7 @@ Error at line 35, column 32
 Error at line 42, column 2
 41 │ 
 42 │ []: op(self, i: usize)
-     ╘╛ Cannot return 'void' from '[]' with 'self'
+     ╘╛ '[]' operators need a return type
 
 Error at line 51, column 28
 50 │ 

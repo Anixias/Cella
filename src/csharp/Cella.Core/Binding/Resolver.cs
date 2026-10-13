@@ -588,7 +588,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			{
 				{ Type: NeverType } => new ResolvedReturnExpressionNode(value, node),
 				{ Type: InvalidType } => new ResolvedInvalidExpressionNode(node),
-				_ => Error(node, $"Cannot return from '{function.Symbol.Name}'", null)
+				_ => Error(node, $"Cannot return from {DiagnosticReporter.DescribeFunction(function.Symbol)}", null)
 			};
 		}
 		
@@ -602,7 +602,8 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		if (IsInvalid(VisitDiscarded(expression)))
 			return new ResolvedInvalidExpressionNode(node);
 		
-		return Error(node, $"Cannot return a value from '{function.Symbol.Name}'", null, expression);
+		return Error(node, $"Cannot return a value from {DiagnosticReporter.DescribeFunction(function.Symbol)}", null,
+			expression);
 	}
 	
 	public IResolvedExpressionNode Visit(BreakExpressionNode node)
@@ -4144,6 +4145,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		if (target is ResolvedLiteralExpressionNode { Type: UntypedType } or ResolvedInterpolatedStringExpressionNode)
 			target = MaterializeAsDefault(target);
 		
+		if (IsInvalid(target))
+			return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
+		
 		target = Decay(target);
 		if (GetMemberOwner(target.Type, node.Member.Text) != target.Type)
 			target = ResolveDereference(TokenType.OpStar, target, node.Target);
@@ -7242,6 +7246,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			
 			case PointerType:
 			case PrimitiveType { Kind: PrimitiveTypeKind.CStr }:
+				return arg;
+			
+			case InvalidType:
 				return arg;
 			
 			default:

@@ -1904,6 +1904,7 @@ public sealed class SignatureCollector
 				(receiver.SourceLocation, "Cannot take 'self' in 'for' operators"),
 			{ Parameters: [var parameter, ..] } =>
 				(parameter.SourceLocation, $"Cannot take parameters in '{name}' operators"),
+			{ ReturnType: null } => (node.Identifier.SourceLocation, $"'{name}' operators need a return type"),
 			_ when !IsLoopOperatorResult(isStep, signature.ReturnType) =>
 				(node.ReturnType?.SourceLocation ?? node.Identifier.SourceLocation,
 					$"Cannot return '{signature.ReturnType.Name}' from '{name}' operators"),
@@ -1986,6 +1987,7 @@ public sealed class SignatureCollector
 		{ Parameters: [] } => (node.Identifier.SourceLocation, "'[]' operators need at least one parameter"),
 		_ when node.Parameters.FirstOrDefault(static p => p.Mode?.Type == TokenType.KeywordMut) is { } parameter =>
 			(parameter.SourceLocation, "Cannot take 'mut' parameters in '[]' operators"),
+		{ ReturnType: null } => (node.Identifier.SourceLocation, "'[]' operators need a return type"),
 		_ when IsIndexerResult(type, signature) => null,
 		_ => (node.ReturnType?.SourceLocation ?? node.Identifier.SourceLocation,
 			$"Cannot return '{signature.ReturnType.Name}' from '[]' with '{DescribeReceiver(signature.GetMode(0))}'")
@@ -2025,6 +2027,7 @@ public sealed class SignatureCollector
 			(receiver.SourceLocation, "Cannot take 'own self' in '*' operators"),
 		{ Parameters: [var parameter, ..] } =>
 			(parameter.SourceLocation, "Cannot take parameters in '*' operators with 'self'"),
+		{ ReturnType: null } => (node.Identifier.SourceLocation, "'*' operators need a return type"),
 		_ when signature.ReturnType is BorrowType borrow && IsPlaceResult(type, borrow, signature.GetMode(0)) => null,
 		_ => (node.ReturnType?.SourceLocation ?? node.Identifier.SourceLocation,
 			$"Cannot return '{signature.ReturnType.Name}' from '*' with '{DescribeReceiver(signature.GetMode(0))}'")

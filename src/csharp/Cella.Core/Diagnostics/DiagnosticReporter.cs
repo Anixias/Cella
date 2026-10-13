@@ -9,6 +9,11 @@ namespace Cella.Diagnostics;
 
 public static class DiagnosticReporter
 {
+	public static string DescribeFunction(FunctionSymbol function, bool startsSentence = false) =>
+		function.Syntax is LambdaDeclarationNode
+			? startsSentence ? "This lambda" : "this lambda"
+			: $"'{function.Name}'";
+	
 	public static Diagnostic ReportUnreachableCode(SourceLocation location) =>
 		new(DiagnosticSeverity.Warning, location, "Unreachable code");
 	

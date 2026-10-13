@@ -1,0 +1,9 @@
+
+====== never_lambda_end.ce ======
+
+Error at line 5, column 13
+4 │ {
+5 │     val stop = fun -> never { }
+                   ╘═╛ This lambda can reach its end
+
+[compilation failed]

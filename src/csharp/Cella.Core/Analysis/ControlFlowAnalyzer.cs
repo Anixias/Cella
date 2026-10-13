@@ -45,7 +45,7 @@ public sealed class ControlFlowAnalyzer(DiagnosticList diagnostics)
 			return true;
 		
 		diagnostics.Add(new(DiagnosticSeverity.Error, function.Info.Symbol.Definition, returnType is NeverType
-			? $"'{function.Info.Symbol.Name}' can reach its end"
+			? $"{DiagnosticReporter.DescribeFunction(function.Info.Symbol, true)} can reach its end"
 			: "Not all paths return a value"));
 		
 		return false;
