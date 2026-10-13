@@ -1,0 +1,17 @@
+mod test
+
+g: fun(a: i32) -> usize = 1
+
+sum: fun -> i32
+{
+	var x: array[i32, 2 +]
+	ret 0
+}
+
+call: fun -> i32
+{
+	var x: array[i32, g(1 2)]
+	ret 0
+}
+
+main: fun -> i32 = 0

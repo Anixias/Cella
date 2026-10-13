@@ -1,0 +1,9 @@
+mod test
+
+f: fun -> i32 ] = 1
+
+puts: ext fun(text: cstr) -> i32
+
+main: fun -> i32 = 0
+
+g: fun -> i32

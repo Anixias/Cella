@@ -1,0 +1,23 @@
+mod test
+
+P: rec { x: i32 }
+
+dot: fun(p: P) -> i32
+{
+	val a = p.
+	ret 0
+}
+
+number: fun(p: P) -> i32
+{
+	val a = p.5
+	ret 0
+}
+
+keyword: fun(p: P) -> i32
+{
+	val a = p.match
+	ret 0
+}
+
+main: fun -> i32 = 0

@@ -1,0 +1,24 @@
+
+====== nested_declarations.ce ======
+
+Error at line 6, column 9
+5 │ x: i32
+6 │ Inner: rec
+           ╘═╛ Cannot nest 'rec' declarations
+
+Error at line 15, column 2
+14 │ x: i32
+15 │ ext
+     ╘═╛ Cannot nest 'ext' blocks
+
+Error at line 24, column 9
+23 │ x: i32
+24 │ Outer: impl
+            ╘══╛ Cannot nest 'impl' declarations
+
+Error at line 30, column 8
+29 │ x: i32
+30 │ Kind: enum { a  b }
+           ╘══╛ Cannot nest 'enum' declarations
+
+[compilation failed]

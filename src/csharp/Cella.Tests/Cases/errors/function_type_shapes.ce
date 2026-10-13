@@ -1,0 +1,14 @@
+mod test
+
+a: fun(g: fun[i32 ->]) -> i32 = 0
+b: fun(g: fun[->]) -> i32 = 0
+c: fun(g: fun[i32,]) -> i32 = 0
+d: fun(g: fun[mut]) -> i32 = 0
+e: fun(g: fun[5]) -> i32 = 0
+
+R: rec
+{
+	callback: fun(i32) -> i32
+}
+
+main: fun -> i32 = 0

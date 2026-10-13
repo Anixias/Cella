@@ -194,7 +194,12 @@ public sealed class TypeParser(ImmutableArray<Token> tokens) : BaseParser<ITypeN
 			index = parserIndex;
 			return result;
 		}
-		catch
+		catch (ParseException e) when (e.Diagnostic.SourceLocation.Range.Start >
+		                               Tokens[index].SourceLocation.Range.Start)
+		{
+			throw;
+		}
+		catch (InvalidOperationException)
 		{
 			return null;
 		}

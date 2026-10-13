@@ -81,6 +81,8 @@ public sealed class FileParser
 	
 	private static readonly HashSet<string> _topLevelFormWords = ["pub", "pvt", "mod", "use", "ext"];
 	
+	private static readonly HashSet<string> _nestedKinds = ["rec", "enum", "union", "trait", "impl"];
+	
 	private bool skippedToEnd;
 	
 	private static Dictionary<string, TokenType> BuildContextualKeywords(params IEnumerable<TokenType> tokenTypes) =>
@@ -1108,15 +1110,19 @@ public sealed class FileParser
 		}
 		
 		if (!Match(ref index, out var openBraceToken, TokenType.OpOpenBrace))
-			return allowsMissingBodies
-				? new(identifier, modifiers.Tokens, receiver, parameters, returnType, null, isExternal)
+		{
+			if (allowsMissingBodies)
+				return new(identifier, modifiers.Tokens, receiver, parameters, returnType, null, isExternal)
 				{
 					Visibility = modifiers.Visibility,
 					TypeParameters = [..typeParameters],
 					When = when,
 					ExternalName = externalName
-				}
-				: null;
+				};
+			
+			ReportExpected(IsOnSameLine(index) ? index : index - 1, "'=' or '{'");
+			return null;
+		}
 		
 		if (ParseBlockStatement(ref index, openBraceToken) is not { } body)
 			return null;
@@ -1819,6 +1825,12 @@ public sealed class FileParser
 			return null;
 		}
 		
+		if (identifier.Text == "ext" && Peek(index, TokenType.OpOpenBrace))
+		{
+			Report(identifier, "Cannot nest 'ext' blocks");
+			return null;
+		}
+		
 		if (ParseTypeParameters(ref index) is not { } typeParameters)
 			return null;
 		
@@ -1829,6 +1841,12 @@ public sealed class FileParser
 		}
 		
 		var modifiers = ParseMemberModifiers(ref index, block);
+		if (_nestedKinds.Contains(Tokens[index].Text))
+		{
+			Report(Tokens[index], $"Cannot nest '{Tokens[index].Text}' declarations");
+			return null;
+		}
+		
 		if (FindMisplacedFieldModifier(index) is var (location, message))
 		{
 			Report(location, message);
@@ -2013,7 +2031,7 @@ public sealed class FileParser
 			return new(keyword, modifiers, receiver, parameters, resultType, null, false) { Visibility = visibility };
 		else
 		{
-			ReportExpected(index, "'=' or '{'");
+			ReportExpected(IsOnSameLine(index) ? index : index - 1, "'=' or '{'");
 			return null;
 		}
 		

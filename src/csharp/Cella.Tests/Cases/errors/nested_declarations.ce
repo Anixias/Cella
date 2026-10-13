@@ -1,0 +1,33 @@
+mod test
+
+A: rec
+{
+	x: i32
+	Inner: rec
+	{
+		y: i32
+	}
+}
+
+B: rec
+{
+	x: i32
+	ext
+	{
+		puts: fun(s: cstr) -> i32
+	}
+}
+
+C: rec
+{
+	x: i32
+	Outer: impl
+}
+
+D: rec
+{
+	x: i32
+	Kind: enum { a  b }
+}
+
+main: fun -> i32 = 0

@@ -1,0 +1,15 @@
+
+====== generic_argument_expressions.ce ======
+
+Error at line 7, column 23
+6 │ {
+7 │     var x: array[i32, 2 +]
+                             ^ Expected an expression
+
+Error at line 13, column 24
+12 │ {
+13 │     var x: array[i32, g(1 2)]
+                               ^ Expected ',' or ')'
+                               | To match the '(' on line 13
+
+[compilation failed]

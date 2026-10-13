@@ -788,9 +788,16 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 				if (!Match(ref index, out var member, TokenType.Identifier) &&
 				    !MatchOperatorName(ref index, out member))
 				{
-					// TODO Diagnostic
-					index = startIndex;
-					break;
+					if (IsNextNewline(startIndex))
+					{
+						index = startIndex;
+						break;
+					}
+					
+					throw IsReservedWord(index) && !IsNextNewline(index)
+						? new ParseException(new Diagnostic(DiagnosticSeverity.Error, Tokens[index].SourceLocation,
+							DescribeReservedWord(Tokens[index])))
+						: Expected(IsNextNewline(index) ? index - 1 : index, "a name after '.'");
 				}
 				
 				var (source, range) = target.SourceLocation;

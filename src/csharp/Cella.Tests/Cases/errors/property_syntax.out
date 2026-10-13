@@ -66,9 +66,9 @@ Error at line 53, column 3
 53 │     init(self) = 1
          ╘══╛ Expected 'get' or 'set'
 
-Error at line 60, column 1
+Error at line 59, column 22
+58 │ {
 59 │     value: get(self) -> i32
-60 │ }
-     ^ Expected '=' or '{'
+                             ╘═╛ Expected '=' or '{'
 
 [compilation failed]
