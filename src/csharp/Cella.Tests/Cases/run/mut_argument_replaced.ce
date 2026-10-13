@@ -1,0 +1,51 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Slots: rec
+{
+	values: array[i32, 3]
+
+	[]: op(mut self, i: usize) -> mut[i32]
+	{
+		printf("op ")
+		ret mut self.values[i]
+	}
+}
+
+pick: fun -> usize
+{
+	printf("pick ")
+	ret 1
+}
+
+compute: fun -> i32
+{
+	printf("compute ")
+	ret 5
+}
+
+reset: fun(mut slots: Slots) -> i32
+{
+	printf("reset ")
+	slots = Slots([7, 7, 7])
+	ret 9
+}
+
+add: fun(mut slot: i32, amount: i32)
+{
+	slot += amount
+}
+
+main: fun -> i32
+{
+	var slots = Slots([1, 2, 3])
+	add(mut slots[pick()], compute())
+	printf("= %d | call with a mut argument\n", slots.values[1])
+	add(mut slots[pick()], reset(mut slots))
+	printf("= %d | right argument replaces the container\n", slots.values[1])
+	ret 0
+}

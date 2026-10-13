@@ -1,0 +1,3 @@
+pick compute op = 7 | call with a mut argument
+pick reset op = 16 | right argument replaces the container
+[exit code 0]

@@ -1,0 +1,12 @@
+pick second mutgrid[] mutrow[] = 6 | read through []
+pick second compute mutgrid[] mutrow[] | mut argument
+pick compute mutgrid[] bump | mut self method
+compute pick second compute mutgrid[] mutrow[] | nested call
+pick compute bag[] show2 | lent argument
+reset drop2 drop1 bag[] show8 | lent argument, container replaced
+pick make bag[] pair83 drop3 | lent temporary
+compute make show4 drop4 | lent temporary in order
+pick compute | pointer argument
+pick second = 0 | nested arrays
+drop8 drop7 
+[exit code 0]

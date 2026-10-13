@@ -16,5 +16,4 @@ public sealed class ResolvedFunctionCallExpressionNode
 	public TypeSymbol Type { get; } = function.Signature.ReturnType;
 	public IExpressionNode Syntax { get; } = syntax;
 	public bool IsConversion { get; init; }
-	public bool IsAssignment { get; init; }
 }
