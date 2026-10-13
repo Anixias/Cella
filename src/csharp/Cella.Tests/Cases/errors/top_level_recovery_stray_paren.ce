@@ -1,0 +1,11 @@
+mod test
+
+f: fun -> i32 = 1)
+
+g: fun -> i32
+{
+	var : i32 = 1
+	ret 0
+}
+
+main: fun -> i32 = 0

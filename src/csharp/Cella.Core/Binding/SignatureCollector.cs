@@ -1105,6 +1105,17 @@ public sealed class SignatureCollector
 				
 				case 0 when requirement.Syntax is FunctionNode { Body: not null }:
 					conformance.Witnesses[requirement] = new FunctionWitness(requirement, info);
+					foreach (var candidate in candidates.Where(candidate =>
+						         conformance.Impl is { } impl &&
+						         impl.Functions.Any(method => method.Function == candidate.Function) ||
+						         SignaturesMatch(candidate.Signature, info.Signature, requirement, candidate.Function,
+							         traitMap, true, true)))
+					{
+						_witnessMembers.Add(candidate.Function);
+						ReportConformance(GetFunctionLocation(candidate.Function),
+							$"'{name}' doesn't match '{trait}.{name}'");
+					}
+					
 					break;
 				
 				case 0 when FindNativeWitness(requirement, info.Signature, traitMap, self) is { } native:
@@ -1284,7 +1295,7 @@ public sealed class SignatureCollector
 	
 	private bool SignaturesMatch(FunctionSignature candidate, FunctionSignature requirement,
 		FunctionSymbol requirementSymbol, FunctionSymbol candidateSymbol,
-		Dictionary<TypeParameterSymbol, TypeSymbol> traitMap, bool allowsStandIns = false)
+		Dictionary<TypeParameterSymbol, TypeSymbol> traitMap, bool allowsStandIns = false, bool ignoresReturn = false)
 	{
 		var declared = requirementSymbol.DeclaredTypeParameters;
 		var own = candidateSymbol.DeclaredTypeParameters;
@@ -1308,7 +1319,7 @@ public sealed class SignatureCollector
 		var expected = _typePool.SubstituteSignature(requirement, map);
 		return expected.IsVariadic == candidate.IsVariadic &&
 		       expected.HasVariadicParameter == candidate.HasVariadicParameter &&
-		       (expected.ReturnType == candidate.ReturnType ||
+		       (ignoresReturn || expected.ReturnType == candidate.ReturnType ||
 		        allowsStandIns && FunctionType.CanAdapt(candidate.ReturnType, expected.ReturnType)) &&
 		       _typePool.ParametersMatchOrCopy(candidate, expected, allowsStandIns);
 	}

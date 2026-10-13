@@ -246,6 +246,7 @@ public sealed class ConstantEvaluator
 			new FloatConstant(node.Type, double.Parse(text, CultureInfo.InvariantCulture)),
 		PrimitiveType { Kind: PrimitiveTypeKind.Bool } when node.Value is bool value => BoolConstant.From(value),
 		PointerType or UntypedNullType => new NullConstant(node.Type),
+		PrimitiveType { Kind: PrimitiveTypeKind.CStr } when node.Value is null => new NullConstant(node.Type),
 		StringType or UntypedStringType when node.Value is { } value => new StringConstant(node.Type, value),
 		InvalidType => InvalidConstant.Instance,
 		_ => null

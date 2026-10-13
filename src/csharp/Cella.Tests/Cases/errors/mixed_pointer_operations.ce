@@ -1,0 +1,23 @@
+mod test
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+main: fun -> i32
+{
+	var values: array[i64, 3]
+	var small: array[i32, 3]
+	val q = @values[2]
+	val p = @small[0]
+	val r = @values[0]
+	val raw = ptr(p)
+	val a = q - p
+	val b = q == p
+	val c = q < p
+	val d = q - r
+	val e = raw == p
+	val f = p == raw
+	printf("%lld %d %d\n", d, i32(e), i32(f))
+	ret 0
+}

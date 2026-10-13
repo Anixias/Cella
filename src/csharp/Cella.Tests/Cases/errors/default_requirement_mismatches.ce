@@ -1,0 +1,13 @@
+mod test
+Hash: trait
+{
+	hash: fun(imm self) -> u64
+	twice: fun(imm self) -> u64 = self.hash() * 2
+}
+Point: rec impl Hash
+{
+	x: i32
+	hash: fun(imm self) -> u64 = u64(self.x)
+	twice: fun(imm self) -> u32 = 7
+}
+main: fun -> i32 = 0

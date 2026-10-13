@@ -1,0 +1,19 @@
+
+====== mixed_pointer_operations.ce ======
+
+Error at line 15, column 10
+14 │ val raw = ptr(p)
+15 │ val a = q - p
+             ╘═══╛ No operation defined for '-' between 'ptr[i64]' and 'ptr[i32]'
+
+Error at line 16, column 10
+15 │ val a = q - p
+16 │ val b = q == p
+             ╘════╛ No operation defined for '==' between 'ptr[i64]' and 'ptr[i32]'
+
+Error at line 17, column 10
+16 │ val b = q == p
+17 │ val c = q < p
+             ╘═══╛ No operation defined for '<' between 'ptr[i64]' and 'ptr[i32]'
+
+[compilation failed]

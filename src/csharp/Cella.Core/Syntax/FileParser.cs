@@ -54,8 +54,6 @@ public sealed class FileParser
 	private static readonly HashSet<TokenType> _undeclarableOperators =
 		[TokenType.OpBang, TokenType.OpAmpersandAmpersand, TokenType.OpBarBar, TokenType.OpDot, TokenType.OpEqual];
 	
-	private static readonly HashSet<TokenType> _topLevelSyncTypes = [TokenType.EndOfFile];
-	
 	private static readonly HashSet<TokenType> _topLevelKeywords =
 		[TokenType.KeywordMod, TokenType.KeywordUse, TokenType.KeywordExt, TokenType.KeywordPvt];
 	
@@ -189,9 +187,9 @@ public sealed class FileParser
 				continue;
 			}
 			
-			// Unexpected token, cannot resync
 			ReportUnexpected(Tokens[index]);
-			return null;
+			index++;
+			ResyncTopLevel(ref index);
 		}
 		
 		if (moduleName == default)
@@ -275,10 +273,10 @@ public sealed class FileParser
 			return true;
 		}
 		
-		var colonIndex = index;
-		if (!Consume(ref index, _topLevelSyncTypes, TokenType.OpColon))
+		if (!Match(ref index, TokenType.OpColon))
 		{
-			Report(Tokens[colonIndex], "Expected ':' after identifier");
+			Report(IsOnSameLine(index) ? Tokens[index] : identifier, "Expected ':' after identifier");
+			ResyncTopLevel(ref index, insideBlock);
 			return true;
 		}
 		
@@ -591,8 +589,8 @@ public sealed class FileParser
 				continue;
 			
 			ReportUnexpected(Tokens[index]);
-			SkipToEnd(ref index);
-			return false;
+			index++;
+			ResyncTopLevel(ref index, true);
 		}
 		
 		return true;

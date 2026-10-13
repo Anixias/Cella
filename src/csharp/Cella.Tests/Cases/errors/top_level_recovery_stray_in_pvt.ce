@@ -1,0 +1,10 @@
+mod test
+
+pvt
+{
+	a: fun -> i32 = 1
+	+
+	b: fun -> i32 = (
+}
+
+main: fun -> i32 = 0

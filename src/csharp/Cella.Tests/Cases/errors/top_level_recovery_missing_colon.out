@@ -1,0 +1,14 @@
+
+====== top_level_recovery_missing_colon.ce ======
+
+Error at line 3, column 8
+2 │ 
+3 │ helper fun -> i32 = 1
+           ╘═╛ Expected ':' after identifier
+
+Error at line 7, column 6
+6 │ {
+7 │     var : i32 = 1
+            ^ Expected a name after 'var'
+
+[compilation failed]

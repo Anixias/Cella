@@ -1,0 +1,14 @@
+
+====== top_level_recovery_name_alone.ce ======
+
+Error at line 3, column 1
+2 │ 
+3 │ helper
+    ╘════╛ Expected ':' after identifier
+
+Error at line 7, column 6
+6 │ {
+7 │     var : i32 = 1
+            ^ Expected a name after 'var'
+
+[compilation failed]

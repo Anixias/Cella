@@ -1,0 +1,15 @@
+
+====== top_level_recovery_colon_in_pvt.ce ======
+
+Error at line 5, column 9
+4 │ {
+5 │     helper fun -> i32 = 1
+               ╘═╛ Expected ':' after identifier
+
+Error at line 10, column 5
+ 9 │ 
+10 │ main: fun -> i32 = 0
+         ^ Expected ')'
+         | To match the '(' on line 8
+
+[compilation failed]

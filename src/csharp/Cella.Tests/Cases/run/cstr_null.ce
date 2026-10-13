@@ -1,0 +1,22 @@
+mod test
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+H: rec
+{
+	c: cstr
+}
+pick: fun(c: cstr = null) -> i32 = i32(c == null)
+main: fun -> i32
+{
+	val a: cstr = null
+	var b: cstr = "x"
+	val before = i32(b == null)
+	b = null
+	var h = H("y")
+	h.c = null
+	printf("%d %d %d %d %d %d\n", i32(a == null), before, i32(b == null), i32(h.c == null), pick(), pick("z"))
+	ret 0
+}

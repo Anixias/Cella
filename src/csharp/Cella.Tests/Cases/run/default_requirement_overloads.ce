@@ -1,0 +1,23 @@
+mod test
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Hash: trait
+{
+	hash: fun(imm self) -> u64
+	twice: fun(imm self) -> u64 = self.hash() * 2
+}
+Point: rec impl Hash
+{
+	x: i32
+	hash: fun(imm self) -> u64 = u64(self.x)
+	twice: fun(imm self, n: u64) -> u64 = n
+}
+main: fun -> i32
+{
+	val p = Point(3)
+	printf("%llu %llu\n", p.twice(), p.twice(5))
+	ret 0
+}

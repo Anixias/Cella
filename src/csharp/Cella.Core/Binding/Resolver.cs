@@ -5771,6 +5771,12 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 				candidates = [..candidates.Where(candidate => candidate.ParameterTypes.All(type => type == mixedType))];
 			}
 			
+			if (left.Type is PointerType { BaseType: var leftBase } &&
+			    right.Type is PointerType { BaseType: var rightBase } &&
+			    leftBase != rightBase && leftBase != NativeSymbols.Void && rightBase != NativeSymbols.Void)
+				return Error(node, DiagnosticReporter.ReportBinaryOpMismatch(_operatorRegistry, left, op, right),
+					CurrentTargetType);
+			
 			var args = new[] { left, right };
 			var resolutionSet = ResolveCallable(candidates, args, MaterializationMode.Overload);
 			if (resolutionSet.IsAmbiguous)
@@ -6667,7 +6673,8 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			UntypedIntegerType when target is IntegerType t => MaterializeInteger(literal, t),
 			UntypedIntegerType when target is FloatType t => MaterializeIntegerAsFloat(literal, t),
 			UntypedFloatType when target is FloatType t => MaterializeFloat(literal, t),
-			UntypedNullType when target is PointerType t => MaterializeNull(literal, t),
+			UntypedNullType when target is PointerType || target == NativeSymbols.CStr =>
+				MaterializeNull(literal, target),
 			UntypedStringType when target is StringType t => t == NativeSymbols.CStr
 				? MaterializeCStr(literal)
 				: MaterializeStr(literal),
@@ -6731,7 +6738,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		return significand.GetBitLength() <= significandBits && magnitude.GetBitLength() <= maxBitLength;
 	}
 	
-	private ResolvedLiteralExpressionNode MaterializeNull(ResolvedLiteralExpressionNode node, PointerType target)
+	private ResolvedLiteralExpressionNode MaterializeNull(ResolvedLiteralExpressionNode node, TypeSymbol target)
 	{
 		if (node.Type is not UntypedNullType)
 			return node;
