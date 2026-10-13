@@ -1,0 +1,208 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Effect: enum
+{
+	none
+	hit(amount: i32)
+}
+
+Token: rec
+{
+	id: i32
+
+	drop: op
+	{
+		printf("drop%d ", self.id)
+	}
+
+	+=: op(mut self, k: i32)
+	{
+		printf("+= ")
+		self.id += k
+	}
+}
+
+Bag: rec
+{
+	tokens: array[Token, 2]
+
+	[]: op(mut self, i: usize) -> mut[Token]
+	{
+		printf("bag[] ")
+		ret mut self.tokens[i]
+	}
+}
+
+Row: rec
+{
+	values: array[i32, 3]
+
+	[]: op(mut self, i: usize) -> mut[i32]
+	{
+		printf("row[] ")
+		ret mut self.values[i]
+	}
+}
+
+Grid: rec
+{
+	rows: array[Row, 2]
+
+	[]: op(mut self, i: usize) -> mut[Row]
+	{
+		printf("grid[] ")
+		ret mut self.rows[i]
+	}
+}
+
+Holder: rec
+{
+	data: ptr[i32]
+
+	*: op(mut self) -> mut[i32]
+	{
+		printf("holder* ")
+		ret mut *self.data
+	}
+}
+
+Gauge: rec
+{
+	level: i32
+
+	reading: prop i32
+	{
+		get(self)
+		{
+			printf("get ")
+			ret self.level
+		}
+
+		set(mut self, value)
+		{
+			printf("set ")
+			self.level = value
+		}
+	}
+}
+
+Gauges: rec
+{
+	items: array[Gauge, 2]
+
+	[]: op(mut self, i: usize) -> mut[Gauge]
+	{
+		printf("gauges[] ")
+		ret mut self.items[i]
+	}
+}
+
+counter: var i32 = 0
+target: var i32 = 0
+
+pick: fun -> usize
+{
+	printf("pick ")
+	ret 1
+}
+
+second: fun -> usize
+{
+	printf("second ")
+	ret 2
+}
+
+compute: fun -> i32
+{
+	printf("compute ")
+	ret 5
+}
+
+make: fun(id: i32) -> Token
+{
+	printf("make ")
+	ret Token(id)
+}
+
+effect: fun -> Effect
+{
+	printf("effect ")
+	ret Effect.hit(1)
+}
+
+bump: fun(n: i32) -> i32
+{
+	counter = 100
+	ret n
+}
+
+where: fun -> ptr[i32]
+{
+	printf("where ")
+	ret @target
+}
+
+reset: fun(mut grid: Grid) -> i32
+{
+	printf("reset ")
+	grid = Grid([Row([7, 7, 7]), Row([7, 7, 7])])
+	ret 9
+}
+
+main: fun -> i32
+{
+	var numbers = [10, 20, 30]
+	numbers[pick()] = compute()
+	printf("| index\n")
+	numbers[pick()] = match effect() { hit(n) => compute()  none => 0 }
+	printf("| index from match\n")
+	numbers[pick()] += compute()
+	printf("= %d | index +=\n", numbers[1])
+	*where() = compute()
+	printf("= %d | pointer from call\n", target)
+	counter = 1
+	counter += bump(5)
+	printf("= %d | += after the right side\n", counter)
+
+	var grid = Grid([Row([1, 2, 3]), Row([4, 5, 6])])
+	grid[pick()][second()] = compute()
+	printf("| nested []\n")
+	grid[pick()][second()] += compute()
+	printf("= %d | nested [] +=\n", grid.rows[1].values[2])
+	grid[pick()][match effect() { hit(n) => usize(n)  none => 0 }] = compute()
+	printf("| nested [] with a branching index\n")
+	printf("%d | as a value\n", grid[pick()][second()] = compute())
+	grid[0][0] = reset(mut grid)
+	printf("= %d %d | right side replaces the container\n", grid.rows[0].values[0], grid.rows[0].values[1])
+	grid[0][1] += reset(mut grid)
+	printf("= %d %d | += with the right side replacing the container\n", grid.rows[0].values[0],
+		grid.rows[0].values[1])
+
+	var number = 4
+	var holder = Holder(@number)
+	*holder = compute()
+	printf("| user *\n")
+	*holder += compute()
+	printf("= %d | user * +=\n", number)
+
+	var gauges = Gauges([Gauge(1), Gauge(2)])
+	gauges[pick()].reading = compute()
+	printf("| property\n")
+	gauges[pick()].reading += compute()
+	printf("= %d | property +=\n", gauges.items[1].level)
+
+	var bag = Bag([Token(1), Token(2)])
+	bag[pick()] += compute()
+	printf("= %d | user +=\n", bag.tokens[1].id)
+	bag[pick()] = make(9)
+	printf("| destructor\n")
+
+	var none: array[i32, 2]
+	none[pick() + 4] = compute()
+	ret 0
+}

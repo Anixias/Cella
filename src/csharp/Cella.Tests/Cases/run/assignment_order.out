@@ -1,0 +1,21 @@
+pick compute | index
+pick effect compute | index from match
+pick compute = 10 | index +=
+where compute = 5 | pointer from call
+= 105 | += after the right side
+pick second compute grid[] row[] | nested []
+pick second compute grid[] row[] = 10 | nested [] +=
+pick effect compute grid[] row[] | nested [] with a branching index
+pick second compute grid[] row[] 5 | as a value
+reset grid[] row[] = 9 7 | right side replaces the container
+reset grid[] row[] = 7 16 | += with the right side replacing the container
+compute holder* | user *
+compute holder* = 10 | user * +=
+pick compute gauges[] set | property
+pick compute gauges[] get set = 10 | property +=
+pick compute bag[] += = 7 | user +=
+pick make bag[] drop7 | destructor
+pick compute 
+[stderr]
+Panic at assignment_order.ce:206:2: index out of bounds
+[exit code -1073740791]

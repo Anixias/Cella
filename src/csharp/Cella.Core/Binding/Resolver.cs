@@ -5869,7 +5869,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		TrackFunctionUse(info, node);
 		var args = ApplyArgumentResolution([right], resolution);
 		args.Insert(0, CreateReceiver(left, info));
-		return new ResolvedFunctionCallExpressionNode(info, args, node);
+		return new ResolvedFunctionCallExpressionNode(info, args, node) { IsAssignment = true };
 	}
 	
 	private (IResolvedExpressionNode Right, OperationImpl Operation)? ResolveCompoundOperation(
@@ -5930,8 +5930,12 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		var setterInfo = GetFunctionInfo(setter, target.Owner, property.TraitArguments);
 		var valueType = setterInfo.Signature.GetDeclaredType(setterInfo.Signature.ParameterTypes.Length - 1);
 		if (node.Op.Type == TokenType.OpEqual)
-			return CallAccessor(setter, target.Owner, property.TraitArguments, target.Receiver,
+		{
+			var call = CallAccessor(setter, target.Owner, property.TraitArguments, target.Receiver,
 				[VisitNode(node.Right, valueType)], node);
+			
+			return new ResolvedFunctionCallExpressionNode(call.Function, call.Arguments, node) { IsAssignment = true };
+		}
 		
 		if (property.Getter is not FunctionAccessor { Function: var getter })
 			return RejectAssignment(node, new(DiagnosticSeverity.Error, member, "Cannot read write-only properties"));

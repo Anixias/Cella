@@ -5,6 +5,7 @@ using Cella.Core.Binding.Conversions;
 using Cella.Core.Binding.Nodes;
 using Cella.Core.Binding.Operations;
 using Cella.Core.Symbols;
+using Cella.Core.Syntax.Nodes;
 using Cella.Core.Text;
 using static Cella.Core.Binding.Operations.OperationMapping;
 
@@ -105,6 +106,7 @@ public sealed class Lowerer
 		private readonly Dictionary<int, List<VariableInfo>> _scopeDrops = [];
 		private readonly HashSet<LocalVariableSymbol> _temporaries = [];
 		private readonly HashSet<IResolvedExpressionNode> _returnedValues = [];
+		private readonly HashSet<IResolvedExpressionNode> _accessPath = [];
 		private BasicBlock? currentBlock;
 		private ulong nextLoopId;
 		private ulong nextTempId;
@@ -1028,7 +1030,21 @@ public sealed class Lowerer
 		public Value Visit(ResolvedFunctionCallExpressionNode node) => Diverge(new CallValue(node.Function,
 			node.IsConversion
 				? LowerOperands(node.Arguments, GetArgumentPassing(node.Function, 0))
-				: LowerArguments(node.Arguments, node.Function, 0), node.Syntax.SourceLocation));
+				: node.IsAssignment && node.Function.Symbol.Kind == FunctionKind.Method
+					? LowerAssignmentArguments(node.Arguments, node.Function)
+					: _accessPath.Contains(node)
+						? LowerOperands(node.Arguments, GetArgumentPassing(node.Function, 0), true, true)
+						: LowerArguments(node.Arguments, node.Function, 0), node.Syntax.SourceLocation));
+		
+		private List<Value> LowerAssignmentArguments(IReadOnlyList<IResolvedExpressionNode> arguments,
+			FunctionInfo function)
+		{
+			var passing = GetArgumentPassing(function, 0);
+			MarkAccessPath(arguments[0]);
+			var receiver = StabilizeArgument(LowerOperands([arguments[0]], passing, true)[0], passing(0));
+			var values = LowerOperands([..arguments.Skip(1)], i => passing(i + 1));
+			return [receiver, ..values.Select((value, i) => CaptureArgument(value, passing(i + 1)))];
+		}
 		
 		private Value Diverge(Value call)
 		{
@@ -1102,9 +1118,9 @@ public sealed class Lowerer
 		{
 			var target = MaterializeTemporary(VisitNode(node.Target));
 			if (MayEmit(node.Index))
-				target = node.Target.Type is ArrayType
-					? StabilizeStorageBase(target)
-					: CaptureAsAtomic(target, "target");
+				target = node.Target.Type is not ArrayType ? CaptureAsAtomic(target, "target")
+					: _accessPath.Contains(node) ? StabilizeOperandsBase(target)
+					: StabilizeStorageBase(target);
 			
 			return new IndexerValue(node.Type, target, VisitNode(node.Index), node.Syntax.SourceLocation);
 		}
@@ -1287,7 +1303,7 @@ public sealed class Lowerer
 		}
 		
 		private List<Value> LowerOperands(IReadOnlyList<IResolvedExpressionNode> operands,
-			Func<int, Passing>? passing = null, bool hasReceiver = false)
+			Func<int, Passing>? passing = null, bool hasReceiver = false, bool defersAccess = false)
 		{
 			var values = new List<Value>(operands.Count);
 			var passings = new List<Passing>(operands.Count);
@@ -1298,6 +1314,12 @@ public sealed class Lowerer
 				{
 					for (var j = 0; j < values.Count; j++)
 					{
+						if (defersAccess)
+						{
+							values[j] = StabilizeArgument(values[j], passings[j]);
+							continue;
+						}
+						
 						var captured = CaptureAsAtomic(values[j], "operand");
 						values[j] = passings[j] == Passing.Consume ? Consume(captured) : captured;
 					}
@@ -1406,13 +1428,22 @@ public sealed class Lowerer
 		public Value Visit(ResolvedPropertyAssignmentExpressionNode node)
 		{
 			var location = node.Syntax.SourceLocation;
+			if (node.Receiver is not null)
+				MarkAccessPath(node.Receiver);
+			
 			var receiver = node.Receiver is null ? null : LowerReceiver(node.Receiver);
-			Value current = new CallValue(node.Getter, PassReceiver(node.Getter, receiver), location);
 			if (node.Compound is { } compound)
 			{
 				var valueIndex = node.Setter.DeclaredSignature.ParameterTypes.Length - 1;
-				var place = StoreTemporary(current, "current");
-				var args = LowerArguments([node.Right], compound, 1);
+				var passing = GetArgumentPassing(compound, 1);
+				var args = LowerArguments([node.Right], compound, 1)
+					.Select((value, i) => CaptureArgument(value, passing(i)))
+					.ToList();
+				
+				receiver = receiver is null ? null : StabilizeStorage(receiver);
+				var place = StoreTemporary(new CallValue(node.Getter, PassReceiver(node.Getter, receiver), location),
+					"current");
+				
 				args.Insert(0, new UnaryOpValue(_typePool.GetPointerType(place.Type), place, UnaryOperation.AddressOf,
 					location));
 				
@@ -1422,17 +1453,17 @@ public sealed class Lowerer
 					location);
 			}
 			
-			if (MayEmit(node.Right))
-				current = CaptureAsAtomic(current, "current");
-			
-			var value = LowerBinOp(current, node.Operation!, Consume(VisitNode(node.Right)), location);
+			var right = CaptureAsAtomic(Consume(VisitNode(node.Right)), "operand");
+			receiver = receiver is null ? null : StabilizeStorage(receiver);
+			var current = new CallValue(node.Getter, PassReceiver(node.Getter, receiver), location);
+			var value = LowerBinOp(current, node.Operation!, right, location);
 			return new CallValue(node.Setter, [..PassReceiver(node.Setter, receiver), value], location);
 		}
 		
 		private Value LowerReceiver(IResolvedExpressionNode node)
 		{
 			var value = VisitPlace(node);
-			return IsPlaceValue(value) ? StabilizeStorage(value) : StoreTemporary(value, "receiver");
+			return IsPlaceValue(value) ? StabilizeOperands(value) : StoreTemporary(value, "receiver");
 		}
 		
 		private List<Value> PassReceiver(FunctionInfo accessor, Value? receiver)
@@ -1452,28 +1483,56 @@ public sealed class Lowerer
 			];
 		}
 		
+		private void MarkAccessPath(IResolvedExpressionNode place)
+		{
+			switch (place)
+			{
+				case ResolvedMutArgumentExpressionNode argument:
+					MarkAccessPath(argument.Place);
+					break;
+				
+				case ResolvedUnaryOpExpressionNode
+				{
+					Operation: NativeImpl { Op: TokenType.OpStar },
+					Operand: ResolvedFunctionCallExpressionNode { Arguments: [var receiver, ..] } call
+				} when IsPlaceOperator(call.Function):
+					_accessPath.Add(call);
+					MarkAccessPath(receiver);
+					break;
+				
+				case ResolvedIndexerExpressionNode indexer:
+					_accessPath.Add(indexer);
+					MarkAccessPath(indexer.Target);
+					break;
+				
+				case ResolvedAccessExpressionNode access:
+					MarkAccessPath(access.Target);
+					break;
+			}
+		}
+		
 		private Value LowerAssignment(ResolvedAssignmentExpressionNode node, bool isValue)
 		{
-			var left = VisitPlace(node.Left);
+			MarkAccessPath(node.Left);
+			var left = StabilizeOperands(VisitPlace(node.Left));
 			var dropsOld = !node.IsOwnStore && _typePool.NeedsDrop(node.Type);
-			
-			// Need to stabilize the left side first so it doesn't double-evaluate
-			var emits = MayEmit(node.Right);
-			if (isValue || node.Operation is not null || emits || dropsOld)
-				left = StabilizeStorage(left);
-			
-			var current = node.Operation is not null && emits ? CaptureAsAtomic(left, "current") : left;
 			var right = Consume(VisitNode(node.Right), NamesPlace(node.Right));
-			var value = node.Operation is null
-				? right
-				: LowerBinOp(current, node.Operation, right, node.Syntax.SourceLocation);
-			
 			if (currentBlock is null)
 				return left;
 			
+			if (node.Operation is not null || dropsOld || isValue && AccessesThroughOperator(left))
+			{
+				right = CaptureAsAtomic(right, "assigned");
+				left = StabilizeStorage(left);
+			}
+			
+			var value = node.Operation is null
+				? right
+				: LowerBinOp(left, node.Operation, right, node.Syntax.SourceLocation);
+			
 			if (dropsOld)
 			{
-				value = Consume(CaptureAsAtomic(value, "assigned"));
+				value = Consume(value);
 				currentBlock.Instructions.Add(new DropInstruction(left, node.Op.SourceLocation, isReassignment: true));
 			}
 			
@@ -1701,6 +1760,60 @@ public sealed class Lowerer
 			VariableValue or GlobalValue => value,
 			IndexerValue or AccessValue or UnaryOpValue { Op: UnaryOperation.Dereference } => StabilizeStorage(value),
 			_ => CaptureAsAtomic(value, "target")
+		};
+		
+		private Value StabilizeOperands(Value value) => value switch
+		{
+			IndexerValue v => new IndexerValue(v.Type, StabilizeOperandsBase(v.Target),
+				CaptureAsAtomic(v.Index, "index"), v.SourceLocation),
+			AccessValue v => new AccessValue(v.Type, StabilizeOperandsBase(v.Target), v.Member, v.SourceLocation),
+			UnaryOpValue { Op: UnaryOperation.Dereference, Operand: CallValue call } v when IsPlaceOperator(
+					call.Function) =>
+				new UnaryOpValue(v.Type, StabilizeOperatorCall(call), UnaryOperation.Dereference, v.SourceLocation),
+			_ => StabilizeStorage(value)
+		};
+		
+		private Value StabilizeOperandsBase(Value value) => value switch
+		{
+			VariableValue or GlobalValue => value,
+			IndexerValue or AccessValue or UnaryOpValue { Op: UnaryOperation.Dereference } => StabilizeOperands(value),
+			_ => CaptureAsAtomic(value, "target")
+		};
+		
+		private CallValue StabilizeOperatorCall(CallValue call)
+		{
+			var passing = GetArgumentPassing(call.Function, 0);
+			return new CallValue(call.Function,
+				call.Arguments.Select((argument, i) => StabilizeArgument(argument, passing(i))), call.SourceLocation);
+		}
+		
+		private Value StabilizeArgument(Value argument, Passing passing) => argument is UnaryOpValue
+		{
+			Op: UnaryOperation.AddressOf
+		} address
+			? new UnaryOpValue(address.Type, StabilizeOperandsBase(address.Operand), UnaryOperation.AddressOf,
+				address.SourceLocation)
+			: CaptureArgument(argument, passing);
+		
+		private Value CaptureArgument(Value argument, Passing passing)
+		{
+			if (argument is UnaryOpValue { Op: UnaryOperation.AddressOf } address)
+				return new UnaryOpValue(address.Type, StabilizeStorageBase(address.Operand), UnaryOperation.AddressOf,
+					address.SourceLocation);
+			
+			var captured = CaptureAsAtomic(argument, "operand");
+			return passing == Passing.Consume ? Consume(captured) : captured;
+		}
+		
+		private static bool IsPlaceOperator(FunctionInfo function) =>
+			function.Symbol is { Kind: FunctionKind.Method, Syntax: FunctionNode { Identifier.Text: "[]" or "*" } };
+		
+		private static bool AccessesThroughOperator(Value place) => place switch
+		{
+			UnaryOpValue { Op: UnaryOperation.Dereference, Operand: CallValue call } => IsPlaceOperator(call.Function),
+			IndexerValue v => AccessesThroughOperator(v.Target),
+			AccessValue v => AccessesThroughOperator(v.Target),
+			_ => false
 		};
 		
 		private Value CaptureAsAtomic(Value value, string hint) =>
