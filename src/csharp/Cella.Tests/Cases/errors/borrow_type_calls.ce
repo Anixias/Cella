@@ -1,0 +1,9 @@
+mod test
+
+main: fun -> i32
+{
+	val a = imm[i32](5)
+	val b = mut [i32](5)
+	val c = imm[array[i32, 2]]([1, 2])
+	ret i32(sizeOf(imm[i32]))
+}

@@ -411,6 +411,10 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 		return node;
 	}
 	
+	private bool StartsBorrowType(int index) =>
+		(Peek(index, TokenType.KeywordImm) || Peek(index, TokenType.KeywordMut)) &&
+		Peek(index + 1, TokenType.OpOpenBracket);
+	
 	private IExpressionNode ParseUnary(ref int index)
 	{
 		if (Match(ref index, out var ownKeyword, TokenType.KeywordOwn))
@@ -421,7 +425,7 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 		if (Match(ref index, out var atomicKeyword, TokenType.KeywordAtomic))
 			return ParseAtomic(ref index, atomicKeyword);
 		
-		if (Match(ref index, out var borrowKeyword, _borrowKeywords))
+		if (!StartsBorrowType(index) && Match(ref index, out var borrowKeyword, _borrowKeywords))
 			return new BorrowExpressionNode(borrowKeyword, ParseUnary(ref index));
 		
 		if (!Match(ref index, out var op, _unaryPrefixOps))
@@ -516,7 +520,7 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 		}
 		else if (!Peek(index + 1, TokenType.OpOpenBracket) && Match(ref index, out var lambda, TokenType.KeywordFun))
 			return ParseLambda(ref index, lambda);
-		else if (StartsFunctionType(index) || Peek(index, TokenType.KeywordDyn))
+		else if (StartsFunctionType(index) || StartsBorrowType(index) || Peek(index, TokenType.KeywordDyn))
 			node = new TypeExpressionNode(ParseType(ref index));
 		else if (Match(ref index, out var identifier, TokenType.Identifier))
 			node = new VarExpressionNode(identifier);
@@ -844,7 +848,7 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 	
 	private IExpressionNode ParseArgument(ref int index)
 	{
-		if (Match(ref index, out var keyword, TokenType.KeywordMut))
+		if (!StartsBorrowType(index) && Match(ref index, out var keyword, TokenType.KeywordMut))
 			return new BorrowExpressionNode(keyword, ParseExpression(ref index));
 		
 		return Match(ref index, out var ellipsis, TokenType.OpDotDotDot)

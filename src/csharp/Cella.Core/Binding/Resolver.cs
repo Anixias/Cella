@@ -1208,6 +1208,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		if (targetType is DynType dyn)
 			return VisitDynConversion(node, dyn);
 		
+		if (targetType is BorrowType)
+			return Error(node, "Cannot construct borrow types", targetType, node.Target);
+		
 		if (targetType is FStrType && node.Arguments is [var text])
 			return VisitNode(text, targetType);
 		
