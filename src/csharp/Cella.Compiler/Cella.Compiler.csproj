@@ -10,12 +10,15 @@
   </PropertyGroup>
   
   <PropertyGroup>
-    <CellaToolchainDirectory Condition="'$(CellaToolchainDirectory)' == ''">C:\cella\</CellaToolchainDirectory>
     <CreateHardLinksForAdditionalFilesIfPossible>true</CreateHardLinksForAdditionalFilesIfPossible>
   </PropertyGroup>
 
-  <ItemGroup Condition="Exists('$(CellaToolchainDirectory)')">
-    <None Include="$(CellaToolchainDirectory)**\*" Link="%(RecursiveDir)%(Filename)%(Extension)"
+  <PropertyGroup Condition="'$(CellaToolchainDirectory)' != ''">
+    <CellaToolchainFolder>$([MSBuild]::EnsureTrailingSlash('$(CellaToolchainDirectory)'))</CellaToolchainFolder>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(CellaToolchainFolder)' != '' and Exists('$(CellaToolchainFolder)')">
+    <None Include="$(CellaToolchainFolder)**\*" Link="%(RecursiveDir)%(Filename)%(Extension)"
           CopyToOutputDirectory="PreserveNewest" Visible="false"/>
   </ItemGroup>
 
