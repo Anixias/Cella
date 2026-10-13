@@ -129,6 +129,7 @@ public sealed class FileParser
 		var moduleNameAllowed = true;
 		var hasModuleKeyword = false;
 		var moduleNames = new List<SourceLocation>();
+		var conditions = new List<Token>();
 		var importsAllowed = false;
 		var conditionAllowed = false;
 		var isIncluded = true;
@@ -171,7 +172,15 @@ public sealed class FileParser
 			{
 				if (Match(ref index, TokenType.KeywordWhen))
 				{
-					if (!conditionAllowed)
+					conditions.Add(useToken);
+					if (conditions.Count > 1)
+					{
+						if (conditions.Count == 2)
+							Report(conditions[0], "Cannot declare more than one 'use when'");
+						
+						Report(useToken, "Cannot declare more than one 'use when'");
+					}
+					else if (!conditionAllowed)
 						Report(useToken, "'use when' must directly follow the module name");
 					
 					if (ParseCondition(ref index) is { } condition)
@@ -924,12 +933,27 @@ public sealed class FileParser
 				continue;
 			}
 			
+			if (MatchVisibilityBlock(ref index, _topLevelContextualKeywords, out var visibility, out var inner))
+			{
+				Report(visibility, $"Cannot use '{visibility.Text}' in 'ext' blocks");
+				if (!ParseExternalBody(ref index, inner, origin, block, nodes))
+					return false;
+				
+				continue;
+			}
+			
+			var start = index;
+			var errorCount = Diagnostics.ErrorCount;
 			if (ParseExternalDeclaration(ref index, origin, block) is not { } ext)
 			{
-				// TODO Diagnostics
-				SkipUntil(ref index, TokenType.OpCloseBrace);
-				SkipIf(ref index, TokenType.OpCloseBrace);
-				return false;
+				if (Diagnostics.ErrorCount == errorCount)
+					Report(Tokens[start], "Invalid external declaration");
+				
+				if (index == start)
+					index++;
+				
+				ResyncTopLevel(ref index, true);
+				continue;
 			}
 			
 			nodes.Add(ext);
@@ -1037,6 +1061,12 @@ public sealed class FileParser
 			}
 			
 			names.Add(name);
+		}
+		
+		if (names.Count == 0)
+		{
+			ReportExpected(index - 1, "a name", openBracket);
+			return null;
 		}
 		
 		return new ListImport(names.ToImmutableArray());
@@ -1215,6 +1245,7 @@ public sealed class FileParser
 			return null;
 		
 		RejectWhen(ref index, "'ext' functions");
+		RejectExternalBody(ref index);
 		var (_, parameters, returnType, isVariadic) = signature;
 		return new ExternalFunctionNode(identifier, modifiers.Tokens, parameters, returnType, isVariadic, origin)
 		{
@@ -1234,23 +1265,31 @@ public sealed class FileParser
 		var parameters = new List<ParameterNode>();
 		
 		// Parentheses are optional for function declarations
-		if (Match(ref index, TokenType.OpOpenParen))
+		if (Match(ref index, out var openParen, TokenType.OpOpenParen))
 		{
 			receiver = allowReceiver ? ParseReceiver(ref index) : null;
 			if (Match(ref index, TokenType.OpCloseParen))
 				return parameters;
 			
 			if (receiver is not null && !Match(ref index, TokenType.OpComma))
+			{
+				if (Peek(index, TokenType.OpColon))
+					Report(Tokens[index], "Cannot declare a type for 'self'");
+				else
+					ReportExpected(index, "',' or ')'", openParen);
+				
 				return null;
+			}
 			
 			if (ParseParameterList(ref index, allowVariadic, out isVariadic) is not { } parameterList)
 				return null;
 			
 			parameters.AddRange(parameterList);
-			
-			// TODO Diagnostics
 			if (!Match(ref index, TokenType.OpCloseParen))
+			{
+				ReportExpected(index, "',' or ')'", openParen);
 				return null;
+			}
 		}
 		else if (!optionalParentheses)
 			return null; // TODO Diagnostics
@@ -1312,6 +1351,9 @@ public sealed class FileParser
 		// TODO Diagnostics
 		
 		Token? mode = Match(ref index, out var keyword, _parameterModes) ? keyword : null;
+		while (mode is not null && Match(ref index, out var extra, _parameterModes))
+			Report(extra, $"Cannot combine '{mode.Value.Text}' and '{extra.Text}'");
+		
 		Token? ellipsis = Match(ref index, out var dots, TokenType.OpDotDotDot) ? dots : null;
 		
 		// TODO Attempt resync 
@@ -1319,13 +1361,20 @@ public sealed class FileParser
 		{
 			if (IsReservedWord(index))
 				Report(Tokens[index], DescribeReservedWord(Tokens[index]));
+			else if (mode is { } named && ellipsis is null && Peek(index, TokenType.OpColon))
+				Report(named, DescribeReservedWord(named));
+			else
+				ReportExpected(index, "a parameter name");
 			
 			return null;
 		}
 		
 		// TODO Potentially make type optional, inferred from default or make auto-generic?
 		if (!Match(ref index, TokenType.OpColon))
+		{
+			ReportExpected(index, "':' and a type");
 			return null;
+		}
 		
 		// TODO Type should be more complex than a simple identifier token
 		var type = ParseType(ref index);
@@ -1398,12 +1447,23 @@ public sealed class FileParser
 			traits.Add(ParseType(ref index));
 		} while (Match(ref index, TokenType.OpPlus));
 		
-		return true;
+		if (!IsOnSameLine(index) || !Peek(index, TokenType.OpComma) && !Peek(index, TokenType.Identifier))
+			return true;
+		
+		ReportExpected(index, "'+'");
+		return false;
 	}
 	
 	private TraitNode? ParseTrait(ref int index, Token identifier, DeclarationModifiers modifiers,
 		List<TypeParameterNode> typeParameters)
 	{
+		var implIndex = index;
+		if (IsOnSameLine(index) && Match(ref implIndex, out var implKeyword, _traitListKeywords, TokenType.KeywordImpl))
+		{
+			Report(implKeyword, "Expected 'req' or '{'");
+			return null;
+		}
+		
 		if (ParseTraitList(ref index, TokenType.KeywordReq) is not { } requiredTraits)
 			return null;
 		
@@ -1714,6 +1774,9 @@ public sealed class FileParser
 				return false;
 			}
 			
+			if (Tokens[index].Text == "req" && StartsMemberType(index + 1))
+				Report(Tokens[index++], "Cannot declare required fields in enums");
+			
 			payload.Add(new FieldNode(fieldName, ParseType(ref index), []));
 		} while (Match(ref index, TokenType.OpComma));
 		
@@ -1766,6 +1829,12 @@ public sealed class FileParser
 		}
 		
 		var modifiers = ParseMemberModifiers(ref index, block);
+		if (FindMisplacedFieldModifier(index) is var (location, message))
+		{
+			Report(location, message);
+			return null;
+		}
+		
 		if (IsFunctionMember(index))
 		{
 			RejectWriteRestriction(modifiers, "functions");
@@ -2001,6 +2070,29 @@ public sealed class FileParser
 		return null;
 	}
 	
+	private (SourceLocation Location, string Message)? FindMisplacedFieldModifier(int index)
+	{
+		if (AtEnd(index + 1) || !IsOnSameLine(index + 1))
+			return null;
+		
+		var token = Tokens[index];
+		var next = Tokens[index + 1];
+		if (token.Text == "set" && StartsMemberType(index + 1))
+			return (token.SourceLocation, "Expected 'pvt' or 'mod' before 'set'");
+		
+		if (token.Text != "req")
+			return null;
+		
+		return next.Text switch
+		{
+			"pvt" or "mod" or "pub" => (next.SourceLocation, $"Cannot use '{next.Text}' after 'req'"),
+			"req" => (next.SourceLocation, "Cannot repeat 'req'"),
+			"val" or "var" => (token.SourceLocation, "Cannot declare required static fields"),
+			"get" or "set" or "prop" => (token.SourceLocation, "Cannot declare required properties"),
+			_ => null
+		};
+	}
+	
 	private List<Token> ParseFieldModifiers(ref int index)
 	{
 		var modifiers = new List<Token>();
@@ -2076,6 +2168,47 @@ public sealed class FileParser
 		{
 			Visibility = modifiers.Visibility
 		};
+	}
+	
+	private int? FindClosingBracket(int index)
+	{
+		var depth = 0;
+		for (var i = index; i < Tokens.Length && !AtEnd(i); i++)
+		{
+			if (Peek(i, TokenType.OpOpenBracket))
+				depth++;
+			else if (Peek(i, TokenType.OpCloseBracket) && --depth == 0)
+				return i;
+		}
+		
+		return null;
+	}
+	
+	private void RejectExternalBody(ref int index)
+	{
+		if (!IsOnSameLine(index) || !Peek(index, TokenType.OpEqual) && !Peek(index, TokenType.OpOpenBrace))
+			return;
+		
+		Report(Tokens[index], "Cannot declare bodies for 'ext' functions");
+		if (Peek(index, TokenType.OpOpenBrace))
+		{
+			var depth = 0;
+			do
+			{
+				if (Peek(index, TokenType.OpOpenBrace))
+					depth++;
+				else if (Peek(index, TokenType.OpCloseBrace))
+					depth--;
+				
+				index++;
+			} while (depth > 0 && !AtEnd(index));
+			
+			return;
+		}
+		
+		do
+			index++;
+		while (IsOnSameLine(index));
 	}
 	
 	private void RejectReturnType(ref int index, string kind)
@@ -2475,6 +2608,9 @@ public sealed class FileParser
 		
 		if (token.Text == "pvt")
 			Report(token, "Expected '{' after 'pvt'");
+		else if (startsLine && token.Type == TokenType.KeywordFun && Peek(index + 1, TokenType.OpOpenBracket) &&
+		         FindClosingBracket(index + 1) is { } close && Peek(close + 1, TokenType.OpColon))
+			Report(Span(token, Tokens[close]), $"Cannot implement traits for '{Span(token, Tokens[close]).GetText()}'");
 		else if (namesDeclaration && _operatorNames.Contains(token.Type))
 			Report(token, "Cannot declare operators outside types");
 		else if (namesDeclaration && token.Type == TokenType.KeywordNew)
@@ -2629,11 +2765,5 @@ public sealed class FileParser
 	{
 		if (!skippedToEnd)
 			Report(openBrace, "Expected '}' to close this block");
-	}
-	
-	private void SkipIf(ref int index, TokenType type)
-	{
-		if (!AtEnd(index) && Tokens[index].Type == type)
-			index++;
 	}
 }

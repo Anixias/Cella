@@ -1,0 +1,36 @@
+mod test
+
+A: rec
+{
+	a: pvt req i32
+	b: req pvt i32
+}
+
+B: rec
+{
+	a: req req i32
+}
+
+C: rec
+{
+	h: set i32
+}
+
+D: rec
+{
+	y: req val i32 = 1
+}
+
+E: rec
+{
+	x: i32
+	y: req get(self) -> i32 = 1
+}
+
+F: enum
+{
+	none
+	hit(amount: req i32)
+}
+
+main: fun -> i32 = 0

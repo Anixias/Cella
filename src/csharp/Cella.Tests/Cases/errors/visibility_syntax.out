@@ -6,10 +6,10 @@ Error at line 5, column 10
 5 │     broken: 5
                 ^ Unknown declaration type
 
-Error at line 10, column 2
- 9 │ {
+Error at line 11, column 1
 10 │     unfinished: fun(
-         ╘════════╛ Invalid function declaration
+11 │ }
+     ^ Expected a parameter name
 
 Error at line 13, column 8
 12 │ 

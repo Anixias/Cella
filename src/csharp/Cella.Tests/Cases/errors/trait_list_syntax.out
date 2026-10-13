@@ -1,0 +1,24 @@
+
+====== trait_list_syntax.ce ======
+
+Error at line 6, column 1
+5 │ 
+6 │ fun[i32 -> i32]: impl Hash
+    ╘═════════════╛ Cannot implement traits for 'fun[i32 -> i32]'
+
+Error at line 8, column 17
+7 │ 
+8 │ P: rec impl Hash, Eq
+                    ^ Expected '+'
+
+Error at line 13, column 18
+12 │ 
+13 │ Q: rec impl Hash Eq
+                      ╘╛ Expected '+'
+
+Error at line 18, column 12
+17 │ 
+18 │ Ord: trait impl Eq
+                ╘══╛ Expected 'req' or '{'
+
+[compilation failed]

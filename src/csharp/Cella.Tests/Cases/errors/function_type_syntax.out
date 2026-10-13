@@ -11,9 +11,9 @@ Error at line 5, column 22
 5 │ pair: fun(f: fun[i32 i32]) = {}
                          ╘═╛ Expected ']'
 
-Error at line 9, column 2
+Error at line 9, column 19
 8 │ {
 9 │     callback: fun(i32) -> i32
-        ╘══════╛ Invalid function declaration
+                         ^ Expected ':' and a type
 
 [compilation failed]

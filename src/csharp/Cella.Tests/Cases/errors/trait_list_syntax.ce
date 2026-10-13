@@ -1,0 +1,22 @@
+mod test
+
+Hash: trait {}
+Eq: trait {}
+
+fun[i32 -> i32]: impl Hash
+
+P: rec impl Hash, Eq
+{
+	x: i32
+}
+
+Q: rec impl Hash Eq
+{
+	x: i32
+}
+
+Ord: trait impl Eq
+{
+}
+
+main: fun -> i32 = 0
