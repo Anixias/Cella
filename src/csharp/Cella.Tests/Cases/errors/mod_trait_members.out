@@ -1,0 +1,29 @@
+
+====== main.ce ======
+
+Error at line 8, column 40
+7 │ 
+8 │ go[T: util.Hash]: fun(v: T) -> u64 = v.secret() + v.helper()
+                                           ╘════╛ 'secret' is private to its module
+
+Error at line 8, column 53
+7 │ 
+8 │ go[T: util.Hash]: fun(v: T) -> u64 = v.secret() + v.helper()
+                                                        ╘════╛ 'helper' is private to its module
+
+Error at line 10, column 40
+ 9 │ 
+10 │ dgo: fun(v: dyn[util.Hash]) -> u64 = v.secret()
+                                            ╘════╛ 'secret' is private to its module
+
+Error at line 15, column 67
+14 │ val p = util.Point(0)
+15 │ printf("%llu %llu %llu %llu %llu\n", go(p), dgo(p), util.Hash(p).helper(), p.helper(), p.secret())
+                                                                      ╘════╛ 'helper' is private to its module
+
+Error at line 15, column 79
+14 │ val p = util.Point(0)
+15 │ printf("%llu %llu %llu %llu %llu\n", go(p), dgo(p), util.Hash(p).helper(), p.helper(), p.secret())
+                                                                                  ╘════╛ 'helper' is private to its module
+
+[compilation failed]

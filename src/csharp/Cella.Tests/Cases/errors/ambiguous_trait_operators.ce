@@ -1,0 +1,105 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Pointer: trait
+{
+	*: op(self) -> imm[i32]
+}
+
+Other: trait
+{
+	*: op(self) -> imm[i32]
+}
+
+Index: trait
+{
+	[]: op(self, i: usize) -> imm[i32]
+}
+
+Lookup: trait
+{
+	[]: op(self, i: usize) -> imm[i32]
+}
+
+Cursor: ref rec
+{
+	value: i32
+	done: bool
+
+	for: op(mut self) -> bool
+	{
+		val more = !self.done
+		self.done = true
+		ret more
+	}
+
+	*: op(self) -> imm[i32] = imm self.value
+}
+
+Walk: trait
+{
+	in: op(self) -> Cursor
+}
+
+Stroll: trait
+{
+	in: op(self) -> Cursor
+}
+
+Box: rec
+{
+	value: i32
+
+	drop: op
+	{
+	}
+}
+
+Box: impl Pointer
+{
+	*: op(self) -> imm[i32] = imm self.value
+}
+
+Box: impl Other
+{
+	*: op(self) -> imm[i32] = imm self.value
+}
+
+Box: impl Index
+{
+	[]: op(self, i: usize) -> imm[i32] = imm self.value
+}
+
+Box: impl Lookup
+{
+	[]: op(self, i: usize) -> imm[i32] = imm self.value
+}
+
+Box: impl Walk
+{
+	in: op(self) -> Cursor = Cursor(self.value, false)
+}
+
+Box: impl Stroll
+{
+	in: op(self) -> Cursor = Cursor(self.value, false)
+}
+
+deref[T: Other + Pointer]: fun(value: T) -> i32 = *value
+
+index[T: Lookup + Index]: fun(value: T) -> i32 = value[0]
+
+main: fun -> i32
+{
+	val b = Box(4)
+	printf("%d %d\n", *b, b[0])
+	for x in b
+	{
+		printf("%d\n", x)
+	}
+	ret 0
+}

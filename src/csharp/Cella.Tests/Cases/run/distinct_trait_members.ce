@@ -1,0 +1,33 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+A: trait
+{
+	size: get(self) -> i32
+}
+
+B: trait
+{
+	length: get(self) -> i32
+}
+
+P: rec impl A + B
+{
+	x: i32
+
+	size: get(self) -> i32 = 1
+	length: get(self) -> i32 = 2
+}
+
+g[T: A + B]: fun(value: T) -> i32 = value.size + value.length
+
+main: fun -> i32
+{
+	val p = P(0)
+	printf("%d %d %d\n", p.size, p.length, g(p))
+	ret 0
+}

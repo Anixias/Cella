@@ -1,0 +1,69 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+A: trait
+{
+	size: get(self) -> i32
+	count: prop i32
+	{
+		get(self)
+		set(mut self, value)
+	}
+	total: get -> i32
+}
+
+B: trait
+{
+	size: get(self) -> i32
+	count: prop i32
+	{
+		get(self)
+		set(mut self, value)
+	}
+	total: get -> i32
+}
+
+P: rec
+{
+	x: i32
+}
+
+P: impl B
+{
+	size: get(self) -> i32 = 2
+	count: prop i32
+	{
+		get(self) = 2
+		set(mut self, value)
+		{
+		}
+	}
+	total: get -> i32 = 2
+}
+
+P: impl A
+{
+	size: get(self) -> i32 = 1
+	count: prop i32
+	{
+		get(self) = 1
+		set(mut self, value)
+		{
+		}
+	}
+	total: get -> i32 = 1
+}
+
+g[T: A + B]: fun(value: T) -> i32 = A(value).size * 10 + B(value).size
+
+main: fun -> i32
+{
+	var p = P(0)
+	A(p).count = 5
+	printf("%d %d %d %d %d %d\n", A(p).size, B(p).size, A(p).count, B(p).count, g(p), A(P).total)
+	ret 0
+}

@@ -1,0 +1,22 @@
+mod util
+
+Hash: trait
+{
+	hash: fun(self) -> u64
+	secret: mod fun(self) -> u64
+	helper: mod fun(self) -> u64 = 40
+}
+
+Point: rec impl Hash
+{
+	x: i32
+
+	hash: fun(self) -> u64 = 1
+	secret: fun(self) -> u64 = 2
+}
+
+go[T: Hash]: fun(v: T) -> u64 = v.secret() + v.helper()
+
+dgo: fun(v: dyn[Hash]) -> u64 = v.secret()
+
+total: fun(p: Point) -> u64 = go(p) + dgo(p) + Hash(p).helper() + p.helper()

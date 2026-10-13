@@ -163,6 +163,8 @@ public readonly struct ResolutionContext
 	public bool CanAccess(TypeSymbol owner, Visibility visibility) =>
 		Modules?.IsAccessible(owner, visibility, File, ContainingType) ?? true;
 	
+	public bool IsInModuleOf(Symbol symbol) => Modules is null || Modules.FindModule(symbol) == File.Module;
+	
 	public Diagnostic? ReportHidden(string name, SourceLocation location)
 	{
 		foreach (var symbol in GetModuleSymbols(name))

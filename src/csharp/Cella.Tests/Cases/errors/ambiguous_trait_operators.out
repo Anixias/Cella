@@ -1,0 +1,29 @@
+
+====== ambiguous_trait_operators.ce ======
+
+Error at line 92, column 51
+91 │ 
+92 │ deref[T: Other + Pointer]: fun(value: T) -> i32 = *value
+                                                       ╘════╛ Ambiguous operation '*' on 'T'
+
+Error at line 94, column 50
+93 │ 
+94 │ index[T: Lookup + Index]: fun(value: T) -> i32 = value[0]
+                                                      ╘══════╛ Ambiguous operation '[]' on 'T'
+
+Error at line 99, column 20
+98 │ val b = Box(4)
+99 │ printf("%d %d\n", *b, b[0])
+                       ╘╛ Ambiguous operation '*' on 'Box'
+
+Error at line 99, column 24
+98 │ val b = Box(4)
+99 │ printf("%d %d\n", *b, b[0])
+                           ╘══╛ Ambiguous operation '[]' on 'Box'
+
+Error at line 100, column 11
+ 99 │ printf("%d %d\n", *b, b[0])
+100 │ for x in b
+               ^ Ambiguous operation 'in' on 'Box'
+
+[compilation failed]

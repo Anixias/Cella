@@ -1,0 +1,17 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+go[T: util.Hash]: fun(v: T) -> u64 = v.secret() + v.helper()
+
+dgo: fun(v: dyn[util.Hash]) -> u64 = v.secret()
+
+main: fun -> i32
+{
+	val p = util.Point(0)
+	printf("%llu %llu %llu %llu %llu\n", go(p), dgo(p), util.Hash(p).helper(), p.helper(), p.secret())
+	ret 0
+}

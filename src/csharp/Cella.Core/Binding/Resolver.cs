@@ -3326,7 +3326,10 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 					true), CurrentTargetType);
 		
 		if (GetPropertyMember(type, node.Member.Text) is { } property)
-			return ResolvePropertyUse(node, node.Member.SourceLocation, property, type, null);
+			return IsAmbiguousProperty(type, node.Member.Text)
+				? Error(node, $"Reference to '{property.Name}' is ambiguous", CurrentTargetType,
+					node.Member.SourceLocation)
+				: ResolvePropertyUse(node, node.Member.SourceLocation, property, type, null);
 		
 		var statics = FindStatics(type, node.Member.Text);
 		if (statics.Length == 0)
@@ -3426,6 +3429,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		if (visibility == Visibility.Private)
 			return trait is null ? context.ImplBlock == impl : context.Trait == trait;
 		
+		if (visibility == Visibility.Module && trait is not null)
+			return context.IsInModuleOf(trait);
+		
 		return impl is not { Node.Traits.IsEmpty: true } || CanAccess(owner, visibility);
 	}
 	
@@ -3487,37 +3493,39 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		.Concat(_typePool.FindMemberBlocks(type))
 		.Distinct();
 	
-	private PropertySymbol? GetPropertyMember(TypeSymbol type, string name)
+	private PropertySymbol? GetPropertyMember(TypeSymbol type, string name) =>
+		FindPropertyCandidates(type, name).FirstOrDefault();
+	
+	private bool IsAmbiguousProperty(TypeSymbol type, string name) =>
+		FindPropertyCandidates(type, name).Skip(1).Any();
+	
+	private IEnumerable<PropertySymbol> FindPropertyCandidates(TypeSymbol type, string name)
 	{
 		if (type.GetProperty(name) is { } property)
-			return property;
+			return [property];
 		
 		if (type is DynType dyn)
 			return GetDynTraits(dyn)
 				.Select(trait => GetInstanceProperty(trait, name))
-				.OfType<PropertySymbol>()
-				.FirstOrDefault();
+				.OfType<PropertySymbol>();
 		
 		if (type is TypeParameterSymbol parameter)
 			return _typePool.GetBounds(parameter)
 				.Select(trait => GetInstanceProperty(trait, name))
-				.OfType<PropertySymbol>()
-				.FirstOrDefault();
+				.OfType<PropertySymbol>();
 		
 		var conformances = GetVisibleConformances(type).ToList();
 		return GetImpls(conformances, type)
-			       .Select(impl => impl.Properties.FirstOrDefault(p => p.Name == name))
-			       .OfType<PropertySymbol>()
-			       .FirstOrDefault() ??
-		       conformances
-			       .Select(conformance => conformance.Trait.GetProperty(name) is { } traitProperty &&
-			                              (traitProperty.Visibility == Visibility.Private ||
-			                               GetAccessors(traitProperty).Any(accessor =>
-				                               IsDefaultWitness(conformance, accessor)))
-				       ? GetInstanceProperty(_typePool.GetConformanceTrait(conformance, type), name)
-				       : null)
-			       .OfType<PropertySymbol>()
-			       .FirstOrDefault();
+			.Select(impl => impl.Properties.FirstOrDefault(p => p.Name == name))
+			.OfType<PropertySymbol>()
+			.Concat(conformances
+				.Select(conformance => conformance.Trait.GetProperty(name) is { } traitProperty &&
+				                       (traitProperty.Visibility == Visibility.Private ||
+				                        GetAccessors(traitProperty).Any(accessor =>
+					                        IsDefaultWitness(conformance, accessor)))
+					? GetInstanceProperty(_typePool.GetConformanceTrait(conformance, type), name)
+					: null)
+				.OfType<PropertySymbol>());
 	}
 	
 	private static IEnumerable<FunctionSymbol> GetAccessors(PropertySymbol property) =>
@@ -3748,6 +3756,16 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	private MethodSymbol? FindPlaceOperator(TypeSymbol type, string name, ParameterMode mode) =>
 		FindPlaceOperators(type, name).FirstOrDefault(method => TakesReceiver(method, type, mode));
 	
+	private bool IsAmbiguousOperator(TypeSymbol type, MethodSymbol method) =>
+		FindPlaceOperators(type, method.Name).Count(other => TakesReceiver(other, type, ReceiverMode(method, type))) >
+		1;
+	
+	private ParameterMode ReceiverMode(MethodSymbol method, TypeSymbol type) =>
+		GetFunctionInfo(method, type).Signature.GetMode(0);
+	
+	private static string DescribeAmbiguousOperator(string name, TypeSymbol type) =>
+		$"Ambiguous operation '{name}' on '{type.Name}'";
+	
 	private bool TakesReceiver(MethodSymbol method, TypeSymbol type, ParameterMode mode) =>
 		GetFunctionInfo(method, type).Signature.GetMode(0) == mode;
 	
@@ -3809,6 +3827,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		var receiver = call.Arguments[0];
 		if (FindPlaceOperator(receiver.Type, name, ParameterMode.Mut) is { } writer)
 		{
+			if (IsAmbiguousOperator(receiver.Type, writer))
+				return Error(call.Syntax, DescribeAmbiguousOperator(name, receiver.Type), place.Type);
+			
 			var info = InstantiateLike(GetFunctionInfo(writer, receiver.Type), call.Function);
 			TrackFunctionUse(info, call.Syntax);
 			return Decay(new ResolvedFunctionCallExpressionNode(info,
@@ -3959,7 +3980,8 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		{
 			ArrayType { ElementType: var elementType } => ResolveBuiltInIndexing(node, target, elementType),
 			StringType => ResolveBuiltInIndexing(node, target, NativeSymbols.UInt8),
-			PointerType { BaseType: var baseType } pointer when baseType != NativeSymbols.Void =>
+			PointerType { BaseType: var baseType } pointer when baseType != NativeSymbols.Void &&
+			                                                    baseType is not DynType =>
 				ResolvePointerIndexing(node, target, pointer),
 			var type when GetMethods(type, "[]").Where(static method => method.HasReceiver).ToList() is
 				{ Count: > 0 } declared => ResolveDeclaredIndexing(node, target, declared),
@@ -4013,6 +4035,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		if ((FindIndexer(type, ParameterMode.ReadOnly) ?? FindIndexer(type, ParameterMode.Mut)) is not { } indexer)
 			return RejectIndexing(node, Error(node, ReportHiddenMember(node.SourceLocation, "[]",
 				declared.Select(static method => method.Function)), CurrentTargetType));
+		
+		if (IsAmbiguousOperator(type, indexer))
+			return RejectIndexing(node, Error(node, DescribeAmbiguousOperator("[]", type), CurrentTargetType));
 		
 		var info = GetFunctionInfo(indexer, type);
 		var parameterTypes = info.Signature.ParameterTypes;
@@ -4099,7 +4124,10 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		var memberName = node.Member.Text;
 		var resolutionContext = CurrentResolutionContext;
 		if (GetPropertyMember(target.Type, memberName) is { } property)
-			return ResolvePropertyUse(node, node.Member.SourceLocation, property, target.Type, target);
+			return IsAmbiguousProperty(target.Type, memberName)
+				? Error(node, $"Reference to '{memberName}' is ambiguous", CurrentTargetType,
+					node.Member.SourceLocation)
+				: ResolvePropertyUse(node, node.Member.SourceLocation, property, target.Type, target);
 		
 		if (resolutionContext.TypePool.ResolveMember(target.Type, memberName) is not { } member)
 			return Error(node, FindFunctions(target.Type, memberName) switch
@@ -5247,6 +5275,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 				: RejectIteration(node,
 					$"Cannot iterate over '{type.Name}' {(isMut ? "with" : "without")} 'mut'", location);
 		
+		if (sameMode.Count(other => CanAccess(type, other.Function)) > 1)
+			return RejectIteration(node, DescribeAmbiguousOperator("in", type), location);
+		
 		var call = CallOperator(source, method, node.Source);
 		return ResolveCursor(node, new LocalVariableSymbol(HiddenName(node.Binding, "cursor"), call.Type, true), call,
 			isMut);
@@ -5263,6 +5294,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 				? RejectIteration(node, ReportHiddenMember(syntax.SourceLocation, "for",
 					steps.Select(static method => method.Function)))
 				: RejectIteration(node, $"'{type.Name}' has no 'for' operator", syntax.SourceLocation);
+		
+		if (steps.Count(other => CanAccess(type, other.Function)) > 1)
+			return RejectIteration(node, DescribeAmbiguousOperator("for", type), syntax.SourceLocation);
 		
 		var stepCall = CallOperator(ReadCursor(), step, syntax);
 		if (node.Binding.Text == "_")
@@ -5281,6 +5315,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 				? RejectIteration(node, ReportHiddenMember(location, "*", hidden.Select(static m => m.Function)))
 				: RejectIteration(node, $"'{type.Name}' has no '*' operator", location);
 		}
+		
+		if (IsAmbiguousOperator(type, dereference))
+			return RejectIteration(node, DescribeAmbiguousOperator("*", type), node.Binding.SourceLocation);
 		
 		var element = Decay(CallOperator(ReadCursor(), dereference, syntax));
 		var isWritable = ReturnsWritable(dereference, type) &&
@@ -5436,7 +5473,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			? Error(node, "Cannot dereference an untyped pointer; Cast to a typed pointer first", CurrentTargetType)
 			: new ResolvedUnaryOpExpressionNode(operand, new NativeImpl(opType, baseType), node),
 		var type when (FindDereference(type, ParameterMode.ReadOnly) ?? FindDereference(type, ParameterMode.Mut)) is
-			{ } dereference => Decay(CallOperator(operand, dereference, node)),
+			{ } dereference => IsAmbiguousOperator(type, dereference)
+				? Error(node, DescribeAmbiguousOperator("*", type), CurrentTargetType)
+				: Decay(CallOperator(operand, dereference, node)),
 		var type when GetMethods(type, "*").Where(static method => method.HasReceiver).ToList() is
 			{ Count: > 0 } hidden => Error(node, ReportHiddenMember(node.SourceLocation, "*",
 			hidden.Select(static method => method.Function)), CurrentTargetType),

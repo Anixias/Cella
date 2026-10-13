@@ -1,0 +1,14 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+go[T: lib.Hash]: fun(v: T) -> u64 = v.helper()
+
+main: fun -> i32
+{
+	printf("%llu\n", go(lib.Point(0)))
+	ret 0
+}

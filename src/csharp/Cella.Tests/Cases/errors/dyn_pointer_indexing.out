@@ -1,0 +1,14 @@
+
+====== dyn_pointer_indexing.ce ======
+
+Error at line 10, column 2
+ 9 │ {
+10 │     p[0].show()
+         ^ Cannot index into type 'ptr[dyn[Show]]'
+
+Error at line 16, column 10
+15 │ var p: ptr[dyn[Show]] = null
+16 │ val r = p[0]
+             ^ Cannot index into type 'ptr[dyn[Show]]'
+
+[compilation failed]

@@ -1,0 +1,18 @@
+mod test
+
+Show: trait
+{
+	show: fun(self)
+}
+
+f: fun(p: ptr[dyn[Show]])
+{
+	p[0].show()
+}
+
+main: fun -> i32
+{
+	var p: ptr[dyn[Show]] = null
+	val r = p[0]
+	ret 0
+}
