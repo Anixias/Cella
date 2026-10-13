@@ -1860,7 +1860,8 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			: null;
 	
 	private ICallable? Specialize(ICallable candidate, string name, IReadOnlyList<IResolvedExpressionNode> args,
-		TypeArgumentList? typeArguments, SourceLocation location, List<Diagnostic> failures)
+		TypeArgumentList? typeArguments, SourceLocation location, List<Diagnostic> failures,
+		List<Diagnostic>? violations = null)
 	{
 		FunctionInfo info;
 		switch (candidate)
@@ -1919,6 +1920,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		if (ReportConstraintViolation(open, arguments, locate, info) is { } violation)
 		{
 			failures.Add(violation);
+			violations?.Add(violation);
 			return null;
 		}
 		
@@ -6020,10 +6022,11 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 				declared.Select(static entry => entry.Method.Function)), CurrentTargetType);
 		
 		var args = new[] { left, right };
+		var violations = new List<Diagnostic>();
 		ICallable[] candidates =
 		[
 			..accessible
-				.Select(candidate => Specialize(candidate, name, args, null, node.Op.SourceLocation, []))
+				.Select(candidate => Specialize(candidate, name, args, null, node.Op.SourceLocation, [], violations))
 				.OfType<ICallable>()
 		];
 		
@@ -6031,6 +6034,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		if (resolutionSet.IsAmbiguous)
 			return Error(node, $"Ambiguous operation '{name}' between '{left.Type.Name}' and '{right.Type.Name}'",
 				CurrentTargetType);
+		
+		if (!resolutionSet.HasResult && violations is [var violation])
+			return Error(node, violation, CurrentTargetType);
 		
 		if (!resolutionSet.HasResult)
 			return null;
