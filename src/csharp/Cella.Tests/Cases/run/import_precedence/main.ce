@@ -1,0 +1,20 @@
+mod test
+
+use geometry.area
+use geometry.scale
+use shapes.scale
+use geometry.*
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+main: fun -> i32
+{
+	printf("%d %d\n", area(), geometry.area())
+	printf("%d %d %lld\n", scale(1), scale(1, 2), scale(1i64))
+	printf("%d %d %d\n", Point(5).z, geometry.Point(6).x, limit)
+	printf("%d\n", hidden())
+	ret 0
+}

@@ -1,0 +1,4 @@
+mod geometry
+
+area: pub fun -> i32 = 2
+Point: pub rec { x: i32 }

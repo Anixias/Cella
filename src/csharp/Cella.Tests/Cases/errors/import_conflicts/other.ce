@@ -1,0 +1,7 @@
+mod test
+
+use geometry.Point
+
+Point: rec { z: i32 }
+limit: val i32 = 3
+area: rec { z: i32 }

@@ -1,0 +1,14 @@
+
+====== main.ce ======
+
+Error at line 10, column 10
+ 9 │ {
+10 │     val a = area()
+                 ╘══╛ Call to 'area' is ambiguous
+
+Error at line 11, column 10
+10 │ val a = area()
+11 │ val p = Point(1)
+             ╘═══╛ Reference to 'Point' is ambiguous
+
+[compilation failed]

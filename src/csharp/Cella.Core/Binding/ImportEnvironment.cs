@@ -3,7 +3,7 @@ using Cella.Core.Symbols;
 
 namespace Cella.Core.Binding;
 
-public sealed class ImportEnvironment(IEnumerable<Symbol> importedSymbols)
+public sealed class ImportEnvironment(IEnumerable<Symbol> importedSymbols, IEnumerable<Symbol> explicitSymbols)
 {
 	public IEnumerable<Symbol> ImportedSymbols => _importedSymbols.SelectMany(static kvp => kvp.Value);
 	
@@ -12,8 +12,12 @@ public sealed class ImportEnvironment(IEnumerable<Symbol> importedSymbols)
 		.GroupBy(static s => s.Name)
 		.ToImmutableDictionary(static g => g.Key, static g => g.ToImmutableArray());
 	
+	private readonly ImmutableHashSet<Symbol> _explicitSymbols = explicitSymbols.ToImmutableHashSet();
+	
 	public ImmutableArray<Symbol> Resolve(string name) =>
 		_importedSymbols.GetValueOrDefault(name, ImmutableArray<Symbol>.Empty);
+	
+	public bool IsExplicit(Symbol symbol) => _explicitSymbols.Contains(symbol);
 }
 
 // TODO File-specific symbol table for all imported symbols

@@ -50,6 +50,11 @@ public sealed class SignatureCollector
 	private readonly SignatureTable _dependencyTable;
 	private readonly SignatureTable.Builder _builder = new();
 	private readonly Dictionary<Symbol, Declaration> _declarations = [];
+	private readonly HashSet<SourceLocation> _reportedImportConflicts = [];
+	
+	private readonly List<(List<(Symbol Symbol, Token Name, string Module)> Imports, ResolutionContext Context)>
+		_explicitImports = [];
+	
 	private readonly Dictionary<GlobalSymbol, TypeSymbol> _globalTypes = [];
 	private readonly Dictionary<PropertySymbol, TypeSymbol> _propertyTypes = [];
 	private readonly HashSet<TypeSymbol> _completedTypes = [];
@@ -137,6 +142,9 @@ public sealed class SignatureCollector
 	public AssemblySymbol FinishAssembly(string name)
 	{
 		ReportDuplicateDeclarations();
+		foreach (var (imports, context) in _explicitImports)
+			ReportImportConflicts(imports, context);
+		
 		ReportPlainNameConflicts();
 		ReportModuleConflicts();
 		ReportLayoutCycles();
@@ -3533,10 +3541,57 @@ public sealed class SignatureCollector
 	private ImportEnvironment CollectImports(FileNode node, ResolutionContext context)
 	{
 		var imports = new List<Symbol>();
+		var explicitImports = new List<(Symbol Symbol, Token Name, string Module)>();
 		foreach (var importExpression in node.Imports)
-			imports.AddRange(CollectImport(importExpression, context));
+		{
+			var collected = CollectImport(importExpression, context);
+			imports.AddRange(collected);
+			if (importExpression.Import is TokenImport or ListImport)
+				explicitImports.AddRange(collected.Select(symbol =>
+					(symbol, FindImportName(importExpression, symbol), importExpression.ModuleName.Text)));
+		}
 		
-		return new(imports);
+		_explicitImports.Add((explicitImports, context));
+		return new(imports, explicitImports.Select(static entry => entry.Symbol));
+	}
+	
+	private static Token FindImportName(ImportExpression import, Symbol symbol) => import.Import switch
+	{
+		TokenImport single => single.Token,
+		ListImport list => list.Tokens.First(token => token.Text == symbol.Name),
+		_ => throw new InvalidOperationException()
+	};
+	
+	private void ReportImportConflicts(List<(Symbol Symbol, Token Name, string Module)> explicitImports,
+		ResolutionContext context)
+	{
+		foreach (var (symbol, name, module) in explicitImports)
+		{
+			var declared = context.File.Module.Files
+				.SelectMany(file => file.Symbols.GetValueOrDefault(symbol.Name) ?? [])
+				.Where(context.IsVisible)
+				.ToList();
+			
+			if (declared.Count == 0 ||
+			    symbol is FunctionSymbol && declared.All(static member => member is FunctionSymbol))
+				continue;
+			
+			var message = $"'{symbol.Name}' is ambiguous";
+			Diagnostics.Add(new(DiagnosticSeverity.Error, name.SourceLocation, message)
+			{
+				Hints = [$"Also declared in '{context.File.Module.Name}'"]
+			});
+			
+			foreach (var member in declared)
+			{
+				var location = GetIdentifier(_declarations[member].Node).SourceLocation;
+				if (_reportedImportConflicts.Add(location))
+					Diagnostics.Add(new(DiagnosticSeverity.Error, location, message)
+					{
+						Hints = [$"Also imported from '{module}'"]
+					});
+			}
+		}
 	}
 	
 	private List<Symbol> CollectImport(ImportExpression import, ResolutionContext context)

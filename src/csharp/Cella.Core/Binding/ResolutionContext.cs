@@ -98,16 +98,27 @@ public readonly struct ResolutionContext
 	
 	public Symbol? Resolve(string name)
 	{
-		if (ResolveNear(name) is { } symbol)
-			return symbol;
+		if (ResolveScoped(name) is { } scoped)
+			return scoped;
 		
-		if (Imports?.Resolve(name) is { Length: > 0 } imports)
-			return ResolveFrom(name, imports);
+		List<Symbol> module = [..GetModuleSymbols(name).Where(IsVisible)];
+		if (Imports is { } environment && environment.Resolve(name) is { Length: > 0 } imports)
+			return ResolveFrom(name, [..module, ..imports.Where(import => IsKeptBeside(environment, import, module))]);
+		
+		if (module.Count > 0)
+			return ResolveFrom(name, module);
 		
 		return NativeSymbols.Resolve(name) ?? Modules?.Root.Children.GetValueOrDefault(name);
 	}
 	
-	public Symbol? ResolveNear(string name)
+	private static bool IsKeptBeside(ImportEnvironment imports, Symbol import, List<Symbol> module) =>
+		module.Count == 0 || imports.IsExplicit(import) ||
+		import is FunctionSymbol && module.All(static symbol => symbol is FunctionSymbol);
+	
+	public Symbol? ResolveNear(string name) =>
+		ResolveScoped(name) ?? ResolveFrom(name, [..GetModuleSymbols(name).Where(IsVisible)]);
+	
+	private Symbol? ResolveScoped(string name)
 	{
 		// TODO None of this will work with function overloads :(
 		
@@ -154,7 +165,7 @@ public readonly struct ResolutionContext
 				return function;
 		}
 		
-		return ResolveFrom(name, [..GetModuleSymbols(name).Where(IsVisible)]);
+		return null;
 	}
 	
 	private IEnumerable<Symbol> GetModuleSymbols(string name) =>

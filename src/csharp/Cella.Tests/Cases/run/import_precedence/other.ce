@@ -1,0 +1,7 @@
+mod test
+
+area: fun -> i32 = 1
+scale: fun(a: i32, b: i32) -> i32 = a + b
+Point: rec { z: i32 }
+limit: val i32 = 3
+hidden: pvt fun -> i32 = 4

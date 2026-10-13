@@ -1,0 +1,6 @@
+mod test
+
+use geometry.Point
+use geometry.[limit, area]
+
+main: fun -> i32 = 0

@@ -1,0 +1,5 @@
+mod geometry
+
+area: pub fun -> i32 = 2
+Point: pub rec { x: i32 }
+limit: pub val i32 = 7

@@ -1,0 +1,13 @@
+mod test
+
+use geometry.area
+use shapes.area
+use geometry.*
+use shapes.*
+
+main: fun -> i32
+{
+	val a = area()
+	val p = Point(1)
+	ret 0
+}

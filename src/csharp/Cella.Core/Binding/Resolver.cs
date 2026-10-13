@@ -5028,13 +5028,31 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		}
 	}
 	
-	private static FunctionSymbol[] GetFunctions(Symbol? symbol) => symbol switch
+	private FunctionSymbol[] GetFunctions(Symbol? symbol) => symbol switch
 	{
 		FunctionSymbol f => [f],
 		AmbiguousSymbol a when a.Candidates.All(static c => c is FunctionSymbol) =>
-			[..a.Candidates.Cast<FunctionSymbol>()],
+			RemoveShadowedImports([..a.Candidates.Cast<FunctionSymbol>()]),
 		_ => []
 	};
+	
+	private FunctionSymbol[] RemoveShadowedImports(FunctionSymbol[] functions)
+	{
+		var context = CurrentResolutionContext;
+		var own = functions.Where(context.IsInModuleOf).Select(GetFunctionInfo).ToList();
+		return own.Count == 0 || own.Count == functions.Length
+			? functions
+			:
+			[
+				..functions.Where(function => context.IsInModuleOf(function) ||
+				                              !own.Any(info => HasSameParameters(info, GetFunctionInfo(function))))
+			];
+	}
+	
+	private static bool HasSameParameters(FunctionInfo a, FunctionInfo b) =>
+		a.Signature.ParameterTypes.SequenceEqual(b.Signature.ParameterTypes) &&
+		Enumerable.Range(0, a.Signature.ParameterTypes.Length)
+			.All(i => a.Signature.GetMode(i) == b.Signature.GetMode(i));
 	
 	private static MethodSymbol[] AsMethods(FunctionSymbol[] functions) =>
 		[..functions.Select(static function => new MethodSymbol(function.Name, function))];
