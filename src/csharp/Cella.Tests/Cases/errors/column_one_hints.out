@@ -6,6 +6,6 @@ Error at line 29, column 1
 29 │ }
      ^ Cannot use borrows of dropped values
      | 'h' is dropped here
-     | Dropped here in an earlier iteration
+     | Dropped here
 
 [compilation failed]

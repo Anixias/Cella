@@ -1,0 +1,29 @@
+
+====== missing_syntax_parts.ce ======
+
+Error at line 3, column 12
+2 │ 
+3 │ limit: val = 5
+               ^ Expected a type
+
+Error at line 8, column 1
+7 │     val a = (1 +
+8 │ }
+    ^ Expected an expression
+
+Error at line 12, column 9
+11 │ {
+12 │     var x: = 1
+                ^ Expected a type
+
+Error at line 19, column 2
+18 │ var x: array[i32, 4
+19 │ ret 0
+     ╘═╛ Expected ']'
+
+Error at line 24, column 15
+23 │ {
+24 │     var x: test. = 1
+                      ^ Expected a name
+
+[compilation failed]

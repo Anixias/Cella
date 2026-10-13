@@ -15,7 +15,7 @@ Error at line 11, column 12
 Error at line 15, column 1
 14 │ untyped: enum match
 15 │ {
-     ^ Unexpected token
+     ^ Expected a type
 
 Error at line 19, column 18
 18 │ 

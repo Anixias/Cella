@@ -15,6 +15,12 @@ public abstract class BaseParser<T>(ImmutableArray<Token> tokens) : IParser<T>
 		return Parse(ref index);
 	}
 	
+	protected bool IsReservedWord(int index) =>
+		index >= 0 && index < Tokens.Length && Tokens[index] is { Type: not TokenType.Identifier } token &&
+		TokenTypeInfo.GetKeyword(token.Text) == token.Type && !token.Type.IsContextual;
+	
+	protected static string DescribeReservedWord(Token token) => $"'{token.Text}' is a keyword";
+	
 	protected bool AtEnd(int index) => index < 0 || index >= Tokens.Length || Tokens[index].Type == TokenType.EndOfFile;
 	
 	protected bool Peek(int index, TokenType type) =>

@@ -317,9 +317,11 @@ public sealed class BorrowChecker
 		};
 		
 		var hints = endings
-			.Select(ending => ending.Location == location
-				? $"{Describe(ending.Ending)} here in an earlier iteration"
-				: $"{Describe(ending.Ending)} on line {ending.Location.GetLineColumn().Line}")
+			.Select(ending => ending.Location != location
+				? $"{Describe(ending.Ending)} on line {ending.Location.GetLineColumn().Line}"
+				: ending.Ending == Ending.Dropped
+					? "Dropped here"
+					: $"{Describe(ending.Ending)} here in an earlier iteration")
 			.Distinct();
 		
 		diagnostics.Add(new(DiagnosticSeverity.Error, location, message)

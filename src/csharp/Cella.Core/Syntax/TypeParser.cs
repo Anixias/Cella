@@ -28,9 +28,8 @@ public sealed class TypeParser(ImmutableArray<Token> tokens) : BaseParser<ITypeN
 		if (TryParseFunctionType(ref index) is { } functionType)
 			return functionType;
 		
-		// TEMP Should emit an erroneous node instead
 		if (!Match(ref index, out var identifier, TokenType.Identifier))
-			throw new InvalidOperationException();
+			throw Expected(index, "a type");
 		
 		var qualified = Peek(index, TokenType.OpDot) ? ParseQualifiedType(ref index, identifier) : null;
 		var name = qualified?.Parts[^1] ?? identifier;
@@ -50,7 +49,7 @@ public sealed class TypeParser(ImmutableArray<Token> tokens) : BaseParser<ITypeN
 			args.Add(ParseGenericArgument(ref index));
 		
 		if (!Match(ref index, out var closeBracket, TokenType.OpCloseBracket))
-			throw new InvalidOperationException();
+			throw Expected(index, "']'");
 		
 		var (source, range) = identifier.SourceLocation;
 		range = range.Join(closeBracket.SourceLocation.Range);
@@ -101,7 +100,7 @@ public sealed class TypeParser(ImmutableArray<Token> tokens) : BaseParser<ITypeN
 		while (Match(ref index, TokenType.OpDot))
 		{
 			if (!Match(ref index, out var part, TokenType.Identifier))
-				throw new InvalidOperationException();
+				throw Expected(index, "a name");
 			
 			parts.Add(part);
 		}

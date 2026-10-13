@@ -1,0 +1,17 @@
+mod test
+
+Pair: rec { x: i32 }
+
+first: fun -> i32
+{
+	var pair = pair(1)
+	ret pair
+}
+
+second: fun -> i32
+{
+	var p = pair(1)
+	ret p.x
+}
+
+main: fun -> i32 = 0

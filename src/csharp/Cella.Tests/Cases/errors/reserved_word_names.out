@@ -1,0 +1,34 @@
+
+====== reserved_word_names.ce ======
+
+Error at line 5, column 2
+4 │ {
+5 │     match: fun(x: i32) -> i32
+        ╘═══╛ 'match' is a keyword
+
+Error at line 8, column 1
+7 │ 
+8 │ if: fun -> i32 = 1
+    ╘╛ 'if' is a keyword
+
+Error at line 10, column 8
+ 9 │ 
+10 │ f: fun(in: i32) -> i32 = 0
+            ╘╛ 'in' is a keyword
+
+Error at line 12, column 4
+11 │ 
+12 │ id[if]: fun(own x: i32) -> i32 = x
+        ╘╛ 'if' is a keyword
+
+Error at line 16, column 6
+15 │ {
+16 │     val in = 1
+             ╘╛ 'in' is a keyword
+
+Error at line 22, column 14
+21 │ {
+22 │     val g = fun(match: i32) = 1
+                     ╘═══╛ 'match' is a keyword
+
+[compilation failed]

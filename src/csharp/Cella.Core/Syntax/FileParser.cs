@@ -465,7 +465,11 @@ public sealed class FileParser
 		{
 			if (!Match(ref index, out var name, TokenType.Identifier))
 			{
-				ReportExpected(index, "a type parameter name");
+				if (IsReservedWord(index))
+					Report(Tokens[index], DescribeReservedWord(Tokens[index]));
+				else
+					ReportExpected(index, "a type parameter name");
+				
 				return null;
 			}
 			
@@ -1167,7 +1171,12 @@ public sealed class FileParser
 		// TODO Diagnostics
 		
 		if (!Match(ref index, out var identifier, _topLevelContextualKeywords, TokenType.Identifier))
+		{
+			if (IsReservedWord(index))
+				Report(Tokens[index], DescribeReservedWord(Tokens[index]));
+			
 			return null;
+		}
 		
 		if (!RejectTypeParameters(ref index, "ext functions") || !Match(ref index, TokenType.OpColon))
 			return null;
@@ -1307,7 +1316,12 @@ public sealed class FileParser
 		
 		// TODO Attempt resync 
 		if (!Match(ref index, out var identifier, TokenType.Identifier))
+		{
+			if (IsReservedWord(index))
+				Report(Tokens[index], DescribeReservedWord(Tokens[index]));
+			
 			return null;
+		}
 		
 		// TODO Potentially make type optional, inferred from default or make auto-generic?
 		if (!Match(ref index, TokenType.OpColon))
@@ -1961,7 +1975,11 @@ public sealed class FileParser
 			Token? mode = Match(ref index, out var keyword, _parameterModes) ? keyword : null;
 			if (!Match(ref index, out var name, TokenType.Identifier))
 			{
-				ReportExpected(index, "a parameter name");
+				if (IsReservedWord(index))
+					Report(Tokens[index], DescribeReservedWord(Tokens[index]));
+				else
+					ReportExpected(index, "a parameter name");
+				
 				return null;
 			}
 			
@@ -2409,7 +2427,10 @@ public sealed class FileParser
 		// TODO Attempt resync 
 		if (!Match(ref index, out var identifier, TokenType.Identifier))
 		{
-			Report(Tokens[index], $"Expected a name after '{keyword.Text}'");
+			Report(Tokens[index], IsReservedWord(index)
+				? DescribeReservedWord(Tokens[index])
+				: $"Expected a name after '{keyword.Text}'");
+			
 			return null;
 		}
 		
@@ -2460,6 +2481,8 @@ public sealed class FileParser
 			Report(token, "Cannot declare constructors outside types");
 		else if (namesDeclaration && token.Type == TokenType.KeywordDrop)
 			Report(token, "Cannot declare destructors outside types");
+		else if (namesDeclaration && IsReservedWord(index))
+			Report(token, DescribeReservedWord(token));
 		else if (startsLine && !namesDeclaration && _declarationKinds.Contains(token.Text))
 			Report(token, $"Expected a name before '{token.Text}'");
 		else

@@ -34,7 +34,7 @@ Error at line 19, column 21
 Error at line 23, column 6
 22 │ {
 23 │     val when = 1
-             ╘══╛ Expected a name after 'val'
+             ╘══╛ 'when' is a keyword
 
 Error at line 29, column 2
 28 │ when (debug

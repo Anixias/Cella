@@ -15,7 +15,6 @@ Error at line 25, column 13
 24 │ {
 25 │     var pair = pair(1)
                     ╘═════╛ Symbol 'pair' not found in this scope
-                          | Did you mean 'main'?
 
 Error at line 31, column 10
 30 │ {

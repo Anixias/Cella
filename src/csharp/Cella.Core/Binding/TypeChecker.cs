@@ -104,6 +104,14 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool, 
 		if (node.Info.Initializer is not { } initializer)
 			return;
 		
+		if (initializer is ResolvedUndefExpressionNode)
+		{
+			Diagnostics.Add(new(DiagnosticSeverity.Error, initializer.Syntax.SourceLocation,
+				$"Cannot use 'undef' on {DescribeGlobals(node.Info.Symbol)}"));
+			
+			return;
+		}
+		
 		var errorCount = Diagnostics.ErrorCount;
 		VisitNode(initializer);
 		

@@ -4,6 +4,6 @@
 Error at line 5, column 13
 4 │ {
 5 │     var count: = 5
-                   ^ Unexpected token
+                   ^ Expected a type
 
 [compilation failed]

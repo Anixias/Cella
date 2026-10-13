@@ -9,6 +9,6 @@ Error at line 5, column 6
 Error at line 11, column 13
 10 │ {
 11 │     var value: = 2
-                    ^ Unexpected token
+                    ^ Expected a type
 
 [compilation failed]

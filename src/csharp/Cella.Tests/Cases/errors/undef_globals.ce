@@ -1,0 +1,11 @@
+mod test
+
+buffer: var array[u8, 16] = undef
+limit: val i32 = undef
+
+Counter: rec
+{
+	count: var i32 = undef
+}
+
+main: fun -> i32 = i32(buffer[0])

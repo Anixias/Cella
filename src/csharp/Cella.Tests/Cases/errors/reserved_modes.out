@@ -14,6 +14,6 @@ Error at line 7, column 2
 Error at line 12, column 6
 11 │ {
 12 │     var mut = 3
-             ╘═╛ Expected a name after 'var'
+             ╘═╛ 'mut' is a keyword
 
 [compilation failed]

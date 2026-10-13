@@ -582,7 +582,10 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 	{
 		Token? mode = Match(ref index, out var keyword, _parameterModes) ? keyword : null;
 		if (!Match(ref index, out var identifier, TokenType.Identifier))
-			throw Expected(index, "a parameter name");
+			throw IsReservedWord(index)
+				? new ParseException(new Diagnostic(DiagnosticSeverity.Error, Tokens[index].SourceLocation,
+					DescribeReservedWord(Tokens[index])))
+				: Expected(index, "a parameter name");
 		
 		return new(mode, identifier, Match(ref index, TokenType.OpColon) ? ParseType(ref index) : null);
 	}
@@ -896,8 +899,6 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 		if (Match(ref index, out var literal, _literalTypes))
 			return new(literal);
 		
-		// TODO Diagnostics
-		// TEMP Should emit an erroneous node instead of throwing
-		throw new InvalidOperationException();
+		throw Expected(index, "an expression");
 	}
 }

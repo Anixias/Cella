@@ -1,0 +1,26 @@
+mod test
+
+ext
+{
+	match: fun(x: i32) -> i32
+}
+
+if: fun -> i32 = 1
+
+f: fun(in: i32) -> i32 = 0
+
+id[if]: fun(own x: i32) -> i32 = x
+
+local: fun -> i32
+{
+	val in = 1
+	ret 0
+}
+
+lambda: fun -> i32
+{
+	val g = fun(match: i32) = 1
+	ret 0
+}
+
+main: fun -> i32 = 0

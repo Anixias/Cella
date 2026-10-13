@@ -4,6 +4,6 @@
 Error at line 3, column 35
 2 │ 
 3 │ takes: fun(callback: fun[cstr, ...]) {}
-                                      ^ Unexpected token
+                                      ^ Expected a type
 
 [compilation failed]

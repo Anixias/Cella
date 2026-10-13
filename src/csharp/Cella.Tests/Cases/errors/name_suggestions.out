@@ -1,0 +1,16 @@
+
+====== name_suggestions.ce ======
+
+Error at line 7, column 13
+6 │ {
+7 │     var pair = pair(1)
+                   ╘═════╛ Symbol 'pair' not found in this scope
+                         | Did you mean 'Pair'?
+
+Error at line 13, column 10
+12 │ {
+13 │     var p = pair(1)
+                 ╘═════╛ Symbol 'pair' not found in this scope
+                       | Did you mean 'Pair'?
+
+[compilation failed]

@@ -9,7 +9,7 @@ Error at line 3, column 10
 Error at line 5, column 17
 4 │ 
 5 │ second[T: Shape[]: fun -> i32 = 0
-                    ^ Unexpected token
+                    ^ Expected a type
 
 Error at line 12, column 21
 11 │ 

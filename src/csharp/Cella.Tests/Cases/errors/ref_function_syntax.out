@@ -4,7 +4,7 @@
 Error at line 5, column 6
 4 │ {
 5 │     val ref = 1
-            ╘═╛ Expected a name after 'val'
+            ╘═╛ 'ref' is a keyword
 
 Error at line 8, column 25
 7 │ 

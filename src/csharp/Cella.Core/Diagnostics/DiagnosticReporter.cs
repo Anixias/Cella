@@ -154,11 +154,14 @@ public static class DiagnosticReporter
 				if (Math.Abs(name.Length - missingName.Length) > 3)
 					continue;
 				
-				var distance = LevenshteinDistance(missingName, name);
+				var distance = string.Equals(name, missingName, StringComparison.OrdinalIgnoreCase)
+					? 0
+					: EditDistance(missingName, name);
+				
 				var threshold = missingName.Length switch
 				{
 					> 5 => 3,
-					> 2 => 2,
+					> 4 => 2,
 					_ => 1
 				};
 				
@@ -202,34 +205,30 @@ public static class DiagnosticReporter
 		? $"{op.Representation}{operand.SourceLocation.GetText()}"
 		: $"{op.Representation}({operand.SourceLocation.GetText()})";
 	
-	private static int LevenshteinDistance(string source, string target)
+	private static int EditDistance(string source, string target)
 	{
-		if (string.IsNullOrEmpty(source))
-			return string.IsNullOrEmpty(target) ? 0 : target.Length;
+		var distances = new int[source.Length + 1, target.Length + 1];
+		for (var i = 0; i <= source.Length; i++)
+			distances[i, 0] = i;
 		
-		if (string.IsNullOrEmpty(target))
-			return source.Length;
+		for (var j = 0; j <= target.Length; j++)
+			distances[0, j] = j;
 		
-		var v0 = new int[target.Length + 1];
-		var v1 = new int[target.Length + 1];
-		
-		for (var i = 0; i < v0.Length; i++)
-			v0[i] = i;
-		
-		for (var i = 0; i < source.Length; i++)
+		for (var i = 1; i <= source.Length; i++)
 		{
-			v1[0] = i + 1;
-			
-			for (var j = 0; j < target.Length; j++)
+			for (var j = 1; j <= target.Length; j++)
 			{
-				var cost = source[i] == target[j] ? 0 : 1;
-				v1[j + 1] = Math.Min(v1[j] + 1, Math.Min(v0[j + 1] + 1, v0[j] + cost));
+				var cost = source[i - 1] == target[j - 1] ? 0 : 1;
+				var distance = Math.Min(Math.Min(distances[i - 1, j] + 1, distances[i, j - 1] + 1),
+					distances[i - 1, j - 1] + cost);
+				
+				if (i > 1 && j > 1 && source[i - 1] == target[j - 2] && source[i - 2] == target[j - 1])
+					distance = Math.Min(distance, distances[i - 2, j - 2] + 1);
+				
+				distances[i, j] = distance;
 			}
-			
-			for (var j = 0; j < v0.Length; j++)
-				v0[j] = v1[j];
 		}
 		
-		return v1[target.Length];
+		return distances[source.Length, target.Length];
 	}
 }

@@ -1,0 +1,28 @@
+mod test
+
+limit: val = 5
+
+expression: fun -> i32
+{
+	val a = (1 +
+}
+
+type: fun -> i32
+{
+	var x: = 1
+	ret 0
+}
+
+bracket: fun -> i32
+{
+	var x: array[i32, 4
+	ret 0
+}
+
+qualified: fun -> i32
+{
+	var x: test. = 1
+	ret 0
+}
+
+main: fun -> i32 = 0
