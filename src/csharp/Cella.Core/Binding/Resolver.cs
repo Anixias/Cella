@@ -1820,10 +1820,19 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	private TypeArgumentList? ResolveTypeArguments(IndexerExpressionNode node, IEnumerable<FunctionInfo> functions)
 	{
 		var context = CurrentResolutionContext;
-		var shapes = functions
+		var candidates = functions.ToList();
+		var shapes = candidates
 			.Select(GetOpenTypeParameters)
 			.Where(open => open.Length == node.Arguments.Length)
 			.ToList();
+		
+		if (shapes.Count == 0 && candidates.Count > 1)
+		{
+			Diagnostics.Add(ReportOverloadArgumentCount(node.SourceLocation, GetName(node.Target),
+				node.Arguments.Length));
+			
+			return null;
+		}
 		
 		var types = node.Arguments
 			.Select((argument, i) => context.ResolveGenericArgumentExpression(argument, FindSharedParameter(shapes, i)))
@@ -3978,9 +3987,12 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		return Error(node, methods is [var single]
 			? ResolutionContext.ReportGenericArgumentCount(location, name,
 				single.Function.DeclaredTypeParameters.Length)
-			: new(DiagnosticSeverity.Error, location,
-				$"No overload of '{name}' takes {typeArguments.Types.Length} generic arguments"), CurrentTargetType);
+			: ReportOverloadArgumentCount(location, name, typeArguments.Types.Length), CurrentTargetType);
 	}
+	
+	private static Diagnostic ReportOverloadArgumentCount(SourceLocation location, string name, int count) =>
+		new(DiagnosticSeverity.Error, location,
+			$"No overload of '{name}' takes {ResolutionContext.DescribeGenericArguments(count)}");
 	
 	private IResolvedExpressionNode ResolveIndexing(IndexerExpressionNode node, IResolvedExpressionNode target)
 	{

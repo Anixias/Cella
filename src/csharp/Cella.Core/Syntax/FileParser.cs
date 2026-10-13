@@ -167,6 +167,7 @@ public sealed class FileParser
 				}
 				
 				conditionAllowed = false;
+				moduleNameAllowed = false;
 				if (ParseImportExpression(ref index) is { } import)
 					imports.Add(import);
 				else
@@ -180,6 +181,7 @@ public sealed class FileParser
 			
 			if (ParseTopLevelDeclaration(ref index, declarations, null))
 			{
+				moduleNameAllowed = false;
 				importsAllowed = false;
 				conditionAllowed = false;
 				continue;
@@ -1545,6 +1547,13 @@ public sealed class FileParser
 				members.Add(member);
 				continue;
 			}
+			
+			var caseStart = index;
+			if (Match(ref index, out var caseVisibility, _memberContextualKeywords, _visibilityKeywords) &&
+			    Peek(index, TokenType.Identifier) && IsOnSameLine(index))
+				Report(caseVisibility, $"Cannot declare '{caseVisibility.Text}' cases");
+			else
+				index = caseStart;
 			
 			if (ParseEnumCase(ref index, matchedType) is not { } enumCase)
 				return false;

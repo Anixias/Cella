@@ -797,7 +797,7 @@ public readonly struct ResolutionContext
 	public static Diagnostic ReportGenericArgumentCount(SourceLocation location, string name, int count) =>
 		new(DiagnosticSeverity.Error, location, $"'{name}' takes {DescribeGenericArguments(count)}");
 	
-	private static string DescribeGenericArguments(int count) => count switch
+	public static string DescribeGenericArguments(int count) => count switch
 	{
 		0 => "no generic arguments",
 		1 => "one generic argument",

@@ -3328,6 +3328,7 @@ public sealed class SignatureCollector
 		if (_entryPoints.Count > 1)
 		{
 			var reportedAsDuplicates = _entryPoints.All(entryPoint => _entryPoints.Any(other => other != entryPoint &&
+				TypePool.ParametersMatch(entryPoint.Signature, other.Signature, false) &&
 				AreVisibleTogether(entryPoint.Symbol, entryPoint.File!, other.Symbol, other.File!)));
 			
 			if (reportedAsDuplicates)

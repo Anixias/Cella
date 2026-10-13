@@ -1,0 +1,5 @@
+helper: fun -> i32 = 4
+
+mod test
+
+main: fun -> i32 = helper()

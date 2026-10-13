@@ -1,0 +1,11 @@
+mod test
+
+Color: enum { red  pvt green  pub blue }
+
+Shape: enum
+{
+	circle
+	mod square
+}
+
+main: fun -> i32 = 0

@@ -1,0 +1,14 @@
+
+====== main_overloads.ce ======
+
+Error at line 3, column 1
+2 │ 
+3 │ main: fun -> i32 = 0
+    ╘══╛ The program has more than one 'main' function
+
+Error at line 5, column 1
+4 │ 
+5 │ main: fun(args: ptr[str], count: usize) -> i32 = 1
+    ╘══╛ The program has more than one 'main' function
+
+[compilation failed]

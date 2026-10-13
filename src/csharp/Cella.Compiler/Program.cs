@@ -1,4 +1,5 @@
-﻿using System.Collections.Concurrent;
+﻿using System.Buffers;
+using System.Collections.Concurrent;
 using System.Collections.Immutable;
 using System.Text;
 using Cella.Compiler.Linking;
@@ -44,8 +45,18 @@ internal static class Program
 		return result.Task;
 	}
 	
+	private static readonly string[] _options = ["--quiet", "--hints", "--release", "--flag"];
+	
 	private static async Task<int> RunAsync(string[] args)
 	{
+		if (args.Where((arg, i) =>
+				    arg.StartsWith("--") && !_options.Contains(arg) && (i == 0 || args[i - 1] != "--flag"))
+			    .FirstOrDefault() is { } unknown)
+		{
+			Console.WriteLine($"Unknown option '{unknown}'");
+			return 1;
+		}
+		
 		var verbose = !args.Contains("--quiet");
 		var showHints = args.Contains("--hints");
 		var optimizeMode = args.Contains("--release") ? OptimizeMode.Release : OptimizeMode.Debug;
@@ -56,7 +67,16 @@ internal static class Program
 			.FirstOrDefault();
 		
 		if (sourcePath is null)
+		{
+			Console.WriteLine("Expected a project file or folder");
 			return 1;
+		}
+		
+		if (!Directory.Exists(sourcePath) && !File.Exists(sourcePath))
+		{
+			Console.WriteLine($"'{sourcePath}' not found");
+			return 1;
+		}
 		
 		// Phase 0a: Project collection
 		var projectPaths = new HashSet<string>();
@@ -73,7 +93,7 @@ internal static class Program
 		
 		if (projectPaths.Count == 0)
 		{
-			Console.WriteLine("No projects provided, exiting");
+			Console.WriteLine($"No projects found in '{sourcePath}'");
 			return 1;
 		}
 		
@@ -685,10 +705,15 @@ internal static class Program
 			ct.ThrowIfCancellationRequested();
 			
 			// TODO Create some kind of StreamSource so the entire file doesn't have to be loaded into memory
-			var sourceString = await File.ReadAllTextAsync(sourcePath, ct);
+			var bytes = await File.ReadAllBytesAsync(sourcePath, ct);
 			ct.ThrowIfCancellationRequested();
 			
-			var source = new StringSource(sourceString, sourcePath);
+			using var reader = new StreamReader(new MemoryStream(bytes), Encoding.UTF8, true);
+			var source = new StringSource(await reader.ReadToEndAsync(ct), sourcePath);
+			if (FindInvalidUtf8(bytes) is { } offset)
+				diagnostics.Add(new(DiagnosticSeverity.Error,
+					new SourceLocation(source, new TextRange(offset, offset + 1)), "Invalid UTF-8"));
+			
 			var scanner = new FilteredScanner(source);
 			
 			// TODO Change parser to retrieve tokens as needed
@@ -707,6 +732,23 @@ internal static class Program
 		}
 		
 		return (files.ToImmutableArray(), diagnostics);
+	}
+	
+	private static int? FindInvalidUtf8(byte[] bytes)
+	{
+		if (bytes is [0xFF, 0xFE, ..] or [0xFE, 0xFF, ..])
+			return null;
+		
+		var start = bytes is [0xEF, 0xBB, 0xBF, ..] ? 3 : 0;
+		for (var index = start; index < bytes.Length;)
+		{
+			if (Rune.DecodeFromUtf8(bytes.AsSpan(index), out _, out var length) != OperationStatus.Done)
+				return Encoding.UTF8.GetCharCount(bytes, start, index - start);
+			
+			index += length;
+		}
+		
+		return null;
 	}
 	
 	private static bool ReportErrors(List<DiagnosticList> diagnostics, string directory, bool showHints)

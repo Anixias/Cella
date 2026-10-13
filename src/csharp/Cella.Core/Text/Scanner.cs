@@ -265,38 +265,17 @@ public class Scanner : IScanner
 			case '*':
 				tokenType = TokenType.BlockComment;
 				var depth = 1;
-				var lastSlash = false;
-				var lastAsterisk = false;
-				while (end < Source.Length)
+				while (end < Source.Length && depth > 0)
 				{
-					switch (Source[end])
+					var pair = end + 1 < Source.Length ? (Source[end], Source[end + 1]) : default;
+					depth += pair switch
 					{
-						case '*':
-							if (lastSlash)
-								depth++;
-							
-							lastAsterisk = true;
-							lastSlash = false;
-							break;
-						
-						case '/':
-							if (lastAsterisk)
-								depth--;
-							
-							lastAsterisk = false;
-							lastSlash = true;
-							break;
-						
-						default:
-							lastAsterisk = false;
-							lastSlash = false;
-							break;
-					}
+						('/', '*') => 1,
+						('*', '/') => -1,
+						_ => 0
+					};
 					
-					end++;
-					
-					if (depth <= 0)
-						break;
+					end += pair is ('/', '*') or ('*', '/') ? 2 : 1;
 				}
 				
 				if (depth > 0)
@@ -634,7 +613,7 @@ public class Scanner : IScanner
 	private ScanResult ScanChar(int position)
 	{
 		var end = position + 1;
-		var isValid = true;
+		var isValid = false;
 		var escaped = false;
 		
 		while (end < Source.Length)
@@ -642,14 +621,12 @@ public class Scanner : IScanner
 			if (Source[end] == '\'' && !escaped)
 			{
 				end++;
+				isValid = true;
 				break;
 			}
 			
 			if (Source[end] is '\n' or '\r')
-			{
-				isValid = false;
 				break;
-			}
 			
 			if (Source[end] == '\\')
 				escaped = !escaped;

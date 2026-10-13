@@ -337,6 +337,9 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 		}
 	}
 	
+	private static string DescribeInvalidModule(string module, string message) =>
+		$"Internal compiler error: invalid code generated for module '{module}'{Environment.NewLine}{message.TrimEnd()}";
+	
 	private CodeGenResult Finish(ModuleState state)
 	{
 		current = state;
@@ -346,14 +349,14 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 		state.DiBuilder.DIBuilderFinalize();
 		
 		string message;
-		if (!llvmModule.TryVerify(LLVMVerifierFailureAction.LLVMAbortProcessAction, out message))
-			return CodeGenResult.Failure with { ErrorMessage = message };
+		if (!llvmModule.TryVerify(LLVMVerifierFailureAction.LLVMReturnStatusAction, out message))
+			return CodeGenResult.Failure with { ErrorMessage = DescribeInvalidModule(name, message) };
 		
 		if (RunOptimizationPass(llvmModule) is { } passError)
 			return CodeGenResult.Failure with { ErrorMessage = passError };
 		
-		if (!llvmModule.TryVerify(LLVMVerifierFailureAction.LLVMAbortProcessAction, out message))
-			return CodeGenResult.Failure with { ErrorMessage = message };
+		if (!llvmModule.TryVerify(LLVMVerifierFailureAction.LLVMReturnStatusAction, out message))
+			return CodeGenResult.Failure with { ErrorMessage = DescribeInvalidModule(name, message) };
 		
 		if (!Directory.Exists(_config.OutputConfig.Directory))
 			Directory.CreateDirectory(_config.OutputConfig.Directory);

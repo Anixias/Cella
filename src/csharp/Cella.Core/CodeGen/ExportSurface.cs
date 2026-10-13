@@ -74,7 +74,8 @@ public sealed class ExportSurface
 			.Concat(GetAccessors(enumType.Properties)),
 		TraitSymbol trait => trait.Functions.Select(static method => method.Function).Concat(trait.Constructors)
 			.Concat(GetAccessors(trait.Properties)),
-		ImplSymbol impl => impl.Functions.Select(static method => method.Function).Concat(GetAccessors(impl.Properties)),
+		ImplSymbol impl => impl.Functions.Select(static method => method.Function)
+			.Concat(GetAccessors(impl.Properties)),
 		_ => []
 	};
 	
@@ -105,6 +106,7 @@ public sealed class ExportSurface
 				ProcessFunction(_bodies.TryGetValue(function, out var body)
 					? body.Info
 					: _assembly.SignatureTable.Functions[function]);
+				
 				break;
 			
 			case GlobalSymbol global:
