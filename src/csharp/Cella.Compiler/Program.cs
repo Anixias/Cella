@@ -630,6 +630,12 @@ internal static class Program
 				ModuleDefinition = moduleDefinition
 			};
 			
+			if (linker.FindMissingLinker(linkRequest) is { } missing)
+			{
+				Console.WriteLine($"{project.FilePath}: Cannot find the linker '{missing}'");
+				return errorResult;
+			}
+			
 			var linkerToolchain = Toolchain.FromTargetTriple(targetTriple, toolchainDir);
 			var linkExitCode = await linker.LinkAsync(linkRequest, linkerToolchain);
 			

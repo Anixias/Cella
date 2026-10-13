@@ -5,27 +5,18 @@ namespace Cella.Compiler.Linking;
 
 public sealed class Linker(string rootPath, bool verbose)
 {
+	public string? FindMissingLinker(LinkRequest request) =>
+		File.Exists(GetLinkerPath(request)) ? null : GetLinkerPath(request);
+	
+	private string GetLinkerPath(LinkRequest request) => Path.Combine(rootPath,
+		request.OutputType == ProjectOutputType.StaticLibrary ? "llvm-lib.exe" : "lld.exe");
+	
 	public async Task<int> LinkAsync(LinkRequest request, Toolchain toolchain)
 	{
 		// TODO Only works on Windows host
-		string linkerName;
-		bool addFlavor;
-		switch (request.OutputType)
-		{
-			case ProjectOutputType.StaticLibrary:
-				linkerName = "llvm-lib.exe";
-				addFlavor = false;
-				break;
-			
-			default:
-				linkerName = "lld.exe";
-				addFlavor = true;
-				break;
-		}
-		
 		var args = new List<string>();
 		
-		if (addFlavor)
+		if (request.OutputType != ProjectOutputType.StaticLibrary)
 		{
 			args.Add("-flavor");
 			args.Add(toolchain.LldFlavor);
@@ -36,10 +27,8 @@ public sealed class Linker(string rootPath, bool verbose)
 		if (verbose)
 			Console.WriteLine($"Linker starting with arguments: {string.Join(" ", args)}");
 		
-		var linkerPath = Path.Combine(rootPath, linkerName);
-		
 		using var process = new Process();
-		process.StartInfo.FileName = linkerPath;
+		process.StartInfo.FileName = GetLinkerPath(request);
 		process.StartInfo.RedirectStandardError = true;
 		process.StartInfo.UseShellExecute = false;
 		
