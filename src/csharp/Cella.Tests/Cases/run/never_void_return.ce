@@ -1,0 +1,31 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+	fflush: fun(stream: ptr) -> i32
+	abort: fun -> never
+}
+
+fail: fun -> never
+{
+	printf("failing\n")
+	fflush(null)
+	abort()
+}
+
+stop: fun(code: i32)
+{
+	if code > 0
+		ret fail()
+
+	printf("kept going\n")
+}
+
+main: fun -> i32
+{
+	stop(0)
+	stop(1)
+	printf("unreachable\n")
+	ret 0
+}

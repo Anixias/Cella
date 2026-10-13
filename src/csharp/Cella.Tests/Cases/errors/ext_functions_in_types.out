@@ -1,0 +1,14 @@
+
+====== ext_functions_in_types.ce ======
+
+Error at line 7, column 7
+6 │ 
+7 │ get: ext fun(imm self) -> i32 = self.x
+         ╘═╛ Cannot declare 'ext' functions in types
+
+Error at line 12, column 8
+11 │ {
+12 │     make: ext fun(v: i32) -> i32 = v
+               ╘═╛ Cannot declare 'ext' functions in types
+
+[compilation failed]

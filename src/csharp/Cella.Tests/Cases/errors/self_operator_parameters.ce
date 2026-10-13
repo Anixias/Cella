@@ -1,0 +1,10 @@
+mod test
+
+P: rec
+{
+	x: i32
+
+	+: op(a: Self, b: Self) -> Self = a
+}
+
+main: fun -> i32 = 0

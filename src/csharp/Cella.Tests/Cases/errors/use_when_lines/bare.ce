@@ -1,0 +1,4 @@
+mod test
+use when
+
+first: fun -> i32 = 0

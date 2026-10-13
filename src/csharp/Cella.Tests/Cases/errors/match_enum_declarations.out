@@ -89,7 +89,7 @@ Error at line 76, column 9
 Error at line 79, column 22
 78 │ 
 79 │ borrowed: enum match imm[i32]
-                          ╘══════╛ Cannot store borrows in plain enums
+                          ╘══════╛ Cannot store borrows in enums that aren't 'ref'
                                  | Did you mean 'borrowed: ref enum match'?
 
 Error at line 93, column 18

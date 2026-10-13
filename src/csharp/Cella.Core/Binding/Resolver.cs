@@ -590,7 +590,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	public IResolvedExpressionNode Visit(ReturnExpressionNode node)
 	{
 		if (CurrentResolutionContext.ContainingFunction is not { } function)
-			return Error(node, "Returns are only allowed within functions", null);
+			return Error(node, "Cannot use 'ret' outside functions", null);
 		
 		if (function.Signature.ReturnType is NeverType)
 		{
@@ -610,8 +610,12 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		if (returnType != NativeSymbols.Void)
 			return new ResolvedReturnExpressionNode(VisitNode(expression, returnType), node);
 		
-		if (IsInvalid(VisitDiscarded(expression)))
+		var discarded = VisitDiscarded(expression);
+		if (IsInvalid(discarded))
 			return new ResolvedInvalidExpressionNode(node);
+		
+		if (discarded.Type is NeverType)
+			return new ResolvedReturnExpressionNode(discarded, node);
 		
 		return Error(node, $"Cannot return a value from {DiagnosticReporter.DescribeFunction(function.Symbol)}", null,
 			expression);
@@ -636,7 +640,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			return (null, null);
 		
 		if (labelNode is not VarExpressionNode varExpr)
-			return (null, Error(node, "Expression must be a label", null, labelNode));
+			return (null, Error(node, "Expected a label", null, labelNode));
 		
 		var name = varExpr.Identifier.Text;
 		if (CurrentResolutionContext.Resolve(name) is not { } symbol)
@@ -2239,8 +2243,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		var spread = node.Arguments[index];
 		var variadic = candidates.Where(static candidate => candidate.HasVariadicParameter).ToList();
 		if (variadic.Count == 0)
-			return Error(node, "Cannot spread arguments into calls without variadic parameters", CurrentTargetType,
-				spread);
+			return Error(node, candidates.Any(static candidate => candidate.IsVariadic)
+				? "Cannot spread arguments into 'ext' functions"
+				: "Cannot spread arguments into calls without variadic parameters", CurrentTargetType, spread);
 		
 		if (variadic.Any(candidate => index == candidate.ParameterTypes.Length - 1 &&
 		                              node.Arguments.Length == index + 1))
@@ -3236,6 +3241,11 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			return new(DiagnosticSeverity.Error, immArgument.Keyword.SourceLocation, name is null
 				? "Only an argument to an 'imm' parameter can be marked 'imm'"
 				: $"'{name}' isn't an 'imm' parameter");
+		
+		if (isMut && arg.Syntax is OwnExpressionNode ownArgument)
+			return new(DiagnosticSeverity.Error, ownArgument.Keyword.SourceLocation, name is null
+				? "Cannot move arguments into 'mut' parameters"
+				: $"'{name}' isn't an 'own' parameter");
 		
 		if (argument is null)
 		{
@@ -5146,7 +5156,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			return node;
 		
 		if (function.Symbol.Syntax is FunctionNode { When: not null })
-			return Error(node.Syntax, $"'when' function '{node.Group.FunctionName}' can't be used as a value",
+			return Error(node.Syntax, "Cannot use 'when' functions as values",
 				NativeSymbols.Invalid);
 		
 		TrackFunctionUse(function, node.Syntax);
@@ -5164,7 +5174,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 				node.Syntax.SourceLocation), NativeSymbols.Invalid);
 		
 		if (function.Symbol.Syntax is FunctionNode { When: not null })
-			return Error(node.Syntax, $"'when' function '{group.FunctionName}' can't be used as a value",
+			return Error(node.Syntax, "Cannot use 'when' functions as values",
 				NativeSymbols.Invalid);
 		
 		TrackFunctionUse(function, node.Syntax);
@@ -5298,6 +5308,14 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		if (type is null && initializer is null)
 			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Identifier.SourceLocation,
 				$"Cannot infer the type of '{node.Identifier.Text}'"));
+		
+		if (type is null && initializer?.Type is NeverType)
+		{
+			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Identifier.SourceLocation,
+				"'never' can only be a return type"));
+			
+			type = NativeSymbols.Invalid;
+		}
 		
 		type ??= initializer?.Type ?? NativeSymbols.Invalid;
 		if (TypePool.FindValueDyn(type) is { } valueDyn)

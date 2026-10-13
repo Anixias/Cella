@@ -1,0 +1,12 @@
+mod test
+
+ext
+{
+	abort: fun -> never
+}
+
+main: fun -> i32
+{
+	val x = abort()
+	ret 0
+}

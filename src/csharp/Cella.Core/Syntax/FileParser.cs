@@ -176,10 +176,15 @@ public sealed class FileParser
 					else if (!conditionAllowed)
 						Report(useToken, "'use when' must directly follow the module name");
 					
-					if (ParseCondition(ref index) is { } condition)
-						isIncluded &= condition;
-					else
+					if (ParseCondition(ref index) is not { } condition)
 						ResyncTopLevel(ref index);
+					else if (IsOnSameLine(index))
+					{
+						ReportExpected(index, "'&&' or '||'");
+						ResyncTopLevel(ref index);
+					}
+					else
+						isIncluded &= condition;
 					
 					conditionAllowed = false;
 					continue;
@@ -710,6 +715,13 @@ public sealed class FileParser
 	
 	private bool? ParseFlag(ref int index)
 	{
+		if (index > 0 && !IsOnSameLine(index) &&
+		    Tokens[index - 1].Type is not (TokenType.OpAmpersandAmpersand or TokenType.OpBarBar))
+		{
+			ReportExpected(index - 1, "a flag");
+			return null;
+		}
+		
 		if (Match(ref index, TokenType.OpBang))
 			return !ParseFlag(ref index);
 		
@@ -1838,6 +1850,13 @@ public sealed class FileParser
 			return null;
 		}
 		
+		if (Tokens[index].Text == "ext" && Peek(index + 1, TokenType.KeywordFun) &&
+		    !Peek(index + 2, TokenType.OpOpenBracket))
+		{
+			Report(Tokens[index], "Cannot declare 'ext' functions in types");
+			return null;
+		}
+		
 		if (FindMisplacedFieldModifier(index) is var (location, message))
 		{
 			Report(location, message);
@@ -2569,9 +2588,9 @@ public sealed class FileParser
 		// TODO Attempt resync 
 		if (!Match(ref index, out var identifier, TokenType.Identifier))
 		{
-			Report(Tokens[index], IsReservedWord(index)
+			Report(Tokens[index], Tokens[index].Error ?? (IsReservedWord(index)
 				? DescribeReservedWord(Tokens[index])
-				: $"Expected a name after '{keyword.Text}'");
+				: $"Expected a name after '{keyword.Text}'"));
 			
 			return null;
 		}

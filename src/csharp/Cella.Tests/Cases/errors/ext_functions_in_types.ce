@@ -1,0 +1,20 @@
+mod test
+
+Point: rec
+{
+	x: i32
+
+	get: ext fun(imm self) -> i32 = self.x
+}
+
+Maker: rec
+{
+	make: ext fun(v: i32) -> i32 = v
+}
+
+Holder: rec
+{
+	callback: ext fun[i32 -> i32]
+}
+
+main: fun -> i32 = 0

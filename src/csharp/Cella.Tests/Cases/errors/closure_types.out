@@ -4,7 +4,7 @@
 Error at line 5, column 7
 4 │ {
 5 │     run: ref fun[]
-             ╘═══════╛ Cannot store borrows in plain records
+             ╘═══════╛ Cannot store borrows in records that aren't 'ref'
                      | Did you mean 'Plain: ref rec'?
 
 Error at line 8, column 12

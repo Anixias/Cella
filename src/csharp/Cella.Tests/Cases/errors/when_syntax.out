@@ -6,10 +6,10 @@ Error at line 2, column 10
 2 │ use when windws
              ╘════╛ Flag 'windws' not found
 
-Error at line 5, column 1
+Error at line 4, column 12
+3 │ 
 4 │ first: fun when
-5 │ {
-    ^ Expected a flag
+               ╘══╛ Expected a flag
 
 Error at line 9, column 1
 8 │ second: fun when debug &&

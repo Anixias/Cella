@@ -2165,7 +2165,9 @@ public sealed class SignatureCollector
 		if (node.Parameters.FirstOrDefault(static p => p.Mode?.Type == TokenType.KeywordMut) is { } mutParameter)
 			return (mutParameter.SourceLocation, $"Cannot take 'mut' parameters in '{name}' operators");
 		
-		return type is InvalidType || signature.GetDeclaredType(0) == type || signature.GetDeclaredType(1) == type
+		return type is InvalidType || signature.GetDeclaredType(0) is InvalidType ||
+		       signature.GetDeclaredType(1) is InvalidType || signature.GetDeclaredType(0) == type ||
+		       signature.GetDeclaredType(1) == type
 			? null
 			: (node.Identifier.SourceLocation, $"'{name}' operators need a '{type.Name}' parameter");
 	}
@@ -2621,7 +2623,7 @@ public sealed class SignatureCollector
 		string kinds, string keyword)
 	{
 		var prefix = string.Concat(modifiers.Select(static modifier => $"{modifier.Text} "));
-		return new(DiagnosticSeverity.Error, type.SourceLocation, $"Cannot store borrows in plain {kinds}")
+		return new(DiagnosticSeverity.Error, type.SourceLocation, $"Cannot store borrows in {kinds} that aren't 'ref'")
 		{
 			Hints = [$"Did you mean '{name.Text}: {prefix}ref {keyword}'?"]
 		};
@@ -2926,7 +2928,9 @@ public sealed class SignatureCollector
 		
 		if (node.ReturnType is { } returnType)
 			Diagnostics.Add(new(DiagnosticSeverity.Error, returnType.SourceLocation,
-				"Cannot return values from 'when' functions"));
+				returnType is IdentifierTypeNode { Token.Text: "never" }
+					? "Cannot use 'when' on 'never' functions"
+					: "Cannot return values from 'when' functions"));
 		
 		var modes = node.Parameters.Select(static parameter => parameter.Mode).Prepend(node.Receiver?.Mode);
 		foreach (var mode in modes.OfType<Token>().Where(static mode => mode.Type == TokenType.KeywordOwn))

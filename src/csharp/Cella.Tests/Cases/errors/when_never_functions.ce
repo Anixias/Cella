@@ -1,0 +1,10 @@
+mod test
+
+stop: fun -> never when release
+{
+	loop
+	{
+	}
+}
+
+main: fun -> i32 = 0

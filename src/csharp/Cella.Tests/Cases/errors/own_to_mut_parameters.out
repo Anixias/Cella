@@ -1,0 +1,14 @@
+
+====== own_to_mut_parameters.ce ======
+
+Error at line 19, column 9
+18 │ var hp = 10
+19 │ damage(own hp, 3)
+            ╘═╛ 'hp' isn't an 'own' parameter
+
+Error at line 21, column 7
+20 │ var b = B(3)
+21 │ poke(own b)
+          ╘═╛ 'b' isn't an 'own' parameter
+
+[compilation failed]

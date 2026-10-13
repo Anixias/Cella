@@ -1,0 +1,13 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+main: fun -> i32
+{
+	val a = [1, 2]
+	printf("%d\n", ...a)
+	ret 0
+}

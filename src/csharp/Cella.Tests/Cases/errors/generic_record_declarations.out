@@ -19,7 +19,7 @@ Error at line 20, column 9
 Error at line 25, column 8
 24 │ {
 25 │     pair: duo[imm[i32], i32]
-               ╘════════════════╛ Cannot store borrows in plain records
+               ╘════════════════╛ Cannot store borrows in records that aren't 'ref'
                                 | Did you mean 'holder: ref rec'?
 
 Error at line 34, column 22

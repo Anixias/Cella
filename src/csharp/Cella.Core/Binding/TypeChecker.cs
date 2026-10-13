@@ -37,20 +37,10 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool, 
 	
 	public void Visit(ResolvedFunctionNode node)
 	{
-		var returnType = node.FunctionInfo.Signature.ReturnType;
-		if (node.Body is IResolvedExpressionNode expression)
-		{
-			if (!AreTypesCompatible(returnType, expression.Type))
-				Diagnostics.Add(new(DiagnosticSeverity.Error, expression.Syntax.SourceLocation,
-					$"Cannot return value of type '{expression.Type.Name}': Expected type '{returnType.Name}'"));
-			
-			return;
-		}
-		
 		if (node.Body is not IResolvedStatementNode statement)
 			return;
 		
-		_returns.Push((returnType, node.FunctionInfo.Symbol));
+		_returns.Push((node.FunctionInfo.Signature.ReturnType, node.FunctionInfo.Symbol));
 		VisitNode(statement);
 		_returns.Pop();
 	}
@@ -131,14 +121,14 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool, 
 	{
 		if (breakDepth <= 0)
 			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Syntax.SourceLocation,
-				"Breaks are only allowed within loops")); // TODO Allow within switch statements?
+				"Cannot use 'break' outside loops"));
 	}
 	
 	public void Visit(ResolvedContinueExpressionNode node)
 	{
 		if (continueDepth <= 0)
 			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Syntax.SourceLocation,
-				"Continues are only allowed within loops"));
+				"Cannot use 'cont' outside loops"));
 	}
 	
 	public void Visit(ResolvedExpressionStatementNode node)
@@ -169,11 +159,6 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool, 
 	
 	public void Visit(ResolvedIfStatementNode node)
 	{
-		var conditionType = node.Condition.Type;
-		if (!AreTypesCompatible(NativeSymbols.Bool, conditionType))
-			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Condition.Syntax.SourceLocation,
-				$"Invalid condition type '{conditionType.Name}': Expected type '{NativeSymbols.Bool.Name}'"));
-		
 		VisitNode(node.Condition);
 		VisitNode(node.Then);
 		
@@ -212,7 +197,7 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool, 
 		var (expected, function) = _returns.Peek();
 		var actual = node.Value?.Type ?? NativeSymbols.Void;
 		
-		if (!AreTypesCompatible(expected, actual))
+		if (actual is not NeverType && !AreTypesCompatible(expected, actual))
 			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Syntax.SourceLocation, node.Value is null
 				? $"{DiagnosticReporter.DescribeFunction(function, true)} must return a value"
 				: $"Cannot return value of type '{actual.Name}': Expected type '{expected?.Name ?? "void"}'"));
@@ -249,15 +234,8 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool, 
 	
 	public void Visit(ResolvedVarStatementNode node)
 	{
-		var expected = node.Symbol.Type;
-		
 		if (node.Initializer is { } initializer)
 		{
-			var actual = initializer.Type;
-			if (!AreTypesCompatible(expected, actual))
-				Diagnostics.Add(new(DiagnosticSeverity.Error, initializer.Syntax.SourceLocation,
-					$"Cannot assign value of type '{actual.Name}': Expected type '{expected.Name}'"));
-			
 			// Special case: If undef, don't check (it will throw an error)
 			if (initializer is not ResolvedUndefExpressionNode)
 			{
@@ -270,22 +248,12 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool, 
 	
 	public void Visit(ResolvedWhileStatementNode node)
 	{
-		var conditionType = node.Condition.Type;
-		if (!AreTypesCompatible(NativeSymbols.Bool, conditionType))
-			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Condition.Syntax.SourceLocation,
-				$"Invalid condition type '{conditionType.Name}': Expected type '{NativeSymbols.Bool.Name}'"));
-		
 		VisitNode(node.Condition);
 		VisitLoopBody(node.Body);
 	}
 	
 	public void Visit(ResolvedDoWhileStatementNode node)
 	{
-		var conditionType = node.Condition.Type;
-		if (!AreTypesCompatible(NativeSymbols.Bool, conditionType))
-			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Condition.Syntax.SourceLocation,
-				$"Invalid condition type '{conditionType.Name}': Expected type '{NativeSymbols.Bool.Name}'"));
-		
 		VisitNode(node.Condition);
 		VisitLoopBody(node.Body);
 	}
@@ -509,12 +477,6 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool, 
 		else if (node.IsOwnStore)
 			CheckOwnStore(node);
 		
-		var expected = node.Left.Type;
-		var actual = node.Right.Type;
-		if (node.Operation is null && !AreTypesCompatible(expected, actual))
-			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Right.Syntax.SourceLocation,
-				$"Cannot assign source type '{actual.Name}' to target type '{expected.Name}'"));
-		
 		if (node.Op.Type is TokenType.OpSlashEqual or TokenType.OpPercentEqual)
 			ReportZeroDivisor(node.Right);
 		
@@ -604,25 +566,9 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool, 
 	public void Visit(ResolvedConstructorCallExpressionNode node)
 	{
 		var args = node.Arguments;
-		var paramTypes = node.Function.Signature.ParameterTypes;
-		if (args.Length != paramTypes.Length - 1) // - 1 for implicit self parameter
-		{
-			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Syntax.SourceLocation,
-				$"Incorrect number of arguments: Expected {paramTypes.Length}, got {args.Length}"));
-			
-			return;
-		}
-		
 		for (var i = 0; i < args.Length; i++)
 		{
 			var arg = args[i];
-			var expected = paramTypes[i + 1];
-			var actual = arg.Type;
-			
-			if (!AreTypesCompatible(expected, actual))
-				Diagnostics.Add(new(DiagnosticSeverity.Error, arg.Syntax.SourceLocation,
-					$"Argument type '{actual.Name}' is not assignable to parameter type '{expected.Name}'"));
-			
 			VisitNode(arg);
 			if (node.Function.Signature.GetMode(i + 1) == ParameterMode.Own)
 				CheckConsumed(arg);
@@ -659,32 +605,13 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool, 
 	{
 		var args = node.Arguments;
 		var signature = node.Function.Signature;
-		var paramTypes = signature.ParameterTypes;
-		if (signature.IsVariadic ? args.Length < paramTypes.Length : args.Length != paramTypes.Length)
-		{
-			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Syntax.SourceLocation,
-				$"Incorrect number of arguments: Expected {paramTypes.Length}, got {args.Length}"));
-			
-			return;
-		}
-		
 		for (var i = 0; i < args.Length; i++)
 		{
 			var arg = args[i];
-			if (i >= paramTypes.Length)
-			{
-				VisitNode(arg);
-				continue;
-			}
-			
-			var expected = paramTypes[i];
-			var actual = arg.Type;
-			
-			if (!AreTypesCompatible(expected, actual))
-				Diagnostics.Add(new(DiagnosticSeverity.Error, arg.Syntax.SourceLocation,
-					$"Argument type '{actual.Name}' is not assignable to parameter type '{expected.Name}'"));
-			
 			VisitNode(arg);
+			if (i >= signature.ParameterTypes.Length)
+				continue;
+			
 			CheckImmArgument(node.Syntax, arg, signature.GetMode(i),
 				i == 0 && node.Function.Symbol.Kind == FunctionKind.Method);
 			

@@ -1,0 +1,19 @@
+
+====== self_operator_parameters.ce ======
+
+Error at line 7, column 11
+6 │ 
+7 │ +: op(a: Self, b: Self) -> Self = a
+             ╘══╛ Type 'Self' not found in this scope
+
+Error at line 7, column 20
+6 │ 
+7 │ +: op(a: Self, b: Self) -> Self = a
+                      ╘══╛ Type 'Self' not found in this scope
+
+Error at line 7, column 29
+6 │ 
+7 │ +: op(a: Self, b: Self) -> Self = a
+                               ╘══╛ Type 'Self' not found in this scope
+
+[compilation failed]

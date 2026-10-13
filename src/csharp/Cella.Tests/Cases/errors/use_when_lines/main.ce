@@ -1,0 +1,4 @@
+mod test
+use when debug release
+
+main: fun -> i32 = 0

@@ -1,0 +1,23 @@
+mod test
+
+B: rec
+{
+	n: i32
+	drop: op {}
+}
+
+damage: fun(mut hp: i32, amount: i32)
+{
+	hp -= amount
+}
+
+poke: fun(mut b: B) {}
+
+main: fun -> i32
+{
+	var hp = 10
+	damage(own hp, 3)
+	var b = B(3)
+	poke(own b)
+	ret 0
+}

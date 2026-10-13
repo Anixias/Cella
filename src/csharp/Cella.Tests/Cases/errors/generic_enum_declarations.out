@@ -34,13 +34,13 @@ Error at line 30, column 13
 Error at line 35, column 8
 34 │ {
 35 │     name: option[imm[i32]]
-               ╘══════════════╛ Cannot store borrows in plain records
+               ╘══════════════╛ Cannot store borrows in records that aren't 'ref'
                               | Did you mean 'Holder: ref rec'?
 
 Error at line 41, column 14
 40 │ nothing
 41 │ held(value: option[str])
-                 ╘═════════╛ Cannot store borrows in plain enums
+                 ╘═════════╛ Cannot store borrows in enums that aren't 'ref'
                            | Did you mean 'Plain: ref enum'?
 
 Error at line 44, column 14

@@ -1,0 +1,9 @@
+
+====== when_never_functions.ce ======
+
+Error at line 3, column 14
+2 │ 
+3 │ stop: fun -> never when release
+                 ╘═══╛ Cannot use 'when' on 'never' functions
+
+[compilation failed]

@@ -1,0 +1,9 @@
+
+====== invalid_local_names.ce ======
+
+Error at line 5, column 6
+4 │ {
+5 │     val $a = 5
+            ^ Unexpected character '$'
+
+[compilation failed]

@@ -1,0 +1,25 @@
+
+====== bare.ce ======
+
+Error at line 2, column 5
+1 │ mod test
+2 │ use when
+        ╘══╛ Expected a flag
+
+
+====== main.ce ======
+
+Error at line 2, column 16
+1 │ mod test
+2 │ use when debug release
+                   ╘═════╛ Expected '&&' or '||'
+
+
+====== parens.ce ======
+
+Error at line 2, column 13
+1 │ mod test
+2 │ use when ((((
+                ^ Expected a flag
+
+[compilation failed]

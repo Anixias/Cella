@@ -4,7 +4,7 @@
 Error at line 10, column 8
  9 │ {
 10 │     text: fstr[Display]
-               ╘═══════════╛ Cannot store borrows in plain records
+               ╘═══════════╛ Cannot store borrows in records that aren't 'ref'
                            | Did you mean 'Holder: ref rec'?
 
 Error at line 13, column 12

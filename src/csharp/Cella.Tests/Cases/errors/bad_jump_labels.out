@@ -4,7 +4,7 @@
 Error at line 12, column 11
 11 │ if x == 1
 12 │     break 5
-               ^ Expression must be a label
+               ^ Expected a label
 
 Error at line 15, column 10
 14 │ if x == 2
