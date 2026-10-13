@@ -96,7 +96,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	
 	public ResolvedFileNode Resolve(FileNode root) => (ResolvedFileNode)Visit(root);
 	
-	public IResolvedExpressionNode ResolveInitializer(IExpressionNode initializer, TypeSymbol type,
+	public IResolvedExpressionNode ResolveInitializer(IExpressionNode initializer, TypeSymbol? type,
 		ResolutionContext context)
 	{
 		_resolutionContexts.Push(context);
@@ -4248,7 +4248,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		}
 		else
 		{
-			elementType = UnifyTypes(values);
+			elementType = UnifyTypes(values) ?? UnifyRows(node, values);
 			if (elementType is null)
 			{
 				if (!values.Any(static value => value.Type is InvalidType))
@@ -4271,6 +4271,34 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		var type = _typePool.GetArrayType(elementType, node.Values.Length);
 		return new ResolvedArrayExpressionNode(type, values, node);
 	}
+	
+	private TypeSymbol? UnifyRows(ArrayExpressionNode node, List<IResolvedExpressionNode> values)
+	{
+		if (!node.Values.All(static value => value is ArrayExpressionNode))
+			return null;
+		
+		TypeSymbol? common = values[0].Type;
+		for (var i = 1; i < values.Count && common is not null; i++)
+			common = FindCommonRowType(common, values[i].Type);
+		
+		if (common is null)
+			return null;
+		
+		for (var i = 0; i < values.Count; i++)
+		{
+			if (values[i].Type != common)
+				values[i] = VisitNode(node.Values[i], common);
+		}
+		
+		return common;
+	}
+	
+	private TypeSymbol? FindCommonRowType(TypeSymbol a, TypeSymbol b) =>
+		a is ArrayType { LengthParameter: null } left && b is ArrayType { LengthParameter: null } right
+			? left.Length == right.Length && FindCommonRowType(left.ElementType, right.ElementType) is { } element
+				? _typePool.GetArrayType(element, left.Length)
+				: null
+			: FindCommonType(a, b);
 	
 	private TypeSymbol? FindConvertedElementType(TypeSymbol target, int length)
 	{

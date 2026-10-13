@@ -1,0 +1,44 @@
+
+====== lifecycle_member_shapes.ce ======
+
+Error at line 6, column 18
+5 │ x: i32
+6 │ new: op(v: i32) -> i32
+                    ╘╛ Constructors cannot return values
+
+Error at line 15, column 18
+14 │ x: i32
+15 │ new: op(v: i32) = self.x = v
+                     ^ Expected '{'
+
+Error at line 21, column 7
+20 │ x: i32
+21 │ new: fun(v: i32)
+          ╘═╛ Expected 'op'
+
+Error at line 30, column 1
+29 │     new: op(v: i32)
+30 │ }
+     ^ Expected '{'
+
+Error at line 35, column 11
+34 │ x: i32
+35 │ drop: op -> i32
+              ╘╛ Destructors cannot return values
+
+Error at line 43, column 15
+42 │ x: i32
+43 │ drop: op(mut self)
+                  ╘══╛ Destructors cannot take parameters
+
+Error at line 51, column 8
+50 │ x: i32
+51 │ drop: fun
+           ╘═╛ Expected 'op'
+
+Error at line 58, column 7
+57 │ {
+58 │     new: i32
+              ╘═╛ Expected 'op'
+
+[compilation failed]

@@ -1,0 +1,9 @@
+mod test
+
+main: fun -> i32
+{
+	val lengths = [[1, 2], [3, 4, 5]]
+	val types = [[1, 2], [true, false]]
+	val flat = [1, true]
+	ret 0
+}

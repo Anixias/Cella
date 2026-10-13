@@ -1,0 +1,41 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Huge: enum(u128)
+{
+	zero
+	big = 170141183460469231731687303715884105728
+	max = 340282366920938463463374607431768211455
+}
+
+Small: enum(u8)
+{
+	z = 0
+	a = 5u8
+	b = a + 1
+	c = 255
+}
+
+Wide: enum(u16)
+{
+	z
+	a = 7u8
+}
+
+Inferred: enum
+{
+	z
+	a = 5u16
+	b = -3
+}
+
+main: fun -> i32
+{
+	printf("%d %d %d %d %d\n", i32(Small.b), i32(Small.c), i32(Wide.a), i32(sizeOf(Inferred)), i32(Inferred.b))
+	printf("%d %d\n", i32(Huge.big == Huge.max), i32(sizeOf(Huge)))
+	ret 0
+}

@@ -1,0 +1,19 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+main: fun -> i32
+{
+	val wide = [[9223372036854775807, 2], [3, 4]]
+	val huge = [[1, 2], [18446744073709551615, 4]]
+	val mixed = [[1, 2], [3.5, 4]]
+	val deep = [[[1], [2]], [[3000000000], [4]]]
+	val n: i64 = 6
+	val typed = [[n, 1], [2, 3]]
+	printf("%lld %lld %d\n", wide[0][0], wide[1][1], i32(huge[1][0] == 18446744073709551615))
+	printf("%f %f %lld %lld\n", mixed[0][0], mixed[1][0], deep[1][0][0], typed[0][0] + typed[1][1])
+	ret 0
+}

@@ -1982,7 +1982,10 @@ public sealed class FileParser
 		var modifiers = ParseMemberModifiers(ref index, block);
 		RejectWriteRestriction(modifiers, isConversion ? "operators" : "constructors");
 		if (!Match(ref index, _memberContextualKeywords, TokenType.KeywordOp))
+		{
+			ReportExpected(index, "'op'");
 			return null;
+		}
 		
 		if (isConversion)
 			return ParseFunction(ref index, newKeyword, modifiers, false, []);
@@ -1990,14 +1993,19 @@ public sealed class FileParser
 		if (ParseParameters(ref index, true) is not { } parameters)
 			return null;
 		
+		RejectReturnType(ref index, "Constructors");
 		RejectWhen(ref index, "constructors");
 		if (!Match(ref index, out var openBraceToken, TokenType.OpOpenBrace))
-			return allowsMissingBodies
-				? new ConstructorNode(newKeyword, modifiers.Tokens, parameters, null, newKeyword.SourceLocation)
+		{
+			if (allowsMissingBodies)
+				return new ConstructorNode(newKeyword, modifiers.Tokens, parameters, null, newKeyword.SourceLocation)
 				{
 					Visibility = modifiers.Visibility
-				}
-				: null;
+				};
+			
+			ReportExpected(index, "'{'");
+			return null;
+		}
 		
 		if (ParseBlockStatement(ref index, openBraceToken) is not { } body)
 			return null;
@@ -2009,6 +2017,15 @@ public sealed class FileParser
 		{
 			Visibility = modifiers.Visibility
 		};
+	}
+	
+	private void RejectReturnType(ref int index, string kind)
+	{
+		if (!IsOnSameLine(index) || !Match(ref index, out var arrow, TokenType.OpArrow))
+			return;
+		
+		Report(arrow, $"{kind} cannot return values");
+		ParseType(ref index);
 	}
 	
 	private void RejectWhen(ref int index, string kind)
@@ -2053,14 +2070,20 @@ public sealed class FileParser
 				$"Cannot declare '{visibility.Text}' destructors");
 		
 		if (!Match(ref index, _memberContextualKeywords, TokenType.KeywordOp))
+		{
+			ReportExpected(index, "'op'");
+			return null;
+		}
+		
+		if (ParseParameters(ref index, true, false, true, out _, out var receiver) is not { } parameters)
 			return null;
 		
-		if (ParseParameters(ref index, true) is not { } parameters)
-			return null;
-		
-		if (parameters.Count > 0)
+		if (receiver is not null)
+			Report(receiver.Self, "Destructors cannot take parameters");
+		else if (parameters.Count > 0)
 			Report(parameters[0].SourceLocation, "Destructors cannot take parameters");
 		
+		RejectReturnType(ref index, "Destructors");
 		RejectWhen(ref index, "destructors");
 		if (!Match(ref index, out var openBraceToken, TokenType.OpOpenBrace))
 		{

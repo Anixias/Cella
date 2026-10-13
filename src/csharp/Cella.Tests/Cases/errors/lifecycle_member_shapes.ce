@@ -1,0 +1,61 @@
+mod test
+
+A: rec
+{
+	x: i32
+	new: op(v: i32) -> i32
+	{
+		self.x = v
+	}
+}
+
+B: rec
+{
+	x: i32
+	new: op(v: i32) = self.x = v
+}
+
+C: rec
+{
+	x: i32
+	new: fun(v: i32)
+	{
+	}
+}
+
+D: rec
+{
+	x: i32
+	new: op(v: i32)
+}
+
+E: rec
+{
+	x: i32
+	drop: op -> i32
+	{
+	}
+}
+
+F: rec
+{
+	x: i32
+	drop: op(mut self)
+	{
+	}
+}
+
+G: rec
+{
+	x: i32
+	drop: fun
+	{
+	}
+}
+
+H: rec
+{
+	new: i32
+}
+
+main: fun -> i32 = 0

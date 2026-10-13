@@ -1,0 +1,25 @@
+mod test
+
+X: enum { q }
+
+Tagged: enum(u8)
+{
+	zero
+	a = 1.5
+	b = 5u16
+	c = 'A'
+	d = true
+	e = X.q
+	f = 300
+	g = zero + 255
+}
+
+Untagged: enum
+{
+	zero
+	a = 1.5
+	b = "s"
+	c = null
+}
+
+main: fun -> i32 = 0

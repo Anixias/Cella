@@ -14,7 +14,9 @@ namespace Cella.Core.Binding;
 
 public interface IConstantResolver
 {
-	IResolvedExpressionNode ResolveInitializer(IExpressionNode initializer, TypeSymbol type, ResolutionContext context);
+	IResolvedExpressionNode ResolveInitializer(IExpressionNode initializer, TypeSymbol? type,
+		ResolutionContext context);
+	
 	Constant? EvaluateConstant(IExpressionNode expression, ResolutionContext context, TypeSymbol? targetType);
 }
 
@@ -2269,8 +2271,10 @@ public sealed class SignatureCollector
 					"Cannot use 'else' outside 'enum match'"));
 		}
 		
-		var values = CollectCaseValues(enumType, context);
-		var tagType = GetTagType(enumType, context, values);
+		var declaredTag = enumType.Node.TagType is { } tagNode ? ResolveTagType(tagNode, context) : null;
+		var valueType = declaredTag ?? (enumType.IsExternal ? NativeSymbols.Int32 : null);
+		var values = CollectCaseValues(enumType, context, valueType);
+		var tagType = GetTagType(enumType, valueType, values);
 		ReportSharedValues(enumType, values, payloads);
 		if (!enumType.IsExternal && !node.Cases.IsEmpty && !values.Contains(BigInteger.Zero))
 			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Identifier.SourceLocation,
@@ -2573,7 +2577,8 @@ public sealed class SignatureCollector
 		};
 	}
 	
-	private ImmutableArray<BigInteger> CollectCaseValues(EnumSymbol enumType, ResolutionContext context)
+	private ImmutableArray<BigInteger> CollectCaseValues(EnumSymbol enumType, ResolutionContext context,
+		IntegerType? valueType)
 	{
 		var scope = new Scope();
 		var values = ImmutableArray.CreateBuilder<BigInteger>(enumType.Cases.Length);
@@ -2581,13 +2586,14 @@ public sealed class SignatureCollector
 		foreach (var enumCase in enumType.Cases)
 		{
 			var value = enumCase.Node.Value is { } expression
-				? EvaluateCaseValue(enumCase, expression, context with { LocalScope = scope }) ?? next
+				? EvaluateCaseValue(enumCase, expression, context with { LocalScope = scope }, valueType) ?? next
 				: next;
 			
 			values.Add(value);
-			scope.Define(new LocalVariableSymbol(enumCase.Node.Identifier, NativeSymbols.Int128, false)
+			var caseType = valueType ?? NativeSymbols.Int128;
+			scope.Define(new LocalVariableSymbol(enumCase.Node.Identifier, caseType, false)
 			{
-				ConstantValue = new IntegerConstant(NativeSymbols.Int128, value)
+				ConstantValue = new IntegerConstant(caseType, value)
 			});
 			
 			next = value + 1;
@@ -2597,12 +2603,15 @@ public sealed class SignatureCollector
 	}
 	
 	private BigInteger? EvaluateCaseValue(EnumCaseSymbol enumCase, IExpressionNode expression,
-		ResolutionContext context)
+		ResolutionContext context, IntegerType? valueType)
 	{
-		var value = constants!.ResolveInitializer(expression, NativeSymbols.Int128, context);
+		var value = constants!.ResolveInitializer(expression, null, context);
 		switch (EvaluateChecked(value))
 		{
-			case IntegerConstant constant:
+			case IntegerConstant constant when valueType is null || constant.Type is UntypedType ||
+			                                   constant.Type == valueType ||
+			                                   _typePool.ConversionTable.FindImplicit(constant.Type, valueType) is not
+				                                   null:
 				return constant.Value;
 			
 			case null:
@@ -2611,15 +2620,25 @@ public sealed class SignatureCollector
 				
 				return null;
 			
+			case InvalidConstant:
+				return null;
+			
+			case { } constant when valueType is not null:
+				Diagnostics.Add(new(DiagnosticSeverity.Error, expression.SourceLocation,
+					$"Cannot convert type '{constant.Type.Name}' to '{valueType.Name}'"));
+				
+				return null;
+			
 			default:
+				Diagnostics.Add(new(DiagnosticSeverity.Error, expression.SourceLocation,
+					$"The value of '{enumCase.Name}' must be an integer"));
+				
 				return null;
 		}
 	}
 	
-	private IntegerType GetTagType(EnumSymbol enumType, ResolutionContext context, IReadOnlyList<BigInteger> values)
+	private IntegerType GetTagType(EnumSymbol enumType, IntegerType? tagType, IReadOnlyList<BigInteger> values)
 	{
-		var declared = enumType.Node.TagType is { } typeNode ? ResolveTagType(typeNode, context) : null;
-		var tagType = declared ?? (enumType.IsExternal ? NativeSymbols.Int32 : null);
 		if (tagType is null)
 			return SmallestTagType(values);
 		
