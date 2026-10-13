@@ -625,7 +625,8 @@ public enum ParameterMode
 {
 	ReadOnly,
 	Mut,
-	Own
+	Own,
+	Imm
 }
 
 public static class ParameterModeExtensions
@@ -647,10 +648,13 @@ public static class ParameterModeExtensions
 		mode.CanStandIn(type, expectedMode, expectedType) || mode != ParameterMode.Mut &&
 		expectedMode != ParameterMode.Mut && FunctionType.CanAdapt(expectedType, type);
 	
+	public static bool IsReadOnly(this ParameterMode mode) => mode is ParameterMode.ReadOnly or ParameterMode.Imm;
+	
 	public static string Describe(this ParameterMode mode, TypeSymbol passedType) => mode switch
 	{
 		ParameterMode.Mut => $"mut {mode.GetDeclaredType(passedType).Name}",
 		ParameterMode.Own => $"own {passedType.Name}",
+		ParameterMode.Imm => $"imm {passedType.Name}",
 		_ when passedType is FunctionType function => function.PlainName,
 		_ => passedType.Name
 	};

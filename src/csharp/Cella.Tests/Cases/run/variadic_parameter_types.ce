@@ -55,7 +55,7 @@ Sized: rec
 Maker: trait
 {
 	new: op(data: ptr[i32], count: usize)
-	size: fun(self) -> usize
+	size: fun(imm self) -> usize
 }
 
 Sized: impl Maker

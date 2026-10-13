@@ -27,7 +27,7 @@ TextureBox: rec
 		own *self.pointer = own texture
 	}
 
-	*: op(self) -> imm[Texture] = imm *self.pointer
+	*: op(imm self) -> imm[Texture] = imm *self.pointer
 
 	drop: op
 	{
@@ -40,9 +40,9 @@ Shelf: rec
 {
 	textures: array[Texture, 2]
 
-	[]: op(self, i: usize) -> imm[Texture] = imm self.textures[i]
+	[]: op(imm self, i: usize) -> imm[Texture] = imm self.textures[i]
 
-	first: fun(self) -> i32
+	first: fun(imm self) -> i32
 	{
 		val texture = self.textures[0]
 		ret texture.id
@@ -57,13 +57,13 @@ Slot: enum
 
 shared: val Texture = Texture(15)
 
-look: fun(texture: Texture) -> i32
+look: fun(imm texture: Texture) -> i32
 {
 	val same = texture
 	ret same.id
 }
 
-pick: fun(textures: array[Texture, 2], second: bool) -> i32
+pick: fun(imm textures: array[Texture, 2], second: bool) -> i32
 {
 	var chosen = textures[0]
 	if second
@@ -72,7 +72,7 @@ pick: fun(textures: array[Texture, 2], second: bool) -> i32
 	ret chosen.id
 }
 
-measure[T]: fun(value: T) -> usize
+measure[T]: fun(imm value: T) -> usize
 {
 	val same = value
 	ret sizeOf(same)
@@ -89,8 +89,8 @@ parameters: fun
 {
 	val texture = Texture(2)
 	val textures = [Texture(3), Texture(4)]
-	printf("parameters %d %d %d %d\n", look(texture), pick(textures, false), pick(textures, true),
-		i32(measure(texture)))
+	printf("parameters %d %d %d %d\n", look(imm texture), pick(imm textures, false), pick(imm textures, true),
+		i32(measure(imm texture)))
 }
 
 bindings: fun

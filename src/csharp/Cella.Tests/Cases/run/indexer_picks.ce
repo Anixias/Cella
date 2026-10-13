@@ -21,7 +21,7 @@ Logged: rec
 {
 	values: array[i32, 2]
 
-	[]: op(self, i: usize) -> imm[i32]
+	[]: op(imm self, i: usize) -> imm[i32]
 	{
 		printf("read ")
 		ret imm self.values[i]
@@ -42,7 +42,7 @@ Counters: rec
 {
 	values: array[Counter, 2]
 
-	[]: op(self, i: usize) -> imm[Counter]
+	[]: op(imm self, i: usize) -> imm[Counter]
 	{
 		printf("read ")
 		ret imm self.values[i]
@@ -91,7 +91,7 @@ Scores: rec
 {
 	values: array[i32, 3]
 
-	[]: op(self, i: usize) -> imm[i32]
+	[]: op(imm self, i: usize) -> imm[i32]
 	{
 		printf("read ")
 		ret imm self.values[i]

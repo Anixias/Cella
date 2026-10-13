@@ -11,30 +11,30 @@ Error at line 46, column 7
 46 │ ret imm b
          ╘═══╛ Cannot return borrows of parameters other than 'self'
 
-Error at line 49, column 51
+Error at line 49, column 55
 48 │ 
-49 │ count: fun(self, mut stats: Stats) -> mut[i32] = mut stats.kills
-                                                      ╘═════════════╛ Cannot return borrows of parameters other than 'self'
+49 │ count: fun(imm self, mut stats: Stats) -> mut[i32] = mut stats.kills
+                                                          ╘═════════════╛ Cannot return borrows of parameters other than 'self'
 
-Error at line 51, column 62
+Error at line 51, column 74
 50 │ 
-51 │ pickStronger: fun(self, a: Enemy, b: Enemy) -> imm[Enemy] = stronger(a, b)
+51 │ pickStronger: fun(imm self, imm a: Enemy, imm b: Enemy) -> imm[Enemy] = stronger(imm a, imm b)
+                                                                             ╘════════════════════╛ Cannot return borrows of parameters other than 'self'
+
+Error at line 53, column 60
+52 │ 
+53 │ countKills: fun(imm self, mut stats: Stats) -> mut[i32] = kills(mut stats)
+                                                               ╘══════════════╛ Cannot return borrows of parameters other than 'self'
+
+Error at line 55, column 62
+54 │ 
+55 │ leaderOf: fun(imm self, imm other: Referee) -> imm[Enemy] = other.leader()
                                                                  ╘════════════╛ Cannot return borrows of parameters other than 'self'
 
-Error at line 53, column 56
-52 │ 
-53 │ countKills: fun(self, mut stats: Stats) -> mut[i32] = kills(mut stats)
-                                                           ╘══════════════╛ Cannot return borrows of parameters other than 'self'
-
-Error at line 55, column 54
-54 │ 
-55 │ leaderOf: fun(self, other: Referee) -> imm[Enemy] = other.leader()
-                                                         ╘════════════╛ Cannot return borrows of parameters other than 'self'
-
-Error at line 57, column 52
+Error at line 57, column 56
 56 │ 
-57 │ keep: fun(self, own enemy: Enemy) -> imm[Enemy] = imm enemy
-                                                       ╘═══════╛ Cannot return borrows of 'own' parameters
+57 │ keep: fun(imm self, own enemy: Enemy) -> imm[Enemy] = imm enemy
+                                                           ╘═══════╛ Cannot return borrows of 'own' parameters
 
 Error at line 70, column 36
 69 │ 
@@ -46,16 +46,16 @@ Error at line 83, column 17
 83 │ empty => ret fallback
                   ╘══════╛ Cannot return borrows of parameters other than 'self'
 
-Error at line 97, column 7
+Error at line 97, column 11
 96 │ referee = Referee(1, Enemy(Buffer(2), 6))
-97 │ show(leader.name)
-          ╘════╛ Cannot use borrows of reassigned values
-               | Reassigned on line 96
+97 │ show(imm leader.name)
+              ╘════╛ Cannot use borrows of reassigned values
+                   | Reassigned on line 96
 
-Error at line 102, column 7
+Error at line 102, column 11
 101 │ buffer = Buffer(4)
-102 │ show(got)
-           ╘═╛ Cannot use borrows of reassigned values
-             | Reassigned on line 101
+102 │ show(imm got)
+               ╘═╛ Cannot use borrows of reassigned values
+                 | Reassigned on line 101
 
 [compilation failed]

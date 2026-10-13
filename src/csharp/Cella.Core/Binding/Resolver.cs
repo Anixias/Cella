@@ -55,6 +55,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	private readonly Dictionary<ResolvedLiteralExpressionNode, LiteralFold> _literalFolds = [];
 	private readonly Dictionary<(IResolvedExpressionNode, FStrType), IResolvedExpressionNode> _templates = [];
 	private readonly ExtSignatureTypes _extSignatureTypes;
+	private readonly CopiedParameters _copiedParameters;
 	private readonly TypeInference _inference;
 	private readonly List<Instantiation> _instantiations = [];
 	private readonly List<ResolvedFunctionNode> _lambdas = [];
@@ -77,6 +78,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	{
 		_typePool = typePool;
 		_extSignatureTypes = new(typePool);
+		_copiedParameters = new(typePool);
 		_conversionTable = typePool.ConversionTable;
 		_inference = new(typePool);
 		_operatorRegistry = typePool.OperatorRegistry;
@@ -178,6 +180,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			TypePool = _typePool,
 			Diagnostics = Diagnostics,
 			ExtSignatureTypes = _extSignatureTypes,
+			CopiedParameters = _copiedParameters,
 			EvaluateConstant = EvaluateConstant,
 			GenericTypes = [],
 			TrackInstance = TrackTypeInstance
@@ -194,6 +197,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		_lambdas.RemoveAll(lambda => lambda.FunctionInfo.File == file);
 		_resolutionContexts.Pop();
 		_extSignatureTypes.Report(Diagnostics);
+		_copiedParameters.Report(Diagnostics);
 		ReportTooLargeTypes();
 		
 		var result = new ResolvedFileNode(file, resolvedDeclarations, _importedFunctions.Values, node);
@@ -1986,6 +1990,10 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	
 	private InferenceInput? CreateInferenceInput(TypeSymbol parameter, ParameterMode mode, IResolvedExpressionNode arg)
 	{
+		if (mode == ParameterMode.Imm && parameter is not BorrowType &&
+		    arg is ResolvedBorrowExpressionNode { IsMutable: false, IsImplicit: false } written)
+			arg = written.Place;
+		
 		var type = GetArgumentType(arg);
 		if (GetMutTarget(parameter, mode) is { } declared)
 			return type is UntypedType or InvalidType ? null : new(declared, type) { IsExact = true };
@@ -3155,6 +3163,12 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		
 		var name = hasParameter ? callable.GetParameterName(index) : null;
 		
+		if (arg.Syntax is BorrowExpressionNode { IsMutable: false } immArgument && arg.Type is BorrowType &&
+		    parameterType is not BorrowType && (!hasParameter || callable.GetMode(index) != ParameterMode.Imm))
+			return new(DiagnosticSeverity.Error, immArgument.Keyword.SourceLocation, name is null
+				? "Only an argument to an 'imm' parameter can be marked 'imm'"
+				: $"'{name}' isn't an 'imm' parameter");
+		
 		if (argument is null)
 			return isMut && !(arg.Type is BorrowType && parameterType is BorrowType) ||
 			       !isMut && parameterType is not null && NeedsLending(arg, parameterType, callable.GetMode(index))
@@ -3767,7 +3781,8 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		$"Ambiguous operation '{name}' on '{type.Name}'";
 	
 	private bool TakesReceiver(MethodSymbol method, TypeSymbol type, ParameterMode mode) =>
-		GetFunctionInfo(method, type).Signature.GetMode(0) == mode;
+		GetFunctionInfo(method, type).Signature.GetMode(0) is var actual &&
+		(actual == mode || mode.IsReadOnly() && actual.IsReadOnly());
 	
 	private ResolvedFunctionCallExpressionNode CallOperator(IResolvedExpressionNode receiver, MethodSymbol method,
 		IExpressionNode syntax)
@@ -4559,7 +4574,11 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 					parameter.Mode is not null, false));
 			
 			if (parameter.Type is { } typeNode)
+			{
 				types[i] = _typePool.GetPassedType(outer.ResolveType(typeNode), modes[i]);
+				if (modes[i] == ParameterMode.ReadOnly)
+					_copiedParameters.Add(types[i], parameter.Identifier.SourceLocation);
+			}
 			else if (target is not null && IsKnown(target.ParameterTypes[i]))
 				types[i] = GetExpectedParameterType(target, i, modes[i]);
 			else
@@ -4795,7 +4814,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	{
 		LocalVariableSymbol { IsBorrowBinding: true } binding => binding.IsMutBinding,
 		LocalVariableSymbol local => local.IsMutable,
-		ParameterSymbol parameter => parameter.Mode != ParameterMode.ReadOnly,
+		ParameterSymbol parameter => !parameter.Mode.IsReadOnly(),
 		_ => false
 	};
 	
@@ -4954,8 +4973,15 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 				continue;
 			
 			var instantiated = InstantiateDeclared(function, result.Arguments);
-			if (FunctionGroupType.Matches(instantiated, type, true))
+			if (FunctionGroupType.Matches(instantiated, type, true) ||
+			    _typePool.CopiesForImm(GetNaturalType(instantiated), type))
 				return instantiated;
+		}
+		
+		foreach (var function in group.Functions)
+		{
+			if (GetOpenTypeParameters(function).IsEmpty && _typePool.CopiesForImm(GetNaturalType(function), type))
+				return function;
 		}
 		
 		return null;
@@ -7084,6 +7110,10 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			}
 			
 			var target = resolution.Callable.ParameterTypes[i];
+			if (resolution.Callable.GetMode(i) == ParameterMode.Imm && target is not BorrowType &&
+			    arg is ResolvedBorrowExpressionNode { IsMutable: false, IsImplicit: false } written)
+				arg = written.Place;
+			
 			if (resolution.ArgumentConversions[i] is FunctionConversion userConversion)
 			{
 				result.Add(ApplyArgumentConversion(arg, userConversion, target));
@@ -7304,8 +7334,8 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		ParameterMode[] modes = use switch
 		{
 			ParameterMode.Mut => [ParameterMode.Mut],
-			ParameterMode.Own => [ParameterMode.Own, ParameterMode.ReadOnly],
-			_ => [ParameterMode.ReadOnly, ParameterMode.Own]
+			ParameterMode.Own => [ParameterMode.Own, ParameterMode.ReadOnly, ParameterMode.Imm],
+			_ => [ParameterMode.ReadOnly, ParameterMode.Imm, ParameterMode.Own]
 		};
 		
 		return modes
@@ -7433,19 +7463,23 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			return ignoreModes ? (0, null) : (int.MaxValue, null);
 		}
 		
+		if ((parameterMode == ParameterMode.Imm || ignoreModes) && target is not BorrowType &&
+		    arg is ResolvedBorrowExpressionNode { IsMutable: false, IsImplicit: false } borrowed)
+			return MatchArg(borrowed.Place, target, mode);
+		
 		if (arg is not ResolvedMutArgumentExpressionNode argument)
 			return ignoreModes && NeedsLending(arg, target, parameterMode)
 				? (FindLendingConversion(arg, target)!.Cost, null)
 				: MatchArg(arg, target, mode);
 		
-		if (parameterMode == ParameterMode.ReadOnly && FindLendingConversion(argument.Place, target) is { } lending)
+		if (parameterMode.IsReadOnly() && FindLendingConversion(argument.Place, target) is { } lending)
 			return (lending.Cost, lending);
 		
 		return ignoreModes ? MatchArg(argument.Place, target, mode) : (int.MaxValue, null);
 	}
 	
 	private bool NeedsLending(IResolvedExpressionNode arg, TypeSymbol target, ParameterMode parameterMode) =>
-		parameterMode == ParameterMode.ReadOnly && MatchArg(arg, target, MaterializationMode.Overload).Cost ==
+		parameterMode.IsReadOnly() && MatchArg(arg, target, MaterializationMode.Overload).Cost ==
 		int.MaxValue && FindLendingConversion(arg, target) is not null;
 	
 	private FunctionConversion? FindLendingConversion(IResolvedExpressionNode place, TypeSymbol target)

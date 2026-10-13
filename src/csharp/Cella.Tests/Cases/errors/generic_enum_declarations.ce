@@ -15,7 +15,7 @@ wrapper[T]: enum
 {
 	one(value: T)
 
-	pick[T]: fun(self, other: T) -> i32 = 0
+	pick[T]: fun(imm self, imm other: T) -> i32 = 0
 }
 
 endless[T]: enum

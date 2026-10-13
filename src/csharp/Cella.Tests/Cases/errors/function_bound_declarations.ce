@@ -1,10 +1,10 @@
 mod test
 
-both[F: fun[i32] + fun[bool]]: fun(f: F) = f(1)
+both[F: fun[i32] + fun[bool]]: fun(imm f: F) = f(1)
 
-external[F: ext fun[i32]]: fun(f: F) = f(1)
+external[F: ext fun[i32]]: fun(imm f: F) = f(1)
 
-borrowed[F: ref fun[i32]]: fun(f: F) = f(1)
+borrowed[F: ref fun[i32]]: fun(imm f: F) = f(1)
 
 call: fun(f: dyn[fun[-> i32]]) -> i32 = f()
 

@@ -8,7 +8,7 @@ Error at line 9, column 10
 
 Error at line 12, column 6
 11 │ next: fun(mut self) -> option[T]
-12 │ map[T]: fun(self) -> T
+12 │ map[T]: fun(imm self) -> T
          ^ Type parameter 'T' is declared more than once
 
 Error at line 15, column 6

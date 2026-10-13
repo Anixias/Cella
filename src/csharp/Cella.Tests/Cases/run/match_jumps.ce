@@ -113,7 +113,7 @@ check: fun(ok: bool) -> i32
 	ret i32(checked)
 }
 
-firstId: fun(slots: array[Slot, 3]) -> i32
+firstId: fun(imm slots: array[Slot, 3]) -> i32
 {
 	var i: usize = 0
 	while i < 3
@@ -131,7 +131,7 @@ firstId: fun(slots: array[Slot, 3]) -> i32
 	ret -1
 }
 
-idOf: fun(slot: Slot) -> i32
+idOf: fun(imm slot: Slot) -> i32
 {
 	val buffer: imm[Buffer] = match slot
 	{
@@ -142,7 +142,7 @@ idOf: fun(slot: Slot) -> i32
 	ret buffer.id * 10
 }
 
-pick: fun(slot: Slot, fallback: Buffer) -> imm[Buffer] = match slot
+pick: fun(imm slot: Slot, imm fallback: Buffer) -> imm[Buffer] = match slot
 {
 	held(buffer) => buffer
 	empty => ret imm fallback
@@ -173,7 +173,7 @@ main: fun -> i32
 	val slots = [Slot.empty, Slot.held(Buffer(5)), Slot.held(Buffer(6))]
 	val fallback = Buffer(9)
 	var spare = Slot.held(Buffer(1))
-	printf("%d %d %d %d %d\n", firstId(slots), idOf(Slot.empty), idOf(slots[2]), pick(Slot.empty, fallback).id,
+	printf("%d %d %d %d %d\n", firstId(imm slots), idOf(Slot.empty), idOf(imm slots[2]), pick(Slot.empty, imm fallback).id,
 		bump(mut spare))
 	ret 0
 }

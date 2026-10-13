@@ -7,7 +7,7 @@ ext
 
 Ord: trait
 {
-	<: op(a: Self, b: Self) -> bool
+	<: op(imm a: Self, imm b: Self) -> bool
 }
 
 i32: impl Ord

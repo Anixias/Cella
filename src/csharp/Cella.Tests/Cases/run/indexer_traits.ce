@@ -9,14 +9,14 @@ ext
 
 Indexed: trait
 {
-	[]: op(self, i: usize) -> imm[i32]
+	[]: op(imm self, i: usize) -> imm[i32]
 }
 
 Palette: rec impl Indexed
 {
 	values: array[i32, 3]
 
-	[]: op(self, i: usize) -> imm[i32] = imm self.values[i]
+	[]: op(imm self, i: usize) -> imm[i32] = imm self.values[i]
 
 	drop: op
 	{
@@ -39,9 +39,9 @@ Storage: impl Indexed
 {
 }
 
-total[C: Indexed]: fun(items: C) -> i32 = items[0] + items[1] + items[2]
+total[C: Indexed]: fun(imm items: C) -> i32 = items[0] + items[1] + items[2]
 
-tenfold: fun(items: dyn[Indexed]) -> i32 = items[1] * 10
+tenfold: fun(imm items: dyn[Indexed]) -> i32 = items[1] * 10
 
 main: fun -> i32
 {
@@ -51,7 +51,7 @@ main: fun -> i32
 	items[1] = 4
 	items[2] = 5
 	val storage = Storage.heap(items)
-	printf("%d %d %d %d\n", total(palette), total(storage), tenfold(dyn[Indexed](palette)),
+	printf("%d %d %d %d\n", total(imm palette), total(imm storage), tenfold(dyn[Indexed](palette)),
 		tenfold(dyn[Indexed](storage)))
 
 	free(items)

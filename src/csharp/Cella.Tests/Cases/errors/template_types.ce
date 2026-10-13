@@ -2,12 +2,12 @@ mod test
 
 Display: trait
 {
-	print: fun(self)
+	print: fun(imm self)
 }
 
 Hidden: pvt trait
 {
-	print: fun(self)
+	print: fun(imm self)
 }
 
 ext

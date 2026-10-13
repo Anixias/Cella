@@ -2,11 +2,11 @@ mod test
 
 Hash: trait
 {
-	hash: fun(self) -> u64
+	hash: fun(imm self) -> u64
 	seed: fun -> u64
 	size: prop i32
 	{
-		get(self)
+		get(imm self)
 		set(mut self, value)
 	}
 }

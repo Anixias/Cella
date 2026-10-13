@@ -17,7 +17,7 @@ String: rec
 		self.length = text.byteLength
 	}
 
-	as: op(self) -> str = str(self.data, self.length)
+	as: op(imm self) -> str = str(self.data, self.length)
 
 	drop: op
 	{

@@ -13,5 +13,5 @@ Holder[T]: pub rec
 {
 	value: T
 
-	as: op(self) -> imm[T] = imm self.value
+	as: op(imm self) -> imm[T] = imm self.value
 }

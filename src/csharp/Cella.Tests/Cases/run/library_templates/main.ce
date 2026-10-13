@@ -11,7 +11,7 @@ main: fun -> i32
 {
 	val p = Point(4)
 	lib.say("point {p} and {7}\n")
-	lib.log(p)
+	lib.log(imm p)
 	lib.log(3)
 	val note = lib.Note("note {p}\n")
 	lib.read(note)

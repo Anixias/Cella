@@ -1,10 +1,10 @@
 
 ====== member_block_uses.ce ======
 
-Error at line 41, column 38
+Error at line 41, column 42
 40 │ 
-41 │ check[T]: fun(a: box[T]) -> bool = a.same(a)
-                                          ╘══╛ 'T' doesn't implement 'Eq'
+41 │ check[T]: fun(imm a: box[T]) -> bool = a.same(a)
+                                              ╘══╛ 'T' doesn't implement 'Eq'
 
 Error at line 47, column 15
 46 │ {

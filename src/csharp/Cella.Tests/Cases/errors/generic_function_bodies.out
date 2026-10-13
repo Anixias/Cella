@@ -6,10 +6,10 @@ Error at line 12, column 7
 12 │ ret box(self).deeper(depth - 1)
          ╘══════════════╛ Instantiating 'box.deeper' never ends
 
-Error at line 16, column 30
+Error at line 16, column 34
 15 │ 
-16 │ add[T]: fun(value: T) -> T = value + 1
-                                  ╘═══════╛ No operation defined for '+' between 'T' and 'integer literal'
+16 │ add[T]: fun(imm value: T) -> T = value + 1
+                                      ╘═══════╛ No operation defined for '+' between 'T' and 'integer literal'
 
 Error at line 23, column 6
 22 │ 

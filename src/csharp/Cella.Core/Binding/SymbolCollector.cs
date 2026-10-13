@@ -210,6 +210,7 @@ public sealed class SymbolCollector : IDeclarationNodeVisitor<Symbol>
 	{
 		TokenType.KeywordMut => ParameterMode.Mut,
 		TokenType.KeywordOwn => ParameterMode.Own,
+		TokenType.KeywordImm => ParameterMode.Imm,
 		_ => ParameterMode.ReadOnly
 	};
 	

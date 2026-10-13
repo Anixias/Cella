@@ -15,7 +15,7 @@ Down: rec impl lib.Cursor[i32]
 		ret self.left >= 0
 	}
 
-	*: op(self) -> imm[i32] = imm self.left
+	*: op(imm self) -> imm[i32] = imm self.left
 
 	drop: op
 	{
@@ -33,6 +33,6 @@ main: fun -> i32
 		total += x
 
 	var down = Down(5)
-	printf("%d %d %d %d\n", total, lib.view(bag), lib.sum(Down(4)), lib.count(mut down))
+	printf("%d %d %d %d\n", total, lib.view(imm bag), lib.sum(Down(4)), lib.count(mut down))
 	ret 0
 }

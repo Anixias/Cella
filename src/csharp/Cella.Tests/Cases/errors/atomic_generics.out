@@ -6,10 +6,10 @@ Error at line 12, column 56
 12 │ bump: fun(self, amount: T) -> T = atomic *@self.value += amount
                                                            ╘╛ Cannot use '+=' atomically on 'T'
 
-Error at line 19, column 32
+Error at line 19, column 36
 18 │ 
-19 │ load: fun(self) -> T = atomic *@self.value
-                                   ╘══════════╛ Cannot access 'T' values atomically
+19 │ load: fun(imm self) -> T = atomic *@self.value
+                                       ╘══════════╛ Cannot access 'T' values atomically
 
 Error at line 24, column 15
 23 │ {

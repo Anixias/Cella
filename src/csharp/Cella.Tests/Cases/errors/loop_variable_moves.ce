@@ -19,7 +19,7 @@ Countdown: rec
 		ret self.left >= 0
 	}
 
-	*: op(self) -> imm[i32] = imm self.left
+	*: op(imm self) -> imm[i32] = imm self.left
 
 	drop: op
 	{
@@ -38,7 +38,7 @@ finish: fun(own countdown: Countdown)
 {
 }
 
-walk: fun(countdown: Countdown) -> i32
+walk: fun(imm countdown: Countdown) -> i32
 {
 	var total = 0
 	for x in countdown

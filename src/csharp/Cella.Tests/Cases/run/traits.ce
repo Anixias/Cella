@@ -7,18 +7,18 @@ ext
 
 Hash: trait
 {
-	hash: fun(self) -> u64
+	hash: fun(imm self) -> u64
 	seed: fun -> u64
-	twice: fun(self) -> u64 = mix(self.hash()) + seed()
+	twice: fun(imm self) -> u64 = mix(self.hash()) + seed()
 	mix: pvt fun(value: u64) -> u64 = value * 2
 }
 
 Sized: trait
 {
-	size: get(self) -> i32
+	size: get(imm self) -> i32
 	limit: prop i32
 	{
-		get(self)
+		get(imm self)
 		set(mut self, value)
 	}
 }
@@ -26,7 +26,7 @@ Sized: trait
 Counter: trait
 {
 	bump: fun(mut self)
-	count: fun(self) -> i32
+	count: fun(imm self) -> i32
 }
 
 Point: rec impl Hash + Sized
@@ -59,22 +59,22 @@ Text: rec
 
 Text: impl Hash + Counter
 {
-	hash: fun(self) -> u64 = u64(self.id * 3 + offset())
+	hash: fun(imm self) -> u64 = u64(self.id * 3 + offset())
 	seed: fun -> u64 = 7
-	twice: fun(self) -> u64 = 1
+	twice: fun(imm self) -> u64 = 1
 
 	bump: fun(mut self)
 	{
 		self.id += 10
 	}
 
-	count: fun(self) -> i32 = self.id
+	count: fun(imm self) -> i32 = self.id
 	offset: pvt fun -> i32 = 1000
 }
 
-describe[T: Hash]: fun(value: T) -> u64 = value.hash() + T.seed() * 10000 + value.twice() * 100000000
+describe[T: Hash]: fun(imm value: T) -> u64 = value.hash() + T.seed() * 10000 + value.twice() * 100000000
 
-total[T: Sized]: fun(a: T, b: T) -> i32 = a.size + b.size
+total[T: Sized]: fun(imm a: T, imm b: T) -> i32 = a.size + b.size
 
 grow[T: Sized]: fun(mut value: T)
 {
@@ -94,9 +94,9 @@ main: fun -> i32
 	var p = Point(5, 10)
 	var t = Text(4)
 	printf("%llu %llu %llu %llu\n", p.hash(), Point.seed(), p.twice(), t.hash())
-	printf("%llu %llu\n", describe(p), describe(t))
+	printf("%llu %llu\n", describe(imm p), describe(imm t))
 	grow(mut p)
-	printf("%d %d %d\n", total(p, Point(1, 0)), p.cap, p.limit)
+	printf("%d %d %d\n", total(imm p, Point(1, 0)), p.cap, p.limit)
 	printf("%d %d\n", bumpTwice(mut t), t.count())
 	ret 0
 }

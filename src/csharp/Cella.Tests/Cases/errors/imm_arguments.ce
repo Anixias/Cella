@@ -1,0 +1,47 @@
+mod test
+
+Token: rec
+{
+	id: i32
+
+	drop: op
+	{
+	}
+
+	peek: fun(imm self) -> i32 = self.id
+}
+
+Point: rec
+{
+	x: i32
+}
+
+Holder: rec
+{
+	f: fun[imm i32 -> i32]
+}
+
+read: fun(imm token: Token) -> i32 = token.id
+
+sum: fun(p: Point) -> i32 = p.x
+
+look: fun(imm x: i32) -> i32 = x
+
+call: fun(f: fun[i32 -> i32]) -> i32 = f(1)
+
+double: fun(x: i32) -> i32 = x * 2
+
+main: fun -> i32
+{
+	val token = Token(1)
+	val point = Point(2)
+	val f: fun[i32 -> i32] = double
+	val second = sum(imm point)
+	val third = f(imm point.x)
+	val fourth = token.peek() + read(Token(3))
+	val back: fun[i32 -> i32] = look
+	val fifth = call(look)
+	val held = Holder(f)
+	val lambda = fun(t: Token) -> i32 = t.id
+	ret 0
+}

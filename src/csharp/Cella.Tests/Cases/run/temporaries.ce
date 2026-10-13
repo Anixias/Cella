@@ -28,7 +28,7 @@ Effect: enum
 
 make: fun(id: i32) -> Buffer = Buffer(id)
 pair: fun(left: i32, right: i32) -> Pair = Pair(Buffer(left), Buffer(right))
-show: fun(buffer: Buffer) -> i32 = buffer.id
+show: fun(imm buffer: Buffer) -> i32 = buffer.id
 effect: fun(id: i32) -> Effect = Effect.owned(Buffer(id))
 buffers: fun -> array[Buffer, 2] = [Buffer(7), Buffer(8)]
 

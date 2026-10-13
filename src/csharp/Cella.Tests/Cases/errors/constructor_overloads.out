@@ -33,7 +33,7 @@ Error at line 32, column 2
 
 Error at line 47, column 2
 46 │ 
-47 │ new: op(value: T)
+47 │ new: op(imm value: T)
      ╘═╛ 'box.new' overloads cannot differ only in parameter modes
 
 Error at line 52, column 2

@@ -23,14 +23,14 @@ Unit: rec
 
 	release: fun(own self) -> i32 = self.buffer.id
 
-	heal: fun(self)
+	heal: fun(imm self)
 	{
 		self.restore(1)
 		self.hp = 0
 	}
 }
 
-restoreCopy: fun(unit: Unit)
+restoreCopy: fun(imm unit: Unit)
 {
 	unit.restore(1)
 }

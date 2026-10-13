@@ -16,13 +16,13 @@ Holder: rec
 
 make: fun(id: i32) -> Buffer = Buffer(id)
 take: fun(own buffer: Buffer) -> i32 = buffer.id
-show: fun(buffer: Buffer) -> i32 = buffer.id
+show: fun(imm buffer: Buffer) -> i32 = buffer.id
 
 moves: fun(i: usize) -> i32
 {
 	var items = [make(1), make(2), make(3)]
 	val picked = own items[i]
-	val shown = show(items[i])
+	val shown = show(imm items[i])
 	val first = own items[0]
 	ret picked.id + shown + first.id + take(own items[2])
 }

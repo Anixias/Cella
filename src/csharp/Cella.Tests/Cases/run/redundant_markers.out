@@ -19,7 +19,7 @@ Hint at line 42, column 11
 
 Hint at line 53, column 11
 52 │ 
-53 │ within[T: Eq + Ord]: fun(value: T, low: T) -> bool = low < value || value == low
+53 │ within[T: Eq + Ord]: fun(imm value: T, imm low: T) -> bool = low < value || value == low
                ╘╛ Redundant 'Eq'
                 | Required by 'Ord'
 

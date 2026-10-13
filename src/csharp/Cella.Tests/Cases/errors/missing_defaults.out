@@ -61,20 +61,20 @@ Error at line 125, column 20
 125 │ ret describeOuter(outer)
                         ╘═══╛ Cannot use partly initialized values
 
-Error at line 149, column 21
+Error at line 149, column 25
 148 │ var closer: Closer
-149 │ ret describeCloser(closer)
-                         ╘════╛ Cannot use uninitialized values
+149 │ ret describeCloser(imm closer)
+                             ╘════╛ Cannot use uninitialized values
 
 Error at line 155, column 6
 154 │ var closer: Closer
 155 │ ret closer.id
           ╘═══════╛ Cannot use uninitialized values
 
-Error at line 162, column 21
+Error at line 162, column 25
 161 │ keeper.count = 1
-162 │ ret describeKeeper(keeper)
-                         ╘════╛ Cannot use partly initialized values
+162 │ ret describeKeeper(imm keeper)
+                             ╘════╛ Cannot use partly initialized values
 
 Error at line 176, column 19
 175 │ var code: Code

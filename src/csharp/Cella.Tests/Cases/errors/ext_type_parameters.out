@@ -3,7 +3,7 @@
 
 Error at line 9, column 25
 8 │ 
-9 │ call[T]: fun(f: ext fun[T -> i32], value: T) -> i32 = f(value)
+9 │ call[T]: fun(f: ext fun[T -> i32], imm value: T) -> i32 = f(value)
                             ^ Cannot use 'T' in 'ext' signatures
 
 Error at line 13, column 14

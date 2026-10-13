@@ -2,14 +2,14 @@ mod test
 
 Shape: trait
 {
-	area: fun(self) -> f64
+	area: fun(imm self) -> f64
 	scale: fun(mut self, factor: f64)
 	label: fun -> i32
-	same: fun(self, other: Self) -> bool
-	map[T]: fun(self, own value: T) -> T
+	same: fun(imm self, imm other: Self) -> bool
+	map[T]: fun(imm self, own value: T) -> T
 	take: fun(own self) -> i32
-	twin: get(self) -> Self
-	mix: pvt fun(self) -> i32 = 1
+	twin: get(imm self) -> Self
+	mix: pvt fun(imm self) -> i32 = 1
 }
 
 Circle: rec impl Shape
@@ -41,7 +41,7 @@ box[T]: rec
 
 grow: fun(mut shape: dyn[Shape]) = shape.scale(2.0)
 
-describe: fun(shape: dyn[Shape]) -> f64
+describe: fun(imm shape: dyn[Shape]) -> f64
 {
 	shape.label()
 	shape.same(shape)

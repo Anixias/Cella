@@ -13,19 +13,19 @@ take: fun(own texture: Texture)
 {
 }
 
-pass: fun(texture: Texture) -> Texture
+pass: fun(imm texture: Texture) -> Texture
 {
 	val same = texture
 	ret same
 }
 
-consume: fun(texture: Texture)
+consume: fun(imm texture: Texture)
 {
 	val same = texture
 	take(same)
 }
 
-change: fun(texture: Texture)
+change: fun(imm texture: Texture)
 {
 	var same = texture
 	same.id = 5

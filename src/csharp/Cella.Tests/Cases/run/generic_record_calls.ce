@@ -57,7 +57,7 @@ stack[T: noref]: rec
 		self.pushes += 1
 	}
 
-	peek: fun(self) -> imm[T] = imm self.slots.items[self.slots.count - 1]
+	peek: fun(imm self) -> imm[T] = imm self.slots.items[self.slots.count - 1]
 
 	scratch: fun(own item: T) -> i32
 	{
@@ -69,16 +69,16 @@ stack[T: noref]: rec
 mapper[T: noref]: rec
 {
 	value: T
-	change: fun[T -> T]
+	change: fun[imm T -> T]
 
 	apply: fun(mut self)
 	{
-		self.value = self.change(self.value)
+		self.value = self.change(imm self.value)
 	}
 
 	wrap: fun(own value: T) -> pair[T, i32] = pair[T, i32](own value, 1)
 
-	score: fun(value: T) -> i32 = 7
+	score: fun(imm value: T) -> i32 = 7
 }
 
 pair[A, B]: rec
@@ -100,7 +100,7 @@ main: fun -> i32
 	doubler.apply()
 	doubler.apply()
 	val make: fun[own i32 -> pair[i32, i32]] = mapper[i32].wrap
-	val score: fun[i32 -> i32] = mapper[i32].score
+	val score: fun[imm i32 -> i32] = mapper[i32].score
 	val both = make(4)
 	printf("%d %d %d %d\n", doubler.value, both.first, both.second, score(3))
 	ret 0

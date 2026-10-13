@@ -20,6 +20,6 @@ cell[T]: rec
 	}
 }
 
-deeper[T]: fun(c: cell[T]) -> cell[ptr[T]] = cell[ptr[T]](null)
+deeper[T]: fun(imm c: cell[T]) -> cell[ptr[T]] = cell[ptr[T]](null)
 
 main: fun -> i32 = 0

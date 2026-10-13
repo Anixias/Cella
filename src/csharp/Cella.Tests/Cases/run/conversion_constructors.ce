@@ -17,7 +17,7 @@ Small: trait
 
 Same: trait
 {
-	new: op(value: Self)
+	new: op(imm value: Self)
 }
 
 Color: enum
@@ -36,7 +36,7 @@ narrow[T: Wide]: fun(value: i64) -> T = T(value)
 
 pick[T: Small]: fun(value: i32) -> T = T(value)
 
-keep[T: Same]: fun(value: T) -> T = T(value)
+keep[T: Same]: fun(imm value: T) -> T = T(value)
 
 main: fun -> i32
 {

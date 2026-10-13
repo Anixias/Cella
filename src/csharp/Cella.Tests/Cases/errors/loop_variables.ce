@@ -10,7 +10,7 @@ Countdown: rec
 		ret self.left >= 0
 	}
 
-	*: op(self) -> imm[i32] = imm self.left
+	*: op(imm self) -> imm[i32] = imm self.left
 
 	drop: op
 	{

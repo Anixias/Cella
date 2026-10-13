@@ -16,7 +16,7 @@ Node: pvt rec
 		self.label = value * 100
 	}
 
-	describe: fun(self) -> i32 = self.value + self.label
+	describe: fun(imm self) -> i32 = self.value + self.label
 
 	drop: op
 	{

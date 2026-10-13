@@ -18,7 +18,7 @@ Bag: rec
 {
 	items: array[Name, 3]
 
-	in: op(self) -> BagCursor = BagCursor(imm self, 0, 0)
+	in: op(imm self) -> BagCursor = BagCursor(imm self, 0, 0)
 }
 
 BagCursor: ref rec
@@ -37,7 +37,7 @@ BagCursor: ref rec
 	*: op(self) -> imm[Name] = imm self.bag.items[self.current]
 }
 
-largest: fun(bag: Bag) -> i32
+largest: fun(imm bag: Bag) -> i32
 {
 	var best: imm[Name] = bag.items[0]
 	for name in bag
@@ -49,7 +49,7 @@ largest: fun(bag: Bag) -> i32
 	ret best.id
 }
 
-first: fun(bag: Bag) -> imm[Name]
+first: fun(imm bag: Bag) -> imm[Name]
 {
 	for name in bag
 		ret name
@@ -60,6 +60,6 @@ first: fun(bag: Bag) -> imm[Name]
 main: fun -> i32
 {
 	val bag = Bag([Name(4), Name(9), Name(2)])
-	printf("%d %d\n", largest(bag), first(bag).id)
+	printf("%d %d\n", largest(imm bag), first(imm bag).id)
 	ret 0
 }

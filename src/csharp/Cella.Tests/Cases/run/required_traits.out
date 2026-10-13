@@ -3,7 +3,7 @@
 
 Hint at line 64, column 11
 63 │ 
-64 │ either[T: Eq + Ord]: fun(a: T, b: T) -> bool = a == b || a < b
+64 │ either[T: Eq + Ord]: fun(imm a: T, imm b: T) -> bool = a == b || a < b
                ╘╛ Redundant 'Eq'
                 | Required by 'Ord'
 

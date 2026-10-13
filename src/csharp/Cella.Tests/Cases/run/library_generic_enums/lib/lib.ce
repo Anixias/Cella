@@ -27,7 +27,7 @@ option[T]: pub enum
 		}
 	}
 
-	isSome: get(self) -> bool = self is some(_)
+	isSome: get(imm self) -> bool = self is some(_)
 }
 
 Token: pub rec

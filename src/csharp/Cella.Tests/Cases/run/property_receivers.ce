@@ -37,11 +37,11 @@ TraceBox: rec
 		*self.pointer = trace
 	}
 
-	*: op(self) -> imm[Trace] = imm *self.pointer
+	*: op(imm self) -> imm[Trace] = imm *self.pointer
 
 	*: op(mut self) -> mut[Trace] = mut *self.pointer
 
-	value: get(self) -> i32 = -1
+	value: get(imm self) -> i32 = -1
 
 	drop: op
 	{

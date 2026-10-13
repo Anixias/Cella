@@ -38,12 +38,12 @@ ViaStatic: impl FromSource
 
 Implicit: trait
 {
-	as: op(self) -> i32
+	as: op(imm self) -> i32
 }
 
 Explicit: trait
 {
-	new: op(self) -> i32
+	new: op(imm self) -> i32
 }
 
 ExplicitOnly: rec impl Implicit

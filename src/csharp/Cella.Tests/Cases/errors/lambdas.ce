@@ -4,7 +4,7 @@ apply: fun(f: fun[i32 -> i32], x: i32) -> i32 = f(x)
 pair: fun(f: fun[i32, i32 -> i32]) -> i32 = f(1, 2)
 choose: fun(f: fun[i32 -> i32]) -> i32 = f(1)
 choose: fun(f: fun[i64 -> i64]) -> i32 = 2
-transform[T, U]: fun(value: T, f: fun[T -> U]) -> U = f(value)
+transform[T, U]: fun(imm value: T, f: fun[imm T -> U]) -> U = f(value)
 limit: val i32 = 5
 
 Counter: rec

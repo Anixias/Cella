@@ -350,7 +350,7 @@ public sealed class TypeInference(TypePool typePool)
 		}
 		
 		private TypeSymbol GetParameterArgument(FunctionType parameter, int index, TypeSymbol argument) =>
-			parameter.ParameterModes[index] == ParameterMode.ReadOnly &&
+			parameter.ParameterModes[index].IsReadOnly() &&
 			parameter.ParameterTypes[index] is TypeParameterSymbol &&
 			argument is FunctionType { IsRef: true, IsExternal: false } function
 				? typePool.GetPlainFunctionType(function)

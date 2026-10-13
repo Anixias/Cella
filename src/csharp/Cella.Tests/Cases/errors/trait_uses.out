@@ -16,10 +16,10 @@ Error at line 37, column 31
 37 │     hash: fun(self) -> u64 = u64(helper())
                                       ╘══════╛ 'helper' is private to its impl block
 
-Error at line 47, column 44
+Error at line 47, column 48
 46 │ 
-47 │ run[T: Hash]: fun(value: T) -> u64 = value.scale()
-                                                ╘═══╛ 'scale' is private to its trait
+47 │ run[T: Hash]: fun(imm value: T) -> u64 = value.scale()
+                                                    ╘═══╛ 'scale' is private to its trait
 
 Error at line 58, column 2
 57 │ val q = Plain(1)

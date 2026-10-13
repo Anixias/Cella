@@ -2,7 +2,7 @@ mod test
 
 Shape: trait
 {
-	area: fun(self) -> i32
+	area: fun(imm self) -> i32
 }
 
 box[T: new(i32)]: rec
@@ -12,7 +12,7 @@ box[T: new(i32)]: rec
 
 box[T: new(i32)]: impl
 {
-	same: fun(self) -> i32 = 0
+	same: fun(imm self) -> i32 = 0
 }
 
 first[T: new(i32) + new(i32)]: fun -> i32 = 0

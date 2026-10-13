@@ -6,7 +6,7 @@ public sealed class ConversionTable
 {
 	private readonly Dictionary<(TypeSymbol From, TypeSymbol To), Conversion> _conversions = [];
 	
-	public Func<TypeSymbol, IEnumerable<FunctionType>>? CallableSignatures { get; set; }
+	public Func<TypeSymbol, FunctionType, bool>? CallableAs { get; set; }
 	
 	public void Add(Conversion conversion) => _conversions[(conversion.From, conversion.To)] = conversion;
 	
@@ -23,17 +23,14 @@ public sealed class ConversionTable
 	
 	private CallableConversion? FindCallableConversion(TypeSymbol from, TypeSymbol to)
 	{
-		if (from is not (ClosureType or TypeParameterSymbol or DynType) ||
-		    to is not FunctionType { IsRef: true } target || !IsCallableAs(from, target))
+		if (from is not (FunctionType or ClosureType or TypeParameterSymbol or DynType) || from == to ||
+		    to is not FunctionType { IsRef: true } target || CallableAs?.Invoke(from, target) != true)
 			return null;
 		
 		var conversion = new CallableConversion(from, target);
 		Add(conversion);
 		return conversion;
 	}
-	
-	private bool IsCallableAs(TypeSymbol type, FunctionType function) => CallableSignatures?.Invoke(type)
-		.Any(signature => FunctionType.SignatureStandsIn(signature, function)) == true;
 	
 	private Conversion? FindFunctionConversion(TypeSymbol from, TypeSymbol to)
 	{

@@ -13,18 +13,18 @@ Iterator[T]: trait
 
 Write[T]: trait
 {
-	write: fun(mut self, value: T)
+	write: fun(mut self, imm value: T)
 }
 
 Num: trait
 {
-	+: op(a: Self, b: Self) -> Self
+	+: op(imm a: Self, imm b: Self) -> Self
 }
 
 Cloner[T]: trait
 {
-	copy: fun(self) -> Self
-	get: fun(self) -> T
+	copy: fun(imm self) -> Self
+	get: fun(imm self) -> T
 }
 
 Words: rec impl Iterator[str]
@@ -46,7 +46,7 @@ flush[E, W: Write[E]]: fun(mut out: W) { }
 
 sum[T: Num, I: Iterator[T]]: fun(mut items: I) -> i32 = 0
 
-copyAll: fun(item: dyn[Cloner[i32]]) -> i32
+copyAll: fun(imm item: dyn[Cloner[i32]]) -> i32
 {
 	item.copy()
 	ret item.get()

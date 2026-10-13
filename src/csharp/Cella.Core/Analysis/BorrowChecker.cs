@@ -881,17 +881,13 @@ public sealed class BorrowChecker
 	
 	private Escape? GetEscape(FunctionInfo function, int index)
 	{
-		var mode = function.DeclaredSignature.GetMode(index);
-		var type = function.DeclaredSignature.GetDeclaredType(index);
-		if (TypePool.IsLentReceiver(function.Symbol, index, mode))
-			return typePool.IsViewRecord(type) ? Escape.ViewRecord : null;
-		
-		return GetEscape(mode, type, function.Symbol.Kind != FunctionKind.Method || index == 0);
+		return GetEscape(function.DeclaredSignature.GetMode(index), function.DeclaredSignature.GetDeclaredType(index),
+			function.Symbol.Kind != FunctionKind.Method || index == 0);
 	}
 	
 	private Escape? GetEscape(ParameterMode mode, TypeSymbol declared, bool mayLend)
 	{
-		if (mode != ParameterMode.Mut && !typePool.PassesByPointer(declared, mode))
+		if (mode != ParameterMode.Mut && !TypePool.PassesByPointer(mode))
 			return mode == ParameterMode.Own ? Escape.Owned : Escape.Copied;
 		
 		if (!mayLend)

@@ -1,20 +1,20 @@
 
 ====== ext_constraint_arguments.ce ======
 
-Error at line 35, column 64
+Error at line 35, column 68
 34 │ 
-35 │ outer[U]: fun(f: ext fun[i32 -> i32], value: U) -> i32 = visit[U](undef, null)
-                                                                    ^ Cannot use 'U' in 'ext' signatures
+35 │ outer[U]: fun(f: ext fun[i32 -> i32], imm value: U) -> i32 = visit[U](undef, null)
+                                                                        ^ Cannot use 'U' in 'ext' signatures
 
 Error at line 39, column 23
 38 │ {
 39 │     var f: ext fun[array[T, 2] -> i32]
                               ^ Cannot use 'T' in 'ext' signatures
 
-Error at line 40, column 31
+Error at line 40, column 35
 39 │ var f: ext fun[array[T, 2] -> i32]
-40 │ val g = fun(x: T) -> ext fun[T -> i32] = undef
-                                  ^ Cannot use 'T' in 'ext' signatures
+40 │ val g = fun(imm x: T) -> ext fun[T -> i32] = undef
+                                      ^ Cannot use 'T' in 'ext' signatures
 
 Error at line 46, column 2
 45 │ {

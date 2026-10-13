@@ -10,7 +10,7 @@ nullable[T: null]: enum match T
 	none = null
 	some(value) = else
 
-	isSome: get(self) -> bool = self is some(_)
+	isSome: get(imm self) -> bool = self is some(_)
 
 	or: fun(own self, own fallback: T) -> T = match own self { some(own v) => v  none => fallback }
 }

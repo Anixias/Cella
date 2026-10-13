@@ -17,7 +17,7 @@ boxed[K: trait]: rec
 		ret boxed[K](memory)
 	}
 
-	*: op(self) -> imm[dyn[K]] = imm *self.object
+	*: op(imm self) -> imm[dyn[K]] = imm *self.object
 
 	drop: op
 	{
@@ -26,9 +26,9 @@ boxed[K: trait]: rec
 	}
 }
 
-twice[F: fun[i32 -> i32]]: fun(f: F, x: i32) -> i32 = f(f(x))
+twice[F: fun[i32 -> i32]]: fun(imm f: F, x: i32) -> i32 = f(f(x))
 
-misuse[F: fun[i32 -> i32]]: fun(f: F) -> i32 = f(true)
+misuse[F: fun[i32 -> i32]]: fun(imm f: F) -> i32 = f(true)
 
 holder[K: trait]: rec
 {

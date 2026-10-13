@@ -7,19 +7,19 @@ ext
 
 Eq: trait
 {
-	==: op(a: Self, b: Self) -> bool
+	==: op(imm a: Self, imm b: Self) -> bool
 }
 
 Counted: trait
 {
-	count: fun(self) -> usize
+	count: fun(imm self) -> usize
 }
 
 i32: impl Eq
 
 array[T: Eq, N: val usize]: impl Eq
 {
-	==: op(a: array[T, N], b: array[T, N]) -> bool
+	==: op(imm a: array[T, N], imm b: array[T, N]) -> bool
 	{
 		for i in 0..N
 		{
@@ -33,22 +33,22 @@ array[T: Eq, N: val usize]: impl Eq
 
 array[T, N: val usize]: impl Counted
 {
-	count: fun(self) -> usize = N
+	count: fun(imm self) -> usize = N
 }
 
 Short: trait
 {
-	doubled: fun(self) -> u8
+	doubled: fun(imm self) -> u8
 }
 
 array[T, N: val u8]: impl Short
 {
-	doubled: fun(self) -> u8 = N * 2
+	doubled: fun(imm self) -> u8 = N * 2
 }
 
-same[T: Eq]: fun(a: T, b: T) -> bool = a == b
+same[T: Eq]: fun(imm a: T, imm b: T) -> bool = a == b
 
-counted[T: Counted]: fun(item: T) -> usize = item.count()
+counted[T: Counted]: fun(imm item: T) -> usize = item.count()
 
 main: fun -> i32
 {

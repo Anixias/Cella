@@ -1,10 +1,10 @@
 
 ====== match_enum_uses.ce ======
 
-Error at line 22, column 45
+Error at line 22, column 49
 21 │ 
-22 │ unwrap[T: null]: fun(n: nullable[T]) -> T = T(n)
-                                                 ╘══╛ No constructor for 'T' accepts argument of type 'nullable[T]'
+22 │ unwrap[T: null]: fun(imm n: nullable[T]) -> T = T(n)
+                                                     ╘══╛ No constructor for 'T' accepts argument of type 'nullable[T]'
 
 Error at line 24, column 35
 23 │ 

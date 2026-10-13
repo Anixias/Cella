@@ -4,9 +4,9 @@ box[T]: rec
 {
 	value: T
 
-	map[T]: fun(self) -> i32 = 0
+	map[T]: fun(imm self) -> i32 = 0
 
-	other[U, U]: fun(self) -> i32 = 0
+	other[U, U]: fun(imm self) -> i32 = 0
 }
 
 twice[T, T]: fun -> i32 = 0

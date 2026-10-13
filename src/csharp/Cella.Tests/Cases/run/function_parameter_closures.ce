@@ -66,7 +66,7 @@ pick: fun(first: bool, a: fun[-> i32], b: fun[-> i32]) -> ref fun[-> i32]
 
 filter: fun(keep: fun[i32 -> bool]) -> Filter = Filter(keep)
 
-transform[T, U]: fun(value: T, f: fun[T -> U]) -> U = f(value)
+transform[T, U]: fun(imm value: T, f: fun[imm T -> U]) -> U = f(imm value)
 
 twice: fun(f: fun[fun[i32], i32], visit: fun[i32])
 {

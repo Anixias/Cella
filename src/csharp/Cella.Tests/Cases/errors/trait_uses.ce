@@ -2,17 +2,17 @@ mod test
 
 Hash: trait
 {
-	hash: fun(self) -> u64
+	hash: fun(imm self) -> u64
 	seed: fun -> u64
-	twice: fun(self) -> u64 = mix(self.hash())
+	twice: fun(imm self) -> u64 = mix(self.hash())
 	mix: pvt fun(value: u64) -> u64 = value * 2
-	scale: pvt fun(self) -> u64 = self.hash()
-	level: pvt get(self) -> i32 = 1
+	scale: pvt fun(imm self) -> u64 = self.hash()
+	level: pvt get(imm self) -> i32 = 1
 }
 
 Fingerprint: trait
 {
-	hash: fun(self) -> u64
+	hash: fun(imm self) -> u64
 }
 
 Point: rec
@@ -42,9 +42,9 @@ Plain: rec
 	x: i32
 }
 
-check[T: Hash]: fun(value: T) -> i32 = 1
+check[T: Hash]: fun(imm value: T) -> i32 = 1
 
-run[T: Hash]: fun(value: T) -> u64 = value.scale()
+run[T: Hash]: fun(imm value: T) -> u64 = value.scale()
 
 holder[T: Hash + noref]: rec
 {

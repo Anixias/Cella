@@ -1,10 +1,10 @@
 
 ====== constraint_uses.ce ======
 
-Error at line 49, column 36
+Error at line 49, column 84
 48 │ 
-49 │ forward[T]: fun(value: T) -> i32 = twin(value)
-                                        ╘══╛ Cannot copy 'T'
+49 │ forward[T]: fun(imm value: T) -> i32 = imm imm imm imm imm imm imm imm imm imm imm twin(value)
+                                                                                        ╘══╛ Cannot copy 'T'
 
 Error at line 51, column 38
 50 │ 
@@ -21,18 +21,18 @@ Error at line 55, column 22
 55 │ blank[T]: fun -> T = T()
                           ╘═╛ No constructor for 'T' accepts these arguments
 
-Error at line 59, column 2
+Error at line 59, column 46
 58 │ {
-59 │     twin(Text(1))
-         ╘══╛ Cannot copy 'Text'
+59 │     imm imm imm imm imm imm imm imm imm imm imm twin(Text(1))
+                                                     ╘══╛ Cannot copy 'Text'
 
-Error at line 60, column 2
-59 │ twin(Text(1))
-60 │ twin(pair(Text(1), 2))
-     ╘══╛ Cannot copy 'pair[Text, i32]'
+Error at line 60, column 46
+59 │ imm imm imm imm imm imm imm imm imm imm imm twin(Text(1))
+60 │ imm imm imm imm imm imm imm imm imm imm imm twin(pair(Text(1), 2))
+                                                 ╘══╛ Cannot copy 'pair[Text, i32]'
 
 Error at line 61, column 2
-60 │ twin(pair(Text(1), 2))
+60 │ imm imm imm imm imm imm imm imm imm imm imm twin(pair(Text(1), 2))
 61 │ hold(5)
      ╘══╛ 'i32' has no destructor
 

@@ -1,0 +1,34 @@
+mod test
+
+Token: rec
+{
+	id: i32
+
+	drop: op
+	{
+	}
+
+	get: fun(self) -> i32 = self.id
+}
+
+Shape: trait
+{
+	area: fun(imm self) -> i32
+}
+
+Card: rec impl Shape
+{
+	token: Token
+
+	area: fun(self) -> i32 = 1
+}
+
+show: fun(token: Token) -> i32 = token.id
+
+keep[T]: fun(value: T) -> i32 = 0
+
+copies[T: copy]: fun(value: T) -> i32 = 0
+
+holder: fun(f: fun[Token -> i32]) -> i32 = 0
+
+main: fun -> i32 = 0

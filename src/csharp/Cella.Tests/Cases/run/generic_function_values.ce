@@ -7,7 +7,7 @@ ext
 
 identity[T]: fun(own value: T) -> T = value
 
-score[T]: fun(value: T) -> i32 = 7
+score[T: copy]: fun(value: T) -> i32 = 7
 
 apply: fun(value: i32, change: fun[own i32 -> i32]) -> i32 = change(value)
 

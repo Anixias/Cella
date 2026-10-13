@@ -4,9 +4,9 @@ Owned: rec
 {
 	id: i32
 
-	<: op(a: Owned, b: Owned) -> bool = a.id < b.id
-	>: op(a: Owned, own b: Owned) -> bool = a.id > b.id
-	<=: op(own a: Owned, b: Owned) -> bool = a.id <= b.id
+	<: op(imm a: Owned, imm b: Owned) -> bool = a.id < b.id
+	>: op(imm a: Owned, own b: Owned) -> bool = a.id > b.id
+	<=: op(own a: Owned, imm b: Owned) -> bool = a.id <= b.id
 
 	drop: op
 	{

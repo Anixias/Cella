@@ -28,7 +28,7 @@ Iterator[T]: trait
 Num: trait
 {
 	zero: fun -> Self
-	+: op(a: Self, b: Self) -> Self
+	+: op(imm a: Self, imm b: Self) -> Self
 }
 
 i32: impl Num
@@ -120,7 +120,7 @@ second[I: Iterator[i32]]: fun(mut items: I) -> i32
 
 Write[T]: trait
 {
-	write: fun(mut self, value: T)
+	write: fun(mut self, imm value: T)
 }
 
 Console: rec impl Write[str] + Write[i32]
@@ -143,14 +143,14 @@ Console: rec impl Write[str] + Write[i32]
 report[W: Write[str] + Write[i32]]: fun(mut out: W, score: i32)
 {
 	out.write("score: ")
-	out.write(score)
+	out.write(imm score)
 }
 
-send[E, W: Write[E]]: fun(mut out: W, value: E) = out.write(value)
+send[E, W: Write[E]]: fun(mut out: W, imm value: E) = out.write(imm value)
 
 From[T]: trait
 {
-	new: op(value: T)
+	new: op(imm value: T)
 }
 
 Celsius: rec impl From[f32] + From[i32]
@@ -168,7 +168,7 @@ Celsius: rec impl From[f32] + From[i32]
 	}
 }
 
-convert[T, U: From[T]]: fun(value: T) -> U = U(value)
+convert[T, U: From[T]]: fun(imm value: T) -> U = U(value)
 
 Point: rec
 {

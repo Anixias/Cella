@@ -16,7 +16,7 @@ plain[T]: rec
 {
 	value: T
 
-	load: fun(self) -> T = atomic *@self.value
+	load: fun(imm self) -> T = atomic *@self.value
 }
 
 main: fun -> i32

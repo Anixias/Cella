@@ -15,7 +15,7 @@ Choice: enum
 
 Failure: trait
 {
-	fail: fun(self, message: str) -> never
+	fail: fun(imm self, message: str) -> never
 }
 
 Loud: rec impl Failure
@@ -78,7 +78,7 @@ firstPositive: fun(values: array[i32, 3]) -> i32
 	}
 }
 
-failWith[T: Failure]: fun(handler: T) -> i32
+failWith[T: Failure]: fun(imm handler: T) -> i32
 {
 	handler.fail("generic failure")
 }

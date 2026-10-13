@@ -1,9 +1,9 @@
 
 ====== main.ce ======
 
-Error at line 8, column 39
+Error at line 8, column 43
 7 │ 
-8 │ go[T: lib.Hash]: fun(v: T) -> u64 = v.helper()
-                                          ╘════╛ 'helper' is private to its module
+8 │ go[T: lib.Hash]: fun(imm v: T) -> u64 = v.helper()
+                                              ╘════╛ 'helper' is private to its module
 
 [compilation failed]

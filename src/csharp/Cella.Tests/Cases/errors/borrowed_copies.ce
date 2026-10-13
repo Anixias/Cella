@@ -14,7 +14,7 @@ Holder[T]: rec
 {
 	value: T
 
-	*: op(self) -> imm[T] = imm self.value
+	*: op(imm self) -> imm[T] = imm self.value
 }
 
 Sink: ref rec

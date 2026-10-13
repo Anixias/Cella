@@ -1,13 +1,13 @@
 
 ====== parameter_defaults.ce ======
 
-Error at line 17, column 30
+Error at line 17, column 34
 16 │ {
-17 │     log: fun(self, level: i32 = 0)
-                                     ^ Cannot declare defaults in traits
+17 │     log: fun(imm self, level: i32 = 0)
+                                         ^ Cannot declare defaults in traits
 
 Error at line 18, column 22
-17 │ log: fun(self, level: i32 = 0)
+17 │ log: fun(imm self, level: i32 = 0)
 18 │ new: op(size: i32 = 0)
                          ^ Cannot declare defaults in traits
 
@@ -46,9 +46,9 @@ Error at line 34, column 25
 34 │ wrong: fun(value: i32 = "text") {}
                              ╘════╛ Cannot convert type 'string literal' to 'i32'
 
-Error at line 35, column 28
+Error at line 35, column 32
 34 │ wrong: fun(value: i32 = "text") {}
-35 │ generic[T]: fun(value: T = 5) {}
-                                ^ Cannot convert type 'integer literal' to 'T'
+35 │ generic[T]: fun(imm value: T = 5) {}
+                                    ^ Cannot convert type 'integer literal' to 'T'
 
 [compilation failed]

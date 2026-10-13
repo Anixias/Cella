@@ -10,7 +10,7 @@ Bag: rec
 	items: array[i32, 4]
 	count: usize
 
-	in: op(self) -> BagCursor = BagCursor(imm self, 0, 0)
+	in: op(imm self) -> BagCursor = BagCursor(imm self, 0, 0)
 	in: op(mut self) -> BagEditor = BagEditor(mut self, 0, 0)
 
 	drop: op
@@ -62,7 +62,7 @@ Countdown: rec
 		ret self.left >= 0
 	}
 
-	*: op(self) -> imm[i32] = imm self.left
+	*: op(imm self) -> imm[i32] = imm self.left
 
 	drop: op
 	{

@@ -57,7 +57,7 @@ Body: rec
 
 	name: prop Text
 	{
-		get(self) = Text(self.label.id)
+		get(imm self) = Text(self.label.id)
 		set(mut self, own value) { self.label = own value }
 	}
 }

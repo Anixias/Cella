@@ -9,9 +9,9 @@ Text: rec
 {
 	id: i32
 
-	+: op(a: Text, b: Text) -> Text = Text(a.id * 10 + b.id)
-	-: op(own a: Text, b: Text) -> Text = Text(a.id - b.id)
-	==: op(a: Text, b: Text) -> bool = a.id == b.id
+	+: op(imm a: Text, imm b: Text) -> Text = Text(a.id * 10 + b.id)
+	-: op(own a: Text, imm b: Text) -> Text = Text(a.id - b.id)
+	==: op(imm a: Text, imm b: Text) -> bool = a.id == b.id
 	-: op(own self) -> Text = Text(-self.id)
 
 	+=: op(mut self, own other: Text)

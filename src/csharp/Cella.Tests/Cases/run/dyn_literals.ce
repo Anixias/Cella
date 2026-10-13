@@ -7,7 +7,7 @@ ext
 
 Show: trait
 {
-	show: fun(self)
+	show: fun(imm self)
 }
 
 str: impl Show
@@ -20,7 +20,7 @@ i32: impl Show
 	show: fun(self) = printf("<%d>", self)
 }
 
-display: fun(value: dyn[Show]) = value.show()
+display: fun(imm value: dyn[Show]) = value.show()
 
 main: fun -> i32
 {

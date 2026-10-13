@@ -19,7 +19,7 @@ Bag: rec
 {
 	tokens: array[Token, 2]
 
-	[]: op(self, i: usize) -> imm[Token]
+	[]: op(imm self, i: usize) -> imm[Token]
 	{
 		printf("bag[] ")
 		ret imm self.tokens[i]
@@ -91,13 +91,13 @@ reset: fun(mut bag: Bag) -> i32
 	ret 9
 }
 
-show: fun(token: Token, extra: i32) -> i32
+show: fun(imm token: Token, extra: i32) -> i32
 {
 	printf("show%d ", token.id)
 	ret extra
 }
 
-pair: fun(first: Token, second: Token) -> i32
+pair: fun(imm first: Token, imm second: Token) -> i32
 {
 	printf("pair%d%d ", first.id, second.id)
 	ret 0
@@ -125,11 +125,11 @@ main: fun -> i32
 	sum(compute(), add(mut grid[pick()][second()], compute()))
 	printf("| nested call\n")
 	var bag = Bag([Token(1), Token(2)])
-	show(bag[pick()], compute())
+	show(imm bag[pick()], compute())
 	printf("| lent argument\n")
-	show(bag[1], reset(mut bag))
+	show(imm bag[1], reset(mut bag))
 	printf("| lent argument, container replaced\n")
-	pair(bag[pick()], make(3))
+	pair(imm bag[pick()], make(3))
 	printf("| lent temporary\n")
 	sum(compute(), show(make(4), 0))
 	printf("| lent temporary in order\n")

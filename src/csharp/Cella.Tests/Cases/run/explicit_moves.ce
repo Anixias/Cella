@@ -55,7 +55,7 @@ Countdown: rec
 		ret self.value >= 0
 	}
 
-	*: op(self) -> imm[i32] = imm self.value
+	*: op(imm self) -> imm[i32] = imm self.value
 
 	drop: op
 	{
@@ -67,7 +67,7 @@ take: fun(own texture: Texture) -> i32 = texture.id
 
 shift: fun(own point: Point) -> i32 = point.x + point.y
 
-count: fun(textures: array[Texture, 2]) -> i32 = textures[0].id + textures[1].id
+count: fun(imm textures: array[Texture, 2]) -> i32 = textures[0].id + textures[1].id
 
 pass: fun(own texture: Texture) -> Texture = texture
 
@@ -115,7 +115,7 @@ declarations: fun
 	var i: usize = 1
 	val first = textures[0]
 	val picked = textures[i]
-	printf("textures %d %d %d\n", first.id, picked.id, count(textures))
+	printf("textures %d %d %d\n", first.id, picked.id, count(imm textures))
 	val player = Player(Texture(10), 5)
 	val skin = player.skin
 	printf("skin %d %d\n", skin.id, player.retire())

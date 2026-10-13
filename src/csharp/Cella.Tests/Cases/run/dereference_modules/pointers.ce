@@ -33,7 +33,7 @@ SlotBox: rec
 		*self.pointer = Cell(slot)
 	}
 
-	*: op(self) -> imm[Cell] = imm *self.pointer
+	*: op(imm self) -> imm[Cell] = imm *self.pointer
 
 	*: op(mut self) -> mut[Cell] = mut *self.pointer
 

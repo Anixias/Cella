@@ -108,9 +108,9 @@ Guarded: rec
 	}
 }
 
-describeCloser: fun(closer: Closer) -> i32 = closer.id
-describeKeeper: fun(keeper: Keeper) -> i32 = keeper.closer.id * 10 + keeper.count
-describeGuarded: fun(guarded: Guarded) -> i32 = guarded.handle * 10 + guarded.flags
+describeCloser: fun(imm closer: Closer) -> i32 = closer.id
+describeKeeper: fun(imm keeper: Keeper) -> i32 = keeper.closer.id * 10 + keeper.count
+describeGuarded: fun(imm guarded: Guarded) -> i32 = guarded.handle * 10 + guarded.flags
 
 explicit: fun -> i32 = describeCloser(Closer())
 
@@ -118,21 +118,21 @@ written: fun -> i32
 {
 	var closer: Closer
 	closer.id = 5
-	ret describeCloser(closer)
+	ret describeCloser(imm closer)
 }
 
 kept: fun -> i32
 {
 	var keeper: Keeper
 	keeper.closer.id = 7
-	ret describeKeeper(keeper)
+	ret describeKeeper(imm keeper)
 }
 
 guarded: fun -> i32
 {
 	var guarded: Guarded
 	guarded.handle = 8
-	ret describeGuarded(guarded)
+	ret describeGuarded(imm guarded)
 }
 
 main: fun -> i32

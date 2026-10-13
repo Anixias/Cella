@@ -2,7 +2,7 @@ mod test
 
 Show: trait
 {
-	show: fun(self)
+	show: fun(imm self)
 }
 
 f: fun(p: ptr[dyn[Show]])

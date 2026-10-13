@@ -19,7 +19,7 @@ Point: rec
 
 wrap[T: null]: fun(own value: T) -> nullable[T] = some(value)
 
-unwrap[T: null]: fun(n: nullable[T]) -> T = T(n)
+unwrap[T: null]: fun(imm n: nullable[T]) -> T = T(n)
 
 describe: fun(s: socket) -> i32 = match s { valid(h) => h }
 

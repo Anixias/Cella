@@ -16,8 +16,8 @@ Pair: rec
 }
 
 make: fun(id: i32) -> Buffer = Buffer(id)
-show: fun(buffer: Buffer) -> i32 = buffer.id
-sum: fun(pair: Pair) -> i32 = pair.left.id + pair.right.id
+show: fun(imm buffer: Buffer) -> i32 = buffer.id
+sum: fun(imm pair: Pair) -> i32 = pair.left.id + pair.right.id
 
 numbers: fun -> i32
 {
@@ -34,16 +34,16 @@ sometimes: fun(flag: bool) -> i32
 	if flag
 		b = make(1)
 
-	ret show(b)
+	ret show(imm b)
 }
 
 fields: fun -> i32
 {
 	var pair: Pair = undef
 	pair.left = make(1)
-	val total = sum(pair) + pair.left.id + pair.right.id
+	val total = sum(imm pair) + pair.left.id + pair.right.id
 	pair.right = make(2)
-	ret sum(pair) + total
+	ret sum(imm pair) + total
 }
 
 address: fun -> i32

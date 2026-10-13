@@ -3,7 +3,7 @@ mod lib
 Cursor[T]: pub trait
 {
 	for: op(mut self) -> bool
-	*: op(self) -> imm[T]
+	*: op(imm self) -> imm[T]
 }
 
 Bag: pub rec
@@ -11,7 +11,7 @@ Bag: pub rec
 	items: array[i32, 4]
 	count: usize
 
-	in: op(self) -> BagCursor = BagCursor(imm self, 0, 0)
+	in: op(imm self) -> BagCursor = BagCursor(imm self, 0, 0)
 	in: op(mut self) -> BagEditor = BagEditor(mut self, 0, 0)
 
 	drop: op
@@ -53,7 +53,7 @@ BagEditor: pub ref rec
 
 make: pub fun -> Bag = Bag([1, 2, 3, 4], 4)
 
-view: pub fun(bag: Bag) -> i32 = sum(BagCursor(imm bag, 0, 0))
+view: pub fun(imm bag: Bag) -> i32 = sum(BagCursor(imm bag, 0, 0))
 
 sum[C: Cursor[i32]]: pub fun(own cursor: C) -> i32
 {

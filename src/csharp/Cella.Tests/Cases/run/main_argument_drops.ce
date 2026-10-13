@@ -20,7 +20,7 @@ Owned: rec
 	}
 }
 
-main: fun(args: Owned) -> i32
+main: fun(imm args: Owned) -> i32
 {
 	printf("main %zu\n", args.count)
 	ret 0

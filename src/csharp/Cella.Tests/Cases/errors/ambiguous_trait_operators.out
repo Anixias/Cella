@@ -1,15 +1,15 @@
 
 ====== ambiguous_trait_operators.ce ======
 
-Error at line 92, column 51
+Error at line 92, column 55
 91 │ 
-92 │ deref[T: Other + Pointer]: fun(value: T) -> i32 = *value
-                                                       ╘════╛ Ambiguous operation '*' on 'T'
+92 │ deref[T: Other + Pointer]: fun(imm value: T) -> i32 = *value
+                                                           ╘════╛ Ambiguous operation '*' on 'T'
 
-Error at line 94, column 50
+Error at line 94, column 54
 93 │ 
-94 │ index[T: Lookup + Index]: fun(value: T) -> i32 = value[0]
-                                                      ╘══════╛ Ambiguous operation '[]' on 'T'
+94 │ index[T: Lookup + Index]: fun(imm value: T) -> i32 = value[0]
+                                                          ╘══════╛ Ambiguous operation '[]' on 'T'
 
 Error at line 99, column 20
 98 │ val b = Box(4)

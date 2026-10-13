@@ -4,7 +4,7 @@ Box[T]: rec
 {
 	value: T
 
-	show: fun(self, other: T) -> i32 = 5
+	show: fun(imm self, imm other: T) -> i32 = 5
 }
 
 Holder: rec
@@ -26,7 +26,7 @@ build[T: new(fun[-> i32])]: fun -> i32 = 0
 
 pick[T: copy]: fun(a: T, b: T) -> T = b
 
-look[T]: fun(value: T) -> i32 = 7
+look[T: copy]: fun(value: T) -> i32 = 7
 
 forward: fun(mut handlers: array[fun[-> i32], 3], visit: fun[-> i32])
 {

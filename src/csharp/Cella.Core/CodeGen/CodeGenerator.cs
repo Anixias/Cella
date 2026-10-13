@@ -443,7 +443,7 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 		declared is DynType ? FatPointerType : OpaquePointer;
 	
 	private LLVMTypeRef MapParameterType(TypeSymbol type, ParameterMode mode) =>
-		_typePool.PassesByPointer(type, mode) ? MapPassedPointer(type) : MapValueType(type);
+		TypePool.PassesByPointer(mode) ? MapPassedPointer(type) : MapValueType(type);
 	
 	private LLVMTypeRef[] MapParameterTypes(FunctionInfo function) => MapParameterTypes(function, MapValueType);
 	
@@ -454,7 +454,7 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 		[
 			..function.Symbol.Captures.IsEmpty ? [] : new[] { OpaquePointer },
 			..function.Signature.ParameterTypes.Select((type, i) =>
-				_typePool.PassesByPointer(function, i, declared.ParameterTypes[i])
+				TypePool.PassesByPointer(function, i)
 					? MapPassedPointer(declared.ParameterTypes[i])
 					: mapValue(type))
 		];
@@ -844,7 +844,7 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 		}
 		
 		cleanup = mode == ParameterMode.Own ? null : () => EmitDropCall(type, slot, builder);
-		return _typePool.PassesByPointer(type, mode) ? slot : LoadValue(builder, type, slot, "arguments");
+		return TypePool.PassesByPointer(mode) ? slot : LoadValue(builder, type, slot, "arguments");
 	}
 	
 	private void BuildFunction(LoweredFunction function, FunctionInfo info)
@@ -892,7 +892,7 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 					var paramInfo = new VariableInfo(paramSymbol, paramType);
 					
 					var paramLlvmValue = functionValue.GetParam(firstParameter + (uint)p);
-					if (!_typePool.PassesByPointer(function.Info, p, paramType))
+					if (!TypePool.PassesByPointer(function.Info, p))
 					{
 						if (signature is { Parameters: var passes })
 							paramLlvmValue = ReceiveCArgument(passes[p], paramType, paramLlvmValue, builder);
@@ -1725,6 +1725,7 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 		
 		var call = objectType switch
 		{
+			ClosureType closure when TakesCopies(closure.Signature, function) => GetClosureCallThunk(function, closure),
 			ClosureType closure => GetFunctionValue(closure.Function),
 			FunctionType stored => GetStoredCallThunk(function, stored),
 			_ => throw new InvalidOperationException()
@@ -1836,8 +1837,7 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 	{
 		var functionType = (FunctionType)Substitute(v.FunctionType);
 		var target = EmitValue(v.Target, builder);
-		var args = v.Arguments.Select((a, i) => EmitIndirectArgument(a, v.FunctionType, functionType, i, builder))
-			.ToList();
+		var args = v.Arguments.Select(a => EmitValue(a, builder)).ToList();
 		
 		var returnType = MapTypeSymbol(functionType.ReturnType);
 		if (!functionType.IsExternal)
@@ -1854,20 +1854,6 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 		var signature = _cAbi.Classify(functionType.ParameterTypes.Select(MapTypeSymbol), returnType);
 		return EmitCCall(signature, signature.CreateFunctionType(functionType.IsVariadic), target,
 			functionType.ParameterTypes, functionType.ReturnType, args, builder);
-	}
-	
-	private LLVMValueRef EmitIndirectArgument(Value argument, FunctionType declared, FunctionType actual, int index,
-		LLVMBuilderRef builder)
-	{
-		var value = EmitValue(argument, builder);
-		if (index >= declared.ParameterTypes.Length)
-			return value;
-		
-		var mode = declared.ParameterModes[index];
-		var type = actual.ParameterTypes[index];
-		return _typePool.PassesByPointer(declared.ParameterTypes[index], mode) && !_typePool.PassesByPointer(type, mode)
-			? LoadValue(builder, type, value, "argument")
-			: value;
 	}
 	
 	private LLVMValueRef EmitCCall(CSignature signature, LLVMTypeRef functionType, LLVMValueRef callee,
@@ -2243,10 +2229,17 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 	{
 		var address = EmitValue(v.Source, builder);
 		var type = MapTypeSymbol(conversion.To);
+		var target = (FunctionType)Substitute(conversion.To);
 		switch (Substitute(conversion.From))
 		{
+			case ClosureType closure when TakesCopies(closure.Signature, target):
+				return BuildFunctionValue(type, GetClosureCallThunk(target, closure), address, builder);
+			
 			case ClosureType closure:
 				return BuildFunctionValue(type, GetFunctionValue(closure.Function), address, builder);
+			
+			case FunctionType stored when TakesCopies(stored, target):
+				return BuildFunctionValue(type, GetStoredCallThunk(target, stored), address, builder);
 			
 			case FunctionType { IsExternal: true } external:
 				return BuildFunctionValue(type, GetExternalCallThunk(external),
@@ -2281,17 +2274,43 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 		$"call${Mangling.MangleTypeName(signature, _modules)}${Mangling.MangleTypeName(stored, _modules)}", signature,
 		(builder, environment, args) =>
 		{
+			var copied = LoadCopies(signature, stored, args, builder);
 			if (stored.IsExternal)
-				return EmitExternalCall(stored, builder.BuildLoad2(OpaquePointer, environment, "function"), args,
+				return EmitExternalCall(stored, builder.BuildLoad2(OpaquePointer, environment, "function"), copied,
 					builder);
 			
 			var function = builder.BuildLoad2(MapTypeSymbol(stored), environment, "function");
-			var codeType = CreateInternalFunctionType(signature.ReturnType, [OpaquePointer],
-				MapCallParameters(signature));
-			
+			var codeType = CreateInternalFunctionType(stored.ReturnType, [OpaquePointer], MapCallParameters(stored));
 			return BuildInternalCall(builder, codeType, builder.BuildExtractValue(function, 0, "code"),
-				signature.ReturnType, [builder.BuildExtractValue(function, 1, "env")], args);
+				stored.ReturnType, [builder.BuildExtractValue(function, 1, "env")], copied);
 		});
+	
+	private LLVMValueRef GetClosureCallThunk(FunctionType signature, ClosureType closure)
+	{
+		var code = GetFunctionValue(closure.Function);
+		var codeType = CreateInternalFunctionType(closure.Signature.ReturnType, [OpaquePointer],
+			MapCallParameters(closure.Signature));
+		
+		return GetCallThunk($"call${Mangling.MangleTypeName(signature, _modules)}${code.Name}", signature,
+			(builder, environment, args) => BuildInternalCall(builder, codeType, code, closure.Signature.ReturnType,
+				[environment], LoadCopies(signature, closure.Signature, args, builder)));
+	}
+	
+	private static bool TakesCopies(FunctionType declared, FunctionType passed) => declared.ParameterModes
+		.Where((mode, i) => i < passed.ParameterModes.Length && TakesCopy(passed.ParameterModes[i], mode))
+		.Any();
+	
+	private static bool TakesCopy(ParameterMode passed, ParameterMode declared) =>
+		TypePool.PassesByPointer(passed) && !TypePool.PassesByPointer(declared);
+	
+	private LLVMValueRef[] LoadCopies(FunctionType passed, FunctionType declared, LLVMValueRef[] args,
+		LLVMBuilderRef builder) =>
+	[
+		..args.Select((arg, i) => i < declared.ParameterTypes.Length &&
+		                          TakesCopy(passed.ParameterModes[i], declared.ParameterModes[i])
+			? LoadValue(builder, declared.ParameterTypes[i], arg, "argument")
+			: arg)
+	];
 	
 	private LLVMValueRef GetCallThunk(string name, FunctionType signature,
 		Func<LLVMBuilderRef, LLVMValueRef, LLVMValueRef[], LLVMValueRef> emitCall)
@@ -3552,7 +3571,8 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 		var target = current.Functions[function];
 		var actual = function.Signature;
 		var adapts = FunctionType.CanAdapt(actual.ReturnType, type.ReturnType) || actual.ParameterTypes
-			.Where((parameter, i) => FunctionType.CanAdapt(type.ParameterTypes[i], parameter))
+			.Where((parameter, i) => FunctionType.CanAdapt(type.ParameterTypes[i], parameter) ||
+			                         TakesCopy(type.ParameterModes[i], actual.GetMode(i)))
 			.Any();
 		
 		var name = adapts
@@ -3575,8 +3595,8 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 		using var builder = CreateGeneratedBuilder(thunk, GetAdapterName(function), function.Symbol.Definition);
 		var first = IsLarge(returnType) ? 2u : 1u;
 		var args = parameterTypes
-			.Select((_, i) => PassAsDeclared(function, i, AdaptFunction(type.ParameterTypes[i],
-				actual.ParameterTypes[i], thunk.GetParam((uint)i + first), builder), builder))
+			.Select((_, i) => AdaptFunction(type.ParameterTypes[i], actual.ParameterTypes[i],
+				ReceiveCopy(type.ParameterModes[i], actual, i, thunk.GetParam((uint)i + first), builder), builder))
 			.ToList();
 		
 		var result = target.CSignature is { } signature
@@ -3595,15 +3615,10 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 			? BuildFunctionValue(MapTypeSymbol(target), GetExternalCallThunk(source), value, builder)
 			: value;
 	
-	private LLVMValueRef PassAsDeclared(FunctionInfo function, int index, LLVMValueRef value, LLVMBuilderRef builder)
-	{
-		var actual = function.Signature.ParameterTypes[index];
-		if (!_typePool.PassesByPointer(function, index, function.DeclaredSignature.ParameterTypes[index]) ||
-		    _typePool.PassesByPointer(function, index, actual))
-			return value;
-		
-		return SpillValue(builder, actual, value, "argument");
-	}
+	private LLVMValueRef ReceiveCopy(ParameterMode passed, FunctionSignature actual, int index, LLVMValueRef value,
+		LLVMBuilderRef builder) => TakesCopy(passed, actual.GetMode(index))
+		? LoadValue(builder, actual.ParameterTypes[index], value, "argument")
+		: value;
 	
 	private LLVMValueRef GetExternalThunk(FunctionInfo function)
 	{
@@ -3630,7 +3645,6 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 		var args = function.Signature.ParameterTypes
 			.Select((type, i) => ReceiveCArgument(signature.Parameters[i], type, thunk.GetParam(first + (uint)i),
 				builder))
-			.Select((value, i) => PassAsDeclared(function, i, value, builder))
 			.ToArray();
 		
 		var returnType = function.Signature.ReturnType;
@@ -3788,8 +3802,8 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 	private LLVMValueRef PassToWitness(FunctionInfo function, FunctionInfo target, int index, LLVMValueRef value,
 		LLVMBuilderRef builder)
 	{
-		var fromPointer = _typePool.PassesByPointer(function, index, function.DeclaredSignature.ParameterTypes[index]);
-		if (fromPointer == _typePool.PassesByPointer(target, index, target.DeclaredSignature.ParameterTypes[index]))
+		var fromPointer = TypePool.PassesByPointer(function, index);
+		if (fromPointer == TypePool.PassesByPointer(target, index))
 			return value;
 		
 		var type = function.Signature.ParameterTypes[index];
@@ -3886,7 +3900,7 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 	
 	private Value PassConversionSource(FunctionInfo conversion, VariableValue source, SourceLocation location)
 	{
-		return _typePool.PassesByPointer(conversion, 0, conversion.DeclaredSignature.ParameterTypes[0])
+		return TypePool.PassesByPointer(conversion, 0)
 			? new UnaryOpValue(_typePool.GetPointerType(source.Type), source, UnaryOperation.AddressOf, location)
 			: source;
 	}
@@ -3896,7 +3910,7 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 	{
 		var type = function.Signature.ParameterTypes[index];
 		var info = new VariableInfo(new ParameterSymbol($"${index}", function.Symbol.Syntax.SourceLocation), type);
-		if (_typePool.PassesByPointer(function, index, function.DeclaredSignature.ParameterTypes[index]))
+		if (TypePool.PassesByPointer(function, index))
 		{
 			current.Variables[info] = value;
 			return info;

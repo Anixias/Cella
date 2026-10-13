@@ -7,14 +7,14 @@ Error at line 20, column 7
           ^ Cannot use moved values
           | Moved on line 19
 
-Error at line 21, column 7
+Error at line 21, column 11
 20 │ take(a)
-21 │ show(a)
-          ^ Cannot use moved values
-          | Moved on line 20
+21 │ show(imm a)
+              ^ Cannot use moved values
+              | Moved on line 20
 
 Error at line 22, column 6
-21 │ show(a)
+21 │ show(imm a)
 22 │ ret a
          ^ Cannot use moved values
          | Moved on line 20

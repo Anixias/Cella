@@ -1,0 +1,31 @@
+mod test
+
+Token: rec
+{
+	id: i32
+
+	drop: op
+	{
+	}
+
+	peek: fun(imm self) -> i32 = self.id
+}
+
+Pair: rec
+{
+	token: Token
+}
+
+read: fun(imm token: Token) -> i32 = token.id
+
+main: fun -> i32
+{
+	val token = Token(1)
+	val pair = Pair(Token(2))
+	val tokens = [Token(3), Token(4)]
+	val pointer = @token
+	val get: fun[imm Token -> i32] = read
+	val sum = read(token) + read(pair.token) + read(tokens[0]) + read(*pointer) + get(token)
+	val fine = read(imm token) + read(Token(5)) + token.peek() + get(imm pair.token)
+	ret 0
+}

@@ -63,7 +63,7 @@ pool[T: new(usize)]: rec
 		self.first = T(size)
 	}
 
-	grow: fun(self, size: usize) -> T = T(size + 1)
+	grow: fun(imm self, size: usize) -> T = T(size + 1)
 }
 
 box[T]: rec
@@ -73,7 +73,7 @@ box[T]: rec
 
 box[T: new(i32)]: impl
 {
-	fresh: fun(self) -> T = T(3)
+	fresh: fun(imm self) -> T = T(3)
 }
 
 wrapper[T]: rec
@@ -90,7 +90,7 @@ holder[E]: rec
 {
 	value: E
 
-	make[T: new(E)]: fun(self) -> T = T(self.value)
+	make[T: new(E)]: fun(imm self) -> T = T(self.value)
 }
 
 Wrapped: rec
@@ -110,7 +110,7 @@ Wrapped: rec
 
 Shape: trait
 {
-	area: fun(self) -> i32
+	area: fun(imm self) -> i32
 }
 
 Square: rec impl Shape

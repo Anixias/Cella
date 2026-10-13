@@ -12,7 +12,7 @@ Source[T]: trait
 
 Counted[T]: trait req Source[T]
 {
-	count: fun(self) -> i32
+	count: fun(imm self) -> i32
 }
 
 Steps: rec impl Source[i32] + Counted[i32]
@@ -30,12 +30,12 @@ Steps: rec impl Source[i32] + Counted[i32]
 
 Compare[T]: trait
 {
-	compare: fun(self, other: T) -> i32
+	compare: fun(imm self, imm other: T) -> i32
 }
 
 Sortable: trait req Compare[Self]
 {
-	rank: fun(self) -> i32
+	rank: fun(imm self) -> i32
 }
 
 Card: rec impl Compare[Card] + Sortable
@@ -58,9 +58,9 @@ pull: fun(mut source: dyn[Counted[i32]]) -> i32 = source.next() + source.count()
 
 drain: fun(mut source: dyn[Source[i32]]) -> i32 = source.next()
 
-order[T: Sortable]: fun(a: T, b: T) -> i32 = a.compare(b) + a.rank()
+order[T: Sortable]: fun(imm a: T, imm b: T) -> i32 = a.compare(imm b) + a.rank()
 
-rankOf: fun(item: dyn[Sortable]) -> i32 = item.rank()
+rankOf: fun(imm item: dyn[Sortable]) -> i32 = item.rank()
 
 main: fun -> i32
 {

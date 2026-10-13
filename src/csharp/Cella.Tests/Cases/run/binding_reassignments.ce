@@ -27,7 +27,7 @@ TextureBox: rec
 		own *self.pointer = own texture
 	}
 
-	*: op(self) -> imm[Texture] = imm *self.pointer
+	*: op(imm self) -> imm[Texture] = imm *self.pointer
 
 	drop: op
 	{
@@ -42,7 +42,7 @@ Slot: enum
 	full(box: TextureBox)
 }
 
-firstOf: fun(boxes: array[TextureBox, 2]) -> imm[Texture]
+firstOf: fun(imm boxes: array[TextureBox, 2]) -> imm[Texture]
 {
 	for box in boxes
 		ret *box
@@ -93,6 +93,6 @@ main: fun -> i32
 		empty => {}
 	}
 
-	printf("first %d\n", firstOf(boxes).id)
+	printf("first %d\n", firstOf(imm boxes).id)
 	ret 0
 }

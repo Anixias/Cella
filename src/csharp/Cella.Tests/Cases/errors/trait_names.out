@@ -43,7 +43,7 @@ Error at line 44, column 21
 
 Error at line 46, column 10
 45 │ 
-46 │ check[T: Shape]: fun(value: T) -> i32 = 0
+46 │ check[T: Shape]: fun(imm value: T) -> i32 = 0
               ╘═══╛ 'Shape' is not a trait
 
 [compilation failed]

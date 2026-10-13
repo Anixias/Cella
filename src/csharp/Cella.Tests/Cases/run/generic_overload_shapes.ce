@@ -7,17 +7,17 @@ ext
 
 Show: trait
 {
-	show: fun(self) -> i32
+	show: fun(imm self) -> i32
 }
 
-pick[T]: fun(x: T, y: T) -> i32 = 2
-pick[T]: fun(x: T) -> i32 = 1
+pick[T]: fun(imm x: T, imm y: T) -> i32 = 2
+pick[T]: fun(imm x: T) -> i32 = 1
 
-pair[T, U]: fun(x: T, y: U) -> i32 = 3
-pair[T]: fun(x: T, y: T, z: T) -> i32 = 4
+pair[T, U]: fun(imm x: T, imm y: U) -> i32 = 3
+pair[T]: fun(imm x: T, imm y: T, imm z: T) -> i32 = 4
 
-shown[T: Show]: fun(x: T) -> i32 = 5
-shown[T]: fun(x: T, y: i32) -> i32 = 6
+shown[T: Show]: fun(imm x: T) -> i32 = 5
+shown[T]: fun(imm x: T, y: i32) -> i32 = 6
 
 main: fun -> i32
 {

@@ -55,6 +55,7 @@ public sealed class SignatureCollector
 	private readonly HashSet<Symbol> _cyclic = [];
 	private readonly List<FunctionInfo> _entryPoints = [];
 	private readonly ExtSignatureTypes _extSignatureTypes;
+	private readonly CopiedParameters _copiedParameters;
 	private readonly uint _pointerBitSize;
 	private readonly List<ImplSymbol> _impls = [];
 	private readonly Dictionary<ImplSymbol, TypeSymbol> _implTargets = [];
@@ -82,6 +83,7 @@ public sealed class SignatureCollector
 		_symbolTable = symbolTable;
 		_typePool = typePool;
 		_extSignatureTypes = new(typePool);
+		_copiedParameters = new(typePool);
 		_pointerBitSize = pointerBitSize;
 		var dependencyList = dependencies.ToImmutableArray();
 		var indirectList = indirectDependencies.ToImmutableArray();
@@ -138,6 +140,7 @@ public sealed class SignatureCollector
 		ReportEntryPoint();
 		ReportPlainEnumsInExtSignatures();
 		ReportExtSignatureTypes();
+		_copiedParameters.Report(Diagnostics);
 		
 		FunctionInfo? entryPoint = _entryPoints.Count == 1 ? _entryPoints[0] : null;
 		return new(name, _symbolTable, _builder.Build(), entryPoint);
@@ -303,6 +306,7 @@ public sealed class SignatureCollector
 			TypePool = _typePool,
 			Diagnostics = Diagnostics,
 			ExtSignatureTypes = _extSignatureTypes,
+			CopiedParameters = _copiedParameters,
 			EvaluateConstant = EvaluateConstant,
 			GenericTypes = [],
 			DeferConstraintCheck = DeferConstraintCheck
@@ -595,7 +599,7 @@ public sealed class SignatureCollector
 				Diagnostics.Add(DiagnosticReporter.ReportBorrowParameter(borrow, null, node.Modes[i] is not null,
 					false));
 				
-				modes[i] = borrow.IsMutable ? ParameterMode.Mut : ParameterMode.ReadOnly;
+				modes[i] = borrow.IsMutable ? ParameterMode.Mut : ParameterMode.Imm;
 				typeNode = borrow.Target;
 			}
 			else if (typeNode is FunctionTypeNode { IsRef: true } function)
@@ -1271,7 +1275,7 @@ public sealed class SignatureCollector
 		       expected.HasVariadicParameter == candidate.HasVariadicParameter &&
 		       (expected.ReturnType == candidate.ReturnType ||
 		        allowsStandIns && FunctionType.CanAdapt(candidate.ReturnType, expected.ReturnType)) &&
-		       TypePool.ParametersMatch(candidate, expected, allowsStandIns);
+		       _typePool.ParametersMatchOrCopy(candidate, expected, allowsStandIns);
 	}
 	
 	private bool ConstraintsAllowed(TypeParameterSymbol own, TypeParameterSymbol required,
@@ -2635,6 +2639,9 @@ public sealed class SignatureCollector
 			var paramType = _typePool.GetPassedType(
 				RejectValueDyn(param.Type, context.ResolveType(param.Type), paramSymbol.Mode), paramSymbol.Mode);
 			
+			if (paramSymbol.Mode == ParameterMode.ReadOnly && !param.IsVariadic)
+				_copiedParameters.Add(paramType, param.Identifier.SourceLocation);
+			
 			ReportHiddenType(param.Type, paramType, visibility, node.Keyword.Text);
 			
 			paramTypes.Add(paramType);
@@ -2702,6 +2709,8 @@ public sealed class SignatureCollector
 			if (context.ContainingType is null)
 				Diagnostics.Add(new(DiagnosticSeverity.Error, receiver.SourceLocation,
 					"Cannot take 'self' outside types"));
+			else if (self.Mode == ParameterMode.ReadOnly)
+				_copiedParameters.Add(selfType, receiver.Self.SourceLocation);
 			
 			paramTypes.Add(selfType);
 			_builder.VariableTypes[self] = selfType;
@@ -2719,6 +2728,9 @@ public sealed class SignatureCollector
 			var paramType = _typePool.GetPassedType(
 				RejectValueDyn(param.Type, ResolveSignatureType(function, param.Type, context), paramSymbol.Mode),
 				paramSymbol.Mode);
+			
+			if (paramSymbol.Mode == ParameterMode.ReadOnly && !function.IsExternal && !param.IsVariadic)
+				_copiedParameters.Add(paramType, param.Identifier.SourceLocation);
 			
 			if (reportsHiddenTypes)
 				ReportHiddenType(param.Type, paramType, visibility, name);

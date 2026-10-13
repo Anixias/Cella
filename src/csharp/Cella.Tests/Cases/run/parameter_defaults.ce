@@ -107,7 +107,7 @@ Level: enum
 
 Logger: trait
 {
-	log: fun(self, level: Level)
+	log: fun(imm self, level: Level)
 }
 
 Console: rec impl Logger
@@ -120,7 +120,7 @@ Console: rec impl Logger
 	}
 }
 
-through[T: Logger]: fun(logger: T) = logger.log(info)
+through[T: Logger]: fun(imm logger: T) = logger.log(info)
 
 Counter: rec
 {
@@ -164,7 +164,7 @@ main: fun -> i32
 
 	val console = Console(1)
 	console.log()
-	through(console)
+	through(imm console)
 
 	var counter = Counter()
 	counter.add()

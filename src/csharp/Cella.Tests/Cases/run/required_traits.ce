@@ -7,13 +7,13 @@ ext
 
 Eq: trait
 {
-	==: op(a: Self, b: Self) -> bool
+	==: op(imm a: Self, imm b: Self) -> bool
 }
 
 Ord: trait req Eq
 {
-	<: op(a: Self, b: Self) -> bool
-	<=: op(a: Self, b: Self) -> bool = a < b || a == b
+	<: op(imm a: Self, imm b: Self) -> bool
+	<=: op(imm a: Self, imm b: Self) -> bool = a < b || a == b
 }
 
 Version: rec impl Eq + Ord
@@ -34,12 +34,12 @@ box[T]: rec
 
 box[T: Eq]: impl Eq
 {
-	==: op(a: box[T], b: box[T]) -> bool = a.value == b.value
+	==: op(imm a: box[T], imm b: box[T]) -> bool = a.value == b.value
 }
 
 box[T: Ord]: impl Ord
 {
-	<: op(a: box[T], b: box[T]) -> bool = a.value < b.value
+	<: op(imm a: box[T], imm b: box[T]) -> bool = a.value < b.value
 }
 
 pair[T: Eq]: rec
@@ -47,21 +47,21 @@ pair[T: Eq]: rec
 	a: T
 	b: T
 
-	same: fun(self) -> bool = self.a == self.b
+	same: fun(imm self) -> bool = self.a == self.b
 }
 
 pair[T: Ord]: impl
 {
-	ordered: fun(self) -> bool = self.a <= self.b
+	ordered: fun(imm self) -> bool = self.a <= self.b
 }
 
-same[T: Eq]: fun(a: T, b: T) -> bool = a == b
+same[T: Eq]: fun(imm a: T, imm b: T) -> bool = a == b
 
-within[T: Ord]: fun(value: T, low: T, high: T) -> bool = low <= value && value <= high
+within[T: Ord]: fun(imm value: T, imm low: T, imm high: T) -> bool = low <= value && value <= high
 
-isEdge[T: Ord]: fun(value: T, low: T, high: T) -> bool = value == low || same(value, high)
+isEdge[T: Ord]: fun(imm value: T, imm low: T, imm high: T) -> bool = value == low || same(imm value, imm high)
 
-either[T: Eq + Ord]: fun(a: T, b: T) -> bool = a == b || a < b
+either[T: Eq + Ord]: fun(imm a: T, imm b: T) -> bool = a == b || a < b
 
 least[T: Ord + copy]: fun(a: T, b: T) -> T
 {
@@ -76,10 +76,10 @@ main: fun -> i32
 	val low = Version(1, 0)
 	val mid = Version(1, 5)
 	val high = Version(2, 0)
-	printf("%d %d %d\n", i32(within(mid, low, high)), i32(within(high, low, mid)), i32(within(5, 1, 9)))
-	printf("%d %d %d %d\n", i32(isEdge(low, low, high)), i32(isEdge(high, low, high)), i32(isEdge(mid, low, high)),
+	printf("%d %d %d\n", i32(within(imm mid, imm low, imm high)), i32(within(imm high, imm low, imm mid)), i32(within(5, 1, 9)))
+	printf("%d %d %d %d\n", i32(isEdge(imm low, imm low, imm high)), i32(isEdge(imm high, imm low, imm high)), i32(isEdge(imm mid, imm low, imm high)),
 		i32(isEdge(1, 1, 9)))
-	printf("%d %d %d\n", i32(either(mid, high)), i32(either(3, 2)), i32(mid <= high))
+	printf("%d %d %d\n", i32(either(imm mid, imm high)), i32(either(3, 2)), i32(mid <= high))
 	val small = least(box(3), box(2))
 	printf("%d %d %d\n", small.value, i32(box(4) == box(4)), i32(within(box(2), box(1), box(3))))
 	val p = pair(1, 2)

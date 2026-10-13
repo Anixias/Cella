@@ -57,7 +57,7 @@ fill: fun(mut values: array[i32, 3], value: i32)
 		v = value
 }
 
-largest: fun(names: array[Name, 3]) -> i32
+largest: fun(imm names: array[Name, 3]) -> i32
 {
 	var best: imm[Name] = names[0]
 	for name in names
@@ -102,7 +102,7 @@ main: fun -> i32
 	printf("%d %d %d %d\n", filled[0] + filled[2], grid.total(), points[1].y, total)
 
 	val group = [Name(3), Name(9), Name(5)]
-	printf("%d\n", largest(group))
+	printf("%d\n", largest(imm group))
 	for name in names()
 		printf("name %d\n", name.id)
 

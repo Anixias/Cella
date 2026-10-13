@@ -1,11 +1,11 @@
 
 ====== lend_then_move.ce ======
 
-Error at line 41, column 7
+Error at line 41, column 11
 40 │ var item = Item(1)
-41 │ view(item, own item)
-          ╘══╛ Cannot use moved values
-             | Moved on line 41
+41 │ view(imm item, own item)
+              ╘══╛ Cannot use moved values
+                 | Moved on line 41
 
 Error at line 44, column 13
 43 │ var changed = Item(2)

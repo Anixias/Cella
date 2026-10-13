@@ -9,12 +9,12 @@ ext
 
 Named: trait
 {
-	name: fun(self) -> i32
+	name: fun(imm self) -> i32
 }
 
 Shape: trait req Named
 {
-	area: fun(self) -> f64
+	area: fun(imm self) -> f64
 }
 
 Big: rec impl Named + Shape
@@ -40,15 +40,15 @@ cell[K: trait]: rec
 	*: op(self) -> imm[dyn[K]] = imm *self.object
 }
 
-measure: fun(shape: dyn[Shape]) -> usize = sizeOf(shape) * 100 + alignOf(shape)
+measure: fun(imm shape: dyn[Shape]) -> usize = sizeOf(shape) * 100 + alignOf(shape)
 
-named: fun(item: dyn[Named]) -> usize = sizeOf(item)
+named: fun(imm item: dyn[Named]) -> usize = sizeOf(item)
 
 main: fun -> i32
 {
 	val big = Big([1, 2, 3, 4, 5])
 	val small = Small(7)
-	printf("%zu %zu %zu %zu\n", measure(big), measure(small), named(dyn[Shape](big)), usize(sizeOf(Big)))
+	printf("%zu %zu %zu %zu\n", measure(imm big), measure(imm small), named(dyn[Shape](big)), usize(sizeOf(Big)))
 	val memory = ptr[Small](malloc(sizeOf(Small)))
 	*memory = small
 	val shape: ptr[dyn[Shape]] = memory

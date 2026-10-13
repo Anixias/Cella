@@ -45,7 +45,7 @@ Text: rec
 		self.id = id
 	}
 
-	new: op(other: Text)
+	new: op(imm other: Text)
 	{
 		self.id = other.id + 100
 	}
@@ -81,19 +81,19 @@ make[T: new(i32)]: fun -> T = T(5)
 
 pair[T: new(i32, i32)]: fun -> T = T(1, 2)
 
-both[T: new(i32) + new(T)]: fun(value: T) -> T
+both[T: new(i32) + new(T)]: fun(imm value: T) -> T
 {
 	val counted = T(5)
 	ret T(value)
 }
 
-convert[T: new(A) + new(B), A, B]: fun(a: A, b: B) -> T
+convert[T: new(A) + new(B), A, B]: fun(imm a: A, imm b: B) -> T
 {
 	val first = T(a)
 	ret T(b)
 }
 
-duplicate[T: new(T)]: fun(value: T) -> T = T(value)
+duplicate[T: new(imm T)]: fun(imm value: T) -> T = T(imm value)
 
 take[T: new(own Text)]: fun(own value: Text) -> T = T(own value)
 
@@ -113,7 +113,7 @@ main: fun -> i32
 	printf("%.1f %.1f %d %d %d\n", make[Celsius]().degrees, make[f64](), p.x, p.y, i32(make[u8]()))
 	printf("%d %d %d\n", both[i32](3), both[Twice](Twice(2)).n, convert[i32, i32, i32](1, 2))
 	val a = Text(1)
-	val b = duplicate(a)
+	val b = duplicate(imm a)
 	val h = take[Holder](Text(7))
 	printf("%d %d %d\n", a.id, b.id, h.text.id)
 	printf("%d\n", count[Counter]().n)

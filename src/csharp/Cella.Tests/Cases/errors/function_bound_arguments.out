@@ -1,10 +1,10 @@
 
 ====== function_bound_arguments.ce ======
 
-Error at line 31, column 48
+Error at line 31, column 52
 30 │ 
-31 │ misuse[F: fun[i32 -> i32]]: fun(f: F) -> i32 = f(true)
-                                                    ^ 'F' doesn't accept these arguments
+31 │ misuse[F: fun[i32 -> i32]]: fun(imm f: F) -> i32 = f(true)
+                                                        ^ 'F' doesn't accept these arguments
 
 Error at line 42, column 14
 41 │ {

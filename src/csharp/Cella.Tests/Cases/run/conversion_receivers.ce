@@ -26,7 +26,7 @@ Slot[T]: rec
 {
 	value: T
 
-	as: op(self) -> imm[T] = imm self.value
+	as: op(imm self) -> imm[T] = imm self.value
 	as: op(mut self) -> mut[T] = mut self.value
 }
 

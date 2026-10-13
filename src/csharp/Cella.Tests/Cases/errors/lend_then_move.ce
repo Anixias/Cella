@@ -19,7 +19,7 @@ Holder: rec
 	other: Item
 }
 
-view: fun(item: Item, own owned: Item)
+view: fun(imm item: Item, own owned: Item)
 {
 }
 
@@ -38,7 +38,7 @@ run: fun(f: fun[-> i32], own owned: Item)
 main: fun -> i32
 {
 	var item = Item(1)
-	view(item, own item)
+	view(imm item, own item)
 
 	var changed = Item(2)
 	change(mut changed, own changed)
@@ -54,6 +54,6 @@ main: fun -> i32
 
 	val first = Item(7)
 	val second = Item(8)
-	view(first, own second)
+	view(imm first, own second)
 	ret 0
 }

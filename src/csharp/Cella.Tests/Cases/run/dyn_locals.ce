@@ -9,7 +9,7 @@ ext
 
 Shape: trait
 {
-	area: fun(self) -> i32
+	area: fun(imm self) -> i32
 }
 
 Square: rec impl Shape
@@ -30,7 +30,7 @@ boxed[K: trait]: rec
 		ret boxed[K](memory)
 	}
 
-	*: op(self) -> imm[dyn[K]] = imm *self.object
+	*: op(imm self) -> imm[dyn[K]] = imm *self.object
 
 	drop: op
 	{
@@ -46,7 +46,7 @@ Point: rec
 	z: i32
 }
 
-describe: fun(shape: dyn[Shape]) -> i32
+describe: fun(imm shape: dyn[Shape]) -> i32
 {
 	val same = shape
 	ret same.area()
@@ -58,7 +58,7 @@ shapes: fun
 	val other = boxed[Shape].of(Square(4))
 	val shape = *box
 	var current = *box
-	printf("shapes %d %d %d\n", shape.area(), current.area(), describe(shape))
+	printf("shapes %d %d %d\n", shape.area(), current.area(), describe(imm shape))
 	current = *other
 	printf("shapes %d %d\n", current.area(), describe(Square(5)))
 }

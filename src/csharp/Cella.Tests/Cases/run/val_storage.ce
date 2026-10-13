@@ -9,9 +9,9 @@ cell[T: atomic]: rec
 {
 	value: T
 
-	load: fun(self) -> T = atomic acquire *@self.value
+	load: fun(imm self) -> T = atomic acquire *@self.value
 
-	store: fun(self, value: T)
+	store: fun(imm self, value: T)
 	{
 		atomic release *@self.value = value
 	}

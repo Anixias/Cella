@@ -14,7 +14,7 @@ view[T]: ref rec
 
 Logger: trait
 {
-	log: fun(self, level: i32 = 0)
+	log: fun(imm self, level: i32 = 0)
 	new: op(size: i32 = 0)
 }
 
@@ -32,6 +32,6 @@ writes: fun(mut value: i32 = 0) {}
 packs: fun(...values: view[i32] = view[i32](null, 0)) {}
 called: fun(value: i32 = make()) {}
 wrong: fun(value: i32 = "text") {}
-generic[T]: fun(value: T = 5) {}
+generic[T]: fun(imm value: T = 5) {}
 
 main: fun -> i32 = 0

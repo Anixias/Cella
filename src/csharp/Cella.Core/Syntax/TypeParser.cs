@@ -10,7 +10,9 @@ public sealed class TypeParser(ImmutableArray<Token> tokens) : BaseParser<ITypeN
 	private static readonly Dictionary<string, TokenType> _externalKeywords =
 		new[] { TokenType.KeywordExt }.ToDictionary(static t => t.Representation);
 	
-	private static readonly HashSet<TokenType> _parameterModes = [TokenType.KeywordMut, TokenType.KeywordOwn];
+	private static readonly HashSet<TokenType> _parameterModes =
+		[TokenType.KeywordMut, TokenType.KeywordOwn, TokenType.KeywordImm];
+	
 	private static readonly HashSet<TokenType> _borrowKeywords = [TokenType.KeywordImm, TokenType.KeywordMut];
 	
 	public override ITypeNode Parse(ref int index) => ParseType(ref index);
@@ -142,7 +144,9 @@ public sealed class TypeParser(ImmutableArray<Token> tokens) : BaseParser<ITypeN
 					break;
 				}
 				
-				var isBorrowType = Peek(index, TokenType.KeywordMut) && Peek(index + 1, TokenType.OpOpenBracket);
+				var isBorrowType = (Peek(index, TokenType.KeywordMut) || Peek(index, TokenType.KeywordImm)) &&
+				                   Peek(index + 1, TokenType.OpOpenBracket);
+				
 				parameterModes.Add(!isBorrowType && Match(ref index, out var mode, _parameterModes) ? mode : null);
 				ellipses.Add(Match(ref index, out var ellipsis, TokenType.OpDotDotDot) ? ellipsis : null);
 				parameterTypes.Add(ParseType(ref index));

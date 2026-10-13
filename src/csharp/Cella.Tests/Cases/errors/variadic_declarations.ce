@@ -34,7 +34,7 @@ ext
 
 Sink: trait
 {
-	put: fun(self, ...values: view[i32]) -> usize
+	put: fun(imm self, ...values: view[i32]) -> usize
 }
 
 Box: rec impl Sink

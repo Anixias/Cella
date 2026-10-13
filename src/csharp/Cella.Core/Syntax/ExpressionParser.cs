@@ -9,7 +9,8 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 {
 	public delegate BlockStatementNode? BlockParser(ref int index, Token openBrace);
 	
-	private static readonly HashSet<TokenType> _parameterModes = [TokenType.KeywordMut, TokenType.KeywordOwn];
+	private static readonly HashSet<TokenType> _parameterModes =
+		[TokenType.KeywordMut, TokenType.KeywordOwn, TokenType.KeywordImm];
 	
 	private static readonly HashSet<TokenType> _literalTypes =
 	[

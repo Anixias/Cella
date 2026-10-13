@@ -29,7 +29,7 @@ Holder: rec
 	buffer: Buffer
 	matched: bool
 
-	new: op(source: Buffer, address: ptr[Buffer])
+	new: op(imm source: Buffer, address: ptr[Buffer])
 	{
 		self.buffer = Buffer(source.id)
 		self.matched = @source == address
@@ -42,17 +42,17 @@ Effect: enum
 	owned(buffer: Buffer)
 }
 
-same: fun(buffer: Buffer, address: ptr[Buffer]) -> bool = @buffer == address
+same: fun(imm buffer: Buffer, address: ptr[Buffer]) -> bool = @buffer == address
 samePlain: fun(plain: Plain, address: ptr[Plain]) -> bool = @plain == address
-sameHolder: fun(holder: Holder, address: ptr[Holder]) -> bool = @holder == address
-sameEffect: fun(effect: Effect, address: ptr[Effect]) -> bool = @effect == address
-sameArray: fun(values: array[Buffer, 2], address: ptr[array[Buffer, 2]]) -> bool = @values == address
-forward: fun(buffer: Buffer, address: ptr[Buffer]) -> bool = same(buffer, address)
-readId: fun(buffer: Buffer) -> i32 = buffer.id
+sameHolder: fun(imm holder: Holder, address: ptr[Holder]) -> bool = @holder == address
+sameEffect: fun(imm effect: Effect, address: ptr[Effect]) -> bool = @effect == address
+sameArray: fun(imm values: array[Buffer, 2], address: ptr[array[Buffer, 2]]) -> bool = @values == address
+forward: fun(imm buffer: Buffer, address: ptr[Buffer]) -> bool = same(imm buffer, address)
+readId: fun(imm buffer: Buffer) -> i32 = buffer.id
 
-fromMut: fun(mut buffer: Buffer, address: ptr[Buffer]) -> bool = same(buffer, address)
+fromMut: fun(mut buffer: Buffer, address: ptr[Buffer]) -> bool = same(imm buffer, address)
 
-observe: fun(buffer: Buffer, ignored: i32) -> i32 = buffer.id
+observe: fun(imm buffer: Buffer, ignored: i32) -> i32 = buffer.id
 
 bump: fun(mut buffer: Buffer) -> i32
 {
@@ -66,31 +66,31 @@ main: fun -> i32
 {
 	var buffer = Buffer(1)
 	var plain = Plain(2)
-	printf("local %d plain %d\n", flag(same(buffer, @buffer)), flag(samePlain(plain, @plain)))
+	printf("local %d plain %d\n", flag(same(imm buffer, @buffer)), flag(samePlain(plain, @plain)))
 
 	var holder = Holder(buffer, @buffer)
-	printf("ctor %d field %d record %d\n", flag(holder.matched), flag(same(holder.buffer, @holder.buffer)),
-		flag(sameHolder(holder, @holder)))
+	printf("ctor %d field %d record %d\n", flag(holder.matched), flag(same(imm holder.buffer, @holder.buffer)),
+		flag(sameHolder(imm holder, @holder)))
 
 	var buffers = [Buffer(3), Buffer(4)]
 	val p = @buffer
-	printf("element %d deref %d array %d\n", flag(same(buffers[1], @buffers[1])), flag(same(*p, p)),
-		flag(sameArray(buffers, @buffers)))
+	printf("element %d deref %d array %d\n", flag(same(imm buffers[1], @buffers[1])), flag(same(imm *p, p)),
+		flag(sameArray(imm buffers, @buffers)))
 
 	var effect = Effect.owned(Buffer(5))
-	printf("enum %d forward %d mut %d\n", flag(sameEffect(effect, @effect)), flag(forward(buffer, @buffer)),
+	printf("enum %d forward %d mut %d\n", flag(sameEffect(imm effect, @effect)), flag(forward(imm buffer, @buffer)),
 		flag(fromMut(mut buffer, @buffer)))
 
 	match mut effect
 	{
-		owned(inner) => printf("binding %d\n", flag(same(inner, @inner)))
+		owned(inner) => printf("binding %d\n", flag(same(imm inner, @inner)))
 		else => {}
 	}
 
 	val check = same
-	printf("fun %d\n", flag(check(buffer, @buffer)))
+	printf("fun %d\n", flag(check(imm buffer, @buffer)))
 
-	printf("temporary %d %d\n", readId(Buffer(7)), readId(buffers[0]))
-	printf("observe %d\n", observe(buffer, bump(mut buffer)))
+	printf("temporary %d %d\n", readId(Buffer(7)), readId(imm buffers[0]))
+	printf("observe %d\n", observe(imm buffer, bump(mut buffer)))
 	ret 0
 }

@@ -1,20 +1,20 @@
 
 ====== main.ce ======
 
-Error at line 8, column 40
+Error at line 8, column 44
 7 │ 
-8 │ go[T: util.Hash]: fun(v: T) -> u64 = v.secret() + v.helper()
-                                           ╘════╛ 'secret' is private to its module
+8 │ go[T: util.Hash]: fun(imm v: T) -> u64 = v.secret() + v.helper()
+                                               ╘════╛ 'secret' is private to its module
 
-Error at line 8, column 53
+Error at line 8, column 57
 7 │ 
-8 │ go[T: util.Hash]: fun(v: T) -> u64 = v.secret() + v.helper()
-                                                        ╘════╛ 'helper' is private to its module
+8 │ go[T: util.Hash]: fun(imm v: T) -> u64 = v.secret() + v.helper()
+                                                            ╘════╛ 'helper' is private to its module
 
-Error at line 10, column 40
+Error at line 10, column 44
  9 │ 
-10 │ dgo: fun(v: dyn[util.Hash]) -> u64 = v.secret()
-                                            ╘════╛ 'secret' is private to its module
+10 │ dgo: fun(imm v: dyn[util.Hash]) -> u64 = v.secret()
+                                                ╘════╛ 'secret' is private to its module
 
 Error at line 15, column 67
 14 │ val p = util.Point(0)

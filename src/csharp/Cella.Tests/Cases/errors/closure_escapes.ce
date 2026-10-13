@@ -32,7 +32,7 @@ make: fun -> ref fun[-> i32]
 	ret fun = base
 }
 
-show: fun(text: Text) -> ref fun[-> i32] = fun = text.id
+show: fun(imm text: Text) -> ref fun[-> i32] = fun = text.id
 
 store: fun(mut holder: Holder)
 {

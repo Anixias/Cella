@@ -25,10 +25,10 @@ Local: trait
 	make: fun -> Point
 }
 
-needs[I: Iterator]: fun(items: I) { }
+needs[I: Iterator]: fun(imm items: I) { }
 
 view: fun(items: dyn[Iterator]) { }
 
-expose: pub fun(items: dyn[Iterator[Secret]]) { }
+expose: pub fun(imm items: dyn[Iterator[Secret]]) { }
 
 main: fun -> i32 = 0

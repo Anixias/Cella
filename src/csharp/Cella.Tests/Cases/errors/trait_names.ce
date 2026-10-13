@@ -2,7 +2,7 @@ mod test
 
 Hash: trait
 {
-	hash: fun(self) -> u64
+	hash: fun(imm self) -> u64
 }
 
 Point: rec impl Hash + Shape + Missing
@@ -43,6 +43,6 @@ apply: fun(value: Self) -> i32 = 0
 
 measure: fun(value: Hash) -> i32 = 0
 
-check[T: Shape]: fun(value: T) -> i32 = 0
+check[T: Shape]: fun(imm value: T) -> i32 = 0
 
 main: fun -> i32 = 0

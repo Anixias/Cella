@@ -30,7 +30,7 @@ BufferBox: rec
 		own *self.pointer = own buffer
 	}
 
-	*: op(self) -> imm[Buffer] = imm *self.pointer
+	*: op(imm self) -> imm[Buffer] = imm *self.pointer
 
 	*: op(mut self) -> mut[Buffer] = mut *self.pointer
 

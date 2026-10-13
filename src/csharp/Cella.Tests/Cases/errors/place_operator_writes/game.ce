@@ -22,7 +22,7 @@ Grid: rec
 {
 	cells: array[i32, 4]
 
-	[]: op(self, row: usize, column: usize) -> imm[i32] = imm self.cells[row * 2 + column]
+	[]: op(imm self, row: usize, column: usize) -> imm[i32] = imm self.cells[row * 2 + column]
 
 	[]: pvt op(mut self, row: usize, column: usize) -> mut[i32] = mut self.cells[row * 2 + column]
 
@@ -41,7 +41,7 @@ Board: rec
 {
 	cells: array[i32, 2]
 
-	[]: op(self, i: usize) -> imm[i32] = imm self.cells[i]
+	[]: op(imm self, i: usize) -> imm[i32] = imm self.cells[i]
 
 	[]: mod op(mut self, i: usize) -> mut[i32] = mut self.cells[i]
 

@@ -6,20 +6,20 @@ Error at line 25, column 2
 25 │ n += 1
      ^ Cannot use uninitialized values
 
-Error at line 37, column 11
+Error at line 37, column 15
 36 │ 
-37 │ ret show(b)
-              ^ Cannot use uninitialized values
+37 │ ret show(imm b)
+                  ^ Cannot use uninitialized values
 
-Error at line 44, column 18
+Error at line 44, column 22
 43 │ pair.left = make(1)
-44 │ val total = sum(pair) + pair.left.id + pair.right.id
-                     ╘══╛ Cannot use partly initialized values
+44 │ val total = sum(imm pair) + pair.left.id + pair.right.id
+                         ╘══╛ Cannot use partly initialized values
 
-Error at line 44, column 41
+Error at line 44, column 45
 43 │ pair.left = make(1)
-44 │ val total = sum(pair) + pair.left.id + pair.right.id
-                                            ╘═══════════╛ Cannot use uninitialized values
+44 │ val total = sum(imm pair) + pair.left.id + pair.right.id
+                                                ╘═══════════╛ Cannot use uninitialized values
 
 Error at line 52, column 17
 51 │ var n: i32 = undef

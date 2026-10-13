@@ -7,11 +7,11 @@ ext
 
 Shape: trait
 {
-	area: fun(self) -> f64
+	area: fun(imm self) -> f64
 	scale: fun(mut self, factor: f64)
 	label: fun -> i32
-	twice: fun(self) -> f64 = self.area() * 2.0
-	sides: get(self) -> i32
+	twice: fun(imm self) -> f64 = self.area() * 2.0
+	sides: get(imm self) -> i32
 }
 
 Circle: rec impl Shape
@@ -42,7 +42,7 @@ Square: rec impl Shape
 	sides: get(self) -> i32 = 4
 }
 
-describe: fun(shape: dyn[Shape]) -> f64 = shape.area() + shape.twice() * 10.0 + f64(shape.sides) * 1000.0
+describe: fun(imm shape: dyn[Shape]) -> f64 = shape.area() + shape.twice() * 10.0 + f64(shape.sides) * 1000.0
 
 grow: fun(mut shape: dyn[Shape]) -> f64
 {
@@ -54,7 +54,7 @@ main: fun -> i32
 {
 	var c = Circle(1.0)
 	var s = Square(3.0)
-	printf("%.1f %.1f\n", describe(c), describe(s))
+	printf("%.1f %.1f\n", describe(imm c), describe(imm s))
 	printf("%.1f %.1f\n", grow(mut c), grow(mut s))
 	printf("%.1f %.1f %.1f\n", c.radius, s.side, describe(dyn[Shape](c)))
 	printf("%.1f\n", dyn[Shape](mut s).area())

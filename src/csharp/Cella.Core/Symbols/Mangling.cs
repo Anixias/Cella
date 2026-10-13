@@ -109,6 +109,7 @@ public static class Mangling
 		{
 			ParameterMode.Mut => $"mut {MangleType(function.GetDeclaredType(i), modules)}",
 			ParameterMode.Own => $"own {MangleType(type, modules)}",
+			ParameterMode.Imm => $"imm {MangleType(type, modules)}",
 			_ => MangleType(type, modules)
 		}));
 		

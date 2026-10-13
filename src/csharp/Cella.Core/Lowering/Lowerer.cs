@@ -1097,7 +1097,7 @@ public sealed class Lowerer
 		
 		private Func<int, Passing> GetOperandPassing(FunctionType type) => i => i == 0 || i > type.ParameterTypes.Length
 			? Passing.Read
-			: GetPassing(type.ParameterTypes[i - 1], type.ParameterModes[i - 1]);
+			: GetPassing(type.ParameterModes[i - 1]);
 		
 		public Value Visit(ResolvedIndexerExpressionNode node)
 		{
@@ -1342,15 +1342,13 @@ public sealed class Lowerer
 		private Func<int, Passing> GetArgumentPassing(FunctionInfo function, int firstParameter)
 		{
 			var signature = function.DeclaredSignature;
-			return i => firstParameter + i >= signature.ParameterTypes.Length
-				? Passing.Read
-				: TypePool.IsLentReceiver(function.Symbol, firstParameter + i, signature.GetMode(firstParameter + i))
-					? Passing.Borrow
-					: GetPassing(signature.ParameterTypes[firstParameter + i], signature.GetMode(firstParameter + i));
+			return i => firstParameter + i < signature.ParameterTypes.Length
+				? GetPassing(signature.GetMode(firstParameter + i))
+				: Passing.Read;
 		}
 		
-		private Passing GetPassing(TypeSymbol type, ParameterMode mode) =>
-			_typePool.PassesByPointer(type, mode) ? Passing.Borrow
+		private static Passing GetPassing(ParameterMode mode) =>
+			TypePool.PassesByPointer(mode) ? Passing.Borrow
 			: mode == ParameterMode.Own ? Passing.Consume
 			: Passing.Read;
 		
@@ -1372,9 +1370,9 @@ public sealed class Lowerer
 		private UnaryOpValue LowerBorrow(IResolvedExpressionNode argument)
 		{
 			var value = VisitNode(argument);
-			var place = IsPlaceValue(value) ? value : StoreTemporary(value, "borrow");
-			return new UnaryOpValue(_typePool.GetPointerType(argument.Type), place, UnaryOperation.AddressOf,
-				argument.Syntax.SourceLocation);
+			var location = argument.Syntax.SourceLocation;
+			var place = IsPlaceValue(value) ? value : StoreTemporary(value, "borrow", location);
+			return new UnaryOpValue(_typePool.GetPointerType(argument.Type), place, UnaryOperation.AddressOf, location);
 		}
 		
 		private static bool IsPlace(IResolvedExpressionNode node) => node switch
@@ -1482,7 +1480,9 @@ public sealed class Lowerer
 			if (receiver is null)
 				return [];
 			
-			if (accessor.DeclaredSignature.GetMode(0) == ParameterMode.Own)
+			var signature = accessor.DeclaredSignature;
+			var mode = signature.GetMode(0);
+			if (mode != ParameterMode.Mut && GetPassing(mode) != Passing.Borrow)
 				return [receiver];
 			
 			return
@@ -1672,7 +1672,7 @@ public sealed class Lowerer
 		private Value PassChainArgument(Value value, FunctionInfo function, int index, bool isPlace)
 		{
 			var signature = function.DeclaredSignature;
-			return GetPassing(signature.ParameterTypes[index], signature.GetMode(index)) switch
+			return GetPassing(signature.GetMode(index)) switch
 			{
 				Passing.Borrow => new UnaryOpValue(_typePool.GetPointerType(value.Type),
 					IsPlaceValue(value) ? value : StoreTemporary(value, "borrow"), UnaryOperation.AddressOf,
@@ -1806,13 +1806,16 @@ public sealed class Lowerer
 		private Value CaptureAsAtomic(Value value, string hint) =>
 			IsStable(value) ? value : StoreTemporary(value, hint);
 		
-		private VariableValue StoreTemporary(Value value, string hint)
+		private VariableValue StoreTemporary(Value value, string hint) =>
+			StoreTemporary(value, hint, value.SourceLocation);
+		
+		private VariableValue StoreTemporary(Value value, string hint, SourceLocation location)
 		{
 			var symbol = CreateTempSymbol(value.Type, hint);
 			
-			Declare(GetOrMakeBlock(), new LocalVarInstruction(symbol, value, value.SourceLocation, CurrentScopeId));
+			Declare(GetOrMakeBlock(), new LocalVarInstruction(symbol, value, location, CurrentScopeId));
 			
-			return new VariableValue(new(symbol, value.Type), value.SourceLocation);
+			return new VariableValue(new(symbol, value.Type), location);
 		}
 		
 		private bool IsStable(Value value) => value switch

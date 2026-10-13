@@ -48,12 +48,12 @@ Error at line 48, column 23
 
 Error at line 50, column 10
 49 │ 
-50 │ twice[T: Eq + Eq]: fun(a: T, b: T) -> bool = a == b
+50 │ twice[T: Eq + Eq]: fun(imm a: T, imm b: T) -> bool = a == b
               ╘╛ 'Eq' is required more than once
 
 Error at line 50, column 15
 49 │ 
-50 │ twice[T: Eq + Eq]: fun(a: T, b: T) -> bool = a == b
+50 │ twice[T: Eq + Eq]: fun(imm a: T, imm b: T) -> bool = a == b
                    ╘╛ 'Eq' is required more than once
 
 Error at line 52, column 20

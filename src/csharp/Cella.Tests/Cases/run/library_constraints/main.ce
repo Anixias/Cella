@@ -9,7 +9,7 @@ ext
 
 Shape: trait
 {
-	area: fun(self) -> f64
+	area: fun(imm self) -> f64
 }
 
 Circle: rec impl Shape
@@ -39,7 +39,7 @@ Gauge: rec
 	}
 }
 
-describe: fun(shape: dyn[Shape]) -> f64 = shape.area()
+describe: fun(imm shape: dyn[Shape]) -> f64 = shape.area()
 
 reading[T: new(i32)]: fun -> T = T(7)
 

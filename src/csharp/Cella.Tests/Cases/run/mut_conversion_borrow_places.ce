@@ -14,7 +14,7 @@ Slot: rec
 {
 	value: Sprite
 
-	as: op(self) -> imm[Sprite] = imm self.value
+	as: op(imm self) -> imm[Sprite] = imm self.value
 	as: op(mut self) -> mut[Sprite] = mut self.value
 
 	drop: op

@@ -7,7 +7,7 @@ ext
 
 Shape: trait
 {
-	area: fun(self) -> f64
+	area: fun(imm self) -> f64
 	scale: fun(mut self, factor: f64)
 }
 
@@ -31,7 +31,7 @@ Big: rec impl Shape
 {
 	r: f64
 
-	area: fun(self) -> f64 = self.r
+	area: fun(imm self) -> f64 = self.r
 	scale: fun(mut self, factor: f64)
 	{
 		self.r *= factor
@@ -42,7 +42,7 @@ Big: rec impl Shape
 	}
 }
 
-pick: fun(a: Big, b: Big) -> imm[dyn[Shape]] = a
+pick: fun(imm a: Big, imm b: Big) -> imm[dyn[Shape]] = a
 
 main: fun -> i32
 {
@@ -55,7 +55,7 @@ main: fun -> i32
 	val m: mut[dyn[Shape]] = mut c
 	m.scale(3.0)
 	val big = Big(7.0)
-	printf("%.1f %.1f\n", c.radius, pick(big, Big(1.0)).area())
+	printf("%.1f %.1f\n", c.radius, pick(imm big, Big(1.0)).area())
 	val p: ptr[dyn[Shape]] = @c
 	p.scale(2.0)
 	printf("%.1f %.1f\n", c.radius, p.area())

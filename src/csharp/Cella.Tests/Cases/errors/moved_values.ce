@@ -11,14 +11,14 @@ Buffer: rec
 
 make: fun(id: i32) -> Buffer = Buffer(id)
 take: fun(own buffer: Buffer) -> i32 = buffer.id
-show: fun(buffer: Buffer) -> i32 = buffer.id
+show: fun(imm buffer: Buffer) -> i32 = buffer.id
 
 again: fun -> Buffer
 {
 	val a = make(1)
 	take(own a)
 	take(a)
-	show(a)
+	show(imm a)
 	ret a
 }
 

@@ -1,15 +1,15 @@
 
 ====== lambda_instantiation_cycles.ce ======
 
-Error at line 5, column 51
+Error at line 5, column 55
 4 │ 
-5 │ grow[T]: fun(value: T) -> i32 = call(fun -> i32 = grow(@value))
-                                                      ╘══╛ Instantiating 'grow' never ends
+5 │ grow[T]: fun(imm value: T) -> i32 = call(fun -> i32 = grow(@value))
+                                                          ╘══╛ Instantiating 'grow' never ends
 
-Error at line 7, column 69
+Error at line 7, column 73
 6 │ 
-7 │ nest[T]: fun(value: T) -> i32 = call(fun -> i32 = call(fun -> i32 = nest(@value)))
-                                                                        ╘══╛ Instantiating 'nest' never ends
+7 │ nest[T]: fun(imm value: T) -> i32 = call(fun -> i32 = call(fun -> i32 = nest(@value)))
+                                                                            ╘══╛ Instantiating 'nest' never ends
 
 Error at line 11, column 23
 10 │ {

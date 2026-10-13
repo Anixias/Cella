@@ -2,7 +2,7 @@ mod test
 
 Shape: trait
 {
-	area: fun(self) -> i32
+	area: fun(imm self) -> i32
 }
 
 Point: rec

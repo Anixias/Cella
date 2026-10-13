@@ -43,12 +43,12 @@ pair[T]: rec
 
 pair[T: new(i32)]: impl
 {
-	fresh: fun(self) -> T = T(1)
+	fresh: fun(imm self) -> T = T(1)
 }
 
 make[T: new(i32)]: fun -> T = T(5)
 
-duplicate[T: new(T)]: fun(value: T) -> T = T(value)
+duplicate[T: new(T)]: fun(imm value: T) -> T = T(value)
 
 taking[T: new(own str, mut i32)]: fun -> i32 = 0
 

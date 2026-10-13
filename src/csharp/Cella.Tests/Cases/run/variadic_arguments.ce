@@ -27,7 +27,7 @@ Effect: enum
 
 Sink: trait
 {
-	put: fun(self, ...values: view[i32]) -> usize
+	put: fun(imm self, ...values: view[i32]) -> usize
 }
 
 Box: rec impl Sink
@@ -76,7 +76,7 @@ sum: fun(...values: view[i32]) -> i32
 	ret total
 }
 
-through[T: Sink]: fun(sink: T) -> usize = sink.put(1, 2, 3)
+through[T: Sink]: fun(imm sink: T) -> usize = sink.put(1, 2, 3)
 
 dynamic: fun(sink: ptr[dyn[Sink]]) -> usize = (*sink).put(4, 5)
 
@@ -88,6 +88,6 @@ main: fun -> i32
 	printf("%d\n", sum(sum(1, 2), sum(), 4))
 
 	var box = Box(1)
-	printf("%zu %zu %zu\n", box.put(), through(box), dynamic(@box))
+	printf("%zu %zu %zu\n", box.put(), through(imm box), dynamic(@box))
 	ret 0
 }

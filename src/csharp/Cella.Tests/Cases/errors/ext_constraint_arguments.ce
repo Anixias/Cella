@@ -2,7 +2,7 @@ mod test
 
 Display: trait
 {
-	print: fun(self)
+	print: fun(imm self)
 }
 
 i32: impl Display
@@ -30,14 +30,14 @@ call[T: ext]: fun(f: ext fun[T -> i32], value: T) -> i32 = f(value)
 
 visit[T: ext]: fun(f: ext fun[ptr[T] -> i32], items: ptr[T]) -> i32 = f(items)
 
-same: fun(t: Token) -> i32 = t.id
+same: fun(imm t: Token) -> i32 = t.id
 
-outer[U]: fun(f: ext fun[i32 -> i32], value: U) -> i32 = visit[U](undef, null)
+outer[U]: fun(f: ext fun[i32 -> i32], imm value: U) -> i32 = visit[U](undef, null)
 
-local[T]: fun(value: T) -> i32
+local[T]: fun(imm value: T) -> i32
 {
 	var f: ext fun[array[T, 2] -> i32]
-	val g = fun(x: T) -> ext fun[T -> i32] = undef
+	val g = fun(imm x: T) -> ext fun[T -> i32] = undef
 	ret 0
 }
 

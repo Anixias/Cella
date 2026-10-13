@@ -5,16 +5,16 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-apply[T, U, F: fun[T -> U]]: fun(value: T, change: F) -> U = change(value)
+apply[T, U, F: fun[imm T -> U]]: fun(imm value: T, imm change: F) -> U = change(imm value)
 
 twice: fun(x: i32) -> i64 = i64(x) * 2
 
-Mapped[T, U, F: fun[T -> U]]: rec
+Mapped[T, U, F: fun[imm T -> U]]: rec
 {
 	f: F
 	value: T
 
-	get: fun(self) -> U = self.f(self.value)
+	get: fun(imm self) -> U = self.f(imm self.value)
 }
 
 main: fun -> i32

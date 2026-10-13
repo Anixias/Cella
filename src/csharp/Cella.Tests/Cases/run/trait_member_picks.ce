@@ -7,10 +7,10 @@ ext
 
 A: trait
 {
-	size: get(self) -> i32
+	size: get(imm self) -> i32
 	count: prop i32
 	{
-		get(self)
+		get(imm self)
 		set(mut self, value)
 	}
 	total: get -> i32
@@ -18,10 +18,10 @@ A: trait
 
 B: trait
 {
-	size: get(self) -> i32
+	size: get(imm self) -> i32
 	count: prop i32
 	{
-		get(self)
+		get(imm self)
 		set(mut self, value)
 	}
 	total: get -> i32
@@ -58,12 +58,12 @@ P: impl A
 	total: get -> i32 = 1
 }
 
-g[T: A + B]: fun(value: T) -> i32 = A(value).size * 10 + B(value).size
+g[T: A + B]: fun(imm value: T) -> i32 = A(value).size * 10 + B(value).size
 
 main: fun -> i32
 {
 	var p = P(0)
 	A(p).count = 5
-	printf("%d %d %d %d %d %d\n", A(p).size, B(p).size, A(p).count, B(p).count, g(p), A(P).total)
+	printf("%d %d %d %d %d %d\n", A(p).size, B(p).size, A(p).count, B(p).count, g(imm p), A(P).total)
 	ret 0
 }

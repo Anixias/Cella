@@ -258,7 +258,7 @@ Code: enum match u16
 
 Show: trait
 {
-	show: fun(self)
+	show: fun(imm self)
 }
 
 i32: impl Show
@@ -293,7 +293,7 @@ Name: rec
 	}
 }
 
-inspect: fun(mut total: i32, pair: Pair[i32], name: Name, big: array[i64, 8]) -> i32
+inspect: fun(mut total: i32, pair: Pair[i32], imm name: Name, big: array[i64, 8]) -> i32
 {
 	val x = 1
 	if x > 0
@@ -333,7 +333,7 @@ main: fun -> i32
 	val name = Name(4)
 	printf("main\n")
 	listLocals()
-	val result = inspect(mut total, Pair[i32](1, 2), name, [1, 2, 3, 4, 5, 6, 7, 8])
+	val result = inspect(mut total, Pair[i32](1, 2), imm name, [1, 2, 3, 4, 5, 6, 7, 8])
 	printf("%d %d %d %d\n", result, bump(2), first, owned(1))
 	shown.show()
 	ret 0

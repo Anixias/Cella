@@ -18,7 +18,7 @@ Error at line 14, column 9
 
 Error at line 18, column 7
 17 │ 
-18 │ pick[T]: fun(self, other: T) -> i32 = 0
+18 │ pick[T]: fun(imm self, imm other: T) -> i32 = 0
           ^ Type parameter 'T' is declared more than once
 
 Error at line 24, column 13

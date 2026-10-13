@@ -1,0 +1,64 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Token: rec
+{
+	id: i32
+
+	drop: op
+	{
+		printf("drop %d\n", self.id)
+	}
+
+	get: fun(imm self) -> i32 = self.id
+}
+
+Point: rec
+{
+	x: i32
+	y: i32
+
+	moved: fun(self, dx: i32) -> Point = Point(self.x + dx, self.y)
+	first: fun(imm self) -> imm[i32] = imm self.x
+}
+
+Shape: trait
+{
+	area: fun(imm self) -> i32
+	scaled: fun(imm self, imm factor: i32) -> i32
+}
+
+Square: rec impl Shape
+{
+	side: i32
+
+	area: fun(self) -> i32 = self.side * self.side
+	scaled: fun(self, factor: i32) -> i32 = self.side * factor
+}
+
+show: fun(imm token: Token) -> i32 = token.id
+
+sum: fun(p: Point) -> i32 = p.x + p.y
+
+copies[T: copy]: fun(value: T) -> T = value
+
+measure[T: Shape]: fun(imm shape: T) -> i32 = shape.area() + shape.scaled(2)
+
+total: fun(imm shape: dyn[Shape]) -> i32 = shape.area() + shape.scaled(3)
+
+main: fun -> i32
+{
+	val token = Token(5)
+	var point = Point(2, 3)
+	val square = Square(4)
+	printf("%d %d %d %d\n", show(imm token), show(Token(6)), token.get(), sum(point))
+	val next = point.moved(10)
+	point.x = 7
+	printf("%d %d %d %d\n", next.x, point.first(), copies(9), copies(point).y)
+	printf("%d %d %d\n", measure(imm square), total(imm square), square.area())
+	ret 0
+}

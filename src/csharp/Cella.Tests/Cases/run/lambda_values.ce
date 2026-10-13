@@ -31,7 +31,7 @@ apply: fun(f: fun[i32 -> i32], x: i32) -> i32 = f(x)
 
 consume: fun(f: fun[own Text -> i32], own t: Text) -> i32 = f(own t)
 
-inspect: fun(f: fun[Text -> i32], t: Text) -> i32 = f(t)
+inspect: fun(f: fun[imm Text -> i32], imm t: Text) -> i32 = f(imm t)
 
 make: fun -> fun[i32 -> i32] = fun(x) = x * 7
 
@@ -76,7 +76,7 @@ main: fun -> i32
 
 	printf("%d\n", consume(fun(t) = t.id * 10, Text(1)))
 	val kept = Text(2)
-	printf("%d\n", inspect(fun(t) = t.id * 10, kept))
+	printf("%d\n", inspect(fun(t) = t.id * 10, imm kept))
 	printf("%d\n", consume(fun(own t)
 	{
 		val moved = own t

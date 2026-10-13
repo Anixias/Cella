@@ -7,17 +7,17 @@ ext
 
 Num: trait
 {
-	+: op(a: Self, b: Self) -> Self
-	*: op(a: Self, b: Self) -> Self
-	<: op(a: Self, b: Self) -> bool
-	==: op(a: Self, b: Self) -> bool
-	-: op(self) -> Self
-	+=: op(mut self, other: Self)
+	+: op(imm a: Self, imm b: Self) -> Self
+	*: op(imm a: Self, imm b: Self) -> Self
+	<: op(imm a: Self, imm b: Self) -> bool
+	==: op(imm a: Self, imm b: Self) -> bool
+	-: op(imm self) -> Self
+	+=: op(mut self, imm other: Self)
 }
 
 Eq: trait
 {
-	==: op(a: Self, b: Self) -> bool
+	==: op(imm a: Self, imm b: Self) -> bool
 }
 
 Score: rec
@@ -49,13 +49,13 @@ Color: enum impl Eq
 	green
 }
 
-sum[T: Num + noref]: fun(a: T, b: T, c: T) -> T = a + b * c
+sum[T: Num + noref]: fun(imm a: T, imm b: T, imm c: T) -> T = a + b * c
 
 flip[T: Num + noref]: fun(own value: T) -> T = -value
 
-ordered[T: Num]: fun(a: T, b: T, c: T) -> bool = a < b < c
+ordered[T: Num]: fun(imm a: T, imm b: T, imm c: T) -> bool = a < b < c
 
-same[T: Eq]: fun(a: T, b: T) -> bool = a == b
+same[T: Eq]: fun(imm a: T, imm b: T) -> bool = a == b
 
 gather[T: Num]: fun(mut total: T, own a: T, own b: T)
 {

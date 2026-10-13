@@ -164,7 +164,7 @@ early: fun(flag: bool) -> i32
 	ret take(own b) + a.id
 }
 
-matched: fun(effect: Effect) -> i32
+matched: fun(imm effect: Effect) -> i32
 {
 	val spare = make(7)
 	match effect

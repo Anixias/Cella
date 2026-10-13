@@ -1,10 +1,10 @@
 
 ====== ambiguous_trait_members.ce ======
 
-Error at line 61, column 43
+Error at line 61, column 47
 60 │ 
-61 │ g[T: A + B]: fun(value: T) -> i32 = value.size
-                                               ╘══╛ Reference to 'size' is ambiguous
+61 │ g[T: A + B]: fun(imm value: T) -> i32 = value.size
+                                                   ╘══╛ Reference to 'size' is ambiguous
 
 Error at line 66, column 25
 65 │ var p = P(0)

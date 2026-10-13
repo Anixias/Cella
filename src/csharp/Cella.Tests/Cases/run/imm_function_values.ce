@@ -1,0 +1,49 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+	abs: fun(x: i32) -> i32
+}
+
+Big: rec
+{
+	a: i64
+	b: i64
+	c: i64
+	d: i64
+	e: i64
+}
+
+double: fun(x: i32) -> i32 = x * 2
+
+sum: fun(big: Big) -> i64 = big.a + big.b + big.c + big.d + big.e
+
+apply: fun(f: fun[imm i32 -> i32], imm x: i32) -> i32 = f(imm x)
+
+applyBig: fun(f: fun[imm Big -> i64], imm big: Big) -> i64 = f(imm big)
+
+generic[F: fun[imm Big -> i64]]: fun(imm f: F, imm big: Big) -> i64 = f(imm big)
+
+main: fun -> i32
+{
+	val stored: fun[i32 -> i32] = double
+	val offset = 7
+	val closure = fun(x: i32) -> i32 = x + offset
+	val external: ext fun[i32 -> i32] = abs
+	var count = 0
+	val tally = own fun(x: i32) -> i32
+	{
+		count += x
+		ret count
+	}
+
+	printf("%d %d %d %d %d %d\n", apply(double, 1), apply(stored, 2), apply(closure, 3), apply(fun(x) = x * 10, 4),
+		apply(abs, -5), apply(external, -6))
+	printf("%d %d %d\n", apply(tally, 5), apply(tally, 6), tally(1))
+	val big = Big(1, 2, 3, 4, 5)
+	val named: fun[imm Big -> i64] = sum
+	printf("%lld %lld %lld %lld\n", applyBig(sum, imm big), named(imm big), generic(sum, imm big),
+		generic(fun(b: Big) -> i64 = b.e, imm big))
+	ret 0
+}

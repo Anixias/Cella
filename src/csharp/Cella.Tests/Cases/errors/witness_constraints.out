@@ -8,16 +8,16 @@ Error at line 21, column 2
 
 Error at line 22, column 2
 21 │ keep[V: copy]: fun(self, value: V) -> V = value
-22 │ tagged[V: Hash]: fun(self, value: V) -> i32 = 1
+22 │ tagged[V: Hash]: fun(self, imm value: V) -> i32 = 1
      ╘════╛ 'tagged' doesn't match 'Apply.tagged'
 
 Error at line 23, column 2
-22 │ tagged[V: Hash]: fun(self, value: V) -> i32 = 1
-23 │ plain[V: noref]: fun(self, value: V) -> i32 = 2
+22 │ tagged[V: Hash]: fun(self, imm value: V) -> i32 = 1
+23 │ plain[V: noref]: fun(self, imm value: V) -> i32 = 2
      ╘═══╛ 'plain' doesn't match 'Apply.plain'
 
 Error at line 24, column 2
-23 │ plain[V: noref]: fun(self, value: V) -> i32 = 2
+23 │ plain[V: noref]: fun(self, imm value: V) -> i32 = 2
 24 │ cap[M: val u8]: fun(self) -> usize = 3
      ╘═╛ 'cap' doesn't match 'Apply.cap'
 

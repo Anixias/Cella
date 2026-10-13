@@ -7,7 +7,7 @@ ext
 
 Shape: trait
 {
-	area: fun(self) -> f64
+	area: fun(imm self) -> f64
 }
 
 Circle: rec impl Shape
@@ -31,7 +31,7 @@ Triangle: rec impl Shape
 	area: fun(self) -> f64 = self.base
 }
 
-kind: fun(shape: dyn[Shape]) -> i32
+kind: fun(imm shape: dyn[Shape]) -> i32
 {
 	if shape is circle: Circle
 		ret i32(circle.radius) * 10
@@ -42,7 +42,7 @@ kind: fun(shape: dyn[Shape]) -> i32
 	ret 0
 }
 
-name: fun(shape: dyn[Shape]) -> i32 = match shape
+name: fun(imm shape: dyn[Shape]) -> i32 = match shape
 {
 	c: Circle => 100 + i32(c.radius)
 	Square => 200
@@ -67,8 +67,8 @@ main: fun -> i32
 	var c = Circle(4.0)
 	var s = Square(3.0)
 	var t = Triangle(5.0)
-	printf("%d %d %d\n", kind(c), kind(s), kind(t))
-	printf("%d %d %d\n", name(c), name(s), name(t))
+	printf("%d %d %d\n", kind(imm c), kind(imm s), kind(imm t))
+	printf("%d %d %d\n", name(imm c), name(imm s), name(imm t))
 	stretch(mut c)
 	stretch(mut s)
 	stretch(mut t)

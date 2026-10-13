@@ -40,7 +40,7 @@ Countdown: rec
 		ret self.value >= 0
 	}
 
-	*: op(self) -> imm[i32] = imm self.value
+	*: op(imm self) -> imm[i32] = imm self.value
 
 	drop: op
 	{
@@ -49,7 +49,7 @@ Countdown: rec
 
 take: fun(own texture: Texture) -> i32 = texture.id
 
-look: fun(texture: Texture) -> i32 = take(texture)
+look: fun(imm texture: Texture) -> i32 = take(texture)
 
 sites: fun(apply: fun[own Texture -> i32])
 {

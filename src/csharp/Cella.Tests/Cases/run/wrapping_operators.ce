@@ -19,13 +19,13 @@ Clock: rec
 
 Spin: trait
 {
-	+%: op(a: Self, b: Self) -> Self
+	+%: op(imm a: Self, imm b: Self) -> Self
 }
 
 u8: impl Spin
 i32: impl Spin
 
-turn[T: Spin]: fun(a: T, b: T) -> T = a +% b
+turn[T: Spin]: fun(imm a: T, imm b: T) -> T = a +% b
 
 run: fun(a: u8, b: i32, c: u32, d: i128)
 {

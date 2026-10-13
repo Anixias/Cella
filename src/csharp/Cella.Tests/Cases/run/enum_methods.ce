@@ -93,7 +93,7 @@ Slot: enum
 	held(buffer: Buffer)
 	count(value: i32)
 
-	id: fun(self) -> i32 = match self
+	id: fun(imm self) -> i32 = match self
 	{
 		held(buffer) => buffer.id
 		count(value) => value

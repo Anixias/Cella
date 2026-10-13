@@ -10,7 +10,7 @@ Square: rec impl lib.Shape
 	side: f64
 	id: i32
 
-	area: fun(self) -> f64 = self.side * self.side
+	area: fun(imm self) -> f64 = self.side * self.side
 	drop: op
 	{
 		printf("square %d gone\n", self.id)

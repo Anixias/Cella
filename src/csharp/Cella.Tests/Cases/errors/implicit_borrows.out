@@ -1,0 +1,29 @@
+
+====== implicit_borrows.ce ======
+
+Error at line 28, column 17
+27 │ val get: fun[imm Token -> i32] = read
+28 │ val sum = read(token) + read(pair.token) + read(tokens[0]) + read(*pointer) + get(token)
+                    ╘═══╛ Cannot borrow arguments implicitly
+
+Error at line 28, column 31
+27 │ val get: fun[imm Token -> i32] = read
+28 │ val sum = read(token) + read(pair.token) + read(tokens[0]) + read(*pointer) + get(token)
+                                  ╘════════╛ Cannot borrow arguments implicitly
+
+Error at line 28, column 50
+27 │ val get: fun[imm Token -> i32] = read
+28 │ val sum = read(token) + read(pair.token) + read(tokens[0]) + read(*pointer) + get(token)
+                                                     ╘═══════╛ Cannot borrow arguments implicitly
+
+Error at line 28, column 68
+27 │ val get: fun[imm Token -> i32] = read
+28 │ val sum = read(token) + read(pair.token) + read(tokens[0]) + read(*pointer) + get(token)
+                                                                       ╘══════╛ Cannot borrow arguments implicitly
+
+Error at line 28, column 84
+27 │ val get: fun[imm Token -> i32] = read
+28 │ val sum = read(token) + read(pair.token) + read(tokens[0]) + read(*pointer) + get(token)
+                                                                                       ╘═══╛ Cannot borrow arguments implicitly
+
+[compilation failed]

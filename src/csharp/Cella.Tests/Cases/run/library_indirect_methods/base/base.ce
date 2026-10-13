@@ -16,7 +16,7 @@ box[T: copy]: pub rec
 
 Named: pub trait
 {
-	name: fun(self) -> i32
+	name: fun(imm self) -> i32
 
-	twice: fun(self) -> i32 = self.name() * 2
+	twice: fun(imm self) -> i32 = self.name() * 2
 }

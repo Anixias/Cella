@@ -21,9 +21,9 @@ Square: rec impl lib.Named + lib.Shape
 	area: fun(self) -> f64 = self.side * self.side
 }
 
-same[T: lib.Eq]: fun(a: T, b: T) -> bool = a == b
+same[T: lib.Eq]: fun(imm a: T, imm b: T) -> bool = a == b
 
-check[T: lib.Ord]: fun(a: T, b: T) -> bool = same(a, b) || a <= b
+check[T: lib.Ord]: fun(imm a: T, imm b: T) -> bool = same(imm a, imm b) || a <= b
 
 main: fun -> i32
 {
@@ -31,6 +31,6 @@ main: fun -> i32
 	val s = Square(2.0)
 	printf("%d %d %d\n", i32(lib.within(Version(2), Version(1), Version(3))), i32(lib.within(5, 1, 3)),
 		i32(check(Version(4), Version(2))))
-	printf("%.1f %.1f %d %d\n", lib.describe(c), lib.describe(s), lib.label(s), lib.label(dyn[lib.Shape](c)))
+	printf("%.1f %.1f %d %d\n", lib.describe(imm c), lib.describe(imm s), lib.label(imm s), lib.label(dyn[lib.Shape](c)))
 	ret 0
 }

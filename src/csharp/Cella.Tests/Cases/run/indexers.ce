@@ -42,7 +42,7 @@ list[T: noref + copy]: rec
 		}
 	}
 
-	[]: op(self, i: usize) -> imm[T] = imm self.items[i]
+	[]: op(imm self, i: usize) -> imm[T] = imm self.items[i]
 
 	[]: op(mut self, i: usize) -> mut[T] = mut self.items[i]
 
@@ -57,7 +57,7 @@ addTen: fun(mut value: i32)
 	value += 10
 }
 
-sum: fun(values: list[i32]) -> i32 = values[0] + values[1] + values[2]
+sum: fun(imm values: list[i32]) -> i32 = values[0] + values[1] + values[2]
 
 main: fun -> i32
 {
@@ -68,7 +68,7 @@ main: fun -> i32
 	addTen(mut values[2])
 	val second = imm values[1]
 	val copy: i32 = second
-	printf("%d %d %d %d %d %d\n", values[0], values[1], values[2], sum(values), copy, -values[1])
+	printf("%d %d %d %d %d %d\n", values[0], values[1], values[2], sum(imm values), copy, -values[1])
 
 	var counters = list[Counter](2, Counter(0))
 	counters[1].bump()

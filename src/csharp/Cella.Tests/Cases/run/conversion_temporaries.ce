@@ -16,7 +16,7 @@ view[T]: ref rec
 		self.length = length
 	}
 
-	as[N: val usize]: op(values: array[T, N]) -> view[T] = view[T](@values, N)
+	as[N: val usize]: op(imm values: array[T, N]) -> view[T] = view[T](@values, N)
 
 	[]: op(self, i: usize) -> imm[T] = imm self.data[i]
 }

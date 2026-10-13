@@ -23,11 +23,11 @@ each: fun(values: array[i32, 3], visit: fun[i32])
 
 apply: fun(f: fun[i32 -> i32], x: i32) -> i32 = f(x)
 
-infer[T]: fun(f: fun[T -> i32], x: T) -> i32 = f(x)
+infer[T]: fun(f: fun[imm T -> i32], imm x: T) -> i32 = f(imm x)
 
-look[T]: fun(value: T) -> i32 = 7
+look[T]: fun(imm value: T) -> i32 = 7
 
-size[T]: fun(value: T) -> usize = sizeOf(T)
+size[T]: fun(imm value: T) -> usize = sizeOf(T)
 
 keep[T: copy + noref]: fun(value: T) -> T
 {
@@ -112,7 +112,7 @@ generics: fun
 	val other = 4
 	val add = own fun(x: i32) -> i32 = x + step + other
 	val borrowed: ref fun[i32 -> i32] = add
-	printf("generics %d %d %d %d %d %d\n", look(add), i32(size(add)), keep(5), i32(keep(2.5)), borrowed(1), step)
+	printf("generics %d %d %d %d %d %d\n", look(imm add), i32(size(imm add)), keep(5), i32(keep(2.5)), borrowed(1), step)
 }
 
 arguments: fun

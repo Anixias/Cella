@@ -15,4 +15,4 @@ bump: pub fun -> i32
 	ret Counter[i32].count
 }
 
-scaled[T]: pub fun(value: T, x: i32) -> i32 = helper(x)
+scaled[T]: pub fun(imm value: T, x: i32) -> i32 = helper(x)

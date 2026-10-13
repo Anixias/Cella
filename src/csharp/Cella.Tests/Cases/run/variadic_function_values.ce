@@ -16,7 +16,7 @@ view[T]: ref rec
 		self.length = length
 	}
 
-	as[N: val usize]: op(values: array[T, N]) -> view[T] = view[T](@values, N)
+	as[N: val usize]: op(imm values: array[T, N]) -> view[T] = view[T](@values, N)
 
 	[]: op(self, i: usize) -> imm[T] = imm self.data[i]
 }
@@ -62,7 +62,7 @@ forward: fun(sink: fun[str, ...view[Arg]], template: str, ...args: view[Arg])
 
 apply[T: copy + noref]: fun(f: fun[...view[T] -> T], a: T, b: T) -> T = f(a, b)
 
-bound[F: fun[...view[i32] -> i32]]: fun(f: F) -> i32 = f(4, 5, 6)
+bound[F: fun[...view[i32] -> i32]]: fun(imm f: F) -> i32 = f(4, 5, 6)
 
 main: fun -> i32
 {

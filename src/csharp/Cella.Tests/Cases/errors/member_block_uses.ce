@@ -2,12 +2,12 @@ mod test
 
 Eq: trait
 {
-	==: op(a: Self, b: Self) -> bool
+	==: op(imm a: Self, imm b: Self) -> bool
 }
 
 Dup: trait
 {
-	dup: fun(self) -> Self
+	dup: fun(imm self) -> Self
 }
 
 i32: impl Eq
@@ -28,9 +28,9 @@ box[T]: rec
 
 box[T: Eq]: impl
 {
-	same: fun(self, other: box[T]) -> bool = self.value == other.value
-	helper: pvt fun(self) -> i32 = 3
-	size: get(self) -> i32 = 4
+	same: fun(imm self, imm other: box[T]) -> bool = self.value == other.value
+	helper: pvt fun(imm self) -> i32 = 3
+	size: get(imm self) -> i32 = 4
 }
 
 box[T: copy]: impl Dup
@@ -38,9 +38,9 @@ box[T: copy]: impl Dup
 	dup: fun(self) -> box[T] = box(self.value)
 }
 
-check[T]: fun(a: box[T]) -> bool = a.same(a)
+check[T]: fun(imm a: box[T]) -> bool = a.same(a)
 
-copies[T: Dup]: fun(value: T) -> T = value.dup()
+copies[T: Dup]: fun(imm value: T) -> T = value.dup()
 
 main: fun -> i32
 {

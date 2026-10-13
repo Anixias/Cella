@@ -18,7 +18,7 @@ Readings: rec
 {
 	values: array[i32, 2]
 
-	[]: op(self, i: usize) -> imm[i32] = imm self.values[i]
+	[]: op(imm self, i: usize) -> imm[i32] = imm self.values[i]
 
 	drop: op
 	{
@@ -36,7 +36,7 @@ Boxes: rec
 {
 	values: array[Buffer, 2]
 
-	[]: op(self, i: usize) -> imm[Buffer] = imm self.values[i]
+	[]: op(imm self, i: usize) -> imm[Buffer] = imm self.values[i]
 
 	drop: op
 	{

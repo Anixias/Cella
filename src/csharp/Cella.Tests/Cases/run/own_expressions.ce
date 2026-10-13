@@ -31,7 +31,7 @@ Effect: enum
 	owned(buffer: Buffer)
 }
 
-same: fun(buffer: Buffer, address: ptr[Buffer]) -> bool = @buffer == address
+same: fun(imm buffer: Buffer, address: ptr[Buffer]) -> bool = @buffer == address
 keep: fun(own count: i32) -> i32 = count
 take: fun(own buffer: Buffer) -> i32 = buffer.id
 give: fun(own buffer: Buffer) -> Buffer = own buffer
@@ -48,7 +48,7 @@ main: fun -> i32
 
 	var d = Buffer(9)
 	val address = @d
-	printf("%d %d\n", flag(same(d, address)), flag(same(own d, address)))
+	printf("%d %d\n", flag(same(imm d, address)), flag(same(own d, address)))
 
 	var values = [Buffer(10), Buffer(11)]
 	val p = @values[0]

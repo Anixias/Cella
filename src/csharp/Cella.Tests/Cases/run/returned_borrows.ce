@@ -62,14 +62,14 @@ forward: fun(mut stats: Stats) -> mut[i32] = kills(mut stats)
 
 apply: fun(get: fun[mut Stats -> mut[i32]], mut stats: Stats) -> mut[i32] = get(mut stats)
 
-stronger: fun(a: Enemy, b: Enemy) -> imm[Enemy]
+stronger: fun(imm a: Enemy, imm b: Enemy) -> imm[Enemy]
 {
 	if a.hp >= b.hp
 		ret imm a
 	ret imm b
 }
 
-name: fun(enemy: Enemy) -> imm[Buffer]
+name: fun(imm enemy: Enemy) -> imm[Buffer]
 {
 	val view = imm enemy
 	ret imm view.name
@@ -113,8 +113,8 @@ main: fun -> i32
 
 	val first = Enemy(Buffer(1), 3)
 	val second = Enemy(Buffer(2), 5)
-	val best = stronger(first, second)
-	printf("%d %d ", best.name.id, name(first).id)
+	val best = stronger(imm first, imm second)
+	printf("%d %d ", best.name.id, name(imm first).id)
 
 	var x = 10
 	val tally = Tally(mut x, 2)

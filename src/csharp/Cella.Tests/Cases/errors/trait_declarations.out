@@ -23,17 +23,17 @@ Error at line 8, column 2
 
 Error at line 9, column 2
 8 │ drop: op { }
-9 │ helper: pvt fun(self) -> i32
+9 │ helper: pvt fun(imm self) -> i32
     ╘════╛ 'pvt' members need a body
 
 Error at line 10, column 2
- 9 │ helper: pvt fun(self) -> i32
-10 │ hash: fun(self) -> u64
+ 9 │ helper: pvt fun(imm self) -> i32
+10 │ hash: fun(imm self) -> u64
      ╘══╛ 'Hash.hash' is declared more than once with the same signature
 
 Error at line 11, column 2
-10 │ hash: fun(self) -> u64
-11 │ hash: fun(self) -> u64
+10 │ hash: fun(imm self) -> u64
+11 │ hash: fun(imm self) -> u64
      ╘══╛ 'Hash.hash' is declared more than once with the same signature
 
 Error at line 33, column 2

@@ -62,7 +62,7 @@ held: fun -> i32
 	printf("%d ", second.id)
 }
 
-elements: fun(fallback: Buffer) -> i32
+elements: fun(imm fallback: Buffer) -> i32
 {
 	val views = [imm fallback, ret fallback.id]
 	ret views[0].id

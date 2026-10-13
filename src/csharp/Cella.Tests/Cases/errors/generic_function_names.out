@@ -8,17 +8,17 @@ Error at line 3, column 5
 
 Error at line 7, column 6
 6 │ 
-7 │ map[T]: fun(self) -> i32 = 0
+7 │ map[T]: fun(imm self) -> i32 = 0
         ^ Type parameter 'T' is declared more than once
 
 Error at line 9, column 8
 8 │ 
-9 │ other[U, U]: fun(self) -> i32 = 0
+9 │ other[U, U]: fun(imm self) -> i32 = 0
           ^ Type parameter 'U' is declared more than once
 
 Error at line 9, column 11
 8 │ 
-9 │ other[U, U]: fun(self) -> i32 = 0
+9 │ other[U, U]: fun(imm self) -> i32 = 0
              ^ Type parameter 'U' is declared more than once
 
 Error at line 12, column 7

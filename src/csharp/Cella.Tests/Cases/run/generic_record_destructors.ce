@@ -36,13 +36,13 @@ Inventory: rec
 	main: guard[Token]
 	spare: guard[i32]
 
-	combine: fun(self, other: guard[Token]) -> i32 = self.main.value.id + other.value.id
+	combine: fun(imm self, imm other: guard[Token]) -> i32 = self.main.value.id + other.value.id
 }
 
 main: fun -> i32
 {
 	val inventory = Inventory(guard[Token](Token(1), Token(2)), guard[i32](3, Token(4)))
 	val other = guard[Token](Token(6), Token(7))
-	printf("%d %zu | ", inventory.combine(other), sizeOf(guard[i64]))
+	printf("%d %zu | ", inventory.combine(imm other), sizeOf(guard[i64]))
 	ret 0
 }

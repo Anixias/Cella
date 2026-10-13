@@ -14,7 +14,7 @@ Source: rec
 		printf("drop %d\n", self.id)
 	}
 
-	new: op(self) -> Target = Target(self.id)
+	new: op(imm self) -> Target = Target(self.id)
 }
 
 Target: rec
@@ -33,10 +33,10 @@ wrap[T]: rec
 {
 	v: T
 
-	new: op(self) -> i64 = 42
+	new: op(imm self) -> i64 = 42
 }
 
-lend[T: new(Source)]: fun(value: Source) -> T = T(value)
+lend[T: new(Source)]: fun(imm value: Source) -> T = T(value)
 take[T: new(own Source)]: fun(own value: Source) -> T = T(own value)
 make[T: FromSource]: fun(own value: Source) -> T = T(own value)
 unwrap[R: new(wrap[i32])]: fun(w: wrap[i32]) -> R = R(w)
@@ -44,7 +44,7 @@ unwrap[R: new(wrap[i32])]: fun(w: wrap[i32]) -> R = R(w)
 main: fun -> i32
 {
 	val s = Source(1)
-	val a: Target = lend(s)
+	val a: Target = lend(imm s)
 	val b: Target = take(Source(2))
 	val c: Target = make(Source(3))
 	printf("%d %d %d %lld\n", a.id, b.id, c.id, unwrap[i64](wrap[i32](5)))

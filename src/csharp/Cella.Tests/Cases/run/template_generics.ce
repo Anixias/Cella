@@ -7,7 +7,7 @@ ext
 
 Display: trait
 {
-	print: fun(self)
+	print: fun(imm self)
 }
 
 str: impl Display
@@ -38,11 +38,11 @@ say: fun(text: fstr[Display])
 	text.piece(text.holes).print()
 }
 
-log[T: Display]: fun(label: str, value: T) = say("{label}: {value}\n")
+log[T: Display]: fun(label: str, imm value: T) = say("{label}: {value}\n")
 
 count[K: trait]: fun(text: fstr[K]) -> usize = text.holes
 
-relay: fun(value: dyn[Display]) = say("relay {value}\n")
+relay: fun(imm value: dyn[Display]) = say("relay {value}\n")
 
 Box: rec
 {
@@ -67,7 +67,7 @@ main: fun -> i32
 	log[str]("text", "abc")
 	val n = 9
 	printf("%d\n", i32(count[Display]("{n} {n} {n}")))
-	relay(n)
+	relay(imm n)
 	val box = Box(5)
 	say("{counter} {limit} {box.doubled} {box.value}\n")
 	var m = 1

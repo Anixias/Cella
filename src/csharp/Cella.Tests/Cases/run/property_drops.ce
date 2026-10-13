@@ -26,19 +26,19 @@ Slot: rec
 
 	token: prop Token
 	{
-		get(self) = Token(self.held.id + 100)
+		get(imm self) = Token(self.held.id + 100)
 		set(mut self, own value)
 		{
 			self.held = own value
 		}
 	}
 
-	copy: set(mut self, value: Token)
+	copy: set(mut self, imm value: Token)
 	{
 		self.held = Token(value.id + 10)
 	}
 
-	id: get(self) -> i32 = self.held.id
+	id: get(imm self) -> i32 = self.held.id
 }
 
 main: fun -> i32

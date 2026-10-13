@@ -2,7 +2,7 @@ mod test
 
 Shape: trait
 {
-	area: fun(self) -> f64
+	area: fun(imm self) -> f64
 	scale: fun(mut self, factor: f64)
 }
 
@@ -17,7 +17,7 @@ Circle: rec impl Shape
 	}
 }
 
-describe: fun(shape: dyn[Shape]) -> f64
+describe: fun(imm shape: dyn[Shape]) -> f64
 {
 	shape.scale(2.0)
 	ret shape.area()

@@ -18,9 +18,9 @@ Box[T]: rec
 
 Scored: trait
 {
-	score: fun(self) -> i32
+	score: fun(imm self) -> i32
 
-	bonus: fun(self) -> i32 = apply(fun(x) = x + 100, self.score())
+	bonus: fun(imm self) -> i32 = apply(fun(x) = x + 100, self.score())
 }
 
 Player: rec impl Scored

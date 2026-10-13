@@ -7,7 +7,7 @@ ext
 
 Display: trait
 {
-	print: fun(self)
+	print: fun(imm self)
 }
 
 peek: fun(text: fstr[Display])

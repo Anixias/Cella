@@ -1,10 +1,10 @@
 
 ====== implicit_moves.ce ======
 
-Error at line 52, column 43
+Error at line 52, column 47
 51 │ 
-52 │ look: fun(texture: Texture) -> i32 = take(texture)
-                                               ╘═════╛ Cannot move read-only parameters
+52 │ look: fun(imm texture: Texture) -> i32 = take(texture)
+                                                   ╘═════╛ Cannot move read-only parameters
 
 Error at line 57, column 7
 56 │ val a = Texture(1)

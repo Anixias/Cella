@@ -7,12 +7,12 @@ ext
 
 A: trait
 {
-	size: get(self) -> i32
+	size: get(imm self) -> i32
 }
 
 B: trait
 {
-	length: get(self) -> i32
+	length: get(imm self) -> i32
 }
 
 P: rec impl A + B
@@ -23,11 +23,11 @@ P: rec impl A + B
 	length: get(self) -> i32 = 2
 }
 
-g[T: A + B]: fun(value: T) -> i32 = value.size + value.length
+g[T: A + B]: fun(imm value: T) -> i32 = value.size + value.length
 
 main: fun -> i32
 {
 	val p = P(0)
-	printf("%d %d %d\n", p.size, p.length, g(p))
+	printf("%d %d %d\n", p.size, p.length, g(imm p))
 	ret 0
 }

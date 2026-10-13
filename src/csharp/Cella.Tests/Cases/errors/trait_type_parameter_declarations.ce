@@ -9,7 +9,7 @@ option[T]: enum
 Iterator[T]: trait
 {
 	next: fun(mut self) -> option[T]
-	map[T]: fun(self) -> T
+	map[T]: fun(imm self) -> T
 }
 
 Pair[A, A]: trait
@@ -18,17 +18,17 @@ Pair[A, A]: trait
 
 Hash: trait
 {
-	hash: fun(self) -> u64
+	hash: fun(imm self) -> u64
 }
 
 Ord: trait
 {
-	<: op(a: Self, b: Self) -> bool
+	<: op(imm a: Self, imm b: Self) -> bool
 }
 
 Sorted[T: Ord]: trait
 {
-	first: fun(self) -> T
+	first: fun(imm self) -> T
 }
 
 Plain: rec

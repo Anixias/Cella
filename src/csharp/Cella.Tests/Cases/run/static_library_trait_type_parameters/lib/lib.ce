@@ -18,7 +18,7 @@ Iterator[T]: pub trait
 Num: pub trait
 {
 	zero: fun -> Self
-	+: op(a: Self, b: Self) -> Self
+	+: op(imm a: Self, imm b: Self) -> Self
 }
 
 i32: impl Num
@@ -70,7 +70,7 @@ drain: pub fun(mut items: dyn[Iterator[i32]]) -> i32
 
 Pair[A, B]: pub trait
 {
-	join: fun(self, a: A, b: B) -> i32
+	join: fun(imm self, imm a: A, imm b: B) -> i32
 }
 
 Point: pub rec
@@ -95,10 +95,10 @@ box[T]: pub rec
 
 box[T]: impl Pair[T, i32]
 {
-	join: fun(self, a: T, b: i32) -> i32 = b * 2
+	join: fun(imm self, imm a: T, b: i32) -> i32 = b * 2
 }
 
-combine[A, B, P: Pair[A, B]]: pub fun(item: P, a: A, b: B) -> i32 = item.join(a, b)
+combine[A, B, P: Pair[A, B]]: pub fun(imm item: P, imm a: A, imm b: B) -> i32 = item.join(imm a, imm b)
 
 couple[A, B]: pub rec
 {

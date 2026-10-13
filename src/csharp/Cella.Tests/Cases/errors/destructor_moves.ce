@@ -9,7 +9,7 @@ Buffer: rec
 	}
 }
 
-show: fun(wrapper: Wrapper) -> i32 = 0
+show: fun(imm wrapper: Wrapper) -> i32 = 0
 take: fun(own buffer: Buffer) -> i32 = buffer.id
 consume: fun(own whole: Whole) -> i32 = 0
 
@@ -21,7 +21,7 @@ Wrapper: rec
 	drop: op
 	{
 		take(own self.buffer)
-		show(self)
+		show(imm self)
 		self.count = self.buffer.id
 	}
 }

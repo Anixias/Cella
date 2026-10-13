@@ -21,7 +21,7 @@ each: fun(values: array[i32, 3], visit: fun[i32])
 		visit(value)
 }
 
-show: fun(texture: Texture)
+show: fun(imm texture: Texture)
 {
 	val shown = own fun { printf("%d\n", texture.id) }
 	shown()

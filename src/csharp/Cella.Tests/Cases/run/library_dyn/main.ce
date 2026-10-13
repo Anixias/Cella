@@ -24,8 +24,8 @@ main: fun -> i32
 	var s = Square(3.0)
 	bump(mut c)
 	bump(mut s)
-	printf("%.1f %.1f %.1f %.1f\n", lib.describe(c), lib.describe(s), lib.erase(c), lib.erase(s))
-	printf("%d %d\n", i32(lib.isCircle(c)), i32(lib.isCircle(s)))
+	printf("%.1f %.1f %.1f %.1f\n", lib.describe(imm c), lib.describe(imm s), lib.erase(imm c), lib.erase(imm s))
+	printf("%d %d\n", i32(lib.isCircle(imm c)), i32(lib.isCircle(imm s)))
 	if dyn[lib.Shape](c) is circle: lib.Circle
 		printf("%.1f\n", circle.radius)
 

@@ -31,7 +31,7 @@ main: fun -> i32
 	printf("%d %lld %d\n", lib.sum(mut range), total, lib.drain(mut more))
 	val p = lib.Point(1)
 	val b = lib.box(2.5)
-	printf("%d %d %d %d %d\n", p.join(2, i64(3)), lib.combine(p, i64(4), 5), lib.combine(b, 1.0, 7),
+	printf("%d %d %d %d %d\n", p.join(2, i64(3)), lib.combine(imm p, i64(4), 5), lib.combine(imm b, 1.0, 7),
 		lib.Pair[i32, i64](p).join(1, 1), lib.first(lib.couple[i32, f64](3, 1.5)))
 	ret 0
 }

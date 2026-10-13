@@ -2,8 +2,8 @@ mod lib
 
 Hash: pub trait
 {
-	hash: fun(self) -> u64
-	helper: mod fun(self) -> u64 = 40
+	hash: fun(imm self) -> u64
+	helper: mod fun(imm self) -> u64 = 40
 }
 
 Point: pub rec impl Hash

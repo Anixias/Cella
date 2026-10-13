@@ -18,7 +18,7 @@ boxed[K: trait]: rec
 		ret boxed[K](memory)
 	}
 
-	*: op(self) -> imm[dyn[K]] = imm *self.object
+	*: op(imm self) -> imm[dyn[K]] = imm *self.object
 
 	*: op(mut self) -> mut[dyn[K]] = mut *self.object
 
@@ -32,7 +32,7 @@ boxed[K: trait]: rec
 
 Shape: trait
 {
-	area: fun(self) -> f64
+	area: fun(imm self) -> f64
 	grow: fun(mut self)
 }
 
@@ -40,7 +40,7 @@ Circle: rec impl Shape
 {
 	radius: f64
 
-	area: fun(self) -> f64 = self.radius * self.radius * 3.0
+	area: fun(imm self) -> f64 = self.radius * self.radius * 3.0
 	grow: fun(mut self)
 	{
 		self.radius += 1.0
@@ -78,7 +78,7 @@ Tagged: rec impl Shape
 	label: Label
 	side: f64
 
-	area: fun(self) -> f64 = self.side * self.side
+	area: fun(imm self) -> f64 = self.side * self.side
 	grow: fun(mut self)
 	{
 		self.side *= 2.0
@@ -94,19 +94,19 @@ i64: impl Shape
 	}
 }
 
-describe: fun(shape: dyn[Shape]) -> f64 = shape.area()
+describe: fun(imm shape: dyn[Shape]) -> f64 = shape.area()
 
 keep: fun(own shape: boxed[Shape]) -> f64
 {
 	printf("kept %.1f\n", shape.area())
-	ret describe(*shape)
+	ret describe(imm *shape)
 }
 
 main: fun -> i32
 {
 	var circle = boxed[Shape].of(Circle(1.0))
 	circle.grow()
-	printf("%.1f %.1f %zu\n", circle.area(), describe(*circle), sizeOf(*circle))
+	printf("%.1f %.1f %zu\n", circle.area(), describe(imm *circle), sizeOf(*circle))
 	{
 		val dot = boxed[Shape].of(Dot(3))
 		var tagged = boxed[Shape].of(Tagged(Label(9), 2.0))

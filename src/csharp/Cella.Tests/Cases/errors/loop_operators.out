@@ -21,13 +21,13 @@ Error at line 22, column 2
 22 │ in: op(self)
      ╘╛ Cannot return 'void' from 'in' operators
 
-Error at line 31, column 18
+Error at line 31, column 22
 30 │ 
-31 │ in: op(self) -> imm[i32] = imm self.x
-                     ╘══════╛ Cannot return 'imm[i32]' from 'in' operators
+31 │ in: op(imm self) -> imm[i32] = imm self.x
+                         ╘══════╛ Cannot return 'imm[i32]' from 'in' operators
 
 Error at line 32, column 2
-31 │ in: op(self) -> imm[i32] = imm self.x
+31 │ in: op(imm self) -> imm[i32] = imm self.x
 32 │ in: op(mut self) -> Cursor = Cursor(0)
      ╘╛ 'in' with 'mut self' is declared more than once in 'Repeats'
 

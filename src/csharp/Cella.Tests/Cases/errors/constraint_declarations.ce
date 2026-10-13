@@ -2,7 +2,7 @@ mod test
 
 Shape: trait
 {
-	area: fun(self) -> f64
+	area: fun(imm self) -> f64
 }
 
 first[T: copy + drop]: fun -> i32 = 0

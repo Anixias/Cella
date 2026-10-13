@@ -68,7 +68,7 @@ ext
 
 Show: trait
 {
-	code: fun(self) -> i32
+	code: fun(imm self) -> i32
 
 	when profiling
 	{

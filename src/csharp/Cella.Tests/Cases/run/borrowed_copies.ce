@@ -19,14 +19,14 @@ Holder[T]: rec
 {
 	value: T
 
-	*: op(self) -> imm[T] = imm self.value
+	*: op(imm self) -> imm[T] = imm self.value
 }
 
 Slot[T]: rec
 {
 	value: T
 
-	as: op(self) -> imm[T] = imm self.value
+	as: op(imm self) -> imm[T] = imm self.value
 }
 
 dereferenced[T: copy]: fun(holder: Holder[T]) -> T

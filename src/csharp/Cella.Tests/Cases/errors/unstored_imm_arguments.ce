@@ -1,0 +1,14 @@
+mod test
+
+borrowIt[T]: fun(imm a: T) -> imm[T] = imm a
+
+name[T]: fun(imm x: T) -> str = "lit"
+
+main: fun -> i32
+{
+	val v: i64 = 42
+	val r = borrowIt(imm v)
+	val s = borrowIt(42)
+	val n = name(1.5)
+	ret i32(r) + s + i32(n.byteLength)
+}

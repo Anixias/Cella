@@ -7,13 +7,13 @@ ext
 
 Hash: trait
 {
-	hash: fun(self) -> u64
+	hash: fun(imm self) -> u64
 	seed: fun -> u64
 }
 
 Fingerprint: trait
 {
-	hash: fun(self) -> u64
+	hash: fun(imm self) -> u64
 	seed: fun -> u64
 }
 

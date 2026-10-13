@@ -2,23 +2,23 @@ mod lib
 
 Eq: pub trait
 {
-	==: op(a: Self, b: Self) -> bool
+	==: op(imm a: Self, imm b: Self) -> bool
 }
 
 Ord: pub trait req Eq
 {
-	<: op(a: Self, b: Self) -> bool
-	<=: op(a: Self, b: Self) -> bool = a < b || a == b
+	<: op(imm a: Self, imm b: Self) -> bool
+	<=: op(imm a: Self, imm b: Self) -> bool = a < b || a == b
 }
 
 Named: pub trait
 {
-	name: fun(self) -> i32
+	name: fun(imm self) -> i32
 }
 
 Shape: pub trait req Named
 {
-	area: fun(self) -> f64
+	area: fun(imm self) -> f64
 }
 
 Circle: pub rec impl Named + Shape
@@ -32,8 +32,8 @@ Circle: pub rec impl Named + Shape
 
 i32: impl Eq + Ord
 
-within[T: Ord]: pub fun(value: T, low: T, high: T) -> bool = low <= value && value <= high
+within[T: Ord]: pub fun(imm value: T, imm low: T, imm high: T) -> bool = low <= value && value <= high
 
-label: pub fun(item: dyn[Named]) -> i32 = item.name()
+label: pub fun(imm item: dyn[Named]) -> i32 = item.name()
 
-describe: pub fun(shape: dyn[Shape]) -> f64 = shape.area() + f64(shape.name() + label(shape))
+describe: pub fun(imm shape: dyn[Shape]) -> f64 = shape.area() + f64(shape.name() + label(imm shape))

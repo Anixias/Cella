@@ -11,10 +11,10 @@ Error at line 32, column 6
 32 │ ret fun = base
          ╘════════╛ Cannot return closures that capture variables
 
-Error at line 35, column 44
+Error at line 35, column 48
 34 │ 
-35 │ show: fun(text: Text) -> ref fun[-> i32] = fun = text.id
-                                                ╘═══════════╛ Cannot return closures that capture variables
+35 │ show: fun(imm text: Text) -> ref fun[-> i32] = fun = text.id
+                                                    ╘═══════════╛ Cannot return closures that capture variables
 
 Error at line 40, column 15
 39 │ val base = 1

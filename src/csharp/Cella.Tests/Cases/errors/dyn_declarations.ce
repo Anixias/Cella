@@ -2,12 +2,12 @@ mod test
 
 Shape: trait
 {
-	area: fun(self) -> f64
+	area: fun(imm self) -> f64
 }
 
 Secret: pvt trait
 {
-	area: fun(self) -> f64
+	area: fun(imm self) -> f64
 }
 
 Point: rec
@@ -32,6 +32,6 @@ take: fun(own shape: dyn[Shape]) = take(shape)
 
 bad: fun(shape: dyn[Point]) -> i32 = 0
 
-reveal: pub fun(shape: dyn[Secret]) -> i32 = 0
+reveal: pub fun(imm shape: dyn[Secret]) -> i32 = 0
 
 main: fun -> i32 = 0

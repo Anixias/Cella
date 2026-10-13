@@ -26,7 +26,7 @@ TextureBox: rec
 		own *self.pointer = own texture
 	}
 
-	*: op(self) -> imm[Texture] = imm *self.pointer
+	*: op(imm self) -> imm[Texture] = imm *self.pointer
 
 	drop: op
 	{

@@ -19,7 +19,7 @@ Holder[F: fun[i32 -> i32]]: rec
 {
 	f: F
 
-	run: fun(self, x: i32) -> i32 = self.f(x)
+	run: fun(imm self, x: i32) -> i32 = self.f(x)
 }
 
 take[F: fun[i32 -> i32]]: fun(own f: F) -> i32 = f(1)

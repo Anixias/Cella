@@ -18,12 +18,12 @@ ring[T: noref, N: val usize]: rec
 		self.used += 1
 	}
 
-	capacity: get(self) -> usize = N
+	capacity: get(imm self) -> usize = N
 }
 
 ring[T: noref, N: val u8]: impl
 {
-	slots: fun(self) -> u8 = N
+	slots: fun(imm self) -> u8 = N
 }
 
 holder[N: val usize]: rec
@@ -39,7 +39,7 @@ Slot[N: val u8]: enum
 
 Sized[N: val usize]: trait
 {
-	size: fun(self) -> usize
+	size: fun(imm self) -> usize
 }
 
 Crate: rec impl Sized[3]
@@ -77,7 +77,7 @@ wrap[N: val usize]: fun(values: array[i32, N]) -> ring[i32, N]
 	ret result
 }
 
-measure[T: Sized[3]]: fun(item: T) -> usize = item.size()
+measure[T: Sized[3]]: fun(imm item: T) -> usize = item.size()
 
 records: fun
 {

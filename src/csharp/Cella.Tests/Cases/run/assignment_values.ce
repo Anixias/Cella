@@ -19,8 +19,8 @@ Holder: rec
 	buffer: Buffer
 }
 
-show: fun(buffer: Buffer) -> i32 = buffer.id
-same: fun(buffer: Buffer, address: ptr[Buffer]) -> i32 = i32(@buffer == address)
+show: fun(imm buffer: Buffer) -> i32 = buffer.id
+same: fun(imm buffer: Buffer, address: ptr[Buffer]) -> i32 = i32(@buffer == address)
 take: fun(own buffer: Buffer) -> i32 = buffer.id
 grow: fun(mut buffer: Buffer) = buffer.id += 10
 
@@ -40,7 +40,7 @@ main: fun -> i32
 
 	var e = Buffer(13)
 	val viewed = (e = Buffer(14))
-	printf("%d %d\n", viewed.id, same(viewed, @e))
+	printf("%d %d\n", viewed.id, same(imm viewed, @e))
 	val typed: imm[Buffer] = (e = Buffer(15))
 	printf("%d\n", typed.id)
 	val marked: imm[Buffer] = imm (e = Buffer(16))

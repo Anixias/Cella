@@ -2,7 +2,7 @@ mod lib
 
 Eq: pub trait
 {
-	==: op(a: Self, b: Self) -> bool
+	==: op(imm a: Self, imm b: Self) -> bool
 }
 
 i32: impl Eq
@@ -14,7 +14,7 @@ box[T]: pub rec
 
 box[T: Eq]: impl
 {
-	same: fun(self, other: box[T]) -> bool = self.value == other.value
+	same: fun(imm self, imm other: box[T]) -> bool = self.value == other.value
 }
 
 cell[K: trait]: pub rec
@@ -52,4 +52,4 @@ build[T: new(i32)]: pub fun(value: i32) -> T = T(value)
 
 twin[T: copy]: pub fun(value: T) -> box[T] = box(value)
 
-measure[K: trait, T: K]: pub fun(value: ptr[T], action: fun[dyn[K] -> f64]) -> f64 = action(*cell[K].of(value))
+measure[K: trait, T: K]: pub fun(value: ptr[T], action: fun[imm dyn[K] -> f64]) -> f64 = action(imm *cell[K].of(value))

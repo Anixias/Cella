@@ -54,7 +54,7 @@ drain: fun(mut items: dyn[Iterator[i32]]) -> i32
 	ret total
 }
 
-kind: fun(items: dyn[Iterator[i32]]) -> i32 = match items
+kind: fun(imm items: dyn[Iterator[i32]]) -> i32 = match items
 {
 	Countdown => 1
 	Repeat => 2
@@ -63,8 +63,8 @@ kind: fun(items: dyn[Iterator[i32]]) -> i32 = match items
 
 Cloner[T]: trait
 {
-	copy: fun(self) -> Self
-	get: fun(self) -> T
+	copy: fun(imm self) -> Self
+	get: fun(imm self) -> T
 }
 
 Value: rec impl Cloner[i32]
@@ -75,11 +75,11 @@ Value: rec impl Cloner[i32]
 	get: fun(self) -> i32 = self.x * 3
 }
 
-peek: fun(item: dyn[Cloner[i32]]) -> i32 = item.get()
+peek: fun(imm item: dyn[Cloner[i32]]) -> i32 = item.get()
 
 Iterable[T, C: Iterator[T]]: trait
 {
-	iterate: fun(self) -> C
+	iterate: fun(imm self) -> C
 }
 
 cursor[T: copy]: rec impl Iterator[T]
@@ -118,7 +118,7 @@ sum[I: Iterator[i32]]: fun(mut items: I) -> i32
 	ret total
 }
 
-total[C: Iterator[i32], S: Iterable[i32, C]]: fun(items: S) -> i32
+total[C: Iterator[i32], S: Iterable[i32, C]]: fun(imm items: S) -> i32
 {
 	var cursor = items.iterate()
 	ret sum(mut cursor)
@@ -145,7 +145,7 @@ holder[I: Iterator[i32]]: rec
 
 Show[T]: trait
 {
-	show: fun(self, extra: T)
+	show: fun(imm self, imm extra: T)
 }
 
 i32: impl Show[i32]
@@ -185,14 +185,14 @@ main: fun -> i32
 {
 	var a = Countdown(4)
 	var b = Repeat(5, 2)
-	printf("%d %d %d %d %d\n", drain(mut a), drain(mut b), kind(a), kind(b), i32(dyn[Iterator[i32]](a) is Countdown))
+	printf("%d %d %d %d %d\n", drain(mut a), drain(mut b), kind(imm a), kind(imm b), i32(dyn[Iterator[i32]](a) is Countdown))
 
 	val item = Value(2)
 	var values = [1, 2, 3, 4]
 	val scores = fixed[i32](@values[0], 4)
 	var w = wrap(Countdown(3))
 	val h = holder(Countdown(2))
-	printf("%d %d %d %d\n", peek(item), total(scores), w.take(), h.inner.left)
+	printf("%d %d %d %d\n", peek(imm item), total(imm scores), w.take(), h.inner.left)
 
 	say("a {1} b {2}\n")
 	val v = view[Cloner[i32]](item)

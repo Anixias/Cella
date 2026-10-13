@@ -2,7 +2,7 @@ mod test
 
 Eq: trait
 {
-	==: op(a: Self, b: Self) -> bool
+	==: op(imm a: Self, imm b: Self) -> bool
 }
 
 grow[N: val usize]: fun(values: array[i32, N]) -> array[i32, N + 1] = undef
@@ -37,12 +37,12 @@ Vector: rec
 
 array[T]: impl Eq
 {
-	==: op(a: array[T, 1], b: array[T, 1]) -> bool = true
+	==: op(imm a: array[T, 1], imm b: array[T, 1]) -> bool = true
 }
 
 Sized: trait
 {
-	size: fun(self) -> usize
+	size: fun(imm self) -> usize
 }
 
 array[N: val usize, T]: impl Sized

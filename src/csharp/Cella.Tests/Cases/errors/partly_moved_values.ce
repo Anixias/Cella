@@ -16,13 +16,13 @@ Pair: rec
 }
 
 make: fun(id: i32) -> Buffer = Buffer(id)
-show: fun(pair: Pair) -> i32 = pair.left.id
+show: fun(imm pair: Pair) -> i32 = pair.left.id
 
 whole: fun -> Pair
 {
 	val pair = Pair(make(1), make(2))
 	val left = own pair.left
-	val total = show(pair) + pair.right.id + left.id
+	val total = show(imm pair) + pair.right.id + left.id
 	ret pair
 }
 

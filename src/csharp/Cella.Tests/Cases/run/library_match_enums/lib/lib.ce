@@ -5,7 +5,7 @@ nullable[T: null]: pub enum match T
 	none = null
 	some(value) = else
 
-	isSome: get(self) -> bool = self is some(_)
+	isSome: get(imm self) -> bool = self is some(_)
 }
 
 socket: pub enum match i32

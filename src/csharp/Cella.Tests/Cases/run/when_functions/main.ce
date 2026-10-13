@@ -25,14 +25,14 @@ measure: fun(value: i32) when profiling
 	printf("measure %d\n", value)
 }
 
-show[T]: fun(value: T, code: i32) when profiling
+show[T]: fun(imm value: T, code: i32) when profiling
 {
 	printf("show %d\n", code)
 }
 
 Show: trait
 {
-	code: fun(self) -> i32
+	code: fun(imm self) -> i32
 }
 
 i32: impl Show
@@ -55,7 +55,7 @@ log: fun(message: fstr[Show]) when logging
 	printf("log %d holes\n", i32(message.holes))
 }
 
-keep: fun(text: Text) when profiling
+keep: fun(imm text: Text) when profiling
 {
 	printf("keep %d\n", text.id)
 }

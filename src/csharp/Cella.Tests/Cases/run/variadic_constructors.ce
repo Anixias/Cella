@@ -45,7 +45,7 @@ bag[T: copy]: rec
 Maker: trait
 {
 	new: op(...values: view[i32])
-	total: fun(self) -> i32
+	total: fun(imm self) -> i32
 }
 
 Totals: impl Maker

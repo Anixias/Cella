@@ -33,7 +33,7 @@ box[T]: pub rec
 		own *self.pointer = own value
 	}
 
-	*: op(self) -> imm[T] = imm *self.pointer
+	*: op(imm self) -> imm[T] = imm *self.pointer
 
 	drop: op
 	{

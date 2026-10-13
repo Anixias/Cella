@@ -37,7 +37,7 @@ used: fun -> i32
 	}
 }
 
-parameter: fun(effect: Effect) -> i32
+parameter: fun(imm effect: Effect) -> i32
 {
 	match effect
 	{

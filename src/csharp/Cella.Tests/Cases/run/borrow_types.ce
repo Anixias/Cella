@@ -65,7 +65,7 @@ bump: fun(mut tally: Tally)
 	tally.count += tally.step
 }
 
-read: fun(buffer: Buffer) -> i32 = buffer.id
+read: fun(imm buffer: Buffer) -> i32 = buffer.id
 
 make: fun(id: i32) -> Buffer = Buffer(id)
 
@@ -125,7 +125,7 @@ main: fun -> i32
 	var buffer = make(1)
 	val viewed = imm buffer
 	val owner = mut buffer
-	printf("read %d %d\n", read(viewed), viewed.id)
+	printf("read %d %d\n", read(imm viewed), viewed.id)
 	owner = make(2)
 	printf("now %d\n", buffer.id)
 	ret 0

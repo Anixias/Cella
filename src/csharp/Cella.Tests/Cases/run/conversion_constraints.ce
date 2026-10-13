@@ -7,8 +7,8 @@ ext
 
 Numeric: trait
 {
-	as: op(self) -> i32
-	new: op(self) -> i64
+	as: op(imm self) -> i32
+	new: op(imm self) -> i64
 }
 
 FromInt: trait
@@ -62,13 +62,13 @@ show: fun(value: i32)
 	printf("show %d\n", value)
 }
 
-report[T: Numeric]: fun(item: T)
+report[T: Numeric]: fun(imm item: T)
 {
 	show(item)
 	printf("wide %lld\n", i64(item))
 }
 
-viaDyn: fun(item: dyn[Numeric])
+viaDyn: fun(imm item: dyn[Numeric])
 {
 	show(item)
 	printf("dyn wide %lld\n", i64(item))
@@ -87,7 +87,7 @@ build[T: FromFixed]: fun(value: Fixed) -> T = T(value)
 main: fun -> i32
 {
 	val meter = Meter(3)
-	report(meter)
+	report(imm meter)
 	viaDyn(dyn[Numeric](meter))
 	val count: Count = make(4)
 	printf("count %d\n", count.value)

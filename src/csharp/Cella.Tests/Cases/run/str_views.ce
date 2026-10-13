@@ -21,7 +21,7 @@ String: rec
 		memcpy(self.data, text.data, text.byteLength)
 	}
 
-	asStr: fun(self) -> str = str(self.data, self.length)
+	asStr: fun(imm self) -> str = str(self.data, self.length)
 
 	drop: op
 	{

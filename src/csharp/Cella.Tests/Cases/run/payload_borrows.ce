@@ -32,19 +32,19 @@ Holder: rec
 	outer: Outer
 }
 
-show: fun(buffer: Buffer) -> i32 = buffer.id
+show: fun(imm buffer: Buffer) -> i32 = buffer.id
 
-describe: fun(effect: Effect) -> i32
+describe: fun(imm effect: Effect) -> i32
 {
 	match effect
 	{
-		hold(buffer) => ret show(buffer) + buffer.id
+		hold(buffer) => ret show(imm buffer) + buffer.id
 		count(n) => ret n
 		else => ret 0
 	}
 }
 
-unwrap: fun(outer: Outer) -> i32
+unwrap: fun(imm outer: Outer) -> i32
 {
 	match outer
 	{
@@ -95,9 +95,9 @@ main: fun -> i32
 	val holder = Holder(Outer.nested(Effect.hold(Buffer(7))))
 	var total = 0
 	if holder.outer is nested(inner)
-		total = describe(inner)
+		total = describe(imm inner)
 
-	printf("%d %d %d %d\n", describe(Effect.hold(Buffer(3))), unwrap(holder.outer), total, describe(Effect.count(4)))
+	printf("%d %d %d %d\n", describe(Effect.hold(Buffer(3))), unwrap(imm holder.outer), total, describe(Effect.count(4)))
 	printf("%d %d\n", aliased(), copied())
 	ret 0
 }

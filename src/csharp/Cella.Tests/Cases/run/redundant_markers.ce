@@ -7,17 +7,17 @@ ext
 
 Eq: trait
 {
-	==: op(a: Self, b: Self) -> bool
+	==: op(imm a: Self, imm b: Self) -> bool
 }
 
 Ord: trait req Eq
 {
-	<: op(a: Self, b: Self) -> bool
+	<: op(imm a: Self, imm b: Self) -> bool
 }
 
 Sorted: trait req Ord + Eq
 {
-	first: fun(self) -> i32
+	first: fun(imm self) -> i32
 }
 
 Texture: rec
@@ -50,9 +50,9 @@ Wrapper[T]: rec
 	value: req T
 }
 
-within[T: Eq + Ord]: fun(value: T, low: T) -> bool = low < value || value == low
+within[T: Eq + Ord]: fun(imm value: T, imm low: T) -> bool = low < value || value == low
 
-look: fun(texture: Texture) -> i32
+look: fun(imm texture: Texture) -> i32
 {
 	val same = imm texture
 	ret same.id

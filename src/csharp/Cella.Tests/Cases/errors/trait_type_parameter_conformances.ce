@@ -13,7 +13,7 @@ Iterator[T]: trait
 
 From[T]: trait
 {
-	new: op(value: T)
+	new: op(imm value: T)
 }
 
 Countdown: rec impl Iterator[i64]

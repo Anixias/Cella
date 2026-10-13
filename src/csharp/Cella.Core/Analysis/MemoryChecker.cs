@@ -221,7 +221,7 @@ public sealed class MemoryChecker(TypePool typePool, DiagnosticList diagnostics)
 	private string? GetMoveError(Place place, MovePaths paths) => place.Root switch
 	{
 		GlobalSymbol => null,
-		ParameterSymbol { Mode: ParameterMode.ReadOnly } parameter
+		ParameterSymbol { Mode: ParameterMode.ReadOnly or ParameterMode.Imm } parameter
 			when !typePool.IsCopy(paths.GetRoot(parameter).Type) => "Cannot move read-only parameters",
 		LocalVariableSymbol { Captured: not null } => "Cannot move captured variables",
 		LocalVariableSymbol { IsLoopBinding: true } => "Cannot move loop variables",

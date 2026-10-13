@@ -32,5 +32,5 @@ Outer: rec
 	inner: pvt Inner
 
 	make: fun(value: i32) -> Outer = Outer(Inner(value))
-	read: fun(self) -> i32 = self.inner.value
+	read: fun(imm self) -> i32 = self.inner.value
 }

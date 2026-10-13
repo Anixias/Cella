@@ -364,7 +364,11 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool, 
 				Symbol: LocalVariableSymbol { IsBorrowBinding: true, IsMutBinding: false } local
 			}
 		} => local,
-		ResolvedVarExpressionNode { Symbol: ParameterSymbol { Mode: ParameterMode.ReadOnly } parameter } => parameter,
+		ResolvedVarExpressionNode
+			{
+				Symbol: ParameterSymbol { Mode: ParameterMode.ReadOnly or ParameterMode.Imm } parameter
+			} =>
+			parameter,
 		ResolvedGlobalExpressionNode { Symbol: { IsMutable: false } global } => global,
 		ResolvedAccessExpressionNode { Member: FieldSymbol } e => FindImmutableBinding(e.Target),
 		ResolvedIndexerExpressionNode { Target.Type: ArrayType } e => FindImmutableBinding(e.Target),
@@ -671,9 +675,24 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool, 
 					$"Argument type '{actual.Name}' is not assignable to parameter type '{expected.Name}'"));
 			
 			VisitNode(arg);
+			CheckImmArgument(node.Syntax, arg, signature.GetMode(i),
+				i == 0 && node.Function.Symbol.Kind == FunctionKind.Method);
+			
 			if (signature.GetMode(i) == ParameterMode.Own)
 				CheckConsumed(arg);
 		}
+	}
+	
+	private static bool NamesPlace(IExpressionNode syntax) => syntax is VarExpressionNode or AccessExpressionNode
+		or IndexerExpressionNode or UnaryOpExpressionNode { Op.Type: TokenType.OpStar };
+	
+	private void CheckImmArgument(IExpressionNode call, IResolvedExpressionNode arg, ParameterMode mode,
+		bool isReceiver)
+	{
+		if (mode == ParameterMode.Imm && !isReceiver && call is CallExpressionNode { Arguments: var written } &&
+		    written.Contains(arg.Syntax) && NamesPlace(arg.Syntax) && IsLValue(arg))
+			Diagnostics.Add(new(DiagnosticSeverity.Error, arg.Syntax.SourceLocation,
+				"Cannot borrow arguments implicitly"));
 	}
 	
 	public void Visit(ResolvedFunctionReferenceExpressionNode node)
@@ -915,7 +934,11 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool, 
 		for (var i = 0; i < node.Arguments.Length; i++)
 		{
 			VisitNode(node.Arguments[i]);
-			if (i < node.FunctionType.ParameterModes.Length && node.FunctionType.ParameterModes[i] == ParameterMode.Own)
+			if (i >= node.FunctionType.ParameterModes.Length)
+				continue;
+			
+			CheckImmArgument(node.Syntax, node.Arguments[i], node.FunctionType.ParameterModes[i], false);
+			if (node.FunctionType.ParameterModes[i] == ParameterMode.Own)
 				CheckConsumed(node.Arguments[i]);
 		}
 	}

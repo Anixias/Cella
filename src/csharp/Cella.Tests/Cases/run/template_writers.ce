@@ -12,7 +12,7 @@ Writer: pub trait
 
 Display: pub trait
 {
-	show: fun(self, mut out: dyn[Writer], spec: str)
+	show: fun(imm self, mut out: dyn[Writer], spec: str)
 }
 
 str: impl Display

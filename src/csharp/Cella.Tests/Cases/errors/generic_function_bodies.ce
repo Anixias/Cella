@@ -13,7 +13,7 @@ box[T]: rec
 	}
 }
 
-add[T]: fun(value: T) -> T = value + 1
+add[T]: fun(imm value: T) -> T = value + 1
 
 grow[T]: fun(own value: T, depth: i32) -> i32
 {

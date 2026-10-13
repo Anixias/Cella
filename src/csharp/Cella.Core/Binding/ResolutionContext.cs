@@ -18,6 +18,7 @@ public readonly struct ResolutionContext
 	public TypePool TypePool { get; init; }
 	public DiagnosticList Diagnostics { get; init; }
 	public ExtSignatureTypes? ExtSignatureTypes { get; init; }
+	public CopiedParameters? CopiedParameters { get; init; }
 	public Func<IExpressionNode, ResolutionContext, TypeSymbol?, Constant?>? EvaluateConstant { get; init; }
 	public Dictionary<IndexerExpressionNode, TypeSymbol?>? GenericTypes { get; init; }
 	public ImmutableArray<TypeParameterSymbol> TypeParameters { get; init; }
@@ -452,7 +453,7 @@ public readonly struct ResolutionContext
 				Diagnostics.Add(DiagnosticReporter.ReportBorrowParameter(borrow, null,
 					node.ParameterModes[i] is not null, node.IsExternal));
 				
-				modes[i] = borrow.IsMutable ? ParameterMode.Mut : ParameterMode.ReadOnly;
+				modes[i] = borrow.IsMutable ? ParameterMode.Mut : ParameterMode.Imm;
 				typeNode = borrow.Target;
 			}
 			else if (typeNode is FunctionTypeNode { IsRef: true } function)
@@ -460,6 +461,8 @@ public readonly struct ResolutionContext
 					node.ParameterModes[i] is not null, node.IsExternal));
 			
 			parameterTypes[i] = TypePool.GetPassedType(ResolveType(typeNode), modes[i]);
+			if (!node.IsExternal && modes[i] == ParameterMode.ReadOnly)
+				CopiedParameters?.Add(parameterTypes[i], typeNode.SourceLocation);
 		}
 		
 		var returnType = node.ReturnType is { } returnTypeNode ? ResolveReturnType(returnTypeNode) : NativeSymbols.Void;

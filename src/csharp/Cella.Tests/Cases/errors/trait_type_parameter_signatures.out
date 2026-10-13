@@ -8,7 +8,7 @@ Error at line 20, column 15
 
 Error at line 28, column 10
 27 │ 
-28 │ needs[I: Iterator]: fun(items: I) { }
+28 │ needs[I: Iterator]: fun(imm items: I) { }
               ╘══════╛ 'Iterator' takes one generic argument
 
 Error at line 30, column 22
@@ -16,9 +16,9 @@ Error at line 30, column 22
 30 │ view: fun(items: dyn[Iterator]) { }
                           ╘══════╛ 'Iterator' takes one generic argument
 
-Error at line 32, column 24
+Error at line 32, column 28
 31 │ 
-32 │ expose: pub fun(items: dyn[Iterator[Secret]]) { }
-                            ╘═══════════════════╛ 'Secret' is less visible than 'expose'
+32 │ expose: pub fun(imm items: dyn[Iterator[Secret]]) { }
+                                ╘═══════════════════╛ 'Secret' is less visible than 'expose'
 
 [compilation failed]

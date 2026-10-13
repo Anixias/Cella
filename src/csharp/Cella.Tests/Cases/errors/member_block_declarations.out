@@ -8,21 +8,21 @@ Error at line 12, column 2
 
 Error at line 14, column 2
 13 │ 
-14 │ peek: fun(self) -> i32 = 1
+14 │ peek: fun(imm self) -> i32 = 1
      ╘══╛ 'peek' is declared more than once with the same signature
 
 Error at line 20, column 2
-19 │ same: fun(self, other: box[T]) -> bool = self.value == other.value
-20 │ peek: fun(self) -> i32 = 2
+19 │ same: fun(imm self, imm other: box[T]) -> bool = self.value == other.value
+20 │ peek: fun(imm self) -> i32 = 2
      ╘══╛ 'peek' is declared more than once with the same signature
 
 Error at line 21, column 2
-20 │ peek: fun(self) -> i32 = 2
-21 │ value: get(self) -> i32 = 4
+20 │ peek: fun(imm self) -> i32 = 2
+21 │ value: get(imm self) -> i32 = 4
      ╘═══╛ 'value' is declared more than once in 'box'
 
 Error at line 22, column 2
-21 │ value: get(self) -> i32 = 4
+21 │ value: get(imm self) -> i32 = 4
 22 │ count: i32
      ╘═══╛ Cannot declare fields in impl blocks
 

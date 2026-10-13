@@ -67,7 +67,7 @@ public sealed class TypePool
 		OperatorRegistry = operatorRegistry;
 		SizeTable = sizeTable;
 		SizeTable.Completer = Complete;
-		ConversionTable.CallableSignatures = type => GetCallableSignatures(type);
+		ConversionTable.CallableAs = IsCallableAs;
 		
 		CreateNativeMembers();
 	}
@@ -115,7 +115,9 @@ public sealed class TypePool
 	public bool IsCallableAs(TypeSymbol type, FunctionType function) => type is InvalidType ||
 	                                                                    GetCallableSignatures(type).Any(signature =>
 		                                                                    FunctionType.SignatureStandsIn(signature,
-			                                                                    function));
+			                                                                    function) ||
+		                                                                    type is FunctionType or ClosureType &&
+		                                                                    CopiesForImm(signature, function));
 	
 	public ImmutableArray<TypeParameterSymbol> GetParameterBounds(TypeParameterSymbol parameter) =>
 		_parameterBounds.GetValueOrDefault(parameter, []);
@@ -360,6 +362,38 @@ public sealed class TypePool
 				expected.ParameterTypes[i])
 			: candidate.ParameterTypes[i] == expected.ParameterTypes[i] && candidate.GetMode(i) == expected.GetMode(i));
 	
+	public bool ParametersMatchOrCopy(FunctionSignature candidate, FunctionSignature expected, bool allowsStandIns) =>
+		ParametersMatch(candidate, expected, allowsStandIns) || allowsStandIns &&
+		candidate.ParameterTypes.Length == expected.ParameterTypes.Length &&
+		Enumerable.Range(0, expected.ParameterTypes.Length).All(i =>
+			candidate.GetMode(i).CanStandInOrAdapt(candidate.ParameterTypes[i], expected.GetMode(i),
+				expected.ParameterTypes[i]) ||
+			CopiesForImm(candidate.GetMode(i), candidate.ParameterTypes[i], expected.GetMode(i),
+				expected.ParameterTypes[i]));
+	
+	public bool CopiesForImm(ParameterMode mode, TypeSymbol type, ParameterMode expectedMode,
+		TypeSymbol expectedType) =>
+		mode == ParameterMode.ReadOnly && expectedMode == ParameterMode.Imm &&
+		(type == expectedType || type == GetPassedType(expectedType, mode)) && IsCopy(type);
+	
+	public bool CopiesForImm(FunctionType source, FunctionType target) => !target.IsExternal &&
+	                                                                      source.IsVariadic == target.IsVariadic &&
+	                                                                      source.HasVariadicParameter ==
+	                                                                      target.HasVariadicParameter &&
+	                                                                      source.ReturnType == target.ReturnType &&
+	                                                                      source.ParameterTypes.Length ==
+	                                                                      target.ParameterTypes.Length &&
+	                                                                      Enumerable.Range(0,
+		                                                                      source.ParameterTypes.Length).All(i =>
+		                                                                      source.ParameterModes[i]
+			                                                                      .CanStandIn(source.ParameterTypes[i],
+				                                                                      target.ParameterModes[i],
+				                                                                      target.ParameterTypes[i]) ||
+		                                                                      CopiesForImm(source.ParameterModes[i],
+			                                                                      source.ParameterTypes[i],
+			                                                                      target.ParameterModes[i],
+			                                                                      target.ParameterTypes[i]));
+	
 	public static string DescribeParameters(FunctionSignature constructor) => string.Join(", ",
 		Enumerable.Range(1, constructor.ParameterTypes.Length - 1)
 			.Select(i => constructor.GetMode(i).Describe(constructor.ParameterTypes[i])));
@@ -456,15 +490,10 @@ public sealed class TypePool
 		_ => false
 	};
 	
-	public bool PassesByPointer(TypeSymbol type, ParameterMode mode) =>
-		mode == ParameterMode.ReadOnly && NeedsDrop(type);
+	public static bool PassesByPointer(ParameterMode mode) => mode == ParameterMode.Imm;
 	
-	public bool PassesByPointer(FunctionInfo function, int index, TypeSymbol type) =>
-		IsLentReceiver(function.Symbol, index, function.DeclaredSignature.GetMode(index)) ||
-		PassesByPointer(type, function.DeclaredSignature.GetMode(index));
-	
-	public static bool IsLentReceiver(FunctionSymbol function, int index, ParameterMode mode) =>
-		index == 0 && mode == ParameterMode.ReadOnly && function.Kind == FunctionKind.Method;
+	public static bool PassesByPointer(FunctionInfo function, int index) =>
+		PassesByPointer(function.DeclaredSignature.GetMode(index));
 	
 	public bool IsViewRecord(TypeSymbol type) => type is RecordSymbol { IsRef: true } or EnumSymbol { IsRef: true } &&
 	                                             IsCopy(type);
@@ -628,7 +657,7 @@ public sealed class TypePool
 			var mode = expected.GetMode(i + 1);
 			var given = expected.ParameterTypes[i + 1];
 			if (mode == ParameterMode.Mut || given != type && !FunctionType.CanAdapt(given, type) ||
-			    mode == ParameterMode.ReadOnly && !IsCopy(type) || !IsVisibleWithType(self, fields[i].Visibility) ||
+			    mode.IsReadOnly() && !IsCopy(type) || !IsVisibleWithType(self, fields[i].Visibility) ||
 			    !IsVisibleWithType(self, fields[i].WriteVisibility))
 				return null;
 		}
@@ -639,7 +668,7 @@ public sealed class TypePool
 	private bool IsConvertible(FunctionSignature expected) => expected.GetMode(1) switch
 	{
 		ParameterMode.Own => true,
-		ParameterMode.ReadOnly => IsCopy(expected.ParameterTypes[1]),
+		ParameterMode.ReadOnly or ParameterMode.Imm => IsCopy(expected.ParameterTypes[1]),
 		_ => false
 	};
 	
@@ -796,7 +825,7 @@ public sealed class TypePool
 	public TypeSymbol GetPassedType(TypeSymbol type, ParameterMode mode) => (mode, type) switch
 	{
 		(ParameterMode.Mut, not InvalidType) => GetPointerType(type),
-		(ParameterMode.ReadOnly, FunctionType { IsExternal: false, IsRef: false } function) =>
+		(ParameterMode.ReadOnly or ParameterMode.Imm, FunctionType { IsExternal: false, IsRef: false } function) =>
 			GetRefFunctionType(function),
 		_ => type
 	};

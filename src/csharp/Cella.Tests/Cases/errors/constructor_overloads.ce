@@ -44,7 +44,7 @@ box[T]: rec
 {
 	value: T
 
-	new: op(value: T)
+	new: op(imm value: T)
 	{
 		self.value = value
 	}

@@ -8,12 +8,12 @@ ext
 Cursor[T]: trait
 {
 	for: op(mut self) -> bool
-	*: op(self) -> imm[T]
+	*: op(imm self) -> imm[T]
 }
 
 Collection[T, C: Cursor[T]]: trait
 {
-	in: op(self) -> C
+	in: op(imm self) -> C
 }
 
 Name: rec
@@ -35,7 +35,7 @@ Steps: rec impl Cursor[i32]
 		ret self.left >= 0
 	}
 
-	*: op(self) -> imm[i32] = imm self.left
+	*: op(imm self) -> imm[i32] = imm self.left
 
 	drop: op
 	{
@@ -46,7 +46,7 @@ Roster: rec impl Collection[Name, RosterCursor]
 {
 	names: array[Name, 3]
 
-	in: op(self) -> RosterCursor = RosterCursor(imm self, 0, 0)
+	in: op(imm self) -> RosterCursor = RosterCursor(imm self, 0, 0)
 }
 
 RosterCursor: ref rec impl Cursor[Name]
@@ -92,7 +92,7 @@ walk: fun(mut cursor: dyn[Cursor[i32]]) -> i32
 	ret sum
 }
 
-ids[S: Collection[Name, C], C: Cursor[Name]]: fun(collection: S) -> i32
+ids[S: Collection[Name, C], C: Cursor[Name]]: fun(imm collection: S) -> i32
 {
 	var sum = 0
 	for name in collection
@@ -109,6 +109,6 @@ main: fun -> i32
 	printf("%d %d %d %d\n", total(Steps(4)), counted, walk(mut other), steps.left)
 
 	val roster = Roster([Name(1), Name(2), Name(3)])
-	printf("%d\n", ids(roster))
+	printf("%d\n", ids(imm roster))
 	ret 0
 }

@@ -34,7 +34,7 @@ pick[T]: fun(useFirst: bool, own a: T, own b: T) -> T
 
 describe: fun(value: i32) -> i32 = 1
 
-describe[T]: fun(value: T) -> i32 = 2
+describe[T]: fun(imm value: T) -> i32 = 2
 
 consume[T]: fun(own value: T)
 {
@@ -65,7 +65,7 @@ main: fun -> i32
 	val mixed = pick(true, large, 8)
 	val floats = pick(false, 1, 2.5)
 	printf("%d %d %lld %d %lld %d %lld %.1f | ", x, y, widened, literal, targeted, explicit, mixed, floats)
-	printf("%d %d %d | ", describe(5), describe(large), describe(true))
+	printf("%d %d %d | ", describe(5), describe(imm large), describe(true))
 	consume(Token(1))
 	printf("| %d | ", countdown(Token(2), 3))
 	printf("%zu %zu\n", size[i64](), size[Token]())

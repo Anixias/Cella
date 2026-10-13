@@ -23,7 +23,7 @@ Unit: rec
 
 	make: fun(hp: i32) -> Unit = Unit(hp, hp, Buffer(hp))
 
-	isAlive: fun(self) -> bool = self.hp > 0
+	isAlive: fun(imm self) -> bool = self.hp > 0
 
 	takeDamage: fun(mut self, amount: i32) -> i32
 	{
@@ -90,9 +90,9 @@ Counter: rec
 		self.value += 1
 	}
 
-	get: fun(self) -> i32 = self.value
+	get: fun(imm self) -> i32 = self.value
 
-	log: fun(self) = printf("[%d] ", self.value)
+	log: fun(imm self) = printf("[%d] ", self.value)
 
 	drop: op
 	{

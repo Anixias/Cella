@@ -7,5 +7,5 @@ cell[T]: pub rec
 	value: T
 	hits: i32
 
-	peek: fun(self) -> i32 = peekStep(self.hits)
+	peek: fun(imm self) -> i32 = peekStep(self.hits)
 }

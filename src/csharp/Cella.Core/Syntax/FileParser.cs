@@ -73,7 +73,9 @@ public sealed class FileParser
 	
 	private static readonly HashSet<TokenType> _accessorKeywords = [TokenType.KeywordGet, TokenType.KeywordSet];
 	
-	private static readonly HashSet<TokenType> _parameterModes = [TokenType.KeywordMut, TokenType.KeywordOwn];
+	private static readonly HashSet<TokenType> _parameterModes =
+		[TokenType.KeywordMut, TokenType.KeywordOwn, TokenType.KeywordImm];
+	
 	private static readonly HashSet<TokenType> _lifecycleKeywords = [TokenType.KeywordNew, TokenType.KeywordDrop];
 	
 	private static Dictionary<string, TokenType> BuildContextualKeywords(params IEnumerable<TokenType> tokenTypes) =>
@@ -503,7 +505,9 @@ public sealed class FileParser
 		
 		do
 		{
-			var isBorrowType = Peek(index, TokenType.KeywordMut) && Peek(index + 1, TokenType.OpOpenBracket);
+			var isBorrowType = (Peek(index, TokenType.KeywordMut) || Peek(index, TokenType.KeywordImm)) &&
+			                   Peek(index + 1, TokenType.OpOpenBracket);
+			
 			modes.Add(!isBorrowType && Match(ref index, out var mode, _parameterModes) ? mode : null);
 			if (!StartsType(index))
 			{

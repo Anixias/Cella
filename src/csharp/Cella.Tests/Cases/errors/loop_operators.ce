@@ -5,7 +5,7 @@ Cursor: rec
 	left: i32
 
 	for: op(mut self) -> bool = false
-	*: op(self) -> imm[i32] = imm self.left
+	*: op(imm self) -> imm[i32] = imm self.left
 
 	drop: op
 	{
@@ -28,7 +28,7 @@ Repeats: rec
 {
 	x: i32
 
-	in: op(self) -> imm[i32] = imm self.x
+	in: op(imm self) -> imm[i32] = imm self.x
 	in: op(mut self) -> Cursor = Cursor(0)
 	in: op(mut self) -> Cursor = Cursor(1)
 

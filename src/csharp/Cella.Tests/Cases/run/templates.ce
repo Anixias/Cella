@@ -7,7 +7,7 @@ ext
 
 Display: trait
 {
-	print: fun(self, spec: str)
+	print: fun(imm self, spec: str)
 }
 
 str: impl Display

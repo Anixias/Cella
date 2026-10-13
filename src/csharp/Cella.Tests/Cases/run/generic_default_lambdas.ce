@@ -5,7 +5,7 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-measure[T]: fun(value: T, f: fun[-> usize] = fun = sizeOf(T)) -> usize = f()
+measure[T]: fun(imm value: T, f: fun[-> usize] = fun = sizeOf(T)) -> usize = f()
 
 apply[T: copy]: fun(value: T, f: fun[T -> T] = fun(x) = x) -> T = f(value)
 
