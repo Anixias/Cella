@@ -1342,9 +1342,11 @@ public sealed class Lowerer
 		private Func<int, Passing> GetArgumentPassing(FunctionInfo function, int firstParameter)
 		{
 			var signature = function.DeclaredSignature;
-			return i => firstParameter + i < signature.ParameterTypes.Length
-				? GetPassing(signature.ParameterTypes[firstParameter + i], signature.GetMode(firstParameter + i))
-				: Passing.Read;
+			return i => firstParameter + i >= signature.ParameterTypes.Length
+				? Passing.Read
+				: TypePool.IsLentReceiver(function.Symbol, firstParameter + i, signature.GetMode(firstParameter + i))
+					? Passing.Borrow
+					: GetPassing(signature.ParameterTypes[firstParameter + i], signature.GetMode(firstParameter + i));
 		}
 		
 		private Passing GetPassing(TypeSymbol type, ParameterMode mode) =>
@@ -1480,9 +1482,7 @@ public sealed class Lowerer
 			if (receiver is null)
 				return [];
 			
-			var signature = accessor.DeclaredSignature;
-			var mode = signature.GetMode(0);
-			if (mode != ParameterMode.Mut && GetPassing(signature.ParameterTypes[0], mode) != Passing.Borrow)
+			if (accessor.DeclaredSignature.GetMode(0) == ParameterMode.Own)
 				return [receiver];
 			
 			return

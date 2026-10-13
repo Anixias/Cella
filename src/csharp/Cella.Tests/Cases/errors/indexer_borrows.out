@@ -1,11 +1,6 @@
 
 ====== indexer_borrows.ce ======
 
-Error at line 18, column 39
-17 │ 
-18 │ []: op(self, i: usize) -> imm[i32] = imm self.values[i]
-                                          ╘════════════════╛ Cannot return borrows of copied parameters
-
 Error at line 23, column 17
 22 │ {
 23 │     var kept = imm Buffer([7, 8])[0]

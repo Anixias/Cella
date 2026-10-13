@@ -454,7 +454,7 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 		[
 			..function.Symbol.Captures.IsEmpty ? [] : new[] { OpaquePointer },
 			..function.Signature.ParameterTypes.Select((type, i) =>
-				_typePool.PassesByPointer(declared.ParameterTypes[i], declared.GetMode(i))
+				_typePool.PassesByPointer(function, i, declared.ParameterTypes[i])
 					? MapPassedPointer(declared.ParameterTypes[i])
 					: mapValue(type))
 		];
@@ -892,7 +892,7 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 					var paramInfo = new VariableInfo(paramSymbol, paramType);
 					
 					var paramLlvmValue = functionValue.GetParam(firstParameter + (uint)p);
-					if (!_typePool.PassesByPointer(paramType, function.Info.Signature.GetMode(p)))
+					if (!_typePool.PassesByPointer(function.Info, p, paramType))
 					{
 						if (signature is { Parameters: var passes })
 							paramLlvmValue = ReceiveCArgument(passes[p], paramType, paramLlvmValue, builder);
@@ -3597,10 +3597,9 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 	
 	private LLVMValueRef PassAsDeclared(FunctionInfo function, int index, LLVMValueRef value, LLVMBuilderRef builder)
 	{
-		var mode = function.DeclaredSignature.GetMode(index);
 		var actual = function.Signature.ParameterTypes[index];
-		if (!_typePool.PassesByPointer(function.DeclaredSignature.ParameterTypes[index], mode) ||
-		    _typePool.PassesByPointer(actual, mode))
+		if (!_typePool.PassesByPointer(function, index, function.DeclaredSignature.ParameterTypes[index]) ||
+		    _typePool.PassesByPointer(function, index, actual))
 			return value;
 		
 		return SpillValue(builder, actual, value, "argument");
@@ -3789,9 +3788,8 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 	private LLVMValueRef PassToWitness(FunctionInfo function, FunctionInfo target, int index, LLVMValueRef value,
 		LLVMBuilderRef builder)
 	{
-		var mode = function.DeclaredSignature.GetMode(index);
-		var fromPointer = _typePool.PassesByPointer(function.DeclaredSignature.ParameterTypes[index], mode);
-		if (fromPointer == _typePool.PassesByPointer(target.DeclaredSignature.ParameterTypes[index], mode))
+		var fromPointer = _typePool.PassesByPointer(function, index, function.DeclaredSignature.ParameterTypes[index]);
+		if (fromPointer == _typePool.PassesByPointer(target, index, target.DeclaredSignature.ParameterTypes[index]))
 			return value;
 		
 		var type = function.Signature.ParameterTypes[index];
@@ -3888,8 +3886,7 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 	
 	private Value PassConversionSource(FunctionInfo conversion, VariableValue source, SourceLocation location)
 	{
-		var signature = conversion.DeclaredSignature;
-		return _typePool.PassesByPointer(signature.ParameterTypes[0], signature.GetMode(0))
+		return _typePool.PassesByPointer(conversion, 0, conversion.DeclaredSignature.ParameterTypes[0])
 			? new UnaryOpValue(_typePool.GetPointerType(source.Type), source, UnaryOperation.AddressOf, location)
 			: source;
 	}
@@ -3899,8 +3896,7 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 	{
 		var type = function.Signature.ParameterTypes[index];
 		var info = new VariableInfo(new ParameterSymbol($"${index}", function.Symbol.Syntax.SourceLocation), type);
-		if (_typePool.PassesByPointer(function.DeclaredSignature.ParameterTypes[index],
-			    function.DeclaredSignature.GetMode(index)))
+		if (_typePool.PassesByPointer(function, index, function.DeclaredSignature.ParameterTypes[index]))
 		{
 			current.Variables[info] = value;
 			return info;

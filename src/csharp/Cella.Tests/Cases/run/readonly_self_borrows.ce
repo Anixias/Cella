@@ -1,0 +1,58 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Point: rec
+{
+	x: i32
+	y: i32
+
+	show: fun(self, mut x: i32) -> i32
+	{
+		x = 99
+		ret self.x
+	}
+}
+
+Slots: rec
+{
+	values: array[i32, 3]
+
+	[]: op(self, i: usize) -> imm[i32] = imm self.values[i]
+}
+
+Holder[T]: rec
+{
+	value: T
+
+	*: op(self) -> imm[T] = imm self.value
+}
+
+Shape: trait
+{
+	area: fun(self) -> i32
+}
+
+Square: rec impl Shape
+{
+	side: i32
+
+	area: fun(self) -> i32 = self.side * self.side
+}
+
+measure[T: Shape]: fun(value: T) -> i32 = value.area()
+
+total: fun(shape: dyn[Shape]) -> i32 = shape.area()
+
+main: fun -> i32
+{
+	var p = Point(1, 2)
+	val slots = Slots([4, 5, 6])
+	val holder = Holder(7)
+	printf("%d %d %d %d %d %d\n", p.show(mut p.x), slots[1], *holder, measure(Square(3)), total(Square(4)),
+		Square(5).area())
+	ret 0
+}

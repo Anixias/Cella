@@ -459,6 +459,13 @@ public sealed class TypePool
 	public bool PassesByPointer(TypeSymbol type, ParameterMode mode) =>
 		mode == ParameterMode.ReadOnly && NeedsDrop(type);
 	
+	public bool PassesByPointer(FunctionInfo function, int index, TypeSymbol type) =>
+		IsLentReceiver(function.Symbol, index, function.DeclaredSignature.GetMode(index)) ||
+		PassesByPointer(type, function.DeclaredSignature.GetMode(index));
+	
+	public static bool IsLentReceiver(FunctionSymbol function, int index, ParameterMode mode) =>
+		index == 0 && mode == ParameterMode.ReadOnly && function.Kind == FunctionKind.Method;
+	
 	public bool IsViewRecord(TypeSymbol type) => type is RecordSymbol { IsRef: true } or EnumSymbol { IsRef: true } &&
 	                                             IsCopy(type);
 	

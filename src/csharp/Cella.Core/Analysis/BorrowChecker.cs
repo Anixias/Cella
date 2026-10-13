@@ -879,9 +879,15 @@ public sealed class BorrowChecker
 		};
 	}
 	
-	private Escape? GetEscape(FunctionInfo function, int index) => GetEscape(
-		function.DeclaredSignature.GetMode(index), function.DeclaredSignature.GetDeclaredType(index),
-		function.Symbol.Kind != FunctionKind.Method || index == 0);
+	private Escape? GetEscape(FunctionInfo function, int index)
+	{
+		var mode = function.DeclaredSignature.GetMode(index);
+		var type = function.DeclaredSignature.GetDeclaredType(index);
+		if (TypePool.IsLentReceiver(function.Symbol, index, mode))
+			return typePool.IsViewRecord(type) ? Escape.ViewRecord : null;
+		
+		return GetEscape(mode, type, function.Symbol.Kind != FunctionKind.Method || index == 0);
+	}
 	
 	private Escape? GetEscape(ParameterMode mode, TypeSymbol declared, bool mayLend)
 	{
