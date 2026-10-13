@@ -76,6 +76,11 @@ public sealed class FileParser
 	
 	private static readonly HashSet<TokenType> _lifecycleKeywords = [TokenType.KeywordNew, TokenType.KeywordDrop];
 	
+	private static readonly HashSet<string> _declarationKinds =
+		["fun", "val", "var", "rec", "enum", "union", "trait", "impl", "op", "prop"];
+	
+	private static readonly HashSet<string> _topLevelFormWords = ["pub", "pvt", "mod", "use", "ext"];
+	
 	private bool skippedToEnd;
 	
 	private static Dictionary<string, TokenType> BuildContextualKeywords(params IEnumerable<TokenType> tokenTypes) =>
@@ -123,6 +128,7 @@ public sealed class FileParser
 		
 		var moduleNameAllowed = true;
 		var hasModuleKeyword = false;
+		var moduleNames = new List<SourceLocation>();
 		var importsAllowed = false;
 		var conditionAllowed = false;
 		var isIncluded = true;
@@ -135,7 +141,18 @@ public sealed class FileParser
 			{
 				hasModuleKeyword = true;
 				var parsed = ParseModuleName(ref index);
-				if (moduleNameAllowed)
+				if (parsed is { } declared)
+					moduleNames.Add(declared.SourceLocation);
+				
+				if (moduleNames.Count > 1 && parsed is not null)
+				{
+					const string message = "Cannot declare more than one module name";
+					if (moduleNames.Count == 2)
+						Report(moduleNames[0], message);
+					
+					Report(moduleNames[^1], message);
+				}
+				else if (moduleNameAllowed)
 				{
 					moduleNameAllowed = false;
 					importsAllowed = true;
@@ -187,9 +204,7 @@ public sealed class FileParser
 				continue;
 			}
 			
-			ReportUnexpected(Tokens[index]);
-			index++;
-			ResyncTopLevel(ref index);
+			RecoverTopLevel(ref index, false);
 		}
 		
 		if (moduleName == default)
@@ -228,6 +243,16 @@ public sealed class FileParser
 	private bool ParseTopLevelDeclaration(ref int index, List<IDeclarationNode> declarations, Token? block,
 		bool insideBraces = false)
 	{
+		var pubIndex = index;
+		if (Match(ref pubIndex, out var pubKeyword, _topLevelContextualKeywords, TokenType.KeywordPub) &&
+		    Match(ref pubIndex, out var pubBrace, TokenType.OpOpenBrace))
+		{
+			Report(pubKeyword, "Cannot use 'pub' blocks");
+			index = pubIndex;
+			ParseTopLevelBlock(ref index, pubBrace, block, declarations);
+			return true;
+		}
+		
 		if (MatchVisibilityBlock(ref index, _topLevelContextualKeywords, out var keyword, out var openBrace))
 		{
 			if (block is { } outer)
@@ -585,12 +610,19 @@ public sealed class FileParser
 				return false;
 			}
 			
+			if (Match(ref index, out var useToken, _topLevelContextualKeywords, TokenType.KeywordUse))
+			{
+				Report(useToken, "Imports must precede all other declarations");
+				if (ParseImportExpression(ref index) is null)
+					ResyncTopLevel(ref index, true);
+				
+				continue;
+			}
+			
 			if (ParseTopLevelDeclaration(ref index, declarations, block, true))
 				continue;
 			
-			ReportUnexpected(Tokens[index]);
-			index++;
-			ResyncTopLevel(ref index, true);
+			RecoverTopLevel(ref index, true);
 		}
 		
 		return true;
@@ -726,7 +758,12 @@ public sealed class FileParser
 	{
 		var keywords = new List<Token>();
 		while (Match(ref index, out var keyword, _topLevelContextualKeywords, _visibilityKeywords))
+		{
 			keywords.Add(keyword);
+			if (keyword.Type != TokenType.KeywordPub && StartsMemberType(index + 1) &&
+			    Match(ref index, out var set, _memberContextualKeywords, TokenType.KeywordSet))
+				Report(Span(keyword, set), $"Cannot use '{keyword.Text} set' outside types");
+		}
 		
 		return new(keywords, CheckVisibility(keywords, block, false));
 	}
@@ -965,6 +1002,12 @@ public sealed class FileParser
 		{
 			import = new TokenImport(parts[^1]);
 			parts.RemoveAt(parts.Count - 1);
+		}
+		
+		if (IsOnSameLine(index))
+		{
+			ReportExpected(index, "the end of the line");
+			return null;
 		}
 		
 		return new(new(parts.ToImmutableArray()), import);
@@ -2370,7 +2413,16 @@ public sealed class FileParser
 			return null;
 		}
 		
-		var type = Match(ref index, TokenType.OpColon) ? ParseType(ref index) : null;
+		ITypeNode? type = null;
+		if (Match(ref index, TokenType.OpColon))
+		{
+			if (StartsMemberType(index + 1) &&
+			    Match(ref index, out var visibility, _memberContextualKeywords, _visibilityKeywords))
+				Report(visibility, $"Cannot use '{visibility.Text}' on local variables");
+			
+			type = ParseType(ref index);
+		}
+		
 		var isMutable = keyword.Type == TokenType.KeywordVar;
 		
 		var (source, range) = keyword.SourceLocation;
@@ -2388,10 +2440,43 @@ public sealed class FileParser
 	
 	private ITypeNode ParseType(ref int index) => new TypeParser(Tokens).Parse(ref index);
 	
+	private void RecoverTopLevel(ref int index, bool insideBlock)
+	{
+		var token = Tokens[index];
+		var startsLine = index == 0 || token.Line != Tokens[index - 1].Line;
+		var namesDeclaration = startsLine && Peek(index + 1, TokenType.OpColon);
+		if (token.Text == "pvt" && !namesDeclaration)
+		{
+			Report(token, "Expected '{' after 'pvt'");
+			index++;
+			return;
+		}
+		
+		if (token.Text == "pvt")
+			Report(token, "Expected '{' after 'pvt'");
+		else if (namesDeclaration && _operatorNames.Contains(token.Type))
+			Report(token, "Cannot declare operators outside types");
+		else if (namesDeclaration && token.Type == TokenType.KeywordNew)
+			Report(token, "Cannot declare constructors outside types");
+		else if (namesDeclaration && token.Type == TokenType.KeywordDrop)
+			Report(token, "Cannot declare destructors outside types");
+		else if (startsLine && !namesDeclaration && _declarationKinds.Contains(token.Text))
+			Report(token, $"Expected a name before '{token.Text}'");
+		else
+			ReportUnexpected(token);
+		
+		index++;
+		while (IsOnSameLine(index) && !Peek(index, TokenType.OpOpenBrace) && !Peek(index, TokenType.OpCloseBrace))
+			index++;
+		
+		ResyncTopLevel(ref index, insideBlock);
+	}
+	
 	private void ResyncTopLevel(ref int index, bool insideBlock = false)
 	{
 		// Skip until another declaration starts. If we encounter braces, keep skipping until closed
 		var braceCount = 0;
+		var groupCount = 0;
 		var loop = true;
 		while (loop && !AtEnd(index))
 		{
@@ -2415,8 +2500,19 @@ public sealed class FileParser
 					loop = false;
 					break;
 				
+				case TokenType.OpOpenParen or TokenType.OpOpenBracket:
+					groupCount++;
+					index++;
+					break;
+				
+				case TokenType.OpCloseParen or TokenType.OpCloseBracket:
+					groupCount = Math.Max(groupCount - 1, 0);
+					index++;
+					break;
+				
 				case TokenType.Identifier:
-					if (braceCount > 0 || !StartsTopLevelDeclaration(index))
+					if (braceCount > 0 || groupCount > 0 ||
+					    !StartsTopLevelDeclaration(index) && !StartsTopLevelForm(index))
 						index++;
 					else
 						loop = false;
@@ -2424,10 +2520,25 @@ public sealed class FileParser
 					break;
 				
 				default:
-					index++;
+					if (braceCount == 0 && groupCount == 0 && StartsTopLevelForm(index))
+						loop = false;
+					else
+						index++;
+					
 					break;
 			}
 		}
+	}
+	
+	private bool StartsTopLevelForm(int index)
+	{
+		if (index == 0 || Tokens[index].Line == Tokens[index - 1].Line)
+			return false;
+		
+		var token = Tokens[index];
+		return _declarationKinds.Contains(token.Text) || _topLevelFormWords.Contains(token.Text) ||
+		       Peek(index + 1, TokenType.OpColon) && (_operatorNames.Contains(token.Type) ||
+		                                              _lifecycleKeywords.Contains(token.Type));
 	}
 	
 	private bool StartsTopLevelDeclaration(int index)

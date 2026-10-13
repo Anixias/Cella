@@ -29,9 +29,13 @@ Error at line 1, column 1
 
 ====== twice.ce ======
 
+Error at line 1, column 5
+1 │ mod test.twice
+        ╘════════╛ Cannot declare more than one module name
+
 Error at line 2, column 5
 1 │ mod test.twice
 2 │ mod other
-        ╘═══╛ Module name must precede all other declarations or imports
+        ╘═══╛ Cannot declare more than one module name
 
 [compilation failed]

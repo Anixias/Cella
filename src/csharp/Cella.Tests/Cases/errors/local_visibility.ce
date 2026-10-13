@@ -1,0 +1,10 @@
+mod test
+
+f: fun -> i32
+{
+	val x: pvt i32 = 1
+	var y: mod i32 = 2
+	ret x + y
+}
+
+main: fun -> i32 = f()

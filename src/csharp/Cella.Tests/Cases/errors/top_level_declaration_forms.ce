@@ -1,0 +1,47 @@
+mod test
+mod other
+use test.*.foo
+
+val x = 5
+var y: i32 = 5
+fun helper -> i32 = 1
++: op(a: i32, b: i32) -> i32 = a
+
+new: op(x: i32)
+{
+}
+
+drop: op
+{
+}
+
+pub
+{
+	shown: fun -> i32 = 1
+}
+
+pvt helper: fun -> i32 = 1
+
+pvt ext
+{
+	puts: fun(text: cstr) -> i32
+}
+
+count: pvt set var i32 = 0
+
+when debug
+{
+	use other
+}
+
+pvt
+{
+	use other
+	a: fun -> i32 = 1
+}
+
+f: fun -> i32 = 1)
+
+broken: fun -> i32 = (
+
+main: fun -> i32 = 0
