@@ -21,9 +21,4 @@ Error at line 44, column 45
 44 │ val total = sum(imm pair) + pair.left.id + pair.right.id
                                                 ╘═══════════╛ Cannot use uninitialized values
 
-Error at line 52, column 17
-51 │ var n: i32 = undef
-52 │ val pointer = @n
-                    ^ Cannot use uninitialized values
-
 [compilation failed]

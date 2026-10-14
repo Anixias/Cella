@@ -110,7 +110,7 @@ public sealed class EventLinearizer
 					break;
 				
 				case UnaryOpValue { Op: UnaryOperation.AddressOf } v:
-					AddAccess(v.Operand, AccessKind.Borrow);
+					AddAccess(v.Operand, v.IsRaw ? AccessKind.Address : AccessKind.Borrow);
 					break;
 				
 				case AccessValue { Member: not FieldSymbol } v:

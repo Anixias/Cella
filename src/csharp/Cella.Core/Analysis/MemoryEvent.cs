@@ -8,6 +8,7 @@ public enum AccessKind
 {
 	Read,
 	Borrow,
+	Address,
 	Move
 }
 

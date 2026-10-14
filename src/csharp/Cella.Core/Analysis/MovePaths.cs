@@ -66,6 +66,7 @@ public sealed class MovePaths
 			{
 				WriteEvent e => e.Place,
 				AccessEvent { Kind: AccessKind.Move } e => e.Place,
+				AccessEvent { Kind: AccessKind.Address } e => e.Place.AddressedStorage,
 				DropEvent e => e.Place,
 				_ => null
 			};

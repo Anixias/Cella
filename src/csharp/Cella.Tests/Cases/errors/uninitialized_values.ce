@@ -46,11 +46,4 @@ fields: fun -> i32
 	ret sum(imm pair) + total
 }
 
-address: fun -> i32
-{
-	var n: i32 = undef
-	val pointer = @n
-	ret 0
-}
-
 main: fun -> i32 = 0

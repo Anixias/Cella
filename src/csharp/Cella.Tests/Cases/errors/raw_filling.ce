@@ -1,0 +1,92 @@
+mod test
+
+Buffer: rec
+{
+	id: i32
+
+	drop: op
+	{
+	}
+}
+
+R: rec
+{
+	x: i32
+
+	new: op(x: i32)
+	{
+		self.x = x
+	}
+}
+
+Pair: rec
+{
+	left: i32
+	right: i32
+}
+
+fill: fun(target: ptr[i32])
+{
+	*target = 42
+}
+
+bump: fun(mut n: i32)
+{
+	n += 1
+}
+
+moved: fun -> i32
+{
+	var b = Buffer(1)
+	val c = own b
+	val p = @b
+	ret 0
+}
+
+unassigned: fun -> i32
+{
+	var r: R
+	val p = @r
+	ret 0
+}
+
+later: fun -> i32
+{
+	val v: i32
+	val p = @v
+	ret 0
+}
+
+borrowed: fun -> i32
+{
+	var n: i32 = undef
+	bump(mut n)
+	ret n
+}
+
+sometimes: fun(flag: bool) -> i32
+{
+	var x: i32 = undef
+	if flag
+		fill(@x)
+
+	ret x
+}
+
+looped: fun -> i32
+{
+	var buf: array[i32, 4] = undef
+	for i in 0..4
+		fill(@buf[i])
+
+	ret buf[0]
+}
+
+field: fun -> i32
+{
+	var pair: Pair = undef
+	fill(@pair.left)
+	ret pair.left + pair.right
+}
+
+main: fun -> i32 = 0

@@ -151,12 +151,22 @@ public sealed class MemoryChecker(TypePool typePool, DiagnosticList diagnostics)
 			return;
 		}
 		
+		if (access.Kind == AccessKind.Address && FindFillable(access.Place, state, paths) is not null)
+			return;
+		
 		if (FindUninitialized(access.Place, state, paths) is { } uninitialized)
 			Report(access.Location, $"Cannot use {uninitialized.Condition} values",
 				DescribeMoves(access.Location, uninitialized.Moves));
 		else if (access.IsImplicit)
 			Report(access.Location, $"Cannot move '{access.Type.Name}' values implicitly", []);
 	}
+	
+	private static MovePath? FindFillable(Place place, InitState state, MovePaths paths) =>
+		place.Root is not LocalVariableSymbol { IsDeferred: true } &&
+		paths.FindPrefix(place.AddressedStorage).Path is { } storage &&
+		(state.GetUninitialized(storage) & ~PathState.Undef) == PathState.None
+			? storage
+			: null;
 	
 	private static bool IsDeferredRoot(Place place) =>
 		place is { Root: LocalVariableSymbol { IsDeferred: true }, Path.IsEmpty: true };
@@ -417,6 +427,12 @@ public sealed class MemoryChecker(TypePool typePool, DiagnosticList diagnostics)
 				if (GetMoveError(e.Place, paths) is null)
 					state.Move(path, e.Location);
 				
+				break;
+			
+			case AccessEvent { Kind: AccessKind.Address } e when FindFillable(e.Place, state, paths) is { } storage &&
+			                                                     state.GetUninitialized(storage)
+				                                                     .HasFlag(PathState.Undef):
+				state.Set(storage, PathState.Initialized);
 				break;
 			
 			case StorageDeadEvent e:

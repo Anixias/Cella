@@ -14,4 +14,9 @@ public sealed record CaptureProjection : Projection;
 public sealed record Place(VariableSymbol Root, ImmutableArray<Projection> Path)
 {
 	public Place Project(Projection projection) => this with { Path = Path.Add(projection) };
+	
+	public Place AddressedStorage => Path.FirstOrDefault(static projection => projection is IndexProjection) is
+		{ } element
+		? this with { Path = Path[..Path.IndexOf(element)] }
+		: this;
 }

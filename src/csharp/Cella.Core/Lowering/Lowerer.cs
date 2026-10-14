@@ -1291,8 +1291,9 @@ public sealed class Lowerer
 		
 		public Value Visit(ResolvedUnaryOpExpressionNode node)
 		{
-			var operand = node.Operation?.Op == TokenType.OpAt ? VisitPlace(node.Operand) : VisitNode(node.Operand);
-			return Diverge(LowerUnaryOp(operand, node.Operation));
+			var isAddress = node.Operation?.Op == TokenType.OpAt;
+			var operand = isAddress ? VisitPlace(node.Operand) : VisitNode(node.Operand);
+			return Diverge(LowerUnaryOp(operand, node.Operation, isAddress));
 		}
 		
 		public Value Visit(ResolvedUndefExpressionNode node) =>
@@ -1796,10 +1797,10 @@ public sealed class Lowerer
 			_ => throw new InvalidOperationException()
 		};
 		
-		private static Value LowerUnaryOp(Value operand, OperationImpl? op) => op switch
+		private static Value LowerUnaryOp(Value operand, OperationImpl? op, bool isRaw) => op switch
 		{
 			NativeImpl native => new UnaryOpValue(native.ReturnType, operand, ToUnaryOperation(native.Op),
-				operand.SourceLocation),
+				operand.SourceLocation) { IsRaw = isRaw },
 			_ => throw new InvalidOperationException()
 		};
 		
@@ -1859,7 +1860,7 @@ public sealed class Lowerer
 		{
 			if (defersAccess && operand is UnaryOpValue { Op: UnaryOperation.AddressOf } address)
 				return new UnaryOpValue(address.Type, StabilizeOperandsBase(address.Operand), UnaryOperation.AddressOf,
-					address.SourceLocation);
+					address.SourceLocation) { IsRaw = address.IsRaw };
 			
 			if (defersAccess && IsPlaceValue(operand))
 				return StabilizeOperandsBase(operand);

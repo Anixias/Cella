@@ -288,6 +288,7 @@ public sealed class UnaryOpValue(TypeSymbol type, Value operand, UnaryOperation 
 {
 	public Value Operand { get; } = operand;
 	public UnaryOperation Op { get; } = op;
+	public bool IsRaw { get; init; }
 }
 
 public sealed class BinOpValue

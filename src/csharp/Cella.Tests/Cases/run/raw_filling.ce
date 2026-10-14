@@ -1,0 +1,88 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+	memset: fun(target: ptr, value: i32, size: usize) -> ptr
+}
+
+D: rec
+{
+	id: i32
+
+	new: op(id: i32)
+	{
+		self.id = id
+	}
+
+	drop: op
+	{
+		printf("drop %d\n", self.id)
+	}
+}
+
+Pair: rec
+{
+	left: i32
+	right: i32
+}
+
+fill: fun(target: ptr[i32])
+{
+	*target = 42
+}
+
+cleared: fun -> i32
+{
+	var buf: array[i32, 4] = undef
+	memset(@buf, 0, 16)
+	ret buf[0] + buf[3]
+}
+
+counted: fun -> i32
+{
+	var buf: array[i32, 4] = undef
+	val first = @buf[0]
+	for i in 0..4
+		*(first + i) = i32(i) * 3
+	ret buf[1] + buf[3]
+}
+
+rest: fun -> i32
+{
+	var buf: array[i32, 4] = undef
+	buf[0] = 5
+	memset(@buf[1], 0, 12)
+	ret buf[0] + buf[3]
+}
+
+filled: fun -> i32
+{
+	var x: i32 = undef
+	fill(@x)
+	ret x
+}
+
+pair: fun -> i32
+{
+	var p: Pair = undef
+	val raw = @p
+	raw.left = 1
+	raw.right = 2
+	ret p.left + p.right
+}
+
+main: fun -> i32
+{
+	printf("%d %d %d %d %d\n", cleared(), counted(), rest(), filled(), pair())
+	{
+		var items: array[D, 3] = undef
+		val first = @items[0]
+		for i in 0..3
+			own *(first + i) = D(i32(i))
+		printf("built %d\n", items[2].id)
+	}
+
+	printf("end\n")
+	ret 0
+}
