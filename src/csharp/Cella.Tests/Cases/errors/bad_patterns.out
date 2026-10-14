@@ -4,7 +4,7 @@
 Error at line 30, column 10
 29 │ var effect = Effect.none
 30 │ var a = 5 is red
-             ^ 'integer literal' is not an enum
+             ^ Cannot match 'integer literal' values
 
 Error at line 31, column 18
 30 │ var a = 5 is red
@@ -80,7 +80,7 @@ Error at line 48, column 5
 Error at line 51, column 8
 50 │ 
 51 │ match 5
-           ^ 'integer literal' is not an enum
+           ^ Cannot match 'integer literal' values
 
 Error at line 58, column 3
 57 │ {

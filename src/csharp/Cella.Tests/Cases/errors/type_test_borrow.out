@@ -1,0 +1,9 @@
+
+====== type_test_borrow.ce ======
+
+Error at line 6, column 10
+5 │ val s = 3
+6 │ if s is imm[i32]
+            ╘══════╛ Cannot test for borrow types
+
+[compilation failed]

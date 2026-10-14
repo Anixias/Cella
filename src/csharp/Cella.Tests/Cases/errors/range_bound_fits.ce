@@ -1,0 +1,33 @@
+mod test
+
+takeU8: fun(b: u8) -> i32 = i32(b)
+
+small: fun -> i32
+{
+	var sum = 0
+	for b in 0..256
+		sum += takeU8(b)
+
+	ret sum
+}
+
+negative: fun(n: usize) -> i32
+{
+	var sum = 0
+	for i in -1..n
+		sum += 1
+
+	ret sum
+}
+
+indexed: fun -> i32
+{
+	val arr = [1, 2, 3]
+	var sum = 0
+	for i in -1..2
+		sum += arr[i]
+
+	ret sum
+}
+
+main: fun -> i32 = 0

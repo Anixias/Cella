@@ -1790,11 +1790,17 @@ public sealed class SignatureCollector
 		}
 	}
 	
+	private static IEnumerable<Diagnostic>
+		ReportDuplicateTypeParameters(ImmutableArray<TypeParameterNode> parameters) =>
+		parameters
+			.GroupBy(static parameter => parameter.Identifier.Text)
+			.Where(static sameName => sameName.Count() > 1)
+			.SelectMany(static sameName => sameName.Select(ReportDuplicateTypeParameter));
+	
 	private void ReportTypeParameters(ImmutableArray<TypeParameterNode> typeParameters,
 		IEnumerable<IDeclarationNode> members)
 	{
-		Diagnostics.AddRange(DiagnosticReporter.ReportDuplicates(typeParameters.Select(static p => p.Identifier),
-			static name => $"Type parameter '{name}' is declared more than once"));
+		Diagnostics.AddRange(ReportDuplicateTypeParameters(typeParameters));
 		
 		var duplicates = typeParameters
 			.GroupBy(static p => p.Identifier.Text)
@@ -1809,14 +1815,24 @@ public sealed class SignatureCollector
 			if (typeParameters.Where(p => p.Identifier.Text == name).ToList() is not [_, ..] outer)
 				continue;
 			
-			Diagnostics.Add(ReportDuplicateTypeParameter(parameter.Identifier));
+			Diagnostics.Add(ReportDuplicateTypeParameter(parameter));
 			if (!duplicates.Contains(name) && reported.Add(name))
-				Diagnostics.AddRange(outer.Select(static p => ReportDuplicateTypeParameter(p.Identifier)));
+				Diagnostics.AddRange(outer.Select(ReportDuplicateTypeParameter));
 		}
 	}
 	
-	private static Diagnostic ReportDuplicateTypeParameter(Token identifier) => new(DiagnosticSeverity.Error,
-		identifier.SourceLocation, $"Type parameter '{identifier.Text}' is declared more than once");
+	private static Diagnostic ReportDuplicateTypeParameter(TypeParameterNode parameter) => new(DiagnosticSeverity.Error,
+		parameter.Identifier.SourceLocation,
+		$"{DescribeTypeParameter(parameter, true)} '{parameter.Identifier.Text}' is declared more than once");
+	
+	private static string DescribeTypeParameter(TypeParameterNode parameter, bool startsSentence) =>
+		(parameter.ValueType is null, startsSentence) switch
+		{
+			(true, true) => "Type parameter",
+			(true, false) => "type parameter",
+			(false, true) => "Value parameter",
+			(false, false) => "value parameter"
+		};
 	
 	private static bool IsDereference(FunctionNode node) =>
 		node is { Identifier.Type: TokenType.OpStar, Receiver: not null };
@@ -2679,7 +2695,13 @@ public sealed class SignatureCollector
 		foreach (var enumCase in enumType.Cases)
 		{
 			var value = enumCase.Node.Value is { } expression
-				? EvaluateCaseValue(enumCase, expression, context with { LocalScope = scope }, valueType) ?? next
+				? EvaluateCaseValue(enumCase, expression,
+					context with
+					{
+						LocalScope = scope,
+						ExcludedParameters = enumType.TypeParameters,
+						ExclusionPlace = "case values"
+					}, valueType) ?? next
 				: next;
 			
 			values.Add(value);
@@ -2865,8 +2887,7 @@ public sealed class SignatureCollector
 	private FunctionInfo CollectFunction(FunctionSymbol function, FunctionNode node, ResolutionContext context)
 	{
 		ReportWhenFunction(node, context);
-		Diagnostics.AddRange(DiagnosticReporter.ReportDuplicates(node.TypeParameters.Select(static p => p.Identifier),
-			static name => $"Type parameter '{name}' is declared more than once"));
+		Diagnostics.AddRange(ReportDuplicateTypeParameters(node.TypeParameters));
 		
 		ReportDuplicateParameters(node.Parameters);
 		ReportBorrowParameters(node.Parameters, node.IsExternal, function.Property?.Node?.Type);
@@ -2948,9 +2969,6 @@ public sealed class SignatureCollector
 		    IsEntryPoint(signature))
 		{
 			_entryPoints.Add(info);
-			if (node.When is { } when)
-				Diagnostics.Add(new(DiagnosticSeverity.Error, when.Keyword.SourceLocation,
-					$"Cannot use 'when' on '{_entryPointName}'"));
 		}
 		
 		return info;
@@ -2969,6 +2987,14 @@ public sealed class SignatureCollector
 		else if (node.IsExternal)
 			Diagnostics.Add(new(DiagnosticSeverity.Error, when.Keyword.SourceLocation,
 				"Cannot use 'when' on 'ext' functions"));
+		else if (node.Identifier.Text == _entryPointName && context.ContainingType is null &&
+		         context.ImplBlock is null)
+		{
+			Diagnostics.Add(new(DiagnosticSeverity.Error, when.Keyword.SourceLocation,
+				$"Cannot use 'when' on '{_entryPointName}'"));
+			
+			return;
+		}
 		
 		if (node.ReturnType is { } returnType)
 			Diagnostics.Add(new(DiagnosticSeverity.Error, returnType.SourceLocation,
@@ -3137,8 +3163,11 @@ public sealed class SignatureCollector
 				: EvaluateChecked(constants!.ResolveInitializer(value, type, context));
 			
 			if (constant is null)
-				Diagnostics.Add(new(DiagnosticSeverity.Error, value.SourceLocation,
-					$"The default value of '{parameter.Identifier.Text}' must be a constant"));
+				Diagnostics.Add(_typePool.HoldsBorrows(type)
+					? new(DiagnosticSeverity.Error, parameter.Type.SourceLocation,
+						"Cannot declare defaults for parameters that hold borrows")
+					: new(DiagnosticSeverity.Error, value.SourceLocation,
+						$"The default value of '{parameter.Identifier.Text}' must be a constant"));
 			
 			defaults.Add(constant ?? InvalidConstant.Instance);
 		}
@@ -3401,10 +3430,8 @@ public sealed class SignatureCollector
 			    functions.All(function => IsSameExternalSignature(_builder.Functions[function].Signature, first)))
 				continue;
 			
-			foreach (var function in byModule.Where(static module => module.Count() == 1)
-				         .SelectMany(static module => module))
-				Diagnostics.Add(new(DiagnosticSeverity.Error,
-					GetIdentifier((IDeclarationNode)function.Syntax).SourceLocation,
+			foreach (var function in byModule.Where(static m => m.Count() == 1).SelectMany(static m => m))
+				Diagnostics.Add(new(DiagnosticSeverity.Error, GetIdentifier(function.Syntax).SourceLocation,
 					"'ext' functions cannot be overloaded"));
 		}
 	}
@@ -3524,7 +3551,7 @@ public sealed class SignatureCollector
 		{
 			Diagnostics.Add(candidate.Symbol.Syntax is FunctionNode { TypeParameters: [var first, ..] }
 				? new(DiagnosticSeverity.Error, first.Identifier.SourceLocation,
-					$"Cannot declare type parameters on '{_entryPointName}'")
+					$"Cannot declare {DescribeTypeParameter(first, false)}s on '{_entryPointName}'")
 				: new(DiagnosticSeverity.Error, GetIdentifier(candidate.Symbol.Syntax).SourceLocation,
 					candidate.Signature.ReturnType != NativeSymbols.Void &&
 					candidate.Signature.ReturnType != NativeSymbols.Int32
@@ -3669,15 +3696,14 @@ public sealed class SignatureCollector
 	
 	private void ReportRepeatedImports(IEnumerable<ImportExpression> imports)
 	{
-		var names = imports.SelectMany(static import => import.Import switch
+		var names = imports.SelectMany(static i => i.Import switch
 		{
-			TokenImport single => [(Module: import.ModuleName.Text, Token: single.Token)],
-			ListImport list => list.Tokens.Select(token => (Module: import.ModuleName.Text, Token: token)),
+			TokenImport single => [(Module: i.ModuleName.Text, single.Token)],
+			ListImport list => list.Tokens.Select(token => (Module: i.ModuleName.Text, Token: token)),
 			_ => []
 		});
 		
-		foreach (var repeated in names.GroupBy(static entry => (entry.Module, entry.Token.Text))
-			         .Where(static group => group.Count() > 1))
+		foreach (var repeated in names.GroupBy(static e => (e.Module, e.Token.Text)).Where(static g => g.Count() > 1))
 		{
 			foreach (var (_, token) in repeated)
 				Diagnostics.Add(new(DiagnosticSeverity.Error, token.SourceLocation,
@@ -3698,7 +3724,7 @@ public sealed class SignatureCollector
 		foreach (var (symbol, name, module) in explicitImports)
 		{
 			var declared = context.File.Module.Files
-				.SelectMany(file => file.Symbols.GetValueOrDefault(symbol.Name) ?? [])
+				.SelectMany(f => f.Symbols.GetValueOrDefault(symbol.Name) ?? [])
 				.Where(context.IsVisible)
 				.ToList();
 			
@@ -3733,8 +3759,8 @@ public sealed class SignatureCollector
 			if (import.Import is FullImport)
 				hidden.AddRange(module.Members.Values
 					.Concat(module.PrivateMembers.Values)
-					.SelectMany(static members => members)
-					.Where(member => !context.IsVisible(member)));
+					.SelectMany(static m => m)
+					.Where(m => !context.IsVisible(m)));
 			
 			return CollectImport(module, import.Import, context);
 		}
@@ -3748,9 +3774,9 @@ public sealed class SignatureCollector
 	private List<Symbol> CollectImport(ModulePathSymbol module, IImport import, ResolutionContext context) =>
 		import switch
 		{
-			FullImport => [..module.Members.Values.SelectMany(static members => members).Where(context.IsVisible)],
+			FullImport => [..module.Members.Values.SelectMany(static m => m).Where(context.IsVisible)],
 			TokenImport i => ImportMember(module, i.Token, context),
-			ListImport i => [..i.Tokens.SelectMany(token => ImportMember(module, token, context))],
+			ListImport i => [..i.Tokens.SelectMany(t => ImportMember(module, t, context))],
 			_ => []
 		};
 	

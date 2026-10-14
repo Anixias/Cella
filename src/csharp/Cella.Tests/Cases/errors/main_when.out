@@ -1,0 +1,9 @@
+
+====== main_when.ce ======
+
+Error at line 3, column 18
+2 │ 
+3 │ main: fun -> i32 when debug
+                     ╘══╛ Cannot use 'when' on 'main'
+
+[compilation failed]

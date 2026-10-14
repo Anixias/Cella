@@ -548,6 +548,11 @@ public sealed class FileParser
 					          Match(ref index, out keyword, TokenType.KeywordNull) ||
 					          Match(ref index, out keyword, TokenType.KeywordAtomic)))
 						keywords.Add(keyword);
+					else if (Peek(index, TokenType.KeywordDyn))
+					{
+						Report(Tokens[index], "Cannot use 'dyn' types as constraints");
+						return null;
+					}
 					else if (!Peek(index, TokenType.Identifier) && !Peek(index, TokenType.KeywordFun) &&
 					         !Peek(index, TokenType.KeywordRef))
 					{

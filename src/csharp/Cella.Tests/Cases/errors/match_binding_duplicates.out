@@ -1,0 +1,26 @@
+
+====== match_binding_duplicates.ce ======
+
+Error at line 43, column 12
+42 │ var r: result[i32, i32]
+43 │ ret match r { ok(v) => v  err(e) => e }
+               ^ Cannot use uninitialized values
+
+Error at line 50, column 8
+49 │ val taken = own e
+50 │ match e
+           ^ Cannot use moved values
+           | Moved on line 49
+
+Error at line 66, column 8
+65 │ 
+66 │ match n
+           ^ Cannot use borrows of dropped values
+           | Dropped on line 64
+
+Error at line 75, column 8
+74 │ {
+75 │     match make().e
+               ╘══════╛ Cannot move fields out of values with destructors
+
+[compilation failed]

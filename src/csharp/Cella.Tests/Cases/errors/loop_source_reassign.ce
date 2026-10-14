@@ -1,0 +1,27 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+A: rec
+{
+	id: i32
+
+	drop: op
+	{
+	}
+}
+
+main: fun -> i32
+{
+	var items = [A(1), A(2)]
+	for b in items
+	{
+		items = [A(3), A(4)]
+		printf("%d\n", b.id)
+	}
+
+	ret 0
+}

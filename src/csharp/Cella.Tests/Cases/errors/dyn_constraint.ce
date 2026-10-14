@@ -1,0 +1,10 @@
+mod test
+
+Shape: trait
+{
+	area: fun(imm self) -> i32
+}
+
+f[T: dyn[Shape]]: fun(imm x: T) -> i32 = 0
+
+main: fun -> i32 = 0

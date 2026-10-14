@@ -1,0 +1,9 @@
+
+====== drop_as_value.ce ======
+
+Error at line 16, column 10
+15 │ val p = @a
+16 │ val y = drop *p
+             ╘══╛ Cannot use 'drop' as a value
+
+[compilation failed]

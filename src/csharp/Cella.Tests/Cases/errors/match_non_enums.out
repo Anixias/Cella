@@ -1,0 +1,14 @@
+
+====== match_non_enums.ce ======
+
+Error at line 19, column 5
+18 │ val p: ptr[dyn[Shape]] = @a
+19 │ if p is A
+        ^ Cannot match 'ptr[dyn[Shape]]' values
+
+Error at line 28, column 12
+27 │ val a = A(3)
+28 │ ret match a { A => 1  else => 0 }
+               ^ Cannot match 'A' values
+
+[compilation failed]

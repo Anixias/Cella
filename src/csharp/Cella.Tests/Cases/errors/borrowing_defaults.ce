@@ -1,0 +1,16 @@
+mod test
+
+Display: trait
+{
+	print: fun(imm self)
+}
+
+value: val i32 = 4
+
+pointed: var imm[i32] = value
+
+say: fun(text: fstr[Display] = "hi")
+{
+}
+
+main: fun -> i32 = 0

@@ -1,0 +1,3 @@
+mod test
+
+main[N: val usize]: fun -> i32 = 0

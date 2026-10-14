@@ -34,6 +34,6 @@ Error at line 49, column 10
 Error at line 50, column 14
 49 │ val f = both(pair(1, "s"))
 50 │ val g = box(none)
-                 ╘══╛ Symbol 'none' not found in this scope
+                 ╘══╛ Cannot infer the type of 'none'
 
 [compilation failed]

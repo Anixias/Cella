@@ -58,6 +58,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	private readonly CopiedParameters _copiedParameters;
 	private readonly TypeInference _inference;
 	private readonly List<Instantiation> _instantiations = [];
+	private readonly HashSet<Diagnostic> _inferenceFailures = new(ReferenceEqualityComparer.Instance);
 	private readonly List<ResolvedFunctionNode> _lambdas = [];
 	private readonly HashSet<IExpressionNode> _resolvingFallbacks = [];
 	private readonly List<LambdaFrame> _lambdaFrames = [];
@@ -408,6 +409,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			or TokenType.FloatLiteral or TokenType.StringLiteral or TokenType.KeywordNull,
 		InterpolatedStringExpressionNode or UndefExpressionNode { Type: null } => true,
 		ArrayExpressionNode array => !array.Values.IsEmpty && array.Values.All(IsOpenSyntax),
+		MatchExpressionNode match => match.Arms.All(arm => IsCaseNameSyntax(arm.Value)),
 		LambdaExpressionNode lambda => lambda.Parameters.Any(static parameter => parameter.Type is null),
 		UnaryOpExpressionNode { Op.Type: TokenType.OpMinus } unary => IsOpenSyntax(unary.Operand),
 		VarExpressionNode name when FindOpenLocal(name) is not null => true,
@@ -433,6 +435,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	private bool NeedsTarget(IExpressionNode initializer) => initializer switch
 	{
 		ArrayExpressionNode or LambdaExpressionNode => true,
+		MatchExpressionNode match => match.Arms.All(arm => IsCaseNameSyntax(arm.Value)),
 		VarExpressionNode name when FindOpenLocal(name) is { } other => other.IsCaseName ||
 		                                                                NeedsTarget(other.Initializer),
 		_ => false
@@ -791,7 +794,8 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			return (value, null, dyn);
 		
 		if (!IsInvalid(value))
-			Diagnostics.Add(new(DiagnosticSeverity.Error, node.SourceLocation, $"'{value.Type.Name}' is not an enum"));
+			Diagnostics.Add(new(DiagnosticSeverity.Error, node.SourceLocation,
+				$"Cannot match '{value.Type.Name}' values"));
 		
 		return (value, null, null);
 	}
@@ -1050,10 +1054,10 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	}
 	
 	private IResolvedExpressionNode VisitInScope(IExpressionNode node, IEnumerable<LocalVariableSymbol?> bindings,
-		TypeSymbol? target = null)
+		TypeSymbol? target = null, TypeSymbol? hint = null)
 	{
 		_resolutionContexts.Push(CurrentResolutionContext with { LocalScope = CreateScope(bindings) });
-		var result = VisitNode(node, target);
+		var result = target is null && hint is not null ? VisitHinted(node, hint) : VisitNode(node, target);
 		_resolutionContexts.Pop();
 		return result;
 	}
@@ -1102,23 +1106,40 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	public IResolvedExpressionNode Visit(MatchExpressionNode node)
 	{
 		var target = CurrentTargetType;
+		var hint = target is null ? ExpectedType : null;
 		var isMut = node.Mode is not null;
 		var (value, enumType, dyn) = ResolveMatchedValue(node.Value);
 		value = TakeOwnership(value, node.Value, enumType, isMut, node.Arms.Select(static arm => arm.Pattern));
 		var ownsValue = OwnsValue(value, enumType);
 		var patterns = new List<ResolvedPattern?>(node.Arms.Length);
-		var values = new List<IResolvedExpressionNode>(node.Arms.Length);
+		var values = new IResolvedExpressionNode?[node.Arms.Length];
 		var summaries = new List<MatchArmSummary>(node.Arms.Length);
-		foreach (var arm in node.Arms)
+		var bare = new List<(int Index, IEnumerable<LocalVariableSymbol?> Bindings)>();
+		for (var i = 0; i < node.Arms.Length; i++)
 		{
+			var arm = node.Arms[i];
 			var pattern = arm.Pattern is { } syntax ? ResolveArmPattern(syntax, enumType, dyn, isMut, ownsValue) : null;
 			var bindings = pattern?.Bindings ??
 			               (arm.Pattern is { } failed ? CreateBindings(failed, null, isMut, ownsValue) : []);
 			
 			patterns.Add(pattern);
-			values.Add(VisitInScope(arm.Value, bindings, target));
+			if (target is null && IsCaseNameSyntax(arm.Value) &&
+			    !bindings.Any(binding => binding?.Name == GetCaseToken(arm.Value)?.Text))
+				bare.Add((i, bindings));
+			else
+				values[i] = VisitInScope(arm.Value, bindings, target, hint);
+			
 			summaries.Add(SummarizeArm(arm.Pattern, pattern, enumType, arm.SourceLocation));
 		}
+		
+		List<TypeSymbol> peers =
+		[
+			..values.OfType<IResolvedExpressionNode>().Select(static value => value.Type),
+			..hint is null ? [] : new[] { hint }
+		];
+		
+		foreach (var (i, bindings) in bare)
+			values[i] = VisitCaseName(node.Arms[i].Value, peers) ?? VisitInScope(node.Arms[i].Value, bindings);
 		
 		ReportArmConflicts(summaries);
 		if (enumType is not null)
@@ -1127,19 +1148,25 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Keyword.SourceLocation,
 				$"This match doesn't handle every value of '{dyn.Name}'"));
 		
-		var type = target ?? UnifyTypes(values);
+		var arms = values
+			.Select(value => value is ResolvedCaseNameExpressionNode caseName && HasCase(hint, caseName.Name.Text)
+				? MaterializeExpression(caseName, hint!)
+				: value!)
+			.ToList();
+		
+		var type = target ?? UnifyTypes(arms);
 		if (type is null)
 		{
-			var types = string.Join(", ", values.Select(static v => $"'{v.Type.Name}'").Distinct());
+			var types = string.Join(", ", arms.Select(static v => $"'{v.Type.Name}'").Distinct());
 			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Keyword.SourceLocation,
 				$"The arms of this match have incompatible types: {types}"));
 			
 			type = NativeSymbols.Invalid;
 		}
 		
-		var arms = values.Select((v, i) => new ResolvedMatchExpressionArm(patterns[i], CoerceToType(v, type)));
+		var resolved = arms.Select((v, i) => new ResolvedMatchExpressionArm(patterns[i], CoerceToType(v, type)));
 		var borrowsMut = isMut || patterns.Any(static pattern => pattern is { HasMutBindings: true });
-		return new ResolvedMatchExpressionNode(value, arms, borrowsMut, ownsValue, type, node);
+		return new ResolvedMatchExpressionNode(value, resolved, borrowsMut, ownsValue, type, node);
 	}
 	
 	private readonly record struct MatchArmSummary
@@ -1262,7 +1289,8 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			return VisitConstructorCall(node, targetType, null);
 		
 		// Don't push targetType; we're trying to find a CAST to targetType, not a targetType itself
-		var arg = VisitNode(node.Arguments[0], null);
+		var argument = node.Arguments[0];
+		var arg = VisitPeerOperand(argument, () => VisitNode(argument, null), targetType);
 		RecordCast(arg, targetType);
 		
 		// If the argument has an invalid type, we don't want to cascade useless errors; assume identity conversion
@@ -2147,13 +2175,15 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		var type => type
 	};
 	
-	private static Diagnostic ReportInferenceFailure(InferenceResult result, string name, SourceLocation location)
+	private Diagnostic ReportInferenceFailure(InferenceResult result, string name, SourceLocation location)
 	{
 		var message = result.Conflicted is { } parameter
-			? $"Cannot infer '{parameter.Name}' for '{name}' from {JoinNames(result.Candidates)}"
+			? $"Cannot infer '{parameter.Name}' for '{name}' from {JoinNames(result.WrittenCandidates)}"
 			: $"Cannot infer {JoinNames(result.Missing)} for '{name}'";
 		
-		return new(DiagnosticSeverity.Error, location, message);
+		var diagnostic = new Diagnostic(DiagnosticSeverity.Error, location, message);
+		_inferenceFailures.Add(diagnostic);
+		return diagnostic;
 	}
 	
 	private static string JoinNames(IEnumerable<TypeSymbol> types) =>
@@ -2222,7 +2252,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
 		
 		if (isAmbiguous)
-			return Error(node, $"Call to '{functionName}' is ambiguous", CurrentTargetType, node.Target);
+			return ReportAmbiguousCall(node, functionName, shaped, receiver, typeArguments);
 		
 		var failures = new List<Diagnostic>();
 		var specialized = SpecializeAll(args, failures);
@@ -2235,7 +2265,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		var resolutionSet = ResolveCallable(specialized, args, MaterializationMode.Overload, CurrentTargetType);
 		
 		if (resolutionSet.IsAmbiguous)
-			return Error(node, $"Call to '{functionName}' is ambiguous", CurrentTargetType, node.Target);
+			return ReportAmbiguousCall(node, functionName, shaped, receiver, typeArguments);
 		
 		if (!resolutionSet.HasResult && hidden is [_, ..] &&
 		    ResolveCallable(hidden, args, MaterializationMode.Overload, CurrentTargetType).HasResult &&
@@ -2290,6 +2320,42 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		bool Accepts(int index, IResolvedExpressionNode[] values) =>
 			Specialize(shaped[index], functionName, values, typeArguments, location, []) is { } callable &&
 			ResolveCallable([callable], values, MaterializationMode.Overload, CurrentTargetType).HasResult;
+	}
+	
+	private ResolvedInvalidExpressionNode ReportAmbiguousCall(CallExpressionNode node, string functionName,
+		ICallable[] shaped, IResolvedExpressionNode? receiver, TypeArgumentList? typeArguments)
+	{
+		if (!node.Arguments.Any(IsDeferred))
+			return Error(node, $"Call to '{functionName}' is ambiguous", CurrentTargetType, node.Target);
+		
+		var failures = new List<List<Diagnostic>>();
+		foreach (var candidate in shaped)
+		{
+			var trial = OpenCheckpoint();
+			var result = ResolveCall(node, functionName, [candidate], receiver, typeArguments);
+			var errors = trial.Redirections
+				.SelectMany(static redirection => redirection.Captured)
+				.Where(static diagnostic => diagnostic.Severity == DiagnosticSeverity.Error)
+				.ToList();
+			
+			Rollback(trial);
+			if (errors.Count == 0 && !IsInvalid(result))
+				return Error(node, $"Call to '{functionName}' is ambiguous", CurrentTargetType, node.Target);
+			
+			failures.Add(errors);
+		}
+		
+		var first = failures[0].Select(static diagnostic => (diagnostic.SourceLocation, diagnostic.Message)).ToList();
+		if (first.Count > 0 && failures.All(errors =>
+			    errors.Select(static diagnostic => (diagnostic.SourceLocation, diagnostic.Message))
+				    .SequenceEqual(first)))
+		{
+			Diagnostics.AddRange(failures[0]);
+			return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
+		}
+		
+		return Error(node, $"No overload of '{functionName}' accepts these arguments", CurrentTargetType,
+			node.Target);
 	}
 	
 	private ResolvedInvalidExpressionNode? RejectSpread(CallExpressionNode node, IEnumerable<ICallable> candidates)
@@ -2498,8 +2564,26 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			: receiver;
 	
 	private IResolvedExpressionNode VisitArgument(IExpressionNode node, IEnumerable<TypeSymbol> expected,
-		TypeSymbol? hint = null) =>
-		VisitCaseName(node, expected) ?? (hint is null ? VisitArgument(node) : VisitHinted(node, hint));
+		TypeSymbol? hint = null)
+	{
+		var types = expected.ToList();
+		return VisitCaseName(node, types) ?? ReportMisspelledCase(node, types) ??
+			(hint is null ? VisitArgument(node) : VisitHinted(node, hint));
+	}
+	
+	private IResolvedExpressionNode? ReportMisspelledCase(IExpressionNode node, IEnumerable<TypeSymbol> expected)
+	{
+		if (node is not VarExpressionNode { Identifier.Text: var name } ||
+		    CurrentResolutionContext.Resolve(name) is not null)
+			return null;
+		
+		var cases = expected.OfType<EnumSymbol>().SelectMany(static type => type.Cases).Select(static c => c.Name)
+			.ToList();
+		
+		return DiagnosticReporter.FindSuggestion(name, cases) is null
+			? null
+			: Error(node, DiagnosticReporter.ReportUndefinedSymbol(node, name, cases), null);
+	}
 	
 	private IResolvedExpressionNode[] ResolveArguments(ImmutableArray<IExpressionNode> nodes,
 		IReadOnlyList<CallShape> shapes, out bool isAmbiguous,
@@ -2853,6 +2937,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	private bool IsDeferred(IExpressionNode node) => node switch
 	{
 		CallExpressionNode or ArrayExpressionNode or LambdaExpressionNode => true,
+		MatchExpressionNode match => match.Arms.Any(arm => IsDeferred(arm.Value)),
 		AccessExpressionNode => FindGenericCaseEnum(node) is not null,
 		VarExpressionNode name => CurrentResolutionContext.Resolve(name.Identifier.Text) is null ||
 		                          FindOpenLocal(name) is { } open && (open.IsCaseName || NeedsTarget(open.Initializer)),
@@ -2943,9 +3028,10 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		}
 	}
 	
-	private IResolvedExpressionNode VisitOperand(IExpressionNode node, IEnumerable<ICallable> candidates, int index)
+	private IResolvedExpressionNode VisitOperand(IExpressionNode node, IEnumerable<ICallable> candidates, int index,
+		TypeSymbol? peer = null)
 	{
-		var expected = ParameterTypesAt(candidates, index).ToList();
+		List<TypeSymbol> expected = [..ParameterTypesAt(candidates, index), ..peer is null ? [] : new[] { peer }];
 		if (VisitCaseName(node, expected) is { } caseName)
 			return caseName;
 		
@@ -2956,6 +3042,39 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			? VisitNode(node, target)
 			: VisitNode(node, null);
 	}
+	
+	private IResolvedExpressionNode VisitPeerOperand(IExpressionNode node, Func<IResolvedExpressionNode> visit,
+		TypeSymbol peer)
+	{
+		if (node is not CallExpressionNode || peer is UntypedType or InvalidType or NeverType)
+			return visit();
+		
+		var trial = OpenCheckpoint();
+		var value = visit();
+		if (!FailsInference(node, value, trial))
+		{
+			Commit(trial);
+			return value;
+		}
+		
+		Rollback(trial);
+		var retry = OpenCheckpoint();
+		var hinted = VisitHinted(node, peer);
+		if (!IsInvalid(hinted))
+		{
+			Commit(retry);
+			return hinted;
+		}
+		
+		Rollback(retry);
+		return visit();
+	}
+	
+	private bool FailsInference(IExpressionNode node, IResolvedExpressionNode value, Checkpoint trial) =>
+		node is CallExpressionNode && IsInvalid(value) && trial.Redirections
+			.SelectMany(static redirection => redirection.Captured)
+			.Any(diagnostic => _inferenceFailures.Contains(diagnostic) &&
+			                   diagnostic.SourceLocation.Range.Start == node.SourceLocation.Range.Start);
 	
 	private EnumSymbol? FindGenericCaseEnum(IExpressionNode node) =>
 		node is AccessExpressionNode access &&
@@ -2968,13 +3087,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	
 	private ResolvedCaseNameExpressionNode? VisitCaseName(IExpressionNode node, IEnumerable<TypeSymbol> expected)
 	{
-		var name = node switch
-		{
-			VarExpressionNode variable => variable.Identifier,
-			CallExpressionNode { Target: VarExpressionNode callee } => callee.Identifier,
-			_ => default(Token?)
-		};
-		
+		var name = GetCaseToken(node);
 		return name is { } token && expected.Any(type => HasCase(type, token.Text))
 			? CreateCaseName(token, node)
 			: null;
@@ -3054,8 +3167,14 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		return fallback;
 	}
 	
-	private IResolvedExpressionNode ResolveUnmatched(IResolvedExpressionNode node) =>
-		node is ResolvedCaseNameExpressionNode caseName ? Decay(GetFallback(caseName)) : node;
+	private IResolvedExpressionNode ResolveUnmatched(IResolvedExpressionNode node, TypeSymbol? peer = null) =>
+		node switch
+		{
+			ResolvedCaseNameExpressionNode caseName when HasCase(peer, caseName.Name.Text) =>
+				MaterializeExpression(caseName, peer!),
+			ResolvedCaseNameExpressionNode caseName => Decay(GetFallback(caseName)),
+			_ => node
+		};
 	
 	private bool CouldProduce(Symbol symbol, bool isCall, TypeSymbol target)
 	{
@@ -3365,7 +3484,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			return VisitTraitCall(node, access, trait, view, indexer);
 		
 		if (CurrentResolutionContext.TryResolveExpressionAsType(access.Target) is { } type)
-			return VisitStaticCall(node, access, RequireTypeArguments(type, access.Target), indexer);
+			return indexer is not null && type is EnumSymbol && HasCase(type, access.Member.Text)
+				? Error(node, "Cannot pass type arguments to cases", CurrentTargetType, indexer.SourceLocation)
+				: VisitStaticCall(node, access, RequireTypeArguments(type, access.Target), indexer);
 		
 		if (access.Member.Type != TokenType.Identifier)
 			return Error(node, $"Cannot call '{access.Member.Text}' through a value", CurrentTargetType,
@@ -3855,6 +3976,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			_ when CurrentResolutionContext.ContainingType is { } type &&
 			       GetMethods(type, name).Any(static method => method.HasReceiver) =>
 				"Cannot call methods without a receiver",
+			_ when CurrentResolutionContext.ContainingFunction is not null &&
+			       CurrentResolutionContext.GetAllSymbols().OfType<EnumSymbol>().Any(type => HasCase(type, name)) =>
+				$"Cannot infer the type of '{name}'",
 			_ => null
 		};
 		
@@ -4372,8 +4496,6 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	
 	public IResolvedExpressionNode Visit(ArrayExpressionNode node)
 	{
-		var values = new List<IResolvedExpressionNode>(node.Values.Length);
-		
 		var elementType = ExpectedType switch
 		{
 			ArrayType array => array.ElementType,
@@ -4381,11 +4503,17 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			null => null
 		};
 		
-		foreach (var expression in node.Values)
+		var visited = new IResolvedExpressionNode?[node.Values.Length];
+		for (var i = 0; i < node.Values.Length; i++)
 		{
-			var value = VisitNode(expression, elementType);
-			values.Add(value);
+			if (elementType is not null || !IsCaseNameSyntax(node.Values[i]))
+				visited[i] = VisitNode(node.Values[i], elementType);
 		}
+		
+		var peers = visited.OfType<IResolvedExpressionNode>().Select(static value => value.Type).ToList();
+		var values = node.Values
+			.Select((expression, i) => visited[i] ?? VisitCaseName(expression, peers) ?? VisitNode(expression, null))
+			.ToList();
 		
 		if (values.Count == 0)
 		{
@@ -4778,7 +4906,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		return false;
 	}
 	
-	public IResolvedExpressionNode Visit(LambdaExpressionNode node) => ResolveLambda(node, CurrentTargetType);
+	public IResolvedExpressionNode Visit(LambdaExpressionNode node) => ResolveLambda(node, ExpectedType);
 	
 	private IResolvedExpressionNode ResolveLambda(LambdaExpressionNode node, TypeSymbol? expected,
 		bool resolveBody = true, bool isArgument = false)
@@ -5512,8 +5640,15 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			? DeclareOpen(new(node, node.Binding, node.Source, CurrentResolutionContext) { IsCounter = true }, bounds)
 			: null;
 		
+		IResolvedExpressionNode[] written = [..bounds];
 		var type = settledTypes?.GetValueOrDefault(node) ??
 		           (AnyInvalid(bounds[0], bounds[1]) ? NativeSymbols.Invalid : UnifyTypes(bounds));
+		
+		if (type is null && FindLiteralPeer(written) is { } peer)
+		{
+			bounds = [..written];
+			type = peer;
+		}
 		
 		if (type is not (InvalidType or IntegerType { Kind: not PrimitiveTypeKind.Char }))
 		{
@@ -5540,6 +5675,14 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		return new(binding, (body, label) =>
 			new ResolvedRangeForStatementNode(counter, start, end, isInclusive, null, null, body, label, node));
 	}
+	
+	private static TypeSymbol? FindLiteralPeer(IResolvedExpressionNode[] bounds) =>
+		bounds switch
+		{
+			[{ Type: UntypedType }, { Type: IntegerType { Kind: not PrimitiveTypeKind.Char } type }] => type,
+			[{ Type: IntegerType { Kind: not PrimitiveTypeKind.Char } type }, { Type: UntypedType }] => type,
+			_ => null
+		};
 	
 	private ForHeader ResolveIteration(ForStatementNode node)
 	{
@@ -5568,7 +5711,8 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			var cursor = new LocalVariableSymbol(HiddenName(node.Binding, "cursor"), pointer, false)
 			{
 				IsBorrowBinding = true,
-				IsMutBinding = true
+				IsMutBinding = true,
+				IsLoopSource = true
 			};
 			
 			return ResolveCursor(node, cursor,
@@ -5577,7 +5721,8 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		
 		return TypePool.FindValueDyn(type) is { } dyn
 			? RejectIteration(node, $"Cannot use '{dyn.Name}' by value", node.Source.SourceLocation)
-			: ResolveCursor(node, new LocalVariableSymbol(HiddenName(node.Binding, "cursor"), type, true), source,
+			: ResolveCursor(node,
+				new LocalVariableSymbol(HiddenName(node.Binding, "cursor"), type, true) { IsLoopSource = true }, source,
 				false);
 	}
 	
@@ -5589,7 +5734,8 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		var sourceSymbol = new LocalVariableSymbol(HiddenName(node.Binding, "source"), pointer, false)
 		{
 			IsBorrowBinding = true,
-			IsMutBinding = isMut
+			IsMutBinding = isMut,
+			IsLoopSource = true
 		};
 		
 		IResolvedExpressionNode sourceValue = isMut
@@ -5898,11 +6044,28 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		else
 		{
 			var candidates = _operatorRegistry.GetBinaryCandidates(op.Type);
-			var left = Decay(VisitOperand(node.Left, candidates, 0));
+			var operators = candidates;
 			var isConjunction = op.Type == TokenType.OpAmpersandAmpersand;
-			var right = Decay(isConjunction
-				? VisitInScope(node.Right, GetTrueBindings(left))
-				: VisitOperand(node.Right, [..candidates, ..FindOperatorCallables(left.Type, op.Text)], 1));
+			IResolvedExpressionNode left, right;
+			var leftTrial = OpenCheckpoint();
+			left = Decay(VisitOperand(node.Left, candidates, 0));
+			if (!isConjunction && FailsInference(node.Left, left, leftTrial))
+			{
+				Rollback(leftTrial);
+				right = Decay(VisitOperand(node.Right, candidates, 1));
+				left = Decay(VisitPeerOperand(node.Left, () => VisitOperand(node.Left, operators, 0), right.Type));
+			}
+			else
+			{
+				Commit(leftTrial);
+				var leftType = left.Type;
+				right = Decay(isConjunction
+					? VisitInScope(node.Right, GetTrueBindings(left))
+					: VisitPeerOperand(node.Right,
+						() => VisitOperand(node.Right, [..operators, ..FindOperatorCallables(leftType, op.Text)], 1,
+							leftType),
+						leftType));
+			}
 			
 			if (isConjunction)
 				ReportRepeatedBindings(GetTrueBindings(left).Concat(GetTrueBindings(right)));
@@ -5979,8 +6142,8 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 						return defaulted;
 				}
 				
-				left = ResolveUnmatched(left);
-				right = ResolveUnmatched(right);
+				left = ResolveUnmatched(left, right.Type);
+				right = ResolveUnmatched(right, left.Type);
 				if (AnyInvalid(left, right))
 					return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
 				
@@ -6418,9 +6581,14 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	public IResolvedExpressionNode Visit(ChainedExpressionNode node)
 	{
 		// We push null to allow sub-expressions to resolve naturally; then, we attempt to implicit cast to actual type
-		var operands = new List<IResolvedExpressionNode>(node.Operands.Length);
-		foreach (var operand in node.Operands)
-			operands.Add(Decay(VisitNode(operand, null)));
+		var visited = node.Operands
+			.Select(operand => IsCaseNameSyntax(operand) ? null : Decay(VisitNode(operand, null)))
+			.ToArray();
+		
+		var peers = visited.OfType<IResolvedExpressionNode>().Select(static operand => operand.Type).ToList();
+		var operands = node.Operands
+			.Select((operand, i) => visited[i] ?? VisitCaseName(operand, peers) ?? Decay(VisitNode(operand, null)))
+			.ToList();
 		
 		if (Enumerable.Range(0, node.Ops.Length)
 		    .Any(i => DeclaresOperator(operands[i].Type, operands[i + 1].Type, node.Ops[i].Text)))
@@ -7367,7 +7535,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		
 		foreach (var instantiation in locations)
 			Diagnostics.Add(new(DiagnosticSeverity.Error, instantiation.Location,
-				$"Instantiating '{instantiation.To.Owner.Name}' never ends"));
+				$"Instantiating '{DescribeInstantiated(instantiation.To.Owner)}' never ends"));
 		
 		return;
 		
@@ -8103,6 +8271,13 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		ImmutableArray<SourceLocation> Locations,
 		SourceLocation Location
 	);
+	
+	private static string DescribeInstantiated(Symbol owner) => owner switch
+	{
+		FunctionSymbol { Property: { ContainingType: { } type } property } => $"{type.Name}.{property.Name}",
+		FunctionSymbol { Property: { } property } => property.Name,
+		_ => owner.Name
+	};
 	
 	private readonly record struct Instantiation
 	(

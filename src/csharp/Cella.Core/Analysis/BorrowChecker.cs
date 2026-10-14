@@ -309,6 +309,9 @@ public sealed class BorrowChecker
 		if (endings.Any(static invalidation => invalidation.Ending == Ending.Iteration))
 			endings = [..endings.Where(static invalidation => invalidation.Ending == Ending.Iteration)];
 		
+		if (holder is LocalVariableSymbol { IsLoopSource: true })
+			context ??= "Borrowed by this loop";
+		
 		var message = endings[0].Ending switch
 		{
 			Ending.Moved => "Cannot use borrows of moved values",

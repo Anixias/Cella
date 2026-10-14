@@ -4,12 +4,12 @@
 Error at line 8, column 62
 7 │ 
 8 │ grow[N: val usize]: fun(values: array[i32, N]) -> array[i32, N + 1] = undef
-                                                                 ╘═══╛ Cannot use arithmetic on value parameters in types
+                                                                 ╘═══╛ Cannot use arithmetic on value parameters in generic arguments
 
 Error at line 12, column 20
 11 │ {
 12 │     items: array[i32, N * 2]
-                           ╘═══╛ Cannot use arithmetic on value parameters in types
+                           ╘═══╛ Cannot use arithmetic on value parameters in generic arguments
 
 Error at line 17, column 20
 16 │ {

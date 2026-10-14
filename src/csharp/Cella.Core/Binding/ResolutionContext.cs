@@ -22,6 +22,8 @@ public readonly struct ResolutionContext
 	public Func<IExpressionNode, ResolutionContext, TypeSymbol?, Constant?>? EvaluateConstant { get; init; }
 	public Dictionary<IndexerExpressionNode, TypeSymbol?>? GenericTypes { get; init; }
 	public ImmutableArray<TypeParameterSymbol> TypeParameters { get; init; }
+	public ImmutableArray<TypeParameterSymbol> ExcludedParameters { get; init; }
+	public string? ExclusionPlace { get; init; }
 	public TraitSymbol? Trait { get; init; }
 	public ImplSymbol? ImplBlock { get; init; }
 	public Func<ConstraintCheck, bool>? DeferConstraintCheck { get; init; }
@@ -99,7 +101,7 @@ public readonly struct ResolutionContext
 	public Symbol? Resolve(string name)
 	{
 		if (ResolveScoped(name) is { } scoped)
-			return scoped;
+			return IsExcluded(scoped) ? null : scoped;
 		
 		List<Symbol> module = [..GetModuleSymbols(name).Where(IsVisible)];
 		if (Imports is { } environment && environment.Resolve(name) is { Length: > 0 } imports)
@@ -110,6 +112,10 @@ public readonly struct ResolutionContext
 		
 		return NativeSymbols.Resolve(name) ?? Modules?.Root.Children.GetValueOrDefault(name);
 	}
+	
+	private bool IsExcluded(Symbol symbol) =>
+		symbol is TypeParameterSymbol parameter && !ExcludedParameters.IsDefault &&
+		ExcludedParameters.Contains(parameter);
 	
 	private static bool IsKeptBeside(ImportEnvironment imports, Symbol import, List<Symbol> module) =>
 		module.Count == 0 || imports.IsExplicit(import) ||
@@ -186,6 +192,11 @@ public readonly struct ResolutionContext
 	
 	public Diagnostic? ReportHidden(string name, SourceLocation location)
 	{
+		if (!ExcludedParameters.IsDefault &&
+		    ExcludedParameters.FirstOrDefault(parameter => parameter.Name == name) is { } excluded)
+			return new(DiagnosticSeverity.Error, location,
+				$"Cannot use {(excluded.IsValue ? "value" : "type")} parameters in {ExclusionPlace}");
+		
 		foreach (var symbol in GetModuleSymbols(name).Concat(Imports?.ResolveHidden(name) ?? []))
 		{
 			if (!IsVisible(symbol))
@@ -726,7 +737,7 @@ public readonly struct ResolutionContext
 		
 		if (MentionsValueParameter(expression))
 		{
-			Report(expression, "Cannot use arithmetic on value parameters in types");
+			Report(expression, "Cannot use arithmetic on value parameters in generic arguments");
 			return NativeSymbols.Invalid;
 		}
 		

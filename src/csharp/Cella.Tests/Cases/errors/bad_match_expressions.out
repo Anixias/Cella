@@ -34,7 +34,7 @@ Error at line 23, column 34
 Error at line 24, column 16
 23 │ val e = match r { fighter => 1  mage => 2 }
 24 │ val f = match 5 { fighter => 1 }
-                   ^ 'integer literal' is not an enum
+                   ^ Cannot match 'integer literal' values
 
 Error at line 25, column 37
 24 │ val f = match 5 { fighter => 1 }

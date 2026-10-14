@@ -1,0 +1,10 @@
+mod test
+
+ring[N: val usize]: rec
+{
+	value: i32
+
+	f[N: val usize]: fun(imm self) -> usize = N
+}
+
+main: fun -> i32 = 0

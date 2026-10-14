@@ -105,8 +105,15 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool, 
 		var errorCount = Diagnostics.ErrorCount;
 		VisitNode(initializer);
 		
-		if (node.Info.Value is null && Diagnostics.ErrorCount == errorCount &&
-		    FindNonConstant(initializer) is { } blocking)
+		if (node.Info.Value is not null || Diagnostics.ErrorCount != errorCount ||
+		    FindNonConstant(initializer) is not { } blocking)
+			return;
+		
+		if (typePool.HoldsBorrows(node.Info.Type))
+			Diagnostics.Add(new(DiagnosticSeverity.Error,
+				node.Syntax is GlobalNode global ? global.Type.SourceLocation : blocking.Syntax.SourceLocation,
+				$"Cannot store borrows in {(node.Info.Symbol.ContainingType is null ? "module" : "static")} values"));
+		else
 			Diagnostics.Add(new(DiagnosticSeverity.Error, blocking.Syntax.SourceLocation,
 				$"The initial value of '{node.Info.Symbol.Name}' must be a constant"));
 	}
@@ -354,9 +361,16 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool, 
 	};
 	
 	private static bool IsDeferredWrite(ResolvedAssignmentExpressionNode node) =>
-		node is
+		node is { Left: ResolvedVarExpressionNode { Symbol: LocalVariableSymbol { IsDeferred: true } } };
+	
+	private static string DescribeImmutableWrite(IResolvedExpressionNode place, VariableSymbol binding) =>
+		binding switch
 		{
-			Operation: null, Left: ResolvedVarExpressionNode { Symbol: LocalVariableSymbol { IsDeferred: true } }
+			LocalVariableSymbol { Captured: LocalVariableSymbol { IsDeferred: true } } =>
+				"Cannot assign values in closures",
+			LocalVariableSymbol { IsDeferred: true } when place is not ResolvedVarExpressionNode =>
+				"Cannot assign parts of values",
+			_ => $"Cannot reassign {DescribeImmutable(binding)}"
 		};
 	
 	private static string DescribeImmutable(VariableSymbol binding) => binding switch
@@ -473,7 +487,7 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool, 
 				$"Cannot write through '{text.Name}'"));
 		else if (!IsDeferredWrite(node) && FindImmutableBinding(node.Left) is { } binding)
 			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Left.Syntax.SourceLocation,
-				$"Cannot reassign {DescribeImmutable(binding)}"));
+				DescribeImmutableWrite(node.Left, binding)));
 		else if (node.IsOwnStore)
 			CheckOwnStore(node);
 		

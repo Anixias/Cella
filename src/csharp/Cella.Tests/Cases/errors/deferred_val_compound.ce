@@ -1,0 +1,8 @@
+mod test
+
+main: fun -> i32
+{
+	val later: i32
+	later += 1
+	ret 0
+}

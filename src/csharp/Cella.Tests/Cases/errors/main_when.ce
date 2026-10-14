@@ -1,0 +1,6 @@
+mod test
+
+main: fun -> i32 when debug
+{
+	ret 0
+}

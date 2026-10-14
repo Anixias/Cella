@@ -14,7 +14,7 @@ Error at line 15, column 19
 Error at line 16, column 16
 15 │ val empty = pick(none(1))
 16 │ val untyped = none
-                   ╘══╛ Symbol 'none' not found in this scope
+                   ╘══╛ Cannot infer the type of 'none'
 
 Error at line 17, column 16
 16 │ val untyped = none

@@ -16,6 +16,7 @@ public sealed class InferenceResult
 	public ImmutableArray<TypeParameterSymbol> Missing { get; init; } = [];
 	public TypeParameterSymbol? Conflicted { get; init; }
 	public ImmutableArray<TypeSymbol> Candidates { get; init; } = [];
+	public ImmutableArray<TypeSymbol> WrittenCandidates { get; init; } = [];
 	public bool Succeeded => Missing.IsEmpty && Conflicted is null;
 }
 
@@ -31,7 +32,7 @@ public sealed class TypeInference(TypePool typePool)
 			if (Fix(bounds.Exact[i], bounds.Lower[i], out var conflict) is { } type)
 				inferred[i] = type;
 			else if (!conflict.IsEmpty)
-				return new() { Conflicted = parameters[i], Candidates = conflict };
+				return new() { Conflicted = parameters[i], Candidates = conflict, WrittenCandidates = conflict };
 		}
 		
 		FillFromTarget(parameters, inferred, null, returnType, target);
@@ -43,7 +44,17 @@ public sealed class TypeInference(TypePool typePool)
 				continue;
 			
 			if (FixLiterals(bounds.Literals[i], out var conflict) is not { } type)
-				return new() { Conflicted = parameters[i], Candidates = conflict };
+				return new()
+				{
+					Conflicted = parameters[i], Candidates = conflict,
+					WrittenCandidates =
+					[
+						..bounds.Literals[i]
+							.Select(static literal =>
+								literal.Literal is UntypedNullType ? literal.Literal : literal.Default)
+							.Distinct()
+					]
+				};
 			
 			inferred[i] = type;
 		}

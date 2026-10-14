@@ -1,0 +1,19 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+make[T: new()]: fun -> T = T()
+
+main: fun -> i32
+{
+	val x: i64 = 4
+	val sum = x + make()
+	val flipped = make() + x
+	val same = x == make()
+	val converted = i64(make())
+	printf("%lld %lld %d %lld\n", sum, flipped, i32(same), converted)
+	ret 0
+}

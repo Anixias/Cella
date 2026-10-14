@@ -143,7 +143,7 @@ public static class DiagnosticReporter
 		new(DiagnosticSeverity.Error, location,
 			$"'{name}' is write-only outside its {DescribeScope(visibility, true)}");
 	
-	private static string DescribeScope(Visibility visibility, bool isMember) => visibility switch
+	public static string DescribeScope(Visibility visibility, bool isMember) => visibility switch
 	{
 		Visibility.Project => "project",
 		Visibility.Private => isMember ? "type" : "file",

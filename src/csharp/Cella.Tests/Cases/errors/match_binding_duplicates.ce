@@ -1,0 +1,82 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+result[T, E]: enum { ok(value: T)  err(error: E) }
+
+nullable[T: null]: enum match T
+{
+	none = null
+	some(value) = else
+}
+
+Buffer: rec
+{
+	id: i32
+
+	drop: op
+	{
+	}
+}
+
+Holder: enum { none  hold(b: Buffer) }
+
+Effect: enum { none  d(b: Buffer) }
+
+R: rec
+{
+	e: Effect
+
+	drop: op
+	{
+	}
+}
+
+make: fun -> R = R(Effect.d(Buffer(1)))
+
+uninitialized: fun -> i32
+{
+	var r: result[i32, i32]
+	ret match r { ok(v) => v  err(e) => e }
+}
+
+moved: fun
+{
+	var e = Holder.hold(Buffer(1))
+	val taken = own e
+	match e
+	{
+		hold(b) => printf("%d\n", b.id)
+		none => {}
+	}
+}
+
+dangling: fun
+{
+	var y = 0
+	var n: nullable[imm[i32]] = some(imm y)
+	{
+		var x = 5
+		n = some(imm x)
+	}
+
+	match n
+	{
+		some(v) => printf("%d\n", v)
+		none => printf("none\n")
+	}
+}
+
+destructorField: fun
+{
+	match make().e
+	{
+		d(b) => printf("%d\n", b.id)
+		none => {}
+	}
+}
+
+main: fun -> i32 = 0

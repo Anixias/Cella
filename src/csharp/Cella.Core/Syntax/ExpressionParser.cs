@@ -250,6 +250,13 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 	public PatternNode ParsePattern(ref int index)
 	{
 		var start = index;
+		if (StartsBorrowType(index))
+		{
+			var borrow = ParseType(ref index);
+			throw new ParseException(new Diagnostic(DiagnosticSeverity.Error, borrow.SourceLocation,
+				"Cannot test for borrow types"));
+		}
+		
 		if (!Match(ref index, out var first, TokenType.Identifier))
 			throw Expected(index, "a case name");
 		
@@ -889,6 +896,10 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 	{
 		if (Match(ref index, out var literal, _literalTypes))
 			return new(literal);
+		
+		if (Peek(index, TokenType.KeywordDrop))
+			throw new ParseException(new Diagnostic(DiagnosticSeverity.Error, Tokens[index].SourceLocation,
+				"Cannot use 'drop' as a value"));
 		
 		throw Expected(index, "an expression");
 	}

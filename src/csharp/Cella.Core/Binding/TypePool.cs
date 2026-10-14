@@ -7,6 +7,7 @@ using Cella.Core.Binding.Operations;
 using Cella.Core.Collections;
 using Cella.Core.Symbols;
 using Cella.Core.Text;
+using Cella.Diagnostics;
 
 namespace Cella.Core.Binding;
 
@@ -1200,8 +1201,10 @@ public sealed class TypePool
 		if (parameter.HasNew && !HasNew(argument))
 			return ("new()", $"'{name}' has no constructor without parameters");
 		
-		if (FindMissingConstructor(parameter, argument, map) is { } missing)
-			return ($"new({missing})", $"'{name}' has no constructor taking '{missing}'");
+		if (FindMissingConstructor(parameter, argument, map) is var (missing, hidden))
+			return ($"new({missing})", hidden is { } visibility
+				? $"'{name}({missing})' is private to its {DiagnosticReporter.DescribeScope(visibility, true)}"
+				: $"'{name}' has no constructor taking '{missing}'");
 		
 		if (FindUnmetTrait(parameter, argument, map) is { } trait)
 			return (trait.Name, $"'{name}' doesn't implement '{trait.Name}'");
@@ -1253,8 +1256,8 @@ public sealed class TypePool
 			.FirstOrDefault(bound => !Conforms(argument, bound));
 	}
 	
-	private string? FindMissingConstructor(TypeParameterSymbol parameter, TypeSymbol argument,
-		IReadOnlyDictionary<TypeParameterSymbol, TypeSymbol>? map)
+	private (string Parameters, Visibility? Hidden)? FindMissingConstructor(TypeParameterSymbol parameter,
+		TypeSymbol argument, IReadOnlyDictionary<TypeParameterSymbol, TypeSymbol>? map)
 	{
 		var bounds = GetConstructorBounds(parameter);
 		if (bounds.IsEmpty)
@@ -1266,8 +1269,18 @@ public sealed class TypePool
 			.Select(bound => SubstituteSignature(bound.Signature, substitution))
 			.FirstOrDefault(expected => !expected.ParameterTypes.Any(static type => type is InvalidType) &&
 			                            !HasConstructor(argument, expected)) is { } missing
-			? DescribeParameters(missing)
+			? (DescribeParameters(missing), FindHiddenConstructor(argument, missing))
 			: null;
+	}
+	
+	private Visibility? FindHiddenConstructor(TypeSymbol type, FunctionSignature expected)
+	{
+		var floor = GetConstructorFloor(type);
+		return GetConstructors(type)
+			.Where(constructor => constructor.Symbol.Visibility < floor &&
+			                      MatchesConstructor(constructor.Signature, expected, true))
+			.Select(static constructor => (Visibility?)constructor.Symbol.Visibility)
+			.FirstOrDefault();
 	}
 	
 	private string? FindUnmetBound(TypeParameterSymbol parameter, TypeSymbol argument,

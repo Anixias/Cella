@@ -638,7 +638,9 @@ public sealed class Lowerer
 			{
 				var binding = pattern.Bindings[i];
 				var location = binding?.Identifier.SourceLocation ?? scrutinee.SourceLocation;
-				var payload = new EnumPayloadValue(payloadTypes[i], scrutinee, pattern.Case!, i, location);
+				var payload = new EnumPayloadValue(payloadTypes[i], scrutinee, pattern.Case!, i,
+					scrutinee.SourceLocation);
+				
 				var isMoved = ownsValue && _typePool.NeedsDrop(payloadTypes[i]);
 				switch (binding)
 				{

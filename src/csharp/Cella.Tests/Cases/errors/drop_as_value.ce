@@ -1,0 +1,18 @@
+mod test
+
+A: rec
+{
+	v: i32
+
+	drop: op
+	{
+	}
+}
+
+main: fun -> i32
+{
+	var a = A(3)
+	val p = @a
+	val y = drop *p
+	ret 0
+}

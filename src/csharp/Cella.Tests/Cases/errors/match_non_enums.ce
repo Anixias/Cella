@@ -1,0 +1,31 @@
+mod test
+
+Shape: trait
+{
+	area: fun(imm self) -> i32
+}
+
+A: rec impl Shape
+{
+	v: i32
+
+	area: fun(imm self) -> i32 = self.v
+}
+
+throughPointer: fun -> i32
+{
+	var a = A(3)
+	val p: ptr[dyn[Shape]] = @a
+	if p is A
+		ret 1
+
+	ret 0
+}
+
+concrete: fun -> i32
+{
+	val a = A(3)
+	ret match a { A => 1  else => 0 }
+}
+
+main: fun -> i32 = 0

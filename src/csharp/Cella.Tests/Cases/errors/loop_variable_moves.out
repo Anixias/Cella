@@ -20,6 +20,7 @@ Error at line 62, column 14
 61 │ var group = [Name(3), Name(4)]
 62 │ for name in group
                  ╘═══╛ Cannot use borrows of moved values
+                     | Borrowed by this loop
                      | Moved on line 63
 
 Error at line 63, column 15
@@ -38,6 +39,7 @@ Error at line 72, column 15
 71 │ var d = Countdown(3)
 72 │ for x in mut d
                   ^ Cannot use borrows of moved values
+                  | Borrowed by this loop
                   | Moved on line 73
 
 Error at line 73, column 14

@@ -1,0 +1,10 @@
+mod test
+
+main: fun -> i32
+{
+	val s = 3
+	if s is imm[i32]
+		ret 1
+
+	ret 0
+}

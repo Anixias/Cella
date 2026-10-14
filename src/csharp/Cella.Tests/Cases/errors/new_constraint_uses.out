@@ -42,7 +42,7 @@ Error at line 78, column 7
 77 │ make[Point]()
 78 │ make[Secret]()
           ╘════╛ 'make' requires 'T: new(i32)'
-               | 'Secret' has no constructor taking 'i32'
+               | 'Secret(i32)' is private to its type
 
 Error at line 79, column 7
 78 │ make[Secret]()
