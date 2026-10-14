@@ -1,0 +1,15 @@
+
+====== record_pattern_syntax.ce ======
+
+Error at line 23, column 22
+22 │ val h = Holder(1)
+23 │ if h is Holder(count: c: i32)
+                         ^ Expected ',' or ')'
+                         | To match the '(' on line 23
+
+Error at line 31, column 8
+30 │ {
+31 │     1..10 n => n
+               ^ Expected '=>'
+
+[compilation failed]

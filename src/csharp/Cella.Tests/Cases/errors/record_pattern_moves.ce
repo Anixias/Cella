@@ -1,0 +1,58 @@
+mod test
+
+Name: rec
+{
+	id: i32
+
+	drop: op {}
+}
+
+Holder: rec
+{
+	name: Name
+
+	drop: op {}
+}
+
+Pair: rec
+{
+	first: Name
+	second: Name
+}
+
+Shot: enum { miss  hit(at: Pair, damage: i32) }
+
+destructor: fun -> i32
+{
+	var h = Holder(Name(1))
+	match h
+	{
+		Holder(own name) => {}
+	}
+
+	ret 0
+}
+
+borrowed: fun(imm p: Pair) -> i32
+{
+	match p
+	{
+		Pair(own first) => {}
+	}
+
+	ret 0
+}
+
+usedAfter: fun -> i32
+{
+	var p = Pair(Name(1), Name(2))
+	match p
+	{
+		Pair(own first) => {}
+	}
+
+	val q = p
+	ret 0
+}
+
+main: fun -> i32 = 0

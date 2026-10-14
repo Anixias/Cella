@@ -1,0 +1,107 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Point: rec
+{
+	x: i32
+	y: i32
+}
+
+Enemy: rec
+{
+	health: i32
+	position: Point
+	level: u8
+}
+
+where: fun(p: Point) -> i32 = match p
+{
+	Point(x: 0, y: 0) => 0
+	Point(x: 0, y) => 100 + y
+	Point(x: > 10, y: py) => 200 + py
+	Point(x, y) => x * y
+}
+
+state: fun(e: Enemy) -> i32 = match e
+{
+	Enemy(health: <= 0) => -1
+	Enemy(health: 1..20 hp, position: Point(x: 0)) => hp
+	Enemy(health: 1..20 hp, position) => hp * 1000 + position.x
+	Enemy(level: 5 l) => i32(l)
+	else => 99
+}
+
+Shot: enum { miss  hit(at: Point, damage: i32) }
+
+score: fun(s: Shot) -> i32 = match s
+{
+	hit(Point(x: 0), 1..10 d) => d
+	hit(Point(x, y) p, > 50) => p.x + p.y + x + y
+	hit(_, d) => -d
+	miss => 0
+}
+
+Shape: trait
+{
+	area: fun(imm self) -> f32
+}
+
+Circle: rec impl Shape
+{
+	radius: f32
+
+	area: fun(imm self) -> f32 = 3.0 * self.radius * self.radius
+}
+
+Square: rec impl Shape
+{
+	side: f32
+
+	area: fun(imm self) -> f32 = self.side * self.side
+}
+
+size: fun(imm shape: dyn[Shape]) -> i32 = match shape
+{
+	Circle(radius: > 10.0) => 1
+	Circle(radius) => i32(radius)
+	s: Square => i32(s.side) * 100
+	else => 0
+}
+
+Box[T]: rec
+{
+	value: T
+	count: i32
+}
+
+Origin: val Point = Point(0, 3)
+Check: val i32 = match Origin { Point(x: 0, y) => y  else => 9 }
+
+main: fun -> i32
+{
+	printf("%d %d %d %d\n", where(Point(0, 0)), where(Point(0, 7)), where(Point(11, 3)), where(Point(2, 3)))
+	printf("%d %d %d %d %d\n", state(Enemy(0, Point(1, 1), 1)), state(Enemy(10, Point(0, 4), 1)), state(Enemy(10, Point(3, 4), 1)), state(Enemy(50, Point(3, 4), 5)), state(Enemy(50, Point(3, 4), 6)))
+	val e = Enemy(5, Point(2, 9), 3)
+	if e is Enemy(health: < 10, position: Point(y)) && y > 8
+		printf("low %d\n", y)
+
+	printf("%d %d %d %d\n", score(Shot.hit(Point(0, 5), 7)), score(Shot.hit(Point(1, 2), 60)), score(Shot.hit(Point(1, 2), 3)), score(Shot.miss))
+	val big = Circle(20.0)
+	val small = Circle(3.0)
+	val sq = Square(2.0)
+	printf("%d %d %d\n", size(imm big), size(imm small), size(imm sq))
+	val b = Box[i32](7, 2)
+	val r = match b
+	{
+		Box(value: 7, count) => count
+		else => 0
+	}
+
+	printf("%d\n", r)
+	printf("%d\n", Check)
+	ret 0
+}

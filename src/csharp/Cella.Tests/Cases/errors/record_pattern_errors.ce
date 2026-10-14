@@ -1,0 +1,101 @@
+mod test
+
+Point: rec
+{
+	x: i32
+	y: i32
+}
+
+Enemy: rec
+{
+	health: i32
+	secret: pvt i32
+}
+
+Name: rec
+{
+	id: i32
+
+	drop: op {}
+}
+
+Holder: rec
+{
+	name: Name
+
+	drop: op {}
+}
+
+Pair: rec
+{
+	first: Name
+	second: Name
+}
+
+Shot: enum { miss  hit(at: Point, damage: i32) }
+
+positional: fun(p: Point) -> i32 = match p
+{
+	Point(0, y) => y
+	else => 0
+}
+
+unknown: fun(p: Point) -> i32 = match p
+{
+	Point(z: 1) => 1
+	else => 0
+}
+
+hidden: fun(e: Enemy) -> i32 = match e
+{
+	Enemy(secret: 1) => 1
+	else => 0
+}
+
+twice: fun(p: Point) -> i32 = match p
+{
+	Point(x: 1, x: 2) => 1
+	else => 0
+}
+
+wrongType: fun(p: Point) -> i32 = match p
+{
+	Enemy(health: 1) => 1
+	else => 0
+}
+
+namedPayload: fun(imm s: Shot) -> i32 = match s
+{
+	hit(at: a, damage: d) => d
+	else => 0
+}
+
+notRecord: fun(n: i32) -> i32 = match n
+{
+	i32(x: 1) => 1
+	else => 0
+}
+
+rebound: fun(p: Point) -> i32 = match p
+{
+	Point(x, y: x) => x
+}
+
+uncovered: fun(p: Point) -> i32 = match p
+{
+	Point(x: 0) => 1
+}
+
+guarded: fun -> i32
+{
+	var p = Pair(Name(1), Name(2))
+	match p
+	{
+		Pair(own first) if first.id > 0 => {}
+		else => {}
+	}
+
+	ret 0
+}
+
+main: fun -> i32 = 0

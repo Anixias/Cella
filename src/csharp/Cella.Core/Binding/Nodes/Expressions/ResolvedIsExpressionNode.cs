@@ -27,6 +27,9 @@ public sealed class ResolvedPattern(EnumCaseSymbol? enumCase, IEnumerable<LocalV
 {
 	public EnumCaseSymbol? Case { get; } = enumCase;
 	public TypeSymbol? TestedType { get; init; }
+	public LocalVariableSymbol? TypeBinding { get; init; }
+	public TypeSymbol? Record { get; init; }
+	public ImmutableArray<FieldSymbol> Fields { get; init; } = [];
 	public ImmutableArray<LocalVariableSymbol?> Bindings { get; } = bindings.ToImmutableArray();
 	public ImmutableArray<ResolvedPattern?> Elements { get; init; } = [];
 	public LocalVariableSymbol? Subject { get; init; }
@@ -34,9 +37,13 @@ public sealed class ResolvedPattern(EnumCaseSymbol? enumCase, IEnumerable<LocalV
 	public Constant? Constant { get; init; }
 	public ImmutableArray<(BigInteger Low, BigInteger High)> Spans { get; init; } = [];
 	
-	public bool IsConditional => Test is not null || Elements.Any(static element => element is not null);
+	public bool IsConditional =>
+		Test is not null || Elements.Any(static element => element is { IsIrrefutable: false });
+	
+	public bool IsIrrefutable => Record is not null && TestedType is null && !IsConditional;
 	
 	public IEnumerable<LocalVariableSymbol> AllBindings => Bindings.OfType<LocalVariableSymbol>()
+		.Concat(TypeBinding is null ? [] : [TypeBinding])
 		.Concat(Elements.OfType<ResolvedPattern>().SelectMany(static element => element.AllBindings));
 	
 	public bool HasBindings => AllBindings.Any();

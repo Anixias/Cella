@@ -223,6 +223,24 @@ public sealed class ConstantEvaluator
 			return result?.Value;
 		}
 		
+		if (pattern is { Record: not null, TestedType: null })
+		{
+			for (var i = 0; i < pattern.Fields.Length; i++)
+			{
+				if (pattern.Elements[i] is not { } element)
+					continue;
+				
+				if (GetField(value, pattern.Fields[i]) is not { } field ||
+				    MatchPattern(element, field) is not { } matches)
+					return null;
+				
+				if (!matches)
+					return false;
+			}
+			
+			return true;
+		}
+		
 		if (pattern.Case is not { } enumCase || value.Type is not EnumSymbol enumType || GetTag(value) is not { } tag)
 			return null;
 		
@@ -242,17 +260,29 @@ public sealed class ConstantEvaluator
 		? constant.Payload[index]
 		: Zero(typePool.GetPayloadTypes((EnumSymbol)value.Type, enumCase)[index]);
 	
+	private Constant? GetField(Constant value, FieldSymbol field) => value switch
+	{
+		RecordConstant record => record.Fields[typePool.GetFieldIndex(value.Type, field)],
+		ZeroConstant => Zero(typePool.GetTypeOfMember(field)),
+		_ => null
+	};
+	
 	private void Bind(ResolvedPattern pattern, Constant value)
 	{
-		if (pattern.Case is not { } enumCase)
-			return;
-		
 		for (var i = 0; i < pattern.Bindings.Length; i++)
 		{
+			var slot = pattern.Case is { } enumCase ? GetPayload(value, enumCase, i)
+				: pattern is { Record: not null, TestedType: null } ? GetField(value, pattern.Fields[i])
+				: null;
+			
+			if (slot is null)
+				continue;
+			
+			if (pattern.Elements.Length > i && pattern.Elements[i] is { } element)
+				Bind(element, slot);
+			
 			if (pattern.Bindings[i] is { } binding)
-				_bindings[binding] = GetPayload(value, enumCase, i);
-			else if (pattern.Elements.Length > i && pattern.Elements[i] is { } element)
-				Bind(element, GetPayload(value, enumCase, i));
+				_bindings[binding] = slot;
 		}
 	}
 	

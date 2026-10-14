@@ -262,7 +262,9 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 	
 	public ConditionParser? ParseWhenCondition { get; init; }
 	
-	public PatternNode ParsePattern(ref int index)
+	public PatternNode ParsePattern(ref int index) => ParsePattern(ref index, true);
+	
+	private PatternNode ParsePattern(ref int index, bool allowsTypeBinding)
 	{
 		if (StartsBorrowType(index))
 		{
@@ -275,7 +277,7 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 			return PatternNode.CreateRelational(relation, ParseBitwiseOr(ref index));
 		
 		var start = index;
-		var named = TryParse(start, ParseNamedPattern, out var namedEnd);
+		var named = TryParse(start, (ref i) => ParseNamedPattern(ref i, allowsTypeBinding), out var namedEnd);
 		var value = TryParse(start, ParseBitwiseOr, out var valueEnd);
 		if (named is not null && (value is null || namedEnd >= valueEnd))
 		{
@@ -319,13 +321,13 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 		}
 	}
 	
-	private PatternNode ParseNamedPattern(ref int index)
+	private PatternNode ParseNamedPattern(ref int index, bool allowsTypeBinding)
 	{
 		var start = index;
 		if (!Match(ref index, out var first, TokenType.Identifier))
 			throw Expected(index, "a pattern");
 		
-		if (!IsNextNewline(index) && Match(ref index, TokenType.OpColon))
+		if (allowsTypeBinding && !IsNextNewline(index) && Match(ref index, TokenType.OpColon))
 		{
 			var type = ParseType(ref index);
 			var (bindingSource, bindingRange) = first.SourceLocation;
@@ -379,20 +381,32 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 	
 	private PatternNode ParseElement(ref int index)
 	{
-		if (Match(ref index, out var mode, _bindingModes))
-		{
-			if (!Match(ref index, out var named, TokenType.Identifier))
-				throw Expected(index, "a name or '_'");
-			
-			return PatternNode.CreateBinding(mode, named);
-		}
+		if (Peek(index, TokenType.Identifier) && Peek(index + 1, TokenType.OpColon) &&
+		    Match(ref index, out var field, TokenType.Identifier) && Match(ref index, TokenType.OpColon))
+			return ParseElementPattern(ref index).WithField(field);
 		
-		if (Peek(index, TokenType.Identifier) &&
-		    (Peek(index + 1, TokenType.OpComma) || Peek(index + 1, TokenType.OpCloseParen)) &&
-		    Match(ref index, out var name, TokenType.Identifier))
-			return PatternNode.CreateBinding(null, name);
+		return ParseElementPattern(ref index);
+	}
+	
+	private PatternNode ParseElementPattern(ref int index)
+	{
+		var probe = index;
+		if (Match(ref probe, _bindingModes) || EndsElement(index + 1) && Peek(index, TokenType.Identifier))
+			return ParseBinding(ref index);
 		
-		return ParsePattern(ref index);
+		var pattern = ParsePattern(ref index, false);
+		return EndsElement(index) ? pattern : pattern.WithBinding(ParseBinding(ref index));
+	}
+	
+	private bool EndsElement(int index) => Peek(index, TokenType.OpComma) || Peek(index, TokenType.OpCloseParen);
+	
+	private PatternNode ParseBinding(ref int index)
+	{
+		Token? mode = Match(ref index, out var modeToken, _bindingModes) ? modeToken : null;
+		if (!Match(ref index, out var name, TokenType.Identifier))
+			throw Expected(index, mode is null ? "',' or ')'" : "a name or '_'");
+		
+		return PatternNode.CreateBinding(mode, name);
 	}
 	
 	public (List<PatternNode> Patterns, IExpressionNode? Guard, SourceLocation Location) ParseArmHead(ref int index)

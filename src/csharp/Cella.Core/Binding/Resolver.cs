@@ -838,24 +838,41 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		_ => false
 	};
 	
-	private bool MovesPayload(PatternNode? pattern, EnumSymbol enumType)
+	private bool MovesPayload(PatternNode? pattern, TypeSymbol type)
 	{
-		if (pattern is not { Kind: PatternKind.Case } ||
+		if (pattern is null)
+			return false;
+		
+		if (pattern.Binding is { } binding && MovesValue(binding, type))
+			return true;
+		
+		if (type is not EnumSymbol enumType)
+			return pattern.IsDestructuring && pattern.Elements.Any(element =>
+				GetFieldName(element) is { } name && _typePool.ResolveMember(type, name.Text) is FieldSymbol field &&
+				MovesSlot(element, GetMemberType(field)));
+		
+		if (pattern.Kind != PatternKind.Case ||
 		    enumType.Cases.FirstOrDefault(c => c.Name == pattern.CaseName.Text) is not { } enumCase)
 			return false;
 		
 		var payloadTypes = _typePool.GetPayloadTypes(enumType, enumCase);
 		for (var i = 0; i < pattern.Elements.Length && i < payloadTypes.Length; i++)
 		{
-			var element = pattern.Elements[i];
-			if (element is { Kind: PatternKind.Binding, Mode.Type: TokenType.KeywordOwn or TokenType.KeywordVar } &&
-			    !_typePool.IsCopy(payloadTypes[i]) ||
-			    payloadTypes[i] is EnumSymbol payloadEnum && MovesPayload(element, payloadEnum))
+			if (MovesSlot(pattern.Elements[i], payloadTypes[i]))
 				return true;
 		}
 		
 		return false;
 	}
+	
+	private bool MovesSlot(PatternNode element, TypeSymbol type) =>
+		element.Kind == PatternKind.Binding ? MovesValue(element, type) : MovesPayload(element, type);
+	
+	private bool MovesValue(PatternNode binding, TypeSymbol type) =>
+		binding.Mode?.Type is TokenType.KeywordOwn or TokenType.KeywordVar && !_typePool.IsCopy(type);
+	
+	private static Token? GetFieldName(PatternNode element) =>
+		element.Field ?? (element.Kind == PatternKind.Binding ? element.CaseName : null);
 	
 	private bool OwnsValue(IResolvedExpressionNode value, EnumSymbol? enumType) =>
 		enumType is not null && !_typePool.IsCopy(enumType) && !IsStored(value);
@@ -890,11 +907,13 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		for (var i = 0; i < payloadTypes.Length; i++)
 		{
 			var element = pattern.Elements[i];
-			if (element.Kind == PatternKind.Binding)
-				bindings[i] = CreateBinding(element.CaseName, element.Mode, payloadTypes[i], isMut, ownsValue);
-			else if (ResolveArmPattern(element, payloadTypes[i], isMut, ownsValue) is { } nested)
-				elements[i] = nested;
-			else
+			if (element.Field is { } field)
+			{
+				Diagnostics.Add(new(DiagnosticSeverity.Error, field.SourceLocation, "Cannot name payload values"));
+				return null;
+			}
+			
+			if (!ResolveSlot(element, payloadTypes[i], isMut, ownsValue, false, out bindings[i], out elements[i]))
 				return null;
 		}
 		
@@ -910,15 +929,61 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		return resolved;
 	}
 	
-	private ImmutableArray<LocalVariableSymbol?> CreateBindings(PatternNode pattern, bool isMut, bool ownsValue) =>
-		pattern.TypeBinding is { } typeBinding
-			? [CreateBinding(typeBinding, null, NativeSymbols.Invalid, isMut, ownsValue)]
-			:
-			[
-				..pattern.Elements.SelectMany(element => element.Kind == PatternKind.Binding
-					? [CreateBinding(element.CaseName, element.Mode, NativeSymbols.Invalid, isMut, ownsValue)]
-					: CreateBindings(element, isMut, ownsValue))
-			];
+	private bool ResolveSlot(PatternNode element, TypeSymbol type, bool isMut, bool ownsValue, bool movesFields,
+		out LocalVariableSymbol? binding, out ResolvedPattern? nested)
+	{
+		binding = null;
+		nested = null;
+		if (element.Kind == PatternKind.Binding)
+		{
+			binding = CreateBinding(element.CaseName, element.Mode, type, isMut,
+				ownsValue || movesFields && MovesValue(element, type));
+			
+			return true;
+		}
+		
+		if (type is DynType dyn && element.Kind is PatternKind.Case or PatternKind.Type)
+		{
+			nested = ResolveTypePattern(element, dyn, isMut, element.Binding);
+			return nested is not null;
+		}
+		
+		nested = ResolveArmPattern(element, type, isMut, ownsValue);
+		if (nested is null)
+			return false;
+		
+		if (element.Binding is not { } trailing)
+			return true;
+		
+		binding = CreateBinding(trailing.CaseName, trailing.Mode, type, isMut,
+			ownsValue || movesFields && MovesValue(trailing, type));
+		
+		if (binding is { IsBorrowBinding: false } && _typePool.NeedsDrop(type) && nested.HasBindings)
+			Diagnostics.Add(new(DiagnosticSeverity.Error, binding.Identifier.SourceLocation,
+				$"Cannot move '{binding.Name}' and bind its parts"));
+		
+		return true;
+	}
+	
+	private List<LocalVariableSymbol?> CreateBindings(PatternNode pattern, bool isMut, bool ownsValue)
+	{
+		var bindings = new List<LocalVariableSymbol?>();
+		if (pattern.TypeBinding is { } typeBinding)
+			bindings.Add(CreateBinding(typeBinding, null, NativeSymbols.Invalid, isMut, ownsValue));
+		
+		if (pattern.Binding is { } trailing)
+			bindings.Add(CreateBinding(trailing.CaseName, trailing.Mode, NativeSymbols.Invalid, isMut, ownsValue));
+		
+		foreach (var element in pattern.Elements)
+		{
+			if (element.Kind == PatternKind.Binding)
+				bindings.Add(CreateBinding(element.CaseName, element.Mode, NativeSymbols.Invalid, isMut, ownsValue));
+			else
+				bindings.AddRange(CreateBindings(element, isMut, ownsValue));
+		}
+		
+		return bindings;
+	}
 	
 	private ResolvedPattern? ResolveArmPattern(PatternNode syntax, TypeSymbol subjectType, bool isMut, bool ownsValue)
 	{
@@ -931,7 +996,10 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 				return ResolvePattern(syntax, enumType, isMut, ownsValue);
 			
 			case PatternKind.Case or PatternKind.Type when subjectType is DynType dyn:
-				return ResolveTypePattern(syntax, dyn, isMut);
+				return ResolveTypePattern(syntax, dyn, isMut, null);
+			
+			case PatternKind.Case when syntax.IsDestructuring && subjectType is not EnumSymbol:
+				return ResolveRecordPattern(syntax, subjectType, isMut, ownsValue);
 			
 			case PatternKind.Case when syntax.Value is not null:
 			case PatternKind.Value or PatternKind.Range or PatternKind.Relational:
@@ -1050,9 +1118,113 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		_ => null
 	};
 	
-	private ResolvedPattern? ResolveTypePattern(PatternNode pattern, DynType dyn, bool isMut)
+	private ResolvedPattern? ResolveRecordPattern(PatternNode syntax, TypeSymbol type, bool isMut, bool ownsValue)
 	{
-		if (pattern.HasParentheses)
+		var context = CurrentResolutionContext;
+		var typeNode = CreatePatternTypeNode(syntax);
+		var symbol = context.ResolveTypeName(typeNode);
+		if (symbol is null)
+		{
+			context.ResolveType(typeNode);
+			return null;
+		}
+		
+		if (symbol != type && symbol != (type as NamedTypeSymbol)?.Definition)
+		{
+			Diagnostics.Add(new(DiagnosticSeverity.Error, typeNode.SourceLocation, $"Expected '{type.Name}'"));
+			return null;
+		}
+		
+		return ResolveFields(syntax, type, isMut, ownsValue);
+	}
+	
+	private static ITypeNode CreatePatternTypeNode(PatternNode pattern) => pattern.TypePath.IsEmpty
+		? new IdentifierTypeNode(pattern.CaseName)
+		: new QualifiedTypeNode(ResolutionContext.GetSpan([..pattern.TypePath, pattern.CaseName]),
+			[..pattern.TypePath, pattern.CaseName]);
+	
+	private ResolvedPattern? ResolveFields(PatternNode syntax, TypeSymbol type, bool isMut, bool ownsValue)
+	{
+		if (type is not RecordSymbol)
+		{
+			Diagnostics.Add(new(DiagnosticSeverity.Error, CreatePatternTypeNode(syntax).SourceLocation,
+				$"Cannot destructure '{type.Name}' values"));
+			
+			return null;
+		}
+		
+		var fields = new List<FieldSymbol>();
+		var bindings = new List<LocalVariableSymbol?>();
+		var elements = new List<ResolvedPattern?>();
+		var failed = false;
+		foreach (var element in syntax.Elements)
+		{
+			if (ResolveField(element, type) is not { } field)
+			{
+				failed = true;
+				continue;
+			}
+			
+			var fieldType = GetMemberType(field);
+			if (!ResolveSlot(element, fieldType, isMut, ownsValue, true, out var binding, out var nested))
+			{
+				failed = true;
+				continue;
+			}
+			
+			if (ownsValue && binding is { IsBorrowBinding: false } && _typePool.NeedsDrop(fieldType) &&
+			    type is RecordSymbol { HasDestructor: true })
+				Diagnostics.Add(new(DiagnosticSeverity.Error, binding.Identifier.SourceLocation,
+					"Cannot move fields out of values with destructors"));
+			
+			fields.Add(field);
+			bindings.Add(binding);
+			elements.Add(nested);
+		}
+		
+		var names = syntax.Elements.Select(GetFieldName).OfType<Token>().ToList();
+		foreach (var sameField in names.GroupBy(static name => name.Text).Where(static g => g.Count() > 1))
+		{
+			failed = true;
+			foreach (var name in sameField)
+				Diagnostics.Add(new(DiagnosticSeverity.Error, name.SourceLocation,
+					$"'{name.Text}' is named more than once"));
+		}
+		
+		if (failed)
+			return null;
+		
+		var resolved = new ResolvedPattern(null, bindings)
+			{ Record = type, Fields = [..fields], Elements = [..elements] };
+		
+		ReportRepeatedBindings(resolved.AllBindings);
+		return resolved;
+	}
+	
+	private FieldSymbol? ResolveField(PatternNode element, TypeSymbol type)
+	{
+		if (GetFieldName(element) is not { Text: not "_" } name)
+		{
+			Diagnostics.Add(new(DiagnosticSeverity.Error, element.SourceLocation, "Expected a field name"));
+			return null;
+		}
+		
+		if (_typePool.ResolveMember(type, name.Text) is not FieldSymbol field)
+		{
+			Diagnostics.Add(DescribeAbsentMember(type, name.Text).At(name.SourceLocation));
+			return null;
+		}
+		
+		if (CanAccess(type, field.Visibility))
+			return field;
+		
+		Diagnostics.Add(DiagnosticReporter.ReportHidden(name.SourceLocation, name.Text, field.Visibility, true));
+		return null;
+	}
+	
+	private ResolvedPattern? ResolveTypePattern(PatternNode pattern, DynType dyn, bool isMut, PatternNode? trailing)
+	{
+		if (pattern.HasParentheses && !pattern.IsDestructuring)
 		{
 			Diagnostics.Add(new(DiagnosticSeverity.Error, pattern.SourceLocation, "Expected a type"));
 			return null;
@@ -1081,16 +1253,31 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			return null;
 		}
 		
-		var binding = pattern.TypeBinding is { Text: not "_" } token
+		if (trailing?.Mode is { Type: not TokenType.KeywordMut } moved)
+			Diagnostics.Add(new(DiagnosticSeverity.Error, moved.SourceLocation, "Cannot move borrowed values"));
+		
+		var binding = (pattern.TypeBinding ?? trailing?.CaseName) is { Text: not "_" } token
 			? new LocalVariableSymbol(token, _typePool.GetPointerType(type), false)
 			{
 				IsPatternBinding = true,
 				IsBorrowBinding = true,
-				IsMutBinding = isMut
+				IsMutBinding = isMut || trailing?.Mode?.Type == TokenType.KeywordMut
 			}
 			: null;
 		
-		return new ResolvedPattern(null, [binding]) { TestedType = type };
+		if (!pattern.IsDestructuring)
+			return new ResolvedPattern(null, []) { TestedType = type, TypeBinding = binding };
+		
+		return ResolveFields(pattern, type, isMut, false) is { } fields
+			? new ResolvedPattern(null, fields.Bindings)
+			{
+				TestedType = type,
+				TypeBinding = binding,
+				Record = type,
+				Fields = fields.Fields,
+				Elements = fields.Elements
+			}
+			: null;
 	}
 	
 	private LocalVariableSymbol? CreateBinding(Token token, Token? mode, TypeSymbol type, bool isMut, bool ownsValue)
@@ -1229,7 +1416,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			return new ResolvedIsExpressionNode(value, pattern, isMut || pattern.HasMutBindings, ownsValue, node);
 		
 		var invalid = new ResolvedInvalidExpressionNode(node, NativeSymbols.Bool);
-		_failedPatterns[invalid] = CreateBindings(node.Pattern, isMut, ownsValue);
+		_failedPatterns[invalid] = [..CreateBindings(node.Pattern, isMut, ownsValue)];
 		return invalid;
 	}
 	
@@ -1270,7 +1457,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		{
 			if (!binding.IsBorrowBinding && !_typePool.IsCopy(binding.Type))
 				Diagnostics.Add(new(DiagnosticSeverity.Error, binding.Identifier.SourceLocation,
-					"Cannot move payloads in arms with 'if'"));
+					"Cannot move values in arms with 'if'"));
 		}
 		
 		return VisitInScope(guard, bindings, NativeSymbols.Bool);
@@ -1343,7 +1530,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		ReportArmConflicts(summaries);
 		if (enumType is not null)
 			ReportMissingCases(node.Keyword, enumType, summaries);
-		else if (!summaries.Any(static arm => arm.IsElse || arm.IsFailed) && !IsInvalid(value) &&
+		else if (!summaries.Any(static arm => arm.IsElse || arm.IsFailed || arm.CoversAll) && !IsInvalid(value) &&
 		         (dyn is not null || !CoversEveryValue(value.Type, summaries)))
 			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Keyword.SourceLocation,
 				$"This match doesn't handle every value of '{(dyn ?? value.Type).Name}'"));
@@ -1387,6 +1574,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		public object? Constant { get; init; }
 		public ImmutableArray<(BigInteger Low, BigInteger High)> Spans { get; init; } = [];
 		public bool IsFailed { get; init; }
+		public bool CoversAll { get; init; }
 	}
 	
 	private IEnumerable<MatchArmSummary> SummarizeArm(ImmutableArray<PatternNode> syntax,
@@ -1404,7 +1592,8 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			return new MatchArmSummary(false, enumCase,
 				enumCase is not null ? _typePool.GetCaseValue(enumType!, enumCase) : null, syntax[i].SourceLocation)
 			{
-				Type = pattern.TestedType,
+				Type = pattern.IsConditional ? null : pattern.TestedType,
+				CoversAll = pattern.IsIrrefutable,
 				Constant = pattern.Constant switch
 				{
 					IntegerConstant integer => integer.Value,

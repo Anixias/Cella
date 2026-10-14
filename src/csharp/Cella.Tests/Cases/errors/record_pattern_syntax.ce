@@ -1,0 +1,35 @@
+mod test
+
+Shape: trait
+{
+	area: fun(imm self) -> f32
+}
+
+Circle: rec impl Shape
+{
+	radius: f32
+
+	area: fun(imm self) -> f32 = self.radius
+}
+
+Holder: rec
+{
+	count: i32
+}
+
+typed: fun -> i32
+{
+	val h = Holder(1)
+	if h is Holder(count: c: i32)
+		ret 1
+
+	ret 0
+}
+
+bound: fun -> i32 = match 5
+{
+	1..10 n => n
+	else => 0
+}
+
+main: fun -> i32 = 0

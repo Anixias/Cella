@@ -48,6 +48,8 @@ public sealed class PatternNode
 	public IExpressionNode? Value { get; private init; }
 	public IExpressionNode? Upper { get; private init; }
 	public Token? Operator { get; private init; }
+	public Token? Field { get; private init; }
+	public PatternNode? Binding { get; private init; }
 	
 	public bool IsInclusive => Operator?.Type == TokenType.OpDotDotEqual;
 	
@@ -103,12 +105,29 @@ public sealed class PatternNode
 		};
 	}
 	
-	public PatternNode WithValue(IExpressionNode value) => new(Kind, SourceLocation)
-	{
-		TypePath = TypePath,
-		CaseName = CaseName,
-		Elements = Elements,
-		HasParentheses = HasParentheses,
-		Value = value
-	};
+	public bool IsDestructuring => HasParentheses &&
+	                               Elements.Any(static element => element.Field is not null ||
+	                                                              element.Kind == PatternKind.Binding ||
+	                                                              element.Binding is not null);
+	
+	public PatternNode WithValue(IExpressionNode value) => Copy(value, Field, Binding);
+	public PatternNode WithField(Token field) => Copy(Value, field, Binding);
+	public PatternNode WithBinding(PatternNode binding) => Copy(Value, Field, binding);
+	
+	private PatternNode Copy(IExpressionNode? value, Token? field, PatternNode? binding) =>
+		new(Kind, SourceLocation)
+		{
+			TypePath = TypePath,
+			CaseName = CaseName,
+			Elements = Elements,
+			HasParentheses = HasParentheses,
+			Type = Type,
+			TypeBinding = TypeBinding,
+			Mode = Mode,
+			Value = value,
+			Upper = Upper,
+			Operator = Operator,
+			Field = field,
+			Binding = binding
+		};
 }

@@ -39,7 +39,7 @@ Error at line 40, column 15
 Error at line 46, column 7
 45 │ {
 46 │     full(b) if b.n > 0 => 1
-              ^ Cannot move payloads in arms with 'if'
+              ^ Cannot move values in arms with 'if'
 
 Error at line 52, column 2
 51 │ {

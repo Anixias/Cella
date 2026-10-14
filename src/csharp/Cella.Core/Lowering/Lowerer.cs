@@ -523,6 +523,9 @@ public sealed class Lowerer
 		private bool IsExhaustive(TypeSymbol type, IReadOnlyList<LoweredArm> arms)
 		{
 			var patterns = arms.Where(static arm => arm.Guard is null).SelectMany(static arm => arm.Patterns).ToList();
+			if (patterns.Any(static pattern => pattern.IsIrrefutable))
+				return true;
+			
 			if (type is EnumSymbol { IsExternal: false } enumType)
 				return enumType.Cases.All(enumCase => patterns.Any(pattern =>
 					pattern is { Case: { } covered, IsConditional: false } &&
@@ -633,10 +636,22 @@ public sealed class Lowerer
 			var block = GetOrMakeBlock();
 			if (pattern.TestedType is not null)
 			{
-				block.SetTerminator(new ConditionalBranchTerminator(TestDyn(subject, pattern), success, failure,
+				var tested = pattern.IsConditional ? CreateBlock("match_fields") : success;
+				block.SetTerminator(new ConditionalBranchTerminator(TestDyn(subject, pattern), tested, failure,
 					location));
 				
 				currentBlock = null;
+				if (tested == success)
+					return;
+				
+				currentBlock = tested;
+				LowerFieldTests(CastRecord(subject, pattern), pattern, success, failure);
+				return;
+			}
+			
+			if (pattern.Record is not null)
+			{
+				LowerFieldTests(subject, pattern, success, failure);
 				return;
 			}
 			
@@ -676,6 +691,46 @@ public sealed class Lowerer
 			currentBlock = null;
 		}
 		
+		private void LowerFieldTests(Value record, ResolvedPattern pattern, BasicBlock success, BasicBlock failure)
+		{
+			var elements = pattern.Elements.Select(static (element, i) => (Element: element, Index: i))
+				.Where(static entry => entry.Element is { IsIrrefutable: false })
+				.ToList();
+			
+			if (elements.Count == 0)
+			{
+				GetOrMakeBlock().SetTerminator(new BranchTerminator(success, record.SourceLocation));
+				currentBlock = null;
+				return;
+			}
+			
+			for (var i = 0; i < elements.Count; i++)
+			{
+				var (element, index) = elements[i];
+				var next = i == elements.Count - 1 ? success : CreateBlock("match_field");
+				LowerPatternTest(GetField(record, pattern, index, record.SourceLocation), element!, next, failure);
+				currentBlock = next;
+			}
+			
+			currentBlock = null;
+		}
+		
+		private AccessValue GetField(Value record, ResolvedPattern pattern, int index, SourceLocation location)
+		{
+			var field = pattern.Fields[index];
+			return new AccessValue(_typePool.GetTypeOfMember(field), record, field, location);
+		}
+		
+		private UnaryOpValue CastRecord(Value address, ResolvedPattern pattern)
+		{
+			var location = address.SourceLocation;
+			var type = pattern.TestedType!;
+			var pointer = _typePool.GetPointerType(type);
+			return new UnaryOpValue(type,
+				new ConversionValue(address, new DynCastConversion(address.Type, pointer), location),
+				UnaryOperation.Dereference, location);
+		}
+		
 		private void DeclareSubject(LocalVariableSymbol subject, Value value)
 		{
 			var location = subject.Identifier.SourceLocation;
@@ -698,7 +753,7 @@ public sealed class Lowerer
 		
 		private void BindDyn(Value address, ResolvedPattern pattern)
 		{
-			if (pattern.Bindings is not [{ } binding])
+			if (pattern.TypeBinding is not { } binding)
 				return;
 			
 			var location = binding.Identifier.SourceLocation;
@@ -787,6 +842,15 @@ public sealed class Lowerer
 			if (pattern.TestedType is not null)
 			{
 				BindDyn(subject, pattern);
+				if (pattern.Record is not null)
+					BindFields(CastRecord(subject, pattern), pattern, ownsValue);
+				
+				return;
+			}
+			
+			if (pattern.Record is not null)
+			{
+				BindFields(subject, pattern, ownsValue);
 				return;
 			}
 			
@@ -797,41 +861,37 @@ public sealed class Lowerer
 			for (var i = 0; i < pattern.Bindings.Length; i++)
 			{
 				var payload = new EnumPayloadValue(payloadTypes[i], subject, enumCase, i, subject.SourceLocation);
-				switch (pattern.Bindings[i])
-				{
-					case { IsBorrowBinding: true, Type: PointerType pointer } binding:
-					{
-						var location = binding.Identifier.SourceLocation;
-						GetOrMakeBlock().Instructions.Add(new LocalVarInstruction(binding,
-							new UnaryOpValue(pointer, payload, UnaryOperation.AddressOf, location), location,
-							CurrentScopeId));
-						
-						break;
-					}
-					
-					case { } binding when ownsValue && _typePool.NeedsDrop(payloadTypes[i]):
-					{
-						var location = binding.Identifier.SourceLocation;
-						Declare(GetOrMakeBlock(),
-							new LocalVarInstruction(binding, new MoveValue(payload), location, CurrentScopeId));
-						
-						break;
-					}
-					
-					case { } binding:
-					{
-						var location = binding.Identifier.SourceLocation;
-						GetOrMakeBlock().Instructions.Add(new LocalVarInstruction(binding, payload, location,
-							CurrentScopeId));
-						
-						break;
-					}
-					
-					case null when pattern.Elements.Length > i && pattern.Elements[i] is { } element:
-						BindPattern(payload, element, ownsValue);
-						break;
-				}
+				BindSlot(payload, pattern.Bindings[i], pattern.Elements.Length > i ? pattern.Elements[i] : null,
+					ownsValue);
 			}
+		}
+		
+		private void BindFields(Value record, ResolvedPattern pattern, bool ownsValue)
+		{
+			for (var i = 0; i < pattern.Fields.Length; i++)
+			{
+				var location = pattern.Bindings[i]?.Identifier.SourceLocation ?? record.SourceLocation;
+				BindSlot(GetField(record, pattern, i, location), pattern.Bindings[i], pattern.Elements[i], ownsValue);
+			}
+		}
+		
+		private void BindSlot(Value slot, LocalVariableSymbol? binding, ResolvedPattern? element, bool ownsValue)
+		{
+			if (element is not null)
+				BindPattern(slot, element, ownsValue);
+			
+			if (binding is null)
+				return;
+			
+			var location = binding.Identifier.SourceLocation;
+			if (binding is { IsBorrowBinding: true, Type: PointerType pointer })
+				GetOrMakeBlock().Instructions.Add(new LocalVarInstruction(binding,
+					new UnaryOpValue(pointer, slot, UnaryOperation.AddressOf, location), location, CurrentScopeId));
+			else if (_typePool.NeedsDrop(slot.Type))
+				Declare(GetOrMakeBlock(),
+					new LocalVarInstruction(binding, new MoveValue(slot), location, CurrentScopeId));
+			else
+				GetOrMakeBlock().Instructions.Add(new LocalVarInstruction(binding, slot, location, CurrentScopeId));
 		}
 		
 		private void ReleaseScrutinee(Value scrutinee, ResolvedPattern? pattern)
@@ -857,12 +917,40 @@ public sealed class Lowerer
 					continue;
 				
 				var payload = new EnumPayloadValue(payloadTypes[i], subject, enumCase, i, subject.SourceLocation);
-				if (pattern.Elements.Length > i && pattern.Elements[i] is { Case: not null } element)
-					ReleasePayload(payload, element);
-				else if (_typePool.NeedsDrop(payloadTypes[i]))
-					StoreTemporary(new MoveValue(payload), "unbound");
+				ReleaseSlot(payload, pattern.Elements.Length > i ? pattern.Elements[i] : null);
 			}
 		}
+		
+		private void ReleaseSlot(Value slot, ResolvedPattern? element)
+		{
+			if (element is { Case: not null })
+				ReleasePayload(slot, element);
+			else if (element is { Record: not null, TestedType: null } && MovesParts(element))
+				ReleaseFields(slot, element);
+			else if (_typePool.NeedsDrop(slot.Type))
+				StoreTemporary(new MoveValue(slot), "unbound");
+		}
+		
+		private void ReleaseFields(Value record, ResolvedPattern pattern)
+		{
+			foreach (var field in _typePool.GetMembers(record.Type).OfType<FieldSymbol>())
+			{
+				var index = pattern.Fields.IndexOf(field);
+				var value = new AccessValue(_typePool.GetTypeOfMember(field), record, field, record.SourceLocation);
+				if (index < 0)
+				{
+					if (_typePool.NeedsDrop(value.Type))
+						StoreTemporary(new MoveValue(value), "unbound");
+				}
+				else if (pattern.Bindings[index] is null)
+				{
+					ReleaseSlot(value, pattern.Elements[index]);
+				}
+			}
+		}
+		
+		private bool MovesParts(ResolvedPattern pattern) =>
+			pattern.AllBindings.Any(binding => !binding.IsBorrowBinding && _typePool.NeedsDrop(binding.Type));
 		
 		public Value Visit(ResolvedReturnExpressionNode node)
 		{
