@@ -1,0 +1,27 @@
+mod geo
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Vec2: rec
+{
+	x: f32
+	y: f32
+
+	new: mod op() = default
+
+	new: op(x: f32, y: f32)
+	{
+		self.x = x
+		self.y = y
+	}
+}
+
+origin: fun -> f32
+{
+	var v: Vec2
+	printf("%.0f\n", v.y)
+	ret v.x
+}

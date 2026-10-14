@@ -52,6 +52,7 @@ public sealed class ConstructorNode
 	public ImmutableArray<ParameterNode> Parameters { get; } = parameters.ToImmutableArray();
 	public IStatementNode? Body { get; } = body;
 	public SourceLocation SourceLocation { get; } = sourceLocation;
+	public Token? Default { get; init; }
 }
 
 public sealed class DestructorNode

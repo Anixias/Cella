@@ -112,7 +112,7 @@ describeCloser: fun(imm closer: Closer) -> i32 = closer.id
 describeKeeper: fun(imm keeper: Keeper) -> i32 = keeper.closer.id * 10 + keeper.count
 describeGuarded: fun(imm guarded: Guarded) -> i32 = guarded.handle * 10 + guarded.flags
 
-explicit: fun -> i32 = describeCloser(Closer())
+explicit: fun -> i32 = describeCloser(Closer(0))
 
 written: fun -> i32
 {

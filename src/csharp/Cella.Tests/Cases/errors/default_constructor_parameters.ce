@@ -1,0 +1,10 @@
+mod test
+
+Param: rec
+{
+	x: i32
+
+	new: op(x: i32) = default
+}
+
+main: fun -> i32 = 0

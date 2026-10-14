@@ -1,0 +1,7 @@
+mod test
+
+main: fun -> i32
+{
+	val default = 3
+	ret 0
+}

@@ -373,8 +373,10 @@ public sealed class MemoryChecker(TypePool typePool, DiagnosticList diagnostics)
 			ApplyDefaults(state, child);
 	}
 	
-	private static bool RequiresWrite(MovePath path) => path is
-		{ Projection: FieldProjection { Field.IsRequired: true } } or { Type: RecordSymbol { HasDestructor: true } };
+	private bool RequiresWrite(MovePath path) =>
+		path is { Projection: FieldProjection { Field.IsRequired: true } } ||
+		(path.Type is RecordSymbol { HasDestructor: true } || typePool.DeclaresConstructors(path.Type)) &&
+		!typePool.HasDefault(path.Type);
 	
 	private bool UntrackedPartsHaveDefaults(MovePath path) =>
 		path is { IsComplete: false, Type: RecordSymbol record } && typePool.GetMembers(record)
@@ -386,6 +388,10 @@ public sealed class MemoryChecker(TypePool typePool, DiagnosticList diagnostics)
 	{
 		switch (memoryEvent)
 		{
+			case DefineEvent { Kind: DefineKind.Default, Local.StartsZeroed: true } e:
+				state.Set(paths.GetRoot(e.Local), PathState.Initialized);
+				break;
+			
 			case DefineEvent { Kind: DefineKind.Default } e:
 				SetDefaults(state, paths.GetRoot(e.Local));
 				break;

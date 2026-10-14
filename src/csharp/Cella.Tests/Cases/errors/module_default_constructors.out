@@ -1,0 +1,10 @@
+
+====== main.ce ======
+
+Error at line 9, column 12
+8 │ val o = origin()
+9 │ ret blank[Vec2]()
+              ╘══╛ 'blank' requires 'T: default'
+                 | 'Vec2' has no default
+
+[compilation failed]

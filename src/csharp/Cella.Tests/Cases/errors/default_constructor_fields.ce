@@ -1,0 +1,30 @@
+mod test
+
+Vec2: rec
+{
+	x: f32
+	y: f32
+
+	new: op(x: f32, y: f32)
+	{
+		self.x = x
+		self.y = y
+	}
+}
+
+Bad: rec
+{
+	v: Vec2
+	f: fun[-> i32]
+
+	new: op() = default
+}
+
+box[T]: rec
+{
+	value: T
+
+	new: op() = default
+}
+
+main: fun -> i32 = 0

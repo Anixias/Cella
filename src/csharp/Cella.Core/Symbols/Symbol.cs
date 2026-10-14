@@ -172,6 +172,7 @@ public sealed class TypeParameterSymbol(string name, IEnumerable<Token> keywords
 	public bool IsExt => Has(TokenType.KeywordExt);
 	public bool HasDrop => Has(TokenType.KeywordDrop);
 	public bool HasNew => Has(TokenType.KeywordNew);
+	public bool HasDefault => Has(TokenType.KeywordDefault);
 	public bool IsTrait => Has(TokenType.KeywordTrait);
 	public bool IsValue { get; init; }
 	public string? Owner { get; init; }
@@ -596,6 +597,7 @@ public sealed class LocalVariableSymbol(Token identifier, TypeSymbol type, bool 
 	public bool IsMutBinding { get; init; }
 	public bool IsLoopBinding { get; init; }
 	public bool IsLoopSource { get; init; }
+	public bool StartsZeroed { get; init; }
 	public bool IsDeferred { get; init; }
 	public bool IsClosureEnvironment { get; init; }
 	public VariableSymbol? Captured { get; init; }

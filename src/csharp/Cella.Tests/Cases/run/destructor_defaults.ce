@@ -1,0 +1,33 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+List: rec
+{
+	data: ptr[i32]
+	count: usize
+
+	new: op() = default
+
+	drop: op
+	{
+		printf("drop list %zu\n", self.count)
+	}
+}
+
+Holder: rec
+{
+	items: List
+	id: i32
+}
+
+main: fun -> i32
+{
+	var l: List
+	val h = Holder()
+	printf("%zu %d\n", l.count, h.id)
+	ret 0
+}

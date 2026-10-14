@@ -28,7 +28,7 @@ public sealed class FileParser
 	private static readonly HashSet<TokenType> _constraintTypes =
 	[
 		TokenType.KeywordNoref, TokenType.KeywordCopy, TokenType.KeywordDrop, TokenType.KeywordTrait,
-		TokenType.KeywordExt
+		TokenType.KeywordExt, TokenType.KeywordDefault
 	];
 	
 	private static readonly Dictionary<string, TokenType> _constraintKeywords =
@@ -2262,6 +2262,9 @@ public sealed class FileParser
 		
 		RejectReturnType(ref index, "Constructors");
 		RejectWhen(ref index, "constructors");
+		if ((parameters.Count == 0 || Peek(index + 1, TokenType.KeywordDefault)) && Match(ref index, TokenType.OpEqual))
+			return ParseDefaultConstructor(ref index, newKeyword, modifiers, parameters);
+		
 		if (!Match(ref index, out var openBraceToken, TokenType.OpOpenBrace))
 		{
 			if (allowsMissingBodies)
@@ -2283,6 +2286,31 @@ public sealed class FileParser
 		return new ConstructorNode(newKeyword, modifiers.Tokens, parameters, body, new(source, range))
 		{
 			Visibility = modifiers.Visibility
+		};
+	}
+	
+	private ConstructorNode? ParseDefaultConstructor(ref int index, Token newKeyword, DeclarationModifiers modifiers,
+		List<ParameterNode> parameters)
+	{
+		if (!Match(ref index, out var defaultKeyword, TokenType.KeywordDefault))
+		{
+			ReportExpected(index, "'default'");
+			return null;
+		}
+		
+		if (parameters.Count > 0)
+		{
+			Report(defaultKeyword, "Cannot use 'default' on constructors with parameters");
+			return null;
+		}
+		
+		var (source, range) = newKeyword.SourceLocation;
+		var location = new SourceLocation(source, range.Join(defaultKeyword.SourceLocation.Range));
+		return new ConstructorNode(newKeyword, modifiers.Tokens, parameters, new BlockStatementNode(location, []),
+			location)
+		{
+			Visibility = modifiers.Visibility,
+			Default = defaultKeyword
 		};
 	}
 	

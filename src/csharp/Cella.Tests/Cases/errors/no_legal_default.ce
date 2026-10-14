@@ -1,0 +1,46 @@
+mod test
+
+Vec2: rec
+{
+	x: f32
+	y: f32
+
+	new: op(x: f32, y: f32)
+	{
+		self.x = x
+		self.y = y
+	}
+}
+
+R: rec
+{
+	x: i32
+
+	new: op()
+	{
+		self.x = 5
+	}
+}
+
+box[T]: rec
+{
+	value: T
+}
+
+blank[T: default]: fun -> T
+{
+	var x: T
+	ret x
+}
+
+needsNew[T: new()]: fun -> box[T] = box[T]()
+
+main: fun -> i32
+{
+	var v: Vec2
+	val w = Vec2()
+	val r = blank[R]()
+	val b = box[R]()
+	val f = v.x
+	ret 0
+}

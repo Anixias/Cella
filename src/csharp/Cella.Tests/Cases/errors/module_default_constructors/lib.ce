@@ -1,0 +1,17 @@
+mod geo
+
+Vec2: rec
+{
+	x: f32
+	y: f32
+
+	new: mod op() = default
+
+	new: op(x: f32, y: f32)
+	{
+		self.x = x
+		self.y = y
+	}
+}
+
+origin: fun -> Vec2 = Vec2()

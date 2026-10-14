@@ -1,0 +1,19 @@
+mod test
+
+Handle: rec
+{
+	id: req i32
+	flags: i32
+
+	new: op() = default
+}
+
+Mixed: rec
+{
+	handle: req i32
+	fallback: fun[-> i32]
+
+	new: op() = default
+}
+
+main: fun -> i32 = 0

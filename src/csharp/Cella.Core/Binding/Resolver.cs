@@ -1582,7 +1582,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		IResolvedExpressionNode[]? resolvedArgs = null)
 	{
 		var fields = _typePool.GetMembers(record).OfType<FieldSymbol>().ToArray();
-		var hasDefault = fields.All(_typePool.HasDefault);
+		var hasDefault = _typePool.HasDefault(record);
 		if (record.IsUnion && node.Arguments.Length > 0)
 		{
 			var args = resolvedArgs ?? node.Arguments.Select(a => VisitNode(a, null)).ToArray();
@@ -3784,6 +3784,10 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	private MethodSymbol[] FindAccessible(TypeSymbol owner, IEnumerable<MethodSymbol> methods) =>
 		[..methods.Where(method => CanAccess(owner, method.Function))];
 	
+	private bool HasLocalDefault(TypeSymbol type) =>
+		type is RecordSymbol && !_typePool.HasDefault(type) && _typePool.GetConstructors(type)
+			.Any(constructor => _typePool.IsDefaultConstructor(constructor) && CanAccess(type, constructor.Symbol));
+	
 	private bool CanAccess(TypeSymbol owner, Visibility visibility) =>
 		CurrentResolutionContext.CanAccess(owner, visibility);
 	
@@ -5657,7 +5661,8 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			ConstantValue = node.IsMutable || initializer is null || !_typePool.IsCopy(type)
 				? null
 				: _evaluator.Evaluate(initializer),
-			IsDeferred = !node.IsMutable && initializer is null
+			IsDeferred = !node.IsMutable && initializer is null,
+			StartsZeroed = node.IsMutable && initializer is null && HasLocalDefault(type)
 		};
 		
 		resolutionContext.LocalScope!.Define(symbol);

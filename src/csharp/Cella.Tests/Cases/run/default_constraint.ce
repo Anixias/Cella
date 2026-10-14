@@ -1,0 +1,39 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+box[T]: rec
+{
+	value: T
+}
+
+Vec2: rec
+{
+	x: f32
+	y: f32
+
+	new: op() = default
+
+	new: op(x: f32, y: f32)
+	{
+		self.x = x
+		self.y = y
+	}
+}
+
+outer[T: default]: fun -> box[T] = box[T]()
+
+blank[T: default]: fun -> T
+{
+	var x: T
+	ret x
+}
+
+main: fun -> i32
+{
+	printf("%d %.0f %d\n", outer[i32]().value, outer[Vec2]().value.x, blank[i32]())
+	ret 0
+}

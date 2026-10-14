@@ -85,6 +85,8 @@ Inventory: rec
 	items: pvt array[Item, 4]
 	length: pvt set usize
 
+	new: op() = default
+
 	first: get(imm self) -> imm[Item] = imm self.items[0]
 
 	add: fun(mut self, item: Item)

@@ -1,0 +1,38 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Vec2: rec
+{
+	x: f32
+	y: f32
+
+	new: op() = default
+
+	new: op(x: f32, y: f32)
+	{
+		self.x = x
+		self.y = y
+	}
+}
+
+Line: rec
+{
+	a: Vec2
+	b: Vec2
+}
+
+main: fun -> i32
+{
+	var v: Vec2
+	val w = Vec2()
+	val u = Vec2(1, 2)
+	var line: Line
+	var points: array[Vec2, 3]
+	val l = Line()
+	printf("%.0f %.0f %.0f %.0f %.0f %.0f\n", v.x, w.y, u.y, line.b.x, points[2].y, l.a.x)
+	ret 0
+}

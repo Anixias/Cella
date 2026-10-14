@@ -6,6 +6,7 @@ using Cella.Core.Binding.Conversions;
 using Cella.Core.Binding.Operations;
 using Cella.Core.Collections;
 using Cella.Core.Symbols;
+using Cella.Core.Syntax.Nodes;
 using Cella.Core.Text;
 using Cella.Diagnostics;
 
@@ -539,13 +540,24 @@ public sealed class TypePool
 	public bool HasNew(TypeSymbol type) => type switch
 	{
 		InvalidType => true,
-		TypeParameterSymbol parameter => parameter.HasNew || GetParameterConstructors(parameter)
+		TypeParameterSymbol parameter => parameter.HasNew || parameter.HasDefault || GetParameterConstructors(parameter)
 			.Any(static constructor => constructor.Signature.ParameterTypes.Length == 1),
 		TraitType => false,
 		RecordSymbol when GetConstructors(type).Count > 0 => FindNewConstructor(type) is not null,
-		RecordSymbol record => GetMembers(record).OfType<FieldSymbol>().All(HasDefault),
 		_ => HasDefault(type)
 	};
+	
+	public bool DeclaresConstructors(TypeSymbol type) => type is NamedTypeSymbol && GetConstructors(type).Count > 0;
+	
+	public bool IsDefaultConstructor(FunctionInfo constructor) =>
+		constructor.Symbol.Syntax is ConstructorNode { Default: not null };
+	
+	private bool HasDefaultConstructor(TypeSymbol type)
+	{
+		var floor = GetConstructorFloor(type);
+		return GetConstructors(type)
+			.Any(constructor => IsDefaultConstructor(constructor) && constructor.Symbol.Visibility >= floor);
+	}
 	
 	public FunctionInfo? FindNewConstructor(TypeSymbol type)
 	{
@@ -736,7 +748,9 @@ public sealed class TypePool
 		{
 			RecordSymbol r => Combine(r.HasDestructor, GetParts(r)) with
 			{
-				HasDefault = !r.HasDestructor && GetMembers(r).OfType<FieldSymbol>().All(HasDefault)
+				HasDefault = GetConstructors(r).Count > 0
+					? HasDefaultConstructor(r)
+					: !r.HasDestructor && GetMembers(r).OfType<FieldSymbol>().All(HasDefault)
 			},
 			EnumSymbol e => Combine(false, GetParts(e)) with
 			{
@@ -745,7 +759,7 @@ public sealed class TypePool
 			ArrayType => Combine(false, GetParts(type)),
 			ClosureType => Combine(false, GetParts(type)) with { IsCopy = false, HasDefault = false },
 			FunctionType or BorrowType or FStrType => TypeFacts.Plain with { HasDefault = false },
-			TypeParameterSymbol parameter => new(!parameter.IsCopy, parameter.IsCopy, false),
+			TypeParameterSymbol parameter => new(!parameter.IsCopy, parameter.IsCopy, parameter.HasDefault),
 			DynType => new(true, false, false),
 			_ => TypeFacts.Plain
 		};
@@ -1209,6 +1223,9 @@ public sealed class TypePool
 		
 		if (parameter.HasNew && !HasNew(argument))
 			return ("new()", $"'{name}' has no constructor without parameters");
+		
+		if (parameter.HasDefault && !HasDefault(argument))
+			return ("default", $"'{name}' has no default");
 		
 		if (FindMissingConstructor(parameter, argument, map) is var (missing, hidden))
 			return ($"new({missing})", hidden is { } visibility

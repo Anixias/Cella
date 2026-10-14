@@ -1,0 +1,9 @@
+
+====== default_constructor_parameters.ce ======
+
+Error at line 7, column 20
+6 │ 
+7 │ new: op(x: i32) = default
+                      ╘═════╛ Cannot use 'default' on constructors with parameters
+
+[compilation failed]

@@ -40,7 +40,7 @@ main: fun -> i32
 {
 	val buffer = Buffer(16)
 	val handle = Handle(7)
-	val empty = Handle()
+	val empty = Handle(0)
 	printf("%zu %d %d\n", buffer.size, handle.id, empty.id)
 	ret 0
 }

@@ -56,6 +56,7 @@ public enum TokenType
 	KeywordAtomic,
 	KeywordWhen,
 	KeywordNew,
+	KeywordDefault,
 	KeywordDrop,
 	KeywordRef,
 	
@@ -205,6 +206,7 @@ public static class TokenTypeInfo
 			[TokenType.KeywordAtomic] = new("atomic", IsKeyword: true),
 			[TokenType.KeywordWhen] = new("when", IsKeyword: true),
 			[TokenType.KeywordNew] = new("new", IsKeyword: true),
+			[TokenType.KeywordDefault] = new("default", IsKeyword: true),
 			[TokenType.KeywordDrop] = new("drop", IsKeyword: true),
 			[TokenType.KeywordRef] = new("ref", IsKeyword: true),
 			

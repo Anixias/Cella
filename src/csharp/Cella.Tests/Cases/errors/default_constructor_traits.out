@@ -1,0 +1,9 @@
+
+====== default_constructor_traits.ce ======
+
+Error at line 5, column 14
+4 │ {
+5 │     new: op() = default
+                    ╘═════╛ Cannot use 'default' in traits
+
+[compilation failed]

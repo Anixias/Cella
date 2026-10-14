@@ -922,8 +922,10 @@ public sealed class SignatureCollector
 		ReportTypeParameters(node.TypeParameters, node.Members);
 		CompleteMembers(node.Members, "traits");
 		foreach (var constructor in node.Members.OfType<ConstructorNode>().Where(static c => c.Body is not null))
-			Diagnostics.Add(new(DiagnosticSeverity.Error, constructor.Keyword.SourceLocation,
-				"Cannot declare constructor bodies in traits"));
+			Diagnostics.Add(constructor.Default is { } defaultKeyword
+				? new(DiagnosticSeverity.Error, defaultKeyword.SourceLocation, "Cannot use 'default' in traits")
+				: new(DiagnosticSeverity.Error, constructor.Keyword.SourceLocation,
+					"Cannot declare constructor bodies in traits"));
 		
 		foreach (var constructor in node.Members.OfType<ConstructorNode>())
 			if (constructor.Visibility is { Type: TokenType.KeywordPvt } visibility)
@@ -1774,6 +1776,7 @@ public sealed class SignatureCollector
 		_typePool.RegisterRecord(record);
 		_completedTypes.Add(record);
 		Exit();
+		ReportDefaultConstructor(record, node.Members);
 		
 		if (record.IsUnion)
 			ReportUnionMembers(node);
@@ -2377,6 +2380,23 @@ public sealed class SignatureCollector
 		
 		ReportModeOperators(enumType, [..functions[true]]);
 		ReportOperators(enumType, functions[false]);
+	}
+	
+	private void ReportDefaultConstructor(RecordSymbol type, IEnumerable<IDeclarationNode> members)
+	{
+		if (members.OfType<ConstructorNode>().FirstOrDefault(static c => c.Default is not null) is not
+		    { Default: { } keyword })
+			return;
+		
+		var missing = _typePool.GetMembers(type)
+			.OfType<FieldSymbol>()
+			.Where(field => !_typePool.HasDefault(field))
+			.Select(static field => field.IsRequired ? $"'{field.Name}' is required" : $"'{field.Name}' has no default")
+			.ToList();
+		
+		if (missing.Count > 0)
+			Diagnostics.Add(new(DiagnosticSeverity.Error, keyword.SourceLocation,
+				"Cannot use 'default' when fields have no default") { Hints = [..missing] });
 	}
 	
 	private void CompletePlainEnum(EnumSymbol enumType, ResolutionContext context,

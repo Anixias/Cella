@@ -1,0 +1,17 @@
+
+====== default_constructor_fields.ce ======
+
+Error at line 20, column 14
+19 │ 
+20 │ new: op() = default
+                 ╘═════╛ Cannot use 'default' when fields have no default
+                       | 'v' has no default
+                       | 'f' has no default
+
+Error at line 27, column 14
+26 │ 
+27 │ new: op() = default
+                 ╘═════╛ Cannot use 'default' when fields have no default
+                       | 'value' has no default
+
+[compilation failed]

@@ -1,0 +1,10 @@
+mod test
+use geo.*
+
+blank[T: default]: fun -> i32 = 0
+
+main: fun -> i32
+{
+	val o = origin()
+	ret blank[Vec2]()
+}
