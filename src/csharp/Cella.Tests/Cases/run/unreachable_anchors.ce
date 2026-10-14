@@ -1,0 +1,63 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+loopBreak: fun -> i32
+{
+	for i in 0..3
+	{
+		break
+		printf("dead1\n")
+	}
+
+	ret 0
+}
+
+deadIf: fun(c: bool) -> i32
+{
+	ret 0
+	if c
+		printf("a\n")
+}
+
+deadWhile: fun(c: bool) -> i32
+{
+	ret 0
+	while c
+		printf("a\n")
+}
+
+deadLoop: fun -> i32
+{
+	ret 0
+	loop
+	{
+		printf("a\n")
+	}
+}
+
+outerBreak: fun -> i32
+{
+	var n = 0
+	outer: loop
+	{
+		while n < 10 || break outer
+		{
+			n += 1
+		}
+	}
+
+	ret n
+}
+
+compound: fun -> i32
+{
+	var total = 0
+	ret total
+	total += 100
+}
+
+main: fun -> i32 = 0

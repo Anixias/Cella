@@ -4,7 +4,7 @@
 Error at line 35, column 2
 34 │ var bits = Bits(5)
 35 │ bits[0] = true
-     ╘═════╛ Assignment target must be addressable
+     ╘═════╛ Cannot assign to unstored values
 
 Error at line 36, column 11
 35 │ bits[0] = true
@@ -24,6 +24,6 @@ Error at line 39, column 2
 Error at line 40, column 2
 39 │ counters[0].bump()
 40 │ counters[1].count = 4
-     ╘═══════════════╛ Assignment target must be addressable
+     ╘═══════════════╛ Cannot assign to unstored values
 
 [compilation failed]

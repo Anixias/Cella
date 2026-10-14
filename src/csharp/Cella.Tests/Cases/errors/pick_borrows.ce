@@ -1,0 +1,24 @@
+mod test
+
+Counter: trait
+{
+	bump: fun(mut self)
+}
+
+C: rec impl Counter
+{
+	n: i32
+
+	bump: fun(mut self)
+	{
+		self.n += 1
+	}
+}
+
+main: fun -> i32
+{
+	var c = C(0)
+	Counter(mut c).bump()
+	Counter(imm c).bump()
+	ret 0
+}

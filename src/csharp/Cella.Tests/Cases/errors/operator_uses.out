@@ -29,6 +29,6 @@ Error at line 44, column 18
 Error at line 45, column 16
 44 │ val negated = a.-()
 45 │ val product = Matrix(3) * Vector(5)
-                   ╘═══════════════════╛ Ambiguous operation '*' between 'Matrix' and 'Vector'
+                   ╘═══════════════════╛ Operation '*' between 'Matrix' and 'Vector' is ambiguous
 
 [compilation failed]

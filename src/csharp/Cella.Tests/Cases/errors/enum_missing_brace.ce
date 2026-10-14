@@ -1,0 +1,7 @@
+mod test
+
+E: enum
+	a
+	b
+
+main: fun -> i32 = 0

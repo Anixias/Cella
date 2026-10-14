@@ -1,0 +1,13 @@
+mod test
+
+A: rec
+{
+	pad: array[u8, sizeOf(B)]
+}
+
+B: rec
+{
+	a: A
+}
+
+main: fun -> i32 = 0

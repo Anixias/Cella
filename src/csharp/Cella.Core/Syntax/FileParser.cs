@@ -1394,6 +1394,11 @@ public sealed class FileParser
 	{
 		isVariadic = false;
 		var result = new List<ParameterNode>();
+		if (allowVariadic && Peek(index, TokenType.OpDotDotDot) && !Peek(index + 1, TokenType.Identifier))
+		{
+			Report(Tokens[index], "Expected a parameter before '...'");
+			return null;
+		}
 		
 		if (ParseParameter(ref index) is not { } firstParameter)
 			return null;
@@ -1642,10 +1647,24 @@ public sealed class FileParser
 				ReportExpected(index, "')'", openParen);
 				return null;
 			}
+			
+			if (Peek(index, TokenType.KeywordMatch))
+			{
+				Report(Tokens[index], "Cannot use 'match' on enums with a tag type");
+				return null;
+			}
 		}
 		
 		if (ParseTraitList(ref index, TokenType.KeywordImpl) is not { } traits)
 			return null;
+		
+		if (!Peek(index, TokenType.OpOpenBrace) && !AtEnd(index) &&
+		    (IsOnSameLine(index) || Peek(index, TokenType.Identifier) && !Peek(index + 1, TokenType.OpColon) &&
+			    !Peek(index + 1, TokenType.OpOpenBracket)))
+		{
+			ReportMissing(index, "'{'");
+			return null;
+		}
 		
 		if (!Match(ref index, out var openBrace, TokenType.OpOpenBrace))
 			return new(identifier, modifiers.Tokens, isExternal, isRef, tagType, [], [])
@@ -1882,6 +1901,12 @@ public sealed class FileParser
 		if (MatchOperatorName(ref index, out var symbol))
 			return ParseOperatorMember(ref index, symbol, block);
 		
+		if (IsReservedWord(index) && Peek(index + 1, TokenType.OpColon))
+		{
+			Report(Tokens[index], DescribeReservedWord(Tokens[index]));
+			return null;
+		}
+		
 		if (!Match(ref index, out var identifier, TokenType.Identifier))
 		{
 			ReportUnexpected(Tokens[index]);
@@ -1891,6 +1916,12 @@ public sealed class FileParser
 		if (identifier.Text == "ext" && Peek(index, TokenType.OpOpenBrace))
 		{
 			Report(identifier, "Cannot nest 'ext' blocks");
+			return null;
+		}
+		
+		if (identifier.Text == "use" && !Peek(index, TokenType.OpColon) && !Peek(index, TokenType.OpOpenBracket))
+		{
+			Report(identifier, "Cannot nest 'use' declarations");
 			return null;
 		}
 		
@@ -2004,8 +2035,8 @@ public sealed class FileParser
 	private bool StartsProperty(int index)
 	{
 		if (Match(ref index, _memberContextualKeywords, TokenType.KeywordProp))
-			return IsOnSameLine(index) && Tokens[index].Type is TokenType.Identifier or TokenType.KeywordFun
-				or TokenType.KeywordRef or TokenType.KeywordImm or TokenType.KeywordMut;
+			return !IsOnSameLine(index) || Tokens[index].Type is TokenType.Identifier or TokenType.KeywordFun
+				or TokenType.KeywordRef or TokenType.KeywordImm or TokenType.KeywordMut or TokenType.OpOpenBrace;
 		
 		return Match(ref index, _memberContextualKeywords, _accessorKeywords) && IsOnSameLine(index) &&
 		       Tokens[index].Type is TokenType.OpOpenParen or TokenType.OpArrow or TokenType.OpEqual
@@ -2380,10 +2411,22 @@ public sealed class FileParser
 		return new(dropKeyword, body, new(source, range));
 	}
 	
-	private FieldNode ParseField(ref int index, Token identifier, DeclarationModifiers modifiers)
+	private FieldNode? ParseField(ref int index, Token identifier, DeclarationModifiers modifiers)
 	{
 		var tokens = modifiers.Tokens.Concat(ParseFieldModifiers(ref index));
+		if (!IsOnSameLine(index))
+		{
+			ReportMissing(index, "a type");
+			return null;
+		}
+		
 		var type = ParseType(ref index);
+		if (IsOnSameLine(index) && Peek(index, TokenType.OpEqual))
+		{
+			Report(Tokens[index], "Cannot give fields initial values");
+			return null;
+		}
+		
 		return new(identifier, type, tokens)
 		{
 			Visibility = modifiers.Visibility,
@@ -2918,6 +2961,6 @@ public sealed class FileParser
 	private void ReportUnclosed(Token openBrace)
 	{
 		if (!skippedToEnd)
-			Report(openBrace, "Expected '}' to close this block");
+			Report(openBrace, "Expected '}' to close this '{'");
 	}
 }

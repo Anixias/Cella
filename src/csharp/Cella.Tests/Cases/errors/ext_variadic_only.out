@@ -1,0 +1,14 @@
+
+====== ext_variadic_only.ce ======
+
+Error at line 5, column 9
+4 │ {
+5 │     f: fun(...) -> i32
+               ╘═╛ Expected a parameter before '...'
+
+Error at line 10, column 17
+ 9 │ {
+10 │     var g: ext fun[...]
+                        ╘═╛ Expected a parameter before '...'
+
+[compilation failed]

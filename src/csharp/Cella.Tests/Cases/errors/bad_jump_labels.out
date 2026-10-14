@@ -14,6 +14,6 @@ Error at line 15, column 10
 Error at line 18, column 11
 17 │ if x == 3
 18 │     break x
-               ^ Symbol 'x' is not a label
+               ^ 'x' is not a label
 
 [compilation failed]

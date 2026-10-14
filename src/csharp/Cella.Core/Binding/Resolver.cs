@@ -660,7 +660,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		
 		return symbol is LabelSymbol label
 			? (label, null)
-			: (null, Error(node, $"Symbol '{name}' is not a label", null, varExpr));
+			: (null, Error(node, $"'{name}' is not a label", null, varExpr));
 	}
 	
 	public IResolvedStatementNode Visit(ExpressionStatementNode node) =>
@@ -1034,7 +1034,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	{
 		if (body is VarStatementNode declaration)
 			Diagnostics.Add(new(DiagnosticSeverity.Error, declaration.SourceLocation,
-				"Declarations cannot be whole bodies"));
+				"Cannot use declarations as whole bodies"));
 	}
 	
 	private Scope CreateScope(IEnumerable<LocalVariableSymbol?> bindings)
@@ -1158,9 +1158,10 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		var type = target ?? UnifyTypes(arms);
 		if (type is null)
 		{
-			var types = string.Join(", ", arms.Select(static v => $"'{v.Type.Name}'").Distinct());
 			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Keyword.SourceLocation,
-				$"The arms of this match have incompatible types: {types}"));
+				HoldsDistinctClosures(arms.Select(static v => v.Type))
+					? "The arms of this match hold different 'own fun' closures"
+					: $"The arms of this match have incompatible types: {JoinTypeNames(arms)}"));
 			
 			type = NativeSymbols.Invalid;
 		}
@@ -1256,7 +1257,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		if (missing.Count == 0)
 			return;
 		
-		var names = string.Join(", ", missing.Select(static enumCase => enumCase.Name));
+		var names = DiagnosticReporter.JoinNames([..missing.Select(static enumCase => enumCase.Name)]);
 		Diagnostics.Add(new(DiagnosticSeverity.Error, keyword.SourceLocation,
 			$"This match doesn't handle every case of '{enumType.Name}': {names}"));
 	}
@@ -1424,6 +1425,10 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	{
 		if (source.Type is UntypedType && CanConvertToDyn(GetDefaultType(source), target))
 			source = MaterializeAsDefault(source);
+		else if (source is ResolvedLiteralExpressionNode { Type: UntypedType } literal &&
+		         (target is BorrowType { Target: DynType inner } ? inner : target) is DynType dyn &&
+		         FindLiteralConformer(literal, dyn) is { } conformer)
+			source = MaterializeExpression(literal, conformer);
 		
 		if (!CanConvertToDyn(source.Type, target))
 			return null;
@@ -2179,13 +2184,34 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	private Diagnostic ReportInferenceFailure(InferenceResult result, string name, SourceLocation location)
 	{
 		var message = result.Conflicted is { } parameter
-			? $"Cannot infer '{parameter.Name}' for '{name}' from {JoinNames(result.WrittenCandidates)}"
+			? HoldsDistinctClosures(result.WrittenCandidates)
+				? $"Cannot infer '{parameter.Name}' for '{name}' from different 'own fun' closures"
+				: $"Cannot infer '{parameter.Name}' for '{name}' from {JoinNames(result.WrittenCandidates)}"
 			: $"Cannot infer {JoinNames(result.Missing)} for '{name}'";
 		
 		var diagnostic = new Diagnostic(DiagnosticSeverity.Error, location, message);
 		_inferenceFailures.Add(diagnostic);
 		return diagnostic;
 	}
+	
+	private static string JoinTypeNames(IEnumerable<IResolvedExpressionNode> values) =>
+		string.Join(", ", values.Select(static v => $"'{v.Type.Name}'").Distinct());
+	
+	private static bool HoldsDistinctClosures(IEnumerable<TypeSymbol> types)
+	{
+		var distinct = types.Distinct().ToList();
+		return distinct.Count > 1 && distinct.Any(ContainsClosure) &&
+		       distinct.Select(static type => type.Name).Distinct().Count() < distinct.Count;
+	}
+	
+	private static bool ContainsClosure(TypeSymbol type) => type switch
+	{
+		ClosureType => true,
+		PointerType pointer => ContainsClosure(pointer.BaseType),
+		BorrowType borrow => ContainsClosure(borrow.Target),
+		ArrayType array => ContainsClosure(array.ElementType),
+		_ => type.TypeArguments.Any(ContainsClosure)
+	};
 	
 	private static string JoinNames(IEnumerable<TypeSymbol> types) =>
 		DiagnosticReporter.JoinNames([..types.Select(static type => type.Name)]);
@@ -2592,6 +2618,13 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		method.Signature.GetMode(0) == ParameterMode.Mut
 			? new ResolvedMutArgumentExpressionNode(MakeWritable(receiver), _typePool.GetPointerType(receiver.Type),
 				receiver.Syntax)
+			{
+				OnlyMutOperator =
+					method.Symbol.Syntax is FunctionNode { Identifier.Text: var name and ("*" or "[]") } &&
+					FindPlaceOperator(receiver.Type, name, ParameterMode.ReadOnly) is null
+						? name
+						: null
+			}
 			: receiver;
 	
 	private IResolvedExpressionNode VisitArgument(IExpressionNode node, IEnumerable<TypeSymbol> expected,
@@ -3270,6 +3303,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		if (IsInvalid(value))
 			return value;
 		
+		if (value.Type is DynType dyn)
+			return Error(node, $"Cannot use '{dyn.Name}' by value", CurrentTargetType);
+		
 		if (isPlace && value.Type is not UntypedType)
 			return new ResolvedOwnExpressionNode(value, node);
 		
@@ -3471,7 +3507,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		var keyword = ((BorrowExpressionNode)argument.Syntax).Keyword;
 		if (!isMut)
 			return new(DiagnosticSeverity.Error, keyword.SourceLocation, name is null
-				? "Only an argument to a 'mut' parameter can be marked 'mut'"
+				? "Cannot use 'mut' on arguments to read-only parameters"
 				: $"'{name}' isn't a 'mut' parameter");
 		
 		if (GetMutTarget(parameterType, callable.GetMode(index)) is not { } declared ||
@@ -3878,6 +3914,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		if (trait is null)
 			return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
 		
+		if (argument is BorrowExpressionNode borrow)
+			return RejectPickBorrow(node, borrow);
+		
 		var name = access.Member.Text;
 		var member = access.Member.SourceLocation;
 		IResolvedExpressionNode? receiver = null;
@@ -3927,11 +3966,21 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			: new ResolvedInvalidExpressionNode(node, CurrentTargetType);
 	}
 	
+	private ResolvedInvalidExpressionNode RejectPickBorrow(IExpressionNode node, BorrowExpressionNode borrow)
+	{
+		VisitNode(borrow.Value, null);
+		return Error(node, $"Cannot use '{borrow.Keyword.Text}' in trait picks", CurrentTargetType,
+			borrow.Keyword.SourceLocation);
+	}
+	
 	private IResolvedExpressionNode VisitTraitMember(AccessExpressionNode node, TraitType? trait,
 		IExpressionNode argument)
 	{
 		if (trait is null)
 			return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
+		
+		if (argument is BorrowExpressionNode borrow)
+			return RejectPickBorrow(node, borrow);
 		
 		var name = node.Member.Text;
 		var member = node.Member.SourceLocation;
@@ -4119,7 +4168,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		GetFunctionInfo(method, type).Signature.GetMode(0);
 	
 	private static string DescribeAmbiguousOperator(string name, TypeSymbol type) =>
-		$"Ambiguous operation '{name}' on '{type.Name}'";
+		$"Operation '{name}' on '{type.Name}' is ambiguous";
 	
 	private bool TakesReceiver(MethodSymbol method, TypeSymbol type, ParameterMode mode) =>
 		GetFunctionInfo(method, type).Signature.GetMode(0) is var actual &&
@@ -4569,9 +4618,10 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			{
 				if (!values.Any(static value => value.Type is InvalidType))
 				{
-					var types = string.Join(", ", values.Select(static v => $"'{v.Type.Name}'").Distinct());
 					Diagnostics.Add(new(DiagnosticSeverity.Error, node.SourceLocation,
-						$"The elements of this array have incompatible types: {types}"));
+						HoldsDistinctClosures(values.Select(static v => v.Type))
+							? "The elements of this array hold different 'own fun' closures"
+							: $"The elements of this array have incompatible types: {JoinTypeNames(values)}"));
 				}
 				
 				elementType = NativeSymbols.Invalid;
@@ -5690,8 +5740,8 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			var (source, range) = node.Source.SourceLocation;
 			Diagnostics.Add(new(DiagnosticSeverity.Error, new(source, range.Join(endNode.SourceLocation.Range)),
 				type is null
-					? $"Range bounds have incompatible types: '{bounds[0].Type.Name}', '{bounds[1].Type.Name}'"
-					: "Range bounds must be integers"));
+					? $"Cannot combine '{bounds[0].Type.Name}' and '{bounds[1].Type.Name}' range bounds"
+					: $"Cannot use '{type.Name}' as a range bound"));
 			
 			type = NativeSymbols.Invalid;
 		}
@@ -5998,7 +6048,8 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 				var resolutionSet = ResolveCallable(candidates, operandArray, MaterializationMode.Overload);
 				
 				if (resolutionSet.IsAmbiguous)
-					return Error(node, $"Ambiguous operation '{op.Text}' on '{operand.Type.Name}'", CurrentTargetType);
+					return Error(node, $"Operation '{op.Text}' on '{operand.Type.Name}' is ambiguous",
+						CurrentTargetType);
 				
 				if (!resolutionSet.HasResult)
 					return Error(node, $"Operator '{op.Text}' cannot be applied to '{operand.Type.Name}'",
@@ -6066,6 +6117,11 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			}
 			
 			left = MakeWritable(left);
+			if (left.Type is DynType dyn)
+			{
+				VisitNode(node.Right, null);
+				return Error(node, $"Cannot use '{dyn.Name}' by value", CurrentTargetType, node.Left);
+			}
 			
 			if (op.Type != TokenType.OpEqual)
 				return ResolveCompoundAssignment(node, Decay(MaterializeAsDefault(left)), isOwnStore);
@@ -6161,7 +6217,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			
 			if (resolutionSet.IsAmbiguous)
 				return Error(node,
-					$"Ambiguous operation '{op.Text}' between '{left.Type.Name}' and '{right.Type.Name}'",
+					$"Operation '{op.Text}' between '{left.Type.Name}' and '{right.Type.Name}' is ambiguous",
 					CurrentTargetType);
 			
 			if (!resolutionSet.HasResult)
@@ -6432,7 +6488,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		
 		var resolutionSet = ResolveCallable(candidates, args, MaterializationMode.Overload);
 		if (resolutionSet.IsAmbiguous)
-			return Error(node, $"Ambiguous operation '{name}' between '{left.Type.Name}' and '{right.Type.Name}'",
+			return Error(node, $"Operation '{name}' between '{left.Type.Name}' and '{right.Type.Name}' is ambiguous",
 				CurrentTargetType);
 		
 		if (!resolutionSet.HasResult && violations is [var violation])
@@ -6495,7 +6551,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		
 		var resolutionSet = ResolveCallable(candidates, [right], MaterializationMode.Overload);
 		if (resolutionSet.IsAmbiguous)
-			return Error(node, $"Ambiguous operation '{name}' between '{left.Type.Name}' and '{right.Type.Name}'",
+			return Error(node, $"Operation '{name}' between '{left.Type.Name}' and '{right.Type.Name}' is ambiguous",
 				CurrentTargetType);
 		
 		if (!resolutionSet.HasResult)
@@ -6656,7 +6712,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 				range = range.Join(right.Syntax.SourceLocation.Range);
 				
 				return Error(node,
-					$"Ambiguous operation '{op.Text}' between '{left.Type.Name}' and '{right.Type.Name}'",
+					$"Operation '{op.Text}' between '{left.Type.Name}' and '{right.Type.Name}' is ambiguous",
 					CurrentTargetType, new SourceLocation(source, range));
 			}
 			
@@ -6718,7 +6774,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			
 			if (resolutionSet.IsAmbiguous)
 				return Error(node,
-					$"Ambiguous operation '{op.Text}' between '{args[0].Type.Name}' and '{args[1].Type.Name}'",
+					$"Operation '{op.Text}' between '{args[0].Type.Name}' and '{args[1].Type.Name}' is ambiguous",
 					CurrentTargetType, location);
 			
 			if (!resolutionSet.HasResult)
@@ -6835,7 +6891,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		if (IsMovedFunctionParameter(source, target))
 			return Error(source.Syntax, "Cannot move read-only parameters", target);
 		
-		if (source.Type is ClosureType && target is ClosureType)
+		if (HoldsDistinctClosures([source.Type, target]))
 			return Error(source.Syntax, "Cannot convert between 'own fun' closures", target);
 		
 		if (TypePool.ContainsInvalid(source.Type) || TypePool.ContainsInvalid(target))
@@ -6994,7 +7050,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 				return MaterializeFunctionAsDefault(group);
 			
 			case UntypedUndefType:
-				return Error(node.Syntax, "'undef' may only be used as a variable initializer", null);
+				return Error(node.Syntax, "Cannot use 'undef' outside variable initializers", null);
 			
 			default:
 				return node;
@@ -7047,6 +7103,17 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		PrimitiveTypeKind.Char => value >= uint.MinValue && value <= uint.MaxValue,
 		_ => false
 	};
+	
+	private TypeSymbol? FindLiteralConformer(ResolvedLiteralExpressionNode literal, DynType dyn) =>
+		literal.Type is UntypedType untyped
+			? NativeSymbols.PrimitiveTypes
+				.Where(type => untyped.MaterializationCost(type, MaterializationMode.Overload) != int.MaxValue &&
+				               (type is not IntegerType integer || literal.IntegerValue is not { } value ||
+				                FitsInType(value, integer)) &&
+				               _typePool.Conforms(type, dyn))
+				.OrderBy(type => untyped.MaterializationCost(type, MaterializationMode.Overload))
+				.FirstOrDefault()
+			: null;
 	
 	private IResolvedExpressionNode MaterializeExpression(IResolvedExpressionNode node, TypeSymbol target)
 	{
@@ -8126,7 +8193,11 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		if (IsDynTarget(target))
 			return CanConvertToDyn(arg.Type is UntypedType ? GetDefaultType(arg) : arg.Type, target)
 				? (1, null)
-				: (int.MaxValue, null);
+				: arg is ResolvedLiteralExpressionNode { Type: UntypedType untyped } literal &&
+				  (target is BorrowType { IsMutable: false, Target: DynType inner } ? inner : target) is DynType dyn &&
+				  FindLiteralConformer(literal, dyn) is { } conformer
+					? (2 + untyped.MaterializationCost(conformer, MaterializationMode.Overload), null)
+					: (int.MaxValue, null);
 		
 		if (target is BorrowType { IsMutable: false } borrow && arg.Type is not BorrowType)
 		{

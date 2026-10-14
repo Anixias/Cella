@@ -4,17 +4,17 @@
 Error at line 62, column 2
 61 │ {
 62 │     shared.id = 5
-         ╘═══════╛ Cannot write through read-only borrows
+         ╘═══════╛ 'Shared' has no writable '*'
 
 Error at line 63, column 2
 62 │ shared.id = 5
 63 │ shared.bump()
-     ╘════╛ Cannot mutably borrow through read-only borrows
+     ╘════╛ 'Shared' has no writable '*'
 
 Error at line 64, column 13
 63 │ shared.bump()
 64 │ addTen(mut shared.id)
-                ╘═══════╛ Cannot mutably borrow through read-only borrows
+                ╘═══════╛ 'Shared' has no writable '*'
 
 Error at line 70, column 2
 69 │ val boxed = BufferBox(Buffer(1))

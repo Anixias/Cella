@@ -1,0 +1,15 @@
+mod test
+
+Grid: rec
+{
+	cells: array[i32, 4]
+
+	[]: op(imm self, i: usize) -> imm[i32] = imm self.cells[i]
+}
+
+main: fun -> i32
+{
+	var g = Grid([1, 2, 3, 4])
+	g[0] = 1
+	ret 0
+}

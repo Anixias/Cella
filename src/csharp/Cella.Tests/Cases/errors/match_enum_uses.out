@@ -9,7 +9,7 @@ Error at line 22, column 49
 Error at line 24, column 35
 23 │ 
 24 │ describe: fun(s: socket) -> i32 = match s { valid(h) => h }
-                                       ╘═══╛ This match doesn't handle every case of 'socket': invalid
+                                       ╘═══╛ This match doesn't handle every case of 'socket': 'invalid'
 
 Error at line 28, column 10
 27 │ {

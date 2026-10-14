@@ -4,7 +4,7 @@
 Error at line 15, column 39
 14 │ 
 15 │ missing: fun(o: option[i32]) -> i32 = match o { some(v) => v }
-                                           ╘═══╛ This match doesn't handle every case of 'option[i32]': none
+                                           ╘═══╛ This match doesn't handle every case of 'option[i32]': 'none'
 
 Error at line 16, column 49
 15 │ missing: fun(o: option[i32]) -> i32 = match o { some(v) => v }

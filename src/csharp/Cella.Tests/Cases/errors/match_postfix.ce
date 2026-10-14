@@ -1,0 +1,14 @@
+mod test
+
+P: rec
+{
+	x: i32
+}
+
+E: enum { a  b }
+
+main: fun -> i32
+{
+	val t = E.a
+	ret match t { a => P(1)  b => P(2) }.x
+}

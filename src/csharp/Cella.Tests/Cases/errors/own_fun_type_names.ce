@@ -1,0 +1,12 @@
+mod test
+
+ext
+{
+	malloc: fun(size: usize) -> ptr
+}
+
+main: fun -> i32
+{
+	val g: own fun[-> i32] = fun -> i32 = 1
+	ret 0
+}

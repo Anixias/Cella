@@ -30,7 +30,7 @@ Error at line 66, column 8
 Error at line 72, column 8
 71 │ var n = 1
 72 │ ret T(mut n)
-           ╘═╛ Only an argument to a 'mut' parameter can be marked 'mut'
+           ╘═╛ Cannot use 'mut' on arguments to read-only parameters
 
 Error at line 77, column 7
 76 │ {

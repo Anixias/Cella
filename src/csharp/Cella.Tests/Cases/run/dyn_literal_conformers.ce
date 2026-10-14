@@ -1,0 +1,31 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Show: trait
+{
+	show: fun(imm self)
+}
+
+i64: impl Show
+{
+	show: fun(imm self) = printf("[%lld]", self)
+}
+
+cstr: impl Show
+{
+	show: fun(imm self) = printf("[%s]", self)
+}
+
+display: fun(imm value: dyn[Show]) = value.show()
+
+main: fun -> i32
+{
+	display(5)
+	display("x")
+	printf("\n")
+	ret 0
+}

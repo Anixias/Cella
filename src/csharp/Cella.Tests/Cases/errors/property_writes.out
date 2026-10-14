@@ -44,6 +44,6 @@ Error at line 35, column 18
 Error at line 36, column 2
 35 │ val moved = own unit.health
 36 │ unit.health
-     ╘═════════╛ Only assignments and function calls are allowed as statements
+     ╘═════════╛ Cannot use values as statements
 
 [compilation failed]

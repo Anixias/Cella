@@ -1,0 +1,9 @@
+
+====== ext_record_declarations.ce ======
+
+Error at line 3, column 12
+2 │ 
+3 │ Point: ext rec
+               ╘═╛ Cannot declare 'ext' records
+
+[compilation failed]

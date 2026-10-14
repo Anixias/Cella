@@ -1,0 +1,9 @@
+
+====== own_fun_type_arguments.ce ======
+
+Error at line 10, column 14
+ 9 │ {
+10 │     val f = ptr[own fun[-> i32]](malloc(8))
+                     ╘═╛ Cannot name 'own fun' types
+
+[compilation failed]

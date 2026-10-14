@@ -1,0 +1,14 @@
+
+====== unreachable_after_endless.ce ======
+
+Warning at line 11, column 2
+10 │ while true {}
+11 │ printf("z\n")
+     ^ Unreachable code
+
+Warning at line 17, column 2
+16 │ loop {}
+17 │ ret 4
+     ^ Unreachable code
+
+[exit code 0]

@@ -50,7 +50,7 @@ Error at line 112, column 18
 111 │ {
 112 │     printf("%d\n", last)
                          ╘══╛ Cannot use borrows of dropped values
-                            | Dropped on line 116
+                            | Dropped on line 116 in an earlier iteration
 
 Error at line 127, column 19
 126 │ effect = Effect.none

@@ -289,6 +289,10 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 		{
 			index = start;
 			var type = ParseType(ref index);
+			if (!IsNextNewline(index) && Peek(index, TokenType.OpDot))
+				throw new ParseException(new Diagnostic(DiagnosticSeverity.Error, type.SourceLocation,
+					"Cannot pass type arguments to cases"));
+			
 			return new PatternNode(typePath, caseName, [], [], false, type.SourceLocation) { Type = type };
 		}
 		
@@ -309,6 +313,10 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 			Token? mode = Match(ref index, out var keyword, _bindingModes) ? keyword : null;
 			if (!Match(ref index, out var binding, TokenType.Identifier))
 				throw Expected(index, "a name or '_'");
+			
+			if (Peek(index, TokenType.OpOpenParen))
+				throw new ParseException(new Diagnostic(DiagnosticSeverity.Error, Tokens[index].SourceLocation,
+					"Cannot nest patterns"));
 			
 			bindings.Add(binding);
 			bindingModes.Add(mode);
@@ -416,9 +424,19 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 	private IExpressionNode ParseUnary(ref int index)
 	{
 		if (Match(ref index, out var ownKeyword, TokenType.KeywordOwn))
+		{
+			if (Peek(index, TokenType.KeywordFun) && Peek(index + 1, TokenType.OpOpenBracket))
+				throw new ParseException(new Diagnostic(DiagnosticSeverity.Error, ownKeyword.SourceLocation,
+					"Cannot name 'own fun' types"));
+			
+			if (Match(ref index, out var ownedBorrow, TokenSets.BorrowKeywords))
+				throw new ParseException(new Diagnostic(DiagnosticSeverity.Error, ownedBorrow.SourceLocation,
+					$"Cannot combine 'own' and '{ownedBorrow.Text}'"));
+			
 			return !Peek(index + 1, TokenType.OpOpenBracket) && Match(ref index, out var lambda, TokenType.KeywordFun)
 				? ParseLambda(ref index, lambda, ownKeyword)
 				: new OwnExpressionNode(ownKeyword, ParseOperand(ref index));
+		}
 		
 		if (Match(ref index, out var atomicKeyword, TokenType.KeywordAtomic))
 			return ParseAtomic(ref index, atomicKeyword);
@@ -607,11 +625,17 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 		Token closeBrace;
 		while (!Match(ref index, out closeBrace, TokenType.OpCloseBrace))
 		{
-			if (AtEnd(index))
+			if (AtEnd(index) || Tokens[index].Type is TokenType.KeywordRet or TokenType.KeywordVar or
+				    TokenType.KeywordVal or TokenType.KeywordIf or TokenType.KeywordFor or TokenType.KeywordLoop or
+				    TokenType.KeywordWhile or TokenType.KeywordDo)
 				throw Expected(index, "'}'", openBrace);
 			
 			arms.Add(ParseMatchArm(ref index));
 		}
+		
+		if (!IsNextNewline(index) && Peek(index, TokenType.OpDot))
+			throw new ParseException(new Diagnostic(DiagnosticSeverity.Error, Tokens[index].SourceLocation,
+				"Cannot use '.' on 'match' expressions"));
 		
 		var (source, range) = keyword.SourceLocation;
 		range = range.Join(closeBrace.SourceLocation.Range);
@@ -755,6 +779,10 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 			var (nameSource, nameRange) = name.SourceLocation;
 			name = new AccessExpressionNode(name, member, new(nameSource, nameRange.Join(member.SourceLocation.Range)));
 		}
+		
+		if (Peek(index, TokenType.OpOpenBracket))
+			throw new ParseException(new Diagnostic(DiagnosticSeverity.Error, Tokens[index].SourceLocation,
+				"Cannot use type arguments in 'nameOf'"));
 		
 		if (!Match(ref index, out var closeParen, TokenType.OpCloseParen))
 			throw Expected(index, "')'", openParen);

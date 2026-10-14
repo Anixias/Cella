@@ -6,7 +6,7 @@ Error at line 20, column 11
 20 │ for b in items
               ╘═══╛ Cannot use borrows of reassigned values
                   | Borrowed by this loop
-                  | Reassigned on line 22
+                  | Reassigned on line 22 in an earlier iteration
 
 Error at line 23, column 18
 22 │ items = [A(3), A(4)]

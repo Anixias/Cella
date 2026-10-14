@@ -1,0 +1,49 @@
+
+====== record_member_syntax.ce ======
+
+Error at line 6, column 9
+5 │ x: i32
+6 │ Inner: rec
+           ╘═╛ Cannot nest 'rec' declarations
+
+Error at line 15, column 8
+14 │ x: i32
+15 │ Kind: enum { a  b }
+           ╘══╛ Cannot nest 'enum' declarations
+
+Error at line 21, column 5
+20 │ x: i32
+21 │ T: trait
+        ╘═══╛ Cannot nest 'trait' declarations
+
+Error at line 29, column 2
+28 │ x: i32
+29 │ ext
+     ╘═╛ Cannot nest 'ext' blocks
+
+Error at line 38, column 2
+37 │ x: i32
+38 │ use foo.bar
+     ╘═╛ Cannot nest 'use' declarations
+
+Error at line 43, column 9
+42 │ {
+43 │     x: i32 = 5
+                ^ Cannot give fields initial values
+
+Error at line 48, column 3
+47 │ {
+48 │     x:
+          ^ Expected a type
+
+Error at line 55, column 2
+54 │ v: prop
+55 │ {
+     ^ Expected a type
+
+Error at line 62, column 2
+61 │ {
+62 │     self: i32
+         ╘══╛ 'self' is a keyword
+
+[compilation failed]

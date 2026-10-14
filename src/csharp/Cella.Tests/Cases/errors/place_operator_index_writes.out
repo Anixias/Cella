@@ -1,0 +1,9 @@
+
+====== place_operator_index_writes.ce ======
+
+Error at line 13, column 2
+12 │ var g = Grid([1, 2, 3, 4])
+13 │ g[0] = 1
+     ╘══╛ 'Grid' has no writable '[]'
+
+[compilation failed]

@@ -1,0 +1,9 @@
+
+====== enum_missing_brace.ce ======
+
+Error at line 3, column 4
+2 │ 
+3 │ E: enum
+       ╘══╛ Expected '{'
+
+[compilation failed]

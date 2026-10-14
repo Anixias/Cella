@@ -1,0 +1,13 @@
+mod test
+
+ext
+{
+	f: fun(...) -> i32
+}
+
+main: fun -> i32
+{
+	var g: ext fun[...]
+	var h: ext fun[... -> i32]
+	ret 0
+}

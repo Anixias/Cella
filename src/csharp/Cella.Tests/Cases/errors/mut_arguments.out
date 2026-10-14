@@ -39,12 +39,12 @@ Error at line 36, column 18
 Error at line 37, column 17
 36 │ val converted = i32(mut hp)
 37 │ printf("%d\n", mut hp)
-                    ╘═╛ Only an argument to a 'mut' parameter can be marked 'mut'
+                    ╘═╛ Cannot use 'mut' on arguments to read-only parameters
 
 Error at line 39, column 11
 38 │ var callback: fun[i32] = show
 39 │ callback(mut hp)
-              ╘═╛ Only an argument to a 'mut' parameter can be marked 'mut'
+              ╘═╛ Cannot use 'mut' on arguments to read-only parameters
 
 Error at line 41, column 4
 40 │ val f = damage

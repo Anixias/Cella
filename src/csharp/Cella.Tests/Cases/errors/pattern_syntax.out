@@ -1,0 +1,19 @@
+
+====== pattern_syntax.ce ======
+
+Error at line 12, column 10
+11 │ val o: option[i32] = option.some(1)
+12 │ if o is option[i32].some(x)
+             ╘═════════╛ Cannot pass type arguments to cases
+
+Error at line 23, column 19
+22 │ val o: option[option[i32]] = option.some(option.some(1))
+23 │ if o is some(some(v))
+                      ^ Cannot nest patterns
+
+Error at line 32, column 12
+31 │ var e = E.hit(1)
+32 │ match own mut e
+               ╘═╛ Cannot combine 'own' and 'mut'
+
+[compilation failed]

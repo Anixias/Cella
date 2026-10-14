@@ -1,0 +1,14 @@
+mod test
+
+Grid: rec
+{
+	cells: array[i32, 4]
+
+	[]: op(mut self, i: usize) -> mut[i32] = mut self.cells[i]
+}
+
+main: fun -> i32
+{
+	val g = Grid([1, 2, 3, 4])
+	ret g[0]
+}

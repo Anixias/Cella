@@ -9,7 +9,7 @@ Error at line 3, column 12
 Error at line 7, column 2
 6 │ {
 7 │     own: i32
-        ╘═╛ Unexpected token
+        ╘═╛ 'own' is a keyword
 
 Error at line 12, column 6
 11 │ {

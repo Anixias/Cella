@@ -4,17 +4,17 @@
 Error at line 59, column 2
 58 │ var readings = Readings([1, 2])
 59 │ readings[0] = 5
-     ╘═════════╛ Cannot write through read-only borrows
+     ╘═════════╛ 'Readings' has no writable '[]'
 
 Error at line 60, column 13
 59 │ readings[0] = 5
 60 │ addTen(mut readings[1])
-                ╘═════════╛ Cannot mutably borrow through read-only borrows
+                ╘═════════╛ 'Readings' has no writable '[]'
 
 Error at line 62, column 14
 61 │ val slots = Slots([1, 2])
 62 │ val first = slots[0]
-                 ╘═══╛ Cannot mutably borrow values
+                 ╘═══╛ 'Slots' has no read-only '[]'
 
 Error at line 64, column 18
 63 │ val boxes = Boxes([Buffer(1), Buffer(2)])

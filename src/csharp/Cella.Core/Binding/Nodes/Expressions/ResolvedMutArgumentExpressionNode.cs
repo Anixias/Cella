@@ -13,4 +13,5 @@ public sealed class ResolvedMutArgumentExpressionNode
 	public IResolvedExpressionNode Place { get; } = place;
 	public TypeSymbol Type { get; } = type;
 	public IExpressionNode Syntax { get; } = syntax;
+	public string? OnlyMutOperator { get; init; }
 }

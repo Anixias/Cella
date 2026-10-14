@@ -1,0 +1,73 @@
+mod test
+
+Outer: rec
+{
+	x: i32
+	Inner: rec
+	{
+		y: i32
+	}
+}
+
+Kinds: rec
+{
+	x: i32
+	Kind: enum { a  b }
+}
+
+Traits: rec
+{
+	x: i32
+	T: trait
+	{
+	}
+}
+
+Exts: rec
+{
+	x: i32
+	ext
+	{
+		puts: fun(text: cstr) -> i32
+	}
+}
+
+Uses: rec
+{
+	x: i32
+	use foo.bar
+}
+
+Init: rec
+{
+	x: i32 = 5
+}
+
+Missing: rec
+{
+	x:
+	y: i32
+}
+
+Props: rec
+{
+	v: prop
+	{
+		get = 1
+	}
+}
+
+Selfs: rec
+{
+	self: i32
+}
+
+Statics: rec
+{
+	x: i32
+	s: var i32 = undef
+}
+
+g: var i32 = undef
+
+main: fun -> i32 = 0

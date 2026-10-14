@@ -1,0 +1,17 @@
+mod test
+
+E: enum { a  b }
+
+f: fun -> i32
+{
+	val t = E.a
+	val x = match t
+	{
+		a => 1
+		b => 2
+	ret x
+}
+
+g: fun -> i32 = )
+
+main: fun -> i32 = 0

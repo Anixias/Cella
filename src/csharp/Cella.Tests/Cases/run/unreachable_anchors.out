@@ -1,0 +1,29 @@
+
+====== unreachable_anchors.ce ======
+
+Warning at line 13, column 3
+12 │ break
+13 │ printf("dead1\n")
+     ^ Unreachable code
+
+Warning at line 22, column 2
+21 │ ret 0
+22 │ if c
+     ^ Unreachable code
+
+Warning at line 29, column 2
+28 │ ret 0
+29 │ while c
+     ^ Unreachable code
+
+Warning at line 36, column 2
+35 │ ret 0
+36 │ loop
+     ^ Unreachable code
+
+Warning at line 60, column 2
+59 │ ret total
+60 │ total += 100
+     ^ Unreachable code
+
+[exit code 0]

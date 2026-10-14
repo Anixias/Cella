@@ -20,6 +20,6 @@ Error at line 15, column 1
 Error at line 19, column 18
 18 │ 
 19 │ tagged: enum(u8) match i32
-                      ╘═══╛ Unexpected token
+                      ╘═══╛ Cannot use 'match' on enums with a tag type
 
 [compilation failed]

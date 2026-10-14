@@ -1,0 +1,7 @@
+mod test
+
+main: fun -> i32
+{
+	var g: ext fun[...]
+	ret 0
+}

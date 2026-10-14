@@ -111,6 +111,7 @@ public sealed class SignatureCollector
 		constants = constantResolver;
 		_typePool.TypeCompleter = Complete;
 		_typePool.TraitCompleter = CompleteTrait;
+		_typePool.SizeTable.Measurer = Measure;
 		
 		foreach (var file in files)
 			Register(file);
@@ -138,6 +139,24 @@ public sealed class SignatureCollector
 		ReportVariadicTypes();
 		_typePool.TypeCompleter = null;
 		_typePool.TraitCompleter = null;
+		_typePool.SizeTable.Measurer = null;
+	}
+	
+	private ISize Measure(TypeSymbol type, Func<ISize> computeSize)
+	{
+		var entry = ((Symbol)type, false);
+		if (type is not (RecordSymbol or EnumSymbol) || _inProgress.Contains(entry))
+			return computeSize();
+		
+		_inProgress.Add(entry);
+		try
+		{
+			return computeSize();
+		}
+		finally
+		{
+			_inProgress.Remove(entry);
+		}
 	}
 	
 	public TypeSymbol GetImplTarget(ImplSymbol impl) => _implTargets.GetValueOrDefault(impl, NativeSymbols.Invalid);

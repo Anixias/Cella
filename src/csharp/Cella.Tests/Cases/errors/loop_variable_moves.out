@@ -21,7 +21,7 @@ Error at line 62, column 14
 62 │ for name in group
                  ╘═══╛ Cannot use borrows of moved values
                      | Borrowed by this loop
-                     | Moved on line 63
+                     | Moved on line 63 in an earlier iteration
 
 Error at line 63, column 15
 62 │ for name in group
@@ -40,7 +40,7 @@ Error at line 72, column 15
 72 │ for x in mut d
                   ^ Cannot use borrows of moved values
                   | Borrowed by this loop
-                  | Moved on line 73
+                  | Moved on line 73 in an earlier iteration
 
 Error at line 73, column 14
 72 │ for x in mut d

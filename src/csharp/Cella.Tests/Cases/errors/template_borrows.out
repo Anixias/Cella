@@ -36,7 +36,7 @@ Error at line 84, column 8
 83 │ {
 84 │     show(last)
               ╘══╛ Cannot use borrows of dropped values
-                 | Dropped on line 87
+                 | Dropped on line 87 in an earlier iteration
 
 Error at line 92, column 7
 91 │ take(own buffer)

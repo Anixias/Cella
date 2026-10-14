@@ -1,0 +1,9 @@
+
+====== ext_variadic_only_types.ce ======
+
+Error at line 5, column 17
+4 │ {
+5 │     var g: ext fun[...]
+                       ╘═╛ Expected a parameter before '...'
+
+[compilation failed]

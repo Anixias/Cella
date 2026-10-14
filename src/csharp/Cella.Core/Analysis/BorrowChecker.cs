@@ -322,7 +322,8 @@ public sealed class BorrowChecker
 		
 		var hints = endings
 			.Select(ending => ending.Location != location
-				? $"{Describe(ending.Ending)} on line {ending.Location.GetLineColumn().Line}"
+				? $"{Describe(ending.Ending)} on line {ending.Location.GetLineColumn().Line}" +
+				  (MemoryChecker.IsOnLaterLine(ending.Location, location) ? " in an earlier iteration" : "")
 				: ending.Ending == Ending.Dropped
 					? "Dropped here"
 					: $"{Describe(ending.Ending)} here in an earlier iteration")

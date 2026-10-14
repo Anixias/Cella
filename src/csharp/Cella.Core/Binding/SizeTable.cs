@@ -34,6 +34,7 @@ public sealed class SizeTable
 	private readonly Dictionary<TypeSymbol, Func<ISize>> _deferredSizes = [];
 	
 	public Action<TypeSymbol>? Completer { get; set; }
+	public Func<TypeSymbol, Func<ISize>, ISize>? Measurer { get; set; }
 	
 	public void Register(TypeSymbol type, ISize size) => _sizes[type] = size;
 	public void Register(TypeSymbol type, Func<ISize> computeSize) => _deferredSizes[type] = computeSize;
@@ -58,7 +59,7 @@ public sealed class SizeTable
 		if (!_deferredSizes.Remove(type, out var computeSize))
 			return null;
 		
-		size = computeSize();
+		size = Measurer is { } measure ? measure(type, computeSize) : computeSize();
 		_sizes[type] = size;
 		return size;
 	}

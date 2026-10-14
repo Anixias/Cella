@@ -4,7 +4,7 @@
 Error at line 4, column 1
 3 │ first: fun -> i32
 4 │ {
-    ^ Expected '}' to close this block
+    ^ Expected '}' to close this '{'
 
 Error at line 13, column 6
 12 │ {

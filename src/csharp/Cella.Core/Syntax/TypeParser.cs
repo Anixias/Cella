@@ -20,6 +20,10 @@ public sealed class TypeParser(ImmutableArray<Token> tokens) : BaseParser<ITypeN
 		if (Match(ref index, out var dynKeyword, TokenType.KeywordDyn))
 			return ParseDynType(ref index, dynKeyword);
 		
+		if (Peek(index, TokenType.KeywordOwn) && Peek(index + 1, TokenType.KeywordFun))
+			throw new ParseException(new Diagnostic(DiagnosticSeverity.Error, Tokens[index].SourceLocation,
+				"Cannot name 'own fun' types"));
+		
 		if (TryParseFunctionType(ref index) is { } functionType)
 			return functionType;
 		
@@ -148,6 +152,10 @@ public sealed class TypeParser(ImmutableArray<Token> tokens) : BaseParser<ITypeN
 				if (isExternal && Peek(index, TokenType.OpDotDotDot) &&
 				    (Peek(index + 1, TokenType.OpArrow) || Peek(index + 1, TokenType.OpCloseBracket)))
 				{
+					if (parameterTypes.Count == 0)
+						throw new ParseException(new Diagnostic(DiagnosticSeverity.Error, Tokens[index].SourceLocation,
+							"Expected a parameter before '...'"));
+					
 					variadic = Tokens[index++];
 					break;
 				}

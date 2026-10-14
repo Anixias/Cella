@@ -1,0 +1,9 @@
+
+====== name_of_type_arguments.ce ======
+
+Error at line 7, column 23
+6 │ {
+7 │     val n = nameOf(option[i32].none)
+                             ^ Cannot use type arguments in 'nameOf'
+
+[compilation failed]

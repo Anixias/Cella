@@ -142,7 +142,7 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool, 
 	{
 		if (!IsAllowedAsStatement(node.Expression))
 			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Syntax.SourceLocation,
-				"Only assignments and function calls are allowed as statements"));
+				"Cannot use values as statements"));
 		
 		// ^Need to check for purity of expressions. Pure expressions as statements is either an error or a warning
 		VisitNode(node.Expression);
@@ -473,9 +473,12 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool, 
 				"Cannot reassign read-only properties"));
 		else if (!IsLValue(node.Left))
 			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Left.Syntax.SourceLocation,
-				"Assignment target must be addressable"));
+				$"Cannot assign to {DescribeUnstored(node.Left)}"));
 		else if (ReportUnwritable(node.Left) is { } unwritable)
 			Diagnostics.Add(unwritable);
+		else if (FindReadOnlyOperator(node.Left) is var (owner, name))
+			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Left.Syntax.SourceLocation,
+				$"'{owner.Name}' has no writable '{name}'"));
 		else if (IsThroughReadOnlyBorrow(node.Left))
 			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Left.Syntax.SourceLocation,
 				"Cannot write through read-only borrows"));
@@ -798,7 +801,12 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool, 
 	
 	public void Visit(ResolvedMutArgumentExpressionNode node)
 	{
-		CheckMutPlace(node.Place);
+		if (FindMutPlaceError(node.Place) is { } error)
+			Diagnostics.Add(node.OnlyMutOperator is { } name
+				? new(DiagnosticSeverity.Error, error.SourceLocation,
+					$"'{node.Place.Type.Name}' has no read-only '{name}'")
+				: error);
+		
 		VisitNode(node.Place);
 	}
 	
@@ -821,26 +829,48 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool, 
 	
 	private void CheckMutPlace(IResolvedExpressionNode place)
 	{
-		var location = place.Syntax.SourceLocation;
-		if (place is ResolvedAssignmentExpressionNode assignment)
-		{
-			if (IsDeferredWrite(assignment) && FindImmutableBinding(assignment.Left) is { } deferred)
-				Diagnostics.Add(new(DiagnosticSeverity.Error, location,
-					$"Cannot mutably borrow {DescribeImmutable(deferred)}"));
-		}
-		else if (!IsLValue(place))
-			Diagnostics.Add(new(DiagnosticSeverity.Error, location,
-				$"Cannot mutably borrow {DescribeUnstored(place)}"));
-		else if (ReportUnwritable(place) is { } unwritable)
-			Diagnostics.Add(unwritable);
-		else if (IsThroughReadOnlyBorrow(place))
-			Diagnostics.Add(new(DiagnosticSeverity.Error, location, "Cannot mutably borrow through read-only borrows"));
-		else if (FindIndexedString(place) is { } text)
-			Diagnostics.Add(new(DiagnosticSeverity.Error, location, $"Cannot mutably borrow through '{text.Name}'"));
-		else if (FindImmutableBinding(place) is { } binding)
-			Diagnostics.Add(new(DiagnosticSeverity.Error, location,
-				$"Cannot mutably borrow {DescribeImmutable(binding)}"));
+		if (FindMutPlaceError(place) is { } error)
+			Diagnostics.Add(error);
 	}
+	
+	private Diagnostic? FindMutPlaceError(IResolvedExpressionNode place)
+	{
+		if (place is not ResolvedAssignmentExpressionNode && IsLValue(place) &&
+		    ReportUnwritable(place) is { } unwritable)
+			return unwritable;
+		
+		var message = place switch
+		{
+			ResolvedAssignmentExpressionNode assignment =>
+				IsDeferredWrite(assignment) && FindImmutableBinding(assignment.Left) is { } deferred
+					? $"Cannot mutably borrow {DescribeImmutable(deferred)}"
+					: null,
+			_ when !IsLValue(place) => $"Cannot mutably borrow {DescribeUnstored(place)}",
+			_ when FindReadOnlyOperator(place) is var (owner, name) => $"'{owner.Name}' has no writable '{name}'",
+			_ when IsThroughReadOnlyBorrow(place) => "Cannot mutably borrow through read-only borrows",
+			_ when FindIndexedString(place) is { } text => $"Cannot mutably borrow through '{text.Name}'",
+			_ when FindImmutableBinding(place) is { } binding => $"Cannot mutably borrow {DescribeImmutable(binding)}",
+			_ => null
+		};
+		
+		return message is null ? null : new Diagnostic(DiagnosticSeverity.Error, place.Syntax.SourceLocation, message);
+	}
+	
+	private static (TypeSymbol Owner, string Name)? FindReadOnlyOperator(IResolvedExpressionNode place) => place switch
+	{
+		ResolvedAccessExpressionNode { Member: FieldSymbol } n => FindReadOnlyOperator(n.Target),
+		ResolvedIndexerExpressionNode { Target.Type: ArrayType } n => FindReadOnlyOperator(n.Target),
+		ResolvedUnaryOpExpressionNode
+		{
+			Operation.Op: TokenType.OpStar, Operand: ResolvedFunctionCallExpressionNode
+			{
+				Type: BorrowType { IsMutable: false },
+				Function.Symbol.Syntax: FunctionNode { Identifier.Text: var name and ("*" or "[]") },
+				Arguments: [var receiver, ..]
+			}
+		} => (receiver.Type is BorrowType borrow ? borrow.Target : receiver.Type, name),
+		_ => null
+	};
 	
 	public void Visit(ResolvedFunctionGroupExpressionNode node)
 	{
@@ -966,7 +996,7 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool, 
 	public void Visit(ResolvedUndefExpressionNode node)
 	{
 		Diagnostics.Add(new(DiagnosticSeverity.Error, node.Syntax.SourceLocation,
-			"'undef' may only be used as a variable initializer"));
+			"Cannot use 'undef' outside variable initializers"));
 	}
 	
 	public void Visit(ResolvedVarExpressionNode node)

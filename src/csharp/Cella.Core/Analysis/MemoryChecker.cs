@@ -185,7 +185,9 @@ public sealed class MemoryChecker(TypePool typePool, DiagnosticList diagnostics)
 		if (!uninitialized.HasFlag(PathState.Moved))
 			return new(isPartial ? "partly initialized" : "uninitialized", []);
 		
-		return new(isPartial ? "partly moved" : "moved", isWhole ? state.GetMoves(path) : state.GetOwnMoves(path));
+		var moves = (isWhole ? state.GetMoves(path) : state.GetOwnMoves(path)).ToList();
+		isPartial |= isWhole && moves.Count > 0 && moves.All(move => move.Path != path);
+		return new(isPartial ? "partly moved" : "moved", moves);
 	}
 	
 	private static bool IsComputedIndex(Projection projection) => projection is IndexProjection { Index: null };
@@ -272,8 +274,13 @@ public sealed class MemoryChecker(TypePool typePool, DiagnosticList diagnostics)
 		.OrderBy(static at => at.Range.Start)
 		.Select(at => at == location
 			? $"{action} here in an earlier iteration"
-			: $"{action} on line {at.GetLineColumn().Line}")
+			: IsOnLaterLine(at, location)
+				? $"{action} on line {at.GetLineColumn().Line} in an earlier iteration"
+				: $"{action} on line {at.GetLineColumn().Line}")
 		.Distinct();
+	
+	public static bool IsOnLaterLine(SourceLocation site, SourceLocation use) =>
+		site.Source == use.Source && site.GetLineColumn().Line > use.GetLineColumn().Line;
 	
 	private Dictionary<BasicBlock, InitState> SolveInitialization(LoweredFunction function,
 		Dictionary<BasicBlock, List<MemoryEvent>> events, MovePaths paths, InitState entryState)

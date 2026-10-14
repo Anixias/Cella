@@ -19,7 +19,7 @@ Error at line 34, column 2
 Error at line 35, column 2
 34 │ own a = Buffer(2)
 35 │ own a
-     ╘═══╛ Only assignments and function calls are allowed as statements
+     ╘═══╛ Cannot use values as statements
 
 Error at line 37, column 18
 36 │ 

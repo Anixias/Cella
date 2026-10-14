@@ -4,7 +4,7 @@
 Error at line 13, column 10
 12 │ val r = Role.fighter
 13 │ val a = match r { fighter => 1 }
-             ╘═══╛ This match doesn't handle every case of 'Role': healer, tank
+             ╘═══╛ This match doesn't handle every case of 'Role': 'healer' and 'tank'
 
 Error at line 14, column 10
 13 │ val a = match r { fighter => 1 }

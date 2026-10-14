@@ -10,6 +10,6 @@ Error at line 7, column 9
 Error at line 18, column 9
 17 │ {
 18 │     break outre
-               ╘═══╛ Symbol 'outre' is not a label
+               ╘═══╛ 'outre' is not a label
 
 [compilation failed]

@@ -1,0 +1,9 @@
+mod test
+
+option[T]: enum { none  some(value: T) }
+
+main: fun -> i32
+{
+	val n = nameOf(option[i32].none)
+	ret 0
+}

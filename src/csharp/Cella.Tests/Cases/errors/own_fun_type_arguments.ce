@@ -1,0 +1,12 @@
+mod test
+
+ext
+{
+	malloc: fun(size: usize) -> ptr
+}
+
+main: fun -> i32
+{
+	val f = ptr[own fun[-> i32]](malloc(8))
+	ret 0
+}

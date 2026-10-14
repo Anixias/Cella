@@ -1,0 +1,27 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Buffer: rec
+{
+	id: i32
+}
+
+Box: rec
+{
+	pointer: req ptr[Buffer]
+
+	*: op(mut self) -> mut[Buffer] = mut *self.pointer
+}
+
+main: fun -> i32
+{
+	var x = Buffer(5)
+	val b = Box(@x)
+	printf("%d\n", (*b).id)
+	printf("%d\n", b.id)
+	ret 0
+}
