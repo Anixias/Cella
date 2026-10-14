@@ -1,6 +1,7 @@
 ﻿using System.Collections.Immutable;
 using System.Numerics;
 using System.Text;
+using Cella.Core.Binding.Nodes;
 using Cella.Core.Symbols;
 
 namespace Cella.Core.Binding.Constants;
@@ -87,3 +88,8 @@ public sealed class EnumTagConstant(TypeSymbol type, BigInteger tag) : Constant(
 }
 
 public sealed class ZeroConstant(TypeSymbol type) : Constant(type);
+
+public sealed class ParametricConstant(IResolvedExpressionNode value) : Constant(value.Type)
+{
+	public IResolvedExpressionNode Value { get; } = value;
+}

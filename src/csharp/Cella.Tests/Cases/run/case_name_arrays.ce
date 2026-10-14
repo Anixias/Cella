@@ -1,0 +1,23 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Team: enum { red  blue }
+
+show: fun(t: Team) -> i32 = i32(t)
+
+main: fun -> i32
+{
+	val picked = [red, blue]
+	val looped = [blue, red]
+	var sum = 0
+	for t in looped
+		sum += show(t)
+
+	val nested = [[red, blue], [blue, blue]]
+	printf("%d %d %d\n", show(picked[1]), sum, show(nested[1][0]))
+	ret 0
+}

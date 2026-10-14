@@ -3158,9 +3158,10 @@ public sealed class SignatureCollector
 				? _typePool.GetPlainFunctionType(passed)
 				: types[i];
 			
-			var constant = type is InvalidType
+			var resolved = type is InvalidType ? null : constants!.ResolveInitializer(value, type, context);
+			var constant = resolved is null
 				? InvalidConstant.Instance
-				: EvaluateChecked(constants!.ResolveInitializer(value, type, context));
+				: EvaluateChecked(resolved) ?? (IsParametric(resolved) ? new ParametricConstant(resolved) : null);
 			
 			if (constant is null)
 				Diagnostics.Add(_typePool.HoldsBorrows(type)
@@ -3174,6 +3175,19 @@ public sealed class SignatureCollector
 		
 		return defaults;
 	}
+	
+	private bool IsParametric(IResolvedExpressionNode node) => node switch
+	{
+		ResolvedSizeOfExpressionNode or ResolvedAlignOfExpressionNode or ResolvedValueParameterExpressionNode => true,
+		ResolvedUnaryOpExpressionNode { Operation: NativeImpl } n => IsParametric(n.Operand),
+		ResolvedBinaryOpExpressionNode { Operation: NativeImpl } n => IsParametricOperand(n.Left) &&
+		                                                              IsParametricOperand(n.Right),
+		ResolvedConversionExpressionNode n => IsParametric(n.Source),
+		_ => false
+	};
+	
+	private bool IsParametricOperand(IResolvedExpressionNode node) =>
+		Evaluator.Evaluate(node) is not null || IsParametric(node);
 	
 	private bool TakesVariadicParameter(ImmutableArray<ParameterNode> parameters, List<TypeSymbol> types)
 	{

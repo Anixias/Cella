@@ -384,7 +384,8 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 				return new(tracked.Local.Declaration, tracked.Local.Identifier, element, tracked.Local.Context)
 				{
 					Owner = tracked.Local,
-					Lengths = [..tracked.Lengths, syntax.Values.Length]
+					Lengths = [..tracked.Lengths, syntax.Values.Length],
+					IsCaseName = IsCaseNameSyntax(element)
 				};
 		}
 		
@@ -2457,8 +2458,35 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			: TypePool.CreateMap(info.Symbol.TypeParameters, info.TypeArguments);
 		
 		CompleteArguments(args, info.Signature.ParameterTypes,
-			[..info.Signature.Defaults.Select(value => _typePool.SubstituteConstant(value, map))], form, node);
+		[
+			..info.Signature.Defaults.Select(value => value is ParametricConstant parametric
+				? new ParametricConstant(SubstituteParametric(parametric.Value, map))
+				: _typePool.SubstituteConstant(value, map))
+		], form, node);
 	}
+	
+	private IResolvedExpressionNode SubstituteParametric(IResolvedExpressionNode node,
+		IReadOnlyDictionary<TypeParameterSymbol, TypeSymbol> map) => node switch
+	{
+		ResolvedSizeOfExpressionNode n => new ResolvedSizeOfExpressionNode(_typePool.Substitute(n.Target, map),
+			n.Syntax),
+		ResolvedAlignOfExpressionNode n =>
+			new ResolvedAlignOfExpressionNode(_typePool.Substitute(n.Target, map), n.Syntax),
+		ResolvedValueParameterExpressionNode n => map.GetValueOrDefault(n.Parameter) switch
+		{
+			ValueArgumentType { Value: var value } when n.Type is IntegerType type =>
+				MaterializeLiteral(n.Syntax, type, value),
+			TypeParameterSymbol parameter => new ResolvedValueParameterExpressionNode(parameter, n.Syntax),
+			_ => n
+		},
+		ResolvedUnaryOpExpressionNode n =>
+			new ResolvedUnaryOpExpressionNode(SubstituteParametric(n.Operand, map), n.Operation, n.Syntax),
+		ResolvedBinaryOpExpressionNode n => new ResolvedBinaryOpExpressionNode(SubstituteParametric(n.Left, map),
+			SubstituteParametric(n.Right, map), n.Operation, n.Syntax),
+		ResolvedConversionExpressionNode n =>
+			new ResolvedConversionExpressionNode(SubstituteParametric(n.Source, map), n.Conversion, n.Syntax),
+		_ => node
+	};
 	
 	private void CompleteArguments(List<IResolvedExpressionNode> args, ImmutableArray<TypeSymbol> parameterTypes,
 		ImmutableArray<Constant> defaults, CallForm form, CallExpressionNode node)
@@ -2479,6 +2507,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	{
 		switch (constant)
 		{
+			case ParametricConstant c:
+				return c.Value;
+			
 			case IntegerConstant c when type is IntegerType integer:
 				return MaterializeLiteral(syntax, integer, c.Value);
 			
@@ -4511,6 +4542,10 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		}
 		
 		var peers = visited.OfType<IResolvedExpressionNode>().Select(static value => value.Type).ToList();
+		if (survey is not null && peers.Count == 0 && node.Values.Length > 0)
+			return new ResolvedArrayExpressionNode(_typePool.GetArrayType(CaseNameType.Instance, node.Values.Length),
+				[..node.Values.Select(value => CreateCaseName(GetCaseToken(value)!.Value, value))], node);
+		
 		var values = node.Values
 			.Select((expression, i) => visited[i] ?? VisitCaseName(expression, peers) ?? VisitNode(expression, null))
 			.ToList();

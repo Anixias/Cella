@@ -1,0 +1,9 @@
+mod test
+
+Team: enum { red  blue }
+
+main: fun -> i32
+{
+	val unused = [red, blue]
+	ret 0
+}
