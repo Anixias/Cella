@@ -9,9 +9,6 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 {
 	public delegate BlockStatementNode? BlockParser(ref int index, Token openBrace);
 	
-	private static readonly HashSet<TokenType> _parameterModes =
-		[TokenType.KeywordMut, TokenType.KeywordOwn, TokenType.KeywordImm];
-	
 	private static readonly HashSet<TokenType> _literalTypes =
 	[
 		TokenType.KeywordTrue,
@@ -137,12 +134,6 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 	[
 		TokenType.OpEqualEqual,
 		TokenType.OpBangEqual
-	];
-	
-	private static readonly HashSet<TokenType> _borrowKeywords =
-	[
-		TokenType.KeywordImm,
-		TokenType.KeywordMut
 	];
 	
 	private static readonly HashSet<TokenType> _bindingModes =
@@ -425,7 +416,7 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 		if (Match(ref index, out var atomicKeyword, TokenType.KeywordAtomic))
 			return ParseAtomic(ref index, atomicKeyword);
 		
-		if (!StartsBorrowType(index) && Match(ref index, out var borrowKeyword, _borrowKeywords))
+		if (!StartsBorrowType(index) && Match(ref index, out var borrowKeyword, TokenSets.BorrowKeywords))
 			return new BorrowExpressionNode(borrowKeyword, ParseOperand(ref index));
 		
 		if (!Match(ref index, out var op, _unaryPrefixOps))
@@ -582,7 +573,7 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 	
 	private LambdaParameterNode ParseLambdaParameter(ref int index)
 	{
-		Token? mode = Match(ref index, out var keyword, _parameterModes) ? keyword : null;
+		Token? mode = Match(ref index, out var keyword, TokenSets.ParameterModes) ? keyword : null;
 		if (!Match(ref index, out var identifier, TokenType.Identifier))
 			throw IsReservedWord(index)
 				? new ParseException(new Diagnostic(DiagnosticSeverity.Error, Tokens[index].SourceLocation,
@@ -732,18 +723,7 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 		if (AtEnd(index))
 			throw Expected(index, "an expression");
 		
-		IExpressionNode value;
-		try
-		{
-			value = ParseExpression(ref index);
-		}
-		catch (InvalidOperationException e) when (e is not ParseException)
-		{
-			var token = Tokens[Math.Min(index, Tokens.Length - 1)];
-			throw new ParseException(new Diagnostic(DiagnosticSeverity.Error, token.SourceLocation,
-				token.Error ?? "Unexpected token"));
-		}
-		
+		var value = ParseExpression(ref index);
 		if (!AtEnd(index))
 			throw Expected(index, "'}'");
 		
@@ -784,7 +764,6 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 			// Call, Indexer, Access
 			// TODO Contextual keywords
 			// TODO Should not use identifier but instead a tightly-bound indexer, which is also used for type parameters
-			// TODO An indexer or call expression could be chained with one another; this won't parse those
 			var startIndex = index;
 			
 			// Access Expression

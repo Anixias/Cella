@@ -6353,7 +6353,6 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		    .Any(i => DeclaresOperator(operands[i].Type, operands[i + 1].Type, node.Ops[i].Text)))
 			return ResolveDeclaredChain(node, operands);
 		
-		// TODO Do we need common types anymore?
 		var commonType = UnifyTypes(operands);
 		if (commonType is null)
 			return Error(node, "Cannot chain comparisons between incompatible types", CurrentTargetType);
@@ -6371,7 +6370,6 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			if (AnyInvalid(left, right))
 				return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
 			
-			// TODO Allow types other than bool?
 			var args = new[] { left, right };
 			var candidates = _operatorRegistry.GetBinaryCandidates(op.Type);
 			var resolutionSet = ResolveCallable(candidates, args, MaterializationMode.Overload, NativeSymbols.Bool);
@@ -6399,8 +6397,6 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			operands[i + 1] = resolvedArgs[1];
 			links.Add(new ChainLink((OperationImpl)resolution.Callable, null));
 		}
-		
-		// TODO Aggregate types with implicit AND?
 		
 		return new ResolvedChainedExpressionNode(NativeSymbols.Bool, operands, links, node);
 	}

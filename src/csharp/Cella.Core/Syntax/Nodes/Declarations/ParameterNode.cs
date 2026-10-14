@@ -3,7 +3,6 @@ using Cella.Core.Text;
 
 namespace Cella.Core.Syntax.Nodes;
 
-// TODO More complex type
 public sealed class ParameterNode(Token? mode, Token identifier, ITypeNode type, IExpressionNode? defaultValue)
 	: IDeclarationNode
 {

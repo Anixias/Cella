@@ -1,0 +1,34 @@
+
+====== hidden_bounds.ce ======
+
+Error at line 18, column 6
+17 │ 
+18 │ f[T: Secret]: pub fun(imm x: T) -> i32 = x.id()
+          ╘════╛ 'Secret' is less visible than 'f'
+
+Error at line 19, column 10
+18 │ f[T: Secret]: pub fun(imm x: T) -> i32 = x.id()
+19 │ g[T: new(Hidden)]: pub fun -> i32 = 0
+              ╘════╛ 'Hidden' is less visible than 'g'
+
+Error at line 20, column 6
+19 │ g[T: new(Hidden)]: pub fun -> i32 = 0
+20 │ h[F: fun[Hidden -> i32]]: pub fun -> i32 = 0
+          ╘════════════════╛ 'Hidden' is less visible than 'h'
+
+Error at line 21, column 6
+20 │ h[F: fun[Hidden -> i32]]: pub fun -> i32 = 0
+21 │ k[T: Hash]: fun(imm x: T) -> i32 = 0
+          ╘══╛ 'Hash' is less visible than 'k'
+
+Error at line 23, column 8
+22 │ 
+23 │ box[T: Secret]: pub rec
+            ╘════╛ 'Secret' is less visible than 'box'
+
+Error at line 28, column 11
+27 │ 
+28 │ holder[T: Hash]: pub rec
+               ╘══╛ 'Hash' is less visible than 'holder'
+
+[compilation failed]

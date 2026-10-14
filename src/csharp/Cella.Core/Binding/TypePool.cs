@@ -1799,7 +1799,6 @@ public sealed class TypePool
 		ConversionTable.Add(new NativeConversion(cstr, NativeSymbols.IntSize, ConversionKind.Explicit, 0));
 		ConversionTable.Add(new NativeConversion(NativeSymbols.IntSize, cstr, ConversionKind.Explicit, 0));
 		
-		// TODO constructors, str.toCstr(), str.getCharLength(), etc.
 		CreateStrMembers();
 		
 		// Operations

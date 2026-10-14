@@ -1,0 +1,9 @@
+
+====== underscore_case_names.ce ======
+
+Error at line 3, column 11
+2 │ 
+3 │ E: enum { _  b }
+              ^ Expected a case name
+
+[compilation failed]

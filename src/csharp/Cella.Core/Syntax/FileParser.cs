@@ -71,9 +71,6 @@ public sealed class FileParser
 	
 	private static readonly HashSet<TokenType> _accessorKeywords = [TokenType.KeywordGet, TokenType.KeywordSet];
 	
-	private static readonly HashSet<TokenType> _parameterModes =
-		[TokenType.KeywordMut, TokenType.KeywordOwn, TokenType.KeywordImm];
-	
 	private static readonly HashSet<TokenType> _lifecycleKeywords = [TokenType.KeywordNew, TokenType.KeywordDrop];
 	
 	private static readonly HashSet<string> _declarationKinds =
@@ -242,14 +239,7 @@ public sealed class FileParser
 		
 		// Combine range to include penultimate token (because last must be EOF)
 		if (index > 1)
-			range.Join(Tokens[index - 1].SourceLocation.Range);
-		
-		// Must read EOF at end
-		if (!Match(ref index, TokenType.EndOfFile))
-		{
-			Report(Tokens[index], "Expected end of file");
-			return null;
-		}
+			range = range.Join(Tokens[index - 1].SourceLocation.Range);
 		
 		if (Diagnostics.ErrorCount > 0)
 			return null;
@@ -565,7 +555,7 @@ public sealed class FileParser
 			var isBorrowType = (Peek(index, TokenType.KeywordMut) || Peek(index, TokenType.KeywordImm)) &&
 			                   Peek(index + 1, TokenType.OpOpenBracket);
 			
-			modes.Add(!isBorrowType && Match(ref index, out var mode, _parameterModes) ? mode : null);
+			modes.Add(!isBorrowType && Match(ref index, out var mode, TokenSets.ParameterModes) ? mode : null);
 			if (!StartsType(index))
 			{
 				ReportExpected(index, "a type");
@@ -598,10 +588,6 @@ public sealed class FileParser
 		catch (ParseException e)
 		{
 			Diagnostics.Add(e.Diagnostic);
-		}
-		catch (InvalidOperationException)
-		{
-			ReportUnexpected(Tokens[Math.Min(index, Tokens.Length - 1)]);
 		}
 		
 		return null;
@@ -900,11 +886,6 @@ public sealed class FileParser
 			Diagnostics.Add(e.Diagnostic);
 			declaration = null;
 		}
-		catch (InvalidOperationException)
-		{
-			ReportUnexpected(Tokens[index]);
-			declaration = null;
-		}
 		
 		if (declaration is null && Diagnostics.ErrorCount == errorCount)
 			Report(start, $"Invalid {kind} declaration");
@@ -915,8 +896,6 @@ public sealed class FileParser
 	private List<IDeclarationNode>? ParseExternalDeclarations(ref int index, Token? block)
 	{
 		// 'ext' token already consumed by caller
-		
-		// TODO Diagnostics
 		
 		// Optional library origin
 		string? origin;
@@ -1360,7 +1339,7 @@ public sealed class FileParser
 	private ReceiverNode? ParseReceiver(ref int index)
 	{
 		var start = index;
-		Token? mode = Match(ref index, out var keyword, _parameterModes) ? keyword : null;
+		Token? mode = Match(ref index, out var keyword, TokenSets.ParameterModes) ? keyword : null;
 		if (Match(ref index, out var self, TokenType.KeywordSelf))
 			return new(mode, self);
 		
@@ -1399,8 +1378,8 @@ public sealed class FileParser
 	{
 		// TODO Diagnostics
 		
-		Token? mode = Match(ref index, out var keyword, _parameterModes) ? keyword : null;
-		while (mode is not null && Match(ref index, out var extra, _parameterModes))
+		Token? mode = Match(ref index, out var keyword, TokenSets.ParameterModes) ? keyword : null;
+		while (mode is not null && Match(ref index, out var extra, TokenSets.ParameterModes))
 			Report(extra, $"Cannot combine '{mode.Value.Text}' and '{extra.Text}'");
 		
 		Token? ellipsis = Match(ref index, out var dots, TokenType.OpDotDotDot) ? dots : null;
@@ -1425,7 +1404,6 @@ public sealed class FileParser
 			return null;
 		}
 		
-		// TODO Type should be more complex than a simple identifier token
 		var type = ParseType(ref index);
 		
 		if (!Match(ref index, TokenType.OpEqual))
@@ -1768,7 +1746,8 @@ public sealed class FileParser
 	
 	private EnumCaseNode? ParseEnumCase(ref int index, ITypeNode? matchedType)
 	{
-		if (!Match(ref index, out var name, TokenType.Identifier))
+		if (Tokens[index] is { Type: TokenType.Identifier, Text: "_" } ||
+		    !Match(ref index, out var name, TokenType.Identifier))
 		{
 			ReportExpected(index, "a case name");
 			return null;
@@ -1854,8 +1833,6 @@ public sealed class FileParser
 	
 	private IDeclarationNode? ParseMember(ref int index, Token? block)
 	{
-		// TODO Diagnostics
-		
 		if (Match(ref index, out var lifecycleKeyword, _lifecycleKeywords))
 			return ParseLifecycleMember(ref index, lifecycleKeyword, block);
 		
@@ -1918,8 +1895,6 @@ public sealed class FileParser
 		if (StartsProperty(index))
 			return ParseDeclaration(ref index, identifier, "property",
 				(ref i) => ParseProperty(ref i, identifier, modifiers));
-		
-		// TODO Casts, operator overloads
 		
 		// Fields
 		return ParseField(ref index, identifier, modifiers);
@@ -2109,7 +2084,7 @@ public sealed class FileParser
 		
 		do
 		{
-			Token? mode = Match(ref index, out var keyword, _parameterModes) ? keyword : null;
+			Token? mode = Match(ref index, out var keyword, TokenSets.ParameterModes) ? keyword : null;
 			if (!Match(ref index, out var name, TokenType.Identifier))
 			{
 				if (IsReservedWord(index))
@@ -2186,7 +2161,6 @@ public sealed class FileParser
 	
 	private IDeclarationNode? ParseConstructor(ref int index, Token newKeyword, Token? block)
 	{
-		// When this is called, the identifier and fun keyword are already consumed
 		// Caller is expected to resync in case of errors
 		
 		// @TODO Diagnostics
@@ -2311,7 +2285,7 @@ public sealed class FileParser
 		    !Match(ref index, TokenType.OpOpenParen))
 			return false;
 		
-		Match(ref index, _parameterModes);
+		Match(ref index, TokenSets.ParameterModes);
 		return Peek(index, TokenType.KeywordSelf);
 	}
 	
@@ -2434,8 +2408,6 @@ public sealed class FileParser
 	
 	private IStatementNode? ParseStatement(ref int index)
 	{
-		// @TODO Diagnostics
-		
 		if (Peek(index, TokenType.OpCloseBrace))
 		{
 			ReportExpected(index, "a statement");
@@ -2593,8 +2565,6 @@ public sealed class FileParser
 	{
 		// ifToken already consumed when this function is called
 		
-		// TODO Diagnostics
-		
 		if (StartsBody(index))
 		{
 			ReportMissing(index, "a condition");
@@ -2675,8 +2645,6 @@ public sealed class FileParser
 	private VarStatementNode? ParseVarStatement(ref int index, Token keyword)
 	{
 		// keyword already consumed when this function is called
-		
-		// TODO Diagnostics
 		
 		// TODO Attempt resync 
 		if (!Match(ref index, out var identifier, TokenType.Identifier))

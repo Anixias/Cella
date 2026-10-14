@@ -3,7 +3,6 @@ using Cella.Core.Text;
 
 namespace Cella.Core.Syntax.Nodes;
 
-// TODO Target can be an expression
 public sealed class IndexerExpressionNode
 (
 	IExpressionNode target,

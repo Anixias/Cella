@@ -1,0 +1,8 @@
+mod test
+
+f[T]: fun -> i32 = 1
+f[T, U]: fun -> i32 = 2
+g: fun -> i32 = 3
+g[T]: fun -> i32 = 4
+
+main: fun -> i32 = f[i32]() * 1000 + f[i32, u8]() * 100 + g() * 10 + g[i32]()

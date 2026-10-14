@@ -2,7 +2,6 @@
 
 namespace Cella.Core.Syntax.Nodes;
 
-// TODO Type more complex than Token
 public sealed class VarStatementNode
 (
 	SourceLocation sourceLocation,

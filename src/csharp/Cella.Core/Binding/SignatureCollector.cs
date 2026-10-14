@@ -71,7 +71,10 @@ public sealed class SignatureCollector
 	private readonly HashSet<FunctionSymbol> _witnessMembers = [];
 	private readonly HashSet<(SourceLocation, string)> _conformanceErrors = [];
 	private readonly List<ConstraintCheck> _deferredChecks = [];
-	private readonly List<(TypeParameterNode, TypeParameterSymbol, ResolutionContext)> _pendingConstructorBounds = [];
+	
+	private readonly List<(TypeParameterNode, TypeParameterSymbol, ResolutionContext, Symbol?)>
+		_pendingConstructorBounds = [];
+	
 	private readonly List<(ImmutableArray<ITypeNode>, List<TypeSymbol?>, TypeSymbol)> _boundLists = [];
 	private readonly List<(FieldNode, TypeSymbol)> _requiredFields = [];
 	private readonly List<(GlobalSymbol Global, ITypeNode Node, TypeSymbol Type)> _variables = [];
@@ -371,7 +374,7 @@ public sealed class SignatureCollector
 			{
 				case RecordNode record:
 					RegisterBounds(record.TypeParameters, ((RecordSymbol)symbol).TypeParameters,
-						context with { ContainingType = (RecordSymbol)symbol });
+						context with { ContainingType = (RecordSymbol)symbol }, symbol);
 					
 					RegisterMemberBounds(record.Members);
 					RegisterConformances((NamedTypeSymbol)symbol, record.Traits, context);
@@ -379,21 +382,23 @@ public sealed class SignatureCollector
 				
 				case EnumNode enumNode:
 					RegisterBounds(enumNode.TypeParameters, ((EnumSymbol)symbol).TypeParameters,
-						context with { ContainingType = (EnumSymbol)symbol });
+						context with { ContainingType = (EnumSymbol)symbol }, symbol);
 					
 					RegisterMemberBounds(enumNode.Members);
 					RegisterConformances((NamedTypeSymbol)symbol, enumNode.Traits, context);
 					break;
 				
 				case FunctionNode function:
-					RegisterBounds(function.TypeParameters, ((FunctionSymbol)symbol).DeclaredTypeParameters, context);
+					RegisterBounds(function.TypeParameters, ((FunctionSymbol)symbol).DeclaredTypeParameters, context,
+						symbol);
+					
 					break;
 				
 				case TraitNode traitNode:
 					var trait = (TraitSymbol)symbol;
 					var traitContext = context with { ContainingType = trait.Self, Trait = trait };
 					_typePool.SetBounds(trait.Self, [_typePool.GetTraitType(trait, [..trait.TypeParameters])]);
-					RegisterBounds(traitNode.TypeParameters, trait.TypeParameters, traitContext);
+					RegisterBounds(traitNode.TypeParameters, trait.TypeParameters, traitContext, trait);
 					RegisterRequiredTraits(trait, traitNode, traitContext);
 					RegisterMemberBounds(traitNode.Members);
 					break;
@@ -410,12 +415,13 @@ public sealed class SignatureCollector
 		foreach (var member in members.OfType<FunctionNode>())
 		{
 			var function = (FunctionSymbol)_symbolTable.DeclarationSymbols[member];
-			RegisterBounds(member.TypeParameters, function.DeclaredTypeParameters, _declarations[function].Context);
+			RegisterBounds(member.TypeParameters, function.DeclaredTypeParameters, _declarations[function].Context,
+				function);
 		}
 	}
 	
 	private void RegisterBounds(ImmutableArray<TypeParameterNode> nodes, ImmutableArray<TypeParameterSymbol> parameters,
-		ResolutionContext context)
+		ResolutionContext context, Symbol? owner = null)
 	{
 		var deferring = context with { DeferConstraintCheck = DeferAlways };
 		for (var i = 0; i < nodes.Length && i < parameters.Length; i++)
@@ -426,6 +432,11 @@ public sealed class SignatureCollector
 			ReportConstraintConflicts(nodes[i]);
 			var bounds = nodes[i].Traits.Select(deferring.ResolveTraitReference).ToList();
 			ReportRepeatedTraits(nodes[i].Traits, bounds);
+			if (owner is not null)
+				for (var j = 0; j < bounds.Count; j++)
+					if (bounds[j] is { } bound)
+						ReportHiddenType(nodes[i].Traits[j], bound, GetOwnerVisibility(owner, context), owner.Name);
+			
 			_boundLists.Add((nodes[i].Traits, bounds, parameters[i]));
 			ImmutableArray<TraitType> traits = [..bounds.OfType<TraitType>().Distinct()];
 			ImmutableArray<TypeParameterSymbol> traitParameters = [..bounds.OfType<TypeParameterSymbol>().Distinct()];
@@ -444,7 +455,7 @@ public sealed class SignatureCollector
 				_typePool.SetParameterBounds(parameters[i], traitParameters);
 			
 			if (!nodes[i].Constructors.IsEmpty)
-				_pendingConstructorBounds.Add((nodes[i], parameters[i], context));
+				_pendingConstructorBounds.Add((nodes[i], parameters[i], context, owner));
 		}
 	}
 	
@@ -574,12 +585,22 @@ public sealed class SignatureCollector
 	
 	private void RegisterConstructorBounds()
 	{
-		foreach (var (node, parameter, context) in _pendingConstructorBounds)
+		foreach (var (node, parameter, context, owner) in _pendingConstructorBounds)
 		{
 			var deferring = context with { DeferConstraintCheck = DeferAlways };
 			var constructors = node.Constructors
 				.Select(constructor => CollectConstructorBound(constructor, parameter, deferring))
 				.ToList();
+			
+			if (owner is not null)
+				for (var i = 0; i < constructors.Count; i++)
+				{
+					var types = node.Constructors[i].Types;
+					var parameterTypes = constructors[i].Signature.ParameterTypes;
+					for (var j = 0; j < types.Length && j + 1 < parameterTypes.Length; j++)
+						ReportHiddenType(types[j], parameterTypes[j + 1], GetOwnerVisibility(owner, context),
+							owner.Name);
+				}
 			
 			ReportRepeatedConstructors(node.Constructors, constructors);
 			_typePool.SetConstructorBounds(parameter,
@@ -1607,7 +1628,7 @@ public sealed class SignatureCollector
 					? $"'{member.Name.Text}' is declared more than once in '{target.Name}'"
 					: DescribeConflict(member.Name.Text, GetDeclaredSignature(function, member.Block, declared),
 						others.Select(other => AlignTypeParameters(function, other.Function!,
-							GetDeclaredSignature(other.Function!, other.Block, declared))));
+							GetDeclaredSignature(other.Function!, other.Block, declared))).OfType<FunctionSignature>());
 				
 				if (message is not null)
 					Diagnostics.Add(new(DiagnosticSeverity.Error, member.Name.SourceLocation, message));
@@ -2619,6 +2640,11 @@ public sealed class SignatureCollector
 		return member < Visibility.Project && member < ownerVisibility ? member : ownerVisibility;
 	}
 	
+	private static Visibility GetOwnerVisibility(Symbol owner, ResolutionContext context) =>
+		owner is FunctionSymbol function
+			? GetEffectiveVisibility(function, context)
+			: ModuleIndex.GetVisibility(owner);
+	
 	private static Visibility GetEffectiveVisibility(FunctionSymbol function, ResolutionContext context) =>
 		GetVisibilityOwner(context) is { } owner
 			? GetEffectiveVisibility(function.Visibility, owner)
@@ -3264,18 +3290,22 @@ public sealed class SignatureCollector
 			return new(DiagnosticSeverity.Error, location, "'ext' functions cannot be overloaded");
 		
 		var message = DescribeConflict(symbol.Name, _builder.Functions[function].Signature,
-			others.Cast<FunctionSymbol>().Select(other =>
-				AlignTypeParameters(function, other, _builder.Functions[other].Signature)));
+			others.Cast<FunctionSymbol>()
+				.Select(other => AlignTypeParameters(function, other, _builder.Functions[other].Signature))
+				.OfType<FunctionSignature>());
 		
 		return message is null ? null : new(DiagnosticSeverity.Error, location, message);
 	}
 	
-	private FunctionSignature AlignTypeParameters(FunctionSymbol function, FunctionSymbol other,
+	private FunctionSignature? AlignTypeParameters(FunctionSymbol function, FunctionSymbol other,
 		FunctionSignature signature)
 	{
 		var mine = function.DeclaredTypeParameters;
 		var theirs = other.DeclaredTypeParameters;
-		if (mine.IsEmpty || mine.Length != theirs.Length)
+		if (mine.Length != theirs.Length)
+			return null;
+		
+		if (mine.IsEmpty)
 			return signature;
 		
 		var map = TypePool.CreateMap(theirs, mine);
