@@ -21,7 +21,6 @@ Error at line 6, column 20
 5 │ use geometry.[area
 6 │ use geometry.[area,]
                        ^ Expected a name
-                       | To match the '[' on line 6
 
 Error at line 7, column 14
 6 │ use geometry.[area,]

@@ -16,10 +16,11 @@ Error at line 12, column 9
 12 │     var x: = 1
                 ^ Expected a type
 
-Error at line 19, column 2
-18 │ var x: array[i32, 4
-19 │ ret 0
-     ╘═╛ Expected ']'
+Error at line 18, column 20
+17 │ {
+18 │     var x: array[i32, 4
+                           ^ Expected ']'
+                           | To match the '[' on line 18
 
 Error at line 24, column 15
 23 │ {

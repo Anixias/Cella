@@ -1,0 +1,19 @@
+
+====== unclosed_body_declarations.ce ======
+
+Error at line 4, column 1
+3 │ first: fun -> i32
+4 │ {
+    ^ Expected '}' to close this block
+
+Error at line 13, column 6
+12 │ {
+13 │     var : i32 = 2
+             ^ Expected a name after 'var'
+
+Error at line 17, column 1
+16 │ 
+17 │ third: fun -> i32
+     ╘═══╛ Invalid function declaration
+
+[compilation failed]

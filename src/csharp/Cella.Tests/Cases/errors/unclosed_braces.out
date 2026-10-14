@@ -1,0 +1,14 @@
+
+====== unclosed_braces.ce ======
+
+Error at line 10, column 20
+ 9 │ {
+10 │     printf("%s\n", "a { b")
+                           ^ Expected '}' to close this '{'
+
+Error at line 16, column 10
+15 │ {
+16 │     printf("{")
+                 ^ Expected '}' to close this '{'
+
+[compilation failed]

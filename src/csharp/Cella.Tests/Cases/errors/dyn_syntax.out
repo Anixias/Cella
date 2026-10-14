@@ -15,5 +15,6 @@ Error at line 12, column 28
 11 │ 
 12 │ third: fun(shape: dyn[Shape) -> f64 = 0.0
                                 ^ Expected ']'
+                                | To match the '[' on line 12
 
 [compilation failed]

@@ -1,0 +1,21 @@
+mod test
+
+first: fun -> i32
+{
+	if true
+	{
+		ret 1
+	ret 0
+}
+
+second: fun -> i32
+{
+	var : i32 = 2
+	ret 0
+}
+
+third: fun -> i32
+{
+	ret 3
+
+main: fun -> i32 = 0

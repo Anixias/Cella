@@ -361,9 +361,17 @@ public class Scanner
 			{
 				isValid &= AddSegment(segments, segmentStart, end);
 				var (hole, next, isValidSpec) = ScanHole(end + 1, line);
-				end = next;
 				if (hole is null)
-					break;
+				{
+					var unclosed = new Token(TokenType.Invalid, Source, new TextRange(end, end + 1))
+					{
+						Error = "Expected '}' to close this '{'"
+					};
+					
+					return new ScanResult(unclosed, next);
+				}
+				
+				end = next;
 				
 				isValid &= isValidSpec;
 				holes.Add(hole.Value);
@@ -576,9 +584,9 @@ public class Scanner
 					result.Append('\v');
 					break;
 				
-				case '{':
+				case '{' or '}':
 					if (escapeOpenBrace)
-						result.Append('{');
+						result.Append(character);
 					else
 						valid = false;
 					

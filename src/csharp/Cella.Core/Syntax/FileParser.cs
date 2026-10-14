@@ -73,6 +73,9 @@ public sealed class FileParser
 	
 	private static readonly HashSet<TokenType> _lifecycleKeywords = [TokenType.KeywordNew, TokenType.KeywordDrop];
 	
+	private static readonly HashSet<string> _bodyDeclarationWords =
+		["fun", "val", "var", "rec", "enum", "union", "trait", "impl", "ext", "pub", "mod", "pvt", "ref"];
+	
 	private static readonly HashSet<string> _declarationKinds =
 		["fun", "val", "var", "rec", "enum", "union", "trait", "impl", "op", "prop"];
 	
@@ -81,6 +84,7 @@ public sealed class FileParser
 	private static readonly HashSet<string> _nestedKinds = ["rec", "enum", "union", "trait", "impl"];
 	
 	private bool skippedToEnd;
+	private bool reachedDeclaration;
 	
 	private static Dictionary<string, TokenType> BuildContextualKeywords(params IEnumerable<TokenType> tokenTypes) =>
 		tokenTypes.ToDictionary(static t => t.Representation);
@@ -144,7 +148,7 @@ public sealed class FileParser
 		while (!AtEnd(index))
 		{
 			// Parse module name
-			if (!IsVisibilityBlock(index, _topLevelContextualKeywords) &&
+			if (!IsVisibilityBlock(index, _topLevelContextualKeywords) && !StartsContextualName(index) &&
 			    Match(ref index, _topLevelContextualKeywords, TokenType.KeywordMod))
 			{
 				hasModuleKeyword = true;
@@ -175,7 +179,8 @@ public sealed class FileParser
 			}
 			
 			// Parse imports
-			if (Match(ref index, out var useToken, _topLevelContextualKeywords, TokenType.KeywordUse))
+			if (!StartsContextualName(index) &&
+			    Match(ref index, out var useToken, _topLevelContextualKeywords, TokenType.KeywordUse))
 			{
 				if (Match(ref index, TokenType.KeywordWhen))
 				{
@@ -258,6 +263,9 @@ public sealed class FileParser
 	private bool ParseTopLevelDeclaration(ref int index, List<IDeclarationNode> declarations, Token? block,
 		bool insideBraces = false)
 	{
+		if (StartsContextualName(index))
+			return ParseNamedDeclaration(ref index, declarations, block, insideBraces);
+		
 		var pubIndex = index;
 		if (Match(ref pubIndex, out var pubKeyword, _topLevelContextualKeywords, TokenType.KeywordPub) &&
 		    Match(ref pubIndex, out var pubBrace, TokenType.OpOpenBrace))
@@ -301,9 +309,22 @@ public sealed class FileParser
 			return true;
 		}
 		
-		// Parse top-level declarations
+		return ParseNamedDeclaration(ref index, declarations, block, insideBraces);
+	}
+	
+	private bool StartsContextualName(int index) =>
+		!AtEnd(index + 1) && Tokens[index] is { Type: TokenType.Identifier } token &&
+		_topLevelContextualKeywords.ContainsKey(token.Text) && IsOnSameLine(index + 1) &&
+		(Peek(index + 1, TokenType.OpColon) || Peek(index + 1, TokenType.OpOpenBracket));
+	
+	private bool ParseNamedDeclaration(ref int index, List<IDeclarationNode> declarations, Token? block,
+		bool insideBlock)
+	{
 		var declarationStart = index;
-		if (!Match(ref index, out var identifier, _topLevelContextualKeywords, TokenType.Identifier))
+		Token identifier;
+		if (StartsContextualName(index))
+			identifier = Tokens[index++];
+		else if (!Match(ref index, out identifier, _topLevelContextualKeywords, TokenType.Identifier))
 			return false;
 		
 		var target = ParseImplTarget(ref index, identifier);
@@ -638,7 +659,8 @@ public sealed class FileParser
 				return false;
 			}
 			
-			if (Match(ref index, out var useToken, _topLevelContextualKeywords, TokenType.KeywordUse))
+			if (!StartsContextualName(index) &&
+			    Match(ref index, out var useToken, _topLevelContextualKeywords, TokenType.KeywordUse))
 			{
 				Report(useToken, "Imports must precede all other declarations");
 				if (ParseImportExpression(ref index) is null)
@@ -1093,7 +1115,7 @@ public sealed class FileParser
 			
 			if (!Match(ref index, out var name, TokenType.Identifier))
 			{
-				ReportExpected(index, "a name", openBracket);
+				ReportExpected(index, "a name");
 				return null;
 			}
 			
@@ -1102,7 +1124,7 @@ public sealed class FileParser
 		
 		if (names.Count == 0)
 		{
-			ReportExpected(index - 1, "a name", openBracket);
+			ReportExpected(index - 1, "a name");
 			return null;
 		}
 		
@@ -1241,7 +1263,10 @@ public sealed class FileParser
 	{
 		// TODO Diagnostics
 		
-		if (!Match(ref index, out var identifier, _topLevelContextualKeywords, TokenType.Identifier))
+		Token identifier;
+		if (StartsContextualName(index))
+			identifier = Tokens[index++];
+		else if (!Match(ref index, out identifier, _topLevelContextualKeywords, TokenType.Identifier))
 		{
 			if (IsReservedWord(index))
 				Report(Tokens[index], DescribeReservedWord(Tokens[index]));
@@ -2386,12 +2411,21 @@ public sealed class FileParser
 				return false;
 			}
 			
+			if (StartsDeclarationInBody(index))
+			{
+				ReportUnclosed(open);
+				reachedDeclaration = true;
+				return false;
+			}
+			
 			if (Match(ref index, TokenType.KeywordWhen))
 			{
 				if (!ParseWhen(ref index, (ref i, branch, isActive) =>
 					    ParseStatements(ref i, branch, isActive ? statements : [], out _)))
 				{
-					SkipToEnd(ref index);
+					if (!reachedDeclaration)
+						SkipToEnd(ref index);
+					
 					return false;
 				}
 				
@@ -2400,7 +2434,9 @@ public sealed class FileParser
 			
 			if (ParseStatement(ref index) is not { } statement)
 			{
-				SkipToEnd(ref index);
+				if (!reachedDeclaration)
+					SkipToEnd(ref index);
+				
 				return false;
 			}
 			
@@ -2810,8 +2846,19 @@ public sealed class FileParser
 		       Match(ref keywordIndex, _topLevelContextualKeywords, _topLevelKeywords);
 	}
 	
+	private bool StartsDeclarationInBody(int index) =>
+		Tokens[index].Type == TokenType.Identifier && Peek(index + 1, TokenType.OpColon) && !AtEnd(index + 2) &&
+		_bodyDeclarationWords.Contains(Tokens[index + 2].Text) && Tokens[index].Line != Tokens[index - 1].Line &&
+		IsOnSameLine(index + 2);
+	
 	private void SkipDeclaration(ref int index, int start, bool insideBlock = false)
 	{
+		if (reachedDeclaration)
+		{
+			reachedDeclaration = false;
+			return;
+		}
+		
 		var braceCount = 0;
 		var parameterLists = new Stack<bool>();
 		for (var i = start; !AtEnd(i); i++)

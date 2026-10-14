@@ -44,7 +44,7 @@ public sealed class TypeParser(ImmutableArray<Token> tokens) : BaseParser<ITypeN
 			args.Add(ParseGenericArgument(ref index));
 		
 		if (!Match(ref index, out var closeBracket, TokenType.OpCloseBracket))
-			throw Expected(index, "']'");
+			throw ExpectedClose(index, openBracket);
 		
 		var (source, range) = identifier.SourceLocation;
 		range = range.Join(closeBracket.SourceLocation.Range);
@@ -57,19 +57,19 @@ public sealed class TypeParser(ImmutableArray<Token> tokens) : BaseParser<ITypeN
 	
 	private BorrowTypeNode ParseBorrowType(ref int index, Token keyword)
 	{
-		if (!Match(ref index, TokenType.OpOpenBracket))
+		if (!Match(ref index, out var openBracket, TokenType.OpOpenBracket))
 			throw Expected(index, "'['");
 		
 		var target = ParseType(ref index);
 		if (!Match(ref index, out var closeBracket, TokenType.OpCloseBracket))
-			throw Expected(index, "']'");
+			throw ExpectedClose(index, openBracket);
 		
 		return new BorrowTypeNode(keyword, target, closeBracket);
 	}
 	
 	private DynTypeNode ParseDynType(ref int index, Token keyword)
 	{
-		if (!Match(ref index, TokenType.OpOpenBracket))
+		if (!Match(ref index, out var openBracket, TokenType.OpOpenBracket))
 			throw Expected(index, "'['");
 		
 		if (!Peek(index, TokenType.Identifier) && !Peek(index, TokenType.KeywordFun) &&
@@ -78,9 +78,22 @@ public sealed class TypeParser(ImmutableArray<Token> tokens) : BaseParser<ITypeN
 		
 		var trait = ParseType(ref index);
 		if (!Match(ref index, out var closeBracket, TokenType.OpCloseBracket))
-			throw Expected(index, "']'");
+			throw ExpectedClose(index, openBracket);
 		
 		return new DynTypeNode(keyword, trait, closeBracket);
+	}
+	
+	private ParseException ExpectedClose(int index, Token openBracket)
+	{
+		var at = Math.Min(index, Tokens.Length - 1);
+		if (at > 0 && Tokens[at].Error is null && Tokens[at].Line != Tokens[at - 1].Line)
+			at--;
+		
+		var token = Tokens[at];
+		return new(new Diagnostic(DiagnosticSeverity.Error, token.SourceLocation, token.Error ?? "Expected ']'")
+		{
+			Hints = token.Error is null ? [$"To match the '[' on line {openBracket.Line}"] : []
+		});
 	}
 	
 	private ParseException Expected(int index, string expected)
