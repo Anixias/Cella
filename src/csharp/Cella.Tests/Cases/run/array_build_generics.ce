@@ -1,0 +1,18 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+fill[T: copy + noref, N: val usize]: fun(value: T) -> array[T, N] = array[T, N](fun(i) = value)
+
+indices[N: val usize]: fun -> array[usize, N] = array[usize, N](fun(i) = i)
+
+main: fun -> i32
+{
+	val f = fill[i32, 3](7)
+	val g = indices[5]()
+	printf("%d %d %zu\n", f[0], f[2], g[4])
+	ret 0
+}

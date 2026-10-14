@@ -1274,6 +1274,10 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	
 	private IResolvedExpressionNode VisitTypeCall(CallExpressionNode node, TypeSymbol targetType)
 	{
+		if (targetType is ArrayType array && node.Arguments is [var maker] && ResolveArrayBuild(node, array, maker) is
+			    { } built)
+			return built;
+		
 		if (targetType is DynType dyn)
 			return VisitDynConversion(node, dyn);
 		
@@ -5848,6 +5852,38 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			: ResolveCursor(node,
 				new LocalVariableSymbol(HiddenName(node.Binding, "cursor"), type, true) { IsLoopSource = true }, source,
 				false);
+	}
+	
+	private IResolvedExpressionNode? ResolveArrayBuild(CallExpressionNode node, ArrayType array, IExpressionNode maker)
+	{
+		var function = _typePool.GetFunctionType(false, [NativeSymbols.UIntSize], [ParameterMode.ReadOnly],
+			array.ElementType, true);
+		
+		IResolvedExpressionNode make;
+		if (maker is LambdaExpressionNode lambda)
+			make = CoerceToType(ResolveLambda(lambda, function, true, true), function);
+		else
+		{
+			var trial = OpenCheckpoint();
+			var value = VisitNode(maker, null);
+			if (value.Type is not (FunctionType or FunctionGroupType))
+			{
+				Rollback(trial);
+				return null;
+			}
+			
+			Commit(trial);
+			make = CoerceToType(value, function);
+		}
+		
+		if (IsInvalid(make))
+			return new ResolvedInvalidExpressionNode(node, array);
+		
+		var length = array.LengthParameter is { } parameter
+			? ConvertLength(new ResolvedValueParameterExpressionNode(parameter, node))
+			: MaterializeLiteral(node, NativeSymbols.UIntSize, array.Length);
+		
+		return new ResolvedArrayBuildExpressionNode(array, make, length, function, node);
 	}
 	
 	private ForHeader ResolveArrayIteration(ForStatementNode node, IResolvedExpressionNode source, ArrayType array,

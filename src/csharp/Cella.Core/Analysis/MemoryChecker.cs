@@ -388,8 +388,9 @@ public sealed class MemoryChecker(TypePool typePool, DiagnosticList diagnostics)
 	{
 		switch (memoryEvent)
 		{
-			case DefineEvent { Kind: DefineKind.Default, Local.StartsZeroed: true } e:
-				state.Set(paths.GetRoot(e.Local), PathState.Initialized);
+			case DefineEvent filled when filled.Local.IsFilledInPlace ||
+			                             filled is { Kind: DefineKind.Default, Local.StartsZeroed: true }:
+				state.Set(paths.GetRoot(filled.Local), PathState.Initialized);
 				break;
 			
 			case DefineEvent { Kind: DefineKind.Default } e:

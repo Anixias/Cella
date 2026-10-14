@@ -1,0 +1,9 @@
+make 0
+make 1
+make 2
+built 1
+drop 2
+drop 1
+drop 0
+end
+[exit code 0]

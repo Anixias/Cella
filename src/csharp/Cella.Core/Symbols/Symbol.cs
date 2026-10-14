@@ -598,6 +598,7 @@ public sealed class LocalVariableSymbol(Token identifier, TypeSymbol type, bool 
 	public bool IsLoopBinding { get; init; }
 	public bool IsLoopSource { get; init; }
 	public bool StartsZeroed { get; init; }
+	public bool IsFilledInPlace { get; init; }
 	public bool IsDeferred { get; init; }
 	public bool IsClosureEnvironment { get; init; }
 	public VariableSymbol? Captured { get; init; }

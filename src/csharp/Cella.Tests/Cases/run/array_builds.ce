@@ -1,0 +1,28 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+R: rec
+{
+	x: i32
+
+	new: op(x: i32)
+	{
+		self.x = x
+	}
+}
+
+square: fun(i: usize) -> R = R(i32(i * i))
+
+main: fun -> i32
+{
+	val base = 10
+	val a = array[R, 4](fun(i) = R(i32(i) + base))
+	val b = array[R, 3](square)
+	val nested = array[array[i32, 2], 2](fun(i) = array[i32, 2](fun(j) = i32(i * 10 + j)))
+	printf("%d %d %d %d %d\n", a[0].x, a[3].x, b[2].x, nested[1][0], nested[1][1])
+	ret 0
+}

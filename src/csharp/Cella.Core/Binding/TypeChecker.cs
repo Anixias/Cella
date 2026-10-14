@@ -420,6 +420,12 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool, 
 		}
 	}
 	
+	public void Visit(ResolvedArrayBuildExpressionNode node)
+	{
+		VisitNode(node.Make);
+		VisitNode(node.Length);
+	}
+	
 	public void Visit(ResolvedPackExpressionNode node)
 	{
 		foreach (var value in node.Values)

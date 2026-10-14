@@ -1191,6 +1191,47 @@ public sealed class Lowerer
 		public Value Visit(ResolvedArrayExpressionNode node) => new ArrayValue((ArrayType)node.Type,
 			LowerOperands(node.Values, static _ => Passing.Consume), node.Syntax.SourceLocation);
 		
+		public Value Visit(ResolvedArrayBuildExpressionNode node)
+		{
+			var location = node.Syntax.SourceLocation;
+			var id = NextLoopId();
+			var make = StoreTemporary(Consume(VisitNode(node.Make)), "make", location);
+			var resultSymbol = new LocalVariableSymbol(
+				new(TokenType.Identifier, SourceLocation.None, $".t{NextTempId()}__built"), node.Type, true)
+			{
+				IsFilledInPlace = true
+			};
+			
+			_temporaries.Add(resultSymbol);
+			Declare(GetOrMakeBlock(),
+				new LocalVarInstruction(resultSymbol, new UndefValue(node.Type), location, CurrentScopeId));
+			
+			var index = StoreTemporary(MakeConstant(NativeSymbols.UIntSize, BigInteger.Zero), "index", location);
+			var length = CaptureAsAtomic(VisitNode(node.Length), "length");
+			var result = new VariableValue(new(resultSymbol, node.Type), location);
+			var condBlock = CreateBlock($"build{id}_cond");
+			var bodyBlock = CreateBlock($"build{id}_body");
+			var doneBlock = CreateBlock($"build{id}_done");
+			GetOrMakeBlock().SetTerminator(new BranchTerminator(condBlock, location));
+			condBlock.SetTerminator(new ConditionalBranchTerminator(
+				new BinOpValue(NativeSymbols.Bool, index, length, BinaryOperation.Less, location), bodyBlock, doneBlock,
+				location));
+			
+			currentBlock = bodyBlock;
+			var element = ((ArrayType)node.Type).ElementType;
+			var value = Diverge(new IndirectCallValue(make, [index], node.MakeType, location));
+			if (currentBlock is { } block)
+			{
+				block.Instructions.Add(new ExpressionInstruction(new AssignValue(element,
+					new IndexerValue(element, result, index, location), Consume(value), location)));
+				
+				Increment(block, index, condBlock);
+			}
+			
+			currentBlock = doneBlock;
+			return result;
+		}
+		
 		public Value Visit(ResolvedPackExpressionNode node)
 		{
 			var location = node.Syntax.SourceLocation;

@@ -1,0 +1,33 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+D: rec
+{
+	id: i32
+
+	new: op(id: i32)
+	{
+		printf("make %d\n", id)
+		self.id = id
+	}
+
+	drop: op
+	{
+		printf("drop %d\n", self.id)
+	}
+}
+
+main: fun -> i32
+{
+	{
+		val ds = array[D, 3](fun(i) = D(i32(i)))
+		printf("built %d\n", ds[1].id)
+	}
+
+	printf("end\n")
+	ret 0
+}
