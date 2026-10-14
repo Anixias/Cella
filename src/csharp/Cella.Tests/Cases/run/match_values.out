@@ -1,0 +1,17 @@
+
+====== match_values.ce ======
+
+Warning at line 60, column 2
+59 │ < 0.0 => -1
+60 │ 0.0 => 0
+     ╘═╛ Float patterns compare exactly
+
+0 1 2 2 3 3 4 5
+3 2 1 0
+1 2 3 4 0
+1 2 3 0
+1 2
+1 2
+1 0 1 1
+-1 0 1
+[exit code 0]

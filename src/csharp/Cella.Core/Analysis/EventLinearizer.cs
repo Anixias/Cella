@@ -49,6 +49,10 @@ public sealed class EventLinearizer
 				AddValue(conditional.Condition);
 				break;
 			
+			case SwitchTerminator branch:
+				AddValue(branch.Value);
+				break;
+			
 			case ReturnTerminator { Value: { } value }:
 				AddValue(value);
 				break;

@@ -69,9 +69,12 @@ public sealed class ControlFlowAnalyzer(DiagnosticList diagnostics)
 	private static IEnumerable<BasicBlock> GetTargets(IBlockTerminator terminator) =>
 		GetOnlyTarget(terminator) is { } only
 			? [only]
-			: terminator is ConditionalBranchTerminator branch
-				? [branch.TrueTarget, branch.FalseTarget]
-				: [];
+			: terminator switch
+			{
+				ConditionalBranchTerminator branch => [branch.TrueTarget, branch.FalseTarget],
+				SwitchTerminator branch => branch.Targets,
+				_ => []
+			};
 	
 	private static BasicBlock? GetOnlyTarget(IBlockTerminator terminator) => terminator switch
 	{

@@ -173,6 +173,10 @@ public sealed class ExportSurface
 				case ConditionalBranchTerminator branch:
 					WalkValue(branch.Condition);
 					break;
+				
+				case SwitchTerminator branch:
+					WalkValue(branch.Value);
+					break;
 			}
 		}
 	}

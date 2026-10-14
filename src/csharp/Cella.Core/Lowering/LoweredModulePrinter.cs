@@ -173,6 +173,15 @@ public static class LoweredModulePrinter
 						.AppendLine();
 					
 					break;
+				
+				case SwitchTerminator switchTerminator:
+					sb.Append("switch ");
+					PrintValue(sb, switchTerminator.Value);
+					foreach (var (value, target) in switchTerminator.Cases)
+						sb.Append($" {value} => ").Append(target.Label);
+					
+					sb.Append(" else ").AppendLine(switchTerminator.DefaultTarget.Label);
+					break;
 			}
 		}
 	}

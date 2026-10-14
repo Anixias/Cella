@@ -1,10 +1,10 @@
 
 ====== bad_patterns.ce ======
 
-Error at line 30, column 10
+Error at line 30, column 15
 29 │ var effect = Effect.none
 30 │ var a = 5 is red
-             ^ Cannot match 'integer literal' values
+                  ╘═╛ Cannot infer the type of 'red'
 
 Error at line 31, column 18
 30 │ var a = 5 is red
@@ -77,10 +77,10 @@ Error at line 48, column 5
 48 │ if missing is hit(o)
         ╘═════╛ Symbol 'missing' not found in this scope
 
-Error at line 51, column 8
-50 │ 
-51 │ match 5
-           ^ Cannot match 'integer literal' values
+Error at line 53, column 3
+52 │ {
+53 │     red => ret 1
+         ╘═╛ Cannot infer the type of 'red'
 
 Error at line 58, column 3
 57 │ {

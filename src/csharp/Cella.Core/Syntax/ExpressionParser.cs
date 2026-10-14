@@ -143,6 +143,17 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 		TokenType.KeywordVar
 	];
 	
+	private static readonly HashSet<TokenType> _relationalPatternOps =
+	[
+		TokenType.OpGreaterEqual,
+		TokenType.OpLessEqual,
+		TokenType.OpGreater,
+		TokenType.OpLess,
+		TokenType.OpBangEqual
+	];
+	
+	private static readonly HashSet<TokenType> _rangeOps = [TokenType.OpDotDot, TokenType.OpDotDotEqual];
+	
 	private static readonly HashSet<TokenType> _comparisonOps =
 	[
 		TokenType.OpGreaterEqual,
@@ -247,9 +258,12 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 		return new IsExpressionNode(mode, value, pattern, new(source, range));
 	}
 	
+	public delegate bool? ConditionParser(ref int index);
+	
+	public ConditionParser? ParseWhenCondition { get; init; }
+	
 	public PatternNode ParsePattern(ref int index)
 	{
-		var start = index;
 		if (StartsBorrowType(index))
 		{
 			var borrow = ParseType(ref index);
@@ -257,19 +271,66 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 				"Cannot test for borrow types"));
 		}
 		
+		if (Match(ref index, out var relation, _relationalPatternOps))
+			return PatternNode.CreateRelational(relation, ParseBitwiseOr(ref index));
+		
+		var start = index;
+		var named = TryParse(start, ParseNamedPattern, out var namedEnd);
+		var value = TryParse(start, ParseBitwiseOr, out var valueEnd);
+		if (named is not null && (value is null || namedEnd >= valueEnd))
+		{
+			index = namedEnd;
+			if (named.Kind != PatternKind.Case || value is null || namedEnd != valueEnd)
+				return named;
+			
+			if (IsNextNewline(index) || !Match(ref index, out var namedRange, _rangeOps))
+				return named.WithValue(value);
+			
+			return PatternNode.CreateRange(value, namedRange, ParseBitwiseOr(ref index));
+		}
+		
+		if (value is null)
+		{
+			index = start;
+			ParseBitwiseOr(ref index);
+			throw Expected(start, "a pattern");
+		}
+		
+		index = valueEnd;
+		if (IsNextNewline(index) || !Match(ref index, out var rangeOp, _rangeOps))
+			return PatternNode.CreateValue(value);
+		
+		return PatternNode.CreateRange(value, rangeOp, ParseBitwiseOr(ref index));
+	}
+	
+	private delegate T ParseStep<out T>(ref int index);
+	
+	private static T? TryParse<T>(int start, ParseStep<T> parse, out int end) where T : class
+	{
+		end = start;
+		try
+		{
+			var result = parse(ref end);
+			return result;
+		}
+		catch (ParseException)
+		{
+			return null;
+		}
+	}
+	
+	private PatternNode ParseNamedPattern(ref int index)
+	{
+		var start = index;
 		if (!Match(ref index, out var first, TokenType.Identifier))
-			throw Expected(index, "a case name");
+			throw Expected(index, "a pattern");
 		
 		if (!IsNextNewline(index) && Match(ref index, TokenType.OpColon))
 		{
 			var type = ParseType(ref index);
 			var (bindingSource, bindingRange) = first.SourceLocation;
 			var location = new SourceLocation(bindingSource, bindingRange.Join(type.SourceLocation.Range));
-			return new PatternNode([], first, [], [], false, location)
-			{
-				Type = type,
-				TypeBinding = first
-			};
+			return PatternNode.CreateType([], first, type, first, location);
 		}
 		
 		var names = new List<Token> { first };
@@ -293,37 +354,57 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 				throw new ParseException(new Diagnostic(DiagnosticSeverity.Error, type.SourceLocation,
 					"Cannot pass type arguments to cases"));
 			
-			return new PatternNode(typePath, caseName, [], [], false, type.SourceLocation) { Type = type };
+			return PatternNode.CreateType(typePath, caseName, type, null, type.SourceLocation);
 		}
 		
 		if (IsNextNewline(index) || !Match(ref index, out var openParen, TokenType.OpOpenParen))
-			return new PatternNode(typePath, caseName, [], [], false, new(source, range));
+			return PatternNode.CreateCase(typePath, caseName, [], false, new(source, range));
 		
-		var bindings = new List<Token>();
-		var bindingModes = new List<Token?>();
+		var elements = new List<PatternNode>();
 		Token closeParen;
 		while (!Match(ref index, out closeParen, TokenType.OpCloseParen))
 		{
 			if (AtEnd(index))
 				throw Expected(index, "')'", openParen);
 			
-			if (bindings.Count > 0 && !Match(ref index, TokenType.OpComma))
+			if (elements.Count > 0 && !Match(ref index, TokenType.OpComma))
 				throw Expected(index, "',' or ')'", openParen);
 			
-			Token? mode = Match(ref index, out var keyword, _bindingModes) ? keyword : null;
-			if (!Match(ref index, out var binding, TokenType.Identifier))
-				throw Expected(index, "a name or '_'");
-			
-			if (Peek(index, TokenType.OpOpenParen))
-				throw new ParseException(new Diagnostic(DiagnosticSeverity.Error, Tokens[index].SourceLocation,
-					"Cannot nest patterns"));
-			
-			bindings.Add(binding);
-			bindingModes.Add(mode);
+			elements.Add(ParseElement(ref index));
 		}
 		
 		range = range.Join(closeParen.SourceLocation.Range);
-		return new PatternNode(typePath, caseName, bindings, bindingModes, true, new(source, range));
+		return PatternNode.CreateCase(typePath, caseName, elements, true, new(source, range));
+	}
+	
+	private PatternNode ParseElement(ref int index)
+	{
+		if (Match(ref index, out var mode, _bindingModes))
+		{
+			if (!Match(ref index, out var named, TokenType.Identifier))
+				throw Expected(index, "a name or '_'");
+			
+			return PatternNode.CreateBinding(mode, named);
+		}
+		
+		if (Peek(index, TokenType.Identifier) &&
+		    (Peek(index + 1, TokenType.OpComma) || Peek(index + 1, TokenType.OpCloseParen)) &&
+		    Match(ref index, out var name, TokenType.Identifier))
+			return PatternNode.CreateBinding(null, name);
+		
+		return ParsePattern(ref index);
+	}
+	
+	public (List<PatternNode> Patterns, IExpressionNode? Guard, SourceLocation Location) ParseArmHead(ref int index)
+	{
+		var patterns = new List<PatternNode> { ParsePattern(ref index) };
+		while (!IsNextNewline(index) && Match(ref index, TokenType.OpComma))
+			patterns.Add(ParsePattern(ref index));
+		
+		var (source, range) = patterns[0].SourceLocation;
+		range = range.Join(patterns[^1].SourceLocation.Range);
+		var guard = !IsNextNewline(index) && Match(ref index, TokenType.KeywordIf) ? ParseExpression(ref index) : null;
+		return (patterns, guard, new(source, range));
 	}
 	
 	private IExpressionNode ParseComparison(ref int index)
@@ -622,16 +703,7 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 			throw Expected(index, "'{'");
 		
 		var arms = new List<MatchExpressionArmNode>();
-		Token closeBrace;
-		while (!Match(ref index, out closeBrace, TokenType.OpCloseBrace))
-		{
-			if (AtEnd(index) || Tokens[index].Type is TokenType.KeywordRet or TokenType.KeywordVar or
-				    TokenType.KeywordVal or TokenType.KeywordIf or TokenType.KeywordFor or TokenType.KeywordLoop or
-				    TokenType.KeywordWhile or TokenType.KeywordDo)
-				throw Expected(index, "'}'", openBrace);
-			
-			arms.Add(ParseMatchArm(ref index));
-		}
+		var closeBrace = ParseMatchArms(ref index, openBrace, arms);
 		
 		if (!IsNextNewline(index) && Peek(index, TokenType.OpDot))
 			throw new ParseException(new Diagnostic(DiagnosticSeverity.Error, Tokens[index].SourceLocation,
@@ -642,22 +714,75 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 		return new MatchExpressionNode(keyword, mode, value, arms, new(source, range));
 	}
 	
-	private MatchExpressionArmNode ParseMatchArm(ref int index)
+	private Token ParseMatchArms(ref int index, Token openBrace, List<MatchExpressionArmNode> arms)
 	{
-		PatternNode? pattern = null;
-		SourceLocation location;
-		if (Match(ref index, out var elseToken, TokenType.KeywordElse))
-			location = elseToken.SourceLocation;
-		else
+		Token closeBrace;
+		while (!Match(ref index, out closeBrace, TokenType.OpCloseBrace))
 		{
-			pattern = ParsePattern(ref index);
-			location = pattern.SourceLocation;
+			if (AtEnd(index) || Tokens[index].Type is TokenType.KeywordRet or TokenType.KeywordVar or
+				    TokenType.KeywordVal or TokenType.KeywordIf or TokenType.KeywordFor or TokenType.KeywordLoop or
+				    TokenType.KeywordWhile or TokenType.KeywordDo)
+				throw Expected(index, "'}'", openBrace);
+			
+			if (Match(ref index, out var when, TokenType.KeywordWhen))
+				ParseWhenArms(ref index, when, arms);
+			else
+				arms.Add(ParseMatchArm(ref index));
 		}
 		
+		return closeBrace;
+	}
+	
+	private void ParseWhenArms(ref int index, Token when, List<MatchExpressionArmNode> arms)
+	{
+		var taken = false;
+		while (true)
+		{
+			if (ParseWhenCondition is null)
+				throw new ParseException(new Diagnostic(DiagnosticSeverity.Error, when.SourceLocation,
+					"Cannot use 'when' here"));
+			
+			if (ParseWhenCondition(ref index) is not { } condition)
+				throw Expected(index, "a condition");
+			
+			ParseWhenBranch(ref index, condition && !taken ? arms : []);
+			taken |= condition;
+			if (!Peek(index, TokenType.KeywordElse) ||
+			    !Peek(index + 1, TokenType.KeywordWhen) && !Peek(index + 1, TokenType.OpOpenBrace))
+				return;
+			
+			Match(ref index, TokenType.KeywordElse);
+			if (Match(ref index, TokenType.KeywordWhen))
+				continue;
+			
+			ParseWhenBranch(ref index, taken ? [] : arms);
+			return;
+		}
+	}
+	
+	private void ParseWhenBranch(ref int index, List<MatchExpressionArmNode> arms)
+	{
+		if (!Match(ref index, out var openBrace, TokenType.OpOpenBrace))
+			throw Expected(index, "'{'");
+		
+		ParseMatchArms(ref index, openBrace, arms);
+	}
+	
+	private MatchExpressionArmNode ParseMatchArm(ref int index)
+	{
+		if (Match(ref index, out var elseToken, TokenType.KeywordElse))
+		{
+			if (!Match(ref index, TokenType.OpFatArrow))
+				throw Expected(index, "'=>'");
+			
+			return new MatchExpressionArmNode([], null, elseToken.SourceLocation, ParseExpression(ref index));
+		}
+		
+		var (patterns, guard, location) = ParseArmHead(ref index);
 		if (!Match(ref index, TokenType.OpFatArrow))
 			throw Expected(index, "'=>'");
 		
-		return new MatchExpressionArmNode(pattern, location, ParseExpression(ref index));
+		return new MatchExpressionArmNode(patterns, guard, location, ParseExpression(ref index));
 	}
 	
 	private IExpressionNode ParseJump(ref int index, Token keyword)

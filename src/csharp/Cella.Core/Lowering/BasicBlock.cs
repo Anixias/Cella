@@ -1,4 +1,5 @@
 ﻿using System.Collections.Immutable;
+using System.Numerics;
 using Cella.Core.Binding;
 using Cella.Core.Binding.Conversions;
 using Cella.Core.Binding.Nodes;
@@ -382,6 +383,22 @@ public sealed class BranchTerminator(BasicBlock target, SourceLocation sourceLoc
 {
 	public BasicBlock Target { get; } = target;
 	public SourceLocation SourceLocation { get; } = sourceLocation;
+}
+
+public sealed class SwitchTerminator
+(
+	Value value,
+	BasicBlock defaultTarget,
+	ImmutableArray<(BigInteger Value, BasicBlock Target)> cases,
+	SourceLocation sourceLocation
+) : IBlockTerminator
+{
+	public Value Value { get; } = value;
+	public BasicBlock DefaultTarget { get; } = defaultTarget;
+	public ImmutableArray<(BigInteger Value, BasicBlock Target)> Cases { get; } = cases;
+	public SourceLocation SourceLocation { get; } = sourceLocation;
+	
+	public BasicBlock[] Targets => [..Cases.Select(static c => c.Target).Prepend(DefaultTarget).Distinct()];
 }
 
 public sealed class ConditionalBranchTerminator

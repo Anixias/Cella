@@ -11,6 +11,7 @@ public sealed class DiagnosticList : IEnumerable<Diagnostic>
 	public IEnumerable<Diagnostic> Warnings => _warnings.Values.SelectMany(static d => d);
 	
 	public int ErrorCount { get; private set; }
+	public int ErrorsReported { get; private set; }
 	public int WarningCount { get; private set; }
 	
 	private readonly SortedList<LineColumnKey, List<Diagnostic>> _diagnostics = [];
@@ -46,6 +47,9 @@ public sealed class DiagnosticList : IEnumerable<Diagnostic>
 	
 	public void Add(Diagnostic diagnostic)
 	{
+		if (diagnostic.Severity == DiagnosticSeverity.Error)
+			ErrorsReported++;
+		
 		if (redirect is { } target)
 		{
 			target.Add(diagnostic);

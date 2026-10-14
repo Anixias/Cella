@@ -183,7 +183,28 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool, 
 		
 		VisitNode(node.Value);
 		foreach (var arm in node.Arms)
+		{
+			VisitPatterns(arm.Patterns, arm.Guard);
 			VisitNode(arm.Body);
+		}
+	}
+	
+	private void VisitPatterns(IEnumerable<ResolvedPattern> patterns, IResolvedExpressionNode? guard)
+	{
+		foreach (var pattern in patterns)
+			VisitPattern(pattern);
+		
+		if (guard is not null)
+			VisitNode(guard);
+	}
+	
+	private void VisitPattern(ResolvedPattern pattern)
+	{
+		if (pattern.Test is { } test)
+			VisitNode(test);
+		
+		foreach (var element in pattern.Elements.OfType<ResolvedPattern>())
+			VisitPattern(element);
 	}
 	
 	public void Visit(ResolvedMatchExpressionNode node)
@@ -194,6 +215,7 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool, 
 		VisitNode(node.Value);
 		foreach (var arm in node.Arms)
 		{
+			VisitPatterns(arm.Patterns, arm.Guard);
 			VisitNode(arm.Value);
 			CheckConsumed(arm.Value);
 		}
@@ -918,6 +940,7 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool, 
 			CheckMutPlace(node.Value);
 		
 		VisitNode(node.Value);
+		VisitPattern(node.Pattern);
 	}
 	
 	public void Visit(ResolvedIndirectCallExpressionNode node)

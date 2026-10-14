@@ -1405,6 +1405,18 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 				builder.BuildCondBr(condition, blockMap[term.TrueTarget], blockMap[term.FalseTarget]);
 				break;
 			
+			case SwitchTerminator term:
+			{
+				var selector = EmitValue(term.Value, builder);
+				var instruction = builder.BuildSwitch(selector, blockMap[term.DefaultTarget], (uint)term.Cases.Length);
+				foreach (var (caseValue, target) in term.Cases)
+					instruction.AddCase(
+						LLVMValueRef.CreateConstInt(selector.TypeOf, (ulong)(caseValue & ulong.MaxValue)),
+						blockMap[target]);
+				
+				break;
+			}
+			
 			// This happens with an empty function body
 			case UndefinedTerminator:
 				builder.BuildRetVoid();

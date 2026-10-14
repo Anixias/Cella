@@ -1,4 +1,6 @@
 ﻿using System.Collections.Immutable;
+using System.Numerics;
+using Cella.Core.Binding.Constants;
 using Cella.Core.Symbols;
 using Cella.Core.Syntax.Nodes;
 
@@ -26,6 +28,17 @@ public sealed class ResolvedPattern(EnumCaseSymbol? enumCase, IEnumerable<LocalV
 	public EnumCaseSymbol? Case { get; } = enumCase;
 	public TypeSymbol? TestedType { get; init; }
 	public ImmutableArray<LocalVariableSymbol?> Bindings { get; } = bindings.ToImmutableArray();
-	public bool HasBindings => Bindings.Any(static binding => binding is not null);
-	public bool HasMutBindings => Bindings.Any(static binding => binding is { IsMutBinding: true });
+	public ImmutableArray<ResolvedPattern?> Elements { get; init; } = [];
+	public LocalVariableSymbol? Subject { get; init; }
+	public IResolvedExpressionNode? Test { get; init; }
+	public Constant? Constant { get; init; }
+	public ImmutableArray<(BigInteger Low, BigInteger High)> Spans { get; init; } = [];
+	
+	public bool IsConditional => Test is not null || Elements.Any(static element => element is not null);
+	
+	public IEnumerable<LocalVariableSymbol> AllBindings => Bindings.OfType<LocalVariableSymbol>()
+		.Concat(Elements.OfType<ResolvedPattern>().SelectMany(static element => element.AllBindings));
+	
+	public bool HasBindings => AllBindings.Any();
+	public bool HasMutBindings => AllBindings.Any(static binding => binding.IsMutBinding);
 }

@@ -22,8 +22,14 @@ public sealed class ResolvedMatchExpressionNode
 	public IExpressionNode Syntax { get; } = syntax;
 }
 
-public sealed class ResolvedMatchExpressionArm(ResolvedPattern? pattern, IResolvedExpressionNode value)
+public sealed class ResolvedMatchExpressionArm
+(
+	IEnumerable<ResolvedPattern> patterns,
+	IResolvedExpressionNode? guard,
+	IResolvedExpressionNode value
+)
 {
-	public ResolvedPattern? Pattern { get; } = pattern;
+	public ImmutableArray<ResolvedPattern> Patterns { get; } = patterns.ToImmutableArray();
+	public IResolvedExpressionNode? Guard { get; } = guard;
 	public IResolvedExpressionNode Value { get; } = value;
 }

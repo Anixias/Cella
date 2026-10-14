@@ -1,0 +1,77 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Limit: val i32 = 50
+
+grade: fun(x: i32) -> i32 = match x
+{
+	0 => 0
+	1, 2, 3 => 1
+	4..10 => 2
+	10..=Limit => 3
+	> 100 => 5
+	else => 4
+}
+
+relational: fun(x: i32) -> i32 = match x
+{
+	> 10 => 3
+	>= 5 => 2
+	!= 0 => 1
+	else => 0
+}
+
+kind: fun(c: char) -> i32 = match c
+{
+	'a'..='z' => 1
+	'A'..='Z' => 2
+	'0'..='9' => 3
+	' ', '\t' => 4
+	else => 0
+}
+
+pick: fun(x: i32, low: i32, high: i32) -> i32 = match x
+{
+	low => 1
+	high => 2
+	low..high => 3
+	else => 0
+}
+
+flag: fun(b: bool) -> i32 = match b
+{
+	true => 1
+	false => 2
+}
+
+bucket: fun(b: u8) -> i32 = match b
+{
+	0..128 => 1
+	128..=255 => 2
+}
+
+sign: fun(f: f64) -> i32 = match f
+{
+	< 0.0 => -1
+	0.0 => 0
+	else => 1
+}
+
+main: fun -> i32
+{
+	printf("%d %d %d %d %d %d %d %d\n", grade(0), grade(2), grade(4), grade(9), grade(10), grade(50), grade(51), grade(101))
+	printf("%d %d %d %d\n", relational(11), relational(5), relational(-3), relational(0))
+	printf("%d %d %d %d %d\n", kind('q'), kind('Q'), kind('7'), kind(' '), kind('#'))
+	printf("%d %d %d %d\n", pick(3, 3, 9), pick(9, 3, 9), pick(5, 3, 9), pick(12, 3, 9))
+	printf("%d %d\n", flag(true), flag(false))
+	printf("%d %d\n", bucket(5), bucket(200))
+	val x = 7
+	val c = 'k'
+	printf("%d %d %d %d\n", i32(x is 1..10), i32(x is > 7), i32(x is 7), i32(c is 'a'..='z'))
+	printf("%d %d %d\n", sign(-2.5), sign(0.0), sign(3.0))
+	ret 0
+}

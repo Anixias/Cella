@@ -1,5 +1,4 @@
-﻿using System.Collections.Immutable;
-using System.Diagnostics.CodeAnalysis;
+﻿using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Numerics;
 using Cella.Core.Binding.Conversions;
@@ -202,25 +201,58 @@ public sealed class ConstantEvaluator
 		if (value is null or InvalidConstant)
 			return value;
 		
-		if (value.Type is not EnumSymbol enumType || GetTag(value) is not { } tag)
+		if (MatchPattern(node.Pattern, value) is not { } matches)
 			return null;
 		
-		var matches = tag == typePool.GetCaseValue(enumType, node.Pattern.Case!);
 		if (matches)
 		{
-			Bind(node.Pattern.Bindings, value);
-			_patternBindings.AddRange(node.Pattern.Bindings.OfType<LocalVariableSymbol>());
+			Bind(node.Pattern, value);
+			_patternBindings.AddRange(node.Pattern.AllBindings);
 		}
 		
 		return BoolConstant.From(matches);
 	}
 	
-	private void Bind(ImmutableArray<LocalVariableSymbol?> bindings, Constant value)
+	private bool? MatchPattern(ResolvedPattern pattern, Constant value)
 	{
-		for (var i = 0; i < bindings.Length; i++)
+		if (pattern.Test is { } test)
 		{
-			if (bindings[i] is { } binding)
-				_bindings[binding] = value is EnumConstant constant ? constant.Payload[i] : Zero(binding.Type);
+			_bindings[pattern.Subject!] = value;
+			var result = Evaluate(test) as BoolConstant;
+			_bindings.Remove(pattern.Subject!);
+			return result?.Value;
+		}
+		
+		if (pattern.Case is not { } enumCase || value.Type is not EnumSymbol enumType || GetTag(value) is not { } tag)
+			return null;
+		
+		if (tag != typePool.GetCaseValue(enumType, enumCase))
+			return false;
+		
+		for (var i = 0; i < pattern.Elements.Length; i++)
+		{
+			if (pattern.Elements[i] is { } element && MatchPattern(element, GetPayload(value, enumCase, i)) is not true)
+				return MatchPattern(element, GetPayload(value, enumCase, i));
+		}
+		
+		return true;
+	}
+	
+	private Constant GetPayload(Constant value, EnumCaseSymbol enumCase, int index) => value is EnumConstant constant
+		? constant.Payload[index]
+		: Zero(typePool.GetPayloadTypes((EnumSymbol)value.Type, enumCase)[index]);
+	
+	private void Bind(ResolvedPattern pattern, Constant value)
+	{
+		if (pattern.Case is not { } enumCase)
+			return;
+		
+		for (var i = 0; i < pattern.Bindings.Length; i++)
+		{
+			if (pattern.Bindings[i] is { } binding)
+				_bindings[binding] = GetPayload(value, enumCase, i);
+			else if (pattern.Elements.Length > i && pattern.Elements[i] is { } element)
+				Bind(element, GetPayload(value, enumCase, i));
 		}
 	}
 	
@@ -230,18 +262,44 @@ public sealed class ConstantEvaluator
 		if (value is null or InvalidConstant)
 			return value;
 		
-		if (value.Type is not EnumSymbol enumType || GetTag(value) is not { } tag || node.Arms.FirstOrDefault(arm =>
-			    arm.Pattern is null || typePool.GetCaseValue(enumType, arm.Pattern.Case!) == tag) is not { } arm)
-			return null;
+		foreach (var arm in node.Arms)
+		{
+			ResolvedPattern? matched = null;
+			foreach (var pattern in arm.Patterns)
+			{
+				switch (MatchPattern(pattern, value))
+				{
+					case null:
+						return null;
+					
+					case true:
+						matched = pattern;
+						break;
+				}
+				
+				if (matched is not null)
+					break;
+			}
+			
+			if (matched is null && !arm.Patterns.IsEmpty)
+				continue;
+			
+			if (matched is not null)
+				Bind(matched, value);
+			
+			var guard = arm.Guard is null ? BoolConstant.True : Evaluate(arm.Guard) as BoolConstant;
+			var result = guard is { Value: true } ? Evaluate(arm.Value) : null;
+			foreach (var binding in matched?.AllBindings ?? [])
+				_bindings.Remove(binding);
+			
+			if (guard is null)
+				return null;
+			
+			if (guard.Value)
+				return result;
+		}
 		
-		var bindings = arm.Pattern?.Bindings ?? [];
-		Bind(bindings, value);
-		
-		var result = Evaluate(arm.Value);
-		foreach (var binding in bindings.OfType<LocalVariableSymbol>())
-			_bindings.Remove(binding);
-		
-		return result;
+		return null;
 	}
 	
 	private BigInteger? GetTag(Constant constant) => constant switch
@@ -610,6 +668,14 @@ public sealed class ConstantEvaluator
 		PointerType or FunctionType or PrimitiveType { Kind: PrimitiveTypeKind.CStr } => new NullConstant(type),
 		_ => new ZeroConstant(type)
 	};
+	
+	public (BigInteger Min, BigInteger Max) GetLimits(IntegerType type)
+	{
+		var bits = (int)CountBits(type);
+		return type.IsSigned
+			? (-(BigInteger.One << (bits - 1)), (BigInteger.One << (bits - 1)) - 1)
+			: (BigInteger.Zero, (BigInteger.One << bits) - 1);
+	}
 	
 	public BigInteger Wrap(BigInteger value, IntegerType type)
 	{

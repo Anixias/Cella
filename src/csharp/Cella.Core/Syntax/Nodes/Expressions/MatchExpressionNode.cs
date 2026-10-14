@@ -20,9 +20,17 @@ public sealed class MatchExpressionNode
 	public bool IsContained => true;
 }
 
-public sealed class MatchExpressionArmNode(PatternNode? pattern, SourceLocation sourceLocation, IExpressionNode value)
+public sealed class MatchExpressionArmNode
+(
+	IEnumerable<PatternNode> patterns,
+	IExpressionNode? guard,
+	SourceLocation sourceLocation,
+	IExpressionNode value
+)
 {
-	public PatternNode? Pattern { get; } = pattern;
+	public ImmutableArray<PatternNode> Patterns { get; } = patterns.ToImmutableArray();
+	public IExpressionNode? Guard { get; } = guard;
 	public SourceLocation SourceLocation { get; } = sourceLocation;
 	public IExpressionNode Value { get; } = value;
+	public bool IsElse => Patterns.IsEmpty;
 }

@@ -31,10 +31,10 @@ Error at line 23, column 34
 23 │ val e = match r { fighter => 1  mage => 2 }
                                      ╘══╛ 'Role' has no case 'mage'
 
-Error at line 24, column 16
+Error at line 24, column 20
 23 │ val e = match r { fighter => 1  mage => 2 }
 24 │ val f = match 5 { fighter => 1 }
-                   ^ Cannot match 'integer literal' values
+                       ╘═════╛ Cannot infer the type of 'fighter'
 
 Error at line 25, column 37
 24 │ val f = match 5 { fighter => 1 }

@@ -19,8 +19,14 @@ public sealed class ResolvedMatchStatementNode
 	public IStatementNode Syntax { get; } = syntax;
 }
 
-public sealed class ResolvedMatchArm(ResolvedPattern? pattern, IResolvedStatementNode body)
+public sealed class ResolvedMatchArm
+(
+	IEnumerable<ResolvedPattern> patterns,
+	IResolvedExpressionNode? guard,
+	IResolvedStatementNode body
+)
 {
-	public ResolvedPattern? Pattern { get; } = pattern;
+	public ImmutableArray<ResolvedPattern> Patterns { get; } = patterns.ToImmutableArray();
+	public IResolvedExpressionNode? Guard { get; } = guard;
 	public IResolvedStatementNode Body { get; } = body;
 }

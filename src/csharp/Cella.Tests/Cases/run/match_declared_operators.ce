@@ -1,0 +1,69 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Eq: trait
+{
+	==: op(imm a: Self, imm b: Self) -> bool
+}
+
+i32: impl Eq
+
+count[T: Eq]: fun(imm items: array[T, 4], imm wanted: T) -> i32
+{
+	var total = 0
+	for i in 0..4
+	{
+		match items[i]
+		{
+			wanted => total += 1
+			else => {}
+		}
+	}
+
+	ret total
+}
+
+Point: rec
+{
+	x: i32
+	y: i32
+
+	==: op(a: Point, b: Point) -> bool = a.x == b.x && a.y == b.y
+}
+
+Origin: val Point = Point(0, 0)
+
+where: fun(p: Point) -> i32 = match p
+{
+	Origin => 0
+	Point(1, 1) => 1
+	else => 2
+}
+
+Team: enum
+{
+	red
+	blue
+
+	==: op(a: Team, b: Team) -> bool = true
+}
+
+name: fun(t: Team) -> i32 = match t
+{
+	red => 1
+	blue => 2
+}
+
+main: fun -> i32
+{
+	printf("%d %d %d\n", where(Point(0, 0)), where(Point(1, 1)), where(Point(3, 1)))
+	printf("%d %d\n", name(Team.red), name(Team.blue))
+	val items = [1, 2, 1, 1]
+	val one = 1
+	printf("%d\n", count(imm items, imm one))
+	ret 0
+}

@@ -695,8 +695,10 @@ public sealed class FileParser
 				return false;
 			
 			taken |= condition;
-			if (!Match(ref index, TokenType.KeywordElse))
+			if (!Peek(index, TokenType.KeywordElse) || Peek(index + 1, TokenType.OpFatArrow))
 				return true;
+			
+			Match(ref index, TokenType.KeywordElse);
 			
 			if (!Match(ref index, TokenType.KeywordWhen))
 				return ParseBranch(ref index, parseBranch, !taken);
@@ -2726,6 +2728,16 @@ public sealed class FileParser
 		}
 		
 		var arms = new List<MatchArmNode>();
+		if (ParseMatchArms(ref index, openBrace, arms) is not { } closeBrace)
+			return null;
+		
+		var (source, range) = matchToken.SourceLocation;
+		range = range.Join(closeBrace.SourceLocation.Range);
+		return new(new(source, range), mode, value, arms);
+	}
+	
+	private Token? ParseMatchArms(ref int index, Token openBrace, List<MatchArmNode> arms)
+	{
 		Token closeBrace;
 		while (!Match(ref index, out closeBrace, TokenType.OpCloseBrace))
 		{
@@ -2735,28 +2747,33 @@ public sealed class FileParser
 				return null;
 			}
 			
+			if (Match(ref index, TokenType.KeywordWhen))
+			{
+				if (!ParseWhen(ref index, (ref i, open, isActive) =>
+					    ParseMatchArms(ref i, open, isActive ? arms : []) is not null))
+					return null;
+				
+				continue;
+			}
+			
 			if (ParseMatchArm(ref index) is not { } arm)
 				return null;
 			
 			arms.Add(arm);
 		}
 		
-		var (source, range) = matchToken.SourceLocation;
-		range = range.Join(closeBrace.SourceLocation.Range);
-		return new(new(source, range), mode, value, arms);
+		return closeBrace;
 	}
 	
 	private MatchArmNode? ParseMatchArm(ref int index)
 	{
-		PatternNode? pattern = null;
+		List<PatternNode> patterns = [];
+		IExpressionNode? guard = null;
 		SourceLocation location;
 		if (Match(ref index, out var elseToken, TokenType.KeywordElse))
 			location = elseToken.SourceLocation;
 		else
-		{
-			pattern = new ExpressionParser(Tokens).ParsePattern(ref index);
-			location = pattern.SourceLocation;
-		}
+			(patterns, guard, location) = CreateExpressionParser().ParseArmHead(ref index);
 		
 		if (!Match(ref index, TokenType.OpFatArrow))
 		{
@@ -2764,7 +2781,7 @@ public sealed class FileParser
 			return null;
 		}
 		
-		return ParseStatement(ref index) is { } body ? new(pattern, location, body) : null;
+		return ParseStatement(ref index) is { } body ? new(patterns, guard, location, body) : null;
 	}
 	
 	private VarStatementNode? ParseVarStatement(ref int index, Token keyword)
@@ -2803,8 +2820,13 @@ public sealed class FileParser
 		return new(new(source, range), identifier, type, initializer, isMutable);
 	}
 	
-	private IExpressionNode ParseExpression(ref int index) =>
-		new ExpressionParser(Tokens) { ParseBlock = ParseBlockStatement }.Parse(ref index);
+	private IExpressionNode ParseExpression(ref int index) => CreateExpressionParser().Parse(ref index);
+	
+	private ExpressionParser CreateExpressionParser() => new(Tokens)
+	{
+		ParseBlock = ParseBlockStatement,
+		ParseWhenCondition = ParseCondition
+	};
 	
 	private ITypeNode ParseType(ref int index) => new TypeParser(Tokens).Parse(ref index);
 	

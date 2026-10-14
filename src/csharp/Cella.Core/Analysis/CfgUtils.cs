@@ -10,6 +10,7 @@ public static class CfgUtils
 		ConditionalBranchTerminator { IsErasedCall: false, Condition: ConstantValue { Value: bool taken } } t =>
 			[taken ? t.TrueTarget : t.FalseTarget],
 		ConditionalBranchTerminator t => [t.TrueTarget, t.FalseTarget],
+		SwitchTerminator t => t.Targets,
 		_ => Array.Empty<BasicBlock>()
 	};
 	

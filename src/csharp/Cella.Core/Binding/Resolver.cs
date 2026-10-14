@@ -795,15 +795,17 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		}
 		
 		value = Decay(value);
+		if (!IsInvalid(value) && value.Type is UntypedType)
+			value = MaterializeAsDefault(value);
+		
 		if (value.Type is EnumSymbol enumType)
 			return (value, enumType, null);
 		
 		if (value.Type is DynType dyn)
 			return (value, null, dyn);
 		
-		if (!IsInvalid(value))
-			Diagnostics.Add(new(DiagnosticSeverity.Error, node.SourceLocation,
-				$"Cannot match '{value.Type.Name}' values"));
+		if (value.Type == NativeSymbols.Void)
+			Diagnostics.Add(new(DiagnosticSeverity.Error, node.SourceLocation, "Cannot match 'void' values"));
 		
 		return (value, null, null);
 	}
@@ -838,14 +840,17 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	
 	private bool MovesPayload(PatternNode? pattern, EnumSymbol enumType)
 	{
-		if (pattern is null || enumType.Cases.FirstOrDefault(c => c.Name == pattern.CaseName.Text) is not { } enumCase)
+		if (pattern is not { Kind: PatternKind.Case } ||
+		    enumType.Cases.FirstOrDefault(c => c.Name == pattern.CaseName.Text) is not { } enumCase)
 			return false;
 		
 		var payloadTypes = _typePool.GetPayloadTypes(enumType, enumCase);
-		for (var i = 0; i < pattern.BindingModes.Length && i < payloadTypes.Length; i++)
+		for (var i = 0; i < pattern.Elements.Length && i < payloadTypes.Length; i++)
 		{
-			if (pattern.BindingModes[i]?.Type is TokenType.KeywordOwn or TokenType.KeywordVar &&
-			    !_typePool.IsCopy(payloadTypes[i]))
+			var element = pattern.Elements[i];
+			if (element is { Kind: PatternKind.Binding, Mode.Type: TokenType.KeywordOwn or TokenType.KeywordVar } &&
+			    !_typePool.IsCopy(payloadTypes[i]) ||
+			    payloadTypes[i] is EnumSymbol payloadEnum && MovesPayload(element, payloadEnum))
 				return true;
 		}
 		
@@ -874,14 +879,27 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			return null;
 		
 		var payloadTypes = _typePool.GetPayloadTypes(enumType, enumCase);
-		if (pattern.Bindings.Length != payloadTypes.Length || pattern.HasParentheses == payloadTypes.IsEmpty)
+		if (pattern.Elements.Length != payloadTypes.Length || pattern.HasParentheses == payloadTypes.IsEmpty)
 		{
 			Diagnostics.Add(ReportPayloadCount(pattern.SourceLocation, enumType, enumCase));
 			return null;
 		}
 		
-		var bindings = CreateBindings(pattern, payloadTypes, isMut, ownsValue);
-		ReportRepeatedBindings(bindings.OfType<LocalVariableSymbol>());
+		var bindings = new LocalVariableSymbol?[payloadTypes.Length];
+		var elements = new ResolvedPattern?[payloadTypes.Length];
+		for (var i = 0; i < payloadTypes.Length; i++)
+		{
+			var element = pattern.Elements[i];
+			if (element.Kind == PatternKind.Binding)
+				bindings[i] = CreateBinding(element.CaseName, element.Mode, payloadTypes[i], isMut, ownsValue);
+			else if (ResolveArmPattern(element, payloadTypes[i], isMut, ownsValue) is { } nested)
+				elements[i] = nested;
+			else
+				return null;
+		}
+		
+		var resolved = new ResolvedPattern(enumCase, bindings) { Elements = [..elements] };
+		ReportRepeatedBindings(resolved.AllBindings);
 		if (enumType.IsMatch)
 		{
 			foreach (var binding in bindings.OfType<LocalVariableSymbol>().Where(static b => b.IsMutBinding))
@@ -889,17 +907,148 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 					$"Cannot mutably borrow '{enumType.Name}' payloads"));
 		}
 		
-		return new ResolvedPattern(enumCase, bindings);
+		return resolved;
 	}
 	
-	private ImmutableArray<LocalVariableSymbol?> CreateBindings(PatternNode pattern, IReadOnlyList<TypeSymbol>? types,
-		bool isMut, bool ownsValue) => pattern.TypeBinding is { } typeBinding
-		? [CreateBinding(typeBinding, null, NativeSymbols.Invalid, isMut, ownsValue)]
-		:
-		[
-			..pattern.Bindings.Select((token, i) =>
-				CreateBinding(token, pattern.BindingModes[i], types?[i] ?? NativeSymbols.Invalid, isMut, ownsValue))
-		];
+	private ImmutableArray<LocalVariableSymbol?> CreateBindings(PatternNode pattern, bool isMut, bool ownsValue) =>
+		pattern.TypeBinding is { } typeBinding
+			? [CreateBinding(typeBinding, null, NativeSymbols.Invalid, isMut, ownsValue)]
+			:
+			[
+				..pattern.Elements.SelectMany(element => element.Kind == PatternKind.Binding
+					? [CreateBinding(element.CaseName, element.Mode, NativeSymbols.Invalid, isMut, ownsValue)]
+					: CreateBindings(element, isMut, ownsValue))
+			];
+	
+	private ResolvedPattern? ResolveArmPattern(PatternNode syntax, TypeSymbol subjectType, bool isMut, bool ownsValue)
+	{
+		if (IsInvalid(subjectType))
+			return null;
+		
+		switch (syntax.Kind)
+		{
+			case PatternKind.Case when subjectType is EnumSymbol enumType && IsCasePattern(syntax, enumType):
+				return ResolvePattern(syntax, enumType, isMut, ownsValue);
+			
+			case PatternKind.Case or PatternKind.Type when subjectType is DynType dyn:
+				return ResolveTypePattern(syntax, dyn, isMut);
+			
+			case PatternKind.Case when syntax.Value is not null:
+			case PatternKind.Value or PatternKind.Range or PatternKind.Relational:
+				return ResolveTestPattern(syntax, subjectType);
+			
+			default:
+				Diagnostics.Add(new(DiagnosticSeverity.Error, syntax.SourceLocation, "Expected a value"));
+				return null;
+		}
+	}
+	
+	private bool IsCasePattern(PatternNode syntax, EnumSymbol enumType)
+	{
+		if (syntax.Value is null || syntax.HasParentheses)
+			return true;
+		
+		var context = CurrentResolutionContext;
+		if (syntax.TypePath.IsEmpty)
+			return enumType.Cases.Any(enumCase => enumCase.Name == syntax.CaseName.Text) ||
+			       context.Resolve(syntax.CaseName.Text) is null or TypeSymbol;
+		
+		var symbol = context.Resolve(syntax.TypePath[0].Text);
+		foreach (var part in syntax.TypePath.Skip(1))
+			symbol = symbol is ModulePathSymbol module ? context.ResolveMember(module, part.Text) : null;
+		
+		return symbol is null or TypeSymbol;
+	}
+	
+	private ResolvedPattern? ResolveTestPattern(PatternNode syntax, TypeSymbol subjectType)
+	{
+		var location = syntax.SourceLocation;
+		var name = new Token(TokenType.Identifier, location, "match");
+		var isCopy = _typePool.IsCopy(subjectType);
+		var subject = new LocalVariableSymbol(name, isCopy || IsInvalid(subjectType)
+			? subjectType
+			: _typePool.GetPointerType(subjectType), false)
+		{
+			IsPatternBinding = true,
+			IsBorrowBinding = !isCopy && !IsInvalid(subjectType)
+		};
+		
+		var reference = new VarExpressionNode(name);
+		IExpressionNode test = syntax.Kind switch
+		{
+			PatternKind.Range => new ChainedExpressionNode([syntax.Value!, reference, syntax.Upper!],
+			[
+				new Token(TokenType.OpLessEqual, location, "<="),
+				syntax.IsInclusive
+					? new Token(TokenType.OpLessEqual, location, "<=")
+					: new Token(TokenType.OpLess, location, "<")
+			]),
+			PatternKind.Relational => new BinaryOpExpressionNode(reference, syntax.Operator!.Value, syntax.Value!),
+			_ => new BinaryOpExpressionNode(reference, new Token(TokenType.OpEqualEqual, location, "=="),
+				syntax.Value!)
+		};
+		
+		var errors = Diagnostics.ErrorsReported;
+		var resolved = VisitInScope(test, [subject], NativeSymbols.Bool);
+		if (IsInvalid(resolved) || Diagnostics.ErrorsReported > errors)
+			return null;
+		
+		if (syntax.Kind != PatternKind.Range && subjectType is FloatType or UntypedFloatType &&
+		    syntax.Operator?.Type is null or TokenType.OpBangEqual)
+			Diagnostics.Add(new(DiagnosticSeverity.Warning, location, "Float patterns compare exactly"));
+		
+		var (constant, spans) = FindPatternConstants(syntax, resolved, subjectType);
+		return new ResolvedPattern(null, []) { Subject = subject, Test = resolved, Constant = constant, Spans = spans };
+	}
+	
+	private (Constant? Constant, ImmutableArray<(BigInteger Low, BigInteger High)> Spans) FindPatternConstants(
+		PatternNode syntax, IResolvedExpressionNode test, TypeSymbol subjectType)
+	{
+		if (FindLimits(subjectType) is not var (min, max))
+			return (null, []);
+		
+		switch (test)
+		{
+			case ResolvedChainedExpressionNode { Operands: [var lower, _, var upper] } chain
+				when chain.Links.All(static link => link.Operation is NativeImpl) &&
+				     GetPatternValue(_evaluator.Evaluate(lower)) is { } low &&
+				     GetPatternValue(_evaluator.Evaluate(upper)) is { } high:
+				var last = syntax.IsInclusive ? high : high - 1;
+				return (null, low <= last ? [(low, last)] : []);
+			
+			case ResolvedBinaryOpExpressionNode { Operation: NativeImpl } binary
+				when _evaluator.Evaluate(binary.Right) is { } constant && GetPatternValue(constant) is { } value:
+				ImmutableArray<(BigInteger, BigInteger)> spans = syntax.Operator?.Type switch
+				{
+					null => [(value, value)],
+					TokenType.OpGreater => [(value + 1, max)],
+					TokenType.OpGreaterEqual => [(value, max)],
+					TokenType.OpLess => [(min, value - 1)],
+					TokenType.OpLessEqual => [(min, value)],
+					_ => [(min, value - 1), (value + 1, max)]
+				};
+				
+				return (syntax.Operator is null ? constant : null,
+					[..spans.Where(static span => span.Item1 <= span.Item2)]);
+			
+			default:
+				return (null, []);
+		}
+	}
+	
+	private (BigInteger Min, BigInteger Max)? FindLimits(TypeSymbol type) => type switch
+	{
+		IntegerType integer => _evaluator.GetLimits(integer),
+		_ when type == NativeSymbols.Bool => (BigInteger.Zero, BigInteger.One),
+		_ => null
+	};
+	
+	private static BigInteger? GetPatternValue(Constant? constant) => constant switch
+	{
+		IntegerConstant integer => integer.Value,
+		BoolConstant flag => flag.Value ? BigInteger.One : BigInteger.Zero,
+		_ => null
+	};
 	
 	private ResolvedPattern? ResolveTypePattern(PatternNode pattern, DynType dyn, bool isMut)
 	{
@@ -1029,7 +1178,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	private IEnumerable<LocalVariableSymbol> GetTrueBindings(IResolvedExpressionNode condition) =>
 		condition switch
 		{
-			ResolvedIsExpressionNode node => node.Pattern.Bindings.OfType<LocalVariableSymbol>(),
+			ResolvedIsExpressionNode node => node.Pattern.AllBindings,
 			ResolvedInvalidExpressionNode node when _failedPatterns.TryGetValue(node, out var bindings) =>
 				bindings.OfType<LocalVariableSymbol>(),
 			ResolvedBinaryOpExpressionNode { Operation: NativeImpl { Op: TokenType.OpAmpersandAmpersand } } node =>
@@ -1073,41 +1222,81 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	public IResolvedExpressionNode Visit(IsExpressionNode node)
 	{
 		var isMut = node.Mode is not null;
-		var (value, enumType, dyn) = ResolveMatchedValue(node.Value);
+		var (value, enumType, _) = ResolveMatchedValue(node.Value);
 		value = TakeOwnership(value, node.Value, enumType, isMut, [node.Pattern]);
 		var ownsValue = OwnsValue(value, enumType);
-		if (enumType is not null && ResolvePattern(node.Pattern, enumType, isMut, ownsValue) is { } pattern)
+		if (ResolveArmPattern(node.Pattern, value.Type, isMut, ownsValue) is { } pattern)
 			return new ResolvedIsExpressionNode(value, pattern, isMut || pattern.HasMutBindings, ownsValue, node);
 		
-		if (dyn is not null && ResolveTypePattern(node.Pattern, dyn, isMut) is { } typePattern)
-			return new ResolvedIsExpressionNode(value, typePattern, isMut, false, node);
-		
 		var invalid = new ResolvedInvalidExpressionNode(node, NativeSymbols.Bool);
-		_failedPatterns[invalid] = CreateBindings(node.Pattern, null, isMut, ownsValue);
+		_failedPatterns[invalid] = CreateBindings(node.Pattern, isMut, ownsValue);
 		return invalid;
+	}
+	
+	private (List<ResolvedPattern> Patterns, List<LocalVariableSymbol?> Bindings) ResolveArmPatterns(
+		ImmutableArray<PatternNode> syntax, TypeSymbol subjectType, bool isMut, bool ownsValue)
+	{
+		var patterns = new List<ResolvedPattern>();
+		var bindings = new List<LocalVariableSymbol?>();
+		foreach (var pattern in syntax)
+		{
+			if (ResolveArmPattern(pattern, subjectType, isMut, ownsValue) is { } resolved)
+			{
+				patterns.Add(resolved);
+				bindings.AddRange(resolved.AllBindings);
+			}
+			else
+			{
+				bindings.AddRange(CreateBindings(pattern, isMut, ownsValue));
+			}
+		}
+		
+		if (syntax.Length > 1)
+		{
+			foreach (var binding in bindings.OfType<LocalVariableSymbol>())
+				Diagnostics.Add(new(DiagnosticSeverity.Error, binding.Identifier.SourceLocation,
+					"Cannot bind names in arms with several patterns"));
+		}
+		
+		return (patterns, bindings);
+	}
+	
+	private IResolvedExpressionNode? ResolveGuard(IExpressionNode? guard, List<LocalVariableSymbol?> bindings)
+	{
+		if (guard is null)
+			return null;
+		
+		foreach (var binding in bindings.OfType<LocalVariableSymbol>())
+		{
+			if (!binding.IsBorrowBinding && !_typePool.IsCopy(binding.Type))
+				Diagnostics.Add(new(DiagnosticSeverity.Error, binding.Identifier.SourceLocation,
+					"Cannot move payloads in arms with 'if'"));
+		}
+		
+		return VisitInScope(guard, bindings, NativeSymbols.Bool);
 	}
 	
 	public IResolvedStatementNode Visit(MatchStatementNode node)
 	{
 		var isMut = node.Mode is not null;
-		var (value, enumType, dyn) = ResolveMatchedValue(node.Value);
-		value = TakeOwnership(value, node.Value, enumType, isMut, node.Arms.Select(static arm => arm.Pattern));
+		var (value, enumType, _) = ResolveMatchedValue(node.Value);
+		value = TakeOwnership(value, node.Value, enumType, isMut,
+			node.Arms.SelectMany(static arm => arm.Patterns));
+		
 		var ownsValue = OwnsValue(value, enumType);
 		var arms = new List<ResolvedMatchArm>(node.Arms.Length);
 		var summaries = new List<MatchArmSummary>(node.Arms.Length);
 		foreach (var arm in node.Arms)
 		{
-			var pattern = arm.Pattern is { } syntax ? ResolveArmPattern(syntax, enumType, dyn, isMut, ownsValue) : null;
-			var bindings = pattern?.Bindings ??
-			               (arm.Pattern is { } failed ? CreateBindings(failed, null, isMut, ownsValue) : []);
-			
+			var (patterns, bindings) = ResolveArmPatterns(arm.Patterns, value.Type, isMut, ownsValue);
+			var guard = ResolveGuard(arm.Guard, bindings);
 			ReportDeclarationBody(arm.Body);
-			arms.Add(new ResolvedMatchArm(pattern, VisitInScope(arm.Body, bindings)));
-			summaries.Add(SummarizeArm(arm.Pattern, pattern, enumType, arm.SourceLocation));
+			arms.Add(new ResolvedMatchArm(patterns, guard, VisitInScope(arm.Body, bindings)));
+			summaries.AddRange(SummarizeArm(arm.Patterns, patterns, guard, enumType, arm.SourceLocation));
 		}
 		
 		ReportArmConflicts(summaries);
-		var borrowsMut = isMut || arms.Any(static arm => arm.Pattern is { HasMutBindings: true });
+		var borrowsMut = isMut || arms.Any(static arm => arm.Patterns.Any(static pattern => pattern.HasMutBindings));
 		return new ResolvedMatchStatementNode(value, arms, borrowsMut, ownsValue, node);
 	}
 	
@@ -1117,27 +1306,29 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		var hint = target is null ? ExpectedType : null;
 		var isMut = node.Mode is not null;
 		var (value, enumType, dyn) = ResolveMatchedValue(node.Value);
-		value = TakeOwnership(value, node.Value, enumType, isMut, node.Arms.Select(static arm => arm.Pattern));
+		value = TakeOwnership(value, node.Value, enumType, isMut,
+			node.Arms.SelectMany(static arm => arm.Patterns));
+		
 		var ownsValue = OwnsValue(value, enumType);
-		var patterns = new List<ResolvedPattern?>(node.Arms.Length);
+		var patterns = new List<List<ResolvedPattern>>(node.Arms.Length);
+		var guards = new List<IResolvedExpressionNode?>(node.Arms.Length);
 		var values = new IResolvedExpressionNode?[node.Arms.Length];
 		var summaries = new List<MatchArmSummary>(node.Arms.Length);
 		var bare = new List<(int Index, IEnumerable<LocalVariableSymbol?> Bindings)>();
 		for (var i = 0; i < node.Arms.Length; i++)
 		{
 			var arm = node.Arms[i];
-			var pattern = arm.Pattern is { } syntax ? ResolveArmPattern(syntax, enumType, dyn, isMut, ownsValue) : null;
-			var bindings = pattern?.Bindings ??
-			               (arm.Pattern is { } failed ? CreateBindings(failed, null, isMut, ownsValue) : []);
-			
-			patterns.Add(pattern);
+			var (armPatterns, bindings) = ResolveArmPatterns(arm.Patterns, value.Type, isMut, ownsValue);
+			var guard = ResolveGuard(arm.Guard, bindings);
+			patterns.Add(armPatterns);
+			guards.Add(guard);
 			if (target is null && IsCaseNameSyntax(arm.Value) &&
 			    !bindings.Any(binding => binding?.Name == GetCaseToken(arm.Value)?.Text))
 				bare.Add((i, bindings));
 			else
 				values[i] = VisitInScope(arm.Value, bindings, target, hint);
 			
-			summaries.Add(SummarizeArm(arm.Pattern, pattern, enumType, arm.SourceLocation));
+			summaries.AddRange(SummarizeArm(arm.Patterns, armPatterns, guard, enumType, arm.SourceLocation));
 		}
 		
 		List<TypeSymbol> peers =
@@ -1152,9 +1343,10 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		ReportArmConflicts(summaries);
 		if (enumType is not null)
 			ReportMissingCases(node.Keyword, enumType, summaries);
-		else if (dyn is not null && !summaries.Any(static arm => arm.IsElse))
+		else if (!summaries.Any(static arm => arm.IsElse || arm.IsFailed) && !IsInvalid(value) &&
+		         (dyn is not null || !CoversEveryValue(value.Type, summaries)))
 			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Keyword.SourceLocation,
-				$"This match doesn't handle every value of '{dyn.Name}'"));
+				$"This match doesn't handle every value of '{(dyn ?? value.Type).Name}'"));
 		
 		var arms = values
 			.Select(value => value is ResolvedCaseNameExpressionNode caseName && HasCase(hint, caseName.Name.Text)
@@ -1176,8 +1368,10 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			type = NativeSymbols.Invalid;
 		}
 		
-		var resolved = arms.Select((v, i) => new ResolvedMatchExpressionArm(patterns[i], CoerceToType(v, type)));
-		var borrowsMut = isMut || patterns.Any(static pattern => pattern is { HasMutBindings: true });
+		var resolved = arms.Select((v, i) =>
+			new ResolvedMatchExpressionArm(patterns[i], guards[i], CoerceToType(v, type)));
+		
+		var borrowsMut = isMut || patterns.Any(static armPatterns => armPatterns.Any(static p => p.HasMutBindings));
 		return new ResolvedMatchExpressionNode(value, resolved, borrowsMut, ownsValue, type, node);
 	}
 	
@@ -1190,19 +1384,55 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	)
 	{
 		public TypeSymbol? Type { get; init; }
+		public object? Constant { get; init; }
+		public ImmutableArray<(BigInteger Low, BigInteger High)> Spans { get; init; } = [];
+		public bool IsFailed { get; init; }
 	}
 	
-	private ResolvedPattern? ResolveArmPattern(PatternNode syntax, EnumSymbol? enumType, DynType? dyn, bool isMut,
-		bool ownsValue) => enumType is not null ? ResolvePattern(syntax, enumType, isMut, ownsValue)
-		: dyn is not null ? ResolveTypePattern(syntax, dyn, isMut)
-		: null;
-	
-	private MatchArmSummary SummarizeArm(PatternNode? syntax, ResolvedPattern? pattern, EnumSymbol? enumType,
-		SourceLocation location) => new(syntax is null, pattern?.Case,
-		pattern?.Case is { } enumCase ? _typePool.GetCaseValue(enumType!, enumCase) : null, location)
+	private IEnumerable<MatchArmSummary> SummarizeArm(ImmutableArray<PatternNode> syntax,
+		List<ResolvedPattern> patterns, IResolvedExpressionNode? guard, EnumSymbol? enumType, SourceLocation location)
 	{
-		Type = pattern?.TestedType
-	};
+		if (syntax.IsEmpty)
+			return [new MatchArmSummary(true, null, null, location)];
+		
+		if (guard is not null || patterns.Count != syntax.Length)
+			return [new MatchArmSummary(false, null, null, location) { IsFailed = patterns.Count != syntax.Length }];
+		
+		return patterns.Select((pattern, i) =>
+		{
+			var enumCase = pattern.IsConditional ? null : pattern.Case;
+			return new MatchArmSummary(false, enumCase,
+				enumCase is not null ? _typePool.GetCaseValue(enumType!, enumCase) : null, syntax[i].SourceLocation)
+			{
+				Type = pattern.TestedType,
+				Constant = pattern.Constant switch
+				{
+					IntegerConstant integer => integer.Value,
+					BoolConstant flag => flag.Value,
+					StringConstant text => text.Value,
+					_ => null
+				},
+				Spans = pattern.Spans
+			};
+		});
+	}
+	
+	private bool CoversEveryValue(TypeSymbol type, IReadOnlyList<MatchArmSummary> arms)
+	{
+		if (FindLimits(type) is not var (min, max))
+			return false;
+		
+		var next = min;
+		foreach (var (low, high) in arms.SelectMany(static arm => arm.Spans).OrderBy(static span => span.Low))
+		{
+			if (low > next)
+				return false;
+			
+			next = BigInteger.Max(next, high + 1);
+		}
+		
+		return next > max;
+	}
 	
 	private void ReportArmConflicts(IReadOnlyList<MatchArmSummary> arms)
 	{
@@ -1229,6 +1459,22 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 					$"'{sameType.Key!.Name}' is matched more than once"));
 		}
 		
+		var repeatedValues = arms
+			.Where(static arm => arm.Constant is not null)
+			.GroupBy(static arm => arm.Constant)
+			.Where(static sameValue => sameValue.Count() > 1);
+		
+		foreach (var sameValue in repeatedValues)
+		{
+			List<string> texts = [..sameValue.Select(static arm => arm.Location.GetText().ToString()).Distinct()];
+			var message = texts is [var text]
+				? $"'{text}' is matched more than once"
+				: $"{DiagnosticReporter.JoinNames(texts)} are the same value";
+			
+			foreach (var arm in sameValue)
+				Diagnostics.Add(new(DiagnosticSeverity.Error, arm.Location, message));
+		}
+		
 		var repeated = arms
 			.Where(static arm => arm.Value is not null)
 			.GroupBy(static arm => arm.Value)
@@ -1248,7 +1494,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	
 	private void ReportMissingCases(Token keyword, EnumSymbol enumType, IReadOnlyList<MatchArmSummary> arms)
 	{
-		if (arms.Any(static arm => arm.IsElse || arm.Case is null))
+		if (arms.Any(static arm => arm.IsElse || arm.IsFailed))
 			return;
 		
 		if (enumType.IsExternal)
@@ -7230,7 +7476,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		
 		if (node is ResolvedMatchExpressionNode { Type: UntypedType } match)
 			return new ResolvedMatchExpressionNode(match.Value,
-				match.Arms.Select(arm => new ResolvedMatchExpressionArm(arm.Pattern,
+				match.Arms.Select(arm => new ResolvedMatchExpressionArm(arm.Patterns, arm.Guard,
 					MaterializeExpression(arm.Value, target))),
 				match.IsMut, match.OwnsValue, target, match.Syntax);
 		

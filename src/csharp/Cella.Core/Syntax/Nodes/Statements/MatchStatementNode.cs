@@ -17,9 +17,17 @@ public sealed class MatchStatementNode
 	public ImmutableArray<MatchArmNode> Arms { get; } = arms.ToImmutableArray();
 }
 
-public sealed class MatchArmNode(PatternNode? pattern, SourceLocation sourceLocation, IStatementNode body)
+public sealed class MatchArmNode
+(
+	IEnumerable<PatternNode> patterns,
+	IExpressionNode? guard,
+	SourceLocation sourceLocation,
+	IStatementNode body
+)
 {
-	public PatternNode? Pattern { get; } = pattern;
+	public ImmutableArray<PatternNode> Patterns { get; } = patterns.ToImmutableArray();
+	public IExpressionNode? Guard { get; } = guard;
 	public SourceLocation SourceLocation { get; } = sourceLocation;
 	public IStatementNode Body { get; } = body;
+	public bool IsElse => Patterns.IsEmpty;
 }

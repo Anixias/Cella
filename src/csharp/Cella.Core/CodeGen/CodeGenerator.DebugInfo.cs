@@ -156,6 +156,7 @@ public sealed unsafe partial class CodeGenerator
 			{
 				BranchTerminator branch => [branch.Target],
 				ConditionalBranchTerminator branch => [branch.TrueTarget, branch.FalseTarget],
+				SwitchTerminator branch => branch.Targets,
 				_ => []
 			};
 			

@@ -70,6 +70,12 @@ public sealed class ControlFlowGraph : IReadOnlyList<BasicBlock>
 				RemovePredecessor(t.TrueTarget, block);
 				RemovePredecessor(t.FalseTarget, block);
 				break;
+			
+			case SwitchTerminator t:
+				foreach (var target in t.Targets)
+					RemovePredecessor(target, block);
+				
+				break;
 		}
 		
 		// Update terminator
@@ -99,6 +105,15 @@ public sealed class ControlFlowGraph : IReadOnlyList<BasicBlock>
 				successors.Add(t.FalseTarget);
 				AddPredecessor(t.TrueTarget, block);
 				AddPredecessor(t.FalseTarget, block);
+				break;
+			
+			case SwitchTerminator t:
+				foreach (var target in t.Targets)
+				{
+					successors.Add(target);
+					AddPredecessor(target, block);
+				}
+				
 				break;
 			
 			default:
@@ -153,6 +168,12 @@ public sealed class ControlFlowGraph : IReadOnlyList<BasicBlock>
 				case ConditionalBranchTerminator t:
 					queue.Enqueue(t.TrueTarget);
 					queue.Enqueue(t.FalseTarget);
+					break;
+				
+				case SwitchTerminator t:
+					foreach (var target in t.Targets)
+						queue.Enqueue(target);
+					
 					break;
 			}
 		}
