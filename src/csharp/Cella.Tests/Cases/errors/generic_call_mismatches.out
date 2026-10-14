@@ -9,7 +9,7 @@ Error at line 10, column 17
 Error at line 11, column 22
 10 │ val a = sum[4]([1, 2, 3])
 11 │ val b = pick(small, 300)
-                         ╘═╛ Cannot convert type 'i32' to 'u8'
+                         ╘═╛ '300' doesn't fit in 'u8'
 
 Error at line 12, column 21
 11 │ val b = pick(small, 300)
@@ -19,6 +19,6 @@ Error at line 12, column 21
 Error at line 13, column 10
 12 │ val c = pick(true, 1)
 13 │ val x = 300
-             ╘═╛ Cannot convert type 'i32' to 'u8'
+             ╘═╛ '300' doesn't fit in 'u8'
 
 [compilation failed]

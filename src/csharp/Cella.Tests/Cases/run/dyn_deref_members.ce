@@ -1,0 +1,39 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Point: rec
+{
+	x: i32
+	y: i32
+}
+
+Pointer: trait
+{
+	*: op(imm self) -> imm[Point]
+}
+
+Holder: rec impl Pointer
+{
+	p: Point
+
+	*: op(imm self) -> imm[Point] = imm self.p
+
+	drop: op
+	{
+	}
+}
+
+read[T: Pointer]: fun(imm p: T) -> i32 = p.x + p.y
+
+readDyn: fun(imm p: dyn[Pointer]) -> i32 = p.y
+
+main: fun -> i32
+{
+	val h = Holder(Point(3, 4))
+	printf("%d %d\n", read(imm h), readDyn(imm h))
+	ret 0
+}

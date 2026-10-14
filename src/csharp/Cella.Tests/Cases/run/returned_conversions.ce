@@ -1,0 +1,27 @@
+mod test
+
+V: rec
+{
+	id: i32
+
+	drop: op
+	{
+	}
+
+	as: op(own self) -> W = W(self.id)
+}
+
+W: rec
+{
+	id: i32
+}
+
+viaReturn: fun -> W
+{
+	val v = V(1)
+	ret v
+}
+
+viaBody: fun(own v: V) -> W = v
+
+main: fun -> i32 = viaReturn().id * 10 + viaBody(V(2)).id

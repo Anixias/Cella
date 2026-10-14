@@ -44,6 +44,6 @@ Error at line 35, column 6
 Error at line 36, column 11
 35 │ all(v)
 36 │ bytes(1, 300)
-              ╘═╛ Cannot convert type 'i32' to 'u8'
+              ╘═╛ '300' doesn't fit in 'u8'
 
 [compilation failed]

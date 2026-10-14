@@ -34,7 +34,7 @@ Error at line 28, column 9
 Error at line 34, column 8
 33 │ {
 34 │     low = 256
-               ╘═╛ Cannot convert type 'i32' to 'u8'
+               ╘═╛ '256' doesn't fit in 'u8'
 
 Error at line 35, column 12
 34 │ low = 256

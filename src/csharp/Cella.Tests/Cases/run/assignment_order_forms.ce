@@ -1,0 +1,53 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+P: rec
+{
+	x: i32
+}
+
+store: var P = P(0)
+
+target: fun -> ptr[P]
+{
+	printf("target ")
+	ret @store
+}
+
+value: fun -> i32
+{
+	printf("value ")
+	ret 1
+}
+
+E: enum { a  b }
+
+make: fun -> E
+{
+	printf("make ")
+	ret E.a
+}
+
+index: fun -> usize
+{
+	printf("index ")
+	ret 0
+}
+
+main: fun -> i32
+{
+	var values = [0, 0]
+	(*target()).x = value()
+	printf("| ")
+	(*target()).x += value()
+	printf("| ")
+	values[index()] = match make() { a => value()  b => 2 }
+	printf("| ")
+	values[index()] = value()
+	printf("\n")
+	ret 0
+}

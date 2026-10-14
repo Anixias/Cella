@@ -1,0 +1,59 @@
+
+====== literal_fits.ce ======
+
+Error at line 5, column 14
+4 │ {
+5 │     val a: u8 = 300
+                    ╘═╛ '300' doesn't fit in 'u8'
+
+Error at line 6, column 15
+5 │ val a: u8 = 300
+6 │ val b: i32 = 3000000000
+                 ╘════════╛ '3000000000' doesn't fit in 'i32'
+
+Error at line 7, column 15
+6 │ val b: i32 = 3000000000
+7 │ val c: f32 = 1e39
+                 ╘══╛ '1e39' doesn't fit in 'f32'
+
+Error at line 8, column 15
+7 │ val c: f32 = 1e39
+8 │ val d: f32 = 16777217
+                 ╘══════╛ '16777217' can't be represented exactly in 'f32'
+
+Error at line 9, column 15
+8 │ val d: f32 = 16777217
+9 │ val e: i32 = 0xFFFFFFFF
+                 ╘════════╛ '0xFFFFFFFF' doesn't fit in 'i32'
+
+Error at line 10, column 14
+ 9 │ val e: i32 = 0xFFFFFFFF
+10 │ val f: u8 = -1
+                 ╘╛ '-1' doesn't fit in 'u8'
+
+Error at line 12, column 6
+11 │ var g: u8 = 0
+12 │ g = 256
+         ╘═╛ '256' doesn't fit in 'u8'
+
+Error at line 13, column 7
+12 │ g = 256
+13 │ g += 300
+          ╘═╛ '300' doesn't fit in 'u8'
+
+Error at line 14, column 10
+13 │ g += 300
+14 │ val h = 5(1)
+             ^ Cannot call a value of type 'integer literal'
+
+Error at line 15, column 10
+14 │ val h = 5(1)
+15 │ val i = bool(1.5)
+             ╘═══════╛ No constructor for 'bool' accepts argument of type 'float literal'
+
+Error at line 19, column 16
+18 │ 
+19 │ r: fun -> u8 = 999
+                    ╘═╛ '999' doesn't fit in 'u8'
+
+[compilation failed]

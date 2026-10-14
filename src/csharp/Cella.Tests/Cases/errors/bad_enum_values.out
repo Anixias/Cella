@@ -60,6 +60,6 @@ Error at line 28, column 21
 Error at line 29, column 10
 28 │ var k = Effect.hit(missing)
 29 │ var l = Effect(0)
-             ╘═══════╛ No constructor for 'Effect' accepts argument of type 'i32'
+             ╘═══════╛ No constructor for 'Effect' accepts argument of type 'integer literal'
 
 [compilation failed]

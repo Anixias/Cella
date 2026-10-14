@@ -24,7 +24,7 @@ Error at line 31, column 6
 Error at line 35, column 15
 34 │ 
 35 │ var tooBig = 300
-                  ╘═╛ Cannot convert type 'i32' to 'u8'
+                  ╘═╛ '300' doesn't fit in 'u8'
 
 Error at line 38, column 20
 37 │ 
@@ -44,6 +44,6 @@ Error at line 41, column 6
 Error at line 45, column 22
 44 │ 
 45 │ val values = [1, 2, 300]
-                         ╘═╛ Cannot convert type 'i32' to 'u8'
+                         ╘═╛ '300' doesn't fit in 'u8'
 
 [compilation failed]

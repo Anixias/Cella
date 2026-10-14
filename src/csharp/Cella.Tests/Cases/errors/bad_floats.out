@@ -4,7 +4,7 @@
 Error at line 7, column 15
 6 │ var wide: i64 = 3
 7 │ var a: f32 = 16_777_217
-                 ╘════════╛ Cannot convert type 'i32' to 'f32'
+                 ╘════════╛ '16_777_217' can't be represented exactly in 'f32'
 
 Error at line 8, column 15
 7 │ var a: f32 = 16_777_217
@@ -34,7 +34,7 @@ Error at line 12, column 10
 Error at line 13, column 15
 12 │ var f = 1e400
 13 │ var g: f32 = 1e39
-                  ╘══╛ Cannot convert type 'f64' to 'f32'
+                  ╘══╛ '1e39' doesn't fit in 'f32'
 
 Error at line 14, column 10
 13 │ var g: f32 = 1e39

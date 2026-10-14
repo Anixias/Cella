@@ -1,10 +1,10 @@
 
 ====== bad_globals.ce ======
 
-Error at line 10, column 27
+Error at line 10, column 26
  9 │ items: var array[i32, 2] = [1, 2]
 10 │ negative: val array[i32, -1] = []
-                               ^ Cannot convert type 'i32' to 'usize'
+                              ╘╛ '-1' doesn't fit in 'usize'
 
 Error at line 11, column 28
 10 │ negative: val array[i32, -1] = []

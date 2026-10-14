@@ -1,0 +1,9 @@
+
+====== match_enum_literal_fits.ce ======
+
+Error at line 7, column 17
+6 │ {
+7 │     val p = parity(300)
+                       ╘═╛ '300' doesn't fit in 'u8'
+
+[compilation failed]

@@ -1,0 +1,19 @@
+mod test
+
+main: fun -> i32
+{
+	val a: u8 = 300
+	val b: i32 = 3000000000
+	val c: f32 = 1e39
+	val d: f32 = 16777217
+	val e: i32 = 0xFFFFFFFF
+	val f: u8 = -1
+	var g: u8 = 0
+	g = 256
+	g += 300
+	val h = 5(1)
+	val i = bool(1.5)
+	ret 0
+}
+
+r: fun -> u8 = 999

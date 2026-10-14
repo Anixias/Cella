@@ -1,0 +1,15 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Flags: enum(u8) { none = 0  all = ~0 }
+Signed: enum(i8) { zero = 0  low = 1 << 7 }
+
+main: fun -> i32
+{
+	printf("%d %d\n", i32(Flags.all), i32(Signed.low))
+	ret 0
+}

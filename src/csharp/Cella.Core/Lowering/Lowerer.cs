@@ -1042,7 +1042,7 @@ public sealed class Lowerer
 		
 		public Value Visit(ResolvedFunctionCallExpressionNode node) => Diverge(new CallValue(node.Function,
 			node.IsConversion
-				? LowerOperands(node.Arguments, GetArgumentPassing(node.Function, 0))
+				? LowerOperands(node.Arguments, GetArgumentPassing(node.Function, 0), _returnedValues.Contains(node))
 				: LowerArguments(node.Arguments, node.Function, 0), node.Syntax.SourceLocation));
 		
 		private Value Diverge(Value call)

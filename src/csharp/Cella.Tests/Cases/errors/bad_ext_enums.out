@@ -4,7 +4,7 @@
 Error at line 6, column 8
 5 │ small
 6 │ big = 3000000000
-          ╘════════╛ 'big' is 3000000000, which doesn't fit in 'i32'
+          ╘════════╛ '3000000000' doesn't fit in 'i32'
 
 Error at line 9, column 15
 8 │ 

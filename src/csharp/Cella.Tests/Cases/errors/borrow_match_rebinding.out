@@ -1,0 +1,10 @@
+
+====== borrow_match_rebinding.ce ======
+
+Error at line 26, column 17
+25 │ }
+26 │ printf("%d\n", r)
+                    ^ Cannot use borrows of dropped values
+                    | Dropped on line 25
+
+[compilation failed]

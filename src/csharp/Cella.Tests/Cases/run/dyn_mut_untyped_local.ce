@@ -1,0 +1,29 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Bump: trait
+{
+	bump: fun(mut self)
+}
+
+i32: impl Bump
+{
+	bump: fun(mut self)
+	{
+		self += 1
+	}
+}
+
+grow: fun(mut value: dyn[Bump]) = value.bump()
+
+main: fun -> i32
+{
+	var n = 5
+	grow(mut n)
+	printf("%d\n", n)
+	ret 0
+}

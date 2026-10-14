@@ -39,7 +39,7 @@ Error at line 32, column 18
 Error at line 33, column 18
 32 │ val e = takesU8(big)
 33 │ val f = takesU8(300)
-                     ╘═╛ Cannot convert type 'i32' to 'u8'
+                     ╘═╛ '300' doesn't fit in 'u8'
 
 Error at line 34, column 18
 33 │ val f = takesU8(300)
@@ -69,7 +69,7 @@ Error at line 38, column 10
 Error at line 39, column 17
 38 │ val j = printf()
 39 │ val k = id[u8](300)
-                    ╘═╛ Cannot convert type 'i32' to 'u8'
+                    ╘═╛ '300' doesn't fit in 'u8'
 
 Error at line 40, column 10
 39 │ val k = id[u8](300)

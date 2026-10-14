@@ -29,7 +29,7 @@ Error at line 12, column 6
 Error at line 13, column 6
 12 │ e = X.q
 13 │ f = 300
-         ╘═╛ 'f' is 300, which doesn't fit in 'u8'
+         ╘═╛ '300' doesn't fit in 'u8'
 
 Error at line 20, column 6
 19 │ zero

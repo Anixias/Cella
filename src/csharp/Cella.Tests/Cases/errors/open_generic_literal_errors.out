@@ -4,7 +4,7 @@
 Error at line 8, column 16
 7 │ val values = [100, 200, 250]
 8 │ ret sum([100, 300]) + sum(values)
-                  ╘═╛ Cannot convert type 'i32' to 'u8'
+                  ╘═╛ '300' doesn't fit in 'u8'
 
 Error at line 8, column 28
 7 │ val values = [100, 200, 250]

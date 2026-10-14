@@ -1,0 +1,27 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Choice: enum
+{
+	first
+	second
+}
+
+main: fun -> i32
+{
+	var a = 1
+	var b = 2
+	var r: imm[i32] = a
+	r = match Choice.second
+	{
+		first => imm a
+		second => imm b
+	}
+
+	printf("%d\n", r)
+	ret 0
+}

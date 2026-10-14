@@ -2698,7 +2698,7 @@ public sealed class SignatureCollector
 	private BigInteger? EvaluateCaseValue(EnumCaseSymbol enumCase, IExpressionNode expression,
 		ResolutionContext context, IntegerType? valueType)
 	{
-		var value = constants!.ResolveInitializer(expression, null, context);
+		var value = constants!.ResolveInitializer(expression, valueType, context);
 		switch (EvaluateChecked(value))
 		{
 			case IntegerConstant constant when valueType is null || constant.Type is UntypedType ||

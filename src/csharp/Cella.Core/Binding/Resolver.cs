@@ -1767,8 +1767,12 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			if (ReportArgumentModes(candidates, args, target))
 				return new ResolvedInvalidExpressionNode(node, recovery);
 			
+			if (targetType is EnumSymbol { IsMatch: true } matchEnum && args is [var only] &&
+			    DescribeLiteralMismatch(only, _typePool.GetMatchedType(matchEnum)) is { } literalMismatch)
+				return Error(node, literalMismatch, recovery, only.Syntax);
+			
 			var message = args is [not ResolvedCaseNameExpressionNode]
-				? $"No constructor for '{targetType.Name}' accepts argument of type '{GetArgumentType(args[0]).Name}'"
+				? $"No constructor for '{targetType.Name}' accepts argument of type '{DescribeWrittenType(args[0])}'"
 				: $"No constructor for '{targetType.Name}' accepts these arguments";
 			
 			return Error(node, message, recovery, node);
@@ -2156,6 +2160,21 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		DiagnosticReporter.JoinNames([..types.Select(static type => type.Name)]);
 	
 	private static readonly string[] _literalKeywords = ["true", "false", "null"];
+	
+	private static string? DescribeLiteralMismatch(IResolvedExpressionNode source, TypeSymbol target)
+	{
+		if (source is not ResolvedLiteralExpressionNode { Type: IntegerType or FloatType } literal ||
+		    literal.Type == NativeSymbols.Char || !IsUnsuffixedNumber(literal.Syntax))
+			return null;
+		
+		var text = literal.Syntax.SourceLocation.GetText().ToString();
+		return (literal.Type, target) switch
+		{
+			(IntegerType, IntegerType) or (FloatType, FloatType) => $"'{text}' doesn't fit in '{target.Name}'",
+			(IntegerType, FloatType) => $"'{text}' can't be represented exactly in '{target.Name}'",
+			_ => null
+		};
+	}
 	
 	private static bool IsShift(TokenType op) => op is TokenType.OpLessLess or TokenType.OpGreaterGreater or
 		TokenType.OpLessLessLess or TokenType.OpGreaterGreaterGreater;
@@ -3327,6 +3346,18 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	private static TypeSymbol GetArgumentType(IResolvedExpressionNode arg) =>
 		arg is ResolvedMutArgumentExpressionNode argument ? argument.Place.Type : arg.Type;
 	
+	private static string DescribeWrittenType(IResolvedExpressionNode value) => value switch
+	{
+		ResolvedLiteralExpressionNode { Type: var type } literal when type != NativeSymbols.Char &&
+		                                                              IsUnsuffixedNumber(literal.Syntax) =>
+			type is FloatType ? NativeSymbols.UntypedFloat.Name : NativeSymbols.UntypedInteger.Name,
+		_ => GetArgumentType(value).Name
+	};
+	
+	private static bool IsUnsuffixedNumber(IExpressionNode syntax) =>
+		(syntax is UnaryOpExpressionNode { Op.Type: TokenType.OpMinus } negated ? negated.Operand : syntax)
+		is LiteralExpressionNode { Token.Suffix: null, Token.Type: TokenType.IntegerLiteral or TokenType.FloatLiteral };
+	
 	private IResolvedExpressionNode VisitMemberCall(CallExpressionNode node, AccessExpressionNode access,
 		IndexerExpressionNode? indexer = null)
 	{
@@ -3884,7 +3915,8 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		if (type is PointerType { BaseType: var baseType } && baseType != NativeSymbols.Void)
 			return baseType;
 		
-		if (type is DynType)
+		if (type is DynType && (DeclaresMember(type, name) || GetDereferenceTarget(type) is not { } dynTarget ||
+		                        !DeclaresMember(dynTarget, name)))
 			return type;
 		
 		if (DeclaresAccessibleMember(type, name))
@@ -4035,7 +4067,8 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
 		
 		if (target.Type is not FunctionType functionType)
-			return Error(node, $"Cannot call a value of type '{callee.Type.Name}'", CurrentTargetType, node.Target);
+			return Error(node, $"Cannot call a value of type '{DescribeWrittenType(callee)}'", CurrentTargetType,
+				node.Target);
 		
 		var resolutionSet = ResolveCallable(candidates, args, MaterializationMode.Overload);
 		
@@ -5743,7 +5776,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		var consumed = isLiteral && _unaryOpJobs.Pop().Consumed;
 		
 		if (consumed)
-			return operand;
+			return operand is ResolvedLiteralExpressionNode literal
+				? new ResolvedLiteralExpressionNode(literal.Type, literal.Value, node)
+				: operand;
 		
 		if (IsInvalid(operand))
 			return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
@@ -6122,7 +6157,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	private IResolvedExpressionNode ResolveBorrowAssignment(BinaryOpExpressionNode node, IResolvedExpressionNode left,
 		BorrowType borrow, bool isOwnStore)
 	{
-		if (node.Right is BorrowExpressionNode)
+		if (IsBorrowSyntax(node.Right))
 			return new ResolvedAssignmentExpressionNode(borrow, left, node.Op, VisitNode(node.Right, borrow), null,
 				node, isOwnStore);
 		
@@ -6140,6 +6175,13 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		
 		return new ResolvedAssignmentExpressionNode(borrow, left, node.Op, right, null, node, isOwnStore);
 	}
+	
+	private static bool IsBorrowSyntax(IExpressionNode node) => node switch
+	{
+		BorrowExpressionNode => true,
+		MatchExpressionNode match => match.Arms.All(static arm => IsBorrowSyntax(arm.Value)),
+		_ => false
+	};
 	
 	private IResolvedExpressionNode ResolveCompoundAssignment(BinaryOpExpressionNode node, IResolvedExpressionNode left,
 		bool isOwnStore)
@@ -6602,6 +6644,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		if (source is ResolvedLiteralExpressionNode { Type: UntypedIntegerType, Value: BigInteger value } &&
 		    target is IntegerType)
 			return Error(source.Syntax, $"'{value}' doesn't fit in '{target.Name}'", target);
+		
+		if (DescribeLiteralMismatch(source, target) is { } literalMismatch)
+			return Error(source.Syntax, literalMismatch, target);
 		
 		return Error(source.Syntax, $"Cannot convert type '{source.Type.Name}' to '{target.Name}'", target);
 	}
