@@ -32,7 +32,7 @@ public readonly struct ResolutionContext
 	
 	public string Mangle(Symbol symbol) => Mangling.Mangle(symbol, Modules, GetQualifiers());
 	
-	public string Mangle(Symbol symbol, FunctionSignature signature) =>
+	public (string Name, string Base) Mangle(Symbol symbol, FunctionSignature signature) =>
 		Mangling.Mangle(symbol, signature, Modules, GetQualifiers());
 	
 	public ImmutableArray<NamePart> Qualify(FunctionSymbol function) =>
@@ -55,7 +55,7 @@ public readonly struct ResolutionContext
 		return [..GetModuleParts(), ..GetContainers().Select(container => Mangling.MangleName(container, modules))];
 	}
 	
-	private string[] GetModuleParts() => File.Module.ModuleName.Text.Split('.');
+	private IEnumerable<string> GetModuleParts() => File.Module.ModuleName.Parts.Select(static part => part.Text);
 	
 	private List<Symbol> GetContainers()
 	{
@@ -662,7 +662,7 @@ public readonly struct ResolutionContext
 		_ => null
 	};
 	
-	private Symbol? FindNamed(IExpressionNode expression) => expression switch
+	public Symbol? FindNamed(IExpressionNode expression) => expression switch
 	{
 		VarExpressionNode v => Resolve(v.Identifier.Text),
 		AccessExpressionNode a => ResolveModule(a.Target) is { } module ? ResolveMember(module, a.Member.Text) : null,
@@ -744,9 +744,8 @@ public readonly struct ResolutionContext
 		var constant = EvaluateConstant?.Invoke(expression, this, null);
 		if (constant is null)
 		{
-			Report(expression, parameter is null
-				? $"'{expression.SourceLocation.GetText()}' is not a type or a constant"
-				: $"'{expression.SourceLocation.GetText()}' is not a constant");
+			if (parameter is not null)
+				Report(expression, $"'{expression.SourceLocation.GetText()}' is not a constant");
 			
 			return NativeSymbols.Invalid;
 		}
@@ -763,7 +762,9 @@ public readonly struct ResolutionContext
 				return TypePool.GetValueArgument(integer.Value);
 			
 			default:
-				Report(expression, $"'{expression.SourceLocation.GetText()}' is not a type or an integer");
+				if (parameter is not null)
+					Report(expression, $"'{expression.SourceLocation.GetText()}' is not an integer");
+				
 				return NativeSymbols.Invalid;
 		}
 	}

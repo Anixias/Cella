@@ -1,0 +1,14 @@
+
+====== follow_on_extras.ce ======
+
+Error at line 10, column 9
+ 9 │ {
+10 │     var b: box[i32, 1.5]
+                ╘═══════════╛ 'box' takes one generic argument
+
+Error at line 16, column 10
+15 │ val x = 1
+16 │ val y = x[i32]
+             ^ Cannot index into type 'i32'
+
+[compilation failed]

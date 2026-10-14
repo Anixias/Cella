@@ -2318,6 +2318,10 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		if (!resolutionSet.HasResult && ReportArgumentModes(specialized, args, CurrentTargetType))
 			return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
 		
+		if (!resolutionSet.HasResult &&
+		    candidates.Any(static candidate => candidate.ParameterTypes.Any(static type => type is InvalidType)))
+			return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
+		
 		if (!resolutionSet.HasResult && candidates is [var only])
 			return ReportSingleMismatch(node, functionName, only, specialized is [var single] ? single : null, args,
 				location)
@@ -4455,7 +4459,10 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		ResolvedInvalidExpressionNode error)
 	{
 		foreach (var argument in node.Arguments)
-			VisitNode(argument);
+		{
+			if (argument is not TypeExpressionNode && CurrentResolutionContext.FindNamed(argument) is not TypeSymbol)
+				VisitNode(argument);
+		}
 		
 		return error;
 	}
@@ -5254,7 +5261,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		
 		var signature = new FunctionSignature(types, returnType, false, modes, takesVariadic);
 		symbol.QualifiedName = outer.Qualify(symbol);
-		var info = new FunctionInfo(outer.Mangle(symbol, signature), symbol, signature, scope, null, outer.File);
+		var (mangledName, mangledBase) = outer.Mangle(symbol, signature);
+		var info = new FunctionInfo(mangledName, symbol, signature, scope, null, outer.File)
+			{ MangledBase = mangledBase };
 		
 		_signatures.AddLambda(info);
 		Journal(() => _signatures.RemoveLambda(info));

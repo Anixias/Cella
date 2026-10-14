@@ -1,0 +1,7 @@
+mod test
+
+f: fun(x: array[i32, n]) -> i32 = 1
+
+n: val usize = usize(f([1]))
+
+main: fun -> i32 = 0

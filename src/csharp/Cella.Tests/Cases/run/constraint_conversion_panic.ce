@@ -1,0 +1,17 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Color: enum { red  green }
+
+make[T: new(i32)]: fun(v: i32) -> T = T(v)
+
+main: fun -> i32
+{
+	printf("%d\n", i32(make[Color](1)))
+	printf("%d\n", i32(make[Color](5)))
+	ret 0
+}

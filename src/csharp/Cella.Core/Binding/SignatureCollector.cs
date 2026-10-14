@@ -300,7 +300,7 @@ public sealed class SignatureCollector
 			? InvalidConstant.Instance
 			: initializer is null
 				? null
-				: Evaluator.Evaluate(initializer);
+				: Evaluator.EvaluateStandalone(initializer);
 		
 		var mangledName = global.IsImport ? global.ExternalName! : context.Mangle(global);
 		
@@ -2416,7 +2416,9 @@ public sealed class SignatureCollector
 		
 		var declaredTag = enumType.Node.TagType is { } tagNode ? ResolveTagType(tagNode, context) : null;
 		var valueType = declaredTag ?? (enumType.IsExternal ? NativeSymbols.Int32 : null);
+		Enter(enumType, true);
 		var values = CollectCaseValues(enumType, context, valueType);
+		Exit();
 		var tagType = GetTagType(enumType, valueType, values);
 		ReportSharedValues(enumType, values, payloads);
 		if (!enumType.IsExternal && !node.Cases.IsEmpty && !values.Contains(BigInteger.Zero))
@@ -2744,6 +2746,7 @@ public sealed class SignatureCollector
 				: next;
 			
 			values.Add(value);
+			_typePool.RegisterCaseValue(enumCase, value);
 			var caseType = valueType ?? NativeSymbols.Int128;
 			scope.Define(new LocalVariableSymbol(enumCase.Node.Identifier, caseType, false)
 			{
@@ -2894,9 +2897,12 @@ public sealed class SignatureCollector
 		var signature = new FunctionSignature(paramTypes, NativeSymbols.Void, false, GetModes(function),
 			TakesVariadicParameter(node.Parameters, paramTypes), defaults);
 		
-		var mangledName = context.Mangle(function, signature);
+		var (mangledName, mangledBase) = context.Mangle(function, signature);
 		function.QualifiedName = context.Qualify(function);
-		var info = new FunctionInfo(mangledName, function, signature, scope, null, context.File);
+		var info = new FunctionInfo(mangledName, function, signature, scope, null, context.File)
+		{
+			MangledBase = mangledBase
+		};
 		
 		_builder.Functions[function] = info;
 		if (context.Trait is { } trait)
@@ -2915,9 +2921,12 @@ public sealed class SignatureCollector
 		scope.Define(self);
 		
 		var signature = new FunctionSignature([selfType], NativeSymbols.Void, false, GetModes(function));
-		var mangledName = context.Mangle(function, signature);
+		var (mangledName, mangledBase) = context.Mangle(function, signature);
 		function.QualifiedName = context.Qualify(function);
-		var info = new FunctionInfo(mangledName, function, signature, scope, null, context.File);
+		var info = new FunctionInfo(mangledName, function, signature, scope, null, context.File)
+		{
+			MangledBase = mangledBase
+		};
 		
 		_builder.Functions[function] = info;
 		_typePool.SetDestructor(context.ContainingType!, info);
@@ -3000,9 +3009,12 @@ public sealed class SignatureCollector
 			defaults);
 		
 		// TODO Disable mangling if indicated
-		var mangledName = context.Mangle(function, signature);
+		var (mangledName, mangledBase) = context.Mangle(function, signature);
 		function.QualifiedName = context.Qualify(function);
-		var info = new FunctionInfo(mangledName, function, signature, scope, null, context.File);
+		var info = new FunctionInfo(mangledName, function, signature, scope, null, context.File)
+		{
+			MangledBase = mangledBase
+		};
 		
 		if (_entryPointName is not null && function.Name == _entryPointName && function.TypeParameters.IsEmpty &&
 		    IsEntryPoint(signature))
@@ -3102,22 +3114,25 @@ public sealed class SignatureCollector
 			return true;
 		}
 		
-		foreach (var (member, _) in _inProgress.Skip(index))
+		var cycle = _inProgress.Skip(index).ToList();
+		foreach (var (member, _) in cycle)
 			if (_cyclic.Add(member))
-				ReportCycle(member);
+				ReportCycle(member, cycle.Contains((member, true)));
 		
 		return false;
 	}
 	
 	private void Exit() => _inProgress.RemoveAt(_inProgress.Count - 1);
 	
-	private void ReportCycle(Symbol symbol)
+	private void ReportCycle(Symbol symbol, bool isValue)
 	{
 		var (identifier, message) = symbol switch
 		{
 			GlobalSymbol global => (global.Syntax.Identifier, $"'{global.Name}' depends on its own value"),
 			RecordSymbol record => (record.Node.Identifier, $"'{record.Name}' depends on its own layout"),
-			EnumSymbol enumType => (enumType.Node.Identifier, $"'{enumType.Name}' depends on its own layout"),
+			EnumSymbol enumType => (enumType.Node.Identifier, isValue
+				? $"'{enumType.Name}' depends on its own values"
+				: $"'{enumType.Name}' depends on its own layout"),
 			FunctionSymbol function => (GetIdentifier(function.Syntax),
 				$"'{function.Name}' depends on its own signature"),
 			_ => throw new InvalidOperationException()

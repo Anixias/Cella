@@ -5,19 +5,20 @@ namespace Cella.Core.Symbols;
 
 public static class Mangling
 {
-	public static string Mangle(Symbol symbol, FunctionSignature signature, ModuleIndex? modules,
+	public static (string Name, string Base) Mangle(Symbol symbol, FunctionSignature signature, ModuleIndex? modules,
 		params IEnumerable<string> qualifierParts)
 	{
-		var sb = new StringBuilder(Mangle(symbol, modules, qualifierParts));
+		var name = Mangle(symbol, modules, qualifierParts);
 		if (symbol is FunctionSymbol { IsConversion: true })
-			sb.Append("->").Append(MangleType(signature.ReturnType, modules));
+			name += $"->{MangleType(signature.ReturnType, modules)}";
 		
-		if (signature.ParameterTypes.Length > 0)
-			sb.Append(':').AppendJoin('.',
-				signature.ParameterTypes.Select((_, i) => MangleParameter(signature, i, modules)));
-		
-		return sb.ToString();
+		return (AppendParameters(name, signature, modules), name);
 	}
+	
+	private static string AppendParameters(string name, FunctionSignature signature, ModuleIndex? modules) =>
+		signature.ParameterTypes.Length == 0
+			? name
+			: $"{name}:{string.Join('.', signature.ParameterTypes.Select((_, i) => MangleParameter(signature, i, modules)))}";
 	
 	private static string MangleParameter(FunctionSignature signature, int index, ModuleIndex? modules) =>
 		signature.GetMode(index) == ParameterMode.Mut
@@ -47,19 +48,9 @@ public static class Mangling
 	
 	private static string EscapeExportSyntax(string name) => name.Replace('=', '$').Replace(',', ';');
 	
-	public static string MangleInstantiation(string definitionName, FunctionSignature signature,
-		IEnumerable<TypeSymbol> typeArguments, ModuleIndex? modules)
-	{
-		var parameters = definitionName.IndexOf(':');
-		var sb = new StringBuilder(MangleInstantiation(parameters < 0 ? definitionName : definitionName[..parameters],
-			typeArguments, modules));
-		
-		if (signature.ParameterTypes.Length > 0)
-			sb.Append(':').AppendJoin('.',
-				signature.ParameterTypes.Select((_, i) => MangleParameter(signature, i, modules)));
-		
-		return sb.ToString();
-	}
+	public static string MangleInstantiation(string definitionBase, FunctionSignature signature,
+		IEnumerable<TypeSymbol> typeArguments, ModuleIndex? modules) =>
+		AppendParameters(MangleInstantiation(definitionBase, typeArguments, modules), signature, modules);
 	
 	public static string MangleInstantiation(string definitionName, IEnumerable<TypeSymbol> typeArguments,
 		ModuleIndex? modules) =>

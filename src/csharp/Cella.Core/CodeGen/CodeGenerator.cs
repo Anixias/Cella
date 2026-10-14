@@ -399,7 +399,7 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 		{
 			var irFilePath = Path.Combine(_config.OutputConfig.Directory, $"{fileName}.ll");
 			if (!llvmModule.TryPrintToFile(irFilePath, out message))
-				return CodeGenResult.Failure with { ErrorMessage = message };
+				return CodeGenResult.Failure with { ErrorMessage = DescribeWriteFailure(irFilePath, message) };
 		}
 		
 		if (_config.OutputConfig.EmitAssembly)
@@ -408,15 +408,17 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 			using var assemblyModule = llvmModule.Clone();
 			if (!_targetMachine.TryEmitToFile(assemblyModule, assemblyFilePath, LLVMCodeGenFileType.LLVMAssemblyFile,
 				    out message))
-				return CodeGenResult.Failure with { ErrorMessage = message };
+				return CodeGenResult.Failure with { ErrorMessage = DescribeWriteFailure(assemblyFilePath, message) };
 		}
 		
 		var objectFilePath = Path.Combine(_config.OutputConfig.Directory, $"{fileName}.o");
 		if (_targetMachine.TryEmitToFile(llvmModule, objectFilePath, LLVMCodeGenFileType.LLVMObjectFile, out message))
 			return new(true, objectFilePath, null, state.ExternalLibraries);
 		
-		return CodeGenResult.Failure with { ErrorMessage = message };
+		return CodeGenResult.Failure with { ErrorMessage = DescribeWriteFailure(objectFilePath, message) };
 	}
+	
+	private static string DescribeWriteFailure(string path, string message) => $"Cannot write '{path}': {message}";
 	
 	private void AddUnwindTables(LLVMModuleRef module)
 	{
@@ -1887,9 +1889,16 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 		if (FindDynDispatch(info) is { } dyn)
 			return EmitDynCall(info, dyn, v, builder);
 		
-		if (FindWitness(info) is NativeWitness native)
-			return EmitNativeWitness(info, native, [..v.Arguments.Select(a => EmitValue(a, builder))],
-				v.SourceLocation, builder);
+		switch (FindWitness(info))
+		{
+			case NativeWitness native:
+				return EmitNativeWitness(info, native, [..v.Arguments.Select(a => EmitValue(a, builder))],
+					v.SourceLocation, builder);
+			
+			case ConversionWitness conversion:
+				return EmitConversionWitness(info, conversion.Conversion,
+					[..v.Arguments.Select(a => EmitValue(a, builder))], v.SourceLocation, builder);
+		}
 		
 		GetFunctionValue(info);
 		var function = current.Functions[info];
@@ -2754,13 +2763,20 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 	
 	private string DescribeLocation(SourceLocation location)
 	{
-		var path = location.Source.FilePath;
-		if (_config.SourceRoot is { } root && Path.IsPathFullyQualified(path))
-			path = Path.GetRelativePath(root, path);
+		var file = location.Source.FilePath;
+		var path = Path.IsPathFullyQualified(file) &&
+		           (_config.ProjectRoots.Where(root => Contains(root, file)).MaxBy(static root => root.Length) ??
+		            _config.SourceRoot) is { } root
+			? Path.GetRelativePath(root, file)
+			: file;
 		
 		var (line, column) = location.GetLineColumn();
 		return $"{path.Replace('\\', '/')}:{line}:{column}";
 	}
+	
+	private static bool Contains(string root, string path) =>
+		Path.GetRelativePath(root, path) is var relative && !Path.IsPathRooted(relative) && relative != ".." &&
+		!relative.StartsWith(".." + Path.DirectorySeparatorChar, StringComparison.Ordinal);
 	
 	private LLVMValueRef GetPanicFunction()
 	{
@@ -3787,7 +3803,7 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 	private LLVMValueRef BuildWitness(FunctionInfo function, Witness witness)
 	{
 		var definition = _typePool.GetGenericDefinition(function.Symbol);
-		var name = Mangling.MangleInstantiation(definition.MangledName ?? function.Symbol.Name, function.Signature,
+		var name = Mangling.MangleInstantiation(definition.MangledBase ?? function.Symbol.Name, function.Signature,
 			function.TypeArguments, _modules);
 		
 		var thunk = CreateFunction(current.Module, function, name);
@@ -3804,7 +3820,8 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 				function.Symbol.Syntax.SourceLocation, builder),
 			MemberwiseWitness => EmitConstruction(function, parameters, true, builder),
 			DefaultWitness => EmitConstruction(function, parameters, false, builder),
-			ConversionWitness conversion => EmitConversionWitness(function, conversion.Conversion, parameters, builder),
+			ConversionWitness conversion => EmitConversionWitness(function, conversion.Conversion, parameters,
+				function.Symbol.Syntax.SourceLocation, builder),
 			_ => throw new InvalidOperationException()
 		};
 		
@@ -3946,9 +3963,8 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 	}
 	
 	private LLVMValueRef EmitConversionWitness(FunctionInfo function, Conversion conversion,
-		List<LLVMValueRef> parameters, LLVMBuilderRef builder)
+		List<LLVMValueRef> parameters, SourceLocation location, LLVMBuilderRef builder)
 	{
-		var location = function.Symbol.Syntax.SourceLocation;
 		var type = function.TypeArguments[0];
 		var self = new UnaryOpValue(type, new VariableValue(BindWitnessParameter(function, 0, parameters[0], builder),
 			location), UnaryOperation.Dereference, location);
@@ -3992,7 +4008,7 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 	private LLVMValueRef Instantiate(FunctionInfo function)
 	{
 		var definition = _typePool.GetGenericDefinition(function.Symbol);
-		var name = Mangling.MangleInstantiation(definition.MangledName ?? function.Symbol.Name, function.Signature,
+		var name = Mangling.MangleInstantiation(definition.MangledBase ?? function.Symbol.Name, function.Signature,
 			function.TypeArguments, _modules);
 		
 		var value = CreateFunction(current.Module, function, name).FunctionValue;
@@ -4222,6 +4238,7 @@ public sealed record CodeGenConfig
 	public bool ExportsSymbols { get; init; }
 	public bool DebugInfo { get; init; }
 	public string? SourceRoot { get; init; }
+	public ImmutableArray<string> ProjectRoots { get; init; } = [];
 	
 	public uint GetPointerSize()
 	{

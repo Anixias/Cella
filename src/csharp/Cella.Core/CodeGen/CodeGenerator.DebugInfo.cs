@@ -267,7 +267,7 @@ public sealed unsafe partial class CodeGenerator
 		var file = (LLVMOpaqueMetadata*)GetDebugFile(location).Handle;
 		IEnumerable<string> parts =
 		[
-			..info.File.Module.ModuleName.Text.Split('.'),
+			..info.File.Module.ModuleName.Parts.Select(static part => part.Text),
 			..info.Symbol.ContainingType is { } owner ? [owner.Name] : Array.Empty<string>(),
 			info.Symbol.Name
 		];

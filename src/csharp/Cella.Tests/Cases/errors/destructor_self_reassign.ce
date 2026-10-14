@@ -1,0 +1,23 @@
+mod test
+
+Holder: rec
+{
+	x: i32
+
+	drop: op
+	{
+		self = Holder(0)
+	}
+}
+
+Other: rec
+{
+	x: i32
+
+	drop: op
+	{
+		self.x = 0
+	}
+}
+
+main: fun -> i32 = 0

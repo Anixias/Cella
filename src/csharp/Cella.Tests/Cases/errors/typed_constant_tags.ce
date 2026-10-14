@@ -1,0 +1,8 @@
+mod test
+
+wide: val u64 = 5
+narrow: val u8 = 7
+
+E: enum(u8) { zero  a = wide  b = narrow }
+
+main: fun -> i32 = 0

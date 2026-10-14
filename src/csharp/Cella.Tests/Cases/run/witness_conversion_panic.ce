@@ -1,0 +1,21 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Narrow: trait
+{
+	new: op(value: i64)
+}
+
+u8: impl Narrow
+
+make[T: Narrow]: fun(value: i64) -> T = T(value)
+
+main: fun -> i32
+{
+	printf("%d\n", i32(make[u8](300)))
+	ret 0
+}

@@ -1,0 +1,45 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+P: rec
+{
+	x: i32
+
+	get: fun(self) -> i32 = self.x
+}
+
+Effect: enum { none  hit(n: i32) }
+
+Boxed: enum { empty  full(p: P) }
+
+hitting: val Effect = Effect.hit(3)
+quiet: val Effect = Effect.none
+strong: val bool = hitting is hit(n) && n > 2
+weak: val bool = quiet is hit(n) && n > 2
+either: val bool = quiet is hit(n) || hitting is hit(m) && m == 3
+held: val Boxed = Boxed.full(P(5))
+debugOn: val bool = false
+
+show: fun(imm p: P) -> i32 = p.x
+
+make: fun -> Boxed = Boxed.full(P(4))
+
+main: fun -> i32
+{
+	printf("%d %d %d\n", i32(strong), i32(weak), i32(either))
+	if held is full(p) && p.x > 2
+		printf("%d %d\n", p.get(), show(imm p))
+
+	val local = make()
+	if debugOn && local is full(q)
+		printf("%d\n", q.get())
+
+	if !debugOn && local is full(r)
+		printf("%d\n", r.get())
+
+	ret 0
+}

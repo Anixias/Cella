@@ -1,4 +1,5 @@
-﻿using System.Diagnostics.CodeAnalysis;
+﻿using System.Collections.Immutable;
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Numerics;
 using Cella.Core.Binding.Conversions;
@@ -20,10 +21,13 @@ public sealed class ConstantEvaluator
 {
 	private readonly Dictionary<IResolvedExpressionNode, Constant?> _cache = new(ReferenceEqualityComparer.Instance);
 	private readonly Dictionary<LocalVariableSymbol, Constant> _bindings = [];
+	private readonly List<LocalVariableSymbol> _patternBindings = [];
+	
+	private bool foldsBindings;
 	
 	public Constant? Evaluate(IResolvedExpressionNode node)
 	{
-		if (_bindings.Count > 0)
+		if (_bindings.Count > 0 || foldsBindings)
 			return Fold(node);
 		
 		if (_cache.TryGetValue(node, out var cached))
@@ -32,6 +36,23 @@ public sealed class ConstantEvaluator
 		var result = Fold(node);
 		_cache[node] = result;
 		return result;
+	}
+	
+	public Constant? EvaluateStandalone(IResolvedExpressionNode node)
+	{
+		foldsBindings = true;
+		try
+		{
+			return Fold(node);
+		}
+		finally
+		{
+			foldsBindings = false;
+			foreach (var binding in _patternBindings)
+				_bindings.Remove(binding);
+			
+			_patternBindings.Clear();
+		}
 	}
 	
 	public Constant? EvaluateWithoutDrops(IResolvedExpressionNode node) =>
@@ -170,13 +191,38 @@ public sealed class ConstantEvaluator
 			FoldAll(n.Values, values => new ArrayConstant(type, values)),
 		ResolvedFunctionReferenceExpressionNode n => new FunctionConstant(n.Function, n.Type),
 		ResolvedEnumCaseExpressionNode n => FoldAll(n.Payload, values => new EnumConstant(n.Type, n.Case, values)),
-		ResolvedIsExpressionNode { Pattern.HasBindings: false } n => FoldAll([n.Value], values =>
-			values[0].Type is EnumSymbol enumType && GetTag(values[0]) is { } tag
-				? BoolConstant.From(tag == typePool.GetCaseValue(enumType, n.Pattern.Case!))
-				: null),
+		ResolvedIsExpressionNode n when foldsBindings || !n.Pattern.HasBindings => FoldIs(n),
 		ResolvedMatchExpressionNode n => FoldMatch(n),
 		_ => null
 	};
+	
+	private Constant? FoldIs(ResolvedIsExpressionNode node)
+	{
+		var value = Evaluate(node.Value);
+		if (value is null or InvalidConstant)
+			return value;
+		
+		if (value.Type is not EnumSymbol enumType || GetTag(value) is not { } tag)
+			return null;
+		
+		var matches = tag == typePool.GetCaseValue(enumType, node.Pattern.Case!);
+		if (matches)
+		{
+			Bind(node.Pattern.Bindings, value);
+			_patternBindings.AddRange(node.Pattern.Bindings.OfType<LocalVariableSymbol>());
+		}
+		
+		return BoolConstant.From(matches);
+	}
+	
+	private void Bind(ImmutableArray<LocalVariableSymbol?> bindings, Constant value)
+	{
+		for (var i = 0; i < bindings.Length; i++)
+		{
+			if (bindings[i] is { } binding)
+				_bindings[binding] = value is EnumConstant constant ? constant.Payload[i] : Zero(binding.Type);
+		}
+	}
 	
 	private Constant? FoldMatch(ResolvedMatchExpressionNode node)
 	{
@@ -189,11 +235,7 @@ public sealed class ConstantEvaluator
 			return null;
 		
 		var bindings = arm.Pattern?.Bindings ?? [];
-		for (var i = 0; i < bindings.Length; i++)
-		{
-			if (bindings[i] is { } binding)
-				_bindings[binding] = value is EnumConstant constant ? constant.Payload[i] : Zero(binding.Type);
-		}
+		Bind(bindings, value);
 		
 		var result = Evaluate(arm.Value);
 		foreach (var binding in bindings.OfType<LocalVariableSymbol>())
@@ -281,9 +323,19 @@ public sealed class ConstantEvaluator
 		});
 	}
 	
-	private Constant? FoldBinary(ResolvedBinaryOpExpressionNode node) => node.Operation is { } operation
-		? FoldAll([node.Left, node.Right], values => Apply(operation, values[0], values[1], node.Type))
-		: null;
+	private Constant? FoldBinary(ResolvedBinaryOpExpressionNode node)
+	{
+		if (node.Operation is not { } operation)
+			return null;
+		
+		if (foldsBindings && operation is NativeImpl native &&
+		    OperationMapping.ToBinaryOperation(native.Op) is BinaryOperation.LogicalAnd or BinaryOperation.LogicalOr &&
+		    Evaluate(node.Left) is BoolConstant left &&
+		    left.Value == (OperationMapping.ToBinaryOperation(native.Op) == BinaryOperation.LogicalOr))
+			return left;
+		
+		return FoldAll([node.Left, node.Right], values => Apply(operation, values[0], values[1], node.Type));
+	}
 	
 	private Constant? FoldChain(ResolvedChainedExpressionNode node) => FoldAll(node.Operands, values =>
 	{

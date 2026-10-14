@@ -1,0 +1,3 @@
+mod lib
+
+pick[T: copy]: pub fun(values: array[T, 3], index: usize) -> T = values[index]

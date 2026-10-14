@@ -16,6 +16,7 @@ public readonly record struct FunctionInfo
 )
 {
 	public ImmutableArray<TypeSymbol> TypeArguments { get; init; } = [];
+	public string? MangledBase { get; init; }
 	public FunctionSignature? Declared { get; init; }
 	public FunctionSignature DeclaredSignature => Declared ?? Signature;
 	

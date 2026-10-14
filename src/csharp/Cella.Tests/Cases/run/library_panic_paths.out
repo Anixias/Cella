@@ -1,0 +1,4 @@
+3
+[stderr]
+Panic at src/lib.ce:3:66: index out of bounds
+[exit code -1073740791]

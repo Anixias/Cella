@@ -1,0 +1,13 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+main: fun(args: ptr[str], count: usize) -> i32
+{
+	printf("%d\n", lib.pick([1, 2, 3], count + 1))
+	printf("%d\n", lib.pick([1, 2, 3], count + 4))
+	ret 0
+}

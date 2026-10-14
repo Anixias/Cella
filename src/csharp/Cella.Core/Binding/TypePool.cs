@@ -1334,7 +1334,9 @@ public sealed class TypePool
 	
 	public ImmutableArray<TypeSymbol> GetPayloadTypes(EnumSymbol enumType, EnumCaseSymbol enumCase)
 	{
-		Complete(enumType);
+		if (!enumCase.Fields.All(_memberTypes.ContainsKey))
+			Complete(enumType);
+		
 		return [..enumCase.Fields.Select(GetPayloadType)];
 	}
 	
@@ -1364,9 +1366,14 @@ public sealed class TypePool
 	
 	public BigInteger GetCaseValue(EnumSymbol enumType, EnumCaseSymbol enumCase)
 	{
+		if (_caseValues.TryGetValue(enumCase, out var value))
+			return value;
+		
 		Complete(enumType);
 		return _caseValues.GetValueOrDefault(enumCase, enumCase.Index);
 	}
+	
+	public void RegisterCaseValue(EnumCaseSymbol enumCase, BigInteger value) => _caseValues[enumCase] = value;
 	
 	public EnumCaseSymbol? FindCase(EnumSymbol enumType, BigInteger value) => enumType.IsMatch
 		? enumType.Cases.FirstOrDefault(enumCase => GetMatchValues(enumType, enumCase).Contains(value)) ??
@@ -1737,6 +1744,7 @@ public sealed class TypePool
 		var instantiated = definition with
 		{
 			MangledName = null,
+			MangledBase = null,
 			Signature = SubstituteSignature(signature, map),
 			TypeArguments = typeArguments,
 			Declared = signature

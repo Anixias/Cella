@@ -231,6 +231,10 @@ public sealed class MemoryChecker(TypePool typePool, ConstantEvaluator evaluator
 						
 						break;
 					
+					case WriteEvent { Place.Path.IsEmpty: true } write when write.Place.Root == destructorSelf:
+						Report(write.Location, "Cannot reassign 'self' in destructors", [], write.Place.Root);
+						break;
+					
 					case WriteEvent write:
 						CheckDeferredWrite(write, state, paths);
 						break;

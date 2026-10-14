@@ -266,13 +266,33 @@ internal static class Program
 		return isValid;
 	}
 	
+	private static string GetCanonicalPath(string path)
+	{
+		var full = Path.GetFullPath(path);
+		if (!OperatingSystem.IsWindows() || Path.GetPathRoot(full) is not { Length: > 0 } root)
+			return full;
+		
+		var canonical = root.ToUpperInvariant();
+		foreach (var part in full[root.Length..]
+			         .Split(Path.DirectorySeparatorChar, StringSplitOptions.RemoveEmptyEntries))
+		{
+			var match = Directory.Exists(canonical)
+				? Directory.EnumerateFileSystemEntries(canonical, part).FirstOrDefault()
+				: null;
+			
+			canonical = match ?? Path.Combine(canonical, part);
+		}
+		
+		return canonical;
+	}
+	
 	private static async Task<DependencyGraph<ProjectInfo>> MapDependenciesAsync(HashSet<string> projectPaths,
 		TargetTriple targetTriple, OptimizeMode optimizeMode, IReadOnlyDictionary<string, bool> flagOverrides,
 		List<string> errors)
 	{
 		var projectLookup = new Dictionary<string, ProjectInfo>();
 		var projectDependencies = new Dictionary<ProjectInfo, HashSet<string>>();
-		var projectQueue = new Queue<string>(projectPaths.Select(Path.GetFullPath));
+		var projectQueue = new Queue<string>(projectPaths.Select(GetCanonicalPath));
 		var processedPaths = new HashSet<string>();
 		var graph = new DependencyGraph<ProjectInfo>();
 		
@@ -306,7 +326,7 @@ internal static class Program
 			
 			foreach (var reference in references)
 			{
-				var dependencyPath = Path.GetFullPath(Path.Combine(projectDirectory, reference.Path!));
+				var dependencyPath = GetCanonicalPath(Path.Combine(projectDirectory, reference.Path!));
 				if (!File.Exists(dependencyPath))
 				{
 					errors.Add($"{path}: Project '{reference.Path}' not found");
@@ -354,6 +374,7 @@ internal static class Program
 		public ImmutableArray<ExportName> ExportNames { get; init; } = [];
 		public ImmutableArray<string> PlainNames { get; init; } = [];
 		public ImmutableArray<string> ContainedLibraries { get; init; } = [];
+		public string? Directory { get; init; }
 		public string Name => AssemblySymbol.Name;
 	}
 	
@@ -482,6 +503,7 @@ internal static class Program
 			OverflowChecks = project.Project.OverflowChecks ?? optimizeMode == OptimizeMode.Debug,
 			DebugInfo = project.Project.DebugInfo ?? true,
 			SourceRoot = project.Directory,
+			ProjectRoots = [..allDependencies.Select(static d => d.Directory).OfType<string>(), project.Directory],
 			ExportsSymbols = outputType != ProjectOutputType.StaticLibrary
 		};
 		
@@ -716,6 +738,7 @@ internal static class Program
 		
 		return new(assemblySymbol, outputType, outputPath, true)
 		{
+			Directory = project.Directory,
 			Dependencies = dependencyList,
 			GenericFunctions = genericFunctions,
 			ExportedStatics = exportedStatics,

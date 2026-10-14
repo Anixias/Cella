@@ -1,0 +1,9 @@
+
+====== destructor_self_reassign.ce ======
+
+Error at line 9, column 3
+8 │ {
+9 │     self = Holder(0)
+        ╘══╛ Cannot reassign 'self' in destructors
+
+[compilation failed]

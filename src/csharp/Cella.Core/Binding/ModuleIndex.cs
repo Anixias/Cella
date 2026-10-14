@@ -14,7 +14,7 @@ public sealed class ModuleIndex
 		IEnumerable<AssemblySymbol> indirectDependencies)
 	{
 		AssemblyName = assemblyName;
-		Root = new ModulePathSymbol(string.Empty, null);
+		Root = new ModulePathSymbol(string.Empty, string.Empty, null);
 		_paths[string.Empty] = Root;
 		
 		Add(symbolTable, assemblyName, true);
@@ -107,7 +107,7 @@ public sealed class ModuleIndex
 	{
 		foreach (var (name, module) in symbolTable.ModuleSymbols)
 		{
-			var path = GetOrAdd(name.Text);
+			var path = GetOrAdd([..name.Parts.Select(static part => part.Text)], name.Parts.Length);
 			if (!symbolTable.SymbolsByModule.TryGetValue(module, out var members))
 				continue;
 			
@@ -124,14 +124,14 @@ public sealed class ModuleIndex
 		}
 	}
 	
-	private ModulePathSymbol GetOrAdd(string path)
+	private ModulePathSymbol GetOrAdd(List<string> parts, int count)
 	{
+		var path = string.Join('.', parts.Take(count));
 		if (_paths.TryGetValue(path, out var existing))
 			return existing;
 		
-		var separator = path.LastIndexOf('.');
-		var parent = separator < 0 ? Root : GetOrAdd(path[..separator]);
-		var symbol = new ModulePathSymbol(path, parent);
+		var parent = GetOrAdd(parts, count - 1);
+		var symbol = new ModulePathSymbol(parts[count - 1], path, parent);
 		parent.Children[symbol.Name] = symbol;
 		_paths[path] = symbol;
 		return symbol;

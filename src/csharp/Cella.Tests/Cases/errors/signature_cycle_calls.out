@@ -1,0 +1,14 @@
+
+====== signature_cycle_calls.ce ======
+
+Error at line 3, column 1
+2 │ 
+3 │ f: fun(x: array[i32, n]) -> i32 = 1
+    ^ 'f' depends on its own signature
+
+Error at line 5, column 1
+4 │ 
+5 │ n: val usize = usize(f([1]))
+    ^ 'n' depends on its own value
+
+[compilation failed]

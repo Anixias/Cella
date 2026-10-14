@@ -1693,17 +1693,30 @@ public sealed class Lowerer
 			var result = new VariableValue(new(resultSymbol, NativeSymbols.Bool), location);
 			var mergeBlock = CreateBlock("chain_merge");
 			var left = HoldChainOperand(node.Operands[0]);
+			Value? convertedLeft = null;
 			for (var i = 0; i < node.Links.Length; i++)
 			{
 				var link = node.Links[i];
 				var right = HoldChainOperand(node.Operands[i + 1]);
+				var convertedRight = i + 1 < node.Links.Length && SharesConversion(link, node.Links[i + 1])
+					? HoldConvertedOperand(ConvertChainOperand(right, link.RightConversion,
+						NamesPlace(node.Operands[i + 1])))
+					: null;
+				
 				var comparison = link.Function is { } function
 					? new CallValue(function, [
-						PassChainOperand(left, function, 0, link.LeftConversion, NamesPlace(node.Operands[i])),
-						PassChainOperand(right, function, 1, link.RightConversion, NamesPlace(node.Operands[i + 1]))
+						convertedLeft is not null
+							? PassChainArgument(convertedLeft, function, 0, true)
+							: PassChainOperand(left, function, 0, link.LeftConversion, NamesPlace(node.Operands[i])),
+						convertedRight is not null
+							? PassChainArgument(convertedRight, function, 1, true)
+							: PassChainOperand(right, function, 1, link.RightConversion,
+								NamesPlace(node.Operands[i + 1]))
 					], location)
-					: LowerBinOp(ConvertChainOperand(left, link.LeftConversion, NamesPlace(node.Operands[i])),
-						link.Operation!, ConvertChainOperand(right, link.RightConversion,
+					: LowerBinOp(
+						convertedLeft ?? ConvertChainOperand(left, link.LeftConversion, NamesPlace(node.Operands[i])),
+						link.Operation!,
+						convertedRight ?? ConvertChainOperand(right, link.RightConversion,
 							NamesPlace(node.Operands[i + 1])), location);
 				
 				var block = GetOrMakeBlock();
@@ -1727,10 +1740,33 @@ public sealed class Lowerer
 				currentBlock.SetTerminator(new BranchTerminator(mergeBlock, location));
 				currentBlock = nextBlock;
 				left = right;
+				convertedLeft = convertedRight;
 			}
 			
 			ContinueWith(mergeBlock);
 			return result;
+		}
+		
+		private bool SharesConversion(ChainLink link, ChainLink next)
+		{
+			if (link.RightConversion is not { } conversion || next.LeftConversion is not { } other ||
+			    conversion.GetType() != other.GetType() || conversion.From != other.From || conversion.To != other.To ||
+			    conversion is FunctionConversion first && other is FunctionConversion second &&
+			    first.Function != second.Function)
+				return false;
+			
+			return _typePool.IsCopy(conversion.To) ||
+			       link.Function is { } function && next.Function is { } nextFunction &&
+			       GetPassing(function.DeclaredSignature.GetMode(1)) == Passing.Borrow &&
+			       GetPassing(nextFunction.DeclaredSignature.GetMode(0)) == Passing.Borrow;
+		}
+		
+		private Value HoldConvertedOperand(Value converted)
+		{
+			GetOrMakeBlock();
+			return _typePool.IsCopy(converted.Type)
+				? CaptureAsAtomic(converted, "chain_converted")
+				: StoreTemporary(converted, "chain_converted");
 		}
 		
 		private Value HoldChainOperand(IResolvedExpressionNode operand)

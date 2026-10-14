@@ -1,0 +1,11 @@
+mod test
+
+main: fun -> i32
+{
+	var x: i32 = 3
+	val p = @x
+	val a = x - (p)
+	val b = (p) < x
+	val c = ((x)) * ((p))
+	ret 0
+}
