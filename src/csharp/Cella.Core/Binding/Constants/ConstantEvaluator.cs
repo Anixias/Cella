@@ -359,7 +359,7 @@ public sealed class ConstantEvaluator
 			? Apply(OperationMapping.ToBinaryOperation(native.Op), left, right, resultType)
 			: null;
 	
-	private Constant? Apply(BinaryOperation operation, Constant left, Constant right, TypeSymbol resultType) =>
+	public Constant? Apply(BinaryOperation operation, Constant left, Constant right, TypeSymbol resultType) =>
 		(left, right) switch
 		{
 			(IntegerConstant l, IntegerConstant r) => ApplyInteger(operation, l, r, resultType),
@@ -475,7 +475,7 @@ public sealed class ConstantEvaluator
 		_ => null
 	};
 	
-	private Constant? Convert(Constant value, Conversion conversion) => (conversion, value) switch
+	public Constant? Convert(Constant value, Conversion conversion) => (conversion, value) switch
 	{
 		(IdentityConversion, _) => value,
 		(IntegerConversion c, IntegerConstant integer) => Integer(c.To, integer.Value),

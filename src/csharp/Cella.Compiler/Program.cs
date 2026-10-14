@@ -545,7 +545,7 @@ internal static class Program
 			var cfgDiagnostics = new DiagnosticList();
 			diagnostics.Add(cfgDiagnostics);
 			var controlFlowAnalyzer = new ControlFlowAnalyzer(cfgDiagnostics);
-			var memoryChecker = new MemoryChecker(typePool, cfgDiagnostics);
+			var memoryChecker = new MemoryChecker(typePool, signatureCollector.Evaluator, cfgDiagnostics);
 			
 			foreach (var module in lowerer.Modules)
 			{

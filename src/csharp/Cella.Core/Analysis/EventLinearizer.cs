@@ -10,6 +10,8 @@ public sealed class EventLinearizer
 	private readonly Dictionary<int, List<LocalVariableSymbol>> _scopeLocals = [];
 	private List<MemoryEvent> events = [];
 	
+	public Func<Place, Value, BigInteger?>? ResolveIndex { get; set; }
+	
 	public EventLinearizer(LoweredFunction function)
 	{
 		foreach (var block in function.Blocks)
@@ -76,7 +78,7 @@ public sealed class EventLinearizer
 			
 			case DropInstruction i:
 				AddOperands(i.Value);
-				if (GetPlace(i.Value) is { } place)
+				if (FindPlace(i.Value) is { } place)
 					events.Add(new DropEvent(place, i));
 				
 				break;
@@ -102,7 +104,7 @@ public sealed class EventLinearizer
 				case AssignValue v:
 					AddValue(v.Right);
 					AddOperands(v.Left);
-					if (GetPlace(v.Left) is { } target)
+					if (FindPlace(v.Left) is { } target)
 						events.Add(new WriteEvent(target, v.Left.SourceLocation, v.Right));
 					else if (IsPlace(v.Left))
 						events.Add(new IndirectWriteEvent(v.Left, v.Right, v.Left.SourceLocation));
@@ -133,7 +135,7 @@ public sealed class EventLinearizer
 				} v:
 					AddArguments([..v.Arguments.Skip(1)]);
 					AddOperands(self);
-					if (GetPlace(self) is { } constructed)
+					if (FindPlace(self) is { } constructed)
 						events.Add(new WriteEvent(constructed, self.SourceLocation, v));
 					
 					break;
@@ -215,7 +217,7 @@ public sealed class EventLinearizer
 		AddValues(arguments);
 		foreach (var lent in arguments.SkipLast(1).SelectMany(FindLent))
 		{
-			if (GetPlace(lent) is { } place)
+			if (FindPlace(lent) is { } place)
 				events.Add(new AccessEvent(place, AccessKind.Read, lent.SourceLocation, lent.Type));
 		}
 	}
@@ -240,7 +242,7 @@ public sealed class EventLinearizer
 	private void AddAccess(Value place, AccessKind kind, bool isImplicit = false)
 	{
 		AddOperands(place);
-		if (GetPlace(place) is { } target)
+		if (FindPlace(place) is { } target)
 			events.Add(new AccessEvent(target, kind, place.SourceLocation, place.Type, isImplicit));
 	}
 	
@@ -266,7 +268,7 @@ public sealed class EventLinearizer
 				AddBase(v.Target);
 				break;
 			
-			case UnaryOpValue { Op: UnaryOperation.Dereference } v when GetPlace(v) is null:
+			case UnaryOpValue { Op: UnaryOperation.Dereference } v when FindPlace(v) is null:
 				AddValue(v.Operand);
 				break;
 		}
@@ -290,7 +292,11 @@ public sealed class EventLinearizer
 		_ => false
 	};
 	
-	internal static Place? GetPlace(Value value) => value switch
+	internal static Place? GetPlace(Value value) => GetPlace(value, null);
+	
+	private Place? FindPlace(Value value) => GetPlace(value, ResolveIndex);
+	
+	private static Place? GetPlace(Value value, Func<Place, Value, BigInteger?>? resolve) => value switch
 	{
 		VariableValue v => new(v.Variable.Symbol, []),
 		GlobalValue v => new(v.Global.Symbol, []),
@@ -301,11 +307,16 @@ public sealed class EventLinearizer
 				LocalVariableSymbol { IsBorrowBinding: true } => new(symbol, [new DerefProjection()]),
 				_ => null
 			},
-		AccessValue { Target.Type: RecordSymbol { IsUnion: true } } v => GetPlace(v.Target),
-		AccessValue { Member: FieldSymbol field } v => GetPlace(v.Target)?.Project(new FieldProjection(field)),
+		AccessValue { Target.Type: RecordSymbol { IsUnion: true } } v => GetPlace(v.Target, resolve),
+		AccessValue { Member: FieldSymbol field } v => GetPlace(v.Target, resolve)?.Project(new FieldProjection(field)),
 		IndexerValue { Target.Type: StringType } => null,
-		IndexerValue v => GetPlace(v.Target)?.Project(new IndexProjection(GetConstantIndex(v.Index))),
-		EnumPayloadValue v => GetPlace(v.Target)?.Project(new PayloadProjection(v.Case, v.Index)),
+		IndexerValue v => GetPlace(v.Target, resolve) is { } target
+			? target.Project(new IndexProjection(GetConstantIndex(v.Index) ?? resolve?.Invoke(target, v.Index))
+			{
+				Source = v.Index
+			})
+			: null,
+		EnumPayloadValue v => GetPlace(v.Target, resolve)?.Project(new PayloadProjection(v.Case, v.Index)),
 		_ => null
 	};
 	

@@ -56,6 +56,7 @@ public sealed class DropElementsInstruction
 	public BigInteger? Count { get; } = count;
 	public SourceLocation SourceLocation { get; } = sourceLocation;
 	public Value? Guard { get; } = guard;
+	public Value? Flags { get; init; }
 }
 
 public sealed class DropInstruction

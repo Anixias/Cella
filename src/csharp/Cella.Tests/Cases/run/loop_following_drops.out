@@ -1,0 +1,38 @@
+filled
+drop 2
+drop 1
+drop 0
+take 10
+drop 10
+take 11
+drop 11
+moved
+drop 12
+stopped
+drop 21
+drop 20
+drop 30
+drop 31
+alternating
+drop 33
+drop 32
+interrupted
+drop 41
+drop 40
+conditional
+drop 53
+drop 51
+grid
+drop 82
+drop 71
+drop 60
+take 91
+drop 91
+picked
+drop 92
+drop 90
+drop 100
+refilled
+drop 108
+drop 107
+[exit code 0]

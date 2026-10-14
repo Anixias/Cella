@@ -1,0 +1,161 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+D: rec
+{
+	id: i32
+
+	new: op(id: i32)
+	{
+		self.id = id
+	}
+
+	drop: op
+	{
+		printf("drop %d\n", self.id)
+	}
+}
+
+take: fun(own d: D)
+{
+	printf("take %d\n", d.id)
+}
+
+stop: fun(i: usize) -> bool = i == 2
+
+keep: fun(i: usize) -> bool = i % 2 == 1
+
+diagonal: fun(i: usize, j: usize) -> bool = i == j
+
+pick: fun(i: usize) -> bool = i == 1
+
+filled: fun
+{
+	var a: array[D, 3] = undef
+	for i in 0..3
+		a[i] = D(i32(i))
+
+	printf("filled\n")
+}
+
+moved: fun
+{
+	var b: array[D, 3] = undef
+	for i in 0..3
+		b[i] = D(i32(i) + 10)
+
+	for i in 0..2
+		take(own b[i])
+
+	printf("moved\n")
+}
+
+stopped: fun
+{
+	var c: array[D, 4] = undef
+	for i in 0..4
+	{
+		if i == 2
+			break
+
+		c[i] = D(i32(i) + 20)
+	}
+
+	printf("stopped\n")
+}
+
+alternating: fun
+{
+	var a: array[D, 2] = undef
+	for i in 0..4
+		a[i % 2] = D(i32(i) + 30)
+
+	printf("alternating\n")
+}
+
+interrupted: fun
+{
+	var a: array[D, 4] = undef
+	for i in 0..4
+	{
+		if stop(i)
+			break
+
+		a[i] = D(i32(i) + 40)
+	}
+
+	printf("interrupted\n")
+}
+
+conditional: fun
+{
+	var a: array[D, 5] = undef
+	for i in 0..5
+	{
+		if keep(i)
+			a[i] = D(i32(i) + 50)
+	}
+
+	printf("conditional\n")
+}
+
+grid: fun
+{
+	var g: array[array[D, 3], 3] = undef
+	for i in 0..3
+	{
+		for j in 0..3
+		{
+			if diagonal(i, j)
+				g[i][j] = D(i32(i * 10 + j) + 60)
+		}
+	}
+
+	printf("grid\n")
+}
+
+picked: fun
+{
+	var a: array[D, 3] = undef
+	for i in 0..3
+		a[i] = D(i32(i) + 90)
+
+	for i in 0..3
+	{
+		if pick(i)
+			take(own a[i])
+	}
+
+	printf("picked\n")
+}
+
+refilled: fun
+{
+	var a: array[D, 2] = undef
+	for i in 0..2
+	{
+		if diagonal(i, 0)
+			a[i] = D(i32(i) + 100)
+	}
+
+	a = [D(107), D(108)]
+	printf("refilled\n")
+}
+
+main: fun -> i32
+{
+	filled()
+	moved()
+	stopped()
+	alternating()
+	interrupted()
+	conditional()
+	grid()
+	picked()
+	refilled()
+	ret 0
+}

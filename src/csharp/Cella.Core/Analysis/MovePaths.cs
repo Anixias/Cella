@@ -24,6 +24,16 @@ public sealed class MovePath(Projection? projection, TypeSymbol type, int partCo
 		return child;
 	}
 	
+	internal IEnumerable<MovePath> ClearChildren()
+	{
+		var removed = _children.SelectMany(static child => child.WithDescendants()).ToList();
+		_children.Clear();
+		return removed;
+	}
+	
+	private IEnumerable<MovePath> WithDescendants() => _children.SelectMany(static child => child.WithDescendants())
+		.Prepend(this);
+	
 	internal void Number(List<MovePath> paths)
 	{
 		Index = paths.Count;
@@ -40,6 +50,7 @@ public sealed class MovePaths
 	private readonly TypePool _typePool;
 	private readonly Dictionary<VariableSymbol, MovePath> _roots = [];
 	private readonly List<MovePath> _paths = [];
+	private readonly HashSet<MovePath> _elementArrays = [];
 	
 	public int Count => _paths.Count;
 	
@@ -49,7 +60,7 @@ public sealed class MovePaths
 	}
 	
 	public static MovePaths Build(LoweredFunction function, IEnumerable<MemoryEvent> events, IEnumerable<Place> places,
-		TypePool typePool)
+		TypePool typePool, bool tracksElements = false)
 	{
 		var paths = new MovePaths(typePool);
 		var parameters = function.Info.Symbol.Parameters;
@@ -59,6 +70,9 @@ public sealed class MovePaths
 		var eventList = events.ToList();
 		foreach (var define in eventList.OfType<DefineEvent>())
 			paths.AddRoot(define.Local, define.Local.Type);
+		
+		if (tracksElements)
+			paths.MarkElementArrays(eventList);
 		
 		foreach (var memoryEvent in eventList)
 		{
@@ -85,6 +99,54 @@ public sealed class MovePaths
 	}
 	
 	public MovePath GetRoot(VariableSymbol symbol) => _roots[symbol];
+	
+	public bool TracksElements(MovePath path) => _elementArrays.Contains(path);
+	
+	public IReadOnlyCollection<MovePath> ElementArrays => _elementArrays;
+	
+	private void MarkElementArrays(List<MemoryEvent> events)
+	{
+		foreach (var memoryEvent in events)
+		{
+			var place = memoryEvent switch
+			{
+				WriteEvent e => e.Place,
+				AccessEvent e => e.Place,
+				DropEvent e => e.Place,
+				_ => null
+			};
+			
+			if (place is not null)
+				MarkElementArray(place);
+		}
+		
+		foreach (var array in _elementArrays.ToList())
+			_elementArrays.ExceptWith(array.ClearChildren());
+	}
+	
+	private void MarkElementArray(Place place)
+	{
+		if (!_roots.TryGetValue(place.Root, out var root))
+			return;
+		
+		var type = root.Type;
+		for (var depth = 0; depth < place.Path.Length; depth++)
+		{
+			if (place.Path[depth] is IndexProjection { Index: null })
+			{
+				if (ShapeLayout.GetLength(type) is not null && Track(place with { Path = place.Path[..depth] }) is
+					    { } array)
+					_elementArrays.Add(array);
+				
+				return;
+			}
+			
+			if (GetPartType(type, place.Path[depth]) is not { } part)
+				return;
+			
+			type = part;
+		}
+	}
 	
 	public MovePath? Find(Place place) =>
 		FindPrefix(place) is ({ } path, var depth) && depth == place.Path.Length ? path : null;
@@ -125,13 +187,16 @@ public sealed class MovePaths
 			_roots.Add(symbol, new(null, type, CountParts(type)));
 	}
 	
-	private void Track(Place place)
+	private MovePath? Track(Place place)
 	{
 		if (!_roots.TryGetValue(place.Root, out var path))
-			return;
+			return null;
 		
 		foreach (var projection in place.Path)
 		{
+			if (_elementArrays.Contains(path))
+				return null;
+			
 			if (path.GetChild(projection) is { } child)
 			{
 				path = child;
@@ -139,10 +204,12 @@ public sealed class MovePaths
 			}
 			
 			if (GetPartType(path.Type, projection) is not { } type)
-				return;
+				return null;
 			
 			path = path.AddChild(projection, type, CountParts(type));
 		}
+		
+		return path;
 	}
 	
 	private TypeSymbol? GetPartType(TypeSymbol type, Projection projection) => (type, projection) switch

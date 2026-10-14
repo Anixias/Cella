@@ -94,6 +94,12 @@ public static class LoweredModulePrinter
 						sb.Append("drop ");
 						PrintValue(sb, i.Array);
 						sb.Append(i.Count is { } count ? $"[{i.Start}..{i.Start + count}]" : $"[{i.Start}..]");
+						if (i.Flags is { } flags)
+						{
+							sb.Append(" where ");
+							PrintValue(sb, flags);
+						}
+						
 						if (i.Guard is { } elementsGuard)
 						{
 							sb.Append(" if ");

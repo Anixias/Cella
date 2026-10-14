@@ -13,16 +13,16 @@ Error at line 26, column 6
          ╘══╛ Cannot use partly moved values
             | Moved on line 24
 
-Error at line 42, column 6
-41 │ var i: usize = 1
-42 │ ret items[i].id + items[1].id + first.id
+Error at line 41, column 6
+40 │ val first = own items[0]
+41 │ ret items[i].id + items[1].id + first.id
          ╘═════════╛ Cannot use partly moved values
                    | Moved on line 40
 
-Error at line 49, column 6
-48 │ val left = own pair.left
-49 │ ret pair.left.id + pair.right.id + left.id
+Error at line 48, column 6
+47 │ val left = own pair.left
+48 │ ret pair.left.id + pair.right.id + left.id
          ╘══════════╛ Cannot use moved values
-                    | Moved on line 48
+                    | Moved on line 47
 
 [compilation failed]

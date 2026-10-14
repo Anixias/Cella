@@ -13,7 +13,7 @@ public enum PathState : byte
 	Moved = 8
 }
 
-public readonly record struct MoveSite(MovePath Path, SourceLocation Location);
+public readonly record struct MoveSite(MovePath Path, SourceLocation Location, int Depth = 0);
 
 public sealed class InitState
 {
@@ -22,6 +22,7 @@ public sealed class InitState
 	private readonly int _count;
 	private readonly Chunk[] _chunks;
 	private readonly bool[] _owned;
+	private ImmutableDictionary<int, Shape> shapes = ImmutableDictionary<int, Shape>.Empty;
 	
 	public InitState(int count, PathState state)
 	{
@@ -41,12 +42,12 @@ public sealed class InitState
 	public InitState Copy()
 	{
 		Array.Fill(_owned, false);
-		return new(_count, (Chunk[])_chunks.Clone());
+		return new(_count, (Chunk[])_chunks.Clone()) { shapes = shapes };
 	}
 	
 	public bool JoinWith(InitState other)
 	{
-		var changed = false;
+		var changed = JoinShapes(other);
 		for (var c = 0; c < _chunks.Length; c++)
 		{
 			var mine = _chunks[c];
@@ -71,12 +72,46 @@ public sealed class InitState
 			for (var i = 0; i < length; i++)
 			{
 				target.States[i] |= theirs.States[i];
-				target.Moves[i] = Union(target.Moves[i], theirs.Moves[i]);
-				target.Writes[i] = Union(target.Writes[i], theirs.Writes[i]);
+				target.SetMoves(i, Union(target.GetMoves(i), theirs.GetMoves(i)));
+				target.SetWrites(i, Union(target.GetWrites(i), theirs.GetWrites(i)));
 			}
 		}
 		
 		return changed;
+	}
+	
+	public Shape GetElements(MovePath path) => shapes.TryGetValue(path.Index, out var shape)
+		? shape
+		: new LeafShape(GetState(path.Index), GetChunk(path.Index).GetMoves(path.Index % ChunkSize));
+	
+	public void SetElements(MovePath path, Shape shape)
+	{
+		Fill(path.Index, path.End, Shape.Summarize(shape), Shape.GetMoves(shape), null);
+		if (shape is not LeafShape)
+			shapes = shapes.SetItem(path.Index, shape);
+	}
+	
+	public bool IsSameOutside(InitState other, IReadOnlyCollection<MovePath> excluded)
+	{
+		for (var index = 0; index < _count; index++)
+		{
+			if (excluded.Any(path => index >= path.Index && index < path.End))
+				continue;
+			
+			var mine = GetChunk(index);
+			var theirs = other.GetChunk(index);
+			var offset = index % ChunkSize;
+			if (mine != theirs && (mine.States[offset] != theirs.States[offset] ||
+			                       !mine.GetMoves(offset).SetEquals(theirs.GetMoves(offset)) ||
+			                       !mine.GetWrites(offset).SetEquals(theirs.GetWrites(offset))))
+				return false;
+			
+			if (shapes.TryGetValue(index, out var shape) != other.shapes.TryGetValue(index, out var otherShape) ||
+			    shape is not null && !shape.Equals(otherShape))
+				return false;
+		}
+		
+		return true;
 	}
 	
 	public void Set(MovePath path, PathState state) => Fill(path.Index, path.End, state,
@@ -94,17 +129,19 @@ public sealed class InitState
 	
 	public PathState GetOwnState(MovePath path) => GetState(path.Index);
 	
-	public IEnumerable<MoveSite> GetOwnMoves(MovePath path) => GetChunk(path.Index).Moves[path.Index % ChunkSize];
+	public IEnumerable<MoveSite> GetOwnMoves(MovePath path) => GetChunk(path.Index).GetMoves(path.Index % ChunkSize);
 	
 	public IEnumerable<SourceLocation> GetOwnWrites(MovePath path) =>
-		GetChunk(path.Index).Writes[path.Index % ChunkSize];
+		GetChunk(path.Index).GetWrites(path.Index % ChunkSize);
 	
 	public IEnumerable<MoveSite> GetMoves(MovePath path) => Enumerable.Range(path.Index, path.End - path.Index)
-		.SelectMany(index => GetChunk(index).Moves[index % ChunkSize])
+		.SelectMany(index => GetChunk(index).GetMoves(index % ChunkSize))
 		.Distinct();
 	
 	public bool HasInitializedPart(MovePath path) =>
-		!path.IsComplete && GetState(path.Index) == PathState.Initialized || path.Children.Any(HasInitializedPart);
+		!path.IsComplete && (GetState(path.Index) == PathState.Initialized ||
+		                     shapes.TryGetValue(path.Index, out var shape) && Shape.HasInitializedPart(shape)) ||
+		path.Children.Any(HasInitializedPart);
 	
 	public bool IsWhollyInitialized(MovePath path) =>
 		(path.IsComplete || GetState(path.Index) == PathState.Initialized) && path.Children.All(IsWhollyInitialized);
@@ -116,6 +153,39 @@ public sealed class InitState
 	public PathState GetUninitialized(MovePath path) => path.Children.Aggregate(
 		path.IsComplete ? PathState.None : GetState(path.Index) & ~PathState.Initialized,
 		(state, child) => state | GetUninitialized(child));
+	
+	private bool JoinShapes(InitState other)
+	{
+		if (shapes.IsEmpty && other.shapes.IsEmpty)
+			return false;
+		
+		var changed = false;
+		foreach (var index in shapes.Keys.Union(other.shapes.Keys).ToList())
+		{
+			var mine = GetElementsAt(index);
+			var joined = Shape.Join(mine, other.GetElementsAt(index));
+			if (joined.Equals(mine))
+				continue;
+			
+			changed = true;
+			shapes = joined is LeafShape ? shapes.Remove(index) : shapes.SetItem(index, joined);
+		}
+		
+		return changed;
+	}
+	
+	private Shape GetElementsAt(int index) => shapes.TryGetValue(index, out var shape)
+		? shape
+		: new LeafShape(GetState(index), GetChunk(index).GetMoves(index % ChunkSize));
+	
+	private void RemoveShapes(int start, int end)
+	{
+		if (shapes.IsEmpty)
+			return;
+		
+		foreach (var index in shapes.Keys.Where(index => index >= start && index < end).ToList())
+			shapes = shapes.Remove(index);
+	}
 	
 	private Chunk GetChunk(int index) => _chunks[index / ChunkSize];
 	
@@ -135,15 +205,16 @@ public sealed class InitState
 	private void Fill(int start, int end, PathState state, ImmutableHashSet<MoveSite> moves,
 		ImmutableHashSet<SourceLocation>? writes)
 	{
+		RemoveShapes(start, end);
 		for (var index = start; index < end;)
 		{
 			var offset = index % ChunkSize;
 			var count = Math.Min(ChunkSize - offset, end - index);
 			var chunk = Own(index / ChunkSize);
 			chunk.States.AsSpan(offset, count).Fill(state);
-			chunk.Moves.AsSpan(offset, count).Fill(moves);
+			chunk.FillMoves(offset, count, moves);
 			if (writes is not null)
-				chunk.Writes.AsSpan(offset, count).Fill(writes);
+				chunk.FillWrites(offset, count, writes);
 			
 			index += count;
 		}
@@ -151,6 +222,15 @@ public sealed class InitState
 	
 	private void ApplyDefaults(int start, int end)
 	{
+		foreach (var (index, shape) in shapes.Where(entry => entry.Key >= start && entry.Key < end).ToList())
+		{
+			var applied = Shape.MapLeaves(shape, static leaf => leaf.State.HasFlag(PathState.Unassigned)
+				? new LeafShape(leaf.State & ~PathState.Unassigned | PathState.Initialized, leaf.Moves)
+				: leaf);
+			
+			shapes = applied is LeafShape ? shapes.Remove(index) : shapes.SetItem(index, applied);
+		}
+		
 		for (var index = start; index < end; index++)
 		{
 			if (!GetState(index).HasFlag(PathState.Unassigned))
@@ -162,45 +242,77 @@ public sealed class InitState
 	}
 	
 	private static ImmutableHashSet<T> Union<T>(ImmutableHashSet<T> first, ImmutableHashSet<T> second) =>
-		second.IsEmpty || first == second ? first : first.IsEmpty ? second : first.Union(second);
+		Shape.Union(first, second);
 	
 	private sealed class Chunk
 	(
 		PathState[] states,
-		ImmutableHashSet<MoveSite>[] moves,
-		ImmutableHashSet<SourceLocation>[] writes
+		ImmutableHashSet<MoveSite>[]? moves,
+		ImmutableHashSet<SourceLocation>[]? writes
 	)
 	{
+		private ImmutableHashSet<MoveSite>[]? moves = moves;
+		private ImmutableHashSet<SourceLocation>[]? writes = writes;
+		
 		public PathState[] States { get; } = states;
-		public ImmutableHashSet<MoveSite>[] Moves { get; } = moves;
-		public ImmutableHashSet<SourceLocation>[] Writes { get; } = writes;
 		
 		public static Chunk Empty { get; } = Filled(PathState.None);
 		
 		public static Chunk Filled(PathState state)
 		{
-			var chunk = new Chunk(new PathState[ChunkSize], new ImmutableHashSet<MoveSite>[ChunkSize],
-				new ImmutableHashSet<SourceLocation>[ChunkSize]);
-			
+			var chunk = new Chunk(new PathState[ChunkSize], null, null);
 			Array.Fill(chunk.States, state);
-			Array.Fill(chunk.Moves, ImmutableHashSet<MoveSite>.Empty);
-			Array.Fill(chunk.Writes, ImmutableHashSet<SourceLocation>.Empty);
 			return chunk;
 		}
 		
-		public Chunk Clone() => new((PathState[])States.Clone(), (ImmutableHashSet<MoveSite>[])Moves.Clone(),
-			(ImmutableHashSet<SourceLocation>[])Writes.Clone());
+		public ImmutableHashSet<MoveSite> GetMoves(int index) => moves?[index] ?? ImmutableHashSet<MoveSite>.Empty;
+		
+		public ImmutableHashSet<SourceLocation> GetWrites(int index) =>
+			writes?[index] ?? ImmutableHashSet<SourceLocation>.Empty;
+		
+		public void SetMoves(int index, ImmutableHashSet<MoveSite> value) => FillMoves(index, 1, value);
+		
+		public void SetWrites(int index, ImmutableHashSet<SourceLocation> value) => FillWrites(index, 1, value);
+		
+		public void FillMoves(int offset, int count, ImmutableHashSet<MoveSite> value)
+		{
+			if (moves is null && value.IsEmpty)
+				return;
+			
+			moves ??= Allocate<MoveSite>();
+			moves.AsSpan(offset, count).Fill(value);
+		}
+		
+		public void FillWrites(int offset, int count, ImmutableHashSet<SourceLocation> value)
+		{
+			if (writes is null && value.IsEmpty)
+				return;
+			
+			writes ??= Allocate<SourceLocation>();
+			writes.AsSpan(offset, count).Fill(value);
+		}
+		
+		public Chunk Clone() => new((PathState[])States.Clone(), (ImmutableHashSet<MoveSite>[]?)moves?.Clone(),
+			(ImmutableHashSet<SourceLocation>[]?)writes?.Clone());
 		
 		public static bool Covers(Chunk outer, Chunk inner, int length)
 		{
 			for (var i = 0; i < length; i++)
 			{
 				if ((outer.States[i] | inner.States[i]) != outer.States[i] ||
-				    !Contains(outer.Moves[i], inner.Moves[i]) || !Contains(outer.Writes[i], inner.Writes[i]))
+				    !Contains(outer.GetMoves(i), inner.GetMoves(i)) ||
+				    !Contains(outer.GetWrites(i), inner.GetWrites(i)))
 					return false;
 			}
 			
 			return true;
+		}
+		
+		private static ImmutableHashSet<T>[] Allocate<T>()
+		{
+			var sets = new ImmutableHashSet<T>[ChunkSize];
+			Array.Fill(sets, ImmutableHashSet<T>.Empty);
+			return sets;
 		}
 		
 		private static bool Contains<T>(ImmutableHashSet<T> outer, ImmutableHashSet<T> inner) =>

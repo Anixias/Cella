@@ -1,0 +1,96 @@
+mod test
+
+D: rec
+{
+	id: i32
+
+	new: op(id: i32)
+	{
+		self.id = id
+	}
+
+	drop: op
+	{
+	}
+}
+
+Pair: rec
+{
+	first: D
+	second: D
+}
+
+stop: fun(i: usize) -> bool = i == 2
+
+flip: fun -> bool = true
+
+unknownBound: fun(n: usize) -> i32
+{
+	var buf: array[i32, 4] = undef
+	for i in 0..n
+		buf[i] = 1
+
+	ret buf[0]
+}
+
+unknownBreak: fun -> i32
+{
+	var buf: array[i32, 4] = undef
+	for i in 0..4
+	{
+		if stop(i)
+			break
+
+		buf[i] = 1
+	}
+
+	ret buf[0]
+}
+
+pastBreak: fun -> i32
+{
+	var buf: array[i32, 6] = undef
+	for i in 0..6
+	{
+		if i == 3
+			break
+
+		buf[i] = i32(i)
+	}
+
+	ret buf[3]
+}
+
+movedTwice: fun -> i32
+{
+	val d = D(1)
+	for i in 0..2
+		take(own d)
+
+	ret 0
+}
+
+take: fun(own d: D)
+{
+}
+
+generic[N: val usize]: fun -> i32
+{
+	var buf: array[i32, N] = undef
+	for i in 0..N
+		buf[i] = 1
+
+	ret buf[0]
+}
+
+partParts: fun
+{
+	var pairs: array[Pair, 2] = undef
+	for i in 0..2
+	{
+		if flip()
+			pairs[i].first = D(1)
+	}
+}
+
+main: fun -> i32 = 0

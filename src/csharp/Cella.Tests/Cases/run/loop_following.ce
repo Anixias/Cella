@@ -1,0 +1,136 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+R: rec
+{
+	x: i64
+
+	new: op(x: i64)
+	{
+		self.x = x
+	}
+}
+
+flip: fun -> bool = true
+
+rows: fun -> usize = 2
+
+records: fun -> i64
+{
+	var a: array[R, 4]
+	for i in 0..4
+		a[i] = R(i64(i) * 2)
+
+	ret a[0].x + a[3].x
+}
+
+plain: fun -> i32
+{
+	var buf: array[i32, 4] = undef
+	for i in 0..4
+		buf[i] = i32(i) + 10
+
+	ret buf[3] + buf[0]
+}
+
+stopped: fun -> i32
+{
+	var buf: array[i32, 6] = undef
+	for i in 0..6
+	{
+		if i == 3
+			break
+
+		buf[i] = i32(i)
+	}
+
+	ret buf[2]
+}
+
+fibonacci: fun -> i64
+{
+	var f: array[R, 20]
+	f[0] = R(0)
+	f[1] = R(1)
+	for i in 2..20
+		f[i] = R(f[i - 1].x + f[i - 2].x)
+
+	ret f[19].x
+}
+
+grid: fun -> i64
+{
+	var g: array[array[R, 3], 2]
+	for i in 0..2
+	{
+		for j in 0..3
+			g[i][j] = R(i64(i * 10 + j))
+	}
+
+	ret g[1][2].x + g[0][1].x
+}
+
+counted: fun -> i32
+{
+	var buf: array[i32, 5] = undef
+	var i = 0
+	while i < 5
+	{
+		buf[i] = i32(i) * i32(i)
+		i += 1
+	}
+
+	ret buf[4]
+}
+
+scalar: fun -> i32
+{
+	var x: i32 = undef
+	for i in 0..3
+	{
+		if i == 1
+			x = 5
+	}
+
+	ret x
+}
+
+branches: fun -> i32
+{
+	var buf: array[i32, 4] = undef
+	for i in 0..4
+	{
+		if flip()
+			buf[i] = 1
+		else
+			buf[i] = 2
+	}
+
+	ret buf[0] + buf[3]
+}
+
+nested: fun -> i32
+{
+	var total = 0
+	for r in 0..rows()
+	{
+		var line: array[i32, 3] = undef
+		for c in 0..3
+			line[c] = i32(c)
+
+		total += line[2]
+	}
+
+	ret total
+}
+
+main: fun -> i32
+{
+	printf("%lld %d %d %lld %lld\n", records(), plain(), stopped(), fibonacci(), grid())
+	printf("%d %d %d %d\n", counted(), scalar(), branches(), nested())
+	ret 0
+}

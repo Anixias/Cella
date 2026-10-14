@@ -1329,11 +1329,15 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 			address = SpillValue(builder, array, EmitValue(instruction.Array, builder), "dropped");
 		}
 		
-		EmitElementDrops(array, address, instruction.Start, count, builder);
+		var flags = instruction.Flags is { } flagArray
+			? ((ArrayType)Substitute(flagArray.Type), EmitAddress(flagArray, builder))
+			: ((ArrayType, LLVMValueRef)?)null;
+		
+		EmitElementDrops(array, address, instruction.Start, count, builder, flags);
 	}
 	
 	private void EmitElementDrops(ArrayType array, LLVMValueRef address, BigInteger start, BigInteger count,
-		LLVMBuilderRef builder)
+		LLVMBuilderRef builder, (ArrayType Type, LLVMValueRef Address)? flags = null)
 	{
 		if (count.IsZero || !_typePool.NeedsDrop(Substitute(array.ElementType)))
 			return;
@@ -1351,7 +1355,24 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 		var zero = LLVMValueRef.CreateConstInt(indexType, 0);
 		var first = LLVMValueRef.CreateConstInt(indexType, (ulong)start);
 		var elementAddress = builder.BuildGEP2(MapTypeSymbol(array), address, new[] { zero, element }, "elemptr");
-		EmitDropCall(array.ElementType, elementAddress, builder);
+		if (flags is var (flagType, flagAddress))
+		{
+			var flagPointer =
+				builder.BuildGEP2(MapTypeSymbol(flagType), flagAddress, new[] { zero, element }, "flagptr");
+			
+			var dropElement = function.AppendBasicBlock("drop_element");
+			var nextElement = function.AppendBasicBlock("next_element");
+			builder.BuildCondBr(builder.BuildLoad2(LLVMTypeRef.Int1, flagPointer, "flag"), dropElement, nextElement);
+			builder.PositionAtEnd(dropElement);
+			EmitDropCall(array.ElementType, elementAddress, builder);
+			builder.BuildBr(nextElement);
+			builder.PositionAtEnd(nextElement);
+		}
+		else
+		{
+			EmitDropCall(array.ElementType, elementAddress, builder);
+		}
+		
 		builder.BuildCondBr(builder.BuildICmp(LLVMIntPredicate.LLVMIntNE, element, first), loop, done);
 		index.AddIncoming([LLVMValueRef.CreateConstInt(indexType, (ulong)(start + count)), element],
 			[entry, builder.InsertBlock], 2);

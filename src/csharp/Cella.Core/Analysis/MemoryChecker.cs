@@ -1,4 +1,5 @@
 ﻿using Cella.Core.Binding;
+using Cella.Core.Binding.Constants;
 using Cella.Core.Binding.Operations;
 using Cella.Core.Lowering;
 using Cella.Core.Symbols;
@@ -8,14 +9,32 @@ using Cella.Diagnostics;
 
 namespace Cella.Core.Analysis;
 
-public sealed class MemoryChecker(TypePool typePool, DiagnosticList diagnostics)
+public sealed class MemoryChecker(TypePool typePool, ConstantEvaluator evaluator, DiagnosticList diagnostics)
 {
 	private readonly record struct Uninitialized(string Condition, IEnumerable<MoveSite> Moves);
 	
+	private readonly record struct Visit(BasicBlock Block, InitState State, List<MemoryEvent> Events);
+	
+	private sealed record Analysis
+	(
+		MovePaths Paths,
+		InitState EntryState,
+		Dictionary<BasicBlock, InitState> EntryStates,
+		Dictionary<DropInstruction, (MovePath Path, InitState State)> Drops,
+		Dictionary<DropInstruction, ElementDrop> ElementDrops,
+		List<Diagnostic> Diagnostics,
+		HashSet<VariableSymbol> ErrorRoots
+	);
+	
 	private readonly HashSet<(SourceLocation, string)> _reported = [];
 	private readonly Dictionary<FunctionSymbol, BorrowChecker.ClosureSummary> _closureSummaries = [];
+	private readonly ShapeLayout _layout = new(typePool);
+	private readonly ValueEvaluator _values = new(evaluator);
 	
 	private ParameterSymbol? destructorSelf;
+	private List<Diagnostic> pending = [];
+	private HashSet<(SourceLocation, string)> pendingKeys = [];
+	private HashSet<VariableSymbol> errorRoots = [];
 	
 	public void Check(LoweredFunction function)
 	{
@@ -25,18 +44,178 @@ public sealed class MemoryChecker(TypePool typePool, DiagnosticList diagnostics)
 		
 		AddDestructorExitDrops(function);
 		var events = EventLinearizer.Linearize(function);
+		var allEvents = events.Values.SelectMany(static e => e).ToList();
 		var requiredFields = GetRequiredFields(function);
-		var paths = MovePaths.Build(function, events.Values.SelectMany(static e => e), requiredFields, typePool);
+		var paths = MovePaths.Build(function, allEvents, requiredFields, typePool);
 		var entryState = CreateEntryState(function, paths);
+		var analysis = Inspect(function, paths, requiredFields, entryState,
+			SolveInitialization(function, events, paths, entryState)
+				.Select(entry => new Visit(entry.Key, entry.Value, events[entry.Key])));
+		
+		if (analysis.Diagnostics.Count > 0)
+			analysis = Follow(function, events, allEvents, requiredFields, analysis);
+		
+		foreach (var diagnostic in analysis.Diagnostics)
+		{
+			if (_reported.Add((diagnostic.SourceLocation, diagnostic.Message)))
+				diagnostics.Add(diagnostic);
+		}
+		
+		new BorrowChecker(typePool, diagnostics, _closureSummaries).Check(function, events);
+		new DropElaborator(typePool, (state, memoryEvent) => Transfer(state, memoryEvent, analysis.Paths),
+				analysis.Paths)
+			.Elaborate(function, analysis.EntryState, analysis.EntryStates, analysis.Drops, analysis.ElementDrops);
+	}
+	
+	private Analysis Follow(LoweredFunction function, Dictionary<BasicBlock, List<MemoryEvent>> events,
+		List<MemoryEvent> allEvents, List<Place> requiredFields, Analysis fallback)
+	{
+		var tracked = FindTrackedLocals(function);
+		if (tracked.Count == 0)
+			return fallback;
+		
+		var paths = MovePaths.Build(function, allEvents, requiredFields, typePool, true);
+		var order = CfgUtils.GetReversePostorder(function);
+		var followed = SelectLoops(LoopForest.Find(order), events, fallback.ErrorRoots, tracked);
+		var entryState = CreateEntryState(function, paths);
+		while (true)
+		{
+			var follower = new LoopFollower(function, paths, _layout, _values, tracked,
+				(state, memoryEvent) => Transfer(state, memoryEvent, paths));
+			
+			if (follower.Solve(order, followed, entryState) is { } visits)
+			{
+				return Inspect(function, paths, requiredFields, entryState, visits.Select(visit =>
+				{
+					var known = visit.Known;
+					return new Visit(visit.Block, visit.State, follower.Walk(visit.Block, ref known));
+				}));
+			}
+			
+			followed.Remove(follower.Unfollowable!);
+		}
+	}
+	
+	private static HashSet<LocalVariableSymbol> FindTrackedLocals(LoweredFunction function)
+	{
+		var linearizer = new EventLinearizer(function);
+		var candidates = new HashSet<LocalVariableSymbol>();
+		var excluded = new HashSet<LocalVariableSymbol>();
+		foreach (var block in function.Blocks)
+		{
+			foreach (var instruction in block.Instructions)
+				Classify(linearizer.Linearize(instruction), instruction);
+			
+			Classify(linearizer.Linearize(block.Terminator), null);
+		}
+		
+		candidates.ExceptWith(excluded);
+		return candidates;
+		
+		void Classify(List<MemoryEvent> instructionEvents, IInstruction? instruction)
+		{
+			foreach (var memoryEvent in instructionEvents)
+			{
+				switch (memoryEvent)
+				{
+					case DefineEvent { Local: { Captured: null, IsBorrowBinding: false } local }
+						when local.Type is IntegerType || local.Type == NativeSymbols.Bool:
+						candidates.Add(local);
+						break;
+					
+					case AccessEvent
+					{
+						Kind: AccessKind.Borrow or AccessKind.Address, Place.Root: LocalVariableSymbol local
+					}:
+						excluded.Add(local);
+						break;
+					
+					case WriteEvent { Place: { Root: LocalVariableSymbol local, Path.IsEmpty: true } }
+						when !IsTopLevelAssignment(instruction, local):
+						excluded.Add(local);
+						break;
+				}
+			}
+		}
+	}
+	
+	private static bool IsTopLevelAssignment(IInstruction? instruction, LocalVariableSymbol local) =>
+		instruction is ExpressionInstruction
+		{
+			Value: AssignValue { Left: VariableValue { Variable.Symbol: var target } }
+		} &&
+		target == local;
+	
+	private static HashSet<Loop> SelectLoops(List<Loop> loops, Dictionary<BasicBlock, List<MemoryEvent>> events,
+		HashSet<VariableSymbol> roots, HashSet<LocalVariableSymbol> tracked)
+	{
+		var candidates = loops.Where(static loop => loop.HasExit).ToList();
+		var selected = candidates.Where(loop => GetBodyEvents(loop, events).Any(e => GetRoot(e) is { } root &&
+			roots.Contains(root))).ToHashSet();
+		
+		var changed = true;
+		while (changed)
+		{
+			var reads = selected.SelectMany(loop => GetBodyEvents(loop, events))
+				.OfType<AccessEvent>()
+				.Select(static access => access.Place.Root)
+				.OfType<LocalVariableSymbol>()
+				.Where(tracked.Contains)
+				.ToHashSet();
+			
+			var added = candidates.Where(loop => !selected.Contains(loop) && GetBodyEvents(loop, events).Any(e =>
+				e is WriteEvent { Place.Root: LocalVariableSymbol written } && reads.Contains(written))).ToList();
+			
+			selected.UnionWith(added);
+			changed = added.Count > 0;
+		}
+		
+		return selected;
+	}
+	
+	private static IEnumerable<MemoryEvent>
+		GetBodyEvents(Loop loop, Dictionary<BasicBlock, List<MemoryEvent>> events) =>
+		loop.Body.SelectMany(block => events[block]);
+	
+	private static VariableSymbol? GetRoot(MemoryEvent memoryEvent) => memoryEvent switch
+	{
+		AccessEvent e => e.Place.Root,
+		WriteEvent e => e.Place.Root,
+		DropEvent e => e.Place.Root,
+		DefineEvent e => e.Local,
+		_ => null
+	};
+	
+	private Analysis Inspect(LoweredFunction function, MovePaths paths, List<Place> requiredFields,
+		InitState entryState, IEnumerable<Visit> visits)
+	{
+		pending = [];
+		pendingKeys = [];
+		errorRoots = [];
 		var reportedMoves = new HashSet<SourceLocation>();
 		var drops = new Dictionary<DropInstruction, (MovePath Path, InitState State)>();
+		var elementDrops = new Dictionary<DropInstruction, ElementDrop>();
+		var entryStates = new Dictionary<BasicBlock, InitState>();
+		var flagged = new HashSet<MovePath>();
+		var partWrites = new Dictionary<MovePath, SourceLocation>();
+		var mixedArrays = new Dictionary<DropInstruction, MovePath?>();
 		InitState? returnState = null;
-		var entryStates = SolveInitialization(function, events, paths, entryState);
-		foreach (var (block, blockEntryState) in entryStates)
+		foreach (var (block, blockEntryState, blockEvents) in visits)
 		{
+			if (entryStates.TryGetValue(block, out var joinedEntry))
+				joinedEntry.JoinWith(blockEntryState);
+			else
+				entryStates[block] = blockEntryState.Copy();
+			
 			var state = blockEntryState.Copy();
-			foreach (var memoryEvent in events[block])
+			foreach (var memoryEvent in blockEvents)
 			{
+				if (memoryEvent is WriteEvent or AccessEvent { Kind: AccessKind.Move } &&
+				    GetEventPlace(memoryEvent) is { } changed &&
+				    FindElement(changed, paths) is var (changedArray, at) &&
+				    !IsElementLevel(changedArray.Type, changed, at))
+					partWrites.TryAdd(changedArray, memoryEvent.Location);
+				
 				switch (memoryEvent)
 				{
 					case AccessEvent access:
@@ -48,7 +227,7 @@ public sealed class MemoryChecker(TypePool typePool, DiagnosticList diagnostics)
 						if (FindUninitialized(write.Place, state, paths) is { } uninitialized)
 							Report(write.Location,
 								$"Cannot assign elements of {uninitialized.Condition} arrays at computed indices",
-								DescribeMoves(write.Location, uninitialized.Moves));
+								DescribeMoves(write.Location, uninitialized.Moves), write.Place.Root);
 						
 						break;
 					
@@ -57,7 +236,21 @@ public sealed class MemoryChecker(TypePool typePool, DiagnosticList diagnostics)
 						break;
 					
 					case DropEvent drop when paths.Find(drop.Place) is { } path:
-						drops[drop.Instruction] = (path, state.Copy());
+						if (drops.TryGetValue(drop.Instruction, out var recorded))
+							recorded.State.JoinWith(state);
+						else
+							drops[drop.Instruction] = (path, state.Copy());
+						
+						break;
+					
+					case DropEvent drop when FindElement(drop.Place, paths) is var (array, depth):
+						var kind = ClassifyElementDrop(drop.Place, array, depth, state);
+						elementDrops[drop.Instruction] =
+							elementDrops.TryGetValue(drop.Instruction, out var previous) && previous != kind
+								? ElementDrop.Mixed
+								: kind;
+						
+						mixedArrays[drop.Instruction] = IsElementLevel(array.Type, drop.Place, depth) ? array : null;
 						break;
 				}
 				
@@ -77,10 +270,95 @@ public sealed class MemoryChecker(TypePool typePool, DiagnosticList diagnostics)
 		if (returnState is not null)
 			CheckRequiredFields(function, requiredFields, returnState, paths);
 		
-		new BorrowChecker(typePool, diagnostics, _closureSummaries).Check(function, events);
-		new DropElaborator(typePool, (state, memoryEvent) => Transfer(state, memoryEvent, paths))
-			.Elaborate(function, entryState, entryStates, drops);
+		foreach (var (drop, (path, state)) in drops)
+			CollectFlaggedArrays(path, state, paths, flagged, drop);
+		
+		foreach (var (drop, kind) in elementDrops)
+		{
+			if (kind != ElementDrop.Mixed)
+				continue;
+			
+			if (mixedArrays[drop] is { } array)
+				flagged.Add(array);
+			else
+				Report(drop.SourceLocation, "Cannot drop partly initialized elements", [], null);
+		}
+		
+		foreach (var array in flagged)
+		{
+			if (partWrites.TryGetValue(array, out var location))
+				Report(location, "Cannot drop partly initialized elements", [], null);
+		}
+		
+		return new Analysis(paths, entryState, entryStates, drops, elementDrops, pending, errorRoots);
 	}
+	
+	private ElementDrop ClassifyElementDrop(Place place, MovePath array, int depth, InitState state)
+	{
+		if (place.Path[depth] is IndexProjection { Index: null })
+			return ElementDrop.Keep;
+		
+		var shape = _layout.Get(state.GetElements(array), array.Type, place.Path.AsSpan()[depth..], out _);
+		return Shape.IsWhollyInitialized(shape) ? ElementDrop.Keep
+			: Shape.IsUninitialized(shape) ? ElementDrop.Remove
+			: ElementDrop.Mixed;
+	}
+	
+	private void CollectFlaggedArrays(MovePath path, InitState state, MovePaths paths, HashSet<MovePath> flagged,
+		DropInstruction drop)
+	{
+		if (paths.TracksElements(path) && typePool.NeedsDrop(path.Type) && HasMaybeLeaf(state.GetElements(path)))
+		{
+			if (HasMaybePart(state.GetElements(path)))
+				Report(drop.SourceLocation, "Cannot drop partly initialized elements", [], null);
+			else
+				flagged.Add(path);
+		}
+		
+		foreach (var child in path.Children)
+			CollectFlaggedArrays(child, state, paths, flagged, drop);
+	}
+	
+	private static bool HasMaybeLeaf(Shape shape) => shape switch
+	{
+		LeafShape leaf => leaf.State.HasFlag(PathState.Initialized) && leaf.State != PathState.Initialized,
+		FieldsShape fields => fields.Parts.Any(HasMaybeLeaf),
+		ElementsShape elements => elements.Runs.Any(static run => HasMaybeLeaf(run.Shape)),
+		_ => false
+	};
+	
+	private static bool HasMaybePart(Shape shape) => shape switch
+	{
+		FieldsShape fields => fields.Parts.Any(HasMaybeLeaf),
+		ElementsShape elements => elements.Runs.Any(static run => HasMaybePart(run.Shape)),
+		_ => false
+	};
+	
+	private static bool IsElementLevel(TypeSymbol type, Place place, int depth)
+	{
+		for (var i = depth; i < place.Path.Length; i++)
+		{
+			if (type is not ArrayType array || place.Path[i] is not IndexProjection)
+				return false;
+			
+			type = array.ElementType;
+		}
+		
+		return true;
+	}
+	
+	private static Place? GetEventPlace(MemoryEvent memoryEvent) => memoryEvent switch
+	{
+		WriteEvent e => e.Place,
+		AccessEvent e => e.Place,
+		_ => null
+	};
+	
+	private static (MovePath Array, int Depth)? FindElement(Place place, MovePaths paths) =>
+		paths.FindPrefix(place) is ({ } path, var depth) && depth < place.Path.Length && paths.TracksElements(path) &&
+		place.Path[depth] is IndexProjection
+			? (path, depth)
+			: null;
 	
 	private void AddDestructorExitDrops(LoweredFunction function)
 	{
@@ -140,14 +418,15 @@ public sealed class MemoryChecker(TypePool typePool, DiagnosticList diagnostics)
 		}
 		
 		if (hints.Count > 0)
-			Report(constructor.Keyword.SourceLocation, "Cannot leave fields uninitialized", hints);
+			Report(constructor.Keyword.SourceLocation, "Cannot leave fields uninitialized", hints,
+				function.Info.Symbol.Parameters[0]);
 	}
 	
 	private void CheckAccess(AccessEvent access, InitState state, MovePaths paths)
 	{
 		if (access.Kind == AccessKind.Move && GetMoveError(access.Place, paths) is { } error)
 		{
-			Report(access.Location, error, []);
+			Report(access.Location, error, [], access.Place.Root);
 			return;
 		}
 		
@@ -156,9 +435,9 @@ public sealed class MemoryChecker(TypePool typePool, DiagnosticList diagnostics)
 		
 		if (FindUninitialized(access.Place, state, paths) is { } uninitialized)
 			Report(access.Location, $"Cannot use {uninitialized.Condition} values",
-				DescribeMoves(access.Location, uninitialized.Moves));
+				DescribeMoves(access.Location, uninitialized.Moves), access.Place.Root);
 		else if (access.IsImplicit)
-			Report(access.Location, $"Cannot move '{access.Type.Name}' values implicitly", []);
+			Report(access.Location, $"Cannot move '{access.Type.Name}' values implicitly", [], access.Place.Root);
 	}
 	
 	private static MovePath? FindFillable(Place place, InitState state, MovePaths paths) =>
@@ -179,13 +458,16 @@ public sealed class MemoryChecker(TypePool typePool, DiagnosticList diagnostics)
 		var path = paths.GetRoot(write.Place.Root);
 		if ((state.GetOwnState(path) & (PathState.Initialized | PathState.Moved)) != 0)
 			Report(write.Location, "Cannot reassign values",
-				DescribeSites(write.Location, state.GetOwnWrites(path), "Assigned"));
+				DescribeSites(write.Location, state.GetOwnWrites(path), "Assigned"), write.Place.Root);
 	}
 	
-	private static Uninitialized? FindUninitialized(Place place, InitState state, MovePaths paths)
+	private Uninitialized? FindUninitialized(Place place, InitState state, MovePaths paths)
 	{
 		if (paths.FindPrefix(place) is not ({ } path, var depth))
 			return null;
+		
+		if (FindElement(place, paths) is var (array, elementDepth) && !IsComputedIndex(place.Path[elementDepth]))
+			return FindUninitializedElement(place, array, elementDepth, state);
 		
 		var isWhole = depth == place.Path.Length || IsComputedIndex(place.Path[depth]);
 		if (isWhole ? state.IsWhollyInitialized(path) : state.GetOwnState(path) == PathState.Initialized)
@@ -197,7 +479,23 @@ public sealed class MemoryChecker(TypePool typePool, DiagnosticList diagnostics)
 			return new(isPartial ? "partly initialized" : "uninitialized", []);
 		
 		var moves = (isWhole ? state.GetMoves(path) : state.GetOwnMoves(path)).ToList();
-		isPartial |= isWhole && moves.Count > 0 && moves.All(move => move.Path != path);
+		isPartial |= isWhole && moves.Count > 0 && moves.All(move => move.Path != path || move.Depth > 0);
+		return new(isPartial ? "partly moved" : "moved", moves);
+	}
+	
+	private Uninitialized? FindUninitializedElement(Place place, MovePath array, int depth, InitState state)
+	{
+		var shape = _layout.Get(state.GetElements(array), array.Type, place.Path.AsSpan()[depth..], out var reached);
+		if (Shape.IsWhollyInitialized(shape))
+			return null;
+		
+		var uninitialized = Shape.Summarize(shape) & ~PathState.Initialized;
+		var isPartial = Shape.HasInitializedPart(shape);
+		if (!uninitialized.HasFlag(PathState.Moved))
+			return new(isPartial ? "partly initialized" : "uninitialized", []);
+		
+		var moves = Shape.GetMoves(shape).ToList();
+		isPartial |= moves.Count > 0 && moves.All(move => move.Depth > reached);
 		return new(isPartial ? "partly moved" : "moved", moves);
 	}
 	
@@ -224,9 +522,9 @@ public sealed class MemoryChecker(TypePool typePool, DiagnosticList diagnostics)
 					continue;
 				
 				if (reportedMoves.Add(move.Location))
-					Report(move.Location, move.Path == root
+					Report(move.Location, move.Path == root && move.Depth == 0
 						? $"Cannot leave {subject} moved"
-						: $"Cannot leave {subject} partly moved", []);
+						: $"Cannot leave {subject} partly moved", [], parameter);
 			}
 		}
 	}
@@ -271,10 +569,13 @@ public sealed class MemoryChecker(TypePool typePool, DiagnosticList diagnostics)
 		return false;
 	}
 	
-	private void Report(SourceLocation location, string message, IEnumerable<string> hints)
+	private void Report(SourceLocation location, string message, IEnumerable<string> hints, VariableSymbol? root)
 	{
-		if (_reported.Add((location, message)))
-			diagnostics.Add(new(DiagnosticSeverity.Error, location, message) { Hints = [..hints] });
+		if (root is not null)
+			errorRoots.Add(root);
+		
+		if (pendingKeys.Add((location, message)))
+			pending.Add(new(DiagnosticSeverity.Error, location, message) { Hints = [..hints] });
 	}
 	
 	private static IEnumerable<string> DescribeMoves(SourceLocation location, IEnumerable<MoveSite> moves) =>
@@ -383,10 +684,59 @@ public sealed class MemoryChecker(TypePool typePool, DiagnosticList diagnostics)
 			ApplyDefaults(state, child);
 	}
 	
-	private bool RequiresWrite(MovePath path) =>
-		path is { Projection: FieldProjection { Field.IsRequired: true } } ||
-		(path.Type is RecordSymbol { HasDestructor: true } || typePool.DeclaresConstructors(path.Type)) &&
-		!typePool.HasDefault(path.Type);
+	private bool RequiresWrite(MovePath path) => RequiresWrite(path.Type, path.Projection);
+	
+	private bool RequiresWrite(TypeSymbol type, Projection? projection) =>
+		projection is FieldProjection { Field.IsRequired: true } ||
+		(type is RecordSymbol { HasDestructor: true } || typePool.DeclaresConstructors(type)) &&
+		!typePool.HasDefault(type);
+	
+	private Shape WriteElement(Shape shape, TypeSymbol type, Projection[] suffix, int index, Projection? projection)
+	{
+		if (index == suffix.Length)
+			return new LeafShape(PathState.Initialized, []);
+		
+		if (projection is not null && RequiresWrite(type, projection))
+			shape = ApplyPartDefaults(shape, type);
+		
+		return _layout.Update(shape, type, suffix[index],
+			(part, partType) => WriteElement(part, partType, suffix, index + 1, suffix[index]));
+	}
+	
+	private Shape MoveElement(Shape shape, TypeSymbol type, Projection[] suffix, int index, MovePath array,
+		SourceLocation location)
+	{
+		if (index == suffix.Length)
+			return new LeafShape(PathState.Moved, [new MoveSite(array, location, index)]);
+		
+		return _layout.Update(shape, type, suffix[index],
+			(part, partType) => MoveElement(part, partType, suffix, index + 1, array, location));
+	}
+	
+	private Shape ApplyDefaults(Shape shape, TypeSymbol type, Projection? projection) =>
+		RequiresWrite(type, projection) ? shape : ApplyPartDefaults(shape, type);
+	
+	private Shape ApplyPartDefaults(Shape shape, TypeSymbol type)
+	{
+		if (typePool.HasDefault(type))
+			return Shape.MapLeaves(shape, static leaf => leaf.State.HasFlag(PathState.Unassigned)
+				? new LeafShape(leaf.State & ~PathState.Unassigned | PathState.Initialized, leaf.Moves)
+				: leaf);
+		
+		if (_layout.GetFields(type) is { } fields)
+			return FieldsShape.Create([
+				..fields.Select((field, i) => ApplyDefaults(FieldsShape.GetPart(shape, i),
+					typePool.GetTypeOfMember(field),
+					new FieldProjection(field)))
+			]);
+		
+		if (type is not ArrayType array || ShapeLayout.GetLength(type) is not { } length)
+			return shape;
+		
+		var elements = ElementsShape.Expand(shape, length);
+		return ElementsShape.Create(elements.Runs.Select(run =>
+			run with { Shape = ApplyDefaults(run.Shape, array.ElementType, null) }), length);
+	}
 	
 	private bool UntrackedPartsHaveDefaults(MovePath path) =>
 		path is { IsComplete: false, Type: RecordSymbol record } && typePool.GetMembers(record)
@@ -409,6 +759,24 @@ public sealed class MemoryChecker(TypePool typePool, DiagnosticList diagnostics)
 			
 			case DefineEvent e:
 				state.Set(paths.GetRoot(e.Local), e.Kind == DefineKind.Undef ? PathState.Undef : PathState.Initialized);
+				break;
+			
+			case WriteEvent e when FindElement(e.Place, paths) is var (array, depth) &&
+			                       !IsComputedIndex(e.Place.Path[depth]):
+				ApplyRequiredDefaults(state, e.Place, paths);
+				state.SetElements(array, WriteElement(state.GetElements(array), array.Type, [..e.Place.Path[depth..]],
+					0,
+					null));
+				
+				break;
+			
+			case AccessEvent { Kind: AccessKind.Move } e when FindElement(e.Place, paths) is var (array, depth) &&
+			                                                  !IsComputedIndex(e.Place.Path[depth]):
+				if (GetMoveError(e.Place, paths) is null)
+					state.SetElements(array, MoveElement(state.GetElements(array), array.Type,
+						[..e.Place.Path[depth..]],
+						0, array, e.Location));
+				
 				break;
 			
 			case WriteEvent e:

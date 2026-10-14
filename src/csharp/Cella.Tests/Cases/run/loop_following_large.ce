@@ -1,0 +1,115 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+R: rec
+{
+	x: i64
+
+	new: op(x: i64)
+	{
+		self.x = x
+	}
+}
+
+D: rec
+{
+	id: i32
+
+	new: op(id: i32)
+	{
+		self.id = id
+	}
+
+	drop: op
+	{
+		printf("drop %d\n", self.id)
+	}
+}
+
+take: fun(own d: D)
+{
+}
+
+bytes: fun -> u8
+{
+	var buf: array[u8, 200000] = undef
+	for i in 0..200000
+		buf[i] = u8(i % 200)
+
+	ret buf[199999]
+}
+
+fibonacci: fun -> i64
+{
+	var f: array[R, 90]
+	f[0] = R(0)
+	f[1] = R(1)
+	for i in 2..90
+		f[i] = R(f[i - 1].x + f[i - 2].x)
+
+	ret f[89].x
+}
+
+grid: fun -> i32
+{
+	var g: array[array[i32, 300], 300] = undef
+	for i in 0..300
+	{
+		for j in 0..300
+			g[i][j] = i32(i + j)
+	}
+
+	ret g[299][299]
+}
+
+paired: fun -> i32
+{
+	var a: array[i32, 4000] = undef
+	var b: array[i32, 4001] = undef
+	b[0] = 1
+	for i in 0..4000
+	{
+		a[i] = i32(i % 7)
+		b[i + 1] = a[i] + b[i] % 1000
+	}
+
+	ret b[4000]
+}
+
+counted: fun -> i32
+{
+	var buf: array[i32, 5000] = undef
+	var count = 0
+	var i: usize = 0
+	while i <= 4999
+	{
+		buf[i] = 2
+		count += 2
+		i += 1
+	}
+
+	ret buf[4999] + count
+}
+
+moves: fun
+{
+	var b: array[D, 6] = undef
+	for i in 0..6
+		b[i] = D(i32(i))
+
+	for i in 1..5
+		take(own b[i])
+
+	printf("moved\n")
+}
+
+main: fun -> i32
+{
+	printf("%d %lld %d %d %d\n", bytes(), fibonacci(), grid(), paired(), counted())
+	moves()
+	ret 0
+}

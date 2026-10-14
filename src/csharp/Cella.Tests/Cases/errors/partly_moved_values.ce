@@ -34,11 +34,10 @@ refilled: fun -> Pair
 	ret pair
 }
 
-elements: fun -> i32
+elements: fun(i: usize) -> i32
 {
 	var items = [make(1), make(2)]
 	val first = own items[0]
-	var i: usize = 1
 	ret items[i].id + items[1].id + first.id
 }
 
