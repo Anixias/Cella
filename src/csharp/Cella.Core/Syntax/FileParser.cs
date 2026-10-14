@@ -898,15 +898,23 @@ public sealed class FileParser
 		
 		// Optional library origin
 		string? origin;
-		if (Match(ref index, TokenType.OpOpenParen))
+		if (Match(ref index, out var openParen, TokenType.OpOpenParen))
 		{
-			if (!Match(ref index, out var str, TokenType.StringLiteral) || str.Suffix is not null)
+			var nameIndex = index;
+			if (!Match(ref index, out var str, TokenType.StringLiteral) || str.Suffix is not null ||
+			    str.Interpolation is { Holes.IsEmpty: false } || str.Text.Length == 0 || str.Text.Contains('\0'))
+			{
+				ReportExpected(nameIndex, "a library name");
 				return null;
+			}
 			
 			origin = str.Text;
 			
 			if (!Match(ref index, TokenType.OpCloseParen))
+			{
+				ReportExpected(index, "')'", openParen);
 				return null;
+			}
 		}
 		else
 			origin = null;

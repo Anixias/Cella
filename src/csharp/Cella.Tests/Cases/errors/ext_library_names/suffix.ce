@@ -1,0 +1,6 @@
+mod test
+
+ext("user32"u8)
+{
+	puts: fun(text: cstr) -> i32
+}

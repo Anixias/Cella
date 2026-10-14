@@ -554,10 +554,9 @@ internal static class Program
 				{
 					foreach (var function in file.Functions)
 					{
-						var allPathsReturn = controlFlowAnalyzer.Analyze(function);
+						controlFlowAnalyzer.Analyze(function);
 						function.Normalize();
-						if (allPathsReturn)
-							checkable.Add(function);
+						checkable.Add(function);
 					}
 				}
 				

@@ -1,0 +1,22 @@
+mod test
+
+Big: enum(i128)
+{
+	a
+	b
+}
+
+g: var Big = Big.a
+
+cell[T: atomic]: rec
+{
+	value: T
+}
+
+main: fun -> i32
+{
+	val p = @g
+	atomic *p = Big.b
+	val c = cell[Big](Big.a)
+	ret 0
+}

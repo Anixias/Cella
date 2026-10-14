@@ -1,4 +1,5 @@
 ﻿using System.Collections.Immutable;
+using System.Numerics;
 using Cella.Core.Binding;
 using Cella.Core.Binding.Nodes;
 using Cella.Core.Binding.Operations;
@@ -21,6 +22,10 @@ public static class DiagnosticReporter
 	public static Diagnostic ReportBinaryOpMismatch(OperatorRegistry registry, IResolvedExpressionNode left, Token op,
 		IResolvedExpressionNode right)
 	{
+		if ((FindInexactInteger(left, right) ?? FindInexactInteger(right, left)) is var (literal, floatType))
+			return new(DiagnosticSeverity.Error, literal.Syntax.SourceLocation,
+				$"'{literal.Syntax.SourceLocation.GetText()}' can't be represented exactly in '{floatType}'");
+		
 		var message = $"No operation defined for '{op.Text}' between '{left.Type.Name}' and '{right.Type.Name}'";
 		var hints = new List<string>();
 		
@@ -49,6 +54,22 @@ public static class DiagnosticReporter
 		return new Diagnostic(DiagnosticSeverity.Error, location, message)
 		{
 			Hints = hints.ToImmutableArray()
+		};
+	}
+	
+	private static (IResolvedExpressionNode Literal, string FloatType)? FindInexactInteger(
+		IResolvedExpressionNode literal, IResolvedExpressionNode other)
+	{
+		if (literal is not ResolvedLiteralExpressionNode { Type: UntypedIntegerType, Value: BigInteger value })
+			return null;
+		
+		return other.Type switch
+		{
+			FloatType { Kind: PrimitiveTypeKind.Float32 } type when new BigInteger((float)value) != value =>
+				(literal, type.Name),
+			FloatType type when new BigInteger((double)value) != value => (literal, type.Name),
+			UntypedFloatType when new BigInteger((double)value) != value => (literal, NativeSymbols.Float64.Name),
+			_ => null
 		};
 	}
 	

@@ -2933,6 +2933,9 @@ public sealed class SignatureCollector
 				"Cannot use 'when' on operators"));
 		else if (context.Trait is not null)
 			Diagnostics.Add(new(DiagnosticSeverity.Error, when.Keyword.SourceLocation, "Cannot use 'when' in traits"));
+		else if (node.IsExternal)
+			Diagnostics.Add(new(DiagnosticSeverity.Error, when.Keyword.SourceLocation,
+				"Cannot use 'when' on 'ext' functions"));
 		
 		if (node.ReturnType is { } returnType)
 			Diagnostics.Add(new(DiagnosticSeverity.Error, returnType.SourceLocation,

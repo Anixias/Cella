@@ -1,0 +1,20 @@
+mod test
+
+takeInt: fun(own x: i32) {}
+apply: fun(f: fun[mut i32], mut x: i32) = f(mut x)
+take: fun(x: i32) {}
+
+ext
+{
+	puts: fun(text: cstr) -> i32
+}
+
+main: fun -> i32
+{
+	var v = 1
+	apply(takeInt, mut v)
+	take("hello")
+	val s: str = "hello"
+	puts(s)
+	ret 0
+}

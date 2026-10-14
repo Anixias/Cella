@@ -1,0 +1,10 @@
+mod test
+
+big: val f32 = f32(1e300)
+
+main: fun -> i32
+{
+	val c = f32(1e300)
+	val d = f32(-1e300)
+	ret 0
+}

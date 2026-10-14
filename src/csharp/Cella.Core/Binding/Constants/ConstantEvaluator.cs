@@ -5,6 +5,7 @@ using Cella.Core.Binding.Conversions;
 using Cella.Core.Binding.Nodes;
 using Cella.Core.Binding.Operations;
 using Cella.Core.Symbols;
+using Cella.Core.Syntax.Nodes;
 using Cella.Core.Text;
 using Cella.Diagnostics;
 
@@ -110,8 +111,14 @@ public sealed class ConstantEvaluator
 		node is { Operation: NativeImpl { Op: TokenType.OpMinus }, Type: IntegerType type } &&
 		Evaluate(node.Operand) is IntegerConstant { Value: var value } && !Fits(-value, type);
 	
-	public (string Value, IntegerType Target)? FindLostConstant(ResolvedConversionExpressionNode node)
+	public (string Value, TypeSymbol Target)? FindLostConstant(ResolvedConversionExpressionNode node)
 	{
+		if (node is { Type: FloatType floatTarget, Conversion: FloatConversion } &&
+		    floatTarget == NativeSymbols.Float32 && Evaluate(node.Source) is FloatConstant { Value: var number } &&
+		    double.IsFinite(number) && float.IsInfinity((float)number))
+			return ((node.Syntax is CallExpressionNode { Arguments: [var argument] } ? argument : node.Source.Syntax)
+				.SourceLocation.GetText().ToString(), floatTarget);
+		
 		var target = node switch
 		{
 			{ Type: IntegerType type, Conversion: IntegerConversion or FloatConversion or EnumConversion } => type,

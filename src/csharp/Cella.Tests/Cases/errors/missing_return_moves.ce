@@ -1,0 +1,20 @@
+mod test
+
+B: rec
+{
+	id: i32
+	drop: op {}
+}
+
+take: fun(own b: B) {}
+
+f: fun(c: bool) -> i32
+{
+	val b = B(1)
+	take(own b)
+	take(own b)
+	if c
+		ret 1
+}
+
+main: fun -> i32 = 0

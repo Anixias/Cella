@@ -1,0 +1,9 @@
+
+====== when_ext_functions.ce ======
+
+Error at line 3, column 31
+2 │ 
+3 │ work: ext fun(parameter: ptr) when debug
+                                  ╘══╛ Cannot use 'when' on 'ext' functions
+
+[compilation failed]

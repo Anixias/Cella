@@ -1,0 +1,7 @@
+mod test
+
+work: ext fun(parameter: ptr) when debug
+{
+}
+
+main: fun -> i32 = 0

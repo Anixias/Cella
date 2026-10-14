@@ -1,0 +1,8 @@
+mod test
+
+name: val i32 = 1
+
+ext("{name}")
+{
+	puts: fun(text: cstr) -> i32
+}

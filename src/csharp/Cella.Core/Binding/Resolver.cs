@@ -935,18 +935,28 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	private LocalVariableSymbol? CreateBinding(Token token, Token? mode, TypeSymbol type, bool isMut, bool ownsValue)
 	{
 		if (token.Text == "_")
+		{
+			if (mode is { } discarded)
+				Diagnostics.Add(new(DiagnosticSeverity.Hint, discarded.SourceLocation,
+					$"Redundant '{discarded.Text}'"));
+			
 			return null;
+		}
 		
 		var modeType = mode?.Type;
+		var isCopy = _typePool.IsCopy(type);
+		var copies = modeType == TokenType.KeywordVar && isCopy;
 		if (modeType == TokenType.KeywordMut && ownsValue)
 			Diagnostics.Add(new(DiagnosticSeverity.Error, token.SourceLocation,
 				"Cannot mutably borrow unstored values"));
-		else if (modeType is TokenType.KeywordOwn or TokenType.KeywordVar && isMut)
+		else if (modeType is TokenType.KeywordOwn or TokenType.KeywordVar && isMut && !copies)
 			Diagnostics.Add(new(DiagnosticSeverity.Error, token.SourceLocation,
 				"Cannot move mutably borrowed payloads"));
+		else if (modeType == TokenType.KeywordOwn && !ownsValue && isCopy)
+			Diagnostics.Add(new(DiagnosticSeverity.Hint, mode!.Value.SourceLocation, "Redundant 'own'"));
 		
-		var isMutBinding = !ownsValue && (isMut || modeType == TokenType.KeywordMut);
-		var isBorrowBinding = !ownsValue && (isMutBinding || !_typePool.IsCopy(type));
+		var isMutBinding = !ownsValue && !copies && (isMut || modeType == TokenType.KeywordMut);
+		var isBorrowBinding = !ownsValue && !copies && (isMutBinding || !isCopy);
 		var bindingType = isBorrowBinding && type is not InvalidType ? _typePool.GetPointerType(type) : type;
 		return new LocalVariableSymbol(token, bindingType, modeType == TokenType.KeywordVar && !isBorrowBinding)
 		{
@@ -5873,8 +5883,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			
 			var args = new[] { left, right };
 			var resolutionSet = ResolveCallable(candidates, args, MaterializationMode.Overload);
-			if (resolutionSet.IsAmbiguous && IsShift(op.Type) &&
-			    (left.Type == NativeSymbols.Char || right.Type == NativeSymbols.Char))
+			if (resolutionSet.IsAmbiguous &&
+			    (IsShift(op.Type) && (left.Type == NativeSymbols.Char || right.Type == NativeSymbols.Char) ||
+			     left.Type == NativeSymbols.CStr || right.Type == NativeSymbols.CStr))
 				return Error(node, DiagnosticReporter.ReportBinaryOpMismatch(_operatorRegistry, left, op, right),
 					CurrentTargetType);
 			
@@ -6541,6 +6552,13 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		
 		if (source.Type is ClosureType && target is ClosureType)
 			return Error(source.Syntax, "Cannot convert between 'own fun' closures", target);
+		
+		if (target is BorrowType { IsMutable: true } mutTarget && source.Type == mutTarget.Target)
+			return Error(source.Syntax, "Cannot mutably borrow values implicitly", target);
+		
+		if (source is ResolvedLiteralExpressionNode { Type: UntypedIntegerType, Value: BigInteger value } &&
+		    target is IntegerType)
+			return Error(source.Syntax, $"'{value}' doesn't fit in '{target.Name}'", target);
 		
 		return Error(source.Syntax, $"Cannot convert type '{source.Type.Name}' to '{target.Name}'", target);
 	}

@@ -1,0 +1,11 @@
+
+====== match_mut_copy_bindings.ce ======
+
+Hint at line 25, column 7
+24 │ {
+25 │     hit(own n) => printf("%d\n", n)
+             ╘═╛ Redundant 'own'
+
+6
+1
+[exit code 0]

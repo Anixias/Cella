@@ -1,0 +1,9 @@
+mod test
+
+main: fun -> i32
+{
+	val c: cstr = "hello"
+	val d = c + 1
+	val e = c - 1
+	ret 0
+}

@@ -1,0 +1,50 @@
+
+====== empty.ce ======
+
+Error at line 3, column 5
+2 │ 
+3 │ ext("")
+        ╘╛ Expected a library name
+
+
+====== main.ce ======
+
+Error at line 3, column 5
+2 │ 
+3 │ ext("a\q")
+        ╘═══╛ Invalid escape sequence in string literal
+
+
+====== number.ce ======
+
+Error at line 3, column 5
+2 │ 
+3 │ ext(5)
+        ^ Expected a library name
+
+
+====== suffix.ce ======
+
+Error at line 3, column 5
+2 │ 
+3 │ ext("user32"u8)
+        ╘════════╛ Expected a library name
+
+
+====== template.ce ======
+
+Error at line 5, column 5
+4 │ 
+5 │ ext("{name}")
+        ╘══════╛ Expected a library name
+
+
+====== unclosed.ce ======
+
+Error at line 4, column 1
+3 │ ext("kernel32"
+4 │ {
+    ^ Expected ')'
+    | To match the '(' on line 3
+
+[compilation failed]

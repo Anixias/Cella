@@ -1,0 +1,19 @@
+mod test
+
+Opt[T]: enum
+{
+	none
+	some(value: T)
+}
+
+pick: fun(mut v: i32) -> Opt[mut[i32]]
+{
+	ret Opt[mut[i32]].some(v)
+}
+
+main: fun -> i32
+{
+	var x = 1
+	val m: mut[i32] = x
+	ret 0
+}

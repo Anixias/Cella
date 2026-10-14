@@ -1,0 +1,19 @@
+
+====== single_candidate_arguments.ce ======
+
+Error at line 15, column 8
+14 │ var v = 1
+15 │ apply(takeInt, mut v)
+           ╘═════╛ Cannot convert type 'fun[own i32]' to 'ref fun[mut i32]'
+
+Error at line 16, column 7
+15 │ apply(takeInt, mut v)
+16 │ take("hello")
+          ╘═════╛ Cannot convert type 'string literal' to 'i32'
+
+Error at line 18, column 7
+17 │ val s: str = "hello"
+18 │ puts(s)
+          ^ Cannot convert type 'str' to 'cstr'
+
+[compilation failed]

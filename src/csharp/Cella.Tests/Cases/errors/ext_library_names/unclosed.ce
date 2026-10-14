@@ -1,0 +1,6 @@
+mod test
+
+ext("kernel32"
+{
+	puts: fun(text: cstr) -> i32
+}

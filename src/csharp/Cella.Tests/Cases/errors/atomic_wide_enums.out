@@ -1,0 +1,15 @@
+
+====== atomic_wide_enums.ce ======
+
+Error at line 19, column 9
+18 │ val p = @g
+19 │ atomic *p = Big.b
+            ╘╛ Cannot access 'Big' values atomically
+
+Error at line 20, column 15
+19 │ atomic *p = Big.b
+20 │ val c = cell[Big](Big.a)
+                  ╘═╛ 'cell' requires 'T: atomic'
+                    | 'Big' can't be accessed atomically
+
+[compilation failed]

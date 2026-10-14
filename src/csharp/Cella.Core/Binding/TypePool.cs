@@ -506,7 +506,7 @@ public sealed class TypePool
 		PointerType => !IsFatPointer(type),
 		FunctionType { IsExternal: true } => true,
 		EnumSymbol { IsMatch: true } enumType => IsAtomic(GetMatchedType(enumType)),
-		EnumSymbol enumType => !enumType.HasPayload,
+		EnumSymbol enumType => !enumType.HasPayload && IsAtomic(GetTagType(enumType)),
 		TypeParameterSymbol parameter => parameter.IsAtomic,
 		_ => false
 	};
