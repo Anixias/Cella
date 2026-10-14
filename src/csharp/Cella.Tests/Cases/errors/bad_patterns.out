@@ -23,31 +23,31 @@ Error at line 33, column 18
 
 Error at line 34, column 20
 33 │ var d = team is red()
-34 │ var e = effect is hit(x, y)
-                       ╘═══════╛ 'Effect.hit' holds 1 value: amount
+34 │ var e = effect is hit(val x, val y)
+                       ╘═══════════════╛ 'Effect.hit' holds 1 value: amount
 
-Error at line 35, column 25
-34 │ var e = effect is hit(x, y)
-35 │ var f = effect is both(z, z)
-                            ^ 'z' is bound more than once
+Error at line 35, column 29
+34 │ var e = effect is hit(val x, val y)
+35 │ var f = effect is both(val z, val z)
+                                ^ 'z' is bound more than once
 
-Error at line 35, column 28
-34 │ var e = effect is hit(x, y)
-35 │ var f = effect is both(z, z)
-                               ^ 'z' is bound more than once
+Error at line 35, column 36
+34 │ var e = effect is hit(val x, val y)
+35 │ var f = effect is both(val z, val z)
+                                       ^ 'z' is bound more than once
 
-Error at line 36, column 24
-35 │ var f = effect is both(z, z)
-36 │ var g = effect is hit(w) && effect is both(w, _)
-                           ^ 'w' is bound more than once
+Error at line 36, column 28
+35 │ var f = effect is both(val z, val z)
+36 │ var g = effect is hit(val w) && effect is both(val w, _)
+                               ^ 'w' is bound more than once
 
-Error at line 36, column 45
-35 │ var f = effect is both(z, z)
-36 │ var g = effect is hit(w) && effect is both(w, _)
-                                                ^ 'w' is bound more than once
+Error at line 36, column 53
+35 │ var f = effect is both(val z, val z)
+36 │ var g = effect is hit(val w) && effect is both(val w, _)
+                                                        ^ 'w' is bound more than once
 
 Error at line 37, column 20
-36 │ var g = effect is hit(w) && effect is both(w, _)
+36 │ var g = effect is hit(val w) && effect is both(val w, _)
 37 │ var h = effect is Role.fighter
                        ╘══╛ Expected a case of 'Effect'
 
@@ -62,19 +62,19 @@ Error at line 43, column 18
 43 │     printf("%d\n", n)
                         ^ Symbol 'n' not found in this scope
 
-Error at line 45, column 25
+Error at line 45, column 29
 44 │ 
-45 │ if effect is hit(m) || m > 3
-                            ^ Symbol 'm' not found in this scope
+45 │ if effect is hit(val m) || m > 3
+                                ^ Symbol 'm' not found in this scope
 
 Error at line 46, column 18
-45 │ if effect is hit(m) || m > 3
+45 │ if effect is hit(val m) || m > 3
 46 │     printf("%d\n", m)
                         ^ Symbol 'm' not found in this scope
 
 Error at line 48, column 5
 47 │ 
-48 │ if missing is hit(o)
+48 │ if missing is hit(val o)
         ╘═════╛ Symbol 'missing' not found in this scope
 
 Error at line 53, column 3

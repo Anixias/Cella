@@ -85,7 +85,7 @@ main: fun -> i32
 	var slot = Slot.full(TextureBox(Texture(7)))
 	match mut slot
 	{
-		full(box) =>
+		full(val box) =>
 		{
 			box = TextureBox(Texture(8))
 			printf("match %d\n", box.id)

@@ -81,10 +81,10 @@ main: fun -> i32
 
 	match mut u.effect
 	{
-		hit(n) => n += 100
+		hit(val n) => n += 100
 		else => {}
 	}
-	if u.effect is hit(n)
+	if u.effect is hit(val n)
 		printf("%d\n", n)
 
 	val scores = @unit.scores

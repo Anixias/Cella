@@ -133,7 +133,7 @@ caseChanged: fun -> i32
 	val reset = fun { e = Effect.none }
 	match mut e
 	{
-		hit(n) =>
+		hit(val n) =>
 		{
 			reset()
 			ret n

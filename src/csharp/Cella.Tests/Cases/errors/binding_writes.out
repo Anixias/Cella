@@ -2,7 +2,7 @@
 ====== binding_writes.ce ======
 
 Error at line 28, column 3
-27 │ if effect is hit(n)
+27 │ if effect is hit(val n)
 28 │     n = 2
          ^ Cannot reassign read-only pattern bindings
 
@@ -26,9 +26,9 @@ Error at line 40, column 14
 40 │ touch(mut buffer)
                ╘════╛ Cannot mutably borrow read-only pattern bindings
 
-Error at line 47, column 18
+Error at line 47, column 22
 46 │ {
-47 │     hold(owned) => owned.id = 7
-                        ╘══════╛ Cannot reassign read-only pattern bindings
+47 │     hold(val owned) => owned.id = 7
+                            ╘══════╛ Cannot reassign read-only pattern bindings
 
 [compilation failed]

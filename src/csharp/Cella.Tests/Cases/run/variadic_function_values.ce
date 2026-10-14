@@ -37,8 +37,8 @@ print: fun(template: str, ...args: view[Arg])
 	{
 		match args[i]
 		{
-			int(value) => printf(" %d", value)
-			text(value) => printf(" %.*s", i32(value.byteLength), value.data)
+			int(val value) => printf(" %d", value)
+			text(val value) => printf(" %.*s", i32(value.byteLength), value.data)
 		}
 	}
 

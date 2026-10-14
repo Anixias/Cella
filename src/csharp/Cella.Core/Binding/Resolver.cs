@@ -36,6 +36,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	private readonly SymbolTable _symbolTable;
 	private readonly SignatureCollector _signatures;
 	private readonly ConstantEvaluator _evaluator;
+	private readonly PatternCoverage _coverage;
 	private readonly TypePool _typePool;
 	private readonly ConversionTable _conversionTable;
 	private readonly OperatorRegistry _operatorRegistry;
@@ -87,6 +88,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		_symbolTable = symbolTable;
 		_signatures = signatures;
 		_evaluator = signatures.Evaluator;
+		_coverage = new PatternCoverage(typePool, _evaluator);
 		
 		var ptrBits = (int)pointerBitSize;
 		_isizeMinValue = -BigInteger.Pow(2, ptrBits - 1);
@@ -785,7 +787,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		return new Diagnostic(DiagnosticSeverity.Error, location, message);
 	}
 	
-	private (IResolvedExpressionNode Value, EnumSymbol? Type, DynType? Dyn) ResolveMatchedValue(IExpressionNode node)
+	private (IResolvedExpressionNode Value, EnumSymbol? Type) ResolveMatchedValue(IExpressionNode node)
 	{
 		var value = VisitNode(node, null);
 		if (value is ResolvedOwnExpressionNode { Type: BorrowType } owned)
@@ -799,15 +801,12 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			value = MaterializeAsDefault(value);
 		
 		if (value.Type is EnumSymbol enumType)
-			return (value, enumType, null);
-		
-		if (value.Type is DynType dyn)
-			return (value, null, dyn);
+			return (value, enumType);
 		
 		if (value.Type == NativeSymbols.Void)
 			Diagnostics.Add(new(DiagnosticSeverity.Error, node.SourceLocation, "Cannot match 'void' values"));
 		
-		return (value, null, null);
+		return (value, null);
 	}
 	
 	private IResolvedExpressionNode TakeOwnership(IResolvedExpressionNode value, IExpressionNode syntax,
@@ -955,6 +954,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		if (element.Binding is not { } trailing)
 			return true;
 		
+		if (trailing.Mode is null)
+			ReportUntypedBinding(trailing);
+		
 		binding = CreateBinding(trailing.CaseName, trailing.Mode, type, isMut,
 			ownsValue || movesFields && MovesValue(trailing, type));
 		
@@ -968,9 +970,6 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	private List<LocalVariableSymbol?> CreateBindings(PatternNode pattern, bool isMut, bool ownsValue)
 	{
 		var bindings = new List<LocalVariableSymbol?>();
-		if (pattern.TypeBinding is { } typeBinding)
-			bindings.Add(CreateBinding(typeBinding, null, NativeSymbols.Invalid, isMut, ownsValue));
-		
 		if (pattern.Binding is { } trailing)
 			bindings.Add(CreateBinding(trailing.CaseName, trailing.Mode, NativeSymbols.Invalid, isMut, ownsValue));
 		
@@ -985,6 +984,20 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		return bindings;
 	}
 	
+	private ResolvedPattern? ResolveTopPattern(PatternNode syntax, TypeSymbol subjectType, bool isMut, bool ownsValue)
+	{
+		if (syntax.Binding is not { } binding ||
+		    subjectType is DynType && syntax.Kind is PatternKind.Case or PatternKind.Type)
+			return ResolveArmPattern(syntax, subjectType, isMut, ownsValue);
+		
+		ReportUntypedBinding(binding);
+		return null;
+	}
+	
+	private void ReportUntypedBinding(PatternNode binding) =>
+		Diagnostics.Add(new(DiagnosticSeverity.Error, binding.SourceLocation,
+			$"Expected a type test before '{binding.CaseName.Text}'"));
+	
 	private ResolvedPattern? ResolveArmPattern(PatternNode syntax, TypeSymbol subjectType, bool isMut, bool ownsValue)
 	{
 		if (IsInvalid(subjectType))
@@ -996,7 +1009,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 				return ResolvePattern(syntax, enumType, isMut, ownsValue);
 			
 			case PatternKind.Case or PatternKind.Type when subjectType is DynType dyn:
-				return ResolveTypePattern(syntax, dyn, isMut, null);
+				return ResolveTypePattern(syntax, dyn, isMut, syntax.Binding);
 			
 			case PatternKind.Case when syntax.IsDestructuring && subjectType is not EnumSymbol:
 				return ResolveRecordPattern(syntax, subjectType, isMut, ownsValue);
@@ -1253,15 +1266,16 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			return null;
 		}
 		
-		if (trailing?.Mode is { Type: not TokenType.KeywordMut } moved)
-			Diagnostics.Add(new(DiagnosticSeverity.Error, moved.SourceLocation, "Cannot move borrowed values"));
+		if (trailing?.Mode is { } mode)
+			Diagnostics.Add(
+				new(DiagnosticSeverity.Error, mode.SourceLocation, $"Cannot use '{mode.Text}' after a type"));
 		
-		var binding = (pattern.TypeBinding ?? trailing?.CaseName) is { Text: not "_" } token
+		var binding = trailing?.CaseName is { Text: not "_" } token
 			? new LocalVariableSymbol(token, _typePool.GetPointerType(type), false)
 			{
 				IsPatternBinding = true,
 				IsBorrowBinding = true,
-				IsMutBinding = isMut || trailing?.Mode?.Type == TokenType.KeywordMut
+				IsMutBinding = isMut
 			}
 			: null;
 		
@@ -1409,10 +1423,10 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	public IResolvedExpressionNode Visit(IsExpressionNode node)
 	{
 		var isMut = node.Mode is not null;
-		var (value, enumType, _) = ResolveMatchedValue(node.Value);
+		var (value, enumType) = ResolveMatchedValue(node.Value);
 		value = TakeOwnership(value, node.Value, enumType, isMut, [node.Pattern]);
 		var ownsValue = OwnsValue(value, enumType);
-		if (ResolveArmPattern(node.Pattern, value.Type, isMut, ownsValue) is { } pattern)
+		if (ResolveTopPattern(node.Pattern, value.Type, isMut, ownsValue) is { } pattern)
 			return new ResolvedIsExpressionNode(value, pattern, isMut || pattern.HasMutBindings, ownsValue, node);
 		
 		var invalid = new ResolvedInvalidExpressionNode(node, NativeSymbols.Bool);
@@ -1427,7 +1441,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		var bindings = new List<LocalVariableSymbol?>();
 		foreach (var pattern in syntax)
 		{
-			if (ResolveArmPattern(pattern, subjectType, isMut, ownsValue) is { } resolved)
+			if (ResolveTopPattern(pattern, subjectType, isMut, ownsValue) is { } resolved)
 			{
 				patterns.Add(resolved);
 				bindings.AddRange(resolved.AllBindings);
@@ -1466,7 +1480,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	public IResolvedStatementNode Visit(MatchStatementNode node)
 	{
 		var isMut = node.Mode is not null;
-		var (value, enumType, _) = ResolveMatchedValue(node.Value);
+		var (value, enumType) = ResolveMatchedValue(node.Value);
 		value = TakeOwnership(value, node.Value, enumType, isMut,
 			node.Arms.SelectMany(static arm => arm.Patterns));
 		
@@ -1492,7 +1506,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		var target = CurrentTargetType;
 		var hint = target is null ? ExpectedType : null;
 		var isMut = node.Mode is not null;
-		var (value, enumType, dyn) = ResolveMatchedValue(node.Value);
+		var (value, enumType) = ResolveMatchedValue(node.Value);
 		value = TakeOwnership(value, node.Value, enumType, isMut,
 			node.Arms.SelectMany(static arm => arm.Patterns));
 		
@@ -1528,12 +1542,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			values[i] = VisitCaseName(node.Arms[i].Value, peers) ?? VisitInScope(node.Arms[i].Value, bindings);
 		
 		ReportArmConflicts(summaries);
-		if (enumType is not null)
-			ReportMissingCases(node.Keyword, enumType, summaries);
-		else if (!summaries.Any(static arm => arm.IsElse || arm.IsFailed || arm.CoversAll) && !IsInvalid(value) &&
-		         (dyn is not null || !CoversEveryValue(value.Type, summaries)))
-			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Keyword.SourceLocation,
-				$"This match doesn't handle every value of '{(dyn ?? value.Type).Name}'"));
+		if (!summaries.Any(static arm => arm.IsElse || arm.IsFailed) && !IsInvalid(value))
+			ReportUncovered(node.Keyword, value.Type,
+				patterns.Where((_, i) => guards[i] is null).SelectMany(static armPatterns => armPatterns).ToList());
 		
 		var arms = values
 			.Select(value => value is ResolvedCaseNameExpressionNode caseName && HasCase(hint, caseName.Name.Text)
@@ -1572,9 +1583,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	{
 		public TypeSymbol? Type { get; init; }
 		public object? Constant { get; init; }
-		public ImmutableArray<(BigInteger Low, BigInteger High)> Spans { get; init; } = [];
 		public bool IsFailed { get; init; }
-		public bool CoversAll { get; init; }
 	}
 	
 	private IEnumerable<MatchArmSummary> SummarizeArm(ImmutableArray<PatternNode> syntax,
@@ -1593,34 +1602,15 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 				enumCase is not null ? _typePool.GetCaseValue(enumType!, enumCase) : null, syntax[i].SourceLocation)
 			{
 				Type = pattern.IsConditional ? null : pattern.TestedType,
-				CoversAll = pattern.IsIrrefutable,
 				Constant = pattern.Constant switch
 				{
 					IntegerConstant integer => integer.Value,
 					BoolConstant flag => flag.Value,
 					StringConstant text => text.Value,
 					_ => null
-				},
-				Spans = pattern.Spans
+				}
 			};
 		});
-	}
-	
-	private bool CoversEveryValue(TypeSymbol type, IReadOnlyList<MatchArmSummary> arms)
-	{
-		if (FindLimits(type) is not var (min, max))
-			return false;
-		
-		var next = min;
-		foreach (var (low, high) in arms.SelectMany(static arm => arm.Spans).OrderBy(static span => span.Low))
-		{
-			if (low > next)
-				return false;
-			
-			next = BigInteger.Max(next, high + 1);
-		}
-		
-		return next > max;
 	}
 	
 	private void ReportArmConflicts(IReadOnlyList<MatchArmSummary> arms)
@@ -1681,24 +1671,18 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		}
 	}
 	
-	private void ReportMissingCases(Token keyword, EnumSymbol enumType, IReadOnlyList<MatchArmSummary> arms)
+	private void ReportUncovered(Token keyword, TypeSymbol type, List<ResolvedPattern> patterns)
 	{
-		if (arms.Any(static arm => arm.IsElse || arm.IsFailed))
-			return;
-		
-		if (enumType.IsExternal)
+		if (type is not EnumSymbol { IsExternal: false } enumType)
 		{
-			Diagnostics.Add(new(DiagnosticSeverity.Error, keyword.SourceLocation,
-				$"This match doesn't handle every value of '{enumType.Name}'"));
+			if (!_coverage.Covers(type, patterns))
+				Diagnostics.Add(new(DiagnosticSeverity.Error, keyword.SourceLocation,
+					$"This match doesn't handle every value of '{type.Name}'"));
 			
 			return;
 		}
 		
-		var missing = enumType.Cases
-			.Where(enumCase => arms.All(arm => arm.Value != _typePool.GetCaseValue(enumType, enumCase)))
-			.DistinctBy(enumCase => _typePool.GetCaseValue(enumType, enumCase))
-			.ToList();
-		
+		var missing = _coverage.FindMissingCases(enumType, patterns).ToList();
 		if (missing.Count == 0)
 			return;
 		

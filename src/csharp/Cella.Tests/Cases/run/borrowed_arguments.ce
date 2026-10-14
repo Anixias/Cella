@@ -83,7 +83,7 @@ main: fun -> i32
 
 	match mut effect
 	{
-		owned(inner) => printf("binding %d\n", flag(same(imm inner, @inner)))
+		owned(val inner) => printf("binding %d\n", flag(same(imm inner, @inner)))
 		else => {}
 	}
 

@@ -9,7 +9,12 @@ Error at line 23, column 22
 
 Error at line 31, column 8
 30 │ {
-31 │     1..10 n => n
-               ^ Expected '=>'
+31 │     1..10 val n => n
+               ╘═╛ Expected '=>'
+
+Error at line 37, column 9
+36 │ {
+37 │     Circle val c => c.radius
+                ╘═╛ Expected '=>'
 
 [compilation failed]

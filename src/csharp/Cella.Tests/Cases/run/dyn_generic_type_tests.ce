@@ -29,7 +29,7 @@ box[T: Shape]: impl Shape
 
 classify: fun(imm shape: dyn[Shape]) -> i32
 {
-	if shape is wrapped: box[Circle]
+	if shape is box[Circle] wrapped
 		ret i32(wrapped.value.radius) + 100
 
 	if shape is box[box[Circle]]

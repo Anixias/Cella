@@ -20,7 +20,7 @@ named: fun -> i32 = takes(option[i32].none)
 nested: fun -> i32
 {
 	val o: option[option[i32]] = option.some(option.some(1))
-	if o is some(some(v))
+	if o is some(some(val v))
 		ret v
 
 	ret 0

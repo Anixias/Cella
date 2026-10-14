@@ -86,9 +86,9 @@ make: fun(n: i32) -> Shape
 
 describe: fun(shape: Shape)
 {
-	if shape is poly(points, count)
+	if shape is poly(val points, val count)
 		printf("poly %d %.1f\n", count, points[5])
-	else if shape is dot(x)
+	else if shape is dot(val x)
 		printf("dot %.1f\n", x)
 	else
 		printf("none\n")

@@ -41,7 +41,7 @@ Scope: ref rec
 
 describe: fun(target: Target) -> i32 = match target
 {
-	unit(health) => health
+	unit(val health) => health
 	none => -1
 }
 

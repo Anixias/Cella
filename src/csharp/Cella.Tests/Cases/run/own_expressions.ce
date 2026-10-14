@@ -59,13 +59,13 @@ main: fun -> i32
 	printf("%d %d\n", first.id, inner.id)
 
 	val effect = Effect.owned(Buffer(14))
-	if own effect is owned(buffer)
+	if own effect is owned(val buffer)
 		printf("%d\n", buffer.id)
 
 	var next = Effect.owned(Buffer(15))
 	match own next
 	{
-		owned(buffer) => printf("%d\n", buffer.id)
+		owned(val buffer) => printf("%d\n", buffer.id)
 		else => {}
 	}
 

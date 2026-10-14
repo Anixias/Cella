@@ -99,7 +99,7 @@ main: fun -> i32
 	val filled = atomic *pn == none = some(@target)
 	val found = match atomic acquire *pn
 	{
-		some(value) => *value
+		some(val value) => *value
 		none => -1
 	}
 

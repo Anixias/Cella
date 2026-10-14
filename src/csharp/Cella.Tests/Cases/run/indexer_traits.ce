@@ -31,7 +31,7 @@ Storage: enum
 	[]: op(self, i: usize) -> imm[i32] = match self
 	{
 		empty => imm *ptr[i32](null)
-		heap(items) => imm items[i]
+		heap(val items) => imm items[i]
 	}
 }
 

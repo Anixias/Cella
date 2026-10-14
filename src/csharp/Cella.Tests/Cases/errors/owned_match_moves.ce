@@ -26,13 +26,13 @@ used: fun -> i32
 	val effect = make(1)
 	match own effect
 	{
-		hold(buffer) => take(own buffer)
+		hold(val buffer) => take(own buffer)
 		else => {}
 	}
 
 	match effect
 	{
-		hold(buffer) => ret buffer.id
+		hold(val buffer) => ret buffer.id
 		else => ret 0
 	}
 }

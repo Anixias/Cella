@@ -17,7 +17,7 @@ Box: rec
 		self.inner.grow()
 		match mut self.shape
 		{
-			dot(size) => size = 4
+			dot(val size) => size = 4
 		}
 	}
 }

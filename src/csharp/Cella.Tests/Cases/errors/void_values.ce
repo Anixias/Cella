@@ -35,7 +35,7 @@ main: fun -> i32
 	if greet()
 		ret 1
 
-	val e = match Effect.none { none => greet()  hit(n) => n }
+	val e = match Effect.none { none => greet()  hit(val n) => n }
 	val f = Effect.hit(greet())
 	val g = sizeOf(greet())
 	var handler = Handler(greet)

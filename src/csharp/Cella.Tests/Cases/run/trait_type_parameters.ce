@@ -91,7 +91,7 @@ sum[T: Num + noref, I: Iterator[T]]: fun(mut items: I) -> T
 	{
 		match items.next()
 		{
-			some(value) => total = total + value
+			some(val value) => total = total + value
 			none => ret total
 		}
 	}
@@ -113,7 +113,7 @@ second[I: Iterator[i32]]: fun(mut items: I) -> i32
 	first(mut items)
 	ret match first(mut items)
 	{
-		some(value) => value
+		some(val value) => value
 		none => -1
 	}
 }

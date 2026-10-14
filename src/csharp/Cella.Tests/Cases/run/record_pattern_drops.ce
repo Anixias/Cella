@@ -29,7 +29,7 @@ stored: fun
 	var p = Pair(Name(1), Name(2))
 	match p
 	{
-		Pair(first: Name(id: 1), second) => printf("borrowed %d\n", second.id)
+		Pair(first: Name(id: 1), val second) => printf("borrowed %d\n", second.id)
 		else => {}
 	}
 
@@ -45,7 +45,7 @@ temporary: fun
 {
 	match make()
 	{
-		Pair(first, second: Name(id)) => printf("temp %d %d\n", first.id, id)
+		Pair(val first, second: Name(val id)) => printf("temp %d %d\n", first.id, id)
 	}
 
 	printf("end\n")
@@ -55,7 +55,7 @@ payload: fun
 {
 	match makeSlot()
 	{
-		full(Pair(first)) => printf("got %d\n", first.id)
+		full(Pair(val first)) => printf("got %d\n", first.id)
 		empty => {}
 	}
 

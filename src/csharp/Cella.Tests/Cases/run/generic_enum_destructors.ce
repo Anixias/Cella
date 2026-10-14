@@ -48,7 +48,7 @@ main: fun -> i32
 	c = make(3)
 	match make(4)
 	{
-		some(t) => printf("got %d ", t.id)
+		some(val t) => printf("got %d ", t.id)
 		none => printf("none ")
 	}
 

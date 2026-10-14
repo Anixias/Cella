@@ -42,7 +42,7 @@ boxes[N: val usize]: fun(values: array[box[i64], N]) -> i64
 
 count[T]: fun(imm o: option[T]) -> i32 = match o
 {
-	some(v) => 1
+	some(val v) => 1
 	none => 0
 }
 
@@ -50,7 +50,7 @@ both[T]: fun(imm a: option[T], imm b: option[T]) -> i32 = count(imm a) + count(i
 
 pick[T: copy]: fun(o: option[T], fallback: T) -> T = match o
 {
-	some(v) => v
+	some(val v) => v
 	none => fallback
 }
 

@@ -39,7 +39,7 @@ fillSlots: fun(mut slots: array[Slot, 2], other: str)
 	{
 		match mut slot
 		{
-			text(s) => s = other
+			text(val s) => s = other
 			else => {}
 		}
 	}

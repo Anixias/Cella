@@ -36,7 +36,7 @@ Shot: enum { miss  hit(at: Point, damage: i32) }
 
 positional: fun(p: Point) -> i32 = match p
 {
-	Point(0, y) => y
+	Point(0, val y) => y
 	else => 0
 }
 
@@ -66,7 +66,7 @@ wrongType: fun(p: Point) -> i32 = match p
 
 namedPayload: fun(imm s: Shot) -> i32 = match s
 {
-	hit(at: a, damage: d) => d
+	hit(at: val a, damage: val d) => d
 	else => 0
 }
 
@@ -78,7 +78,7 @@ notRecord: fun(n: i32) -> i32 = match n
 
 rebound: fun(p: Point) -> i32 = match p
 {
-	Point(x, y: x) => x
+	Point(val x, y: val x) => x
 }
 
 uncovered: fun(p: Point) -> i32 = match p
@@ -96,6 +96,18 @@ guarded: fun -> i32
 	}
 
 	ret 0
+}
+
+bound: fun -> i32 = match 5
+{
+	1..10 n => n
+	else => 0
+}
+
+untypedPayload: fun(imm s: Shot) -> i32 = match s
+{
+	hit(_, 1..10 d) => d
+	else => 0
 }
 
 main: fun -> i32 = 0

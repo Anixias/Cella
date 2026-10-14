@@ -121,7 +121,7 @@ useBindingAfterReassign: fun
 	var effect = Effect.hold(Buffer(1))
 	match effect
 	{
-		hold(buffer) =>
+		hold(val buffer) =>
 		{
 			effect = Effect.none
 			printf("%d\n", buffer.id)

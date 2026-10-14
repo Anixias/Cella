@@ -37,13 +37,13 @@ same: fun(x: i32) -> i32 = match x
 
 listed: fun(h: Hit) -> i32 = match h
 {
-	hit(n), pair(n, _) => n
+	hit(val n), pair(val n, _) => n
 	miss => 0
 }
 
 guarded: fun(own h: Holder) -> i32 = match own h
 {
-	full(b) if b.n > 0 => 1
+	full(val b) if b.n > 0 => 1
 	else => 0
 }
 

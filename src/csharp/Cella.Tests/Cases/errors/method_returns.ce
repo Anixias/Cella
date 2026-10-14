@@ -79,7 +79,7 @@ Slot: enum
 	{
 		match self
 		{
-			held(buffer) => ret buffer
+			held(val buffer) => ret buffer
 			empty => ret fallback
 		}
 	}

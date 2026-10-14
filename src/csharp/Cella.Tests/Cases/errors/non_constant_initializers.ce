@@ -20,7 +20,7 @@ Mode: enum
 	slow(factor: i32)
 }
 
-chosen: val i32 = match Mode.slow(3) { fast => 4  slow(factor) => rand() + factor }
+chosen: val i32 = match Mode.slow(3) { fast => 4  slow(val factor) => rand() + factor }
 
 main: fun -> i32
 {

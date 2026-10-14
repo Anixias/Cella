@@ -113,7 +113,7 @@ bindings: fun
 	val slot = Slot.full(Texture(9))
 	match slot
 	{
-		full(texture) =>
+		full(val texture) =>
 		{
 			val same = texture
 			printf("match %d\n", same.id)

@@ -40,16 +40,16 @@ Shape: enum
 
 	edges: pvt fun(self) -> i32 = match self
 	{
-		square(side) => 4
-		circle(radius) => 0
+		square(val side) => 4
+		circle(val radius) => 0
 	}
 
 	pvt
 	{
 		area: fun(self) -> i32 = match self
 		{
-			square(side) => side * side
-			circle(radius) => Shape.approximate(radius)
+			square(val side) => side * side
+			circle(val radius) => Shape.approximate(radius)
 		}
 
 		approximate: fun(radius: i32) -> i32 = 3 * radius * radius

@@ -77,7 +77,7 @@ countdown: fun(mut n: i32, mut steps: i32)
 
 strength: fun(mut e: Effect) -> i32
 {
-	if e is hit(n)
+	if e is hit(val n)
 		ret n
 
 	e = Effect.hit(9)

@@ -66,7 +66,7 @@ takesI64: fun(value: i64) -> i64 = value
 
 takesOpt64: fun(o: option[i64]) -> i64 = match o
 {
-	some(v) => v
+	some(val v) => v
 	none => -1
 }
 
@@ -87,7 +87,7 @@ total: fun(values: array[f64, 2]) -> i32 = 1
 
 unwrapOr[T: copy]: fun(o: option[T], fallback: T) -> T = match o
 {
-	some(v) => v
+	some(val v) => v
 	none => fallback
 }
 

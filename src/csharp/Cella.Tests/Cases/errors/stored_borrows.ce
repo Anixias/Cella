@@ -107,7 +107,7 @@ fill: fun(mut slot: Slot, other: str)
 {
 	match mut slot
 	{
-		held(text) => text = other
+		held(val text) => text = other
 		empty => {}
 	}
 }

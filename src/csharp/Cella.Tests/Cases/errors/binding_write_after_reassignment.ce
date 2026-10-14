@@ -18,7 +18,7 @@ Effect: enum
 	{
 		match mut self
 		{
-			hold(b) =>
+			hold(val b) =>
 			{
 				self = Effect.none
 				b = Buffer(3)
@@ -33,7 +33,7 @@ main: fun -> i32
 	var e = Effect.hold(Buffer(1))
 	match mut e
 	{
-		hold(b) =>
+		hold(val b) =>
 		{
 			e = Effect.none
 			b = Buffer(2)

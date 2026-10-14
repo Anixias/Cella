@@ -36,10 +36,10 @@ Error at line 82, column 6
 82 │ ret view
          ╘══╛ Cannot return borrows of local variables
 
-Error at line 90, column 23
+Error at line 90, column 27
 89 │ {
-90 │     hold(buffer) => ret buffer
-                             ╘════╛ Cannot return borrows of local variables
+90 │     hold(val buffer) => ret buffer
+                                 ╘════╛ Cannot return borrows of local variables
 
 Error at line 95, column 34
 94 │ 

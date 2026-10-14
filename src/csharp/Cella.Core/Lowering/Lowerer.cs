@@ -99,6 +99,7 @@ public sealed class Lowerer
 		private readonly LoweredFunction _function;
 		private readonly ConstantEvaluator _evaluator;
 		private readonly TypePool _typePool;
+		private readonly PatternCoverage _coverage;
 		private readonly Func<GlobalSymbol, GlobalInfo> _getGlobalInfo;
 		private readonly Stack<LoopContext> _loopStack = [];
 		private readonly Dictionary<LabelSymbol, LoopContext> _loopsByLabel = [];
@@ -122,6 +123,7 @@ public sealed class Lowerer
 			_function = function;
 			_evaluator = evaluator;
 			_typePool = typePool;
+			_coverage = new PatternCoverage(typePool, evaluator);
 			_getGlobalInfo = getGlobalInfo;
 			currentBlock = CreateBlock("entry");
 		}
@@ -449,7 +451,8 @@ public sealed class Lowerer
 		{
 			var scrutinee = value.Type is DynType ? LowerDynAddress(value) : LowerScrutinee(value);
 			var mergeBlock = CreateBlock("match_end");
-			var fallthrough = !arms.Any(static arm => arm.Patterns.IsEmpty) && IsExhaustive(value.Type, arms)
+			var fallthrough = !arms.Any(static arm => arm.Patterns.IsEmpty) && _coverage.Covers(value.Type,
+				arms.Where(static arm => arm.Guard is null).SelectMany(static arm => arm.Patterns))
 				? CreateBlock("match_unreachable")
 				: mergeBlock;
 			
@@ -518,39 +521,6 @@ public sealed class Lowerer
 			
 			currentBlock = null;
 			ContinueWith(mergeBlock);
-		}
-		
-		private bool IsExhaustive(TypeSymbol type, IReadOnlyList<LoweredArm> arms)
-		{
-			var patterns = arms.Where(static arm => arm.Guard is null).SelectMany(static arm => arm.Patterns).ToList();
-			if (patterns.Any(static pattern => pattern.IsIrrefutable))
-				return true;
-			
-			if (type is EnumSymbol { IsExternal: false } enumType)
-				return enumType.Cases.All(enumCase => patterns.Any(pattern =>
-					pattern is { Case: { } covered, IsConditional: false } &&
-					_typePool.GetCaseValue(enumType, covered) == _typePool.GetCaseValue(enumType, enumCase)));
-			
-			(BigInteger Min, BigInteger Max)? limits = type switch
-			{
-				IntegerType integer => _evaluator.GetLimits(integer),
-				_ when type == NativeSymbols.Bool => (BigInteger.Zero, BigInteger.One),
-				_ => null
-			};
-			
-			if (limits is not var (min, max))
-				return false;
-			
-			var next = min;
-			foreach (var (low, high) in patterns.SelectMany(static pattern => pattern.Spans).OrderBy(static s => s.Low))
-			{
-				if (low > next)
-					return false;
-				
-				next = BigInteger.Max(next, high + 1);
-			}
-			
-			return next > max;
 		}
 		
 		private bool LowerSwitch(Value scrutinee, IReadOnlyList<LoweredArm> arms, List<BasicBlock> armBlocks,

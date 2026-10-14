@@ -51,7 +51,7 @@ main: fun -> i32
 
 	for k in 0..3
 	{
-		if pick(k) is one(found)
+		if pick(k) is one(val found)
 			printf("found %d\n", found.id)
 	}
 

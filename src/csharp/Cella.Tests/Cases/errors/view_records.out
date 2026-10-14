@@ -16,10 +16,10 @@ Error at line 19, column 41
 19 │ itself: fun(mut self) -> mut[Window] = mut self
                                             ╘══════╛ Cannot return borrows of view records
 
-Error at line 30, column 30
+Error at line 30, column 38
 29 │ {
-30 │     from(items, start) => ret mut start
-                                   ╘═══════╛ Cannot return borrows of view records
+30 │     from(val items, val start) => ret mut start
+                                           ╘═══════╛ Cannot return borrows of view records
 
 Error at line 51, column 49
 50 │ 

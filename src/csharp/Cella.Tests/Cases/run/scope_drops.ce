@@ -51,7 +51,7 @@ unwrap: fun(own effect: Effect) -> i32
 {
 	ret match effect
 	{
-		owned(buffer) => buffer.id
+		owned(val buffer) => buffer.id
 		else => 0
 	}
 }
@@ -113,7 +113,7 @@ main: fun -> i32
 	make(1)
 	val n = match Effect.owned(make(4))
 	{
-		owned(b) => make(b.id + 1).id
+		owned(val b) => make(b.id + 1).id
 		else => 0
 	}
 

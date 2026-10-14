@@ -18,7 +18,7 @@ Cell: rec
 
 	value: fun(self) -> i32 = match self.slot
 	{
-		count(value) => value
+		count(val value) => value
 		empty => 0
 	}
 }

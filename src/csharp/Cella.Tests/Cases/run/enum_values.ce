@@ -63,8 +63,8 @@ Late: enum
 describe: fun(effect: Effect) -> i32 = match effect
 {
 	none => 0
-	hit(n) => n
-	heal(n) => -n
+	hit(val n) => n
+	heal(val n) => -n
 }
 
 flip: fun(team: Team) -> Team = match team { red => Team.blue  else => Team.red }
@@ -85,7 +85,7 @@ main: fun -> i32
 
 	val strike = Effect.strike(7)
 	printf("%d %d %d\n", describe(strike), describe(Effect.hit(3)), describe(Effect.heal(4)))
-	if strike is hit(amount)
+	if strike is hit(val amount)
 		printf("hit %d\n", amount)
 
 	var e: Result

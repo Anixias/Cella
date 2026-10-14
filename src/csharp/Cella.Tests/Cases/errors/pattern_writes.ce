@@ -10,7 +10,7 @@ make: fun -> Effect = Effect.hit(1)
 
 readOnly: fun(e: Effect)
 {
-	if mut e is hit(n)
+	if mut e is hit(val n)
 		n = 1
 }
 
@@ -19,7 +19,7 @@ main: fun -> i32
 	val fixed = Effect.hit(1)
 	match mut fixed
 	{
-		hit(n) => n += 1
+		hit(val n) => n += 1
 		else => {}
 	}
 
@@ -28,12 +28,12 @@ main: fun -> i32
 
 	match mut make()
 	{
-		hit(n) => n += 1
+		hit(val n) => n += 1
 		else => {}
 	}
 
 	var e = Effect.hit(1)
-	if e is hit(n)
+	if e is hit(val n)
 		n = 5
 
 	ret 0

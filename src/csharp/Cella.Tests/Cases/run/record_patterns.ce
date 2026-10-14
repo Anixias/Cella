@@ -21,17 +21,17 @@ Enemy: rec
 where: fun(p: Point) -> i32 = match p
 {
 	Point(x: 0, y: 0) => 0
-	Point(x: 0, y) => 100 + y
-	Point(x: > 10, y: py) => 200 + py
-	Point(x, y) => x * y
+	Point(x: 0, val y) => 100 + y
+	Point(x: > 10, y: val py) => 200 + py
+	Point(val x, val y) => x * y
 }
 
 state: fun(e: Enemy) -> i32 = match e
 {
 	Enemy(health: <= 0) => -1
-	Enemy(health: 1..20 hp, position: Point(x: 0)) => hp
-	Enemy(health: 1..20 hp, position) => hp * 1000 + position.x
-	Enemy(level: 5 l) => i32(l)
+	Enemy(health: 1..20 val hp, position: Point(x: 0)) => hp
+	Enemy(health: 1..20 val hp, val position) => hp * 1000 + position.x
+	Enemy(level: 5 val l) => i32(l)
 	else => 99
 }
 
@@ -39,9 +39,9 @@ Shot: enum { miss  hit(at: Point, damage: i32) }
 
 score: fun(s: Shot) -> i32 = match s
 {
-	hit(Point(x: 0), 1..10 d) => d
-	hit(Point(x, y) p, > 50) => p.x + p.y + x + y
-	hit(_, d) => -d
+	hit(Point(x: 0), 1..10 val d) => d
+	hit(Point(val x, val y) val p, > 50) => p.x + p.y + x + y
+	hit(_, val d) => -d
 	miss => 0
 }
 
@@ -67,8 +67,8 @@ Square: rec impl Shape
 size: fun(imm shape: dyn[Shape]) -> i32 = match shape
 {
 	Circle(radius: > 10.0) => 1
-	Circle(radius) => i32(radius)
-	s: Square => i32(s.side) * 100
+	Circle(val radius) => i32(radius)
+	Square s => i32(s.side) * 100
 	else => 0
 }
 
@@ -79,17 +79,24 @@ Box[T]: rec
 }
 
 Origin: val Point = Point(0, 3)
-Check: val i32 = match Origin { Point(x: 0, y) => y  else => 9 }
+Check: val i32 = match Origin { Point(x: 0, val y) => y  else => 9 }
+
+limited: fun(s: Shot, limit: i32) -> i32 = match s
+{
+	hit(_, limit) => 1
+	else => 0
+}
 
 main: fun -> i32
 {
 	printf("%d %d %d %d\n", where(Point(0, 0)), where(Point(0, 7)), where(Point(11, 3)), where(Point(2, 3)))
 	printf("%d %d %d %d %d\n", state(Enemy(0, Point(1, 1), 1)), state(Enemy(10, Point(0, 4), 1)), state(Enemy(10, Point(3, 4), 1)), state(Enemy(50, Point(3, 4), 5)), state(Enemy(50, Point(3, 4), 6)))
 	val e = Enemy(5, Point(2, 9), 3)
-	if e is Enemy(health: < 10, position: Point(y)) && y > 8
+	if e is Enemy(health: < 10, position: Point(val y)) && y > 8
 		printf("low %d\n", y)
 
 	printf("%d %d %d %d\n", score(Shot.hit(Point(0, 5), 7)), score(Shot.hit(Point(1, 2), 60)), score(Shot.hit(Point(1, 2), 3)), score(Shot.miss))
+	printf("%d %d\n", limited(Shot.hit(Point(0, 0), 4), 4), limited(Shot.hit(Point(0, 0), 5), 4))
 	val big = Circle(20.0)
 	val small = Circle(3.0)
 	val sq = Square(2.0)
@@ -97,7 +104,7 @@ main: fun -> i32
 	val b = Box[i32](7, 2)
 	val r = match b
 	{
-		Box(value: 7, count) => count
+		Box(value: 7, val count) => count
 		else => 0
 	}
 

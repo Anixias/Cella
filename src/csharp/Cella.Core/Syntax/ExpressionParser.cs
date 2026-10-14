@@ -138,6 +138,7 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 	
 	private static readonly HashSet<TokenType> _bindingModes =
 	[
+		TokenType.KeywordVal,
 		TokenType.KeywordMut,
 		TokenType.KeywordOwn,
 		TokenType.KeywordVar
@@ -262,9 +263,15 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 	
 	public ConditionParser? ParseWhenCondition { get; init; }
 	
-	public PatternNode ParsePattern(ref int index) => ParsePattern(ref index, true);
+	public PatternNode ParsePattern(ref int index)
+	{
+		var pattern = ParseUnboundPattern(ref index);
+		return !IsNextNewline(index) && Match(ref index, out var name, TokenType.Identifier)
+			? pattern.WithBinding(PatternNode.CreateBinding(null, name))
+			: pattern;
+	}
 	
-	private PatternNode ParsePattern(ref int index, bool allowsTypeBinding)
+	private PatternNode ParseUnboundPattern(ref int index)
 	{
 		if (StartsBorrowType(index))
 		{
@@ -276,8 +283,15 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 		if (Match(ref index, out var relation, _relationalPatternOps))
 			return PatternNode.CreateRelational(relation, ParseBitwiseOr(ref index));
 		
+		if (Peek(index, TokenType.KeywordDyn))
+		{
+			var dynToken = Tokens[index];
+			var dyn = ParseType(ref index);
+			return PatternNode.CreateType([], dynToken, dyn, dyn.SourceLocation);
+		}
+		
 		var start = index;
-		var named = TryParse(start, (ref i) => ParseNamedPattern(ref i, allowsTypeBinding), out var namedEnd);
+		var named = TryParse(start, ParseNamedPattern, out var namedEnd);
 		var value = TryParse(start, ParseBitwiseOr, out var valueEnd);
 		if (named is not null && (value is null || namedEnd >= valueEnd))
 		{
@@ -321,19 +335,11 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 		}
 	}
 	
-	private PatternNode ParseNamedPattern(ref int index, bool allowsTypeBinding)
+	private PatternNode ParseNamedPattern(ref int index)
 	{
 		var start = index;
 		if (!Match(ref index, out var first, TokenType.Identifier))
 			throw Expected(index, "a pattern");
-		
-		if (allowsTypeBinding && !IsNextNewline(index) && Match(ref index, TokenType.OpColon))
-		{
-			var type = ParseType(ref index);
-			var (bindingSource, bindingRange) = first.SourceLocation;
-			var location = new SourceLocation(bindingSource, bindingRange.Join(type.SourceLocation.Range));
-			return PatternNode.CreateType([], first, type, first, location);
-		}
 		
 		var names = new List<Token> { first };
 		while (!IsNextNewline(index) && Match(ref index, TokenType.OpDot))
@@ -356,7 +362,7 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 				throw new ParseException(new Diagnostic(DiagnosticSeverity.Error, type.SourceLocation,
 					"Cannot pass type arguments to cases"));
 			
-			return PatternNode.CreateType(typePath, caseName, type, null, type.SourceLocation);
+			return PatternNode.CreateType(typePath, caseName, type, type.SourceLocation);
 		}
 		
 		if (IsNextNewline(index) || !Match(ref index, out var openParen, TokenType.OpOpenParen))
@@ -391,10 +397,11 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 	private PatternNode ParseElementPattern(ref int index)
 	{
 		var probe = index;
-		if (Match(ref probe, _bindingModes) || EndsElement(index + 1) && Peek(index, TokenType.Identifier))
+		if (Match(ref probe, _bindingModes) ||
+		    Match(ref probe, out var name, TokenType.Identifier) && name.Text == "_" && EndsElement(probe))
 			return ParseBinding(ref index);
 		
-		var pattern = ParsePattern(ref index, false);
+		var pattern = ParseUnboundPattern(ref index);
 		return EndsElement(index) ? pattern : pattern.WithBinding(ParseBinding(ref index));
 	}
 	
@@ -408,6 +415,10 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 		
 		return PatternNode.CreateBinding(mode, name);
 	}
+	
+	private bool StartsArm(int index) =>
+		TryParse(index, (ref i) => ParseArmHead(ref i).Patterns, out var end) is not null &&
+		Peek(end, TokenType.OpFatArrow);
 	
 	public (List<PatternNode> Patterns, IExpressionNode? Guard, SourceLocation Location) ParseArmHead(ref int index)
 	{
@@ -802,11 +813,22 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 	private IExpressionNode ParseJump(ref int index, Token keyword)
 	{
 		var operandIndex = index;
-		var operand = IsNextNewline(index) || !CanStartExpression(index) ? null : ParseExpression(ref operandIndex);
-		if (operand is not null && Peek(operandIndex, TokenType.OpFatArrow))
-			operand = null;
-		else
+		var operand = IsNextNewline(index) || !CanStartExpression(index)
+			? null
+			: TryParse(index, ParseExpression, out operandIndex);
+		
+		if (operand is null
+			    ? !IsNextNewline(index) && CanStartExpression(index) && !StartsArm(index)
+			    : !Peek(operandIndex, TokenType.OpFatArrow))
+		{
+			operandIndex = index;
+			operand = ParseExpression(ref operandIndex);
 			index = operandIndex;
+		}
+		else
+		{
+			operand = null;
+		}
 		
 		var (source, range) = keyword.SourceLocation;
 		if (operand is not null)

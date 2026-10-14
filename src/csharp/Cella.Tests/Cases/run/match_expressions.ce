@@ -38,8 +38,8 @@ Mode: enum
 }
 
 mode: val Mode = Mode.slow(3)
-size: val i32 = match mode { fast => 4  slow(factor) => factor * 8 }
-table: val array[i32, match Mode.fast { fast => 2  slow(factor) => usize(factor) }] = [5, 6]
+size: val i32 = match mode { fast => 4  slow(val factor) => factor * 8 }
+table: val array[i32, match Mode.fast { fast => 2  slow(val factor) => usize(factor) }] = [5, 6]
 
 damage: fun(role: Role) -> i32 = match role
 {
@@ -52,19 +52,19 @@ power: fun(effect: Effect) -> i64
 	val value: i64 = match effect
 	{
 		none => 0
-		hit(n) => n * 2
-		heal(n, crit) => n * (1 + i32(crit))
+		hit(val n) => n * 2
+		heal(val n, val crit) => n * (1 + i32(crit))
 	}
 
 	ret value
 }
 
-area: fun(shape: Shape) -> i32 = match shape { dot => 0  box(w, h) => w * h }
+area: fun(shape: Shape) -> i32 = match shape { dot => 0  box(val w, val h) => w * h }
 
 total: fun(pair: Pair) -> i32 = match pair
 {
-	one(s) => area(s)
-	two(a, b) => match a { dot => 100  box(w, _) => w + area(b) }
+	one(val s) => area(s)
+	two(val a, val b) => match a { dot => 100  box(val w, _) => w + area(b) }
 }
 
 helper: fun(x: i32) -> i32 = x + 1
@@ -91,7 +91,7 @@ main: fun -> i32
 	while match role { fighter => false  else => count < 3 }
 		count += 1
 
-	val local = match Mode.slow(2) { fast => 1  slow(factor) => factor + 10 }
+	val local = match Mode.slow(2) { fast => 1  slow(val factor) => factor + 10 }
 	printf("%d %d %d %d %d\n", count, size, table[1], local, i32(sizeOf(table)))
 	ret 0
 }

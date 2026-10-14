@@ -29,7 +29,7 @@ rvalue: fun -> i32
 {
 	match make(1)
 	{
-		hold(buffer) => ret take(own buffer)
+		hold(val buffer) => ret take(own buffer)
 		else => ret 0
 	}
 }
@@ -39,7 +39,7 @@ moved: fun -> i32
 	val effect = Effect.pair(Buffer(2), Buffer(3))
 	match own effect
 	{
-		pair(first, _) => ret take(own first)
+		pair(val first, _) => ret take(own first)
 		else => ret 0
 	}
 }
@@ -72,14 +72,14 @@ copies: fun -> i32
 
 	match effect
 	{
-		count(n) => ret n
+		count(val n) => ret n
 		else => ret 0
 	}
 }
 
 condition: fun -> i32
 {
-	if make(6) is hold(buffer)
+	if make(6) is hold(val buffer)
 		ret take(own buffer)
 
 	ret 0
@@ -87,7 +87,7 @@ condition: fun -> i32
 
 value: fun -> i32 = match make(7)
 {
-	hold(buffer) => take(own buffer)
+	hold(val buffer) => take(own buffer)
 	else => 0
 }
 

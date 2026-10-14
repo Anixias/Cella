@@ -3,7 +3,7 @@
 
 Error at line 13, column 9
 12 │ {
-13 │     if mut e is hit(n)
+13 │     if mut e is hit(val n)
                 ^ Cannot mutably borrow read-only parameters
 
 Error at line 20, column 12
@@ -22,7 +22,7 @@ Error at line 29, column 12
                ╘════╛ Cannot mutably borrow unstored values
 
 Error at line 37, column 3
-36 │ if e is hit(n)
+36 │ if e is hit(val n)
 37 │     n = 5
          ^ Cannot reassign read-only pattern bindings
 

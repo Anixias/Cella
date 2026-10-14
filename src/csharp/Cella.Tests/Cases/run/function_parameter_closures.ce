@@ -76,7 +76,7 @@ twice: fun(f: fun[fun[i32], i32], visit: fun[i32])
 
 maybe: fun(callback: option[ref fun[i32]], value: i32)
 {
-	if callback is some(f)
+	if callback is some(val f)
 		f(value)
 }
 

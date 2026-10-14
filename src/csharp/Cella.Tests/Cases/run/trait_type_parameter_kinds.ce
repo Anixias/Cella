@@ -48,7 +48,7 @@ Repeat: rec impl Iterator[i32]
 drain: fun(mut items: dyn[Iterator[i32]]) -> i32
 {
 	var total = 0
-	while items.next() is some(value)
+	while items.next() is some(val value)
 		total += value
 
 	ret total
@@ -112,7 +112,7 @@ fixed[T: copy]: impl Iterable[T, cursor[T]]
 sum[I: Iterator[i32]]: fun(mut items: I) -> i32
 {
 	var total = 0
-	while items.next() is some(value)
+	while items.next() is some(val value)
 		total += value
 
 	ret total
@@ -133,7 +133,7 @@ wrap[I: Iterator[i32]]: impl
 {
 	take: fun(mut self) -> i32 = match self.inner.next()
 	{
-		some(value) => value
+		some(val value) => value
 		none => -1
 	}
 }

@@ -91,7 +91,7 @@ payload: fun(mut effect: Effect, mut fallback: Buffer) -> imm[Buffer]
 {
 	match effect
 	{
-		hold(buffer) => ret buffer
+		hold(val buffer) => ret buffer
 		none => ret fallback
 	}
 }

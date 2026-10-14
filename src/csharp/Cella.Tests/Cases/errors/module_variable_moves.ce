@@ -45,7 +45,7 @@ main: fun -> i32
 	match own slot
 	{
 		empty => {}
-		full(buffer) => take(buffer)
+		full(val buffer) => take(buffer)
 	}
 
 	val e: Buffer = Cache.kept

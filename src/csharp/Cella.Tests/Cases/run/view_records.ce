@@ -50,20 +50,20 @@ Window: ref enum
 
 	first: fun(mut self) -> imm[i32] = match self
 	{
-		whole(items) => imm items[0]
-		from(items, start) => imm items[start]
+		whole(val items) => imm items[0]
+		from(val items, val start) => imm items[start]
 	}
 
 	step: fun(mut self) -> imm[i32]
 	{
 		match mut self
 		{
-			from(items, start) =>
+			from(val items, val start) =>
 			{
 				start += 1
 				ret imm items[start - 1]
 			}
-			whole(items) => ret imm items[0]
+			whole(val items) => ret imm items[0]
 		}
 	}
 }

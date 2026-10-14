@@ -60,7 +60,7 @@ hits: fun(...effects: view[Effect]) -> i32
 	var total = 0
 	for i in 0..effects.length
 	{
-		if effects[i] is hit(n)
+		if effects[i] is hit(val n)
 			total += n
 	}
 

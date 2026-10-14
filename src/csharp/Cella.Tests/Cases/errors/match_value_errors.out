@@ -26,20 +26,20 @@ Error at line 34, column 2
 34 │ Five => 2
      ╘══╛ '5' and 'Five' are the same value
 
-Error at line 40, column 6
+Error at line 40, column 10
 39 │ {
-40 │     hit(n), pair(n, _) => n
-             ^ Cannot bind names in arms with several patterns
+40 │     hit(val n), pair(val n, _) => n
+                 ^ Cannot bind names in arms with several patterns
 
-Error at line 40, column 15
+Error at line 40, column 23
 39 │ {
-40 │     hit(n), pair(n, _) => n
-                      ^ Cannot bind names in arms with several patterns
+40 │     hit(val n), pair(val n, _) => n
+                              ^ Cannot bind names in arms with several patterns
 
-Error at line 46, column 7
+Error at line 46, column 11
 45 │ {
-46 │     full(b) if b.n > 0 => 1
-              ^ Cannot move values in arms with 'if'
+46 │     full(val b) if b.n > 0 => 1
+                  ^ Cannot move values in arms with 'if'
 
 Error at line 52, column 2
 51 │ {

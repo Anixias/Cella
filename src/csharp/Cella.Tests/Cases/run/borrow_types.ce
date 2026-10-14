@@ -114,7 +114,7 @@ main: fun -> i32
 	val e = imm effect
 	val amount = match e
 	{
-		hit(damage) => damage
+		hit(val damage) => damage
 		none => 0
 	}
 

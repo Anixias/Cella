@@ -19,7 +19,7 @@ writes: fun
 	val view = mut box.limit
 	match mut box.shape
 	{
-		dot(size) => size += 1
+		dot(val size) => size += 1
 	}
 
 	match box.shape

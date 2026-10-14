@@ -114,7 +114,7 @@ owned: fun
 	printf("-- owned\n")
 	match effect(50)
 	{
-		pair(first, _) => printf("took %d\n", take(own first))
+		pair(val first, _) => printf("took %d\n", take(own first))
 		else => {}
 	}
 

@@ -49,5 +49,5 @@ measure: fun(shape: Shape) -> i32 = match shape
 {
 	circle => 1
 	square => 2
-	rect(w, h) => w * h
+	rect(val w, val h) => w * h
 }

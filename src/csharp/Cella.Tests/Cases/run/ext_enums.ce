@@ -52,9 +52,9 @@ code: fun(result: VkResult) -> i32
 
 handle: ext fun(event: Event) -> i32 = match event
 {
-	keyDown(key, repeat) => key * 10 + i32(repeat)
-	keyUp(key, _) => -key
-	click(x, y) => x + y
+	keyDown(val key, val repeat) => key * 10 + i32(repeat)
+	keyUp(val key, _) => -key
+	click(val x, val y) => x + y
 	else => 0
 }
 

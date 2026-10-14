@@ -43,7 +43,6 @@ public sealed class PatternNode
 	public ImmutableArray<PatternNode> Elements { get; private init; } = [];
 	public bool HasParentheses { get; private init; }
 	public ITypeNode? Type { get; private init; }
-	public Token? TypeBinding { get; private init; }
 	public Token? Mode { get; private init; }
 	public IExpressionNode? Value { get; private init; }
 	public IExpressionNode? Upper { get; private init; }
@@ -62,13 +61,12 @@ public sealed class PatternNode
 		HasParentheses = hasParentheses
 	};
 	
-	public static PatternNode CreateType(IEnumerable<Token> typePath, Token caseName, ITypeNode? type,
-		Token? binding, SourceLocation sourceLocation) => new(PatternKind.Type, sourceLocation)
+	public static PatternNode CreateType(IEnumerable<Token> typePath, Token caseName, ITypeNode type,
+		SourceLocation sourceLocation) => new(PatternKind.Type, sourceLocation)
 	{
 		TypePath = [..typePath],
 		CaseName = caseName,
-		Type = type,
-		TypeBinding = binding
+		Type = type
 	};
 	
 	public static PatternNode CreateBinding(Token? mode, Token name)
@@ -122,7 +120,6 @@ public sealed class PatternNode
 			Elements = Elements,
 			HasParentheses = HasParentheses,
 			Type = Type,
-			TypeBinding = TypeBinding,
 			Mode = Mode,
 			Value = value,
 			Upper = Upper,

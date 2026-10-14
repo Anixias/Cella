@@ -15,7 +15,7 @@ Shape: enum
 	<: op(a: Shape, b: Shape) -> bool = area(a) < area(b)
 }
 
-area: fun(s: Shape) -> i32 = match s { circle(r) => 3 * r * r  square(side) => side * side  empty => 0 }
+area: fun(s: Shape) -> i32 = match s { circle(val r) => 3 * r * r  square(val side) => side * side  empty => 0 }
 
 Team: enum
 {

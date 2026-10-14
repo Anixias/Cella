@@ -16,7 +16,7 @@ main: fun -> i32
 {
 	var e: Event
 	val r = R()
-	printf("%d %d\n", match e { key(c) => c  closed => -1  else => -2 },
-		match r.e { key(c) => c  closed => -1  else => -2 })
+	printf("%d %d\n", match e { key(val c) => c  closed => -1  else => -2 },
+		match r.e { key(val c) => c  closed => -1  else => -2 })
 	ret 0
 }

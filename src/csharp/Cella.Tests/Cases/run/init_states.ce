@@ -169,8 +169,8 @@ matched: fun(imm effect: Effect) -> i32
 	val spare = make(7)
 	match effect
 	{
-		hold(buffer) => ret buffer.id
-		count(n) => ret n + take(own spare)
+		hold(val buffer) => ret buffer.id
+		count(val n) => ret n + take(own spare)
 		else => {}
 	}
 

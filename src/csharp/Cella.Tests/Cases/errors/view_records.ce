@@ -27,7 +27,7 @@ Range: ref enum
 	{
 		match mut self
 		{
-			from(items, start) => ret mut start
+			from(val items, val start) => ret mut start
 		}
 	}
 }

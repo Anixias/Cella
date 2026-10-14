@@ -59,9 +59,9 @@ describe: fun(effect: Effect)
 {
 	match effect
 	{
-		hit(amount) => printf("hit(%d) ", amount)
-		mend(amount, bonus) => printf("mend(%d, %d) ", amount, i32(bonus))
-		scale(factor) => printf("scale(%.2f) ", factor)
+		hit(val amount) => printf("hit(%d) ", amount)
+		mend(val amount, val bonus) => printf("mend(%d, %d) ", amount, i32(bonus))
+		scale(val factor) => printf("scale(%.2f) ", factor)
 		none => printf("none ")
 	}
 }
@@ -71,17 +71,17 @@ show: fun(outer: Outer)
 	match outer
 	{
 		nothing => printf("nothing\n")
-		wrap(inner, tag) =>
+		wrap(val inner, val tag) =>
 		{
 			match inner
 			{
 				empty => printf("wrap(empty, %d)\n", i32(tag))
-				value(n) => printf("wrap(value(%d), %d)\n", i32(n), i32(tag))
+				value(val n) => printf("wrap(value(%d), %d)\n", i32(n), i32(tag))
 			}
 		}
-		unit(u, extra) =>
+		unit(val u, val extra) =>
 		{
-			if u.inner is value(n) && u.hp > 10
+			if u.inner is value(val n) && u.hp > 10
 				printf("unit(%d, %d, %.1f)\n", u.hp, i32(n), f64(extra))
 		}
 	}
@@ -112,10 +112,10 @@ main: fun -> i32
 	show(Outer.wrap(Inner.empty, 1))
 
 	var effect = Effect.hit(9)
-	if effect is hit(n) && n > 5
+	if effect is hit(val n) && n > 5
 		printf("big hit %d\n", n)
 
-	if effect is mend(_, bonus)
+	if effect is mend(_, val bonus)
 		printf("mend %d\n", i32(bonus))
 	else
 		printf("not mend\n")
@@ -123,13 +123,13 @@ main: fun -> i32
 	if !(effect is hit(_)) || effect is none
 		printf("wrong\n")
 
-	val big = effect is hit(n) && n > 3
+	val big = effect is hit(val n) && n > 3
 	val either = effect is none || effect is scale(_)
 	printf("%d %d\n", i32(big), i32(either))
 
 	match effect
 	{
-		hit(n) =>
+		hit(val n) =>
 		{
 			effect = Effect.hit(50)
 			printf("copied %d, now ", n)
@@ -137,18 +137,18 @@ main: fun -> i32
 		else => printf("wrong\n")
 	}
 
-	if effect is hit(n)
+	if effect is hit(val n)
 		printf("%d\n", n)
 
 	match make(3)
 	{
-		hit(n) => printf("call %d\n", n)
+		hit(val n) => printf("call %d\n", n)
 		else => printf("wrong\n")
 	}
 
 	var box = Box(Effect.hit(8))
 	var pointer = @box
-	if (*pointer).effect is hit(n)
+	if (*pointer).effect is hit(val n)
 		printf("through a pointer %d\n", n)
 
 	var last = Node.end
@@ -156,7 +156,7 @@ main: fun -> i32
 	var first = Node.link(1, @middle)
 	var current = first
 	var total = 0
-	while current is link(value, next)
+	while current is link(val value, val next)
 	{
 		total += value
 		current = *next
@@ -171,9 +171,9 @@ main: fun -> i32
 	{
 		match items[i]
 		{
-			small(v) => sum += i32(v)
-			big(v) => sum += i32(v >> 120)
-			flags(first, second) => sum += i32(first) * 100 + i32(second) * 1000
+			small(val v) => sum += i32(v)
+			big(val v) => sum += i32(v >> 120)
+			flags(val first, val second) => sum += i32(first) * 100 + i32(second) * 1000
 		}
 
 		i += 1

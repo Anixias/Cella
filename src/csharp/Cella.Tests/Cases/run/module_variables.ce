@@ -68,10 +68,10 @@ main: fun -> i32
 	match mut team
 	{
 		red => {}
-		blue(score) => score += 1
+		blue(val score) => score += 1
 	}
 
-	if team is blue(score)
+	if team is blue(val score)
 		printf("%d\n", score)
 
 	running = !running

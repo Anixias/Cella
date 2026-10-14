@@ -22,7 +22,7 @@ main: fun -> i32
 	var e = Effect.hit(1)
 	match mut e
 	{
-		hit(n) =>
+		hit(val n) =>
 		{
 			n = 5
 			printf("%d\n", n)
@@ -34,7 +34,7 @@ main: fun -> i32
 	var b = Box(Effect.hit(2), 3)
 	match mut b.e
 	{
-		hit(n) =>
+		hit(val n) =>
 		{
 			b.k = 4
 			printf("%d %d\n", n, b.k)

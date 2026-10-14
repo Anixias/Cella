@@ -19,7 +19,7 @@ option[T]: enum
 
 read: fun(o: option[i32]) -> i32 = match o
 {
-	some(v) => v
+	some(val v) => v
 	none => -1
 }
 
@@ -31,7 +31,7 @@ Reader: rec
 
 	read: fun(self, o: option[i64]) -> i64 = match o
 	{
-		some(v) => v
+		some(val v) => v
 		none => -2
 	}
 }

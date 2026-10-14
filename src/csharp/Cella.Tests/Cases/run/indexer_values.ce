@@ -89,17 +89,17 @@ main: fun -> i32
 	var shapes = Shapes([Shape.circle(2), Shape.square(3)])
 	match mut shapes[0]
 	{
-		circle(radius) => radius += 5
-		square(side) => side += 1
+		circle(val radius) => radius += 5
+		square(val side) => side += 1
 	}
 
 	val size = match shapes[0]
 	{
-		circle(radius) => radius
-		square(side) => side
+		circle(val radius) => radius
+		square(val side) => side
 	}
 
-	if shapes[1] is square(side)
+	if shapes[1] is square(val side)
 		printf("%d %d\n", size, side)
 
 	val squares = Squares()

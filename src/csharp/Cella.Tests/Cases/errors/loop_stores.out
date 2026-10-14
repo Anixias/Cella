@@ -16,9 +16,9 @@ Error at line 31, column 14
 31 │     words[0] = other
                     ╘═══╛ Cannot store new borrows in 'mut' parameters
 
-Error at line 42, column 19
+Error at line 42, column 23
 41 │ {
-42 │     text(s) => s = other
-                        ╘═══╛ Cannot store new borrows in 'mut' parameters
+42 │     text(val s) => s = other
+                            ╘═══╛ Cannot store new borrows in 'mut' parameters
 
 [compilation failed]

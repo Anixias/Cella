@@ -28,8 +28,14 @@ typed: fun -> i32
 
 bound: fun -> i32 = match 5
 {
-	1..10 n => n
+	1..10 val n => n
 	else => 0
+}
+
+typedWithVal: fun(imm shape: dyn[Shape]) -> f32 = match shape
+{
+	Circle val c => c.radius
+	else => 0.0
 }
 
 main: fun -> i32 = 0

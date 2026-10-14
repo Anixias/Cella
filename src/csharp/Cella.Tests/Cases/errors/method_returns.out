@@ -42,7 +42,7 @@ Error at line 70, column 36
                                        ╘════════╛ Cannot return borrows of 'own' parameters
 
 Error at line 83, column 17
-82 │ held(buffer) => ret buffer
+82 │ held(val buffer) => ret buffer
 83 │ empty => ret fallback
                   ╘══════╛ Cannot return borrows of parameters other than 'self'
 

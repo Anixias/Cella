@@ -32,7 +32,7 @@ main: fun -> i32
 
 	val picked = match Choice.some(Slot(5))
 	{
-		some(s) => s.n
+		some(val s) => s.n
 		none => 0
 	}
 

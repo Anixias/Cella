@@ -50,7 +50,7 @@ option[T: Eq]: impl
 {
 	contains: fun(imm self, imm value: T) -> bool = match self
 	{
-		some(v) => v == value
+		some(val v) => v == value
 		none => false
 	}
 }

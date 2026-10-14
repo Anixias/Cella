@@ -20,7 +20,7 @@ describe: fun(shape: geometry.Shape) -> i32 = match shape
 {
 	geometry.Shape.circle => 1
 	square => 2
-	rect(w, _) => w
+	rect(val w, _) => w
 }
 
 helper: fun -> i32 = 99
@@ -46,7 +46,7 @@ main: fun -> i32
 		i32(sizeOf(array[geometry.Point, 2])))
 
 	val shape = geometry.Shape.rect(3, 4)
-	if shape is geometry.Shape.rect(w, h)
+	if shape is geometry.Shape.rect(val w, val h)
 		printf("%d %d %d %d\n", w, h, geometry.measure(shape), describe(geometry.Shape.square))
 
 	val code = geometry.Code(7)

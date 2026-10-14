@@ -38,8 +38,8 @@ bindings: fun(imm effect: Effect) -> i32
 {
 	match effect
 	{
-		hold(buffer) => ret take(buffer)
-		count(n) => ret takeNumber(own n)
+		hold(val buffer) => ret take(buffer)
+		count(val n) => ret takeNumber(own n)
 		else => ret 0
 	}
 }
@@ -48,7 +48,7 @@ mutBindings: fun(mut effect: Effect) -> i32
 {
 	match mut effect
 	{
-		hold(buffer) => ret take(buffer)
+		hold(val buffer) => ret take(buffer)
 		else => ret 0
 	}
 }

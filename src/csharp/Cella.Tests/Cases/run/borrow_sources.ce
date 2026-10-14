@@ -81,7 +81,7 @@ main: fun -> i32
 	var other = Effect.none
 	match e
 	{
-		hold(buffer) =>
+		hold(val buffer) =>
 		{
 			other = Effect.hold(Buffer(5))
 			printf("%d ", buffer.id)

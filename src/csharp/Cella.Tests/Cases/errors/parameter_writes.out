@@ -52,7 +52,7 @@ Error at line 48, column 13
                 ╘═══╛ Cannot mutably borrow values
 
 Error at line 51, column 14
-50 │ if effect is hit(n)
+50 │ if effect is hit(val n)
 51 │     damage(mut n, 1)
                     ^ Cannot mutably borrow read-only pattern bindings
 

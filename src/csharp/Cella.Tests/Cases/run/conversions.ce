@@ -93,8 +93,8 @@ log: fun(arg: Arg)
 {
 	match arg
 	{
-		int(value) => printf("int %lld\n", value)
-		text(value) => printf("text %.*s\n", i32(value.byteLength), value.data)
+		int(val value) => printf("int %lld\n", value)
+		text(val value) => printf("text %.*s\n", i32(value.byteLength), value.data)
 	}
 }
 

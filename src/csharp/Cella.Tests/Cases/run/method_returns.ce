@@ -70,8 +70,8 @@ Slot: enum
 
 	buffer: fun(imm self) -> imm[Buffer] = match self
 	{
-		small(buffer) => buffer
-		large(buffer, extra) => buffer
+		small(val buffer) => buffer
+		large(val buffer, val extra) => buffer
 	}
 }
 

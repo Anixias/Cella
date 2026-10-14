@@ -159,7 +159,7 @@ main: fun -> i32
 	var numbers = [10, 20, 30]
 	numbers[pick()] = compute()
 	printf("| index\n")
-	numbers[pick()] = match effect() { hit(n) => compute()  none => 0 }
+	numbers[pick()] = match effect() { hit(val n) => compute()  none => 0 }
 	printf("| index from match\n")
 	numbers[pick()] += compute()
 	printf("= %d | index +=\n", numbers[1])
@@ -174,7 +174,7 @@ main: fun -> i32
 	printf("| nested []\n")
 	grid[pick()][second()] += compute()
 	printf("= %d | nested [] +=\n", grid.rows[1].values[2])
-	grid[pick()][match effect() { hit(n) => usize(n)  none => 0 }] = compute()
+	grid[pick()][match effect() { hit(val n) => usize(n)  none => 0 }] = compute()
 	printf("| nested [] with a branching index\n")
 	printf("%d | as a value\n", grid[pick()][second()] = compute())
 	grid[0][0] = reset(mut grid)

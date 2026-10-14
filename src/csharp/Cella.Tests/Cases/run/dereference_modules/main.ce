@@ -12,7 +12,7 @@ main: fun -> i32
 	var boxed = pointers.SlotBox(pointers.Slot.count(4))
 	match mut boxed.slot
 	{
-		count(value) => value += 1
+		count(val value) => value += 1
 		empty => {}
 	}
 

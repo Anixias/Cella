@@ -10,8 +10,8 @@ Hit: enum { miss  hit(amount: i32) }
 score: fun(h: Hit) -> i32 = match h
 {
 	hit(0) => 1
-	hit(n) if n > 10 => 2
-	hit(n) => 3
+	hit(val n) if n > 10 => 2
+	hit(val n) => 3
 	miss => 0
 }
 
@@ -20,7 +20,7 @@ option[T]: enum { none  some(value: T) }
 depth: fun(o: option[option[i32]]) -> i32 = match o
 {
 	some(some(1..10)) => 3
-	some(some(v)) => v
+	some(some(val v)) => v
 	some(none) => 1
 	none => 0
 }

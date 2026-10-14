@@ -137,12 +137,12 @@ main: fun -> i32
 	var holder = Holder.held(Counter(20))
 	match mut holder
 	{
-		held(inner) => inner.bump()
+		held(val inner) => inner.bump()
 		none => {}
 	}
 	match holder
 	{
-		held(inner) => printf("%d ", inner.get())
+		held(val inner) => printf("%d ", inner.get())
 		none => {}
 	}
 

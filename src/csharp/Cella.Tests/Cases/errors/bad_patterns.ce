@@ -31,21 +31,21 @@ main: fun -> i32
 	var b = team is green
 	var c = effect is hit
 	var d = team is red()
-	var e = effect is hit(x, y)
-	var f = effect is both(z, z)
-	var g = effect is hit(w) && effect is both(w, _)
+	var e = effect is hit(val x, val y)
+	var f = effect is both(val z, val z)
+	var g = effect is hit(val w) && effect is both(val w, _)
 	var h = effect is Role.fighter
 	var i = effect is Tem.hit(_)
 
-	if effect is hit(n)
+	if effect is hit(val n)
 		printf("%d\n", n)
 	else
 		printf("%d\n", n)
 
-	if effect is hit(m) || m > 3
+	if effect is hit(val m) || m > 3
 		printf("%d\n", m)
 
-	if missing is hit(o)
+	if missing is hit(val o)
 		printf("%d\n", o)
 
 	match 5

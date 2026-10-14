@@ -29,7 +29,7 @@ main: fun -> i32
 	var v = Value.pointer(@target)
 	match mut v
 	{
-		pointer(p) =>
+		pointer(val p) =>
 		{
 			v = Value.num(77)
 			printf("%d\n", *p)
@@ -46,7 +46,7 @@ main: fun -> i32
 
 	val r: mut[i32] = match mut e
 	{
-		hit(n) => mut n
+		hit(val n) => mut n
 		none => ret 0
 	}
 
@@ -56,7 +56,7 @@ main: fun -> i32
 	val m = mut e
 	match mut e
 	{
-		hit(n) =>
+		hit(val n) =>
 		{
 			m = Effect.none
 			printf("%d\n", n)
@@ -67,7 +67,7 @@ main: fun -> i32
 	var b = Box(Effect.hit(1), 2)
 	match mut b.e
 	{
-		hit(n) =>
+		hit(val n) =>
 		{
 			b = Box(Effect.none, 4)
 			printf("%d\n", n)

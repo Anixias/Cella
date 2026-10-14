@@ -105,7 +105,7 @@ nested: fun
 	val slot = Slot[2].full([8, 9])
 	val second = match slot
 	{
-		full(values) => values[1]
+		full(val values) => values[1]
 		empty => 0
 	}
 

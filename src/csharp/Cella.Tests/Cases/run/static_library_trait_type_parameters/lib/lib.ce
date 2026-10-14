@@ -53,7 +53,7 @@ sum[T: Num + noref, I: Iterator[T]]: pub fun(mut items: I) -> T
 	{
 		match items.next()
 		{
-			some(value) => total = total + value
+			some(val value) => total = total + value
 			none => ret total
 		}
 	}

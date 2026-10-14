@@ -60,7 +60,7 @@ pick: fun(n: i32) -> i32
 
 unwrap: fun(choice: Choice) -> i32 = match choice
 {
-	some(value) => value
+	some(val value) => value
 	none => relay("unwrap of none")
 }
 

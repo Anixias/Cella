@@ -24,16 +24,16 @@ touch: fun(mut buffer: Buffer)
 main: fun -> i32
 {
 	var effect = Effect.hit(1)
-	if effect is hit(n)
+	if effect is hit(val n)
 		n = 2
 
 	match effect
 	{
-		many(values) =>
+		many(val values) =>
 		{
 			values[0] = 3
 		}
-		hold(buffer) =>
+		hold(val buffer) =>
 		{
 			buffer.id = 4
 			buffer = Buffer(5)
@@ -44,7 +44,7 @@ main: fun -> i32
 
 	match Effect.hold(Buffer(6))
 	{
-		hold(owned) => owned.id = 7
+		hold(val owned) => owned.id = 7
 		else => {}
 	}
 

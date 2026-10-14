@@ -21,7 +21,7 @@ wrap[T: null]: fun(own value: T) -> nullable[T] = some(value)
 
 unwrap[T: null]: fun(imm n: nullable[T]) -> T = T(n)
 
-describe: fun(s: socket) -> i32 = match s { valid(h) => h }
+describe: fun(s: socket) -> i32 = match s { valid(val h) => h }
 
 main: fun -> i32
 {
@@ -30,7 +30,7 @@ main: fun -> i32
 	var s = socket(3)
 	match mut s
 	{
-		valid(h) => h = 4
+		valid(val h) => h = 4
 		invalid => s = invalid
 	}
 

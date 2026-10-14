@@ -41,10 +41,10 @@ Error at line 103, column 16
 103 │ target.text = other
                     ╘═══╛ Cannot store new borrows in 'mut' parameters
 
-Error at line 110, column 24
+Error at line 110, column 28
 109 │ {
-110 │     held(text) => text = other
-                               ╘═══╛ Cannot store new borrows in 'mut' parameters
+110 │     held(val text) => text = other
+                                   ╘═══╛ Cannot store new borrows in 'mut' parameters
 
 Error at line 117, column 16
 116 │ {

@@ -33,7 +33,7 @@ Triangle: rec impl Shape
 
 kind: fun(imm shape: dyn[Shape]) -> i32
 {
-	if shape is circle: Circle
+	if shape is Circle circle
 		ret i32(circle.radius) * 10
 
 	if shape is Square
@@ -44,7 +44,7 @@ kind: fun(imm shape: dyn[Shape]) -> i32
 
 name: fun(imm shape: dyn[Shape]) -> i32 = match shape
 {
-	c: Circle => 100 + i32(c.radius)
+	Circle c => 100 + i32(c.radius)
 	Square => 200
 	else => 300
 }
@@ -53,12 +53,12 @@ stretch: fun(mut shape: dyn[Shape])
 {
 	match mut shape
 	{
-		circle: Circle => circle.radius *= 2.0
-		square: Square => square.side += 1.0
+		Circle circle => circle.radius *= 2.0
+		Square square => square.side += 1.0
 		else => {}
 	}
 
-	if mut shape is t: Triangle
+	if mut shape is Triangle t
 		t.base = 99.0
 }
 

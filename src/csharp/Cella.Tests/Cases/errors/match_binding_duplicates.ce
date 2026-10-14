@@ -40,7 +40,7 @@ make: fun -> R = R(Effect.d(Buffer(1)))
 uninitialized: fun -> i32
 {
 	var r: result[i32, i32]
-	ret match r { ok(v) => v  err(e) => e }
+	ret match r { ok(val v) => v  err(val e) => e }
 }
 
 moved: fun
@@ -49,7 +49,7 @@ moved: fun
 	val taken = own e
 	match e
 	{
-		hold(b) => printf("%d\n", b.id)
+		hold(val b) => printf("%d\n", b.id)
 		none => {}
 	}
 }
@@ -65,7 +65,7 @@ dangling: fun
 
 	match n
 	{
-		some(v) => printf("%d\n", v)
+		some(val v) => printf("%d\n", v)
 		none => printf("none\n")
 	}
 }
@@ -74,7 +74,7 @@ destructorField: fun
 {
 	match make().e
 	{
-		d(b) => printf("%d\n", b.id)
+		d(val b) => printf("%d\n", b.id)
 		none => {}
 	}
 }

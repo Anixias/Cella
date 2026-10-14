@@ -26,7 +26,7 @@ main: fun -> i32
 	bump(mut s)
 	printf("%.1f %.1f %.1f %.1f\n", lib.describe(imm c), lib.describe(imm s), lib.erase(imm c), lib.erase(imm s))
 	printf("%d %d\n", i32(lib.isCircle(imm c)), i32(lib.isCircle(imm s)))
-	if dyn[lib.Shape](c) is circle: lib.Circle
+	if dyn[lib.Shape](c) is lib.Circle circle
 		printf("%.1f\n", circle.radius)
 
 	ret 0

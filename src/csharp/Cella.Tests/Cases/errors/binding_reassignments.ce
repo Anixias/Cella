@@ -73,7 +73,7 @@ matches: fun
 	var slot = Slot.full(TextureBox(Texture(7)))
 	match mut slot
 	{
-		full(box) =>
+		full(val box) =>
 		{
 			val inside = *box
 			box = TextureBox(Texture(8))
@@ -90,7 +90,7 @@ payloads: fun
 	{
 		match mut slot
 		{
-			full(box) =>
+			full(val box) =>
 			{
 				slot = Slot.empty
 				printf("%d\n", box.id)

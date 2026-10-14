@@ -39,7 +39,7 @@ main: fun -> i32
 	val restored = signal(2, none)
 	signal(2, some(onSignal))
 	raise(2)
-	val restoredIsOurs = match restored { some(f) => ptr(f) == ptr(onSignal)  none => false }
+	val restoredIsOurs = match restored { some(val f) => ptr(f) == ptr(onSignal)  none => false }
 	printf("%d %d %d\n", caught, i32(previous is none), i32(restoredIsOurs))
 
 	val handlers = Handlers()
@@ -47,7 +47,7 @@ main: fun -> i32
 
 	val rest = strchr("hello", 108)
 	val missing = strchr("hello", 122)
-	printf("%s %d\n", match rest { some(s) => s  none => "?" }, i32(cstr(missing) == null))
+	printf("%s %d\n", match rest { some(val s) => s  none => "?" }, i32(cstr(missing) == null))
 
 	val unset = getenv("CELLA_TEST_UNSET_VARIABLE")
 	printf("%d\n", i32(unset is absent))

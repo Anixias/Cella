@@ -94,7 +94,7 @@ clear: fun(mut slot: Slot)
 {
 	match mut slot
 	{
-		held(text) => text = "cleared"
+		held(val text) => text = "cleared"
 		empty => {}
 	}
 }
@@ -145,7 +145,7 @@ main: fun -> i32
 	clear(mut slot)
 	match slot
 	{
-		held(text) => show(text)
+		held(val text) => show(text)
 		empty => {}
 	}
 

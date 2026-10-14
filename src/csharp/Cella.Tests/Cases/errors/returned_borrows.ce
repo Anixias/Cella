@@ -87,7 +87,7 @@ returnBinding: fun(mut fallback: Buffer) -> imm[Buffer]
 	val effect = Effect.hold(Buffer(1))
 	match effect
 	{
-		hold(buffer) => ret buffer
+		hold(val buffer) => ret buffer
 		none => ret fallback
 	}
 }

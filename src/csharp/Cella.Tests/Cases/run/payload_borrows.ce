@@ -38,8 +38,8 @@ describe: fun(imm effect: Effect) -> i32
 {
 	match effect
 	{
-		hold(buffer) => ret show(imm buffer) + buffer.id
-		count(n) => ret n
+		hold(val buffer) => ret show(imm buffer) + buffer.id
+		count(val n) => ret n
 		else => ret 0
 	}
 }
@@ -48,11 +48,11 @@ unwrap: fun(imm outer: Outer) -> i32
 {
 	match outer
 	{
-		nested(inner) =>
+		nested(val inner) =>
 		{
 			match inner
 			{
-				hold(buffer) => ret 100 + buffer.id
+				hold(val buffer) => ret 100 + buffer.id
 				else => ret -1
 			}
 		}
@@ -66,7 +66,7 @@ aliased: fun -> i32
 	val pointer = @effect
 	match effect
 	{
-		hold(buffer) =>
+		hold(val buffer) =>
 		{
 			*pointer = Effect.hold(Buffer(2))
 			ret buffer.id
@@ -81,7 +81,7 @@ copied: fun -> i32
 	val pointer = @effect
 	match effect
 	{
-		count(n) =>
+		count(val n) =>
 		{
 			*pointer = Effect.count(2)
 			ret n
@@ -94,7 +94,7 @@ main: fun -> i32
 {
 	val holder = Holder(Outer.nested(Effect.hold(Buffer(7))))
 	var total = 0
-	if holder.outer is nested(inner)
+	if holder.outer is nested(val inner)
 		total = describe(imm inner)
 
 	printf("%d %d %d %d\n", describe(Effect.hold(Buffer(3))), unwrap(imm holder.outer), total, describe(Effect.count(4)))

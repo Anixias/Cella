@@ -54,10 +54,10 @@ describe: fun(imm shape: dyn[Shape]) -> f64
 	val copy: dyn[Shape] = shape
 	val n = sizeOf(dyn[Shape])
 	val items = [shape]
-	if shape is p: Plain
+	if shape is Plain p
 		ret 1.0
 
-	if shape is d: dyn[Shape]
+	if shape is dyn[Shape] d
 		ret 2.0
 
 	ret 0.0
@@ -78,7 +78,7 @@ main: fun -> i32
 	match dyn[Shape](c)
 	{
 		Circle => {}
-		x: Circle => {}
+		Circle x => {}
 		else => {}
 	}
 

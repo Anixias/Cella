@@ -129,7 +129,7 @@ main: fun -> i32
 	val maybe = Maybe.some(Text(4))
 	match maybe
 	{
-		some(t) => printf("%d\n", call(fun = t.id))
+		some(val t) => printf("%d\n", call(fun = t.id))
 		none => printf("none\n")
 	}
 

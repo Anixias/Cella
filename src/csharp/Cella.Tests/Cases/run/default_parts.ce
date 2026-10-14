@@ -44,7 +44,7 @@ negate: fun(n: i32) -> i32 = -n
 
 amount: fun(effect: Effect) -> i32 = match effect
 {
-	hit(n) => n
+	hit(val n) => n
 	none => 0
 }
 

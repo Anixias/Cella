@@ -25,6 +25,6 @@ total: pub fun(b: box[i64]) -> i64 = b.value
 
 pick: pub fun(o: option[box[i64]]) -> i64 = match o
 {
-	some(b) => b.value
+	some(val b) => b.value
 	none => -1
 }
