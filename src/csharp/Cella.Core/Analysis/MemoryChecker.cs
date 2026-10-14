@@ -291,7 +291,8 @@ public sealed class MemoryChecker(TypePool typePool, DiagnosticList diagnostics)
 				
 				foreach (var predecessor in block.GetPredecessors())
 				{
-					if (exitStates.TryGetValue(predecessor, out var exitState))
+					if (CfgUtils.GetSuccessors(predecessor).Contains(block) &&
+					    exitStates.TryGetValue(predecessor, out var exitState))
 						state.JoinWith(exitState);
 				}
 				

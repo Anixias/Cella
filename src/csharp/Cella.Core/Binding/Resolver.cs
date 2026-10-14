@@ -2136,6 +2136,8 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	private static string JoinNames(IEnumerable<TypeSymbol> types) =>
 		DiagnosticReporter.JoinNames([..types.Select(static type => type.Name)]);
 	
+	private static readonly string[] _literalKeywords = ["true", "false", "null"];
+	
 	private static bool IsShift(TokenType op) => op is TokenType.OpLessLess or TokenType.OpGreaterGreater or
 		TokenType.OpLessLessLess or TokenType.OpGreaterGreaterGreater;
 	
@@ -3787,7 +3789,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		CurrentResolutionContext.ReportHidden(name, node.SourceLocation) ??
 		ReportHiddenStatic(name, node.SourceLocation) ??
 		ReportMisplacedName(node.SourceLocation, name) ??
-		DiagnosticReporter.ReportUndefinedSymbol(node, name, GetVisibleSymbolNames());
+		DiagnosticReporter.ReportUndefinedSymbol(node, name, GetVisibleSymbolNames().Concat(_literalKeywords));
 	
 	private Diagnostic? ReportMisplacedName(SourceLocation location, string name)
 	{
@@ -3831,7 +3833,18 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		: DescribeAbsentMember(type, name);
 	
 	private DiagnosticText DescribeAbsentMember(TypeSymbol type, string name) =>
-		_typePool.FindBlockViolation(type, name) ?? $"Type '{type.Name}' has no member '{name}'";
+		_typePool.FindBlockViolation(type, name) ?? new DiagnosticText($"Type '{type.Name}' has no member '{name}'",
+			DiagnosticReporter.FindSuggestion(name, GetMemberNames(type)));
+	
+	private IEnumerable<string> GetMemberNames(TypeSymbol type) =>
+		(type is RecordSymbol record ? record.Members.Select(static member => member.Name) : [])
+		.Concat(type.OriginalDefinition is NamedTypeSymbol named
+			? named.Properties.Select(static property => property.Name)
+			: [])
+		.Concat(_typePool.GetMemberBlocks(type.OriginalDefinition)
+			.SelectMany(static block => block.Functions.Select(static method => method.Name)
+				.Concat(block.Properties.Select(static property => property.Name))))
+		.Distinct();
 	
 	private MethodSymbol[] FindStatics(TypeSymbol type, string name) =>
 		[..FindFunctions(type, name).Where(static function => !function.HasReceiver)];

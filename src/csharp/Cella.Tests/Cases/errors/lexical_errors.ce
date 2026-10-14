@@ -1,0 +1,12 @@
+mod test
+
+a: val i32 = 5 $
+b: val i32 = 6 $
+
+main: fun -> i32
+{
+	val c = 0xZZ
+	val d = 0b2
+	val e = "\q"
+	ret 0
+}

@@ -262,7 +262,14 @@ public readonly struct ResolutionContext
 			
 			case null:
 				Diagnostics.Add(ReportHidden(text, location) ??
-				                new(DiagnosticSeverity.Error, location, $"Trait '{text}' not found in this scope"));
+				                new(DiagnosticSeverity.Error, location, $"Trait '{text}' not found in this scope")
+				                {
+					                Hints = DiagnosticReporter.FindSuggestion(text,
+							                GetAllSymbols().OfType<TraitSymbol>().Select(static trait => trait.Name)) is
+						                { } hint
+						                ? [hint]
+						                : []
+				                });
 				
 				return null;
 			

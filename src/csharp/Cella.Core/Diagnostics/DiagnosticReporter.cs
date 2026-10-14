@@ -170,10 +170,14 @@ public static class DiagnosticReporter
 			new Diagnostic(DiagnosticSeverity.Error, identifier.SourceLocation, describe(sameName.Key))));
 	
 	private static Diagnostic ReportUndefined(SourceLocation location, string message, string missingName,
-		IEnumerable<string> availableNames)
+		IEnumerable<string> availableNames) =>
+		new(DiagnosticSeverity.Error, location, message)
+		{
+			Hints = FindSuggestion(missingName, availableNames) is { } hint ? [hint] : []
+		};
+	
+	public static string? FindSuggestion(string missingName, IEnumerable<string> availableNames)
 	{
-		var hints = new List<string>();
-		
 		string? bestMatch = null;
 		var bestDistance = int.MaxValue;
 		
@@ -181,7 +185,7 @@ public static class DiagnosticReporter
 		{
 			foreach (var name in availableNames)
 			{
-				if (Math.Abs(name.Length - missingName.Length) > 3)
+				if (Math.Abs(name.Length - missingName.Length) > 3 || name == missingName)
 					continue;
 				
 				var distance = string.Equals(name, missingName, StringComparison.OrdinalIgnoreCase)
@@ -203,19 +207,7 @@ public static class DiagnosticReporter
 			}
 		}
 		
-		if (bestMatch is null)
-		{
-			// TODO Check for missing imports?
-		}
-		else
-		{
-			hints.Add($"Did you mean '{bestMatch}'?");
-		}
-		
-		return new Diagnostic(DiagnosticSeverity.Error, location, message)
-		{
-			Hints = hints.ToImmutableArray()
-		};
+		return bestMatch is null ? null : $"Did you mean '{bestMatch}'?";
 	}
 	
 	private static bool HasExactBinary(OperatorRegistry registry, TypeSymbol left, TokenType op,

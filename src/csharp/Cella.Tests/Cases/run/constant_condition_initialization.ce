@@ -1,0 +1,52 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+B: rec
+{
+	id: i32
+	drop: op { printf("drop %d\n", self.id) }
+}
+
+P: rec
+{
+	x: req i32
+
+	new: op(v: i32)
+	{
+		while true
+		{
+			self.x = v
+			break
+		}
+	}
+}
+
+take: fun(own b: B) {}
+
+main: fun -> i32
+{
+	val x: i32
+	while true
+	{
+		x = 3
+		break
+	}
+
+	val y: i32
+	if true
+	{
+		y = 4
+	}
+
+	val b = B(1)
+	if false
+		take(own b)
+
+	val p = P(5)
+	printf("%d %d %d %d\n", x, y, b.id, p.x)
+	ret 0
+}

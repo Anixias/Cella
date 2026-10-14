@@ -112,6 +112,23 @@ public sealed class FileParser
 	
 	public override FileNode? Parse(ref int index)
 	{
+		var file = ParseFile(ref index);
+		ReportLexicalErrors();
+		return file;
+	}
+	
+	private void ReportLexicalErrors()
+	{
+		var reported = Diagnostics.Select(static d => (d.SourceLocation, d.Message)).ToHashSet();
+		foreach (var token in Tokens)
+		{
+			if (token.Error is { } error && reported.Add((token.SourceLocation, error)))
+				Diagnostics.Add(new(DiagnosticSeverity.Error, token.SourceLocation, error));
+		}
+	}
+	
+	private FileNode? ParseFile(ref int index)
+	{
 		// Setup
 		var (source, range) = Tokens[0].SourceLocation;
 		
@@ -745,7 +762,11 @@ public sealed class FileParser
 		if (flags.TryGetValue(name.Text, out var flag))
 			return flag;
 		
-		Report(name, $"Flag '{name.Text}' not found");
+		Diagnostics.Add(new(DiagnosticSeverity.Error, name.SourceLocation, $"Flag '{name.Text}' not found")
+		{
+			Hints = DiagnosticReporter.FindSuggestion(name.Text, flags.Keys) is { } hint ? [hint] : []
+		});
+		
 		return false;
 	}
 	

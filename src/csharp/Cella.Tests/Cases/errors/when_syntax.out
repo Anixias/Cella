@@ -5,6 +5,7 @@ Error at line 2, column 10
 1 │ mod test
 2 │ use when windws
              ╘════╛ Flag 'windws' not found
+                  | Did you mean 'windows'?
 
 Error at line 4, column 12
 3 │ 

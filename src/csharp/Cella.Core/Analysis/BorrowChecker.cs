@@ -178,7 +178,8 @@ public sealed class BorrowChecker
 				var state = block == function.Blocks[0] ? initialState.Copy() : new BorrowState();
 				foreach (var predecessor in block.GetPredecessors())
 				{
-					if (exitStates.TryGetValue(predecessor, out var exitState))
+					if (CfgUtils.GetSuccessors(predecessor).Contains(block) &&
+					    exitStates.TryGetValue(predecessor, out var exitState))
 						state.JoinWith(exitState);
 				}
 				

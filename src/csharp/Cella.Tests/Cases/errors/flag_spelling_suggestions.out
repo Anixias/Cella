@@ -1,0 +1,10 @@
+
+====== flag_spelling_suggestions.ce ======
+
+Error at line 3, column 18
+2 │ 
+3 │ traced: fun when debg {}
+                     ╘══╛ Flag 'debg' not found
+                        | Did you mean 'debug'?
+
+[compilation failed]

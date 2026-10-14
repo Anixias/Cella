@@ -1,0 +1,22 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Event: ext enum { key(code: i32) = 0  closed = 2 }
+
+R: rec
+{
+	e: Event
+}
+
+main: fun -> i32
+{
+	var e: Event
+	val r = R()
+	printf("%d %d\n", match e { key(c) => c  closed => -1  else => -2 },
+		match r.e { key(c) => c  closed => -1  else => -2 })
+	ret 0
+}

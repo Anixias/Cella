@@ -1,0 +1,5 @@
+mod test
+
+traced: fun when debg {}
+
+main: fun -> i32 = 0

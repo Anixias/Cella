@@ -1,0 +1,10 @@
+
+====== spelling_suggestions.ce ======
+
+Error at line 8, column 17
+7 │ 
+8 │ Point: rec impl Shap
+                    ╘══╛ Trait 'Shap' not found in this scope
+                       | Did you mean 'Shape'?
+
+[compilation failed]

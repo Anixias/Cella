@@ -395,4 +395,5 @@ public sealed class ConditionalBranchTerminator
 	public BasicBlock TrueTarget { get; } = trueTarget;
 	public BasicBlock FalseTarget { get; } = falseTarget;
 	public SourceLocation SourceLocation { get; } = sourceLocation;
+	public bool IsErasedCall { get; init; }
 }

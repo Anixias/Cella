@@ -1,0 +1,14 @@
+mod test
+
+Point: rec
+{
+	x: i32
+	length: i32
+}
+
+main: fun -> i32
+{
+	val p = Point(1, 2)
+	val flag = ture
+	ret p.lenght
+}

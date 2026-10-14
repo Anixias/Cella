@@ -1168,7 +1168,7 @@ public sealed class Lowerer
 			var erasedBlock = CreateBlock("erased");
 			var afterBlock = CreateBlock("after_erased");
 			GetOrMakeBlock().SetTerminator(new ConditionalBranchTerminator(new ConstantValue(NativeSymbols.Bool, false),
-				erasedBlock, afterBlock, location));
+				erasedBlock, afterBlock, location) { IsErasedCall = true });
 			
 			currentBlock = erasedBlock;
 			BeginScope(location, true);

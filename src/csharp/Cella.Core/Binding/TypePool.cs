@@ -737,7 +737,7 @@ public sealed class TypePool
 			},
 			EnumSymbol e => Combine(false, GetParts(e)) with
 			{
-				HasDefault = FindCase(e, BigInteger.Zero) is { } zeroCase ? zeroCase.Fields.IsEmpty : e.IsExternal
+				HasDefault = e.IsExternal || FindCase(e, BigInteger.Zero) is { Fields.IsEmpty: true }
 			},
 			ArrayType => Combine(false, GetParts(type)),
 			ClosureType => Combine(false, GetParts(type)) with { IsCopy = false, HasDefault = false },
