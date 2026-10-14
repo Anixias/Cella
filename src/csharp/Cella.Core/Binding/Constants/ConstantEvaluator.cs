@@ -116,8 +116,7 @@ public sealed class ConstantEvaluator
 		if (node is { Type: FloatType floatTarget, Conversion: FloatConversion } &&
 		    floatTarget == NativeSymbols.Float32 && Evaluate(node.Source) is FloatConstant { Value: var number } &&
 		    double.IsFinite(number) && float.IsInfinity((float)number))
-			return ((node.Syntax is CallExpressionNode { Arguments: [var argument] } ? argument : node.Source.Syntax)
-				.SourceLocation.GetText().ToString(), floatTarget);
+			return (DescribeWritten(node), floatTarget);
 		
 		var target = node switch
 		{
@@ -133,8 +132,7 @@ public sealed class ConstantEvaluator
 		string? lost = Evaluate(node.Source) switch
 		{
 			IntegerConstant { Value: var value } when !Fits(value, target) => value.ToString(),
-			FloatConstant { Value: var value } when !FitsInteger(value, target) =>
-				value.ToString(CultureInfo.InvariantCulture),
+			FloatConstant { Value: var value } when !FitsInteger(value, target) => DescribeWritten(node),
 			EnumConstant { Type: EnumSymbol enumType, Case: var enumCase } when
 				typePool.GetCaseValue(enumType, enumCase) is var tag && !Fits(tag, target) => tag.ToString(),
 			_ => null
@@ -142,6 +140,10 @@ public sealed class ConstantEvaluator
 		
 		return lost is null ? null : (lost, target);
 	}
+	
+	private static string DescribeWritten(ResolvedConversionExpressionNode node) =>
+		(node.Syntax is CallExpressionNode { Arguments: [var argument] } ? argument : node.Source.Syntax)
+		.SourceLocation.GetText().ToString();
 	
 	private bool FitsInteger(double value, IntegerType type) =>
 		double.IsFinite(value) && Fits(new BigInteger(Math.Truncate(value)), type);

@@ -1,0 +1,33 @@
+mod test
+
+Hash: trait
+{
+	hash: fun(imm self) -> u64
+}
+
+box[T]: rec
+{
+	value: T
+}
+
+box[T: Hash]: impl
+{
+	digest: fun(imm self) -> u64 = self.value.hash()
+}
+
+box[T: Hash]: impl Hash
+{
+	hash: fun(imm self) -> u64 = self.value.hash()
+}
+
+Plain: rec
+{
+	x: i32
+}
+
+main: fun -> i32
+{
+	val a = box(Plain(1)).digest()
+	val b = box(Plain(1)).hash()
+	ret 0
+}

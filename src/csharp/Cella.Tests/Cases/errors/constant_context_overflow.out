@@ -29,7 +29,7 @@ Error at line 23, column 22
 Error at line 24, column 25
 23 │ negated: fun(x: i8 = -i8(-128)) -> i8 = x
 24 │ truncated: fun(x: i32 = i32(3e10)) -> i32 = x
-                             ╘═══════╛ '30000000000' doesn't fit in 'i32'
+                             ╘═══════╛ '3e10' doesn't fit in 'i32'
 
 Error at line 25, column 27
 24 │ truncated: fun(x: i32 = i32(3e10)) -> i32 = x

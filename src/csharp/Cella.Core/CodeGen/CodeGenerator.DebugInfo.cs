@@ -444,7 +444,9 @@ public sealed unsafe partial class CodeGenerator
 	private LLVMMetadataRef CreateArrayType(ArrayType array)
 	{
 		var mapped = MapTypeSymbol(array);
-		var subrange = LLVM.DIBuilderGetOrCreateSubrange(DiBuilder, 0, (long)array.Length);
+		var subrange = LLVM.DIBuilderGetOrCreateSubrange(DiBuilder, 0,
+			array.Length > long.MaxValue ? long.MaxValue : (long)array.Length);
+		
 		return LLVM.DIBuilderCreateArrayType(DiBuilder, GetSizeInBits(mapped), GetAlignInBits(mapped),
 			(LLVMOpaqueMetadata*)GetDebugType(array.ElementType).Handle, &subrange, 1);
 	}

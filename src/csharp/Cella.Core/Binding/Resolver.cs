@@ -7531,7 +7531,17 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			
 			case PointerType:
 			case PrimitiveType { Kind: PrimitiveTypeKind.CStr }:
+			case FunctionType { IsExternal: true }:
 				return arg;
+			
+			case EnumSymbol { IsExternal: true, HasPayload: false } enumType when
+				_conversionTable.FindExplicit(enumType, _typePool.GetTagType(enumType)) is { } toTag:
+				return PromoteVariadicArgument(new ResolvedConversionExpressionNode(arg, toTag, arg.Syntax));
+			
+			case EnumSymbol { IsMatch: true } enumType when _typePool.GetMatchedType(enumType) is PointerType matched &&
+			                                                _conversionTable.FindExplicit(enumType, matched) is
+				                                                { } unwrap:
+				return new ResolvedConversionExpressionNode(arg, unwrap, arg.Syntax);
 			
 			case var type when TypePool.ContainsInvalid(type):
 				return arg;

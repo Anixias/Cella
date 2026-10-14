@@ -271,6 +271,10 @@ public sealed class TypePool
 	public DiagnosticText? FindBlockViolation(TypeSymbol type, string name) => type is TypeParameterSymbol
 		? null
 		: _memberBlocks
+			.Select(static block => (block.Target, block.Impl))
+			.Concat(_conformances
+				.Where(static conformance => conformance.Impl is not null)
+				.Select(static conformance => (Target: conformance.Target.OriginalDefinition, Impl: conformance.Impl!)))
 			.Where(block => block.Target == type.OriginalDefinition &&
 			                block.Impl.TypeParameters.Length == type.TypeArguments.Length &&
 			                Fits(block.Impl, type.TypeArguments) &&

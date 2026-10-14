@@ -1,0 +1,9 @@
+mod test
+
+Empty: rec {}
+
+main: fun -> i32
+{
+	var a: array[Empty, 18446744073709551615]
+	ret 0
+}

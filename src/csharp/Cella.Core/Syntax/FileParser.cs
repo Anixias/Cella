@@ -190,6 +190,7 @@ public sealed class FileParser
 					continue;
 				}
 				
+				var precedesModuleName = moduleNameAllowed;
 				conditionAllowed = false;
 				moduleNameAllowed = false;
 				if (ParseImportExpression(ref index) is { } import)
@@ -197,7 +198,7 @@ public sealed class FileParser
 				else
 					ResyncTopLevel(ref index);
 				
-				if (!importsAllowed)
+				if (!importsAllowed && !precedesModuleName)
 					Report(useToken, "Imports must precede all other declarations");
 				
 				continue;
@@ -990,10 +991,20 @@ public sealed class FileParser
 		
 		parts.Add(firstPart);
 		
-		while (Match(ref index, TokenType.OpDot))
+		while (IsOnSameLine(index) && Match(ref index, TokenType.OpDot))
 		{
-			if (Match(ref index, out var part, TokenType.Identifier))
+			if (IsOnSameLine(index) && Match(ref index, out var part, TokenType.Identifier))
+			{
 				parts.Add(part);
+				continue;
+			}
+			
+			var isOnSameLine = IsOnSameLine(index);
+			ReportExpected(isOnSameLine ? index : index - 1, "a name after '.'");
+			if (isOnSameLine)
+				ResyncTopLevel(ref index);
+			
+			return null;
 		}
 		
 		return new(parts.ToImmutableArray());
