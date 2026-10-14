@@ -1,0 +1,26 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+ext
+{
+	puts: fun(text: cstr) -> i32
+}
+
+T: enum { a  b }
+
+show: fun(s: str) -> i32 = i32(s.byteLength)
+
+main: fun -> i32
+{
+	val t = T.b
+	printf("%s\n", match t { a => "aa"  b => "bb" })
+	val s = match t { a => "x"  b => "yyy" }
+	val c = match t { a => "c1"  b => "c2" }
+	puts(c)
+	printf("%d\n", show(s))
+	ret 0
+}

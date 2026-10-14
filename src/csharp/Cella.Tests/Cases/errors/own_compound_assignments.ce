@@ -1,0 +1,33 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+N: rec
+{
+	id: i32
+
+	drop: op
+	{
+	}
+
+	+=: op(mut self, other: i32)
+	{
+		self.id += other
+	}
+}
+
+main: fun -> i32
+{
+	var a = N(1)
+	own a += 5
+	val p = @a
+	own *p += 5
+	var i = 1
+	val q = @i
+	own *q += 1
+	printf("a %d\n", a.id)
+	ret 0
+}

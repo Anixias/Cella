@@ -311,6 +311,7 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool, 
 		ResolvedIndexerExpressionNode { Target.Type: StringType } => true,
 		ResolvedIndexerExpressionNode e => IsLValue(e.Target),
 		ResolvedUnaryOpExpressionNode { Operation.Op: TokenType.OpStar } => true,
+		ResolvedAssignmentExpressionNode e => IsLValue(e.Left),
 		_ => false
 	};
 	
@@ -527,7 +528,11 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool, 
 	
 	private void CheckOwnStore(ResolvedAssignmentExpressionNode node)
 	{
-		if (!IsThroughPointer(node.Left))
+		if (node.Operation is not null)
+			Diagnostics.Add(new(DiagnosticSeverity.Error,
+				((OwnExpressionNode)((BinaryOpExpressionNode)node.Syntax).Left).Keyword.SourceLocation,
+				"Cannot use 'own' on compound assignments"));
+		else if (!IsThroughPointer(node.Left))
 			Diagnostics.Add(new(DiagnosticSeverity.Error, ((BinaryOpExpressionNode)node.Syntax).Left.SourceLocation,
 				"Cannot assign with 'own' except through pointers"));
 		else if (!typePool.NeedsDrop(node.Left.Type))

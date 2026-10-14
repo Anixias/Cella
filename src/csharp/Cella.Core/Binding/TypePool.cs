@@ -19,7 +19,9 @@ public sealed class TypePool
 	public Action<TypeSymbol>? TypeCompleter { get; set; }
 	public Action<TraitSymbol>? TraitCompleter { get; set; }
 	public Func<BigInteger, IntegerType, bool>? IntegerFits { get; set; }
-	public List<(TypeSymbol Type, SourceLocation Location)> SizeChecks { get; } = [];
+	public List<(TypeSymbol Type, SourceLocation Location, FunctionSymbol? Owner)> SizeChecks { get; } = [];
+	
+	public Dictionary<FunctionSymbol, List<(TypeSymbol Type, SourceLocation Location)>> GenericSizeChecks { get; } = [];
 	
 	private readonly Dictionary<TypeSymbol, OrderedDictionary<string, MemberSymbol>> _members = [];
 	private readonly Dictionary<(TypeSymbol, BigInteger), ArrayType> _arrayTypes = [];
@@ -751,6 +753,13 @@ public sealed class TypePool
 		_facts[type] = facts;
 		return facts;
 	}
+	
+	public bool DropReadsBorrows(TypeSymbol type) => DropReadsBorrows(type, []);
+	
+	private bool DropReadsBorrows(TypeSymbol type, HashSet<TypeSymbol> visited) =>
+		NeedsDrop(type) && HoldsBorrows(type) && visited.Add(type) &&
+		(type is TypeParameterSymbol or RecordSymbol { HasDestructor: true } ||
+		 GetParts(type).Any(part => DropReadsBorrows(part, visited)));
 	
 	private IEnumerable<TypeSymbol> GetParts(TypeSymbol type) => type switch
 	{

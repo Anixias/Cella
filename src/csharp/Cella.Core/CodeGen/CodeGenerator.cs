@@ -14,6 +14,7 @@ using Cella.Core.Lowering;
 using Cella.Core.Symbols;
 using Cella.Core.Syntax.Nodes;
 using Cella.Core.Text;
+using Cella.Diagnostics;
 using LLVMSharp.Interop;
 
 // ReSharper disable StringLiteralTypo
@@ -34,6 +35,8 @@ internal readonly record struct LLVMFunctionInfo
 public sealed unsafe partial class CodeGenerator : IDisposable
 {
 	private const ulong LargeValueBytes = 16;
+	
+	public DiagnosticList Diagnostics { get; } = new();
 	
 	private static bool isInitialized;
 	
@@ -71,6 +74,7 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 	private readonly LLVMTargetDataRef _targetData;
 	private readonly CAbi _cAbi;
 	private readonly uint _pointerSize;
+	private readonly HashSet<(TypeSymbol, SourceLocation)> _reportedSizes = [];
 	private readonly LLVMPassBuilderOptionsRef _passBuilderOptions = LLVMPassBuilderOptionsRef.Create();
 	private readonly LLVMValueRef _true = LLVMValueRef.CreateConstInt(LLVMTypeRef.Int1, 1uL);
 	private readonly LLVMValueRef _false = LLVMValueRef.CreateConstInt(LLVMTypeRef.Int1, 0uL);
@@ -331,11 +335,32 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 				continue;
 			
 			current = pending.Owner;
-			GetFunctionValue(pending.Info);
+			var function = GetFunctionValue(pending.Info);
 			substitution = TypePool.CreateMap(pending.Info.Symbol.TypeParameters, pending.Info.TypeArguments);
-			BuildFunction(_genericBodies[pending.Info.Symbol], pending.Info);
+			if (ReportTooLargeInstances(pending.Info.Symbol))
+			{
+				using var builder = current.Module.Context.CreateBuilder();
+				builder.PositionAtEnd(function.AppendBasicBlock("entry"));
+				builder.BuildUnreachable();
+			}
+			else
+				BuildFunction(_genericBodies[pending.Info.Symbol], pending.Info);
+			
 			substitution = new Dictionary<TypeParameterSymbol, TypeSymbol>();
 		}
+	}
+	
+	private bool ReportTooLargeInstances(FunctionSymbol function)
+	{
+		var errorCount = Diagnostics.ErrorCount;
+		foreach (var (type, location) in _typePool.GenericSizeChecks.GetValueOrDefault(function) ?? [])
+		{
+			var instance = Substitute(type);
+			if (_reportedSizes.Add((instance, location)) && _typePool.IsTooLarge(instance, _pointerSize * 8))
+				Diagnostics.Add(new(DiagnosticSeverity.Error, location, $"'{instance.Name}' is too large"));
+		}
+		
+		return Diagnostics.ErrorCount > errorCount;
 	}
 	
 	private static Dictionary<ModuleState, string> GetFileNames(List<ModuleState> states) => states

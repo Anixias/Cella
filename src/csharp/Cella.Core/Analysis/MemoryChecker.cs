@@ -96,10 +96,11 @@ public sealed class MemoryChecker(TypePool typePool, DiagnosticList diagnostics)
 			.Select(static access => ((FieldProjection)access.Place.Path[0]).Field)
 			.ToHashSet();
 		
-		typePool.SetDestructorMoves(record, movedFields);
+		var declared = typePool.GetMembers(record).OfType<FieldSymbol>().ToList();
+		var fields = declared.SkipWhile(field => !movedFields.Contains(field)).Reverse().ToList();
+		typePool.SetDestructorMoves(record, fields.ToHashSet());
 		var selfValue = new VariableValue(new(self, function.Info.Signature.ParameterTypes[0]), SourceLocation.None);
 		var target = new UnaryOpValue(record, selfValue, UnaryOperation.Dereference, SourceLocation.None);
-		var fields = typePool.GetMembers(record).OfType<FieldSymbol>().Where(movedFields.Contains).Reverse().ToList();
 		foreach (var block in function.Blocks.Where(static block => block.Terminator is ReturnTerminator))
 		{
 			block.Instructions.AddRange(fields.Select(field => new DropInstruction(

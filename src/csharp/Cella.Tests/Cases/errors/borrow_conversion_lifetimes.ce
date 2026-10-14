@@ -1,0 +1,31 @@
+mod test
+
+Sprite: rec
+{
+	hp: i32
+}
+
+Handle: rec
+{
+	sprite: Sprite
+
+	as: op(imm self) -> imm[Sprite] = imm self.sprite
+
+	drop: op
+	{
+	}
+}
+
+bad: fun -> imm[Sprite]
+{
+	val h = Handle(Sprite(1))
+	ret h
+}
+
+later: fun -> i32
+{
+	var s: imm[Sprite] = Handle(Sprite(2))
+	ret s.hp
+}
+
+main: fun -> i32 = 0

@@ -1,0 +1,24 @@
+
+====== never_operands_dead.ce ======
+
+Warning at line 27, column 2
+26 │ printf("%d\n", -(ret n))
+27 │ ret 0
+     ^ Unreachable code
+
+Warning at line 33, column 2
+32 │ printf("%d\n", exit(2) + exit(3))
+33 │ ret 0
+     ^ Unreachable code
+
+Warning at line 49, column 2
+48 │ 
+49 │ ret 0
+     ^ Unreachable code
+
+Warning at line 55, column 2
+54 │ printf("%s\n", "a{ret n}b")
+55 │ ret 0
+     ^ Unreachable code
+
+[exit code 0]

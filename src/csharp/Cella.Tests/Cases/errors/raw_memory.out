@@ -16,9 +16,9 @@ Error at line 34, column 6
 34 │ own *q = 5
          ╘╛ Cannot move 'i32' values into a pointer
 
-Error at line 35, column 6
+Error at line 35, column 2
 34 │ own *q = 5
 35 │ own *q += 1
-         ╘╛ Cannot move 'i32' values into a pointer
+     ╘═╛ Cannot use 'own' on compound assignments
 
 [compilation failed]

@@ -1,0 +1,45 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+N: rec
+{
+	id: i32
+
+	drop: op
+	{
+		printf("drop N %d\n", self.id)
+	}
+}
+
+W: rec
+{
+	a: N
+	b: N
+	flag: bool
+
+	drop: op
+	{
+		printf("drop W\n")
+		if self.flag
+			take(own self.a)
+	}
+}
+
+take: fun(own n: N) = printf("take %d\n", n.id)
+
+main: fun -> i32
+{
+	{
+		val w = W(N(3), N(4), false)
+	}
+
+	{
+		val v = W(N(5), N(6), true)
+	}
+
+	ret 0
+}

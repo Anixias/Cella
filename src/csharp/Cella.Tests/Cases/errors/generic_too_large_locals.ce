@@ -1,0 +1,9 @@
+mod test
+
+stack[T]: fun -> i32
+{
+	var a: array[T, 3000000000000000000]
+	ret 0
+}
+
+main: fun -> i32 = stack[u64]()

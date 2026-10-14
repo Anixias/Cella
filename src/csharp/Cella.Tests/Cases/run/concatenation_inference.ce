@@ -1,0 +1,22 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+ext
+{
+	puts: fun(text: cstr) -> i32
+}
+
+show: fun(s: str) = printf("%d\n", i32(s.byteLength))
+
+main: fun -> i32
+{
+	val a = "x"
+	val b = a + "y"
+	puts(b)
+	show(a)
+	ret 0
+}

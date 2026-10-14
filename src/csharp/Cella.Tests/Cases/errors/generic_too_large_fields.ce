@@ -1,0 +1,22 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+ring[T, N: val usize]: rec
+{
+	items: array[T, N]
+}
+
+wrap[T]: rec
+{
+	inner: ring[T, 4611686018427387904]
+}
+
+main: fun -> i32
+{
+	printf("%zu\n", sizeOf(wrap[u64]))
+	ret 0
+}

@@ -1,0 +1,21 @@
+mod test
+
+Cur[T]: rec
+{
+	value: T
+}
+
+Buf[T]: rec
+{
+	n: T
+
+	make: fun(imm self) -> i32
+	{
+		val other: Buf[T] = self
+		val c = Cur[T](imm self)
+		val x: i32 = other
+		ret x
+	}
+}
+
+main: fun -> i32 = 0

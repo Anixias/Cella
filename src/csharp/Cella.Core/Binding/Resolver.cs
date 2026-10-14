@@ -213,9 +213,16 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	
 	private void ReportTooLargeTypes()
 	{
-		foreach (var (type, location) in _typePool.SizeChecks)
+		foreach (var (type, location, owner) in _typePool.SizeChecks)
 		{
-			if (_sizeCheckLocations.Add(location) && _typePool.IsTooLarge(type, _pointerBitSize))
+			if (owner is not null && TypePool.ContainsTypeParameters(type))
+			{
+				if (!_typePool.GenericSizeChecks.TryGetValue(owner, out var checks))
+					_typePool.GenericSizeChecks[owner] = checks = [];
+				
+				checks.Add((type, location));
+			}
+			else if (_sizeCheckLocations.Add(location) && _typePool.IsTooLarge(type, _pointerBitSize))
 				Diagnostics.Add(new(DiagnosticSeverity.Error, location, $"'{type.Name}' is too large"));
 		}
 		
@@ -1155,7 +1162,10 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 				: value!)
 			.ToList();
 		
-		var type = target ?? UnifyTypes(arms);
+		var type = target ?? (arms is [_, ..] && arms.All(static arm => arm.Type is UntypedStringType)
+			? NativeSymbols.UntypedString
+			: UnifyTypes(arms));
+		
 		if (type is null)
 		{
 			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Keyword.SourceLocation,
@@ -1806,8 +1816,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 				return Error(node, literalMismatch, recovery, only.Syntax);
 			
 			var message = args is [not ResolvedCaseNameExpressionNode]
-				? $"No constructor for '{targetType.Name}' accepts argument of type '{DescribeWrittenType(args[0])}'"
-				: $"No constructor for '{targetType.Name}' accepts these arguments";
+				? $"No constructor for '{DiagnosticReporter.DescribeType(targetType)}' accepts argument of type " +
+				  $"'{DescribeWrittenType(args[0])}'"
+				: $"No constructor for '{DiagnosticReporter.DescribeType(targetType)}' accepts these arguments";
 			
 			return Error(node, message, recovery, node);
 		}
@@ -2278,7 +2289,8 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		if (AnyInvalid(args))
 			return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
 		
-		if (isAmbiguous)
+		var isEndless = args.Any(static arg => arg.Type is NeverType);
+		if (isAmbiguous && !isEndless)
 			return ReportAmbiguousCall(node, functionName, shaped, receiver, typeArguments);
 		
 		var failures = new List<Diagnostic>();
@@ -2291,7 +2303,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		
 		var resolutionSet = ResolveCallable(specialized, args, MaterializationMode.Overload, CurrentTargetType);
 		
-		if (resolutionSet.IsAmbiguous)
+		if (resolutionSet.IsAmbiguous && !isEndless)
 			return ReportAmbiguousCall(node, functionName, shaped, receiver, typeArguments);
 		
 		if (!resolutionSet.HasResult && hidden is [_, ..] &&
@@ -3537,7 +3549,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		ResolvedLiteralExpressionNode { Type: var type } literal when type != NativeSymbols.Char &&
 		                                                              IsUnsuffixedNumber(literal.Syntax) =>
 			type is FloatType ? NativeSymbols.UntypedFloat.Name : NativeSymbols.UntypedInteger.Name,
-		_ => GetArgumentType(value).Name
+		_ => DiagnosticReporter.DescribeType(GetArgumentType(value))
 	};
 	
 	private static bool IsUnsuffixedNumber(IExpressionNode syntax) =>
@@ -3721,6 +3733,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			return new ResolvedPropertyExpressionNode(property, owner, receiver, GetPropertyType(property, owner),
 				node);
 		
+		property = WithDefaultAccessor(property, owner, false);
 		if (property.Getter is not FunctionAccessor { Function: var getter })
 			return Error(node, "Cannot read write-only properties", CurrentTargetType, member);
 		
@@ -3839,6 +3852,23 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 				TraitArguments = trait.Arguments
 			}
 			: trait.Trait.GetProperty(name);
+	
+	private PropertySymbol WithDefaultAccessor(PropertySymbol property, TypeSymbol owner, bool isSetter)
+	{
+		if ((isSetter ? property.Setter : property.Getter) is FunctionAccessor || property.Trait is not null)
+			return property;
+		
+		return GetVisibleConformances(owner)
+			.Select(conformance => conformance.Trait.GetProperty(property.Name) is { } traitProperty &&
+			                       (isSetter ? traitProperty.Setter : traitProperty.Getter) is FunctionAccessor
+			                       {
+				                       Function: var accessor
+			                       } && IsDefaultWitness(conformance, accessor)
+				? GetInstanceProperty(_typePool.GetConformanceTrait(conformance, owner), property.Name)
+				: null)
+			.OfType<PropertySymbol>()
+			.FirstOrDefault() ?? property;
+	}
 	
 	private static bool IsDefaultWitness(Conformance conformance, FunctionSymbol requirement) =>
 		conformance.Witnesses.GetValueOrDefault(requirement) is FunctionWitness { Function: var witness } &&
@@ -4690,6 +4720,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		if (_foldedStrings.TryGetValue(node, out var folded))
 			return folded;
 		
+		if (node.Values.FirstOrDefault(static value => value.Type is NeverType) is { } endless)
+			return endless;
+		
 		var syntax = node.Interpolation;
 		var text = new StringBuilder(syntax.Segments[0]);
 		var isValid = true;
@@ -4808,10 +4841,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		if (leftText is null || rightText is null)
 			return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
 		
-		var text = new ResolvedLiteralExpressionNode(NativeSymbols.UntypedString, leftText + rightText, node);
-		survey?.Track(text, survey.GetTracked(left).Concat(survey.GetTracked(right)));
-		var type = left.Type as StringType ?? right.Type as StringType;
-		return type is null ? text : MaterializeExpression(text, type);
+		return new ResolvedLiteralExpressionNode(NativeSymbols.UntypedString, leftText + rightText, node);
 	}
 	
 	public IResolvedExpressionNode Visit(LiteralExpressionNode node)
@@ -5779,6 +5809,10 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		if (IsInvalid(source))
 			return InvalidHeader(node, CreateLoopBinding(node.Binding, NativeSymbols.Invalid, false, false));
 		
+		if (source.Type is NeverType)
+			return new(CreateLoopBinding(node.Binding, NativeSymbols.Never, false, false),
+				(_, _) => new ResolvedExpressionStatementNode(source, node));
+		
 		var isMut = node.Mode is not null;
 		var type = source.Type;
 		if (type is ArrayType array)
@@ -6014,6 +6048,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		if (IsInvalid(operand))
 			return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
 		
+		if (operand.Type is NeverType && op.Type != TokenType.OpAt)
+			return operand;
+		
 		operand = Decay(operand);
 		switch (op.Type)
 		{
@@ -6163,6 +6200,12 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			
 			if (AnyInvalid(left, right))
 				return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
+			
+			if (left.Type is NeverType)
+				return left;
+			
+			if (right.Type is NeverType && left.Type is not UntypedType)
+				right = MaterializeExpression(right, left.Type);
 			
 			if (FoldLiterals(node, left, right) is { } folded)
 				return folded;
@@ -6441,7 +6484,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		bool isOwnStore)
 	{
 		if (ResolveDeclaredCompound(node, left) is { } declared)
-			return declared;
+			return node.Left is OwnExpressionNode own
+				? Error(node, "Cannot use 'own' on compound assignments", CurrentTargetType, own.Keyword.SourceLocation)
+				: declared;
 		
 		return ResolveCompoundOperation(node, left) is var (right, operation)
 			? new ResolvedAssignmentExpressionNode(left.Type, left, node.Op, right, operation, node, isOwnStore)
@@ -6600,17 +6645,18 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	private IResolvedExpressionNode ResolvePropertyAssignment(BinaryOpExpressionNode node,
 		ResolvedPropertyExpressionNode target, bool isOwnStore)
 	{
-		var property = target.Property;
 		var member = GetMemberLocation(target.Syntax);
 		if (isOwnStore)
 			return RejectAssignment(node, new(DiagnosticSeverity.Error, node.Left.SourceLocation,
 				"Cannot assign with 'own' except through pointers"));
 		
+		var reader = WithDefaultAccessor(target.Property, target.Owner, false);
+		var property = WithDefaultAccessor(target.Property, target.Owner, true);
 		if (property.Setter is not FunctionAccessor { Function: var setter })
 			return RejectAssignment(node, new(DiagnosticSeverity.Error, target.Syntax.SourceLocation,
 				"Cannot reassign read-only properties"));
 		
-		var read = node.Op.Type == TokenType.OpEqual ? null : (property.Getter as FunctionAccessor)?.Function;
+		var read = node.Op.Type == TokenType.OpEqual ? null : (reader.Getter as FunctionAccessor)?.Function;
 		if (target.Owner is DynType dyn && (!IsDynMember(setter) || read is not null && !IsDynMember(read)))
 			return RejectAssignment(node, new(DiagnosticSeverity.Error, member,
 				$"Cannot use '{property.Name}' through '{dyn.Name}'"));
@@ -6627,7 +6673,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			return CallAccessor(setter, target.Owner, property.TraitArguments, target.Receiver,
 				[VisitNode(node.Right, valueType)], node);
 		
-		if (property.Getter is not FunctionAccessor { Function: var getter })
+		if (reader.Getter is not FunctionAccessor { Function: var getter })
 			return RejectAssignment(node, new(DiagnosticSeverity.Error, member, "Cannot read write-only properties"));
 		
 		if (FindReceiverError(getter.Kind == FunctionKind.Free, target.Receiver) is { } getterError)
@@ -6636,12 +6682,12 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		if (!CanAccess(target.Owner, getter))
 			return RejectAssignment(node, DiagnosticReporter.ReportWriteOnly(member, property.Name, getter.Visibility));
 		
-		var getterInfo = GetFunctionInfo(getter, target.Owner, property.TraitArguments);
+		var getterInfo = GetFunctionInfo(getter, target.Owner, reader.TraitArguments);
 		var receiver = target.Receiver is { } place && (TakesMutSelf(getterInfo) || TakesMutSelf(setterInfo))
 			? MakeWritable(place)
 			: target.Receiver;
 		
-		var current = CallAccessor(getter, target.Owner, property.TraitArguments, receiver, [], target.Syntax);
+		var current = CallAccessor(getter, target.Owner, reader.TraitArguments, receiver, [], target.Syntax);
 		if (current.Type == valueType && ResolveDeclaredCompound(node, current) is { } declared)
 		{
 			if (declared is not ResolvedFunctionCallExpressionNode { Arguments: [_, var value] } call)
@@ -6877,7 +6923,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			return new ResolvedConversionExpressionNode(source, conversion, source.Syntax);
 		
 		if (FindUserConversion(source, target) is { } userConversion)
-			return ApplyUserConversion(source, userConversion);
+			return ApplyUserConversion(source, userConversion, null, target);
 		
 		if (FindLendingConversion(source, target) is not null)
 			return Error(source.Syntax, "Cannot mutably borrow arguments implicitly", target);
@@ -6907,7 +6953,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		if (DescribeLiteralMismatch(source, target) is { } literalMismatch)
 			return Error(source.Syntax, literalMismatch, target);
 		
-		return Error(source.Syntax, $"Cannot convert type '{source.Type.Name}' to '{target.Name}'", target);
+		var from = DiagnosticReporter.DescribeType(source.Type);
+		return Error(source.Syntax, $"Cannot convert type '{from}' to '{DiagnosticReporter.DescribeType(target)}'",
+			target);
 	}
 	
 	private IResolvedExpressionNode ResolveSuffixedLiteral(LiteralExpressionNode node, string suffix)
@@ -7129,6 +7177,12 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		
 		if (node is ResolvedUndefExpressionNode { Type: UntypedUndefType })
 			return new ResolvedUndefExpressionNode(target, node.Syntax);
+		
+		if (node is ResolvedMatchExpressionNode { Type: UntypedType } match)
+			return new ResolvedMatchExpressionNode(match.Value,
+				match.Arms.Select(arm => new ResolvedMatchExpressionArm(arm.Pattern,
+					MaterializeExpression(arm.Value, target))),
+				match.IsMut, match.OwnsValue, target, match.Syntax);
 		
 		if (node is ResolvedInterpolatedStringExpressionNode interpolation)
 			return target switch
@@ -8073,10 +8127,10 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	}
 	
 	private IResolvedExpressionNode ApplyUserConversion(IResolvedExpressionNode source, FunctionConversion conversion,
-		IExpressionNode? syntax = null)
+		IExpressionNode? syntax = null, TypeSymbol? target = null)
 	{
 		if (!conversion.IsAmbiguous)
-			return CallConversion(conversion.Function, source, syntax ?? source.Syntax);
+			return CallConversion(conversion.Function, source, syntax ?? source.Syntax, target);
 		
 		var from = Decay(source is ResolvedMutArgumentExpressionNode argument ? argument.Place : source).Type;
 		var to = conversion.To is BorrowType borrow ? borrow.Target : conversion.To;
@@ -8084,7 +8138,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	}
 	
 	private IResolvedExpressionNode CallConversion(FunctionInfo info, IResolvedExpressionNode source,
-		IExpressionNode syntax)
+		IExpressionNode syntax, TypeSymbol? target = null)
 	{
 		TrackFunctionUse(info, syntax);
 		if (info.Symbol.Kind == FunctionKind.Free)
@@ -8108,10 +8162,12 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			_ => Decay(source)
 		};
 		
-		return Decay(new ResolvedFunctionCallExpressionNode(info, [CreateReceiver(receiver, info)], syntax)
+		var call = new ResolvedFunctionCallExpressionNode(info, [CreateReceiver(receiver, info)], syntax)
 		{
 			IsConversion = true
-		});
+		};
+		
+		return target is BorrowType && call.Type == target ? call : Decay(call);
 	}
 	
 	private (int Cost, Conversion? Conversion) MatchArg(IResolvedExpressionNode arg, TypeSymbol target,

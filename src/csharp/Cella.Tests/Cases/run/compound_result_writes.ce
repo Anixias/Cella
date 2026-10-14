@@ -1,0 +1,22 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Point: rec
+{
+	x: i32
+	y: i32
+}
+
+main: fun -> i32
+{
+	var i = 1
+	(i += 2) *= 3
+	var arr = [1, 2, 3]
+	(arr[0] += 10) = 50
+	printf("%d %d\n", i, arr[0])
+	ret 0
+}

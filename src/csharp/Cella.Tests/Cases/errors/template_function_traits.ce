@@ -1,0 +1,11 @@
+mod test
+
+call: fun(t: fstr[fun[-> i32]])
+{
+}
+
+main: fun -> i32
+{
+	call("plain")
+	ret 0
+}

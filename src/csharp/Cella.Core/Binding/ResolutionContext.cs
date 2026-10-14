@@ -891,8 +891,7 @@ public readonly struct ResolutionContext
 		
 		var type = TypePool.Instantiate(definition, [..arguments]);
 		TrackInstance?.Invoke(this, type, location);
-		if (arguments.Any(static argument => argument is ValueArgumentType))
-			TypePool.SizeChecks.Add((type, location));
+		TypePool.SizeChecks.Add((type, location, ContainingFunction?.Symbol));
 		
 		return type;
 	}
@@ -905,7 +904,7 @@ public readonly struct ResolutionContext
 			return NativeSymbols.Invalid;
 		
 		var type = TypePool.GetArrayType(element, length);
-		TypePool.SizeChecks.Add((type, location));
+		TypePool.SizeChecks.Add((type, location, ContainingFunction?.Symbol));
 		return type;
 	}
 	
@@ -1018,9 +1017,9 @@ public readonly struct ResolutionContext
 	
 	private TypeSymbol ResolveFStrArgument(IGenericArgumentNode node) => node switch
 	{
-		TypeArgumentNode argument => CreateFStrType(GetTraitDyn(ResolveTraitReference(argument.Type))),
+		TypeArgumentNode argument => CreateFStrType(argument, ResolveTraitReference(argument.Type)),
 		IdentifierArgumentNode argument =>
-			CreateFStrType(GetTraitDyn(ResolveTraitReference(new IdentifierTypeNode(argument.Identifier)))),
+			CreateFStrType(argument, ResolveTraitReference(new IdentifierTypeNode(argument.Identifier))),
 		ExpressionArgumentNode argument => CreateFStrType(argument.Expression),
 		_ => NativeSymbols.Invalid
 	};
@@ -1037,7 +1036,17 @@ public readonly struct ResolutionContext
 		return NativeSymbols.Invalid;
 	}
 	
-	private TypeSymbol CreateFStrType(DynType? dyn) => dyn is null ? NativeSymbols.Invalid : TypePool.GetFStrType(dyn);
+	private TypeSymbol CreateFStrType(IGenericArgumentNode node, TypeSymbol? trait)
+	{
+		if (GetTraitDyn(trait) is { } dyn)
+			return TypePool.GetFStrType(dyn);
+		
+		if (trait is not (null or InvalidType))
+			Diagnostics.Add(new(DiagnosticSeverity.Error, node.SourceLocation,
+				$"'{node.SourceLocation.GetText()}' is not a trait"));
+		
+		return NativeSymbols.Invalid;
+	}
 	
 	private DynType? GetTraitDyn(TypeSymbol? trait) => trait switch
 	{

@@ -1,0 +1,9 @@
+
+====== template_function_traits.ce ======
+
+Error at line 3, column 19
+2 │ 
+3 │ call: fun(t: fstr[fun[-> i32]])
+                      ╘═════════╛ 'fun[-> i32]' is not a trait
+
+[compilation failed]

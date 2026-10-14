@@ -286,7 +286,7 @@ public sealed class BorrowChecker
 				break;
 			
 			case DropEvent { Instruction.Value.Type: var type } e
-				when typePool.NeedsDrop(type) && typePool.HoldsBorrows(type):
+				when typePool.DropReadsBorrows(type):
 				var isNamed = e.Place.Path.IsEmpty && !e.Instruction.IsReassignment &&
 				              !e.Place.Root.Name.StartsWith('.');
 				

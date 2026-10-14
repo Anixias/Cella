@@ -1,0 +1,8 @@
+drop W
+drop N 4
+drop N 3
+drop W
+take 5
+drop N 5
+drop N 6
+[exit code 0]

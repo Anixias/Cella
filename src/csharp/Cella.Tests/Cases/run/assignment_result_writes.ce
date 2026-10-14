@@ -1,0 +1,23 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Point: rec
+{
+	x: i32
+	y: i32
+}
+
+main: fun -> i32
+{
+	var p = Point(1, 2)
+	(p = Point(3, 4)).x = 9
+	printf("%d %d\n", p.x, p.y)
+	var arr = [1, 2, 3]
+	(arr[1] = 7) += 1
+	printf("%d\n", arr[1])
+	ret 0
+}

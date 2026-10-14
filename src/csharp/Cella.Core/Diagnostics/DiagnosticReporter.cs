@@ -26,7 +26,8 @@ public static class DiagnosticReporter
 			return new(DiagnosticSeverity.Error, literal.Syntax.SourceLocation,
 				$"'{literal.Syntax.SourceLocation.GetText()}' can't be represented exactly in '{floatType}'");
 		
-		var message = $"No operation defined for '{op.Text}' between '{left.Type.Name}' and '{right.Type.Name}'";
+		var (leftName, rightName) = (DescribeType(left.Type), DescribeType(right.Type));
+		var message = $"No operation defined for '{op.Text}' between '{leftName}' and '{rightName}'";
 		var hints = new List<string>();
 		
 		// One side is a pointer to the other side's type
@@ -154,9 +155,14 @@ public static class DiagnosticReporter
 		IEnumerable<string> caseNames) =>
 		ReportUndefined(location, $"'{enumName}' has no case '{missingName}'", missingName, caseNames);
 	
-	public static string DescribeType(TypeSymbol type) => type is NamedTypeSymbol { IsGenericDefinition: true } generic
-		? $"{generic.Name}[{string.Join(", ", generic.TypeParameters.Select(static parameter => parameter.Name))}]"
-		: type.Name;
+	public static string DescribeType(TypeSymbol type) => type switch
+	{
+		NamedTypeSymbol { IsGenericDefinition: true } generic =>
+			$"{generic.Name}[{string.Join(", ", generic.TypeParameters.Select(static parameter => parameter.Name))}]",
+		BorrowType borrow => $"{(borrow.IsMutable ? "mut" : "imm")}[{DescribeType(borrow.Target)}]",
+		PointerType { BaseType: var baseType } when baseType != NativeSymbols.Void => $"ptr[{DescribeType(baseType)}]",
+		_ => type.Name
+	};
 	
 	public static string JoinNames(IReadOnlyList<string> names) => names.Count == 1
 		? $"'{names[0]}'"

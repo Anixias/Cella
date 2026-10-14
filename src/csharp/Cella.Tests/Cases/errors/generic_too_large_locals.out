@@ -1,0 +1,9 @@
+
+====== generic_too_large_locals.ce ======
+
+Error at line 5, column 9
+4 │ {
+5 │     var a: array[T, 3000000000000000000]
+               ╘═══════════════════════════╛ 'array[u64, 3000000000000000000]' is too large
+
+[compilation failed]

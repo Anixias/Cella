@@ -1,0 +1,5 @@
+drop 5
+1
+drop 1
+drop 0
+[exit code 0]

@@ -628,6 +628,9 @@ internal static class Program
 				externalLibraries.UnionWith(result.ExternalLibraries);
 			}
 			
+			if (ReportErrors([codeGenerator.Diagnostics], displayRoot, showHints))
+				return errorResult;
+			
 			if (codeGenFailed)
 				return errorResult;
 			

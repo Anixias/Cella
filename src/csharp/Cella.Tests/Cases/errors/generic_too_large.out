@@ -1,0 +1,9 @@
+
+====== generic_too_large.ce ======
+
+Error at line 10, column 13
+ 9 │ {
+10 │     ret sizeOf(array[T, 4611686018427387904])
+                    ╘═══════════════════════════╛ 'array[u64, 4611686018427387904]' is too large
+
+[compilation failed]

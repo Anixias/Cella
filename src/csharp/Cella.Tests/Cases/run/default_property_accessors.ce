@@ -1,0 +1,59 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Sized: trait
+{
+	limit: prop i32
+	{
+		get(imm self)
+		set(mut self, value)
+		{
+		}
+	}
+}
+
+Limited: trait
+{
+	cap: prop i32
+	{
+		get(imm self) = 3
+		set(mut self, value)
+	}
+}
+
+P: rec impl Sized
+{
+	x: i32
+
+	limit: get(imm self) -> i32 = self.x
+}
+
+Q: rec impl Limited
+{
+	x: i32
+
+	cap: set(mut self, value: i32)
+	{
+		self.x = value
+	}
+}
+
+setIt[T: Sized]: fun(mut v: T) = v.limit = 5
+
+main: fun -> i32
+{
+	var p = P(1)
+	setIt(mut p)
+	p.limit = 9
+	p.limit += 1
+	printf("%d %d\n", p.x, p.limit)
+	var q = Q(2)
+	q.cap = 7
+	q.cap += 10
+	printf("%d %d\n", q.x, q.cap)
+	ret 0
+}

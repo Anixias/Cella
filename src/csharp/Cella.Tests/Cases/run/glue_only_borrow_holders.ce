@@ -1,0 +1,35 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Buffer: rec
+{
+	id: i32
+
+	drop: op
+	{
+		printf("drop %d\n", self.id)
+	}
+}
+
+Holder: ref rec
+{
+	view: imm[Buffer]
+	owned: Buffer
+}
+
+main: fun -> i32
+{
+	val outer = Buffer(0)
+	var h = Holder(outer, Buffer(1))
+	{
+		val a = Buffer(5)
+		h.view = a
+	}
+
+	printf("%d\n", h.owned.id)
+	ret 0
+}

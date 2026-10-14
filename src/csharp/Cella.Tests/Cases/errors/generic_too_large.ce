@@ -1,0 +1,18 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+big[T]: fun -> usize
+{
+	ret sizeOf(array[T, 4611686018427387904])
+}
+
+main: fun -> i32
+{
+	printf("%zu\n", big[u8]())
+	printf("%zu\n", big[u64]())
+	ret 0
+}

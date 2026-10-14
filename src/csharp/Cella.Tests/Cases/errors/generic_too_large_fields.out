@@ -1,0 +1,9 @@
+
+====== generic_too_large_fields.ce ======
+
+Error at line 20, column 25
+19 │ {
+20 │     printf("%zu\n", sizeOf(wrap[u64]))
+                                ╘═══════╛ 'wrap[u64]' is too large
+
+[compilation failed]

@@ -1,0 +1,32 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Sprite: rec
+{
+	hp: i32
+}
+
+Handle: rec
+{
+	sprite: Sprite
+
+	as: op(imm self) -> imm[Sprite] = imm self.sprite
+
+	drop: op
+	{
+	}
+}
+
+get: fun(imm h: Handle) -> imm[Sprite] = h
+
+main: fun -> i32
+{
+	val h = Handle(Sprite(4))
+	val s: imm[Sprite] = h
+	printf("%d %d\n", s.hp, get(imm h).hp)
+	ret 0
+}

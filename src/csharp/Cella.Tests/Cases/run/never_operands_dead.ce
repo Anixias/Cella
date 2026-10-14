@@ -1,0 +1,63 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+ext
+{
+	exit: fun(code: i32) -> never
+}
+
+show: fun(x: i32) -> i32 = x
+show: fun(x: i64) -> i32 = 1
+
+P: rec
+{
+	v: i32
+
+	+: op(a: P, b: P) -> P = P(a.v + b.v)
+	+: op(a: P, b: i32) -> P = P(a.v + b)
+}
+
+unary: fun(n: i32) -> i32
+{
+	printf("%d\n", -(ret n))
+	ret 0
+}
+
+binary: fun -> i32
+{
+	printf("%d\n", exit(2) + exit(3))
+	ret 0
+}
+
+declared: fun -> i32
+{
+	ret (P(1) + exit(2)).v
+}
+
+call: fun -> i32 = show(exit(8))
+
+loopOver: fun -> i32
+{
+	for v in exit(6)
+	{
+	}
+
+	ret 0
+}
+
+hole: fun(n: i32) -> i32
+{
+	printf("%s\n", "a{ret n}b")
+	ret 0
+}
+
+voidReturn: fun
+{
+	ret exit(3)
+}
+
+main: fun -> i32 = 0
