@@ -702,6 +702,9 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 		if (!Match(ref index, out var openParen, TokenType.OpOpenParen))
 			throw Expected(index, "'('");
 		
+		if (Peek(index, TokenType.OpCloseParen))
+			throw Expected(index, "a type or a value");
+		
 		var target = ParseExpression(ref index);
 		
 		if (!Match(ref index, out var closeBracket, TokenType.OpCloseParen))

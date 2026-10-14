@@ -1,0 +1,14 @@
+
+====== empty_layout_arguments.ce ======
+
+Error at line 3, column 29
+2 │ 
+3 │ size: fun -> usize = sizeOf()
+                                ^ Expected a type or a value
+
+Error at line 4, column 35
+3 │ size: fun -> usize = sizeOf()
+4 │ alignment: fun -> usize = alignOf()
+                                      ^ Expected a type or a value
+
+[compilation failed]

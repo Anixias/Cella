@@ -2591,10 +2591,10 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 				: builder.BuildICmp(LLVMIntPredicate.LLVMIntULE, left, right),
 			
 			{ Op: BinaryOperation.Equal } =>
-				builder.BuildICmp(LLVMIntPredicate.LLVMIntEQ, left, right), // TODO Check type for correct operation
+				builder.BuildICmp(LLVMIntPredicate.LLVMIntEQ, left, right),
 			
 			{ Op: BinaryOperation.NotEqual } =>
-				builder.BuildICmp(LLVMIntPredicate.LLVMIntNE, left, right), // TODO Check type for correct operation
+				builder.BuildICmp(LLVMIntPredicate.LLVMIntNE, left, right),
 			
 			{ Op: BinaryOperation.BitwiseAnd } =>
 				builder.BuildAnd(left, right),

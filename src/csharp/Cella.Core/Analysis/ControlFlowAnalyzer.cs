@@ -14,7 +14,7 @@ public sealed class ControlFlowAnalyzer(DiagnosticList diagnostics)
 	
 	private void DetectUnreachableCode(LoweredFunction function)
 	{
-		var reachableBlocks = function.Blocks.FindReachable();
+		var reachableBlocks = FindLiveBlocks(function);
 		var unreachable = function.Statements.Where(statement => !reachableBlocks.Contains(statement.Block))
 			.ToHashSet();
 		
@@ -46,24 +46,24 @@ public sealed class ControlFlowAnalyzer(DiagnosticList diagnostics)
 		return false;
 	}
 	
-	private static bool CanFallOffEnd(LoweredFunction function)
+	private static bool CanFallOffEnd(LoweredFunction function) =>
+		FindLiveBlocks(function).Any(static block => block.Terminator is UndefinedTerminator);
+	
+	private static HashSet<BasicBlock> FindLiveBlocks(LoweredFunction function)
 	{
 		if (function.Blocks.Count == 0)
-			return false;
+			return [];
 		
 		var visited = new HashSet<BasicBlock> { function.Blocks[0] };
 		var pending = new Stack<BasicBlock>(visited);
 		while (pending.TryPop(out var block))
 		{
-			if (block.Terminator is UndefinedTerminator)
-				return true;
-			
 			foreach (var target in GetTargets(block.Terminator))
 				if (visited.Add(target))
 					pending.Push(target);
 		}
 		
-		return false;
+		return visited;
 	}
 	
 	private static IEnumerable<BasicBlock> GetTargets(IBlockTerminator terminator) =>

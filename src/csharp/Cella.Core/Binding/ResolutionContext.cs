@@ -120,8 +120,6 @@ public readonly struct ResolutionContext
 	
 	private Symbol? ResolveScoped(string name)
 	{
-		// TODO None of this will work with function overloads :(
-		
 		if (LocalScope?.Resolve(name) is { } localSymbol)
 			return localSymbol;
 		
@@ -388,8 +386,6 @@ public readonly struct ResolutionContext
 	
 	public IEnumerable<Symbol> GetAllSymbols()
 	{
-		// TODO None of this will work with function overloads :(
-		
 		for (var scope = LocalScope; scope is not null; scope = scope.Parent)
 			foreach (var symbol in scope.Symbols)
 				yield return symbol;

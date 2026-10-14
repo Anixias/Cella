@@ -34,7 +34,6 @@ public sealed class MatchConversion(TypeSymbol from, TypeSymbol to)
 public sealed class NeverConversion(TypeSymbol to)
 	: Conversion(NativeSymbols.Never, to, ConversionKind.Implicit, 0, false);
 
-// TODO Is this needed?
 public sealed class IdentityConversion(TypeSymbol symbol)
 	: Conversion(symbol, symbol, ConversionKind.Identity, 0, true);
 

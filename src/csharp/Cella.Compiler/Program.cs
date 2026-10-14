@@ -671,10 +671,12 @@ internal static class Program
 			
 			// TODO Need a more robust way of getting libs
 			var libFiles = externalLibraries
+				.Select(static name => Path.GetExtension(name).ToLowerInvariant() is ".lib" or ".dll"
+					? Path.ChangeExtension(name, ".lib")
+					: $"{name}.lib")
 				.Concat(allDependencies
 					.Where(d => d.OutputType != ProjectOutputType.StaticLibrary || !providers.ContainsKey(d.Name))
-					.Select(static d => d.OutputPath))
-				.Select(static p => Path.ChangeExtension(p, ".lib"))
+					.Select(static d => Path.ChangeExtension(d.OutputPath, ".lib")))
 				.WhereNot(string.IsNullOrEmpty)
 				.Distinct()
 				.ToList();

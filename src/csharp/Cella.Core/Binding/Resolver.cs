@@ -2126,6 +2126,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	private static string JoinNames(IEnumerable<TypeSymbol> types) =>
 		DiagnosticReporter.JoinNames([..types.Select(static type => type.Name)]);
 	
+	private static bool IsShift(TokenType op) => op is TokenType.OpLessLess or TokenType.OpGreaterGreater or
+		TokenType.OpLessLessLess or TokenType.OpGreaterGreaterGreater;
+	
 	private static string JoinWrittenNames(IEnumerable<TypeSymbol> types) =>
 		DiagnosticReporter.JoinNames([
 			..types.Select(static type => type is FunctionType function
@@ -5870,6 +5873,11 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			
 			var args = new[] { left, right };
 			var resolutionSet = ResolveCallable(candidates, args, MaterializationMode.Overload);
+			if (resolutionSet.IsAmbiguous && IsShift(op.Type) &&
+			    (left.Type == NativeSymbols.Char || right.Type == NativeSymbols.Char))
+				return Error(node, DiagnosticReporter.ReportBinaryOpMismatch(_operatorRegistry, left, op, right),
+					CurrentTargetType);
+			
 			if (resolutionSet.IsAmbiguous)
 				return Error(node,
 					$"Ambiguous operation '{op.Text}' between '{left.Type.Name}' and '{right.Type.Name}'",
@@ -6602,8 +6610,6 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	
 	private (TypeSymbol? Type, object? Value) ParseInteger(ReadOnlySpan<char> span)
 	{
-		// TODO Check suffixes
-		
 		if (Scanner.TryParseInteger(ConsumeNegation(span), out var untypedValue))
 			return (NativeSymbols.UntypedInteger, untypedValue);
 		
@@ -6787,7 +6793,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		var fallback = SmallestFittingType(value);
 		return fallback is not null
 			? MaterializeLiteral(node.Syntax, fallback, value)
-			: node; // TODO Diagnostic: Too large for any integer type
+			: node;
 	}
 	
 	private ResolvedLiteralExpressionNode MaterializeIntegerAsFloat(ResolvedLiteralExpressionNode node,

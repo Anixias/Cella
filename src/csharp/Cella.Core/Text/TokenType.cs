@@ -57,6 +57,7 @@ public enum TokenType
 	KeywordWhen,
 	KeywordNew,
 	KeywordDrop,
+	KeywordRef,
 	
 	// Contextual Keywords
 	KeywordMod,
@@ -68,7 +69,6 @@ public enum TokenType
 	KeywordUnion,
 	KeywordOp,
 	KeywordReq,
-	KeywordRef,
 	KeywordPvt,
 	KeywordSet,
 	KeywordGet,

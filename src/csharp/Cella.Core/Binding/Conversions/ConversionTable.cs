@@ -10,13 +10,11 @@ public sealed class ConversionTable
 	
 	public void Add(Conversion conversion) => _conversions[(conversion.From, conversion.To)] = conversion;
 	
-	// TODO Chaining?
 	public Conversion? FindImplicit(TypeSymbol from, TypeSymbol to) =>
 		_conversions.TryGetValue((from, to), out var conversion)
 			? conversion.Kind == ConversionKind.Implicit ? conversion : null
 			: FindFunctionConversion(from, to) ?? FindCallableConversion(from, to);
 	
-	// TODO Chaining?
 	public Conversion? FindExplicit(TypeSymbol from, TypeSymbol to) =>
 		_conversions.GetValueOrDefault((from, to)) ?? FindFunctionConversion(from, to) ??
 		FindCallableConversion(from, to);
@@ -62,8 +60,6 @@ public sealed class ConversionTable
 			(NativeSymbols.Int64, NativeSymbols.UInt64),
 			(NativeSymbols.Int128, NativeSymbols.UInt128)
 		};
-		
-		// TODO Floating point types
 		
 		// Integer widening
 		for (var i = 0; i < intTypes.Length - 1; i++)

@@ -671,11 +671,19 @@ public sealed class SignatureCollector
 			return;
 		}
 		
+		foreach (var repeated in keywords.GroupBy(static keyword => keyword.Type)
+			         .Where(static group => group.Count() > 1))
+		{
+			foreach (var keyword in repeated)
+				Diagnostics.Add(new(DiagnosticSeverity.Error, keyword.SourceLocation,
+					$"'{keyword.Text}' is required more than once"));
+		}
+		
 		if (keywords.All(static keyword => keyword.Type != TokenType.KeywordDrop))
 			return;
 		
-		foreach (var copying in keywords.Where(static k =>
-			         k.Type is TokenType.KeywordCopy or TokenType.KeywordAtomic or TokenType.KeywordExt))
+		foreach (var copying in keywords.Where(static k => k.Type is TokenType.KeywordCopy or TokenType.KeywordAtomic or
+			         TokenType.KeywordExt or TokenType.KeywordNull))
 		{
 			var message = $"Cannot combine '{copying.Text}' and 'drop'";
 			foreach (var keyword in keywords.Where(k => k == copying || k.Type == TokenType.KeywordDrop))

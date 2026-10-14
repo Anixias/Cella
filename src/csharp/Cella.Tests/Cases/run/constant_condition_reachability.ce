@@ -1,0 +1,44 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+endless: fun -> i32
+{
+	var i = 0
+	while true
+	{
+		i += 1
+		if i > 3
+			ret i
+	}
+
+	printf("after\n")
+	ret 0
+}
+
+taken: fun -> i32
+{
+	if true
+		ret 3
+
+	ret 4
+}
+
+skipped: fun -> i32
+{
+	if false
+	{
+		ret 2
+	}
+
+	ret 5
+}
+
+main: fun -> i32
+{
+	printf("%d %d %d\n", endless(), taken(), skipped())
+	ret 0
+}

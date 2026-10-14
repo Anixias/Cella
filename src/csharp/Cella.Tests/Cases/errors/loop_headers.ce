@@ -1,0 +1,78 @@
+mod test
+
+labelBlock: fun -> i32
+{
+	outer: {
+	}
+
+	ret 0
+}
+
+labelIf: fun -> i32
+{
+	outer: if true
+	{
+	}
+
+	ret 0
+}
+
+whileCondition: fun -> i32
+{
+	while
+	{
+	}
+
+	ret 0
+}
+
+ifCondition: fun -> i32
+{
+	if {
+	}
+
+	ret 0
+}
+
+forSource: fun -> i32
+{
+	for x in
+	{
+	}
+
+	ret 0
+}
+
+forEnd: fun -> i32
+{
+	for x in 0..
+	{
+	}
+
+	ret 0
+}
+
+chainedRange: fun -> i32
+{
+	for x in 0..3..5
+	{
+	}
+
+	ret 0
+}
+
+loopBody: fun -> i32
+{
+	loop
+}
+
+doCondition: fun -> i32
+{
+	do
+	{
+	} while
+
+	ret 0
+}
+
+main: fun -> i32 = 0

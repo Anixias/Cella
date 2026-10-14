@@ -2396,6 +2396,12 @@ public sealed class FileParser
 	{
 		// @TODO Diagnostics
 		
+		if (Peek(index, TokenType.OpCloseBrace))
+		{
+			ReportExpected(index, "a statement");
+			return null;
+		}
+		
 		if (Match(ref index, out var bindingToken, _bindingKeywords))
 			return ParseVarStatement(ref index, bindingToken);
 		
@@ -2425,8 +2431,14 @@ public sealed class FileParser
 		// Attempt to parse as loop, else backtrack
 		var backtrackIndex = index;
 		
-		if (Match(ref index, TokenType.OpColon) && Match(ref index, out var namedLoopToken, _loopKeywords))
-			return ParseLoop(ref index, namedLoopToken, var.Identifier);
+		if (IsOnSameLine(index) && Match(ref index, TokenType.OpColon))
+		{
+			if (Match(ref index, out var namedLoopToken, _loopKeywords))
+				return ParseLoop(ref index, namedLoopToken, var.Identifier);
+			
+			ReportMissing(index, "a loop");
+			return null;
+		}
 		
 		index = backtrackIndex;
 		return new ExpressionStatementNode(expr);
@@ -2468,9 +2480,27 @@ public sealed class FileParser
 		}
 		
 		Token? mode = Match(ref index, out var mut, TokenType.KeywordMut) ? mut : null;
+		if (StartsBody(index))
+		{
+			ReportMissing(index, "an expression");
+			return null;
+		}
+		
 		var source = ParseExpression(ref index);
 		Token? rangeOperator = Match(ref index, out var op, _rangeOperators) ? op : null;
+		if (rangeOperator is not null && StartsBody(index))
+		{
+			ReportMissing(index, "an expression");
+			return null;
+		}
+		
 		var end = rangeOperator is null ? null : ParseExpression(ref index);
+		if (end is not null && Match(ref index, out var extraRange, _rangeOperators))
+		{
+			Report(extraRange, "Cannot chain ranges");
+			return null;
+		}
+		
 		return ParseStatement(ref index) is { } body
 			? new(SpanLoop(keyword, label, body.SourceLocation), binding, mode, source, rangeOperator, end, body, label)
 			: null;
@@ -2478,6 +2508,12 @@ public sealed class FileParser
 	
 	private WhileStatementNode? ParseWhileStatement(ref int index, Token keyword, Token? label)
 	{
+		if (StartsBody(index))
+		{
+			ReportMissing(index, "a condition");
+			return null;
+		}
+		
 		var condition = ParseExpression(ref index);
 		return ParseStatement(ref index) is { } body
 			? new(SpanLoop(keyword, label, body.SourceLocation), condition, body, label)
@@ -2491,13 +2527,24 @@ public sealed class FileParser
 		
 		if (!Match(ref index, TokenType.KeywordWhile))
 		{
-			ReportExpected(index, "'while'");
+			ReportMissing(index, "'while'");
+			return null;
+		}
+		
+		if (StartsBody(index))
+		{
+			ReportMissing(index, "a condition");
 			return null;
 		}
 		
 		var condition = ParseExpression(ref index);
 		return new(SpanLoop(keyword, label, condition.SourceLocation), body, condition, label);
 	}
+	
+	private bool StartsBody(int index) => !IsOnSameLine(index) || Peek(index, TokenType.OpOpenBrace);
+	
+	private void ReportMissing(int index, string expected) =>
+		ReportExpected(IsOnSameLine(index) ? index : index - 1, expected);
 	
 	private LoopStatementNode? ParseLoopStatement(ref int index, Token keyword, Token? label) =>
 		ParseStatement(ref index) is { } body ? new(SpanLoop(keyword, label, body.SourceLocation), body, label) : null;
@@ -2507,6 +2554,12 @@ public sealed class FileParser
 		// ifToken already consumed when this function is called
 		
 		// TODO Diagnostics
+		
+		if (StartsBody(index))
+		{
+			ReportMissing(index, "a condition");
+			return null;
+		}
 		
 		var condition = ParseExpression(ref index);
 		

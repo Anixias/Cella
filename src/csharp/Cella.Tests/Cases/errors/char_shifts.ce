@@ -1,0 +1,11 @@
+mod test
+
+main: fun -> i32
+{
+	var c = 'a'
+	var d = c << 1
+	var e = c >>> 1
+	var f: u8 = 1
+	var g = f << 'a'
+	ret 0
+}

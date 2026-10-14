@@ -1,0 +1,64 @@
+
+====== repeated_constraints.ce ======
+
+Error at line 3, column 6
+2 │ 
+3 │ a[T: copy + copy]: fun -> i32 = 0
+         ╘══╛ 'copy' is required more than once
+
+Error at line 3, column 13
+2 │ 
+3 │ a[T: copy + copy]: fun -> i32 = 0
+                ╘══╛ 'copy' is required more than once
+
+Error at line 4, column 6
+3 │ a[T: copy + copy]: fun -> i32 = 0
+4 │ b[T: noref + noref]: fun -> i32 = 0
+         ╘═══╛ 'noref' is required more than once
+
+Error at line 4, column 14
+3 │ a[T: copy + copy]: fun -> i32 = 0
+4 │ b[T: noref + noref]: fun -> i32 = 0
+                 ╘═══╛ 'noref' is required more than once
+
+Error at line 5, column 6
+4 │ b[T: noref + noref]: fun -> i32 = 0
+5 │ c[T: drop + drop]: fun -> i32 = 0
+         ╘══╛ 'drop' is required more than once
+
+Error at line 5, column 13
+4 │ b[T: noref + noref]: fun -> i32 = 0
+5 │ c[T: drop + drop]: fun -> i32 = 0
+                ╘══╛ 'drop' is required more than once
+
+Error at line 6, column 6
+5 │ c[T: drop + drop]: fun -> i32 = 0
+6 │ d[T: null + null]: fun -> i32 = 0
+         ╘══╛ 'null' is required more than once
+
+Error at line 6, column 13
+5 │ c[T: drop + drop]: fun -> i32 = 0
+6 │ d[T: null + null]: fun -> i32 = 0
+                ╘══╛ 'null' is required more than once
+
+Error at line 7, column 6
+6 │ d[T: null + null]: fun -> i32 = 0
+7 │ e[T: atomic + atomic]: fun -> i32 = 0
+         ╘════╛ 'atomic' is required more than once
+
+Error at line 7, column 15
+6 │ d[T: null + null]: fun -> i32 = 0
+7 │ e[T: atomic + atomic]: fun -> i32 = 0
+                  ╘════╛ 'atomic' is required more than once
+
+Error at line 8, column 6
+7 │ e[T: atomic + atomic]: fun -> i32 = 0
+8 │ f[T: drop + null]: fun -> i32 = 0
+         ╘══╛ Cannot combine 'null' and 'drop'
+
+Error at line 8, column 13
+7 │ e[T: atomic + atomic]: fun -> i32 = 0
+8 │ f[T: drop + null]: fun -> i32 = 0
+                ╘══╛ Cannot combine 'null' and 'drop'
+
+[compilation failed]

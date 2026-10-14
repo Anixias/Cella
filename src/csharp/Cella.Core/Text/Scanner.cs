@@ -7,7 +7,7 @@ using System.Text;
 
 namespace Cella.Core.Text;
 
-public class Scanner : IScanner
+public class Scanner
 {
 	public ISource Source { get; }
 	
@@ -47,25 +47,30 @@ public class Scanner : IScanner
 		if (TryScanOperator(position, out var op))
 			return op;
 		
-		// Invalid character, emit invalid token
-		var end = position + 1;
+		var end = char.IsHighSurrogate(character) && position + 1 < Source.Length &&
+		          char.IsLowSurrogate(Source[position + 1])
+			? position + 2
+			: position + 1;
+		
 		var range = new TextRange(position, end);
-		var token = new Token(TokenType.Invalid, Source, range) { Error = $"Unexpected character '{character}'" };
+		var text = Source.GetText(range).ToString();
+		var token = new Token(TokenType.Invalid, Source, range)
+		{
+			Error = $"Unexpected character {DescribeCharacter(text)}"
+		};
+		
 		return new ScanResult(token, end);
 	}
 	
-	private IEnumerable<Token> ScanAllTokens()
+	private static string DescribeCharacter(string text)
 	{
-		var position = 0;
-		while (ScanToken(position) is var lexerResult)
-		{
-			yield return lexerResult.Token;
-			
-			if (lexerResult.NextPosition <= position)
-				break;
-			
-			position = lexerResult.NextPosition;
-		}
+		var codePoint = char.IsSurrogatePair(text, 0) ? char.ConvertToUtf32(text, 0) : text[0];
+		var isPrintable = text.Length == 1 && CharUnicodeInfo.GetUnicodeCategory(text[0]) is not
+			(UnicodeCategory.Control or UnicodeCategory.Format or UnicodeCategory.Surrogate or
+			UnicodeCategory.PrivateUse or UnicodeCategory.OtherNotAssigned or UnicodeCategory.SpaceSeparator or
+			UnicodeCategory.LineSeparator or UnicodeCategory.ParagraphSeparator);
+		
+		return isPrintable ? $"'{text}'" : $"U+{codePoint:X4}";
 	}
 	
 	private ScanResult ScanWhiteSpace(int position)
@@ -654,7 +659,4 @@ public class Scanner : IScanner
 	
 	private static bool IsSingleRune(string text) =>
 		Rune.DecodeFromUtf16(text, out _, out var length) == OperationStatus.Done && length == text.Length;
-	
-	public IEnumerator<Token> GetEnumerator() => ScanAllTokens().GetEnumerator();
-	IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 }

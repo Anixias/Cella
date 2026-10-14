@@ -27,12 +27,3 @@ public sealed class ImportEnvironment
 	
 	public IEnumerable<Symbol> ResolveHidden(string name) => _hiddenSymbols[name];
 }
-
-// TODO File-specific symbol table for all imported symbols
-// It would automatically import all symbols in its module
-// - for the module in this assembly, all non-file-private symbols
-// - for the module in other assemblies, all public symbols
-// Then, import all symbols in import expressions
-// - for import expressions whose module is in this assembly, all non-file-private symbols referenced
-// - for other assemblies, all public symbols referenced
-// ^ all of these symbols are grouped by name; ambiguous if a name has more than 1 match

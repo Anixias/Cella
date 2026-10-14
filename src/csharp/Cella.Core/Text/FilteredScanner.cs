@@ -2,7 +2,7 @@
 
 namespace Cella.Core.Text;
 
-public class FilteredScanner : IScanner
+public class FilteredScanner : IEnumerable<Token>
 {
 	public ISource Source => _scanner.Source;
 	private readonly Scanner _scanner;
