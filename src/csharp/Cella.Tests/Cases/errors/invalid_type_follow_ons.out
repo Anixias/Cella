@@ -1,0 +1,29 @@
+
+====== invalid_type_follow_ons.ce ======
+
+Error at line 7, column 11
+6 │ {
+7 │     val xs = []
+                 ╘╛ Cannot infer the type of '[]'
+
+Error at line 14, column 11
+13 │ {
+14 │     val xs = [1, true]
+                  ╘═══════╛ The elements of this array have incompatible types: 'i32', 'bool'
+
+Error at line 21, column 10
+20 │ {
+21 │     val f = id
+                 ╘╛ Cannot infer 'T' for 'id'
+
+Error at line 22, column 3
+21 │ val f = id
+22 │ [i32](4)
+      ╘═╛ Cannot use types as values
+
+Error at line 26, column 28
+25 │ 
+26 │ hugeOperand: fun -> bool = 999999999999999999999999999999999999999999999 > 1
+                                ╘═══════════════════════════════════════════╛ Integer literal too large to fit any type
+
+[compilation failed]

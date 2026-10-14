@@ -1,0 +1,12 @@
+mod test
+
+Point: ext rec
+{
+	x: i32
+}
+
+Code: ext ref enum { a }
+
+Second: ref ext enum { b }
+
+main: fun -> i32 = 0

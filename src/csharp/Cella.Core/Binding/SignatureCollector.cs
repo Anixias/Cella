@@ -150,6 +150,7 @@ public sealed class SignatureCollector
 		
 		ReportPlainNameConflicts();
 		ReportModuleConflicts();
+		ReportExternalConflicts();
 		ReportLayoutCycles();
 		ReportEntryPoint();
 		ReportExtSignatureTypes();
@@ -1697,6 +1698,12 @@ public sealed class SignatureCollector
 			{
 				case FieldNode field:
 					var fieldSymbol = (FieldSymbol)symbol;
+					if (field is { Visibility: null, WriteVisibility: { } scope } &&
+					    record.Node.Visibility is { } typeVisibility &&
+					    Visibility.FromKeyword(scope) >= record.Visibility)
+						Diagnostics.Add(new(DiagnosticSeverity.Error, scope.SourceLocation,
+							$"Cannot use '{scope.Text} set' in '{typeVisibility.Text}' types"));
+					
 					var fieldType = RejectValueDyn(field.Type, context.ResolveType(field.Type));
 					_typePool.RegisterMember(record, fieldSymbol, fieldType);
 					if (fieldSymbol.IsRequired)
@@ -3379,6 +3386,33 @@ public sealed class SignatureCollector
 		};
 	}
 	
+	private void ReportExternalConflicts()
+	{
+		var imports = _builder.Functions.Keys
+			.Where(static function => function.Syntax is ExternalFunctionNode)
+			.GroupBy(static function => function.ExternalName);
+		
+		foreach (var group in imports)
+		{
+			var functions = group.ToList();
+			var byModule = functions.GroupBy(function => _declarations[function].Context.File.Module).ToList();
+			var first = _builder.Functions[functions[0]].Signature;
+			if (byModule.Count < 2 ||
+			    functions.All(function => IsSameExternalSignature(_builder.Functions[function].Signature, first)))
+				continue;
+			
+			foreach (var function in byModule.Where(static module => module.Count() == 1)
+				         .SelectMany(static module => module))
+				Diagnostics.Add(new(DiagnosticSeverity.Error,
+					GetIdentifier((IDeclarationNode)function.Syntax).SourceLocation,
+					"'ext' functions cannot be overloaded"));
+		}
+	}
+	
+	private static bool IsSameExternalSignature(FunctionSignature first, FunctionSignature second) =>
+		HasSameParameters(first, second) && first.ReturnType == second.ReturnType &&
+		first.ParameterModes.SequenceEqual(second.ParameterModes);
+	
 	private void ReportModuleConflicts()
 	{
 		foreach (var module in _symbolTable.ModuleSymbols.Values)
@@ -3629,7 +3663,26 @@ public sealed class SignatureCollector
 		}
 		
 		_explicitImports.Add((explicitImports, context));
+		ReportRepeatedImports(node.Imports);
 		return new(imports, explicitImports.Select(static entry => entry.Symbol), hidden);
+	}
+	
+	private void ReportRepeatedImports(IEnumerable<ImportExpression> imports)
+	{
+		var names = imports.SelectMany(static import => import.Import switch
+		{
+			TokenImport single => [(Module: import.ModuleName.Text, Token: single.Token)],
+			ListImport list => list.Tokens.Select(token => (Module: import.ModuleName.Text, Token: token)),
+			_ => []
+		});
+		
+		foreach (var repeated in names.GroupBy(static entry => (entry.Module, entry.Token.Text))
+			         .Where(static group => group.Count() > 1))
+		{
+			foreach (var (_, token) in repeated)
+				Diagnostics.Add(new(DiagnosticSeverity.Error, token.SourceLocation,
+					$"'{token.Text}' is imported more than once"));
+		}
 	}
 	
 	private static Token FindImportName(ImportExpression import, Symbol symbol) => import.Import switch

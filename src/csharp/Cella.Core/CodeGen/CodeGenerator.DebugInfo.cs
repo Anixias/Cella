@@ -349,6 +349,8 @@ public sealed unsafe partial class CodeGenerator
 	
 	private string GetAdapterName(FunctionInfo function) => $"{GetDisplayName(function)} (adapter)";
 	
+	private string DescribeDropGlue(TypeSymbol type) => $"{GetDebugTypeName(type)} (drop)";
+	
 	private LLVMMetadataRef GetDebugType(TypeSymbol type)
 	{
 		type = Substitute(type);

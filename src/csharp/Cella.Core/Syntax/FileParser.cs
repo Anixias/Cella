@@ -315,7 +315,7 @@ public sealed class FileParser
 		
 		if (!Match(ref index, TokenType.OpColon))
 		{
-			Report(IsOnSameLine(index) ? Tokens[index] : identifier, "Expected ':' after identifier");
+			Report(IsOnSameLine(index) ? Tokens[index] : identifier, $"Expected ':' after '{identifier.Text}'");
 			ResyncTopLevel(ref index, insideBlock);
 			return true;
 		}
@@ -418,9 +418,22 @@ public sealed class FileParser
 			return true;
 		}
 		
+		if (isExternal && Tokens[index].Text is "rec" or "ref")
+		{
+			Report(Tokens[index], Tokens[index].Text == "rec"
+				? "Cannot declare 'ext' records"
+				: "Cannot combine 'ext' and 'ref'");
+			
+			ResyncTopLevel(ref index, insideBlock);
+			return true;
+		}
+		
 		if (isRef)
 		{
-			Report(Tokens[index], "Expected 'rec' or 'enum' after 'ref'");
+			Report(Tokens[index], Tokens[index].Text == "ext"
+				? "Cannot combine 'ref' and 'ext'"
+				: "Expected 'rec' or 'enum' after 'ref'");
+			
 			if (!AtEnd(index))
 				index++;
 			
@@ -459,7 +472,7 @@ public sealed class FileParser
 		
 		// Unknown declaration
 		index = kindIndex;
-		Report(Tokens[index], "Unknown declaration type");
+		Report(Tokens[index], "Expected a declaration");
 		if (!AtEnd(index))
 			index++;
 		
@@ -1856,7 +1869,7 @@ public sealed class FileParser
 		
 		if (!Match(ref index, TokenType.OpColon))
 		{
-			Report(Tokens[index], "Expected ':' after identifier");
+			Report(Tokens[index], $"Expected ':' after '{identifier.Text}'");
 			return null;
 		}
 		

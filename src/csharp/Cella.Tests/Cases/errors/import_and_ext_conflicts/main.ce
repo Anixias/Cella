@@ -1,0 +1,10 @@
+mod test
+use geometry.[area, area]
+use geometry.area
+
+ext
+{
+	abs: fun(x: i32) -> i32
+}
+
+main: fun -> i32 = area() + abs(-7)

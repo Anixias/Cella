@@ -1184,7 +1184,13 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 		glue.Linkage = LLVMLinkage.LLVMInternalLinkage;
 		current.DropGlue[type] = glue;
 		
-		using var builder = CreateGeneratedBuilder(glue, glue.Name, SourceLocation.None);
+		using var builder = CreateGeneratedBuilder(glue, DescribeDropGlue(type), type switch
+		{
+			RecordSymbol record => record.Node.Identifier.SourceLocation,
+			EnumSymbol enumType => enumType.Node.Identifier.SourceLocation,
+			_ => SourceLocation.None
+		});
+		
 		var address = glue.GetParam(0);
 		switch (type)
 		{

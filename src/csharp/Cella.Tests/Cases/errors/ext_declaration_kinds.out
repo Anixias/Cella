@@ -1,0 +1,19 @@
+
+====== ext_declaration_kinds.ce ======
+
+Error at line 3, column 12
+2 │ 
+3 │ Point: ext rec
+               ╘═╛ Cannot declare 'ext' records
+
+Error at line 8, column 11
+7 │ 
+8 │ Code: ext ref enum { a }
+              ╘═╛ Cannot combine 'ext' and 'ref'
+
+Error at line 10, column 13
+ 9 │ 
+10 │ Second: ref ext enum { b }
+                 ╘═╛ Cannot combine 'ref' and 'ext'
+
+[compilation failed]

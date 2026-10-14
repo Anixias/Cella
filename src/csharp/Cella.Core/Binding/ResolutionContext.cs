@@ -176,6 +176,14 @@ public readonly struct ResolutionContext
 	
 	public bool IsInModuleOf(Symbol symbol) => Modules is null || Modules.FindModule(symbol) == File.Module;
 	
+	public IEnumerable<FunctionSymbol> FindHiddenFunctions(string name)
+	{
+		var modules = Modules;
+		var file = File;
+		return GetModuleSymbols(name).Concat(Imports?.ResolveHidden(name) ?? []).OfType<FunctionSymbol>()
+			.Where(function => modules is not null && !modules.IsVisible(function, file));
+	}
+	
 	public Diagnostic? ReportHidden(string name, SourceLocation location)
 	{
 		foreach (var symbol in GetModuleSymbols(name).Concat(Imports?.ResolveHidden(name) ?? []))

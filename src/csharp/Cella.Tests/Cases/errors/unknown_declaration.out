@@ -4,11 +4,11 @@
 Error at line 3, column 10
 2 │ 
 3 │ counter: static i32 = 0
-             ╘════╛ Unknown declaration type
+             ╘════╛ Expected a declaration
 
 Error at line 5, column 8
 4 │ 
 5 │ Shape: struct
-           ╘════╛ Unknown declaration type
+           ╘════╛ Expected a declaration
 
 [compilation failed]

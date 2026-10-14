@@ -4,17 +4,17 @@
 Error at line 5, column 4
 4 │ {
 5 │     x i32
-          ╘═╛ Expected ':' after identifier
+          ╘═╛ Expected ':' after 'x'
 
 Error at line 10, column 6
  9 │ {
 10 │     get fun(self) -> i32 = 0
-             ╘═╛ Expected ':' after identifier
+             ╘═╛ Expected ':' after 'get'
 
 Error at line 15, column 9
 14 │ {
 15 │     get[T] fun(self) -> i32 = 0
-                ╘═╛ Expected ':' after identifier
+                ╘═╛ Expected ':' after 'get'
 
 Error at line 20, column 6
 19 │ {

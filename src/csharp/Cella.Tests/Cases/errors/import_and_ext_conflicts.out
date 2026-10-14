@@ -1,0 +1,32 @@
+
+====== geometry.ce ======
+
+Error at line 5, column 2
+4 │ {
+5 │     abs: fun(x: i64) -> i64
+        ╘═╛ 'ext' functions cannot be overloaded
+
+
+====== main.ce ======
+
+Error at line 2, column 15
+1 │ mod test
+2 │ use geometry.[area, area]
+                  ╘══╛ 'area' is imported more than once
+
+Error at line 2, column 21
+1 │ mod test
+2 │ use geometry.[area, area]
+                        ╘══╛ 'area' is imported more than once
+
+Error at line 3, column 14
+2 │ use geometry.[area, area]
+3 │ use geometry.area
+                 ╘══╛ 'area' is imported more than once
+
+Error at line 7, column 2
+6 │ {
+7 │     abs: fun(x: i32) -> i32
+        ╘═╛ 'ext' functions cannot be overloaded
+
+[compilation failed]

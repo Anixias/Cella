@@ -1755,6 +1755,15 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		
 		if (!resolutionSet.HasResult)
 		{
+			var hidden = _typePool.GetConstructors(targetType).Where(info => !CanAccess(targetType, info.Symbol))
+				.ToList();
+			
+			if (hidden.Count > 0 && ResolveCallable([..hidden.Select(info => new ReceiverCallable(info, targetType))],
+				    args,
+				    MaterializationMode.Overload, target).HasResult)
+				return Error(node, ReportHiddenMember(node.SourceLocation, "new",
+					hidden.Select(static info => info.Symbol)), recovery);
+			
 			if (ReportArgumentModes(candidates, args, target))
 				return new ResolvedInvalidExpressionNode(node, recovery);
 			
@@ -1818,7 +1827,17 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			return VisitIndirectCall(node, VisitNode(node.Target, null));
 		
 		var candidates = functionSymbols.Select(GetFunctionInfo).Select(static info => new FunctionCallable(info));
-		return ResolveCall(node, GetName(node.Target), [..candidates], null);
+		ICallable[] hidden = node.Target is VarExpressionNode name
+			?
+			[
+				..context.FindHiddenFunctions(name.Identifier.Text)
+					.Where(static function => function.TypeParameters.IsEmpty)
+					.Select(GetFunctionInfo)
+					.Select(static info => new FunctionCallable(info))
+			]
+			: [];
+		
+		return ResolveCall(node, GetName(node.Target), [..candidates], null, hidden: hidden);
 	}
 	
 	private IResolvedExpressionNode VisitExplicitCall(CallExpressionNode node, IndexerExpressionNode indexer)
@@ -2169,7 +2188,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	}
 	
 	private IResolvedExpressionNode ResolveCall(CallExpressionNode node, string functionName, ICallable[] candidates,
-		IResolvedExpressionNode? receiver, TypeArgumentList? typeArguments = null)
+		IResolvedExpressionNode? receiver, TypeArgumentList? typeArguments = null, ICallable[]? hidden = null)
 	{
 		var location = (node.Target is IndexerExpressionNode indexer ? indexer.Target : node.Target).SourceLocation;
 		if (RejectSpread(node, candidates) is { } rejected)
@@ -2198,6 +2217,11 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		
 		if (resolutionSet.IsAmbiguous)
 			return Error(node, $"Call to '{functionName}' is ambiguous", CurrentTargetType, node.Target);
+		
+		if (!resolutionSet.HasResult && hidden is [_, ..] &&
+		    ResolveCallable(hidden, args, MaterializationMode.Overload, CurrentTargetType).HasResult &&
+		    CurrentResolutionContext.ReportHidden(functionName, location) is { } hiddenError)
+			return Error(node, hiddenError, CurrentTargetType);
 		
 		if (!resolutionSet.HasResult && ReportArgumentModes(specialized, args, CurrentTargetType))
 			return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
@@ -4007,7 +4031,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		var args = ResolveArguments(Unspread(node.Arguments),
 			[..candidates.Select(static candidate => CreateShape(candidate, []))], out _);
 		
-		if (IsInvalid(target) || AnyInvalid(args))
+		if (IsInvalid(target) || AnyInvalid(args) || TypePool.ContainsInvalid(callee.Type))
 			return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
 		
 		if (target.Type is not FunctionType functionType)
@@ -5909,9 +5933,16 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			
 			if (!resolutionSet.HasResult)
 			{
-				if ((left.Type is UntypedType || right.Type is UntypedType) &&
-				    ResolveDeclaredOperator(node, DefaultLiteral(left), DefaultLiteral(right)) is { } defaulted)
-					return defaulted;
+				if (left.Type is UntypedType || right.Type is UntypedType)
+				{
+					var defaultLeft = DefaultLiteral(left);
+					var defaultRight = DefaultLiteral(right);
+					if (AnyInvalid(defaultLeft, defaultRight))
+						return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
+					
+					if (ResolveDeclaredOperator(node, defaultLeft, defaultRight) is { } defaulted)
+						return defaulted;
+				}
 				
 				left = ResolveUnmatched(left);
 				right = ResolveUnmatched(right);
@@ -6561,6 +6592,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		
 		if (source.Type is ClosureType && target is ClosureType)
 			return Error(source.Syntax, "Cannot convert between 'own fun' closures", target);
+		
+		if (TypePool.ContainsInvalid(source.Type) || TypePool.ContainsInvalid(target))
+			return new ResolvedInvalidExpressionNode(source.Syntax, target);
 		
 		if (target is BorrowType { IsMutable: true } mutTarget && source.Type == mutTarget.Target)
 			return Error(source.Syntax, "Cannot mutably borrow values implicitly", target);

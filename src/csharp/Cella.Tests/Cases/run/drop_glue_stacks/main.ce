@@ -1,0 +1,125 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+	strcmp: fun(left: ptr, right: cstr) -> i32
+	strrchr: fun(text: ptr, character: i32) -> ptr
+}
+
+ext("kernel32")
+{
+	GetCurrentProcess: fun -> ptr
+	GetModuleFileNameA: fun(module: ptr, path: ptr, size: u32) -> u32
+	RtlCaptureStackBackTrace: fun(skip: u32, count: u32, frames: ptr, hash: ptr) -> u16
+}
+
+ext("dbghelp")
+{
+	SymInitialize: fun(process: ptr, path: ptr, invade: i32) -> i32
+	SymFromAddr: fun(process: ptr, address: u64, displacement: ptr, symbol: ptr) -> i32
+	SymGetLineFromAddr64: fun(process: ptr, address: u64, displacement: ptr, line: ptr) -> i32
+}
+
+Path: rec
+{
+	text: array[u8, 520]
+}
+
+Frames: rec
+{
+	items: array[u64, 16]
+}
+
+SymbolInfo: rec
+{
+	sizeOfStruct: u32
+	typeIndex: u32
+	reserved: array[u64, 2]
+	index: u32
+	size: u32
+	modBase: u64
+	flags: u32
+	value: u64
+	address: u64
+	register: u32
+	scope: u32
+	tag: u32
+	nameLength: u32
+	maxNameLength: u32
+	name: array[u8, 256]
+}
+
+LineInfo: rec
+{
+	sizeOfStruct: u32
+	key: ptr
+	lineNumber: u32
+	fileName: ptr
+	address: u64
+}
+
+printStack: fun
+{
+	val process = GetCurrentProcess()
+	var path = Path()
+	GetModuleFileNameA(null, @path, 520)
+	*ptr[u8](strrchr(@path, 92)) = 0
+	SymInitialize(process, @path, 1)
+
+	var frames = Frames()
+	val count = RtlCaptureStackBackTrace(0, 16, @frames, null)
+	var i: u16 = 0
+	while i < count
+	{
+		var symbol = SymbolInfo()
+		symbol.sizeOfStruct = 88
+		symbol.maxNameLength = 255
+		var line = LineInfo()
+		line.sizeOfStruct = 40
+		var offset: u32 = 0
+		val address = frames.items[usize(i)]
+		if SymFromAddr(process, address, null, @symbol) == 0 ||
+			SymGetLineFromAddr64(process, address - 1, @offset, @line) == 0
+		{
+			printf("?\n")
+		}
+		else
+		{
+			printf("%s %s:%u\n", @symbol.name, ptr[u8](strrchr(line.fileName, 92)) + 1, line.lineNumber)
+		}
+
+		if strcmp(@symbol.name, "main") == 0
+		{
+			ret
+		}
+
+		i += 1
+	}
+}
+
+Guard: rec
+{
+	id: i32
+
+	drop: op
+	{
+		printStack()
+	}
+}
+
+Holder: rec
+{
+	guard: Guard
+}
+
+run: fun
+{
+	val holder = Holder(Guard(3))
+}
+
+main: fun -> i32
+{
+	run()
+	ret 0
+}

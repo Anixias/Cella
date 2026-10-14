@@ -1,0 +1,14 @@
+mod test
+
+Box: mod rec
+{
+	x: mod set i32
+	y: pvt set i32
+}
+
+Secret: pvt rec
+{
+	z: pvt set i32
+}
+
+main: fun -> i32 = 0

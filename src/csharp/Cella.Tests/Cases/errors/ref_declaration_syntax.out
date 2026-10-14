@@ -9,6 +9,6 @@ Error at line 3, column 12
 Error at line 5, column 13
 4 │ 
 5 │ Second: ref ext enum
-                ╘═╛ Expected 'rec' or 'enum' after 'ref'
+                ╘═╛ Cannot combine 'ref' and 'ext'
 
 [compilation failed]

@@ -1,0 +1,16 @@
+mod game
+
+Thing: rec
+{
+	n: i32
+
+	new: op(n: i32)
+	{
+		self.n = n
+	}
+
+	new: mod op(p: ptr[i32])
+	{
+		self.n = *p
+	}
+}

@@ -1,0 +1,28 @@
+mod test
+
+id[T]: fun(own x: T) -> T = x
+
+emptyArray: fun -> i32
+{
+	val xs = []
+	val ys: array[i32, 0] = xs
+	ret 0
+}
+
+mixedArray: fun -> i32
+{
+	val xs = [1, true]
+	val y: i32 = xs
+	ret 0
+}
+
+newlineBracket: fun -> i32
+{
+	val f = id
+	[i32](4)
+	ret 0
+}
+
+hugeOperand: fun -> bool = 999999999999999999999999999999999999999999999 > 1
+
+main: fun -> i32 = 0

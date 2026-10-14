@@ -4,7 +4,7 @@
 Error at line 3, column 8
 2 │ 
 3 │ helper fun -> i32 = 1
-           ╘═╛ Expected ':' after identifier
+           ╘═╛ Expected ':' after 'helper'
 
 Error at line 7, column 6
 6 │ {

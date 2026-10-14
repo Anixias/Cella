@@ -4,7 +4,7 @@
 Error at line 3, column 1
 2 │ 
 3 │ helper
-    ╘════╛ Expected ':' after identifier
+    ╘════╛ Expected ':' after 'helper'
 
 Error at line 7, column 6
 6 │ {

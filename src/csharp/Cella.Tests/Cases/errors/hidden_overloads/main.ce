@@ -1,0 +1,8 @@
+mod test
+
+main: fun -> i32
+{
+	var k = 3
+	val u = game.Thing(@k)
+	ret show(1)
+}

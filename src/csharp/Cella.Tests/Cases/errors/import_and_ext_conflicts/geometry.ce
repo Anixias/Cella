@@ -1,0 +1,8 @@
+mod geometry
+
+ext
+{
+	abs: fun(x: i64) -> i64
+}
+
+area: fun -> i32 = i32(abs(-2))
