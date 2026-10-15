@@ -173,11 +173,14 @@ public sealed partial class SignatureCollector
 		
 		var message = DescribeConflict(symbol.Name, _builder.Functions[function].Signature,
 			others.Cast<FunctionSymbol>()
+				.Where(other => HasReceiver(other) == HasReceiver(function))
 				.Select(other => AlignTypeParameters(function, other, _builder.Functions[other].Signature))
 				.OfType<FunctionSignature>());
 		
 		return message is null ? null : new(DiagnosticSeverity.Error, location, message);
 	}
+	
+	private static bool HasReceiver(FunctionSymbol function) => function.Syntax is FunctionNode { Receiver: not null };
 	
 	private FunctionSignature? AlignTypeParameters(FunctionSymbol function, FunctionSymbol other,
 		FunctionSignature signature)

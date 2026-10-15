@@ -1,0 +1,24 @@
+mod test
+
+P: rec
+{
+	x: i32
+
+	f: fun(imm self)
+	{
+	}
+
+	f: fun(imm self)
+	{
+	}
+
+	h: fun(p: P)
+	{
+	}
+
+	h: fun(q: P)
+	{
+	}
+}
+
+main: fun -> i32 = 0

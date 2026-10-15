@@ -1,0 +1,41 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+P: rec
+{
+	x: i32
+
+	f: fun(imm self)
+	{
+		printf("method %d\n", self.x)
+	}
+
+	f: fun(p: P)
+	{
+		printf("static %d\n", p.x)
+	}
+
+	g: fun(imm self, y: i32 = 0)
+	{
+		printf("g method %d\n", y)
+	}
+
+	g: fun(p: P)
+	{
+		printf("g static\n")
+	}
+}
+
+main: fun -> i32
+{
+	val p = P(1)
+	p.f()
+	P.f(p)
+	p.g()
+	P.g(p)
+	ret 0
+}
