@@ -1,0 +1,11 @@
+mod test
+
+main: fun -> i32
+{
+	var u = game.Unit()
+	u.grow()
+	val p = @u.length
+	val q = @game.Unit.count
+	val r = imm u.length
+	ret 0
+}

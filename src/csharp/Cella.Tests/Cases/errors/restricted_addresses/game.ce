@@ -1,0 +1,15 @@
+mod game
+
+Unit: rec
+{
+	length: pvt set i32
+	count: pvt set var i32 = 0
+
+	grow: fun(mut self)
+	{
+		val p = @self.length
+		*p += 1
+		val q = @count
+		*q += 1
+	}
+}

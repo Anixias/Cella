@@ -1,0 +1,16 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+main: fun -> i32
+{
+	var u = game.Unit()
+	u.grow()
+	u.grow()
+	val r = imm u.length
+	printf("%d %d %d\n", u.length, r, game.Unit.count)
+	ret 0
+}

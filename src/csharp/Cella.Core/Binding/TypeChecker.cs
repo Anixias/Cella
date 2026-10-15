@@ -1016,6 +1016,9 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool, 
 		if (node.Operation?.Op == TokenType.OpAt && !IsLValue(SkipAssignment(node.Operand)))
 			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Operand.Syntax.SourceLocation,
 				$"Cannot take the address of {DescribeUnstored(node.Operand)}"));
+		else if (node.Operation?.Op == TokenType.OpAt &&
+		         ReportUnwritable(SkipAssignment(node.Operand)) is { } unwritable)
+			Diagnostics.Add(unwritable);
 		
 		var reported = overflows;
 		VisitNode(node.Operand);
