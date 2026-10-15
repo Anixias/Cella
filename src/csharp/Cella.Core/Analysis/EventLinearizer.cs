@@ -139,6 +139,7 @@ public sealed class EventLinearizer
 				} v:
 					AddArguments([..v.Arguments.Skip(1)]);
 					AddOperands(self);
+					AddLending(v.Arguments, v.Function.DeclaredSignature.ParameterModes, 1);
 					if (FindPlace(self) is { } constructed)
 						events.Add(new WriteEvent(constructed, self.SourceLocation, v));
 					
@@ -146,11 +147,13 @@ public sealed class EventLinearizer
 				
 				case CallValue v:
 					AddArguments(v.Arguments);
+					AddLending(v.Arguments, v.Function.DeclaredSignature.ParameterModes, 0);
 					break;
 				
 				case IndirectCallValue v:
 					AddValue(v.Target);
 					AddArguments(v.Arguments);
+					AddLending(v.Arguments, v.FunctionType.ParameterModes, 0);
 					break;
 				
 				case ClosureValue v:
@@ -223,6 +226,17 @@ public sealed class EventLinearizer
 		{
 			if (FindPlace(lent) is { } place)
 				events.Add(new AccessEvent(place, AccessKind.Read, lent.SourceLocation, lent.Type));
+		}
+	}
+	
+	private void AddLending(IReadOnlyList<Value> arguments, IReadOnlyList<ParameterMode> modes, int first)
+	{
+		for (var i = first; i < arguments.Count && i < modes.Count; i++)
+		{
+			if (modes[i] == ParameterMode.Mut &&
+			    arguments[i] is UnaryOpValue { Op: UnaryOperation.AddressOf, IsRaw: false, Operand: var lent } &&
+			    FindPlace(lent) is { } place)
+				events.Add(new LendEvent(place, arguments[i].SourceLocation));
 		}
 	}
 	

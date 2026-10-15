@@ -32,6 +32,7 @@ public sealed record AccessEvent
 
 public sealed record WriteEvent(Place Place, SourceLocation Location, Value Value) : MemoryEvent(Location);
 public sealed record IndirectWriteEvent(Value Target, Value Value, SourceLocation Location) : MemoryEvent(Location);
+public sealed record LendEvent(Place Place, SourceLocation Location) : MemoryEvent(Location);
 
 public sealed record DefineEvent(LocalVariableSymbol Local, DefineKind Kind, SourceLocation Location, Value Value)
 	: MemoryEvent(Location);

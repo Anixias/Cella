@@ -1,0 +1,71 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Buffer: rec
+{
+	id: i32
+
+	drop: op
+	{
+		printf("drop %d\n", self.id)
+	}
+}
+
+Effect: enum
+{
+	none
+	hold(buffer: Buffer)
+
+	clear: fun(mut self)
+	{
+		self = Effect.none
+	}
+}
+
+Holder: rec
+{
+	effect: Effect
+}
+
+clear: fun(mut e: Effect)
+{
+	e = Effect.none
+}
+
+reset: fun(mut holder: Holder)
+{
+	holder.effect = Effect.none
+}
+
+main: fun -> i32
+{
+	var e = Effect.hold(Buffer(1))
+	match e
+	{
+		hold(val b) =>
+		{
+			clear(mut e)
+			printf("%d\n", b.id)
+		}
+		else => {}
+	}
+
+	if e is hold(val b)
+	{
+		e.clear()
+		printf("%d\n", b.id)
+	}
+
+	var holder = Holder(Effect.hold(Buffer(2)))
+	if holder.effect is hold(val b)
+	{
+		reset(mut holder)
+		printf("%d\n", b.id)
+	}
+
+	ret 0
+}

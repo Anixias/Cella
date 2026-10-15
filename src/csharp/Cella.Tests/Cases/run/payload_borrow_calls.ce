@@ -1,0 +1,62 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Buffer: rec
+{
+	id: i32
+
+	drop: op
+	{
+		printf("drop %d\n", self.id)
+	}
+}
+
+Effect: enum
+{
+	none
+	hold(buffer: Buffer)
+
+	isHeld: fun(imm self) -> bool = self is hold(_)
+}
+
+Pair: rec
+{
+	left: i32
+	right: i32
+}
+
+peek: fun(imm e: Effect) -> i32 = match e
+{
+	hold(val b) => b.id
+	else => 0
+}
+
+show: fun(mut e: Effect, id: i32)
+{
+	printf("show %d %d\n", id, peek(imm e))
+}
+
+bump: fun(mut pair: Pair)
+{
+	pair.left += 10
+}
+
+main: fun -> i32
+{
+	var e = Effect.hold(Buffer(1))
+	if e is hold(val b)
+	{
+		printf("%d %d %d\n", peek(imm e), i32(e.isHeld()), b.id)
+		show(mut e, b.id)
+	}
+
+	var pair = Pair(1, 2)
+	val left = imm pair.left
+	bump(mut pair)
+	printf("%d\n", left)
+	ret 0
+}

@@ -665,6 +665,10 @@ public sealed class BorrowChecker
 				state.End(e.Place, new(Ending.Moved, e.Location));
 				break;
 			
+			case LendEvent e:
+				state.EndPayloads(e.Place, new(Ending.Reassigned, e.Location));
+				break;
+			
 			case DropEvent e:
 				End(e.Place, new(e.Instruction.IsReassignment ? Ending.Reassigned : Ending.Dropped, e.Location), state);
 				break;
