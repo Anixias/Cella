@@ -1,0 +1,17 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+ext("lib/bin/lib")
+{
+	triple: fun(x: i32) -> i32
+}
+
+main: fun -> i32
+{
+	printf("%d\n", triple(14))
+	ret 0
+}

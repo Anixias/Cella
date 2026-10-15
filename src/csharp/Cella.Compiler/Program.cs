@@ -753,7 +753,7 @@ internal static class Program
 			
 			ownLibraries =
 			[
-				..externalLibraries.Select(GetLibraryFileName).Distinct()
+				..externalLibraries.Select(origin => ResolveLibrary(origin, project.Directory)).Distinct()
 			];
 			
 			var libFiles = outputType == ProjectOutputType.StaticLibrary
@@ -882,6 +882,13 @@ internal static class Program
 	
 	private const string UndefinedSymbol = "lld: error: undefined symbol: ";
 	private const string MissingFile = "lld: error: could not open '";
+	
+	private static string ResolveLibrary(string origin, string projectDirectory)
+	{
+		var fileName = GetLibraryFileName(origin);
+		var local = Path.Combine(projectDirectory, fileName);
+		return File.Exists(local) ? Path.GetFullPath(local) : fileName;
+	}
 	
 	private static string GetLibraryFileName(string name) =>
 		Path.GetExtension(name).ToLowerInvariant() is ".lib" or ".dll"
