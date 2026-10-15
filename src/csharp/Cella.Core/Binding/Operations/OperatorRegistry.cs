@@ -221,10 +221,12 @@ public abstract class OperationImpl(TokenType op, TypeSymbol result, params IEnu
 public sealed class NativeImpl(TokenType op, TypeSymbol result, params IEnumerable<TypeSymbol> parameters)
 	: OperationImpl(op, result, parameters);
 
-public sealed class PointerOffsetImpl(TokenType op, PointerType pointerType, TypeSymbol offsetType)
-	: OperationImpl(op, pointerType, pointerType, offsetType)
+public sealed class PointerOffsetImpl
+	(TokenType op, PointerType pointerType, TypeSymbol offsetType, bool isReversed = false)
+	: OperationImpl(op, pointerType, isReversed ? [offsetType, pointerType] : [pointerType, offsetType])
 {
 	public PointerType PointerType { get; } = pointerType;
+	public bool IsReversed { get; } = isReversed;
 }
 
 public sealed class PointerDifferenceImpl(PointerType pointerType)

@@ -263,6 +263,8 @@ public sealed partial class Lowerer
 				new EnumTagValue(_typePool.GetTagType(enumType), right, right.SourceLocation),
 				ToBinaryOperation(i.Op), location),
 			NativeImpl i => new BinOpValue(i.ReturnType, left, right, ToBinaryOperation(i.Op), location),
+			PointerOffsetImpl { IsReversed: true } i => new PointerOffsetValue(i.PointerType, right, left,
+				ToBinaryOperation(i.Op), location),
 			PointerOffsetImpl i => new PointerOffsetValue(i.PointerType, left, right, ToBinaryOperation(i.Op),
 				location),
 			PointerDifferenceImpl i => new PointerDifferenceValue(left, right, i.PointerType, location),

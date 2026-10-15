@@ -1,0 +1,17 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+main: fun -> i32
+{
+	var values = [10, 20, 30, 40]
+	val p: ptr[i32] = @values[0]
+	val k: usize = 3
+	val second = 1 + p
+	val third = 2 + p
+	val fourth = k + p
+	printf("%d %d %d %d\n", *second, *third, *fourth, *(p + 1))
+	ret 0
+}
