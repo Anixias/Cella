@@ -1,0 +1,34 @@
+
+====== own_self_field_moves.ce ======
+
+Hint at line 26, column 37
+25 │ 
+26 │ split: fun(own p: Pair) -> Token = own p.first
+                                        ╘═╛ Redundant 'own'
+
+Error at line 26, column 41
+25 │ 
+26 │ split: fun(own p: Pair) -> Token = own p.first
+                                            ╘═════╛ Cannot move fields out of values with destructors
+
+Hint at line 28, column 33
+27 │ 
+28 │ deep: fun(own self) -> Token = own self.inner.token
+                                    ╘═╛ Redundant 'own'
+
+Error at line 28, column 37
+27 │ 
+28 │ deep: fun(own self) -> Token = own self.inner.token
+                                        ╘══════════════╛ Cannot move fields out of values with destructors
+
+Hint at line 35, column 35
+34 │ 
+35 │ take: fun(own p: Pair) -> Token = own p.first
+                                       ╘═╛ Redundant 'own'
+
+Error at line 35, column 39
+34 │ 
+35 │ take: fun(own p: Pair) -> Token = own p.first
+                                           ╘═════╛ Cannot move fields out of values with destructors
+
+[compilation failed]

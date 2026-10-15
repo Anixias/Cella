@@ -1,0 +1,37 @@
+mod test
+
+Token: rec
+{
+	id: i32
+
+	drop: op
+	{
+	}
+}
+
+Inner: rec
+{
+	token: Token
+
+	drop: op
+	{
+	}
+}
+
+Pair: rec
+{
+	first: Token
+	inner: Inner
+
+	split: fun(own p: Pair) -> Token = own p.first
+
+	deep: fun(own self) -> Token = own self.inner.token
+
+	drop: op
+	{
+	}
+}
+
+take: fun(own p: Pair) -> Token = own p.first
+
+main: fun -> i32 = 0

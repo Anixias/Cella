@@ -32,6 +32,7 @@ public sealed class MemoryChecker(TypePool typePool, ConstantEvaluator evaluator
 	private readonly ValueEvaluator _values = new(evaluator);
 	
 	private ParameterSymbol? destructorSelf;
+	private ParameterSymbol? ownSelf;
 	private List<Diagnostic> pending = [];
 	private HashSet<(SourceLocation, string)> pendingKeys = [];
 	private HashSet<VariableSymbol> errorRoots = [];
@@ -40,6 +41,14 @@ public sealed class MemoryChecker(TypePool typePool, ConstantEvaluator evaluator
 	{
 		destructorSelf = function.Info.Symbol is { Kind: FunctionKind.Destructor, Parameters: [var self] }
 			? self
+			: null;
+		
+		ownSelf = function.Info.Symbol is
+		{
+			Kind: FunctionKind.Method, Syntax: FunctionNode { Receiver: not null },
+			Parameters: [{ Mode: ParameterMode.Own } owned, ..]
+		}
+			? owned
 			: null;
 		
 		AddDestructorExitDrops(function);
@@ -550,10 +559,13 @@ public sealed class MemoryChecker(TypePool typePool, ConstantEvaluator evaluator
 	private bool HasDestructorAbove(Place place, MovePaths paths)
 	{
 		var type = paths.GetRoot(place.Root).Type;
+		var isOwnSelf = place.Root == ownSelf;
 		foreach (var projection in place.Path)
 		{
-			if (type is RecordSymbol { HasDestructor: true })
+			if (type is RecordSymbol { HasDestructor: true } && !isOwnSelf)
 				return true;
+			
+			isOwnSelf = false;
 			
 			switch (projection)
 			{

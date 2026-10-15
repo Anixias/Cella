@@ -1,0 +1,42 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Token: rec
+{
+	id: i32
+
+	drop: op
+	{
+		printf("drop token %d\n", self.id)
+	}
+}
+
+Pair: rec
+{
+	first: Token
+	second: Token
+
+	take: fun(own self) -> Token
+	{
+		printf("taking\n")
+		ret own self.first
+	}
+
+	drop: op
+	{
+		printf("drop pair\n")
+	}
+}
+
+main: fun -> i32
+{
+	val pair = Pair(Token(1), Token(2))
+	val t = pair.take()
+	printf("got %d\n", t.id)
+	val other = Pair(Token(3), Token(4))
+	ret 0
+}
