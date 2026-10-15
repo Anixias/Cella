@@ -5,7 +5,7 @@ Holder: rec
 	items: array[u64, 2305843009213693952]
 }
 
-ring[T, N: val usize]: rec
+ring[T, N: const usize]: rec
 {
 	items: array[T, N]
 }

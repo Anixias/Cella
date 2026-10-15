@@ -5,31 +5,31 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-maxI32: val i32 = 2147483647
-wrapAdd: val i32 = maxI32 +% 1
-wrapMul: val u8 = u8(200) *% 3
-divTrunc: val i32 = i32(-7) / 2
-remSign: val i32 = i32(-7) % 3
-minRem: val i32 = i32(-2147483648) % -1
-shl: val i32 = 1 << 31
-sarNeg: val i32 = i32(-16) >> 2
-shrU: val u32 = u32(4000000000) >> 3
-rotl: val u8 = u8(129) <<< 1
-rotr: val u16 = u16(1) >>> 1
-notU: val u16 = ~u16(0)
-mixed: val bool = i32(-1) < u32(1)
-chain: val bool = i32(1) < 3 < 2
-hugeU: val u128 = u128(18446744073709551615) * u128(18446744073709551615)
-highWord: val u64 = u64(hugeU >> 64)
+maxI32: const i32 = 2147483647
+wrapAdd: const i32 = maxI32 +% 1
+wrapMul: const u8 = u8(200) *% 3
+divTrunc: const i32 = i32(-7) / 2
+remSign: const i32 = i32(-7) % 3
+minRem: const i32 = i32(-2147483648) % -1
+shl: const i32 = 1 << 31
+sarNeg: const i32 = i32(-16) >> 2
+shrU: const u32 = u32(4000000000) >> 3
+rotl: const u8 = u8(129) <<< 1
+rotr: const u16 = u16(1) >>> 1
+notU: const u16 = ~u16(0)
+mixed: const bool = i32(-1) < u32(1)
+chain: const bool = i32(1) < 3 < 2
+hugeU: const u128 = u128(18446744073709551615) * u128(18446744073709551615)
+highWord: const u64 = u64(hugeU >> 64)
 
-sum32: val f32 = f32(0.1) + 0.2
-sum64: val f64 = f64(0.1) + 0.2
-quot32: val f32 = f32(1) / f32(3)
-rem64: val f64 = f64(-7.5) % 2.0
-truncated: val i64 = i64(-2.9)
-rounded: val f32 = f32(16777217)
-wide: val f64 = f64(9007199254740993)
-nanCompare: val bool = (0.0 / 0.0) != (0.0 / 0.0)
+sum32: const f32 = f32(0.1) + 0.2
+sum64: const f64 = f64(0.1) + 0.2
+quot32: const f32 = f32(1) / f32(3)
+rem64: const f64 = f64(-7.5) % 2.0
+truncated: const i64 = i64(-2.9)
+rounded: const f32 = f32(16777217)
+wide: const f64 = f64(9007199254740993)
+nanCompare: const bool = (0.0 / 0.0) != (0.0 / 0.0)
 
 main: fun -> i32
 {

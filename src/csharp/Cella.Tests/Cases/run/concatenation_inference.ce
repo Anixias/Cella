@@ -14,7 +14,7 @@ show: fun(s: str) = printf("%d\n", i32(s.byteLength))
 
 main: fun -> i32
 {
-	val a = "x"
+	const a = "x"
 	val b = a + "y"
 	puts(b)
 	show(a)

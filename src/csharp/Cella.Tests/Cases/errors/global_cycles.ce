@@ -5,12 +5,12 @@ Buffer: rec
 	data: array[u8, size]
 }
 
-size: val usize = sizeOf(Buffer) + 1
-first: val i32 = second + 1
-second: val i32 = first + 1
-itself: val i32 = itself
-lengths: val array[usize, lengths[0]] = [1]
-fine: val i32 = 1
+size: const usize = sizeOf(Buffer) + 1
+first: const i32 = second + 1
+second: const i32 = first + 1
+itself: const i32 = itself
+lengths: const array[usize, lengths[0]] = [1]
+fine: const i32 = 1
 
 main: fun -> i32
 {

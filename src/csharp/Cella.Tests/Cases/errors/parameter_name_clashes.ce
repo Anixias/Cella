@@ -1,6 +1,6 @@
 mod test
 
-f[N: val usize]: fun(N: usize) -> usize = N
+f[N: const usize]: fun(N: usize) -> usize = N
 
 g[T]: fun(T: i32) -> i32 = T
 

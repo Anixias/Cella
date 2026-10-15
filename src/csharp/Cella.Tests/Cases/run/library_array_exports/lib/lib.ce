@@ -7,7 +7,7 @@ Grid: pub rec
 	total: fun(self, extra: array[i32, 2]) -> i32 = self.cells[0] + self.cells[3] + extra[1]
 }
 
-sum[N: val usize]: pub fun(values: array[i32, N]) -> i32
+sum[N: const usize]: pub fun(values: array[i32, N]) -> i32
 {
 	var total = 0
 	for value in values

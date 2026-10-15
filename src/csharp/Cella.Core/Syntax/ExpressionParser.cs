@@ -777,7 +777,8 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 		while (!Match(ref index, out closeBrace, TokenType.OpCloseBrace))
 		{
 			if (AtEnd(index) || Tokens[index].Type is TokenType.KeywordRet or TokenType.KeywordVar or
-				    TokenType.KeywordVal or TokenType.KeywordIf or TokenType.KeywordFor or TokenType.KeywordLoop or
+				    TokenType.KeywordVal or TokenType.KeywordConst or TokenType.KeywordIf or TokenType.KeywordFor
+				    or TokenType.KeywordLoop or
 				    TokenType.KeywordWhile or TokenType.KeywordDo)
 				throw Expected(index, "'}'", openBrace);
 			

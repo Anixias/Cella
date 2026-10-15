@@ -18,11 +18,11 @@ Error at line 23, column 2
 
 Error at line 24, column 2
 23 │ plain[V: noref]: fun(self, imm value: V) -> i32 = 2
-24 │ cap[M: val u8]: fun(self) -> usize = 3
+24 │ cap[M: const u8]: fun(self) -> usize = 3
      ╘═╛ 'cap' doesn't match 'Apply.cap'
 
 Error at line 25, column 2
-24 │ cap[M: val u8]: fun(self) -> usize = 3
+24 │ cap[M: const u8]: fun(self) -> usize = 3
 25 │ other[M]: fun(self) -> usize = 4
      ╘═══╛ 'other' doesn't match 'Apply.other'
 

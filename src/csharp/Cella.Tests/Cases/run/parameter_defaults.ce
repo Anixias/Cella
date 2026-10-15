@@ -49,10 +49,10 @@ Big: rec
 	c: i64
 }
 
-origin: val Point = Point(3, 4)
-limit: val usize = 4096
-corners: val array[i32, 3] = [1, 2, 3]
-big: val Big = Big(1, 2, 3)
+origin: const Point = Point(3, 4)
+limit: const usize = 4096
+corners: const array[i32, 3] = [1, 2, 3]
+big: const Big = Big(1, 2, 3)
 
 double: fun(x: i32) -> i32 = x * 2
 

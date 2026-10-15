@@ -3,12 +3,12 @@
 
 Error at line 3, column 6
 2 │ 
-3 │ ring[N: val usize]: rec
+3 │ ring[N: const usize]: rec
          ^ Value parameter 'N' is declared more than once
 
 Error at line 7, column 4
 6 │ 
-7 │ f[N: val usize]: fun(imm self) -> usize = N
+7 │ f[N: const usize]: fun(imm self) -> usize = N
       ^ Value parameter 'N' is declared more than once
 
 [compilation failed]

@@ -5,12 +5,12 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-Enabled: val bool = true
-Disabled: val bool = !Enabled
-Mixed: val bool = Enabled && !Disabled || Disabled
-Neither: val bool = Disabled || Disabled && Enabled
-Same: val bool = Enabled == !Disabled
-Different: val bool = Enabled != Disabled
+Enabled: const bool = true
+Disabled: const bool = !Enabled
+Mixed: const bool = Enabled && !Disabled || Disabled
+Neither: const bool = Disabled || Disabled && Enabled
+Same: const bool = Enabled == !Disabled
+Different: const bool = Enabled != Disabled
 
 main: fun -> i32
 {

@@ -26,7 +26,7 @@ repeated: fun(x: i32) -> i32 = match x
 	else => 3
 }
 
-Five: val i32 = 5
+Five: const i32 = 5
 
 same: fun(x: i32) -> i32 = match x
 {

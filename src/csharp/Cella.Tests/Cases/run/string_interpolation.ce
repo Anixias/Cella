@@ -10,18 +10,18 @@ Point: rec
 	x: i32
 }
 
-title: val str = "Cella"
-version: val cstr = "1.0"
-banner: val cstr = "{title} v{version}!"
-full: val str = title + " " + "language"
-greeting: val cstr = version + "-beta"
-nested: val str = "[{"{title}"}]"
+title: const str = "Cella"
+version: const cstr = "1.0"
+banner: const cstr = "{title} v{version}!"
+full: const str = title + " " + "language"
+greeting: const cstr = version + "-beta"
+nested: const str = "[{"{title}"}]"
 
 show: fun(text: str) = printf("%.*s\n", i32(text.byteLength), text.data)
 
 main: fun -> i32
 {
-	val name = "world"
+	const name = "world"
 	printf("%s\n", banner)
 	show(full)
 	printf("%s\n", greeting)

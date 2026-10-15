@@ -1,0 +1,48 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Size: const usize = 3
+Speed: val f32 = 4.5
+Title: const cstr = "grid"
+Banner: const cstr = Title + " ready"
+
+Count: const i32 = 3
+
+Shape: ext enum(i32)
+{
+	none
+	large = Count * 10
+}
+
+Grid: rec
+{
+	Width: const usize = Size + 1
+	Origin: val i32 = 7
+
+	cells: array[i32, Width]
+}
+
+count[N: const usize]: fun -> usize = N
+
+main: fun -> i32
+{
+	const local = 2
+	val grid = Grid([1, 2, 3, 4])
+	val values: array[u8, local + 1] = [5, 6, 7]
+	printf("%zu %zu %zu %d\n", count[Size](), count[Grid.Width](), grid.cells.length, i32(Shape.large))
+	printf("%d %s\n", values[2], Banner)
+	*@Speed = 5.5
+	*@Grid.Origin = 8
+	printf("%.1f %d\n", Speed, Grid.Origin)
+	val picked = match 3
+	{
+		Size => 1
+		else => 0
+	}
+
+	ret picked
+}

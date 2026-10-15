@@ -28,7 +28,7 @@ public sealed partial class FileParser
 			var constructors = new List<ConstructorConstraintNode>();
 			ITypeNode? valueType = null;
 			var hasConstraints = Match(ref index, TokenType.OpColon);
-			if (hasConstraints && Match(ref index, TokenType.KeywordVal))
+			if (hasConstraints && Match(ref index, TokenType.KeywordConst))
 			{
 				if ((valueType = ParseConstraintType(ref index)) is null)
 					return null;

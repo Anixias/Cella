@@ -18,6 +18,7 @@ public sealed class GlobalNode
 	public ITypeNode Type { get; } = type;
 	public IExpressionNode? Initializer { get; } = initializer;
 	public bool IsMutable => Keyword.Type == TokenType.KeywordVar;
+	public bool IsConstant => Keyword.Type == TokenType.KeywordConst;
 	public bool IsExternal { get; init; }
 	public Token? ExternalName { get; init; }
 }

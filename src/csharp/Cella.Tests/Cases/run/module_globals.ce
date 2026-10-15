@@ -5,14 +5,14 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-limit: val usize = 4
-doubled: val i32 = base * 2
-base: val i32 = 3
-greeting: val cstr = "hello"
-title: val str = "Cella"
-ratio: val f64 = 1.5 * 2.0
-large: val bool = limit > 2
-letter: val char = 'x'
+limit: const usize = 4
+doubled: const i32 = base * 2
+base: const i32 = 3
+greeting: const cstr = "hello"
+title: const str = "Cella"
+ratio: const f64 = 1.5 * 2.0
+large: const bool = limit > 2
+letter: const char = 'x'
 
 counter: var i32 = 10
 total: var u64 = 0

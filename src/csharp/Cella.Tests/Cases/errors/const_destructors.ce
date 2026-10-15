@@ -1,0 +1,17 @@
+mod test
+
+Buffer: rec
+{
+	id: i32
+
+	drop: op {}
+}
+
+Handle: const Buffer = Buffer(1)
+
+Pool: rec
+{
+	Spare: const Buffer = Buffer(2)
+}
+
+main: fun -> i32 = 0

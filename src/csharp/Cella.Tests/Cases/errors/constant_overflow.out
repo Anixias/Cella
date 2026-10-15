@@ -1,15 +1,15 @@
 
 ====== constant_overflow.ce ======
 
-Error at line 3, column 17
+Error at line 3, column 19
 2 │ 
-3 │ limit: val u8 = u8(200) + 100
-                    ╘═══════════╛ Addition overflows 'u8'
+3 │ limit: const u8 = u8(200) + 100
+                      ╘═══════════╛ Addition overflows 'u8'
 
-Error at line 7, column 16
+Error at line 7, column 18
 6 │ {
-7 │     low: val i8 = i8(-100) - 100
-                      ╘════════════╛ Subtraction overflows 'i8'
+7 │     low: const i8 = i8(-100) - 100
+                        ╘════════════╛ Subtraction overflows 'i8'
 
 Error at line 14, column 18
 13 │ {
@@ -37,12 +37,12 @@ Error at line 18, column 25
                             ╘═══════════╛ Addition overflows 'u8'
 
 Error at line 20, column 14
-19 │ val base: u8 = 200
+19 │ const base: u8 = 200
 20 │ val local = base + 100
                  ╘════════╛ Addition overflows 'u8'
 
 Error at line 22, column 16
-21 │ val smallest: i32 = -2147483648
+21 │ const smallest: i32 = -2147483648
 22 │ val negated = -smallest
                    ╘═══════╛ Negation overflows 'i32'
 

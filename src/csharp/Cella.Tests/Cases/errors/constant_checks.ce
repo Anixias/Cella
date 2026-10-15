@@ -1,7 +1,7 @@
 mod test
 
-limit: val i32 = 5
-last: val usize = 4
+limit: const i32 = 5
+last: const usize = 4
 
 main: fun -> i32
 {

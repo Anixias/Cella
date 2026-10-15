@@ -37,9 +37,9 @@ Mode: enum
 	slow(factor: i32)
 }
 
-mode: val Mode = Mode.slow(3)
-size: val i32 = match mode { fast => 4, slow(val factor) => factor * 8 }
-table: val array[i32, match Mode.fast { fast => 2, slow(val factor) => usize(factor) }] = [5, 6]
+mode: const Mode = Mode.slow(3)
+size: const i32 = match mode { fast => 4, slow(val factor) => factor * 8 }
+table: const array[i32, match Mode.fast { fast => 2, slow(val factor) => usize(factor) }] = [5, 6]
 
 damage: fun(role: Role) -> i32 = match role
 {

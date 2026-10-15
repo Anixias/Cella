@@ -5,9 +5,9 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-count: val usize = 2
+count: const usize = 2
 
-ring[T: noref, N: val usize]: rec
+ring[T: noref, N: const usize]: rec
 {
 	items: array[T, N]
 	used: usize
@@ -21,23 +21,23 @@ ring[T: noref, N: val usize]: rec
 	capacity: get(imm self) -> usize = N
 }
 
-ring[T: noref, N: val u8]: impl
+ring[T: noref, N: const u8]: impl
 {
 	slots: fun(imm self) -> u8 = N
 }
 
-holder[N: val usize]: rec
+holder[N: const usize]: rec
 {
 	items: array[i32, N]
 }
 
-Slot[N: val u8]: enum
+Slot[N: const u8]: enum
 {
 	empty
 	full(values: array[i32, N])
 }
 
-Sized[N: val usize]: trait
+Sized[N: const usize]: trait
 {
 	size: fun(imm self) -> usize
 }
@@ -49,7 +49,7 @@ Crate: rec impl Sized[3]
 	size: fun(self) -> usize = 3
 }
 
-sum[N: val usize]: fun(values: array[i32, N]) -> i32
+sum[N: const usize]: fun(values: array[i32, N]) -> i32
 {
 	var total = 0
 	for value in values
@@ -58,17 +58,17 @@ sum[N: val usize]: fun(values: array[i32, N]) -> i32
 	ret total + i32(N)
 }
 
-echo[N: val usize]: fun(values: array[i32, N]) -> array[i32, N] = values
+echo[N: const usize]: fun(values: array[i32, N]) -> array[i32, N] = values
 
-zeros[N: val usize]: fun -> array[i32, N] = holder[N]().items
+zeros[N: const usize]: fun -> array[i32, N] = holder[N]().items
 
-scaled[N: val usize]: fun(values: array[i32, N]) -> usize = N * 10
+scaled[N: const usize]: fun(values: array[i32, N]) -> usize = N * 10
 
-first[T: copy, N: val usize]: fun(values: array[T, N]) -> T = values[0]
+first[T: copy, N: const usize]: fun(values: array[T, N]) -> T = values[0]
 
-make[N: val usize]: fun -> ring[i32, N] = ring[i32, N]()
+make[N: const usize]: fun -> ring[i32, N] = ring[i32, N]()
 
-wrap[N: val usize]: fun(values: array[i32, N]) -> ring[i32, N]
+wrap[N: const usize]: fun(values: array[i32, N]) -> ring[i32, N]
 {
 	var result = make[N]()
 	for value in values

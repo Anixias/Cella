@@ -74,7 +74,7 @@ take: fun(own d: D)
 {
 }
 
-generic[N: val usize]: fun -> i32
+generic[N: const usize]: fun -> i32
 {
 	var buf: array[i32, N] = undef
 	for i in 0..N

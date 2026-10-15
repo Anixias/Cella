@@ -1,0 +1,12 @@
+mod test
+
+Missing: const i32
+
+Box: rec
+{
+	Limit: pvt set const i32 = 4
+}
+
+count[N: val usize]: fun -> usize = 0
+
+main: fun -> i32 = 0

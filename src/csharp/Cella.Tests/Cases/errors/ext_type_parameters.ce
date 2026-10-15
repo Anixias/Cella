@@ -19,7 +19,7 @@ visit[T]: fun(f: ext fun[ptr[T] -> i32], items: ptr[T]) -> i32 = f(items)
 
 pairs[T]: fun(f: ext fun[Pair[T] -> i32]) -> i32 = 0
 
-sized[N: val usize]: fun(f: ext fun[ptr[array[i32, N]] -> i32]) -> i32 = 0
+sized[N: const usize]: fun(f: ext fun[ptr[array[i32, N]] -> i32]) -> i32 = 0
 
 both[T: ext + drop]: fun(own value: T) -> i32 = 0
 

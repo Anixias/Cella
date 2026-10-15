@@ -6,7 +6,7 @@ Code: enum(u16)
 	big = 300
 }
 
-limit: val i32 = 300
+limit: const i32 = 300
 
 main: fun -> i32
 {

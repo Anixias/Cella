@@ -298,6 +298,10 @@ public sealed partial class SignatureCollector
 				? null
 				: Evaluator.EvaluateStandalone(initializer);
 		
+		if (node.IsConstant && type is not InvalidType && _typePool.NeedsDrop(type))
+			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Type.SourceLocation,
+				"Cannot store values with destructors in constants"));
+		
 		var mangledName = global.IsImport ? global.ExternalName! : context.Mangle(global);
 		
 		info = new GlobalInfo(mangledName, global, type, initializer, value, context.File);

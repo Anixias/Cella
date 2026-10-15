@@ -13,29 +13,29 @@ take: fun(own t: Token)
 {
 }
 
-takeAll[N: val usize]: fun(own values: array[Token, N])
+takeAll[N: const usize]: fun(own values: array[Token, N])
 {
 }
 
-twice[N: val usize]: fun(own values: array[Token, N])
+twice[N: const usize]: fun(own values: array[Token, N])
 {
 	take(own values[0])
 	take(own values[0])
 }
 
-peek[N: val usize]: fun(own values: array[Token, N]) -> i32
+peek[N: const usize]: fun(own values: array[Token, N]) -> i32
 {
 	take(own values[0])
 	ret values[0].id
 }
 
-both[N: val usize]: fun(own values: array[Token, N])
+both[N: const usize]: fun(own values: array[Token, N])
 {
 	take(own values[0])
 	takeAll(own values)
 }
 
-steal[N: val usize]: fun(mut values: array[Token, N])
+steal[N: const usize]: fun(mut values: array[Token, N])
 {
 	take(own values[0])
 }

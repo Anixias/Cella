@@ -126,8 +126,8 @@ public sealed partial class FileParser
 	
 	private GlobalNode? ParseStaticField(ref int index, Token identifier, DeclarationModifiers modifiers, Token keyword)
 	{
-		if (keyword.Type == TokenType.KeywordVal)
-			RejectWriteRestriction(modifiers, "'val' fields");
+		if (keyword.Type is TokenType.KeywordVal or TokenType.KeywordConst)
+			RejectWriteRestriction(modifiers, $"'{keyword.Text}' fields");
 		
 		return ParseDeclaration(ref index, identifier, "field",
 			(ref i) => ParseGlobal(ref i, identifier, modifiers, keyword));
@@ -161,7 +161,7 @@ public sealed partial class FileParser
 				return null;
 		}
 		
-		if (Match(ref index, out var keyword, _bindingKeywords))
+		if (Match(ref index, out var keyword, _externalBindingKeywords))
 		{
 			var type = ParseType(ref index);
 			if (Match(ref index, out var equals, TokenType.OpEqual))

@@ -27,7 +27,7 @@ show: fun(text: fstr[A]) = printf("A\n")
 show: fun(text: fstr[B]) = printf("B\n")
 other: fun(text: fstr[A]) = printf("fstr\n")
 other: fun(text: str) = printf("str\n")
-title: val str = "x"
+title: const str = "x"
 
 main: fun -> i32
 {

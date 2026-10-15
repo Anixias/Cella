@@ -178,7 +178,8 @@ public sealed partial class FileParser
 	
 	private static readonly HashSet<TokenType> _statementKeywords =
 	[
-		TokenType.KeywordVal, TokenType.KeywordVar, TokenType.KeywordRet, TokenType.KeywordIf, TokenType.KeywordFor,
+		TokenType.KeywordVal, TokenType.KeywordVar, TokenType.KeywordConst, TokenType.KeywordRet, TokenType.KeywordIf,
+		TokenType.KeywordFor,
 		TokenType.KeywordWhile, TokenType.KeywordDo, TokenType.KeywordLoop, TokenType.KeywordMatch,
 		TokenType.KeywordDrop, TokenType.KeywordWhen, TokenType.KeywordBreak, TokenType.KeywordCont
 	];

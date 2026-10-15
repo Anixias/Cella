@@ -1,7 +1,7 @@
 mod test
 
-wide: val u64 = 5
-narrow: val u8 = 7
+wide: const u64 = 5
+narrow: const u8 = 7
 
 E: enum(u8) { zero  a = wide  b = narrow }
 

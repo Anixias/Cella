@@ -1,0 +1,21 @@
+mod test
+
+Buffer: rec
+{
+	id: i32
+
+	drop: op {}
+}
+
+Stored: val usize = 3
+
+main: fun -> i32
+{
+	val n: usize = 2
+	const m = n + 1
+	const later: i32
+	const handle = Buffer(1)
+	val cells: array[i32, Stored] = undef
+	val more: array[i32, n] = undef
+	ret 0
+}

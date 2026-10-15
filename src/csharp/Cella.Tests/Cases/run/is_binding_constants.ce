@@ -16,13 +16,13 @@ Effect: enum { none  hit(n: i32) }
 
 Boxed: enum { empty  full(p: P) }
 
-hitting: val Effect = Effect.hit(3)
-quiet: val Effect = Effect.none
-strong: val bool = hitting is hit(val n) && n > 2
-weak: val bool = quiet is hit(val n) && n > 2
-either: val bool = quiet is hit(val n) || hitting is hit(val m) && m == 3
-held: val Boxed = Boxed.full(P(5))
-debugOn: val bool = false
+hitting: const Effect = Effect.hit(3)
+quiet: const Effect = Effect.none
+strong: const bool = hitting is hit(val n) && n > 2
+weak: const bool = quiet is hit(val n) && n > 2
+either: const bool = quiet is hit(val n) || hitting is hit(val m) && m == 3
+held: const Boxed = Boxed.full(P(5))
+debugOn: const bool = false
 
 show: fun(imm p: P) -> i32 = p.x
 

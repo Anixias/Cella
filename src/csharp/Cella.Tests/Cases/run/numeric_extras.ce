@@ -5,9 +5,9 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-Code: val u32 = 'A'u32
-Letter: val char = char(Code + 1)
-Lengths: val array[u8, usize('C' - 'A')] = [1, 2]
+Code: const u32 = 'A'u32
+Letter: const char = char(Code + 1)
+Lengths: const array[u8, usize('C' - 'A')] = [1, 2]
 
 divide: fun(a: i128, b: i128) -> i128 = a / b
 remainder: fun(a: i128, b: i128) -> i128 = a % b

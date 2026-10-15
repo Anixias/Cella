@@ -6,13 +6,13 @@ ext
 }
 
 counter: var i32 = 0
-limit: val i32 = 5
-random: val i32 = rand()
-copied: val i32 = counter
-address: val ptr[i32] = @counter
-quotient: val i32 = 1 / (limit - 5)
-dependent: val i32 = random + 1
-fine: val i32 = limit * 2
+limit: const i32 = 5
+random: const i32 = rand()
+copied: const i32 = counter
+address: const ptr[i32] = @counter
+quotient: const i32 = 1 / (limit - 5)
+dependent: const i32 = random + 1
+fine: const i32 = limit * 2
 
 Mode: enum
 {
@@ -20,7 +20,7 @@ Mode: enum
 	slow(factor: i32)
 }
 
-chosen: val i32 = match Mode.slow(3) { fast => 4, slow(val factor) => rand() + factor }
+chosen: const i32 = match Mode.slow(3) { fast => 4, slow(val factor) => rand() + factor }
 
 main: fun -> i32
 {

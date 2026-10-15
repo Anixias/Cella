@@ -4,7 +4,7 @@ show: fun(value: i64) -> i64 = value
 
 main: fun -> i32
 {
-	val big: i32 = 2000000000
+	const big: i32 = 2000000000
 	val sum = show(big + big)
 	ret 0
 }

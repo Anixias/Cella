@@ -1,0 +1,29 @@
+
+====== const_declarations.ce ======
+
+Error at line 15, column 12
+14 │ val n: usize = 2
+15 │ const m = n + 1
+               ╘═══╛ The initial value of 'm' must be a constant
+
+Error at line 16, column 8
+15 │ const m = n + 1
+16 │ const later: i32
+           ╘═══╛ Cannot declare constants without values
+
+Error at line 17, column 8
+16 │ const later: i32
+17 │ const handle = Buffer(1)
+           ╘════╛ Cannot store values with destructors in constants
+
+Error at line 18, column 24
+17 │ const handle = Buffer(1)
+18 │ val cells: array[i32, Stored] = undef
+                           ╘════╛ 'Stored' is not a constant
+
+Error at line 19, column 23
+18 │ val cells: array[i32, Stored] = undef
+19 │ val more: array[i32, n] = undef
+                          ^ 'n' is not a constant
+
+[compilation failed]

@@ -8,7 +8,7 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-table: val array[fun[i32 -> i32], 2] = [geometry.twice, geometry.doubler]
+table: const array[fun[i32 -> i32], 2] = [geometry.twice, geometry.doubler]
 
 sum: fun(p: geometry.Point) -> i32 = p.x + p.y
 

@@ -5,7 +5,7 @@ box[T]: rec
 	value: T
 }
 
-first[T: copy, N: val usize]: fun(values: array[T, N]) -> box[T] = box(values[0])
+first[T: copy, N: const usize]: fun(values: array[T, N]) -> box[T] = box(values[0])
 
 untyped: fun -> i32
 {

@@ -1,6 +1,8 @@
-﻿using Cella.Core.Binding.Nodes;
+﻿using Cella.Core.Binding.Constants;
+using Cella.Core.Binding.Nodes;
 using Cella.Core.Symbols;
 using Cella.Core.Syntax.Nodes;
+using Cella.Core.Text;
 using Cella.Diagnostics;
 
 namespace Cella.Core.Binding;
@@ -202,11 +204,19 @@ public sealed partial class Resolver
 			type = NativeSymbols.Invalid;
 		}
 		
+		var constant = node.IsConstant && initializer is not null && type is not InvalidType &&
+		               !_typePool.NeedsDrop(type)
+			? _evaluator.Evaluate(initializer)
+			: null;
+		
+		if (node.IsConstant)
+			ReportConstant(node.Identifier, node.Type?.SourceLocation ?? node.Identifier.SourceLocation, type,
+				initializer, constant);
+		
 		var symbol = new LocalVariableSymbol(node.Identifier, type, node.IsMutable)
 		{
-			ConstantValue = node.IsMutable || initializer is null || !_typePool.IsCopy(type)
-				? null
-				: _evaluator.Evaluate(initializer),
+			ConstantValue = constant,
+			IsConstant = node.IsConstant,
 			IsDeferred = !node.IsMutable && initializer is null,
 			StartsZeroed = node.IsMutable && initializer is null && HasLocalDefault(type)
 		};
@@ -216,6 +226,23 @@ public sealed partial class Resolver
 			survey!.Bind(symbol, open);
 		
 		return new ResolvedVarStatementNode(symbol, initializer, node);
+	}
+	
+	private void ReportConstant(Token name, SourceLocation typeLocation, TypeSymbol type,
+		IResolvedExpressionNode? initializer, Constant? value)
+	{
+		if (type is InvalidType || initializer is ResolvedInvalidExpressionNode)
+			return;
+		
+		if (_typePool.NeedsDrop(type))
+			Diagnostics.Add(new(DiagnosticSeverity.Error, typeLocation,
+				"Cannot store values with destructors in constants"));
+		else if (initializer is null)
+			Diagnostics.Add(new(DiagnosticSeverity.Error, name.SourceLocation,
+				"Cannot declare constants without values"));
+		else if (value is null)
+			Diagnostics.Add(new(DiagnosticSeverity.Error, initializer.Syntax.SourceLocation,
+				$"The initial value of '{name.Text}' must be a constant"));
 	}
 	
 	private bool BorrowsWhenDeclared(IResolvedExpressionNode value) =>

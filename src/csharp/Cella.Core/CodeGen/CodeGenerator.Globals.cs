@@ -80,8 +80,7 @@ public sealed unsafe partial class CodeGenerator
 		return global;
 	}
 	
-	private bool IsReadOnly(GlobalInfo info) =>
-		!info.Symbol.IsMutable && !info.Symbol.IsExternal && !_typePool.NeedsDrop(info.Type);
+	private static bool IsReadOnly(GlobalInfo info) => info.Symbol.IsConstant;
 	
 	private LLVMValueRef GetGlobal(GlobalInfo info)
 	{

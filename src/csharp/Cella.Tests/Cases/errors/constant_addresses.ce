@@ -6,17 +6,18 @@ Pair: rec
 	b: i32
 }
 
-limit: val i32 = 4
+limit: const i32 = 4
 
 main: fun -> i32
 {
-	val local = 3
-	val pair = Pair(1, 2)
+	const local = 3
+	const pair = Pair(1, 2)
 	*@limit = 5
 	*@local = 6
 	*@pair.a = 9
 	atomic *@limit += 1
 	atomic release *@local = 2
 	val swapped = atomic *@limit == 4 = 5
+	val read = *@limit
 	ret 0
 }

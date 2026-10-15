@@ -19,11 +19,11 @@ take: fun(own t: Token)
 {
 }
 
-firstOf[N: val usize]: fun(own values: array[Token, N]) -> Token = values[0]
+firstOf[N: const usize]: fun(own values: array[Token, N]) -> Token = values[0]
 
-middleOf[N: val usize]: fun(own values: array[Token, N]) -> Token = values[1]
+middleOf[N: const usize]: fun(own values: array[Token, N]) -> Token = values[1]
 
-make[N: val usize]: fun
+make[N: const usize]: fun
 {
 	var arr: array[Token, N] = undef
 	arr[0] = Token(7)
@@ -31,7 +31,7 @@ make[N: val usize]: fun
 	printf("made\n")
 }
 
-maybe[N: val usize]: fun(own values: array[Token, N], deep: bool)
+maybe[N: const usize]: fun(own values: array[Token, N], deep: bool)
 {
 	if deep
 		take(own values[5])
@@ -39,7 +39,7 @@ maybe[N: val usize]: fun(own values: array[Token, N], deep: bool)
 	printf("kept\n")
 }
 
-swapFirst[N: val usize]: fun(mut values: array[Token, N])
+swapFirst[N: const usize]: fun(mut values: array[Token, N])
 {
 	take(own values[0])
 	values[0] = Token(99)

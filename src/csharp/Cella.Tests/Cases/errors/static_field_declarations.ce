@@ -8,20 +8,20 @@ Node: pvt rec
 Unit: rec
 {
 	maxHp: i32
-	maxHp: val i32 = 1
+	maxHp: const i32 = 1
 	names: var str = "a"
-	secret: val Node = Node(1)
-	hidden: pvt val Node = Node(2)
-	cycle: val i32 = cycle + 1
+	secret: const Node = Node(1)
+	hidden: pvt const Node = Node(2)
+	cycle: const i32 = cycle + 1
 
 	describe: fun -> i32 = 0
-	describe: val i32 = 2
+	describe: const i32 = 2
 }
 
 Kind: enum
 {
 	first
-	first: val i32 = 1
+	first: const i32 = 1
 }
 
 main: fun -> i32 = 0

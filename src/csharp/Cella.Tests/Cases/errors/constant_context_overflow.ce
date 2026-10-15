@@ -1,13 +1,13 @@
 mod test
 
-kb: val u16 = 1024
+kb: const u16 = 1024
 
 Buffer: rec
 {
 	data: array[u8, kb * 64]
 }
 
-Ring[N: val u8]: rec
+Ring[N: const u8]: rec
 {
 	x: i32
 }

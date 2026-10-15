@@ -42,7 +42,7 @@ Error at line 69, column 11
               ╘═════╛ Cannot mutably borrow through 'str'
 
 Error at line 71, column 2
-70 │ val c: cstr = "xyz"
+70 │ const c: cstr = "xyz"
 71 │ c[0] = 66
      ╘══╛ Cannot write through 'cstr'
 

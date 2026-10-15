@@ -29,7 +29,7 @@ Pick[T: copy]: rec
 	handler: val fun[T -> T] = identity
 }
 
-Ring[N: val usize]: rec
+Ring[N: const usize]: rec
 {
 	items: array[i32, N]
 

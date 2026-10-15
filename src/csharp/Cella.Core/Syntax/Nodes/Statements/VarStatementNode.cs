@@ -16,4 +16,5 @@ public sealed class VarStatementNode
 	public ITypeNode? Type { get; } = type;
 	public IExpressionNode? ExpressionNode { get; } = expressionNode;
 	public bool IsMutable { get; } = isMutable;
+	public bool IsConstant { get; init; }
 }

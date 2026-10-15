@@ -1,0 +1,19 @@
+
+====== const_syntax.ce ======
+
+Error at line 3, column 16
+2 │ 
+3 │ Missing: const i32
+                   ╘═╛ Expected '=' and an initial value
+
+Error at line 7, column 9
+6 │ {
+7 │     Limit: pvt set const i32 = 4
+               ╘═════╛ Cannot use 'pvt set' on 'const' fields
+
+Error at line 10, column 10
+ 9 │ 
+10 │ count[N: val usize]: fun -> usize = 0
+              ╘═╛ Expected a constraint
+
+[compilation failed]

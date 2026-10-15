@@ -63,7 +63,10 @@ public sealed partial class FileParser
 	
 	private static readonly HashSet<TokenType> _blockKeywords = [TokenType.KeywordPvt, TokenType.KeywordMod];
 	
-	private static readonly HashSet<TokenType> _bindingKeywords = [TokenType.KeywordVal, TokenType.KeywordVar];
+	private static readonly HashSet<TokenType> _bindingKeywords =
+		[TokenType.KeywordVal, TokenType.KeywordVar, TokenType.KeywordConst];
+	
+	private static readonly HashSet<TokenType> _externalBindingKeywords = [TokenType.KeywordVal, TokenType.KeywordVar];
 	
 	private static readonly HashSet<TokenType> _loopKeywords =
 		[TokenType.KeywordFor, TokenType.KeywordWhile, TokenType.KeywordDo, TokenType.KeywordLoop];

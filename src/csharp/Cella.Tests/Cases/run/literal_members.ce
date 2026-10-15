@@ -10,8 +10,8 @@ Point: rec
 	x: i32
 }
 
-title: val str = "Cella"
-size: val usize = "four".byteLength
+title: const str = "Cella"
+size: const usize = "four".byteLength
 
 main: fun -> i32
 {

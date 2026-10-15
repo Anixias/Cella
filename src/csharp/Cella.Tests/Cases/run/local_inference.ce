@@ -12,7 +12,7 @@ option[T]: enum
 	some(value: T)
 }
 
-ring[T, N: val usize]: rec
+ring[T, N: const usize]: rec
 {
 	items: array[T, N]
 }
@@ -36,7 +36,7 @@ bump: fun(mut value: u8)
 	value += 1
 }
 
-counter: val fun[-> usize] = fun()
+counter: const fun[-> usize] = fun()
 {
 	var i = 0
 	ret i
@@ -44,7 +44,7 @@ counter: val fun[-> usize] = fun()
 
 reads: fun
 {
-	val n = 3
+	const n = 3
 	var buffer: array[u8, n + 1] = undef
 	val values = [10, 20, 30]
 	var i = 0
@@ -77,7 +77,7 @@ forms: fun
 	var target = 5
 	var pointer = null
 	pointer = @target
-	val greeting = "hi"
+	const greeting = "hi"
 	puts(greeting + "!")
 	val values = [1, 2, 3]
 	val double = fun(x) = x * 2
@@ -91,13 +91,13 @@ forms: fun
 rules: fun
 {
 	val values = [10, 20, 30]
-	val x = 3
+	const x = 3
 	val index = 1
 	val copy = index
 	var count = 0
 	bump(mut count)
 	var byte: u8 = 4
-	val n = 2
+	const n = 2
 	val y = same(n, byte)
 	val z = same(index, 5)
 	val r = ring[i32, x]()
@@ -129,7 +129,7 @@ elements: fun
 	var small: u16 = 9
 	var written = [1, 2, 3]
 	written[0] = small
-	val x = 3
+	const x = 3
 	val y = 4
 	printf("elements %d %d %d %d %d %d %d %d %d\n", narrow(values[0]), i32(sizeOf(values)), narrow(grid[1][0]),
 		i32(sizeOf(grid)), sum, i32(sizeOf(looped)), i32(sizeOf(written)), wide(x) + i32(u8(x)), i32(f64(y)) +

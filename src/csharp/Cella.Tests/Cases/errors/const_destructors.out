@@ -1,0 +1,14 @@
+
+====== const_destructors.ce ======
+
+Error at line 10, column 15
+ 9 │ 
+10 │ Handle: const Buffer = Buffer(1)
+                   ╘════╛ Cannot store values with destructors in constants
+
+Error at line 14, column 15
+13 │ {
+14 │     Spare: const Buffer = Buffer(2)
+                      ╘════╛ Cannot store values with destructors in constants
+
+[compilation failed]

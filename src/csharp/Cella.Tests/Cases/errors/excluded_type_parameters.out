@@ -1,10 +1,10 @@
 
 ====== excluded_type_parameters.ce ======
 
-Error at line 3, column 39
+Error at line 3, column 41
 2 │ 
-3 │ sized[N: val i32]: enum { zero  big = N }
-                                          ^ Cannot use value parameters in case values
+3 │ sized[N: const i32]: enum { zero  big = N }
+                                            ^ Cannot use value parameters in case values
 
 Error at line 5, column 44
 4 │ 

@@ -377,12 +377,13 @@ public sealed partial class FileParser
 		
 		var (source, range) = keyword.SourceLocation;
 		
+		var isConstant = keyword.Type == TokenType.KeywordConst;
 		if (!Match(ref index, TokenType.OpEqual))
-			return new(new(source, range), identifier, type, null, isMutable);
+			return new(new(source, range), identifier, type, null, isMutable) { IsConstant = isConstant };
 		
 		var initializer = ParseExpression(ref index);
 		range = range.Join(initializer.SourceLocation.Range);
-		return new(new(source, range), identifier, type, initializer, isMutable);
+		return new(new(source, range), identifier, type, initializer, isMutable) { IsConstant = isConstant };
 	}
 	
 	private IExpressionNode ParseExpression(ref int index) => CreateExpressionParser().Parse(ref index);

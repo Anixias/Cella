@@ -263,7 +263,7 @@ public sealed partial class FileParser
 	private bool StartsMemberType(int index) =>
 		!AtEnd(index) && Tokens[index].Line == Tokens[index - 1].Line && Tokens[index].Type is TokenType.Identifier
 			or TokenType.KeywordFun or TokenType.KeywordRef or TokenType.KeywordImm or TokenType.KeywordMut
-			or TokenType.KeywordVal or TokenType.KeywordVar;
+			or TokenType.KeywordVal or TokenType.KeywordVar or TokenType.KeywordConst;
 	
 	private static bool IsNarrower(Token write, Token read) =>
 		write.Type == TokenType.KeywordPvt && read.Type == TokenType.KeywordMod;

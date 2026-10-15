@@ -623,6 +623,7 @@ public sealed class LocalVariableSymbol(Token identifier, TypeSymbol type, bool 
 	public bool StartsZeroed { get; init; }
 	public bool IsFilledInPlace { get; init; }
 	public bool IsDeferred { get; init; }
+	public bool IsConstant { get; init; }
 	public bool IsClosureEnvironment { get; init; }
 	public VariableSymbol? Captured { get; init; }
 	public Constant? ConstantValue { get; init; }
@@ -633,6 +634,7 @@ public sealed class GlobalSymbol(GlobalNode syntax, Visibility visibility)
 {
 	public GlobalNode Syntax { get; } = syntax;
 	public bool IsMutable => Syntax.IsMutable;
+	public bool IsConstant => Syntax.IsConstant;
 	public Visibility Visibility { get; } = visibility;
 	
 	public Visibility WriteVisibility { get; } =
