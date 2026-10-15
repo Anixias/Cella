@@ -22,18 +22,20 @@ public sealed class WindowsMsvcToolchain(string root, string builtinsLibrary) : 
 	public override List<string> GetLinkerArgs(LinkRequest request)
 	{
 		var args = new List<string> { "/nologo" };
-		if (request.OutputType is ProjectOutputType.Executable or ProjectOutputType.SharedLibrary)
-			args.Add("/subsystem:console"); // TEMP This should be console or windows based on request
+		if (request.OutputType == ProjectOutputType.WindowedExecutable)
+			args.AddRange(["/subsystem:windows", "/entry:mainCRTStartup"]);
+		else if (request.OutputType is ProjectOutputType.Executable or ProjectOutputType.SharedLibrary)
+			args.Add("/subsystem:console");
 		
 		if (request.OutputType == ProjectOutputType.SharedLibrary)
 			args.Add("/dll");
 		
-		if (request.OutputType is ProjectOutputType.Executable or ProjectOutputType.SharedLibrary)
+		if (request.OutputType != ProjectOutputType.StaticLibrary)
 			args.Add("/Brepro");
 		
 		args.Add($"/out:{request.OutputFile}");
 		
-		if (request.DebugInfo && request.OutputType is ProjectOutputType.Executable or ProjectOutputType.SharedLibrary)
+		if (request.DebugInfo && request.OutputType != ProjectOutputType.StaticLibrary)
 		{
 			args.AddRange(["/debug", "/pdbaltpath:%_PDB%", "/opt:ref"]);
 			if (request.OptimizeMode == OptimizeMode.Release)
@@ -44,7 +46,7 @@ public sealed class WindowsMsvcToolchain(string root, string builtinsLibrary) : 
 		if (request.ModuleDefinition is { } definition)
 			args.Add($"/def:{definition}");
 		
-		if (request.OutputType is ProjectOutputType.Executable or ProjectOutputType.SharedLibrary)
+		if (request.OutputType != ProjectOutputType.StaticLibrary)
 		{
 			args.Add(request.LinkPreference == SystemLinkPreference.Static ? "libcmt.lib" : "msvcrt.lib");
 			args.Add("legacy_stdio_definitions.lib");

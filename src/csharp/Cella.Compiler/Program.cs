@@ -492,7 +492,7 @@ internal static class Program
 		
 		if (files.Length == 0)
 		{
-			if (outputType != ProjectOutputType.Executable)
+			if (!outputType.IsExecutable())
 				return new(new(project.Name, SymbolTable.Empty, SignatureTable.Empty, null), outputType, null, true);
 			
 			PrintDiagnostics([new(DiagnosticSeverity.Error, SourceLocation.None, "The program has no 'main' function")],
@@ -559,7 +559,7 @@ internal static class Program
 		
 		// Phase 2b: Signature collection
 		// TODO Allow configuring entry point name?
-		var entryPointName = outputType == ProjectOutputType.Executable ? "main" : null;
+		var entryPointName = outputType.IsExecutable() ? "main" : null;
 		var indirectSymbols = allDependencies
 			.Select(static d => d.AssemblySymbol)
 			.Except(dependencySymbols)
@@ -805,7 +805,7 @@ internal static class Program
 			if (linkExitCode != 0)
 				return errorResult;
 			
-			if (outputType == ProjectOutputType.Executable)
+			if (outputType.IsExecutable())
 				CopySharedLibraries(allDependencies, outputDir);
 		}
 		
@@ -996,7 +996,7 @@ internal static class Program
 		var ext = GetOutputExtension(target, outputType);
 		
 		var needsLibPrefix =
-			outputType != ProjectOutputType.Executable &&
+			!outputType.IsExecutable() &&
 			target.Os is TargetTriple.OsTypes.Linux or TargetTriple.OsTypes.MacOsX;
 		
 		return needsLibPrefix
@@ -1008,19 +1008,19 @@ internal static class Program
 	{
 		TargetTriple.OsTypes.Windows => outputType switch
 		{
-			ProjectOutputType.Executable => ".exe",
+			ProjectOutputType.Executable or ProjectOutputType.WindowedExecutable => ".exe",
 			ProjectOutputType.StaticLibrary => ".lib",
 			_ => ".dll"
 		},
 		TargetTriple.OsTypes.Linux => outputType switch
 		{
-			ProjectOutputType.Executable => null,
+			ProjectOutputType.Executable or ProjectOutputType.WindowedExecutable => null,
 			ProjectOutputType.StaticLibrary => ".a",
 			_ => ".so"
 		},
 		TargetTriple.OsTypes.MacOsX => outputType switch
 		{
-			ProjectOutputType.Executable => null,
+			ProjectOutputType.Executable or ProjectOutputType.WindowedExecutable => null,
 			ProjectOutputType.StaticLibrary => ".a",
 			_ => ".dylib"
 		},
