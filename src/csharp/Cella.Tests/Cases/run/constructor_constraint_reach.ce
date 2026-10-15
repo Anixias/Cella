@@ -1,0 +1,71 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+view[T]: ref rec
+{
+	data: ptr[T]
+	length: usize
+}
+
+sum: fun(values: view[i32]) -> i32
+{
+	var total = 0
+	for i in 0..values.length
+		total += values.data[i]
+
+	ret total
+}
+
+Packed: rec
+{
+	n: i32
+
+	new: op(...values: view[i32])
+	{
+		self.n = sum(values) * 10 + i32(values.length)
+	}
+}
+
+Defaulted: rec
+{
+	n: i32
+
+	new: op(x: i32 = 3)
+	{
+		self.n = x
+	}
+}
+
+Trailing: rec
+{
+	n: i32
+
+	new: op(x: i32, y: i32 = 2)
+	{
+		self.n = x * y
+	}
+}
+
+Rest: rec
+{
+	n: i32
+
+	new: op(x: i32, ...rest: view[i32])
+	{
+		self.n = x * 100 + sum(rest)
+	}
+}
+
+one[T: new(i32)]: fun -> T = T(5)
+two[T: new(i32, i32)]: fun -> T = T(4, 7)
+
+main: fun -> i32
+{
+	printf("%d %d %d %d\n", one[Packed]().n, one[Defaulted]().n, one[Trailing]().n, one[Rest]().n)
+	printf("%d %d %d\n", two[Packed]().n, two[Trailing]().n, two[Rest]().n)
+	ret 0
+}

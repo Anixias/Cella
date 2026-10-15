@@ -440,7 +440,10 @@ public sealed partial class SignatureCollector
 			};
 			
 			if (message is not null)
-				Diagnostics.Add(new(DiagnosticSeverity.Error, node.SourceLocation, message));
+				Diagnostics.Add(new(DiagnosticSeverity.Error, node.SourceLocation, message)
+				{
+					Hints = _typePool.DescribeHiddenRun(type) is { } hint ? [hint] : []
+				});
 		}
 		
 		_variadicTypes.Clear();

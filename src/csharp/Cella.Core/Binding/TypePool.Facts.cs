@@ -1,8 +1,10 @@
 ﻿using System.Collections.Immutable;
 using System.Numerics;
+using Cella.Core.Binding.Constants;
 using Cella.Core.Binding.Conversions;
 using Cella.Core.Symbols;
 using Cella.Core.Syntax.Nodes;
+using Cella.Diagnostics;
 
 namespace Cella.Core.Binding;
 
@@ -153,15 +155,54 @@ public sealed partial class TypePool
 			.Any(constructor => IsDefaultConstructor(constructor) && constructor.Symbol.Visibility >= floor);
 	}
 	
-	public FunctionInfo? FindNewConstructor(TypeSymbol type)
+	public FunctionInfo? FindNewConstructor(TypeSymbol type) =>
+		FindConstructorWitness(type, new FunctionSignature([GetPointerType(type)], NativeSymbols.Void, false,
+			[ParameterMode.Mut])) is FunctionWitness { Info: var constructor }
+			? constructor
+			: null;
+	
+	public bool ReachesConstructor(FunctionSignature candidate, FunctionSignature expected, bool allowsStandIns = false)
 	{
-		var floor = GetConstructorFloor(type);
-		return GetConstructors(type)
-			.Where(constructor => constructor.Signature.ParameterTypes.Length == 1 &&
-			                      constructor.Symbol.Visibility >= floor)
-			.Select(static constructor => (FunctionInfo?)constructor)
-			.FirstOrDefault();
+		if (expected.HasVariadicParameter || !candidate.HasVariadicParameter && candidate.Defaults.IsEmpty)
+			return MatchesConstructor(candidate, expected, allowsStandIns);
+		
+		var given = expected.ParameterTypes.Length;
+		var fixedCount = candidate.FixedCount;
+		var required = fixedCount - candidate.Defaults.Length;
+		if (given < required || given > fixedCount && !candidate.HasVariadicParameter)
+			return false;
+		
+		for (var i = 0; i < Math.Min(given, fixedCount); i++)
+		{
+			if (!ParameterMatches(candidate.GetMode(i), candidate.ParameterTypes[i], expected, i, allowsStandIns))
+				return false;
+		}
+		
+		for (var i = given; i < fixedCount; i++)
+		{
+			if (candidate.Defaults[i - required] is ParametricConstant)
+				return false;
+		}
+		
+		if (given <= fixedCount)
+			return true;
+		
+		if (FindVariadicElement(candidate.GetDeclaredType(fixedCount)) is not { } element)
+			return false;
+		
+		for (var i = fixedCount; i < given; i++)
+		{
+			if (!ParameterMatches(ParameterMode.ReadOnly, element, expected, i, allowsStandIns))
+				return false;
+		}
+		
+		return true;
 	}
+	
+	private static bool ParameterMatches(ParameterMode mode, TypeSymbol type, FunctionSignature expected, int index,
+		bool allowsStandIns) => allowsStandIns
+		? mode.CanStandInOrAdapt(type, expected.GetMode(index), expected.ParameterTypes[index])
+		: type == expected.ParameterTypes[index] && mode == expected.GetMode(index);
 	
 	private static Visibility GetConstructorFloor(TypeSymbol type) => type is NamedTypeSymbol named
 		? (Visibility)Math.Max((int)named.Definition.Visibility, (int)Visibility.Module)
@@ -172,10 +213,21 @@ public sealed partial class TypePool
 	
 	public Witness? FindArgumentsWitness(TypeSymbol type) => FindRunWitness(type, NativeSymbols.Str);
 	
+	private FunctionSignature GetRunSignature(TypeSymbol type, TypeSymbol element) =>
+		new([GetPointerType(type), GetPointerType(element), NativeSymbols.UIntSize], NativeSymbols.Void, false,
+			[ParameterMode.Mut, ParameterMode.ReadOnly, ParameterMode.ReadOnly]);
+	
+	public string? DescribeHiddenRun(TypeSymbol type, TypeSymbol? element = null) =>
+		type is RecordSymbol &&
+		GetMembers(type).OfType<FieldSymbol>().Select(GetTypeOfMember).ToList() is
+			[PointerType { BaseType: var found }, var count] &&
+		count == NativeSymbols.UIntSize && (element is null || found == element)
+			? DescribeHiddenFields(type, GetRunSignature(type, found))
+			: null;
+	
 	public Witness? FindRunWitness(TypeSymbol type, TypeSymbol element)
 	{
-		var expected = new FunctionSignature([GetPointerType(type), GetPointerType(element), NativeSymbols.UIntSize],
-			NativeSymbols.Void, false, [ParameterMode.Mut, ParameterMode.ReadOnly, ParameterMode.ReadOnly]);
+		var expected = GetRunSignature(type, element);
 		
 		if (type is TypeParameterSymbol)
 			return GetConstructors(type).FirstOrDefault(constructor =>
@@ -216,8 +268,8 @@ public sealed partial class TypePool
 		var floor = GetConstructorFloor(type);
 		var visible = declared.Where(constructor => constructor.Symbol.Visibility >= floor).ToList();
 		var match = visible
-			.Where(constructor => MatchesConstructor(constructor.Signature, expected))
-			.Concat(visible.Where(constructor => MatchesConstructor(constructor.Signature, expected, true)))
+			.Where(constructor => ReachesConstructor(constructor.Signature, expected))
+			.Concat(visible.Where(constructor => ReachesConstructor(constructor.Signature, expected, true)))
 			.Select(static constructor => new FunctionWitness(constructor.Symbol, constructor))
 			.FirstOrDefault();
 		
@@ -282,8 +334,22 @@ public sealed partial class TypePool
 				: null;
 		
 		var fields = GetMembers(self).OfType<FieldSymbol>().ToList();
-		if (fields.Count != count || ((RecordSymbol)self).IsUnion)
-			return null;
+		return MatchesFields((RecordSymbol)self, fields, expected) && DescribeHiddenField(self, fields) is null
+			? new MemberwiseWitness()
+			: null;
+	}
+	
+	public string? DescribeHiddenFields(TypeSymbol self, FunctionSignature expected) =>
+		self is RecordSymbol record && GetConstructors(self).Count == 0 &&
+		GetMembers(self).OfType<FieldSymbol>().ToList() is var fields && MatchesFields(record, fields, expected)
+			? DescribeHiddenField(self, fields)
+			: null;
+	
+	private bool MatchesFields(RecordSymbol record, List<FieldSymbol> fields, FunctionSignature expected)
+	{
+		var count = expected.ParameterTypes.Length - 1;
+		if (fields.Count != count || record.IsUnion)
+			return false;
 		
 		for (var i = 0; i < count; i++)
 		{
@@ -291,13 +357,20 @@ public sealed partial class TypePool
 			var mode = expected.GetMode(i + 1);
 			var given = expected.ParameterTypes[i + 1];
 			if (mode == ParameterMode.Mut || given != type && !FunctionType.CanAdapt(given, type) ||
-			    mode.IsReadOnly() && !IsCopy(type) || !IsVisibleWithType(self, fields[i].Visibility) ||
-			    !IsVisibleWithType(self, fields[i].WriteVisibility))
-				return null;
+			    mode.IsReadOnly() && !IsCopy(type))
+				return false;
 		}
 		
-		return new MemberwiseWitness();
+		return true;
 	}
+	
+	private static string? DescribeHiddenField(TypeSymbol self, IEnumerable<FieldSymbol> fields) => fields
+		.Select(field => !IsVisibleWithType(self, field.Visibility)
+			? $"'{field.Name}' is private to its {DiagnosticReporter.DescribeScope(field.Visibility, true)}"
+			: !IsVisibleWithType(self, field.WriteVisibility)
+				? $"'{field.Name}' is read-only outside its {DiagnosticReporter.DescribeScope(field.WriteVisibility, true)}"
+				: null)
+		.FirstOrDefault(static hint => hint is not null);
 	
 	private bool IsConvertible(FunctionSignature expected) => expected.GetMode(1) switch
 	{

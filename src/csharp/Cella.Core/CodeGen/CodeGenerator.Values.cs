@@ -1,6 +1,7 @@
 ﻿using System.Collections.Immutable;
 using System.Numerics;
 using System.Text;
+using Cella.Core.Binding;
 using Cella.Core.Binding.Constants;
 using Cella.Core.Binding.Nodes;
 using Cella.Core.Binding.Operations;
@@ -92,8 +93,92 @@ public sealed unsafe partial class CodeGenerator
 		var info = SubstituteFunction(constructor);
 		GetFunctionValue(info);
 		var function = current.Functions[info];
-		builder.BuildCall2(function.FunctionType, function.FunctionValue, [slot]);
+		var cleanups = new List<Action>();
+		var args = EmitOmittedArguments(info.Signature, 1, [], cleanups, builder);
+		builder.BuildCall2(function.FunctionType, function.FunctionValue, [slot, ..args]);
+		foreach (var cleanup in cleanups)
+			cleanup();
+		
 		return IsLarge(type) ? slot : builder.BuildLoad2(MapTypeSymbol(type), slot, "new");
+	}
+	
+	private List<LLVMValueRef> EmitOmittedArguments(FunctionSignature signature, int given,
+		IReadOnlyList<LLVMValueRef> packed, List<Action> cleanups, LLVMBuilderRef builder)
+	{
+		var args = new List<LLVMValueRef>();
+		var firstDefault = signature.FixedCount - signature.Defaults.Length;
+		for (var i = given; i < signature.FixedCount; i++)
+		{
+			var type = Substitute(signature.GetDeclaredType(i));
+			var slot = SpillValue(builder, type, EmitStaticConstant(signature.Defaults[i - firstDefault]), "default");
+			args.Add(PassOmittedArgument(signature, i, slot, cleanups, builder));
+		}
+		
+		if (signature.HasVariadicParameter)
+			args.Add(PassOmittedArgument(signature, signature.FixedCount,
+				EmitRun(Substitute(signature.GetDeclaredType(signature.FixedCount)), packed, builder), cleanups,
+				builder));
+		
+		return args;
+	}
+	
+	private LLVMValueRef PassOmittedArgument(FunctionSignature signature, int index, LLVMValueRef slot,
+		List<Action> cleanups, LLVMBuilderRef builder)
+	{
+		var type = Substitute(signature.GetDeclaredType(index));
+		var mode = signature.GetMode(index);
+		if (mode != ParameterMode.Own)
+			cleanups.Add(() => EmitDropCall(type, slot, builder));
+		
+		return TypePool.PassesByPointer(mode) ? slot : LoadValue(builder, type, slot, "argument");
+	}
+	
+	private LLVMValueRef EmitRun(TypeSymbol type, IReadOnlyList<LLVMValueRef> elements, LLVMBuilderRef builder)
+	{
+		var slot = SpillValue(builder, type, EmitZeroed(builder, type, "run"), "run");
+		var element = _typePool.FindVariadicElement(type)!;
+		var data = LLVMValueRef.CreateConstNull(OpaquePointer);
+		if (elements.Count > 0)
+		{
+			var elementType = MapTypeSymbol(element);
+			var arrayType = LLVMTypeRef.CreateArray(elementType, (uint)elements.Count);
+			data = BuildEntryAlloca(builder, arrayType, "values");
+			for (var i = 0; i < elements.Count; i++)
+			{
+				var index = LLVMValueRef.CreateConstInt(_context.Int32Type, (ulong)i);
+				StoreValue(builder, element, elements[i],
+					builder.BuildGEP2(arrayType, data, new[] { Int32Zero, index }, "value"));
+			}
+		}
+		
+		BuildRun(type, _typePool.FindRunWitness(type, element), slot, data,
+			EmitSizeConstant(new BigInteger(elements.Count), false), builder);
+		
+		return slot;
+	}
+	
+	private void BuildRun(TypeSymbol type, Witness? witness, LLVMValueRef slot, LLVMValueRef data, LLVMValueRef count,
+		LLVMBuilderRef builder)
+	{
+		switch (witness)
+		{
+			case FunctionWitness { Info: var constructor }:
+			{
+				var info = SubstituteFunction(constructor);
+				GetFunctionValue(info);
+				var function = current.Functions[info];
+				builder.BuildCall2(function.FunctionType, function.FunctionValue, [slot, data, count]);
+				break;
+			}
+			
+			case MemberwiseWitness:
+			{
+				var mapped = MapTypeSymbol(type);
+				builder.BuildStore(data, builder.BuildStructGEP2(mapped, slot, 0, "data"));
+				builder.BuildStore(count, builder.BuildStructGEP2(mapped, slot, 1, "length"));
+				break;
+			}
+		}
 	}
 	
 	private LLVMValueRef EmitIndexer(IndexerValue v, LLVMBuilderRef builder)

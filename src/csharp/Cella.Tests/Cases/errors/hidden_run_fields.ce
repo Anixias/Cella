@@ -1,0 +1,26 @@
+mod test
+
+Run: rec
+{
+	data: pvt ptr[i32]
+	count: pvt usize
+
+	size: fun(imm self) -> usize = self.count
+}
+
+Fixed: rec
+{
+	data: pvt set ptr[i32]
+	count: usize
+}
+
+Args: rec
+{
+	data: ptr[str]
+	count: pvt usize
+}
+
+count: fun(...xs: Run) -> usize = xs.size()
+fixed: fun(...xs: Fixed) -> usize = xs.count
+
+main: fun(args: Args) -> i32 = 0

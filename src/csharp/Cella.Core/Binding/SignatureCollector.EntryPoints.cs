@@ -53,7 +53,14 @@ public sealed partial class SignatureCollector
 					!IsEntryPointResult(candidate.Signature.ReturnType)
 						? $"'{_entryPointName}' must return 'i32', 'never' or nothing"
 						: $"'{_entryPointName}' must take no parameters, 'ptr[str]' and 'usize', or one parameter " +
-						  "that meets 'new(ptr[str], usize)'"));
+						  "that meets 'new(ptr[str], usize)'")
+				{
+					Hints = IsEntryPointResult(candidate.Signature.ReturnType) &&
+					        candidate.Signature.ParameterTypes is [var only] &&
+					        _typePool.DescribeHiddenRun(only, NativeSymbols.Str) is { } hint
+						? [hint]
+						: []
+				});
 		}
 	}
 	

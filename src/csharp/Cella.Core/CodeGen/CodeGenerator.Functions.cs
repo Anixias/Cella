@@ -147,25 +147,7 @@ public sealed partial class CodeGenerator
 		var type = signature.GetDeclaredType(0);
 		var mode = signature.GetMode(0);
 		var slot = SpillValue(builder, type, EmitZeroed(builder, type, "arguments"), "arguments");
-		switch (_typePool.FindArgumentsWitness(type))
-		{
-			case FunctionWitness { Info: var constructor }:
-			{
-				GetFunctionValue(constructor);
-				var function = current.Functions[constructor];
-				builder.BuildCall2(function.FunctionType, function.FunctionValue, [slot, strings, count]);
-				break;
-			}
-			
-			case MemberwiseWitness:
-			{
-				var mapped = MapTypeSymbol(type);
-				builder.BuildStore(strings, builder.BuildStructGEP2(mapped, slot, 0, "data"));
-				builder.BuildStore(count, builder.BuildStructGEP2(mapped, slot, 1, "length"));
-				break;
-			}
-		}
-		
+		BuildRun(type, _typePool.FindArgumentsWitness(type), slot, strings, count, builder);
 		cleanup = mode == ParameterMode.Own ? null : () => EmitDropCall(type, slot, builder);
 		return TypePool.PassesByPointer(mode) ? slot : LoadValue(builder, type, slot, "arguments");
 	}

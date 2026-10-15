@@ -98,16 +98,28 @@ public sealed partial class CodeGenerator
 		var target = _typePool.InstantiateFunction(witness.Info, arguments);
 		GetFunctionValue(target);
 		var callee = current.Functions[target];
+		var direct = function.Signature.HasVariadicParameter
+			? parameters.Count
+			: Math.Min(parameters.Count, target.Signature.FixedCount);
+		
 		var args = parameters
+			.Take(direct)
 			.Select((parameter, i) => AdaptFunction(function.Signature.ParameterTypes[i],
 				target.Signature.ParameterTypes[i], PassToWitness(function, target, i, parameter, builder), builder))
 			.ToList();
+		
+		var cleanups = new List<Action>();
+		if (!function.Signature.HasVariadicParameter)
+			args.AddRange(EmitOmittedArguments(target.Signature, direct, parameters[direct..], cleanups, builder));
 		
 		var result = callee.CSignature is { } signature
 			? EmitCCall(signature, callee.FunctionType, callee.FunctionValue, target.Signature.ParameterTypes,
 				target.Signature.ReturnType, args, builder)
 			: BuildInternalCall(builder, callee.FunctionType, callee.FunctionValue, target.Signature.ReturnType, [],
 				args);
+		
+		foreach (var cleanup in cleanups)
+			cleanup();
 		
 		return AdaptFunction(target.Signature.ReturnType, function.Signature.ReturnType, result, builder);
 	}

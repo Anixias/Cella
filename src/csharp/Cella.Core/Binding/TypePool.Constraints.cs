@@ -51,10 +51,8 @@ public sealed partial class TypePool
 		if (parameter.HasDefault && !HasDefault(argument))
 			return ("default", $"'{name}' has no default");
 		
-		if (FindMissingConstructor(parameter, argument, map) is var (missing, hidden))
-			return ($"new({missing})", hidden is { } visibility
-				? $"'{name}({missing})' is private to its {DiagnosticReporter.DescribeScope(visibility, true)}"
-				: $"'{name}' has no constructor taking '{missing}'");
+		if (FindMissingConstructor(parameter, argument, map) is var (missing, hint))
+			return ($"new({missing})", hint ?? $"'{name}' has no constructor taking '{missing}'");
 		
 		if (FindUnmetTrait(parameter, argument, map) is { } trait)
 			return (trait.Name, $"'{name}' doesn't implement '{trait.Name}'");
@@ -106,7 +104,7 @@ public sealed partial class TypePool
 			.FirstOrDefault(bound => !Conforms(argument, bound));
 	}
 	
-	private (string Parameters, Visibility? Hidden)? FindMissingConstructor(TypeParameterSymbol parameter,
+	private (string Parameters, string? Hint)? FindMissingConstructor(TypeParameterSymbol parameter,
 		TypeSymbol argument, IReadOnlyDictionary<TypeParameterSymbol, TypeSymbol>? map)
 	{
 		var bounds = GetConstructorBounds(parameter);
@@ -119,7 +117,10 @@ public sealed partial class TypePool
 			.Select(bound => SubstituteSignature(bound.Signature, substitution))
 			.FirstOrDefault(expected => !expected.ParameterTypes.Any(static type => type is InvalidType) &&
 			                            !HasConstructor(argument, expected)) is { } missing
-			? (DescribeParameters(missing), FindHiddenConstructor(argument, missing))
+			? (DescribeParameters(missing), FindHiddenConstructor(argument, missing) is { } visibility
+				? $"'{argument.Name}({DescribeParameters(missing)})' is private to its " +
+				  DiagnosticReporter.DescribeScope(visibility, true)
+				: DescribeHiddenFields(argument, missing))
 			: null;
 	}
 	
@@ -128,7 +129,7 @@ public sealed partial class TypePool
 		var floor = GetConstructorFloor(type);
 		return GetConstructors(type)
 			.Where(constructor => constructor.Symbol.Visibility < floor &&
-			                      MatchesConstructor(constructor.Signature, expected, true))
+			                      ReachesConstructor(constructor.Signature, expected, true))
 			.Select(static constructor => (Visibility?)constructor.Symbol.Visibility)
 			.FirstOrDefault();
 	}

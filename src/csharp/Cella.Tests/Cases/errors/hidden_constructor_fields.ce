@@ -1,0 +1,23 @@
+mod test
+
+Args: rec
+{
+	data: pvt ptr[str]
+	count: pvt usize
+
+	size: fun(imm self) -> usize = self.count
+}
+
+Open: rec
+{
+	data: ptr[str]
+	count: usize
+}
+
+make[T: new(ptr[str], usize)]: fun -> T = T(null, 4)
+
+main: fun -> i32
+{
+	val open = make[Open]()
+	ret i32(make[Args]().size() + open.count)
+}

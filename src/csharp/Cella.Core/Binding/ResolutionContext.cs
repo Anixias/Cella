@@ -588,7 +588,11 @@ public readonly struct ResolutionContext
 		if (message is null)
 			return true;
 		
-		Diagnostics.Add(new(DiagnosticSeverity.Error, node.SourceLocation, message));
+		Diagnostics.Add(new(DiagnosticSeverity.Error, node.SourceLocation, message)
+		{
+			Hints = TypePool.DescribeHiddenRun(type) is { } hint ? [hint] : []
+		});
+		
 		return false;
 	}
 	

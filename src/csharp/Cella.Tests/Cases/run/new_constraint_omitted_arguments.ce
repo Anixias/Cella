@@ -1,0 +1,55 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+view[T]: ref rec
+{
+	data: ptr[T]
+	length: usize
+
+	new: op(data: ptr[T], length: usize)
+	{
+		self.data = data
+		self.length = length + 100
+	}
+}
+
+Bag[T: copy]: rec
+{
+	count: usize
+
+	new: op(...values: view[T])
+	{
+		self.count = values.length
+	}
+}
+
+Counted: rec
+{
+	start: i32
+
+	new: op(start: i32 = 7, step: i32 = 2)
+	{
+		self.start = start * step
+	}
+}
+
+reset[T: new()]: fun(mut value: T)
+{
+	value = T()
+}
+
+make[T: new()]: fun -> T = T()
+
+main: fun -> i32
+{
+	var b = Bag[i32](4, 5, 6)
+	val e = Bag[i32]()
+	printf("%zu %zu\n", b.count, e.count)
+	reset(mut b)
+	printf("%zu %d %d\n", b.count, make[Counted]().start, Counted().start)
+	ret 0
+}

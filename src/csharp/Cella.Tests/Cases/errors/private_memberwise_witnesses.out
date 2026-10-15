@@ -5,6 +5,6 @@ Error at line 19, column 45
 18 │ 
 19 │ main: fun -> i32 = make[Open]().left + make[Pair]().sum()
                                                  ╘══╛ 'make' requires 'T: new(i32, i32)'
-                                                    | 'Pair' has no constructor taking 'i32, i32'
+                                                    | 'left' is private to its type
 
 [compilation failed]
