@@ -1,0 +1,14 @@
+
+====== discard_reads.ce ======
+
+Error at line 3, column 28
+2 Γöé 
+3 Γöé read: fun(_: i32) -> i32 = _
+                               ^ Cannot use '_' as a value
+
+Error at line 8, column 6
+7 Γöé val _ = 1
+8 Γöé ret _
+        ^ Cannot use '_' as a value
+
+[compilation failed]

@@ -25,6 +25,7 @@ public sealed partial class FileParser
 			return null;
 		}
 		
+		RejectDiscardName(identifier);
 		if (identifier.Text == "ext" && Peek(index, TokenType.OpOpenBrace))
 		{
 			Report(identifier, "Cannot nest 'ext' blocks");

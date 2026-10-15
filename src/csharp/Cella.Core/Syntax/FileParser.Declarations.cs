@@ -16,6 +16,7 @@ public sealed partial class FileParser
 		else if (!Match(ref index, out identifier, _topLevelContextualKeywords, TokenType.Identifier))
 			return false;
 		
+		RejectDiscardName(identifier);
 		var target = ParseImplTarget(ref index, identifier);
 		if (ParseTypeParameters(ref index) is not { } typeParameters)
 		{

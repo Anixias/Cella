@@ -23,6 +23,7 @@ public sealed partial class FileParser
 				return null;
 			}
 			
+			RejectDiscardName(name);
 			var keywords = new List<Token>();
 			var traits = new List<ITypeNode>();
 			var constructors = new List<ConstructorConstraintNode>();

@@ -1,0 +1,12 @@
+mod test
+
+_: rec { x: i32 }
+
+Point: rec
+{
+	_: i32
+}
+
+pick[_]: fun -> i32 = 0
+
+main: fun -> i32 = 0

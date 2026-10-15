@@ -1,0 +1,9 @@
+mod test
+
+read: fun(_: i32) -> i32 = _
+
+main: fun -> i32
+{
+	val _ = 1
+	ret _
+}

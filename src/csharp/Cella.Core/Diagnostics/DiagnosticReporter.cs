@@ -213,6 +213,7 @@ public static class DiagnosticReporter
 	
 	public static IEnumerable<Diagnostic> ReportDuplicates(IEnumerable<Token> identifiers,
 		Func<string, string> describe) => identifiers
+		.Where(static identifier => identifier.Text != "_")
 		.GroupBy(static identifier => identifier.Text)
 		.Where(static sameName => sameName.Count() > 1)
 		.SelectMany(sameName => sameName.Select(identifier =>

@@ -100,6 +100,12 @@ public sealed partial class FileParser
 	private void Report(Token token, string message, DiagnosticSeverity severity = DiagnosticSeverity.Error) =>
 		Diagnostics.Add(new(severity, token.SourceLocation, message));
 	
+	private void RejectDiscardName(Token identifier)
+	{
+		if (identifier.Text == "_")
+			Report(identifier, "Cannot use '_' as a name");
+	}
+	
 	private void ReportUnexpected(Token token) => Report(token, token.Error ?? "Unexpected token");
 	
 	private void ReportExpected(int index, string expected, Token? opener = null)

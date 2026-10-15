@@ -148,6 +148,9 @@ public sealed partial class Resolver
 	
 	public IResolvedExpressionNode Visit(VarExpressionNode node)
 	{
+		if (node.Identifier.Text == "_")
+			return Error(node, "Cannot use '_' as a value", CurrentTargetType);
+		
 		if (ResolveTargetCase(node.Identifier, node) is { } targetCase)
 			return targetCase;
 		
