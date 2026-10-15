@@ -6,10 +6,10 @@ Error at line 3, column 15
 3 │ untyped: fun(x) -> i32 = 0
                   ^ Expected ':' and a type
 
-Error at line 5, column 22
+Error at line 5, column 21
 4 │ 
 5 │ trailing: fun(x: i32,) -> i32 = x
-                         ^ Expected a parameter name
+                        ^ Cannot end lists with ','
 
 Error at line 7, column 16
 6 │ 

@@ -435,7 +435,7 @@ public sealed partial class FileParser
 				Report(Tokens[index++], "Cannot declare required fields in enums");
 			
 			payload.Add(new FieldNode(fieldName, ParseType(ref index), []));
-		} while (Match(ref index, TokenType.OpComma));
+		} while (MatchSeparator(ref index, TokenType.OpCloseParen));
 		
 		if (Match(ref index, TokenType.OpCloseParen))
 			return true;

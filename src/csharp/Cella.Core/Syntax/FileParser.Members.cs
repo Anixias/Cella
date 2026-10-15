@@ -270,6 +270,10 @@ public sealed partial class FileParser
 			return null;
 		}
 		
+		if (receiver is not null && RejectTrailingComma(index, Tokens[index - 1], TokenType.OpCloseParen) &&
+		    Match(ref index, TokenType.OpCloseParen))
+			return (receiver, parameters);
+		
 		do
 		{
 			Token? mode = Match(ref index, out var keyword, TokenSets.ParameterModes) ? keyword : null;
@@ -292,7 +296,7 @@ public sealed partial class FileParser
 				ReportExpected(index, "':' and a type");
 				return null;
 			}
-		} while (Match(ref index, TokenType.OpComma));
+		} while (MatchSeparator(ref index, TokenType.OpCloseParen));
 		
 		if (Match(ref index, TokenType.OpCloseParen))
 			return (receiver, parameters);

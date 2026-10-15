@@ -45,7 +45,7 @@ public sealed class TypeParser(ImmutableArray<Token> tokens) : BaseParser<ITypeN
 		}
 		
 		var args = new List<IGenericArgumentNode> { ParseGenericArgument(ref index) };
-		while (Match(ref index, TokenType.OpComma))
+		while (MatchSeparator(ref index, TokenType.OpCloseBracket))
 			args.Add(ParseGenericArgument(ref index));
 		
 		if (!Match(ref index, out var closeBracket, TokenType.OpCloseBracket))
@@ -170,7 +170,7 @@ public sealed class TypeParser(ImmutableArray<Token> tokens) : BaseParser<ITypeN
 				
 				ellipses.Add(Match(ref index, out var ellipsis, TokenType.OpDotDotDot) ? ellipsis : null);
 				parameterTypes.Add(ParseType(ref index));
-			} while (Match(ref index, TokenType.OpComma));
+			} while (MatchSeparator(ref index, TokenType.OpCloseBracket, TokenType.OpArrow));
 		}
 		
 		var returnType = Match(ref index, TokenType.OpArrow) ? ParseType(ref index) : null;

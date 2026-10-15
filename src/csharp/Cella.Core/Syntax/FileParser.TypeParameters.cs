@@ -68,7 +68,7 @@ public sealed partial class FileParser
 			}
 			
 			parameters.Add(new(name, keywords, traits, constructors) { ValueType = valueType });
-		} while (Match(ref index, TokenType.OpComma));
+		} while (MatchSeparator(ref index, TokenType.OpCloseBracket));
 		
 		if (Match(ref index, TokenType.OpCloseBracket))
 			return parameters;
@@ -106,7 +106,7 @@ public sealed partial class FileParser
 				return null;
 			
 			types.Add(type);
-		} while (Match(ref index, TokenType.OpComma));
+		} while (MatchSeparator(ref index, TokenType.OpCloseParen));
 		
 		if (Match(ref index, out closeParen, TokenType.OpCloseParen))
 			return new(keyword, modes, types, closeParen);

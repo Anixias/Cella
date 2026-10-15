@@ -222,6 +222,10 @@ public sealed partial class FileParser
 				return null;
 			}
 			
+			if (receiver is not null && RejectTrailingComma(index, Tokens[index - 1], TokenType.OpCloseParen) &&
+			    Match(ref index, TokenType.OpCloseParen))
+				return parameters;
+			
 			if (ParseParameterList(ref index, allowVariadic, out isVariadic) is not { } parameterList)
 				return null;
 			
@@ -275,7 +279,7 @@ public sealed partial class FileParser
 		
 		result.Add(firstParameter);
 		
-		while (Match(ref index, TokenType.OpComma))
+		while (MatchSeparator(ref index, TokenType.OpCloseParen))
 		{
 			if (allowVariadic && !Peek(index + 1, TokenType.Identifier) && Match(ref index, TokenType.OpDotDotDot))
 			{

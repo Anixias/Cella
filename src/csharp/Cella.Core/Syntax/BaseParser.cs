@@ -1,5 +1,6 @@
 ﻿using System.Collections.Immutable;
 using Cella.Core.Text;
+using Cella.Diagnostics;
 
 namespace Cella.Core.Syntax;
 
@@ -20,6 +21,25 @@ public abstract class BaseParser<T>(ImmutableArray<Token> tokens) : IParser<T>
 		TokenTypeInfo.GetKeyword(token.Text) == token.Type && !token.Type.IsContextual;
 	
 	protected static string DescribeReservedWord(Token token) => $"'{token.Text}' is a keyword";
+	
+	protected bool MatchSeparator(ref int index, params ReadOnlySpan<TokenType> closers) =>
+		Match(ref index, out var comma, TokenType.OpComma) && !RejectTrailingComma(index, comma, closers);
+	
+	protected bool RejectTrailingComma(int index, Token comma, params ReadOnlySpan<TokenType> closers)
+	{
+		foreach (var closer in closers)
+		{
+			if (!Peek(index, closer))
+				continue;
+			
+			ReportTrailingComma(new(DiagnosticSeverity.Error, comma.SourceLocation, "Cannot end lists with ','"));
+			return true;
+		}
+		
+		return false;
+	}
+	
+	protected virtual void ReportTrailingComma(Diagnostic diagnostic) => throw new ParseException(diagnostic);
 	
 	protected bool AtEnd(int index) => index < 0 || index >= Tokens.Length || Tokens[index].Type == TokenType.EndOfFile;
 	

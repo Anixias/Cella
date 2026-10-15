@@ -1,0 +1,84 @@
+mod test
+
+use test.[main, add,]
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Shape: enum
+{
+	rect(w: i32, h: i32,)
+	none
+}
+
+add: fun(a: i32, b: i32,) -> i32 = a + b
+
+Point: rec
+{
+	x: i32
+
+	get: fun(imm self,) -> i32 = self.x
+}
+
+pair[A, B,]: rec
+{
+	a: A
+	b: B
+}
+
+make[T: new(i32,)]: fun -> T = T(1)
+
+arrays: fun -> i32
+{
+	val values = [1, 2,]
+	ret 0
+}
+
+functionTypes: fun -> i32
+{
+	val f: fun[i32, i32, -> i32] = add
+	ret 0
+}
+
+lambdas: fun -> i32
+{
+	val g = fun(a: i32, b: i32,) -> i32 = a * b
+	ret 0
+}
+
+typeArguments: fun -> i32
+{
+	val v: array[i32, 2,] = [1, 2]
+	ret 0
+}
+
+arms: fun -> i32 = match 3
+{
+	1, 2, => 0
+	else => 1
+}
+
+patterns: fun -> bool
+{
+	val s = Shape.rect(1, 2)
+	ret s is rect(1, 2,)
+}
+
+calls: fun -> i32
+{
+	printf(
+		"%d\n",
+		5,
+	)
+	ret 0
+}
+
+indexers: fun -> i32
+{
+	val values = [1, 2]
+	ret values[1,]
+}
+
+main: fun -> i32 = 0

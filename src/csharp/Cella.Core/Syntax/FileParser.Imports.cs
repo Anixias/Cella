@@ -103,10 +103,16 @@ public sealed partial class FileParser
 		var names = new List<Token>();
 		while (!Match(ref index, TokenType.OpCloseBracket))
 		{
-			if (names.Count > 0 && !Match(ref index, TokenType.OpComma))
+			if (names.Count > 0)
 			{
-				ReportExpected(index, "',' or ']'", openBracket);
-				return null;
+				if (!Match(ref index, out var comma, TokenType.OpComma))
+				{
+					ReportExpected(index, "',' or ']'", openBracket);
+					return null;
+				}
+				
+				if (RejectTrailingComma(index, comma, TokenType.OpCloseBracket))
+					continue;
 			}
 			
 			if (!Match(ref index, out var name, TokenType.Identifier))

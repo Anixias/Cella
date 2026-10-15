@@ -382,8 +382,14 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 			if (AtEnd(index))
 				throw Expected(index, "')'", openParen);
 			
-			if (elements.Count > 0 && !Match(ref index, TokenType.OpComma))
-				throw Expected(index, "',' or ')'", openParen);
+			if (elements.Count > 0)
+			{
+				if (!Match(ref index, out var comma, TokenType.OpComma))
+					throw Expected(index, "',' or ')'", openParen);
+				
+				if (RejectTrailingComma(index, comma, TokenType.OpCloseParen))
+					continue;
+			}
 			
 			elements.Add(ParseElement(ref index));
 		}
@@ -430,7 +436,7 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 	public (List<PatternNode> Patterns, IExpressionNode? Guard, SourceLocation Location) ParseArmHead(ref int index)
 	{
 		var patterns = new List<PatternNode> { ParsePattern(ref index) };
-		while (!IsNextNewline(index) && Match(ref index, TokenType.OpComma))
+		while (!IsNextNewline(index) && MatchSeparator(ref index, TokenType.OpFatArrow, TokenType.KeywordIf))
 			patterns.Add(ParsePattern(ref index));
 		
 		var (source, range) = patterns[0].SourceLocation;
@@ -638,8 +644,7 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 			{
 				var values = new List<IExpressionNode> { ParseExpression(ref index) };
 				
-				// TODO Allow trailing comma
-				while (Match(ref index, TokenType.OpComma))
+				while (MatchSeparator(ref index, TokenType.OpCloseBracket))
 					values.Add(ParseExpression(ref index));
 				
 				if (!Match(ref index, out closeBracket, TokenType.OpCloseBracket))
@@ -686,7 +691,7 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 		{
 			do
 				parameters.Add(ParseLambdaParameter(ref index));
-			while (Match(ref index, TokenType.OpComma));
+			while (MatchSeparator(ref index, TokenType.OpCloseParen));
 			
 			if (!Match(ref index, TokenType.OpCloseParen))
 				throw Expected(index, "',' or ')'", openParen);
@@ -1045,8 +1050,14 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 			if (AtEnd(index))
 				throw Expected(index, "')'", openParen);
 			
-			if (arguments.Count > 0 && !Match(ref index, TokenType.OpComma))
-				throw Expected(index, "',' or ')'", openParen);
+			if (arguments.Count > 0)
+			{
+				if (!Match(ref index, out var comma, TokenType.OpComma))
+					throw Expected(index, "',' or ')'", openParen);
+				
+				if (RejectTrailingComma(index, comma, TokenType.OpCloseParen))
+					continue;
+			}
 			
 			arguments.Add(ParseArgument(ref index));
 		}
@@ -1078,8 +1089,14 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 			if (AtEnd(index))
 				throw Expected(index, "']'", openBracket);
 			
-			if (arguments.Count > 0 && !Match(ref index, TokenType.OpComma))
-				throw Expected(index, "',' or ']'", openBracket);
+			if (arguments.Count > 0)
+			{
+				if (!Match(ref index, out var comma, TokenType.OpComma))
+					throw Expected(index, "',' or ']'", openBracket);
+				
+				if (RejectTrailingComma(index, comma, TokenType.OpCloseBracket))
+					continue;
+			}
 			
 			arguments.Add(ParseExpression(ref index));
 		}

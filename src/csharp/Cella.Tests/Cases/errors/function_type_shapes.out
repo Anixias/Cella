@@ -11,10 +11,10 @@ Error at line 4, column 17
 4 │ b: fun(g: fun[->]) -> i32 = 0
                     ^ Expected a type
 
-Error at line 5, column 19
+Error at line 5, column 18
 4 │ b: fun(g: fun[->]) -> i32 = 0
 5 │ c: fun(g: fun[i32,]) -> i32 = 0
-                      ^ Expected a type
+                     ^ Cannot end lists with ','
 
 Error at line 6, column 18
 5 │ c: fun(g: fun[i32,]) -> i32 = 0
