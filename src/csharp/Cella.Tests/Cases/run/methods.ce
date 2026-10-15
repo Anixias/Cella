@@ -113,7 +113,7 @@ main: fun -> i32
 	var unit = Unit.make(10)
 	val dealt = unit.takeDamage(4)
 	unit.restore(1)
-	val health = unit.health()
+	val health = mut unit.health()
 	health -= 2
 	printf("%d %d ", dealt, unit.hp)
 	if unit.isAlive()

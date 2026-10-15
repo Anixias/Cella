@@ -169,7 +169,7 @@ public sealed partial class Resolver
 				}, [value]);
 			
 			initializer = MaterializeAsDefault(value);
-			if (initializer.Type is BorrowType { IsMutable: false, Target: var target } && _typePool.IsCopy(target))
+			if (initializer.Type is BorrowType { Target: var target } && _typePool.IsCopy(target))
 				initializer = Decay(initializer);
 		}
 		

@@ -29,14 +29,15 @@ main: fun -> i32
 	var x = 1
 	val r = imm x
 	val c = r
-	val kept: imm[i32] = r
+	val kept = imm r
 	var p = Point(1)
 	val rp = imm p
 	val cp = rp
 	var b = Box(Point(2))
 	val viaDeref = *b
 	val m = mut x
-	val alias = m
+	val alias = mut m
+	val copied = m
 	x = 5
 	p.x = 5
 	b.inner.x = 6
@@ -50,6 +51,6 @@ main: fun -> i32
 		total += start.x
 	}
 
-	printf("%d %d %d %d %d %d %d %d\n", r, c, kept, cp.x, viaDeref.x, x, snapshot(mut p), total)
+	printf("%d %d %d %d %d %d %d %d %d\n", r, c, kept, cp.x, viaDeref.x, x, copied, snapshot(mut p), total)
 	ret 0
 }

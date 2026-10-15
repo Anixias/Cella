@@ -124,7 +124,7 @@ main: fun -> i32
 	printf("%d %d %d %d %d %d %d ", a.value, b.value, kept.value, shown, stepped, c.value, d.value)
 
 	var counter = Counter(items, 7, Guard())
-	val count = counter.countRef()
+	val count = mut counter.countRef()
 	count += 1
 	printf("%d %d %d\n", firstToken(mut items).value, viaHelper(mut items).value, counter.count)
 	ret 0

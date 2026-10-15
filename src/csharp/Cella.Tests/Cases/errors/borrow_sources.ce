@@ -142,7 +142,7 @@ useRecordAfterMove: fun
 useResultAfterMove: fun
 {
 	var stats = Stats(1)
-	val total = kills(mut stats)
+	val total = mut kills(mut stats)
 	val moved = own stats
 	total += 1
 }

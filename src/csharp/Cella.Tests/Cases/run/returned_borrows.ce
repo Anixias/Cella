@@ -105,9 +105,9 @@ greeting: fun -> str = "hello"
 main: fun -> i32
 {
 	var stats = Stats(1, 2)
-	val total = forward(mut stats)
+	val total = mut forward(mut stats)
 	total += 4
-	val again = apply(kills, mut stats)
+	val again = mut apply(kills, mut stats)
 	again += 1
 	printf("%d ", stats.kills)
 
@@ -118,7 +118,7 @@ main: fun -> i32
 
 	var x = 10
 	val tally = Tally(mut x, 2)
-	val counter = count(pass(tally))
+	val counter = mut count(pass(tally))
 	counter += 1
 	printf("%d ", x)
 
