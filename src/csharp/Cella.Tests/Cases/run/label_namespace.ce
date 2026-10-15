@@ -1,0 +1,22 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+main: fun -> i32
+{
+	val count = 3
+	var seen = 0
+	count: for i in 0..10
+	{
+		if i == count
+			break count
+
+		seen += 1
+	}
+
+	printf("%d %d %s\n", count, seen, nameOf(count))
+	ret 0
+}

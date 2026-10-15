@@ -212,9 +212,6 @@ public sealed partial class Resolver
 			case TypeSymbol:
 				return Error(node, "Cannot use types as values", CurrentTargetType);
 			
-			case LabelSymbol:
-				return Error(node, "Cannot use labels as values", CurrentTargetType);
-			
 			default:
 				return Error(node, $"Symbol '{GetName(node)}' is not a variable", CurrentTargetType);
 		}

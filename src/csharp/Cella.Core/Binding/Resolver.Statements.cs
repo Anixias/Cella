@@ -82,20 +82,14 @@ public sealed partial class Resolver
 			return (null, Error(node, "Expected a label", null, labelNode));
 		
 		var name = varExpr.Identifier.Text;
-		if (CurrentResolutionContext.Resolve(name) is not { } symbol)
-		{
-			var labels = CurrentResolutionContext.GetAllSymbols()
-				.OfType<LabelSymbol>()
-				.Select(static label => label.Name)
-				.Distinct();
-			
-			var diagnostic = DiagnosticReporter.ReportUndefinedSymbol(labelNode, name, labels);
-			return (null, Error(node, diagnostic, null));
-		}
+		if (CurrentScope?.ResolveLabel(name) is { } label)
+			return (label, null);
 		
-		return symbol is LabelSymbol label
-			? (label, null)
-			: (null, Error(node, $"'{name}' is not a label", null, varExpr));
+		if (CurrentResolutionContext.Resolve(name) is not null)
+			return (null, Error(node, $"'{name}' is not a label", null, varExpr));
+		
+		var labels = CurrentScope?.GetLabelNames().Distinct() ?? [];
+		return (null, Error(node, DiagnosticReporter.ReportUndefinedSymbol(labelNode, name, labels), null));
 	}
 	
 	public IResolvedStatementNode Visit(ExpressionStatementNode node) =>

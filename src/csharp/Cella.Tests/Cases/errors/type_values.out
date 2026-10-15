@@ -29,6 +29,6 @@ Error at line 39, column 10
 Error at line 47, column 11
 46 │ {
 47 │     val a = outer
-                 ╘═══╛ Cannot use labels as values
+                 ╘═══╛ Symbol 'outer' not found in this scope
 
 [compilation failed]

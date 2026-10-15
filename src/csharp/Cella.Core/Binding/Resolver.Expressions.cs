@@ -403,7 +403,8 @@ public sealed partial class Resolver
 		var context = CurrentResolutionContext;
 		switch (name)
 		{
-			case VarExpressionNode variable when context.Resolve(variable.Identifier.Text) is null:
+			case VarExpressionNode variable when context.Resolve(variable.Identifier.Text) is null &&
+			                                     CurrentScope?.ResolveLabel(variable.Identifier.Text) is null:
 				Diagnostics.Add(ReportUndefinedSymbol(variable, variable.Identifier.Text));
 				return false;
 			

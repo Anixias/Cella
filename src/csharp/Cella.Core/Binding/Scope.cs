@@ -8,14 +8,21 @@ public sealed class Scope(Scope? parent = null)
 	public IReadOnlyCollection<Symbol> Symbols => _symbols.Values;
 	
 	private readonly Dictionary<string, Symbol> _symbols = [];
+	private readonly Dictionary<string, LabelSymbol> _labels = [];
 	
 	public void Define(Symbol symbol)
 	{
-		if (symbol.Name != "_")
+		if (symbol is LabelSymbol label)
+			_labels[label.Name] = label;
+		else if (symbol.Name != "_")
 			_symbols[symbol.Name] = symbol;
 	}
 	
 	public Symbol? Resolve(string name) => _symbols.GetValueOrDefault(name) ?? Parent?.Resolve(name);
+	
+	public LabelSymbol? ResolveLabel(string name) => _labels.GetValueOrDefault(name) ?? Parent?.ResolveLabel(name);
+	
+	public IEnumerable<string> GetLabelNames() => _labels.Keys.Concat(Parent?.GetLabelNames() ?? []);
 	
 	public Scope CreateChild() => new(this);
 }
