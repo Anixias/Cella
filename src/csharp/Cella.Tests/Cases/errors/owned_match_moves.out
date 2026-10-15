@@ -7,9 +7,9 @@ Error at line 33, column 8
            ╘════╛ Cannot use moved values
                 | Moved on line 27
 
-Error at line 42, column 8
+Error at line 42, column 12
 41 │ {
-42 │     match effect
-               ╘════╛ Cannot move read-only parameters
+42 │     match own effect
+                   ╘════╛ Cannot move read-only parameters
 
 [compilation failed]

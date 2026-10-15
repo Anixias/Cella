@@ -49,7 +49,7 @@ bindings: fun -> i32
 {
 	val effect = make(4)
 	var total = 0
-	match effect
+	match own effect
 	{
 		hold(var buffer) =>
 		{

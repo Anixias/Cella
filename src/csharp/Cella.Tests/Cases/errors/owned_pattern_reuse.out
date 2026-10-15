@@ -1,0 +1,10 @@
+
+====== owned_pattern_reuse.ce ======
+
+Error at line 27, column 8
+26 │ 
+27 │ match effect
+           ╘════╛ Cannot use moved values
+                | Moved on line 21
+
+[compilation failed]

@@ -39,7 +39,7 @@ used: fun -> i32
 
 parameter: fun(imm effect: Effect) -> i32
 {
-	match effect
+	match own effect
 	{
 		hold(own buffer) => ret take(own buffer)
 		else => ret 0

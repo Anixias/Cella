@@ -1,0 +1,42 @@
+mod test
+
+Buffer: rec
+{
+	id: i32
+
+	drop: op
+	{
+	}
+}
+
+Effect: enum
+{
+	none
+	count(n: i32)
+	hold(buffer: Buffer)
+	two(a: Buffer, b: Buffer)
+}
+
+keep: fun -> i32
+{
+	val effect = Effect.hold(Buffer(5))
+	match effect
+	{
+		hold(var buffer) => buffer.id += 10
+		else => {}
+	}
+
+	ret 0
+}
+
+pairs: fun -> i32
+{
+	val effect = Effect.two(Buffer(1), Buffer(2))
+	match effect
+	{
+		two(own a, val b) => ret a.id + b.id
+		else => ret 0
+	}
+}
+
+main: fun -> i32 = keep() + pairs()

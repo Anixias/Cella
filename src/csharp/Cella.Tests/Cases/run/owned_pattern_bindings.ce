@@ -1,0 +1,48 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Buffer: rec
+{
+	id: i32
+
+	drop: op
+	{
+		printf("drop %d\n", self.id)
+	}
+}
+
+Effect: enum
+{
+	none
+	count(n: i32)
+	hold(buffer: Buffer)
+}
+
+main: fun -> i32
+{
+	val counted = Effect.count(4)
+	match counted
+	{
+		count(var n) => n += 1
+		else => {}
+	}
+
+	val effect = Effect.hold(Buffer(5))
+	match own effect
+	{
+		hold(var buffer) =>
+		{
+			buffer.id += 10
+			printf("%d\n", buffer.id)
+		}
+
+		else => {}
+	}
+
+	printf("end\n")
+	ret 0
+}
