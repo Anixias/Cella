@@ -1,0 +1,15 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+geometry: rec { x: i32 }
+
+main: fun -> i32
+{
+	val local = geometry(4)
+	val shape: mod.geometry.Shape = mod.geometry.Shape(3)
+	printf("%d %d %d %d\n", local.x, mod.geometry.area(2), shape.side, game.speed())
+	ret 0
+}

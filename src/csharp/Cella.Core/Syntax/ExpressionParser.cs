@@ -655,6 +655,8 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 			node = new TypeExpressionNode(ParseType(ref index));
 		else if (Match(ref index, out var identifier, TokenType.Identifier))
 			node = new VarExpressionNode(identifier);
+		else if (Peek(index + 1, TokenType.OpDot) && Match(ref index, out var root, TokenType.KeywordMod))
+			node = new VarExpressionNode(root);
 		else if (Match(ref index, out var self, TokenType.KeywordSelf))
 			node = new VarExpressionNode(self);
 		else if (Match(ref index, out var undef, TokenType.KeywordUndef))

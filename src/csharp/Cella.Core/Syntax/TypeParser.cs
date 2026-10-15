@@ -27,7 +27,8 @@ public sealed class TypeParser(ImmutableArray<Token> tokens) : BaseParser<ITypeN
 		if (TryParseFunctionType(ref index) is { } functionType)
 			return functionType;
 		
-		if (!Match(ref index, out var identifier, TokenType.Identifier))
+		if (!Match(ref index, out var identifier, TokenType.Identifier) &&
+		    !(Peek(index + 1, TokenType.OpDot) && Match(ref index, out identifier, TokenType.KeywordMod)))
 			throw Expected(index, "a type");
 		
 		var qualified = Peek(index, TokenType.OpDot) ? ParseQualifiedType(ref index, identifier) : null;

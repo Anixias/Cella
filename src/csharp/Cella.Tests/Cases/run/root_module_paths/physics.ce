@@ -1,0 +1,3 @@
+mod game.physics
+
+gravity: fun -> i32 = 10

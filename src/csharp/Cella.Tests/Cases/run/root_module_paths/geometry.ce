@@ -1,0 +1,5 @@
+mod geometry
+
+Shape: rec { side: i32 }
+
+area: fun(side: i32) -> i32 = side * side

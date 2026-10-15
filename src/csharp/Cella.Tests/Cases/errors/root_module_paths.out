@@ -1,0 +1,14 @@
+
+====== root_module_paths.ce ======
+
+Error at line 3, column 27
+2 │ 
+3 │ missing: fun -> i32 = mod.nowhere.value()
+                              ╘═════╛ Module 'nowhere' not found
+
+Error at line 11, column 13
+10 │ {
+11 │     val x: mod.nowhere.Thing = undef
+                    ╘═════╛ Module 'nowhere' not found
+
+[compilation failed]

@@ -1,0 +1,15 @@
+mod test
+
+missing: fun -> i32 = mod.nowhere.value()
+
+value: fun -> i32 = mod.test.answer()
+
+answer: fun -> i32 = 1
+
+typed: fun -> i32
+{
+	val x: mod.nowhere.Thing = undef
+	ret 0
+}
+
+main: fun -> i32 = 0

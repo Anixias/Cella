@@ -97,6 +97,8 @@ public readonly struct ResolutionContext
 		_ => null
 	};
 	
+	private const string RootModuleName = "mod";
+	
 	public Symbol? Resolve(string name)
 	{
 		if (ResolveScoped(name) is { } scoped)
@@ -109,7 +111,12 @@ public readonly struct ResolutionContext
 		if (module.Count > 0)
 			return ResolveFrom(name, module);
 		
-		return NativeSymbols.Resolve(name) ?? Modules?.Root.Children.GetValueOrDefault(name);
+		if (name == RootModuleName)
+			return Modules?.Root;
+		
+		return NativeSymbols.Resolve(name) ??
+		       Modules?.Find(File.Module.ModuleName.Text)?.Children.GetValueOrDefault(name) ??
+		       Modules?.Root.Children.GetValueOrDefault(name);
 	}
 	
 	private bool IsExcluded(Symbol symbol) =>
