@@ -1,0 +1,3 @@
+mod test.tools
+
+mod ext("msvcrt") size: fun(text: cstr) -> i32

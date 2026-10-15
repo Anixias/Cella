@@ -45,19 +45,9 @@ Error at line 14, column 1
 14 │ drop: op
      ╘══╛ Cannot declare destructors outside types
 
-Error at line 18, column 1
-17 │ 
-18 │ pub
-     ╘═╛ Cannot use 'pub' blocks
-
 Error at line 23, column 1
 22 │ 
 23 │ pvt helper: fun -> i32 = 1
-     ╘═╛ Expected '{' after 'pvt'
-
-Error at line 25, column 1
-24 │ 
-25 │ pvt ext
      ╘═╛ Expected '{' after 'pvt'
 
 Error at line 30, column 8

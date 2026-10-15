@@ -266,17 +266,30 @@ public sealed class FileParser
 		if (StartsContextualName(index))
 			return ParseNamedDeclaration(ref index, declarations, block, insideBraces);
 		
-		var pubIndex = index;
-		if (Match(ref pubIndex, out var pubKeyword, _topLevelContextualKeywords, TokenType.KeywordPub) &&
-		    Match(ref pubIndex, out var pubBrace, TokenType.OpOpenBrace))
+		var visibilityIndex = index;
+		if (StartsVisibleExternals(index) &&
+		    (Match(ref visibilityIndex, out var visibility, _topLevelContextualKeywords, _blockKeywords) ||
+		     Match(ref visibilityIndex, out visibility, _topLevelContextualKeywords, TokenType.KeywordPub)) &&
+		    Match(ref visibilityIndex, _topLevelContextualKeywords, TokenType.KeywordExt))
 		{
-			Report(pubKeyword, "Cannot use 'pub' blocks");
-			index = pubIndex;
-			ParseTopLevelBlock(ref index, pubBrace, block, declarations);
+			if (block is { } outer)
+				Report(visibility, $"Cannot use '{visibility.Text}' in '{outer.Text}' blocks");
+			
+			var visibleStart = index;
+			var visibleExt = Tokens[visibilityIndex - 1];
+			index = visibilityIndex;
+			var visibleBlock = block ?? visibility;
+			if (ParseDeclaration(ref index, visibleExt, "external",
+				    (ref i) => ParseExternalDeclarations(ref i, visibleBlock)) is { } visibleExternals)
+				declarations.AddRange(visibleExternals);
+			else
+				SkipDeclaration(ref index, visibleStart, insideBraces);
+			
 			return true;
 		}
 		
-		if (MatchVisibilityBlock(ref index, _topLevelContextualKeywords, out var keyword, out var openBrace))
+		if (MatchVisibilityBlock(ref index, _topLevelContextualKeywords, out var keyword, out var openBrace) ||
+		    MatchPubBlock(ref index, _topLevelContextualKeywords, out keyword, out openBrace))
 		{
 			if (block is { } outer)
 				Report(keyword, $"Cannot use '{keyword.Text}' in '{outer.Text}' blocks");
@@ -799,7 +812,28 @@ public sealed class FileParser
 	}
 	
 	private bool IsVisibilityBlock(int index, IReadOnlyDictionary<string, TokenType> keywords) =>
-		MatchVisibilityBlock(ref index, keywords, out _, out _);
+		MatchVisibilityBlock(ref index, keywords, out _, out _) || StartsVisibleExternals(index);
+	
+	private bool StartsVisibleExternals(int index) =>
+		(Match(ref index, _topLevelContextualKeywords, _blockKeywords) ||
+		 Match(ref index, _topLevelContextualKeywords, TokenType.KeywordPub)) &&
+		Match(ref index, _topLevelContextualKeywords, TokenType.KeywordExt) &&
+		(Peek(index, TokenType.OpOpenBrace) || IsOnSameLine(index) && (Peek(index, TokenType.OpOpenParen) ||
+		                                                               Peek(index, TokenType.Identifier) &&
+		                                                               Peek(index + 1, TokenType.OpColon)));
+	
+	private bool MatchPubBlock(ref int index, IReadOnlyDictionary<string, TokenType> keywords, out Token keyword,
+		out Token openBrace)
+	{
+		var start = index;
+		if (Match(ref index, out keyword, keywords, TokenType.KeywordPub) &&
+		    Match(ref index, out openBrace, TokenType.OpOpenBrace))
+			return true;
+		
+		index = start;
+		openBrace = default;
+		return false;
+	}
 	
 	private bool MatchVisibilityBlock(ref int index, IReadOnlyDictionary<string, TokenType> keywords, out Token keyword,
 		out Token openBrace)
@@ -1604,6 +1638,15 @@ public sealed class FileParser
 				continue;
 			}
 			
+			if (MatchPubBlock(ref index, _memberContextualKeywords, out var pubKeyword, out var pubBrace))
+			{
+				Report(pubKeyword, "Cannot declare 'pub' members");
+				if (!ParseMembers(ref index, pubBrace, block, members))
+					return false;
+				
+				continue;
+			}
+			
 			if (MatchVisibilityBlock(ref index, _memberContextualKeywords, out var keyword, out var blockBrace))
 			{
 				if (block is { } outer)
@@ -1706,6 +1749,15 @@ public sealed class FileParser
 				if (!ParseWhen(ref index, (ref i, open, isActive) => isActive
 					    ? ParseEnumBody(ref i, open, block, matchedType, cases, members)
 					    : ParseEnumBody(ref i, open, block, matchedType, [], [])))
+					return false;
+				
+				continue;
+			}
+			
+			if (MatchPubBlock(ref index, _memberContextualKeywords, out var pubKeyword, out var pubBrace))
+			{
+				Report(pubKeyword, "Cannot declare 'pub' members");
+				if (!ParseEnumBody(ref index, pubBrace, block, matchedType, cases, members))
 					return false;
 				
 				continue;

@@ -1,0 +1,13 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+main: fun -> i32
+{
+	val v = lib.Vector(3, 4)
+	printf("%d %d %d\n", lib.dot(v, v), lib.length(v), lib.abs(-7))
+	ret 0
+}

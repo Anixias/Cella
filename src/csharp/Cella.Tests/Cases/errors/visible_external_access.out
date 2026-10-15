@@ -1,0 +1,17 @@
+
+====== main.ce ======
+
+Error at line 11, column 17
+10 │ puts("hi")
+11 │ ret test.tools.size("x")
+                    ╘══╛ 'test.tools.size' is private to its module
+
+
+====== other.ce ======
+
+Error at line 3, column 21
+2 │ 
+3 │ other: fun -> i32 = puts("there")
+                        ╘═══════════╛ 'puts' is private to its file
+
+[compilation failed]

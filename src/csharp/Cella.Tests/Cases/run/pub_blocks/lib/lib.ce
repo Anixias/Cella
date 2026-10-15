@@ -1,0 +1,17 @@
+mod lib
+
+pub
+{
+	Vector: rec
+	{
+		x: i32
+		y: i32
+	}
+
+	dot: fun(a: Vector, b: Vector) -> i32 = a.x * b.x + a.y * b.y
+	length: fun(v: Vector) -> i32 = magnitude(v.x * v.x + v.y * v.y)
+}
+
+pub ext("msvcrt") abs: fun(value: i32) -> i32
+
+magnitude: pvt fun(squared: i32) -> i32 = squared

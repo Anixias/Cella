@@ -2838,7 +2838,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			node.Target);
 	}
 	
-	private ResolvedInvalidExpressionNode? RejectSpread(CallExpressionNode node, IEnumerable<ICallable> candidates)
+	private ResolvedInvalidExpressionNode? RejectSpread(CallExpressionNode node, IReadOnlyList<ICallable> candidates)
 	{
 		var index = FindSpread(node.Arguments);
 		if (index < 0)

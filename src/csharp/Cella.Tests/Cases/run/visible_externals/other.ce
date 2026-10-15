@@ -1,0 +1,12 @@
+mod test
+
+pvt ext
+{
+	puts: fun(text: cstr) -> i32
+}
+
+other: fun -> i32
+{
+	puts("other")
+	ret i32(strlen("de"))
+}

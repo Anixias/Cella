@@ -1,0 +1,19 @@
+mod test
+
+pvt
+{
+	pub ext
+	{
+		abs: fun(value: i32) -> i32
+	}
+}
+
+mod
+{
+	pvt ext
+	{
+		labs: fun(value: i32) -> i32
+	}
+}
+
+main: fun -> i32 = 0

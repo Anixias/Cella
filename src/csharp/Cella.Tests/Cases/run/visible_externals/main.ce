@@ -1,0 +1,19 @@
+mod test
+
+pvt ext
+{
+	puts: fun(text: cstr) -> i32
+}
+
+pvt ext("msvcrt") abs: fun(value: i32) -> i32
+
+mod ext
+{
+	strlen: fun(text: cstr) -> usize
+}
+
+main: fun -> i32
+{
+	puts("main")
+	ret other() + abs(-2) + i32(strlen("abc"))
+}

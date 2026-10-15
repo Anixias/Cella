@@ -1,0 +1,19 @@
+
+====== pub_block_errors.ce ======
+
+Error at line 5, column 9
+4 │ {
+5 │     Point: pub rec { x: i32 }
+               ╘═╛ Cannot use 'pub' in 'pub' blocks
+
+Error at line 11, column 2
+10 │ {
+11 │     pub
+         ╘═╛ Cannot use 'pub' in 'pvt' blocks
+
+Error at line 19, column 2
+18 │ {
+19 │     pub
+         ╘═╛ Cannot declare 'pub' members
+
+[compilation failed]

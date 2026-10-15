@@ -1,0 +1,25 @@
+mod test
+
+pub
+{
+	Point: pub rec { x: i32 }
+	helper: fun -> i32 = 1
+}
+
+pvt
+{
+	pub
+	{
+		other: fun -> i32 = 2
+	}
+}
+
+Shape: rec
+{
+	pub
+	{
+		size: i32
+	}
+}
+
+main: fun -> i32 = 0
