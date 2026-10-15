@@ -1,0 +1,20 @@
+mod test
+
+U: union
+
+R: rec
+
+Shape: ref rec
+
+Box[T]: rec
+
+Marker: trait
+
+Tagged: rec impl Marker
+
+Kept: rec
+{
+	value: i32
+}
+
+main: fun -> i32 = Kept(0).value

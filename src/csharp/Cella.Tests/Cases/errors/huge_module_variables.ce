@@ -1,0 +1,21 @@
+mod test
+
+Pool: rec
+{
+	data: array[u8, 3000000000]
+}
+
+Small: rec
+{
+	data: array[u8, 1000]
+}
+
+pool: var Pool = Pool()
+small: var Small = Small()
+
+main: fun -> i32
+{
+	pool.data[2999999999] = 1
+	small.data[1] = 2
+	ret i32(pool.data[2999999999]) + i32(small.data[1])
+}

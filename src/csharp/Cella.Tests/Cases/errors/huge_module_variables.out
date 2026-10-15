@@ -1,0 +1,9 @@
+
+====== huge_module_variables.ce ======
+
+Error at line 13, column 1
+12 │ 
+13 │ pool: var Pool = Pool()
+     ╘══╛ Module variable 'pool' is too large
+
+[compilation failed]

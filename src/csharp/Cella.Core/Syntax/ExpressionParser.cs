@@ -843,6 +843,13 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 		};
 	}
 	
+	public static bool ContinuesExpression(TokenType type) => !_unaryPrefixOps.Contains(type) &&
+	                                                          (_binaryOperatorNames.Contains(type) ||
+	                                                           _assignmentOps.Contains(type) ||
+	                                                           _rangeOps.Contains(type) ||
+	                                                           type is TokenType.OpAmpersandAmpersand
+		                                                           or TokenType.OpBarBar or TokenType.KeywordIs);
+	
 	private bool CanStartExpression(int index)
 	{
 		if (AtEnd(index))
@@ -902,22 +909,26 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 	{
 		var interpolation = token.Interpolation!;
 		var values = interpolation.Holes.Select(static h =>
-			new ExpressionParser([..h.Tokens, new Token(TokenType.EndOfFile, h.Close)]).ParseHole());
+			new ExpressionParser([..h.Tokens, new Token(TokenType.EndOfFile, h.Close)]).ParseHole(h.Open));
 		
 		return new InterpolatedStringExpressionNode(interpolation.Segments, values,
 			interpolation.Holes.Select(static h => h.Spec), interpolation.Holes.Select(static h => h.SpecLocation),
 			token.SourceLocation);
 	}
 	
-	private IExpressionNode ParseHole()
+	private IExpressionNode ParseHole(Token open)
 	{
 		var index = 0;
 		if (AtEnd(index))
 			throw Expected(index, "an expression");
 		
+		if (Tokens[index].Error is null && !CanStartExpression(index))
+			throw new ParseException(new Diagnostic(DiagnosticSeverity.Error, open.SourceLocation,
+				"Expected an expression after '{'"));
+		
 		var value = ParseExpression(ref index);
 		if (!AtEnd(index))
-			throw Expected(index, "'}'");
+			throw Expected(index, "'}'", open);
 		
 		return value;
 	}

@@ -1,0 +1,44 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+both: fun(a: bool, b: bool) -> bool
+{
+	val c = a
+		&& b
+	ret c
+}
+
+assign: fun -> i32
+{
+	var x = 1
+	x
+		= 5
+	ret x
+}
+
+guarded: fun(a: bool, b: bool)
+{
+	if a
+		|| b
+		printf("yes\n")
+}
+
+test: fun(n: i32) -> bool
+{
+	val r = n
+		is 3
+	ret r
+}
+
+compare: fun(n: i32) -> bool
+{
+	val r = n
+		== 3
+	ret r
+}
+
+main: fun -> i32 = 0

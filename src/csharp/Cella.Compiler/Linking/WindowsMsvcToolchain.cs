@@ -21,11 +21,9 @@ public sealed class WindowsMsvcToolchain(string root, string builtinsLibrary) : 
 	
 	public override List<string> GetLinkerArgs(LinkRequest request)
 	{
-		var args = new List<string>
-		{
-			"/nologo",
-			"/subsystem:console" // TEMP This should be console or windows based on request
-		};
+		var args = new List<string> { "/nologo" };
+		if (request.OutputType is ProjectOutputType.Executable or ProjectOutputType.SharedLibrary)
+			args.Add("/subsystem:console"); // TEMP This should be console or windows based on request
 		
 		if (request.OutputType == ProjectOutputType.SharedLibrary)
 			args.Add("/dll");

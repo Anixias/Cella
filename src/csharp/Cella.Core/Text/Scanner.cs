@@ -43,6 +43,10 @@ public class Scanner
 		if (TryScanComment(position, out var comment))
 			return comment;
 		
+		if (character == '.' && position + 1 < Source.Length && char.IsAsciiDigit(Source[position + 1]) &&
+		    !EndsOperand(position))
+			return ScanInvalidNumber(position, ScanDigits(position + 1), "Expected a digit before '.'");
+		
 		if (TryScanOperator(position, out var op))
 			return op;
 		
@@ -139,6 +143,8 @@ public class Scanner
 			end = ScanDigits(end + 1);
 			tokenType = TokenType.FloatLiteral;
 		}
+		else if (end < Source.Length && Source[end] == '.' && FindMissingFraction(end + 1) is { } fractionEnd)
+			return ScanInvalidNumber(position, fractionEnd, "Expected a digit after '.'");
 		
 		if (end < Source.Length && Source[end] is 'e' or 'E')
 		{
@@ -162,6 +168,37 @@ public class Scanner
 		
 		return CreateSuffixedToken(tokenType, position, end, ScanSuffix(end));
 	}
+	
+	private int? FindMissingFraction(int position)
+	{
+		if (position >= Source.Length)
+			return position;
+		
+		var next = Source[position];
+		if (next is 'e' or 'E')
+		{
+			var exponent = position + 1;
+			if (exponent < Source.Length && Source[exponent] is '+' or '-')
+				exponent++;
+			
+			return exponent < Source.Length && char.IsAsciiDigit(Source[exponent]) ? ScanDigits(exponent) : null;
+		}
+		
+		return next == '.' || char.IsLetter(next) || next == '_' ? null : position;
+	}
+	
+	private bool EndsOperand(int position)
+	{
+		var previous = position - 1;
+		while (previous >= 0 && Source[previous] is ' ' or '\t')
+			previous--;
+		
+		return previous >= 0 && (char.IsLetterOrDigit(Source[previous]) ||
+		                         Source[previous] is '_' or ')' or ']' or '}' or '"' or '\'');
+	}
+	
+	private ScanResult ScanInvalidNumber(int position, int end, string error) =>
+		new(new Token(TokenType.Invalid, Source, new TextRange(position, end)) { Error = error }, end);
 	
 	private int ScanDigits(int position)
 	{
@@ -359,7 +396,8 @@ public class Scanner
 			if (character == '{' && !escaped)
 			{
 				isValid &= AddSegment(segments, segmentStart, end);
-				var (hole, next, isValidSpec) = ScanHole(end + 1, line);
+				var open = new Token(TokenType.OpOpenBrace, Source, new TextRange(end, end + 1));
+				var (hole, next, isValidSpec) = ScanHole(open, end + 1, line);
 				if (hole is null)
 				{
 					var unclosed = new Token(TokenType.Invalid, Source, new TextRange(end, end + 1))
@@ -397,7 +435,7 @@ public class Scanner
 		return isValid;
 	}
 	
-	private (InterpolationHole? Hole, int End, bool IsValid) ScanHole(int position, int line)
+	private (InterpolationHole? Hole, int End, bool IsValid) ScanHole(Token open, int position, int line)
 	{
 		var tokens = new List<Token>();
 		var braces = 0;
@@ -415,11 +453,11 @@ public class Scanner
 			switch (token.Type)
 			{
 				case TokenType.OpCloseBrace when braces == 0:
-					return (new InterpolationHole([..tokens], token.SourceLocation, "", SourceLocation.None), position,
-						true);
+					return (new InterpolationHole(open, [..tokens], token.SourceLocation, "", SourceLocation.None),
+						position, true);
 				
 				case TokenType.OpColon when braces == 0 && brackets == 0:
-					return ScanSpec([..tokens], token.SourceLocation, position);
+					return ScanSpec(open, [..tokens], token.SourceLocation, position);
 				
 				case TokenType.OpOpenBrace:
 					braces++;
@@ -442,7 +480,7 @@ public class Scanner
 		}
 	}
 	
-	private (InterpolationHole? Hole, int End, bool IsValid) ScanSpec(ImmutableArray<Token> tokens,
+	private (InterpolationHole? Hole, int End, bool IsValid) ScanSpec(Token open, ImmutableArray<Token> tokens,
 		SourceLocation colon, int position)
 	{
 		var start = position;
@@ -454,8 +492,8 @@ public class Scanner
 			{
 				var range = new TextRange(start, position);
 				var (spec, isValid) = UnescapeString(Source.GetText(range), true);
-				return (new InterpolationHole(tokens, colon, spec, new SourceLocation(Source, range)), position + 1,
-					isValid);
+				return (new InterpolationHole(open, tokens, colon, spec, new SourceLocation(Source, range)),
+					position + 1, isValid);
 			}
 			
 			escaped = character == '\\' && !escaped;

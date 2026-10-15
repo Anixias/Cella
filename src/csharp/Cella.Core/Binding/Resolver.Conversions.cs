@@ -326,17 +326,21 @@ public sealed partial class Resolver
 				.Select(method => GetFunctionInfo(method, target))
 				.Where(info => info.Signature.ParameterTypes.Length == 1 && info.Signature.ReturnType == target);
 	
-	private static ResolutionSet PreferConstruction(ResolutionSet resolutionSet)
+	private ResolutionSet ResolveConstruction(ICallable[] candidates, IResolvedExpressionNode[] args,
+		TypeSymbol? target)
 	{
-		if (!resolutionSet.IsAmbiguous)
-			return resolutionSet;
+		var construction = candidates
+			.Where(static candidate => candidate is not ConversionCallable { Info.Symbol.Kind: FunctionKind.Free })
+			.ToArray();
 		
-		var winners = Enumerable.Range(0, resolutionSet.Count).Select(i => resolutionSet[i]).ToList();
-		var kept = winners
-			.Where(static winner => winner.Callable is not ConversionCallable { Info.Symbol.Kind: FunctionKind.Free })
-			.ToList();
+		if (construction.Length < candidates.Length)
+		{
+			var constructed = ResolveCallable(construction, args, MaterializationMode.Overload, target);
+			if (constructed.IsAmbiguous || constructed.HasResult && constructed[0].Callable is not ConversionCallable)
+				return constructed;
+		}
 		
-		return kept is [{ Callable: not ConversionCallable } only] ? ResolutionSet.Single(only) : resolutionSet;
+		return ResolveCallable(candidates, args, MaterializationMode.Overload, target);
 	}
 	
 	private ConversionCallable[] FindConversionCallables(IReadOnlyList<IResolvedExpressionNode> args,

@@ -1,0 +1,25 @@
+
+====== string_hole_errors.ce ======
+
+Error at line 8, column 23
+7 │ 
+8 │ format: fun = printf("{%d}\n", 5)
+                          ^ Expected an expression after '{'
+
+Error at line 10, column 39
+ 9 │ 
+10 │ structure: fun = printf("struct { int x; }\n")
+                                           ^ Expected '}'
+                                           | To match the '{' on line 10
+
+Error at line 12, column 21
+11 │ 
+12 │ json: fun = printf("{\"a\": 1}\n")
+                         ^ Expected '}' to close this '{'
+
+Error at line 14, column 37
+13 │ 
+14 │ operand: fun(n: i32) = printf("{n + }\n")
+                                         ^ Expected an expression
+
+[compilation failed]

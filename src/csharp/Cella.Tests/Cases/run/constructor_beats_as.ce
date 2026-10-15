@@ -1,0 +1,36 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Meters: rec
+{
+	value: f64
+
+	as: op(value: i64) -> Meters = Meters(f64(value) * 2.0)
+}
+
+Seconds: rec
+{
+	value: f64
+
+	new: op(value: f64)
+	{
+		self.value = value
+	}
+
+	as: op(value: i32) -> Seconds = Seconds(value)
+}
+
+main: fun -> i32
+{
+	val a = Meters(3)
+	val b = Meters(3.0)
+	val c: Meters = 3
+	val d: Seconds = 5
+	val e = Seconds(7)
+	printf("%.1f %.1f %.1f %.1f %.1f\n", a.value, b.value, c.value, d.value, e.value)
+	ret 0
+}

@@ -123,12 +123,12 @@ internal static partial class WindowsProcess
 		}
 	}
 	
-	private static async Task<string> ReadAllAsync(SafeFileHandle pipe, Encoding encoding)
+	private static Task<string> ReadAllAsync(SafeFileHandle pipe, Encoding encoding) => Task.Factory.StartNew(() =>
 	{
-		await using var stream = new FileStream(pipe, FileAccess.Read, 4096, false);
+		using var stream = new FileStream(pipe, FileAccess.Read, 4096, false);
 		using var reader = new StreamReader(stream, encoding);
-		return await reader.ReadToEndAsync();
-	}
+		return reader.ReadToEnd();
+	}, CancellationToken.None, TaskCreationOptions.LongRunning, TaskScheduler.Default);
 	
 	private static Task WaitForExitAsync(SafeProcessHandle process, CancellationToken cancellationToken)
 	{
@@ -249,7 +249,8 @@ internal static partial class WindowsProcess
 	
 	[LibraryImport("kernel32.dll", SetLastError = true)]
 	[return: MarshalAs(UnmanagedType.Bool)]
-	private static unsafe partial bool InitializeProcThreadAttributeList(void* list, int count, uint flags, ref nuint size);
+	private static unsafe partial bool InitializeProcThreadAttributeList(void* list, int count, uint flags,
+		ref nuint size);
 	
 	[LibraryImport("kernel32.dll", SetLastError = true)]
 	[return: MarshalAs(UnmanagedType.Bool)]

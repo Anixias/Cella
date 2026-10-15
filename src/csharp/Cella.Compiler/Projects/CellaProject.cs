@@ -1,4 +1,5 @@
 ﻿using System.Collections.Immutable;
+using System.Text;
 using Cella.Compiler.Linking;
 using Cella.Core.Syntax;
 using Cella.Core.Text;
@@ -60,6 +61,40 @@ public sealed partial class CellaProject
 		.OfType<string>()
 		.Order(StringComparer.Ordinal);
 	
+	private static string DescribeSyntaxError(string line, string message)
+	{
+		if (message.StartsWith("Escape characters 10 ", StringComparison.Ordinal))
+			return "Unterminated string";
+		
+		if (message.StartsWith("Bare keys contains an invalid string '10'", StringComparison.Ordinal))
+			return line.StartsWith('[') ? "Expected ']'" : "Expected '='";
+		
+		if (message.StartsWith("Reached end of file", StringComparison.Ordinal))
+			return line.StartsWith("[[", StringComparison.Ordinal) ? "Expected ']]'" :
+				line.StartsWith('[') ? "Expected ']'" : "Unexpected end of file";
+		
+		if (message.StartsWith("Bare keys is empty", StringComparison.Ordinal))
+			return "Expected a key";
+		
+		if (message.StartsWith("There is a non-newline", StringComparison.Ordinal))
+			return "Expected a new line after the value";
+		
+		if (message.StartsWith("Unexpected value found", StringComparison.Ordinal))
+			return "Expected a value";
+		
+		if (message.StartsWith("An invalid escape sequence", StringComparison.Ordinal))
+			return "Invalid escape sequence";
+		
+		if (message.StartsWith("Table Header '", StringComparison.Ordinal) &&
+		    message.EndsWith("' is already defined.", StringComparison.Ordinal))
+			return $"'[{message["Table Header '".Length..^"' is already defined.".Length]}]' appears more than once";
+		
+		if (message.EndsWith(" is already defined.", StringComparison.Ordinal))
+			return $"'{line.Split('=')[0].Trim()}' is set more than once";
+		
+		return message;
+	}
+	
 	// All cella files in or under the project directory belong to that project
 	public static IEnumerable<string> FindSourceFiles(string directory) => FindSourceFiles(directory, true);
 	
@@ -68,15 +103,28 @@ public sealed partial class CellaProject
 	
 	public static async Task<CellaProject?> LoadAsync(Stream stream, string path, List<string> errors)
 	{
+		var buffer = new MemoryStream();
+		await stream.CopyToAsync(buffer);
+		var bytes = buffer.ToArray();
+		var lines = Encoding.UTF8.GetString(bytes).Split('\n');
+		using var content = new MemoryStream(bytes);
+		
 		TomlDocument document;
 		try
 		{
-			document = await CsTomlSerializer.DeserializeAsync<TomlDocument>(stream);
+			document = await CsTomlSerializer.DeserializeAsync<TomlDocument>(content);
 		}
 		catch (CsTomlSerializeException e)
 		{
 			errors.AddRange((e.ParseExceptions ?? []).Select(error =>
-				$"{path}:{error.LineNumber}: {(error.InnerException ?? error).Message}"));
+			{
+				var line = error.LineNumber >= 1 && error.LineNumber <= lines.Length
+					? lines[error.LineNumber - 1].Trim()
+					: "";
+				
+				return
+					$"{path}:{error.LineNumber}: {DescribeSyntaxError(line, (error.InnerException ?? error).Message)}";
+			}));
 			
 			return null;
 		}

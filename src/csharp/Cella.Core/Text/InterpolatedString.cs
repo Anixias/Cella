@@ -6,6 +6,7 @@ public sealed record InterpolatedString(ImmutableArray<string> Segments, Immutab
 
 public readonly record struct InterpolationHole
 (
+	Token Open,
 	ImmutableArray<Token> Tokens,
 	SourceLocation Close,
 	string Spec,

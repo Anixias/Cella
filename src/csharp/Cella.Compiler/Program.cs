@@ -62,14 +62,22 @@ internal static class Program
 		if (ParseFlagArguments(args) is not { } flagOverrides)
 			return 1;
 		
-		var sourcePath = args.Where((arg, i) => !arg.StartsWith("--") && (i == 0 || args[i - 1] != "--flag"))
-			.FirstOrDefault();
-		
-		if (sourcePath is null)
+		var paths = args.Where((arg, i) => !arg.StartsWith("--") && (i == 0 || args[i - 1] != "--flag")).ToArray();
+		if (paths is [])
 		{
-			Console.WriteLine("Expected a project file or folder");
+			Console.WriteLine(
+				"Usage: cella <project file or folder> [--release] [--quiet] [--hints] [--flag <name>[=true|false]]");
+			
 			return 1;
 		}
+		
+		if (paths is [_, var extra, ..])
+		{
+			Console.WriteLine($"Unexpected argument '{extra}'");
+			return 1;
+		}
+		
+		var sourcePath = paths[0];
 		
 		if (!Directory.Exists(sourcePath) && !File.Exists(sourcePath))
 		{
@@ -208,6 +216,12 @@ internal static class Program
 			}
 			
 			var parts = args[i].Split('=', 2);
+			if (parts[0].Length == 0)
+			{
+				Console.WriteLine("Expected a flag after '--flag'");
+				return null;
+			}
+			
 			if (parts is [_, not ("true" or "false")])
 			{
 				Console.WriteLine($"Expected 'true' or 'false' for flag '{parts[0]}'");
@@ -374,6 +388,7 @@ internal static class Program
 		public ImmutableArray<ExportName> ExportNames { get; init; } = [];
 		public ImmutableArray<string> PlainNames { get; init; } = [];
 		public ImmutableArray<string> ContainedLibraries { get; init; } = [];
+		public ImmutableArray<string> LibraryFiles { get; init; } = [];
 		public string? Directory { get; init; }
 		public string Name => AssemblySymbol.Name;
 	}
@@ -597,6 +612,7 @@ internal static class Program
 		
 		// Phase 7: Code generation
 		string outputPath;
+		ImmutableArray<string> ownLibraries;
 		var genericFunctions = lowerer.Modules
 			.SelectMany(static module => module.Files)
 			.SelectMany(static file => file.Functions)
@@ -693,17 +709,25 @@ internal static class Program
 					ct);
 			}
 			
-			// TODO Need a more robust way of getting libs
-			var libFiles = externalLibraries
-				.Select(static name => Path.GetExtension(name).ToLowerInvariant() is ".lib" or ".dll"
-					? Path.ChangeExtension(name, ".lib")
-					: $"{name}.lib")
-				.Concat(allDependencies
-					.Where(d => d.OutputType != ProjectOutputType.StaticLibrary || !providers.ContainsKey(d.Name))
-					.Select(static d => Path.ChangeExtension(d.OutputPath, ".lib")))
-				.WhereNot(string.IsNullOrEmpty)
-				.Distinct()
-				.ToList();
+			ownLibraries =
+			[
+				..externalLibraries
+					.Select(static name => Path.GetExtension(name).ToLowerInvariant() is ".lib" or ".dll"
+						? Path.ChangeExtension(name, ".lib")
+						: $"{name}.lib")
+					.Distinct()
+			];
+			
+			var libFiles = outputType == ProjectOutputType.StaticLibrary
+				? []
+				: ownLibraries
+					.Concat(contained.SelectMany(static library => library.LibraryFiles))
+					.Concat(allDependencies
+						.Where(d => d.OutputType != ProjectOutputType.StaticLibrary || !providers.ContainsKey(d.Name))
+						.Select(static d => Path.ChangeExtension(d.OutputPath, ".lib")))
+					.WhereNot(string.IsNullOrEmpty)
+					.Distinct()
+					.ToList();
 			
 			var linker = new Linker(AppContext.BaseDirectory, verbose);
 			var linkPreference = project.Project.SystemLinkPreference;
@@ -745,7 +769,8 @@ internal static class Program
 			Exports = exports,
 			ExportNames = exportNames,
 			PlainNames = plainNames,
-			ContainedLibraries = [..contained.Select(static library => library.Name)]
+			ContainedLibraries = [..contained.Select(static library => library.Name)],
+			LibraryFiles = ownLibraries
 		};
 	}
 	

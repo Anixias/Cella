@@ -1,0 +1,39 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+trailing: fun -> f64
+{
+	val a = 1.
+	ret a
+}
+
+leading: fun -> f64
+{
+	val b = .5
+	ret b
+}
+
+exponent: fun -> f64
+{
+	val c = 1.e5
+	ret c
+}
+
+signed: fun -> f64
+{
+	val d = 2.E-3
+	ret d
+}
+
+main: fun -> i32
+{
+	val e = 1.5e3
+	for i in 1..3
+		printf("%d %g\n", i, e)
+
+	ret 0
+}

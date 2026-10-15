@@ -10,6 +10,7 @@ Error at line 10, column 13
  9 │ {
 10 │     ret "x{"a" "b"}y"
                     ╘═╛ Expected '}'
+                      | To match the '{' on line 10
 
 Error at line 15, column 14
 14 │ {

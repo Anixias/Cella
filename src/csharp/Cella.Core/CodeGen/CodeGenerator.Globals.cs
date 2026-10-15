@@ -1,14 +1,21 @@
 ﻿using System.Text;
 using Cella.Core.Binding;
 using Cella.Core.Symbols;
+using Cella.Diagnostics;
 using LLVMSharp.Interop;
 
 namespace Cella.Core.CodeGen;
 
 public sealed unsafe partial class CodeGenerator
 {
+	private const ulong MaxImageBytes = 1UL << 31;
+	
 	private void DefineGlobal(GlobalInfo info)
 	{
+		if (TargetTriple.Contains("windows") && _targetData.ABISizeOfType(MapTypeSymbol(info.Type)) >= MaxImageBytes)
+			Diagnostics.Add(new(DiagnosticSeverity.Error, info.Symbol.Syntax.Identifier.SourceLocation,
+				$"Module variable '{info.Symbol.Name}' is too large"));
+		
 		var global = CreateGlobal(info);
 		if (_inputs.Exports.Contains(info.Symbol))
 			_exportNames.Add(new(global.Name, true));

@@ -1,0 +1,29 @@
+
+====== bodiless_records.ce ======
+
+Error at line 3, column 4
+2 │ 
+3 │ U: union
+       ╘═══╛ Expected '{'
+
+Error at line 5, column 4
+4 │ 
+5 │ R: rec
+       ╘═╛ Expected '{'
+
+Error at line 7, column 12
+6 │ 
+7 │ Shape: ref rec
+               ╘═╛ Expected '{'
+
+Error at line 9, column 9
+8 │ 
+9 │ Box[T]: rec
+            ╘═╛ Expected '{'
+
+Error at line 13, column 18
+12 │ 
+13 │ Tagged: rec impl Marker
+                      ╘════╛ Expected '{'
+
+[compilation failed]

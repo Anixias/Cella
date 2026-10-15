@@ -1,0 +1,2 @@
+OutputType = "Executable
+SystemLinkPreference = "Dynamic"

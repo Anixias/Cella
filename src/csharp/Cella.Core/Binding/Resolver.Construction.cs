@@ -106,8 +106,7 @@ public sealed partial class Resolver
 			? [new FieldsCallable([GetMemberType(field)], record), ..conversions]
 			: [..conversions];
 		
-		var resolutionSet = PreferConstruction(ResolveCallable(candidates, [arg], MaterializationMode.Overload,
-			record));
+		var resolutionSet = ResolveConstruction(candidates, [arg], record);
 		
 		if (resolutionSet.IsAmbiguous)
 			return Error(node, $"Conversion to '{record.Name}' is ambiguous", record, node);
@@ -330,7 +329,7 @@ public sealed partial class Resolver
 		IResolvedExpressionNode[] args, ICallable[] ctorCandidates, TypeSymbol? target)
 	{
 		ICallable[] candidates = [..ctorCandidates, ..FindConversionCallables(args, targetType)];
-		var resolutionSet = PreferConstruction(ResolveCallable(candidates, args, MaterializationMode.Overload, target));
+		var resolutionSet = ResolveConstruction(candidates, args, target);
 		var recovery = target ?? CurrentTargetType;
 		
 		if (resolutionSet.IsAmbiguous)

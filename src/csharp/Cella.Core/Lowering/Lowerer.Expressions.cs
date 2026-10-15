@@ -146,8 +146,7 @@ public sealed partial class Lowerer
 		
 		public Value Visit(ResolvedCaseNameExpressionNode node) => throw new InvalidOperationException();
 		
-		public Value Visit(ResolvedFunctionReferenceExpressionNode node) =>
-			new FunctionReferenceValue(node.Function, node.Type, node.Syntax.SourceLocation);
+		public Value Visit(ResolvedFunctionReferenceExpressionNode node) => throw new InvalidOperationException();
 		
 		public Value Visit(ResolvedClosureExpressionNode node) => node.Type is ClosureType closure
 			? new OwnClosureValue(node.Function,

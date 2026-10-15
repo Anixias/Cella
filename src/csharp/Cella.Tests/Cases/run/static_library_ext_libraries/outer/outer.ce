@@ -1,0 +1,8 @@
+mod outer
+
+ext("kernel32")
+{
+	GetCurrentProcessId: fun -> u32
+}
+
+check: pub fun -> bool = GetCurrentProcessId() > 0 && inner.width() >= 0

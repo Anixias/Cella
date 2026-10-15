@@ -103,6 +103,12 @@ public sealed partial class FileParser
 		if (Match(ref index, out var dropToken, TokenType.KeywordDrop))
 			return ParseDropStatement(ref index, dropToken);
 		
+		if (index > 0 && !IsOnSameLine(index) && ExpressionParser.ContinuesExpression(Tokens[index].Type))
+		{
+			Report(Tokens[index], $"Cannot start a line with '{Tokens[index].Text}'");
+			return null;
+		}
+		
 		// Named loops
 		var expr = ParseExpression(ref index);
 		if (expr is not VarExpressionNode { Identifier.Type: TokenType.Identifier } var)

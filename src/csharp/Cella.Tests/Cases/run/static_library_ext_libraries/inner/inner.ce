@@ -1,0 +1,8 @@
+mod inner
+
+ext("user32")
+{
+	GetSystemMetrics: fun(index: i32) -> i32
+}
+
+width: pub fun -> i32 = GetSystemMetrics(0)

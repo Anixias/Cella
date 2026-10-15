@@ -14,9 +14,14 @@ public sealed partial class FileParser
 		if (ParseTraitList(ref index, TokenType.KeywordImpl) is not { } traits)
 			return null;
 		
+		if (!Match(ref index, out var openBrace, TokenType.OpOpenBrace))
+		{
+			ReportMissing(index, "'{'");
+			return null;
+		}
+		
 		var members = new List<IDeclarationNode>();
-		if (Match(ref index, out var openBrace, TokenType.OpOpenBrace) &&
-		    !ParseMembers(ref index, openBrace, null, members))
+		if (!ParseMembers(ref index, openBrace, null, members))
 			return null;
 		
 		return new(identifier, modifiers.Tokens, isRef, members)
