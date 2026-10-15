@@ -429,8 +429,10 @@ public sealed class ConstantEvaluator
 	{
 		for (var i = 0; i < node.Links.Length; i++)
 		{
-			if (node.Links[i].Operation is not { } operation ||
-			    Apply(operation, values[i], values[i + 1], node.Type) is not BoolConstant result)
+			var link = node.Links[i];
+			if (link.Operation is not { } operation || ConvertOperand(values[i], link.LeftConversion) is not { } left ||
+			    ConvertOperand(values[i + 1], link.RightConversion) is not { } right ||
+			    Apply(operation, left, right, node.Type) is not BoolConstant result)
 				return null;
 			
 			if (!result.Value)
@@ -439,6 +441,9 @@ public sealed class ConstantEvaluator
 		
 		return BoolConstant.True;
 	});
+	
+	private Constant? ConvertOperand(Constant value, Conversion? conversion) =>
+		conversion is null ? value : Convert(value, conversion);
 	
 	private Constant? FoldAccess(ResolvedAccessExpressionNode node)
 	{

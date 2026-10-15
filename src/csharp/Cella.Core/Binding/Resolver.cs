@@ -1497,6 +1497,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		}
 		
 		ReportArmConflicts(summaries);
+		ReportUnreachableElse(value.Type, summaries,
+			arms.Where(static arm => arm.Guard is null).SelectMany(static arm => arm.Patterns));
+		
 		var borrowsMut = isMut || arms.Any(static arm => arm.Patterns.Any(static pattern => pattern.HasMutBindings));
 		return new ResolvedMatchStatementNode(value, arms, borrowsMut, ownsValue, node);
 	}
@@ -1542,9 +1545,12 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			values[i] = VisitCaseName(node.Arms[i].Value, peers) ?? VisitInScope(node.Arms[i].Value, bindings);
 		
 		ReportArmConflicts(summaries);
+		var unguarded = patterns.Where((_, i) => guards[i] is null).SelectMany(static armPatterns => armPatterns)
+			.ToList();
+		
+		ReportUnreachableElse(value.Type, summaries, unguarded);
 		if (!summaries.Any(static arm => arm.IsElse || arm.IsFailed) && !IsInvalid(value))
-			ReportUncovered(node.Keyword, value.Type,
-				patterns.Where((_, i) => guards[i] is null).SelectMany(static armPatterns => armPatterns).ToList());
+			ReportUncovered(node.Keyword, value.Type, unguarded);
 		
 		var arms = values
 			.Select(value => value is ResolvedCaseNameExpressionNode caseName && HasCase(hint, caseName.Name.Text)
@@ -1669,6 +1675,14 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			foreach (var arm in sameCase)
 				Diagnostics.Add(new(DiagnosticSeverity.Error, arm.Location, message));
 		}
+	}
+	
+	private void ReportUnreachableElse(TypeSymbol type, List<MatchArmSummary> arms,
+		IEnumerable<ResolvedPattern> patterns)
+	{
+		if (arms is [.., { IsElse: true } last] && arms.Count(static arm => arm.IsElse) == 1 &&
+		    !arms.Any(static arm => arm.IsFailed) && !IsInvalid(type) && _coverage.Covers(type, patterns))
+			Diagnostics.Add(new(DiagnosticSeverity.Warning, last.Location, "Unreachable code"));
 	}
 	
 	private void ReportUncovered(Token keyword, TypeSymbol type, List<ResolvedPattern> patterns)
@@ -7196,65 +7210,13 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			.Select((operand, i) => visited[i] ?? VisitCaseName(operand, peers) ?? Decay(VisitNode(operand, null)))
 			.ToList();
 		
-		if (Enumerable.Range(0, node.Ops.Length)
-		    .Any(i => DeclaresOperator(operands[i].Type, operands[i + 1].Type, node.Ops[i].Text)))
-			return ResolveDeclaredChain(node, operands);
-		
-		var commonType = UnifyTypes(operands);
-		if (commonType is null)
-			return Error(node, "Cannot chain comparisons between incompatible types", CurrentTargetType);
-		
-		for (var i = 0; i < operands.Count; i++)
-			operands[i] = CoerceToType(operands[i], commonType);
-		
-		var links = new List<ChainLink>(node.Ops.Length);
-		for (var i = 0; i < operands.Count - 1; i++)
-		{
-			var left = operands[i];
-			var op = node.Ops[i];
-			var right = operands[i + 1];
-			
-			if (AnyInvalid(left, right))
-				return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
-			
-			var args = new[] { left, right };
-			var candidates = _operatorRegistry.GetBinaryCandidates(op.Type);
-			var resolutionSet = ResolveCallable(candidates, args, MaterializationMode.Overload, NativeSymbols.Bool);
-			
-			if (resolutionSet.IsAmbiguous)
-			{
-				var (source, range) = left.Syntax.SourceLocation;
-				range = range.Join(right.Syntax.SourceLocation.Range);
-				
-				return Error(node,
-					$"Operation '{op.Text}' between '{left.Type.Name}' and '{right.Type.Name}' is ambiguous",
-					CurrentTargetType, new SourceLocation(source, range));
-			}
-			
-			if (!resolutionSet.HasResult)
-			{
-				var diagnostic = DiagnosticReporter.ReportBinaryOpMismatch(_operatorRegistry, left, op, right);
-				return Error(node, diagnostic, CurrentTargetType);
-			}
-			
-			var resolution = resolutionSet[0];
-			var resolvedArgs = ApplyArgumentResolution(args, resolution);
-			
-			operands[i] = resolvedArgs[0];
-			operands[i + 1] = resolvedArgs[1];
-			links.Add(new ChainLink((OperationImpl)resolution.Callable, null));
-		}
-		
-		return new ResolvedChainedExpressionNode(NativeSymbols.Bool, operands, links, node);
+		return ResolveChainLinks(node, operands);
 	}
 	
 	private IResolvedExpressionNode DefaultLiteral(IResolvedExpressionNode operand) =>
 		operand is ResolvedLiteralExpressionNode { Type: UntypedType } ? MaterializeAsDefault(operand) : operand;
 	
-	private bool DeclaresOperator(TypeSymbol left, TypeSymbol right, string name) =>
-		FindOperators(left, name).Any() || FindOperators(right, name).Any();
-	
-	private IResolvedExpressionNode ResolveDeclaredChain(ChainedExpressionNode node,
+	private IResolvedExpressionNode ResolveChainLinks(ChainedExpressionNode node,
 		List<IResolvedExpressionNode> operands)
 	{
 		if (AnyInvalid([..operands]))
@@ -7267,25 +7229,38 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 			var args = new[] { operands[i], operands[i + 1] };
 			var (source, range) = args[0].Syntax.SourceLocation;
 			var location = new SourceLocation(source, range.Join(args[1].Syntax.SourceLocation.Range));
+			if (IsMixedSignComparison(op.Type, args[0].Type, args[1].Type))
+			{
+				links.Add(new ChainLink(new NativeImpl(op.Type, NativeSymbols.Bool, args[0].Type, args[1].Type), null));
+				continue;
+			}
+			
 			var declared = FindOperators(args[0].Type, op.Text).ToList();
 			if (args[1].Type != args[0].Type)
 				declared.AddRange(FindOperators(args[1].Type, op.Text));
 			
-			ICallable[] candidates = declared.Count == 0
-				? [.._operatorRegistry.GetBinaryCandidates(op.Type)]
-				:
-				[
-					..declared
-						.Where(entry => CanAccess(entry.Owner, entry.Method.Function))
-						.Select(entry => new FunctionCallable(GetFunctionInfo(entry.Method, entry.Owner)))
-				];
+			ICallable[] visible =
+			[
+				..declared
+					.Where(entry => CanAccess(entry.Owner, entry.Method.Function))
+					.Select(entry => new FunctionCallable(GetFunctionInfo(entry.Method, entry.Owner)))
+			];
 			
-			if (candidates.Length == 0)
+			if (declared.Count > 0 && visible.Length == 0)
 				return Error(node, ReportHiddenMember(op.SourceLocation, op.Text,
 					declared.Select(static entry => entry.Method.Function)), CurrentTargetType);
 			
-			var resolutionSet = ResolveCallable(candidates, args, MaterializationMode.Overload,
-				declared.Count == 0 ? NativeSymbols.Bool : null);
+			var resolutionSet = visible.Length > 0
+				? ResolveCallable(visible, args, MaterializationMode.Overload)
+				: default;
+			
+			if (visible.Length == 0 || !resolutionSet.HasResult && !resolutionSet.IsAmbiguous)
+			{
+				if (ResolveBuiltInLink(op, args) is not { } builtIn)
+					return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
+				
+				resolutionSet = builtIn;
+			}
 			
 			if (resolutionSet.IsAmbiguous)
 				return Error(node,
@@ -7320,6 +7295,20 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		}
 		
 		return new ResolvedChainedExpressionNode(NativeSymbols.Bool, operands, links, node);
+	}
+	
+	private ResolutionSet? ResolveBuiltInLink(Token op, IResolvedExpressionNode[] args)
+	{
+		if (args[0].Type is PointerType { BaseType: var leftBase } &&
+		    args[1].Type is PointerType { BaseType: var rightBase } &&
+		    leftBase != rightBase && leftBase != NativeSymbols.Void && rightBase != NativeSymbols.Void)
+		{
+			Diagnostics.Add(DiagnosticReporter.ReportBinaryOpMismatch(_operatorRegistry, args[0], op, args[1]));
+			return null;
+		}
+		
+		return ResolveCallable(_operatorRegistry.GetBinaryCandidates(op.Type), args, MaterializationMode.Overload,
+			NativeSymbols.Bool);
 	}
 	
 	private IResolvedExpressionNode MaterializeChainOperand(IResolvedExpressionNode operand, TypeSymbol target)

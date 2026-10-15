@@ -1,0 +1,72 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+T: enum { a  b }
+
+Point: rec
+{
+	x: i32
+	y: i32
+}
+
+option[V]: enum { none  some(value: V) }
+
+pick: fun(t: T) -> i32 = match t
+{
+	a => 1
+	b => 2
+	else => 5
+}
+
+flag: fun(on: bool) -> i32 = match on
+{
+	true => 1
+	false => 0
+	else => 9
+}
+
+sum: fun(p: Point) -> i32 = match p
+{
+	Point(val x, val y) => x + y
+	else => 0
+}
+
+nested: fun(o: option[option[u8]]) -> i32 = match o
+{
+	some(some(0..128)) => 1
+	some(some(128..=255)) => 2
+	some(none) => 3
+	none => 4
+	else => 5
+}
+
+needed: fun(n: i32) -> i32 = match n
+{
+	0 => 0
+	else => 1
+}
+
+guarded: fun(t: T) -> i32 = match t
+{
+	a => 1
+	b if false => 2
+	else => 3
+}
+
+main: fun -> i32
+{
+	val t = T.a
+	match t
+	{
+		a => printf("a\n")
+		b => printf("b\n")
+		else => printf("never\n")
+	}
+
+	printf("%d %d %d %d %d %d\n", pick(T.b), flag(true), sum(Point(1, 2)), nested(option.none), needed(3), guarded(T.b))
+	ret 0
+}

@@ -1846,7 +1846,8 @@ public sealed class Lowerer
 		
 		public Value Visit(ResolvedChainedExpressionNode node)
 		{
-			if (node.Links.Any(static link => link.Function is not null))
+			if (node.Links.Any(static link =>
+				    link.Function is not null || link.LeftConversion is not null || link.RightConversion is not null))
 				return LowerDeclaredChain(node);
 			
 			var resultSymbol = CreateTempSymbol(NativeSymbols.Bool, "chain_result");

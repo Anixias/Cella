@@ -1,0 +1,11 @@
+mod test
+
+main: fun -> i32
+{
+	val a: i32 = 1
+	val flag = true
+	val x = a < flag < 3
+	ret 0
+}
+
+pointers: fun(p: ptr[i32], q: ptr[u8], r: ptr[i32]) -> bool = p < q < r

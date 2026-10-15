@@ -59,6 +59,8 @@ public sealed class TypePool
 	private readonly Dictionary<GlobalSymbol, GlobalInfo> _genericGlobals = [];
 	private readonly Dictionary<GlobalSymbol, GlobalInfo> _globalInstances = [];
 	private readonly List<Conformance> _conformances = [];
+	private readonly Dictionary<TypeSymbol, List<Conformance>> _conformancesByTarget = [];
+	private readonly List<Conformance> _arrayConformances = [];
 	private readonly Dictionary<TypeParameterSymbol, ImmutableArray<TraitType>> _bounds = [];
 	private readonly Dictionary<TypeParameterSymbol, ImmutableArray<TypeParameterSymbol>> _parameterBounds = [];
 	private readonly Dictionary<TypeParameterSymbol, ImmutableArray<FunctionInfo>> _constructorBounds = [];
@@ -84,10 +86,24 @@ public sealed class TypePool
 	public void AddTraitConstructor(TraitSymbol trait, FunctionInfo info) =>
 		_traitConstructors.GetOrAdd(trait).Add(info);
 	
-	public void AddConformance(Conformance conformance) => _conformances.Add(conformance);
+	public void AddConformance(Conformance conformance)
+	{
+		_conformances.Add(conformance);
+		if (conformance.Target is ArrayType)
+			_arrayConformances.Add(conformance);
+		else
+			_conformancesByTarget.GetOrAdd(conformance.Target).Add(conformance);
+	}
+	
+	private IReadOnlyList<Conformance> GetConformanceCandidates(TypeSymbol type) => type switch
+	{
+		TypeParameterSymbol => [],
+		ArrayType => _arrayConformances,
+		_ => _conformancesByTarget.GetValueOrDefault(type.OriginalDefinition) ?? []
+	};
 	
 	public IEnumerable<Conformance> FindConformances(TypeSymbol type) =>
-		_conformances.Where(conformance => Matches(conformance, type));
+		GetConformanceCandidates(type).Where(conformance => Matches(conformance, type));
 	
 	public void SetBounds(TypeParameterSymbol parameter, ImmutableArray<TraitType> traits) =>
 		_bounds[parameter] = traits;
@@ -218,9 +234,10 @@ public sealed class TypePool
 		_ => Conforms(type, dyn.Parameter!)
 	};
 	
-	public Conformance? FindConformance(TypeSymbol type, TraitType trait) => _conformances.FirstOrDefault(conformance =>
-		conformance.Trait == trait.Trait && Matches(conformance, type) &&
-		GetConformanceArguments(conformance, type).SequenceEqual(trait.Arguments));
+	public Conformance? FindConformance(TypeSymbol type, TraitType trait) => GetConformanceCandidates(type)
+		.FirstOrDefault(conformance =>
+			conformance.Trait == trait.Trait && Matches(conformance, type) &&
+			GetConformanceArguments(conformance, type).SequenceEqual(trait.Arguments));
 	
 	public ImmutableArray<TypeSymbol> GetConformanceArguments(Conformance conformance, TypeSymbol type)
 	{
@@ -334,7 +351,8 @@ public sealed class TypePool
 	}
 	
 	private Conformance? FindConformance(TypeSymbol self, ImplSymbol impl) =>
-		_conformances.FirstOrDefault(conformance => conformance.Impl == impl && Matches(conformance, self));
+		GetConformanceCandidates(self)
+			.FirstOrDefault(conformance => conformance.Impl == impl && Matches(conformance, self));
 	
 	public IReadOnlyList<FunctionInfo> GetConstructors(TypeSymbol type)
 	{

@@ -1,0 +1,14 @@
+
+====== chain_operand_errors.ce ======
+
+Error at line 7, column 10
+6 │ val flag = true
+7 │ val x = a < flag < 3
+            ╘══════╛ No operation defined for '<' between 'i32' and 'bool'
+
+Error at line 11, column 63
+10 │ 
+11 │ pointers: fun(p: ptr[i32], q: ptr[u8], r: ptr[i32]) -> bool = p < q < r
+                                                                   ╘═══╛ No operation defined for '<' between 'ptr[i32]' and 'ptr[u8]'
+
+[compilation failed]
