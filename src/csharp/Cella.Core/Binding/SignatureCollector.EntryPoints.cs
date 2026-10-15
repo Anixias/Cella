@@ -50,9 +50,8 @@ public sealed partial class SignatureCollector
 				? new(DiagnosticSeverity.Error, first.Identifier.SourceLocation,
 					$"Cannot declare {DescribeTypeParameter(first, false)}s on '{_entryPointName}'")
 				: new(DiagnosticSeverity.Error, GetIdentifier(candidate.Symbol.Syntax).SourceLocation,
-					candidate.Signature.ReturnType != NativeSymbols.Void &&
-					candidate.Signature.ReturnType != NativeSymbols.Int32
-						? $"'{_entryPointName}' must return 'i32' or nothing"
+					!IsEntryPointResult(candidate.Signature.ReturnType)
+						? $"'{_entryPointName}' must return 'i32', 'never' or nothing"
 						: $"'{_entryPointName}' must take no parameters, 'ptr[str]' and 'usize', or one parameter " +
 						  "that meets 'new(ptr[str], usize)'"));
 		}
@@ -99,8 +98,11 @@ public sealed partial class SignatureCollector
 	
 	private static bool IsWrittenBorrow(ITypeNode node) => node is BorrowTypeNode or FunctionTypeNode { IsRef: true };
 	
+	private static bool IsEntryPointResult(TypeSymbol type) =>
+		type == NativeSymbols.Void || type == NativeSymbols.Int32 || type == NativeSymbols.Never;
+	
 	private static bool IsEntryPoint(FunctionSignature signature) =>
-		(signature.ReturnType == NativeSymbols.Void || signature.ReturnType == NativeSymbols.Int32) &&
+		IsEntryPointResult(signature.ReturnType) &&
 		!signature.HasVariadicParameter &&
 		signature.ParameterModes.All(static mode => mode != ParameterMode.Mut) &&
 		signature.ParameterTypes switch

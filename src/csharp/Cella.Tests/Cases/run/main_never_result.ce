@@ -1,0 +1,23 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+	fflush: fun(stream: ptr) -> i32
+	exit: fun(code: i32) -> never
+}
+
+main: fun -> never
+{
+	var count = 0
+	loop
+	{
+		count += 1
+		if count == 3
+		{
+			printf("done %d\n", count)
+			fflush(null)
+			exit(7)
+		}
+	}
+}
