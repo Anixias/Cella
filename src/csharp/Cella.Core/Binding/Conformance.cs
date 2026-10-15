@@ -31,3 +31,4 @@ public sealed record NativeWitness(NativeImpl Operation, bool IsCompound = false
 public sealed record MemberwiseWitness : Witness;
 public sealed record DefaultWitness : Witness;
 public sealed record ConversionWitness(Conversion Conversion) : Witness;
+public sealed record SelfConversionWitness(Conversion Conversion) : Witness;

@@ -47,6 +47,8 @@ public sealed partial class CodeGenerator
 			DefaultWitness => EmitConstruction(function, parameters, false, builder),
 			ConversionWitness conversion => EmitConversionWitness(function, conversion.Conversion, parameters,
 				function.Symbol.Syntax.SourceLocation, builder),
+			SelfConversionWitness conversion => EmitSelfConversionWitness(function, conversion.Conversion, parameters,
+				function.Symbol.Syntax.SourceLocation, builder),
 			_ => throw new InvalidOperationException()
 		};
 		
@@ -206,6 +208,13 @@ public sealed partial class CodeGenerator
 			EmitDrop(value, builder);
 		
 		return default;
+	}
+	
+	private LLVMValueRef EmitSelfConversionWitness(FunctionInfo function, Conversion conversion,
+		List<LLVMValueRef> parameters, SourceLocation location, LLVMBuilderRef builder)
+	{
+		var source = new VariableValue(BindWitnessParameter(function, 0, parameters[0], builder), location);
+		return EmitValue(new ConversionValue(source, conversion, location), builder);
 	}
 	
 	private Value PassConversionSource(FunctionInfo conversion, VariableValue source, SourceLocation location)

@@ -28,6 +28,10 @@ public sealed unsafe partial class CodeGenerator
 			case ConversionWitness conversion:
 				return EmitConversionWitness(info, conversion.Conversion,
 					[..v.Arguments.Select(a => EmitValue(a, builder))], v.SourceLocation, builder);
+			
+			case SelfConversionWitness conversion:
+				return EmitSelfConversionWitness(info, conversion.Conversion,
+					[..v.Arguments.Select(a => EmitValue(a, builder))], v.SourceLocation, builder);
 		}
 		
 		GetFunctionValue(info);

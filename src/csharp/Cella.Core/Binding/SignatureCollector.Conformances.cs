@@ -178,6 +178,10 @@ public sealed partial class SignatureCollector
 					conformance.Witnesses[requirement] = native;
 					break;
 				
+				case 0 when FindSelfConversionWitness(requirement, info.Signature, traitMap, self) is { } conversion:
+					conformance.Witnesses[requirement] = conversion;
+					break;
+				
 				case 0 when candidates.Count > 0:
 					foreach (var candidate in candidates)
 					{
@@ -479,6 +483,27 @@ public sealed partial class SignatureCollector
 			candidate.ParameterTypes.SequenceEqual(expected.ParameterTypes)) is { } native
 			? new NativeWitness(native)
 			: null;
+	}
+	
+	private SelfConversionWitness? FindSelfConversionWitness(FunctionSymbol requirement, FunctionSignature signature,
+		Dictionary<TypeParameterSymbol, TypeSymbol> traitMap, TypeSymbol self)
+	{
+		if (requirement.Syntax is not FunctionNode { Receiver: not null } node || !IsConversion(node))
+			return null;
+		
+		var expected = _typePool.SubstituteSignature(signature, traitMap);
+		if (expected.ParameterTypes.Length != 1 || expected.GetMode(0) == ParameterMode.Mut)
+			return null;
+		
+		var table = _typePool.ConversionTable;
+		var implicitConversion = table.FindImplicit(self, expected.ReturnType);
+		var conversion = node.Identifier.Type == TokenType.KeywordAs
+			? implicitConversion
+			: implicitConversion is null
+				? table.FindExplicit(self, expected.ReturnType)
+				: null;
+		
+		return conversion is null ? null : new SelfConversionWitness(conversion);
 	}
 	
 	private NativeWitness? FindPointerWitness(TokenType op, FunctionSignature expected, TypeSymbol self) =>

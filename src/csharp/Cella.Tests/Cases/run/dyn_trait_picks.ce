@@ -1,0 +1,47 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Named: trait
+{
+	name: fun(imm self) -> i32
+}
+
+Shape: trait req Named
+{
+	name: fun(imm self) -> i32
+	area: fun(imm self) -> i32
+}
+
+Other: trait
+{
+	name: fun(imm self) -> i32
+}
+
+A: rec
+{
+	v: i32
+}
+
+A: impl Named
+{
+	name: fun(imm self) -> i32 = 1
+}
+
+A: impl Shape
+{
+	name: fun(imm self) -> i32 = 2
+	area: fun(imm self) -> i32 = self.v
+}
+
+f: fun(imm s: dyn[Shape]) -> i32 = Named(s).name() * 10 + Shape(s).name()
+
+main: fun -> i32
+{
+	val a = A(3)
+	printf("%d\n", f(imm a))
+	ret 0
+}

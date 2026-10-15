@@ -1,0 +1,16 @@
+mod test
+
+Widen: trait
+{
+	as: op(imm self) -> i64
+}
+
+ToWide: trait
+{
+	new: op(imm self) -> i64
+}
+
+i32: impl ToWide
+f64: impl Widen
+
+main: fun -> i32 = 0

@@ -1,0 +1,41 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Widen: trait
+{
+	as: op(imm self) -> i64
+}
+
+ToWide: trait
+{
+	new: op(imm self) -> i64
+}
+
+Color: enum(u8)
+{
+	red
+	green = 5
+}
+
+i32: impl Widen
+u8: impl Widen
+f64: impl ToWide
+Color: impl ToWide
+
+widen[T: copy + Widen]: fun(value: T) -> i64
+{
+	val wide: i64 = value
+	ret wide
+}
+
+narrow[T: copy + ToWide]: fun(value: T) -> i64 = i64(value)
+
+main: fun -> i32
+{
+	printf("%lld %lld %lld %lld\n", widen(7), widen(200u8), narrow(2.75), narrow(Color.green))
+	ret 0
+}

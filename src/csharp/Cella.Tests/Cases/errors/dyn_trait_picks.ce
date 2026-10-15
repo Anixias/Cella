@@ -1,0 +1,22 @@
+mod test
+
+Named: trait
+{
+	name: fun(imm self) -> i32
+}
+
+Shape: trait req Named
+{
+	name: fun(imm self) -> i32
+}
+
+Other: trait
+{
+	name: fun(imm self) -> i32
+}
+
+g: fun(imm s: dyn[Shape]) -> i32 = Other(s).name()
+
+h: fun(imm s: dyn[Shape]) -> i32 = s.name()
+
+main: fun -> i32 = 0

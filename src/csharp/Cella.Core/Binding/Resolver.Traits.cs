@@ -173,14 +173,15 @@ public sealed partial class Resolver
 	}
 	
 	private IResolvedExpressionNode VisitDynCall(CallExpressionNode node, AccessExpressionNode access,
-		IResolvedExpressionNode target, DynType dyn, IndexerExpressionNode? indexer)
+		IResolvedExpressionNode target, DynType dyn, IndexerExpressionNode? indexer, TraitType? picked = null)
 	{
 		var name = access.Member.Text;
 		var member = access.Member.SourceLocation;
-		if (GetPropertyMember(dyn, name) is not null)
+		if (picked is null && GetPropertyMember(dyn, name) is not null)
 			return VisitIndirectCall(node, Index(indexer, ResolveAccess(access, target)));
 		
-		var functions = GetDynTraits(dyn).SelectMany(trait => GetInstanceMethods(trait, name)).ToArray();
+		IEnumerable<TraitType> traits = picked is null ? GetDynTraits(dyn) : [picked];
+		var functions = traits.SelectMany(trait => GetInstanceMethods(trait, name)).ToArray();
 		if (functions.Length == 0)
 			return Error(node, $"Type '{dyn.Name}' has no member '{name}'", CurrentTargetType, member);
 		
@@ -233,6 +234,10 @@ public sealed partial class Resolver
 		
 		if (self is InvalidType)
 			return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
+		
+		if (receiver is not null && self is DynType dyn && GetDynTraits(dyn).Any(reached =>
+			    reached.Trait == trait.Trait && reached.Arguments.SequenceEqual(trait.Arguments)))
+			return VisitDynCall(node, access, receiver, dyn, indexer, trait);
 		
 		if (!_typePool.Conforms(self, trait))
 			return Error(node, $"'{self.Name}' doesn't implement '{trait.Name}'", CurrentTargetType, argument);
