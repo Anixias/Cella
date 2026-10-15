@@ -1,0 +1,10 @@
+
+====== pointer_trait_bounds.ce ======
+
+Error at line 18, column 10
+17 │ val p: ptr[f64] = null
+18 │ ret i32(hashOf(imm p))
+             ╘════╛ 'hashOf' requires 'T: Hash'
+                  | 'ptr[f64]' doesn't implement 'Hash'
+
+[compilation failed]

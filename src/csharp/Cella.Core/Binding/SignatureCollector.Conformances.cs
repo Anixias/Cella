@@ -453,11 +453,13 @@ public sealed partial class SignatureCollector
 	private NativeWitness? FindNativeWitness(FunctionSymbol requirement, FunctionSignature signature,
 		Dictionary<TypeParameterSymbol, TypeSymbol> traitMap, TypeSymbol self)
 	{
-		if (self is not (PrimitiveType or EnumSymbol) || requirement.Syntax is not FunctionNode node ||
+		if (self is not (PrimitiveType or EnumSymbol or PointerType) || requirement.Syntax is not FunctionNode node ||
 		    node.Identifier.Type == TokenType.Identifier || IsConversion(node))
 			return null;
 		
 		var expected = _typePool.SubstituteSignature(signature, traitMap);
+		if (self is PointerType && self != NativeSymbols.VoidPtr)
+			return FindPointerWitness(node.Identifier.Type, expected, self);
 		
 		var registry = _typePool.OperatorRegistry;
 		if (node.Receiver is not null && expected.ParameterTypes.Length == 2)
@@ -478,6 +480,14 @@ public sealed partial class SignatureCollector
 			? new NativeWitness(native)
 			: null;
 	}
+	
+	private NativeWitness? FindPointerWitness(TokenType op, FunctionSignature expected, TypeSymbol self) =>
+		expected.ParameterTypes.Length == 2 && expected.ParameterTypes.All(type => type == self) &&
+		_typePool.OperatorRegistry.GetBinaryCandidates(op).OfType<NativeImpl>().FirstOrDefault(candidate =>
+			candidate.ReturnType == expected.ReturnType &&
+			candidate.ParameterTypes.All(static type => type == NativeSymbols.VoidPtr)) is { } untyped
+			? new NativeWitness(new NativeImpl(op, untyped.ReturnType, self, self))
+			: null;
 	
 	private static SourceLocation GetFunctionLocation(FunctionSymbol function) => function.Syntax switch
 	{

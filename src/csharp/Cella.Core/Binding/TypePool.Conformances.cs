@@ -11,6 +11,8 @@ public sealed partial class TypePool
 		_conformances.Add(conformance);
 		if (conformance.Target is ArrayType)
 			_arrayConformances.Add(conformance);
+		else if (IsTypedPointer(conformance.Target))
+			_pointerConformances.Add(conformance);
 		else
 			_conformancesByTarget.GetOrAdd(conformance.Target).Add(conformance);
 	}
@@ -19,6 +21,7 @@ public sealed partial class TypePool
 	{
 		TypeParameterSymbol => [],
 		ArrayType => _arrayConformances,
+		_ when IsTypedPointer(type) => _pointerConformances,
 		_ => _conformancesByTarget.GetValueOrDefault(type.OriginalDefinition) ?? []
 	};
 	
@@ -171,23 +174,27 @@ public sealed partial class TypePool
 	public TraitType GetConformanceTrait(Conformance conformance, TypeSymbol type) =>
 		GetTraitType(conformance.Trait, GetConformanceArguments(conformance, type));
 	
-	private bool Matches(Conformance conformance, TypeSymbol type) => type is not TypeParameterSymbol &&
-	                                                                  (conformance.Target is ArrayType
-		                                                                  ? type is ArrayType
-		                                                                  : conformance.Target ==
-		                                                                    type.OriginalDefinition) &&
-	                                                                  Fits(conformance.Impl, GetShapeArguments(type)) &&
-	                                                                  Satisfies(conformance.Parameters,
-		                                                                  GetShapeArguments(type));
+	private bool Matches(Conformance conformance, TypeSymbol type) =>
+		type is not TypeParameterSymbol &&
+		(conformance.Target is ArrayType ? type is ArrayType
+			: IsTypedPointer(conformance.Target) ? IsTypedPointer(type)
+			: conformance.Target == type.OriginalDefinition) &&
+		Fits(conformance.Impl, GetShapeArguments(type)) &&
+		Satisfies(conformance.Parameters, GetShapeArguments(type));
+	
+	private static bool IsTypedPointer(TypeSymbol type) => type is PointerType && type != NativeSymbols.VoidPtr;
 	
 	private static bool Fits(ImplSymbol? impl, ImmutableArray<TypeSymbol> arguments) => impl is null ||
 		impl.TargetArguments.Length == arguments.Length && impl.TargetArguments
 			.Zip(arguments)
 			.All(static pair => pair.First is TypeParameterSymbol || pair.First == pair.Second);
 	
-	private ImmutableArray<TypeSymbol> GetShapeArguments(TypeSymbol type) => type is ArrayType array
-		? [array.ElementType, GetLengthArgument(array)]
-		: type.TypeArguments;
+	private ImmutableArray<TypeSymbol> GetShapeArguments(TypeSymbol type) => type switch
+	{
+		ArrayType array => [array.ElementType, GetLengthArgument(array)],
+		PointerType { BaseType: var baseType } when IsTypedPointer(type) => [baseType],
+		_ => type.TypeArguments
+	};
 	
 	private bool Satisfies(ImmutableArray<TypeParameterSymbol> parameters, ImmutableArray<TypeSymbol> arguments) =>
 		arguments.Length == parameters.Length && FindViolation(parameters, arguments) is null;

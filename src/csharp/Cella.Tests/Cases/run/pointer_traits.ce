@@ -1,0 +1,67 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Eq: trait
+{
+	==: op(imm a: Self, imm b: Self) -> bool
+}
+
+Hash: trait
+{
+	hash: fun(imm self) -> u64
+}
+
+Named: trait
+{
+	label: fun(imm self) -> i32
+}
+
+ptr[T]: impl Eq
+
+ptr: impl Eq
+
+ptr[i32]: impl Hash
+{
+	hash: fun(imm self) -> u64 = 7
+}
+
+ptr[T]: impl Named
+{
+	label: fun(imm self) -> i32 = 3
+}
+
+contains[T: Eq]: fun(imm values: array[T, 3], imm item: T) -> bool
+{
+	for value in values
+	{
+		if value == item
+			ret true
+	}
+
+	ret false
+}
+
+hashOf[T: Hash]: fun(imm value: T) -> u64 = value.hash()
+
+labelOf[T: Named]: fun(imm value: T) -> i32 = value.label()
+
+same[T: Eq]: fun(imm a: T, imm b: T) -> bool = a == b
+
+main: fun -> i32
+{
+	var a = 1
+	var b = 2
+	var c = 3
+	val values = [@a, @b, @c]
+	val raw: ptr = @a
+	val p: ptr[i32] = @b
+	val q: ptr[i64] = null
+	val pb: ptr[i32] = @b
+	val none: ptr[i32] = null
+	printf("%d %d %d %d %d\n", contains(imm values, imm pb), contains(imm values, imm none), hashOf(imm p), labelOf(imm q), same(imm raw, imm raw))
+	ret 0
+}

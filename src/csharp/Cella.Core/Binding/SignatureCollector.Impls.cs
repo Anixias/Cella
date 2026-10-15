@@ -80,6 +80,16 @@ public sealed partial class SignatureCollector
 				Diagnostics.Add(new(DiagnosticSeverity.Error, location, $"'{name}' takes no generic arguments"));
 				return null;
 			
+			case PointerType when impl.TypeParameters.IsEmpty:
+				return NativeSymbols.VoidPtr;
+			
+			case PointerType when impl.TypeParameters.Length == 1:
+				return _typePool.GetPointerType(impl.TargetArguments[0]);
+			
+			case PointerType:
+				Diagnostics.Add(ResolutionContext.ReportGenericArgumentCount(location, "ptr", 1));
+				return null;
+			
 			case null when node.Target is IdentifierTypeNode { Token.Text: "array" }:
 				return ResolveArrayImplTarget(impl, node);
 			
