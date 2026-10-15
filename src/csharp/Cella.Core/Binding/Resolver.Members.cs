@@ -467,8 +467,17 @@ public sealed partial class Resolver
 		: DescribeAbsentMember(type, name);
 	
 	private DiagnosticText DescribeAbsentMember(TypeSymbol type, string name) =>
-		_typePool.FindBlockViolation(type, name) ?? new DiagnosticText($"Type '{type.Name}' has no member '{name}'",
+		_typePool.FindBlockViolation(type, name) ?? DescribeHiddenTraitMember(type, name) ??
+		new DiagnosticText($"Type '{type.Name}' has no member '{name}'",
 			DiagnosticReporter.FindSuggestion(name, GetMemberNames(type)));
+	
+	private DiagnosticText? DescribeHiddenTraitMember(TypeSymbol type, string name) => _typePool.FindConformances(type)
+		.Select(static conformance => conformance.Trait)
+		.Where(trait => !CurrentResolutionContext.IsVisible(trait) &&
+		                (trait.GetFunctions(name).Any() || trait.GetProperty(name) is not null))
+		.Select(trait =>
+			$"'{name}' is private to its {DiagnosticReporter.DescribeScope(ModuleIndex.GetVisibility(trait), false)}")
+		.FirstOrDefault();
 	
 	private IEnumerable<string> GetMemberNames(TypeSymbol type) =>
 		(type is RecordSymbol record ? record.Members.Select(static member => member.Name) : [])

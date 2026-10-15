@@ -1,0 +1,19 @@
+mod game
+
+Peek: pub trait
+{
+	peek: fun(imm self) -> i32
+}
+
+Box: impl Peek
+{
+	peek: fun(imm self) -> i32 = self.v
+}
+
+box[T: copy]: impl
+{
+	bump: fun(mut self)
+	{
+		self.n += 1
+	}
+}

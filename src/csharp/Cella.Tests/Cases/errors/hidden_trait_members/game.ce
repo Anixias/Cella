@@ -1,0 +1,16 @@
+mod game
+
+Secret: mod trait
+{
+	go: fun(imm self) -> i32
+}
+
+Point: pub rec
+{
+	x: i32
+}
+
+Point: impl Secret
+{
+	go: fun(imm self) -> i32 = self.x
+}

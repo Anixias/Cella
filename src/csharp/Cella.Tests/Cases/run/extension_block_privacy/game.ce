@@ -1,0 +1,18 @@
+mod game
+
+Box: pub rec
+{
+	v: pvt i32
+}
+
+box[T]: pub rec
+{
+	n: pvt set i32
+	item: T
+
+	new: op(own item: T)
+	{
+		self.n = 3
+		self.item = own item
+	}
+}

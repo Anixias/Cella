@@ -1,0 +1,15 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+main: fun -> i32
+{
+	var b: game.Box
+	var c = game.box[i32](5)
+	c.bump()
+	printf("%d %d\n", b.peek(), c.n)
+	ret 0
+}

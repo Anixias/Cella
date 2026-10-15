@@ -1,0 +1,9 @@
+mod test
+
+main: fun -> i32
+{
+	val p = game.Point(3)
+	val a = p.go()
+	val b = p.spot()
+	ret a + b
+}

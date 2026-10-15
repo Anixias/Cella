@@ -1,0 +1,13 @@
+mod test
+
+Peek: trait
+{
+	peek: fun(imm self) -> i32
+}
+
+game.Box: impl Peek
+{
+	peek: fun(imm self) -> i32 = self.v
+}
+
+main: fun -> i32 = 0

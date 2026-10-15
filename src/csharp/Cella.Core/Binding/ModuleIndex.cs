@@ -106,6 +106,9 @@ public sealed class ModuleIndex
 		if (visibility != Visibility.Private)
 			return true;
 		
+		if (_files.GetValueOrDefault(owner)?.Module != from.Module)
+			return false;
+		
 		for (var type = within; type is not null; type = type.ContainingType)
 		{
 			if (type.OriginalDefinition == owner)

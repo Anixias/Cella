@@ -1,0 +1,14 @@
+
+====== main.ce ======
+
+Error at line 6, column 12
+5 │ val p = game.Point(3)
+6 │ val a = p.go()
+              ╘╛ 'go' is private to its module
+
+Error at line 7, column 12
+6 │ val a = p.go()
+7 │ val b = p.spot()
+              ╘══╛ 'spot' is private to its file
+
+[compilation failed]

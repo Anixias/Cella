@@ -1,0 +1,11 @@
+mod test
+
+game.box[T: copy]: impl
+{
+	bump: fun(mut self)
+	{
+		self.n += 1
+	}
+}
+
+main: fun -> i32 = 0
