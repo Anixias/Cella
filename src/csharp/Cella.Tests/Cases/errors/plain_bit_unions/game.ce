@@ -1,0 +1,12 @@
+mod game
+
+Secret: pub rec
+{
+	key: pvt i32
+	open: i32
+}
+
+Guarded: pub rec
+{
+	count: pvt set i32
+}

@@ -1,0 +1,24 @@
+
+====== main.ce ======
+
+Error at line 16, column 9
+15 │ {
+16 │     color: Color
+                ╘═══╛ Cannot store 'Color' values in unions
+
+Error at line 17, column 10
+16 │ color: Color
+17 │ holder: Holder
+             ╘════╛ Cannot store 'Holder' values in unions
+
+Error at line 18, column 10
+17 │ holder: Holder
+18 │ secret: game.Secret
+             ╘═════════╛ Cannot store 'Secret' values in unions
+
+Error at line 19, column 11
+18 │ secret: game.Secret
+19 │ guarded: game.Guarded
+              ╘══════════╛ Cannot store 'Guarded' values in unions
+
+[compilation failed]

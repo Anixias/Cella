@@ -1,0 +1,24 @@
+mod test
+
+Color: enum
+{
+	red
+	green
+}
+
+Holder: rec
+{
+	color: Color
+}
+
+U: union
+{
+	color: Color
+	holder: Holder
+	secret: game.Secret
+	guarded: game.Guarded
+	text: cstr
+	raw: u64
+}
+
+main: fun -> i32 = 0

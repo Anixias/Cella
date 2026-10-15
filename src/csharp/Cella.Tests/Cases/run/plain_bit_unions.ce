@@ -1,0 +1,37 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Mode: ext enum
+{
+	off
+	on
+}
+
+Vec: rec
+{
+	x: f32
+	y: f32
+}
+
+U: union
+{
+	flag: bool
+	letter: char
+	mode: Mode
+	raw: u32
+	vec: Vec
+	values: array[u8, 8]
+	pointer: ptr[i32]
+}
+
+main: fun -> i32
+{
+	var u = U()
+	u.raw = 65
+	printf("%d %d\n", i32(u.letter), sizeOf(U))
+	ret 0
+}

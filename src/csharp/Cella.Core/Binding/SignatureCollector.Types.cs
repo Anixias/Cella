@@ -245,7 +245,7 @@ public sealed partial class SignatureCollector
 		ReportDefaultConstructor(record, node.Members);
 		
 		if (record.IsUnion)
-			ReportUnionMembers(node);
+			ReportUnionMembers(node, _declarations[record].Context);
 		else
 		{
 			foreach (var (typeNode, type) in storedTypes)
@@ -259,7 +259,7 @@ public sealed partial class SignatureCollector
 			Complete(_symbolTable.DeclarationSymbols[field]);
 	}
 	
-	private void ReportUnionMembers(RecordNode node)
+	private void ReportUnionMembers(RecordNode node, ResolutionContext context)
 	{
 		foreach (var field in node.Members.OfType<FieldNode>())
 		{
@@ -270,6 +270,7 @@ public sealed partial class SignatureCollector
 				: _typePool.HoldsBorrows(type) ? "Cannot store borrows in unions"
 				: _typePool.NeedsDrop(type) ? "Cannot store values with destructors in unions"
 				: !_typePool.HasDefault(type) ? "Cannot store values without defaults in unions"
+				: !IsPlainBits(type, context, []) ? $"Cannot store '{type.Name}' values in unions"
 				: null;
 			
 			if (message is not null)
@@ -277,6 +278,17 @@ public sealed partial class SignatureCollector
 					symbol.IsRequired ? field.Identifier.SourceLocation : field.Type.SourceLocation, message));
 		}
 	}
+	
+	private bool IsPlainBits(TypeSymbol type, ResolutionContext context, HashSet<RecordSymbol> visited) => type switch
+	{
+		PrimitiveType or PointerType or FunctionType { IsExternal: true } or TypeParameterSymbol => true,
+		EnumSymbol enumType => enumType.IsExternal,
+		ArrayType array => IsPlainBits(array.ElementType, context, visited),
+		RecordSymbol record => !visited.Add(record) || _typePool.GetMembers(record).OfType<FieldSymbol>().All(field =>
+			context.CanAccess(record, field.Visibility) && context.CanAccess(record, field.WriteVisibility) &&
+			IsPlainBits(_typePool.GetTypeOfMember(field), context, visited)),
+		_ => false
+	};
 	
 	private static IEnumerable<Diagnostic>
 		ReportDuplicateTypeParameters(ImmutableArray<TypeParameterNode> parameters) =>
