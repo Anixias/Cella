@@ -1,0 +1,14 @@
+
+====== writable_view_conversions.ce ======
+
+Error at line 21, column 6
+20 │ val slot: Slot = mut ring
+21 │ ret slot
+         ╘══╛ Cannot return borrows of local variables
+
+Error at line 27, column 6
+26 │ var ring = Ring(1)
+27 │ ret pass(mut ring)
+         ╘════════════╛ Cannot return borrows of local variables
+
+[compilation failed]

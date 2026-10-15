@@ -118,7 +118,7 @@ public sealed partial class SignatureCollector
 			{ ReturnType: null } => (node.Identifier.SourceLocation, $"'{name}' operators need a return type"),
 			_ when result is BorrowType { IsMutable: var isMutable } && (isMutable != (mode == ParameterMode.Mut) ||
 			                                                             mode == ParameterMode.Own) ||
-			       result is not BorrowType && mode == ParameterMode.Mut =>
+			       result is not (BorrowType or NamedTypeSymbol { IsRef: true }) && mode == ParameterMode.Mut =>
 				(resultLocation,
 					$"Cannot return '{result.Name}' from '{name}' with '{DescribeConversionReceiver(mode)}'"),
 			_ when GetIndexedType(signature) == type => (resultLocation, $"Cannot convert '{type.Name}' to itself"),

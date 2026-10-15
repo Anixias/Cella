@@ -224,7 +224,8 @@ public sealed partial class Resolver
 	{
 		var converted = ApplyUserConversion(arg, conversion);
 		return arg is ResolvedMutArgumentExpressionNode argument &&
-		       conversion.Function.Symbol.Kind != FunctionKind.Free && !IsInvalid(converted)
+		       conversion.Function.Symbol.Kind != FunctionKind.Free &&
+		       conversion.Function.Signature.ReturnType is BorrowType && !IsInvalid(converted)
 			? ApplyMutArgument(new ResolvedMutArgumentExpressionNode(converted,
 				_typePool.GetPointerType(converted.Type), argument.Syntax), target)
 			: converted;

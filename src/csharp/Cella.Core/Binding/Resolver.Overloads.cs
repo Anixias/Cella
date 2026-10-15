@@ -311,6 +311,7 @@ public sealed partial class Resolver
 			.OfType<FunctionInfo>()
 			.Where(info => info.Signature.GetDeclaredType(0) is var source &&
 			               (source == type || isOpen && HaveSameLength(source, type)))
+			.Concat(FindWritableViews(type, target))
 			.ToList();
 		
 		return conversions.Count == 0
@@ -320,6 +321,16 @@ public sealed partial class Resolver
 				IsAmbiguous = conversions.Count > 1
 			};
 	}
+	
+	private IEnumerable<FunctionInfo> FindWritableViews(TypeSymbol type, TypeSymbol target) =>
+		target is NamedTypeSymbol { IsRef: true }
+			? GetMethods(type, "as")
+				.Where(method => method.Function is { IsConversion: true, Kind: FunctionKind.Method } &&
+				                 CanAccess(type, method.Function))
+				.Select(method => GetFunctionInfo(method, type))
+				.Where(info => info.Signature.ParameterTypes.Length == 1 &&
+				               info.Signature.GetMode(0) == ParameterMode.Mut && info.Signature.ReturnType == target)
+			: [];
 	
 	private static bool HaveSameLength(TypeSymbol first, TypeSymbol second) =>
 		first is ArrayType { LengthParameter: null } a && second is ArrayType { LengthParameter: null } b &&
