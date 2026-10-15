@@ -1,0 +1,17 @@
+mod test
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+option[T]: enum { none  some(value: T) }
+Wrap[T]: rec { value: T }
+pick: fun(imm o: option[u16]) -> i32 = 16
+pick: fun(imm o: option[i64]) -> i32 = 64
+wrap: fun(w: Wrap[i8]) -> i32 = 8
+wrap: fun(w: Wrap[u8]) -> i32 = 9
+main: fun -> i32
+{
+	printf("%d %d %d\n", pick(option.some(5)), pick(some(5)), wrap(Wrap(5)))
+	ret 0
+}

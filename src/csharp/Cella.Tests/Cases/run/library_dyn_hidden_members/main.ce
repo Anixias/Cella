@@ -1,0 +1,22 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Square: rec impl lib.Shape
+{
+	side: i32
+
+	area: fun(imm self) -> i32 = self.side * self.side
+	label: fun(imm self) -> i32 = 200
+}
+
+main: fun -> i32
+{
+	val c = lib.Circle(1)
+	val s = Square(2)
+	printf("%d %d\n", lib.describe(imm c), lib.describe(imm s))
+	ret 0
+}

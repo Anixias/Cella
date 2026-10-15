@@ -1,0 +1,28 @@
+mod test
+
+ext
+{
+	printf: pvt fun(format: cstr, ...) -> i32
+}
+
+Measure: pvt trait
+{
+	size: fun(imm self) -> i32
+	double: fun(imm self) -> i32 = self.size() * 2
+}
+
+Box: pvt rec impl Measure
+{
+	side: i32
+
+	size: fun(imm self) -> i32 = self.side
+}
+
+total: pvt fun(imm value: dyn[Measure]) -> i32 = value.double()
+
+main: fun -> i32
+{
+	val box = Box(4)
+	printf("%d %d\n", total(imm box), other())
+	ret 0
+}

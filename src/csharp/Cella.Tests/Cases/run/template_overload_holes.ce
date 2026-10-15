@@ -1,0 +1,38 @@
+mod test
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+A: trait
+{
+	a: fun(imm self)
+}
+
+B: trait
+{
+	b: fun(imm self)
+}
+
+Only: rec impl A
+{
+	x: i32
+
+	a: fun(imm self)
+	{
+	}
+}
+
+show: fun(text: fstr[A]) = printf("A\n")
+show: fun(text: fstr[B]) = printf("B\n")
+other: fun(text: fstr[A]) = printf("fstr\n")
+other: fun(text: str) = printf("str\n")
+title: val str = "x"
+
+main: fun -> i32
+{
+	val o = Only(1)
+	show("{o}")
+	other("{title}")
+	ret 0
+}

@@ -91,6 +91,11 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 	private readonly HashSet<string> _requestedInstantiations = [];
 	private readonly HashSet<GlobalSymbol> _requestedGlobals = [];
 	private readonly Dictionary<TypeSymbol, bool> _largeTypes = [];
+	private readonly Dictionary<LLVMValueRef, int> _temporaryIndices = [];
+	
+	private readonly Dictionary<(LLVMValueRef Function, LLVMTypeRef Type, int Index), LLVMValueRef>
+		_temporarySlots = [];
+	
 	private ModuleState current = null!;
 	private LLVMFunctionInfo currentFunction;
 	
@@ -1011,7 +1016,7 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 		if (!IsLarge(type))
 			return builder.BuildLoad2(mapped, address, name);
 		
-		var copy = BuildEntryAlloca(builder, mapped, name);
+		var copy = BuildTemporarySlot(builder, mapped, name);
 		CopyValue(builder, mapped, copy, address);
 		return copy;
 	}
@@ -1043,9 +1048,24 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 		if (!IsLarge(type))
 			return LLVMValueRef.CreateConstNull(mapped);
 		
-		var slot = BuildEntryAlloca(builder, mapped, name);
-		builder.BuildMemSet(slot, LLVMValueRef.CreateConstInt(LLVMTypeRef.Int8, 0), EmitByteCount(mapped),
-			_targetData.ABIAlignmentOfType(mapped));
+		var slot = BuildTemporarySlot(builder, mapped, name);
+		EmitZeroFill(builder, mapped, slot);
+		return slot;
+	}
+	
+	private void EmitZeroFill(LLVMBuilderRef builder, LLVMTypeRef type, LLVMValueRef destination) =>
+		builder.BuildMemSet(destination, LLVMValueRef.CreateConstInt(LLVMTypeRef.Int8, 0), EmitByteCount(type),
+			_targetData.ABIAlignmentOfType(type));
+	
+	private LLVMValueRef BuildTemporarySlot(LLVMBuilderRef builder, LLVMTypeRef type, string name)
+	{
+		var function = builder.InsertBlock.Parent;
+		if (!_temporaryIndices.TryGetValue(function, out var index))
+			return BuildEntryAlloca(builder, type, name);
+		
+		_temporaryIndices[function] = index + 1;
+		if (!_temporarySlots.TryGetValue((function, type, index), out var slot))
+			_temporarySlots[(function, type, index)] = slot = BuildEntryAlloca(builder, type, name);
 		
 		return slot;
 	}
@@ -1105,6 +1125,21 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 	
 	private void EmitInstruction(LLVMBuilderRef builder, IInstruction instruction)
 	{
+		var function = builder.InsertBlock.Parent;
+		var outermost = _temporaryIndices.TryAdd(function, 0);
+		try
+		{
+			EmitInstructionBody(builder, instruction);
+		}
+		finally
+		{
+			if (outermost)
+				_temporaryIndices.Remove(function);
+		}
+	}
+	
+	private void EmitInstructionBody(LLVMBuilderRef builder, IInstruction instruction)
+	{
 		SetLocation(builder, instruction.SourceLocation);
 		switch (instruction)
 		{
@@ -1120,7 +1155,10 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 			{
 				var storage = current.Variables[new(i.Symbol, i.Symbol.Type)];
 				DeclareLocal(i, storage);
-				if (i.Initializer is not UndefValue)
+				if (i.Initializer is ZeroValue or DefaultValue or ConstantValue { Value: null } &&
+				    IsLarge(i.Symbol.Type))
+					EmitZeroFill(builder, MapTypeSymbol(i.Symbol.Type), storage);
+				else if (i.Initializer is not UndefValue)
 					StoreValue(builder, i.Symbol.Type, EmitValue(i.Initializer, builder), storage);
 				
 				break;
@@ -1401,6 +1439,22 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 	}
 	
 	private void EmitTerminator(LLVMBuilderRef builder, IBlockTerminator terminator,
+		Dictionary<BasicBlock, LLVMBasicBlockRef> blockMap)
+	{
+		var function = builder.InsertBlock.Parent;
+		var outermost = _temporaryIndices.TryAdd(function, 0);
+		try
+		{
+			EmitTerminatorBody(builder, terminator, blockMap);
+		}
+		finally
+		{
+			if (outermost)
+				_temporaryIndices.Remove(function);
+		}
+	}
+	
+	private void EmitTerminatorBody(LLVMBuilderRef builder, IBlockTerminator terminator,
 		Dictionary<BasicBlock, LLVMBasicBlockRef> blockMap)
 	{
 		SetLocation(builder, terminator.SourceLocation);

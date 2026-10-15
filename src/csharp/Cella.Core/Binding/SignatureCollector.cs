@@ -3329,6 +3329,9 @@ public sealed class SignatureCollector
 			
 			foreach (var sameName in declarationsByName)
 			{
+				if (ReportPlainOverloadConflicts(sameName.ToList()))
+					continue;
+				
 				foreach (var (file, declaration, symbol) in sameName)
 				{
 					var visibleTogether = sameName
@@ -3339,6 +3342,91 @@ public sealed class SignatureCollector
 						Diagnostics.Add(diagnostic);
 				}
 			}
+		}
+	}
+	
+	private bool ReportPlainOverloadConflicts(
+		List<(FileSymbol File, IDeclarationNode Declaration, Symbol Symbol)> sameName)
+	{
+		if (sameName.Count < 2 ||
+		    sameName.Any(static d => d.Symbol is not FunctionSymbol
+		    {
+			    Kind: not FunctionKind.External, DeclaredTypeParameters.IsEmpty: true
+		    }) ||
+		    sameName.Select(static d => d.File).Distinct().Count() > 1 &&
+		    sameName.Any(static d => ModuleIndex.GetVisibility(d.Symbol) == Visibility.Private))
+			return false;
+		
+		var signatures = sameName
+			.Select(d => (d.Declaration, Function: (FunctionSymbol)d.Symbol,
+				_builder.Functions[(FunctionSymbol)d.Symbol].Signature))
+			.ToList();
+		
+		var groups = signatures
+			.Where(static entry => Enumerable.Range(0, entry.Signature.ParameterTypes.Length)
+				.All(i => entry.Signature.GetDeclaredType(i) is not InvalidType))
+			.GroupBy(static entry => new ParameterKey(entry.Signature), static entry => entry.Signature)
+			.ToDictionary(static group => group.Key, static group => new OverloadGroup(group.ToList()));
+		
+		foreach (var (declaration, function, signature) in signatures)
+		{
+			var message = groups.TryGetValue(new ParameterKey(signature), out var group) && group.Count > 1
+				? group.DescribeConflict(function.Name, signature)
+				: DescribeConflict(function.Name, signature,
+					signatures.Where(other => other.Function != function).Select(static other => other.Signature));
+			
+			if (message is not null)
+				Diagnostics.Add(new(DiagnosticSeverity.Error, GetIdentifier(declaration).SourceLocation, message));
+		}
+		
+		return true;
+	}
+	
+	private sealed class OverloadGroup(List<FunctionSignature> signatures)
+	{
+		private readonly Dictionary<string, int> _modes = signatures.CountBy(DescribeModes).ToDictionary();
+		
+		private readonly Dictionary<TypeSymbol, int> _returns =
+			signatures.CountBy(static signature => signature.ReturnType).ToDictionary();
+		
+		private readonly Dictionary<(string, TypeSymbol), int> _exact = signatures
+			.CountBy(static signature => (DescribeModes(signature), signature.ReturnType))
+			.ToDictionary();
+		
+		public int Count => signatures.Count;
+		
+		public string DescribeConflict(string name, FunctionSignature signature)
+		{
+			var modes = DescribeModes(signature);
+			return (_modes[modes] > 1, _returns[signature.ReturnType] > 1) switch
+			{
+				(true, _) when _exact[(modes, signature.ReturnType)] > 1 =>
+					$"'{name}' is declared more than once with the same signature",
+				(true, _) => $"'{name}' overloads cannot differ only in return type",
+				(false, true) => $"'{name}' overloads cannot differ only in parameter modes",
+				(false, false) => $"'{name}' overloads cannot differ only in parameter modes and return type"
+			};
+		}
+		
+		private static string DescribeModes(FunctionSignature signature) =>
+			string.Join(",", signature.ParameterModes);
+	}
+	
+	private readonly struct ParameterKey(FunctionSignature signature) : IEquatable<ParameterKey>
+	{
+		private readonly FunctionSignature _signature = signature;
+		
+		public bool Equals(ParameterKey other) => HasSameParameters(_signature, other._signature);
+		public override bool Equals(object? obj) => obj is ParameterKey other && Equals(other);
+		
+		public override int GetHashCode()
+		{
+			var hash = new HashCode();
+			hash.Add(_signature.IsVariadic);
+			for (var i = 0; i < _signature.ParameterTypes.Length; i++)
+				hash.Add(_signature.GetDeclaredType(i));
+			
+			return hash.ToHashCode();
 		}
 	}
 	

@@ -1,0 +1,18 @@
+mod test
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Wrap[T]: enum { empty  one(value: T) }
+Color: enum { red  green }
+Shade: enum { light  dark }
+take: fun(imm w: Wrap[i8]) -> i32 = 8
+take: fun(imm w: Wrap[u8]) -> i32 = 9
+paint: fun(c: Color) -> i32 = 1
+paint: fun(s: Shade) -> i32 = 2
+main: fun -> i32
+{
+	printf("%d %d %d %d\n", take(one(5)), take(Wrap.one(5)), paint(green), paint(dark))
+	ret 0
+}

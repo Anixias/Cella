@@ -1,0 +1,30 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Table: rec
+{
+	items: array[i32, 50000]
+}
+
+first: fun(table: Table) -> i32 = table.items[0]
+
+main: fun -> i32
+{
+	var big: array[u8, 400000]
+	big[399999] = 7
+	var t: Table
+	t.items[0] = 1
+	var total = 0
+	total += first(t)
+	total += first(t)
+	total += first(t)
+	total += first(t)
+	total += first(t)
+	total += first(t)
+	printf("%d %d\n", total, i32(big[399999]))
+	ret 0
+}

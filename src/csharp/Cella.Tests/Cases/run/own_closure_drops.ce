@@ -1,0 +1,67 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Token: rec
+{
+	id: i32
+
+	drop: op
+	{
+		printf("drop %d\n", self.id)
+	}
+}
+
+Effect: enum { none  hit(amount: i32) }
+
+early: fun(stop: bool) -> i32
+{
+	val token = Token(1)
+	val f = own fun -> i32 = token.id
+	if stop
+		ret f()
+
+	ret f() + 10
+}
+
+looped: fun -> i32
+{
+	var total = 0
+	for i in 0..4
+	{
+		val token = Token(i + 10)
+		val f = own fun -> i32 = token.id
+		if i == 1
+			cont
+
+		if i == 3
+			break
+
+		total += f()
+	}
+
+	ret total
+}
+
+matched: fun(effect: Effect) -> i32
+{
+	val token = Token(20)
+	val f = own fun -> i32 = token.id
+	ret match effect
+	{
+		hit(val n) => n + f()
+		none => 0
+	}
+}
+
+main: fun -> i32
+{
+	printf("%d\n", early(true))
+	printf("%d\n", early(false))
+	printf("%d\n", looped())
+	printf("%d %d\n", matched(Effect.hit(1)), matched(Effect.none))
+	ret 0
+}

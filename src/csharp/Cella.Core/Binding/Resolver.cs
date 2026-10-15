@@ -3135,7 +3135,9 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		
 		var resolved = values.Select(static value => value!).ToArray();
 		if (succeeds is null || accepts is null || AnyInvalid(resolved) ||
-		    shapes.Count < 2 && shapes.All(static shape => shape.Open.IsEmpty) || succeeds(resolved))
+		    shapes.Count < 2 && shapes.All(static shape => shape.Open.IsEmpty) ||
+		    succeeds(resolved) && (shapes.Count < 2 ||
+		                           !deferred.Any(i => resolved[i] is ResolvedCaseNameExpressionNode)))
 		{
 			Commit(checkpoint);
 			return resolved;
@@ -3153,9 +3155,15 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		
 		Rollback(checkpoint);
 		foreach (var i in deferred)
+		{
 			resolved[i] = nodes[i] is LambdaExpressionNode lambda
 				? VisitLambdaArgument(lambda, i, [shapes[shape]], resolved)
 				: VisitDeferred(nodes[i], i, [shapes[shape]], [hints[i]]);
+			
+			if (resolved[i] is ResolvedCaseNameExpressionNode && (hints[i] ?? ExpectedAt(shapes[shape], resolved, i)) is
+			    EnumSymbol target)
+				resolved[i] = MaterializeExpression(resolved[i], target);
+		}
 		
 		return resolved;
 	}
@@ -3246,13 +3254,39 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 				
 				return AnyInvalid(trial) || checkpoint.HasErrors || !accepts(index, trial)
 					? null
-					: deferred.Select(i => LiteralDistance(values[i].Type, trial[i].Type)).Aggregate(0, AddCosts);
+					: deferred
+						.Select(i => FindCaseDistance(nodes[i], values[i], trial[i], shapes[index], i) ??
+						             LiteralDistance(values[i].Type, trial[i].Type))
+						.Aggregate(0, AddCosts);
 			}
 			finally
 			{
 				Rollback(checkpoint);
 			}
 		}
+	}
+	
+	private int? FindCaseDistance(IExpressionNode node, IResolvedExpressionNode value, IResolvedExpressionNode trial,
+		CallShape shape, int index)
+	{
+		if (value is not ResolvedCaseNameExpressionNode)
+			return null;
+		
+		var chosen = trial.Type is EnumSymbol ? trial.Type
+			: index < shape.Parameters.Count && shape.Open.IsEmpty ? shape.Parameters[index]
+			: null;
+		
+		if (chosen is not EnumSymbol enumType)
+			return null;
+		
+		if (enumType is not { IsGenericInstance: true, OriginalDefinition: EnumSymbol definition } ||
+		    node is not CallExpressionNode { Target: VarExpressionNode callee } call)
+			return 0;
+		
+		var natural = VisitInferredEnumCase(callee.Identifier, definition.Name, callee.Identifier.SourceLocation,
+			definition, call, node);
+		
+		return IsInvalid(natural) ? null : LiteralDistance(natural.Type, enumType);
 	}
 	
 	private static int LiteralDistance(TypeSymbol natural, TypeSymbol chosen) => (natural, chosen) switch
@@ -5198,6 +5232,15 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		
 		_foldedStrings[node] = folded;
 		return folded;
+	}
+	
+	private bool HolesConform(ResolvedInterpolatedStringExpressionNode node, FStrType type)
+	{
+		var target = _typePool.GetBorrowType(type.Value, false);
+		return node.Values.All(hole => IsInvalid(hole) || hole.Type == target ||
+		                               CanConvertToDyn(
+			                               hole.Type is UntypedType ? GetDefaultType(hole) : Decay(hole).Type,
+			                               target));
 	}
 	
 	private IResolvedExpressionNode CreateTemplate(ResolvedInterpolatedStringExpressionNode node, FStrType type)
@@ -8700,6 +8743,10 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 	{
 		if (arg is ResolvedCaseNameExpressionNode caseName)
 			return MatchCaseName(caseName, target, mode);
+		
+		if (arg is ResolvedInterpolatedStringExpressionNode template && target is FStrType fstr &&
+		    !HolesConform(template, fstr))
+			return (int.MaxValue, null);
 		
 		if (arg.Type == target)
 			return (0, null);

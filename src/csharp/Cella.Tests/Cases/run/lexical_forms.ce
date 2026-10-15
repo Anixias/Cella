@@ -1,0 +1,30 @@
+﻿mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Größe: rec
+{
+	länge: i32
+}
+
+名前: fun(值: i32) -> i32 = 值 * 2
+
+main: fun -> i32
+{
+	val codes = ['\0', '\a', '\b', '\f', '\v', '\r', '\t', '\u00e9', '\U0001F600']
+	printf("%u %u %u %u %u %u %u %u %u\n", codes[0], codes[1], codes[2], codes[3], codes[4], codes[5], codes[6], codes[7], codes[8])
+	val g = Größe(3)
+	printf("%d %d\n", g.länge, 名前(21))
+	val union = 1
+	val impl = 2
+	val get = 3
+	val set = 4
+	val prop = 5
+	val req = 6
+	printf("%d\n", union + impl + get + set + prop + req)
+	printf("%.1f %.2f %.1f\n", 1e+3, 2.5e-1, 1E2)
+	ret 0
+}
