@@ -13,7 +13,7 @@ Error at line 28, column 6
 
 Error at line 35, column 10
 34 │ val e = E.a
-35 │ val f = match e { a => own fun -> i32 = a  b => own fun -> i32 = a + 1 }
+35 │ val f = match e { a => own fun -> i32 = a, b => own fun -> i32 = a + 1 }
              ╘═══╛ The arms of this match hold different 'own fun' closures
 
 [compilation failed]

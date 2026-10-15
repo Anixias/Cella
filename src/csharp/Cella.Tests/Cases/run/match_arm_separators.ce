@@ -1,0 +1,38 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Shape: enum
+{
+	square(side: i32)
+	rect(w: i32, h: i32)
+	none
+}
+
+area: fun(shape: Shape) -> i32 = match shape
+{
+	square(val side) =>
+		side * side
+	rect(val w, val h) => w *
+		h
+	none => 0
+}
+
+main: fun -> i32
+{
+	val v = 2
+	val w = match v { 1 => 10, 2 => 20, else => 0 }
+	var total = 0
+	match v
+	{
+		1, 2 => total += 1
+		else => {}
+	}
+
+	match v { 2 => total += 10, else => {} }
+	printf("%d %d %d %d\n", w, total, area(Shape.square(3)), area(Shape.rect(2, 5)))
+	ret 0
+}

@@ -300,6 +300,7 @@ public sealed partial class FileParser
 					    ParseMatchArms(ref i, open, isActive ? arms : []) is not null))
 					return null;
 				
+				SeparateArms(ref index);
 				continue;
 			}
 			
@@ -307,6 +308,7 @@ public sealed partial class FileParser
 				return null;
 			
 			arms.Add(arm);
+			SeparateArms(ref index);
 		}
 		
 		return closeBrace;

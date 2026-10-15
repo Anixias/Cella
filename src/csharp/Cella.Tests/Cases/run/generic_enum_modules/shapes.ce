@@ -14,4 +14,4 @@ option[T]: enum
 	}
 }
 
-read: fun(o: option[i32]) -> i32 = match o { some(val v) => v  none => -1 }
+read: fun(o: option[i32]) -> i32 = match o { some(val v) => v, none => -1 }

@@ -12,7 +12,7 @@ nullable[T: null]: enum match T
 
 	isSome: get(imm self) -> bool = self is some(_)
 
-	or: fun(own self, own fallback: T) -> T = match own self { some(own v) => v  none => fallback }
+	or: fun(own self, own fallback: T) -> T = match own self { some(own v) => v, none => fallback }
 }
 
 lent: ref enum match imm[i32]
@@ -42,7 +42,7 @@ wrap[T: null]: fun(own value: T) -> nullable[T] = some(own value)
 triple: fun(n: i32) -> i32 = n * 3
 twice: fun(n: i32) -> i32 = n * 2
 
-readNode: fun(n: nullable[ptr[Node]]) -> i32 = match n { some(val p) => p.value  none => -1 }
+readNode: fun(n: nullable[ptr[Node]]) -> i32 = match n { some(val p) => p.value, none => -1 }
 
 find: fun(mut values: array[i32, 3], target: i32) -> nullable[imm[i32]]
 {
@@ -84,10 +84,10 @@ main: fun -> i32
 
 	var values = [10, 20, 30]
 	val hit = find(mut values, 20)
-	printf("%d %d\n", match hit { some(val v) => v  none => -1 }, i32(find(mut values, 99) is none))
+	printf("%d %d\n", match hit { some(val v) => v, none => -1 }, i32(find(mut values, 99) is none))
 
 	val got = pick(mut values, 1)
-	printf("%d %d %d\n", match got { found(val v) => v  missing => -1 }, i32(pick(mut values, 7) is missing),
+	printf("%d %d %d\n", match got { found(val v) => v, missing => -1 }, i32(pick(mut values, 7) is missing),
 		i32(sizeOf(lent)))
 
 	var total = 10
@@ -102,7 +102,7 @@ main: fun -> i32
 	var handler = Handler()
 	printf("%d %d\n", handler.id, i32(handler.callback is none))
 	handler.callback = some(triple)
-	val call = match handler.callback { some(val f) => f(5)  none => -1 }
+	val call = match handler.callback { some(val f) => f(5), none => -1 }
 	printf("%d %d\n", call, i32(sizeOf(Handler)))
 
 	var m = 6

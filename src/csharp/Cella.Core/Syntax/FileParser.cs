@@ -101,7 +101,7 @@ public sealed partial class FileParser
 	private void Report(Token token, string message, DiagnosticSeverity severity = DiagnosticSeverity.Error) =>
 		Diagnostics.Add(new(severity, token.SourceLocation, message));
 	
-	protected override void ReportTrailingComma(Diagnostic diagnostic) => Diagnostics.Add(diagnostic);
+	protected override void ReportSeparatorError(Diagnostic diagnostic) => Diagnostics.Add(diagnostic);
 	
 	private void RejectDiscardName(Token identifier)
 	{

@@ -17,6 +17,6 @@ main: fun -> i32
 {
 	val k = Kind.two
 	val base = 3
-	printf("%d\n", apply(match k { one => fun(x) = x  else => fun(x) = x * base }, 5))
+	printf("%d\n", apply(match k { one => fun(x) = x, else => fun(x) = x * base }, 5))
 	ret 0
 }

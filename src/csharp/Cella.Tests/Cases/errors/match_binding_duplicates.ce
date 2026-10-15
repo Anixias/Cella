@@ -40,7 +40,7 @@ make: fun -> R = R(Effect.d(Buffer(1)))
 uninitialized: fun -> i32
 {
 	var r: result[i32, i32]
-	ret match r { ok(val v) => v  err(val e) => e }
+	ret match r { ok(val v) => v, err(val e) => e }
 }
 
 moved: fun

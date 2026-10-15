@@ -11,8 +11,8 @@ Effect: enum
 main: fun -> i32
 {
 	val e = Effect.none
-	val a = match e { hit(val n) => n  strike(val n) => n  else => 0 }
-	val b = match e { none => 0  strike(val n) => n }
-	val c = match e { none => 0  hit(val n) => n  heal(val n) => n }
+	val a = match e { hit(val n) => n, strike(val n) => n, else => 0 }
+	val b = match e { none => 0, strike(val n) => n }
+	val c = match e { none => 0, hit(val n) => n, heal(val n) => n }
 	ret 0
 }

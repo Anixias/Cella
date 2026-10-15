@@ -67,7 +67,7 @@ describe: fun(effect: Effect) -> i32 = match effect
 	heal(val n) => -n
 }
 
-flip: fun(team: Team) -> Team = match team { red => Team.blue  else => Team.red }
+flip: fun(team: Team) -> Team = match team { red => Team.blue, else => Team.red }
 
 main: fun -> i32
 {

@@ -8,7 +8,7 @@ Error at line 19, column 10
 
 Error at line 28, column 16
 27 │ val a = A(3)
-28 │ ret match a { A => 1  else => 0 }
+28 │ ret match a { A => 1, else => 0 }
                    ^ Cannot use types as values
 
 [compilation failed]

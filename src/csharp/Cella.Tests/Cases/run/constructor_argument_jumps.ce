@@ -36,7 +36,7 @@ find: fun(values: array[i32, 4]) -> i32
 	var total = 0
 	for value in values
 	{
-		val pair = Pair(Note(value), match choose(value) { some(val v) => v  none => break })
+		val pair = Pair(Note(value), match choose(value) { some(val v) => v, none => break })
 		total += pair.left.id + pair.right
 	}
 
@@ -48,7 +48,7 @@ skip: fun(values: array[i32, 4]) -> i32
 	var total = 0
 	for value in values
 	{
-		val pair = Pair(Note(value * 10), match choose(value) { some(val v) => v  none => cont })
+		val pair = Pair(Note(value * 10), match choose(value) { some(val v) => v, none => cont })
 		total += pair.right
 	}
 
@@ -57,7 +57,7 @@ skip: fun(values: array[i32, 4]) -> i32
 
 early: fun -> i32
 {
-	val pair = Pair(Note(100), match choose(5) { some(val v) => v  none => ret -1 })
+	val pair = Pair(Note(100), match choose(5) { some(val v) => v, none => ret -1 })
 	ret pair.right
 }
 

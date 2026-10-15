@@ -25,7 +25,7 @@ pick: fun(value: i64) -> i32 = 64
 same[T: copy]: fun(a: T, b: T) -> T = a
 bytes: fun(values: array[u8, 3]) -> i32 = i32(values[0]) + i32(values[1]) + i32(values[2])
 apply: fun(f: fun[i32 -> i32]) -> i32 = f(21)
-check: fun(value: option[i32]) -> i32 = match value { none => 7  some(val v) => v }
+check: fun(value: option[i32]) -> i32 = match value { none => 7, some(val v) => v }
 twice: fun(x: i32) -> i32 = x * 2
 twice: fun(x: f64) -> f64 = x * 2.0
 run: fun(visit: fun[]) = visit()

@@ -32,7 +32,7 @@ arms: fun -> i32
 {
 	val a = 1
 	val e = E.a
-	val f = match e { a => own fun -> i32 = a  b => own fun -> i32 = a + 1 }
+	val f = match e { a => own fun -> i32 = a, b => own fun -> i32 = a + 1 }
 	ret 0
 }
 

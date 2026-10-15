@@ -163,9 +163,11 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 		TokenType.OpLess
 	];
 	
+	private int bracketDepth;
+	
 	private bool IsNextNewline(int next)
 	{
-		if (AtEnd(next - 1) || AtEnd(next))
+		if (bracketDepth > 0 || AtEnd(next - 1) || AtEnd(next))
 			return false;
 		
 		return Tokens[next - 1].Line != Tokens[next].Line;
@@ -328,6 +330,22 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 	
 	private delegate T ParseStep<out T>(ref int index);
 	
+	private T WithDepth<T>(ref int index, int depth, ParseStep<T> parse)
+	{
+		var outer = bracketDepth;
+		bracketDepth = depth;
+		try
+		{
+			return parse(ref index);
+		}
+		finally
+		{
+			bracketDepth = outer;
+		}
+	}
+	
+	private T InBrackets<T>(ref int index, ParseStep<T> parse) => WithDepth(ref index, bracketDepth + 1, parse);
+	
 	private static T? TryParse<T>(int start, ParseStep<T> parse, out int end) where T : class
 	{
 		end = start;
@@ -391,7 +409,7 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 					continue;
 			}
 			
-			elements.Add(ParseElement(ref index));
+			elements.Add(InBrackets(ref index, ParseElement));
 		}
 		
 		range = range.Join(closeParen.SourceLocation.Range);
@@ -625,7 +643,7 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 		if (Match(ref index, out var openParen, TokenType.OpOpenParen))
 		{
 			// Parenthesized Expression
-			node = ParseExpression(ref index);
+			node = InBrackets(ref index, ParseExpression);
 			
 			if (!Match(ref index, TokenType.OpCloseParen))
 				throw Expected(index, "')'", openParen);
@@ -642,10 +660,10 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 			}
 			else
 			{
-				var values = new List<IExpressionNode> { ParseExpression(ref index) };
+				var values = new List<IExpressionNode> { InBrackets(ref index, ParseExpression) };
 				
 				while (MatchSeparator(ref index, TokenType.OpCloseBracket))
-					values.Add(ParseExpression(ref index));
+					values.Add(InBrackets(ref index, ParseExpression));
 				
 				if (!Match(ref index, out closeBracket, TokenType.OpCloseBracket))
 					throw Expected(index, "',' or ']'", openBracket);
@@ -766,7 +784,9 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 			if (Match(ref index, out var when, TokenType.KeywordWhen))
 				ParseWhenArms(ref index, when, arms);
 			else
-				arms.Add(ParseMatchArm(ref index));
+				arms.Add(WithDepth(ref index, 0, ParseMatchArm));
+			
+			SeparateArms(ref index);
 		}
 		
 		return closeBrace;
@@ -909,7 +929,7 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 		if (Peek(index, TokenType.OpCloseParen))
 			throw Expected(index, "a type or a value");
 		
-		var target = ParseExpression(ref index);
+		var target = InBrackets(ref index, ParseExpression);
 		
 		if (!Match(ref index, out var closeBracket, TokenType.OpCloseParen))
 			throw Expected(index, "')'", openParen);
@@ -1059,7 +1079,7 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 					continue;
 			}
 			
-			arguments.Add(ParseArgument(ref index));
+			arguments.Add(InBrackets(ref index, ParseArgument));
 		}
 		
 		range = range.Join(closeParen.SourceLocation.Range);
@@ -1098,7 +1118,7 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 					continue;
 			}
 			
-			arguments.Add(ParseExpression(ref index));
+			arguments.Add(InBrackets(ref index, ParseExpression));
 		}
 		
 		range = range.Join(closeBracket.SourceLocation.Range);

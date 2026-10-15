@@ -652,12 +652,12 @@ main: fun -> i32
 {
 	printf("%d %d %d %d %d\n", describe(Key('h')), describe(Key('l')), describe(Key('Q')), describe(Key('z')), i32(char(Key.quit)))
 	printf("%d %d %d\n", index(Big.c0), index(Big.c150), index(Big.c299))
-	val total = three(trace(1), match trace(2) { 2 => trace(3)  else => 0 }, trace(4))
+	val total = three(trace(1), match trace(2) { 2 => trace(3), else => 0 }, trace(4))
 	printf("= %d\n", total)
 	val items = [trace(5), i32(trace(6) is 6), trace(7)]
 	printf("= %d\n", items[0] + items[1] + items[2])
-	val hit = Hit.pair(trace(8), match trace(9) { > 5 => trace(10)  else => 0 })
-	printf("= %d\n", match hit { pair(val a, val b) => a + b  miss => 0 })
+	val hit = Hit.pair(trace(8), match trace(9) { > 5 => trace(10), else => 0 })
+	printf("= %d\n", match hit { pair(val a, val b) => a + b, miss => 0 })
 	var state = Countdown.more(3)
 	var steps = 0
 	while state is more(var n)

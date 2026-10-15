@@ -26,10 +26,10 @@ marker[T]: enum
 seven: val option[i32] = option.some(7)
 nothing: val option[i32] = option.none
 pairs: val array[option[i16], 2] = [option.some(3), option.none]
-unwrapped: val i32 = match seven { some(val v) => v  none => 0 }
+unwrapped: val i32 = match seven { some(val v) => v, none => 0 }
 
-read: fun(o: option[i32]) -> i32 = match o { some(val v) => v  none => -1 }
-readQualified: fun(o: option[i32]) -> i32 = match o { option.some(val v) => v * 10  option.none => 0 }
+read: fun(o: option[i32]) -> i32 = match o { some(val v) => v, none => -1 }
+readQualified: fun(o: option[i32]) -> i32 = match o { option.some(val v) => v * 10, option.none => 0 }
 
 half: fun(n: i32) -> result[i32, cstr]
 {
@@ -52,7 +52,7 @@ depth: fun(o: option[option[i32]]) -> i32
 {
 	match o
 	{
-		some(val inner) => ret match inner { some(val v) => v  none => -2 }
+		some(val inner) => ret match inner { some(val v) => v, none => -2 }
 		none => ret -1
 	}
 }
@@ -76,7 +76,7 @@ main: fun -> i32
 
 	printf("%d %d %d\n", depth(option.some(option.some(4))), depth(option.some(option[i32].none)),
 		depth(option[option[i32]].none))
-	printf("%d %d %d\n", i32(match pairs[0] { some(val v) => v  none => 0 }), i32(pairs[1] is none), unwrapped)
+	printf("%d %d %d\n", i32(match pairs[0] { some(val v) => v, none => 0 }), i32(pairs[1] is none), unwrapped)
 
 	val m = marker[u8].second
 	printf("%d %d %d\n", i32(m == marker[u8].second), i32(m), i32(marker[u8](0) == marker[u8].first))

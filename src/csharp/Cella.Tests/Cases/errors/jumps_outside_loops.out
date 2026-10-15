@@ -8,16 +8,16 @@ Error at line 11, column 2
 
 Error at line 17, column 31
 16 │ val r = Role.fighter
-17 │ val x = match r { fighter => break  healer => 1 }
+17 │ val x = match r { fighter => break, healer => 1 }
                                   ╘═══╛ Cannot use 'break' outside loops
 
 Error at line 18, column 31
-17 │ val x = match r { fighter => break  healer => 1 }
-18 │ val y = match r { fighter => cont  healer => 2 }
+17 │ val x = match r { fighter => break, healer => 1 }
+18 │ val y = match r { fighter => cont, healer => 2 }
                                   ╘══╛ Cannot use 'cont' outside loops
 
 Error at line 19, column 2
-18 │ val y = match r { fighter => cont  healer => 2 }
+18 │ val y = match r { fighter => cont, healer => 2 }
 19 │ break
      ╘═══╛ Cannot use 'break' outside loops
 

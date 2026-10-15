@@ -37,6 +37,6 @@ main: fun -> i32
 	say("{a && b}")
 	say("{a || b}")
 	say("{1 < x < 3}")
-	say("{match mode { idle => 10  busy => 20 }}")
+	say("{match mode { idle => 10, busy => 20 }}")
 	ret 0
 }

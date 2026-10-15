@@ -44,7 +44,7 @@ main: fun -> i32
 	val cell = Cell[fun[i64 -> i64]](pick)
 	val handler = nullable[ext fun[i32]].none
 	val thunk = ext fun[i32 -> i32](triple)
-	printf("%d %lld %d %lld %d\n", small(1), large(1), match boxed { some(val f) => f(2)  none => 0 }, cell.value(5),
+	printf("%d %lld %d %lld %d\n", small(1), large(1), match boxed { some(val f) => f(2), none => 0 }, cell.value(5),
 		i32(handler is none))
 
 	val ext = 7

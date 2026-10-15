@@ -1,0 +1,44 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+add: fun(a: i32, b: i32) -> i32 = a + b
+
+arms: fun(v: i32) -> i32
+{
+	val a = 7
+	ret (match v
+	{
+		1 => a
+		-1 => 2
+		2 => a
+		else => 0
+	})
+}
+
+main: fun -> i32
+{
+	val x = (
+		1
+		+ 2
+	)
+
+	val y = add(1
+		+ 2, 3)
+
+	val values = [
+		10
+		* 2,
+		5
+	]
+
+	val z = values[2
+		- 1]
+
+	val w = match x { 1 => 10, 3 => 30, else => 0 }
+	printf("%d %d %d %d %d %d\n", x, y, values[0], z, arms(-1), w)
+	ret 0
+}

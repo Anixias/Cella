@@ -63,7 +63,7 @@ first: fun(effects: array[Effect, 4]) -> i32
 	var i: usize = 0
 	while i < 4
 	{
-		val amount = match effects[i] { hit(val n) => ret n  none => 0 }
+		val amount = match effects[i] { hit(val n) => ret n, none => 0 }
 		i += usize(amount) + 1
 	}
 
@@ -72,7 +72,7 @@ first: fun(effects: array[Effect, 4]) -> i32
 
 doubled: fun(effect: Effect) -> i32
 {
-	val amount = match effect { none => ret -1  hit(val n) => n }
+	val amount = match effect { none => ret -1, hit(val n) => n }
 	ret amount * 2
 }
 
@@ -102,8 +102,8 @@ walk: fun(steps: array[Step, 5]) -> i32
 
 tally: fun(effect: Effect)
 {
-	match effect { none => ret  hit(val n) => count += n }
-	val bonus = match effect { none => ret  Effect.hit(val n) => n * 10 }
+	match effect { none => ret, hit(val n) => count += n }
+	val bonus = match effect { none => ret, Effect.hit(val n) => n * 10 }
 	count += bonus
 }
 

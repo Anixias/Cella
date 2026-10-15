@@ -3,7 +3,7 @@
 
 Error at line 43, column 12
 42 │ var r: result[i32, i32]
-43 │ ret match r { ok(val v) => v  err(val e) => e }
+43 │ ret match r { ok(val v) => v, err(val e) => e }
                ^ Cannot use uninitialized values
 
 Error at line 50, column 8

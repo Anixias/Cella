@@ -3,7 +3,7 @@
 
 Error at line 13, column 38
 12 │ val t = E.a
-13 │ ret match t { a => P(1)  b => P(2) }.x
+13 │ ret match t { a => P(1), b => P(2) }.x
                                          ^ Cannot use '.' on 'match' expressions
 
 [compilation failed]

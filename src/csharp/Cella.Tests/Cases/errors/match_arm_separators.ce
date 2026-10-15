@@ -1,0 +1,31 @@
+mod test
+
+sameLine: fun(v: i32) -> i32 = match v { 1 => 10 2 => 20 else => 0 }
+
+commaThenLine: fun(v: i32) -> i32 = match v
+{
+	1 => 10,
+	else => 0
+}
+
+trailing: fun(v: i32) -> i32 = match v { 1 => 10, else => 0, }
+
+statements: fun(v: i32) -> i32
+{
+	var total = 0
+	match v
+	{
+		1 => total += 1 2 => total += 2
+		else => {}
+	}
+
+	match v
+	{
+		1 => total += 1,
+		else => {}
+	}
+
+	ret total
+}
+
+main: fun -> i32 = 0

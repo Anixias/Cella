@@ -45,7 +45,7 @@ main: fun -> i32
 	printf("| ")
 	(*target()).x += value()
 	printf("| ")
-	values[index()] = match make() { a => value()  b => 2 }
+	values[index()] = match make() { a => value(), b => 2 }
 	printf("| ")
 	values[index()] = value()
 	printf("\n")

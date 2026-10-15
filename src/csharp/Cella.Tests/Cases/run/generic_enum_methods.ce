@@ -85,6 +85,6 @@ main: fun -> i32
 	var s = slot[i32].make(1)
 	s.put(2)
 	val t = slot[i64].make(3)
-	printf("%d %d %d\n", match s { filled(val v) => v  vacant => 0 }, slot[i32].created, slot[i64].created)
+	printf("%d %d %d\n", match s { filled(val v) => v, vacant => 0 }, slot[i32].created, slot[i64].created)
 	ret 0
 }

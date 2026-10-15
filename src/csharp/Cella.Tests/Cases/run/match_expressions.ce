@@ -38,8 +38,8 @@ Mode: enum
 }
 
 mode: val Mode = Mode.slow(3)
-size: val i32 = match mode { fast => 4  slow(val factor) => factor * 8 }
-table: val array[i32, match Mode.fast { fast => 2  slow(val factor) => usize(factor) }] = [5, 6]
+size: val i32 = match mode { fast => 4, slow(val factor) => factor * 8 }
+table: val array[i32, match Mode.fast { fast => 2, slow(val factor) => usize(factor) }] = [5, 6]
 
 damage: fun(role: Role) -> i32 = match role
 {
@@ -59,12 +59,12 @@ power: fun(effect: Effect) -> i64
 	ret value
 }
 
-area: fun(shape: Shape) -> i32 = match shape { dot => 0  box(val w, val h) => w * h }
+area: fun(shape: Shape) -> i32 = match shape { dot => 0, box(val w, val h) => w * h }
 
 total: fun(pair: Pair) -> i32 = match pair
 {
 	one(val s) => area(s)
-	two(val a, val b) => match a { dot => 100  box(val w, _) => w + area(b) }
+	two(val a, val b) => match a { dot => 100, box(val w, _) => w + area(b) }
 }
 
 helper: fun(x: i32) -> i32 = x + 1
@@ -73,25 +73,25 @@ other: fun(x: i32) -> i32 = x * 10
 main: fun -> i32
 {
 	val role = Role.healer
-	val scale = match role { fighter => 1.5  healer => 2  tank => 3 }
+	val scale = match role { fighter => 1.5, healer => 2, tank => 3 }
 	printf("%d %d %d %.1f\n", damage(Role.fighter), damage(role), damage(Role.tank), scale)
 	printf("%lld %lld %lld\n", power(Effect.none), power(Effect.hit(4)), power(Effect.heal(5, true)))
 	printf("%d %d %d\n", total(Pair.one(Shape.box(3, 3))), total(Pair.two(Shape.box(2, 3), Shape.box(4, 5))),
 		total(Pair.two(Shape.dot, Shape.dot)))
 
-	var small: u8 = match role { fighter => 1  healer => 200  tank => 3 }
-	val big: i64 = match role { fighter => 1  else => 5_000_000_000 }
-	val f: fun[i32 -> i32] = match role { fighter => helper  else => other }
+	var small: u8 = match role { fighter => 1, healer => 200, tank => 3 }
+	val big: i64 = match role { fighter => 1, else => 5_000_000_000 }
+	val f: fun[i32 -> i32] = match role { fighter => helper, else => other }
 	printf("%d %lld %d\n", small, big, f(2))
 
-	if match role { healer => true  else => false }
+	if match role { healer => true, else => false }
 		printf("healer\n")
 
 	var count = 0
-	while match role { fighter => false  else => count < 3 }
+	while match role { fighter => false, else => count < 3 }
 		count += 1
 
-	val local = match Mode.slow(2) { fast => 1  slow(val factor) => factor + 10 }
+	val local = match Mode.slow(2) { fast => 1, slow(val factor) => factor + 10 }
 	printf("%d %d %d %d %d\n", count, size, table[1], local, i32(sizeOf(table)))
 	ret 0
 }

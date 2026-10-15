@@ -1,0 +1,29 @@
+
+====== match_arm_separators.ce ======
+
+Error at line 3, column 50
+2 │ 
+3 │ sameLine: fun(v: i32) -> i32 = match v { 1 => 10 2 => 20 else => 0 }
+                                                     ^ Expected ',' or a new line before the next arm
+
+Error at line 7, column 9
+6 │ {
+7 │     1 => 10,
+               ^ Cannot separate arms on separate lines with ','
+
+Error at line 11, column 60
+10 │ 
+11 │ trailing: fun(v: i32) -> i32 = match v { 1 => 10, else => 0, }
+                                                                ^ Cannot end lists with ','
+
+Error at line 18, column 19
+17 │ {
+18 │     1 => total += 1 2 => total += 2
+                         ^ Expected ',' or a new line before the next arm
+
+Error at line 24, column 18
+23 │ {
+24 │     1 => total += 1,
+                        ^ Cannot separate arms on separate lines with ','
+
+[compilation failed]

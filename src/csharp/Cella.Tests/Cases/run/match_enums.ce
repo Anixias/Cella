@@ -41,9 +41,9 @@ opened: val socket = valid(4)
 four: val parity = parity(4)
 sockets: val array[socket, 3] = [invalid, valid(2), socket(-1)]
 
-readSocket: fun(s: socket) -> i32 = match s { valid(val h) => h  invalid => -100 }
-describe: fun(p: parity) -> i32 = match p { even => 0  odd => 1  other(val v) => i32(v) }
-flip: fun(s: switch) -> switch = match s { on => off  off => on }
+readSocket: fun(s: socket) -> i32 = match s { valid(val h) => h, invalid => -100 }
+describe: fun(p: parity) -> i32 = match p { even => 0, odd => 1, other(val v) => i32(v) }
+flip: fun(s: switch) -> switch = match s { on => off, off => on }
 
 main: fun -> i32
 {
@@ -67,7 +67,7 @@ main: fun -> i32
 	printf("%d %d %d\n", i32(sockets[0]), readSocket(sockets[1]), i32(sockets[2] is invalid))
 
 	var current = socket(3)
-	current = match current { valid(_) => invalid  invalid => valid(0) }
+	current = match current { valid(_) => invalid, invalid => valid(0) }
 	val connection = Connection()
 	printf("%d %d %d\n", i32(current), connection.id, i32(connection.mode == off))
 	printf("%d %d %d\n", i32(sizeOf(socket)), i32(sizeOf(parity)), i32(sizeOf(switch)))

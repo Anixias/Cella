@@ -25,7 +25,7 @@ throughPointer: fun -> i32
 concrete: fun -> i32
 {
 	val a = A(3)
-	ret match a { A => 1  else => 0 }
+	ret match a { A => 1, else => 0 }
 }
 
 main: fun -> i32 = 0

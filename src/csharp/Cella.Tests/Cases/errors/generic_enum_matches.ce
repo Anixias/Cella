@@ -13,8 +13,8 @@ result[T, E]: enum
 }
 
 missing: fun(o: option[i32]) -> i32 = match o { some(val v) => v }
-foreign: fun(o: option[i32]) -> i32 = match o { result.ok(val v) => v  else => 0 }
-unknown: fun(o: option[i32]) -> i32 = match o { ok(val v) => v  else => 0 }
-counted: fun(o: option[i32]) -> i32 = match o { some() => 0  none => 1 }
+foreign: fun(o: option[i32]) -> i32 = match o { result.ok(val v) => v, else => 0 }
+unknown: fun(o: option[i32]) -> i32 = match o { ok(val v) => v, else => 0 }
+counted: fun(o: option[i32]) -> i32 = match o { some() => 0, none => 1 }
 
 main: fun -> i32 = 0

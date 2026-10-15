@@ -15,8 +15,8 @@ main: fun -> i32
 {
 	val ts = [Team.red, blue]
 	val s = Side.b
-	val t = match s { a => red  b => Team.blue }
-	val later = match s { a => blue  b => red }
+	val t = match s { a => red, b => Team.blue }
+	val later = match s { a => blue, b => red }
 	printf("%d %d %d %d\n", i32(ts[0]), i32(ts[1]), i32(t), show(later))
 	ret 0
 }

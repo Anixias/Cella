@@ -79,7 +79,7 @@ Box[T]: rec
 }
 
 Origin: val Point = Point(0, 3)
-Check: val i32 = match Origin { Point(x: 0, val y) => y  else => 9 }
+Check: val i32 = match Origin { Point(x: 0, val y) => y, else => 9 }
 
 limited: fun(s: Shot, limit: i32) -> i32 = match s
 {

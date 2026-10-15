@@ -64,10 +64,10 @@ pair[T]: rec
 
 seven: val option[i32] = some(7)
 
-read: fun(o: option[i32]) -> i32 = match o { some(val v) => v  none => -1 }
-readWide: fun(o: option[i64]) -> i64 = match o { some(val v) => v  none => -1 }
-speed: fun(m: Mode) -> i32 = match m { running(val s) => s  idle => 0 }
-damage: fun(e: Effect) -> i32 = match e { strike(val d) => d  calm => 0 }
+read: fun(o: option[i32]) -> i32 = match o { some(val v) => v, none => -1 }
+readWide: fun(o: option[i64]) -> i64 = match o { some(val v) => v, none => -1 }
+speed: fun(m: Mode) -> i32 = match m { running(val s) => s, idle => 0 }
+damage: fun(e: Effect) -> i32 = match e { strike(val d) => d, calm => 0 }
 show: fun(o: option[i32]) -> i32 = 1
 show: fun(t: Team) -> i32 = 2
 both[T]: fun(imm o: option[T], own fallback: T) -> T = fallback
@@ -100,14 +100,14 @@ main: fun -> i32
 
 	val modes: array[Mode, 2] = [idle, running(4)]
 	val nested: option[option[i32]] = some(none)
-	printf("%d %d %d\n", speed(modes[0]), speed(modes[1]), match nested { some(val inner) => read(inner)  none => -2 })
+	printf("%d %d %d\n", speed(modes[0]), speed(modes[1]), match nested { some(val inner) => read(inner), none => -2 })
 
 	val held = Holder(some(9), 1)
 	val box = Box(some(10))
 	val reader: fun[option[i32] -> i32] = read
 	val counted = pair(none, 3)
 	printf("%d %d %d %d %d ", read(held.item), read(box.item), reader(some(11)), both(none, 12),
-		match counted.item { some(val v) => v  none => counted.count })
+		match counted.item { some(val v) => v, none => counted.count })
 
 	printf("%d %d %lld\n", show(none), show(blue), readWide(option.some(21).map(double)))
 
