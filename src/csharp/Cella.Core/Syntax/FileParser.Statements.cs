@@ -51,12 +51,28 @@ public sealed partial class FileParser
 				continue;
 			}
 			
-			if (ParseStatement(ref index) is not { } statement)
+			var start = index;
+			IStatementNode? statement;
+			try
 			{
-				if (!reachedDeclaration)
-					SkipToEnd(ref index);
+				statement = ParseStatement(ref index);
+			}
+			catch (ParseException e)
+			{
+				Diagnostics.Add(e.Diagnostic);
+				statement = null;
+			}
+			
+			if (statement is null)
+			{
+				if (reachedDeclaration)
+					return false;
 				
-				return false;
+				if (!ResyncStatement(ref index, start))
+					continue;
+				
+				close = Tokens[index - 1];
+				return true;
 			}
 			
 			statements.Add(statement);

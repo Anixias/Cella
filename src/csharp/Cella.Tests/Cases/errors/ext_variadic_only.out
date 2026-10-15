@@ -11,4 +11,9 @@ Error at line 10, column 17
 10 │     var g: ext fun[...]
                         ╘═╛ Expected a parameter before '...'
 
+Error at line 11, column 17
+10 │ var g: ext fun[...]
+11 │ var h: ext fun[... -> i32]
+                    ╘═╛ Expected a parameter before '...'
+
 [compilation failed]

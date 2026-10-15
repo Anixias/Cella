@@ -32,4 +32,9 @@ Error at line 42, column 3
 42 │     fighter => ret 1
          ╘═════╛ Expected '{'
 
+Error at line 42, column 11
+41 │ match Role.fighter
+42 │     fighter => ret 1
+                 ╘╛ Expected an expression
+
 [compilation failed]

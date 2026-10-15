@@ -11,9 +11,9 @@ Error at line 13, column 6
 13 │     var : i32 = 2
              ^ Expected a name after 'var'
 
-Error at line 17, column 1
-16 │ 
+Error at line 18, column 1
 17 │ third: fun -> i32
-     ╘═══╛ Invalid function declaration
+18 │ {
+     ^ Expected '}' to close this '{'
 
 [compilation failed]

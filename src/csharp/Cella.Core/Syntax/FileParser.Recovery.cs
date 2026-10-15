@@ -176,6 +176,65 @@ public sealed partial class FileParser
 	private bool StartsDeclarationOnLine(int index) =>
 		Tokens[index].Line != Tokens[index - 1].Line && StartsTopLevelDeclaration(index);
 	
+	private static readonly HashSet<TokenType> _statementKeywords =
+	[
+		TokenType.KeywordVal, TokenType.KeywordVar, TokenType.KeywordRet, TokenType.KeywordIf, TokenType.KeywordFor,
+		TokenType.KeywordWhile, TokenType.KeywordDo, TokenType.KeywordLoop, TokenType.KeywordMatch,
+		TokenType.KeywordDrop, TokenType.KeywordWhen, TokenType.KeywordBreak, TokenType.KeywordCont
+	];
+	
+	private bool ResyncStatement(ref int index, int start)
+	{
+		var braces = 0;
+		var brackets = 0;
+		int? bracesAtError = null;
+		for (var i = start + 1; !AtEnd(i); i++)
+		{
+			switch (Tokens[i - 1].Type)
+			{
+				case TokenType.OpOpenBrace:
+					braces++;
+					break;
+				
+				case TokenType.OpCloseBrace:
+					braces--;
+					break;
+				
+				case TokenType.OpOpenParen or TokenType.OpOpenBracket:
+					brackets++;
+					break;
+				
+				case TokenType.OpCloseParen or TokenType.OpCloseBracket:
+					brackets--;
+					break;
+			}
+			
+			if (i < index)
+				continue;
+			
+			bracesAtError ??= braces;
+			if (!IsOnSameLine(i) && StartsDeclarationInBody(i) && (braces > 0 || bracesAtError > 0))
+			{
+				index = i;
+				return true;
+			}
+			
+			if (braces > 0)
+				continue;
+			
+			if (Tokens[i].Type == TokenType.OpCloseBrace ||
+			    !IsOnSameLine(i) && Tokens[i].Type != TokenType.OpOpenBrace &&
+			    (brackets <= 0 || _statementKeywords.Contains(Tokens[i].Type)))
+			{
+				index = i;
+				return false;
+			}
+		}
+		
+		SkipToEnd(ref index);
+		return false;
+	}
+	
 	private void SkipToEnd(ref int index)
 	{
 		SkipUntil(ref index, TokenType.EndOfFile);
