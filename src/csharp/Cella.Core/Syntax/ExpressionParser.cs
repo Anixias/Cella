@@ -223,14 +223,21 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 	
 	private IExpressionNode ParseEquality(ref int index)
 	{
-		var node = ParseIs(ref index);
+		var operands = new List<IExpressionNode> { ParseIs(ref index) };
+		var ops = new List<Token>();
+		
 		while (!IsNextNewline(index) && Match(ref index, out var op, _equalityOps))
 		{
-			var right = ParseIs(ref index);
-			node = new BinaryOpExpressionNode(node, op, right);
+			ops.Add(op);
+			operands.Add(ParseIs(ref index));
 		}
 		
-		return node;
+		return operands.Count switch
+		{
+			1 => operands[0],
+			2 => new BinaryOpExpressionNode(operands[0], ops[0], operands[1]),
+			_ => new ChainedExpressionNode(operands, ops)
+		};
 	}
 	
 	private IExpressionNode ParseIs(ref int index)
