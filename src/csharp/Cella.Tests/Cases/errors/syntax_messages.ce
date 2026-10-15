@@ -20,7 +20,7 @@ exponent: fun
 	var big = 1e
 }
 
-array: fun
+values: fun
 {
 	var values = [1, 2
 }

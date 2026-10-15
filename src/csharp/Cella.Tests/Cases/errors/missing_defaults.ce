@@ -47,7 +47,7 @@ record: fun -> i32
 	ret amount(holder.effect) + holder.count
 }
 
-array: fun -> i32
+elements: fun -> i32
 {
 	var effects: array[Effect, 2]
 	effects[0] = Effect.none

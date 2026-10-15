@@ -1,0 +1,8 @@
+
+====== builtin_module_names.ce ======
+
+Error at line 1, column 5
+1 │ mod i32
+        ╘═╛ Cannot use 'i32' as a name
+
+[compilation failed]

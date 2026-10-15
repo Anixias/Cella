@@ -93,6 +93,7 @@ public sealed partial class SignatureCollector
 		Diagnostics.AddRange(ReportDuplicateTypeParameters(node.TypeParameters));
 		
 		ReportDuplicateParameters(node.Parameters);
+		ReportParameterNameClashes(node.TypeParameters, node.Parameters);
 		ReportBorrowParameters(node.Parameters, node.IsExternal, function.Property?.Node?.Type);
 		ReportVariadicParameters(node.Parameters, node.IsExternal ? "'ext' functions"
 			: node.Identifier.Type != TokenType.Identifier ? "operators"
@@ -443,6 +444,18 @@ public sealed partial class SignatureCollector
 		}
 		
 		_variadicTypes.Clear();
+	}
+	
+	private void ReportParameterNameClashes(ImmutableArray<TypeParameterNode> typeParameters,
+		ImmutableArray<ParameterNode> parameters)
+	{
+		var names = parameters.Select(static p => p.Identifier.Text).ToHashSet();
+		var clashes = typeParameters.Select(static p => p.Identifier.Text).Where(names.Contains).ToHashSet();
+		foreach (var identifier in typeParameters.Select(static p => p.Identifier)
+			         .Concat(parameters.Select(static p => p.Identifier))
+			         .Where(identifier => clashes.Contains(identifier.Text)))
+			Diagnostics.Add(new(DiagnosticSeverity.Error, identifier.SourceLocation,
+				$"'{identifier.Text}' is declared more than once"));
 	}
 	
 	private void ReportDuplicateParameters(IEnumerable<ParameterNode> parameters) =>

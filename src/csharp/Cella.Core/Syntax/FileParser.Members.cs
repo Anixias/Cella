@@ -41,6 +41,7 @@ public sealed partial class FileParser
 		if (ParseTypeParameters(ref index) is not { } typeParameters)
 			return null;
 		
+		RejectReservedNames(typeParameters);
 		if (!Match(ref index, TokenType.OpColon))
 		{
 			Report(Tokens[index], $"Expected ':' after '{identifier.Text}'");

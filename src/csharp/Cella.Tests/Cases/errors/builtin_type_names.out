@@ -1,0 +1,44 @@
+
+====== builtin_type_names.ce ======
+
+Error at line 3, column 1
+2 │ 
+3 │ i32: rec { value: u8 }
+    ╘═╛ Cannot use 'i32' as a name
+
+Error at line 5, column 5
+4 │ 
+5 │ box[i32]: rec { value: i32 }
+        ╘═╛ Cannot use 'i32' as a name
+
+Error at line 7, column 1
+6 │ 
+7 │ Self: trait { }
+    ╘══╛ Cannot use 'Self' as a name
+
+Error at line 9, column 1
+8 │ 
+9 │ str: fun = 0
+    ╘═╛ Cannot use 'str' as a name
+
+Error at line 11, column 1
+10 │ 
+11 │ ptr[T]: rec { value: T }
+     ╘═╛ Cannot use 'ptr' as a name
+
+Error at line 13, column 1
+12 │ 
+13 │ array: val i32 = 1
+     ╘═══╛ Cannot use 'array' as a name
+
+Error at line 17, column 7
+16 │ {
+17 │     pick[bool]: fun(imm value: bool) -> i32 = 0
+              ╘══╛ Cannot use 'bool' as a name
+
+Error at line 22, column 2
+21 │ {
+22 │     cstr: fun -> i32
+         ╘══╛ Cannot use 'cstr' as a name
+
+[compilation failed]

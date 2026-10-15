@@ -19,6 +19,7 @@ public sealed partial class FileParser
 			return null;
 		}
 		
+		RejectReservedName(firstPart);
 		parts.Add(firstPart);
 		
 		while (IsOnSameLine(index) && Match(ref index, TokenType.OpDot))

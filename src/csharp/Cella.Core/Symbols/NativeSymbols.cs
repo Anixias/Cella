@@ -94,6 +94,10 @@ public static class NativeSymbols
 	];
 	
 	public static Symbol? Resolve(string name) => _primitiveTypes.GetValueOrDefault(name);
+	
+	public static bool IsBuiltInName(string name) =>
+		_primitiveTypes.ContainsKey(name) || name is "array" or "fstr" or "Self";
+	
 	public static IEnumerable<TypeSymbol> PrimitiveTypes => _primitiveTypes.Values;
 }
 

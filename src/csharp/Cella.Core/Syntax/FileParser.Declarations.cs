@@ -16,7 +16,6 @@ public sealed partial class FileParser
 		else if (!Match(ref index, out identifier, _topLevelContextualKeywords, TokenType.Identifier))
 			return false;
 		
-		RejectDiscardName(identifier);
 		var target = ParseImplTarget(ref index, identifier);
 		if (ParseTypeParameters(ref index) is not { } typeParameters)
 		{
@@ -54,6 +53,9 @@ public sealed partial class FileParser
 			ResyncTopLevel(ref index, insideBlock);
 			return true;
 		}
+		
+		RejectReservedName(identifier);
+		RejectReservedNames(typeParameters);
 		
 		if (Match(ref index, _topLevelContextualKeywords, TokenType.KeywordTrait))
 		{

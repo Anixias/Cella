@@ -148,7 +148,7 @@ public sealed partial class FileParser
 			return null;
 		}
 		
-		RejectDiscardName(identifier);
+		RejectReservedName(identifier);
 		if (!RejectTypeParameters(ref index, "ext functions") || !Match(ref index, TokenType.OpColon))
 			return null;
 		

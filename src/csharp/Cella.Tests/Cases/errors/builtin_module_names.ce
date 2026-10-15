@@ -1,0 +1,3 @@
+mod i32
+
+main: fun -> i32 = 0

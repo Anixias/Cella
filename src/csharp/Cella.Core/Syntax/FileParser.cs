@@ -1,4 +1,5 @@
 ﻿using System.Collections.Immutable;
+using Cella.Core.Symbols;
 using Cella.Core.Syntax.Nodes;
 using Cella.Core.Text;
 using Cella.Diagnostics;
@@ -104,6 +105,18 @@ public sealed partial class FileParser
 	{
 		if (identifier.Text == "_")
 			Report(identifier, "Cannot use '_' as a name");
+	}
+	
+	private void RejectReservedName(Token identifier)
+	{
+		if (identifier.Text == "_" || NativeSymbols.IsBuiltInName(identifier.Text))
+			Report(identifier, $"Cannot use '{identifier.Text}' as a name");
+	}
+	
+	private void RejectReservedNames(List<TypeParameterNode> typeParameters)
+	{
+		foreach (var parameter in typeParameters)
+			RejectReservedName(parameter.Identifier);
 	}
 	
 	private void ReportUnexpected(Token token) => Report(token, token.Error ?? "Unexpected token");

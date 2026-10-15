@@ -2,18 +2,18 @@
 ====== discard_names.ce ======
 
 Error at line 3, column 1
-2 Γöé 
-3 Γöé _: rec { x: i32 }
+2 │ 
+3 │ _: rec { x: i32 }
     ^ Cannot use '_' as a name
 
 Error at line 7, column 2
-6 Γöé {
-7 Γöé     _: i32
+6 │ {
+7 │     _: i32
         ^ Cannot use '_' as a name
 
 Error at line 10, column 6
- 9 Γöé 
-10 Γöé pick[_]: fun -> i32 = 0
+ 9 │ 
+10 │ pick[_]: fun -> i32 = 0
           ^ Cannot use '_' as a name
 
 [compilation failed]
