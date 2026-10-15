@@ -1,0 +1,42 @@
+mod test
+
+Shape: trait
+{
+	area: fun(imm self) -> i32
+}
+
+Holder: rec
+{
+	p: ptr[dyn[Shape]]
+}
+
+Wrap: ext enum
+{
+	one(p: ptr[dyn[Shape]])
+}
+
+View: ref rec
+{
+	p: ptr[i32]
+}
+
+Outer: rec
+{
+	inner: array[Holder, 2]
+}
+
+ext
+{
+	puts: fun(text: str) -> i32
+	take: fun(h: Holder) -> i32
+	takeWrap: fun(w: Wrap)
+	getenv: fun(name: cstr) -> imm[u8]
+	look: fun(v: View)
+	names: fun(list: array[str, 2])
+	outer: fun(o: Outer)
+	keep: fun(p: ptr[Holder])
+}
+
+visit: ext fun(v: View) -> i32 = 0
+
+main: fun -> i32 = 0

@@ -83,9 +83,35 @@ public sealed partial class TypePool
 	public static EnumCaseSymbol? GetElseCase(EnumSymbol enumType) =>
 		enumType.Cases.FirstOrDefault(static enumCase => enumCase.Node.Else is not null);
 	
-	private bool IsExtCompatible(TypeSymbol type) => ExtSignatureTypes.FindForeign(type) is null &&
+	private bool IsExtCompatible(TypeSymbol type) => FindForeign(type) is null &&
 	                                                 ExtSignatureTypes.FindUnconstrained(type) is null &&
 	                                                 FindDestructor(type) is null && FindPlainEnum(type) is null;
+	
+	public TypeSymbol? FindForeign(TypeSymbol type) => FindForeign(type, []);
+	
+	private TypeSymbol? FindForeign(TypeSymbol type, HashSet<TypeSymbol> visited) => type switch
+	{
+		DynType or FStrType or BorrowType or FunctionType { IsExternal: false } or NamedTypeSymbol { IsRef: true } =>
+			type,
+		StringType when type == NativeSymbols.Str => type,
+		PointerType pointer => FindFatTarget(pointer.BaseType),
+		FunctionType function => function.ParameterTypes.Append(function.ReturnType)
+			.Select(part => FindForeign(part, visited))
+			.FirstOrDefault(static foreign => foreign is not null),
+		ArrayType or RecordSymbol or EnumSymbol when visited.Add(type) => GetParts(type)
+			.Select(part => FindForeign(part, visited))
+			.FirstOrDefault(static foreign => foreign is not null),
+		_ => null
+	};
+	
+	private static TypeSymbol? FindFatTarget(TypeSymbol type) => type switch
+	{
+		DynType or FStrType => type,
+		PointerType pointer => FindFatTarget(pointer.BaseType),
+		BorrowType borrow => FindFatTarget(borrow.Target),
+		ArrayType array => FindFatTarget(array.ElementType),
+		_ => null
+	};
 	
 	public EnumSymbol? FindPlainEnum(TypeSymbol type) => FindPlainEnum(type, []);
 	

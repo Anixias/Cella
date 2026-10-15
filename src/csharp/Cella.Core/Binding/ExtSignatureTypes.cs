@@ -25,12 +25,13 @@ public sealed class ExtSignatureTypes(TypePool typePool)
 						typePool.FindPlainEnum(located)!));
 			}
 			
-			if (FindForeign(type) is { } foreign)
+			if (IsForeign(type))
 			{
 				var (located, locatedNode, location) = Locate(type, node, IsForeign);
 				if (reported.Add(location))
-					diagnostics.Add(new(DiagnosticSeverity.Error, location,
-						$"Cannot use '{GetWrittenName(foreign, located, locatedNode)}' in 'ext' signatures"));
+					diagnostics.Add(Report(location,
+						$"Cannot use '{GetWrittenName(located, locatedNode)}' in 'ext' signatures", located,
+						typePool.FindForeign(located)!));
 			}
 			else if (FindUnconstrained(type) is { } parameter)
 			{
@@ -55,12 +56,12 @@ public sealed class ExtSignatureTypes(TypePool typePool)
 	
 	private bool HasPlainEnum(TypeSymbol type) => typePool.FindPlainEnum(type) is not null;
 	
-	private static string GetWrittenName(TypeSymbol foreign, TypeSymbol located, ITypeNode? node) =>
-		foreign is FunctionType function && foreign == located && node is FunctionTypeNode { IsRef: false }
+	private static string GetWrittenName(TypeSymbol located, ITypeNode? node) =>
+		located is FunctionType function && node is FunctionTypeNode { IsRef: false }
 			? function.PlainName
-			: foreign.Name;
+			: located.Name;
 	
-	private static bool IsForeign(TypeSymbol type) => FindForeign(type) is not null;
+	private bool IsForeign(TypeSymbol type) => typePool.FindForeign(type) is not null;
 	
 	public static TypeParameterSymbol? FindUnconstrained(TypeSymbol type) => type switch
 	{
@@ -74,27 +75,6 @@ public sealed class ExtSignatureTypes(TypePool typePool)
 		NamedTypeSymbol named => named.TypeArguments
 			.Select(FindUnconstrained)
 			.FirstOrDefault(static found => found is not null),
-		_ => null
-	};
-	
-	public static TypeSymbol? FindForeign(TypeSymbol type) => type switch
-	{
-		DynType or FStrType or FunctionType { IsExternal: false } => type,
-		PointerType pointer => FindDyn(pointer.BaseType),
-		BorrowType borrow => FindForeign(borrow.Target),
-		ArrayType array => FindForeign(array.ElementType),
-		FunctionType function => function.ParameterTypes.Append(function.ReturnType)
-			.Select(FindForeign)
-			.FirstOrDefault(static foreign => foreign is not null),
-		_ => null
-	};
-	
-	private static TypeSymbol? FindDyn(TypeSymbol type) => type switch
-	{
-		DynType or FStrType => type,
-		PointerType pointer => FindDyn(pointer.BaseType),
-		BorrowType borrow => FindDyn(borrow.Target),
-		ArrayType array => FindDyn(array.ElementType),
 		_ => null
 	};
 	

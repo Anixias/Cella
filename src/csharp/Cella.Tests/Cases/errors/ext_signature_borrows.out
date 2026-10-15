@@ -1,0 +1,47 @@
+
+====== ext_signature_borrows.ce ======
+
+Error at line 30, column 18
+29 │ {
+30 │     puts: fun(text: str) -> i32
+                         ╘═╛ Cannot use 'str' in 'ext' signatures
+
+Error at line 31, column 15
+30 │ puts: fun(text: str) -> i32
+31 │ take: fun(h: Holder) -> i32
+                  ╘════╛ Cannot use 'Holder' in 'ext' signatures
+                       | 'Holder' contains 'dyn[Shape]'
+
+Error at line 32, column 19
+31 │ take: fun(h: Holder) -> i32
+32 │ takeWrap: fun(w: Wrap)
+                      ╘══╛ Cannot use 'Wrap' in 'ext' signatures
+                         | 'Wrap' contains 'dyn[Shape]'
+
+Error at line 33, column 29
+32 │ takeWrap: fun(w: Wrap)
+33 │ getenv: fun(name: cstr) -> imm[u8]
+                                ╘═════╛ Cannot use 'imm[u8]' in 'ext' signatures
+
+Error at line 34, column 15
+33 │ getenv: fun(name: cstr) -> imm[u8]
+34 │ look: fun(v: View)
+                  ╘══╛ Cannot use 'View' in 'ext' signatures
+
+Error at line 35, column 25
+34 │ look: fun(v: View)
+35 │ names: fun(list: array[str, 2])
+                            ╘═╛ Cannot use 'str' in 'ext' signatures
+
+Error at line 36, column 16
+35 │ names: fun(list: array[str, 2])
+36 │ outer: fun(o: Outer)
+                   ╘═══╛ Cannot use 'Outer' in 'ext' signatures
+                       | 'Outer' contains 'dyn[Shape]'
+
+Error at line 40, column 19
+39 │ 
+40 │ visit: ext fun(v: View) -> i32 = 0
+                       ╘══╛ Cannot use 'View' in 'ext' signatures
+
+[compilation failed]

@@ -526,7 +526,8 @@ public readonly struct ResolutionContext
 		{
 			for (var i = 0; i < node.ParameterTypes.Length; i++)
 			{
-				if (node.ParameterTypes[i] is not (BorrowTypeNode or FunctionTypeNode { IsRef: true }))
+				if (node.Ellipses[i] is null &&
+				    node.ParameterTypes[i] is not (BorrowTypeNode or FunctionTypeNode { IsRef: true }))
 					signatureTypes.Add(functionType.GetDeclaredType(i), node.ParameterTypes[i]);
 			}
 			

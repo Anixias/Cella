@@ -87,7 +87,7 @@ public sealed partial class SignatureCollector
 			
 			for (var i = 0; i < parameters.Length; i++)
 			{
-				if (!IsWrittenBorrow(parameters[i].Type))
+				if (parameters[i].Ellipsis is null && !IsWrittenBorrow(parameters[i].Type))
 					yield return (info.Signature.GetDeclaredType(i), parameters[i].Type);
 			}
 			
