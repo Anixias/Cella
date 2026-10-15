@@ -1,0 +1,23 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Bag: rec
+{
+	values: array[i32, 3]
+
+	[]: op(imm self, i: usize) -> imm[i32] = imm self.values[i]
+	[]: op(mut self, i: usize) -> mut[i32] = mut self.values[i]
+}
+
+main: fun -> i32
+{
+	var bag = Bag([1, 2, 3])
+	bag[1] = 20
+	val copy = bag
+	printf("%d %d %d\n", bag[1], copy[2], bag[0])
+	ret 0
+}

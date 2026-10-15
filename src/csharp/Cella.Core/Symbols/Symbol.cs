@@ -174,6 +174,7 @@ public sealed class TypeParameterSymbol(string name, IEnumerable<Token> keywords
 	public bool HasDefault => Has(TokenType.KeywordDefault);
 	public bool IsTrait => Has(TokenType.KeywordTrait);
 	public bool IsValue { get; init; }
+	public bool IsSelf { get; init; }
 	public string? Owner { get; init; }
 	public TypeSymbol? ValueType { get; internal set; }
 	

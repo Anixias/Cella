@@ -262,7 +262,8 @@ public sealed partial class SignatureCollector
 	};
 	
 	private static bool IsPlaceResult(TypeSymbol type, BorrowType result, ParameterMode mode) =>
-		result.IsMutable == (mode == ParameterMode.Mut) || result.IsMutable && type is NamedTypeSymbol { IsRef: true };
+		result.IsMutable == (mode == ParameterMode.Mut) ||
+		result.IsMutable && type is NamedTypeSymbol { IsRef: true } or TypeParameterSymbol { IsSelf: true };
 	
 	private static bool HaveSameIndices(FunctionSignature first, FunctionSignature second) =>
 		first.ParameterTypes.Length == second.ParameterTypes.Length &&

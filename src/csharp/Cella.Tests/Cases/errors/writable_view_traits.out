@@ -1,0 +1,14 @@
+
+====== writable_view_traits.ce ======
+
+Error at line 12, column 28
+11 │ 
+12 │ []: op(self, i: usize) -> mut[i32] = mut self.values[i]
+                               ╘══════╛ Cannot return 'mut[i32]' from '[]' with 'self'
+
+Error at line 19, column 2
+18 │ 
+19 │ []: op(mut self, i: usize) -> mut[i32] = mut self.values[i]
+     ╘╛ '[]' doesn't match 'Writable[i32].[]'
+
+[compilation failed]

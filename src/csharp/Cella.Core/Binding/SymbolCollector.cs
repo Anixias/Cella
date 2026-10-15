@@ -336,7 +336,7 @@ public sealed class SymbolCollector : IDeclarationNodeVisitor<Symbol>
 	
 	public Symbol Visit(TraitNode node)
 	{
-		var self = new TypeParameterSymbol("Self", []);
+		var self = new TypeParameterSymbol("Self", []) { IsSelf = true };
 		var typeParameters = CreateTypeParameters(node.TypeParameters, node.Identifier.Text);
 		_typeStack.Push(node.Identifier.Text);
 		_typeVisibilities.Push(Visibility.FromKeyword(node.Visibility));
