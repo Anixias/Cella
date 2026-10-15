@@ -1,0 +1,9 @@
+mod test
+
+reset[T: null]: fun -> T = null
+
+main: fun -> i32
+{
+	val f = reset[fun[i32 -> i32]]()
+	ret 0
+}

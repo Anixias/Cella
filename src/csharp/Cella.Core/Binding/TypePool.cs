@@ -18,6 +18,7 @@ public sealed partial class TypePool
 	public List<(TypeSymbol Type, SourceLocation Location, FunctionSymbol? Owner)> SizeChecks { get; } = [];
 	
 	public Dictionary<FunctionSymbol, List<(TypeSymbol Type, SourceLocation Location)>> GenericSizeChecks { get; } = [];
+	public Dictionary<FunctionSymbol, List<(TypeSymbol Type, SourceLocation Location)>> GenericNullChecks { get; } = [];
 	
 	private readonly Dictionary<TypeSymbol, OrderedDictionary<string, MemberSymbol>> _members = [];
 	private readonly Dictionary<(TypeSymbol, BigInteger), ArrayType> _arrayTypes = [];

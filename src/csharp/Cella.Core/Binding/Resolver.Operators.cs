@@ -229,6 +229,13 @@ public sealed partial class Resolver
 				candidates = [..candidates.Where(candidate => candidate.ParameterTypes.All(type => type == mixedType))];
 			}
 			
+			if (op.Type is TokenType.OpEqualEqual or TokenType.OpBangEqual &&
+			    FindNullableOperand(left, right) is { } nullable)
+				return new ResolvedBinaryOpExpressionNode(MaterializeExpression(left, nullable),
+					MaterializeExpression(right, nullable),
+					new NativeImpl(op.Type, NativeSymbols.Bool, nullable, nullable),
+					node);
+			
 			if (left.Type is PointerType { BaseType: var leftBase } &&
 			    right.Type is PointerType { BaseType: var rightBase } &&
 			    leftBase != rightBase && leftBase != NativeSymbols.Void && rightBase != NativeSymbols.Void)
@@ -549,4 +556,12 @@ public sealed partial class Resolver
 	
 	private static string GetDisplayName(IResolvedExpressionNode node) =>
 		IsBorrowedFunctionParameter(node) && node.Type is FunctionType function ? function.PlainName : node.Type.Name;
+	
+	private static TypeSymbol? FindNullableOperand(IResolvedExpressionNode left, IResolvedExpressionNode right) =>
+		(left.Type, right.Type) switch
+		{
+			(TypeParameterSymbol { HasNull: true } type, UntypedNullType) => type,
+			(UntypedNullType, TypeParameterSymbol { HasNull: true } type) => type,
+			_ => null
+		};
 }

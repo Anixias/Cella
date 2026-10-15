@@ -305,7 +305,9 @@ public sealed class UntypedNullType() : UntypedType("null")
 	
 	public override int MaterializationCost(TypeSymbol target, MaterializationMode mode) => mode switch
 	{
-		MaterializationMode.Overload => target is PointerType ? 0 : int.MaxValue,
+		MaterializationMode.Overload => target is PointerType or TypeParameterSymbol { HasNull: true }
+			? 0
+			: int.MaxValue,
 		_ => target == NativeSymbols.VoidPtr ? 0 : int.MaxValue
 	};
 }

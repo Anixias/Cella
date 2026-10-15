@@ -1,0 +1,21 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+reset[T: null]: fun -> T = null
+
+isEmpty[T: null]: fun(imm value: T) -> bool = value == null
+
+isSet[T: null]: fun(imm value: T) -> bool = null != value
+
+main: fun -> i32
+{
+	var x = 5
+	val p: ptr[i32] = reset[ptr[i32]]()
+	val q = @x
+	val c = reset[cstr]()
+	printf("%d %d %d %d\n", i32(p == null), i32(isEmpty(imm p)), i32(isSet(imm q)), i32(isEmpty(imm c)))
+	ret 0
+}

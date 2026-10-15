@@ -288,6 +288,8 @@ public sealed partial class Resolver
 			UntypedFloatType when target is FloatType t => MaterializeFloat(literal, t),
 			UntypedNullType when target is PointerType || target == NativeSymbols.CStr =>
 				MaterializeNull(literal, target),
+			UntypedNullType when target is TypeParameterSymbol { HasNull: true } =>
+				MaterializeGenericNull(literal, target),
 			UntypedStringType when target is StringType t => t == NativeSymbols.CStr
 				? MaterializeCStr(literal)
 				: MaterializeStr(literal),
@@ -349,6 +351,19 @@ public sealed partial class Resolver
 		
 		var significand = magnitude >> (int)BigInteger.TrailingZeroCount(magnitude);
 		return significand.GetBitLength() <= significandBits && magnitude.GetBitLength() <= maxBitLength;
+	}
+	
+	private ResolvedLiteralExpressionNode MaterializeGenericNull(ResolvedLiteralExpressionNode node, TypeSymbol target)
+	{
+		if (CurrentResolutionContext.ContainingFunction?.Symbol is { } owner)
+		{
+			if (!_typePool.GenericNullChecks.TryGetValue(owner, out var checks))
+				_typePool.GenericNullChecks[owner] = checks = [];
+			
+			checks.Add((target, node.Syntax.SourceLocation));
+		}
+		
+		return MaterializeNull(node, target);
 	}
 	
 	private ResolvedLiteralExpressionNode MaterializeNull(ResolvedLiteralExpressionNode node, TypeSymbol target)
