@@ -105,7 +105,7 @@ public sealed partial class Resolver
 		
 		if (node.Target is AccessExpressionNode access && ResolveEnumType(access.Target) is { } enumType)
 			return DeclaresNonCaseMember(enumType, access.Member.Text)
-				? VisitStaticCall(node, access, RequireTypeArguments(enumType, access.Target))
+				? VisitStaticCall(node, access, ResolveStaticOwner(node, access, enumType))
 				: VisitEnumCase(access, enumType, node);
 		
 		if (CurrentResolutionContext.TryResolveExpressionAsType(node.Target) is not { } targetType)

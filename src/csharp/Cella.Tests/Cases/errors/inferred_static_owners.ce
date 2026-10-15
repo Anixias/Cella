@@ -1,0 +1,15 @@
+mod test
+
+option[T]: enum
+{
+	none
+	some(value: T)
+
+	empty: fun -> option[T] = option[T].none
+}
+
+main: fun -> i32
+{
+	val o = option.empty()
+	ret 0
+}

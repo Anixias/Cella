@@ -18,7 +18,7 @@ public sealed partial class Resolver
 		if (CurrentResolutionContext.TryResolveExpressionAsType(access.Target) is { } type)
 			return indexer is not null && type is EnumSymbol && HasCase(type, access.Member.Text)
 				? Error(node, "Cannot pass type arguments to cases", CurrentTargetType, indexer.SourceLocation)
-				: VisitStaticCall(node, access, RequireTypeArguments(type, access.Target), indexer);
+				: VisitStaticCall(node, access, ResolveStaticOwner(node, access, type), indexer);
 		
 		if (access.Member.Type != TokenType.Identifier)
 			return Error(node, $"Cannot call '{access.Member.Text}' through a value", CurrentTargetType,
@@ -103,6 +103,61 @@ public sealed partial class Resolver
 	
 	private IResolvedExpressionNode Index(IndexerExpressionNode? indexer, IResolvedExpressionNode target) =>
 		indexer is null ? target : ResolveIndexing(indexer, target);
+	
+	private TypeSymbol ResolveStaticOwner(CallExpressionNode node, AccessExpressionNode access, TypeSymbol type) =>
+		type is NamedTypeSymbol { IsGenericDefinition: true } definition && access.Target is not IndexerExpressionNode
+			? InferStaticOwner(node, access, definition) ?? NativeSymbols.Invalid
+			: RequireTypeArguments(type, access.Target);
+	
+	private TypeSymbol? InferStaticOwner(CallExpressionNode node, AccessExpressionNode access,
+		NamedTypeSymbol definition)
+	{
+		var name = access.Member.Text;
+		var statics = FindAccessible(definition, FindStatics(definition, name));
+		if (statics.Length == 0 || node.Arguments.Any(static argument => argument is SpreadExpressionNode))
+			return RequireTypeArguments(definition, access.Target);
+		
+		var trial = OpenCheckpoint();
+		var args = node.Arguments.Select(argument => VisitNode(argument, null)).ToArray();
+		var failures = new List<Diagnostic>();
+		var location = access.Target.SourceLocation;
+		var owners = new List<NamedTypeSymbol>();
+		foreach (var method in statics)
+		{
+			var signature = GetFunctionInfo(method, definition).Signature;
+			if (signature.ParameterTypes.Length < args.Length)
+				continue;
+			
+			var inputs = args.Select((arg, i) =>
+				CreateInferenceInput(signature.ParameterTypes[i], signature.GetMode(i), arg));
+			
+			var result = _inference.Infer(definition.TypeParameters, inputs.OfType<InferenceInput>(),
+				signature.ReturnType, ExpectedType);
+			
+			if (InstantiateInferred(result, definition, definition.Name, location, failures) is { } owner &&
+			    !owners.Contains(owner))
+				owners.Add(owner);
+		}
+		
+		Rollback(trial);
+		switch (owners)
+		{
+			case [var only]:
+				return only;
+			
+			case []:
+				Diagnostics.Add(failures.FirstOrDefault() ??
+				                ResolutionContext.ReportGenericArgumentCount(location, definition));
+				
+				return null;
+			
+			default:
+				Diagnostics.Add(new(DiagnosticSeverity.Error, access.Member.SourceLocation,
+					$"Call to '{GetName(access)}' is ambiguous"));
+				
+				return null;
+		}
+	}
 	
 	private IResolvedExpressionNode VisitStaticCall(CallExpressionNode node, AccessExpressionNode access,
 		TypeSymbol type, IndexerExpressionNode? indexer = null)

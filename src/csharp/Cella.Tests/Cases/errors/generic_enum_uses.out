@@ -24,7 +24,7 @@ Error at line 22, column 23
 Error at line 23, column 16
 22 │ val missing = option.nothing
 23 │ val statics = option.empty()
-                   ╘════╛ 'option' takes one generic argument
+                   ╘════╛ Cannot infer 'T' for 'option'
 
 Error at line 24, column 18
 23 │ val statics = option.empty()

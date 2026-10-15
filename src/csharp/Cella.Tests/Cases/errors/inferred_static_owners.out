@@ -1,0 +1,9 @@
+
+====== inferred_static_owners.ce ======
+
+Error at line 13, column 10
+12 │ {
+13 │     val o = option.empty()
+                 ╘════╛ Cannot infer 'T' for 'option'
+
+[compilation failed]
