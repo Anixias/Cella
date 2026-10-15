@@ -147,14 +147,18 @@ public sealed partial class CodeGenerator
 		var parameterTypes = function.Signature.ParameterTypes.Select(MapTypeSymbol).ToArray();
 		var signature = _cAbi.Classify(parameterTypes, target.ReturnType);
 		var thunk = current.Module.AddFunction(name, signature.CreateFunctionType(false));
-		thunk.Linkage = LLVMLinkage.LLVMInternalLinkage;
-		
 		var isIndirect = signature.Return.Kind == CPassKind.Indirect;
 		if (isIndirect)
 			AddSretAttribute(thunk, signature.Return.Type, false);
 		
 		AddBoolExtensions(thunk, signature, false);
+		if (target.FunctionValue.DLLStorageClass == LLVMDLLStorageClass.LLVMDLLImportStorageClass)
+		{
+			Import(thunk, function.Symbol);
+			return thunk;
+		}
 		
+		ShareDefinition(thunk, IsExported(function.Symbol));
 		using var builder = CreateGeneratedBuilder(thunk, GetAdapterName(function), function.Symbol.Definition);
 		var first = isIndirect ? 1u : 0u;
 		var args = function.Signature.ParameterTypes
@@ -203,6 +207,7 @@ public sealed partial class CodeGenerator
 				current.ExternalLibraries.Add(origin);
 			
 			value.Linkage = LLVMLinkage.LLVMExternalLinkage;
+			value.DLLStorageClass = LLVMDLLStorageClass.LLVMDLLImportStorageClass;
 		}
 		else if (!IsDefinedHere(function.Symbol))
 		{
@@ -215,6 +220,13 @@ public sealed partial class CodeGenerator
 		
 		return value;
 	}
+	
+	private bool ExportsAdapter(FunctionInfo function) =>
+		_inputs.Exports.Contains(function.Symbol) &&
+		function.Symbol is { Kind: FunctionKind.Free, IsExternal: false, Captures.IsEmpty: true } &&
+		!IsOpenGeneric(function) &&
+		function.Signature.ParameterModes.All(static mode => mode == ParameterMode.ReadOnly) &&
+		function.Signature.ParameterTypes.Append(function.Signature.ReturnType).All(_typePool.IsExtCompatible);
 	
 	private bool IsDefinedHere(FunctionSymbol symbol)
 	{

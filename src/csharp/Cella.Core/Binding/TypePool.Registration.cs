@@ -83,9 +83,9 @@ public sealed partial class TypePool
 	public static EnumCaseSymbol? GetElseCase(EnumSymbol enumType) =>
 		enumType.Cases.FirstOrDefault(static enumCase => enumCase.Node.Else is not null);
 	
-	private bool IsExtCompatible(TypeSymbol type) => FindForeign(type) is null &&
-	                                                 ExtSignatureTypes.FindUnconstrained(type) is null &&
-	                                                 FindDestructor(type) is null && FindPlainEnum(type) is null;
+	public bool IsExtCompatible(TypeSymbol type) => FindForeign(type) is null &&
+	                                                ExtSignatureTypes.FindUnconstrained(type) is null &&
+	                                                FindDestructor(type) is null && FindPlainEnum(type) is null;
 	
 	public TypeSymbol? FindForeign(TypeSymbol type) => FindForeign(type, []);
 	

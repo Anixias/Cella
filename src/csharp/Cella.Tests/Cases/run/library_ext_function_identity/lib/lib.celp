@@ -1,0 +1,2 @@
+OutputType = "SharedLibrary"
+SystemLinkPreference = "Dynamic"

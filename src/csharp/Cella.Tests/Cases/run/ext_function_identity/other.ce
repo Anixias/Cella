@@ -1,0 +1,14 @@
+mod other
+
+ext
+{
+	SetConsoleCtrlHandler: fun(handler: ext fun[u32 -> i32], add: i32) -> i32
+}
+
+remove: fun -> i32 = SetConsoleCtrlHandler(test.onCtrl, 0)
+
+address: fun -> ptr
+{
+	val there: ext fun[i32 -> i32] = test.twice
+	ret ptr(there)
+}

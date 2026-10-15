@@ -856,10 +856,14 @@ internal static class Program
 				continue;
 			
 			if (line.StartsWith(UndefinedSymbol, StringComparison.Ordinal) &&
-			    declarations.TryGetValue(line[UndefinedSymbol.Length..], out var declaration))
+			    line[UndefinedSymbol.Length..] is var undefined &&
+			    (undefined.StartsWith(ImportPrefix, StringComparison.Ordinal)
+				    ? undefined[ImportPrefix.Length..]
+				    : undefined)
+			    is var symbol && declarations.TryGetValue(symbol, out var declaration))
 			{
 				diagnostics.Add(new(DiagnosticSeverity.Error, declaration,
-					$"Cannot find '{line[UndefinedSymbol.Length..]}' in the linked libraries"));
+					$"Cannot find '{symbol}' in the linked libraries"));
 				
 				continue;
 			}
@@ -882,6 +886,7 @@ internal static class Program
 	
 	private const string UndefinedSymbol = "lld: error: undefined symbol: ";
 	private const string MissingFile = "lld: error: could not open '";
+	private const string ImportPrefix = "__declspec(dllimport) ";
 	
 	private static string ResolveLibrary(string origin, string projectDirectory)
 	{

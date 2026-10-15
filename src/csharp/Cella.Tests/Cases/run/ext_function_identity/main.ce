@@ -1,0 +1,20 @@
+mod test
+
+ext
+{
+	SetConsoleCtrlHandler: fun(handler: ext fun[u32 -> i32], add: i32) -> i32
+	printf: fun(format: cstr, ...) -> i32
+}
+
+onCtrl: fun(kind: u32) -> i32 = 0
+
+twice: fun(x: i32) -> i32 = x * 2
+
+main: fun -> i32
+{
+	val added = SetConsoleCtrlHandler(onCtrl, 1)
+	val removed = other.remove()
+	val here: ext fun[i32 -> i32] = twice
+	printf("%d %d %d\n", added, removed, ptr(here) == other.address())
+	ret 0
+}

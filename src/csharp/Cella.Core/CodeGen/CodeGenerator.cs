@@ -523,11 +523,9 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 				if (function.Origin is { } origin)
 					current.ExternalLibraries.Add(origin);
 				
-				var info = CreateFunction(current.Module, function);
-				var llvmFunction = info.FunctionValue;
+				var llvmFunction = CreateFunction(current.Module, function).FunctionValue;
 				llvmFunction.Linkage = LLVMLinkage.LLVMExternalLinkage;
-				
-				// TODO On Windows, check for DLL Import metadata/annotation/attribute
+				llvmFunction.DLLStorageClass = LLVMDLLStorageClass.LLVMDLLImportStorageClass;
 			}
 			
 			// Create and map imported functions
@@ -566,6 +564,10 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 				if (_assemblySymbol.EntryPoint?.Symbol == function.Info.Symbol)
 					current.EntryPoint = info;
 			}
+			
+			foreach (var function in file.Functions.Where(function => IsEmitted(function.Info) &&
+			                                                          ExportsAdapter(function.Info)))
+				_exportNames.Add(new(GetExternalThunk(function.Info).Name, false));
 		}
 		
 		foreach (var file in module.Files)

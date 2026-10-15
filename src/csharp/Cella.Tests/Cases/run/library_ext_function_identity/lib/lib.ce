@@ -1,0 +1,20 @@
+mod lib
+
+ext
+{
+	GetTickCount: fun -> u32
+}
+
+twice: pub fun(x: i32) -> i32 = x * 2
+
+twiceAddress: pub fun -> ptr
+{
+	val f: ext fun[i32 -> i32] = twice
+	ret ptr(f)
+}
+
+tickAddress: pub fun -> ptr
+{
+	val f: ext fun[-> u32] = GetTickCount
+	ret ptr(f)
+}

@@ -1,0 +1,15 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+	GetTickCount: fun -> u32
+}
+
+main: fun -> i32
+{
+	val mine: ext fun[i32 -> i32] = lib.twice
+	val tick: ext fun[-> u32] = GetTickCount
+	printf("%d %d %d\n", ptr(mine) == lib.twiceAddress(), ptr(tick) == lib.tickAddress(), mine(21))
+	ret 0
+}
