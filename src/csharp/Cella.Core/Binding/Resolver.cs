@@ -225,6 +225,8 @@ public sealed partial class Resolver : IStatementNodeVisitor<IResolvedStatementN
 		Conversion?[] ArgumentConversions
 	);
 	
+	private const int VoidResultRank = 2;
+	
 	private readonly record struct CallableCost
 	(
 		int ResultRank,
@@ -236,9 +238,9 @@ public sealed partial class Resolver : IStatementNodeVisitor<IResolvedStatementN
 	{
 		public int CompareTo(CallableCost other)
 		{
-			var resultRankComparison = ResultRank.CompareTo(other.ResultRank);
-			if (resultRankComparison != 0)
-				return resultRankComparison;
+			var voidComparison = (ResultRank == VoidResultRank).CompareTo(other.ResultRank == VoidResultRank);
+			if (voidComparison != 0)
+				return voidComparison;
 			
 			var conversionCostComparison = ConversionCost.CompareTo(other.ConversionCost);
 			if (conversionCostComparison != 0)
@@ -247,6 +249,10 @@ public sealed partial class Resolver : IStatementNodeVisitor<IResolvedStatementN
 			var materializationCostComparison = MaterializationCost.CompareTo(other.MaterializationCost);
 			if (materializationCostComparison != 0)
 				return materializationCostComparison;
+			
+			var resultRankComparison = ResultRank.CompareTo(other.ResultRank);
+			if (resultRankComparison != 0)
+				return resultRankComparison;
 			
 			var resultCostComparison = ResultCost.CompareTo(other.ResultCost);
 			return resultCostComparison != 0 ? resultCostComparison : GenericRank.CompareTo(other.GenericRank);

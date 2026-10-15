@@ -1,0 +1,30 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+f: fun(x: i32) -> i32
+{
+	printf("i32\n")
+	ret 1
+}
+
+f: fun(x: i64) -> i64
+{
+	printf("i64\n")
+	ret 2
+}
+
+main: fun -> i32
+{
+	val a: i32 = 5
+	val b: i64 = 6
+	val r: i64 = f(a)
+	val s = f(a)
+	val t: i64 = f(b)
+	val u: i64 = f(7)
+	printf("%lld %d %lld %lld\n", r, s, t, u)
+	ret 0
+}

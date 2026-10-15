@@ -64,7 +64,7 @@ public sealed partial class Resolver
 					continue;
 				
 				// Exact returns beat converted returns, so set to a higher cost
-				resultRank = 1;
+				resultRank = candidate.ReturnType == NativeSymbols.Void ? VoidResultRank : 1;
 				resultCost = conversion?.Cost ?? 0;
 				resultConversion = conversion;
 			}
