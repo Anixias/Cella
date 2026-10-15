@@ -25,6 +25,11 @@ Outer: rec
 	inner: array[Holder, 2]
 }
 
+Callbacks: rec
+{
+	list: array[fun[], 2]
+}
+
 ext
 {
 	puts: fun(text: str) -> i32
@@ -32,8 +37,11 @@ ext
 	takeWrap: fun(w: Wrap)
 	getenv: fun(name: cstr) -> imm[u8]
 	look: fun(v: View)
-	names: fun(list: array[str, 2])
+	numbers: fun(list: array[i32, 2])
+	make: fun -> array[u8, 4]
+	read: fun(imm data: array[u8, 8]) -> usize
 	outer: fun(o: Outer)
+	calls: fun(c: Callbacks)
 	keep: fun(p: ptr[Holder])
 }
 

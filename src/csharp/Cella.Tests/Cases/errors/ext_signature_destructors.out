@@ -38,10 +38,10 @@ Error at line 37, column 20
                        ╘════╛ Cannot use types with destructors in 'ext' signatures
                             | 'Packet' contains 'Buffer'
 
-Error at line 38, column 26
+Error at line 38, column 20
 37 │ send: fun(packet: Packet)
 38 │ all: fun(buffers: array[Buffer, 2])
-                             ╘════╛ Cannot use types with destructors in 'ext' signatures
+                       ╘══════════════╛ Cannot use 'array[Buffer, 2]' in 'ext' signatures
 
 Error at line 39, column 34
 38 │ all: fun(buffers: array[Buffer, 2])

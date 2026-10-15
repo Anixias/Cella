@@ -17,9 +17,9 @@ Error at line 12, column 15
                   ╘══╛ 'pick' requires 'T: ext'
                      | 'Team' can't be used in 'ext' signatures
 
-Error at line 13, column 31
+Error at line 13, column 25
 12 │ val n = pick[Team](null)
 13 │ ret i32(sizeOf(ext fun[array[Team, 2]]))
-                                  ╘══╛ Cannot use plain enums in 'ext' signatures
+                            ╘════════════╛ Cannot use 'array[Team, 2]' in 'ext' signatures
 
 [compilation failed]

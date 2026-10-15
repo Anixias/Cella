@@ -528,11 +528,12 @@ public readonly struct ResolutionContext
 			{
 				if (node.Ellipses[i] is null &&
 				    node.ParameterTypes[i] is not (BorrowTypeNode or FunctionTypeNode { IsRef: true }))
-					signatureTypes.Add(functionType.GetDeclaredType(i), node.ParameterTypes[i]);
+					signatureTypes.Add(functionType.GetDeclaredType(i), node.ParameterTypes[i],
+						ExtSignatureTypes.PassesByValue(modes[i]));
 			}
 			
 			if (node.ReturnType is not null)
-				signatureTypes.Add(returnType, node.ReturnType);
+				signatureTypes.Add(returnType, node.ReturnType, true);
 		}
 		
 		return functionType;

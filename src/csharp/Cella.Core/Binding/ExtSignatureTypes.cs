@@ -7,16 +7,27 @@ namespace Cella.Core.Binding;
 
 public sealed class ExtSignatureTypes(TypePool typePool)
 {
-	private readonly List<(TypeSymbol Type, ITypeNode Node)> _types = [];
+	private readonly List<(TypeSymbol Type, ITypeNode Node, bool IsPassed)> _types = [];
 	
-	public void Add(TypeSymbol type, ITypeNode node) => _types.Add((type, node));
+	public void Add(TypeSymbol type, ITypeNode node, bool isPassed) => _types.Add((type, node, isPassed));
+	
+	public static bool PassesByValue(ParameterMode mode) => mode is ParameterMode.ReadOnly or ParameterMode.Own;
 	
 	public void Report(DiagnosticList diagnostics)
 	{
 		var reported = new HashSet<SourceLocation>();
 		var enums = new HashSet<SourceLocation>();
-		foreach (var (type, node) in _types)
+		foreach (var (type, node, isPassed) in _types)
 		{
+			if (isPassed && type is ArrayType)
+			{
+				if (reported.Add(node.SourceLocation))
+					diagnostics.Add(new(DiagnosticSeverity.Error, node.SourceLocation,
+						$"Cannot use '{type.Name}' in 'ext' signatures"));
+				
+				continue;
+			}
+			
 			if (HasPlainEnum(type))
 			{
 				var (located, _, location) = Locate(type, node, HasPlainEnum);

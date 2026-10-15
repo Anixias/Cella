@@ -59,18 +59,18 @@ public sealed partial class SignatureCollector
 	
 	private void ReportExtSignatureTypes()
 	{
-		foreach (var (type, node) in GetExtSignatureTypes())
-			_extSignatureTypes.Add(type, node);
+		foreach (var (type, node, isPassed) in GetExtSignatureTypes())
+			_extSignatureTypes.Add(type, node, isPassed);
 		
 		_extSignatureTypes.Report(Diagnostics);
 	}
 	
-	private IEnumerable<(TypeSymbol Type, ITypeNode Node)> GetExtSignatureTypes()
+	private IEnumerable<(TypeSymbol Type, ITypeNode Node, bool IsPassed)> GetExtSignatureTypes()
 	{
 		foreach (var (global, info) in _builder.Globals)
 		{
 			if (global.IsExternal)
-				yield return (info.Type, global.Syntax.Type);
+				yield return (info.Type, global.Syntax.Type, false);
 		}
 		
 		foreach (var (function, info) in _builder.Functions)
@@ -88,11 +88,12 @@ public sealed partial class SignatureCollector
 			for (var i = 0; i < parameters.Length; i++)
 			{
 				if (parameters[i].Ellipsis is null && !IsWrittenBorrow(parameters[i].Type))
-					yield return (info.Signature.GetDeclaredType(i), parameters[i].Type);
+					yield return (info.Signature.GetDeclaredType(i), parameters[i].Type,
+						ExtSignatureTypes.PassesByValue(info.Signature.GetMode(i)));
 			}
 			
 			if (returnType is not null)
-				yield return (info.Signature.ReturnType, returnType);
+				yield return (info.Signature.ReturnType, returnType, true);
 		}
 	}
 	

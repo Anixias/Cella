@@ -11,10 +11,10 @@ Error at line 6, column 18
 6 │ handler: fun -> ref fun[]
                     ╘═══════╛ Cannot use 'ref fun[]' in 'ext' signatures
 
-Error at line 7, column 29
+Error at line 7, column 23
 6 │ handler: fun -> ref fun[]
 7 │ pair: fun(callbacks: array[fun[], 2])
-                               ╘═══╛ Cannot use 'fun[]' in 'ext' signatures
+                         ╘═════════════╛ Cannot use 'array[fun[], 2]' in 'ext' signatures
 
 Error at line 8, column 32
 7 │ pair: fun(callbacks: array[fun[], 2])

@@ -1,0 +1,21 @@
+mod test
+
+Name: rec
+{
+	text: array[u8, 8]
+}
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+	strlen: fun(imm text: array[u8, 8]) -> usize
+	measure: ext("strlen") fun(imm name: Name) -> usize
+}
+
+main: fun -> i32
+{
+	val text: array[u8, 8] = [104, 105, 0, 0, 0, 0, 0, 0]
+	val name = Name([99, 101, 108, 108, 97, 0, 0, 0])
+	printf("%zu %zu\n", strlen(imm text), measure(imm name))
+	ret 0
+}
