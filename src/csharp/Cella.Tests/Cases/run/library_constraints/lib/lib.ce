@@ -30,13 +30,13 @@ holder[T]: pub rec
 {
 	count: i32
 
-	new: op()
+	new: op
 	{
 		self.count = 5
 	}
 }
 
-make[T: new()]: pub fun -> T = T()
+make[T: new]: pub fun -> T = T()
 
 Meters: pub rec
 {

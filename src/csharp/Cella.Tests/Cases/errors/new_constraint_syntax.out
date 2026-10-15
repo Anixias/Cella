@@ -1,16 +1,6 @@
 
 ====== new_constraint_syntax.ce ======
 
-Error at line 3, column 13
-2 │ 
-3 │ first[T: new]: fun -> i32 = 0
-                ^ Expected '('
-
-Error at line 5, column 15
-4 │ 
-5 │ second[T: new + copy]: fun -> i32 = 0
-                  ^ Expected '('
-
 Error at line 7, column 14
 6 │ 
 7 │ third[T: new(3)]: fun -> i32 = 0

@@ -10,7 +10,7 @@ Vec2: rec
 	x: f32
 	y: f32
 
-	new: op() = default
+	new: op = default
 
 	new: op(x: f32, y: f32)
 	{

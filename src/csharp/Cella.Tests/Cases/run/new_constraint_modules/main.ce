@@ -16,7 +16,7 @@ Score: mod rec
 		self.n = value + 30
 	}
 
-	new: mod op()
+	new: mod op
 	{
 		self.n = 12
 	}

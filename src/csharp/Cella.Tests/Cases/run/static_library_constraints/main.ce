@@ -23,7 +23,7 @@ Counter: rec
 {
 	n: i32
 
-	new: op()
+	new: op
 	{
 		self.n = 9
 	}

@@ -23,6 +23,9 @@ public sealed partial class Resolver
 		Diagnostics.AddRange(DiagnosticReporter.ReportDuplicates(node.Parameters.Select(static p => p.Identifier),
 			static name => $"Parameter '{name}' is declared more than once"));
 		
+		if (node.EmptyParentheses is { } parentheses)
+			Diagnostics.Add(new(DiagnosticSeverity.Hint, parentheses, "Redundant '()'"));
+		
 		var modes = new ParameterMode[node.Parameters.Length];
 		var types = new TypeSymbol[node.Parameters.Length];
 		for (var i = 0; i < node.Parameters.Length; i++)

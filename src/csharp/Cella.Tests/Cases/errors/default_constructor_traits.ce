@@ -2,7 +2,7 @@ mod test
 
 Shape: trait
 {
-	new: op() = default
+	new: op = default
 }
 
 main: fun -> i32 = 0

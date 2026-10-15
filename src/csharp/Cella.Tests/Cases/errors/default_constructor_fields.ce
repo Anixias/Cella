@@ -17,14 +17,14 @@ Bad: rec
 	v: Vec2
 	f: fun[-> i32]
 
-	new: op() = default
+	new: op = default
 }
 
 box[T]: rec
 {
 	value: T
 
-	new: op() = default
+	new: op = default
 }
 
 main: fun -> i32 = 0

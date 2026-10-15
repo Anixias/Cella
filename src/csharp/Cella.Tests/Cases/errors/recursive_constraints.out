@@ -10,7 +10,7 @@ Error at line 24, column 13
 Error at line 30, column 13
 29 │ {
 30 │     up: holder[Needy]
-                    ╘═══╛ 'holder' requires 'T: new()'
+                    ╘═══╛ 'holder' requires 'T: new'
                         | 'Needy' has no constructor without parameters
 
 [compilation failed]

@@ -28,13 +28,13 @@ Error at line 20, column 22
 
 Error at line 22, column 10
 21 │ 
-22 │ third[T: new() + new()]: fun -> i32 = 0
-              ╘═══╛ 'new()' is required more than once
+22 │ third[T: new + new]: fun -> i32 = 0
+              ╘═╛ 'new' is required more than once
 
-Error at line 22, column 18
+Error at line 22, column 16
 21 │ 
-22 │ third[T: new() + new()]: fun -> i32 = 0
-                      ╘═══╛ 'new()' is required more than once
+22 │ third[T: new + new]: fun -> i32 = 0
+                    ╘═╛ 'new' is required more than once
 
 Error at line 24, column 11
 23 │ 

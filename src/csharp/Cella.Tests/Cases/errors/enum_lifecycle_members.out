@@ -3,7 +3,7 @@
 
 Error at line 7, column 2
 6 │ 
-7 │ new: op()
+7 │ new: op
     ╘═╛ Cannot declare constructors in enums
 
 Error at line 11, column 2

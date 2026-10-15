@@ -1,0 +1,53 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Counter: rec
+{
+	count: i32
+
+	new: op()
+	{
+		self.count = 2
+	}
+
+	reset: fun() -> Counter = Counter()
+
+	drop: op()
+	{
+		printf("drop %d\n", self.count)
+	}
+}
+
+Plain: rec
+{
+	count: i32
+
+	new: op
+	{
+		self.count = 3
+	}
+
+	drop: op
+	{
+		printf("drop %d\n", self.count)
+	}
+}
+
+answer: fun() -> i32 = 4
+plain: fun -> i32 = 5
+
+call: fun(f: fun[-> i32]) -> i32 = f()
+
+made[T: new() + drop()]: fun -> T = T()
+bare[T: new + drop]: fun -> T = T()
+
+main: fun -> i32
+{
+	printf("%d %d %d %d %d\n", answer(), plain(), call(fun() = 6), call(fun = 7), Counter.reset().count)
+	printf("%d %d\n", made[Counter]().count, bare[Plain]().count)
+	ret 0
+}

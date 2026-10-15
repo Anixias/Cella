@@ -16,7 +16,7 @@ R: rec
 {
 	x: i32
 
-	new: op()
+	new: op
 	{
 		self.x = 5
 	}

@@ -10,7 +10,7 @@ List: rec
 	data: ptr[i32]
 	count: usize
 
-	new: op() = default
+	new: op = default
 
 	drop: op
 	{

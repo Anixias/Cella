@@ -12,7 +12,7 @@ Make: trait
 
 Empty: trait
 {
-	new: op()
+	new: op
 }
 
 Cell: rec impl Make + Empty
@@ -24,7 +24,7 @@ Cell: rec impl Make + Empty
 		self.n = value + 1
 	}
 
-	new: op()
+	new: op
 	{
 		self.n = 77
 	}
@@ -132,7 +132,7 @@ Report: rec
 
 make[T: new(i32)]: fun -> T = T(5)
 
-blank[T: new()]: fun -> T = T()
+blank[T: new]: fun -> T = T()
 
 forward[T: new(i32)]: fun -> T = make[T]()
 

@@ -22,7 +22,7 @@ box[T: Eq]: impl
 	count: i32
 	total: val i32 = 0
 
-	new: op()
+	new: op
 	{
 	}
 

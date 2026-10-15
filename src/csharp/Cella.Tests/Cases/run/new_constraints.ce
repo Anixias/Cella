@@ -9,7 +9,7 @@ Buffer: rec
 {
 	size: usize
 
-	new: op()
+	new: op
 	{
 		self.size = 16
 	}
@@ -36,7 +36,7 @@ holder[T]: rec
 {
 	count: i32
 
-	new: op()
+	new: op
 	{
 		self.count = 5
 	}
@@ -47,9 +47,9 @@ box[T]: rec
 	value: T
 }
 
-make[T: new()]: fun -> T = T()
+make[T: new]: fun -> T = T()
 
-forward[T: new()]: fun -> T = make[T]()
+forward[T: new]: fun -> T = make[T]()
 
 main: fun -> i32
 {

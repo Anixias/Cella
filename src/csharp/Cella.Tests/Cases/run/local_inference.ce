@@ -36,7 +36,7 @@ bump: fun(mut value: u8)
 	value += 1
 }
 
-counter: const fun[-> usize] = fun()
+counter: const fun[-> usize] = fun
 {
 	var i = 0
 	ret i
@@ -113,7 +113,7 @@ loops: fun
 		sum += values[i]
 
 	var total = 0
-	run(fun() { total += size(4) })
+	run(fun { total += size(4) })
 	printf("loops %d %d %d %d\n", sum, i32(total), i32(sizeOf(total)), i32(counter()))
 }
 

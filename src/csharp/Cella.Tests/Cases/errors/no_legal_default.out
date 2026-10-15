@@ -1,11 +1,11 @@
 
 ====== no_legal_default.ce ======
 
-Error at line 36, column 37
+Error at line 36, column 35
 35 │ 
-36 │ needsNew[T: new()]: fun -> box[T] = box[T]()
-                                         ╘══════╛ No constructor for 'box[T]' accepts these arguments
-                                                | 'box[T]' takes one argument for each field: value
+36 │ needsNew[T: new]: fun -> box[T] = box[T]()
+                                       ╘══════╛ No constructor for 'box[T]' accepts these arguments
+                                              | 'box[T]' takes one argument for each field: value
 
 Error at line 41, column 10
 40 │ var v: Vec2

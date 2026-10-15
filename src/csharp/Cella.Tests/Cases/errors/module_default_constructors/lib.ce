@@ -5,7 +5,7 @@ Vec2: rec
 	x: f32
 	y: f32
 
-	new: mod op() = default
+	new: mod op = default
 
 	new: op(x: f32, y: f32)
 	{

@@ -1,5 +1,6 @@
 ﻿using Cella.Core.Syntax.Nodes;
 using Cella.Core.Text;
+using Cella.Diagnostics;
 
 namespace Cella.Core.Syntax;
 
@@ -242,12 +243,26 @@ public sealed partial class FileParser
 		return parameters;
 	}
 	
+	private void ReportEmptyParentheses(int start, int end)
+	{
+		if (end != start + 2 || Tokens[start].Type != TokenType.OpOpenParen ||
+		    Tokens[start + 1].Type != TokenType.OpCloseParen)
+			return;
+		
+		var (source, range) = Tokens[start].SourceLocation;
+		Report(new SourceLocation(source, range.Join(Tokens[start + 1].SourceLocation.Range)), "Redundant '()'",
+			DiagnosticSeverity.Hint);
+	}
+	
 	private (ReceiverNode? Receiver, List<ParameterNode> Parameters, ITypeNode? ReturnType, bool IsVariadic)?
 		ParseFunctionSignature(ref int index, bool allowVariadic, bool allowReceiver)
 	{
+		var start = index;
 		if (ParseParameters(ref index, true, allowVariadic, allowReceiver, out var isVariadic, out var receiver) is not
 		    { } parameters)
 			return null;
+		
+		ReportEmptyParentheses(start, index);
 		
 		var returnType = Match(ref index, TokenType.OpArrow) ? ParseType(ref index) : null;
 		return (receiver, parameters, returnType, isVariadic);

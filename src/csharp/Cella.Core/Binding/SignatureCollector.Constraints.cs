@@ -314,7 +314,7 @@ public sealed partial class SignatureCollector
 				continue;
 			
 			var message = same.Any(other => other.Signature.ParameterModes.SequenceEqual(signature.ParameterModes))
-				? $"'new({TypePool.DescribeParameters(signature)})' is required more than once"
+				? $"'{TypePool.DescribeConstructorConstraint(TypePool.DescribeParameters(signature))}' is required more than once"
 				: "'new' constraints cannot differ only in parameter modes";
 			
 			Diagnostics.Add(new(DiagnosticSeverity.Error, nodes[i].SourceLocation, message));

@@ -85,7 +85,7 @@ Inventory: rec
 	items: pvt array[Item, 4]
 	length: pvt set usize
 
-	new: op() = default
+	new: op = default
 
 	first: get(imm self) -> imm[Item] = imm self.items[0]
 

@@ -28,7 +28,7 @@ Error at line 65, column 18
 Error at line 66, column 15
 65 │ val n: nullable[i32] = undef
 66 │ val m = make[Point]()
-                  ╘═══╛ 'make' requires 'T: new()'
+                  ╘═══╛ 'make' requires 'T: new'
                       | 'Point' has no constructor without parameters
 
 Error at line 67, column 16

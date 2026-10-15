@@ -705,14 +705,23 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 	private LambdaExpressionNode ParseLambda(ref int index, Token keyword, Token? own = null)
 	{
 		var parameters = new List<LambdaParameterNode>();
-		if (Match(ref index, out var openParen, TokenType.OpOpenParen) && !Match(ref index, TokenType.OpCloseParen))
+		SourceLocation? emptyParentheses = null;
+		if (Match(ref index, out var openParen, TokenType.OpOpenParen))
 		{
-			do
-				parameters.Add(ParseLambdaParameter(ref index));
-			while (MatchSeparator(ref index, TokenType.OpCloseParen));
-			
-			if (!Match(ref index, TokenType.OpCloseParen))
-				throw Expected(index, "',' or ')'", openParen);
+			if (Match(ref index, out var closeParen, TokenType.OpCloseParen))
+			{
+				var (parenSource, parenRange) = openParen.SourceLocation;
+				emptyParentheses = new SourceLocation(parenSource, parenRange.Join(closeParen.SourceLocation.Range));
+			}
+			else
+			{
+				do
+					parameters.Add(ParseLambdaParameter(ref index));
+				while (MatchSeparator(ref index, TokenType.OpCloseParen));
+				
+				if (!Match(ref index, TokenType.OpCloseParen))
+					throw Expected(index, "',' or ')'", openParen);
+			}
 		}
 		
 		var returnType = Match(ref index, TokenType.OpArrow) ? ParseType(ref index) : null;
@@ -721,7 +730,11 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 		{
 			var expression = ParseExpression(ref index);
 			return new(keyword, parameters, returnType, expression, null,
-				new(source, range.Join(expression.SourceLocation.Range))) { Own = own };
+				new(source, range.Join(expression.SourceLocation.Range)))
+			{
+				Own = own,
+				EmptyParentheses = emptyParentheses
+			};
 		}
 		
 		if (ParseBlock is null || !Match(ref index, out var openBrace, TokenType.OpOpenBrace))
@@ -730,7 +743,8 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 		var block = ParseBlock(ref index, openBrace) ?? new BlockStatementNode(openBrace.SourceLocation, []);
 		return new(keyword, parameters, returnType, null, block, new(source, range.Join(block.SourceLocation.Range)))
 		{
-			Own = own
+			Own = own,
+			EmptyParentheses = emptyParentheses
 		};
 	}
 	

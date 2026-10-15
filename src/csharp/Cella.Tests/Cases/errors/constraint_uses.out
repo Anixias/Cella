@@ -16,7 +16,7 @@ Error at line 51, column 38
 Error at line 53, column 27
 52 │ 
 53 │ build[T]: fun -> T = make[T]()
-                               ^ 'make' requires 'T: new()'
+                               ^ 'make' requires 'T: new'
                                | 'T' has no constructor without parameters
 
 Error at line 55, column 22
@@ -51,19 +51,19 @@ Error at line 62, column 2
 Error at line 63, column 7
 62 │ hold(pair(1, 2))
 63 │ make[Holder]()
-          ╘════╛ 'make' requires 'T: new()'
+          ╘════╛ 'make' requires 'T: new'
                | 'Holder' has no constructor without parameters
 
 Error at line 64, column 7
 63 │ make[Holder]()
 64 │ make[Sized]()
-          ╘═══╛ 'make' requires 'T: new()'
+          ╘═══╛ 'make' requires 'T: new'
               | 'Sized' has no constructor without parameters
 
 Error at line 65, column 7
 64 │ make[Sized]()
 65 │ make[Secret]()
-          ╘════╛ 'make' requires 'T: new()'
+          ╘════╛ 'make' requires 'T: new'
                | 'Secret' has no constructor without parameters
 
 [compilation failed]

@@ -375,9 +375,11 @@ public sealed partial class FileParser
 		if (isConversion)
 			return ParseFunction(ref index, newKeyword, modifiers, false, []);
 		
+		var parametersStart = index;
 		if (ParseParameters(ref index, true) is not { } parameters)
 			return null;
 		
+		ReportEmptyParentheses(parametersStart, index);
 		RejectReturnType(ref index, "Constructors");
 		RejectWhen(ref index, "constructors");
 		if ((parameters.Count == 0 || Peek(index + 1, TokenType.KeywordDefault)) && Match(ref index, TokenType.OpEqual))
@@ -529,9 +531,11 @@ public sealed partial class FileParser
 			return null;
 		}
 		
+		var parametersStart = index;
 		if (ParseParameters(ref index, true, false, true, out _, out var receiver) is not { } parameters)
 			return null;
 		
+		ReportEmptyParentheses(parametersStart, index);
 		if (receiver is not null)
 			Report(receiver.Self, "Destructors cannot take parameters");
 		else if (parameters.Count > 0)

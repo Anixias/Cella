@@ -30,7 +30,7 @@ Handle: rec
 {
 	id: i32
 
-	drop: op()
+	drop: op
 	{
 		printf("close %d\n", self.id)
 	}

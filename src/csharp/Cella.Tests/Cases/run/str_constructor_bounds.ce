@@ -25,7 +25,7 @@ viaTrait[T: FromParts]: fun(data: ptr[u8], length: usize) -> T = T(data, length)
 
 same[T: new(own T)]: fun(own value: T) -> T = T(own value)
 
-empty[T: new()]: fun -> T = T()
+empty[T: new]: fun -> T = T()
 
 again[T: FromSelf]: fun(value: str) -> T = T(value)
 

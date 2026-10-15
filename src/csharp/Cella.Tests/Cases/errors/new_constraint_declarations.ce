@@ -19,7 +19,7 @@ first[T: new(i32) + new(i32)]: fun -> i32 = 0
 
 second[T: new(i32) + new(own i32)]: fun -> i32 = 0
 
-third[T: new() + new()]: fun -> i32 = 0
+third[T: new + new]: fun -> i32 = 0
 
 fourth[T: new(U) + new(U), U]: fun -> i32 = 0
 

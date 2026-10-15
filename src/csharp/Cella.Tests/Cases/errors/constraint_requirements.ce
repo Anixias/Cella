@@ -50,7 +50,7 @@ Point: rec
 	}
 }
 
-make[T: new()]: fun -> T = T()
+make[T: new]: fun -> T = T()
 
 build[T: new(i32)]: fun -> T = T(1)
 

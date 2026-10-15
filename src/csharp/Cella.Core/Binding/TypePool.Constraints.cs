@@ -46,13 +46,13 @@ public sealed partial class TypePool
 			return ("drop", $"'{name}' has no destructor");
 		
 		if (parameter.HasNew && !HasNew(argument))
-			return ("new()", $"'{name}' has no constructor without parameters");
+			return ("new", $"'{name}' has no constructor without parameters");
 		
 		if (parameter.HasDefault && !HasDefault(argument))
 			return ("default", $"'{name}' has no default");
 		
 		if (FindMissingConstructor(parameter, argument, map) is var (missing, hint))
-			return ($"new({missing})", hint ?? $"'{name}' has no constructor taking '{missing}'");
+			return (DescribeConstructorConstraint(missing), hint ?? $"'{name}' has no constructor taking '{missing}'");
 		
 		if (FindUnmetTrait(parameter, argument, map) is { } trait)
 			return (trait.Name, $"'{name}' doesn't implement '{trait.Name}'");

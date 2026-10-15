@@ -16,7 +16,7 @@ R: rec
 {
 	x: i32
 
-	new: op()
+	new: op
 	{
 		self.x = 5
 	}
@@ -33,7 +33,7 @@ blank[T: default]: fun -> T
 	ret x
 }
 
-needsNew[T: new()]: fun -> box[T] = box[T]()
+needsNew[T: new]: fun -> box[T] = box[T]()
 
 main: fun -> i32
 {

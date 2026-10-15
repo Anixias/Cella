@@ -15,6 +15,7 @@ public sealed class LambdaExpressionNode
 {
 	public Token Keyword { get; } = keyword;
 	public Token? Own { get; init; }
+	public SourceLocation? EmptyParentheses { get; init; }
 	public ImmutableArray<LambdaParameterNode> Parameters { get; } = parameters.ToImmutableArray();
 	public ITypeNode? ReturnType { get; } = returnType;
 	public IExpressionNode? ExpressionBody { get; } = expressionBody;

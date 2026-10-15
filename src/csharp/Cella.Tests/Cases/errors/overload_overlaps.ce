@@ -13,12 +13,12 @@ view[T]: ref rec
 }
 
 defaulted: fun(x: i32 = 5) {}
-defaulted: fun() {}
+defaulted: fun {}
 
 packed: fun(x: i32) {}
 packed: fun(...xs: view[i32]) {}
 
-empty: fun() {}
+empty: fun {}
 empty: fun(...xs: view[i32]) {}
 
 head: fun(template: str) {}

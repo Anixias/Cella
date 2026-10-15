@@ -48,7 +48,15 @@ public sealed partial class FileParser
 					         (Match(ref index, out var keyword, _constraintKeywords, _constraintTypes) ||
 					          Match(ref index, out keyword, TokenType.KeywordNull) ||
 					          Match(ref index, out keyword, TokenType.KeywordAtomic)))
+					{
 						keywords.Add(keyword);
+						if (keyword.Type == TokenType.KeywordDrop && Peek(index, TokenType.OpOpenParen) &&
+						    Peek(index + 1, TokenType.OpCloseParen))
+						{
+							index += 2;
+							ReportEmptyParentheses(index - 2, index);
+						}
+					}
 					else if (Peek(index, TokenType.KeywordDyn))
 					{
 						Report(Tokens[index], "Cannot use 'dyn' types as constraints");
@@ -79,16 +87,16 @@ public sealed partial class FileParser
 	
 	private ConstructorConstraintNode? ParseConstructorConstraint(ref int index, Token keyword)
 	{
-		if (!Match(ref index, out var openParen, TokenType.OpOpenParen))
-		{
-			ReportExpected(index, "'('");
-			return null;
-		}
-		
 		var modes = new List<Token?>();
 		var types = new List<ITypeNode>();
+		if (!Match(ref index, out var openParen, TokenType.OpOpenParen))
+			return new(keyword, modes, types, keyword);
+		
 		if (Match(ref index, out var closeParen, TokenType.OpCloseParen))
+		{
+			ReportEmptyParentheses(index - 2, index);
 			return new(keyword, modes, types, closeParen);
+		}
 		
 		do
 		{

@@ -12,7 +12,7 @@ Make: trait
 
 Fresh: trait
 {
-	new: op()
+	new: op
 }
 
 Buffer: rec impl Make

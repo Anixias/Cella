@@ -1,0 +1,44 @@
+
+====== redundant_parentheses.ce ======
+
+Hint at line 12, column 9
+11 │ 
+12 │ new: op()
+            ╘╛ Redundant '()'
+
+Hint at line 17, column 12
+16 │ 
+17 │ reset: fun() -> Counter = Counter()
+               ╘╛ Redundant '()'
+
+Hint at line 19, column 10
+18 │ 
+19 │ drop: op()
+             ╘╛ Redundant '()'
+
+Hint at line 40, column 12
+39 │ 
+40 │ answer: fun() -> i32 = 4
+                ╘╛ Redundant '()'
+
+Hint at line 45, column 12
+44 │ 
+45 │ made[T: new() + drop()]: fun -> T = T()
+                ╘╛ Redundant '()'
+
+Hint at line 45, column 21
+44 │ 
+45 │ made[T: new() + drop()]: fun -> T = T()
+                         ╘╛ Redundant '()'
+
+Hint at line 50, column 56
+49 │ {
+50 │     printf("%d %d %d %d %d\n", answer(), plain(), call(fun() = 6), call(fun = 7), Counter.reset().count)
+                                                               ╘╛ Redundant '()'
+
+4 5 6 7 2
+drop 2
+2 3
+drop 3
+drop 2
+[exit code 0]

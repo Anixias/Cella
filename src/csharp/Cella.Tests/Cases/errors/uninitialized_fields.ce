@@ -78,7 +78,7 @@ Pair: rec
 	count: i32
 	second: fun[i32 -> i32]
 
-	new: op()
+	new: op
 	{
 	}
 }

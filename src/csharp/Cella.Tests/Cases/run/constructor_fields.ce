@@ -74,7 +74,7 @@ Wrapper: rec
 	handler: Handler
 	parts: Handler
 
-	new: op()
+	new: op
 	{
 		self.handler = Handler(double, 3)
 		self.parts.callback = negate
@@ -86,7 +86,7 @@ Table: rec
 {
 	callbacks: array[fun[i32 -> i32], 2]
 
-	new: op()
+	new: op
 	{
 		self.callbacks[0] = double
 		self.callbacks[1] = negate

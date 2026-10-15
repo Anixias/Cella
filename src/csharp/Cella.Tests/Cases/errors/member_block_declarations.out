@@ -33,7 +33,7 @@ Error at line 23, column 2
 
 Error at line 25, column 2
 24 │ 
-25 │ new: op()
+25 │ new: op
      ╘═╛ Cannot declare constructors in impl blocks
 
 Error at line 29, column 2

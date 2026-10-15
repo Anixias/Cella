@@ -355,6 +355,9 @@ public sealed partial class TypePool
 			                                                                      target.ParameterModes[i],
 			                                                                      target.ParameterTypes[i]));
 	
+	public static string DescribeConstructorConstraint(string parameters) =>
+		parameters.Length == 0 ? "new" : $"new({parameters})";
+	
 	public static string DescribeParameters(FunctionSignature constructor) => string.Join(", ",
 		Enumerable.Range(1, constructor.ParameterTypes.Length - 1)
 			.Select(i => constructor.GetMode(i).Describe(constructor.ParameterTypes[i])));
