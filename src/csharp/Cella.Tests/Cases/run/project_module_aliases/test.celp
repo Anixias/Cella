@@ -1,0 +1,9 @@
+OutputType = "Executable"
+SystemLinkPreference = "Dynamic"
+
+[[ProjectReferences]]
+Path = 'geometry/geometry.celp'
+Alias = 'geo'
+
+[[ProjectReferences]]
+Path = 'shapes/shapes.celp'

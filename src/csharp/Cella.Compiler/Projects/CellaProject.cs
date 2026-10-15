@@ -223,6 +223,8 @@ public sealed partial class CellaProject
 				errors.Add($"{path}: '{nameof(ProjectReferences)}' must be written as {table} tables");
 			else if (entry["Path"u8] is { HasValue: true, ValueType: not TomlValueType.String })
 				errors.Add($"{path}: 'Path' in {table} must be a string");
+			else if (entry["Alias"u8] is { HasValue: true, ValueType: not TomlValueType.String })
+				errors.Add($"{path}: 'Alias' in {table} must be a string");
 		}
 	}
 	
@@ -285,7 +287,7 @@ public sealed partial class CellaProject
 			{
 				if (key.ToString() == nameof(ProjectReference.Path))
 					hasPath = true;
-				else
+				else if (key.ToString() != nameof(ProjectReference.Alias))
 					errors.Add($"{path}: Unknown setting '{key}' in {table}");
 			}
 			
@@ -402,4 +404,7 @@ public sealed partial record ProjectReference
 {
 	[TomlValueOnSerialized]
 	public string? Path { get; init; }
+	
+	[TomlValueOnSerialized]
+	public string? Alias { get; init; }
 }

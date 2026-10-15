@@ -70,6 +70,11 @@ public sealed class ModuleSymbol
 	public List<FileSymbol> Files { get; } = [];
 }
 
+public sealed class AmbiguousModuleSymbol(string name, ImmutableArray<string> projects) : Symbol(name)
+{
+	public ImmutableArray<string> Projects { get; } = projects;
+}
+
 public sealed class ModulePathSymbol(string name, string path, ModulePathSymbol? parent) : Symbol(name)
 {
 	public string Path { get; } = path;

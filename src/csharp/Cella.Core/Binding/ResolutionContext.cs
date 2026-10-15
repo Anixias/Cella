@@ -116,7 +116,7 @@ public readonly struct ResolutionContext
 		
 		return NativeSymbols.Resolve(name) ??
 		       Modules?.Find(File.Module.ModuleName.Text)?.Children.GetValueOrDefault(name) ??
-		       Modules?.Root.Children.GetValueOrDefault(name);
+		       (Symbol?)Modules?.Root.Children.GetValueOrDefault(name) ?? Modules?.FindAmbiguous(name);
 	}
 	
 	private bool IsExcluded(Symbol symbol) =>
@@ -216,7 +216,12 @@ public readonly struct ResolutionContext
 		module.Members.TryGetValue(name, out var members) &&
 		ResolveFrom(name, [..members.Where(IsVisible)]) is { } member
 			? member
-			: module.Children.GetValueOrDefault(name);
+			: (Symbol?)module.Children.GetValueOrDefault(name) ??
+			  (module == Modules?.Root ? Modules.FindAmbiguous(name) : null);
+	
+	public static Diagnostic ReportAmbiguousModule(SourceLocation location, AmbiguousModuleSymbol module) =>
+		new(DiagnosticSeverity.Error, location,
+			$"'{module.Name}' is ambiguous between {DiagnosticReporter.JoinNames(module.Projects)}");
 	
 	public Diagnostic ReportUndefinedMember(SourceLocation location, ModulePathSymbol module, string name)
 	{
@@ -385,6 +390,12 @@ public readonly struct ResolutionContext
 	{
 		for (var i = start; i < parts.Length; i++)
 		{
+			if (symbol is AmbiguousModuleSymbol ambiguous)
+			{
+				Diagnostics.Add(ReportAmbiguousModule(parts[i - 1].SourceLocation, ambiguous));
+				return null;
+			}
+			
 			if (symbol is not ModulePathSymbol module)
 			{
 				Diagnostics.Add(ReportNotModule(symbol, parts[..i]));

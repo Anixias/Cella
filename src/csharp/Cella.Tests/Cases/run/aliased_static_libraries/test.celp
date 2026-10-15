@@ -1,0 +1,9 @@
+OutputType = "Executable"
+SystemLinkPreference = "Dynamic"
+
+[[ProjectReferences]]
+Path = 'a/a.celp'
+
+[[ProjectReferences]]
+Path = 'b/b.celp'
+Alias = 'second'

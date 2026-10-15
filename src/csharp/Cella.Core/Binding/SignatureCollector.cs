@@ -84,7 +84,7 @@ public sealed partial class SignatureCollector
 	
 	public SignatureCollector(string assemblyName, string? entryPointName, SymbolTable symbolTable,
 		TypePool typePool, IEnumerable<AssemblySymbol> dependencies, IEnumerable<AssemblySymbol> indirectDependencies,
-		uint pointerBitSize)
+		IReadOnlyDictionary<string, string> aliases, uint pointerBitSize)
 	{
 		_entryPointName = entryPointName;
 		_symbolTable = symbolTable;
@@ -99,7 +99,7 @@ public sealed partial class SignatureCollector
 		
 		Evaluator = new ConstantEvaluator(typePool, pointerBitSize, GetGlobalValue);
 		typePool.IntegerFits = Evaluator.Fits;
-		Modules = new ModuleIndex(assemblyName, symbolTable, dependencyList, indirectList);
+		Modules = new ModuleIndex(assemblyName, symbolTable, dependencyList, indirectList, aliases);
 	}
 	
 	public void Collect(IReadOnlyCollection<FileNode> files, IConstantResolver constantResolver)

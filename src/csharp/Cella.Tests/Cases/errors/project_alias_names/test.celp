@@ -1,0 +1,18 @@
+OutputType = "Executable"
+SystemLinkPreference = "Dynamic"
+
+[[ProjectReferences]]
+Path = 'a/a.celp'
+Alias = 'lib'
+
+[[ProjectReferences]]
+Path = 'b/b.celp'
+Alias = 'lib'
+
+[[ProjectReferences]]
+Path = 'a/a.celp'
+Alias = 'my-lib'
+
+[[ProjectReferences]]
+Path = 'b/b.celp'
+Alias = 'i32'

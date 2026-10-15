@@ -1,27 +1,51 @@
-﻿using Cella.Core.Symbols;
+﻿using System.Collections.Immutable;
+using Cella.Core.Symbols;
 
 namespace Cella.Core.Binding;
 
 public sealed class ModuleIndex
 {
 	private readonly Dictionary<string, ModulePathSymbol> _paths = [];
+	private readonly Dictionary<string, ImmutableArray<string>> _ambiguous = [];
 	private readonly Dictionary<Symbol, FileSymbol> _files = [];
 	private readonly Dictionary<Symbol, FileSymbol> _dependencyFiles = [];
 	private readonly Dictionary<Symbol, ModuleSymbol> _modules = [];
 	private readonly Dictionary<Symbol, string> _assemblies = [];
 	
 	public ModuleIndex(string assemblyName, SymbolTable symbolTable, IEnumerable<AssemblySymbol> dependencies,
-		IEnumerable<AssemblySymbol> indirectDependencies)
+		IEnumerable<AssemblySymbol> indirectDependencies, IReadOnlyDictionary<string, string> aliases)
 	{
 		AssemblyName = assemblyName;
 		Root = new ModulePathSymbol(string.Empty, string.Empty, null);
 		_paths[string.Empty] = Root;
 		
-		Add(symbolTable, assemblyName, true);
+		Add(symbolTable, assemblyName, true, Root, _paths);
+		var shared = new Dictionary<string, List<(string Project, ModulePathSymbol Module)>>();
 		foreach (var dependency in dependencies)
 		{
-			Add(dependency.SymbolTable, dependency.Name, false);
+			var alias = aliases.GetValueOrDefault(dependency.Name);
+			var root = new ModulePathSymbol(alias ?? string.Empty, alias ?? string.Empty, null);
+			Add(dependency.SymbolTable, dependency.Name, false, root, new() { [root.Path] = root });
 			MapFiles(dependency.SymbolTable, _dependencyFiles);
+			if (alias is not null)
+			{
+				Root.Children.TryAdd(alias, root);
+				continue;
+			}
+			
+			foreach (var (name, module) in root.Children)
+				shared.GetOrAdd(name).Add((dependency.Name, module));
+		}
+		
+		foreach (var (name, modules) in shared)
+		{
+			if (Root.Children.ContainsKey(name))
+				continue;
+			
+			if (modules is [var only])
+				Root.Children[name] = only.Module;
+			else
+				_ambiguous[name] = [..modules.Select(static module => module.Project)];
 		}
 		
 		foreach (var dependency in indirectDependencies)
@@ -45,6 +69,9 @@ public sealed class ModuleIndex
 	public ModulePathSymbol Root { get; }
 	
 	public ModulePathSymbol? Find(string path) => _paths.GetValueOrDefault(path);
+	
+	public AmbiguousModuleSymbol? FindAmbiguous(string name) =>
+		_ambiguous.TryGetValue(name, out var projects) ? new AmbiguousModuleSymbol(name, projects) : null;
 	
 	public static Visibility GetVisibility(Symbol symbol) =>
 		symbol is IExportable exportable ? exportable.Visibility : Visibility.Public;
@@ -103,11 +130,12 @@ public sealed class ModuleIndex
 		}
 	}
 	
-	private void Add(SymbolTable symbolTable, string assemblyName, bool isLocal)
+	private void Add(SymbolTable symbolTable, string assemblyName, bool isLocal, ModulePathSymbol root,
+		Dictionary<string, ModulePathSymbol> paths)
 	{
 		foreach (var (name, module) in symbolTable.ModuleSymbols)
 		{
-			var path = GetOrAdd([..name.Parts.Select(static part => part.Text)], name.Parts.Length);
+			var path = GetOrAdd([..name.Parts.Select(static part => part.Text)], name.Parts.Length, root, paths);
 			if (!symbolTable.SymbolsByModule.TryGetValue(module, out var members))
 				continue;
 			
@@ -124,16 +152,21 @@ public sealed class ModuleIndex
 		}
 	}
 	
-	private ModulePathSymbol GetOrAdd(List<string> parts, int count)
+	private static ModulePathSymbol GetOrAdd(List<string> parts, int count, ModulePathSymbol root,
+		Dictionary<string, ModulePathSymbol> paths)
 	{
+		if (count == 0)
+			return root;
+		
 		var path = string.Join('.', parts.Take(count));
-		if (_paths.TryGetValue(path, out var existing))
+		var key = root.Path.Length == 0 ? path : $"{root.Path}.{path}";
+		if (paths.TryGetValue(key, out var existing))
 			return existing;
 		
-		var parent = GetOrAdd(parts, count - 1);
-		var symbol = new ModulePathSymbol(parts[count - 1], path, parent);
+		var parent = GetOrAdd(parts, count - 1, root, paths);
+		var symbol = new ModulePathSymbol(parts[count - 1], key, parent);
 		parent.Children[symbol.Name] = symbol;
-		_paths[path] = symbol;
+		paths[key] = symbol;
 		return symbol;
 	}
 }

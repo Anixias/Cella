@@ -1,0 +1,9 @@
+mod test
+
+main: fun -> i32 = shared.one()
+
+typed: fun -> i32
+{
+	val x: shared.Thing = undef
+	ret 0
+}

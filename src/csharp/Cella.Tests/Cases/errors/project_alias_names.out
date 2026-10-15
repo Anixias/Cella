@@ -1,0 +1,4 @@
+<case>\test.celp: 'my-lib' is not a valid alias
+<case>\test.celp: 'i32' is not a valid alias
+<case>\test.celp: 'lib' names more than one project reference
+[compilation failed]

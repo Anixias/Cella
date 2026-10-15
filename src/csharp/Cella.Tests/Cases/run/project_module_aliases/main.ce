@@ -1,0 +1,11 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+main: fun -> i32
+{
+	printf("%d %d %d %d %d\n", shared.one(), shared.local(), geo.shared.one(), mod.geo.shared.one(), extra.two())
+	ret 0
+}

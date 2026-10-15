@@ -337,6 +337,16 @@ internal static class Program
 			if (project.ProjectReferences is not { } references)
 				continue;
 			
+			foreach (var alias in references.Select(static reference => reference.Alias).OfType<string>())
+			{
+				if (!BuildFlags.IsValidName(alias) || NativeSymbols.IsBuiltInName(alias))
+					errors.Add($"{path}: '{alias}' is not a valid alias");
+			}
+			
+			foreach (var alias in references.Select(static reference => reference.Alias).OfType<string>()
+				         .GroupBy(static alias => alias).Where(static sameAlias => sameAlias.Count() > 1))
+				errors.Add($"{path}: '{alias.Key}' names more than one project reference");
+			
 			foreach (var reference in references)
 			{
 				var dependencyPath = GetCanonicalPath(Path.Combine(projectDirectory, reference.Path!));
@@ -389,6 +399,7 @@ internal static class Program
 		public ImmutableArray<string> ContainedLibraries { get; init; } = [];
 		public ImmutableArray<string> LibraryFiles { get; init; } = [];
 		public string? Directory { get; init; }
+		public string? ProjectPath { get; init; }
 		public string Name => AssemblySymbol.Name;
 	}
 	
@@ -532,7 +543,7 @@ internal static class Program
 			.ToImmutableArray();
 		
 		var signatureCollector = new SignatureCollector(project.Name, entryPointName, symbolTable, typePool,
-			dependencySymbols, indirectSymbols, pointerBitSize);
+			dependencySymbols, indirectSymbols, FindAliases(project, dependencyList), pointerBitSize);
 		
 		var resolver = new Resolver(symbolTable, signatureCollector, typePool, pointerBitSize);
 		signatureCollector.Collect([..files], resolver);
@@ -769,6 +780,7 @@ internal static class Program
 		return new(assemblySymbol, outputType, outputPath, true)
 		{
 			Directory = project.Directory,
+			ProjectPath = project.FilePath,
 			Dependencies = dependencyList,
 			GenericFunctions = genericFunctions,
 			ExportedStatics = exportedStatics,
@@ -842,6 +854,24 @@ internal static class Program
 		Path.GetExtension(name).ToLowerInvariant() is ".lib" or ".dll"
 			? Path.ChangeExtension(name, ".lib")
 			: $"{name}.lib";
+	
+	private static Dictionary<string, string> FindAliases(ProjectInfo project,
+		ImmutableArray<AssemblyInfo> dependencies)
+	{
+		var aliases = new Dictionary<string, string>();
+		foreach (var reference in project.Project.ProjectReferences ?? [])
+		{
+			if (reference is not { Path: { } path, Alias: { } alias })
+				continue;
+			
+			var target = GetCanonicalPath(Path.Combine(project.Directory, path));
+			if (dependencies.FirstOrDefault(dependency => dependency.ProjectPath == target) is
+			    { AssemblySymbol: { } symbol })
+				aliases[symbol.Name] = alias;
+		}
+		
+		return aliases;
+	}
 	
 	private static void CopySharedLibraries(ImmutableArray<AssemblyInfo> dependencies, string outputDir)
 	{
