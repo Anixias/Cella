@@ -16,6 +16,7 @@ public abstract class Conversion(TypeSymbol from, TypeSymbol to, ConversionKind 
 	public TypeSymbol To { get; } = to;
 	public ConversionKind Kind { get; } = kind;
 	public int Cost { get; } = cost;
+	public int Distance { get; init; }
 	public bool IsConstant { get; } = isConstant;
 }
 

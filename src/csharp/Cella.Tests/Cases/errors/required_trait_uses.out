@@ -5,6 +5,8 @@ Error at line 24, column 44
 23 │ 
 24 │ show[T: Shape]: fun(imm value: T) -> i32 = value.name()
                                                 ╘════════╛ Call to 'name' is ambiguous
+                                                         | Candidate on line 5
+                                                         | Candidate on line 10
 
 Error at line 30, column 49
 29 │ 

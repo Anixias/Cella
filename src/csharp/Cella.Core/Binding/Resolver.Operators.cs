@@ -250,11 +250,14 @@ public sealed partial class Resolver
 				return Error(node, DiagnosticReporter.ReportBinaryOpMismatch(_operatorRegistry, left, op, right),
 					CurrentTargetType);
 			
+			if (!IsShift(op.Type) && MixesCharWithInteger(left.Type, right.Type))
+				return Error(node, DiagnosticReporter.ReportBinaryOpMismatch(_operatorRegistry, left, op, right),
+					CurrentTargetType);
+			
 			var args = new[] { left, right };
 			var resolutionSet = ResolveCallable(candidates, args, MaterializationMode.Overload);
 			if (resolutionSet.IsAmbiguous &&
 			    (IsShift(op.Type) && (left.Type == NativeSymbols.Char || right.Type == NativeSymbols.Char) ||
-			     MixesCharWithInteger(left.Type, right.Type) ||
 			     left.Type == NativeSymbols.CStr || right.Type == NativeSymbols.CStr))
 				return Error(node, DiagnosticReporter.ReportBinaryOpMismatch(_operatorRegistry, left, op, right),
 					CurrentTargetType);
@@ -440,9 +443,11 @@ public sealed partial class Resolver
 		return ResolveChainLinks(node, operands);
 	}
 	
-	private static bool MixesCharWithInteger(TypeSymbol left, TypeSymbol right) =>
-		left == NativeSymbols.Char && right is IntegerType { Kind: not PrimitiveTypeKind.Char } ||
-		right == NativeSymbols.Char && left is IntegerType { Kind: not PrimitiveTypeKind.Char };
+	private bool MixesCharWithInteger(TypeSymbol left, TypeSymbol right) =>
+		left == NativeSymbols.Char && IsNarrowInteger(right) || right == NativeSymbols.Char && IsNarrowInteger(left);
+	
+	private bool IsNarrowInteger(TypeSymbol type) =>
+		type is IntegerType { Kind: not PrimitiveTypeKind.Char } && CountBits(type) < CountBits(NativeSymbols.Char);
 	
 	private IResolvedExpressionNode DefaultLiteral(IResolvedExpressionNode operand) =>
 		operand is ResolvedLiteralExpressionNode { Type: UntypedType } ? MaterializeAsDefault(operand) : operand;
@@ -493,7 +498,7 @@ public sealed partial class Resolver
 				resolutionSet = builtIn;
 			}
 			
-			if (resolutionSet.IsAmbiguous && MixesCharWithInteger(args[0].Type, args[1].Type))
+			if (MixesCharWithInteger(args[0].Type, args[1].Type))
 				return Error(node, DiagnosticReporter.ReportBinaryOpMismatch(_operatorRegistry, args[0], op, args[1]),
 					CurrentTargetType);
 			

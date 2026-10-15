@@ -45,6 +45,8 @@ Error at line 34, column 13
 33 │ var native: ext fun[i32 -> i32] = closure
 34 │ var both = apply(over, 1)
                 ╘═══╛ Call to 'apply' is ambiguous
+                    | Candidate on line 18
+                    | Candidate on line 19
 
 Error at line 36, column 10
 35 │ var handler = Handler(helper, 2)

@@ -66,10 +66,22 @@ public sealed class ConversionTable
 		{
 			for (var j = i + 1; j < intTypes.Length; j++)
 			{
-				table.Add(new IntegerConversion(intTypes[i].S, intTypes[j].S, ConversionKind.Implicit, 1));
-				table.Add(new IntegerConversion(intTypes[i].U, intTypes[j].U, ConversionKind.Implicit, 1));
+				var distance = j - i;
+				table.Add(new IntegerConversion(intTypes[i].S, intTypes[j].S, ConversionKind.Implicit, 1)
+				{
+					Distance = distance
+				});
+				
+				table.Add(new IntegerConversion(intTypes[i].U, intTypes[j].U, ConversionKind.Implicit, 1)
+				{
+					Distance = distance
+				});
+				
 				table.Add(new IntegerConversion(intTypes[i].S, intTypes[j].U, ConversionKind.Explicit, 1));
-				table.Add(new IntegerConversion(intTypes[i].U, intTypes[j].S, ConversionKind.Implicit, 1));
+				table.Add(new IntegerConversion(intTypes[i].U, intTypes[j].S, ConversionKind.Implicit, 1)
+				{
+					Distance = distance
+				});
 			}
 		}
 		
@@ -156,14 +168,15 @@ public sealed class ConversionTable
 		
 		foreach (var (floatType, significandBits) in floatPrecisions)
 		{
+			var distance = floatType == NativeSymbols.Float32 ? 0 : 1;
 			for (var i = 0; i < intTypes.Length - 1; i++)
 			{
-				AddFloatConversions(intTypes[i].S, floatType, (8 << i) - 1 <= significandBits);
-				AddFloatConversions(intTypes[i].U, floatType, 8 << i <= significandBits);
+				AddFloatConversions(intTypes[i].S, floatType, (8 << i) - 1 <= significandBits, distance);
+				AddFloatConversions(intTypes[i].U, floatType, 8 << i <= significandBits, distance);
 			}
 			
-			AddFloatConversions(NativeSymbols.IntSize, floatType, false);
-			AddFloatConversions(NativeSymbols.UIntSize, floatType, false);
+			AddFloatConversions(NativeSymbols.IntSize, floatType, false, distance);
+			AddFloatConversions(NativeSymbols.UIntSize, floatType, false, distance);
 		}
 		
 		// cstr <-> ptr
@@ -174,10 +187,10 @@ public sealed class ConversionTable
 		
 		bool IsLossless(IntegerType from, IntegerType to) => from == to || table.FindImplicit(from, to) is not null;
 		
-		void AddFloatConversions(IntegerType integer, FloatType floating, bool isExact)
+		void AddFloatConversions(IntegerType integer, FloatType floating, bool isExact, int distance)
 		{
 			var kind = isExact ? ConversionKind.Implicit : ConversionKind.Explicit;
-			table.Add(new FloatConversion(integer, floating, kind, 2));
+			table.Add(new FloatConversion(integer, floating, kind, 2) { Distance = distance });
 			table.Add(new FloatConversion(floating, integer, ConversionKind.Explicit, 2));
 		}
 	}

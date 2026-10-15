@@ -1,0 +1,25 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+f: fun(x: i32) -> i32 = 32
+f: fun(x: i64) -> i32 = 64
+
+g: fun(x: f32) -> i32 = 32
+g: fun(x: f64) -> i32 = 64
+
+h: fun(x: u32) -> i32 = 32
+h: fun(x: i64) -> i32 = 64
+
+main: fun -> i32
+{
+	var s: i16 = 1
+	var b: u8 = 2
+	var w: i64 = 3
+	var u: u16 = 4
+	printf("%d %d %d %d %d %d %d\n", f(s), f(b), f(w), g(s), h(b), h(u), f(5))
+	ret 0
+}

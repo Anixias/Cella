@@ -231,6 +231,7 @@ public sealed partial class Resolver : IStatementNodeVisitor<IResolvedStatementN
 	(
 		int ResultRank,
 		int ConversionCost,
+		int Distance,
 		int MaterializationCost,
 		int ResultCost,
 		int GenericRank
@@ -249,6 +250,10 @@ public sealed partial class Resolver : IStatementNodeVisitor<IResolvedStatementN
 			var materializationCostComparison = MaterializationCost.CompareTo(other.MaterializationCost);
 			if (materializationCostComparison != 0)
 				return materializationCostComparison;
+			
+			var distanceComparison = Distance.CompareTo(other.Distance);
+			if (distanceComparison != 0)
+				return distanceComparison;
 			
 			var resultRankComparison = ResultRank.CompareTo(other.ResultRank);
 			if (resultRankComparison != 0)

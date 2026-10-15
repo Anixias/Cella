@@ -25,6 +25,8 @@ Error at line 58, column 2
 57 │ val q = Plain(1)
 58 │ p.hash()
      ╘════╛ Call to 'hash' is ambiguous
+          | Candidate on line 28
+          | Candidate on line 37
 
 Error at line 59, column 7
 58 │ p.hash()

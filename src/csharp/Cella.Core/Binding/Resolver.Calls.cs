@@ -3,6 +3,7 @@ using Cella.Core.Binding.Constants;
 using Cella.Core.Binding.Nodes;
 using Cella.Core.Symbols;
 using Cella.Core.Syntax.Nodes;
+using Cella.Core.Text;
 using Cella.Diagnostics;
 
 namespace Cella.Core.Binding;
@@ -110,7 +111,7 @@ public sealed partial class Resolver
 		var resolutionSet = ResolveCallable(specialized, args, MaterializationMode.Overload, CurrentTargetType);
 		
 		if (resolutionSet.IsAmbiguous && !isEndless)
-			return ReportAmbiguousCall(node, functionName, shaped, receiver, typeArguments);
+			return ReportAmbiguousCall(node, functionName, shaped, receiver, typeArguments, resolutionSet);
 		
 		if (!resolutionSet.HasResult && hidden is [_, ..] &&
 		    ResolveCallable(hidden, args, MaterializationMode.Overload, CurrentTargetType).HasResult &&
@@ -171,11 +172,31 @@ public sealed partial class Resolver
 			ResolveCallable([callable], values, MaterializationMode.Overload, CurrentTargetType).HasResult;
 	}
 	
+	private static IEnumerable<string> DescribeCandidates(SourceLocation location, ResolutionSet? tied) =>
+		tied is not { } set
+			? []
+			: Enumerable.Range(0, set.Count)
+				.Select(i => GetInfo(set[i].Callable)?.Symbol.Definition)
+				.OfType<SourceLocation>()
+				.Select(definition => (Other: definition.Source != location.Source,
+					File: Path.GetFileName(definition.Source.FilePath), definition.GetLineColumn().Line))
+				.OrderBy(static candidate => candidate.Other)
+				.ThenBy(static candidate => candidate.File, StringComparer.Ordinal)
+				.ThenBy(static candidate => candidate.Line)
+				.Select(static candidate => candidate.Other
+					? $"Candidate in '{candidate.File}' on line {candidate.Line}"
+					: $"Candidate on line {candidate.Line}");
+	
 	private ResolvedInvalidExpressionNode ReportAmbiguousCall(CallExpressionNode node, string functionName,
-		ICallable[] shaped, IResolvedExpressionNode? receiver, TypeArgumentList? typeArguments)
+		ICallable[] shaped, IResolvedExpressionNode? receiver, TypeArgumentList? typeArguments,
+		ResolutionSet? tied = null)
 	{
 		if (!node.Arguments.Any(IsDeferred))
-			return Error(node, $"Call to '{functionName}' is ambiguous", CurrentTargetType, node.Target);
+			return Error(node, new Diagnostic(DiagnosticSeverity.Error, node.Target.SourceLocation,
+				$"Call to '{functionName}' is ambiguous")
+			{
+				Hints = [..DescribeCandidates(node.SourceLocation, tied)]
+			}, CurrentTargetType);
 		
 		var failures = new List<List<Diagnostic>>();
 		foreach (var candidate in shaped)

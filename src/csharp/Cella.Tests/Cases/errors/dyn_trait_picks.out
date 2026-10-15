@@ -10,5 +10,7 @@ Error at line 20, column 36
 19 │ 
 20 │ h: fun(imm s: dyn[Shape]) -> i32 = s.name()
                                         ╘════╛ Call to 'name' is ambiguous
+                                             | Candidate on line 5
+                                             | Candidate on line 10
 
 [compilation failed]

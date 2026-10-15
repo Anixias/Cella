@@ -22,6 +22,7 @@ public sealed partial class Resolver
 				continue;
 			
 			var conversionCost = 0;
+			var distance = 0;
 			var materializationCost = 0;
 			var argumentConversions = new Conversion?[args.Count];
 			var valid = true;
@@ -40,7 +41,10 @@ public sealed partial class Resolver
 				if (args[i].Type is UntypedType)
 					materializationCost += cost;
 				else
+				{
 					conversionCost += cost;
+					distance += conversion?.Distance ?? 0;
+				}
 				
 				argumentConversions[i] = conversion;
 			}
@@ -69,7 +73,7 @@ public sealed partial class Resolver
 				resultConversion = conversion;
 			}
 			
-			var totalCost = new CallableCost(resultRank, conversionCost, materializationCost, resultCost,
+			var totalCost = new CallableCost(resultRank, conversionCost, distance, materializationCost, resultCost,
 				candidate.IsGeneric ? 1 : 0);
 			
 			options.Add(new(candidate, totalCost, resultConversion, argumentConversions));
