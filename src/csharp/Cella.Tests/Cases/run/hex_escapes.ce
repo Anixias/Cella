@@ -1,0 +1,17 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+main: fun -> i32
+{
+	val text: str = "\x41\x7a\x30!"
+	val tab: char = '\x09'
+	val octal: str = "\o101\o012"
+	val nul: str = "\012"
+	printf("%s %d %d %d %d\n", "\x41\x42C", i32(text.byteLength), i32(u32(tab)), i32(text[1]), i32("\0".byteLength))
+	printf("%d %d %d %d %d\n", i32(octal[0]), i32(octal[1]), i32(nul.byteLength), i32(nul[0]), i32(nul[1]))
+	ret 0
+}

@@ -631,6 +631,25 @@ public class Scanner
 					result.Append('\0');
 					break;
 				
+				case 'o':
+					if (i + 3 < text.Length && TryParseOctalEscape(text.Slice(i + 1, 3)) is { } octal)
+						result.Append(octal);
+					else
+						valid = false;
+					
+					i += 3;
+					break;
+				
+				case 'x':
+					if (i + 2 < text.Length && byte.TryParse(text.Slice(i + 1, 2), NumberStyles.AllowHexSpecifier,
+						    CultureInfo.InvariantCulture, out var ascii) && ascii <= 0x7F)
+						result.Append((char)ascii);
+					else
+						valid = false;
+					
+					i += 2;
+					break;
+				
 				case 'a':
 					result.Append('\a');
 					break;
@@ -686,6 +705,20 @@ public class Scanner
 		}
 		
 		return (result.ToString(), valid);
+	}
+	
+	private static char? TryParseOctalEscape(ReadOnlySpan<char> digits)
+	{
+		var value = 0;
+		foreach (var digit in digits)
+		{
+			if (digit is < '0' or > '7')
+				return null;
+			
+			value = value * 8 + (digit - '0');
+		}
+		
+		return value <= 0x7F ? (char)value : null;
 	}
 	
 	private static bool TryAppendCodePoint(StringBuilder result, ReadOnlySpan<char> hexDigits)
