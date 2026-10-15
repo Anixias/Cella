@@ -16,11 +16,6 @@ Error at line 26, column 14
 26 │ *: op(self, index: i32) -> imm[Buffer] = imm *self.pointer
                  ╘═══╛ Cannot take parameters in '*' operators with 'self'
 
-Error at line 33, column 17
-32 │ 
-33 │ *: op(self) -> Buffer = *self.pointer
-                    ╘════╛ Cannot return 'Buffer' from '*' with 'self'
-
 Error at line 40, column 17
 39 │ 
 40 │ *: op(self) -> mut[Buffer] = mut *self.pointer

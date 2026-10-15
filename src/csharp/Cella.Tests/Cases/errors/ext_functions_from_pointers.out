@@ -1,0 +1,14 @@
+
+====== ext_functions_from_pointers.ce ======
+
+Error at line 6, column 27
+5 │ val raw: ptr = null
+6 │ val f: ext fun[-> u32] = raw
+                             ╘═╛ Cannot convert type 'ptr' to 'ext fun[-> u32]'
+
+Error at line 7, column 10
+6 │ val f: ext fun[-> u32] = raw
+7 │ val h = fun[-> u32](raw)
+            ╘══════════════╛ No constructor for 'fun[-> u32]' accepts argument of type 'ptr'
+
+[compilation failed]

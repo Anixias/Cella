@@ -1,0 +1,9 @@
+mod test
+
+main: fun -> i32
+{
+	val raw: ptr = null
+	val f: ext fun[-> u32] = raw
+	val h = fun[-> u32](raw)
+	ret 0
+}

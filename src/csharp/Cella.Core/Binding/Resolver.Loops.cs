@@ -257,8 +257,9 @@ public sealed partial class Resolver
 		var isWritable = ReturnsWritable(dereference, type) &&
 		                 (isMut || TakesReceiver(dereference, type, ParameterMode.ReadOnly));
 		
-		var binding = CreateLoopBinding(node.Binding, element.Type, isWritable || !_typePool.IsCopy(element.Type),
-			isWritable)!;
+		var lends = GetFunctionInfo(dereference, type).Signature.ReturnType is BorrowType;
+		var binding = CreateLoopBinding(node.Binding, element.Type,
+			isWritable || lends && !_typePool.IsCopy(element.Type), isWritable)!;
 		
 		return new(binding, (body, label) => new ResolvedCursorForStatementNode(new(cursor, cursorValue), stepCall,
 			new(binding, element), body, label, node));

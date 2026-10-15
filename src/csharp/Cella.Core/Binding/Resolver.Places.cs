@@ -11,8 +11,8 @@ public sealed partial class Resolver
 {
 	private TypeSymbol? GetDereferenceTarget(TypeSymbol type) => FindDereferences(type)
 		.Select(dereference => GetFunctionInfo(dereference, type).Signature.ReturnType)
-		.OfType<BorrowType>()
-		.FirstOrDefault()?.Target;
+		.Select(static result => result is BorrowType borrow ? borrow.Target : result)
+		.FirstOrDefault();
 	
 	private IEnumerable<MethodSymbol> FindDereferences(TypeSymbol type) => FindPlaceOperators(type, "*");
 	

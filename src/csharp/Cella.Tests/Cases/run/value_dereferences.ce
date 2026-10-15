@@ -1,0 +1,74 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Chars: ref rec
+{
+	text: str
+	offset: usize
+	current: char
+
+	for: op(mut self) -> bool
+	{
+		if self.offset >= self.text.byteLength
+			ret false
+
+		self.current = char(u32(self.text[self.offset]))
+		self.offset += 1
+		ret true
+	}
+
+	*: op(imm self) -> char = self.current
+}
+
+Entry: ref rec
+{
+	key: imm[i32]
+	value: mut[i32]
+}
+
+Pairs: ref rec
+{
+	keys: ptr[i32]
+	values: ptr[i32]
+	count: usize
+	index: usize
+	started: bool
+
+	for: op(mut self) -> bool
+	{
+		if self.started
+			self.index += 1
+
+		self.started = true
+		ret self.index < self.count
+	}
+
+	*: op(imm self) -> Entry = Entry(imm self.keys[self.index], mut self.values[self.index])
+}
+
+Counter: rec
+{
+	n: i32
+
+	*: op(imm self) -> i32 = self.n * 2
+}
+
+main: fun -> i32
+{
+	var sum = 0
+	for c in Chars("abc", 0, 'x')
+		sum += i32(u32(c))
+
+	var keys = [1, 2, 3]
+	var values = [10, 20, 30]
+	for entry in Pairs(@keys[0], @values[0], 3, 0, false)
+		entry.value += entry.key
+
+	val counter = Counter(21)
+	printf("%d %d %d %d %d\n", sum, values[0], values[2], *counter, counter.n)
+	ret 0
+}

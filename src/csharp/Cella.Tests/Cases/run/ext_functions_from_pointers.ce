@@ -1,0 +1,24 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+ext
+{
+	GetModuleHandleA: fun(name: cstr) -> ptr
+	GetProcAddress: fun(module: ptr, name: cstr) -> ptr
+}
+
+twice: ext fun(x: i32) -> i32 = x * 2
+
+main: fun -> i32
+{
+	val address = GetProcAddress(GetModuleHandleA("kernel32"), "GetCurrentProcessId")
+	val f = ext fun[-> u32](address)
+	val raw = ptr(twice)
+	val g = ext fun[i32 -> i32](raw)
+	printf("%d %d\n", i32(f() > 0), g(21))
+	ret 0
+}

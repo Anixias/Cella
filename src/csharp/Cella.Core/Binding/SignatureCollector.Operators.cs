@@ -307,7 +307,7 @@ public sealed partial class SignatureCollector
 				new Diagnostic(DiagnosticSeverity.Error, d.Node.Identifier.SourceLocation, message)));
 		}
 		
-		if (valid.Select(static d => ((BorrowType)d.Signature.ReturnType).Target).Distinct().Count() > 1)
+		if (valid.Select(static d => GetIndexedType(d.Signature)).Distinct().Count() > 1)
 			Diagnostics.AddRange(valid.Select(static d => new Diagnostic(DiagnosticSeverity.Error,
 				d.Node.ReturnType!.SourceLocation, "Cannot declare '*' operators with different target types")));
 	}
@@ -320,7 +320,7 @@ public sealed partial class SignatureCollector
 		{ Parameters: [var parameter, ..] } =>
 			(parameter.SourceLocation, "Cannot take parameters in '*' operators with 'self'"),
 		{ ReturnType: null } => (node.Identifier.SourceLocation, "'*' operators need a return type"),
-		_ when signature.ReturnType is BorrowType borrow && IsPlaceResult(type, borrow, signature.GetMode(0)) => null,
+		_ when IsIndexerResult(type, signature) => null,
 		_ => (node.ReturnType?.SourceLocation ?? node.Identifier.SourceLocation,
 			$"Cannot return '{signature.ReturnType.Name}' from '*' with '{DescribeReceiver(signature.GetMode(0))}'")
 	};

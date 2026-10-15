@@ -1,0 +1,14 @@
+
+====== value_dereference_writes.ce ======
+
+Error at line 13, column 2
+12 │ var counter = Counter(1)
+13 │ *counter = 5
+     ╘══════╛ Cannot assign to unstored values
+
+Error at line 14, column 12
+13 │ *counter = 5
+14 │ val p = @(*counter)
+               ╘══════╛ Cannot take the address of unstored values
+
+[compilation failed]

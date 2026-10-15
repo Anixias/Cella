@@ -78,7 +78,10 @@ public sealed partial class TypePool
 		SizeTable.Register(functionType, size);
 		
 		if (isExternal)
+		{
 			ConversionTable.Add(new FreeConversion(functionType, NativeSymbols.VoidPtr, ConversionKind.Explicit));
+			ConversionTable.Add(new FreeConversion(NativeSymbols.VoidPtr, functionType, ConversionKind.Explicit));
+		}
 		
 		if (isRef)
 			ConversionTable.Add(new FreeConversion(

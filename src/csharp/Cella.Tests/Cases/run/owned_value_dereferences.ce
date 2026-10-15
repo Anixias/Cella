@@ -1,0 +1,41 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Token: rec
+{
+	id: i32
+
+	drop: op
+	{
+		printf("drop %d\n", self.id)
+	}
+}
+
+Maker: rec
+{
+	n: i32
+	limit: i32
+
+	for: op(mut self) -> bool
+	{
+		self.n += 1
+		ret self.n <= self.limit
+	}
+
+	*: op(imm self) -> Token = Token(self.n)
+}
+
+main: fun -> i32
+{
+	for t in Maker(0, 2)
+		printf("got %d\n", t.id)
+
+	val m = Maker(5, 9)
+	val one = *m
+	printf("one %d %d\n", one.id, m.n)
+	ret 0
+}
