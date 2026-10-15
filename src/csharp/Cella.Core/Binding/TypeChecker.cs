@@ -322,7 +322,6 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool, 
 		continueDepth--;
 	}
 	
-	// TEMP Will need implicit conversions, subtyping, traits/interfaces, constraints, etc.
 	private bool AreTypesCompatible(TypeSymbol? expected, TypeSymbol? actual) => expected == actual;
 	
 	internal static bool IsLValue(IResolvedExpressionNode expression) => expression switch
@@ -339,7 +338,7 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool, 
 	
 	private bool IsAllowedAsStatement(IResolvedExpressionNode expression) => expression switch
 	{
-		ResolvedFunctionCallExpressionNode call => !IsGetterCall(call), // TODO Warn if function is pure?
+		ResolvedFunctionCallExpressionNode call => !IsGetterCall(call),
 		ResolvedIndirectCallExpressionNode => true,
 		ResolvedConstructorCallExpressionNode => true,
 		ResolvedAssignmentExpressionNode => true,
@@ -1026,7 +1025,6 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool, 
 			ReportOverflow(node, "Negation");
 	}
 	
-	// TODO Better diagnostics
 	public void Visit(ResolvedUndefExpressionNode node)
 	{
 		Diagnostics.Add(new(DiagnosticSeverity.Error, node.Syntax.SourceLocation,

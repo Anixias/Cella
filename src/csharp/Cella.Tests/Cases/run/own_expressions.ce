@@ -16,6 +16,7 @@ Buffer: rec
 
 	drop: op
 	{
+		printf("drop %d\n", self.id)
 	}
 }
 
@@ -57,6 +58,8 @@ main: fun -> i32
 	val h = @holder
 	val inner = own h.buffer
 	printf("%d %d\n", first.id, inner.id)
+	own *p = Buffer(30)
+	own h.buffer = Buffer(31)
 
 	val effect = Effect.owned(Buffer(14))
 	if own effect is owned(val buffer)

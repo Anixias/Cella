@@ -200,8 +200,6 @@ public sealed class OperatorRegistry
 			result.GetOrAdd(op)
 				.Add(new NativeImpl(op, NativeSymbols.Bool, NativeSymbols.VoidPtr, NativeSymbols.VoidPtr));
 		
-		// TODO Should equality operations should be defined for everything?
-		
 		return result;
 	}
 	

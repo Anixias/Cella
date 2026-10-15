@@ -11,6 +11,7 @@ Buffer: rec
 
 	drop: op
 	{
+		printf("drop %d\n", self.id)
 	}
 }
 

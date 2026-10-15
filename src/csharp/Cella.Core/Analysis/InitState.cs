@@ -23,6 +23,7 @@ public sealed class InitState
 	private readonly Chunk[] _chunks;
 	private readonly bool[] _owned;
 	private ImmutableDictionary<int, Shape> shapes = ImmutableDictionary<int, Shape>.Empty;
+	private List<(int Start, int End)>? writeLog;
 	
 	public InitState(int count, PathState state)
 	{
@@ -37,6 +38,15 @@ public sealed class InitState
 		_count = count;
 		_chunks = chunks;
 		_owned = new bool[chunks.Length];
+	}
+	
+	public void BeginWriteLog() => writeLog = [];
+	
+	public List<(int Start, int End)> EndWriteLog()
+	{
+		var log = writeLog ?? [];
+		writeLog = null;
+		return log;
 	}
 	
 	public InitState Copy()
@@ -60,6 +70,7 @@ public sealed class InitState
 				continue;
 			
 			changed = true;
+			writeLog?.Add((c * ChunkSize, c * ChunkSize + length));
 			if (mine == Chunk.Empty || Chunk.Covers(theirs, mine, length))
 			{
 				_chunks[c] = theirs;
@@ -206,6 +217,7 @@ public sealed class InitState
 		ImmutableHashSet<SourceLocation>? writes)
 	{
 		RemoveShapes(start, end);
+		writeLog?.Add((start, end));
 		for (var index = start; index < end;)
 		{
 			var offset = index % ChunkSize;
@@ -222,6 +234,7 @@ public sealed class InitState
 	
 	private void ApplyDefaults(int start, int end)
 	{
+		writeLog?.Add((start, end));
 		foreach (var (index, shape) in shapes.Where(entry => entry.Key >= start && entry.Key < end).ToList())
 		{
 			var applied = Shape.MapLeaves(shape, static leaf => leaf.State.HasFlag(PathState.Unassigned)

@@ -4,7 +4,6 @@ using Cella.Core.Binding.Constants;
 
 namespace Cella.Core.Symbols;
 
-// TODO Type parameters
 public sealed class FunctionSignature
 (
 	IEnumerable<TypeSymbol> parameterTypes,

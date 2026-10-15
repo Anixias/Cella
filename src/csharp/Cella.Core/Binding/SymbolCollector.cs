@@ -125,7 +125,6 @@ public sealed class SymbolCollector : IDeclarationNodeVisitor<Symbol>
 			_builder.DeclarationSymbols[param] = paramSymbol;
 		}
 		
-		// TODO Containing function
 		var isMember = _typeStack.TryPeek(out var typeName);
 		var isAccessor = _properties.TryPeek(out var property);
 		var name = isAccessor ? $"{typeName}.{property!.Identifier.Text}.{node.Identifier.Text}"
@@ -441,7 +440,7 @@ public sealed class SymbolCollector : IDeclarationNodeVisitor<Symbol>
 	public Symbol Visit(FieldNode node)
 	{
 		var name = node.Identifier.Text;
-		var field = new FieldSymbol(name, node, true); // TODO Immutable fields
+		var field = new FieldSymbol(name, node, true);
 		_builder.DeclarationSymbols[node] = field;
 		return field;
 	}

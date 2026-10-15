@@ -1,6 +1,59 @@
+drop 1
+drop 9
+drop 3
+drop 2
+drop 1
+drop 9
+drop 2
+drop 1
+drop 9
 1 5 9
+drop 0
+drop 0
+drop 1
+drop 1
+drop 2
+drop 2
+drop 3
+drop 3
+drop 4
+drop 0
+drop 0
+drop 0
+drop 1
+drop 1
+drop 2
+drop 2
+drop 3
+drop 3
+drop 4
+drop 4
+drop 5
+drop 5
+drop 6
+drop 6
+drop 7
+drop 7
+drop 0
 40 8
+drop 2
+drop 1
+drop 3
+drop 2
+drop 3
+drop 3
+drop 1
+drop 5
+drop 4
 3 6 5
+drop 7
 6 7 8
+drop 2
+drop 1
+drop 12
 3 11 12 0
+drop 11
+drop 8
+drop 7
+drop 6
 [exit code 0]

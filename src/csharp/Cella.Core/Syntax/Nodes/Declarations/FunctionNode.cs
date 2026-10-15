@@ -11,7 +11,6 @@ public interface IFunctionNode : IDeclarationNode
 	ITypeNode? ReturnType { get; }
 }
 
-// TODO Store local function nodes directly and omit from body node?
 public sealed class FunctionNode
 (
 	Token identifier,

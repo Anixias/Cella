@@ -1,0 +1,8 @@
+-- 1
+take 1
+drop R 1 2
+end
+-- 0
+end
+drop R 5 0
+[exit code 0]

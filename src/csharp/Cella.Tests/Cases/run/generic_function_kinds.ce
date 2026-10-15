@@ -1,0 +1,23 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+	abs: fun(value: i32) -> i32
+}
+
+first[T]: fun(own a: T, own b: T) -> T = a
+second[T]: fun(own a: T, own b: T) -> T = b
+neg: fun(value: i32) -> i32 = -value
+
+main: fun -> i32
+{
+	val f = first(neg, abs)
+	val g = second(neg, abs)
+	val n = 3
+	val h = first(fun -> i32 = n, fun -> i32 = 1)
+	val k = second(fun -> i32 = n, fun -> i32 = 1)
+	val wide = first(1, 2i64)
+	printf("%d %d %d %d %lld\n", f(5), g(-6), h(), k(), wide)
+	ret 0
+}

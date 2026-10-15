@@ -1,0 +1,62 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Code: val u32 = 'A'
+Letter: val char = char(Code + 1)
+Lengths: val array[u8, 'C' - 'A'] = [1, 2]
+
+divide: fun(a: i128, b: i128) -> i128 = a / b
+remainder: fun(a: i128, b: i128) -> i128 = a % b
+divideWide: fun(a: u128, b: u128) -> u128 = a / b
+remainderWide: fun(a: u128, b: u128) -> u128 = a % b
+
+classify: fun(n: i32) -> i32
+{
+	if n == 0
+		ret 0
+
+	if n == 1
+		ret 10
+
+	if n == 2
+		ret 20
+
+	if n == 3
+		ret 30
+
+	if n == 4
+		ret 40
+
+	if n == 5
+		ret 50
+
+	if n == 6
+		ret 60
+
+	if n == 7
+		ret 70
+
+	if n == 8
+		ret 80
+
+	if n == 9
+		ret 90
+
+	ret -1
+}
+
+main: fun -> i32
+{
+	val big: i128 = 170141183460469231731687303715884105727
+	val small: i128 = -1000000000000000000000
+	printf("%lld %lld\n", i64(divide(big, 100000000000000000000000)), i64(remainder(small, 7)))
+	val huge: u128 = 340282366920938463463374607431768211455
+	printf("%llu %llu\n", u64(divideWide(huge, 100000000000000000000000000)), u64(remainderWide(huge, 1000)))
+	printf("%u %c %d\n", Code, Letter, i32(Lengths.length))
+	printf("%d %d %d\n", classify(0), classify(7), classify(12))
+	ret 0
+}

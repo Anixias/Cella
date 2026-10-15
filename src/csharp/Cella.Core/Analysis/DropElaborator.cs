@@ -17,6 +17,8 @@ public enum ElementDrop
 public sealed class DropElaborator(TypePool typePool, Action<InitState, MemoryEvent> transfer, MovePaths paths)
 {
 	private readonly Dictionary<MovePath, LocalVariableSymbol> _flags = [];
+	private readonly List<(int Index, MovePath Path)> _flaggedIndices = [];
+	private readonly Dictionary<MovePath, int> _flagOrder = [];
 	private readonly Dictionary<MovePath, LocalVariableSymbol> _zeroFlags = [];
 	private readonly Dictionary<MovePath, LocalVariableSymbol> _elementFlags = [];
 	
@@ -399,9 +401,12 @@ public sealed class DropElaborator(TypePool typePool, Action<InitState, MemoryEv
 	
 	private List<IInstruction> Update(InitState state, List<MemoryEvent> events)
 	{
-		var flagged = _flags.Keys.ToList();
-		var before = flagged.Select(state.GetOwnState).ToList();
 		var updates = new List<IInstruction>();
+		if (events.Count == 0)
+			return updates;
+		
+		var before = state.Copy();
+		state.BeginWriteLog();
 		foreach (var memoryEvent in events)
 		{
 			transfer(state, memoryEvent);
@@ -409,14 +414,14 @@ public sealed class DropElaborator(TypePool typePool, Action<InitState, MemoryEv
 				updates.AddRange(UpdateElementFlags(memoryEvent, state));
 		}
 		
-		for (var i = 0; i < flagged.Count; i++)
+		foreach (var path in FindWrittenFlags(state.EndWriteLog()))
 		{
-			var path = flagged[i];
+			var previous = before.GetOwnState(path);
 			var current = state.GetOwnState(path);
-			if (current == before[i])
+			if (current == previous)
 				continue;
 			
-			if (MayChange(before[i], current, PathState.Initialized))
+			if (MayChange(previous, current, PathState.Initialized))
 				updates.Add(Assign(_flags[path], current switch
 				{
 					PathState.Initialized => ConstantValue.True,
@@ -425,11 +430,40 @@ public sealed class DropElaborator(TypePool typePool, Action<InitState, MemoryEv
 						BinaryOperation.LogicalOr, SourceLocation.None)
 				}));
 			
-			if (_zeroFlags.TryGetValue(path, out var zeroFlag) && MayChange(before[i], current, PathState.Unassigned))
+			if (_zeroFlags.TryGetValue(path, out var zeroFlag) && MayChange(previous, current, PathState.Unassigned))
 				updates.Add(Assign(zeroFlag, Constant(current == PathState.Unassigned)));
 		}
 		
 		return updates;
+	}
+	
+	private List<MovePath> FindWrittenFlags(List<(int Start, int End)> written)
+	{
+		var found = new SortedSet<int>();
+		foreach (var (start, end) in written)
+		{
+			var first = FindFirstFlag(start);
+			for (var i = first; i < _flaggedIndices.Count && _flaggedIndices[i].Index < end; i++)
+				found.Add(i);
+		}
+		
+		return [..found.Select(i => _flaggedIndices[i].Path).OrderBy(path => _flagOrder[path])];
+	}
+	
+	private int FindFirstFlag(int index)
+	{
+		var low = 0;
+		var high = _flaggedIndices.Count;
+		while (low < high)
+		{
+			var middle = (low + high) / 2;
+			if (_flaggedIndices[middle].Index < index)
+				low = middle + 1;
+			else
+				high = middle;
+		}
+		
+		return low;
 	}
 	
 	private static bool MayChange(PathState before, PathState after, PathState state) =>
@@ -438,7 +472,11 @@ public sealed class DropElaborator(TypePool typePool, Action<InitState, MemoryEv
 	private VariableValue ReadFlag(MovePath path)
 	{
 		if (!_flags.TryGetValue(path, out var flag))
+		{
+			_flagOrder[path] = _flags.Count;
 			_flags[path] = flag = CreateFlag($".flag{_flags.Count}");
+			_flaggedIndices.Insert(FindFirstFlag(path.Index), (path.Index, path));
+		}
 		
 		return Read(flag);
 	}

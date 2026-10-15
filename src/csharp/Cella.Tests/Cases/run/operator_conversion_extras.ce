@@ -1,0 +1,76 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Display: trait
+{
+	print: fun(imm self, spec: str)
+}
+
+str: impl Display
+{
+	print: fun(self, spec: str) = printf("%.*s", i32(self.byteLength), self.data)
+}
+
+i32: impl Display
+{
+	print: fun(self, spec: str) = printf("%d", self)
+}
+
+Sprite: rec
+{
+	hp: i32
+}
+
+Slot: rec
+{
+	value: Sprite
+
+	as: op(imm self) -> imm[Sprite] = imm self.value
+	as: op(mut self) -> mut[Sprite] = mut self.value
+
+	drop: op
+	{
+	}
+}
+
+Holder: rec
+{
+	slot: Slot
+}
+
+heal: fun(mut s: Sprite)
+{
+	s.hp += 10
+}
+
+say: fun(text: fstr[Display])
+{
+	var i: usize = 0
+	while i < text.holes
+	{
+		text.piece(i).print("")
+		text.value(i).print(text.spec(i))
+		i += 1
+	}
+
+	text.piece(text.holes).print("")
+	printf("\n")
+}
+
+main: fun -> i32
+{
+	var slot = Slot(Sprite(1))
+	val m = mut slot
+	heal(mut m)
+	var holder = Holder(Slot(Sprite(5)))
+	heal(mut holder.slot)
+	printf("%d %d\n", slot.value.hp, holder.slot.value.hp)
+
+	val count = 3
+	say("count {count}")
+	ret 0
+}

@@ -1447,7 +1447,6 @@ public sealed class FileParser
 			return null;
 		}
 		
-		// TODO Potentially make type optional, inferred from default or make auto-generic?
 		if (!Match(ref index, TokenType.OpColon))
 		{
 			ReportExpected(index, "':' and a type");
@@ -2468,7 +2467,6 @@ public sealed class FileParser
 	{
 		// @TODO Diagnostics
 		
-		// @TODO Replace with statement node type
 		var statements = new List<IStatementNode>();
 		if (!ParseStatements(ref index, open, statements, out var close))
 			return null;

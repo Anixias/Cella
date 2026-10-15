@@ -380,6 +380,9 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 		var llvmModule = state.Module;
 		var name = state.Lowered.Symbol.Name;
 		AddUnwindTables(llvmModule);
+		if (TargetTriple.Contains("windows"))
+			PlaceFunctionsInSections(llvmModule);
+		
 		state.DiBuilder.DIBuilderFinalize();
 		
 		string message;
@@ -419,6 +422,21 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 	}
 	
 	private static string DescribeWriteFailure(string path, string message) => $"Cannot write '{path}': {message}";
+	
+	private static void PlaceFunctionsInSections(LLVMModuleRef module)
+	{
+		for (var function = module.FirstFunction; function.Handle != IntPtr.Zero; function = function.NextFunction)
+		{
+			if (function.BasicBlocksCount == 0 || LLVM.GetComdat((LLVMOpaqueValue*)function.Handle) != null ||
+			    function.Linkage is not (LLVMLinkage.LLVMExternalLinkage or LLVMLinkage.LLVMDLLExportLinkage))
+				continue;
+			
+			using var name = new MarshaledString(function.Name);
+			var comdat = LLVM.GetOrInsertComdat((LLVMOpaqueModule*)module.Handle, name);
+			LLVM.SetComdatSelectionKind(comdat, LLVMComdatSelectionKind.LLVMNoDeduplicateComdatSelectionKind);
+			LLVM.SetComdat((LLVMOpaqueValue*)function.Handle, comdat);
+		}
+	}
 	
 	private void AddUnwindTables(LLVMModuleRef module)
 	{
@@ -3786,7 +3804,7 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 			
 			value.Linkage = LLVMLinkage.LLVMExternalLinkage;
 		}
-		else if (!_assemblySymbol.SignatureTable.Functions.ContainsKey(function.Symbol))
+		else if (!IsDefinedHere(function.Symbol))
 		{
 			Import(value, function.Symbol);
 		}
@@ -3796,6 +3814,14 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 		}
 		
 		return value;
+	}
+	
+	private bool IsDefinedHere(FunctionSymbol symbol)
+	{
+		while (symbol.ContainingFunction is { } outer)
+			symbol = outer.Symbol;
+		
+		return _assemblySymbol.SignatureTable.Functions.ContainsKey(symbol);
 	}
 	
 	private Witness? FindWitness(FunctionInfo function)

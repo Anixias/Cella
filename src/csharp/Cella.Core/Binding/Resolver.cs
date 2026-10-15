@@ -2555,7 +2555,7 @@ public sealed class Resolver : IStatementNodeVisitor<IResolvedStatementNode>,
 		return arg switch
 		{
 			ResolvedFunctionGroupExpressionNode { Group.Functions: [var single] } when
-				GetOpenTypeParameters(single).IsEmpty => new(parameter, GetNaturalType(single)) { IsExact = true },
+				GetOpenTypeParameters(single).IsEmpty => new(parameter, GetNaturalType(single)),
 			ResolvedCaseNameExpressionNode => null,
 			_ when type is NeverType or FunctionGroupType or InvalidType => null,
 			_ when type is UntypedType literal => new(parameter, GetDefaultType(arg)) { Literal = literal },

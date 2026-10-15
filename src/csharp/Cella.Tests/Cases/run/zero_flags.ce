@@ -1,0 +1,40 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+R: rec
+{
+	a: i32
+	b: i32
+
+	drop: op
+	{
+		printf("drop R %d %d\n", self.a, self.b)
+	}
+}
+
+take: fun(own r: R) = printf("take %d\n", r.a)
+
+run: fun(flag: bool)
+{
+	printf("-- %d\n", flag)
+	var r: R
+	if flag
+	{
+		r = R(1, 2)
+		take(own r)
+	}
+
+	r.a = 5
+	printf("end\n")
+}
+
+main: fun -> i32
+{
+	run(true)
+	run(false)
+	ret 0
+}

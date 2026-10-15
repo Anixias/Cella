@@ -1,0 +1,105 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Word: rec
+{
+	v: u32
+
+	<<<: op(a: Word, b: i32) -> Word = Word(a.v <<< b)
+	>>>: op(a: Word, b: i32) -> Word = Word(a.v >>> b)
+	-%: op(a: Word, b: Word) -> Word = Word(a.v -% b.v)
+	*%: op(a: Word, b: Word) -> Word = Word(a.v *% b.v)
+
+	-=: op(mut self, other: Word)
+	{
+		self.v -= other.v
+	}
+
+	/=: op(mut self, other: Word)
+	{
+		self.v /= other.v
+	}
+
+	%=: op(mut self, other: Word)
+	{
+		self.v %= other.v
+	}
+
+	&=: op(mut self, other: Word)
+	{
+		self.v &= other.v
+	}
+
+	^=: op(mut self, other: Word)
+	{
+		self.v ^= other.v
+	}
+
+	<<=: op(mut self, amount: i32)
+	{
+		self.v <<= amount
+	}
+
+	>>=: op(mut self, amount: i32)
+	{
+		self.v >>= amount
+	}
+
+	<<<=: op(mut self, amount: i32)
+	{
+		self.v <<<= amount
+	}
+
+	>>>=: op(mut self, amount: i32)
+	{
+		self.v >>>= amount
+	}
+
+	-%=: op(mut self, other: Word)
+	{
+		self.v -%= other.v
+	}
+
+	*%=: op(mut self, other: Word)
+	{
+		self.v *%= other.v
+	}
+}
+
+main: fun -> i32
+{
+	val high = Word(0x80000001)
+	printf("%u %u\n", (high <<< 1).v, (high >>> 1).v)
+	printf("%u %u\n", (Word(1) -% Word(2)).v, (Word(0x10000) *% Word(0x10000)).v)
+
+	var w = Word(100)
+	w -= Word(10)
+	w /= Word(4)
+	w %= Word(7)
+	printf("%u\n", w.v)
+
+	w = Word(0xF0)
+	w &= Word(0x3C)
+	w ^= Word(0x0F)
+	w <<= 4
+	w >>= 2
+	printf("%u\n", w.v)
+
+	w = Word(0x80000001)
+	w <<<= 4
+	printf("%u\n", w.v)
+	w >>>= 8
+	printf("%u\n", w.v)
+
+	w = Word(0)
+	w -%= Word(1)
+	printf("%u\n", w.v)
+	w = Word(0x10000)
+	w *%= Word(0x10001)
+	printf("%u\n", w.v)
+	ret 0
+}

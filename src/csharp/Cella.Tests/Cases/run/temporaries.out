@@ -1,5 +1,24 @@
+drop 1
 2 3 5
+drop 5
+drop 4
+drop 3
+drop 2
 8
+drop 8
+drop 7
 9
+drop 9
+drop 6
+drop 0
+drop 1
+drop 2
+drop 3
+drop 13
+drop 23
+drop 33
+drop 3
 33 3 11
+drop 11
+drop 0
 [exit code 0]

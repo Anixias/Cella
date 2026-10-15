@@ -61,7 +61,6 @@ public readonly struct ResolutionContext
 	{
 		var result = new List<Symbol>();
 		
-		// TODO Nested functions in functions not supported
 		for (var f = ContainingFunction; f is not null; f = f.Value.Symbol.ContainingFunction)
 			result.Add(f.Value.Symbol);
 		

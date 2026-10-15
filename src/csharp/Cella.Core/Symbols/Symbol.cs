@@ -91,8 +91,6 @@ public sealed class FileSymbol(FileNode syntax, ModuleSymbol module, IEnumerable
 	public ImmutableDictionary<string, HashSet<Symbol>> Symbols { get; } = symbols
 		.GroupBy(static s => s.Name)
 		.ToImmutableDictionary(static g => g.Key, static g => g.ToHashSet());
-	
-	// TODO Symbols by name won't work with overloaded functions
 }
 
 public enum FunctionKind
@@ -104,7 +102,6 @@ public enum FunctionKind
 	External
 }
 
-// TODO Type parameter symbols
 public sealed class FunctionSymbol
 (
 	string name,
@@ -604,7 +601,6 @@ public sealed class LocalVariableSymbol(Token identifier, TypeSymbol type, bool 
 	public Constant? ConstantValue { get; init; }
 }
 
-// TODO: Initializer? Or is that stored elsewhere?
 public sealed class GlobalSymbol(GlobalNode syntax, Visibility visibility)
 	: VariableSymbol(syntax.Identifier.Text), IExportable
 {
@@ -874,7 +870,6 @@ public sealed class NativeConstructorNode(NativeMemberIntrinsic intrinsic) : IDe
 
 public sealed class CapturedSymbol(string name) : Symbol(name);
 
-// TODO Throw errors when symbols resolved as ambiguous
 public sealed class AmbiguousSymbol(string name, IEnumerable<Symbol> candidates) : Symbol(name)
 {
 	public ImmutableArray<Symbol> Candidates { get; } = candidates.ToImmutableArray();
