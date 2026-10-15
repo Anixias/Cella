@@ -131,8 +131,8 @@ public class Scanner
 	
 	private ScanResult ScanNumber(int position)
 	{
-		// @TODO Octal literals
-		if (Source[position] == '0' && position + 1 < Source.Length && Source[position + 1] is 'x' or 'X' or 'b' or 'B')
+		if (Source[position] == '0' && position + 1 < Source.Length &&
+		    Source[position + 1] is 'x' or 'X' or 'b' or 'B' or 'o' or 'O')
 			return ScanPrefixedNumber(position);
 		
 		var end = ScanDigits(position + 1);
@@ -210,14 +210,22 @@ public class Scanner
 	
 	private ScanResult ScanPrefixedNumber(int position)
 	{
-		var isHex = Source[position + 1] is 'x' or 'X';
+		var radix = Source[position + 1] switch
+		{
+			'x' or 'X' => 16,
+			'o' or 'O' => 8,
+			_ => 2
+		};
+		
 		var end = position + 2;
 		while (end < Source.Length && (char.IsLetterOrDigit(Source[end]) || Source[end] == '_'))
 			end++;
 		
-		var suffix = Source.GetText(new TextRange(position + 2, end)).IndexOfAny('i', 'u');
-		var digitsEnd = suffix < 0 ? end : position + 2 + suffix;
-		if (FindPrefixedNumberError(Source.GetText(new TextRange(position + 2, digitsEnd)), isHex) is not { } error)
+		var digitsEnd = position + 2;
+		while (digitsEnd < end && !(char.IsLetter(Source[digitsEnd]) && !IsRadixDigit(Source[digitsEnd], radix)))
+			digitsEnd++;
+		
+		if (FindPrefixedNumberError(Source.GetText(new TextRange(position + 2, digitsEnd)), radix) is not { } error)
 			return CreateSuffixedToken(TokenType.IntegerLiteral, position, digitsEnd, end);
 		
 		var invalid = new Token(TokenType.Invalid, Source, new TextRange(position, end)) { Error = error };
@@ -247,12 +255,25 @@ public class Scanner
 		return new ScanResult(token, end);
 	}
 	
-	private static string? FindPrefixedNumberError(ReadOnlySpan<char> digits, bool isHex)
+	private static bool IsRadixDigit(char digit, int radix) => radix switch
 	{
-		var kind = isHex ? "hex" : "binary";
+		16 => char.IsAsciiHexDigit(digit),
+		8 => digit is >= '0' and <= '7',
+		_ => digit is '0' or '1'
+	};
+	
+	private static string? FindPrefixedNumberError(ReadOnlySpan<char> digits, int radix)
+	{
+		var kind = radix switch
+		{
+			16 => "hex",
+			8 => "octal",
+			_ => "binary"
+		};
+		
 		foreach (var digit in digits)
 		{
-			if (digit != '_' && !(isHex ? char.IsAsciiHexDigit(digit) : digit is '0' or '1'))
+			if (digit != '_' && !IsRadixDigit(digit, radix))
 				return $"Invalid digit '{digit}' in {kind} literal";
 		}
 		
@@ -265,6 +286,23 @@ public class Scanner
 		var isNegative = digits.StartsWith('-');
 		if (isNegative)
 			digits = digits[1..];
+		
+		if (digits is ['0', 'o' or 'O', .. var octal])
+		{
+			value = BigInteger.Zero;
+			foreach (var digit in octal)
+			{
+				if (digit is < '0' or > '7')
+					return false;
+				
+				value = value * 8 + (digit - '0');
+			}
+			
+			if (isNegative)
+				value = -value;
+			
+			return octal.Length > 0;
+		}
 		
 		var (body, style) = digits switch
 		{

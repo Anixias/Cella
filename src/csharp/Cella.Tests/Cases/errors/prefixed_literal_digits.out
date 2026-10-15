@@ -1,0 +1,19 @@
+
+====== prefixed_literal_digits.ce ======
+
+Error at line 5, column 10
+4 │ {
+5 │     val a = 0o78
+                ╘══╛ Invalid digit '8' in octal literal
+
+Error at line 9, column 10
+8 │ val d = 0xFFU8
+9 │ val e = 0b102
+            ╘═══╛ Invalid digit '2' in binary literal
+
+Error at line 10, column 10
+ 9 │ val e = 0b102
+10 │ val f = 0o
+             ╘╛ Expected octal digits
+
+[compilation failed]

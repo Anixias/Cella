@@ -1,0 +1,15 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+main: fun -> i32
+{
+	val mode = 0o755
+	val small: u8 = 0o17u8
+	val big = 0O1_777
+	printf("%d %d %d %d %d\n", mode, small, big, 010, -0o10)
+	ret 0
+}

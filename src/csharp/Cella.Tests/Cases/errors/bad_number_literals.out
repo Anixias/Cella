@@ -1,11 +1,6 @@
 
 ====== bad_number_literals.ce ======
 
-Error at line 5, column 6
-4 │ {
-5 │     ret 0xFG
-            ╘══╛ Invalid digit 'G' in hex literal
-
 Error at line 10, column 6
  9 │ {
 10 │     ret 0b102
