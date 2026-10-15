@@ -59,7 +59,10 @@ public sealed partial class Resolver
 			.ToList();
 		
 		var rightTypes = candidates.Select(static candidate => candidate.ParameterTypes[1]).Distinct().ToList();
-		var right = VisitNode(node.Right, rightTypes.Count == 1 ? rightTypes[0] : null);
+		var isChar = node.Right is LiteralExpressionNode { Token: { Type: TokenType.CharLiteral, Suffix: null } };
+		var right = AdaptCharLiteral(VisitNode(node.Right, rightTypes.Count == 1 && !isChar ? rightTypes[0] : null),
+			left.Type);
+		
 		if (AnyInvalid(left, right))
 			return null;
 		

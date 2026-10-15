@@ -11,9 +11,10 @@ Error at line 7, column 10
 7 │ var e = c >>> 1
             ╘═════╛ No operation defined for '>>>' between 'char' and 'integer literal'
 
-Error at line 9, column 10
+Error at line 9, column 15
 8 │ var f: u8 = 1
 9 │ var g = f << 'a'
-            ╘══════╛ No operation defined for '<<' between 'u8' and 'char'
+                 ╘═╛ Shift amount 97 is out of range for 'u8'
+                   | 'u8' has 8 bits
 
 [compilation failed]

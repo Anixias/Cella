@@ -1,0 +1,49 @@
+
+====== byte_char_literals.ce ======
+
+Error at line 9, column 16
+8 │ var b: u8 = 1
+9 │ if text[0] == '€' || small < 'é'
+                  ╘═╛ '€' doesn't fit in 'u8'
+
+Error at line 9, column 31
+8 │ var b: u8 = 1
+9 │ if text[0] == '€' || small < 'é'
+                                 ╘═╛ 'é' doesn't fit in 'i8'
+
+Error at line 12, column 5
+11 │ 
+12 │ if text[0] == ch || text[0] < ch
+        ╘═══════════╛ No operation defined for '==' between 'u8' and 'char'
+
+Error at line 12, column 22
+11 │ 
+12 │ if text[0] == ch || text[0] < ch
+                         ╘══════════╛ No operation defined for '<' between 'u8' and 'char'
+
+Error at line 15, column 12
+14 │ 
+15 │ val sum = ch + b
+               ╘════╛ No operation defined for '+' between 'char' and 'u8'
+
+Error at line 16, column 7
+15 │ val sum = ch + b
+16 │ b += ch
+          ╘╛ Cannot convert type 'char' to 'u8'
+
+Error at line 17, column 6
+16 │ b += ch
+17 │ val mixed = 'a'
+         ╘═══╛ Cannot infer the type of 'mixed' from 'char' and 'u8'
+
+Error at line 19, column 13
+18 │ val named: char = mixed
+19 │ val euro = '€'
+                ╘═╛ '€' doesn't fit in 'u8'
+
+Error at line 20, column 18
+19 │ val euro = '€'
+20 │ val typed: u8 = '€'
+                     ╘═╛ '€' doesn't fit in 'u8'
+
+[compilation failed]

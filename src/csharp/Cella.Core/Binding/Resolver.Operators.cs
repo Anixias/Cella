@@ -192,6 +192,10 @@ public sealed partial class Resolver
 			if (right.Type is NeverType && left.Type is not UntypedType)
 				right = MaterializeExpression(right, left.Type);
 			
+			(left, right) = (AdaptCharLiteral(left, right.Type), AdaptCharLiteral(right, left.Type));
+			if (AnyInvalid(left, right))
+				return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
+			
 			if (FoldLiterals(node, left, right) is { } folded)
 				return folded;
 			
@@ -246,6 +250,7 @@ public sealed partial class Resolver
 			var resolutionSet = ResolveCallable(candidates, args, MaterializationMode.Overload);
 			if (resolutionSet.IsAmbiguous &&
 			    (IsShift(op.Type) && (left.Type == NativeSymbols.Char || right.Type == NativeSymbols.Char) ||
+			     MixesCharWithInteger(left.Type, right.Type) ||
 			     left.Type == NativeSymbols.CStr || right.Type == NativeSymbols.CStr))
 				return Error(node, DiagnosticReporter.ReportBinaryOpMismatch(_operatorRegistry, left, op, right),
 					CurrentTargetType);
@@ -419,8 +424,21 @@ public sealed partial class Resolver
 			.Select((operand, i) => visited[i] ?? VisitCaseName(operand, peers) ?? Decay(VisitNode(operand, null)))
 			.ToList();
 		
+		for (var i = 0; i < operands.Count; i++)
+		{
+			if (i > 0)
+				operands[i] = AdaptCharLiteral(operands[i], operands[i - 1].Type);
+			
+			if (i + 1 < operands.Count)
+				operands[i] = AdaptCharLiteral(operands[i], operands[i + 1].Type);
+		}
+		
 		return ResolveChainLinks(node, operands);
 	}
+	
+	private static bool MixesCharWithInteger(TypeSymbol left, TypeSymbol right) =>
+		left == NativeSymbols.Char && right is IntegerType { Kind: not PrimitiveTypeKind.Char } ||
+		right == NativeSymbols.Char && left is IntegerType { Kind: not PrimitiveTypeKind.Char };
 	
 	private IResolvedExpressionNode DefaultLiteral(IResolvedExpressionNode operand) =>
 		operand is ResolvedLiteralExpressionNode { Type: UntypedType } ? MaterializeAsDefault(operand) : operand;
@@ -470,6 +488,10 @@ public sealed partial class Resolver
 				
 				resolutionSet = builtIn;
 			}
+			
+			if (resolutionSet.IsAmbiguous && MixesCharWithInteger(args[0].Type, args[1].Type))
+				return Error(node, DiagnosticReporter.ReportBinaryOpMismatch(_operatorRegistry, args[0], op, args[1]),
+					CurrentTargetType);
 			
 			if (resolutionSet.IsAmbiguous)
 				return Error(node,

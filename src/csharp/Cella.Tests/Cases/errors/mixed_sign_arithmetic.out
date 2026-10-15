@@ -20,7 +20,7 @@ Error at line 13, column 16
                              | 'i64' can't represent every 'usize' value
 
 Error at line 16, column 13
-15 │ var letter = 'a'
+15 │ var letter: char = 'a'
 16 │ var next = letter + signed
                 ╘═════════════╛ No operation defined for '+' between 'char' and 'i32'
                               | 'i32' can't represent every 'char' value
