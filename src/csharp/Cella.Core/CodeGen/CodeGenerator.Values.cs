@@ -41,7 +41,7 @@ public sealed unsafe partial class CodeGenerator
 	{
 		var template = EmitValue(v.Target, builder);
 		var index = EmitValue(v.Index, builder);
-		if (_config.BoundsChecks)
+		if (checks.Bounds)
 		{
 			var holes = builder.BuildExtractValue(template, 0, "holes");
 			var predicate = v.Part == FStrPart.Piece ? LLVMIntPredicate.LLVMIntUGT : LLVMIntPredicate.LLVMIntUGE;
@@ -123,7 +123,7 @@ public sealed unsafe partial class CodeGenerator
 				
 				var index = EmitValue(v.Index, builder);
 				var zero = LLVMValueRef.CreateConstInt(_context.Int32Type, 0);
-				if (!_config.BoundsChecks)
+				if (!checks.Bounds)
 					return (builder.BuildGEP2(arrayType, arrayPtr, new[] { zero, index }, "elemptr"), elemType);
 				
 				var length = LLVMValueRef.CreateConstInt(index.TypeOf, (ulong)a.Length);
@@ -137,7 +137,7 @@ public sealed unsafe partial class CodeGenerator
 			{
 				var (length, data) = EmitStrParts(v.Target, builder);
 				var index = EmitValue(v.Index, builder);
-				if (!_config.BoundsChecks)
+				if (!checks.Bounds)
 					return (builder.BuildGEP2(_context.Int8Type, data, new[] { index }, "byteptr"), elemType);
 				
 				PanicIf(builder.BuildICmp(LLVMIntPredicate.LLVMIntUGE, index, length), "index out of bounds",
@@ -208,7 +208,7 @@ public sealed unsafe partial class CodeGenerator
 			return null;
 		
 		var value = builder.BuildLoad2(_context.Int32Type, address, v.Member.Name);
-		if (_config.OverflowChecks)
+		if (checks.Overflow)
 			PanicIf(builder.BuildNot(IsScalarValue(value, builder), "invalid"), "invalid char", v.SourceLocation,
 				builder);
 		

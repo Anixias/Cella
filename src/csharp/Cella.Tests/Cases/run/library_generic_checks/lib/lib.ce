@@ -1,0 +1,10 @@
+mod lib
+
+plain: pub fun(x: u8) -> u8 = x + 1
+
+bump[T]: pub fun(x: u8) -> u8
+{
+	var y = x
+	y += 1
+	ret y
+}

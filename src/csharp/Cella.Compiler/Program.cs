@@ -392,6 +392,7 @@ internal static class Program
 	{
 		public ImmutableArray<AssemblyInfo> Dependencies { get; init; } = [];
 		public ImmutableArray<LoweredFunction> GenericFunctions { get; init; } = [];
+		public RuntimeChecks Checks { get; init; }
 		public IReadOnlySet<GlobalSymbol> ExportedStatics { get; init; } = ImmutableHashSet<GlobalSymbol>.Empty;
 		public IReadOnlySet<Symbol> Exports { get; init; } = ImmutableHashSet<Symbol>.Empty;
 		public ImmutableArray<ExportName> ExportNames { get; init; } = [];
@@ -546,8 +547,8 @@ internal static class Program
 		var targetConfig = new TargetConfig(targetTriple.ToLlvm(), Features: targetTriple.ToLlvmFeatures());
 		var codeGenConfig = new CodeGenConfig(outputConfig, targetConfig, optimizeMode)
 		{
-			BoundsChecks = project.Project.BoundsChecks ?? true,
-			OverflowChecks = project.Project.OverflowChecks ?? optimizeMode == OptimizeMode.Debug,
+			Checks = new(project.Project.BoundsChecks ?? true,
+				project.Project.OverflowChecks ?? optimizeMode == OptimizeMode.Debug),
 			DebugInfo = project.Project.DebugInfo ?? true,
 			SourceRoot = project.Directory,
 			ProjectRoots = [..allDependencies.Select(static d => d.Directory).OfType<string>(), project.Directory],
@@ -659,6 +660,9 @@ internal static class Program
 			var inputs = new CodeGenInputs
 			{
 				GenericFunctions = [..genericFunctions, ..allDependencies.SelectMany(static d => d.GenericFunctions)],
+				ForeignChecks = allDependencies
+					.SelectMany(static d => d.GenericFunctions.Select(f => (f.Info.Symbol, d.Checks)))
+					.ToDictionary(static pair => pair.Symbol, static pair => pair.Checks),
 				Exports = exports,
 				LibraryStatics = allDependencies.SelectMany(static d => d.ExportedStatics).ToHashSet(),
 				StaticLibrarySymbols = allDependencies
@@ -811,6 +815,7 @@ internal static class Program
 			ProjectPath = project.FilePath,
 			Dependencies = dependencyList,
 			GenericFunctions = genericFunctions,
+			Checks = codeGenConfig.Checks,
 			ExportedStatics = exportedStatics,
 			Exports = exports,
 			ExportNames = exportNames,

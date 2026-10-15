@@ -138,7 +138,7 @@ public sealed partial class CodeGenerator
 				: builder.BuildZExt(source, _context.Int64Type, "wide")
 			: source;
 		
-		if (_config.OverflowChecks)
+		if (checks.Overflow)
 			PanicIf(builder.BuildNot(IsScalarValue(wide, builder), "invalid"), "conversion overflow", location,
 				builder);
 		
@@ -150,7 +150,7 @@ public sealed partial class CodeGenerator
 	{
 		var result = ResizeInteger(source, destType, fromSigned, builder);
 		var (fromBits, toBits) = (source.TypeOf.IntWidth, destType.IntWidth);
-		if (!_config.OverflowChecks || (fromSigned == toSigned ? toBits >= fromBits : !fromSigned && toBits > fromBits))
+		if (!checks.Overflow || (fromSigned == toSigned ? toBits >= fromBits : !fromSigned && toBits > fromBits))
 			return result;
 		
 		var back = ResizeInteger(result, source.TypeOf, toSigned, builder);
@@ -201,7 +201,7 @@ public sealed partial class CodeGenerator
 	private LLVMValueRef EmitFloatToInteger(LLVMValueRef source, LLVMTypeRef destType, bool isSigned,
 		SourceLocation location, LLVMBuilderRef builder)
 	{
-		if (_config.OverflowChecks)
+		if (checks.Overflow)
 			PanicIf(builder.BuildNot(FitsInteger(source, destType.IntWidth, isSigned, builder)), "conversion overflow",
 				location, builder);
 		

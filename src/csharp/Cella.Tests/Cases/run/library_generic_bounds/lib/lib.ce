@@ -1,0 +1,7 @@
+mod lib
+
+read[T]: pub fun(i: usize) -> i32
+{
+	val items: array[i32, 3] = [1, 2, 3]
+	ret items[i]
+}

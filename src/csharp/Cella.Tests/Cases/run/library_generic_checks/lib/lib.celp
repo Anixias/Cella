@@ -1,0 +1,3 @@
+OutputType = "SharedLibrary"
+SystemLinkPreference = "Dynamic"
+OverflowChecks = false

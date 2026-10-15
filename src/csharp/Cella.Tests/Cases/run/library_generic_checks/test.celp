@@ -1,0 +1,6 @@
+OutputType = "Executable"
+SystemLinkPreference = "Dynamic"
+OverflowChecks = true
+
+[[ProjectReferences]]
+Path = 'lib/lib.celp'

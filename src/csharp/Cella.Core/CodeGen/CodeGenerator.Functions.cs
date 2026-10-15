@@ -173,6 +173,7 @@ public sealed partial class CodeGenerator
 	private void BuildFunction(LoweredFunction function, FunctionInfo info)
 	{
 		currentFunction = current.Functions[info];
+		checks = _inputs.ForeignChecks.GetValueOrDefault(info.Symbol, _config.Checks);
 		var functionValue = currentFunction.FunctionValue;
 		if (_config.DebugInfo)
 			StartFunctionDebugInfo(function, info, functionValue);
@@ -240,6 +241,8 @@ public sealed partial class CodeGenerator
 		var entryBranch = builder.BuildBr(blockMap[function.Blocks[0]]);
 		if (_config.DebugInfo)
 			FinishFunctionDebugInfo(entryBranch);
+		
+		checks = _config.Checks;
 	}
 	
 	private static LLVMValueRef BuildEntryAlloca(LLVMBuilderRef builder, LLVMTypeRef type, string name)

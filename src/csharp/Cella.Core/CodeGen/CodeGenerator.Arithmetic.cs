@@ -97,7 +97,7 @@ public sealed partial class CodeGenerator
 		return v switch
 		{
 			{ Op: BinaryOperation.Addition or BinaryOperation.Subtraction or BinaryOperation.Multiplication }
-				when _config.OverflowChecks =>
+				when checks.Overflow =>
 				EmitCheckedArithmetic(v.Op, left, right, signed, v.SourceLocation, builder),
 			
 			{ IsConstant: true, Op: BinaryOperation.Addition or BinaryOperation.WrappingAddition } =>
@@ -165,7 +165,7 @@ public sealed partial class CodeGenerator
 			? builder.BuildAdd(left, right, "char.add")
 			: builder.BuildSub(left, right, "char.sub");
 		
-		if (Substitute(v.Type) == NativeSymbols.Char && _config.OverflowChecks)
+		if (Substitute(v.Type) == NativeSymbols.Char && checks.Overflow)
 			PanicIf(builder.BuildNot(IsScalarValue(result, builder), "invalid"), "char overflow", v.SourceLocation,
 				builder);
 		
@@ -403,7 +403,7 @@ public sealed partial class CodeGenerator
 		{ Op: UnaryOperation.Identity } => EmitValue(v.Operand, builder),
 		{ Op: UnaryOperation.Negation, Operand.Type: FloatType } => builder.BuildFNeg(EmitValue(v.Operand, builder)),
 		{ IsConstant: true, Op: UnaryOperation.Negation } => LLVMValueRef.CreateConstNeg(EmitValue(v.Operand, builder)),
-		{ Op: UnaryOperation.Negation } when _config.OverflowChecks => EmitCheckedNegation(v, builder),
+		{ Op: UnaryOperation.Negation } when checks.Overflow => EmitCheckedNegation(v, builder),
 		{ Op: UnaryOperation.Negation } => builder.BuildNeg(EmitValue(v.Operand, builder)),
 		
 		{ IsConstant: true, Op: UnaryOperation.BitwiseNot } =>

@@ -1,0 +1,14 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+main: fun -> i32
+{
+	printf("%d\n", lib.plain(255))
+	printf("%d\n", lib.bump[u8](255))
+	printf("%d\n", lib.bump[u16](255))
+	ret 0
+}

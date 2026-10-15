@@ -100,6 +100,7 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 	
 	private ModuleState current = null!;
 	private LLVMFunctionInfo currentFunction;
+	private RuntimeChecks checks;
 	
 	private IReadOnlyDictionary<TypeParameterSymbol, TypeSymbol> substitution =
 		new Dictionary<TypeParameterSymbol, TypeSymbol>();
@@ -116,6 +117,7 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 		_assemblySymbol = assemblySymbol;
 		_typePool = typePool;
 		_config = config;
+		checks = config.Checks;
 		(_dataLayoutStr, TargetTriple, _targetMachine, _pointerSize) = config.GetDataLayout();
 		_targetData = LLVMTargetDataRef.FromStringRepresentation(_dataLayoutStr);
 		_cAbi = new CAbi(_targetData, TargetTriple);
@@ -629,7 +631,12 @@ public sealed record CodeGenInputs
 	public IReadOnlySet<string> HostedRegistries { get; init; } = ImmutableHashSet<string>.Empty;
 	public ImmutableArray<string> ContainedAssemblies { get; init; } = [];
 	public ImmutableArray<string> LoadedAssemblies { get; init; } = [];
+	
+	public IReadOnlyDictionary<FunctionSymbol, RuntimeChecks> ForeignChecks { get; init; } =
+		ImmutableDictionary<FunctionSymbol, RuntimeChecks>.Empty;
 }
+
+public readonly record struct RuntimeChecks(bool Bounds, bool Overflow);
 
 public sealed record CodeGenConfig
 (
@@ -638,8 +645,7 @@ public sealed record CodeGenConfig
 	OptimizeMode OptimizeMode
 )
 {
-	public bool BoundsChecks { get; init; } = true;
-	public bool OverflowChecks { get; init; }
+	public RuntimeChecks Checks { get; init; } = new(true, false);
 	public bool ExportsSymbols { get; init; }
 	public bool DebugInfo { get; init; }
 	public string? SourceRoot { get; init; }

@@ -1,0 +1,6 @@
+OutputType = "Executable"
+SystemLinkPreference = "Dynamic"
+BoundsChecks = false
+
+[[ProjectReferences]]
+Path = 'lib/lib.celp'
