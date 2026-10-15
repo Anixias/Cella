@@ -1,0 +1,49 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Spannable[T]: trait
+{
+	spanned: fun(mut self) -> span[T]
+}
+
+span[T]: ref rec
+{
+	data: ptr[T]
+	length: usize
+
+	new: op(data: ptr[T], length: usize)
+	{
+		self.data = data
+		self.length = length
+	}
+
+	as[N: const usize]: op(mut values: array[T, N]) -> span[T] = span[T](ptr[T](ptr(@values)), N)
+
+	as[C: Spannable[T]]: op(mut values: C) -> span[T] = values.spanned()
+}
+
+Bag: rec
+{
+	items: array[i32, 2]
+}
+
+Bag: impl Spannable[i32]
+{
+	spanned: fun(mut self) -> span[i32] = span[i32](ptr[i32](ptr(@self.items)), 2)
+}
+
+check[T: copy]: fun(values: span[T], test: fun[T -> bool]) -> bool = test(values.data[0])
+
+main: fun -> i32
+{
+	var numbers: array[i32, 4] = [1, 2, 3, 4]
+	var bag = Bag([5, 6])
+	var loose = [7, 8, 9]
+	printf("%d %d %d\n", i32(check(mut numbers, fun(a) = a > 0)), i32(check(mut bag, fun(a) = a > 5)),
+		i32(check(mut loose, fun(a) = a > 7)))
+	ret 0
+}

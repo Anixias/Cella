@@ -1,0 +1,8 @@
+mod test
+
+over: fun(x: i32) -> i32 = x + 1
+over: fun(x: f64) -> f64 = x * 2.0
+
+pick[F: fun[i64 -> i64]]: fun(imm f: F) -> i64 = f(1)
+
+main: fun -> i32 = i32(pick(over))

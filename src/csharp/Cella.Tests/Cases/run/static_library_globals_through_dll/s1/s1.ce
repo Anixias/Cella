@@ -1,0 +1,3 @@
+mod s1
+
+state: pub var i32 = 5

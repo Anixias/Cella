@@ -36,7 +36,8 @@ public sealed partial class Resolver
 				: VisitDeferred(nodes[i], i, shapes,
 				[
 					..shapes.Select(shape =>
-						ExpectedAt(shape, values, i) ?? ExpectArrayLiteral(shape, values, i, nodes[i]))
+						ExpectedAt(shape, values, i) ?? ExpectArrayLiteral(shape, values, i, nodes[i]) ??
+						ExpectLocalLambda(shape, values, i, nodes[i]))
 				]);
 		
 		var resolved = values.Select(static value => value!).ToArray();
@@ -129,6 +130,12 @@ public sealed partial class Resolver
 			? _typePool.GetArrayType(element, literal.Values.Length)
 			: null;
 	}
+	
+	private FunctionType? ExpectLocalLambda(CallShape shape, IReadOnlyList<IResolvedExpressionNode?> values, int index,
+		IExpressionNode node) =>
+		node is VarExpressionNode name && FindOpenLocal(name) is { Initializer: LambdaExpressionNode lambda }
+			? ExpectLambda(shape, values, index, ResolveAnnotations(lambda))
+			: null;
 	
 	private List<(int Shape, TypeSymbol?[] Hints, int Cost)> FindRetries(ImmutableArray<IExpressionNode> nodes,
 		IReadOnlyList<CallShape> shapes, IResolvedExpressionNode[] values, List<int> deferred,

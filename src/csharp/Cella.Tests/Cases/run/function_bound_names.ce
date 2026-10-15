@@ -1,0 +1,21 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+over: fun(x: i32) -> i32 = x + 1
+over: fun(x: f64) -> f64 = x * 2.0
+
+ident[T]: fun(own x: T) -> T = own x
+
+twice[F: fun[i32 -> i32]]: fun(imm f: F, x: i32) -> i32 = f(f(x))
+again[F: fun[own i32 -> i32]]: fun(imm f: F, x: i32) -> i32 = f(f(x))
+scaled[F: fun[f64 -> f64]]: fun(imm f: F, x: f64) -> f64 = f(x)
+
+main: fun -> i32
+{
+	printf("%d %d %.1f\n", twice(over, 1), again(ident, 5), scaled(over, 1.5))
+	ret 0
+}

@@ -1,0 +1,3 @@
+mod s2
+
+read: pub fun -> i32 = s1.state

@@ -1,0 +1,13 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+main: fun -> i32
+{
+	d.bump()
+	printf("%d %d\n", s2.read(), d.read())
+	ret 0
+}

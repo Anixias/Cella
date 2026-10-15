@@ -1,0 +1,13 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+main: fun -> i32
+{
+	s1.state += 1
+	printf("%d %d\n", s2.read(), s1.state)
+	ret 0
+}

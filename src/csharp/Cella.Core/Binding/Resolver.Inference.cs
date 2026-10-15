@@ -118,12 +118,24 @@ public sealed partial class Resolver
 		}
 		
 		var instantiated = InstantiateDeclared(info, arguments);
-		return candidate is FunctionCallable
+		ICallable specialized = candidate is FunctionCallable
 			? new FunctionCallable(instantiated, Repack(candidate, instantiated)) { IsGeneric = true }
 			: new ReceiverCallable(instantiated, instantiated.Signature.ReturnType, Repack(candidate, instantiated))
 			{
 				IsGeneric = true
 			};
+		
+		RecordGenericUses(args, specialized);
+		return specialized;
+	}
+	
+	private void RecordGenericUses(IReadOnlyList<IResolvedExpressionNode> args, ICallable instantiated)
+	{
+		if (survey is null)
+			return;
+		
+		for (var i = 0; i < args.Count && i < instantiated.ParameterTypes.Length; i++)
+			RecordMaterialization(args[i], instantiated.ParameterTypes[i]);
 	}
 	
 	private void MarkDefaultedArguments(ImmutableArray<TypeParameterSymbol> open, ICallable candidate,
@@ -144,7 +156,8 @@ public sealed partial class Resolver
 				.ToList();
 			
 			if (inputs.All(static input => input.Type is UntypedType))
-				inputs.ForEach(activeSurvey.MarkDefaulted);
+				inputs.Where(static input => input.Type is not FunctionGroupType).ToList()
+					.ForEach(activeSurvey.MarkDefaulted);
 		}
 		
 		static bool MentionsParameter(TypeSymbol type, TypeParameterSymbol parameter) =>
@@ -169,7 +182,12 @@ public sealed partial class Resolver
 		IEnumerable<InferenceInput?> inputs =
 		[
 			literal is null
-				? new InferenceInput(info.Signature.GetDeclaredType(0), type)
+				? new InferenceInput(info.Signature.GetDeclaredType(0), type is FunctionGroupType
+				{
+					Functions: [var single]
+				} && GetOpenTypeParameters(single).IsEmpty
+					? GetNaturalType(single)
+					: type)
 				: CreateInferenceInput(parameter, info.Signature.GetMode(0), literal)
 		];
 		
@@ -208,18 +226,36 @@ public sealed partial class Resolver
 		
 		var type = GetArgumentType(arg);
 		if (GetMutTarget(parameter, mode) is { } declared)
-			return type is UntypedType or InvalidType ? null : new(declared, type) { IsExact = true };
+			return type is UntypedType or InvalidType
+				? null
+				: arg is ResolvedMutArgumentExpressionNode { Place: var place } && FindOpenPlace(place) is not null &&
+				  FindLiteralType(type) is { } literal
+					? new(declared, type) { Literal = literal }
+					: new(declared, type) { IsExact = true };
 		
 		return arg switch
 		{
 			ResolvedFunctionGroupExpressionNode { Group.Functions: [var single] } when
 				GetOpenTypeParameters(single).IsEmpty => new(parameter, GetNaturalType(single)),
+			ResolvedFunctionGroupExpressionNode group when FindBoundFunction(parameter, group.Group) is { } bound =>
+				new(parameter, GetNaturalType(bound)),
 			ResolvedCaseNameExpressionNode => null,
 			_ when type is NeverType or FunctionGroupType or InvalidType => null,
 			_ when type is UntypedType literal => new(parameter, GetDefaultType(arg)) { Literal = literal },
 			_ => ConvertForInference(parameter, type, arg is ResolvedMutArgumentExpressionNode) ?? new(parameter, type)
 		};
 	}
+	
+	private FunctionInfo? FindBoundFunction(TypeSymbol parameter, FunctionGroupType group) =>
+		parameter is TypeParameterSymbol bounded &&
+		_typePool.GetFunctionBounds(bounded)
+			.Where(static bound => !TypePool.FindTypeParameters(bound).Any())
+			.Select(bound => FindFunction(group, bound))
+			.OfType<FunctionInfo>()
+			.Distinct()
+			.ToList() is [var found]
+			? found
+			: null;
 	
 	private InferenceInput? ConvertForInference(TypeSymbol parameter, TypeSymbol type, bool isMut)
 	{
@@ -245,10 +281,45 @@ public sealed partial class Resolver
 			
 			var variables = new OrderedSet<TypeParameterSymbol>([..open, ..GetOpenTypeParameters(info)]);
 			var bindings = new Dictionary<TypeParameterSymbol, TypeSymbol>();
-			if (_typePool.TryUnify(info.Signature.GetDeclaredType(0), type, variables, bindings))
+			if (_typePool.TryUnify(info.Signature.GetDeclaredType(0), type, variables, bindings) &&
+			    MeetsConversionBounds(info, variables, bindings))
 				yield return _typePool.Substitute(info.Signature.ReturnType, bindings);
 		}
 	}
+	
+	private bool MeetsConversionBounds(FunctionInfo info, OrderedSet<TypeParameterSymbol> variables,
+		Dictionary<TypeParameterSymbol, TypeSymbol> bindings)
+	{
+		var map = info.TypeArguments.IsDefaultOrEmpty
+			? new Dictionary<TypeParameterSymbol, TypeSymbol>()
+			: TypePool.CreateMap(info.Symbol.TypeParameters, info.TypeArguments);
+		
+		foreach (var parameter in GetOpenTypeParameters(info))
+		{
+			if (!bindings.TryGetValue(parameter, out var argument))
+				continue;
+			
+			foreach (var bound in _typePool.GetBounds(parameter).Select(bound => _typePool.SubstituteTrait(bound, map)))
+			{
+				var met = FindConformanceArguments(argument, bound.Trait).Any(arguments =>
+					arguments.Length == bound.Arguments.Length && bound.Arguments.Zip(arguments)
+						.All(pair => _typePool.TryUnify(pair.First, pair.Second, variables, bindings)));
+				
+				if (!met)
+					return false;
+			}
+		}
+		
+		return true;
+	}
+	
+	private IEnumerable<ImmutableArray<TypeSymbol>> FindConformanceArguments(TypeSymbol type, TraitSymbol trait) =>
+		type is TypeParameterSymbol parameter
+			? _typePool.GetBounds(parameter).Where(bound => bound.Trait == trait)
+				.Select(static bound => bound.Arguments)
+			: _typePool.FindConformances(type)
+				.Where(conformance => conformance.Trait == trait)
+				.Select(conformance => _typePool.GetConformanceArguments(conformance, type));
 	
 	private IEnumerable<TypeSymbol> FindOutwardResults(TypeSymbol parameter, TypeSymbol type,
 		OrderedSet<TypeParameterSymbol> open)

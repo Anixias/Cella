@@ -674,7 +674,9 @@ public sealed record CodeGenConfig
 			triple,
 			cpu,
 			features,
-			LLVMCodeGenOptLevel.LLVMCodeGenLevelDefault,
+			OptimizeMode == OptimizeMode.Release
+				? LLVMCodeGenOptLevel.LLVMCodeGenLevelDefault
+				: LLVMCodeGenOptLevel.LLVMCodeGenLevelNone,
 			LLVMRelocMode.LLVMRelocPIC,
 			LLVMCodeModel.LLVMCodeModelDefault);
 		

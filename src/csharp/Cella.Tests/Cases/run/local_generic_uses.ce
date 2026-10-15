@@ -1,0 +1,29 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+twice: fun(x: i32) -> i32 = x * 2
+twice: fun(x: f64) -> f64 = x * 2.0
+
+apply[T: copy]: fun(f: fun[T -> T], x: T) -> T = f(x)
+
+swap[T: copy + noref]: fun(mut a: T, mut b: T)
+{
+	val t = a
+	a = b
+	b = t
+}
+
+main: fun -> i32
+{
+	val f = twice
+	val g = fun(x) = x + 1
+	var x = 1
+	var y: u8 = 2
+	swap(mut x, mut y)
+	printf("%.1f %d %d %d\n", apply(f, 2.5), apply(g, 2), x, y)
+	ret 0
+}

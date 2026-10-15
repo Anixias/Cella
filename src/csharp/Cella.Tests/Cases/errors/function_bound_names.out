@@ -1,0 +1,9 @@
+
+====== function_bound_names.ce ======
+
+Error at line 8, column 24
+7 │ 
+8 │ main: fun -> i32 = i32(pick(over))
+                           ╘══╛ Cannot infer 'F' for 'pick'
+
+[compilation failed]

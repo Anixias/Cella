@@ -1,0 +1,10 @@
+
+====== function_bound_names.ce ======
+
+Hint at line 11, column 32
+10 │ 
+11 │ ident[T]: fun(own x: T) -> T = own x
+                                    ╘═╛ Redundant 'own'
+
+3 5 3.0
+[exit code 0]
