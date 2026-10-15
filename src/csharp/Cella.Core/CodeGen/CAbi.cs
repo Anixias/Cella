@@ -16,7 +16,8 @@ internal readonly record struct CSignature(ImmutableArray<CPass> Parameters, CPa
 {
 	public LLVMTypeRef CreateFunctionType(bool isVariadic)
 	{
-		var pointerType = LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0);
+		var context = Return.Type.Context;
+		var pointerType = LLVMTypeRef.CreatePointer(context.Int8Type, 0);
 		var parameterTypes = new List<LLVMTypeRef>(Parameters.Length + 1);
 		if (Return.Kind == CPassKind.Indirect)
 			parameterTypes.Add(pointerType);
@@ -24,7 +25,7 @@ internal readonly record struct CSignature(ImmutableArray<CPass> Parameters, CPa
 		foreach (var parameter in Parameters)
 			parameterTypes.Add(parameter.Kind == CPassKind.Indirect ? pointerType : parameter.Type);
 		
-		var returnType = Return.Kind == CPassKind.Indirect ? LLVMTypeRef.Void : Return.Type;
+		var returnType = Return.Kind == CPassKind.Indirect ? context.VoidType : Return.Type;
 		return LLVMTypeRef.CreateFunction(returnType, parameterTypes.ToArray(), isVariadic);
 	}
 }
@@ -41,7 +42,7 @@ internal sealed class CAbi(LLVMTargetDataRef targetData, string targetTriple)
 	{
 		if (_isWindowsX64 && type is { Kind: LLVMTypeKind.LLVMIntegerTypeKind, IntWidth: 128 })
 			return isReturn
-				? new(CPassKind.Coerced, LLVMTypeRef.CreateVector(LLVMTypeRef.Int64, 2))
+				? new(CPassKind.Coerced, LLVMTypeRef.CreateVector(type.Context.Int64Type, 2))
 				: new(CPassKind.Indirect, type);
 		
 		if (type.Kind is not (LLVMTypeKind.LLVMStructTypeKind or LLVMTypeKind.LLVMArrayTypeKind))
@@ -53,7 +54,7 @@ internal sealed class CAbi(LLVMTargetDataRef targetData, string targetTriple)
 		
 		var size = targetData.ABISizeOfType(type);
 		return size is 1 or 2 or 4 or 8
-			? new(CPassKind.Coerced, LLVMTypeRef.CreateInt((uint)size * 8))
+			? new(CPassKind.Coerced, type.Context.GetIntType((uint)size * 8))
 			: new(CPassKind.Indirect, type);
 	}
 }

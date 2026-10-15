@@ -22,11 +22,6 @@ public static unsafe class Extensions
 		}
 	}
 	
-	extension(LLVMTypeRef type)
-	{
-		public static LLVMTypeRef Int128 => LLVMTypeRef.CreateInt(128);
-	}
-	
 	extension(LLVMBuilderRef builder)
 	{
 		public LLVMValueRef BuildMemCpy(LLVMValueRef destination, uint destinationAlignment, LLVMValueRef source,

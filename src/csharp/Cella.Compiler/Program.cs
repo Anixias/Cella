@@ -881,10 +881,7 @@ internal static class Program
 			{
 				var path = rootDirectory is not null ? Path.GetRelativePath(rootDirectory, file) : file;
 				
-				Console.ForegroundColor = ConsoleColor.Blue;
-				Console.WriteLine($"\n====== {path} ======");
-				Console.WriteLine();
-				Console.ForegroundColor = ConsoleColor.Gray;
+				WriteColored($"\n====== {path} ======{Environment.NewLine}{Environment.NewLine}", ConsoleColor.Blue);
 			}
 			
 			foreach (var diagnostic in set)
@@ -1122,6 +1119,12 @@ internal static class Program
 	
 	private static void WriteColored(string text, ConsoleColor color)
 	{
+		if (Console.IsOutputRedirected)
+		{
+			Console.Write(text);
+			return;
+		}
+		
 		var prev = Console.ForegroundColor;
 		Console.ForegroundColor = color;
 		Console.Write(text);

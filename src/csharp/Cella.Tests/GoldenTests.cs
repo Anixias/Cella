@@ -11,8 +11,14 @@ public sealed class GoldenTests
 	private const string UpdateVariable = "CELLA_UPDATE_GOLDEN";
 	
 	private static readonly string _casesDirectory = Path.Combine(GetSourceDirectory(), "Cases");
-	private static readonly SemaphoreSlim _compilerLock = new(1, 1);
 	private static readonly TimeSpan _runTimeout = TimeSpan.FromSeconds(10);
+	private static readonly AsyncLocal<TextWriter?> _compilerOutput = new();
+	
+	static GoldenTests()
+	{
+		Console.SetOut(new RoutingWriter(Console.Out));
+		Console.SetError(new RoutingWriter(Console.Error));
+	}
 	
 	public static TheoryData<string, bool> Cases()
 	{
@@ -90,7 +96,23 @@ public sealed class GoldenTests
 		}
 		finally
 		{
-			Directory.Delete(caseDirectory, true);
+			await DeleteDirectoryAsync(caseDirectory);
+		}
+	}
+	
+	private static async Task DeleteDirectoryAsync(string path)
+	{
+		for (var attempt = 1;; attempt++)
+		{
+			try
+			{
+				Directory.Delete(path, true);
+				return;
+			}
+			catch (Exception exception) when (exception is IOException or UnauthorizedAccessException && attempt < 50)
+			{
+				await Task.Delay(100);
+			}
 		}
 	}
 	
@@ -116,32 +138,23 @@ public sealed class GoldenTests
 	private static async Task<(int ExitCode, string Output)> CompileAsync(string projectPath, bool release,
 		CancellationToken cancellationToken)
 	{
-		await _compilerLock.WaitAsync(cancellationToken);
-		var standardOutput = Console.Out;
-		var standardError = Console.Error;
-		try
-		{
-			var output = new StringWriter();
-			Console.SetOut(output);
-			Console.SetError(output);
-			string[] arguments = release
-				? [projectPath, "--quiet", "--hints", "--release"]
-				: [projectPath, "--quiet", "--hints"];
-			
-			var exitCode = await Program.Main(arguments);
-			return (exitCode, output.ToString());
-		}
-		finally
-		{
-			Console.SetOut(standardOutput);
-			Console.SetError(standardError);
-			_compilerLock.Release();
-		}
+		cancellationToken.ThrowIfCancellationRequested();
+		var output = new StringWriter();
+		_compilerOutput.Value = output;
+		string[] arguments = release
+			? [projectPath, "--quiet", "--hints", "--release"]
+			: [projectPath, "--quiet", "--hints"];
+		
+		var exitCode = await Program.Main(arguments);
+		return (exitCode, output.ToString());
 	}
 	
 	private static async Task<(int ExitCode, string Output, string Error)> ExecuteAsync(string executablePath,
 		IEnumerable<string> arguments, CancellationToken cancellationToken)
 	{
+		if (OperatingSystem.IsWindows())
+			return await WindowsProcess.RunAsync(executablePath, arguments, _runTimeout, cancellationToken);
+		
 		using var process = Process.Start(new ProcessStartInfo(executablePath, arguments)
 		{
 			RedirectStandardOutput = true,
@@ -185,4 +198,19 @@ public sealed class GoldenTests
 	}
 	
 	private static string GetSourceDirectory([CallerFilePath] string path = "") => Path.GetDirectoryName(path)!;
+	
+	private sealed class RoutingWriter(TextWriter fallback) : TextWriter
+	{
+		private TextWriter Target => _compilerOutput.Value ?? fallback;
+		
+		public override Encoding Encoding => fallback.Encoding;
+		
+		public override void Write(char value) => Target.Write(value);
+		
+		public override void Write(string? value) => Target.Write(value);
+		
+		public override void Write(char[] buffer, int index, int count) => Target.Write(buffer, index, count);
+		
+		public override void Flush() => Target.Flush();
+	}
 }

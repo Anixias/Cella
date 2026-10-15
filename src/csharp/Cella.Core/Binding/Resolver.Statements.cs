@@ -1,0 +1,318 @@
+﻿using Cella.Core.Binding.Nodes;
+using Cella.Core.Symbols;
+using Cella.Core.Syntax.Nodes;
+using Cella.Diagnostics;
+
+namespace Cella.Core.Binding;
+
+public sealed partial class Resolver
+{
+	public IResolvedStatementNode Visit(BlockStatementNode node)
+	{
+		Diagnostics.AddRange(DiagnosticReporter.ReportDuplicates(
+			node.StatementNodes.OfType<VarStatementNode>().Select(static v => v.Identifier),
+			static name => $"'{name}' is declared more than once in this scope"));
+		
+		var statements = new List<IResolvedStatementNode>(node.StatementNodes.Length);
+		var scope = CurrentScope?.CreateChild();
+		
+		var resolutionContext = CurrentResolutionContext with { LocalScope = scope };
+		_resolutionContexts.Push(resolutionContext);
+		foreach (var child in node.StatementNodes)
+			statements.Add(VisitNode(child));
+		
+		_resolutionContexts.Pop();
+		
+		return new ResolvedBlockStatementNode(statements, node);
+	}
+	
+	public IResolvedExpressionNode Visit(ReturnExpressionNode node)
+	{
+		if (CurrentResolutionContext.ContainingFunction is not { } function)
+			return Error(node, "Cannot use 'ret' outside functions", null);
+		
+		if (function.Signature.ReturnType is NeverType)
+		{
+			var value = node.Value is { } returned ? VisitDiscarded(returned) : null;
+			return value switch
+			{
+				{ Type: NeverType } => new ResolvedReturnExpressionNode(value, node),
+				{ Type: InvalidType } => new ResolvedInvalidExpressionNode(node),
+				_ => Error(node, $"Cannot return from {DiagnosticReporter.DescribeFunction(function.Symbol)}", null)
+			};
+		}
+		
+		if (node.Value is not { } expression)
+			return new ResolvedReturnExpressionNode(null, node);
+		
+		var returnType = function.Signature.ReturnType;
+		if (returnType != NativeSymbols.Void)
+			return new ResolvedReturnExpressionNode(VisitNode(expression, returnType), node);
+		
+		var discarded = VisitDiscarded(expression);
+		if (IsInvalid(discarded))
+			return new ResolvedInvalidExpressionNode(node);
+		
+		if (discarded.Type is NeverType)
+			return new ResolvedReturnExpressionNode(discarded, node);
+		
+		return Error(node, $"Cannot return a value from {DiagnosticReporter.DescribeFunction(function.Symbol)}", null,
+			expression);
+	}
+	
+	public IResolvedExpressionNode Visit(BreakExpressionNode node)
+	{
+		var (label, error) = ResolveLabel(node, node.Label);
+		return error ?? (IResolvedExpressionNode)new ResolvedBreakExpressionNode(label, node);
+	}
+	
+	public IResolvedExpressionNode Visit(ContinueExpressionNode node)
+	{
+		var (label, error) = ResolveLabel(node, node.Label);
+		return error ?? (IResolvedExpressionNode)new ResolvedContinueExpressionNode(label, node);
+	}
+	
+	private (LabelSymbol? Label, ResolvedInvalidExpressionNode? Error) ResolveLabel(IExpressionNode node,
+		IExpressionNode? labelNode)
+	{
+		if (labelNode is null)
+			return (null, null);
+		
+		if (labelNode is not VarExpressionNode varExpr)
+			return (null, Error(node, "Expected a label", null, labelNode));
+		
+		var name = varExpr.Identifier.Text;
+		if (CurrentResolutionContext.Resolve(name) is not { } symbol)
+		{
+			var labels = CurrentResolutionContext.GetAllSymbols()
+				.OfType<LabelSymbol>()
+				.Select(static label => label.Name)
+				.Distinct();
+			
+			var diagnostic = DiagnosticReporter.ReportUndefinedSymbol(labelNode, name, labels);
+			return (null, Error(node, diagnostic, null));
+		}
+		
+		return symbol is LabelSymbol label
+			? (label, null)
+			: (null, Error(node, $"'{name}' is not a label", null, varExpr));
+	}
+	
+	public IResolvedStatementNode Visit(ExpressionStatementNode node) =>
+		new ResolvedExpressionStatementNode(VisitDiscarded(node.ExpressionNode), node);
+	
+	public IResolvedStatementNode Visit(DropStatementNode node) =>
+		new ResolvedDropStatementNode(VisitNode(node.Target, null), node);
+	
+	public IResolvedExpressionNode Visit(CallExpressionNode node)
+	{
+		if (node.Target is VarExpressionNode callee && ResolveTargetCase(callee.Identifier, node) is { } targetCase)
+			return targetCase;
+		
+		if (node.Target is AccessExpressionNode access && ResolveEnumType(access.Target) is { } enumType)
+			return DeclaresNonCaseMember(enumType, access.Member.Text)
+				? VisitStaticCall(node, access, RequireTypeArguments(enumType, access.Target))
+				: VisitEnumCase(access, enumType, node);
+		
+		if (CurrentResolutionContext.TryResolveExpressionAsType(node.Target) is not { } targetType)
+			return VisitFunctionCall(node);
+		
+		if (node.Target is not IndexerExpressionNode &&
+		    targetType is RecordSymbol { IsGenericDefinition: true } generic)
+			return VisitInferredConstruction(node, generic);
+		
+		return RequireTypeArguments(targetType, node.Target) is InvalidType
+			? new ResolvedInvalidExpressionNode(node, CurrentTargetType)
+			: VisitTypeCall(node, targetType);
+	}
+	
+	public IResolvedStatementNode Visit(IfStatementNode node)
+	{
+		var condition = VisitNode(node.Condition, NativeSymbols.Bool);
+		
+		ReportDeclarationBody(node.Then);
+		var then = VisitInScope(node.Then, GetTrueBindings(condition));
+		
+		if (node.Else is { } elseNode)
+			ReportDeclarationBody(elseNode);
+		
+		var @else = node.Else is null ? null : VisitInScope(node.Else, []);
+		
+		return new ResolvedIfStatementNode(condition, then, @else, node);
+	}
+	
+	public IResolvedStatementNode Visit(VarStatementNode node)
+	{
+		var resolutionContext = CurrentResolutionContext;
+		TypeSymbol? type;
+		if (node.Type is { } specifiedType)
+			type = resolutionContext.ResolveType(specifiedType);
+		else
+			type = settledTypes?.GetValueOrDefault(node);
+		
+		OpenLocal? open = null;
+		IResolvedExpressionNode? initializer;
+		if (node.ExpressionNode is not { } initializerNode)
+			initializer = null;
+		else if (type is InvalidType && initializerNode is LambdaExpressionNode)
+			initializer = new ResolvedInvalidExpressionNode(initializerNode, type);
+		else if (type is not null)
+			initializer = VisitNode(initializerNode, type);
+		else if (survey is null && initializerNode is UndefExpressionNode { Type: null })
+		{
+			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Identifier.SourceLocation,
+				$"Cannot infer the type of '{node.Identifier.Text}'"));
+			
+			initializer = new ResolvedUndefExpressionNode(NativeSymbols.Invalid, initializerNode);
+		}
+		else
+		{
+			var value = VisitNode(initializerNode, null);
+			if (survey is not null && (IsOpenValue(value) || IsOpenSyntax(initializerNode)))
+				open = DeclareOpen(new(node, node.Identifier, initializerNode, resolutionContext)
+				{
+					IsCaseName = IsCaseNameSyntax(initializerNode)
+				}, [value]);
+			
+			initializer = MaterializeAsDefault(value);
+		}
+		
+		if (type is null && initializer is not null && BorrowsWhenDeclared(initializer))
+			initializer = new ResolvedBorrowExpressionNode(initializer,
+				_typePool.GetBorrowType(initializer.Type, false), true, initializer.Syntax);
+		else if (type is null && initializer is ResolvedBorrowExpressionNode { IsImplicit: false } borrow &&
+		         borrow.Syntax is BorrowExpressionNode { IsMutable: false } syntax &&
+		         BorrowsWhenDeclared(borrow.Place))
+			Diagnostics.Add(new(DiagnosticSeverity.Hint, syntax.Keyword.SourceLocation, "Redundant 'imm'"));
+		
+		if (type is null && initializer is null)
+			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Identifier.SourceLocation,
+				$"Cannot infer the type of '{node.Identifier.Text}'"));
+		
+		if (type is null && initializer?.Type is NeverType)
+		{
+			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Identifier.SourceLocation,
+				"'never' can only be a return type"));
+			
+			type = NativeSymbols.Invalid;
+		}
+		
+		type ??= initializer?.Type ?? NativeSymbols.Invalid;
+		if (TypePool.FindValueDyn(type) is { } valueDyn)
+		{
+			var location = node.Type?.SourceLocation ?? node.ExpressionNode!.SourceLocation;
+			Diagnostics.Add(new(DiagnosticSeverity.Error, location, $"Cannot use '{valueDyn.Name}' by value"));
+			
+			type = NativeSymbols.Invalid;
+		}
+		
+		var symbol = new LocalVariableSymbol(node.Identifier, type, node.IsMutable)
+		{
+			ConstantValue = node.IsMutable || initializer is null || !_typePool.IsCopy(type)
+				? null
+				: _evaluator.Evaluate(initializer),
+			IsDeferred = !node.IsMutable && initializer is null,
+			StartsZeroed = node.IsMutable && initializer is null && HasLocalDefault(type)
+		};
+		
+		resolutionContext.LocalScope!.Define(symbol);
+		if (open is not null)
+			survey!.Bind(symbol, open);
+		
+		return new ResolvedVarStatementNode(symbol, initializer, node);
+	}
+	
+	private bool BorrowsWhenDeclared(IResolvedExpressionNode value) =>
+		value.Type is DynType || !_typePool.IsCopy(value.Type) && IsStored(value);
+	
+	public IResolvedStatementNode Visit(WhileStatementNode node)
+	{
+		var condition = VisitNode(node.Condition, NativeSymbols.Bool);
+		
+		// Create a scope for the body and label (if applicable)
+		var scope = CurrentScope?.CreateChild() ?? new();
+		foreach (var binding in GetTrueBindings(condition))
+			scope.Define(binding);
+		
+		var resolutionContext = CurrentResolutionContext with { LocalScope = scope };
+		
+		LabelSymbol? symbol;
+		if (node.Label is { } label)
+		{
+			symbol = new(label);
+			scope.Define(symbol);
+		}
+		else
+			symbol = null;
+		
+		_resolutionContexts.Push(resolutionContext);
+		ReportDeclarationBody(node.Body);
+		var body = VisitNode(node.Body);
+		_resolutionContexts.Pop();
+		
+		return new ResolvedWhileStatementNode(condition, body, symbol, node);
+	}
+	
+	public IResolvedStatementNode Visit(DoWhileStatementNode node)
+	{
+		var condition = VisitNode(node.Condition, NativeSymbols.Bool);
+		
+		// Create a scope for the body and label (if applicable)
+		var scope = CurrentScope?.CreateChild() ?? new();
+		var resolutionContext = CurrentResolutionContext with { LocalScope = scope };
+		
+		LabelSymbol? symbol;
+		if (node.Label is { } label)
+		{
+			symbol = new(label);
+			scope.Define(symbol);
+		}
+		else
+			symbol = null;
+		
+		_resolutionContexts.Push(resolutionContext);
+		ReportDeclarationBody(node.Body);
+		var body = VisitNode(node.Body);
+		_resolutionContexts.Pop();
+		
+		return new ResolvedDoWhileStatementNode(body, condition, symbol, node);
+	}
+	
+	public IResolvedStatementNode Visit(ForStatementNode node)
+	{
+		var header = node.End is { } end ? ResolveRange(node, end) : ResolveIteration(node);
+		var scope = CreateScope([header.Binding]);
+		LabelSymbol? label = node.Label is { } labelToken ? new(labelToken) : null;
+		if (label is not null)
+			scope.Define(label);
+		
+		_resolutionContexts.Push(CurrentResolutionContext with { LocalScope = scope });
+		ReportDeclarationBody(node.Body);
+		var body = VisitNode(node.Body);
+		_resolutionContexts.Pop();
+		return header.Build(body, label);
+	}
+	
+	public IResolvedStatementNode Visit(LoopStatementNode node)
+	{
+		// Create a scope for the body and label (if applicable)
+		var scope = CurrentScope?.CreateChild() ?? new();
+		var resolutionContext = CurrentResolutionContext with { LocalScope = scope };
+		
+		LabelSymbol? symbol;
+		if (node.Label is { } label)
+		{
+			symbol = new(label);
+			scope.Define(symbol);
+		}
+		else
+			symbol = null;
+		
+		_resolutionContexts.Push(resolutionContext);
+		ReportDeclarationBody(node.Body);
+		var body = VisitNode(node.Body);
+		_resolutionContexts.Pop();
+		
+		return new ResolvedLoopStatementNode(body, symbol, node);
+	}
+}

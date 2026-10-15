@@ -58,7 +58,7 @@ public sealed unsafe partial class CodeGenerator
 	private void AddModuleFlag(string name, uint value)
 	{
 		using var key = new MarshaledString(name);
-		var constant = LLVMValueRef.CreateConstInt(LLVMTypeRef.Int32, value);
+		var constant = LLVMValueRef.CreateConstInt(_context.Int32Type, value);
 		LLVM.AddModuleFlag((LLVMOpaqueModule*)current.Module.Handle,
 			LLVMModuleFlagBehavior.LLVMModuleFlagBehaviorWarning, key, (nuint)key.Length,
 			LLVM.ValueAsMetadata((LLVMOpaqueValue*)constant.Handle));
@@ -99,7 +99,7 @@ public sealed unsafe partial class CodeGenerator
 	private LLVMBuilderRef CreateGeneratedBuilder(LLVMValueRef function, string name, SourceLocation location)
 	{
 		var builder = current.Module.Context.CreateBuilder();
-		builder.PositionAtEnd(function.AppendBasicBlock("entry"));
+		builder.PositionAtEnd(_context.AppendBasicBlock(function, "entry"));
 		if (!_config.DebugInfo)
 			return builder;
 		

@@ -1,0 +1,473 @@
+﻿using System.Collections.Immutable;
+using Cella.Core.Binding.Constants;
+using Cella.Core.Binding.Nodes;
+using Cella.Core.Symbols;
+using Cella.Core.Syntax.Nodes;
+using Cella.Diagnostics;
+
+namespace Cella.Core.Binding;
+
+public sealed partial class Resolver
+{
+	private IResolvedExpressionNode VisitFunctionCall(CallExpressionNode node)
+	{
+		var context = CurrentResolutionContext;
+		Symbol? symbol;
+		switch (node.Target)
+		{
+			case VarExpressionNode varExpr:
+				symbol = context.Resolve(varExpr.Identifier.Text);
+				if (symbol is not null)
+					break;
+				
+				return Error(node, ReportUndefinedSymbol(node, varExpr.Identifier.Text), CurrentTargetType);
+			
+			case AccessExpressionNode access when context.ResolveModule(access.Target) is { } module:
+				symbol = context.ResolveMember(module, access.Member.Text);
+				break;
+			
+			case AccessExpressionNode access:
+				return VisitMemberCall(node, access);
+			
+			case IndexerExpressionNode indexer:
+				return VisitExplicitCall(node, indexer);
+			
+			default:
+				return VisitIndirectCall(node, VisitNode(node.Target, null));
+		}
+		
+		var functionSymbols = GetFunctions(symbol);
+		if (functionSymbols.Length == 0)
+			return VisitIndirectCall(node, VisitNode(node.Target, null));
+		
+		var candidates = functionSymbols.Select(GetFunctionInfo).Select(static info => new FunctionCallable(info));
+		ICallable[] hidden = node.Target is VarExpressionNode name
+			?
+			[
+				..context.FindHiddenFunctions(name.Identifier.Text)
+					.Where(static function => function.TypeParameters.IsEmpty)
+					.Select(GetFunctionInfo)
+					.Select(static info => new FunctionCallable(info))
+			]
+			: [];
+		
+		return ResolveCall(node, GetName(node.Target), [..candidates], null, hidden: hidden);
+	}
+	
+	private IResolvedExpressionNode VisitExplicitCall(CallExpressionNode node, IndexerExpressionNode indexer)
+	{
+		var context = CurrentResolutionContext;
+		switch (indexer.Target)
+		{
+			case VarExpressionNode name when GetFunctions(context.Resolve(name.Identifier.Text)) is [_, ..] functions:
+				return ResolveExplicitCall(node, indexer, name.Identifier.Text, [..functions.Select(GetFunctionInfo)]);
+			
+			case AccessExpressionNode access when context.ResolveModule(access.Target) is { } module:
+				return GetFunctions(context.ResolveMember(module, access.Member.Text)) is [_, ..] members
+					? ResolveExplicitCall(node, indexer, GetName(access), [..members.Select(GetFunctionInfo)])
+					: VisitIndirectCall(node, VisitNode(indexer, null));
+			
+			case AccessExpressionNode access:
+				return VisitMemberCall(node, access, indexer);
+			
+			default:
+				return VisitIndirectCall(node, VisitNode(indexer, null));
+		}
+	}
+	
+	private IResolvedExpressionNode ResolveExplicitCall(CallExpressionNode node, IndexerExpressionNode indexer,
+		string name, FunctionInfo[] functions) => ResolveTypeArguments(indexer, functions) is { } typeArguments
+		? ResolveCall(node, name, [..functions.Select(static info => new FunctionCallable(info))], null, typeArguments)
+		: new ResolvedInvalidExpressionNode(node, CurrentTargetType);
+	
+	private IResolvedExpressionNode ResolveCall(CallExpressionNode node, string functionName, ICallable[] candidates,
+		IResolvedExpressionNode? receiver, TypeArgumentList? typeArguments = null, ICallable[]? hidden = null)
+	{
+		var location = (node.Target is IndexerExpressionNode indexer ? indexer.Target : node.Target).SourceLocation;
+		if (RejectSpread(node, candidates) is { } rejected)
+			return rejected;
+		
+		var shaped = Shape(candidates, node.Arguments);
+		var args = ResolveArguments(Unspread(node.Arguments),
+			[..shaped.Select(candidate => GetCallShape(candidate, typeArguments))], out var isAmbiguous,
+			Succeeds, Accepts);
+		
+		if (AnyInvalid(args))
+			return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
+		
+		var isEndless = args.Any(static arg => arg.Type is NeverType);
+		if (isAmbiguous && !isEndless)
+			return ReportAmbiguousCall(node, functionName, shaped, receiver, typeArguments);
+		
+		var failures = new List<Diagnostic>();
+		var specialized = SpecializeAll(args, failures);
+		if (specialized.Length == 0 && shaped.Length == 1 && failures is [var failure])
+		{
+			Diagnostics.Add(failure);
+			return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
+		}
+		
+		var resolutionSet = ResolveCallable(specialized, args, MaterializationMode.Overload, CurrentTargetType);
+		
+		if (resolutionSet.IsAmbiguous && !isEndless)
+			return ReportAmbiguousCall(node, functionName, shaped, receiver, typeArguments);
+		
+		if (!resolutionSet.HasResult && hidden is [_, ..] &&
+		    ResolveCallable(hidden, args, MaterializationMode.Overload, CurrentTargetType).HasResult &&
+		    CurrentResolutionContext.ReportHidden(functionName, location) is { } hiddenError)
+			return Error(node, hiddenError, CurrentTargetType);
+		
+		if (!resolutionSet.HasResult && ReportArgumentModes(specialized, args, CurrentTargetType))
+			return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
+		
+		if (!resolutionSet.HasResult &&
+		    candidates.Any(static candidate => candidate.ParameterTypes.Any(static type => type is InvalidType)))
+			return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
+		
+		if (!resolutionSet.HasResult && candidates is [var only])
+			return ReportSingleMismatch(node, functionName, only, specialized is [var single] ? single : null, args,
+				location)
+				? new ResolvedInvalidExpressionNode(node, CurrentTargetType)
+				: Error(node, $"'{functionName}' doesn't accept these arguments", CurrentTargetType, node.Target);
+		
+		if (!resolutionSet.HasResult)
+			return Error(node, $"No overload of '{functionName}' accepts these arguments", CurrentTargetType,
+				node.Target);
+		
+		var resolution = resolutionSet[0];
+		var info = resolution.Callable switch
+		{
+			FunctionCallable callable => callable.Info,
+			ReceiverCallable callable => callable.Info,
+			_ => throw new InvalidOperationException()
+		};
+		
+		var isErased = info.Symbol.Syntax is FunctionNode { When.IsActive: false };
+		if (!isErased)
+			TrackFunctionUse(info, node.Target);
+		
+		var resolvedArgs = ApplyArgumentResolution(args, resolution);
+		if (GetForm(resolution.Callable) is { } form)
+			CompleteArguments(resolvedArgs, info, form, node);
+		
+		if (receiver is not null)
+			resolvedArgs.Insert(0, CreateReceiver(receiver, info));
+		
+		var result = new ResolvedFunctionCallExpressionNode(info, resolvedArgs, node);
+		return isErased ? new ResolvedErasedCallExpressionNode(result) : ApplyResultResolution(result, resolution);
+		
+		ICallable[] SpecializeAll(IResolvedExpressionNode[] values, List<Diagnostic> failed) =>
+		[
+			..shaped
+				.Select(candidate => Specialize(candidate, functionName, values, typeArguments, location, failed))
+				.OfType<ICallable>()
+		];
+		
+		bool Succeeds(IResolvedExpressionNode[] values) => ResolveCallable(SpecializeAll(values, []), values,
+			MaterializationMode.Overload, CurrentTargetType).HasResult;
+		
+		bool Accepts(int index, IResolvedExpressionNode[] values) =>
+			Specialize(shaped[index], functionName, values, typeArguments, location, []) is { } callable &&
+			ResolveCallable([callable], values, MaterializationMode.Overload, CurrentTargetType).HasResult;
+	}
+	
+	private ResolvedInvalidExpressionNode ReportAmbiguousCall(CallExpressionNode node, string functionName,
+		ICallable[] shaped, IResolvedExpressionNode? receiver, TypeArgumentList? typeArguments)
+	{
+		if (!node.Arguments.Any(IsDeferred))
+			return Error(node, $"Call to '{functionName}' is ambiguous", CurrentTargetType, node.Target);
+		
+		var failures = new List<List<Diagnostic>>();
+		foreach (var candidate in shaped)
+		{
+			var trial = OpenCheckpoint();
+			var result = ResolveCall(node, functionName, [candidate], receiver, typeArguments);
+			var errors = trial.Redirections
+				.SelectMany(static redirection => redirection.Captured)
+				.Where(static diagnostic => diagnostic.Severity == DiagnosticSeverity.Error)
+				.ToList();
+			
+			Rollback(trial);
+			if (errors.Count == 0 && !IsInvalid(result))
+				return Error(node, $"Call to '{functionName}' is ambiguous", CurrentTargetType, node.Target);
+			
+			failures.Add(errors);
+		}
+		
+		var first = failures[0].Select(static diagnostic => (diagnostic.SourceLocation, diagnostic.Message)).ToList();
+		if (first.Count > 0 && failures.All(errors =>
+			    errors.Select(static diagnostic => (diagnostic.SourceLocation, diagnostic.Message))
+				    .SequenceEqual(first)))
+		{
+			Diagnostics.AddRange(failures[0]);
+			return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
+		}
+		
+		return Error(node, $"No overload of '{functionName}' accepts these arguments", CurrentTargetType,
+			node.Target);
+	}
+	
+	private ResolvedInvalidExpressionNode? RejectSpread(CallExpressionNode node, IReadOnlyList<ICallable> candidates)
+	{
+		var index = FindSpread(node.Arguments);
+		if (index < 0)
+			return null;
+		
+		var spread = node.Arguments[index];
+		var variadic = candidates.Where(static candidate => candidate.HasVariadicParameter).ToList();
+		if (variadic.Count == 0)
+			return Error(node, candidates.Any(static candidate => candidate.IsVariadic)
+				? "Cannot spread arguments into 'ext' functions"
+				: "Cannot spread arguments into calls without variadic parameters", CurrentTargetType, spread);
+		
+		if (variadic.Any(candidate => index == candidate.ParameterTypes.Length - 1 &&
+		                              node.Arguments.Length == index + 1))
+			return null;
+		
+		return variadic.Any(candidate => index >= candidate.ParameterTypes.Length - 1)
+			? Error(node, "Cannot combine spread arguments with other variadic arguments", CurrentTargetType, spread)
+			: null;
+	}
+	
+	private static ImmutableArray<IExpressionNode> Unspread(ImmutableArray<IExpressionNode> arguments) =>
+		[..arguments.Select(static argument => argument is SpreadExpressionNode spread ? spread.Value : argument)];
+	
+	private static int FindSpread(ImmutableArray<IExpressionNode> arguments) => arguments
+		.Select(static (argument, i) => argument is SpreadExpressionNode ? i : -1)
+		.FirstOrDefault(static i => i >= 0, -1);
+	
+	private ICallable[] Shape(IEnumerable<ICallable> candidates, ImmutableArray<IExpressionNode> arguments)
+	{
+		var spread = FindSpread(arguments);
+		return [..candidates.Select(candidate => Shape(candidate, arguments.Length, spread)).OfType<ICallable>()];
+	}
+	
+	private ICallable? Shape(ICallable candidate, int count, int spread)
+	{
+		var isVariadic = candidate.HasVariadicParameter;
+		var defaults = GetInfo(candidate)?.Signature.Defaults.Length ?? 0;
+		if (!isVariadic && defaults == 0)
+			return spread < 0 ? candidate : null;
+		
+		var fixedCount = candidate.ParameterTypes.Length - (isVariadic ? 1 : 0);
+		if (spread >= 0)
+			return isVariadic && spread == fixedCount && count == fixedCount + 1 ? candidate : null;
+		
+		var omitted = Math.Max(fixedCount - count, 0);
+		if (omitted > defaults || !isVariadic && omitted == 0)
+			return candidate;
+		
+		TypeSymbol? element = null;
+		if (isVariadic && (element = _typePool.FindVariadicElement(candidate.ParameterTypes[^1])) is null)
+			return null;
+		
+		var form = new CallForm(omitted, element, Math.Max(count - fixedCount, 0));
+		return candidate switch
+		{
+			FunctionCallable callable => new FunctionCallable(callable.Info, form) { IsGeneric = callable.IsGeneric },
+			ReceiverCallable callable => new ReceiverCallable(callable.Info, callable.ReturnType, form)
+			{
+				IsGeneric = callable.IsGeneric
+			},
+			FunctionTypeCallable callable => new FunctionTypeCallable(callable.Type, form),
+			_ => candidate
+		};
+	}
+	
+	private static FunctionInfo? GetInfo(ICallable callable) => callable switch
+	{
+		FunctionCallable function => function.Info,
+		ReceiverCallable receiver => receiver.Info,
+		_ => null
+	};
+	
+	private static CallForm? GetForm(ICallable callable) => callable switch
+	{
+		FunctionCallable function => function.Form,
+		ReceiverCallable receiver => receiver.Form,
+		FunctionTypeCallable type => type.Form,
+		_ => null
+	};
+	
+	private CallForm? Repack(ICallable candidate, FunctionInfo info) => GetForm(candidate) switch
+	{
+		{ Element: null } form => form,
+		{ } form => _typePool.FindVariadicElement(info.Signature.ParameterTypes[^1]) is { } element
+			? form with { Element = element }
+			: null,
+		null => null
+	};
+	
+	private void CompleteArguments(List<IResolvedExpressionNode> args, FunctionInfo info, CallForm form,
+		CallExpressionNode node)
+	{
+		var map = info.TypeArguments.IsDefaultOrEmpty
+			? []
+			: TypePool.CreateMap(info.Symbol.TypeParameters, info.TypeArguments);
+		
+		CompleteArguments(args, info.Signature.ParameterTypes,
+		[
+			..info.Signature.Defaults.Select(value => value is ParametricConstant parametric
+				? new ParametricConstant(SubstituteParametric(parametric.Value, map))
+				: _typePool.SubstituteConstant(value, map))
+		], form, node);
+	}
+	
+	private IResolvedExpressionNode SubstituteParametric(IResolvedExpressionNode node,
+		IReadOnlyDictionary<TypeParameterSymbol, TypeSymbol> map) => node switch
+	{
+		ResolvedSizeOfExpressionNode n => new ResolvedSizeOfExpressionNode(_typePool.Substitute(n.Target, map),
+			n.Syntax),
+		ResolvedAlignOfExpressionNode n =>
+			new ResolvedAlignOfExpressionNode(_typePool.Substitute(n.Target, map), n.Syntax),
+		ResolvedValueParameterExpressionNode n => map.GetValueOrDefault(n.Parameter) switch
+		{
+			ValueArgumentType { Value: var value } when n.Type is IntegerType type =>
+				MaterializeLiteral(n.Syntax, type, value),
+			TypeParameterSymbol parameter => new ResolvedValueParameterExpressionNode(parameter, n.Syntax),
+			_ => n
+		},
+		ResolvedUnaryOpExpressionNode n =>
+			new ResolvedUnaryOpExpressionNode(SubstituteParametric(n.Operand, map), n.Operation, n.Syntax),
+		ResolvedBinaryOpExpressionNode n => new ResolvedBinaryOpExpressionNode(SubstituteParametric(n.Left, map),
+			SubstituteParametric(n.Right, map), n.Operation, n.Syntax),
+		ResolvedConversionExpressionNode n =>
+			new ResolvedConversionExpressionNode(SubstituteParametric(n.Source, map), n.Conversion, n.Syntax),
+		_ => node
+	};
+	
+	private void CompleteArguments(List<IResolvedExpressionNode> args, ImmutableArray<TypeSymbol> parameterTypes,
+		ImmutableArray<Constant> defaults, CallForm form, CallExpressionNode node)
+	{
+		var packed = args.GetRange(args.Count - form.Packed, form.Packed);
+		args.RemoveRange(args.Count - form.Packed, form.Packed);
+		
+		var fixedCount = parameterTypes.Length - (form.Element is null ? 0 : 1);
+		var firstDefault = fixedCount - defaults.Length;
+		for (var i = fixedCount - form.Omitted; i < fixedCount; i++)
+			args.Add(MaterializeConstant(defaults[i - firstDefault], parameterTypes[i], node));
+		
+		if (form.Element is { } element)
+			args.Add(CreatePack(parameterTypes[^1], element, packed, packed is [var first, ..] ? first.Syntax : node));
+	}
+	
+	private IResolvedExpressionNode MaterializeConstant(Constant constant, TypeSymbol type, IExpressionNode syntax)
+	{
+		switch (constant)
+		{
+			case ParametricConstant c:
+				return c.Value;
+			
+			case IntegerConstant c when type is IntegerType integer:
+				return MaterializeLiteral(syntax, integer, c.Value);
+			
+			case FloatConstant c:
+				return new ResolvedLiteralExpressionNode(type, c.Value, syntax);
+			
+			case BoolConstant c:
+				return new ResolvedLiteralExpressionNode(type, c.Value, syntax);
+			
+			case StringConstant c:
+				return new ResolvedLiteralExpressionNode(type, c.Value, syntax);
+			
+			case NullConstant:
+				return new ResolvedLiteralExpressionNode(type, null, syntax);
+			
+			case RecordConstant c when type is RecordSymbol record:
+				return new ResolvedRecordExpressionNode(record, _typePool.GetMembers(record).OfType<FieldSymbol>()
+						.Zip(c.Fields,
+							(field, value) => (field, MaterializeConstant(value, GetMemberType(field), syntax))),
+					syntax);
+			
+			case ZeroConstant when type is RecordSymbol record:
+				return new ResolvedRecordExpressionNode(record, [], syntax);
+			
+			case ArrayConstant c when type is ArrayType array:
+				return new ResolvedArrayExpressionNode(array,
+					c.Elements.Select(element => MaterializeConstant(element, array.ElementType, syntax)), syntax);
+			
+			case EnumConstant c when type is EnumSymbol enumType:
+			{
+				var enumCase = enumType.Cases[c.Case.Index];
+				var payloadTypes = _typePool.GetPayloadTypes(enumType, enumCase);
+				return new ResolvedEnumCaseExpressionNode(enumType, enumCase,
+					c.Payload.Select((value, i) => MaterializeConstant(value, payloadTypes[i], syntax)), syntax);
+			}
+			
+			case EnumTagConstant c when type is EnumSymbol enumType &&
+			                            _typePool.FindCase(enumType, c.Tag) is { } tagCase:
+				return new ResolvedEnumCaseExpressionNode(enumType, tagCase, [], syntax);
+			
+			case FunctionConstant c:
+			{
+				TrackFunctionUse(c.Function, syntax);
+				var reference = new ResolvedFunctionReferenceExpressionNode(c.Function, GetNaturalType(c.Function),
+					syntax);
+				
+				return reference.Type == type ? reference : CoerceToType(reference, type);
+			}
+			
+			default:
+				return new ResolvedInvalidExpressionNode(syntax, type);
+		}
+	}
+	
+	private IResolvedExpressionNode CreatePack(TypeSymbol type, TypeSymbol element,
+		IReadOnlyList<IResolvedExpressionNode> values, IExpressionNode syntax)
+	{
+		IResolvedExpressionNode[] parts =
+		[
+			new ResolvedPackExpressionNode(_typePool.GetPointerType(element), element, values, syntax),
+			MaterializeLiteral(syntax, NativeSymbols.UIntSize, values.Count)
+		];
+		
+		switch (_typePool.FindRunWitness(type, element))
+		{
+			case FunctionWitness { Info: var constructor }:
+				TrackFunctionUse(constructor, syntax);
+				return new ResolvedConstructorCallExpressionNode(constructor, parts, type, syntax);
+			
+			case MemberwiseWitness when type is RecordSymbol record:
+				return new ResolvedRecordExpressionNode(record,
+					_typePool.GetMembers(record).OfType<FieldSymbol>().Zip(parts), syntax);
+			
+			default:
+				return new ResolvedInvalidExpressionNode(syntax, type);
+		}
+	}
+	
+	private IResolvedExpressionNode CreateReceiver(IResolvedExpressionNode receiver, FunctionInfo method) =>
+		method.Signature.GetMode(0) == ParameterMode.Mut
+			? new ResolvedMutArgumentExpressionNode(MakeWritable(receiver), _typePool.GetPointerType(receiver.Type),
+				receiver.Syntax)
+			{
+				OnlyMutOperator =
+					method.Symbol.Syntax is FunctionNode { Identifier.Text: var name and ("*" or "[]") } &&
+					FindPlaceOperator(receiver.Type, name, ParameterMode.ReadOnly) is null
+						? name
+						: null
+			}
+			: receiver;
+	
+	private IResolvedExpressionNode VisitArgument(IExpressionNode node, IEnumerable<TypeSymbol> expected,
+		TypeSymbol? hint = null)
+	{
+		var types = expected.ToList();
+		return VisitCaseName(node, types) ?? ReportMisspelledCase(node, types) ??
+			(hint is null ? VisitArgument(node) : VisitHinted(node, hint));
+	}
+	
+	private IResolvedExpressionNode? ReportMisspelledCase(IExpressionNode node, IEnumerable<TypeSymbol> expected)
+	{
+		if (node is not VarExpressionNode { Identifier.Text: var name } ||
+		    CurrentResolutionContext.Resolve(name) is not null)
+			return null;
+		
+		var cases = expected.OfType<EnumSymbol>().SelectMany(static type => type.Cases).Select(static c => c.Name)
+			.ToList();
+		
+		return DiagnosticReporter.FindSuggestion(name, cases) is null
+			? null
+			: Error(node, DiagnosticReporter.ReportUndefinedSymbol(node, name, cases), null);
+	}
+}
