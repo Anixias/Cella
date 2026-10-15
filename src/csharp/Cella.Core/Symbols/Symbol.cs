@@ -31,7 +31,7 @@ public interface IExportable
 
 public static class VisibilityExtensions
 {
-	extension(Visibility visibility)
+	extension(Visibility)
 	{
 		public static Visibility FromKeyword(Token? keyword) => keyword?.Type switch
 		{
@@ -63,12 +63,10 @@ public sealed class AssemblySymbol
 
 public sealed class ModuleSymbol
 (
-	ModuleName moduleName,
-	params IEnumerable<SourceLocation> declarations
+	ModuleName moduleName
 ) : Symbol(moduleName.Text)
 {
 	public ModuleName ModuleName { get; } = moduleName;
-	public ImmutableArray<SourceLocation> Declarations { get; } = declarations.ToImmutableArray();
 	public List<FileSymbol> Files { get; } = [];
 }
 
@@ -612,7 +610,6 @@ public sealed class GlobalSymbol(GlobalNode syntax, Visibility visibility)
 		syntax.WriteVisibility is { } write ? Visibility.FromKeyword(write) : visibility;
 	
 	public TypeSymbol? ContainingType { get; internal set; }
-	public SourceLocation Definition { get; } = syntax.SourceLocation;
 	public bool IsExternal => Syntax.IsExternal;
 	public bool IsImport => Syntax is { IsExternal: true, Initializer: null };
 	
@@ -676,11 +673,7 @@ public sealed class ParameterSymbol : VariableSymbol
 	}
 }
 
-public sealed class LabelSymbol(Token identifier) : Symbol(identifier.Text)
-{
-	public Token Identifier { get; } = identifier;
-	public SourceLocation Definition { get; } = identifier.SourceLocation;
-}
+public sealed class LabelSymbol(Token identifier) : Symbol(identifier.Text);
 
 public abstract class NamedTypeSymbol : TypeSymbol, IExportable
 {

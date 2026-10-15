@@ -1,0 +1,9 @@
+
+====== untyped_locals.ce ======
+
+Error at line 5, column 6
+4 │ {
+5 │     var x
+            ^ Cannot infer the type of 'x'
+
+[compilation failed]

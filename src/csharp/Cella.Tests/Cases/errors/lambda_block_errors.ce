@@ -1,0 +1,22 @@
+mod test
+
+main: fun -> i32
+{
+	val f = fun -> i32
+	{
+		val x = )
+		ret 1
+	}
+
+	ret f()
+}
+
+other: fun -> i32
+{
+	val g = fun(a: i32) -> i32
+	{
+		ret a +
+	}
+
+	ret g(1)
+}

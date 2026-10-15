@@ -1,0 +1,20 @@
+mod test
+
+f: fun(x: i32) -> i32 = x
+
+called: fun -> i32
+{
+	val a = f
+		(1)
+	ret 0
+}
+
+indexed: fun -> i32
+{
+	val items = [1, 2]
+	val a = items
+		[0]
+	ret 0
+}
+
+main: fun -> i32 = 0

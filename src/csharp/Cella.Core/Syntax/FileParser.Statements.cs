@@ -134,7 +134,7 @@ public sealed partial class FileParser
 	{
 		var target = ParseExpression(ref index);
 		var (source, range) = keyword.SourceLocation;
-		return new(keyword, target, new(source, range.Join(target.SourceLocation.Range)));
+		return new(target, new(source, range.Join(target.SourceLocation.Range)));
 	}
 	
 	private IStatementNode? ParseLoop(ref int index, Token keyword, Token? label) => keyword.Type switch

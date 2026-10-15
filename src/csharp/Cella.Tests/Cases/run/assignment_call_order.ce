@@ -1,0 +1,29 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+trace: fun(label: cstr, value: i32) -> i32
+{
+	printf("%s\n", label)
+	ret value
+}
+
+Holder: rec
+{
+	value: i32
+}
+
+main: fun -> i32
+{
+	var values = [0, 0, 0]
+	values[usize(trace("index", 1))] = trace("value", 5)
+	var holder = Holder(0)
+	holder.value = trace("field", 7)
+	var total = trace("start", 1)
+	total = total + trace("add", 2)
+	printf("%d %d %d\n", values[1], holder.value, total)
+	ret 0
+}

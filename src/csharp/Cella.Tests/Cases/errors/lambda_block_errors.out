@@ -1,0 +1,14 @@
+
+====== lambda_block_errors.ce ======
+
+Error at line 7, column 11
+6 │ {
+7 │     val x = )
+                ^ Expected an expression
+
+Error at line 19, column 2
+18 │     ret a +
+19 │ }
+     ^ Expected an expression
+
+[compilation failed]

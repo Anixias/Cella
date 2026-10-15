@@ -1,0 +1,14 @@
+
+====== next_line_resolve_errors.ce ======
+
+Error at line 7, column 9
+6 │ {
+7 │     val b: Box
+               ╘═╛ 'Box' takes one generic argument
+
+Error at line 8, column 4
+7 │ val b: Box
+8 │     [i32] = undef
+         ╘═╛ Cannot use types as values
+
+[compilation failed]

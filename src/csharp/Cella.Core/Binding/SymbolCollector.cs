@@ -47,7 +47,7 @@ public sealed class SymbolCollector : IDeclarationNodeVisitor<Symbol>
 		
 		if (_builder.ModuleSymbols.GetValueOrDefault(moduleName) is not { } module)
 		{
-			module = new(moduleName, node.ModuleName.SourceLocation);
+			module = new(moduleName);
 			_builder.ModuleSymbols[moduleName] = module;
 		}
 		

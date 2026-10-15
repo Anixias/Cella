@@ -1,0 +1,19 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Enabled: val bool = true
+Disabled: val bool = !Enabled
+Mixed: val bool = Enabled && !Disabled || Disabled
+Neither: val bool = Disabled || Disabled && Enabled
+Same: val bool = Enabled == !Disabled
+Different: val bool = Enabled != Disabled
+
+main: fun -> i32
+{
+	printf("%d %d %d %d %d\n", i32(Mixed), i32(Neither), i32(Same), i32(Different), i32(Disabled))
+	ret 0
+}

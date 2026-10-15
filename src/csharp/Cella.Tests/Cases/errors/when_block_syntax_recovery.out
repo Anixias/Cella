@@ -1,0 +1,19 @@
+
+====== when_block_syntax_recovery.ce ======
+
+Error at line 5, column 18
+4 │ {
+5 │     f: fun -> i32 = )
+                        ^ Expected an expression
+
+Error at line 9, column 18
+8 │ 
+9 │ k: fun -> i32 = ]
+                    ^ Expected an expression
+
+Error at line 12, column 17
+11 │ 
+12 │ h: fun -> i32 = ]
+                     ^ Expected an expression
+
+[compilation failed]

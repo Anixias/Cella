@@ -1,0 +1,5 @@
+mod left
+
+bump: pub fun = base.count += 1
+
+read: pub fun -> i32 = base.count

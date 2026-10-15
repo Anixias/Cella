@@ -31,10 +31,6 @@ public sealed class BasicBlock(string label, ControlFlowGraph owner)
 	
 	public bool HasPredecessor() => Owner.HasPredecessor(this);
 	public IReadOnlySet<BasicBlock> GetPredecessors() => Owner.GetPredecessors(this);
-	
-	public SourceLocation GetSourceLocation() => Instructions
-		.Select(static instruction => instruction.SourceLocation)
-		.FirstOrDefault(static location => location != SourceLocation.None, Terminator.SourceLocation);
 }
 
 public abstract class Value(TypeSymbol type, SourceLocation sourceLocation)

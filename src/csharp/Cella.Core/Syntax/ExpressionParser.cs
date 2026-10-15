@@ -863,7 +863,7 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 	private UndefExpressionNode ParseUndef(ref int index, Token token)
 	{
 		if (!Match(ref index, out var openBracket, TokenType.OpOpenBracket))
-			return new UndefExpressionNode(token, null, token.SourceLocation);
+			return new UndefExpressionNode(null, token.SourceLocation);
 		
 		var type = ParseType(ref index);
 		
@@ -872,19 +872,19 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 		
 		var (source, range) = token.SourceLocation;
 		range = range.Join(closeBracket.SourceLocation.Range);
-		return new UndefExpressionNode(token, type, new(source, range));
+		return new UndefExpressionNode(type, new(source, range));
 	}
 	
 	private SizeOfExpressionNode ParseSizeOf(ref int index, Token token)
 	{
 		var target = ParseLayoutTarget(ref index, token, out var location);
-		return new SizeOfExpressionNode(token, target, location);
+		return new SizeOfExpressionNode(target, location);
 	}
 	
 	private AlignOfExpressionNode ParseAlignOf(ref int index, Token token)
 	{
 		var target = ParseLayoutTarget(ref index, token, out var location);
-		return new AlignOfExpressionNode(token, target, location);
+		return new AlignOfExpressionNode(target, location);
 	}
 	
 	private IExpressionNode ParseLayoutTarget(ref int index, Token token, out SourceLocation location)
@@ -961,7 +961,7 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 		
 		var (source, range) = token.SourceLocation;
 		range = range.Join(closeParen.SourceLocation.Range);
-		return new NameOfExpressionNode(token, name, new(source, range));
+		return new NameOfExpressionNode(name, new(source, range));
 	}
 	
 	private IExpressionNode ParsePostfix(ref int index, IExpressionNode target)

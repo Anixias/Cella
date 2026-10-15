@@ -1,0 +1,16 @@
+mod test
+
+W: rec
+{
+	v: i32
+
+	as: op(self) -> i32 = self.v
+	as: op(self) -> i64 = i64(self.v)
+}
+
+main: fun -> i32
+{
+	val w = W(1)
+	val x = -w
+	ret 0
+}

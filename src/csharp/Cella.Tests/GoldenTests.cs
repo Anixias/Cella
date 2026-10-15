@@ -1,5 +1,6 @@
 ﻿using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using System.Security.Cryptography;
 using System.Text;
 using Cella.Compiler;
 using Xunit;
@@ -38,6 +39,44 @@ public sealed class GoldenTests
 		.SelectMany(static category => Directory.EnumerateFiles(category, "*.ce")
 			.Concat(Directory.EnumerateDirectories(category)))
 		.Order();
+	
+	[Theory]
+	[InlineData(false)]
+	[InlineData(true)]
+	public async Task BuildsAreDeterministic(bool release)
+	{
+		var cancellationToken = TestContext.Current.CancellationToken;
+		var caseDirectory = Directory.CreateTempSubdirectory("cella-").FullName;
+		try
+		{
+			CopySources(Path.Combine(_casesDirectory, "run", "library_dependencies"), caseDirectory);
+			var projectPath = Path.Combine(caseDirectory, "test.celp");
+			var first = await BuildOutputsAsync(projectPath, caseDirectory, release, cancellationToken);
+			foreach (var output in Directory.EnumerateDirectories(caseDirectory, "*", SearchOption.AllDirectories)
+				         .Where(static directory => Path.GetFileName(directory) is "bin" or "obj")
+				         .ToList())
+				Directory.Delete(output, true);
+			
+			var second = await BuildOutputsAsync(projectPath, caseDirectory, release, cancellationToken);
+			Assert.NotEmpty(first);
+			Assert.Equal(first, second);
+		}
+		finally
+		{
+			await DeleteDirectoryAsync(caseDirectory);
+		}
+	}
+	
+	private static async Task<Dictionary<string, string>> BuildOutputsAsync(string projectPath, string caseDirectory,
+		bool release, CancellationToken cancellationToken)
+	{
+		var (exitCode, output) = await CompileAsync(projectPath, release, [], cancellationToken);
+		Assert.True(exitCode == 0, output);
+		return Directory.EnumerateFiles(caseDirectory, "*", SearchOption.AllDirectories)
+			.Where(static path => Path.GetExtension(path) is ".exe" or ".dll" or ".lib" or ".pdb")
+			.ToDictionary(path => Path.GetRelativePath(caseDirectory, path),
+				static path => Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(path))));
+	}
 	
 	[Theory]
 	[MemberData(nameof(Cases))]
@@ -79,7 +118,12 @@ public sealed class GoldenTests
 					"OutputType = \"Executable\"\nSystemLinkPreference = \"Dynamic\"\n",
 					cancellationToken);
 			
-			var (compileExitCode, compileOutput) = await CompileAsync(projectPath, release, cancellationToken);
+			var optionsPath = Path.ChangeExtension(sourcePath, ".options");
+			string[] options = File.Exists(optionsPath)
+				? await File.ReadAllLinesAsync(optionsPath, cancellationToken)
+				: [];
+			
+			var (compileExitCode, compileOutput) = await CompileAsync(projectPath, release, options, cancellationToken);
 			compileOutput = compileOutput.Replace(caseDirectory, "<case>");
 			if (compileExitCode != 0)
 				return Transcript(compileOutput, "[compilation failed]");
@@ -136,14 +180,14 @@ public sealed class GoldenTests
 	}
 	
 	private static async Task<(int ExitCode, string Output)> CompileAsync(string projectPath, bool release,
-		CancellationToken cancellationToken)
+		string[] options, CancellationToken cancellationToken)
 	{
 		cancellationToken.ThrowIfCancellationRequested();
 		var output = new StringWriter();
 		_compilerOutput.Value = output;
 		string[] arguments = release
-			? [projectPath, "--quiet", "--hints", "--release"]
-			: [projectPath, "--quiet", "--hints"];
+			? [projectPath, "--quiet", "--hints", "--release", ..options]
+			: [projectPath, "--quiet", "--hints", ..options];
 		
 		var exitCode = await Program.Main(arguments);
 		return (exitCode, output.ToString());

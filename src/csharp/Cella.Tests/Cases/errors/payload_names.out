@@ -1,0 +1,14 @@
+
+====== payload_names.ce ======
+
+Error at line 3, column 24
+2 │ 
+3 │ Shot: enum { miss  hit(5) }
+                           ^ Expected a payload name
+
+Error at line 5, column 24
+4 │ 
+5 │ Mark: enum { none  hit() }
+                           ^ Expected a payload name
+
+[compilation failed]

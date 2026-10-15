@@ -1,0 +1,12 @@
+mod test
+
+Box[T]: rec { value: T }
+
+typed: fun -> i32
+{
+	val b: Box
+		[i32] = undef
+	ret 0
+}
+
+main: fun -> i32 = 0

@@ -1,0 +1,3 @@
+mod test
+
+value: fun -> i32 = 0

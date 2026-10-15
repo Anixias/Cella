@@ -97,12 +97,6 @@ public abstract class BaseParser<T>(ImmutableArray<Token> tokens) : IParser<T>
 		}
 	}
 	
-	protected bool Consume(ref int index, IReadOnlySet<TokenType> syncTypes, TokenType type) =>
-		Consume(ref index, out _, null, syncTypes, type);
-	
-	protected bool Consume(ref int index, out Token token, IReadOnlySet<TokenType> syncTypes, TokenType type) =>
-		Consume(ref index, out token, null, syncTypes, type);
-	
 	protected bool Consume(ref int index, out Token token, IReadOnlyDictionary<string, TokenType>? contextualTypes,
 		IReadOnlySet<TokenType> syncTypes, TokenType type)
 	{

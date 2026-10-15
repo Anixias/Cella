@@ -1,0 +1,5 @@
+mod imports
+
+helper: fun -> i32 = 0
+
+use test

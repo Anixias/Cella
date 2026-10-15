@@ -1,0 +1,6 @@
+lld: error: undefined symbol: cella_missing_function
+>>> referenced by <case>\undefined_ext_symbols.ce:8
+>>>               <case>\obj\test.o:(?test!test.main)
+
+Linker finished with exit code 1
+[compilation failed]

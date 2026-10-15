@@ -1,0 +1,32 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+consume: fun(own bag: lib.Bag) {}
+
+reassigned: fun -> i32
+{
+	var bag = lib.Bag([1, 2, 3, 4])
+	val head = lib.first(imm bag)
+	bag = lib.Bag([5, 6, 7, 8])
+	ret head
+}
+
+moved: fun -> i32
+{
+	val bag = lib.Bag([1, 2, 3, 4])
+	val view = lib.watch(imm bag)
+	consume(own bag)
+	ret view.value
+}
+
+valid: fun -> i32
+{
+	val bag = lib.Bag([1, 2, 3, 4])
+	val view = lib.watch(imm bag)
+	ret lib.first(imm bag) + view.value
+}
+
+main: fun -> i32 = valid()

@@ -1,0 +1,14 @@
+
+====== next_line_values.ce ======
+
+Error at line 8, column 4
+7 │ val a = f
+8 │     (1)
+         ^ Cannot use values as statements
+
+Error at line 16, column 3
+15 │ val a = items
+16 │     [0]
+         ╘═╛ Cannot use values as statements
+
+[compilation failed]

@@ -1,0 +1,9 @@
+
+====== integer_literal_too_large.ce ======
+
+Error at line 5, column 10
+4 │ {
+5 │     val x = 1000000000000000000000000000000000000000000
+                ╘═════════════════════════════════════════╛ Integer literal too large to fit any type
+
+[compilation failed]

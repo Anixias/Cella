@@ -106,7 +106,6 @@ internal static class Program
 		
 		// Phase 0b: Dependency graph
 		var targetTriple = TargetTriple.FromHost(); // TODO Check CLI args for cross-compilation
-		var cts = new CancellationTokenSource();
 		var projectErrors = new List<string>();
 		var dependencyGraph = await MapDependenciesAsync(projectPaths, targetTriple, optimizeMode, flagOverrides,
 			projectErrors);
@@ -154,7 +153,7 @@ internal static class Program
 			
 			var dependencyInfo = dependencies.Select(dependency => projectSymbols[dependency]).ToList();
 			var assemblyInfo = await BuildProject(project, typePool, dependencyInfo, verbose, showHints, optimizeMode,
-				targetTriple, flagOverrides, displayRoot, cts.Token);
+				targetTriple, flagOverrides, displayRoot);
 			
 			if (assemblyInfo.Succeeded)
 				projectSymbols[project] = assemblyInfo;

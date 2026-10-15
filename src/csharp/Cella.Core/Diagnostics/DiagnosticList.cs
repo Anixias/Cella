@@ -6,17 +6,10 @@ namespace Cella.Diagnostics;
 public sealed class DiagnosticList : IEnumerable<Diagnostic>
 {
 	public int Count { get; private set; }
-	
-	public IEnumerable<Diagnostic> Errors => _errors.Values.SelectMany(static d => d);
-	public IEnumerable<Diagnostic> Warnings => _warnings.Values.SelectMany(static d => d);
-	
 	public int ErrorCount { get; private set; }
 	public int ErrorsReported { get; private set; }
-	public int WarningCount { get; private set; }
 	
 	private readonly SortedList<LineColumnKey, List<Diagnostic>> _diagnostics = [];
-	private readonly SortedList<LineColumnKey, List<Diagnostic>> _errors = [];
-	private readonly SortedList<LineColumnKey, List<Diagnostic>> _warnings = [];
 	private List<Diagnostic>? redirect;
 	
 	public DiagnosticList() : this([])
@@ -26,16 +19,6 @@ public sealed class DiagnosticList : IEnumerable<Diagnostic>
 	public DiagnosticList(IEnumerable<Diagnostic> diagnostics)
 	{
 		AddRange(diagnostics);
-	}
-	
-	public void Clear()
-	{
-		_diagnostics.Clear();
-		_errors.Clear();
-		_warnings.Clear();
-		Count = 0;
-		ErrorCount = 0;
-		WarningCount = 0;
 	}
 	
 	public List<Diagnostic>? Redirect(List<Diagnostic>? target)
@@ -60,18 +43,8 @@ public sealed class DiagnosticList : IEnumerable<Diagnostic>
 		_diagnostics.GetOrAdd(key).Add(diagnostic);
 		Count++;
 		
-		switch (diagnostic.Severity)
-		{
-			case DiagnosticSeverity.Error:
-				_errors.GetOrAdd(key).Add(diagnostic);
-				ErrorCount++;
-				break;
-			
-			case DiagnosticSeverity.Warning:
-				_warnings.GetOrAdd(key).Add(diagnostic);
-				WarningCount++;
-				break;
-		}
+		if (diagnostic.Severity == DiagnosticSeverity.Error)
+			ErrorCount++;
 	}
 	
 	public void AddRange(params IEnumerable<Diagnostic> diagnostics)

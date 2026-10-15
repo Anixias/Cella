@@ -1,0 +1,25 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+main: fun -> i32
+{
+	when extra
+	{
+		printf("extra\n")
+	}
+	else
+	{
+		printf("plain\n")
+	}
+
+	when quiet
+	{
+		printf("quiet\n")
+	}
+
+	ret 0
+}

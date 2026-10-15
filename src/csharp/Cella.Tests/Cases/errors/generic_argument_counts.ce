@@ -1,0 +1,10 @@
+mod test
+
+pick[T]: fun(imm value: T) -> i32 = 0
+
+choose[T]: fun(imm value: T) -> i32 = 0
+choose[T, U]: fun(imm value: T, imm other: U) -> i32 = 1
+
+first: fun -> i32 = pick[i32, i64](1)
+
+main: fun -> i32 = choose[i32, i64, u8](1, 2)

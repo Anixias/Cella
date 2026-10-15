@@ -32,5 +32,4 @@ public sealed class MatchExpressionArmNode
 	public IExpressionNode? Guard { get; } = guard;
 	public SourceLocation SourceLocation { get; } = sourceLocation;
 	public IExpressionNode Value { get; } = value;
-	public bool IsElse => Patterns.IsEmpty;
 }

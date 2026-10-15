@@ -18,12 +18,8 @@ public sealed class ResolvedRecordNode
 
 public sealed class ResolvedFieldNode
 (
-	FieldSymbol symbol,
-	TypeSymbol type,
 	IDeclarationNode syntax
 ) : IResolvedDeclarationNode
 {
-	public FieldSymbol Symbol { get; } = symbol;
-	public TypeSymbol Type { get; } = type;
 	public IDeclarationNode Syntax { get; } = syntax;
 }

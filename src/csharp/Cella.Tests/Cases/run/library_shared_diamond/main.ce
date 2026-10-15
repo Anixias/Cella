@@ -1,0 +1,15 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+main: fun -> i32
+{
+	left.bump()
+	right.bump()
+	left.bump()
+	printf("%d %d\n", left.read(), right.read())
+	ret 0
+}

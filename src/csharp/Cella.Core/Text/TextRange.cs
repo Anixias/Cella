@@ -8,8 +8,5 @@ public readonly record struct TextRange(int Start, int End)
 	public int Length { get; } = End - Start;
 	public bool IsValid { get; } = End >= Start && Start >= 0;
 	
-	public static TextRange operator +(TextRange left, int right) => new(left.Start + right, left.End + right);
-	public static TextRange operator +(int left, TextRange right) => new(left + right.Start, left + right.End);
-	
 	public TextRange Join(TextRange range) => new(Math.Min(Start, range.Start), Math.Max(End, range.End));
 }

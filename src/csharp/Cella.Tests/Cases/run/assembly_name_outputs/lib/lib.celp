@@ -1,0 +1,3 @@
+OutputType = "SharedLibrary"
+SystemLinkPreference = "Dynamic"
+AssemblyName = "geometry"

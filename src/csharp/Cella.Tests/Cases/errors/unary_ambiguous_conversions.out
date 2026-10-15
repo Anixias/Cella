@@ -1,0 +1,9 @@
+
+====== unary_ambiguous_conversions.ce ======
+
+Error at line 14, column 10
+13 │ val w = W(1)
+14 │ val x = -w
+             ╘╛ Operation '-' on 'W' is ambiguous
+
+[compilation failed]

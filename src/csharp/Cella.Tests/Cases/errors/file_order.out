@@ -1,0 +1,24 @@
+
+====== imports.ce ======
+
+Error at line 5, column 1
+4 │ 
+5 │ use test
+    ╘═╛ Imports must precede all other declarations
+
+
+====== late.ce ======
+
+Error at line 3, column 5
+2 │ 
+3 │ mod late
+        ╘══╛ Module name must precede all other declarations or imports
+
+
+====== missing.ce ======
+
+Error at line 1, column 1
+1 │ main: fun -> i32 = 0
+    ╘══╛ All files must begin with a module name
+
+[compilation failed]

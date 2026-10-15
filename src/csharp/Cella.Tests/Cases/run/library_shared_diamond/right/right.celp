@@ -1,0 +1,5 @@
+OutputType = "SharedLibrary"
+SystemLinkPreference = "Dynamic"
+
+[[ProjectReferences]]
+Path = '../base/base.celp'

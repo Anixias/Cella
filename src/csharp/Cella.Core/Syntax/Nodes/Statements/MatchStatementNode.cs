@@ -29,5 +29,4 @@ public sealed class MatchArmNode
 	public IExpressionNode? Guard { get; } = guard;
 	public SourceLocation SourceLocation { get; } = sourceLocation;
 	public IStatementNode Body { get; } = body;
-	public bool IsElse => Patterns.IsEmpty;
 }

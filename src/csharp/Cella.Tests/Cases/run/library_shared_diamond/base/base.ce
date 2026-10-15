@@ -1,0 +1,3 @@
+mod base
+
+count: pub var i32 = 0

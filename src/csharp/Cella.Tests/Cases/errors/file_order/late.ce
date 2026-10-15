@@ -1,0 +1,3 @@
+helper: fun -> i32 = 0
+
+mod late

@@ -9,11 +9,8 @@ public sealed partial class Resolver
 {
 	public IResolvedDeclarationNode Visit(FieldNode node)
 	{
-		var resolutionContext = CurrentResolutionContext;
-		var type = resolutionContext.ResolveType(node.Type);
-		var field = (FieldSymbol)_symbolTable.DeclarationSymbols[node];
-		
-		return new ResolvedFieldNode(field, type, node);
+		CurrentResolutionContext.ResolveType(node.Type);
+		return new ResolvedFieldNode(node);
 	}
 	
 	public IResolvedDeclarationNode Visit(FileNode node)
@@ -168,7 +165,7 @@ public sealed partial class Resolver
 		_resolutionContexts.Push(CurrentResolutionContext with { ContainingType = target, ImplBlock = impl });
 		var members = node.Members.SelectMany(VisitBodyMember).ToList();
 		_resolutionContexts.Pop();
-		return new ResolvedImplNode(impl, target, members, node);
+		return new ResolvedImplNode(target, members, node);
 	}
 	
 	private IEnumerable<IResolvedDeclarationNode> VisitBodyMember(IDeclarationNode member) => member switch

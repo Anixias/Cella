@@ -1,0 +1,14 @@
+
+====== generic_argument_counts.ce ======
+
+Error at line 8, column 21
+7 │ 
+8 │ first: fun -> i32 = pick[i32, i64](1)
+                        ╘════════════╛ 'pick' takes one generic argument
+
+Error at line 10, column 20
+ 9 │ 
+10 │ main: fun -> i32 = choose[i32, i64, u8](1, 2)
+                        ╘══════════════════╛ No overload of 'choose' takes 3 generic arguments
+
+[compilation failed]
