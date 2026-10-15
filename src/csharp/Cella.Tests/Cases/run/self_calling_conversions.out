@@ -1,0 +1,19 @@
+
+====== self_calling_conversions.ce ======
+
+Warning at line 8, column 31
+7 │ 
+8 │ as: op(value: i32) -> Pair = Pair(value)
+                                 ╘═════════╛ Conversion 'as' calls itself
+
+Warning at line 15, column 24
+14 │ 
+15 │ as: op(self) -> i32 = self
+                           ╘══╛ Conversion 'as' calls itself
+
+Warning at line 37, column 28
+36 │ 
+37 │ as: op(value: i32) -> U = U(value)
+                               ╘══════╛ Conversion 'as' calls itself
+
+[exit code 0]

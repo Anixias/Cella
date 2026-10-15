@@ -1,0 +1,57 @@
+mod test
+
+Pair: rec
+{
+	a: i32
+	b: i32
+
+	as: op(value: i32) -> Pair = Pair(value)
+}
+
+Box: rec
+{
+	v: i32
+
+	as: op(self) -> i32 = self
+}
+
+Shift: rec
+{
+	a: i32
+	b: i32
+
+	as: op(value: i32) -> Shift
+	{
+		if value > 100
+			ret Shift(value - 1)
+
+		ret Shift(value, value)
+	}
+}
+
+U: union
+{
+	a: i32
+	b: f32
+
+	as: op(value: i32) -> U = U(value)
+}
+
+Meters: rec
+{
+	value: f64
+
+	new: op(value: f64)
+	{
+		self.value = value
+	}
+
+	as: op(value: i32) -> Meters = Meters(value)
+}
+
+main: fun -> i32
+{
+	val s: Shift = 103
+	val m: Meters = 5
+	ret s.a - 100 + i32(m.value) - 5
+}

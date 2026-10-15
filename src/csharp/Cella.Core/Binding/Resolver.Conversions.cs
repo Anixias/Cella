@@ -385,9 +385,21 @@ public sealed partial class Resolver
 		return Error(syntax ?? source.Syntax, $"Conversion from '{from.Name}' to '{to.Name}' is ambiguous", to);
 	}
 	
+	private static bool PassesOwnParameter(IResolvedExpressionNode source, FunctionInfo info) => source switch
+	{
+		ResolvedOwnExpressionNode owned => PassesOwnParameter(owned.Value, info),
+		ResolvedMutArgumentExpressionNode argument => PassesOwnParameter(argument.Place, info),
+		ResolvedVarExpressionNode { Symbol: ParameterSymbol parameter } => info.Symbol.Parameters.Contains(parameter),
+		_ => false
+	};
+	
 	private IResolvedExpressionNode CallConversion(FunctionInfo info, IResolvedExpressionNode source,
 		IExpressionNode syntax, TypeSymbol? target = null)
 	{
+		if (CurrentResolutionContext.ContainingFunction?.Symbol == info.Symbol && PassesOwnParameter(source, info))
+			Diagnostics.Add(new(DiagnosticSeverity.Warning, syntax.SourceLocation,
+				$"Conversion '{info.Symbol.DeclaredName}' calls itself"));
+		
 		TrackFunctionUse(info, syntax);
 		if (info.Symbol.Kind == FunctionKind.Free)
 		{
