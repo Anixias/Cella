@@ -1,0 +1,14 @@
+
+====== never_layout.ce ======
+
+Error at line 3, column 29
+2 │ 
+3 │ size: fun -> usize = sizeOf(never)
+                                ╘═══╛ 'never' can only be a return type
+
+Error at line 5, column 35
+4 │ 
+5 │ alignment: fun -> usize = alignOf(never)
+                                      ╘═══╛ 'never' can only be a return type
+
+[compilation failed]

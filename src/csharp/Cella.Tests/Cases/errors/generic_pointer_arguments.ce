@@ -1,0 +1,9 @@
+mod test
+
+box[T]: rec { value: T }
+
+main: fun -> i32
+{
+	val p: ptr[box] = null
+	ret 0
+}

@@ -133,7 +133,7 @@ public sealed partial class FileParser
 			(ref i) => ParseGlobal(ref i, identifier, modifiers, keyword));
 	}
 	
-	private IDeclarationNode? ParseExternalDeclaration(ref int index, string? origin, Token? block)
+	private IDeclarationNode? ParseExternalDeclaration(ref int index, Token? origin, Token? block)
 	{
 		// TODO Diagnostics
 		

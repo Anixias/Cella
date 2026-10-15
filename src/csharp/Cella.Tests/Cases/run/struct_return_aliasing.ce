@@ -1,0 +1,42 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Point: rec
+{
+	x: i32
+	y: i32
+}
+
+Mirror: rec
+{
+	x: i32
+	y: i32
+
+	new: op(x: i32, y: i32)
+	{
+		self.x = x
+		self.y = y
+	}
+
+	new: op(other: ptr[Mirror])
+	{
+		self.x = (*other).y
+		self.y = (*other).x
+	}
+}
+
+rev: fun(mut p: Point) -> Point = Point(p.y, p.x)
+
+main: fun -> i32
+{
+	var a = Point(1, 2)
+	a = rev(mut a)
+	var m = Mirror(5, 6)
+	m = Mirror(@m)
+	printf("%d %d %d %d\n", a.x, a.y, m.x, m.y)
+	ret 0
+}

@@ -1,0 +1,31 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Item: rec
+{
+	id: i32
+
+	drop: op
+	{
+		printf("drop %d\n", self.id)
+	}
+}
+
+swap[N: val usize]: fun(mut items: array[Item, N], own item: Item) -> i32
+{
+	val old = own items[0]
+	items[0] = own item
+	ret old.id
+}
+
+main: fun -> i32
+{
+	var items = [Item(1), Item(2)]
+	printf("%d\n", swap(mut items, Item(3)))
+	printf("%d %d\n", items[0].id, items[1].id)
+	ret 0
+}

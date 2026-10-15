@@ -1,0 +1,8 @@
+mod test
+
+ext("no_such_library_anywhere")
+{
+	Missing: fun -> i32
+}
+
+main: fun -> i32 = Missing()

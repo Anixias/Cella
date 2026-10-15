@@ -11,7 +11,7 @@ public sealed class Linker(string rootPath, bool verbose)
 	private string GetLinkerPath(LinkRequest request) => Path.Combine(rootPath,
 		request.OutputType == ProjectOutputType.StaticLibrary ? "llvm-lib.exe" : "lld.exe");
 	
-	public async Task<int> LinkAsync(LinkRequest request, Toolchain toolchain)
+	public async Task<(int ExitCode, string Errors)> LinkAsync(LinkRequest request, Toolchain toolchain)
 	{
 		// TODO Only works on Windows host
 		var args = new List<string>();
@@ -42,10 +42,6 @@ public sealed class Linker(string rootPath, bool verbose)
 		process.Start();
 		var errors = process.StandardError.ReadToEndAsync();
 		await process.WaitForExitAsync();
-		
-		if (process.ExitCode != 0)
-			await Console.Error.WriteLineAsync(await errors);
-		
-		return process.ExitCode;
+		return (process.ExitCode, await errors);
 	}
 }

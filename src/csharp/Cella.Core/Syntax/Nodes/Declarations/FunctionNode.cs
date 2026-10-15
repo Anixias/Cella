@@ -45,7 +45,7 @@ public sealed class ExternalFunctionNode
 	IEnumerable<ParameterNode> parameters,
 	ITypeNode? returnType,
 	bool isVariadic,
-	string? origin
+	Token? origin
 ) : IFunctionNode
 {
 	public SourceLocation SourceLocation => Identifier.SourceLocation;
@@ -55,6 +55,7 @@ public sealed class ExternalFunctionNode
 	public ImmutableArray<ParameterNode> Parameters { get; } = parameters.ToImmutableArray();
 	public ITypeNode? ReturnType { get; } = returnType;
 	public bool IsVariadic { get; } = isVariadic;
-	public string? Origin { get; } = origin;
+	public string? Origin { get; } = origin?.Text;
+	public SourceLocation? OriginLocation { get; } = origin?.SourceLocation;
 	public Token? ExternalName { get; init; }
 }

@@ -319,7 +319,7 @@ public sealed partial class FileParser
 		// 'ext' token already consumed by caller
 		
 		// Optional library origin
-		string? origin;
+		Token? origin;
 		if (Match(ref index, out var openParen, TokenType.OpOpenParen))
 		{
 			var nameIndex = index;
@@ -330,7 +330,7 @@ public sealed partial class FileParser
 				return null;
 			}
 			
-			origin = str.Text;
+			origin = str;
 			
 			if (!Match(ref index, TokenType.OpCloseParen))
 			{
@@ -348,7 +348,7 @@ public sealed partial class FileParser
 		return ParseExternalBody(ref index, openBrace, origin, block, nodes) ? nodes : null;
 	}
 	
-	private bool ParseExternalBody(ref int index, Token openBrace, string? origin, Token? block,
+	private bool ParseExternalBody(ref int index, Token openBrace, Token? origin, Token? block,
 		List<IDeclarationNode> nodes)
 	{
 		while (!Match(ref index, TokenType.OpCloseBrace))

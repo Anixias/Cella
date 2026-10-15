@@ -1,0 +1,29 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Counter: rec
+{
+	a: i32
+	b: i32
+
+	new: op(first: bool)
+	{
+		if first
+			self.a = 1
+	}
+}
+
+main: fun -> i32
+{
+	for i in 0..3
+	{
+		val c = Counter(i == 0)
+		printf("%d %d\n", c.a, c.b)
+	}
+
+	ret 0
+}

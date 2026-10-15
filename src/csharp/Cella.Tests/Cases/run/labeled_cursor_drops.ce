@@ -1,0 +1,52 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Range: rec
+{
+	id: i32
+	count: i32
+
+	in: op(imm self) -> Walker = Walker(self.id, -1, self.count)
+}
+
+Walker: rec
+{
+	id: i32
+	current: i32
+	count: i32
+
+	for: op(mut self) -> bool
+	{
+		self.current += 1
+		ret self.current < self.count
+	}
+
+	*: op(imm self) -> imm[i32] = imm self.current
+
+	drop: op
+	{
+		printf("close %d\n", self.id)
+	}
+}
+
+main: fun -> i32
+{
+	outer: for i in Range(1, 3)
+	{
+		for j in Range(10 + i, 3)
+		{
+			printf("%d %d\n", i, j)
+			if j == 1
+				cont outer
+
+			if i == 2
+				break outer
+		}
+	}
+
+	ret 0
+}

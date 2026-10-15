@@ -1,0 +1,35 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Note: rec
+{
+	id: i32
+
+	drop: op
+	{
+		printf("drop %d\n", self.id)
+	}
+}
+
+main: fun -> i32
+{
+	outer: for i in 0..3
+	{
+		val a = Note(i)
+		for j in 0..3
+		{
+			val b = Note(10 + j)
+			if j == 1
+				cont outer
+
+			if i == 2
+				break outer
+		}
+	}
+
+	ret 0
+}

@@ -1,0 +1,45 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Architecture: rec
+{
+	architecture: u16
+	reserved: u16
+}
+
+OemId: union
+{
+	oemId: u32
+	parts: Architecture
+}
+
+SystemInfo: rec
+{
+	oem: OemId
+	pageSize: u32
+	minimum: ptr
+	maximum: ptr
+	mask: usize
+	processors: u32
+	processorType: u32
+	granularity: u32
+	level: u16
+	revision: u16
+}
+
+ext("kernel32")
+{
+	GetSystemInfo: fun(info: ptr[SystemInfo])
+}
+
+main: fun -> i32
+{
+	var info: SystemInfo
+	GetSystemInfo(@info)
+	printf("%zu %u %u %d\n", sizeOf(SystemInfo), info.pageSize, info.granularity, i32(info.processors > 0))
+	ret 0
+}

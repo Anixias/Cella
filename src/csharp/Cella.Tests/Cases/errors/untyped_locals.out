@@ -6,4 +6,9 @@ Error at line 5, column 6
 5 │     var x
             ^ Cannot infer the type of 'x'
 
+Error at line 11, column 6
+10 │ {
+11 │     var y = undef
+             ^ Cannot infer the type of 'y'
+
 [compilation failed]

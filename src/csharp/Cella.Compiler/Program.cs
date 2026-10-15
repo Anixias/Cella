@@ -710,11 +710,7 @@ internal static class Program
 			
 			ownLibraries =
 			[
-				..externalLibraries
-					.Select(static name => Path.GetExtension(name).ToLowerInvariant() is ".lib" or ".dll"
-						? Path.ChangeExtension(name, ".lib")
-						: $"{name}.lib")
-					.Distinct()
+				..externalLibraries.Select(GetLibraryFileName).Distinct()
 			];
 			
 			var libFiles = outputType == ProjectOutputType.StaticLibrary
@@ -747,7 +743,18 @@ internal static class Program
 			var linkerToolchain = Toolchain.FromTargetTriple(targetTriple,
 				Path.Combine(AppContext.BaseDirectory, "toolchains"));
 			
-			var linkExitCode = await linker.LinkAsync(linkRequest, linkerToolchain);
+			var (linkExitCode, linkErrors) = await linker.LinkAsync(linkRequest, linkerToolchain);
+			if (linkExitCode != 0 && DescribeLinkErrors(linkErrors, [
+				    assemblySymbol, ..contained
+					    .Select(static library => library.AssemblySymbol)
+			    ]) is { } described)
+			{
+				ReportErrors([described], displayRoot, showHints);
+				return errorResult;
+			}
+			
+			if (linkExitCode != 0)
+				await Console.Error.WriteLineAsync(linkErrors);
 			
 			if (verbose || linkExitCode != 0)
 				Console.WriteLine($"Linker finished with exit code {linkExitCode}");
@@ -772,6 +779,69 @@ internal static class Program
 			LibraryFiles = ownLibraries
 		};
 	}
+	
+	private static DiagnosticList? DescribeLinkErrors(string errors, IEnumerable<AssemblySymbol> assemblies)
+	{
+		var declarations = new Dictionary<string, SourceLocation>();
+		var origins =
+			new Dictionary<string, (string Origin, SourceLocation Location)>(StringComparer.OrdinalIgnoreCase);
+		
+		foreach (var symbol in assemblies.SelectMany(static assembly => assembly.SymbolTable.DeclarationSymbols.Values))
+		{
+			switch (symbol)
+			{
+				case FunctionSymbol { Syntax: ExternalFunctionNode node } function:
+					declarations.TryAdd(function.ExternalName ?? function.Name, node.Identifier.SourceLocation);
+					if (node is { Origin: { } origin, OriginLocation: { } location })
+						origins.TryAdd(Path.GetFileName(GetLibraryFileName(origin)), (origin, location));
+					
+					break;
+				
+				case GlobalSymbol { IsImport: true } global:
+					declarations.TryAdd(global.ExternalName ?? global.Name, global.Syntax.Identifier.SourceLocation);
+					break;
+			}
+		}
+		
+		var diagnostics = new DiagnosticList();
+		foreach (var line in errors.Split('\n').Select(static line => line.Trim())
+			         .Where(static line => line.Length > 0))
+		{
+			if (line.StartsWith(">>>", StringComparison.Ordinal))
+				continue;
+			
+			if (line.StartsWith(UndefinedSymbol, StringComparison.Ordinal) &&
+			    declarations.TryGetValue(line[UndefinedSymbol.Length..], out var declaration))
+			{
+				diagnostics.Add(new(DiagnosticSeverity.Error, declaration,
+					$"Cannot find '{line[UndefinedSymbol.Length..]}' in the linked libraries"));
+				
+				continue;
+			}
+			
+			if (line.StartsWith(MissingFile, StringComparison.Ordinal) &&
+			    line.IndexOf('\'', MissingFile.Length) is var end and > 0 &&
+			    origins.TryGetValue(Path.GetFileName(line[MissingFile.Length..end]), out var library))
+			{
+				diagnostics.Add(new(DiagnosticSeverity.Error, library.Location,
+					$"Cannot find the library '{library.Origin}'"));
+				
+				continue;
+			}
+			
+			return null;
+		}
+		
+		return diagnostics.Count > 0 ? diagnostics : null;
+	}
+	
+	private const string UndefinedSymbol = "lld: error: undefined symbol: ";
+	private const string MissingFile = "lld: error: could not open '";
+	
+	private static string GetLibraryFileName(string name) =>
+		Path.GetExtension(name).ToLowerInvariant() is ".lib" or ".dll"
+			? Path.ChangeExtension(name, ".lib")
+			: $"{name}.lib";
 	
 	private static void CopySharedLibraries(ImmutableArray<AssemblyInfo> dependencies, string outputDir)
 	{

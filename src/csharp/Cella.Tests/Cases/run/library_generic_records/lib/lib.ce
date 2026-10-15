@@ -1,0 +1,16 @@
+mod lib
+
+Stack[T]: pub rec
+{
+	top: T
+
+	created: var i32 = 0
+
+	new: op(own top: T)
+	{
+		self.top = own top
+		Stack[T].created += 1
+	}
+
+	peek: get(imm self) -> imm[T] = imm self.top
+}

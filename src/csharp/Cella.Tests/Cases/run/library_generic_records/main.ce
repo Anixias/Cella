@@ -1,0 +1,15 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+main: fun -> i32
+{
+	val small = lib.Stack[i32](3)
+	val wide = lib.Stack[i64](4)
+	lib.Stack[i32].created += 10
+	printf("%d %d %d %d\n", small.peek, i32(wide.peek), lib.Stack[i32].created, lib.Stack[i64].created)
+	ret 0
+}

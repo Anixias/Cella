@@ -1,0 +1,32 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+main: fun -> i32
+{
+	var count = 0
+	for x in 250u8..=255u8
+	{
+		if x == 252
+			cont
+
+		count += 1
+	}
+
+	for y in -128i8..=-128i8
+		count += 10
+
+	for z in 126i8..=127i8
+	{
+		if z == 127
+			cont
+
+		count += 100
+	}
+
+	printf("%d\n", count)
+	ret 0
+}

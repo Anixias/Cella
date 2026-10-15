@@ -1,0 +1,15 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+wrap[T]: rec { value: T }
+
+main: fun -> i32
+{
+	val w: wrap[wrap[wrap[wrap[wrap[wrap[wrap[wrap[wrap[wrap[wrap[wrap[wrap[wrap[wrap[wrap[wrap[wrap[wrap[wrap[wrap[wrap[wrap[wrap[wrap[wrap[wrap[wrap[wrap[wrap[wrap[wrap[wrap[wrap[wrap[wrap[wrap[wrap[wrap[wrap[i32]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]] = undef
+	printf("%zu\n", sizeOf(w))
+	ret 0
+}

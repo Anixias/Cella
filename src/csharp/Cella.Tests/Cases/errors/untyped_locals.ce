@@ -5,3 +5,9 @@ main: fun -> i32
 	var x
 	ret 0
 }
+
+undefined: fun -> i32
+{
+	var y = undef
+	ret 0
+}

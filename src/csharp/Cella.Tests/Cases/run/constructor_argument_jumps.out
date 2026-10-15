@@ -1,0 +1,12 @@
+drop 1
+drop 2
+drop 3
+6
+drop 10
+drop 50
+drop 20
+drop 60
+3
+drop 100
+-1
+[exit code 0]

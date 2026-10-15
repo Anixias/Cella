@@ -1,0 +1,70 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Note: rec
+{
+	id: i32
+
+	drop: op
+	{
+		printf("drop %d\n", self.id)
+	}
+}
+
+Pair: rec
+{
+	left: Note
+	right: i32
+}
+
+Pick: enum { none  some(value: i32) }
+
+choose: fun(value: i32) -> Pick
+{
+	if value > 2
+		ret Pick.none
+
+	ret Pick.some(value)
+}
+
+find: fun(values: array[i32, 4]) -> i32
+{
+	var total = 0
+	for value in values
+	{
+		val pair = Pair(Note(value), match choose(value) { some(val v) => v  none => break })
+		total += pair.left.id + pair.right
+	}
+
+	ret total
+}
+
+skip: fun(values: array[i32, 4]) -> i32
+{
+	var total = 0
+	for value in values
+	{
+		val pair = Pair(Note(value * 10), match choose(value) { some(val v) => v  none => cont })
+		total += pair.right
+	}
+
+	ret total
+}
+
+early: fun -> i32
+{
+	val pair = Pair(Note(100), match choose(5) { some(val v) => v  none => ret -1 })
+	ret pair.right
+}
+
+main: fun -> i32
+{
+	printf("%d\n", find([1, 2, 3, 4]))
+	printf("%d\n", skip([1, 5, 2, 6]))
+	printf("%d\n", early())
+	ret 0
+}

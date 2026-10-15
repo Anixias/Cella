@@ -1,0 +1,35 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Slot: rec
+{
+	id: i32
+
+	new: op(id: i32)
+	{
+		self = Slot.blank(id * 10)
+	}
+
+	blank: fun(id: i32) -> Slot
+	{
+		var s: Slot = undef
+		s.id = id
+		ret s
+	}
+
+	drop: op
+	{
+		printf("drop %d\n", self.id)
+	}
+}
+
+main: fun -> i32
+{
+	val s = Slot(4)
+	printf("%d\n", s.id)
+	ret 0
+}

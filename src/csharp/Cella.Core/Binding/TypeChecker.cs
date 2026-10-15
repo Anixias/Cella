@@ -908,9 +908,7 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool, 
 	{
 	}
 	
-	public void Visit(ResolvedCaseNameExpressionNode node)
-	{
-	}
+	public void Visit(ResolvedCaseNameExpressionNode node) => throw new InvalidOperationException();
 	
 	public void Visit(ResolvedEnumCaseExpressionNode node)
 	{
