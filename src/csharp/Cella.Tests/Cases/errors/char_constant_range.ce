@@ -1,0 +1,9 @@
+mod test
+
+main: fun -> i32
+{
+	val f = char(1114112)
+	val g = char(55296)
+	val h = char(1114111)
+	ret 0
+}

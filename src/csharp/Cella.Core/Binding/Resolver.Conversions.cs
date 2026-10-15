@@ -99,7 +99,7 @@ public sealed partial class Resolver
 		op is TokenType.OpLess or TokenType.OpLessEqual or TokenType.OpGreater or TokenType.OpGreaterEqual
 			or TokenType.OpEqualEqual or TokenType.OpBangEqual &&
 		left is IntegerType { IsSigned: var leftSigned } && right is IntegerType { IsSigned: var rightSigned } &&
-		leftSigned != rightSigned;
+		leftSigned != rightSigned && left != NativeSymbols.Char && right != NativeSymbols.Char;
 	
 	private static bool IsShiftOrRotate(TokenType op) => op is TokenType.OpLessLess or TokenType.OpLessLessEqual
 		or TokenType.OpGreaterGreater or TokenType.OpGreaterGreaterEqual or TokenType.OpLessLessLess
@@ -127,7 +127,8 @@ public sealed partial class Resolver
 	
 	private (IntegerType Signed, IntegerType Unsigned)? FindLossyMixedSign(TypeSymbol left, TypeSymbol right)
 	{
-		if (left is not IntegerType a || right is not IntegerType b || a.IsSigned == b.IsSigned)
+		if (left is not IntegerType a || right is not IntegerType b || a.IsSigned == b.IsSigned ||
+		    a == NativeSymbols.Char || b == NativeSymbols.Char)
 			return null;
 		
 		var (signedType, unsignedType) = a.IsSigned ? (a, b) : (b, a);

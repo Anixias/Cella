@@ -1,0 +1,9 @@
+mod test
+
+make: fun(x: u32) -> char = char(x)
+
+main: fun -> i32
+{
+	val c = make(55296)
+	ret 0
+}

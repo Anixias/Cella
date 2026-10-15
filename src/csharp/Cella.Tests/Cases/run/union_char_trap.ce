@@ -1,0 +1,15 @@
+mod test
+
+U: union
+{
+	letter: char
+	raw: u32
+}
+
+main: fun -> i32
+{
+	var u = U()
+	u.raw = 4294967295
+	val c = u.letter
+	ret 0
+}

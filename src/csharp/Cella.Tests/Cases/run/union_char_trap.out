@@ -1,0 +1,3 @@
+[stderr]
+Panic at union_char_trap.ce:13:10: invalid char
+[exit code -1073740791]

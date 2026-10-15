@@ -1,0 +1,14 @@
+
+====== char_constant_range.ce ======
+
+Error at line 5, column 10
+4 │ {
+5 │     val f = char(1114112)
+                ╘═══════════╛ '1114112' doesn't fit in 'char'
+
+Error at line 6, column 10
+5 │ val f = char(1114112)
+6 │ val g = char(55296)
+            ╘═════════╛ '55296' doesn't fit in 'char'
+
+[compilation failed]

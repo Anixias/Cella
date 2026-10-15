@@ -1,0 +1,30 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+U: union
+{
+	flag: bool
+	letter: char
+	raw: u32
+}
+
+main: fun -> i32
+{
+	var c = 'a'
+	val next = c + 1
+	val back = 2 + c
+	val distance = 'z' - c
+	c += 3
+	c -= 1
+	val wide = u32('€')
+	var u = U()
+	u.raw = 2
+	val asBool = u.flag
+	u.raw = 66
+	printf("%u %u %d %u %u %d %u\n", u32(next), u32(back), distance, u32(c), wide, i32(asBool), u32(u.letter))
+	ret 0
+}

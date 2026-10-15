@@ -13,7 +13,7 @@ main: fun -> i32
 	var product = size * wide
 
 	var letter: char = 'a'
-	var next = letter + signed
+	var next = letter * signed
 	var forced: char = unsigned
 	ret 0
 }

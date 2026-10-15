@@ -16,7 +16,7 @@ main: fun -> i32
 	var signedSize: isize = small
 	var fromShort: isize = short
 	var unsignedSize: usize = count
-	var fromLetter: usize = letter
+	var fromLetter: usize = usize(letter)
 	printf("%lld %lld %llu %llu\n", signedSize, fromShort, unsignedSize, fromLetter)
 
 	var text: str = "hello"

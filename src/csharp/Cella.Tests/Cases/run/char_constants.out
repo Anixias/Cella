@@ -1,2 +1,14 @@
-97 97 66 97
-[exit code 0]
+
+====== char_constants.ce ======
+
+Error at line 9, column 17
+8 │ letter: val char = 'a'
+9 │ code: val u32 = letter
+                    ╘════╛ Cannot convert type 'char' to 'u32'
+
+Error at line 12, column 17
+11 │ back: val char = char(u32(66))
+12 │ wide: val u64 = letter
+                     ╘════╛ Cannot convert type 'char' to 'u64'
+
+[compilation failed]

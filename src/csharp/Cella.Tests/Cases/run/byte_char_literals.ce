@@ -5,41 +5,28 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-take: fun(b: u8) -> i32 = i32(b)
-
-locals: fun
-{
-	val text: str = "ab"
-	val ch = 'a'
-	val other = 'b'
-	val plain = 'c'
-	val typed: u8 = 'z'
-	val bytes: array[u8, 2] = ['h', 'i']
-	val kept: char = '€'
-	printf("%d %d %d %d %d %d %d\n", text[0] == ch, take(other), text[1] == other, plain == 'c', typed, bytes[1], kept)
-}
-
 main: fun -> i32
 {
 	val text: str = "a7b"
 	var count = 0
 	for i in 0..text.byteLength
 	{
-		if text[i] == 'b' || 'a' == text[i]
+		if text[i] == 'b'u8 || 'a'u8 == text[i]
 			count += 1
 	}
-	val digit = text[1] - '0'
+
+	val digit = text[1] - '0'u8
 	var b: u8 = 1
-	b += 'a'
-	val wide: u16 = 0x20AC
-	val lower = text[0] >= 'a' && text[0] <= 'z'
+	b += 'a'u8
+	val lower = text[0] >= 'a'u8 && text[0] <= 'z'u8
 	val kind = match text[2]
 	{
-		'a'..='z' => 1
+		'a'u8..='z'u8 => 1
 		else => 0
 	}
-	val ch: char = 'x'
-	printf("%d %d %d %d %d %d %d\n", count, digit, b, wide == '€', lower, kind, ch == 'x')
-	locals()
+
+	val bytes: array[u8, 2] = ['h'u8, 'i'u8]
+	val wide = '€'u16
+	printf("%d %d %d %d %d %d %d\n", count, digit, b, lower, kind, bytes[1], wide)
 	ret 0
 }

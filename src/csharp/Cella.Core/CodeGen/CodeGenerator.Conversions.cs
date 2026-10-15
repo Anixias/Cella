@@ -13,6 +13,10 @@ public sealed partial class CodeGenerator
 	private LLVMValueRef EmitConversion(ConversionValue v, LLVMBuilderRef builder) => v.Conversion switch
 	{
 		IdentityConversion => EmitValue(v.Source, builder),
+		IntegerConversion { To: var to } c when Substitute(to) == NativeSymbols.Char =>
+			ConvertToChar(EmitValue(v.Source, builder), c.FromSigned, v.SourceLocation, builder),
+		FreeConversion { From: IntegerType, To: var to } when Substitute(to) == NativeSymbols.Char =>
+			ConvertToChar(EmitValue(v.Source, builder), false, v.SourceLocation, builder),
 		IntegerConversion c => ConvertInteger(EmitValue(v.Source, builder), MapTypeSymbol(c.To), c.FromSigned,
 			c.ToSigned, v.SourceLocation, builder),
 		FloatConversion c => EmitFloatConversion(c, EmitValue(v.Source, builder), v.SourceLocation, builder),
@@ -124,6 +128,22 @@ public sealed partial class CodeGenerator
 		UnaryOpValue { Op: UnaryOperation.Dereference } => true,
 		_ => false
 	};
+	
+	private LLVMValueRef ConvertToChar(LLVMValueRef source, bool fromSigned, SourceLocation location,
+		LLVMBuilderRef builder)
+	{
+		var wide = source.TypeOf.IntWidth < 64
+			? fromSigned
+				? builder.BuildSExt(source, _context.Int64Type, "wide")
+				: builder.BuildZExt(source, _context.Int64Type, "wide")
+			: source;
+		
+		if (_config.OverflowChecks)
+			PanicIf(builder.BuildNot(IsScalarValue(wide, builder), "invalid"), "conversion overflow", location,
+				builder);
+		
+		return ResizeInteger(source, _context.Int32Type, fromSigned, builder);
+	}
 	
 	private LLVMValueRef ConvertInteger(LLVMValueRef source, LLVMTypeRef destType, bool fromSigned, bool toSigned,
 		SourceLocation location, LLVMBuilderRef builder)

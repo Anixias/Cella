@@ -2,6 +2,7 @@
 using System.Globalization;
 using System.Numerics;
 using System.Text;
+using Cella.Core.Binding.Constants;
 using Cella.Core.Binding.Conversions;
 using Cella.Core.Binding.Nodes;
 using Cella.Core.Symbols;
@@ -28,10 +29,6 @@ public sealed partial class Resolver
 		
 		if (node.Token.Suffix is { } suffix)
 			return ResolveSuffixedLiteral(node, suffix);
-		
-		if (node.Token.Type == TokenType.CharLiteral &&
-		    CurrentTargetType is IntegerType { Kind: not PrimitiveTypeKind.Char } target)
-			return ResolveSuffixedChar(node, target);
 		
 		var valueSpan = node.Token.AsSpan();
 		
@@ -109,21 +106,6 @@ public sealed partial class Resolver
 		return _evaluator.Fits(code, type)
 			? new ResolvedLiteralExpressionNode(type, new BigInteger(code), node)
 			: Error(node, $"'{node.Token.Text}' doesn't fit in '{type.Name}'", CurrentTargetType);
-	}
-	
-	private IResolvedExpressionNode AdaptCharLiteral(IResolvedExpressionNode operand, TypeSymbol peerType)
-	{
-		if (operand is not ResolvedLiteralExpressionNode
-		    {
-			    Type: var type,
-			    Syntax: LiteralExpressionNode { Token: { Type: TokenType.CharLiteral, Suffix: null } } syntax
-		    } || type != NativeSymbols.Char || peerType is not IntegerType { Kind: not PrimitiveTypeKind.Char } integer)
-			return operand;
-		
-		foreach (var tracked in survey?.GetTracked(operand) ?? [])
-			RecordUse(tracked.Local, Wrap(integer, tracked.Lengths), LocalUseKind.Read);
-		
-		return ResolveSuffixedChar(syntax, integer);
 	}
 	
 	private ResolvedArrayExpressionNode ResolveCodeUnits(LiteralExpressionNode node, IntegerType type)
@@ -272,7 +254,7 @@ public sealed partial class Resolver
 		PrimitiveTypeKind.UInt64 => value >= ulong.MinValue && value <= ulong.MaxValue,
 		PrimitiveTypeKind.UInt128 => value >= UInt128.MinValue && value <= UInt128.MaxValue,
 		PrimitiveTypeKind.UIntSize => value >= _usizeMinValue && value <= _usizeMaxValue,
-		PrimitiveTypeKind.Char => value >= uint.MinValue && value <= uint.MaxValue,
+		PrimitiveTypeKind.Char => ConstantEvaluator.IsScalarValue(value),
 		_ => false
 	};
 	

@@ -37,6 +37,6 @@ main: fun -> i32
 	var letter = 'a'
 	var code: i32 = 97
 	var minus: i32 = -97
-	printf("%d %d\n", flag(minus < letter), flag(code == letter))
+	printf("%d %d\n", flag(minus < i32(letter)), flag(code == i32(letter)))
 	ret 0
 }

@@ -17,7 +17,7 @@ main: fun -> i32
 	var widened: i64 = count
 
 	var letter = 'a'
-	var code: u32 = letter
+	var code: u32 = u32(letter)
 
 	printf("%d %lld %lld %u\n", sum, total, widened, code)
 

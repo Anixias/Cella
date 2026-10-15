@@ -11,6 +11,11 @@ Error at line 9, column 6
 9 │ b = 5u16
         ╘══╛ Cannot convert type 'u16' to 'u8'
 
+Error at line 10, column 6
+ 9 │ b = 5u16
+10 │ c = 'A'
+         ╘═╛ Cannot convert type 'char' to 'u8'
+
 Error at line 11, column 6
 10 │ c = 'A'
 11 │ d = true

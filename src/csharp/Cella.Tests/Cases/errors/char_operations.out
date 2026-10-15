@@ -1,0 +1,24 @@
+
+====== char_operations.ce ======
+
+Error at line 6, column 10
+5 │ var c: char = 'a'
+6 │ val a = c * c
+            ╘═══╛ No operation defined for '*' between 'char' and 'char'
+
+Error at line 7, column 10
+6 │ val a = c * c
+7 │ val b = ~c
+            ╘╛ Operator '~' cannot be applied to 'char'
+
+Error at line 8, column 10
+7 │ val b = ~c
+8 │ val d = c & 1
+            ╘═══╛ No operation defined for '&' between 'char' and 'integer literal'
+
+Error at line 9, column 15
+8 │ val d = c & 1
+9 │ val e: u32 = c
+                 ^ Cannot convert type 'char' to 'u32'
+
+[compilation failed]

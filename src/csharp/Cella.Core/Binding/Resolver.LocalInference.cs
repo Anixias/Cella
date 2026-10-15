@@ -170,7 +170,7 @@ public sealed partial class Resolver
 	private bool IsOpenSyntax(IExpressionNode node) => node switch
 	{
 		LiteralExpressionNode { Token: { Suffix: null, Type: var type } } => type is TokenType.IntegerLiteral
-			or TokenType.FloatLiteral or TokenType.StringLiteral or TokenType.CharLiteral or TokenType.KeywordNull,
+			or TokenType.FloatLiteral or TokenType.StringLiteral or TokenType.KeywordNull,
 		InterpolatedStringExpressionNode or UndefExpressionNode { Type: null } => true,
 		ArrayExpressionNode array => !array.Values.IsEmpty && array.Values.All(IsOpenSyntax),
 		MatchExpressionNode match => match.Arms.All(arm => IsCaseNameSyntax(arm.Value)),

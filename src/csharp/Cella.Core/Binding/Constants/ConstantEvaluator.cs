@@ -78,7 +78,15 @@ public sealed class ConstantEvaluator
 		_ => []
 	};
 	
-	public bool Fits(BigInteger value, IntegerType type) => Wrap(value, type) == value;
+	public bool Fits(BigInteger value, IntegerType type) =>
+		type == NativeSymbols.Char ? IsScalarValue(value) : Wrap(value, type) == value;
+	
+	public static bool IsScalarValue(BigInteger value) =>
+		value >= 0 && value <= MaxScalarValue && (value < FirstSurrogate || value > LastSurrogate);
+	
+	private const int MaxScalarValue = 0x10FFFF;
+	private const int FirstSurrogate = 0xD800;
+	private const int LastSurrogate = 0xDFFF;
 	
 	public Diagnostic? FindConstantError(IResolvedExpressionNode node)
 	{

@@ -94,14 +94,12 @@ public sealed class OperatorRegistry
 		.._equalityBinOps
 	];
 	
-	private static readonly ImmutableArray<TypeSymbol> _numericTypes =
-	[
-		..NativeSymbols.IntegerTypes // TODO Handle char differently?
-	];
+	private static readonly ImmutableArray<TypeSymbol> _numericTypes = [..NativeSymbols.PureIntegerTypes];
 	
 	private static readonly ImmutableArray<TypeSymbol> _comparableTypes =
 	[
 		.._numericTypes,
+		NativeSymbols.Char,
 		..NativeSymbols.FloatTypes
 	];
 	
@@ -194,6 +192,18 @@ public sealed class OperatorRegistry
 		
 		foreach (var op in _boolBinOps)
 			result.GetOrAdd(op).Add(new NativeImpl(op, NativeSymbols.Bool, NativeSymbols.Bool, NativeSymbols.Bool));
+		
+		foreach (var op in new[]
+		         {
+			         TokenType.OpPlus, TokenType.OpPlusEqual, TokenType.OpMinus, TokenType.OpMinusEqual
+		         })
+			result.GetOrAdd(op).Add(new NativeImpl(op, NativeSymbols.Char, NativeSymbols.Char, NativeSymbols.Int32));
+		
+		result.GetOrAdd(TokenType.OpPlus)
+			.Add(new NativeImpl(TokenType.OpPlus, NativeSymbols.Char, NativeSymbols.Int32, NativeSymbols.Char));
+		
+		result.GetOrAdd(TokenType.OpMinus)
+			.Add(new NativeImpl(TokenType.OpMinus, NativeSymbols.Int32, NativeSymbols.Char, NativeSymbols.Char));
 		
 		// Pointers
 		foreach (var op in _comparisonBinOps)

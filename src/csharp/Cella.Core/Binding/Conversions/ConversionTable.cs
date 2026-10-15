@@ -146,13 +146,13 @@ public sealed class ConversionTable
 		table.Add(new IntegerConversion(NativeSymbols.Char, NativeSymbols.Int16, ConversionKind.Explicit, 1));
 		table.Add(new IntegerConversion(NativeSymbols.Char, NativeSymbols.UInt16, ConversionKind.Explicit, 1));
 		table.Add(new IntegerConversion(NativeSymbols.Char, NativeSymbols.Int32, ConversionKind.Explicit, 1));
-		table.Add(new FreeConversion(NativeSymbols.Char, NativeSymbols.UInt32, ConversionKind.Implicit));
-		table.Add(new IntegerConversion(NativeSymbols.Char, NativeSymbols.Int64, ConversionKind.Implicit, 1));
-		table.Add(new IntegerConversion(NativeSymbols.Char, NativeSymbols.UInt64, ConversionKind.Implicit, 1));
-		table.Add(new IntegerConversion(NativeSymbols.Char, NativeSymbols.Int128, ConversionKind.Implicit, 1));
-		table.Add(new IntegerConversion(NativeSymbols.Char, NativeSymbols.UInt128, ConversionKind.Implicit, 1));
+		table.Add(new FreeConversion(NativeSymbols.Char, NativeSymbols.UInt32, ConversionKind.Explicit));
+		table.Add(new IntegerConversion(NativeSymbols.Char, NativeSymbols.Int64, ConversionKind.Explicit, 1));
+		table.Add(new IntegerConversion(NativeSymbols.Char, NativeSymbols.UInt64, ConversionKind.Explicit, 1));
+		table.Add(new IntegerConversion(NativeSymbols.Char, NativeSymbols.Int128, ConversionKind.Explicit, 1));
+		table.Add(new IntegerConversion(NativeSymbols.Char, NativeSymbols.UInt128, ConversionKind.Explicit, 1));
 		table.Add(new IntegerConversion(NativeSymbols.Char, NativeSymbols.IntSize, ConversionKind.Explicit, 1));
-		table.Add(new IntegerConversion(NativeSymbols.Char, NativeSymbols.UIntSize, ConversionKind.Implicit, 1));
+		table.Add(new IntegerConversion(NativeSymbols.Char, NativeSymbols.UIntSize, ConversionKind.Explicit, 1));
 		
 		foreach (var type in NativeSymbols.PureIntegerTypes)
 			table.Add(new NativeConversion(NativeSymbols.Bool, type, ConversionKind.Explicit, 1));

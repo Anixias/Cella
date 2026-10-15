@@ -185,6 +185,36 @@ public sealed unsafe partial class CodeGenerator
 		return builder.BuildStructGEP2(targetType, targetPtr, fieldIndex, v.Member.Name + ".addr");
 	}
 	
+	private bool ReadsThroughUnion(Value value) => value switch
+	{
+		AccessValue access => Substitute(access.Target.Type) is RecordSymbol { IsUnion: true } ||
+		                      ReadsThroughUnion(access.Target),
+		IndexerValue indexer => ReadsThroughUnion(indexer.Target),
+		_ => false
+	};
+	
+	private LLVMValueRef? LoadUnionScalar(TypeSymbol type, LLVMValueRef address, AccessValue v, LLVMBuilderRef builder)
+	{
+		type = Substitute(type);
+		if (type == NativeSymbols.Bool)
+		{
+			var stored = builder.BuildLoad2(_context.Int8Type, address, v.Member.Name);
+			return builder.BuildICmp(LLVMIntPredicate.LLVMIntNE, stored,
+				LLVMValueRef.CreateConstNull(_context.Int8Type),
+				v.Member.Name);
+		}
+		
+		if (type != NativeSymbols.Char)
+			return null;
+		
+		var value = builder.BuildLoad2(_context.Int32Type, address, v.Member.Name);
+		if (_config.OverflowChecks)
+			PanicIf(builder.BuildNot(IsScalarValue(value, builder), "invalid"), "invalid char", v.SourceLocation,
+				builder);
+		
+		return value;
+	}
+	
 	private LLVMValueRef EmitAccessValue(AccessValue v, LLVMBuilderRef builder)
 	{
 		// Intrinsic properties
@@ -204,15 +234,20 @@ public sealed unsafe partial class CodeGenerator
 		if (IsAddressable(v.Target))
 		{
 			var fieldAddress = EmitAccessAddress(v, builder);
-			return LoadValue(builder, _typePool.GetTypeOfMember((TypedMemberSymbol)v.Member), fieldAddress,
-				v.Member.Name);
+			var fieldType = _typePool.GetTypeOfMember((TypedMemberSymbol)v.Member);
+			return ReadsThroughUnion(v) && LoadUnionScalar(fieldType, fieldAddress, v, builder) is { } scalar
+				? scalar
+				: LoadValue(builder, fieldType, fieldAddress, v.Member.Name);
 		}
 		
 		// TODO Fields could have been reordered to pack them
 		// TODO Also, GetFieldIndex is O(n), would probably want to cache the final indices in another dictionary
 		var target = EmitValue(v.Target, builder);
 		if (Substitute(v.Target.Type) is RecordSymbol { IsUnion: true } union)
-			return LoadValue(builder, v.Type, SpillValue(builder, union, target, "union"), v.Member.Name);
+		{
+			var stored = SpillValue(builder, union, target, "union");
+			return LoadUnionScalar(v.Type, stored, v, builder) ?? LoadValue(builder, v.Type, stored, v.Member.Name);
+		}
 		
 		var fieldIndex = (uint)_typePool.GetFieldIndex(Substitute(v.Target.Type), v.Member);
 		return ExtractField(builder, v.Target.Type, target, fieldIndex, v.Type, v.Member.Name);

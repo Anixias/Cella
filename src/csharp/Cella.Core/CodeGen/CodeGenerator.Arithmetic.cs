@@ -70,6 +70,10 @@ public sealed partial class CodeGenerator
 		if (v.Left.Type is FloatType)
 			return EmitFloatBinaryOp(v, builder);
 		
+		if (v.Op is BinaryOperation.Addition or BinaryOperation.Subtraction &&
+		    (Substitute(v.Left.Type) == NativeSymbols.Char || Substitute(v.Right.Type) == NativeSymbols.Char))
+			return EmitCharArithmetic(v, builder);
+		
 		var left = EmitValue(v.Left, builder);
 		var right = EmitValue(v.Right, builder);
 		if (Substitute(v.Left.Type) is EnumSymbol { IsMatch: true } matchEnum)
@@ -151,6 +155,42 @@ public sealed partial class CodeGenerator
 			
 			_ => throw new InvalidOperationException()
 		};
+	}
+	
+	private LLVMValueRef EmitCharArithmetic(BinOpValue v, LLVMBuilderRef builder)
+	{
+		var left = WidenCharOperand(v.Left, builder);
+		var right = WidenCharOperand(v.Right, builder);
+		var result = v.Op == BinaryOperation.Addition
+			? builder.BuildAdd(left, right, "char.add")
+			: builder.BuildSub(left, right, "char.sub");
+		
+		if (Substitute(v.Type) == NativeSymbols.Char && _config.OverflowChecks)
+			PanicIf(builder.BuildNot(IsScalarValue(result, builder), "invalid"), "char overflow", v.SourceLocation,
+				builder);
+		
+		return builder.BuildTrunc(result, _context.Int32Type, "char");
+	}
+	
+	private LLVMValueRef WidenCharOperand(Value operand, LLVMBuilderRef builder)
+	{
+		var value = EmitValue(operand, builder);
+		return Substitute(operand.Type) is IntegerType { IsSigned: true }
+			? builder.BuildSExt(value, _context.Int64Type, "wide")
+			: builder.BuildZExt(value, _context.Int64Type, "wide");
+	}
+	
+	private LLVMValueRef IsScalarValue(LLVMValueRef value, LLVMBuilderRef builder)
+	{
+		var type = value.TypeOf;
+		var inRange = builder.BuildICmp(LLVMIntPredicate.LLVMIntULE, value,
+			LLVMValueRef.CreateConstInt(type, 0x10FFFF), "in.range");
+		
+		var offset = builder.BuildSub(value, LLVMValueRef.CreateConstInt(type, 0xD800), "surrogate.offset");
+		var outside = builder.BuildICmp(LLVMIntPredicate.LLVMIntUGT, offset, LLVMValueRef.CreateConstInt(type, 0x7FF),
+			"not.surrogate");
+		
+		return builder.BuildAnd(inRange, outside, "scalar");
 	}
 	
 	private LLVMValueRef EmitCheckedArithmetic(BinaryOperation op, LLVMValueRef left, LLVMValueRef right, bool signed,

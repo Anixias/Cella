@@ -3,23 +3,16 @@ mod test
 main: fun -> i32
 {
 	val text: str = "a"
-	val small: i8 = 1
 	val ch: char = 'a'
 	var b: u8 = 1
-	if text[0] == '€' || small < 'é'
+	if text[0] == 'b'
 		ret 1
 
-	if text[0] == ch || text[0] < ch
+	if text[0] == ch
 		ret 2
 
-	val sum = ch + b
-	b += ch
-	val mixed = 'a'
-	val named: char = mixed
-	val euro = '€'
-	val typed: u8 = '€'
-	if text[0] == mixed || text[0] == euro
-		ret 3
-
+	val typed: u8 = 'z'
+	val bytes: array[u8, 2] = ['h', 'i']
+	b += 'a'
 	ret 0
 }

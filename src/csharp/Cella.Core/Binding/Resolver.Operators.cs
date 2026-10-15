@@ -196,7 +196,9 @@ public sealed partial class Resolver
 			if (right.Type is NeverType && left.Type is not UntypedType)
 				right = MaterializeExpression(right, left.Type);
 			
-			(left, right) = (AdaptCharLiteral(left, right.Type), AdaptCharLiteral(right, left.Type));
+			if (left.Type is UntypedUndefType || right.Type is UntypedUndefType)
+				(left, right) = (TypeUndef(left, right.Type), TypeUndef(right, left.Type));
+			
 			if (AnyInvalid(left, right))
 				return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
 			
@@ -247,10 +249,6 @@ public sealed partial class Resolver
 			if (left.Type is PointerType { BaseType: var leftBase } &&
 			    right.Type is PointerType { BaseType: var rightBase } &&
 			    leftBase != rightBase && leftBase != NativeSymbols.Void && rightBase != NativeSymbols.Void)
-				return Error(node, DiagnosticReporter.ReportBinaryOpMismatch(_operatorRegistry, left, op, right),
-					CurrentTargetType);
-			
-			if (!IsShift(op.Type) && MixesCharWithInteger(left.Type, right.Type))
 				return Error(node, DiagnosticReporter.ReportBinaryOpMismatch(_operatorRegistry, left, op, right),
 					CurrentTargetType);
 			
@@ -431,23 +429,13 @@ public sealed partial class Resolver
 			.Select((operand, i) => visited[i] ?? VisitCaseName(operand, peers) ?? Decay(VisitNode(operand, null)))
 			.ToList();
 		
-		for (var i = 0; i < operands.Count; i++)
-		{
-			if (i > 0)
-				operands[i] = AdaptCharLiteral(operands[i], operands[i - 1].Type);
-			
-			if (i + 1 < operands.Count)
-				operands[i] = AdaptCharLiteral(operands[i], operands[i + 1].Type);
-		}
-		
 		return ResolveChainLinks(node, operands);
 	}
 	
-	private bool MixesCharWithInteger(TypeSymbol left, TypeSymbol right) =>
-		left == NativeSymbols.Char && IsNarrowInteger(right) || right == NativeSymbols.Char && IsNarrowInteger(left);
-	
-	private bool IsNarrowInteger(TypeSymbol type) =>
-		type is IntegerType { Kind: not PrimitiveTypeKind.Char } && CountBits(type) < CountBits(NativeSymbols.Char);
+	private IResolvedExpressionNode TypeUndef(IResolvedExpressionNode operand, TypeSymbol peerType) =>
+		operand.Type is UntypedUndefType
+			? MaterializeExpression(operand, peerType is UntypedType ? NativeSymbols.Int32 : peerType)
+			: operand;
 	
 	private IResolvedExpressionNode DefaultLiteral(IResolvedExpressionNode operand) =>
 		operand is ResolvedLiteralExpressionNode { Type: UntypedType } ? MaterializeAsDefault(operand) : operand;
@@ -497,10 +485,6 @@ public sealed partial class Resolver
 				
 				resolutionSet = builtIn;
 			}
-			
-			if (MixesCharWithInteger(args[0].Type, args[1].Type))
-				return Error(node, DiagnosticReporter.ReportBinaryOpMismatch(_operatorRegistry, args[0], op, args[1]),
-					CurrentTargetType);
 			
 			if (resolutionSet.IsAmbiguous)
 				return Error(node,

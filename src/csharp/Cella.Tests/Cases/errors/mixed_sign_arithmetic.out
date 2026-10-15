@@ -21,12 +21,11 @@ Error at line 13, column 16
 
 Error at line 16, column 13
 15 │ var letter: char = 'a'
-16 │ var next = letter + signed
-                ╘═════════════╛ No operation defined for '+' between 'char' and 'i32'
-                              | 'i32' can't represent every 'char' value
+16 │ var next = letter * signed
+                ╘═════════════╛ No operation defined for '*' between 'char' and 'i32'
 
 Error at line 17, column 21
-16 │ var next = letter + signed
+16 │ var next = letter * signed
 17 │ var forced: char = unsigned
                         ╘══════╛ Cannot convert type 'u32' to 'char'
 
