@@ -1,0 +1,29 @@
+mod test
+
+N: rec
+{
+	id: i32
+
+	drop: op {}
+}
+
+Inner: rec
+{
+	x: N
+
+	drop: op {}
+}
+
+W: rec
+{
+	inner: Inner
+
+	drop: op
+	{
+		take(own self.inner.x)
+	}
+}
+
+take: fun(own n: N) {}
+
+main: fun -> i32 = 0

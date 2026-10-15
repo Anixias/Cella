@@ -382,7 +382,7 @@ public sealed class MemoryChecker(TypePool typePool, ConstantEvaluator evaluator
 		var movedFields = EventLinearizer.Linearize(function).Values
 			.SelectMany(static events => events)
 			.OfType<AccessEvent>()
-			.Where(access => access is { Kind: AccessKind.Move, Place.Path: [FieldProjection] } &&
+			.Where(access => access is { Kind: AccessKind.Move, Place.Path: [FieldProjection, ..] } &&
 			                 access.Place.Root == self)
 			.Select(static access => ((FieldProjection)access.Place.Path[0]).Field)
 			.ToHashSet();
@@ -531,7 +531,7 @@ public sealed class MemoryChecker(TypePool typePool, ConstantEvaluator evaluator
 			var subject = parameter == receiver ? "'self'" : "'mut' parameters";
 			foreach (var move in state.GetMoves(root))
 			{
-				if (parameter == destructorSelf && root.Children.Contains(move.Path))
+				if (parameter == destructorSelf)
 					continue;
 				
 				if (reportedMoves.Add(move.Location))
@@ -552,6 +552,8 @@ public sealed class MemoryChecker(TypePool typePool, ConstantEvaluator evaluator
 		LocalVariableSymbol { IsBorrowBinding: true } => "Cannot move pattern bindings",
 		_ when place.Path.Any(IsComputedIndex) => "Cannot move array elements at computed indices",
 		_ when place.Root == destructorSelf && place.Path.IsEmpty => "Cannot move 'self' in destructors",
+		_ when place.Root == destructorSelf && HasDestructorAbove(place, paths) =>
+			"Cannot move fields out of values with destructors",
 		ParameterSymbol { Mode: ParameterMode.Mut } => null,
 		_ => HasDestructorAbove(place, paths) ? "Cannot move fields out of values with destructors" : null
 	};
@@ -559,7 +561,7 @@ public sealed class MemoryChecker(TypePool typePool, ConstantEvaluator evaluator
 	private bool HasDestructorAbove(Place place, MovePaths paths)
 	{
 		var type = paths.GetRoot(place.Root).Type;
-		var isOwnSelf = place.Root == ownSelf;
+		var isOwnSelf = place.Root == ownSelf || place.Root == destructorSelf;
 		foreach (var projection in place.Path)
 		{
 			if (type is RecordSymbol { HasDestructor: true } && !isOwnSelf)

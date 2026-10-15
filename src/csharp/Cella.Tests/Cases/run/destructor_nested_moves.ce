@@ -1,0 +1,47 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+N: rec
+{
+	id: i32
+
+	drop: op
+	{
+		printf("drop %d\n", self.id)
+	}
+}
+
+Inner: rec
+{
+	x: N
+	y: N
+}
+
+W: rec
+{
+	first: N
+	inner: Inner
+	items: array[N, 3]
+
+	drop: op
+	{
+		printf("destroy\n")
+		take(own self.inner.x)
+		take(own self.items[1])
+	}
+}
+
+take: fun(own n: N)
+{
+	printf("take %d\n", n.id)
+}
+
+main: fun -> i32
+{
+	val w = W(N(1), Inner(N(2), N(3)), [N(4), N(5), N(6)])
+	ret 0
+}

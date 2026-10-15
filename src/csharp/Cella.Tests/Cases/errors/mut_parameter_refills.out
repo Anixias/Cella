@@ -1,11 +1,6 @@
 
 ====== mut_parameter_refills.ce ======
 
-Error at line 24, column 12
-23 │ {
-24 │     take(own self.pair.left)
-                  ╘════════════╛ Cannot leave 'self' partly moved
-
 Error at line 33, column 11
 32 │ {
 33 │     take(own buffer)

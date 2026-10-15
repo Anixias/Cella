@@ -1,0 +1,9 @@
+
+====== destructor_nested_moves.ce ======
+
+Error at line 23, column 12
+22 │ {
+23 │     take(own self.inner.x)
+                  ╘══════════╛ Cannot move fields out of values with destructors
+
+[compilation failed]
