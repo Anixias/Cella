@@ -1,0 +1,14 @@
+
+====== storage_defaults.ce ======
+
+Error at line 14, column 27
+13 │ 
+14 │ take: fun(own c: Closer = shared) -> i32 = c.id
+                               ╘════╛ The default value of 'c' must be a constant
+
+Error at line 16, column 27
+15 │ 
+16 │ peek: fun(imm c: Closer = shared) -> i32 = c.id
+                               ╘════╛ The default value of 'c' must be a constant
+
+[compilation failed]

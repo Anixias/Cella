@@ -449,6 +449,27 @@ internal static class Program
 		}
 	}
 	
+	private static ImmutableArray<AssemblyInfo> OrderForDrops(ImmutableArray<AssemblyInfo> dependencies)
+	{
+		var ordered = new List<AssemblyInfo>();
+		var seen = new HashSet<AssemblySymbol>();
+		Visit(dependencies);
+		ordered.Reverse();
+		return [..ordered];
+		
+		void Visit(ImmutableArray<AssemblyInfo> items)
+		{
+			foreach (var item in items)
+			{
+				if (!seen.Add(item.AssemblySymbol))
+					continue;
+				
+				Visit(item.Dependencies);
+				ordered.Add(item);
+			}
+		}
+	}
+	
 	private static IEnumerable<Symbol> GetLibrarySymbols(AssemblyInfo library) =>
 		library.AssemblySymbol.SignatureTable.Functions.Keys
 			.Concat<Symbol>(library.AssemblySymbol.SignatureTable.Globals.Keys)
@@ -492,6 +513,7 @@ internal static class Program
 		var dependencyList = dependencies.ToImmutableArray();
 		var dependencySymbols = dependencyList.Select(static d => d.AssemblySymbol).ToImmutableArray();
 		var allDependencies = CollectDependencies(dependencyList);
+		var dropOrder = OrderForDrops(dependencyList);
 		var providers = FindProviders(allDependencies);
 		if (outputType != ProjectOutputType.StaticLibrary)
 		{
@@ -654,7 +676,13 @@ internal static class Program
 						ContainingType: NamedTypeSymbol { IsGenericDefinition: true }
 					}))
 					.Select(static library => library.Name)
-					.ToHashSet()
+					.ToHashSet(),
+				ContainedAssemblies = [..dropOrder.Where(contained.Contains).Select(static d => d.Name)],
+				LoadedAssemblies =
+				[
+					..dropOrder.Where(static d => d.OutputType != ProjectOutputType.StaticLibrary)
+						.Select(static d => d.Name)
+				]
 			};
 			
 			using var codeGenerator = new CodeGenerator(assemblySymbol, typePool, codeGenConfig,

@@ -283,19 +283,25 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 			}
 			
 			BuildInstantiations();
-			if (states.Count > 0 && _config.ExportsSymbols && (_inputs.HostedRegistries.Count > 0 ||
-			                                                   _inputs.Exports.Any(static symbol =>
-				                                                   symbol is GlobalSymbol
-				                                                   {
-					                                                   ContainingType: NamedTypeSymbol
-					                                                   {
-						                                                   IsGenericDefinition: true
-					                                                   }
-				                                                   })))
+			BuildStaticDropGlue(states);
+			var hasRegistry = states.Count > 0 && _config.ExportsSymbols && (_inputs.HostedRegistries.Count > 0 ||
+			                                                                 _inputs.Exports.Any(static symbol =>
+				                                                                 symbol is GlobalSymbol
+				                                                                 {
+					                                                                 ContainingType: NamedTypeSymbol
+					                                                                 {
+						                                                                 IsGenericDefinition: true
+					                                                                 }
+				                                                                 }));
+			
+			if (hasRegistry)
 			{
 				current = states[0];
 				EmitStaticRegistry();
 			}
+			
+			if (states.Count > 0)
+				EmitStaticDrops(states, hasRegistry);
 			
 			var fileNames = GetFileNames(states);
 			return [..states.Select(state => Finish(state, fileNames[state]))];
@@ -621,6 +627,8 @@ public sealed record CodeGenInputs
 	public IReadOnlySet<Symbol> StaticLibrarySymbols { get; init; } = ImmutableHashSet<Symbol>.Empty;
 	public IReadOnlySet<string> DynamicAssemblies { get; init; } = ImmutableHashSet<string>.Empty;
 	public IReadOnlySet<string> HostedRegistries { get; init; } = ImmutableHashSet<string>.Empty;
+	public ImmutableArray<string> ContainedAssemblies { get; init; } = [];
+	public ImmutableArray<string> LoadedAssemblies { get; init; } = [];
 }
 
 public sealed record CodeGenConfig

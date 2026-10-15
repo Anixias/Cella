@@ -1,0 +1,3 @@
+mod audio
+
+mixer: pub var test.Buffer = test.Buffer(1)

@@ -1,0 +1,23 @@
+mod d
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Buffer: pub rec
+{
+	id: i32
+
+	drop: op
+	{
+		printf("drop %d\n", self.id)
+	}
+}
+
+slot[T]: pub rec
+{
+	kept: var Buffer = Buffer(40)
+}
+
+shared: pub var Buffer = Buffer(1)

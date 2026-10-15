@@ -1,0 +1,27 @@
+mod test
+
+use zlog.*
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Buffer: pub rec
+{
+	id: i32
+
+	drop: op
+	{
+		printf("drop %d\n", self.id)
+	}
+}
+
+window: var Buffer = Buffer(2)
+
+main: fun -> i32
+{
+	log.id += 10
+	printf("%d %d %d\n", audio.mixer.id, window.id, log.id)
+	ret 0
+}

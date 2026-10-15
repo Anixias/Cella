@@ -16,6 +16,7 @@ internal sealed class ModuleState(LoweredModule lowered, LLVMModuleRef module, L
 	public Dictionary<VariableInfo, LLVMValueRef> Variables { get; } = [];
 	public Dictionary<GlobalSymbol, LLVMValueRef> Globals { get; } = [];
 	public Dictionary<GlobalSymbol, LLVMValueRef> StaticAccessors { get; } = [];
+	public List<(LLVMValueRef Global, TypeSymbol Type)> DroppedStatics { get; } = [];
 	public Dictionary<byte[], LLVMValueRef> Strings { get; } = new(ByteArrayComparer.Instance);
 	public HashSet<string> ExternalLibraries { get; } = [];
 	public LLVMValueRef PanicFunction { get; set; }

@@ -1,6 +1,7 @@
 ﻿using System.Text;
 using Cella.Core.Binding;
 using Cella.Core.Symbols;
+using Cella.Core.Text;
 using Cella.Diagnostics;
 using LLVMSharp.Interop;
 
@@ -17,6 +18,9 @@ public sealed unsafe partial class CodeGenerator
 				$"Module variable '{info.Symbol.Name}' is too large"));
 		
 		var global = CreateGlobal(info);
+		if (_typePool.NeedsDrop(info.Type))
+			current.DroppedStatics.Add((global, info.Type));
+		
 		if (_inputs.Exports.Contains(info.Symbol))
 			_exportNames.Add(new(global.Name, true));
 		
@@ -120,7 +124,11 @@ public sealed unsafe partial class CodeGenerator
 			var outer = substitution;
 			substitution = TypePool.CreateMap(instance.Definition.TypeParameters, instance.TypeArguments);
 			var defined = CreateGlobal(info);
+			var type = Substitute(info.Type);
 			substitution = outer;
+			if (_typePool.NeedsDrop(type))
+				current.DroppedStatics.Add((defined, type));
+			
 			var isReachable = IsReachableStatic(info, instance);
 			if (!isReachable && _moduleStates.ContainsKey(info.File.Module) &&
 			    info.Symbol.Visibility is Visibility.Private or Visibility.Module)
@@ -174,7 +182,12 @@ public sealed unsafe partial class CodeGenerator
 	}
 	
 	private LLVMTypeRef RegistryType => LLVMTypeRef.CreateFunction(OpaquePointer,
-		[OpaquePointer, MapTypeSymbol(NativeSymbols.UIntSize), OpaquePointer]);
+		[OpaquePointer, MapTypeSymbol(NativeSymbols.UIntSize), OpaquePointer, OpaquePointer]);
+	
+	private LLVMTypeRef RegistryNodeType =>
+		_context.GetStructType([OpaquePointer, OpaquePointer, OpaquePointer, OpaquePointer], false);
+	
+	private LLVMTypeRef DropsType => LLVMTypeRef.CreateFunction(_context.VoidType, []);
 	
 	private string? FindRegistryOwner(GlobalInfo info) =>
 		info.Symbol.ContainingType is NamedTypeSymbol { IsGenericInstance: true } instance &&
@@ -205,7 +218,9 @@ public sealed unsafe partial class CodeGenerator
 		var outer = substitution;
 		substitution = TypePool.CreateMap(instance.Definition.TypeParameters, instance.TypeArguments);
 		var value = EmitStaticConstant(info.Value!);
+		var type = Substitute(info.Type);
 		substitution = outer;
+		var glue = _typePool.NeedsDrop(type) ? GetDropGlue(type) : LLVMValueRef.CreateConstNull(OpaquePointer);
 		
 		var initial = current.Module.AddGlobal(value.TypeOf, $"{info.MangledName}.initial");
 		initial.Initializer = value;
@@ -227,7 +242,7 @@ public sealed unsafe partial class CodeGenerator
 		builder.BuildCondBr(builder.BuildIsNull(pointer, "missing"), lookup, cached);
 		
 		builder.PositionAtEnd(lookup);
-		var found = builder.BuildCall2(RegistryType, GetStaticRegistry(assembly), new[] { name, size, initial },
+		var found = builder.BuildCall2(RegistryType, GetStaticRegistry(assembly), new[] { name, size, initial, glue },
 			"found");
 		
 		var store = builder.BuildStore(found, cache);
@@ -261,7 +276,7 @@ public sealed unsafe partial class CodeGenerator
 	{
 		var sizeType = MapTypeSymbol(NativeSymbols.UIntSize);
 		var byteType = _context.Int8Type;
-		var nodeType = _context.GetStructType([OpaquePointer, OpaquePointer, OpaquePointer], false);
+		var nodeType = RegistryNodeType;
 		var registry = GetStaticRegistry(_assemblySymbol.Name);
 		registry.DLLStorageClass = LLVMDLLStorageClass.LLVMDLLExportStorageClass;
 		foreach (var hosted in _inputs.HostedRegistries)
@@ -301,6 +316,7 @@ public sealed unsafe partial class CodeGenerator
 		var key = registry.GetParam(0);
 		var size = registry.GetParam(1);
 		var initial = registry.GetParam(2);
+		var glue = registry.GetParam(3);
 		var zero = LLVMValueRef.CreateConstInt(sizeType, 0);
 		var one = LLVMValueRef.CreateConstInt(sizeType, 1);
 		
@@ -398,6 +414,8 @@ public sealed unsafe partial class CodeGenerator
 		builder.BuildStore(builder.BuildLoad2(OpaquePointer, head, "previous"),
 			builder.BuildStructGEP2(nodeType, added, 2, "added_next"));
 		
+		builder.BuildStore(glue, builder.BuildStructGEP2(nodeType, added, 3, "added_drop"));
+		
 		builder.BuildStore(added, head);
 		builder.BuildBr(release);
 		
@@ -408,5 +426,163 @@ public sealed unsafe partial class CodeGenerator
 		unlock.Alignment = 4;
 		LLVM.SetOrdering(unlock, LLVMAtomicOrdering.LLVMAtomicOrderingRelease);
 		builder.BuildRet(result);
+	}
+	
+	private LLVMValueRef GetStaticDrops(string assembly)
+	{
+		var name = Mangling.MangleStaticDrops(assembly);
+		var existing = current.Module.GetNamedFunction(name);
+		if (existing.Handle != IntPtr.Zero)
+			return existing;
+		
+		var drops = current.Module.AddFunction(name, DropsType);
+		if (_inputs.LoadedAssemblies.Contains(assembly))
+		{
+			drops.DLLStorageClass = LLVMDLLStorageClass.LLVMDLLImportStorageClass;
+			drops.Linkage = LLVMLinkage.LLVMDLLImportLinkage;
+		}
+		
+		return drops;
+	}
+	
+	private void BuildStaticDropGlue(List<ModuleState> states)
+	{
+		var prepared = states.ToDictionary(static state => state, static _ => 0);
+		while (states.Any(state => prepared[state] < state.DroppedStatics.Count))
+		{
+			foreach (var state in states)
+			{
+				current = state;
+				for (var i = prepared[state]; i < state.DroppedStatics.Count; i++)
+					GetDropGlue(state.DroppedStatics[i].Type);
+				
+				prepared[state] = state.DroppedStatics.Count;
+			}
+			
+			BuildInstantiations();
+		}
+	}
+	
+	private void EmitStaticDrops(List<ModuleState> states, bool hasRegistry)
+	{
+		var dropped = states.Where(static state => state.DroppedStatics.Count > 0).ToList();
+		foreach (var state in dropped)
+		{
+			current = state;
+			EmitModuleDrops(state);
+		}
+		
+		current = states[0];
+		var drops = GetStaticDrops(_assemblySymbol.Name);
+		if (_config.ExportsSymbols)
+			drops.DLLStorageClass = LLVMDLLStorageClass.LLVMDLLExportStorageClass;
+		else
+			drops.Visibility = LLVMVisibility.LLVMHiddenVisibility;
+		
+		using var builder = CreateGeneratedBuilder(drops, drops.Name, SourceLocation.None);
+		if (hasRegistry)
+			EmitRegistryDrops(drops, builder);
+		
+		foreach (var state in OrderForDrops(dropped))
+			builder.BuildCall2(DropsType, GetModuleDrops(state), Array.Empty<LLVMValueRef>());
+		
+		foreach (var assembly in _inputs.ContainedAssemblies)
+			builder.BuildCall2(DropsType, GetStaticDrops(assembly), Array.Empty<LLVMValueRef>());
+		
+		builder.BuildRetVoid();
+	}
+	
+	private LLVMValueRef GetModuleDrops(ModuleState state)
+	{
+		var name = Mangling.MangleModuleDrops(_assemblySymbol.Name, state.Lowered.Symbol.Name);
+		var existing = current.Module.GetNamedFunction(name);
+		if (existing.Handle != IntPtr.Zero)
+			return existing;
+		
+		var drops = current.Module.AddFunction(name, DropsType);
+		drops.Visibility = LLVMVisibility.LLVMHiddenVisibility;
+		return drops;
+	}
+	
+	private void EmitModuleDrops(ModuleState state)
+	{
+		var drops = GetModuleDrops(state);
+		using var builder = CreateGeneratedBuilder(drops, drops.Name, SourceLocation.None);
+		for (var i = state.DroppedStatics.Count - 1; i >= 0; i--)
+		{
+			var (global, type) = state.DroppedStatics[i];
+			EmitDropCall(type, global, builder);
+		}
+		
+		builder.BuildRetVoid();
+	}
+	
+	private List<ModuleState> OrderForDrops(List<ModuleState> states)
+	{
+		var ordered = new List<ModuleState>();
+		var visited = new HashSet<ModuleState>();
+		var included = states.ToHashSet();
+		foreach (var state in states)
+			Visit(state);
+		
+		ordered.Reverse();
+		return ordered;
+		
+		void Visit(ModuleState state)
+		{
+			if (!visited.Add(state))
+				return;
+			
+			foreach (var dependency in FindImportedModules(state))
+				Visit(dependency);
+			
+			if (included.Contains(state))
+				ordered.Add(state);
+		}
+	}
+	
+	private IEnumerable<ModuleState> FindImportedModules(ModuleState state) => state.Lowered.Files
+		.SelectMany(file =>
+			_assemblySymbol.SignatureTable.ImportEnvironments.GetValueOrDefault(file.Symbol)?.ImportedSymbols ?? [])
+		.Select(_modules.FindModule)
+		.OfType<ModuleSymbol>()
+		.Select(_moduleStates.GetValueOrDefault)
+		.OfType<ModuleState>()
+		.Where(dependency => dependency != state)
+		.Distinct();
+	
+	private void EmitRegistryDrops(LLVMValueRef drops, LLVMBuilderRef builder)
+	{
+		var nodeType = RegistryNodeType;
+		var head = current.Module.GetNamedGlobal(".statics.head");
+		var entry = builder.InsertBlock;
+		var visit = _context.AppendBasicBlock(drops, "visit");
+		var check = _context.AppendBasicBlock(drops, "check");
+		var drop = _context.AppendBasicBlock(drops, "drop");
+		var advance = _context.AppendBasicBlock(drops, "advance");
+		var done = _context.AppendBasicBlock(drops, "done");
+		var first = builder.BuildLoad2(OpaquePointer, head, "first");
+		builder.BuildBr(visit);
+		
+		builder.PositionAtEnd(visit);
+		var node = builder.BuildPhi(OpaquePointer, "node");
+		builder.BuildCondBr(builder.BuildIsNull(node, "end"), done, check);
+		
+		builder.PositionAtEnd(check);
+		var glue = builder.BuildLoad2(OpaquePointer, builder.BuildStructGEP2(nodeType, node, 3, "drop_slot"), "glue");
+		builder.BuildCondBr(builder.BuildIsNull(glue, "kept"), advance, drop);
+		
+		builder.PositionAtEnd(drop);
+		var storage = builder.BuildLoad2(OpaquePointer, builder.BuildStructGEP2(nodeType, node, 1, "storage_slot"),
+			"storage");
+		
+		builder.BuildCall2(DropGlueType, glue, [storage]);
+		builder.BuildBr(advance);
+		
+		builder.PositionAtEnd(advance);
+		var next = builder.BuildLoad2(OpaquePointer, builder.BuildStructGEP2(nodeType, node, 2, "next_slot"), "next");
+		builder.BuildBr(visit);
+		node.AddIncoming([first, next], [entry, advance], 2);
+		builder.PositionAtEnd(done);
 	}
 }

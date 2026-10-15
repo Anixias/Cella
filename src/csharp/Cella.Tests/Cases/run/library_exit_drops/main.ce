@@ -1,0 +1,20 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Mine: rec
+{
+	v: i32
+}
+
+local: var d.Buffer = d.Buffer(3)
+
+main: fun -> i32
+{
+	d.slot[Mine].kept.id += 1
+	printf("%d %d %d %d %d\n", d.shared.id, s.cache.id, local.id, d.slot[Mine].kept.id, s.touch())
+	ret 0
+}

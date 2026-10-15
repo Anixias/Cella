@@ -1,0 +1,21 @@
+mod test
+
+Closer: rec
+{
+	id: i32
+
+	drop: op
+	{
+	}
+}
+
+shared: val Closer = Closer(5)
+
+take: fun(own c: Closer = shared) -> i32 = c.id
+
+peek: fun(imm c: Closer = shared) -> i32 = c.id
+
+main: fun -> i32
+{
+	ret take() + peek()
+}

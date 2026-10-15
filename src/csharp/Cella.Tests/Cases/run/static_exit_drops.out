@@ -1,0 +1,8 @@
+drop 1
+10 2 3 31 32
+drop 32
+drop 31
+drop 3
+drop 2
+drop 10
+[exit code 0]

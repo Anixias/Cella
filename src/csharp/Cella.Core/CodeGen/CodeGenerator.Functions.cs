@@ -72,6 +72,10 @@ public sealed partial class CodeGenerator
 		
 		var result = builder.BuildCall2(entryPoint.FunctionType, entryPoint.FunctionValue, arguments);
 		cleanup?.Invoke();
+		builder.BuildCall2(DropsType, GetStaticDrops(_assemblySymbol.Name), Array.Empty<LLVMValueRef>());
+		foreach (var assembly in _inputs.LoadedAssemblies)
+			builder.BuildCall2(DropsType, GetStaticDrops(assembly), Array.Empty<LLVMValueRef>());
+		
 		builder.BuildRet(entryPoint.ReturnType.Kind == LLVMTypeKind.LLVMVoidTypeKind
 			? LLVMValueRef.CreateConstInt(_context.Int32Type, 0)
 			: result);

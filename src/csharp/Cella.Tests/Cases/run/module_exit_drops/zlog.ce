@@ -1,0 +1,3 @@
+mod zlog
+
+log: pub var test.Buffer = test.Buffer(3)

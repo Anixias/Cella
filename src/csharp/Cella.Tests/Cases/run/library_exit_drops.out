@@ -1,0 +1,7 @@
+1 2 3 41 42
+drop 3
+drop 2
+drop 42
+drop 41
+drop 1
+[exit code 0]

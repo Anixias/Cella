@@ -31,6 +31,11 @@ public static class Mangling
 	
 	public static string MangleStaticRegistry(string assemblyName) => $"?{QualifyAssembly(assemblyName)}.statics";
 	
+	public static string MangleStaticDrops(string assemblyName) => $"?{QualifyAssembly(assemblyName)}.drops";
+	
+	public static string MangleModuleDrops(string assemblyName, string moduleName) =>
+		$"?{QualifyAssembly(assemblyName)}{moduleName}$drops";
+	
 	private static string QualifyAssembly(string? assemblyName) =>
 		assemblyName is null ? "" : $"{EscapeExportSyntax(assemblyName)}!";
 	

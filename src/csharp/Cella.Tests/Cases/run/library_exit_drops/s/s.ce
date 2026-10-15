@@ -1,0 +1,9 @@
+mod s
+
+cache: pub var d.Buffer = d.Buffer(2)
+
+touch: pub fun -> i32
+{
+	d.slot[bool].kept.id += 2
+	ret d.slot[bool].kept.id
+}
