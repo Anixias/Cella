@@ -88,7 +88,7 @@ public sealed class LeafShape(PathState state, ImmutableHashSet<MoveSite> moves)
 	public ImmutableHashSet<MoveSite> Moves { get; } = moves;
 	
 	public override bool Equals(Shape? other) => other is LeafShape leaf && leaf.State == State &&
-	                                            (leaf.Moves == Moves || leaf.Moves.SetEquals(Moves));
+	                                             (leaf.Moves == Moves || leaf.Moves.SetEquals(Moves));
 	
 	public override int GetHashCode() => HashCode.Combine(State, Moves.Count);
 }

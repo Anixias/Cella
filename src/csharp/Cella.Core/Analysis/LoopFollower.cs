@@ -33,7 +33,8 @@ public sealed class LoopFollower
 		{
 			ResolveIndex = (target, index) => paths.FindPrefix(target) is ({ } array, var depth) &&
 			                                  paths.TracksElements(array) &&
-			                                  layout.GetPartType(array.Type, target.Path.AsSpan()[depth..]) is { } type &&
+			                                  layout.GetPartType(array.Type, target.Path.AsSpan()[depth..]) is
+				                                  { } type &&
 			                                  values.EvaluateInteger(index, known) is { } resolved &&
 			                                  layout.IsInBounds(type, resolved)
 				? resolved
@@ -211,7 +212,10 @@ public sealed class LoopFollower
 			DefaultValue => Zero(i.Symbol.Type),
 			var initializer => _values.Evaluate(initializer, values)
 		}),
-		ExpressionInstruction { Value: AssignValue { Left: VariableValue { Variable.Symbol: LocalVariableSymbol local } } v }
+		ExpressionInstruction
+			{
+				Value: AssignValue { Left: VariableValue { Variable.Symbol: LocalVariableSymbol local } } v
+			}
 			when _tracked.Contains(local) => values.With(local, _values.Evaluate(v.Right, values)),
 		_ => values
 	};

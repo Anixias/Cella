@@ -15,14 +15,16 @@ public sealed class KnownValues : IEquatable<KnownValues>
 	private KnownValues((LocalVariableSymbol Symbol, Constant Value)[] values)
 	{
 		_values = values;
-		_hash = values.Aggregate(0, static (sum, entry) => sum + HashCode.Combine(entry.Symbol, HashValue(entry.Value)));
+		_hash = values.Aggregate(0,
+			static (sum, entry) => sum + HashCode.Combine(entry.Symbol, HashValue(entry.Value)));
 	}
 	
 	public static KnownValues Empty { get; } = new([]);
 	
 	public IReadOnlyList<(LocalVariableSymbol Symbol, Constant Value)> Entries => _values;
 	
-	public Constant? Get(LocalVariableSymbol symbol) => IndexOf(symbol) is var index and >= 0 ? _values[index].Value : null;
+	public Constant? Get(LocalVariableSymbol symbol) =>
+		IndexOf(symbol) is var index and >= 0 ? _values[index].Value : null;
 	
 	public KnownValues With(LocalVariableSymbol symbol, Constant? value)
 	{
@@ -170,7 +172,8 @@ public sealed class ValueEvaluator(ConstantEvaluator evaluator)
 		{
 			(UnaryOperation.Identity, _, _) => operand,
 			(UnaryOperation.LogicalNot, BoolConstant flag, _) => BoolConstant.From(!flag.Value),
-			(UnaryOperation.Negation, IntegerConstant integer, IntegerType type) when evaluator.Fits(-integer.Value, type) =>
+			(UnaryOperation.Negation, IntegerConstant integer, IntegerType type) when evaluator.Fits(-integer.Value,
+					type) =>
 				new IntegerConstant(type, -integer.Value),
 			(UnaryOperation.BitwiseNot, IntegerConstant integer, IntegerType type) =>
 				new IntegerConstant(type, evaluator.Wrap(~integer.Value, type)),

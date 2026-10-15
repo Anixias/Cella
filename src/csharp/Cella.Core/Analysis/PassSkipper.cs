@@ -177,8 +177,14 @@ public sealed class PassSkipper(LoopFollower follower, MovePaths paths, ShapeLay
 		public List<Touch> Touches { get; } = [];
 	}
 	
-	private sealed class Scan(PassSkipper skipper, Loop loop, List<BasicBlock> pass, KnownValues entry,
-		HashSet<LocalVariableSymbol> changing)
+	private sealed class Scan
+	(
+		PassSkipper skipper,
+		Loop loop,
+		List<BasicBlock> pass,
+		KnownValues entry,
+		HashSet<LocalVariableSymbol> changing
+	)
 	{
 		private readonly HashSet<LocalVariableSymbol> _varying = [..changing];
 		private readonly Dictionary<LocalVariableSymbol, BigInteger> _offsets = [];
@@ -328,7 +334,10 @@ public sealed class PassSkipper(LoopFollower follower, MovePaths paths, ShapeLay
 				
 				case ExpressionInstruction
 				{
-					Value: AssignValue { Left: VariableValue { Variable.Symbol: LocalVariableSymbol target } } assignment
+					Value: AssignValue
+					{
+						Left: VariableValue { Variable.Symbol: LocalVariableSymbol target }
+					} assignment
 				}:
 					if (GetOffset(assignment.Right) is { } assigned)
 						_offsets[target] = assigned;
@@ -445,14 +454,16 @@ public sealed class PassSkipper(LoopFollower follower, MovePaths paths, ShapeLay
 		
 		private static string Describe(Projection projection) => projection switch
 		{
-			FieldProjection field => $"f{field.Field.Name}#{System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(field.Field)}",
+			FieldProjection field =>
+				$"f{field.Field.Name}#{System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(field.Field)}",
 			IndexProjection index => $"i{index.Index}",
 			_ => "?"
 		};
 		
 		private BigInteger? GetOffset(Value value) => value switch
 		{
-			VariableValue { Variable.Symbol: LocalVariableSymbol local } when _offsets.TryGetValue(local, out var offset) =>
+			VariableValue { Variable.Symbol: LocalVariableSymbol local } when _offsets.TryGetValue(local,
+					out var offset) =>
 				offset,
 			BinOpValue { Op: BinaryOperation.Addition or BinaryOperation.WrappingAddition } v =>
 				GetOffset(v.Left) is { } left && GetConstant(v.Right) is { } right ? left + right
