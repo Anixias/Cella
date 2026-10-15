@@ -1,0 +1,23 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+take: fun(v: u16) -> u16 = v
+
+main: fun -> i32
+{
+	val mask = 0x8000000000000000u
+	val big = 340282366920938463463374607431768211455u
+	val small = 5u
+	val b: u8 = 200u
+	val s: usize = 4u
+	var count = 0u
+	count += 3
+	val total = small + 7u
+	printf("%llx %d %d %d %d %d %d %d %d\n", mask, sizeOf(mask), sizeOf(big), sizeOf(small), b, s, count, total, take(9u))
+	printf("%d\n", sizeOf(0xFFFFFFFFFFFFFFFF))
+	ret 0
+}

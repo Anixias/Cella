@@ -12,6 +12,15 @@ namespace Cella.Core.Binding;
 
 public sealed partial class Resolver
 {
+	private const string UnsignedSuffix = "u";
+	
+	private static string DescribeLiteralKind(TokenType type) => type switch
+	{
+		TokenType.FloatLiteral => "float",
+		TokenType.CharLiteral => "char",
+		_ => "string"
+	};
+	
 	public IResolvedExpressionNode Visit(LiteralExpressionNode node)
 	{
 		if (node.Token.Type == TokenType.InvalidCharLiteral)
@@ -50,6 +59,13 @@ public sealed partial class Resolver
 	
 	private IResolvedExpressionNode ResolveSuffixedLiteral(LiteralExpressionNode node, string suffix)
 	{
+		if (suffix == UnsignedSuffix)
+			return node.Token.Type == TokenType.IntegerLiteral &&
+			       Scanner.TryParseInteger(node.Token.Text, out var value)
+				? new ResolvedLiteralExpressionNode(NativeSymbols.UntypedUnsignedInteger, value, node)
+				: Error(node, $"Cannot use '{suffix}' on {DescribeLiteralKind(node.Token.Type)} literals",
+					CurrentTargetType);
+		
 		var type = NativeSymbols.Resolve(suffix) as PrimitiveType;
 		if (type is not (FloatType or IntegerType { Kind: not PrimitiveTypeKind.Char }))
 			return Error(node, $"Invalid suffix '{suffix}'", CurrentTargetType);
@@ -184,6 +200,9 @@ public sealed partial class Resolver
 					: Error(node.Syntax, "Integer literal too large to fit any type", targetType);
 			}
 			
+			case UntypedIntegerType { IsUnsigned: true }:
+				return MaterializeExpression(node, NativeSymbols.UInt32);
+			
 			case UntypedIntegerType:
 				return MaterializeExpression(node, NativeSymbols.Int32);
 			
@@ -212,8 +231,8 @@ public sealed partial class Resolver
 	
 	private IntegerType? FindDefaultIntegerType(ResolvedLiteralExpressionNode literal) => NativeSymbols.IntegerTypes
 		.Where(type => IntegerValueIn(literal, type) is not null)
-		.Select(static type => (Type: type,
-			Cost: UntypedIntegerType.Instance.MaterializationCost(type, MaterializationMode.Default)))
+		.Select(type => (Type: type,
+			Cost: ((UntypedType)literal.Type).MaterializationCost(type, MaterializationMode.Default)))
 		.Where(static candidate => candidate.Cost != int.MaxValue)
 		.OrderBy(static candidate => candidate.Cost)
 		.FirstOrDefault().Type;
@@ -302,6 +321,9 @@ public sealed partial class Resolver
 		
 		return node.Type switch
 		{
+			UntypedIntegerType { IsUnsigned: true } when target is IntegerType { IsSigned: false } t &&
+			                                             t != NativeSymbols.Char => MaterializeInteger(literal, t),
+			UntypedIntegerType { IsUnsigned: true } => literal,
 			UntypedIntegerType when target is IntegerType t => MaterializeInteger(literal, t),
 			UntypedIntegerType when target is FloatType t => MaterializeIntegerAsFloat(literal, t),
 			UntypedFloatType when target is FloatType t => MaterializeFloat(literal, t),
@@ -327,7 +349,7 @@ public sealed partial class Resolver
 			return MaterializeLiteral(node.Syntax, target, fitted);
 		
 		var value = (BigInteger)node.Value!;
-		var fallback = SmallestFittingType(value);
+		var fallback = node.Type is UntypedIntegerType { IsUnsigned: true } ? null : SmallestFittingType(value);
 		return fallback is not null
 			? MaterializeLiteral(node.Syntax, fallback, value)
 			: node;

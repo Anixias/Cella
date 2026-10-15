@@ -61,11 +61,6 @@ Error at line 16, column 10
 16 │ val l = 3q
              ╘╛ Invalid suffix 'q'
 
-Error at line 17, column 10
-16 │ val l = 3q
-17 │ val m = 0xFFu
-             ╘═══╛ Invalid suffix 'u'
-
 Error at line 18, column 10
 17 │ val m = 0xFFu
 18 │ val n = 2bool

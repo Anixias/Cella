@@ -48,6 +48,10 @@ public sealed partial class Resolver
 			
 			default:
 			{
+				if (op.Type is TokenType.OpMinus or TokenType.OpTilde &&
+				    operand.Type is UntypedIntegerType { IsUnsigned: true })
+					operand = MaterializeAsDefault(operand);
+				
 				if (FoldLiteral(node, operand) is { } folded)
 					return folded;
 				

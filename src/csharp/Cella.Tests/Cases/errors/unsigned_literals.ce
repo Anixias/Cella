@@ -1,0 +1,12 @@
+mod test
+
+main: fun -> i32
+{
+	val i: i32 = 5u
+	val n = -1u
+	val f: f64 = 2u
+	val c = 'a'u
+	val d = 2.5u
+	val tiny: u8 = 300u
+	ret 0
+}

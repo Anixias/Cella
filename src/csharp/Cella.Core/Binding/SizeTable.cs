@@ -8,6 +8,7 @@ public sealed class SizeTable
 	{
 		[NativeSymbols.Invalid] = StorageSize.Const(0),
 		[NativeSymbols.UntypedInteger] = StorageSize.Const(0),
+		[NativeSymbols.UntypedUnsignedInteger] = StorageSize.Const(0),
 		[NativeSymbols.UntypedFloat] = StorageSize.Const(0),
 		[NativeSymbols.VoidPtr] = StorageSize.Ptr,
 		[NativeSymbols.Void] = StorageSize.Const(0),

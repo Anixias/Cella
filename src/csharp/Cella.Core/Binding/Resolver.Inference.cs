@@ -280,6 +280,7 @@ public sealed partial class Resolver
 	{
 		UntypedIntegerType when node is ResolvedLiteralExpressionNode literal =>
 			FindDefaultIntegerType(literal) ?? NativeSymbols.Int32,
+		UntypedIntegerType { IsUnsigned: true } => NativeSymbols.UInt32,
 		UntypedIntegerType => NativeSymbols.Int32,
 		UntypedFloatType => NativeSymbols.Float64,
 		UntypedNullType => NativeSymbols.VoidPtr,

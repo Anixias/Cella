@@ -69,8 +69,8 @@ public sealed partial class Resolver
 		if (target is BorrowType { IsMutable: true } mutTarget && source.Type == mutTarget.Target)
 			return Error(source.Syntax, "Cannot mutably borrow values implicitly", target);
 		
-		if (source is ResolvedLiteralExpressionNode { Type: UntypedIntegerType, Value: BigInteger value } &&
-		    target is IntegerType)
+		if (source is ResolvedLiteralExpressionNode { Type: UntypedIntegerType untyped, Value: BigInteger value } &&
+		    target is IntegerType { IsSigned: var isSigned } && !(untyped.IsUnsigned && isSigned))
 			return Error(source.Syntax, $"'{value}' doesn't fit in '{target.Name}'", target);
 		
 		if (DescribeLiteralMismatch(source, target) is { } literalMismatch)

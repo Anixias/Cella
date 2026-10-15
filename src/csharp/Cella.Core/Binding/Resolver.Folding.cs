@@ -40,7 +40,11 @@ public sealed partial class Resolver
 				: FoldIntegers(node.Op.Type, leftInteger, rightInteger);
 			
 			return integer is { } value
-				? CreateFold(node, node.Op.Type, NativeSymbols.UntypedInteger, value, [leftLiteral, rightLiteral])
+				? CreateFold(node, node.Op.Type,
+					leftLiteral.Type is UntypedIntegerType { IsUnsigned: true } ||
+					rightLiteral.Type is UntypedIntegerType { IsUnsigned: true }
+						? NativeSymbols.UntypedUnsignedInteger
+						: NativeSymbols.UntypedInteger, value, [leftLiteral, rightLiteral])
 				: null;
 		}
 		

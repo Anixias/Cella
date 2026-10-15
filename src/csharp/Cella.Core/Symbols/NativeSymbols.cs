@@ -32,6 +32,7 @@ public static class NativeSymbols
 {
 	public static InvalidType Invalid => InvalidType.Instance;
 	public static UntypedIntegerType UntypedInteger => UntypedIntegerType.Instance;
+	public static UntypedIntegerType UntypedUnsignedInteger => UntypedIntegerType.Unsigned;
 	public static UntypedFloatType UntypedFloat => UntypedFloatType.Instance;
 	public static UntypedNullType UntypedNull => UntypedNullType.Instance;
 	public static UntypedStringType UntypedString => UntypedStringType.Instance;

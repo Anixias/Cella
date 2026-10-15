@@ -227,12 +227,19 @@ public sealed class NeverType() : UntypedType("never")
 	public override int MaterializationCost(TypeSymbol target, MaterializationMode mode) => 0;
 }
 
-public sealed class UntypedIntegerType() : UntypedType("integer literal")
+public sealed class UntypedIntegerType(bool isUnsigned = false)
+	: UntypedType(isUnsigned ? "unsigned integer literal" : "integer literal")
 {
 	public static UntypedIntegerType Instance { get; } = new();
+	public static UntypedIntegerType Unsigned { get; } = new(true);
+	
+	public bool IsUnsigned { get; } = isUnsigned;
 	
 	public override int MaterializationCost(TypeSymbol target, MaterializationMode mode)
 	{
+		if (IsUnsigned)
+			return UnsignedCost(target, mode);
+		
 		if (target == NativeSymbols.Int32)
 			return 0;
 		
@@ -289,6 +296,20 @@ public sealed class UntypedIntegerType() : UntypedType("integer literal")
 				
 				return int.MaxValue;
 		}
+	}
+	
+	private static int UnsignedCost(TypeSymbol target, MaterializationMode mode)
+	{
+		TypeSymbol[] order = mode == MaterializationMode.Overload
+			?
+			[
+				NativeSymbols.UInt32, NativeSymbols.UInt8, NativeSymbols.UInt16, NativeSymbols.UInt64,
+				NativeSymbols.UInt128, NativeSymbols.UIntSize
+			]
+			: [NativeSymbols.UInt32, NativeSymbols.UInt64, NativeSymbols.UInt128];
+		
+		var index = Array.IndexOf(order, target);
+		return index < 0 ? int.MaxValue : index;
 	}
 }
 
