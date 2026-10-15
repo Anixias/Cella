@@ -1,0 +1,17 @@
+make 0
+drop 0
+body 0
+make 1
+drop 1
+body 1
+make 2
+drop 2
+make 10
+drop 10
+then
+make 20
+drop 20
+bound 30
+drop 30
+end
+[exit code 0]

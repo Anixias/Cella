@@ -1,6 +1,7 @@
 ﻿using Cella.Core.Binding;
 using Cella.Core.Binding.Constants;
 using Cella.Core.Binding.Nodes;
+using Cella.Core.Binding.Operations;
 using Cella.Core.Symbols;
 using Cella.Core.Text;
 
@@ -356,12 +357,24 @@ public sealed partial class Lowerer
 		
 		public void Visit(ResolvedIfStatementNode node)
 		{
-			BeginScope(node.Syntax.SourceLocation, true);
+			var scope = BeginScope(node.Syntax.SourceLocation, true);
 			var thenBlock = CreateBlock("then");
 			var elseBlock = node.Else is null ? null : CreateBlock("else");
 			var mergeBlock = CreateBlock("merge");
+			var endsEarly = !BindsNames(node.Condition);
+			var skipBlock = endsEarly && elseBlock is null ? CreateBlock("skip") : null;
 			
-			LowerBranch(node.Condition, thenBlock, elseBlock ?? mergeBlock);
+			LowerBranch(node.Condition, thenBlock, elseBlock ?? skipBlock ?? mergeBlock);
+			if (endsEarly)
+			{
+				_activeScopes.Pop();
+				EndScope(thenBlock, scope);
+				if (elseBlock is not null)
+					EndScope(elseBlock, scope);
+				
+				if (skipBlock is not null)
+					ExitScope(skipBlock, scope, mergeBlock);
+			}
 			
 			// Then block
 			currentBlock = thenBlock;
@@ -378,8 +391,17 @@ public sealed partial class Lowerer
 			
 			// Finish
 			ContinueWith(mergeBlock);
-			EndCurrentScope();
+			if (!endsEarly)
+				EndCurrentScope();
 		}
+		
+		private static bool BindsNames(IResolvedExpressionNode condition) => condition switch
+		{
+			ResolvedIsExpressionNode node => node.Pattern.AllBindings.Any(),
+			ResolvedBinaryOpExpressionNode { Operation: NativeImpl { Op: TokenType.OpAmpersandAmpersand } } node =>
+				BindsNames(node.Left) || BindsNames(node.Right),
+			_ => false
+		};
 		
 		public void Visit(ResolvedInvalidStatementNode node) =>
 			throw new InvalidOperationException();

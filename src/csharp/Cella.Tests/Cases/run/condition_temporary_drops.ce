@@ -1,0 +1,50 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Note: rec
+{
+	id: i32
+
+	drop: op
+	{
+		printf("drop %d\n", self.id)
+	}
+}
+
+Effect: enum { none  owned(note: Note) }
+
+make: fun(id: i32) -> Note
+{
+	printf("make %d\n", id)
+	ret Note(id)
+}
+
+effect: fun(id: i32) -> Effect = Effect.owned(Note(id))
+
+main: fun -> i32
+{
+	var i = 0
+	while make(i).id < 2
+	{
+		printf("body %d\n", i)
+		i += 1
+	}
+
+	if make(10).id > 5
+		printf("then\n")
+	else
+		printf("else\n")
+
+	if make(20).id < 5
+		printf("never\n")
+
+	if effect(30) is owned(val note)
+		printf("bound %d\n", note.id)
+
+	printf("end\n")
+	ret 0
+}

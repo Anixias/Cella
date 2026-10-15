@@ -25,13 +25,22 @@ public sealed partial class Lowerer
 			var scopeDepth = _activeScopes.Count;
 			var scope = BeginScope(node.Condition.Syntax.SourceLocation, true);
 			var doneBlock = CreateBlock($"while{id}_done");
-			LowerBranch(node.Condition, bodyBlock, doneBlock);
+			var endsEarly = !BindsNames(node.Condition);
+			var enterBlock = endsEarly ? CreateBlock($"while{id}_enter") : bodyBlock;
+			LowerBranch(node.Condition, enterBlock, doneBlock);
 			ExitScope(doneBlock, scope, exitBlock);
+			if (endsEarly)
+			{
+				_activeScopes.Pop();
+				ExitScope(enterBlock, scope, bodyBlock);
+			}
 			
 			// Body
 			currentBlock = bodyBlock;
 			VisitInLoop(node.Body, exitBlock, condBlock, node.Label, scopeDepth, scopeDepth);
-			EndCurrentScope();
+			if (!endsEarly)
+				EndCurrentScope();
+			
 			currentBlock?.FillTerminator(new BranchTerminator(condBlock, node.Syntax.SourceLocation));
 			
 			ContinueWith(exitBlock);
