@@ -611,6 +611,8 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool, 
 		{
 			var arg = args[i];
 			VisitNode(arg);
+			CheckOwnArgument(node.Syntax, arg, node.Function.Signature, i + 1, node.Function.Symbol.Parameters);
+			
 			if (node.Function.Signature.GetMode(i + 1) == ParameterMode.Own)
 				CheckConsumed(arg);
 		}
@@ -656,6 +658,9 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool, 
 			CheckImmArgument(node.Syntax, arg, signature.GetMode(i),
 				i == 0 && node.Function.Symbol.Kind == FunctionKind.Method);
 			
+			if (i > 0 || node.Function.Symbol.Kind != FunctionKind.Method)
+				CheckOwnArgument(node.Syntax, arg, signature, i, node.Function.Symbol.Parameters);
+			
 			if (signature.GetMode(i) == ParameterMode.Own)
 				CheckConsumed(arg);
 		}
@@ -671,6 +676,21 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool, 
 		    written.Contains(arg.Syntax) && NamesPlace(arg.Syntax) && IsLValue(arg))
 			Diagnostics.Add(new(DiagnosticSeverity.Error, arg.Syntax.SourceLocation,
 				"Cannot borrow arguments implicitly"));
+	}
+	
+	private void CheckOwnArgument(IExpressionNode call, IResolvedExpressionNode arg, FunctionSignature signature,
+		int index, IReadOnlyList<ParameterSymbol> parameters) =>
+		CheckOwnArgument(call, arg, signature.GetMode(index), index < parameters.Count ? parameters[index].Name : null,
+			signature.HasVariadicParameter && index >= signature.FixedCount);
+	
+	private void CheckOwnArgument(IExpressionNode call, IResolvedExpressionNode arg, ParameterMode mode, string? name,
+		bool isPacked)
+	{
+		if (mode != ParameterMode.Own && !isPacked && arg.Syntax is OwnExpressionNode own &&
+		    call is CallExpressionNode { Arguments: var written } && written.Contains(arg.Syntax))
+			Diagnostics.Add(new(DiagnosticSeverity.Error, own.Keyword.SourceLocation, name is null
+				? "Only an argument to an 'own' parameter can be marked 'own'"
+				: $"'{name}' isn't an 'own' parameter"));
 	}
 	
 	public void Visit(ResolvedFunctionReferenceExpressionNode node)
@@ -928,6 +948,9 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool, 
 				continue;
 			
 			CheckImmArgument(node.Syntax, node.Arguments[i], node.FunctionType.ParameterModes[i], false);
+			CheckOwnArgument(node.Syntax, node.Arguments[i], node.FunctionType.ParameterModes[i], null,
+				node.FunctionType.HasVariadicParameter && i == node.FunctionType.ParameterTypes.Length - 1);
+			
 			if (node.FunctionType.ParameterModes[i] == ParameterMode.Own)
 				CheckConsumed(node.Arguments[i]);
 		}

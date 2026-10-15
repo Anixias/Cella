@@ -1,0 +1,34 @@
+mod test
+
+Buffer: rec
+{
+	id: i32
+
+	drop: op {}
+}
+
+Wrapper: rec
+{
+	id: i32
+
+	new: op(imm buffer: Buffer)
+	{
+		self.id = buffer.id
+	}
+}
+
+show: fun(imm buffer: Buffer) -> i32 = buffer.id
+count: fun(n: i32) -> i32 = n
+take: fun(own buffer: Buffer) -> i32 = buffer.id
+
+main: fun -> i32
+{
+	var b = Buffer(1)
+	var n = 3
+	val f: fun[i32 -> i32] = count
+	val shown = show(own b)
+	val counted = count(own n)
+	val called = f(own n)
+	val wrapped = Wrapper(own b)
+	ret take(own b)
+}

@@ -49,7 +49,7 @@ main: fun -> i32
 
 	var d = Buffer(9)
 	val address = @d
-	printf("%d %d\n", flag(same(imm d, address)), flag(same(own d, address)))
+	printf("%d %d\n", flag(same(imm d, address)), flag(same(imm give(own d), address)))
 
 	var values = [Buffer(10), Buffer(11)]
 	val p = @values[0]
