@@ -21,4 +21,6 @@ public sealed class GlobalNode
 	public bool IsConstant => Keyword.Type == TokenType.KeywordConst;
 	public bool IsExternal { get; init; }
 	public Token? ExternalName { get; init; }
+	public string? Origin { get; init; }
+	public SourceLocation? OriginLocation { get; init; }
 }

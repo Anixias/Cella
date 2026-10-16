@@ -47,6 +47,9 @@ public sealed class WindowsMsvcToolchain(string root, string builtinsLibrary) : 
 		}
 		
 		args.AddRange(request.InputFiles);
+		if (request.OutputType != ProjectOutputType.StaticLibrary)
+			args.AddRange(request.ImportedFunctions.Select(static function => $"/include:{function}"));
+		
 		if (request.ModuleDefinition is { } definition)
 			args.Add($"/def:{definition}");
 		

@@ -11,6 +11,7 @@ namespace Cella.Tests;
 public sealed class GoldenTests
 {
 	private const string UpdateVariable = "CELLA_UPDATE_GOLDEN";
+	private const string ClangVariable = "CELLA_TEST_CLANG";
 	
 	private static readonly string _casesDirectory = Path.Combine(GetSourceDirectory(), "Cases");
 	private static readonly TimeSpan _runTimeout = TimeSpan.FromSeconds(10);
@@ -180,6 +181,7 @@ public sealed class GoldenTests
 				? await File.ReadAllLinesAsync(optionsPath, cancellationToken)
 				: [];
 			
+			await BuildCSourcesAsync(caseDirectory, target, cancellationToken);
 			var (compileExitCode, compileOutput) =
 				await CompileAsync(projectPath, release, [..options, "--target", target], cancellationToken);
 			
@@ -215,6 +217,73 @@ public sealed class GoldenTests
 		}
 	}
 	
+	private static async Task BuildCSourcesAsync(string caseDirectory, string target,
+		CancellationToken cancellationToken)
+	{
+		var sources = Directory.GetFiles(caseDirectory, "*.c", SearchOption.AllDirectories);
+		if (sources.Length == 0)
+			return;
+		
+		var clang = FindClang();
+		if (clang is null)
+			Assert.Skip($"Building C sources needs clang on PATH or in {ClangVariable}");
+		
+		var triple = TargetTriple.Parse(target)!.Value
+			.WithDefaultAbi(Path.Combine(AppContext.BaseDirectory, "toolchains"));
+		
+		string[] flags = triple.IsElf ? ["-fPIC"] : [];
+		var archiver = Path.Combine(AppContext.BaseDirectory, OperatingSystem.IsWindows() ? "llvm-ar.exe" : "llvm-ar");
+		foreach (var source in sources)
+		{
+			var objectPath = Path.ChangeExtension(source, ".o");
+			await RunToolAsync(clang,
+			[
+				"-c", "-O1", "-fno-stack-protector", $"--target={triple.ToLlvm()}", ..flags,
+				"-o", objectPath, source
+			], cancellationToken);
+			
+			var name = Path.GetFileNameWithoutExtension(source);
+			var library = Path.Combine(Path.GetDirectoryName(source)!, triple.IsElf ? $"lib{name}.a" : $"{name}.lib");
+			await RunToolAsync(archiver, ["rcs", library, objectPath], cancellationToken);
+		}
+	}
+	
+	private static string? FindClang()
+	{
+		if (Environment.GetEnvironmentVariable(ClangVariable) is { Length: > 0 } configured)
+			return configured;
+		
+		var candidates = (Environment.GetEnvironmentVariable("PATH") ?? "")
+			.Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries)
+			.Select(static directory => Path.Combine(directory, OperatingSystem.IsWindows() ? "clang.exe" : "clang"));
+		
+		if (OperatingSystem.IsWindows())
+			candidates = candidates.Append(Path.Combine(
+				Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "LLVM", "bin", "clang.exe"));
+		
+		return candidates.FirstOrDefault(File.Exists);
+	}
+	
+	private static async Task RunToolAsync(string tool, IEnumerable<string> arguments,
+		CancellationToken cancellationToken)
+	{
+		var start = new ProcessStartInfo(tool, arguments)
+		{
+			RedirectStandardOutput = true,
+			RedirectStandardError = true,
+			UseShellExecute = false
+		};
+		
+		if (OperatingSystem.IsLinux())
+			start.Environment["LD_LIBRARY_PATH"] = AppContext.BaseDirectory;
+		
+		using var process = Process.Start(start)!;
+		var output = process.StandardOutput.ReadToEndAsync(cancellationToken);
+		var error = process.StandardError.ReadToEndAsync(cancellationToken);
+		await process.WaitForExitAsync(cancellationToken);
+		Assert.True(process.ExitCode == 0, $"{Path.GetFileName(tool)} failed:\n{await output}{await error}");
+	}
+	
 	private static async Task DeleteDirectoryAsync(string path)
 	{
 		for (var attempt = 1;; attempt++)
@@ -243,7 +312,8 @@ public sealed class GoldenTests
 		}
 		
 		var files = Directory.EnumerateFiles(sourcePath, "*.ce", SearchOption.AllDirectories)
-			.Concat(Directory.EnumerateFiles(sourcePath, "*.celp", SearchOption.AllDirectories));
+			.Concat(Directory.EnumerateFiles(sourcePath, "*.celp", SearchOption.AllDirectories))
+			.Concat(Directory.EnumerateFiles(sourcePath, "*.c", SearchOption.AllDirectories));
 		
 		foreach (var file in files)
 		{

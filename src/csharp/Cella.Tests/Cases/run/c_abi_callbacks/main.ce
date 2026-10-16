@@ -1,0 +1,127 @@
+mod test
+
+Pair: rec
+{
+	a: i32
+	b: i32
+}
+
+Doubles: rec
+{
+	x: f64
+	y: f64
+}
+
+Big: rec
+{
+	a: i64
+	b: i64
+	c: i64
+}
+
+Rgb: rec
+{
+	r: u8
+	g: u8
+	b: u8
+}
+
+Vec3: rec
+{
+	x: f32
+	y: f32
+	z: f32
+}
+
+Mixed: pub rec
+{
+	n: i64
+	d: f64
+}
+
+ext("abi")
+{
+	call_pair: fun(f: ext fun[Pair, i32 -> Pair]) -> Pair
+	call_doubles: fun(f: ext fun[Doubles, f32, i8 -> f64]) -> f64
+	call_big: fun(f: ext fun[Big, Rgb -> Big]) -> Big
+	call_narrow: fun(f: ext fun[i8, u16, bool -> i8]) -> i8
+	call_many: fun(f: ext fun[i32, i32, i32, i32, i32, i32, i32, i32, f64, f64, f64, f64, f64, f64, f64, f64, f64 -> f64])
+		-> f64
+	call_vec3: fun(f: ext fun[Vec3 -> Vec3]) -> Vec3
+	call_wide: fun(f: ext fun[i128 -> i128])
+	call_named: fun -> f64
+}
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+scalePair: ext fun(v: Pair, factor: i32) -> Pair
+{
+	printf("Cella pair %d %d %d\n", v.a, v.b, factor)
+	ret Pair(v.a * factor, v.b * factor)
+}
+
+sumDoubles: ext fun(v: Doubles, extra: f32, small: i8) -> f64
+{
+	printf("Cella doubles %.2f %.2f %.2f %d\n", v.x, v.y, extra, small)
+	ret v.x + v.y + f64(extra) + f64(small)
+}
+
+addBig: ext fun(v: Big, color: Rgb) -> Big
+{
+	printf("Cella big %lld %lld %lld %u %u %u\n", v.a, v.b, v.c, color.r, color.g, color.b)
+	ret Big(v.a + i64(color.r), v.b + i64(color.g), v.c + i64(color.b))
+}
+
+narrow: ext fun(x: i8, wide: u16, flag: bool) -> i8
+{
+	printf("Cella narrow %d %u %d\n", x, wide, flag)
+	if flag
+	{
+		ret x * 2
+	}
+
+	ret x
+}
+
+sumMany: ext fun(a: i32, b: i32, c: i32, d: i32, e: i32, f: i32, g: i32, h: i32, p: f64, q: f64, r: f64, s: f64,
+	t: f64, u: f64, v: f64, w: f64, x: f64) -> f64
+{
+	printf("Cella many %d %d %d %d %d %d %d %d %.1f %.1f %.1f %.1f %.1f %.1f %.1f %.1f %.1f\n", a, b, c, d, e, f, g, h,
+		p, q, r, s, t, u, v, w, x)
+	ret f64(a + b + c + d + e + f + g + h) + p + q + r + s + t + u + v + w + x
+}
+
+scaleVec: ext fun(v: Vec3) -> Vec3
+{
+	printf("Cella vec3 %.2f %.2f %.2f\n", v.x, v.y, v.z)
+	ret Vec3(v.x * 3.0, v.y * 3.0, v.z * 3.0)
+}
+
+nextWide: ext fun(v: i128) -> i128 = v + 1
+
+cellaMix: pub ext("cella_mix") fun(v: Mixed, factor: i32) -> f64
+{
+	printf("Cella mix %lld %.2f %d\n", v.n, v.d, factor)
+	ret f64(v.n * i64(factor)) + v.d
+}
+
+main: fun -> i32
+{
+	val pair = call_pair(scalePair)
+	printf("%d %d\n", pair.a, pair.b)
+	printf("%.2f\n", call_doubles(sumDoubles))
+
+	val big = call_big(addBig)
+	printf("%lld %lld %lld\n", big.a, big.b, big.c)
+	printf("%d\n", call_narrow(narrow))
+	printf("%.2f\n", call_many(sumMany))
+
+	val vec = call_vec3(scaleVec)
+	printf("%.2f %.2f %.2f\n", vec.x, vec.y, vec.z)
+	call_wide(nextWide)
+	printf("%.2f\n", call_named())
+	ret 0
+}

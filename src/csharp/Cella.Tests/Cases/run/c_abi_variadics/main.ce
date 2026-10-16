@@ -1,0 +1,32 @@
+mod test
+
+Color: ext enum { red  green  blue }
+
+ext("abi")
+{
+	sum_ints: fun(count: i32, ...) -> i64
+	average: fun(count: i32, first: f64, ...) -> f64
+	show: fun(types: cstr, ...)
+}
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+triple: ext fun(x: i32) -> i32 = x * 3
+
+main: fun -> i32
+{
+	printf("%lld\n", sum_ints(5, 1, -2, 3, -4, 5))
+	printf("%lld\n", sum_ints(12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12))
+	printf("%.3f\n", average(10, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.5))
+
+	show("iiiiiuddlLs", i8(-3), u8(250), i16(-1000), u16(65000), true, u32(4000000000), f32(1.5), 2.25,
+		i64(-5000000000), u64(18000000000000000000), "text")
+
+	var local: i32 = 77
+	show("pfi", @local, triple, Color.blue)
+	show("dddddddddddi", 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12)
+	ret 0
+}

@@ -1,0 +1,54 @@
+mod test
+
+ext("abi")
+{
+	widths: fun(a: i8, b: u8, c: i16, d: u16, e: i32, f: u32, g: i64, h: u64) -> i64
+	widen_i8: fun(x: i8) -> i64
+	widen_u8: fun(x: u8) -> u64
+	widen_i16: fun(x: i16) -> i64
+	widen_u16: fun(x: u16) -> u64
+	negate_i8: fun(x: i8) -> i8
+	invert_u8: fun(x: u8) -> u8
+	negate_i16: fun(x: i16) -> i16
+	invert_u16: fun(x: u16) -> u16
+	is_negative: fun(x: i64) -> bool
+	count_true: fun(a: bool, b: bool, c: bool) -> i32
+	many_ints: fun(a: i32, b: i32, c: i32, d: i32, e: i32, f: i32, g: i32, h: i32, i: i8, j: i16) -> i64
+	many_doubles: fun(a: f64, b: f64, c: f64, d: f64, e: f64, f: f64, g: f64, h: f64, i: f64, j: f32) -> f64
+	interleaved: fun(a: i32, b: f64, c: i8, d: f32, e: i64, f: f64, g: u16, h: f32) -> f64
+	half: fun(x: f32) -> f32
+	show_i128: fun(x: i128)
+	multiply_i128: fun(a: i128, b: i64) -> i128
+	after_five: fun(a: i64, b: i64, c: i64, d: i64, e: i64, f: i128, g: i64) -> i64
+}
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+main: fun -> i32
+{
+	printf("%lld\n", widths(-100, 200, -30000, 60000, -2000000000, 4000000000, -9000000000000000000,
+		18000000000000000000))
+
+	var smallSigned: i8 = -1
+	var smallUnsigned: u8 = 255
+	var shortSigned: i16 = -2
+	var shortUnsigned: u16 = 65535
+	printf("%lld %llu %lld %llu\n", widen_i8(smallSigned), widen_u8(smallUnsigned), widen_i16(shortSigned),
+		widen_u16(shortUnsigned))
+
+	printf("%d %u %d %u\n", negate_i8(100), invert_u8(15), negate_i16(1234), invert_u16(1))
+	printf("%d %d %d\n", is_negative(-5), is_negative(5), count_true(true, false, true))
+	printf("%lld\n", many_ints(1, 2, 3, 4, 5, 6, 7, 8, -9, -10))
+	printf("%.2f\n", many_doubles(1.25, 2.5, 3.75, 5.0, 6.25, 7.5, 8.75, 10.0, 11.25, 12.5))
+	printf("%.2f\n", interleaved(-7, 0.25, -3, 1.5, 5000000000, 2.75, 65000, -0.5))
+	printf("%.2f\n", half(5.0))
+
+	val big = (i128(1) << 100) + 5
+	show_i128(big)
+	show_i128(multiply_i128(big, -3))
+	printf("%lld\n", after_five(1, 2, 3, 4, 5, big, 7))
+	ret 0
+}

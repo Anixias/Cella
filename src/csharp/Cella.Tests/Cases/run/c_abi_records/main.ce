@@ -1,0 +1,188 @@
+mod test
+
+Pair: rec
+{
+	a: i32
+	b: i32
+}
+
+Floats: rec
+{
+	x: f32
+	y: f32
+}
+
+Doubles: rec
+{
+	x: f64
+	y: f64
+}
+
+Mixed: rec
+{
+	n: i64
+	d: f64
+}
+
+Rgb: rec
+{
+	r: u8
+	g: u8
+	b: u8
+}
+
+Triple: rec
+{
+	a: i32
+	b: i32
+	c: i32
+}
+
+Big: rec
+{
+	a: i64
+	b: i64
+	c: i64
+}
+
+Vec3: rec
+{
+	x: f32
+	y: f32
+	z: f32
+}
+
+Quad: rec
+{
+	v: array[f32, 4]
+}
+
+Padded: rec
+{
+	tag: i8
+	s: i16
+	n: i32
+	f: f32
+}
+
+FloatInt: rec
+{
+	f: f32
+	n: i32
+}
+
+Nested: rec
+{
+	p: Pair
+	f: f32
+}
+
+Flagged: rec
+{
+	flag: bool
+	n: i32
+}
+
+Wide: rec
+{
+	v: i128
+}
+
+ext("abi")
+{
+	twice_pair: fun(v: Pair) -> Pair
+	twice_floats: fun(v: Floats) -> Floats
+	twice_doubles: fun(v: Doubles) -> Doubles
+	twice_mixed: fun(v: Mixed) -> Mixed
+	invert_rgb: fun(v: Rgb) -> Rgb
+	twice_triple: fun(v: Triple) -> Triple
+	twice_big: fun(v: Big) -> Big
+	twice_vec3: fun(v: Vec3) -> Vec3
+	twice_quad: fun(v: Quad) -> Quad
+	twice_padded: fun(v: Padded) -> Padded
+	twice_float_int: fun(v: FloatInt) -> FloatInt
+	twice_nested: fun(v: Nested) -> Nested
+	flip_flagged: fun(v: Flagged) -> Flagged
+	show_wide: fun(v: Wide)
+	twice_wide: fun(v: Wide) -> Wide
+	late_doubles: fun(a: f64, b: f64, c: f64, d: f64, e: f64, f: f64, g: f64, v: Doubles, after: f64) -> Doubles
+	late_triple: fun(a: i64, b: i64, c: i64, d: i64, e: i64, v: Triple, after: i64) -> i64
+	consume_triple: fun(v: Triple) -> i32
+	consume_big: fun(v: Big) -> i64
+	scale_pair: fun(v: ptr[Pair], factor: i32)
+	make_big: fun(first: i64) -> Big
+}
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+main: fun -> i32
+{
+	val pair = twice_pair(Pair(3, -4))
+	printf("%d %d\n", pair.a, pair.b)
+
+	val floats = twice_floats(Floats(1.5, -2.25))
+	printf("%.2f %.2f\n", floats.x, floats.y)
+
+	val doubles = twice_doubles(Doubles(0.125, 10000000000.0))
+	printf("%.3f %.3f\n", doubles.x, doubles.y)
+
+	val mixed = twice_mixed(Mixed(-5000000000, 2.5))
+	printf("%lld %.2f\n", mixed.n, mixed.d)
+
+	val rgb = invert_rgb(Rgb(10, 128, 255))
+	printf("%u %u %u\n", rgb.r, rgb.g, rgb.b)
+
+	val triple = twice_triple(Triple(1, -2, 3))
+	printf("%d %d %d\n", triple.a, triple.b, triple.c)
+
+	val big = twice_big(Big(4000000000, -1, 7))
+	printf("%lld %lld %lld\n", big.a, big.b, big.c)
+
+	val vec = twice_vec3(Vec3(0.5, 1.5, -2.5))
+	printf("%.2f %.2f %.2f\n", vec.x, vec.y, vec.z)
+
+	var quad: Quad
+	quad.v[0] = 1.25
+	quad.v[1] = 2.5
+	quad.v[2] = -3.75
+	quad.v[3] = 4.0
+	val doubledQuad = twice_quad(quad)
+	printf("%.2f %.2f %.2f %.2f\n", doubledQuad.v[0], doubledQuad.v[1], doubledQuad.v[2], doubledQuad.v[3])
+
+	val padded = twice_padded(Padded(-7, -300, 100000, 0.75))
+	printf("%d %d %d %.2f\n", padded.tag, padded.s, padded.n, padded.f)
+
+	val floatInt = twice_float_int(FloatInt(2.5, -9))
+	printf("%.2f %d\n", floatInt.f, floatInt.n)
+
+	val nested = twice_nested(Nested(Pair(5, 6), -1.25))
+	printf("%d %d %.2f\n", nested.p.a, nested.p.b, nested.f)
+
+	val flagged = flip_flagged(Flagged(true, 41))
+	printf("%d %d\n", flagged.flag, flagged.n)
+
+	show_wide(twice_wide(Wide((i128(1) << 64) + 3)))
+
+	val late = late_doubles(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, Doubles(8.5, 9.5), 10.5)
+	printf("%.2f %.2f\n", late.x, late.y)
+	printf("%lld\n", late_triple(1, 2, 3, 4, 5, Triple(6, 7, 8), 9))
+
+	val kept = Triple(10, 20, 30)
+	printf("%d\n", consume_triple(kept))
+	printf("%d %d %d\n", kept.a, kept.b, kept.c)
+
+	val keptBig = Big(100, 200, 300)
+	printf("%lld\n", consume_big(keptBig))
+	printf("%lld %lld %lld\n", keptBig.a, keptBig.b, keptBig.c)
+
+	var scaled = Pair(2, -5)
+	scale_pair(@scaled, 3)
+	printf("%d %d\n", scaled.a, scaled.b)
+
+	val made = make_big(41)
+	printf("%lld %lld %lld\n", made.a, made.b, made.c)
+	ret 0
+}

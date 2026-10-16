@@ -451,9 +451,9 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 		if (_targetMachine.TryEmitToFile(llvmModule, objectFilePath, LLVMCodeGenFileType.LLVMObjectFile, out message))
 			return new(true, objectFilePath, null, state.ExternalLibraries)
 			{
-				ImportedSymbols =
+				ImportedFunctions =
 				[
-					..state.ExternalSymbols.Where(name => IsReferenced(llvmModule, name))
+					..state.ExternalFunctions.Where(name => IsReferenced(llvmModule, name))
 				]
 			};
 		
@@ -461,8 +461,7 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 	}
 	
 	private static bool IsReferenced(LLVMModuleRef module, string name) =>
-		(module.GetNamedFunction(name) is { Handle: not 0 } function ? function : module.GetNamedGlobal(name))
-		is { Handle: not 0 } value && value.FirstUse.Handle != IntPtr.Zero;
+		module.GetNamedFunction(name) is { Handle: not 0 } function && function.FirstUse.Handle != IntPtr.Zero;
 	
 	private static string DescribeWriteFailure(string path, string message) => $"Cannot write '{path}': {message}";
 	
@@ -600,7 +599,7 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 				var llvmFunction = CreateFunction(current.Module, function).FunctionValue;
 				llvmFunction.Linkage = LLVMLinkage.LLVMExternalLinkage;
 				llvmFunction.DLLStorageClass = LLVMDLLStorageClass.LLVMDLLImportStorageClass;
-				current.ExternalSymbols.Add(llvmFunction.Name);
+				current.ExternalFunctions.Add(llvmFunction.Name);
 			}
 			
 			// Create and map imported functions
@@ -687,7 +686,7 @@ public readonly struct CodeGenResult
 	public string? ErrorMessage { get; init; }
 	
 	public ImmutableHashSet<string> ExternalLibraries { get; }
-	public ImmutableArray<string> ImportedSymbols { get; init; } = [];
+	public ImmutableArray<string> ImportedFunctions { get; init; } = [];
 	
 	public CodeGenResult(bool isSuccess, string? outputPath, string? errorMessage,
 		IEnumerable<string> externalLibraries)

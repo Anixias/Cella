@@ -176,7 +176,9 @@ public sealed partial class FileParser
 				Visibility = modifiers.Visibility,
 				WriteVisibility = modifiers.WriteVisibility,
 				IsExternal = true,
-				ExternalName = externalName
+				ExternalName = externalName,
+				Origin = origin?.Text,
+				OriginLocation = origin?.SourceLocation
 			};
 		}
 		

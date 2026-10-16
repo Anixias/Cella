@@ -525,7 +525,7 @@ internal static class Program
 		public ImmutableArray<string> PlainNames { get; init; } = [];
 		public ImmutableArray<string> ContainedLibraries { get; init; } = [];
 		public ImmutableArray<string> LibraryFiles { get; init; } = [];
-		public ImmutableArray<string> ImportedSymbols { get; init; } = [];
+		public ImmutableArray<string> ImportedFunctions { get; init; } = [];
 		public string? Directory { get; init; }
 		public string? ProjectPath { get; init; }
 		public string Name => AssemblySymbol.Name;
@@ -826,7 +826,7 @@ internal static class Program
 				signatureCollector.Modules, inputs);
 			
 			var externalLibraries = new HashSet<string>();
-			var importedSymbols = new HashSet<string>();
+			var importedFunctions = new HashSet<string>();
 			var objectFiles = new List<string>();
 			var codeGenFailed = false;
 			foreach (var result in codeGenerator.Generate(lowerer.Modules))
@@ -840,7 +840,7 @@ internal static class Program
 				
 				objectFiles.Add(result.OutputPath!);
 				externalLibraries.UnionWith(result.ExternalLibraries);
-				importedSymbols.UnionWith(result.ImportedSymbols);
+				importedFunctions.UnionWith(result.ImportedFunctions);
 			}
 			
 			if (ReportErrors([codeGenerator.Diagnostics], displayRoot, showHints))
@@ -886,7 +886,7 @@ internal static class Program
 					ct);
 			}
 			
-			ownImports = [..importedSymbols];
+			ownImports = [..importedFunctions];
 			ownLibraries =
 			[
 				..externalLibraries.Select(origin => ResolveLibrary(origin, project.Directory, targetTriple)).Distinct()
@@ -917,9 +917,10 @@ internal static class Program
 				ModuleDefinition = moduleDefinition,
 				KeptSymbols = targetTriple.IsElf ? [..reexports.Select(static name => name.Name)] : [],
 				WideEntry = codeGenerator.UsesWideEntry,
-				ImportedSymbols =
+				ImportedFunctions =
 				[
-					..importedSymbols.Concat(contained.SelectMany(static library => library.ImportedSymbols)).Distinct()
+					..importedFunctions.Concat(contained.SelectMany(static library => library.ImportedFunctions))
+						.Distinct()
 				]
 			};
 			
@@ -995,7 +996,7 @@ internal static class Program
 			PlainNames = plainNames,
 			ContainedLibraries = [..contained.Select(static library => library.Name)],
 			LibraryFiles = ownLibraries,
-			ImportedSymbols = ownImports
+			ImportedFunctions = ownImports
 		};
 	}
 	
@@ -1019,15 +1020,21 @@ internal static class Program
 				
 				case GlobalSymbol { IsImport: true } global:
 					declarations.TryAdd(global.ExternalName ?? global.Name, global.Syntax.Identifier.SourceLocation);
+					if (global.Syntax is { Origin: { } globalOrigin, OriginLocation: { } globalLocation })
+						foreach (var key in GetLibraryKeys(globalOrigin))
+							origins.TryAdd(key, (globalOrigin, globalLocation));
+					
 					break;
 			}
 		}
 		
 		var diagnostics = new DiagnosticList();
-		foreach (var line in errors.Split('\n').Select(static line => line.Trim())
+		var reported = new HashSet<string>();
+		foreach (var line in errors.Split('\n').Select(static line => line.Trim().Replace(ForcedSymbolPrefix, ""))
 			         .Where(static line => line.Length > 0))
 		{
-			if (line.StartsWith(">>>", StringComparison.Ordinal))
+			if (line.StartsWith(">>>", StringComparison.Ordinal) ||
+			    line.StartsWith(LinkerWarning, StringComparison.Ordinal))
 				continue;
 			
 			if (line.StartsWith(UndefinedSymbol, StringComparison.Ordinal) &&
@@ -1037,8 +1044,9 @@ internal static class Program
 				    : undefined)
 			    is var symbol && declarations.TryGetValue(symbol, out var declaration))
 			{
-				diagnostics.Add(new(DiagnosticSeverity.Error, declaration,
-					$"Cannot find '{symbol}' in the linked libraries"));
+				if (reported.Add(symbol))
+					diagnostics.Add(new(DiagnosticSeverity.Error, declaration,
+						$"Cannot find '{symbol}' in the linked libraries"));
 				
 				continue;
 			}
@@ -1058,6 +1066,8 @@ internal static class Program
 	}
 	
 	private const string UndefinedSymbol = "lld: error: undefined symbol: ";
+	private const string ForcedSymbolPrefix = "<root>: ";
+	private const string LinkerWarning = "lld: warning: ";
 	private const string MissingFile = "lld: error: could not open '";
 	private const string MissingLibrary = "lld: error: unable to find library ";
 	private const string MissingInput = "lld: error: cannot open ";

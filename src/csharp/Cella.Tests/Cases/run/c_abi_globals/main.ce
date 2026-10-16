@@ -1,0 +1,29 @@
+mod test
+
+ext("abi")
+{
+	shared_count: var i32
+	shared_total: var i64
+}
+
+ext("abi")
+{
+	bump_shared: fun
+	show_shared: fun
+}
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+main: fun -> i32
+{
+	printf("%d %lld\n", shared_count, shared_total)
+	bump_shared()
+	printf("%d %lld\n", shared_count, shared_total)
+	shared_count = 7
+	shared_total = 9
+	show_shared()
+	ret 0
+}

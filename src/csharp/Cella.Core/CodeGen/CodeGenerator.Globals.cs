@@ -99,7 +99,8 @@ public sealed unsafe partial class CodeGenerator
 			
 			global.DLLStorageClass = LLVMDLLStorageClass.LLVMDLLImportStorageClass;
 			global.Linkage = LLVMLinkage.LLVMDLLImportLinkage;
-			current.ExternalSymbols.Add(global.Name);
+			if (info.Symbol.Syntax.Origin is { } origin)
+				current.ExternalLibraries.Add(origin);
 		}
 		else if (!_assemblySymbol.SignatureTable.Globals.ContainsKey(info.Symbol) && !_config.ExportsSymbols &&
 		         _inputs.StaticLibrarySymbols.Contains(info.Symbol))
