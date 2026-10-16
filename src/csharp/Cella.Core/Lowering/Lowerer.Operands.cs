@@ -130,7 +130,7 @@ public sealed partial class Lowerer
 		private static bool IsPlaceValue(Value value) => value switch
 		{
 			VariableValue or GlobalValue or UnaryOpValue { Op: UnaryOperation.Dereference } => true,
-			AccessValue v => IsPlaceValue(v.Target),
+			AccessValue { Member: FieldSymbol } v => IsPlaceValue(v.Target),
 			IndexerValue { Target.Type: StringType } => true,
 			IndexerValue v => IsPlaceValue(v.Target),
 			EnumPayloadValue v => IsPlaceValue(v.Target),

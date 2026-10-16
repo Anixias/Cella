@@ -1,0 +1,48 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Display: trait
+{
+	print: fun(imm self)
+}
+
+str: impl Display
+{
+	print: fun(self) = printf("%.*s", i32(self.byteLength), self.data)
+}
+
+usize: impl Display
+{
+	print: fun(self) = printf("%zu", self)
+}
+
+say: fun(message: fstr[Display])
+{
+	var i: usize = 0
+	while i < message.holes
+	{
+		message.piece(i).print()
+		message.value(i).print()
+		i += 1
+	}
+
+	message.piece(message.holes).print()
+	printf("\n")
+}
+
+show: fun(imm value: usize) = printf("%zu\n", value)
+
+main: fun -> i32
+{
+	val a = [1, 2, 3]
+	val text = "hello"
+	say("length {a.length}")
+	say("bytes {text.byteLength}")
+	show(imm a.length)
+	show(imm text.byteLength)
+	ret 0
+}
