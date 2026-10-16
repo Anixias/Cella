@@ -139,7 +139,7 @@ public sealed unsafe partial class CodeGenerator
 				return defined;
 			}
 			
-			ShareDefinition(defined, _config.ExportsSymbols && isReachable);
+			ShareDefinition(defined, SharesExports && isReachable);
 			if (isReachable)
 			{
 				_exportedStatics.Add(info.Symbol);

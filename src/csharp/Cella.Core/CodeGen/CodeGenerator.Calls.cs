@@ -51,7 +51,6 @@ public sealed unsafe partial class CodeGenerator
 		var target = EmitValue(v.Target, builder);
 		var args = v.Arguments.Select(a => EmitValue(a, builder)).ToList();
 		
-		var returnType = MapTypeSymbol(functionType.ReturnType);
 		if (!functionType.IsExternal)
 		{
 			var parameterTypes = functionType.ParameterTypes
@@ -63,7 +62,7 @@ public sealed unsafe partial class CodeGenerator
 			return BuildInternalCall(builder, codeType, code, functionType.ReturnType, [environment], args);
 		}
 		
-		var signature = _cAbi.Classify(functionType.ParameterTypes.Select(MapTypeSymbol), returnType);
+		var signature = ClassifyC(functionType.ParameterTypes, functionType.ReturnType);
 		return EmitCCall(signature, signature.CreateFunctionType(functionType.IsVariadic), target,
 			functionType.ParameterTypes, functionType.ReturnType, args, builder);
 	}
@@ -83,7 +82,7 @@ public sealed unsafe partial class CodeGenerator
 		}
 		
 		var result = builder.BuildCall2(functionType, callee, args.ToArray());
-		AddBoolExtensions(result, signature, true);
+		AddCAttributes(result, signature, true);
 		switch (signature.Return.Kind)
 		{
 			case CPassKind.Coerced:
@@ -150,6 +149,20 @@ public sealed unsafe partial class CodeGenerator
 		slot.Alignment = Math.Max(slot.Alignment, 16);
 		return slot;
 	}
+	
+	private CSignature ClassifyC(IEnumerable<TypeSymbol> parameterTypes, TypeSymbol returnType) => _cAbi.Classify(
+		parameterTypes.Select(type => (MapTypeSymbol(type), GetCExtension(type))),
+		(MapTypeSymbol(returnType), GetCExtension(returnType)));
+	
+	private CExtension GetCExtension(TypeSymbol type) => Substitute(type) switch
+	{
+		PrimitiveType { Kind: PrimitiveTypeKind.Bool } => CExtension.Zero,
+		IntegerType { Kind: PrimitiveTypeKind.Int8 or PrimitiveTypeKind.Int16 } when _cAbi.ExtendsSmallIntegers =>
+			CExtension.Sign,
+		IntegerType { Kind: PrimitiveTypeKind.UInt8 or PrimitiveTypeKind.UInt16 } when _cAbi.ExtendsSmallIntegers =>
+			CExtension.Zero,
+		_ => CExtension.None
+	};
 	
 	private static void AddSretAttribute(LLVMValueRef value, LLVMTypeRef type, bool isCall)
 	{
@@ -244,8 +257,7 @@ public sealed unsafe partial class CodeGenerator
 	private LLVMValueRef EmitExternalCall(FunctionType external, LLVMValueRef function, LLVMValueRef[] args,
 		LLVMBuilderRef builder)
 	{
-		var returnType = MapTypeSymbol(external.ReturnType);
-		var signature = _cAbi.Classify(external.ParameterTypes.Select(MapTypeSymbol), returnType);
+		var signature = ClassifyC(external.ParameterTypes, external.ReturnType);
 		return EmitCCall(signature, signature.CreateFunctionType(false), function, external.ParameterTypes,
 			external.ReturnType, [..args], builder);
 	}

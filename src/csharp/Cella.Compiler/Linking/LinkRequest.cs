@@ -20,4 +20,5 @@ public sealed class LinkRequest
 	public bool DebugInfo { get; init; }
 	public OptimizeMode OptimizeMode { get; init; }
 	public string? ModuleDefinition { get; init; }
+	public ImmutableArray<string> KeptSymbols { get; init; } = [];
 }

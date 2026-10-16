@@ -5,7 +5,8 @@ namespace Cella.Compiler.Linking;
 
 public sealed class WindowsMsvcToolchain(string root, string builtinsLibrary) : Toolchain
 {
-	public override string LldFlavor => "link";
+	public override string GetTool(ProjectOutputType outputType) =>
+		outputType == ProjectOutputType.StaticLibrary ? "llvm-lib" : "lld";
 	
 	private readonly string _msvcLibDir = Path.Combine(root, "msvc");
 	private readonly string _ucrtLibDir = Path.Combine(root, "ucrt");
@@ -21,7 +22,10 @@ public sealed class WindowsMsvcToolchain(string root, string builtinsLibrary) : 
 	
 	public override List<string> GetLinkerArgs(LinkRequest request)
 	{
-		var args = new List<string> { "/nologo" };
+		var args = request.OutputType == ProjectOutputType.StaticLibrary
+			? new List<string> { "/nologo" }
+			: ["-flavor", "link", "/nologo"];
+		
 		if (request.OutputType == ProjectOutputType.WindowedExecutable)
 			args.AddRange(["/subsystem:windows", "/entry:mainCRTStartup"]);
 		else if (request.OutputType is ProjectOutputType.Executable or ProjectOutputType.SharedLibrary)

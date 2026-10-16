@@ -147,7 +147,9 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 		function.Kind is not (FunctionKind.Destructor or FunctionKind.Constructor) && !function.OwnsCaptures &&
 		!_sharedFunctions.Contains(function) && !_inputs.Exports.Contains(function);
 	
-	private bool IsExported(Symbol symbol) => _config.ExportsSymbols && _inputs.Exports.Contains(symbol);
+	private bool IsExported(Symbol symbol) => SharesExports && _inputs.Exports.Contains(symbol);
+	
+	private bool SharesExports => _config.ExportsSymbols || TargetTriple.Contains("-linux");
 	
 	private void Import(LLVMValueRef value, Symbol symbol)
 	{
@@ -490,29 +492,53 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 			attribute);
 	}
 	
-	private static void AddBoolExtensions(LLVMValueRef value, CSignature signature, bool isCall)
+	private void AddCAttributes(LLVMValueRef value, CSignature signature, bool isCall)
 	{
 		var first = signature.Return.Kind == CPassKind.Indirect ? 2 : 1;
-		if (IsCBool(signature.Return))
-			AddExtension(value, LLVMAttributeIndex.LLVMAttributeReturnIndex, isCall);
+		if (signature.Return.Kind == CPassKind.Direct)
+			AddExtension(value, LLVMAttributeIndex.LLVMAttributeReturnIndex, signature.Return.Extension, isCall);
 		
 		for (var i = 0; i < signature.Parameters.Length; i++)
 		{
-			if (IsCBool(signature.Parameters[i]))
-				AddExtension(value, (LLVMAttributeIndex)(first + i), isCall);
+			var parameter = signature.Parameters[i];
+			var index = (LLVMAttributeIndex)(first + i);
+			if (parameter.Kind == CPassKind.Direct)
+				AddExtension(value, index, parameter.Extension, isCall);
+			
+			if (!parameter.IsByValue)
+				continue;
+			
+			var alignment = Math.Max(8u, _targetData.ABIAlignmentOfType(parameter.Type));
+			AddAttribute(value, index, CreateTypeAttribute(value, "byval", parameter.Type), isCall);
+			AddAttribute(value, index, CreateEnumAttribute(value, "align", alignment), isCall);
 		}
 	}
 	
-	private static bool IsCBool(CPass pass) => pass.Kind == CPassKind.Direct &&
-	                                           pass.Type.Kind == LLVMTypeKind.LLVMIntegerTypeKind &&
-	                                           pass.Type.IntWidth == 1;
-	
-	private static void AddExtension(LLVMValueRef value, LLVMAttributeIndex index, bool isCall)
+	private static void AddExtension(LLVMValueRef value, LLVMAttributeIndex index, CExtension extension,
+		bool isCall)
 	{
-		using var name = new MarshaledString("zeroext");
-		var attribute = LLVM.CreateEnumAttribute((LLVMOpaqueContext*)value.TypeOf.Context.Handle,
-			LLVM.GetEnumAttributeKindForName(name, (nuint)name.Length), 0);
-		
+		if (extension != CExtension.None)
+			AddAttribute(value, index,
+				CreateEnumAttribute(value, extension == CExtension.Sign ? "signext" : "zeroext", 0), isCall);
+	}
+	
+	private static LLVMOpaqueAttributeRef* CreateEnumAttribute(LLVMValueRef value, string name, ulong argument)
+	{
+		using var marshaled = new MarshaledString(name);
+		return LLVM.CreateEnumAttribute((LLVMOpaqueContext*)value.TypeOf.Context.Handle,
+			LLVM.GetEnumAttributeKindForName(marshaled, (nuint)marshaled.Length), argument);
+	}
+	
+	private static LLVMOpaqueAttributeRef* CreateTypeAttribute(LLVMValueRef value, string name, LLVMTypeRef type)
+	{
+		using var marshaled = new MarshaledString(name);
+		return LLVM.CreateTypeAttribute((LLVMOpaqueContext*)value.TypeOf.Context.Handle,
+			LLVM.GetEnumAttributeKindForName(marshaled, (nuint)marshaled.Length), (LLVMOpaqueType*)type.Handle);
+	}
+	
+	private static void AddAttribute(LLVMValueRef value, LLVMAttributeIndex index, LLVMOpaqueAttributeRef* attribute,
+		bool isCall)
+	{
 		if (isCall)
 			LLVM.AddCallSiteAttribute((LLVMOpaqueValue*)value.Handle, index, attribute);
 		else

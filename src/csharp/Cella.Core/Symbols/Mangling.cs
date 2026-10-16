@@ -48,7 +48,7 @@ public static class Mangling
 			_ => symbol.Name
 		};
 		
-		return EscapeExportSyntax(modules?.FindPrivateFile(symbol) is { } file ? $"{name}@{file}" : name);
+		return EscapeExportSyntax(modules?.FindPrivateFile(symbol) is { } file ? $"{name}#{file}" : name);
 	}
 	
 	private static string EscapeExportSyntax(string name) => name.Replace('=', '$').Replace(',', ';');

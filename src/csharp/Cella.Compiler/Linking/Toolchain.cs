@@ -1,34 +1,27 @@
-﻿namespace Cella.Compiler.Linking;
+﻿using Cella.Compiler.Projects;
+
+namespace Cella.Compiler.Linking;
 
 public abstract class Toolchain
 {
-	public abstract string LldFlavor { get; }
-	
+	public abstract string GetTool(ProjectOutputType outputType);
 	public abstract Dictionary<string, string?> GetLinkerEnvironmentVars();
 	public abstract List<string> GetLinkerArgs(LinkRequest request);
 	
 	public static Toolchain FromTargetTriple(TargetTriple targetTriple, string toolchainsDirectory)
 	{
-		// TODO Find best-case target triple instead of exact match only
-		var tripleStr = targetTriple.ToString();
-		var toolchainRoot = Path.Combine(toolchainsDirectory, tripleStr);
-		var os = targetTriple.Os;
-		var arch = targetTriple.Arch;
-		
-		if (arch.Equals(TargetTriple.ArchTypes.Wasm64, StringComparison.OrdinalIgnoreCase))
-			throw new NotSupportedException();
-		
-		if (os.Equals(TargetTriple.OsTypes.Windows, StringComparison.OrdinalIgnoreCase))
-			return new WindowsMsvcToolchain(toolchainRoot, $"clang_rt.builtins-{arch switch
-			{
-				TargetTriple.ArchTypes.X86 => "i386",
-				TargetTriple.ArchTypes.Arm64 => "aarch64",
-				_ => "x86_64"
-			}}.lib");
-		
-		if (os.Equals(TargetTriple.OsTypes.MacOsX, StringComparison.OrdinalIgnoreCase))
-			throw new NotSupportedException();
-		
-		return new LinuxGnuToolchain(toolchainRoot);
+		var toolchainRoot = Path.Combine(toolchainsDirectory, targetTriple.ToString());
+		return targetTriple.Os switch
+		{
+			TargetTriple.OsTypes.Windows => new WindowsMsvcToolchain(toolchainRoot, $"clang_rt.builtins-{
+				targetTriple.Arch switch
+				{
+					TargetTriple.ArchTypes.X86 => "i386",
+					TargetTriple.ArchTypes.Arm64 => "aarch64",
+					_ => "x86_64"
+				}}.lib"),
+			TargetTriple.OsTypes.Linux => new LinuxGnuToolchain(toolchainRoot),
+			_ => throw new NotSupportedException()
+		};
 	}
 }

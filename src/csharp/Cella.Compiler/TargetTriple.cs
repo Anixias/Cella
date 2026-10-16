@@ -45,8 +45,19 @@ public readonly record struct TargetTriple(string Os, string Arch, string? Abi)
 	
 	public string ToLlvmFeatures() => (Os, Arch) switch
 	{
-		(OsTypes.Windows, ArchTypes.X64) => "+cx16",
+		(OsTypes.Windows or OsTypes.Linux, ArchTypes.X64) => "+cx16",
 		_ => ""
+	};
+	
+	public bool IsElf => Os == OsTypes.Linux;
+	
+	public static TargetTriple? Parse(string text) => text.Split('-') switch
+	{
+		[OsTypes.Windows, ArchTypes.X64] or [OsTypes.Windows, ArchTypes.X64, "msvc"] =>
+			new TargetTriple(OsTypes.Windows, ArchTypes.X64, "msvc"),
+		[OsTypes.Linux, ArchTypes.X64] or [OsTypes.Linux, ArchTypes.X64, "gnu"] =>
+			new TargetTriple(OsTypes.Linux, ArchTypes.X64, "gnu"),
+		_ => null
 	};
 	
 	public static TargetTriple FromHost()

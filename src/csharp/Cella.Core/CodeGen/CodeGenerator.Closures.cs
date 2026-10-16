@@ -143,14 +143,13 @@ public sealed partial class CodeGenerator
 		if (existing.Handle != IntPtr.Zero)
 			return existing;
 		
-		var parameterTypes = function.Signature.ParameterTypes.Select(MapTypeSymbol).ToArray();
-		var signature = _cAbi.Classify(parameterTypes, target.ReturnType);
+		var signature = ClassifyC(function.Signature.ParameterTypes, function.Signature.ReturnType);
 		var thunk = current.Module.AddFunction(name, signature.CreateFunctionType(false));
 		var isIndirect = signature.Return.Kind == CPassKind.Indirect;
 		if (isIndirect)
 			AddSretAttribute(thunk, signature.Return.Type, false);
 		
-		AddBoolExtensions(thunk, signature, false);
+		AddCAttributes(thunk, signature, false);
 		if (target.FunctionValue.DLLStorageClass == LLVMDLLStorageClass.LLVMDLLImportStorageClass)
 		{
 			Import(thunk, function.Symbol);

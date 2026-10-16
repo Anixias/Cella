@@ -19,7 +19,7 @@ public sealed partial class CodeGenerator
 		var paramLlvmTypes = MapParameterTypes(function);
 		
 		CSignature? cSignature = symbol.IsExternal
-			? _cAbi.Classify(MapParameterTypes(function, MapTypeSymbol), returnType)
+			? ClassifyC(signature.ParameterTypes, signature.ReturnType)
 			: null;
 		
 		var leading = symbol.Captures.IsEmpty ? 0 : 1;
@@ -36,8 +36,8 @@ public sealed partial class CodeGenerator
 		if (isFunction && cSignature is { Return: { Kind: CPassKind.Indirect } sret })
 			AddSretAttribute(functionValue, sret.Type, false);
 		
-		if (isFunction && cSignature is { } boolSignature)
-			AddBoolExtensions(functionValue, boolSignature, false);
+		if (isFunction && cSignature is { } attributedSignature)
+			AddCAttributes(functionValue, attributedSignature, false);
 		
 		if (isFunction && signature.ReturnType is NeverType)
 			AddFunctionAttribute(functionValue, "noreturn");

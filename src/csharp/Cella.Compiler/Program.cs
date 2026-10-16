@@ -46,12 +46,14 @@ internal static class Program
 	}
 	
 	private static readonly string[] _options =
-		["--verbose", "--hints", "--release", "--flag", "--emit-ir", "--emit-asm"];
+		["--verbose", "--hints", "--release", "--flag", "--target", "--emit-ir", "--emit-asm"];
+	
+	private static bool IsOptionValue(string[] args, int index) =>
+		index > 0 && args[index - 1] is "--flag" or "--target";
 	
 	private static async Task<int> RunAsync(string[] args)
 	{
-		if (args.Where((arg, i) =>
-				    arg.StartsWith("--") && !_options.Contains(arg) && (i == 0 || args[i - 1] != "--flag"))
+		if (args.Where((arg, i) => arg.StartsWith("--") && !_options.Contains(arg) && !IsOptionValue(args, i))
 			    .FirstOrDefault() is { } unknown)
 		{
 			Console.WriteLine($"Unknown option '{unknown}'");
@@ -65,12 +67,15 @@ internal static class Program
 		if (ParseFlagArguments(args) is not { } flagOverrides)
 			return 1;
 		
-		var paths = args.Where((arg, i) => !arg.StartsWith("--") && (i == 0 || args[i - 1] != "--flag")).ToArray();
+		if (ParseTarget(args) is not { } targetTriple)
+			return 1;
+		
+		var paths = args.Where((arg, i) => !arg.StartsWith("--") && !IsOptionValue(args, i)).ToArray();
 		if (paths is [])
 		{
 			Console.WriteLine(
 				"Usage: cella <project file or folder> [--release] [--verbose] [--hints] [--flag <name>[=true|false]] " +
-				"[--emit-ir] [--emit-asm]");
+				"[--target windows-x64|linux-x64] [--emit-ir] [--emit-asm]");
 			
 			return 1;
 		}
@@ -109,7 +114,6 @@ internal static class Program
 		}
 		
 		// Phase 0b: Dependency graph
-		var targetTriple = TargetTriple.FromHost(); // TODO Check CLI args for cross-compilation
 		var projectErrors = new List<string>();
 		var dependencyGraph = await MapDependenciesAsync(projectPaths, targetTriple, optimizeMode, flagOverrides,
 			projectErrors);
@@ -275,6 +279,31 @@ internal static class Program
 		}
 		
 		return isValid;
+	}
+	
+	private static TargetTriple? ParseTarget(string[] args)
+	{
+		var index = Array.IndexOf(args, "--target");
+		if (index < 0)
+			return TargetTriple.FromHost();
+		
+		if (index + 1 == args.Length || args[index + 1].StartsWith("--"))
+		{
+			Console.WriteLine("Expected a target after '--target'");
+			return null;
+		}
+		
+		if (Array.IndexOf(args, "--target", index + 1) >= 0)
+		{
+			Console.WriteLine("'--target' is given more than once");
+			return null;
+		}
+		
+		if (TargetTriple.Parse(args[index + 1]) is { } target)
+			return target;
+		
+		Console.WriteLine($"Unknown target '{args[index + 1]}'");
+		return null;
 	}
 	
 	private static Dictionary<string, bool>? ParseFlagArguments(string[] args)
@@ -827,7 +856,7 @@ internal static class Program
 			
 			string? moduleDefinition = null;
 			var reexports = contained.SelectMany(static library => library.ExportNames).Distinct().ToList();
-			if (reexports.Count > 0)
+			if (reexports.Count > 0 && !targetTriple.IsElf)
 			{
 				moduleDefinition = Path.Combine(objDir, $"{project.Name}.def");
 				await File.WriteAllLinesAsync(moduleDefinition,
@@ -837,7 +866,7 @@ internal static class Program
 			
 			ownLibraries =
 			[
-				..externalLibraries.Select(origin => ResolveLibrary(origin, project.Directory)).Distinct()
+				..externalLibraries.Select(origin => ResolveLibrary(origin, project.Directory, targetTriple)).Distinct()
 			];
 			
 			var libFiles = outputType == ProjectOutputType.StaticLibrary
@@ -846,7 +875,7 @@ internal static class Program
 					.Concat(contained.SelectMany(static library => library.LibraryFiles))
 					.Concat(allDependencies
 						.Where(d => d.OutputType != ProjectOutputType.StaticLibrary || !providers.ContainsKey(d.Name))
-						.Select(static d => Path.ChangeExtension(d.OutputPath, ".lib")))
+						.Select(d => targetTriple.IsElf ? d.OutputPath : Path.ChangeExtension(d.OutputPath, ".lib")))
 					.WhereNot(string.IsNullOrEmpty)
 					.Distinct()
 					.ToList();
@@ -857,17 +886,18 @@ internal static class Program
 				LinkPreference = linkPreference,
 				DebugInfo = codeGenConfig.DebugInfo,
 				OptimizeMode = optimizeMode,
-				ModuleDefinition = moduleDefinition
+				ModuleDefinition = moduleDefinition,
+				KeptSymbols = targetTriple.IsElf ? [..reexports.Select(static name => name.Name)] : []
 			};
 			
-			if (linker.FindMissingLinker(linkRequest) is { } missing)
+			var linkerToolchain = Toolchain.FromTargetTriple(targetTriple,
+				Path.Combine(AppContext.BaseDirectory, "toolchains"));
+			
+			if (linker.FindMissingLinker(linkRequest, linkerToolchain) is { } missing)
 			{
 				Console.WriteLine($"{project.FilePath}: Cannot find the linker '{missing}'");
 				return errorResult;
 			}
-			
-			var linkerToolchain = Toolchain.FromTargetTriple(targetTriple,
-				Path.Combine(AppContext.BaseDirectory, "toolchains"));
 			
 			var (linkExitCode, linkErrors) = await linker.LinkAsync(linkRequest, linkerToolchain);
 			if (linkExitCode != 0 && DescribeLinkErrors(linkErrors, [
@@ -921,7 +951,8 @@ internal static class Program
 				case FunctionSymbol { Syntax: ExternalFunctionNode node } function:
 					declarations.TryAdd(function.ExternalName ?? function.Name, node.Identifier.SourceLocation);
 					if (node is { Origin: { } origin, OriginLocation: { } location })
-						origins.TryAdd(Path.GetFileName(GetLibraryFileName(origin)), (origin, location));
+						foreach (var key in GetLibraryKeys(origin))
+							origins.TryAdd(key, (origin, location));
 					
 					break;
 				
@@ -951,9 +982,7 @@ internal static class Program
 				continue;
 			}
 			
-			if (line.StartsWith(MissingFile, StringComparison.Ordinal) &&
-			    line.IndexOf('\'', MissingFile.Length) is var end and > 0 &&
-			    origins.TryGetValue(Path.GetFileName(line[MissingFile.Length..end]), out var library))
+			if (FindMissingLibrary(line) is { } missing && origins.TryGetValue(missing, out var library))
 			{
 				diagnostics.Add(new(DiagnosticSeverity.Error, library.Location,
 					$"Cannot find the library '{library.Origin}'"));
@@ -969,10 +998,51 @@ internal static class Program
 	
 	private const string UndefinedSymbol = "lld: error: undefined symbol: ";
 	private const string MissingFile = "lld: error: could not open '";
+	private const string MissingLibrary = "lld: error: unable to find library ";
+	private const string MissingInput = "lld: error: cannot open ";
+	
+	private static string? FindMissingLibrary(string line)
+	{
+		if (line.StartsWith(MissingFile, StringComparison.Ordinal) &&
+		    line.IndexOf('\'', MissingFile.Length) is var end and > 0)
+			return Path.GetFileName(line[MissingFile.Length..end]);
+		
+		if (line.StartsWith(MissingLibrary, StringComparison.Ordinal))
+			return line[MissingLibrary.Length..];
+		
+		return line.StartsWith(MissingInput, StringComparison.Ordinal) &&
+		       line.LastIndexOf(": ", StringComparison.Ordinal) is var colon and > 0
+			? Path.GetFileName(line[MissingInput.Length..colon])
+			: null;
+	}
+	
+	private static IEnumerable<string> GetLibraryKeys(string origin)
+	{
+		var name = Path.GetFileName(origin);
+		return [Path.GetFileName(GetLibraryFileName(origin)), $"-l{name}", $"lib{name}.so", name];
+	}
+	
 	private const string ImportPrefix = "__declspec(dllimport) ";
 	
-	private static string ResolveLibrary(string origin, string projectDirectory)
+	private static string ResolveLibrary(string origin, string projectDirectory, TargetTriple target)
 	{
+		if (target.IsElf)
+		{
+			var directory = Path.GetDirectoryName(origin) ?? "";
+			var name = Path.GetFileName(origin);
+			string[] candidates = Path.HasExtension(name) ? [name] : [$"lib{name}.so", $"lib{name}.a"];
+			foreach (var candidate in candidates)
+			{
+				var path = Path.Combine(projectDirectory, directory, candidate);
+				if (File.Exists(path))
+					return Path.GetFullPath(path);
+			}
+			
+			return directory.Length == 0 && !Path.HasExtension(name)
+				? $"-l{name}"
+				: Path.GetFullPath(Path.Combine(projectDirectory, directory, candidates[0]));
+		}
+		
 		var fileName = GetLibraryFileName(origin);
 		var local = Path.Combine(projectDirectory, fileName);
 		return File.Exists(local) ? Path.GetFullPath(local) : fileName;
