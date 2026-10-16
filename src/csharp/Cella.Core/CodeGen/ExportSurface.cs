@@ -57,6 +57,9 @@ public sealed class ExportSurface
 					Reach(function);
 		}
 		
+		foreach (var target in assembly.SignatureTable.PanicTargets.Values.Where(_declared.Contains))
+			Reach(target);
+		
 		while (_pending.TryDequeue(out var next))
 			Process(next);
 	}

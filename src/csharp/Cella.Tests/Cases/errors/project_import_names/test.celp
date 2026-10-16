@@ -1,0 +1,10 @@
+OutputType = "Executable"
+SystemLinkPreference = "Dynamic"
+Imports = [
+	"lib.nothere",
+	"lib.greet",
+	"nomod.x",
+]
+
+[[ProjectReferences]]
+Path = 'lib/lib.celp'

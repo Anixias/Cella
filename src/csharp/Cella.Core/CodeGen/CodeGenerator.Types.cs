@@ -10,8 +10,7 @@ public sealed partial class CodeGenerator
 	private LLVMTypeRef OpaquePointer => LLVMTypeRef.CreatePointer(_context.Int8Type, 0u);
 	private LLVMTypeRef DropGlueType => LLVMTypeRef.CreateFunction(_context.VoidType, [OpaquePointer]);
 	
-	private LLVMTypeRef PanicType =>
-		LLVMTypeRef.CreateFunction(_context.VoidType, [OpaquePointer, _context.Int32Type]);
+	private LLVMTypeRef TrapType => LLVMTypeRef.CreateFunction(_context.VoidType, []);
 	
 	private LLVMTypeRef FatPointerType => _context.GetStructType([OpaquePointer, OpaquePointer], false);
 	

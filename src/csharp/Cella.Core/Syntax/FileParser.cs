@@ -377,6 +377,17 @@ public sealed partial class FileParser
 			return true;
 		}
 		
+		var panicStart = index;
+		if (Match(ref index, out var panicToken, TokenType.KeywordPanic))
+		{
+			if (ParseOperatorMember(ref index, panicToken, block) is { } panic)
+				declarations.Add(panic);
+			else
+				SkipDeclaration(ref index, panicStart, insideBlock);
+			
+			return true;
+		}
+		
 		return ParseNamedDeclaration(ref index, declarations, block, insideBraces);
 	}
 	

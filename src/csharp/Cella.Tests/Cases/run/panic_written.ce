@@ -1,0 +1,27 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+	exit: fun(code: i32) -> never
+}
+
+panic: op(message: str, location: str) -> never
+{
+	printf("Panic at %.*s: %.*s\n", i32(location.byteLength), location.data, i32(message.byteLength), message.data)
+	exit(7)
+}
+
+pick: fun(n: i32) -> i32
+{
+	if n != 1
+		panic "bad pick"
+
+	ret 10
+}
+
+main: fun -> i32
+{
+	printf("%d\n", pick(1))
+	ret pick(2)
+}

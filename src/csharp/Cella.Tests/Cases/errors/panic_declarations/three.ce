@@ -1,0 +1,3 @@
+mod three
+
+panic: op(message: str, location: str) -> i32 = 0

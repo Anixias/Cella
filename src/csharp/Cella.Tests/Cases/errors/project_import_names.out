@@ -1,0 +1,27 @@
+
+====== main.ce ======
+
+Error at line 3, column 9
+2 │ 
+3 │ use lib.greet
+            ╘═══╛ 'greet' is imported more than once
+
+
+====== test.celp ======
+
+Error at line 4, column 7
+3 │ Imports = [
+4 │     "lib.nothere",
+             ╘═════╛ Module 'lib' has no member 'nothere'
+
+Error at line 5, column 7
+4 │ "lib.nothere",
+5 │ "lib.greet",
+         ╘═══╛ 'greet' is imported more than once
+
+Error at line 6, column 3
+5 │ "lib.greet",
+6 │ "nomod.x",
+     ╘═══╛ Module 'nomod' not found
+
+[compilation failed]

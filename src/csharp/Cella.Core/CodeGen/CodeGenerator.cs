@@ -642,6 +642,9 @@ public sealed record CodeGenInputs
 	
 	public IReadOnlyDictionary<FunctionSymbol, RuntimeChecks> ForeignChecks { get; init; } =
 		ImmutableDictionary<FunctionSymbol, RuntimeChecks>.Empty;
+	
+	public IReadOnlyDictionary<string, FunctionInfo> PanicAdapters { get; init; } =
+		ImmutableDictionary<string, FunctionInfo>.Empty;
 }
 
 public readonly record struct RuntimeChecks(bool Bounds, bool Overflow);

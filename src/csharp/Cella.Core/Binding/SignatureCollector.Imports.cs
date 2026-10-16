@@ -8,7 +8,24 @@ namespace Cella.Core.Binding;
 
 public sealed partial class SignatureCollector
 {
+	private void ReportOnce(Action report)
+	{
+		var captured = new List<Diagnostic>();
+		var previous = Diagnostics.Redirect(captured);
+		report();
+		Diagnostics.Redirect(previous);
+		Diagnostics.AddRange(captured.Where(diagnostic =>
+			_reportedImportErrors.Add((diagnostic.SourceLocation, diagnostic.Message))));
+	}
+	
 	private ImportEnvironment CollectImports(FileNode node, ResolutionContext context)
+	{
+		ImportEnvironment? environment = null;
+		ReportOnce(() => environment = CollectFileImports(node, context));
+		return environment!;
+	}
+	
+	private ImportEnvironment CollectFileImports(FileNode node, ResolutionContext context)
 	{
 		var imports = new List<Symbol>();
 		var hidden = new List<Symbol>();

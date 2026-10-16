@@ -153,8 +153,11 @@ public sealed class GoldenTests
 				Directory.Delete(path, true);
 				return;
 			}
-			catch (Exception exception) when (exception is IOException or UnauthorizedAccessException && attempt < 50)
+			catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
 			{
+				if (attempt == 50)
+					return;
+				
 				await Task.Delay(100);
 			}
 		}

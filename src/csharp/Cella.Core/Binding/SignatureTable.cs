@@ -13,6 +13,7 @@ public readonly record struct SignatureTable
 		public Dictionary<GlobalSymbol, GlobalInfo> Globals { get; } = [];
 		public Dictionary<TypeSymbol, ISize> TypeSizes { get; } = [];
 		public Dictionary<FunctionSymbol, InlineDeclaration> InlineContexts { get; } = [];
+		public Dictionary<string, FunctionSymbol> PanicTargets { get; } = [];
 		
 		public SignatureTable Build() => new()
 		{
@@ -21,7 +22,8 @@ public readonly record struct SignatureTable
 			VariableTypes = VariableTypes.ToImmutableDictionary(),
 			Globals = Globals.ToImmutableDictionary(),
 			TypeSizes = TypeSizes.ToImmutableDictionary(),
-			InlineContexts = InlineContexts.ToImmutableDictionary()
+			InlineContexts = InlineContexts.ToImmutableDictionary(),
+			PanicTargets = PanicTargets
 		};
 	}
 	
@@ -31,6 +33,7 @@ public readonly record struct SignatureTable
 	public ImmutableDictionary<GlobalSymbol, GlobalInfo> Globals { get; init; }
 	public ImmutableDictionary<TypeSymbol, ISize> TypeSizes { get; init; }
 	public ImmutableDictionary<FunctionSymbol, InlineDeclaration> InlineContexts { get; init; }
+	public IReadOnlyDictionary<string, FunctionSymbol> PanicTargets { get; init; }
 	
 	public static readonly SignatureTable Empty = new()
 	{
@@ -39,7 +42,8 @@ public readonly record struct SignatureTable
 		VariableTypes = [],
 		Globals = [],
 		TypeSizes = [],
-		InlineContexts = []
+		InlineContexts = [],
+		PanicTargets = new Dictionary<string, FunctionSymbol>()
 	};
 	
 	public static SignatureTable Combine(params IEnumerable<SignatureTable> tables)
@@ -65,6 +69,9 @@ public readonly record struct SignatureTable
 			
 			foreach (var (function, declaration) in table.InlineContexts)
 				builder.InlineContexts[function] = declaration;
+			
+			foreach (var (path, target) in table.PanicTargets)
+				builder.PanicTargets[path] = target;
 		}
 		
 		return builder.Build();

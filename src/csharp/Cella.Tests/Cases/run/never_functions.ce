@@ -22,17 +22,17 @@ Loud: rec impl Failure
 {
 	level: i32
 
-	fail: fun(self, message: str) -> never = panic(message)
+	fail: fun(self, message: str) -> never = halt(message)
 }
 
-panic: fun(message: str) -> never
+halt: fun(message: str) -> never
 {
 	printf("Panic: %.*s\n", i32(message.byteLength), message.data)
 	fflush(null)
 	abort()
 }
 
-relay: fun(message: str) -> never = panic(message)
+relay: fun(message: str) -> never = halt(message)
 
 counter: var i32 = 0
 
@@ -43,7 +43,7 @@ spin: fun -> never
 		counter += 1
 		if counter == 3
 		{
-			panic("spun three times")
+			halt("spun three times")
 		}
 	}
 }
@@ -55,7 +55,7 @@ pick: fun(n: i32) -> i32
 		ret 10
 	}
 
-	panic("bad pick")
+	halt("bad pick")
 }
 
 unwrap: fun(choice: Choice) -> i32 = match choice
@@ -85,8 +85,8 @@ failWith[T: Failure]: fun(imm handler: T) -> i32
 
 main: fun -> i32
 {
-	val handler: fun[str -> never] = panic
-	val local = fun(message: str) -> never = panic(message)
+	val handler: fun[str -> never] = halt
+	val local = fun(message: str) -> never = halt(message)
 	printf("%d %d %d\n", pick(0), unwrap(Choice.some(4)), firstPositive([0, -1, 7]))
 	if counter > 0
 	{

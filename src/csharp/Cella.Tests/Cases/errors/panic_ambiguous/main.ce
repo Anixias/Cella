@@ -1,0 +1,6 @@
+mod test
+
+use alpha.*
+use beta.*
+
+main: fun -> i32 = 0

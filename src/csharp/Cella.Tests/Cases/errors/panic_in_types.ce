@@ -1,0 +1,15 @@
+mod test
+
+Box: rec
+{
+	x: i32
+
+	panic: op(message: str, location: str) -> never
+	{
+		while true
+		{
+		}
+	}
+}
+
+main: fun -> i32 = 0

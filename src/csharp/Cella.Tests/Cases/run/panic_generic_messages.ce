@@ -1,0 +1,39 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+	exit: fun(code: i32) -> never
+}
+
+Display: trait
+{
+	print: fun(imm self)
+}
+
+str: impl Display
+{
+	print: fun(self) = printf("%.*s", i32(self.byteLength), self.data)
+}
+
+i32: impl Display
+{
+	print: fun(self) = printf("%d", self)
+}
+
+panic[T: Display]: op(imm message: T, location: str) -> never
+{
+	printf("Panic at %.*s: ", i32(location.byteLength), location.data)
+	message.print()
+	printf("\n")
+	exit(4)
+}
+
+main: fun -> i32
+{
+	var i: i32 = 5
+	if i > 3
+		panic 42
+
+	ret i + 1
+}

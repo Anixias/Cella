@@ -17,29 +17,14 @@ public sealed partial class Resolver
 	public IResolvedDeclarationNode Visit(FileNode node)
 	{
 		var file = (FileSymbol)_symbolTable.DeclarationSymbols[node];
-		var imports = _signatures.GetImports(file);
-		
-		var resolutionContext = new ResolutionContext
-		{
-			File = file,
-			Imports = imports,
-			Modules = _signatures.Modules,
-			TypePool = _typePool,
-			Diagnostics = Diagnostics,
-			ExtSignatureTypes = _extSignatureTypes,
-			CopiedParameters = _copiedParameters,
-			EvaluateConstant = EvaluateConstant,
-			GenericTypes = [],
-			TrackInstance = TrackTypeInstance
-		};
-		
 		_importedFunctions.Clear();
-		_resolutionContexts.Push(resolutionContext);
+		_resolutionContexts.Push(CreateFileContext(file));
 		
 		var resolvedDeclarations = new List<IResolvedDeclarationNode>(node.Declarations.Length);
 		foreach (var declaration in node.Declarations)
 			resolvedDeclarations.Add(VisitNode(declaration));
 		
+		RecordPanicTarget(file, node);
 		resolvedDeclarations.AddRange(_lambdas.Where(lambda => lambda.FunctionInfo.File == file));
 		_lambdas.RemoveAll(lambda => lambda.FunctionInfo.File == file);
 		_resolutionContexts.Pop();
@@ -51,6 +36,20 @@ public sealed partial class Resolver
 		_importedFunctions.Clear();
 		return result;
 	}
+	
+	private ResolutionContext CreateFileContext(FileSymbol file) => new()
+	{
+		File = file,
+		Imports = _signatures.GetImports(file),
+		Modules = _signatures.Modules,
+		TypePool = _typePool,
+		Diagnostics = Diagnostics,
+		ExtSignatureTypes = _extSignatureTypes,
+		CopiedParameters = _copiedParameters,
+		EvaluateConstant = EvaluateConstant,
+		GenericTypes = [],
+		TrackInstance = TrackTypeInstance
+	};
 	
 	private void ReportTooLargeTypes()
 	{
@@ -101,6 +100,9 @@ public sealed partial class Resolver
 		};
 		
 		_resolutionContexts.Push(resolutionContext);
+		if (node is FunctionNode { Identifier.Type: TokenType.KeywordPanic } panic)
+			ReportPanicDeclaration(panic, info);
+		
 		var resolvedBody = InferLocals(() => VisitNode(body));
 		_resolutionContexts.Pop();
 		

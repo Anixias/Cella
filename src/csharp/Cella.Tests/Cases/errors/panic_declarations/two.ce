@@ -1,0 +1,8 @@
+mod two
+
+panic: op(message: str, location: i32) -> never
+{
+	while true
+	{
+	}
+}

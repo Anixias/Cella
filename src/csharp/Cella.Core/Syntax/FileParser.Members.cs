@@ -99,6 +99,12 @@ public sealed partial class FileParser
 	
 	private bool MatchOperatorName(ref int index, out Token symbol)
 	{
+		if (Peek(index + 1, TokenType.OpColon) && Match(ref index, out symbol, TokenType.KeywordPanic))
+		{
+			Report(symbol, "Cannot declare 'panic' operators in types");
+			return true;
+		}
+		
 		if (Peek(index + 1, TokenType.OpColon) && Match(ref index, out symbol, _undeclarableOperators))
 		{
 			Report(symbol, $"Cannot declare '{symbol.Text}' operators");
@@ -136,7 +142,10 @@ public sealed partial class FileParser
 			return null;
 		}
 		
-		var modifiers = ParseMemberModifiers(ref index, block);
+		var modifiers = symbol.Type == TokenType.KeywordPanic
+			? ParseDeclarationModifiers(ref index, block)
+			: ParseMemberModifiers(ref index, block);
+		
 		RejectWriteRestriction(modifiers, "operators");
 		return Match(ref index, _memberContextualKeywords, TokenType.KeywordOp)
 			? ParseFunction(ref index, symbol, modifiers, false, typeParameters)

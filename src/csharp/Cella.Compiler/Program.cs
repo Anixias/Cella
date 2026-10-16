@@ -662,8 +662,9 @@ internal static class Program
 		
 		// Phase 3: Symbol resolution
 		ImmutableArray<ResolvedFileNode> resolvedFiles;
+		IReadOnlyDictionary<string, FunctionInfo> panicAdapters;
 		{
-			resolvedFiles = [..files.Select(resolver.Resolve)];
+			(resolvedFiles, panicAdapters) = resolver.AddPanicAdapters([..files.Select(resolver.Resolve)]);
 			
 			resolver.ReportInfiniteInstantiations();
 			resolver.ReportAtomicInstances();
@@ -746,6 +747,7 @@ internal static class Program
 					.SelectMany(static d => d.GenericFunctions.Select(f => (f.Info.Symbol, d.Checks)))
 					.ToDictionary(static pair => pair.Symbol, static pair => pair.Checks),
 				Exports = exports,
+				PanicAdapters = panicAdapters,
 				LibraryStatics = allDependencies.SelectMany(static d => d.ExportedStatics).ToHashSet(),
 				StaticLibrarySymbols = allDependencies
 					.Where(d => d.OutputType == ProjectOutputType.StaticLibrary && !providers.ContainsKey(d.Name))
@@ -1016,15 +1018,118 @@ internal static class Program
 	{
 		var files = new List<FileNode>();
 		var diagnostics = new DiagnosticList();
+		var projectImports = await ParseProjectImports(project, flags, diagnostics, ct);
 		foreach (var path in CellaProject.FindSourceFiles(project.Directory).Order(StringComparer.Ordinal))
 		{
 			var (ast, fileDiagnostics) = await ParseFile(project, flags, path, ct);
 			diagnostics.AddRange(fileDiagnostics);
 			if (ast is { IsExcluded: false })
-				files.Add(ast);
+				files.Add(projectImports.IsEmpty
+					? ast
+					: new FileNode(ast.SourceLocation)
+					{
+						FileName = ast.FileName,
+						FullPath = ast.FullPath,
+						ModuleName = ast.ModuleName,
+						Declarations = ast.Declarations,
+						Imports = [..projectImports, ..ast.Imports]
+					});
 		}
 		
 		return ([..files], diagnostics);
+	}
+	
+	private static async Task<ImmutableArray<ImportExpression>> ParseProjectImports(ProjectInfo project,
+		IReadOnlyDictionary<string, bool> flags, DiagnosticList diagnostics, CancellationToken ct)
+	{
+		if (project.Project.Imports is not { Count: > 0 } entries)
+			return [];
+		
+		var text = await File.ReadAllTextAsync(project.FilePath, ct);
+		var ranges = FindImportEntries(text);
+		var isLocated = ranges.Count == entries.Count;
+		var imports = new List<ImportExpression>();
+		for (var i = 0; i < entries.Count; i++)
+		{
+			var (start, length) = isLocated ? ranges[i] : (0, entries[i].Length);
+			var entryText = isLocated ? text : entries[i];
+			var display = new StringSource(entryText, project.FilePath);
+			var blanked = string.Create(entryText.Length, (entryText, start, length), static (span, state) =>
+			{
+				for (var c = 0; c < span.Length; c++)
+					span[c] = c >= state.start && c < state.start + state.length || state.entryText[c] == '\n'
+						? state.entryText[c]
+						: ' ';
+			});
+			
+			var source = new StringSource(blanked, project.FilePath);
+			var keyword = new Token(TokenType.KeywordUse, new SourceLocation(display, new TextRange(start, start)),
+				"use");
+			
+			ImmutableArray<Token> tokens =
+			[
+				keyword,
+				..new FilteredScanner(source).Select(token =>
+					token with { SourceLocation = token.SourceLocation with { Source = display } })
+			];
+			
+			var parser = new FileParser(tokens, Path.GetFileName(project.FilePath), project.FilePath, flags);
+			if (parser.ParseImport() is { } import)
+				imports.Add(import);
+			
+			diagnostics.AddRange(parser.Diagnostics);
+		}
+		
+		return [..imports];
+	}
+	
+	private static List<(int Start, int Length)> FindImportEntries(string text)
+	{
+		var entries = new List<(int Start, int Length)>();
+		if (FindImportsList(text) is not { } open)
+			return entries;
+		
+		for (var i = open; i < text.Length && text[i] != ']'; i++)
+		{
+			if (text[i] == '#')
+			{
+				while (i < text.Length && text[i] != '\n')
+					i++;
+				
+				continue;
+			}
+			
+			if (text[i] is not ('"' or '\''))
+				continue;
+			
+			var quote = text[i];
+			var start = i + 1;
+			for (i = start; i < text.Length && text[i] != quote; i++)
+			{
+				if (quote == '"' && text[i] == '\\')
+					i++;
+			}
+			
+			entries.Add((start, i - start));
+		}
+		
+		return entries;
+	}
+	
+	private static int? FindImportsList(string text)
+	{
+		var offset = 0;
+		foreach (var line in text.Split('\n'))
+		{
+			var trimmed = line.TrimStart();
+			if (trimmed.StartsWith("Imports", StringComparison.Ordinal) &&
+			    trimmed["Imports".Length..].TrimStart().StartsWith('=') && line.IndexOf('[') is >= 0 and var bracket)
+				return offset + bracket + 1;
+			
+			offset += line.Length + 1;
+		}
+		
+		return null;
 	}
 	
 	private static async Task<(FileNode? Ast, List<Diagnostic> Diagnostics)> ParseFile(ProjectInfo project,

@@ -59,6 +59,7 @@ public enum TokenType
 	KeywordNew,
 	KeywordDefault,
 	KeywordDrop,
+	KeywordPanic,
 	KeywordRef,
 	
 	// Contextual Keywords
@@ -211,6 +212,7 @@ public static class TokenTypeInfo
 			[TokenType.KeywordNew] = new("new", IsKeyword: true),
 			[TokenType.KeywordDefault] = new("default", IsKeyword: true),
 			[TokenType.KeywordDrop] = new("drop", IsKeyword: true),
+			[TokenType.KeywordPanic] = new("panic", IsKeyword: true),
 			[TokenType.KeywordRef] = new("ref", IsKeyword: true),
 			
 			[TokenType.KeywordMod] = new("mod", IsKeyword: true, IsContextual: true),

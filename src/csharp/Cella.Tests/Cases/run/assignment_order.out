@@ -18,4 +18,4 @@ pick make bag[] drop7 | destructor
 pick compute 
 [stderr]
 Panic at assignment_order.ce:206:2: index out of bounds
-[exit code -1073740791]
+[exit code 101]

@@ -1,0 +1,9 @@
+mod test
+
+use lib
+
+main: fun -> i32
+{
+	val a = [7]
+	ret lib.second(a)
+}

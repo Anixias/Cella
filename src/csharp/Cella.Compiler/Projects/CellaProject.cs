@@ -23,7 +23,7 @@ public sealed partial class CellaProject
 		nameof(OverflowChecks), nameof(DebugInfo), nameof(ProjectReferences), nameof(Flags)
 	];
 	
-	private static readonly HashSet<string> _settingNames = [.._whenSettingNames, nameof(When)];
+	private static readonly HashSet<string> _settingNames = [.._whenSettingNames, nameof(Imports), nameof(When)];
 	
 	[TomlValueOnSerialized]
 	public required ProjectOutputType OutputType { get; init; }
@@ -48,6 +48,9 @@ public sealed partial class CellaProject
 	
 	[TomlValueOnSerialized]
 	public Dictionary<string, bool>? Flags { get; init; }
+	
+	[TomlValueOnSerialized]
+	public List<string>? Imports { get; init; }
 	
 	public Dictionary<string, ProjectSettings> When { get; } = [];
 	
@@ -191,11 +194,29 @@ public sealed partial class CellaProject
 					CheckFlags(value, condition, path, errors);
 					break;
 				
+				case nameof(Imports) when !IsStringList(value):
+					errors.Add($"{path}: '{name}' must be a list of strings");
+					break;
+				
 				case nameof(When) when condition is null:
 					CheckConditions(value, path, errors);
 					break;
 			}
 		}
+	}
+	
+	private static bool IsStringList(TomlDocumentNode value)
+	{
+		if (!value.TryGetArray(out var entries))
+			return false;
+		
+		for (var i = 0; i < entries.Count; i++)
+		{
+			if (value[i].ValueType != TomlValueType.String)
+				return false;
+		}
+		
+		return true;
 	}
 	
 	private static void CheckChoice<T>(TomlDocumentNode value, string name, string place, string path,
@@ -334,7 +355,8 @@ public sealed partial class CellaProject
 				..ProjectReferences ?? [],
 				..matching.SelectMany(static entry => entry.Settings.ProjectReferences ?? [])
 			],
-			Flags = Flags
+			Flags = Flags,
+			Imports = Imports
 		};
 	}
 	

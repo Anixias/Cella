@@ -26,9 +26,14 @@ Error at line 37, column 2
 37 │ drop
      ╘══╛ Expected an expression
 
-Error at line 50, column 12
-49 │ var box = Box(1)
-50 │ box.limit++
+Error at line 44, column 2
+43 │ {
+44 │     panic
+         ╘═══╛ Expected an expression
+
+Error at line 56, column 12
+55 │ var box = Box(1)
+56 │ box.limit++
                ^ Expected an expression
 
 [compilation failed]

@@ -1,0 +1,19 @@
+
+====== test.celp ======
+
+Error at line 3, column 16
+2 │ SystemLinkPreference = "Dynamic"
+3 │ Imports = ["lib..x", "a b", "", "x.[y, z]"]
+                   ╘╛ Expected the end of the line
+
+Error at line 3, column 25
+2 │ SystemLinkPreference = "Dynamic"
+3 │ Imports = ["lib..x", "a b", "", "x.[y, z]"]
+                            ^ Expected the end of the line
+
+Error at line 3, column 30
+2 │ SystemLinkPreference = "Dynamic"
+3 │ Imports = ["lib..x", "a b", "", "x.[y, z]"]
+                                 ^ Expected a module name
+
+[compilation failed]

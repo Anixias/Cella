@@ -1,3 +1,3 @@
 [stderr]
 Panic at atomic_overflow.ce:12:10: addition overflow
-[exit code -1073740791]
+[exit code 101]

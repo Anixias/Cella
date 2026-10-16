@@ -1,0 +1,22 @@
+
+====== main.ce ======
+
+Error at line 3, column 23
+2 │ 
+3 │ missing: fun -> i32 = panic "nothing here"
+                          ╘═══╛ Symbol 'panic' not found in this scope
+
+
+====== other.ce ======
+
+Error at line 15, column 28
+14 │ 
+15 │ number: fun -> i32 = panic Point(1)
+                                ╘══════╛ 'panic' doesn't accept 'Point'
+
+Error at line 17, column 25
+16 │ 
+17 │ notModule: fun -> i32 = number.panic "x"
+                             ╘════╛ 'number' is not a module
+
+[compilation failed]

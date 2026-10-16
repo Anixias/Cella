@@ -47,6 +47,7 @@ public sealed partial class SignatureCollector
 	private readonly SignatureTable.Builder _builder = new();
 	private readonly Dictionary<Symbol, Declaration> _declarations = [];
 	private readonly HashSet<SourceLocation> _reportedImportConflicts = [];
+	private readonly HashSet<(SourceLocation, string)> _reportedImportErrors = [];
 	
 	private readonly List<(List<(Symbol Symbol, Token Name, string Module)> Imports, ResolutionContext Context)>
 		_explicitImports = [];
@@ -163,7 +164,7 @@ public sealed partial class SignatureCollector
 	{
 		ReportDuplicateDeclarations();
 		foreach (var (imports, context) in _explicitImports)
-			ReportImportConflicts(imports, context);
+			ReportOnce(() => ReportImportConflicts(imports, context));
 		
 		ReportPlainNameConflicts();
 		ReportModuleConflicts();
@@ -202,6 +203,11 @@ public sealed partial class SignatureCollector
 	}
 	
 	public ImportEnvironment GetImports(FileSymbol file) => _builder.ImportEnvironments[file];
+	
+	public IEnumerable<KeyValuePair<string, FunctionSymbol>> PanicTargets =>
+		_dependencyTable.PanicTargets.Concat(_builder.PanicTargets);
+	
+	public void AddPanicTarget(string path, FunctionSymbol target) => _builder.PanicTargets[path] = target;
 	
 	public ResolutionContext? FindInlineContext(FunctionSymbol function) =>
 		_builder.InlineContexts.TryGetValue(function, out var declaration) ? declaration.Context

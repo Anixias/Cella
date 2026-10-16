@@ -63,6 +63,10 @@ public sealed partial class FileParser
 			{
 				parts.Add(part);
 			}
+			else if (Match(ref index, out var panic, TokenType.KeywordPanic))
+			{
+				import = new TokenImport(panic);
+			}
 			else if (Match(ref index, out var openBracket, TokenType.OpOpenBracket))
 			{
 				if (ParseImportList(ref index, openBracket) is not { } list)
@@ -115,7 +119,8 @@ public sealed partial class FileParser
 					continue;
 			}
 			
-			if (!Match(ref index, out var name, TokenType.Identifier))
+			if (!Match(ref index, out var name, TokenType.Identifier) &&
+			    !Match(ref index, out name, TokenType.KeywordPanic))
 			{
 				ReportExpected(index, "a name");
 				return null;

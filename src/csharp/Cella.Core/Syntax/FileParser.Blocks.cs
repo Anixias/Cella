@@ -66,6 +66,12 @@ public sealed partial class FileParser
 		return false;
 	}
 	
+	public ImportExpression? ParseImport()
+	{
+		var index = 1;
+		return ParseImportExpression(ref index);
+	}
+	
 	public bool? ParseCondition()
 	{
 		var index = 0;

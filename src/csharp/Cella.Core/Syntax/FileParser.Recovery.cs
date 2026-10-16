@@ -181,7 +181,8 @@ public sealed partial class FileParser
 		TokenType.KeywordVal, TokenType.KeywordVar, TokenType.KeywordConst, TokenType.KeywordRet, TokenType.KeywordIf,
 		TokenType.KeywordFor,
 		TokenType.KeywordWhile, TokenType.KeywordDo, TokenType.KeywordLoop, TokenType.KeywordMatch,
-		TokenType.KeywordDrop, TokenType.KeywordWhen, TokenType.KeywordBreak, TokenType.KeywordCont
+		TokenType.KeywordDrop, TokenType.KeywordWhen, TokenType.KeywordBreak, TokenType.KeywordCont,
+		TokenType.KeywordPanic
 	];
 	
 	private bool ResyncStatement(ref int index, int start)

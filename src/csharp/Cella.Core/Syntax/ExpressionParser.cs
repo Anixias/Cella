@@ -46,6 +46,7 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 		TokenType.KeywordFun,
 		TokenType.KeywordDyn,
 		TokenType.KeywordAtomic,
+		TokenType.KeywordPanic,
 		TokenType.KeywordRet,
 		TokenType.KeywordBreak,
 		TokenType.KeywordCont
@@ -694,6 +695,8 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 			node = ParseMatch(ref index, match);
 		else if (Match(ref index, out var jump, _jumpKeywords))
 			return ParseJump(ref index, jump);
+		else if (Match(ref index, out var panic, TokenType.KeywordPanic))
+			return ParsePanic(ref index, panic, null);
 		else if (Match(ref index, out var interpolated, TokenType.InterpolatedStringLiteral))
 			node = ParseInterpolatedString(interpolated);
 		else
@@ -857,6 +860,12 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 		
 		return new MatchExpressionArmNode(patterns, guard, location, ParseExpression(ref index));
 	}
+	
+	private PanicExpressionNode ParsePanic(ref int index, Token keyword, IExpressionNode? qualifier) =>
+		new(keyword, qualifier,
+			AtEnd(index) || IsNextNewline(index)
+				? throw Expected(index - 1, "an expression")
+				: ParseExpression(ref index));
 	
 	private IExpressionNode ParseJump(ref int index, Token keyword)
 	{
@@ -1024,6 +1033,9 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 			// Access Expression
 			if (Match(ref index, TokenType.OpDot))
 			{
+				if (Match(ref index, out var qualifiedPanic, TokenType.KeywordPanic))
+					return ParsePanic(ref index, qualifiedPanic, target);
+				
 				if (!Match(ref index, out var member, TokenType.Identifier) &&
 				    !MatchOperatorName(ref index, out member))
 				{

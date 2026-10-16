@@ -1,0 +1,5 @@
+mod test
+
+missing: fun -> i32 = panic "nothing here"
+
+main: fun -> i32 = 0

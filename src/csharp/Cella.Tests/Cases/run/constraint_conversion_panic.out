@@ -1,4 +1,4 @@
 1
 [stderr]
 Panic at constraint_conversion_panic.ce:10:39: 'Color' has no case with this value
-[exit code -1073740791]
+[exit code 101]

@@ -1,4 +1,4 @@
 2
 [stderr]
 Panic at lib.ce:6:6: index out of bounds
-[exit code -1073740791]
+[exit code 101]

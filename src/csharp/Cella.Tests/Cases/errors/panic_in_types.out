@@ -1,0 +1,9 @@
+
+====== panic_in_types.ce ======
+
+Error at line 7, column 2
+6 │ 
+7 │ panic: op(message: str, location: str) -> never
+    ╘═══╛ Cannot declare 'panic' operators in types
+
+[compilation failed]

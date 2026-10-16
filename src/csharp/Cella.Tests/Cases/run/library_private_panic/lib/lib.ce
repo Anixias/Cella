@@ -1,0 +1,19 @@
+mod lib
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+	exit: fun(code: i32) -> never
+}
+
+panic: op(message: str, location: str) -> never
+{
+	printf("private panic at %.*s: %.*s\n", i32(location.byteLength), location.data, i32(message.byteLength), message.data)
+	exit(11)
+}
+
+second[T: copy]: pub fun(items: array[T, 1]) -> T
+{
+	var i: usize = 1
+	ret items[i]
+}

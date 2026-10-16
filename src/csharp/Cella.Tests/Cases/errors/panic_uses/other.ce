@@ -1,0 +1,17 @@
+mod other
+
+panic: op(message: str, location: str) -> never
+{
+	while true
+	{
+	}
+}
+
+Point: rec
+{
+	x: i32
+}
+
+number: fun -> i32 = panic Point(1)
+
+notModule: fun -> i32 = number.panic "x"

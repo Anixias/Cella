@@ -1,0 +1,8 @@
+mod beta
+
+panic: pub op(message: str, location: str) -> never
+{
+	while true
+	{
+	}
+}

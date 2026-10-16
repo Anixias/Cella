@@ -269,10 +269,12 @@ public sealed partial class CodeGenerator
 		builder.BuildCondBr(condition, panicBlock, continueBlock);
 		
 		builder.PositionAtEnd(panicBlock);
-		var text = $"Panic at {DescribeLocation(location)}: {message}\n";
-		var length = LLVMValueRef.CreateConstInt(_context.Int32Type, (ulong)Encoding.UTF8.GetByteCount(text));
-		var messagePointer = builder.BuildGlobalStringPtr(text, "panic.message");
-		builder.BuildCall2(PanicType, GetPanicFunction(), [messagePointer, length]);
+		if (_inputs.PanicAdapters.TryGetValue(location.Source.FilePath, out var adapter))
+			EmitValue(new CallValue(adapter, [CreateStr(message), CreateStr(DescribeLocation(location))], location),
+				builder);
+		else
+			builder.BuildCall2(TrapType, GetTrapFunction(), []);
+		
 		builder.BuildUnreachable();
 		
 		builder.PositionAtEnd(continueBlock);
@@ -295,31 +297,12 @@ public sealed partial class CodeGenerator
 		Path.GetRelativePath(root, path) is var relative && !Path.IsPathRooted(relative) && relative != ".." &&
 		!relative.StartsWith(".." + Path.DirectorySeparatorChar, StringComparison.Ordinal);
 	
-	private LLVMValueRef GetPanicFunction()
+	private LLVMValueRef GetTrapFunction() => GetIntrinsic("llvm.trap", TrapType);
+	
+	private static ConstantValue CreateStr(string text)
 	{
-		if (current.PanicFunction.Handle != IntPtr.Zero)
-			return current.PanicFunction;
-		
-		var panicFunction = current.Module.AddFunction("panic", PanicType);
-		panicFunction.Linkage = LLVMLinkage.LLVMInternalLinkage;
-		current.PanicFunction = panicFunction;
-		using var builder = CreateGeneratedBuilder(panicFunction, panicFunction.Name, SourceLocation.None);
-		
-		var flushType = LLVMTypeRef.CreateFunction(_context.Int32Type, [OpaquePointer]);
-		builder.BuildCall2(flushType, GetCFunction("fflush", flushType), [LLVMValueRef.CreateConstNull(OpaquePointer)]);
-		
-		var isWindows = TargetTriple.Contains("windows");
-		var countType = isWindows ? _context.Int32Type : MapTypeSymbol(NativeSymbols.UIntSize);
-		var writeType = LLVMTypeRef.CreateFunction(countType, [_context.Int32Type, OpaquePointer, countType]);
-		var length = isWindows ? panicFunction.GetParam(1) : builder.BuildZExt(panicFunction.GetParam(1), countType);
-		var standardError = LLVMValueRef.CreateConstInt(_context.Int32Type, 2);
-		builder.BuildCall2(writeType, GetCFunction(isWindows ? "_write" : "write", writeType),
-			[standardError, panicFunction.GetParam(0), length]);
-		
-		var abortType = LLVMTypeRef.CreateFunction(_context.VoidType, []);
-		builder.BuildCall2(abortType, GetCFunction("abort", abortType), []);
-		builder.BuildUnreachable();
-		return panicFunction;
+		var bytes = Encoding.UTF8.GetBytes(text);
+		return new ConstantValue(NativeSymbols.Str, new StrValue((ulong)bytes.Length, bytes));
 	}
 	
 	private LLVMValueRef GetCFunction(string name, LLVMTypeRef type)
