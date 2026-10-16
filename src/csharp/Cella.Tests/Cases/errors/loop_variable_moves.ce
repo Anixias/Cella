@@ -50,16 +50,16 @@ walk: fun(imm countdown: Countdown) -> i32
 main: fun -> i32
 {
 	var names = [Name(1), Name(2)]
-	for name in names
+	for imm name in names
 		take(own name)
 
-	for name in mut names
+	for mut name in names
 	{
 		val copy: Name = name
 	}
 
 	var group = [Name(3), Name(4)]
-	for name in group
+	for imm name in group
 		takeAll(own group)
 
 	var c = Countdown(3)

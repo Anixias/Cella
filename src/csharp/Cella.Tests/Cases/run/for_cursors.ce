@@ -103,7 +103,7 @@ main: fun -> i32
 	for x in bag
 		total += x
 
-	for x in mut bag
+	for mut x in bag
 		x += 10
 
 	for x in bag
@@ -154,7 +154,7 @@ main: fun -> i32
 		seen += x
 
 	var skipped = 0
-	for x in mut s
+	for mut x in mut s
 	{
 		x -= 1
 		skipped += 1

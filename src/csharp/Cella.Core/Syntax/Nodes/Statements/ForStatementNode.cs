@@ -17,6 +17,7 @@ public sealed class ForStatementNode
 	public SourceLocation SourceLocation { get; } = sourceLocation;
 	public Token Binding { get; } = binding;
 	public Token? Mode { get; } = mode;
+	public Token? BindingMode { get; init; }
 	public IExpressionNode Source { get; } = source;
 	public Token? RangeOperator { get; } = rangeOperator;
 	public IExpressionNode? End { get; } = end;

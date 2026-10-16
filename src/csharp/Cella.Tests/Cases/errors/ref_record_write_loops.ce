@@ -34,7 +34,7 @@ main: fun -> i32
 {
 	val four = [1, 2, 3, 4]
 	val v = view[i32](@four, 4)
-	for x in mut v
+	for mut x in v
 		x = 0
 
 	ret 0

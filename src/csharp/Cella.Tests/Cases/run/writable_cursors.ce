@@ -46,7 +46,7 @@ spanCursor[T]: ref rec
 
 double: fun(values: span[i32])
 {
-	for value in values
+	for mut value in values
 	{
 		value *= 2
 	}
@@ -54,7 +54,7 @@ double: fun(values: span[i32])
 
 shift: fun(points: span[Point], by: i32)
 {
-	for point in points
+	for mut point in points
 	{
 		point.x += by
 		point.y -= by
@@ -66,7 +66,7 @@ main: fun -> i32
 	var numbers = [1, 2, 3]
 	double(mut numbers)
 	val all: span[i32] = mut numbers
-	for value in all
+	for mut value in all
 	{
 		value += 1
 	}

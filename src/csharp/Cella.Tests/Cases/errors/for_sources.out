@@ -48,7 +48,7 @@ Error at line 145, column 11
 
 Error at line 150, column 15
 149 │ var r = ReadOnly(1)
-150 │ for _ in mut r
+150 │ for mut _ in r
                    ^ Cannot iterate over 'ReadOnly' with 'mut'
 
 Error at line 155, column 11

@@ -2,12 +2,12 @@
 ====== mut_loop_variable_refills.ce ======
 
 Error at line 32, column 12
-31 │ for buffer in mut buffers
+31 │ for mut buffer in buffers
 32 │     take(own buffer)
                   ╘════╛ Cannot leave 'mut' loop variables moved
 
 Error at line 38, column 12
-37 │ for pair in mut pairs
+37 │ for mut pair in pairs
 38 │     take(own pair.left)
                   ╘═══════╛ Cannot leave 'mut' loop variables partly moved
 
@@ -27,7 +27,7 @@ Error at line 71, column 18
                         ╘═══════════════╛ Cannot move fields out of values with destructors
 
 Error at line 79, column 12
-78 │ for buffer in buffers
+78 │ for imm buffer in buffers
 79 │     take(own buffer)
                   ╘════╛ Cannot move loop variables
 

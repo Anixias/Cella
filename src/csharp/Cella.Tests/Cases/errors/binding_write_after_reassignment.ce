@@ -48,7 +48,7 @@ main: fun -> i32
 	}
 
 	var arr = [Buffer(4), Buffer(5)]
-	for b in mut arr
+	for mut b in arr
 	{
 		arr = [Buffer(6), Buffer(7)]
 		b.id = 9

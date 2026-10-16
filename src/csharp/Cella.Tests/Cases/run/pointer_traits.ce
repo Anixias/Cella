@@ -36,7 +36,7 @@ ptr[T]: impl Named
 
 contains[T: Eq]: fun(imm values: array[T, 3], imm item: T) -> bool
 {
-	for value in values
+	for imm value in values
 	{
 		if value == item
 			ret true

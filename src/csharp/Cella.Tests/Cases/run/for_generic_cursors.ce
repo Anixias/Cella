@@ -95,7 +95,7 @@ walk: fun(mut cursor: dyn[Cursor[i32]]) -> i32
 ids[S: Collection[Name, C], C: Cursor[Name]]: fun(imm collection: S) -> i32
 {
 	var sum = 0
-	for name in collection
+	for imm name in collection
 		sum = sum * 10 + name.id
 
 	ret sum

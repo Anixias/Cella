@@ -36,11 +36,11 @@ main: fun -> i32
 		x = 1
 
 	var steps = Steps(3)
-	for x in mut steps
+	for mut x in mut steps
 		x = 1
 
 	var editor = Editor(3)
-	for x in mut editor
+	for mut x in mut editor
 		x = 1
 
 	ret 0

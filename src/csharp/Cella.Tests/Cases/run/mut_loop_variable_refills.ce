@@ -19,7 +19,7 @@ main: fun -> i32
 {
 	var buffers = [Buffer(1), Buffer(2)]
 	var spare = Buffer(9)
-	for buffer in mut buffers
+	for mut buffer in buffers
 	{
 		val old = own buffer
 		buffer = own spare

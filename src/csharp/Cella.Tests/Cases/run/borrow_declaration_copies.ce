@@ -44,7 +44,7 @@ main: fun -> i32
 	alias += 1
 	var points = [Point(1), Point(2)]
 	var total = 0
-	for q in mut points
+	for mut q in points
 	{
 		val start = q
 		q.x += 10

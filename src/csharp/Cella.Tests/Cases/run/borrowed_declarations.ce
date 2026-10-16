@@ -96,14 +96,14 @@ parameters: fun
 bindings: fun
 {
 	val textures = [Texture(5), Texture(6)]
-	for texture in textures
+	for imm texture in textures
 	{
 		val same = texture
 		printf("loop %d\n", same.id)
 	}
 
 	var changed = [Texture(7), Texture(8)]
-	for texture in mut changed
+	for mut texture in changed
 	{
 		texture.id += 10
 		val same = texture

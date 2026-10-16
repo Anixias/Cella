@@ -11,9 +11,8 @@ public sealed partial class Resolver
 {
 	public IResolvedExpressionNode Visit(OwnExpressionNode node)
 	{
-		var isPlace = node.Value is VarExpressionNode or AccessExpressionNode or IndexerExpressionNode
-			              or UnaryOpExpressionNode { Op.Type: TokenType.OpStar }
-		              || node.Value is BinaryOpExpressionNode binary && IsAssignment(binary.Op.Type);
+		var isPlace = IsPlaceSyntax(node.Value) ||
+		              node.Value is BinaryOpExpressionNode binary && IsAssignment(binary.Op.Type);
 		
 		var value = VisitNode(node.Value, isPlace ? null : CurrentTargetType);
 		if (IsInvalid(value))
@@ -30,6 +29,10 @@ public sealed partial class Resolver
 		
 		return value;
 	}
+	
+	private static bool IsPlaceSyntax(IExpressionNode node) =>
+		node is VarExpressionNode or AccessExpressionNode or IndexerExpressionNode
+			or UnaryOpExpressionNode { Op.Type: TokenType.OpStar };
 	
 	public IResolvedExpressionNode Visit(AtomicExpressionNode node)
 	{

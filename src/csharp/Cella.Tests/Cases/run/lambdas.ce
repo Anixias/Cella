@@ -16,7 +16,7 @@ each: fun(values: array[i32, 3], visit: fun[i32])
 
 bumpAll: fun(mut values: array[i32, 3], bump: fun[mut i32])
 {
-	for value in mut values
+	for mut value in values
 		bump(mut value)
 }
 

@@ -44,7 +44,7 @@ Slot: enum
 
 firstOf: fun(imm boxes: array[TextureBox, 2]) -> imm[Texture]
 {
-	for box in boxes
+	for imm box in boxes
 		ret *box
 
 	ret *boxes[0]
@@ -53,14 +53,14 @@ firstOf: fun(imm boxes: array[TextureBox, 2]) -> imm[Texture]
 main: fun -> i32
 {
 	var boxes = [TextureBox(Texture(1)), TextureBox(Texture(2))]
-	for box in mut boxes
+	for mut box in boxes
 	{
 		val before = *box
 		printf("before %d\n", before.id)
 		box = TextureBox(Texture(3))
 	}
 
-	for box in mut boxes
+	for mut box in boxes
 	{
 		box = TextureBox(Texture(4))
 		val after = *box
@@ -70,7 +70,7 @@ main: fun -> i32
 	var spare = TextureBox(Texture(5))
 	var kept = *spare
 	var first = true
-	for box in mut boxes
+	for mut box in boxes
 	{
 		if first
 		{

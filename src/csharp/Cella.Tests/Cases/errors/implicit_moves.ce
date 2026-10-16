@@ -99,7 +99,7 @@ twice: fun
 loops: fun
 {
 	val textures = [Texture(13), Texture(14)]
-	for texture in textures
+	for imm texture in textures
 		take(texture)
 }
 

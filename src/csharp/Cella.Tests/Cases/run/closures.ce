@@ -135,7 +135,7 @@ main: fun -> i32
 
 	val texts = [Text(6), Text(7)]
 	var sum = 0
-	for text in texts
+	for imm text in texts
 		sum += call(fun = text.id * 10)
 
 	printf("%d %d %f\n", sum, repeat(4), repeat(2.5))

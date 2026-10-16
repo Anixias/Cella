@@ -78,7 +78,7 @@ Error at line 96, column 7
                 | Moved on line 95
 
 Error at line 103, column 8
-102 │ for texture in textures
+102 │ for imm texture in textures
 103 │     take(texture)
                ╘═════╛ Cannot move loop variables
 

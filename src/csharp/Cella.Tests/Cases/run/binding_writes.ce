@@ -36,7 +36,7 @@ main: fun -> i32
 	}
 
 	var arr = [Buffer(7), Buffer(8)]
-	for b in mut arr
+	for mut b in arr
 		b.id = b.id + 10
 
 	printf("%d %d\n", arr[0].id, arr[1].id)

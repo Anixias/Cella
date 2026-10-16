@@ -109,7 +109,7 @@ set: fun(mut target: i32, value: i32)
 
 zero: fun(values: span[i32])
 {
-	for value in mut values
+	for mut value in values
 		value = 0
 }
 

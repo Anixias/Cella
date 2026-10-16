@@ -7,7 +7,7 @@ Error at line 44, column 11
               ╘═══════╛ Cannot move read-only parameters
 
 Error at line 54, column 12
-53 │ for name in names
+53 │ for imm name in names
 54 │     take(own name)
                   ╘══╛ Cannot move loop variables
 
@@ -16,15 +16,15 @@ Error at line 58, column 20
 58 │     val copy: Name = name
                           ╘══╛ Cannot move 'Name' values implicitly
 
-Error at line 62, column 14
+Error at line 62, column 18
 61 │ var group = [Name(3), Name(4)]
-62 │ for name in group
-                 ╘═══╛ Cannot use borrows of moved values
-                     | Borrowed by this loop
-                     | Moved on line 63 in an earlier iteration
+62 │ for imm name in group
+                     ╘═══╛ Cannot use borrows of moved values
+                         | Borrowed by this loop
+                         | Moved on line 63 in an earlier iteration
 
 Error at line 63, column 15
-62 │ for name in group
+62 │ for imm name in group
 63 │     takeAll(own group)
                      ╘═══╛ Cannot use moved values
                          | Moved here in an earlier iteration

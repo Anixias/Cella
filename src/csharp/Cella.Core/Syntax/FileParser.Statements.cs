@@ -169,6 +169,8 @@ public sealed partial class FileParser
 	
 	private ForStatementNode? ParseForStatement(ref int index, Token keyword, Token? label)
 	{
+		Token? bindingMode = Match(ref index, out var modeKeyword, _loopBindingModes) ? modeKeyword : null;
+		
 		if (!Match(ref index, out var binding, TokenType.Identifier))
 		{
 			ReportExpected(index, "a name");
@@ -205,6 +207,9 @@ public sealed partial class FileParser
 		
 		return ParseStatement(ref index) is { } body
 			? new(SpanLoop(keyword, label, body.SourceLocation), binding, mode, source, rangeOperator, end, body, label)
+			{
+				BindingMode = bindingMode
+			}
 			: null;
 	}
 	

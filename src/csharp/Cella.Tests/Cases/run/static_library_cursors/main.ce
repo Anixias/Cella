@@ -25,7 +25,7 @@ Down: rec impl lib.Cursor[i32]
 main: fun -> i32
 {
 	var bag = lib.make()
-	for x in mut bag
+	for mut x in bag
 		x *= 3
 
 	var total = 0

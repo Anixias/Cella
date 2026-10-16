@@ -3,7 +3,7 @@
 
 Error at line 37, column 15
 36 │ val v = view[i32](@four, 4)
-37 │ for x in mut v
+37 │ for mut x in v
                   ^ Cannot iterate over 'view[i32]' with 'mut'
 
 [compilation failed]

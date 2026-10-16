@@ -36,11 +36,11 @@ main: fun -> i32
 		v = 5
 
 	val fixed = [1, 2]
-	for v in mut fixed
+	for mut v in fixed
 	{
 	}
 
-	for v in mut [1, 2]
+	for mut v in [1, 2]
 	{
 	}
 

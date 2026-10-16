@@ -51,7 +51,7 @@ BagCursor: ref rec
 largest: fun(mut bag: Bag) -> i32
 {
 	var best: imm[Name] = bag.items[0]
-	for name in mut bag
+	for imm name in mut bag
 	{
 		if name.id > best.id
 			best = name

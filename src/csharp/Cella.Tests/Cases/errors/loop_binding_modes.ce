@@ -1,0 +1,81 @@
+mod test
+
+Name: rec
+{
+	id: i32
+
+	drop: op {}
+}
+
+Countdown: rec
+{
+	left: i32
+
+	for: op(mut self) -> bool
+	{
+		self.left -= 1
+		ret self.left >= 0
+	}
+
+	*: op(imm self) -> imm[i32] = imm self.left
+}
+
+Slots: rec
+{
+	values: array[i32, 3]
+
+	in: op(mut self) -> SlotCursor = SlotCursor(@self.values[0], 0, 0)
+}
+
+SlotCursor: rec
+{
+	data: ptr[i32]
+	current: usize
+	next: usize
+
+	for: op(mut self) -> bool
+	{
+		self.current = self.next
+		self.next += 1
+		ret self.current < 3
+	}
+
+	*: op(mut self) -> mut[i32] = mut self.data[self.current]
+}
+
+main: fun -> i32
+{
+	var counts = [1, 2, 3]
+	val names = [Name(1)]
+	for n in names
+	{
+	}
+
+	for c in mut counts
+	{
+	}
+
+	for n in own names
+	{
+	}
+
+	for mut i in 0..3
+	{
+	}
+
+	var down = Countdown(3)
+	for mut x in down
+	{
+	}
+
+	for own x in down
+	{
+	}
+
+	var slots = Slots([1, 2, 3])
+	for mut s in mut slots
+	{
+	}
+
+	ret 0
+}

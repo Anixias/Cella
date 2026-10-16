@@ -23,12 +23,12 @@ Error at line 36, column 3
 
 Error at line 39, column 15
 38 │ val fixed = [1, 2]
-39 │ for v in mut fixed
+39 │ for mut v in fixed
                   ╘═══╛ Cannot mutably borrow values
 
 Error at line 43, column 15
 42 │ 
-43 │ for v in mut [1, 2]
+43 │ for mut v in [1, 2]
                   ╘════╛ Cannot mutably borrow unstored values
 
 Error at line 48, column 3

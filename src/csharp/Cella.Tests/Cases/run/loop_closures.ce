@@ -11,7 +11,7 @@ main: fun -> i32
 {
 	var values = [10, 20, 30]
 	var total = 0
-	for v in mut values
+	for mut v in values
 	{
 		val get = fun -> i32 = v
 		total += get() + apply(fun -> i32 = v)

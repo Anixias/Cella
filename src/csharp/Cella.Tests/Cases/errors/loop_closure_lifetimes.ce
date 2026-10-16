@@ -6,7 +6,7 @@ main: fun -> i32
 	var first: ref fun[-> i32] = fun -> i32 = 0
 	var last: ref fun[-> i32] = fun -> i32 = 0
 	var i = 0
-	for v in mut values
+	for mut v in values
 	{
 		val get = fun -> i32 = v
 		if i == 0

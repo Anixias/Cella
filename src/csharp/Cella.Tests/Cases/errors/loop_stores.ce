@@ -6,7 +6,7 @@ Words: ref rec
 
 	fill: fun(mut self, other: str)
 	{
-		for w in mut self.items
+		for mut w in self.items
 			w = other
 	}
 }
@@ -19,7 +19,7 @@ Slot: ref enum
 
 replaceAll: fun(mut words: array[str, 2], other: str)
 {
-	for w in mut words
+	for mut w in words
 		w = other
 }
 
@@ -35,7 +35,7 @@ replaceFirst: fun(mut words: array[str, 2], other: str)
 
 fillSlots: fun(mut slots: array[Slot, 2], other: str)
 {
-	for slot in mut slots
+	for mut slot in slots
 	{
 		match mut slot
 		{
@@ -47,7 +47,7 @@ fillSlots: fun(mut slots: array[Slot, 2], other: str)
 
 fillStatic: fun(mut words: array[str, 2])
 {
-	for w in mut words
+	for mut w in words
 		w = "q"
 }
 

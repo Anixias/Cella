@@ -39,9 +39,9 @@ Grid: rec
 
 	double: fun(mut self)
 	{
-		for row in mut self.cells
+		for mut row in self.cells
 		{
-			for cell in mut row
+			for mut cell in row
 				cell *= 2
 		}
 	}
@@ -53,14 +53,14 @@ names: fun -> array[Name, 2] = [Name(7), Name(8)]
 
 fill: fun(mut values: array[i32, 3], value: i32)
 {
-	for v in mut values
+	for mut v in values
 		v = value
 }
 
 largest: fun(imm names: array[Name, 3]) -> i32
 {
 	var best: imm[Name] = names[0]
-	for name in names
+	for imm name in names
 	{
 		if name.id > best.id
 			best = name
@@ -76,7 +76,7 @@ main: fun -> i32
 	for v in values
 		total += v
 
-	for v in mut values
+	for mut v in values
 		v *= 10
 
 	for v in values
@@ -92,7 +92,7 @@ main: fun -> i32
 	var grid = Grid([[1, 2], [3, 4]])
 	grid.double()
 	var points = [Point(1, 2), Point(3, 4)]
-	for p in mut points
+	for mut p in points
 		p.y += p.x
 
 	var empty: array[i32, 0]
@@ -103,7 +103,7 @@ main: fun -> i32
 
 	val group = [Name(3), Name(9), Name(5)]
 	printf("%d\n", largest(imm group))
-	for name in names()
+	for imm name in names()
 		printf("name %d\n", name.id)
 
 	printf("done\n")

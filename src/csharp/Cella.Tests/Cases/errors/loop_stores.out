@@ -2,12 +2,12 @@
 ====== loop_stores.ce ======
 
 Error at line 10, column 8
- 9 │ for w in mut self.items
+ 9 │ for mut w in self.items
 10 │     w = other
              ╘═══╛ Cannot store new borrows in 'self'
 
 Error at line 23, column 7
-22 │ for w in mut words
+22 │ for mut w in words
 23 │     w = other
              ╘═══╛ Cannot store new borrows in 'mut' parameters
 

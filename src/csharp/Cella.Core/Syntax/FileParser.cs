@@ -73,6 +73,9 @@ public sealed partial class FileParser
 	
 	private static readonly HashSet<TokenType> _rangeOperators = [TokenType.OpDotDot, TokenType.OpDotDotEqual];
 	
+	private static readonly HashSet<TokenType> _loopBindingModes =
+		[TokenType.KeywordImm, TokenType.KeywordMut, TokenType.KeywordOwn];
+	
 	private static readonly HashSet<TokenType> _accessorKeywords = [TokenType.KeywordGet, TokenType.KeywordSet];
 	
 	private static readonly HashSet<TokenType> _lifecycleKeywords = [TokenType.KeywordNew, TokenType.KeywordDrop];

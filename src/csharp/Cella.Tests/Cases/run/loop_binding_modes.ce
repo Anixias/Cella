@@ -1,0 +1,125 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Name: rec
+{
+	id: i32
+
+	drop: op
+	{
+		printf("d%d ", self.id)
+	}
+}
+
+keep: fun(own n: Name)
+{
+	printf("k%d ", n.id)
+}
+
+Countdown: rec
+{
+	left: i32
+
+	for: op(mut self) -> bool
+	{
+		self.left -= 1
+		ret self.left >= 0
+	}
+
+	*: op(imm self) -> imm[i32] = imm self.left
+}
+
+Slots: rec
+{
+	values: array[i32, 3]
+
+	in: op(mut self) -> SlotCursor = SlotCursor(@self.values[0], 0, 0)
+}
+
+SlotCursor: rec
+{
+	data: ptr[i32]
+	current: usize
+	next: usize
+
+	for: op(mut self) -> bool
+	{
+		self.current = self.next
+		self.next += 1
+		ret self.current < 3
+	}
+
+	*: op(mut self) -> mut[i32] = mut self.data[self.current]
+}
+
+Counted: rec
+{
+	values: array[i32, 3]
+	opened: i32
+
+	in: op(mut self) -> SlotCursor
+	{
+		self.opened += 1
+		ret SlotCursor(@self.values[0], 0, 0)
+	}
+}
+
+main: fun -> i32
+{
+	var counts = [1, 2, 3]
+	for c in counts
+		printf("%d ", c)
+
+	for mut c in counts
+		c *= 10
+
+	for imm c in counts
+		printf("%d ", c)
+
+	printf("\n")
+	val names = [Name(1), Name(2), Name(3), Name(4)]
+	for imm n in names
+		printf("n%d ", n.id)
+
+	printf("\n")
+	for own n in names
+	{
+		if n.id == 3
+			break
+
+		if n.id == 1
+			keep(own n)
+	}
+
+	printf("\n")
+	var down = Countdown(5)
+	for x in mut down
+	{
+		printf("%d ", x)
+		if x == 2
+			break
+	}
+
+	printf("| ")
+	for x in down
+		printf("%d ", x)
+
+	printf("| %d\n", down.left)
+	var slots = Slots([4, 5, 6])
+	for mut s in slots
+		s += 100
+
+	for s in mut slots
+		printf("%d ", s)
+
+	var counted = Counted([7, 8, 9], 0)
+	for imm v in mut counted
+		printf("%d ", v)
+
+	printf("| %d\n", counted.opened)
+	ret 0
+}

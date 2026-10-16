@@ -117,7 +117,7 @@ public sealed partial class Lowerer
 			var scope = BeginScope(location, true);
 			if (node.Source is { Symbol: var source, Value: var sourceValue })
 			{
-				var address = sourceValue is ResolvedMutArgumentExpressionNode
+				var address = source.Type is not PointerType || sourceValue is ResolvedMutArgumentExpressionNode
 					? VisitNode(sourceValue)
 					: LowerBorrow(sourceValue);
 				

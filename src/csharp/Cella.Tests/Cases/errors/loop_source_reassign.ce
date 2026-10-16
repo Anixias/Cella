@@ -17,7 +17,7 @@ A: rec
 main: fun -> i32
 {
 	var items = [A(1), A(2)]
-	for b in items
+	for imm b in items
 	{
 		items = [A(3), A(4)]
 		printf("%d\n", b.id)
