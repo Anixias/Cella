@@ -42,8 +42,17 @@ public sealed partial class CodeGenerator
 		if (isFunction && signature.ReturnType is NeverType)
 			AddFunctionAttribute(functionValue, "noreturn");
 		
-		var functionInfo = new LLVMFunctionInfo(functionValue, functionType, returnType, cSignature,
-			cSignature is null && IsLarge(signature.ReturnType) ? (uint)paramLlvmTypes.Length : null);
+		if (isFunction && cSignature is null)
+			MarkCopiedParameters(functionValue, function, leading);
+		
+		var resultParameter = cSignature is null && IsLarge(signature.ReturnType) ? (uint?)paramLlvmTypes.Length : null;
+		if (isFunction && resultParameter is { } result)
+		{
+			AddParameterAttribute(functionValue, (LLVMAttributeIndex)(result + 1), "noalias", 0);
+			AddParameterAttribute(functionValue, (LLVMAttributeIndex)(result + 1), "captures", 0);
+		}
+		
+		var functionInfo = new LLVMFunctionInfo(functionValue, functionType, returnType, cSignature, resultParameter);
 		
 		current.Functions.Add(function, functionInfo);
 		return functionInfo;
@@ -254,6 +263,30 @@ public sealed partial class CodeGenerator
 	}
 	
 	private LLVMTypeRef MapValueType(TypeSymbol type) => IsLarge(type) ? OpaquePointer : MapTypeSymbol(type);
+	
+	private void MarkCopiedParameters(LLVMValueRef function, FunctionInfo info, int leading)
+	{
+		for (var i = 0; i < info.Signature.ParameterTypes.Length; i++)
+		{
+			if (TypePool.PassesByPointer(info, i) || info.DeclaredSignature.GetMode(i) != ParameterMode.ReadOnly ||
+			    !IsLarge(info.Signature.ParameterTypes[i]))
+				continue;
+			
+			var index = (LLVMAttributeIndex)(leading + i + 1);
+			AddParameterAttribute(function, index, "noalias", 0);
+			AddParameterAttribute(function, index, "readonly", 0);
+			AddParameterAttribute(function, index, "captures", 0);
+		}
+	}
+	
+	private static unsafe void AddParameterAttribute(LLVMValueRef function, LLVMAttributeIndex index, string name,
+		ulong value)
+	{
+		using var attributeName = new MarshaledString(name);
+		var kind = LLVM.GetEnumAttributeKindForName(attributeName, (nuint)attributeName.Length);
+		var attribute = LLVM.CreateEnumAttribute((LLVMOpaqueContext*)function.TypeOf.Context.Handle, kind, value);
+		LLVM.AddAttributeAtIndex((LLVMOpaqueValue*)function.Handle, index, attribute);
+	}
 	
 	private LLVMValueRef LoadValue(LLVMBuilderRef builder, TypeSymbol type, LLVMValueRef address, string name)
 	{

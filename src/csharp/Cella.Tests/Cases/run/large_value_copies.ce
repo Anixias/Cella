@@ -1,0 +1,120 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+first: fun(items: array[i32, 200000]) -> i32 = items[0]
+
+make: fun -> array[i32, 100000]
+{
+	var made: array[i32, 100000]
+	made[0] = 2
+	ret made
+}
+
+Big: rec
+{
+	values: array[i32, 75000]
+	tag: i32
+}
+
+read: fun(big: Big) -> i32 = big.tag
+
+aliased: fun(items: array[i32, 100], mut other: array[i32, 100]) -> i32
+{
+	other[0] = 9
+	ret items[0]
+}
+
+called: fun(items: array[i32, 100], change: fun[]) -> i32
+{
+	change()
+	ret items[0]
+}
+
+passing: fun
+{
+	var big: array[i32, 200000]
+	big[0] = 1
+	printf("%d\n", first(big))
+}
+
+returning: fun
+{
+	val made = make()
+	printf("%d\n", made[0])
+}
+
+copying: fun
+{
+	var record: Big
+	record.tag = 5
+	val copy = record
+	printf("%d\n", read(copy))
+}
+
+shift: fun(values: array[i32, 50000]) -> array[i32, 50000]
+{
+	var result: array[i32, 50000]
+	var i: usize = 0
+	while i < 49999
+	{
+		result[i] = values[i + 1]
+		i += 1
+	}
+
+	result[49999] = values[0]
+	ret result
+}
+
+shifting: fun
+{
+	var x: array[i32, 50000]
+	var i: usize = 0
+	while i < 50000
+	{
+		x[i] = i32(i)
+		i += 1
+	}
+
+	x = shift(x)
+	printf("%d %d %d\n", x[0], x[1], x[49999])
+}
+
+overwrite: fun(values: array[i32, 50000], mut target: array[i32, 50000]) -> array[i32, 50000]
+{
+	target[0] = 100
+	var result = values
+	result[1] = target[0]
+	ret result
+}
+
+overwriting: fun
+{
+	var x: array[i32, 50000]
+	x[0] = 1
+	x = overwrite(x, mut x)
+	printf("%d %d\n", x[0], x[1])
+}
+
+main: fun -> i32
+{
+	passing()
+	returning()
+	copying()
+	shifting()
+	overwriting()
+
+	var a: array[i32, 100]
+	a[0] = 3
+	val fromAlias = aliased(a, mut a)
+	printf("%d %d\n", fromAlias, a[0])
+
+	var b: array[i32, 100]
+	b[0] = 3
+	val fromClosure = called(b, fun = b[0] = 7)
+	printf("%d %d\n", fromClosure, b[0])
+	ret 0
+}
