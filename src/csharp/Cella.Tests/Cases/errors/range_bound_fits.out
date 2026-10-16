@@ -6,11 +6,6 @@ Error at line 8, column 14
 8 │ for b in 0..256
                 ╘═╛ '256' doesn't fit in 'u8'
 
-Error at line 17, column 11
-16 │ var sum = 0
-17 │ for i in -1..n
-              ╘╛ '-1' doesn't fit in 'usize'
-
 Error at line 27, column 11
 26 │ var sum = 0
 27 │ for i in -1..2

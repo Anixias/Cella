@@ -27,18 +27,12 @@ public sealed partial class Resolver
 			? DeclareOpen(new(node, node.Binding, node.Source, CurrentResolutionContext) { IsCounter = true }, bounds)
 			: null;
 		
-		IResolvedExpressionNode[] written = [..bounds];
 		var type = settledTypes?.GetValueOrDefault(node) ??
-		           (AnyInvalid(bounds[0], bounds[1]) ? NativeSymbols.Invalid : UnifyTypes(bounds));
+		           (AnyInvalid(bounds[0], bounds[1]) ? NativeSymbols.Invalid : FindBoundType(bounds));
 		
-		if (type is null && FindLiteralPeer(written) is { } peer)
+		if (type is not (InvalidType or IntegerType))
 		{
-			bounds = [..written];
-			type = peer;
-		}
-		
-		if (type is not (InvalidType or IntegerType { Kind: not PrimitiveTypeKind.Char }))
-		{
+			bounds = [..bounds.Select(MaterializeAsDefault)];
 			var (source, range) = node.Source.SourceLocation;
 			Diagnostics.Add(new(DiagnosticSeverity.Error, new(source, range.Join(endNode.SourceLocation.Range)),
 				type is null
@@ -63,13 +57,24 @@ public sealed partial class Resolver
 			new ResolvedRangeForStatementNode(counter, start, end, isInclusive, null, null, body, label, node));
 	}
 	
-	private static TypeSymbol? FindLiteralPeer(IResolvedExpressionNode[] bounds) =>
-		bounds switch
-		{
-			[{ Type: UntypedType }, { Type: IntegerType { Kind: not PrimitiveTypeKind.Char } type }] => type,
-			[{ Type: IntegerType { Kind: not PrimitiveTypeKind.Char } type }, { Type: UntypedType }] => type,
-			_ => null
-		};
+	private TypeSymbol? FindBoundType(List<IResolvedExpressionNode> bounds)
+	{
+		if (bounds.All(static bound => bound.Type is UntypedType))
+			return UnifyTypes(bounds);
+		
+		if (bounds.All(static bound => bound.Type == NativeSymbols.Char))
+			return NativeSymbols.Char;
+		
+		var trial = OpenCheckpoint();
+		var sums = ResolveCallable(_operatorRegistry.GetBinaryCandidates(TokenType.OpPlus), [..bounds],
+			MaterializationMode.Overload);
+		
+		Rollback(trial);
+		return sums is { HasResult: true, IsAmbiguous: false } &&
+		       sums[0].Callable.ParameterTypes is [var left, var right] && left == right
+			? left
+			: null;
+	}
 	
 	private ForHeader ResolveIteration(ForStatementNode node)
 	{

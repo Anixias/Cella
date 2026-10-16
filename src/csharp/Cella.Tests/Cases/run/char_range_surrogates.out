@@ -1,0 +1,3 @@
+[stderr]
+Panic at char_range_surrogates.ce:11:2: char overflow
+[exit code -1073740791]

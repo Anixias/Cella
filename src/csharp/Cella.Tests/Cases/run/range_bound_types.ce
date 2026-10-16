@@ -1,0 +1,38 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+main: fun -> i32
+{
+	var k: u32 = 2
+	for x in -2..k
+		printf("%lld ", x)
+
+	printf("\n")
+	val big: u64 = 2
+	val low: i64 = -1
+	for w in low..big
+		printf("%lld ", i64(w))
+
+	printf("\n")
+	val a: u8 = 3
+	val b: i16 = 6
+	for n in a..b
+		printf("%d ", n)
+
+	printf("\n")
+	var letters = 0
+	for ch in 'a'..='z'
+		letters += 1
+
+	printf("%d\n", letters)
+	val last = 'e'
+	for ch in 'a'..last
+		printf("%d ", i32(u32(ch)))
+
+	printf("\n")
+	ret 0
+}

@@ -1,0 +1,34 @@
+mod test
+
+main: fun -> i32
+{
+	val f = 1.5
+	val n: i32 = 4
+	for a in 'a'..10
+	{
+	}
+
+	for b in 0..'z'
+	{
+	}
+
+	for c in f..n
+	{
+	}
+
+	for d in 0.0..1.0
+	{
+	}
+
+	for e in n..'z'
+	{
+	}
+
+	var k: u32 = 2
+	for x in -2..k
+	{
+		val t: bool = x
+	}
+
+	ret 0
+}

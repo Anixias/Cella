@@ -172,8 +172,12 @@ public sealed partial class Lowerer
 		private void Increment(BasicBlock block, VariableValue counter, BasicBlock next)
 		{
 			var (type, location) = (counter.Type, counter.SourceLocation);
-			var one = MakeConstant(type, BigInteger.One);
-			var sum = new BinOpValue(type, counter, one, BinaryOperation.WrappingAddition, location);
+			var sum = type == NativeSymbols.Char
+				? new BinOpValue(type, counter, MakeConstant(NativeSymbols.Int32, BigInteger.One),
+					BinaryOperation.Addition, location)
+				: new BinOpValue(type, counter, MakeConstant(type, BigInteger.One), BinaryOperation.WrappingAddition,
+					location);
+			
 			block.Instructions.Add(new ExpressionInstruction(new AssignValue(type, counter, sum, location)));
 			block.SetTerminator(new BranchTerminator(next, location));
 		}
