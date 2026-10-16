@@ -65,7 +65,7 @@ main: fun -> i32
 	printf("f64 %.2f %.2f %d %.2f\n", sum, diff, i32(same), atomic *pr)
 	var small: u8 = 250
 	val ps: ptr[u8] = @small
-	val wrapped = atomic *ps += 10
+	val wrapped = atomic *ps +%= 10
 	printf("u8 %d %d\n", i32(wrapped), i32(atomic *ps))
 	var wide: i64 = 5000000000
 	val pw: ptr[i64] = @wide

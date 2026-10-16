@@ -1,0 +1,13 @@
+mod test
+
+use sync.*
+
+main: fun -> i32
+{
+	val numbers = Counter[i32](1)
+	val flags = Counter[bool](false)
+	numbers.add(2)
+	flags.add(true)
+	twice(imm flags, true)
+	ret twice(imm numbers, 3)
+}

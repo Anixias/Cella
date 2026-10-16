@@ -1,0 +1,33 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Atomic[T: atomic]: rec
+{
+	value: T
+
+	add: fun(imm self, amount: T) -> T = atomic *@self.value += amount
+	sub: fun(imm self, amount: T) -> T = atomic relaxed *@self.value -= amount
+	mask: fun(imm self, bits: T) -> T = atomic *@self.value &= bits
+}
+
+bump[T: atomic]: fun(counter: ptr[T], amount: T) -> T = atomic *counter += amount
+twice[T: atomic]: fun(counter: ptr[T], amount: T) -> T
+{
+	bump(counter, amount)
+	ret bump(counter, amount)
+}
+
+main: fun -> i32
+{
+	val a = Atomic[i32](1)
+	val b = Atomic[f64](1.5)
+	val flags = Atomic[bool](true)
+	var n: u64 = 10
+	printf("%d %d %f %d\n", a.add(2), a.sub(1), b.add(1.0), i32(flags.mask(false)))
+	printf("%llu\n", twice(@n, 5u))
+	ret 0
+}

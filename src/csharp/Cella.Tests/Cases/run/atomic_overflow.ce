@@ -1,0 +1,15 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+counter: var i32 = 2147483647
+
+main: fun -> i32
+{
+	val a = atomic *@counter += 1
+	printf("%d\n", a)
+	ret 0
+}

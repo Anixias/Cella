@@ -1,0 +1,31 @@
+mod test
+
+Atomic[T: atomic]: rec
+{
+	value: T
+
+	add: fun(imm self, amount: T) -> T = atomic *@self.value += amount
+	mask: fun(imm self, bits: T) -> T = atomic *@self.value &= bits
+}
+
+bump[T: atomic]: fun(counter: ptr[T], amount: T) -> T = atomic *counter += amount
+twice[T: atomic]: fun(counter: ptr[T], amount: T) -> T = bump(counter, amount)
+
+Color: enum
+{
+	red
+	green
+}
+
+main: fun -> i32
+{
+	val flags = Atomic[bool](true)
+	val colors = Atomic[Color](Color.red)
+	var f = 1.5
+	flags.add(true)
+	colors.mask(Color.green)
+	twice(@f, 1.0)
+	var b = false
+	twice(@b, true)
+	ret 0
+}

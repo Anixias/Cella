@@ -53,9 +53,10 @@ public sealed unsafe partial class CodeGenerator
 		var operation = v.Operation switch
 		{
 			BinaryOperation.Addition when isFloat => LLVMAtomicRMWBinOp.LLVMAtomicRMWBinOpFAdd,
-			BinaryOperation.Addition => LLVMAtomicRMWBinOp.LLVMAtomicRMWBinOpAdd,
+			BinaryOperation.Addition or BinaryOperation.WrappingAddition => LLVMAtomicRMWBinOp.LLVMAtomicRMWBinOpAdd,
 			BinaryOperation.Subtraction when isFloat => LLVMAtomicRMWBinOp.LLVMAtomicRMWBinOpFSub,
-			BinaryOperation.Subtraction => LLVMAtomicRMWBinOp.LLVMAtomicRMWBinOpSub,
+			BinaryOperation.Subtraction or BinaryOperation.WrappingSubtraction =>
+				LLVMAtomicRMWBinOp.LLVMAtomicRMWBinOpSub,
 			BinaryOperation.BitwiseAnd => LLVMAtomicRMWBinOp.LLVMAtomicRMWBinOpAnd,
 			BinaryOperation.BitwiseOr => LLVMAtomicRMWBinOp.LLVMAtomicRMWBinOpOr,
 			_ => LLVMAtomicRMWBinOp.LLVMAtomicRMWBinOpXor
@@ -64,10 +65,13 @@ public sealed unsafe partial class CodeGenerator
 		var old = builder.BuildAtomicRMW(operation, address, operand, ordering, false);
 		var result = v.Operation switch
 		{
+			BinaryOperation.Addition or BinaryOperation.Subtraction when valueType is IntegerType integer &&
+			                                                             checks.Overflow =>
+				EmitCheckedArithmetic(v.Operation.Value, old, operand, integer.IsSigned, v.SourceLocation, builder),
 			BinaryOperation.Addition when isFloat => builder.BuildFAdd(old, operand, "new"),
-			BinaryOperation.Addition => builder.BuildAdd(old, operand, "new"),
+			BinaryOperation.Addition or BinaryOperation.WrappingAddition => builder.BuildAdd(old, operand, "new"),
 			BinaryOperation.Subtraction when isFloat => builder.BuildFSub(old, operand, "new"),
-			BinaryOperation.Subtraction => builder.BuildSub(old, operand, "new"),
+			BinaryOperation.Subtraction or BinaryOperation.WrappingSubtraction => builder.BuildSub(old, operand, "new"),
 			BinaryOperation.BitwiseAnd => builder.BuildAnd(old, operand, "new"),
 			BinaryOperation.BitwiseOr => builder.BuildOr(old, operand, "new"),
 			_ => builder.BuildXor(old, operand, "new")

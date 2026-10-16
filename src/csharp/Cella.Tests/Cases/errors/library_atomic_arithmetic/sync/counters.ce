@@ -1,0 +1,14 @@
+mod sync
+
+Counter[T: atomic]: pub rec
+{
+	value: T
+
+	add: fun(imm self, amount: T) -> T = atomic *@self.value += amount
+}
+
+twice[T: atomic]: pub fun(imm counter: Counter[T], amount: T) -> T
+{
+	counter.add(amount)
+	ret counter.add(amount)
+}

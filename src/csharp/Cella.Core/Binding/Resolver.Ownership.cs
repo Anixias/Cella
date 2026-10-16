@@ -79,11 +79,16 @@ public sealed partial class Resolver
 		}
 		
 		var op = node.Op!.Value;
-		if (FindAtomicOperation(op.Type, type) is not { } operation)
-			return RejectAtomic(node, Error(node, op.Type is TokenType.OpPlusEqual or TokenType.OpMinusEqual
-				or TokenType.OpAmpersandEqual or TokenType.OpBarEqual or TokenType.OpHatEqual
-				? $"Cannot use '{op.Text}' atomically on '{type.Name}'"
-				: $"Cannot use '{op.Text}' atomically", null, op.SourceLocation));
+		if (FindAtomicOperation(op.Type) is not { } operation)
+			return RejectAtomic(node, Error(node, $"Cannot use '{op.Text}' atomically", null, op.SourceLocation));
+		
+		var owner = type is TypeParameterSymbol ? FindGenericCaller(CurrentResolutionContext) : null;
+		if (owner is null && !TypePool.SupportsAtomic(operation, type))
+			return RejectAtomic(node, Error(node, $"Cannot use '{op.Text}' atomically on '{type.Name}'", null,
+				op.SourceLocation));
+		
+		if (owner is not null)
+			AddAtomicRequirement(owner, new((TypeParameterSymbol)type, operation, op.Text, op.SourceLocation));
 		
 		var amount = VisitNode(node.Value!, type);
 		return new ResolvedAtomicExpressionNode(access, node.Ordering, pointer, operation, null, amount, type, node);
@@ -117,16 +122,15 @@ public sealed partial class Resolver
 		_ => "acquire release"
 	};
 	
-	private static BinaryOperation? FindAtomicOperation(TokenType op, TypeSymbol type) => (op, type) switch
+	private static BinaryOperation? FindAtomicOperation(TokenType op) => op switch
 	{
-		(TokenType.OpPlusEqual, IntegerType or FloatType) => BinaryOperation.Addition,
-		(TokenType.OpMinusEqual, IntegerType or FloatType) => BinaryOperation.Subtraction,
-		(TokenType.OpAmpersandEqual, IntegerType or PrimitiveType { Kind: PrimitiveTypeKind.Bool }) =>
-			BinaryOperation.BitwiseAnd,
-		(TokenType.OpBarEqual, IntegerType or PrimitiveType { Kind: PrimitiveTypeKind.Bool }) =>
-			BinaryOperation.BitwiseOr,
-		(TokenType.OpHatEqual, IntegerType or PrimitiveType { Kind: PrimitiveTypeKind.Bool }) =>
-			BinaryOperation.BitwiseXor,
+		TokenType.OpPlusEqual => BinaryOperation.Addition,
+		TokenType.OpMinusEqual => BinaryOperation.Subtraction,
+		TokenType.OpPlusPercentEqual => BinaryOperation.WrappingAddition,
+		TokenType.OpMinusPercentEqual => BinaryOperation.WrappingSubtraction,
+		TokenType.OpAmpersandEqual => BinaryOperation.BitwiseAnd,
+		TokenType.OpBarEqual => BinaryOperation.BitwiseOr,
+		TokenType.OpHatEqual => BinaryOperation.BitwiseXor,
 		_ => null
 	};
 	

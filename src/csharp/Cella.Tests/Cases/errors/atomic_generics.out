@@ -1,11 +1,6 @@
 
 ====== atomic_generics.ce ======
 
-Error at line 12, column 56
-11 │ 
-12 │ bump: fun(self, amount: T) -> T = atomic *@self.value += amount
-                                                           ╘╛ Cannot use '+=' atomically on 'T'
-
 Error at line 19, column 36
 18 │ 
 19 │ load: fun(imm self) -> T = atomic *@self.value

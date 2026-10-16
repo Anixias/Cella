@@ -9,5 +9,7 @@ main: fun -> i32
 	var value: i32 = 1
 	val pointer = @value
 	atomic relaxed *pointer +%= 1
+	var f = 1.5
+	atomic *@f +%= 1.0
 	ret 0
 }

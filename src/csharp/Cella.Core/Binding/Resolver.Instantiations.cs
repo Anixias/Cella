@@ -14,6 +14,10 @@ public sealed partial class Resolver
 		    _importedFunctions.TryAdd(info.Symbol, info))
 			Journal(() => _importedFunctions.Remove(info.Symbol));
 		
+		if (!info.TypeArguments.IsDefaultOrEmpty)
+			AddGenericUse(new(FindGenericCaller(CurrentResolutionContext), info.Symbol, info.TypeArguments,
+				syntax.SourceLocation));
+		
 		if (FindGenericCaller(CurrentResolutionContext) is not { } caller || info.TypeArguments.IsDefaultOrEmpty)
 			return;
 		

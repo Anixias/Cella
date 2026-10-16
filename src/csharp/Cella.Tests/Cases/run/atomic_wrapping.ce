@@ -1,0 +1,29 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Ticker[T: atomic]: rec
+{
+	value: T
+
+	tick: fun(imm self, amount: T) -> T = atomic *@self.value +%= amount
+}
+
+main: fun -> i32
+{
+	var v: u8 = 255
+	val p = @v
+	val a = atomic relaxed *p +%= 1
+	val b = atomic *p -%= 1
+	var f = 1.5
+	val c = atomic *@f += 2.0
+	var s: i32 = 5
+	val d = atomic *@s -= 7
+	printf("%d %d %f %d\n", a, b, c, d)
+	val t = Ticker[u8](250)
+	printf("%d\n", t.tick(10))
+	ret 0
+}

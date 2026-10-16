@@ -11,9 +11,9 @@ Error at line 8, column 2
 8 │ flag +%= false
     ╘════════════╛ No operation defined for '+%=' between 'bool' and 'bool'
 
-Error at line 11, column 26
-10 │ val pointer = @value
-11 │ atomic relaxed *pointer +%= 1
-                             ╘═╛ Cannot use '+%=' atomically
+Error at line 13, column 13
+12 │ var f = 1.5
+13 │ atomic *@f +%= 1.0
+                ╘═╛ Cannot use '+%=' atomically on 'f64'
 
 [compilation failed]

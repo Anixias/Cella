@@ -585,6 +585,7 @@ internal static class Program
 			resolvedFiles = [..files.Select(resolver.Resolve)];
 			
 			resolver.ReportInfiniteInstantiations();
+			resolver.ReportAtomicInstances();
 			if (ReportErrors(diagnostics, displayRoot, showHints))
 				return errorResult;
 		}
