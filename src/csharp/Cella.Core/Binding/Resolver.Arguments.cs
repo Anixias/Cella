@@ -50,7 +50,10 @@ public sealed partial class Resolver
 			return resolved;
 		}
 		
-		var retries = FindRetries(nodes, shapes, resolved, deferred, accepts);
+		var retries = FindRetries(nodes, shapes, resolved, deferred, accepts, true);
+		if (retries.Count == 0)
+			retries = FindRetries(nodes, shapes, resolved, deferred, accepts, false);
+		
 		var cheapest = retries.Select(static retry => retry.Cost).DefaultIfEmpty().Min();
 		var best = retries.Where(retry => retry.Cost == cheapest).ToList();
 		if (best is not [var (shape, hints, _)])
@@ -139,7 +142,7 @@ public sealed partial class Resolver
 	
 	private List<(int Shape, TypeSymbol?[] Hints, int Cost)> FindRetries(ImmutableArray<IExpressionNode> nodes,
 		IReadOnlyList<CallShape> shapes, IResolvedExpressionNode[] values, List<int> deferred,
-		Func<int, IResolvedExpressionNode[], bool> accepts)
+		Func<int, IResolvedExpressionNode[], bool> accepts, bool checksBodies)
 	{
 		var settled = values.Select((value, i) => deferred.Contains(i) ? null : value).ToArray();
 		var retries = new List<(int Shape, TypeSymbol?[] Hints, int Cost)>();
@@ -162,7 +165,7 @@ public sealed partial class Resolver
 				var trial = values.ToArray();
 				foreach (var i in deferred)
 					trial[i] = nodes[i] is LambdaExpressionNode lambda
-						? VisitLambdaArgument(lambda, i, [shapes[index]], trial, true)
+						? VisitLambdaArgument(lambda, i, [shapes[index]], trial, true, checksBodies)
 						: VisitDeferred(nodes[i], i, [shapes[index]], [hints[i]]);
 				
 				return AnyInvalid(trial) || checkpoint.HasErrors || !accepts(index, trial)
@@ -275,7 +278,8 @@ public sealed partial class Resolver
 	}
 	
 	private IResolvedExpressionNode VisitLambdaArgument(LambdaExpressionNode node, int index,
-		IReadOnlyList<CallShape> shapes, IReadOnlyList<IResolvedExpressionNode?> values, bool isTrial = false)
+		IReadOnlyList<CallShape> shapes, IReadOnlyList<IResolvedExpressionNode?> values, bool isTrial = false,
+		bool checksBody = false)
 	{
 		var settled = values.Select((value, i) => i == index ? null : value).ToList();
 		var annotations = ResolveAnnotations(node);
@@ -297,7 +301,7 @@ public sealed partial class Resolver
 		var target = fitting is [var single] ? single : expected is [var only] ? only : null;
 		return target is null && expected.Count > 1
 			? new ResolvedFunctionGroupExpressionNode(new FunctionGroupType("fun", [], "fun"), node)
-			: ResolveLambda(node, target, !isTrial, true);
+			: ResolveLambda(node, target, !isTrial || checksBody, true);
 	}
 	
 	private FunctionType? ExpectLambda(CallShape shape, IReadOnlyList<IResolvedExpressionNode?> values, int index,

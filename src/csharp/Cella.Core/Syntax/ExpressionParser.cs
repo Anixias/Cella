@@ -691,7 +691,7 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 		else if (Match(ref index, out var nameOf, TokenType.KeywordNameOf))
 			node = ParseNameOf(ref index, nameOf);
 		else if (Match(ref index, out var match, TokenType.KeywordMatch))
-			return ParseMatch(ref index, match);
+			node = ParseMatch(ref index, match);
 		else if (Match(ref index, out var jump, _jumpKeywords))
 			return ParseJump(ref index, jump);
 		else if (Match(ref index, out var interpolated, TokenType.InterpolatedStringLiteral))
@@ -775,11 +775,6 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 		
 		var arms = new List<MatchExpressionArmNode>();
 		var closeBrace = ParseMatchArms(ref index, openBrace, arms);
-		
-		if (!IsNextNewline(index) && Peek(index, TokenType.OpDot))
-			throw new ParseException(new Diagnostic(DiagnosticSeverity.Error, Tokens[index].SourceLocation,
-				"Cannot use '.' on 'match' expressions"));
-		
 		var (source, range) = keyword.SourceLocation;
 		range = range.Join(closeBrace.SourceLocation.Range);
 		return new MatchExpressionNode(keyword, mode, value, arms, new(source, range));
