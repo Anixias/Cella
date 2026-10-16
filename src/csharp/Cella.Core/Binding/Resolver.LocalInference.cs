@@ -155,9 +155,10 @@ public sealed partial class Resolver
 		return null;
 	}
 	
-	private static bool CouldBecome(IResolvedExpressionNode node, TypeSymbol type) => node switch
+	private bool CouldBecome(IResolvedExpressionNode node, TypeSymbol type) => node switch
 	{
 		ResolvedCaseNameExpressionNode => type is EnumSymbol,
+		{ Type: FunctionGroupType group } => type is FunctionType function && FindFunction(group, function) is not null,
 		_ => node.Type is UntypedType untyped &&
 		     untyped.MaterializationCost(type, MaterializationMode.Overload) != int.MaxValue
 	};
@@ -165,6 +166,7 @@ public sealed partial class Resolver
 	private bool IsOpenValue(IResolvedExpressionNode value) =>
 		!IsInvalid(value) &&
 		value.Type is UntypedType and not (NeverType or FunctionGroupType { Functions.Length: 1 }) ||
+		value.Type is FunctionGroupType { Functions: [var only] } && !GetOpenTypeParameters(only).IsEmpty ||
 		!survey!.GetTracked(value).IsEmpty;
 	
 	private bool IsOpenSyntax(IExpressionNode node) => node switch

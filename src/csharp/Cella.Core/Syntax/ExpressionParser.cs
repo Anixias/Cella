@@ -1065,7 +1065,8 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 	{
 		name = default;
 		return Peek(index + 1, TokenType.OpOpenParen) && !IsNextNewline(index + 1) &&
-		       Match(ref index, out name, _binaryOperatorNames);
+		       (Match(ref index, out name, _binaryOperatorNames) || Match(ref index, out name, TokenType.OpTilde) ||
+		        !Peek(index, TokenType.OpEqual) && Match(ref index, out name, _assignmentOps));
 	}
 	
 	private CallExpressionNode ParseCallExpression(ref int index, IExpressionNode target, Token openParen)

@@ -1,5 +1,6 @@
 ﻿using System.Collections.Immutable;
 using Cella.Core.Binding.Nodes;
+using Cella.Core.Binding.Operations;
 using Cella.Core.Symbols;
 using Cella.Core.Syntax.Nodes;
 using Cella.Core.Text;
@@ -169,10 +170,14 @@ public sealed partial class Resolver
 		    GetPropertyMember(type, access.Member.Text) is not null)
 			return VisitIndirectCall(node, Index(indexer, VisitStaticMember(access, type)));
 		
-		var statics = FindStatics(type, access.Member.Text);
+		var statics = access.Member.Type == TokenType.Identifier
+			? FindStatics(type, access.Member.Text)
+			: FindFunctions(type, access.Member.Text);
+		
 		if (statics.Length == 0)
-			return Error(node, DescribeMissingStatic(type, access.Member.Text), CurrentTargetType,
-				access.Member.SourceLocation);
+			return VisitBuiltInPick(node, access.Member, type) ??
+			       Error(node, DescribeMissingStatic(type, access.Member.Text), CurrentTargetType,
+				       access.Member.SourceLocation);
 		
 		var accessible = FindAccessible(type, statics);
 		if (accessible.Length == 0)
@@ -192,6 +197,57 @@ public sealed partial class Resolver
 		return ResolveTypeArguments(indexer, candidates) is { } typeArguments
 			? ResolveCall(node, GetName(access), candidates, null, typeArguments)
 			: new ResolvedInvalidExpressionNode(node, CurrentTargetType);
+	}
+	
+	private IResolvedExpressionNode? VisitBuiltInPick(CallExpressionNode node, Token op, TypeSymbol type)
+	{
+		if (op.Type == TokenType.Identifier || type is not (PrimitiveType or PointerType))
+			return null;
+		
+		var rejected = $"'{type.Name}.{op.Text}' doesn't accept these arguments";
+		if (IsAssignment(op.Type))
+		{
+			if (node.Arguments is not [BorrowExpressionNode { IsMutable: true } target, var value])
+				return Error(node, rejected, CurrentTargetType);
+			
+			var assignment = VisitNode(new BinaryOpExpressionNode(target.Value, op, value), CurrentTargetType);
+			return assignment is ResolvedAssignmentExpressionNode { Left.Type: var left } && left != type
+				? Error(node, rejected, CurrentTargetType)
+				: assignment;
+		}
+		
+		List<ICallable> unary = [.._operatorRegistry.GetUnaryCandidates(op.Type).Where(TakesType)];
+		List<ICallable> binary = [.._operatorRegistry.GetBinaryCandidates(op.Type).Where(TakesType)];
+		if (unary.Count + binary.Count == 0)
+			return null;
+		
+		var candidates = node.Arguments.Length switch
+		{
+			1 => unary,
+			2 => binary,
+			_ => []
+		};
+		
+		if (candidates.Count == 0)
+			return Error(node, rejected, CurrentTargetType);
+		
+		IResolvedExpressionNode[] args = [..node.Arguments.Select(argument => Decay(VisitNode(argument, type)))];
+		if (AnyInvalid(args))
+			return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
+		
+		var resolutionSet = ResolveCallable(candidates, args, MaterializationMode.Overload);
+		if (!resolutionSet.HasResult || resolutionSet.IsAmbiguous)
+			return Error(node, rejected, CurrentTargetType);
+		
+		var resolvedArgs = ApplyArgumentResolution(args, resolutionSet[0]);
+		var operation = (OperationImpl)resolutionSet[0].Callable;
+		IResolvedExpressionNode result = resolvedArgs.Count == 1
+			? new ResolvedUnaryOpExpressionNode(resolvedArgs[0], operation, node)
+			: new ResolvedBinaryOpExpressionNode(resolvedArgs[0], resolvedArgs[1], operation, node);
+		
+		return ApplyResultResolution(result, resolutionSet[0]);
+		
+		bool TakesType(ICallable candidate) => candidate.ParameterTypes.Contains(type);
 	}
 	
 	private IResolvedExpressionNode VisitStaticMember(AccessExpressionNode node, TypeSymbol type)

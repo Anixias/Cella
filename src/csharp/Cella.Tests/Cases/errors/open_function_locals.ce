@@ -1,0 +1,14 @@
+mod test
+
+ident[T]: fun(own x: T) -> T = x
+over: fun(x: i32) -> i32 = x + 1
+over: fun(x: f64) -> i32 = 7
+
+main: fun -> i32
+{
+	val both = over
+	val first = both(2.5)
+	val second = both(1)
+	val unused = ident
+	ret 0
+}

@@ -1,0 +1,18 @@
+mod test
+
+P: rec
+{
+	x: i32
+
+	neg: fun(self) -> P = P(-self.x)
+}
+
+main: fun -> i32
+{
+	var w: i64 = 2
+	val a = i8.+(300, 1)
+	i32.+=(mut w, 1)
+	val c = i32.+(1, 2, 3)
+	val p = P.neg(P(1))
+	ret 0
+}

@@ -1,0 +1,39 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+P: rec
+{
+	x: i32
+
+	-: op(self) -> P = P(-self.x)
+	-: op(a: P, b: P) -> P = P(a.x - b.x)
+	~: op(self) -> P = P(~self.x)
+	+=: op(mut self, other: P)
+	{
+		self.x += other.x
+	}
+}
+
+main: fun -> i32
+{
+	var p = P(3)
+	val negated = P.-(p)
+	val difference = P.-(p, P(1))
+	val flipped = P.~(p)
+	P.+=(mut p, P(10))
+	printf("%d %d %d %d\n", negated.x, difference.x, flipped.x, p.x)
+	val small: i8 = 100
+	val sum = i32.+(1, 2)
+	val widened = i32.+(small, small)
+	val minus = i32.-(5)
+	var total = 7
+	i32.+=(mut total, 3)
+	val product = f64.*(1.5, 2.0)
+	val same = bool.==(true, false)
+	printf("%d %d %d %d %f %d\n", sum, widened, minus, total, product, i32(same))
+	ret 0
+}

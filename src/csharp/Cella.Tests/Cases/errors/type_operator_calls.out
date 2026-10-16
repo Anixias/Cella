@@ -1,0 +1,24 @@
+
+====== type_operator_calls.ce ======
+
+Error at line 13, column 15
+12 │ var w: i64 = 2
+13 │ val a = i8.+(300, 1)
+                  ╘═╛ '300' doesn't fit in 'i8'
+
+Error at line 14, column 2
+13 │ val a = i8.+(300, 1)
+14 │ i32.+=(mut w, 1)
+     ╘══════════════╛ 'i32.+=' doesn't accept these arguments
+
+Error at line 15, column 10
+14 │ i32.+=(mut w, 1)
+15 │ val c = i32.+(1, 2, 3)
+             ╘════════════╛ 'i32.+' doesn't accept these arguments
+
+Error at line 16, column 12
+15 │ val c = i32.+(1, 2, 3)
+16 │ val p = P.neg(P(1))
+               ╘═╛ Cannot use methods through types
+
+[compilation failed]

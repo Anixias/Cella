@@ -10,6 +10,10 @@ public sealed partial class Resolver
 {
 	private IResolvedExpressionNode VisitIndirectCall(CallExpressionNode node, IResolvedExpressionNode target)
 	{
+		if (survey is { } activeSurvey && target.Type is FunctionGroupType group &&
+		    !activeSurvey.GetTracked(target).IsEmpty)
+			return CallOpenFunction(node, target, group);
+		
 		if (target.Type is UntypedType)
 			target = MaterializeAsDefault(target);
 		
@@ -50,6 +54,18 @@ public sealed partial class Resolver
 			CompleteArguments(resolvedArgs, functionType.ParameterTypes, [], form, node);
 		
 		return new ResolvedIndirectCallExpressionNode(target, resolvedArgs, functionType, node);
+	}
+	
+	private IResolvedExpressionNode CallOpenFunction(CallExpressionNode node, IResolvedExpressionNode callee,
+		FunctionGroupType group)
+	{
+		var call = ResolveCall(node, group.FunctionName,
+			[..group.Functions.Select(static function => new FunctionCallable(function))], null);
+		
+		if (call is ResolvedFunctionCallExpressionNode { Function: var function })
+			RecordMaterialization(callee, GetNaturalType(function));
+		
+		return call;
 	}
 	
 	private IResolvedExpressionNode ResolveCallTarget(IResolvedExpressionNode callee, bool dereferences = true)

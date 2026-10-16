@@ -1,0 +1,22 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+ident[T]: fun(own x: T) -> T = x
+over: fun(x: i32) -> i32 = x + 1
+over: fun(x: f64) -> i32 = 7
+
+apply: fun(f: fun[own i32 -> i32], x: i32) -> i32 = f(x)
+
+main: fun -> i32
+{
+	val passed = ident
+	val called = ident
+	val picked = over
+	val chosen = over
+	printf("%d %d %d %d\n", apply(passed, 10), called(5), picked(2.5), chosen(1))
+	ret 0
+}
