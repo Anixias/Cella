@@ -1,0 +1,25 @@
+
+====== hidden_characters.ce ======
+
+Error at line 6, column 10
+5 │ var x = 1
+6 │ // reset
+   x = 2
+            ^ Cannot use U+2028 in source
+
+Error at line 8, column 19
+7 │ val escaped = "\u202E"
+8 │ val hidden = "abc‮def"
+                     ^ Cannot use U+202E in source
+
+Error at line 9, column 5
+8 │ val hidden = "abc‮def"
+9 │ // ⁦admin⁩ check
+       ^ Cannot use U+2066 in source
+
+Error at line 9, column 11
+8 │ val hidden = "abc‮def"
+9 │ // ⁦admin⁩ check
+             ^ Cannot use U+2069 in source
+
+[compilation failed]

@@ -1,0 +1,11 @@
+mod test
+
+main: fun -> i32
+{
+	var x = 1
+	// reset 	x = 2
+	val escaped = "\u202E"
+	val hidden = "abc‮def"
+	// ⁦admin⁩ check
+	ret x
+}

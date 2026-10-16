@@ -153,7 +153,19 @@ public sealed partial class FileParser
 			if (token.Error is { } error && reported.Add((token.SourceLocation, error)))
 				Diagnostics.Add(new(DiagnosticSeverity.Error, token.SourceLocation, error));
 		}
+		
+		var source = Tokens[0].SourceLocation.Source;
+		var located = reported.Select(static entry => entry.SourceLocation).ToHashSet();
+		for (var i = 0; i < source.Length; i++)
+		{
+			SourceLocation location = new(source, new(i, i + 1));
+			if (IsHiddenCharacter(source[i]) && !located.Contains(location))
+				Diagnostics.Add(new(DiagnosticSeverity.Error, location, $"Cannot use U+{(int)source[i]:X4} in source"));
+		}
 	}
+	
+	private static bool IsHiddenCharacter(char character) =>
+		character is '\u0085' or '\u2028' or '\u2029' or >= '\u202A' and <= '\u202E' or >= '\u2066' and <= '\u2069';
 	
 	private FileNode? ParseFile(ref int index)
 	{
