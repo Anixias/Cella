@@ -1,0 +1,36 @@
+mod test
+
+Fcomplex: rec
+{
+	re: f32
+	im: f32
+}
+
+Dcomplex: rec
+{
+	re: f64
+	im: f64
+}
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+	conjf: fun(z: Fcomplex) -> Fcomplex
+	crealf: fun(z: Fcomplex) -> f32
+	cimagf: fun(z: Fcomplex) -> f32
+	cabsf: fun(z: Fcomplex) -> f32
+	conj: fun(z: Dcomplex) -> Dcomplex
+	creal: fun(z: Dcomplex) -> f64
+	cimag: fun(z: Dcomplex) -> f64
+	cabs: fun(z: Dcomplex) -> f64
+}
+
+main: fun -> i32
+{
+	val single = conjf(Fcomplex(1.5, -2.5))
+	printf("%.1f %.1f %.1f %.1f %.1f\n", single.re, single.im, crealf(single), cimagf(single), cabsf(Fcomplex(3.0, 4.0)))
+
+	val double = conj(Dcomplex(6.0, 8.0))
+	printf("%.1f %.1f %.1f %.1f %.1f\n", double.re, double.im, creal(double), cimag(double), cabs(double))
+	ret 0
+}

@@ -21,18 +21,56 @@ public sealed class GoldenTests
 		Console.SetError(new RoutingWriter(Console.Error));
 	}
 	
-	public static TheoryData<string, bool> Cases()
+	private static readonly string[] _targets = [WindowsTarget, LinuxTarget];
+	
+	private const string WindowsTarget = "windows-x64";
+	private const string LinuxTarget = "linux-x64";
+	
+	public static TheoryData<string, bool, string> Cases()
 	{
-		var cases = new TheoryData<string, bool>();
+		var cases = new TheoryData<string, bool, string>();
 		foreach (var path in FindCases())
 		{
 			var name = Path.GetRelativePath(_casesDirectory, path).Replace('\\', '/');
-			cases.Add(name, false);
-			if (name.StartsWith("run/"))
-				cases.Add(name, true);
+			foreach (var target in _targets.Where(target => RunsOn(path, target)))
+			{
+				cases.Add(name, false, target);
+				if (name.StartsWith("run/"))
+					cases.Add(name, true, target);
+			}
 		}
 		
 		return cases;
+	}
+	
+	private static string GetSystem(string target) => target.Split('-')[0];
+	
+	private static bool RunsOn(string sourcePath, string target)
+	{
+		var directory = Path.GetDirectoryName(sourcePath)!;
+		var prefix = Path.GetFileNameWithoutExtension(sourcePath) + ".";
+		var outputs = Directory.EnumerateFiles(directory, prefix + "*out")
+			.Select(static output => Path.GetFileName(output))
+			.Where(output => output.Length > prefix.Length)
+			.Select(output => output[prefix.Length..])
+			.ToList();
+		
+		return outputs.Count == 0 || outputs.Any(output => output is "out" or "release.out" ||
+		                                                   output.StartsWith(GetSystem(target) + ".",
+			                                                   StringComparison.Ordinal));
+	}
+	
+	private static IEnumerable<string> FindExpectedPaths(string sourcePath, bool release, string target)
+	{
+		var system = GetSystem(target);
+		if (release)
+		{
+			yield return Path.ChangeExtension(sourcePath, $".{system}.release.out");
+			yield return Path.ChangeExtension(sourcePath, ".release.out");
+		}
+		
+		yield return Path.ChangeExtension(sourcePath, $".{system}.out");
+		yield return Path.ChangeExtension(sourcePath, ".out");
 	}
 	
 	private static IEnumerable<string> FindCases() => Directory.EnumerateDirectories(_casesDirectory)
@@ -80,18 +118,20 @@ public sealed class GoldenTests
 	
 	[Theory]
 	[MemberData(nameof(Cases))]
-	public async Task Case(string name, bool release)
+	public async Task Case(string name, bool release, string target)
 	{
 		var cancellationToken = TestContext.Current.CancellationToken;
 		var updating = Environment.GetEnvironmentVariable(UpdateVariable) == "1";
 		var sourcePath = Path.Combine(_casesDirectory, name);
-		var releasePath = Path.ChangeExtension(sourcePath, ".release.out");
-		var hasReleaseOutput = release && File.Exists(releasePath);
-		if (updating && release && !hasReleaseOutput)
+		var candidates = FindExpectedPaths(sourcePath, release, target).ToList();
+		var expectedPath = candidates.FirstOrDefault(File.Exists) ?? candidates[^1];
+		var isOwnOutput = Path.GetFileName(expectedPath).Contains($".{GetSystem(target)}.") ||
+		                  target == WindowsTarget;
+		
+		if (updating && (!isOwnOutput || release && !expectedPath.EndsWith(".release.out", StringComparison.Ordinal)))
 			return;
 		
-		var expectedPath = hasReleaseOutput ? releasePath : Path.ChangeExtension(sourcePath, ".out");
-		var actual = await RunAsync(sourcePath, release, cancellationToken);
+		var actual = await RunAsync(sourcePath, release, target, cancellationToken);
 		
 		if (updating)
 		{
@@ -106,7 +146,8 @@ public sealed class GoldenTests
 		Assert.Equal(expected, actual);
 	}
 	
-	private static async Task<string> RunAsync(string sourcePath, bool release, CancellationToken cancellationToken)
+	private static async Task<string> RunAsync(string sourcePath, bool release, string target,
+		CancellationToken cancellationToken)
 	{
 		var caseDirectory = Directory.CreateTempSubdirectory("cella-").FullName;
 		try
@@ -123,18 +164,29 @@ public sealed class GoldenTests
 				? await File.ReadAllLinesAsync(optionsPath, cancellationToken)
 				: [];
 			
-			var (compileExitCode, compileOutput) = await CompileAsync(projectPath, release, options, cancellationToken);
+			var (compileExitCode, compileOutput) =
+				await CompileAsync(projectPath, release, [..options, "--target", target], cancellationToken);
+			
 			compileOutput = compileOutput.Replace(caseDirectory, "<case>");
 			if (compileExitCode != 0)
 				return Transcript(compileOutput, "[compilation failed]");
 			
-			var executablePath = Path.Combine(caseDirectory, "bin", OperatingSystem.IsWindows() ? "test.exe" : "test");
 			var argumentsPath = Path.ChangeExtension(sourcePath, ".args");
 			string[] arguments = File.Exists(argumentsPath)
 				? await File.ReadAllLinesAsync(argumentsPath, cancellationToken)
 				: [];
 			
-			var (exitCode, output, error) = await ExecuteAsync(executablePath, arguments, cancellationToken);
+			var binDirectory = Path.Combine(caseDirectory, "bin");
+			if (target == LinuxTarget && !LinuxProcess.IsAvailable)
+				Assert.Skip("Linux programs can't run on this machine (install WSL to run them on Windows)");
+			
+			if (target == WindowsTarget && !OperatingSystem.IsWindows())
+				Assert.Skip("Windows programs can't run on this machine");
+			
+			var (exitCode, output, error) = target == LinuxTarget
+				? await LinuxProcess.RunAsync(binDirectory, arguments, _runTimeout, cancellationToken)
+				: await ExecuteAsync(Path.Combine(binDirectory, "test.exe"), arguments, cancellationToken);
+			
 			var errorSection = error.Length > 0 ? $"[stderr]\n{error}" : "";
 			return Transcript(compileOutput, output, errorSection, $"[exit code {exitCode}]");
 		}

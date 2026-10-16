@@ -5,7 +5,14 @@ pvt ext
 	puts: fun(text: cstr) -> i32
 }
 
-pvt ext("msvcrt") abs: fun(value: i32) -> i32
+when windows
+{
+	pvt ext("msvcrt") abs: fun(value: i32) -> i32
+}
+else
+{
+	pvt ext("c") abs: fun(value: i32) -> i32
+}
 
 mod ext
 {

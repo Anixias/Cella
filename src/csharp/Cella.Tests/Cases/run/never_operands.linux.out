@@ -1,0 +1,14 @@
+
+====== never_operands.ce ======
+
+Warning at line 38, column 2
+37 │ 
+38 │ ret 0
+     ^ Unreachable code
+
+first
+second
+third
+fourth
+Panic: deep in operands
+[exit code 134]

@@ -8,9 +8,23 @@ read[T]: pub fun(i: usize) -> i32
 
 ext
 {
-	_write: fun(fd: i32, data: ptr, count: u32) -> i32
 	fflush: fun(stream: ptr) -> i32
 	exit: fun(code: i32) -> never
+}
+
+when windows
+{
+	ext
+	{
+		write: ext("_write") fun(fd: i32, data: ptr, count: u32) -> i32
+	}
+}
+else
+{
+	ext
+	{
+		write: fun(fd: i32, data: ptr, count: u32) -> i32
+	}
 }
 
 panic: op(message: str, location: str) -> never
@@ -19,10 +33,10 @@ panic: op(message: str, location: str) -> never
 	val separator = ": "
 	val newline = "\n"
 	fflush(null)
-	_write(2, prefix.data, u32(prefix.byteLength))
-	_write(2, location.data, u32(location.byteLength))
-	_write(2, separator.data, u32(separator.byteLength))
-	_write(2, message.data, u32(message.byteLength))
-	_write(2, newline.data, u32(newline.byteLength))
+	write(2, prefix.data, u32(prefix.byteLength))
+	write(2, location.data, u32(location.byteLength))
+	write(2, separator.data, u32(separator.byteLength))
+	write(2, message.data, u32(message.byteLength))
+	write(2, newline.data, u32(newline.byteLength))
 	exit(101)
 }

@@ -12,6 +12,6 @@ Pth = 'lib/lib.celp'
 [When.debug]
 OverflowCheck = true
 
-[[When.linux.ProjectReferences]]
+[[When.macos.ProjectReferences]]
 Path = 'missing/missing.celp'
 Optional = true

@@ -10,8 +10,8 @@ OverflowChecks = false
 [When."release || strict"]
 OverflowChecks = true
 
-[[When.windows.ProjectReferences]]
+[[When."windows || linux".ProjectReferences]]
 Path = 'lib/lib.celp'
 
-[[When."linux || macos".ProjectReferences]]
+[[When.macos.ProjectReferences]]
 Path = 'missing/missing.celp'

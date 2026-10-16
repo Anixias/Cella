@@ -1,5 +1,10 @@
 mod test
 
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
 main: fun -> i32
 {
 	var total = 0
@@ -12,5 +17,6 @@ main: fun -> i32
 		i += 1
 	}
 
-	ret total
+	printf("%d\n", total)
+	ret 0
 }

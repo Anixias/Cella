@@ -12,6 +12,13 @@ pub
 	length: fun(v: Vector) -> i32 = magnitude(v.x * v.x + v.y * v.y)
 }
 
-pub ext("msvcrt") abs: fun(value: i32) -> i32
+when windows
+{
+	pub ext("msvcrt") abs: fun(value: i32) -> i32
+}
+else
+{
+	pub ext("c") abs: fun(value: i32) -> i32
+}
 
 magnitude: pvt fun(squared: i32) -> i32 = squared

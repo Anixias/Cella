@@ -13,7 +13,7 @@ public sealed unsafe partial class CodeGenerator
 	
 	private void DefineGlobal(GlobalInfo info)
 	{
-		if (TargetTriple.Contains("windows") && _targetData.ABISizeOfType(MapTypeSymbol(info.Type)) >= MaxImageBytes)
+		if (_targetData.ABISizeOfType(MapTypeSymbol(info.Type)) >= MaxImageBytes)
 			Diagnostics.Add(new(DiagnosticSeverity.Error, info.Symbol.Syntax.Identifier.SourceLocation,
 				$"Module variable '{info.Symbol.Name}' is too large"));
 		

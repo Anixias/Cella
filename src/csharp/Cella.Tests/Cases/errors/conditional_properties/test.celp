@@ -5,7 +5,7 @@ SystemLinkPreference = "Dynamic"
 BoundsChecks = false
 OutputType = "SharedLibrary"
 
-[When.windows]
+[When."windows || linux"]
 BoundsChecks = true
 
 [When."debug && unknown"]

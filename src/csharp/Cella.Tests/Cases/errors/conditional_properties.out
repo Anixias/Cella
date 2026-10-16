@@ -4,5 +4,5 @@
 <case>\test.celp: Expected ')' in [When."(debug"]
 <case>\test.celp: Unexpected token in [When."debug release"]
 <case>\test.celp: Cannot set 'Flags' in [When."release"]
-<case>\test.celp: 'BoundsChecks' is set more than once, by [When."debug"] and [When."windows"]
+<case>\test.celp: 'BoundsChecks' is set more than once, by [When."debug"] and [When."windows || linux"]
 [compilation failed]
