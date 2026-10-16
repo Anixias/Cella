@@ -1,0 +1,24 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+take: fun(own n: i32) -> i32 = n
+
+main: fun -> i32
+{
+	var y = 7
+	val w = take(own y)
+	y = 3
+	val z = own y
+	y = 4
+	var x = 1
+	val p = @x
+	own *p = 5
+	val v = own *p
+	own *p = 6
+	printf("%d %d %d %d %d\n", w, z, y, v, x)
+	ret 0
+}

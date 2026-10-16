@@ -1,0 +1,12 @@
+mod test
+
+take: fun(own n: i32) -> i32 = n
+
+main: fun -> i32
+{
+	val y = 7
+	val z = own y
+	val a = 8
+	val w = take(own a)
+	ret z + w + y + a
+}

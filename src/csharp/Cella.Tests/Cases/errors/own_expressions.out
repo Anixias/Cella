@@ -36,25 +36,10 @@ Error at line 39, column 21
 39 │ val constant = own limit
                         ╘═══╛ Cannot move module values
 
-Error at line 42, column 19
-41 │ val q = @number
-42 │ val copied = own *q
-                      ╘╛ Cannot move 'i32' values out of a pointer
-
-Error at line 45, column 18
-44 │ val h = @holder
-45 │ val count = own h.count
-                     ╘═════╛ Cannot move 'i32' values out of a pointer
-
 Error at line 46, column 20
 45 │ val count = own h.count
 46 │ val stored = own (counter = 5)
                        ╘═════════╛ Cannot move module variables
-
-Error at line 47, column 21
-46 │ val stored = own (counter = 5)
-47 │ val through = own (*q = 7)
-                        ╘════╛ Cannot move 'i32' values out of a pointer
 
 Error at line 49, column 25
 48 │ 

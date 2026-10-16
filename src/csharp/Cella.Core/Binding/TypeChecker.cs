@@ -554,9 +554,6 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool, 
 		else if (!IsThroughPointer(node.Left))
 			Diagnostics.Add(new(DiagnosticSeverity.Error, ((BinaryOpExpressionNode)node.Syntax).Left.SourceLocation,
 				"Cannot assign with 'own' except through pointers"));
-		else if (!typePool.NeedsDrop(node.Left.Type))
-			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Left.Syntax.SourceLocation,
-				$"Cannot move '{node.Left.Type.Name}' values into a pointer"));
 	}
 	
 	public void Visit(ResolvedBinaryOpExpressionNode node)
@@ -711,9 +708,6 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool, 
 			Diagnostics.Add(new(DiagnosticSeverity.Error, location, $"Cannot move {DescribeGlobals(global)}"));
 		else if (IsThroughBorrow(place))
 			Diagnostics.Add(new(DiagnosticSeverity.Error, location, "Cannot move borrowed values"));
-		else if (IsThroughPointer(place) && typePool.IsCopy(node.Value.Type))
-			Diagnostics.Add(new(DiagnosticSeverity.Error, location,
-				$"Cannot move '{node.Value.Type.Name}' values out of a pointer"));
 		else if (!typePool.IsCopy(node.Value.Type) && ReportUnwritable(place) is { } unwritable)
 			Diagnostics.Add(unwritable);
 		
