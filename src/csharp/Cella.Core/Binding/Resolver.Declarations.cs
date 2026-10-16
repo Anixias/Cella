@@ -1,6 +1,7 @@
 ﻿using Cella.Core.Binding.Nodes;
 using Cella.Core.Symbols;
 using Cella.Core.Syntax.Nodes;
+using Cella.Core.Text;
 using Cella.Diagnostics;
 
 namespace Cella.Core.Binding;
@@ -75,6 +76,18 @@ public sealed partial class Resolver
 	
 	public IResolvedDeclarationNode Visit(FunctionNode node) => ResolveFunction(node, node.Body!);
 	
+	private IEnumerable<IResolvedDeclarationNode> VisitFunctionMember(FunctionNode node)
+	{
+		if (node.Identifier.Type != TokenType.OpQuestion)
+			return [VisitNode(node)];
+		
+		var function = (FunctionSymbol)_symbolTable.DeclarationSymbols[node];
+		if (_signatures.FindInlineContext(function) is { } declaration && FindQuestionBody(function) is { } body)
+			IsSoundQuestionBody(function, declaration, body);
+		
+		return [];
+	}
+	
 	private ResolvedFunctionNode ResolveFunction(IDeclarationNode node, IStatementNode body)
 	{
 		var function = (FunctionSymbol)_symbolTable.DeclarationSymbols[node];
@@ -117,10 +130,12 @@ public sealed partial class Resolver
 	
 	public IResolvedDeclarationNode Visit(PropertyNode node) => throw new InvalidOperationException();
 	
-	private IEnumerable<IResolvedDeclarationNode> VisitMember(IDeclarationNode member) =>
-		member is PropertyNode property
-			? property.Accessors.Select(accessor => VisitNode(accessor))
-			: [VisitNode(member)];
+	private IEnumerable<IResolvedDeclarationNode> VisitMember(IDeclarationNode member) => member switch
+	{
+		PropertyNode property => property.Accessors.Select(accessor => VisitNode(accessor)),
+		FunctionNode function => VisitFunctionMember(function),
+		_ => [VisitNode(member)]
+	};
 	
 	public IResolvedDeclarationNode Visit(RecordNode node)
 	{
@@ -171,7 +186,7 @@ public sealed partial class Resolver
 	private IEnumerable<IResolvedDeclarationNode> VisitBodyMember(IDeclarationNode member) => member switch
 	{
 		PropertyNode property => property.Accessors.Where(static a => a.Body is not null).Select(a => VisitNode(a)),
-		FunctionNode { Body: not null } function => [VisitNode(function)],
+		FunctionNode { Body: not null } function => VisitFunctionMember(function),
 		_ => []
 	};
 }

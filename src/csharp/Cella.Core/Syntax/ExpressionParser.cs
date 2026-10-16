@@ -1055,6 +1055,12 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 				continue;
 			}
 			
+			if (!IsNextNewline(index) && Match(ref index, out var question, TokenType.OpQuestion))
+			{
+				target = new QuestionExpressionNode(target, question);
+				continue;
+			}
+			
 			break;
 		}
 		

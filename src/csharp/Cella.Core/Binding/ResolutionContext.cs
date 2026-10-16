@@ -7,6 +7,13 @@ using Cella.Diagnostics;
 
 namespace Cella.Core.Binding;
 
+public readonly record struct InlineReturn(FunctionInfo? Caller, SourceLocation Site);
+
+public sealed class InlineDeclaration(ResolutionContext context)
+{
+	public ResolutionContext Context { get; } = context;
+}
+
 public readonly struct ResolutionContext
 {
 	public FileSymbol File { get; init; }
@@ -29,6 +36,7 @@ public readonly struct ResolutionContext
 	public Func<ConstraintCheck, bool>? DeferConstraintCheck { get; init; }
 	public Func<string, Symbol?>? Capture { get; init; }
 	public Action<ResolutionContext, TypeSymbol, SourceLocation>? TrackInstance { get; init; }
+	public InlineReturn? InlineReturn { get; init; }
 	
 	public string Mangle(Symbol symbol) => Mangling.Mangle(symbol, Modules, GetQualifiers());
 	

@@ -1,0 +1,177 @@
+﻿using Cella.Core.Binding.Nodes;
+using Cella.Core.Symbols;
+using Cella.Core.Syntax.Nodes;
+using Cella.Core.Text;
+using Cella.Diagnostics;
+
+namespace Cella.Core.Binding;
+
+public sealed partial class Resolver
+{
+	private const string QuestionName = "?";
+	
+	private readonly Dictionary<FunctionSymbol, bool> _questionBodies = [];
+	private readonly HashSet<FunctionSymbol> _inlinedQuestions = [];
+	
+	public IResolvedExpressionNode Visit(QuestionExpressionNode node)
+	{
+		var operand = VisitNode(node.Value, null);
+		if (IsInvalid(operand))
+			return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
+		
+		if (operand.Type is NeverType)
+			return operand;
+		
+		operand = Decay(operand);
+		var declared = GetMethods(operand.Type, QuestionName).Where(static method => method.HasReceiver).ToList();
+		if (declared.Count == 0)
+			return Error(node, $"Cannot use '?' on '{operand.Type.Name}'", CurrentTargetType);
+		
+		if (declared.FirstOrDefault(method => CanAccess(operand.Type, method.Function)) is not { } method)
+			return Error(node, ReportHiddenMember(node.Op.SourceLocation, QuestionName,
+				declared.Select(static method => method.Function)), CurrentTargetType);
+		
+		var info = GetFunctionInfo(method, operand.Type);
+		var function = info.Symbol;
+		if (info.Signature.GetMode(0) != ParameterMode.Own || info.Signature.ReturnType is InvalidType ||
+		    _signatures.FindInlineContext(function) is not { } declaration ||
+		    FindQuestionBody(function) is not { } body || !IsSoundQuestionBody(function, declaration, body))
+			return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
+		
+		var context = CurrentResolutionContext;
+		if (context.InlineReturn is { Caller: null })
+			return new ResolvedInvalidExpressionNode(node, info.Signature.ReturnType);
+		
+		if ((context.InlineReturn?.Caller ?? context.ContainingFunction) is not { } caller)
+			return Error(node, "Cannot use '?' outside functions", CurrentTargetType);
+		
+		if (!_inlinedQuestions.Add(function))
+			return Error(node, $"Cannot use '?' on '{operand.Type.Name}' in its own '?' operator", CurrentTargetType);
+		
+		var self = new LocalVariableSymbol(new(TokenType.KeywordSelf, node.Op.SourceLocation, "self"), operand.Type,
+			false);
+		
+		var scope = new Scope();
+		scope.Define(self);
+		if (!info.TypeArguments.IsDefaultOrEmpty)
+		{
+			foreach (var (parameter, argument) in TypePool.CreateMap(function.TypeParameters, info.TypeArguments))
+				scope.Define(parameter.Name, argument);
+		}
+		
+		_resolutionContexts.Push(WithResolverState(declaration) with
+		{
+			ContainingFunction = info,
+			LocalScope = scope,
+			InlineReturn = new(caller, node.Op.SourceLocation)
+		});
+		
+		var captured = new List<Diagnostic>();
+		var previous = Diagnostics.Redirect(captured);
+		var resolvedBody = VisitNode(body, info.Signature.ReturnType);
+		Diagnostics.Redirect(previous);
+		Diagnostics.AddRange(captured.Where(static diagnostic => diagnostic.Severity == DiagnosticSeverity.Error));
+		_resolutionContexts.Pop();
+		_inlinedQuestions.Remove(function);
+		
+		return new ResolvedQuestionExpressionNode(self, CreateReceiver(operand, info), resolvedBody, node);
+	}
+	
+	private static IExpressionNode? FindQuestionBody(FunctionSymbol function) => function.Syntax is FunctionNode
+	{
+		Body: ExpressionStatementNode { ExpressionNode: ReturnExpressionNode { Value: { } value } }
+	}
+		? value
+		: null;
+	
+	private ResolutionContext WithResolverState(ResolutionContext declaration)
+	{
+		var current = CurrentResolutionContext;
+		return declaration with
+		{
+			Diagnostics = Diagnostics,
+			ExtSignatureTypes = current.ExtSignatureTypes,
+			CopiedParameters = current.CopiedParameters,
+			EvaluateConstant = current.EvaluateConstant,
+			GenericTypes = current.GenericTypes,
+			TrackInstance = current.TrackInstance,
+			DeferConstraintCheck = current.DeferConstraintCheck,
+			Capture = null
+		};
+	}
+	
+	private bool IsSoundQuestionBody(FunctionSymbol function, ResolutionContext declaration, IExpressionNode body)
+	{
+		if (!_signatures.IsLocal(function))
+			return true;
+		
+		if (_questionBodies.TryGetValue(function, out var isSound))
+			return isSound;
+		
+		_questionBodies[function] = true;
+		var info = _signatures.GetFunctionInfo(function);
+		var previous = Diagnostics.Redirect(null);
+		var errors = Diagnostics.ErrorCount;
+		
+		_resolutionContexts.Push(WithResolverState(declaration) with
+		{
+			ContainingFunction = info,
+			LocalScope = info.Scope,
+			TypeParameters = function.DeclaredTypeParameters,
+			InlineReturn = new(null, body.SourceLocation)
+		});
+		
+		InferLocals(() => VisitNode(body, info.Signature.ReturnType));
+		_resolutionContexts.Pop();
+		
+		isSound = Diagnostics.ErrorCount == errors;
+		Diagnostics.Redirect(previous);
+		_questionBodies[function] = isSound;
+		return isSound;
+	}
+	
+	private IResolvedExpressionNode ResolveInlineReturn(ReturnExpressionNode node, InlineReturn inline)
+	{
+		var checkpoint = OpenCheckpoint();
+		if (inline.Caller is not { } caller)
+		{
+			var discarded = node.Value is { } value ? VisitDiscarded(value) : null;
+			Rollback(checkpoint);
+			return new ResolvedReturnExpressionNode(discarded, node);
+		}
+		
+		var returnType = caller.Signature.ReturnType;
+		var resolved = node.Value is not { } expression ? null
+			: returnType is NeverType || returnType == NativeSymbols.Void ? VisitDiscarded(expression)
+			: VisitNode(expression, returnType);
+		
+		var isMismatched = returnType is NeverType ? resolved is not { Type: NeverType }
+			: returnType == NativeSymbols.Void ? resolved is not (null or { Type: NeverType })
+			: resolved is null;
+		
+		if (!checkpoint.HasErrors && !isMismatched)
+		{
+			Commit(checkpoint);
+			return new ResolvedReturnExpressionNode(resolved, node);
+		}
+		
+		Rollback(checkpoint);
+		var function = DiagnosticReporter.DescribeFunction(caller.Symbol);
+		Diagnostics.Add(new(DiagnosticSeverity.Error, inline.Site, node.Value is { } returned
+			? $"Cannot return '{DescribeReturned(returned)}' from {function}"
+			: returnType is NeverType
+				? $"Cannot return from {function}"
+				: $"{DiagnosticReporter.DescribeFunction(caller.Symbol, true)} must return a value"));
+		
+		return new ResolvedInvalidExpressionNode(node);
+	}
+	
+	private static string DescribeReturned(IExpressionNode node) => node switch
+	{
+		CallExpressionNode call => DescribeReturned(call.Target),
+		AccessExpressionNode access => access.Member.Text,
+		VarExpressionNode name => name.Identifier.Text,
+		IndexerExpressionNode indexer => DescribeReturned(indexer.Target),
+		_ => new(node.SourceLocation.GetText())
+	};
+}

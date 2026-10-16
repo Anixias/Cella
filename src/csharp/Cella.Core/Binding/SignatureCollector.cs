@@ -172,6 +172,11 @@ public sealed partial class SignatureCollector
 		ReportEntryPoint();
 		ReportExtSignatureTypes();
 		_copiedParameters.Report(Diagnostics);
+		foreach (var (symbol, declaration) in _declarations)
+		{
+			if (declaration.Node is FunctionNode { Identifier.Type: TokenType.OpQuestion })
+				_builder.InlineContexts[(FunctionSymbol)symbol] = new(declaration.Context);
+		}
 		
 		FunctionInfo? entryPoint = _entryPoints.Count == 1 ? _entryPoints[0] : null;
 		return new(name, _symbolTable, _builder.Build(), entryPoint);
@@ -197,6 +202,11 @@ public sealed partial class SignatureCollector
 	}
 	
 	public ImportEnvironment GetImports(FileSymbol file) => _builder.ImportEnvironments[file];
+	
+	public ResolutionContext? FindInlineContext(FunctionSymbol function) =>
+		_builder.InlineContexts.TryGetValue(function, out var declaration) ? declaration.Context
+		: _dependencyTable.InlineContexts.TryGetValue(function, out declaration) ? declaration.Context
+		: null;
 	
 	public FunctionInfo GetFunctionInfo(FunctionSymbol function)
 	{

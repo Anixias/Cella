@@ -392,6 +392,16 @@ public sealed partial class Lowerer
 		
 		public Value Visit(ResolvedOwnExpressionNode node) => new MoveValue(VisitPlace(node.Value));
 		
+		public Value Visit(ResolvedQuestionExpressionNode node)
+		{
+			var operand = Consume(VisitNode(node.Operand));
+			Declare(GetOrMakeBlock(),
+				new LocalVarInstruction(node.Self, operand, node.Syntax.SourceLocation, CurrentScopeId));
+			
+			_returnedValues.Add(node.Body);
+			return VisitNode(node.Body);
+		}
+		
 		public Value Visit(ResolvedMutArgumentExpressionNode node) => new UnaryOpValue(node.Type,
 			VisitPlace(node.Place), UnaryOperation.AddressOf, node.Syntax.SourceLocation);
 		

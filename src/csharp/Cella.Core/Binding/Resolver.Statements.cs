@@ -30,6 +30,9 @@ public sealed partial class Resolver
 	
 	public IResolvedExpressionNode Visit(ReturnExpressionNode node)
 	{
+		if (CurrentResolutionContext.InlineReturn is { } inline)
+			return ResolveInlineReturn(node, inline);
+		
 		if (CurrentResolutionContext.ContainingFunction is not { } function)
 			return Error(node, "Cannot use 'ret' outside functions", null);
 		

@@ -45,6 +45,7 @@ public sealed partial class FileParser
 		TokenType.OpPercent, TokenType.OpPlusPercent, TokenType.OpMinusPercent, TokenType.OpStarPercent,
 		TokenType.OpLessLess, TokenType.OpGreaterGreater, TokenType.OpLessLessLess,
 		TokenType.OpGreaterGreaterGreater, TokenType.OpAmpersand, TokenType.OpBar, TokenType.OpHat, TokenType.OpTilde,
+		TokenType.OpQuestion,
 		TokenType.OpPlusEqual, TokenType.OpMinusEqual, TokenType.OpStarEqual, TokenType.OpSlashEqual,
 		TokenType.OpPercentEqual, TokenType.OpPlusPercentEqual, TokenType.OpMinusPercentEqual,
 		TokenType.OpStarPercentEqual, TokenType.OpLessLessEqual, TokenType.OpGreaterGreaterEqual,

@@ -1,0 +1,39 @@
+
+====== question_operator_declarations.ce ======
+
+Error at line 7, column 8
+6 │ 
+7 │ ?: op(self) -> i32 = 1
+          ╘══╛ Cannot take 'self' in '?' operators
+
+Error at line 14, column 18
+13 │ 
+14 │ ?: op(own self, x: i32) -> i32 = 1
+                     ^ Cannot take parameters in '?' operators with 'self'
+
+Error at line 21, column 2
+20 │ 
+21 │ ?: op(own self) -> i32
+     ^ '?' operators need '=' and a value
+
+Error at line 31, column 2
+30 │ 
+31 │ ?: op -> i32 = 1
+     ^ Cannot declare '?' operators without 'own self'
+
+Error at line 38, column 2
+37 │ 
+38 │ ?: op(own self) = 1
+     ^ '?' operators need a return type
+
+Error at line 45, column 4
+44 │ 
+45 │ ?[T]: op(own self) -> i32 = 1
+       ^ Cannot infer 'T' from the operands of '?'
+
+Error at line 50, column 2
+49 │ {
+50 │     ?: op(own self) -> i32
+         ^ Cannot declare '?' operators in traits
+
+[compilation failed]

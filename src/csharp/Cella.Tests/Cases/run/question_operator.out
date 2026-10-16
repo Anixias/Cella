@@ -1,0 +1,18 @@
+ok 6
+err -1
+err -5
+1 0
+loaded 1 2
+free 2
+free 1
+free 3
+free 7
+1 1
+err 9
+lambda 5
+1 1
+free 10
+probe 10
+sum 19
+free 11
+[exit code 0]

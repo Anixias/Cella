@@ -12,6 +12,7 @@ public readonly record struct SignatureTable
 		public Dictionary<VariableSymbol, TypeSymbol> VariableTypes { get; } = [];
 		public Dictionary<GlobalSymbol, GlobalInfo> Globals { get; } = [];
 		public Dictionary<TypeSymbol, ISize> TypeSizes { get; } = [];
+		public Dictionary<FunctionSymbol, InlineDeclaration> InlineContexts { get; } = [];
 		
 		public SignatureTable Build() => new()
 		{
@@ -20,6 +21,7 @@ public readonly record struct SignatureTable
 			VariableTypes = VariableTypes.ToImmutableDictionary(),
 			Globals = Globals.ToImmutableDictionary(),
 			TypeSizes = TypeSizes.ToImmutableDictionary(),
+			InlineContexts = InlineContexts.ToImmutableDictionary()
 		};
 	}
 	
@@ -28,6 +30,7 @@ public readonly record struct SignatureTable
 	public ImmutableDictionary<VariableSymbol, TypeSymbol> VariableTypes { get; init; }
 	public ImmutableDictionary<GlobalSymbol, GlobalInfo> Globals { get; init; }
 	public ImmutableDictionary<TypeSymbol, ISize> TypeSizes { get; init; }
+	public ImmutableDictionary<FunctionSymbol, InlineDeclaration> InlineContexts { get; init; }
 	
 	public static readonly SignatureTable Empty = new()
 	{
@@ -35,7 +38,8 @@ public readonly record struct SignatureTable
 		Functions = [],
 		VariableTypes = [],
 		Globals = [],
-		TypeSizes = []
+		TypeSizes = [],
+		InlineContexts = []
 	};
 	
 	public static SignatureTable Combine(params IEnumerable<SignatureTable> tables)
@@ -58,6 +62,9 @@ public readonly record struct SignatureTable
 			
 			foreach (var (type, size) in table.TypeSizes)
 				builder.TypeSizes[type] = size;
+			
+			foreach (var (function, declaration) in table.InlineContexts)
+				builder.InlineContexts[function] = declaration;
 		}
 		
 		return builder.Build();

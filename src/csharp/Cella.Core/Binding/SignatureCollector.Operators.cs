@@ -368,6 +368,9 @@ public sealed partial class SignatureCollector
 		if (_compoundOperators.Contains(node.Identifier.Type))
 			return FindCompoundOperatorError(node);
 		
+		if (node.Identifier.Type == TokenType.OpQuestion)
+			return FindQuestionOperatorError(type, node);
+		
 		if (node.Receiver is { } receiver)
 		{
 			if (!_unaryOperators.Contains(node.Identifier.Type))
@@ -399,6 +402,23 @@ public sealed partial class SignatureCollector
 			? null
 			: (node.Identifier.SourceLocation, $"'{name}' operators need a '{type.Name}' parameter");
 	}
+	
+	private static (SourceLocation Location, string Message)? FindQuestionOperatorError(TypeSymbol type,
+		FunctionNode node) => node switch
+	{
+		_ when type is TypeParameterSymbol =>
+			(node.Identifier.SourceLocation, "Cannot declare '?' operators in traits"),
+		{ Receiver: null } =>
+			(node.Identifier.SourceLocation, "Cannot declare '?' operators without 'own self'"),
+		{ Receiver: { } receiver } when receiver.Mode?.Type != TokenType.KeywordOwn =>
+			(receiver.SourceLocation, $"Cannot take '{DescribeReceiver(receiver)}' in '?' operators"),
+		{ Parameters: [var parameter, ..] } =>
+			(parameter.SourceLocation, "Cannot take parameters in '?' operators with 'self'"),
+		{ ReturnType: null } => (node.Identifier.SourceLocation, "'?' operators need a return type"),
+		{ Body: not ExpressionStatementNode } =>
+			(node.Identifier.SourceLocation, "'?' operators need '=' and a value"),
+		_ => null
+	};
 	
 	private static (SourceLocation Location, string Message)? FindCompoundOperatorError(FunctionNode node)
 	{

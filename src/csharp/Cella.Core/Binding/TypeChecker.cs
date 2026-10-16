@@ -16,6 +16,7 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool, 
 	public DiagnosticList Diagnostics { get; } = new();
 	
 	private readonly Stack<(TypeSymbol? Type, FunctionSymbol Function)> _returns = [];
+	private readonly HashSet<(SourceLocation, string)> _inlinedErrors = [];
 	private int continueDepth;
 	private int breakDepth;
 	private int overflows;
@@ -219,6 +220,22 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool, 
 			VisitNode(arm.Value);
 			CheckConsumed(arm.Value);
 		}
+	}
+	
+	public void Visit(ResolvedQuestionExpressionNode node)
+	{
+		VisitNode(node.Operand);
+		CheckConsumed(node.Operand);
+		var (breaks, continues) = (breakDepth, continueDepth);
+		(breakDepth, continueDepth) = (0, 0);
+		var captured = new List<Diagnostic>();
+		var previous = Diagnostics.Redirect(captured);
+		VisitNode(node.Body);
+		Diagnostics.Redirect(previous);
+		(breakDepth, continueDepth) = (breaks, continues);
+		Diagnostics.AddRange(captured.Where(diagnostic =>
+			diagnostic.Severity == DiagnosticSeverity.Error &&
+			_inlinedErrors.Add((diagnostic.SourceLocation, diagnostic.Message))));
 	}
 	
 	public void Visit(ResolvedReturnExpressionNode node)

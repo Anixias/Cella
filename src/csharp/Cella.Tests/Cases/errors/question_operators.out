@@ -1,0 +1,30 @@
+
+====== question_operators.ce ======
+
+Error at line 21, column 22
+20 │ {
+21 │     held(own value) => valu
+                            ╘══╛ Symbol 'valu' not found in this scope
+                               | Did you mean 'value'?
+
+Error at line 27, column 29
+26 │ 
+27 │ plain: fun -> i32 = parse(1)?
+                                 ^ Cannot return 'err' from 'plain'
+
+Error at line 31, column 18
+30 │ {
+31 │     val x = parse(1)?
+                         ^ Cannot return 'err' from 'nothing'
+
+Error at line 36, column 18
+35 │ {
+36 │     val x = parse(1)?
+                         ^ Cannot return 'err' from 'stop'
+
+Error at line 45, column 6
+44 │ val x = 5
+45 │ ret x?
+         ╘╛ Cannot use '?' on 'i32'
+
+[compilation failed]

@@ -1,0 +1,30 @@
+mod test
+
+use lib.result
+
+parse: fun(n: i32) -> result[i32, i32]
+{
+	if n < 0
+		ret result.err(n)
+
+	ret result.ok(n)
+}
+
+twice: fun(n: i32) -> result[i32, i32] = result.ok(parse(n)? * 2)
+
+main: fun -> i32
+{
+	val a = match twice(-3)
+	{
+		ok(val v) => v
+		err(val e) => e
+	}
+
+	val b = match twice(5)
+	{
+		ok(val v) => v
+		err(val e) => e
+	}
+
+	ret a + b
+}

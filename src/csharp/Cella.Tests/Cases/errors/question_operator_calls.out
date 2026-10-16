@@ -1,0 +1,9 @@
+
+====== question_operator_calls.ce ======
+
+Error at line 15, column 68
+14 │ 
+15 │ called: fun(r: result[i32, i32]) -> result[i32, i32] = result.ok(r.?())
+                                                                        ^ Expected a name after '.'
+
+[compilation failed]

@@ -1,0 +1,25 @@
+mod test
+
+option[T]: enum
+{
+	none
+	some(value: T)
+
+	?: op(own self) -> T = match own self
+	{
+		some(own value) => value
+		none => break
+	}
+}
+
+loops: fun -> option[i32]
+{
+	while true
+	{
+		val x = option.some(1)?
+	}
+
+	ret option.none
+}
+
+main: fun -> i32 = 0

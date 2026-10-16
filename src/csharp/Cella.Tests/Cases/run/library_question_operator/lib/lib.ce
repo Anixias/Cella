@@ -1,0 +1,13 @@
+mod lib
+
+result[T, E]: pub enum
+{
+	ok(value: T)
+	err(error: E)
+
+	?: op(own self) -> T = match own self
+	{
+		ok(own value) => value
+		err(own error) => ret result.err(own error)
+	}
+}

@@ -18,6 +18,8 @@ public sealed class Scope(Scope? parent = null)
 			_symbols[symbol.Name] = symbol;
 	}
 	
+	public void Define(string name, Symbol symbol) => _symbols[name] = symbol;
+	
 	public Symbol? Resolve(string name) => _symbols.GetValueOrDefault(name) ?? Parent?.Resolve(name);
 	
 	public LabelSymbol? ResolveLabel(string name) => _labels.GetValueOrDefault(name) ?? Parent?.ResolveLabel(name);

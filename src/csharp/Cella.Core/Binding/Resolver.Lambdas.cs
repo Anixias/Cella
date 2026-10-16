@@ -260,6 +260,7 @@ public sealed partial class Resolver
 		{
 			ContainingFunction = info,
 			LocalScope = info.Scope,
+			InlineReturn = null,
 			Capture = name => (Symbol?)frame.Bindings.GetValueOrDefault(name) ??
 			                  (outer.ResolveNear(name) is LocalVariableSymbol or ParameterSymbol or CapturedSymbol
 				                  ? new CapturedSymbol(name)
