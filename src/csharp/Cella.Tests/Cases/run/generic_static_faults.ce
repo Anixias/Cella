@@ -1,0 +1,21 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+slots[N: const usize]: rec
+{
+	count: i32
+	per: const usize = 10 / N
+
+	share: fun(imm self) -> usize = per
+}
+
+main: fun -> i32
+{
+	val s = slots[0](1)
+	printf("%zu\n", s.share())
+	ret 0
+}

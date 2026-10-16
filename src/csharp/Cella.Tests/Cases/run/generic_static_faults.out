@@ -1,0 +1,3 @@
+[stderr]
+Panic at generic_static_faults.ce:11:21: division by zero
+[exit code -1073740791]

@@ -98,6 +98,8 @@ public sealed partial class SignatureCollector
 			.Select(static a => a.SignatureTable));
 		
 		Evaluator = new ConstantEvaluator(typePool, pointerBitSize, GetGlobalValue);
+		typePool.FoldParametric = Evaluator.EvaluateInstance;
+		typePool.FindParametricFault = Evaluator.FindInstanceFault;
 		typePool.IntegerFits = Evaluator.Fits;
 		Modules = new ModuleIndex(assemblyName, symbolTable, dependencyList, indirectList, aliases);
 	}
@@ -296,7 +298,10 @@ public sealed partial class SignatureCollector
 			? InvalidConstant.Instance
 			: initializer is null
 				? null
-				: Evaluator.EvaluateStandalone(initializer);
+				: Evaluator.EvaluateStandalone(initializer) ??
+				  (global.ContainingType is NamedTypeSymbol { IsGenericDefinition: true } && IsParametric(initializer)
+					  ? new ParametricConstant(initializer)
+					  : null);
 		
 		if (node.IsConstant && type is not InvalidType && _typePool.NeedsDrop(type))
 			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Type.SourceLocation,

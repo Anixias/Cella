@@ -201,7 +201,9 @@ public sealed partial class Resolver
 		
 		if (type.GetStaticField(node.Member.Text) is { } field)
 			return CanAccess(type, field.Visibility)
-				? ResolveSymbolValue(node, field)
+				? _signatures.GetGlobalInfo(field) is { Fault: not null }
+					? Error(node, $"'{type.Name}.{field.Name}' has no constant value", CurrentTargetType)
+					: ResolveSymbolValue(node, field)
 				: Error(node, DiagnosticReporter.ReportHidden(node.Member.SourceLocation, field.Name, field.Visibility,
 					true), CurrentTargetType);
 		

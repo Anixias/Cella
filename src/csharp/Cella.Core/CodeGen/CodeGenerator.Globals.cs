@@ -175,6 +175,9 @@ public sealed unsafe partial class CodeGenerator
 	private LLVMValueRef EmitGlobalAddress(GlobalInfo info, LLVMBuilderRef builder)
 	{
 		info = SubstituteGlobal(info);
+		if (info.Fault is { } fault)
+			PanicIf(_true, fault.Message, fault.Location, builder);
+		
 		if (FindRegistryOwner(info) is not { } assembly)
 			return GetGlobal(info);
 		

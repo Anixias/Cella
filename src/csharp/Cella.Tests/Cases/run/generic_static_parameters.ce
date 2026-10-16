@@ -1,0 +1,31 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+ring[T, N: const usize]: rec
+{
+	items: array[T, N]
+
+	capacity: const usize = N
+	elementSize: const usize = sizeOf(T)
+	alignment: val usize = alignOf(T)
+	bytes: const usize = capacity * elementSize
+	made: var usize = N * 2
+
+	total: fun(imm self) -> usize = capacity + made
+}
+
+main: fun -> i32
+{
+	printf("%zu %zu %zu\n", ring[i32, 4].capacity, ring[i64, 8].elementSize, ring[i16, 3].bytes)
+	ring[i32, 4].made += 1
+	printf("%zu %zu\n", ring[i32, 4].made, ring[i32, 5].made)
+	val r = ring[u8, 2]([1u8, 2u8])
+	printf("%zu\n", r.total())
+	val arr: array[i32, ring[i32, 6].capacity] = [1, 2, 3, 4, 5, 6]
+	printf("%d %zu\n", arr[5], ring[i64, 1].alignment)
+	ret 0
+}

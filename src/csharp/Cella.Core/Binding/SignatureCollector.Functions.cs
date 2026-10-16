@@ -393,6 +393,8 @@ public sealed partial class SignatureCollector
 		ResolvedBinaryOpExpressionNode { Operation: NativeImpl } n => IsParametricOperand(n.Left) &&
 		                                                              IsParametricOperand(n.Right),
 		ResolvedConversionExpressionNode n => IsParametric(n.Source),
+		ResolvedGlobalExpressionNode { Symbol: { IsConstant: true } global } =>
+			GetGlobalInfo(global)?.Value is ParametricConstant,
 		_ => false
 	};
 	

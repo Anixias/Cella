@@ -23,10 +23,11 @@ public sealed class ConstantEvaluator
 	private readonly List<LocalVariableSymbol> _patternBindings = [];
 	
 	private bool foldsBindings;
+	private IReadOnlyDictionary<TypeParameterSymbol, TypeSymbol>? substitution;
 	
 	public Constant? Evaluate(IResolvedExpressionNode node)
 	{
-		if (_bindings.Count > 0 || foldsBindings)
+		if (_bindings.Count > 0 || foldsBindings || substitution is not null)
 			return Fold(node);
 		
 		if (_cache.TryGetValue(node, out var cached))
@@ -36,6 +37,65 @@ public sealed class ConstantEvaluator
 		_cache[node] = result;
 		return result;
 	}
+	
+	public Constant? EvaluateInstance(IResolvedExpressionNode node,
+		IReadOnlyDictionary<TypeParameterSymbol, TypeSymbol> map)
+	{
+		var outer = substitution;
+		substitution = map;
+		try
+		{
+			return Fold(node);
+		}
+		finally
+		{
+			substitution = outer;
+		}
+	}
+	
+	public StaticFault? FindInstanceFault(IResolvedExpressionNode node,
+		IReadOnlyDictionary<TypeParameterSymbol, TypeSymbol> map)
+	{
+		var outer = substitution;
+		substitution = map;
+		try
+		{
+			return FindFault(node);
+		}
+		finally
+		{
+			substitution = outer;
+		}
+	}
+	
+	private StaticFault? FindFault(IResolvedExpressionNode node)
+	{
+		if (node is ResolvedGlobalExpressionNode { Symbol: { IsConstant: true } global } &&
+		    getGlobalValue(global) is ParametricConstant parametric)
+			return FindFault(parametric.Value);
+		
+		if (GetOperands(node).Select(FindFault).FirstOrDefault(static fault => fault is not null) is { } inner)
+			return inner;
+		
+		return Fold(node) is null or InvalidConstant
+			? new StaticFault(DescribeFault(node), node.Syntax.SourceLocation)
+			: null;
+	}
+	
+	private string DescribeFault(IResolvedExpressionNode node) => node switch
+	{
+		ResolvedBinaryOpExpressionNode { Operation: NativeImpl { Op: TokenType.OpSlash or TokenType.OpPercent } } n
+			when Fold(n.Right) is IntegerConstant { Value.IsZero: true } => "division by zero",
+		ResolvedBinaryOpExpressionNode { Operation: NativeImpl { Op: TokenType.OpSlash or TokenType.OpPercent } } =>
+			"division overflow",
+		ResolvedBinaryOpExpressionNode { Operation: NativeImpl { Op: TokenType.OpPlus } } => "addition overflow",
+		ResolvedBinaryOpExpressionNode { Operation: NativeImpl { Op: TokenType.OpMinus } } => "subtraction overflow",
+		ResolvedBinaryOpExpressionNode { Operation: NativeImpl { Op: TokenType.OpStar } } =>
+			"multiplication overflow",
+		ResolvedUnaryOpExpressionNode { Operation: NativeImpl { Op: TokenType.OpMinus } } => "negation overflow",
+		ResolvedConversionExpressionNode => "conversion overflow",
+		_ => "constant overflow"
+	};
 	
 	public Constant? EvaluateStandalone(IResolvedExpressionNode node)
 	{
@@ -187,7 +247,11 @@ public sealed class ConstantEvaluator
 		ResolvedVarExpressionNode { Symbol: LocalVariableSymbol symbol } when
 			_bindings.TryGetValue(symbol, out var bound) => bound,
 		ResolvedVarExpressionNode { Symbol: LocalVariableSymbol { ConstantValue: { } value } } => value,
-		ResolvedGlobalExpressionNode { Symbol: { IsConstant: true } global } => getGlobalValue(global),
+		ResolvedGlobalExpressionNode { Symbol: { IsConstant: true } global } => FoldGlobal(global),
+		ResolvedValueParameterExpressionNode n when substitution?.GetValueOrDefault(n.Parameter) is
+			ValueArgumentType { Value: var value } => new IntegerConstant(n.Type, value),
+		ResolvedSizeOfExpressionNode n when substitution is not null => FoldLayout(n.Target, false),
+		ResolvedAlignOfExpressionNode n when substitution is not null => FoldLayout(n.Target, true),
 		ResolvedAccessExpressionNode n => FoldAccess(n),
 		ResolvedIndexerExpressionNode n => FoldAll([n.Target, n.Index], values => Index(values[0], values[1])),
 		ResolvedRecordExpressionNode n => FoldAll(n.Fields.Select(static f => f.Value),
@@ -200,6 +264,22 @@ public sealed class ConstantEvaluator
 		ResolvedMatchExpressionNode n => FoldMatch(n),
 		_ => null
 	};
+	
+	private Constant? FoldGlobal(GlobalSymbol global) => getGlobalValue(global) switch
+	{
+		ParametricConstant parametric when substitution is not null => Fold(parametric.Value),
+		ParametricConstant => null,
+		var value => value
+	};
+	
+	private IntegerConstant? FoldLayout(TypeSymbol target, bool isAlignment)
+	{
+		if (typePool.SizeTable.TryGetSize(typePool.Substitute(target, substitution!)) is not { } size)
+			return null;
+		
+		var bits = isAlignment ? size.CountAlignmentBits(pointerBitSize) : size.CountBits(pointerBitSize);
+		return new IntegerConstant(NativeSymbols.UIntSize, (bits + 7) / 8);
+	}
 	
 	private Constant? FoldIs(ResolvedIsExpressionNode node)
 	{

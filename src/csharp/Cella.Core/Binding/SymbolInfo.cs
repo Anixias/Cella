@@ -2,6 +2,7 @@
 using Cella.Core.Binding.Constants;
 using Cella.Core.Binding.Nodes;
 using Cella.Core.Symbols;
+using Cella.Core.Text;
 
 namespace Cella.Core.Binding;
 
@@ -44,6 +45,7 @@ public readonly record struct FunctionInfo
 
 public readonly record struct NamePart(string Name, ImmutableArray<TypeSymbol> Arguments);
 public readonly record struct VariableInfo(VariableSymbol Symbol, TypeSymbol Type);
+public readonly record struct StaticFault(string Message, SourceLocation Location);
 
 public readonly record struct GlobalInfo
 (
@@ -53,4 +55,7 @@ public readonly record struct GlobalInfo
 	IResolvedExpressionNode? Initializer,
 	Constant? Value,
 	FileSymbol File
-);
+)
+{
+	public StaticFault? Fault { get; init; }
+}

@@ -1,6 +1,7 @@
 ﻿using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
 using Cella.Core.Binding.Constants;
+using Cella.Core.Binding.Nodes;
 using Cella.Core.Collections;
 using Cella.Core.Symbols;
 
@@ -395,6 +396,12 @@ public sealed partial class TypePool
 				_ => constant
 			};
 	
+	public Func<IResolvedExpressionNode, IReadOnlyDictionary<TypeParameterSymbol, TypeSymbol>, Constant?>?
+		FoldParametric { get; set; }
+	
+	public Func<IResolvedExpressionNode, IReadOnlyDictionary<TypeParameterSymbol, TypeSymbol>, StaticFault?>?
+		FindParametricFault { get; set; }
+	
 	public void RegisterGenericGlobal(GlobalInfo definition) => _genericGlobals[definition.Symbol] = definition;
 	
 	public GlobalInfo InstantiateGlobal(GlobalSymbol global, ModuleIndex? modules)
@@ -405,12 +412,26 @@ public sealed partial class TypePool
 		var instance = (NamedTypeSymbol)global.ContainingType!;
 		var definition = _genericGlobals[instance.Definition.GetStaticField(global.Name)!];
 		var map = CreateMap(instance.Definition.TypeParameters, instance.TypeArguments);
+		var type = Substitute(definition.Type, map);
+		var folded = definition.Value is ParametricConstant parametric
+			? FoldParametric?.Invoke(parametric.Value, map) is { } result and not InvalidConstant ? result : null
+			: null;
+		
 		var instantiated = definition with
 		{
 			MangledName = Mangling.MangleInstantiation(definition.MangledName, instance.TypeArguments, modules),
 			Symbol = global,
-			Type = Substitute(definition.Type, map),
-			Value = definition.Value is { } value ? SubstituteConstant(value, map) : null
+			Type = type,
+			Value = definition.Value switch
+			{
+				ParametricConstant => folded ?? new ZeroConstant(type),
+				{ } value => SubstituteConstant(value, map),
+				null => null
+			},
+			Fault = definition.Value is ParametricConstant { Value: var expression } && folded is null
+				? FindParametricFault?.Invoke(expression, map) ??
+				  new StaticFault("constant overflow", expression.Syntax.SourceLocation)
+				: null
 		};
 		
 		_globalInstances[global] = instantiated;
