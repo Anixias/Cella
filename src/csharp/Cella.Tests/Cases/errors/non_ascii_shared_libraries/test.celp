@@ -1,0 +1,8 @@
+OutputType = "Executable"
+SystemLinkPreference = "Dynamic"
+
+[[ProjectReferences]]
+Path = 'bibliothèque/bibliothèque.celp'
+
+[[ProjectReferences]]
+Path = 'données/données.celp'

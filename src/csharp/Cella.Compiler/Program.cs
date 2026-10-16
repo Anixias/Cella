@@ -130,7 +130,8 @@ internal static class Program
 		var builtInFlags = BuildFlags.Create(targetTriple, optimizeMode);
 		var linkPreferences = FindLinkPreferences(projectDependencies);
 		var flagsValid = ValidateFlags(projectDependencies.Keys, builtInFlags, flagOverrides) &
-		                 ValidateOutputNames(projectDependencies) & linkPreferences is not null;
+		                 ValidateOutputNames(projectDependencies) & ValidateLibraryNames(projectDependencies.Keys) &
+		                 linkPreferences is not null;
 		
 		foreach (var error in projectErrors)
 			Console.WriteLine(error);
@@ -258,6 +259,22 @@ internal static class Program
 		}
 		
 		return reported.Count == 0;
+	}
+	
+	private static bool ValidateLibraryNames(IEnumerable<ProjectInfo> projects)
+	{
+		var isValid = true;
+		foreach (var project in projects.OrderBy(static project => project.FilePath, StringComparer.Ordinal))
+		{
+			var name = GetOutputBaseName(project);
+			if (project.Project.OutputType != ProjectOutputType.SharedLibrary || Ascii.IsValid(name))
+				continue;
+			
+			Console.WriteLine($"The shared library name '{name}' in '{project.FilePath}' must be ASCII");
+			isValid = false;
+		}
+		
+		return isValid;
 	}
 	
 	private static Dictionary<string, bool>? ParseFlagArguments(string[] args)
