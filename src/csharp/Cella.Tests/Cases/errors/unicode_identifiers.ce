@@ -1,0 +1,8 @@
+mod test
+
+main: fun -> i32
+{
+	val café = 1
+	val café = 2
+	ret 0
+}

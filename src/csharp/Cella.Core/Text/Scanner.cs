@@ -28,7 +28,7 @@ public class Scanner
 		if (char.IsAsciiDigit(character))
 			return ScanNumber(position);
 		
-		if (char.IsLetter(character) || character == '_')
+		if (FindRune(position) is { } first && IsIdentifierStart(first))
 			return ScanIdentifier(position);
 		
 		switch (character)
@@ -113,21 +113,43 @@ public class Scanner
 	
 	private ScanResult ScanIdentifier(int position)
 	{
-		int end;
-		for (end = position + 1; end < Source.Length; end++)
-		{
-			var c = Source[end];
-			if (!char.IsLetterOrDigit(c) && c != '_')
-				break;
-		}
+		var end = position + FindRune(position)!.Value.Utf16SequenceLength;
+		while (end < Source.Length && FindRune(end) is { } rune && IsIdentifierContinue(rune))
+			end += rune.Utf16SequenceLength;
 		
 		var range = new TextRange(position, end);
-		var text = new string(Source.GetText(range));
+		var text = new string(Source.GetText(range)).Normalize(NormalizationForm.FormC);
 		var tokenType = TokenType.GetKeyword(text) ?? TokenType.Identifier;
 		
-		var token = new Token(tokenType, Source, range);
+		var token = new Token(tokenType, Source, range, text);
 		return new ScanResult(token, end);
 	}
+	
+	private Rune? FindRune(int position)
+	{
+		var character = Source[position];
+		if (char.IsHighSurrogate(character) && position + 1 < Source.Length &&
+		    char.IsLowSurrogate(Source[position + 1]))
+			return new Rune(character, Source[position + 1]);
+		
+		return Rune.IsValid(character) ? new Rune(character) : null;
+	}
+	
+	private static bool IsIdentifierStart(Rune rune) => rune.Value == '_' ||
+	                                                    Rune.GetUnicodeCategory(rune) is
+		                                                    UnicodeCategory.UppercaseLetter or
+		                                                    UnicodeCategory.LowercaseLetter or
+		                                                    UnicodeCategory.TitlecaseLetter or
+		                                                    UnicodeCategory.ModifierLetter or
+		                                                    UnicodeCategory.OtherLetter or
+		                                                    UnicodeCategory.LetterNumber;
+	
+	private static bool IsIdentifierContinue(Rune rune) => IsIdentifierStart(rune) ||
+	                                                       Rune.GetUnicodeCategory(rune) is
+		                                                       UnicodeCategory.NonSpacingMark or
+		                                                       UnicodeCategory.SpacingCombiningMark or
+		                                                       UnicodeCategory.DecimalDigitNumber or
+		                                                       UnicodeCategory.ConnectorPunctuation;
 	
 	private ScanResult ScanNumber(int position)
 	{

@@ -1,0 +1,17 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+main: fun -> i32
+{
+	val café = 1
+	val 𝑥 = 2
+	val 変数 = 3
+	val Δx = 4
+	val countⅧ = 5
+	printf("%d %d %d %d %d\n", café, 𝑥, 変数, Δx, countⅧ)
+	ret 0
+}
