@@ -228,7 +228,7 @@ public sealed class MemoryChecker(TypePool typePool, ConstantEvaluator evaluator
 				switch (memoryEvent)
 				{
 					case AccessEvent access:
-						CheckAccess(access, state, paths);
+						CheckAccess(access, state, paths, reportedMoves);
 						break;
 					
 					case WriteEvent write when write.Place.Path.Any(IsComputedIndex):
@@ -246,6 +246,10 @@ public sealed class MemoryChecker(TypePool typePool, ConstantEvaluator evaluator
 					
 					case WriteEvent write:
 						CheckDeferredWrite(write, state, paths);
+						break;
+					
+					case StorageDeadEvent { Local: { IsLoopBinding: true, IsMutBinding: true } binding }:
+						CheckLoopRefill(binding, state, paths, reportedMoves);
 						break;
 					
 					case DropEvent drop when paths.Find(drop.Place) is { } path:
@@ -435,7 +439,8 @@ public sealed class MemoryChecker(TypePool typePool, ConstantEvaluator evaluator
 				function.Info.Symbol.Parameters[0]);
 	}
 	
-	private void CheckAccess(AccessEvent access, InitState state, MovePaths paths)
+	private void CheckAccess(AccessEvent access, InitState state, MovePaths paths,
+		HashSet<SourceLocation> reportedMoves)
 	{
 		if (access.Kind == AccessKind.Move && GetMoveError(access.Place, paths) is { } error)
 		{
@@ -449,7 +454,7 @@ public sealed class MemoryChecker(TypePool typePool, ConstantEvaluator evaluator
 		if (FindUninitialized(access.Place, state, paths) is { } uninitialized)
 			Report(access.Location, $"Cannot use {uninitialized.Condition} values",
 				DescribeMoves(access.Location, uninitialized.Moves), access.Place.Root);
-		else if (access.IsImplicit)
+		else if (access.IsImplicit && reportedMoves.Add(access.Location))
 			Report(access.Location, $"Cannot move '{access.Type.Name}' values implicitly", [], access.Place.Root);
 	}
 	
@@ -542,12 +547,27 @@ public sealed class MemoryChecker(TypePool typePool, ConstantEvaluator evaluator
 		}
 	}
 	
+	private void CheckLoopRefill(LocalVariableSymbol binding, InitState state, MovePaths paths,
+		HashSet<SourceLocation> reportedMoves)
+	{
+		var element = paths.GetRoot(binding).GetChild(new DerefProjection());
+		foreach (var move in state.GetMoves(paths.GetRoot(binding)))
+		{
+			if (reportedMoves.Add(move.Location))
+				Report(move.Location, move.Path == element && move.Depth == 0
+					? "Cannot leave 'mut' loop variables moved"
+					: "Cannot leave 'mut' loop variables partly moved", [], binding);
+		}
+	}
+	
 	private string? GetMoveError(Place place, MovePaths paths) => place.Root switch
 	{
 		GlobalSymbol => null,
 		ParameterSymbol { Mode: ParameterMode.ReadOnly or ParameterMode.Imm } parameter
 			when !typePool.IsCopy(paths.GetRoot(parameter).Type) => "Cannot move read-only parameters",
 		LocalVariableSymbol { Captured: not null } => "Cannot move captured variables",
+		LocalVariableSymbol { IsLoopBinding: true, IsMutBinding: true } when place.Path is [DerefProjection, ..] =>
+			HasDestructorAbove(place, paths) ? "Cannot move fields out of values with destructors" : null,
 		LocalVariableSymbol { IsLoopBinding: true } => "Cannot move loop variables",
 		LocalVariableSymbol { IsBorrowBinding: true } => "Cannot move pattern bindings",
 		_ when place.Path.Any(IsComputedIndex) => "Cannot move array elements at computed indices",
@@ -577,6 +597,10 @@ public sealed class MemoryChecker(TypePool typePool, ConstantEvaluator evaluator
 				
 				case IndexProjection when type is ArrayType array:
 					type = array.ElementType;
+					break;
+				
+				case DerefProjection when type is PointerType pointer:
+					type = pointer.BaseType;
 					break;
 				
 				default:

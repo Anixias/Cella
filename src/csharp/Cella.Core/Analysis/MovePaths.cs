@@ -215,6 +215,7 @@ public sealed class MovePaths
 	private TypeSymbol? GetPartType(TypeSymbol type, Projection projection) => (type, projection) switch
 	{
 		(RecordSymbol { IsUnion: false }, FieldProjection p) => _typePool.GetTypeOfMember(p.Field),
+		(PointerType p, DerefProjection) => p.BaseType,
 		(ArrayType a, IndexProjection { Index: { } index }) when index >= 0 &&
 		                                                         (index < a.Length || a.LengthParameter is not null) =>
 			a.ElementType,

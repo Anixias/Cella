@@ -1,0 +1,31 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Buffer: rec
+{
+	id: i32
+
+	drop: op
+	{
+		printf("drop %d\n", self.id)
+	}
+}
+
+main: fun -> i32
+{
+	var buffers = [Buffer(1), Buffer(2)]
+	var spare = Buffer(9)
+	for buffer in mut buffers
+	{
+		val old = own buffer
+		buffer = own spare
+		spare = own old
+	}
+
+	printf("%d %d %d\n", buffers[0].id, buffers[1].id, spare.id)
+	ret 0
+}

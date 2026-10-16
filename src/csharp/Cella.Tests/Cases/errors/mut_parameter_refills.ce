@@ -69,4 +69,9 @@ Built: rec
 	}
 }
 
+implicit: fun(mut buffer: Buffer)
+{
+	val copy: Buffer = buffer
+}
+
 main: fun -> i32 = 0

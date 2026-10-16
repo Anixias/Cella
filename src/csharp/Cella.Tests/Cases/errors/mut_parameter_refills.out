@@ -21,4 +21,9 @@ Error at line 68, column 12
 68 │ keep(own self)
               ╘══╛ Cannot leave 'self' moved
 
+Error at line 74, column 21
+73 │ {
+74 │     val copy: Buffer = buffer
+                            ╘════╛ Cannot move 'Buffer' values implicitly
+
 [compilation failed]

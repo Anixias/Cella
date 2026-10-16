@@ -1,0 +1,34 @@
+
+====== mut_loop_variable_refills.ce ======
+
+Error at line 32, column 12
+31 │ for buffer in mut buffers
+32 │     take(own buffer)
+                  ╘════╛ Cannot leave 'mut' loop variables moved
+
+Error at line 38, column 12
+37 │ for pair in mut pairs
+38 │     take(own pair.left)
+                  ╘═══════╛ Cannot leave 'mut' loop variables partly moved
+
+Error at line 45, column 17
+44 │ {
+45 │     val old = own buffer
+                       ╘════╛ Cannot leave 'mut' loop variables moved
+
+Error at line 57, column 17
+56 │ {
+57 │     val old = own buffer
+                       ╘════╛ Cannot leave 'mut' loop variables moved
+
+Error at line 71, column 18
+70 │ {
+71 │     val left = own wrapper.pair.left
+                        ╘═══════════════╛ Cannot move fields out of values with destructors
+
+Error at line 79, column 12
+78 │ for buffer in buffers
+79 │     take(own buffer)
+                  ╘════╛ Cannot move loop variables
+
+[compilation failed]

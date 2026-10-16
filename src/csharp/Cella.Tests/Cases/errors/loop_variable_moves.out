@@ -14,7 +14,7 @@ Error at line 54, column 12
 Error at line 58, column 20
 57 │ {
 58 │     val copy: Name = name
-                          ╘══╛ Cannot move loop variables
+                          ╘══╛ Cannot move 'Name' values implicitly
 
 Error at line 62, column 14
 61 │ var group = [Name(3), Name(4)]
