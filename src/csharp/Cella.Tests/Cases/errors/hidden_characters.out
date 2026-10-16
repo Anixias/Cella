@@ -20,6 +20,6 @@ Error at line 9, column 5
 Error at line 9, column 11
 8 │ val hidden = "abc‮def"
 9 │ // ⁦admin⁩ check
-             ^ Cannot use U+2069 in source
+            ^ Cannot use U+2069 in source
 
 [compilation failed]

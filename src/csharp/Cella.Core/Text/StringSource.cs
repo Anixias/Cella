@@ -74,7 +74,7 @@ public sealed class StringSource : ISource
 			return (1, 1);
 		
 		if (position >= _text.Length)
-			return (_lines.Length, _lines.Length > 0 ? _lines[^1].Length + 1 : 0);
+			return (_lines.Length, _lines.Length > 0 ? CountCharacters(_lines[^1].Start, _lines[^1].End) + 1 : 0);
 		
 		var low = 0;
 		var high = _lines.Length - 1;
@@ -89,8 +89,20 @@ public sealed class StringSource : ISource
 		}
 		
 		var line = low + 1;
-		var column = position - _lines[low].Start + 1;
+		var column = CountCharacters(_lines[low].Start, position) + 1;
 		return (line, column);
+	}
+	
+	private int CountCharacters(int start, int end)
+	{
+		var count = 0;
+		for (var i = start; i < end; i++)
+		{
+			if (!char.IsLowSurrogate(_text[i]) || i == start || !char.IsHighSurrogate(_text[i - 1]))
+				count++;
+		}
+		
+		return count;
 	}
 	
 	public TextRange GetLineRange(int line)

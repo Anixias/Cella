@@ -1,5 +1,6 @@
 ﻿using System.Buffers;
 using System.Collections.Immutable;
+using System.Globalization;
 using System.Text;
 using Cella.Compiler.Linking;
 using Cella.Compiler.Projects;
@@ -1149,7 +1150,7 @@ internal static class Program
 		const ConsoleColor suggestionColor = ConsoleColor.Cyan;
 		
 		var (startLine, startCol) = source.GetLineColumn(range.Start);
-		var (endLine, endCol) = source.GetLineColumn(range.End);
+		var endLine = source.GetLineColumn(range.End).Line;
 		
 		var firstDisplayLine = Math.Max(1, startLine - 1);
 		var gutterWidth = endLine.ToString().Length;
@@ -1200,11 +1201,11 @@ internal static class Program
 			
 			var rawLine = rawLines[i];
 			var hlVisStart = lineNum == startLine
-				? Math.Max(0, VisualColumn(rawLine, startCol - 1) - commonLeading)
+				? Math.Max(0, VisualColumn(rawLine, range.Start - source.GetLineRange(startLine).Start) - commonLeading)
 				: LeadingVisualWidth(stripped);
 			
 			var hlVisEnd = lineNum == endLine
-				? Math.Max(0, VisualColumn(rawLine, endCol - 1) - commonLeading)
+				? Math.Max(0, VisualColumn(rawLine, range.End - source.GetLineRange(endLine).Start) - commonLeading)
 				: VisualColumn(stripped, stripped.Length);
 			
 			var lineVisLen = VisualColumn(stripped, stripped.Length);
@@ -1212,10 +1213,12 @@ internal static class Program
 			hlVisEnd = Math.Clamp(hlVisEnd, 0, lineVisLen);
 			
 			var visualCol = 0;
-			foreach (var ch in stripped)
+			for (var c = 0; c < stripped.Length;)
 			{
-				var expanded = ch == '\t' ? new string(' ', TabWidth - visualCol % TabWidth) : ch.ToString();
-				var charVisWidth = expanded.Length;
+				Rune.DecodeFromUtf16(stripped.AsSpan(c), out var rune, out var consumed);
+				var isTab = rune.Value == '\t';
+				var charVisWidth = isTab ? TabWidth - visualCol % TabWidth : DisplayWidth(rune);
+				var expanded = isTab ? new string(' ', charVisWidth) : stripped.Substring(c, consumed);
 				var inHighlight = visualCol >= hlVisStart && visualCol < hlVisEnd;
 				
 				if (inHighlight)
@@ -1224,6 +1227,7 @@ internal static class Program
 					Console.Write(expanded);
 				
 				visualCol += charVisWidth;
+				c += consumed;
 			}
 			
 			Console.WriteLine();
@@ -1316,19 +1320,35 @@ internal static class Program
 	private static int VisualColumn(string text, int charIndex)
 	{
 		var col = 0;
-		for (var i = 0; i < charIndex && i < text.Length; i++)
-			col += text[i] == '\t' ? TabWidth - col % TabWidth : 1;
+		for (var i = 0; i < charIndex && i < text.Length;)
+		{
+			Rune.DecodeFromUtf16(text.AsSpan(i), out var rune, out var consumed);
+			col += rune.Value == '\t' ? TabWidth - col % TabWidth : DisplayWidth(rune);
+			i += consumed;
+		}
 		
 		return col;
 	}
+	
+	private static int DisplayWidth(Rune rune) => Rune.GetUnicodeCategory(rune) switch
+	{
+		UnicodeCategory.NonSpacingMark or UnicodeCategory.EnclosingMark or UnicodeCategory.Format => 0,
+		_ => IsWide(rune.Value) ? 2 : 1
+	};
+	
+	private static bool IsWide(int value) => value is >= 0x1100 and <= 0x115F or >= 0x2E80 and <= 0x303E
+		or >= 0x3041 and <= 0x33FF or >= 0x3400 and <= 0x4DBF or >= 0x4E00 and <= 0x9FFF or >= 0xA000 and <= 0xA4CF
+		or >= 0xAC00 and <= 0xD7A3 or >= 0xF900 and <= 0xFAFF or >= 0xFE30 and <= 0xFE4F or >= 0xFF00 and <= 0xFF60
+		or >= 0xFFE0 and <= 0xFFE6 or >= 0x1F300 and <= 0x1F64F or >= 0x1F900 and <= 0x1F9FF
+		or >= 0x20000 and <= 0x3FFFD;
 	
 	private static string ExpandTabs(string text)
 	{
 		var sb = new StringBuilder(text.Length);
 		var col = 0;
-		foreach (var c in text)
+		foreach (var rune in text.EnumerateRunes())
 		{
-			if (c == '\t')
+			if (rune.Value == '\t')
 			{
 				var spaces = TabWidth - col % TabWidth;
 				sb.Append(' ', spaces);
@@ -1336,8 +1356,8 @@ internal static class Program
 			}
 			else
 			{
-				sb.Append(c);
-				col++;
+				sb.Append(rune.ToString());
+				col += DisplayWidth(rune);
 			}
 		}
 		

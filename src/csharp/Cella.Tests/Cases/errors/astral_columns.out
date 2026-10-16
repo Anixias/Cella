@@ -1,0 +1,9 @@
+
+====== astral_columns.ce ======
+
+Error at line 5, column 16
+4 │ {
+5 │     val 𝑥 = "😀" + missing
+                       ╘═════╛ Symbol 'missing' not found in this scope
+
+[compilation failed]
