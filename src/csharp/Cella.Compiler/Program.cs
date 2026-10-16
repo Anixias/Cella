@@ -237,6 +237,8 @@ internal static class Program
 		OptimizeMode optimizeMode, IReadOnlyDictionary<string, bool> flagOverrides)
 	{
 		var flags = BuildFlags.Create(targetTriple, optimizeMode);
+		flags["boundsChecks"] = BuildFlags.ChecksBounds(project);
+		flags["overflowChecks"] = BuildFlags.ChecksOverflow(project, optimizeMode);
 		foreach (var (name, value) in project.Flags ?? [])
 			flags[name] = flagOverrides.GetValueOrDefault(name, value);
 		
@@ -547,8 +549,8 @@ internal static class Program
 		var targetConfig = new TargetConfig(targetTriple.ToLlvm(), Features: targetTriple.ToLlvmFeatures());
 		var codeGenConfig = new CodeGenConfig(outputConfig, targetConfig, optimizeMode)
 		{
-			Checks = new(project.Project.BoundsChecks ?? true,
-				project.Project.OverflowChecks ?? optimizeMode == OptimizeMode.Debug),
+			Checks = new(BuildFlags.ChecksBounds(project.Project),
+				BuildFlags.ChecksOverflow(project.Project, optimizeMode)),
 			DebugInfo = project.Project.DebugInfo ?? true,
 			SourceRoot = project.Directory,
 			ProjectRoots = [..allDependencies.Select(static d => d.Directory).OfType<string>(), project.Directory],

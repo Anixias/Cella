@@ -15,8 +15,15 @@ public static class BuildFlags
 		["arm64"] = target.Arch == TargetTriple.ArchTypes.Arm64,
 		["wasm64"] = target.Arch == TargetTriple.ArchTypes.Wasm64,
 		["debug"] = mode == OptimizeMode.Debug,
-		["release"] = mode == OptimizeMode.Release
+		["release"] = mode == OptimizeMode.Release,
+		["boundsChecks"] = true,
+		["overflowChecks"] = mode == OptimizeMode.Debug
 	};
+	
+	public static bool ChecksBounds(CellaProject project) => project.BoundsChecks ?? true;
+	
+	public static bool ChecksOverflow(CellaProject project, OptimizeMode mode) =>
+		project.OverflowChecks ?? mode == OptimizeMode.Debug;
 	
 	public static bool IsValidName(string name) =>
 		new FilteredScanner(new StringSource(name, name)).ToList() is

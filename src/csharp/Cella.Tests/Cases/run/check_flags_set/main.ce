@@ -1,0 +1,29 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+main: fun -> i32
+{
+	when boundsChecks
+	{
+		printf("bounds on\n")
+	}
+	else
+	{
+		printf("bounds off\n")
+	}
+
+	when overflowChecks
+	{
+		printf("overflow on\n")
+	}
+	else
+	{
+		printf("overflow off\n")
+	}
+
+	ret 0
+}
