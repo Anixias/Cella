@@ -172,6 +172,7 @@ public sealed partial class Resolver
 					? null
 					: deferred
 						.Select(i => FindCaseDistance(nodes[i], values[i], trial[i], shapes[index], i) ??
+						             FindLambdaDistance(nodes[i], trial, shapes[index], i) ??
 						             LiteralDistance(values[i].Type, trial[i].Type))
 						.Aggregate(0, AddCosts);
 			}
@@ -203,6 +204,22 @@ public sealed partial class Resolver
 			definition, call, node);
 		
 		return IsInvalid(natural) ? null : LiteralDistance(natural.Type, enumType);
+	}
+	
+	private int? FindLambdaDistance(IExpressionNode node, IResolvedExpressionNode[] trial, CallShape shape,
+		int index)
+	{
+		if (node is not LambdaExpressionNode { ExpressionBody: not null, ReturnType: null } lambda ||
+		    ExpectLambda(shape, trial, index, ResolveAnnotations(lambda)) is not { } target)
+			return null;
+		
+		var checkpoint = OpenCheckpoint();
+		var natural = ResolveLambda(lambda, target, false, true, true).Type;
+		var hasErrors = checkpoint.HasErrors;
+		Rollback(checkpoint);
+		return !hasErrors && natural is FunctionGroupType { Functions: [var function] }
+			? LiteralDistance(function.Signature.ReturnType, target.ReturnType)
+			: null;
 	}
 	
 	private static int LiteralDistance(TypeSymbol natural, TypeSymbol chosen) => (natural, chosen) switch

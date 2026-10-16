@@ -12,7 +12,7 @@ public sealed partial class Resolver
 	public IResolvedExpressionNode Visit(LambdaExpressionNode node) => ResolveLambda(node, ExpectedType);
 	
 	private IResolvedExpressionNode ResolveLambda(LambdaExpressionNode node, TypeSymbol? expected,
-		bool resolveBody = true, bool isArgument = false)
+		bool resolveBody = true, bool isArgument = false, bool infersResult = false)
 	{
 		var outer = CurrentResolutionContext;
 		var target = (expected is BorrowType { IsMutable: false } borrow ? borrow.Target : expected) as FunctionType;
@@ -69,7 +69,7 @@ public sealed partial class Resolver
 			? outer.ResolveReturnType(returnNode)
 			: !agrees
 				? NativeSymbols.Void
-				: IsKnown(target!.ReturnType)
+				: !infersResult && IsKnown(target!.ReturnType)
 					? target.ReturnType
 					: null;
 		
