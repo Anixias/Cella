@@ -16,6 +16,7 @@ public sealed class RecordNode
 	public ImmutableArray<Token> Modifiers { get; } = modifiers.ToImmutableArray();
 	public Token? Visibility { get; init; }
 	public bool IsRef { get; } = isRef;
+	public bool IsOwn { get; init; }
 	public ImmutableArray<IDeclarationNode> Members { get; } = members.ToImmutableArray();
 	public ImmutableArray<TypeParameterNode> TypeParameters { get; init; } = [];
 	public ImmutableArray<ITypeNode> Traits { get; init; } = [];

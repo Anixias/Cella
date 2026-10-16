@@ -174,7 +174,7 @@ public sealed class ConversionTable
 		foreach (var (floatType, significandBits) in floatPrecisions)
 		{
 			var distance = floatType == NativeSymbols.Float32 ? 0 : 1;
-			for (var i = 0; i < intTypes.Length - 1; i++)
+			for (var i = 0; i < intTypes.Length; i++)
 			{
 				AddFloatConversions(intTypes[i].S, floatType, (8 << i) - 1 <= significandBits, distance);
 				AddFloatConversions(intTypes[i].U, floatType, 8 << i <= significandBits, distance);

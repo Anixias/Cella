@@ -1,0 +1,35 @@
+mod test
+
+Countdown: own rec
+{
+	left: i32
+
+	for: op(mut self) -> bool
+	{
+		self.left -= 1
+		ret self.left >= 0
+	}
+
+	*: op(imm self) -> imm[i32] = imm self.left
+}
+
+Ticket: own enum
+{
+	open(id: i32)
+	closed
+}
+
+
+main: fun -> i32
+{
+	var c = Countdown(4)
+	for x in c
+	{
+	}
+
+	val other = Countdown(2)
+	val d: Countdown = other
+	val t = Ticket.open(1)
+	val u: Ticket = t
+	ret 0
+}

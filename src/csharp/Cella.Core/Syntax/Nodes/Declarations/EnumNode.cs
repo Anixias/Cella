@@ -20,6 +20,7 @@ public sealed class EnumNode
 	public Token? Visibility { get; init; }
 	public bool IsExternal { get; } = isExternal;
 	public bool IsRef { get; } = isRef;
+	public bool IsOwn { get; init; }
 	public ITypeNode? TagType { get; } = tagType;
 	public ImmutableArray<EnumCaseNode> Cases { get; } = cases.ToImmutableArray();
 	public ImmutableArray<IDeclarationNode> Members { get; } = members.ToImmutableArray();

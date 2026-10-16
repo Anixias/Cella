@@ -6,7 +6,7 @@ namespace Cella.Core.Syntax;
 public sealed partial class FileParser
 {
 	private RecordNode? ParseRecord(ref int index, Token identifier, DeclarationModifiers modifiers, bool isRef,
-		bool isUnion, List<TypeParameterNode> typeParameters)
+		bool isOwn, bool isUnion, List<TypeParameterNode> typeParameters)
 	{
 		// When this is called, the identifier and rec keyword are already consumed
 		// Caller is expected to resync in case of errors
@@ -29,7 +29,8 @@ public sealed partial class FileParser
 			Visibility = modifiers.Visibility,
 			TypeParameters = [..typeParameters],
 			Traits = [..traits],
-			IsUnion = isUnion
+			IsUnion = isUnion,
+			IsOwn = isOwn
 		};
 	}
 	
@@ -186,7 +187,7 @@ public sealed partial class FileParser
 	}
 	
 	private EnumNode? ParseEnum(ref int index, Token identifier, DeclarationModifiers modifiers, bool isExternal,
-		bool isRef, List<TypeParameterNode> typeParameters)
+		bool isRef, bool isOwn, List<TypeParameterNode> typeParameters)
 	{
 		ITypeNode? tagType = null;
 		ITypeNode? matchedType = null;
@@ -230,7 +231,8 @@ public sealed partial class FileParser
 				Visibility = modifiers.Visibility,
 				TypeParameters = [..typeParameters],
 				MatchedType = matchedType,
-				Traits = [..traits]
+				Traits = [..traits],
+				IsOwn = isOwn
 			};
 		
 		var cases = new List<EnumCaseNode>();
@@ -243,7 +245,8 @@ public sealed partial class FileParser
 			Visibility = modifiers.Visibility,
 			TypeParameters = [..typeParameters],
 			MatchedType = matchedType,
-			Traits = [..traits]
+			Traits = [..traits],
+			IsOwn = isOwn
 		};
 	}
 	

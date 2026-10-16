@@ -36,11 +36,6 @@ Error at line 13, column 15
 13 │ var g: f32 = 1e39
                   ╘══╛ '1e39' doesn't fit in 'f32'
 
-Error at line 14, column 10
-13 │ var g: f32 = 1e39
-14 │ var h = i128(half)
-             ╘════════╛ No constructor for 'i128' accepts argument of type 'f64'
-
 Error at line 15, column 10
 14 │ var h = i128(half)
 15 │ var i = bool(half)

@@ -721,6 +721,7 @@ public abstract class NamedTypeSymbol : TypeSymbol, IExportable
 	public ImmutableArray<PropertySymbol> Properties { get; init; } = [];
 	public Visibility Visibility { get; }
 	public abstract bool IsRef { get; }
+	public abstract bool IsOwn { get; }
 	
 	public override GlobalSymbol? GetStaticField(string name) => StaticFields.FirstOrDefault(f => f.Name == name);
 	public override PropertySymbol? GetProperty(string name) => Properties.FirstOrDefault(p => p.Name == name);
@@ -752,6 +753,7 @@ public sealed class RecordSymbol : NamedTypeSymbol
 	public bool HasDestructor => Members.Any(static m => m is MethodSymbol { Function.Kind: FunctionKind.Destructor });
 	public bool IsUnion => Node.IsUnion;
 	public override bool IsRef => Node.IsRef;
+	public override bool IsOwn => Node.IsOwn;
 	
 	public override IEnumerable<MethodSymbol> GetFunctions(string name) => Members
 		.OfType<MethodSymbol>()
@@ -783,6 +785,7 @@ public sealed class EnumSymbol : NamedTypeSymbol
 	public bool IsExternal => Node.IsExternal;
 	public bool IsMatch => Node.IsMatch;
 	public override bool IsRef => Node.IsRef;
+	public override bool IsOwn => Node.IsOwn;
 	
 	public EnumSymbol(EnumNode node, IEnumerable<EnumCaseSymbol> cases, IEnumerable<MethodSymbol> functions,
 		ImmutableArray<TypeParameterSymbol> typeParameters)

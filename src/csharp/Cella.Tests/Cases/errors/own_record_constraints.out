@@ -1,0 +1,10 @@
+
+====== own_record_constraints.ce ======
+
+Error at line 10, column 20
+ 9 │ 
+10 │ main: fun -> i32 = keep(Token(1)).id
+                        ╘══╛ 'keep' requires 'T: copy'
+                           | 'Token' can't be copied
+
+[compilation failed]

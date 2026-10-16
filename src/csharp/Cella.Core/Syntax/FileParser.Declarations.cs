@@ -70,13 +70,14 @@ public sealed partial class FileParser
 			return true;
 		}
 		
+		var isOwn = Match(ref index, out var ownKeyword, _topLevelContextualKeywords, TokenType.KeywordOwn);
 		var isRef = Match(ref index, out var refKeyword, _topLevelContextualKeywords, TokenType.KeywordRef);
 		
 		// Record
 		if (Match(ref index, _topLevelContextualKeywords, TokenType.KeywordRec))
 		{
 			var record = ParseDeclaration(ref index, identifier, "record",
-				(ref i) => ParseRecord(ref i, identifier, modifiers, isRef, false, typeParameters));
+				(ref i) => ParseRecord(ref i, identifier, modifiers, isRef, isOwn, false, typeParameters));
 			
 			if (record is null)
 				SkipDeclaration(ref index, declarationStart, insideBlock);
@@ -88,6 +89,9 @@ public sealed partial class FileParser
 		
 		if (Match(ref index, _topLevelContextualKeywords, TokenType.KeywordUnion))
 		{
+			if (isOwn)
+				Report(ownKeyword, "Cannot declare 'own' unions");
+			
 			if (isRef)
 				Report(refKeyword, "Cannot declare 'ref' unions");
 			
@@ -95,7 +99,7 @@ public sealed partial class FileParser
 				Report(parameter.SourceLocation, "Cannot declare type parameters on unions");
 			
 			var union = ParseDeclaration(ref index, identifier, "union",
-				(ref i) => ParseRecord(ref i, identifier, modifiers, false, true, []));
+				(ref i) => ParseRecord(ref i, identifier, modifiers, false, false, true, []));
 			
 			if (union is null)
 				SkipDeclaration(ref index, declarationStart, insideBlock);
@@ -119,9 +123,13 @@ public sealed partial class FileParser
 			if (externalName is { } enumName)
 				Report(enumName, "Cannot name 'ext' enums");
 			
+			if (isOwn && isExternal)
+				Report(ownKeyword, "Cannot combine 'own' and 'ext'");
+			
 			var enumTypeParameters = isExternal ? [] : typeParameters;
 			var enumNode = ParseDeclaration(ref index, identifier, "enum",
-				(ref i) => ParseEnum(ref i, identifier, modifiers, isExternal, isRef, enumTypeParameters));
+				(ref i) => ParseEnum(ref i, identifier, modifiers, isExternal, isRef, isOwn && !isExternal,
+					enumTypeParameters));
 			
 			if (enumNode is null)
 				SkipDeclaration(ref index, declarationStart, insideBlock);
@@ -141,11 +149,12 @@ public sealed partial class FileParser
 			return true;
 		}
 		
-		if (isRef)
+		if (isRef || isOwn)
 		{
+			var keyword = isRef ? "ref" : "own";
 			Report(Tokens[index], Tokens[index].Text == "ext"
-				? "Cannot combine 'ref' and 'ext'"
-				: "Expected 'rec' or 'enum' after 'ref'");
+				? $"Cannot combine '{keyword}' and 'ext'"
+				: $"Expected 'rec' or 'enum' after '{keyword}'");
 			
 			if (!AtEnd(index))
 				index++;

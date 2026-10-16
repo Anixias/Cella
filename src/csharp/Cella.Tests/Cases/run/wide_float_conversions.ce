@@ -1,0 +1,20 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+main: fun -> i32
+{
+	var big: i128 = 170141183460469231731687303715884105727
+	var neg: i128 = -12345678901234567890123
+	var ubig: u128 = 340282366920938463463374607431768211455
+	printf("%e %e %e %f\n", f64(big), f64(neg), f64(ubig), f32(neg))
+	var x = 2.5e30
+	val back = i128(x)
+	val ub = u128(1.5e38)
+	val small = i128(-7.9)
+	printf("%d %d %d\n", i32(back / 1000000000000000000000000i128), i32(ub / 100000000000000000000000000000000000u128), i32(small))
+	ret 0
+}

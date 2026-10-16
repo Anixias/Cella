@@ -1,0 +1,19 @@
+
+====== own_records.ce ======
+
+Error at line 26, column 11
+25 │ var c = Countdown(4)
+26 │ for x in c
+              ^ Cannot move 'Countdown' values implicitly
+
+Error at line 31, column 21
+30 │ val other = Countdown(2)
+31 │ val d: Countdown = other
+                        ╘═══╛ Cannot move 'Countdown' values implicitly
+
+Error at line 33, column 18
+32 │ val t = Ticket.open(1)
+33 │ val u: Ticket = t
+                     ^ Cannot move 'Ticket' values implicitly
+
+[compilation failed]

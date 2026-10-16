@@ -1,0 +1,10 @@
+mod test
+
+Token: own rec
+{
+	id: i32
+}
+
+keep[T: copy]: fun(value: T) -> T = value
+
+main: fun -> i32 = keep(Token(1)).id

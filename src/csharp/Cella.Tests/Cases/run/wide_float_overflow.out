@@ -1,0 +1,3 @@
+[stderr]
+Panic at wide_float_overflow.ce:6:10: conversion overflow
+[exit code -1073740791]

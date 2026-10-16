@@ -1,0 +1,8 @@
+mod test
+
+main: fun -> i32
+{
+	var x = 1.0e40
+	val v = i128(x)
+	ret 0
+}

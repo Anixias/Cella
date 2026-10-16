@@ -1,0 +1,15 @@
+mod test
+
+Bits: own union
+{
+	a: i32
+}
+
+Code: own ext enum
+{
+	one = 1
+}
+
+Clock: own fun -> i32 = 0
+
+main: fun -> i32 = 0

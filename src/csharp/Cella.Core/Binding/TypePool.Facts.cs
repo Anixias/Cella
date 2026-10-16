@@ -414,12 +414,14 @@ public sealed partial class TypePool
 		{
 			RecordSymbol r => Combine(r.HasDestructor, GetParts(r)) with
 			{
+				IsCopy = !r.IsOwn && Combine(r.HasDestructor, GetParts(r)).IsCopy,
 				HasDefault = GetConstructors(r).Count > 0
 					? HasDefaultConstructor(r)
 					: !r.HasDestructor && GetMembers(r).OfType<FieldSymbol>().All(HasDefault)
 			},
 			EnumSymbol e => Combine(false, GetParts(e)) with
 			{
+				IsCopy = !e.IsOwn && Combine(false, GetParts(e)).IsCopy,
 				HasDefault = e.IsExternal || FindCase(e, BigInteger.Zero) is { Fields.IsEmpty: true }
 			},
 			ArrayType => Combine(false, GetParts(type)),

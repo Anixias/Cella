@@ -1,0 +1,14 @@
+
+====== own_record_copies.ce ======
+
+Error at line 7, column 12
+6 │ 
+7 │ show: fun(self) -> i32 = self.id
+              ╘══╛ Cannot copy 'Token'
+
+Error at line 11, column 11
+10 │ 
+11 │ take: fun(t: Token) -> i32 = t.id
+               ^ Cannot copy 'Token'
+
+[compilation failed]
