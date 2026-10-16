@@ -1,0 +1,29 @@
+
+====== blanket_impl_declarations.ce ======
+
+Error at line 23, column 11
+22 │ 
+23 │ [T]: impl Size
+               ╘══╛ 'T' needs 'Size.size'
+
+Error at line 25, column 6
+24 │ 
+25 │ [T]: impl
+          ╘══╛ Expected a trait
+
+Error at line 30, column 5
+29 │ 
+30 │ [T, U]: impl Describe
+         ^ Blanket impls take one type parameter
+
+Error at line 35, column 2
+34 │ 
+35 │ [i32]: impl Describe
+      ╘═╛ Expected a type parameter
+
+Error at line 40, column 2
+39 │ 
+40 │ [N: const usize]: impl Describe
+      ^ Expected a type parameter
+
+[compilation failed]

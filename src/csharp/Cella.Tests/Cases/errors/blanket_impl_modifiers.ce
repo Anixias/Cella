@@ -1,0 +1,13 @@
+mod test
+
+Size: trait
+{
+	size: fun(imm self) -> usize
+}
+
+[T]: pub impl Size
+{
+	size: fun(imm self) -> usize = sizeOf(T)
+}
+
+main: fun -> i32 = 0

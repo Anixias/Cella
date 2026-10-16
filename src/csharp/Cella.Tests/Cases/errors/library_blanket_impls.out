@@ -1,0 +1,9 @@
+
+====== main.ce ======
+
+Error at line 33, column 11
+32 │ 
+33 │ [T]: impl lib.Hash
+               ╘══════╛ 'Hash' is declared in another project
+
+[compilation failed]

@@ -58,6 +58,8 @@ public sealed partial class TypePool
 	private readonly Dictionary<TypeSymbol, List<Conformance>> _conformancesByTarget = [];
 	private readonly List<Conformance> _arrayConformances = [];
 	private readonly List<Conformance> _pointerConformances = [];
+	private readonly List<Conformance> _blanketConformances = [];
+	private readonly HashSet<TypeParameterSymbol> _blanketBoundsInProgress = [];
 	private readonly Dictionary<TypeParameterSymbol, ImmutableArray<TraitType>> _bounds = [];
 	private readonly Dictionary<TypeParameterSymbol, ImmutableArray<TypeParameterSymbol>> _parameterBounds = [];
 	private readonly Dictionary<TypeParameterSymbol, ImmutableArray<FunctionInfo>> _constructorBounds = [];

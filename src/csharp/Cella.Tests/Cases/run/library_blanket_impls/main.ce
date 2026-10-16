@@ -1,0 +1,31 @@
+mod test
+
+use lib
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Point: rec impl lib.Hash
+{
+	x: i32
+	y: i32
+
+	hash: fun(imm self) -> u64 = u64(self.x * 31 + self.y)
+}
+
+Plain: rec
+{
+	value: i64
+}
+
+main: fun -> i32
+{
+	val point = Point(1, 2)
+	val plain = Plain(7)
+	val pair = lib.Pair(3, 4)
+	printf("%llu %llu %llu\n", point.hash(), plain.hash(), pair.hash())
+	printf("%llu %llu %llu %llu\n", lib.hashOf(imm point), lib.hashOf(imm plain), lib.hashOf(imm pair), lib.pairHash())
+	ret 0
+}

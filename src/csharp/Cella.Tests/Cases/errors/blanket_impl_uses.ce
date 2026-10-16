@@ -1,0 +1,37 @@
+mod test
+
+Eq: trait
+{
+	==: op(imm a: Self, imm b: Self) -> bool
+}
+
+Describe: trait
+{
+	name: fun(imm self) -> cstr
+}
+
+Size: trait
+{
+	size: fun(imm self) -> usize
+}
+
+[T: Eq]: impl Describe
+{
+	name: fun(imm self) -> cstr = "comparable"
+}
+
+Plain: rec
+{
+	value: i32
+}
+
+plainName: fun(imm plain: Plain) -> cstr = plain.name()
+anyName[T]: fun(imm value: T) -> cstr = value.name()
+
+dynName: fun(imm plain: Plain) -> cstr
+{
+	val view: imm[dyn[Describe]] = imm plain
+	ret view.name()
+}
+
+main: fun -> i32 = 0

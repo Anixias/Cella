@@ -388,6 +388,9 @@ public sealed partial class FileParser
 			return true;
 		}
 		
+		if (Peek(index, TokenType.OpOpenBracket))
+			return ParseBlanketImpl(ref index, declarations, block, insideBraces);
+		
 		return ParseNamedDeclaration(ref index, declarations, block, insideBraces);
 	}
 	

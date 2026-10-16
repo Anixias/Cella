@@ -12,13 +12,17 @@ public sealed partial class SignatureCollector
 {
 	private void CheckConformances()
 	{
-		foreach (var sameTrait in _localConformances.GroupBy(static c => (c.Target, c.Trait)))
+		foreach (var sameTrait in _localConformances.GroupBy(static c =>
+			         (Target: c.Target is TypeParameterSymbol ? null : c.Target, c.Trait)))
 			ReportOverlaps([..sameTrait]);
 		
 		foreach (var conformance in _localConformances)
 		{
 			var trait = DescribeTrait(conformance);
-			if (conformance.Impl is not null && !IsLocal(conformance.Trait) && !IsLocal(conformance.Target))
+			if (conformance.Target is TypeParameterSymbol && !IsLocal(conformance.Trait))
+				Diagnostics.Add(new(DiagnosticSeverity.Error, conformance.Location,
+					$"'{trait}' is declared in another project"));
+			else if (conformance.Impl is not null && !IsLocal(conformance.Trait) && !IsLocal(conformance.Target))
 				Diagnostics.Add(new(DiagnosticSeverity.Error, conformance.Location,
 					$"'{trait}' and '{conformance.Target.Name}' are both declared in other projects"));
 			

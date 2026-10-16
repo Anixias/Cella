@@ -1,0 +1,53 @@
+mod test
+
+Eq: trait
+{
+	==: op(imm a: Self, imm b: Self) -> bool
+}
+
+Describe: trait
+{
+	name: fun(imm self) -> cstr
+}
+
+Size: trait
+{
+	size: fun(imm self) -> usize
+}
+
+[T: Eq]: impl Describe
+{
+	name: fun(imm self) -> cstr = "comparable"
+}
+
+[T]: impl Size
+
+[T]: impl
+{
+	extra: fun(imm self) -> i32 = 0
+}
+
+[T, U]: impl Describe
+{
+	name: fun(imm self) -> cstr = "two"
+}
+
+[i32]: impl Describe
+{
+	name: fun(imm self) -> cstr = "number"
+}
+
+[N: const usize]: impl Describe
+{
+	name: fun(imm self) -> cstr = "value"
+}
+
+Plain: rec
+{
+	value: i32
+}
+
+plainName: fun(imm plain: Plain) -> cstr = plain.name()
+anyName[T]: fun(imm value: T) -> cstr = value.name()
+
+main: fun -> i32 = 0

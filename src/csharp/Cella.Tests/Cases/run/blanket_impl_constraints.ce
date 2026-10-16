@@ -1,0 +1,73 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Eq: trait
+{
+	==: op(imm a: Self, imm b: Self) -> bool
+}
+
+i32: impl Eq
+
+Describe: trait
+{
+	name: fun(imm self) -> cstr
+	shout: fun(imm self) -> cstr = "LOUD"
+}
+
+[T: Eq]: impl Describe
+{
+	name: fun(imm self) -> cstr = "comparable"
+}
+
+Point: rec impl Eq
+{
+	x: i32
+	y: i32
+
+	==: op(imm a: Point, imm b: Point) -> bool = a.x == b.x && a.y == b.y
+}
+
+Pair: rec
+{
+	a: i64
+	b: i64
+}
+
+Pair: impl Eq + Describe
+{
+	==: op(imm a: Pair, imm b: Pair) -> bool = a.a == b.a && a.b == b.b
+	name: fun(imm self) -> cstr = "pair"
+}
+
+box[T]: rec
+{
+	value: T
+}
+
+box[T: Eq]: impl Eq
+{
+	==: op(imm a: box[T], imm b: box[T]) -> bool = a.value == b.value
+}
+
+box[T]: impl Describe
+{
+	name: fun(imm self) -> cstr = "box"
+}
+
+describe[T: Eq]: fun(imm value: T) -> cstr = value.name()
+
+main: fun -> i32
+{
+	val number: i32 = 1
+	val point = Point(1, 2)
+	val pair = Pair(1, 2)
+	val boxed = box[i32](3)
+	printf("%s %s %s %s\n", number.name(), point.name(), pair.name(), boxed.name())
+	printf("%s %s %s %s\n", describe(imm number), describe(imm point), describe(imm pair), describe(imm boxed))
+	printf("%s %s\n", point.shout(), pair.shout())
+	ret 0
+}

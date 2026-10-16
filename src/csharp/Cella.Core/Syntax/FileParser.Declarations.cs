@@ -6,6 +6,50 @@ namespace Cella.Core.Syntax;
 
 public sealed partial class FileParser
 {
+	private bool ParseBlanketImpl(ref int index, List<IDeclarationNode> declarations, Token? block, bool insideBlock)
+	{
+		var declarationStart = index;
+		var openBracket = Tokens[index];
+		if (ParseTypeParameters(ref index, true) is not { } typeParameters)
+		{
+			ResyncTopLevel(ref index, insideBlock);
+			return true;
+		}
+		
+		if (!Match(ref index, TokenType.OpColon))
+		{
+			ReportExpected(index, "':'");
+			ResyncTopLevel(ref index, insideBlock);
+			return true;
+		}
+		
+		var modifiers = ParseDeclarationModifiers(ref index, block);
+		if (!Match(ref index, out var implKeyword, _topLevelContextualKeywords, TokenType.KeywordImpl))
+		{
+			ReportExpected(index, "'impl'");
+			ResyncTopLevel(ref index, insideBlock);
+			return true;
+		}
+		
+		if (modifiers.Tokens is [var modifier, ..])
+			Report(modifier, $"Cannot use '{modifier.Text}' on impl blocks");
+		
+		var target = new IdentifierTypeNode(typeParameters[0].Identifier);
+		var impl = ParseDeclaration(ref index, openBracket, "impl",
+			(ref i) => ParseImpl(ref i, target, implKeyword, typeParameters));
+		
+		if (impl is null)
+			SkipDeclaration(ref index, declarationStart, insideBlock);
+		else
+			declarations.Add(new ImplNode(impl.Target, impl.Keyword, impl.Traits, impl.Members)
+			{
+				TypeParameters = impl.TypeParameters,
+				IsBlanket = true
+			});
+		
+		return true;
+	}
+	
 	private bool ParseNamedDeclaration(ref int index, List<IDeclarationNode> declarations, Token? block,
 		bool insideBlock)
 	{

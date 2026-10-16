@@ -5,10 +5,11 @@ namespace Cella.Core.Syntax;
 
 public sealed partial class FileParser
 {
-	private List<TypeParameterNode>? ParseTypeParameters(ref int index)
+	private List<TypeParameterNode>? ParseTypeParameters(ref int index, bool startsDeclaration = false)
 	{
 		var parameters = new List<TypeParameterNode>();
-		if (!IsOnSameLine(index) || !Match(ref index, out var openBracket, TokenType.OpOpenBracket))
+		if (!startsDeclaration && !IsOnSameLine(index) ||
+		    !Match(ref index, out var openBracket, TokenType.OpOpenBracket))
 			return parameters;
 		
 		do

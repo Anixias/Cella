@@ -64,6 +64,9 @@ public sealed partial class SignatureCollector
 	{
 		var location = node.Target.SourceLocation;
 		var name = location.GetText().ToString();
+		if (node.IsBlanket)
+			return ResolveBlanketTarget(impl, node);
+		
 		switch (context.ResolveTypeName(node.Target))
 		{
 			case NamedTypeSymbol named when named.TypeParameters.Length == impl.TypeParameters.Length:
@@ -104,6 +107,33 @@ public sealed partial class SignatureCollector
 				Diagnostics.Add(new(DiagnosticSeverity.Error, location, $"Cannot implement traits for '{name}'"));
 				return null;
 		}
+	}
+	
+	private TypeSymbol? ResolveBlanketTarget(ImplSymbol impl, ImplNode node)
+	{
+		if (node.Traits.IsEmpty)
+		{
+			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Keyword.SourceLocation, "Expected a trait"));
+			return null;
+		}
+		
+		if (node.TypeParameters is [_, var extra, ..])
+		{
+			Diagnostics.Add(new(DiagnosticSeverity.Error, extra.SourceLocation,
+				"Blanket impls take one type parameter"));
+			
+			return null;
+		}
+		
+		if (impl.TargetArguments[0] is not TypeParameterSymbol { IsValue: false } parameter)
+		{
+			Diagnostics.Add(new(DiagnosticSeverity.Error, node.TypeParameters[0].SourceLocation,
+				"Expected a type parameter"));
+			
+			return null;
+		}
+		
+		return parameter;
 	}
 	
 	private TypeSymbol? ResolveArrayImplTarget(ImplSymbol impl, ImplNode node)

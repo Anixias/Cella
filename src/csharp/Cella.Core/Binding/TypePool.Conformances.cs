@@ -9,7 +9,9 @@ public sealed partial class TypePool
 	public void AddConformance(Conformance conformance)
 	{
 		_conformances.Add(conformance);
-		if (conformance.Target is ArrayType)
+		if (conformance.Target is TypeParameterSymbol)
+			_blanketConformances.Add(conformance);
+		else if (conformance.Target is ArrayType)
 			_arrayConformances.Add(conformance);
 		else if (IsTypedPointer(conformance.Target))
 			_pointerConformances.Add(conformance);
@@ -17,16 +19,52 @@ public sealed partial class TypePool
 			_conformancesByTarget.GetOrAdd(conformance.Target).Add(conformance);
 	}
 	
-	private IReadOnlyList<Conformance> GetConformanceCandidates(TypeSymbol type) => type switch
+	private IEnumerable<Conformance> GetConformanceCandidates(TypeSymbol type) =>
+		type is TypeParameterSymbol ? [] : GetExplicitCandidates(type).Concat(_blanketConformances);
+	
+	private IReadOnlyList<Conformance> GetExplicitCandidates(TypeSymbol type) => type switch
 	{
-		TypeParameterSymbol => [],
 		ArrayType => _arrayConformances,
 		_ when IsTypedPointer(type) => _pointerConformances,
 		_ => _conformancesByTarget.GetValueOrDefault(type.OriginalDefinition) ?? []
 	};
 	
-	public IEnumerable<Conformance> FindConformances(TypeSymbol type) =>
-		GetConformanceCandidates(type).Where(conformance => Matches(conformance, type));
+	public IEnumerable<Conformance> FindConformances(TypeSymbol type)
+	{
+		if (type is TypeParameterSymbol)
+			return [];
+		
+		var explicitOnes = GetExplicitCandidates(type).Where(conformance => Matches(conformance, type)).ToList();
+		return explicitOnes.Concat(_blanketConformances.Where(blanket => Matches(blanket, type) &&
+		                                                                 !explicitOnes.Any(conformance =>
+			                                                                 Overrides(conformance, blanket, type))));
+	}
+	
+	private bool Overrides(Conformance conformance, Conformance blanket, TypeSymbol type) =>
+		conformance.Trait == blanket.Trait &&
+		GetConformanceArguments(conformance, type).SequenceEqual(GetConformanceArguments(blanket, type));
+	
+	private IEnumerable<TraitType> GetBlanketTraits(TypeParameterSymbol parameter)
+	{
+		if (_blanketConformances.Count == 0 || parameter.IsValue || parameter.IsTrait ||
+		    !_blanketBoundsInProgress.Add(parameter))
+			return [];
+		
+		try
+		{
+			return _blanketConformances
+				.Where(blanket => Satisfies(blanket.Parameters, [parameter]))
+				.Select(blanket => GetTraitType(blanket.Trait, GetConformanceArguments(blanket, parameter)))
+				.ToList();
+		}
+		finally
+		{
+			_blanketBoundsInProgress.Remove(parameter);
+		}
+	}
+	
+	private ImmutableArray<TypeSymbol> GetTargetArguments(Conformance conformance, TypeSymbol type) =>
+		conformance.Target is TypeParameterSymbol ? [type] : GetShapeArguments(type);
 	
 	public void SetBounds(TypeParameterSymbol parameter, ImmutableArray<TraitType> traits) =>
 		_bounds[parameter] = traits;
@@ -35,7 +73,7 @@ public sealed partial class TypePool
 		_bounds.GetValueOrDefault(parameter, []);
 	
 	public ImmutableArray<TraitType> GetBounds(TypeParameterSymbol parameter) =>
-		AddRequiredTraits(GetDeclaredBounds(parameter), parameter);
+		AddRequiredTraits([..GetDeclaredBounds(parameter).Concat(GetBlanketTraits(parameter)).Distinct()], parameter);
 	
 	public void SetParameterBounds(TypeParameterSymbol parameter, ImmutableArray<TypeParameterSymbol> traits) =>
 		_parameterBounds[parameter] = traits;
@@ -167,20 +205,21 @@ public sealed partial class TypePool
 		if (conformance.Parameters.IsEmpty || conformance.Arguments.IsEmpty)
 			return conformance.Arguments;
 		
-		var map = CreateMap(conformance.Parameters, GetShapeArguments(type));
+		var map = CreateMap(conformance.Parameters, GetTargetArguments(conformance, type));
 		return [..conformance.Arguments.Select(argument => Substitute(argument, map))];
 	}
 	
 	public TraitType GetConformanceTrait(Conformance conformance, TypeSymbol type) =>
 		GetTraitType(conformance.Trait, GetConformanceArguments(conformance, type));
 	
-	private bool Matches(Conformance conformance, TypeSymbol type) =>
-		type is not TypeParameterSymbol &&
-		(conformance.Target is ArrayType ? type is ArrayType
-			: IsTypedPointer(conformance.Target) ? IsTypedPointer(type)
-			: conformance.Target == type.OriginalDefinition) &&
-		Fits(conformance.Impl, GetShapeArguments(type)) &&
-		Satisfies(conformance.Parameters, GetShapeArguments(type));
+	private bool Matches(Conformance conformance, TypeSymbol type) => conformance.Target is TypeParameterSymbol
+		? type is not TypeParameterSymbol && Satisfies(conformance.Parameters, [type])
+		: type is not TypeParameterSymbol &&
+		  (conformance.Target is ArrayType ? type is ArrayType
+			  : IsTypedPointer(conformance.Target) ? IsTypedPointer(type)
+			  : conformance.Target == type.OriginalDefinition) &&
+		  Fits(conformance.Impl, GetShapeArguments(type)) &&
+		  Satisfies(conformance.Parameters, GetShapeArguments(type));
 	
 	private static bool IsTypedPointer(TypeSymbol type) => type is PointerType && type != NativeSymbols.VoidPtr;
 	
@@ -273,7 +312,7 @@ public sealed partial class TypePool
 		if (witness.Impl is null || FindConformance(self, witness.Impl) is not { } conformance)
 			return [..self.TypeArguments, ..declared];
 		
-		var map = CreateMap(conformance.Parameters, GetShapeArguments(self));
+		var map = CreateMap(conformance.Parameters, GetTargetArguments(conformance, self));
 		return [..witness.Impl.TypeParameters.Select(parameter => map[parameter]), ..declared];
 	}
 	

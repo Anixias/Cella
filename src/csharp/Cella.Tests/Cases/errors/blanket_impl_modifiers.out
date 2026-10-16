@@ -1,0 +1,9 @@
+
+====== blanket_impl_modifiers.ce ======
+
+Error at line 8, column 6
+7 │ 
+8 │ [T]: pub impl Size
+         ╘═╛ Cannot use 'pub' on impl blocks
+
+[compilation failed]

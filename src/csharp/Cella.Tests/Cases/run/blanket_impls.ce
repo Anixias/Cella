@@ -1,0 +1,45 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Hash: trait
+{
+	hash: fun(imm self) -> u64
+}
+
+[T]: impl Hash
+{
+	hash: fun(imm self) -> u64 = u64(sizeOf(T))
+}
+
+Point: rec impl Hash
+{
+	x: i32
+	y: i32
+
+	hash: fun(imm self) -> u64 = u64(self.x * 31 + self.y)
+}
+
+Pair: rec
+{
+	a: i64
+	b: i64
+}
+
+hashOf[T]: fun(imm value: T) -> u64 = value.hash()
+
+hashDyn: fun(imm value: dyn[Hash]) -> u64 = value.hash()
+
+main: fun -> i32
+{
+	val point = Point(1, 2)
+	val pair = Pair(1, 2)
+	val number: i32 = 5
+	printf("%llu %llu %llu\n", point.hash(), pair.hash(), number.hash())
+	printf("%llu %llu %llu\n", hashOf(imm point), hashOf(imm pair), hashOf(imm number))
+	printf("%llu %llu\n", hashDyn(imm point), hashDyn(imm pair))
+	ret 0
+}
