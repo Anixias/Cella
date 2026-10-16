@@ -1,0 +1,28 @@
+mod test
+
+Guarded: union
+{
+	a: pvt set i32
+	b: i32
+}
+
+Scoped: union
+{
+	a: mod set i32
+	b: mod set u32
+}
+
+Hidden: union
+{
+	a: pvt i32
+	b: i32
+	c: mod f32
+}
+
+Same: union
+{
+	a: pvt i32
+	b: pvt u32
+}
+
+main: fun -> i32 = 0

@@ -1,0 +1,29 @@
+
+====== union_member_visibility.ce ======
+
+Error at line 5, column 5
+4 │ {
+5 │     a: pvt set i32
+           ╘═╛ Cannot restrict writes to union members
+
+Error at line 11, column 5
+10 │ {
+11 │     a: mod set i32
+            ╘═╛ Cannot restrict writes to union members
+
+Error at line 12, column 5
+11 │ a: mod set i32
+12 │ b: mod set u32
+        ╘═╛ Cannot restrict writes to union members
+
+Error at line 17, column 5
+16 │ {
+17 │     a: pvt i32
+            ╘═╛ Cannot make union members less visible than other members
+
+Error at line 19, column 5
+18 │ b: i32
+19 │ c: mod f32
+        ╘═╛ Cannot make union members less visible than other members
+
+[compilation failed]

@@ -261,9 +261,22 @@ public sealed partial class SignatureCollector
 	
 	private void ReportUnionMembers(RecordNode node, ResolutionContext context)
 	{
-		foreach (var field in node.Members.OfType<FieldNode>())
+		var fields = node.Members.OfType<FieldNode>().ToList();
+		var widest = fields.Select(field => ((FieldSymbol)_symbolTable.DeclarationSymbols[field]).Visibility)
+			.DefaultIfEmpty().Max();
+		
+		foreach (var field in fields)
 		{
 			var symbol = (FieldSymbol)_symbolTable.DeclarationSymbols[field];
+			if (field.WriteVisibility is { } write)
+				Diagnostics.Add(new(DiagnosticSeverity.Error, write.SourceLocation,
+					"Cannot restrict writes to union members"));
+			
+			if (symbol.Visibility < widest)
+				Diagnostics.Add(new(DiagnosticSeverity.Error,
+					(field.Visibility ?? field.Identifier).SourceLocation,
+					"Cannot make union members less visible than other members"));
+			
 			var type = _typePool.GetTypeOfMember(symbol);
 			var message = type is InvalidType ? null
 				: symbol.IsRequired ? "Cannot declare required fields in unions"
