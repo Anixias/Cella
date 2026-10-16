@@ -13,6 +13,8 @@ public abstract class Toolchain
 		var toolchainRoot = Path.Combine(toolchainsDirectory, targetTriple.ToString());
 		return targetTriple.Os switch
 		{
+			TargetTriple.OsTypes.Windows when targetTriple.Abi == TargetTriple.Abis.Gnu =>
+				new WindowsGnuToolchain(toolchainRoot),
 			TargetTriple.OsTypes.Windows => new WindowsMsvcToolchain(toolchainRoot, $"clang_rt.builtins-{
 				targetTriple.Arch switch
 				{

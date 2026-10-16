@@ -29,6 +29,9 @@ public sealed class Linker(string rootPath, bool verbose)
 		foreach (var arg in args)
 			process.StartInfo.ArgumentList.Add(arg);
 		
+		if (OperatingSystem.IsLinux())
+			process.StartInfo.Environment["LD_LIBRARY_PATH"] = rootPath;
+		
 		var environmentVars = toolchain.GetLinkerEnvironmentVars();
 		foreach (var (key, value) in environmentVars)
 			process.StartInfo.Environment[key] = value;

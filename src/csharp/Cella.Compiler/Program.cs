@@ -289,11 +289,13 @@ internal static class Program
 		return isValid;
 	}
 	
+	private static string ToolchainsDirectory => Path.Combine(AppContext.BaseDirectory, "toolchains");
+	
 	private static TargetTriple? ParseTarget(string[] args)
 	{
 		var index = Array.IndexOf(args, "--target");
 		if (index < 0)
-			return TargetTriple.FromHost();
+			return TargetTriple.FromHost().WithDefaultAbi(ToolchainsDirectory);
 		
 		if (index + 1 == args.Length || args[index + 1].StartsWith("--"))
 		{
@@ -308,7 +310,7 @@ internal static class Program
 		}
 		
 		if (TargetTriple.Parse(args[index + 1]) is { } target)
-			return target;
+			return target.WithDefaultAbi(ToolchainsDirectory);
 		
 		Console.WriteLine($"Unknown target '{args[index + 1]}'");
 		return null;
@@ -523,6 +525,7 @@ internal static class Program
 		public ImmutableArray<string> PlainNames { get; init; } = [];
 		public ImmutableArray<string> ContainedLibraries { get; init; } = [];
 		public ImmutableArray<string> LibraryFiles { get; init; } = [];
+		public ImmutableArray<string> ImportedSymbols { get; init; } = [];
 		public string? Directory { get; init; }
 		public string? ProjectPath { get; init; }
 		public string Name => AssemblySymbol.Name;
@@ -774,6 +777,7 @@ internal static class Program
 		// Phase 7: Code generation
 		string outputPath;
 		ImmutableArray<string> ownLibraries;
+		ImmutableArray<string> ownImports;
 		var genericFunctions = lowerer.Modules
 			.SelectMany(static module => module.Files)
 			.SelectMany(static file => file.Functions)
@@ -822,6 +826,7 @@ internal static class Program
 				signatureCollector.Modules, inputs);
 			
 			var externalLibraries = new HashSet<string>();
+			var importedSymbols = new HashSet<string>();
 			var objectFiles = new List<string>();
 			var codeGenFailed = false;
 			foreach (var result in codeGenerator.Generate(lowerer.Modules))
@@ -835,6 +840,7 @@ internal static class Program
 				
 				objectFiles.Add(result.OutputPath!);
 				externalLibraries.UnionWith(result.ExternalLibraries);
+				importedSymbols.UnionWith(result.ImportedSymbols);
 			}
 			
 			if (ReportErrors([codeGenerator.Diagnostics], displayRoot, showHints))
@@ -880,6 +886,7 @@ internal static class Program
 					ct);
 			}
 			
+			ownImports = [..importedSymbols];
 			ownLibraries =
 			[
 				..externalLibraries.Select(origin => ResolveLibrary(origin, project.Directory, targetTriple)).Distinct()
@@ -908,11 +915,15 @@ internal static class Program
 				DebugInfo = codeGenConfig.DebugInfo,
 				OptimizeMode = optimizeMode,
 				ModuleDefinition = moduleDefinition,
-				KeptSymbols = targetTriple.IsElf ? [..reexports.Select(static name => name.Name)] : []
+				KeptSymbols = targetTriple.IsElf ? [..reexports.Select(static name => name.Name)] : [],
+				WideEntry = codeGenerator.UsesWideEntry,
+				ImportedSymbols =
+				[
+					..importedSymbols.Concat(contained.SelectMany(static library => library.ImportedSymbols)).Distinct()
+				]
 			};
 			
-			var linkerToolchain = Toolchain.FromTargetTriple(targetTriple,
-				Path.Combine(AppContext.BaseDirectory, "toolchains"));
+			var linkerToolchain = Toolchain.FromTargetTriple(targetTriple, ToolchainsDirectory);
 			
 			if (linker.FindMissingLinker(linkRequest, linkerToolchain) is { } missing)
 			{
@@ -952,7 +963,8 @@ internal static class Program
 					targetTriple.IsElf ? linkedPath : Path.ChangeExtension(linkedPath, ".lib"))
 				{
 					LinkPreference = linkPreference,
-					OptimizeMode = optimizeMode
+					OptimizeMode = optimizeMode,
+					WideEntry = codeGenerator.UsesWideEntry
 				};
 				
 				var (launcherExitCode, launcherErrors) = await linker.LinkAsync(launcherRequest, linkerToolchain);
@@ -982,7 +994,8 @@ internal static class Program
 			ExportNames = exportNames,
 			PlainNames = plainNames,
 			ContainedLibraries = [..contained.Select(static library => library.Name)],
-			LibraryFiles = ownLibraries
+			LibraryFiles = ownLibraries,
+			ImportedSymbols = ownImports
 		};
 	}
 	
@@ -1348,7 +1361,7 @@ internal static class Program
 				.ThenBy(static d => d.Column)
 				.ToArray());
 		
-		foreach (var (file, set) in diagnosticsByFile.OrderBy(static kvp => kvp.Key))
+		foreach (var (file, set) in diagnosticsByFile.OrderBy(static kvp => kvp.Key, StringComparer.Ordinal))
 		{
 			if (!string.IsNullOrEmpty(file))
 			{

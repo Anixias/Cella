@@ -21,9 +21,10 @@ public sealed class GoldenTests
 		Console.SetError(new RoutingWriter(Console.Error));
 	}
 	
-	private static readonly string[] _targets = [WindowsTarget, LinuxTarget];
+	private static readonly string[] _targets = [WindowsTarget, WindowsGnuTarget, LinuxTarget];
 	
 	private const string WindowsTarget = "windows-x64";
+	private const string WindowsGnuTarget = "windows-x64-gnu";
 	private const string LinuxTarget = "linux-x64";
 	
 	public static TheoryData<string, bool, string> Cases()
@@ -180,7 +181,7 @@ public sealed class GoldenTests
 			if (target == LinuxTarget && !LinuxProcess.IsAvailable)
 				Assert.Skip("Linux programs can't run on this machine (install WSL to run them on Windows)");
 			
-			if (target == WindowsTarget && !OperatingSystem.IsWindows())
+			if (target != LinuxTarget && !CanRunWindowsPrograms)
 				Assert.Skip("Windows programs can't run on this machine");
 			
 			var (exitCode, output, error) = target == LinuxTarget
@@ -296,7 +297,17 @@ public sealed class GoldenTests
 		return builder.ToString();
 	}
 	
-	private static string GetSourceDirectory([CallerFilePath] string path = "") => Path.GetDirectoryName(path)!;
+	private static string GetSourceDirectory([CallerFilePath] string path = "") =>
+		Path.GetDirectoryName(OperatingSystem.IsWindows() || path.StartsWith('/') ? path : ToWslPath(path))!;
+	
+	private static string ToWslPath(string windowsPath) =>
+		$"/mnt/{char.ToLowerInvariant(windowsPath[0])}{windowsPath[2..].Replace('\\', '/')}";
+	
+	private static bool CanRunWindowsPrograms => OperatingSystem.IsWindows() ||
+	                                             Directory.Exists(InteropDirectory) && Directory
+		                                             .EnumerateFiles(InteropDirectory, "WSLInterop*").Any();
+	
+	private const string InteropDirectory = "/proc/sys/fs/binfmt_misc";
 	
 	private sealed class RoutingWriter(TextWriter fallback) : TextWriter
 	{

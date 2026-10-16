@@ -18,7 +18,9 @@
   </PropertyGroup>
 
   <ItemGroup Condition="'$(CellaToolchainFolder)' != '' and Exists('$(CellaToolchainFolder)')">
-    <None Include="$(CellaToolchainFolder)**\*" Link="%(RecursiveDir)%(Filename)%(Extension)"
+    <None Include="$(CellaToolchainFolder)toolchains\**\*" Link="toolchains\%(RecursiveDir)%(Filename)%(Extension)"
+          CopyToOutputDirectory="PreserveNewest" Visible="false"/>
+    <None Include="$(CellaToolchainFolder)hosts\$(RuntimeIdentifier)\**\*" Link="%(RecursiveDir)%(Filename)%(Extension)"
           CopyToOutputDirectory="PreserveNewest" Visible="false"/>
   </ItemGroup>
 

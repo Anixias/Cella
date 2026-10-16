@@ -449,17 +449,27 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 		
 		var objectFilePath = Path.Combine(_config.OutputConfig.Directory, $"{fileName}.o");
 		if (_targetMachine.TryEmitToFile(llvmModule, objectFilePath, LLVMCodeGenFileType.LLVMObjectFile, out message))
-			return new(true, objectFilePath, null, state.ExternalLibraries);
+			return new(true, objectFilePath, null, state.ExternalLibraries)
+			{
+				ImportedSymbols =
+				[
+					..state.ExternalSymbols.Where(static value => value.FirstUse.Handle != IntPtr.Zero)
+						.Select(static value => value.Name)
+				]
+			};
 		
 		return CodeGenResult.Failure with { ErrorMessage = DescribeWriteFailure(objectFilePath, message) };
 	}
 	
 	private static string DescribeWriteFailure(string path, string message) => $"Cannot write '{path}': {message}";
 	
+	public bool UsesWideEntry =>
+		_assemblySymbol.EntryPoint is { Signature.ParameterTypes.IsEmpty: false } && TargetTriple.Contains("windows");
+	
 	public CodeGenResult GenerateLauncher(string startFunction)
 	{
 		var takesArguments = _assemblySymbol.EntryPoint is { Signature.ParameterTypes.IsEmpty: false };
-		var isWide = takesArguments && TargetTriple.Contains("windows");
+		var isWide = UsesWideEntry;
 		using var module = _context.CreateModuleWithName("launcher");
 		module.Target = TargetTriple;
 		module.DataLayout = _dataLayoutStr;
@@ -587,6 +597,7 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 				var llvmFunction = CreateFunction(current.Module, function).FunctionValue;
 				llvmFunction.Linkage = LLVMLinkage.LLVMExternalLinkage;
 				llvmFunction.DLLStorageClass = LLVMDLLStorageClass.LLVMDLLImportStorageClass;
+				current.ExternalSymbols.Add(llvmFunction);
 			}
 			
 			// Create and map imported functions
@@ -673,6 +684,7 @@ public readonly struct CodeGenResult
 	public string? ErrorMessage { get; init; }
 	
 	public ImmutableHashSet<string> ExternalLibraries { get; }
+	public ImmutableArray<string> ImportedSymbols { get; init; } = [];
 	
 	public CodeGenResult(bool isSuccess, string? outputPath, string? errorMessage,
 		IEnumerable<string> externalLibraries)

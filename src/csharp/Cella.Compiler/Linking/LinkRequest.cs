@@ -21,4 +21,6 @@ public sealed class LinkRequest
 	public OptimizeMode OptimizeMode { get; init; }
 	public string? ModuleDefinition { get; init; }
 	public ImmutableArray<string> KeptSymbols { get; init; } = [];
+	public bool WideEntry { get; init; }
+	public ImmutableArray<string> ImportedSymbols { get; init; } = [];
 }

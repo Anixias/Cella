@@ -15,6 +15,12 @@ public readonly record struct TargetTriple(string Os, string Arch, string? Abi)
 		public const string MacOsX = "macosx";
 	}
 	
+	public static class Abis
+	{
+		public const string Msvc = "msvc";
+		public const string Gnu = "gnu";
+	}
+	
 	public static class ArchTypes
 	{
 		public const string X64 = "x64";
@@ -51,10 +57,18 @@ public readonly record struct TargetTriple(string Os, string Arch, string? Abi)
 	
 	public bool IsElf => Os == OsTypes.Linux;
 	
+	public TargetTriple WithDefaultAbi(string toolchainsDirectory) => Os == OsTypes.Windows && Abi is null
+		? this with
+		{
+			Abi = Directory.Exists(Path.Combine(toolchainsDirectory, $"{Os}-{Arch}-{Abis.Msvc}")) ? Abis.Msvc : Abis.Gnu
+		}
+		: this;
+	
 	public static TargetTriple? Parse(string text) => text.Split('-') switch
 	{
-		[OsTypes.Windows, ArchTypes.X64] or [OsTypes.Windows, ArchTypes.X64, "msvc"] =>
-			new TargetTriple(OsTypes.Windows, ArchTypes.X64, "msvc"),
+		[OsTypes.Windows, ArchTypes.X64] => new TargetTriple(OsTypes.Windows, ArchTypes.X64, null),
+		[OsTypes.Windows, ArchTypes.X64, (Abis.Msvc or Abis.Gnu) and var abi] =>
+			new TargetTriple(OsTypes.Windows, ArchTypes.X64, abi),
 		[OsTypes.Linux, ArchTypes.X64] or [OsTypes.Linux, ArchTypes.X64, "gnu"] =>
 			new TargetTriple(OsTypes.Linux, ArchTypes.X64, "gnu"),
 		_ => null
@@ -77,7 +91,7 @@ public readonly record struct TargetTriple(string Os, string Arch, string? Abi)
 		if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
 		{
 			os = "windows";
-			abi = "msvc";
+			abi = null;
 		}
 		else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
 		{

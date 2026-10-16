@@ -206,6 +206,7 @@ public sealed partial class CodeGenerator
 			
 			value.Linkage = LLVMLinkage.LLVMExternalLinkage;
 			value.DLLStorageClass = LLVMDLLStorageClass.LLVMDLLImportStorageClass;
+			current.ExternalSymbols.Add(value);
 		}
 		else if (!IsDefinedHere(function.Symbol))
 		{
