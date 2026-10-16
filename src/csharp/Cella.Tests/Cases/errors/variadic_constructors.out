@@ -9,12 +9,7 @@ Error at line 24, column 2
 Error at line 33, column 2
 32 │ 
 33 │ new: op(...values: view[i32])
-     ╘═╛ 'Many.new' is declared more than once with the same signature
-
-Error at line 37, column 2
-36 │ 
-37 │ new: op(values: view[i32])
-     ╘═╛ 'Many.new' is declared more than once with the same signature
+     ╘═╛ 'Many.new' overloads cannot differ only in parameter modes
 
 Error at line 41, column 2
 40 │ 

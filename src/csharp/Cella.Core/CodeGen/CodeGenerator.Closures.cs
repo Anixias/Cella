@@ -108,10 +108,9 @@ public sealed partial class CodeGenerator
 		
 		thunk.Linkage = LLVMLinkage.LLVMInternalLinkage;
 		using var builder = CreateGeneratedBuilder(thunk, GetAdapterName(function), function.Symbol.Definition);
-		var first = IsLarge(returnType) ? 2u : 1u;
 		var args = parameterTypes
 			.Select((_, i) => AdaptFunction(type.ParameterTypes[i], actual.ParameterTypes[i],
-				ReceiveCopy(type.ParameterModes[i], actual, i, thunk.GetParam((uint)i + first), builder), builder))
+				ReceiveCopy(type.ParameterModes[i], actual, i, thunk.GetParam((uint)i + 1), builder), builder))
 			.ToList();
 		
 		var result = target.CSignature is { } signature
@@ -119,8 +118,8 @@ public sealed partial class CodeGenerator
 				args, builder)
 			: BuildInternalCall(builder, target.FunctionType, target.FunctionValue, actual.ReturnType, [], args);
 		
-		EmitThunkReturn(thunk, returnType, AdaptFunction(actual.ReturnType, type.ReturnType, result, builder), 1,
-			builder);
+		EmitThunkReturn(thunk, returnType, actual.ReturnType,
+			AdaptFunction(actual.ReturnType, type.ReturnType, result, builder), builder);
 		
 		return thunk;
 	}

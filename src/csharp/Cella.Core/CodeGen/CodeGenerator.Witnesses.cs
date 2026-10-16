@@ -36,8 +36,7 @@ public sealed partial class CodeGenerator
 		value.Linkage = LLVMLinkage.LLVMInternalLinkage;
 		
 		using var builder = CreateGeneratedBuilder(value, GetAdapterName(function), function.Symbol.Definition);
-		var first = thunk.ResultParameter is null ? 0u : 1u;
-		var parameters = function.Signature.ParameterTypes.Select((_, i) => value.GetParam((uint)i + first)).ToList();
+		var parameters = function.Signature.ParameterTypes.Select((_, i) => value.GetParam((uint)i)).ToList();
 		var result = witness switch
 		{
 			FunctionWitness target => CallWitness(function, target, parameters, builder),

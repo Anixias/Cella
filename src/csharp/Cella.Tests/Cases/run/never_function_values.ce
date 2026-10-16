@@ -1,0 +1,48 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+	exit: fun(code: i32) -> never
+}
+
+Big: rec
+{
+	a: i64
+	b: i64
+	c: i64
+	d: i64
+}
+
+stop: fun(a: i32, b: i32) -> never
+{
+	printf("stop %d %d\n", a, b)
+	exit(a + b)
+}
+
+sum: fun(a: i32, b: i32) -> Big = Big(a, b, 0, 0)
+
+pick: fun(f: fun[i32, i32 -> Big]) -> i32 = 1
+pick: fun(f: fun[i32, i32 -> never]) -> i32 = 2
+
+borrow: fun(handler: fun[i32, i32 -> Big]) -> i64 = handler(1, 2).b
+keep: fun(own handler: fun[i32, i32 -> Big]) -> i64 = handler(8, 9).a
+code: fun(own handler: fun[i32 -> i32]) -> i32 = handler(30)
+
+main: fun -> i32
+{
+	printf("%d %d\n", pick(stop), pick(sum))
+	printf("%lld\n", borrow(sum))
+	val base = 4
+	val handlers: array[fun[i32, i32 -> Big], 2] = [sum, stop]
+	printf("%lld\n", handlers[0](5, 6).a)
+	if base == 0
+	{
+		val e: fun[i32 -> i32] = exit
+		code(e)
+		borrow(fun(a: i32, b: i32) -> never = stop(a, b + base))
+	}
+
+	val h: fun[i32, i32 -> never] = stop
+	ret i32(keep(h))
+}

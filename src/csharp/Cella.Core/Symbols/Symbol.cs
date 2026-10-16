@@ -489,9 +489,12 @@ public sealed class FunctionType : TypeSymbol
 	
 	public static bool SignatureStandsIn(FunctionType source, FunctionType target) =>
 		source.IsVariadic == target.IsVariadic && source.HasVariadicParameter == target.HasVariadicParameter &&
-		source.ReturnType == target.ReturnType && source.ParameterTypes.Length == target.ParameterTypes.Length &&
+		ReturnStandsIn(source, target) && source.ParameterTypes.Length == target.ParameterTypes.Length &&
 		Enumerable.Range(0, source.ParameterTypes.Length).All(i => source.ParameterModes[i]
 			.CanStandIn(source.ParameterTypes[i], target.ParameterModes[i], target.ParameterTypes[i]));
+	
+	public static bool ReturnStandsIn(FunctionType source, FunctionType target) =>
+		source.ReturnType == target.ReturnType || source.ReturnType is NeverType && !target.IsExternal;
 	
 	private static string BuildName(bool isExternal, bool isRef, ImmutableArray<TypeSymbol> parameterTypes,
 		ImmutableArray<ParameterMode> parameterModes, TypeSymbol returnType, bool isVariadic,

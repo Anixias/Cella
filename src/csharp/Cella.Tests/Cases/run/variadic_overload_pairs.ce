@@ -1,0 +1,53 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+view[T]: ref rec
+{
+	data: ptr[T]
+	length: usize
+
+	as[N: const usize]: op(imm values: array[T, N]) -> view[T] = view(@values[0], N)
+}
+
+same: fun(xs: view[i32]) -> usize
+{
+	printf("view\n")
+	ret xs.length
+}
+
+same: fun(...xs: view[i32]) -> usize
+{
+	printf("pack\n")
+	ret xs.length
+}
+
+Bag: rec
+{
+	count: usize
+
+	new: op(xs: view[i32])
+	{
+		self.count = xs.length
+	}
+
+	new: op(...xs: view[i32])
+	{
+		self.count = xs.length + 100
+	}
+}
+
+main: fun -> i32
+{
+	val numbers = [1, 2, 3]
+	val v: view[i32] = numbers
+	same(v)
+	same(1, 2)
+	same(...v)
+	same()
+	printf("%zu %zu\n", Bag(v).count, Bag(1, 2).count)
+	ret 0
+}

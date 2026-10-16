@@ -67,16 +67,6 @@ Error at line 53, column 18
 53 │ compare: ext fun(...values: view[i32]) -> i32 = 0
                       ╘═╛ Cannot take variadic parameters in 'ext' functions
 
-Error at line 54, column 1
-53 │ compare: ext fun(...values: view[i32]) -> i32 = 0
-54 │ same: fun(values: view[i32]) {}
-     ╘══╛ 'same' is declared more than once with the same signature
-
-Error at line 55, column 1
-54 │ same: fun(values: view[i32]) {}
-55 │ same: fun(...values: view[i32]) {}
-     ╘══╛ 'same' is declared more than once with the same signature
-
 Error at line 57, column 1
 56 │ 
 57 │ main: fun(...args: view[str]) -> i32 = 0

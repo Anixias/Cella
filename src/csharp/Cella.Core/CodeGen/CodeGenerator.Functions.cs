@@ -43,7 +43,7 @@ public sealed partial class CodeGenerator
 			AddFunctionAttribute(functionValue, "noreturn");
 		
 		var functionInfo = new LLVMFunctionInfo(functionValue, functionType, returnType, cSignature,
-			cSignature is null && IsLarge(signature.ReturnType) ? (uint)leading : null);
+			cSignature is null && IsLarge(signature.ReturnType) ? (uint)paramLlvmTypes.Length : null);
 		
 		current.Functions.Add(function, functionInfo);
 		return functionInfo;
@@ -188,8 +188,7 @@ public sealed partial class CodeGenerator
 				var parameters = function.Info.Symbol.Parameters;
 				var signature = currentFunction.CSignature;
 				var firstParameter = (signature?.Return.Kind == CPassKind.Indirect ? 1u : 0u) +
-				                     (function.Info.Symbol.Captures.IsEmpty ? 0u : 1u) +
-				                     (currentFunction.ResultParameter is null ? 0u : 1u);
+				                     (function.Info.Symbol.Captures.IsEmpty ? 0u : 1u);
 				
 				for (var p = 0; p < parameters.Length; p++)
 				{
@@ -337,7 +336,7 @@ public sealed partial class CodeGenerator
 	
 	private LLVMTypeRef CreateInternalFunctionType(TypeSymbol returnType, IEnumerable<LLVMTypeRef> leading,
 		IEnumerable<LLVMTypeRef> parameters, bool isVariadic = false) => IsLarge(returnType)
-		? LLVMTypeRef.CreateFunction(_context.VoidType, [..leading, OpaquePointer, ..parameters], isVariadic)
+		? LLVMTypeRef.CreateFunction(_context.VoidType, [..leading, ..parameters, OpaquePointer], isVariadic)
 		: LLVMTypeRef.CreateFunction(MapTypeSymbol(returnType), [..leading, ..parameters], isVariadic);
 	
 	private LLVMValueRef BuildInternalCall(LLVMBuilderRef builder, LLVMTypeRef functionType, LLVMValueRef callee,
@@ -347,16 +346,20 @@ public sealed partial class CodeGenerator
 			return builder.BuildCall2(functionType, callee, [..leading, ..args]);
 		
 		var slot = BuildEntryAlloca(builder, MapTypeSymbol(returnType), "result");
-		builder.BuildCall2(functionType, callee, [..leading, slot, ..args]);
+		builder.BuildCall2(functionType, callee, [..leading, ..args, slot]);
 		return slot;
 	}
 	
-	private void EmitThunkReturn(LLVMValueRef thunk, TypeSymbol type, LLVMValueRef result, uint resultParameter,
+	private void EmitThunkReturn(LLVMValueRef thunk, TypeSymbol type, TypeSymbol calledType, LLVMValueRef result,
 		LLVMBuilderRef builder)
 	{
-		if (IsLarge(type))
+		if (calledType is NeverType)
 		{
-			StoreValue(builder, type, result, thunk.GetParam(resultParameter));
+			builder.BuildUnreachable();
+		}
+		else if (IsLarge(type))
+		{
+			StoreValue(builder, type, result, thunk.GetParam(thunk.ParamsCount - 1));
 			builder.BuildRetVoid();
 		}
 		else if (MapTypeSymbol(type).Kind == LLVMTypeKind.LLVMVoidTypeKind)

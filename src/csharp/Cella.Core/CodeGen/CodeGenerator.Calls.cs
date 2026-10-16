@@ -172,12 +172,12 @@ public sealed unsafe partial class CodeGenerator
 	}
 	
 	private LLVMValueRef GetExternalCallThunk(FunctionType external) =>
-		GetCallThunk($"call${Mangling.MangleTypeName(external, _modules)}", external, (builder, environment, args) =>
-			EmitExternalCall(external, environment, args, builder));
+		GetCallThunk($"call${Mangling.MangleTypeName(external, _modules)}", external, external.ReturnType,
+			(builder, environment, args) => EmitExternalCall(external, environment, args, builder));
 	
 	private LLVMValueRef GetStoredCallThunk(FunctionType signature, FunctionType stored) => GetCallThunk(
 		$"call${Mangling.MangleTypeName(signature, _modules)}${Mangling.MangleTypeName(stored, _modules)}", signature,
-		(builder, environment, args) =>
+		stored.ReturnType, (builder, environment, args) =>
 		{
 			var copied = LoadCopies(signature, stored, args, builder);
 			if (stored.IsExternal)
@@ -197,7 +197,8 @@ public sealed unsafe partial class CodeGenerator
 			MapCallParameters(closure.Signature));
 		
 		return GetCallThunk($"call${Mangling.MangleTypeName(signature, _modules)}${code.Name}", signature,
-			(builder, environment, args) => BuildInternalCall(builder, codeType, code, closure.Signature.ReturnType,
+			closure.Signature.ReturnType, (builder, environment, args) => BuildInternalCall(builder, codeType, code,
+				closure.Signature.ReturnType,
 				[environment], LoadCopies(signature, closure.Signature, args, builder)));
 	}
 	
@@ -217,7 +218,7 @@ public sealed unsafe partial class CodeGenerator
 			: arg)
 	];
 	
-	private LLVMValueRef GetCallThunk(string name, FunctionType signature,
+	private LLVMValueRef GetCallThunk(string name, FunctionType signature, TypeSymbol calledReturnType,
 		Func<LLVMBuilderRef, LLVMValueRef, LLVMValueRef[], LLVMValueRef> emitCall)
 	{
 		var existing = current.Module.GetNamedFunction(name);
@@ -230,11 +231,10 @@ public sealed unsafe partial class CodeGenerator
 		
 		thunk.Linkage = LLVMLinkage.LLVMInternalLinkage;
 		using var builder = CreateGeneratedBuilder(thunk, name, SourceLocation.None);
-		var first = IsLarge(signature.ReturnType) ? 2u : 1u;
 		var result = emitCall(builder, thunk.GetParam(0),
-			[..parameterTypes.Select((_, i) => thunk.GetParam((uint)i + first))]);
+			[..parameterTypes.Select((_, i) => thunk.GetParam((uint)i + 1))]);
 		
-		EmitThunkReturn(thunk, signature.ReturnType, result, 1, builder);
+		EmitThunkReturn(thunk, signature.ReturnType, calledReturnType, result, builder);
 		return thunk;
 	}
 	

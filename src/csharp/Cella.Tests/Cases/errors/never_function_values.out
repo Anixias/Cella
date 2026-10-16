@@ -1,0 +1,19 @@
+
+====== never_function_values.ce ======
+
+Error at line 15, column 31
+14 │ {
+15 │     val f: ext fun[i32 -> i32] = exit
+                                      ╘══╛ Cannot convert type 'ext fun[i32 -> never]' to 'ext fun[i32 -> i32]'
+
+Error at line 16, column 29
+15 │ val f: ext fun[i32 -> i32] = exit
+16 │ val g: fun[i32 -> never] = fun(code: i32) -> i32 = code
+                                ╘══════════════════════════╛ Cannot convert type 'fun[i32 -> i32]' to 'fun[i32 -> never]'
+
+Error at line 17, column 27
+16 │ val g: fun[i32 -> never] = fun(code: i32) -> i32 = code
+17 │ val h: fun[i64 -> i32] = stop
+                              ╘══╛ Cannot convert type 'fun[i32 -> never]' to 'fun[i64 -> i32]'
+
+[compilation failed]

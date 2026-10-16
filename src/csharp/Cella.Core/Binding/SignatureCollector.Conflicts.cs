@@ -113,6 +113,7 @@ public sealed partial class SignatureCollector
 		{
 			var hash = new HashCode();
 			hash.Add(_signature.IsVariadic);
+			hash.Add(_signature.HasVariadicParameter);
 			for (var i = 0; i < _signature.ParameterTypes.Length; i++)
 				hash.Add(_signature.GetDeclaredType(i));
 			
@@ -343,7 +344,8 @@ public sealed partial class SignatureCollector
 	}
 	
 	private static bool HasSameParameters(FunctionSignature first, FunctionSignature second) =>
-		first.IsVariadic == second.IsVariadic && first.ParameterTypes.Length == second.ParameterTypes.Length &&
+		first.IsVariadic == second.IsVariadic && first.HasVariadicParameter == second.HasVariadicParameter &&
+		first.ParameterTypes.Length == second.ParameterTypes.Length &&
 		Enumerable.Range(0, first.ParameterTypes.Length).All(i =>
 			first.GetDeclaredType(i) is not InvalidType && first.GetDeclaredType(i) == second.GetDeclaredType(i));
 	

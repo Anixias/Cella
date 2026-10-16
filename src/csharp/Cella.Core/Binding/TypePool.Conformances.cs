@@ -341,7 +341,7 @@ public sealed partial class TypePool
 	                                                                      source.IsVariadic == target.IsVariadic &&
 	                                                                      source.HasVariadicParameter ==
 	                                                                      target.HasVariadicParameter &&
-	                                                                      source.ReturnType == target.ReturnType &&
+	                                                                      FunctionType.ReturnStandsIn(source, target) &&
 	                                                                      source.ParameterTypes.Length ==
 	                                                                      target.ParameterTypes.Length &&
 	                                                                      Enumerable.Range(0,
