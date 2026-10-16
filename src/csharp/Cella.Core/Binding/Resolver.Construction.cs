@@ -69,11 +69,11 @@ public sealed partial class Resolver
 				arg = MaterializeAsDefault(arg);
 		}
 		
-		if (arg.Type == targetType)
+		if (arg.Type == targetType && ConversionTable.ConstructsItself(targetType))
 			return arg;
 		
 		var value = targetType is BorrowType ? arg : Decay(arg);
-		if (value.Type == targetType)
+		if (value.Type == targetType && ConversionTable.ConstructsItself(targetType))
 			return value;
 		
 		if (_conversionTable.FindExplicit(value.Type, targetType) is { } conversion)

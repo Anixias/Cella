@@ -1,0 +1,25 @@
+mod test
+
+Color: enum
+{
+	red
+	green
+}
+
+Point: rec
+{
+	x: i32
+}
+
+keep[T: copy + new(T)]: fun(value: T) -> T = T(value)
+
+main: fun -> i32
+{
+	val c = Color.green
+	val p = Point(1)
+	val d = Color(c)
+	val q = Point(p)
+	val e = keep(c)
+	val r = keep(p)
+	ret 0
+}

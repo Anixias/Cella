@@ -1,0 +1,35 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Counter: rec
+{
+	v: i32
+
+	new: op(other: Counter)
+	{
+		self.v = other.v + 1
+	}
+
+	new: op(v: i32)
+	{
+		self.v = v
+	}
+}
+
+keep[T: copy + new(T)]: fun(value: T) -> T = T(value)
+
+main: fun -> i32
+{
+	var n = 7
+	val p = @n
+	val xs = [1, 2, 3]
+	val text: cstr = "text"
+	printf("%d %d %d %d %s\n", i32(n), i32(bool(true)), array[i32, 3](xs)[1], *ptr[i32](p), cstr(text))
+	printf("%d %d %d %f %d %s\n", keep(5), i32(keep(true)), keep(xs)[2], keep(1.5), *keep(p), keep(text))
+	printf("%d %d\n", Counter(Counter(4)).v, keep(Counter(4)).v)
+	ret 0
+}

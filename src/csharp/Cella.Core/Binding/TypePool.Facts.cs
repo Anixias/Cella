@@ -379,8 +379,7 @@ public sealed partial class TypePool
 		_ => false
 	};
 	
-	private Conversion? FindConversion(TypeSymbol from, TypeSymbol to) =>
-		from == to ? new IdentityConversion(to) : ConversionTable.FindExplicit(from, to);
+	private Conversion? FindConversion(TypeSymbol from, TypeSymbol to) => ConversionTable.FindExplicit(from, to);
 	
 	private bool HasConstructor(TypeSymbol type, FunctionSignature expected) => type switch
 	{

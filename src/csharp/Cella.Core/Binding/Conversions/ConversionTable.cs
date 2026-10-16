@@ -16,8 +16,13 @@ public sealed class ConversionTable
 			: FindFunctionConversion(from, to) ?? FindCallableConversion(from, to);
 	
 	public Conversion? FindExplicit(TypeSymbol from, TypeSymbol to) =>
-		_conversions.GetValueOrDefault((from, to)) ?? FindFunctionConversion(from, to) ??
-		FindCallableConversion(from, to);
+		from == to
+			? ConstructsItself(from) ? new IdentityConversion(from) : null
+			: _conversions.GetValueOrDefault((from, to)) ?? FindFunctionConversion(from, to) ??
+			FindCallableConversion(from, to);
+	
+	public static bool ConstructsItself(TypeSymbol type) =>
+		type is IntegerType or FloatType or StringType or PointerType or ArrayType || type == NativeSymbols.Bool;
 	
 	private CallableConversion? FindCallableConversion(TypeSymbol from, TypeSymbol to)
 	{
