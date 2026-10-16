@@ -1,0 +1,9 @@
+OutputType = "Executable"
+SystemLinkPreference = "Static"
+Referenceable = true
+
+[[ProjectReferences]]
+Path = 'plain/plain.celp'
+
+[[ProjectReferences]]
+Path = 'lib/lib.celp'

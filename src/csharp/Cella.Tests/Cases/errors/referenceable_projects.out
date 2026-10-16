@@ -1,0 +1,4 @@
+<case>\lib\lib.celp: 'Referenceable' only applies to executables
+<case>\test.celp: '<case>\plain\plain.celp' is an executable without 'Referenceable = true'
+<case>\test.celp: A referenceable executable can't link the C runtime statically
+[compilation failed]

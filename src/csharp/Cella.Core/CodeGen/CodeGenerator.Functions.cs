@@ -62,10 +62,13 @@ public sealed partial class CodeGenerator
 	{
 		var takesArguments = !signature.ParameterTypes.IsEmpty;
 		var isWide = takesArguments && TargetTriple.Contains("windows");
-		var main = current.Module.AddFunction(isWide ? "wmain" : "main", LLVMTypeRef.CreateFunction(_context.Int32Type,
-			takesArguments ? [_context.Int32Type, OpaquePointer] : []));
+		var main = current.Module.AddFunction(_config.StartFunction ?? (isWide ? "wmain" : "main"),
+			LLVMTypeRef.CreateFunction(_context.Int32Type, takesArguments ? [_context.Int32Type, OpaquePointer] : []));
 		
 		main.Linkage = LLVMLinkage.LLVMExternalLinkage;
+		if (_config.StartFunction is not null)
+			main.DLLStorageClass = LLVMDLLStorageClass.LLVMDLLExportStorageClass;
+		
 		using var builder = CreateGeneratedBuilder(main, main.Name, location);
 		
 		LLVMValueRef[] arguments = [];

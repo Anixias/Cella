@@ -456,6 +456,35 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 	
 	private static string DescribeWriteFailure(string path, string message) => $"Cannot write '{path}': {message}";
 	
+	public CodeGenResult GenerateLauncher(string startFunction)
+	{
+		var takesArguments = _assemblySymbol.EntryPoint is { Signature.ParameterTypes.IsEmpty: false };
+		var isWide = takesArguments && TargetTriple.Contains("windows");
+		using var module = _context.CreateModuleWithName("launcher");
+		module.Target = TargetTriple;
+		module.DataLayout = _dataLayoutStr;
+		var type = LLVMTypeRef.CreateFunction(_context.Int32Type,
+			takesArguments ? [_context.Int32Type, OpaquePointer] : []);
+		
+		var main = module.AddFunction(isWide ? "wmain" : "main", type);
+		var start = module.AddFunction(startFunction, type);
+		if (TargetTriple.Contains("windows"))
+			start.DLLStorageClass = LLVMDLLStorageClass.LLVMDLLImportStorageClass;
+		
+		using var builder = _context.CreateBuilder();
+		builder.PositionAtEnd(main.AppendBasicBlock("entry"));
+		builder.BuildRet(builder.BuildCall2(type, start, takesArguments ? [main.GetParam(0), main.GetParam(1)] : []));
+		
+		if (!module.TryVerify(LLVMVerifierFailureAction.LLVMReturnStatusAction, out var message))
+			return CodeGenResult.Failure with { ErrorMessage = DescribeInvalidModule("launcher", message) };
+		
+		Directory.CreateDirectory(_config.OutputConfig.Directory);
+		var objectFilePath = Path.Combine(_config.OutputConfig.Directory, "launcher.o");
+		return _targetMachine.TryEmitToFile(module, objectFilePath, LLVMCodeGenFileType.LLVMObjectFile, out message)
+			? new(true, objectFilePath, null, [])
+			: CodeGenResult.Failure with { ErrorMessage = DescribeWriteFailure(objectFilePath, message) };
+	}
+	
 	private static void PlaceFunctionsInSections(LLVMModuleRef module)
 	{
 		for (var function = module.FirstFunction; function.Handle != IntPtr.Zero; function = function.NextFunction)
@@ -684,6 +713,7 @@ public sealed record CodeGenConfig
 {
 	public RuntimeChecks Checks { get; init; } = new(true, false);
 	public bool ExportsSymbols { get; init; }
+	public string? StartFunction { get; init; }
 	public bool DebugInfo { get; init; }
 	public string? SourceRoot { get; init; }
 	public ImmutableArray<string> ProjectRoots { get; init; } = [];

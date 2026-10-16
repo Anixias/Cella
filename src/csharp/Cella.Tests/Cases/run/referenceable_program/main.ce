@@ -1,0 +1,19 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+main: fun(args: ptr[str], count: usize)
+{
+	printf("%zu", count)
+	var i: usize = 1
+	while i < count
+	{
+		printf(" %zu", args[i].byteLength)
+		i += 1
+	}
+
+	printf("\n")
+}

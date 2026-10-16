@@ -133,6 +133,14 @@ internal static class Program
 		
 		var builtInFlags = BuildFlags.Create(targetTriple, optimizeMode);
 		var linkPreferences = FindLinkPreferences(projectDependencies);
+		foreach (var (project, preference) in linkPreferences ?? [])
+		{
+			if (project.Project is { Referenceable: true, OutputType: var type } && type.IsExecutable() &&
+			    preference == SystemLinkPreference.Static)
+				projectErrors.Add(
+					$"{project.FilePath}: A referenceable executable can't link the C runtime statically");
+		}
+		
 		var flagsValid = ValidateFlags(projectDependencies.Keys, builtInFlags, flagOverrides) &
 		                 ValidateOutputNames(projectDependencies) & ValidateLibraryNames(projectDependencies.Keys) &
 		                 linkPreferences is not null;
@@ -482,8 +490,14 @@ internal static class Program
 		{
 			foreach (var dependency in dependencies)
 			{
-				if (projectLookup.TryGetValue(dependency, out var target))
-					graph.AddDependency(project, target);
+				if (!projectLookup.TryGetValue(dependency, out var target))
+					continue;
+				
+				if (target.Project.OutputType.IsExecutable() && target.Project.Referenceable != true)
+					errors.Add($"{project.FilePath}: '{target.FilePath}' is an executable without " +
+					           $"'{nameof(CellaProject.Referenceable)} = true'");
+				
+				graph.AddDependency(project, target);
 			}
 		}
 		
@@ -593,6 +607,7 @@ internal static class Program
 	{
 		// Phase 1: File parsing
 		var outputType = project.Project.OutputType;
+		var isReferenceable = project.Project.Referenceable == true && outputType.IsExecutable();
 		var flags = CreateFlags(project.Project, targetTriple, optimizeMode, flagOverrides);
 		var (files, parseDiagnostics) = await ProcessProject(project, flags, ct);
 		var diagnostics = new List<DiagnosticList> { parseDiagnostics };
@@ -662,7 +677,8 @@ internal static class Program
 			DebugInfo = project.Project.DebugInfo ?? true,
 			SourceRoot = project.Directory,
 			ProjectRoots = [..allDependencies.Select(static d => d.Directory).OfType<string>(), project.Directory],
-			ExportsSymbols = outputType != ProjectOutputType.StaticLibrary
+			ExportsSymbols = outputType != ProjectOutputType.StaticLibrary,
+			StartFunction = isReferenceable ? Mangling.MangleStart(project.Name) : null
 		};
 		
 		var pointerBitSize = codeGenConfig.GetPointerSize() * 8;
@@ -880,8 +896,13 @@ internal static class Program
 					.Distinct()
 					.ToList();
 			
+			var linkedType = isReferenceable ? ProjectOutputType.SharedLibrary : outputType;
+			var linkedPath = isReferenceable
+				? Path.Combine(outputDir, GetOutputFileName(outputBaseName, targetTriple, linkedType))
+				: outputPath;
+			
 			var linker = new Linker(AppContext.BaseDirectory, verbose);
-			var linkRequest = new LinkRequest(outputType, objectFiles, outputPath, libFiles!)
+			var linkRequest = new LinkRequest(linkedType, objectFiles, linkedPath, libFiles!)
 			{
 				LinkPreference = linkPreference,
 				DebugInfo = codeGenConfig.DebugInfo,
@@ -918,11 +939,38 @@ internal static class Program
 			if (linkExitCode != 0)
 				return errorResult;
 			
+			if (isReferenceable)
+			{
+				var launcher = codeGenerator.GenerateLauncher(codeGenConfig.StartFunction!);
+				if (!launcher.IsSuccess)
+				{
+					Console.WriteLine($"Error: {launcher.ErrorMessage}");
+					return errorResult;
+				}
+				
+				var launcherRequest = new LinkRequest(outputType, [launcher.OutputPath!], outputPath,
+					targetTriple.IsElf ? linkedPath : Path.ChangeExtension(linkedPath, ".lib"))
+				{
+					LinkPreference = linkPreference,
+					OptimizeMode = optimizeMode
+				};
+				
+				var (launcherExitCode, launcherErrors) = await linker.LinkAsync(launcherRequest, linkerToolchain);
+				if (launcherExitCode != 0)
+				{
+					await Console.Error.WriteLineAsync(launcherErrors);
+					Console.WriteLine($"Linker finished with exit code {launcherExitCode}");
+					return errorResult;
+				}
+				
+				outputPath = linkedPath;
+			}
+			
 			if (outputType.IsExecutable())
 				CopySharedLibraries(allDependencies, outputDir);
 		}
 		
-		return new(assemblySymbol, outputType, outputPath, true)
+		return new(assemblySymbol, isReferenceable ? ProjectOutputType.SharedLibrary : outputType, outputPath, true)
 		{
 			Directory = project.Directory,
 			ProjectPath = project.FilePath,

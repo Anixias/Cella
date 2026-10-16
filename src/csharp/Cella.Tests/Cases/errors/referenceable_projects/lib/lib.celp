@@ -1,0 +1,3 @@
+OutputType = "StaticLibrary"
+SystemLinkPreference = "Static"
+Referenceable = true

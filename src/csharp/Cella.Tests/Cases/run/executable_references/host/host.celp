@@ -1,2 +1,3 @@
 OutputType = "Executable"
 SystemLinkPreference = "Dynamic"
+Referenceable = true

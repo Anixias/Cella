@@ -20,7 +20,7 @@ public sealed partial class CellaProject
 	private static readonly HashSet<string> _whenSettingNames =
 	[
 		nameof(OutputType), nameof(SystemLinkPreference), nameof(AssemblyName), nameof(BoundsChecks),
-		nameof(OverflowChecks), nameof(DebugInfo), nameof(ProjectReferences), nameof(Flags)
+		nameof(OverflowChecks), nameof(DebugInfo), nameof(Referenceable), nameof(ProjectReferences), nameof(Flags)
 	];
 	
 	private static readonly HashSet<string> _settingNames = [.._whenSettingNames, nameof(Imports), nameof(When)];
@@ -42,6 +42,9 @@ public sealed partial class CellaProject
 	
 	[TomlValueOnSerialized]
 	public bool? DebugInfo { get; init; }
+	
+	[TomlValueOnSerialized]
+	public bool? Referenceable { get; init; }
 	
 	[TomlValueOnSerialized]
 	public List<ProjectReference>? ProjectReferences { get; init; }
@@ -181,7 +184,7 @@ public sealed partial class CellaProject
 					errors.Add($"{path}: '{name}'{place} must be a file name");
 					break;
 				
-				case nameof(BoundsChecks) or nameof(OverflowChecks) or nameof(DebugInfo)
+				case nameof(BoundsChecks) or nameof(OverflowChecks) or nameof(DebugInfo) or nameof(Referenceable)
 					when value.ValueType != TomlValueType.Boolean:
 					errors.Add($"{path}: '{name}'{place} must be true or false");
 					break;
@@ -337,9 +340,16 @@ public sealed partial class CellaProject
 				$"{path}: {diagnostic.Message} in {DescribeTable(condition)}"));
 		}
 		
+		var referenceable = Override(path, matching, static settings => settings.Referenceable, nameof(Referenceable),
+			errors) ?? Referenceable;
+		
+		if (referenceable == true && !OutputType.IsExecutable())
+			errors.Add($"{path}: '{nameof(Referenceable)}' only applies to executables");
+		
 		return new CellaProject
 		{
 			OutputType = OutputType,
+			Referenceable = referenceable,
 			SystemLinkPreference = Override(path, matching, static settings => settings.SystemLinkPreference,
 				nameof(SystemLinkPreference), errors) ?? SystemLinkPreference,
 			AssemblyName = Override(path, matching, static settings => settings.AssemblyName, nameof(AssemblyName),
@@ -413,6 +423,9 @@ public sealed partial class ProjectSettings
 	
 	[TomlValueOnSerialized]
 	public bool? DebugInfo { get; init; }
+	
+	[TomlValueOnSerialized]
+	public bool? Referenceable { get; init; }
 	
 	[TomlValueOnSerialized]
 	public List<ProjectReference>? ProjectReferences { get; init; }
