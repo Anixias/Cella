@@ -423,16 +423,22 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 		if (!Directory.Exists(_config.OutputConfig.Directory))
 			Directory.CreateDirectory(_config.OutputConfig.Directory);
 		
+		var irFilePath = Path.Combine(_config.OutputConfig.Directory, $"{fileName}.ll");
+		var assemblyFilePath = Path.Combine(_config.OutputConfig.Directory, $"{fileName}.s");
+		if (!_config.OutputConfig.EmitIR)
+			File.Delete(irFilePath);
+		
+		if (!_config.OutputConfig.EmitAssembly)
+			File.Delete(assemblyFilePath);
+		
 		if (_config.OutputConfig.EmitIR)
 		{
-			var irFilePath = Path.Combine(_config.OutputConfig.Directory, $"{fileName}.ll");
 			if (!llvmModule.TryPrintToFile(irFilePath, out message))
 				return CodeGenResult.Failure with { ErrorMessage = DescribeWriteFailure(irFilePath, message) };
 		}
 		
 		if (_config.OutputConfig.EmitAssembly)
 		{
-			var assemblyFilePath = Path.Combine(_config.OutputConfig.Directory, $"{fileName}.s");
 			using var assemblyModule = llvmModule.Clone();
 			if (!_targetMachine.TryEmitToFile(assemblyModule, assemblyFilePath, LLVMCodeGenFileType.LLVMAssemblyFile,
 				    out message))

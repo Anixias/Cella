@@ -45,7 +45,8 @@ internal static class Program
 		return result.Task;
 	}
 	
-	private static readonly string[] _options = ["--quiet", "--hints", "--release", "--flag"];
+	private static readonly string[] _options =
+		["--verbose", "--hints", "--release", "--flag", "--emit-ir", "--emit-asm"];
 	
 	private static async Task<int> RunAsync(string[] args)
 	{
@@ -57,9 +58,10 @@ internal static class Program
 			return 1;
 		}
 		
-		var verbose = !args.Contains("--quiet");
+		var verbose = args.Contains("--verbose");
 		var showHints = args.Contains("--hints");
 		var optimizeMode = args.Contains("--release") ? OptimizeMode.Release : OptimizeMode.Debug;
+		var emitted = new EmittedFiles(args.Contains("--emit-ir"), args.Contains("--emit-asm"));
 		if (ParseFlagArguments(args) is not { } flagOverrides)
 			return 1;
 		
@@ -67,7 +69,8 @@ internal static class Program
 		if (paths is [])
 		{
 			Console.WriteLine(
-				"Usage: cella <project file or folder> [--release] [--quiet] [--hints] [--flag <name>[=true|false]]");
+				"Usage: cella <project file or folder> [--release] [--verbose] [--hints] [--flag <name>[=true|false]] " +
+				"[--emit-ir] [--emit-asm]");
 			
 			return 1;
 		}
@@ -155,7 +158,7 @@ internal static class Program
 			
 			var dependencyInfo = dependencies.Select(dependency => projectSymbols[dependency]).ToList();
 			var assemblyInfo = await BuildProject(project, typePool, dependencyInfo, verbose, showHints, optimizeMode,
-				targetTriple, flagOverrides, displayRoot, linkPreferences![project]);
+				targetTriple, flagOverrides, displayRoot, linkPreferences![project], emitted);
 			
 			if (assemblyInfo.Succeeded)
 				projectSymbols[project] = assemblyInfo;
@@ -441,6 +444,8 @@ internal static class Program
 		return graph;
 	}
 	
+	private readonly record struct EmittedFiles(bool IR, bool Assembly);
+	
 	private readonly record struct AssemblyInfo
 	(
 		AssemblySymbol AssemblySymbol,
@@ -538,7 +543,7 @@ internal static class Program
 	private static async Task<AssemblyInfo> BuildProject(ProjectInfo project, TypePool typePool,
 		IEnumerable<AssemblyInfo> dependencies, bool verbose, bool showHints, OptimizeMode optimizeMode,
 		TargetTriple targetTriple, IReadOnlyDictionary<string, bool> flagOverrides, string? displayRoot,
-		SystemLinkPreference linkPreference, CancellationToken ct = default)
+		SystemLinkPreference linkPreference, EmittedFiles emitted, CancellationToken ct = default)
 	{
 		// Phase 1: File parsing
 		var outputType = project.Project.OutputType;
@@ -602,7 +607,7 @@ internal static class Program
 		// TODO Should I make a dependency here on LLVM? This implies a Language Server would also have to do this
 		// We need to know the pointer size of the target for proper symbol resolution
 		var objDir = Path.Combine(project.Directory, "obj");
-		var outputConfig = new OutputConfig(objDir, true, true);
+		var outputConfig = new OutputConfig(objDir, emitted.IR, emitted.Assembly);
 		var targetConfig = new TargetConfig(targetTriple.ToLlvm(), Features: targetTriple.ToLlvmFeatures());
 		var codeGenConfig = new CodeGenConfig(outputConfig, targetConfig, optimizeMode)
 		{
