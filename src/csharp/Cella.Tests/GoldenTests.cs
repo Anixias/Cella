@@ -186,8 +186,8 @@ public sealed class GoldenTests
 		var output = new StringWriter();
 		_compilerOutput.Value = output;
 		string[] arguments = release
-			? [projectPath, "--quiet", "--hints", "--release", ..options]
-			: [projectPath, "--quiet", "--hints", ..options];
+			? [projectPath, "--hints", "--release", ..options]
+			: [projectPath, "--hints", ..options];
 		
 		var exitCode = await Program.Main(arguments);
 		return (exitCode, output.ToString());

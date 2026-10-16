@@ -70,7 +70,7 @@ public sealed partial class FileParser
 			}
 			
 			traits.Add(ParseType(ref index));
-		} while (Match(ref index, TokenType.OpPlus));
+		} while (MatchOnLine(ref index, TokenType.OpPlus));
 		
 		if (!IsOnSameLine(index) || !Peek(index, TokenType.OpComma) && !Peek(index, TokenType.Identifier))
 			return true;
@@ -398,7 +398,7 @@ public sealed partial class FileParser
 		
 		var values = new List<IExpressionNode>();
 		Token? elseKeyword = null;
-		if (Match(ref index, TokenType.OpEqual))
+		if (MatchOnLine(ref index, TokenType.OpEqual))
 		{
 			if (Match(ref index, out var keyword, TokenType.KeywordElse))
 				elseKeyword = keyword;

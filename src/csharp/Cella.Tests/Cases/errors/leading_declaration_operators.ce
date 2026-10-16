@@ -1,0 +1,48 @@
+mod test
+
+A: trait
+{
+}
+
+B: trait
+{
+}
+
+Square: rec impl A
+	+ B
+{
+	side: i32
+
+	area: get(imm self) -> i32
+		= self.side * self.side
+
+	new: op
+		= default
+}
+
+E: enum
+{
+	a
+	b
+		= 2
+}
+
+limit: var i32
+	= 5
+
+f: fun -> i32
+	= 5
+
+g: fun -> i32
+{
+	val h = fun(x: i32) -> i32
+		= x
+	ret h(1)
+}
+
+main: fun -> i32
+{
+	var x: i32
+		= 4
+	ret x
+}

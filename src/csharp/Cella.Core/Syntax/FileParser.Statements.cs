@@ -121,7 +121,9 @@ public sealed partial class FileParser
 		
 		if (index > 0 && !IsOnSameLine(index) && ExpressionParser.ContinuesExpression(Tokens[index].Type))
 		{
-			Report(Tokens[index], $"Cannot start a line with '{Tokens[index].Text}'");
+			if (!IsReported(Tokens[index]))
+				Report(Tokens[index], $"Cannot start a line with '{Tokens[index].Text}'");
+			
 			return null;
 		}
 		
@@ -389,7 +391,7 @@ public sealed partial class FileParser
 		var (source, range) = keyword.SourceLocation;
 		
 		var isConstant = keyword.Type == TokenType.KeywordConst;
-		if (!Match(ref index, TokenType.OpEqual))
+		if (!MatchOnLine(ref index, TokenType.OpEqual))
 			return new(new(source, range), identifier, type, null, isMutable) { IsConstant = isConstant };
 		
 		var initializer = ParseExpression(ref index);

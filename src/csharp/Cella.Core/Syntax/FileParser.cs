@@ -130,6 +130,21 @@ public sealed partial class FileParser
 	
 	private void ReportUnexpected(Token token) => Report(token, token.Error ?? "Unexpected token");
 	
+	private bool IsReported(Token token) =>
+		Diagnostics.Any(diagnostic => diagnostic.SourceLocation == token.SourceLocation);
+	
+	private bool MatchOnLine(ref int index, TokenType type)
+	{
+		if (!Peek(index, type))
+			return false;
+		
+		if (!IsOnSameLine(index))
+			Report(Tokens[index], $"Cannot start a line with '{Tokens[index].Text}'");
+		
+		index++;
+		return true;
+	}
+	
 	private void ReportExpected(int index, string expected, Token? opener = null)
 	{
 		var token = Tokens[Math.Min(index, Tokens.Length - 1)];

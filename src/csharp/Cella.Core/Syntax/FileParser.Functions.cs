@@ -27,7 +27,7 @@ public sealed partial class FileParser
 			when = new(whenKeyword, condition);
 		}
 		
-		if (Match(ref index, TokenType.OpEqual))
+		if (MatchOnLine(ref index, TokenType.OpEqual))
 		{
 			if (ParseExpressionBody(ref index, returnType is null) is not { } statement)
 				return null;
@@ -83,7 +83,7 @@ public sealed partial class FileParser
 		bool isExternal = false, Token? externalName = null)
 	{
 		var type = ParseType(ref index);
-		if (!Match(ref index, TokenType.OpEqual))
+		if (!MatchOnLine(ref index, TokenType.OpEqual))
 		{
 			Report(type.SourceLocation, "Expected '=' and an initial value");
 			return null;

@@ -236,7 +236,7 @@ public sealed partial class FileParser
 		var resultType = isGetter ? returnType ?? propertyType : null;
 		RejectWhen(ref index, isGetter ? "getters" : "setters");
 		IStatementNode? body;
-		if (Match(ref index, TokenType.OpEqual))
+		if (MatchOnLine(ref index, TokenType.OpEqual))
 			body = ParseExpressionBody(ref index, resultType is null);
 		else if (Match(ref index, out var openBrace, TokenType.OpOpenBrace))
 			body = ParseBlockStatement(ref index, openBrace);
@@ -382,7 +382,8 @@ public sealed partial class FileParser
 		ReportEmptyParentheses(parametersStart, index);
 		RejectReturnType(ref index, "Constructors");
 		RejectWhen(ref index, "constructors");
-		if ((parameters.Count == 0 || Peek(index + 1, TokenType.KeywordDefault)) && Match(ref index, TokenType.OpEqual))
+		if ((parameters.Count == 0 || Peek(index + 1, TokenType.KeywordDefault)) &&
+		    MatchOnLine(ref index, TokenType.OpEqual))
 			return ParseDefaultConstructor(ref index, newKeyword, modifiers, parameters);
 		
 		if (!Match(ref index, out var openBraceToken, TokenType.OpOpenBrace))

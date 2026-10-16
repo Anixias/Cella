@@ -726,6 +726,10 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 		
 		var returnType = Match(ref index, TokenType.OpArrow) ? ParseType(ref index) : null;
 		var (source, range) = (own ?? keyword).SourceLocation;
+		if (IsNextNewline(index) && Peek(index, TokenType.OpEqual))
+			throw new ParseException(new Diagnostic(DiagnosticSeverity.Error, Tokens[index].SourceLocation,
+				"Cannot start a line with '='"));
+		
 		if (Match(ref index, TokenType.OpEqual))
 		{
 			var expression = ParseExpression(ref index);

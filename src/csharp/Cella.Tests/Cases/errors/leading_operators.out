@@ -16,11 +16,6 @@ Error at line 26, column 3
 26 │     || b
          ╘╛ Cannot start a line with '||'
 
-Error at line 26, column 3
-25 │ if a
-26 │     || b
-         ╘╛ Cannot start a line with '||'
-
 Error at line 33, column 3
 32 │ val r = n
 33 │     is 3
