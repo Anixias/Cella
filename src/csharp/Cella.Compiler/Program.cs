@@ -75,7 +75,7 @@ internal static class Program
 		{
 			Console.WriteLine(
 				"Usage: cella <project file or folder> [--release] [--verbose] [--hints] [--flag <name>[=true|false]] " +
-				"[--target windows-x64|linux-x64] [--emit-ir] [--emit-asm]");
+				"[--target windows-x64|windows-x64-gnu|linux-x64] [--emit-ir] [--emit-asm]");
 			
 			return 1;
 		}
