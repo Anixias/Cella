@@ -453,13 +453,16 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 			{
 				ImportedSymbols =
 				[
-					..state.ExternalSymbols.Where(static value => value.FirstUse.Handle != IntPtr.Zero)
-						.Select(static value => value.Name)
+					..state.ExternalSymbols.Where(name => IsReferenced(llvmModule, name))
 				]
 			};
 		
 		return CodeGenResult.Failure with { ErrorMessage = DescribeWriteFailure(objectFilePath, message) };
 	}
+	
+	private static bool IsReferenced(LLVMModuleRef module, string name) =>
+		(module.GetNamedFunction(name) is { Handle: not 0 } function ? function : module.GetNamedGlobal(name))
+		is { Handle: not 0 } value && value.FirstUse.Handle != IntPtr.Zero;
 	
 	private static string DescribeWriteFailure(string path, string message) => $"Cannot write '{path}': {message}";
 	
@@ -597,7 +600,7 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 				var llvmFunction = CreateFunction(current.Module, function).FunctionValue;
 				llvmFunction.Linkage = LLVMLinkage.LLVMExternalLinkage;
 				llvmFunction.DLLStorageClass = LLVMDLLStorageClass.LLVMDLLImportStorageClass;
-				current.ExternalSymbols.Add(llvmFunction);
+				current.ExternalSymbols.Add(llvmFunction.Name);
 			}
 			
 			// Create and map imported functions

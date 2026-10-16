@@ -2,6 +2,7 @@
 using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.RegularExpressions;
 using Cella.Compiler;
 using Xunit;
 
@@ -13,6 +14,11 @@ public sealed class GoldenTests
 	
 	private static readonly string _casesDirectory = Path.Combine(GetSourceDirectory(), "Cases");
 	private static readonly TimeSpan _runTimeout = TimeSpan.FromSeconds(10);
+	private static readonly Regex _exitCodeLine = new(@"^\[exit code (-?\d+)\]$", RegexOptions.Multiline);
+	
+	private static readonly Regex _displayedPath =
+		new(@"<case>[^\s:']*|(?<=^====== ).+(?= ======$)", RegexOptions.Multiline);
+	
 	private static readonly AsyncLocal<TextWriter?> _compilerOutput = new();
 	
 	static GoldenTests()
@@ -112,7 +118,7 @@ public sealed class GoldenTests
 		var (exitCode, output) = await CompileAsync(projectPath, release, [], cancellationToken);
 		Assert.True(exitCode == 0, output);
 		return Directory.EnumerateFiles(caseDirectory, "*", SearchOption.AllDirectories)
-			.Where(static path => Path.GetExtension(path) is ".exe" or ".dll" or ".lib" or ".pdb")
+			.Where(static path => Path.GetFileName(Path.GetDirectoryName(path)) == "bin")
 			.ToDictionary(path => Path.GetRelativePath(caseDirectory, path),
 				static path => Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(path))));
 	}
@@ -124,6 +130,11 @@ public sealed class GoldenTests
 		var cancellationToken = TestContext.Current.CancellationToken;
 		var updating = Environment.GetEnvironmentVariable(UpdateVariable) == "1";
 		var sourcePath = Path.Combine(_casesDirectory, name);
+		var hostPath = Path.ChangeExtension(sourcePath, ".host");
+		if (File.Exists(hostPath) && (await File.ReadAllTextAsync(hostPath, cancellationToken)).Trim() is var host &&
+		    !OperatingSystem.IsOSPlatform(host))
+			Assert.Skip($"{name} only builds on {host}");
+		
 		var candidates = FindExpectedPaths(sourcePath, release, target).ToList();
 		var expectedPath = candidates.FirstOrDefault(File.Exists) ?? candidates[^1];
 		var isOwnOutput = Path.GetFileName(expectedPath).Contains($".{GetSystem(target)}.") ||
@@ -144,6 +155,10 @@ public sealed class GoldenTests
 			$"{name} has no expected output. Run with {UpdateVariable}=1 to record this output:\n\n{actual}");
 		
 		var expected = (await File.ReadAllTextAsync(expectedPath, cancellationToken)).ReplaceLineEndings("\n");
+		if (target != LinuxTarget && !OperatingSystem.IsWindows())
+			expected = _exitCodeLine.Replace(expected,
+				static match => $"[exit code {int.Parse(match.Groups[1].Value) & 0xFF}]");
+		
 		Assert.Equal(expected, actual);
 	}
 	
@@ -169,6 +184,9 @@ public sealed class GoldenTests
 				await CompileAsync(projectPath, release, [..options, "--target", target], cancellationToken);
 			
 			compileOutput = compileOutput.Replace(caseDirectory, "<case>");
+			if (!OperatingSystem.IsWindows())
+				compileOutput = _displayedPath.Replace(compileOutput, static match => match.Value.Replace('/', '\\'));
+			
 			if (compileExitCode != 0)
 				return Transcript(compileOutput, "[compilation failed]");
 			

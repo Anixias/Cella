@@ -1,0 +1,16 @@
+﻿<Project>
+
+  <PropertyGroup>
+    <CellaHostLibLLVM Condition="'$(CellaToolchainDirectory)' != ''">$([MSBuild]::EnsureTrailingSlash('$(CellaToolchainDirectory)'))hosts\$(RuntimeIdentifier)\libLLVM.so</CellaHostLibLLVM>
+  </PropertyGroup>
+
+  <Target Name="UseHostLibLLVM" AfterTargets="ResolvePackageAssets"
+          Condition="'$(CellaHostLibLLVM)' != '' and Exists('$(CellaHostLibLLVM)')">
+    <ItemGroup>
+      <NativeCopyLocalItems Remove="@(NativeCopyLocalItems)" Condition="'%(Filename)%(Extension)' == 'libLLVM.so'"/>
+      <RuntimeTargetsCopyLocalItems Remove="@(RuntimeTargetsCopyLocalItems)"
+                                    Condition="'%(Filename)%(Extension)' == 'libLLVM.so'"/>
+    </ItemGroup>
+  </Target>
+
+</Project>

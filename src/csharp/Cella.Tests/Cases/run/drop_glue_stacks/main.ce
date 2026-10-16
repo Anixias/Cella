@@ -59,6 +59,17 @@ LineInfo: rec
 	address: u64
 }
 
+baseName: fun(path: ptr) -> ptr[u8]
+{
+	val slash = strrchr(path, 47)
+	if slash != null
+	{
+		ret ptr[u8](slash) + 1
+	}
+
+	ret ptr[u8](strrchr(path, 92)) + 1
+}
+
 printStack: fun
 {
 	val process = GetCurrentProcess()
@@ -86,7 +97,7 @@ printStack: fun
 		}
 		else
 		{
-			printf("%s %s:%u\n", @symbol.name, ptr[u8](strrchr(line.fileName, 92)) + 1, line.lineNumber)
+			printf("%s %s:%u\n", @symbol.name, baseName(line.fileName), line.lineNumber)
 		}
 
 		if strcmp(@symbol.name, "main") == 0
