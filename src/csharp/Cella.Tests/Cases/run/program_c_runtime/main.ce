@@ -1,0 +1,14 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+main: fun -> i32
+{
+	printf("main first\n")
+	lib.hello()
+	printf("main last\n")
+	ret 0
+}

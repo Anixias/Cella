@@ -1,0 +1,2 @@
+'<case>\test.celp' links the C runtime statically, so it can't use the shared library '<case>\lib\lib.celp'
+[compilation failed]

@@ -124,8 +124,9 @@ internal static class Program
 			p => dependencyGraph.GetDependencies(p).ToImmutableArray());
 		
 		var builtInFlags = BuildFlags.Create(targetTriple, optimizeMode);
+		var linkPreferences = FindLinkPreferences(projectDependencies);
 		var flagsValid = ValidateFlags(projectDependencies.Keys, builtInFlags, flagOverrides) &
-		                 ValidateOutputNames(projectDependencies);
+		                 ValidateOutputNames(projectDependencies) & linkPreferences is not null;
 		
 		foreach (var error in projectErrors)
 			Console.WriteLine(error);
@@ -153,7 +154,7 @@ internal static class Program
 			
 			var dependencyInfo = dependencies.Select(dependency => projectSymbols[dependency]).ToList();
 			var assemblyInfo = await BuildProject(project, typePool, dependencyInfo, verbose, showHints, optimizeMode,
-				targetTriple, flagOverrides, displayRoot);
+				targetTriple, flagOverrides, displayRoot, linkPreferences![project]);
 			
 			if (assemblyInfo.Succeeded)
 				projectSymbols[project] = assemblyInfo;
@@ -165,6 +166,61 @@ internal static class Program
 	}
 	
 	private static string GetOutputBaseName(ProjectInfo project) => project.Project.AssemblyName ?? project.Name;
+	
+	private static Dictionary<ProjectInfo, SystemLinkPreference>? FindLinkPreferences(
+		Dictionary<ProjectInfo, ImmutableArray<ProjectInfo>> dependencies)
+	{
+		var used = dependencies.Values.SelectMany(static items => items).ToHashSet();
+		var programs = dependencies.Keys.ToDictionary(static project => project, static _ => new List<ProjectInfo>());
+		var isValid = true;
+		foreach (var root in dependencies.Keys.Where(project => !used.Contains(project)))
+		{
+			var reached = new HashSet<ProjectInfo>();
+			var pending = new Stack<ProjectInfo>([root]);
+			while (pending.TryPop(out var next))
+			{
+				if (!reached.Add(next))
+					continue;
+				
+				programs[next].Add(root);
+				foreach (var dependency in dependencies.GetValueOrDefault(next, []))
+					pending.Push(dependency);
+			}
+			
+			if (root.Project.SystemLinkPreference != SystemLinkPreference.Static)
+				continue;
+			
+			foreach (var library in reached.Where(project => project != root &&
+			                                                 project.Project.OutputType ==
+			                                                 ProjectOutputType.SharedLibrary)
+				         .OrderBy(static project => project.FilePath, StringComparer.Ordinal))
+			{
+				Console.WriteLine($"'{root.FilePath}' links the C runtime statically, so it can't use the shared " +
+				                  $"library '{library.FilePath}'");
+				
+				isValid = false;
+			}
+		}
+		
+		var preferences = new Dictionary<ProjectInfo, SystemLinkPreference>();
+		foreach (var (project, roots) in programs)
+		{
+			var chosen = roots.Select(static root => root.Project.SystemLinkPreference).Distinct().ToList();
+			if (chosen.Count > 1)
+			{
+				var names = roots.Select(static root => $"'{root.FilePath}'").Order(StringComparer.Ordinal).ToList();
+				Console.WriteLine(
+					$"'{project.FilePath}' is used by {string.Join(", ", names[..^1])} and {names[^1]}, " +
+					"which link the C runtime differently");
+				
+				isValid = false;
+			}
+			
+			preferences[project] = chosen.FirstOrDefault(project.Project.SystemLinkPreference);
+		}
+		
+		return isValid ? preferences : null;
+	}
 	
 	private static bool ValidateOutputNames(Dictionary<ProjectInfo, ImmutableArray<ProjectInfo>> dependencies)
 	{
@@ -481,7 +537,7 @@ internal static class Program
 	private static async Task<AssemblyInfo> BuildProject(ProjectInfo project, TypePool typePool,
 		IEnumerable<AssemblyInfo> dependencies, bool verbose, bool showHints, OptimizeMode optimizeMode,
 		TargetTriple targetTriple, IReadOnlyDictionary<string, bool> flagOverrides, string? displayRoot,
-		CancellationToken ct = default)
+		SystemLinkPreference linkPreference, CancellationToken ct = default)
 	{
 		// Phase 1: File parsing
 		var outputType = project.Project.OutputType;
@@ -771,7 +827,6 @@ internal static class Program
 					.ToList();
 			
 			var linker = new Linker(AppContext.BaseDirectory, verbose);
-			var linkPreference = project.Project.SystemLinkPreference;
 			var linkRequest = new LinkRequest(outputType, objectFiles, outputPath, libFiles!)
 			{
 				LinkPreference = linkPreference,
