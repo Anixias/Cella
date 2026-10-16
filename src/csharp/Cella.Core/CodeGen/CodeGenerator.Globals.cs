@@ -99,6 +99,7 @@ public sealed unsafe partial class CodeGenerator
 			
 			global.DLLStorageClass = LLVMDLLStorageClass.LLVMDLLImportStorageClass;
 			global.Linkage = LLVMLinkage.LLVMDLLImportLinkage;
+			current.ExternalGlobals.Add(global.Name);
 			if (info.Symbol.Syntax.Origin is { } origin)
 				current.ExternalLibraries.Add(origin);
 		}

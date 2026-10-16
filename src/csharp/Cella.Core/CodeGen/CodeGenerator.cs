@@ -453,15 +453,19 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 			{
 				ImportedFunctions =
 				[
-					..state.ExternalFunctions.Where(name => IsReferenced(llvmModule, name))
+					..state.ExternalFunctions.Where(name => IsReferenced(llvmModule.GetNamedFunction(name)))
+				],
+				ImportedGlobals =
+				[
+					..state.ExternalGlobals.Where(name => IsReferenced(llvmModule.GetNamedGlobal(name)))
 				]
 			};
 		
 		return CodeGenResult.Failure with { ErrorMessage = DescribeWriteFailure(objectFilePath, message) };
 	}
 	
-	private static bool IsReferenced(LLVMModuleRef module, string name) =>
-		module.GetNamedFunction(name) is { Handle: not 0 } function && function.FirstUse.Handle != IntPtr.Zero;
+	private static bool IsReferenced(LLVMValueRef value) =>
+		value.Handle != IntPtr.Zero && value.FirstUse.Handle != IntPtr.Zero;
 	
 	private static string DescribeWriteFailure(string path, string message) => $"Cannot write '{path}': {message}";
 	
@@ -687,6 +691,7 @@ public readonly struct CodeGenResult
 	
 	public ImmutableHashSet<string> ExternalLibraries { get; }
 	public ImmutableArray<string> ImportedFunctions { get; init; } = [];
+	public ImmutableArray<string> ImportedGlobals { get; init; } = [];
 	
 	public CodeGenResult(bool isSuccess, string? outputPath, string? errorMessage,
 		IEnumerable<string> externalLibraries)

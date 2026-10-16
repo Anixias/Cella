@@ -22,5 +22,5 @@ public sealed class LinkRequest
 	public string? ModuleDefinition { get; init; }
 	public ImmutableArray<string> KeptSymbols { get; init; } = [];
 	public bool WideEntry { get; init; }
-	public ImmutableArray<string> ImportedFunctions { get; init; } = [];
+	public ImmutableArray<string> ForcedSymbols { get; init; } = [];
 }

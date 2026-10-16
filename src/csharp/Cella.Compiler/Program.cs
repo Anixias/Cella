@@ -526,6 +526,7 @@ internal static class Program
 		public ImmutableArray<string> ContainedLibraries { get; init; } = [];
 		public ImmutableArray<string> LibraryFiles { get; init; } = [];
 		public ImmutableArray<string> ImportedFunctions { get; init; } = [];
+		public ImmutableArray<string> ImportedGlobals { get; init; } = [];
 		public string? Directory { get; init; }
 		public string? ProjectPath { get; init; }
 		public string Name => AssemblySymbol.Name;
@@ -778,6 +779,7 @@ internal static class Program
 		string outputPath;
 		ImmutableArray<string> ownLibraries;
 		ImmutableArray<string> ownImports;
+		ImmutableArray<string> ownGlobalImports;
 		var genericFunctions = lowerer.Modules
 			.SelectMany(static module => module.Files)
 			.SelectMany(static file => file.Functions)
@@ -827,6 +829,7 @@ internal static class Program
 			
 			var externalLibraries = new HashSet<string>();
 			var importedFunctions = new HashSet<string>();
+			var importedGlobals = new HashSet<string>();
 			var objectFiles = new List<string>();
 			var codeGenFailed = false;
 			foreach (var result in codeGenerator.Generate(lowerer.Modules))
@@ -841,6 +844,7 @@ internal static class Program
 				objectFiles.Add(result.OutputPath!);
 				externalLibraries.UnionWith(result.ExternalLibraries);
 				importedFunctions.UnionWith(result.ImportedFunctions);
+				importedGlobals.UnionWith(result.ImportedGlobals);
 			}
 			
 			if (ReportErrors([codeGenerator.Diagnostics], displayRoot, showHints))
@@ -887,6 +891,7 @@ internal static class Program
 			}
 			
 			ownImports = [..importedFunctions];
+			ownGlobalImports = [..importedGlobals];
 			ownLibraries =
 			[
 				..externalLibraries.Select(origin => ResolveLibrary(origin, project.Directory, targetTriple)).Distinct()
@@ -917,9 +922,13 @@ internal static class Program
 				ModuleDefinition = moduleDefinition,
 				KeptSymbols = targetTriple.IsElf ? [..reexports.Select(static name => name.Name)] : [],
 				WideEntry = codeGenerator.UsesWideEntry,
-				ImportedFunctions =
+				ForcedSymbols =
 				[
 					..importedFunctions.Concat(contained.SelectMany(static library => library.ImportedFunctions))
+						.Concat(FindStaticGlobals(
+							importedGlobals.Concat(contained.SelectMany(static library => library.ImportedGlobals)),
+							libFiles,
+							targetTriple))
 						.Distinct()
 				]
 			};
@@ -996,7 +1005,8 @@ internal static class Program
 			PlainNames = plainNames,
 			ContainedLibraries = [..contained.Select(static library => library.Name)],
 			LibraryFiles = ownLibraries,
-			ImportedFunctions = ownImports
+			ImportedFunctions = ownImports,
+			ImportedGlobals = ownGlobalImports
 		};
 	}
 	
@@ -1094,6 +1104,20 @@ internal static class Program
 	}
 	
 	private const string ImportPrefix = "__declspec(dllimport) ";
+	
+	private static IEnumerable<string> FindStaticGlobals(IEnumerable<string> globals, IEnumerable<string?> libraries,
+		TargetTriple target)
+	{
+		if (target.IsElf)
+			return [];
+		
+		var defined = libraries.OfType<string>()
+			.Where(static library => Path.IsPathRooted(library) && File.Exists(library))
+			.SelectMany(StaticArchive.ReadObjectDefinitions)
+			.ToHashSet(StringComparer.Ordinal);
+		
+		return globals.Where(defined.Contains);
+	}
 	
 	private static string ResolveLibrary(string origin, string projectDirectory, TargetTriple target)
 	{

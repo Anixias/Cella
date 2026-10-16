@@ -20,6 +20,7 @@ internal sealed class ModuleState(LoweredModule lowered, LLVMModuleRef module, L
 	public Dictionary<byte[], LLVMValueRef> Strings { get; } = new(ByteArrayComparer.Instance);
 	public HashSet<string> ExternalLibraries { get; } = [];
 	public HashSet<string> ExternalFunctions { get; } = [];
+	public HashSet<string> ExternalGlobals { get; } = [];
 	public LLVMFunctionInfo? EntryPoint { get; set; }
 	public LLVMMetadataRef DebugFile { get; set; }
 	public Dictionary<string, LLVMMetadataRef> DebugFiles { get; } = [];

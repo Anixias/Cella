@@ -32,8 +32,8 @@ public sealed class WindowsGnuToolchain(string root) : Toolchain
 			"-Xlink=-Brepro"
 		};
 		
-		foreach (var function in request.ImportedFunctions)
-			args.AddRange(["-u", function]);
+		foreach (var symbol in request.ForcedSymbols)
+			args.AddRange(["-u", symbol]);
 		
 		if (isShared)
 			args.AddRange([
