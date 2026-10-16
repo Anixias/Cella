@@ -189,8 +189,7 @@ public sealed unsafe partial class CodeGenerator
 			info.Symbol.Name);
 	}
 	
-	private LLVMTypeRef RegistryType => LLVMTypeRef.CreateFunction(OpaquePointer,
-		[OpaquePointer, MapTypeSymbol(NativeSymbols.UIntSize), OpaquePointer, OpaquePointer]);
+	private LLVMTypeRef RegistryType => LLVMTypeRef.CreateFunction(OpaquePointer, [OpaquePointer]);
 	
 	private LLVMTypeRef RegistryNodeType =>
 		_context.GetStructType([OpaquePointer, OpaquePointer, OpaquePointer, OpaquePointer], false);
@@ -230,14 +229,16 @@ public sealed unsafe partial class CodeGenerator
 		substitution = outer;
 		var glue = _typePool.NeedsDrop(type) ? GetDropGlue(type) : LLVMValueRef.CreateConstNull(OpaquePointer);
 		
-		var initial = current.Module.AddGlobal(value.TypeOf, $"{info.MangledName}.initial");
-		initial.Initializer = value;
-		initial.IsGlobalConstant = true;
-		initial.Linkage = LLVMLinkage.LLVMPrivateLinkage;
+		var storage = current.Module.AddGlobal(value.TypeOf, $"{info.MangledName}.storage");
+		storage.Initializer = value;
+		storage.Linkage = LLVMLinkage.LLVMInternalLinkage;
 		
 		var name = GetOrCreateStringGlobal(Encoding.UTF8.GetBytes(info.MangledName + "\0"));
-		var size = LLVMValueRef.CreateConstInt(MapTypeSymbol(NativeSymbols.UIntSize),
-			_targetData.ABISizeOfType(value.TypeOf));
+		var node = current.Module.AddGlobal(RegistryNodeType, $"{info.MangledName}.node");
+		node.Initializer = LLVMValueRef.CreateConstNamedStruct(RegistryNodeType,
+			[name, storage, LLVMValueRef.CreateConstNull(OpaquePointer), glue]);
+		
+		node.Linkage = LLVMLinkage.LLVMInternalLinkage;
 		
 		using var builder = current.Module.Context.CreateBuilder();
 		var entry = _context.AppendBasicBlock(accessor, "entry");
@@ -250,8 +251,7 @@ public sealed unsafe partial class CodeGenerator
 		builder.BuildCondBr(builder.BuildIsNull(pointer, "missing"), lookup, cached);
 		
 		builder.PositionAtEnd(lookup);
-		var found = builder.BuildCall2(RegistryType, GetStaticRegistry(assembly), new[] { name, size, initial, glue },
-			"found");
+		var found = builder.BuildCall2(RegistryType, GetStaticRegistry(assembly), new[] { node }, "found");
 		
 		var store = builder.BuildStore(found, cache);
 		store.Alignment = (uint)_targetData.ABISizeOfType(OpaquePointer);
@@ -312,19 +312,7 @@ public sealed unsafe partial class CodeGenerator
 		guard.Initializer = LLVMValueRef.CreateConstInt(_context.Int32Type, 0);
 		guard.Linkage = LLVMLinkage.LLVMInternalLinkage;
 		
-		var allocateType = LLVMTypeRef.CreateFunction(OpaquePointer, [sizeType]);
-		var allocate = current.Module.GetNamedFunction("malloc");
-		if (allocate.Handle == IntPtr.Zero)
-			allocate = current.Module.AddFunction("malloc", allocateType);
-		
-		var copyType = LLVMTypeRef.CreateFunction(_context.VoidType,
-			[OpaquePointer, OpaquePointer, sizeType, _context.Int1Type]);
-		
-		var copy = GetIntrinsic($"llvm.memcpy.p0.p0.i{sizeType.IntWidth}", copyType);
-		var key = registry.GetParam(0);
-		var size = registry.GetParam(1);
-		var initial = registry.GetParam(2);
-		var glue = registry.GetParam(3);
+		var added = registry.GetParam(0);
 		var zero = LLVMValueRef.CreateConstInt(sizeType, 0);
 		var one = LLVMValueRef.CreateConstInt(sizeType, 1);
 		
@@ -338,12 +326,12 @@ public sealed unsafe partial class CodeGenerator
 		var matched = _context.AppendBasicBlock(registry, "matched");
 		var advance = _context.AppendBasicBlock(registry, "advance");
 		var found = _context.AppendBasicBlock(registry, "found");
-		var measure = _context.AppendBasicBlock(registry, "measure");
-		var create = _context.AppendBasicBlock(registry, "create");
+		var link = _context.AppendBasicBlock(registry, "link");
 		var release = _context.AppendBasicBlock(registry, "release");
 		
 		using var builder = current.Module.Context.CreateBuilder();
 		builder.PositionAtEnd(entry);
+		var key = builder.BuildLoad2(OpaquePointer, builder.BuildStructGEP2(nodeType, added, 0, "added_key"), "key");
 		builder.BuildBr(acquire);
 		
 		builder.PositionAtEnd(acquire);
@@ -360,7 +348,7 @@ public sealed unsafe partial class CodeGenerator
 		
 		builder.PositionAtEnd(visit);
 		var node = builder.BuildPhi(OpaquePointer, "node");
-		builder.BuildCondBr(builder.BuildIsNull(node, "end"), measure, compare);
+		builder.BuildCondBr(builder.BuildIsNull(node, "end"), link, compare);
 		
 		builder.PositionAtEnd(compare);
 		var nodeKey = builder.BuildLoad2(OpaquePointer, builder.BuildStructGEP2(nodeType, node, 0, "key_slot"),
@@ -397,39 +385,17 @@ public sealed unsafe partial class CodeGenerator
 		
 		builder.BuildBr(release);
 		
-		builder.PositionAtEnd(measure);
-		var length = builder.BuildPhi(sizeType, "length");
-		var character = builder.BuildLoad2(byteType,
-			builder.BuildGEP2(byteType, key, new[] { length }, "character_slot"),
-			"character");
-		
-		var counted = builder.BuildAdd(length, one, "counted");
-		builder.BuildCondBr(builder.BuildIsNull(character, "terminator"), create, measure);
-		length.AddIncoming([zero, counted], [visit, measure], 2);
-		
-		builder.PositionAtEnd(create);
-		var keyCopy = builder.BuildCall2(allocateType, allocate, new[] { counted }, "key_copy");
-		builder.BuildCall2(copyType, copy, [keyCopy, key, counted, LLVMValueRef.CreateConstInt(_context.Int1Type, 0)]);
-		var bytes = builder.BuildSelect(builder.BuildICmp(LLVMIntPredicate.LLVMIntEQ, size, zero, "empty"), one, size,
-			"bytes");
-		
-		var created = builder.BuildCall2(allocateType, allocate, new[] { bytes }, "created");
-		builder.BuildCall2(copyType, copy, [created, initial, size, LLVMValueRef.CreateConstInt(_context.Int1Type, 0)]);
-		var entrySize = LLVMValueRef.CreateConstInt(sizeType, _targetData.ABISizeOfType(nodeType));
-		var added = builder.BuildCall2(allocateType, allocate, new[] { entrySize }, "added");
-		builder.BuildStore(keyCopy, builder.BuildStructGEP2(nodeType, added, 0, "added_key"));
-		builder.BuildStore(created, builder.BuildStructGEP2(nodeType, added, 1, "added_storage"));
-		builder.BuildStore(builder.BuildLoad2(OpaquePointer, head, "previous"),
-			builder.BuildStructGEP2(nodeType, added, 2, "added_next"));
-		
-		builder.BuildStore(glue, builder.BuildStructGEP2(nodeType, added, 3, "added_drop"));
-		
+		builder.PositionAtEnd(link);
+		builder.BuildStore(first, builder.BuildStructGEP2(nodeType, added, 2, "added_next"));
 		builder.BuildStore(added, head);
+		var linked = builder.BuildLoad2(OpaquePointer, builder.BuildStructGEP2(nodeType, added, 1, "added_storage"),
+			"linked");
+		
 		builder.BuildBr(release);
 		
 		builder.PositionAtEnd(release);
 		var result = builder.BuildPhi(OpaquePointer, "result");
-		result.AddIncoming([storage, created], [found, create], 2);
+		result.AddIncoming([storage, linked], [found, link], 2);
 		var unlock = builder.BuildStore(LLVMValueRef.CreateConstInt(_context.Int32Type, 0), guard);
 		unlock.Alignment = 4;
 		LLVM.SetOrdering(unlock, LLVMAtomicOrdering.LLVMAtomicOrderingRelease);
