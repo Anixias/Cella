@@ -25,6 +25,20 @@ borrow: fun -> i32
 	ret 0
 }
 
+complement: fun -> i32
+{
+	val a = 1 ~
+	ret 0
+}
+
+dropping: fun -> i32
+{
+	val x = 1
+	drop
+	x
+	ret 0
+}
+
 Box: rec
 {
 	limit: i32

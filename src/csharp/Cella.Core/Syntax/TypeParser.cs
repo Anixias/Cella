@@ -62,9 +62,7 @@ public sealed class TypeParser(ImmutableArray<Token> tokens) : BaseParser<ITypeN
 	
 	private BorrowTypeNode ParseBorrowType(ref int index, Token keyword)
 	{
-		if (!Match(ref index, out var openBracket, TokenType.OpOpenBracket))
-			throw Expected(index, "'['");
-		
+		var openBracket = MatchOpenBracket(ref index);
 		var target = ParseType(ref index);
 		if (!Match(ref index, out var closeBracket, TokenType.OpCloseBracket))
 			throw ExpectedClose(index, openBracket);
@@ -74,9 +72,7 @@ public sealed class TypeParser(ImmutableArray<Token> tokens) : BaseParser<ITypeN
 	
 	private DynTypeNode ParseDynType(ref int index, Token keyword)
 	{
-		if (!Match(ref index, out var openBracket, TokenType.OpOpenBracket))
-			throw Expected(index, "'['");
-		
+		var openBracket = MatchOpenBracket(ref index);
 		if (!Peek(index, TokenType.Identifier) && !Peek(index, TokenType.KeywordFun) &&
 		    !Peek(index, TokenType.KeywordRef))
 			throw Expected(index, "a trait");
@@ -86,6 +82,16 @@ public sealed class TypeParser(ImmutableArray<Token> tokens) : BaseParser<ITypeN
 			throw ExpectedClose(index, openBracket);
 		
 		return new DynTypeNode(keyword, trait, closeBracket);
+	}
+	
+	private Token MatchOpenBracket(ref int index)
+	{
+		if (!AtEnd(index) && Tokens[index].Line != Tokens[index - 1].Line)
+			throw Expected(index - 1, "'['");
+		
+		return Match(ref index, out var openBracket, TokenType.OpOpenBracket)
+			? openBracket
+			: throw Expected(index, "'['");
 	}
 	
 	private ParseException ExpectedClose(int index, Token openBracket)
@@ -139,9 +145,7 @@ public sealed class TypeParser(ImmutableArray<Token> tokens) : BaseParser<ITypeN
 			return null;
 		}
 		
-		if (!Match(ref index, TokenType.OpOpenBracket))
-			throw Expected(index, "'['");
-		
+		MatchOpenBracket(ref index);
 		var parameterModes = new List<Token?>();
 		var parameterTypes = new List<ITypeNode>();
 		var ellipses = new List<Token?>();

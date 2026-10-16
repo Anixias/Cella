@@ -1,0 +1,25 @@
+mod test
+
+Box[T]: rec
+{
+	value: T
+}
+
+Shape: trait
+{
+	area: fun(imm self) -> i32
+}
+
+named: fun(b: Box
+	[i32]) -> i32 = 0
+
+function: fun(f: fun
+	[i32 -> i32]) -> i32 = 0
+
+borrowed: fun(b: imm
+	[i32]) -> i32 = 0
+
+dynamic: fun(s: imm[dyn
+	[Shape]]) -> i32 = 0
+
+main: fun -> i32 = 0

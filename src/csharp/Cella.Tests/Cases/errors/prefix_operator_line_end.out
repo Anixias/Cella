@@ -16,9 +16,19 @@ Error at line 23, column 10
 23 │ val b = imm
              ╘═╛ Expected an expression
 
-Error at line 36, column 12
-35 │ var box = Box(1)
-36 │ box.limit++
+Error at line 30, column 12
+29 │ {
+30 │     val a = 1 ~
+                   ^ Expected an expression
+
+Error at line 37, column 2
+36 │ val x = 1
+37 │ drop
+     ╘══╛ Expected an expression
+
+Error at line 50, column 12
+49 │ var box = Box(1)
+50 │ box.limit++
                ^ Expected an expression
 
 [compilation failed]

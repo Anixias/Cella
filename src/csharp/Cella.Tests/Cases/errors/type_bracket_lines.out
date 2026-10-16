@@ -1,0 +1,25 @@
+
+====== type_bracket_lines.ce ======
+
+Error at line 14, column 2
+13 │ named: fun(b: Box
+14 │     [i32]) -> i32 = 0
+         ^ Expected ',' or ')'
+         | To match the '(' on line 13
+
+Error at line 16, column 18
+15 │ 
+16 │ function: fun(f: fun
+                      ╘═╛ Expected '['
+
+Error at line 19, column 18
+18 │ 
+19 │ borrowed: fun(b: imm
+                      ╘═╛ Expected '['
+
+Error at line 22, column 21
+21 │ 
+22 │ dynamic: fun(s: imm[dyn
+                         ╘═╛ Expected '['
+
+[compilation failed]

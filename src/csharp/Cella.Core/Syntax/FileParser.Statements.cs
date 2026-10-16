@@ -146,8 +146,14 @@ public sealed partial class FileParser
 		return new ExpressionStatementNode(expr);
 	}
 	
-	private DropStatementNode ParseDropStatement(ref int index, Token keyword)
+	private DropStatementNode? ParseDropStatement(ref int index, Token keyword)
 	{
+		if (!IsOnSameLine(index))
+		{
+			ReportExpected(index - 1, "an expression");
+			return null;
+		}
+		
 		var target = ParseExpression(ref index);
 		var (source, range) = keyword.SourceLocation;
 		return new(target, new(source, range.Join(target.SourceLocation.Range)));
