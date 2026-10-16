@@ -35,10 +35,15 @@ public sealed partial class TypePool
 			return [];
 		
 		var explicitOnes = GetExplicitCandidates(type).Where(conformance => Matches(conformance, type)).ToList();
-		return explicitOnes.Concat(_blanketConformances.Where(blanket => Matches(blanket, type) &&
-		                                                                 !explicitOnes.Any(conformance =>
-			                                                                 Overrides(conformance, blanket, type))));
+		var blankets = _blanketConformances.Where(blanket => Matches(blanket, type)).ToList();
+		return explicitOnes.Concat(blankets.Where(blanket =>
+			!explicitOnes.Any(conformance => Overrides(conformance, blanket, type)) &&
+			!blankets.Any(other => Overrides(other, blanket, type) && IsMoreConstrained(other, blanket))));
 	}
+	
+	public bool IsMoreConstrained(Conformance blanket, Conformance other) =>
+		blanket.Parameters is [var parameter] && other.Parameters is [var otherParameter] &&
+		Satisfies(other.Parameters, [parameter]) && !Satisfies(blanket.Parameters, [otherParameter]);
 	
 	private bool Overrides(Conformance conformance, Conformance blanket, TypeSymbol type) =>
 		conformance.Trait == blanket.Trait &&
@@ -195,10 +200,31 @@ public sealed partial class TypePool
 		_ => Conforms(type, dyn.Parameter!)
 	};
 	
-	public Conformance? FindConformance(TypeSymbol type, TraitType trait) => GetConformanceCandidates(type)
-		.FirstOrDefault(conformance =>
-			conformance.Trait == trait.Trait && Matches(conformance, type) &&
-			GetConformanceArguments(conformance, type).SequenceEqual(trait.Arguments));
+	public Conformance? FindConformance(TypeSymbol type, TraitType trait)
+	{
+		if (type is TypeParameterSymbol)
+			return null;
+		
+		if (GetExplicitCandidates(type).FirstOrDefault(conformance => Provides(conformance, type, trait)) is { } found)
+			return found;
+		
+		if (!_blanketLookupsInProgress.Add((type, trait.Trait)))
+			return null;
+		
+		try
+		{
+			var blankets = _blanketConformances.Where(blanket => Provides(blanket, type, trait)).ToList();
+			return blankets.FirstOrDefault(blanket => !blankets.Any(other => IsMoreConstrained(other, blanket)));
+		}
+		finally
+		{
+			_blanketLookupsInProgress.Remove((type, trait.Trait));
+		}
+	}
+	
+	private bool Provides(Conformance conformance, TypeSymbol type, TraitType trait) =>
+		conformance.Trait == trait.Trait && Matches(conformance, type) &&
+		GetConformanceArguments(conformance, type).SequenceEqual(trait.Arguments);
 	
 	public ImmutableArray<TypeSymbol> GetConformanceArguments(Conformance conformance, TypeSymbol type)
 	{

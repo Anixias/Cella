@@ -1,0 +1,69 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Eq: trait
+{
+	==: op(imm a: Self, imm b: Self) -> bool
+}
+
+Ord: trait req Eq
+{
+	<: op(imm a: Self, imm b: Self) -> bool
+}
+
+i32: impl Eq + Ord
+f64: impl Eq
+
+Describe: trait
+{
+	name: fun(imm self) -> cstr
+}
+
+[T]: impl Describe
+{
+	name: fun(imm self) -> cstr = "anything"
+}
+
+[T: Eq]: impl Describe
+{
+	name: fun(imm self) -> cstr = "comparable"
+}
+
+[T: Ord]: impl Describe
+{
+	name: fun(imm self) -> cstr = "ordered"
+}
+
+Plain: rec
+{
+	value: i32
+}
+
+Named: rec impl Describe
+{
+	value: i32
+
+	name: fun(imm self) -> cstr = "named"
+}
+
+describe[T]: fun(imm value: T) -> cstr = value.name()
+describeEq[T: Eq]: fun(imm value: T) -> cstr = value.name()
+describeDyn: fun(imm value: dyn[Describe]) -> cstr = value.name()
+
+main: fun -> i32
+{
+	val number: i32 = 1
+	val real: f64 = 2.5
+	val plain = Plain(3)
+	val named = Named(4)
+	printf("%s %s %s %s\n", number.name(), real.name(), plain.name(), named.name())
+	printf("%s %s %s %s\n", describe(imm number), describe(imm real), describe(imm plain), describe(imm named))
+	printf("%s %s\n", describeEq(imm number), describeEq(imm real))
+	printf("%s %s %s %s\n", describeDyn(imm number), describeDyn(imm real), describeDyn(imm plain),
+		describeDyn(imm named))
+	ret 0
+}

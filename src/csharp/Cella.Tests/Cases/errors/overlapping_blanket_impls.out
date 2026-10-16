@@ -1,0 +1,24 @@
+
+====== overlapping_blanket_impls.ce ======
+
+Error at line 28, column 15
+27 │ 
+28 │ [T: Eq]: impl Describe
+                   ╘══════╛ 'T' implements 'Describe' more than once
+
+Error at line 33, column 17
+32 │ 
+33 │ [T: Show]: impl Describe
+                     ╘══════╛ 'T' implements 'Describe' more than once
+
+Error at line 38, column 17
+37 │ 
+38 │ [T: copy]: impl Size
+                     ╘══╛ 'T' implements 'Size' more than once
+
+Error at line 43, column 17
+42 │ 
+43 │ [U: copy]: impl Size
+                     ╘══╛ 'U' implements 'Size' more than once
+
+[compilation failed]

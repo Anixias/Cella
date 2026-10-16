@@ -54,7 +54,7 @@ public sealed partial class SignatureCollector
 		foreach (var conformance in conformances)
 		{
 			var overlap = conformances
-				.Where(other => other != conformance)
+				.Where(other => other != conformance && !AreRanked(conformance, other))
 				.Select(other => FindOverlap(conformance, other))
 				.FirstOrDefault(static found => found is not null);
 			
@@ -63,6 +63,10 @@ public sealed partial class SignatureCollector
 					$"'{DiagnosticReporter.DescribeType(target)}' implements '{trait.Name}' more than once"));
 		}
 	}
+	
+	private bool AreRanked(Conformance conformance, Conformance other) =>
+		conformance.Target is TypeParameterSymbol && other.Target is TypeParameterSymbol &&
+		(_typePool.IsMoreConstrained(conformance, other) || _typePool.IsMoreConstrained(other, conformance));
 	
 	private (TypeSymbol Target, TraitType Trait)? FindOverlap(Conformance conformance, Conformance other)
 	{

@@ -1,0 +1,58 @@
+mod test
+
+Eq: trait
+{
+	==: op(imm a: Self, imm b: Self) -> bool
+}
+
+Show: trait
+{
+	show: fun(imm self) -> cstr
+}
+
+Describe: trait
+{
+	name: fun(imm self) -> cstr
+}
+
+Size: trait
+{
+	size: fun(imm self) -> usize
+}
+
+Width: trait
+{
+	width: fun(imm self) -> usize
+}
+
+[T: Eq]: impl Describe
+{
+	name: fun(imm self) -> cstr = "comparable"
+}
+
+[T: Show]: impl Describe
+{
+	name: fun(imm self) -> cstr = "shown"
+}
+
+[T: copy]: impl Size
+{
+	size: fun(imm self) -> usize = 1
+}
+
+[U: copy]: impl Size
+{
+	size: fun(imm self) -> usize = 2
+}
+
+[T]: impl Width
+{
+	width: fun(imm self) -> usize = 1
+}
+
+[T: copy]: impl Width
+{
+	width: fun(imm self) -> usize = 2
+}
+
+main: fun -> i32 = 0
