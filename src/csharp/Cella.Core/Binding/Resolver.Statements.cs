@@ -105,6 +105,17 @@ public sealed partial class Resolver
 	
 	public IResolvedExpressionNode Visit(CallExpressionNode node)
 	{
+		_callArguments.Add(null);
+		var result = VisitCall(node);
+		var arguments = _callArguments[^1];
+		_callArguments.RemoveAt(_callArguments.Count - 1);
+		return result is ResolvedInvalidExpressionNode { Parts.IsEmpty: true } invalid && arguments is [_, ..]
+			? new ResolvedInvalidExpressionNode(invalid.Syntax, invalid.Type) { Parts = [..arguments] }
+			: result;
+	}
+	
+	private IResolvedExpressionNode VisitCall(CallExpressionNode node)
+	{
 		if (node.Target is VarExpressionNode callee && ResolveTargetCase(callee.Identifier, node) is { } targetCase)
 			return targetCase;
 		
@@ -179,6 +190,7 @@ public sealed partial class Resolver
 			if (survey is not null && (IsOpenValue(value) || IsOpenSyntax(initializerNode)))
 				open = DeclareOpen(new(node, node.Identifier, initializerNode, resolutionContext)
 				{
+					Value = value,
 					IsCaseName = IsCaseNameSyntax(initializerNode)
 				}, [value]);
 			

@@ -1,0 +1,31 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+pick: fun(mut a: i32, imm k: i32) = printf("i32 %d\n", a + k)
+pick: fun(mut a: f32, imm k: i32) = printf("f32 %.1f\n", a + f32(k))
+pick: fun(mut a: str, imm k: i32) = printf("str %d\n", k)
+
+grow: fun(mut a: f32) = a *= 2.0
+grow: fun(mut a: f64) = a *= 3.0
+
+main: fun -> i32
+{
+	var x1 = 3.0
+	var x2 = 4
+	pick(mut x1, imm x2)
+	
+	var whole = 5
+	pick(mut whole, imm x2)
+	
+	var text = "hi"
+	pick(mut text, imm x2)
+	
+	var scaled = 1.5
+	grow(mut scaled)
+	printf("%.1f\n", scaled)
+	ret 0
+}

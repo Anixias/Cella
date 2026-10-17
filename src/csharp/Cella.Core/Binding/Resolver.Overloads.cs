@@ -265,8 +265,8 @@ public sealed partial class Resolver
 		if (parameterMode == ParameterMode.Mut || mutTarget is not null)
 		{
 			if (arg is ResolvedMutArgumentExpressionNode { Place: var place } && mutTarget is not null &&
-			    FindOpenPlace(place) is not null)
-				return (0, null);
+			    FindOpenPlace(place) is { } open)
+				return (MatchOpenPlace(open, mutTarget), null);
 			
 			if (arg is ResolvedMutArgumentExpressionNode mutArgument && mutTarget is not null &&
 			    IsMutPlaceOf(mutArgument.Place, mutTarget))
@@ -293,6 +293,15 @@ public sealed partial class Resolver
 		
 		return ignoreModes ? MatchArg(argument.Place, target, mode) : (int.MaxValue, null);
 	}
+	
+	private int MatchOpenPlace(OpenLocal open, TypeSymbol target) => open.Value switch
+	{
+		null => 0,
+		var value when !CouldBecome(value, target) => int.MaxValue,
+		ResolvedCaseNameExpressionNode or { Type: FunctionGroupType } => 0,
+		{ Type: UntypedType untyped } => untyped.MaterializationCost(target, MaterializationMode.Overload),
+		_ => 0
+	};
 	
 	private bool NeedsLending(IResolvedExpressionNode arg, TypeSymbol target, ParameterMode parameterMode) =>
 		parameterMode.IsReadOnly() && MatchArg(arg, target, MaterializationMode.Overload).Cost ==

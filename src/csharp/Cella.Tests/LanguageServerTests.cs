@@ -256,6 +256,32 @@ public sealed class LanguageServerTests : IAsyncDisposable
 	}
 	
 	[Fact]
+	public async Task LinksArgumentsOfFailedCalls()
+	{
+		await File.WriteAllTextAsync(SourcePath, """
+		                                         mod test
+		                                         
+		                                         y: fun(a: i32) {}
+		                                         y: fun(a: bool) {}
+		                                         
+		                                         main: fun -> i32
+		                                         {
+		                                         	val name = 2.5
+		                                         	y(name)
+		                                         	ret 0
+		                                         }
+		                                         
+		                                         """, Token);
+		
+		await InitializeAsync();
+		Assert.Equal(Code("val name: f64"), await HoverAsync(8, 3));
+		var declaration = await DefinitionAsync(8, 3);
+		Assert.Equal(7, (int)declaration!["range"]!["start"]!["line"]!);
+		Assert.Equal(5, (int)declaration["range"]!["start"]!["character"]!);
+		Assert.Equal(0, await ShutDownAsync());
+	}
+	
+	[Fact]
 	public async Task ClassifiesNamesInTheOpenText()
 	{
 		await File.WriteAllTextAsync(SourcePath, NavigationSource, Token);

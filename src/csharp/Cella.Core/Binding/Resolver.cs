@@ -47,6 +47,7 @@ public sealed partial class Resolver : IStatementNodeVisitor<IResolvedStatementN
 	private readonly Stack<UnaryOpJob> _unaryOpJobs = [];
 	private readonly Stack<Expectation> _expectations = [];
 	private readonly Stack<ResolutionContext> _resolutionContexts = [];
+	private readonly List<IResolvedExpressionNode[]?> _callArguments = [];
 	private readonly HashSet<LocalVariableSymbol> _repeatedBindings = [];
 	private readonly Dictionary<IResolvedExpressionNode, ImmutableArray<LocalVariableSymbol?>> _failedPatterns = [];
 	private readonly Dictionary<ResolvedCaseNameExpressionNode, IResolvedExpressionNode> _caseNameFallbacks = [];

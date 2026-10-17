@@ -1,4 +1,5 @@
-﻿using Cella.Core.Symbols;
+﻿using System.Collections.Immutable;
+using Cella.Core.Symbols;
 using Cella.Core.Syntax.Nodes;
 
 namespace Cella.Core.Binding.Nodes;
@@ -20,4 +21,5 @@ public sealed class ResolvedInvalidExpressionNode(IExpressionNode syntax, TypeSy
 {
 	public TypeSymbol Type { get; } = type ?? NativeSymbols.Invalid;
 	public IExpressionNode Syntax { get; } = syntax;
+	public ImmutableArray<IResolvedExpressionNode> Parts { get; init; } = [];
 }

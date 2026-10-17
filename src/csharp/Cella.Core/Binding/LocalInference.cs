@@ -19,6 +19,7 @@ public sealed class OpenLocal
 	public Token Identifier { get; } = identifier;
 	public IExpressionNode Initializer { get; } = initializer;
 	public ResolutionContext Context { get; } = context;
+	public IResolvedExpressionNode? Value { get; init; }
 	public bool IsCaseName { get; init; }
 	public bool IsCounter { get; init; }
 	public OpenLocal? Owner { get; init; }

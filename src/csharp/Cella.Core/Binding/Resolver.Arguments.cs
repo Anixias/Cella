@@ -13,6 +13,17 @@ public sealed partial class Resolver
 		Func<IResolvedExpressionNode[], bool>? succeeds = null,
 		Func<int, IResolvedExpressionNode[], bool>? accepts = null, IResolvedExpressionNode? first = null)
 	{
+		var values = ResolveArgumentValues(nodes, shapes, out isAmbiguous, succeeds, accepts, first);
+		if (_callArguments.Count > 0)
+			_callArguments[^1] = values;
+		
+		return values;
+	}
+	
+	private IResolvedExpressionNode[] ResolveArgumentValues(ImmutableArray<IExpressionNode> nodes,
+		IReadOnlyList<CallShape> shapes, out bool isAmbiguous, Func<IResolvedExpressionNode[], bool>? succeeds,
+		Func<int, IResolvedExpressionNode[], bool>? accepts, IResolvedExpressionNode? first)
+	{
 		isAmbiguous = false;
 		var values = new IResolvedExpressionNode?[nodes.Length];
 		var deferred = new List<int>();
