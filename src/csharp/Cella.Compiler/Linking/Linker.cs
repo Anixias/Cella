@@ -3,7 +3,7 @@ using Cella.Compiler.Projects;
 
 namespace Cella.Compiler.Linking;
 
-public sealed class Linker(string rootPath, bool verbose)
+public sealed class Linker(string rootPath, Action<string>? log)
 {
 	public string? FindMissingLinker(LinkRequest request, Toolchain toolchain) =>
 		File.Exists(GetLinkerPath(request, toolchain)) ? null : GetLinkerPath(request, toolchain);
@@ -18,8 +18,7 @@ public sealed class Linker(string rootPath, bool verbose)
 		
 		var args = toolchain.GetLinkerArgs(request);
 		
-		if (verbose)
-			Console.WriteLine($"Linker starting with arguments: {string.Join(" ", args)}");
+		log?.Invoke($"Linker starting with arguments: {string.Join(" ", args)}");
 		
 		using var process = new Process();
 		process.StartInfo.FileName = GetLinkerPath(request, toolchain);

@@ -738,13 +738,6 @@ public sealed record CodeGenConfig
 	public string? SourceRoot { get; init; }
 	public ImmutableArray<string> ProjectRoots { get; init; } = [];
 	
-	public uint GetPointerSize()
-	{
-		var (_, _, targetMachine, pointerSize) = GetDataLayout();
-		targetMachine.Dispose();
-		return pointerSize;
-	}
-	
 	public unsafe (string DataLayout, string TargetTriple, LLVMTargetMachineRef TargetMachine, uint PointerSize)
 		GetDataLayout()
 	{

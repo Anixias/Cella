@@ -1,6 +1,6 @@
 ﻿using System.Collections.Concurrent;
 
-namespace Cella.Compiler;
+namespace Cella.Compiler.Building;
 
 internal sealed class CompilerSynchronizationContext : SynchronizationContext
 {

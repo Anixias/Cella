@@ -57,6 +57,8 @@ public readonly record struct TargetTriple(string Os, string Arch, string? Abi)
 	
 	public bool IsElf => Os == OsTypes.Linux;
 	
+	public uint PointerBitSize => Arch == ArchTypes.X86 ? 32u : 64u;
+	
 	public TargetTriple WithDefaultAbi(string toolchainsDirectory) => Os == OsTypes.Windows && Abi is null
 		? this with
 		{
