@@ -5,6 +5,7 @@
 	<description><![CDATA[Language support for Cella source (.ce) and project (.celp) files.]]></description>
 	
 	<depends>com.intellij.modules.platform</depends>
+	<depends>com.intellij.modules.rider</depends>
 	<depends>com.intellij.modules.spellchecker</depends>
 	
 	<extensions defaultExtensionNs="com.intellij">
