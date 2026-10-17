@@ -102,11 +102,11 @@ public sealed class Server
 			
 			case "textDocument/definition":
 				return (true, Find(parameters)?.Declaration is { } declaration
-					? new JsonObject
+					? new JsonArray(new JsonObject
 					{
 						["uri"] = _workspace.UriOf(declaration.Source.FilePath),
 						["range"] = Protocol.ToRange(declaration)
-					}
+					})
 					: null);
 			
 			case "textDocument/didClose":

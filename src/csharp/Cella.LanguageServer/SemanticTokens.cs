@@ -11,7 +11,6 @@ public static class SemanticTokens
 	private enum Kind
 	{
 		Type,
-		Class,
 		Struct,
 		Enum,
 		Interface,
@@ -31,7 +30,9 @@ public static class SemanticTokens
 		None = 0,
 		Declaration = 1,
 		Readonly = 2,
-		Static = 4
+		Static = 4,
+		Drop = 8,
+		Ref = 16
 	}
 	
 	public static JsonObject Legend { get; } = new()
@@ -53,7 +54,7 @@ public static class SemanticTokens
 			                 reference.Symbol is FunctionSymbol or MethodSymbol;
 			
 			if (range.Start < previousEnd || !isOperator && !IsName(text) ||
-			    Classify(reference.Symbol) is not { } classified)
+			    Classify(reference) is not { } classified)
 				continue;
 			
 			var (kind, modifiers) = classified;
@@ -83,7 +84,7 @@ public static class SemanticTokens
 		text is [var first, ..] && (char.IsLetter(first) || first == '_') &&
 		text.All(static c => char.IsLetterOrDigit(c) || c == '_') && TokenTypeInfo.GetKeyword(text) is null;
 	
-	private static (Kind, Modifiers)? Classify(Symbol symbol) => symbol switch
+	private static (Kind, Modifiers)? Classify(SymbolReference reference) => reference.Symbol switch
 	{
 		FunctionSymbol { Kind: FunctionKind.Free or FunctionKind.External } => (Kind.Function, Modifiers.None),
 		FunctionSymbol or MethodSymbol => (Kind.Method, Modifiers.None),
@@ -98,8 +99,8 @@ public static class SemanticTokens
 		EnumCaseSymbol => (Kind.EnumMember, Modifiers.None),
 		TraitSymbol or TraitType => (Kind.Interface, Modifiers.None),
 		TypeParameterSymbol => (Kind.TypeParameter, Modifiers.None),
-		TypeSymbol { OriginalDefinition: RecordSymbol { IsRef: true } } => (Kind.Struct, Modifiers.None),
-		TypeSymbol { OriginalDefinition: RecordSymbol } => (Kind.Class, Modifiers.None),
+		TypeSymbol { OriginalDefinition: RecordSymbol record } => (Kind.Struct,
+			(reference.NeedsDrop ? Modifiers.Drop : Modifiers.None) | (record.IsRef ? Modifiers.Ref : Modifiers.None)),
 		TypeSymbol { OriginalDefinition: EnumSymbol } => (Kind.Enum, Modifiers.None),
 		NamedTypeSymbol => (Kind.Type, Modifiers.None),
 		TypeSymbol => (Kind.Keyword, Modifiers.None),

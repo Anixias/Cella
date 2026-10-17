@@ -14,6 +14,7 @@ namespace Cella.Core.Binding;
 public sealed record SymbolReference(SourceLocation Location, Symbol Symbol, string Description)
 {
 	public SourceLocation? Declaration { get; init; } = SemanticModel.FindDeclaration(Symbol);
+	public bool NeedsDrop { get; init; }
 }
 
 public sealed class SemanticModel
@@ -26,12 +27,16 @@ public sealed class SemanticModel
 	private readonly Dictionary<string, List<SymbolReference>> _references = new(_pathComparer);
 	private readonly Dictionary<Type, PropertyInfo[]> _children = [];
 	private readonly Dictionary<TypeParameterSymbol, SourceLocation> _typeParameters = [];
+	private readonly Dictionary<TypeSymbol, bool> _drops = [];
+	private readonly Func<TypeSymbol, bool>? needsDrop;
 	
 	private readonly Dictionary<IExpressionNode, AccessExpressionNode> _accesses =
 		new(ReferenceEqualityComparer.Instance);
 	
-	public SemanticModel(IEnumerable<ResolvedFileNode> files, IEnumerable<(Token Name, Symbol Symbol)> names)
+	public SemanticModel(IEnumerable<ResolvedFileNode> files, IEnumerable<(Token Name, Symbol Symbol)> names,
+		Func<TypeSymbol, bool>? needsDrop = null)
 	{
+		this.needsDrop = needsDrop;
 		foreach (var file in files)
 			Walk(file);
 		
@@ -108,7 +113,18 @@ public sealed class SemanticModel
 		if (!_references.TryGetValue(path, out var references))
 			_references[path] = references = [];
 		
-		references.Add(new(location, symbol, description));
+		references.Add(new(location, symbol, description) { NeedsDrop = NeedsDrop(symbol) });
+	}
+
+	private bool NeedsDrop(Symbol symbol)
+	{
+		if (symbol is not TypeSymbol { OriginalDefinition: RecordSymbol } type || needsDrop is null)
+			return false;
+
+		if (!_drops.TryGetValue(type, out var drops))
+			_drops[type] = drops = needsDrop(type);
+
+		return drops;
 	}
 	
 	private void Add(Token? token, Symbol symbol, string description)

@@ -184,6 +184,9 @@ public sealed class LanguageServerTests : IAsyncDisposable
 		throw new TimeoutException();
 	}
 	
+	private async Task<JsonNode?> DefinitionAsync(int line, int character) =>
+		(await AskAsync("textDocument/definition", line, character))?[0];
+	
 	private static string Code(string text) => $"```cella\n{text}\n```";
 	
 	[Fact]
@@ -198,19 +201,19 @@ public sealed class LanguageServerTests : IAsyncDisposable
 		Assert.Equal(Code("Point: rec"), await HoverAsync(8, 21));
 		Assert.Equal(Code("Point: rec"), await HoverAsync(12, 15));
 		
-		var function = await AskAsync("textDocument/definition", 13, 6);
+		var function = await DefinitionAsync(13, 6);
 		Assert.Equal(8, (int)function!["range"]!["start"]!["line"]!);
 		Assert.Equal(0, (int)function["range"]!["start"]!["character"]!);
 		Assert.Equal(3, (int)function["range"]!["end"]!["character"]!);
 		
-		var type = await AskAsync("textDocument/definition", 12, 15);
+		var type = await DefinitionAsync(12, 15);
 		Assert.Equal(2, (int)type!["range"]!["start"]!["line"]!);
 		
-		var field = await AskAsync("textDocument/definition", 8, 42);
+		var field = await DefinitionAsync(8, 42);
 		Assert.Equal(4, (int)field!["range"]!["start"]!["line"]!);
 		Assert.Equal(1, (int)field["range"]!["start"]!["character"]!);
 		
-		Assert.Null(await AskAsync("textDocument/definition", 8, 30));
+		Assert.Null(await DefinitionAsync(8, 30));
 		Assert.Equal(0, await ShutDownAsync());
 	}
 	
@@ -220,14 +223,14 @@ public sealed class LanguageServerTests : IAsyncDisposable
 		await File.WriteAllTextAsync(SourcePath, NavigationSource, Token);
 		Assert.Equal(
 		[
-			"2:0:5 class declaration",
+			"2:0:5 struct declaration",
 			"4:1:1 property declaration",
 			"4:4:3 keyword",
 			"5:1:1 property declaration",
 			"5:4:3 keyword",
 			"8:0:5 function declaration",
 			"8:15:5 parameter declaration",
-			"8:22:5 class",
+			"8:22:5 struct",
 			"8:32:3 keyword",
 			"8:38:5 parameter",
 			"8:44:1 property",
@@ -236,7 +239,7 @@ public sealed class LanguageServerTests : IAsyncDisposable
 			"10:0:4 function declaration",
 			"10:13:3 keyword",
 			"12:5:6 variable declaration readonly",
-			"12:14:5 class",
+			"12:14:5 struct",
 			"13:5:5 function",
 			"13:15:6 variable readonly"
 		], await ClassifyAsync(NavigationSource.Replace("sum", "total")));
@@ -249,16 +252,16 @@ public sealed class LanguageServerTests : IAsyncDisposable
 	{
 		Assert.Equal(
 		[
-			"2:0:3 class declaration",
+			"2:0:3 struct declaration",
 			"2:4:1 typeParameter declaration",
 			"4:1:1 property declaration",
 			"4:4:1 typeParameter",
 			"5:1:1 method declaration",
 			"5:11:1 parameter declaration",
-			"5:14:3 class",
+			"5:14:3 struct",
 			"5:18:1 typeParameter",
 			"5:26:1 parameter declaration",
-			"5:29:3 class",
+			"5:29:3 struct",
 			"5:33:1 typeParameter",
 			"5:40:1 typeParameter",
 			"5:44:1 parameter",
@@ -272,7 +275,7 @@ public sealed class LanguageServerTests : IAsyncDisposable
 			"13:11:5 keyword",
 			"13:17:4 keyword",
 			"14:5:1 variable declaration readonly",
-			"14:9:3 class",
+			"14:9:3 struct",
 			"14:13:3 keyword",
 			"14:18:3 keyword",
 			"14:22:5 variable readonly static",
@@ -307,11 +310,11 @@ public sealed class LanguageServerTests : IAsyncDisposable
 		Assert.Equal(Code("const count: i32"), await HoverAsync(14, 22));
 		Assert.Equal(Code("char"), await HoverAsync(13, 17));
 		
-		var operation = await AskAsync("textDocument/definition", 15, 11);
+		var operation = await DefinitionAsync(15, 11);
 		Assert.Equal(5, (int)operation!["range"]!["start"]!["line"]!);
 		Assert.Equal(1, (int)operation["range"]!["start"]!["character"]!);
 		
-		var parameter = await AskAsync("textDocument/definition", 4, 4);
+		var parameter = await DefinitionAsync(4, 4);
 		Assert.Equal(2, (int)parameter!["range"]!["start"]!["line"]!);
 		Assert.Equal(4, (int)parameter["range"]!["start"]!["character"]!);
 		Assert.Equal(0, await ShutDownAsync());
@@ -388,11 +391,26 @@ public sealed class LanguageServerTests : IAsyncDisposable
 		                                 	val c = Color.red
 		                                 	ret b.x + v.point.x
 		                                 }
-		                                 
+
+		                                 Handle: rec
+		                                 {
+		                                 	id: i32
+
+		                                 	drop: op { }
+		                                 }
+
+		                                 Owner: rec
+		                                 {
+		                                 	handle: Handle
+		                                 }
+
 		                                 """);
-		
-		Assert.Contains("2:0:5 class declaration", tokens);
-		Assert.Contains("14:0:4 struct declaration", tokens);
+
+		Assert.Contains("2:0:5 struct declaration", tokens);
+		Assert.Contains("14:0:4 struct declaration ref", tokens);
+		Assert.Contains("34:0:6 struct declaration drop", tokens);
+		Assert.Contains("41:0:5 struct declaration drop", tokens);
+		Assert.Contains("43:9:6 struct drop", tokens);
 		Assert.Contains("19:0:5 enum declaration", tokens);
 		Assert.Contains("31:5:1 variable readonly", tokens);
 		Assert.Contains("31:6:1 method", tokens);
@@ -403,7 +421,7 @@ public sealed class LanguageServerTests : IAsyncDisposable
 		Assert.Equal(Code("val b: Box"), await HoverAsync(31, 5));
 		Assert.Equal(Code("View: ref rec"), await HoverAsync(29, 9));
 		
-		var dereference = await AskAsync("textDocument/definition", 31, 6);
+		var dereference = await DefinitionAsync(31, 6);
 		Assert.Equal(11, (int)dereference!["range"]!["start"]!["line"]!);
 		Assert.Equal(1, (int)dereference["range"]!["start"]!["character"]!);
 		Assert.Equal(0, await ShutDownAsync());

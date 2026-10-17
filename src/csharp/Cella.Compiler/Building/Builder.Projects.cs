@@ -15,6 +15,13 @@ namespace Cella.Compiler.Building;
 
 public sealed partial class Builder
 {
+	private static Lazy<SemanticModel> CreateModel(ImmutableArray<ResolvedFileNode> files,
+		List<(Token Name, Symbol Symbol)> names, TypePool typePool)
+	{
+		var model = new SemanticModel(files, names, typePool.NeedsDrop);
+		return new(() => model);
+	}
+	
 	private async Task<AssemblyInfo> BuildProject(ProjectInfo project, TypePool typePool,
 		IEnumerable<AssemblyInfo> dependencies, SystemLinkPreference linkPreference, CancellationToken ct)
 	{
@@ -206,7 +213,7 @@ public sealed partial class Builder
 			
 			_projects.Add(new(project.FilePath, [..diagnostics.SelectMany(static list => list)], resolvedFiles)
 			{
-				Model = options.ChecksOnly ? new(() => new SemanticModel(resolvedFiles, names)) : null
+				Model = options.ChecksOnly ? CreateModel(resolvedFiles, names, typePool) : null
 			});
 			
 			if (ReportErrors(diagnostics))

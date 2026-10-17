@@ -37,5 +37,24 @@ object CellaColors {
 	val PROJECT_COMMENT = key("PROJECT_COMMENT", Default.LINE_COMMENT)
 	val PROJECT_EQUALS = key("PROJECT_EQUALS", Default.OPERATION_SIGN)
 	
+	val DROP_TYPE = key("DROP_TYPE", rider("CSHARP_CLASS_IDENTIFIER"))
+	val RECORD = key("RECORD", rider("STRUCT_IDENTIFIER"))
+	val REF_RECORD = key("REF_RECORD", rider("STRUCT_IDENTIFIER"))
+	val ENUM = key("ENUM", rider("ENUM_IDENTIFIER"))
+	val TRAIT = key("TRAIT", rider("CSHARP_INTERFACE_IDENTIFIER"))
+	val TYPE_PARAMETER = key("TYPE_PARAMETER", rider("TYPE_PARAMETER_IDENTIFIER"))
+	val TYPE = key("TYPE", rider("CSHARP_CLASS_IDENTIFIER"))
+	val FUNCTION = key("FUNCTION", rider("CSHARP_METHOD_IDENTIFIER"))
+	val METHOD = key("METHOD", rider("CSHARP_METHOD_IDENTIFIER"))
+	val PARAMETER = key("PARAMETER", rider("CSHARP_PARAMETER_IDENTIFIER"))
+	val LOCAL_VARIABLE = key("LOCAL_VARIABLE", rider("CSHARP_MUTABLE_LOCAL_VARIABLE_IDENTIFIER"))
+	val LOCAL_VALUE = key("LOCAL_VALUE", rider("CSHARP_LOCAL_VARIABLE_IDENTIFIER"))
+	val CONSTANT = key("CONSTANT", rider("CSHARP_CONSTANT_IDENTIFIER"))
+	val GLOBAL_VARIABLE = key("GLOBAL_VARIABLE", rider("CSHARP_STATIC_FIELD_IDENTIFIER"))
+	val FIELD = key("FIELD", rider("CSHARP_FIELD_IDENTIFIER"))
+	val ENUM_CASE = key("ENUM_CASE", rider("CSHARP_STATIC_FIELD_IDENTIFIER"))
+	
 	private fun key(name: String, fallback: TextAttributesKey) = createTextAttributesKey("CELLA_$name", fallback)
+	
+	private fun rider(name: String) = TextAttributesKey.find("ReSharper.$name")
 }

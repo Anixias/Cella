@@ -36,5 +36,19 @@
 		<lineIndentProvider implementation="com.anixias.cella.editor.CellaLineIndentProvider"/>
 		<langCodeStyleSettingsProvider implementation="com.anixias.cella.editor.CellaCodeStyleSettingsProvider"/>
 		<spellchecker.bundledDictionaryProvider implementation="com.anixias.cella.editor.CellaDictionaryProvider"/>
+		
+		<applicationConfigurable parentId="language" instance="com.anixias.cella.server.CellaConfigurable"
+		                         id="com.anixias.cella" displayName="Cella"/>
+		<notificationGroup id="Cella" displayType="BALLOON"/>
+		<editorFactoryListener implementation="com.anixias.cella.server.CellaEditorListener"/>
+		<externalAnnotator language="Cella" implementationClass="com.anixias.cella.server.CellaAnnotator"/>
+		<platform.backend.documentation.targetProvider
+				implementation="com.anixias.cella.server.CellaDocumentationTargetProvider"/>
+		<gotoDeclarationHandler implementation="com.anixias.cella.server.CellaGotoDeclarationHandler"/>
+		<completion.contributor language="Cella"
+		                        implementationClass="com.anixias.cella.server.CellaCompletionContributor"/>
+		<codeInsight.parameterInfo language="Cella"
+		                           implementationClass="com.anixias.cella.server.CellaParameterInfoHandler"/>
+		<typedHandler implementation="com.anixias.cella.server.CellaTypedHandler"/>
 	</extensions>
 </idea-plugin>

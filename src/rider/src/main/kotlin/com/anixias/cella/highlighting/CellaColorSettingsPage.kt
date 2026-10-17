@@ -30,7 +30,41 @@ class CellaColorSettingsPage : ColorSettingsPage {
 		AttributesDescriptor("Punctuation//Comma", CellaColors.COMMA),
 		AttributesDescriptor("Punctuation//Dot", CellaColors.DOT),
 		AttributesDescriptor("Punctuation//Operator", CellaColors.OPERATOR),
-		AttributesDescriptor("Bad character", CellaColors.BAD_CHARACTER)
+		AttributesDescriptor("Bad character", CellaColors.BAD_CHARACTER),
+		AttributesDescriptor("Types//Drop type", CellaColors.DROP_TYPE),
+		AttributesDescriptor("Types//Record", CellaColors.RECORD),
+		AttributesDescriptor("Types//Ref record", CellaColors.REF_RECORD),
+		AttributesDescriptor("Types//Enum", CellaColors.ENUM),
+		AttributesDescriptor("Types//Trait", CellaColors.TRAIT),
+		AttributesDescriptor("Types//Type parameter", CellaColors.TYPE_PARAMETER),
+		AttributesDescriptor("Types//Other type", CellaColors.TYPE),
+		AttributesDescriptor("Functions//Function", CellaColors.FUNCTION),
+		AttributesDescriptor("Functions//Method", CellaColors.METHOD),
+		AttributesDescriptor("Variables//Parameter", CellaColors.PARAMETER),
+		AttributesDescriptor("Variables//Local var", CellaColors.LOCAL_VARIABLE),
+		AttributesDescriptor("Variables//Local val", CellaColors.LOCAL_VALUE),
+		AttributesDescriptor("Variables//Constant", CellaColors.CONSTANT),
+		AttributesDescriptor("Variables//Global var", CellaColors.GLOBAL_VARIABLE),
+		AttributesDescriptor("Members//Field", CellaColors.FIELD),
+		AttributesDescriptor("Members//Enum case", CellaColors.ENUM_CASE)
+	)
+	
+	private val tags = mapOf(
+		"drop" to CellaColors.DROP_TYPE,
+		"record" to CellaColors.RECORD,
+		"ref" to CellaColors.REF_RECORD,
+		"enum" to CellaColors.ENUM,
+		"trait" to CellaColors.TRAIT,
+		"typeParameter" to CellaColors.TYPE_PARAMETER,
+		"function" to CellaColors.FUNCTION,
+		"method" to CellaColors.METHOD,
+		"parameter" to CellaColors.PARAMETER,
+		"var" to CellaColors.LOCAL_VARIABLE,
+		"val" to CellaColors.LOCAL_VALUE,
+		"constant" to CellaColors.CONSTANT,
+		"global" to CellaColors.GLOBAL_VARIABLE,
+		"field" to CellaColors.FIELD,
+		"case" to CellaColors.ENUM_CASE
 	)
 	
 	override fun getDisplayName() = "Cella"
@@ -38,7 +72,7 @@ class CellaColorSettingsPage : ColorSettingsPage {
 	override fun getHighlighter() = CellaHighlighter()
 	override fun getAttributeDescriptors() = descriptors
 	override fun getColorDescriptors(): Array<ColorDescriptor> = ColorDescriptor.EMPTY_ARRAY
-	override fun getAdditionalHighlightingTagToDescriptorMap(): Map<String, Nothing>? = null
+	override fun getAdditionalHighlightingTagToDescriptorMap() = tags
 	
 	override fun getDemoText() = """
 		mod demo
@@ -46,27 +80,46 @@ class CellaColorSettingsPage : ColorSettingsPage {
 		use std.io
 
 		/* Shapes */
-		Shape: enum
+		<enum>Shape</enum>: enum
 		{
-			circle
-			square
+			<case>circle</case>
+			<case>square</case>
 		}
 
-		Point: ref rec
+		<record>Point</record>: rec
 		{
-			x: i32
+			<field>x</field>: i32
 
-			length: fun(imm self) -> f64 = 1.5e3
+			<method>length</method>: fun(imm self) -> f64 = 1.5e3
 		}
+
+		<ref>View</ref>: ref rec
+		{
+			<field>point</field>: imm[<record>Point</record>]
+		}
+
+		<drop>Handle</drop>: rec
+		{
+			<field>id</field>: i32
+
+			drop: op { }
+		}
+
+		<trait>Sized</trait>: trait
+		{
+			<method>size</method>: fun(imm self) -> usize
+		}
+
+		<global>count</global>: var i32 = 0
 
 		// Scales a point
-		scale[T: copy + noref]: pub fun(mut target: Point, factor: i32) -> bool
+		<function>scale</function>[<typeParameter>T</typeParameter>: copy + noref]: pub fun(mut <parameter>target</parameter>: <record>Point</record>, <parameter>factor</parameter>: i32) -> bool
 		{
-			val label = "x = {target.x:4}\n"
-			val bad = "\q"
-			const limit = 255u8
-			val size = sizeOf(Point)
-			if factor > 0 && self != null
+			val <val>label</val> = "x = {<parameter>target</parameter>.<field>x</field>:4}\n"
+			val <val>bad</val> = "\q"
+			const <constant>limit</constant> = 255u8
+			var <var>size</var> = sizeOf(<record>Point</record>)
+			if <parameter>factor</parameter> > 0 && <parameter>target</parameter>.<method>length</method>() > 1.0
 			{
 				ret true
 			}
