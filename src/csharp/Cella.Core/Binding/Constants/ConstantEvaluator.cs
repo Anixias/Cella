@@ -38,6 +38,14 @@ public sealed class ConstantEvaluator
 		return result;
 	}
 	
+	private Constant? FoldTraitConstant(ResolvedTraitConstantExpressionNode node)
+	{
+		var owner = substitution is null ? node.Owner : typePool.Substitute(node.Owner, substitution);
+		return TypePool.ContainsTypeParameters(owner)
+			? null
+			: typePool.TraitConstantValue?.Invoke(owner, node.Constant);
+	}
+	
 	public Constant? EvaluateInstance(IResolvedExpressionNode node,
 		IReadOnlyDictionary<TypeParameterSymbol, TypeSymbol> map)
 	{
@@ -248,8 +256,11 @@ public sealed class ConstantEvaluator
 			_bindings.TryGetValue(symbol, out var bound) => bound,
 		ResolvedVarExpressionNode { Symbol: LocalVariableSymbol { ConstantValue: { } value } } => value,
 		ResolvedGlobalExpressionNode { Symbol: { IsConstant: true } global } => FoldGlobal(global),
-		ResolvedValueParameterExpressionNode n when substitution?.GetValueOrDefault(n.Parameter) is
-			ValueArgumentType { Value: var value } => new IntegerConstant(n.Type, value),
+		ResolvedTraitConstantExpressionNode n => FoldTraitConstant(n),
+		ResolvedValueParameterExpressionNode n when substitution is not null &&
+		                                            typePool.SubstituteParameter(n.Parameter, substitution) is
+			                                            ValueArgumentType { Value: var value } => new IntegerConstant(
+			n.Type, value),
 		ResolvedSizeOfExpressionNode n when substitution is not null => FoldLayout(n.Target, false),
 		ResolvedAlignOfExpressionNode n when substitution is not null => FoldLayout(n.Target, true),
 		ResolvedAccessExpressionNode n => FoldAccess(n),

@@ -187,7 +187,7 @@ public sealed partial class TypePool
 			? type
 			: type switch
 			{
-				TypeParameterSymbol parameter => map.GetValueOrDefault(parameter, parameter),
+				TypeParameterSymbol parameter => SubstituteParameter(parameter, map),
 				DynType { Parameter: { } parameter } => map.GetValueOrDefault(parameter) switch
 				{
 					TraitType argument => GetDynType(argument),
@@ -209,7 +209,7 @@ public sealed partial class TypePool
 				PointerType pointer => GetPointerType(Substitute(pointer.BaseType, map)),
 				BorrowType borrow => GetBorrowType(Substitute(borrow.Target, map), borrow.IsMutable),
 				ArrayType { LengthParameter: { } length } array =>
-					GetArrayType(Substitute(array.ElementType, map), map.GetValueOrDefault(length, length)),
+					GetArrayType(Substitute(array.ElementType, map), SubstituteParameter(length, map)),
 				ArrayType array => GetArrayType(Substitute(array.ElementType, map), array.Length),
 				FunctionType function => SubstituteFunctionType(function, map),
 				ClosureType closure => SubstituteClosure(closure, map),

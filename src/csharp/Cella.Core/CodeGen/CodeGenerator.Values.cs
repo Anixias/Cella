@@ -77,6 +77,18 @@ public sealed unsafe partial class CodeGenerator
 		? EmitIntegerConstant(new IntegerConstant(v.Type, value.Value))
 		: throw new InvalidOperationException($"Value parameter '{v.Parameter.Name}' has no value");
 	
+	private LLVMValueRef EmitTraitConstant(TraitConstantValue v)
+	{
+		if (_typePool.TraitConstantValue?.Invoke(Substitute(v.Owner), v.Constant) is { } constant
+		    and not InvalidConstant)
+			return EmitStaticConstant(constant);
+		
+		Diagnostics.Add(new(Cella.Diagnostics.DiagnosticSeverity.Error, v.SourceLocation,
+			$"'{v.Constant.Name}' depends on its own value"));
+		
+		return LLVMValueRef.CreateConstNull(MapTypeSymbol(Substitute(v.Type)));
+	}
+	
 	private LLVMValueRef EmitAlignOf(AlignOfValue v)
 	{
 		var bits = _typePool.SizeTable.GetSize(Substitute(v.Target)).CountAlignmentBits(_pointerSize * 8);

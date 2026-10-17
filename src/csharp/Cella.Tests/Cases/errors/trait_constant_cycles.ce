@@ -1,0 +1,20 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Integer: trait
+{
+	bits: const u32 = bytes * 8
+	bytes: const u32 = bits / 8
+}
+
+i32: impl Integer
+
+main: fun -> i32
+{
+	printf("%u\n", i32.bits)
+	ret 0
+}

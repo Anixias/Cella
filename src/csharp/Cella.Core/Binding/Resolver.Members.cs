@@ -250,10 +250,43 @@ public sealed partial class Resolver
 		bool TakesType(ICallable candidate) => candidate.ParameterTypes.Contains(type);
 	}
 	
+	private GlobalSymbol? FindRequirement(ImplSymbol impl, string name) => _typePool.Conformances
+		.Where(conformance => conformance.Impl == impl)
+		.Select(conformance => conformance.Trait.GetConstant(name))
+		.FirstOrDefault(static constant => constant is not null);
+	
+	private IResolvedExpressionNode ResolveTraitConstant(IExpressionNode node, TypeSymbol owner,
+		GlobalSymbol requirement)
+	{
+		var map = new Dictionary<TypeParameterSymbol, TypeSymbol> { [requirement.Trait!.Self] = owner };
+		var type = _typePool.Substitute(_signatures.GetGlobalType(requirement), map);
+		return new ResolvedTraitConstantExpressionNode(owner, requirement, type, node);
+	}
+	
+	private GlobalSymbol[] FindTraitConstants(TypeSymbol type, string name) => type is TypeParameterSymbol parameter
+		?
+		[
+			.._typePool.GetBounds(parameter).Select(bound => bound.Trait.GetConstant(name)).OfType<GlobalSymbol>()
+				.Distinct()
+		]
+		:
+		[
+			..GetVisibleConformances(type).Select(conformance => conformance.Trait.GetConstant(name))
+				.OfType<GlobalSymbol>()
+				.Distinct()
+		];
+	
 	private IResolvedExpressionNode VisitStaticMember(AccessExpressionNode node, TypeSymbol type)
 	{
 		if (type is InvalidType)
 			return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
+		
+		if (type.GetStaticField(node.Member.Text) is null &&
+		    FindTraitConstants(type, node.Member.Text) is [_, ..] constants)
+			return constants is [var requirement]
+				? ResolveTraitConstant(node, type, requirement)
+				: Error(node, $"Reference to '{node.Member.Text}' is ambiguous", CurrentTargetType,
+					node.Member.SourceLocation);
 		
 		if (type.GetStaticField(node.Member.Text) is { } field)
 			return CanAccess(type, field.Visibility)

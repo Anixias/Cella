@@ -341,11 +341,12 @@ public sealed partial class Resolver
 			n.Syntax),
 		ResolvedAlignOfExpressionNode n =>
 			new ResolvedAlignOfExpressionNode(_typePool.Substitute(n.Target, map), n.Syntax),
-		ResolvedValueParameterExpressionNode n => map.GetValueOrDefault(n.Parameter) switch
+		ResolvedValueParameterExpressionNode n => _typePool.SubstituteParameter(n.Parameter, map) switch
 		{
 			ValueArgumentType { Value: var value } when n.Type is IntegerType type =>
 				MaterializeLiteral(n.Syntax, type, value),
-			TypeParameterSymbol parameter => new ResolvedValueParameterExpressionNode(parameter, n.Syntax),
+			TypeParameterSymbol parameter when parameter != n.Parameter =>
+				new ResolvedValueParameterExpressionNode(parameter, n.Syntax),
 			_ => n
 		},
 		ResolvedUnaryOpExpressionNode n =>

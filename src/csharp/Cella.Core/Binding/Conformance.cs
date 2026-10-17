@@ -23,6 +23,7 @@ public sealed class Conformance
 	public ImplSymbol? Impl { get; } = impl;
 	public SourceLocation Location { get; } = location;
 	public Dictionary<FunctionSymbol, Witness> Witnesses { get; } = [];
+	public Dictionary<GlobalSymbol, GlobalSymbol> ConstantWitnesses { get; } = [];
 }
 
 public abstract record Witness;

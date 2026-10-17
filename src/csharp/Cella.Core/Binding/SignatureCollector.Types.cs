@@ -99,6 +99,11 @@ public sealed partial class SignatureCollector
 					
 					break;
 				
+				case GlobalNode { IsConstant: true } when symbol is GlobalSymbol { Trait: not null } or
+					GlobalSymbol { Impl.Node.Traits.IsEmpty: false }:
+					Complete(symbol);
+					break;
+				
 				case GlobalNode global:
 					Diagnostics.Add(new(DiagnosticSeverity.Error, global.Identifier.SourceLocation,
 						$"Cannot declare static fields in {kind}"));

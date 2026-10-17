@@ -68,6 +68,45 @@ public sealed partial class TypePool
 		}
 	}
 	
+	public TypeParameterSymbol GetConstantProjection(TypeSymbol owner, GlobalSymbol constant)
+	{
+		if (_constantProjections.TryGetValue((owner, constant), out var existing))
+			return existing;
+		
+		var type = GlobalTypeOf?.Invoke(constant) is { } declared && constant.Trait is { } trait
+			? Substitute(declared, new Dictionary<TypeParameterSymbol, TypeSymbol> { [trait.Self] = owner })
+			: NativeSymbols.Invalid;
+		
+		var projection = new TypeParameterSymbol($"{owner.Name}.{constant.Name}", [])
+		{
+			IsValue = true,
+			ValueType = type,
+			ConstantOwner = owner,
+			Constant = constant
+		};
+		
+		_constantProjections[(owner, constant)] = projection;
+		return projection;
+	}
+	
+	public TypeSymbol SubstituteParameter(TypeParameterSymbol parameter,
+		IReadOnlyDictionary<TypeParameterSymbol, TypeSymbol> map)
+	{
+		if (parameter is not { ConstantOwner: { } owner, Constant: { } constant })
+			return map.GetValueOrDefault(parameter, parameter);
+		
+		var substituted = Substitute(owner, map);
+		if (ContainsTypeParameters(substituted))
+			return substituted == owner ? parameter : GetConstantProjection(substituted, constant);
+		
+		return TraitConstantValue?.Invoke(substituted, constant) is Constants.IntegerConstant { Value: var value }
+			? GetValueArgument(value)
+			: NativeSymbols.Invalid;
+	}
+	
+	public Dictionary<TypeParameterSymbol, TypeSymbol> GetConformanceMap(Conformance conformance, TypeSymbol type) =>
+		CreateMap(conformance.Parameters, GetTargetArguments(conformance, type));
+	
 	private ImmutableArray<TypeSymbol> GetTargetArguments(Conformance conformance, TypeSymbol type) =>
 		conformance.Target is TypeParameterSymbol ? [type] : GetShapeArguments(type);
 	

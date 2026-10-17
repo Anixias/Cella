@@ -175,6 +175,8 @@ public sealed class TypeParameterSymbol(string name, IEnumerable<Token> keywords
 	public bool IsTrait => Has(TokenType.KeywordTrait);
 	public bool IsValue { get; init; }
 	public bool IsSelf { get; init; }
+	public TypeSymbol? ConstantOwner { get; init; }
+	public GlobalSymbol? Constant { get; init; }
 	public string? Owner { get; init; }
 	public TypeSymbol? ValueType { get; internal set; }
 	
@@ -644,6 +646,8 @@ public sealed class GlobalSymbol(GlobalNode syntax, Visibility visibility)
 		syntax.WriteVisibility is { } write ? Visibility.FromKeyword(write) : visibility;
 	
 	public TypeSymbol? ContainingType { get; internal set; }
+	public TraitSymbol? Trait { get; set; }
+	public ImplSymbol? Impl { get; set; }
 	public bool IsExternal => Syntax.IsExternal;
 	public bool IsImport => Syntax is { IsExternal: true, Initializer: null };
 	
@@ -857,7 +861,10 @@ public sealed class TraitSymbol
 	public ImmutableArray<MethodSymbol> Functions { get; } = functions.ToImmutableArray();
 	public ImmutableArray<PropertySymbol> Properties { get; } = properties.ToImmutableArray();
 	public ImmutableArray<FunctionSymbol> Constructors { get; } = constructors.ToImmutableArray();
+	public ImmutableArray<GlobalSymbol> Constants { get; init; } = [];
 	public Visibility Visibility { get; } = Visibility.FromKeyword(node.Visibility);
+	
+	public GlobalSymbol? GetConstant(string name) => Constants.FirstOrDefault(c => c.Name == name);
 	
 	public IEnumerable<MethodSymbol> GetFunctions(string name) => Functions.Where(f => f.Name == name);
 	public PropertySymbol? GetProperty(string name) => Properties.FirstOrDefault(p => p.Name == name);
@@ -877,6 +884,7 @@ public sealed class ImplSymbol
 	public ImmutableArray<TypeSymbol> TargetArguments { get; set; } = [..typeParameters];
 	public ImmutableArray<MethodSymbol> Functions { get; } = functions.ToImmutableArray();
 	public ImmutableArray<PropertySymbol> Properties { get; } = properties.ToImmutableArray();
+	public ImmutableArray<GlobalSymbol> Constants { get; init; } = [];
 	
 	public bool Declares(TypeParameterSymbol parameter) => TargetArguments.Contains(parameter);
 	

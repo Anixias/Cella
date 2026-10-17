@@ -1,0 +1,19 @@
+mod numbers
+
+Integer: pub trait
+{
+	bits: const u32
+	bytes: const u32 = bits / 8
+}
+
+i32: impl Integer
+{
+	bits: const u32 = 32
+}
+
+[T]: impl Integer
+{
+	bits: const u32 = u32(sizeOf(T)) * 8
+}
+
+byteCount[T: Integer]: pub fun -> u32 = T.bytes

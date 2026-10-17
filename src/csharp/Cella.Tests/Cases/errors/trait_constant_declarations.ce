@@ -1,0 +1,33 @@
+mod test
+
+Integer: trait
+{
+	bits: const u32
+	bytes: const u32 = bits / 8
+}
+
+Flags: trait
+{
+	value: val u32 = 1
+}
+
+u16: impl Integer
+
+i64: impl Integer
+{
+	bits: const i32 = 64
+}
+
+Small: rec impl Integer
+{
+	value: u8
+
+	bits: val u32 = 8
+}
+
+u32: impl
+{
+	limit: const u32 = 7
+}
+
+main: fun -> i32 = 0

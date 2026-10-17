@@ -165,8 +165,14 @@ public readonly struct ResolutionContext
 		if (ImplBlock is { } impl && ResolveStatic(impl.Functions, impl.Properties, name) is { } blockMember)
 			return blockMember;
 		
+		if (ImplBlock?.Constants.FirstOrDefault(constant => constant.Name == name) is { } blockConstant)
+			return blockConstant;
+		
 		if (Trait is { } owner && ResolveStatic(owner.Functions, owner.Properties, name) is { } traitMember)
 			return traitMember;
+		
+		if (Trait?.GetConstant(name) is { } traitConstant)
+			return traitConstant;
 		
 		for (var type = ContainingType; type is not null; type = type.ContainingType)
 		{
@@ -724,6 +730,12 @@ public readonly struct ResolutionContext
 	
 	public TypeSymbol ResolveGenericArgumentExpression(IExpressionNode expression, TypeParameterSymbol? parameter)
 	{
+		if (expression is AccessExpressionNode { Target: VarExpressionNode target } projected &&
+		    Resolve(target.Identifier.Text) is TypeParameterSymbol { IsValue: false, IsTrait: false } owner &&
+		    TypePool.GetBounds(owner).Select(bound => bound.Trait.GetConstant(projected.Member.Text))
+			    .OfType<GlobalSymbol>().Distinct().ToList() is [var constant])
+			return TypePool.GetConstantProjection(owner, constant);
+		
 		var named = expression is VarExpressionNode or AccessExpressionNode ? FindNamed(expression) : null;
 		return named switch
 		{
@@ -806,6 +818,8 @@ public readonly struct ResolutionContext
 	private bool MentionsValueParameter(IExpressionNode expression) => expression switch
 	{
 		VarExpressionNode => FindNamed(expression) is TypeParameterSymbol { IsValue: true },
+		AccessExpressionNode { Target: VarExpressionNode target } =>
+			Resolve(target.Identifier.Text) is TypeParameterSymbol { IsValue: false, IsTrait: false },
 		BinaryOpExpressionNode binary => MentionsValueParameter(binary.Left) || MentionsValueParameter(binary.Right),
 		UnaryOpExpressionNode unary => MentionsValueParameter(unary.Operand),
 		ChainedExpressionNode chained => chained.Operands.Any(MentionsValueParameter),

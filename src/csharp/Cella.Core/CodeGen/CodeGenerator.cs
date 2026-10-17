@@ -651,7 +651,8 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 		foreach (var file in module.Files)
 		{
 			var globals = file.Globals.Where(static global =>
-				global.Symbol.ContainingType is not NamedTypeSymbol { IsGenericDefinition: true });
+				global.Symbol.ContainingType is not NamedTypeSymbol { IsGenericDefinition: true } &&
+				global.Symbol is { Trait: null, Impl: null });
 			
 			foreach (var global in globals.Where(static global => !global.Symbol.IsImport))
 				DefineGlobal(global);

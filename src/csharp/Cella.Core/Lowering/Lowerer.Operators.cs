@@ -381,7 +381,7 @@ public sealed partial class Lowerer
 		private bool IsStable(Value value) => value switch
 		{
 			ConstantValue or ZeroValue or DefaultValue or UndefValue or FunctionReferenceValue or SizeOfValue
-				or AlignOfValue or ValueParameterValue => true,
+				or AlignOfValue or ValueParameterValue or TraitConstantValue => true,
 			VariableValue { Variable.Symbol: LocalVariableSymbol symbol } =>
 				!symbol.IsMutable && !symbol.IsDeferred || _temporaries.Contains(symbol),
 			VariableValue { Variable.Symbol: ParameterSymbol { Mode: ParameterMode.Mut } } => true,

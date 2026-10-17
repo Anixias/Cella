@@ -348,8 +348,12 @@ public sealed class SymbolCollector : IDeclarationNodeVisitor<Symbol>
 		
 		var trait = new TraitSymbol(node, self, functions, properties, constructors)
 		{
-			TypeParameters = typeParameters
+			TypeParameters = typeParameters,
+			Constants = [..GetConstants(node.Members)]
 		};
+		
+		foreach (var constant in trait.Constants)
+			constant.Trait = trait;
 		
 		foreach (var function in GetMemberFunctions(functions, properties).Concat(constructors))
 			function.Trait = trait;
@@ -381,7 +385,15 @@ public sealed class SymbolCollector : IDeclarationNodeVisitor<Symbol>
 		_typeVisibilities.Pop();
 		_typeParameters.Pop();
 		
-		var impl = new ImplSymbol(node, typeParameters, functions, properties) { TraitNames = traits };
+		var impl = new ImplSymbol(node, typeParameters, functions, properties)
+		{
+			TraitNames = traits,
+			Constants = [..GetConstants(node.Members)]
+		};
+		
+		foreach (var constant in impl.Constants)
+			constant.Impl = impl;
+		
 		foreach (var function in GetMemberFunctions(functions, properties))
 			function.Impl = impl;
 		
@@ -427,6 +439,12 @@ public sealed class SymbolCollector : IDeclarationNodeVisitor<Symbol>
 			.OfType<FunctionAccessor>()
 			.Select(static accessor => accessor.Function)
 	];
+	
+	private IEnumerable<GlobalSymbol> GetConstants(IEnumerable<IDeclarationNode> members) => members
+		.OfType<GlobalNode>()
+		.Select(member => _builder.DeclarationSymbols.GetValueOrDefault(member))
+		.OfType<GlobalSymbol>()
+		.Where(static global => global.IsConstant);
 	
 	public Symbol Visit(GlobalNode node)
 	{

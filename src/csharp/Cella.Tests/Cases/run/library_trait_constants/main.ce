@@ -1,0 +1,31 @@
+mod test
+
+use numbers.Integer
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Rgb: rec impl Integer
+{
+	r: u8
+	g: u8
+	b: u8
+
+	bits: const u32 = 24
+}
+
+buffer[T: Integer]: fun -> array[u8, T.bytes]
+{
+	var result: array[u8, T.bytes]
+	ret result
+}
+
+main: fun -> i32
+{
+	val wide = buffer[i64]()
+	printf("%u %u %u %u\n", i32.bits, numbers.byteCount[i32](), numbers.byteCount[Rgb](), Rgb.bytes)
+	printf("%zu %zu\n", buffer[Rgb]().length, wide.length)
+	ret 0
+}

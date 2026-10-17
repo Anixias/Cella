@@ -27,12 +27,58 @@ public sealed partial class SignatureCollector
 					$"'{trait}' and '{conformance.Target.Name}' are both declared in other projects"));
 			
 			MatchRequirements(conformance);
+			MatchConstants(conformance);
 			CheckRequiredTraits(conformance);
 		}
 		
 		foreach (var impl in _impls)
 			ReportUnmatchedMembers(impl);
 	}
+	
+	private void MatchConstants(Conformance conformance)
+	{
+		var self = GetConformanceSelf(conformance);
+		if (self is InvalidType)
+			return;
+		
+		var trait = DescribeTrait(conformance);
+		var traitMap = CreateTraitMap(conformance, self);
+		foreach (var requirement in conformance.Trait.Constants)
+		{
+			var name = requirement.Name;
+			if (FindConstantCandidate(conformance, name) is not { } candidate)
+			{
+				if (requirement.Syntax.Initializer is not null)
+					conformance.ConstantWitnesses[requirement] = requirement;
+				else
+					ReportConformance(conformance.Location,
+						$"'{DiagnosticReporter.DescribeType(self)}' needs '{trait}.{name}'");
+				
+				continue;
+			}
+			
+			_witnessConstants.Add(candidate);
+			var expected = _typePool.Substitute(GetGlobalType(requirement), traitMap);
+			if (!candidate.IsConstant || GetGlobalType(candidate) is var actual && actual != expected &&
+			    actual is not InvalidType && expected is not InvalidType)
+			{
+				ReportConformance(candidate.Syntax.Identifier.SourceLocation,
+					$"'{name}' doesn't match '{trait}.{name}'");
+				
+				continue;
+			}
+			
+			conformance.ConstantWitnesses[requirement] = candidate;
+		}
+		
+		if (!TypePool.ContainsTypeParameters(self))
+			foreach (var requirement in conformance.ConstantWitnesses.Keys)
+				EvaluateTraitConstant(self, requirement);
+	}
+	
+	private static GlobalSymbol? FindConstantCandidate(Conformance conformance, string name) =>
+		conformance.Impl?.Constants.FirstOrDefault(constant => constant.Name == name) ??
+		conformance.Target.OriginalDefinition.GetStaticField(name);
 	
 	private void CheckRequiredTraits(Conformance conformance)
 	{
@@ -548,6 +594,10 @@ public sealed partial class SignatureCollector
 			Diagnostics.Add(new(DiagnosticSeverity.Error, GetFunctionLocation(function),
 				$"'{name}' isn't a member of {string.Join(" or ", traits)}"));
 		}
+		
+		foreach (var constant in impl.Constants.Where(constant => !_witnessConstants.Contains(constant)))
+			Diagnostics.Add(new(DiagnosticSeverity.Error, constant.Syntax.Identifier.SourceLocation,
+				$"'{constant.Name}' isn't a member of {string.Join(" or ", traits)}"));
 	}
 	
 	private bool DeferConstraintCheck(ConstraintCheck check)

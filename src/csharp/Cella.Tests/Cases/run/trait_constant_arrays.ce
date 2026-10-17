@@ -1,0 +1,69 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Integer: trait
+{
+	bits: const u32
+	bytes: const u32 = bits / 8
+	signed: const bool = false
+}
+
+i32: impl Integer
+{
+	bits: const u32 = 32
+	signed: const bool = true
+}
+
+u8: impl Integer
+{
+	bits: const u32 = 8
+}
+
+Wide: rec impl Integer
+{
+	low: u64
+	high: u64
+
+	bits: const u32 = 128
+}
+
+box[T: Integer]: rec
+{
+	value: T
+}
+
+box[T: Integer]: impl Integer
+{
+	bits: const u32 = T.bits * 2
+}
+
+toBytes[T: Integer]: fun(seed: u8) -> array[u8, T.bytes]
+{
+	var result: array[u8, T.bytes]
+	for i in 0..result.length
+	{
+		result[i] = seed + u8(i)
+	}
+
+	ret result
+}
+
+Buffer[T: Integer]: rec
+{
+	data: array[u8, T.bytes]
+}
+
+main: fun -> i32
+{
+	val four = toBytes[i32](10)
+	val one = toBytes[u8](7)
+	val boxed = toBytes[box[u8]](1)
+	val concrete: array[u8, i32.bytes] = [1, 2, 3, 4]
+	printf("%zu %u %u %zu %zu\n", four.length, four[0], four[3], one.length, boxed.length)
+	printf("%zu %zu %zu\n", sizeOf(Buffer[Wide]), sizeOf(Buffer[i32]), concrete.length)
+	ret 0
+}

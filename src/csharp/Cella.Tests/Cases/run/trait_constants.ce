@@ -1,0 +1,64 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Integer: trait
+{
+	bits: const u32
+	bytes: const u32 = bits / 8
+	signed: const bool = false
+}
+
+i32: impl Integer
+{
+	bits: const u32 = 32
+	signed: const bool = true
+}
+
+u8: impl Integer
+{
+	bits: const u32 = 8
+}
+
+Wide: rec impl Integer
+{
+	low: u64
+	high: u64
+
+	bits: const u32 = 128
+}
+
+box[T: Integer]: rec
+{
+	value: T
+}
+
+box[T: Integer]: impl Integer
+{
+	bits: const u32 = T.bits * 2
+}
+
+Size: trait
+{
+	size: const usize
+}
+
+[T]: impl Size
+{
+	size: const usize = sizeOf(T)
+}
+
+describe[T: Integer]: fun -> u32 = T.bits + T.bytes
+
+doubled: const u32 = i32.bits * 2
+
+main: fun -> i32
+{
+	printf("%u %u %u %u %u\n", i32.bits, i32.bytes, u8.bytes, Wide.bits, Wide.bytes)
+	printf("%u %u %u %u\n", box[u8].bits, box[i32].bytes, describe[i32](), describe[box[u8]]())
+	printf("%d %d %zu %zu %u\n", i32.signed, u8.signed, Wide.size, i32.size, doubled)
+	ret 0
+}

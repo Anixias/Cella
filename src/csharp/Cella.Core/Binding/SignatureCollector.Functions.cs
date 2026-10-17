@@ -389,6 +389,7 @@ public sealed partial class SignatureCollector
 	private bool IsParametric(IResolvedExpressionNode node) => node switch
 	{
 		ResolvedSizeOfExpressionNode or ResolvedAlignOfExpressionNode or ResolvedValueParameterExpressionNode => true,
+		ResolvedTraitConstantExpressionNode n => TypePool.ContainsTypeParameters(n.Owner),
 		ResolvedUnaryOpExpressionNode { Operation: NativeImpl } n => IsParametric(n.Operand),
 		ResolvedBinaryOpExpressionNode { Operation: NativeImpl } n => IsParametricOperand(n.Left) &&
 		                                                              IsParametricOperand(n.Right),

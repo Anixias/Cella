@@ -1,0 +1,21 @@
+mod test
+
+Integer: trait
+{
+	bits: const u32
+	bytes: const u32 = bits / 8
+}
+
+i32: impl Integer
+{
+	bits: const u32 = 32
+}
+
+unbounded[T]: fun -> u32 = T.bits
+arithmetic[T: Integer]: fun -> array[u8, T.bits / 8]
+{
+	var result: array[u8, T.bits / 8]
+	ret result
+}
+
+main: fun -> i32 = 0

@@ -1,0 +1,9 @@
+
+====== trait_constant_members.ce ======
+
+Error at line 8, column 30
+7 │ 
+8 │ unbounded[T]: fun -> u32 = T.bits
+                                 ╘══╛ Type 'T' has no member 'bits'
+
+[compilation failed]

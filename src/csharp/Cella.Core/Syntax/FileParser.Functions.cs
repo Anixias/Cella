@@ -83,13 +83,15 @@ public sealed partial class FileParser
 		bool isExternal = false, Token? externalName = null)
 	{
 		var type = ParseType(ref index);
-		if (!MatchOnLine(ref index, TokenType.OpEqual))
+		IExpressionNode? initializer = null;
+		if (MatchOnLine(ref index, TokenType.OpEqual))
+			initializer = ParseExpression(ref index);
+		else if (!allowsMissingBodies || keyword.Type != TokenType.KeywordConst)
 		{
 			Report(type.SourceLocation, "Expected '=' and an initial value");
 			return null;
 		}
 		
-		var initializer = ParseExpression(ref index);
 		return new(identifier, keyword, type, initializer)
 		{
 			Visibility = modifiers.Visibility,

@@ -1,0 +1,10 @@
+mod test
+
+Integer: trait
+{
+	bits: const u32
+}
+
+unbounded[T]: fun -> u32 = T.bits
+
+main: fun -> i32 = 0
