@@ -2,6 +2,7 @@
 using Cella.Compiler;
 using Cella.Compiler.Building;
 using Cella.Core.Binding;
+using Cella.Core.Text;
 using Cella.Diagnostics;
 
 namespace Cella.LanguageServer;
@@ -139,6 +140,44 @@ public sealed class Workspace(Func<JsonObject, Task> notify, TimeSpan debounce)
 				.FirstOrDefault(static references => references.Count > 0) ?? [];
 		}
 	}
+	
+	public IReadOnlyList<SourceLocation> FindUsages(string uri, int line, int character, bool includeDeclaration)
+	{
+		if (Find(uri, line, character)?.Declaration is not { } declaration)
+			return [];
+		
+		ProjectCheck[] projects;
+		lock (_lock)
+			projects = [.._results.Values.SelectMany(static result => result.Projects)];
+		
+		var seen = new Dictionary<string, HashSet<TextRange>>(Protocol.PathComparer);
+		var usages = new List<SourceLocation>();
+		foreach (var model in projects.Select(static project => project.Model?.Value).OfType<SemanticModel>())
+		{
+			foreach (var reference in model.GetReferences())
+			{
+				if (reference.Declaration is not { } target || !IsSameLocation(target, declaration) ||
+				    !includeDeclaration && IsSameLocation(reference.Location, declaration))
+					continue;
+				
+				var path = reference.Location.Source.FilePath;
+				if (!seen.TryGetValue(path, out var ranges))
+					seen[path] = ranges = [];
+				
+				if (ranges.Add(reference.Location.Range))
+					usages.Add(reference.Location);
+			}
+		}
+		
+		return
+		[
+			..usages.OrderBy(static usage => usage.Source.FilePath, Protocol.PathComparer)
+				.ThenBy(static usage => usage.Range.Start)
+		];
+	}
+	
+	private static bool IsSameLocation(SourceLocation left, SourceLocation right) =>
+		left.Range == right.Range && Protocol.PathComparer.Equals(left.Source.FilePath, right.Source.FilePath);
 	
 	private static IEnumerable<SemanticModel> ModelsOf(string path, IEnumerable<ProjectCheck> projects) => projects
 		.Where(project => project.Files.Any(file => Protocol.PathComparer.Equals(file.Symbol.FullPath, path)))

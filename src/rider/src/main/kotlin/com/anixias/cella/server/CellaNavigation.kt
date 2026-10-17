@@ -3,14 +3,20 @@ package com.anixias.cella.server
 import com.anixias.cella.CellaLanguage
 import com.anixias.cella.lexer.CellaToken
 import com.anixias.cella.lexer.CellaTokenTypes
+import com.intellij.codeInsight.daemon.impl.HighlightInfoType
 import com.intellij.codeInsight.navigation.actions.GotoDeclarationHandler
+import com.intellij.lang.annotation.AnnotationHolder
+import com.intellij.lang.annotation.Annotator
 import com.intellij.lang.documentation.DocumentationMarkup
 import com.intellij.model.Pointer
 import com.intellij.openapi.application.runReadActionBlocking
+import com.intellij.openapi.editor.Document
 import com.intellij.openapi.editor.Editor
-import com.intellij.openapi.project.Project
 import com.intellij.openapi.editor.richcopy.HtmlSyntaxInfoUtil
+import com.intellij.openapi.fileEditor.FileDocumentManager
+import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.LocalFileSystem
+import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.platform.backend.documentation.DocumentationResult
 import com.intellij.platform.backend.documentation.DocumentationTarget
 import com.intellij.platform.backend.documentation.DocumentationTargetProvider
@@ -31,15 +37,55 @@ private val namedTokens = setOf(
 	CellaToken.DECLARATION_KEYWORD, CellaToken.MODIFIER_KEYWORD
 )
 
-private fun isNamed(element: PsiElement) = CellaTokenTypes.tokenOf(element.node?.elementType) in namedTokens
+private val hoverTokens = setOf(CellaToken.IDENTIFIER, CellaToken.BUILTIN_TYPE, CellaToken.OPERATOR)
+
+internal fun isNamed(element: PsiElement) = CellaTokenTypes.tokenOf(element.node?.elementType) in namedTokens
+
+internal fun namedElementAt(file: PsiFile, offset: Int): PsiElement? =
+	file.findElementAt(offset)?.takeIf(::isNamed)
+		?: file.findElementAt(offset - 1)?.takeIf(::isNamed)
+
+internal class CellaLocation(val file: VirtualFile, val offset: Int) {
+	fun isAt(element: PsiElement) =
+		element.containingFile?.virtualFile == file && element.textRange.startOffset == offset
+}
+
+internal fun locate(uri: String, position: Position): CellaLocation? {
+	val file = LocalFileSystem.getInstance().findFileByNioFile(Path.of(URI(uri))) ?: return null
+	val document = FileDocumentManager.getInstance().getDocument(file) ?: return null
+	if (position.line >= document.lineCount)
+		return null
+	
+	val lineStart = document.getLineStartOffset(position.line)
+	return CellaLocation(file, (lineStart + position.character).coerceAtMost(document.getLineEndOffset(position.line)))
+}
+
+internal fun definitionAt(project: Project, file: VirtualFile, document: Document, offset: Int): CellaLocation? {
+	val server = CellaServer.get(project)
+	val position = server.position(document, offset)
+	val result = server.await(server.request {
+		it.textDocumentService.definition(DefinitionParams(TextDocumentIdentifier(CellaServer.uriOf(file)), position))
+	}, 2000) ?: return null
+	
+	val (uri, start) = (if (result.isLeft) result.left.map { it.uri to it.range.start } else
+		result.right.map { it.targetUri to it.targetSelectionRange.start }).firstOrNull() ?: return null
+	
+	return runReadActionBlocking { locate(uri, start) }
+}
+
+class CellaHoverAnnotator : Annotator {
+	override fun annotate(element: PsiElement, holder: AnnotationHolder) {
+		if (CellaTokenTypes.tokenOf(element.node?.elementType) in hoverTokens)
+			holder.newSilentAnnotation(HighlightInfoType.SYMBOL_TYPE_SEVERITY).create()
+	}
+}
 
 class CellaDocumentationTargetProvider : DocumentationTargetProvider {
 	override fun documentationTargets(file: PsiFile, offset: Int): List<DocumentationTarget> {
 		if (file.language != CellaLanguage)
 			return emptyList()
 		
-		val element = file.findElementAt(offset) ?: return emptyList()
-		return if (isNamed(element)) listOf(CellaDocumentationTarget(element)) else emptyList()
+		return listOfNotNull(namedElementAt(file, offset)?.let(::CellaDocumentationTarget))
 	}
 }
 
@@ -87,23 +133,11 @@ class CellaGotoDeclarationHandler : GotoDeclarationHandler {
 		
 		val project = editor.project ?: return null
 		val file = source.containingFile?.virtualFile ?: return null
-		val server = CellaServer.get(project)
-		val position = server.position(editor.document, source.textRange.startOffset)
-		val result = server.await(server.request {
-			it.textDocumentService.definition(DefinitionParams(TextDocumentIdentifier(CellaServer.uriOf(file)), position))
-		}, 2000) ?: return null
+		val location = definitionAt(project, file, editor.document, source.textRange.startOffset) ?: return null
+		if (location.isAt(source))
+			return null
 		
-		val locations = if (result.isLeft) result.left.map { it.uri to it.range.start } else
-			result.right.map { it.targetUri to it.targetSelectionRange.start }
-		
-		return locations.mapNotNull { (uri, start) ->
-			val target = LocalFileSystem.getInstance().findFileByNioFile(Path.of(URI(uri))) ?: return@mapNotNull null
-			val psi = PsiManager.getInstance(project).findFile(target) ?: return@mapNotNull null
-			val document = psi.viewProvider.document ?: return@mapNotNull null
-			if (start.line >= document.lineCount)
-				return@mapNotNull null
-			
-			psi.findElementAt(document.getLineStartOffset(start.line) + start.character)
-		}.toTypedArray()
+		val target = PsiManager.getInstance(project).findFile(location.file)?.findElementAt(location.offset)
+		return target?.let { arrayOf(it) }
 	}
 }

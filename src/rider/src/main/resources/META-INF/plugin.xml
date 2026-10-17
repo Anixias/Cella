@@ -46,10 +46,20 @@
 		<platform.backend.documentation.targetProvider
 				implementation="com.anixias.cella.server.CellaDocumentationTargetProvider"/>
 		<gotoDeclarationHandler implementation="com.anixias.cella.server.CellaGotoDeclarationHandler"/>
+		<annotator language="Cella" implementationClass="com.anixias.cella.server.CellaHoverAnnotator"/>
+		<psi.declarationProvider implementation="com.anixias.cella.server.CellaDeclarationProvider"/>
+		<uiDataRule implementation="com.anixias.cella.server.CellaSearchTargetsRule"/>
+		<searcher forClass="com.intellij.find.usages.api.UsageSearchParameters"
+		          implementationClass="com.anixias.cella.server.CellaUsageSearcher"/>
 		<completion.contributor language="Cella"
 		                        implementationClass="com.anixias.cella.server.CellaCompletionContributor"/>
 		<codeInsight.parameterInfo language="Cella"
 		                           implementationClass="com.anixias.cella.server.CellaParameterInfoHandler"/>
 		<typedHandler implementation="com.anixias.cella.server.CellaTypedHandler"/>
 	</extensions>
+	
+	<applicationListeners>
+		<listener topic="com.intellij.openapi.actionSystem.ex.AnActionListener"
+		          class="com.anixias.cella.server.CellaActionListener"/>
+	</applicationListeners>
 </idea-plugin>

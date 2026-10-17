@@ -217,6 +217,44 @@ public sealed class LanguageServerTests : IAsyncDisposable
 		Assert.Equal(0, await ShutDownAsync());
 	}
 	
+	private async Task<List<string>> UsagesAsync(int line, int character, bool includeDeclaration)
+	{
+		for (var attempt = 0; attempt < 200; attempt++)
+		{
+			var parameters = Position(line, character);
+			parameters["textDocument"]!["uri"] = SourceUri;
+			parameters["context"] = new JsonObject { ["includeDeclaration"] = includeDeclaration };
+			var usages = (JsonArray)(await ReadResponseAsync(await RequestAsync("textDocument/references", parameters)))
+				["result"]!;
+			
+			if (usages.Count > 0)
+				return usages.Select(static usage =>
+				{
+					Assert.EndsWith("main.ce", (string)usage!["uri"]!);
+					var start = usage["range"]!["start"]!;
+					return $"{(int)start["line"]!}:{(int)start["character"]!}";
+				}).ToList();
+			
+			await Task.Delay(50, Token);
+		}
+		
+		throw new TimeoutException();
+	}
+	
+	[Fact]
+	public async Task FindsUsages()
+	{
+		await File.WriteAllTextAsync(SourcePath, NavigationSource, Token);
+		await InitializeAsync();
+		
+		Assert.Equal(["8:20", "12:14"], await UsagesAsync(2, 2, false));
+		Assert.Equal(["2:0", "8:20", "12:14"], await UsagesAsync(12, 16, true));
+		Assert.Equal(["8:36", "8:46"], await UsagesAsync(8, 14, false));
+		Assert.Equal(["8:42"], await UsagesAsync(4, 1, false));
+		Assert.Equal(["13:5"], await UsagesAsync(8, 0, false));
+		Assert.Equal(0, await ShutDownAsync());
+	}
+	
 	[Fact]
 	public async Task ClassifiesNamesInTheOpenText()
 	{
@@ -309,6 +347,7 @@ public sealed class LanguageServerTests : IAsyncDisposable
 		Assert.Equal(Code("+: op(imm a: Vec[i64], imm b: Vec[i64]) -> i64"), await HoverAsync(15, 11));
 		Assert.Equal(Code("const count: i32"), await HoverAsync(14, 22));
 		Assert.Equal(Code("char"), await HoverAsync(13, 17));
+		Assert.Equal(["15:11"], await UsagesAsync(5, 1, false));
 		
 		var operation = await DefinitionAsync(15, 11);
 		Assert.Equal(5, (int)operation!["range"]!["start"]!["line"]!);

@@ -109,6 +109,18 @@ public sealed class Server
 					})
 					: null);
 			
+			case "textDocument/references":
+				var position = parameters!["position"]!;
+				return (true, new JsonArray([
+					.._workspace.FindUsages(GetUri(parameters), (int)position["line"]!, (int)position["character"]!,
+							(bool?)parameters["context"]?["includeDeclaration"] ?? false)
+						.Select(JsonNode (usage) => new JsonObject
+						{
+							["uri"] = _workspace.UriOf(usage.Source.FilePath),
+							["range"] = Protocol.ToRange(usage)
+						})
+				]));
+			
 			case "textDocument/didClose":
 				_workspace.Close(GetUri(parameters));
 				return (true, null);
@@ -202,6 +214,7 @@ public sealed class Server
 		{
 			["hoverProvider"] = true,
 			["definitionProvider"] = true,
+			["referencesProvider"] = true,
 			["completionProvider"] = new JsonObject { ["triggerCharacters"] = new JsonArray(".") },
 			["signatureHelpProvider"] = new JsonObject
 			{
