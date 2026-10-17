@@ -115,15 +115,15 @@ public sealed class SemanticModel
 		
 		references.Add(new(location, symbol, description) { NeedsDrop = NeedsDrop(symbol) });
 	}
-
+	
 	private bool NeedsDrop(Symbol symbol)
 	{
 		if (symbol is not TypeSymbol { OriginalDefinition: RecordSymbol } type || needsDrop is null)
 			return false;
-
+		
 		if (!_drops.TryGetValue(type, out var drops))
 			_drops[type] = drops = needsDrop(type);
-
+		
 		return drops;
 	}
 	

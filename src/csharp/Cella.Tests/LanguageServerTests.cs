@@ -391,21 +391,21 @@ public sealed class LanguageServerTests : IAsyncDisposable
 		                                 	val c = Color.red
 		                                 	ret b.x + v.point.x
 		                                 }
-
+		                                 
 		                                 Handle: rec
 		                                 {
 		                                 	id: i32
-
+		                                 
 		                                 	drop: op { }
 		                                 }
-
+		                                 
 		                                 Owner: rec
 		                                 {
 		                                 	handle: Handle
 		                                 }
-
+		                                 
 		                                 """);
-
+		
 		Assert.Contains("2:0:5 struct declaration", tokens);
 		Assert.Contains("14:0:4 struct declaration ref", tokens);
 		Assert.Contains("34:0:6 struct declaration drop", tokens);
