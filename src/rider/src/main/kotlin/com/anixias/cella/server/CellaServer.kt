@@ -14,6 +14,7 @@ import com.intellij.openapi.components.service
 import com.intellij.openapi.diagnostic.logger
 import com.intellij.openapi.editor.Document
 import com.intellij.openapi.fileEditor.FileDocumentManager
+import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiManager
@@ -50,6 +51,7 @@ import java.nio.file.Path
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.TimeoutException
 
 @Service(Service.Level.PROJECT)
 class CellaServer(private val project: Project) : Disposable {
@@ -108,10 +110,19 @@ class CellaServer(private val project: Project) : Disposable {
 		return result
 	}
 	
-	fun <T> await(future: CompletableFuture<T?>, milliseconds: Long = 3000): T? = try {
-		future.get(milliseconds, TimeUnit.MILLISECONDS)
-	} catch (_: Exception) {
-		null
+	fun <T> await(future: CompletableFuture<T?>, milliseconds: Long = 3000): T? {
+		val deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(milliseconds)
+		while (true) {
+			ProgressManager.checkCanceled()
+			try {
+				return future.get(10, TimeUnit.MILLISECONDS)
+			} catch (_: TimeoutException) {
+				if (System.nanoTime() >= deadline)
+					return null
+			} catch (_: Exception) {
+				return null
+			}
+		}
 	}
 	
 	fun open(document: Document, file: VirtualFile) {

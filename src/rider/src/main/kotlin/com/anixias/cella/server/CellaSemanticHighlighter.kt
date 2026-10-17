@@ -10,11 +10,18 @@ import com.intellij.openapi.editor.markup.HighlighterTargetArea
 import com.intellij.openapi.editor.markup.RangeHighlighter
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Key
+import com.intellij.openapi.util.TextRange
 import org.eclipse.lsp4j.SemanticTokensParams
 import org.eclipse.lsp4j.TextDocumentIdentifier
 
 class CellaSemanticHighlighter(private val project: Project, private val server: CellaServer) {
-	private val highlightersKey = Key.create<List<RangeHighlighter>>("cella.semantic.highlighters")
+	companion object {
+		private val highlightersKey = Key.create<List<RangeHighlighter>>("cella.semantic.highlighters")
+		private val declarationsKey = Key.create<List<RangeHighlighter>>("cella.semantic.declarations")
+		
+		fun isDeclaration(document: Document, range: TextRange) = document.getUserData(declarationsKey).orEmpty()
+			.any { it.isValid && it.startOffset == range.startOffset && it.endOffset == range.endOffset }
+	}
 	
 	fun request(document: Document, uri: String, version: Int) {
 		server.request { it.textDocumentService.semanticTokensFull(SemanticTokensParams(TextDocumentIdentifier(uri))) }
@@ -33,6 +40,7 @@ class CellaSemanticHighlighter(private val project: Project, private val server:
 		document.getUserData(highlightersKey)?.forEach { if (it.isValid) markup.removeHighlighter(it) }
 		
 		val added = ArrayList<RangeHighlighter>(data.size / 5)
+		val declarations = ArrayList<RangeHighlighter>()
 		var line = 0
 		var character = 0
 		for (index in data.indices step 5) {
@@ -52,11 +60,16 @@ class CellaSemanticHighlighter(private val project: Project, private val server:
 			val type = legend.tokenTypes.getOrNull(data[index + 3]) ?: continue
 			val modifiers = legend.tokenModifiers.filterIndexed { bit, _ -> data[index + 4] and (1 shl bit) != 0 }.toSet()
 			val key = colorOf(type, modifiers) ?: continue
-			added += markup.addRangeHighlighter(key, start, end, HighlighterLayer.SYNTAX + 1,
+			val highlighter = markup.addRangeHighlighter(key, start, end, HighlighterLayer.SYNTAX + 1,
 				HighlighterTargetArea.EXACT_RANGE)
+			
+			added += highlighter
+			if ("declaration" in modifiers)
+				declarations += highlighter
 		}
 		
 		document.putUserData(highlightersKey, added)
+		document.putUserData(declarationsKey, declarations)
 	}
 	
 	private fun colorOf(type: String, modifiers: Set<String>): TextAttributesKey? = when (type) {

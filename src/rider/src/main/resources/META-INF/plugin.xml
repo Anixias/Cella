@@ -50,6 +50,7 @@
 		<targetElementEvaluator language="Cella"
 		                        implementationClass="com.anixias.cella.server.CellaTargetElementEvaluator"/>
 		<psi.declarationProvider implementation="com.anixias.cella.server.CellaDeclarationProvider"/>
+		<psi.implicitReferenceProvider implementation="com.anixias.cella.server.CellaReferenceProvider"/>
 		<uiDataRule implementation="com.anixias.cella.server.CellaSearchTargetsRule"/>
 		<searcher forClass="com.intellij.find.usages.api.UsageSearchParameters"
 		          implementationClass="com.anixias.cella.server.CellaUsageSearcher"/>
@@ -59,9 +60,4 @@
 		                           implementationClass="com.anixias.cella.server.CellaParameterInfoHandler"/>
 		<typedHandler implementation="com.anixias.cella.server.CellaTypedHandler"/>
 	</extensions>
-	
-	<applicationListeners>
-		<listener topic="com.intellij.openapi.actionSystem.ex.AnActionListener"
-		          class="com.anixias.cella.server.CellaActionListener"/>
-	</applicationListeners>
 </idea-plugin>
