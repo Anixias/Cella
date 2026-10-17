@@ -1,0 +1,40 @@
+<idea-plugin>
+	<id>com.anixias.cella</id>
+	<name>Cella</name>
+	<vendor>Anixias</vendor>
+	<description><![CDATA[Language support for Cella source (.ce) and project (.celp) files.]]></description>
+	
+	<depends>com.intellij.modules.platform</depends>
+	<depends>com.intellij.modules.spellchecker</depends>
+	
+	<extensions defaultExtensionNs="com.intellij">
+		<fileType name="Cella" implementationClass="com.anixias.cella.CellaFileType" fieldName="INSTANCE"
+		          language="Cella" extensions="ce"/>
+		<fileType name="Cella Project" implementationClass="com.anixias.cella.CelpFileType" fieldName="INSTANCE"
+		          language="CellaProject" extensions="celp"/>
+		
+		<lang.parserDefinition language="Cella" implementationClass="com.anixias.cella.psi.CellaParserDefinition"/>
+		<lang.parserDefinition language="CellaProject"
+		                       implementationClass="com.anixias.cella.psi.CelpParserDefinition"/>
+		<lang.syntaxHighlighterFactory language="Cella"
+		                               implementationClass="com.anixias.cella.highlighting.CellaHighlighterFactory"/>
+		<lang.syntaxHighlighterFactory language="CellaProject"
+		                               implementationClass="com.anixias.cella.highlighting.CelpHighlighterFactory"/>
+		<colorSettingsPage implementation="com.anixias.cella.highlighting.CellaColorSettingsPage"/>
+		<colorSettingsPage implementation="com.anixias.cella.highlighting.CelpColorSettingsPage"/>
+		
+		<lang.commenter language="Cella" implementationClass="com.anixias.cella.editor.CellaCommenter"/>
+		<lang.commenter language="CellaProject" implementationClass="com.anixias.cella.editor.CelpCommenter"/>
+		<lang.braceMatcher language="Cella" implementationClass="com.anixias.cella.editor.CellaBraceMatcher"/>
+		<lang.braceMatcher language="CellaProject" implementationClass="com.anixias.cella.editor.CelpBraceMatcher"/>
+		<lang.quoteHandler language="Cella" implementationClass="com.anixias.cella.editor.CellaQuoteHandler"/>
+		<lang.quoteHandler language="CellaProject" implementationClass="com.anixias.cella.editor.CelpQuoteHandler"/>
+		<spellchecker.support language="Cella"
+		                      implementationClass="com.anixias.cella.editor.CellaSpellcheckingStrategy"/>
+		<spellchecker.support language="CellaProject"
+		                      implementationClass="com.anixias.cella.editor.CelpSpellcheckingStrategy"/>
+		<lineIndentProvider implementation="com.anixias.cella.editor.CellaLineIndentProvider"/>
+		<langCodeStyleSettingsProvider implementation="com.anixias.cella.editor.CellaCodeStyleSettingsProvider"/>
+		<typedHandler implementation="com.anixias.cella.editor.CellaTypedHandler"/>
+	</extensions>
+</idea-plugin>
