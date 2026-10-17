@@ -75,6 +75,27 @@ public static class Protocol
 	private static int FindTextEnd(ISource source) =>
 		source.GetText(new TextRange(0, source.Length)).TrimEnd().Length;
 	
+	public static int ToOffset(string text, int line, int character)
+	{
+		var offset = 0;
+		for (var current = 0; current < line && offset < text.Length; current++)
+		{
+			var end = text.IndexOf('\n', offset);
+			if (end < 0)
+				return text.Length;
+			
+			offset = end + 1;
+		}
+		
+		return Math.Min(offset + character, text.Length);
+	}
+	
+	public static JsonObject ToRange(SourceLocation location) => new()
+	{
+		["start"] = ToPosition(location.Source, location.Range.Start),
+		["end"] = ToPosition(location.Source, location.Range.End)
+	};
+	
 	private static JsonObject ToPosition(ISource source, int offset)
 	{
 		if (source.Length == 0)

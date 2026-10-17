@@ -36,6 +36,7 @@ public readonly struct ResolutionContext
 	public Func<ConstraintCheck, bool>? DeferConstraintCheck { get; init; }
 	public Func<string, Symbol?>? Capture { get; init; }
 	public Action<ResolutionContext, TypeSymbol, SourceLocation>? TrackInstance { get; init; }
+	public Action<ITypeNode, TypeSymbol>? RecordType { get; init; }
 	public InlineReturn? InlineReturn { get; init; }
 	
 	public string Mangle(Symbol symbol) => Mangling.Mangle(symbol, Modules, GetQualifiers());
@@ -482,7 +483,14 @@ public readonly struct ResolutionContext
 			? NativeSymbols.Never
 			: ResolveType(node);
 	
-	public TypeSymbol ResolveType(ITypeNode node) => node switch
+	public TypeSymbol ResolveType(ITypeNode node)
+	{
+		var type = ResolveTypeNode(node);
+		RecordType?.Invoke(node, type);
+		return type;
+	}
+	
+	private TypeSymbol ResolveTypeNode(ITypeNode node) => node switch
 	{
 		IdentifierTypeNode n => ResolveNamedType(n.Token),
 		QualifiedTypeNode n => ResolveQualifiedType(n),

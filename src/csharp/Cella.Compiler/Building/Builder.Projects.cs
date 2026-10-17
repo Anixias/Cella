@@ -2,11 +2,12 @@
 using Cella.Compiler.Linking;
 using Cella.Compiler.Projects;
 using Cella.Core.Analysis;
-using Cella.Core.Binding;
 using Cella.Core.Binding.Nodes;
+using Cella.Core.Binding;
 using Cella.Core.CodeGen;
 using Cella.Core.Lowering;
 using Cella.Core.Symbols;
+using Cella.Core.Syntax.Nodes;
 using Cella.Core.Text;
 using Cella.Diagnostics;
 
@@ -105,17 +106,24 @@ public sealed partial class Builder
 			.Except(dependencySymbols)
 			.ToImmutableArray();
 		
+		var typeReferences = new List<(ITypeNode Node, TypeSymbol Type)>();
+		var recordType = options.ChecksOnly
+			? (node, type) => typeReferences.Add((node, type))
+			: (Action<ITypeNode, TypeSymbol>?)null;
+		
 		var signatureCollector = new SignatureCollector(project.Name, entryPointName, symbolTable, typePool,
 			dependencySymbols, indirectSymbols, FindAliases(project, dependencyList), pointerBitSize)
 		{
-			ReportsMissingEntryPoint = parseDiagnostics.ErrorCount == 0
+			ReportsMissingEntryPoint = parseDiagnostics.ErrorCount == 0,
+			RecordType = recordType
 		};
 		
 		var containment = new ErrorContainment(files);
 		containment.MarkSyntaxErrors(parseDiagnostics);
 		var resolver = new Resolver(symbolTable, signatureCollector, typePool, pointerBitSize)
 		{
-			Containment = containment
+			Containment = containment,
+			RecordType = recordType
 		};
 		
 		signatureCollector.Collect([..files], resolver);
@@ -194,7 +202,11 @@ public sealed partial class Builder
 			var found = diagnostics.SelectMany(static list => list).ToList();
 			diagnostics = [new(containment.Filter(found, diagnostic => phases.GetValueOrDefault(diagnostic, 4)))];
 			
-			_projects.Add(new(project.FilePath, [..diagnostics.SelectMany(static list => list)], resolvedFiles));
+			_projects.Add(new(project.FilePath, [..diagnostics.SelectMany(static list => list)], resolvedFiles)
+			{
+				Model = options.ChecksOnly ? new(() => new SemanticModel(resolvedFiles, typeReferences)) : null
+			});
+			
 			if (ReportErrors(diagnostics))
 				return errorResult;
 			

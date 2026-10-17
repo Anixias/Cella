@@ -1,4 +1,5 @@
 ﻿using System.Text.Json.Nodes;
+using Cella.Core.Binding;
 
 namespace Cella.LanguageServer;
 
@@ -79,6 +80,28 @@ public sealed class Server
 				_workspace.Change(GetUri(parameters), (string)changes[^1]!["text"]!);
 				return (true, null);
 			
+			case "textDocument/hover":
+				return (true, Find(parameters) is { } hovered
+					? new JsonObject
+					{
+						["contents"] = new JsonObject
+						{
+							["kind"] = "markdown",
+							["value"] = $"```cella\n{hovered.Description}\n```"
+						},
+						["range"] = Protocol.ToRange(hovered.Location)
+					}
+					: null);
+			
+			case "textDocument/definition":
+				return (true, Find(parameters)?.Declaration is { } declaration
+					? new JsonObject
+					{
+						["uri"] = _workspace.UriOf(declaration.Source.FilePath),
+						["range"] = Protocol.ToRange(declaration)
+					}
+					: null);
+			
 			case "textDocument/didClose":
 				_workspace.Close(GetUri(parameters));
 				return (true, null);
@@ -97,10 +120,15 @@ public sealed class Server
 	
 	private static string GetUri(JsonObject? parameters) => (string)parameters!["textDocument"]!["uri"]!;
 	
+	private SymbolReference? Find(JsonObject? parameters) => _workspace.Find(GetUri(parameters),
+		(int)parameters!["position"]!["line"]!, (int)parameters["position"]!["character"]!);
+	
 	private static JsonObject Capabilities() => new()
 	{
 		["capabilities"] = new JsonObject
 		{
+			["hoverProvider"] = true,
+			["definitionProvider"] = true,
 			["textDocumentSync"] = new JsonObject
 			{
 				["openClose"] = true,

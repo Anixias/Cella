@@ -1,4 +1,5 @@
 ﻿using System.Collections.Immutable;
+using Cella.Core.Binding;
 using Cella.Core.Binding.Nodes;
 using Cella.Diagnostics;
 
@@ -11,4 +12,7 @@ public sealed record ProjectCheck
 	string ProjectPath,
 	ImmutableArray<Diagnostic> Diagnostics,
 	ImmutableArray<ResolvedFileNode> Files
-);
+)
+{
+	public Lazy<SemanticModel>? Model { get; init; }
+}

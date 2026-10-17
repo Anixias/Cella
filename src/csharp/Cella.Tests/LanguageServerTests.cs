@@ -137,6 +137,81 @@ public sealed class LanguageServerTests : IAsyncDisposable
 		Assert.Equal(0, await ShutDownAsync());
 	}
 	
+	private const string NavigationSource = """
+	                                        mod test
+	                                        
+	                                        Point: rec
+	                                        {
+	                                        	x: i32
+	                                        	y: i32
+	                                        }
+	                                        
+	                                        sum: fun(imm point: Point) -> i32 = point.x + point.y
+	                                        
+	                                        main: fun -> i32
+	                                        {
+	                                        	val origin = Point(1, 2)
+	                                        	ret sum(imm origin)
+	                                        }
+	                                        
+	                                        """;
+	
+	private static JsonObject Position(int line, int character) => new()
+	{
+		["textDocument"] = new JsonObject(),
+		["position"] = new JsonObject { ["line"] = line, ["character"] = character }
+	};
+	
+	private async Task<JsonNode?> AskAsync(string method, int line, int character)
+	{
+		var parameters = Position(line, character);
+		parameters["textDocument"]!["uri"] = SourceUri;
+		return (await ReadResponseAsync(await RequestAsync(method, parameters)))["result"];
+	}
+	
+	private async Task<string> HoverAsync(int line, int character)
+	{
+		for (var attempt = 0; attempt < 200; attempt++)
+		{
+			if (await AskAsync("textDocument/hover", line, character) is { } result)
+				return (string)result["contents"]!["value"]!;
+			
+			await Task.Delay(50, Token);
+		}
+		
+		throw new TimeoutException();
+	}
+	
+	private static string Code(string text) => $"```cella\n{text}\n```";
+	
+	[Fact]
+	public async Task AnswersHoverAndDefinition()
+	{
+		await File.WriteAllTextAsync(SourcePath, NavigationSource, Token);
+		await InitializeAsync();
+		
+		Assert.Equal(Code("sum: fun(imm point: Point) -> i32"), await HoverAsync(13, 6));
+		Assert.Equal(Code("val origin: Point"), await HoverAsync(13, 14));
+		Assert.Equal(Code("x: i32"), await HoverAsync(8, 42));
+		Assert.Equal(Code("Point: rec"), await HoverAsync(8, 21));
+		Assert.Equal(Code("Point: rec"), await HoverAsync(12, 15));
+		
+		var function = await AskAsync("textDocument/definition", 13, 6);
+		Assert.Equal(8, (int)function!["range"]!["start"]!["line"]!);
+		Assert.Equal(0, (int)function["range"]!["start"]!["character"]!);
+		Assert.Equal(3, (int)function["range"]!["end"]!["character"]!);
+		
+		var type = await AskAsync("textDocument/definition", 12, 15);
+		Assert.Equal(2, (int)type!["range"]!["start"]!["line"]!);
+		
+		var field = await AskAsync("textDocument/definition", 8, 42);
+		Assert.Equal(4, (int)field!["range"]!["start"]!["line"]!);
+		Assert.Equal(1, (int)field["range"]!["start"]!["character"]!);
+		
+		Assert.Null(await AskAsync("textDocument/definition", 8, 30));
+		Assert.Equal(0, await ShutDownAsync());
+	}
+	
 	[Fact]
 	public async Task ReadsEditorUris()
 	{

@@ -88,6 +88,7 @@ public sealed partial class SignatureCollector
 	public ConstantEvaluator Evaluator { get; }
 	public ModuleIndex Modules { get; }
 	public bool ReportsMissingEntryPoint { get; init; } = true;
+	public Action<ITypeNode, TypeSymbol>? RecordType { get; init; }
 	
 	public SignatureCollector(string assemblyName, string? entryPointName, SymbolTable symbolTable,
 		TypePool typePool, IEnumerable<AssemblySymbol> dependencies, IEnumerable<AssemblySymbol> indirectDependencies,
@@ -420,7 +421,8 @@ public sealed partial class SignatureCollector
 			CopiedParameters = _copiedParameters,
 			EvaluateConstant = EvaluateConstant,
 			GenericTypes = [],
-			DeferConstraintCheck = DeferConstraintCheck
+			DeferConstraintCheck = DeferConstraintCheck,
+			RecordType = RecordType
 		};
 		
 		var imports = CollectImports(node, context);

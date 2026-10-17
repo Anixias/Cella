@@ -1,6 +1,7 @@
 ﻿using System.Text.Json.Nodes;
 using Cella.Compiler;
 using Cella.Compiler.Building;
+using Cella.Core.Binding;
 using Cella.Diagnostics;
 
 namespace Cella.LanguageServer;
@@ -29,6 +30,7 @@ public sealed class Workspace(Func<JsonObject, Task> notify, TimeSpan debounce)
 	private readonly List<string> _roots = [];
 	private readonly Dictionary<string, Checker> _checkers = new(Protocol.PathComparer);
 	private readonly Dictionary<string, HashSet<string>> _published = new(Protocol.PathComparer);
+	private readonly Dictionary<string, BuildResult> _results = new(Protocol.PathComparer);
 	private readonly SemaphoreSlim _changes = new(0);
 	private readonly CancellationTokenSource _stopping = new();
 	private Task? checking;
@@ -78,6 +80,34 @@ public sealed class Workspace(Func<JsonObject, Task> notify, TimeSpan debounce)
 	}
 	
 	public void RequestCheck() => _changes.Release();
+	
+	public SymbolReference? Find(string uri, int line, int character)
+	{
+		var path = Protocol.ToPath(uri);
+		string? text;
+		ProjectCheck[] projects;
+		lock (_lock)
+		{
+			text = _documents.TryGetValue(path, out var document) ? document.Text : null;
+			projects = [.._results.Values.SelectMany(static result => result.Projects)];
+		}
+		
+		text ??= File.Exists(path) ? File.ReadAllText(path) : null;
+		if (text is null)
+			return null;
+		
+		var offset = Protocol.ToOffset(text, line, character);
+		return projects
+			.Where(project => project.Files.Any(file => Protocol.PathComparer.Equals(file.Symbol.FullPath, path)))
+			.Select(project => project.Model?.Value.Find(path, offset))
+			.FirstOrDefault(static reference => reference is not null);
+	}
+	
+	public string UriOf(string path)
+	{
+		lock (_lock)
+			return _documents.TryGetValue(path, out var document) ? document.Uri : Protocol.ToUri(path);
+	}
 	
 	public async Task StopAsync()
 	{
@@ -187,6 +217,9 @@ public sealed class Workspace(Func<JsonObject, Task> notify, TimeSpan debounce)
 			
 			foreach (var line in checker.Output.Lines)
 				await LogAsync(InfoMessage, line);
+			
+			lock (_lock)
+				_results[root] = result;
 			
 			await PublishAsync(root, result, uris);
 		}

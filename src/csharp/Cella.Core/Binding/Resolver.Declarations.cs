@@ -44,7 +44,8 @@ public sealed partial class Resolver
 		CopiedParameters = _copiedParameters,
 		EvaluateConstant = EvaluateConstant,
 		GenericTypes = [],
-		TrackInstance = TrackTypeInstance
+		TrackInstance = TrackTypeInstance,
+		RecordType = RecordType
 	};
 	
 	private void ReportTooLargeTypes()

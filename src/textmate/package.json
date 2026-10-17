@@ -5,6 +5,10 @@
 	"version": "0.1.0",
 	"publisher": "anixias",
 	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/Anixias/Cella.git"
+	},
 	"engines": {
 		"vscode": "^1.91.0"
 	},
@@ -12,6 +16,9 @@
 		"Programming Languages"
 	],
 	"main": "./extension.js",
+	"scripts": {
+		"package": "vsce package --skip-license"
+	},
 	"contributes": {
 		"languages": [
 			{
@@ -52,5 +59,8 @@
 	},
 	"dependencies": {
 		"vscode-languageclient": "^10.1.2"
+	},
+	"devDependencies": {
+		"@vscode/vsce": "^3.9.2"
 	}
 }
