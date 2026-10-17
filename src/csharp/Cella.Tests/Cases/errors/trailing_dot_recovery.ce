@@ -1,0 +1,21 @@
+mod test
+
+B: enum
+{
+	a
+	b
+}
+
+Point: rec
+{
+	x: i32
+}
+
+main: fun -> i32
+{
+	var b = B.
+	val p = Point(1)
+	val x = p.
+	val c: bool = 5
+	ret 0
+}

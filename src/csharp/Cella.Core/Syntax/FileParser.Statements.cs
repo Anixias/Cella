@@ -52,6 +52,7 @@ public sealed partial class FileParser
 			}
 			
 			var start = index;
+			var errorsBefore = Diagnostics.ErrorCount;
 			IStatementNode? statement;
 			try
 			{
@@ -76,6 +77,9 @@ public sealed partial class FileParser
 				close = Tokens[index - 1];
 				return true;
 			}
+			
+			if (Diagnostics.ErrorCount > errorsBefore)
+				_brokenStatements.Add(statement.SourceLocation);
 			
 			statements.Add(statement);
 		}
@@ -436,6 +440,7 @@ public sealed partial class FileParser
 	private ExpressionParser CreateExpressionParser() => new(Tokens)
 	{
 		ParseBlock = ParseBlockStatement,
+		ReportRecovered = Diagnostics.Add,
 		ParseWhenCondition = ParseCondition
 	};
 	

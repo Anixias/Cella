@@ -1,0 +1,19 @@
+
+====== trailing_dot_recovery.ce ======
+
+Error at line 16, column 11
+15 │ {
+16 │     var b = B.
+                  ^ Expected a name after '.'
+
+Error at line 18, column 11
+17 │ val p = Point(1)
+18 │ val x = p.
+              ^ Expected a name after '.'
+
+Error at line 19, column 16
+18 │ val x = p.
+19 │ val c: bool = 5
+                   ^ Cannot convert type 'integer literal' to 'bool'
+
+[compilation failed]

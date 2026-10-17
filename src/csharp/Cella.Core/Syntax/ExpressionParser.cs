@@ -175,6 +175,7 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 	}
 	
 	public BlockParser? ParseBlock { get; init; }
+	public Action<Diagnostic>? ReportRecovered { get; init; }
 	
 	public override IExpressionNode Parse(ref int index) => ParseExpression(ref index);
 	private IExpressionNode ParseExpression(ref int index) => ParseAssignment(ref index);
@@ -1043,6 +1044,19 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 					if (IsNextNewline(startIndex))
 					{
 						index = startIndex;
+						break;
+					}
+					
+					if (IsNextNewline(index) && ReportRecovered is { } report)
+					{
+						report(Expected(index - 1, "a name after '.'").Diagnostic);
+						var (dotSource, dotRange) = dot.SourceLocation;
+						var missing = new Token(TokenType.Identifier,
+							new SourceLocation(dotSource, new TextRange(dotRange.End, dotRange.End)), "");
+						
+						target = new AccessExpressionNode(target, dot, missing,
+							new(dotSource, target.SourceLocation.Range.Join(dotRange)));
+						
 						break;
 					}
 					
