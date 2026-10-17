@@ -1,0 +1,42 @@
+{
+	"name": "cella",
+	"displayName": "Cella",
+	"description": "Cella language support",
+	"version": "0.1.0",
+	"publisher": "anixias",
+	"license": "MIT",
+	"engines": {
+		"vscode": "^1.75.0"
+	},
+	"categories": [
+		"Programming Languages"
+	],
+	"contributes": {
+		"languages": [
+			{
+				"id": "cella",
+				"aliases": ["Cella", "cella"],
+				"extensions": [".ce"],
+				"configuration": "./language-configuration.json"
+			},
+			{
+				"id": "cella-project",
+				"aliases": ["Cella Project"],
+				"extensions": [".celp"],
+				"configuration": "./celp-language-configuration.json"
+			}
+		],
+		"grammars": [
+			{
+				"language": "cella",
+				"scopeName": "source.cella",
+				"path": "./syntaxes/cella.tmLanguage.json"
+			},
+			{
+				"language": "cella-project",
+				"scopeName": "source.celp",
+				"path": "./syntaxes/celp.tmLanguage.json"
+			}
+		]
+	}
+}

@@ -1,0 +1,161 @@
+{
+	"$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+	"name": "Cella Project",
+	"scopeName": "source.celp",
+	"fileTypes": ["celp"],
+	"patterns": [
+		{ "include": "#comments" },
+		{ "include": "#tables" },
+		{ "include": "#entries" },
+		{ "include": "#values" }
+	],
+	"repository": {
+		"comments": {
+			"name": "comment.line.number-sign.celp",
+			"begin": "#",
+			"beginCaptures": { "0": { "name": "punctuation.definition.comment.celp" } },
+			"end": "$"
+		},
+		"tables": {
+			"patterns": [
+				{
+					"name": "meta.table.array.celp",
+					"begin": "^\\s*(\\[\\[)",
+					"beginCaptures": { "1": { "name": "punctuation.definition.table.array.begin.celp" } },
+					"end": "(\\]\\])|$",
+					"endCaptures": { "1": { "name": "punctuation.definition.table.array.end.celp" } },
+					"patterns": [{ "include": "#table-keys" }]
+				},
+				{
+					"name": "meta.table.celp",
+					"begin": "^\\s*(\\[)",
+					"beginCaptures": { "1": { "name": "punctuation.definition.table.begin.celp" } },
+					"end": "(\\])|$",
+					"endCaptures": { "1": { "name": "punctuation.definition.table.end.celp" } },
+					"patterns": [{ "include": "#table-keys" }]
+				}
+			]
+		},
+		"table-keys": {
+			"patterns": [
+				{
+					"name": "string.quoted.double.condition.celp",
+					"begin": "(?<=When\\.)\"",
+					"beginCaptures": { "0": { "name": "punctuation.definition.string.begin.celp" } },
+					"end": "\"|$",
+					"endCaptures": { "0": { "name": "punctuation.definition.string.end.celp" } },
+					"patterns": [{ "include": "#condition" }]
+				},
+				{ "include": "#keys" },
+				{ "name": "punctuation.separator.dot.celp", "match": "\\." }
+			]
+		},
+		"condition": {
+			"patterns": [
+				{ "name": "keyword.operator.logical.celp", "match": "&&|\\|\\||!" },
+				{ "name": "punctuation.section.parens.celp", "match": "[()]" },
+				{ "name": "variable.other.constant.flag.celp", "match": "[A-Za-z_]\\w*" }
+			]
+		},
+		"keys": {
+			"patterns": [
+				{
+					"name": "support.type.property-name.setting.celp",
+					"match": "\\b(?:OutputType|SystemLinkPreference|AssemblyName|BoundsChecks|OverflowChecks|DebugInfo|Referenceable|ProjectReferences|Path|Alias|Flags|Imports|When)\\b(?![\\w-])"
+				},
+				{ "include": "#strings" },
+				{
+					"name": "variable.other.key.celp",
+					"match": "[A-Za-z0-9_-]+"
+				}
+			]
+		},
+		"entries": {
+			"begin": "^\\s*(?=[A-Za-z0-9_\"'-])",
+			"end": "(=)|$",
+			"endCaptures": { "1": { "name": "keyword.operator.assignment.celp" } },
+			"patterns": [
+				{ "include": "#keys" },
+				{ "name": "punctuation.separator.dot.celp", "match": "\\." }
+			]
+		},
+		"values": {
+			"patterns": [
+				{ "include": "#comments" },
+				{ "include": "#strings" },
+				{ "name": "constant.language.boolean.celp", "match": "\\b(?:true|false)\\b" },
+				{ "name": "constant.numeric.celp", "match": "[+-]?\\b\\d[\\d_]*(?:\\.\\d[\\d_]*)?(?:[eE][+-]?\\d[\\d_]*)?\\b" },
+				{
+					"name": "meta.array.celp",
+					"begin": "\\[",
+					"beginCaptures": { "0": { "name": "punctuation.definition.array.begin.celp" } },
+					"end": "\\]",
+					"endCaptures": { "0": { "name": "punctuation.definition.array.end.celp" } },
+					"patterns": [
+						{ "include": "#values" },
+						{ "name": "punctuation.separator.array.celp", "match": "," }
+					]
+				},
+				{
+					"name": "meta.inline-table.celp",
+					"begin": "\\{",
+					"beginCaptures": { "0": { "name": "punctuation.definition.table.inline.begin.celp" } },
+					"end": "\\}",
+					"endCaptures": { "0": { "name": "punctuation.definition.table.inline.end.celp" } },
+					"patterns": [
+						{ "include": "#keys" },
+						{ "name": "keyword.operator.assignment.celp", "match": "=" },
+						{ "name": "punctuation.separator.inline-table.celp", "match": "," },
+						{ "include": "#values" }
+					]
+				}
+			]
+		},
+		"strings": {
+			"patterns": [
+				{
+					"name": "string.quoted.triple.basic.celp",
+					"begin": "\"\"\"",
+					"beginCaptures": { "0": { "name": "punctuation.definition.string.begin.celp" } },
+					"end": "\"\"\"(?!\")",
+					"endCaptures": { "0": { "name": "punctuation.definition.string.end.celp" } },
+					"patterns": [{ "include": "#escapes" }]
+				},
+				{
+					"name": "string.quoted.triple.literal.celp",
+					"begin": "'''",
+					"beginCaptures": { "0": { "name": "punctuation.definition.string.begin.celp" } },
+					"end": "'''(?!')",
+					"endCaptures": { "0": { "name": "punctuation.definition.string.end.celp" } }
+				},
+				{
+					"name": "string.quoted.double.basic.celp",
+					"begin": "\"",
+					"beginCaptures": { "0": { "name": "punctuation.definition.string.begin.celp" } },
+					"end": "\"|$",
+					"endCaptures": { "0": { "name": "punctuation.definition.string.end.celp" } },
+					"patterns": [{ "include": "#escapes" }]
+				},
+				{
+					"name": "string.quoted.single.literal.celp",
+					"begin": "'",
+					"beginCaptures": { "0": { "name": "punctuation.definition.string.begin.celp" } },
+					"end": "'|$",
+					"endCaptures": { "0": { "name": "punctuation.definition.string.end.celp" } }
+				}
+			]
+		},
+		"escapes": {
+			"patterns": [
+				{
+					"name": "constant.character.escape.celp",
+					"match": "\\\\(?:[btnfr\"\\\\]|u[0-9A-Fa-f]{4}|U[0-9A-Fa-f]{8})"
+				},
+				{
+					"name": "invalid.illegal.escape.celp",
+					"match": "\\\\."
+				}
+			]
+		}
+	}
+}
