@@ -19,6 +19,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Cella.Compiler\Cella.Compiler.csproj"/>
     <ProjectReference Include="..\Cella.Core\Cella.Core.csproj"/>
+    <ProjectReference Include="..\Cella.LanguageServer\Cella.LanguageServer.csproj"/>
   </ItemGroup>
   
   <ItemGroup>
