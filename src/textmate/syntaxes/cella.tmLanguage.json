@@ -14,7 +14,6 @@
 		{ "include": "#annotations" },
 		{ "include": "#keywords" },
 		{ "include": "#types" },
-		{ "include": "#calls" },
 		{ "include": "#operators" },
 		{ "include": "#punctuation" }
 	],
@@ -318,16 +317,8 @@
 				{
 					"name": "support.type.primitive.cella",
 					"match": "(?<![.\\w])(?:i8|i16|i32|i64|i128|isize|u8|u16|u32|u64|u128|usize|f32|f64|char|bool|str|cstr|fstr|ptr|array|never)\\b"
-				},
-				{
-					"name": "entity.name.type.cella",
-					"match": "\\b[A-Z]\\w*\\b"
 				}
 			]
-		},
-		"calls": {
-			"match": "\\b([A-Za-z_]\\w*)(?=\\s*(?:\\[[^\\]]*\\])?\\()",
-			"captures": { "1": { "name": "entity.name.function.call.cella" } }
 		},
 		"operators": {
 			"patterns": [
