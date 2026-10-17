@@ -1,0 +1,26 @@
+mod mathx
+
+i32: mod impl
+{
+	twice: fun(imm self) -> i32 = self * 2
+}
+
+mod
+{
+	i32: impl
+	{
+		half: fun(imm self) -> i32 = self / 2
+	}
+}
+
+i32: pvt impl
+{
+	third: fun(imm self) -> i32 = self / 3
+}
+
+i32: impl
+{
+	shared: fun(imm self) -> i32 = self + 1
+}
+
+inside: fun(x: i32) -> i32 = x.twice() + x.half() + x.third() + x.shared()

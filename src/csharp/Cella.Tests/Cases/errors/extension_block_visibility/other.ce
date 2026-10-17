@@ -1,0 +1,4 @@
+mod mathx
+
+sameModule: fun(x: i32) -> i32 = x.twice() + x.half() + x.shared()
+otherFile: fun(x: i32) -> i32 = x.third()

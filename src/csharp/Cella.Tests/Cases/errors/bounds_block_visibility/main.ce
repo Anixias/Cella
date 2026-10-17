@@ -1,0 +1,25 @@
+mod test
+
+Eq: trait
+{
+	==: op(imm a: Self, imm b: Self) -> bool
+}
+
+i32: impl Eq
+
+box[T]: rec
+{
+	value: T
+}
+
+box[T: Eq]: pub impl
+{
+	same: fun(imm self, imm other: box[T]) -> bool = self.value == other.value
+}
+
+box[T: Eq]: mod impl
+{
+	equalTo: fun(imm self, imm value: T) -> bool = self.value == value
+}
+
+main: fun -> i32 = 0

@@ -1,0 +1,15 @@
+mod test
+
+use mathx
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+main: fun -> i32
+{
+	val x: i32 = 10
+	printf("%d %d\n", x.twice(), x.half())
+	ret 0
+}

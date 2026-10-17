@@ -1,0 +1,12 @@
+mod mathx
+
+i32: pub impl
+{
+	twice: fun(imm self) -> i32 = self * 2
+	half: fun(imm self) -> i32 = self / 2
+}
+
+i32: impl
+{
+	internal: fun(imm self) -> i32 = 0
+}

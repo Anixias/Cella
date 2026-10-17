@@ -1,0 +1,9 @@
+
+====== main.ce ======
+
+Error at line 15, column 13
+14 │ 
+15 │ box[T: Eq]: pub impl
+                 ╘═╛ Cannot declare 'pub' members
+
+[compilation failed]

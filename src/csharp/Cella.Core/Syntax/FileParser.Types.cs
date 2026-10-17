@@ -111,7 +111,8 @@ public sealed partial class FileParser
 		};
 	}
 	
-	private ImplNode? ParseImpl(ref int index, ITypeNode target, Token keyword, List<TypeParameterNode> typeParameters)
+	private ImplNode? ParseImpl(ref int index, ITypeNode target, Token keyword, List<TypeParameterNode> typeParameters,
+		DeclarationModifiers modifiers)
 	{
 		var traits = new List<ITypeNode>();
 		if (!Peek(index, TokenType.OpOpenBrace))
@@ -126,11 +127,15 @@ public sealed partial class FileParser
 				return null;
 		}
 		
+		if (traits.Count > 0 && modifiers.Visibility is { } visibility)
+			Report(modifiers.Tokens is [var written, ..] ? written : keyword,
+				$"Cannot use '{visibility.Text}' on trait impls");
+		
 		var members = new List<IDeclarationNode>();
 		var outerPublic = allowsPublicMembers;
 		allowsPublicMembers = traits.Count == 0;
 		var parsed = !Match(ref index, out var openBrace, TokenType.OpOpenBrace) ||
-		             ParseMembers(ref index, openBrace, null, members);
+		             ParseMembers(ref index, openBrace, traits.Count == 0 ? modifiers.Visibility : null, members);
 		
 		allowsPublicMembers = outerPublic;
 		if (!parsed)

@@ -4,7 +4,7 @@
 Error at line 13, column 8
 12 │ 
 13 │ Point: pub impl Hash
-            ╘═╛ Cannot use 'pub' on impl blocks
+            ╘═╛ Cannot use 'pub' on trait impls
 
 Error at line 17, column 13
 16 │ 

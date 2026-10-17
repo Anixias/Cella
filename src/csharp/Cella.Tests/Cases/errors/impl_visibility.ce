@@ -1,0 +1,30 @@
+mod test
+
+Eq: trait
+{
+	==: op(imm a: Self, imm b: Self) -> bool
+}
+
+Size: trait
+{
+	size: fun(imm self) -> usize
+}
+
+i32: mod impl Eq
+
+pub
+{
+	f64: impl Eq
+}
+
+[T]: pvt impl Size
+{
+	size: fun(imm self) -> usize = sizeOf(T)
+}
+
+i64: mod impl
+{
+	twice: pvt fun(imm self) -> i64 = self * 2
+}
+
+main: fun -> i32 = 0

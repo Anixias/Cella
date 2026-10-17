@@ -31,12 +31,9 @@ public sealed partial class FileParser
 			return true;
 		}
 		
-		if (modifiers.Tokens is [var modifier, ..])
-			Report(modifier, $"Cannot use '{modifier.Text}' on impl blocks");
-		
 		var target = new IdentifierTypeNode(typeParameters[0].Identifier);
 		var impl = ParseDeclaration(ref index, openBracket, "impl",
-			(ref i) => ParseImpl(ref i, target, implKeyword, typeParameters));
+			(ref i) => ParseImpl(ref i, target, implKeyword, typeParameters, modifiers));
 		
 		if (impl is null)
 			SkipDeclaration(ref index, declarationStart, insideBlock);
@@ -77,11 +74,8 @@ public sealed partial class FileParser
 		var modifiers = ParseDeclarationModifiers(ref index, block);
 		if (Match(ref index, out var implKeyword, _topLevelContextualKeywords, TokenType.KeywordImpl))
 		{
-			if (modifiers.Tokens is [var modifier, ..])
-				Report(modifier, $"Cannot use '{modifier.Text}' on impl blocks");
-			
 			var impl = ParseDeclaration(ref index, identifier, "impl",
-				(ref i) => ParseImpl(ref i, target, implKeyword, typeParameters));
+				(ref i) => ParseImpl(ref i, target, implKeyword, typeParameters, modifiers));
 			
 			if (impl is null)
 				SkipDeclaration(ref index, declarationStart, insideBlock);
