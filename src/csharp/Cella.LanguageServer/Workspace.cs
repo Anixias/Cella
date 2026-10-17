@@ -34,9 +34,16 @@ public sealed class Workspace(Func<JsonObject, Task> notify, TimeSpan debounce)
 	private readonly SemaphoreSlim _changes = new(0);
 	private readonly CancellationTokenSource _stopping = new();
 	private Task? checking;
+	private Dictionary<string, string> checkedTexts = new(Protocol.PathComparer);
+	private TaskCompletionSource checkCompleted = new(TaskCreationOptions.RunContinuationsAsynchronously);
+	private bool refreshesTokens;
+	private int refreshCount;
 	
 	public void Initialize(JsonObject? parameters)
 	{
+		refreshesTokens = (bool?)parameters?["capabilities"]?["workspace"]?["semanticTokens"]?["refreshSupport"] ==
+		                  true;
+		
 		if (parameters?["workspaceFolders"] is JsonArray { Count: > 0 } folders)
 		{
 			foreach (var folder in folders)
@@ -97,11 +104,43 @@ public sealed class Workspace(Func<JsonObject, Task> notify, TimeSpan debounce)
 			return null;
 		
 		var offset = Protocol.ToOffset(text, line, character);
-		return projects
-			.Where(project => project.Files.Any(file => Protocol.PathComparer.Equals(file.Symbol.FullPath, path)))
-			.Select(project => project.Model?.Value.Find(path, offset))
+		return ModelsOf(path, projects)
+			.Select(model => model.Find(path, offset))
 			.FirstOrDefault(static reference => reference is not null);
 	}
+	
+	public async Task<IReadOnlyList<SymbolReference>> GetReferencesAsync(string uri)
+	{
+		var path = Protocol.ToPath(uri);
+		while (true)
+		{
+			Task completed;
+			ProjectCheck[] projects;
+			bool isCurrent;
+			lock (_lock)
+			{
+				completed = checkCompleted.Task;
+				projects = [.._results.Values.SelectMany(static result => result.Projects)];
+				isCurrent = !_documents.TryGetValue(path, out var document) ||
+				            checkedTexts.TryGetValue(path, out var checkedText) && checkedText == document.Text;
+			}
+			
+			if (!isCurrent)
+			{
+				await completed.WaitAsync(_stopping.Token);
+				continue;
+			}
+			
+			return ModelsOf(path, projects)
+				.Select(model => model.GetReferences(path))
+				.FirstOrDefault(static references => references.Count > 0) ?? [];
+		}
+	}
+	
+	private static IEnumerable<SemanticModel> ModelsOf(string path, IEnumerable<ProjectCheck> projects) => projects
+		.Where(project => project.Files.Any(file => Protocol.PathComparer.Equals(file.Symbol.FullPath, path)))
+		.Select(static project => project.Model?.Value)
+		.OfType<SemanticModel>();
 	
 	public string UriOf(string path)
 	{
@@ -223,6 +262,18 @@ public sealed class Workspace(Func<JsonObject, Task> notify, TimeSpan debounce)
 			
 			await PublishAsync(root, result, uris);
 		}
+		
+		TaskCompletionSource completed;
+		lock (_lock)
+		{
+			checkedTexts = unsaved;
+			completed = checkCompleted;
+			checkCompleted = new(TaskCreationOptions.RunContinuationsAsynchronously);
+		}
+		
+		completed.SetResult();
+		if (refreshesTokens)
+			await notify(Protocol.Request($"refresh-{++refreshCount}", "workspace/semanticTokens/refresh"));
 	}
 	
 	private async Task PublishAsync(string root, BuildResult result, IReadOnlyDictionary<string, string> uris)

@@ -85,7 +85,7 @@ public sealed class LanguageServerTests : IAsyncDisposable
 		                          (string?)message["params"]!["uri"] == SourceUri &&
 		                          predicate((JsonArray)message["params"]!["diagnostics"]!));
 	
-	private async Task InitializeAsync()
+	private async Task<JsonObject> InitializeAsync()
 	{
 		var id = await RequestAsync("initialize", new JsonObject
 		{
@@ -94,8 +94,10 @@ public sealed class LanguageServerTests : IAsyncDisposable
 		});
 		
 		var response = await ReadResponseAsync(id);
-		Assert.Equal(1, (int)response["result"]!["capabilities"]!["textDocumentSync"]!["change"]!);
+		var capabilities = (JsonObject)response["result"]!["capabilities"]!;
+		Assert.Equal(1, (int)capabilities["textDocumentSync"]!["change"]!);
 		await NotifyAsync("initialized", new JsonObject());
+		return capabilities;
 	}
 	
 	private async Task<int> ShutDownAsync()
@@ -209,6 +211,65 @@ public sealed class LanguageServerTests : IAsyncDisposable
 		Assert.Equal(1, (int)field["range"]!["start"]!["character"]!);
 		
 		Assert.Null(await AskAsync("textDocument/definition", 8, 30));
+		Assert.Equal(0, await ShutDownAsync());
+	}
+	
+	[Fact]
+	public async Task ClassifiesNamesInTheOpenText()
+	{
+		await File.WriteAllTextAsync(SourcePath, NavigationSource, Token);
+		var legend = (await InitializeAsync())["semanticTokensProvider"]!["legend"]!;
+		var types = ((JsonArray)legend["tokenTypes"]!).Select(static type => (string)type!).ToArray();
+		var modifiers = ((JsonArray)legend["tokenModifiers"]!).Select(static modifier => (string)modifier!).ToArray();
+		
+		await NotifyAsync("textDocument/didOpen", new JsonObject
+		{
+			["textDocument"] = new JsonObject
+			{
+				["uri"] = SourceUri,
+				["languageId"] = "cella",
+				["version"] = 1,
+				["text"] = NavigationSource.Replace("sum", "total")
+			}
+		});
+		
+		var id = await RequestAsync("textDocument/semanticTokens/full",
+			new JsonObject { ["textDocument"] = new JsonObject { ["uri"] = SourceUri } });
+		
+		var data = ((JsonArray)(await ReadResponseAsync(id))["result"]!["data"]!).Select(static n => (int)n!).ToArray();
+		var (line, character) = (0, 0);
+		var tokens = new List<string>();
+		for (var i = 0; i < data.Length; i += 5)
+		{
+			character = data[i] == 0 ? character + data[i + 1] : data[i + 1];
+			line += data[i];
+			var applied = modifiers.Where((_, bit) => (data[i + 4] & (1 << bit)) != 0);
+			tokens.Add(string.Join(' ', [$"{line}:{character}:{data[i + 2]}", types[data[i + 3]], ..applied]));
+		}
+		
+		Assert.Equal(
+		[
+			"2:0:5 struct declaration",
+			"4:1:1 property declaration",
+			"4:4:3 type defaultLibrary",
+			"5:1:1 property declaration",
+			"5:4:3 type defaultLibrary",
+			"8:0:5 function declaration",
+			"8:15:5 parameter declaration",
+			"8:22:5 struct",
+			"8:32:3 type defaultLibrary",
+			"8:38:5 parameter",
+			"8:44:1 property",
+			"8:48:5 parameter",
+			"8:54:1 property",
+			"10:0:4 function declaration",
+			"10:13:3 type defaultLibrary",
+			"12:5:6 variable declaration readonly",
+			"12:14:5 struct",
+			"13:5:5 function",
+			"13:15:6 variable readonly"
+		], tokens);
+		
 		Assert.Equal(0, await ShutDownAsync());
 	}
 	

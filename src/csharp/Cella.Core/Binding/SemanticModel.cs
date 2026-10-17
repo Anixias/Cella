@@ -62,6 +62,9 @@ public sealed class SemanticModel
 		return best;
 	}
 	
+	public IReadOnlyList<SymbolReference> GetReferences(string path) =>
+		_references.TryGetValue(path, out var references) ? references : [];
+	
 	public static SourceLocation? FindDeclaration(Symbol symbol)
 	{
 		SourceLocation? location = symbol switch

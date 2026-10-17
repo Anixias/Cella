@@ -1,0 +1,94 @@
+﻿using System.Text.Json;
+using System.Text.Json.Nodes;
+using Cella.Core.Binding;
+using Cella.Core.Symbols;
+using Cella.Core.Text;
+
+namespace Cella.LanguageServer;
+
+public static class SemanticTokens
+{
+	private enum Kind
+	{
+		Type,
+		Struct,
+		Enum,
+		Interface,
+		TypeParameter,
+		Function,
+		Method,
+		Parameter,
+		Variable,
+		Property,
+		EnumMember
+	}
+	
+	[Flags]
+	private enum Modifiers
+	{
+		None = 0,
+		Declaration = 1,
+		Readonly = 2,
+		DefaultLibrary = 4
+	}
+	
+	public static JsonObject Legend { get; } = new()
+	{
+		["tokenTypes"] = Names(Enum.GetNames<Kind>()),
+		["tokenModifiers"] = Names(Enum.GetNames<Modifiers>().Where(static name => name != nameof(Modifiers.None)))
+	};
+	
+	public static JsonObject Encode(IEnumerable<SymbolReference> references)
+	{
+		var data = new JsonArray();
+		var (previousLine, previousCharacter, previousEnd) = (0, 0, 0);
+		foreach (var reference in references.OrderBy(static reference => reference.Location.Range.Start)
+			         .ThenBy(static reference => reference.Location.Range.Length))
+		{
+			var (source, range) = reference.Location;
+			if (range.Start < previousEnd || !IsName(reference.Location.GetText().ToString()) ||
+			    Classify(reference.Symbol) is not { } classified)
+				continue;
+			
+			var (kind, modifiers) = classified;
+			if (reference.Declaration is { } declaration && declaration.Range.Start == range.Start &&
+			    Protocol.PathComparer.Equals(declaration.Source.FilePath, source.FilePath))
+				modifiers |= Modifiers.Declaration;
+			
+			var (line, character) = Protocol.ToLineCharacter(source, range.Start);
+			data.Add(line - previousLine);
+			data.Add(line == previousLine ? character - previousCharacter : character);
+			data.Add(range.Length);
+			data.Add((int)kind);
+			data.Add((int)modifiers);
+			(previousLine, previousCharacter, previousEnd) = (line, character, range.End);
+		}
+		
+		return new JsonObject { ["data"] = data };
+	}
+	
+	private static JsonArray Names(IEnumerable<string> names) =>
+		new([..names.Select(static name => JsonValue.Create(JsonNamingPolicy.CamelCase.ConvertName(name)))]);
+	
+	private static bool IsName(string text) =>
+		text is [var first, ..] && (char.IsLetter(first) || first == '_') && TokenTypeInfo.GetKeyword(text) is null;
+	
+	private static (Kind, Modifiers)? Classify(Symbol symbol) => symbol switch
+	{
+		FunctionSymbol { Kind: FunctionKind.Free or FunctionKind.External } => (Kind.Function, Modifiers.None),
+		FunctionSymbol or MethodSymbol => (Kind.Method, Modifiers.None),
+		LocalVariableSymbol { IsMutable: true } or GlobalSymbol { IsMutable: true } => (Kind.Variable, Modifiers.None),
+		LocalVariableSymbol or GlobalSymbol => (Kind.Variable, Modifiers.Readonly),
+		ParameterSymbol => (Kind.Parameter, Modifiers.None),
+		FieldSymbol { IsMutable: true } or PropertySymbol => (Kind.Property, Modifiers.None),
+		FieldSymbol => (Kind.Property, Modifiers.Readonly),
+		EnumCaseSymbol => (Kind.EnumMember, Modifiers.None),
+		TraitSymbol or TraitType => (Kind.Interface, Modifiers.None),
+		TypeParameterSymbol => (Kind.TypeParameter, Modifiers.None),
+		TypeSymbol { OriginalDefinition: RecordSymbol } => (Kind.Struct, Modifiers.None),
+		TypeSymbol { OriginalDefinition: EnumSymbol } => (Kind.Enum, Modifiers.None),
+		NamedTypeSymbol => (Kind.Type, Modifiers.None),
+		TypeSymbol => (Kind.Type, Modifiers.DefaultLibrary),
+		_ => null
+	};
+}

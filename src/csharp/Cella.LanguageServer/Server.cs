@@ -7,6 +7,7 @@ public sealed class Server
 {
 	private const int MethodNotFound = -32601;
 	private const int InternalError = -32603;
+	private const int RequestCancelled = -32800;
 	private const int FullSync = 1;
 	
 	private readonly MessageConnection _connection;
@@ -39,6 +40,12 @@ public sealed class Server
 				{
 					isShutDown = true;
 					await _workspace.StopAsync();
+				}
+				
+				if (method == "textDocument/semanticTokens/full" && id is not null)
+				{
+					_ = AnswerTokensAsync(id, GetUri(message["params"] as JsonObject), ct);
+					continue;
 				}
 				
 				var (isHandled, result) = Handle(method, message["params"] as JsonObject);
@@ -118,6 +125,32 @@ public sealed class Server
 		}
 	}
 	
+	private async Task AnswerTokensAsync(JsonNode id, string uri, CancellationToken ct)
+	{
+		JsonObject response;
+		try
+		{
+			response = Protocol.Response(id, SemanticTokens.Encode(await _workspace.GetReferencesAsync(uri)));
+		}
+		catch (OperationCanceledException)
+		{
+			response = Protocol.ErrorResponse(id, RequestCancelled, "The server is shutting down");
+		}
+		catch (Exception exception)
+		{
+			response = Protocol.ErrorResponse(id, InternalError, exception.Message);
+		}
+		
+		try
+		{
+			await _connection.WriteAsync(response, ct);
+		}
+		catch (Exception exception) when (exception is IOException or ObjectDisposedException
+			                                  or OperationCanceledException)
+		{
+		}
+	}
+	
 	private static string GetUri(JsonObject? parameters) => (string)parameters!["textDocument"]!["uri"]!;
 	
 	private SymbolReference? Find(JsonObject? parameters) => _workspace.Find(GetUri(parameters),
@@ -129,6 +162,11 @@ public sealed class Server
 		{
 			["hoverProvider"] = true,
 			["definitionProvider"] = true,
+			["semanticTokensProvider"] = new JsonObject
+			{
+				["legend"] = SemanticTokens.Legend.DeepClone(),
+				["full"] = true
+			},
 			["textDocumentSync"] = new JsonObject
 			{
 				["openClose"] = true,

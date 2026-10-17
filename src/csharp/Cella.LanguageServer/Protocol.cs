@@ -35,6 +35,13 @@ public static class Protocol
 		["params"] = parameters
 	};
 	
+	public static JsonObject Request(string id, string method) => new()
+	{
+		["jsonrpc"] = "2.0",
+		["id"] = id,
+		["method"] = method
+	};
+	
 	public static JsonObject Response(JsonNode id, JsonNode? result) => new()
 	{
 		["jsonrpc"] = "2.0",
@@ -96,14 +103,20 @@ public static class Protocol
 		["end"] = ToPosition(location.Source, location.Range.End)
 	};
 	
-	private static JsonObject ToPosition(ISource source, int offset)
+	public static (int Line, int Character) ToLineCharacter(ISource source, int offset)
 	{
 		if (source.Length == 0)
-			return new JsonObject { ["line"] = 0, ["character"] = 0 };
+			return (0, 0);
 		
 		offset = Math.Clamp(offset, 0, source.Length);
 		var (line, _) = source.GetLineColumn(offset);
 		var lineStart = source.GetLineRange(line).Start;
-		return new JsonObject { ["line"] = Math.Max(line - 1, 0), ["character"] = Math.Max(offset - lineStart, 0) };
+		return (Math.Max(line - 1, 0), Math.Max(offset - lineStart, 0));
+	}
+	
+	private static JsonObject ToPosition(ISource source, int offset)
+	{
+		var (line, character) = ToLineCharacter(source, offset);
+		return new JsonObject { ["line"] = line, ["character"] = character };
 	}
 }
