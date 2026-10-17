@@ -68,7 +68,9 @@ public sealed partial class FileParser
 				if (reachedDeclaration)
 					return false;
 				
-				if (!ResyncStatement(ref index, start))
+				var resynced = ResyncStatement(ref index, start);
+				AddBrokenStatement(statements, start, Math.Max(index - 1, start));
+				if (!resynced)
 					continue;
 				
 				close = Tokens[index - 1];
@@ -79,6 +81,36 @@ public sealed partial class FileParser
 		}
 		
 		return true;
+	}
+	
+	private void AddBrokenStatement(List<IStatementNode> statements, int start, int end)
+	{
+		var extent = Span(Tokens[start], Tokens[end]);
+		var declares = _bindingKeywords.Contains(Tokens[start].Type) && start + 1 <= end &&
+		               Tokens[start + 1].Type == TokenType.Identifier;
+		
+		var broken = new BrokenStatementNode(extent, declares ? Tokens[start + 1] : null,
+			Tokens[start].Type == TokenType.KeywordVar);
+		
+		if (statements is [.., var previous] && start > 0 &&
+		    (IsOnSameLine(start) || ExpressionParser.ContinuesExpression(Tokens[start].Type)))
+		{
+			statements.RemoveAt(statements.Count - 1);
+			var (source, range) = previous.SourceLocation;
+			extent = new(source, range.Join(extent.Range));
+			broken = previous switch
+			{
+				VarStatementNode declaration => new(extent, declaration.Identifier, declaration.IsMutable),
+				BrokenStatementNode earlier => new(extent, earlier.Name, earlier.IsMutable),
+				_ => new(extent, null, false)
+			};
+			
+			if (previous is BrokenStatementNode)
+				_brokenStatements.RemoveAt(_brokenStatements.Count - 1);
+		}
+		
+		_brokenStatements.Add(extent);
+		statements.Add(broken);
 	}
 	
 	private BlockStatementNode? ParseWhenStatement(ref int index, Token whenToken)

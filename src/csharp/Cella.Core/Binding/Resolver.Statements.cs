@@ -140,6 +140,15 @@ public sealed partial class Resolver
 		return new ResolvedIfStatementNode(condition, then, @else, node);
 	}
 	
+	public IResolvedStatementNode Visit(BrokenStatementNode node)
+	{
+		if (node.Name is { } name)
+			CurrentResolutionContext.LocalScope!.Define(new LocalVariableSymbol(name, NativeSymbols.Invalid,
+				node.IsMutable));
+		
+		return new ResolvedBlockStatementNode([], node);
+	}
+	
 	public IResolvedStatementNode Visit(VarStatementNode node)
 	{
 		var resolutionContext = CurrentResolutionContext;

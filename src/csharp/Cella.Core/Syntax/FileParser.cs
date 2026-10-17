@@ -92,6 +92,7 @@ public sealed partial class FileParser
 	private static readonly HashSet<string> _nestedKinds = ["rec", "enum", "union", "trait", "impl"];
 	
 	private readonly List<SourceLocation> _declarationExtents = [];
+	private readonly List<SourceLocation> _brokenStatements = [];
 	private bool skippedToEnd;
 	private bool reachedDeclaration;
 	
@@ -319,6 +320,7 @@ public sealed partial class FileParser
 			Imports = imports.ToImmutableArray(),
 			Declarations = declarations.ToImmutableArray(),
 			DeclarationExtents = [.._declarationExtents],
+			BrokenStatements = [.._brokenStatements],
 			IsExcluded = !isIncluded
 		};
 	}

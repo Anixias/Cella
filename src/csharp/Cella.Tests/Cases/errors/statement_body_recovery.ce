@@ -1,0 +1,25 @@
+mod test
+
+Point: rec
+{
+	x: i32
+}
+
+broken: fun -> i32
+{
+	val a = )
+	val b: bool = 5
+	val c = a.x + 1
+	var d = Point(1)
+	d.y = 2
+	ret c
+}
+
+continued: fun -> bool
+{
+	val r = 1
+		is 3
+	ret r
+}
+
+main: fun -> i32 = 0

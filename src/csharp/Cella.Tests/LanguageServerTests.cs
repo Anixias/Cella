@@ -569,6 +569,15 @@ public sealed class LanguageServerTests : IAsyncDisposable
 	}
 	
 	[Fact]
+	public async Task CompletesBelowBrokenLines()
+	{
+		await InitializeAsync();
+		var members = ItemsOf(await AskAtCursorAsync("textDocument/completion", "val broken = )\n\tp.|"));
+		Assert.Equal(["length", "shift", "x"], members.Keys.Order());
+		Assert.Equal(0, await ShutDownAsync());
+	}
+	
+	[Fact]
 	public async Task HelpsWithSignatures()
 	{
 		await InitializeAsync();

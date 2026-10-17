@@ -1,0 +1,24 @@
+
+====== statement_body_recovery.ce ======
+
+Error at line 10, column 10
+ 9 │ {
+10 │     val a = )
+                 ^ Expected an expression
+
+Error at line 11, column 16
+10 │ val a = )
+11 │ val b: bool = 5
+                   ^ Cannot convert type 'integer literal' to 'bool'
+
+Error at line 14, column 4
+13 │ var d = Point(1)
+14 │ d.y = 2
+       ^ Type 'Point' has no member 'y'
+
+Error at line 21, column 3
+20 │ val r = 1
+21 │     is 3
+         ╘╛ Cannot start a line with 'is'
+
+[compilation failed]
