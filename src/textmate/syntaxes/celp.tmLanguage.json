@@ -13,7 +13,6 @@
 		"comments": {
 			"name": "comment.line.number-sign.celp",
 			"begin": "#",
-			"beginCaptures": { "0": { "name": "punctuation.definition.comment.celp" } },
 			"end": "$"
 		},
 		"tables": {

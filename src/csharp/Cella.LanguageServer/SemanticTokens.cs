@@ -11,6 +11,7 @@ public static class SemanticTokens
 	private enum Kind
 	{
 		Type,
+		Class,
 		Struct,
 		Enum,
 		Interface,
@@ -97,7 +98,8 @@ public static class SemanticTokens
 		EnumCaseSymbol => (Kind.EnumMember, Modifiers.None),
 		TraitSymbol or TraitType => (Kind.Interface, Modifiers.None),
 		TypeParameterSymbol => (Kind.TypeParameter, Modifiers.None),
-		TypeSymbol { OriginalDefinition: RecordSymbol } => (Kind.Struct, Modifiers.None),
+		TypeSymbol { OriginalDefinition: RecordSymbol { IsRef: true } } => (Kind.Struct, Modifiers.None),
+		TypeSymbol { OriginalDefinition: RecordSymbol } => (Kind.Class, Modifiers.None),
 		TypeSymbol { OriginalDefinition: EnumSymbol } => (Kind.Enum, Modifiers.None),
 		NamedTypeSymbol => (Kind.Type, Modifiers.None),
 		TypeSymbol => (Kind.Keyword, Modifiers.None),

@@ -24,7 +24,6 @@
 				{
 					"name": "comment.line.double-slash.cella",
 					"begin": "//",
-					"beginCaptures": { "0": { "name": "punctuation.definition.comment.cella" } },
 					"end": "$"
 				},
 				{ "include": "#block-comment" }
@@ -33,9 +32,7 @@
 		"block-comment": {
 			"name": "comment.block.cella",
 			"begin": "/\\*",
-			"beginCaptures": { "0": { "name": "punctuation.definition.comment.begin.cella" } },
 			"end": "\\*/",
-			"endCaptures": { "0": { "name": "punctuation.definition.comment.end.cella" } },
 			"patterns": [{ "include": "#block-comment" }]
 		},
 		"modules": {

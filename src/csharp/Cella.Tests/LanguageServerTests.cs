@@ -220,14 +220,14 @@ public sealed class LanguageServerTests : IAsyncDisposable
 		await File.WriteAllTextAsync(SourcePath, NavigationSource, Token);
 		Assert.Equal(
 		[
-			"2:0:5 struct declaration",
+			"2:0:5 class declaration",
 			"4:1:1 property declaration",
 			"4:4:3 keyword",
 			"5:1:1 property declaration",
 			"5:4:3 keyword",
 			"8:0:5 function declaration",
 			"8:15:5 parameter declaration",
-			"8:22:5 struct",
+			"8:22:5 class",
 			"8:32:3 keyword",
 			"8:38:5 parameter",
 			"8:44:1 property",
@@ -236,7 +236,7 @@ public sealed class LanguageServerTests : IAsyncDisposable
 			"10:0:4 function declaration",
 			"10:13:3 keyword",
 			"12:5:6 variable declaration readonly",
-			"12:14:5 struct",
+			"12:14:5 class",
 			"13:5:5 function",
 			"13:15:6 variable readonly"
 		], await ClassifyAsync(NavigationSource.Replace("sum", "total")));
@@ -249,16 +249,16 @@ public sealed class LanguageServerTests : IAsyncDisposable
 	{
 		Assert.Equal(
 		[
-			"2:0:3 struct declaration",
+			"2:0:3 class declaration",
 			"2:4:1 typeParameter declaration",
 			"4:1:1 property declaration",
 			"4:4:1 typeParameter",
 			"5:1:1 method declaration",
 			"5:11:1 parameter declaration",
-			"5:14:3 struct",
+			"5:14:3 class",
 			"5:18:1 typeParameter",
 			"5:26:1 parameter declaration",
-			"5:29:3 struct",
+			"5:29:3 class",
 			"5:33:1 typeParameter",
 			"5:40:1 typeParameter",
 			"5:44:1 parameter",
@@ -272,7 +272,7 @@ public sealed class LanguageServerTests : IAsyncDisposable
 			"13:11:5 keyword",
 			"13:17:4 keyword",
 			"14:5:1 variable declaration readonly",
-			"14:9:3 struct",
+			"14:9:3 class",
 			"14:13:3 keyword",
 			"14:18:3 keyword",
 			"14:22:5 variable readonly static",
@@ -349,6 +349,64 @@ public sealed class LanguageServerTests : IAsyncDisposable
 		}
 		
 		return tokens;
+	}
+	
+	[Fact]
+	public async Task NamesDereferencesAndRecordKinds()
+	{
+		var tokens = await ClassifyAsync("""
+		                                 mod test
+		                                 
+		                                 Point: rec
+		                                 {
+		                                 	x: i32
+		                                 }
+		                                 
+		                                 Box: rec
+		                                 {
+		                                 	inner: Point
+		                                 
+		                                 	*: op(imm self) -> imm[Point] = self.inner
+		                                 }
+		                                 
+		                                 View: ref rec
+		                                 {
+		                                 	point: imm[Point]
+		                                 }
+		                                 
+		                                 Color: enum
+		                                 {
+		                                 	red
+		                                 	green
+		                                 }
+		                                 
+		                                 main: fun -> i32
+		                                 {
+		                                 	val b = Box(Point(2))
+		                                 	val p = Point(1)
+		                                 	val v = View(imm p)
+		                                 	val c = Color.red
+		                                 	ret b.x + v.point.x
+		                                 }
+		                                 
+		                                 """);
+		
+		Assert.Contains("2:0:5 class declaration", tokens);
+		Assert.Contains("14:0:4 struct declaration", tokens);
+		Assert.Contains("19:0:5 enum declaration", tokens);
+		Assert.Contains("31:5:1 variable readonly", tokens);
+		Assert.Contains("31:6:1 method", tokens);
+		Assert.Contains("31:11:1 variable readonly", tokens);
+		Assert.DoesNotContain(tokens, static token => token.StartsWith("31:12:1 "));
+		
+		Assert.Equal(Code("*: op(imm self) -> imm[Point]"), await HoverAsync(31, 6));
+		Assert.Equal(Code("val b: Box"), await HoverAsync(31, 5));
+		Assert.Equal(Code("View: ref rec"), await HoverAsync(29, 9));
+		
+		var dereference = await AskAsync("textDocument/definition", 31, 6);
+		Assert.Equal(11, (int)dereference!["range"]!["start"]!["line"]!);
+		Assert.Equal(1, (int)dereference["range"]!["start"]!["character"]!);
+		Assert.Equal(0, await ShutDownAsync());
 	}
 	
 	[Fact]

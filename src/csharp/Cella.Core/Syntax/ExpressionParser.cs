@@ -1000,13 +1000,14 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 			throw Expected(index, "a name");
 		
 		IExpressionNode name = new VarExpressionNode(first);
-		while (Match(ref index, TokenType.OpDot))
+		while (Match(ref index, out var dot, TokenType.OpDot))
 		{
 			if (!Match(ref index, out var member, TokenType.Identifier))
 				throw Expected(index, "a name");
 			
 			var (nameSource, nameRange) = name.SourceLocation;
-			name = new AccessExpressionNode(name, member, new(nameSource, nameRange.Join(member.SourceLocation.Range)));
+			name = new AccessExpressionNode(name, dot, member,
+				new(nameSource, nameRange.Join(member.SourceLocation.Range)));
 		}
 		
 		if (Peek(index, TokenType.OpOpenBracket))
@@ -1031,7 +1032,7 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 			var startIndex = index;
 			
 			// Access Expression
-			if (Match(ref index, TokenType.OpDot))
+			if (Match(ref index, out var dot, TokenType.OpDot))
 			{
 				if (Match(ref index, out var qualifiedPanic, TokenType.KeywordPanic))
 					return ParsePanic(ref index, qualifiedPanic, target);
@@ -1053,7 +1054,7 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 				
 				var (source, range) = target.SourceLocation;
 				range = range.Join(member.SourceLocation.Range);
-				target = new AccessExpressionNode(target, member, new(source, range));
+				target = new AccessExpressionNode(target, dot, member, new(source, range));
 				continue;
 			}
 			

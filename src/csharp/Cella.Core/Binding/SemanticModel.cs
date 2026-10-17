@@ -26,6 +26,9 @@ public sealed class SemanticModel
 	private readonly Dictionary<Type, PropertyInfo[]> _children = [];
 	private readonly Dictionary<TypeParameterSymbol, SourceLocation> _typeParameters = [];
 	
+	private readonly Dictionary<IExpressionNode, AccessExpressionNode> _accesses =
+		new(ReferenceEqualityComparer.Instance);
+	
 	public SemanticModel(IEnumerable<ResolvedFileNode> files, IEnumerable<(Token Name, Symbol Symbol)> names)
 	{
 		foreach (var file in files)
@@ -174,6 +177,9 @@ public sealed class SemanticModel
 	
 	private void Visit(object node)
 	{
+		if (node is IResolvedExpressionNode { Syntax: var syntax } && FindAccess(syntax) is { } accessed)
+			_accesses[accessed.Target] = accessed;
+		
 		switch (node)
 		{
 			case ResolvedVarExpressionNode n:
@@ -189,7 +195,9 @@ public sealed class SemanticModel
 				break;
 			
 			case ResolvedFunctionCallExpressionNode { IsConversion: false } n:
-				Add(FindCallName(n.Syntax, n.Function.Symbol), n.Function.Symbol, DescribeFunction(n.Function));
+				Add(FindCallName(n.Syntax, n.Function.Symbol) ?? FindDereferenceDot(n), n.Function.Symbol,
+					DescribeFunction(n.Function));
+				
 				break;
 			
 			case ResolvedFunctionReferenceExpressionNode n:
@@ -313,8 +321,21 @@ public sealed class SemanticModel
 		BinaryOpExpressionNode binary => IsOperator(function) ? binary.Op : null,
 		UnaryOpExpressionNode unary => IsOperator(function) ? unary.Op : null,
 		IndexerExpressionNode => null,
-		_ => FindName(syntax)
+		_ => IsOperator(function) ? null : FindName(syntax)
 	};
+	
+	private static AccessExpressionNode? FindAccess(IExpressionNode syntax) => syntax switch
+	{
+		AccessExpressionNode access => access,
+		CallExpressionNode { Target: AccessExpressionNode access } => access,
+		_ => null
+	};
+	
+	private Token? FindDereferenceDot(ResolvedFunctionCallExpressionNode call) =>
+		IsOperator(call.Function.Symbol) && call.Function.Symbol.DeclaredName == "*" &&
+		_accesses.TryGetValue(call.Syntax, out var access)
+			? access.Dot
+			: null;
 	
 	private static bool IsOperator(FunctionSymbol function) =>
 		function.Syntax is FunctionNode node && TokenTypeInfo.GetOperator(node.Identifier.Text) is not null;
@@ -383,11 +404,13 @@ public sealed class SemanticModel
 	
 	private static string TypeName(TypeSymbol type) => DiagnosticReporter.DescribeType(type);
 	
+	private static string RefPrefix(NamedTypeSymbol type) => type.IsRef ? "ref " : "";
+	
 	private static string DescribeType(TypeSymbol type) => type switch
 	{
-		RecordSymbol { IsUnion: true } => $"{TypeName(type)}: union",
-		RecordSymbol => $"{TypeName(type)}: rec",
-		EnumSymbol => $"{TypeName(type)}: enum",
+		RecordSymbol { IsUnion: true } record => $"{TypeName(type)}: {RefPrefix(record)}union",
+		RecordSymbol record => $"{TypeName(type)}: {RefPrefix(record)}rec",
+		EnumSymbol enumType => $"{TypeName(type)}: {RefPrefix(enumType)}enum",
 		TraitType trait => $"{trait.Name}: trait",
 		TypeParameterSymbol { ValueType: { } valueType } => $"{type.Name}: const {TypeName(valueType)}",
 		_ => TypeName(type)
