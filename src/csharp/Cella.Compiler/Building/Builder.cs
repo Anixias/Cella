@@ -2,9 +2,6 @@
 using System.Text;
 using Cella.Compiler.Linking;
 using Cella.Compiler.Projects;
-using Cella.Core.Binding;
-using Cella.Core.Binding.Conversions;
-using Cella.Core.Binding.Operations;
 using Cella.Core.CodeGen;
 using Cella.Core.Lowering;
 using Cella.Core.Symbols;
@@ -17,10 +14,13 @@ public sealed partial class Builder(BuildOptions options, IBuildOutput output)
 	public static string ToolchainsDirectory => Path.Combine(AppContext.BaseDirectory, "toolchains");
 	
 	private readonly List<ProjectCheck> _projects = [];
+	private IReadOnlyDictionary<string, string> openFiles = new Dictionary<string, string>();
 	
-	public async Task<BuildResult> BuildAsync(string sourcePath, CancellationToken ct = default)
+	public async Task<BuildResult> BuildAsync(string sourcePath,
+		IReadOnlyDictionary<string, string>? unsavedFiles = null, CancellationToken ct = default)
 	{
 		_projects.Clear();
+		openFiles = unsavedFiles ?? new Dictionary<string, string>();
 		if (!Directory.Exists(sourcePath) && !File.Exists(sourcePath))
 		{
 			output.WriteLine($"'{sourcePath}' not found");
@@ -83,31 +83,7 @@ public sealed partial class Builder(BuildOptions options, IBuildOutput output)
 		if (!flagsValid || projectErrors.Count > 0)
 			return Fail();
 		
-		var conversionTable = ConversionTable.CreateNative();
-		var operatorRegistry = new OperatorRegistry();
-		var sizeTable = new SizeTable();
-		var typePool = new TypePool(conversionTable, operatorRegistry, sizeTable);
-		var projectSymbols = new Dictionary<ProjectInfo, AssemblyInfo>();
-		var succeeded = true;
-		
-		foreach (var (project, dependencies) in projectDependencies)
-		{
-			if (!dependencies.All(projectSymbols.ContainsKey))
-			{
-				succeeded = false;
-				continue;
-			}
-			
-			var dependencyInfo = dependencies.Select(dependency => projectSymbols[dependency]).ToList();
-			var assemblyInfo = await BuildProject(project, typePool, dependencyInfo, linkPreferences![project], ct);
-			
-			if (assemblyInfo.Succeeded)
-				projectSymbols[project] = assemblyInfo;
-			else
-				succeeded = false;
-		}
-		
-		return new(succeeded, [.._projects]);
+		return await BuildProjectsAsync(projectDependencies, linkPreferences!, ct);
 	}
 	
 	private BuildResult Fail() => new(false, [.._projects]);
@@ -143,7 +119,7 @@ public sealed partial class Builder(BuildOptions options, IBuildOutput output)
 				         .OrderBy(static project => project.FilePath, StringComparer.Ordinal))
 			{
 				output.WriteLine($"'{root.FilePath}' links the C runtime statically, so it can't use the shared " +
-				                  $"library '{library.FilePath}'");
+				                 $"library '{library.FilePath}'");
 				
 				isValid = false;
 			}

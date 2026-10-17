@@ -156,7 +156,7 @@ public sealed partial class Builder
 	}
 	
 	private async Task<byte[]> ReadBytesAsync(string path, CancellationToken ct) =>
-		options.OpenFiles.TryGetValue(Path.GetFullPath(path), out var text)
+		openFiles.TryGetValue(Path.GetFullPath(path), out var text)
 			? Encoding.UTF8.GetBytes(text)
 			: await File.ReadAllBytesAsync(path, ct);
 	

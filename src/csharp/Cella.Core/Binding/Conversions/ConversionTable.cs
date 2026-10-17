@@ -1,4 +1,5 @@
-﻿using Cella.Core.Symbols;
+﻿using Cella.Core.Collections;
+using Cella.Core.Symbols;
 
 namespace Cella.Core.Binding.Conversions;
 
@@ -7,6 +8,12 @@ public sealed class ConversionTable
 	private readonly Dictionary<(TypeSymbol From, TypeSymbol To), Conversion> _conversions = [];
 	
 	public Func<TypeSymbol, FunctionType, bool>? CallableAs { get; set; }
+	
+	internal void Save(StateSnapshot snapshot)
+	{
+		snapshot.Save(_conversions);
+		snapshot.SaveValue(() => CallableAs, value => CallableAs = value);
+	}
 	
 	public void Add(Conversion conversion) => _conversions[(conversion.From, conversion.To)] = conversion;
 	

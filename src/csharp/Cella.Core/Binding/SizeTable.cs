@@ -1,4 +1,5 @@
-﻿using Cella.Core.Symbols;
+﻿using Cella.Core.Collections;
+using Cella.Core.Symbols;
 
 namespace Cella.Core.Binding;
 
@@ -36,6 +37,14 @@ public sealed class SizeTable
 	
 	public Action<TypeSymbol>? Completer { get; set; }
 	public Func<TypeSymbol, Func<ISize>, ISize>? Measurer { get; set; }
+	
+	internal void Save(StateSnapshot snapshot)
+	{
+		snapshot.Save(_sizes);
+		snapshot.Save(_deferredSizes);
+		snapshot.SaveValue(() => Completer, value => Completer = value);
+		snapshot.SaveValue(() => Measurer, value => Measurer = value);
+	}
 	
 	public void Register(TypeSymbol type, ISize size) => _sizes[type] = size;
 	public void Register(TypeSymbol type, Func<ISize> computeSize) => _deferredSizes[type] = computeSize;

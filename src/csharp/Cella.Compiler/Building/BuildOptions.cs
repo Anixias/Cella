@@ -11,5 +11,4 @@ public sealed record BuildOptions
 	public bool EmitsIr { get; init; }
 	public bool EmitsAssembly { get; init; }
 	public bool ChecksOnly { get; init; }
-	public IReadOnlyDictionary<string, string> OpenFiles { get; init; } = new Dictionary<string, string>();
 }

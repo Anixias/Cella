@@ -1,5 +1,10 @@
-﻿using Cella.Compiler;
+﻿using System.Collections;
+using System.Reflection;
+using Cella.Compiler;
 using Cella.Compiler.Building;
+using Cella.Core.Binding;
+using Cella.Core.Binding.Conversions;
+using Cella.Core.Binding.Operations;
 using Cella.Diagnostics;
 using Xunit;
 
@@ -9,6 +14,68 @@ public sealed class BuilderTests : IDisposable
 {
 	private const string ValidSource = "mod test\n\nmain: fun -> i32 = 0\n";
 	private const string InvalidSource = "mod test\n\nmain: fun -> i32 = true\n";
+	
+	private const string LibrarySource = """
+	                                     mod lib
+	                                     
+	                                     Shape: pub trait
+	                                     {
+	                                     	area: fun(imm self) -> i32
+	                                     }
+	                                     
+	                                     box[T]: pub rec
+	                                     {
+	                                     	value: T
+	                                     }
+	                                     
+	                                     Square: pub rec impl Shape
+	                                     {
+	                                     	side: i32
+	                                     
+	                                     	area: fun(imm self) -> i32 = self.side * self.side
+	                                     }
+	                                     
+	                                     total[T: Shape]: pub fun(imm shape: T) -> i32 = shape.area()
+	                                     
+	                                     """;
+	
+	private const string ProgramSource = """
+	                                     mod test
+	                                     
+	                                     use lib
+	                                     
+	                                     Named: trait
+	                                     {
+	                                     	code: fun(imm self) -> i32
+	                                     }
+	                                     
+	                                     Circle: rec impl lib.Shape
+	                                     {
+	                                     	radius: i32
+	                                     	
+	                                     	area: fun(imm self) -> i32 = 3 * self.radius * self.radius
+	                                     	+: op(imm a: Circle, imm b: Circle) -> Circle = Circle(a.radius + b.radius)
+	                                     }
+	                                     
+	                                     i32: impl Named
+	                                     {
+	                                     	code: fun(imm self) -> i32 = self
+	                                     }
+	                                     
+	                                     i32: impl
+	                                     {
+	                                     	twice: fun(imm self) -> i32 = self * 2
+	                                     }
+	                                     
+	                                     main: fun -> i32
+	                                     {
+	                                     	val held = lib.box[Circle](Circle(2))
+	                                     	val sum = Circle(1) + Circle(2)
+	                                     	val number: i32 = 4
+	                                     	ret lib.total(imm held.value) + lib.total(imm lib.Square(3)) + number.code() + number.twice() + sum.radius
+	                                     }
+	                                     
+	                                     """;
 	
 	private readonly string _directory =
 		Path.Combine(Path.GetTempPath(), "cella-builder-tests", Guid.NewGuid().ToString("N"));
@@ -23,32 +90,62 @@ public sealed class BuilderTests : IDisposable
 		public void Report(IEnumerable<Diagnostic> diagnostics) => Diagnostics.AddRange(diagnostics);
 	}
 	
-	public BuilderTests()
-	{
-		Directory.CreateDirectory(_directory);
-		File.WriteAllText(Path.Combine(_directory, "test.celp"), "OutputType = \"Executable\"\n");
-	}
+	public BuilderTests() => Directory.CreateDirectory(_directory);
 	
 	public void Dispose() => Directory.Delete(_directory, true);
 	
-	private string SourcePath => Path.Combine(_directory, "main.ce");
+	private static CancellationToken Token => TestContext.Current.CancellationToken;
 	
-	private static BuildOptions CheckOptions(IReadOnlyDictionary<string, string>? openFiles = null) => new()
+	private string SourcePath => Path.Combine(_directory, "main.ce");
+	private string LibraryPath => Path.Combine(_directory, "lib", "lib.ce");
+	private string ProgramPath => Path.Combine(_directory, "app", "main.ce");
+	
+	private static Builder CreateBuilder(IBuildOutput output) => new(new BuildOptions
 	{
 		Target = TargetTriple.FromHost().WithDefaultAbi(Builder.ToolchainsDirectory),
-		ChecksOnly = true,
-		OpenFiles = openFiles ?? new Dictionary<string, string>()
-	};
+		ChecksOnly = true
+	}, output);
 	
-	private Task<BuildResult> CheckAsync(IBuildOutput output, IReadOnlyDictionary<string, string>? openFiles = null) =>
-		CompilerThread.Run(() => new Builder(CheckOptions(openFiles), output).BuildAsync(_directory));
+	private Task<BuildResult> CheckAsync(Builder builder, IReadOnlyDictionary<string, string>? unsavedFiles = null) =>
+		CompilerThread.Run(() => builder.BuildAsync(_directory, unsavedFiles, Token));
+	
+	private async Task WriteProgramAsync(string source)
+	{
+		await File.WriteAllTextAsync(Path.Combine(_directory, "test.celp"), "OutputType = \"Executable\"\n", Token);
+		await File.WriteAllTextAsync(SourcePath, source, Token);
+	}
+	
+	private async Task WriteLibraryProjectsAsync()
+	{
+		Directory.CreateDirectory(Path.GetDirectoryName(LibraryPath)!);
+		Directory.CreateDirectory(Path.GetDirectoryName(ProgramPath)!);
+		await File.WriteAllTextAsync(Path.Combine(_directory, "lib", "lib.celp"), "OutputType = \"StaticLibrary\"\n",
+			Token);
+		
+		await File.WriteAllTextAsync(Path.Combine(_directory, "app", "test.celp"),
+			"OutputType = \"Executable\"\n\n[[ProjectReferences]]\nPath = '../lib/lib.celp'\n", Token);
+		
+		await File.WriteAllTextAsync(LibraryPath, LibrarySource, Token);
+		await File.WriteAllTextAsync(ProgramPath, ProgramSource, Token);
+	}
+	
+	private static ProjectCheck FindProject(BuildResult result, string directoryName) =>
+		Assert.Single(result.Projects,
+			project => Path.GetFileName(Path.GetDirectoryName(project.ProjectPath)) == directoryName);
+	
+	private static int CountPoolEntries(Builder builder) =>
+		builder.TypePool!.CreateSnapshot().Collections.Sum(static collection =>
+			((IEnumerable)collection).Cast<object>().Count());
+	
+	private static string Describe(BuildResult result) =>
+		string.Join("\n", result.Projects.SelectMany(static project => project.Diagnostics));
 	
 	[Fact]
 	public async Task ChecksWithoutBuilding()
 	{
-		await File.WriteAllTextAsync(SourcePath, ValidSource, TestContext.Current.CancellationToken);
+		await WriteProgramAsync(ValidSource);
 		var output = new RecordingOutput();
-		var result = await CheckAsync(output);
+		var result = await CheckAsync(CreateBuilder(output));
 		
 		Assert.True(result.Succeeded);
 		Assert.False(Directory.Exists(Path.Combine(_directory, "bin")));
@@ -62,9 +159,9 @@ public sealed class BuilderTests : IDisposable
 	[Fact]
 	public async Task ReportsErrorsThroughOutput()
 	{
-		await File.WriteAllTextAsync(SourcePath, InvalidSource, TestContext.Current.CancellationToken);
+		await WriteProgramAsync(InvalidSource);
 		var output = new RecordingOutput();
-		var result = await CheckAsync(output);
+		var result = await CheckAsync(CreateBuilder(output));
 		
 		Assert.False(result.Succeeded);
 		var project = Assert.Single(result.Projects);
@@ -75,14 +172,80 @@ public sealed class BuilderTests : IDisposable
 	}
 	
 	[Fact]
-	public async Task ReadsOpenFilesInsteadOfDisk()
+	public async Task ReadsUnsavedFilesInsteadOfDisk()
 	{
-		await File.WriteAllTextAsync(SourcePath, ValidSource, TestContext.Current.CancellationToken);
-		var result = await CheckAsync(new RecordingOutput(),
+		await WriteProgramAsync(ValidSource);
+		var result = await CheckAsync(CreateBuilder(new RecordingOutput()),
 			new Dictionary<string, string> { [Path.GetFullPath(SourcePath)] = InvalidSource });
 		
 		Assert.False(result.Succeeded);
 		Assert.Single(Assert.Single(result.Projects).Diagnostics);
-		Assert.Equal(ValidSource, await File.ReadAllTextAsync(SourcePath, TestContext.Current.CancellationToken));
+		Assert.Equal(ValidSource, await File.ReadAllTextAsync(SourcePath, Token));
+	}
+	
+	[Fact]
+	public async Task ReusesUnchangedDependencies()
+	{
+		await WriteLibraryProjectsAsync();
+		var builder = CreateBuilder(new RecordingOutput());
+		var first = await CheckAsync(builder);
+		Assert.True(first.Succeeded, Describe(first));
+		var poolSize = CountPoolEntries(builder);
+		
+		for (var edit = 1; edit <= 3; edit++)
+		{
+			var next = await CheckAsync(builder, new Dictionary<string, string>
+			{
+				[Path.GetFullPath(ProgramPath)] = ProgramSource + new string('\n', edit)
+			});
+			
+			Assert.Same(FindProject(first, "lib"), FindProject(next, "lib"));
+			Assert.NotSame(FindProject(first, "app"), FindProject(next, "app"));
+			Assert.True(next.Succeeded, Describe(next));
+			Assert.Equal(poolSize, CountPoolEntries(builder));
+		}
+	}
+	
+	[Fact]
+	public async Task RechecksChangedDependencies()
+	{
+		await WriteLibraryProjectsAsync();
+		var builder = CreateBuilder(new RecordingOutput());
+		var first = await CheckAsync(builder);
+		var changed = await CheckAsync(builder, new Dictionary<string, string>
+		{
+			[Path.GetFullPath(LibraryPath)] = LibrarySource.Replace("total[T: Shape]", "sum[T: Shape]")
+		});
+		
+		Assert.NotSame(FindProject(first, "lib"), FindProject(changed, "lib"));
+		Assert.False(changed.Succeeded);
+		Assert.Contains(FindProject(changed, "app").Diagnostics,
+			static diagnostic => diagnostic.Message.Contains("total"));
+		
+		var restored = await CheckAsync(builder);
+		Assert.True(restored.Succeeded, Describe(restored));
+	}
+	
+	private static bool IsCollection(Type type) => type.IsGenericType &&
+	                                               type.GetGenericTypeDefinition() is var definition &&
+	                                               (definition == typeof(Dictionary<,>) ||
+	                                                definition == typeof(List<>) || definition == typeof(HashSet<>) ||
+	                                                definition == typeof(OrderedDictionary<,>));
+	
+	[Fact]
+	public void SnapshotsCoverEveryCollection()
+	{
+		var typePool = new TypePool(ConversionTable.CreateNative(), new OperatorRegistry(), new SizeTable());
+		var snapshot = typePool.CreateSnapshot();
+		object[] owners = [typePool, typePool.ConversionTable, typePool.OperatorRegistry, typePool.SizeTable];
+		foreach (var owner in owners)
+		{
+			var fields = owner.GetType()
+				.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+			
+			foreach (var field in fields.Where(static field => IsCollection(field.FieldType)))
+				Assert.True(snapshot.Collections.Any(saved => ReferenceEquals(saved, field.GetValue(owner))),
+					$"{owner.GetType().Name}.{field.Name} isn't saved");
+		}
 	}
 }

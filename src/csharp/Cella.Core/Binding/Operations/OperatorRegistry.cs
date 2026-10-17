@@ -1,4 +1,5 @@
 ﻿using System.Collections.Immutable;
+using Cella.Core.Collections;
 using Cella.Core.Symbols;
 using Cella.Core.Text;
 
@@ -109,6 +110,12 @@ public sealed class OperatorRegistry
 	public OperatorRegistry()
 	{
 		_binaryOps = CreateBinaryOps();
+	}
+	
+	internal void Save(StateSnapshot snapshot)
+	{
+		snapshot.SaveNested(_unaryOps);
+		snapshot.SaveNested(_binaryOps);
 	}
 	
 	public void Create(OperationImpl impl)
