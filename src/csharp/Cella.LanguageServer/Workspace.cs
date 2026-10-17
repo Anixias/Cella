@@ -32,6 +32,7 @@ public sealed class Workspace(Func<JsonObject, Task> notify, TimeSpan debounce)
 	private readonly Dictionary<string, HashSet<string>> _published = new(Protocol.PathComparer);
 	private readonly Dictionary<string, BuildResult> _results = new(Protocol.PathComparer);
 	private readonly SemaphoreSlim _changes = new(0);
+	private readonly SemaphoreSlim _urgent = new(0);
 	private readonly CancellationTokenSource _stopping = new();
 	private Task? checking;
 	private Dictionary<string, string> checkedTexts = new(Protocol.PathComparer);
@@ -127,6 +128,7 @@ public sealed class Workspace(Func<JsonObject, Task> notify, TimeSpan debounce)
 			
 			if (!isCurrent)
 			{
+				_urgent.Release();
 				await completed.WaitAsync(_stopping.Token);
 				continue;
 			}
@@ -200,9 +202,13 @@ public sealed class Workspace(Func<JsonObject, Task> notify, TimeSpan debounce)
 			{
 				await _changes.WaitAsync(ct);
 				if (debounce > TimeSpan.Zero)
-					await Task.Delay(debounce, ct);
+				{
+					using var waiting = CancellationTokenSource.CreateLinkedTokenSource(ct);
+					await Task.WhenAny(Task.Delay(debounce, waiting.Token), _urgent.WaitAsync(waiting.Token));
+					await waiting.CancelAsync();
+				}
 				
-				while (_changes.Wait(0))
+				while (_changes.Wait(0) || _urgent.Wait(0))
 				{
 				}
 				
@@ -291,6 +297,8 @@ public sealed class Workspace(Func<JsonObject, Task> notify, TimeSpan debounce)
 					byFile[path] = diagnostics = [];
 				
 				diagnostics.Add(Protocol.ToLsp(diagnostic));
+				if (Protocol.ToUnnecessaryLsp(diagnostic) is { } unnecessary)
+					diagnostics.Add(unnecessary);
 			}
 		}
 		

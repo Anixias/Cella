@@ -273,7 +273,10 @@ public sealed partial class Resolver
 	{
 		if (arms is [.., { IsElse: true } last] && arms.Count(static arm => arm.IsElse) == 1 &&
 		    !arms.Any(static arm => arm.IsFailed) && !IsInvalid(type) && _coverage.Covers(type, patterns))
-			Diagnostics.Add(new(DiagnosticSeverity.Warning, last.Location, "Unreachable code"));
+			Diagnostics.Add(DiagnosticReporter.ReportUnreachableCode(last.Location) with
+			{
+				UnnecessaryLocation = last.Location
+			});
 	}
 	
 	private void ReportUncovered(Token keyword, TypeSymbol type, List<ResolvedPattern> patterns)

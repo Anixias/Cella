@@ -12,7 +12,7 @@ namespace Cella.Core.Binding;
 
 public sealed record SymbolReference(SourceLocation Location, Symbol Symbol, string Description)
 {
-	public SourceLocation? Declaration { get; } = SemanticModel.FindDeclaration(Symbol);
+	public SourceLocation? Declaration { get; init; } = SemanticModel.FindDeclaration(Symbol);
 }
 
 public sealed class SemanticModel
@@ -24,24 +24,29 @@ public sealed class SemanticModel
 	
 	private readonly Dictionary<string, List<SymbolReference>> _references = new(_pathComparer);
 	private readonly Dictionary<Type, PropertyInfo[]> _children = [];
+	private readonly Dictionary<TypeParameterSymbol, SourceLocation> _typeParameters = [];
 	
-	public SemanticModel(IEnumerable<ResolvedFileNode> files, IEnumerable<(ITypeNode Node, TypeSymbol Type)> types)
+	public SemanticModel(IEnumerable<ResolvedFileNode> files, IEnumerable<(Token Name, Symbol Symbol)> names)
 	{
 		foreach (var file in files)
 			Walk(file);
 		
-		foreach (var (node, type) in types)
+		var latest = new Dictionary<SourceLocation, Symbol>();
+		foreach (var (name, symbol) in names)
+			latest[name.SourceLocation] = symbol;
+		
+		foreach (var (location, symbol) in latest)
+			Add(location, symbol,
+				symbol is TraitSymbol trait ? $"{trait.Name}: trait" : DescribeType((TypeSymbol)symbol));
+		
+		foreach (var references in _references.Values)
 		{
-			var token = node switch
+			for (var i = 0; i < references.Count; i++)
 			{
-				IdentifierTypeNode identifier => identifier.Token,
-				GenericTypeNode generic => generic.Identifier,
-				QualifiedTypeNode qualified => qualified.Parts[^1],
-				_ => (Token?)null
-			};
-			
-			if (token is { } name)
-				Add(name.SourceLocation, type, DescribeType(type));
+				if (references[i].Symbol is TypeParameterSymbol parameter &&
+				    _typeParameters.TryGetValue(parameter, out var declaration))
+					references[i] = references[i] with { Declaration = declaration };
+			}
 		}
 	}
 	
@@ -183,8 +188,8 @@ public sealed class SemanticModel
 				Add(FindName(n.Syntax), n.Constant, DescribeVariable(n.Constant, n.Type));
 				break;
 			
-			case ResolvedFunctionCallExpressionNode n:
-				Add(FindName(n.Syntax), n.Function.Symbol, DescribeFunction(n.Function));
+			case ResolvedFunctionCallExpressionNode { IsConversion: false } n:
+				Add(FindCallName(n.Syntax, n.Function.Symbol), n.Function.Symbol, DescribeFunction(n.Function));
 				break;
 			
 			case ResolvedFunctionReferenceExpressionNode n:
@@ -243,6 +248,7 @@ public sealed class SemanticModel
 			
 			case ResolvedRecordNode n:
 				AddType(n.Symbol, n.Symbol.Node.Identifier);
+				AddTypeParameters(n.Symbol.Node.TypeParameters, n.Symbol.TypeParameters);
 				foreach (var field in n.Symbol.Members.OfType<FieldSymbol>())
 				{
 					if (field.Node is { } fieldNode)
@@ -253,6 +259,7 @@ public sealed class SemanticModel
 			
 			case ResolvedEnumNode n:
 				AddType(n.Symbol, n.Symbol.Node.Identifier);
+				AddTypeParameters(n.Symbol.Node.TypeParameters, n.Symbol.TypeParameters);
 				foreach (var enumCase in n.Symbol.Cases)
 					Add(enumCase.Node.Identifier, enumCase, DescribeCase(n.Symbol, enumCase));
 				
@@ -260,6 +267,13 @@ public sealed class SemanticModel
 			
 			case ResolvedTraitNode n:
 				Add(n.Symbol.Node.Identifier, n.Symbol, $"{n.Symbol.Name}: trait");
+				AddTypeParameters(n.Symbol.Node.TypeParameters, n.Symbol.TypeParameters);
+				foreach (var method in n.Symbol.Functions)
+				{
+					if (method.Function.Syntax is IFunctionNode function)
+						Add(function.Identifier, method, $"{method.Name}: fun");
+				}
+				
 				break;
 		}
 	}
@@ -269,15 +283,41 @@ public sealed class SemanticModel
 	
 	private void AddType(NamedTypeSymbol type, Token identifier) => Add(identifier, type, DescribeType(type));
 	
+	private void AddTypeParameters(ImmutableArray<TypeParameterNode> nodes, ImmutableArray<TypeParameterSymbol> symbols)
+	{
+		foreach (var node in nodes)
+		{
+			if (symbols.FirstOrDefault(symbol => symbol.Name == node.Identifier.Text) is not { } symbol)
+				continue;
+			
+			_typeParameters[symbol] = node.Identifier.SourceLocation;
+			Add(node.Identifier, symbol, DescribeType(symbol));
+		}
+	}
+	
 	private void AddFunction(FunctionInfo info)
 	{
 		Add(FindDeclaration(info.Symbol) is { } declaration ? declaration : SourceLocation.None, info.Symbol,
 			DescribeFunction(info));
 		
+		if (info.Symbol.Syntax is FunctionNode function)
+			AddTypeParameters(function.TypeParameters, info.Symbol.DeclaredTypeParameters);
+		
 		var parameters = info.Symbol.Parameters;
 		for (var i = 0; i < parameters.Length && i < info.Signature.ParameterTypes.Length; i++)
 			Add(parameters[i].Definition, parameters[i], DescribeParameter(parameters[i].Name, info.Signature, i));
 	}
+	
+	private static Token? FindCallName(IExpressionNode syntax, FunctionSymbol function) => syntax switch
+	{
+		BinaryOpExpressionNode binary => IsOperator(function) ? binary.Op : null,
+		UnaryOpExpressionNode unary => IsOperator(function) ? unary.Op : null,
+		IndexerExpressionNode => null,
+		_ => FindName(syntax)
+	};
+	
+	private static bool IsOperator(FunctionSymbol function) =>
+		function.Syntax is FunctionNode node && TokenTypeInfo.GetOperator(node.Identifier.Text) is not null;
 	
 	private static Token? FindName(IExpressionNode syntax) => syntax switch
 	{
@@ -291,6 +331,7 @@ public sealed class SemanticModel
 	private static string DescribeVariable(Symbol symbol, TypeSymbol type) => symbol switch
 	{
 		LocalVariableSymbol { IsMutable: true } => $"var {symbol.Name}: {TypeName(type)}",
+		LocalVariableSymbol { IsConstant: true } => $"const {symbol.Name}: {TypeName(type)}",
 		LocalVariableSymbol => $"val {symbol.Name}: {TypeName(type)}",
 		GlobalSymbol global => $"{symbol.Name}: {global.Syntax.Keyword.Text} {TypeName(type)}",
 		_ => $"{symbol.Name}: {TypeName(type)}"
@@ -324,7 +365,7 @@ public sealed class SemanticModel
 			: "fun";
 		
 		var parameterList = signature.ParameterTypes.IsEmpty ? "" : $"({string.Join(", ", described)})";
-		return $"{info.Symbol.Name}: {keyword}{parameterList}{result}";
+		return $"{info.Symbol.DeclaredName}: {keyword}{parameterList}{result}";
 	}
 	
 	private static string DescribeParameter(string name, FunctionSignature signature, int index)
@@ -348,6 +389,7 @@ public sealed class SemanticModel
 		RecordSymbol => $"{TypeName(type)}: rec",
 		EnumSymbol => $"{TypeName(type)}: enum",
 		TraitType trait => $"{trait.Name}: trait",
+		TypeParameterSymbol { ValueType: { } valueType } => $"{type.Name}: const {TypeName(valueType)}",
 		_ => TypeName(type)
 	};
 }

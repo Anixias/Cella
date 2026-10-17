@@ -24,7 +24,7 @@ public sealed partial class Resolver : IStatementNodeVisitor<IResolvedStatementN
 	
 	public DiagnosticList Diagnostics { get; } = new();
 	public ErrorContainment? Containment { get; init; }
-	public Action<ITypeNode, TypeSymbol>? RecordType { get; init; }
+	public Action<Token, Symbol>? RecordName { get; init; }
 	
 	private const int UserConversionCost = 100;
 	

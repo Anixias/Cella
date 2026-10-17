@@ -45,7 +45,7 @@ public sealed partial class Resolver
 		EvaluateConstant = EvaluateConstant,
 		GenericTypes = [],
 		TrackInstance = TrackTypeInstance,
-		RecordType = RecordType
+		RecordName = RecordName
 	};
 	
 	private void ReportTooLargeTypes()

@@ -218,6 +218,107 @@ public sealed class LanguageServerTests : IAsyncDisposable
 	public async Task ClassifiesNamesInTheOpenText()
 	{
 		await File.WriteAllTextAsync(SourcePath, NavigationSource, Token);
+		Assert.Equal(
+		[
+			"2:0:5 struct declaration",
+			"4:1:1 property declaration",
+			"4:4:3 keyword",
+			"5:1:1 property declaration",
+			"5:4:3 keyword",
+			"8:0:5 function declaration",
+			"8:15:5 parameter declaration",
+			"8:22:5 struct",
+			"8:32:3 keyword",
+			"8:38:5 parameter",
+			"8:44:1 property",
+			"8:48:5 parameter",
+			"8:54:1 property",
+			"10:0:4 function declaration",
+			"10:13:3 keyword",
+			"12:5:6 variable declaration readonly",
+			"12:14:5 struct",
+			"13:5:5 function",
+			"13:15:6 variable readonly"
+		], await ClassifyAsync(NavigationSource.Replace("sum", "total")));
+		
+		Assert.Equal(0, await ShutDownAsync());
+	}
+	
+	[Fact]
+	public async Task ClassifiesOperatorsConstantsAndTypeArguments()
+	{
+		Assert.Equal(
+		[
+			"2:0:3 struct declaration",
+			"2:4:1 typeParameter declaration",
+			"4:1:1 property declaration",
+			"4:4:1 typeParameter",
+			"5:1:1 method declaration",
+			"5:11:1 parameter declaration",
+			"5:14:3 struct",
+			"5:18:1 typeParameter",
+			"5:26:1 parameter declaration",
+			"5:29:3 struct",
+			"5:33:1 typeParameter",
+			"5:40:1 typeParameter",
+			"5:44:1 parameter",
+			"5:46:1 property",
+			"8:0:5 variable declaration readonly static",
+			"8:13:3 keyword",
+			"10:0:4 function declaration",
+			"10:13:3 keyword",
+			"12:7:5 variable declaration readonly static",
+			"13:5:4 variable declaration",
+			"13:11:5 keyword",
+			"13:17:4 keyword",
+			"14:5:1 variable declaration readonly",
+			"14:9:3 struct",
+			"14:13:3 keyword",
+			"14:18:3 keyword",
+			"14:22:5 variable readonly static",
+			"15:5:1 variable declaration readonly",
+			"15:9:1 variable readonly",
+			"15:11:1 method",
+			"15:13:1 variable readonly",
+			"16:5:5 variable readonly static"
+		], await ClassifyAsync("""
+		                       mod test
+		                       
+		                       Vec[T: copy]: rec
+		                       {
+		                       	x: T
+		                       	+: op(imm a: Vec[T], imm b: Vec[T]) -> T = a.x
+		                       }
+		                       
+		                       limit: const i32 = 4
+		                       
+		                       main: fun -> i32
+		                       {
+		                       	const count = 3
+		                       	var name: array[char, 20] = undef
+		                       	val a = Vec[i64](i64(count))
+		                       	val b = a + a
+		                       	ret limit
+		                       }
+		                       
+		                       """));
+		
+		Assert.Equal(Code("+: op(imm a: Vec[i64], imm b: Vec[i64]) -> i64"), await HoverAsync(15, 11));
+		Assert.Equal(Code("const count: i32"), await HoverAsync(14, 22));
+		Assert.Equal(Code("char"), await HoverAsync(13, 17));
+		
+		var operation = await AskAsync("textDocument/definition", 15, 11);
+		Assert.Equal(5, (int)operation!["range"]!["start"]!["line"]!);
+		Assert.Equal(1, (int)operation["range"]!["start"]!["character"]!);
+		
+		var parameter = await AskAsync("textDocument/definition", 4, 4);
+		Assert.Equal(2, (int)parameter!["range"]!["start"]!["line"]!);
+		Assert.Equal(4, (int)parameter["range"]!["start"]!["character"]!);
+		Assert.Equal(0, await ShutDownAsync());
+	}
+	
+	private async Task<List<string>> ClassifyAsync(string text)
+	{
 		var legend = (await InitializeAsync())["semanticTokensProvider"]!["legend"]!;
 		var types = ((JsonArray)legend["tokenTypes"]!).Select(static type => (string)type!).ToArray();
 		var modifiers = ((JsonArray)legend["tokenModifiers"]!).Select(static modifier => (string)modifier!).ToArray();
@@ -229,7 +330,7 @@ public sealed class LanguageServerTests : IAsyncDisposable
 				["uri"] = SourceUri,
 				["languageId"] = "cella",
 				["version"] = 1,
-				["text"] = NavigationSource.Replace("sum", "total")
+				["text"] = text
 			}
 		});
 		
@@ -247,29 +348,48 @@ public sealed class LanguageServerTests : IAsyncDisposable
 			tokens.Add(string.Join(' ', [$"{line}:{character}:{data[i + 2]}", types[data[i + 3]], ..applied]));
 		}
 		
-		Assert.Equal(
-		[
-			"2:0:5 struct declaration",
-			"4:1:1 property declaration",
-			"4:4:3 type defaultLibrary",
-			"5:1:1 property declaration",
-			"5:4:3 type defaultLibrary",
-			"8:0:5 function declaration",
-			"8:15:5 parameter declaration",
-			"8:22:5 struct",
-			"8:32:3 type defaultLibrary",
-			"8:38:5 parameter",
-			"8:44:1 property",
-			"8:48:5 parameter",
-			"8:54:1 property",
-			"10:0:4 function declaration",
-			"10:13:3 type defaultLibrary",
-			"12:5:6 variable declaration readonly",
-			"12:14:5 struct",
-			"13:5:5 function",
-			"13:15:6 variable readonly"
-		], tokens);
+		return tokens;
+	}
+	
+	[Fact]
+	public async Task FadesUnreachableCode()
+	{
+		await InitializeAsync();
+		await NotifyAsync("textDocument/didOpen", new JsonObject
+		{
+			["textDocument"] = new JsonObject
+			{
+				["uri"] = SourceUri,
+				["languageId"] = "cella",
+				["version"] = 1,
+				["text"] = """
+				           mod test
+				           
+				           main: fun -> i32
+				           {
+				           	ret 0
+				           	val unused = 1
+				           	ret unused
+				           }
+				           
+				           """
+			}
+		});
 		
+		var published = await ReadDiagnosticsAsync(static diagnostics => diagnostics.Count > 0);
+		var diagnostics = (JsonArray)published["params"]!["diagnostics"]!;
+		Assert.Equal(2, diagnostics.Count);
+		
+		var warning = diagnostics.Single(static diagnostic => (int)diagnostic!["severity"]! == 2)!;
+		Assert.Equal(5, (int)warning["range"]!["start"]!["line"]!);
+		Assert.Equal(1, (int)warning["range"]!["end"]!["character"]!);
+		
+		var faded = diagnostics.Single(static diagnostic => (int)diagnostic!["severity"]! == 4)!;
+		Assert.Equal(1, (int)faded["tags"]![0]!);
+		Assert.Equal(5, (int)faded["range"]!["start"]!["line"]!);
+		Assert.Equal(1, (int)faded["range"]!["start"]!["character"]!);
+		Assert.Equal(6, (int)faded["range"]!["end"]!["line"]!);
+		Assert.Equal(11, (int)faded["range"]!["end"]!["character"]!);
 		Assert.Equal(0, await ShutDownAsync());
 	}
 	

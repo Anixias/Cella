@@ -36,7 +36,7 @@ public readonly struct ResolutionContext
 	public Func<ConstraintCheck, bool>? DeferConstraintCheck { get; init; }
 	public Func<string, Symbol?>? Capture { get; init; }
 	public Action<ResolutionContext, TypeSymbol, SourceLocation>? TrackInstance { get; init; }
-	public Action<ITypeNode, TypeSymbol>? RecordType { get; init; }
+	public Action<Token, Symbol>? RecordName { get; init; }
 	public InlineReturn? InlineReturn { get; init; }
 	
 	public string Mangle(Symbol symbol) => Mangling.Mangle(symbol, Modules, GetQualifiers());
@@ -107,6 +107,16 @@ public readonly struct ResolutionContext
 	};
 	
 	private const string RootModuleName = "mod";
+	
+	public Symbol? Resolve(Token name) => Record(name, Resolve(name.Text));
+	
+	private Symbol? Record(Token name, Symbol? symbol)
+	{
+		if (symbol is TypeSymbol or TraitSymbol)
+			RecordName?.Invoke(name, symbol);
+		
+		return symbol;
+	}
 	
 	public Symbol? Resolve(string name)
 	{
@@ -256,9 +266,9 @@ public readonly struct ResolutionContext
 	
 	public ModulePathSymbol? ResolveModule(IExpressionNode node) => node switch
 	{
-		VarExpressionNode v => Resolve(v.Identifier.Text) as ModulePathSymbol,
+		VarExpressionNode v => Resolve(v.Identifier) as ModulePathSymbol,
 		AccessExpressionNode a => ResolveModule(a.Target) is { } module
-			? ResolveMember(module, a.Member.Text) as ModulePathSymbol
+			? Record(a.Member, ResolveMember(module, a.Member.Text)) as ModulePathSymbol
 			: null,
 		_ => null
 	};
@@ -272,7 +282,7 @@ public readonly struct ResolutionContext
 		switch (node)
 		{
 			case IdentifierTypeNode identifier:
-				symbol = Resolve(identifier.Token.Text);
+				symbol = Resolve(identifier.Token);
 				break;
 			
 			case QualifiedTypeNode qualified:
@@ -286,7 +296,7 @@ public readonly struct ResolutionContext
 				ImmutableArray<Token> parts = [..generic.Qualifiers, generic.Identifier];
 				text = string.Join('.', parts.Select(static part => part.Text));
 				location = GetSpan(parts);
-				symbol = generic.Qualifiers.IsEmpty ? Resolve(generic.Identifier.Text) : ResolveQualifiedName(parts);
+				symbol = generic.Qualifiers.IsEmpty ? Resolve(generic.Identifier) : ResolveQualifiedName(parts);
 				if (symbol is null && !generic.Qualifiers.IsEmpty)
 					return null;
 				
@@ -360,7 +370,7 @@ public readonly struct ResolutionContext
 	{
 		FunctionTypeNode function => ResolveFunctionTrait(function),
 		IdentifierTypeNode identifier
-			when Resolve(identifier.Token.Text) is TypeParameterSymbol { IsTrait: true } trait => trait,
+			when Resolve(identifier.Token) is TypeParameterSymbol { IsTrait: true } trait => trait,
 		_ => ResolveTrait(node)
 	};
 	
@@ -384,7 +394,7 @@ public readonly struct ResolutionContext
 	
 	public Symbol? ResolveTypeName(ITypeNode node) => node switch
 	{
-		IdentifierTypeNode identifier => Resolve(identifier.Token.Text),
+		IdentifierTypeNode identifier => Resolve(identifier.Token),
 		QualifiedTypeNode qualified => ResolveQualifiedName(qualified.Parts),
 		_ => null
 	};
@@ -392,7 +402,7 @@ public readonly struct ResolutionContext
 	public Symbol? ResolveQualifiedName(ImmutableArray<Token> parts)
 	{
 		var first = parts[0];
-		if (Resolve(first.Text) is { } symbol)
+		if (Resolve(first) is { } symbol)
 			return ResolveMembers(symbol, parts, 1);
 		
 		Diagnostics.Add(DiagnosticReporter.ReportUndefinedModule(first.SourceLocation, first.Text,
@@ -417,7 +427,7 @@ public readonly struct ResolutionContext
 				return null;
 			}
 			
-			if (ResolveMember(module, parts[i].Text) is not { } member)
+			if (Record(parts[i], ResolveMember(module, parts[i].Text)) is not { } member)
 			{
 				Diagnostics.Add(ReportUndefinedMember(parts[i].SourceLocation, module, parts[i].Text));
 				return null;
@@ -486,9 +496,19 @@ public readonly struct ResolutionContext
 	public TypeSymbol ResolveType(ITypeNode node)
 	{
 		var type = ResolveTypeNode(node);
-		RecordType?.Invoke(node, type);
+		if (NameOf(node) is { } name)
+			Record(name, type);
+		
 		return type;
 	}
+	
+	private static Token? NameOf(ITypeNode node) => node switch
+	{
+		IdentifierTypeNode identifier => identifier.Token,
+		GenericTypeNode generic => generic.Identifier,
+		QualifiedTypeNode qualified => qualified.Parts[^1],
+		_ => null
+	};
 	
 	private TypeSymbol ResolveTypeNode(ITypeNode node) => node switch
 	{
@@ -620,7 +640,7 @@ public readonly struct ResolutionContext
 	
 	private TypeSymbol ResolveNamedType(Token name)
 	{
-		switch (Resolve(name.Text))
+		switch (Resolve(name))
 		{
 			case NamedTypeSymbol { IsGenericDefinition: true } generic:
 				Diagnostics.Add(ReportGenericArgumentCount(name.SourceLocation, generic));
@@ -709,8 +729,10 @@ public readonly struct ResolutionContext
 	
 	public Symbol? FindNamed(IExpressionNode expression) => expression switch
 	{
-		VarExpressionNode v => Resolve(v.Identifier.Text),
-		AccessExpressionNode a => ResolveModule(a.Target) is { } module ? ResolveMember(module, a.Member.Text) : null,
+		VarExpressionNode v => Resolve(v.Identifier),
+		AccessExpressionNode a => ResolveModule(a.Target) is { } module
+			? Record(a.Member, ResolveMember(module, a.Member.Text))
+			: null,
 		_ => null
 	};
 	
@@ -739,7 +761,7 @@ public readonly struct ResolutionContext
 	public TypeSymbol ResolveGenericArgumentExpression(IExpressionNode expression, TypeParameterSymbol? parameter)
 	{
 		if (expression is AccessExpressionNode { Target: VarExpressionNode target } projected &&
-		    Resolve(target.Identifier.Text) is TypeParameterSymbol { IsValue: false, IsTrait: false } owner &&
+		    Resolve(target.Identifier) is TypeParameterSymbol { IsValue: false, IsTrait: false } owner &&
 		    TypePool.GetBounds(owner).Select(bound => bound.Trait.GetConstant(projected.Member.Text))
 			    .OfType<GlobalSymbol>().Distinct().ToList() is [var constant])
 			return TypePool.GetConstantProjection(owner, constant);
@@ -827,7 +849,7 @@ public readonly struct ResolutionContext
 	{
 		VarExpressionNode => FindNamed(expression) is TypeParameterSymbol { IsValue: true },
 		AccessExpressionNode { Target: VarExpressionNode target } =>
-			Resolve(target.Identifier.Text) is TypeParameterSymbol { IsValue: false, IsTrait: false },
+			Resolve(target.Identifier) is TypeParameterSymbol { IsValue: false, IsTrait: false },
 		BinaryOpExpressionNode binary => MentionsValueParameter(binary.Left) || MentionsValueParameter(binary.Right),
 		UnaryOpExpressionNode unary => MentionsValueParameter(unary.Operand),
 		ChainedExpressionNode chained => chained.Operands.Any(MentionsValueParameter),
@@ -851,9 +873,9 @@ public readonly struct ResolutionContext
 	{
 		var symbol = node.Target switch
 		{
-			VarExpressionNode variable => Resolve(variable.Identifier.Text),
+			VarExpressionNode variable => Resolve(variable.Identifier),
 			AccessExpressionNode access => ResolveModule(access.Target) is { } module
-				? ResolveMember(module, access.Member.Text)
+				? Record(access.Member, ResolveMember(module, access.Member.Text))
 				: null,
 			_ => null
 		};
@@ -874,7 +896,7 @@ public readonly struct ResolutionContext
 		}
 		
 		if (node.Target is not VarExpressionNode target ||
-		    Resolve(target.Identifier.Text) is not (null or TypeSymbol) ||
+		    Resolve(target.Identifier) is not (null or TypeSymbol) ||
 		    !TypePool.BuiltinGenericTypeArguments.ContainsKey(target.Identifier.Text))
 			return null;
 		
@@ -989,13 +1011,13 @@ public readonly struct ResolutionContext
 		node switch
 		{
 			TypeArgumentNode { Type: IdentifierTypeNode type } when
-				AsTraitArgument(Resolve(type.Token.Text), type.SourceLocation) is { } trait => trait,
+				AsTraitArgument(Resolve(type.Token), type.SourceLocation) is { } trait => trait,
 			TypeArgumentNode { Type: QualifiedTypeNode type } when
 				AsTraitArgument(FindQualified(type.Parts), type.SourceLocation) is { } trait => trait,
 			TypeArgumentNode { Type: GenericTypeNode type } when FindQualified([..type.Qualifiers, type.Identifier]) is
 				TraitSymbol => ResolveTrait(type) ?? (TypeSymbol)NativeSymbols.Invalid,
 			TypeArgumentNode argument => ResolveType(argument.Type),
-			IdentifierArgumentNode argument => Resolve(argument.Identifier.Text) switch
+			IdentifierArgumentNode argument => Resolve(argument.Identifier) switch
 			{
 				TypeParameterSymbol { IsValue: true } value => value,
 				VariableSymbol => ResolveValueExpression(new VarExpressionNode(argument.Identifier), parameter),
@@ -1009,7 +1031,7 @@ public readonly struct ResolutionContext
 	{
 		var symbol = Resolve(parts[0].Text);
 		foreach (var part in parts.Skip(1))
-			symbol = symbol is ModulePathSymbol module ? ResolveMember(module, part.Text) : null;
+			symbol = symbol is ModulePathSymbol module ? Record(part, ResolveMember(module, part.Text)) : null;
 		
 		return symbol;
 	}
@@ -1017,7 +1039,7 @@ public readonly struct ResolutionContext
 	private TypeSymbol? ResolveTypeArgument(IGenericArgumentNode node) => node switch
 	{
 		TypeArgumentNode t => ResolveType(t.Type),
-		IdentifierArgumentNode i => Resolve(i.Identifier.Text) switch
+		IdentifierArgumentNode i => Resolve(i.Identifier) switch
 		{
 			null or TypeParameterSymbol { IsTrait: true } or TypeParameterSymbol { IsValue: true }
 				or NamedTypeSymbol { IsGenericDefinition: true } => ResolveNamedType(i.Identifier),
@@ -1120,7 +1142,7 @@ public readonly struct ResolutionContext
 	private TypeSymbol ResolveUserGenericType(GenericTypeNode node)
 	{
 		var name = node.Identifier;
-		var symbol = node.Qualifiers.IsEmpty ? Resolve(name.Text) : ResolveQualifiedName([..node.Qualifiers, name]);
+		var symbol = node.Qualifiers.IsEmpty ? Resolve(name) : ResolveQualifiedName([..node.Qualifiers, name]);
 		switch (symbol)
 		{
 			case NamedTypeSymbol { IsGenericDefinition: true } definition:

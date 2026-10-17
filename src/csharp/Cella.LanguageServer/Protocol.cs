@@ -9,6 +9,7 @@ public static class Protocol
 	private const int ErrorSeverity = 1;
 	private const int WarningSeverity = 2;
 	private const int HintSeverity = 4;
+	private const int UnnecessaryTag = 1;
 	
 	public static StringComparer PathComparer { get; } =
 		OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal;
@@ -55,6 +56,17 @@ public static class Protocol
 		["id"] = id,
 		["error"] = new JsonObject { ["code"] = code, ["message"] = message }
 	};
+	
+	public static JsonObject? ToUnnecessaryLsp(Diagnostic diagnostic) => diagnostic.UnnecessaryLocation is { } location
+		? new JsonObject
+		{
+			["range"] = ToRange(location),
+			["severity"] = HintSeverity,
+			["source"] = "cella",
+			["message"] = diagnostic.Message,
+			["tags"] = new JsonArray(UnnecessaryTag)
+		}
+		: null;
 	
 	public static JsonObject ToLsp(Diagnostic diagnostic)
 	{

@@ -16,6 +16,7 @@ public sealed record Diagnostic
 	public SourceLocation SourceLocation { get; }
 	public string Message { get; }
 	public ImmutableArray<string> Hints { get; init; } = ImmutableArray<string>.Empty; // TODO Suggested fixes for IDE?
+	public SourceLocation? UnnecessaryLocation { get; init; }
 	public int Line { get; }
 	public int Column { get; }
 	

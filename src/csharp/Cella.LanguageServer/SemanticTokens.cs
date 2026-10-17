@@ -20,7 +20,8 @@ public static class SemanticTokens
 		Parameter,
 		Variable,
 		Property,
-		EnumMember
+		EnumMember,
+		Keyword
 	}
 	
 	[Flags]
@@ -29,7 +30,7 @@ public static class SemanticTokens
 		None = 0,
 		Declaration = 1,
 		Readonly = 2,
-		DefaultLibrary = 4
+		Static = 4
 	}
 	
 	public static JsonObject Legend { get; } = new()
@@ -46,11 +47,18 @@ public static class SemanticTokens
 			         .ThenBy(static reference => reference.Location.Range.Length))
 		{
 			var (source, range) = reference.Location;
-			if (range.Start < previousEnd || !IsName(reference.Location.GetText().ToString()) ||
+			var text = reference.Location.GetText().ToString();
+			var isOperator = TokenTypeInfo.GetOperator(text) is not null &&
+			                 reference.Symbol is FunctionSymbol or MethodSymbol;
+			
+			if (range.Start < previousEnd || !isOperator && !IsName(text) ||
 			    Classify(reference.Symbol) is not { } classified)
 				continue;
 			
 			var (kind, modifiers) = classified;
+			if (isOperator)
+				kind = Kind.Method;
+			
 			if (reference.Declaration is { } declaration && declaration.Range.Start == range.Start &&
 			    Protocol.PathComparer.Equals(declaration.Source.FilePath, source.FilePath))
 				modifiers |= Modifiers.Declaration;
@@ -71,14 +79,18 @@ public static class SemanticTokens
 		new([..names.Select(static name => JsonValue.Create(JsonNamingPolicy.CamelCase.ConvertName(name)))]);
 	
 	private static bool IsName(string text) =>
-		text is [var first, ..] && (char.IsLetter(first) || first == '_') && TokenTypeInfo.GetKeyword(text) is null;
+		text is [var first, ..] && (char.IsLetter(first) || first == '_') &&
+		text.All(static c => char.IsLetterOrDigit(c) || c == '_') && TokenTypeInfo.GetKeyword(text) is null;
 	
 	private static (Kind, Modifiers)? Classify(Symbol symbol) => symbol switch
 	{
 		FunctionSymbol { Kind: FunctionKind.Free or FunctionKind.External } => (Kind.Function, Modifiers.None),
 		FunctionSymbol or MethodSymbol => (Kind.Method, Modifiers.None),
-		LocalVariableSymbol { IsMutable: true } or GlobalSymbol { IsMutable: true } => (Kind.Variable, Modifiers.None),
-		LocalVariableSymbol or GlobalSymbol => (Kind.Variable, Modifiers.Readonly),
+		LocalVariableSymbol { IsConstant: true } => (Kind.Variable, Modifiers.Static | Modifiers.Readonly),
+		LocalVariableSymbol { IsMutable: true } => (Kind.Variable, Modifiers.None),
+		LocalVariableSymbol => (Kind.Variable, Modifiers.Readonly),
+		GlobalSymbol { IsMutable: true } => (Kind.Variable, Modifiers.Static),
+		GlobalSymbol => (Kind.Variable, Modifiers.Static | Modifiers.Readonly),
 		ParameterSymbol => (Kind.Parameter, Modifiers.None),
 		FieldSymbol { IsMutable: true } or PropertySymbol => (Kind.Property, Modifiers.None),
 		FieldSymbol => (Kind.Property, Modifiers.Readonly),
@@ -88,7 +100,7 @@ public static class SemanticTokens
 		TypeSymbol { OriginalDefinition: RecordSymbol } => (Kind.Struct, Modifiers.None),
 		TypeSymbol { OriginalDefinition: EnumSymbol } => (Kind.Enum, Modifiers.None),
 		NamedTypeSymbol => (Kind.Type, Modifiers.None),
-		TypeSymbol => (Kind.Type, Modifiers.DefaultLibrary),
+		TypeSymbol => (Kind.Keyword, Modifiers.None),
 		_ => null
 	};
 }

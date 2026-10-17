@@ -18,6 +18,9 @@ public sealed class ControlFlowAnalyzer(DiagnosticList diagnostics)
 		var unreachable = function.Statements.Where(statement => !reachableBlocks.Contains(statement.Block))
 			.ToHashSet();
 		
+		var next = function.Statements.Where(static statement => statement.Previous is not null)
+			.ToDictionary(static statement => statement.Previous!);
+		
 		foreach (var statement in function.Statements)
 		{
 			if (!unreachable.Contains(statement) || statement.Parent is { } parent && unreachable.Contains(parent) ||
@@ -25,8 +28,16 @@ public sealed class ControlFlowAnalyzer(DiagnosticList diagnostics)
 				continue;
 			
 			var (source, range) = statement.Location;
-			range = new(range.Start, range.Start); // Empty length to avoid coloring first character only
-			diagnostics.Add(DiagnosticReporter.ReportUnreachableCode(new(source, range)));
+			var end = range.End;
+			for (var following = statement;
+			     next.TryGetValue(following, out var sibling) && unreachable.Contains(sibling);
+			     following = sibling)
+				end = Math.Max(end, sibling.Location.Range.End);
+			
+			diagnostics.Add(DiagnosticReporter.ReportUnreachableCode(new(source, new(range.Start, range.Start))) with
+			{
+				UnnecessaryLocation = new(source, new(range.Start, end))
+			});
 		}
 	}
 	

@@ -106,16 +106,16 @@ public sealed partial class Builder
 			.Except(dependencySymbols)
 			.ToImmutableArray();
 		
-		var typeReferences = new List<(ITypeNode Node, TypeSymbol Type)>();
-		var recordType = options.ChecksOnly
-			? (node, type) => typeReferences.Add((node, type))
-			: (Action<ITypeNode, TypeSymbol>?)null;
+		var names = new List<(Token Name, Symbol Symbol)>();
+		var recordName = options.ChecksOnly
+			? (name, symbol) => names.Add((name, symbol))
+			: (Action<Token, Symbol>?)null;
 		
 		var signatureCollector = new SignatureCollector(project.Name, entryPointName, symbolTable, typePool,
 			dependencySymbols, indirectSymbols, FindAliases(project, dependencyList), pointerBitSize)
 		{
 			ReportsMissingEntryPoint = parseDiagnostics.ErrorCount == 0,
-			RecordType = recordType
+			RecordName = recordName
 		};
 		
 		var containment = new ErrorContainment(files);
@@ -123,7 +123,7 @@ public sealed partial class Builder
 		var resolver = new Resolver(symbolTable, signatureCollector, typePool, pointerBitSize)
 		{
 			Containment = containment,
-			RecordType = recordType
+			RecordName = recordName
 		};
 		
 		signatureCollector.Collect([..files], resolver);
@@ -204,7 +204,7 @@ public sealed partial class Builder
 			
 			_projects.Add(new(project.FilePath, [..diagnostics.SelectMany(static list => list)], resolvedFiles)
 			{
-				Model = options.ChecksOnly ? new(() => new SemanticModel(resolvedFiles, typeReferences)) : null
+				Model = options.ChecksOnly ? new(() => new SemanticModel(resolvedFiles, names)) : null
 			});
 			
 			if (ReportErrors(diagnostics))

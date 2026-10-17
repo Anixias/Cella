@@ -96,10 +96,8 @@
 		"strings": {
 			"name": "string.quoted.double.cella",
 			"begin": "\"",
-			"beginCaptures": { "0": { "name": "punctuation.definition.string.begin.cella" } },
 			"end": "(\")([A-Za-z]\\w*)?|$",
 			"endCaptures": {
-				"1": { "name": "punctuation.definition.string.end.cella" },
 				"2": { "name": "storage.type.string.cella" }
 			},
 			"patterns": [
@@ -110,10 +108,8 @@
 		"chars": {
 			"name": "string.quoted.single.cella",
 			"begin": "'",
-			"beginCaptures": { "0": { "name": "punctuation.definition.string.begin.cella" } },
 			"end": "(')([A-Za-z]\\w*)?|$",
 			"endCaptures": {
-				"1": { "name": "punctuation.definition.string.end.cella" },
 				"2": { "name": "storage.type.string.cella" }
 			},
 			"patterns": [{ "include": "#escapes" }]

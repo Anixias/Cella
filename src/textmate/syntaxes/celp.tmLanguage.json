@@ -41,9 +41,7 @@
 				{
 					"name": "string.quoted.double.condition.celp",
 					"begin": "(?<=When\\.)\"",
-					"beginCaptures": { "0": { "name": "punctuation.definition.string.begin.celp" } },
 					"end": "\"|$",
-					"endCaptures": { "0": { "name": "punctuation.definition.string.end.celp" } },
 					"patterns": [{ "include": "#condition" }]
 				},
 				{ "include": "#keys" },
@@ -116,32 +114,24 @@
 				{
 					"name": "string.quoted.triple.basic.celp",
 					"begin": "\"\"\"",
-					"beginCaptures": { "0": { "name": "punctuation.definition.string.begin.celp" } },
 					"end": "\"\"\"(?!\")",
-					"endCaptures": { "0": { "name": "punctuation.definition.string.end.celp" } },
 					"patterns": [{ "include": "#escapes" }]
 				},
 				{
 					"name": "string.quoted.triple.literal.celp",
 					"begin": "'''",
-					"beginCaptures": { "0": { "name": "punctuation.definition.string.begin.celp" } },
-					"end": "'''(?!')",
-					"endCaptures": { "0": { "name": "punctuation.definition.string.end.celp" } }
+					"end": "'''(?!')"
 				},
 				{
 					"name": "string.quoted.double.basic.celp",
 					"begin": "\"",
-					"beginCaptures": { "0": { "name": "punctuation.definition.string.begin.celp" } },
 					"end": "\"|$",
-					"endCaptures": { "0": { "name": "punctuation.definition.string.end.celp" } },
 					"patterns": [{ "include": "#escapes" }]
 				},
 				{
 					"name": "string.quoted.single.literal.celp",
 					"begin": "'",
-					"beginCaptures": { "0": { "name": "punctuation.definition.string.begin.celp" } },
-					"end": "'|$",
-					"endCaptures": { "0": { "name": "punctuation.definition.string.end.celp" } }
+					"end": "'|$"
 				}
 			]
 		},
