@@ -3,6 +3,8 @@ package com.anixias.cella.server
 import com.anixias.cella.CellaLanguage
 import com.anixias.cella.lexer.CellaToken
 import com.anixias.cella.lexer.CellaTokenTypes
+import com.intellij.codeInsight.TargetElementEvaluatorEx
+import com.intellij.codeInsight.TargetElementEvaluatorEx2
 import com.intellij.codeInsight.daemon.impl.HighlightInfoType
 import com.intellij.codeInsight.navigation.actions.GotoDeclarationHandler
 import com.intellij.lang.annotation.AnnotationHolder
@@ -78,6 +80,11 @@ class CellaHoverAnnotator : Annotator {
 		if (CellaTokenTypes.tokenOf(element.node?.elementType) in hoverTokens)
 			holder.newSilentAnnotation(HighlightInfoType.SYMBOL_TYPE_SEVERITY).create()
 	}
+}
+
+class CellaTargetElementEvaluator : TargetElementEvaluatorEx2(), TargetElementEvaluatorEx {
+	override fun isIdentifierPart(file: PsiFile, text: CharSequence, offset: Int) =
+		CellaTokenTypes.tokenOf(file.findElementAt(offset)?.node?.elementType) in hoverTokens
 }
 
 class CellaDocumentationTargetProvider : DocumentationTargetProvider {

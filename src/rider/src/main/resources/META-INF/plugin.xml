@@ -47,6 +47,8 @@
 				implementation="com.anixias.cella.server.CellaDocumentationTargetProvider"/>
 		<gotoDeclarationHandler implementation="com.anixias.cella.server.CellaGotoDeclarationHandler"/>
 		<annotator language="Cella" implementationClass="com.anixias.cella.server.CellaHoverAnnotator"/>
+		<targetElementEvaluator language="Cella"
+		                        implementationClass="com.anixias.cella.server.CellaTargetElementEvaluator"/>
 		<psi.declarationProvider implementation="com.anixias.cella.server.CellaDeclarationProvider"/>
 		<uiDataRule implementation="com.anixias.cella.server.CellaSearchTargetsRule"/>
 		<searcher forClass="com.intellij.find.usages.api.UsageSearchParameters"
