@@ -1,0 +1,7 @@
+mod pairs
+
+pair[T]: rec
+{
+	a: T
+	b: T
+}

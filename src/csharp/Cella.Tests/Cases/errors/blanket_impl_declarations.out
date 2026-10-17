@@ -6,11 +6,6 @@ Error at line 23, column 11
 23 │ [T]: impl Size
                ╘══╛ 'T' needs 'Size.size'
 
-Error at line 25, column 6
-24 │ 
-25 │ [T]: impl
-          ╘══╛ Expected a trait
-
 Error at line 30, column 5
 29 │ 
 30 │ [T, U]: impl Describe

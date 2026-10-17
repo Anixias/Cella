@@ -7,9 +7,14 @@ public sealed class ImportEnvironment
 (
 	IEnumerable<Symbol> importedSymbols,
 	IEnumerable<Symbol> explicitSymbols,
-	IEnumerable<Symbol> hiddenSymbols
+	IEnumerable<Symbol> hiddenSymbols,
+	IEnumerable<ModuleSymbol> activatedModules
 )
 {
+	private readonly ImmutableHashSet<ModuleSymbol> _activatedModules = activatedModules.ToImmutableHashSet();
+	
+	public bool Activates(ModuleSymbol module) => _activatedModules.Contains(module);
+	
 	public IEnumerable<Symbol> ImportedSymbols => _importedSymbols.SelectMany(static kvp => kvp.Value);
 	
 	private readonly ImmutableDictionary<string, ImmutableArray<Symbol>> _importedSymbols = importedSymbols

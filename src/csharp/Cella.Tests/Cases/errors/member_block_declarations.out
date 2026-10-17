@@ -51,11 +51,6 @@ Error at line 44, column 9
 44 │ box[T]: impl
              ╘══╛ Cannot declare 'impl' blocks that add no bounds
 
-Error at line 49, column 1
-48 │ 
-49 │ i32: impl
-     ╘═╛ 'i32' is declared in another project
-
 Error at line 59, column 6
 58 │ 
 59 │ wrap[T: Eq]: impl

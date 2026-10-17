@@ -1,0 +1,16 @@
+mod test
+
+use pairs.pair
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+main: fun -> i32
+{
+	val numbers = pair[i32](3, 3)
+	val other = pair[i32](1, 2)
+	printf("%d %d %d\n", numbers.same(), other.same(), other.total())
+	ret 0
+}

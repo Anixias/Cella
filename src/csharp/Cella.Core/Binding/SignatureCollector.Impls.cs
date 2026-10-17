@@ -39,6 +39,9 @@ public sealed partial class SignatureCollector
 			return;
 		
 		_implTargets[impl] = target;
+		if (node.Traits.IsEmpty && IsExtensionTarget(target, context))
+			RegisterExtension(impl, node, context);
+		
 		if (node.Traits.IsEmpty)
 			_typePool.AddMemberBlock(impl, target);
 		
@@ -48,6 +51,35 @@ public sealed partial class SignatureCollector
 			if (deferring.ResolveTrait(traitNode) is { } trait)
 				AddConformance(new(trait.Trait, trait.Arguments, target, impl.TypeParameters, impl,
 					traitNode.SourceLocation));
+		}
+	}
+	
+	private bool IsExtensionTarget(TypeSymbol target, ResolutionContext context) =>
+		target is TypeParameterSymbol || target.OriginalDefinition is not NamedTypeSymbol named ||
+		Modules.FindModule(named) != context.File.Module;
+	
+	private void RegisterExtension(ImplSymbol impl, ImplNode node, ResolutionContext context)
+	{
+		impl.ExtensionFile = context.File;
+		impl.ExtensionAssembly = Modules.AssemblyName;
+		foreach (var member in node.Members)
+		{
+			var visibility = Visibility.FromKeyword(member switch
+			{
+				FunctionNode function => function.Visibility,
+				PropertyNode property => property.Visibility,
+				_ => null
+			});
+			
+			if (!_symbolTable.DeclarationSymbols.TryGetValue(member, out var symbol))
+				continue;
+			
+			impl.ExtensionVisibilities[symbol] = visibility;
+			if (symbol is not PropertySymbol declared)
+				continue;
+			
+			foreach (var accessor in new[] { declared.Getter, declared.Setter }.OfType<FunctionAccessor>())
+				impl.ExtensionVisibilities[accessor.Function] = visibility;
 		}
 	}
 	
@@ -111,12 +143,6 @@ public sealed partial class SignatureCollector
 	
 	private TypeSymbol? ResolveBlanketTarget(ImplSymbol impl, ImplNode node)
 	{
-		if (node.Traits.IsEmpty)
-		{
-			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Keyword.SourceLocation, "Expected a trait"));
-			return null;
-		}
-		
 		if (node.TypeParameters is [_, var extra, ..])
 		{
 			Diagnostics.Add(new(DiagnosticSeverity.Error, extra.SourceLocation,
@@ -210,16 +236,80 @@ public sealed partial class SignatureCollector
 		foreach (var impl in blocks)
 			CheckMemberBlock(impl, (ImplNode)_declarations[impl].Node);
 		
-		foreach (var sameType in blocks.GroupBy(impl => GetImplTarget(impl).OriginalDefinition))
+		foreach (var sameModule in blocks.Where(static impl => impl.IsExtension)
+			         .GroupBy(impl => (Target: GetExtendedType(impl), impl.ExtensionFile!.Module)))
+			ReportExtensionDuplicates([..sameModule]);
+		
+		foreach (var sameType in blocks.Where(static impl => !impl.IsExtension)
+			         .GroupBy(impl => GetImplTarget(impl).OriginalDefinition))
 			ReportMemberBlockConflicts(sameType.Key, [..sameType],
 				[..conformances.Where(impl => GetImplTarget(impl).OriginalDefinition == sameType.Key)]);
 	}
+	
+	private TypeSymbol? GetExtendedType(ImplSymbol impl) =>
+		GetImplTarget(impl) is TypeParameterSymbol ? null : GetImplTarget(impl).OriginalDefinition;
+	
+	private void ReportExtensionDuplicates(IReadOnlyList<ImplSymbol> blocks)
+	{
+		if (blocks.Count < 2)
+			return;
+		
+		var members = blocks
+			.SelectMany(impl => impl.Functions.Select(method =>
+				(Impl: impl, method.Name, method.Function,
+					Signature: GetAlignedSignature(impl, method.Function, blocks[0]))))
+			.ToList();
+		
+		foreach (var member in members)
+		{
+			if (!members.Any(other => other.Impl != member.Impl && other.Name == member.Name &&
+			                          HaveSameParameters(other.Signature, member.Signature)))
+				continue;
+			
+			var target = DiagnosticReporter.DescribeType(GetImplTarget(member.Impl).OriginalDefinition);
+			Diagnostics.Add(new(DiagnosticSeverity.Error, GetFunctionLocation(member.Function),
+				$"'{target}.{member.Name}' is declared more than once with the same signature"));
+		}
+	}
+	
+	private FunctionSignature GetAlignedSignature(ImplSymbol impl, FunctionSymbol function, ImplSymbol reference)
+	{
+		var map = new Dictionary<TypeParameterSymbol, TypeSymbol>();
+		for (var i = 0; i < impl.TargetArguments.Length && i < reference.TargetArguments.Length; i++)
+			if (impl.TargetArguments[i] is TypeParameterSymbol parameter)
+				map[parameter] = reference.TargetArguments[i];
+		
+		return _typePool.SubstituteSignature(GetFunctionInfo(function).Signature, map);
+	}
+	
+	private static bool HaveSameParameters(FunctionSignature a, FunctionSignature b) =>
+		a.ParameterTypes.SequenceEqual(b.ParameterTypes) &&
+		Enumerable.Range(0, a.ParameterTypes.Length).All(i => a.GetMode(i) == b.GetMode(i));
 	
 	private void CheckMemberBlock(ImplSymbol impl, ImplNode node)
 	{
 		var target = GetImplTarget(impl).OriginalDefinition;
 		if (target is InvalidType)
 			return;
+		
+		if (impl.IsExtension)
+		{
+			if (target is NamedTypeSymbol extended)
+				ReportParameterViolations(extended.TypeParameters, impl, node);
+			
+			return;
+		}
+		
+		foreach (var keyword in node.Members.Select(static member => member switch
+			         {
+				         FunctionNode function => function.Visibility,
+				         PropertyNode property => property.Visibility,
+				         _ => null
+			         })
+			         .OfType<Token>()
+			         .Where(static keyword => keyword.Type == TokenType.KeywordPub)
+			         .DistinctBy(static keyword => keyword.SourceLocation))
+			Diagnostics.Add(new(DiagnosticSeverity.Error, keyword.SourceLocation, "Cannot declare 'pub' members"));
 		
 		if (!IsLocal(target))
 		{

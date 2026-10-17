@@ -326,7 +326,7 @@ public sealed partial class FileParser
 		if (keywords.Count > 1)
 			Report(Span(keywords[0], keywords[^1]),
 				$"Cannot combine {DiagnosticReporter.JoinNames([..keywords.Select(static k => k.Text)])}");
-		else if (isMember && keywords is [{ Type: TokenType.KeywordPub } pub])
+		else if (isMember && !allowsPublicMembers && keywords is [{ Type: TokenType.KeywordPub } pub])
 			Report(pub, "Cannot declare 'pub' members");
 		else if (keywords is [var keyword] && block is { } outer)
 			Report(keyword, $"Cannot use '{keyword.Text}' in '{outer.Text}' blocks");

@@ -1,0 +1,11 @@
+mod shapes
+
+Square: rec
+{
+	side: i32
+}
+
+Square: impl
+{
+	area: pub fun(imm self) -> i32 = self.side * self.side
+}

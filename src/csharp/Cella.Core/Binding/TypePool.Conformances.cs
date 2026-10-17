@@ -274,12 +274,15 @@ public sealed partial class TypePool
 	
 	public void AddMemberBlock(ImplSymbol impl, TypeSymbol target) => _memberBlocks.Add((impl, target));
 	
-	public IEnumerable<ImplSymbol> FindMemberBlocks(TypeSymbol type) => type is TypeParameterSymbol
-		? []
-		: _memberBlocks
-			.Where(block => block.Target == type.OriginalDefinition && Fits(block.Impl, type.TypeArguments) &&
-			                Satisfies(block.Impl.TypeParameters, type.TypeArguments))
-			.Select(static block => block.Impl);
+	public IEnumerable<ImplSymbol> FindMemberBlocks(TypeSymbol type) => _memberBlocks
+		.Where(block => block.Target is TypeParameterSymbol
+			? Satisfies(block.Impl.TypeParameters, [type])
+			: type is not TypeParameterSymbol && block.Target == type.OriginalDefinition &&
+			  Fits(block.Impl, type.TypeArguments) && Satisfies(block.Impl.TypeParameters, type.TypeArguments))
+		.Select(static block => block.Impl);
+	
+	public TypeSymbol? GetMemberBlockTarget(ImplSymbol impl) =>
+		_memberBlocks.FirstOrDefault(block => block.Impl == impl).Target;
 	
 	public DiagnosticText? FindBlockViolation(TypeSymbol type, string name) => type is TypeParameterSymbol
 		? null
@@ -334,6 +337,9 @@ public sealed partial class TypePool
 			return traitArguments.IsDefault
 				? [self, ..trait.TypeParameters, ..declared]
 				: [self, ..traitArguments, ..declared];
+		
+		if (witness.Impl is { } blanket && GetMemberBlockTarget(blanket) is TypeParameterSymbol)
+			return [self, ..declared];
 		
 		if (witness.Impl is null || FindConformance(self, witness.Impl) is not { } conformance)
 			return [..self.TypeArguments, ..declared];

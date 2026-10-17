@@ -368,6 +368,9 @@ public sealed partial class Resolver
 		if (trait is null && impl is null)
 			return CanAccess(owner, visibility);
 		
+		if (impl is { IsExtension: true })
+			return true;
+		
 		var context = CurrentResolutionContext;
 		if (visibility == Visibility.Private)
 			return trait is null ? context.ImplBlock == impl : context.Trait == trait;
@@ -378,8 +381,54 @@ public sealed partial class Resolver
 		return impl is not { Node.Traits.IsEmpty: true } || CanAccess(owner, visibility);
 	}
 	
-	private IEnumerable<MethodSymbol> GetMethods(TypeSymbol type, string name) =>
-		type.GetFunctions(name).Concat(GetTraitMethods(type, name));
+	private IEnumerable<MethodSymbol> GetMethods(TypeSymbol type, string name)
+	{
+		var own = type.GetFunctions(name).ToList();
+		return own.Concat(GetTraitMethods(type, name).Where(method =>
+			method.Function.Impl is not { IsExtension: true } impl ||
+			!own.Any(member => HidesExtension(member.Function, method.Function, impl))));
+	}
+	
+	private bool HidesExtension(FunctionSymbol member, FunctionSymbol extension, ImplSymbol impl)
+	{
+		var map = new Dictionary<TypeParameterSymbol, TypeSymbol>();
+		if (_typePool.GetMemberBlockTarget(impl) is NamedTypeSymbol { TypeParameters: var declared })
+			for (var i = 0; i < declared.Length && i < impl.TargetArguments.Length; i++)
+				if (impl.TargetArguments[i] is TypeParameterSymbol parameter)
+					map[parameter] = declared[i];
+		
+		var own = GetFunctionInfo(member).Signature;
+		var added = _typePool.SubstituteSignature(GetFunctionInfo(extension).Signature, map);
+		return own.ParameterTypes.SequenceEqual(added.ParameterTypes) &&
+		       Enumerable.Range(0, own.ParameterTypes.Length).All(i => own.GetMode(i) == added.GetMode(i));
+	}
+	
+	private bool IsActive(ImplSymbol impl)
+	{
+		if (impl.ExtensionFile is not { Module: var module })
+			return true;
+		
+		var context = CurrentResolutionContext;
+		return context.File.Module == module || context.Imports?.Activates(module) == true;
+	}
+	
+	private bool IsVisibleExtensionMember(ImplSymbol impl, Symbol member)
+	{
+		if (impl.ExtensionFile is not { } file)
+			return true;
+		
+		var context = CurrentResolutionContext;
+		return impl.ExtensionVisibilities.GetValueOrDefault(member, Visibility.Project) switch
+		{
+			Visibility.Private => context.File == file,
+			Visibility.Module => context.File.Module == file.Module,
+			Visibility.Project => context.Modules is not { } modules || modules.AssemblyName == impl.ExtensionAssembly,
+			_ => true
+		};
+	}
+	
+	private IEnumerable<ImplSymbol> GetActiveMemberBlocks(TypeSymbol type) =>
+		_typePool.FindMemberBlocks(type).Where(IsActive);
 	
 	private IEnumerable<MethodSymbol> GetTraitMethods(TypeSymbol type, string name)
 	{
@@ -389,11 +438,14 @@ public sealed partial class Resolver
 				.Where(method => IsDynMember(method.Function));
 		
 		if (type is TypeParameterSymbol parameter)
-			return _typePool.GetBounds(parameter).SelectMany(trait => GetInstanceMethods(trait, name));
+			return _typePool.GetBounds(parameter).SelectMany(trait => GetInstanceMethods(trait, name))
+				.Concat(GetActiveMemberBlocks(parameter).SelectMany(impl => impl.Functions.Where(method =>
+					method.Name == name && IsVisibleExtensionMember(impl, method.Function))));
 		
 		var conformances = GetVisibleConformances(type).ToList();
 		return GetImpls(conformances, type)
-			.SelectMany(impl => impl.Functions.Where(method => method.Name == name))
+			.SelectMany(impl => impl.Functions.Where(method =>
+				method.Name == name && IsVisibleExtensionMember(impl, method.Function)))
 			.Concat(conformances.SelectMany(conformance =>
 				GetInstanceMethods(_typePool.GetConformanceTrait(conformance, type), name)
 					.Where(method => method.Function.Visibility == Visibility.Private ||
@@ -450,7 +502,7 @@ public sealed partial class Resolver
 	private IEnumerable<ImplSymbol> GetImpls(IEnumerable<Conformance> conformances, TypeSymbol type) => conformances
 		.Select(static conformance => conformance.Impl)
 		.OfType<ImplSymbol>()
-		.Concat(_typePool.FindMemberBlocks(type))
+		.Concat(GetActiveMemberBlocks(type))
 		.Distinct();
 	
 	private PropertySymbol? GetPropertyMember(TypeSymbol type, string name) =>
@@ -472,11 +524,13 @@ public sealed partial class Resolver
 		if (type is TypeParameterSymbol parameter)
 			return _typePool.GetBounds(parameter)
 				.Select(trait => GetInstanceProperty(trait, name))
-				.OfType<PropertySymbol>();
+				.OfType<PropertySymbol>()
+				.Concat(GetActiveMemberBlocks(parameter).Select(impl => impl.Properties.FirstOrDefault(p =>
+					p.Name == name && IsVisibleExtensionMember(impl, p))).OfType<PropertySymbol>());
 		
 		var conformances = GetVisibleConformances(type).ToList();
 		return GetImpls(conformances, type)
-			.Select(impl => impl.Properties.FirstOrDefault(p => p.Name == name))
+			.Select(impl => impl.Properties.FirstOrDefault(p => p.Name == name && IsVisibleExtensionMember(impl, p)))
 			.OfType<PropertySymbol>()
 			.Concat(conformances
 				.Select(conformance => conformance.Trait.GetProperty(name) is { } traitProperty &&

@@ -879,6 +879,11 @@ public sealed class ImplSymbol
 	public ImmutableArray<PropertySymbol> Properties { get; } = properties.ToImmutableArray();
 	
 	public bool Declares(TypeParameterSymbol parameter) => TargetArguments.Contains(parameter);
+	
+	public FileSymbol? ExtensionFile { get; set; }
+	public string? ExtensionAssembly { get; set; }
+	public Dictionary<Symbol, Visibility> ExtensionVisibilities { get; } = [];
+	public bool IsExtension => ExtensionFile is not null;
 }
 
 public sealed class MethodSymbol(string name, FunctionSymbol function) : MemberSymbol(name)

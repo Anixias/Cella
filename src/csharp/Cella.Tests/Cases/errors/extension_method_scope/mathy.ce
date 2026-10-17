@@ -1,0 +1,6 @@
+mod mathy
+
+i32: impl
+{
+	clamp: fun(imm self, low: i32, high: i32) -> i32 = high
+}

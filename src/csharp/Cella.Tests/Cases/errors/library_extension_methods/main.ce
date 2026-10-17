@@ -1,0 +1,32 @@
+mod test
+
+use mathx
+use mathx.Box
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Local: rec
+{
+	a: i64
+	b: i64
+}
+
+Box: impl
+{
+	doubled: get(imm self) -> i32 = self.value * 2
+}
+
+main: fun -> i32
+{
+	val x: i32 = 50
+	val box = mathx.Box(21)
+	val local = Local(1, 2)
+	printf("%d %d %d\n", x.clamp(0, 10), box.doubled, mathx.libraryUse(7))
+	printf("%zu %zu\n", x.byteSize(), local.byteSize())
+	ret 0
+}
+
+hidden: fun(x: i32) -> i32 = x.internal()

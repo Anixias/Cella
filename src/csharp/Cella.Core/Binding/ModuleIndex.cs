@@ -6,6 +6,7 @@ namespace Cella.Core.Binding;
 public sealed class ModuleIndex
 {
 	private readonly Dictionary<string, ModulePathSymbol> _paths = [];
+	private readonly Dictionary<ModulePathSymbol, List<ModuleSymbol>> _pathModules = [];
 	private readonly Dictionary<string, ImmutableArray<string>> _ambiguous = [];
 	private readonly Dictionary<Symbol, FileSymbol> _files = [];
 	private readonly Dictionary<Symbol, FileSymbol> _dependencyFiles = [];
@@ -69,6 +70,9 @@ public sealed class ModuleIndex
 	public ModulePathSymbol Root { get; }
 	
 	public ModulePathSymbol? Find(string path) => _paths.GetValueOrDefault(path);
+	
+	public IEnumerable<ModuleSymbol> GetModules(ModulePathSymbol path) =>
+		_pathModules.GetValueOrDefault(path) ?? [];
 	
 	public AmbiguousModuleSymbol? FindAmbiguous(string name) =>
 		_ambiguous.TryGetValue(name, out var projects) ? new AmbiguousModuleSymbol(name, projects) : null;
@@ -139,6 +143,7 @@ public sealed class ModuleIndex
 		foreach (var (name, module) in symbolTable.ModuleSymbols)
 		{
 			var path = GetOrAdd([..name.Parts.Select(static part => part.Text)], name.Parts.Length, root, paths);
+			_pathModules.GetOrAdd(path).Add(module);
 			if (!symbolTable.SymbolsByModule.TryGetValue(module, out var members))
 				continue;
 			

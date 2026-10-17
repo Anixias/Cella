@@ -127,8 +127,13 @@ public sealed partial class FileParser
 		}
 		
 		var members = new List<IDeclarationNode>();
-		if (Match(ref index, out var openBrace, TokenType.OpOpenBrace) &&
-		    !ParseMembers(ref index, openBrace, null, members))
+		var outerPublic = allowsPublicMembers;
+		allowsPublicMembers = traits.Count == 0;
+		var parsed = !Match(ref index, out var openBrace, TokenType.OpOpenBrace) ||
+		             ParseMembers(ref index, openBrace, null, members);
+		
+		allowsPublicMembers = outerPublic;
+		if (!parsed)
 			return null;
 		
 		return new(target, keyword, traits, members) { TypeParameters = [..typeParameters] };
@@ -155,8 +160,12 @@ public sealed partial class FileParser
 			
 			if (MatchPubBlock(ref index, _memberContextualKeywords, out var pubKeyword, out var pubBrace))
 			{
-				Report(pubKeyword, "Cannot declare 'pub' members");
-				if (!ParseMembers(ref index, pubBrace, block, members))
+				if (!allowsPublicMembers)
+					Report(pubKeyword, "Cannot declare 'pub' members");
+				else if (block is { } outerBlock)
+					Report(pubKeyword, $"Cannot use 'pub' in '{outerBlock.Text}' blocks");
+				
+				if (!ParseMembers(ref index, pubBrace, allowsPublicMembers ? block ?? pubKeyword : block, members))
 					return false;
 				
 				continue;

@@ -53,7 +53,7 @@ public sealed class ExportSurface
 		foreach (var (impl, target) in typePool.MemberBlocks)
 		{
 			if (_declared.Contains(impl) && !_declared.Contains(target.OriginalDefinition))
-				foreach (var function in GetMemberFunctions(impl).Where(IsVisibleWithType))
+				foreach (var function in GetMemberFunctions(impl).Where(function => IsExported(impl, function)))
 					Reach(function);
 		}
 		
@@ -211,10 +211,14 @@ public sealed class ExportSurface
 		foreach (var witness in _typePool.GetWitnessFunctions(type))
 			Reach(witness);
 		
-		foreach (var function in _typePool.GetMemberBlocks(type).SelectMany(GetMemberFunctions)
-			         .Where(IsVisibleWithType))
-			Reach(function);
+		foreach (var impl in _typePool.GetMemberBlocks(type))
+			foreach (var function in GetMemberFunctions(impl).Where(function => IsExported(impl, function)))
+				Reach(function);
 	}
+	
+	private static bool IsExported(ImplSymbol impl, FunctionSymbol function) => impl.IsExtension
+		? impl.ExtensionVisibilities.GetValueOrDefault(function) == Visibility.Public
+		: IsVisibleWithType(function);
 	
 	private static bool IsVisibleWithType(FunctionSymbol function) =>
 		function.Kind == FunctionKind.Destructor || IsVisibleWithType(function.Visibility);

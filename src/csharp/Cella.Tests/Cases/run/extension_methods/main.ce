@@ -1,0 +1,25 @@
+mod test
+
+use geometry
+use mathx
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+sizeOfAny[T]: fun(imm value: T) -> usize = value.byteSize()
+
+main: fun -> i32
+{
+	val x: i32 = 50
+	val low: i32 = -5
+	printf("%d %d %d\n", x.clamp(0, 10), low.clamp(0, 10), i32.parse(55))
+	printf("%d\n", x.doubled)
+
+	val point = geometry.Point(3, 4)
+	val moved = point + geometry.Point(1, 1)
+	printf("%d %d %d %d\n", point.lengthSquared(), point.sum(), point.sum(10), moved.x)
+	printf("%zu %zu %zu\n", x.byteSize(), point.byteSize(), sizeOfAny(imm point))
+	ret 0
+}

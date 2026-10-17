@@ -30,10 +30,15 @@ public sealed partial class SignatureCollector
 		var imports = new List<Symbol>();
 		var hidden = new List<Symbol>();
 		var explicitImports = new List<(Symbol Symbol, Token Name, string Module)>();
+		var activated = new List<ModuleSymbol>();
 		foreach (var importExpression in node.Imports)
 		{
 			var collected = CollectImport(importExpression, context, hidden);
 			imports.AddRange(collected);
+			if (context.ResolveMembers(Modules.Root, importExpression.ModuleName.Parts, 0) is ModulePathSymbol imported)
+				activated.AddRange(Modules.GetModules(imported));
+			
+			activated.AddRange(collected.OfType<ModulePathSymbol>().SelectMany(Modules.GetModules));
 			if (importExpression.Import is TokenImport or ListImport)
 				explicitImports.AddRange(collected.Select(symbol =>
 					(symbol, FindImportName(importExpression, symbol), importExpression.ModuleName.Text)));
@@ -41,7 +46,7 @@ public sealed partial class SignatureCollector
 		
 		_explicitImports.Add((explicitImports, context));
 		ReportRepeatedImports(node.Imports);
-		return new(imports, explicitImports.Select(static entry => entry.Symbol), hidden);
+		return new(imports, explicitImports.Select(static entry => entry.Symbol), hidden, activated);
 	}
 	
 	private void ReportRepeatedImports(IEnumerable<ImportExpression> imports)

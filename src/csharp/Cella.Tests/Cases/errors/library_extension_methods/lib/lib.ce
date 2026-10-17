@@ -1,0 +1,36 @@
+mod mathx
+
+Box: pub rec
+{
+	value: i32
+}
+
+i32: impl
+{
+	clamp: pub fun(imm self, low: i32, high: i32) -> i32
+	{
+		if self < low
+		{
+			ret low
+		}
+
+		if self > high
+		{
+			ret high
+		}
+
+		ret self
+	}
+
+	internal: fun(imm self) -> i32 = self
+}
+
+[T]: impl
+{
+	pub
+	{
+		byteSize: fun(imm self) -> usize = sizeOf(T)
+	}
+}
+
+libraryUse: pub fun(x: i32) -> i32 = x.internal() + x.clamp(0, 5)

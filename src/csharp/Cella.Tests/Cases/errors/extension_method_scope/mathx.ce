@@ -1,0 +1,9 @@
+mod mathx
+
+i32: impl
+{
+	clamp: fun(imm self, low: i32, high: i32) -> i32 = low
+	twice: fun(imm self) -> i32 = self * 2
+	secret: pvt fun(imm self) -> i32 = 1
+	inner: mod fun(imm self) -> i32 = 2
+}

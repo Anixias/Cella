@@ -100,6 +100,7 @@ public sealed partial class FileParser
 	public DiagnosticList Diagnostics { get; } = new();
 	
 	private bool allowsMissingBodies;
+	private bool allowsPublicMembers;
 	
 	private void Report(SourceLocation location, string message,
 		DiagnosticSeverity severity = DiagnosticSeverity.Error) =>
