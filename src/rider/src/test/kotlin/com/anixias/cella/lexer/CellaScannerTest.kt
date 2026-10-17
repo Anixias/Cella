@@ -84,7 +84,7 @@ class CellaScannerTest {
 		assertEquals(
 			listOf(
 				"\"a :STRING", "{:INTERPOLATION_START", "x:IDENTIFIER", "+:OPERATOR", "1:INTEGER",
-				":4:FORMAT_SPEC", "}:INTERPOLATION_END", " b:STRING", "\\n:STRING_ESCAPE", "\\q:INVALID_STRING_ESCAPE",
+				"::FORMAT_SEPARATOR", "4:FORMAT_SPEC", "}:INTERPOLATION_END", " b:STRING", "\\n:STRING_ESCAPE", "\\q:INVALID_STRING_ESCAPE",
 				"\":STRING"
 			),
 			describe("\"a {x + 1:4} b\\n\\q\"")

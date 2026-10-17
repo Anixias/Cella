@@ -6,20 +6,17 @@ import com.anixias.cella.lexer.CelpTokenTypes
 import com.anixias.cella.lexer.CellaToken
 import com.anixias.cella.lexer.CellaTokenTypes
 import com.intellij.codeInsight.editorActions.SimpleTokenSetQuoteHandler
-import com.intellij.codeInsight.editorActions.TypedHandlerDelegate
 import com.intellij.lang.BracePair
 import com.intellij.lang.Commenter
 import com.intellij.lang.Language
 import com.intellij.lang.PairedBraceMatcher
-import com.intellij.openapi.editor.Editor
-import com.intellij.openapi.fileTypes.FileType
-import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
 import com.intellij.psi.TokenType
 import com.intellij.psi.impl.source.codeStyle.lineIndent.JavaLikeLangLineIndentProvider
 import com.intellij.psi.impl.source.codeStyle.SemanticEditorPosition
 import com.intellij.psi.tree.IElementType
+import com.intellij.spellchecker.BundledDictionaryProvider
 import com.intellij.spellchecker.tokenizer.SpellcheckingStrategy
 import com.intellij.spellchecker.tokenizer.Tokenizer
 
@@ -99,43 +96,6 @@ class CellaLineIndentProvider : JavaLikeLangLineIndentProvider() {
 	override fun isSuitableForLanguage(language: Language) = language.isKindOf(CellaLanguage)
 }
 
-class CellaTypedHandler : TypedHandlerDelegate() {
-	override fun beforeCharTyped(c: Char, project: Project, editor: Editor, file: PsiFile, fileType: FileType): Result {
-		if (c != '}' || file.language != CellaLanguage)
-			return Result.CONTINUE
-		
-		val offset = editor.caretModel.offset
-		val text = editor.document.charsSequence
-		if (offset < text.length && text[offset] == '}' && isBalanced(text)) {
-			editor.caretModel.moveToOffset(offset + 1)
-			return Result.STOP
-		}
-		
-		return Result.CONTINUE
-	}
-	
-	override fun charTyped(c: Char, project: Project, editor: Editor, file: PsiFile): Result {
-		if (c != '{' || file.language != CellaLanguage)
-			return Result.CONTINUE
-		
-		val offset = editor.caretModel.offset
-		val text = editor.document.charsSequence
-		val next = if (offset < text.length) text[offset] else '\n'
-		if (next.isWhitespace() || next in ")]}")
-			editor.document.insertString(offset, "}")
-		
-		return Result.CONTINUE
-	}
-	
-	private fun isBalanced(text: CharSequence): Boolean {
-		var depth = 0
-		for (c in text) {
-			if (c == '{')
-				depth++
-			else if (c == '}')
-				depth--
-		}
-		
-		return depth <= 0
-	}
+class CellaDictionaryProvider : BundledDictionaryProvider {
+	override fun getBundledDictionaries() = arrayOf("/dictionaries/cella.dic")
 }

@@ -35,7 +35,8 @@ class CellaHighlighter : SyntaxHighlighterBase() {
 			CellaToken.STRING_ESCAPE -> CellaColors.STRING_ESCAPE
 			CellaToken.INVALID_STRING_ESCAPE -> CellaColors.INVALID_STRING_ESCAPE
 			CellaToken.FORMAT_SPEC -> CellaColors.FORMAT_SPEC
-			CellaToken.INTERPOLATION_START, CellaToken.INTERPOLATION_END -> CellaColors.INTERPOLATION
+			CellaToken.INTERPOLATION_START, CellaToken.INTERPOLATION_END, CellaToken.FORMAT_SEPARATOR ->
+				CellaColors.INTERPOLATION
 			CellaToken.LINE_COMMENT -> CellaColors.LINE_COMMENT
 			CellaToken.BLOCK_COMMENT -> CellaColors.BLOCK_COMMENT
 			CellaToken.IDENTIFIER -> CellaColors.IDENTIFIER

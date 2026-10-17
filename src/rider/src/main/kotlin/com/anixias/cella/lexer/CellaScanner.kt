@@ -7,6 +7,7 @@ class CellaScanner {
 		const val AFTER_COLON = 2
 		const val STRING_CONTENT = 3
 		const val SUFFIX = 4
+		const val FORMAT = 5
 		const val HOLE = 100
 		
 		private val keywords = buildMap {
@@ -80,6 +81,21 @@ class CellaScanner {
 		if (tokenStart >= bufferEnd) {
 			tokenType = null
 			return
+		}
+		
+		if (state == FORMAT) {
+			state = HOLE
+			tokenEnd = tokenStart
+			var escaped = false
+			while (tokenEnd < bufferEnd && !isNewline(buffer[tokenEnd]) && (buffer[tokenEnd] != '}' || escaped)) {
+				escaped = buffer[tokenEnd] == '\\' && !escaped
+				tokenEnd++
+			}
+			
+			if (tokenEnd > tokenStart) {
+				tokenType = CellaToken.FORMAT_SPEC
+				return
+			}
 		}
 		
 		if (state == SUFFIX) {
@@ -399,13 +415,8 @@ class CellaScanner {
 			
 			c == ':' && depth == 0 -> {
 				tokenEnd = tokenStart + 1
-				var escaped = false
-				while (tokenEnd < bufferEnd && !isNewline(buffer[tokenEnd]) && (buffer[tokenEnd] != '}' || escaped)) {
-					escaped = buffer[tokenEnd] == '\\' && !escaped
-					tokenEnd++
-				}
-				
-				CellaToken.FORMAT_SPEC
+				state = FORMAT
+				CellaToken.FORMAT_SEPARATOR
 			}
 			
 			else -> null
