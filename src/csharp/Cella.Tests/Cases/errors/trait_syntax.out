@@ -1,6 +1,11 @@
 
 ====== trait_syntax.ce ======
 
+Error at line 5, column 12
+4 │ {
+5 │     hash: fun(self) -> u64
+                  ╘══╛ Cannot copy 'Self'
+
 Error at line 13, column 8
 12 │ 
 13 │ Point: pub impl Hash

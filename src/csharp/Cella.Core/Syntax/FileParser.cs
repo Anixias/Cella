@@ -91,6 +91,7 @@ public sealed partial class FileParser
 	
 	private static readonly HashSet<string> _nestedKinds = ["rec", "enum", "union", "trait", "impl"];
 	
+	private readonly List<SourceLocation> _declarationExtents = [];
 	private bool skippedToEnd;
 	private bool reachedDeclaration;
 	
@@ -273,6 +274,8 @@ public sealed partial class FileParser
 				else
 					ResyncTopLevel(ref index);
 				
+				_declarationExtents.Add(Span(useToken, Tokens[index - 1]));
+				
 				if (!importsAllowed && !precedesModuleName)
 					Report(useToken, "Imports must precede all other declarations");
 				
@@ -302,9 +305,6 @@ public sealed partial class FileParser
 		if (index > 1)
 			range = range.Join(Tokens[index - 1].SourceLocation.Range);
 		
-		if (Diagnostics.ErrorCount > 0)
-			return null;
-		
 		return new FileNode(new(source, range))
 		{
 			FileName = fileName,
@@ -312,6 +312,7 @@ public sealed partial class FileParser
 			ModuleName = moduleName,
 			Imports = imports.ToImmutableArray(),
 			Declarations = declarations.ToImmutableArray(),
+			DeclarationExtents = [.._declarationExtents],
 			IsExcluded = !isIncluded
 		};
 	}

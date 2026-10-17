@@ -1,6 +1,21 @@
 
 ====== pattern_syntax.ce ======
 
+Error at line 12, column 10
+11 │ val o: option[i32] = option.some(1)
+12 │ if o is option[i32].some(x)
+             ╘═════════════════╛ No operation defined for '==' between 'option[i32]' and 'option[i32]'
+
+Error at line 12, column 27
+11 │ val o: option[i32] = option.some(1)
+12 │ if o is option[i32].some(x)
+                              ^ Symbol 'x' not found in this scope
+
+Error at line 13, column 7
+12 │ if o is option[i32].some(x)
+13 │     ret x
+             ^ Symbol 'x' not found in this scope
+
 Error at line 32, column 12
 31 │ var e = E.hit(1)
 32 │ match own mut e

@@ -615,12 +615,14 @@ internal static class Program
 		var flags = CreateFlags(project.Project, targetTriple, optimizeMode, flagOverrides);
 		var (files, parseDiagnostics) = await ProcessProject(project, flags, ct);
 		var diagnostics = new List<DiagnosticList> { parseDiagnostics };
-		
-		if (ReportErrors(diagnostics, displayRoot, showHints))
-			return new(new(project.Name, SymbolTable.Empty, SignatureTable.Empty, null), outputType, null, false);
+		var phases = new Dictionary<Diagnostic, int>(ReferenceEqualityComparer.Instance);
+		RecordPhase(diagnostics, phases, 0);
 		
 		if (files.Length == 0)
 		{
+			if (ReportErrors(diagnostics, displayRoot, showHints))
+				return new(new(project.Name, SymbolTable.Empty, SignatureTable.Empty, null), outputType, null, false);
+			
 			if (!outputType.IsExecutable())
 				return new(new(project.Name, SymbolTable.Empty, SignatureTable.Empty, null), outputType, null, true);
 			
@@ -696,9 +698,18 @@ internal static class Program
 			.ToImmutableArray();
 		
 		var signatureCollector = new SignatureCollector(project.Name, entryPointName, symbolTable, typePool,
-			dependencySymbols, indirectSymbols, FindAliases(project, dependencyList), pointerBitSize);
+			dependencySymbols, indirectSymbols, FindAliases(project, dependencyList), pointerBitSize)
+		{
+			ReportsMissingEntryPoint = parseDiagnostics.ErrorCount == 0
+		};
 		
-		var resolver = new Resolver(symbolTable, signatureCollector, typePool, pointerBitSize);
+		var containment = new ErrorContainment(files);
+		containment.MarkSyntaxErrors(parseDiagnostics);
+		var resolver = new Resolver(symbolTable, signatureCollector, typePool, pointerBitSize)
+		{
+			Containment = containment
+		};
+		
 		signatureCollector.Collect([..files], resolver);
 		
 		var assemblySymbol = signatureCollector.FinishAssembly(project.Name);
@@ -706,8 +717,7 @@ internal static class Program
 		
 		diagnostics.Add(signatureCollector.Diagnostics);
 		diagnostics.Add(resolver.Diagnostics);
-		if (ReportErrors(diagnostics, displayRoot, showHints))
-			return errorResult;
+		RecordPhase(diagnostics, phases, 1);
 		
 		// Phase 3: Symbol resolution
 		ImmutableArray<ResolvedFileNode> resolvedFiles;
@@ -717,25 +727,29 @@ internal static class Program
 			
 			resolver.ReportInfiniteInstantiations();
 			resolver.ReportAtomicInstances();
-			if (ReportErrors(diagnostics, displayRoot, showHints))
-				return errorResult;
+			RecordPhase(diagnostics, phases, 2);
 		}
+		
+		containment.AddDeclarations(resolvedFiles);
+		containment.MarkErrors(diagnostics.SelectMany(static list => list));
 		
 		// Phase 4: Type checking
 		{
-			var typeChecker = new TypeChecker(signatureCollector.Evaluator, typePool, signatureCollector.Modules);
-			diagnostics.Add(typeChecker.Diagnostics);
+			var typeChecker = new TypeChecker(signatureCollector.Evaluator, typePool, signatureCollector.Modules,
+				containment);
 			
+			diagnostics.Add(typeChecker.Diagnostics);
 			foreach (var resolvedAst in resolvedFiles)
 				typeChecker.Check(resolvedAst);
 			
-			if (ReportErrors(diagnostics, displayRoot, showHints))
-				return errorResult;
+			typeChecker.Complete();
+			containment.MarkErrors(typeChecker.Diagnostics);
+			RecordPhase(diagnostics, phases, 3);
 		}
 		
 		// Phase 5: Lowering
 		var lowerer = new Lowerer(signatureCollector.Evaluator, typePool,
-			g => signatureCollector.GetGlobalInfo(g)!.Value);
+			g => signatureCollector.GetGlobalInfo(g)!.Value, containment);
 		
 		{
 			foreach (var resolvedAst in resolvedFiles)
@@ -768,6 +782,9 @@ internal static class Program
 				if (verbose)
 					Console.WriteLine(LoweredModulePrinter.Print(module));
 			}
+			
+			var found = diagnostics.SelectMany(static list => list).ToList();
+			diagnostics = [new(containment.Filter(found, diagnostic => phases.GetValueOrDefault(diagnostic, 4)))];
 			
 			if (ReportErrors(diagnostics, displayRoot, showHints))
 				return errorResult;
@@ -1197,7 +1214,8 @@ internal static class Program
 						FullPath = ast.FullPath,
 						ModuleName = ast.ModuleName,
 						Declarations = ast.Declarations,
-						Imports = [..projectImports, ..ast.Imports]
+						Imports = [..projectImports, ..ast.Imports],
+						DeclarationExtents = ast.DeclarationExtents
 					});
 		}
 		
@@ -1336,6 +1354,12 @@ internal static class Program
 		}
 		
 		return null;
+	}
+	
+	private static void RecordPhase(List<DiagnosticList> diagnostics, Dictionary<Diagnostic, int> phases, int phase)
+	{
+		foreach (var diagnostic in diagnostics.SelectMany(static list => list))
+			phases.TryAdd(diagnostic, phase);
 	}
 	
 	private static bool ReportErrors(List<DiagnosticList> diagnostics, string? directory, bool showHints)

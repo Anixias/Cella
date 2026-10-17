@@ -23,6 +23,7 @@ public sealed class FunctionNode
 ) : IFunctionNode
 {
 	public SourceLocation SourceLocation => Identifier.SourceLocation;
+	public SourceLocation Extent { get; init; } = identifier.SourceLocation;
 	public Token Identifier { get; } = identifier;
 	public ImmutableArray<Token> Modifiers { get; } = modifiers.ToImmutableArray();
 	public Token? Visibility { get; init; }

@@ -34,6 +34,7 @@ public sealed partial class FileParser
 			
 			return new(identifier, modifiers.Tokens, receiver, parameters, returnType, statement, isExternal)
 			{
+				Extent = Span(identifier, Tokens[index - 1]),
 				Visibility = modifiers.Visibility,
 				TypeParameters = [..typeParameters],
 				When = when,
@@ -46,6 +47,7 @@ public sealed partial class FileParser
 			if (allowsMissingBodies)
 				return new(identifier, modifiers.Tokens, receiver, parameters, returnType, null, isExternal)
 				{
+					Extent = Span(identifier, Tokens[index - 1]),
 					Visibility = modifiers.Visibility,
 					TypeParameters = [..typeParameters],
 					When = when,
@@ -61,6 +63,7 @@ public sealed partial class FileParser
 		
 		return new(identifier, modifiers.Tokens, receiver, parameters, returnType, body, isExternal)
 		{
+			Extent = Span(identifier, Tokens[index - 1]),
 			Visibility = modifiers.Visibility,
 			ExternalName = externalName,
 			TypeParameters = [..typeParameters],
@@ -94,6 +97,7 @@ public sealed partial class FileParser
 		
 		return new(identifier, keyword, type, initializer)
 		{
+			Extent = Span(identifier, Tokens[index - 1]),
 			Visibility = modifiers.Visibility,
 			WriteVisibility = modifiers.WriteVisibility,
 			IsExternal = isExternal,

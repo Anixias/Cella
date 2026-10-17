@@ -1,6 +1,11 @@
 
 ====== writable_cursors.ce ======
 
+Error at line 26, column 28
+25 │ 
+26 │ *: op(self) -> imm[i32] = imm self.left
+                               ╘═══════════╛ Cannot return borrows of copied parameters
+
 Error at line 33, column 3
 32 │ for x in Steps(3)
 33 │     x = 1

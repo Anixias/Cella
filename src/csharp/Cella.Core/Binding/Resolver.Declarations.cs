@@ -8,11 +8,7 @@ namespace Cella.Core.Binding;
 
 public sealed partial class Resolver
 {
-	public IResolvedDeclarationNode Visit(FieldNode node)
-	{
-		CurrentResolutionContext.ResolveType(node.Type);
-		return new ResolvedFieldNode(node);
-	}
+	public IResolvedDeclarationNode Visit(FieldNode node) => new ResolvedFieldNode(node);
 	
 	public IResolvedDeclarationNode Visit(FileNode node)
 	{
@@ -103,7 +99,8 @@ public sealed partial class Resolver
 		if (node is FunctionNode { Identifier.Type: TokenType.KeywordPanic } panic)
 			ReportPanicDeclaration(panic, info);
 		
-		var resolvedBody = InferLocals(() => VisitNode(body));
+		var extent = node is FunctionNode declared ? declared.Extent : node.SourceLocation;
+		var resolvedBody = Containment?.IsInBrokenRegion(extent) == true ? null : InferLocals(() => VisitNode(body));
 		_resolutionContexts.Pop();
 		
 		return new ResolvedFunctionNode(info, resolvedBody, node);

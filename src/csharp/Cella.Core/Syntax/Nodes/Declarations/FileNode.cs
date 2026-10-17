@@ -11,5 +11,6 @@ public sealed class FileNode(SourceLocation sourceLocation) : IDeclarationNode
 	public required ModuleName ModuleName { get; init; }
 	public required ImmutableArray<IDeclarationNode> Declarations { get; init; }
 	public required ImmutableArray<ImportExpression> Imports { get; init; }
+	public ImmutableArray<SourceLocation> DeclarationExtents { get; init; } = [];
 	public bool IsExcluded { get; init; }
 }

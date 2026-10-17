@@ -361,6 +361,7 @@ public sealed partial class FileParser
 		if (declaration is null && Diagnostics.ErrorCount == errorCount)
 			Report(start, $"Invalid {kind} declaration");
 		
+		_declarationExtents.Add(Span(start, Tokens[Math.Max(index - 1, 0)]));
 		return declaration;
 	}
 	

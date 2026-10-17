@@ -11,6 +11,7 @@ public sealed class GlobalNode
 ) : IDeclarationNode
 {
 	public SourceLocation SourceLocation => Identifier.SourceLocation;
+	public SourceLocation Extent { get; init; } = identifier.SourceLocation;
 	public Token Identifier { get; } = identifier;
 	public Token? Visibility { get; init; }
 	public Token? WriteVisibility { get; init; }

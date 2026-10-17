@@ -1,6 +1,11 @@
 
 ====== conversion_writes.ce ======
 
+Error at line 12, column 32
+11 │ 
+12 │ as: op(self) -> imm[Sprite] = imm self.sprite
+                                   ╘═════════════╛ Cannot return borrows of copied parameters
+
 Error at line 20, column 11
 19 │ {
 20 │     heal(mut handle)

@@ -1,6 +1,11 @@
 
 ====== trait_constant_arguments.ce ======
 
+Error at line 14, column 30
+13 │ 
+14 │ unbounded[T]: fun -> u32 = T.bits
+                                  ╘══╛ Type 'T' has no member 'bits'
+
 Error at line 15, column 42
 14 │ unbounded[T]: fun -> u32 = T.bits
 15 │ arithmetic[T: Integer]: fun -> array[u8, T.bits / 8]

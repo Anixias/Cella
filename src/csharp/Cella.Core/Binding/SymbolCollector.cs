@@ -54,10 +54,11 @@ public sealed class SymbolCollector : IDeclarationNodeVisitor<Symbol>
 		foreach (var child in node.Declarations)
 			VisitNode(child);
 		
-		var symbol = new FileSymbol(node, module, _symbolsInFile);
+		var visible = _symbolsInFile.Where(static symbol => !NativeSymbols.IsBuiltInName(symbol.Name)).ToList();
+		var symbol = new FileSymbol(node, module, visible);
 		module.Files.Add(symbol);
 		_builder.DeclarationSymbols[node] = symbol;
-		_builder.SymbolsByModule.GetOrAdd(module).UnionWith(_symbolsInFile);
+		_builder.SymbolsByModule.GetOrAdd(module).UnionWith(visible);
 		_symbolsInFile.Clear();
 		return symbol;
 	}

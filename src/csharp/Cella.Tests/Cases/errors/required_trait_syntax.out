@@ -1,6 +1,16 @@
 
 ====== required_trait_syntax.ce ======
 
+Error at line 5, column 9
+4 │ {
+5 │     ==: op(a: Self, b: Self) -> bool
+               ^ Cannot copy 'Self'
+
+Error at line 5, column 18
+4 │ {
+5 │     ==: op(a: Self, b: Self) -> bool
+                        ^ Cannot copy 'Self'
+
 Error at line 9, column 1
 8 │ Empty: trait req
 9 │ {

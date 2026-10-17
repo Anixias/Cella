@@ -1,6 +1,11 @@
 
 ====== single_function_calls.ce ======
 
+Hint at line 11, column 29
+10 │ opt: fun(a: i32, b: i32 = 1, c: i32 = 2) -> i32 = a + b + c
+11 │ id[T]: fun(own a: T) -> T = own a
+                                 ╘═╛ Redundant 'own'
+
 Error at line 24, column 13
 23 │ val fn: fun[i32 -> i32] = double
 24 │ val n = fn(true)

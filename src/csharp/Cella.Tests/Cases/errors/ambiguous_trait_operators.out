@@ -1,6 +1,11 @@
 
 ====== ambiguous_trait_operators.ce ======
 
+Error at line 40, column 28
+39 │ 
+40 │ *: op(self) -> imm[i32] = imm self.value
+                               ╘════════════╛ Cannot return borrows of copied parameters
+
 Error at line 92, column 55
 91 │ 
 92 │ deref[T: Other + Pointer]: fun(imm value: T) -> i32 = *value

@@ -10,13 +10,21 @@ using Cella.Diagnostics;
 
 namespace Cella.Core.Binding;
 
-public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool, ModuleIndex modules)
+public sealed class TypeChecker
+(
+	ConstantEvaluator evaluator,
+	TypePool typePool,
+	ModuleIndex modules,
+	ErrorContainment containment
+)
 	: IResolvedStatementNodeVisitor, IResolvedDeclarationNodeVisitor, IResolvedExpressionNodeVisitor
 {
 	public DiagnosticList Diagnostics { get; } = new();
 	
 	private readonly Stack<(TypeSymbol? Type, FunctionSymbol Function)> _returns = [];
 	private readonly HashSet<(SourceLocation, string)> _inlinedErrors = [];
+	private readonly List<(IResolvedDeclarationNode Node, List<Diagnostic> Diagnostics, bool IsInvalid)> _checked = [];
+	private bool sawInvalid;
 	private int continueDepth;
 	private int breakDepth;
 	private int overflows;
@@ -24,6 +32,36 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool, 
 	private TypeSymbol? currentType;
 	
 	public void Check(ResolvedFileNode root) => VisitNode(root);
+	
+	public void Complete()
+	{
+		foreach (var (node, _, isInvalid) in _checked)
+		{
+			if (isInvalid)
+				containment.Mark(node);
+		}
+		
+		foreach (var (node, diagnostics, _) in _checked)
+		{
+			if (!containment.IsBroken(node))
+				Diagnostics.AddRange(diagnostics);
+		}
+		
+		_checked.Clear();
+	}
+	
+	private void Contain(IResolvedDeclarationNode node, Action check)
+	{
+		if (containment.IsBroken(node))
+			return;
+		
+		var diagnostics = new List<Diagnostic>();
+		var previous = Diagnostics.Redirect(diagnostics);
+		sawInvalid = false;
+		check();
+		Diagnostics.Redirect(previous);
+		_checked.Add((node, diagnostics, sawInvalid));
+	}
 	
 	private void VisitNode(IResolvedStatementNode node) => ((IResolvedStatementNodeVisitor)this).Visit(node);
 	private void VisitNode(IResolvedDeclarationNode node) => ((IResolvedDeclarationNodeVisitor)this).Visit(node);
@@ -41,9 +79,12 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool, 
 		if (node.Body is not IResolvedStatementNode statement)
 			return;
 		
-		_returns.Push((node.FunctionInfo.Signature.ReturnType, node.FunctionInfo.Symbol));
-		VisitNode(statement);
-		_returns.Pop();
+		Contain(node, () =>
+		{
+			_returns.Push((node.FunctionInfo.Signature.ReturnType, node.FunctionInfo.Symbol));
+			VisitNode(statement);
+			_returns.Pop();
+		});
 	}
 	
 	public void Visit(ResolvedRecordNode node)
@@ -92,9 +133,12 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool, 
 	
 	public void Visit(ResolvedGlobalNode node)
 	{
-		if (node.Info.Initializer is not { } initializer)
-			return;
-		
+		if (node.Info.Initializer is { } initializer)
+			Contain(node, () => CheckGlobal(node, initializer));
+	}
+	
+	private void CheckGlobal(ResolvedGlobalNode node, IResolvedExpressionNode initializer)
+	{
 		if (initializer is ResolvedUndefExpressionNode)
 		{
 			Diagnostics.Add(new(DiagnosticSeverity.Error, initializer.Syntax.SourceLocation,
@@ -103,10 +147,10 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool, 
 			return;
 		}
 		
-		var errorCount = Diagnostics.ErrorCount;
+		var errorCount = Diagnostics.ErrorsReported;
 		VisitNode(initializer);
 		
-		if (node.Info.Value is not null || Diagnostics.ErrorCount != errorCount ||
+		if (node.Info.Value is not null || Diagnostics.ErrorsReported != errorCount ||
 		    FindNonConstant(initializer) is not { } blocking)
 			return;
 		
@@ -174,8 +218,7 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool, 
 			VisitNode(@else);
 	}
 	
-	public void Visit(ResolvedInvalidStatementNode node) =>
-		throw new InvalidOperationException();
+	public void Visit(ResolvedInvalidStatementNode node) => sawInvalid = true;
 	
 	public void Visit(ResolvedMatchStatementNode node)
 	{
@@ -986,8 +1029,7 @@ public sealed class TypeChecker(ConstantEvaluator evaluator, TypePool typePool, 
 		_ => null
 	};
 	
-	public void Visit(ResolvedInvalidExpressionNode node) =>
-		throw new InvalidOperationException();
+	public void Visit(ResolvedInvalidExpressionNode node) => sawInvalid = true;
 	
 	public void Visit(ResolvedLiteralExpressionNode node)
 	{

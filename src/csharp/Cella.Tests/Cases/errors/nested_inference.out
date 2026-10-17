@@ -1,6 +1,11 @@
 
 ====== nested_inference.ce ======
 
+Error at line 35, column 44
+34 │ 
+35 │ wrap[T]: fun(own value: T) -> box[T] = box(value)
+                                                ╘═══╛ Cannot move 'T' values implicitly
+
 Error at line 44, column 10
 43 │ val small: i32 = 1
 44 │ val a = take(pair(1, 2))

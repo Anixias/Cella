@@ -6,4 +6,10 @@ Error at line 17, column 12
 17 │ last: var Slot[T] = Slot[T].empty
                ╘═════╛ Cannot store borrows in static variables
 
+Error at line 31, column 10
+30 │ var local = 42
+31 │ bounded[View].last = Slot[View].full(View(imm local))
+             ╘══╛ 'bounded' requires 'T: noref'
+                | 'View' holds borrows
+
 [compilation failed]

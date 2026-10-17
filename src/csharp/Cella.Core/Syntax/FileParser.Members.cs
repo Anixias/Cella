@@ -250,7 +250,11 @@ public sealed partial class FileParser
 		else if (Match(ref index, out var openBrace, TokenType.OpOpenBrace))
 			body = ParseBlockStatement(ref index, openBrace);
 		else if (allowsMissingBodies)
-			return new(keyword, modifiers, receiver, parameters, resultType, null, false) { Visibility = visibility };
+			return new(keyword, modifiers, receiver, parameters, resultType, null, false)
+			{
+				Extent = Span(keyword, Tokens[index - 1]),
+				Visibility = visibility
+			};
 		else
 		{
 			ReportExpected(IsOnSameLine(index) ? index : index - 1, "'=' or '{'");
@@ -259,7 +263,11 @@ public sealed partial class FileParser
 		
 		return body is null
 			? null
-			: new(keyword, modifiers, receiver, parameters, resultType, body, false) { Visibility = visibility };
+			: new(keyword, modifiers, receiver, parameters, resultType, body, false)
+			{
+				Extent = Span(keyword, Tokens[index - 1]),
+				Visibility = visibility
+			};
 	}
 	
 	private (ReceiverNode? Receiver, List<ParameterNode> Parameters)? ParseAccessorParameters(ref int index,

@@ -1,0 +1,9 @@
+mod broken
+
+half: fun(value: i32) -> i32
+{
+	val result = (value / 2
+	ret result
+}
+
+whole: fun(value: i32) -> i32 = value * true

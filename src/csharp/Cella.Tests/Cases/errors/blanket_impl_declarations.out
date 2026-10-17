@@ -21,4 +21,14 @@ Error at line 40, column 2
 40 │ [N: const usize]: impl Describe
       ^ Expected a type parameter
 
+Error at line 50, column 50
+49 │ 
+50 │ plainName: fun(imm plain: Plain) -> cstr = plain.name()
+                                                      ╘══╛ Type 'Plain' has no member 'name'
+
+Error at line 51, column 47
+50 │ plainName: fun(imm plain: Plain) -> cstr = plain.name()
+51 │ anyName[T]: fun(imm value: T) -> cstr = value.name()
+                                                   ╘══╛ Type 'T' has no member 'name'
+
 [compilation failed]

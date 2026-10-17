@@ -1,6 +1,11 @@
 
 ====== lambdas.ce ======
 
+Error at line 7, column 65
+6 │ choose: fun(f: fun[i64 -> i64]) -> i32 = 2
+7 │ transform[T, U]: fun(imm value: T, f: fun[imm T -> U]) -> U = f(value)
+                                                                    ╘═══╛ Cannot borrow arguments implicitly
+
 Error at line 35, column 18
 34 │ 
 35 │ val loose = fun(x) = x

@@ -38,8 +38,9 @@ public sealed partial class SignatureCollector
 		
 		if (candidates.Count == 0)
 		{
-			Diagnostics.Add(new(DiagnosticSeverity.Error, SourceLocation.None,
-				$"The program has no '{_entryPointName}' function"));
+			if (ReportsMissingEntryPoint)
+				Diagnostics.Add(new(DiagnosticSeverity.Error, SourceLocation.None,
+					$"The program has no '{_entryPointName}' function"));
 			
 			return;
 		}

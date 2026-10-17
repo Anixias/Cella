@@ -1,6 +1,16 @@
 
 ====== generic_call_mismatches.ce ======
 
+Hint at line 3, column 29
+2 │ 
+3 │ id[T]: fun(own a: T) -> T = own a
+                                ╘═╛ Redundant 'own'
+
+Hint at line 4, column 41
+3 │ id[T]: fun(own a: T) -> T = own a
+4 │ pick[T]: fun(own a: T, own b: T) -> T = own a
+                                            ╘═╛ Redundant 'own'
+
 Error at line 10, column 17
  9 │ val small: u8 = 1
 10 │ val a = sum[4]([1, 2, 3])

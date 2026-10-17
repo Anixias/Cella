@@ -1,6 +1,11 @@
 
 ====== match_enum_uses.ce ======
 
+Error at line 20, column 56
+19 │ 
+20 │ wrap[T: null]: fun(own value: T) -> nullable[T] = some(value)
+                                                            ╘═══╛ Cannot move 'T' values implicitly
+
 Error at line 22, column 49
 21 │ 
 22 │ unwrap[T: null]: fun(imm n: nullable[T]) -> T = T(n)

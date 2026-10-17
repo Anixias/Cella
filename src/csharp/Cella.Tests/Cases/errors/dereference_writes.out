@@ -1,6 +1,11 @@
 
 ====== dereference_writes.ce ======
 
+Error at line 30, column 23
+29 │ self.pointer = ptr[Buffer](malloc(sizeOf(Buffer)))
+30 │ own *self.pointer = buffer
+                         ╘════╛ Cannot move 'Buffer' values implicitly
+
 Error at line 62, column 2
 61 │ {
 62 │     shared.id = 5

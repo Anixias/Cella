@@ -6,4 +6,9 @@ Error at line 14, column 21
 14 │ *: op(mut self) -> i32 = self.n
                         ╘═╛ Cannot return 'i32' from '*' with 'mut self'
 
+Error at line 20, column 2
+19 │ var counter = Counter(1)
+20 │ *counter = 5
+     ╘══════╛ Cannot assign to unstored values
+
 [compilation failed]

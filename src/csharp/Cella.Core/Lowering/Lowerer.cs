@@ -11,7 +11,8 @@ public sealed partial class Lowerer
 (
 	ConstantEvaluator evaluator,
 	TypePool typePool,
-	Func<GlobalSymbol, GlobalInfo> getGlobalInfo
+	Func<GlobalSymbol, GlobalInfo> getGlobalInfo,
+	ErrorContainment containment
 ) : IResolvedDeclarationNodeVisitor
 {
 	public IReadOnlyCollection<LoweredModule> Modules => _modules.Values;
@@ -42,8 +43,11 @@ public sealed partial class Lowerer
 		currentFile = null;
 	}
 	
-	public void Visit(ResolvedFunctionNode node) =>
-		currentFile?.Functions.Add(FunctionLowerer.Lower(node, evaluator, typePool, getGlobalInfo));
+	public void Visit(ResolvedFunctionNode node)
+	{
+		if (!containment.IsBroken(node))
+			currentFile?.Functions.Add(FunctionLowerer.Lower(node, evaluator, typePool, getGlobalInfo));
+	}
 	
 	public void Visit(ResolvedRecordNode node)
 	{

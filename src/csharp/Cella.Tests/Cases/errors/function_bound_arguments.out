@@ -1,6 +1,11 @@
 
 ====== function_bound_arguments.ce ======
 
+Error at line 16, column 17
+15 │ val memory = ptr[T](malloc(sizeOf(T)))
+16 │ own *memory = value
+                   ╘═══╛ Cannot move 'T' values implicitly
+
 Error at line 31, column 54
 30 │ 
 31 │ misuse[F: fun[i32 -> i32]]: fun(imm f: F) -> i32 = f(true)

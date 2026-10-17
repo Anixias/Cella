@@ -21,4 +21,14 @@ Error at line 9, column 15
 9 │ val e: u32 = c
                  ^ Cannot convert type 'char' to 'u32'
 
+Error at line 15, column 10
+14 │ {
+15 │     val f = char(1114112)
+                 ╘═══════════╛ '1114112' doesn't fit in 'char'
+
+Error at line 16, column 10
+15 │ val f = char(1114112)
+16 │ val g = char(55296)
+             ╘═════════╛ '55296' doesn't fit in 'char'
+
 [compilation failed]

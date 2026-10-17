@@ -87,6 +87,7 @@ public sealed partial class SignatureCollector
 	public DiagnosticList Diagnostics { get; } = new();
 	public ConstantEvaluator Evaluator { get; }
 	public ModuleIndex Modules { get; }
+	public bool ReportsMissingEntryPoint { get; init; } = true;
 	
 	public SignatureCollector(string assemblyName, string? entryPointName, SymbolTable symbolTable,
 		TypePool typePool, IEnumerable<AssemblySymbol> dependencies, IEnumerable<AssemblySymbol> indirectDependencies,

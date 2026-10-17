@@ -19,6 +19,16 @@ public sealed partial class TypePool
 			_conformancesByTarget.GetOrAdd(conformance.Target).Add(conformance);
 	}
 	
+	public void RemoveConformance(Conformance conformance)
+	{
+		_conformances.Remove(conformance);
+		_blanketConformances.Remove(conformance);
+		_arrayConformances.Remove(conformance);
+		_pointerConformances.Remove(conformance);
+		if (_conformancesByTarget.TryGetValue(conformance.Target.OriginalDefinition, out var sameTarget))
+			sameTarget.Remove(conformance);
+	}
+	
 	private IEnumerable<Conformance> GetConformanceCandidates(TypeSymbol type) =>
 		type is TypeParameterSymbol ? [] : GetExplicitCandidates(type).Concat(_blanketConformances);
 	

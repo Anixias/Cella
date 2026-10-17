@@ -1,6 +1,11 @@
 
 ====== conversion_uses.ce ======
 
+Error at line 70, column 32
+69 │ 
+70 │ as: op(self) -> imm[Sprite] = imm self.sprite
+                                   ╘═════════════╛ Cannot return borrows of copied parameters
+
 Error at line 85, column 22
 84 │ val fixed = Fixed(1 << 16)
 85 │ val implicit: i32 = fixed

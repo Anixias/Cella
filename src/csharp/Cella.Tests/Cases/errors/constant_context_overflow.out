@@ -36,4 +36,9 @@ Error at line 25, column 27
 25 │ divided: fun(x: i32 = 5 / 0) -> i32 = x
                                ^ Division by zero
 
+Error at line 29, column 18
+28 │ {
+29 │     val ring = Ring[u8(200) + 100](1)
+                         ╘═══════════╛ Addition overflows 'u8'
+
 [compilation failed]
