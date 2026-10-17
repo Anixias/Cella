@@ -37,6 +37,7 @@ public readonly struct ResolutionContext
 	public Func<string, Symbol?>? Capture { get; init; }
 	public Action<ResolutionContext, TypeSymbol, SourceLocation>? TrackInstance { get; init; }
 	public Action<Token, Symbol>? RecordName { get; init; }
+	public CompletionProbe? Probe { get; init; }
 	public InlineReturn? InlineReturn { get; init; }
 	
 	public string Mangle(Symbol symbol) => Mangling.Mangle(symbol, Modules, GetQualifiers());
@@ -495,6 +496,9 @@ public readonly struct ResolutionContext
 	
 	public TypeSymbol ResolveType(ITypeNode node)
 	{
+		if (NameOf(node) is { } probed)
+			ProbeType(probed);
+		
 		var type = ResolveTypeNode(node);
 		if (NameOf(node) is { } name)
 			Record(name, type);
@@ -638,8 +642,24 @@ public readonly struct ResolutionContext
 		return false;
 	}
 	
+	private void ProbeType(Token name)
+	{
+		if (Probe?.Covers(name) == true)
+			Probe.Capture(CompletionPlace.Type, GetAllSymbols().Distinct()
+				.Where(static symbol => symbol is TypeSymbol and not TypeParameterSymbol { IsValue: true }
+					or TraitSymbol
+					or ModulePathSymbol)
+				.Select(static symbol => new CompletionCandidate(symbol)), null);
+	}
+	
+	public IEnumerable<Symbol> GetModuleMembers(ModulePathSymbol module) => module.Members.Values
+		.SelectMany(static members => members)
+		.Where(IsVisible)
+		.Concat(module.Children.Values);
+	
 	private TypeSymbol ResolveNamedType(Token name)
 	{
+		ProbeType(name);
 		switch (Resolve(name))
 		{
 			case NamedTypeSymbol { IsGenericDefinition: true } generic:

@@ -89,6 +89,7 @@ public sealed partial class SignatureCollector
 	public ModuleIndex Modules { get; }
 	public bool ReportsMissingEntryPoint { get; init; } = true;
 	public Action<Token, Symbol>? RecordName { get; init; }
+	public CompletionProbe? Probe { get; init; }
 	
 	public SignatureCollector(string assemblyName, string? entryPointName, SymbolTable symbolTable,
 		TypePool typePool, IEnumerable<AssemblySymbol> dependencies, IEnumerable<AssemblySymbol> indirectDependencies,
@@ -222,6 +223,12 @@ public sealed partial class SignatureCollector
 		_builder.InlineContexts.TryGetValue(function, out var declaration) ? declaration.Context
 		: _dependencyTable.InlineContexts.TryGetValue(function, out declaration) ? declaration.Context
 		: null;
+	
+	public FunctionInfo? FindFunctionInfo(FunctionSymbol function) =>
+		_builder.Functions.ContainsKey(function) || _declarations.ContainsKey(function) ||
+		_dependencyTable.Functions.ContainsKey(function)
+			? GetFunctionInfo(function)
+			: null;
 	
 	public FunctionInfo GetFunctionInfo(FunctionSymbol function)
 	{
@@ -422,7 +429,8 @@ public sealed partial class SignatureCollector
 			EvaluateConstant = EvaluateConstant,
 			GenericTypes = [],
 			DeferConstraintCheck = DeferConstraintCheck,
-			RecordName = RecordName
+			RecordName = RecordName,
+			Probe = Probe
 		};
 		
 		var imports = CollectImports(node, context);

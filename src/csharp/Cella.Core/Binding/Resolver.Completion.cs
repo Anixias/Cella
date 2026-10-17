@@ -1,0 +1,93 @@
+﻿using Cella.Core.Symbols;
+using Cella.Core.Syntax.Nodes;
+using Cella.Core.Text;
+
+namespace Cella.Core.Binding;
+
+public sealed partial class Resolver
+{
+	public CompletionProbe? Probe { get; init; }
+	
+	private void ProbeName(Token name) => ProbeName(name, CurrentTargetType);
+	
+	private void ProbeName(Token name, TypeSymbol? expectedType)
+	{
+		if (Probe?.Covers(name) == true)
+			Probe.Capture(CompletionPlace.Name, CurrentResolutionContext.GetAllSymbols().Distinct().Select(ToCandidate),
+				expectedType);
+	}
+	
+	private void ProbeMember(AccessExpressionNode node, Func<IEnumerable<CompletionCandidate>> candidates)
+	{
+		if (Probe?.Covers(node.Member) == true)
+			Probe.Capture(CompletionPlace.Member, candidates(), CurrentTargetType);
+	}
+	
+	private void ProbePattern(PatternNode pattern, TypeSymbol subjectType)
+	{
+		if (pattern.Kind is PatternKind.Case or PatternKind.Type && Probe?.Covers(pattern.CaseName) == true)
+			Probe.Capture(CompletionPlace.Member, subjectType.OriginalDefinition is EnumSymbol enumType
+				? enumType.Cases.Select(static enumCase => new CompletionCandidate(enumCase))
+				: [], null);
+	}
+	
+	private CompletionCandidate ToCandidate(Symbol symbol) => symbol switch
+	{
+		FunctionSymbol function => new(symbol, _signatures.FindFunctionInfo(function)),
+		ParameterSymbol parameter when CurrentResolutionContext.ContainingFunction is { } containing &&
+		                               containing.Symbol.Parameters.IndexOf(parameter) is >= 0 and var index &&
+		                               index < containing.Signature.ParameterTypes.Length =>
+			new(symbol, Type: containing.Signature.GetDeclaredType(index)),
+		_ => new(symbol)
+	};
+	
+	private IEnumerable<CompletionCandidate> GetModuleCandidates(ModulePathSymbol module) =>
+		CurrentResolutionContext.GetModuleMembers(module).Select(ToCandidate);
+	
+	private IEnumerable<CompletionCandidate> GetValueMemberCandidates(TypeSymbol type)
+	{
+		TypeSymbol[] owners = type switch
+		{
+			PointerType { BaseType: var baseType } when baseType != NativeSymbols.Void => [baseType],
+			_ when GetDereferenceTarget(type) is { } target => [type, target],
+			_ => [type]
+		};
+		
+		foreach (var owner in owners)
+		{
+			foreach (var name in GetMemberNames(owner))
+			{
+				if (_typePool.ResolveMember(owner, name) is FieldSymbol field && CanAccess(owner, field.Visibility))
+					yield return new(field);
+				
+				if (GetPropertyMember(owner, name) is { } property && CanAccess(owner, property))
+					yield return new(property);
+				
+				foreach (var method in FindFunctions(owner, name)
+					         .Where(method => method.HasReceiver && CanAccess(owner, method.Function)))
+					yield return new(method, GetFunctionInfo(method, owner));
+			}
+		}
+	}
+	
+	private IEnumerable<CompletionCandidate> GetStaticCandidates(TypeSymbol type)
+	{
+		if (type.OriginalDefinition is EnumSymbol enumType)
+		{
+			foreach (var enumCase in enumType.Cases)
+				yield return new(enumCase);
+		}
+		
+		if (type.OriginalDefinition is NamedTypeSymbol named)
+		{
+			foreach (var field in named.StaticFields.Where(CurrentResolutionContext.IsVisible))
+				yield return new(field);
+		}
+		
+		foreach (var name in GetMemberNames(type))
+		{
+			foreach (var method in FindStatics(type, name).Where(method => CanAccess(type, method.Function)))
+				yield return new(method, GetFunctionInfo(method, type));
+		}
+	}
+}

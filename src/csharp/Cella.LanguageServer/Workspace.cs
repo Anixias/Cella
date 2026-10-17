@@ -33,6 +33,7 @@ public sealed class Workspace(Func<JsonObject, Task> notify, TimeSpan debounce)
 	private readonly Dictionary<string, BuildResult> _results = new(Protocol.PathComparer);
 	private readonly SemaphoreSlim _changes = new(0);
 	private readonly SemaphoreSlim _urgent = new(0);
+	private readonly SemaphoreSlim _building = new(1, 1);
 	private readonly CancellationTokenSource _stopping = new();
 	private Task? checking;
 	private Dictionary<string, string> checkedTexts = new(Protocol.PathComparer);
@@ -237,31 +238,8 @@ public sealed class Workspace(Func<JsonObject, Task> notify, TimeSpan debounce)
 		
 		foreach (var root in roots)
 		{
-			if (!_checkers.TryGetValue(root, out var checker))
-			{
-				var output = new CollectedOutput();
-				_checkers[root] = checker = new(new Builder(new BuildOptions
-				{
-					Target = TargetTriple.FromHost().WithDefaultAbi(Builder.ToolchainsDirectory),
-					ChecksOnly = true
-				}, output), output);
-			}
-			
-			checker.Output.Lines.Clear();
-			BuildResult result;
-			try
-			{
-				result = await CompilerThread.Run(() => checker.Builder.BuildAsync(root, unsaved, ct));
-			}
-			catch (Exception exception) when (exception is not OperationCanceledException)
-			{
-				_checkers.Remove(root);
-				await LogAsync(ErrorMessage, $"Checking '{root}' failed: {exception}");
+			if (await RunAsync(root, builder => builder.BuildAsync(root, unsaved, ct)) is not { } result)
 				continue;
-			}
-			
-			foreach (var line in checker.Output.Lines)
-				await LogAsync(InfoMessage, line);
 			
 			lock (_lock)
 				_results[root] = result;
@@ -280,6 +258,78 @@ public sealed class Workspace(Func<JsonObject, Task> notify, TimeSpan debounce)
 		completed.SetResult();
 		if (refreshesTokens)
 			await notify(Protocol.Request($"refresh-{++refreshCount}", "workspace/semanticTokens/refresh"));
+	}
+	
+	public async Task<CompletionProbe?> ProbeAsync(string path, string text, int offset)
+	{
+		string? root;
+		Dictionary<string, string> unsaved;
+		lock (_lock)
+		{
+			root = _roots.FirstOrDefault(root => Contains(root, path));
+			unsaved = _documents.ToDictionary(static pair => pair.Key, static pair => pair.Value.Text,
+				Protocol.PathComparer);
+		}
+		
+		if (root is null)
+			return null;
+		
+		unsaved[path] = text;
+		var probe = new CompletionProbe(path, offset);
+		return await RunAsync(root, builder => builder.CompleteAsync(root, unsaved, probe, _stopping.Token)) is null
+			? null
+			: probe;
+	}
+	
+	private async Task<BuildResult?> RunAsync(string root, Func<Builder, Task<BuildResult>> build)
+	{
+		await _building.WaitAsync(_stopping.Token);
+		try
+		{
+			if (!_checkers.TryGetValue(root, out var checker))
+			{
+				var output = new CollectedOutput();
+				_checkers[root] = checker = new(new Builder(new BuildOptions
+				{
+					Target = TargetTriple.FromHost().WithDefaultAbi(Builder.ToolchainsDirectory),
+					ChecksOnly = true
+				}, output), output);
+			}
+			
+			checker.Output.Lines.Clear();
+			BuildResult result;
+			try
+			{
+				result = await CompilerThread.Run(() => build(checker.Builder));
+			}
+			catch (Exception exception) when (exception is not OperationCanceledException)
+			{
+				_checkers.Remove(root);
+				await LogAsync(ErrorMessage, $"Checking '{root}' failed: {exception}");
+				return null;
+			}
+			
+			foreach (var line in checker.Output.Lines)
+				await LogAsync(InfoMessage, line);
+			
+			return result;
+		}
+		finally
+		{
+			_building.Release();
+		}
+	}
+	
+	public string? GetText(string uri)
+	{
+		var path = Protocol.ToPath(uri);
+		lock (_lock)
+		{
+			if (_documents.TryGetValue(path, out var document))
+				return document.Text;
+		}
+		
+		return File.Exists(path) ? File.ReadAllText(path) : null;
 	}
 	
 	private async Task PublishAsync(string root, BuildResult result, IReadOnlyDictionary<string, string> uris)

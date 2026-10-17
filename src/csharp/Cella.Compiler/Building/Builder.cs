@@ -2,6 +2,7 @@
 using System.Text;
 using Cella.Compiler.Linking;
 using Cella.Compiler.Projects;
+using Cella.Core.Binding;
 using Cella.Core.CodeGen;
 using Cella.Core.Lowering;
 using Cella.Core.Symbols;
@@ -15,6 +16,21 @@ public sealed partial class Builder(BuildOptions options, IBuildOutput output)
 	
 	private readonly List<ProjectCheck> _projects = [];
 	private IReadOnlyDictionary<string, string> openFiles = new Dictionary<string, string>();
+	private CompletionProbe? probe;
+	
+	public async Task<BuildResult> CompleteAsync(string sourcePath, IReadOnlyDictionary<string, string> unsavedFiles,
+		CompletionProbe completion, CancellationToken ct = default)
+	{
+		probe = completion;
+		try
+		{
+			return await BuildAsync(sourcePath, unsavedFiles, ct);
+		}
+		finally
+		{
+			probe = null;
+		}
+	}
 	
 	public async Task<BuildResult> BuildAsync(string sourcePath,
 		IReadOnlyDictionary<string, string>? unsavedFiles = null, CancellationToken ct = default)

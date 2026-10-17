@@ -33,6 +33,7 @@ public sealed partial class SignatureCollector
 		var activated = new List<ModuleSymbol>();
 		foreach (var importExpression in node.Imports)
 		{
+			ProbeImport(importExpression, context);
 			var collected = CollectImport(importExpression, context, hidden);
 			imports.AddRange(collected);
 			if (context.ResolveMembers(Modules.Root, importExpression.ModuleName.Parts, 0) is ModulePathSymbol imported)
@@ -47,6 +48,50 @@ public sealed partial class SignatureCollector
 		_explicitImports.Add((explicitImports, context));
 		ReportRepeatedImports(node.Imports);
 		return new(imports, explicitImports.Select(static entry => entry.Symbol), hidden, activated);
+	}
+	
+	private void ProbeImport(ImportExpression import, ResolutionContext context)
+	{
+		if (Probe is null)
+			return;
+		
+		var parts = import.ModuleName.Parts;
+		for (var i = 0; i < parts.Length; i++)
+		{
+			if (Probe.Covers(parts[i]))
+				Probe.Capture(CompletionPlace.Member, FindModule(parts[..i], context) is { } parent
+					? i == parts.Length - 1 && import.Import is FullImport
+						? GetImportCandidates(parent, context)
+						: parent.Children.Values.Select(static child => new CompletionCandidate(child))
+					: [], null);
+		}
+		
+		var names = import.Import switch
+		{
+			TokenImport single => [single.Token],
+			ListImport list => list.Tokens,
+			_ => ImmutableArray<Token>.Empty
+		};
+		
+		if (names.FirstOrDefault(Probe.Covers) is { Text: not null } probed && FindModule(parts, context) is { } module)
+		{
+			var listed = names.Where(name => name != probed).Select(static name => name.Text).ToHashSet();
+			Probe.Capture(CompletionPlace.Member, GetImportCandidates(module, context)
+				.Where(candidate => !listed.Contains(candidate.Symbol.Name)), null);
+		}
+	}
+	
+	private static IEnumerable<CompletionCandidate> GetImportCandidates(ModulePathSymbol module,
+		ResolutionContext context) =>
+		context.GetModuleMembers(module).Select(static member => new CompletionCandidate(member));
+	
+	private ModulePathSymbol? FindModule(ImmutableArray<Token> parts, ResolutionContext context)
+	{
+		ModulePathSymbol? module = Modules.Root;
+		foreach (var part in parts)
+			module = module?.Children.GetValueOrDefault(part.Text);
+		
+		return module is not null && (parts.IsEmpty || context.IsVisible(module)) ? module : null;
 	}
 	
 	private void ReportRepeatedImports(IEnumerable<ImportExpression> imports)

@@ -474,4 +474,188 @@ public sealed class LanguageServerTests : IAsyncDisposable
 		Assert.Equal(-32601, (int)response["error"]!["code"]!);
 		Assert.Equal(0, await ShutDownAsync());
 	}
+	
+	private const string CompletionSource = """
+	                                        mod test
+	                                        
+	                                        Point: rec
+	                                        {
+	                                        	x: i32
+	                                        
+	                                        	length: fun(imm self) -> i32 = self.x
+	                                        	shift: fun(mut self, by: i32) = self.x = self.x + by
+	                                        }
+	                                        
+	                                        scale: fun(mut target: Point, factor: i32) = target.x = target.x * factor
+	                                        scale: fun(mut target: Point, imm by: Point) = target.x = target.x * by.x
+	                                        move: fun(mut target: Point, imm offset: Point) = target.x = offset.x
+	                                        twice: fun(value: i32) -> i32 = value * 2
+	                                        apply: fun(f: fun[i32 -> i32], value: i32) -> i32 = f(value)
+	                                        
+	                                        main: fun -> i32
+	                                        {
+	                                        	var p = Point(1)
+	                                        	val q = Point(2)
+	                                        	CURSOR
+	                                        	ret 0
+	                                        }
+	                                        
+	                                        """;
+	
+	private int documentVersion;
+	
+	private async Task SetTextAsync(string text)
+	{
+		documentVersion++;
+		if (documentVersion == 1)
+			await NotifyAsync("textDocument/didOpen", new JsonObject
+			{
+				["textDocument"] = new JsonObject
+				{
+					["uri"] = SourceUri,
+					["languageId"] = "cella",
+					["version"] = documentVersion,
+					["text"] = text
+				}
+			});
+		else
+			await NotifyAsync("textDocument/didChange", new JsonObject
+			{
+				["textDocument"] = new JsonObject { ["uri"] = SourceUri, ["version"] = documentVersion },
+				["contentChanges"] = new JsonArray(new JsonObject { ["text"] = text })
+			});
+	}
+	
+	private async Task<JsonNode?> AskAtCursorAsync(string method, string line)
+	{
+		var text = CompletionSource.Replace("CURSOR", line);
+		var offset = text.IndexOf('|');
+		text = text.Remove(offset, 1);
+		await SetTextAsync(text);
+		var lineNumber = text[..offset].Count(static c => c == '\n');
+		return await AskAsync(method, lineNumber, offset - (text.LastIndexOf('\n', offset - 1) + 1));
+	}
+	
+	private static Dictionary<string, JsonNode> ItemsOf(JsonNode? list) => ((JsonArray)list!["items"]!)
+		.ToDictionary(static item => (string)item!["label"]!, static item => item!);
+	
+	[Fact]
+	public async Task CompletesNamesMembersAndTypes()
+	{
+		await InitializeAsync();
+		
+		var names = ItemsOf(await AskAtCursorAsync("textDocument/completion", "|"));
+		Assert.Equal("var p: Point", (string)names["p"]["detail"]!);
+		Assert.Equal("move(mut ${1}, imm ${2})$0", (string)names["move"]["insertText"]!);
+		Assert.Equal("scale($0)", (string)names["scale"]["insertText"]!);
+		Assert.EndsWith("(+1 overload)", (string)names["scale"]["detail"]!);
+		Assert.Equal("twice(${1})$0", (string)names["twice"]["insertText"]!);
+		Assert.Contains("val", names.Keys);
+		Assert.Contains("Point", names.Keys);
+		
+		var members = ItemsOf(await AskAtCursorAsync("textDocument/completion", "p.|"));
+		Assert.Equal(["length", "shift", "x"], members.Keys.Order());
+		Assert.Equal("length()$0", (string)members["length"]["insertText"]!);
+		Assert.Equal("shift(${1})$0", (string)members["shift"]["insertText"]!);
+		
+		var values = ItemsOf(await AskAtCursorAsync("textDocument/completion", "val r = apply(tw|, 1)"));
+		Assert.Equal("twice", (string)values["twice"]["insertText"]!);
+		
+		var types = ItemsOf(await AskAtCursorAsync("textDocument/completion", "val v: |"));
+		Assert.Contains("Point", types.Keys);
+		Assert.Contains("i32", types.Keys);
+		Assert.DoesNotContain("p", types.Keys);
+		Assert.Equal(0, await ShutDownAsync());
+	}
+	
+	[Fact]
+	public async Task HelpsWithSignatures()
+	{
+		await InitializeAsync();
+		
+		var overloads = await AskAtCursorAsync("textDocument/signatureHelp", "scale(mut p, |)");
+		Assert.Equal(1, (int)overloads!["activeParameter"]!);
+		Assert.Equal(
+		[
+			"scale: fun(mut target: Point, factor: i32)",
+			"scale: fun(mut target: Point, imm by: Point)"
+		], ((JsonArray)overloads["signatures"]!).Select(static signature => (string)signature!["label"]!));
+		
+		var method = await AskAtCursorAsync("textDocument/signatureHelp", "p.shift(|)");
+		var signature = Assert.Single((JsonArray)method!["signatures"]!)!;
+		Assert.Equal("shift: fun(by: i32)", (string)signature["label"]!);
+		Assert.Equal(11, (int)signature["parameters"]![0]!["label"]![0]!);
+		Assert.Equal(0, await ShutDownAsync());
+	}
+	
+	[Fact]
+	public async Task CompletesUsePaths()
+	{
+		await File.WriteAllTextAsync(Path.Combine(_directory, "physics.ce"), """
+		                                                                     mod game.physics
+		                                                                     
+		                                                                     step: pub fun -> i32 = 1
+		                                                                     Body: pub rec
+		                                                                     {
+		                                                                     	mass: i32
+		                                                                     }
+		                                                                     
+		                                                                     """, Token);
+		
+		await File.WriteAllTextAsync(Path.Combine(_directory, "solver.ce"), "mod game.physics.solver\n", Token);
+		
+		await File.WriteAllTextAsync(Path.Combine(_directory, "geometry.ce"), "mod game.geometry\n", Token);
+		await InitializeAsync();
+		
+		async Task<IEnumerable<string>> CompleteUseAsync(string path)
+		{
+			var text = $"mod test\n\nuse {path}\n\nmain: fun -> i32 = 0\n";
+			await SetTextAsync(text);
+			var list = await AskAsync("textDocument/completion", 2, 4 + path.Length);
+			return ((JsonArray)list!["items"]!).Select(static item => item!)
+				.OrderBy(static item => (string)item["sortText"]!, StringComparer.Ordinal)
+				.Select(static item => (string)item["label"]!);
+		}
+		
+		Assert.Equal(["game", "test"], await CompleteUseAsync(""));
+		Assert.Equal(["geometry", "physics"], await CompleteUseAsync("game."));
+		Assert.Equal(["solver", "Body", "step"], await CompleteUseAsync("game.physics."));
+		Assert.Equal(["solver", "Body"], await CompleteUseAsync("game.physics.[step, "));
+		Assert.Equal(0, await ShutDownAsync());
+	}
+	
+	[Fact]
+	public async Task CompletesCasePatterns()
+	{
+		const string source = """
+		                      mod test
+		                      
+		                      Color: enum
+		                      {
+		                      	red
+		                      	green
+		                      }
+		                      
+		                      main: fun -> i32
+		                      {
+		                      	val c = Color.red
+		                      	val n = match c
+		                      	{
+		                      		Color.red => 1
+		                      		ARM
+		                      	}
+		                      
+		                      	ret if c is r { 1 } else { n }
+		                      }
+		                      
+		                      """;
+		
+		await InitializeAsync();
+		await SetTextAsync(source.Replace("ARM", "gr"));
+		Assert.Equal(["green", "red"], ItemsOf(await AskAsync("textDocument/completion", 14, 4)).Keys.Order());
+		
+		await SetTextAsync(source.Replace("ARM", "Color.green => 2"));
+		Assert.Equal(["green", "red"], ItemsOf(await AskAsync("textDocument/completion", 17, 14)).Keys.Order());
+		Assert.Equal(0, await ShutDownAsync());
+	}
 }

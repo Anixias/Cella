@@ -115,7 +115,8 @@ public sealed partial class Builder
 			dependencySymbols, indirectSymbols, FindAliases(project, dependencyList), pointerBitSize)
 		{
 			ReportsMissingEntryPoint = parseDiagnostics.ErrorCount == 0,
-			RecordName = recordName
+			RecordName = recordName,
+			Probe = probe
 		};
 		
 		var containment = new ErrorContainment(files);
@@ -123,7 +124,8 @@ public sealed partial class Builder
 		var resolver = new Resolver(symbolTable, signatureCollector, typePool, pointerBitSize)
 		{
 			Containment = containment,
-			RecordName = recordName
+			RecordName = recordName,
+			Probe = probe
 		};
 		
 		signatureCollector.Collect([..files], resolver);

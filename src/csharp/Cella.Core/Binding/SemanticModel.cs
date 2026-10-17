@@ -2,6 +2,7 @@
 using System.Collections.Immutable;
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using System.Text;
 using Cella.Core.Binding.Nodes;
 using Cella.Core.Symbols;
 using Cella.Core.Syntax.Nodes;
@@ -349,6 +350,23 @@ public sealed class SemanticModel
 		_ => null
 	};
 	
+	public static string Describe(CompletionCandidate candidate) => candidate switch
+	{
+		{ Function: { } function } => DescribeFunction(function),
+		{ Symbol: ParameterSymbol parameter, Type: { } type } => $"{parameter.Name}: {TypeName(type)}",
+		{ Symbol: LocalVariableSymbol local } => DescribeVariable(local, local.Type),
+		{ Symbol: GlobalSymbol global } =>
+			$"{global.Name}: {global.Syntax.Keyword.Text} {global.Syntax.Type.SourceLocation.GetText()}",
+		{ Symbol: FieldSymbol { Node: { } node } field } => $"{field.Name}: {node.Type.SourceLocation.GetText()}",
+		{ Symbol: PropertySymbol property } => $"{property.Name}: prop",
+		{ Symbol: MethodSymbol method } => $"{method.Name}: fun",
+		{ Symbol: FunctionSymbol function } => $"{function.DeclaredName}: fun",
+		{ Symbol: TraitSymbol trait } => $"{trait.Name}: trait",
+		{ Symbol: TypeSymbol type } => DescribeType(type),
+		{ Symbol: ModulePathSymbol module } => $"mod {module.Path}",
+		_ => candidate.Symbol.Name
+	};
+	
 	private static string DescribeVariable(Symbol symbol, TypeSymbol type) => symbol switch
 	{
 		LocalVariableSymbol { IsMutable: true } => $"var {symbol.Name}: {TypeName(type)}",
@@ -367,14 +385,17 @@ public sealed class SemanticModel
 	private static string DescribeCase(TypeSymbol type, EnumCaseSymbol enumCase) =>
 		$"{TypeName(type.OriginalDefinition)}.{enumCase.Name}";
 	
-	private static string DescribeFunction(FunctionInfo info)
+	private static string DescribeFunction(FunctionInfo info) => DescribeSignature(info, false).Label;
+	
+	public static IEnumerable<int> GetCallParameters(FunctionInfo info) =>
+		Enumerable.Range(0, info.Signature.ParameterTypes.Length).Where(i =>
+			i >= info.Symbol.Parameters.Length || info.Symbol.Parameters[i].Name != "self");
+	
+	public static (string Label, ImmutableArray<(int Start, int End)> Parameters) DescribeSignature(FunctionInfo info,
+		bool isCall)
 	{
 		var signature = info.Signature;
 		var parameters = info.Symbol.Parameters;
-		var described = Enumerable.Range(0, signature.ParameterTypes.Length)
-			.Select(i => DescribeParameter(i < parameters.Length ? parameters[i].Name : "_", signature, i));
-		
-		var result = signature.ReturnType == NativeSymbols.Void ? "" : $" -> {TypeName(signature.ReturnType)}";
 		var keyword = info.Symbol.Syntax is FunctionNode function
 			? function.Identifier.Type switch
 			{
@@ -385,8 +406,32 @@ public sealed class SemanticModel
 			}
 			: "fun";
 		
-		var parameterList = signature.ParameterTypes.IsEmpty ? "" : $"({string.Join(", ", described)})";
-		return $"{info.Symbol.DeclaredName}: {keyword}{parameterList}{result}";
+		var label = new StringBuilder($"{info.Symbol.DeclaredName}: {keyword}");
+		var ranges = ImmutableArray.CreateBuilder<(int Start, int End)>();
+		var indices = isCall
+			? GetCallParameters(info).ToArray()
+			: [..Enumerable.Range(0, signature.ParameterTypes.Length)];
+		
+		if (isCall || indices.Length > 0)
+		{
+			label.Append('(');
+			foreach (var i in indices)
+			{
+				if (ranges.Count > 0)
+					label.Append(", ");
+				
+				var start = label.Length;
+				label.Append(DescribeParameter(i < parameters.Length ? parameters[i].Name : "_", signature, i));
+				ranges.Add((start, label.Length));
+			}
+			
+			label.Append(')');
+		}
+		
+		if (signature.ReturnType != NativeSymbols.Void)
+			label.Append(" -> ").Append(TypeName(signature.ReturnType));
+		
+		return (label.ToString(), ranges.ToImmutable());
 	}
 	
 	private static string DescribeParameter(string name, FunctionSignature signature, int index)

@@ -164,6 +164,7 @@ public sealed partial class Resolver
 	
 	public IResolvedExpressionNode Visit(VarExpressionNode node)
 	{
+		ProbeName(node.Identifier);
 		if (node.Identifier.Text == "_")
 			return Error(node, "Cannot use '_' as a value", CurrentTargetType);
 		

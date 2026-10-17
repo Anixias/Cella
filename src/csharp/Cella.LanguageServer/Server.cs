@@ -42,9 +42,9 @@ public sealed class Server
 					await _workspace.StopAsync();
 				}
 				
-				if (method == "textDocument/semanticTokens/full" && id is not null)
+				if (id is not null && AnswerLater(method, message["params"] as JsonObject) is { } answer)
 				{
-					_ = AnswerTokensAsync(id, GetUri(message["params"] as JsonObject), ct);
+					_ = AnswerLaterAsync(id, answer, ct);
 					continue;
 				}
 				
@@ -125,12 +125,52 @@ public sealed class Server
 		}
 	}
 	
-	private async Task AnswerTokensAsync(JsonNode id, string uri, CancellationToken ct)
+	private Func<Task<JsonNode?>>? AnswerLater(string method, JsonObject? parameters) => method switch
+	{
+		"textDocument/semanticTokens/full" => async () =>
+			SemanticTokens.Encode(await _workspace.GetReferencesAsync(GetUri(parameters))),
+		"textDocument/completion" => () => CompleteAsync(parameters),
+		"textDocument/signatureHelp" => () => HelpSignatureAsync(parameters),
+		_ => null
+	};
+	
+	private async Task<JsonNode?> CompleteAsync(JsonObject? parameters)
+	{
+		var uri = GetUri(parameters);
+		if (_workspace.GetText(uri) is not { } text)
+			return null;
+		
+		var offset = GetOffset(text, parameters);
+		var start = Completion.FindNameStart(text, offset);
+		var probed = Completion.Repair(start < offset ? text : text.Insert(offset, Completion.Placeholder), offset);
+		return Completion.ToList(await _workspace.ProbeAsync(Protocol.ToPath(uri), probed, offset), text, start);
+	}
+	
+	private async Task<JsonNode?> HelpSignatureAsync(JsonObject? parameters)
+	{
+		var uri = GetUri(parameters);
+		if (_workspace.GetText(uri) is not { } text)
+			return null;
+		
+		var offset = GetOffset(text, parameters);
+		if (Completion.FindCall(text, offset) is not var (nameEnd, callee, argument))
+			return null;
+		
+		var probed = Completion.IsEmptyArgument(text, offset) ? text.Insert(offset, Completion.Placeholder) : text;
+		return await _workspace.ProbeAsync(Protocol.ToPath(uri), probed, nameEnd) is { } probe
+			? Completion.ToSignatureHelp(probe, callee, argument)
+			: null;
+	}
+	
+	private static int GetOffset(string text, JsonObject? parameters) => Protocol.ToOffset(text,
+		(int)parameters!["position"]!["line"]!, (int)parameters["position"]!["character"]!);
+	
+	private async Task AnswerLaterAsync(JsonNode id, Func<Task<JsonNode?>> answer, CancellationToken ct)
 	{
 		JsonObject response;
 		try
 		{
-			response = Protocol.Response(id, SemanticTokens.Encode(await _workspace.GetReferencesAsync(uri)));
+			response = Protocol.Response(id, await answer());
 		}
 		catch (OperationCanceledException)
 		{
@@ -162,6 +202,12 @@ public sealed class Server
 		{
 			["hoverProvider"] = true,
 			["definitionProvider"] = true,
+			["completionProvider"] = new JsonObject { ["triggerCharacters"] = new JsonArray(".") },
+			["signatureHelpProvider"] = new JsonObject
+			{
+				["triggerCharacters"] = new JsonArray("(", ","),
+				["retriggerCharacters"] = new JsonArray(",")
+			},
 			["semanticTokensProvider"] = new JsonObject
 			{
 				["legend"] = SemanticTokens.Legend.DeepClone(),

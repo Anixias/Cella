@@ -17,6 +17,7 @@ public sealed partial class Resolver
 		switch (node.Target)
 		{
 			case VarExpressionNode varExpr:
+				ProbeName(varExpr.Identifier);
 				symbol = context.Resolve(varExpr.Identifier.Text);
 				if (symbol is not null)
 					break;
@@ -24,6 +25,7 @@ public sealed partial class Resolver
 				return Error(node, ReportUndefinedSymbol(node, varExpr.Identifier.Text), CurrentTargetType);
 			
 			case AccessExpressionNode access when context.ResolveModule(access.Target) is { } module:
+				ProbeMember(access, () => GetModuleCandidates(module));
 				symbol = context.ResolveMember(module, access.Member.Text);
 				break;
 			
@@ -475,6 +477,9 @@ public sealed partial class Resolver
 		TypeSymbol? hint = null)
 	{
 		var types = expected.ToList();
+		if (node is VarExpressionNode name)
+			ProbeName(name.Identifier, hint ?? (types.Distinct().ToList() is [var only] ? only : null));
+		
 		return VisitCaseName(node, types) ?? ReportMisspelledCase(node, types) ??
 			(hint is null ? VisitArgument(node) : VisitHinted(node, hint));
 	}

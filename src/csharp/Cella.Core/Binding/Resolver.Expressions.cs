@@ -17,15 +17,24 @@ public sealed partial class Resolver
 			return VisitTraitMember(node, trait, view);
 		
 		if (ResolveEnumType(node.Target) is { } enumType)
+		{
+			ProbeMember(node, () => GetStaticCandidates(enumType));
 			return DeclaresNonCaseMember(enumType, node.Member.Text)
 				? VisitStaticMember(node, RequireTypeArguments(enumType, node.Target))
 				: VisitEnumCase(node, enumType, null);
+		}
 		
 		if (CurrentResolutionContext.ResolveModule(node.Target) is { } module)
+		{
+			ProbeMember(node, () => GetModuleCandidates(module));
 			return VisitModuleMember(node, module);
+		}
 		
 		if (CurrentResolutionContext.TryResolveExpressionAsType(node.Target) is { } type)
+		{
+			ProbeMember(node, () => GetStaticCandidates(type));
 			return VisitStaticMember(node, RequireTypeArguments(type, node.Target));
+		}
 		
 		return ResolveAccess(node, VisitNode(node.Target));
 	}
@@ -52,6 +61,8 @@ public sealed partial class Resolver
 			return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
 		
 		target = Decay(target);
+		var valueType = target.Type;
+		ProbeMember(node, () => GetValueMemberCandidates(valueType));
 		if (GetMemberOwner(target.Type, node.Member.Text) != target.Type)
 			target = ResolveDereference(TokenType.OpStar, target, node.Target);
 		

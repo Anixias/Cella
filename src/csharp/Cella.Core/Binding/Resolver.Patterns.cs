@@ -212,6 +212,7 @@ public sealed partial class Resolver
 	
 	private ResolvedPattern? ResolveArmPattern(PatternNode syntax, TypeSymbol subjectType, bool isMut, bool ownsValue)
 	{
+		ProbePattern(syntax, subjectType);
 		if (IsInvalid(subjectType))
 			return null;
 		
@@ -255,6 +256,7 @@ public sealed partial class Resolver
 	
 	private ResolvedPattern? ResolveTestPattern(PatternNode syntax, TypeSymbol subjectType)
 	{
+		ProbePattern(syntax, subjectType);
 		var location = syntax.SourceLocation;
 		var name = new Token(TokenType.Identifier, location, "match");
 		var isCopy = _typePool.IsCopy(subjectType);

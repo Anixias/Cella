@@ -17,9 +17,12 @@ public sealed partial class Resolver
 			return VisitTraitCall(node, access, trait, view, indexer);
 		
 		if (CurrentResolutionContext.TryResolveExpressionAsType(access.Target) is { } type)
+		{
+			ProbeMember(access, () => GetStaticCandidates(type));
 			return indexer is not null && type is EnumSymbol && HasCase(type, access.Member.Text)
 				? Error(node, "Cannot pass type arguments to cases", CurrentTargetType, indexer.SourceLocation)
 				: VisitStaticCall(node, access, ResolveStaticOwner(node, access, type), indexer);
+		}
 		
 		if (access.Member.Type != TokenType.Identifier)
 			return Error(node, $"Cannot call '{access.Member.Text}' through a value", CurrentTargetType,
@@ -35,6 +38,8 @@ public sealed partial class Resolver
 		if (target.Type is FStrType fstr && FindFStrPart(access.Member.Text) is { } part)
 			return ResolveFStrPart(node, access, target, fstr, part, indexer);
 		
+		var targetType = target.Type;
+		ProbeMember(access, () => GetValueMemberCandidates(targetType));
 		var owner = GetMemberOwner(target.Type, access.Member.Text);
 		if (owner is DynType dyn)
 			return VisitDynCall(node, access,
