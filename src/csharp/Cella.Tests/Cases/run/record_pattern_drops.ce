@@ -12,7 +12,7 @@ Name: rec
 	drop: op { printf("drop %d\n", self.id) }
 }
 
-Slot: enum { empty  full(pair: Pair) }
+Slot: enum { empty, full(pair: Pair) }
 
 make: fun -> Pair = Pair(Name(3), Name(4))
 

@@ -10,7 +10,7 @@ count[N: const i32]: fun -> i32 = N
 
 twice[N: const i32]: fun -> i32 = count[N - 1]()
 
-option[T]: enum { none  some(value: T) }
+option[T]: enum { none, some(value: T) }
 
 pick[T]: fun(imm a: T, imm b: T) -> i32 = 0
 

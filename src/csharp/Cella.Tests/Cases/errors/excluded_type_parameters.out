@@ -3,12 +3,12 @@
 
 Error at line 3, column 41
 2 │ 
-3 │ sized[N: const i32]: enum { zero  big = N }
+3 │ sized[N: const i32]: enum { zero, big = N }
                                             ^ Cannot use value parameters in case values
 
 Error at line 5, column 44
 4 │ 
-5 │ measured[T]: enum { zero  big = i32(sizeOf(T)) }
+5 │ measured[T]: enum { zero, big = i32(sizeOf(T)) }
                                                ^ Cannot use type parameters in case values
 
 [compilation failed]

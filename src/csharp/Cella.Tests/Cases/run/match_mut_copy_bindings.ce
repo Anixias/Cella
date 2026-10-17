@@ -5,7 +5,7 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-E: enum { a  hit(n: i32) }
+E: enum { a, hit(n: i32) }
 
 main: fun -> i32
 {

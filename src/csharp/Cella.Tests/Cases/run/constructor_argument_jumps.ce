@@ -21,7 +21,7 @@ Pair: rec
 	right: i32
 }
 
-Pick: enum { none  some(value: i32) }
+Pick: enum { none, some(value: i32) }
 
 choose: fun(value: i32) -> Pick
 {

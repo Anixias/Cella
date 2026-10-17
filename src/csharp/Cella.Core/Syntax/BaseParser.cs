@@ -39,23 +39,25 @@ public abstract class BaseParser<T>(ImmutableArray<Token> tokens) : IParser<T>
 		return false;
 	}
 	
-	protected void SeparateArms(ref int index)
+	protected void SeparateArms(ref int index) => SeparateItems(ref index, "arm");
+	
+	protected void SeparateItems(ref int index, string item)
 	{
-		if (AtEnd(index) || Peek(index, TokenType.OpCloseBrace))
+		if (AtEnd(index) || Peek(index, TokenType.OpCloseBrace) || Peek(index, TokenType.Invalid))
 			return;
 		
 		if (Match(ref index, out var comma, TokenType.OpComma))
 		{
 			if (!RejectTrailingComma(index, comma, TokenType.OpCloseBrace) && StartsLine(index))
 				ReportSeparatorError(new(DiagnosticSeverity.Error, comma.SourceLocation,
-					"Cannot separate arms on separate lines with ','"));
+					$"Cannot separate {item}s on separate lines with ','"));
 			
 			return;
 		}
 		
 		if (!StartsLine(index))
 			ReportSeparatorError(new(DiagnosticSeverity.Error, Tokens[index].SourceLocation,
-				"Expected ',' or a new line before the next arm"));
+				$"Expected ',' or a new line before the next {item}"));
 	}
 	
 	private bool StartsLine(int index) => index > 0 && !AtEnd(index) && Tokens[index - 1].Line != Tokens[index].Line;

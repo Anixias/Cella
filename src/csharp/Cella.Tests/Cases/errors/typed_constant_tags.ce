@@ -3,6 +3,6 @@ mod test
 wide: const u64 = 5
 narrow: const u8 = 7
 
-E: enum(u8) { zero  a = wide  b = narrow }
+E: enum(u8) { zero, a = wide, b = narrow }
 
 main: fun -> i32 = 0

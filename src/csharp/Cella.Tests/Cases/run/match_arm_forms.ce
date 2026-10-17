@@ -5,7 +5,7 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-Hit: enum { miss  hit(amount: i32) }
+Hit: enum { miss, hit(amount: i32) }
 
 score: fun(h: Hit) -> i32 = match h
 {
@@ -15,7 +15,7 @@ score: fun(h: Hit) -> i32 = match h
 	miss => 0
 }
 
-option[T]: enum { none  some(value: T) }
+option[T]: enum { none, some(value: T) }
 
 depth: fun(o: option[option[i32]]) -> i32 = match o
 {

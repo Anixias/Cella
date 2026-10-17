@@ -12,7 +12,7 @@ Counter[F: fun[-> i32]]: rec
 
 first[T]: fun(own a: T, own b: T) -> i32 = 0
 
-E: enum { a  b }
+E: enum { a, b }
 
 reassign: fun -> i32
 {

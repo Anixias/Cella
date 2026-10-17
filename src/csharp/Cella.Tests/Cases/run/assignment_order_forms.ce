@@ -24,7 +24,7 @@ value: fun -> i32
 	ret 1
 }
 
-E: enum { a  b }
+E: enum { a, b }
 
 make: fun -> E
 {

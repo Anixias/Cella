@@ -5,7 +5,7 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-T: enum { a  b }
+T: enum { a, b }
 
 Point: rec
 {
@@ -13,7 +13,7 @@ Point: rec
 	y: i32
 }
 
-option[V]: enum { none  some(value: V) }
+option[V]: enum { none, some(value: V) }
 
 pick: fun(t: T) -> i32 = match t
 {

@@ -201,6 +201,7 @@ public sealed partial class FileParser
 		var importsAllowed = false;
 		var conditionAllowed = false;
 		var isIncluded = true;
+		int? errorsAfterDeclaration = null;
 		
 		while (!AtEnd(index))
 		{
@@ -282,8 +283,13 @@ public sealed partial class FileParser
 				continue;
 			}
 			
+			if (errorsAfterDeclaration == Diagnostics.ErrorCount && IsOnSameLine(index) &&
+			    StartsTopLevelDeclaration(index))
+				Report(Tokens[index], "Expected a new line before the next declaration");
+			
 			if (ParseTopLevelDeclaration(ref index, declarations, null))
 			{
+				errorsAfterDeclaration = Diagnostics.ErrorCount;
 				moduleNameAllowed = false;
 				importsAllowed = false;
 				conditionAllowed = false;

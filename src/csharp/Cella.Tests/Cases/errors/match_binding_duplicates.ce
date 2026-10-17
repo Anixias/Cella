@@ -5,7 +5,7 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-result[T, E]: enum { ok(value: T)  err(error: E) }
+result[T, E]: enum { ok(value: T), err(error: E) }
 
 nullable[T: null]: enum match T
 {
@@ -22,9 +22,9 @@ Buffer: rec
 	}
 }
 
-Holder: enum { none  hold(b: Buffer) }
+Holder: enum { none, hold(b: Buffer) }
 
-Effect: enum { none  d(b: Buffer) }
+Effect: enum { none, d(b: Buffer) }
 
 R: rec
 {

@@ -3,12 +3,12 @@
 
 Error at line 3, column 1
 2 │ 
-3 │ X: enum { zero  a = i32(Y.b) }
+3 │ X: enum { zero, a = i32(Y.b) }
     ^ 'X' depends on its own values
 
 Error at line 5, column 1
 4 │ 
-5 │ Y: enum { zero  b = i32(X.a) }
+5 │ Y: enum { zero, b = i32(X.a) }
     ^ 'Y' depends on its own values
 
 [compilation failed]

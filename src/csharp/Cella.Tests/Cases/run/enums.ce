@@ -12,7 +12,7 @@ Team: enum
 	green
 }
 
-Role: enum { fighter  caster  healer }
+Role: enum { fighter, caster, healer }
 
 Unit: rec
 {

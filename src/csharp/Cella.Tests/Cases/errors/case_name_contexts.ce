@@ -1,6 +1,6 @@
 mod test
 
-Team: enum { red  blue }
+Team: enum { red, blue }
 
 show: fun(t: Team) -> i32 = 0
 

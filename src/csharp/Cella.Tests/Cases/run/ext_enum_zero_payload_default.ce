@@ -5,7 +5,7 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-Event: ext enum { key(code: i32) = 0  closed = 2 }
+Event: ext enum { key(code: i32) = 0, closed = 2 }
 
 R: rec
 {

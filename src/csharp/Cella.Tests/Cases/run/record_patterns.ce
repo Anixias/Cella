@@ -35,7 +35,7 @@ state: fun(e: Enemy) -> i32 = match e
 	else => 99
 }
 
-Shot: enum { miss  hit(at: Point, damage: i32) }
+Shot: enum { miss, hit(at: Point, damage: i32) }
 
 score: fun(s: Shot) -> i32 = match s
 {

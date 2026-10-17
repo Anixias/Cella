@@ -5,7 +5,7 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-Shape: enum { square  circle }
+Shape: enum { square, circle }
 
 main: fun -> i32
 {

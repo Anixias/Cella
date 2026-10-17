@@ -402,6 +402,7 @@ public sealed partial class FileParser
 	private bool ParseExternalBody(ref int index, Token openBrace, Token? origin, Token? block,
 		List<IDeclarationNode> nodes)
 	{
+		int? errorsBefore = null;
 		while (!Match(ref index, TokenType.OpCloseBrace))
 		{
 			if (AtEnd(index))
@@ -409,6 +410,9 @@ public sealed partial class FileParser
 				ReportUnclosed(openBrace);
 				return false;
 			}
+			
+			if (!SeparateMember(ref index, ref errorsBefore, "declaration"))
+				continue;
 			
 			if (Match(ref index, TokenType.KeywordWhen))
 			{

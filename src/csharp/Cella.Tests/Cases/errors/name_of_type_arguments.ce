@@ -1,6 +1,6 @@
 mod test
 
-option[T]: enum { none  some(value: T) }
+option[T]: enum { none, some(value: T) }
 
 main: fun -> i32
 {

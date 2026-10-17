@@ -1,6 +1,6 @@
 mod test
 
-Color: enum { red  pvt green  pub blue }
+Color: enum { red, pvt green, pub blue }
 
 Shape: enum
 {

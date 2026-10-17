@@ -178,6 +178,7 @@ public sealed partial class FileParser
 		var accessors = new List<FunctionNode>();
 		if (Match(ref index, out var openBrace, TokenType.OpOpenBrace))
 		{
+			int? errorsBefore = null;
 			while (!Match(ref index, TokenType.OpCloseBrace))
 			{
 				if (AtEnd(index))
@@ -185,6 +186,9 @@ public sealed partial class FileParser
 					ReportUnclosed(openBrace);
 					return null;
 				}
+				
+				if (!SeparateMember(ref index, ref errorsBefore, "accessor"))
+					continue;
 				
 				if (ParsePropertyAccessor(ref index, type, modifiers.Visibility) is not { } accessor)
 					return null;

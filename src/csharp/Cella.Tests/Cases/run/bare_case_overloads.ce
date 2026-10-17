@@ -4,7 +4,7 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-option[T]: enum { none  some(value: T) }
+option[T]: enum { none, some(value: T) }
 Wrap[T]: rec { value: T }
 pick: fun(imm o: option[u16]) -> i32 = 16
 pick: fun(imm o: option[i64]) -> i32 = 64

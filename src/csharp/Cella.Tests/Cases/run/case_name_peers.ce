@@ -5,9 +5,9 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-Team: enum { red  blue }
+Team: enum { red, blue }
 
-Side: enum { a  b }
+Side: enum { a, b }
 
 show: fun(t: Team) -> i32 = i32(t)
 

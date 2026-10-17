@@ -1,6 +1,6 @@
 mod test
 
-Hit: enum { miss  hit(amount: i32)  pair(a: i32, b: i32) }
+Hit: enum { miss, hit(amount: i32), pair(a: i32, b: i32) }
 
 Box: rec
 {
@@ -9,7 +9,7 @@ Box: rec
 	drop: op {}
 }
 
-Holder: enum { empty  full(b: Box) }
+Holder: enum { empty, full(b: Box) }
 
 Point: rec { x: i32 }
 

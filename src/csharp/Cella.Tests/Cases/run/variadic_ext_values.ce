@@ -5,7 +5,7 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-Color: ext enum { red  green  blue }
+Color: ext enum { red, green, blue }
 twice: ext fun(x: i32) -> i32 = x * 2
 
 nullable[T: null]: enum match T

@@ -15,7 +15,7 @@ Token: rec
 	}
 }
 
-Effect: enum { none  hit(amount: i32) }
+Effect: enum { none, hit(amount: i32) }
 
 early: fun(stop: bool) -> i32
 {

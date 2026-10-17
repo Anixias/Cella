@@ -4,7 +4,7 @@
 Error at line 5, column 5
 4 │ {
 5 │     red,
-           ^ Expected a case name
+           ^ Cannot separate members on separate lines with ','
 
 Error at line 11, column 9
 10 │ {

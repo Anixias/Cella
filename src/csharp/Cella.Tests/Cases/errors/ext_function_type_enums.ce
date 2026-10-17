@@ -1,6 +1,6 @@
 mod test
 
-Team: enum { red  blue }
+Team: enum { red, blue }
 
 pick[T: ext]: fun(f: ext fun[i32 -> T]) -> i32 = 0
 

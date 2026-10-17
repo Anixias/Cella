@@ -8,6 +8,7 @@ public sealed partial class FileParser
 {
 	private bool ParseTopLevelBlock(ref int index, Token openBrace, Token? block, List<IDeclarationNode> declarations)
 	{
+		int? errorsBefore = null;
 		while (!Match(ref index, TokenType.OpCloseBrace))
 		{
 			if (AtEnd(index))
@@ -15,6 +16,9 @@ public sealed partial class FileParser
 				ReportUnclosed(openBrace);
 				return false;
 			}
+			
+			if (!SeparateMember(ref index, ref errorsBefore, "declaration"))
+				continue;
 			
 			if (!StartsContextualName(index) &&
 			    Match(ref index, out var useToken, _topLevelContextualKeywords, TokenType.KeywordUse))
@@ -33,6 +37,17 @@ public sealed partial class FileParser
 		}
 		
 		return true;
+	}
+	
+	private bool SeparateMember(ref int index, ref int? errorsBefore, string item)
+	{
+		if (errorsBefore == Diagnostics.ErrorCount)
+			SeparateItems(ref index, item);
+		else if (errorsBefore is not null)
+			Match(ref index, TokenType.OpComma);
+		
+		errorsBefore = Diagnostics.ErrorCount;
+		return !Peek(index, TokenType.OpCloseBrace);
 	}
 	
 	private delegate bool BranchParser(ref int index, Token openBrace, bool isActive);

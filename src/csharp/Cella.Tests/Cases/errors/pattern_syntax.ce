@@ -1,8 +1,8 @@
 mod test
 
-option[T]: enum { none  some(value: T) }
+option[T]: enum { none, some(value: T) }
 
-E: enum { a  hit(n: i32) }
+E: enum { a, hit(n: i32) }
 
 takes: fun(o: option[i32]) -> i32 = 0
 

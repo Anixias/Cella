@@ -1,6 +1,6 @@
 mod test
 
-Color: ext enum { red  green  blue }
+Color: ext enum { red, green, blue }
 
 ext("abi")
 {

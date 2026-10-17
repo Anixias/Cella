@@ -5,9 +5,9 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-A: enum { b = 0  a = i32(A.b) + 4  c = i32(A.a) * 2 }
+A: enum { b = 0, a = i32(A.b) + 4, c = i32(A.a) * 2 }
 
-B: enum(u8) { off = 0  low = 1  mid = u8(B.low) + 1  high = u8(B.mid) * 3 }
+B: enum(u8) { off = 0, low = 1, mid = u8(B.low) + 1, high = u8(B.mid) * 3 }
 
 main: fun -> i32
 {

@@ -1,7 +1,7 @@
 mod test
 
-X: enum { zero  a = i32(Y.b) }
+X: enum { zero, a = i32(Y.b) }
 
-Y: enum { zero  b = i32(X.a) }
+Y: enum { zero, b = i32(X.a) }
 
 main: fun -> i32 = 0

@@ -1,6 +1,6 @@
 mod test
 
-E: enum { a  b }
+E: enum { a, b }
 
 f: fun -> i32
 {

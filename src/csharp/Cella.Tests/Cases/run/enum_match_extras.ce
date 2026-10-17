@@ -324,9 +324,9 @@ Big: enum
 	c299
 }
 
-Countdown: enum { more(count: i32)  done }
+Countdown: enum { more(count: i32), done }
 
-Hit: enum { miss  pair(a: i32, b: i32) }
+Hit: enum { miss, pair(a: i32, b: i32) }
 
 index: fun(b: Big) -> i32 = match b
 {

@@ -15,7 +15,7 @@ Note: rec
 	}
 }
 
-Effect: enum { none  owned(note: Note) }
+Effect: enum { none, owned(note: Note) }
 
 make: fun(id: i32) -> Note
 {

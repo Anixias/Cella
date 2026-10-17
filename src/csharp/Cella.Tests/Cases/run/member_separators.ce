@@ -1,0 +1,39 @@
+mod test
+
+ext { printf: fun(format: cstr, ...) -> i32 }
+
+Point: rec { x: i32, y: i32 }
+
+Color: enum { red, green, blue }
+
+Shape: enum { dot, square(side: i32), rect(width: i32, height: i32) }
+
+Key: enum match char { left = 'h', quit = 'q', 'Q', other(value) = else }
+
+Sized: trait { size: fun(imm self) -> i32, scale: fun(imm self, by: i32) -> i32 }
+
+Point: impl Sized { size: fun(imm self) -> i32 = self.x * self.y, scale: fun(imm self, by: i32) -> i32 = self.size() * by }
+
+Counter: rec
+{
+	value: i32
+
+	doubled: prop i32 { get(imm self) = self.value * 2, set(mut self, next) { self.value = next / 2 } }
+}
+
+pub { one: fun -> i32 = 1, two: fun -> i32 = 2 }
+
+area: fun(shape: Shape) -> i32 = match shape { dot => 1, square(val side) => side * side, rect(val w, val h) => w * h }
+
+describe: fun(key: Key) -> i32 = match key { left => 1, quit => 2, other(val c) => i32(c) }
+
+main: fun -> i32
+{
+	val point = Point(3, 4)
+	var counter = Counter(5)
+	counter.doubled = 20
+	printf("%d %d %d %d\n", point.size(), point.scale(2), counter.value, one() + two())
+	printf("%d %d %d\n", area(Shape.square(3)), area(Shape.rect(2, 5)), i32(Color.blue))
+	printf("%d %d %d\n", describe(Key('q')), describe(Key('Q')), describe(Key('z')))
+	ret 0
+}

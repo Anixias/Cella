@@ -12,9 +12,9 @@ P: rec
 	get: fun(self) -> i32 = self.x
 }
 
-Effect: enum { none  hit(n: i32) }
+Effect: enum { none, hit(n: i32) }
 
-Boxed: enum { empty  full(p: P) }
+Boxed: enum { empty, full(p: P) }
 
 hitting: const Effect = Effect.hit(3)
 quiet: const Effect = Effect.none

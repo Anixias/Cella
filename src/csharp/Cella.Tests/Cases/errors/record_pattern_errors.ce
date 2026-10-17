@@ -32,7 +32,7 @@ Pair: rec
 	second: Name
 }
 
-Shot: enum { miss  hit(at: Point, damage: i32) }
+Shot: enum { miss, hit(at: Point, damage: i32) }
 
 positional: fun(p: Point) -> i32 = match p
 {

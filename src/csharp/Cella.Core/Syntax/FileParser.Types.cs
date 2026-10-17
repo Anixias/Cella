@@ -146,6 +146,7 @@ public sealed partial class FileParser
 	
 	private bool ParseMembers(ref int index, Token openBrace, Token? block, List<IDeclarationNode> members)
 	{
+		int? errorsBefore = null;
 		while (!Match(ref index, TokenType.OpCloseBrace))
 		{
 			if (AtEnd(index))
@@ -153,6 +154,9 @@ public sealed partial class FileParser
 				ReportUnclosed(openBrace);
 				return false;
 			}
+			
+			if (!SeparateMember(ref index, ref errorsBefore, "member"))
+				continue;
 			
 			if (Match(ref index, TokenType.KeywordWhen))
 			{
@@ -267,6 +271,7 @@ public sealed partial class FileParser
 	private bool ParseEnumBody(ref int index, Token openBrace, Token? block, ITypeNode? matchedType,
 		List<EnumCaseNode> cases, List<IDeclarationNode> members)
 	{
+		int? errorsBefore = null;
 		while (!Match(ref index, TokenType.OpCloseBrace))
 		{
 			if (AtEnd(index))
@@ -274,6 +279,9 @@ public sealed partial class FileParser
 				ReportUnclosed(openBrace);
 				return false;
 			}
+			
+			if (!SeparateMember(ref index, ref errorsBefore, "member"))
+				continue;
 			
 			if (Match(ref index, TokenType.KeywordWhen))
 			{
@@ -417,19 +425,59 @@ public sealed partial class FileParser
 			if (Match(ref index, out var keyword, TokenType.KeywordElse))
 				elseKeyword = keyword;
 			else
-				values.AddRange(ParseCaseValues(ref index));
+				values.AddRange(ParseCaseValues(ref index, matchedType is not null));
 		}
 		
 		return new(name, payload, values, elseKeyword);
 	}
 	
-	private List<IExpressionNode> ParseCaseValues(ref int index)
+	private List<IExpressionNode> ParseCaseValues(ref int index, bool isMatched)
 	{
 		var values = new List<IExpressionNode> { ParseExpression(ref index) };
-		while (Match(ref index, TokenType.OpComma))
+		while (Peek(index, TokenType.OpComma) && !StartsEnumItem(index + 1, isMatched) &&
+		       Match(ref index, TokenType.OpComma))
 			values.Add(ParseExpression(ref index));
 		
 		return values;
+	}
+	
+	private bool StartsEnumItem(int index, bool isMatched)
+	{
+		if (AtEnd(index) || Peek(index + 1, TokenType.OpColon) || Peek(index, TokenType.KeywordWhen))
+			return true;
+		
+		if (!Peek(index, TokenType.Identifier))
+			return false;
+		
+		var next = index + 1;
+		if (Peek(next, TokenType.OpOpenParen) && IsOnSameLine(next))
+		{
+			if (FindClosingParen(next) is not { } close)
+				return false;
+			
+			next = close + 1;
+		}
+		
+		if (Peek(next, TokenType.OpEqual) || Peek(next, TokenType.OpOpenBrace) || Peek(next, TokenType.OpOpenBracket))
+			return true;
+		
+		return !isMatched &&
+		       (AtEnd(next) || !IsOnSameLine(next) || Peek(next, TokenType.OpComma) ||
+		        Peek(next, TokenType.OpCloseBrace));
+	}
+	
+	private int? FindClosingParen(int index)
+	{
+		var depth = 0;
+		for (var i = index; !AtEnd(i); i++)
+		{
+			if (Peek(i, TokenType.OpOpenParen))
+				depth++;
+			else if (Peek(i, TokenType.OpCloseParen) && --depth == 0)
+				return i;
+		}
+		
+		return null;
 	}
 	
 	private bool ParsePayload(ref int index, Token openParen, List<FieldNode> payload)

@@ -20,7 +20,7 @@ Pair: rec
 	second: Name
 }
 
-Shot: enum { miss  hit(at: Pair, damage: i32) }
+Shot: enum { miss, hit(at: Pair, damage: i32) }
 
 destructor: fun -> i32
 {
