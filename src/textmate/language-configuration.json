@@ -22,9 +22,5 @@
 		["(", ")"],
 		["\"", "\""],
 		["'", "'"]
-	],
-	"indentationRules": {
-		"increaseIndentPattern": "^.*\\{[^}\"']*$",
-		"decreaseIndentPattern": "^\\s*\\}"
-	}
+	]
 }
