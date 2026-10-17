@@ -6,11 +6,12 @@
 	"publisher": "anixias",
 	"license": "MIT",
 	"engines": {
-		"vscode": "^1.75.0"
+		"vscode": "^1.91.0"
 	},
 	"categories": [
 		"Programming Languages"
 	],
+	"main": "./extension.js",
 	"contributes": {
 		"languages": [
 			{
@@ -37,6 +38,19 @@
 				"scopeName": "source.celp",
 				"path": "./syntaxes/celp.tmLanguage.json"
 			}
-		]
+		],
+		"configuration": {
+			"title": "Cella",
+			"properties": {
+				"cella.server.path": {
+					"type": "string",
+					"default": "",
+					"markdownDescription": "Path to the `cella-lsp` executable. When empty, `cella-lsp` is found on `PATH`."
+				}
+			}
+		}
+	},
+	"dependencies": {
+		"vscode-languageclient": "^10.1.2"
 	}
 }
