@@ -1,8 +1,3 @@
-Error at geometry.ce:5:2
-4 │ {
-5 │     abs: fun(x: i64) -> i64
-        ╘═╛ 'ext' functions cannot be overloaded
-
 Error at main.ce:2:15
 1 │ mod test
 2 │ use geometry.[area, area]
@@ -17,10 +12,5 @@ Error at main.ce:3:14
 2 │ use geometry.[area, area]
 3 │ use geometry.area
                  ╘══╛ 'area' is imported more than once
-
-Error at main.ce:7:2
-6 │ {
-7 │     abs: fun(x: i32) -> i32
-        ╘═╛ 'ext' functions cannot be overloaded
 
 [compilation failed]

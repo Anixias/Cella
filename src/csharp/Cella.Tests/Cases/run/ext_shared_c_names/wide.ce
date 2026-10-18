@@ -1,0 +1,11 @@
+mod wide
+
+ext
+{
+	labs: ext("llabs") fun(value: i64) -> i64
+	exit: fun(code: i32) -> never
+}
+
+wideAbs: pub fun(value: i64) -> i64 => labs(value)
+
+quit: pub fun(code: i32) -> never => exit(code)

@@ -24,18 +24,18 @@ when windows
 		}
 	}
 	
-	crash: fun() -> never => failFast(null, null, 0)
+	crash: fun -> never => failFast(null, null, 0)
 }
 else
 {
 	ext
 	{
 		write: fun(fd: i32, data: ptr, count: usize) -> isize
-		abort: fun() -> never
+		abort: fun -> never
 	}
 	
 	writeError: fun(text: str) => write(2, text.data, text.byteLength)
-	crash: fun() -> never => abort()
+	crash: fun -> never => abort()
 }
 
 ext

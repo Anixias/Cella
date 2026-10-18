@@ -83,6 +83,11 @@ public sealed unsafe partial class CodeGenerator
 		
 		var result = builder.BuildCall2(functionType, callee, args.ToArray());
 		AddCAttributes(result, signature, true);
+		if (returnType is NeverType)
+			AddAttribute(result, LLVMAttributeIndex.LLVMAttributeFunctionIndex,
+				CreateEnumAttribute(result, "noreturn", 0),
+				true);
+		
 		switch (signature.Return.Kind)
 		{
 			case CPassKind.Coerced:

@@ -42,17 +42,20 @@ public sealed partial class Builder
 		if (files.Length == 0)
 		{
 			if (ReportErrors(diagnostics))
-				return new(new(project.Name, SymbolTable.Empty, SignatureTable.Empty, null), outputType, null, false);
+				return new(new(GetIdentity(project), SymbolTable.Empty, SignatureTable.Empty, null), outputType, null,
+					false);
 			
 			if (!outputType.IsExecutable())
-				return new(new(project.Name, SymbolTable.Empty, SignatureTable.Empty, null), outputType, null, true);
+				return new(new(GetIdentity(project), SymbolTable.Empty, SignatureTable.Empty, null), outputType, null,
+					true);
 			
 			output.Report([
 				new(DiagnosticSeverity.Error, SourceLocation.None,
 					$"The program has no '{entryPointName}' function")
 			]);
 			
-			return new(new(project.Name, SymbolTable.Empty, SignatureTable.Empty, null), outputType, null, false);
+			return new(new(GetIdentity(project), SymbolTable.Empty, SignatureTable.Empty, null), outputType, null,
+				false);
 		}
 		
 		// Phase 2a: Symbol collection
@@ -104,7 +107,7 @@ public sealed partial class Builder
 			SourceRoot = project.Directory,
 			ProjectRoots = [..allDependencies.Select(static d => d.Directory).OfType<string>(), project.Directory],
 			ExportsSymbols = outputType != ProjectOutputType.StaticLibrary,
-			StartFunction = isReferenceable ? Mangling.MangleStart(project.Name) : null
+			StartFunction = isReferenceable ? Mangling.MangleStart(GetIdentity(project)) : null
 		};
 		
 		var pointerBitSize = targetTriple.PointerBitSize;
@@ -121,7 +124,7 @@ public sealed partial class Builder
 			? (name, symbol) => names.Add((name, symbol))
 			: (Action<Token, Symbol>?)null;
 		
-		var signatureCollector = new SignatureCollector(project.Name, entryPointName, symbolTable, typePool,
+		var signatureCollector = new SignatureCollector(GetIdentity(project), entryPointName, symbolTable, typePool,
 			dependencySymbols, indirectSymbols, FindAliases(project, dependencyList), pointerBitSize)
 		{
 			QualifiesEntryPoint = isEntry,
@@ -140,7 +143,7 @@ public sealed partial class Builder
 		
 		signatureCollector.Collect([..files], resolver);
 		
-		var assemblySymbol = signatureCollector.FinishAssembly(project.Name);
+		var assemblySymbol = signatureCollector.FinishAssembly(GetIdentity(project));
 		var errorResult = new AssemblyInfo(assemblySymbol, outputType, null, false);
 		
 		diagnostics.Add(signatureCollector.Diagnostics);

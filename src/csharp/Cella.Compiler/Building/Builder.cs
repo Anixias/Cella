@@ -19,10 +19,10 @@ public sealed partial class Builder(BuildOptions options, IBuildOutput output)
 	{
 		StandardLibrary.Full =>
 		[
-			Path.Combine(StandardLibraryDirectory, "core", "stdCore.celp"),
-			Path.Combine(StandardLibraryDirectory, "os", "std.celp")
+			Path.Combine(StandardLibraryDirectory, "core", "core.celp"),
+			Path.Combine(StandardLibraryDirectory, "os", "os.celp")
 		],
-		StandardLibrary.Core => [Path.Combine(StandardLibraryDirectory, "core", "stdCore.celp")],
+		StandardLibrary.Core => [Path.Combine(StandardLibraryDirectory, "core", "core.celp")],
 		_ => []
 	};
 	
@@ -146,8 +146,6 @@ public sealed partial class Builder(BuildOptions options, IBuildOutput output)
 	private void AssignBundledOutputs(Dictionary<ProjectInfo, ImmutableArray<ProjectInfo>> dependencies)
 	{
 		_outputDirectories.Clear();
-		var library = GetCanonicalPath(StandardLibraryDirectory) + Path.DirectorySeparatorChar;
-		var comparison = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
 		var used = dependencies.Values.SelectMany(static items => items).ToHashSet();
 		foreach (var root in dependencies.Keys.Where(project => !used.Contains(project))
 			         .OrderBy(static project => project.FilePath, StringComparer.Ordinal))
@@ -159,7 +157,7 @@ public sealed partial class Builder(BuildOptions options, IBuildOutput output)
 				if (!reached.Add(next))
 					continue;
 				
-				if (next.FilePath.StartsWith(library, comparison))
+				if (IsBundled(next))
 					_outputDirectories.TryAdd(next.FilePath, Path.Combine(root.Directory, "obj", "std", next.Name));
 				
 				foreach (var dependency in dependencies.GetValueOrDefault(next, []))
@@ -175,6 +173,14 @@ public sealed partial class Builder(BuildOptions options, IBuildOutput output)
 		_outputDirectories.GetValueOrDefault(project.FilePath, project.Directory);
 	
 	private static string GetOutputBaseName(ProjectInfo project) => project.Project.AssemblyName ?? project.Name;
+	
+	private static readonly string _bundledDirectory =
+		GetCanonicalPath(StandardLibraryDirectory) + Path.DirectorySeparatorChar;
+	
+	private static bool IsBundled(ProjectInfo project) => project.FilePath.StartsWith(_bundledDirectory,
+		OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal);
+	
+	private static string GetIdentity(ProjectInfo project) => IsBundled(project) ? $"std/{project.Name}" : project.Name;
 	
 	private Dictionary<ProjectInfo, SystemLinkPreference> FindLinkPreferences(
 		Dictionary<ProjectInfo, ImmutableArray<ProjectInfo>> dependencies)
@@ -245,6 +251,7 @@ public sealed partial class Builder(BuildOptions options, IBuildOutput output)
 			}
 			
 			var clashes = closure
+				.Where(static project => !IsBundled(project))
 				.GroupBy(GetOutputBaseName, StringComparer.OrdinalIgnoreCase)
 				.Where(static sameName => sameName.Count() > 1)
 				.OrderBy(static sameName => sameName.Key, StringComparer.OrdinalIgnoreCase);

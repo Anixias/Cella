@@ -261,31 +261,6 @@ public sealed partial class SignatureCollector
 		};
 	}
 	
-	private void ReportExternalConflicts()
-	{
-		var imports = _builder.Functions.Keys
-			.Where(static function => function.Syntax is ExternalFunctionNode)
-			.GroupBy(static function => function.ExternalName);
-		
-		foreach (var group in imports)
-		{
-			var functions = group.ToList();
-			var byModule = functions.GroupBy(function => _declarations[function].Context.File.Module).ToList();
-			var first = _builder.Functions[functions[0]].Signature;
-			if (byModule.Count < 2 ||
-			    functions.All(function => IsSameExternalSignature(_builder.Functions[function].Signature, first)))
-				continue;
-			
-			foreach (var function in byModule.Where(static m => m.Count() == 1).SelectMany(static m => m))
-				Diagnostics.Add(new(DiagnosticSeverity.Error, GetIdentifier(function.Syntax).SourceLocation,
-					"'ext' functions cannot be overloaded"));
-		}
-	}
-	
-	private static bool IsSameExternalSignature(FunctionSignature first, FunctionSignature second) =>
-		HasSameParameters(first, second) && first.ReturnType == second.ReturnType &&
-		first.ParameterModes.SequenceEqual(second.ParameterModes);
-	
 	private void ReportModuleConflicts()
 	{
 		foreach (var module in _symbolTable.ModuleSymbols.Values)

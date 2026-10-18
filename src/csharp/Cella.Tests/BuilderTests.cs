@@ -148,6 +148,27 @@ public sealed class BuilderTests : IDisposable
 		Assert.False(Directory.Exists(Path.Combine(_directory, "app", "obj", "std")));
 	}
 	
+	[Theory]
+	[InlineData("core")]
+	[InlineData("os")]
+	public async Task BuildsUserProjectsNamedLikeStandardLibraryProjects(string name)
+	{
+		Directory.CreateDirectory(Path.Combine(_directory, name));
+		Directory.CreateDirectory(Path.Combine(_directory, "app"));
+		await File.WriteAllTextAsync(Path.Combine(_directory, name, $"{name}.celp"),
+			"OutputType = \"StaticLibrary\"\n", Token);
+		
+		await File.WriteAllTextAsync(Path.Combine(_directory, name, "lib.ce"),
+			"mod mine\n\nvalue: pub fun -> i32 => 0\n", Token);
+		
+		await File.WriteAllTextAsync(Path.Combine(_directory, "app", "test.celp"),
+			$"OutputType = \"Executable\"\n\n[[ProjectReferences]]\nPath = '../{name}/{name}.celp'\n", Token);
+		
+		await File.WriteAllTextAsync(ProgramPath, "mod test\n\nuse mine\n\nmain: fun -> i32 => mine.value()\n", Token);
+		var (result, output, _) = await BuildProgramAsync();
+		Assert.True(result.Succeeded, output);
+	}
+	
 	[Fact]
 	public async Task BuildsTheStandardLibraryIntoTheProgram()
 	{
@@ -161,7 +182,7 @@ public sealed class BuilderTests : IDisposable
 		var (project, path) = Assert.Single(outputs);
 		Assert.Equal("test", project);
 		Assert.Equal(Path.Combine(_directory, "app", "bin"), Path.GetDirectoryName(path));
-		Assert.NotEmpty(Directory.GetFiles(Path.Combine(_directory, "app", "obj", "std", "std", "bin")));
+		Assert.NotEmpty(Directory.GetFiles(Path.Combine(_directory, "app", "obj", "std", "os", "bin")));
 		Assert.False(Directory.Exists(Path.Combine(AppContext.BaseDirectory, "lib", "std", "os", "bin")));
 	}
 	

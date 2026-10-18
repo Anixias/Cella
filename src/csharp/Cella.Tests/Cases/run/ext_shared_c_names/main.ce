@@ -1,0 +1,24 @@
+mod test
+
+use wide.[wideAbs, quit]
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+	abs: fun(value: i32) -> i32
+	exit: fun(code: i32)
+}
+
+finish: fun(code: i32) -> i32
+{
+	if code > 100
+		exit(code)
+
+	ret code
+}
+
+main: fun -> i32
+{
+	printf("%d %lld %d\n", abs(-2), wideAbs(-3), finish(4))
+	quit(0)
+}

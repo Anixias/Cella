@@ -5,4 +5,4 @@ Hint at prelude_panic.ce:3:9
 
 [stderr]
 Panic at prelude_panic.ce:10:36: addition overflow
-[exit code 101]
+[exit code -1073740286]

@@ -180,7 +180,6 @@ public sealed partial class SignatureCollector
 		
 		ReportPlainNameConflicts();
 		ReportModuleConflicts();
-		ReportExternalConflicts();
 		ReportLayoutCycles();
 		ReportEntryPoint();
 		ReportExtSignatureTypes();

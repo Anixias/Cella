@@ -1,0 +1,8 @@
+Hint at prelude_panic.ce:3:9
+2 │ 
+3 │ use std.panic
+            ╘═══╛ Redundant import
+
+[stderr]
+Panic at prelude_panic.ce:10:36: addition overflow
+[exit code 134]
