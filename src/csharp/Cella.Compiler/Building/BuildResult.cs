@@ -11,7 +11,10 @@ public sealed record BuildResult
 	bool Succeeded,
 	ImmutableArray<ProjectCheck> Projects,
 	ImmutableArray<ProjectDiagnostic> ProjectDiagnostics
-);
+)
+{
+	public string? ProgramPath { get; init; }
+}
 
 public sealed record ProjectCheck
 (

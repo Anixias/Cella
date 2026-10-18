@@ -118,10 +118,16 @@ Windows programs link with Visual Studio's C++ build tools and the Windows SDK w
 ## Usage
 
 ```
+cella new [name] [--lib] [--gitignore]
 cella build [project file or folder] [--release] [--target windows-x64|windows-x64-gnu|linux-x64]
+cella run [project file or folder] [--release] [-- program arguments]
 ```
 
-The target defaults to the system you're on. Other options: `--verbose`, `--hints`, `--flag <name>[=true|false]`, `--emit-ir`, `--emit-asm`.
+`cella new game` creates a `game` folder with `game.celp` and a `main.ce` that prints "Hello, World!". Without a name it sets up the current folder. `--lib` makes a static library instead, and `--gitignore` adds a `.gitignore` for `bin/` and `obj/`.
+
+`cella run` builds the program and runs it in the current folder, passing everything after `--` to it, and exits with the program's exit code.
+
+The target defaults to the system you're on. Other options: `--verbose`, `--hints`, `--flag <name>[=true|false]`, `--entry <module.function>`, `--emit-ir`, `--emit-asm`.
 
 The launcher's own commands:
 

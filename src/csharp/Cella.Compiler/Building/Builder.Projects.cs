@@ -327,6 +327,8 @@ public sealed partial class Builder
 			var outputFileName = GetOutputFileName(outputBaseName, targetTriple, outputType);
 			var outputDir = isEntry ? GetEntryDirectory(project) : Path.Combine(GetOutputDirectory(project), "bin");
 			outputPath = Path.Combine(outputDir, outputFileName);
+			if (project.FilePath == programProjectPath)
+				programPath = outputPath;
 			
 			if (!Directory.Exists(outputDir))
 				Directory.CreateDirectory(outputDir);

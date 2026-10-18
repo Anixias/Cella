@@ -21,7 +21,8 @@ internal static partial class Pins
 	}
 	
 	public static string? FindProjectPath(IEnumerable<string> arguments) =>
-		arguments.Where(static argument => !argument.StartsWith('-'))
+		arguments.TakeWhile(static argument => argument != "--")
+			.Where(static argument => !argument.StartsWith('-'))
 			.FirstOrDefault(static argument => File.Exists(argument) || Directory.Exists(argument));
 	
 	private static SemanticVersion? ReadPin(string project)

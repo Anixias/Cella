@@ -1,4 +1,6 @@
-﻿using System.Text;
+﻿using System.ComponentModel;
+using System.Diagnostics;
+using System.Text;
 using Cella.Compiler.Building;
 using Cella.Compiler.Projects;
 using Cella.Core.CodeGen;
@@ -22,6 +24,8 @@ internal static class Program
 	private const string Usage =
 		"Usage: cella build [project file or folder] [--release] [--verbose] [--hints] [--flag <name>[=true|false]] " +
 		"[--target windows-x64|windows-x64-gnu|linux-x64] [--entry <module.function>] [--emit-ir] [--emit-asm]\n" +
+		"       cella run [project file or folder] [build options] [-- program arguments]\n" +
+		"       cella new [name] [--lib] [--gitignore]\n" +
 		"       cella --version";
 	
 	private static bool IsOptionValue(string[] args, int index) =>
@@ -38,6 +42,12 @@ internal static class Program
 			case ["build", .. var rest]:
 				return BuildAsync(rest);
 			
+			case ["run", .. var rest]:
+				return RunProgramAsync(rest);
+			
+			case ["new", .. var rest]:
+				return Task.FromResult(ProjectTemplate.Create(rest));
+			
 			case [var command, ..] when !command.StartsWith('-'):
 				Console.WriteLine($"Unknown command '{command}'");
 				return Task.FromResult(1);
@@ -50,30 +60,96 @@ internal static class Program
 	
 	private static async Task<int> BuildAsync(string[] args)
 	{
+		if (ParseBuild(args) is not var (options, sourcePath, showHints))
+			return 1;
+		
+		var result = await new Builder(options, new ConsoleBuildOutput(Environment.CurrentDirectory, showHints))
+			.BuildAsync(sourcePath);
+		
+		return result.Succeeded ? 0 : 1;
+	}
+	
+	private static async Task<int> RunProgramAsync(string[] args)
+	{
+		var separator = Array.IndexOf(args, "--");
+		var buildArgs = separator < 0 ? args : args[..separator];
+		string[] programArgs = separator < 0 ? [] : args[(separator + 1)..];
+		if (ParseBuild(buildArgs) is not var (options, sourcePath, showHints))
+			return 1;
+		
+		var host = TargetTriple.FromHost();
+		if (options.Target.Os != host.Os || options.Target.Arch != host.Arch)
+		{
+			var target = buildArgs[Array.IndexOf(buildArgs, "--target") + 1];
+			Console.WriteLine($"Cannot run '{target}' programs on this system");
+			return 1;
+		}
+		
+		var output = new ConsoleBuildOutput(Environment.CurrentDirectory, showHints) { ReportsOutputs = false };
+		var result = await new Builder(options with { RequiresProgram = true }, output).BuildAsync(sourcePath);
+		if (!result.Succeeded || result.ProgramPath is not { } program)
+			return 1;
+		
+		return await StartProgramAsync(program, programArgs);
+	}
+	
+	private static async Task<int> StartProgramAsync(string path, string[] arguments)
+	{
+		var start = new ProcessStartInfo(path)
+		{
+			UseShellExecute = false,
+			WorkingDirectory = Environment.CurrentDirectory
+		};
+		
+		foreach (var argument in arguments)
+			start.ArgumentList.Add(argument);
+		
+		Console.CancelKeyPress += KeepRunning;
+		try
+		{
+			using var process = Process.Start(start)!;
+			await process.WaitForExitAsync();
+			return process.ExitCode;
+		}
+		catch (Win32Exception exception)
+		{
+			Console.WriteLine($"Couldn't start '{path}': {exception.Message}");
+			return 1;
+		}
+		finally
+		{
+			Console.CancelKeyPress -= KeepRunning;
+		}
+	}
+	
+	private static void KeepRunning(object? sender, ConsoleCancelEventArgs e) => e.Cancel = true;
+	
+	private static (BuildOptions Options, string SourcePath, bool ShowHints)? ParseBuild(string[] args)
+	{
 		if (args.Where((arg, i) => arg.StartsWith("--") && !_options.Contains(arg) && !IsOptionValue(args, i))
 			    .FirstOrDefault() is { } unknown)
 		{
 			Console.WriteLine($"Unknown option '{unknown}'");
-			return 1;
+			return null;
 		}
 		
 		var verbose = args.Contains("--verbose");
 		var showHints = args.Contains("--hints");
 		var optimizeMode = args.Contains("--release") ? OptimizeMode.Release : OptimizeMode.Debug;
 		if (ParseFlagArguments(args) is not { } flagOverrides)
-			return 1;
+			return null;
 		
 		if (ParseTarget(args) is not { } targetTriple)
-			return 1;
+			return null;
 		
 		if (!TryParseEntry(args, out var entry))
-			return 1;
+			return null;
 		
 		var paths = args.Where((arg, i) => !arg.StartsWith("--") && !IsOptionValue(args, i)).ToArray();
 		if (paths is [_, var extra, ..])
 		{
 			Console.WriteLine($"Unexpected argument '{extra}'");
-			return 1;
+			return null;
 		}
 		
 		var sourcePath = paths is [var path] ? path : ".";
@@ -89,11 +165,7 @@ internal static class Program
 			Entry = entry
 		};
 		
-		var result =
-			await new Builder(options, new ConsoleBuildOutput(Environment.CurrentDirectory, showHints))
-				.BuildAsync(sourcePath);
-		
-		return result.Succeeded ? 0 : 1;
+		return (options, sourcePath, showHints);
 	}
 	
 	private static bool TryParseEntry(string[] args, out string? entry)

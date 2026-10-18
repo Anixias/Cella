@@ -12,8 +12,13 @@ internal sealed class ConsoleBuildOutput(string displayDirectory, bool showHints
 	
 	public void WriteError(string text) => Console.Error.WriteLine(text);
 	
-	public void ReportOutput(string projectName, string outputPath) =>
-		Console.WriteLine($"{projectName} -> {DisplayPath(outputPath, displayDirectory)}");
+	public bool ReportsOutputs { get; init; } = true;
+	
+	public void ReportOutput(string projectName, string outputPath)
+	{
+		if (ReportsOutputs)
+			Console.WriteLine($"{projectName} -> {DisplayPath(outputPath, displayDirectory)}");
+	}
 	
 	public void Report(IEnumerable<Diagnostic> diagnostics)
 	{

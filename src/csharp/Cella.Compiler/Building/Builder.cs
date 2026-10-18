@@ -31,6 +31,8 @@ public sealed partial class Builder(BuildOptions options, IBuildOutput output)
 	private readonly HashSet<string> _unchecked = [];
 	private readonly Dictionary<string, string> _outputDirectories = [];
 	private string? entryProjectPath;
+	private string? programProjectPath;
+	private string? programPath;
 	private IReadOnlyDictionary<string, string> openFiles = new Dictionary<string, string>();
 	private CompletionProbe? probe;
 	private bool generatesCode;
@@ -98,16 +100,26 @@ public sealed partial class Builder(BuildOptions options, IBuildOutput output)
 			p => dependencyGraph.GetDependencies(p).ToImmutableArray());
 		
 		AssignBundledOutputs(projectDependencies);
+		var roots = FindRoots(projectDependencies);
 		if (options.Entry is not null)
 		{
-			var used = projectDependencies.Values.SelectMany(static items => items).ToHashSet();
-			if (projectDependencies.Keys.Where(project => !used.Contains(project)).ToList() is not [var root])
+			if (roots is not [var root])
 			{
 				output.WriteLine("'--entry' needs exactly one project to build");
 				return Fail();
 			}
 			
 			entryProjectPath = root.FilePath;
+		}
+		
+		programProjectPath = null;
+		programPath = null;
+		if (options.RequiresProgram)
+		{
+			if (FindProgram(roots, sourcePath) is not { } program)
+				return Fail();
+			
+			programProjectPath = program.FilePath;
 		}
 		
 		var builtInFlags = BuildFlags.Create(options.Target, options.OptimizeMode);
@@ -130,7 +142,41 @@ public sealed partial class Builder(BuildOptions options, IBuildOutput output)
 		
 		generatesCode = !HasErrors;
 		var result = await BuildProjectsAsync(projectDependencies, linkPreferences, ct);
-		return result with { Succeeded = result.Succeeded && !HasErrors };
+		return result with { Succeeded = result.Succeeded && !HasErrors, ProgramPath = programPath };
+	}
+	
+	private static List<ProjectInfo> FindRoots(Dictionary<ProjectInfo, ImmutableArray<ProjectInfo>> dependencies)
+	{
+		var used = dependencies.Values.SelectMany(static items => items).ToHashSet();
+		return
+		[
+			..dependencies.Keys.Where(project => !used.Contains(project))
+				.OrderBy(static project => project.FilePath, StringComparer.Ordinal)
+		];
+	}
+	
+	private ProjectInfo? FindProgram(List<ProjectInfo> roots, string sourcePath)
+	{
+		if (options.Entry is not null)
+			return roots[0];
+		
+		switch (roots.Where(static project => project.Project.OutputType.IsExecutable()).ToList())
+		{
+			case [var program]:
+				return program;
+			
+			case []:
+				output.WriteLine(roots is [var library]
+					? $"'{library.Name}' is a library"
+					: $"No programs found in '{sourcePath}'");
+				
+				return null;
+			
+			case var programs:
+				var names = programs.Select(project => $"'{Path.GetRelativePath(sourcePath, project.FilePath)}'");
+				output.WriteLine($"'{sourcePath}' has several programs: {string.Join(", ", names)}");
+				return null;
+		}
 	}
 	
 	private bool HasErrors => _problems.Any(static problem => problem.Severity == DiagnosticSeverity.Error);

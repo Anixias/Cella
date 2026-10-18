@@ -11,6 +11,8 @@ internal static class Program
 		"Usage: cella <command> [arguments]\n" +
 		"\n" +
 		"  build [project file or folder]  Build a project with its pinned Cella version\n" +
+		"  run [project file or folder]    Build a program and run it\n" +
+		"  new [name]                      Create a project\n" +
 		"  install [version]               Install a version (the latest when none is given)\n" +
 		"  uninstall <version>             Remove a version\n" +
 		"  list                            List installed and available versions\n" +
@@ -78,8 +80,18 @@ internal static class Program
 		foreach (var argument in args)
 			start.ArgumentList.Add(argument);
 		
-		using var process = Process.Start(start) ?? throw new LauncherException($"Couldn't start '{path}'");
-		process.WaitForExit();
-		return process.ExitCode;
+		Console.CancelKeyPress += KeepRunning;
+		try
+		{
+			using var process = Process.Start(start) ?? throw new LauncherException($"Couldn't start '{path}'");
+			process.WaitForExit();
+			return process.ExitCode;
+		}
+		finally
+		{
+			Console.CancelKeyPress -= KeepRunning;
+		}
 	}
+	
+	private static void KeepRunning(object? sender, ConsoleCancelEventArgs e) => e.Cancel = true;
 }
