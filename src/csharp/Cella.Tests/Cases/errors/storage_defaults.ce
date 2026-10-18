@@ -11,9 +11,9 @@ Closer: rec
 
 shared: val Closer = Closer(5)
 
-take: fun(own c: Closer = shared) -> i32 = c.id
+take: fun(own c: Closer = shared) -> i32 => c.id
 
-peek: fun(imm c: Closer = shared) -> i32 = c.id
+peek: fun(imm c: Closer = shared) -> i32 => c.id
 
 main: fun -> i32
 {

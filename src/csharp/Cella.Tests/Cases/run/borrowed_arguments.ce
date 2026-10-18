@@ -42,17 +42,17 @@ Effect: enum
 	owned(buffer: Buffer)
 }
 
-same: fun(imm buffer: Buffer, address: ptr[Buffer]) -> bool = @buffer == address
-samePlain: fun(plain: Plain, address: ptr[Plain]) -> bool = @plain == address
-sameHolder: fun(imm holder: Holder, address: ptr[Holder]) -> bool = @holder == address
-sameEffect: fun(imm effect: Effect, address: ptr[Effect]) -> bool = @effect == address
-sameArray: fun(imm values: array[Buffer, 2], address: ptr[array[Buffer, 2]]) -> bool = @values == address
-forward: fun(imm buffer: Buffer, address: ptr[Buffer]) -> bool = same(imm buffer, address)
-readId: fun(imm buffer: Buffer) -> i32 = buffer.id
+same: fun(imm buffer: Buffer, address: ptr[Buffer]) -> bool => @buffer == address
+samePlain: fun(plain: Plain, address: ptr[Plain]) -> bool => @plain == address
+sameHolder: fun(imm holder: Holder, address: ptr[Holder]) -> bool => @holder == address
+sameEffect: fun(imm effect: Effect, address: ptr[Effect]) -> bool => @effect == address
+sameArray: fun(imm values: array[Buffer, 2], address: ptr[array[Buffer, 2]]) -> bool => @values == address
+forward: fun(imm buffer: Buffer, address: ptr[Buffer]) -> bool => same(imm buffer, address)
+readId: fun(imm buffer: Buffer) -> i32 => buffer.id
 
-fromMut: fun(mut buffer: Buffer, address: ptr[Buffer]) -> bool = same(imm buffer, address)
+fromMut: fun(mut buffer: Buffer, address: ptr[Buffer]) -> bool => same(imm buffer, address)
 
-observe: fun(imm buffer: Buffer, ignored: i32) -> i32 = buffer.id
+observe: fun(imm buffer: Buffer, ignored: i32) -> i32 => buffer.id
 
 bump: fun(mut buffer: Buffer) -> i32
 {
@@ -60,7 +60,7 @@ bump: fun(mut buffer: Buffer) -> i32
 	ret 0
 }
 
-flag: fun(value: bool) -> i32 = i32(value)
+flag: fun(value: bool) -> i32 => i32(value)
 
 main: fun -> i32
 {

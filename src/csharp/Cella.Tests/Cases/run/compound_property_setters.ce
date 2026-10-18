@@ -26,7 +26,7 @@ Slot: rec
 
 	token: prop Token
 	{
-		get(imm self) = Token(self.held.id + 100)
+		get(imm self) => Token(self.held.id + 100)
 		set(mut self, imm value)
 		{
 			self.held = Token(value.id)
@@ -35,7 +35,7 @@ Slot: rec
 
 	owned: prop Token
 	{
-		get(imm self) = Token(self.held.id + 1000)
+		get(imm self) => Token(self.held.id + 1000)
 		set(mut self, own value)
 		{
 			self.held = own value
@@ -49,7 +49,7 @@ Registry: rec
 
 	token: prop Token
 	{
-		get = Token(count + 100)
+		get => Token(count + 100)
 		set(imm value)
 		{
 			count = value.id

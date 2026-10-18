@@ -1,6 +1,6 @@
 mod test
 
-show: fun(value: i64) -> i64 = value
+show: fun(value: i64) -> i64 => value
 
 main: fun -> i32
 {

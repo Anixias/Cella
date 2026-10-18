@@ -5,7 +5,7 @@ result[T, E]: enum
 	ok(value: T)
 	err(error: E)
 
-	?: op(own self) -> T = match own self
+	?: op(own self) -> T => match own self
 	{
 		ok(own value) => value
 		err(own error) => ret result.err(own error)
@@ -16,15 +16,15 @@ broken[T]: enum
 {
 	held(value: T)
 
-	?: op(own self) -> T = match own self
+	?: op(own self) -> T => match own self
 	{
 		held(own value) => valu
 	}
 }
 
-parse: fun(n: i32) -> result[i32, i32] = result.ok(n)
+parse: fun(n: i32) -> result[i32, i32] => result.ok(n)
 
-plain: fun -> i32 = parse(1)?
+plain: fun -> i32 => parse(1)?
 
 nothing: fun
 {
@@ -45,6 +45,6 @@ numbers: fun -> i32
 	ret x?
 }
 
-unused: fun -> result[i32, i32] = result.ok(broken.held(1)?)
+unused: fun -> result[i32, i32] => result.ok(broken.held(1)?)
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

@@ -19,10 +19,10 @@ Holder: rec
 	buffer: Buffer
 }
 
-show: fun(imm buffer: Buffer) -> i32 = buffer.id
-same: fun(imm buffer: Buffer, address: ptr[Buffer]) -> i32 = i32(@buffer == address)
-take: fun(own buffer: Buffer) -> i32 = buffer.id
-grow: fun(mut buffer: Buffer) = buffer.id += 10
+show: fun(imm buffer: Buffer) -> i32 => buffer.id
+same: fun(imm buffer: Buffer, address: ptr[Buffer]) -> i32 => i32(@buffer == address)
+take: fun(own buffer: Buffer) -> i32 => buffer.id
+grow: fun(mut buffer: Buffer) => buffer.id += 10
 
 main: fun -> i32
 {

@@ -6,22 +6,22 @@ ext
 }
 
 store: fun(own f: fun[i32 -> i32]) { }
-call: fun(f: fun[-> i32]) -> i32 = f()
+call: fun(f: fun[-> i32]) -> i32 => f()
 keep[T: noref]: fun(own value: T) { }
 
 main: fun -> i32
 {
 	val base = 10
-	store(fun(x) = x + base)
+	store(fun(x) => x + base)
 	var values = [3, 1, 2]
-	qsort(@values, 3, 4, fun(a, b) = (*a - *b) * base)
+	qsort(@values, 3, 4, fun(a, b) => (*a - *b) * base)
 	call(fun -> i32
 	{
-		store(fun(x) = x + base)
+		store(fun(x) => x + base)
 		ret 0
 	})
 
-	val closure = fun -> i32 = base
+	val closure = fun -> i32 => base
 	val plain: fun[-> i32] = closure
 	keep(closure)
 	ret 0

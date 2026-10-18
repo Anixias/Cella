@@ -9,14 +9,14 @@ V: rec
 {
 	x: i32
 
-	<: op(a: V, b: V) -> bool = a.x < b.x
+	<: op(a: V, b: V) -> bool => a.x < b.x
 }
 
 W: rec
 {
 	x: i32
 
-	<: op(imm a: W, imm b: W) -> bool = a.x < b.x
+	<: op(imm a: W, imm b: W) -> bool => a.x < b.x
 
 	drop: op
 	{
@@ -28,7 +28,7 @@ O: rec
 {
 	x: i32
 
-	<: op(own a: O, own b: O) -> bool = a.x < b.x
+	<: op(own a: O, own b: O) -> bool => a.x < b.x
 
 	drop: op
 	{

@@ -1,7 +1,7 @@
-Error at implicit_moves.ce:52:47
+Error at implicit_moves.ce:52:48
 51 │ 
-52 │ look: fun(imm texture: Texture) -> i32 = take(texture)
-                                                   ╘═════╛ Cannot move read-only parameters
+52 │ look: fun(imm texture: Texture) -> i32 => take(texture)
+                                                    ╘═════╛ Cannot move read-only parameters
 
 Error at implicit_moves.ce:57:7
 56 │ val a = Texture(1)

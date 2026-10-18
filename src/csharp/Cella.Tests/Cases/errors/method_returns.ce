@@ -25,7 +25,7 @@ Label: ref rec
 	buffer: imm[Buffer]
 }
 
-kills: fun(mut stats: Stats) -> mut[i32] = mut stats.kills
+kills: fun(mut stats: Stats) -> mut[i32] => mut stats.kills
 
 stronger: fun(imm a: Enemy, imm b: Enemy) -> imm[Enemy]
 {
@@ -46,28 +46,28 @@ Referee: rec
 		ret imm b
 	}
 
-	count: fun(imm self, mut stats: Stats) -> mut[i32] = mut stats.kills
+	count: fun(imm self, mut stats: Stats) -> mut[i32] => mut stats.kills
 
-	pickStronger: fun(imm self, imm a: Enemy, imm b: Enemy) -> imm[Enemy] = stronger(imm a, imm b)
+	pickStronger: fun(imm self, imm a: Enemy, imm b: Enemy) -> imm[Enemy] => stronger(imm a, imm b)
 
-	countKills: fun(imm self, mut stats: Stats) -> mut[i32] = kills(mut stats)
+	countKills: fun(imm self, mut stats: Stats) -> mut[i32] => kills(mut stats)
 
-	leaderOf: fun(imm self, imm other: Referee) -> imm[Enemy] = other.leader()
+	leaderOf: fun(imm self, imm other: Referee) -> imm[Enemy] => other.leader()
 
-	keep: fun(imm self, own enemy: Enemy) -> imm[Enemy] = imm enemy
+	keep: fun(imm self, own enemy: Enemy) -> imm[Enemy] => imm enemy
 
-	leader: fun(imm self) -> imm[Enemy] = imm self.best
+	leader: fun(imm self) -> imm[Enemy] => imm self.best
 
-	bufferOf: fun(imm self, label: Label) -> imm[Buffer] = label.buffer
+	bufferOf: fun(imm self, label: Label) -> imm[Buffer] => label.buffer
 }
 
 Point: rec
 {
 	x: i32
 
-	get: fun(imm self) -> imm[i32] = imm self.x
+	get: fun(imm self) -> imm[i32] => imm self.x
 
-	take: fun(own self) -> imm[i32] = imm self.x
+	take: fun(own self) -> imm[i32] => imm self.x
 }
 
 Slot: enum

@@ -20,9 +20,9 @@ Pair: rec
 	second: D
 }
 
-stop: fun(i: usize) -> bool = i == 2
+stop: fun(i: usize) -> bool => i == 2
 
-flip: fun -> bool = true
+flip: fun -> bool => true
 
 unknownBound: fun(n: usize) -> i32
 {
@@ -93,4 +93,4 @@ partParts: fun
 	}
 }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

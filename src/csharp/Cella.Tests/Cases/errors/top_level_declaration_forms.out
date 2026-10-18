@@ -29,7 +29,7 @@ Error at top_level_declaration_forms.ce:7:1
 
 Error at top_level_declaration_forms.ce:8:1
 7 │ fun helper -> i32 = 1
-8 │ +: op(a: i32, b: i32) -> i32 = a
+8 │ +: op(a: i32, b: i32) -> i32 => a
     ^ Cannot declare operators outside types
 
 Error at top_level_declaration_forms.ce:10:1
@@ -44,7 +44,7 @@ Error at top_level_declaration_forms.ce:14:1
 
 Error at top_level_declaration_forms.ce:23:1
 22 │ 
-23 │ pvt helper: fun -> i32 = 1
+23 │ pvt helper: fun -> i32 => 1
      ╘═╛ Expected '{' after 'pvt'
 
 Error at top_level_declaration_forms.ce:30:8
@@ -62,14 +62,14 @@ Error at top_level_declaration_forms.ce:39:2
 39 │     use other
          ╘═╛ Imports must precede all other declarations
 
-Error at top_level_declaration_forms.ce:43:18
+Error at top_level_declaration_forms.ce:43:19
 42 │ 
-43 │ f: fun -> i32 = 1)
-                      ^ Unexpected token
+43 │ f: fun -> i32 => 1)
+                       ^ Unexpected token
 
 Error at top_level_declaration_forms.ce:47:5
 46 │ 
-47 │ main: fun -> i32 = 0
+47 │ main: fun -> i32 => 0
          ^ Expected ')'
          | To match the '(' on line 45
 

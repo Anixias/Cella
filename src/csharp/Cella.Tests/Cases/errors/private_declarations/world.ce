@@ -11,7 +11,7 @@ World: rec
 		self.turn += 1
 	}
 
-	create: mod fun -> World = World()
+	create: mod fun -> World => World()
 }
 
 Secret: mod rec
@@ -30,6 +30,6 @@ Color: pvt enum
 	green
 }
 
-helper: mod fun -> i32 = 1
+helper: mod fun -> i32 => 1
 
-tool: pvt fun -> i32 = 2
+tool: pvt fun -> i32 => 2

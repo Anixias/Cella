@@ -27,32 +27,32 @@ Width: trait
 
 [T: Eq]: impl Describe
 {
-	name: fun(imm self) -> cstr = "comparable"
+	name: fun(imm self) -> cstr => "comparable"
 }
 
 [T: Show]: impl Describe
 {
-	name: fun(imm self) -> cstr = "shown"
+	name: fun(imm self) -> cstr => "shown"
 }
 
 [T: copy]: impl Size
 {
-	size: fun(imm self) -> usize = 1
+	size: fun(imm self) -> usize => 1
 }
 
 [U: copy]: impl Size
 {
-	size: fun(imm self) -> usize = 2
+	size: fun(imm self) -> usize => 2
 }
 
 [T]: impl Width
 {
-	width: fun(imm self) -> usize = 1
+	width: fun(imm self) -> usize => 1
 }
 
 [T: copy]: impl Width
 {
-	width: fun(imm self) -> usize = 2
+	width: fun(imm self) -> usize => 2
 }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

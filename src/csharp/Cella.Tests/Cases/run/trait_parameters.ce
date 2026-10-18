@@ -14,23 +14,23 @@ Circle: rec impl Shape
 {
 	r: f64
 
-	area: fun(self) -> f64 = self.r * 3.0
+	area: fun(self) -> f64 => self.r * 3.0
 }
 
 Square: rec impl Shape
 {
 	s: f64
 
-	area: fun(self) -> f64 = self.s * self.s
+	area: fun(self) -> f64 => self.s * self.s
 }
 
 cell[K: trait]: rec
 {
 	object: ptr[dyn[K]]
 
-	of[T: K]: fun(value: ptr[T]) -> cell[K] = cell[K](value)
+	of[T: K]: fun(value: ptr[T]) -> cell[K] => cell[K](value)
 
-	*: op(self) -> imm[dyn[K]] = imm *self.object
+	*: op(self) -> imm[dyn[K]] => imm *self.object
 }
 
 view[K: trait]: ref rec
@@ -43,21 +43,21 @@ slot[K: trait, T: K]: rec
 	value: T
 }
 
-measure: fun(imm shape: dyn[Shape]) -> f64 = shape.area()
+measure: fun(imm shape: dyn[Shape]) -> f64 => shape.area()
 
-apply[K: trait, T: K]: fun(imm value: T, action: fun[imm dyn[K] -> f64]) -> f64 = action(imm value)
+apply[K: trait, T: K]: fun(imm value: T, action: fun[imm dyn[K] -> f64]) -> f64 => action(imm value)
 
-wrap[K: trait, T: K]: fun(value: ptr[T]) -> cell[K] = cell[K].of(value)
+wrap[K: trait, T: K]: fun(value: ptr[T]) -> cell[K] => cell[K].of(value)
 
-same[K: trait, T: K]: fun(imm shape: dyn[K]) -> bool = shape is T
+same[K: trait, T: K]: fun(imm shape: dyn[K]) -> bool => shape is T
 
-kind[K: trait, T: K]: fun(imm shape: dyn[K]) -> i32 = match shape
+kind[K: trait, T: K]: fun(imm shape: dyn[K]) -> i32 => match shape
 {
 	T => 1
 	else => 0
 }
 
-count[K: trait]: fun(imm shape: dyn[K]) -> i32 = 1
+count[K: trait]: fun(imm shape: dyn[K]) -> i32 => 1
 
 main: fun -> i32
 {

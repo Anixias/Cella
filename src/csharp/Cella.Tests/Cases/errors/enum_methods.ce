@@ -5,9 +5,9 @@ Effect: enum
 	none
 	hit(amount: i32)
 
-	make: fun -> Effect = Effect.none
+	make: fun -> Effect => Effect.none
 
-	size: fun(self) -> i32 = 0
+	size: fun(self) -> i32 => 0
 }
 
 main: fun -> i32

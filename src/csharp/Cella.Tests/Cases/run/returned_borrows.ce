@@ -56,11 +56,11 @@ Scope: ref rec
 
 base: val i32 = 3
 
-kills: fun(mut stats: Stats) -> mut[i32] = mut stats.kills
+kills: fun(mut stats: Stats) -> mut[i32] => mut stats.kills
 
-forward: fun(mut stats: Stats) -> mut[i32] = kills(mut stats)
+forward: fun(mut stats: Stats) -> mut[i32] => kills(mut stats)
 
-apply: fun(get: fun[mut Stats -> mut[i32]], mut stats: Stats) -> mut[i32] = get(mut stats)
+apply: fun(get: fun[mut Stats -> mut[i32]], mut stats: Stats) -> mut[i32] => get(mut stats)
 
 stronger: fun(imm a: Enemy, imm b: Enemy) -> imm[Enemy]
 {
@@ -75,9 +75,9 @@ name: fun(imm enemy: Enemy) -> imm[Buffer]
 	ret imm view.name
 }
 
-count: fun(tally: Tally) -> mut[i32] = tally.count
+count: fun(tally: Tally) -> mut[i32] => tally.count
 
-pass: fun(tally: Tally) -> Tally = tally
+pass: fun(tally: Tally) -> Tally => tally
 
 either: fun(mut a: i32, mut b: i32, flag: bool) -> imm[i32]
 {
@@ -96,11 +96,11 @@ payload: fun(mut effect: Effect, mut fallback: Buffer) -> imm[Buffer]
 	}
 }
 
-enter: fun(mut depth: i32) -> Scope = Scope(mut depth)
+enter: fun(mut depth: i32) -> Scope => Scope(mut depth)
 
-limit: fun -> imm[i32] = imm base
+limit: fun -> imm[i32] => imm base
 
-greeting: fun -> str = "hello"
+greeting: fun -> str => "hello"
 
 main: fun -> i32
 {

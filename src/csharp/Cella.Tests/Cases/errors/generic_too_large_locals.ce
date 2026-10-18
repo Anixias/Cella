@@ -6,4 +6,4 @@ stack[T]: fun -> i32
 	ret 0
 }
 
-main: fun -> i32 = stack[u64]()
+main: fun -> i32 => stack[u64]()

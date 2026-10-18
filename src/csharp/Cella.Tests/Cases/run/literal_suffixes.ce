@@ -18,11 +18,11 @@ box[T]: rec
 	value: T
 }
 
-pick: fun(value: u8) -> i32 = 8
-pick: fun(value: i32) -> i32 = 32
+pick: fun(value: u8) -> i32 => 8
+pick: fun(value: i32) -> i32 => 32
 
-take: fun(value: f32) -> i32 = 32
-take: fun(value: f64) -> i32 = 64
+take: fun(value: f32) -> i32 => 32
+take: fun(value: f64) -> i32 => 64
 
 main: fun -> i32
 {

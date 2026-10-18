@@ -15,7 +15,7 @@ Error at when_member_declarations.ce:17:11
 
 Error at when_member_declarations.ce:21:26
 20 │ 
-21 │ y: get(imm self) -> i32 when debug = self.x
+21 │ y: get(imm self) -> i32 when debug => self.x
                              ╘══╛ Cannot use 'when' on getters
 
 Error at when_member_declarations.ce:23:31

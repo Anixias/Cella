@@ -5,4 +5,4 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-hello: pub fun -> i32 = printf("lib says hi\n")
+hello: pub fun -> i32 => printf("lib says hi\n")

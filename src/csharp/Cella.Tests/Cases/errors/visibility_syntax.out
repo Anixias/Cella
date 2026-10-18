@@ -15,7 +15,7 @@ Error at visibility_syntax.ce:13:8
 
 Error at visibility_syntax.ce:18:8
 17 │ 
-18 │ twice: pvt mod fun -> i32 = 0
+18 │ twice: pvt mod fun -> i32 => 0
             ╘═════╛ Cannot combine 'pvt' and 'mod'
 
 Error at visibility_syntax.ce:22:5
@@ -45,7 +45,7 @@ Error at visibility_syntax.ce:26:13
 
 Error at visibility_syntax.ce:27:5
 26 │ e: pvt set mod i32
-27 │ f: pvt set fun(self) -> i32 = 0
+27 │ f: pvt set fun(self) -> i32 => 0
         ╘═════╛ Cannot use 'pvt set' on functions
 
 Error at visibility_syntax.ce:32:6
@@ -80,12 +80,12 @@ Error at visibility_syntax.ce:60:8
 
 Error at visibility_syntax.ce:67:10
 66 │ {
-67 │     helper: pvt fun -> i32 = 0
+67 │     helper: pvt fun -> i32 => 0
                  ╘═╛ Cannot use 'pvt' in 'mod' blocks
 
 Error at visibility_syntax.ce:68:12
-67 │ helper: pvt fun -> i32 = 0
-68 │ exported: pub fun -> i32 = 0
+67 │ helper: pvt fun -> i32 => 0
+68 │ exported: pub fun -> i32 => 0
                ╘═╛ Cannot use 'pub' in 'mod' blocks
 
 Error at visibility_syntax.ce:70:2

@@ -4,10 +4,10 @@ Error at question_operators.ce:21:22
                             ╘══╛ Symbol 'valu' not found in this scope
                                | Did you mean 'value'?
 
-Error at question_operators.ce:27:29
+Error at question_operators.ce:27:30
 26 │ 
-27 │ plain: fun -> i32 = parse(1)?
-                                 ^ Cannot return 'err' from 'plain'
+27 │ plain: fun -> i32 => parse(1)?
+                                  ^ Cannot return 'err' from 'plain'
 
 Error at question_operators.ce:31:18
 30 │ {

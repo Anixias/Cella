@@ -5,5 +5,5 @@ Hint at main.ce:3:9
 
 hello from the prelude
 own shout
-lib panic at main.ce:12:35: addition overflow
+lib panic at main.ce:12:36: addition overflow
 [exit code 9]

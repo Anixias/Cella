@@ -46,4 +46,4 @@ nested: fun(c: bool) -> i32
 	printf("z\n")
 }
 
-main: fun -> i32 = both(true) + looped(false) + nested(true)
+main: fun -> i32 => both(true) + looped(false) + nested(true)

@@ -5,7 +5,7 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-narrow: fun(value: i32) -> u8 = u8(value)
+narrow: fun(value: i32) -> u8 => u8(value)
 
 main: fun -> i32
 {

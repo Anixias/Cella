@@ -40,7 +40,7 @@ ext
 	peek: fun(buffer: ptr[Buffer]) -> i32
 }
 
-echo: ext fun(buffer: Buffer) -> Buffer = buffer
+echo: ext fun(buffer: Buffer) -> Buffer => buffer
 forward: fun(callback: fun[ext fun[own Buffer]]) {}
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

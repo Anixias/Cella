@@ -142,7 +142,7 @@ idOf: fun(imm slot: Slot) -> i32
 	ret buffer.id * 10
 }
 
-pick: fun(imm slot: Slot, imm fallback: Buffer) -> imm[Buffer] = match slot
+pick: fun(imm slot: Slot, imm fallback: Buffer) -> imm[Buffer] => match slot
 {
 	held(val buffer) => buffer
 	empty => ret imm fallback

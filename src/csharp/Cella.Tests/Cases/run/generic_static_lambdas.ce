@@ -9,7 +9,7 @@ Box[T]: rec
 {
 	value: T
 
-	size: val fun[-> usize] = fun = sizeOf(T)
+	size: val fun[-> usize] = fun => sizeOf(T)
 	local: val fun[-> i32] = fun -> i32
 	{
 		var x: T
@@ -18,14 +18,14 @@ Box[T]: rec
 
 	count: var i32 = 0
 	bump: val fun[] = fun { count += 1 }
-	resize: var fun[-> usize] = fun = alignOf(T)
+	resize: var fun[-> usize] = fun => alignOf(T)
 }
 
 Pick[T: copy]: rec
 {
 	value: T
 
-	identity: fun(v: T) -> T = v
+	identity: fun(v: T) -> T => v
 	handler: val fun[T -> T] = identity
 }
 
@@ -33,7 +33,7 @@ Ring[N: const usize]: rec
 {
 	items: array[i32, N]
 
-	capacity: val fun[-> usize] = fun -> usize = N
+	capacity: val fun[-> usize] = fun -> usize => N
 }
 
 main: fun -> i32

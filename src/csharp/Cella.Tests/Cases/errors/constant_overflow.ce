@@ -7,7 +7,7 @@ Ranges: rec
 	low: const i8 = i8(-100) - 100
 }
 
-takesU8: fun(value: u8) -> u8 = value
+takesU8: fun(value: u8) -> u8 => value
 
 main: fun -> i32
 {

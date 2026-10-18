@@ -10,4 +10,4 @@ value: val i32 = 4
 greeting: val fstr[Display] = "hi"
 borrowed: val imm[i32] = value
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

@@ -1,11 +1,11 @@
-Error at never_layout.ce:3:29
+Error at never_layout.ce:3:30
 2 │ 
-3 │ size: fun -> usize = sizeOf(never)
-                                ╘═══╛ 'never' can only be a return type
+3 │ size: fun -> usize => sizeOf(never)
+                                 ╘═══╛ 'never' can only be a return type
 
-Error at never_layout.ce:5:35
+Error at never_layout.ce:5:36
 4 │ 
-5 │ alignment: fun -> usize = alignOf(never)
-                                      ╘═══╛ 'never' can only be a return type
+5 │ alignment: fun -> usize => alignOf(never)
+                                       ╘═══╛ 'never' can only be a return type
 
 [compilation failed]

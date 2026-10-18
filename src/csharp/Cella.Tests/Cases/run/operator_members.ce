@@ -10,15 +10,15 @@ Vector: rec
 	x: f32
 	y: f32
 
-	+: op(a: Vector, b: Vector) -> Vector = Vector(a.x + b.x, a.y + b.y)
-	-: op(a: Vector, b: Vector) -> Vector = Vector(a.x - b.x, a.y - b.y)
-	*: op(v: Vector, scale: f32) -> Vector = Vector(v.x * scale, v.y * scale)
-	*: op(scale: f32, v: Vector) -> Vector = Vector(v.x * scale * 10.0, v.y * scale * 10.0)
-	-: op(self) -> Vector = Vector(-self.x, -self.y)
-	+: op(self) -> Vector = self
-	==: op(a: Vector, b: Vector) -> bool = a.x == b.x && a.y == b.y
-	!=: op(a: Vector, b: Vector) -> bool = a.x != b.x || a.y != b.y
-	<: op(a: Vector, b: Vector) -> bool = a.x * a.x + a.y * a.y < b.x * b.x + b.y * b.y
+	+: op(a: Vector, b: Vector) -> Vector => Vector(a.x + b.x, a.y + b.y)
+	-: op(a: Vector, b: Vector) -> Vector => Vector(a.x - b.x, a.y - b.y)
+	*: op(v: Vector, scale: f32) -> Vector => Vector(v.x * scale, v.y * scale)
+	*: op(scale: f32, v: Vector) -> Vector => Vector(v.x * scale * 10.0, v.y * scale * 10.0)
+	-: op(self) -> Vector => Vector(-self.x, -self.y)
+	+: op(self) -> Vector => self
+	==: op(a: Vector, b: Vector) -> bool => a.x == b.x && a.y == b.y
+	!=: op(a: Vector, b: Vector) -> bool => a.x != b.x || a.y != b.y
+	<: op(a: Vector, b: Vector) -> bool => a.x * a.x + a.y * a.y < b.x * b.x + b.y * b.y
 
 	+=: op(mut self, other: Vector)
 	{
@@ -37,21 +37,21 @@ Flags: rec
 {
 	bits: u32
 
-	|: op(a: Flags, b: Flags) -> Flags = Flags(a.bits | b.bits)
-	&: op(a: Flags, b: Flags) -> Flags = Flags(a.bits & b.bits)
-	^: op(a: Flags, b: Flags) -> Flags = Flags(a.bits ^ b.bits)
-	<<: op(a: Flags, amount: u32) -> Flags = Flags(a.bits << amount)
-	>>: op(a: Flags, amount: u32) -> Flags = Flags(a.bits >> amount)
-	~: op(self) -> Flags = Flags(~self.bits)
-	%: op(a: Flags, b: Flags) -> u32 = a.bits % b.bits
-	/: op(a: Flags, b: Flags) -> u32 = a.bits / b.bits
+	|: op(a: Flags, b: Flags) -> Flags => Flags(a.bits | b.bits)
+	&: op(a: Flags, b: Flags) -> Flags => Flags(a.bits & b.bits)
+	^: op(a: Flags, b: Flags) -> Flags => Flags(a.bits ^ b.bits)
+	<<: op(a: Flags, amount: u32) -> Flags => Flags(a.bits << amount)
+	>>: op(a: Flags, amount: u32) -> Flags => Flags(a.bits >> amount)
+	~: op(self) -> Flags => Flags(~self.bits)
+	%: op(a: Flags, b: Flags) -> u32 => a.bits % b.bits
+	/: op(a: Flags, b: Flags) -> u32 => a.bits / b.bits
 	|=: op(mut self, other: Flags)
 	{
 		self.bits = self.bits | other.bits
 	}
 }
 
-show: fun(label: cstr, v: Vector) = printf("%s %.1f %.1f\n", label, f64(v.x), f64(v.y))
+show: fun(label: cstr, v: Vector) => printf("%s %.1f %.1f\n", label, f64(v.x), f64(v.y))
 
 main: fun -> i32
 {

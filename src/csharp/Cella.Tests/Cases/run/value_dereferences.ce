@@ -21,7 +21,7 @@ Chars: ref rec
 		ret true
 	}
 
-	*: op(imm self) -> char = self.current
+	*: op(imm self) -> char => self.current
 }
 
 Entry: ref rec
@@ -47,14 +47,14 @@ Pairs: ref rec
 		ret self.index < self.count
 	}
 
-	*: op(imm self) -> Entry = Entry(imm self.keys[self.index], mut self.values[self.index])
+	*: op(imm self) -> Entry => Entry(imm self.keys[self.index], mut self.values[self.index])
 }
 
 Counter: rec
 {
 	n: i32
 
-	*: op(imm self) -> i32 = self.n * 2
+	*: op(imm self) -> i32 => self.n * 2
 }
 
 main: fun -> i32

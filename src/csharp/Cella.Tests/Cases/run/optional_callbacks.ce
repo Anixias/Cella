@@ -28,7 +28,7 @@ ascending: fun(left: ptr, right: ptr) -> i32
 	ret 0
 }
 
-descending: ext fun(left: ptr, right: ptr) -> i32 = *ptr[i32](right) - *ptr[i32](left)
+descending: ext fun(left: ptr, right: ptr) -> i32 => *ptr[i32](right) - *ptr[i32](left)
 
 compareUp: const ext fun[ptr, ptr -> i32] = ascending
 comparers: const array[ptr, 2] = [ptr(compareUp), ptr(descending)]

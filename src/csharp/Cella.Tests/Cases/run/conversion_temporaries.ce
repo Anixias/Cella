@@ -16,9 +16,9 @@ view[T]: ref rec
 		self.length = length
 	}
 
-	as[N: const usize]: op(imm values: array[T, N]) -> view[T] = view[T](@values, N)
+	as[N: const usize]: op(imm values: array[T, N]) -> view[T] => view[T](@values, N)
 
-	[]: op(self, i: usize) -> imm[T] = imm self.data[i]
+	[]: op(self, i: usize) -> imm[T] => imm self.data[i]
 }
 
 span[T]: ref rec
@@ -32,16 +32,16 @@ span[T]: ref rec
 		self.length = length
 	}
 
-	as[N: const usize]: op(mut values: array[T, N]) -> span[T] = span[T](@values, N)
+	as[N: const usize]: op(mut values: array[T, N]) -> span[T] => span[T](@values, N)
 
-	as: op(self) -> view[T] = view[T](self.data, self.length)
+	as: op(self) -> view[T] => view[T](self.data, self.length)
 }
 
 Text: rec
 {
 	size: i32
 
-	as: op(value: i32) -> Text = Text(value)
+	as: op(value: i32) -> Text => Text(value)
 }
 
 Grid: rec
@@ -49,9 +49,9 @@ Grid: rec
 	cells: array[i32, 4]
 }
 
-first: fun(values: view[i32]) -> i32 = values[0]
+first: fun(values: view[i32]) -> i32 => values[0]
 
-second: fun(values: view[u16]) -> u16 = values[1]
+second: fun(values: view[u16]) -> u16 => values[1]
 
 main: fun -> i32
 {

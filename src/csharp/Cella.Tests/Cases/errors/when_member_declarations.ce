@@ -18,7 +18,7 @@ Point: rec
 	{
 	}
 
-	y: get(imm self) -> i32 when debug = self.x
+	y: get(imm self) -> i32 when debug => self.x
 
 	z: set(mut self, value: i32) when release
 	{
@@ -26,4 +26,4 @@ Point: rec
 	}
 }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

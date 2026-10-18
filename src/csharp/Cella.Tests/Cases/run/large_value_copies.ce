@@ -5,7 +5,7 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-first: fun(items: array[i32, 2000]) -> i32 = items[0]
+first: fun(items: array[i32, 2000]) -> i32 => items[0]
 
 make: fun -> array[i32, 1000]
 {
@@ -20,7 +20,7 @@ Big: rec
 	tag: i32
 }
 
-read: fun(big: Big) -> i32 = big.tag
+read: fun(big: Big) -> i32 => big.tag
 
 aliased: fun(items: array[i32, 100], mut other: array[i32, 100]) -> i32
 {
@@ -114,7 +114,7 @@ main: fun -> i32
 
 	var b: array[i32, 100]
 	b[0] = 3
-	val fromClosure = called(b, fun = b[0] = 7)
+	val fromClosure = called(b, fun => b[0] = 7)
 	printf("%d %d\n", fromClosure, b[0])
 	ret 0
 }

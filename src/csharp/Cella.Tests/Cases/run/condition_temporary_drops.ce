@@ -23,7 +23,7 @@ make: fun(id: i32) -> Note
 	ret Note(id)
 }
 
-effect: fun(id: i32) -> Effect = Effect.owned(Note(id))
+effect: fun(id: i32) -> Effect => Effect.owned(Note(id))
 
 main: fun -> i32
 {

@@ -15,16 +15,16 @@ Circle: rec impl Shape
 {
 	radius: f64
 
-	area: fun(self) -> f64 = self.radius
+	area: fun(self) -> f64 => self.radius
 	scale: fun(mut self, factor: f64)
 	{
 		self.radius *= factor
 	}
 }
 
-describe: fun(imm shape: dyn[Shape]) -> f64 = shape.area()
+describe: fun(imm shape: dyn[Shape]) -> f64 => shape.area()
 
-grow: fun(mut shape: dyn[Shape]) = shape.scale(3.0)
+grow: fun(mut shape: dyn[Shape]) => shape.scale(3.0)
 
 main: fun -> i32
 {

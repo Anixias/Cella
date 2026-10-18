@@ -9,21 +9,21 @@ Version: rec impl lib.Eq + lib.Ord
 {
 	major: i32
 
-	==: op(a: Version, b: Version) -> bool = a.major == b.major
-	<: op(a: Version, b: Version) -> bool = a.major < b.major
+	==: op(a: Version, b: Version) -> bool => a.major == b.major
+	<: op(a: Version, b: Version) -> bool => a.major < b.major
 }
 
 Square: rec impl lib.Named + lib.Shape
 {
 	side: f64
 
-	name: fun(self) -> i32 = 4
-	area: fun(self) -> f64 = self.side * self.side
+	name: fun(self) -> i32 => 4
+	area: fun(self) -> f64 => self.side * self.side
 }
 
-same[T: lib.Eq]: fun(imm a: T, imm b: T) -> bool = a == b
+same[T: lib.Eq]: fun(imm a: T, imm b: T) -> bool => a == b
 
-check[T: lib.Ord]: fun(imm a: T, imm b: T) -> bool = same(imm a, imm b) || a <= b
+check[T: lib.Ord]: fun(imm a: T, imm b: T) -> bool => same(imm a, imm b) || a <= b
 
 main: fun -> i32
 {

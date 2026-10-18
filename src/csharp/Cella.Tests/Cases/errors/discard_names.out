@@ -10,7 +10,7 @@ Error at discard_names.ce:7:2
 
 Error at discard_names.ce:10:6
  9 │ 
-10 │ pick[_]: fun -> i32 = 0
+10 │ pick[_]: fun -> i32 => 0
           ^ Cannot use '_' as a name
 
 [compilation failed]

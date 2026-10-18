@@ -9,14 +9,14 @@ cell[T: atomic]: rec
 {
 	value: T
 
-	load: fun(imm self) -> T = atomic acquire *@self.value
+	load: fun(imm self) -> T => atomic acquire *@self.value
 
 	store: fun(imm self, value: T)
 	{
 		atomic release *@self.value = value
 	}
 
-	compareSwap: fun(imm self, expected: T, desired: T) -> bool = atomic *@self.value == expected = desired
+	compareSwap: fun(imm self, expected: T, desired: T) -> bool => atomic *@self.value == expected = desired
 
 	swap: fun(imm self, value: T) -> T
 	{

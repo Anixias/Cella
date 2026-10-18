@@ -109,9 +109,9 @@ add: fun(mut slot: i32, amount: i32) -> i32
 	ret slot
 }
 
-sum: fun(a: i32, b: i32) -> i32 = a + b
+sum: fun(a: i32, b: i32) -> i32 => a + b
 
-point: fun(p: ptr[i32], amount: i32) -> i32 = *p + amount
+point: fun(p: ptr[i32], amount: i32) -> i32 => *p + amount
 
 main: fun -> i32
 {

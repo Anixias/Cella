@@ -3,16 +3,16 @@ mod test
 Measure: pvt trait
 {
 	size: fun(imm self) -> i32
-	triple: fun(imm self) -> i32 = self.size() * 3
+	triple: fun(imm self) -> i32 => self.size() * 3
 }
 
 Line: pvt rec impl Measure
 {
 	length: i32
 
-	size: fun(imm self) -> i32 = self.length + 1
+	size: fun(imm self) -> i32 => self.length + 1
 }
 
-total: pvt fun(imm value: dyn[Measure]) -> i32 = value.triple()
+total: pvt fun(imm value: dyn[Measure]) -> i32 => value.triple()
 
-other: fun -> i32 = total(imm Line(9))
+other: fun -> i32 => total(imm Line(9))

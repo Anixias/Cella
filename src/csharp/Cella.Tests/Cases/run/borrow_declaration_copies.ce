@@ -14,7 +14,7 @@ Box: rec
 {
 	inner: Point
 
-	*: op(imm self) -> imm[Point] = self.inner
+	*: op(imm self) -> imm[Point] => self.inner
 }
 
 snapshot: fun(mut p: Point) -> i32

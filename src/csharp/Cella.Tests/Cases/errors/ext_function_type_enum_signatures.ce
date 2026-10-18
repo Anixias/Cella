@@ -9,4 +9,4 @@ Holder: rec
 
 register: fun(cb: ext fun[-> Team]) {}
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

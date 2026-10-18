@@ -48,9 +48,9 @@ Error at literal_fits.ce:15:10
 15 │ val i = bool(1.5)
              ╘═══════╛ No constructor for 'bool' accepts argument of type 'float literal'
 
-Error at literal_fits.ce:19:16
+Error at literal_fits.ce:19:17
 18 │ 
-19 │ r: fun -> u8 = 999
-                    ╘═╛ '999' doesn't fit in 'u8'
+19 │ r: fun -> u8 => 999
+                     ╘═╛ '999' doesn't fit in 'u8'
 
 [compilation failed]

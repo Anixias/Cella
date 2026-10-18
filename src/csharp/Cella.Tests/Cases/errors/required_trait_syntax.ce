@@ -13,7 +13,7 @@ Trailing: trait req Eq +
 {
 }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0
 
 Ord: trait impl Eq
 {

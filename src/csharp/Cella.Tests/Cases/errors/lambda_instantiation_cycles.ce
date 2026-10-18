@@ -1,15 +1,15 @@
 mod test
 
-call: fun(f: fun[-> i32]) -> i32 = f()
+call: fun(f: fun[-> i32]) -> i32 => f()
 
-grow[T]: fun(imm value: T) -> i32 = call(fun -> i32 = grow(@value))
+grow[T]: fun(imm value: T) -> i32 => call(fun -> i32 => grow(@value))
 
-nest[T]: fun(imm value: T) -> i32 = call(fun -> i32 = call(fun -> i32 = nest(@value)))
+nest[T]: fun(imm value: T) -> i32 => call(fun -> i32 => call(fun -> i32 => nest(@value)))
 
 apply[T]: fun(imm value: T, x: i32) -> i32
 {
-	val f = fun -> i32 = apply(@value, x)
+	val f = fun -> i32 => apply(@value, x)
 	ret f()
 }
 
-main: fun -> i32 = grow(1) + nest(2) + apply(3, 4)
+main: fun -> i32 => grow(1) + nest(2) + apply(3, 4)

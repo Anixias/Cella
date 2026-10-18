@@ -9,7 +9,7 @@ Handle: rec
 {
 	sprite: Sprite
 
-	as: op(imm self) -> imm[Sprite] = imm self.sprite
+	as: op(imm self) -> imm[Sprite] => imm self.sprite
 
 	drop: op
 	{
@@ -28,4 +28,4 @@ later: fun -> i32
 	ret s.hp
 }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

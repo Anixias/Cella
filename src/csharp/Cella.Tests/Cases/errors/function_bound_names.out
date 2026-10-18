@@ -1,6 +1,6 @@
-Error at function_bound_names.ce:8:24
+Error at function_bound_names.ce:8:25
 7 │ 
-8 │ main: fun -> i32 = i32(pick(over))
-                           ╘══╛ Cannot infer 'F' for 'pick'
+8 │ main: fun -> i32 => i32(pick(over))
+                            ╘══╛ Cannot infer 'F' for 'pick'
 
 [compilation failed]

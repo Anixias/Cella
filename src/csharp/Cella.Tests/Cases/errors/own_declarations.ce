@@ -12,4 +12,4 @@ Code: own ext enum
 
 Clock: own fun -> i32 = 0
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

@@ -40,7 +40,7 @@ bump: fun(mut count: i32) -> i32
 
 adder: fun(bonus: i32) -> ref fun[i32 -> i32]
 {
-	ret own fun(x) = x + bonus
+	ret own fun(x) => x + bonus
 }
 
 main: fun -> i32
@@ -67,7 +67,7 @@ main: fun -> i32
 	}
 
 	val step = 3
-	val first = own fun(x: i32) -> i32 = x + step
+	val first = own fun(x: i32) -> i32 => x + step
 	val second = own first
 	ret first(1)
 }

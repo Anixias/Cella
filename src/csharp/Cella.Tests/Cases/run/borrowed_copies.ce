@@ -19,14 +19,14 @@ Holder[T]: rec
 {
 	value: T
 
-	*: op(imm self) -> imm[T] = imm self.value
+	*: op(imm self) -> imm[T] => imm self.value
 }
 
 Slot[T]: rec
 {
 	value: T
 
-	as: op(imm self) -> imm[T] = imm self.value
+	as: op(imm self) -> imm[T] => imm self.value
 }
 
 dereferenced[T: copy]: fun(holder: Holder[T]) -> T
@@ -35,7 +35,7 @@ dereferenced[T: copy]: fun(holder: Holder[T]) -> T
 	ret value
 }
 
-direct[T: copy]: fun(holder: Holder[T]) -> T = *holder
+direct[T: copy]: fun(holder: Holder[T]) -> T => *holder
 
 converted[T: copy]: fun(slot: Slot[T]) -> T
 {

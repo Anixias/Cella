@@ -26,8 +26,8 @@ Slot[T]: rec
 {
 	value: T
 
-	as: op(imm self) -> imm[T] = imm self.value
-	as: op(mut self) -> mut[T] = mut self.value
+	as: op(imm self) -> imm[T] => imm self.value
+	as: op(mut self) -> mut[T] => mut self.value
 }
 
 box[T]: rec
@@ -72,7 +72,7 @@ Text: rec
 {
 	size: i32
 
-	as: op(own self) -> Buffer = Buffer(self.size)
+	as: op(own self) -> Buffer => Buffer(self.size)
 
 	drop: op
 	{
@@ -95,7 +95,7 @@ send: fun(own buffer: Buffer)
 	printf("send %d\n", buffer.size)
 }
 
-unbox[T]: fun(own boxed: box[T]) -> T = T(own boxed)
+unbox[T]: fun(own boxed: box[T]) -> T => T(own boxed)
 
 views: fun
 {

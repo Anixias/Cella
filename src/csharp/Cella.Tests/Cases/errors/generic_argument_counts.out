@@ -1,11 +1,11 @@
-Error at generic_argument_counts.ce:8:21
+Error at generic_argument_counts.ce:8:22
 7 │ 
-8 │ first: fun -> i32 = pick[i32, i64](1)
-                        ╘════════════╛ 'pick' takes one generic argument
+8 │ first: fun -> i32 => pick[i32, i64](1)
+                         ╘════════════╛ 'pick' takes one generic argument
 
-Error at generic_argument_counts.ce:10:20
+Error at generic_argument_counts.ce:10:21
  9 │ 
-10 │ main: fun -> i32 = choose[i32, i64, u8](1, 2)
-                        ╘══════════════════╛ No overload of 'choose' takes 3 generic arguments
+10 │ main: fun -> i32 => choose[i32, i64, u8](1, 2)
+                         ╘══════════════════╛ No overload of 'choose' takes 3 generic arguments
 
 [compilation failed]

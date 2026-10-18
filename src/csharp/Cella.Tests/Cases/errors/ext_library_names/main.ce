@@ -5,4 +5,4 @@ ext("a\q")
 	puts: fun(text: cstr) -> i32
 }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

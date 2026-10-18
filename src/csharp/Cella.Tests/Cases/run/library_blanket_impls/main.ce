@@ -12,7 +12,7 @@ Point: rec impl lib.Hash
 	x: i32
 	y: i32
 
-	hash: fun(imm self) -> u64 = u64(self.x * 31 + self.y)
+	hash: fun(imm self) -> u64 => u64(self.x * 31 + self.y)
 }
 
 Plain: rec

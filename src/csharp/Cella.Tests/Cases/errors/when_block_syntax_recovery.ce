@@ -2,13 +2,13 @@ mod test
 
 when debug
 {
-	f: fun -> i32 = )
+	f: fun -> i32 => )
 
-	g: fun -> i32 = 1
+	g: fun -> i32 => 1
 
-	k: fun -> i32 = ]
+	k: fun -> i32 => ]
 }
 
-h: fun -> i32 = ]
+h: fun -> i32 => ]
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

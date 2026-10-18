@@ -1,6 +1,6 @@
 mod test
 
-f: fun -> bool = true
+f: fun -> bool => true
 
 negate: fun -> i32
 {
@@ -57,4 +57,4 @@ increment: fun -> i32
 	ret 0
 }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

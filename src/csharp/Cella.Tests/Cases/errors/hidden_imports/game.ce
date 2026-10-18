@@ -1,4 +1,4 @@
 mod game
 
-tool: mod fun -> i32 = 1
-secret: pvt fun -> i32 = 2
+tool: mod fun -> i32 => 1
+secret: pvt fun -> i32 => 2

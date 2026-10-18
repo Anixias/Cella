@@ -1,7 +1,7 @@
-Error at conversion_temporaries.ce:19:26
+Error at conversion_temporaries.ce:19:27
 18 │ 
-19 │ back: fun -> view[i32] = [5, 6]
-                              ╘════╛ Cannot return borrows of unstored values
+19 │ back: fun -> view[i32] => [5, 6]
+                               ╘════╛ Cannot return borrows of unstored values
 
 Error at conversion_temporaries.ce:23:21
 22 │ {

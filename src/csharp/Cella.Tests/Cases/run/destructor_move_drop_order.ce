@@ -29,7 +29,7 @@ W: rec
 	}
 }
 
-take: fun(own n: N) = printf("take %d\n", n.id)
+take: fun(own n: N) => printf("take %d\n", n.id)
 
 main: fun -> i32
 {

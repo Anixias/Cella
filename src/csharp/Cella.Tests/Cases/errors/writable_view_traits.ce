@@ -9,14 +9,14 @@ Bag: rec impl Writable[i32]
 {
 	values: array[i32, 3]
 
-	[]: op(self, i: usize) -> mut[i32] = mut self.values[i]
+	[]: op(self, i: usize) -> mut[i32] => mut self.values[i]
 }
 
 Box: rec impl Writable[i32]
 {
 	values: array[i32, 3]
 
-	[]: op(mut self, i: usize) -> mut[i32] = mut self.values[i]
+	[]: op(mut self, i: usize) -> mut[i32] => mut self.values[i]
 }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

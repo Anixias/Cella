@@ -10,7 +10,7 @@ Point: rec impl Shap
 	x: i32
 	length: i32
 
-	area: fun(imm self) -> i32 = 0
+	area: fun(imm self) -> i32 => 0
 }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

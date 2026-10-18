@@ -1,11 +1,11 @@
 Error at storage_defaults.ce:14:27
 13 │ 
-14 │ take: fun(own c: Closer = shared) -> i32 = c.id
+14 │ take: fun(own c: Closer = shared) -> i32 => c.id
                                ╘════╛ The default value of 'c' must be a constant
 
 Error at storage_defaults.ce:16:27
 15 │ 
-16 │ peek: fun(imm c: Closer = shared) -> i32 = c.id
+16 │ peek: fun(imm c: Closer = shared) -> i32 => c.id
                                ╘════╛ The default value of 'c' must be a constant
 
 [compilation failed]

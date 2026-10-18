@@ -21,9 +21,9 @@ Holder: rec
 
 counter: var i32 = 0
 
-make: fun -> i32 = 4
+make: fun -> i32 => 4
 
-first: fun(mut point: Point) -> imm[i32] = make()
+first: fun(mut point: Point) -> imm[i32] => make()
 
 main: fun -> i32
 {

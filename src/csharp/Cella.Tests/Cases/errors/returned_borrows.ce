@@ -31,9 +31,9 @@ Effect: enum
 	hold(buffer: Buffer)
 }
 
-kills: fun(mut stats: Stats) -> mut[i32] = mut stats.kills
+kills: fun(mut stats: Stats) -> mut[i32] => mut stats.kills
 
-make: fun(id: i32) -> Buffer = Buffer(id)
+make: fun(id: i32) -> Buffer => Buffer(id)
 
 returnBorrow: fun -> imm[i32]
 {
@@ -92,11 +92,11 @@ returnBinding: fun(mut fallback: Buffer) -> imm[Buffer]
 	}
 }
 
-returnTemporary: fun -> Holder = Holder(make(3))
+returnTemporary: fun -> Holder => Holder(make(3))
 
-returnOwned: fun(own buffer: Buffer) -> imm[Buffer] = imm buffer
+returnOwned: fun(own buffer: Buffer) -> imm[Buffer] => imm buffer
 
-returnOwnedCopy: fun(own value: i32) -> imm[i32] = imm value
+returnOwnedCopy: fun(own value: i32) -> imm[i32] => imm value
 
 returnCopied: fun(a: i32, b: i32) -> imm[i32]
 {
@@ -105,8 +105,8 @@ returnCopied: fun(a: i32, b: i32) -> imm[i32]
 	ret imm b
 }
 
-returnCopiedField: fun(tally: Tally) -> imm[i32] = imm tally.step
+returnCopiedField: fun(tally: Tally) -> imm[i32] => imm tally.step
 
-returnCopiedText: fun(text: str) -> imm[str] = imm text
+returnCopiedText: fun(text: str) -> imm[str] => imm text
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

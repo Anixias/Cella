@@ -1,16 +1,16 @@
-Error at main.ce:3:23
+Error at main.ce:3:24
 2 │ 
-3 │ missing: fun -> i32 = panic "nothing here"
-                          ╘═══╛ Symbol 'panic' not found in this scope
+3 │ missing: fun -> i32 => panic "nothing here"
+                           ╘═══╛ Symbol 'panic' not found in this scope
 
-Error at other.ce:15:28
+Error at other.ce:15:29
 14 │ 
-15 │ number: fun -> i32 = panic Point(1)
-                                ╘══════╛ 'panic' doesn't accept 'Point'
+15 │ number: fun -> i32 => panic Point(1)
+                                 ╘══════╛ 'panic' doesn't accept 'Point'
 
-Error at other.ce:17:25
+Error at other.ce:17:26
 16 │ 
-17 │ notModule: fun -> i32 = number.panic "x"
-                             ╘════╛ 'number' is not a module
+17 │ notModule: fun -> i32 => number.panic "x"
+                              ╘════╛ 'number' is not a module
 
 [compilation failed]

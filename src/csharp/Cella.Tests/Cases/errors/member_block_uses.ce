@@ -28,19 +28,19 @@ box[T]: rec
 
 box[T: Eq]: impl
 {
-	same: fun(imm self, imm other: box[T]) -> bool = self.value == other.value
-	helper: pvt fun(imm self) -> i32 = 3
-	size: get(imm self) -> i32 = 4
+	same: fun(imm self, imm other: box[T]) -> bool => self.value == other.value
+	helper: pvt fun(imm self) -> i32 => 3
+	size: get(imm self) -> i32 => 4
 }
 
 box[T: copy]: impl Dup
 {
-	dup: fun(self) -> box[T] = box(self.value)
+	dup: fun(self) -> box[T] => box(self.value)
 }
 
-check[T]: fun(imm a: box[T]) -> bool = a.same(a)
+check[T]: fun(imm a: box[T]) -> bool => a.same(a)
 
-copies[T: Dup]: fun(imm value: T) -> T = value.dup()
+copies[T: Dup]: fun(imm value: T) -> T => value.dup()
 
 main: fun -> i32
 {

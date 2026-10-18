@@ -41,4 +41,4 @@ compare: fun(n: i32) -> bool
 	ret r
 }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

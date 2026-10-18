@@ -25,7 +25,7 @@ else
 
 when profiling
 {
-	missing: fun -> i32 = undefined()
+	missing: fun -> i32 => undefined()
 }
 
 Counter: rec
@@ -36,11 +36,11 @@ Counter: rec
 	{
 		label: i32
 
-		describe: fun(self) -> i32 = self.n * 10 + self.label
+		describe: fun(self) -> i32 => self.n * 10 + self.label
 	}
 	else
 	{
-		describe: fun(self) -> i32 = self.n
+		describe: fun(self) -> i32 => self.n
 	}
 }
 
@@ -78,14 +78,14 @@ Show: trait
 
 i32: impl Show
 {
-	code: fun(self) -> i32 = self
+	code: fun(self) -> i32 => self
 }
 
 pvt
 {
 	when logging
 	{
-		helper: fun -> i32 = 3
+		helper: fun -> i32 => 3
 	}
 }
 
@@ -93,7 +93,7 @@ when !profiling
 {
 	mod
 	{
-		other: fun -> i32 = 4
+		other: fun -> i32 => 4
 	}
 }
 

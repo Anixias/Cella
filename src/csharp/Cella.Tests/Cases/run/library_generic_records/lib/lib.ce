@@ -12,5 +12,5 @@ Stack[T]: pub rec
 		Stack[T].created += 1
 	}
 
-	peek: get(imm self) -> imm[T] = imm self.top
+	peek: get(imm self) -> imm[T] => imm self.top
 }

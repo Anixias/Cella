@@ -8,11 +8,11 @@ ext
 	missing: fun -> i32
 }
 
-call: fun(f: fun[-> i32]) -> i32 = f()
+call: fun(f: fun[-> i32]) -> i32 => f()
 
 measure: fun when profiling
 {
-	call(fun = missing())
+	call(fun => missing())
 }
 
 main: fun -> i32

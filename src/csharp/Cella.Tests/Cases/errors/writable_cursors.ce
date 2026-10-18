@@ -10,7 +10,7 @@ Steps: rec
 		ret self.left >= 0
 	}
 
-	*: op(mut self) -> mut[i32] = mut self.left
+	*: op(mut self) -> mut[i32] => mut self.left
 }
 
 Editor: rec
@@ -23,8 +23,8 @@ Editor: rec
 		ret self.left >= 0
 	}
 
-	*: op(self) -> imm[i32] = imm self.left
-	*: op(mut self) -> mut[i32] = mut self.left
+	*: op(self) -> imm[i32] => imm self.left
+	*: op(mut self) -> mut[i32] => mut self.left
 }
 
 main: fun -> i32

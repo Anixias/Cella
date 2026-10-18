@@ -1,7 +1,7 @@
 mod test
 
-size: fun -> usize = sizeOf(never)
+size: fun -> usize => sizeOf(never)
 
-alignment: fun -> usize = alignOf(never)
+alignment: fun -> usize => alignOf(never)
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

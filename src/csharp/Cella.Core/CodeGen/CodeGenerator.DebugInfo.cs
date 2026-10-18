@@ -90,7 +90,7 @@ public sealed unsafe partial class CodeGenerator
 		var type = current.DiBuilder.CreateSubroutineType(file, signature, LLVMDIFlags.LLVMDIFlagZero);
 		var isLocal = function.Linkage is LLVMLinkage.LLVMInternalLinkage or LLVMLinkage.LLVMPrivateLinkage ? 1 : 0;
 		var scope = GetNamespace(name.Take(name.Count - 1));
-		var subprogram = current.DiBuilder.CreateFunction(scope.Handle != IntPtr.Zero ? scope : file, name[^1], "",
+		var subprogram = current.DiBuilder.CreateFunction(scope.Handle != nint.Zero ? scope : file, name[^1], "",
 			file, line, type, isLocal, 1, line, flags, IsOptimized);
 		
 		LLVM.SetSubprogram((LLVMOpaqueValue*)function.Handle, (LLVMOpaqueMetadata*)subprogram.Handle);
@@ -247,7 +247,7 @@ public sealed unsafe partial class CodeGenerator
 		if (signature.GetMode(index) == ParameterMode.Mut)
 			type = CreateReferenceType(type);
 		
-		if (storage.IsAAllocaInst.Handle == IntPtr.Zero)
+		if (storage.IsAAllocaInst.Handle == nint.Zero)
 		{
 			var slot = BuildEntryAlloca(builder, storage.TypeOf, parameter.Name);
 			builder.BuildStore(storage, slot);
@@ -301,7 +301,7 @@ public sealed unsafe partial class CodeGenerator
 		using var name = new MarshaledString(info.Symbol.Name);
 		var isLocal = global.Linkage is LLVMLinkage.LLVMInternalLinkage or LLVMLinkage.LLVMPrivateLinkage ? 1 : 0;
 		var expression = LLVM.DIBuilderCreateGlobalVariableExpression(DiBuilder,
-			scope.Handle != IntPtr.Zero ? (LLVMOpaqueMetadata*)scope.Handle : file, name, (nuint)name.Length,
+			scope.Handle != nint.Zero ? (LLVMOpaqueMetadata*)scope.Handle : file, name, (nuint)name.Length,
 			null, 0, file, GetLine(location),
 			(LLVMOpaqueMetadata*)GetDebugType(info.Type).Handle, isLocal, CreateEmptyExpression(), null, 0);
 		
@@ -314,7 +314,7 @@ public sealed unsafe partial class CodeGenerator
 	private LLVMMetadataRef GetScope(LLVMBuilderRef builder)
 	{
 		var function = builder.InsertBlock.Parent;
-		return currentScope.Handle != IntPtr.Zero && function.Handle == currentFunction.FunctionValue.Handle
+		return currentScope.Handle != nint.Zero && function.Handle == currentFunction.FunctionValue.Handle
 			? currentScope
 			: LLVM.GetSubprogram((LLVMOpaqueValue*)function.Handle);
 	}
@@ -325,7 +325,7 @@ public sealed unsafe partial class CodeGenerator
 			return;
 		
 		var scope = GetScope(builder);
-		if (scope.Handle == IntPtr.Zero)
+		if (scope.Handle == nint.Zero)
 			return;
 		
 		var file = GetDebugFile(location.Source.FilePath);

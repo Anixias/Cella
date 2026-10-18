@@ -22,7 +22,7 @@ Team: enum
 
 buffer: ext val Buffer = Buffer(null)
 team: ext var Team = Team.red
-callback: ext val fun[-> i32] = fun = 1
+callback: ext val fun[-> i32] = fun => 1
 shape: ext val ptr[dyn[Shape]] = null
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

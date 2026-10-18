@@ -1,6 +1,6 @@
-Error at main.ce:8:43
+Error at main.ce:8:44
 7 │ 
-8 │ go[T: lib.Hash]: fun(imm v: T) -> u64 = v.helper()
-                                              ╘════╛ 'helper' is private to its module
+8 │ go[T: lib.Hash]: fun(imm v: T) -> u64 => v.helper()
+                                               ╘════╛ 'helper' is private to its module
 
 [compilation failed]

@@ -10,9 +10,9 @@ nullable[T: null]: enum match T
 	none = null
 	some(value) = else
 
-	isSome: get(imm self) -> bool = self is some(_)
+	isSome: get(imm self) -> bool => self is some(_)
 
-	or: fun(own self, own fallback: T) -> T = match own self { some(own v) => v, none => fallback }
+	or: fun(own self, own fallback: T) -> T => match own self { some(own v) => v, none => fallback }
 }
 
 lent: ref enum match imm[i32]
@@ -37,12 +37,12 @@ Cell[T: null]: rec
 	value: nullable[T]
 }
 
-wrap[T: null]: fun(own value: T) -> nullable[T] = some(own value)
+wrap[T: null]: fun(own value: T) -> nullable[T] => some(own value)
 
-triple: fun(n: i32) -> i32 = n * 3
-twice: fun(n: i32) -> i32 = n * 2
+triple: fun(n: i32) -> i32 => n * 3
+twice: fun(n: i32) -> i32 => n * 2
 
-readNode: fun(n: nullable[ptr[Node]]) -> i32 = match n { some(val p) => p.value, none => -1 }
+readNode: fun(n: nullable[ptr[Node]]) -> i32 => match n { some(val p) => p.value, none => -1 }
 
 find: fun(mut values: array[i32, 3], target: i32) -> nullable[imm[i32]]
 {

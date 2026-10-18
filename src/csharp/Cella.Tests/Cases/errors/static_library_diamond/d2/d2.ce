@@ -1,3 +1,3 @@
 mod d2
 
-two: pub fun -> i32 = s.bump()
+two: pub fun -> i32 => s.bump()

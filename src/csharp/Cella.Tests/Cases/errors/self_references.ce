@@ -98,4 +98,4 @@ linkPayload: fun
 	holder.link = Link.to(mut holder.value)
 }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

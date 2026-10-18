@@ -5,4 +5,4 @@ Point: rec
 	x: i32
 }
 
-area: fun(w: i32, h: i32) -> i32 = w * h
+area: fun(w: i32, h: i32) -> i32 => w * h

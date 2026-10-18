@@ -4,8 +4,8 @@ Clock: rec
 {
 	hours: u8
 
-	+%=: op(other: Clock) -> Clock = other
-	*%: op(a: i32, b: i32) -> i32 = a
+	+%=: op(other: Clock) -> Clock => other
+	*%: op(a: i32, b: i32) -> i32 => a
 }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

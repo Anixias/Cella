@@ -5,7 +5,7 @@ Args: rec
 	data: pvt ptr[str]
 	count: pvt usize
 
-	size: fun(imm self) -> usize = self.count
+	size: fun(imm self) -> usize => self.count
 }
 
 Open: rec
@@ -14,7 +14,7 @@ Open: rec
 	count: usize
 }
 
-make[T: new(ptr[str], usize)]: fun -> T = T(null, 4)
+make[T: new(ptr[str], usize)]: fun -> T => T(null, 4)
 
 main: fun -> i32
 {

@@ -5,8 +5,8 @@ Hash: pub trait
 	hash: fun(imm self) -> u64
 	seed: fun -> u64
 	==: op(imm a: Self, imm b: Self) -> bool
-	twice: fun(imm self) -> u64 = mix(self.hash()) + seed()
-	mix: pvt fun(value: u64) -> u64 = value * 2
+	twice: fun(imm self) -> u64 => mix(self.hash()) + seed()
+	mix: pvt fun(value: u64) -> u64 => value * 2
 }
 
 Show: pub trait
@@ -23,21 +23,21 @@ Point: pub rec impl Hash + Make
 {
 	x: i32
 
-	hash: fun(self) -> u64 = u64(self.x)
-	seed: fun -> u64 = 1000
-	==: op(a: Point, b: Point) -> bool = a.x == b.x
+	hash: fun(self) -> u64 => u64(self.x)
+	seed: fun -> u64 => 1000
+	==: op(a: Point, b: Point) -> bool => a.x == b.x
 }
 
 Point: impl Show
 {
-	show: fun(self) -> i32 = self.x * offset()
-	offset: pvt fun -> i32 = 3
+	show: fun(self) -> i32 => self.x * offset()
+	offset: pvt fun -> i32 => 3
 }
 
 i32: impl Hash
 {
-	hash: fun(self) -> u64 = u64(self) + 7
-	seed: fun -> u64 = 5
+	hash: fun(self) -> u64 => u64(self) + 7
+	seed: fun -> u64 => 5
 }
 
 box[T]: pub rec
@@ -47,9 +47,9 @@ box[T]: pub rec
 
 box[T: Show]: impl Show
 {
-	show: fun(imm self) -> i32 = self.value.show() + 1
+	show: fun(imm self) -> i32 => self.value.show() + 1
 }
 
-describe[T: Hash]: pub fun(imm value: T) -> u64 = value.twice() + T.seed()
+describe[T: Hash]: pub fun(imm value: T) -> u64 => value.twice() + T.seed()
 
-render[T: Show]: pub fun(imm value: T) -> i32 = value.show()
+render[T: Show]: pub fun(imm value: T) -> i32 => value.show()

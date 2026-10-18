@@ -1,7 +1,7 @@
 mod test
 
-helper: fun -> i32 = 2
+helper: fun -> i32 => 2
 
-shared: fun(value: str) -> i32 = 0
+shared: fun(value: str) -> i32 => 0
 
-main: pvt fun -> i32 = 1
+main: pvt fun -> i32 => 1

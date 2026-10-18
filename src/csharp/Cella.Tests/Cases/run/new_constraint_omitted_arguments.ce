@@ -42,7 +42,7 @@ reset[T: new]: fun(mut value: T)
 	value = T()
 }
 
-make[T: new]: fun -> T = T()
+make[T: new]: fun -> T => T()
 
 main: fun -> i32
 {

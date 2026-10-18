@@ -46,4 +46,4 @@ distinct: fun(...xs: view[i32]) {}
 typed: fun(a: i32, b: i32 = 0) {}
 typed: fun(a: i32, b: str) {}
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

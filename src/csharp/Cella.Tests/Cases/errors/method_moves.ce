@@ -19,9 +19,9 @@ Unit: rec
 		self.hp += amount
 	}
 
-	release: fun(own self) -> i32 = self.buffer.id
+	release: fun(own self) -> i32 => self.buffer.id
 
-	take: fun(mut self) -> Buffer = own self.buffer
+	take: fun(mut self) -> Buffer => own self.buffer
 }
 
 Cursor: ref rec

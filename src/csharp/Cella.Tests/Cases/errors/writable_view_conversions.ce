@@ -9,10 +9,10 @@ Ring: rec
 {
 	first: i32
 
-	as: op(mut self) -> Slot = Slot(mut self.first)
+	as: op(mut self) -> Slot => Slot(mut self.first)
 }
 
-pass: fun(slot: Slot) -> Slot = slot
+pass: fun(slot: Slot) -> Slot => slot
 
 kept: fun -> Slot
 {
@@ -27,4 +27,4 @@ passed: fun -> Slot
 	ret pass(mut ring)
 }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

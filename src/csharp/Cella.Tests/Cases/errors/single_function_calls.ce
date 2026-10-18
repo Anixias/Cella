@@ -5,18 +5,18 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-add: fun(a: i32, b: i32) -> i32 = a + b
-takesU8: fun(value: u8) -> u8 = value
-opt: fun(a: i32, b: i32 = 1, c: i32 = 2) -> i32 = a + b + c
-id[T]: fun(own a: T) -> T = own a
+add: fun(a: i32, b: i32) -> i32 => a + b
+takesU8: fun(value: u8) -> u8 => value
+opt: fun(a: i32, b: i32 = 1, c: i32 = 2) -> i32 => a + b + c
+id[T]: fun(own a: T) -> T => own a
 
 Point: rec
 {
 	x: i32
-	shift: fun(imm self, by: i32) -> i32 = self.x + by
+	shift: fun(imm self, by: i32) -> i32 => self.x + by
 }
 
-double: fun(x: i32) -> i32 = x * 2
+double: fun(x: i32) -> i32 => x * 2
 
 main: fun -> i32
 {

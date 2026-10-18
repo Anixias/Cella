@@ -21,4 +21,4 @@ callback: fun(handler: fun[never])
 {
 }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

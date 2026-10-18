@@ -178,11 +178,11 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 	private void AddExternalName(LLVMValueRef target, LLVMTypeRef type, string name, bool isData, bool isPublic)
 	{
 		using var empty = new MarshaledString(string.Empty);
-		var alias = new LLVMValueRef((IntPtr)LLVM.AddAlias2((LLVMOpaqueModule*)current.Module.Handle,
+		var alias = new LLVMValueRef((nint)LLVM.AddAlias2((LLVMOpaqueModule*)current.Module.Handle,
 			(LLVMOpaqueType*)type.Handle, 0, (LLVMOpaqueValue*)target.Handle, empty));
 		
 		var declared = isData ? current.Module.GetNamedGlobal(name) : current.Module.GetNamedFunction(name);
-		if (declared.Handle != IntPtr.Zero)
+		if (declared.Handle != nint.Zero)
 		{
 			declared.ReplaceAllUsesWith(alias);
 			foreach (var (function, info) in current.Functions.Where(pair => pair.Value.FunctionValue == declared)
@@ -472,7 +472,7 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 	}
 	
 	private static bool IsReferenced(LLVMValueRef value) =>
-		value.Handle != IntPtr.Zero && value.FirstUse.Handle != IntPtr.Zero;
+		value.Handle != nint.Zero && value.FirstUse.Handle != nint.Zero;
 	
 	private static string DescribeWriteFailure(string path, string message) => $"Cannot write '{path}': {message}";
 	
@@ -510,7 +510,7 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 	
 	private static void PlaceFunctionsInSections(LLVMModuleRef module)
 	{
-		for (var function = module.FirstFunction; function.Handle != IntPtr.Zero; function = function.NextFunction)
+		for (var function = module.FirstFunction; function.Handle != nint.Zero; function = function.NextFunction)
 		{
 			if (function.BasicBlocksCount == 0 || LLVM.GetComdat((LLVMOpaqueValue*)function.Handle) != null ||
 			    function.Linkage is not (LLVMLinkage.LLVMExternalLinkage or LLVMLinkage.LLVMDLLExportLinkage))
@@ -527,7 +527,7 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 	{
 		const uint asynchronous = 2;
 		AddModuleFlag("uwtable", asynchronous);
-		for (var function = module.FirstFunction; function.Handle != IntPtr.Zero; function = function.NextFunction)
+		for (var function = module.FirstFunction; function.Handle != nint.Zero; function = function.NextFunction)
 		{
 			if (function.BasicBlocksCount > 0)
 				AddFunctionAttribute(function, "uwtable", asynchronous);

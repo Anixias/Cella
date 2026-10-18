@@ -12,7 +12,7 @@ unclosed: fun
 
 missingName: fun
 {
-	val c = fun(own) = 1
+	val c = fun(own) => 1
 }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

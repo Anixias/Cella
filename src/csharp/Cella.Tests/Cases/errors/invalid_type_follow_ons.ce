@@ -1,6 +1,6 @@
 mod test
 
-id[T]: fun(own x: T) -> T = x
+id[T]: fun(own x: T) -> T => x
 
 emptyArray: fun -> i32
 {
@@ -23,6 +23,6 @@ newlineBracket: fun -> i32
 	ret 0
 }
 
-hugeOperand: fun -> bool = 999999999999999999999999999999999999999999999 > 1
+hugeOperand: fun -> bool => 999999999999999999999999999999999999999999999 > 1
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

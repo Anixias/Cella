@@ -16,4 +16,4 @@ i32: impl Integer
 	bits: const u32 = u32(sizeOf(T)) * 8
 }
 
-byteCount[T: Integer]: pub fun -> u32 = T.bytes
+byteCount[T: Integer]: pub fun -> u32 => T.bytes

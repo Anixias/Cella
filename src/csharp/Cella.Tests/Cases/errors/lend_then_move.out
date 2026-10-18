@@ -22,10 +22,10 @@ Error at lend_then_move.ce:50:12
                ╘════╛ Cannot use partly moved values
                     | Moved on line 50
 
-Error at lend_then_move.ce:53:19
+Error at lend_then_move.ce:53:20
 52 │ val captured = Item(6)
-53 │ run(fun -> i32 = captured.id, own captured)
-                      ╘══════╛ Cannot use moved values
-                             | Moved on line 53
+53 │ run(fun -> i32 => captured.id, own captured)
+                       ╘══════╛ Cannot use moved values
+                              | Moved on line 53
 
 [compilation failed]

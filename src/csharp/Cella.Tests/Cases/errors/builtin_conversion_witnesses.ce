@@ -13,4 +13,4 @@ ToWide: trait
 i32: impl ToWide
 f64: impl Widen
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

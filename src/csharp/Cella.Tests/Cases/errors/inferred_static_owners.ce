@@ -5,7 +5,7 @@ option[T]: enum
 	none
 	some(value: T)
 
-	empty: fun -> option[T] = option[T].none
+	empty: fun -> option[T] => option[T].none
 }
 
 main: fun -> i32

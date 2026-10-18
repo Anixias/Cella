@@ -41,7 +41,7 @@ mode: const Mode = Mode.slow(3)
 size: const i32 = match mode { fast => 4, slow(val factor) => factor * 8 }
 table: const array[i32, match Mode.fast { fast => 2, slow(val factor) => usize(factor) }] = [5, 6]
 
-damage: fun(role: Role) -> i32 = match role
+damage: fun(role: Role) -> i32 => match role
 {
 	fighter => 7
 	else => 1
@@ -59,16 +59,16 @@ power: fun(effect: Effect) -> i64
 	ret value
 }
 
-area: fun(shape: Shape) -> i32 = match shape { dot => 0, box(val w, val h) => w * h }
+area: fun(shape: Shape) -> i32 => match shape { dot => 0, box(val w, val h) => w * h }
 
-total: fun(pair: Pair) -> i32 = match pair
+total: fun(pair: Pair) -> i32 => match pair
 {
 	one(val s) => area(s)
 	two(val a, val b) => match a { dot => 100, box(val w, _) => w + area(b) }
 }
 
-helper: fun(x: i32) -> i32 = x + 1
-other: fun(x: i32) -> i32 = x * 10
+helper: fun(x: i32) -> i32 => x + 1
+other: fun(x: i32) -> i32 => x * 10
 
 main: fun -> i32
 {

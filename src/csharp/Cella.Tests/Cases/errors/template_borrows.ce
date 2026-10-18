@@ -37,7 +37,7 @@ Message: ref rec
 	text: fstr[Display]
 }
 
-make: fun(x: i32) -> fstr[Display] = "{x}"
+make: fun(x: i32) -> fstr[Display] => "{x}"
 
 makeLocal: fun -> fstr[Display]
 {
@@ -45,18 +45,18 @@ makeLocal: fun -> fstr[Display]
 	ret "{local}"
 }
 
-fromStr: fun(text: str) -> fstr[Display] = text
+fromStr: fun(text: str) -> fstr[Display] => text
 
-plain: fun -> fstr[Display] = "plain"
+plain: fun -> fstr[Display] => "plain"
 
-pass: fun(text: fstr[Display]) -> fstr[Display] = text
+pass: fun(text: fstr[Display]) -> fstr[Display] => text
 
 fill: fun(mut message: Message, count: i32)
 {
 	message.text = "{count}"
 }
 
-compute: fun -> i32 = 4
+compute: fun -> i32 => 4
 
 take: fun(own buffer: Buffer)
 {

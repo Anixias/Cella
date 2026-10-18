@@ -6,4 +6,4 @@ Hash: trait
 	hash: fun(imm self) -> u64
 }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

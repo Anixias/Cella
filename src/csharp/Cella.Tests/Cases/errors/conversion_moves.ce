@@ -17,7 +17,7 @@ String: rec
 		self.length = text.byteLength
 	}
 
-	as: op(imm self) -> str = str(self.data, self.length)
+	as: op(imm self) -> str => str(self.data, self.length)
 
 	drop: op
 	{
@@ -38,7 +38,7 @@ Text: rec
 {
 	size: i32
 
-	as: op(own self) -> Buffer = Buffer(self.size)
+	as: op(own self) -> Buffer => Buffer(self.size)
 
 	drop: op
 	{

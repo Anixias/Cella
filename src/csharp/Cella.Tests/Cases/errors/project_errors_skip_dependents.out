@@ -1,7 +1,7 @@
 <case>\broken\broken.celp:3: Expected a value
-Error at other\other.ce:3:26
+Error at other\other.ce:3:27
 2 │ 
-3 │ second: pub fun -> i32 = false
-                             ╘═══╛ Cannot convert type 'bool' to 'i32'
+3 │ second: pub fun -> i32 => false
+                              ╘═══╛ Cannot convert type 'bool' to 'i32'
 
 [compilation failed]

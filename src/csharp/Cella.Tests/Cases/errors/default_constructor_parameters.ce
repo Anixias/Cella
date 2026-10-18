@@ -7,4 +7,4 @@ Param: rec
 	new: op(x: i32) = default
 }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

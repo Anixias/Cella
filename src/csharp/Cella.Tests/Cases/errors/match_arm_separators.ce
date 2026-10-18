@@ -1,14 +1,14 @@
 mod test
 
-sameLine: fun(v: i32) -> i32 = match v { 1 => 10 2 => 20 else => 0 }
+sameLine: fun(v: i32) -> i32 => match v { 1 => 10 2 => 20 else => 0 }
 
-commaThenLine: fun(v: i32) -> i32 = match v
+commaThenLine: fun(v: i32) -> i32 => match v
 {
 	1 => 10,
 	else => 0
 }
 
-trailing: fun(v: i32) -> i32 = match v { 1 => 10, else => 0, }
+trailing: fun(v: i32) -> i32 => match v { 1 => 10, else => 0, }
 
 statements: fun(v: i32) -> i32
 {
@@ -28,4 +28,4 @@ statements: fun(v: i32) -> i32
 	ret total
 }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

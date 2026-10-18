@@ -7,7 +7,7 @@ Size: trait
 
 [T]: pub impl Size
 {
-	size: fun(imm self) -> usize = sizeOf(T)
+	size: fun(imm self) -> usize => sizeOf(T)
 }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

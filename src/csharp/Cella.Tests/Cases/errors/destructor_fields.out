@@ -18,9 +18,9 @@ Error at destructor_fields.ce:58:38
 58 │ ret take(shell.inner.buffer) + take(shell.items[0])
                                          ╘════════════╛ Cannot move fields out of values with destructors
 
-Error at destructor_fields.ce:61:46
+Error at destructor_fields.ce:61:47
 60 │ 
-61 │ owned: fun(own holder: Holder) -> i32 = take(holder.buffer)
-                                                  ╘═══════════╛ Cannot move fields out of values with destructors
+61 │ owned: fun(own holder: Holder) -> i32 => take(holder.buffer)
+                                                   ╘═══════════╛ Cannot move fields out of values with destructors
 
 [compilation failed]

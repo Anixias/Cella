@@ -1,17 +1,17 @@
 mod test
 
-apply: fun(f: fun[i32 -> i32]) -> i32 = f(1)
-apply: fun(f: fun[bool -> i32]) -> i32 = f(true)
+apply: fun(f: fun[i32 -> i32]) -> i32 => f(1)
+apply: fun(f: fun[bool -> i32]) -> i32 => f(true)
 
 option[T]: enum { none, some(value: T) }
 
-read: fun(o: option[i32]) -> i32 = 0
-read: fun(o: option[i64]) -> i32 = 1
+read: fun(o: option[i32]) -> i32 => 0
+read: fun(o: option[i64]) -> i32 => 1
 
-missingName: fun -> i32 = apply(fun(x) = missing)
+missingName: fun -> i32 => apply(fun(x) => missing)
 
-wrongResult: fun -> i32 = apply(fun(x) = "s")
+wrongResult: fun -> i32 => apply(fun(x) => "s")
 
-wrongPayload: fun -> i32 = read(some("text"))
+wrongPayload: fun -> i32 => read(some("text"))
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

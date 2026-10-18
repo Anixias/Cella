@@ -12,12 +12,12 @@ Display: trait
 
 str: impl Display
 {
-	print: fun(self) = printf("%.*s", i32(self.byteLength), self.data)
+	print: fun(self) => printf("%.*s", i32(self.byteLength), self.data)
 }
 
 usize: impl Display
 {
-	print: fun(self) = printf("%zu", self)
+	print: fun(self) => printf("%zu", self)
 }
 
 say: fun(message: fstr[Display])
@@ -34,7 +34,7 @@ say: fun(message: fstr[Display])
 	printf("\n")
 }
 
-show: fun(imm value: usize) = printf("%zu\n", value)
+show: fun(imm value: usize) => printf("%zu\n", value)
 
 main: fun -> i32
 {

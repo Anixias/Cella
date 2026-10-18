@@ -5,7 +5,7 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-origin: fun -> i32 = 99
+origin: fun -> i32 => 99
 
 Point: rec
 {
@@ -14,15 +14,15 @@ Point: rec
 	notify: fun[]
 	measure: fun[-> i32]
 
-	origin: fun -> Point = Point(0, 0, quiet, zero)
+	origin: fun -> Point => Point(0, 0, quiet, zero)
 
-	at: fun(x: i32, y: i32) -> Point = Point(x, y, quiet, zero)
+	at: fun(x: i32, y: i32) -> Point => Point(x, y, quiet, zero)
 
-	quiet: fun = printf("")
+	quiet: fun => printf("")
 
-	zero: fun -> i32 = 0
+	zero: fun -> i32 => 0
 
-	diagonal: fun(n: i32) -> Point = at(n, n)
+	diagonal: fun(n: i32) -> Point => at(n, n)
 
 	reset: fun(mut self)
 	{
@@ -31,7 +31,7 @@ Point: rec
 		self.y = home.y
 	}
 
-	maker: fun(self) -> fun[i32, i32 -> Point] = at
+	maker: fun(self) -> fun[i32, i32 -> Point] => at
 }
 
 main: fun -> i32

@@ -31,4 +31,4 @@ uses: fun
 	val nested: box[box] = box[i32](1)
 }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

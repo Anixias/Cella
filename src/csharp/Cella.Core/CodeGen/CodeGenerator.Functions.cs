@@ -31,8 +31,8 @@ public sealed partial class CodeGenerator
 			symbol.Name;
 		
 		var declared = symbol.Kind == FunctionKind.External ? FindNamedFunction(llvmModule, name) : default;
-		var functionValue = declared.Handle != IntPtr.Zero ? declared : llvmModule.AddFunction(name, functionType);
-		var isFunction = functionValue.IsAFunction.Handle != IntPtr.Zero;
+		var functionValue = declared.Handle != nint.Zero ? declared : llvmModule.AddFunction(name, functionType);
+		var isFunction = functionValue.IsAFunction.Handle != nint.Zero;
 		if (isFunction && cSignature is { Return: { Kind: CPassKind.Indirect } sret })
 			AddSretAttribute(functionValue, sret.Type, false);
 		

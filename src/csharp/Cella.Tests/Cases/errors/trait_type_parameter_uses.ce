@@ -31,7 +31,7 @@ Words: rec impl Iterator[str]
 {
 	x: i32
 
-	next: fun(mut self) -> option[str] = none
+	next: fun(mut self) -> option[str] => none
 }
 
 Console: rec impl Write[str] + Write[i32]
@@ -44,7 +44,7 @@ Console: rec impl Write[str] + Write[i32]
 
 flush[E, W: Write[E]]: fun(mut out: W) { }
 
-sum[T: Num, I: Iterator[T]]: fun(mut items: I) -> i32 = 0
+sum[T: Num, I: Iterator[T]]: fun(mut items: I) -> i32 => 0
 
 copyAll: fun(imm item: dyn[Cloner[i32]]) -> i32
 {

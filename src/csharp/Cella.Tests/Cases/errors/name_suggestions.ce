@@ -14,4 +14,4 @@ second: fun -> i32
 	ret p.x
 }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

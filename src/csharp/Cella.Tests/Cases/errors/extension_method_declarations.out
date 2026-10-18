@@ -1,11 +1,11 @@
 Error at main.ce:5:2
 4 │ {
-5 │     twice: fun(imm self) -> i32 = self * 2
+5 │     twice: fun(imm self) -> i32 => self * 2
         ╘═══╛ 'i32.twice' is declared more than once with the same signature
 
 Error at main.ce:10:2
  9 │ {
-10 │     twice: fun(imm self) -> i32 = self + self
+10 │     twice: fun(imm self) -> i32 => self + self
          ╘═══╛ 'i32.twice' is declared more than once with the same signature
 
 Error at shapes.ce:8:9
@@ -15,7 +15,7 @@ Error at shapes.ce:8:9
 
 Error at shapes.ce:10:8
  9 │ {
-10 │     area: pub fun(imm self) -> i32 = self.side * self.side
+10 │     area: pub fun(imm self) -> i32 => self.side * self.side
                ╘═╛ Cannot declare 'pub' members
 
 [compilation failed]

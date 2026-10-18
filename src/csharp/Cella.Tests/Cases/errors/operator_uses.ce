@@ -4,31 +4,31 @@ Point: rec
 {
 	x: i32
 
-	==: op(a: Point, b: Point) -> bool = a.x == b.x
-	+: op(a: Point, b: Point) -> Point = Point(a.x + b.x)
-	<: op(a: Point, b: Point) -> bool = a.x < b.x
-	-: op(self) -> Point = Point(-self.x)
+	==: op(a: Point, b: Point) -> bool => a.x == b.x
+	+: op(a: Point, b: Point) -> Point => Point(a.x + b.x)
+	<: op(a: Point, b: Point) -> bool => a.x < b.x
+	-: op(self) -> Point => Point(-self.x)
 
 	+=: op(mut self, other: Point)
 	{
 		self.x += other.x
 	}
 
-	*: pvt op(a: Point, b: Point) -> Point = a
+	*: pvt op(a: Point, b: Point) -> Point => a
 }
 
 Matrix: rec
 {
 	scale: i32
 
-	*: op(m: Matrix, v: Vector) -> Vector = Vector(v.x * m.scale)
+	*: op(m: Matrix, v: Vector) -> Vector => Vector(v.x * m.scale)
 }
 
 Vector: rec
 {
 	x: i32
 
-	*: op(m: Matrix, v: Vector) -> Vector = Vector(v.x * m.scale + 1)
+	*: op(m: Matrix, v: Vector) -> Vector => Vector(v.x * m.scale + 1)
 }
 
 main: fun -> i32

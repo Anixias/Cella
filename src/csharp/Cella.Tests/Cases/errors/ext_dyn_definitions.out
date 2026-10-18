@@ -5,12 +5,12 @@ Error at ext_dyn_definitions.ce:10:21
 
 Error at ext_dyn_definitions.ce:13:23
 12 │ 
-13 │ visit: ext fun(shape: dyn[Shape]) -> i32 = shape.area()
+13 │ visit: ext fun(shape: dyn[Shape]) -> i32 => shape.area()
                            ╘════════╛ Cannot use 'dyn[Shape]' in 'ext' signatures
 
 Error at ext_dyn_definitions.ce:14:34
-13 │ visit: ext fun(shape: dyn[Shape]) -> i32 = shape.area()
-14 │ visitAddress: ext fun(shape: ptr[dyn[Shape]]) -> i32 = 0
+13 │ visit: ext fun(shape: dyn[Shape]) -> i32 => shape.area()
+14 │ visitAddress: ext fun(shape: ptr[dyn[Shape]]) -> i32 => 0
                                       ╘════════╛ Cannot use 'dyn[Shape]' in 'ext' signatures
 
 [compilation failed]

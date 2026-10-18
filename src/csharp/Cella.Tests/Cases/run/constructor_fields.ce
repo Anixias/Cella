@@ -17,10 +17,10 @@ Handler: rec
 	scale: i32
 }
 
-double: fun(n: i32) -> i32 = n * 2
-negate: fun(n: i32) -> i32 = -n
+double: fun(n: i32) -> i32 => n * 2
+negate: fun(n: i32) -> i32 => -n
 
-amount: fun(effect: Effect) -> i32 = match effect
+amount: fun(effect: Effect) -> i32 => match effect
 {
 	hit(val n) => n
 	none => 0
@@ -93,7 +93,7 @@ Table: rec
 	}
 }
 
-describe: fun(whole: Whole) -> i32 = amount(whole.effect) + whole.count
+describe: fun(whole: Whole) -> i32 => amount(whole.effect) + whole.count
 
 Whole: rec
 {

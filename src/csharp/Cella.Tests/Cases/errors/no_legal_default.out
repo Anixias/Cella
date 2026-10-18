@@ -1,8 +1,8 @@
-Error at no_legal_default.ce:36:35
+Error at no_legal_default.ce:36:36
 35 │ 
-36 │ needsNew[T: new]: fun -> box[T] = box[T]()
-                                       ╘══════╛ No constructor for 'box[T]' accepts these arguments
-                                              | 'box[T]' takes one argument for each field: value
+36 │ needsNew[T: new]: fun -> box[T] => box[T]()
+                                        ╘══════╛ No constructor for 'box[T]' accepts these arguments
+                                               | 'box[T]' takes one argument for each field: value
 
 Error at no_legal_default.ce:41:10
 40 │ var v: Vec2

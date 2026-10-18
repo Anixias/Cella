@@ -25,11 +25,11 @@ Error at static_field_declarations.ce:15:2
 
 Error at static_field_declarations.ce:17:2
 16 │ 
-17 │ describe: fun -> i32 = 0
+17 │ describe: fun -> i32 => 0
      ╘══════╛ 'describe' is declared more than once in 'Unit'
 
 Error at static_field_declarations.ce:18:2
-17 │ describe: fun -> i32 = 0
+17 │ describe: fun -> i32 => 0
 18 │ describe: const i32 = 2
      ╘══════╛ 'describe' is declared more than once in 'Unit'
 

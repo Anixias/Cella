@@ -9,7 +9,7 @@ P: rec
 {
 	x: i32
 
-	get: fun(self) -> i32 = self.x
+	get: fun(self) -> i32 => self.x
 }
 
 Effect: enum { none, hit(n: i32) }
@@ -24,9 +24,9 @@ either: const bool = quiet is hit(val n) || hitting is hit(val m) && m == 3
 held: const Boxed = Boxed.full(P(5))
 debugOn: const bool = false
 
-show: fun(imm p: P) -> i32 = p.x
+show: fun(imm p: P) -> i32 => p.x
 
-make: fun -> Boxed = Boxed.full(P(4))
+make: fun -> Boxed => Boxed.full(P(4))
 
 main: fun -> i32
 {

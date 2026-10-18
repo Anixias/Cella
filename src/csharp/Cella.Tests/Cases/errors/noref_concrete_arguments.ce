@@ -12,7 +12,7 @@ wrap[T]: rec
 
 wrap[T: noref]: impl
 {
-	size: fun(imm self) -> i32 = 1
+	size: fun(imm self) -> i32 => 1
 }
 
 Token: ref rec
@@ -20,7 +20,7 @@ Token: ref rec
 	text: imm[i32]
 }
 
-keep[T: noref]: fun(own value: T) -> T = own value
+keep[T: noref]: fun(own value: T) -> T => own value
 
 main: fun -> i32
 {

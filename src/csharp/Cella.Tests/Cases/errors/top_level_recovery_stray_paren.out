@@ -1,7 +1,7 @@
-Error at top_level_recovery_stray_paren.ce:3:18
+Error at top_level_recovery_stray_paren.ce:3:19
 2 │ 
-3 │ f: fun -> i32 = 1)
-                     ^ Unexpected token
+3 │ f: fun -> i32 => 1)
+                      ^ Unexpected token
 
 Error at top_level_recovery_stray_paren.ce:7:6
 6 │ {

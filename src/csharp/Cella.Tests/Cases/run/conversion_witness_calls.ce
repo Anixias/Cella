@@ -14,7 +14,7 @@ Source: rec
 		printf("drop %d\n", self.id)
 	}
 
-	new: op(imm self) -> Target = Target(self.id)
+	new: op(imm self) -> Target => Target(self.id)
 }
 
 Target: rec
@@ -33,13 +33,13 @@ wrap[T]: rec
 {
 	v: T
 
-	new: op(imm self) -> i64 = 42
+	new: op(imm self) -> i64 => 42
 }
 
-lend[T: new(Source)]: fun(imm value: Source) -> T = T(value)
-take[T: new(own Source)]: fun(own value: Source) -> T = T(own value)
-make[T: FromSource]: fun(own value: Source) -> T = T(own value)
-unwrap[R: new(wrap[i32])]: fun(w: wrap[i32]) -> R = R(w)
+lend[T: new(Source)]: fun(imm value: Source) -> T => T(value)
+take[T: new(own Source)]: fun(own value: Source) -> T => T(own value)
+make[T: FromSource]: fun(own value: Source) -> T => T(own value)
+unwrap[R: new(wrap[i32])]: fun(w: wrap[i32]) -> R => R(w)
 
 main: fun -> i32
 {

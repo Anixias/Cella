@@ -7,7 +7,7 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-helper: fun -> i32 = 100
+helper: fun -> i32 => 100
 
 main: fun -> i32
 {

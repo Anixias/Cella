@@ -1,31 +1,31 @@
 Error at main.ce:3:1
 2 │ 
-3 │ helper: pvt fun -> i32 = 1
+3 │ helper: pvt fun -> i32 => 1
     ╘════╛ 'helper' is declared more than once with the same signature
 
 Error at main.ce:5:1
 4 │ 
-5 │ tool: pvt fun -> i32 = 1
+5 │ tool: pvt fun -> i32 => 1
     ╘══╛ 'tool' is declared more than once with the same signature
 
 Error at main.ce:7:1
 6 │ 
-7 │ tool: pvt fun -> i32 = 2
+7 │ tool: pvt fun -> i32 => 2
     ╘══╛ 'tool' is declared more than once with the same signature
 
 Error at main.ce:11:1
 10 │ 
-11 │ main: pvt fun -> i32 = 0
+11 │ main: pvt fun -> i32 => 0
      ╘══╛ The program has more than one 'main' function
 
 Error at other.ce:3:1
 2 │ 
-3 │ helper: fun -> i32 = 2
+3 │ helper: fun -> i32 => 2
     ╘════╛ 'helper' is declared more than once with the same signature
 
 Error at other.ce:7:1
 6 │ 
-7 │ main: pvt fun -> i32 = 1
+7 │ main: pvt fun -> i32 => 1
     ╘══╛ The program has more than one 'main' function
 
 [compilation failed]

@@ -9,8 +9,8 @@ Bag: rec
 {
 	values: array[i32, 3]
 
-	[]: op(imm self, i: usize) -> imm[i32] = imm self.values[i]
-	[]: op(mut self, i: usize) -> mut[i32] = mut self.values[i]
+	[]: op(imm self, i: usize) -> imm[i32] => imm self.values[i]
+	[]: op(mut self, i: usize) -> mut[i32] => mut self.values[i]
 }
 
 main: fun -> i32

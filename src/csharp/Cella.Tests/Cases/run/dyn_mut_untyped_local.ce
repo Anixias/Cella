@@ -18,7 +18,7 @@ i32: impl Bump
 	}
 }
 
-grow: fun(mut value: dyn[Bump]) = value.bump()
+grow: fun(mut value: dyn[Bump]) => value.bump()
 
 main: fun -> i32
 {

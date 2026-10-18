@@ -23,8 +23,8 @@ Color: enum
 	{
 	}
 
-	describe: fun(self) -> i32 = 1
+	describe: fun(self) -> i32 => 1
 	count: i32
 }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

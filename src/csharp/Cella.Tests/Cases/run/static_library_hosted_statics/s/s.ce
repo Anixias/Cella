@@ -7,7 +7,7 @@ Counter[T]: pub rec
 	count: var i32 = 0
 }
 
-helper: pvt fun(x: i32) -> i32 = x * 10
+helper: pvt fun(x: i32) -> i32 => x * 10
 
 bump: pub fun -> i32
 {
@@ -15,4 +15,4 @@ bump: pub fun -> i32
 	ret Counter[i32].count
 }
 
-scaled[T]: pub fun(imm value: T, x: i32) -> i32 = helper(x)
+scaled[T]: pub fun(imm value: T, x: i32) -> i32 => helper(x)

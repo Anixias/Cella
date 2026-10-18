@@ -14,7 +14,7 @@ Unit: rec
 	origin: val Unit = Unit(0)
 	clock: val i32 = now()
 
-	now: fun -> i32 = 1
+	now: fun -> i32 => 1
 }
 
 writes: fun
@@ -29,4 +29,4 @@ writes: fun
 	Unit.total += 1
 }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

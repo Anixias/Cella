@@ -4,9 +4,9 @@ Error at match_unclosed.ce:12:2
      ╘═╛ Expected '}'
        | To match the '{' on line 9
 
-Error at match_unclosed.ce:15:17
+Error at match_unclosed.ce:15:18
 14 │ 
-15 │ g: fun -> i32 = )
-                     ^ Expected an expression
+15 │ g: fun -> i32 => )
+                      ^ Expected an expression
 
 [compilation failed]

@@ -5,17 +5,17 @@ Error at dyn_syntax.ce:5:12
 
 Error at dyn_syntax.ce:8:22
 7 │ 
-8 │ first: fun(shape: dyn) -> f64 = 0.0
+8 │ first: fun(shape: dyn) -> f64 => 0.0
                          ^ Expected '['
 
 Error at dyn_syntax.ce:10:24
  9 │ 
-10 │ second: fun(shape: dyn[]) -> f64 = 0.0
+10 │ second: fun(shape: dyn[]) -> f64 => 0.0
                             ^ Expected a trait
 
 Error at dyn_syntax.ce:12:28
 11 │ 
-12 │ third: fun(shape: dyn[Shape) -> f64 = 0.0
+12 │ third: fun(shape: dyn[Shape) -> f64 => 0.0
                                 ^ Expected ']'
                                 | To match the '[' on line 12
 

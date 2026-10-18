@@ -10,8 +10,8 @@ ext
 	viaName: ext("hidden_symbol") fun -> i32
 }
 
-answer: pub ext("cella_answer") fun(x: i32) -> i32 = x * 2
-hidden: ext("hidden_symbol") fun -> i32 = 17
+answer: pub ext("cella_answer") fun(x: i32) -> i32 => x * 2
+hidden: ext("hidden_symbol") fun -> i32 => 17
 counter: pub ext var i32 = 5
 gpuHint: pub ext("NvOptimusEnablement") val u32 = 1
 plainHint: ext val u32 = 3

@@ -30,7 +30,7 @@ Event: ext enum(u32)
 weird: val VkResult = VkResult(-1000)
 named: val VkResult = VkResult(2)
 
-describe: fun(result: VkResult) -> i32 = match result
+describe: fun(result: VkResult) -> i32 => match result
 {
 	success => 0
 	timeout => 2
@@ -50,7 +50,7 @@ code: fun(result: VkResult) -> i32
 	ret 7
 }
 
-handle: ext fun(event: Event) -> i32 = match event
+handle: ext fun(event: Event) -> i32 => match event
 {
 	keyDown(val key, val repeat) => key * 10 + i32(repeat)
 	keyUp(val key, _) => -key

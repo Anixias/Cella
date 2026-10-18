@@ -6,7 +6,7 @@ Error at unknown_type.ce:11:10
 
 Error at unknown_type.ce:14:20
 13 │ 
-14 │ scale: fun(amount: usise) -> i32 = 0
+14 │ scale: fun(amount: usise) -> i32 => 0
                         ╘═══╛ Type 'usise' not found in this scope
                             | Did you mean 'usize'?
 

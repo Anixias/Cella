@@ -40,4 +40,4 @@ steal[N: const usize]: fun(mut values: array[Token, N])
 	take(own values[0])
 }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

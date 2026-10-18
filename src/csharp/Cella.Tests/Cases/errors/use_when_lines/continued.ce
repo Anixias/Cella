@@ -2,4 +2,4 @@ mod test
 use when debug ||
 	release
 
-third: fun -> i32 = 0
+third: fun -> i32 => 0

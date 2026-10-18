@@ -5,7 +5,7 @@ Eq: trait
 	==: op(imm a: Self, imm b: Self) -> bool
 }
 
-grow[N: const usize]: fun(values: array[i32, N]) -> array[i32, N + 1] = undef
+grow[N: const usize]: fun(values: array[i32, N]) -> array[i32, N + 1] => undef
 
 doubled[N: const usize]: rec
 {
@@ -31,13 +31,13 @@ Vector: rec
 {
 	x: i32
 
-	+[N: const usize]: op(a: Vector, b: Vector) -> Vector = a
-	[][N: const usize]: op(self, i: usize) -> i32 = 0
+	+[N: const usize]: op(a: Vector, b: Vector) -> Vector => a
+	[][N: const usize]: op(self, i: usize) -> i32 => 0
 }
 
 array[T]: impl Eq
 {
-	==: op(imm a: array[T, 1], imm b: array[T, 1]) -> bool = true
+	==: op(imm a: array[T, 1], imm b: array[T, 1]) -> bool => true
 }
 
 Sized: trait
@@ -47,12 +47,12 @@ Sized: trait
 
 array[N: const usize, T]: impl Sized
 {
-	size: fun(self) -> usize = 0
+	size: fun(self) -> usize => 0
 }
 
 array[T, N: const i32]: impl Sized
 {
-	size: fun(self) -> usize = 0
+	size: fun(self) -> usize => 0
 }
 
 ring[T, N: const usize]: rec
@@ -62,7 +62,7 @@ ring[T, N: const usize]: rec
 
 ring[N: const usize, T]: impl Sized
 {
-	size: fun(self) -> usize = 0
+	size: fun(self) -> usize => 0
 }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

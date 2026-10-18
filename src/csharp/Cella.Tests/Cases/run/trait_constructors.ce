@@ -40,9 +40,9 @@ Point: rec impl Fresh
 
 i32: impl Fresh
 
-build[T: Make]: fun -> T = T(64)
+build[T: Make]: fun -> T => T(64)
 
-blank[T: Fresh]: fun -> T = T()
+blank[T: Fresh]: fun -> T => T()
 
 main: fun -> i32
 {

@@ -35,7 +35,7 @@ R: rec
 	}
 }
 
-make: fun -> R = R(Effect.d(Buffer(1)))
+make: fun -> R => R(Effect.d(Buffer(1)))
 
 uninitialized: fun -> i32
 {
@@ -79,4 +79,4 @@ destructorField: fun
 	}
 }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

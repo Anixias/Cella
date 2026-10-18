@@ -8,7 +8,7 @@ Token: rec
 	{
 	}
 
-	peek: fun(imm self) -> i32 = self.id
+	peek: fun(imm self) -> i32 => self.id
 }
 
 Pair: rec
@@ -16,7 +16,7 @@ Pair: rec
 	token: Token
 }
 
-read: fun(imm token: Token) -> i32 = token.id
+read: fun(imm token: Token) -> i32 => token.id
 
 main: fun -> i32
 {

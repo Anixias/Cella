@@ -25,4 +25,4 @@ Same: union
 	b: pvt u32
 }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

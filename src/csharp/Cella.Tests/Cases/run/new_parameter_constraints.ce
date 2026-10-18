@@ -77,9 +77,9 @@ Counter: rec
 	}
 }
 
-make[T: new(i32)]: fun -> T = T(5)
+make[T: new(i32)]: fun -> T => T(5)
 
-pair[T: new(i32, i32)]: fun -> T = T(1, 2)
+pair[T: new(i32, i32)]: fun -> T => T(1, 2)
 
 both[T: new(i32) + new(T)]: fun(imm value: T) -> T
 {
@@ -93,9 +93,9 @@ convert[T: new(A) + new(B), A, B]: fun(imm a: A, imm b: B) -> T
 	ret T(b)
 }
 
-duplicate[T: new(imm T)]: fun(imm value: T) -> T = T(imm value)
+duplicate[T: new(imm T)]: fun(imm value: T) -> T => T(imm value)
 
-take[T: new(own Text)]: fun(own value: Text) -> T = T(own value)
+take[T: new(own Text)]: fun(own value: Text) -> T => T(own value)
 
 count[T: noref + new(mut i32)]: fun -> T
 {
@@ -105,7 +105,7 @@ count[T: noref + new(mut i32)]: fun -> T
 	ret made
 }
 
-from[T: new(i32)]: fun(value: i32) -> T = T(value)
+from[T: new(i32)]: fun(value: i32) -> T => T(value)
 
 main: fun -> i32
 {

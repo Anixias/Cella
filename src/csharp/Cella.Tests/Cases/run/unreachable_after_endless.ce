@@ -17,4 +17,4 @@ f4: fun -> i32
 	ret 4
 }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

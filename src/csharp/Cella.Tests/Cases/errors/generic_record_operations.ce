@@ -4,7 +4,7 @@ box[T]: rec
 {
 	value: T
 
-	add: fun(imm self) -> T = self.value + 1
+	add: fun(imm self) -> T => self.value + 1
 }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

@@ -1,7 +1,7 @@
-Hint at own_expressions.ce:38:43
-37 │ take: fun(own buffer: Buffer) -> i32 = buffer.id
-38 │ give: fun(own buffer: Buffer) -> Buffer = own buffer
-                                               ╘═╛ Redundant 'own'
+Hint at own_expressions.ce:38:44
+37 │ take: fun(own buffer: Buffer) -> i32 => buffer.id
+38 │ give: fun(own buffer: Buffer) -> Buffer => own buffer
+                                                ╘═╛ Redundant 'own'
 
 Hint at own_expressions.ce:83:6
 82 │ var status = 0

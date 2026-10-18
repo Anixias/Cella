@@ -1,21 +1,21 @@
 Error at trait_parameter_declarations.ce:18:31
 17 │ 
-18 │ asValue[K: trait]: fun(value: K) -> i32 = 0
+18 │ asValue[K: trait]: fun(value: K) -> i32 => 0
                                    ^ 'K' is not a type
 
 Error at trait_parameter_declarations.ce:20:37
 19 │ 
-20 │ asPointer[K: trait]: fun(value: ptr[K]) -> i32 = 0
+20 │ asPointer[K: trait]: fun(value: ptr[K]) -> i32 => 0
                                          ^ 'K' is not a type
 
 Error at trait_parameter_declarations.ce:22:26
 21 │ 
-22 │ first: fun(value: holder[i32]) -> i32 = 0
+22 │ first: fun(value: holder[i32]) -> i32 => 0
                               ╘═╛ 'i32' is not a trait
 
 Error at trait_parameter_declarations.ce:24:24
 23 │ 
-24 │ second: fun(value: box[Shape]) -> i32 = 0
+24 │ second: fun(value: box[Shape]) -> i32 => 0
                             ╘═══╛ 'Shape' is not a type
 
 [compilation failed]

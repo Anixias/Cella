@@ -4,11 +4,11 @@ ext
 {
 	printf: fun(format: cstr, ...) -> i32
 }
-reset[T: null]: fun -> T = null
+reset[T: null]: fun -> T => null
 
-isEmpty[T: null]: fun(imm value: T) -> bool = value == null
+isEmpty[T: null]: fun(imm value: T) -> bool => value == null
 
-isSet[T: null]: fun(imm value: T) -> bool = null != value
+isSet[T: null]: fun(imm value: T) -> bool => null != value
 
 main: fun -> i32
 {

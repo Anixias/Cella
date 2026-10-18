@@ -9,12 +9,12 @@ Text: rec
 	}
 }
 
-call: fun(f: fun[-> imm[Text]]) -> imm[Text] = f()
+call: fun(f: fun[-> imm[Text]]) -> imm[Text] => f()
 
 main: fun -> i32
 {
 	var t = Text(1)
-	val r = call(fun -> imm[Text] = t)
+	val r = call(fun -> imm[Text] => t)
 	t = Text(2)
 	ret r.id
 }

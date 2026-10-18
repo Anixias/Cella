@@ -26,4 +26,4 @@ W: rec
 
 take: fun(own n: N) {}
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

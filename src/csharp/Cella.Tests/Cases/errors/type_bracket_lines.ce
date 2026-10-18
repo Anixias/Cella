@@ -22,4 +22,4 @@ borrowed: fun(b: imm
 dynamic: fun(s: imm[dyn
 	[Shape]]) -> i32 = 0
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

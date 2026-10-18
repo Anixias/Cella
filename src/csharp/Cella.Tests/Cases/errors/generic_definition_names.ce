@@ -23,12 +23,12 @@ box[T]: rec impl Make
 
 box[T]: impl Show
 {
-	show: fun(imm self) -> i32 = 1
+	show: fun(imm self) -> i32 => 1
 }
 
 box[U]: impl Show
 {
-	show: fun(imm self) -> i32 = 2
+	show: fun(imm self) -> i32 => 2
 }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

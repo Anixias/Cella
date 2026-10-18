@@ -1,7 +1,7 @@
-Error at void_values.ce:25:22
-24 │ take: fun(x: i32) -> i32 = x
-25 │ answer: fun -> i32 = greet()
-                          ╘═════╛ 'greet' doesn't return a value
+Error at void_values.ce:25:23
+24 │ take: fun(x: i32) -> i32 => x
+25 │ answer: fun -> i32 => greet()
+                           ╘═════╛ 'greet' doesn't return a value
 
 Error at void_values.ce:29:10
 28 │ {

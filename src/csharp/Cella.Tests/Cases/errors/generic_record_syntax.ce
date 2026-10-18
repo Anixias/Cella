@@ -22,4 +22,4 @@ maybe[T]: ext enum
 
 limit[T]: val i32 = 3
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

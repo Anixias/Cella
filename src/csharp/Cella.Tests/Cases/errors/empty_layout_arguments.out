@@ -1,11 +1,11 @@
-Error at empty_layout_arguments.ce:3:29
+Error at empty_layout_arguments.ce:3:30
 2 │ 
-3 │ size: fun -> usize = sizeOf()
-                                ^ Expected a type or a value
+3 │ size: fun -> usize => sizeOf()
+                                 ^ Expected a type or a value
 
-Error at empty_layout_arguments.ce:4:35
-3 │ size: fun -> usize = sizeOf()
-4 │ alignment: fun -> usize = alignOf()
-                                      ^ Expected a type or a value
+Error at empty_layout_arguments.ce:4:36
+3 │ size: fun -> usize => sizeOf()
+4 │ alignment: fun -> usize => alignOf()
+                                       ^ Expected a type or a value
 
 [compilation failed]

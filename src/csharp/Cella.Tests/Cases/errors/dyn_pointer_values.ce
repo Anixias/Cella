@@ -9,7 +9,7 @@ A: rec impl Shape
 {
 	v: i32
 
-	area: fun(imm self) -> i32 = self.v
+	area: fun(imm self) -> i32 => self.v
 }
 
 main: fun -> i32

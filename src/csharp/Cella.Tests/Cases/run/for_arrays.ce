@@ -47,9 +47,9 @@ Grid: rec
 	}
 }
 
-digits: fun -> array[i32, 3] = [4, 5, 6]
+digits: fun -> array[i32, 3] => [4, 5, 6]
 
-names: fun -> array[Name, 2] = [Name(7), Name(8)]
+names: fun -> array[Name, 2] => [Name(7), Name(8)]
 
 fill: fun(mut values: array[i32, 3], value: i32)
 {

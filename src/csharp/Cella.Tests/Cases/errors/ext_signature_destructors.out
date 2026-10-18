@@ -47,16 +47,16 @@ Error at ext_signature_destructors.ce:39:34
 
 Error at ext_signature_destructors.ce:43:23
 42 │ 
-43 │ echo: ext fun(buffer: Buffer) -> Buffer = buffer
+43 │ echo: ext fun(buffer: Buffer) -> Buffer => buffer
                            ╘════╛ Cannot use types with destructors in 'ext' signatures
 
 Error at ext_signature_destructors.ce:43:34
 42 │ 
-43 │ echo: ext fun(buffer: Buffer) -> Buffer = buffer
+43 │ echo: ext fun(buffer: Buffer) -> Buffer => buffer
                                       ╘════╛ Cannot use types with destructors in 'ext' signatures
 
 Error at ext_signature_destructors.ce:44:40
-43 │ echo: ext fun(buffer: Buffer) -> Buffer = buffer
+43 │ echo: ext fun(buffer: Buffer) -> Buffer => buffer
 44 │ forward: fun(callback: fun[ext fun[own Buffer]]) {}
                                             ╘════╛ Cannot use types with destructors in 'ext' signatures
 

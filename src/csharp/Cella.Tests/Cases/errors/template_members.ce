@@ -17,4 +17,4 @@ show: fun(text: fstr[Display])
 	val f = text.missing(0)
 }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

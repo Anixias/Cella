@@ -1,5 +1,5 @@
 mod test
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0
 
-main: fun(args: ptr[str], count: usize) -> i32 = 1
+main: fun(args: ptr[str], count: usize) -> i32 => 1

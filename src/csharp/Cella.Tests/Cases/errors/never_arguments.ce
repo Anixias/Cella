@@ -5,15 +5,15 @@ ext
 	abort: fun -> never
 }
 
-id[T]: fun(own x: T) -> T = x
+id[T]: fun(own x: T) -> T => x
 
 explicit: fun -> i32
 {
 	ret id[never](abort())
 }
 
-size: fun -> usize = sizeOf(never)
-pointer: fun -> usize = sizeOf(ptr[never])
-elements: fun -> usize = sizeOf(array[never, 2])
+size: fun -> usize => sizeOf(never)
+pointer: fun -> usize => sizeOf(ptr[never])
+elements: fun -> usize => sizeOf(array[never, 2])
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

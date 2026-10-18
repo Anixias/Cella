@@ -7,10 +7,10 @@ Hash: pub trait
 
 [T]: impl Hash
 {
-	hash: fun(imm self) -> u64 = u64(sizeOf(T)) * 100
+	hash: fun(imm self) -> u64 => u64(sizeOf(T)) * 100
 }
 
-hashOf[T]: pub fun(imm value: T) -> u64 = value.hash()
+hashOf[T]: pub fun(imm value: T) -> u64 => value.hash()
 
 Pair: pub rec
 {
@@ -18,4 +18,4 @@ Pair: pub rec
 	b: i32
 }
 
-pairHash: pub fun -> u64 = hashOf(imm Pair(1, 2))
+pairHash: pub fun -> u64 => hashOf(imm Pair(1, 2))

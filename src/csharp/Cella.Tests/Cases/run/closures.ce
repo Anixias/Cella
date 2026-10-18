@@ -30,7 +30,7 @@ Counter: rec
 {
 	count: i32
 
-	add: fun(self, x: i32) -> i32 = apply(fun(y) = y + self.count, x)
+	add: fun(self, x: i32) -> i32 => apply(fun(y) => y + self.count, x)
 
 	grow: fun(mut self, by: i32)
 	{
@@ -48,7 +48,7 @@ Doubled: rec
 
 	new: op(x: i32)
 	{
-		self.v = call(fun = x * 2)
+		self.v = call(fun => x * 2)
 	}
 }
 
@@ -58,20 +58,20 @@ each: fun(values: array[i32, 3], visit: fun[i32])
 		visit(value)
 }
 
-apply: fun(f: fun[i32 -> i32], x: i32) -> i32 = f(x)
+apply: fun(f: fun[i32 -> i32], x: i32) -> i32 => f(x)
 
-call: fun(f: fun[-> i32]) -> i32 = f()
+call: fun(f: fun[-> i32]) -> i32 => f()
 
-generic[T]: fun(f: fun[-> T]) -> T = f()
+generic[T]: fun(f: fun[-> T]) -> T => f()
 
-repeat[T: copy + noref]: fun(value: T) -> T = generic(fun = value)
+repeat[T: copy + noref]: fun(value: T) -> T => generic(fun => value)
 
 bump: fun(mut value: i32)
 {
 	value += 1
 }
 
-triple: fun(x: i32) -> i32 = x * 3
+triple: fun(x: i32) -> i32 => x * 3
 
 main: fun -> i32
 {
@@ -88,12 +88,12 @@ main: fun -> i32
 	tick()
 
 	var name = Text(1)
-	val show = fun -> i32 = name.id
+	val show = fun -> i32 => name.id
 	name = Text(2)
 	printf("%d %d\n", total, show())
 
 	var scale = 2
-	val scaled = fun(x: i32) -> i32 = x * scale
+	val scaled = fun(x: i32) -> i32 => x * scale
 	scale = 3
 	val widened: ref fun[i32 -> i32] = triple
 	printf("%d %d %d\n", scaled(5), widened(2), apply(triple, 3))
@@ -102,7 +102,7 @@ main: fun -> i32
 	{
 		val inner = 3
 		total += 10
-		ret call(fun = base + total + inner)
+		ret call(fun => base + total + inner)
 	}
 
 	printf("%d %d\n", outer(), total)
@@ -122,21 +122,21 @@ main: fun -> i32
 	printf("%d %d\n", ticker.next(), count)
 
 	var b = 2
-	val fs: array[ref fun[-> i32], 2] = [fun = base, fun = b]
+	val fs: array[ref fun[-> i32], 2] = [fun => base, fun => b]
 	b = 5
 	printf("%d %d\n", fs[0](), fs[1]())
 
 	val maybe = Maybe.some(Text(4))
 	match maybe
 	{
-		some(val t) => printf("%d\n", call(fun = t.id))
+		some(val t) => printf("%d\n", call(fun => t.id))
 		none => printf("none\n")
 	}
 
 	val texts = [Text(6), Text(7)]
 	var sum = 0
 	for imm text in texts
-		sum += call(fun = text.id * 10)
+		sum += call(fun => text.id * 10)
 
 	printf("%d %d %f\n", sum, repeat(4), repeat(2.5))
 	ret 0

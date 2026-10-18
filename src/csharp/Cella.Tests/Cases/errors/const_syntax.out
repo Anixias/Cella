@@ -10,7 +10,7 @@ Error at const_syntax.ce:7:9
 
 Error at const_syntax.ce:10:10
  9 │ 
-10 │ count[N: val usize]: fun -> usize = 0
+10 │ count[N: val usize]: fun -> usize => 0
               ╘═╛ Expected a constraint
 
 [compilation failed]

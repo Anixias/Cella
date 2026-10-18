@@ -9,11 +9,11 @@ Fixed: rec
 {
 	raw: i32
 
-	<: op(a: Fixed, b: Fixed) -> bool = a.raw < b.raw
-	<=: op(a: Fixed, b: Fixed) -> bool = a.raw <= b.raw
-	<=: op(low: f32, x: Fixed) -> bool = i32(low * 256.0) <= x.raw
-	<: op(x: Fixed, high: f32) -> bool = x.raw < i32(high * 256.0)
-	<: op(low: i32, x: Fixed) -> bool = low * 256 < x.raw
+	<: op(a: Fixed, b: Fixed) -> bool => a.raw < b.raw
+	<=: op(a: Fixed, b: Fixed) -> bool => a.raw <= b.raw
+	<=: op(low: f32, x: Fixed) -> bool => i32(low * 256.0) <= x.raw
+	<: op(x: Fixed, high: f32) -> bool => x.raw < i32(high * 256.0)
+	<: op(low: i32, x: Fixed) -> bool => low * 256 < x.raw
 }
 
 calls: var i32 = 0

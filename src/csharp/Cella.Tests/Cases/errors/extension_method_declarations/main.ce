@@ -2,12 +2,12 @@ mod test
 
 i32: impl
 {
-	twice: fun(imm self) -> i32 = self * 2
+	twice: fun(imm self) -> i32 => self * 2
 }
 
 i32: impl
 {
-	twice: fun(imm self) -> i32 = self + self
+	twice: fun(imm self) -> i32 => self + self
 }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

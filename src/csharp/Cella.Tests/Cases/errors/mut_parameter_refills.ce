@@ -25,8 +25,8 @@ Wrapper: rec
 	}
 }
 
-make: fun(id: i32) -> Buffer = Buffer(id)
-take: fun(own buffer: Buffer) -> i32 = buffer.id
+make: fun(id: i32) -> Buffer => Buffer(id)
+take: fun(own buffer: Buffer) -> i32 => buffer.id
 
 whole: fun(mut buffer: Buffer)
 {
@@ -56,7 +56,7 @@ swap: fun(mut pair: Pair)
 	pair.right = own left
 }
 
-keep: fun(own built: Built) -> i32 = built.buffer.id
+keep: fun(own built: Built) -> i32 => built.buffer.id
 
 Built: rec
 {
@@ -74,4 +74,4 @@ implicit: fun(mut buffer: Buffer)
 	val copy: Buffer = buffer
 }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

@@ -13,5 +13,5 @@ Shape: trait
 
 Point: impl
 {
-	sum: fun(self) -> i32 = self.x + self.y;
+	sum: fun(self) -> i32 => self.x + self.y;
 }

@@ -9,13 +9,13 @@ Point: rec
 {
 	x: i32
 
-	len: fun(self) -> i32 = self.x
+	len: fun(self) -> i32 => self.x
 
-	name: fun(self) -> cstr = nameOf(self)
+	name: fun(self) -> cstr => nameOf(self)
 
-	field: fun(self) -> cstr = nameOf(self.x)
+	field: fun(self) -> cstr => nameOf(self.x)
 
-	make: fun -> Point = Point(0)
+	make: fun -> Point => Point(0)
 }
 
 main: fun -> i32

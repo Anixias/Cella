@@ -9,7 +9,7 @@ Value: rec
 {
 	x: i32
 
-	<: op(imm a: Value, imm b: Value) -> bool = a.x < b.x
+	<: op(imm a: Value, imm b: Value) -> bool => a.x < b.x
 
 	drop: op
 	{
@@ -21,7 +21,7 @@ Owned: rec
 {
 	n: i32
 
-	as: op(own self) -> Value = Value(self.n)
+	as: op(own self) -> Value => Value(self.n)
 
 	drop: op
 	{
@@ -33,7 +33,7 @@ Lent: rec
 {
 	n: i32
 
-	as: op(imm self) -> Value = Value(self.n)
+	as: op(imm self) -> Value => Value(self.n)
 
 	drop: op
 	{

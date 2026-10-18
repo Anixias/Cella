@@ -7,4 +7,4 @@ Make: trait
 	new: op(value: bool)
 }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

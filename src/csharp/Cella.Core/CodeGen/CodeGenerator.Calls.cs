@@ -235,7 +235,7 @@ public sealed unsafe partial class CodeGenerator
 		Func<LLVMBuilderRef, LLVMValueRef, LLVMValueRef[], LLVMValueRef> emitCall)
 	{
 		var existing = current.Module.GetNamedFunction(name);
-		if (existing.Handle != IntPtr.Zero)
+		if (existing.Handle != nint.Zero)
 			return existing;
 		
 		LLVMTypeRef[] parameterTypes = [..MapCallParameters(signature)];

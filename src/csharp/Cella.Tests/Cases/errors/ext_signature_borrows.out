@@ -49,7 +49,7 @@ Error at ext_signature_borrows.ce:44:16
 
 Error at ext_signature_borrows.ce:48:19
 47 │ 
-48 │ visit: ext fun(v: View) -> i32 = 0
+48 │ visit: ext fun(v: View) -> i32 => 0
                        ╘══╛ Cannot use 'View' in 'ext' signatures
 
 [compilation failed]

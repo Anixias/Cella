@@ -4,9 +4,9 @@ Square: rec
 {
 	side: i32
 
-	unit: fun -> Square = Square(1)
+	unit: fun -> Square => Square(1)
 
-	area: fun(self) -> i32 = self.side * self.side
+	area: fun(self) -> i32 => self.side * self.side
 
 	grow: fun(mut self, amount: i32)
 	{
@@ -19,11 +19,11 @@ Corner: enum
 	top
 	bottom
 
-	opposite: fun(self) -> Corner = match self
+	opposite: fun(self) -> Corner => match self
 	{
 		top => Corner.bottom
 		bottom => Corner.top
 	}
 
-	first: fun -> Corner = Corner.top
+	first: fun -> Corner => Corner.top
 }

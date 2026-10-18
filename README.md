@@ -22,7 +22,7 @@ Shape: enum
 	rect(width: f64, height: f64)
 }
 
-area: fun(shape: Shape) -> f64 = match shape
+area: fun(shape: Shape) -> f64 => match shape
 {
 	circle(val r) => 3.14159 * r * r
 	rect(val w, val h) => w * h
@@ -95,7 +95,7 @@ As in C, the compiler doesn't check aliasing between borrows (`both(mut n, mut n
 
 Array indexing is bounds checked in every build, and integer overflow is checked in debug builds. Both can be changed per project. A failed check calls the `panic` operator the file can see, or traps if there isn't one. The standard library's `panic` is visible everywhere: it prints the message and location and exits with code 101.
 
-The language also has methods, operators and properties on records, generic constraints, traits with `impl` and `dyn[Trait]` values, lambdas (`fun(x) = x * base`), and `when` for conditional compilation.
+The language also has methods, operators and properties on records, generic constraints, traits with `impl` and `dyn[Trait]` values, lambdas (`fun(x) => x * base`), and `when` for conditional compilation.
 
 ## Installing
 

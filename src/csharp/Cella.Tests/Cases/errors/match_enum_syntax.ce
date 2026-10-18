@@ -21,4 +21,4 @@ tagged: enum(u8) match i32
 	zero = 0
 }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

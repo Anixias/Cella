@@ -53,7 +53,7 @@ Props: rec
 {
 	v: prop
 	{
-		get = 1
+		get => 1
 	}
 }
 
@@ -70,4 +70,4 @@ Statics: rec
 
 g: var i32 = undef
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

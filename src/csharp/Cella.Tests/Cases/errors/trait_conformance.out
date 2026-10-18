@@ -15,11 +15,11 @@ Error at trait_conformance.ce:32:19
 
 Error at trait_conformance.ce:41:2
 40 │ 
-41 │ hash: fun(self) -> i32 = 0
+41 │ hash: fun(self) -> i32 => 0
      ╘══╛ 'hash' doesn't match 'Hash.hash'
 
 Error at trait_conformance.ce:42:2
-41 │ hash: fun(self) -> i32 = 0
+41 │ hash: fun(self) -> i32 => 0
 42 │ put: fun(self, value: i32) { }
      ╘═╛ 'put' doesn't match 'Hash.put'
 
@@ -30,7 +30,7 @@ Error at trait_conformance.ce:46:15
 
 Error at trait_conformance.ce:50:8
 49 │ 
-50 │ size: get(self) -> u8 = 0
+50 │ size: get(self) -> u8 => 0
            ╘═╛ 'size' doesn't match 'Sized.size'
 
 Error at trait_conformance.ce:54:17
@@ -40,7 +40,7 @@ Error at trait_conformance.ce:54:17
 
 Error at trait_conformance.ce:58:2
 57 │ 
-58 │ hash: fun(self) -> u64 = 1
+58 │ hash: fun(self) -> u64 => 1
      ╘══╛ 'Twice.hash' is declared more than once with the same signature
 
 Error at trait_conformance.ce:63:13
@@ -50,7 +50,7 @@ Error at trait_conformance.ce:63:13
 
 Error at trait_conformance.ce:65:2
 64 │ {
-65 │     hash: fun(self) -> u64 = 2
+65 │     hash: fun(self) -> u64 => 2
          ╘══╛ 'Twice.hash' is declared more than once with the same signature
 
 Error at trait_conformance.ce:68:16

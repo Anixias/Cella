@@ -45,6 +45,6 @@ ext
 	keep: fun(p: ptr[Holder])
 }
 
-visit: ext fun(v: View) -> i32 = 0
+visit: ext fun(v: View) -> i32 => 0
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

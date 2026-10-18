@@ -28,16 +28,16 @@ holder[T: ext]: rec
 	cb: ext fun[T -> i32]
 }
 
-visit[T: ext]: fun(f: ext fun[ptr[T] -> i32], items: ptr[T]) -> i32 = f(items)
+visit[T: ext]: fun(f: ext fun[ptr[T] -> i32], items: ptr[T]) -> i32 => f(items)
 
-pairs[T: ext]: fun(f: ext fun[Pair[T] -> i32], pair: Pair[T]) -> i32 = f(pair)
+pairs[T: ext]: fun(f: ext fun[Pair[T] -> i32], pair: Pair[T]) -> i32 => f(pair)
 
-outer[U: ext]: fun(f: ext fun[U -> i32], value: U) -> i32 = call(f, value) + 1
+outer[U: ext]: fun(f: ext fun[U -> i32], value: U) -> i32 => call(f, value) + 1
 
-twice: ext fun(x: i32) -> i32 = x * 2
-sum: ext fun(p: Point) -> i32 = p.x + p.y
-first: ext fun(p: ptr[Point]) -> i32 = p.x
-both: ext fun(pair: Pair[i32]) -> i32 = pair.first * pair.second
+twice: ext fun(x: i32) -> i32 => x * 2
+sum: ext fun(p: Point) -> i32 => p.x + p.y
+first: ext fun(p: ptr[Point]) -> i32 => p.x
+both: ext fun(pair: Pair[i32]) -> i32 => pair.first * pair.second
 
 main: fun -> i32
 {

@@ -8,7 +8,7 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-sizeOfAny[T]: fun(imm value: T) -> usize = value.byteSize()
+sizeOfAny[T]: fun(imm value: T) -> usize => value.byteSize()
 
 main: fun -> i32
 {

@@ -8,10 +8,10 @@ Error at never_returns.ce:20:2
 20 │     ret 5
          ╘═══╛ Cannot return from 'returnsValue'
 
-Error at never_returns.ce:23:27
+Error at never_returns.ce:23:28
 22 │ 
-23 │ valueBody: fun -> never = 5
-                               ^ Cannot return from 'valueBody'
+23 │ valueBody: fun -> never => 5
+                                ^ Cannot return from 'valueBody'
 
 Error at never_returns.ce:27:9
 26 │ {

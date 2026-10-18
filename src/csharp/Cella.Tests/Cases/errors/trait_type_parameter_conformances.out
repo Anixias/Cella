@@ -1,6 +1,6 @@
 Error at trait_type_parameter_conformances.ce:23:2
 22 │ 
-23 │ next: fun(mut self) -> option[i32] = none
+23 │ next: fun(mut self) -> option[i32] => none
      ╘══╛ 'next' doesn't match 'Iterator[i64].next'
 
 Error at trait_type_parameter_conformances.ce:26:17
@@ -44,7 +44,7 @@ Error at trait_type_parameter_conformances.ce:67:18
                       ╘════╛ 'pair[A, A]' implements 'Tag[A]' more than once
 
 Error at trait_type_parameter_conformances.ce:79:2
-78 │ next: fun(mut self) -> option[i32] = none
+78 │ next: fun(mut self) -> option[i32] => none
 79 │ flush: fun(self) { }
      ╘═══╛ 'flush' isn't a member of 'Iterator[i32]'
 

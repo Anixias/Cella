@@ -19,7 +19,7 @@ Point: rec impl Hash
 {
 	x: i32
 
-	hash: fun(self) -> u64 = u64(self.x)
+	hash: fun(self) -> u64 => u64(self.x)
 }
 
 box[T]: rec
@@ -29,7 +29,7 @@ box[T]: rec
 
 box[T: Hash]: impl Hash
 {
-	hash: fun(imm self) -> u64 = self.value.hash() + 1
+	hash: fun(imm self) -> u64 => self.value.hash() + 1
 }
 
 pair[A, B]: rec impl Hash
@@ -37,28 +37,28 @@ pair[A, B]: rec impl Hash
 	first: A
 	second: B
 
-	hash: fun(imm self) -> u64 = 2
+	hash: fun(imm self) -> u64 => 2
 }
 
 holder[T: Hash]: rec
 {
 	value: T
 
-	digest: fun(imm self) -> u64 = self.value.hash() * 10
+	digest: fun(imm self) -> u64 => self.value.hash() * 10
 }
 
 Cell: rec impl Mapper
 {
 	value: i32
 
-	apply[V]: fun(self, change: fun[i32 -> V]) -> V = change(self.value)
+	apply[V]: fun(self, change: fun[i32 -> V]) -> V => change(self.value)
 }
 
-describe[T: Hash]: fun(imm value: T) -> u64 = value.hash()
+describe[T: Hash]: fun(imm value: T) -> u64 => value.hash()
 
-triple: fun(value: i32) -> i64 = value * 3
+triple: fun(value: i32) -> i64 => value * 3
 
-run[T: Mapper]: fun(imm item: T) -> i64 = item.apply(triple)
+run[T: Mapper]: fun(imm item: T) -> i64 => item.apply(triple)
 
 main: fun -> i32
 {

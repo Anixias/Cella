@@ -26,9 +26,9 @@ note: fun(name: str) -> i32
 	ret 1
 }
 
-sum: fun(values: array[i32, 2]) -> i32 = values[0] + values[1]
+sum: fun(values: array[i32, 2]) -> i32 => values[0] + values[1]
 
-total: fun(first: i32, pair: Pair) -> i32 = first + pair.left + pair.right
+total: fun(first: i32, pair: Pair) -> i32 => first + pair.left + pair.right
 
 main: fun -> i32
 {

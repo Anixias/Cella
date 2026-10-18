@@ -1,11 +1,11 @@
 Error at parameter_list_shapes.ce:3:15
 2 │ 
-3 │ untyped: fun(x) -> i32 = 0
+3 │ untyped: fun(x) -> i32 => 0
                   ^ Expected ':' and a type
 
 Error at parameter_list_shapes.ce:5:21
 4 │ 
-5 │ trailing: fun(x: i32,) -> i32 = x
+5 │ trailing: fun(x: i32,) -> i32 => x
                         ^ Cannot end lists with ','
 
 Error at parameter_list_shapes.ce:7:16
@@ -15,7 +15,7 @@ Error at parameter_list_shapes.ce:7:16
 
 Error at parameter_list_shapes.ce:9:19
 8 │ 
-9 │ comma: fun(a: i32 b: i32) -> i32 = a
+9 │ comma: fun(a: i32 b: i32) -> i32 => a
                       ^ Expected ',' or ')'
                       | To match the '(' on line 9
 
@@ -26,7 +26,7 @@ Error at parameter_list_shapes.ce:11:31
 
 Error at parameter_list_shapes.ce:16:15
 15 │ n: i32
-16 │ get: fun(self: P) -> i32 = 1
+16 │ get: fun(self: P) -> i32 => 1
                   ^ Cannot declare a type for 'self'
 
 [compilation failed]

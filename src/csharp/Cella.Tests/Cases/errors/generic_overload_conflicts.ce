@@ -14,8 +14,8 @@ defaults[T]: fun(imm x: T) {}
 modes[T]: fun(mut x: T) {}
 modes[T]: fun(imm x: T) {}
 
-results[T]: fun(imm x: T) -> i32 = 1
-results[T]: fun(imm x: T) -> i64 = 2
+results[T]: fun(imm x: T) -> i32 => 1
+results[T]: fun(imm x: T) -> i64 => 2
 
 bounded[T: Show]: fun(imm x: T) {}
 bounded[U: Show]: fun(imm x: U) {}
@@ -28,4 +28,4 @@ Box: rec
 	put[U]: fun(self, imm v: U) {}
 }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

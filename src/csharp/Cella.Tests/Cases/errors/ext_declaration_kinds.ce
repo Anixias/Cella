@@ -9,4 +9,4 @@ Code: ext ref enum { a }
 
 Second: ref ext enum { b }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

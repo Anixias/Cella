@@ -19,7 +19,7 @@ counted[T]: rec
 		made += 1
 	}
 
-	total: get -> i32 = made
+	total: get -> i32 => made
 
 	reseed: fun -> i32
 	{
@@ -27,7 +27,7 @@ counted[T]: rec
 		ret seed
 	}
 
-	isEmpty: fun -> bool = none == null
+	isEmpty: fun -> bool => none == null
 }
 
 main: fun -> i32

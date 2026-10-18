@@ -4,7 +4,7 @@ Grid: rec
 {
 	cells: array[i32, 4]
 
-	[]: op(mut self, i: usize) -> mut[i32] = mut self.cells[i]
+	[]: op(mut self, i: usize) -> mut[i32] => mut self.cells[i]
 }
 
 main: fun -> i32

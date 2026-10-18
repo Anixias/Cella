@@ -30,17 +30,17 @@ Error at trait_names.ce:40:18
 
 Error at trait_names.ce:42:19
 41 │ 
-42 │ apply: fun(value: Self) -> i32 = 0
+42 │ apply: fun(value: Self) -> i32 => 0
                        ╘══╛ Type 'Self' not found in this scope
 
 Error at trait_names.ce:44:21
 43 │ 
-44 │ measure: fun(value: Hash) -> i32 = 0
+44 │ measure: fun(value: Hash) -> i32 => 0
                          ╘══╛ 'Hash' is not a type
 
 Error at trait_names.ce:46:10
 45 │ 
-46 │ check[T: Shape]: fun(imm value: T) -> i32 = 0
+46 │ check[T: Shape]: fun(imm value: T) -> i32 => 0
               ╘═══╛ 'Shape' is not a trait
 
 [compilation failed]

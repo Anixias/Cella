@@ -4,7 +4,7 @@ Text: rec
 {
 	id: i32
 
-	<: op(own a: Text, own b: Text) -> bool = a.id < b.id
+	<: op(own a: Text, own b: Text) -> bool => a.id < b.id
 
 	drop: op
 	{
@@ -20,14 +20,14 @@ Vec: rec
 {
 	x: i32
 
-	<: op(a: Vec, b: Vec) -> Mask = Mask(0)
+	<: op(a: Vec, b: Vec) -> Mask => Mask(0)
 }
 
 Counter: rec
 {
 	n: i32
 
-	<: op(own a: Counter, own b: Counter) -> bool = a.n < b.n
+	<: op(own a: Counter, own b: Counter) -> bool => a.n < b.n
 }
 
 main: fun -> i32

@@ -1,3 +1,3 @@
 [stderr]
-Panic at char_conversion_trap.ce:3:29: conversion overflow
+Panic at char_conversion_trap.ce:3:30: conversion overflow
 [exit code 101]

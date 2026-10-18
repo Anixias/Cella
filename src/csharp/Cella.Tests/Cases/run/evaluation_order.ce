@@ -52,7 +52,7 @@ loud: fun(id: i32) -> Buffer
 	ret Buffer(id)
 }
 
-show: fun(imm buffer: Buffer) -> i32 = buffer.id
+show: fun(imm buffer: Buffer) -> i32 => buffer.id
 
 three: fun(a: i32, b: i32, c: i32) -> i32
 {

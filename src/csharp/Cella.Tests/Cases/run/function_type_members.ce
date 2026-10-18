@@ -5,22 +5,22 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-triple: fun(n: i32) -> i32 = n * 3
-twice: fun(n: i32) -> i32 = n * 2
+triple: fun(n: i32) -> i32 => n * 3
+twice: fun(n: i32) -> i32 => n * 2
 
 Handler: rec
 {
 	callback: req fun[i32 -> i32]
 	scale: i32
 
-	helper: pvt fun(self) -> i32 = self.scale
+	helper: pvt fun(self) -> i32 => self.scale
 	current: prop fun[i32 -> i32]
 	{
-		get(self) = self.callback
+		get(self) => self.callback
 		set(mut self, own value) { self.callback = value }
 	}
 
-	run: fun(self, n: i32) -> i32 = self.callback(n) + self.helper()
+	run: fun(self, n: i32) -> i32 => self.callback(n) + self.helper()
 }
 
 main: fun -> i32

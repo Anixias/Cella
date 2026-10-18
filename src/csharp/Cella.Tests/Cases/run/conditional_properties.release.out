@@ -1,4 +1,4 @@
 42
 [stderr]
-Panic at main.ce:10:35: addition overflow
+Panic at main.ce:10:36: addition overflow
 [exit code 101]

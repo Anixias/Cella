@@ -54,7 +54,7 @@ limit: const usize = 4096
 corners: const array[i32, 3] = [1, 2, 3]
 big: const Big = Big(1, 2, 3)
 
-double: fun(x: i32) -> i32 = x * 2
+double: fun(x: i32) -> i32 => x * 2
 
 open: fun(path: str, mode: Mode = read, size: usize = limit)
 {
@@ -75,19 +75,19 @@ effects: fun(effect: Effect = Effect.hit(7), pointer: ptr[i32] = null, values: a
 		printf("none\n")
 }
 
-maybe: fun(value: nullable[ptr[i32]] = none) -> i32 = i32(value is some(_))
+maybe: fun(value: nullable[ptr[i32]] = none) -> i32 => i32(value is some(_))
 
-sum: fun(value: Big = big) -> i64 = value.a + value.b + value.c
+sum: fun(value: Big = big) -> i64 => value.a + value.b + value.c
 
-owned: fun(own name: str = "owned") -> usize = name.byteLength
+owned: fun(own name: str = "owned") -> usize => name.byteLength
 
 count: fun(first: i32 = 9, ...rest: view[i32])
 {
 	printf("%d %zu\n", first, rest.length)
 }
 
-wide: fun(x: i64, y: i32 = 0) -> i32 = 1
-wide: fun(x: i32) -> i32 = 2
+wide: fun(x: i64, y: i32 = 0) -> i32 => 1
+wide: fun(x: i32) -> i32 => 2
 
 pick[T: copy]: fun(value: T, fallback: ptr[T] = null) -> T
 {
@@ -97,7 +97,7 @@ pick[T: copy]: fun(value: T, fallback: ptr[T] = null) -> T
 	ret value
 }
 
-typed[T]: fun(x: ptr[T] = null) -> i32 = i32(x == null)
+typed[T]: fun(x: ptr[T] = null) -> i32 => i32(x == null)
 
 Level: enum
 {
@@ -120,7 +120,7 @@ Console: rec impl Logger
 	}
 }
 
-through[T: Logger]: fun(imm logger: T) = logger.log(info)
+through[T: Logger]: fun(imm logger: T) => logger.log(info)
 
 Counter: rec
 {

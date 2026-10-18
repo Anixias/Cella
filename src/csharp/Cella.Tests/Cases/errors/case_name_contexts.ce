@@ -2,7 +2,7 @@ mod test
 
 Team: enum { red, blue }
 
-show: fun(t: Team) -> i32 = 0
+show: fun(t: Team) -> i32 => 0
 
 compare: fun -> i32
 {
@@ -10,7 +10,7 @@ compare: fun -> i32
 	ret i32(t < blue)
 }
 
-misspelled: fun -> i32 = show(bleu)
+misspelled: fun -> i32 => show(bleu)
 
 unused: fun -> i32
 {
@@ -18,4 +18,4 @@ unused: fun -> i32
 	ret 0
 }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

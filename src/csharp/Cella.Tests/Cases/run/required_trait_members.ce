@@ -10,27 +10,27 @@ Zero: trait
 	zero: fun -> Self
 	new: op(value: i32)
 	size: get(imm self) -> i32
-	twice: fun(imm self) -> i32 = self.size * 2
+	twice: fun(imm self) -> i32 => self.size * 2
 }
 
 Num: trait req Zero
 {
 	+: op(imm a: Self, imm b: Self) -> Self
-	total: fun(imm self) -> i32 = self.twice() + self.size
+	total: fun(imm self) -> i32 => self.twice() + self.size
 }
 
 Meter: rec impl Zero + Num
 {
 	n: i32
 
-	zero: fun -> Meter = Meter(0)
+	zero: fun -> Meter => Meter(0)
 	new: op(value: i32)
 	{
 		self.n = value
 	}
 
-	size: get(self) -> i32 = self.n
-	+: op(a: Meter, b: Meter) -> Meter = Meter(a.n + b.n)
+	size: get(self) -> i32 => self.n
+	+: op(a: Meter, b: Meter) -> Meter => Meter(a.n + b.n)
 }
 
 Base: trait
@@ -40,27 +40,27 @@ Base: trait
 
 Left: trait req Base
 {
-	left: fun(imm self) -> i32 = self.id() + 1
+	left: fun(imm self) -> i32 => self.id() + 1
 }
 
 Right: trait req Base
 {
-	right: fun(imm self) -> i32 = self.id() + 2
+	right: fun(imm self) -> i32 => self.id() + 2
 }
 
 Both: trait req Left + Right
 {
-	sum: fun(imm self) -> i32 = self.left() + self.right() + self.id()
+	sum: fun(imm self) -> i32 => self.left() + self.right() + self.id()
 }
 
 Item: rec impl Base + Left + Right + Both
 {
 	n: i32
 
-	id: fun(self) -> i32 = self.n
+	id: fun(self) -> i32 => self.n
 }
 
-build[T: Num + noref]: fun(value: i32) -> T = T(value) + T.zero()
+build[T: Num + noref]: fun(value: i32) -> T => T(value) + T.zero()
 
 report[T: Num]: fun(imm value: T) -> i32
 {
@@ -68,11 +68,11 @@ report[T: Num]: fun(imm value: T) -> i32
 	ret value.size + value.twice() * 10 + value.total() * 100 + picked * 1000
 }
 
-ids[T: Both]: fun(imm value: T) -> i32 = value.id() + value.left() * 10 + value.sum() * 100
+ids[T: Both]: fun(imm value: T) -> i32 => value.id() + value.left() * 10 + value.sum() * 100
 
-base: fun(imm item: dyn[Base]) -> i32 = item.id()
+base: fun(imm item: dyn[Base]) -> i32 => item.id()
 
-through: fun(imm item: dyn[Both]) -> i32 = item.id() + item.left() * 10 + item.sum() * 100 + base(imm item) * 1000
+through: fun(imm item: dyn[Both]) -> i32 => item.id() + item.left() * 10 + item.sum() * 100 + base(imm item) * 1000
 
 main: fun -> i32
 {

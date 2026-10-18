@@ -24,7 +24,7 @@ Error at enum_lifecycle_members.ce:22:6
          ^ Cannot declare type parameters on constructors
 
 Error at enum_lifecycle_members.ce:27:2
-26 │ describe: fun(self) -> i32 = 1
+26 │ describe: fun(self) -> i32 => 1
 27 │ count: i32
      ╘═══╛ Cannot declare fields in enums
 

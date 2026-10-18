@@ -1,6 +1,6 @@
-Error at main.ce:10:36
+Error at main.ce:10:37
  9 │ {
-10 │     peek: fun(imm self) -> i32 = self.v
-                                           ^ 'v' is private to its type
+10 │     peek: fun(imm self) -> i32 => self.v
+                                            ^ 'v' is private to its type
 
 [compilation failed]

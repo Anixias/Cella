@@ -16,9 +16,9 @@ view[T]: ref rec
 		self.length = length
 	}
 
-	as[N: const usize]: op(imm values: array[T, N]) -> view[T] = view[T](@values, N)
+	as[N: const usize]: op(imm values: array[T, N]) -> view[T] => view[T](@values, N)
 
-	[]: op(self, i: usize) -> imm[T] = imm self.data[i]
+	[]: op(self, i: usize) -> imm[T] => imm self.data[i]
 }
 
 Arg: ref enum
@@ -26,8 +26,8 @@ Arg: ref enum
 	int(value: i32)
 	text(value: str)
 
-	as: op(value: i32) -> Arg = int(value)
-	as: op(value: str) -> Arg = text(value)
+	as: op(value: i32) -> Arg => int(value)
+	as: op(value: str) -> Arg => text(value)
 }
 
 sum: fun(...values: view[i32]) -> i32
@@ -68,7 +68,7 @@ last[T: copy]: fun(first: T, ...rest: view[T]) -> T
 	ret rest[rest.length - 1]
 }
 
-count[T]: fun(...values: view[T]) -> usize = values.length
+count[T]: fun(...values: view[T]) -> usize => values.length
 
 f: fun(x: str)
 {

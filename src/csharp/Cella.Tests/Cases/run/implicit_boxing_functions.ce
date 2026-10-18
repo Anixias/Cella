@@ -18,9 +18,9 @@ boxed[K: trait]: rec
 		ret boxed[K](memory)
 	}
 
-	as[T: K + noref]: op(own value: T) -> boxed[K] = boxed[K].of(own value)
+	as[T: K + noref]: op(own value: T) -> boxed[K] => boxed[K].of(own value)
 
-	*: op(imm self) -> imm[dyn[K]] = imm *self.object
+	*: op(imm self) -> imm[dyn[K]] => imm *self.object
 
 	drop: op
 	{
@@ -29,16 +29,16 @@ boxed[K: trait]: rec
 	}
 }
 
-twice: fun(x: i32) -> i32 = x * 2
+twice: fun(x: i32) -> i32 => x * 2
 
-run: fun(own f: boxed[fun[i32 -> i32]], x: i32) -> i32 = f(x)
+run: fun(own f: boxed[fun[i32 -> i32]], x: i32) -> i32 => f(x)
 
 main: fun -> i32
 {
 	val step = 3
 	val named: boxed[fun[i32 -> i32]] = twice
-	val plain: boxed[fun[i32 -> i32]] = fun(x: i32) -> i32 = x + 1
-	val captured: boxed[fun[i32 -> i32]] = own fun(x: i32) -> i32 = x + step
-	printf("%d %d %d %d %d\n", named(5), plain(5), captured(5), run(twice, 4), run(fun(x: i32) -> i32 = x - 1, 4))
+	val plain: boxed[fun[i32 -> i32]] = fun(x: i32) -> i32 => x + 1
+	val captured: boxed[fun[i32 -> i32]] = own fun(x: i32) -> i32 => x + step
+	printf("%d %d %d %d %d\n", named(5), plain(5), captured(5), run(twice, 4), run(fun(x: i32) -> i32 => x - 1, 4))
 	ret 0
 }

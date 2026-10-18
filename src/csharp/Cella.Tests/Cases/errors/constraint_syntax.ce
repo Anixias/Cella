@@ -11,4 +11,4 @@ box[T]: rec
 
 box[T: noref]: impl ,
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

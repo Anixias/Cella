@@ -6,7 +6,7 @@ ext
 }
 
 Color: ext enum { red, green, blue }
-twice: ext fun(x: i32) -> i32 = x * 2
+twice: ext fun(x: i32) -> i32 => x * 2
 
 nullable[T: null]: enum match T
 {

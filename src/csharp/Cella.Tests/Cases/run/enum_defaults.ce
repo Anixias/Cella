@@ -47,11 +47,11 @@ Event: ext enum
 	closed = 2
 }
 
-amount: fun(effect: Effect) -> i32 = match effect { hit(val n) => n, none => 0 }
-speed: fun(mode: Mode) -> i32 = match mode { idle => -1, running(val s) => s }
-height: fun(level: Level) -> i32 = match level { high => 2, low => 0 }
-reading: fun(signal: Signal) -> i32 = match signal { data(val v) => v, quiet => -2 }
-keyCode: fun(event: Event) -> i32 = match event { key(val c) => c, closed => 2, else => -3 }
+amount: fun(effect: Effect) -> i32 => match effect { hit(val n) => n, none => 0 }
+speed: fun(mode: Mode) -> i32 => match mode { idle => -1, running(val s) => s }
+height: fun(level: Level) -> i32 => match level { high => 2, low => 0 }
+reading: fun(signal: Signal) -> i32 => match signal { data(val v) => v, quiet => -2 }
+keyCode: fun(event: Event) -> i32 => match event { key(val c) => c, closed => 2, else => -3 }
 
 main: fun -> i32
 {

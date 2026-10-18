@@ -15,7 +15,7 @@ Unit: rec
 
 	health: prop i32
 	{
-		get(self) = self.hp
+		get(self) => self.hp
 		set(mut self, value)
 		{
 			self.hp = value
@@ -24,14 +24,14 @@ Unit: rec
 
 	armor: prop i32
 	{
-		get(self) = self.plating
+		get(self) => self.plating
 		pvt set(mut self, value)
 		{
 			self.plating = value
 		}
 	}
 
-	total: get -> i32 = spawned
+	total: get -> i32 => spawned
 
 	harden: fun(mut self)
 	{
@@ -49,14 +49,14 @@ Color: enum
 
 	picked: prop i32
 	{
-		get = picks
+		get => picks
 		set(value)
 		{
 			picks = value
 		}
 	}
 
-	isWarm: get(self) -> bool = self == Color.red
+	isWarm: get(self) -> bool => self == Color.red
 
-	code: get(self) -> i32 = i32(self) * 10 + picked
+	code: get(self) -> i32 => i32(self) * 10 + picked
 }

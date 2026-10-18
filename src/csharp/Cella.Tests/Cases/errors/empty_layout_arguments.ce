@@ -1,6 +1,6 @@
 mod test
 
-size: fun -> usize = sizeOf()
-alignment: fun -> usize = alignOf()
+size: fun -> usize => sizeOf()
+alignment: fun -> usize => alignOf()
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

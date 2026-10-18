@@ -12,6 +12,6 @@ f: fun -> i32
 	ret x
 }
 
-g: fun -> i32 = )
+g: fun -> i32 => )
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

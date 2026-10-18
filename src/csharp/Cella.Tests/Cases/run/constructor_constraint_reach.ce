@@ -60,8 +60,8 @@ Rest: rec
 	}
 }
 
-one[T: new(i32)]: fun -> T = T(5)
-two[T: new(i32, i32)]: fun -> T = T(4, 7)
+one[T: new(i32)]: fun -> T => T(5)
+two[T: new(i32, i32)]: fun -> T => T(4, 7)
 
 main: fun -> i32
 {

@@ -5,7 +5,7 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-local: pub fun(values: array[i32, 2]) -> i32 = values[0] + values[1]
+local: pub fun(values: array[i32, 2]) -> i32 => values[0] + values[1]
 
 main: fun -> i32
 {

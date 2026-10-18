@@ -14,8 +14,8 @@ Point: rec
 {
 	x: i32
 
-	==: op(left: Point, right: Point) -> bool = left.x == right.x
-	!=: op(left: Point, right: Point) -> bool = left.x != right.x
+	==: op(left: Point, right: Point) -> bool => left.x == right.x
+	!=: op(left: Point, right: Point) -> bool => left.x != right.x
 }
 
 main: fun -> i32

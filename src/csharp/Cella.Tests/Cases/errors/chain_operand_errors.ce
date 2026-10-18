@@ -8,4 +8,4 @@ main: fun -> i32
 	ret 0
 }
 
-pointers: fun(p: ptr[i32], q: ptr[u8], r: ptr[i32]) -> bool = p < q < r
+pointers: fun(p: ptr[i32], q: ptr[u8], r: ptr[i32]) -> bool => p < q < r

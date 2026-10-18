@@ -8,7 +8,7 @@ V: rec
 	{
 	}
 
-	as: op(own self) -> W = W(self.id)
+	as: op(own self) -> W => W(self.id)
 }
 
 W: rec
@@ -22,6 +22,6 @@ viaReturn: fun -> W
 	ret v
 }
 
-viaBody: fun(own v: V) -> W = v
+viaBody: fun(own v: V) -> W => v
 
-main: fun -> i32 = viaReturn().id * 10 + viaBody(V(2)).id
+main: fun -> i32 => viaReturn().id * 10 + viaBody(V(2)).id

@@ -3,14 +3,14 @@ mod test
 pub
 {
 	Point: pub rec { x: i32 }
-	helper: fun -> i32 = 1
+	helper: fun -> i32 => 1
 }
 
 pvt
 {
 	pub
 	{
-		other: fun -> i32 = 2
+		other: fun -> i32 => 2
 	}
 }
 
@@ -22,4 +22,4 @@ Shape: rec
 	}
 }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

@@ -14,7 +14,7 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-triple: ext fun(x: i32) -> i32 = x * 3
+triple: ext fun(x: i32) -> i32 => x * 3
 
 main: fun -> i32
 {

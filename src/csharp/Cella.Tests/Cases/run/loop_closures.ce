@@ -5,7 +5,7 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-apply: fun(f: fun[-> i32]) -> i32 = f()
+apply: fun(f: fun[-> i32]) -> i32 => f()
 
 main: fun -> i32
 {
@@ -13,8 +13,8 @@ main: fun -> i32
 	var total = 0
 	for mut v in values
 	{
-		val get = fun -> i32 = v
-		total += get() + apply(fun -> i32 = v)
+		val get = fun -> i32 => v
+		total += get() + apply(fun -> i32 => v)
 		printf("%d\n", get())
 	}
 

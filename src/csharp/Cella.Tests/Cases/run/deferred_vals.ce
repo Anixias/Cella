@@ -15,7 +15,7 @@ Buffer: rec
 	}
 }
 
-make: fun(id: i32) -> Buffer = Buffer(id)
+make: fun(id: i32) -> Buffer => Buffer(id)
 
 pick: fun(flag: bool) -> i32
 {

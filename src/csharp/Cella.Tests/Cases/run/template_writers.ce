@@ -17,7 +17,7 @@ Display: pub trait
 
 str: impl Display
 {
-	show: fun(self, mut out: dyn[Writer], spec: str) = out.write(self)
+	show: fun(self, mut out: dyn[Writer], spec: str) => out.write(self)
 }
 
 i32: impl Display

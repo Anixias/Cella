@@ -34,31 +34,31 @@ P: rec
 
 P: impl B
 {
-	size: get(self) -> i32 = 2
+	size: get(self) -> i32 => 2
 	count: prop i32
 	{
-		get(self) = 2
+		get(self) => 2
 		set(mut self, value)
 		{
 		}
 	}
-	total: get -> i32 = 2
+	total: get -> i32 => 2
 }
 
 P: impl A
 {
-	size: get(self) -> i32 = 1
+	size: get(self) -> i32 => 1
 	count: prop i32
 	{
-		get(self) = 1
+		get(self) => 1
 		set(mut self, value)
 		{
 		}
 	}
-	total: get -> i32 = 1
+	total: get -> i32 => 1
 }
 
-g[T: A + B]: fun(imm value: T) -> i32 = A(value).size * 10 + B(value).size
+g[T: A + B]: fun(imm value: T) -> i32 => A(value).size * 10 + B(value).size
 
 main: fun -> i32
 {

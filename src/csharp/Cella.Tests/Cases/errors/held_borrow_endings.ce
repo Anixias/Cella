@@ -49,7 +49,7 @@ closureViewScope: fun -> i32
 {
 	var y = 0
 	var view: imm[i32] = y
-	val f = fun -> i32 = view
+	val f = fun -> i32 => view
 	{
 		var x = 1
 		view = x
@@ -62,7 +62,7 @@ closureViewMoved: fun -> i32
 {
 	val text = Text(1)
 	val r: imm[Text] = imm text
-	val f = fun -> i32 = r.id
+	val f = fun -> i32 => r.id
 	consume(own text)
 	ret f()
 }
@@ -70,10 +70,10 @@ closureViewMoved: fun -> i32
 closureOfClosure: fun -> i32
 {
 	val text = Text(1)
-	val inner = fun -> i32 = text.id
-	val outer = fun -> i32 = inner() + 1
+	val inner = fun -> i32 => text.id
+	val outer = fun -> i32 => inner() + 1
 	consume(own text)
 	ret outer()
 }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

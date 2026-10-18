@@ -30,9 +30,9 @@ BufferBox: rec
 		own *self.pointer = buffer
 	}
 
-	*: op(imm self) -> imm[Buffer] = imm *self.pointer
+	*: op(imm self) -> imm[Buffer] => imm *self.pointer
 
-	*: op(mut self) -> mut[Buffer] = mut *self.pointer
+	*: op(mut self) -> mut[Buffer] => mut *self.pointer
 
 	drop: op
 	{
@@ -45,7 +45,7 @@ Shared: rec
 {
 	pointer: req ptr[Buffer]
 
-	*: op(imm self) -> imm[Buffer] = imm *self.pointer
+	*: op(imm self) -> imm[Buffer] => imm *self.pointer
 
 	drop: op
 	{
@@ -77,4 +77,4 @@ moveOut: fun(imm boxed: BufferBox) -> i32
 	ret buffer.id
 }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

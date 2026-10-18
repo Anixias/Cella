@@ -15,9 +15,9 @@ R: rec
 	}
 }
 
-flip: fun -> bool = true
+flip: fun -> bool => true
 
-rows: fun -> usize = 2
+rows: fun -> usize => 2
 
 records: fun -> i64
 {

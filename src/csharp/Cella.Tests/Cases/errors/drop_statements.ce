@@ -13,7 +13,7 @@ box[T]: rec
 {
 	pointer: ptr[T]
 
-	*: op(self) -> imm[T] = imm *self.pointer
+	*: op(self) -> imm[T] => imm *self.pointer
 }
 
 plain[T: copy]: fun(memory: ptr[T])
@@ -41,4 +41,4 @@ pointer: fun(memory: ptr[Noisy])
 	drop memory
 }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

@@ -5,4 +5,4 @@ first: fun -> usize
 	ret alignOf i32
 }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

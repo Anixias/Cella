@@ -27,7 +27,7 @@ Panel: rec
 
 	action: prop fun[i32 -> i32]
 	{
-		get(self) = self.handler
+		get(self) => self.handler
 		set(mut self, own value) { self.handler = value }
 	}
 }
@@ -42,7 +42,7 @@ beep: fun
 	printf("beep\n")
 }
 
-double: fun(x: i32) -> i32 = x * 2
+double: fun(x: i32) -> i32 => x * 2
 
 each: fun(values: array[i32, 3], visit: fun[i32])
 {
@@ -64,9 +64,9 @@ pick: fun(first: bool, a: fun[-> i32], b: fun[-> i32]) -> ref fun[-> i32]
 	ret b
 }
 
-filter: fun(keep: fun[i32 -> bool]) -> Filter = Filter(keep)
+filter: fun(keep: fun[i32 -> bool]) -> Filter => Filter(keep)
 
-transform[T, U]: fun(imm value: T, f: fun[imm T -> U]) -> U = f(imm value)
+transform[T, U]: fun(imm value: T, f: fun[imm T -> U]) -> U => f(imm value)
 
 twice: fun(f: fun[fun[i32], i32], visit: fun[i32])
 {
@@ -94,16 +94,16 @@ main: fun -> i32
 
 	val run = each
 	run([4, 5, 6], fun(value) { total += value })
-	val visitor = fun(visit: fun[i32], value: i32) = visit(value * 100)
+	val visitor = fun(visit: fun[i32], value: i32) => visit(value * 100)
 	twice(visitor, fun(value) { total += value })
 	maybe(some(fun(value) { total += value }), 1000)
 	maybe(none, 5)
 	printf("%d\n", total)
 
 	val base = 7
-	val chosen = pick(false, fun = base, fun = base + 1)
-	val big = filter(fun(x) = x > base)
-	printf("%d %d %d %d %d\n", chosen(), i32(big.keep(9)), i32(big.keep(3)), transform(3, fun(x) = x + base),
+	val chosen = pick(false, fun => base, fun => base + 1)
+	val big = filter(fun(x) => x > base)
+	printf("%d %d %d %d %d\n", chosen(), i32(big.keep(9)), i32(big.keep(3)), transform(3, fun(x) => x + base),
 		transform(4, double))
 
 	var button = Button(beep)
@@ -112,7 +112,7 @@ main: fun -> i32
 	button.onClick()
 
 	var panel = Panel(double)
-	panel.action = fun(x) = x + 1
+	panel.action = fun(x) => x + 1
 	val action = panel.action
 	printf("%d\n", action(5))
 	ret 0

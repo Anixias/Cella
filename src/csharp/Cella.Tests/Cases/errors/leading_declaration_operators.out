@@ -5,8 +5,8 @@ Error at leading_declaration_operators.ce:12:2
 
 Error at leading_declaration_operators.ce:17:3
 16 │ area: get(imm self) -> i32
-17 │     = self.side * self.side
-         ^ Cannot start a line with '='
+17 │     => self.side * self.side
+         ╘╛ Cannot start a line with '=>'
 
 Error at leading_declaration_operators.ce:20:3
 19 │ new: op
@@ -25,13 +25,13 @@ Error at leading_declaration_operators.ce:31:2
 
 Error at leading_declaration_operators.ce:34:2
 33 │ f: fun -> i32
-34 │     = 5
-         ^ Cannot start a line with '='
+34 │     => 5
+         ╘╛ Cannot start a line with '=>'
 
 Error at leading_declaration_operators.ce:39:3
 38 │ val h = fun(x: i32) -> i32
-39 │     = x
-         ^ Cannot start a line with '='
+39 │     => x
+         ╘╛ Cannot start a line with '=>'
 
 Error at leading_declaration_operators.ce:46:3
 45 │ var x: i32

@@ -14,9 +14,9 @@ Name: rec
 
 Slot: enum { empty, full(pair: Pair) }
 
-make: fun -> Pair = Pair(Name(3), Name(4))
+make: fun -> Pair => Pair(Name(3), Name(4))
 
-makeSlot: fun -> Slot = Slot.full(Pair(Name(5), Name(6)))
+makeSlot: fun -> Slot => Slot.full(Pair(Name(5), Name(6)))
 
 Pair: rec
 {

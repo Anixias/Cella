@@ -16,15 +16,15 @@ Plain: enum { a = 0, 1 }
 
 ext { puts: fun(text: cstr) -> i32 abs: fun(v: i32) -> i32 }
 
-pub { one: fun -> i32 = 1 two: fun -> i32 = 2 }
+pub { one: fun -> i32 => 1 two: fun -> i32 => 2 }
 
 Counter: rec
 {
 	value: i32
 
-	doubled: prop i32 { get(imm self) = self.value * 2 set(mut self, next) { self.value = next / 2 } }
+	doubled: prop i32 { get(imm self) => self.value * 2 set(mut self, next) { self.value = next / 2 } }
 }
 
-three: fun -> i32 = 3 four: fun -> i32 = 4
+three: fun -> i32 => 3 four: fun -> i32 => 4
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

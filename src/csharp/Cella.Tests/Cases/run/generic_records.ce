@@ -22,7 +22,7 @@ pair[A: noref, B: noref]: rec
 	first: A
 	second: B
 
-	left: get(imm self) -> imm[A] = imm self.first
+	left: get(imm self) -> imm[A] => imm self.first
 
 	swapFirst: fun(mut self, own value: A) -> A
 	{
@@ -31,7 +31,7 @@ pair[A: noref, B: noref]: rec
 		ret old
 	}
 
-	make: fun(own first: A, own second: B) -> pair[A, B] = pair[A, B](own first, own second)
+	make: fun(own first: A, own second: B) -> pair[A, B] => pair[A, B](own first, own second)
 }
 
 box[T]: rec
@@ -44,9 +44,9 @@ box[T]: rec
 		own *self.pointer = own value
 	}
 
-	*: op(imm self) -> imm[T] = imm *self.pointer
+	*: op(imm self) -> imm[T] => imm *self.pointer
 
-	*: op(mut self) -> mut[T] = mut *self.pointer
+	*: op(mut self) -> mut[T] => mut *self.pointer
 
 	drop: op
 	{
@@ -71,11 +71,11 @@ buffer[T]: rec
 		own *(self.start + index) = own value
 	}
 
-	get: fun(imm self, index: usize) -> imm[T] = imm *(self.start + index)
+	get: fun(imm self, index: usize) -> imm[T] => imm *(self.start + index)
 
-	span: fun(imm self) -> isize = (self.start + self.length) - self.start
+	span: fun(imm self) -> isize => (self.start + self.length) - self.start
 
-	bytes: get -> usize = sizeOf(array[T, 3])
+	bytes: get -> usize => sizeOf(array[T, 3])
 
 	drop: op
 	{

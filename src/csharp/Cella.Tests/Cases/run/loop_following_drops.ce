@@ -25,13 +25,13 @@ take: fun(own d: D)
 	printf("take %d\n", d.id)
 }
 
-stop: fun(i: usize) -> bool = i == 2
+stop: fun(i: usize) -> bool => i == 2
 
-keep: fun(i: usize) -> bool = i % 2 == 1
+keep: fun(i: usize) -> bool => i % 2 == 1
 
-diagonal: fun(i: usize, j: usize) -> bool = i == j
+diagonal: fun(i: usize, j: usize) -> bool => i == j
 
-pick: fun(i: usize) -> bool = i == 1
+pick: fun(i: usize) -> bool => i == 1
 
 filled: fun
 {

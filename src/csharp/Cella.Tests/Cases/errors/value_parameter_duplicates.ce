@@ -4,7 +4,7 @@ ring[N: const usize]: rec
 {
 	value: i32
 
-	f[N: const usize]: fun(imm self) -> usize = N
+	f[N: const usize]: fun(imm self) -> usize => N
 }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

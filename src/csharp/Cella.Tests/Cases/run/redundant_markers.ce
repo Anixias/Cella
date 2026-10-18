@@ -50,7 +50,7 @@ Wrapper[T]: rec
 	value: req T
 }
 
-within[T: Eq + Ord]: fun(imm value: T, imm low: T) -> bool = low < value || value == low
+within[T: Eq + Ord]: fun(imm value: T, imm low: T) -> bool => low < value || value == low
 
 look: fun(imm texture: Texture) -> i32
 {
@@ -65,7 +65,7 @@ give: fun(own texture: Texture) -> Texture
 
 main: fun -> i32
 {
-	val double = own fun(x: i32) -> i32 = x * 2
+	val double = own fun(x: i32) -> i32 => x * 2
 	printf("%d\n", double(4))
 	ret 0
 }

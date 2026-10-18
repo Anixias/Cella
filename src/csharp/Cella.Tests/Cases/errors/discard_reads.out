@@ -1,7 +1,7 @@
-Error at discard_reads.ce:3:28
+Error at discard_reads.ce:3:29
 2 │ 
-3 │ read: fun(_: i32) -> i32 = _
-                               ^ Cannot use '_' as a value
+3 │ read: fun(_: i32) -> i32 => _
+                                ^ Cannot use '_' as a value
 
 Error at discard_reads.ce:8:6
 7 │ val _ = 1

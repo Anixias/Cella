@@ -24,7 +24,7 @@ Vec2: rec
 	}
 }
 
-outer[T: default]: fun -> box[T] = box[T]()
+outer[T: default]: fun -> box[T] => box[T]()
 
 blank[T: default]: fun -> T
 {

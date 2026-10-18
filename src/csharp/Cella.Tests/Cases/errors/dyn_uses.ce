@@ -9,24 +9,24 @@ Shape: trait
 	map[T]: fun(imm self, own value: T) -> T
 	take: fun(own self) -> i32
 	twin: get(imm self) -> Self
-	mix: pvt fun(imm self) -> i32 = 1
+	mix: pvt fun(imm self) -> i32 => 1
 }
 
 Circle: rec impl Shape
 {
 	radius: f64
 
-	area: fun(self) -> f64 = self.radius
+	area: fun(self) -> f64 => self.radius
 	scale: fun(mut self, factor: f64)
 	{
 		self.radius *= factor
 	}
 
-	label: fun -> i32 = 1
-	same: fun(self, other: Circle) -> bool = true
-	map[T]: fun(self, own value: T) -> T = value
-	take: fun(own self) -> i32 = 1
-	twin: get(self) -> Circle = self
+	label: fun -> i32 => 1
+	same: fun(self, other: Circle) -> bool => true
+	map[T]: fun(self, own value: T) -> T => value
+	take: fun(own self) -> i32 => 1
+	twin: get(self) -> Circle => self
 }
 
 Plain: rec
@@ -39,7 +39,7 @@ box[T]: rec
 	value: T
 }
 
-grow: fun(mut shape: dyn[Shape]) = shape.scale(2.0)
+grow: fun(mut shape: dyn[Shape]) => shape.scale(2.0)
 
 describe: fun(imm shape: dyn[Shape]) -> f64
 {

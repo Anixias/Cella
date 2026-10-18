@@ -2,4 +2,4 @@ mod test
 
 use lib.greet
 
-main: fun -> i32 = greet()
+main: fun -> i32 => greet()

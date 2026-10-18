@@ -45,12 +45,12 @@ Error at required_traits.ce:48:23
 
 Error at required_traits.ce:50:10
 49 │ 
-50 │ twice[T: Eq + Eq]: fun(imm a: T, imm b: T) -> bool = a == b
+50 │ twice[T: Eq + Eq]: fun(imm a: T, imm b: T) -> bool => a == b
               ╘╛ 'Eq' is required more than once
 
 Error at required_traits.ce:50:15
 49 │ 
-50 │ twice[T: Eq + Eq]: fun(imm a: T, imm b: T) -> bool = a == b
+50 │ twice[T: Eq + Eq]: fun(imm a: T, imm b: T) -> bool => a == b
                    ╘╛ 'Eq' is required more than once
 
 Error at required_traits.ce:52:20

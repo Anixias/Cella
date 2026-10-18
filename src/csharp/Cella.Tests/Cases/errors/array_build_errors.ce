@@ -12,13 +12,13 @@ R: rec
 
 wrongResult: fun -> i32
 {
-	val a = array[R, 3](fun(i) = 5)
+	val a = array[R, 3](fun(i) => 5)
 	ret 0
 }
 
 wrongArity: fun -> i32
 {
-	val b = array[R, 3](fun(i, j) = R(1))
+	val b = array[R, 3](fun(i, j) => R(1))
 	ret 0
 }
 
@@ -28,4 +28,4 @@ notFunction: fun -> i32
 	ret 0
 }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

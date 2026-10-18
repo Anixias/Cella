@@ -1,31 +1,31 @@
-Hint at own_self_field_moves.ce:26:37
+Hint at own_self_field_moves.ce:26:38
 25 │ 
-26 │ split: fun(own p: Pair) -> Token = own p.first
+26 │ split: fun(own p: Pair) -> Token => own p.first
+                                         ╘═╛ Redundant 'own'
+
+Error at own_self_field_moves.ce:26:42
+25 │ 
+26 │ split: fun(own p: Pair) -> Token => own p.first
+                                             ╘═════╛ Cannot move fields out of values with destructors
+
+Hint at own_self_field_moves.ce:28:34
+27 │ 
+28 │ deep: fun(own self) -> Token => own self.inner.token
+                                     ╘═╛ Redundant 'own'
+
+Error at own_self_field_moves.ce:28:38
+27 │ 
+28 │ deep: fun(own self) -> Token => own self.inner.token
+                                         ╘══════════════╛ Cannot move fields out of values with destructors
+
+Hint at own_self_field_moves.ce:35:36
+34 │ 
+35 │ take: fun(own p: Pair) -> Token => own p.first
                                         ╘═╛ Redundant 'own'
 
-Error at own_self_field_moves.ce:26:41
-25 │ 
-26 │ split: fun(own p: Pair) -> Token = own p.first
+Error at own_self_field_moves.ce:35:40
+34 │ 
+35 │ take: fun(own p: Pair) -> Token => own p.first
                                             ╘═════╛ Cannot move fields out of values with destructors
-
-Hint at own_self_field_moves.ce:28:33
-27 │ 
-28 │ deep: fun(own self) -> Token = own self.inner.token
-                                    ╘═╛ Redundant 'own'
-
-Error at own_self_field_moves.ce:28:37
-27 │ 
-28 │ deep: fun(own self) -> Token = own self.inner.token
-                                        ╘══════════════╛ Cannot move fields out of values with destructors
-
-Hint at own_self_field_moves.ce:35:35
-34 │ 
-35 │ take: fun(own p: Pair) -> Token = own p.first
-                                       ╘═╛ Redundant 'own'
-
-Error at own_self_field_moves.ce:35:39
-34 │ 
-35 │ take: fun(own p: Pair) -> Token = own p.first
-                                           ╘═════╛ Cannot move fields out of values with destructors
 
 [compilation failed]

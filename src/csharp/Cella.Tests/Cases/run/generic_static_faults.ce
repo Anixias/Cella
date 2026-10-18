@@ -10,7 +10,7 @@ slots[N: const usize]: rec
 	count: i32
 	per: const usize = 10 / N
 
-	share: fun(imm self) -> usize = per
+	share: fun(imm self) -> usize => per
 }
 
 main: fun -> i32

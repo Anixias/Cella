@@ -16,7 +16,7 @@ Counter: rec
 		self.count += 1
 	}
 
-	get: fun(self) -> i32 = self.count
+	get: fun(self) -> i32 => self.count
 }
 
 Shape: enum
@@ -42,9 +42,9 @@ list[T: noref + copy]: rec
 		}
 	}
 
-	[]: op(imm self, i: usize) -> imm[T] = imm self.items[i]
+	[]: op(imm self, i: usize) -> imm[T] => imm self.items[i]
 
-	[]: op(mut self, i: usize) -> mut[T] = mut self.items[i]
+	[]: op(mut self, i: usize) -> mut[T] => mut self.items[i]
 
 	drop: op
 	{
@@ -57,7 +57,7 @@ addTen: fun(mut value: i32)
 	value += 10
 }
 
-sum: fun(imm values: list[i32]) -> i32 = values[0] + values[1] + values[2]
+sum: fun(imm values: list[i32]) -> i32 => values[0] + values[1] + values[2]
 
 main: fun -> i32
 {

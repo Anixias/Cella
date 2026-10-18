@@ -13,7 +13,7 @@ box[T]: rec
 	}
 }
 
-add[T]: fun(imm value: T) -> T = value + 1
+add[T]: fun(imm value: T) -> T => value + 1
 
 grow[T]: fun(own value: T, depth: i32) -> i32
 {
@@ -31,6 +31,6 @@ first[T]: fun(own value: T, depth: i32) -> i32
 	ret second(box(value), depth - 1)
 }
 
-second[U]: fun(own value: U, depth: i32) -> i32 = first(value, depth)
+second[U]: fun(own value: U, depth: i32) -> i32 => first(value, depth)
 
-main: fun -> i32 = grow(1, 3) + box(2).deeper(1) + first(3, 2)
+main: fun -> i32 => grow(1, 3) + box(2).deeper(1) + first(3, 2)

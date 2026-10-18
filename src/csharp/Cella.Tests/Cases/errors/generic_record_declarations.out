@@ -21,7 +21,7 @@ Error at generic_record_declarations.ce:25:8
 
 Error at generic_record_declarations.ce:34:22
 33 │ 
-34 │ take: pub fun(value: box[Node]) -> i32 = 0
+34 │ take: pub fun(value: box[Node]) -> i32 => 0
                           ╘═══════╛ 'Node' is less visible than 'take'
 
 [compilation failed]

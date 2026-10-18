@@ -1,9 +1,9 @@
 mod test
 
-wide: fun(value: u16) -> i32 = 0
-signed: fun(value: i16) -> i32 = 0
-float: fun(value: f32) -> i32 = 0
-narrow: fun(value: u8) -> i32 = 0
+wide: fun(value: u16) -> i32 => 0
+signed: fun(value: i16) -> i32 => 0
+float: fun(value: f32) -> i32 => 0
+narrow: fun(value: u8) -> i32 => 0
 
 ext
 {
@@ -35,7 +35,7 @@ main: fun -> i32
 	var tooBig = 300
 	val byte: u8 = tooBig
 
-	val untyped = fun(x) = x * 2
+	val untyped = fun(x) => x * 2
 	val unknown = nowhere
 
 	val text = "hi"

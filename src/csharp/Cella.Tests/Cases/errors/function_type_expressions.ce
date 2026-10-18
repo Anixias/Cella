@@ -1,9 +1,9 @@
 mod test
 
-pick: fun(n: i32) -> i32 = n + 1
-pick: fun(n: i64) -> i64 = n + 100
+pick: fun(n: i32) -> i32 => n + 1
+pick: fun(n: i64) -> i64 => n + 100
 
-triple: fun(n: i32) -> i32 = n * 3
+triple: fun(n: i32) -> i32 => n * 3
 
 Holder: rec
 {

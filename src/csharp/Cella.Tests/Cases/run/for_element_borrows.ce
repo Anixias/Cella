@@ -18,7 +18,7 @@ Bag: rec
 {
 	items: array[Name, 3]
 
-	in: op(imm self) -> BagCursor = BagCursor(imm self, 0, 0)
+	in: op(imm self) -> BagCursor => BagCursor(imm self, 0, 0)
 }
 
 BagCursor: ref rec
@@ -34,7 +34,7 @@ BagCursor: ref rec
 		ret self.current < 3
 	}
 
-	*: op(self) -> imm[Name] = imm self.bag.items[self.current]
+	*: op(self) -> imm[Name] => imm self.bag.items[self.current]
 }
 
 largest: fun(imm bag: Bag) -> i32

@@ -2,7 +2,7 @@ mod test
 
 ext
 {
-	puts: fun(text: cstr) -> i32 = 0
+	puts: fun(text: cstr) -> i32 => 0
 	abs: fun(x: i32) -> i32 { ret x }
 	labs: fun(x: i32 -> i32
 	fabs: fun(x) -> f64
@@ -16,4 +16,4 @@ ext
 	}
 }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

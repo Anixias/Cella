@@ -1,9 +1,9 @@
 mod test
 
-f[N: const usize]: fun(N: usize) -> usize = N
+f[N: const usize]: fun(N: usize) -> usize => N
 
-g[T]: fun(T: i32) -> i32 = T
+g[T]: fun(T: i32) -> i32 => T
 
-h[T]: fun(imm value: T, count: i32) -> i32 = count
+h[T]: fun(imm value: T, count: i32) -> i32 => count
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

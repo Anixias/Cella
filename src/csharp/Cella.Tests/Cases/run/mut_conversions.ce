@@ -16,9 +16,9 @@ view[T]: ref rec
 		self.length = length
 	}
 
-	as[N: const usize]: op(imm values: array[T, N]) -> view[T] = view[T](@values, N)
+	as[N: const usize]: op(imm values: array[T, N]) -> view[T] => view[T](@values, N)
 
-	[]: op(self, i: usize) -> imm[T] = imm self.data[i]
+	[]: op(self, i: usize) -> imm[T] => imm self.data[i]
 }
 
 span[T]: ref rec
@@ -32,9 +32,9 @@ span[T]: ref rec
 		self.length = length
 	}
 
-	as[N: const usize]: op(mut values: array[T, N]) -> span[T] = span[T](@values, N)
+	as[N: const usize]: op(mut values: array[T, N]) -> span[T] => span[T](@values, N)
 
-	[]: op(self, i: usize) -> mut[T] = mut self.data[i]
+	[]: op(self, i: usize) -> mut[T] => mut self.data[i]
 }
 
 fill: fun(values: span[i32], value: i32)
@@ -47,7 +47,7 @@ fill: fun(values: span[i32], value: i32)
 	}
 }
 
-process: fun(values: view[i32]) -> i32 = values[0]
+process: fun(values: view[i32]) -> i32 => values[0]
 
 process: fun(values: span[i32]) -> i32
 {
@@ -60,7 +60,7 @@ Grid: rec
 	cells: array[i32, 4]
 }
 
-reset: fun(mut values: array[i32, 4]) = fill(mut values, 0)
+reset: fun(mut values: array[i32, 4]) => fill(mut values, 0)
 
 main: fun -> i32
 {

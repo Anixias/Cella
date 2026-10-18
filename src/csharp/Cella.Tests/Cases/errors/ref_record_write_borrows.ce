@@ -11,7 +11,7 @@ span[T]: ref rec
 		self.length = length
 	}
 
-	[]: op(self, i: usize) -> mut[T] = mut self.data[i]
+	[]: op(self, i: usize) -> mut[T] => mut self.data[i]
 }
 
 local: fun -> mut[i32]

@@ -1,21 +1,21 @@
 Error at parameter_name_clashes.ce:3:3
 2 │ 
-3 │ f[N: const usize]: fun(N: usize) -> usize = N
+3 │ f[N: const usize]: fun(N: usize) -> usize => N
       ^ 'N' is declared more than once
 
 Error at parameter_name_clashes.ce:3:24
 2 │ 
-3 │ f[N: const usize]: fun(N: usize) -> usize = N
+3 │ f[N: const usize]: fun(N: usize) -> usize => N
                            ^ 'N' is declared more than once
 
 Error at parameter_name_clashes.ce:5:3
 4 │ 
-5 │ g[T]: fun(T: i32) -> i32 = T
+5 │ g[T]: fun(T: i32) -> i32 => T
       ^ 'T' is declared more than once
 
 Error at parameter_name_clashes.ce:5:11
 4 │ 
-5 │ g[T]: fun(T: i32) -> i32 = T
+5 │ g[T]: fun(T: i32) -> i32 => T
               ^ 'T' is declared more than once
 
 [compilation failed]

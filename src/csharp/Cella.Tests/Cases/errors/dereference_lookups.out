@@ -1,11 +1,11 @@
-Error at dereference_lookups.ce:39:44
+Error at dereference_lookups.ce:39:45
 38 │ 
-39 │ deep: fun(imm outer: Outer) -> i32 = outer.id
-                                                ╘╛ Type 'BufferBox' has no member 'id'
+39 │ deep: fun(imm outer: Outer) -> i32 => outer.id
+                                                 ╘╛ Type 'BufferBox' has no member 'id'
 
-Error at dereference_lookups.ce:41:46
+Error at dereference_lookups.ce:41:47
 40 │ 
-41 │ notPointer: fun(imm value: Buffer) -> i32 = (*value).id
-                                                  ╘════╛ Cannot dereference type 'Buffer'
+41 │ notPointer: fun(imm value: Buffer) -> i32 => (*value).id
+                                                   ╘════╛ Cannot dereference type 'Buffer'
 
 [compilation failed]

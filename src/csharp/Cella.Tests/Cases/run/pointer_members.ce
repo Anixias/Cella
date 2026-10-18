@@ -32,7 +32,7 @@ Unit: ref rec
 	name: str
 }
 
-triple: fun(n: i32) -> i32 = n * 3
+triple: fun(n: i32) -> i32 => n * 3
 
 damage: fun(mut hp: i32, amount: i32)
 {
@@ -44,7 +44,7 @@ shift: fun(p: ptr[Point], dx: i32)
 	p.x += dx
 }
 
-pick: fun(p: ptr[Point]) -> ptr[Point] = p
+pick: fun(p: ptr[Point]) -> ptr[Point] => p
 
 lift: fun(mut cursor: ptr[Point])
 {

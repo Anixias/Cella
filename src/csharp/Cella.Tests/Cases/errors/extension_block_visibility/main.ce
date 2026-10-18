@@ -15,4 +15,4 @@ main: fun -> i32
 	ret 0
 }
 
-outside: fun(x: i32) -> i32 = x.twice() + x.half()
+outside: fun(x: i32) -> i32 => x.twice() + x.half()

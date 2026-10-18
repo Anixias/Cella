@@ -15,9 +15,9 @@ Pair: rec
 	right: Buffer
 }
 
-make: fun(id: i32) -> Buffer = Buffer(id)
-show: fun(imm buffer: Buffer) -> i32 = buffer.id
-sum: fun(imm pair: Pair) -> i32 = pair.left.id + pair.right.id
+make: fun(id: i32) -> Buffer => Buffer(id)
+show: fun(imm buffer: Buffer) -> i32 => buffer.id
+sum: fun(imm pair: Pair) -> i32 => pair.left.id + pair.right.id
 
 numbers: fun -> i32
 {
@@ -46,4 +46,4 @@ fields: fun -> i32
 	ret sum(imm pair) + total
 }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

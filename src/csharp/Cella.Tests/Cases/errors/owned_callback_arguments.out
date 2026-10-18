@@ -3,23 +3,23 @@ Error at owned_callback_arguments.ce:33:34
 33 │     fill[fun[-> i32]](mut handlers, visit)
                                          ╘═══╛ Cannot move read-only parameters
 
-Error at owned_callback_arguments.ce:46:40
+Error at owned_callback_arguments.ce:46:41
 45 │ val base = 3
-46 │ fill[fun[-> i32]](mut handlers, fun = base)
-                                           ╘══╛ Cannot capture 'base' in 'fun[-> i32]'
+46 │ fill[fun[-> i32]](mut handlers, fun => base)
+                                            ╘══╛ Cannot capture 'base' in 'fun[-> i32]'
 
-Error at owned_callback_arguments.ce:47:42
-46 │ fill[fun[-> i32]](mut handlers, fun = base)
-47 │ saved = pick[fun[-> i32]](answer, fun = base)
-                                             ╘══╛ Cannot capture 'base' in 'fun[-> i32]'
+Error at owned_callback_arguments.ce:47:43
+46 │ fill[fun[-> i32]](mut handlers, fun => base)
+47 │ saved = pick[fun[-> i32]](answer, fun => base)
+                                              ╘══╛ Cannot capture 'base' in 'fun[-> i32]'
 
-Error at owned_callback_arguments.ce:49:17
+Error at owned_callback_arguments.ce:49:18
 48 │ val box = Box[fun[-> i32]](answer)
-49 │ box.show(fun = base)
-                    ╘══╛ Cannot capture 'base' in 'fun[-> i32]'
+49 │ box.show(fun => base)
+                     ╘══╛ Cannot capture 'base' in 'fun[-> i32]'
 
 Error at owned_callback_arguments.ce:50:43
-49 │ box.show(fun = base)
+49 │ box.show(fun => base)
 50 │ val borrowing: fun[fun[-> i32] -> i32] = look[fun[-> i32]]
                                               ╘═══════════════╛ Cannot convert type 'fun[own fun[-> i32] -> i32]' to 'fun[fun[-> i32] -> i32]'
 

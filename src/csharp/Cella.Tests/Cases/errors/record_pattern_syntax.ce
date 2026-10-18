@@ -9,7 +9,7 @@ Circle: rec impl Shape
 {
 	radius: f32
 
-	area: fun(imm self) -> f32 = self.radius
+	area: fun(imm self) -> f32 => self.radius
 }
 
 Holder: rec
@@ -26,16 +26,16 @@ typed: fun -> i32
 	ret 0
 }
 
-bound: fun -> i32 = match 5
+bound: fun -> i32 => match 5
 {
 	1..10 val n => n
 	else => 0
 }
 
-typedWithVal: fun(imm shape: dyn[Shape]) -> f32 = match shape
+typedWithVal: fun(imm shape: dyn[Shape]) -> f32 => match shape
 {
 	Circle val c => c.radius
 	else => 0.0
 }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

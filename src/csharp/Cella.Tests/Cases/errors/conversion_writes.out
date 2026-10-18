@@ -1,7 +1,7 @@
-Error at conversion_writes.ce:12:32
+Error at conversion_writes.ce:12:33
 11 │ 
-12 │ as: op(self) -> imm[Sprite] = imm self.sprite
-                                   ╘═════════════╛ Cannot return borrows of copied parameters
+12 │ as: op(self) -> imm[Sprite] => imm self.sprite
+                                    ╘═════════════╛ Cannot return borrows of copied parameters
 
 Error at conversion_writes.ce:20:11
 19 │ {

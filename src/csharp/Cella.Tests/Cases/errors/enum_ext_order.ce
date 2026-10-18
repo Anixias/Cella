@@ -2,4 +2,4 @@ mod test
 
 E: enum(u8) ext { a }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

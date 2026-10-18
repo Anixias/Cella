@@ -1,7 +1,7 @@
-Error at root_module_paths.ce:3:27
+Error at root_module_paths.ce:3:28
 2 │ 
-3 │ missing: fun -> i32 = mod.nowhere.value()
-                              ╘═════╛ Module 'nowhere' not found
+3 │ missing: fun -> i32 => mod.nowhere.value()
+                               ╘═════╛ Module 'nowhere' not found
 
 Error at root_module_paths.ce:11:13
 10 │ {

@@ -22,7 +22,7 @@ Bytes: rec
 	{
 	}
 
-	+: op(self, ...rest: view[i32]) -> i32 = 0
+	+: op(self, ...rest: view[i32]) -> i32 => 0
 }
 
 ext
@@ -41,7 +41,7 @@ Box: rec impl Sink
 {
 	id: i32
 
-	put: fun(self, values: view[i32]) -> usize = values.length
+	put: fun(self, values: view[i32]) -> usize => values.length
 }
 
 plain: fun(...values: i32) {}
@@ -50,8 +50,8 @@ both: fun(...first: view[i32], ...second: view[i32]) {}
 writes: fun(mut ...values: view[i32]) {}
 owns: fun(own ...values: view[i32]) {}
 bytes: fun(...values: Bytes) {}
-compare: ext fun(...values: view[i32]) -> i32 = 0
+compare: ext fun(...values: view[i32]) -> i32 => 0
 same: fun(values: view[i32]) {}
 same: fun(...values: view[i32]) {}
 
-main: fun(...args: view[str]) -> i32 = 0
+main: fun(...args: view[str]) -> i32 => 0

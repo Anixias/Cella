@@ -9,7 +9,7 @@ Buffer: rec
 	}
 }
 
-take: fun(imm first: Buffer, own second: Buffer) -> i32 = first.id + second.id
+take: fun(imm first: Buffer, own second: Buffer) -> i32 => first.id + second.id
 
 main: fun -> i32
 {

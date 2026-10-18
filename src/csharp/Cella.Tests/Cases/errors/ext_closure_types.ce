@@ -14,7 +14,7 @@ Callbacks: rec
 	run: ext fun[fun[-> i32] -> i32]
 }
 
-take: ext fun(f: fun[-> i32]) -> i32 = f()
-give: ext fun -> fun[-> i32] = fun = 1
+take: ext fun(f: fun[-> i32]) -> i32 => f()
+give: ext fun -> fun[-> i32] => fun => 1
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

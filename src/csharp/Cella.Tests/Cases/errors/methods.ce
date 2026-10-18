@@ -14,7 +14,7 @@ Unit: rec
 	hp: i32
 	buffer: Buffer
 
-	make: fun(hp: i32) -> Unit = Unit(hp, Buffer(hp))
+	make: fun(hp: i32) -> Unit => Unit(hp, Buffer(hp))
 
 	restore: fun(mut self, amount: i32)
 	{

@@ -1,7 +1,7 @@
-Error at method_moves.ce:24:38
+Error at method_moves.ce:24:39
 23 │ 
-24 │ take: fun(mut self) -> Buffer = own self.buffer
-                                         ╘═════════╛ Cannot leave 'self' partly moved
+24 │ take: fun(mut self) -> Buffer => own self.buffer
+                                          ╘═════════╛ Cannot leave 'self' partly moved
 
 Error at method_moves.ce:34:15
 33 │ {

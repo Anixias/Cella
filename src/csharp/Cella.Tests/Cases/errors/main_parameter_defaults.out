@@ -1,6 +1,6 @@
 Error at main_parameter_defaults.ce:3:1
 2 │ 
-3 │ main: fun(scale: i32 = 3) -> i32 = scale
+3 │ main: fun(scale: i32 = 3) -> i32 => scale
     ╘══╛ 'main' must take no parameters, 'ptr[str]' and 'usize', or one parameter that meets 'new(ptr[str], usize)'
 
 [compilation failed]

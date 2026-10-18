@@ -20,7 +20,7 @@ result[T, E]: enum
 	ok(value: T)
 	err(error: E)
 
-	?: op(own self) -> T = match own self
+	?: op(own self) -> T => match own self
 	{
 		ok(own value) => value
 		err(own error) => ret result.err(own error)
@@ -32,7 +32,7 @@ option[T]: enum
 	none
 	some(value: T)
 
-	?: op(own self) -> T = match own self
+	?: op(own self) -> T => match own self
 	{
 		some(own value) => value
 		none => ret option.none
@@ -43,7 +43,7 @@ wrap[T]: enum
 {
 	held(inner: option[T])
 
-	?: op(own self) -> T = match own self
+	?: op(own self) -> T => match own self
 	{
 		held(own inner) => inner?
 	}
@@ -53,14 +53,14 @@ Probe: rec
 {
 	texture: Texture
 
-	?: op(own self) -> i32 = self.texture.id
+	?: op(own self) -> i32 => self.texture.id
 }
 
 sized[T]: enum
 {
 	held(value: T)
 
-	?: op(own self) -> usize = sizeOf(T)
+	?: op(own self) -> usize => sizeOf(T)
 }
 
 parse: fun(n: i32) -> result[i32, i32]
@@ -85,7 +85,7 @@ half: fun(n: i32) -> option[i32]
 	ret option.some(n / 2)
 }
 
-quarter: fun(n: i32) -> option[i32] = option.some(half(half(n)?)?)
+quarter: fun(n: i32) -> option[i32] => option.some(half(half(n)?)?)
 
 load: fun(id: i32) -> result[Texture, i32]
 {
@@ -119,7 +119,7 @@ first[T: copy]: fun(a: result[T, i32], b: result[T, i32]) -> result[T, i32]
 
 lambda: fun -> i32
 {
-	val f = fun(n: i32) -> result[i32, i32] = result.ok(first(result[i32, i32].ok(n), result.ok(2))? + 1)
+	val f = fun(n: i32) -> result[i32, i32] => result.ok(first(result[i32, i32].ok(n), result.ok(2))? + 1)
 	match f(4)
 	{
 		ok(val v) => ret v
@@ -127,7 +127,7 @@ lambda: fun -> i32
 	}
 }
 
-nested: fun(w: wrap[i32]) -> option[i32] = option.some(w? + 1)
+nested: fun(w: wrap[i32]) -> option[i32] => option.some(w? + 1)
 
 show: fun(r: result[i64, i32])
 {

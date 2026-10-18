@@ -8,14 +8,14 @@ Error at ambiguous_enum_cases.ce:23:6
 23 │ ret none
          ╘══╛ 'none' is ambiguous
 
-Error at ambiguous_enum_cases.ce:26:26
+Error at ambiguous_enum_cases.ce:26:27
 25 │ 
-26 │ calls: fun -> i32 = pick(some(2))
-                              ╘══╛ 'some' is ambiguous
+26 │ calls: fun -> i32 => pick(some(2))
+                               ╘══╛ 'some' is ambiguous
 
-Error at ambiguous_enum_cases.ce:27:36
-26 │ calls: fun -> i32 = pick(some(2))
-27 │ globals: fun -> bool = Team.red == blue
-                                        ╘══╛ 'blue' is ambiguous
+Error at ambiguous_enum_cases.ce:27:37
+26 │ calls: fun -> i32 => pick(some(2))
+27 │ globals: fun -> bool => Team.red == blue
+                                         ╘══╛ 'blue' is ambiguous
 
 [compilation failed]

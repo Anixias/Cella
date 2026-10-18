@@ -27,7 +27,7 @@ public sealed partial class FileParser
 			when = new(whenKeyword, condition);
 		}
 		
-		if (MatchOnLine(ref index, TokenType.OpEqual))
+		if (MatchOnLine(ref index, TokenType.OpFatArrow))
 		{
 			if (ParseExpressionBody(ref index, returnType is null) is not { } statement)
 				return null;
@@ -54,7 +54,7 @@ public sealed partial class FileParser
 					ExternalName = externalName
 				};
 			
-			ReportExpected(IsOnSameLine(index) ? index : index - 1, "'=' or '{'");
+			ReportExpected(IsOnSameLine(index) ? index : index - 1, "'=>' or '{'");
 			return null;
 		}
 		

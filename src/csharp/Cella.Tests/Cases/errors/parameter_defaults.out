@@ -10,12 +10,12 @@ Error at parameter_defaults.ce:18:22
 
 Error at parameter_defaults.ce:25:14
 24 │ 
-25 │ *: op(self, other: i32 = 0) -> i32 = 0
+25 │ *: op(self, other: i32 = 0) -> i32 => 0
                  ╘═══╛ Cannot take parameters in '*' operators with 'self'
 
 Error at parameter_defaults.ce:25:27
 24 │ 
-25 │ *: op(self, other: i32 = 0) -> i32 = 0
+25 │ *: op(self, other: i32 = 0) -> i32 => 0
                               ^ Cannot declare defaults in operators
 
 Error at parameter_defaults.ce:30:28

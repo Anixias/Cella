@@ -4,4 +4,4 @@ ext
 {
 	printf: fun(format: cstr, ...) -> i32
 }
-speed: fun -> i32 = physics.gravity() + game.physics.gravity()
+speed: fun -> i32 => physics.gravity() + game.physics.gravity()

@@ -16,7 +16,7 @@ R: rec
 	}
 }
 
-take: fun(own r: R) = printf("take %d\n", r.a)
+take: fun(own r: R) => printf("take %d\n", r.a)
 
 run: fun(flag: bool)
 {

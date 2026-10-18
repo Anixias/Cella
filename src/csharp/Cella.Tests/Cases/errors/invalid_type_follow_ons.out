@@ -18,9 +18,9 @@ Error at invalid_type_follow_ons.ce:22:3
 22 │ [i32](4)
       ╘═╛ Cannot use types as values
 
-Error at invalid_type_follow_ons.ce:26:28
+Error at invalid_type_follow_ons.ce:26:29
 25 │ 
-26 │ hugeOperand: fun -> bool = 999999999999999999999999999999999999999999999 > 1
-                                ╘═══════════════════════════════════════════╛ Integer literal too large to fit any type
+26 │ hugeOperand: fun -> bool => 999999999999999999999999999999999999999999999 > 1
+                                 ╘═══════════════════════════════════════════╛ Integer literal too large to fit any type
 
 [compilation failed]

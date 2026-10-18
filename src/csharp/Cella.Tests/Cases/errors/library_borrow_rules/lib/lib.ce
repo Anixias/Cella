@@ -14,6 +14,6 @@ View: pub ref rec
 	value: imm[i32]
 }
 
-first: pub fun(imm bag: Bag) -> imm[i32] = imm bag.items[0]
+first: pub fun(imm bag: Bag) -> imm[i32] => imm bag.items[0]
 
-watch: pub fun(imm bag: Bag) -> View = View(imm bag.items[0])
+watch: pub fun(imm bag: Bag) -> View => View(imm bag.items[0])

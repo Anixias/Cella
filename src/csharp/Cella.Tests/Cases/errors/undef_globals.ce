@@ -8,4 +8,4 @@ Counter: rec
 	count: var i32 = undef
 }
 
-main: fun -> i32 = i32(buffer[0])
+main: fun -> i32 => i32(buffer[0])

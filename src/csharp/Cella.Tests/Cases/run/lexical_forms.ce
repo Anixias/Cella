@@ -10,7 +10,7 @@ Größe: rec
 	länge: i32
 }
 
-名前: fun(值: i32) -> i32 = 值 * 2
+名前: fun(值: i32) -> i32 => 值 * 2
 
 main: fun -> i32
 {

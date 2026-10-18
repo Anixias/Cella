@@ -15,7 +15,7 @@ Stats: rec
 		self.hits += 1
 	}
 
-	total: fun(self) -> i32 = self.hits + self.misses
+	total: fun(self) -> i32 => self.hits + self.misses
 }
 
 Team: enum
@@ -37,8 +37,8 @@ running: var bool = true
 cursor: var ptr[i32] = null
 handler: var fun[i32 -> i32] = double
 
-double: fun(value: i32) -> i32 = value * 2
-triple: fun(value: i32) -> i32 = value * 3
+double: fun(value: i32) -> i32 => value * 2
+triple: fun(value: i32) -> i32 => value * 3
 
 addTen: fun(mut value: i32)
 {
@@ -50,7 +50,7 @@ reset: fun(mut target: Stats)
 	target = Stats(0, 0)
 }
 
-current: fun -> imm[Stats] = imm stats
+current: fun -> imm[Stats] => imm stats
 
 main: fun -> i32
 {

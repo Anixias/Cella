@@ -1,51 +1,51 @@
 Error at operator_declarations.ce:7:9
 6 │ 
-7 │ ==: op(self, other: Point) -> bool = true
+7 │ ==: op(self, other: Point) -> bool => true
            ╘══╛ Cannot take 'self' in '==' operators
 
 Error at operator_declarations.ce:8:2
-7 │ ==: op(self, other: Point) -> bool = true
-8 │ !=: op(a: Point) -> bool = true
+7 │ ==: op(self, other: Point) -> bool => true
+8 │ !=: op(a: Point) -> bool => true
     ╘╛ '!=' operators need two parameters
 
 Error at operator_declarations.ce:9:2
-8 │ !=: op(a: Point) -> bool = true
-9 │ -: op(a: Point) -> Point = a
+8 │ !=: op(a: Point) -> bool => true
+9 │ -: op(a: Point) -> Point => a
     ^ '-' operators need 'self' or two parameters
 
 Error at operator_declarations.ce:10:2
- 9 │ -: op(a: Point) -> Point = a
-10 │ ~: op(a: Point, b: Point) -> Point = a
+ 9 │ -: op(a: Point) -> Point => a
+10 │ ~: op(a: Point, b: Point) -> Point => a
      ^ Cannot declare '~' operators without 'self'
 
 Error at operator_declarations.ce:11:2
-10 │ ~: op(a: Point, b: Point) -> Point = a
-11 │ +: op(a: i32, b: i32) -> i32 = a
+10 │ ~: op(a: Point, b: Point) -> Point => a
+11 │ +: op(a: i32, b: i32) -> i32 => a
      ^ '+' operators need a 'Point' parameter
 
 Error at operator_declarations.ce:12:12
-11 │ +: op(a: i32, b: i32) -> i32 = a
-12 │ *: op(mut a: Point, b: Point) -> Point = b
+11 │ +: op(a: i32, b: i32) -> i32 => a
+12 │ *: op(mut a: Point, b: Point) -> Point => b
                ^ Cannot take 'mut' parameters in '*' operators
 
 Error at operator_declarations.ce:13:8
-12 │ *: op(mut a: Point, b: Point) -> Point = b
-13 │ /: op(self, other: Point) -> Point = other
+12 │ *: op(mut a: Point, b: Point) -> Point => b
+13 │ /: op(self, other: Point) -> Point => other
            ╘══╛ Cannot take 'self' in '/' operators
 
 Error at operator_declarations.ce:14:12
-13 │ /: op(self, other: Point) -> Point = other
-14 │ +: op(mut self) -> Point = self
+13 │ /: op(self, other: Point) -> Point => other
+14 │ +: op(mut self) -> Point => self
                ╘══╛ Cannot take 'mut self' in '+' operators
 
 Error at operator_declarations.ce:15:2
-14 │ +: op(mut self) -> Point = self
-15 │ <: op(a: Point, b: Point) -> bool = true
+14 │ +: op(mut self) -> Point => self
+15 │ <: op(a: Point, b: Point) -> bool => true
      ^ 'Point.<' is declared more than once with the same signature
 
 Error at operator_declarations.ce:16:2
-15 │ <: op(a: Point, b: Point) -> bool = true
-16 │ <: op(a: Point, b: Point) -> bool = false
+15 │ <: op(a: Point, b: Point) -> bool => true
+16 │ <: op(a: Point, b: Point) -> bool => false
      ^ 'Point.<' is declared more than once with the same signature
 
 Error at operator_declarations.ce:18:2
@@ -70,27 +70,27 @@ Error at operator_declarations.ce:21:2
 
 Error at operator_declarations.ce:22:36
 21 │ /=: op(mut self) { }
-22 │ %=: op(mut self, other: Point) -> Point = other
+22 │ %=: op(mut self, other: Point) -> Point => other
                                        ╘═══╛ Cannot return values from '%=' operators
 
 Error at operator_declarations.ce:23:23
-22 │ %=: op(mut self, other: Point) -> Point = other
+22 │ %=: op(mut self, other: Point) -> Point => other
 23 │ &=: op(mut self, mut other: Point) { }
                           ╘═══╛ Cannot take 'mut' parameters in '&=' operators
 
 Error at operator_declarations.ce:24:14
 23 │ &=: op(mut self, mut other: Point) { }
-24 │ *: op(self, other: Point) -> imm[i32] = self.x
+24 │ *: op(self, other: Point) -> imm[i32] => self.x
                  ╘═══╛ Cannot take parameters in '*' operators with 'self'
 
 Error at operator_declarations.ce:32:2
 31 │ 
-32 │ ==: op(a: i32, b: i32) -> bool = true
+32 │ ==: op(a: i32, b: i32) -> bool => true
      ╘╛ '==' operators need a 'Mode' parameter
 
 Error at operator_declarations.ce:33:12
-32 │ ==: op(a: i32, b: i32) -> bool = true
-33 │ -: op(mut self) -> Mode = idle
+32 │ ==: op(a: i32, b: i32) -> bool => true
+33 │ -: op(mut self) -> Mode => idle
                ╘══╛ Cannot take 'mut self' in '-' operators
 
 [compilation failed]

@@ -16,7 +16,7 @@ view[T]: ref rec
 		self.length = length
 	}
 
-	[]: op(self, i: usize) -> imm[T] = imm self.data[i]
+	[]: op(self, i: usize) -> imm[T] => imm self.data[i]
 }
 
 Run: rec
@@ -60,10 +60,10 @@ Maker: trait
 
 Sized: impl Maker
 {
-	size: fun(self) -> usize = self.count + usize(self.data[1])
+	size: fun(self) -> usize => self.count + usize(self.data[1])
 }
 
-total: fun(...bytes: Run) -> usize = bytes.count + usize(bytes.data[0])
+total: fun(...bytes: Run) -> usize => bytes.count + usize(bytes.data[0])
 
 sum: fun(...values: view[Big]) -> i64
 {
@@ -74,9 +74,9 @@ sum: fun(...values: view[Big]) -> i64
 	ret total
 }
 
-wide: fun(...values: Wide) -> i64 = i64(values.count) + values.extra
+wide: fun(...values: Wide) -> i64 => i64(values.count) + values.extra
 
-made[R: Maker]: fun(...values: R) -> usize = values.size()
+made[R: Maker]: fun(...values: R) -> usize => values.size()
 
 main: fun -> i32
 {

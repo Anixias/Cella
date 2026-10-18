@@ -11,7 +11,7 @@ Layout: rec
 	after: i32
 }
 
-read: fun(layout: Layout, index: usize) -> i32 = layout.values[index]
+read: fun(layout: Layout, index: usize) -> i32 => layout.values[index]
 
 main: fun -> i32
 {

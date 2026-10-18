@@ -11,7 +11,7 @@ ext
 	GetProcAddress: fun(module: ptr, name: cstr) -> ptr
 }
 
-twice: ext fun(x: i32) -> i32 = x * 2
+twice: ext fun(x: i32) -> i32 => x * 2
 
 main: fun -> i32
 {

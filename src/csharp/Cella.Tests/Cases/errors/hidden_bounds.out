@@ -1,21 +1,21 @@
 Error at hidden_bounds.ce:18:6
 17 │ 
-18 │ f[T: Secret]: pub fun(imm x: T) -> i32 = x.id()
+18 │ f[T: Secret]: pub fun(imm x: T) -> i32 => x.id()
           ╘════╛ 'Secret' is less visible than 'f'
 
 Error at hidden_bounds.ce:19:10
-18 │ f[T: Secret]: pub fun(imm x: T) -> i32 = x.id()
-19 │ g[T: new(Hidden)]: pub fun -> i32 = 0
+18 │ f[T: Secret]: pub fun(imm x: T) -> i32 => x.id()
+19 │ g[T: new(Hidden)]: pub fun -> i32 => 0
               ╘════╛ 'Hidden' is less visible than 'g'
 
 Error at hidden_bounds.ce:20:6
-19 │ g[T: new(Hidden)]: pub fun -> i32 = 0
-20 │ h[F: fun[Hidden -> i32]]: pub fun -> i32 = 0
+19 │ g[T: new(Hidden)]: pub fun -> i32 => 0
+20 │ h[F: fun[Hidden -> i32]]: pub fun -> i32 => 0
           ╘════════════════╛ 'Hidden' is less visible than 'h'
 
 Error at hidden_bounds.ce:21:6
-20 │ h[F: fun[Hidden -> i32]]: pub fun -> i32 = 0
-21 │ k[T: Hash]: fun(imm x: T) -> i32 = 0
+20 │ h[F: fun[Hidden -> i32]]: pub fun -> i32 => 0
+21 │ k[T: Hash]: fun(imm x: T) -> i32 => 0
           ╘══╛ 'Hash' is less visible than 'k'
 
 Error at hidden_bounds.ce:23:8

@@ -5,7 +5,7 @@ Error at bare_generic_pointers.ce:10:9
 
 Error at bare_generic_pointers.ce:13:18
 12 │ 
-13 │ take: fun(p: ptr[box]) -> i32 = 0
+13 │ take: fun(p: ptr[box]) -> i32 => 0
                       ╘═╛ 'box' takes one generic argument
 
 [compilation failed]

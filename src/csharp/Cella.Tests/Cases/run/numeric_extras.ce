@@ -9,10 +9,10 @@ Code: const u32 = 'A'u32
 Letter: const char = char(Code + 1)
 Lengths: const array[u8, usize('C' - 'A')] = [1, 2]
 
-divide: fun(a: i128, b: i128) -> i128 = a / b
-remainder: fun(a: i128, b: i128) -> i128 = a % b
-divideWide: fun(a: u128, b: u128) -> u128 = a / b
-remainderWide: fun(a: u128, b: u128) -> u128 = a % b
+divide: fun(a: i128, b: i128) -> i128 => a / b
+remainder: fun(a: i128, b: i128) -> i128 => a % b
+divideWide: fun(a: u128, b: u128) -> u128 => a / b
+remainderWide: fun(a: u128, b: u128) -> u128 => a % b
 
 classify: fun(n: i32) -> i32
 {

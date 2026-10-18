@@ -17,7 +17,7 @@ Buffer: rec
 	}
 }
 
-second[T]: fun(items: ptr[T]) -> ptr[T] = @items[1]
+second[T]: fun(items: ptr[T]) -> ptr[T] => @items[1]
 
 main: fun -> i32
 {

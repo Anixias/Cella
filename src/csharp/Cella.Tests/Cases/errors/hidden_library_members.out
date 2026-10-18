@@ -1,16 +1,16 @@
-Error at main.ce:5:24
+Error at main.ce:5:25
 4 │ 
-5 │ main: fun -> i32 = lib.helper() + lib.inner() + lib.secret()
-                           ╘════╛ 'lib.helper' is private to its project
+5 │ main: fun -> i32 => lib.helper() + lib.inner() + lib.secret()
+                            ╘════╛ 'lib.helper' is private to its project
 
-Error at main.ce:5:39
+Error at main.ce:5:40
 4 │ 
-5 │ main: fun -> i32 = lib.helper() + lib.inner() + lib.secret()
-                                          ╘═══╛ 'lib.inner' is private to its module
+5 │ main: fun -> i32 => lib.helper() + lib.inner() + lib.secret()
+                                           ╘═══╛ 'lib.inner' is private to its module
 
-Error at main.ce:5:53
+Error at main.ce:5:54
 4 │ 
-5 │ main: fun -> i32 = lib.helper() + lib.inner() + lib.secret()
-                                                        ╘════╛ 'lib.secret' is private to its file
+5 │ main: fun -> i32 => lib.helper() + lib.inner() + lib.secret()
+                                                         ╘════╛ 'lib.secret' is private to its file
 
 [compilation failed]

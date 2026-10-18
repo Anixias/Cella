@@ -1,23 +1,23 @@
-Error at main.ce:6:33
+Error at main.ce:6:34
 5 │ 
-6 │ ambiguous: fun(x: i32) -> i32 = x.clamp(0, 10)
-                                    ╘═════╛ Call to 'clamp' is ambiguous
-                                          | Candidate in 'mathx.ce' on line 5
-                                          | Candidate in 'mathy.ce' on line 5
+6 │ ambiguous: fun(x: i32) -> i32 => x.clamp(0, 10)
+                                     ╘═════╛ Call to 'clamp' is ambiguous
+                                           | Candidate in 'mathx.ce' on line 5
+                                           | Candidate in 'mathy.ce' on line 5
 
-Error at main.ce:7:39
-6 │ ambiguous: fun(x: i32) -> i32 = x.clamp(0, 10)
-7 │ hiddenPrivate: fun(x: i32) -> i32 = x.secret()
-                                          ╘════╛ Type 'i32' has no member 'secret'
+Error at main.ce:7:40
+6 │ ambiguous: fun(x: i32) -> i32 => x.clamp(0, 10)
+7 │ hiddenPrivate: fun(x: i32) -> i32 => x.secret()
+                                           ╘════╛ Type 'i32' has no member 'secret'
 
-Error at main.ce:8:38
-7 │ hiddenPrivate: fun(x: i32) -> i32 = x.secret()
-8 │ hiddenModule: fun(x: i32) -> i32 = x.inner()
-                                         ╘═══╛ Type 'i32' has no member 'inner'
+Error at main.ce:8:39
+7 │ hiddenPrivate: fun(x: i32) -> i32 => x.secret()
+8 │ hiddenModule: fun(x: i32) -> i32 => x.inner()
+                                          ╘═══╛ Type 'i32' has no member 'inner'
 
-Error at other.ce:3:37
+Error at other.ce:3:38
 2 │ 
-3 │ notImported: fun(x: i32) -> i32 = x.clamp(0, 10)
-                                        ╘═══╛ Type 'i32' has no member 'clamp'
+3 │ notImported: fun(x: i32) -> i32 => x.clamp(0, 10)
+                                         ╘═══╛ Type 'i32' has no member 'clamp'
 
 [compilation failed]

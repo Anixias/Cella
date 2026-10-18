@@ -24,7 +24,7 @@ Holder: rec
 	}
 }
 
-make: fun(id: i32) -> Buffer = Buffer(id)
+make: fun(id: i32) -> Buffer => Buffer(id)
 
 main: fun -> i32
 {

@@ -25,12 +25,12 @@ Error at ext_closure_types.ce:14:15
 
 Error at ext_closure_types.ce:17:18
 16 │ 
-17 │ take: ext fun(f: fun[-> i32]) -> i32 = f()
+17 │ take: ext fun(f: fun[-> i32]) -> i32 => f()
                       ╘═════════╛ Cannot use 'fun[-> i32]' in 'ext' signatures
 
 Error at ext_closure_types.ce:18:18
-17 │ take: ext fun(f: fun[-> i32]) -> i32 = f()
-18 │ give: ext fun -> fun[-> i32] = fun = 1
+17 │ take: ext fun(f: fun[-> i32]) -> i32 => f()
+18 │ give: ext fun -> fun[-> i32] => fun => 1
                       ╘═════════╛ Cannot use 'fun[-> i32]' in 'ext' signatures
 
 [compilation failed]

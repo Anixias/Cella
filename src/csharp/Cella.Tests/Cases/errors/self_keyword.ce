@@ -1,6 +1,6 @@
 mod test
 
-first: fun(self: i32) -> i32 = 0
+first: fun(self: i32) -> i32 => 0
 
 second: fun -> i32
 {
@@ -17,4 +17,4 @@ third: fun(other: i32) -> i32
 	ret other
 }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

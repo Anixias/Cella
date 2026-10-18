@@ -11,7 +11,7 @@ view[T]: ref rec
 		self.length = length
 	}
 
-	as[N: const usize]: op(imm values: array[T, N]) -> view[T] = view[T](@values, N)
+	as[N: const usize]: op(imm values: array[T, N]) -> view[T] => view[T](@values, N)
 }
 
 span[T]: ref rec
@@ -25,7 +25,7 @@ span[T]: ref rec
 		self.length = length
 	}
 
-	as[N: const usize]: op(mut values: array[T, N]) -> span[T] = span[T](@values, N)
+	as[N: const usize]: op(mut values: array[T, N]) -> span[T] => span[T](@values, N)
 }
 
 triple: ref rec
@@ -37,7 +37,7 @@ triple: ref rec
 		self.data = data
 	}
 
-	as: op(mut values: array[u8, 3]) -> triple = triple(@values)
+	as: op(mut values: array[u8, 3]) -> triple => triple(@values)
 }
 
 wide: fun(values: view[u16]) {}
@@ -46,7 +46,7 @@ narrow: fun(values: view[u8]) {}
 
 take: fun(values: triple) {}
 
-count[T]: fun(values: view[T]) -> usize = values.length
+count[T]: fun(values: view[T]) -> usize => values.length
 
 main: fun -> i32
 {

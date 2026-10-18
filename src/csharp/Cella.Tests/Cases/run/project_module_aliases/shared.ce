@@ -1,5 +1,5 @@
 mod shared
 
-one: fun -> i32 = 1
+one: fun -> i32 => 1
 
-local: fun -> i32 = one()
+local: fun -> i32 => one()

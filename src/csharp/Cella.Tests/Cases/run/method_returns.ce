@@ -30,9 +30,9 @@ Party: rec
 	members: array[Enemy, 2]
 	leaderIndex: usize
 
-	leader: fun(imm self) -> imm[Enemy] = imm self.members[self.leaderIndex]
+	leader: fun(imm self) -> imm[Enemy] => imm self.members[self.leaderIndex]
 
-	leaderMut: fun(mut self) -> mut[Enemy] = mut self.members[self.leaderIndex]
+	leaderMut: fun(mut self) -> mut[Enemy] => mut self.members[self.leaderIndex]
 
 	strongest: fun(imm self) -> imm[Enemy]
 	{
@@ -41,7 +41,7 @@ Party: rec
 		ret imm self.members[1]
 	}
 
-	find: fun(imm self, imm key: Buffer) -> imm[Enemy] = imm self.members[usize(key.id)]
+	find: fun(imm self, imm key: Buffer) -> imm[Enemy] => imm self.members[usize(key.id)]
 
 	findMut: fun(mut self, mut key: Buffer) -> mut[Enemy]
 	{
@@ -49,7 +49,7 @@ Party: rec
 		ret mut self.members[usize(key.id)]
 	}
 
-	bufferOf: fun(imm self, label: Label) -> imm[Buffer] = label.buffer
+	bufferOf: fun(imm self, label: Label) -> imm[Buffer] => label.buffer
 
 	stronger: fun(imm a: Enemy, imm b: Enemy) -> imm[Enemy]
 	{
@@ -58,9 +58,9 @@ Party: rec
 		ret imm b
 	}
 
-	best: fun(imm self) -> imm[Enemy] = stronger(imm self.members[0], imm self.members[1])
+	best: fun(imm self) -> imm[Enemy] => stronger(imm self.members[0], imm self.members[1])
 
-	bestLeader: fun(imm self) -> imm[Enemy] = self.leader()
+	bestLeader: fun(imm self) -> imm[Enemy] => self.leader()
 }
 
 Slot: enum
@@ -68,7 +68,7 @@ Slot: enum
 	small(buffer: Buffer)
 	large(buffer: Buffer, extra: i32)
 
-	buffer: fun(imm self) -> imm[Buffer] = match self
+	buffer: fun(imm self) -> imm[Buffer] => match self
 	{
 		small(val buffer) => buffer
 		large(val buffer, val extra) => buffer

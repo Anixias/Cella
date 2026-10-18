@@ -17,7 +17,7 @@ Res: rec
 
 consume: fun(own item: Res) {}
 
-last: fun(data: ptr[array[u8, 5000000000]]) -> u8 = (*data)[4999999999]
+last: fun(data: ptr[array[u8, 5000000000]]) -> u8 => (*data)[4999999999]
 
 partly: fun(own items: array[Res, 6])
 {

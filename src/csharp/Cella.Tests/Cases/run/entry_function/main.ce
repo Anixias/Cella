@@ -5,7 +5,7 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-area: pub fun(side: i32) -> i32 = side * side
+area: pub fun(side: i32) -> i32 => side * side
 
 demo: pub fun -> i32
 {

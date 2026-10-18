@@ -4,8 +4,8 @@ Source: rec
 {
 	id: i32
 
-	as: op(self) -> ViaAs = ViaAs(self.id)
-	new: op(self) -> ViaNew = ViaNew(self.id)
+	as: op(self) -> ViaAs => ViaAs(self.id)
+	new: op(self) -> ViaNew => ViaNew(self.id)
 }
 
 ViaAs: rec
@@ -22,10 +22,10 @@ ViaStatic: rec
 {
 	id: i32
 
-	as: op(value: Source) -> ViaStatic = ViaStatic(value.id)
+	as: op(value: Source) -> ViaStatic => ViaStatic(value.id)
 }
 
-convert[T: new(Source)]: fun(value: Source) -> T = T(value)
+convert[T: new(Source)]: fun(value: Source) -> T => T(value)
 
 main: fun -> i32
 {

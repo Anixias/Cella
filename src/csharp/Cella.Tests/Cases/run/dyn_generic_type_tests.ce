@@ -14,7 +14,7 @@ Circle: rec impl Shape
 {
 	radius: f64
 
-	area: fun(self) -> f64 = self.radius
+	area: fun(self) -> f64 => self.radius
 }
 
 box[T]: rec
@@ -24,7 +24,7 @@ box[T]: rec
 
 box[T: Shape]: impl Shape
 {
-	area: fun(imm self) -> f64 = self.value.area() * 10.0
+	area: fun(imm self) -> f64 => self.value.area() * 10.0
 }
 
 classify: fun(imm shape: dyn[Shape]) -> i32
@@ -38,7 +38,7 @@ classify: fun(imm shape: dyn[Shape]) -> i32
 	ret i32(shape.area())
 }
 
-forward: fun(imm shape: dyn[Shape]) -> i32 = classify(imm shape)
+forward: fun(imm shape: dyn[Shape]) -> i32 => classify(imm shape)
 
 main: fun -> i32
 {

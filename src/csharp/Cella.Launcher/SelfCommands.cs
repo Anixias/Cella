@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
 using Cella.Compiler.Projects;
@@ -158,7 +159,7 @@ internal static partial class SelfCommands
 	private static void WritePath(RegistryKey key, IEnumerable<string> entries)
 	{
 		key.SetValue("Path", string.Join(';', entries), RegistryValueKind.ExpandString);
-		SendMessageTimeout(new IntPtr(0xFFFF), 0x001A, IntPtr.Zero, "Environment", 0x0002, 5000, out _);
+		SendMessageTimeout(new nint(0xFFFF), 0x001A, nint.Zero, "Environment", 0x0002, 5000, out _);
 	}
 	
 	[SupportedOSPlatform("windows")]
@@ -178,6 +179,7 @@ internal static partial class SelfCommands
 		StringComparison.OrdinalIgnoreCase);
 	
 	[LibraryImport("user32.dll", EntryPoint = "SendMessageTimeoutW", StringMarshalling = StringMarshalling.Utf16)]
-	private static partial IntPtr SendMessageTimeout(IntPtr window, uint message, IntPtr wParam, string lParam,
-		uint flags, uint timeout, out IntPtr result);
+	[SuppressMessage("ReSharper", "UnusedMethodReturnValue.Local")]
+	private static partial nint SendMessageTimeout(nint window, uint message, nint wParam, string lParam,
+		uint flags, uint timeout, out nint result);
 }

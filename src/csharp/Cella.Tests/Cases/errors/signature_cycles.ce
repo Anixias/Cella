@@ -1,5 +1,5 @@
 mod test
 
-f: fun(x: array[i32, sizeOf(f)]) -> i32 = 0
+f: fun(x: array[i32, sizeOf(f)]) -> i32 => 0
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

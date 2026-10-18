@@ -15,7 +15,7 @@ Error at generic_function_declarations.ce:14:8
 
 Error at generic_function_declarations.ce:16:7
 15 │ 
-16 │ size[Y]: get -> i32 = 0
+16 │ size[Y]: get -> i32 => 0
           ^ Cannot declare type parameters on properties
 
 Error at generic_function_declarations.ce:21:9

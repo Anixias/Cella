@@ -4,7 +4,7 @@ Error at function_parameter_moves.ce:9:18
                        ╘═════╛ Cannot move read-only parameters
 
 Error at function_parameter_moves.ce:25:41
-24 │ get(self) = self.handler
+24 │ get(self) => self.handler
 25 │ set(mut self, value) { self.handler = value }
                                            ╘═══╛ Cannot move read-only parameters
 
@@ -28,15 +28,15 @@ Error at function_parameter_moves.ce:48:21
 48 │ val local: fun[] = onClick
                         ╘═════╛ Cannot move read-only parameters
 
-Error at function_parameter_moves.ce:51:38
+Error at function_parameter_moves.ce:51:39
 50 │ 
-51 │ back: fun(onClick: fun[]) -> fun[] = onClick
-                                          ╘═════╛ Cannot move read-only parameters
+51 │ back: fun(onClick: fun[]) -> fun[] => onClick
+                                           ╘═════╛ Cannot move read-only parameters
 
-Error at function_parameter_moves.ce:53:44
+Error at function_parameter_moves.ce:53:45
 52 │ 
-53 │ wrap: fun(onClick: fun[]) -> Plain = Plain(onClick)
-                                                ╘═════╛ Cannot move read-only parameters
+53 │ wrap: fun(onClick: fun[]) -> Plain => Plain(onClick)
+                                                 ╘═════╛ Cannot move read-only parameters
 
 Error at function_parameter_moves.ce:57:2
 56 │ {

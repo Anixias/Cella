@@ -10,4 +10,4 @@ show: fun(text: fstr[Display])
 	text.holes = 2
 }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

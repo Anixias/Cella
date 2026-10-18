@@ -1,7 +1,7 @@
-Error at atomic_generics.ce:19:36
+Error at atomic_generics.ce:19:37
 18 │ 
-19 │ load: fun(imm self) -> T = atomic *@self.value
-                                       ╘══════════╛ Cannot access 'T' values atomically
+19 │ load: fun(imm self) -> T => atomic *@self.value
+                                        ╘══════════╛ Cannot access 'T' values atomically
 
 Error at atomic_generics.ce:24:15
 23 │ {

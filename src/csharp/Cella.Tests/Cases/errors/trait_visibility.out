@@ -1,15 +1,15 @@
 Error at trait_visibility.ce:23:8
 22 │ 
-23 │ hash: pvt fun(self) -> u64 = 1
+23 │ hash: pvt fun(self) -> u64 => 1
            ╘═╛ Cannot implement 'Hash.hash' with 'pvt' members
 
 Error at trait_visibility.ce:24:8
-23 │ hash: pvt fun(self) -> u64 = 1
-24 │ seed: mod fun -> u64 = 2
+23 │ hash: pvt fun(self) -> u64 => 1
+24 │ seed: mod fun -> u64 => 2
            ╘═╛ Cannot implement 'Hash.seed' with 'mod' members
 
 Error at trait_visibility.ce:28:3
-27 │ get(self) = self.x
+27 │ get(self) => self.x
 28 │ pvt set(mut self, value)
      ╘═╛ Cannot implement 'Hash.size' with 'pvt' members
 
@@ -20,16 +20,16 @@ Error at trait_visibility.ce:34:7
 
 Error at trait_visibility.ce:47:8
 46 │ {
-47 │     hash: mod fun(self) -> u64 = 1
+47 │     hash: mod fun(self) -> u64 => 1
                ╘═╛ Cannot implement 'Hash.hash' with 'mod' members
 
 Error at trait_visibility.ce:48:8
-47 │ hash: mod fun(self) -> u64 = 1
-48 │ seed: pvt fun -> u64 = 2
+47 │ hash: mod fun(self) -> u64 => 1
+48 │ seed: pvt fun -> u64 => 2
            ╘═╛ Cannot implement 'Hash.seed' with 'pvt' members
 
 Error at trait_visibility.ce:49:8
-48 │ seed: pvt fun -> u64 = 2
+48 │ seed: pvt fun -> u64 => 2
 49 │ size: mod prop i32
            ╘═╛ Cannot implement 'Hash.size' with 'mod' members
 

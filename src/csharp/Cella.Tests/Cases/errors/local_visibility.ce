@@ -7,4 +7,4 @@ f: fun -> i32
 	ret x + y
 }
 
-main: fun -> i32 = f()
+main: fun -> i32 => f()

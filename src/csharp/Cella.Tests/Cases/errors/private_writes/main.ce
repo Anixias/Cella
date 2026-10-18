@@ -41,8 +41,8 @@ modules: fun
 	counter.total = 1
 }
 
-builds: fun -> Plain = Plain(1, 2, 3)
+builds: fun -> Plain => Plain(1, 2, 3)
 
-defaults: fun -> Plain = Plain()
+defaults: fun -> Plain => Plain()
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

@@ -4,13 +4,13 @@ Hash: trait
 {
 	hash: fun(imm self) -> u64
 	secret: mod fun(imm self) -> u64
-	helper: mod fun(imm self) -> u64 = 40
+	helper: mod fun(imm self) -> u64 => 40
 }
 
 Point: rec impl Hash
 {
 	x: i32
 
-	hash: fun(self) -> u64 = 1
-	secret: fun(self) -> u64 = 2
+	hash: fun(self) -> u64 => 1
+	secret: fun(self) -> u64 => 2
 }

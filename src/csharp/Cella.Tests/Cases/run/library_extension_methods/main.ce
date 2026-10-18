@@ -16,7 +16,7 @@ Local: rec
 
 Box: impl
 {
-	doubled: get(imm self) -> i32 = self.value * 2
+	doubled: get(imm self) -> i32 => self.value * 2
 }
 
 main: fun -> i32

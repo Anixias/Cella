@@ -9,48 +9,48 @@ Box[T]: rec
 {
 	value: T
 
-	map[U]: fun(own self, change: fun[own T -> U]) -> Box[U] = Box(change(own self.value))
+	map[U]: fun(own self, change: fun[own T -> U]) -> Box[U] => Box(change(own self.value))
 
-	twice: fun(own self, change: fun[own T -> T]) -> T = change(change(own self.value))
+	twice: fun(own self, change: fun[own T -> T]) -> T => change(change(own self.value))
 
-	same: fun(own self) -> Box[T] = self.map(fun(x) = x)
+	same: fun(own self) -> Box[T] => self.map(fun(x) => x)
 }
 
 Scored: trait
 {
 	score: fun(imm self) -> i32
 
-	bonus: fun(imm self) -> i32 = apply(fun(x) = x + 100, self.score())
+	bonus: fun(imm self) -> i32 => apply(fun(x) => x + 100, self.score())
 }
 
 Player: rec impl Scored
 {
 	points: i32
 
-	score: fun(self) -> i32 = self.points
+	score: fun(self) -> i32 => self.points
 }
 
-apply: fun(f: fun[i32 -> i32], x: i32) -> i32 = f(x)
+apply: fun(f: fun[i32 -> i32], x: i32) -> i32 => f(x)
 
-pass[T]: fun(f: fun[own T -> T], own x: T) -> T = f(own x)
+pass[T]: fun(f: fun[own T -> T], own x: T) -> T => f(own x)
 
-call[T]: fun(f: fun[-> T]) -> T = f()
+call[T]: fun(f: fun[-> T]) -> T => f()
 
-same[T]: fun(own x: T) -> T = pass(fun(y) = y, own x)
+same[T]: fun(own x: T) -> T => pass(fun(y) => y, own x)
 
-last[T]: fun(own x: T, own y: T) -> T = pass(fun(z: T) -> T
+last[T]: fun(own x: T, own y: T) -> T => pass(fun(z: T) -> T
 {
 	val w: T = own z
 	ret w
 }, own y)
 
-deep[T]: fun(own x: T) -> T = pass(fun(y) = pass(fun(z) = z, own y), own x)
+deep[T]: fun(own x: T) -> T => pass(fun(y) => pass(fun(z) => z, own y), own x)
 
 both[T]: fun(own x: T, own y: T) -> T
 {
-	val a = pass(fun(v) = v, own x)
-	val b = pass(fun(v) = v, own y)
-	if call(fun -> i32 = 7) == 7
+	val a = pass(fun(v) => v, own x)
+	val b = pass(fun(v) => v, own y)
+	if call(fun -> i32 => 7) == 7
 		ret b
 
 	ret a
@@ -61,9 +61,9 @@ main: fun -> i32
 	printf("%d %f %d %d %f\n", same(3), same(1.5), last(1, 2), deep(9), deep(0.5))
 	printf("%d %f\n", both(1, 2), both(0.5, 1.5))
 
-	val doubled = Box(21).map(fun(x) = x * 2)
-	val scaled = Box(1.5).map(fun(x) = i32(x * 4.0))
-	printf("%d %d %d %f\n", doubled.value, scaled.value, Box(3).twice(fun(x) = x * x), Box(0.25).same().value)
+	val doubled = Box(21).map(fun(x) => x * 2)
+	val scaled = Box(1.5).map(fun(x) => i32(x * 4.0))
+	printf("%d %d %d %f\n", doubled.value, scaled.value, Box(3).twice(fun(x) => x * x), Box(0.25).same().value)
 	printf("%d\n", Player(5).bonus())
 	ret 0
 }

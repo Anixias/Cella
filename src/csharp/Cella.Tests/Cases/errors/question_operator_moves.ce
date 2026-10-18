@@ -14,14 +14,14 @@ result[T, E]: enum
 	ok(value: T)
 	err(error: E)
 
-	?: op(own self) -> T = match own self
+	?: op(own self) -> T => match own self
 	{
 		ok(own value) => value
 		err(own error) => ret result.err(own error)
 	}
 }
 
-load: fun(id: i32) -> result[Texture, i32] = result.ok(Texture(id))
+load: fun(id: i32) -> result[Texture, i32] => result.ok(Texture(id))
 
 twice: fun -> result[i32, i32]
 {
@@ -31,4 +31,4 @@ twice: fun -> result[i32, i32]
 	ret result.ok(a.id + b.id)
 }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

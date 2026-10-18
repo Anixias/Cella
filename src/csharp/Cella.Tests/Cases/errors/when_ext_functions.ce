@@ -4,4 +4,4 @@ work: ext fun(parameter: ptr) when debug
 {
 }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

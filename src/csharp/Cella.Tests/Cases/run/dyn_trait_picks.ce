@@ -28,16 +28,16 @@ A: rec
 
 A: impl Named
 {
-	name: fun(imm self) -> i32 = 1
+	name: fun(imm self) -> i32 => 1
 }
 
 A: impl Shape
 {
-	name: fun(imm self) -> i32 = 2
-	area: fun(imm self) -> i32 = self.v
+	name: fun(imm self) -> i32 => 2
+	area: fun(imm self) -> i32 => self.v
 }
 
-f: fun(imm s: dyn[Shape]) -> i32 = Named(s).name() * 10 + Shape(s).name()
+f: fun(imm s: dyn[Shape]) -> i32 => Named(s).name() * 10 + Shape(s).name()
 
 main: fun -> i32
 {

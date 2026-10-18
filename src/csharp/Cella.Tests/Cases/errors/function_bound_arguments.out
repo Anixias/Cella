@@ -3,10 +3,10 @@ Error at function_bound_arguments.ce:16:17
 16 │ own *memory = value
                    ╘═══╛ Cannot move 'T' values implicitly
 
-Error at function_bound_arguments.ce:31:54
+Error at function_bound_arguments.ce:31:55
 30 │ 
-31 │ misuse[F: fun[i32 -> i32]]: fun(imm f: F) -> i32 = f(true)
-                                                          ╘══╛ Cannot convert type 'bool' to 'i32'
+31 │ misuse[F: fun[i32 -> i32]]: fun(imm f: F) -> i32 => f(true)
+                                                           ╘══╛ Cannot convert type 'bool' to 'i32'
 
 Error at function_bound_arguments.ce:42:14
 41 │ {
@@ -16,17 +16,17 @@ Error at function_bound_arguments.ce:42:14
 
 Error at function_bound_arguments.ce:43:20
 42 │ val wrong = twice(5, 1)
-43 │ val fewer = twice(fun = 4, 1)
-                       ╘═════╛ 'fun[i32 -> i32]' takes one parameter
+43 │ val fewer = twice(fun => 4, 1)
+                       ╘══════╛ 'fun[i32 -> i32]' takes one parameter
 
 Error at function_bound_arguments.ce:44:19
-43 │ val fewer = twice(fun = 4, 1)
+43 │ val fewer = twice(fun => 4, 1)
 44 │ val bad = holder[ref fun[-> i32]](1)
                       ╘═════════════╛ 'ref fun[-> i32]' is not a trait
 
 Error at function_bound_arguments.ce:46:18
 45 │ var count = 0
-46 │ val borrowing = boxed[fun[-> i32]].of(fun -> i32 = count)
+46 │ val borrowing = boxed[fun[-> i32]].of(fun -> i32 => count)
                      ╘═══════════════════╛ 'of' requires 'T: noref'
                                          | 'ref fun[-> i32]' holds borrows
 

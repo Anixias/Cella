@@ -2,5 +2,5 @@ mod test.brace
 
 E: enum { a }
 
-f: fun(e: E) -> i32 = match e
+f: fun(e: E) -> i32 => match e
 {

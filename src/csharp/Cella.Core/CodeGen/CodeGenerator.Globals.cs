@@ -60,13 +60,13 @@ public sealed unsafe partial class CodeGenerator
 	private static LLVMValueRef FindNamedFunction(LLVMModuleRef module, string name)
 	{
 		var function = module.GetNamedFunction(name);
-		return function.Handle != IntPtr.Zero ? function : FindNamedAlias(module, name);
+		return function.Handle != nint.Zero ? function : FindNamedAlias(module, name);
 	}
 	
 	private static LLVMValueRef FindNamedAlias(LLVMModuleRef module, string name)
 	{
 		using var marshaled = new MarshaledString(name);
-		return new((IntPtr)LLVM.GetNamedGlobalAlias((LLVMOpaqueModule*)module.Handle, marshaled, (nuint)name.Length));
+		return new((nint)LLVM.GetNamedGlobalAlias((LLVMOpaqueModule*)module.Handle, marshaled, (nuint)name.Length));
 	}
 	
 	private LLVMValueRef DeclareGlobal(GlobalInfo info)
@@ -94,7 +94,7 @@ public sealed unsafe partial class CodeGenerator
 		var global = DeclareGlobal(info);
 		if (info.Symbol.IsImport)
 		{
-			if (global.IsAGlobalAlias.Handle != IntPtr.Zero)
+			if (global.IsAGlobalAlias.Handle != nint.Zero)
 				return global;
 			
 			global.DLLStorageClass = LLVMDLLStorageClass.LLVMDLLImportStorageClass;
@@ -267,7 +267,7 @@ public sealed unsafe partial class CodeGenerator
 	{
 		var name = Mangling.MangleStaticRegistry(assembly);
 		var existing = current.Module.GetNamedFunction(name);
-		if (existing.Handle != IntPtr.Zero)
+		if (existing.Handle != nint.Zero)
 			return existing;
 		
 		var registry = current.Module.AddFunction(name, RegistryType);
@@ -291,11 +291,11 @@ public sealed unsafe partial class CodeGenerator
 		{
 			var name = Mangling.MangleStaticRegistry(hosted);
 			using var empty = new MarshaledString(string.Empty);
-			var alias = new LLVMValueRef((IntPtr)LLVM.AddAlias2((LLVMOpaqueModule*)current.Module.Handle,
+			var alias = new LLVMValueRef((nint)LLVM.AddAlias2((LLVMOpaqueModule*)current.Module.Handle,
 				(LLVMOpaqueType*)RegistryType.Handle, 0, (LLVMOpaqueValue*)registry.Handle, empty));
 			
 			var declared = current.Module.GetNamedFunction(name);
-			if (declared.Handle != IntPtr.Zero)
+			if (declared.Handle != nint.Zero)
 			{
 				declared.ReplaceAllUsesWith(alias);
 				declared.DeleteFunction();
@@ -406,7 +406,7 @@ public sealed unsafe partial class CodeGenerator
 	{
 		var name = Mangling.MangleStaticDrops(assembly);
 		var existing = current.Module.GetNamedFunction(name);
-		if (existing.Handle != IntPtr.Zero)
+		if (existing.Handle != nint.Zero)
 			return existing;
 		
 		var drops = current.Module.AddFunction(name, DropsType);
@@ -472,7 +472,7 @@ public sealed unsafe partial class CodeGenerator
 		foreach (var state in states)
 		{
 			var drops = state.Module.GetNamedFunction(name);
-			if (drops.Handle == IntPtr.Zero)
+			if (drops.Handle == nint.Zero)
 				continue;
 			
 			while (LLVM.GetFirstUse(drops) is var use && use != null)
@@ -486,7 +486,7 @@ public sealed unsafe partial class CodeGenerator
 	{
 		var name = Mangling.MangleModuleDrops(_assemblySymbol.Name, state.Lowered.Symbol.Name);
 		var existing = current.Module.GetNamedFunction(name);
-		if (existing.Handle != IntPtr.Zero)
+		if (existing.Handle != nint.Zero)
 			return existing;
 		
 		var drops = current.Module.AddFunction(name, DropsType);

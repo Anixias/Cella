@@ -18,12 +18,12 @@ ring[T: noref, N: const usize]: rec
 		self.used += 1
 	}
 
-	capacity: get(imm self) -> usize = N
+	capacity: get(imm self) -> usize => N
 }
 
 ring[T: noref, N: const u8]: impl
 {
-	slots: fun(imm self) -> u8 = N
+	slots: fun(imm self) -> u8 => N
 }
 
 holder[N: const usize]: rec
@@ -46,7 +46,7 @@ Crate: rec impl Sized[3]
 {
 	value: i32
 
-	size: fun(self) -> usize = 3
+	size: fun(self) -> usize => 3
 }
 
 sum[N: const usize]: fun(values: array[i32, N]) -> i32
@@ -58,15 +58,15 @@ sum[N: const usize]: fun(values: array[i32, N]) -> i32
 	ret total + i32(N)
 }
 
-echo[N: const usize]: fun(values: array[i32, N]) -> array[i32, N] = values
+echo[N: const usize]: fun(values: array[i32, N]) -> array[i32, N] => values
 
-zeros[N: const usize]: fun -> array[i32, N] = holder[N]().items
+zeros[N: const usize]: fun -> array[i32, N] => holder[N]().items
 
-scaled[N: const usize]: fun(values: array[i32, N]) -> usize = N * 10
+scaled[N: const usize]: fun(values: array[i32, N]) -> usize => N * 10
 
-first[T: copy, N: const usize]: fun(values: array[T, N]) -> T = values[0]
+first[T: copy, N: const usize]: fun(values: array[T, N]) -> T => values[0]
 
-make[N: const usize]: fun -> ring[i32, N] = ring[i32, N]()
+make[N: const usize]: fun -> ring[i32, N] => ring[i32, N]()
 
 wrap[N: const usize]: fun(values: array[i32, N]) -> ring[i32, N]
 {
@@ -77,7 +77,7 @@ wrap[N: const usize]: fun(values: array[i32, N]) -> ring[i32, N]
 	ret result
 }
 
-measure[T: Sized[3]]: fun(imm item: T) -> usize = item.size()
+measure[T: Sized[3]]: fun(imm item: T) -> usize => item.size()
 
 records: fun
 {

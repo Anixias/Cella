@@ -26,11 +26,11 @@ done: fun(flag: bool)
 	greet()
 }
 
-log: fun(x: i32) = printf("%d\n", x)
-hello: fun = greet()
-bump: fun = counter += 1
-handle: fun(e: Effect) = match e { none => greet(), hit(val n) => log(n) }
-record: ext fun(x: i32) = counter = x
+log: fun(x: i32) => printf("%d\n", x)
+hello: fun => greet()
+bump: fun => counter += 1
+handle: fun(e: Effect) => match e { none => greet(), hit(val n) => log(n) }
+record: ext fun(x: i32) => counter = x
 
 pick: fun(x: i32)
 {

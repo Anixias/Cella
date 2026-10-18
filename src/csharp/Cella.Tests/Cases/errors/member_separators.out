@@ -28,19 +28,19 @@ Error at member_separators.ce:17:36
 17 │ ext { puts: fun(text: cstr) -> i32 abs: fun(v: i32) -> i32 }
                                         ╘═╛ Expected ',' or a new line before the next declaration
 
-Error at member_separators.ce:19:27
+Error at member_separators.ce:19:28
 18 │ 
-19 │ pub { one: fun -> i32 = 1 two: fun -> i32 = 2 }
-                               ╘═╛ Expected ',' or a new line before the next declaration
+19 │ pub { one: fun -> i32 => 1 two: fun -> i32 => 2 }
+                                ╘═╛ Expected ',' or a new line before the next declaration
 
-Error at member_separators.ce:25:53
+Error at member_separators.ce:25:54
 24 │ 
-25 │ doubled: prop i32 { get(imm self) = self.value * 2 set(mut self, next) { self.value = next / 2 } }
-                                                        ╘═╛ Expected ',' or a new line before the next accessor
+25 │ doubled: prop i32 { get(imm self) => self.value * 2 set(mut self, next) { self.value = next / 2 } }
+                                                         ╘═╛ Expected ',' or a new line before the next accessor
 
-Error at member_separators.ce:28:23
+Error at member_separators.ce:28:24
 27 │ 
-28 │ three: fun -> i32 = 3 four: fun -> i32 = 4
-                           ╘══╛ Expected a new line before the next declaration
+28 │ three: fun -> i32 => 3 four: fun -> i32 => 4
+                            ╘══╛ Expected a new line before the next declaration
 
 [compilation failed]

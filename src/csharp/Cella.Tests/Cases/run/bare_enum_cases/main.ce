@@ -64,15 +64,15 @@ pair[T]: rec
 
 seven: val option[i32] = some(7)
 
-read: fun(o: option[i32]) -> i32 = match o { some(val v) => v, none => -1 }
-readWide: fun(o: option[i64]) -> i64 = match o { some(val v) => v, none => -1 }
-speed: fun(m: Mode) -> i32 = match m { running(val s) => s, idle => 0 }
-damage: fun(e: Effect) -> i32 = match e { strike(val d) => d, calm => 0 }
-show: fun(o: option[i32]) -> i32 = 1
-show: fun(t: Team) -> i32 = 2
-both[T]: fun(imm o: option[T], own fallback: T) -> T = fallback
-double: fun(own n: i32) -> i64 = i64(n) * 2
-some: fun(value: i32) -> i32 = value * 100
+read: fun(o: option[i32]) -> i32 => match o { some(val v) => v, none => -1 }
+readWide: fun(o: option[i64]) -> i64 => match o { some(val v) => v, none => -1 }
+speed: fun(m: Mode) -> i32 => match m { running(val s) => s, idle => 0 }
+damage: fun(e: Effect) -> i32 => match e { strike(val d) => d, calm => 0 }
+show: fun(o: option[i32]) -> i32 => 1
+show: fun(t: Team) -> i32 => 2
+both[T]: fun(imm o: option[T], own fallback: T) -> T => fallback
+double: fun(own n: i32) -> i64 => i64(n) * 2
+some: fun(value: i32) -> i32 => value * 100
 
 half: fun(n: i32) -> option[i32]
 {

@@ -13,13 +13,13 @@ Shape: enum
 	none
 }
 
-add: fun(a: i32, b: i32,) -> i32 = a + b
+add: fun(a: i32, b: i32,) -> i32 => a + b
 
 Point: rec
 {
 	x: i32
 
-	get: fun(imm self,) -> i32 = self.x
+	get: fun(imm self,) -> i32 => self.x
 }
 
 pair[A, B,]: rec
@@ -28,7 +28,7 @@ pair[A, B,]: rec
 	b: B
 }
 
-make[T: new(i32,)]: fun -> T = T(1)
+make[T: new(i32,)]: fun -> T => T(1)
 
 arrays: fun -> i32
 {
@@ -54,7 +54,7 @@ typeArguments: fun -> i32
 	ret 0
 }
 
-arms: fun -> i32 = match 3
+arms: fun -> i32 => match 3
 {
 	1, 2, => 0
 	else => 1
@@ -81,4 +81,4 @@ indexers: fun -> i32
 	ret values[1,]
 }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

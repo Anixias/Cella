@@ -26,18 +26,18 @@ Bundle: rec
 	token: Token
 }
 
-call[T: ext]: fun(f: ext fun[T -> i32], value: T) -> i32 = f(value)
+call[T: ext]: fun(f: ext fun[T -> i32], value: T) -> i32 => f(value)
 
-visit[T: ext]: fun(f: ext fun[ptr[T] -> i32], items: ptr[T]) -> i32 = f(items)
+visit[T: ext]: fun(f: ext fun[ptr[T] -> i32], items: ptr[T]) -> i32 => f(items)
 
-same: fun(imm t: Token) -> i32 = t.id
+same: fun(imm t: Token) -> i32 => t.id
 
-outer[U]: fun(f: ext fun[i32 -> i32], imm value: U) -> i32 = visit[U](undef, null)
+outer[U]: fun(f: ext fun[i32 -> i32], imm value: U) -> i32 => visit[U](undef, null)
 
 local[T]: fun(imm value: T) -> i32
 {
 	var f: ext fun[array[T, 2] -> i32]
-	val g = fun(imm x: T) -> ext fun[T -> i32] = undef
+	val g = fun(imm x: T) -> ext fun[T -> i32] => undef
 	ret 0
 }
 
@@ -45,7 +45,7 @@ main: fun -> i32
 {
 	call(same, Token(4))
 	call[Bundle](undef, Bundle(Token(1)))
-	call[fun[i32 -> i32]](undef, fun(n: i32) -> i32 = n)
+	call[fun[i32 -> i32]](undef, fun(n: i32) -> i32 => n)
 	visit[fstr[Display]](undef, null)
 	ret 0
 }

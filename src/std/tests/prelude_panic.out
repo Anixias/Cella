@@ -4,5 +4,5 @@ Hint at prelude_panic.ce:3:9
             ╘═══╛ Redundant import
 
 [stderr]
-Panic at prelude_panic.ce:10:35: addition overflow
+Panic at prelude_panic.ce:10:36: addition overflow
 [exit code 101]

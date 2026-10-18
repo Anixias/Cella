@@ -1,6 +1,6 @@
 mod test
 
-sum[N: const usize]: fun(values: array[u8, N]) -> i32 = 0
+sum[N: const usize]: fun(values: array[u8, N]) -> i32 => 0
 
 main: fun -> i32
 {

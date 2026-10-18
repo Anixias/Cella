@@ -19,9 +19,9 @@ take: fun(own t: Token)
 {
 }
 
-firstOf[N: const usize]: fun(own values: array[Token, N]) -> Token = values[0]
+firstOf[N: const usize]: fun(own values: array[Token, N]) -> Token => values[0]
 
-middleOf[N: const usize]: fun(own values: array[Token, N]) -> Token = values[1]
+middleOf[N: const usize]: fun(own values: array[Token, N]) -> Token => values[1]
 
 make[N: const usize]: fun
 {

@@ -1,6 +1,6 @@
 mod test
 
-g: fun(a: i32) -> usize = 1
+g: fun(a: i32) -> usize => 1
 
 sum: fun -> i32
 {
@@ -14,4 +14,4 @@ call: fun -> i32
 	ret 0
 }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

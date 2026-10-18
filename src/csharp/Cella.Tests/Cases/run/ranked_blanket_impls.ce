@@ -25,17 +25,17 @@ Describe: trait
 
 [T]: impl Describe
 {
-	name: fun(imm self) -> cstr = "anything"
+	name: fun(imm self) -> cstr => "anything"
 }
 
 [T: Eq]: impl Describe
 {
-	name: fun(imm self) -> cstr = "comparable"
+	name: fun(imm self) -> cstr => "comparable"
 }
 
 [T: Ord]: impl Describe
 {
-	name: fun(imm self) -> cstr = "ordered"
+	name: fun(imm self) -> cstr => "ordered"
 }
 
 Plain: rec
@@ -47,12 +47,12 @@ Named: rec impl Describe
 {
 	value: i32
 
-	name: fun(imm self) -> cstr = "named"
+	name: fun(imm self) -> cstr => "named"
 }
 
-describe[T]: fun(imm value: T) -> cstr = value.name()
-describeEq[T: Eq]: fun(imm value: T) -> cstr = value.name()
-describeDyn: fun(imm value: dyn[Describe]) -> cstr = value.name()
+describe[T]: fun(imm value: T) -> cstr => value.name()
+describeEq[T: Eq]: fun(imm value: T) -> cstr => value.name()
+describeDyn: fun(imm value: dyn[Describe]) -> cstr => value.name()
 
 main: fun -> i32
 {

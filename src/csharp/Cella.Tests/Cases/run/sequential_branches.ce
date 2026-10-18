@@ -86,4 +86,4 @@ step: fun(start: i32) -> i32
 	ret x
 }
 
-main: fun -> i32 = step(0)
+main: fun -> i32 => step(0)

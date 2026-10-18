@@ -19,4 +19,4 @@ panic: op(message: str, location: str) -> never
 	}
 }
 
-main: fun -> i32 = panic "stopped"
+main: fun -> i32 => panic "stopped"

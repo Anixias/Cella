@@ -100,7 +100,7 @@ scaleVec: ext fun(v: Vec3) -> Vec3
 	ret Vec3(v.x * 3.0, v.y * 3.0, v.z * 3.0)
 }
 
-nextWide: ext fun(v: i128) -> i128 = v + 1
+nextWide: ext fun(v: i128) -> i128 => v + 1
 
 cellaMix: pub ext("cella_mix") fun(v: Mixed, factor: i32) -> f64
 {

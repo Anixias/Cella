@@ -16,7 +16,7 @@ view[T]: ref rec
 		self.length = length
 	}
 
-	[]: op(self, i: usize) -> imm[T] = imm self.data[i]
+	[]: op(self, i: usize) -> imm[T] => imm self.data[i]
 }
 
 main: fun(args: view[str]) -> i32

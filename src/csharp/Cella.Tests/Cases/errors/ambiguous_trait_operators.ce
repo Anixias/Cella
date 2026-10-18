@@ -37,7 +37,7 @@ Cursor: ref rec
 		ret more
 	}
 
-	*: op(self) -> imm[i32] = imm self.value
+	*: op(self) -> imm[i32] => imm self.value
 }
 
 Walk: trait
@@ -61,37 +61,37 @@ Box: rec
 
 Box: impl Pointer
 {
-	*: op(imm self) -> imm[i32] = imm self.value
+	*: op(imm self) -> imm[i32] => imm self.value
 }
 
 Box: impl Other
 {
-	*: op(imm self) -> imm[i32] = imm self.value
+	*: op(imm self) -> imm[i32] => imm self.value
 }
 
 Box: impl Index
 {
-	[]: op(imm self, i: usize) -> imm[i32] = imm self.value
+	[]: op(imm self, i: usize) -> imm[i32] => imm self.value
 }
 
 Box: impl Lookup
 {
-	[]: op(imm self, i: usize) -> imm[i32] = imm self.value
+	[]: op(imm self, i: usize) -> imm[i32] => imm self.value
 }
 
 Box: impl Walk
 {
-	in: op(imm self) -> Cursor = Cursor(self.value, false)
+	in: op(imm self) -> Cursor => Cursor(self.value, false)
 }
 
 Box: impl Stroll
 {
-	in: op(imm self) -> Cursor = Cursor(self.value, false)
+	in: op(imm self) -> Cursor => Cursor(self.value, false)
 }
 
-deref[T: Other + Pointer]: fun(imm value: T) -> i32 = *value
+deref[T: Other + Pointer]: fun(imm value: T) -> i32 => *value
 
-index[T: Lookup + Index]: fun(imm value: T) -> i32 = value[0]
+index[T: Lookup + Index]: fun(imm value: T) -> i32 => value[0]
 
 main: fun -> i32
 {

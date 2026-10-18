@@ -12,5 +12,5 @@ Point: pub rec
 
 i32: impl Hash
 {
-	hash: fun(self) -> u64 = 1
+	hash: fun(self) -> u64 => 1
 }

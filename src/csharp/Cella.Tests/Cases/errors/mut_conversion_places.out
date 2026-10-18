@@ -1,7 +1,7 @@
-Error at mut_conversion_places.ce:19:49
+Error at mut_conversion_places.ce:19:50
 18 │ 
-19 │ readOnly: fun(values: array[i32, 2]) = fill(mut values, 1)
-                                                     ╘════╛ Cannot mutably borrow read-only parameters
+19 │ readOnly: fun(values: array[i32, 2]) => fill(mut values, 1)
+                                                      ╘════╛ Cannot mutably borrow read-only parameters
 
 Error at mut_conversion_places.ce:24:11
 23 │ val fixed: array[i32, 2] = [1, 2]

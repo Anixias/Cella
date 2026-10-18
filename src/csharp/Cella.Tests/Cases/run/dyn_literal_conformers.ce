@@ -12,15 +12,15 @@ Show: trait
 
 i64: impl Show
 {
-	show: fun(imm self) = printf("[%lld]", self)
+	show: fun(imm self) => printf("[%lld]", self)
 }
 
 cstr: impl Show
 {
-	show: fun(imm self) = printf("[%s]", self)
+	show: fun(imm self) => printf("[%s]", self)
 }
 
-display: fun(imm value: dyn[Show]) = value.show()
+display: fun(imm value: dyn[Show]) => value.show()
 
 main: fun -> i32
 {

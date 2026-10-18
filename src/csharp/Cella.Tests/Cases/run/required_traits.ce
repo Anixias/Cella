@@ -13,7 +13,7 @@ Eq: trait
 Ord: trait req Eq
 {
 	<: op(imm a: Self, imm b: Self) -> bool
-	<=: op(imm a: Self, imm b: Self) -> bool = a < b || a == b
+	<=: op(imm a: Self, imm b: Self) -> bool => a < b || a == b
 }
 
 Version: rec impl Eq + Ord
@@ -21,8 +21,8 @@ Version: rec impl Eq + Ord
 	major: i32
 	minor: i32
 
-	==: op(a: Version, b: Version) -> bool = a.major == b.major && a.minor == b.minor
-	<: op(a: Version, b: Version) -> bool = a.major < b.major || a.major == b.major && a.minor < b.minor
+	==: op(a: Version, b: Version) -> bool => a.major == b.major && a.minor == b.minor
+	<: op(a: Version, b: Version) -> bool => a.major < b.major || a.major == b.major && a.minor < b.minor
 }
 
 i32: impl Eq + Ord
@@ -34,12 +34,12 @@ box[T]: rec
 
 box[T: Eq]: impl Eq
 {
-	==: op(imm a: box[T], imm b: box[T]) -> bool = a.value == b.value
+	==: op(imm a: box[T], imm b: box[T]) -> bool => a.value == b.value
 }
 
 box[T: Ord]: impl Ord
 {
-	<: op(imm a: box[T], imm b: box[T]) -> bool = a.value < b.value
+	<: op(imm a: box[T], imm b: box[T]) -> bool => a.value < b.value
 }
 
 pair[T: Eq]: rec
@@ -47,21 +47,21 @@ pair[T: Eq]: rec
 	a: T
 	b: T
 
-	same: fun(imm self) -> bool = self.a == self.b
+	same: fun(imm self) -> bool => self.a == self.b
 }
 
 pair[T: Ord]: impl
 {
-	ordered: fun(imm self) -> bool = self.a <= self.b
+	ordered: fun(imm self) -> bool => self.a <= self.b
 }
 
-same[T: Eq]: fun(imm a: T, imm b: T) -> bool = a == b
+same[T: Eq]: fun(imm a: T, imm b: T) -> bool => a == b
 
-within[T: Ord]: fun(imm value: T, imm low: T, imm high: T) -> bool = low <= value && value <= high
+within[T: Ord]: fun(imm value: T, imm low: T, imm high: T) -> bool => low <= value && value <= high
 
-isEdge[T: Ord]: fun(imm value: T, imm low: T, imm high: T) -> bool = value == low || same(imm value, imm high)
+isEdge[T: Ord]: fun(imm value: T, imm low: T, imm high: T) -> bool => value == low || same(imm value, imm high)
 
-either[T: Eq + Ord]: fun(imm a: T, imm b: T) -> bool = a == b || a < b
+either[T: Eq + Ord]: fun(imm a: T, imm b: T) -> bool => a == b || a < b
 
 least[T: Ord + copy]: fun(a: T, b: T) -> T
 {

@@ -1,16 +1,16 @@
 Error at builtin_conversions.ce:8:18
 7 │ 
-8 │ as: op(self) -> i32 = 100
+8 │ as: op(self) -> i32 => 100
                     ╘═╛ Conversion to 'i32' is built in
 
 Error at builtin_conversions.ce:9:19
-8 │ as: op(self) -> i32 = 100
-9 │ new: op(self) -> u16 = 99
+8 │ as: op(self) -> i32 => 100
+9 │ new: op(self) -> u16 => 99
                      ╘═╛ Conversion to 'u16' is built in
 
 Error at builtin_conversions.ce:10:9
- 9 │ new: op(self) -> u16 = 99
-10 │ as: op(value: i32) -> Color = green
+ 9 │ new: op(self) -> u16 => 99
+10 │ as: op(value: i32) -> Color => green
             ╘═══╛ Conversion from 'i32' is built in
 
 [compilation failed]

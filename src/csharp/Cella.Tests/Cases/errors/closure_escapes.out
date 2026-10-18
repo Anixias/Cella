@@ -5,13 +5,13 @@ Error at closure_escapes.ce:23:14
 
 Error at closure_escapes.ce:32:6
 31 │ val base = 1
-32 │ ret fun = base
-         ╘════════╛ Cannot return closures that capture variables
+32 │ ret fun => base
+         ╘═════════╛ Cannot return closures that capture variables
 
-Error at closure_escapes.ce:35:48
+Error at closure_escapes.ce:35:49
 34 │ 
-35 │ show: fun(imm text: Text) -> ref fun[-> i32] = fun = text.id
-                                                    ╘═══════════╛ Cannot return closures that capture variables
+35 │ show: fun(imm text: Text) -> ref fun[-> i32] => fun => text.id
+                                                     ╘════════════╛ Cannot return closures that capture variables
 
 Error at closure_escapes.ce:40:15
 39 │ val base = 1

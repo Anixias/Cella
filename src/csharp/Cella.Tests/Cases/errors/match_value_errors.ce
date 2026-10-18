@@ -13,13 +13,13 @@ Holder: enum { empty, full(b: Box) }
 
 Point: rec { x: i32 }
 
-missing: fun(x: i32) -> i32 = match x
+missing: fun(x: i32) -> i32 => match x
 {
 	0..10 => 1
 	> 20 => 2
 }
 
-repeated: fun(x: i32) -> i32 = match x
+repeated: fun(x: i32) -> i32 => match x
 {
 	5 => 1
 	2, 5 => 2
@@ -28,47 +28,47 @@ repeated: fun(x: i32) -> i32 = match x
 
 Five: const i32 = 5
 
-same: fun(x: i32) -> i32 = match x
+same: fun(x: i32) -> i32 => match x
 {
 	5 => 1
 	Five => 2
 	else => 0
 }
 
-listed: fun(h: Hit) -> i32 = match h
+listed: fun(h: Hit) -> i32 => match h
 {
 	hit(val n), pair(val n, _) => n
 	miss => 0
 }
 
-guarded: fun(own h: Holder) -> i32 = match own h
+guarded: fun(own h: Holder) -> i32 => match own h
 {
 	full(val b) if b.n > 0 => 1
 	else => 0
 }
 
-noEquals: fun(p: Point) -> i32 = match p
+noEquals: fun(p: Point) -> i32 => match p
 {
 	Point(1) => 1
 	else => 0
 }
 
-exact: fun(f: f32) -> i32 = match f
+exact: fun(f: f32) -> i32 => match f
 {
 	1.5 => 1
 	!= 2.0 => 2
 	else => 0
 }
 
-byteGap: fun(b: u8) -> i32 = match b
+byteGap: fun(b: u8) -> i32 => match b
 {
 	0..100 => 1
 	101..=255 => 2
 }
 
-flags: fun(b: bool) -> i32 = match b
+flags: fun(b: bool) -> i32 => match b
 {
 	true => 1
 }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

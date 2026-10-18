@@ -7,9 +7,9 @@ ext
 	GetProcAddress: fun(module: ptr, name: cstr) -> ptr
 }
 
-answer: pub ext fun(x: i32) -> i32 = x * 2
+answer: pub ext fun(x: i32) -> i32 => x * 2
 
-hidden: ext fun -> i32 = 1
+hidden: ext fun -> i32 => 1
 
 main: fun -> i32
 {

@@ -5,8 +5,8 @@ Error at lifecycle_member_shapes.ce:6:18
 
 Error at lifecycle_member_shapes.ce:15:18
 14 │ x: i32
-15 │ new: op(v: i32) = self.x = v
-                     ^ Expected '{'
+15 │ new: op(v: i32) => self.x = v
+                     ╘╛ Expected '{'
 
 Error at lifecycle_member_shapes.ce:21:7
 20 │ x: i32

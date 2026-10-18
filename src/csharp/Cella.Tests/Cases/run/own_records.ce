@@ -15,7 +15,7 @@ Countdown: own rec
 		ret self.left >= 0
 	}
 
-	*: op(imm self) -> imm[i32] = imm self.left
+	*: op(imm self) -> imm[i32] => imm self.left
 }
 
 Ticket: own enum
@@ -24,8 +24,8 @@ Ticket: own enum
 	closed
 }
 
-finish: fun(own c: Countdown) -> i32 = c.left
-peek: fun(imm c: Countdown) -> i32 = c.left
+finish: fun(own c: Countdown) -> i32 => c.left
+peek: fun(imm c: Countdown) -> i32 => c.left
 
 main: fun -> i32
 {

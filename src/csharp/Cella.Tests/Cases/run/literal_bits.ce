@@ -10,7 +10,7 @@ Flags: rec
 	bits: u8
 }
 
-clear: fun(value: u8) -> u8 = value & ~5
+clear: fun(value: u8) -> u8 => value & ~5
 
 run: fun(a: u8)
 {

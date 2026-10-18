@@ -3,4 +3,4 @@ mod other
 use tools.geometry
 use game.geometry
 
-check: fun -> i32 = geometry.area()
+check: fun -> i32 => geometry.area()

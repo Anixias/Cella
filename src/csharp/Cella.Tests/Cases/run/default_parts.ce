@@ -39,10 +39,10 @@ Wrapper: rec
 	}
 }
 
-double: fun(n: i32) -> i32 = n * 2
-negate: fun(n: i32) -> i32 = -n
+double: fun(n: i32) -> i32 => n * 2
+negate: fun(n: i32) -> i32 => -n
 
-amount: fun(effect: Effect) -> i32 = match effect
+amount: fun(effect: Effect) -> i32 => match effect
 {
 	hit(val n) => n
 	none => 0
@@ -108,11 +108,11 @@ Guarded: rec
 	}
 }
 
-describeCloser: fun(imm closer: Closer) -> i32 = closer.id
-describeKeeper: fun(imm keeper: Keeper) -> i32 = keeper.closer.id * 10 + keeper.count
-describeGuarded: fun(imm guarded: Guarded) -> i32 = guarded.handle * 10 + guarded.flags
+describeCloser: fun(imm closer: Closer) -> i32 => closer.id
+describeKeeper: fun(imm keeper: Keeper) -> i32 => keeper.closer.id * 10 + keeper.count
+describeGuarded: fun(imm guarded: Guarded) -> i32 => guarded.handle * 10 + guarded.flags
 
-explicit: fun -> i32 = describeCloser(Closer(0))
+explicit: fun -> i32 => describeCloser(Closer(0))
 
 written: fun -> i32
 {

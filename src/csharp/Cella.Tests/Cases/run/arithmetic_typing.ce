@@ -12,8 +12,8 @@ Wide: rec
 
 limit: val u8 = 300 - 100
 
-show: fun(value: i64) -> i64 = value
-product: fun(a: i32, b: i32) -> i64 = a *% b
+show: fun(value: i64) -> i64 => value
+product: fun(a: i32, b: i32) -> i64 => a *% b
 
 run: fun(a: i32, b: i32, small: u8)
 {

@@ -9,22 +9,22 @@ Fixed: rec
 {
 	raw: u32
 
-	<: op(a: u32, b: Fixed) -> bool = a < b.raw
+	<: op(a: u32, b: Fixed) -> bool => a < b.raw
 }
 
 Name: rec
 {
 	id: i32
 
-	<: op(a: Name, b: Name) -> bool = a.id < b.id
-	as: op(self) -> i32 = self.id
+	<: op(a: Name, b: Name) -> bool => a.id < b.id
+	as: op(self) -> i32 => self.id
 }
 
 Level: rec
 {
 	value: i32
 
-	as: op(self) -> i32 = self.value
+	as: op(self) -> i32 => self.value
 }
 
 Low: val bool = i32(-1) < u32(1) < u64(2)

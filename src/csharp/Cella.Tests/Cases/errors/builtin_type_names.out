@@ -15,7 +15,7 @@ Error at builtin_type_names.ce:7:1
 
 Error at builtin_type_names.ce:9:1
 8 │ 
-9 │ str: fun = 0
+9 │ str: fun => 0
     ╘═╛ Cannot use 'str' as a name
 
 Error at builtin_type_names.ce:11:1
@@ -30,7 +30,7 @@ Error at builtin_type_names.ce:13:1
 
 Error at builtin_type_names.ce:17:7
 16 │ {
-17 │     pick[bool]: fun(imm value: bool) -> i32 = 0
+17 │     pick[bool]: fun(imm value: bool) -> i32 => 0
               ╘══╛ Cannot use 'bool' as a name
 
 Error at builtin_type_names.ce:22:2

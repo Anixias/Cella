@@ -1,6 +1,6 @@
-Error at lib\lib.ce:3:49
+Error at lib\lib.ce:3:50
 2 │ 
-3 │ twice: pub fun(value: i32) -> i32 = value * 2 + offset
-                                                    ╘════╛ Symbol 'offset' not found in this scope
+3 │ twice: pub fun(value: i32) -> i32 => value * 2 + offset
+                                                     ╘════╛ Symbol 'offset' not found in this scope
 
 [compilation failed]

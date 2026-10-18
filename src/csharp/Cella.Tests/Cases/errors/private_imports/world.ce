@@ -15,6 +15,6 @@ Hidden: pvt rec
 	code: i32
 }
 
-helper: mod fun -> i32 = 1
+helper: mod fun -> i32 => 1
 
-tool: pvt fun -> i32 = 2
+tool: pvt fun -> i32 => 2

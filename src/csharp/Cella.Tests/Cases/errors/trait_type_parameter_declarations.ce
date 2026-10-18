@@ -38,7 +38,7 @@ Plain: rec
 
 Names: rec impl Sorted[Plain]
 {
-	first: fun(self) -> Plain = Plain(1)
+	first: fun(self) -> Plain => Plain(1)
 }
 
 Bare: rec impl Iterator
@@ -53,4 +53,4 @@ Unknown: rec impl Iterator[Missing]
 {
 }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

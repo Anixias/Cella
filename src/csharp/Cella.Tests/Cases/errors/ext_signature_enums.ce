@@ -48,7 +48,7 @@ ext
 	fine: fun(code: Code) -> Code
 }
 
-swap: ext fun(team: Team) -> Team = team
+swap: ext fun(team: Team) -> Team => team
 
 main: fun -> i32
 {

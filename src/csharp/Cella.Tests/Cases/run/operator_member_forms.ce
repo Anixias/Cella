@@ -9,10 +9,10 @@ Word: rec
 {
 	v: u32
 
-	<<<: op(a: Word, b: i32) -> Word = Word(a.v <<< b)
-	>>>: op(a: Word, b: i32) -> Word = Word(a.v >>> b)
-	-%: op(a: Word, b: Word) -> Word = Word(a.v -% b.v)
-	*%: op(a: Word, b: Word) -> Word = Word(a.v *% b.v)
+	<<<: op(a: Word, b: i32) -> Word => Word(a.v <<< b)
+	>>>: op(a: Word, b: i32) -> Word => Word(a.v >>> b)
+	-%: op(a: Word, b: Word) -> Word => Word(a.v -% b.v)
+	*%: op(a: Word, b: Word) -> Word => Word(a.v *% b.v)
 
 	-=: op(mut self, other: Word)
 	{

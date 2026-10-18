@@ -1,11 +1,11 @@
-Error at main.ce:32:32
+Error at main.ce:32:33
 31 │ 
-32 │ hidden: fun(x: i32) -> i32 = x.internal()
-                                    ╘══════╛ Type 'i32' has no member 'internal'
+32 │ hidden: fun(x: i32) -> i32 => x.internal()
+                                     ╘══════╛ Type 'i32' has no member 'internal'
 
-Error at other.ce:3:34
+Error at other.ce:3:35
 2 │ 
-3 │ noImport: fun(x: i32) -> i32 = x.clamp(0, 1)
-                                     ╘═══╛ Type 'i32' has no member 'clamp'
+3 │ noImport: fun(x: i32) -> i32 => x.clamp(0, 1)
+                                      ╘═══╛ Type 'i32' has no member 'clamp'
 
 [compilation failed]

@@ -1,16 +1,16 @@
-Error at main.ce:18:33
+Error at main.ce:18:34
 17 │ 
-18 │ outside: fun(x: i32) -> i32 = x.twice() + x.half()
-                                     ╘═══╛ Type 'i32' has no member 'twice'
+18 │ outside: fun(x: i32) -> i32 => x.twice() + x.half()
+                                      ╘═══╛ Type 'i32' has no member 'twice'
 
-Error at main.ce:18:45
+Error at main.ce:18:46
 17 │ 
-18 │ outside: fun(x: i32) -> i32 = x.twice() + x.half()
-                                                 ╘══╛ Type 'i32' has no member 'half'
+18 │ outside: fun(x: i32) -> i32 => x.twice() + x.half()
+                                                  ╘══╛ Type 'i32' has no member 'half'
 
-Error at other.ce:4:35
-3 │ sameModule: fun(x: i32) -> i32 = x.twice() + x.half() + x.shared()
-4 │ otherFile: fun(x: i32) -> i32 = x.third()
-                                      ╘═══╛ Type 'i32' has no member 'third'
+Error at other.ce:4:36
+3 │ sameModule: fun(x: i32) -> i32 => x.twice() + x.half() + x.shared()
+4 │ otherFile: fun(x: i32) -> i32 => x.third()
+                                       ╘═══╛ Type 'i32' has no member 'third'
 
 [compilation failed]

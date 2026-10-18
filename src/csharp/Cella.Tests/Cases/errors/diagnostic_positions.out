@@ -1,11 +1,11 @@
-Error at end_blank_lines.ce:3:29
+Error at end_blank_lines.ce:3:30
 2 │ 
-3 │ value: fun -> i32 = add(1, 2
-                                ^ Expected ')'
-                                | To match the '(' on line 3
+3 │ value: fun -> i32 => add(1, 2
+                                 ^ Expected ')'
+                                 | To match the '(' on line 3
 
 Error at unclosed_brace.ce:6:2
-5 │ f: fun(e: E) -> i32 = match e
+5 │ f: fun(e: E) -> i32 => match e
 6 │ {
      ^ Expected '}'
      | To match the '{' on line 6

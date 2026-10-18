@@ -5,7 +5,7 @@ ring[T, N: const usize]: pub rec
 	items: array[T, N]
 	used: usize
 
-	capacity: get(imm self) -> usize = N
+	capacity: get(imm self) -> usize => N
 }
 
 total[N: const usize]: pub fun(values: array[i32, N]) -> i32
@@ -24,5 +24,5 @@ Measured: pub trait
 
 array[T, N: const usize]: impl Measured
 {
-	measure: fun(imm self) -> usize = N * 100
+	measure: fun(imm self) -> usize => N * 100
 }

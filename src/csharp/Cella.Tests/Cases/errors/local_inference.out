@@ -25,11 +25,11 @@ Error at local_inference.ce:35:15
 
 Error at local_inference.ce:38:20
 37 │ 
-38 │ val untyped = fun(x) = x * 2
+38 │ val untyped = fun(x) => x * 2
                        ^ Cannot infer the type of 'x'
 
 Error at local_inference.ce:39:16
-38 │ val untyped = fun(x) = x * 2
+38 │ val untyped = fun(x) => x * 2
 39 │ val unknown = nowhere
                    ╘═════╛ Symbol 'nowhere' not found in this scope
 

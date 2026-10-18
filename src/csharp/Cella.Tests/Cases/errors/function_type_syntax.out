@@ -1,11 +1,11 @@
 Error at function_type_syntax.ce:3:18
 2 │ 
-3 │ apply: fun(f: fun(i32) -> i32) -> i32 = 0
+3 │ apply: fun(f: fun(i32) -> i32) -> i32 => 0
                      ^ Expected '['
 
 Error at function_type_syntax.ce:5:22
 4 │ 
-5 │ pair: fun(f: fun[i32 i32]) = {}
+5 │ pair: fun(f: fun[i32 i32]) => {}
                          ╘═╛ Expected ']'
 
 Error at function_type_syntax.ce:9:19

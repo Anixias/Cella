@@ -16,7 +16,7 @@ Circle: rec impl Shape
 {
 	r: f64
 
-	area: fun(self) -> f64 = self.r * 3.0
+	area: fun(self) -> f64 => self.r * 3.0
 }
 
 Counter: rec
@@ -39,9 +39,9 @@ Gauge: rec
 	}
 }
 
-describe: fun(imm shape: dyn[Shape]) -> f64 = shape.area()
+describe: fun(imm shape: dyn[Shape]) -> f64 => shape.area()
 
-reading[T: new(i32)]: fun -> T = T(7)
+reading[T: new(i32)]: fun -> T => T(7)
 
 main: fun -> i32
 {

@@ -16,7 +16,7 @@ view[T]: ref rec
 		self.length = length
 	}
 
-	[]: op(self, i: usize) -> imm[T] = imm self.data[i]
+	[]: op(self, i: usize) -> imm[T] => imm self.data[i]
 }
 
 Effect: enum
@@ -34,7 +34,7 @@ Box: rec impl Sink
 {
 	id: i32
 
-	put: fun(self, ...values: view[i32]) -> usize = values.length
+	put: fun(self, ...values: view[i32]) -> usize => values.length
 }
 
 bytes: fun(...values: view[u8]) -> i32
@@ -76,14 +76,14 @@ sum: fun(...values: view[i32]) -> i32
 	ret total
 }
 
-through[T: Sink]: fun(imm sink: T) -> usize = sink.put(1, 2, 3)
+through[T: Sink]: fun(imm sink: T) -> usize => sink.put(1, 2, 3)
 
-dynamic: fun(sink: ptr[dyn[Sink]]) -> usize = (*sink).put(4, 5)
+dynamic: fun(sink: ptr[dyn[Sink]]) -> usize => (*sink).put(4, 5)
 
 main: fun -> i32
 {
 	printf("%d\n", bytes(200, 50, 5))
-	printf("%d\n", apply(3, fun(x) = x + 1, fun(x) = x * 10))
+	printf("%d\n", apply(3, fun(x) => x + 1, fun(x) => x * 10))
 	printf("%d\n", hits(hit(3), none, hit(4)))
 	printf("%d\n", sum(sum(1, 2), sum(), 4))
 

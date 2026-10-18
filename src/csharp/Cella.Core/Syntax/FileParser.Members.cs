@@ -162,7 +162,7 @@ public sealed partial class FileParser
 				or TokenType.KeywordRef or TokenType.KeywordImm or TokenType.KeywordMut or TokenType.OpOpenBrace;
 		
 		return Match(ref index, _memberContextualKeywords, _accessorKeywords) && IsOnSameLine(index) &&
-		       Tokens[index].Type is TokenType.OpOpenParen or TokenType.OpArrow or TokenType.OpEqual
+		       Tokens[index].Type is TokenType.OpOpenParen or TokenType.OpArrow or TokenType.OpFatArrow
 			       or TokenType.OpOpenBrace;
 	}
 	
@@ -249,7 +249,7 @@ public sealed partial class FileParser
 		var resultType = isGetter ? returnType ?? propertyType : null;
 		RejectWhen(ref index, isGetter ? "getters" : "setters");
 		IStatementNode? body;
-		if (MatchOnLine(ref index, TokenType.OpEqual))
+		if (MatchOnLine(ref index, TokenType.OpFatArrow))
 			body = ParseExpressionBody(ref index, resultType is null);
 		else if (Match(ref index, out var openBrace, TokenType.OpOpenBrace))
 			body = ParseBlockStatement(ref index, openBrace);
@@ -261,7 +261,7 @@ public sealed partial class FileParser
 			};
 		else
 		{
-			ReportExpected(IsOnSameLine(index) ? index : index - 1, "'=' or '{'");
+			ReportExpected(IsOnSameLine(index) ? index : index - 1, "'=>' or '{'");
 			return null;
 		}
 		
@@ -472,7 +472,7 @@ public sealed partial class FileParser
 	
 	private void RejectExternalBody(ref int index)
 	{
-		if (!IsOnSameLine(index) || !Peek(index, TokenType.OpEqual) && !Peek(index, TokenType.OpOpenBrace))
+		if (!IsOnSameLine(index) || !Peek(index, TokenType.OpFatArrow) && !Peek(index, TokenType.OpOpenBrace))
 			return;
 		
 		Report(Tokens[index], "Cannot declare bodies for 'ext' functions");

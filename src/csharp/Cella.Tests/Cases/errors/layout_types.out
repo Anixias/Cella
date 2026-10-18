@@ -1,12 +1,12 @@
-Error at layout_types.ce:9:24
+Error at layout_types.ce:9:25
 8 │ 
-9 │ concrete: fun -> i32 = sizeOf(P)
-                           ╘═══════╛ Cannot convert type 'usize' to 'i32'
+9 │ concrete: fun -> i32 => sizeOf(P)
+                            ╘═══════╛ Cannot convert type 'usize' to 'i32'
 
-Error at layout_types.ce:11:26
+Error at layout_types.ce:11:27
 10 │ 
-11 │ generic[T]: fun -> i32 = alignOf(T)
-                              ╘════════╛ Cannot convert type 'usize' to 'i32'
+11 │ generic[T]: fun -> i32 => alignOf(T)
+                               ╘════════╛ Cannot convert type 'usize' to 'i32'
 
 Error at layout_types.ce:15:18
 14 │ {

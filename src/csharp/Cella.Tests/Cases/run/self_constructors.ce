@@ -20,7 +20,7 @@ Counter: rec
 	}
 }
 
-keep[T: copy + new(T)]: fun(value: T) -> T = T(value)
+keep[T: copy + new(T)]: fun(value: T) -> T => T(value)
 
 main: fun -> i32
 {

@@ -9,7 +9,7 @@ Point: rec
 {
 	x: i32
 
-	show: fun(imm self) -> i32 = self.x
+	show: fun(imm self) -> i32 => self.x
 }
 
 negated: fun -> i32
@@ -19,4 +19,4 @@ negated: fun -> i32
 	ret a
 }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

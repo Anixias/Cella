@@ -5,4 +5,4 @@ bump: pub fun
 	s1.state += 10
 }
 
-read: pub fun -> i32 = s1.state
+read: pub fun -> i32 => s1.state

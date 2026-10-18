@@ -1,5 +1,5 @@
 mod test
 
-typed[T]: fun(pointer: ptr[T] = null) -> i32 = 1
+typed[T]: fun(pointer: ptr[T] = null) -> i32 => 1
 
-main: fun -> i32 = typed()
+main: fun -> i32 => typed()

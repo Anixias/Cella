@@ -1,17 +1,17 @@
-Error at match_arm_separators.ce:3:50
+Error at match_arm_separators.ce:3:51
 2 │ 
-3 │ sameLine: fun(v: i32) -> i32 = match v { 1 => 10 2 => 20 else => 0 }
-                                                     ^ Expected ',' or a new line before the next arm
+3 │ sameLine: fun(v: i32) -> i32 => match v { 1 => 10 2 => 20 else => 0 }
+                                                      ^ Expected ',' or a new line before the next arm
 
 Error at match_arm_separators.ce:7:9
 6 │ {
 7 │     1 => 10,
                ^ Cannot separate arms on separate lines with ','
 
-Error at match_arm_separators.ce:11:60
+Error at match_arm_separators.ce:11:61
 10 │ 
-11 │ trailing: fun(v: i32) -> i32 = match v { 1 => 10, else => 0, }
-                                                                ^ Cannot end lists with ','
+11 │ trailing: fun(v: i32) -> i32 => match v { 1 => 10, else => 0, }
+                                                                 ^ Cannot end lists with ','
 
 Error at match_arm_separators.ce:18:19
 17 │ {

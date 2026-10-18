@@ -16,7 +16,7 @@ Cell: rec
 {
 	slot: Slot
 
-	value: fun(self) -> i32 = match self.slot
+	value: fun(self) -> i32 => match self.slot
 	{
 		count(val value) => value
 		empty => 0
@@ -33,9 +33,9 @@ SlotBox: rec
 		*self.pointer = Cell(slot)
 	}
 
-	*: op(imm self) -> imm[Cell] = imm *self.pointer
+	*: op(imm self) -> imm[Cell] => imm *self.pointer
 
-	*: op(mut self) -> mut[Cell] = mut *self.pointer
+	*: op(mut self) -> mut[Cell] => mut *self.pointer
 
 	drop: op
 	{

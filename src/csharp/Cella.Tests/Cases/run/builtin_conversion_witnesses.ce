@@ -32,7 +32,7 @@ widen[T: copy + Widen]: fun(value: T) -> i64
 	ret wide
 }
 
-narrow[T: copy + ToWide]: fun(value: T) -> i64 = i64(value)
+narrow[T: copy + ToWide]: fun(value: T) -> i64 => i64(value)
 
 main: fun -> i32
 {

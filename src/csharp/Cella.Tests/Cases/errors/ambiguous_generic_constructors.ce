@@ -22,7 +22,7 @@ box[T]: rec
 		self.target = adopt
 	}
 
-	*: op(imm self) -> imm[T] = imm *self.target
+	*: op(imm self) -> imm[T] => imm *self.target
 
 	drop: op
 	{

@@ -49,7 +49,7 @@ Forward: enum
 	b = 0
 }
 
-runtime: fun -> i32 = 5
+runtime: fun -> i32 => 5
 
 main: fun -> i32
 {

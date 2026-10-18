@@ -23,7 +23,7 @@ Name: rec
 
 take: fun(...names: view[Name]) {}
 
-first: fun(...values: view[i32]) -> view[i32] = values
+first: fun(...values: view[i32]) -> view[i32] => values
 
 main: fun -> i32
 {

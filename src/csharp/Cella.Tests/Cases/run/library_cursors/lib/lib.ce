@@ -11,8 +11,8 @@ Bag: pub rec
 	items: array[i32, 4]
 	count: usize
 
-	in: op(imm self) -> BagCursor = BagCursor(imm self, 0, 0)
-	in: op(mut self) -> BagEditor = BagEditor(mut self, 0, 0)
+	in: op(imm self) -> BagCursor => BagCursor(imm self, 0, 0)
+	in: op(mut self) -> BagEditor => BagEditor(mut self, 0, 0)
 
 	drop: op
 	{
@@ -32,7 +32,7 @@ BagCursor: pub ref rec impl Cursor[i32]
 		ret self.current < self.bag.count
 	}
 
-	*: op(self) -> imm[i32] = imm self.bag.items[self.current]
+	*: op(self) -> imm[i32] => imm self.bag.items[self.current]
 }
 
 BagEditor: pub ref rec
@@ -48,12 +48,12 @@ BagEditor: pub ref rec
 		ret self.current < self.bag.count
 	}
 
-	*: op(mut self) -> mut[i32] = mut self.bag.items[self.current]
+	*: op(mut self) -> mut[i32] => mut self.bag.items[self.current]
 }
 
-make: pub fun -> Bag = Bag([1, 2, 3, 4], 4)
+make: pub fun -> Bag => Bag([1, 2, 3, 4], 4)
 
-view: pub fun(imm bag: Bag) -> i32 = sum(BagCursor(imm bag, 0, 0))
+view: pub fun(imm bag: Bag) -> i32 => sum(BagCursor(imm bag, 0, 0))
 
 sum[C: Cursor[i32]]: pub fun(own cursor: C) -> i32
 {

@@ -3,9 +3,9 @@ Error at chain_operand_errors.ce:7:10
 7 │ val x = a < flag < 3
             ╘══════╛ No operation defined for '<' between 'i32' and 'bool'
 
-Error at chain_operand_errors.ce:11:63
+Error at chain_operand_errors.ce:11:64
 10 │ 
-11 │ pointers: fun(p: ptr[i32], q: ptr[u8], r: ptr[i32]) -> bool = p < q < r
-                                                                   ╘═══╛ No operation defined for '<' between 'ptr[i32]' and 'ptr[u8]'
+11 │ pointers: fun(p: ptr[i32], q: ptr[u8], r: ptr[i32]) -> bool => p < q < r
+                                                                    ╘═══╛ No operation defined for '<' between 'ptr[i32]' and 'ptr[u8]'
 
 [compilation failed]

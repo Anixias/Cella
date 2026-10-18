@@ -12,12 +12,12 @@ Display: pub trait
 
 str: impl Display
 {
-	print: fun(self) = printf("%.*s", i32(self.byteLength), self.data)
+	print: fun(self) => printf("%.*s", i32(self.byteLength), self.data)
 }
 
 i32: impl Display
 {
-	print: fun(self) = printf("%d", self)
+	print: fun(self) => printf("%d", self)
 }
 
 say: pub fun(text: fstr[Display])
@@ -33,11 +33,11 @@ say: pub fun(text: fstr[Display])
 	text.piece(text.holes).print()
 }
 
-log[T: Display]: pub fun(imm value: T) = say("log {value}\n")
+log[T: Display]: pub fun(imm value: T) => say("log {value}\n")
 
 Note: pub ref rec
 {
 	text: fstr[Display]
 }
 
-read: pub fun(note: Note) = say(note.text)
+read: pub fun(note: Note) => say(note.text)

@@ -1,6 +1,6 @@
 mod test
 
-takeU8: fun(b: u8) -> i32 = i32(b)
+takeU8: fun(b: u8) -> i32 => i32(b)
 
 small: fun -> i32
 {
@@ -30,4 +30,4 @@ indexed: fun -> i32
 	ret sum
 }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

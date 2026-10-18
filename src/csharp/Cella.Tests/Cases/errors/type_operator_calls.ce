@@ -4,7 +4,7 @@ P: rec
 {
 	x: i32
 
-	neg: fun(self) -> P = P(-self.x)
+	neg: fun(self) -> P => P(-self.x)
 }
 
 main: fun -> i32

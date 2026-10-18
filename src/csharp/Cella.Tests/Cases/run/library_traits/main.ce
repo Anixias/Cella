@@ -9,21 +9,21 @@ Mine: rec impl lib.Hash
 {
 	n: i32
 
-	hash: fun(self) -> u64 = u64(self.n) * 100
-	seed: fun -> u64 = 9
-	==: op(a: Mine, b: Mine) -> bool = true
+	hash: fun(self) -> u64 => u64(self.n) * 100
+	seed: fun -> u64 => 9
+	==: op(a: Mine, b: Mine) -> bool => true
 }
 
 Mine: impl lib.Show
 {
-	show: fun(self) -> i32 = -self.n
+	show: fun(self) -> i32 => -self.n
 }
 
-local[T: lib.Hash]: fun(imm value: T) -> u64 = value.hash() + lib.Hash(T).seed()
+local[T: lib.Hash]: fun(imm value: T) -> u64 => value.hash() + lib.Hash(T).seed()
 
-make[T: lib.Make]: fun -> T = T(4)
+make[T: lib.Make]: fun -> T => T(4)
 
-same[T: lib.Hash]: fun(imm a: T, imm b: T) -> bool = a == b
+same[T: lib.Hash]: fun(imm a: T, imm b: T) -> bool => a == b
 
 main: fun -> i32
 {

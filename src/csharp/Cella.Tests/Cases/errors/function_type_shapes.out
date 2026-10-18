@@ -1,26 +1,26 @@
 Error at function_type_shapes.ce:3:21
 2 │ 
-3 │ a: fun(g: fun[i32 ->]) -> i32 = 0
+3 │ a: fun(g: fun[i32 ->]) -> i32 => 0
                         ^ Expected a type
 
 Error at function_type_shapes.ce:4:17
-3 │ a: fun(g: fun[i32 ->]) -> i32 = 0
-4 │ b: fun(g: fun[->]) -> i32 = 0
+3 │ a: fun(g: fun[i32 ->]) -> i32 => 0
+4 │ b: fun(g: fun[->]) -> i32 => 0
                     ^ Expected a type
 
 Error at function_type_shapes.ce:5:18
-4 │ b: fun(g: fun[->]) -> i32 = 0
-5 │ c: fun(g: fun[i32,]) -> i32 = 0
+4 │ b: fun(g: fun[->]) -> i32 => 0
+5 │ c: fun(g: fun[i32,]) -> i32 => 0
                      ^ Cannot end lists with ','
 
 Error at function_type_shapes.ce:6:18
-5 │ c: fun(g: fun[i32,]) -> i32 = 0
-6 │ d: fun(g: fun[mut]) -> i32 = 0
+5 │ c: fun(g: fun[i32,]) -> i32 => 0
+6 │ d: fun(g: fun[mut]) -> i32 => 0
                      ^ Expected a type
 
 Error at function_type_shapes.ce:7:15
-6 │ d: fun(g: fun[mut]) -> i32 = 0
-7 │ e: fun(g: fun[5]) -> i32 = 0
+6 │ d: fun(g: fun[mut]) -> i32 => 0
+7 │ e: fun(g: fun[5]) -> i32 => 0
                   ^ Expected a type
 
 Error at function_type_shapes.ce:11:19

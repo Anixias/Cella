@@ -51,4 +51,4 @@ fillStatic: fun(mut words: array[str, 2])
 		w = "q"
 }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

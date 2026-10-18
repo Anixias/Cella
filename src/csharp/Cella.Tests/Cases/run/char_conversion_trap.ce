@@ -1,6 +1,6 @@
 mod test
 
-make: fun(x: u32) -> char = char(x)
+make: fun(x: u32) -> char => char(x)
 
 main: fun -> i32
 {

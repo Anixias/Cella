@@ -11,7 +11,7 @@ Shape: rec
 	origin: Pont
 }
 
-scale: fun(amount: usise) -> i32 = 0
+scale: fun(amount: usise) -> i32 => 0
 
 main: fun -> i32
 {

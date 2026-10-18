@@ -5,8 +5,8 @@ Error at closure_stores.ce:39:7
 
 Error at closure_stores.ce:51:7
 50 │ {
-51 │     g = fun -> i32 = base
-             ╘═══════════════╛ Cannot store closures that capture variables in captured variables
+51 │     g = fun -> i32 => base
+             ╘════════════════╛ Cannot store closures that capture variables in captured variables
 
 Error at closure_stores.ce:61:28
 60 │ var p: imm[i32] = imm zero

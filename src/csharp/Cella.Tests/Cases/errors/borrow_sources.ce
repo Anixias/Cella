@@ -64,7 +64,7 @@ kills: fun(mut stats: Stats) -> mut[i32]
 
 take: fun(own enemy: Enemy) {}
 
-make: fun(id: i32) -> Buffer = Buffer(id)
+make: fun(id: i32) -> Buffer => Buffer(id)
 
 useAfterMove: fun
 {
@@ -185,4 +185,4 @@ storeThroughBorrow: fun
 	printf("%d\n", tally.count)
 }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

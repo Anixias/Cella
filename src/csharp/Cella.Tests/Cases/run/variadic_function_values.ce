@@ -16,9 +16,9 @@ view[T]: ref rec
 		self.length = length
 	}
 
-	as[N: const usize]: op(imm values: array[T, N]) -> view[T] = view[T](@values, N)
+	as[N: const usize]: op(imm values: array[T, N]) -> view[T] => view[T](@values, N)
 
-	[]: op(self, i: usize) -> imm[T] = imm self.data[i]
+	[]: op(self, i: usize) -> imm[T] => imm self.data[i]
 }
 
 Arg: ref enum
@@ -26,8 +26,8 @@ Arg: ref enum
 	int(value: i32)
 	text(value: str)
 
-	as: op(value: i32) -> Arg = int(value)
-	as: op(value: str) -> Arg = text(value)
+	as: op(value: i32) -> Arg => int(value)
+	as: op(value: str) -> Arg => text(value)
 }
 
 print: fun(template: str, ...args: view[Arg])
@@ -60,9 +60,9 @@ forward: fun(sink: fun[str, ...view[Arg]], template: str, ...args: view[Arg])
 	sink("extra", 7)
 }
 
-apply[T: copy + noref]: fun(f: fun[...view[T] -> T], a: T, b: T) -> T = f(a, b)
+apply[T: copy + noref]: fun(f: fun[...view[T] -> T], a: T, b: T) -> T => f(a, b)
 
-bound[F: fun[...view[i32] -> i32]]: fun(imm f: F) -> i32 = f(4, 5, 6)
+bound[F: fun[...view[i32] -> i32]]: fun(imm f: F) -> i32 => f(4, 5, 6)
 
 main: fun -> i32
 {
@@ -79,12 +79,12 @@ main: fun -> i32
 	val total = sum
 	printf("%d %d %d %d\n", total(1, 2, 3), total(), total(...[4, 5]), apply(sum, 20, 22))
 
-	val lambda: fun[str, ...view[Arg]] = fun(template, args) = printf("lambda %zu\n", args.length)
+	val lambda: fun[str, ...view[Arg]] = fun(template, args) => printf("lambda %zu\n", args.length)
 	lambda("x", 1, 2, 3)
 
 	var offset = 100
-	val counted: ref fun[...view[i32] -> i32] = fun(values) = i32(values.length) + offset
-	printf("%d %d %d\n", counted(1, 2), bound(sum), bound(fun(values) = i32(values.length) * 10))
-	printf("%d\n", bound(own fun(values) = i32(values.length) + offset))
+	val counted: ref fun[...view[i32] -> i32] = fun(values) => i32(values.length) + offset
+	printf("%d %d %d\n", counted(1, 2), bound(sum), bound(fun(values) => i32(values.length) * 10))
+	printf("%d\n", bound(own fun(values) => i32(values.length) + offset))
 	ret 0
 }

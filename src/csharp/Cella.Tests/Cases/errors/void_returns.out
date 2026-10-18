@@ -1,7 +1,7 @@
-Error at void_returns.ce:13:18
+Error at void_returns.ce:13:19
 12 │ 
-13 │ early: fun = ret 5
-                      ^ Cannot return a value from 'early'
+13 │ early: fun => ret 5
+                       ^ Cannot return a value from 'early'
 
 Error at void_returns.ce:17:6
 16 │ {

@@ -22,9 +22,9 @@ span[T]: ref rec
 		self.length = length
 	}
 
-	as[N: const usize]: op(mut values: array[T, N]) -> span[T] = span[T](ptr[T](ptr(@values)), N)
+	as[N: const usize]: op(mut values: array[T, N]) -> span[T] => span[T](ptr[T](ptr(@values)), N)
 
-	in: op(self) -> spanCursor[T] = spanCursor[T](self.data, self.length, 0, 0)
+	in: op(self) -> spanCursor[T] => spanCursor[T](self.data, self.length, 0, 0)
 }
 
 spanCursor[T]: ref rec
@@ -41,7 +41,7 @@ spanCursor[T]: ref rec
 		ret self.current < self.length
 	}
 
-	*: op(self) -> mut[T] = mut *(self.data + self.current)
+	*: op(self) -> mut[T] => mut *(self.data + self.current)
 }
 
 double: fun(values: span[i32])

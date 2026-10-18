@@ -1,10 +1,10 @@
 mod test
 
-missing: fun -> i32 = mod.nowhere.value()
+missing: fun -> i32 => mod.nowhere.value()
 
-value: fun -> i32 = mod.test.answer()
+value: fun -> i32 => mod.test.answer()
 
-answer: fun -> i32 = 1
+answer: fun -> i32 => 1
 
 typed: fun -> i32
 {
@@ -12,4 +12,4 @@ typed: fun -> i32
 	ret 0
 }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

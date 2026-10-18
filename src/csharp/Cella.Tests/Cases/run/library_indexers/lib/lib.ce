@@ -23,9 +23,9 @@ list[T: noref + copy]: pub rec
 		}
 	}
 
-	[]: op(imm self, i: usize) -> imm[T] = imm self.items[i]
+	[]: op(imm self, i: usize) -> imm[T] => imm self.items[i]
 
-	[]: op(mut self, i: usize) -> mut[T] = mut self.items[i]
+	[]: op(mut self, i: usize) -> mut[T] => mut self.items[i]
 
 	drop: op
 	{
@@ -37,9 +37,9 @@ Scores: pub rec
 {
 	values: array[i32, 3]
 
-	[]: op(imm self, i: usize) -> imm[i32] = imm self.values[i]
+	[]: op(imm self, i: usize) -> imm[i32] => imm self.values[i]
 
-	[]: pvt op(mut self, i: usize) -> mut[i32] = mut self.values[i]
+	[]: pvt op(mut self, i: usize) -> mut[i32] => mut self.values[i]
 
 	reset: fun(mut self, i: usize)
 	{

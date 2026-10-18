@@ -35,9 +35,9 @@ next: fun -> usize
 	ret usize(counter)
 }
 
-make: fun(id: i32) -> Buffer = Buffer(id)
-grow: fun(imm buffer: Buffer) -> Buffer = Buffer(buffer.id * 2)
-give: fun(own buffer: Buffer) -> Buffer = Buffer(buffer.id + 1)
+make: fun(id: i32) -> Buffer => Buffer(id)
+grow: fun(imm buffer: Buffer) -> Buffer => Buffer(buffer.id * 2)
+give: fun(own buffer: Buffer) -> Buffer => Buffer(buffer.id + 1)
 
 refill: fun(mut buffer: Buffer, id: i32)
 {

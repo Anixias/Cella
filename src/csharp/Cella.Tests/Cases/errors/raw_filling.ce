@@ -89,4 +89,4 @@ field: fun -> i32
 	ret pair.left + pair.right
 }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

@@ -31,4 +31,4 @@ keep: fun -> i32
 	}
 }
 
-main: fun -> i32 = keep()
+main: fun -> i32 => keep()

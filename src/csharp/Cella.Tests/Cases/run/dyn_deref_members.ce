@@ -20,16 +20,16 @@ Holder: rec impl Pointer
 {
 	p: Point
 
-	*: op(imm self) -> imm[Point] = imm self.p
+	*: op(imm self) -> imm[Point] => imm self.p
 
 	drop: op
 	{
 	}
 }
 
-read[T: Pointer]: fun(imm p: T) -> i32 = p.x + p.y
+read[T: Pointer]: fun(imm p: T) -> i32 => p.x + p.y
 
-readDyn: fun(imm p: dyn[Pointer]) -> i32 = p.y
+readDyn: fun(imm p: dyn[Pointer]) -> i32 => p.y
 
 main: fun -> i32
 {

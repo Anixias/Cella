@@ -14,4 +14,4 @@ Vec2: rec
 	}
 }
 
-origin: fun -> Vec2 = Vec2()
+origin: fun -> Vec2 => Vec2()

@@ -7,7 +7,7 @@ ring[T, N: const usize]: rec
 
 ring[T, N: const u8]: impl
 {
-	slots: fun(imm self) -> u8 = N
+	slots: fun(imm self) -> u8 => N
 }
 
 Short: trait
@@ -17,7 +17,7 @@ Short: trait
 
 array[T, N: const u8]: impl Short
 {
-	doubled: fun(imm self) -> u8 = N * 2
+	doubled: fun(imm self) -> u8 => N * 2
 }
 
 small[N: const u8]: rec
@@ -35,7 +35,7 @@ misuse[N: const usize]: fun -> usize
 
 typed[T]: fun(imm value: T) {}
 
-tiny[N: const u8]: fun(values: array[i32, N]) -> i32 = 0
+tiny[N: const u8]: fun(values: array[i32, N]) -> i32 => 0
 
 count: const i32 = 3
 

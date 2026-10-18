@@ -55,4 +55,4 @@ usedAfter: fun -> i32
 	ret 0
 }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

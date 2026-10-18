@@ -22,7 +22,7 @@ Loud: rec impl Failure
 {
 	level: i32
 
-	fail: fun(self, message: str) -> never = halt(message)
+	fail: fun(self, message: str) -> never => halt(message)
 }
 
 halt: fun(message: str) -> never
@@ -32,7 +32,7 @@ halt: fun(message: str) -> never
 	abort()
 }
 
-relay: fun(message: str) -> never = halt(message)
+relay: fun(message: str) -> never => halt(message)
 
 counter: var i32 = 0
 
@@ -58,7 +58,7 @@ pick: fun(n: i32) -> i32
 	halt("bad pick")
 }
 
-unwrap: fun(choice: Choice) -> i32 = match choice
+unwrap: fun(choice: Choice) -> i32 => match choice
 {
 	some(val value) => value
 	none => relay("unwrap of none")
@@ -86,7 +86,7 @@ failWith[T: Failure]: fun(imm handler: T) -> i32
 main: fun -> i32
 {
 	val handler: fun[str -> never] = halt
-	val local = fun(message: str) -> never = halt(message)
+	val local = fun(message: str) -> never => halt(message)
 	printf("%d %d %d\n", pick(0), unwrap(Choice.some(4)), firstPositive([0, -1, 7]))
 	if counter > 0
 	{

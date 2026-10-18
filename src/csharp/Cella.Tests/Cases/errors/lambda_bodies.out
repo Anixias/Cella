@@ -1,7 +1,7 @@
-Error at lambda_bodies.ce:7:16
+Error at lambda_bodies.ce:7:17
 6 │ {
-7 │     each(fun(x) = x * 2)
-                      ╘═══╛ Cannot use values as statements
+7 │     each(fun(x) => x * 2)
+                       ╘═══╛ Cannot use values as statements
 
 Error at lambda_bodies.ce:9:17
 8 │ for i in 0..3
@@ -10,7 +10,7 @@ Error at lambda_bodies.ce:9:17
 
 Error at lambda_bodies.ce:11:2
 10 │ 
-11 │ fun(x: i32) -> i32 = x
-     ╘════════════════════╛ Cannot use values as statements
+11 │ fun(x: i32) -> i32 => x
+     ╘═════════════════════╛ Cannot use values as statements
 
 [compilation failed]

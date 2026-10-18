@@ -21,28 +21,28 @@ Big: rec impl Named + Shape
 {
 	values: array[i64, 5]
 
-	name: fun(self) -> i32 = 1
-	area: fun(self) -> f64 = 1.0
+	name: fun(self) -> i32 => 1
+	area: fun(self) -> f64 => 1.0
 }
 
 Small: rec impl Named + Shape
 {
 	value: u16
 
-	name: fun(self) -> i32 = 2
-	area: fun(self) -> f64 = 2.0
+	name: fun(self) -> i32 => 2
+	area: fun(self) -> f64 => 2.0
 }
 
 cell[K: trait]: rec
 {
 	object: ptr[dyn[K]]
 
-	*: op(self) -> imm[dyn[K]] = imm *self.object
+	*: op(self) -> imm[dyn[K]] => imm *self.object
 }
 
-measure: fun(imm shape: dyn[Shape]) -> usize = sizeOf(shape) * 100 + alignOf(shape)
+measure: fun(imm shape: dyn[Shape]) -> usize => sizeOf(shape) * 100 + alignOf(shape)
 
-named: fun(imm item: dyn[Named]) -> usize = sizeOf(item)
+named: fun(imm item: dyn[Named]) -> usize => sizeOf(item)
 
 main: fun -> i32
 {

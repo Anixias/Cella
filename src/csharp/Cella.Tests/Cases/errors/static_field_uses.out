@@ -1,31 +1,31 @@
-Error at static_field_uses.ce:11:32
-10 │ twice: pvt fun(value: i32) -> i32 = value * 2
-11 │ read: fun(self) -> i32 = self.maxHp
-                                   ╘═══╛ Cannot use static fields through values
+Error at static_field_uses.ce:11:33
+10 │ twice: pvt fun(value: i32) -> i32 => value * 2
+11 │ read: fun(self) -> i32 => self.maxHp
+                                    ╘═══╛ Cannot use static fields through values
 
-Error at static_field_uses.ce:14:40
+Error at static_field_uses.ce:14:41
 13 │ 
-14 │ through: fun(unit: Unit) -> i32 = unit.maxHp
-                                            ╘═══╛ Cannot use static fields through values
+14 │ through: fun(unit: Unit) -> i32 => unit.maxHp
+                                             ╘═══╛ Cannot use static fields through values
 
-Error at static_field_uses.ce:16:38
+Error at static_field_uses.ce:16:39
 15 │ 
-16 │ calls: fun(unit: Unit) -> i32 = unit.handler(1)
-                                          ╘═════╛ Cannot use static fields through values
+16 │ calls: fun(unit: Unit) -> i32 => unit.handler(1)
+                                           ╘═════╛ Cannot use static fields through values
 
-Error at static_field_uses.ce:18:27
+Error at static_field_uses.ce:18:28
 17 │ 
-18 │ hidden: fun -> i32 = Unit.label
-                               ╘═══╛ 'label' is private to its type
+18 │ hidden: fun -> i32 => Unit.label
+                                ╘═══╛ 'label' is private to its type
 
-Error at static_field_uses.ce:20:33
+Error at static_field_uses.ce:20:34
 19 │ 
-20 │ names: fun -> str = nameOf(Unit.label)
-                                     ╘═══╛ 'label' is private to its type
+20 │ names: fun -> str => nameOf(Unit.label)
+                                      ╘═══╛ 'label' is private to its type
 
-Error at static_field_uses.ce:22:23
+Error at static_field_uses.ce:22:24
 21 │ 
-22 │ missing: fun -> i32 = maxHp
-                           ╘═══╛ Symbol 'maxHp' not found in this scope
+22 │ missing: fun -> i32 => maxHp
+                            ╘═══╛ Symbol 'maxHp' not found in this scope
 
 [compilation failed]

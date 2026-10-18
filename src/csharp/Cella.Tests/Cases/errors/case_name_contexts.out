@@ -3,11 +3,11 @@ Error at case_name_contexts.ce:10:10
 10 │ ret i32(t < blue)
              ╘══════╛ No operation defined for '<' between 'Team' and 'Team'
 
-Error at case_name_contexts.ce:13:31
+Error at case_name_contexts.ce:13:32
 12 │ 
-13 │ misspelled: fun -> i32 = show(bleu)
-                                   ╘══╛ Symbol 'bleu' not found in this scope
-                                      | Did you mean 'blue'?
+13 │ misspelled: fun -> i32 => show(bleu)
+                                    ╘══╛ Symbol 'bleu' not found in this scope
+                                       | Did you mean 'blue'?
 
 Error at case_name_contexts.ce:17:10
 16 │ {

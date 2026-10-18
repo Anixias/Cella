@@ -44,9 +44,9 @@ Effect: enum
 	owned(buffer: Buffer)
 }
 
-make: fun(id: i32) -> Buffer = Buffer(id)
-give: fun(own buffer: Buffer) -> Buffer = buffer
-sum: fun(own values: array[Buffer, 2]) -> i32 = values[0].id + values[1].id
+make: fun(id: i32) -> Buffer => Buffer(id)
+give: fun(own buffer: Buffer) -> Buffer => buffer
+sum: fun(own values: array[Buffer, 2]) -> i32 => values[0].id + values[1].id
 
 unwrap: fun(own effect: Effect) -> i32
 {

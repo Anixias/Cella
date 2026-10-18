@@ -10,11 +10,11 @@ Error at ext_global_types.ce:24:15
 
 Error at ext_global_types.ce:25:19
 24 │ team: ext var Team = Team.red
-25 │ callback: ext val fun[-> i32] = fun = 1
+25 │ callback: ext val fun[-> i32] = fun => 1
                        ╘═════════╛ Cannot use 'fun[-> i32]' in 'ext' signatures
 
 Error at ext_global_types.ce:26:20
-25 │ callback: ext val fun[-> i32] = fun = 1
+25 │ callback: ext val fun[-> i32] = fun => 1
 26 │ shape: ext val ptr[dyn[Shape]] = null
                         ╘════════╛ Cannot use 'dyn[Shape]' in 'ext' signatures
 

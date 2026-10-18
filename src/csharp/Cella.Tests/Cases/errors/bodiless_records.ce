@@ -17,4 +17,4 @@ Kept: rec
 	value: i32
 }
 
-main: fun -> i32 = Kept(0).value
+main: fun -> i32 => Kept(0).value

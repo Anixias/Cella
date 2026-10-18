@@ -10,7 +10,7 @@ Countdown: own rec
 		ret self.left >= 0
 	}
 
-	*: op(imm self) -> imm[i32] = imm self.left
+	*: op(imm self) -> imm[i32] => imm self.left
 }
 
 Ticket: own enum

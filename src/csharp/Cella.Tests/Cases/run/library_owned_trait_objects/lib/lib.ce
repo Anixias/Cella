@@ -18,7 +18,7 @@ boxed[K: trait]: pub rec
 		ret boxed[K](memory)
 	}
 
-	*: op(imm self) -> imm[dyn[K]] = imm *self.object
+	*: op(imm self) -> imm[dyn[K]] => imm *self.object
 
 	drop: op
 	{
@@ -37,11 +37,11 @@ Circle: pub rec impl Shape
 {
 	radius: f64
 
-	area: fun(imm self) -> f64 = self.radius * 2.0
+	area: fun(imm self) -> f64 => self.radius * 2.0
 	drop: op
 	{
 		printf("circle gone\n")
 	}
 }
 
-circle: pub fun(radius: f64) -> boxed[Shape] = boxed[Shape].of(Circle(radius))
+circle: pub fun(radius: f64) -> boxed[Shape] => boxed[Shape].of(Circle(radius))

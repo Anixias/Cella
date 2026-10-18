@@ -12,12 +12,12 @@ Display: trait
 
 str: impl Display
 {
-	print: fun(self) = printf("%.*s", i32(self.byteLength), self.data)
+	print: fun(self) => printf("%.*s", i32(self.byteLength), self.data)
 }
 
 i32: impl Display
 {
-	print: fun(self) = printf("%d", self)
+	print: fun(self) => printf("%d", self)
 }
 
 say: fun(text: fstr[Display])
@@ -33,8 +33,8 @@ say: fun(text: fstr[Display])
 	text.piece(text.holes).print()
 }
 
-show: fun(text: str) = printf("str\n")
-show: fun(text: fstr[Display]) = printf("fstr with %d holes\n", i32(text.holes))
+show: fun(text: str) => printf("str\n")
+show: fun(text: fstr[Display]) => printf("fstr with %d holes\n", i32(text.holes))
 
 Line: rec
 {
@@ -57,13 +57,13 @@ Label: ref rec
 	text: str
 }
 
-deliver: fun(message: Message) = say(message.text)
+deliver: fun(message: Message) => say(message.text)
 
-pass: fun(text: fstr[Display]) -> fstr[Display] = text
+pass: fun(text: fstr[Display]) -> fstr[Display] => text
 
-first: fun(text: fstr[Display]) -> imm[dyn[Display]] = text.value(0)
+first: fun(text: fstr[Display]) -> imm[dyn[Display]] => text.value(0)
 
-greeting: fun -> str = "hi\n"
+greeting: fun -> str => "hi\n"
 
 title: val str = "Cella"
 

@@ -78,8 +78,8 @@ Unknown: rec
 	}
 }
 
-lookup: fun(a: Missing) -> i32 = 0
+lookup: fun(a: Missing) -> i32 => 0
 
-lookup: fun(b: Other) -> i32 = 0
+lookup: fun(b: Other) -> i32 => 0
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

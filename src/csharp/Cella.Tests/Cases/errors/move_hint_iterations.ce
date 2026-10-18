@@ -15,9 +15,9 @@ P: rec
 	right: N
 }
 
-take: fun(own n: N) -> i32 = n.id
-show: fun(imm n: N) -> i32 = n.id
-showP: fun(imm p: P) -> i32 = 0
+take: fun(own n: N) -> i32 => n.id
+show: fun(imm n: N) -> i32 => n.id
+showP: fun(imm p: P) -> i32 => 0
 
 loopUse: fun -> i32
 {
@@ -51,4 +51,4 @@ maybe: fun(flag: bool) -> i32
 	ret show(imm a)
 }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

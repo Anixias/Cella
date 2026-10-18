@@ -10,7 +10,7 @@ parse: fun(n: i32) -> result[i32, i32]
 	ret result.ok(n)
 }
 
-twice: fun(n: i32) -> result[i32, i32] = result.ok(parse(n)? * 2)
+twice: fun(n: i32) -> result[i32, i32] => result.ok(parse(n)? * 2)
 
 main: fun -> i32
 {

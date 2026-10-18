@@ -10,7 +10,7 @@ Range: rec
 	id: i32
 	count: i32
 
-	in: op(imm self) -> Walker = Walker(self.id, -1, self.count)
+	in: op(imm self) -> Walker => Walker(self.id, -1, self.count)
 }
 
 Walker: rec
@@ -25,7 +25,7 @@ Walker: rec
 		ret self.current < self.count
 	}
 
-	*: op(imm self) -> imm[i32] = imm self.current
+	*: op(imm self) -> imm[i32] => imm self.current
 
 	drop: op
 	{

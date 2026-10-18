@@ -1,6 +1,6 @@
 mod test
 
-main: fun -> i32 = shared.one() + shared.two()
+main: fun -> i32 => shared.one() + shared.two()
 
 typed: fun -> i32
 {

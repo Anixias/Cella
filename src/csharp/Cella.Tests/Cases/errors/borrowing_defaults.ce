@@ -13,4 +13,4 @@ say: fun(text: fstr[Display] = "hi")
 {
 }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

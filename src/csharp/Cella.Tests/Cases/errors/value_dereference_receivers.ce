@@ -4,14 +4,14 @@ Counter: rec
 {
 	n: i32
 
-	*: op(imm self) -> i32 = self.n * 2
+	*: op(imm self) -> i32 => self.n * 2
 }
 
 Writer: rec
 {
 	n: i32
 
-	*: op(mut self) -> i32 = self.n
+	*: op(mut self) -> i32 => self.n
 }
 
 main: fun -> i32

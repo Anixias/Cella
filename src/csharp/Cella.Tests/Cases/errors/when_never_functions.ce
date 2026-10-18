@@ -7,4 +7,4 @@ stop: fun -> never when release
 	}
 }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

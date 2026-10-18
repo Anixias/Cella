@@ -19,8 +19,8 @@ Caller: rec impl Sink[fun[-> i32]] + Store[fun[-> i32]]
 {
 	base: i32
 
-	take: fun(self, value: fun[-> i32]) -> i32 = value() + self.base
-	put: fun(self, value: fun[-> i32]) -> i32 = value() * self.base
+	take: fun(self, value: fun[-> i32]) -> i32 => value() + self.base
+	put: fun(self, value: fun[-> i32]) -> i32 => value() * self.base
 }
 
 Holder: rec
@@ -40,27 +40,27 @@ fill[T: copy + noref]: fun(mut items: array[T, 3], value: T)
 	items[2] = value
 }
 
-apply[T]: fun(f: fun[imm T -> i32], imm x: T) -> i32 = f(imm x)
+apply[T]: fun(f: fun[imm T -> i32], imm x: T) -> i32 => f(imm x)
 
-look[T: copy]: fun(value: T) -> i32 = 7
+look[T: copy]: fun(value: T) -> i32 => 7
 
-build[T: new(own fun[-> i32])]: fun -> T = T(answer)
+build[T: new(own fun[-> i32])]: fun -> T => T(answer)
 
-feed[T, S: Sink[T]]: fun(imm sink: S, imm value: T) -> i32 = sink.take(imm value)
+feed[T, S: Sink[T]]: fun(imm sink: S, imm value: T) -> i32 => sink.take(imm value)
 
-viaDyn: fun(imm sink: dyn[Sink[fun[-> i32]]]) -> i32 = sink.take(seven)
+viaDyn: fun(imm sink: dyn[Sink[fun[-> i32]]]) -> i32 => sink.take(seven)
 
-run: fun(callback: fun[-> i32]) -> i32 = callback() + 1
+run: fun(callback: fun[-> i32]) -> i32 => callback() + 1
 
-answer: fun -> i32 = 42
+answer: fun -> i32 => 42
 
-seven: fun -> i32 = 7
+seven: fun -> i32 => 7
 
 main: fun -> i32
 {
 	val caller = Caller(2)
 	val base = 3
-	printf("%d %d %d %d\n", caller.take(answer), caller.take(fun = base), caller.put(seven), viaDyn(imm caller))
+	printf("%d %d %d %d\n", caller.take(answer), caller.take(fun => base), caller.put(seven), viaDyn(imm caller))
 
 	var handlers: array[fun[-> i32], 3] = [answer, answer, answer]
 	fill(mut handlers, seven)

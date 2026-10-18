@@ -5,4 +5,4 @@ ext
 	cella_missing_function: fun -> i32
 }
 
-main: fun -> i32 = cella_missing_function()
+main: fun -> i32 => cella_missing_function()

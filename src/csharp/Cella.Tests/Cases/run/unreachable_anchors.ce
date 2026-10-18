@@ -60,4 +60,4 @@ compound: fun -> i32
 	total += 100
 }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

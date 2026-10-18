@@ -1,6 +1,6 @@
 Error at fun_keyword.ce:3:12
 2 │ 
-3 │ first: fun(fun: i32) -> i32 = 0
+3 │ first: fun(fun: i32) -> i32 => 0
                ╘═╛ 'fun' is a keyword
 
 Error at fun_keyword.ce:7:6

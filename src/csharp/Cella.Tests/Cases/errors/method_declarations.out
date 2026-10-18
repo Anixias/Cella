@@ -5,22 +5,22 @@ Error at method_declarations.ce:5:2
 
 Error at method_declarations.ce:8:2
 7 │ 
-8 │ x: fun(self) -> i32 = 0
+8 │ x: fun(self) -> i32 => 0
     ^ 'x' is declared more than once in 'Point'
 
 Error at method_declarations.ce:10:2
  9 │ 
-10 │ scale: fun(self, factor: i32) -> i32 = self.y * factor
+10 │ scale: fun(self, factor: i32) -> i32 => self.y * factor
      ╘═══╛ 'Point.scale' is declared more than once with the same signature
 
 Error at method_declarations.ce:11:2
-10 │ scale: fun(self, factor: i32) -> i32 = self.y * factor
-11 │ scale: fun(self, factor: i32) -> i32 = 0
+10 │ scale: fun(self, factor: i32) -> i32 => self.y * factor
+11 │ scale: fun(self, factor: i32) -> i32 => 0
      ╘═══╛ 'Point.scale' is declared more than once with the same signature
 
 Error at method_declarations.ce:14:11
 13 │ 
-14 │ free: fun(self) -> i32 = 0
+14 │ free: fun(self) -> i32 => 0
                ╘══╛ Cannot take 'self' outside types
 
 [compilation failed]

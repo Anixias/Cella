@@ -62,10 +62,10 @@ Holder: rec
 	}
 }
 
-make: fun(id: i32) -> Buffer = Buffer(id)
-take: fun(own buffer: Buffer) -> i32 = buffer.id
-show: fun(imm buffer: Buffer) -> i32 = buffer.id
-effect: fun(id: i32) -> Effect = Effect.pair(make(id), make(id + 1))
+make: fun(id: i32) -> Buffer => Buffer(id)
+take: fun(own buffer: Buffer) -> i32 => buffer.id
+show: fun(imm buffer: Buffer) -> i32 => buffer.id
+effect: fun(id: i32) -> Effect => Effect.pair(make(id), make(id + 1))
 
 order: fun
 {

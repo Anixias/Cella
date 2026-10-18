@@ -11,4 +11,4 @@ Secret: pvt rec
 	z: pvt set i32
 }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

@@ -15,8 +15,8 @@ Pair: rec
 	right: Buffer
 }
 
-make: fun(id: i32) -> Buffer = Buffer(id)
-show: fun(imm pair: Pair) -> i32 = pair.left.id
+make: fun(id: i32) -> Buffer => Buffer(id)
+show: fun(imm pair: Pair) -> i32 => pair.left.id
 
 whole: fun -> Pair
 {
@@ -48,4 +48,4 @@ constant: fun -> i32
 	ret pair.left.id + pair.right.id + left.id
 }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

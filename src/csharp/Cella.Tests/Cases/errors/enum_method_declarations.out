@@ -5,17 +5,17 @@ Error at enum_method_declarations.ce:6:2
 
 Error at enum_method_declarations.ce:8:2
 7 │ 
-8 │ hit: fun(amount: i32) -> Effect = Effect.none
+8 │ hit: fun(amount: i32) -> Effect => Effect.none
     ╘═╛ 'hit' is declared more than once in 'Effect'
 
 Error at enum_method_declarations.ce:10:2
  9 │ 
-10 │ size: fun(self) -> i32 = 0
+10 │ size: fun(self) -> i32 => 0
      ╘══╛ 'Effect.size' is declared more than once with the same signature
 
 Error at enum_method_declarations.ce:11:2
-10 │ size: fun(self) -> i32 = 0
-11 │ size: fun(self) -> i32 = 1
+10 │ size: fun(self) -> i32 => 0
+11 │ size: fun(self) -> i32 => 1
      ╘══╛ 'Effect.size' is declared more than once with the same signature
 
 [compilation failed]

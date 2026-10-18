@@ -12,6 +12,6 @@ Point: rec
 	x: i32
 }
 
-number: fun -> i32 = panic Point(1)
+number: fun -> i32 => panic Point(1)
 
-notModule: fun -> i32 = number.panic "x"
+notModule: fun -> i32 => number.panic "x"

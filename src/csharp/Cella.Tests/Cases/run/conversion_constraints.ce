@@ -25,22 +25,22 @@ Meter: rec impl Numeric
 {
 	value: i32
 
-	as: op(self) -> i32 = self.value
-	new: op(self) -> i64 = i64(self.value) * 1000
+	as: op(self) -> i32 => self.value
+	new: op(self) -> i64 => i64(self.value) * 1000
 }
 
 Count: rec impl FromInt
 {
 	value: i32
 
-	as: op(value: i32) -> Count = Count(value * 2)
+	as: op(value: i32) -> Count => Count(value * 2)
 }
 
 Fixed: rec
 {
 	raw: i32
 
-	new: op(self) -> i32 = self.raw >> 16
+	new: op(self) -> i32 => self.raw >> 16
 }
 
 Meters: rec
@@ -52,7 +52,7 @@ Meters: rec
 		self.value = value
 	}
 
-	as: op(value: f64) -> Meters = Meters(value)
+	as: op(value: f64) -> Meters => Meters(value)
 }
 
 i32: impl FromFixed
@@ -80,9 +80,9 @@ make[T: FromInt]: fun(value: i32) -> T
 	ret made
 }
 
-convert[T: new(Fixed)]: fun(value: Fixed) -> T = T(value)
+convert[T: new(Fixed)]: fun(value: Fixed) -> T => T(value)
 
-build[T: FromFixed]: fun(value: Fixed) -> T = T(value)
+build[T: FromFixed]: fun(value: Fixed) -> T => T(value)
 
 main: fun -> i32
 {

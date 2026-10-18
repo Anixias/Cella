@@ -7,7 +7,7 @@ ext
 
 Limit: val i32 = 50
 
-grade: fun(x: i32) -> i32 = match x
+grade: fun(x: i32) -> i32 => match x
 {
 	0 => 0
 	1, 2, 3 => 1
@@ -17,7 +17,7 @@ grade: fun(x: i32) -> i32 = match x
 	else => 4
 }
 
-relational: fun(x: i32) -> i32 = match x
+relational: fun(x: i32) -> i32 => match x
 {
 	> 10 => 3
 	>= 5 => 2
@@ -25,7 +25,7 @@ relational: fun(x: i32) -> i32 = match x
 	else => 0
 }
 
-kind: fun(c: char) -> i32 = match c
+kind: fun(c: char) -> i32 => match c
 {
 	'a'..='z' => 1
 	'A'..='Z' => 2
@@ -34,7 +34,7 @@ kind: fun(c: char) -> i32 = match c
 	else => 0
 }
 
-pick: fun(x: i32, low: i32, high: i32) -> i32 = match x
+pick: fun(x: i32, low: i32, high: i32) -> i32 => match x
 {
 	low => 1
 	high => 2
@@ -42,19 +42,19 @@ pick: fun(x: i32, low: i32, high: i32) -> i32 = match x
 	else => 0
 }
 
-flag: fun(b: bool) -> i32 = match b
+flag: fun(b: bool) -> i32 => match b
 {
 	true => 1
 	false => 2
 }
 
-bucket: fun(b: u8) -> i32 = match b
+bucket: fun(b: u8) -> i32 => match b
 {
 	0..128 => 1
 	128..=255 => 2
 }
 
-sign: fun(f: f64) -> i32 = match f
+sign: fun(f: f64) -> i32 => match f
 {
 	< 0.0 => -1
 	0.0 => 0

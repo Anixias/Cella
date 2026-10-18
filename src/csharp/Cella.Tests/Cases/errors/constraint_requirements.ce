@@ -50,11 +50,11 @@ Point: rec
 	}
 }
 
-make[T: new]: fun -> T = T()
+make[T: new]: fun -> T => T()
 
-build[T: new(i32)]: fun -> T = T(1)
+build[T: new(i32)]: fun -> T => T(1)
 
-smallest[T: Ord + copy]: fun(a: T, b: T) -> T = a
+smallest[T: Ord + copy]: fun(a: T, b: T) -> T => a
 
 main: fun -> i32
 {

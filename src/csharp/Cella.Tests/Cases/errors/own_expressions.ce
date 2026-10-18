@@ -23,8 +23,8 @@ bump: fun(mut buffer: Buffer)
 	buffer.id += 1
 }
 
-take: fun(own buffer: Buffer) -> i32 = buffer.id
-make: fun -> Holder = Holder(Buffer(1), 2)
+take: fun(own buffer: Buffer) -> i32 => buffer.id
+make: fun -> Holder => Holder(Buffer(1), 2)
 
 main: fun -> i32
 {

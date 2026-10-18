@@ -14,7 +14,7 @@ View: ref rec
 	p: imm[Point]
 }
 
-pick[T: copy]: fun(a: T, b: T) -> T = a
+pick[T: copy]: fun(a: T, b: T) -> T => a
 
 main: fun -> i32
 {

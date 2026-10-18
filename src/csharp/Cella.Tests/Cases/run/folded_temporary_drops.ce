@@ -21,7 +21,7 @@ Choice: enum
 	some(slot: Slot)
 }
 
-field: fun -> i32 = Slot(1).n
+field: fun -> i32 => Slot(1).n
 
 main: fun -> i32
 {

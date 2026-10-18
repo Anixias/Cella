@@ -26,7 +26,7 @@ Player: rec
 	skin: Texture
 	hp: i32
 
-	retire: fun(own self) -> i32 = self.skin.id
+	retire: fun(own self) -> i32 => self.skin.id
 }
 
 Sprite: rec
@@ -55,7 +55,7 @@ Countdown: rec
 		ret self.value >= 0
 	}
 
-	*: op(imm self) -> imm[i32] = imm self.value
+	*: op(imm self) -> imm[i32] => imm self.value
 
 	drop: op
 	{
@@ -63,15 +63,15 @@ Countdown: rec
 	}
 }
 
-take: fun(own texture: Texture) -> i32 = texture.id
+take: fun(own texture: Texture) -> i32 => texture.id
 
-shift: fun(own point: Point) -> i32 = point.x + point.y
+shift: fun(own point: Point) -> i32 => point.x + point.y
 
-count: fun(imm textures: array[Texture, 2]) -> i32 = textures[0].id + textures[1].id
+count: fun(imm textures: array[Texture, 2]) -> i32 => textures[0].id + textures[1].id
 
-pass: fun(own texture: Texture) -> Texture = texture
+pass: fun(own texture: Texture) -> Texture => texture
 
-choose: fun(own slot: Slot, own fallback: Texture) -> Texture = match own slot
+choose: fun(own slot: Slot, own fallback: Texture) -> Texture => match own slot
 {
 	full(own texture) => texture
 	empty => fallback

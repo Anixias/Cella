@@ -48,7 +48,7 @@ Window: ref enum
 	whole(items: imm[array[i32, 6]])
 	from(items: imm[array[i32, 6]], start: usize)
 
-	first: fun(mut self) -> imm[i32] = match self
+	first: fun(mut self) -> imm[i32] => match self
 	{
 		whole(val items) => imm items[0]
 		from(val items, val start) => imm items[start]
@@ -81,10 +81,10 @@ Counter: ref rec
 	count: i32
 	guard: Guard
 
-	countRef: fun(mut self) -> mut[i32] = mut self.count
+	countRef: fun(mut self) -> mut[i32] => mut self.count
 }
 
-first: fun(mut lexer: Lexer) -> Token = lexer.next()
+first: fun(mut lexer: Lexer) -> Token => lexer.next()
 
 firstToken: fun(mut items: array[i32, 6]) -> Token
 {

@@ -54,7 +54,7 @@ drain: fun(mut items: dyn[Iterator[i32]]) -> i32
 	ret total
 }
 
-kind: fun(imm items: dyn[Iterator[i32]]) -> i32 = match items
+kind: fun(imm items: dyn[Iterator[i32]]) -> i32 => match items
 {
 	Countdown => 1
 	Repeat => 2
@@ -71,11 +71,11 @@ Value: rec impl Cloner[i32]
 {
 	x: i32
 
-	copy: fun(self) -> Value = Value(self.x)
-	get: fun(self) -> i32 = self.x * 3
+	copy: fun(self) -> Value => Value(self.x)
+	get: fun(self) -> i32 => self.x * 3
 }
 
-peek: fun(imm item: dyn[Cloner[i32]]) -> i32 = item.get()
+peek: fun(imm item: dyn[Cloner[i32]]) -> i32 => item.get()
 
 Iterable[T, C: Iterator[T]]: trait
 {
@@ -106,7 +106,7 @@ fixed[T: copy]: rec
 
 fixed[T: copy]: impl Iterable[T, cursor[T]]
 {
-	iterate: fun(self) -> cursor[T] = cursor[T](self.items, self.length, 0)
+	iterate: fun(self) -> cursor[T] => cursor[T](self.items, self.length, 0)
 }
 
 sum[I: Iterator[i32]]: fun(mut items: I) -> i32
@@ -131,7 +131,7 @@ wrap[I]: rec
 
 wrap[I: Iterator[i32]]: impl
 {
-	take: fun(mut self) -> i32 = match self.inner.next()
+	take: fun(mut self) -> i32 => match self.inner.next()
 	{
 		some(val value) => value
 		none => -1
@@ -150,12 +150,12 @@ Show[T]: trait
 
 i32: impl Show[i32]
 {
-	show: fun(self, extra: i32) = printf("%d", self + extra)
+	show: fun(self, extra: i32) => printf("%d", self + extra)
 }
 
 str: impl Show[i32]
 {
-	show: fun(self, extra: i32) = printf("%.*s", i32(self.byteLength), self.data)
+	show: fun(self, extra: i32) => printf("%.*s", i32(self.byteLength), self.data)
 }
 
 say: fun(text: fstr[Show[i32]])

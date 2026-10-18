@@ -5,14 +5,14 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-call: fun(f: fun[-> i32]) -> i32 = f()
+call: fun(f: fun[-> i32]) -> i32 => f()
 
 count[T]: fun(imm value: T, n: i32) -> i32
 {
 	if n == 0
 		ret 0
 
-	ret call(fun -> i32 = count(imm value, n - 1) + 1)
+	ret call(fun -> i32 => count(imm value, n - 1) + 1)
 }
 
 main: fun -> i32

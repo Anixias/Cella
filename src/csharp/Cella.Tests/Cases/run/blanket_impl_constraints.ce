@@ -15,12 +15,12 @@ i32: impl Eq
 Describe: trait
 {
 	name: fun(imm self) -> cstr
-	shout: fun(imm self) -> cstr = "LOUD"
+	shout: fun(imm self) -> cstr => "LOUD"
 }
 
 [T: Eq]: impl Describe
 {
-	name: fun(imm self) -> cstr = "comparable"
+	name: fun(imm self) -> cstr => "comparable"
 }
 
 Point: rec impl Eq
@@ -28,7 +28,7 @@ Point: rec impl Eq
 	x: i32
 	y: i32
 
-	==: op(imm a: Point, imm b: Point) -> bool = a.x == b.x && a.y == b.y
+	==: op(imm a: Point, imm b: Point) -> bool => a.x == b.x && a.y == b.y
 }
 
 Pair: rec
@@ -39,8 +39,8 @@ Pair: rec
 
 Pair: impl Eq + Describe
 {
-	==: op(imm a: Pair, imm b: Pair) -> bool = a.a == b.a && a.b == b.b
-	name: fun(imm self) -> cstr = "pair"
+	==: op(imm a: Pair, imm b: Pair) -> bool => a.a == b.a && a.b == b.b
+	name: fun(imm self) -> cstr => "pair"
 }
 
 box[T]: rec
@@ -50,15 +50,15 @@ box[T]: rec
 
 box[T: Eq]: impl Eq
 {
-	==: op(imm a: box[T], imm b: box[T]) -> bool = a.value == b.value
+	==: op(imm a: box[T], imm b: box[T]) -> bool => a.value == b.value
 }
 
 box[T]: impl Describe
 {
-	name: fun(imm self) -> cstr = "box"
+	name: fun(imm self) -> cstr => "box"
 }
 
-describe[T: Eq]: fun(imm value: T) -> cstr = value.name()
+describe[T: Eq]: fun(imm value: T) -> cstr => value.name()
 
 main: fun -> i32
 {

@@ -1,45 +1,45 @@
-Error at lambdas.ce:7:65
-6 │ choose: fun(f: fun[i64 -> i64]) -> i32 = 2
-7 │ transform[T, U]: fun(imm value: T, f: fun[imm T -> U]) -> U = f(value)
-                                                                    ╘═══╛ Cannot borrow arguments implicitly
+Error at lambdas.ce:7:66
+6 │ choose: fun(f: fun[i64 -> i64]) -> i32 => 2
+7 │ transform[T, U]: fun(imm value: T, f: fun[imm T -> U]) -> U => f(value)
+                                                                     ╘═══╛ Cannot borrow arguments implicitly
 
 Error at lambdas.ce:35:18
 34 │ 
-35 │ val loose = fun(x) = x
+35 │ val loose = fun(x) => x
                      ^ Cannot infer the type of 'x'
 
 Error at lambdas.ce:36:8
-35 │ val loose = fun(x) = x
-36 │ apply(fun(a, b) = a, 1)
-           ╘═══════════╛ 'fun[i32 -> i32]' takes one parameter
+35 │ val loose = fun(x) => x
+36 │ apply(fun(a, b) => a, 1)
+           ╘════════════╛ 'fun[i32 -> i32]' takes one parameter
 
 Error at lambdas.ce:37:8
-36 │ apply(fun(a, b) = a, 1)
-37 │ apply(fun = 1, 1)
-           ╘═════╛ 'fun[i32 -> i32]' takes one parameter
+36 │ apply(fun(a, b) => a, 1)
+37 │ apply(fun => 1, 1)
+           ╘══════╛ 'fun[i32 -> i32]' takes one parameter
 
 Error at lambdas.ce:38:11
-37 │ apply(fun = 1, 1)
-38 │ pair(fun(x, x) = x)
+37 │ apply(fun => 1, 1)
+38 │ pair(fun(x, x) => x)
               ^ Parameter 'x' is declared more than once
 
 Error at lambdas.ce:38:14
-37 │ apply(fun = 1, 1)
-38 │ pair(fun(x, x) = x)
+37 │ apply(fun => 1, 1)
+38 │ pair(fun(x, x) => x)
                  ^ Parameter 'x' is declared more than once
 
 Error at lambdas.ce:39:2
-38 │ pair(fun(x, x) = x)
-39 │ choose(fun(x) = x)
+38 │ pair(fun(x, x) => x)
+39 │ choose(fun(x) => x)
      ╘════╛ Call to 'choose' is ambiguous
 
 Error at lambdas.ce:41:16
-40 │ choose(fun(x: i64) -> i64 = x)
-41 │ val counter = Counter(fun(x) = x)
-                   ╘═════════════════╛ Conversion to 'Counter' is ambiguous
+40 │ choose(fun(x: i64) -> i64 => x)
+41 │ val counter = Counter(fun(x) => x)
+                   ╘══════════════════╛ Conversion to 'Counter' is ambiguous
 
 Error at lambdas.ce:42:15
-41 │ val counter = Counter(fun(x) = x)
+41 │ val counter = Counter(fun(x) => x)
 42 │ transform(1, fun(x) { ret x })
                   ╘══════════════╛ Cannot infer the return type
 
@@ -50,22 +50,22 @@ Error at lambdas.ce:43:8
 
 Error at lambdas.ce:44:8
 43 │ apply(fun(mut x) { x += 1 }, 1)
-44 │ apply(fun(x: i64) = x, 1)
-           ╘═════════════╛ Cannot convert type 'fun[i64]' to 'ref fun[i32 -> i32]'
+44 │ apply(fun(x: i64) => x, 1)
+           ╘══════════════╛ Cannot convert type 'fun[i64]' to 'ref fun[i32 -> i32]'
 
 Error at lambdas.ce:45:23
-44 │ apply(fun(x: i64) = x, 1)
-45 │ val unknown = fun(x: Missing) = x
+44 │ apply(fun(x: i64) => x, 1)
+45 │ val unknown = fun(x: Missing) => x
                           ╘═════╛ Type 'Missing' not found in this scope
 
-Error at lambdas.ce:46:17
-45 │ val unknown = fun(x: Missing) = x
-46 │ apply(fun(x) = x > 0, 1)
-                    ╘═══╛ Cannot convert type 'bool' to 'i32'
+Error at lambdas.ce:46:18
+45 │ val unknown = fun(x: Missing) => x
+46 │ apply(fun(x) => x > 0, 1)
+                     ╘═══╛ Cannot convert type 'bool' to 'i32'
 
 Error at lambdas.ce:47:2
-46 │ apply(fun(x) = x > 0, 1)
-47 │ missing(fun(x) = x)
-     ╘═════════════════╛ Symbol 'missing' not found in this scope
+46 │ apply(fun(x) => x > 0, 1)
+47 │ missing(fun(x) => x)
+     ╘══════════════════╛ Symbol 'missing' not found in this scope
 
 [compilation failed]

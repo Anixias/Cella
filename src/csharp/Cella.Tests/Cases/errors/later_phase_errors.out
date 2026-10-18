@@ -4,24 +4,24 @@ Error at broken.ce:6:2
     ╘═╛ Expected ')'
       | To match the '(' on line 5
 
-Error at broken.ce:9:33
+Error at broken.ce:9:34
 8 │ 
-9 │ whole: fun(value: i32) -> i32 = value * true
-                                    ╘══════════╛ No operation defined for '*' between 'i32' and 'bool'
+9 │ whole: fun(value: i32) -> i32 => value * true
+                                     ╘══════════╛ No operation defined for '*' between 'i32' and 'bool'
 
 Error at main.ce:7:9
 6 │ {
 7 │     width: Missing
                ╘═════╛ Type 'Missing' not found in this scope
 
-Error at main.ce:11:36
-10 │ area: fun(imm self) -> i32 = self.width * self.height
-11 │ perimeter: fun(imm self) -> i32 = self.height + false
-                                       ╘═════════════════╛ No operation defined for '+' between 'i32' and 'bool'
+Error at main.ce:11:37
+10 │ area: fun(imm self) -> i32 => self.width * self.height
+11 │ perimeter: fun(imm self) -> i32 => self.height + false
+                                        ╘═════════════════╛ No operation defined for '+' between 'i32' and 'bool'
 
 Error at main.ce:14:22
 13 │ 
-14 │ describe: fun(shape: Unknown) -> i32 = shape.size + 1
+14 │ describe: fun(shape: Unknown) -> i32 => shape.size + 1
                           ╘═════╛ Type 'Unknown' not found in this scope
 
 Error at main.ce:19:6

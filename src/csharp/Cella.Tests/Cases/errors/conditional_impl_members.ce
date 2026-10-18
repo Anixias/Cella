@@ -12,12 +12,12 @@ box[T]: rec
 
 box[T: Hash]: impl
 {
-	digest: fun(imm self) -> u64 = self.value.hash()
+	digest: fun(imm self) -> u64 => self.value.hash()
 }
 
 box[T: Hash]: impl Hash
 {
-	hash: fun(imm self) -> u64 = self.value.hash()
+	hash: fun(imm self) -> u64 => self.value.hash()
 }
 
 Plain: rec

@@ -51,7 +51,7 @@ Size: trait
 	size: const usize = sizeOf(T)
 }
 
-describe[T: Integer]: fun -> u32 = T.bits + T.bytes
+describe[T: Integer]: fun -> u32 => T.bits + T.bytes
 
 doubled: const u32 = i32.bits * 2
 

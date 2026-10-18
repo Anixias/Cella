@@ -12,12 +12,12 @@ Display: trait
 
 bool: impl Display
 {
-	print: fun(self) = printf("%d\n", i32(self))
+	print: fun(self) => printf("%d\n", i32(self))
 }
 
 i32: impl Display
 {
-	print: fun(self) = printf("%d\n", self)
+	print: fun(self) => printf("%d\n", self)
 }
 
 Mode: enum
@@ -26,7 +26,7 @@ Mode: enum
 	busy
 }
 
-say: fun(text: fstr[Display]) = text.value(0).print()
+say: fun(text: fstr[Display]) => text.value(0).print()
 
 main: fun -> i32
 {

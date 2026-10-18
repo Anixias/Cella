@@ -56,18 +56,18 @@ inc: fun(mut counter: i32)
 	counter += 1
 }
 
-total: fun(point: Point) -> i32 = point.x * 10 + point.y
+total: fun(point: Point) -> i32 => point.x * 10 + point.y
 
-sum: fun(point: Point) -> i32 = point.x + point.y
+sum: fun(point: Point) -> i32 => point.x + point.y
 
 bump: fun(mut tally: Tally)
 {
 	tally.count += tally.step
 }
 
-read: fun(imm buffer: Buffer) -> i32 = buffer.id
+read: fun(imm buffer: Buffer) -> i32 => buffer.id
 
-make: fun(id: i32) -> Buffer = Buffer(id)
+make: fun(id: i32) -> Buffer => Buffer(id)
 
 main: fun -> i32
 {

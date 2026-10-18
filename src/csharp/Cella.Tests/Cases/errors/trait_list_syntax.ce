@@ -19,4 +19,4 @@ Ord: trait impl Eq
 {
 }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

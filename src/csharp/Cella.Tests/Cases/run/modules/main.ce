@@ -10,20 +10,20 @@ ext
 
 table: const array[fun[i32 -> i32], 2] = [geometry.twice, geometry.doubler]
 
-sum: fun(p: geometry.Point) -> i32 = p.x + p.y
+sum: fun(p: geometry.Point) -> i32 => p.x + p.y
 
-swap: fun(p: geometry.Point) -> geometry.Point = geometry.Point(p.y, p.x)
+swap: fun(p: geometry.Point) -> geometry.Point => geometry.Point(p.y, p.x)
 
-shadowed: fun(geometry: geometry.Point) -> i32 = geometry.y
+shadowed: fun(geometry: geometry.Point) -> i32 => geometry.y
 
-describe: fun(shape: geometry.Shape) -> i32 = match shape
+describe: fun(shape: geometry.Shape) -> i32 => match shape
 {
 	geometry.Shape.circle => 1
 	square => 2
 	rect(val w, _) => w
 }
 
-helper: fun -> i32 = 99
+helper: fun -> i32 => 99
 
 main: fun -> i32
 {

@@ -1,8 +1,8 @@
 mod test
 
-takesI32: fun(value: i32) -> i32 = value
-takesU8: fun(value: u8) -> u8 = value
-takesSize: fun(value: usize) -> usize = value
+takesI32: fun(value: i32) -> i32 => value
+takesU8: fun(value: u8) -> u8 => value
+takesSize: fun(value: usize) -> usize => value
 
 main: fun -> i32
 {

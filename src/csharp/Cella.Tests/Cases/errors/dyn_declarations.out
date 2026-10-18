@@ -15,22 +15,22 @@ Error at dyn_declarations.ce:26:23
 
 Error at dyn_declarations.ce:29:14
 28 │ 
-29 │ make: fun -> dyn[Shape] = make()
+29 │ make: fun -> dyn[Shape] => make()
                   ╘════════╛ Cannot use 'dyn[Shape]' by value
 
 Error at dyn_declarations.ce:31:22
 30 │ 
-31 │ take: fun(own shape: dyn[Shape]) = take(shape)
+31 │ take: fun(own shape: dyn[Shape]) => take(shape)
                           ╘════════╛ Cannot use 'dyn[Shape]' by value
 
 Error at dyn_declarations.ce:33:21
 32 │ 
-33 │ bad: fun(shape: dyn[Point]) -> i32 = 0
+33 │ bad: fun(shape: dyn[Point]) -> i32 => 0
                          ╘═══╛ 'Point' is not a trait
 
 Error at dyn_declarations.ce:35:28
 34 │ 
-35 │ reveal: pub fun(imm shape: dyn[Secret]) -> i32 = 0
+35 │ reveal: pub fun(imm shape: dyn[Secret]) -> i32 => 0
                                 ╘═════════╛ 'dyn[Secret]' is less visible than 'reveal'
 
 [compilation failed]

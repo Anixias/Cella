@@ -5,7 +5,7 @@ use test.*.foo
 val x = 5
 var y: i32 = 5
 fun helper -> i32 = 1
-+: op(a: i32, b: i32) -> i32 = a
++: op(a: i32, b: i32) -> i32 => a
 
 new: op(x: i32)
 {
@@ -17,10 +17,10 @@ drop: op
 
 pub
 {
-	shown: fun -> i32 = 1
+	shown: fun -> i32 => 1
 }
 
-pvt helper: fun -> i32 = 1
+pvt helper: fun -> i32 => 1
 
 pvt ext
 {
@@ -37,11 +37,11 @@ when debug
 pvt
 {
 	use other
-	a: fun -> i32 = 1
+	a: fun -> i32 => 1
 }
 
-f: fun -> i32 = 1)
+f: fun -> i32 => 1)
 
-broken: fun -> i32 = (
+broken: fun -> i32 => (
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

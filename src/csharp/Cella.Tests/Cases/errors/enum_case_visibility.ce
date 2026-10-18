@@ -8,4 +8,4 @@ Shape: enum
 	mod square
 }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

@@ -34,16 +34,16 @@ ascending: fun(left: ptr, right: ptr) -> i32
 	ret 0
 }
 
-double: fun(x: i32) -> i32 = x * 2
-twice: ext fun(x: i32) -> i32 = x * 2
-swap: fun(pair: Pair) -> Pair = Pair(pair.y, pair.x)
-spread: fun(quad: Quad, scale: i32) -> Quad = Quad(quad.a * scale, quad.b * scale, quad.c * scale, quad.d * scale)
-swapNative: ext fun(pair: Pair) -> Pair = Pair(pair.y, pair.x)
+double: fun(x: i32) -> i32 => x * 2
+twice: ext fun(x: i32) -> i32 => x * 2
+swap: fun(pair: Pair) -> Pair => Pair(pair.y, pair.x)
+spread: fun(quad: Quad, scale: i32) -> Quad => Quad(quad.a * scale, quad.b * scale, quad.c * scale, quad.d * scale)
+swapNative: ext fun(pair: Pair) -> Pair => Pair(pair.y, pair.x)
 
 natives: val array[ext fun[i32 -> i32], 2] = [twice, double]
 
-applyFun: fun(f: fun[i32 -> i32], x: i32) -> i32 = f(x)
-applyExt: fun(f: ext fun[i32 -> i32], x: i32) -> i32 = f(x)
+applyFun: fun(f: fun[i32 -> i32], x: i32) -> i32 => f(x)
+applyExt: fun(f: ext fun[i32 -> i32], x: i32) -> i32 => f(x)
 
 main: fun -> i32
 {

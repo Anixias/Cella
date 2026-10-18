@@ -13,12 +13,12 @@ Display: trait
 
 str: impl Display
 {
-	print: fun(self) = printf("%.*s", i32(self.byteLength), self.data)
+	print: fun(self) => printf("%.*s", i32(self.byteLength), self.data)
 }
 
 i32: impl Display
 {
-	print: fun(self) = printf("%d", self)
+	print: fun(self) => printf("%d", self)
 }
 
 panic[T: Display]: op(imm message: T, location: str) -> never

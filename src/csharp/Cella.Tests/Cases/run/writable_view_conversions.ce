@@ -33,8 +33,8 @@ Ring: rec
 {
 	items: array[i32, 3]
 
-	as: op(mut self) -> span[i32] = span[i32](ptr[i32](ptr(@self.items)), 3)
-	as: op(imm self) -> view[i32] = view[i32](ptr[i32](ptr(@self.items)), 3)
+	as: op(mut self) -> span[i32] => span[i32](ptr[i32](ptr(@self.items)), 3)
+	as: op(imm self) -> view[i32] => view[i32](ptr[i32](ptr(@self.items)), 3)
 }
 
 fill: fun(values: span[i32], value: i32)

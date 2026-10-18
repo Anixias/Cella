@@ -13,7 +13,7 @@ box[T]: rec
 
 	total[X]: var i32 = 0
 
-	size[Y]: get -> i32 = 0
+	size[Y]: get -> i32 => 0
 }
 
 ext
@@ -21,4 +21,4 @@ ext
 	native[T]: fun(value: i32) -> i32
 }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

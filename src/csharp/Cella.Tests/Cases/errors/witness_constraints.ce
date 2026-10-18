@@ -18,11 +18,11 @@ Point: rec impl Apply
 {
 	x: i32
 
-	keep[V: copy]: fun(self, value: V) -> V = value
-	tagged[V: Hash]: fun(self, imm value: V) -> i32 = 1
-	plain[V: noref]: fun(self, imm value: V) -> i32 = 2
-	cap[M: const u8]: fun(self) -> usize = 3
-	other[M]: fun(self) -> usize = 4
+	keep[V: copy]: fun(self, value: V) -> V => value
+	tagged[V: Hash]: fun(self, imm value: V) -> i32 => 1
+	plain[V: noref]: fun(self, imm value: V) -> i32 => 2
+	cap[M: const u8]: fun(self) -> usize => 3
+	other[M]: fun(self) -> usize => 4
 }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

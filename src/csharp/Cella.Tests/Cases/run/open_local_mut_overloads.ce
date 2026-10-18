@@ -5,12 +5,12 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-pick: fun(mut a: i32, imm k: i32) = printf("i32 %d\n", a + k)
-pick: fun(mut a: f32, imm k: i32) = printf("f32 %.1f\n", a + f32(k))
-pick: fun(mut a: str, imm k: i32) = printf("str %d\n", k)
+pick: fun(mut a: i32, imm k: i32) => printf("i32 %d\n", a + k)
+pick: fun(mut a: f32, imm k: i32) => printf("f32 %.1f\n", a + f32(k))
+pick: fun(mut a: str, imm k: i32) => printf("str %d\n", k)
 
-grow: fun(mut a: f32) = a *= 2.0
-grow: fun(mut a: f64) = a *= 3.0
+grow: fun(mut a: f32) => a *= 2.0
+grow: fun(mut a: f64) => a *= 3.0
 
 main: fun -> i32
 {

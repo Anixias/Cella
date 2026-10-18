@@ -22,10 +22,10 @@ Box: rec
 {
 	value: i32
 
-	*: op(self, other: i32 = 0) -> i32 = 0
+	*: op(self, other: i32 = 0) -> i32 => 0
 }
 
-make: fun -> i32 = 4
+make: fun -> i32 => 4
 
 order: fun(first: i32 = 0, second: i32) {}
 writes: fun(mut value: i32 = 0) {}
@@ -34,4 +34,4 @@ called: fun(value: i32 = make()) {}
 wrong: fun(value: i32 = "text") {}
 generic[T]: fun(imm value: T = 5) {}
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

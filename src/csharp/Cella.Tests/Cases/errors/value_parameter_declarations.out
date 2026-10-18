@@ -1,6 +1,6 @@
 Error at value_parameter_declarations.ce:8:64
 7 │ 
-8 │ grow[N: const usize]: fun(values: array[i32, N]) -> array[i32, N + 1] = undef
+8 │ grow[N: const usize]: fun(values: array[i32, N]) -> array[i32, N + 1] => undef
                                                                    ╘═══╛ Cannot use arithmetic on value parameters in generic arguments
 
 Error at value_parameter_declarations.ce:12:20
@@ -25,12 +25,12 @@ Error at value_parameter_declarations.ce:25:19
 
 Error at value_parameter_declarations.ce:34:4
 33 │ 
-34 │ +[N: const usize]: op(a: Vector, b: Vector) -> Vector = a
+34 │ +[N: const usize]: op(a: Vector, b: Vector) -> Vector => a
        ^ Cannot infer 'N' from the operands of '+'
 
 Error at value_parameter_declarations.ce:35:5
-34 │ +[N: const usize]: op(a: Vector, b: Vector) -> Vector = a
-35 │ [][N: const usize]: op(self, i: usize) -> i32 = 0
+34 │ +[N: const usize]: op(a: Vector, b: Vector) -> Vector => a
+35 │ [][N: const usize]: op(self, i: usize) -> i32 => 0
         ^ Cannot infer 'N' from the operands of '[]'
 
 Error at value_parameter_declarations.ce:38:1

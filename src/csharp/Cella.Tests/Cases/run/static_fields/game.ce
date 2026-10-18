@@ -14,7 +14,7 @@ Unit: rec
 		ret Unit(hp)
 	}
 
-	scaled: fun(self) -> i32 = self.hp * Unit.label + maxHp
+	scaled: fun(self) -> i32 => self.hp * Unit.label + maxHp
 }
 
 Color: enum
@@ -32,7 +32,7 @@ Color: enum
 		ret Color.green
 	}
 
-	picked: fun -> i32 = picks
+	picked: fun -> i32 => picks
 }
 
 Pair: rec
@@ -46,5 +46,5 @@ Pair: rec
 	limit: const i32 = base * 2
 	base: pvt const i32 = 8
 
-	twice: pvt fun(value: i32) -> i32 = value * 2
+	twice: pvt fun(value: i32) -> i32 => value * 2
 }

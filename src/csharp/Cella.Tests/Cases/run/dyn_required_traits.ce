@@ -15,7 +15,7 @@ Named: trait
 Shape: trait req Named
 {
 	area: fun(imm self) -> f64
-	label: fun(imm self) -> i32 = self.name() * 2
+	label: fun(imm self) -> i32 => self.name() * 2
 }
 
 Solid: trait req Shape
@@ -28,28 +28,28 @@ Circle: rec impl Named + Shape + Solid
 	radius: f64
 	id: i32
 
-	name: fun(self) -> i32 = self.id
+	name: fun(self) -> i32 => self.id
 	rename: fun(mut self, value: i32)
 	{
 		self.id = value
 	}
 
-	code: get(self) -> i32 = self.id + 100
-	area: fun(self) -> f64 = self.radius * self.radius * 3.0
-	volume: fun(self) -> f64 = self.area() * 2.0
+	code: get(self) -> i32 => self.id + 100
+	area: fun(self) -> f64 => self.radius * self.radius * 3.0
+	volume: fun(self) -> f64 => self.area() * 2.0
 }
 
 Square: rec impl Named + Shape
 {
 	side: f64
 
-	name: fun(self) -> i32 = 4
+	name: fun(self) -> i32 => 4
 	rename: fun(mut self, value: i32)
 	{
 	}
 
-	code: get(self) -> i32 = 400
-	area: fun(self) -> f64 = self.side * self.side
+	code: get(self) -> i32 => 400
+	area: fun(self) -> f64 => self.side * self.side
 }
 
 cell[K: trait]: rec
@@ -57,16 +57,16 @@ cell[K: trait]: rec
 	object: ptr[dyn[K]]
 }
 
-label: fun(imm item: dyn[Named]) -> i32 = item.name()
+label: fun(imm item: dyn[Named]) -> i32 => item.name()
 
 relabel: fun(mut item: dyn[Named], value: i32)
 {
 	item.rename(value)
 }
 
-describe: fun(imm shape: dyn[Shape]) -> f64 = shape.area() + f64(shape.name() + label(imm shape) + shape.code)
+describe: fun(imm shape: dyn[Shape]) -> f64 => shape.area() + f64(shape.name() + label(imm shape) + shape.code)
 
-measure: fun(imm solid: dyn[Solid]) -> f64 = solid.volume() + describe(imm solid) + f64(label(imm solid) * 1000)
+measure: fun(imm solid: dyn[Solid]) -> f64 => solid.volume() + describe(imm solid) + f64(label(imm solid) * 1000)
 
 grow: fun(mut solid: dyn[Solid])
 {
@@ -74,11 +74,11 @@ grow: fun(mut solid: dyn[Solid])
 	relabel(mut solid, solid.label())
 }
 
-apply[K: trait, T: K]: fun(imm value: T, action: fun[imm dyn[K] -> f64]) -> f64 = action(imm value)
+apply[K: trait, T: K]: fun(imm value: T, action: fun[imm dyn[K] -> f64]) -> f64 => action(imm value)
 
-names: fun(item: cell[Named]) -> i32 = item.object.name()
+names: fun(item: cell[Named]) -> i32 => item.object.name()
 
-widen: fun(item: cell[Shape]) -> cell[Named] = cell[Named](item.object)
+widen: fun(item: cell[Shape]) -> cell[Named] => cell[Named](item.object)
 
 main: fun -> i32
 {

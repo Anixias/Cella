@@ -17,19 +17,19 @@ ring[T, N: const usize]: rec
 	items: array[T, N]
 }
 
-wide: fun(value: u16) -> i32 = i32(value)
-narrow: fun(value: u8) -> i32 = i32(value)
-large: fun(value: i64) -> i32 = i32(value)
-pick: fun(value: u8) -> i32 = 8
-pick: fun(value: i64) -> i32 = 64
-same[T: copy]: fun(a: T, b: T) -> T = a
-bytes: fun(values: array[u8, 3]) -> i32 = i32(values[0]) + i32(values[1]) + i32(values[2])
-apply: fun(f: fun[i32 -> i32]) -> i32 = f(21)
-check: fun(value: option[i32]) -> i32 = match value { none => 7, some(val v) => v }
-twice: fun(x: i32) -> i32 = x * 2
-twice: fun(x: f64) -> f64 = x * 2.0
-run: fun(visit: fun[]) = visit()
-size: fun(value: i32) -> usize = 2
+wide: fun(value: u16) -> i32 => i32(value)
+narrow: fun(value: u8) -> i32 => i32(value)
+large: fun(value: i64) -> i32 => i32(value)
+pick: fun(value: u8) -> i32 => 8
+pick: fun(value: i64) -> i32 => 64
+same[T: copy]: fun(a: T, b: T) -> T => a
+bytes: fun(values: array[u8, 3]) -> i32 => i32(values[0]) + i32(values[1]) + i32(values[2])
+apply: fun(f: fun[i32 -> i32]) -> i32 => f(21)
+check: fun(value: option[i32]) -> i32 => match value { none => 7, some(val v) => v }
+twice: fun(x: i32) -> i32 => x * 2
+twice: fun(x: f64) -> f64 => x * 2.0
+run: fun(visit: fun[]) => visit()
+size: fun(value: i32) -> usize => 2
 
 bump: fun(mut value: u8)
 {
@@ -80,7 +80,7 @@ forms: fun
 	const greeting = "hi"
 	puts(greeting + "!")
 	val values = [1, 2, 3]
-	val double = fun(x) = x * 2
+	val double = fun(x) => x * 2
 	val nothing = none
 	val five = some(5)
 	val f = twice

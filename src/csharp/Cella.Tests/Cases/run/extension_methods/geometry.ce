@@ -5,5 +5,5 @@ Point: rec
 	x: i32
 	y: i32
 
-	sum: fun(imm self) -> i32 = self.x + self.y
+	sum: fun(imm self) -> i32 => self.x + self.y
 }

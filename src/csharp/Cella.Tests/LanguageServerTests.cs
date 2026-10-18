@@ -7,8 +7,8 @@ namespace Cella.Tests;
 
 public sealed class LanguageServerTests : IAsyncDisposable
 {
-	private const string ValidSource = "mod test\n\nmain: fun -> i32 = 0\n";
-	private const string InvalidSource = "mod test\n\nmain: fun -> i32 = true\n";
+	private const string ValidSource = "mod test\n\nmain: fun -> i32 => 0\n";
+	private const string InvalidSource = "mod test\n\nmain: fun -> i32 => true\n";
 	
 	private readonly string _directory =
 		Path.Combine(Path.GetTempPath(), "cella-server-tests", Guid.NewGuid().ToString("N"));
@@ -119,8 +119,8 @@ public sealed class LanguageServerTests : IAsyncDisposable
 		var error = Assert.Single((JsonArray)published["params"]!["diagnostics"]!)!;
 		Assert.Equal(1, (int)error["severity"]!);
 		Assert.Equal(2, (int)error["range"]!["start"]!["line"]!);
-		Assert.Equal(19, (int)error["range"]!["start"]!["character"]!);
-		Assert.Equal(23, (int)error["range"]!["end"]!["character"]!);
+		Assert.Equal(20, (int)error["range"]!["start"]!["character"]!);
+		Assert.Equal(24, (int)error["range"]!["end"]!["character"]!);
 		
 		await NotifyAsync("textDocument/didChange", new JsonObject
 		{
@@ -202,7 +202,7 @@ public sealed class LanguageServerTests : IAsyncDisposable
 	                                        	y: i32
 	                                        }
 	                                        
-	                                        sum: fun(imm point: Point) -> i32 = point.x + point.y
+	                                        sum: fun(imm point: Point) -> i32 => point.x + point.y
 	                                        
 	                                        main: fun -> i32
 	                                        {
@@ -251,7 +251,7 @@ public sealed class LanguageServerTests : IAsyncDisposable
 		
 		Assert.Equal(Code("sum: fun(imm point: Point) -> i32"), await HoverAsync(13, 6));
 		Assert.Equal(Code("val origin: Point"), await HoverAsync(13, 14));
-		Assert.Equal(Code("x: i32"), await HoverAsync(8, 42));
+		Assert.Equal(Code("x: i32"), await HoverAsync(8, 43));
 		Assert.Equal(Code("Point: rec"), await HoverAsync(8, 21));
 		Assert.Equal(Code("Point: rec"), await HoverAsync(12, 15));
 		
@@ -263,7 +263,7 @@ public sealed class LanguageServerTests : IAsyncDisposable
 		var type = await DefinitionAsync(12, 15);
 		Assert.Equal(2, (int)type!["range"]!["start"]!["line"]!);
 		
-		var field = await DefinitionAsync(8, 42);
+		var field = await DefinitionAsync(8, 43);
 		Assert.Equal(4, (int)field!["range"]!["start"]!["line"]!);
 		Assert.Equal(1, (int)field["range"]!["start"]!["character"]!);
 		
@@ -299,8 +299,8 @@ public sealed class LanguageServerTests : IAsyncDisposable
 	public async Task ListsRunnableFunctions()
 	{
 		await InitializeAsync();
-		await OpenSourceAsync("mod test\n\nmain: fun -> i32 = 0\n\ndemo: pub fun\n{\n}\n\nhelper: fun\n{\n}\n\n" +
-		                      "scaled: pub fun(factor: i32) -> i32 = factor\n\nflag: pub fun -> bool = true\n");
+		await OpenSourceAsync("mod test\n\nmain: fun -> i32 => 0\n\ndemo: pub fun\n{\n}\n\nhelper: fun\n{\n}\n\n" +
+		                      "scaled: pub fun(factor: i32) -> i32 => factor\n\nflag: pub fun -> bool => true\n");
 		
 		var id = await RequestAsync("cella/runnables",
 			new JsonObject { ["textDocument"] = new JsonObject { ["uri"] = SourceUri } });
@@ -319,8 +319,8 @@ public sealed class LanguageServerTests : IAsyncDisposable
 		
 		Assert.Equal(["8:20", "12:14"], await UsagesAsync(2, 2, false));
 		Assert.Equal(["2:0", "8:20", "12:14"], await UsagesAsync(12, 16, true));
-		Assert.Equal(["8:36", "8:46"], await UsagesAsync(8, 14, false));
-		Assert.Equal(["8:42"], await UsagesAsync(4, 1, false));
+		Assert.Equal(["8:37", "8:47"], await UsagesAsync(8, 14, false));
+		Assert.Equal(["8:43"], await UsagesAsync(4, 1, false));
 		Assert.Equal(["13:5"], await UsagesAsync(8, 0, false));
 		Assert.Equal(0, await ShutDownAsync());
 	}
@@ -366,10 +366,10 @@ public sealed class LanguageServerTests : IAsyncDisposable
 			"8:15:5 parameter declaration",
 			"8:22:5 struct",
 			"8:32:3 keyword",
-			"8:38:5 parameter",
-			"8:44:1 property",
-			"8:48:5 parameter",
-			"8:54:1 property",
+			"8:39:5 parameter",
+			"8:45:1 property",
+			"8:49:5 parameter",
+			"8:55:1 property",
 			"10:0:4 function declaration",
 			"10:13:3 keyword",
 			"12:5:6 variable declaration readonly",
@@ -398,8 +398,8 @@ public sealed class LanguageServerTests : IAsyncDisposable
 			"5:29:3 struct",
 			"5:33:1 typeParameter",
 			"5:40:1 typeParameter",
-			"5:44:1 parameter",
-			"5:46:1 property",
+			"5:45:1 parameter",
+			"5:47:1 property",
 			"8:0:5 variable declaration readonly static",
 			"8:13:3 keyword",
 			"10:0:4 function declaration",
@@ -424,7 +424,7 @@ public sealed class LanguageServerTests : IAsyncDisposable
 		                       Vec[T: copy]: rec
 		                       {
 		                       	x: T
-		                       	+: op(imm a: Vec[T], imm b: Vec[T]) -> T = a.x
+		                       	+: op(imm a: Vec[T], imm b: Vec[T]) -> T => a.x
 		                       }
 		                       
 		                       limit: const i32 = 4
@@ -482,7 +482,8 @@ public sealed class LanguageServerTests : IAsyncDisposable
 		{
 			character = data[i] == 0 ? character + data[i + 1] : data[i + 1];
 			line += data[i];
-			var applied = modifiers.Where((_, bit) => (data[i + 4] & (1 << bit)) != 0);
+			var flags = data[i + 4];
+			var applied = modifiers.Where((_, bit) => (flags & (1 << bit)) != 0);
 			tokens.Add(string.Join(' ', [$"{line}:{character}:{data[i + 2]}", types[data[i + 3]], ..applied]));
 		}
 		
@@ -504,7 +505,7 @@ public sealed class LanguageServerTests : IAsyncDisposable
 		                                 {
 		                                 	inner: Point
 		                                 
-		                                 	*: op(imm self) -> imm[Point] = self.inner
+		                                 	*: op(imm self) -> imm[Point] => self.inner
 		                                 }
 		                                 
 		                                 View: ref rec
@@ -635,15 +636,15 @@ public sealed class LanguageServerTests : IAsyncDisposable
 	                                        {
 	                                        	x: i32
 	                                        
-	                                        	length: fun(imm self) -> i32 = self.x
-	                                        	shift: fun(mut self, by: i32) = self.x = self.x + by
+	                                        	length: fun(imm self) -> i32 => self.x
+	                                        	shift: fun(mut self, by: i32) => self.x = self.x + by
 	                                        }
 	                                        
-	                                        scale: fun(mut target: Point, factor: i32) = target.x = target.x * factor
-	                                        scale: fun(mut target: Point, imm by: Point) = target.x = target.x * by.x
-	                                        move: fun(mut target: Point, imm offset: Point) = target.x = offset.x
-	                                        twice: fun(value: i32) -> i32 = value * 2
-	                                        apply: fun(f: fun[i32 -> i32], value: i32) -> i32 = f(value)
+	                                        scale: fun(mut target: Point, factor: i32) => target.x = target.x * factor
+	                                        scale: fun(mut target: Point, imm by: Point) => target.x = target.x * by.x
+	                                        move: fun(mut target: Point, imm offset: Point) => target.x = offset.x
+	                                        twice: fun(value: i32) -> i32 => value * 2
+	                                        apply: fun(f: fun[i32 -> i32], value: i32) -> i32 => f(value)
 	                                        
 	                                        main: fun -> i32
 	                                        {
@@ -756,7 +757,7 @@ public sealed class LanguageServerTests : IAsyncDisposable
 		await File.WriteAllTextAsync(Path.Combine(_directory, "physics.ce"), """
 		                                                                     mod game.physics
 		                                                                     
-		                                                                     step: pub fun -> i32 = 1
+		                                                                     step: pub fun -> i32 => 1
 		                                                                     Body: pub rec
 		                                                                     {
 		                                                                     	mass: i32
@@ -771,7 +772,7 @@ public sealed class LanguageServerTests : IAsyncDisposable
 		
 		async Task<IEnumerable<string>> CompleteUseAsync(string path)
 		{
-			var text = $"mod test\n\nuse {path}\n\nmain: fun -> i32 = 0\n";
+			var text = $"mod test\n\nuse {path}\n\nmain: fun -> i32 => 0\n";
 			await SetTextAsync(text);
 			var list = await AskAsync("textDocument/completion", 2, 4 + path.Length);
 			return ((JsonArray)list!["items"]!).Select(static item => item!)

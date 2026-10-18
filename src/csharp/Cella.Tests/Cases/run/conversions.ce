@@ -20,7 +20,7 @@ String: rec
 		memcpy(self.data, text.data, text.byteLength)
 	}
 
-	as: op(imm self) -> str = str(self.data, self.length)
+	as: op(imm self) -> str => str(self.data, self.length)
 
 	drop: op
 	{
@@ -38,8 +38,8 @@ Fixed: rec
 		self.raw = value << 16
 	}
 
-	new: op(self) -> i32 = self.raw >> 16
-	new: op(self) -> f64 = f64(self.raw) / 65536.0
+	new: op(self) -> i32 => self.raw >> 16
+	new: op(self) -> f64 => f64(self.raw) / 65536.0
 }
 
 Meters: rec
@@ -51,7 +51,7 @@ Feet: rec
 {
 	value: f64
 
-	new: op(self) -> Meters = Meters(self.value * 0.5)
+	new: op(self) -> Meters => Meters(self.value * 0.5)
 }
 
 Arg: ref enum
@@ -59,22 +59,22 @@ Arg: ref enum
 	int(value: i64)
 	text(value: str)
 
-	as: op(value: i64) -> Arg = int(value)
-	as: op(value: str) -> Arg = text(value)
+	as: op(value: i64) -> Arg => int(value)
+	as: op(value: str) -> Arg => text(value)
 }
 
 Name: rec
 {
 	id: i32
 
-	as: op(self) -> i32 = self.id
+	as: op(self) -> i32 => self.id
 }
 
 Flag: rec
 {
 	on: bool
 
-	as: op(self) -> bool = self.on
+	as: op(self) -> bool => self.on
 }
 
 Line: ref rec
@@ -87,7 +87,7 @@ show: fun(text: str)
 	printf("[%.*s]\n", i32(text.byteLength), text.data)
 }
 
-makeString: fun -> String = String("made")
+makeString: fun -> String => String("made")
 
 log: fun(arg: Arg)
 {
@@ -98,7 +98,7 @@ log: fun(arg: Arg)
 	}
 }
 
-makeArg: fun -> Arg = 6
+makeArg: fun -> Arg => 6
 
 pick: fun(value: i32)
 {
@@ -115,7 +115,7 @@ only: fun(value: i32)
 	printf("only %d\n", value)
 }
 
-same[T: copy]: fun(value: T) -> T = value
+same[T: copy]: fun(value: T) -> T => value
 
 strings: fun
 {

@@ -5,7 +5,7 @@ option[T]: enum
 	none
 	some(value: T)
 
-	empty: fun -> option[T] = option[T].none
+	empty: fun -> option[T] => option[T].none
 }
 
 strict[T: noref]: enum
@@ -29,4 +29,4 @@ uses: fun
 	val inferred = strict.some("text")
 }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

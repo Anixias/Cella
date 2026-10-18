@@ -57,7 +57,7 @@ stack[T: noref]: rec
 		self.pushes += 1
 	}
 
-	peek: fun(imm self) -> imm[T] = imm self.slots.items[self.slots.count - 1]
+	peek: fun(imm self) -> imm[T] => imm self.slots.items[self.slots.count - 1]
 
 	scratch: fun(own item: T) -> i32
 	{
@@ -76,9 +76,9 @@ mapper[T: noref]: rec
 		self.value = self.change(imm self.value)
 	}
 
-	wrap: fun(own value: T) -> pair[T, i32] = pair[T, i32](own value, 1)
+	wrap: fun(own value: T) -> pair[T, i32] => pair[T, i32](own value, 1)
 
-	score: fun(imm value: T) -> i32 = 7
+	score: fun(imm value: T) -> i32 => 7
 }
 
 pair[A, B]: rec
@@ -87,7 +87,7 @@ pair[A, B]: rec
 	second: B
 }
 
-double: fun(value: i32) -> i32 = value * 2
+double: fun(value: i32) -> i32 => value * 2
 
 main: fun -> i32
 {

@@ -16,7 +16,7 @@ view[T]: ref rec
 		self.length = length
 	}
 
-	[]: op(self, i: usize) -> imm[T] = imm self.data[i]
+	[]: op(self, i: usize) -> imm[T] => imm self.data[i]
 }
 
 Name: rec
@@ -29,7 +29,7 @@ Name: rec
 	}
 }
 
-count: fun(...names: view[Name]) -> usize = names.length
+count: fun(...names: view[Name]) -> usize => names.length
 
 say: fun(n: i32) -> i32
 {

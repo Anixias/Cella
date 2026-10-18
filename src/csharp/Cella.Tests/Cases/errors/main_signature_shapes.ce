@@ -12,8 +12,8 @@ view[T]: ref rec
 	}
 }
 
-main: fun(mut args: view[str]) -> i32 = 0
+main: fun(mut args: view[str]) -> i32 => 0
 
-main: fun(args: ptr[str], count: i32) -> i32 = 0
+main: fun(args: ptr[str], count: i32) -> i32 => 0
 
-main: fun(args: ptr[str], count: usize, extra: i32) -> i32 = 0
+main: fun(args: ptr[str], count: usize, extra: i32) -> i32 => 0

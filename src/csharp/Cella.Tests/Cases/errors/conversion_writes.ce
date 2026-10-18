@@ -9,8 +9,8 @@ Handle: rec
 {
 	sprite: Sprite
 
-	as: op(self) -> imm[Sprite] = imm self.sprite
-	as: op(mut self) -> mut[Sprite] = mut self.sprite
+	as: op(self) -> imm[Sprite] => imm self.sprite
+	as: op(mut self) -> mut[Sprite] => mut self.sprite
 }
 
 heal: fun(mut sprite: Sprite) {}

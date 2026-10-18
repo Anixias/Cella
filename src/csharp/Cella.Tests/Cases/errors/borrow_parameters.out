@@ -29,7 +29,7 @@ Error at borrow_parameters.ce:20:19
 
 Error at borrow_parameters.ce:25:18
 24 │ 
-25 │ look: fun(value: imm[i32]) -> i32 = value
+25 │ look: fun(value: imm[i32]) -> i32 => value
                       ╘══════╛ Cannot use borrow types for parameters
                              | 'value: i32' is already a read-only borrow
 

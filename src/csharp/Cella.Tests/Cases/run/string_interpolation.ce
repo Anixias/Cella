@@ -17,7 +17,7 @@ full: const str = title + " " + "language"
 greeting: const cstr = version + "-beta"
 nested: const str = "[{"{title}"}]"
 
-show: fun(text: str) = printf("%.*s\n", i32(text.byteLength), text.data)
+show: fun(text: str) => printf("%.*s\n", i32(text.byteLength), text.data)
 
 main: fun -> i32
 {

@@ -93,10 +93,10 @@ Cell[T]: rec
 	value: nullable[T]
 }
 
-limit: fun -> u8 = 3
+limit: fun -> u8 => 3
 
-first[T]: fun(own value: T) -> nullable[T] = some(value)
+first[T]: fun(own value: T) -> nullable[T] => some(value)
 
-count: fun(numbers: nullable[i32]) -> i32 = 0
+count: fun(numbers: nullable[i32]) -> i32 => 0
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

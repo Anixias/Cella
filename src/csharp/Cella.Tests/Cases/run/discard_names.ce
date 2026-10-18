@@ -14,15 +14,15 @@ Note: rec
 	}
 }
 
-handler: fun(_: i32, _: i32) -> i32 = 0
+handler: fun(_: i32, _: i32) -> i32 => 0
 
-each: fun(f: fun[i32, i32 -> i32]) -> i32 = f(1, 2)
+each: fun(f: fun[i32, i32 -> i32]) -> i32 => f(1, 2)
 
 main: fun -> i32
 {
 	val _ = Note(1)
 	val _ = Note(2)
-	printf("%d %d\n", handler(3, 4), each(fun(_: i32, b: i32) -> i32 = b))
+	printf("%d %d\n", handler(3, 4), each(fun(_: i32, b: i32) -> i32 => b))
 	var total = 0
 	for _ in 0..3
 		total += 1

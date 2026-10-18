@@ -11,7 +11,7 @@ P: rec
 	b: i64
 }
 
-sizeOfT[T]: fun -> usize = sizeOf(T)
+sizeOfT[T]: fun -> usize => sizeOf(T)
 
 main: fun -> i32
 {

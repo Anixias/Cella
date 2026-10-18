@@ -1,3 +1,3 @@
 mod test
 
-main: fun -> i32 = host.add(2, 3) + host.scaled(1.5, 4)
+main: fun -> i32 => host.add(2, 3) + host.scaled(1.5, 4)

@@ -33,7 +33,7 @@ Num: trait
 
 i32: impl Num
 {
-	zero: fun -> i32 = 0
+	zero: fun -> i32 => 0
 }
 
 Countdown: rec impl Iterator[i32]
@@ -106,7 +106,7 @@ countAll[T, I: Iterator[T]]: fun(mut items: I) -> i32
 	ret count
 }
 
-first[T, I: Iterator[T]]: fun(mut items: I) -> option[T] = items.next()
+first[T, I: Iterator[T]]: fun(mut items: I) -> option[T] => items.next()
 
 second[I: Iterator[i32]]: fun(mut items: I) -> i32
 {
@@ -146,7 +146,7 @@ report[W: Write[str] + Write[i32]]: fun(mut out: W, score: i32)
 	out.write(imm score)
 }
 
-send[E, W: Write[E]]: fun(mut out: W, imm value: E) = out.write(imm value)
+send[E, W: Write[E]]: fun(mut out: W, imm value: E) => out.write(imm value)
 
 From[T]: trait
 {
@@ -168,7 +168,7 @@ Celsius: rec impl From[f32] + From[i32]
 	}
 }
 
-convert[T, U: From[T]]: fun(imm value: T) -> U = U(value)
+convert[T, U: From[T]]: fun(imm value: T) -> U => U(value)
 
 Point: rec
 {
@@ -184,7 +184,7 @@ Origin: rec impl Make
 {
 	x: i32
 
-	make: fun -> Point = Point(0)
+	make: fun -> Point => Point(0)
 }
 
 main: fun -> i32

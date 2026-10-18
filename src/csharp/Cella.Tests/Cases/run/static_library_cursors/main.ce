@@ -15,7 +15,7 @@ Down: rec impl lib.Cursor[i32]
 		ret self.left >= 0
 	}
 
-	*: op(imm self) -> imm[i32] = imm self.left
+	*: op(imm self) -> imm[i32] => imm self.left
 
 	drop: op
 	{

@@ -2,4 +2,4 @@ mod test
 
 use lib
 
-main: fun -> i32 = lib.helper() + lib.inner() + lib.secret()
+main: fun -> i32 => lib.helper() + lib.inner() + lib.secret()

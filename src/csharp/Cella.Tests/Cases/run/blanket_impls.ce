@@ -12,7 +12,7 @@ Hash: trait
 
 [T]: impl Hash
 {
-	hash: fun(imm self) -> u64 = u64(sizeOf(T))
+	hash: fun(imm self) -> u64 => u64(sizeOf(T))
 }
 
 Point: rec impl Hash
@@ -20,7 +20,7 @@ Point: rec impl Hash
 	x: i32
 	y: i32
 
-	hash: fun(imm self) -> u64 = u64(self.x * 31 + self.y)
+	hash: fun(imm self) -> u64 => u64(self.x * 31 + self.y)
 }
 
 Pair: rec
@@ -29,9 +29,9 @@ Pair: rec
 	b: i64
 }
 
-hashOf[T]: fun(imm value: T) -> u64 = value.hash()
+hashOf[T]: fun(imm value: T) -> u64 => value.hash()
 
-hashDyn: fun(imm value: dyn[Hash]) -> u64 = value.hash()
+hashDyn: fun(imm value: dyn[Hash]) -> u64 => value.hash()
 
 main: fun -> i32
 {

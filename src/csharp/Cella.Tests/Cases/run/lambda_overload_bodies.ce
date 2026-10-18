@@ -5,27 +5,27 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-run: fun(f: fun[-> i32]) -> i32 = f()
-run: fun(f: fun[-> str]) -> i32 = 0
+run: fun(f: fun[-> i32]) -> i32 => f()
+run: fun(f: fun[-> str]) -> i32 => 0
 
-pick: fun(own f: fun[i32 -> i32]) -> i32 = 1
-pick: fun(f: fun[i64 -> i64]) -> i32 = i32(f(10))
+pick: fun(own f: fun[i32 -> i32]) -> i32 => 1
+pick: fun(f: fun[i64 -> i64]) -> i32 => i32(f(10))
 
-width: fun(f: fun[-> i32]) -> i32 = 1
-width: fun(f: fun[-> i64]) -> i32 = 2
+width: fun(f: fun[-> i32]) -> i32 => 1
+width: fun(f: fun[-> i64]) -> i32 => 2
 
-unsigned: fun(f: fun[-> u32]) -> i32 = 1
-unsigned: fun(f: fun[-> u64]) -> i32 = 2
+unsigned: fun(f: fun[-> u32]) -> i32 => 1
+unsigned: fun(f: fun[-> u64]) -> i32 => 2
 
-wide: fun(f: fun[-> i64]) -> i32 = 1
-wide: fun(f: fun[-> f64]) -> i32 = 2
+wide: fun(f: fun[-> i64]) -> i32 => 1
+wide: fun(f: fun[-> f64]) -> i32 => 2
 
 main: fun -> i32
 {
 	val base = 3
-	printf("%d %d\n", run(fun = 5), run(fun = "x"))
+	printf("%d %d\n", run(fun => 5), run(fun => "x"))
 	printf("%d %d\n", run(fun { ret 6 }), run(fun { ret "y" }))
-	printf("%d\n", pick(fun(x) = x + base))
-	printf("%d %d %d %d\n", width(fun = 5), unsigned(fun = 5u), wide(fun = 5), wide(fun = 2.5))
+	printf("%d\n", pick(fun(x) => x + base))
+	printf("%d %d %d %d\n", width(fun => 5), unsigned(fun => 5u), wide(fun => 5), wide(fun => 2.5))
 	ret 0
 }

@@ -26,4 +26,4 @@ boards: fun(mut board: Board)
 	board[1] = 2
 }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

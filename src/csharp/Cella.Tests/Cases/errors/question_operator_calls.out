@@ -1,6 +1,6 @@
-Error at question_operator_calls.ce:15:68
+Error at question_operator_calls.ce:15:69
 14 │ 
-15 │ called: fun(r: result[i32, i32]) -> result[i32, i32] = result.ok(r.?())
-                                                                        ^ Expected a name after '.'
+15 │ called: fun(r: result[i32, i32]) -> result[i32, i32] => result.ok(r.?())
+                                                                         ^ Expected a name after '.'
 
 [compilation failed]

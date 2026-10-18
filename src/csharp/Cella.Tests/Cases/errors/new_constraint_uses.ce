@@ -43,22 +43,22 @@ pair[T]: rec
 
 pair[T: new(i32)]: impl
 {
-	fresh: fun(imm self) -> T = T(1)
+	fresh: fun(imm self) -> T => T(1)
 }
 
-make[T: new(i32)]: fun -> T = T(5)
+make[T: new(i32)]: fun -> T => T(5)
 
-duplicate[T: new(T)]: fun(imm value: T) -> T = T(value)
+duplicate[T: new(T)]: fun(imm value: T) -> T => T(value)
 
-taking[T: new(own str, mut i32)]: fun -> i32 = 0
+taking[T: new(own str, mut i32)]: fun -> i32 => 0
 
-forward[T]: fun -> T = make[T]()
+forward[T]: fun -> T => make[T]()
 
-text[T: new(str)]: fun -> T = T(5)
+text[T: new(str)]: fun -> T => T(5)
 
-unconstrained[T]: fun -> T = T(1)
+unconstrained[T]: fun -> T => T(1)
 
-lost[T: new(i32)]: fun(own value: T) -> T = T(value)
+lost[T: new(i32)]: fun(own value: T) -> T => T(value)
 
 implicit[T: new(mut i32)]: fun -> T
 {

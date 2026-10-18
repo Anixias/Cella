@@ -58,14 +58,14 @@ Error at main.ce:41:10
 41 │ counter.total = 1
              ╘═══╛ 'total' is read-only outside its module
 
-Error at main.ce:44:33
+Error at main.ce:44:34
 43 │ 
-44 │ builds: fun -> Plain = Plain(1, 2, 3)
-                                     ^ 'hidden' is private to its type
+44 │ builds: fun -> Plain => Plain(1, 2, 3)
+                                      ^ 'hidden' is private to its type
 
-Error at main.ce:44:36
+Error at main.ce:44:37
 43 │ 
-44 │ builds: fun -> Plain = Plain(1, 2, 3)
-                                        ^ 'fixed' is read-only outside its type
+44 │ builds: fun -> Plain => Plain(1, 2, 3)
+                                         ^ 'fixed' is read-only outside its type
 
 [compilation failed]

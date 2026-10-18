@@ -4,4 +4,4 @@ Shot: enum { miss, hit(5) }
 
 Mark: enum { none, hit() }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

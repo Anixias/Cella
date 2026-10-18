@@ -12,7 +12,7 @@ ext
 
 T: enum { a, b }
 
-show: fun(s: str) -> i32 = i32(s.byteLength)
+show: fun(s: str) -> i32 => i32(s.byteLength)
 
 main: fun -> i32
 {

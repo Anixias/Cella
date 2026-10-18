@@ -37,7 +37,7 @@ Show: trait
 
 i32: impl Show
 {
-	code: fun(self) -> i32 = self
+	code: fun(self) -> i32 => self
 }
 
 Text: rec
@@ -80,7 +80,7 @@ Meter: rec
 	}
 }
 
-quiet: fun = measure(count(9))
+quiet: fun => measure(count(9))
 
 Kind: enum
 {

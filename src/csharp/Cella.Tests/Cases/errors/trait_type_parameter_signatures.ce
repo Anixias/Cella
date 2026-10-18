@@ -31,4 +31,4 @@ view: fun(items: dyn[Iterator]) { }
 
 expose: pub fun(imm items: dyn[Iterator[Secret]]) { }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

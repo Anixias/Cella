@@ -25,9 +25,9 @@ Effect: enum
 	hit(n: i32)
 }
 
-call: fun(f: fun[]) = f()
+call: fun(f: fun[]) => f()
 
-apply: fun(mut t: Tally, f: fun[mut Tally]) = f(mut t)
+apply: fun(mut t: Tally, f: fun[mut Tally]) => f(mut t)
 
 localIntoCapture: fun -> i32
 {
@@ -45,10 +45,10 @@ localIntoCapture: fun -> i32
 closureIntoCapture: fun -> i32
 {
 	val base = 1
-	var g = fun -> i32 = base
+	var g = fun -> i32 => base
 	call(fun
 	{
-		g = fun -> i32 = base
+		g = fun -> i32 => base
 	})
 
 	ret g()
@@ -142,4 +142,4 @@ caseChanged: fun -> i32
 	}
 }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

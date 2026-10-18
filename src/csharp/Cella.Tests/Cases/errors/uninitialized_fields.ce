@@ -83,7 +83,7 @@ Pair: rec
 	}
 }
 
-describe: fun(user: User) -> i32 = user.count
+describe: fun(user: User) -> i32 => user.count
 
 User: rec
 {
@@ -98,4 +98,4 @@ User: rec
 	}
 }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

@@ -10,12 +10,12 @@ Error at trailing_commas.ce:12:21
 
 Error at trailing_commas.ce:16:24
 15 │ 
-16 │ add: fun(a: i32, b: i32,) -> i32 = a + b
+16 │ add: fun(a: i32, b: i32,) -> i32 => a + b
                             ^ Cannot end lists with ','
 
 Error at trailing_commas.ce:22:19
 21 │ 
-22 │ get: fun(imm self,) -> i32 = self.x
+22 │ get: fun(imm self,) -> i32 => self.x
                       ^ Cannot end lists with ','
 
 Error at trailing_commas.ce:25:10
@@ -25,7 +25,7 @@ Error at trailing_commas.ce:25:10
 
 Error at trailing_commas.ce:31:16
 30 │ 
-31 │ make[T: new(i32,)]: fun -> T = T(1)
+31 │ make[T: new(i32,)]: fun -> T => T(1)
                     ^ Cannot end lists with ','
 
 Error at trailing_commas.ce:35:20

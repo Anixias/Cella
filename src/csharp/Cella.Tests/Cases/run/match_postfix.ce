@@ -16,11 +16,11 @@ Pair: rec
 	left: i32
 	right: i32
 
-	sum: fun(self) -> i32 = self.left + self.right
+	sum: fun(self) -> i32 => self.left + self.right
 }
 
-double: fun(x: i32) -> i32 = x * 2
-triple: fun(x: i32) -> i32 = x * 3
+double: fun(x: i32) -> i32 => x * 2
+triple: fun(x: i32) -> i32 => x * 3
 
 main: fun -> i32
 {

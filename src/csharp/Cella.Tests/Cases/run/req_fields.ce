@@ -125,11 +125,11 @@ Wrapped: rec
 	other: i32
 }
 
-double: fun(n: i32) -> i32 = n * 2
+double: fun(n: i32) -> i32 => n * 2
 
-describe: fun(file: File) -> i32 = file.handle * 10 + file.flags
+describe: fun(file: File) -> i32 => file.handle * 10 + file.flags
 
-implicit: fun -> i32 = describe(File(7, 1))
+implicit: fun -> i32 => describe(File(7, 1))
 
 local: fun -> i32
 {

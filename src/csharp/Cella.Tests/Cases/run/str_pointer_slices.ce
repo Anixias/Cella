@@ -16,13 +16,13 @@ Node: rec
 	id: i32
 }
 
-view: fun(p: ptr[u8]) -> str = str(p + 1, 2)
+view: fun(p: ptr[u8]) -> str => str(p + 1, 2)
 
-fromRaw: fun(r: Raw) -> str = str(r.p, 2)
+fromRaw: fun(r: Raw) -> str => str(r.p, 2)
 
-slice: fun(text: str) -> str = str(text.data + 1, 2)
+slice: fun(text: str) -> str => str(text.data + 1, 2)
 
-literal: fun -> str = str("hello".data + 1, 3)
+literal: fun -> str => str("hello".data + 1, 3)
 
 pointerToLocal: fun -> i32
 {

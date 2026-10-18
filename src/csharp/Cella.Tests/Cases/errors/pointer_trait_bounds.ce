@@ -7,10 +7,10 @@ Hash: trait
 
 ptr[f32]: impl Hash
 {
-	hash: fun(imm self) -> u64 = 1
+	hash: fun(imm self) -> u64 => 1
 }
 
-hashOf[T: Hash]: fun(imm value: T) -> u64 = value.hash()
+hashOf[T: Hash]: fun(imm value: T) -> u64 => value.hash()
 
 main: fun -> i32
 {

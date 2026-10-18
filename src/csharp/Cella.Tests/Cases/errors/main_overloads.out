@@ -1,11 +1,11 @@
 Error at main_overloads.ce:3:1
 2 │ 
-3 │ main: fun -> i32 = 0
+3 │ main: fun -> i32 => 0
     ╘══╛ The program has more than one 'main' function
 
 Error at main_overloads.ce:5:1
 4 │ 
-5 │ main: fun(args: ptr[str], count: usize) -> i32 = 1
+5 │ main: fun(args: ptr[str], count: usize) -> i32 => 1
     ╘══╛ The program has more than one 'main' function
 
 [compilation failed]

@@ -1,8 +1,8 @@
 mod test
 
-borrowIt[T]: fun(imm a: T) -> imm[T] = imm a
+borrowIt[T]: fun(imm a: T) -> imm[T] => imm a
 
-name[T]: fun(imm x: T) -> str = "lit"
+name[T]: fun(imm x: T) -> str => "lit"
 
 main: fun -> i32
 {

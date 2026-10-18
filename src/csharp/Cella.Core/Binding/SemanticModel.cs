@@ -28,7 +28,7 @@ public sealed class SemanticModel
 	private readonly Dictionary<Type, PropertyInfo[]> _children = [];
 	private readonly Dictionary<TypeParameterSymbol, SourceLocation> _typeParameters = [];
 	private readonly Dictionary<TypeSymbol, bool> _drops = [];
-	private readonly Func<TypeSymbol, bool>? needsDrop;
+	private readonly Func<TypeSymbol, bool>? _needsDrop;
 	
 	private readonly Dictionary<IExpressionNode, AccessExpressionNode> _accesses =
 		new(ReferenceEqualityComparer.Instance);
@@ -36,7 +36,7 @@ public sealed class SemanticModel
 	public SemanticModel(IEnumerable<ResolvedFileNode> files, IEnumerable<(Token Name, Symbol Symbol)> names,
 		Func<TypeSymbol, bool>? needsDrop = null)
 	{
-		this.needsDrop = needsDrop;
+		_needsDrop = needsDrop;
 		foreach (var file in files)
 			Walk(file);
 		
@@ -121,11 +121,11 @@ public sealed class SemanticModel
 	
 	private bool NeedsDrop(Symbol symbol)
 	{
-		if (symbol is not TypeSymbol { OriginalDefinition: RecordSymbol } type || needsDrop is null)
+		if (symbol is not TypeSymbol { OriginalDefinition: RecordSymbol } type || _needsDrop is null)
 			return false;
 		
 		if (!_drops.TryGetValue(type, out var drops))
-			_drops[type] = drops = needsDrop(type);
+			_drops[type] = drops = _needsDrop(type);
 		
 		return drops;
 	}
@@ -190,7 +190,7 @@ public sealed class SemanticModel
 	
 	private static bool IsNode(object value) => value.GetType().Namespace?.StartsWith(NodeNamespace) == true;
 	
-	private static bool IsDefaultArray(IEnumerable items) =>
+	private static bool IsDefaultArray(object items) =>
 		items.GetType() is { IsGenericType: true } type &&
 		type.GetGenericTypeDefinition() == typeof(ImmutableArray<>) &&
 		type.GetProperty(nameof(ImmutableArray<object>.IsDefault))!.GetValue(items) is true;

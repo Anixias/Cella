@@ -23,15 +23,15 @@ Pair: rec
 	first: Token
 	inner: Inner
 
-	split: fun(own p: Pair) -> Token = own p.first
+	split: fun(own p: Pair) -> Token => own p.first
 
-	deep: fun(own self) -> Token = own self.inner.token
+	deep: fun(own self) -> Token => own self.inner.token
 
 	drop: op
 	{
 	}
 }
 
-take: fun(own p: Pair) -> Token = own p.first
+take: fun(own p: Pair) -> Token => own p.first
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

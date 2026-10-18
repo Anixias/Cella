@@ -90,7 +90,7 @@ class CellaColorSettingsPage : ColorSettingsPage {
 		{
 			<field>x</field>: i32
 
-			<method>length</method>: fun(imm self) -> f64 = 1.5e3
+			<method>length</method>: fun(imm self) -> f64 => 1.5e3
 		}
 
 		<ref>View</ref>: ref rec

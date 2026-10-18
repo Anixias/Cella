@@ -1,25 +1,25 @@
-Error at constraint_uses.ce:49:84
+Error at constraint_uses.ce:49:85
 48 │ 
-49 │ forward[T]: fun(imm value: T) -> i32 = imm imm imm imm imm imm imm imm imm imm imm twin(value)
-                                                                                        ╘══╛ 'twin' requires 'T: copy'
-                                                                                           | 'T' can't be copied
+49 │ forward[T]: fun(imm value: T) -> i32 => imm imm imm imm imm imm imm imm imm imm imm twin(value)
+                                                                                         ╘══╛ 'twin' requires 'T: copy'
+                                                                                            | 'T' can't be copied
 
-Error at constraint_uses.ce:51:38
+Error at constraint_uses.ce:51:39
 50 │ 
-51 │ relay[T]: fun(own value: T) -> i32 = hold(value)
-                                          ╘══╛ 'hold' requires 'T: drop'
-                                             | 'T' has no destructor
+51 │ relay[T]: fun(own value: T) -> i32 => hold(value)
+                                           ╘══╛ 'hold' requires 'T: drop'
+                                              | 'T' has no destructor
 
-Error at constraint_uses.ce:53:27
+Error at constraint_uses.ce:53:28
 52 │ 
-53 │ build[T]: fun -> T = make[T]()
-                               ^ 'make' requires 'T: new'
-                               | 'T' has no constructor without parameters
+53 │ build[T]: fun -> T => make[T]()
+                                ^ 'make' requires 'T: new'
+                                | 'T' has no constructor without parameters
 
-Error at constraint_uses.ce:55:22
+Error at constraint_uses.ce:55:23
 54 │ 
-55 │ blank[T]: fun -> T = T()
-                          ╘═╛ No constructor for 'T' accepts these arguments
+55 │ blank[T]: fun -> T => T()
+                           ╘═╛ No constructor for 'T' accepts these arguments
 
 Error at constraint_uses.ce:59:46
 58 │ {

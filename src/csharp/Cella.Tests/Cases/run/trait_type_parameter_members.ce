@@ -23,10 +23,10 @@ Box: rec
 
 Box: impl Holder[i64]
 {
-	current: get(self) -> i64 = self.whole
+	current: get(self) -> i64 => self.whole
 	limit: prop i64
 	{
-		get(self) = self.whole * 2
+		get(self) => self.whole * 2
 		set(mut self, value)
 		{
 			self.whole = value
@@ -36,10 +36,10 @@ Box: impl Holder[i64]
 
 Box: impl Holder[f64]
 {
-	current: get(self) -> f64 = self.part
+	current: get(self) -> f64 => self.part
 	limit: prop f64
 	{
-		get(self) = self.part * 2.0
+		get(self) => self.part * 2.0
 		set(mut self, value)
 		{
 			self.part = value
@@ -47,7 +47,7 @@ Box: impl Holder[f64]
 	}
 }
 
-read[T, H: Holder[T]]: fun(imm holder: H) -> T = holder.current
+read[T, H: Holder[T]]: fun(imm holder: H) -> T => holder.current
 
 bump[H: Holder[i64]]: fun(mut holder: H)
 {
@@ -64,13 +64,13 @@ Vector: rec impl Add[Vector] + Add[f32]
 	x: f32
 	y: f32
 
-	+: op(a: Vector, b: Vector) -> Vector = Vector(a.x + b.x, a.y + b.y)
-	+: op(a: Vector, b: f32) -> Vector = Vector(a.x + b, a.y + b)
+	+: op(a: Vector, b: Vector) -> Vector => Vector(a.x + b.x, a.y + b.y)
+	+: op(a: Vector, b: f32) -> Vector => Vector(a.x + b, a.y + b)
 }
 
 i32: impl Add[i32]
 
-plus[R, T: Add[R]]: fun(imm a: T, imm b: R) -> T = a + b
+plus[R, T: Add[R]]: fun(imm a: T, imm b: R) -> T => a + b
 
 Eq[T]: trait
 {
@@ -81,8 +81,8 @@ Name: rec impl Eq[Name] + Eq[i32]
 {
 	id: i32
 
-	==: op(a: Name, b: Name) -> bool = a.id == b.id
-	==: op(a: Name, b: i32) -> bool = a.id == b
+	==: op(a: Name, b: Name) -> bool => a.id == b.id
+	==: op(a: Name, b: i32) -> bool => a.id == b
 }
 
 i32: impl Eq[i32]
@@ -102,12 +102,12 @@ count[T: Eq[T]]: fun(items: ptr[T], length: usize, imm value: T) -> i32
 	ret found
 }
 
-matches[K, T: Eq[K]]: fun(imm a: T, imm b: K) -> bool = a == b
+matches[K, T: Eq[K]]: fun(imm a: T, imm b: K) -> bool => a == b
 
 Factory[T]: trait
 {
 	make: fun -> T
-	twice: fun -> T = make()
+	twice: fun -> T => make()
 }
 
 Widget: rec
@@ -117,34 +117,34 @@ Widget: rec
 
 Widget: impl Factory[i32]
 {
-	make: fun -> i32 = 7
+	make: fun -> i32 => 7
 }
 
 Widget: impl Factory[f64]
 {
-	make: fun -> f64 = 2.5
+	make: fun -> f64 => 2.5
 }
 
-build[T, F: Factory[T]]: fun -> T = F.make()
+build[T, F: Factory[T]]: fun -> T => F.make()
 
 Mapper[T]: trait
 {
 	map[U]: fun(imm self, change: fun[imm T -> U]) -> U
-	keep: pvt fun(own value: T) -> T = value
+	keep: pvt fun(own value: T) -> T => value
 }
 
 Cell: rec impl Mapper[i32]
 {
 	value: i32
 
-	map[V]: fun(imm self, change: fun[imm i32 -> V]) -> V = change(imm self.value)
+	map[V]: fun(imm self, change: fun[imm i32 -> V]) -> V => change(imm self.value)
 }
 
-triple: fun(value: i32) -> i64 = value * 3
+triple: fun(value: i32) -> i64 => value * 3
 
-half: fun(value: i32) -> f64 = f64(value) / 2.0
+half: fun(value: i32) -> f64 => f64(value) / 2.0
 
-run[T, M: Mapper[T]]: fun(imm item: M, change: fun[imm T -> i64]) -> i64 = item.map(change)
+run[T, M: Mapper[T]]: fun(imm item: M, change: fun[imm T -> i64]) -> i64 => item.map(change)
 
 main: fun -> i32
 {

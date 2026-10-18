@@ -15,7 +15,7 @@ Error at impl_visibility.ce:20:6
 
 Error at impl_visibility.ce:27:9
 26 │ {
-27 │     twice: pvt fun(imm self) -> i64 = self * 2
+27 │     twice: pvt fun(imm self) -> i64 => self * 2
                 ╘═╛ Cannot use 'pvt' in 'mod' blocks
 
 [compilation failed]

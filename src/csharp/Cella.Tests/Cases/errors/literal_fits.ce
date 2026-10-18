@@ -16,4 +16,4 @@ main: fun -> i32
 	ret 0
 }
 
-r: fun -> u8 = 999
+r: fun -> u8 => 999

@@ -78,7 +78,7 @@ Scope: ref rec
 	}
 }
 
-pick: fun(mut cursor: Cursor) -> str = cursor.text
+pick: fun(mut cursor: Cursor) -> str => cursor.text
 
 retarget: fun(mut token: Token, other: str)
 {
@@ -139,4 +139,4 @@ Cursor: ref rec
 	owner: Buffer
 }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

@@ -4,12 +4,12 @@ Point: rec
 {
 	x: i32
 
-	make[T, U]: fun(imm value: T) -> i32 = 1
-	make[T, U, V]: fun(imm value: T, imm other: U) -> i32 = 2
+	make[T, U]: fun(imm value: T) -> i32 => 1
+	make[T, U, V]: fun(imm value: T, imm other: U) -> i32 => 2
 }
 
-make[T, U]: fun(imm value: T) -> i32 = 1
-make[T, U, V]: fun(imm value: T, imm other: U) -> i32 = 2
+make[T, U]: fun(imm value: T) -> i32 => 1
+make[T, U, V]: fun(imm value: T, imm other: U) -> i32 => 2
 
 main: fun -> i32
 {

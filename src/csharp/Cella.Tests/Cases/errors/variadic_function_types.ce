@@ -18,4 +18,4 @@ after: fun(callback: fun[...view[i32], i32]) {}
 writes: fun(callback: fun[mut ...view[i32]]) {}
 plain: fun(callback: fun[...i32]) {}
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

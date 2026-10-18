@@ -1,21 +1,21 @@
-Error at generic_enum_matches.ce:15:39
+Error at generic_enum_matches.ce:15:40
 14 │ 
-15 │ missing: fun(o: option[i32]) -> i32 = match o { some(val v) => v }
-                                           ╘═══╛ This match doesn't handle every case of 'option[i32]': 'none'
+15 │ missing: fun(o: option[i32]) -> i32 => match o { some(val v) => v }
+                                            ╘═══╛ This match doesn't handle every case of 'option[i32]': 'none'
 
-Error at generic_enum_matches.ce:16:49
-15 │ missing: fun(o: option[i32]) -> i32 = match o { some(val v) => v }
-16 │ foreign: fun(o: option[i32]) -> i32 = match o { result.ok(val v) => v, else => 0 }
-                                                     ╘════╛ Expected a case of 'option[i32]'
+Error at generic_enum_matches.ce:16:50
+15 │ missing: fun(o: option[i32]) -> i32 => match o { some(val v) => v }
+16 │ foreign: fun(o: option[i32]) -> i32 => match o { result.ok(val v) => v, else => 0 }
+                                                      ╘════╛ Expected a case of 'option[i32]'
 
-Error at generic_enum_matches.ce:17:49
-16 │ foreign: fun(o: option[i32]) -> i32 = match o { result.ok(val v) => v, else => 0 }
-17 │ unknown: fun(o: option[i32]) -> i32 = match o { ok(val v) => v, else => 0 }
-                                                     ╘╛ 'option[i32]' has no case 'ok'
+Error at generic_enum_matches.ce:17:50
+16 │ foreign: fun(o: option[i32]) -> i32 => match o { result.ok(val v) => v, else => 0 }
+17 │ unknown: fun(o: option[i32]) -> i32 => match o { ok(val v) => v, else => 0 }
+                                                      ╘╛ 'option[i32]' has no case 'ok'
 
-Error at generic_enum_matches.ce:18:49
-17 │ unknown: fun(o: option[i32]) -> i32 = match o { ok(val v) => v, else => 0 }
-18 │ counted: fun(o: option[i32]) -> i32 = match o { some() => 0, none => 1 }
-                                                     ╘════╛ 'option[i32].some' holds 1 value: value
+Error at generic_enum_matches.ce:18:50
+17 │ unknown: fun(o: option[i32]) -> i32 => match o { ok(val v) => v, else => 0 }
+18 │ counted: fun(o: option[i32]) -> i32 => match o { some() => 0, none => 1 }
+                                                      ╘════╛ 'option[i32].some' holds 1 value: value
 
 [compilation failed]

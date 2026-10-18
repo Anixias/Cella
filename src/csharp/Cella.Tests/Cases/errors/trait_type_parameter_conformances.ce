@@ -20,7 +20,7 @@ Countdown: rec impl Iterator[i64]
 {
 	left: i32
 
-	next: fun(mut self) -> option[i32] = none
+	next: fun(mut self) -> option[i32] => none
 }
 
 Empty: rec impl Iterator[i32]
@@ -75,8 +75,8 @@ Console: rec
 
 Console: impl Iterator[i32]
 {
-	next: fun(mut self) -> option[i32] = none
+	next: fun(mut self) -> option[i32] => none
 	flush: fun(self) { }
 }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

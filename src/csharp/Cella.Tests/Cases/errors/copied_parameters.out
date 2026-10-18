@@ -1,31 +1,31 @@
 Error at copied_parameters.ce:11:11
 10 │ 
-11 │ get: fun(self) -> i32 = self.id
+11 │ get: fun(self) -> i32 => self.id
               ╘══╛ Cannot copy 'Token'
 
 Error at copied_parameters.ce:23:2
 22 │ 
-23 │ area: fun(self) -> i32 = 1
+23 │ area: fun(self) -> i32 => 1
      ╘══╛ 'area' doesn't match 'Shape.area'
 
 Error at copied_parameters.ce:23:12
 22 │ 
-23 │ area: fun(self) -> i32 = 1
+23 │ area: fun(self) -> i32 => 1
                ╘══╛ Cannot copy 'Card'
 
 Error at copied_parameters.ce:26:11
 25 │ 
-26 │ show: fun(token: Token) -> i32 = token.id
+26 │ show: fun(token: Token) -> i32 => token.id
                ╘═══╛ Cannot copy 'Token'
 
 Error at copied_parameters.ce:28:14
 27 │ 
-28 │ keep[T]: fun(value: T) -> i32 = 0
+28 │ keep[T]: fun(value: T) -> i32 => 0
                   ╘═══╛ Cannot copy 'T'
 
 Error at copied_parameters.ce:32:20
 31 │ 
-32 │ holder: fun(f: fun[Token -> i32]) -> i32 = 0
+32 │ holder: fun(f: fun[Token -> i32]) -> i32 => 0
                         ╘═══╛ Cannot copy 'Token'
 
 [compilation failed]

@@ -9,9 +9,9 @@ Buffer: rec
 	}
 }
 
-show: fun(imm wrapper: Wrapper) -> i32 = 0
-take: fun(own buffer: Buffer) -> i32 = buffer.id
-consume: fun(own whole: Whole) -> i32 = 0
+show: fun(imm wrapper: Wrapper) -> i32 => 0
+take: fun(own buffer: Buffer) -> i32 => buffer.id
+consume: fun(own whole: Whole) -> i32 => 0
 
 Wrapper: rec
 {
@@ -36,4 +36,4 @@ Whole: rec
 	}
 }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

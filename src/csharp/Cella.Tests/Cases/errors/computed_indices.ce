@@ -14,9 +14,9 @@ Holder: rec
 	items: array[Buffer, 2]
 }
 
-make: fun(id: i32) -> Buffer = Buffer(id)
-take: fun(own buffer: Buffer) -> i32 = buffer.id
-show: fun(imm buffer: Buffer) -> i32 = buffer.id
+make: fun(id: i32) -> Buffer => Buffer(id)
+take: fun(own buffer: Buffer) -> i32 => buffer.id
+show: fun(imm buffer: Buffer) -> i32 => buffer.id
 
 moves: fun(i: usize) -> i32
 {
@@ -27,7 +27,7 @@ moves: fun(i: usize) -> i32
 	ret picked.id + shown + first.id + take(own items[2])
 }
 
-parameter: fun(mut items: array[Buffer, 2], i: usize) -> i32 = take(own items[i])
+parameter: fun(mut items: array[Buffer, 2], i: usize) -> i32 => take(own items[i])
 
 large: fun -> i32
 {
@@ -62,4 +62,4 @@ nested: fun(i: usize) -> i32
 	ret 0
 }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

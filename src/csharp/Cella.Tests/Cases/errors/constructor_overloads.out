@@ -70,12 +70,12 @@ Error at constructor_overloads.ce:75:13
 
 Error at constructor_overloads.ce:81:16
 80 │ 
-81 │ lookup: fun(a: Missing) -> i32 = 0
+81 │ lookup: fun(a: Missing) -> i32 => 0
                     ╘═════╛ Type 'Missing' not found in this scope
 
 Error at constructor_overloads.ce:83:16
 82 │ 
-83 │ lookup: fun(b: Other) -> i32 = 0
+83 │ lookup: fun(b: Other) -> i32 => 0
                     ╘═══╛ Type 'Other' not found in this scope
 
 [compilation failed]

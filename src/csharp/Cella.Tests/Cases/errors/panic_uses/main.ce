@@ -1,5 +1,5 @@
 mod test
 
-missing: fun -> i32 = panic "nothing here"
+missing: fun -> i32 => panic "nothing here"
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

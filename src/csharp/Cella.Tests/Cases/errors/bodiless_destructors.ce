@@ -16,4 +16,4 @@ Other: impl
 	drop: op
 }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

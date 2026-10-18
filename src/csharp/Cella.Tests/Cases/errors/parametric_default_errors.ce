@@ -2,6 +2,6 @@ mod test
 
 value: var usize = 3
 
-f[T]: fun(imm x: T, extra: usize = sizeOf(T) + value) -> usize = extra
+f[T]: fun(imm x: T, extra: usize = sizeOf(T) + value) -> usize => extra
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

@@ -3,9 +3,9 @@ mod lib
 Shape: pub trait
 {
 	area: fun(imm self) -> i32
-	scale: mod fun(imm self) -> i32 = 2
-	twice: fun(imm self) -> i32 = self.area() * factor()
-	factor: pvt fun -> i32 = 3
+	scale: mod fun(imm self) -> i32 => 2
+	twice: fun(imm self) -> i32 => self.area() * factor()
+	factor: pvt fun -> i32 => 3
 	label: fun(imm self) -> i32
 }
 
@@ -13,8 +13,8 @@ Circle: pub rec impl Shape
 {
 	radius: i32
 
-	area: fun(imm self) -> i32 = self.radius * 3
-	label: fun(imm self) -> i32 = 100
+	area: fun(imm self) -> i32 => self.radius * 3
+	label: fun(imm self) -> i32 => 100
 }
 
-describe: pub fun(imm shape: dyn[Shape]) -> i32 = shape.twice() + shape.label() + shape.scale()
+describe: pub fun(imm shape: dyn[Shape]) -> i32 => shape.twice() + shape.label() + shape.scale()

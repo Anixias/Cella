@@ -22,14 +22,14 @@ Cell[T]: rec
 	value: T
 }
 
-wrap[T]: fun(own value: T) -> option[T] = some(own value)
+wrap[T]: fun(own value: T) -> option[T] => some(own value)
 
-pick: fun(n: i32) -> i32 = n + 1
-pick: fun(n: i64) -> i64 = n + 100
+pick: fun(n: i32) -> i32 => n + 1
+pick: fun(n: i64) -> i64 => n + 100
 
-triple: fun(n: i32) -> i32 = n * 3
+triple: fun(n: i32) -> i32 => n * 3
 
-apply: ext fun(f: ext fun[i32 -> i32], n: i32) -> i32 = f(n)
+apply: ext fun(f: ext fun[i32 -> i32], n: i32) -> i32 => f(n)
 
 run: fun(n: i32) -> i32
 {

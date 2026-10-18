@@ -12,8 +12,8 @@ namespace Cella.Tests;
 
 public sealed class BuilderTests : IDisposable
 {
-	private const string ValidSource = "mod test\n\nmain: fun -> i32 = 0\n";
-	private const string InvalidSource = "mod test\n\nmain: fun -> i32 = true\n";
+	private const string ValidSource = "mod test\n\nmain: fun -> i32 => 0\n";
+	private const string InvalidSource = "mod test\n\nmain: fun -> i32 => true\n";
 	
 	private const string LibrarySource = """
 	                                     mod lib
@@ -32,10 +32,10 @@ public sealed class BuilderTests : IDisposable
 	                                     {
 	                                     	side: i32
 	                                     
-	                                     	area: fun(imm self) -> i32 = self.side * self.side
+	                                     	area: fun(imm self) -> i32 => self.side * self.side
 	                                     }
 	                                     
-	                                     total[T: Shape]: pub fun(imm shape: T) -> i32 = shape.area()
+	                                     total[T: Shape]: pub fun(imm shape: T) -> i32 => shape.area()
 	                                     
 	                                     """;
 	
@@ -53,18 +53,18 @@ public sealed class BuilderTests : IDisposable
 	                                     {
 	                                     	radius: i32
 	                                     	
-	                                     	area: fun(imm self) -> i32 = 3 * self.radius * self.radius
-	                                     	+: op(imm a: Circle, imm b: Circle) -> Circle = Circle(a.radius + b.radius)
+	                                     	area: fun(imm self) -> i32 => 3 * self.radius * self.radius
+	                                     	+: op(imm a: Circle, imm b: Circle) -> Circle => Circle(a.radius + b.radius)
 	                                     }
 	                                     
 	                                     i32: impl Named
 	                                     {
-	                                     	code: fun(imm self) -> i32 = self
+	                                     	code: fun(imm self) -> i32 => self
 	                                     }
 	                                     
 	                                     i32: impl
 	                                     {
-	                                     	twice: fun(imm self) -> i32 = self * 2
+	                                     	twice: fun(imm self) -> i32 => self * 2
 	                                     }
 	                                     
 	                                     main: fun -> i32
@@ -136,12 +136,12 @@ public sealed class BuilderTests : IDisposable
 		Directory.CreateDirectory(Path.Combine(_directory, "app"));
 		await File.WriteAllTextAsync(Path.Combine(_directory, "std", "std.celp"), OptedOut("StaticLibrary"), Token);
 		await File.WriteAllTextAsync(Path.Combine(_directory, "std", "std.ce"),
-			"mod mine\n\nvalue: pub fun -> i32 = 0\n", Token);
+			"mod mine\n\nvalue: pub fun -> i32 => 0\n", Token);
 		
 		await File.WriteAllTextAsync(Path.Combine(_directory, "app", "test.celp"),
 			OptedOut("Executable") + "\n[[ProjectReferences]]\nPath = '../std/std.celp'\n", Token);
 		
-		await File.WriteAllTextAsync(ProgramPath, "mod test\n\nuse mine\n\nmain: fun -> i32 = mine.value()\n", Token);
+		await File.WriteAllTextAsync(ProgramPath, "mod test\n\nuse mine\n\nmain: fun -> i32 => mine.value()\n", Token);
 		var (result, output, _) = await BuildProgramAsync();
 		Assert.True(result.Succeeded, output);
 		Assert.NotEmpty(Directory.GetFiles(Path.Combine(_directory, "std", "bin")));

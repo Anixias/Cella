@@ -7,4 +7,4 @@ Plain: rec
 
 saved: var ref fun[] = fun { }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

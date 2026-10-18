@@ -1,16 +1,16 @@
-Error at when_block_syntax_recovery.ce:5:18
+Error at when_block_syntax_recovery.ce:5:19
 4 │ {
-5 │     f: fun -> i32 = )
-                        ^ Expected an expression
+5 │     f: fun -> i32 => )
+                         ^ Expected an expression
 
-Error at when_block_syntax_recovery.ce:9:18
+Error at when_block_syntax_recovery.ce:9:19
 8 │ 
-9 │ k: fun -> i32 = ]
-                    ^ Expected an expression
-
-Error at when_block_syntax_recovery.ce:12:17
-11 │ 
-12 │ h: fun -> i32 = ]
+9 │ k: fun -> i32 => ]
                      ^ Expected an expression
+
+Error at when_block_syntax_recovery.ce:12:18
+11 │ 
+12 │ h: fun -> i32 => ]
+                      ^ Expected an expression
 
 [compilation failed]

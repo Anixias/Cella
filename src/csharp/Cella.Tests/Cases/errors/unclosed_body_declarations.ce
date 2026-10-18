@@ -18,4 +18,4 @@ third: fun -> i32
 {
 	ret 3
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

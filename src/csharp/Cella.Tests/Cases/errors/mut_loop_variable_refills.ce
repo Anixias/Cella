@@ -24,7 +24,7 @@ Wrapper: rec
 	}
 }
 
-take: fun(own buffer: Buffer) -> i32 = buffer.id
+take: fun(own buffer: Buffer) -> i32 => buffer.id
 
 whole: fun(mut buffers: array[Buffer, 2])
 {
@@ -89,4 +89,4 @@ refilled: fun(mut pairs: array[Pair, 2])
 	}
 }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

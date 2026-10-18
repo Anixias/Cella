@@ -32,11 +32,11 @@ Wide: rec
 	}
 }
 
-wrap[T]: fun(own value: T) -> box[T] = box(value)
-takesBox64: fun(b: box[i64]) -> i64 = b.value
-take: fun(p: pair[i64, f64]) -> i32 = 1
-take: fun(p: pair[f64, i64]) -> i32 = 2
-both[T: copy]: fun(p: pair[T, T]) -> T = p.a
+wrap[T]: fun(own value: T) -> box[T] => box(value)
+takesBox64: fun(b: box[i64]) -> i64 => b.value
+take: fun(p: pair[i64, f64]) -> i32 => 1
+take: fun(p: pair[f64, i64]) -> i32 => 2
+both[T: copy]: fun(p: pair[T, T]) -> T => p.a
 
 main: fun -> i32
 {

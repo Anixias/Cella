@@ -11,7 +11,7 @@ view[T]: ref rec
 		self.length = length
 	}
 
-	in: op(self) -> viewCursor[T] = viewCursor[T](self.data, self.length)
+	in: op(self) -> viewCursor[T] => viewCursor[T](self.data, self.length)
 }
 
 viewCursor[T]: ref rec
@@ -25,9 +25,9 @@ viewCursor[T]: ref rec
 		self.left = left
 	}
 
-	for: op(mut self) -> bool = self.left > 0
+	for: op(mut self) -> bool => self.left > 0
 
-	*: op(self) -> imm[T] = imm *self.data
+	*: op(self) -> imm[T] => imm *self.data
 }
 
 main: fun -> i32

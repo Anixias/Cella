@@ -1,6 +1,6 @@
 Error at self_keyword.ce:3:16
 2 │ 
-3 │ first: fun(self: i32) -> i32 = 0
+3 │ first: fun(self: i32) -> i32 => 0
                    ^ Cannot declare a type for 'self'
 
 Error at self_keyword.ce:7:6

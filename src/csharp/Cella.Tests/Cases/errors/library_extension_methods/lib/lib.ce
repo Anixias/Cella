@@ -22,15 +22,15 @@ i32: impl
 		ret self
 	}
 
-	internal: fun(imm self) -> i32 = self
+	internal: fun(imm self) -> i32 => self
 }
 
 [T]: impl
 {
 	pub
 	{
-		byteSize: fun(imm self) -> usize = sizeOf(T)
+		byteSize: fun(imm self) -> usize => sizeOf(T)
 	}
 }
 
-libraryUse: pub fun(x: i32) -> i32 = x.internal() + x.clamp(0, 5)
+libraryUse: pub fun(x: i32) -> i32 => x.internal() + x.clamp(0, 5)

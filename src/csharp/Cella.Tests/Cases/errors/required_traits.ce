@@ -19,7 +19,7 @@ Plain: rec impl Ord
 {
 	n: i32
 
-	<: op(a: Plain, b: Plain) -> bool = a.n < b.n
+	<: op(a: Plain, b: Plain) -> bool => a.n < b.n
 }
 
 f64: impl Ord
@@ -31,12 +31,12 @@ box[T]: rec
 
 box[T: Ord]: impl Ord
 {
-	<: op(imm a: box[T], imm b: box[T]) -> bool = a.value < b.value
+	<: op(imm a: box[T], imm b: box[T]) -> bool => a.value < b.value
 }
 
 box[T: Hash]: impl Eq
 {
-	==: op(imm a: box[T], imm b: box[T]) -> bool = true
+	==: op(imm a: box[T], imm b: box[T]) -> bool => true
 }
 
 Even: trait req Odd
@@ -47,7 +47,7 @@ Shown: pub trait req Eq
 
 Twice: trait req Eq + Eq
 
-twice[T: Eq + Eq]: fun(imm a: T, imm b: T) -> bool = a == b
+twice[T: Eq + Eq]: fun(imm a: T, imm b: T) -> bool => a == b
 
 Missing: trait req Unknown
 NotTrait: trait req i32
@@ -59,7 +59,7 @@ list[T: Ord]: rec
 
 list[T: Eq + Ord]: impl
 {
-	same: fun(imm self, imm other: T) -> bool = self.value == other
+	same: fun(imm self, imm other: T) -> bool => self.value == other
 }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

@@ -31,6 +31,6 @@ duo[A, B]: rec
 	second: B
 }
 
-take: pub fun(value: box[Node]) -> i32 = 0
+take: pub fun(value: box[Node]) -> i32 => 0
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

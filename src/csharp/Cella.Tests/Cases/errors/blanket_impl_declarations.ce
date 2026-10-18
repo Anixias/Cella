@@ -17,29 +17,29 @@ Size: trait
 
 [T: Eq]: impl Describe
 {
-	name: fun(imm self) -> cstr = "comparable"
+	name: fun(imm self) -> cstr => "comparable"
 }
 
 [T]: impl Size
 
 [T]: impl
 {
-	extra: fun(imm self) -> i32 = 0
+	extra: fun(imm self) -> i32 => 0
 }
 
 [T, U]: impl Describe
 {
-	name: fun(imm self) -> cstr = "two"
+	name: fun(imm self) -> cstr => "two"
 }
 
 [i32]: impl Describe
 {
-	name: fun(imm self) -> cstr = "number"
+	name: fun(imm self) -> cstr => "number"
 }
 
 [N: const usize]: impl Describe
 {
-	name: fun(imm self) -> cstr = "value"
+	name: fun(imm self) -> cstr => "value"
 }
 
 Plain: rec
@@ -47,7 +47,7 @@ Plain: rec
 	value: i32
 }
 
-plainName: fun(imm plain: Plain) -> cstr = plain.name()
-anyName[T]: fun(imm value: T) -> cstr = value.name()
+plainName: fun(imm plain: Plain) -> cstr => plain.name()
+anyName[T]: fun(imm value: T) -> cstr => value.name()
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

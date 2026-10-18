@@ -1,10 +1,10 @@
 mod test
 
-a[T: copy + copy]: fun -> i32 = 0
-b[T: noref + noref]: fun -> i32 = 0
-c[T: drop + drop]: fun -> i32 = 0
-d[T: null + null]: fun -> i32 = 0
-e[T: atomic + atomic]: fun -> i32 = 0
-f[T: drop + null]: fun -> i32 = 0
+a[T: copy + copy]: fun -> i32 => 0
+b[T: noref + noref]: fun -> i32 => 0
+c[T: drop + drop]: fun -> i32 => 0
+d[T: null + null]: fun -> i32 => 0
+e[T: atomic + atomic]: fun -> i32 => 0
+f[T: drop + null]: fun -> i32 => 0
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

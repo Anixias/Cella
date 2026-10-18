@@ -15,7 +15,7 @@ view[T]: ref rec impl Writable[T]
 	data: ptr[T]
 	length: usize
 
-	[]: op(self, i: usize) -> mut[T] = mut self.data[i]
+	[]: op(self, i: usize) -> mut[T] => mut self.data[i]
 }
 
 fill[V: Writable[i32]]: fun(imm values: V, count: usize, value: i32)

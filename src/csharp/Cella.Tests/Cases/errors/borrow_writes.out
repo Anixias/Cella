@@ -1,7 +1,7 @@
-Error at borrow_writes.ce:26:44
+Error at borrow_writes.ce:26:45
 25 │ 
-26 │ first: fun(mut point: Point) -> imm[i32] = make()
-                                                ╘════╛ Cannot borrow unstored values
+26 │ first: fun(mut point: Point) -> imm[i32] => make()
+                                                 ╘════╛ Cannot borrow unstored values
 
 Error at borrow_writes.ce:32:2
 31 │ val r = imm p

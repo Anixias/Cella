@@ -16,7 +16,7 @@ Square: rec impl Shape
 {
 	side: i32
 
-	area: fun(self) -> i32 = self.side * self.side
+	area: fun(self) -> i32 => self.side * self.side
 }
 
 boxed[K: trait]: rec
@@ -30,7 +30,7 @@ boxed[K: trait]: rec
 		ret boxed[K](memory)
 	}
 
-	*: op(imm self) -> imm[dyn[K]] = imm *self.object
+	*: op(imm self) -> imm[dyn[K]] => imm *self.object
 
 	drop: op
 	{
@@ -39,7 +39,7 @@ boxed[K: trait]: rec
 	}
 }
 
-keep: fun(own box: boxed[Shape]) = printf("kept\n")
+keep: fun(own box: boxed[Shape]) => printf("kept\n")
 
 leak: fun -> imm[dyn[Shape]]
 {

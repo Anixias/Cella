@@ -12,5 +12,5 @@ Point: pub rec
 
 Point: impl Secret
 {
-	go: fun(imm self) -> i32 = self.x
+	go: fun(imm self) -> i32 => self.x
 }

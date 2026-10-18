@@ -29,9 +29,9 @@ Effect: enum
 	hit(amount: i32)
 	mend(amount: i32)
 
-	strong: fun(amount: i32) -> Effect = Effect.hit(amount * 2)
+	strong: fun(amount: i32) -> Effect => Effect.hit(amount * 2)
 
-	weak: fun -> Effect = Effect.mend(1)
+	weak: fun -> Effect => Effect.mend(1)
 
 	applyTo: fun(self, mut target: Unit)
 	{
@@ -43,7 +43,7 @@ Effect: enum
 		}
 	}
 
-	size: fun(self) -> i32 = match self
+	size: fun(self) -> i32 => match self
 	{
 		hit(val amount) => amount
 		mend(val amount) => amount
@@ -60,9 +60,9 @@ Effect: enum
 		}
 	}
 
-	release: fun(own self) -> i32 = self.size()
+	release: fun(own self) -> i32 => self.size()
 
-	twice: fun(self) -> Effect = strong(self.size())
+	twice: fun(self) -> Effect => strong(self.size())
 }
 
 Color: ext enum
@@ -70,7 +70,7 @@ Color: ext enum
 	red
 	green
 
-	next: fun(self) -> Color = match self
+	next: fun(self) -> Color => match self
 	{
 		red => Color.green
 		else => Color.red
@@ -93,7 +93,7 @@ Slot: enum
 	held(buffer: Buffer)
 	count(value: i32)
 
-	id: fun(imm self) -> i32 = match self
+	id: fun(imm self) -> i32 => match self
 	{
 		held(val buffer) => buffer.id
 		count(val value) => value

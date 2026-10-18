@@ -1,15 +1,15 @@
 Error at own_closure_types.ce:10:9
- 9 │ var pick = own fun -> i32 = base
-10 │ pick = own fun -> i32 = other
-            ╘════════════════════╛ Cannot convert between 'own fun' closures
+ 9 │ var pick = own fun -> i32 => base
+10 │ pick = own fun -> i32 => other
+            ╘═════════════════════╛ Cannot convert between 'own fun' closures
 
-Error at own_closure_types.ce:11:17
-10 │ pick = own fun -> i32 = other
-11 │ keep(own fun = base)
-                    ╘══╛ Cannot capture 'base' in 'fun[-> i32]'
+Error at own_closure_types.ce:11:18
+10 │ pick = own fun -> i32 => other
+11 │ keep(own fun => base)
+                     ╘══╛ Cannot capture 'base' in 'fun[-> i32]'
 
 Error at own_closure_types.ce:12:27
-11 │ keep(own fun = base)
+11 │ keep(own fun => base)
 12 │ val plain: fun[-> i32] = pick
                               ╘══╛ Cannot convert type 'own fun[-> i32]' to 'fun[-> i32]'
 

@@ -59,4 +59,4 @@ Needs[T: new(view[i32])]: rec
 
 takes: fun(needs: Needs[Packs]) {}
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

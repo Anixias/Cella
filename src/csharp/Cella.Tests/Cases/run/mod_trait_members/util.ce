@@ -4,19 +4,19 @@ Hash: trait
 {
 	hash: fun(imm self) -> u64
 	secret: mod fun(imm self) -> u64
-	helper: mod fun(imm self) -> u64 = 40
+	helper: mod fun(imm self) -> u64 => 40
 }
 
 Point: rec impl Hash
 {
 	x: i32
 
-	hash: fun(self) -> u64 = 1
-	secret: fun(self) -> u64 = 2
+	hash: fun(self) -> u64 => 1
+	secret: fun(self) -> u64 => 2
 }
 
-go[T: Hash]: fun(imm v: T) -> u64 = v.secret() + v.helper()
+go[T: Hash]: fun(imm v: T) -> u64 => v.secret() + v.helper()
 
-dgo: fun(imm v: dyn[Hash]) -> u64 = v.secret()
+dgo: fun(imm v: dyn[Hash]) -> u64 => v.secret()
 
-total: fun(p: Point) -> u64 = go(imm p) + dgo(imm p) + Hash(p).helper() + p.helper()
+total: fun(p: Point) -> u64 => go(imm p) + dgo(imm p) + Hash(p).helper() + p.helper()

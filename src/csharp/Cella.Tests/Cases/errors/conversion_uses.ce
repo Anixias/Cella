@@ -4,22 +4,22 @@ Fixed: rec
 {
 	raw: i32
 
-	new: op(self) -> i32 = self.raw >> 16
-	as: op(self) -> f64 = f64(self.raw) / 65536.0
+	new: op(self) -> i32 => self.raw >> 16
+	as: op(self) -> f64 => f64(self.raw) / 65536.0
 }
 
 Name: rec
 {
 	id: i32
 
-	as: op(value: Source) -> Name = Name(value.id)
+	as: op(value: Source) -> Name => Name(value.id)
 }
 
 Source: rec
 {
 	id: i32
 
-	as: op(self) -> Name = Name(self.id)
+	as: op(self) -> Name => Name(self.id)
 }
 
 Label: rec
@@ -41,21 +41,21 @@ Origin: rec
 {
 	id: i32
 
-	new: op(self) -> Label = Label(1)
+	new: op(self) -> Label => Label(1)
 }
 
 Arg: enum
 {
 	int(value: i64)
 
-	as: op(value: i64) -> Arg = int(value)
+	as: op(value: i64) -> Arg => int(value)
 }
 
 Secret: rec
 {
 	value: i32
 
-	as: pvt op(self) -> i32 = self.value
+	as: pvt op(self) -> i32 => self.value
 }
 
 Sprite: rec
@@ -67,8 +67,8 @@ Handle: rec
 {
 	sprite: Sprite
 
-	as: op(self) -> imm[Sprite] = imm self.sprite
-	as: op(mut self) -> mut[Sprite] = mut self.sprite
+	as: op(self) -> imm[Sprite] => imm self.sprite
+	as: op(mut self) -> mut[Sprite] => mut self.sprite
 }
 
 takeInt: fun(value: i32) {}

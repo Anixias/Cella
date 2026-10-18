@@ -5,14 +5,14 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-format: fun = printf("{%d}\n", 5)
+format: fun => printf("{%d}\n", 5)
 
-structure: fun = printf("struct { int x; }\n")
+structure: fun => printf("struct { int x; }\n")
 
-json: fun = printf("{\"a\": 1}\n")
+json: fun => printf("{\"a\": 1}\n")
 
-operand: fun(n: i32) = printf("{n + }\n")
+operand: fun(n: i32) => printf("{n + }\n")
 
-escaped: fun = printf("\{%d}\n", 5)
+escaped: fun => printf("\{%d}\n", 5)
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

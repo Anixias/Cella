@@ -24,19 +24,19 @@ i32: impl
 		ret value
 	}
 
-	parse: fun(digit: u8) -> i32 = i32(digit) - 48
-	doubled: get(imm self) -> i32 = self * 2
+	parse: fun(digit: u8) -> i32 => i32(digit) - 48
+	doubled: get(imm self) -> i32 => self * 2
 }
 
 Point: impl
 {
-	lengthSquared: fun(imm self) -> i32 = self.x * self.x + self.y * self.y
-	sum: fun(imm self) -> i32 = 0
-	sum: fun(imm self, extra: i32) -> i32 = self.x + self.y + extra
-	+: op(imm a: Point, imm b: Point) -> Point = Point(a.x + b.x, a.y + b.y)
+	lengthSquared: fun(imm self) -> i32 => self.x * self.x + self.y * self.y
+	sum: fun(imm self) -> i32 => 0
+	sum: fun(imm self, extra: i32) -> i32 => self.x + self.y + extra
+	+: op(imm a: Point, imm b: Point) -> Point => Point(a.x + b.x, a.y + b.y)
 }
 
 [T]: impl
 {
-	byteSize: fun(imm self) -> usize = sizeOf(T)
+	byteSize: fun(imm self) -> usize => sizeOf(T)
 }

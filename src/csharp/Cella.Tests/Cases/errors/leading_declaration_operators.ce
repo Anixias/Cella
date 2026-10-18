@@ -14,7 +14,7 @@ Square: rec impl A
 	side: i32
 
 	area: get(imm self) -> i32
-		= self.side * self.side
+		=> self.side * self.side
 
 	new: op
 		= default
@@ -31,12 +31,12 @@ limit: var i32
 	= 5
 
 f: fun -> i32
-	= 5
+	=> 5
 
 g: fun -> i32
 {
 	val h = fun(x: i32) -> i32
-		= x
+		=> x
 	ret h(1)
 }
 

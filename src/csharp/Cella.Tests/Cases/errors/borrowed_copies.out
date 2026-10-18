@@ -18,9 +18,9 @@ Error at borrowed_copies.ce:49:6
 49 │ ret line
          ╘══╛ Cannot return borrows of local variables
 
-Error at borrowed_copies.ce:52:55
+Error at borrowed_copies.ce:52:56
 51 │ 
-52 │ borrowed[T: copy]: fun(holder: Holder[T]) -> imm[T] = imm *holder
-                                                           ╘═════════╛ Cannot return borrows of copied parameters
+52 │ borrowed[T: copy]: fun(holder: Holder[T]) -> imm[T] => imm *holder
+                                                            ╘═════════╛ Cannot return borrows of copied parameters
 
 [compilation failed]

@@ -4,14 +4,14 @@ Copied: enum
 {
 	one
 
-	?: op(self) -> i32 = 1
+	?: op(self) -> i32 => 1
 }
 
 Parameter: enum
 {
 	one
 
-	?: op(own self, x: i32) -> i32 = 1
+	?: op(own self, x: i32) -> i32 => 1
 }
 
 Block: enum
@@ -28,21 +28,21 @@ Static: rec
 {
 	x: i32
 
-	?: op -> i32 = 1
+	?: op -> i32 => 1
 }
 
 Untyped: enum
 {
 	one
 
-	?: op(own self) = 1
+	?: op(own self) => 1
 }
 
 Generic: enum
 {
 	one
 
-	?[T]: op(own self) -> i32 = 1
+	?[T]: op(own self) -> i32 => 1
 }
 
 Fallible: trait
@@ -50,4 +50,4 @@ Fallible: trait
 	?: op(own self) -> i32
 }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

@@ -11,9 +11,9 @@ Vector3: rec
 {
 	values: array[f32, 3]
 
-	[]: op(self, i: usize) -> f32 = self.values[i]
+	[]: op(self, i: usize) -> f32 => self.values[i]
 
-	[]: op(mut self, i: usize) -> mut[f32] = mut self.values[i]
+	[]: op(mut self, i: usize) -> mut[f32] => mut self.values[i]
 }
 
 Bits: rec
@@ -26,7 +26,7 @@ Bits: rec
 		self.words[0] = 0
 	}
 
-	[]: op(imm self, i: usize) -> bool = ((self.words[0] >> u64(i)) & 1) != 0
+	[]: op(imm self, i: usize) -> bool => ((self.words[0] >> u64(i)) & 1) != 0
 
 	set: fun(mut self, i: usize)
 	{
@@ -49,9 +49,9 @@ Shapes: rec
 {
 	values: array[Shape, 2]
 
-	[]: op(self, i: usize) -> Shape = self.values[i]
+	[]: op(self, i: usize) -> Shape => self.values[i]
 
-	[]: op(mut self, i: usize) -> mut[Shape] = mut self.values[i]
+	[]: op(mut self, i: usize) -> mut[Shape] => mut self.values[i]
 }
 
 Lookup: trait
@@ -61,7 +61,7 @@ Lookup: trait
 
 Squares: rec impl Lookup
 {
-	[]: op(self, i: usize) -> i32 = i32(i * i)
+	[]: op(self, i: usize) -> i32 => i32(i * i)
 }
 
 scale: fun(mut value: f32)
@@ -69,9 +69,9 @@ scale: fun(mut value: f32)
 	value *= 2.0
 }
 
-total[C: Lookup]: fun(imm items: C) -> i32 = items[1] + items[2]
+total[C: Lookup]: fun(imm items: C) -> i32 => items[1] + items[2]
 
-third: fun(imm items: dyn[Lookup]) -> i32 = items[3]
+third: fun(imm items: dyn[Lookup]) -> i32 => items[3]
 
 main: fun -> i32
 {

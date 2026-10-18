@@ -18,7 +18,7 @@ Readings: rec
 {
 	values: array[i32, 2]
 
-	[]: op(imm self, i: usize) -> imm[i32] = imm self.values[i]
+	[]: op(imm self, i: usize) -> imm[i32] => imm self.values[i]
 
 	drop: op
 	{
@@ -29,14 +29,14 @@ Slots: rec
 {
 	values: array[i32, 2]
 
-	[]: op(mut self, i: usize) -> mut[i32] = mut self.values[i]
+	[]: op(mut self, i: usize) -> mut[i32] => mut self.values[i]
 }
 
 Boxes: rec
 {
 	values: array[Buffer, 2]
 
-	[]: op(imm self, i: usize) -> imm[Buffer] = imm self.values[i]
+	[]: op(imm self, i: usize) -> imm[Buffer] => imm self.values[i]
 
 	drop: op
 	{

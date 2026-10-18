@@ -1,7 +1,7 @@
 mod shared
 
-one: pub fun -> i32 = 1
-two: pub fun -> i32 = 2
+one: pub fun -> i32 => 1
+two: pub fun -> i32 => 2
 
 Thing: pub rec
 {

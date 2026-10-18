@@ -1,7 +1,7 @@
-Hint at noref_concrete_arguments.ce:23:42
+Hint at noref_concrete_arguments.ce:23:43
 22 │ 
-23 │ keep[T: noref]: fun(own value: T) -> T = own value
-                                              ╘═╛ Redundant 'own'
+23 │ keep[T: noref]: fun(own value: T) -> T => own value
+                                               ╘═╛ Redundant 'own'
 
 Error at noref_concrete_arguments.ce:27:19
 26 │ {

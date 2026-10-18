@@ -5,18 +5,18 @@ Lexer: ref rec
 	items: imm[array[i32, 6]]
 	offset: usize
 
-	offsetRef: fun(mut self) -> mut[usize] = mut self.offset
+	offsetRef: fun(mut self) -> mut[usize] => mut self.offset
 
-	itself: fun(mut self) -> mut[Lexer] = mut self
+	itself: fun(mut self) -> mut[Lexer] => mut self
 
-	current: fun(mut self) -> imm[i32] = imm self.items[self.offset]
+	current: fun(mut self) -> imm[i32] => imm self.items[self.offset]
 }
 
 Window: ref enum
 {
 	whole(items: imm[array[i32, 6]])
 
-	itself: fun(mut self) -> mut[Window] = mut self
+	itself: fun(mut self) -> mut[Window] => mut self
 }
 
 Range: ref enum
@@ -45,10 +45,10 @@ Counter: ref rec
 	count: i32
 	guard: Guard
 
-	countRef: fun(mut self) -> mut[i32] = mut self.count
+	countRef: fun(mut self) -> mut[i32] => mut self.count
 }
 
-offsetOf: fun(mut lexer: Lexer) -> mut[usize] = mut lexer.offset
+offsetOf: fun(mut lexer: Lexer) -> mut[usize] => mut lexer.offset
 
 countOf: fun(mut items: array[i32, 6]) -> mut[i32]
 {
@@ -56,4 +56,4 @@ countOf: fun(mut items: array[i32, 6]) -> mut[i32]
 	ret counter.countRef()
 }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

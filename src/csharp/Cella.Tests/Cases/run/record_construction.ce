@@ -39,7 +39,7 @@ Wide: rec
 	value: u32
 }
 
-sum: fun(point: Point) -> i32 = point.x + point.y
+sum: fun(point: Point) -> i32 => point.x + point.y
 
 main: fun -> i32
 {

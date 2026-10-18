@@ -7,7 +7,7 @@ ext
 
 Color: enum { red, green }
 
-make[T: new(i32)]: fun(v: i32) -> T = T(v)
+make[T: new(i32)]: fun(v: i32) -> T => T(v)
 
 main: fun -> i32
 {

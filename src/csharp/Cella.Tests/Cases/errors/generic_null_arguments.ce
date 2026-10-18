@@ -1,6 +1,6 @@
 mod test
 
-reset[T: null]: fun -> T = null
+reset[T: null]: fun -> T => null
 
 main: fun -> i32
 {

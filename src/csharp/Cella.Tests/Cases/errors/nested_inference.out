@@ -1,7 +1,7 @@
-Error at nested_inference.ce:35:44
+Error at nested_inference.ce:35:45
 34 │ 
-35 │ wrap[T]: fun(own value: T) -> box[T] = box(value)
-                                                ╘═══╛ Cannot move 'T' values implicitly
+35 │ wrap[T]: fun(own value: T) -> box[T] => box(value)
+                                                 ╘═══╛ Cannot move 'T' values implicitly
 
 Error at nested_inference.ce:44:10
 43 │ val small: i32 = 1

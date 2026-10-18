@@ -6,9 +6,9 @@ when debug
 }
 else
 {
-	other: fun -> i32 = 1
+	other: fun -> i32 => 1
 }
 
-helper: fun -> i32 = 2
+helper: fun -> i32 => 2
 
-main: fun -> i32 = helper()
+main: fun -> i32 => helper()

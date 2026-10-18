@@ -20,7 +20,7 @@ returnsValue: fun -> never
 	ret 5
 }
 
-valueBody: fun -> never = 5
+valueBody: fun -> never => 5
 
 main: fun -> i32
 {

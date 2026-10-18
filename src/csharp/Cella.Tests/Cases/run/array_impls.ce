@@ -33,7 +33,7 @@ array[T: Eq, N: const usize]: impl Eq
 
 array[T, N: const usize]: impl Counted
 {
-	count: fun(imm self) -> usize = N
+	count: fun(imm self) -> usize => N
 }
 
 Short: trait
@@ -43,12 +43,12 @@ Short: trait
 
 array[T, N: const u8]: impl Short
 {
-	doubled: fun(imm self) -> u8 = N * 2
+	doubled: fun(imm self) -> u8 => N * 2
 }
 
-same[T: Eq]: fun(imm a: T, imm b: T) -> bool = a == b
+same[T: Eq]: fun(imm a: T, imm b: T) -> bool => a == b
 
-counted[T: Counted]: fun(imm item: T) -> usize = item.count()
+counted[T: Counted]: fun(imm item: T) -> usize => item.count()
 
 main: fun -> i32
 {

@@ -16,7 +16,7 @@ Hint at redundant_markers.ce:42:11
 
 Hint at redundant_markers.ce:53:11
 52 │ 
-53 │ within[T: Eq + Ord]: fun(imm value: T, imm low: T) -> bool = low < value || value == low
+53 │ within[T: Eq + Ord]: fun(imm value: T, imm low: T) -> bool => low < value || value == low
                ╘╛ Redundant 'Eq'
                 | Required by 'Ord'
 
@@ -32,7 +32,7 @@ Hint at redundant_markers.ce:63:6
 
 Hint at redundant_markers.ce:68:15
 67 │ {
-68 │     val double = own fun(x: i32) -> i32 = x * 2
+68 │     val double = own fun(x: i32) -> i32 => x * 2
                       ╘═╛ Redundant 'own'
 
 8

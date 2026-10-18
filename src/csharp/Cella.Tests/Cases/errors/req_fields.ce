@@ -73,10 +73,10 @@ PointHolder: rec
 	count: i32
 }
 
-take: fun(own pos: Point) -> i32 = pos.x
-describe: fun(file: File) -> i32 = file.handle
-describeOwner: fun(owner: Owner) -> i32 = owner.count
-describeHolder: fun(holder: PointHolder) -> i32 = holder.count
+take: fun(own pos: Point) -> i32 => pos.x
+describe: fun(file: File) -> i32 => file.handle
+describeOwner: fun(owner: Owner) -> i32 => owner.count
+describeHolder: fun(holder: PointHolder) -> i32 => holder.count
 
 unset: fun -> i32
 {
@@ -126,4 +126,4 @@ movedPart: fun -> i32
 	ret describeHolder(holder)
 }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

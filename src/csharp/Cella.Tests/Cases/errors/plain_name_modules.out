@@ -1,11 +1,11 @@
 Error at game.ce:3:1
 2 │ 
-3 │ run: pub ext fun -> i32 = 1
+3 │ run: pub ext fun -> i32 => 1
     ╘═╛ 'run' is defined by more than one 'ext' declaration
 
 Error at ui.ce:3:1
 2 │ 
-3 │ run: pub ext fun -> i32 = 2
+3 │ run: pub ext fun -> i32 => 2
     ╘═╛ 'run' is defined by more than one 'ext' declaration
 
 [compilation failed]

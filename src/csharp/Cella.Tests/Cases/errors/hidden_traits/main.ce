@@ -2,7 +2,7 @@ mod test
 
 Point: rec impl Hidden
 {
-	go: fun(imm self) -> i32 = 1
+	go: fun(imm self) -> i32 => 1
 }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

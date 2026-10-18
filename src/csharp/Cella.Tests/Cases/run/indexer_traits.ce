@@ -16,7 +16,7 @@ Palette: rec impl Indexed
 {
 	values: array[i32, 3]
 
-	[]: op(imm self, i: usize) -> imm[i32] = imm self.values[i]
+	[]: op(imm self, i: usize) -> imm[i32] => imm self.values[i]
 
 	drop: op
 	{
@@ -28,7 +28,7 @@ Storage: enum
 	empty
 	heap(items: ptr[i32])
 
-	[]: op(self, i: usize) -> imm[i32] = match self
+	[]: op(self, i: usize) -> imm[i32] => match self
 	{
 		empty => imm *ptr[i32](null)
 		heap(val items) => imm items[i]
@@ -39,9 +39,9 @@ Storage: impl Indexed
 {
 }
 
-total[C: Indexed]: fun(imm items: C) -> i32 = items[0] + items[1] + items[2]
+total[C: Indexed]: fun(imm items: C) -> i32 => items[0] + items[1] + items[2]
 
-tenfold: fun(imm items: dyn[Indexed]) -> i32 = items[1] * 10
+tenfold: fun(imm items: dyn[Indexed]) -> i32 => items[1] * 10
 
 main: fun -> i32
 {

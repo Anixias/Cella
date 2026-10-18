@@ -23,7 +23,7 @@ Handler: rec
 	scale: i32
 }
 
-amount: fun(effect: Effect) -> i32 = match effect { hit(val n) => n, none => 0 }
+amount: fun(effect: Effect) -> i32 => match effect { hit(val n) => n, none => 0 }
 
 direct: fun -> i32
 {
@@ -92,10 +92,10 @@ Outer: rec
 	label: i32
 }
 
-describe: fun(handler: Handler) -> i32 = handler.scale
-describePair: fun(pair: Pair) -> i32 = 0
-describeAll: fun(handlers: array[Handler, 2]) -> i32 = 0
-describeOuter: fun(outer: Outer) -> i32 = outer.label
+describe: fun(handler: Handler) -> i32 => handler.scale
+describePair: fun(pair: Pair) -> i32 => 0
+describeAll: fun(handlers: array[Handler, 2]) -> i32 => 0
+describeOuter: fun(outer: Outer) -> i32 => outer.label
 
 wholeHandler: fun -> i32
 {
@@ -140,8 +140,8 @@ Keeper: rec
 	count: i32
 }
 
-describeCloser: fun(imm closer: Closer) -> i32 = closer.id
-describeKeeper: fun(imm keeper: Keeper) -> i32 = keeper.count
+describeCloser: fun(imm closer: Closer) -> i32 => closer.id
+describeKeeper: fun(imm keeper: Keeper) -> i32 => keeper.count
 
 closer: fun -> i32
 {
@@ -168,7 +168,7 @@ Code: enum
 	held(amount: i32) = 0
 }
 
-describeCode: fun(code: Code) -> i32 = match code { first => 1, held(val n) => n }
+describeCode: fun(code: Code) -> i32 => match code { first => 1, held(val n) => n }
 
 zeroCase: fun -> i32
 {
@@ -176,4 +176,4 @@ zeroCase: fun -> i32
 	ret describeCode(code)
 }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

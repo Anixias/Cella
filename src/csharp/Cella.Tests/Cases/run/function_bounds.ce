@@ -6,9 +6,9 @@ ext
 	abs: fun(value: i32) -> i32
 }
 
-twice[F: fun[i32 -> i32]]: fun(imm f: F, x: i32) -> i32 = f(f(x))
+twice[F: fun[i32 -> i32]]: fun(imm f: F, x: i32) -> i32 => f(f(x))
 
-apply[F: fun[i32]]: fun(imm f: F, x: i32) = f(x)
+apply[F: fun[i32]]: fun(imm f: F, x: i32) => f(x)
 
 each: fun(values: array[i32, 3], visit: fun[i32])
 {
@@ -16,34 +16,34 @@ each: fun(values: array[i32, 3], visit: fun[i32])
 		apply(imm visit, value)
 }
 
-forward[G: fun[i32 -> i32]]: fun(imm g: G, x: i32) -> i32 = twice(imm g, x)
+forward[G: fun[i32 -> i32]]: fun(imm g: G, x: i32) -> i32 => twice(imm g, x)
 
-run: fun(f: fun[i32 -> i32]) -> i32 = f(5)
+run: fun(f: fun[i32 -> i32]) -> i32 => f(5)
 
-viaBound[F: fun[i32 -> i32]]: fun(imm f: F) -> i32 = run(f) + 1
+viaBound[F: fun[i32 -> i32]]: fun(imm f: F) -> i32 => run(f) + 1
 
-applyTo[T, F: fun[imm T -> i32]]: fun(imm f: F, imm x: T) -> i32 = f(imm x)
+applyTo[T, F: fun[imm T -> i32]]: fun(imm f: F, imm x: T) -> i32 => f(imm x)
 
-relay: fun(callback: ext fun[i32 -> i32]) -> i32 = twice(imm callback, -5)
+relay: fun(callback: ext fun[i32 -> i32]) -> i32 => twice(imm callback, -5)
 
-pick: fun -> ext fun[i32 -> i32] = abs
+pick: fun -> ext fun[i32 -> i32] => abs
 
-keep: fun(own f: fun[i32 -> i32]) -> i32 = f(-8)
+keep: fun(own f: fun[i32 -> i32]) -> i32 => f(-8)
 
 Counter[F: fun[-> i32]]: rec
 {
 	next: F
 
-	take: fun(imm self) -> i32 = self.next() * 10
+	take: fun(imm self) -> i32 => self.next() * 10
 }
 
-double: fun(x: i32) -> i32 = x * 2
+double: fun(x: i32) -> i32 => x * 2
 
 callables: fun
 {
 	val step = 3
-	val byCopy = twice(own fun(x: i32) -> i32 = x + step, 1)
-	val borrowing = twice(fun(x) = x + step, 1)
+	val byCopy = twice(own fun(x: i32) -> i32 => x + step, 1)
+	val borrowing = twice(fun(x) => x + step, 1)
 	printf("callables %d %d %d %d\n", byCopy, twice(double, 1), borrowing, twice(abs, -5))
 }
 
@@ -52,8 +52,8 @@ forwarding: fun
 	var total = 0
 	each([1, 2, 3], fun(value) { total += value })
 	val step = 2
-	val doubled = viaBound(own fun(x: i32) -> i32 = x * step)
-	printf("forwarding %d %d %d %d\n", total, forward(double, 3), doubled, applyTo(fun(x) = x + step, 40))
+	val doubled = viaBound(own fun(x: i32) -> i32 => x * step)
+	printf("forwarding %d %d %d %d\n", total, forward(double, 3), doubled, applyTo(fun(x) => x + step, 40))
 }
 
 externals: fun

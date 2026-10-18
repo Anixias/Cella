@@ -20,7 +20,7 @@ Box: rec
 	}
 }
 
-call: fun(f: fun[]) = f()
+call: fun(f: fun[]) => f()
 
 main: fun -> i32
 {

@@ -19,24 +19,24 @@ Holder[F: fun[i32 -> i32]]: rec
 {
 	f: F
 
-	run: fun(imm self, x: i32) -> i32 = self.f(x)
+	run: fun(imm self, x: i32) -> i32 => self.f(x)
 }
 
-take[F: fun[i32 -> i32]]: fun(own f: F) -> i32 = f(1)
+take[F: fun[i32 -> i32]]: fun(own f: F) -> i32 => f(1)
 
 main: fun -> i32
 {
 	var big: array[i32, 10000]
 	big[5] = 7
-	val f = own fun -> i32 = big[5]
+	val f = own fun -> i32 => big[5]
 	var table: array[i32, 5000]
 	table[3] = 5
 	val n = Noisy(5)
-	val h = Holder(own fun(x: i32) -> i32 = x + table[3] + n.id)
+	val h = Holder(own fun(x: i32) -> i32 => x + table[3] + n.id)
 	printf("%d %d\n", f(), h.run(1))
 	val m = Noisy(6)
 	var other: array[i32, 5000]
 	other[9] = 3
-	printf("%d\n", take(own fun(x: i32) -> i32 = x + other[9] + m.id))
+	printf("%d\n", take(own fun(x: i32) -> i32 => x + other[9] + m.id))
 	ret 0
 }

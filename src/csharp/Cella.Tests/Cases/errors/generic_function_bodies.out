@@ -3,10 +3,10 @@ Error at generic_function_bodies.ce:12:7
 12 │ ret box(self).deeper(depth - 1)
          ╘══════════════╛ Instantiating 'box.deeper' never ends
 
-Error at generic_function_bodies.ce:16:34
+Error at generic_function_bodies.ce:16:35
 15 │ 
-16 │ add[T]: fun(imm value: T) -> T = value + 1
-                                      ╘═══════╛ No operation defined for '+' between 'T' and 'integer literal'
+16 │ add[T]: fun(imm value: T) -> T => value + 1
+                                       ╘═══════╛ No operation defined for '+' between 'T' and 'integer literal'
 
 Error at generic_function_bodies.ce:23:6
 22 │ 
@@ -18,9 +18,9 @@ Error at generic_function_bodies.ce:31:6
 31 │ ret second(box(value), depth - 1)
          ╘════╛ Instantiating 'second' never ends
 
-Error at generic_function_bodies.ce:34:57
+Error at generic_function_bodies.ce:34:58
 33 │ 
-34 │ second[U]: fun(own value: U, depth: i32) -> i32 = first(value, depth)
-                                                             ╘═══╛ Cannot move 'U' values implicitly
+34 │ second[U]: fun(own value: U, depth: i32) -> i32 => first(value, depth)
+                                                              ╘═══╛ Cannot move 'U' values implicitly
 
 [compilation failed]

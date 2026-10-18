@@ -10,9 +10,9 @@ option[T]: enum
 	none
 	some(value: T)
 
-	empty: fun -> option[T] = option[T].none
+	empty: fun -> option[T] => option[T].none
 
-	of: fun(own value: T) -> option[T] = option[T].some(own value)
+	of: fun(own value: T) -> option[T] => option[T].some(own value)
 }
 
 pair[A, B]: rec
@@ -20,7 +20,7 @@ pair[A, B]: rec
 	a: A
 	b: B
 
-	make: fun(own a: A, own b: B) -> pair[A, B] = pair[A, B](own a, own b)
+	make: fun(own a: A, own b: B) -> pair[A, B] => pair[A, B](own a, own b)
 }
 
 main: fun -> i32

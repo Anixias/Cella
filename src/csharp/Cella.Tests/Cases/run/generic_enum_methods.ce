@@ -10,7 +10,7 @@ option[T]: enum
 	none
 	some(value: T)
 
-	isSome: get(imm self) -> bool = self is some(_)
+	isSome: get(imm self) -> bool => self is some(_)
 
 	orElse: fun(own self, own fallback: T) -> T
 	{
@@ -30,7 +30,7 @@ option[T]: enum
 		}
 	}
 
-	empty: fun -> option[T] = option[T].none
+	empty: fun -> option[T] => option[T].none
 }
 
 slot[T: noref]: enum
@@ -56,7 +56,7 @@ slot[T: noref]: enum
 	}
 }
 
-double: fun(own n: i32) -> i64 = i64(n) * 2
+double: fun(own n: i32) -> i64 => i64(n) * 2
 
 find[T]: fun(own value: T, present: bool) -> option[T]
 {

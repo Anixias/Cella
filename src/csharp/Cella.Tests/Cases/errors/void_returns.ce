@@ -10,7 +10,7 @@ greet: fun
 	printf("hi\n")
 }
 
-early: fun = ret 5
+early: fun => ret 5
 
 finish: fun
 {

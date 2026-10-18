@@ -1,36 +1,36 @@
 Error at constraint_declarations.ce:8:10
 7 │ 
-8 │ first[T: copy + drop]: fun -> i32 = 0
+8 │ first[T: copy + drop]: fun -> i32 => 0
              ╘══╛ Cannot combine 'copy' and 'drop'
 
 Error at constraint_declarations.ce:8:17
 7 │ 
-8 │ first[T: copy + drop]: fun -> i32 = 0
+8 │ first[T: copy + drop]: fun -> i32 => 0
                     ╘══╛ Cannot combine 'copy' and 'drop'
 
 Error at constraint_declarations.ce:10:11
  9 │ 
-10 │ second[K: trait + noref]: fun -> i32 = 0
+10 │ second[K: trait + noref]: fun -> i32 => 0
                ╘═══╛ Cannot combine 'trait' with other constraints
 
 Error at constraint_declarations.ce:10:19
  9 │ 
-10 │ second[K: trait + noref]: fun -> i32 = 0
+10 │ second[K: trait + noref]: fun -> i32 => 0
                        ╘═══╛ Cannot combine 'trait' with other constraints
 
 Error at constraint_declarations.ce:12:10
 11 │ 
-12 │ third[K: trait + Shape]: fun -> i32 = 0
+12 │ third[K: trait + Shape]: fun -> i32 => 0
               ╘═══╛ Cannot combine 'trait' with other constraints
 
 Error at constraint_declarations.ce:12:18
 11 │ 
-12 │ third[K: trait + Shape]: fun -> i32 = 0
+12 │ third[K: trait + Shape]: fun -> i32 => 0
                       ╘═══╛ Cannot combine 'trait' with other constraints
 
 Error at constraint_declarations.ce:14:14
 13 │ 
-14 │ fourth[T, U: T]: fun -> i32 = 0
+14 │ fourth[T, U: T]: fun -> i32 => 0
                   ^ 'T' is not a trait
 
 [compilation failed]

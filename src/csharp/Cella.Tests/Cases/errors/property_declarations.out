@@ -20,62 +20,62 @@ Error at property_declarations.ce:22:2
 
 Error at property_declarations.ce:26:3
 25 │ {
-26 │     get(self) = 1
+26 │     get(self) => 1
          ╘═╛ 'get' is declared more than once in 'twice'
 
 Error at property_declarations.ce:27:3
-26 │ get(self) = 1
-27 │ get(self) = 2
+26 │ get(self) => 1
+27 │ get(self) => 2
      ╘═╛ 'get' is declared more than once in 'twice'
 
 Error at property_declarations.ce:33:3
 32 │ {
-33 │     get = 1
+33 │     get => 1
          ╘═╛ Cannot combine static and instance accessors
 
 Error at property_declarations.ce:34:3
-33 │ get = 1
-34 │ set(mut self, value) = 0
+33 │ get => 1
+34 │ set(mut self, value) => 0
      ╘═╛ Cannot combine static and instance accessors
 
 Error at property_declarations.ce:39:11
 38 │ {
-39 │     get(own self) = 1
+39 │     get(own self) => 1
                  ╘══╛ Cannot take 'own self' in getters
 
 Error at property_declarations.ce:40:11
-39 │ get(own self) = 1
-40 │ set(own self, value) = 0
+39 │ get(own self) => 1
+40 │ set(own self, value) => 0
              ╘══╛ Cannot take 'own self' in setters
 
 Error at property_declarations.ce:43:26
 42 │ 
-43 │ borrowed: set(mut self, mut value: i32) = 0
+43 │ borrowed: set(mut self, mut value: i32) => 0
                              ╘═╛ Cannot take 'mut' parameters in setters
 
 Error at property_declarations.ce:47:16
 46 │ {
-47 │     get(self) -> i64 = 1
+47 │     get(self) -> i64 => 1
                       ╘═╛ 'get' must return 'i32'
 
 Error at property_declarations.ce:48:24
-47 │ get(self) -> i64 = 1
-48 │ set(mut self, value: u8) = 0
+47 │ get(self) -> i64 => 1
+48 │ set(mut self, value: u8) => 0
                           ╘╛ 'value' must be 'i32'
 
 Error at property_declarations.ce:51:2
 50 │ 
-51 │ hp: get(self) -> i32 = 1
+51 │ hp: get(self) -> i32 => 1
      ╘╛ 'hp' is declared more than once in 'Unit'
 
 Error at property_declarations.ce:53:2
 52 │ 
-53 │ speed: get(self) -> i32 = 1
+53 │ speed: get(self) -> i32 => 1
      ╘═══╛ 'speed' is declared more than once in 'Unit'
 
 Error at property_declarations.ce:55:2
 54 │ 
-55 │ speed: set(mut self, value: i32) = 0
+55 │ speed: set(mut self, value: i32) => 0
      ╘═══╛ 'speed' is declared more than once in 'Unit'
 
 Error at property_declarations.ce:57:15
@@ -85,12 +85,12 @@ Error at property_declarations.ce:57:15
 
 Error at property_declarations.ce:63:23
 62 │ 
-63 │ hidden: get(self) -> Node = Node(1)
+63 │ hidden: get(self) -> Node => Node(1)
                           ╘══╛ 'Node' is less visible than 'hidden'
 
 Error at property_declarations.ce:68:17
-67 │ get(self) = imm self.hp
-68 │ set(mut self, value) = 0
+67 │ get(self) => imm self.hp
+68 │ set(mut self, value) => 0
                    ╘═══╛ Cannot use borrow types for parameters
 
 Error at property_declarations.ce:74:2
@@ -100,7 +100,7 @@ Error at property_declarations.ce:74:2
 
 Error at property_declarations.ce:75:2
 74 │ first
-75 │ first: get -> i32 = 1
+75 │ first: get -> i32 => 1
      ╘═══╛ 'first' is declared more than once in 'Kind'
 
 [compilation failed]

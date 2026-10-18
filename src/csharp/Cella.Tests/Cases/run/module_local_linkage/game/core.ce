@@ -5,11 +5,11 @@ ext
 	printf: pvt fun(format: cstr, ...) -> i32
 }
 
-twice: mod fun(n: i32) -> i32 = n * 2
+twice: mod fun(n: i32) -> i32 => n * 2
 
-triple: pvt fun(n: i32) -> i32 = n * 3
+triple: pvt fun(n: i32) -> i32 => n * 3
 
-bump: mod fun(n: i32) -> i32 = n + 1
+bump: mod fun(n: i32) -> i32 => n + 1
 
 hits: mod var i32 = 20
 
@@ -31,6 +31,6 @@ Outer: rec
 {
 	inner: pvt Inner
 
-	make: fun(value: i32) -> Outer = Outer(Inner(value))
-	read: fun(imm self) -> i32 = self.inner.value
+	make: fun(value: i32) -> Outer => Outer(Inner(value))
+	read: fun(imm self) -> i32 => self.inner.value
 }

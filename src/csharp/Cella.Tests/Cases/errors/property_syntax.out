@@ -1,61 +1,61 @@
 Error at property_syntax.ce:7:20
 6 │ 
-7 │ health: get(self, extra: i32) -> i32 = self.hp
+7 │ health: get(self, extra: i32) -> i32 => self.hp
                       ╘═══╛ Getters cannot take parameters
 
 Error at property_syntax.ce:9:10
 8 │ 
-9 │ volume: set(mut self) = 0
+9 │ volume: set(mut self) => 0
             ╘═╛ Setters must take one parameter
 
 Error at property_syntax.ce:11:35
 10 │ 
-11 │ pitch: set(mut self, first: i32, second: i32) = 0
+11 │ pitch: set(mut self, first: i32, second: i32) => 0
                                       ╘════╛ Setters must take one parameter
 
 Error at property_syntax.ce:13:38
 12 │ 
-13 │ speed: set(mut self, value: i32) -> i32 = 0
+13 │ speed: set(mut self, value: i32) -> i32 => 0
                                          ╘═╛ Setters cannot return values
 
 Error at property_syntax.ce:15:19
 14 │ 
-15 │ label: get(self) = self.hp
-                      ^ Expected '->' and a type
+15 │ label: get(self) => self.hp
+                      ╘╛ Expected '->' and a type
 
 Error at property_syntax.ce:17:9
 16 │ 
-17 │ armor: pvt set get(self) -> i32 = 1
+17 │ armor: pvt set get(self) -> i32 => 1
             ╘═════╛ Cannot use 'pvt set' on properties
 
 Error at property_syntax.ce:22:3
-21 │ get(self) = 1
-22 │ mod set(mut self, value) = 0
+21 │ get(self) => 1
+22 │ mod set(mut self, value) => 0
      ╘═╛ Cannot use 'mod' in 'pvt' properties
 
 Error at property_syntax.ce:27:3
 26 │ {
-27 │     pvt get(self) = 1
+27 │     pvt get(self) => 1
          ╘═╛ Cannot restrict both accessors
 
 Error at property_syntax.ce:28:3
-27 │ pvt get(self) = 1
-28 │ pvt set(mut self, value) = 0
+27 │ pvt get(self) => 1
+28 │ pvt set(mut self, value) => 0
      ╘═╛ Cannot restrict both accessors
 
 Error at property_syntax.ce:33:3
 32 │ {
-33 │     pub get(self) = 1
+33 │     pub get(self) => 1
          ╘═╛ Cannot declare 'pub' members
 
 Error at property_syntax.ce:40:3
-39 │ get(self) = 1
-40 │ mod pvt set(mut self, value) = 0
+39 │ get(self) => 1
+40 │ mod pvt set(mut self, value) => 0
      ╘═════╛ Cannot combine 'mod' and 'pvt'
 
 Error at property_syntax.ce:46:28
 45 │ {
-46 │     value: set(mut self, value) = 0
+46 │     value: set(mut self, value) => 0
                                    ^ Expected ':' and a type
 
 Error at property_syntax.ce:53:3
@@ -66,6 +66,6 @@ Error at property_syntax.ce:53:3
 Error at property_syntax.ce:59:22
 58 │ {
 59 │     value: get(self) -> i32
-                             ╘═╛ Expected '=' or '{'
+                             ╘═╛ Expected '=>' or '{'
 
 [compilation failed]

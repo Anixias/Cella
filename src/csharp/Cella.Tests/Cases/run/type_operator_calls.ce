@@ -9,9 +9,9 @@ P: rec
 {
 	x: i32
 
-	-: op(self) -> P = P(-self.x)
-	-: op(a: P, b: P) -> P = P(a.x - b.x)
-	~: op(self) -> P = P(~self.x)
+	-: op(self) -> P => P(-self.x)
+	-: op(a: P, b: P) -> P => P(a.x - b.x)
+	~: op(self) -> P => P(~self.x)
 	+=: op(mut self, other: P)
 	{
 		self.x += other.x

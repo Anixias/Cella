@@ -39,4 +39,4 @@ pairs: fun -> i32
 	}
 }
 
-main: fun -> i32 = keep() + pairs()
+main: fun -> i32 => keep() + pairs()

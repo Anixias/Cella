@@ -29,7 +29,7 @@ boxed[K: trait]: rec
 		ret boxed[K](memory)
 	}
 
-	*: op(imm self) -> imm[dyn[K]] = imm *self.object
+	*: op(imm self) -> imm[dyn[K]] => imm *self.object
 
 	drop: op
 	{
@@ -56,12 +56,12 @@ makeCounter: fun(start: i32) -> boxed[fun[-> i32]]
 
 makeBox[T: copy + noref]: fun(value: T) -> boxed[fun[-> T]]
 {
-	ret boxed[fun[-> T]].of(own fun -> T = value)
+	ret boxed[fun[-> T]].of(own fun -> T => value)
 }
 
-pick: fun -> ext fun[i32 -> i32] = abs
+pick: fun -> ext fun[i32 -> i32] => abs
 
-answer: fun -> i32 = 42
+answer: fun -> i32 => 42
 
 counters: fun
 {
@@ -77,7 +77,7 @@ sources: fun
 	val external = boxed[fun[i32 -> i32]].of(pick())
 	val made = makeBox(2.5)
 	val step = 2
-	val add = boxed[fun[i32 -> i32]].of(own fun(x) = x + step)
+	val add = boxed[fun[i32 -> i32]].of(own fun(x) => x + step)
 	printf("sources %d %d %d %d\n", plain(), external(-6), i32(made() * 2.0), add(1))
 }
 

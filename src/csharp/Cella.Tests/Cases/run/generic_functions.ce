@@ -22,7 +22,7 @@ swap[T: noref]: fun(mut a: T, mut b: T)
 	b = own first
 }
 
-identity[T]: fun(own value: T) -> T = value
+identity[T]: fun(own value: T) -> T => value
 
 pick[T]: fun(useFirst: bool, own a: T, own b: T) -> T
 {
@@ -32,9 +32,9 @@ pick[T]: fun(useFirst: bool, own a: T, own b: T) -> T
 	ret b
 }
 
-describe: fun(value: i32) -> i32 = 1
+describe: fun(value: i32) -> i32 => 1
 
-describe[T]: fun(imm value: T) -> i32 = 2
+describe[T]: fun(imm value: T) -> i32 => 2
 
 consume[T]: fun(own value: T)
 {
@@ -49,7 +49,7 @@ countdown[T]: fun(own value: T, steps: i32) -> i32
 	ret 1 + countdown(own value, steps - 1)
 }
 
-size[T]: fun -> usize = sizeOf(T)
+size[T]: fun -> usize => sizeOf(T)
 
 main: fun -> i32
 {

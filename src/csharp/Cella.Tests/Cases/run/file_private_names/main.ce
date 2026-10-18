@@ -14,7 +14,7 @@ Node: pvt rec
 		self.value = value
 	}
 
-	describe: fun(imm self) -> i32 = self.value + 1
+	describe: fun(imm self) -> i32 => self.value + 1
 
 	drop: op
 	{
@@ -24,7 +24,7 @@ Node: pvt rec
 
 limit: pvt val i32 = 10
 
-helper: pvt fun(value: i32) -> i32 = value + limit
+helper: pvt fun(value: i32) -> i32 => value + limit
 
 main: fun -> i32
 {

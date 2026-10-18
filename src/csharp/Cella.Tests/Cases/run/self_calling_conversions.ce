@@ -5,14 +5,14 @@ Pair: rec
 	a: i32
 	b: i32
 
-	as: op(value: i32) -> Pair = Pair(value)
+	as: op(value: i32) -> Pair => Pair(value)
 }
 
 Box: rec
 {
 	v: i32
 
-	as: op(self) -> i32 = self
+	as: op(self) -> i32 => self
 }
 
 Shift: rec
@@ -34,7 +34,7 @@ U: union
 	a: i32
 	b: f32
 
-	as: op(value: i32) -> U = U(value)
+	as: op(value: i32) -> U => U(value)
 }
 
 Meters: rec
@@ -46,7 +46,7 @@ Meters: rec
 		self.value = value
 	}
 
-	as: op(value: i32) -> Meters = Meters(value)
+	as: op(value: i32) -> Meters => Meters(value)
 }
 
 main: fun -> i32

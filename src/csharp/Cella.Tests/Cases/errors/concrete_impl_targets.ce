@@ -22,17 +22,17 @@ list[T: noref]: rec
 
 box[T]: impl Tag
 {
-	tag: fun(imm self) -> i32 = 1
+	tag: fun(imm self) -> i32 => 1
 }
 
 box[i32]: impl Tag
 {
-	tag: fun(self) -> i32 = 2
+	tag: fun(self) -> i32 => 2
 }
 
 list[Token]: impl
 {
-	get: fun(self) -> i32 = 1
+	get: fun(self) -> i32 => 1
 }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

@@ -7,5 +7,5 @@ Square: rec
 
 Square: impl
 {
-	area: pub fun(imm self) -> i32 = self.side * self.side
+	area: pub fun(imm self) -> i32 => self.side * self.side
 }

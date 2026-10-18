@@ -1,6 +1,6 @@
 mod test
 
-make[T: new(i32)]: fun -> T = T(42)
+make[T: new(i32)]: fun -> T => T(42)
 
 main: fun -> i32
 {

@@ -9,7 +9,7 @@ A: rec impl Shape
 {
 	v: i32
 
-	area: fun(imm self) -> i32 = self.v
+	area: fun(imm self) -> i32 => self.v
 }
 
 throughPointer: fun -> i32
@@ -28,4 +28,4 @@ concrete: fun -> i32
 	ret match a { A => 1, else => 0 }
 }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

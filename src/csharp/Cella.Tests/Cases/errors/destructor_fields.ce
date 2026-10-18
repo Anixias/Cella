@@ -40,8 +40,8 @@ Outer: rec
 	spare: Buffer
 }
 
-make: fun(id: i32) -> Buffer = Buffer(id)
-take: fun(own buffer: Buffer) -> i32 = buffer.id
+make: fun(id: i32) -> Buffer => Buffer(id)
+take: fun(own buffer: Buffer) -> i32 => buffer.id
 
 local: fun -> i32
 {
@@ -58,7 +58,7 @@ nested: fun -> i32
 	ret take(shell.inner.buffer) + take(shell.items[0])
 }
 
-owned: fun(own holder: Holder) -> i32 = take(holder.buffer)
+owned: fun(own holder: Holder) -> i32 => take(holder.buffer)
 
 whole: fun -> i32
 {
@@ -75,4 +75,4 @@ refilled: fun(mut holder: Holder) -> i32
 	ret old.id
 }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

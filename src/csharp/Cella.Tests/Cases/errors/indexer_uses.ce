@@ -4,9 +4,9 @@ Grid: rec
 {
 	cells: array[i32, 4]
 
-	[]: op(imm self, row: usize, column: usize) -> imm[i32] = imm self.cells[row * 2 + column]
+	[]: op(imm self, row: usize, column: usize) -> imm[i32] => imm self.cells[row * 2 + column]
 
-	[]: pvt op(mut self, row: usize, column: usize) -> mut[i32] = mut self.cells[row * 2 + column]
+	[]: pvt op(mut self, row: usize, column: usize) -> mut[i32] => mut self.cells[row * 2 + column]
 
 	drop: op
 	{
@@ -17,16 +17,16 @@ Pair: rec
 {
 	values: array[i32, 2]
 
-	[]: op(self, i: usize) -> i32 = self.values[i]
+	[]: op(self, i: usize) -> i32 => self.values[i]
 
-	[]: pvt op(mut self, i: usize) -> mut[i32] = mut self.values[i]
+	[]: pvt op(mut self, i: usize) -> mut[i32] => mut self.values[i]
 }
 
 Hidden: rec
 {
 	cells: array[i32, 4]
 
-	[]: pvt op(imm self, i: usize) -> imm[i32] = imm self.cells[i]
+	[]: pvt op(imm self, i: usize) -> imm[i32] => imm self.cells[i]
 
 	drop: op
 	{
@@ -47,9 +47,9 @@ Counters: rec
 {
 	values: array[Counter, 2]
 
-	[]: op(imm self, i: usize) -> imm[Counter] = imm self.values[i]
+	[]: op(imm self, i: usize) -> imm[Counter] => imm self.values[i]
 
-	[]: pvt op(mut self, i: usize) -> mut[Counter] = mut self.values[i]
+	[]: pvt op(mut self, i: usize) -> mut[Counter] => mut self.values[i]
 
 	drop: op
 	{

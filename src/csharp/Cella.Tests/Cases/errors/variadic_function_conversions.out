@@ -20,7 +20,7 @@ Error at variadic_function_conversions.ce:28:46
 
 Error at variadic_function_conversions.ce:29:41
 28 │ val cella: fun[cstr, ...view[i32] -> i32] = printf
-29 │ val lambda: fun[...view[i32] -> i32] = fun(values: i32) = values
-                                            ╘═══════════════════════╛ Cannot convert type 'fun[i32]' to 'fun[...view[i32] -> i32]'
+29 │ val lambda: fun[...view[i32] -> i32] = fun(values: i32) => values
+                                            ╘════════════════════════╛ Cannot convert type 'fun[i32]' to 'fun[...view[i32] -> i32]'
 
 [compilation failed]

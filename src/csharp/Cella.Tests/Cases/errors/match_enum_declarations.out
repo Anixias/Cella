@@ -97,13 +97,13 @@ Error at match_enum_declarations.ce:93:18
 
 Error at match_enum_declarations.ce:98:41
 97 │ 
-98 │ first[T]: fun(own value: T) -> nullable[T] = some(value)
+98 │ first[T]: fun(own value: T) -> nullable[T] => some(value)
                                              ^ 'nullable' requires 'T: null'
                                              | 'T' has no null
 
 Error at match_enum_declarations.ce:100:30
  99 │ 
-100 │ count: fun(numbers: nullable[i32]) -> i32 = 0
+100 │ count: fun(numbers: nullable[i32]) -> i32 => 0
                                    ╘═╛ 'nullable' requires 'T: null'
                                      | 'i32' has no null
 

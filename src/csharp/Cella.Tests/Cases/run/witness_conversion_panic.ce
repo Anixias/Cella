@@ -12,7 +12,7 @@ Narrow: trait
 
 u8: impl Narrow
 
-make[T: Narrow]: fun(value: i64) -> T = T(value)
+make[T: Narrow]: fun(value: i64) -> T => T(value)
 
 main: fun -> i32
 {

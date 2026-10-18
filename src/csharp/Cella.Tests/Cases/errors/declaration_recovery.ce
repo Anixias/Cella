@@ -1,7 +1,7 @@
 mod test
 
 limit: val i32 = (1 +
-first: fun -> i32 = (2 +
+first: fun -> i32 => (2 +
 
 second: fun(
 	a: i32,
@@ -10,7 +10,7 @@ second: fun(
 	ret a
 }
 
-third: fun -> i32 = (3 +
+third: fun -> i32 => (3 +
 fourth: fun -> i32
 {
 	ret (4 +
@@ -23,7 +23,7 @@ fifth: fun(
 	ret b
 }
 
-sixth: fun -> i32 = call(
+sixth: fun -> i32 => call(
 seventh: fun -> i32
 {
 	val x = (7 +

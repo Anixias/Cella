@@ -4,12 +4,12 @@ Atomic[T: atomic]: rec
 {
 	value: T
 
-	add: fun(imm self, amount: T) -> T = atomic *@self.value += amount
-	mask: fun(imm self, bits: T) -> T = atomic *@self.value &= bits
+	add: fun(imm self, amount: T) -> T => atomic *@self.value += amount
+	mask: fun(imm self, bits: T) -> T => atomic *@self.value &= bits
 }
 
-bump[T: atomic]: fun(counter: ptr[T], amount: T) -> T = atomic *counter += amount
-twice[T: atomic]: fun(counter: ptr[T], amount: T) -> T = bump(counter, amount)
+bump[T: atomic]: fun(counter: ptr[T], amount: T) -> T => atomic *counter += amount
+twice[T: atomic]: fun(counter: ptr[T], amount: T) -> T => bump(counter, amount)
 
 Color: enum
 {

@@ -16,7 +16,7 @@ Counter: rec
 		self.step = step
 	}
 
-	by: fun(step: i32) -> Counter = Counter(step)
+	by: fun(step: i32) -> Counter => Counter(step)
 
 	bump: fun(mut self)
 	{
@@ -28,7 +28,7 @@ Counter: rec
 		self.count += other.count
 	}
 
-	advance: pvt fun(self) -> i32 = self.step
+	advance: pvt fun(self) -> i32 => self.step
 }
 
 Shape: enum
@@ -36,9 +36,9 @@ Shape: enum
 	square(side: i32)
 	circle(radius: i32)
 
-	size: fun(self) -> i32 = self.area() + self.edges()
+	size: fun(self) -> i32 => self.area() + self.edges()
 
-	edges: pvt fun(self) -> i32 = match self
+	edges: pvt fun(self) -> i32 => match self
 	{
 		square(val side) => 4
 		circle(val radius) => 0
@@ -46,13 +46,13 @@ Shape: enum
 
 	pvt
 	{
-		area: fun(self) -> i32 = match self
+		area: fun(self) -> i32 => match self
 		{
 			square(val side) => side * side
 			circle(val radius) => Shape.approximate(radius)
 		}
 
-		approximate: fun(radius: i32) -> i32 = 3 * radius * radius
+		approximate: fun(radius: i32) -> i32 => 3 * radius * radius
 	}
 }
 
@@ -67,7 +67,7 @@ Camera: rec
 		self.dirty = true
 	}
 
-	position: fun(self) -> i32 = self.x
+	position: fun(self) -> i32 => self.x
 }
 
 Ledger: rec
@@ -89,7 +89,7 @@ Target: rec
 {
 	value: i32
 
-	label: fun(self) -> i32 = 1
+	label: fun(self) -> i32 => 1
 }
 
 Handle: rec
@@ -97,21 +97,21 @@ Handle: rec
 	target: req ptr[Target]
 	value: pvt i32
 
-	*: op(self) -> imm[Target] = imm *self.target
-	*: op(mut self) -> mut[Target] = mut *self.target
+	*: op(self) -> imm[Target] => imm *self.target
+	*: op(mut self) -> mut[Target] => mut *self.target
 
-	at: fun(target: ptr[Target]) -> Handle = Handle(target, 40)
-	label: pvt fun(self) -> i32 = 2
-	total: fun(self) -> i32 = self.value + self.label()
+	at: fun(target: ptr[Target]) -> Handle => Handle(target, 40)
+	label: pvt fun(self) -> i32 => 2
+	total: fun(self) -> i32 => self.value + self.label()
 }
 
-audit: mod fun(ledger: Ledger) -> i32 = ledger.total * 100 + ledger.entries
+audit: mod fun(ledger: Ledger) -> i32 => ledger.total * 100 + ledger.entries
 
 pvt
 {
 	scale: val i32 = 10
 
-	double: fun(value: i32) -> i32 = value * 2
+	double: fun(value: i32) -> i32 => value * 2
 }
 
 main: fun -> i32

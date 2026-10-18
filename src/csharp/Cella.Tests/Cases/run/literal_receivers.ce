@@ -17,13 +17,13 @@ Eq: trait
 
 str: impl Show + Eq
 {
-	show: fun(self) -> i32 = i32(self.byteLength)
-	==: op(a: str, b: str) -> bool = a.byteLength == b.byteLength
+	show: fun(self) -> i32 => i32(self.byteLength)
+	==: op(a: str, b: str) -> bool => a.byteLength == b.byteLength
 }
 
 i32: impl Show
 {
-	show: fun(self) -> i32 = self * 2
+	show: fun(self) -> i32 => self * 2
 }
 
 main: fun -> i32

@@ -7,7 +7,7 @@ Peek: trait
 
 game.Box: impl Peek
 {
-	peek: fun(imm self) -> i32 = self.v
+	peek: fun(imm self) -> i32 => self.v
 }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

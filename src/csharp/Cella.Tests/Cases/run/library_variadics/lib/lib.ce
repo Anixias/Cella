@@ -11,7 +11,7 @@ view[T]: pub ref rec
 		self.length = length
 	}
 
-	[]: op(self, i: usize) -> imm[T] = imm self.data[i]
+	[]: op(self, i: usize) -> imm[T] => imm self.data[i]
 }
 
 total: pub fun(...values: view[i32]) -> i32

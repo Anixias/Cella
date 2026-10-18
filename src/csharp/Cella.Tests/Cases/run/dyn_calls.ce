@@ -10,7 +10,7 @@ Shape: trait
 	area: fun(imm self) -> f64
 	scale: fun(mut self, factor: f64)
 	label: fun -> i32
-	twice: fun(imm self) -> f64 = self.area() * 2.0
+	twice: fun(imm self) -> f64 => self.area() * 2.0
 	sides: get(imm self) -> i32
 }
 
@@ -18,31 +18,31 @@ Circle: rec impl Shape
 {
 	radius: f64
 
-	area: fun(self) -> f64 = self.radius * self.radius * 3.0
+	area: fun(self) -> f64 => self.radius * self.radius * 3.0
 	scale: fun(mut self, factor: f64)
 	{
 		self.radius *= factor
 	}
 
-	label: fun -> i32 = 1
-	sides: get(self) -> i32 = 0
+	label: fun -> i32 => 1
+	sides: get(self) -> i32 => 0
 }
 
 Square: rec impl Shape
 {
 	side: f64
 
-	area: fun(self) -> f64 = self.side * self.side
+	area: fun(self) -> f64 => self.side * self.side
 	scale: fun(mut self, factor: f64)
 	{
 		self.side *= factor
 	}
 
-	label: fun -> i32 = 2
-	sides: get(self) -> i32 = 4
+	label: fun -> i32 => 2
+	sides: get(self) -> i32 => 4
 }
 
-describe: fun(imm shape: dyn[Shape]) -> f64 = shape.area() + shape.twice() * 10.0 + f64(shape.sides) * 1000.0
+describe: fun(imm shape: dyn[Shape]) -> f64 => shape.area() + shape.twice() * 10.0 + f64(shape.sides) * 1000.0
 
 grow: fun(mut shape: dyn[Shape]) -> f64
 {

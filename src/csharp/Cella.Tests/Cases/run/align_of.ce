@@ -63,11 +63,11 @@ pair[A, B]: rec
 	b: B
 }
 
-align[T]: fun -> usize = alignOf(T)
+align[T]: fun -> usize => alignOf(T)
 
-alignUp: fun(offset: usize, alignment: usize) -> usize = (offset + alignment - 1) / alignment * alignment
+alignUp: fun(offset: usize, alignment: usize) -> usize => (offset + alignment - 1) / alignment * alignment
 
-place[T]: fun(offset: usize) -> usize = alignUp(offset, alignOf(T))
+place[T]: fun(offset: usize) -> usize => alignUp(offset, alignOf(T))
 
 eight: val usize = alignOf(f64)
 

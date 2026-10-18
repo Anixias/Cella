@@ -1,4 +1,4 @@
 use geometry.area
 mod test
 
-second: fun -> i32 = 0
+second: fun -> i32 => 0

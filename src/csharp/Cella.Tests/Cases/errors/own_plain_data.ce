@@ -1,6 +1,6 @@
 mod test
 
-take: fun(own n: i32) -> i32 = n
+take: fun(own n: i32) -> i32 => n
 
 main: fun -> i32
 {

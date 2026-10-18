@@ -24,7 +24,7 @@ D: rec
 main: fun -> i32
 {
 	{
-		val ds = array[D, 3](fun(i) = D(i32(i)))
+		val ds = array[D, 3](fun(i) => D(i32(i)))
 		printf("built %d\n", ds[1].id)
 	}
 

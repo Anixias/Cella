@@ -48,10 +48,10 @@ Error at record_pattern_errors.ce:81:22
 81 │     Point(val x, y: val x) => x
                              ^ 'x' is bound more than once
 
-Error at record_pattern_errors.ce:84:35
+Error at record_pattern_errors.ce:84:36
 83 │ 
-84 │ uncovered: fun(p: Point) -> i32 = match p
-                                       ╘═══╛ This match doesn't handle every value of 'Point'
+84 │ uncovered: fun(p: Point) -> i32 => match p
+                                        ╘═══╛ This match doesn't handle every value of 'Point'
 
 Error at record_pattern_errors.ce:94:12
 93 │ {

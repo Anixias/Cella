@@ -21,9 +21,9 @@ Unit: rec
 	maxHp: i32
 	buffer: Buffer
 
-	make: fun(hp: i32) -> Unit = Unit(hp, hp, Buffer(hp))
+	make: fun(hp: i32) -> Unit => Unit(hp, hp, Buffer(hp))
 
-	isAlive: fun(imm self) -> bool = self.hp > 0
+	isAlive: fun(imm self) -> bool => self.hp > 0
 
 	takeDamage: fun(mut self, amount: i32) -> i32
 	{
@@ -38,9 +38,9 @@ Unit: rec
 			self.hp = self.maxHp
 	}
 
-	health: fun(mut self) -> mut[i32] = mut self.hp
+	health: fun(mut self) -> mut[i32] => mut self.hp
 
-	release: fun(own self) -> i32 = self.buffer.id
+	release: fun(own self) -> i32 => self.buffer.id
 }
 
 Point: rec
@@ -48,13 +48,13 @@ Point: rec
 	x: i32
 	y: i32
 
-	origin: fun -> Point = Point(0, 0)
+	origin: fun -> Point => Point(0, 0)
 
-	sum: fun(self) -> i32 = self.x + self.y
+	sum: fun(self) -> i32 => self.x + self.y
 
-	scaled: fun(self, factor: i32) -> Point = Point(self.x * factor, self.y * factor)
+	scaled: fun(self, factor: i32) -> Point => Point(self.x * factor, self.y * factor)
 
-	scaled: fun(self, factor: f64) -> Point = Point(i32(f64(self.x) * factor), i32(f64(self.y) * factor))
+	scaled: fun(self, factor: f64) -> Point => Point(i32(f64(self.x) * factor), i32(f64(self.y) * factor))
 
 	shift: fun(mut self, dx: i32, dy: i32)
 	{
@@ -90,9 +90,9 @@ Counter: rec
 		self.value += 1
 	}
 
-	get: fun(imm self) -> i32 = self.value
+	get: fun(imm self) -> i32 => self.value
 
-	log: fun(imm self) = printf("[%d] ", self.value)
+	log: fun(imm self) => printf("[%d] ", self.value)
 
 	drop: op
 	{
@@ -106,7 +106,7 @@ Holder: enum
 	held(counter: Counter)
 }
 
-apply: fun(make: fun[-> Point]) -> i32 = make().sum()
+apply: fun(make: fun[-> Point]) -> i32 => make().sum()
 
 main: fun -> i32
 {

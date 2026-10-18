@@ -28,4 +28,4 @@ b[T]: rec
 	a: ptr[a[array[T, 2]]]
 }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

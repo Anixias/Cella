@@ -17,7 +17,7 @@ Size: trait
 
 [T: Eq]: impl Describe
 {
-	name: fun(imm self) -> cstr = "comparable"
+	name: fun(imm self) -> cstr => "comparable"
 }
 
 Plain: rec
@@ -25,8 +25,8 @@ Plain: rec
 	value: i32
 }
 
-plainName: fun(imm plain: Plain) -> cstr = plain.name()
-anyName[T]: fun(imm value: T) -> cstr = value.name()
+plainName: fun(imm plain: Plain) -> cstr => plain.name()
+anyName[T]: fun(imm value: T) -> cstr => value.name()
 
 dynName: fun(imm plain: Plain) -> cstr
 {
@@ -34,4 +34,4 @@ dynName: fun(imm plain: Plain) -> cstr
 	ret view.name()
 }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

@@ -32,7 +32,7 @@ box[T]: rec
 {
 	value: T
 
-	wrap: fun(imm self) -> box[ptr[T]] = box[ptr[T]](null)
+	wrap: fun(imm self) -> box[ptr[T]] => box[ptr[T]](null)
 
 	drop: op
 	{

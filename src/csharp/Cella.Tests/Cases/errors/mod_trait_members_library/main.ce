@@ -5,7 +5,7 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-go[T: lib.Hash]: fun(imm v: T) -> u64 = v.helper()
+go[T: lib.Hash]: fun(imm v: T) -> u64 => v.helper()
 
 main: fun -> i32
 {

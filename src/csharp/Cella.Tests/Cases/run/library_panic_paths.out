@@ -1,4 +1,4 @@
 3
 [stderr]
-Panic at src/lib.ce:3:66: index out of bounds
+Panic at src/lib.ce:3:67: index out of bounds
 [exit code 101]

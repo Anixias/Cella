@@ -3,10 +3,10 @@ Error at computed_indices.ce:24:19
 24 │ val picked = own items[i]
                       ╘══════╛ Cannot move array elements at computed indices
 
-Error at computed_indices.ce:30:73
+Error at computed_indices.ce:30:74
 29 │ 
-30 │ parameter: fun(mut items: array[Buffer, 2], i: usize) -> i32 = take(own items[i])
-                                                                             ╘══════╛ Cannot move array elements at computed indices
+30 │ parameter: fun(mut items: array[Buffer, 2], i: usize) -> i32 => take(own items[i])
+                                                                              ╘══════╛ Cannot move array elements at computed indices
 
 Error at computed_indices.ce:42:2
 41 │ var items: array[Buffer, 2] = undef

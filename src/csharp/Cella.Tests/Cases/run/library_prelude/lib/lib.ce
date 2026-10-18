@@ -12,5 +12,5 @@ panic: pub op(message: str, location: str) -> never
 	exit(9)
 }
 
-greet: pub fun = printf("hello from the prelude\n")
-shout: pub fun = printf("lib shout\n")
+greet: pub fun => printf("hello from the prelude\n")
+shout: pub fun => printf("lib shout\n")

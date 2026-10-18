@@ -38,20 +38,20 @@ Error at returned_borrows.ce:90:27
 90 │     hold(val buffer) => ret buffer
                                  ╘════╛ Cannot return borrows of local variables
 
-Error at returned_borrows.ce:95:34
+Error at returned_borrows.ce:95:35
 94 │ 
-95 │ returnTemporary: fun -> Holder = Holder(make(3))
-                                      ╘═════════════╛ Cannot return borrows of unstored values
+95 │ returnTemporary: fun -> Holder => Holder(make(3))
+                                       ╘═════════════╛ Cannot return borrows of unstored values
 
-Error at returned_borrows.ce:97:55
+Error at returned_borrows.ce:97:56
 96 │ 
-97 │ returnOwned: fun(own buffer: Buffer) -> imm[Buffer] = imm buffer
-                                                           ╘════════╛ Cannot return borrows of 'own' parameters
+97 │ returnOwned: fun(own buffer: Buffer) -> imm[Buffer] => imm buffer
+                                                            ╘════════╛ Cannot return borrows of 'own' parameters
 
-Error at returned_borrows.ce:99:52
+Error at returned_borrows.ce:99:53
 98 │ 
-99 │ returnOwnedCopy: fun(own value: i32) -> imm[i32] = imm value
-                                                        ╘═══════╛ Cannot return borrows of 'own' parameters
+99 │ returnOwnedCopy: fun(own value: i32) -> imm[i32] => imm value
+                                                         ╘═══════╛ Cannot return borrows of 'own' parameters
 
 Error at returned_borrows.ce:104:7
 103 │ if a > b
@@ -63,14 +63,14 @@ Error at returned_borrows.ce:105:6
 105 │ ret imm b
           ╘═══╛ Cannot return borrows of copied parameters
 
-Error at returned_borrows.ce:108:52
+Error at returned_borrows.ce:108:53
 107 │ 
-108 │ returnCopiedField: fun(tally: Tally) -> imm[i32] = imm tally.step
-                                                         ╘════════════╛ Cannot return borrows of copied parameters
+108 │ returnCopiedField: fun(tally: Tally) -> imm[i32] => imm tally.step
+                                                          ╘════════════╛ Cannot return borrows of copied parameters
 
-Error at returned_borrows.ce:110:48
+Error at returned_borrows.ce:110:49
 109 │ 
-110 │ returnCopiedText: fun(text: str) -> imm[str] = imm text
-                                                     ╘══════╛ Cannot return borrows of copied parameters
+110 │ returnCopiedText: fun(text: str) -> imm[str] => imm text
+                                                      ╘══════╛ Cannot return borrows of copied parameters
 
 [compilation failed]

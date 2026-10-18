@@ -6,9 +6,9 @@ P: rec
 	b: i64
 }
 
-concrete: fun -> i32 = sizeOf(P)
+concrete: fun -> i32 => sizeOf(P)
 
-generic[T]: fun -> i32 = alignOf(T)
+generic[T]: fun -> i32 => alignOf(T)
 
 main: fun -> i32
 {

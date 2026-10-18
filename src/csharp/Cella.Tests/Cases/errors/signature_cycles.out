@@ -1,6 +1,6 @@
 Error at signature_cycles.ce:3:1
 2 │ 
-3 │ f: fun(x: array[i32, sizeOf(f)]) -> i32 = 0
+3 │ f: fun(x: array[i32, sizeOf(f)]) -> i32 => 0
     ^ 'f' depends on its own signature
 
 [compilation failed]

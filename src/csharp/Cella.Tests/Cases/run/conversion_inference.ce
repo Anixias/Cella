@@ -16,9 +16,9 @@ view[T]: ref rec
 		self.length = length
 	}
 
-	as[N: const usize]: op(imm values: array[T, N]) -> view[T] = view[T](@values, N)
+	as[N: const usize]: op(imm values: array[T, N]) -> view[T] => view[T](@values, N)
 
-	[]: op(self, i: usize) -> imm[T] = imm self.data[i]
+	[]: op(self, i: usize) -> imm[T] => imm self.data[i]
 }
 
 span[T]: ref rec
@@ -32,30 +32,30 @@ span[T]: ref rec
 		self.length = length
 	}
 
-	as[N: const usize]: op(mut values: array[T, N]) -> span[T] = span[T](@values, N)
+	as[N: const usize]: op(mut values: array[T, N]) -> span[T] => span[T](@values, N)
 
-	as: op(self) -> view[T] = view[T](self.data, self.length)
+	as: op(self) -> view[T] => view[T](self.data, self.length)
 
-	[]: op(self, i: usize) -> mut[T] = mut self.data[i]
+	[]: op(self, i: usize) -> mut[T] => mut self.data[i]
 }
 
-count[T]: fun(values: view[T]) -> usize = values.length
+count[T]: fun(values: view[T]) -> usize => values.length
 
-last[T]: fun(values: view[T]) -> imm[T] = values[values.length - 1]
+last[T]: fun(values: view[T]) -> imm[T] => values[values.length - 1]
 
 setFirst[T: noref]: fun(values: span[T], own value: T)
 {
 	values[0] = own value
 }
 
-second: fun(values: view[u16]) -> u16 = values[1]
+second: fun(values: view[u16]) -> u16 => values[1]
 
 setByte: fun(values: span[u8], value: u8)
 {
 	values[0] = value
 }
 
-whole: fun(mut values: array[i32, 4]) -> span[i32] = mut values
+whole: fun(mut values: array[i32, 4]) -> span[i32] => mut values
 
 main: fun -> i32
 {

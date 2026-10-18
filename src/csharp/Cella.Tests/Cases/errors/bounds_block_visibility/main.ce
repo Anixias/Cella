@@ -14,12 +14,12 @@ box[T]: rec
 
 box[T: Eq]: pub impl
 {
-	same: fun(imm self, imm other: box[T]) -> bool = self.value == other.value
+	same: fun(imm self, imm other: box[T]) -> bool => self.value == other.value
 }
 
 box[T: Eq]: mod impl
 {
-	equalTo: fun(imm self, imm value: T) -> bool = self.value == value
+	equalTo: fun(imm self, imm value: T) -> bool => self.value == value
 }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

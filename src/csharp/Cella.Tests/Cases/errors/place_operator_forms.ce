@@ -14,7 +14,7 @@ Box: rec
 {
 	pointer: req ptr[Buffer]
 
-	*: op(mut self) -> mut[Buffer] = mut *self.pointer
+	*: op(mut self) -> mut[Buffer] => mut *self.pointer
 }
 
 main: fun -> i32

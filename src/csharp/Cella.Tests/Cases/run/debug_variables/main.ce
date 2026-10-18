@@ -263,7 +263,7 @@ Show: trait
 
 i32: impl Show
 {
-	show: fun(self) = printf("%d\n", self)
+	show: fun(self) => printf("%d\n", self)
 }
 
 Pair[T: copy + noref]: rec
@@ -328,7 +328,7 @@ main: fun -> i32
 		ret y * scale
 	}
 
-	val owned = own fun(z: i32) -> i32 = z * scale
+	val owned = own fun(z: i32) -> i32 => z * scale
 	val shown: imm[dyn[Show]] = imm scale
 	val name = Name(4)
 	printf("main\n")

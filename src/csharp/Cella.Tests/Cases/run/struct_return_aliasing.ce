@@ -29,7 +29,7 @@ Mirror: rec
 	}
 }
 
-rev: fun(mut p: Point) -> Point = Point(p.y, p.x)
+rev: fun(mut p: Point) -> Point => Point(p.y, p.x)
 
 main: fun -> i32
 {

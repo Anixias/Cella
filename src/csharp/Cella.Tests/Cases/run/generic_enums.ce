@@ -28,8 +28,8 @@ nothing: const option[i32] = option.none
 pairs: const array[option[i16], 2] = [option.some(3), option.none]
 unwrapped: const i32 = match seven { some(val v) => v, none => 0 }
 
-read: fun(o: option[i32]) -> i32 = match o { some(val v) => v, none => -1 }
-readQualified: fun(o: option[i32]) -> i32 = match o { option.some(val v) => v * 10, option.none => 0 }
+read: fun(o: option[i32]) -> i32 => match o { some(val v) => v, none => -1 }
+readQualified: fun(o: option[i32]) -> i32 => match o { option.some(val v) => v * 10, option.none => 0 }
 
 half: fun(n: i32) -> result[i32, cstr]
 {

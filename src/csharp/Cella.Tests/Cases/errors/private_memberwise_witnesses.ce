@@ -5,7 +5,7 @@ Pair: rec
 	left: pvt i32
 	right: pvt i32
 
-	sum: fun(imm self) -> i32 = self.left + self.right
+	sum: fun(imm self) -> i32 => self.left + self.right
 }
 
 Open: rec
@@ -14,6 +14,6 @@ Open: rec
 	right: i32
 }
 
-make[T: new(i32, i32)]: fun -> T = T(3, 4)
+make[T: new(i32, i32)]: fun -> T => T(3, 4)
 
-main: fun -> i32 = make[Open]().left + make[Pair]().sum()
+main: fun -> i32 => make[Open]().left + make[Pair]().sum()

@@ -5,7 +5,7 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-pick: fun(text: str, index: usize) -> u8 = text[index]
+pick: fun(text: str, index: usize) -> u8 => text[index]
 
 main: fun -> i32
 {

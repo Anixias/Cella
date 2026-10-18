@@ -239,7 +239,7 @@ public sealed partial class CodeGenerator
 	private LLVMValueRef GetIntrinsic(string name, LLVMTypeRef functionType)
 	{
 		var function = current.Module.GetNamedFunction(name);
-		return function.Handle == IntPtr.Zero ? current.Module.AddFunction(name, functionType) : function;
+		return function.Handle == nint.Zero ? current.Module.AddFunction(name, functionType) : function;
 	}
 	
 	private uint CountBits(TypeSymbol type) =>

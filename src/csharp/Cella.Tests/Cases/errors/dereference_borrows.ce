@@ -30,9 +30,9 @@ BufferBox: rec
 		own *self.pointer = own buffer
 	}
 
-	*: op(imm self) -> imm[Buffer] = imm *self.pointer
+	*: op(imm self) -> imm[Buffer] => imm *self.pointer
 
-	*: op(mut self) -> mut[Buffer] = mut *self.pointer
+	*: op(mut self) -> mut[Buffer] => mut *self.pointer
 
 	drop: op
 	{
@@ -59,4 +59,4 @@ escape: fun -> imm[i32]
 	ret imm boxed.id
 }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

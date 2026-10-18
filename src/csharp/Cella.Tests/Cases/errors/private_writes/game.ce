@@ -7,7 +7,7 @@ Box: rec
 	inner: pvt set Inner
 	shape: pvt set Shape
 
-	make: fun -> Box = Box(0, [0, 0], Inner(0), Shape.dot(0))
+	make: fun -> Box => Box(0, [0, 0], Inner(0), Shape.dot(0))
 
 	reset: fun(mut self)
 	{

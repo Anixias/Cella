@@ -19,7 +19,7 @@ damage: fun(mut hp: i32, amount: i32)
 	hp -= amount
 }
 
-make: fun -> i32 = 1
+make: fun -> i32 => 1
 
 readOnly: fun(p: Point, n: i32, values: array[i32, 2])
 {

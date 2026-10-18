@@ -1,26 +1,26 @@
 Error at witness_constraints.ce:21:2
 20 │ 
-21 │ keep[V: copy]: fun(self, value: V) -> V = value
+21 │ keep[V: copy]: fun(self, value: V) -> V => value
      ╘══╛ 'keep' doesn't match 'Apply.keep'
 
 Error at witness_constraints.ce:22:2
-21 │ keep[V: copy]: fun(self, value: V) -> V = value
-22 │ tagged[V: Hash]: fun(self, imm value: V) -> i32 = 1
+21 │ keep[V: copy]: fun(self, value: V) -> V => value
+22 │ tagged[V: Hash]: fun(self, imm value: V) -> i32 => 1
      ╘════╛ 'tagged' doesn't match 'Apply.tagged'
 
 Error at witness_constraints.ce:23:2
-22 │ tagged[V: Hash]: fun(self, imm value: V) -> i32 = 1
-23 │ plain[V: noref]: fun(self, imm value: V) -> i32 = 2
+22 │ tagged[V: Hash]: fun(self, imm value: V) -> i32 => 1
+23 │ plain[V: noref]: fun(self, imm value: V) -> i32 => 2
      ╘═══╛ 'plain' doesn't match 'Apply.plain'
 
 Error at witness_constraints.ce:24:2
-23 │ plain[V: noref]: fun(self, imm value: V) -> i32 = 2
-24 │ cap[M: const u8]: fun(self) -> usize = 3
+23 │ plain[V: noref]: fun(self, imm value: V) -> i32 => 2
+24 │ cap[M: const u8]: fun(self) -> usize => 3
      ╘═╛ 'cap' doesn't match 'Apply.cap'
 
 Error at witness_constraints.ce:25:2
-24 │ cap[M: const u8]: fun(self) -> usize = 3
-25 │ other[M]: fun(self) -> usize = 4
+24 │ cap[M: const u8]: fun(self) -> usize => 3
+25 │ other[M]: fun(self) -> usize => 4
      ╘═══╛ 'other' doesn't match 'Apply.other'
 
 [compilation failed]

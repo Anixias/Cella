@@ -12,7 +12,7 @@ Result: ext enum
 	timeout
 }
 
-convert: fun(value: i64) -> Result = Result(value)
+convert: fun(value: i64) -> Result => Result(value)
 
 main: fun -> i32
 {

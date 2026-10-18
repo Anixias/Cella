@@ -10,7 +10,7 @@ Table: rec
 	items: array[i32, 50000]
 }
 
-first: fun(table: Table) -> i32 = table.items[0]
+first: fun(table: Table) -> i32 => table.items[0]
 
 main: fun -> i32
 {

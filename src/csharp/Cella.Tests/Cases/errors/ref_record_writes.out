@@ -1,21 +1,21 @@
 Error at ref_record_writes.ce:7:28
 6 │ 
-7 │ []: op(self, i: usize) -> mut[i32] = mut self.data[i]
+7 │ []: op(self, i: usize) -> mut[i32] => mut self.data[i]
                               ╘══════╛ Cannot return 'mut[i32]' from '[]' with 'self'
 
 Error at ref_record_writes.ce:8:17
-7 │ []: op(self, i: usize) -> mut[i32] = mut self.data[i]
-8 │ *: op(self) -> mut[i32] = mut *self.data
+7 │ []: op(self, i: usize) -> mut[i32] => mut self.data[i]
+8 │ *: op(self) -> mut[i32] => mut *self.data
                    ╘══════╛ Cannot return 'mut[i32]' from '*' with 'self'
 
 Error at ref_record_writes.ce:15:32
 14 │ 
-15 │ []: op(mut self, i: usize) -> imm[i32] = imm self.data[i]
+15 │ []: op(mut self, i: usize) -> imm[i32] => imm self.data[i]
                                    ╘══════╛ Cannot return 'imm[i32]' from '[]' with 'mut self'
 
 Error at ref_record_writes.ce:16:21
-15 │ []: op(mut self, i: usize) -> imm[i32] = imm self.data[i]
-16 │ *: op(mut self) -> imm[i32] = imm *self.data
+15 │ []: op(mut self, i: usize) -> imm[i32] => imm self.data[i]
+16 │ *: op(mut self) -> imm[i32] => imm *self.data
                         ╘══════╛ Cannot return 'imm[i32]' from '*' with 'mut self'
 
 [compilation failed]

@@ -15,22 +15,22 @@ Error at constant_context_overflow.ce:19:6
 
 Error at constant_context_overflow.ce:22:20
 21 │ 
-22 │ added: fun(x: u8 = u8(200) + 100) -> u8 = x
+22 │ added: fun(x: u8 = u8(200) + 100) -> u8 => x
                         ╘═══════════╛ Addition overflows 'u8'
 
 Error at constant_context_overflow.ce:23:22
-22 │ added: fun(x: u8 = u8(200) + 100) -> u8 = x
-23 │ negated: fun(x: i8 = -i8(-128)) -> i8 = x
+22 │ added: fun(x: u8 = u8(200) + 100) -> u8 => x
+23 │ negated: fun(x: i8 = -i8(-128)) -> i8 => x
                           ╘═══════╛ Negation overflows 'i8'
 
 Error at constant_context_overflow.ce:24:25
-23 │ negated: fun(x: i8 = -i8(-128)) -> i8 = x
-24 │ truncated: fun(x: i32 = i32(3e10)) -> i32 = x
+23 │ negated: fun(x: i8 = -i8(-128)) -> i8 => x
+24 │ truncated: fun(x: i32 = i32(3e10)) -> i32 => x
                              ╘═══════╛ '3e10' doesn't fit in 'i32'
 
 Error at constant_context_overflow.ce:25:27
-24 │ truncated: fun(x: i32 = i32(3e10)) -> i32 = x
-25 │ divided: fun(x: i32 = 5 / 0) -> i32 = x
+24 │ truncated: fun(x: i32 = i32(3e10)) -> i32 => x
+25 │ divided: fun(x: i32 = 5 / 0) -> i32 => x
                                ^ Division by zero
 
 Error at constant_context_overflow.ce:29:18

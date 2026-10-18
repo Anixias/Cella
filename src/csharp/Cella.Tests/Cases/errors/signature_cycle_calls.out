@@ -1,6 +1,6 @@
 Error at signature_cycle_calls.ce:3:1
 2 │ 
-3 │ f: fun(x: array[i32, n]) -> i32 = 1
+3 │ f: fun(x: array[i32, n]) -> i32 => 1
     ^ 'f' depends on its own signature
 
 Error at signature_cycle_calls.ce:5:1

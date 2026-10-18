@@ -1,7 +1,7 @@
 mod test
 
-pick: fun(a: i32, b: i64) -> i32 = 1
-pick: fun(a: i64, b: i32) -> i32 = 2
+pick: fun(a: i32, b: i64) -> i32 => 1
+pick: fun(a: i64, b: i32) -> i32 => 2
 
 main: fun -> i32
 {

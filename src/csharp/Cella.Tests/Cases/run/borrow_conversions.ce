@@ -14,14 +14,14 @@ Handle: rec
 {
 	sprite: Sprite
 
-	as: op(imm self) -> imm[Sprite] = imm self.sprite
+	as: op(imm self) -> imm[Sprite] => imm self.sprite
 
 	drop: op
 	{
 	}
 }
 
-get: fun(imm h: Handle) -> imm[Sprite] = h
+get: fun(imm h: Handle) -> imm[Sprite] => h
 
 main: fun -> i32
 {

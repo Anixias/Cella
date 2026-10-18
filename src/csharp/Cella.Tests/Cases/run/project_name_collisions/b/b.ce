@@ -1,8 +1,8 @@
 mod blib
 
-helped: pub fun -> i32 = util.helper()
+helped: pub fun -> i32 => util.helper()
 
-picked: pub fun -> i32 = util.pick(5)
+picked: pub fun -> i32 => util.pick(5)
 
 make: pub fun
 {

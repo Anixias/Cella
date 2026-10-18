@@ -30,14 +30,14 @@ Countdown: rec
 		ret self.left >= 0
 	}
 
-	*: op(imm self) -> imm[i32] = imm self.left
+	*: op(imm self) -> imm[i32] => imm self.left
 }
 
 Slots: rec
 {
 	values: array[i32, 3]
 
-	in: op(mut self) -> SlotCursor = SlotCursor(@self.values[0], 0, 0)
+	in: op(mut self) -> SlotCursor => SlotCursor(@self.values[0], 0, 0)
 }
 
 SlotCursor: rec
@@ -53,7 +53,7 @@ SlotCursor: rec
 		ret self.current < 3
 	}
 
-	*: op(mut self) -> mut[i32] = mut self.data[self.current]
+	*: op(mut self) -> mut[i32] => mut self.data[self.current]
 }
 
 Counted: rec

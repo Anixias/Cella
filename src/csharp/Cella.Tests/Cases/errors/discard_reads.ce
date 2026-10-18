@@ -1,6 +1,6 @@
 mod test
 
-read: fun(_: i32) -> i32 = _
+read: fun(_: i32) -> i32 => _
 
 main: fun -> i32
 {

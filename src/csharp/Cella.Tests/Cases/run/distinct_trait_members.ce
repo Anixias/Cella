@@ -19,11 +19,11 @@ P: rec impl A + B
 {
 	x: i32
 
-	size: get(self) -> i32 = 1
-	length: get(self) -> i32 = 2
+	size: get(self) -> i32 => 1
+	length: get(self) -> i32 => 2
 }
 
-g[T: A + B]: fun(imm value: T) -> i32 = value.size + value.length
+g[T: A + B]: fun(imm value: T) -> i32 => value.size + value.length
 
 main: fun -> i32
 {

@@ -12,4 +12,4 @@ Holder: rec
 
 saved: var fstr[Display] = "x"
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

@@ -21,7 +21,7 @@ String: rec
 		memcpy(self.data, text.data, text.byteLength)
 	}
 
-	asStr: fun(imm self) -> str = str(self.data, self.length)
+	asStr: fun(imm self) -> str => str(self.data, self.length)
 
 	drop: op
 	{
@@ -39,9 +39,9 @@ show: fun(text: str)
 	printf("[%.*s]\n", i32(text.byteLength), text.data)
 }
 
-fromCstr: fun(text: cstr) -> str = str(text, strlen(text))
+fromCstr: fun(text: cstr) -> str => str(text, strlen(text))
 
-slice: fun(text: str, start: usize, length: usize) -> str = str(text.data + start, length)
+slice: fun(text: str, start: usize, length: usize) -> str => str(text.data + start, length)
 
 main: fun -> i32
 {

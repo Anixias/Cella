@@ -9,7 +9,7 @@ Clock: rec
 {
 	hours: u8
 
-	+%: op(a: Clock, b: Clock) -> Clock = Clock((a.hours + b.hours) % 24)
+	+%: op(a: Clock, b: Clock) -> Clock => Clock((a.hours + b.hours) % 24)
 
 	+%=: op(mut self, other: Clock)
 	{
@@ -25,7 +25,7 @@ Spin: trait
 u8: impl Spin
 i32: impl Spin
 
-turn[T: Spin]: fun(imm a: T, imm b: T) -> T = a +% b
+turn[T: Spin]: fun(imm a: T, imm b: T) -> T => a +% b
 
 run: fun(a: u8, b: i32, c: u32, d: i128)
 {

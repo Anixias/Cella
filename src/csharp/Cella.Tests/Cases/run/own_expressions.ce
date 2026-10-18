@@ -32,11 +32,11 @@ Effect: enum
 	owned(buffer: Buffer)
 }
 
-same: fun(imm buffer: Buffer, address: ptr[Buffer]) -> bool = @buffer == address
-keep: fun(own count: i32) -> i32 = count
-take: fun(own buffer: Buffer) -> i32 = buffer.id
-give: fun(own buffer: Buffer) -> Buffer = own buffer
-flag: fun(value: bool) -> i32 = i32(value)
+same: fun(imm buffer: Buffer, address: ptr[Buffer]) -> bool => @buffer == address
+keep: fun(own count: i32) -> i32 => count
+take: fun(own buffer: Buffer) -> i32 => buffer.id
+give: fun(own buffer: Buffer) -> Buffer => own buffer
+flag: fun(value: bool) -> i32 => i32(value)
 
 main: fun -> i32
 {

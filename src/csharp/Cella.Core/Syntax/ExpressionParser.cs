@@ -730,11 +730,11 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 		
 		var returnType = Match(ref index, TokenType.OpArrow) ? ParseType(ref index) : null;
 		var (source, range) = (own ?? keyword).SourceLocation;
-		if (IsNextNewline(index) && Peek(index, TokenType.OpEqual))
+		if (IsNextNewline(index) && Peek(index, TokenType.OpFatArrow))
 			throw new ParseException(new Diagnostic(DiagnosticSeverity.Error, Tokens[index].SourceLocation,
-				"Cannot start a line with '='"));
+				"Cannot start a line with '=>'"));
 		
-		if (Match(ref index, TokenType.OpEqual))
+		if (Match(ref index, TokenType.OpFatArrow))
 		{
 			var expression = ParseExpression(ref index);
 			return new(keyword, parameters, returnType, expression, null,
@@ -746,7 +746,7 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 		}
 		
 		if (ParseBlock is null || !Match(ref index, out var openBrace, TokenType.OpOpenBrace))
-			throw Expected(index, ParseBlock is null ? "'='" : "'=' or '{'");
+			throw Expected(index, ParseBlock is null ? "'=>'" : "'=>' or '{'");
 		
 		var block = ParseBlock(ref index, openBrace) ?? new BlockStatementNode(openBrace.SourceLocation, []);
 		return new(keyword, parameters, returnType, null, block, new(source, range.Join(block.SourceLocation.Range)))
@@ -906,7 +906,8 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 	                                                           _assignmentOps.Contains(type) ||
 	                                                           _rangeOps.Contains(type) ||
 	                                                           type is TokenType.OpAmpersandAmpersand
-		                                                           or TokenType.OpBarBar or TokenType.KeywordIs);
+		                                                           or TokenType.OpBarBar or TokenType.KeywordIs
+		                                                           or TokenType.OpFatArrow);
 	
 	private bool CanStartExpression(int index)
 	{

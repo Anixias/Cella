@@ -8,7 +8,7 @@ Token: rec
 	{
 	}
 
-	get: fun(self) -> i32 = self.id
+	get: fun(self) -> i32 => self.id
 }
 
 Shape: trait
@@ -20,15 +20,15 @@ Card: rec impl Shape
 {
 	token: Token
 
-	area: fun(self) -> i32 = 1
+	area: fun(self) -> i32 => 1
 }
 
-show: fun(token: Token) -> i32 = token.id
+show: fun(token: Token) -> i32 => token.id
 
-keep[T]: fun(value: T) -> i32 = 0
+keep[T]: fun(value: T) -> i32 => 0
 
-copies[T: copy]: fun(value: T) -> i32 = 0
+copies[T: copy]: fun(value: T) -> i32 => 0
 
-holder: fun(f: fun[Token -> i32]) -> i32 = 0
+holder: fun(f: fun[Token -> i32]) -> i32 => 0
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

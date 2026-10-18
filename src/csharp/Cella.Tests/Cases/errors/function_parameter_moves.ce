@@ -21,7 +21,7 @@ Panel: rec
 
 	action: prop fun[i32 -> i32]
 	{
-		get(self) = self.handler
+		get(self) => self.handler
 		set(mut self, value) { self.handler = value }
 	}
 }
@@ -48,9 +48,9 @@ remember: fun(onClick: fun[])
 	val local: fun[] = onClick
 }
 
-back: fun(onClick: fun[]) -> fun[] = onClick
+back: fun(onClick: fun[]) -> fun[] => onClick
 
-wrap: fun(onClick: fun[]) -> Plain = Plain(onClick)
+wrap: fun(onClick: fun[]) -> Plain => Plain(onClick)
 
 call: fun(visit: fun[i32])
 {

@@ -11,12 +11,12 @@ span[T]: ref rec
 		self.length = length
 	}
 
-	as[N: const usize]: op(mut values: array[T, N]) -> span[T] = span[T](@values, N)
+	as[N: const usize]: op(mut values: array[T, N]) -> span[T] => span[T](@values, N)
 }
 
 fill: fun(values: span[i32], value: i32) {}
 
-keep: fun(values: span[i32]) -> span[i32] = values
+keep: fun(values: span[i32]) -> span[i32] => values
 
 local: fun -> span[i32]
 {
@@ -24,4 +24,4 @@ local: fun -> span[i32]
 	ret keep(mut items)
 }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

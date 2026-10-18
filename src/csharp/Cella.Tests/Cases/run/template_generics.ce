@@ -12,17 +12,17 @@ Display: trait
 
 str: impl Display
 {
-	print: fun(self) = printf("%.*s", i32(self.byteLength), self.data)
+	print: fun(self) => printf("%.*s", i32(self.byteLength), self.data)
 }
 
 i32: impl Display
 {
-	print: fun(self) = printf("%d", self)
+	print: fun(self) => printf("%d", self)
 }
 
 f64: impl Display
 {
-	print: fun(self) = printf("%.2f", self)
+	print: fun(self) => printf("%.2f", self)
 }
 
 say: fun(text: fstr[Display])
@@ -38,17 +38,17 @@ say: fun(text: fstr[Display])
 	text.piece(text.holes).print()
 }
 
-log[T: Display]: fun(label: str, imm value: T) = say("{label}: {value}\n")
+log[T: Display]: fun(label: str, imm value: T) => say("{label}: {value}\n")
 
-count[K: trait]: fun(text: fstr[K]) -> usize = text.holes
+count[K: trait]: fun(text: fstr[K]) -> usize => text.holes
 
-relay: fun(imm value: dyn[Display]) = say("relay {value}\n")
+relay: fun(imm value: dyn[Display]) => say("relay {value}\n")
 
 Box: rec
 {
 	value: i32
 
-	doubled: get(self) -> i32 = self.value * 2
+	doubled: get(self) -> i32 => self.value * 2
 }
 
 bump: fun(mut value: i32)

@@ -4,7 +4,7 @@ option[T]: enum { none, some(value: T) }
 
 E: enum { a, hit(n: i32) }
 
-takes: fun(o: option[i32]) -> i32 = 0
+takes: fun(o: option[i32]) -> i32 => 0
 
 qualified: fun -> i32
 {
@@ -15,7 +15,7 @@ qualified: fun -> i32
 	ret 0
 }
 
-named: fun -> i32 = takes(option[i32].none)
+named: fun -> i32 => takes(option[i32].none)
 
 nested: fun -> i32
 {
@@ -38,4 +38,4 @@ ownMut: fun -> i32
 	ret 0
 }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

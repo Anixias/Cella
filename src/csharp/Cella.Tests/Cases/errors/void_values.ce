@@ -21,8 +21,8 @@ greet: fun
 	printf("hi\n")
 }
 
-take: fun(x: i32) -> i32 = x
-answer: fun -> i32 = greet()
+take: fun(x: i32) -> i32 => x
+answer: fun -> i32 => greet()
 
 main: fun -> i32
 {

@@ -3,12 +3,12 @@ mod test
 main: fun -> i32
 {
 	var values = [10, 20, 30]
-	var first: ref fun[-> i32] = fun -> i32 = 0
-	var last: ref fun[-> i32] = fun -> i32 = 0
+	var first: ref fun[-> i32] = fun -> i32 => 0
+	var last: ref fun[-> i32] = fun -> i32 => 0
 	var i = 0
 	for mut v in values
 	{
-		val get = fun -> i32 = v
+		val get = fun -> i32 => v
 		if i == 0
 			first = get
 

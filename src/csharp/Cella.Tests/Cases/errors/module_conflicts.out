@@ -1,6 +1,6 @@
 Error at game.ce:3:1
 2 │ 
-3 │ geometry: fun -> i32 = 1
+3 │ geometry: fun -> i32 => 1
     ╘══════╛ 'game.geometry' is both a module and a member of 'game'
 
 Error at game\geometry.ce:1:5

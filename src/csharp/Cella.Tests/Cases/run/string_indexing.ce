@@ -7,9 +7,9 @@ ext
 
 second: val u8 = "hello"[1]
 
-pick: fun(text: str, index: usize) -> u8 = text[index]
+pick: fun(text: str, index: usize) -> u8 => text[index]
 
-byteAt: fun(text: cstr, index: usize) -> u8 = text[index]
+byteAt: fun(text: cstr, index: usize) -> u8 => text[index]
 
 main: fun -> i32
 {

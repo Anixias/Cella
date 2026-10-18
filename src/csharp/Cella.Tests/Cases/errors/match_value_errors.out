@@ -1,7 +1,7 @@
-Error at match_value_errors.ce:16:31
+Error at match_value_errors.ce:16:32
 15 │ 
-16 │ missing: fun(x: i32) -> i32 = match x
-                                   ╘═══╛ This match doesn't handle every value of 'i32'
+16 │ missing: fun(x: i32) -> i32 => match x
+                                    ╘═══╛ This match doesn't handle every value of 'i32'
 
 Error at match_value_errors.ce:24:2
 23 │ {
@@ -53,14 +53,14 @@ Warning at match_value_errors.ce:59:2
 59 │ != 2.0 => 2
      ╘════╛ Float patterns compare exactly
 
-Error at match_value_errors.ce:63:30
+Error at match_value_errors.ce:63:31
 62 │ 
-63 │ byteGap: fun(b: u8) -> i32 = match b
-                                  ╘═══╛ This match doesn't handle every value of 'u8'
+63 │ byteGap: fun(b: u8) -> i32 => match b
+                                   ╘═══╛ This match doesn't handle every value of 'u8'
 
-Error at match_value_errors.ce:69:30
+Error at match_value_errors.ce:69:31
 68 │ 
-69 │ flags: fun(b: bool) -> i32 = match b
-                                  ╘═══╛ This match doesn't handle every value of 'bool'
+69 │ flags: fun(b: bool) -> i32 => match b
+                                   ╘═══╛ This match doesn't handle every value of 'bool'
 
 [compilation failed]

@@ -6,7 +6,7 @@ Unit: rec
 
 	health: prop i32
 	{
-		get(self) = self.hp
+		get(self) => self.hp
 		set(mut self, value)
 		{
 			self.hp = value
@@ -14,7 +14,7 @@ Unit: rec
 	}
 }
 
-make: fun -> Unit = Unit(1)
+make: fun -> Unit => Unit(1)
 
 addOne: fun(mut value: i32)
 {
@@ -36,4 +36,4 @@ writes: fun(unit: Unit)
 	unit.health
 }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

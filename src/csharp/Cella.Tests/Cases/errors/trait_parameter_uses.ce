@@ -9,7 +9,7 @@ Circle: rec impl Shape
 {
 	r: f64
 
-	area: fun(self) -> f64 = self.r
+	area: fun(self) -> f64 => self.r
 }
 
 Text: rec
@@ -17,15 +17,15 @@ Text: rec
 	id: i32
 }
 
-call[K: trait]: fun(imm shape: dyn[K]) -> f64 = shape.area()
+call[K: trait]: fun(imm shape: dyn[K]) -> f64 => shape.area()
 
-test[K: trait]: fun(imm shape: dyn[K]) -> bool = shape is Circle
+test[K: trait]: fun(imm shape: dyn[K]) -> bool => shape is Circle
 
-erase[K: trait]: fun(circle: Circle) -> i32 = count[K](circle)
+erase[K: trait]: fun(circle: Circle) -> i32 => count[K](circle)
 
-count[K: trait]: fun(imm shape: dyn[K]) -> i32 = 1
+count[K: trait]: fun(imm shape: dyn[K]) -> i32 => 1
 
-size[K: trait]: fun -> usize = sizeOf(K)
+size[K: trait]: fun -> usize => sizeOf(K)
 
 construct[K: trait]: fun -> i32
 {
@@ -33,7 +33,7 @@ construct[K: trait]: fun -> i32
 	ret 0
 }
 
-apply[K: trait, T: K]: fun(imm value: T) -> i32 = 0
+apply[K: trait, T: K]: fun(imm value: T) -> i32 => 0
 
 main: fun -> i32
 {

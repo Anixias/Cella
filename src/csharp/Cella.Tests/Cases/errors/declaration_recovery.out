@@ -1,6 +1,6 @@
 Error at declaration_recovery.ce:4:6
 3 │ limit: val i32 = (1 +
-4 │ first: fun -> i32 = (2 +
+4 │ first: fun -> i32 => (2 +
          ^ Expected ')'
          | To match the '(' on line 3
 
@@ -16,7 +16,7 @@ Error at declaration_recovery.ce:8:5
        ^ Expected a type
 
 Error at declaration_recovery.ce:14:7
-13 │ third: fun -> i32 = (3 +
+13 │ third: fun -> i32 => (3 +
 14 │ fourth: fun -> i32
            ^ Expected ')'
            | To match the '(' on line 13
@@ -32,7 +32,7 @@ Error at declaration_recovery.ce:20:5
             ^ Expected a type
 
 Error at declaration_recovery.ce:27:8
-26 │ sixth: fun -> i32 = call(
+26 │ sixth: fun -> i32 => call(
 27 │ seventh: fun -> i32
             ^ Expected ',' or ')'
             | To match the '(' on line 26

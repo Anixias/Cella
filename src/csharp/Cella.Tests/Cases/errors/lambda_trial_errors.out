@@ -1,16 +1,16 @@
-Error at lambda_trial_errors.ce:11:42
+Error at lambda_trial_errors.ce:11:44
 10 │ 
-11 │ missingName: fun -> i32 = apply(fun(x) = missing)
-                                              ╘═════╛ Symbol 'missing' not found in this scope
+11 │ missingName: fun -> i32 => apply(fun(x) => missing)
+                                                ╘═════╛ Symbol 'missing' not found in this scope
 
-Error at lambda_trial_errors.ce:13:42
+Error at lambda_trial_errors.ce:13:44
 12 │ 
-13 │ wrongResult: fun -> i32 = apply(fun(x) = "s")
-                                              ╘═╛ Cannot convert type 'string literal' to 'i32'
+13 │ wrongResult: fun -> i32 => apply(fun(x) => "s")
+                                                ╘═╛ Cannot convert type 'string literal' to 'i32'
 
-Error at lambda_trial_errors.ce:15:28
+Error at lambda_trial_errors.ce:15:29
 14 │ 
-15 │ wrongPayload: fun -> i32 = read(some("text"))
-                                ╘══╛ No overload of 'read' accepts these arguments
+15 │ wrongPayload: fun -> i32 => read(some("text"))
+                                 ╘══╛ No overload of 'read' accepts these arguments
 
 [compilation failed]

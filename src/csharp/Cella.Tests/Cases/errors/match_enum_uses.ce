@@ -17,11 +17,11 @@ Point: rec
 	x: i32
 }
 
-wrap[T: null]: fun(own value: T) -> nullable[T] = some(value)
+wrap[T: null]: fun(own value: T) -> nullable[T] => some(value)
 
-unwrap[T: null]: fun(imm n: nullable[T]) -> T = T(n)
+unwrap[T: null]: fun(imm n: nullable[T]) -> T => T(n)
 
-describe: fun(s: socket) -> i32 = match s { valid(val h) => h }
+describe: fun(s: socket) -> i32 => match s { valid(val h) => h }
 
 main: fun -> i32
 {

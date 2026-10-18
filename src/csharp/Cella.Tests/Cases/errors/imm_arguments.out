@@ -25,7 +25,7 @@ Error at imm_arguments.ce:44:20
 
 Error at imm_arguments.ce:45:19
 44 │ val held = Holder(f)
-45 │ val lambda = fun(t: Token) -> i32 = t.id
+45 │ val lambda = fun(t: Token) -> i32 => t.id
                       ^ Cannot copy 'Token'
 
 [compilation failed]

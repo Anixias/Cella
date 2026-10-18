@@ -5,7 +5,7 @@ Point: rec
 	x: i32
 }
 
-helper: fun -> i32 = 1
+helper: fun -> i32 => 1
 
 main: fun -> i32
 {

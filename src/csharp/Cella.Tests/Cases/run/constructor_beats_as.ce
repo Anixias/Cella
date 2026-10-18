@@ -9,7 +9,7 @@ Meters: rec
 {
 	value: f64
 
-	as: op(value: i64) -> Meters = Meters(f64(value) * 2.0)
+	as: op(value: i64) -> Meters => Meters(f64(value) * 2.0)
 }
 
 Seconds: rec
@@ -21,7 +21,7 @@ Seconds: rec
 		self.value = value
 	}
 
-	as: op(value: i32) -> Seconds = Seconds(value)
+	as: op(value: i32) -> Seconds => Seconds(value)
 }
 
 main: fun -> i32

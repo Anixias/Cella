@@ -5,13 +5,13 @@ result[T, E]: enum
 	ok(value: T)
 	err(error: E)
 
-	?: op(own self) -> T = match own self
+	?: op(own self) -> T => match own self
 	{
 		ok(own value) => value
 		err(own error) => ret result.err(own error)
 	}
 }
 
-called: fun(r: result[i32, i32]) -> result[i32, i32] = result.ok(r.?())
+called: fun(r: result[i32, i32]) -> result[i32, i32] => result.ok(r.?())
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

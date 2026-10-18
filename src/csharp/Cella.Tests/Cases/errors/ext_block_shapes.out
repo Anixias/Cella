@@ -1,10 +1,10 @@
 Error at ext_block_shapes.ce:5:31
 4 │ {
-5 │     puts: fun(text: cstr) -> i32 = 0
-                                     ^ Cannot declare bodies for 'ext' functions
+5 │     puts: fun(text: cstr) -> i32 => 0
+                                     ╘╛ Cannot declare bodies for 'ext' functions
 
 Error at ext_block_shapes.ce:6:26
-5 │ puts: fun(text: cstr) -> i32 = 0
+5 │ puts: fun(text: cstr) -> i32 => 0
 6 │ abs: fun(x: i32) -> i32 { ret x }
                             ^ Cannot declare bodies for 'ext' functions
 

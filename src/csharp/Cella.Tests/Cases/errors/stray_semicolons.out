@@ -13,10 +13,10 @@ Error at members.ce:11:24
 11 │     area: fun(self) -> i32;
                                ^ Unexpected character ';'
 
-Error at members.ce:16:41
+Error at members.ce:16:42
 15 │ {
-16 │     sum: fun(self) -> i32 = self.x + self.y;
-                                                ^ Unexpected character ';'
+16 │     sum: fun(self) -> i32 => self.x + self.y;
+                                                 ^ Unexpected character ';'
 
 Error at statements.ce:5:11
 4 │ {

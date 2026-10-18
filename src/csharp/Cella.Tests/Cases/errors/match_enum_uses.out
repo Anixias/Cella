@@ -1,17 +1,17 @@
-Error at match_enum_uses.ce:20:56
+Error at match_enum_uses.ce:20:57
 19 │ 
-20 │ wrap[T: null]: fun(own value: T) -> nullable[T] = some(value)
-                                                            ╘═══╛ Cannot move 'T' values implicitly
+20 │ wrap[T: null]: fun(own value: T) -> nullable[T] => some(value)
+                                                             ╘═══╛ Cannot move 'T' values implicitly
 
-Error at match_enum_uses.ce:22:49
+Error at match_enum_uses.ce:22:50
 21 │ 
-22 │ unwrap[T: null]: fun(imm n: nullable[T]) -> T = T(n)
-                                                     ╘══╛ No constructor for 'T' accepts argument of type 'nullable[T]'
+22 │ unwrap[T: null]: fun(imm n: nullable[T]) -> T => T(n)
+                                                      ╘══╛ No constructor for 'T' accepts argument of type 'nullable[T]'
 
-Error at match_enum_uses.ce:24:35
+Error at match_enum_uses.ce:24:36
 23 │ 
-24 │ describe: fun(s: socket) -> i32 = match s { valid(val h) => h }
-                                       ╘═══╛ This match doesn't handle every case of 'socket': 'invalid'
+24 │ describe: fun(s: socket) -> i32 => match s { valid(val h) => h }
+                                        ╘═══╛ This match doesn't handle every case of 'socket': 'invalid'
 
 Error at match_enum_uses.ce:28:10
 27 │ {

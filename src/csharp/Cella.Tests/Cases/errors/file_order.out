@@ -9,7 +9,7 @@ Error at late.ce:3:5
         ╘══╛ Module name must precede all other declarations or imports
 
 Error at missing.ce:1:1
-1 │ main: fun -> i32 = 0
+1 │ main: fun -> i32 => 0
     ╘══╛ All files must begin with a module name
 
 [compilation failed]

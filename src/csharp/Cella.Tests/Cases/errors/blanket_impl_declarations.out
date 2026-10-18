@@ -18,14 +18,14 @@ Error at blanket_impl_declarations.ce:40:2
 40 │ [N: const usize]: impl Describe
       ^ Expected a type parameter
 
-Error at blanket_impl_declarations.ce:50:50
+Error at blanket_impl_declarations.ce:50:51
 49 │ 
-50 │ plainName: fun(imm plain: Plain) -> cstr = plain.name()
-                                                      ╘══╛ Type 'Plain' has no member 'name'
+50 │ plainName: fun(imm plain: Plain) -> cstr => plain.name()
+                                                       ╘══╛ Type 'Plain' has no member 'name'
 
-Error at blanket_impl_declarations.ce:51:47
-50 │ plainName: fun(imm plain: Plain) -> cstr = plain.name()
-51 │ anyName[T]: fun(imm value: T) -> cstr = value.name()
-                                                   ╘══╛ Type 'T' has no member 'name'
+Error at blanket_impl_declarations.ce:51:48
+50 │ plainName: fun(imm plain: Plain) -> cstr => plain.name()
+51 │ anyName[T]: fun(imm value: T) -> cstr => value.name()
+                                                    ╘══╛ Type 'T' has no member 'name'
 
 [compilation failed]

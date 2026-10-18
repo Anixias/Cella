@@ -31,7 +31,7 @@ boost: fun(mut e: Effect)
 	}
 }
 
-describe: fun(e: Effect) -> i32 = match e
+describe: fun(e: Effect) -> i32 => match e
 {
 	hit(val n) => n
 	pair(val l, val r) => l * 100 + r

@@ -1,6 +1,6 @@
 mod game
 
-step: mod fun(value: i32) -> i32 = value + 1
+step: mod fun(value: i32) -> i32 => value + 1
 
 counter[T]: rec
 {
@@ -28,9 +28,9 @@ pair[A, B]: rec
 		self.id = id
 	}
 
-	sameId: fun(imm self, imm other: pair[A, B]) -> bool = self.id == other.id
+	sameId: fun(imm self, imm other: pair[A, B]) -> bool => self.id == other.id
 
-	flippedId: fun(imm self, imm other: pair[B, A]) -> bool = self.id == other.id
+	flippedId: fun(imm self, imm other: pair[B, A]) -> bool => self.id == other.id
 }
 
 wrapper[T: noref]: rec
@@ -42,7 +42,7 @@ wrapper[T: noref]: rec
 		self.inner = util.cell[T](own value)
 	}
 
-	hits: fun(imm self) -> i32 = self.inner.hits
+	hits: fun(imm self) -> i32 => self.inner.hits
 }
 
 peek: fun -> i32

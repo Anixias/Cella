@@ -6,8 +6,8 @@ option[T]: enum
 	some(value: T)
 }
 
-pick: fun(o: option[i32]) -> i32 = 0
-both[T]: fun(imm o: option[T]) -> i32 = 0
+pick: fun(o: option[i32]) -> i32 => 0
+both[T]: fun(imm o: option[T]) -> i32 => 0
 
 shapes: fun
 {
@@ -18,4 +18,4 @@ shapes: fun
 	val declared: option[i32] = nnone
 }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

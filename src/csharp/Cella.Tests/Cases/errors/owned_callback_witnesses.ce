@@ -9,7 +9,7 @@ Caller: rec impl Sink
 {
 	base: i32
 
-	take: fun(self, own value: fun[-> i32]) -> i32 = value() + self.base
+	take: fun(self, own value: fun[-> i32]) -> i32 => value() + self.base
 }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

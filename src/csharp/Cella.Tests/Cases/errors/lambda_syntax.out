@@ -1,7 +1,7 @@
 Error at lambda_syntax.ce:6:1
 5 │     val a = fun(x: i32)
 6 │ }
-    ^ Expected '=' or '{'
+    ^ Expected '=>' or '{'
 
 Error at lambda_syntax.ce:10:21
  9 │ {
@@ -11,7 +11,7 @@ Error at lambda_syntax.ce:10:21
 
 Error at lambda_syntax.ce:15:17
 14 │ {
-15 │     val c = fun(own) = 1
+15 │     val c = fun(own) => 1
                         ^ Expected a parameter name
 
 [compilation failed]

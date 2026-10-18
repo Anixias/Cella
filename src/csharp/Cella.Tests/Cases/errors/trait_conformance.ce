@@ -38,39 +38,39 @@ Wrong: rec impl Hash
 {
 	x: i32
 
-	hash: fun(self) -> i32 = 0
+	hash: fun(self) -> i32 => 0
 	put: fun(self, value: i32) { }
-	==: op(a: Wrong, b: Wrong) -> bool = true
+	==: op(a: Wrong, b: Wrong) -> bool => true
 }
 
 Box: rec impl Sized
 {
 	cap: i32
 
-	size: get(self) -> u8 = 0
-	limit: get(self) -> i32 = self.cap
+	size: get(self) -> u8 => 0
+	limit: get(self) -> i32 => self.cap
 }
 
 Twice: rec impl Hash
 {
 	x: i32
 
-	hash: fun(self) -> u64 = 1
+	hash: fun(self) -> u64 => 1
 	put: fun(mut self, value: i32) { }
-	==: op(a: Twice, b: Twice) -> bool = true
+	==: op(a: Twice, b: Twice) -> bool => true
 }
 
 Twice: impl Hash
 {
-	hash: fun(self) -> u64 = 2
+	hash: fun(self) -> u64 => 2
 }
 
 Both: rec impl Num + Num
 {
 	x: i32
 
-	+: op(a: Both, b: Both) -> Both = a
-	~: op(self) -> Both = self
+	+: op(a: Both, b: Both) -> Both => a
+	~: op(self) -> Both => self
 }
 
 Buffer: rec impl Make
@@ -102,7 +102,7 @@ Named: trait
 
 keyed[T]: impl Named
 {
-	name: fun(imm self) -> i32 = 0
+	name: fun(imm self) -> i32 => 0
 }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

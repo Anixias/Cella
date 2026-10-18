@@ -5,7 +5,7 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-increment: fun(value: u8) -> u8 = value + 1
+increment: fun(value: u8) -> u8 => value + 1
 
 main: fun -> i32
 {

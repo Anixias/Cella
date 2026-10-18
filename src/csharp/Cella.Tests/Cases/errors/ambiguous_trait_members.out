@@ -1,7 +1,7 @@
-Error at ambiguous_trait_members.ce:61:47
+Error at ambiguous_trait_members.ce:61:48
 60 │ 
-61 │ g[T: A + B]: fun(imm value: T) -> i32 = value.size
-                                                   ╘══╛ Reference to 'size' is ambiguous
+61 │ g[T: A + B]: fun(imm value: T) -> i32 => value.size
+                                                    ╘══╛ Reference to 'size' is ambiguous
 
 Error at ambiguous_trait_members.ce:66:25
 65 │ var p = P(0)

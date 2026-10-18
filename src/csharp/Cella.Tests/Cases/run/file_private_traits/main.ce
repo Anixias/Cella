@@ -8,17 +8,17 @@ ext
 Measure: pvt trait
 {
 	size: fun(imm self) -> i32
-	double: fun(imm self) -> i32 = self.size() * 2
+	double: fun(imm self) -> i32 => self.size() * 2
 }
 
 Box: pvt rec impl Measure
 {
 	side: i32
 
-	size: fun(imm self) -> i32 = self.side
+	size: fun(imm self) -> i32 => self.side
 }
 
-total: pvt fun(imm value: dyn[Measure]) -> i32 = value.double()
+total: pvt fun(imm value: dyn[Measure]) -> i32 => value.double()
 
 main: fun -> i32
 {

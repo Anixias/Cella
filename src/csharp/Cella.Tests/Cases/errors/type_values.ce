@@ -51,4 +51,4 @@ label: fun -> i32
 	ret 0
 }
 
-main: fun -> i32 = parameter(1)
+main: fun -> i32 => parameter(1)

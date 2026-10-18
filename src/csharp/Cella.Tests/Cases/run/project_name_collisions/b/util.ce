@@ -5,9 +5,9 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-helper: fun -> i32 = 20
+helper: fun -> i32 => 20
 
-pick[T]: fun(imm x: T) -> i32 = 300
+pick[T]: fun(imm x: T) -> i32 => 300
 
 Res: rec
 {

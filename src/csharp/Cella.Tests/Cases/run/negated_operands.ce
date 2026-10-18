@@ -9,10 +9,10 @@ Vector: rec
 {
 	x: i32
 
-	-: op(self) -> Vector = Vector(-self.x * 10)
+	-: op(self) -> Vector => Vector(-self.x * 10)
 }
 
-square: fun(x: i32) -> i32 = x * x
+square: fun(x: i32) -> i32 => x * x
 
 main: fun -> i32
 {

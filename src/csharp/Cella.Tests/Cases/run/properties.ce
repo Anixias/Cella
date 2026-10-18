@@ -16,7 +16,7 @@ clamp: fun(value: i32, low: i32, high: i32) -> i32
 	ret value
 }
 
-double: fun(value: i32) -> i32 = value * 2
+double: fun(value: i32) -> i32 => value * 2
 
 Unit: rec
 {
@@ -34,7 +34,7 @@ Unit: rec
 
 	health: prop i32
 	{
-		get(self) = self.hp
+		get(self) => self.hp
 		set(mut self, value)
 		{
 			self.hp = clamp(value, 0, self.maxHp)
@@ -43,14 +43,14 @@ Unit: rec
 
 	ratio: prop i32
 	{
-		get(self) -> i32 = self.hp * 100 / self.maxHp
+		get(self) -> i32 => self.hp * 100 / self.maxHp
 		set(mut self, value: i32)
 		{
 			self.hp = self.maxHp * value / 100
 		}
 	}
 
-	isAlive: get(self) -> bool = self.hp > 0
+	isAlive: get(self) -> bool => self.hp > 0
 
 	lookups: get(mut self) -> i32
 	{
@@ -58,16 +58,16 @@ Unit: rec
 		ret self.hits
 	}
 
-	count: get -> i32 = created
+	count: get -> i32 => created
 
 	reset: set(value: i32)
 	{
 		created = value
 	}
 
-	scaler: get(self) -> fun[i32 -> i32] = double
+	scaler: get(self) -> fun[i32 -> i32] => double
 
-	twice: fun -> i32 = count * 2
+	twice: fun -> i32 => count * 2
 
 	restart: fun
 	{
@@ -87,7 +87,7 @@ Inventory: rec
 
 	new: op = default
 
-	first: get(imm self) -> imm[Item] = imm self.items[0]
+	first: get(imm self) -> imm[Item] => imm self.items[0]
 
 	add: fun(mut self, item: Item)
 	{

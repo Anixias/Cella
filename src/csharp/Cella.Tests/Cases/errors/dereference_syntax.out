@@ -1,6 +1,6 @@
 Error at dereference_syntax.ce:12:2
 11 │ 
-12 │ *: fun(self) -> imm[Buffer] = imm *self.pointer
+12 │ *: fun(self) -> imm[Buffer] => imm *self.pointer
      ^ Invalid operator declaration
 
 [compilation failed]

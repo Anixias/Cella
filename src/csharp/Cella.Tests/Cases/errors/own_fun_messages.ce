@@ -10,30 +10,30 @@ Counter[F: fun[-> i32]]: rec
 	next: F
 }
 
-first[T]: fun(own a: T, own b: T) -> i32 = 0
+first[T]: fun(own a: T, own b: T) -> i32 => 0
 
 E: enum { a, b }
 
 reassign: fun -> i32
 {
 	val a = 1
-	var c = Counter(own fun -> i32 = a)
-	c = Counter(own fun -> i32 = a + 1)
+	var c = Counter(own fun -> i32 => a)
+	c = Counter(own fun -> i32 => a + 1)
 	ret c.next()
 }
 
 infer: fun -> i32
 {
 	val a = 1
-	ret first(own fun -> i32 = a, own fun -> i32 = a)
+	ret first(own fun -> i32 => a, own fun -> i32 => a)
 }
 
 arms: fun -> i32
 {
 	val a = 1
 	val e = E.a
-	val f = match e { a => own fun -> i32 = a, b => own fun -> i32 = a + 1 }
+	val f = match e { a => own fun -> i32 => a, b => own fun -> i32 => a + 1 }
 	ret 0
 }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

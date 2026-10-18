@@ -6,7 +6,7 @@ box[i32]: rec { value: i32 }
 
 Self: trait { }
 
-str: fun = 0
+str: fun => 0
 
 ptr[T]: rec { value: T }
 
@@ -14,7 +14,7 @@ array: val i32 = 1
 
 Holder: rec
 {
-	pick[bool]: fun(imm value: bool) -> i32 = 0
+	pick[bool]: fun(imm value: bool) -> i32 => 0
 }
 
 ext
@@ -22,4 +22,4 @@ ext
 	cstr: fun -> i32
 }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

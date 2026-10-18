@@ -9,9 +9,9 @@ Text: rec
 {
 	id: i32
 
-	<: op(imm a: Text, imm b: Text) -> bool = a.id < b.id
-	<=: op(own a: Text, imm b: Text) -> bool = a.id <= b.id
-	>: op(imm a: Text, own b: Text) -> bool = a.id > b.id
+	<: op(imm a: Text, imm b: Text) -> bool => a.id < b.id
+	<=: op(own a: Text, imm b: Text) -> bool => a.id <= b.id
+	>: op(imm a: Text, own b: Text) -> bool => a.id > b.id
 
 	drop: op
 	{

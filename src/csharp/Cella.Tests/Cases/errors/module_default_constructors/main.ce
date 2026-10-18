@@ -1,7 +1,7 @@
 mod test
 use geo.*
 
-blank[T: default]: fun -> i32 = 0
+blank[T: default]: fun -> i32 => 0
 
 main: fun -> i32
 {

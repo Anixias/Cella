@@ -4,10 +4,10 @@ Token: own rec
 {
 	id: i32
 
-	show: fun(self) -> i32 = self.id
-	peek: fun(imm self) -> i32 = self.id
+	show: fun(self) -> i32 => self.id
+	peek: fun(imm self) -> i32 => self.id
 }
 
-take: fun(t: Token) -> i32 = t.id
+take: fun(t: Token) -> i32 => t.id
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

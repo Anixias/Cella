@@ -17,4 +17,4 @@ f: fun(c: bool) -> i32
 		ret 1
 }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

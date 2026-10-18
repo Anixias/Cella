@@ -45,12 +45,12 @@ Error at ext_signature_enums.ce:46:18
 
 Error at ext_signature_enums.ce:51:21
 50 │ 
-51 │ swap: ext fun(team: Team) -> Team = team
+51 │ swap: ext fun(team: Team) -> Team => team
                          ╘══╛ Cannot use plain enums in 'ext' signatures
 
 Error at ext_signature_enums.ce:51:30
 50 │ 
-51 │ swap: ext fun(team: Team) -> Team = team
+51 │ swap: ext fun(team: Team) -> Team => team
                                   ╘══╛ Cannot use plain enums in 'ext' signatures
 
 [compilation failed]

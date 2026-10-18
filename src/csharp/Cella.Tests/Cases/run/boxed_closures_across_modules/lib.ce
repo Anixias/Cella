@@ -17,7 +17,7 @@ boxed[K: trait]: pub rec
 		ret boxed[K](memory)
 	}
 
-	*: op(imm self) -> imm[dyn[K]] = imm *self.object
+	*: op(imm self) -> imm[dyn[K]] => imm *self.object
 
 	drop: op
 	{
@@ -30,5 +30,5 @@ Counter[F: fun[-> i32]]: pub rec
 {
 	f: F
 
-	get: fun(imm self) -> i32 = self.f()
+	get: fun(imm self) -> i32 => self.f()
 }

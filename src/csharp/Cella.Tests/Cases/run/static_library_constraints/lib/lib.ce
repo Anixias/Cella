@@ -14,16 +14,16 @@ box[T]: pub rec
 
 box[T: Eq]: impl
 {
-	same: fun(imm self, imm other: box[T]) -> bool = self.value == other.value
+	same: fun(imm self, imm other: box[T]) -> bool => self.value == other.value
 }
 
 cell[K: trait]: pub rec
 {
 	object: ptr[dyn[K]]
 
-	of[T: K]: fun(value: ptr[T]) -> cell[K] = cell[K](value)
+	of[T: K]: fun(value: ptr[T]) -> cell[K] => cell[K](value)
 
-	*: op(self) -> imm[dyn[K]] = imm *self.object
+	*: op(self) -> imm[dyn[K]] => imm *self.object
 }
 
 holder[T]: pub rec
@@ -36,7 +36,7 @@ holder[T]: pub rec
 	}
 }
 
-make[T: new]: pub fun -> T = T()
+make[T: new]: pub fun -> T => T()
 
 Meters: pub rec
 {
@@ -48,8 +48,8 @@ Meters: pub rec
 	}
 }
 
-build[T: new(i32)]: pub fun(value: i32) -> T = T(value)
+build[T: new(i32)]: pub fun(value: i32) -> T => T(value)
 
-twin[T: copy]: pub fun(value: T) -> box[T] = box(value)
+twin[T: copy]: pub fun(value: T) -> box[T] => box(value)
 
-measure[K: trait, T: K]: pub fun(value: ptr[T], action: fun[imm dyn[K] -> f64]) -> f64 = action(imm *cell[K].of(value))
+measure[K: trait, T: K]: pub fun(value: ptr[T], action: fun[imm dyn[K] -> f64]) -> f64 => action(imm *cell[K].of(value))

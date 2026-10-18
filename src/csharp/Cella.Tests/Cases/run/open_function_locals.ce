@@ -5,11 +5,11 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-ident[T]: fun(own x: T) -> T = x
-over: fun(x: i32) -> i32 = x + 1
-over: fun(x: f64) -> i32 = 7
+ident[T]: fun(own x: T) -> T => x
+over: fun(x: i32) -> i32 => x + 1
+over: fun(x: f64) -> i32 => 7
 
-apply: fun(f: fun[own i32 -> i32], x: i32) -> i32 = f(x)
+apply: fun(f: fun[own i32 -> i32], x: i32) -> i32 => f(x)
 
 main: fun -> i32
 {

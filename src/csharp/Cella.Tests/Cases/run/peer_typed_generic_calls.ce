@@ -5,7 +5,7 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-make[T: new]: fun -> T = T()
+make[T: new]: fun -> T => T()
 
 main: fun -> i32
 {

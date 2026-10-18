@@ -95,7 +95,7 @@ public sealed partial class CodeGenerator
 			: $"{target.FunctionValue.Name}$fun";
 		
 		var existing = current.Module.GetNamedFunction(name);
-		if (existing.Handle != IntPtr.Zero)
+		if (existing.Handle != nint.Zero)
 			return existing;
 		
 		var parameterTypes = adapts
@@ -140,7 +140,7 @@ public sealed partial class CodeGenerator
 		var target = current.Functions[function];
 		var name = $"{target.FunctionValue.Name}$ext";
 		var existing = current.Module.GetNamedFunction(name);
-		if (existing.Handle != IntPtr.Zero)
+		if (existing.Handle != nint.Zero)
 			return existing;
 		
 		var signature = ClassifyC(function.Signature.ParameterTypes, function.Signature.ReturnType);

@@ -38,37 +38,37 @@ pair[A, B]: rec
 
 i32: impl Hash
 {
-	hash: fun(self) -> u64 = u64(self)
+	hash: fun(self) -> u64 => u64(self)
 }
 
 box[i32]: impl Show
 {
-	show: fun(self) -> i32 = i32(sizeOf(i32)) + self.value
+	show: fun(self) -> i32 => i32(sizeOf(i32)) + self.value
 }
 
 box[f64]: impl Show
 {
-	show: fun(self) -> i32 = 100
+	show: fun(self) -> i32 => 100
 }
 
 box[K: Hash]: impl Tag
 {
-	tag: fun(imm self) -> i32 = 7
+	tag: fun(imm self) -> i32 => 7
 }
 
 pair[T, Point]: impl Show
 {
-	show: fun(imm self) -> i32 = self.second.x * 10
+	show: fun(imm self) -> i32 => self.second.x * 10
 }
 
 pair[i32, i32]: impl
 {
-	sum: fun(self) -> i32 = self.first + self.second
+	sum: fun(self) -> i32 => self.first + self.second
 }
 
-total[T: Show]: fun(imm value: T) -> i32 = value.show()
+total[T: Show]: fun(imm value: T) -> i32 => value.show()
 
-viaDyn: fun(imm value: dyn[Show]) -> i32 = value.show()
+viaDyn: fun(imm value: dyn[Show]) -> i32 => value.show()
 
 main: fun -> i32
 {

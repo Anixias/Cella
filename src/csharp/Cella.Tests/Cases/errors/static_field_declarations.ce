@@ -14,7 +14,7 @@ Unit: rec
 	hidden: pvt const Node = Node(2)
 	cycle: const i32 = cycle + 1
 
-	describe: fun -> i32 = 0
+	describe: fun -> i32 => 0
 	describe: const i32 = 2
 }
 
@@ -24,4 +24,4 @@ Kind: enum
 	first: const i32 = 1
 }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

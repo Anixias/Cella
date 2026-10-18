@@ -8,7 +8,7 @@ Eq: pub trait
 Ord: pub trait req Eq
 {
 	<: op(imm a: Self, imm b: Self) -> bool
-	<=: op(imm a: Self, imm b: Self) -> bool = a < b || a == b
+	<=: op(imm a: Self, imm b: Self) -> bool => a < b || a == b
 }
 
 Named: pub trait
@@ -26,14 +26,14 @@ Circle: pub rec impl Named + Shape
 	radius: f64
 	id: i32
 
-	name: fun(self) -> i32 = self.id
-	area: fun(self) -> f64 = self.radius * 2.0
+	name: fun(self) -> i32 => self.id
+	area: fun(self) -> f64 => self.radius * 2.0
 }
 
 i32: impl Eq + Ord
 
-within[T: Ord]: pub fun(imm value: T, imm low: T, imm high: T) -> bool = low <= value && value <= high
+within[T: Ord]: pub fun(imm value: T, imm low: T, imm high: T) -> bool => low <= value && value <= high
 
-label: pub fun(imm item: dyn[Named]) -> i32 = item.name()
+label: pub fun(imm item: dyn[Named]) -> i32 => item.name()
 
-describe: pub fun(imm shape: dyn[Shape]) -> f64 = shape.area() + f64(shape.name() + label(imm shape))
+describe: pub fun(imm shape: dyn[Shape]) -> f64 => shape.area() + f64(shape.name() + label(imm shape))

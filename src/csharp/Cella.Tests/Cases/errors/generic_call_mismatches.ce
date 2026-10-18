@@ -1,8 +1,8 @@
 mod test
 
-id[T]: fun(own a: T) -> T = own a
-pick[T]: fun(own a: T, own b: T) -> T = own a
-sum[N: const usize]: fun(values: array[i32, N]) -> i32 = 0
+id[T]: fun(own a: T) -> T => own a
+pick[T]: fun(own a: T, own b: T) -> T => own a
+sum[N: const usize]: fun(values: array[i32, N]) -> i32 => 0
 
 main: fun -> i32
 {

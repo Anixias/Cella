@@ -18,7 +18,7 @@ Outer: rec
 {
 	pointer: req ptr[BufferBox]
 
-	*: op(imm self) -> imm[BufferBox] = imm *self.pointer
+	*: op(imm self) -> imm[BufferBox] => imm *self.pointer
 
 	drop: op
 	{
@@ -29,15 +29,15 @@ BufferBox: rec
 {
 	pointer: req ptr[Buffer]
 
-	*: op(imm self) -> imm[Buffer] = imm *self.pointer
+	*: op(imm self) -> imm[Buffer] => imm *self.pointer
 
 	drop: op
 	{
 	}
 }
 
-deep: fun(imm outer: Outer) -> i32 = outer.id
+deep: fun(imm outer: Outer) -> i32 => outer.id
 
-notPointer: fun(imm value: Buffer) -> i32 = (*value).id
+notPointer: fun(imm value: Buffer) -> i32 => (*value).id
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

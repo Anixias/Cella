@@ -1,6 +1,6 @@
 mod test
 
-f: fun(x: i32) -> i32 = x
+f: fun(x: i32) -> i32 => x
 
 called: fun -> i32
 {
@@ -17,4 +17,4 @@ indexed: fun -> i32
 	ret 0
 }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

@@ -1,6 +1,6 @@
 mod test
 
-first: fun(fun: i32) -> i32 = 0
+first: fun(fun: i32) -> i32 => 0
 
 second: fun -> i32
 {
@@ -14,4 +14,4 @@ Mode: enum
 	fun
 }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

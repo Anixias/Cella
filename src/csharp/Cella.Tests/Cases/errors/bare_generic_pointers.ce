@@ -10,6 +10,6 @@ Holder: rec
 	p: ptr[box]
 }
 
-take: fun(p: ptr[box]) -> i32 = 0
+take: fun(p: ptr[box]) -> i32 => 0
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

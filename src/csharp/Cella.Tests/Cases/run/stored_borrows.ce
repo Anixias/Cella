@@ -58,7 +58,7 @@ Scope: ref rec
 	}
 }
 
-first: fun(token: Token) -> str = token.text
+first: fun(token: Token) -> str => token.text
 
 swap: fun(mut token: Token)
 {

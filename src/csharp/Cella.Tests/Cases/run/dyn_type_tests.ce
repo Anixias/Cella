@@ -14,21 +14,21 @@ Circle: rec impl Shape
 {
 	radius: f64
 
-	area: fun(self) -> f64 = self.radius
+	area: fun(self) -> f64 => self.radius
 }
 
 Square: rec impl Shape
 {
 	side: f64
 
-	area: fun(self) -> f64 = self.side
+	area: fun(self) -> f64 => self.side
 }
 
 Triangle: rec impl Shape
 {
 	base: f64
 
-	area: fun(self) -> f64 = self.base
+	area: fun(self) -> f64 => self.base
 }
 
 kind: fun(imm shape: dyn[Shape]) -> i32
@@ -42,7 +42,7 @@ kind: fun(imm shape: dyn[Shape]) -> i32
 	ret 0
 }
 
-name: fun(imm shape: dyn[Shape]) -> i32 = match shape
+name: fun(imm shape: dyn[Shape]) -> i32 => match shape
 {
 	Circle c => 100 + i32(c.radius)
 	Square => 200

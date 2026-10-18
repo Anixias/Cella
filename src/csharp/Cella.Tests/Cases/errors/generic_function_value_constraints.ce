@@ -10,9 +10,9 @@ Point: rec
 	x: i32
 }
 
-h[T: Hash]: fun(imm x: T) -> i32 = 1
+h[T: Hash]: fun(imm x: T) -> i32 => 1
 
-keep[T: copy]: fun(own x: T) -> T = own x
+keep[T: copy]: fun(own x: T) -> T => own x
 
 Guard: rec
 {

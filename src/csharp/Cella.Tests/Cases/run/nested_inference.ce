@@ -58,34 +58,34 @@ pairOf[T]: rec
 	b: box[T]
 }
 
-wrap[T]: fun(own value: T) -> box[T] = box(own value)
-id[T]: fun(own value: T) -> T = value
-sizeOfArg[T]: fun(own value: T) -> usize = sizeOf(T)
-takesBox64: fun(b: box[i64]) -> i64 = b.value
-takesI64: fun(value: i64) -> i64 = value
+wrap[T]: fun(own value: T) -> box[T] => box(own value)
+id[T]: fun(own value: T) -> T => value
+sizeOfArg[T]: fun(own value: T) -> usize => sizeOf(T)
+takesBox64: fun(b: box[i64]) -> i64 => b.value
+takesI64: fun(value: i64) -> i64 => value
 
-takesOpt64: fun(o: option[i64]) -> i64 = match o
+takesOpt64: fun(o: option[i64]) -> i64 => match o
 {
 	some(val v) => v
 	none => -1
 }
 
-take: fun(b: box[i64]) -> i32 = 64
-take: fun(b: box[str]) -> i32 = 1
-twice: fun(value: i32) -> i32 = 32
-twice: fun(value: i64) -> i32 = 64
-both[T: copy]: fun(p: pair[T, T]) -> T = p.a
-first[T: copy]: fun(b: box[T]) -> T = b.value
-sumAll: fun(values: array[i64, 3]) -> i64 = values[0] + values[1] + values[2]
-boxes: fun(values: array[box[i64], 2]) -> i64 = values[0].value + values[1].value
-wideBox: fun(b: box[i64]) -> i32 = 64
-wideBox: fun(b: box[f64]) -> i32 = 1
-smallBox: fun(b: box[i8]) -> i32 = 8
-smallBox: fun(b: box[u8]) -> i32 = 2
-total: fun(values: array[i64, 2]) -> i32 = 64
-total: fun(values: array[f64, 2]) -> i32 = 1
+take: fun(b: box[i64]) -> i32 => 64
+take: fun(b: box[str]) -> i32 => 1
+twice: fun(value: i32) -> i32 => 32
+twice: fun(value: i64) -> i32 => 64
+both[T: copy]: fun(p: pair[T, T]) -> T => p.a
+first[T: copy]: fun(b: box[T]) -> T => b.value
+sumAll: fun(values: array[i64, 3]) -> i64 => values[0] + values[1] + values[2]
+boxes: fun(values: array[box[i64], 2]) -> i64 => values[0].value + values[1].value
+wideBox: fun(b: box[i64]) -> i32 => 64
+wideBox: fun(b: box[f64]) -> i32 => 1
+smallBox: fun(b: box[i8]) -> i32 => 8
+smallBox: fun(b: box[u8]) -> i32 => 2
+total: fun(values: array[i64, 2]) -> i32 => 64
+total: fun(values: array[f64, 2]) -> i32 => 1
 
-unwrapOr[T: copy]: fun(o: option[T], fallback: T) -> T = match o
+unwrapOr[T: copy]: fun(o: option[T], fallback: T) -> T => match o
 {
 	some(val v) => v
 	none => fallback
@@ -97,7 +97,7 @@ relay[U: copy]: fun(value: U) -> U
 	ret unwrapOr(option.some(inner), value)
 }
 
-lift[U: copy]: fun(value: U) -> box[box[U]] = box(box(value))
+lift[U: copy]: fun(value: U) -> box[box[U]] => box(box(value))
 
 main: fun -> i32
 {

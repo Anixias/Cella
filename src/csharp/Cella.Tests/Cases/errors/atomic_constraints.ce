@@ -8,4 +8,4 @@ second[T: drop + copy + atomic]: fun(value: T)
 {
 }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

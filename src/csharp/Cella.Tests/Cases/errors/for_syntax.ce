@@ -25,4 +25,4 @@ missingWhile: fun -> i32
 	ret i
 }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

@@ -19,12 +19,12 @@ pub
 
 [T]: pvt impl Size
 {
-	size: fun(imm self) -> usize = sizeOf(T)
+	size: fun(imm self) -> usize => sizeOf(T)
 }
 
 i64: mod impl
 {
-	twice: pvt fun(imm self) -> i64 = self * 2
+	twice: pvt fun(imm self) -> i64 => self * 2
 }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

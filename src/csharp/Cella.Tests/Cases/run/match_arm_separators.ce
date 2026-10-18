@@ -12,7 +12,7 @@ Shape: enum
 	none
 }
 
-area: fun(shape: Shape) -> i32 = match shape
+area: fun(shape: Shape) -> i32 => match shape
 {
 	square(val side) =>
 		side * side

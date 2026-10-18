@@ -8,7 +8,7 @@ Token: rec
 	{
 	}
 
-	peek: fun(imm self) -> i32 = self.id
+	peek: fun(imm self) -> i32 => self.id
 }
 
 Point: rec
@@ -21,15 +21,15 @@ Holder: rec
 	f: fun[imm i32 -> i32]
 }
 
-read: fun(imm token: Token) -> i32 = token.id
+read: fun(imm token: Token) -> i32 => token.id
 
-sum: fun(p: Point) -> i32 = p.x
+sum: fun(p: Point) -> i32 => p.x
 
-look: fun(imm x: i32) -> i32 = x
+look: fun(imm x: i32) -> i32 => x
 
-call: fun(f: fun[i32 -> i32]) -> i32 = f(1)
+call: fun(f: fun[i32 -> i32]) -> i32 => f(1)
 
-double: fun(x: i32) -> i32 = x * 2
+double: fun(x: i32) -> i32 => x * 2
 
 main: fun -> i32
 {
@@ -42,6 +42,6 @@ main: fun -> i32
 	val back: fun[i32 -> i32] = look
 	val fifth = call(look)
 	val held = Holder(f)
-	val lambda = fun(t: Token) -> i32 = t.id
+	val lambda = fun(t: Token) -> i32 => t.id
 	ret 0
 }

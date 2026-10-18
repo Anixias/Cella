@@ -7,11 +7,11 @@ Shape: rec
 	width: Missing
 	height: i32
 
-	area: fun(imm self) -> i32 = self.width * self.height
-	perimeter: fun(imm self) -> i32 = self.height + false
+	area: fun(imm self) -> i32 => self.width * self.height
+	perimeter: fun(imm self) -> i32 => self.height + false
 }
 
-describe: fun(shape: Unknown) -> i32 = shape.size + 1
+describe: fun(shape: Unknown) -> i32 => shape.size + 1
 
 leak: fun -> i32
 {
@@ -21,6 +21,6 @@ leak: fun -> i32
 
 i32: rec { value: u8 }
 
-count: fun -> i32 = 3
+count: fun -> i32 => 3
 
-main: fun -> i32 = broken.half(4) + count()
+main: fun -> i32 => broken.half(4) + count()

@@ -1,6 +1,6 @@
 mod test
 
-step: fun(c: char, n: i32) -> char = c + n
+step: fun(c: char, n: i32) -> char => c + n
 
 main: fun -> i32
 {

@@ -15,7 +15,7 @@ ring[T, N: const usize]: rec
 	bytes: const usize = capacity * elementSize
 	made: var usize = N * 2
 
-	total: fun(imm self) -> usize = capacity + made
+	total: fun(imm self) -> usize => capacity + made
 }
 
 main: fun -> i32

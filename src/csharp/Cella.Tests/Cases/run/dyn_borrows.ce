@@ -15,7 +15,7 @@ Circle: rec impl Shape
 {
 	radius: f64
 
-	area: fun(self) -> f64 = self.radius * 10.0
+	area: fun(self) -> f64 => self.radius * 10.0
 	scale: fun(mut self, factor: f64)
 	{
 		self.radius *= factor
@@ -31,7 +31,7 @@ Big: rec impl Shape
 {
 	r: f64
 
-	area: fun(imm self) -> f64 = self.r
+	area: fun(imm self) -> f64 => self.r
 	scale: fun(mut self, factor: f64)
 	{
 		self.r *= factor
@@ -42,7 +42,7 @@ Big: rec impl Shape
 	}
 }
 
-pick: fun(imm a: Big, imm b: Big) -> imm[dyn[Shape]] = a
+pick: fun(imm a: Big, imm b: Big) -> imm[dyn[Shape]] => a
 
 main: fun -> i32
 {

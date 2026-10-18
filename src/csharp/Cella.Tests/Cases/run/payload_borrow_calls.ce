@@ -20,7 +20,7 @@ Effect: enum
 	none
 	hold(buffer: Buffer)
 
-	isHeld: fun(imm self) -> bool = self is hold(_)
+	isHeld: fun(imm self) -> bool => self is hold(_)
 }
 
 Pair: rec
@@ -29,7 +29,7 @@ Pair: rec
 	right: i32
 }
 
-peek: fun(imm e: Effect) -> i32 = match e
+peek: fun(imm e: Effect) -> i32 => match e
 {
 	hold(val b) => b.id
 	else => 0

@@ -1,22 +1,22 @@
-Error at trait_uses.ce:22:21
+Error at trait_uses.ce:22:22
 21 │ 
-22 │ peek: fun -> i32 = helper()
-                        ╘══════╛ 'helper' is private to its impl block
+22 │ peek: fun -> i32 => helper()
+                         ╘══════╛ 'helper' is private to its impl block
 
-Error at trait_uses.ce:23:27
-22 │ peek: fun -> i32 = helper()
-23 │ poke: fun -> i32 = Point.helper()
-                              ╘════╛ 'helper' is private to its impl block
+Error at trait_uses.ce:23:28
+22 │ peek: fun -> i32 => helper()
+23 │ poke: fun -> i32 => Point.helper()
+                               ╘════╛ 'helper' is private to its impl block
 
-Error at trait_uses.ce:37:31
+Error at trait_uses.ce:37:32
 36 │ {
-37 │     hash: fun(self) -> u64 = u64(helper())
-                                      ╘══════╛ 'helper' is private to its impl block
+37 │     hash: fun(self) -> u64 => u64(helper())
+                                       ╘══════╛ 'helper' is private to its impl block
 
-Error at trait_uses.ce:47:48
+Error at trait_uses.ce:47:49
 46 │ 
-47 │ run[T: Hash]: fun(imm value: T) -> u64 = value.scale()
-                                                    ╘═══╛ 'scale' is private to its trait
+47 │ run[T: Hash]: fun(imm value: T) -> u64 => value.scale()
+                                                     ╘═══╛ 'scale' is private to its trait
 
 Error at trait_uses.ce:58:2
 57 │ val q = Plain(1)

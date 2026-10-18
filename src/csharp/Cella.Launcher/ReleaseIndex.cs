@@ -36,7 +36,7 @@ internal sealed class ReleaseIndex
 		try
 		{
 			text = Url.StartsWith("file://", StringComparison.Ordinal)
-				? await System.IO.File.ReadAllTextAsync(new Uri(Url).LocalPath)
+				? await File.ReadAllTextAsync(new Uri(Url).LocalPath)
 				: await Downloads.Client.GetStringAsync(Url);
 		}
 		catch (Exception exception) when (exception is HttpRequestException or IOException or TaskCanceledException)

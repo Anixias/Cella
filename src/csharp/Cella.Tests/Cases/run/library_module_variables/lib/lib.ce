@@ -10,4 +10,4 @@ settings: pub var Settings = Settings(640, 480)
 flags: pub var array[bool, 2] = [false, true]
 running: pub var bool = true
 
-area: pub fun -> i32 = settings.width * settings.height
+area: pub fun -> i32 => settings.width * settings.height

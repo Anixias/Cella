@@ -9,7 +9,7 @@ Ticker[T: atomic]: rec
 {
 	value: T
 
-	tick: fun(imm self, amount: T) -> T = atomic *@self.value +%= amount
+	tick: fun(imm self, amount: T) -> T => atomic *@self.value +%= amount
 }
 
 main: fun -> i32

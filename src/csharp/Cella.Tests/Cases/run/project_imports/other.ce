@@ -1,3 +1,3 @@
 mod test
 
-other: fun -> i32 = extra()
+other: fun -> i32 => extra()

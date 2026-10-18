@@ -21,8 +21,8 @@ Effect: enum
 	count(n: i32)
 }
 
-take: fun(own buffer: Buffer) -> i32 = buffer.id
-takeNumber: fun(own n: i32) -> i32 = n
+take: fun(own buffer: Buffer) -> i32 => buffer.id
+takeNumber: fun(own n: i32) -> i32 => n
 
 parameters: fun(imm buffer: Buffer, imm holder: Holder, n: i32) -> i32
 {
@@ -53,4 +53,4 @@ mutBindings: fun(mut effect: Effect) -> i32
 	}
 }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

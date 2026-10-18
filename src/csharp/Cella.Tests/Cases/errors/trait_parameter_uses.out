@@ -1,22 +1,22 @@
-Error at trait_parameter_uses.ce:20:55
+Error at trait_parameter_uses.ce:20:56
 19 │ 
-20 │ call[K: trait]: fun(imm shape: dyn[K]) -> f64 = shape.area()
-                                                           ╘══╛ Type 'dyn[K]' has no member 'area'
+20 │ call[K: trait]: fun(imm shape: dyn[K]) -> f64 => shape.area()
+                                                            ╘══╛ Type 'dyn[K]' has no member 'area'
 
-Error at trait_parameter_uses.ce:22:59
+Error at trait_parameter_uses.ce:22:60
 21 │ 
-22 │ test[K: trait]: fun(imm shape: dyn[K]) -> bool = shape is Circle
-                                                               ╘════╛ 'Circle' doesn't implement 'K'
+22 │ test[K: trait]: fun(imm shape: dyn[K]) -> bool => shape is Circle
+                                                                ╘════╛ 'Circle' doesn't implement 'K'
 
-Error at trait_parameter_uses.ce:24:56
+Error at trait_parameter_uses.ce:24:57
 23 │ 
-24 │ erase[K: trait]: fun(circle: Circle) -> i32 = count[K](circle)
-                                                            ╘════╛ Cannot convert type 'Circle' to 'dyn[K]'
+24 │ erase[K: trait]: fun(circle: Circle) -> i32 => count[K](circle)
+                                                             ╘════╛ Cannot convert type 'Circle' to 'dyn[K]'
 
-Error at trait_parameter_uses.ce:28:39
+Error at trait_parameter_uses.ce:28:40
 27 │ 
-28 │ size[K: trait]: fun -> usize = sizeOf(K)
-                                           ^ Cannot use traits as values
+28 │ size[K: trait]: fun -> usize => sizeOf(K)
+                                            ^ Cannot use traits as values
 
 Error at trait_parameter_uses.ce:32:2
 31 │ {

@@ -5,10 +5,10 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-twice: fun(x: i32) -> i32 = x * 2
-twice: fun(x: f64) -> f64 = x * 2.0
+twice: fun(x: i32) -> i32 => x * 2
+twice: fun(x: f64) -> f64 => x * 2.0
 
-apply[T: copy]: fun(f: fun[T -> T], x: T) -> T = f(x)
+apply[T: copy]: fun(f: fun[T -> T], x: T) -> T => f(x)
 
 swap[T: copy + noref]: fun(mut a: T, mut b: T)
 {
@@ -20,7 +20,7 @@ swap[T: copy + noref]: fun(mut a: T, mut b: T)
 main: fun -> i32
 {
 	val f = twice
-	val g = fun(x) = x + 1
+	val g = fun(x) => x + 1
 	var x = 1
 	var y: u8 = 2
 	swap(mut x, mut y)

@@ -4,7 +4,7 @@ Point: rec impl lib.Display
 {
 	x: i32
 
-	print: fun(self) = lib.say("<{self.x}>")
+	print: fun(self) => lib.say("<{self.x}>")
 }
 
 main: fun -> i32

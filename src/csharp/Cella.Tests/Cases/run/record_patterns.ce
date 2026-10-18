@@ -18,7 +18,7 @@ Enemy: rec
 	level: u8
 }
 
-where: fun(p: Point) -> i32 = match p
+where: fun(p: Point) -> i32 => match p
 {
 	Point(x: 0, y: 0) => 0
 	Point(x: 0, val y) => 100 + y
@@ -26,7 +26,7 @@ where: fun(p: Point) -> i32 = match p
 	Point(val x, val y) => x * y
 }
 
-state: fun(e: Enemy) -> i32 = match e
+state: fun(e: Enemy) -> i32 => match e
 {
 	Enemy(health: <= 0) => -1
 	Enemy(health: 1..20 val hp, position: Point(x: 0)) => hp
@@ -37,7 +37,7 @@ state: fun(e: Enemy) -> i32 = match e
 
 Shot: enum { miss, hit(at: Point, damage: i32) }
 
-score: fun(s: Shot) -> i32 = match s
+score: fun(s: Shot) -> i32 => match s
 {
 	hit(Point(x: 0), 1..10 val d) => d
 	hit(Point(val x, val y) val p, > 50) => p.x + p.y + x + y
@@ -54,17 +54,17 @@ Circle: rec impl Shape
 {
 	radius: f32
 
-	area: fun(imm self) -> f32 = 3.0 * self.radius * self.radius
+	area: fun(imm self) -> f32 => 3.0 * self.radius * self.radius
 }
 
 Square: rec impl Shape
 {
 	side: f32
 
-	area: fun(imm self) -> f32 = self.side * self.side
+	area: fun(imm self) -> f32 => self.side * self.side
 }
 
-size: fun(imm shape: dyn[Shape]) -> i32 = match shape
+size: fun(imm shape: dyn[Shape]) -> i32 => match shape
 {
 	Circle(radius: > 10.0) => 1
 	Circle(val radius) => i32(radius)
@@ -81,7 +81,7 @@ Box[T]: rec
 Origin: const Point = Point(0, 3)
 Check: const i32 = match Origin { Point(x: 0, val y) => y, else => 9 }
 
-limited: fun(s: Shot, limit: i32) -> i32 = match s
+limited: fun(s: Shot, limit: i32) -> i32 => match s
 {
 	hit(_, limit) => 1
 	else => 0

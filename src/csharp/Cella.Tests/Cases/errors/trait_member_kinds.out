@@ -1,11 +1,11 @@
 Error at trait_member_kinds.ce:17:2
 16 │ 
-17 │ size: fun(imm self) -> i32 = self.x
+17 │ size: fun(imm self) -> i32 => self.x
      ╘══╛ 'size' doesn't match 'Sized.size'
 
 Error at trait_member_kinds.ce:24:2
 23 │ 
-24 │ count: get(imm self) -> i32 = self.x
+24 │ count: get(imm self) -> i32 => self.x
      ╘═══╛ 'count' doesn't match 'Counted.count'
 
 Error at trait_member_kinds.ce:29:2

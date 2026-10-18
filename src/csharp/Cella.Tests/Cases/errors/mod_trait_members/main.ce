@@ -5,9 +5,9 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-go[T: util.Hash]: fun(imm v: T) -> u64 = v.secret() + v.helper()
+go[T: util.Hash]: fun(imm v: T) -> u64 => v.secret() + v.helper()
 
-dgo: fun(imm v: dyn[util.Hash]) -> u64 = v.secret()
+dgo: fun(imm v: dyn[util.Hash]) -> u64 => v.secret()
 
 main: fun -> i32
 {

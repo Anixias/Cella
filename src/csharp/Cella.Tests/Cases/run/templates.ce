@@ -12,7 +12,7 @@ Display: trait
 
 str: impl Display
 {
-	print: fun(self, spec: str) = printf("%.*s", i32(self.byteLength), self.data)
+	print: fun(self, spec: str) => printf("%.*s", i32(self.byteLength), self.data)
 }
 
 i32: impl Display
@@ -64,7 +64,7 @@ Point: rec impl Display
 	x: i32
 	y: i32
 
-	print: fun(self, spec: str) = say("({self.x}, {self.y})")
+	print: fun(self, spec: str) => say("({self.x}, {self.y})")
 }
 
 title: val str = "Cella"

@@ -9,7 +9,7 @@ Empty: rec
 {
 }
 
-count[T]: fun(begin: ptr[T], end: ptr[T]) -> isize = end - begin
+count[T]: fun(begin: ptr[T], end: ptr[T]) -> isize => end - begin
 
 guarded[T]: fun(begin: ptr[T], end: ptr[T]) -> isize
 {

@@ -16,7 +16,7 @@ ClearColor: union
 		self.floats = [red, green, blue, 1.0]
 	}
 
-	alpha: fun(self) -> f32 = self.floats[3]
+	alpha: fun(self) -> f32 => self.floats[3]
 }
 
 Bits: union
@@ -38,13 +38,13 @@ Flags: union
 
 	visible: prop bool
 	{
-		get(self) = (self.raw & 1) != 0
+		get(self) => (self.raw & 1) != 0
 		set(mut self, value) { self.raw = (self.raw & ~1) | u32(value) }
 	}
 
 	layer: prop u32
 	{
-		get(self) = (self.raw >> 2) & 15
+		get(self) => (self.raw >> 2) & 15
 		set(mut self, value) { self.raw = (self.raw & ~(15 << 2)) | ((value & 15) << 2) }
 	}
 }
@@ -85,7 +85,7 @@ makeBits: fun(value: f32) -> Bits
 	ret bits
 }
 
-passed: ext fun(bits: Bits, color: ClearColor) -> u32 = bits.raw + color.uints[0]
+passed: ext fun(bits: Bits, color: ClearColor) -> u32 => bits.raw + color.uints[0]
 
 main: fun -> i32
 {

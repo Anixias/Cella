@@ -20,7 +20,7 @@ Limited: trait
 {
 	cap: prop i32
 	{
-		get(imm self) = 3
+		get(imm self) => 3
 		set(mut self, value)
 	}
 }
@@ -29,7 +29,7 @@ P: rec impl Sized
 {
 	x: i32
 
-	limit: get(imm self) -> i32 = self.x
+	limit: get(imm self) -> i32 => self.x
 }
 
 Q: rec impl Limited
@@ -42,7 +42,7 @@ Q: rec impl Limited
 	}
 }
 
-setIt[T: Sized]: fun(mut v: T) = v.limit = 5
+setIt[T: Sized]: fun(mut v: T) => v.limit = 5
 
 main: fun -> i32
 {

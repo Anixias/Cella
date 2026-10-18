@@ -1,8 +1,8 @@
-Error at member_block_uses.ce:41:42
+Error at member_block_uses.ce:41:43
 40 │ 
-41 │ check[T]: fun(imm a: box[T]) -> bool = a.same(a)
-                                              ╘══╛ 'same' requires 'T: Eq'
-                                                 | 'T' doesn't implement 'Eq'
+41 │ check[T]: fun(imm a: box[T]) -> bool => a.same(a)
+                                               ╘══╛ 'same' requires 'T: Eq'
+                                                  | 'T' doesn't implement 'Eq'
 
 Error at member_block_uses.ce:47:15
 46 │ {

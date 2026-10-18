@@ -18,4 +18,4 @@ sizes: fun -> usize
 	ret sizeOf(ret 3)
 }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

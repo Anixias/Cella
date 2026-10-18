@@ -4,4 +4,4 @@ mod test
 /* a /* b */* c */
 /**/
 /* / * * / */
-main: fun -> i32 = 7 /* done */
+main: fun -> i32 => 7 /* done */

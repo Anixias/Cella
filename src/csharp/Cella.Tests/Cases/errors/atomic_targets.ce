@@ -21,7 +21,7 @@ holder[T]: rec
 {
 	value: ptr[T]
 
-	*: op(self) -> imm[T] = imm *self.value
+	*: op(self) -> imm[T] => imm *self.value
 }
 
 main: fun -> i32

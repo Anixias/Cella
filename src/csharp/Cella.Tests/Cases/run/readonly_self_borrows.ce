@@ -27,14 +27,14 @@ Slots: rec
 {
 	values: array[i32, 3]
 
-	[]: op(imm self, i: usize) -> imm[i32] = imm self.values[i]
+	[]: op(imm self, i: usize) -> imm[i32] => imm self.values[i]
 }
 
 Holder[T]: rec
 {
 	value: T
 
-	*: op(imm self) -> imm[T] = imm self.value
+	*: op(imm self) -> imm[T] => imm self.value
 }
 
 Shape: trait
@@ -46,12 +46,12 @@ Square: rec impl Shape
 {
 	side: i32
 
-	area: fun(self) -> i32 = self.side * self.side
+	area: fun(self) -> i32 => self.side * self.side
 }
 
-measure[T: Shape]: fun(imm value: T) -> i32 = value.area()
+measure[T: Shape]: fun(imm value: T) -> i32 => value.area()
 
-total: fun(imm shape: dyn[Shape]) -> i32 = shape.area()
+total: fun(imm shape: dyn[Shape]) -> i32 => shape.area()
 
 main: fun -> i32
 {

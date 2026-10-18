@@ -31,4 +31,4 @@ change: fun(imm texture: Texture)
 	same.id = 5
 }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

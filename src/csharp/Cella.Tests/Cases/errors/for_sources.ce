@@ -17,7 +17,7 @@ Ticker: rec
 
 	pvt
 	{
-		*: op(imm self) -> imm[i32] = imm self.left
+		*: op(imm self) -> imm[i32] => imm self.left
 	}
 
 	drop: op
@@ -29,7 +29,7 @@ Blank: rec
 {
 	left: i32
 
-	for: op(mut self) -> bool = false
+	for: op(mut self) -> bool => false
 }
 
 Hidden: rec
@@ -38,7 +38,7 @@ Hidden: rec
 
 	pvt
 	{
-		for: op(mut self) -> bool = false
+		for: op(mut self) -> bool => false
 	}
 }
 
@@ -46,7 +46,7 @@ Plain: rec
 {
 	x: i32
 
-	in: op(imm self) -> Point = Point(self.x)
+	in: op(imm self) -> Point => Point(self.x)
 
 	drop: op
 	{
@@ -59,7 +59,7 @@ Secret: rec
 
 	pvt
 	{
-		in: op(imm self) -> Ticker = Ticker(self.x)
+		in: op(imm self) -> Ticker => Ticker(self.x)
 	}
 
 	drop: op
@@ -71,7 +71,7 @@ Closed: rec
 {
 	x: i32
 
-	in: op(imm self) -> Hidden = Hidden(self.x)
+	in: op(imm self) -> Hidden => Hidden(self.x)
 
 	drop: op
 	{
@@ -82,7 +82,7 @@ ReadOnly: rec
 {
 	x: i32
 
-	in: op(imm self) -> Ticker = Ticker(self.x)
+	in: op(imm self) -> Ticker => Ticker(self.x)
 
 	drop: op
 	{
@@ -93,7 +93,7 @@ WriteOnly: rec
 {
 	x: i32
 
-	in: op(mut self) -> Ticker = Ticker(self.x)
+	in: op(mut self) -> Ticker => Ticker(self.x)
 }
 
 Steps: trait

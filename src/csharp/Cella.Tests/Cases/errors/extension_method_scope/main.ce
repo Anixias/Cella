@@ -3,9 +3,9 @@ mod test
 use mathx
 use mathy
 
-ambiguous: fun(x: i32) -> i32 = x.clamp(0, 10)
-hiddenPrivate: fun(x: i32) -> i32 = x.secret()
-hiddenModule: fun(x: i32) -> i32 = x.inner()
-duplicate: fun(x: i32) -> i32 = x.twice()
+ambiguous: fun(x: i32) -> i32 => x.clamp(0, 10)
+hiddenPrivate: fun(x: i32) -> i32 => x.secret()
+hiddenModule: fun(x: i32) -> i32 => x.inner()
+duplicate: fun(x: i32) -> i32 => x.twice()
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

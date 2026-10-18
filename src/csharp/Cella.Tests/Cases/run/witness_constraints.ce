@@ -22,13 +22,13 @@ Point: rec impl Apply
 {
 	x: i32
 
-	keep[V: copy]: fun(self, value: V) -> V = value
-	tagged[V: Hash]: fun(self, imm value: V) -> i32 = 1
-	loose[V]: fun(self, imm value: V) -> i32 = 2
-	cap[M: const usize]: fun(self) -> usize = M
+	keep[V: copy]: fun(self, value: V) -> V => value
+	tagged[V: Hash]: fun(self, imm value: V) -> i32 => 1
+	loose[V]: fun(self, imm value: V) -> i32 => 2
+	cap[M: const usize]: fun(self) -> usize => M
 }
 
-run[T: Apply]: fun(imm item: T) -> i32 = item.keep(5) + item.loose(1) + i32(item.cap[3]())
+run[T: Apply]: fun(imm item: T) -> i32 => item.keep(5) + item.loose(1) + i32(item.cap[3]())
 
 main: fun -> i32
 {

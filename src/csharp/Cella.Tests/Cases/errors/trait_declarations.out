@@ -34,12 +34,12 @@ Error at trait_declarations.ce:11:2
      ╘══╛ 'Hash.hash' is declared more than once with the same signature
 
 Error at trait_declarations.ce:33:2
-32 │ size: fun(self) -> i32 = 1
-33 │ extra: fun(self) -> i32 = 2
+32 │ size: fun(self) -> i32 => 1
+33 │ extra: fun(self) -> i32 => 2
      ╘═══╛ 'extra' isn't a member of 'Show' or 'Size'
 
 Error at trait_declarations.ce:35:2
-34 │ helper: pvt fun -> i32 = 3
+34 │ helper: pvt fun -> i32 => 3
 35 │ y: i32
      ^ Cannot declare fields in impl blocks
 

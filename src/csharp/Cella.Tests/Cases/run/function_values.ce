@@ -18,14 +18,14 @@ Pipeline: rec
 	second: fun[i32 -> i32]
 }
 
-double: fun(x: i32) -> i32 = x * 2
-triple: fun(x: i32) -> i32 = x * 3
-twice: ext fun(x: i32) -> i32 = x * 2
-answer: fun -> i32 = 42
-decrement: fun(n: i32) -> i32 = n - 1
-halve: fun(n: i32) -> i32 = n / 2
-over: fun(x: i32) -> i32 = x + 1
-over: fun(x: f64) -> f64 = x * 0.5
+double: fun(x: i32) -> i32 => x * 2
+triple: fun(x: i32) -> i32 => x * 3
+twice: ext fun(x: i32) -> i32 => x * 2
+answer: fun -> i32 => 42
+decrement: fun(n: i32) -> i32 => n - 1
+halve: fun(n: i32) -> i32 => n / 2
+over: fun(x: i32) -> i32 => x + 1
+over: fun(x: f64) -> f64 => x * 0.5
 
 greet: fun
 {
@@ -36,7 +36,7 @@ op: val fun[i32 -> i32] = triple
 ops: val array[fun[i32 -> i32], 2] = [double, triple]
 pipeline: val Pipeline = Pipeline(double, triple)
 
-apply: fun(f: fun[i32 -> i32], x: i32) -> i32 = f(x)
+apply: fun(f: fun[i32 -> i32], x: i32) -> i32 => f(x)
 
 pick: fun(which: i32) -> fun[i32 -> i32]
 {

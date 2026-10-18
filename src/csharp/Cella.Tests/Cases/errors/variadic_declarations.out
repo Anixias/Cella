@@ -1,11 +1,11 @@
 Error at variadic_declarations.ce:25:14
 24 │ 
-25 │ +: op(self, ...rest: view[i32]) -> i32 = 0
+25 │ +: op(self, ...rest: view[i32]) -> i32 => 0
                  ╘═╛ Cannot take variadic parameters in operators
 
 Error at variadic_declarations.ce:25:17
 24 │ 
-25 │ +: op(self, ...rest: view[i32]) -> i32 = 0
+25 │ +: op(self, ...rest: view[i32]) -> i32 => 0
                     ╘══╛ Cannot take parameters in '+' operators with 'self'
 
 Error at variadic_declarations.ce:30:26
@@ -26,7 +26,7 @@ Error at variadic_declarations.ce:32:13
 
 Error at variadic_declarations.ce:44:2
 43 │ 
-44 │ put: fun(self, values: view[i32]) -> usize = values.length
+44 │ put: fun(self, values: view[i32]) -> usize => values.length
      ╘═╛ 'put' doesn't match 'Sink.put'
 
 Error at variadic_declarations.ce:47:23
@@ -61,12 +61,12 @@ Error at variadic_declarations.ce:52:23
 
 Error at variadic_declarations.ce:53:18
 52 │ bytes: fun(...values: Bytes) {}
-53 │ compare: ext fun(...values: view[i32]) -> i32 = 0
+53 │ compare: ext fun(...values: view[i32]) -> i32 => 0
                       ╘═╛ Cannot take variadic parameters in 'ext' functions
 
 Error at variadic_declarations.ce:57:1
 56 │ 
-57 │ main: fun(...args: view[str]) -> i32 = 0
+57 │ main: fun(...args: view[str]) -> i32 => 0
      ╘══╛ 'main' must take no parameters, 'ptr[str]' and 'usize', or one parameter that meets 'new(ptr[str], usize)'
 
 [compilation failed]

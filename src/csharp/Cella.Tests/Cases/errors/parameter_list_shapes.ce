@@ -1,19 +1,19 @@
 mod test
 
-untyped: fun(x) -> i32 = 0
+untyped: fun(x) -> i32 => 0
 
-trailing: fun(x: i32,) -> i32 = x
+trailing: fun(x: i32,) -> i32 => x
 
 modes: fun(mut own x: i32) {}
 
-comma: fun(a: i32 b: i32) -> i32 = a
+comma: fun(a: i32 b: i32) -> i32 => a
 
 variadic: ext fun(f: cstr, ...) -> i32 = 5
 
 P: rec
 {
 	n: i32
-	get: fun(self: P) -> i32 = 1
+	get: fun(self: P) -> i32 => 1
 }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

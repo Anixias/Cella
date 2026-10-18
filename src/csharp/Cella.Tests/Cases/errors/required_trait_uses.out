@@ -1,24 +1,24 @@
-Error at required_trait_uses.ce:24:44
+Error at required_trait_uses.ce:24:45
 23 │ 
-24 │ show[T: Shape]: fun(imm value: T) -> i32 = value.name()
-                                                ╘════════╛ Call to 'name' is ambiguous
-                                                         | Candidate on line 5
-                                                         | Candidate on line 10
+24 │ show[T: Shape]: fun(imm value: T) -> i32 => value.name()
+                                                 ╘════════╛ Call to 'name' is ambiguous
+                                                          | Candidate on line 5
+                                                          | Candidate on line 10
 
-Error at required_trait_uses.ce:30:49
+Error at required_trait_uses.ce:30:50
 29 │ 
-30 │ fromNamed[T: Named]: fun(imm value: T) -> f64 = needsShape(value)
-                                                     ╘════════╛ 'needsShape' requires 'T: Shape'
-                                                              | 'T' doesn't implement 'Shape'
+30 │ fromNamed[T: Named]: fun(imm value: T) -> f64 => needsShape(value)
+                                                      ╘════════╛ 'needsShape' requires 'T: Shape'
+                                                               | 'T' doesn't implement 'Shape'
 
-Error at required_trait_uses.ce:32:55
+Error at required_trait_uses.ce:32:56
 31 │ 
-32 │ narrow: fun(imm item: dyn[Named]) -> f64 = dyn[Shape](item).area()
-                                                           ╘══╛ 'dyn[Named]' doesn't implement 'Shape'
+32 │ narrow: fun(imm item: dyn[Named]) -> f64 => dyn[Shape](item).area()
+                                                            ╘══╛ 'dyn[Named]' doesn't implement 'Shape'
 
-Error at required_trait_uses.ce:34:82
+Error at required_trait_uses.ce:34:83
 33 │ 
-34 │ compareAll: fun(imm item: dyn[Sortable], imm other: dyn[Sortable]) -> i32 = item.compare(other)
-                                                                                      ╘═════╛ Type 'dyn[Sortable]' has no member 'compare'
+34 │ compareAll: fun(imm item: dyn[Sortable], imm other: dyn[Sortable]) -> i32 => item.compare(other)
+                                                                                       ╘═════╛ Type 'dyn[Sortable]' has no member 'compare'
 
 [compilation failed]

@@ -5,6 +5,6 @@ pvt
 	helper fun -> i32 = 1
 }
 
-second: fun -> i32 = (
+second: fun -> i32 => (
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

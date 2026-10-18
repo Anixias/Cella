@@ -9,7 +9,7 @@ Team: enum { red, blue }
 
 Side: enum { a, b }
 
-show: fun(t: Team) -> i32 = i32(t)
+show: fun(t: Team) -> i32 => i32(t)
 
 main: fun -> i32
 {

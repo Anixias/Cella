@@ -15,7 +15,7 @@ Error at generic_enum_declarations.ce:14:9
 
 Error at generic_enum_declarations.ce:18:7
 17 │ 
-18 │ pick[T]: fun(imm self, imm other: T) -> i32 = 0
+18 │ pick[T]: fun(imm self, imm other: T) -> i32 => 0
           ^ Type parameter 'T' is declared more than once
 
 Error at generic_enum_declarations.ce:24:13
@@ -42,7 +42,7 @@ Error at generic_enum_declarations.ce:41:14
 
 Error at generic_enum_declarations.ce:44:14
 43 │ 
-44 │ bare: fun(o: option) -> i32 = 0
+44 │ bare: fun(o: option) -> i32 => 0
                   ╘════╛ 'option' takes one generic argument
 
 [compilation failed]

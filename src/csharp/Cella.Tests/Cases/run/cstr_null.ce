@@ -8,7 +8,7 @@ H: rec
 {
 	c: cstr
 }
-pick: fun(c: cstr = null) -> i32 = i32(c == null)
+pick: fun(c: cstr = null) -> i32 => i32(c == null)
 main: fun -> i32
 {
 	val a: cstr = null

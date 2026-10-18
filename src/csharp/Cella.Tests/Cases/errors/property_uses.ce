@@ -6,7 +6,7 @@ Unit: rec
 
 	health: prop i32
 	{
-		get(self) = self.hp
+		get(self) => self.hp
 		pvt set(mut self, value)
 		{
 			self.hp = value
@@ -15,25 +15,25 @@ Unit: rec
 
 	shield: prop i32
 	{
-		pvt get(self) = self.hp
+		pvt get(self) => self.hp
 		set(mut self, value)
 		{
 			self.hp = value
 		}
 	}
 
-	level: get(self) -> i32 = self.hp
+	level: get(self) -> i32 => self.hp
 
 	volume: set(mut self, value: i32)
 	{
 		self.hp = value
 	}
 
-	count: get -> i32 = 1
+	count: get -> i32 => 1
 
-	secret: pvt get(self) -> i32 = 1
+	secret: pvt get(self) -> i32 => 1
 
-	hidden: pvt get -> i32 = 2
+	hidden: pvt get -> i32 => 2
 }
 
 uses: fun(mut unit: Unit)
@@ -55,4 +55,4 @@ uses: fun(mut unit: Unit)
 	val result = (unit.volume = 6)
 }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

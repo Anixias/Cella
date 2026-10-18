@@ -39,11 +39,11 @@ Holder: rec
 	{
 	}
 
-	*: op(self) -> imm[Node] = imm self.node
-	read: fun(self, secret: Secret) -> i32 = 0
-	make: fun -> Node = Node(1)
-	peek: mod fun(secret: Secret) -> i32 = 0
-	inner: pvt fun(node: Node) -> i32 = 0
+	*: op(self) -> imm[Node] => imm self.node
+	read: fun(self, secret: Secret) -> i32 => 0
+	make: fun -> Node => Node(1)
+	peek: mod fun(secret: Secret) -> i32 => 0
+	inner: pvt fun(node: Node) -> i32 => 0
 }
 
 Tree: enum
@@ -56,7 +56,7 @@ Local: pvt rec
 {
 	node: Node
 
-	make: fun -> Node = Node(1)
+	make: fun -> Node => Node(1)
 }
 
 Grouped: mod rec
@@ -65,18 +65,18 @@ Grouped: mod rec
 	secret: Secret
 }
 
-make: fun -> Node = Node(1)
+make: fun -> Node => Node(1)
 
-take: fun(node: Node) -> i32 = node.value
+take: fun(node: Node) -> i32 => node.value
 
-expose: mod fun(node: Node) -> i32 = node.value
+expose: mod fun(node: Node) -> i32 => node.value
 
-keep: pvt fun(node: Node) -> i32 = node.value
+keep: pvt fun(node: Node) -> i32 => node.value
 
-share: mod fun(secret: Secret) -> i32 = secret.code
+share: mod fun(secret: Secret) -> i32 => secret.code
 
-export: pub fun(shared: Shared) -> i32 = shared.value
+export: pub fun(shared: Shared) -> i32 => shared.value
 
 origin: val Node = Node(0)
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

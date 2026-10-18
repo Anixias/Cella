@@ -1,5 +1,5 @@
 mod imports
 
-helper: fun -> i32 = 0
+helper: fun -> i32 => 0
 
 use test

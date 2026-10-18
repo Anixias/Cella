@@ -32,7 +32,7 @@ Wide: enum match i128
 	rest(v) = else
 }
 
-pick: fun(s: Signed, u: Unsigned, a: Auto) -> i32 =
+pick: fun(s: Signed, u: Unsigned, a: Auto) -> i32 =>
 	i32(s == Signed.big) + i32(u == Unsigned.first) + i32(a == Auto.second)
 
 main: fun -> i32

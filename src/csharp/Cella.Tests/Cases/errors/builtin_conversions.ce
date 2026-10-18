@@ -5,10 +5,10 @@ Color: enum
 	red
 	green
 
-	as: op(self) -> i32 = 100
-	new: op(self) -> u16 = 99
-	as: op(value: i32) -> Color = green
-	as: op(self) -> f64 = 1.5
+	as: op(self) -> i32 => 100
+	new: op(self) -> u16 => 99
+	as: op(value: i32) -> Color => green
+	as: op(self) -> f64 => 1.5
 }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

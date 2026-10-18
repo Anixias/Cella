@@ -32,12 +32,12 @@ Point: rec
 	x: i32
 	y: i32
 
-	==: op(a: Point, b: Point) -> bool = a.x == b.x && a.y == b.y
+	==: op(a: Point, b: Point) -> bool => a.x == b.x && a.y == b.y
 }
 
 Origin: val Point = Point(0, 0)
 
-where: fun(p: Point) -> i32 = match p
+where: fun(p: Point) -> i32 => match p
 {
 	Origin => 0
 	Point(1, 1) => 1
@@ -49,10 +49,10 @@ Team: enum
 	red
 	blue
 
-	==: op(a: Team, b: Team) -> bool = true
+	==: op(a: Team, b: Team) -> bool => true
 }
 
-name: fun(t: Team) -> i32 = match t
+name: fun(t: Team) -> i32 => match t
 {
 	red => 1
 	blue => 2

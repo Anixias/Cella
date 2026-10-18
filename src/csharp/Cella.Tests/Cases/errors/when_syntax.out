@@ -16,7 +16,7 @@ Error at when_syntax.ce:9:1
 
 Error at when_syntax.ce:13:2
 12 │ when windows
-13 │     broken: fun -> i32 = 1
+13 │     broken: fun -> i32 => 1
          ╘════╛ Expected '{'
 
 Error at when_syntax.ce:15:6

@@ -6,7 +6,7 @@ Effect: enum
 	hit(amount: i32)
 }
 
-make: fun -> Effect = Effect.hit(1)
+make: fun -> Effect => Effect.hit(1)
 
 readOnly: fun(e: Effect)
 {

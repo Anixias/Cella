@@ -133,7 +133,7 @@ walk: fun(depth: i32) -> i32
 
 main: fun -> i32
 {
-	val start = fun(depth: i32) -> i32 = walk(depth)
+	val start = fun(depth: i32) -> i32 => walk(depth)
 	printf("%d\n",
 		start(1))
 	ret 0

@@ -2,4 +2,4 @@ mod test
 
 traced: fun when debg {}
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

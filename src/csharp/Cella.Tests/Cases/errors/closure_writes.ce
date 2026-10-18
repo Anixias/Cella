@@ -1,13 +1,13 @@
 mod test
 
-call: fun(f: fun[-> i32]) -> i32 = f()
+call: fun(f: fun[-> i32]) -> i32 => f()
 
 bump: fun(mut value: i32)
 {
 	value += 1
 }
 
-watch: fun(limit: i32) -> i32 = call(fun -> i32
+watch: fun(limit: i32) -> i32 => call(fun -> i32
 {
 	limit = 2
 	ret limit

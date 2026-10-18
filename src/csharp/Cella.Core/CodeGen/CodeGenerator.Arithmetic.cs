@@ -308,7 +308,7 @@ public sealed partial class CodeGenerator
 	private LLVMValueRef GetCFunction(string name, LLVMTypeRef type)
 	{
 		var function = current.Module.GetNamedFunction(name);
-		if (function.Handle != IntPtr.Zero)
+		if (function.Handle != nint.Zero)
 			return function;
 		
 		function = current.Module.AddFunction(name, type);

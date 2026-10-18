@@ -19,15 +19,15 @@ str: impl FromParts + FromSelf
 {
 }
 
-build[T: new(ptr[u8], usize)]: fun(data: ptr[u8], length: usize) -> T = T(data, length)
+build[T: new(ptr[u8], usize)]: fun(data: ptr[u8], length: usize) -> T => T(data, length)
 
-viaTrait[T: FromParts]: fun(data: ptr[u8], length: usize) -> T = T(data, length)
+viaTrait[T: FromParts]: fun(data: ptr[u8], length: usize) -> T => T(data, length)
 
-same[T: new(own T)]: fun(own value: T) -> T = T(own value)
+same[T: new(own T)]: fun(own value: T) -> T => T(own value)
 
-empty[T: new]: fun -> T = T()
+empty[T: new]: fun -> T => T()
 
-again[T: FromSelf]: fun(value: str) -> T = T(value)
+again[T: FromSelf]: fun(value: str) -> T => T(value)
 
 main: fun -> i32
 {

@@ -26,12 +26,12 @@ ptr: impl Eq
 
 ptr[i32]: impl Hash
 {
-	hash: fun(imm self) -> u64 = 7
+	hash: fun(imm self) -> u64 => 7
 }
 
 ptr[T]: impl Named
 {
-	label: fun(imm self) -> i32 = 3
+	label: fun(imm self) -> i32 => 3
 }
 
 contains[T: Eq]: fun(imm values: array[T, 3], imm item: T) -> bool
@@ -45,11 +45,11 @@ contains[T: Eq]: fun(imm values: array[T, 3], imm item: T) -> bool
 	ret false
 }
 
-hashOf[T: Hash]: fun(imm value: T) -> u64 = value.hash()
+hashOf[T: Hash]: fun(imm value: T) -> u64 => value.hash()
 
-labelOf[T: Named]: fun(imm value: T) -> i32 = value.label()
+labelOf[T: Named]: fun(imm value: T) -> i32 => value.label()
 
-same[T: Eq]: fun(imm a: T, imm b: T) -> bool = a == b
+same[T: Eq]: fun(imm a: T, imm b: T) -> bool => a == b
 
 main: fun -> i32
 {

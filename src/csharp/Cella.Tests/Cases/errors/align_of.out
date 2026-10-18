@@ -1,41 +1,41 @@
-Error at align_of.ce:17:23
+Error at align_of.ce:17:24
 16 │ 
-17 │ asDyn: fun -> usize = alignOf(dyn[Shape])
-                           ╘═════════════════╛ Cannot use 'dyn[Shape]' by value
+17 │ asDyn: fun -> usize => alignOf(dyn[Shape])
+                            ╘═════════════════╛ Cannot use 'dyn[Shape]' by value
 
-Error at align_of.ce:19:39
+Error at align_of.ce:19:40
 18 │ 
-19 │ asArray: fun -> usize = alignOf(array[dyn[Shape], 2])
-                                           ╘════════╛ Cannot use 'dyn[Shape]' by value
+19 │ asArray: fun -> usize => alignOf(array[dyn[Shape], 2])
+                                            ╘════════╛ Cannot use 'dyn[Shape]' by value
 
-Error at align_of.ce:21:33
+Error at align_of.ce:21:34
 20 │ 
-21 │ asTrait: fun -> usize = alignOf(Shape)
-                                     ╘═══╛ Cannot use traits as values
+21 │ asTrait: fun -> usize => alignOf(Shape)
+                                      ╘═══╛ Cannot use traits as values
 
-Error at align_of.ce:23:47
+Error at align_of.ce:23:48
 22 │ 
-23 │ asParameter[K: trait]: fun -> usize = alignOf(K)
-                                                   ^ Cannot use traits as values
+23 │ asParameter[K: trait]: fun -> usize => alignOf(K)
+                                                    ^ Cannot use traits as values
 
-Error at align_of.ce:25:35
+Error at align_of.ce:25:36
 24 │ 
-25 │ asGeneric: fun -> usize = alignOf(box)
-                                       ╘═╛ 'box' takes one generic argument
+25 │ asGeneric: fun -> usize => alignOf(box)
+                                        ╘═╛ 'box' takes one generic argument
 
-Error at align_of.ce:27:32
+Error at align_of.ce:27:33
 26 │ 
-27 │ asVoid: fun -> usize = alignOf(greet())
-                                    ╘═════╛ 'greet' doesn't return a value
+27 │ asVoid: fun -> usize => alignOf(greet())
+                                     ╘═════╛ 'greet' doesn't return a value
 
-Error at align_of.ce:29:41
+Error at align_of.ce:29:42
 28 │ 
-29 │ sizeParameter[K: trait]: fun -> usize = sizeOf(dyn[K])
-                                             ╘════════════╛ Cannot use 'dyn[K]' by value
+29 │ sizeParameter[K: trait]: fun -> usize => sizeOf(dyn[K])
+                                              ╘════════════╛ Cannot use 'dyn[K]' by value
 
-Error at align_of.ce:31:42
+Error at align_of.ce:31:43
 30 │ 
-31 │ alignParameter[K: trait]: fun -> usize = alignOf(dyn[K])
-                                              ╘═════════════╛ Cannot use 'dyn[K]' by value
+31 │ alignParameter[K: trait]: fun -> usize => alignOf(dyn[K])
+                                               ╘═════════════╛ Cannot use 'dyn[K]' by value
 
 [compilation failed]

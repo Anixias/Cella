@@ -9,9 +9,9 @@ Matrix: rec
 {
 	cells: array[f64, 4]
 
-	[]: op(imm self, row: usize, column: usize) -> imm[f64] = imm self.cells[row * 2 + column]
+	[]: op(imm self, row: usize, column: usize) -> imm[f64] => imm self.cells[row * 2 + column]
 
-	[]: op(mut self, row: usize, column: usize) -> mut[f64] = mut self.cells[row * 2 + column]
+	[]: op(mut self, row: usize, column: usize) -> mut[f64] => mut self.cells[row * 2 + column]
 
 	drop: op
 	{
@@ -29,9 +29,9 @@ Table: rec
 {
 	values: array[i32, 3]
 
-	[]: op(imm self, color: Color) -> imm[i32] = imm self.values[usize(color)]
+	[]: op(imm self, color: Color) -> imm[i32] => imm self.values[usize(color)]
 
-	[]: op(mut self, color: Color) -> mut[i32] = mut self.values[usize(color)]
+	[]: op(mut self, color: Color) -> mut[i32] => mut self.values[usize(color)]
 
 	drop: op
 	{

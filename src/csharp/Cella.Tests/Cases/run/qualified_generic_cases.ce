@@ -10,26 +10,26 @@ option[T]: enum
 	none
 	some(value: T)
 
-	==: op(imm a: option[T], imm b: option[T]) -> bool = match a
+	==: op(imm a: option[T], imm b: option[T]) -> bool => match a
 	{
 		none => b is none
 		else => false
 	}
 }
 
-read: fun(o: option[i32]) -> i32 = match o
+read: fun(o: option[i32]) -> i32 => match o
 {
 	some(val v) => v
 	none => -1
 }
 
-both[T]: fun(imm a: option[T], imm b: option[T]) -> i32 = 2
+both[T]: fun(imm a: option[T], imm b: option[T]) -> i32 => 2
 
 Reader: rec
 {
 	k: i32
 
-	read: fun(self, o: option[i64]) -> i64 = match o
+	read: fun(self, o: option[i64]) -> i64 => match o
 	{
 		some(val v) => v
 		none => -2

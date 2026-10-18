@@ -29,10 +29,10 @@ consume: fun(own text: Text) { }
 make: fun -> ref fun[-> i32]
 {
 	val base = 1
-	ret fun = base
+	ret fun => base
 }
 
-show: fun(imm text: Text) -> ref fun[-> i32] = fun = text.id
+show: fun(imm text: Text) -> ref fun[-> i32] => fun => text.id
 
 store: fun(mut holder: Holder)
 {
@@ -49,14 +49,14 @@ wrap: fun -> Holder
 main: fun -> i32
 {
 	var text = Text(1)
-	val show = fun -> i32 = text.id
+	val show = fun -> i32 => text.id
 	consume(own text)
 	show()
 	text = Text(2)
 	show()
-	var later: ref fun[-> i32] = fun = 0
+	var later: ref fun[-> i32] = fun => 0
 	for i in 0..3
-		later = fun = i
+		later = fun => i
 
 	later()
 	ret 0

@@ -23,12 +23,12 @@ Num: pub trait
 
 i32: impl Num
 {
-	zero: fun -> i32 = 0
+	zero: fun -> i32 => 0
 }
 
 i64: impl Num
 {
-	zero: fun -> i64 = 0
+	zero: fun -> i64 => 0
 }
 
 Range: pub rec impl Iterator[i32]
@@ -80,12 +80,12 @@ Point: pub rec
 
 Point: impl Pair[i32, i64]
 {
-	join: fun(self, a: i32, b: i64) -> i32 = self.x + a + i32(b)
+	join: fun(self, a: i32, b: i64) -> i32 => self.x + a + i32(b)
 }
 
 Point: impl Pair[i64, i32]
 {
-	join: fun(self, a: i64, b: i32) -> i32 = self.x * 100 + i32(a) + b
+	join: fun(self, a: i64, b: i32) -> i32 => self.x * 100 + i32(a) + b
 }
 
 box[T]: pub rec
@@ -95,10 +95,10 @@ box[T]: pub rec
 
 box[T]: impl Pair[T, i32]
 {
-	join: fun(imm self, imm a: T, b: i32) -> i32 = b * 2
+	join: fun(imm self, imm a: T, b: i32) -> i32 => b * 2
 }
 
-combine[A, B, P: Pair[A, B]]: pub fun(imm item: P, imm a: A, imm b: B) -> i32 = item.join(imm a, imm b)
+combine[A, B, P: Pair[A, B]]: pub fun(imm item: P, imm a: A, imm b: B) -> i32 => item.join(imm a, imm b)
 
 couple[A, B]: pub rec
 {
@@ -106,4 +106,4 @@ couple[A, B]: pub rec
 	b: B
 }
 
-first: pub fun(value: couple[i32, f64]) -> i32 = value.a
+first: pub fun(value: couple[i32, f64]) -> i32 => value.a

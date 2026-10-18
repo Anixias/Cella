@@ -1,17 +1,17 @@
-Error at ambiguous_trait_operators.ce:40:28
+Error at ambiguous_trait_operators.ce:40:29
 39 │ 
-40 │ *: op(self) -> imm[i32] = imm self.value
-                               ╘════════════╛ Cannot return borrows of copied parameters
+40 │ *: op(self) -> imm[i32] => imm self.value
+                                ╘════════════╛ Cannot return borrows of copied parameters
 
-Error at ambiguous_trait_operators.ce:92:55
+Error at ambiguous_trait_operators.ce:92:56
 91 │ 
-92 │ deref[T: Other + Pointer]: fun(imm value: T) -> i32 = *value
-                                                           ╘════╛ Operation '*' on 'T' is ambiguous
+92 │ deref[T: Other + Pointer]: fun(imm value: T) -> i32 => *value
+                                                            ╘════╛ Operation '*' on 'T' is ambiguous
 
-Error at ambiguous_trait_operators.ce:94:54
+Error at ambiguous_trait_operators.ce:94:55
 93 │ 
-94 │ index[T: Lookup + Index]: fun(imm value: T) -> i32 = value[0]
-                                                          ╘══════╛ Operation '[]' on 'T' is ambiguous
+94 │ index[T: Lookup + Index]: fun(imm value: T) -> i32 => value[0]
+                                                           ╘══════╛ Operation '[]' on 'T' is ambiguous
 
 Error at ambiguous_trait_operators.ce:99:20
 98 │ val b = Box(4)

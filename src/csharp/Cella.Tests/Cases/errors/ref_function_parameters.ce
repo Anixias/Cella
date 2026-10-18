@@ -32,4 +32,4 @@ build[A: new(ref fun[i32])]: fun
 {
 }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

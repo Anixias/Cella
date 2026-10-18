@@ -9,7 +9,7 @@ Secret: mod rec impl util.Hash
 {
 	x: i32
 
-	hash: fun(self) -> u64 = u64(self.x)
+	hash: fun(self) -> u64 => u64(self.x)
 }
 
 Hidden: pvt rec
@@ -19,7 +19,7 @@ Hidden: pvt rec
 
 Hidden: impl util.Hash
 {
-	hash: fun(self) -> u64 = u64(self.x * 10)
+	hash: fun(self) -> u64 => u64(self.x * 10)
 }
 
 main: fun -> i32

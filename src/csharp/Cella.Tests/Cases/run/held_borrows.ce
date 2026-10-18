@@ -29,7 +29,7 @@ main: fun -> i32
 {
 	val text = Text(1)
 	val r: imm[Text] = imm text
-	val f = fun -> i32 = r.id
+	val f = fun -> i32 => r.id
 	printf("%d\n", f())
 	var h = Holder(text, 5)
 	val q = imm h

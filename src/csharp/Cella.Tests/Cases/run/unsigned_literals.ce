@@ -5,7 +5,7 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-take: fun(v: u16) -> u16 = v
+take: fun(v: u16) -> u16 => v
 
 main: fun -> i32
 {

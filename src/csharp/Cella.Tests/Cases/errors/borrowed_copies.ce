@@ -14,7 +14,7 @@ Holder[T]: rec
 {
 	value: T
 
-	*: op(imm self) -> imm[T] = imm self.value
+	*: op(imm self) -> imm[T] => imm self.value
 }
 
 Sink: ref rec
@@ -49,6 +49,6 @@ throughOperator: fun -> Line
 	ret line
 }
 
-borrowed[T: copy]: fun(holder: Holder[T]) -> imm[T] = imm *holder
+borrowed[T: copy]: fun(holder: Holder[T]) -> imm[T] => imm *holder
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

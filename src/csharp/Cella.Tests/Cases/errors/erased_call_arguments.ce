@@ -13,7 +13,7 @@ take: fun(own b: Buffer)
 {
 }
 
-consume: fun(own b: Buffer) -> i32 = b.id
+consume: fun(own b: Buffer) -> i32 => b.id
 
 trace: fun(id: i32) when release
 {

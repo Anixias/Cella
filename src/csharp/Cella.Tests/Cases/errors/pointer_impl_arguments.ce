@@ -7,7 +7,7 @@ Hash: trait
 
 ptr[A, B]: impl Hash
 {
-	hash: fun(imm self) -> u64 = 1
+	hash: fun(imm self) -> u64 => 1
 }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

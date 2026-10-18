@@ -34,54 +34,54 @@ Pair: rec
 
 Shot: enum { miss, hit(at: Point, damage: i32) }
 
-positional: fun(p: Point) -> i32 = match p
+positional: fun(p: Point) -> i32 => match p
 {
 	Point(0, val y) => y
 	else => 0
 }
 
-unknown: fun(p: Point) -> i32 = match p
+unknown: fun(p: Point) -> i32 => match p
 {
 	Point(z: 1) => 1
 	else => 0
 }
 
-hidden: fun(e: Enemy) -> i32 = match e
+hidden: fun(e: Enemy) -> i32 => match e
 {
 	Enemy(secret: 1) => 1
 	else => 0
 }
 
-twice: fun(p: Point) -> i32 = match p
+twice: fun(p: Point) -> i32 => match p
 {
 	Point(x: 1, x: 2) => 1
 	else => 0
 }
 
-wrongType: fun(p: Point) -> i32 = match p
+wrongType: fun(p: Point) -> i32 => match p
 {
 	Enemy(health: 1) => 1
 	else => 0
 }
 
-namedPayload: fun(imm s: Shot) -> i32 = match s
+namedPayload: fun(imm s: Shot) -> i32 => match s
 {
 	hit(at: val a, damage: val d) => d
 	else => 0
 }
 
-notRecord: fun(n: i32) -> i32 = match n
+notRecord: fun(n: i32) -> i32 => match n
 {
 	i32(x: 1) => 1
 	else => 0
 }
 
-rebound: fun(p: Point) -> i32 = match p
+rebound: fun(p: Point) -> i32 => match p
 {
 	Point(val x, y: val x) => x
 }
 
-uncovered: fun(p: Point) -> i32 = match p
+uncovered: fun(p: Point) -> i32 => match p
 {
 	Point(x: 0) => 1
 }
@@ -98,16 +98,16 @@ guarded: fun -> i32
 	ret 0
 }
 
-bound: fun -> i32 = match 5
+bound: fun -> i32 => match 5
 {
 	1..10 n => n
 	else => 0
 }
 
-untypedPayload: fun(imm s: Shot) -> i32 = match s
+untypedPayload: fun(imm s: Shot) -> i32 => match s
 {
 	hit(_, 1..10 d) => d
 	else => 0
 }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

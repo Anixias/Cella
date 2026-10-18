@@ -11,12 +11,12 @@ view[T]: ref rec
 		self.length = length
 	}
 
-	as[N: const usize]: op(imm values: array[T, N]) -> view[T] = view[T](@values, N)
+	as[N: const usize]: op(imm values: array[T, N]) -> view[T] => view[T](@values, N)
 }
 
-make: fun -> array[i32, 2] = [1, 2]
+make: fun -> array[i32, 2] => [1, 2]
 
-back: fun -> view[i32] = [5, 6]
+back: fun -> view[i32] => [5, 6]
 
 main: fun -> i32
 {

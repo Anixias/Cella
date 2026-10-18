@@ -1,6 +1,6 @@
 Error at generic_main.ce:3:6
 2 │ 
-3 │ main[T]: fun -> i32 = 0
+3 │ main[T]: fun -> i32 => 0
          ^ Cannot declare type parameters on 'main'
 
 [compilation failed]

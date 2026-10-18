@@ -1,23 +1,23 @@
-Error at new_constraint_uses.ce:55:29
+Error at new_constraint_uses.ce:55:30
 54 │ 
-55 │ forward[T]: fun -> T = make[T]()
-                                 ^ 'make' requires 'T: new(i32)'
-                                 | 'T' has no constructor taking 'i32'
+55 │ forward[T]: fun -> T => make[T]()
+                                  ^ 'make' requires 'T: new(i32)'
+                                  | 'T' has no constructor taking 'i32'
 
-Error at new_constraint_uses.ce:57:31
+Error at new_constraint_uses.ce:57:32
 56 │ 
-57 │ text[T: new(str)]: fun -> T = T(5)
+57 │ text[T: new(str)]: fun -> T => T(5)
+                                    ╘══╛ No constructor for 'T' accepts argument of type 'integer literal'
+
+Error at new_constraint_uses.ce:59:31
+58 │ 
+59 │ unconstrained[T]: fun -> T => T(1)
                                    ╘══╛ No constructor for 'T' accepts argument of type 'integer literal'
 
-Error at new_constraint_uses.ce:59:30
-58 │ 
-59 │ unconstrained[T]: fun -> T = T(1)
-                                  ╘══╛ No constructor for 'T' accepts argument of type 'integer literal'
-
-Error at new_constraint_uses.ce:61:45
+Error at new_constraint_uses.ce:61:46
 60 │ 
-61 │ lost[T: new(i32)]: fun(own value: T) -> T = T(value)
-                                                 ╘══════╛ No constructor for 'T' accepts argument of type 'T'
+61 │ lost[T: new(i32)]: fun(own value: T) -> T => T(value)
+                                                  ╘══════╛ No constructor for 'T' accepts argument of type 'T'
 
 Error at new_constraint_uses.ce:66:8
 65 │ var n = 1

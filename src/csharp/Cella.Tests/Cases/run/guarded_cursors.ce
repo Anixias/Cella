@@ -40,7 +40,7 @@ BagCursor: ref rec
 		ret self.current < 3
 	}
 
-	*: op(imm self) -> imm[Name] = imm self.items[self.current]
+	*: op(imm self) -> imm[Name] => imm self.items[self.current]
 
 	drop: op
 	{

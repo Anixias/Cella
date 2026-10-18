@@ -7,7 +7,7 @@ ext
 
 Hit: enum { miss, hit(amount: i32) }
 
-score: fun(h: Hit) -> i32 = match h
+score: fun(h: Hit) -> i32 => match h
 {
 	hit(0) => 1
 	hit(val n) if n > 10 => 2
@@ -17,7 +17,7 @@ score: fun(h: Hit) -> i32 = match h
 
 option[T]: enum { none, some(value: T) }
 
-depth: fun(o: option[option[i32]]) -> i32 = match o
+depth: fun(o: option[option[i32]]) -> i32 => match o
 {
 	some(some(1..10)) => 3
 	some(some(val v)) => v
@@ -25,7 +25,7 @@ depth: fun(o: option[option[i32]]) -> i32 = match o
 	none => 0
 }
 
-size: fun(x: i32) -> i32 = match x
+size: fun(x: i32) -> i32 => match x
 {
 	0 => 0
 	when debug

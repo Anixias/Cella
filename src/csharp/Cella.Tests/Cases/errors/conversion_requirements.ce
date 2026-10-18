@@ -4,8 +4,8 @@ Source: rec
 {
 	id: i32
 
-	as: op(self) -> ViaAs = ViaAs(self.id)
-	new: op(self) -> ViaNew = ViaNew(self.id)
+	as: op(self) -> ViaAs => ViaAs(self.id)
+	new: op(self) -> ViaNew => ViaNew(self.id)
 }
 
 ViaAs: rec
@@ -22,7 +22,7 @@ ViaStatic: rec
 {
 	id: i32
 
-	as: op(value: Source) -> ViaStatic = ViaStatic(value.id)
+	as: op(value: Source) -> ViaStatic => ViaStatic(value.id)
 }
 
 FromSource: trait
@@ -50,14 +50,14 @@ ExplicitOnly: rec impl Implicit
 {
 	value: i32
 
-	new: op(self) -> i32 = self.value
+	new: op(self) -> i32 => self.value
 }
 
 ImplicitOnly: rec impl Explicit
 {
 	value: i32
 
-	as: op(self) -> i32 = self.value
+	as: op(self) -> i32 => self.value
 }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

@@ -50,7 +50,7 @@ main: fun -> i32
 	store(mut holder, own holder.other)
 
 	val captured = Item(6)
-	run(fun -> i32 = captured.id, own captured)
+	run(fun -> i32 => captured.id, own captured)
 
 	val first = Item(7)
 	val second = Item(8)

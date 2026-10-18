@@ -15,4 +15,4 @@ name: var str = "a"
 label: var Label = Label("b")
 views: var array[str, 2] = ["c", "d"]
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

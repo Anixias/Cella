@@ -6,4 +6,4 @@ half: fun(value: i32) -> i32
 	ret result
 }
 
-whole: fun(value: i32) -> i32 = value * true
+whole: fun(value: i32) -> i32 => value * true

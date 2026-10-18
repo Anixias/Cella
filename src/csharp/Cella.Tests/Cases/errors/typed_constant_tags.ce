@@ -5,4 +5,4 @@ narrow: const u8 = 7
 
 E: enum(u8) { zero, a = wide, b = narrow }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

@@ -10,7 +10,7 @@ second: fun when debug &&
 }
 
 when windows
-	broken: fun -> i32 = 1
+	broken: fun -> i32 => 1
 
 when profiling
 {

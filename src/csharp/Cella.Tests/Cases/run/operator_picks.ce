@@ -9,14 +9,14 @@ Matrix: rec
 {
 	scale: i32
 
-	*: op(m: Matrix, v: Vector) -> Vector = Vector(v.x * m.scale)
+	*: op(m: Matrix, v: Vector) -> Vector => Vector(v.x * m.scale)
 }
 
 Vector: rec
 {
 	x: i32
 
-	*: op(m: Matrix, v: Vector) -> Vector = Vector(v.x * m.scale + 1)
+	*: op(m: Matrix, v: Vector) -> Vector => Vector(v.x * m.scale + 1)
 }
 
 main: fun -> i32

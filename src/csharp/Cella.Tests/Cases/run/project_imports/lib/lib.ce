@@ -1,5 +1,5 @@
 mod lib
 
-greet: pub fun -> i32 = 40
+greet: pub fun -> i32 => 40
 
-extra: pub fun -> i32 = 2
+extra: pub fun -> i32 => 2

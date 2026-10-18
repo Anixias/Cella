@@ -12,7 +12,7 @@ A: rec
 B: rec
 {
 	x: i32
-	new: op(v: i32) = self.x = v
+	new: op(v: i32) => self.x = v
 }
 
 C: rec
@@ -58,4 +58,4 @@ H: rec
 	new: i32
 }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

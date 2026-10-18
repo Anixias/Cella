@@ -30,4 +30,4 @@ D: rec
 	Kind: enum { a  b }
 }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

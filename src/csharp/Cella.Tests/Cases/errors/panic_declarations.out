@@ -20,7 +20,7 @@ Error at one.ce:3:1
 
 Error at three.ce:3:43
 2 │ 
-3 │ panic: op(message: str, location: str) -> i32 = 0
+3 │ panic: op(message: str, location: str) -> i32 => 0
                                               ╘═╛ 'panic' operators must return 'never'
 
 Error at two.ce:3:25

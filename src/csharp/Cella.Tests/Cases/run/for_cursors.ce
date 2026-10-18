@@ -10,8 +10,8 @@ Bag: rec
 	items: array[i32, 4]
 	count: usize
 
-	in: op(imm self) -> BagCursor = BagCursor(imm self, 0, 0)
-	in: op(mut self) -> BagEditor = BagEditor(mut self, 0, 0)
+	in: op(imm self) -> BagCursor => BagCursor(imm self, 0, 0)
+	in: op(mut self) -> BagEditor => BagEditor(mut self, 0, 0)
 
 	drop: op
 	{
@@ -32,7 +32,7 @@ BagCursor: ref rec
 		ret self.current < self.bag.count
 	}
 
-	*: op(self) -> imm[i32] = imm self.bag.items[self.current]
+	*: op(self) -> imm[i32] => imm self.bag.items[self.current]
 }
 
 BagEditor: ref rec
@@ -48,8 +48,8 @@ BagEditor: ref rec
 		ret self.current < self.bag.count
 	}
 
-	*: op(self) -> imm[i32] = imm self.bag.items[self.current]
-	*: op(mut self) -> mut[i32] = mut self.bag.items[self.current]
+	*: op(self) -> imm[i32] => imm self.bag.items[self.current]
+	*: op(mut self) -> mut[i32] => mut self.bag.items[self.current]
 }
 
 Countdown: rec
@@ -62,7 +62,7 @@ Countdown: rec
 		ret self.left >= 0
 	}
 
-	*: op(imm self) -> imm[i32] = imm self.left
+	*: op(imm self) -> imm[i32] => imm self.left
 
 	drop: op
 	{
@@ -80,10 +80,10 @@ Steps: rec
 		ret self.left >= 0
 	}
 
-	*: op(mut self) -> mut[i32] = mut self.left
+	*: op(mut self) -> mut[i32] => mut self.left
 }
 
-make: fun -> Bag = Bag([1, 2, 3, 4], 4)
+make: fun -> Bag => Bag([1, 2, 3, 4], 4)
 
 find: fun(target: i32) -> i32
 {

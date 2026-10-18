@@ -5,7 +5,7 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-add: fun(a: i32, b: i32) -> i32 = a + b
+add: fun(a: i32, b: i32) -> i32 => a + b
 
 arms: fun(v: i32) -> i32
 {

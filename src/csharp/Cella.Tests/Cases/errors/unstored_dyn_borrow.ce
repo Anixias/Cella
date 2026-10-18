@@ -7,7 +7,7 @@ Shape: trait
 
 Thing: rec impl Shape
 {
-	area: fun(imm self) -> i32 = 3
+	area: fun(imm self) -> i32 => 3
 }
 
 main: fun -> i32

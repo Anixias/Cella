@@ -12,17 +12,17 @@ box[T]: rec
 
 i32: impl Hash
 {
-	hash: fun(self) -> u64 = u64(self)
+	hash: fun(self) -> u64 => u64(self)
 }
 
 box[u8]: impl
 {
-	small: fun(self) -> u8 = self.value
+	small: fun(self) -> u8 => self.value
 }
 
 box[K: Hash]: impl
 {
-	hashed: fun(imm self) -> u64 = 3
+	hashed: fun(imm self) -> u64 => 3
 }
 
 main: fun -> i32

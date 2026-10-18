@@ -11,5 +11,5 @@ Size: pub rec
 hidden: pvt const Size = Size(800, 600, 3, 4)
 hiddenCount: pvt const i32 = 7
 
-area: pub fun(size: Size = hidden, scale: i32 = hiddenCount) -> i64 =
+area: pub fun(size: Size = hidden, scale: i32 = hiddenCount) -> i64 =>
 	i64(size.width) * i64(size.height) + size.depth + size.extra + i64(scale)

@@ -5,13 +5,13 @@ ext
 	abs: fun(value: i32) -> i32
 }
 
-negate: fun(x: i32) -> i32 = -x
+negate: fun(x: i32) -> i32 => -x
 
-returnsFun: fun -> fun[i32 -> i32] = negate
+returnsFun: fun -> fun[i32 -> i32] => negate
 
-takesExt: fun(f: ext fun[i32 -> i32]) -> i32 = f(-5)
+takesExt: fun(f: ext fun[i32 -> i32]) -> i32 => f(-5)
 
-pick: fun -> ext fun[i32 -> i32] = abs
+pick: fun -> ext fun[i32 -> i32] => abs
 
 main: fun -> i32
 {

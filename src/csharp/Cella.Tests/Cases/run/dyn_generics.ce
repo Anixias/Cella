@@ -14,14 +14,14 @@ Circle: rec impl Shape
 {
 	radius: f64
 
-	area: fun(self) -> f64 = self.radius
+	area: fun(self) -> f64 => self.radius
 }
 
 Text: rec impl Shape
 {
 	id: i32
 
-	area: fun(imm self) -> f64 = f64(self.id)
+	area: fun(imm self) -> f64 => f64(self.id)
 
 	drop: op
 	{
@@ -29,11 +29,11 @@ Text: rec impl Shape
 	}
 }
 
-describe: fun(imm shape: dyn[Shape]) -> f64 = shape.area()
+describe: fun(imm shape: dyn[Shape]) -> f64 => shape.area()
 
-erase[T: Shape]: fun(imm value: T) -> f64 = describe(imm value) + describe(dyn[Shape](value))
+erase[T: Shape]: fun(imm value: T) -> f64 => describe(imm value) + describe(dyn[Shape](value))
 
-same[T: Shape]: fun(imm shape: dyn[Shape]) -> bool = shape is T
+same[T: Shape]: fun(imm shape: dyn[Shape]) -> bool => shape is T
 
 main: fun -> i32
 {

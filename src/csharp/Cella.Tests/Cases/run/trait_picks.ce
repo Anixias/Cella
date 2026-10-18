@@ -29,27 +29,27 @@ Point: rec
 
 Point: impl Hash
 {
-	hash: fun(self) -> u64 = 1
-	seed: fun -> u64 = 2
+	hash: fun(self) -> u64 => 1
+	seed: fun -> u64 => 2
 }
 
 Point: impl Fingerprint
 {
-	hash: fun(self) -> u64 = 3
-	seed: fun -> u64 = 4
+	hash: fun(self) -> u64 => 3
+	seed: fun -> u64 => 4
 }
 
 Point: impl Zero
 {
-	zero: fun -> Point = Point(42)
+	zero: fun -> Point => Point(42)
 }
 
 i32: impl Zero
 {
-	zero: fun -> i32 = 0
+	zero: fun -> i32 => 0
 }
 
-make[T: Zero]: fun -> T = Zero(T).zero()
+make[T: Zero]: fun -> T => Zero(T).zero()
 
 main: fun -> i32
 {

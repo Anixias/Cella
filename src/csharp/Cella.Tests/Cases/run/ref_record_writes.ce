@@ -16,9 +16,9 @@ span[T]: ref rec
 		self.length = length
 	}
 
-	[]: op(self, i: usize) -> mut[T] = mut self.data[i]
+	[]: op(self, i: usize) -> mut[T] => mut self.data[i]
 
-	in: op(self) -> spanCursor[T] = spanCursor[T](self.data, self.length)
+	in: op(self) -> spanCursor[T] => spanCursor[T](self.data, self.length)
 }
 
 spanCursor[T]: ref rec
@@ -46,7 +46,7 @@ spanCursor[T]: ref rec
 		ret self.left > 0
 	}
 
-	*: op(self) -> mut[T] = mut *self.data
+	*: op(self) -> mut[T] => mut *self.data
 }
 
 handle[T]: ref rec
@@ -58,7 +58,7 @@ handle[T]: ref rec
 		self.target = target
 	}
 
-	*: op(self) -> mut[T] = mut *self.target
+	*: op(self) -> mut[T] => mut *self.target
 }
 
 cell[T]: ref rec
@@ -72,7 +72,7 @@ cell[T]: ref rec
 		self.writes = 0
 	}
 
-	*: op(self) -> mut[T] = mut *self.target
+	*: op(self) -> mut[T] => mut *self.target
 
 	*: op(mut self) -> mut[T]
 	{
@@ -122,7 +122,7 @@ sum: fun(values: span[i32]) -> i32
 	ret total
 }
 
-first: fun(values: span[i32]) -> mut[i32] = mut values[0]
+first: fun(values: span[i32]) -> mut[i32] => mut values[0]
 
 move: fun(at: handle[Point])
 {

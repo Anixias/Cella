@@ -17,4 +17,4 @@ leak: fun -> option[imm[i32]]
 	ret option.some(imm local)
 }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

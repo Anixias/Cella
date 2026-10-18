@@ -4,22 +4,22 @@ Shape: pub trait
 {
 	area: fun(imm self) -> f64
 	grow: fun(mut self)
-	twice: fun(imm self) -> f64 = self.area() * 2.0
+	twice: fun(imm self) -> f64 => self.area() * 2.0
 }
 
 Circle: pub rec impl Shape
 {
 	radius: f64
 
-	area: fun(self) -> f64 = self.radius
+	area: fun(self) -> f64 => self.radius
 	grow: fun(mut self)
 	{
 		self.radius += 1.0
 	}
 }
 
-describe: pub fun(imm shape: dyn[Shape]) -> f64 = shape.twice()
+describe: pub fun(imm shape: dyn[Shape]) -> f64 => shape.twice()
 
-isCircle: pub fun(imm shape: dyn[Shape]) -> bool = shape is Circle
+isCircle: pub fun(imm shape: dyn[Shape]) -> bool => shape is Circle
 
-erase[T: Shape]: pub fun(imm value: T) -> f64 = describe(imm value)
+erase[T: Shape]: pub fun(imm value: T) -> f64 => describe(imm value)

@@ -5,7 +5,7 @@ Error at value_parameter_duplicates.ce:3:6
 
 Error at value_parameter_duplicates.ce:7:4
 6 │ 
-7 │ f[N: const usize]: fun(imm self) -> usize = N
+7 │ f[N: const usize]: fun(imm self) -> usize => N
       ^ Value parameter 'N' is declared more than once
 
 [compilation failed]

@@ -14,8 +14,8 @@ Slot: rec
 {
 	value: Sprite
 
-	as: op(imm self) -> imm[Sprite] = imm self.value
-	as: op(mut self) -> mut[Sprite] = mut self.value
+	as: op(imm self) -> imm[Sprite] => imm self.value
+	as: op(mut self) -> mut[Sprite] => mut self.value
 
 	drop: op
 	{
@@ -32,7 +32,7 @@ heal: fun(mut s: Sprite)
 	s.hp += 10
 }
 
-look: fun(s: Sprite) -> i32 = s.hp
+look: fun(s: Sprite) -> i32 => s.hp
 
 main: fun -> i32
 {

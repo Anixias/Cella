@@ -1,6 +1,6 @@
 Error at missing_body.ce:3:14
 2 │ 
 3 │ main: fun -> i32
-                 ╘═╛ Expected '=' or '{'
+                 ╘═╛ Expected '=>' or '{'
 
 [compilation failed]

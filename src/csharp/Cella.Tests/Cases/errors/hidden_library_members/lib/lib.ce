@@ -5,6 +5,6 @@ Point: rec
 	x: i32
 }
 
-helper: fun -> i32 = 1
-inner: mod fun -> i32 = 2
-secret: pvt fun -> i32 = 3
+helper: fun -> i32 => 1
+inner: mod fun -> i32 => 2
+secret: pvt fun -> i32 => 3

@@ -7,23 +7,23 @@ ext
 
 base: const usize = 100
 
-measure[T]: fun(imm x: T, extra: usize = sizeOf(T)) -> usize = extra
+measure[T]: fun(imm x: T, extra: usize = sizeOf(T)) -> usize => extra
 
-offset[T]: fun(imm x: T, extra: usize = sizeOf(T) + base) -> usize = extra
+offset[T]: fun(imm x: T, extra: usize = sizeOf(T) + base) -> usize => extra
 
-count[N: const usize]: fun(extra: usize = N) -> usize = extra
+count[N: const usize]: fun(extra: usize = N) -> usize => extra
 
-layout[T, N: const usize]: fun(imm x: T, extra: usize = N * sizeOf(T) + alignOf(T)) -> usize = extra
+layout[T, N: const usize]: fun(imm x: T, extra: usize = N * sizeOf(T) + alignOf(T)) -> usize => extra
 
-forward[U]: fun(imm u: U) -> usize = offset(imm u)
+forward[U]: fun(imm u: U) -> usize => offset(imm u)
 
-relay[M: const usize]: fun -> usize = count[M]()
+relay[M: const usize]: fun -> usize => count[M]()
 
 box[T]: rec
 {
 	value: T
 
-	size: fun(imm self, extra: usize = sizeOf(T)) -> usize = extra
+	size: fun(imm self, extra: usize = sizeOf(T)) -> usize => extra
 }
 
 main: fun -> i32

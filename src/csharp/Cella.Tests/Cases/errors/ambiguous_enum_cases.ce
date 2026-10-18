@@ -12,8 +12,8 @@ Team: enum
 	blue
 }
 
-pick: fun(o: option[i32]) -> i32 = 0
-some: fun(value: i32) -> option[i32] = option.some(value)
+pick: fun(o: option[i32]) -> i32 => 0
+some: fun(value: i32) -> option[i32] => option.some(value)
 blue: val Team = Team.red
 
 locals: fun -> option[i32]
@@ -23,7 +23,7 @@ locals: fun -> option[i32]
 	ret none
 }
 
-calls: fun -> i32 = pick(some(2))
-globals: fun -> bool = Team.red == blue
+calls: fun -> i32 => pick(some(2))
+globals: fun -> bool => Team.red == blue
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

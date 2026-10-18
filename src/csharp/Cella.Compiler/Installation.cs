@@ -49,10 +49,10 @@ public static class Installation
 		System.Runtime.Loader.AssemblyLoadContext.Default.ResolvingUnmanagedDll += static (_, name) =>
 		{
 			if (name != "libLLVM")
-				return IntPtr.Zero;
+				return nint.Zero;
 			
 			var path = Path.Combine(ToolsDirectory, OperatingSystem.IsWindows() ? "LLVM-C.dll" : "libLLVM.so");
-			return File.Exists(path) && NativeLibrary.TryLoad(path, out var handle) ? handle : IntPtr.Zero;
+			return File.Exists(path) && NativeLibrary.TryLoad(path, out var handle) ? handle : nint.Zero;
 		};
 	}
 }

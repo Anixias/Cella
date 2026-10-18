@@ -5,7 +5,7 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-f[T]: fun(imm value: T) -> i32 = 1
+f[T]: fun(imm value: T) -> i32 => 1
 
 main: fun -> i32
 {

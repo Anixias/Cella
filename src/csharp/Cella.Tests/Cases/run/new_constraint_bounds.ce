@@ -63,7 +63,7 @@ pool[T: new(usize)]: rec
 		self.first = T(size)
 	}
 
-	grow: fun(imm self, size: usize) -> T = T(size + 1)
+	grow: fun(imm self, size: usize) -> T => T(size + 1)
 }
 
 box[T]: rec
@@ -73,7 +73,7 @@ box[T]: rec
 
 box[T: new(i32)]: impl
 {
-	fresh: fun(imm self) -> T = T(3)
+	fresh: fun(imm self) -> T => T(3)
 }
 
 wrapper[T]: rec
@@ -90,7 +90,7 @@ holder[E]: rec
 {
 	value: E
 
-	make[T: new(E)]: fun(imm self) -> T = T(self.value)
+	make[T: new(E)]: fun(imm self) -> T => T(self.value)
 }
 
 Wrapped: rec
@@ -117,7 +117,7 @@ Square: rec impl Shape
 {
 	side: i32
 
-	area: fun(self) -> i32 = self.side * self.side
+	area: fun(self) -> i32 => self.side * self.side
 }
 
 Report: rec
@@ -130,23 +130,23 @@ Report: rec
 	}
 }
 
-make[T: new(i32)]: fun -> T = T(5)
+make[T: new(i32)]: fun -> T => T(5)
 
-blank[T: new]: fun -> T = T()
+blank[T: new]: fun -> T => T()
 
-forward[T: new(i32)]: fun -> T = make[T]()
+forward[T: new(i32)]: fun -> T => make[T]()
 
-viaTrait[T: Make]: fun -> T = make[T]()
+viaTrait[T: Make]: fun -> T => make[T]()
 
-viaEmpty[T: Empty]: fun -> T = blank[T]()
+viaEmpty[T: Empty]: fun -> T => blank[T]()
 
-both[T: Make + new(i32)]: fun -> T = T(9)
+both[T: Make + new(i32)]: fun -> T => T(9)
 
-twoTraits[T: First + Second]: fun -> T = T(6)
+twoTraits[T: First + Second]: fun -> T => T(6)
 
-nested[T: noref + new(i32) + new(box[T])]: fun -> T = T(box[T](T(4)))
+nested[T: noref + new(i32) + new(box[T])]: fun -> T => T(box[T](T(4)))
 
-measure[K: trait, T: new(ptr[dyn[K]])]: fun(shape: ptr[dyn[K]]) -> T = T(shape)
+measure[K: trait, T: new(ptr[dyn[K]])]: fun(shape: ptr[dyn[K]]) -> T => T(shape)
 
 main: fun -> i32
 {

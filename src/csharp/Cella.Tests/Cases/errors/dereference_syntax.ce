@@ -9,7 +9,7 @@ Broken: rec
 {
 	pointer: req ptr[Buffer]
 
-	*: fun(self) -> imm[Buffer] = imm *self.pointer
+	*: fun(self) -> imm[Buffer] => imm *self.pointer
 }
 
-main: fun -> i32 = 0
+main: fun -> i32 => 0

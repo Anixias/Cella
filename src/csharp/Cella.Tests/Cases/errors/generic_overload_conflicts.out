@@ -30,12 +30,12 @@ Error at generic_overload_conflicts.ce:15:1
 
 Error at generic_overload_conflicts.ce:17:1
 16 │ 
-17 │ results[T]: fun(imm x: T) -> i32 = 1
+17 │ results[T]: fun(imm x: T) -> i32 => 1
      ╘═════╛ 'results' overloads cannot differ only in return type
 
 Error at generic_overload_conflicts.ce:18:1
-17 │ results[T]: fun(imm x: T) -> i32 = 1
-18 │ results[T]: fun(imm x: T) -> i64 = 2
+17 │ results[T]: fun(imm x: T) -> i32 => 1
+18 │ results[T]: fun(imm x: T) -> i64 => 2
      ╘═════╛ 'results' overloads cannot differ only in return type
 
 Error at generic_overload_conflicts.ce:20:1

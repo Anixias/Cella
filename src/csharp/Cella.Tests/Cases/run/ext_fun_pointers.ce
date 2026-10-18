@@ -38,20 +38,20 @@ descending: ext fun(left: ptr, right: ptr) -> i32
 	ret 0
 }
 
-twice: ext fun(value: i32) -> i32 = value * 2
-add: ext fun(a: i32, b: i32) -> i32 = a + b
-sub: ext fun(a: i32, b: i32) -> i32 = a - b
-mul: ext fun(a: i32, b: i32) -> i32 = a * b
-answer: ext fun -> i32 = 42
-swap: ext fun(pair: Pair) -> Pair = Pair(pair.y, pair.x)
-spread: ext fun(quad: Quad, scale: i32) -> Quad = Quad(quad.a * scale, quad.b * scale, quad.c * scale, quad.d * scale)
+twice: ext fun(value: i32) -> i32 => value * 2
+add: ext fun(a: i32, b: i32) -> i32 => a + b
+sub: ext fun(a: i32, b: i32) -> i32 => a - b
+mul: ext fun(a: i32, b: i32) -> i32 => a * b
+answer: ext fun -> i32 => 42
+swap: ext fun(pair: Pair) -> Pair => Pair(pair.y, pair.x)
+spread: ext fun(quad: Quad, scale: i32) -> Quad => Quad(quad.a * scale, quad.b * scale, quad.c * scale, quad.d * scale)
 
 log: ext fun(value: i32)
 {
 	printf("logged %d\n", value)
 }
 
-apply: fun(f: ext fun[i32 -> i32], value: i32) -> i32 = f(value)
+apply: fun(f: ext fun[i32 -> i32], value: i32) -> i32 => f(value)
 
 pick: fun(which: i32) -> ext fun[i32, i32 -> i32]
 {

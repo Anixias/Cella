@@ -84,7 +84,7 @@ public sealed partial class CodeGenerator
 			return GetDropGlue(objectType);
 		
 		var existing = current.Module.GetNamedFunction("drop$");
-		if (existing.Handle != IntPtr.Zero)
+		if (existing.Handle != nint.Zero)
 			return existing;
 		
 		var glue = current.Module.AddFunction("drop$", DropGlueType);
@@ -120,7 +120,7 @@ public sealed partial class CodeGenerator
 	{
 		var name = Mangling.MangleInstantiation($"?{Mangling.MangleTypeName(dyn, _modules)}", [objectType], _modules);
 		var existing = current.Module.GetNamedGlobal(name);
-		if (existing.Handle != IntPtr.Zero)
+		if (existing.Handle != nint.Zero)
 			return existing;
 		
 		var call = objectType switch
@@ -157,7 +157,7 @@ public sealed partial class CodeGenerator
 		var dyn = _typePool.GetDynType(trait);
 		var name = Mangling.MangleInstantiation($"?{Mangling.MangleTypeName(dyn, _modules)}", [objectType], _modules);
 		var existing = current.Module.GetNamedGlobal(name);
-		if (existing.Handle != IntPtr.Zero)
+		if (existing.Handle != nint.Zero)
 			return existing;
 		
 		LLVMValueRef[] entries =
