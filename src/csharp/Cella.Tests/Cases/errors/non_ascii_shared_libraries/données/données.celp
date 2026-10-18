@@ -1,3 +1,4 @@
 OutputType = "SharedLibrary"
+StandardLibrary = "None"
 SystemLinkPreference = "Dynamic"
 AssemblyName = "donnees"

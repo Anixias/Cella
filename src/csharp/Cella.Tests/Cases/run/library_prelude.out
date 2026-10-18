@@ -1,0 +1,12 @@
+
+====== main.ce ======
+
+Hint at line 3, column 9
+2 │ 
+3 │ use lib.greet
+            ╘═══╛ Redundant import
+
+hello from the prelude
+own shout
+lib panic at main.ce:12:35: addition overflow
+[exit code 9]

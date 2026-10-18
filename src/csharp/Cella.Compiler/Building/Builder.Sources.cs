@@ -12,17 +12,25 @@ namespace Cella.Compiler.Building;
 public sealed partial class Builder
 {
 	private async Task<(ImmutableArray<FileNode> Files, DiagnosticList Diagnostics)> ProcessProject(
-		ProjectInfo project, IReadOnlyDictionary<string, bool> flags, CancellationToken ct = default)
+		ProjectInfo project, ImmutableArray<ProjectInfo> references, IReadOnlyDictionary<string, bool> flags,
+		CancellationToken ct = default)
 	{
 		var files = new List<FileNode>();
 		var diagnostics = new DiagnosticList();
-		var projectImports = await ParseProjectImports(project, flags, diagnostics, ct);
+		var projectImports = new List<ImportExpression>();
+		foreach (var reference in references)
+			projectImports.AddRange(await ParseImportList(reference, reference.Project.Prelude,
+				nameof(CellaProject.Prelude), flags, diagnostics, ct));
+		
+		projectImports.AddRange(await ParseImportList(project, project.Project.Imports, nameof(CellaProject.Imports),
+			flags, diagnostics, ct));
+		
 		foreach (var path in CellaProject.FindSourceFiles(project.Directory).Order(StringComparer.Ordinal))
 		{
 			var (ast, fileDiagnostics) = await ParseFile(project, flags, path, ct);
 			diagnostics.AddRange(fileDiagnostics);
 			if (ast is { IsExcluded: false })
-				files.Add(projectImports.IsEmpty
+				files.Add(projectImports.Count == 0
 					? ast
 					: new FileNode(ast.SourceLocation)
 					{
@@ -38,14 +46,14 @@ public sealed partial class Builder
 		return ([..files], diagnostics);
 	}
 	
-	private async Task<ImmutableArray<ImportExpression>> ParseProjectImports(ProjectInfo project,
-		IReadOnlyDictionary<string, bool> flags, DiagnosticList diagnostics, CancellationToken ct)
+	private async Task<List<ImportExpression>> ParseImportList(ProjectInfo project, List<string>? list,
+		string setting, IReadOnlyDictionary<string, bool> flags, DiagnosticList diagnostics, CancellationToken ct)
 	{
-		if (project.Project.Imports is not { Count: > 0 } entries)
+		if (list is not { Count: > 0 } entries)
 			return [];
 		
 		var text = await ReadTextAsync(project.FilePath, ct);
-		var ranges = FindImportEntries(text);
+		var ranges = FindImportEntries(text, setting);
 		var isLocated = ranges.Count == entries.Count;
 		var imports = new List<ImportExpression>();
 		for (var i = 0; i < entries.Count; i++)
@@ -74,18 +82,18 @@ public sealed partial class Builder
 			
 			var parser = new FileParser(tokens, Path.GetFileName(project.FilePath), project.FilePath, flags);
 			if (parser.ParseImport() is { } import)
-				imports.Add(import);
+				imports.Add(import with { IsPrelude = setting == nameof(CellaProject.Prelude) });
 			
 			diagnostics.AddRange(parser.Diagnostics);
 		}
 		
-		return [..imports];
+		return imports;
 	}
 	
-	private static List<(int Start, int Length)> FindImportEntries(string text)
+	private static List<(int Start, int Length)> FindImportEntries(string text, string setting)
 	{
 		var entries = new List<(int Start, int Length)>();
-		if (FindImportsList(text) is not { } open)
+		if (FindImportsList(text, setting) is not { } open)
 			return entries;
 		
 		for (var i = open; i < text.Length && text[i] != ']'; i++)
@@ -115,14 +123,14 @@ public sealed partial class Builder
 		return entries;
 	}
 	
-	private static int? FindImportsList(string text)
+	private static int? FindImportsList(string text, string setting)
 	{
 		var offset = 0;
 		foreach (var line in text.Split('\n'))
 		{
 			var trimmed = line.TrimStart();
-			if (trimmed.StartsWith("Imports", StringComparison.Ordinal) &&
-			    trimmed["Imports".Length..].TrimStart().StartsWith('=') && line.IndexOf('[') is >= 0 and var bracket)
+			if (trimmed.StartsWith(setting, StringComparison.Ordinal) &&
+			    trimmed[setting.Length..].TrimStart().StartsWith('=') && line.IndexOf('[') is >= 0 and var bracket)
 				return offset + bracket + 1;
 			
 			offset += line.Length + 1;

@@ -140,6 +140,8 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 	};
 	
 	public IReadOnlySet<GlobalSymbol> ExportedStatics => _exportedStatics;
+	
+	public bool HasStaticDrops { get; private set; }
 	public IReadOnlyList<ExportName> ExportNames => _exportNames;
 	
 	private bool IsObjectLocal(FunctionSymbol function) =>
@@ -304,8 +306,13 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 				EmitStaticRegistry();
 			}
 			
-			if (states.Count > 0)
+			HasStaticDrops = states.Count > 0 && (hasRegistry || _inputs.ContainedAssemblies.Length > 0 ||
+			                                      states.Any(static state => state.DroppedStatics.Count > 0));
+			
+			if (HasStaticDrops)
 				EmitStaticDrops(states, hasRegistry);
+			else
+				RemoveStaticDropCalls(states);
 			
 			var fileNames = GetFileNames(states);
 			return [..states.Select(state => Finish(state, fileNames[state]))];

@@ -1,0 +1,9 @@
+<Project>
+
+  <PropertyGroup>
+    <CellaVersion>$([System.IO.File]::ReadAllText('$(MSBuildThisFileDirectory)..\..\version.txt').Trim())</CellaVersion>
+    <Version>$(CellaVersion)</Version>
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
+  </PropertyGroup>
+
+</Project>

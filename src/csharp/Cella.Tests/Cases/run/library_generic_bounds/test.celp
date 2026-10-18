@@ -1,4 +1,5 @@
 OutputType = "Executable"
+StandardLibrary = "None"
 SystemLinkPreference = "Dynamic"
 BoundsChecks = false
 

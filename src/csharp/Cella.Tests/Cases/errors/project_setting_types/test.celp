@@ -1,4 +1,5 @@
 OutputType = "Program"
+StandardLibrary = "None"
 SystemLinkPreference = "Fast"
 AssemblyName = 5
 DebugInfo = "yes"

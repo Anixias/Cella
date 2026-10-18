@@ -1,0 +1,20 @@
+mod test
+
+use lib.greet
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+shout: fun = printf("own shout\n")
+
+increment: fun(value: u8) -> u8 = value + 1
+
+main: fun -> i32
+{
+	greet()
+	shout()
+	printf("%d\n", increment(255))
+	ret 0
+}

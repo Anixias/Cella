@@ -1,2 +1,3 @@
 OutputType = "SharedLibrary"
+StandardLibrary = "None"
 SystemLinkPreference = "Static"

@@ -1,1 +1,2 @@
 OutputType = "Executable"
+StandardLibrary = "None"

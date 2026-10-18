@@ -1,3 +1,4 @@
 OutputType = "Executable"
+StandardLibrary = "None"
 SystemLinkPreference = "Dynamic"
 Imports = ["lib..x", "a b", "", "x.[y, z]"]

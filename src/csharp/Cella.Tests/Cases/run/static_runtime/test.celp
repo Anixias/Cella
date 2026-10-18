@@ -1,2 +1,3 @@
 OutputType = "Executable"
+StandardLibrary = "None"
 SystemLinkPreference = "Static"

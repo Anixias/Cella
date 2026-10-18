@@ -1,4 +1,5 @@
 OutputType = "SharedLibrary"
+StandardLibrary = "None"
 SystemLinkPreference = "Dynamic"
 
 [[ProjectReferences]]

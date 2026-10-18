@@ -2,7 +2,7 @@
 	"name": "cella",
 	"displayName": "Cella",
 	"description": "Cella language support",
-	"version": "0.1.0",
+	"version": "0.1.0-dev",
 	"publisher": "anixias",
 	"license": "MIT",
 	"repository": {
@@ -17,7 +17,7 @@
 	],
 	"main": "./extension.js",
 	"scripts": {
-		"package": "vsce package --skip-license"
+		"package": "node sync-version.js && vsce package --skip-license"
 	},
 	"contributes": {
 		"languages": [

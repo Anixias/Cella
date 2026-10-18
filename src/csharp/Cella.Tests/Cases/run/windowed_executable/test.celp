@@ -1,2 +1,3 @@
 OutputType = "WindowedExecutable"
+StandardLibrary = "None"
 SystemLinkPreference = "Dynamic"

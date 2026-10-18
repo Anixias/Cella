@@ -9,19 +9,19 @@ Error at line 3, column 9
 
 ====== test.celp ======
 
-Error at line 4, column 7
-3 │ Imports = [
-4 │     "lib.nothere",
+Error at line 5, column 7
+4 │ Imports = [
+5 │     "lib.nothere",
              ╘═════╛ Module 'lib' has no member 'nothere'
 
-Error at line 5, column 7
-4 │ "lib.nothere",
-5 │ "lib.greet",
+Error at line 6, column 7
+5 │ "lib.nothere",
+6 │ "lib.greet",
          ╘═══╛ 'greet' is imported more than once
 
-Error at line 6, column 3
-5 │ "lib.greet",
-6 │ "nomod.x",
+Error at line 7, column 3
+6 │ "lib.greet",
+7 │ "nomod.x",
      ╘═══╛ Module 'nomod' not found
 
 [compilation failed]

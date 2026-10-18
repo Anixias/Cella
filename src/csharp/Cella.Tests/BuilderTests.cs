@@ -109,9 +109,12 @@ public sealed class BuilderTests : IDisposable
 	private Task<BuildResult> CheckAsync(Builder builder, IReadOnlyDictionary<string, string>? unsavedFiles = null) =>
 		CompilerThread.Run(() => builder.BuildAsync(_directory, unsavedFiles, Token));
 	
+	private static string OptedOut(string outputType) =>
+		$"OutputType = \"{outputType}\"\nStandardLibrary = \"None\"\n";
+	
 	private async Task WriteProgramAsync(string source)
 	{
-		await File.WriteAllTextAsync(Path.Combine(_directory, "test.celp"), "OutputType = \"Executable\"\n", Token);
+		await File.WriteAllTextAsync(Path.Combine(_directory, "test.celp"), OptedOut("Executable"), Token);
 		await File.WriteAllTextAsync(SourcePath, source, Token);
 	}
 	
@@ -119,11 +122,9 @@ public sealed class BuilderTests : IDisposable
 	{
 		Directory.CreateDirectory(Path.GetDirectoryName(LibraryPath)!);
 		Directory.CreateDirectory(Path.GetDirectoryName(ProgramPath)!);
-		await File.WriteAllTextAsync(Path.Combine(_directory, "lib", "lib.celp"), "OutputType = \"StaticLibrary\"\n",
-			Token);
-		
+		await File.WriteAllTextAsync(Path.Combine(_directory, "lib", "lib.celp"), OptedOut("StaticLibrary"), Token);
 		await File.WriteAllTextAsync(Path.Combine(_directory, "app", "test.celp"),
-			"OutputType = \"Executable\"\n\n[[ProjectReferences]]\nPath = '../lib/lib.celp'\n", Token);
+			OptedOut("Executable") + "\n[[ProjectReferences]]\nPath = '../lib/lib.celp'\n", Token);
 		
 		await File.WriteAllTextAsync(LibraryPath, LibrarySource, Token);
 		await File.WriteAllTextAsync(ProgramPath, ProgramSource, Token);

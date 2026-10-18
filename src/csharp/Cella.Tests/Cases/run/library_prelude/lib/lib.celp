@@ -1,0 +1,4 @@
+OutputType = "StaticLibrary"
+StandardLibrary = "None"
+SystemLinkPreference = "Dynamic"
+Prelude = ["lib.panic", "lib.greet", "lib.shout"]

@@ -23,10 +23,20 @@ public sealed partial class CellaProject
 		nameof(OverflowChecks), nameof(DebugInfo), nameof(Referenceable), nameof(ProjectReferences), nameof(Flags)
 	];
 	
-	private static readonly HashSet<string> _settingNames = [.._whenSettingNames, nameof(Imports), nameof(When)];
+	private static readonly HashSet<string> _settingNames =
+	[
+		.._whenSettingNames, nameof(CellaVersion), nameof(StandardLibrary), nameof(Imports), nameof(Prelude),
+		nameof(When)
+	];
 	
 	[TomlValueOnSerialized]
 	public required ProjectOutputType OutputType { get; init; }
+	
+	[TomlValueOnSerialized]
+	public string? CellaVersion { get; init; }
+	
+	[TomlValueOnSerialized]
+	public StandardLibrary StandardLibrary { get; init; }
 	
 	[TomlValueOnSerialized]
 	public SystemLinkPreference SystemLinkPreference { get; init; }
@@ -54,6 +64,9 @@ public sealed partial class CellaProject
 	
 	[TomlValueOnSerialized]
 	public List<string>? Imports { get; init; }
+	
+	[TomlValueOnSerialized]
+	public List<string>? Prelude { get; init; }
 	
 	public Dictionary<string, ProjectSettings> When { get; } = [];
 	
@@ -176,6 +189,18 @@ public sealed partial class CellaProject
 					CheckChoice<SystemLinkPreference>(value, name, place, path, errors);
 					break;
 				
+				case nameof(StandardLibrary):
+					CheckChoice<StandardLibrary>(value, name, place, path, errors);
+					break;
+				
+				case nameof(CellaVersion) when value.ValueType != TomlValueType.String:
+					errors.Add($"{path}: '{name}' must be a string");
+					break;
+				
+				case nameof(CellaVersion) when SemanticVersion.Parse(value.GetString()) is null:
+					errors.Add($"{path}: '{value.GetString()}' is not a valid '{name}'");
+					break;
+				
 				case nameof(AssemblyName) when value.ValueType != TomlValueType.String:
 					errors.Add($"{path}: '{name}'{place} must be a string");
 					break;
@@ -197,7 +222,7 @@ public sealed partial class CellaProject
 					CheckFlags(value, condition, path, errors);
 					break;
 				
-				case nameof(Imports) when !IsStringList(value):
+				case nameof(Imports) or nameof(Prelude) when !IsStringList(value):
 					errors.Add($"{path}: '{name}' must be a list of strings");
 					break;
 				
@@ -349,6 +374,8 @@ public sealed partial class CellaProject
 		return new CellaProject
 		{
 			OutputType = OutputType,
+			CellaVersion = CellaVersion,
+			StandardLibrary = StandardLibrary,
 			Referenceable = referenceable,
 			SystemLinkPreference = Override(path, matching, static settings => settings.SystemLinkPreference,
 				nameof(SystemLinkPreference), errors) ?? SystemLinkPreference,
@@ -366,7 +393,8 @@ public sealed partial class CellaProject
 				..matching.SelectMany(static entry => entry.Settings.ProjectReferences ?? [])
 			],
 			Flags = Flags,
-			Imports = Imports
+			Imports = Imports,
+			Prelude = Prelude
 		};
 	}
 	

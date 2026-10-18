@@ -1,3 +1,4 @@
 .gitignore
 *.vsix
 cella.dic
+sync-version.js

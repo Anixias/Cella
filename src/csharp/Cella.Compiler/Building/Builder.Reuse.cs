@@ -69,7 +69,9 @@ public sealed partial class Builder
 			if (dependencies.All(projectSymbols.ContainsKey))
 			{
 				var dependencyInfo = dependencies.Select(dependency => projectSymbols[dependency]).ToList();
-				var assemblyInfo = await BuildProject(project, typePool, dependencyInfo, linkPreferences[project], ct);
+				var assemblyInfo = await BuildProject(project, dependencies, typePool, dependencyInfo,
+					linkPreferences[project], ct);
+				
 				if (assemblyInfo.Succeeded)
 					built = assemblyInfo;
 			}

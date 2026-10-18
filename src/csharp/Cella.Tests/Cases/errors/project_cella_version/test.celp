@@ -1,0 +1,13 @@
+OutputType = "Executable"
+StandardLibrary = "None"
+SystemLinkPreference = "Dynamic"
+CellaVersion = "0.0.1"
+
+[[ProjectReferences]]
+Path = 'newer/newer.celp'
+
+[[ProjectReferences]]
+Path = 'bad/bad.celp'
+
+[[ProjectReferences]]
+Path = 'number/number.celp'

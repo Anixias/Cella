@@ -22,7 +22,9 @@ public sealed class LanguageServerTests : IAsyncDisposable
 	public LanguageServerTests()
 	{
 		Directory.CreateDirectory(_directory);
-		File.WriteAllText(Path.Combine(_directory, "test.celp"), "OutputType = \"Executable\"\n");
+		File.WriteAllText(Path.Combine(_directory, "test.celp"),
+			"OutputType = \"Executable\"\nStandardLibrary = \"None\"\n");
+		
 		File.WriteAllText(SourcePath, ValidSource);
 		
 		var serverInput = new AnonymousPipeClientStream(PipeDirection.In, _clientOutput.ClientSafePipeHandle);

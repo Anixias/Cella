@@ -1,0 +1,12 @@
+
+====== main.ce ======
+
+Hint at line 3, column 9
+2 │ 
+3 │ use lib.greet
+            ╘═══╛ Redundant import
+
+hello from the prelude
+own shout
+0
+[exit code 0]

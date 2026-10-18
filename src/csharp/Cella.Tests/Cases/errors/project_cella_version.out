@@ -1,0 +1,5 @@
+<case>\test.celp: Pinned to Cella 0.0.1, older than this compiler
+<case>\newer\newer.celp: Pinned to Cella 99.0.0, newer than this compiler
+<case>\bad\bad.celp: '1.2' is not a valid 'CellaVersion'
+<case>\number\number.celp: 'CellaVersion' must be a string
+[compilation failed]

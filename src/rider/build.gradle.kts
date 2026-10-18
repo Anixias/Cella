@@ -4,7 +4,7 @@ plugins {
 }
 
 group = "com.anixias.cella"
-version = "0.1.0"
+version = rootDir.resolve("../../version.txt").readText().trim()
 
 val riderPath = providers.gradleProperty("riderPath")
 	.orElse(providers.environmentVariable("LOCALAPPDATA").map { "$it/Programs/Rider 2" })

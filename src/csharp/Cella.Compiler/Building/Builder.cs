@@ -14,6 +14,19 @@ public sealed partial class Builder(BuildOptions options, IBuildOutput output)
 {
 	public static string ToolchainsDirectory => Path.Combine(AppContext.BaseDirectory, "toolchains");
 	
+	private static string StandardLibraryDirectory => Path.Combine(AppContext.BaseDirectory, "lib", "std");
+	
+	private static IEnumerable<string> FindStandardLibrary(StandardLibrary use) => use switch
+	{
+		StandardLibrary.Full =>
+		[
+			Path.Combine(StandardLibraryDirectory, "core", "std-core.celp"),
+			Path.Combine(StandardLibraryDirectory, "os", "std.celp")
+		],
+		StandardLibrary.Core => [Path.Combine(StandardLibraryDirectory, "core", "std-core.celp")],
+		_ => []
+	};
+	
 	private readonly List<ProjectCheck> _projects = [];
 	private IReadOnlyDictionary<string, string> openFiles = new Dictionary<string, string>();
 	private CompletionProbe? probe;
@@ -260,6 +273,18 @@ public sealed partial class Builder(BuildOptions options, IBuildOutput output)
 		return isValid;
 	}
 	
+	private void CheckVersion(string path, CellaProject project, List<string> errors)
+	{
+		if (project.CellaVersion is not { } pin || SemanticVersion.Parse(pin) is not { } version)
+			return;
+		
+		var comparison = version.CompareTo(SemanticVersion.Current);
+		if (comparison > 0)
+			errors.Add($"{path}: Pinned to Cella {pin}, newer than this compiler");
+		else if (comparison < 0)
+			output.WriteLine($"{path}: Pinned to Cella {pin}, older than this compiler");
+	}
+	
 	private static string GetCanonicalPath(string path)
 	{
 		var full = Path.GetFullPath(path);
@@ -288,6 +313,7 @@ public sealed partial class Builder(BuildOptions options, IBuildOutput output)
 		var projectQueue = new Queue<string>(projectPaths.Select(GetCanonicalPath));
 		var processedPaths = new HashSet<string>();
 		var graph = new DependencyGraph<ProjectInfo>();
+		var isLibraryMissing = false;
 		
 		// Collect projects
 		while (projectQueue.Count > 0)
@@ -307,11 +333,29 @@ public sealed partial class Builder(BuildOptions options, IBuildOutput output)
 				errors.Add($"{path}: Cannot share a directory with {string.Join(", ", siblings)}");
 			
 			var project = loaded.Resolve(path, CreateFlags(loaded), errors);
+			CheckVersion(path, project, errors);
 			var projectDirectory = Path.GetDirectoryName(path) ?? string.Empty;
 			var projectName = Path.GetFileNameWithoutExtension(path);
 			var projectInfo = new ProjectInfo(path, projectDirectory, projectName, project);
 			graph.Add(projectInfo);
 			projectLookup[path] = projectInfo;
+			
+			foreach (var library in FindStandardLibrary(project.StandardLibrary))
+			{
+				if (!File.Exists(library))
+				{
+					if (!isLibraryMissing)
+						errors.Add($"Standard library not found in '{StandardLibraryDirectory}'");
+					
+					isLibraryMissing = true;
+					continue;
+				}
+				
+				var libraryPath = GetCanonicalPath(library);
+				projectDependencies.GetOrAdd(projectInfo).Add(libraryPath);
+				if (!processedPaths.Contains(libraryPath))
+					projectQueue.Enqueue(libraryPath);
+			}
 			
 			// Queue dependencies to be collected
 			if (project.ProjectReferences is not { } references)
@@ -380,6 +424,7 @@ public sealed partial class Builder(BuildOptions options, IBuildOutput output)
 		public ImmutableArray<LoweredFunction> GenericFunctions { get; init; } = [];
 		public RuntimeChecks Checks { get; init; }
 		public IReadOnlySet<GlobalSymbol> ExportedStatics { get; init; } = ImmutableHashSet<GlobalSymbol>.Empty;
+		public bool HasStaticDrops { get; init; }
 		public IReadOnlySet<Symbol> Exports { get; init; } = ImmutableHashSet<Symbol>.Empty;
 		public ImmutableArray<ExportName> ExportNames { get; init; } = [];
 		public ImmutableArray<string> PlainNames { get; init; } = [];

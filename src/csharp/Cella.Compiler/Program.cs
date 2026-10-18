@@ -1,4 +1,5 @@
 ﻿using Cella.Compiler.Building;
+using Cella.Compiler.Projects;
 using Cella.Core.CodeGen;
 
 namespace Cella.Compiler;
@@ -8,7 +9,7 @@ internal static class Program
 	public static Task<int> Main(string[] args) => CompilerThread.Run(() => RunAsync(args));
 	
 	private static readonly string[] _options =
-		["--verbose", "--hints", "--release", "--flag", "--target", "--emit-ir", "--emit-asm"];
+		["--verbose", "--hints", "--release", "--flag", "--target", "--emit-ir", "--emit-asm", "--version"];
 	
 	private static bool IsOptionValue(string[] args, int index) =>
 		index > 0 && args[index - 1] is "--flag" or "--target";
@@ -20,6 +21,12 @@ internal static class Program
 		{
 			Console.WriteLine($"Unknown option '{unknown}'");
 			return 1;
+		}
+		
+		if (args.Contains("--version"))
+		{
+			Console.WriteLine($"cella {SemanticVersion.Current}");
+			return 0;
 		}
 		
 		var verbose = args.Contains("--verbose");
@@ -36,7 +43,8 @@ internal static class Program
 		{
 			Console.WriteLine(
 				"Usage: cella <project file or folder> [--release] [--verbose] [--hints] [--flag <name>[=true|false]] " +
-				"[--target windows-x64|windows-x64-gnu|linux-x64] [--emit-ir] [--emit-asm]");
+				"[--target windows-x64|windows-x64-gnu|linux-x64] [--emit-ir] [--emit-asm]\n" +
+				"       cella --version");
 			
 			return 1;
 		}

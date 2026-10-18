@@ -1,0 +1,4 @@
+OutputType = "Executable"
+StandardLibrary = "None"
+SystemLinkPreference = "Dynamic"
+CellaVersion = "0.0.1"

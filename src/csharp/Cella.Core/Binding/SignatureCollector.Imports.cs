@@ -31,6 +31,7 @@ public sealed partial class SignatureCollector
 		var hidden = new List<Symbol>();
 		var explicitImports = new List<(Symbol Symbol, Token Name, string Module)>();
 		var activated = new List<ModuleSymbol>();
+		var prelude = new HashSet<Symbol>();
 		foreach (var importExpression in node.Imports)
 		{
 			ProbeImport(importExpression, context);
@@ -40,13 +41,19 @@ public sealed partial class SignatureCollector
 				activated.AddRange(Modules.GetModules(imported));
 			
 			activated.AddRange(collected.OfType<ModulePathSymbol>().SelectMany(Modules.GetModules));
-			if (importExpression.Import is TokenImport or ListImport)
+			if (importExpression.IsPrelude)
+				prelude.UnionWith(collected);
+			else if (importExpression.Import is TokenImport or ListImport)
 				explicitImports.AddRange(collected.Select(symbol =>
 					(symbol, FindImportName(importExpression, symbol), importExpression.ModuleName.Text)));
 		}
 		
+		foreach (var name in explicitImports.Where(entry => prelude.Contains(entry.Symbol))
+			         .Select(static entry => entry.Name).Distinct())
+			Diagnostics.Add(new(DiagnosticSeverity.Hint, name.SourceLocation, "Redundant import"));
+		
 		_explicitImports.Add((explicitImports, context));
-		ReportRepeatedImports(node.Imports);
+		ReportRepeatedImports(node.Imports.Where(static import => !import.IsPrelude));
 		return new(imports, explicitImports.Select(static entry => entry.Symbol), hidden, activated);
 	}
 	

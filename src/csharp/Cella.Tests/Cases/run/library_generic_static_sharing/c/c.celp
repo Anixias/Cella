@@ -1,1 +1,2 @@
 OutputType = "SharedLibrary"
+StandardLibrary = "None"

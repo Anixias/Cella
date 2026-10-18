@@ -13,7 +13,12 @@ public sealed class GoldenTests
 	private const string UpdateVariable = "CELLA_UPDATE_GOLDEN";
 	private const string ClangVariable = "CELLA_TEST_CLANG";
 	
+	private const string LibraryCategory = "std/";
 	private static readonly string _casesDirectory = Path.Combine(GetSourceDirectory(), "Cases");
+	
+	private static readonly string _libraryTestsDirectory =
+		Path.GetFullPath(Path.Combine(GetSourceDirectory(), "..", "..", "std", "tests"));
+	
 	private static readonly TimeSpan _runTimeout = TimeSpan.FromSeconds(10);
 	private static readonly Regex _exitCodeLine = new(@"^\[exit code (-?\d+)\]$", RegexOptions.Multiline);
 	
@@ -37,13 +42,14 @@ public sealed class GoldenTests
 	public static TheoryData<string, bool, string> Cases()
 	{
 		var cases = new TheoryData<string, bool, string>();
-		foreach (var path in FindCases())
+		var compilerCases = NameCases(FindCases(), _casesDirectory, "");
+		var libraryCases = NameCases(FindCases(_libraryTestsDirectory), _libraryTestsDirectory, LibraryCategory);
+		foreach (var (path, name) in compilerCases.Concat(libraryCases))
 		{
-			var name = Path.GetRelativePath(_casesDirectory, path).Replace('\\', '/');
 			foreach (var target in _targets.Where(target => RunsOn(path, target)))
 			{
 				cases.Add(name, false, target);
-				if (name.StartsWith("run/"))
+				if (name.StartsWith("run/") || name.StartsWith(LibraryCategory))
 					cases.Add(name, true, target);
 			}
 		}
@@ -82,9 +88,20 @@ public sealed class GoldenTests
 	}
 	
 	private static IEnumerable<string> FindCases() => Directory.EnumerateDirectories(_casesDirectory)
-		.SelectMany(static category => Directory.EnumerateFiles(category, "*.ce")
-			.Concat(Directory.EnumerateDirectories(category)))
+		.SelectMany(FindCases)
 		.Order();
+	
+	private static IEnumerable<string> FindCases(string directory) => Directory.Exists(directory)
+		? Directory.EnumerateFiles(directory, "*.ce").Concat(Directory.EnumerateDirectories(directory)).Order()
+		: [];
+	
+	private static IEnumerable<(string Path, string Name)> NameCases(IEnumerable<string> paths, string directory,
+		string prefix) =>
+		paths.Select(path => (path, prefix + Path.GetRelativePath(directory, path).Replace('\\', '/')));
+	
+	private static string FindCasePath(string name) => name.StartsWith(LibraryCategory)
+		? Path.Combine(_libraryTestsDirectory, name[LibraryCategory.Length..])
+		: Path.Combine(_casesDirectory, name);
 	
 	[Theory]
 	[InlineData(false)]
@@ -130,7 +147,7 @@ public sealed class GoldenTests
 	{
 		var cancellationToken = TestContext.Current.CancellationToken;
 		var updating = Environment.GetEnvironmentVariable(UpdateVariable) == "1";
-		var sourcePath = Path.Combine(_casesDirectory, name);
+		var sourcePath = FindCasePath(name);
 		var hostPath = Path.ChangeExtension(sourcePath, ".host");
 		if (File.Exists(hostPath) && (await File.ReadAllTextAsync(hostPath, cancellationToken)).Trim() is var host &&
 		    !OperatingSystem.IsOSPlatform(host))
@@ -144,7 +161,7 @@ public sealed class GoldenTests
 		if (updating && (!isOwnOutput || release && !expectedPath.EndsWith(".release.out", StringComparison.Ordinal)))
 			return;
 		
-		var actual = await RunAsync(sourcePath, release, target, cancellationToken);
+		var actual = await RunAsync(sourcePath, name.StartsWith(LibraryCategory), release, target, cancellationToken);
 		
 		if (updating)
 		{
@@ -163,7 +180,7 @@ public sealed class GoldenTests
 		Assert.Equal(expected, actual);
 	}
 	
-	private static async Task<string> RunAsync(string sourcePath, bool release, string target,
+	private static async Task<string> RunAsync(string sourcePath, bool usesLibrary, bool release, string target,
 		CancellationToken cancellationToken)
 	{
 		var caseDirectory = Directory.CreateTempSubdirectory("cella-").FullName;
@@ -173,7 +190,9 @@ public sealed class GoldenTests
 			var projectPath = Path.Combine(caseDirectory, "test.celp");
 			if (!File.Exists(projectPath))
 				await File.WriteAllTextAsync(projectPath,
-					"OutputType = \"Executable\"\nSystemLinkPreference = \"Dynamic\"\n",
+					usesLibrary
+						? "OutputType = \"Executable\"\nSystemLinkPreference = \"Dynamic\"\n"
+						: "OutputType = \"Executable\"\nStandardLibrary = \"None\"\nSystemLinkPreference = \"Dynamic\"\n",
 					cancellationToken);
 			
 			var optionsPath = Path.ChangeExtension(sourcePath, ".options");
@@ -385,7 +404,7 @@ public sealed class GoldenTests
 		return builder.ToString();
 	}
 	
-	private static string GetSourceDirectory([CallerFilePath] string path = "") =>
+	internal static string GetSourceDirectory([CallerFilePath] string path = "") =>
 		Path.GetDirectoryName(OperatingSystem.IsWindows() || path.StartsWith('/') ? path : ToWslPath(path))!;
 	
 	private static string ToWslPath(string windowsPath) =>

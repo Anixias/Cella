@@ -1,0 +1,3 @@
+<case>\test.celp: 'Partial' is not a valid 'StandardLibrary'
+<case>\test.celp: 'Prelude' must be a list of strings
+[compilation failed]

@@ -1,4 +1,5 @@
 ﻿using System.Text.Json.Nodes;
+using Cella.Compiler.Projects;
 using Cella.Core.Binding;
 
 namespace Cella.LanguageServer;
@@ -233,6 +234,6 @@ public sealed class Server
 				["save"] = new JsonObject { ["includeText"] = false }
 			}
 		},
-		["serverInfo"] = new JsonObject { ["name"] = "cella-lsp", ["version"] = "0.1.0" }
+		["serverInfo"] = new JsonObject { ["name"] = "cella-lsp", ["version"] = SemanticVersion.Current.ToString() }
 	};
 }

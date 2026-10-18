@@ -22,8 +22,9 @@ public sealed partial class Builder
 		return new(() => model);
 	}
 	
-	private async Task<AssemblyInfo> BuildProject(ProjectInfo project, TypePool typePool,
-		IEnumerable<AssemblyInfo> dependencies, SystemLinkPreference linkPreference, CancellationToken ct)
+	private async Task<AssemblyInfo> BuildProject(ProjectInfo project, ImmutableArray<ProjectInfo> references,
+		TypePool typePool, IEnumerable<AssemblyInfo> dependencies, SystemLinkPreference linkPreference,
+		CancellationToken ct)
 	{
 		var targetTriple = options.Target;
 		var optimizeMode = options.OptimizeMode;
@@ -32,7 +33,7 @@ public sealed partial class Builder
 		var outputType = project.Project.OutputType;
 		var isReferenceable = project.Project.Referenceable == true && outputType.IsExecutable();
 		var flags = CreateFlags(project.Project);
-		var (files, parseDiagnostics) = await ProcessProject(project, flags, ct);
+		var (files, parseDiagnostics) = await ProcessProject(project, references, flags, ct);
 		var diagnostics = new List<DiagnosticList> { parseDiagnostics };
 		var phases = new Dictionary<Diagnostic, int>(ReferenceEqualityComparer.Instance);
 		RecordPhase(diagnostics, phases, 0);
@@ -242,6 +243,7 @@ public sealed partial class Builder
 			.ToImmutableArray();
 		
 		IReadOnlySet<GlobalSymbol> exportedStatics;
+		bool hasStaticDrops;
 		var exports = new ExportSurface(assemblySymbol, typePool, genericFunctions).Symbols;
 		ImmutableArray<ExportName> exportNames;
 		var plainNames = GetPlainNames(assemblySymbol);
@@ -271,10 +273,14 @@ public sealed partial class Builder
 					}))
 					.Select(static library => library.Name)
 					.ToHashSet(),
-				ContainedAssemblies = [..dropOrder.Where(contained.Contains).Select(static d => d.Name)],
+				ContainedAssemblies =
+				[
+					..dropOrder.Where(d => contained.Contains(d) && d.HasStaticDrops)
+						.Select(static d => d.Name)
+				],
 				LoadedAssemblies =
 				[
-					..dropOrder.Where(static d => d.OutputType != ProjectOutputType.StaticLibrary)
+					..dropOrder.Where(static d => d.OutputType != ProjectOutputType.StaticLibrary && d.HasStaticDrops)
 						.Select(static d => d.Name)
 				]
 			};
@@ -309,6 +315,7 @@ public sealed partial class Builder
 				return errorResult;
 			
 			exportedStatics = codeGenerator.ExportedStatics;
+			hasStaticDrops = codeGenerator.HasStaticDrops;
 			exportNames = [..codeGenerator.ExportNames];
 			var outputBaseName = GetOutputBaseName(project);
 			var outputFileName = GetOutputFileName(outputBaseName, targetTriple, outputType);
@@ -455,6 +462,7 @@ public sealed partial class Builder
 			GenericFunctions = genericFunctions,
 			Checks = codeGenConfig.Checks,
 			ExportedStatics = exportedStatics,
+			HasStaticDrops = hasStaticDrops,
 			Exports = exports,
 			ExportNames = exportNames,
 			PlainNames = plainNames,

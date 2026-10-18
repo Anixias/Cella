@@ -1,4 +1,5 @@
 OutputType = "SharedLibrary"
+StandardLibrary = "None"
 
 [[ProjectReferences]]
 Path = '../a/a.celp'
