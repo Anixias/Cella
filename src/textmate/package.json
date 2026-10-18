@@ -52,7 +52,7 @@
 				"cella.server.path": {
 					"type": "string",
 					"default": "",
-					"markdownDescription": "Path to the `cella-lsp` executable. When empty, `cella-lsp` is found on `PATH`."
+					"markdownDescription": "Path to a `cella-lsp` executable to run instead of the installed Cella's language server."
 				}
 			}
 		}

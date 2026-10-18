@@ -1,0 +1,187 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    outputs:
+      components: ${{ steps.verify.outputs.components }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Check the tag, version and changelog
+        id: verify
+        shell: pwsh
+        run: |
+          $components = ./tools/release.ps1 verify -Tag $env:GITHUB_REF_NAME -Notes notes.md
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          "components=$components" >> $env:GITHUB_OUTPUT
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: notes
+          path: notes.md
+
+  components:
+    needs: verify
+    if: needs.verify.outputs.components != '[]'
+    strategy:
+      matrix:
+        component: ${{ fromJSON(needs.verify.outputs.components) }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install archive tools
+        run: sudo apt-get update && sudo apt-get install -y libarchive-tools
+
+      - name: Build ${{ matrix.component }}
+        shell: pwsh
+        run: ./tools/build-component.ps1 -Name ${{ matrix.component }} -Output dist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: component-${{ matrix.component }}
+          path: dist/*
+
+  test:
+    needs: [verify, components]
+    if: always() && needs.verify.result == 'success' && needs.components.result != 'failure'
+    uses: ./.github/workflows/test.yml
+    with:
+      built-components: ${{ needs.verify.outputs.components != '[]' }}
+
+  build:
+    needs: verify
+    strategy:
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Build Cella and the launcher
+        shell: pwsh
+        run: ./tools/build-version.ps1 -Output dist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: build-${{ matrix.os }}
+          path: dist/*
+
+  plugins:
+    needs: verify
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Build the Rider plugin
+        working-directory: src/rider
+        run: ./gradlew buildPlugin --console=plain
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+
+      - name: Package the VS Code extension
+        working-directory: src/textmate
+        run: |
+          npm ci --ignore-scripts
+          npm run package
+
+      - name: Collect the plugins
+        shell: pwsh
+        run: |
+          $version = (Get-Content version.txt -Raw).Trim()
+          New-Item -ItemType Directory -Force dist | Out-Null
+          Copy-Item "src/rider/build/distributions/cella-rider-$version.zip" dist/
+          Copy-Item "src/textmate/cella-$version.vsix" dist/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: plugins
+          path: dist/*
+
+  publish:
+    needs: [verify, components, test, build, plugins]
+    if: always() && needs.verify.result == 'success' && needs.test.result == 'success' && needs.build.result == 'success' && needs.plugins.result == 'success' && needs.components.result != 'failure'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/download-artifact@v5
+        with:
+          path: artifacts
+
+      - name: Gather the release files
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force dist | Out-Null
+          Get-ChildItem artifacts -Directory | Where-Object Name -ne 'notes' |
+            ForEach-Object { Copy-Item "$($_.FullName)/*" dist/ }
+          ./tools/write-index.ps1 -Assets dist -Site site
+          Push-Location dist
+          Get-ChildItem -File | Sort-Object Name | ForEach-Object {
+            "$((Get-FileHash -Algorithm SHA256 $_.FullName).Hash.ToLowerInvariant())  $($_.Name)"
+          } | Set-Content SHA256SUMS
+          Pop-Location
+
+      - uses: actions/attest@v4
+        with:
+          subject-path: dist/*
+
+      - name: Create the draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: pwsh
+        run: |
+          $version = (Get-Content version.txt -Raw).Trim()
+          $prerelease = if ($version -match '-') { '--prerelease' } else { $null }
+          gh release create $env:GITHUB_REF_NAME --draft --verify-tag --title "Cella $version" `
+            --notes-file artifacts/notes/notes.md @(@($prerelease) | Where-Object { $_ })
+          gh release upload $env:GITHUB_REF_NAME dist/*
+
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release edit "$GITHUB_REF_NAME" --draft=false
+
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: site
+
+  pages:
+    needs: publish
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - id: deploy
+        uses: actions/deploy-pages@v4

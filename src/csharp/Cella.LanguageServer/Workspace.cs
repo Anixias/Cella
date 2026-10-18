@@ -330,7 +330,7 @@ public sealed class Workspace(Func<JsonObject, Task> notify, TimeSpan debounce)
 				var output = new CollectedOutput();
 				_checkers[root] = checker = new(new Builder(new BuildOptions
 				{
-					Target = TargetTriple.FromHost().WithDefaultAbi(Builder.ToolchainsDirectory),
+					Target = TargetTriple.FromHost().WithDefaultAbi(),
 					ChecksOnly = true
 				}, output), output);
 			}

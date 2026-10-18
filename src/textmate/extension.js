@@ -4,8 +4,13 @@ const { LanguageClient, TransportKind } = require("vscode-languageclient/node");
 let client;
 
 async function activate() {
-	const command = workspace.getConfiguration("cella").get("server.path") || "cella-lsp";
-	client = new LanguageClient("cella", "Cella", { command, transport: TransportKind.stdio }, {
+	const configured = workspace.getConfiguration("cella").get("server.path");
+	const options = { cwd: workspace.workspaceFolders?.[0]?.uri.fsPath };
+	const server = configured
+		? { command: configured, transport: TransportKind.stdio, options }
+		: { command: "cella", args: ["lsp"], transport: TransportKind.stdio, options };
+
+	client = new LanguageClient("cella", "Cella", server, {
 		documentSelector: [
 			{ scheme: "file", language: "cella" },
 			{ scheme: "file", language: "cella-project" }
@@ -18,7 +23,7 @@ async function activate() {
 	try {
 		await client.start();
 	} catch (error) {
-		window.showErrorMessage(`Couldn't start the Cella language server '${command}': ${error.message}`);
+		window.showErrorMessage(`Couldn't start the Cella language server '${server.command}': ${error.message}`);
 	}
 }
 

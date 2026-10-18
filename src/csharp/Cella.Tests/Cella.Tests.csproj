@@ -20,6 +20,7 @@
     <ProjectReference Include="..\Cella.Compiler\Cella.Compiler.csproj"/>
     <ProjectReference Include="..\Cella.Core\Cella.Core.csproj"/>
     <ProjectReference Include="..\Cella.LanguageServer\Cella.LanguageServer.csproj"/>
+    <Compile Include="..\Cella.Launcher\Pins.cs" Link="Launcher\Pins.cs"/>
   </ItemGroup>
   
   <ItemGroup>

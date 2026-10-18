@@ -3,19 +3,16 @@ using Cella.Core.CodeGen;
 
 namespace Cella.Compiler.Linking;
 
-public sealed class WindowsMsvcToolchain(string root, string builtinsLibrary) : Toolchain
+public sealed class WindowsMsvcToolchain(string root, MsvcLibraries? libraries, string builtinsLibrary) : Toolchain
 {
 	public override string GetTool(ProjectOutputType outputType) =>
 		outputType == ProjectOutputType.StaticLibrary ? "llvm-lib" : "lld";
 	
-	private readonly string _msvcLibDir = Path.Combine(root, "msvc");
-	private readonly string _ucrtLibDir = Path.Combine(root, "ucrt");
-	private readonly string _umLibDir = Path.Combine(root, "um");
-	private readonly string _compilerRtLibDir = Path.Combine(root, "compiler-rt");
+	private readonly string _builtinsPath = Path.Combine(root, "compiler-rt", builtinsLibrary);
 	
 	public override Dictionary<string, string?> GetLinkerEnvironmentVars() => new()
 	{
-		["LIB"] = string.Join(';', _msvcLibDir, _ucrtLibDir, _umLibDir, _compilerRtLibDir),
+		["LIB"] = libraries is null ? string.Empty : string.Join(';', libraries.Msvc, libraries.Ucrt, libraries.Um),
 		["LINK"] = string.Empty,
 		["_LINK_"] = string.Empty,
 	};
@@ -57,7 +54,7 @@ public sealed class WindowsMsvcToolchain(string root, string builtinsLibrary) : 
 		{
 			args.Add(request.LinkPreference == SystemLinkPreference.Static ? "libcmt.lib" : "msvcrt.lib");
 			args.Add("legacy_stdio_definitions.lib");
-			args.Add(builtinsLibrary);
+			args.Add(_builtinsPath);
 		}
 		
 		args.AddRange(request.LibFiles.Distinct());

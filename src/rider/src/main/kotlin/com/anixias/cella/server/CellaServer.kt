@@ -196,9 +196,11 @@ class CellaServer(private val project: Project) : Disposable {
 			connection = null
 		}
 		
-		val executable = findExecutable() ?: return null
+		val command = findCommand() ?: return null
 		return try {
-			val process = ProcessBuilder(executable).redirectError(ProcessBuilder.Redirect.DISCARD).start()
+			val process = ProcessBuilder(command).redirectError(ProcessBuilder.Redirect.DISCARD)
+				.apply { project.basePath?.let { directory(File(it)) } }
+				.start()
 			val launcher = LSPLauncher.createClientLauncher(Client(), process.inputStream, process.outputStream)
 			launcher.startListening()
 			val server = launcher.remoteProxy
@@ -218,7 +220,7 @@ class CellaServer(private val project: Project) : Disposable {
 			server.initialized(InitializedParams())
 			Connection(process, server, result.capabilities.semanticTokensProvider?.legend).also { connection = it }
 		} catch (exception: Exception) {
-			log.warn("Couldn't start $executable", exception)
+			log.warn("Couldn't start ${command.joinToString(" ")}", exception)
 			null
 		}
 	}
@@ -235,21 +237,21 @@ class CellaServer(private val project: Project) : Disposable {
 		current.process.destroy()
 	}
 	
-	private fun findExecutable(): String? {
-		val configured = CellaSettings.instance.state.serverPath
-		val path = configured?.takeIf { File(it).isFile }
-			?: PathEnvironmentVariableUtil.findInPath("cella-lsp")?.path
-			?: PathEnvironmentVariableUtil.findInPath("cella-lsp.exe")?.path
+	private fun findCommand(): List<String>? {
+		CellaSettings.instance.state.serverPath?.takeIf { File(it).isFile }?.let { return listOf(it) }
+		val launcher = PathEnvironmentVariableUtil.findInPath("cella")?.path
+			?: PathEnvironmentVariableUtil.findInPath("cella.exe")?.path
 		
-		if (path == null && !hasReportedMissing) {
+		if (launcher == null && !hasReportedMissing) {
 			hasReportedMissing = true
 			NotificationGroupManager.getInstance().getNotificationGroup("Cella")
-				.createNotification("Cella language server not found",
-					"Set its location in Settings | Languages & Frameworks | Cella.", NotificationType.WARNING)
+				.createNotification("Cella not found",
+					"Install Cella, or set a language server in Settings | Languages & Frameworks | Cella.",
+					NotificationType.WARNING)
 				.notify(project)
 		}
 		
-		return path
+		return launcher?.let { listOf(it, "lsp") }
 	}
 	
 	private fun refreshAnnotations(uri: String) {

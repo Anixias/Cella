@@ -6,27 +6,51 @@ namespace Cella.Compiler;
 
 internal static class Program
 {
-	public static Task<int> Main(string[] args) => CompilerThread.Run(() => RunAsync(args));
+	public static Task<int> Main(string[] args)
+	{
+		Installation.UseComponentLibraries();
+		return CompilerThread.Run(() => RunAsync(args));
+	}
 	
 	private static readonly string[] _options =
-		["--verbose", "--hints", "--release", "--flag", "--target", "--emit-ir", "--emit-asm", "--version"];
+		["--verbose", "--hints", "--release", "--flag", "--target", "--emit-ir", "--emit-asm"];
+	
+	private const string Usage =
+		"Usage: cella build [project file or folder] [--release] [--verbose] [--hints] [--flag <name>[=true|false]] " +
+		"[--target windows-x64|windows-x64-gnu|linux-x64] [--emit-ir] [--emit-asm]\n" +
+		"       cella --version";
 	
 	private static bool IsOptionValue(string[] args, int index) =>
 		index > 0 && args[index - 1] is "--flag" or "--target";
 	
-	private static async Task<int> RunAsync(string[] args)
+	private static Task<int> RunAsync(string[] args)
+	{
+		switch (args)
+		{
+			case ["--version"]:
+				Console.WriteLine($"cella {SemanticVersion.Current}");
+				return Task.FromResult(0);
+			
+			case ["build", .. var rest]:
+				return BuildAsync(rest);
+			
+			case [var command, ..] when !command.StartsWith('-'):
+				Console.WriteLine($"Unknown command '{command}'");
+				return Task.FromResult(1);
+			
+			default:
+				Console.WriteLine(Usage);
+				return Task.FromResult(1);
+		}
+	}
+	
+	private static async Task<int> BuildAsync(string[] args)
 	{
 		if (args.Where((arg, i) => arg.StartsWith("--") && !_options.Contains(arg) && !IsOptionValue(args, i))
 			    .FirstOrDefault() is { } unknown)
 		{
 			Console.WriteLine($"Unknown option '{unknown}'");
 			return 1;
-		}
-		
-		if (args.Contains("--version"))
-		{
-			Console.WriteLine($"cella {SemanticVersion.Current}");
-			return 0;
 		}
 		
 		var verbose = args.Contains("--verbose");
@@ -39,23 +63,13 @@ internal static class Program
 			return 1;
 		
 		var paths = args.Where((arg, i) => !arg.StartsWith("--") && !IsOptionValue(args, i)).ToArray();
-		if (paths is [])
-		{
-			Console.WriteLine(
-				"Usage: cella <project file or folder> [--release] [--verbose] [--hints] [--flag <name>[=true|false]] " +
-				"[--target windows-x64|windows-x64-gnu|linux-x64] [--emit-ir] [--emit-asm]\n" +
-				"       cella --version");
-			
-			return 1;
-		}
-		
 		if (paths is [_, var extra, ..])
 		{
 			Console.WriteLine($"Unexpected argument '{extra}'");
 			return 1;
 		}
 		
-		var sourcePath = paths[0];
+		var sourcePath = paths is [var path] ? path : ".";
 		var displayRoot = Directory.Exists(sourcePath)
 			? Path.GetFullPath(sourcePath)
 			: Path.GetDirectoryName(Path.GetFullPath(sourcePath));
@@ -78,7 +92,7 @@ internal static class Program
 	{
 		var index = Array.IndexOf(args, "--target");
 		if (index < 0)
-			return TargetTriple.FromHost().WithDefaultAbi(Builder.ToolchainsDirectory);
+			return TargetTriple.FromHost().WithDefaultAbi();
 		
 		if (index + 1 == args.Length || args[index + 1].StartsWith("--"))
 		{
@@ -93,7 +107,13 @@ internal static class Program
 		}
 		
 		if (TargetTriple.Parse(args[index + 1]) is { } target)
-			return target.WithDefaultAbi(Builder.ToolchainsDirectory);
+		{
+			if (target.Abi != TargetTriple.Abis.Msvc || TargetTriple.HasMsvc(target.Arch))
+				return target.WithDefaultAbi();
+			
+			Console.WriteLine($"'{args[index + 1]}' needs Visual Studio's C++ build tools and the Windows SDK");
+			return null;
+		}
 		
 		Console.WriteLine($"Unknown target '{args[index + 1]}'");
 		return null;

@@ -1,0 +1,55 @@
+name: Test
+
+on:
+  workflow_call:
+    inputs:
+      built-components:
+        description: Download the component archives this run built instead of fetching or building them
+        type: boolean
+        default: false
+
+jobs:
+  test:
+    name: ${{ matrix.os }} ${{ matrix.configuration }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+        configuration: [Debug, Release]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Install archive tools
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libarchive-tools
+
+      - name: Download built components
+        if: inputs.built-components
+        uses: actions/download-artifact@v5
+        with:
+          pattern: component-*
+          merge-multiple: true
+          path: built-components
+
+      - name: Restore components
+        id: components
+        uses: actions/cache@v4
+        with:
+          path: toolchain
+          key: toolchain-${{ runner.os }}-${{ hashFiles('components.json', 'tools/components/**') }}
+
+      - name: Fetch components
+        if: steps.components.outputs.cache-hit != 'true'
+        shell: pwsh
+        run: ./tools/fetch-components.ps1 -Output toolchain -Built built-components
+
+      - name: Run the suites
+        shell: pwsh
+        env:
+          CellaToolchainDirectory: ${{ github.workspace }}/toolchain
+        run: dotnet test --project src/csharp/Cella.Tests -c ${{ matrix.configuration }}

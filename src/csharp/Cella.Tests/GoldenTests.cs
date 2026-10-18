@@ -248,7 +248,7 @@ public sealed class GoldenTests
 			Assert.Skip($"Building C sources needs clang on PATH or in {ClangVariable}");
 		
 		var triple = TargetTriple.Parse(target)!.Value
-			.WithDefaultAbi(Path.Combine(AppContext.BaseDirectory, "toolchains"));
+			.WithDefaultAbi();
 		
 		string[] flags = triple.IsElf ? ["-fPIC"] : [];
 		var archiver = Path.Combine(AppContext.BaseDirectory, OperatingSystem.IsWindows() ? "llvm-ar.exe" : "llvm-ar");
@@ -349,8 +349,8 @@ public sealed class GoldenTests
 		var output = new StringWriter();
 		_compilerOutput.Value = output;
 		string[] arguments = release
-			? [projectPath, "--hints", "--release", ..options]
-			: [projectPath, "--hints", ..options];
+			? ["build", projectPath, "--hints", "--release", ..options]
+			: ["build", projectPath, "--hints", ..options];
 		
 		var exitCode = await Program.Main(arguments);
 		return (exitCode, output.ToString());

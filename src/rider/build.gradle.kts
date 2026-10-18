@@ -9,6 +9,8 @@ version = rootDir.resolve("../../version.txt").readText().trim()
 val riderPath = providers.gradleProperty("riderPath")
 	.orElse(providers.environmentVariable("LOCALAPPDATA").map { "$it/Programs/Rider 2" })
 
+val riderVersion = providers.gradleProperty("riderVersion").orElse("2026.1.5")
+
 kotlin {
 	jvmToolchain(21)
 }
@@ -22,7 +24,11 @@ repositories {
 
 dependencies {
 	intellijPlatform {
-		local(riderPath)
+		if (riderPath.orNull?.let { file(it).isDirectory } == true)
+			local(riderPath)
+		else
+			rider(riderVersion) { useInstaller = false }
+		
 		bundledModule("intellij.spellchecker")
 	}
 	

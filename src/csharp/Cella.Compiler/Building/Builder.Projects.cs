@@ -374,7 +374,7 @@ public sealed partial class Builder
 				? Path.Combine(outputDir, GetOutputFileName(outputBaseName, targetTriple, linkedType))
 				: outputPath;
 			
-			var linker = new Linker(AppContext.BaseDirectory, options.Verbose ? output.WriteLine : null);
+			var linker = new Linker(Installation.ToolsDirectory, options.Verbose ? output.WriteLine : null);
 			var linkRequest = new LinkRequest(linkedType, objectFiles, linkedPath, libFiles!)
 			{
 				LinkPreference = linkPreference,
@@ -394,7 +394,7 @@ public sealed partial class Builder
 				]
 			};
 			
-			var linkerToolchain = Toolchain.FromTargetTriple(targetTriple, ToolchainsDirectory);
+			var linkerToolchain = Toolchain.FromTargetTriple(targetTriple);
 			
 			if (linker.FindMissingLinker(linkRequest, linkerToolchain) is { } missing)
 			{

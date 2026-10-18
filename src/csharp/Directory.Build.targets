@@ -13,4 +13,13 @@
     </ItemGroup>
   </Target>
 
+  <Target Name="UseComponentLibLLVM" AfterTargets="ResolvePackageAssets" Condition="'$(CellaComponentLayout)' == 'true'">
+    <ItemGroup>
+      <NativeCopyLocalItems Remove="@(NativeCopyLocalItems)"
+                            Condition="'%(Filename)%(Extension)' == 'libLLVM.so' or '%(Filename)%(Extension)' == 'LLVM-C.dll'"/>
+      <RuntimeTargetsCopyLocalItems Remove="@(RuntimeTargetsCopyLocalItems)"
+                                    Condition="'%(Filename)%(Extension)' == 'libLLVM.so' or '%(Filename)%(Extension)' == 'LLVM-C.dll'"/>
+    </ItemGroup>
+  </Target>
+
 </Project>

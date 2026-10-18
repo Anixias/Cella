@@ -13,8 +13,6 @@ namespace Cella.Compiler.Building;
 
 public sealed partial class Builder(BuildOptions options, IBuildOutput output)
 {
-	public static string ToolchainsDirectory => Path.Combine(AppContext.BaseDirectory, "toolchains");
-	
 	private static string StandardLibraryDirectory => Path.Combine(AppContext.BaseDirectory, "lib", "std");
 	
 	private static IEnumerable<string> FindStandardLibrary(StandardLibrary use) => use switch

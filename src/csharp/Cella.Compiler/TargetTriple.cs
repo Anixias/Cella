@@ -59,12 +59,13 @@ public readonly record struct TargetTriple(string Os, string Arch, string? Abi)
 	
 	public uint PointerBitSize => Arch == ArchTypes.X86 ? 32u : 64u;
 	
-	public TargetTriple WithDefaultAbi(string toolchainsDirectory) => Os == OsTypes.Windows && Abi is null
-		? this with
-		{
-			Abi = Directory.Exists(Path.Combine(toolchainsDirectory, $"{Os}-{Arch}-{Abis.Msvc}")) ? Abis.Msvc : Abis.Gnu
-		}
+	public TargetTriple WithDefaultAbi() => Os == OsTypes.Windows && Abi is null
+		? this with { Abi = HasMsvc(Arch) ? Abis.Msvc : Abis.Gnu }
 		: this;
+	
+	public static bool HasMsvc(string arch) =>
+		Directory.Exists(Installation.GetToolchainDirectory($"{OsTypes.Windows}-{arch}-{Abis.Msvc}")) &&
+		Linking.MsvcLibraries.Current is not null;
 	
 	public static TargetTriple? Parse(string text) => text.Split('-') switch
 	{

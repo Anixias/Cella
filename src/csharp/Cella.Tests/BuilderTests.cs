@@ -102,7 +102,7 @@ public sealed class BuilderTests : IDisposable
 	
 	private static Builder CreateBuilder(IBuildOutput output) => new(new BuildOptions
 	{
-		Target = TargetTriple.FromHost().WithDefaultAbi(Builder.ToolchainsDirectory),
+		Target = TargetTriple.FromHost().WithDefaultAbi(),
 		ChecksOnly = true
 	}, output);
 	
@@ -114,7 +114,7 @@ public sealed class BuilderTests : IDisposable
 		var output = new RecordingOutput();
 		var builder = new Builder(new BuildOptions
 		{
-			Target = TargetTriple.FromHost().WithDefaultAbi(Builder.ToolchainsDirectory)
+			Target = TargetTriple.FromHost().WithDefaultAbi()
 		}, output);
 		
 		var result = await CompilerThread.Run(() =>
