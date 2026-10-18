@@ -1,0 +1,11 @@
+<case>\test.celp: Unknown setting 'Colour'
+<case>\lib\lib.celp: Pinned to Cella 99.0.0, newer than this compiler
+
+====== main.ce ======
+
+Error at line 3, column 20
+2 │ 
+3 │ main: fun -> i32 = true
+                       ╘══╛ Cannot convert type 'bool' to 'i32'
+
+[compilation failed]

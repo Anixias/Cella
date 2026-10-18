@@ -1,0 +1,6 @@
+OutputType = "Executable"
+StandardLibrary = "None"
+Colour = "blue"
+
+[[ProjectReferences]]
+Path = 'lib/lib.celp'

@@ -120,7 +120,7 @@ public sealed partial class CellaProject
 	public static bool IsProjectFile(string path) =>
 		Path.GetExtension(path).Equals(ProjectFileExtension, StringComparison.OrdinalIgnoreCase);
 	
-	public static async Task<CellaProject?> LoadAsync(Stream stream, string path, List<string> errors)
+	public static async Task<CellaProject?> LoadAsync(Stream stream, string path, List<ProjectDiagnostic> errors)
 	{
 		var buffer = new MemoryStream();
 		await stream.CopyToAsync(buffer);
@@ -141,8 +141,8 @@ public sealed partial class CellaProject
 					? lines[error.LineNumber - 1].Trim()
 					: "";
 				
-				return
-					$"{path}:{error.LineNumber}: {DescribeSyntaxError(line, (error.InnerException ?? error).Message)}";
+				return ProjectDiagnostic.At(path, (int)error.LineNumber,
+					DescribeSyntaxError(line, (error.InnerException ?? error).Message));
 			}));
 			
 			return null;
@@ -153,7 +153,7 @@ public sealed partial class CellaProject
 		var reported = errors.Count;
 		CheckTypes(root, null, path, errors);
 		if (!root["OutputType"u8].HasValue)
-			errors.Add($"{path}: Missing '{nameof(OutputType)}'");
+			errors.Add(ProjectDiagnostic.In(path, $"Missing '{nameof(OutputType)}'"));
 		
 		if (errors.Count > reported)
 			return null;
@@ -173,7 +173,8 @@ public sealed partial class CellaProject
 		return project;
 	}
 	
-	private static void CheckTypes(TomlDocumentNode node, string? condition, string path, List<string> errors)
+	private static void CheckTypes(TomlDocumentNode node, string? condition, string path,
+		List<ProjectDiagnostic> errors)
 	{
 		var place = condition is null ? "" : $" in {DescribeTable(condition)}";
 		foreach (var (key, value) in node)
@@ -194,24 +195,24 @@ public sealed partial class CellaProject
 					break;
 				
 				case nameof(CellaVersion) when value.ValueType != TomlValueType.String:
-					errors.Add($"{path}: '{name}' must be a string");
+					errors.Add(ProjectDiagnostic.In(path, $"'{name}' must be a string"));
 					break;
 				
 				case nameof(CellaVersion) when SemanticVersion.Parse(value.GetString()) is null:
-					errors.Add($"{path}: '{value.GetString()}' is not a valid '{name}'");
+					errors.Add(ProjectDiagnostic.In(path, $"'{value.GetString()}' is not a valid '{name}'"));
 					break;
 				
 				case nameof(AssemblyName) when value.ValueType != TomlValueType.String:
-					errors.Add($"{path}: '{name}'{place} must be a string");
+					errors.Add(ProjectDiagnostic.In(path, $"'{name}'{place} must be a string"));
 					break;
 				
 				case nameof(AssemblyName) when !IsFileName(value.GetString()):
-					errors.Add($"{path}: '{name}'{place} must be a file name");
+					errors.Add(ProjectDiagnostic.In(path, $"'{name}'{place} must be a file name"));
 					break;
 				
 				case nameof(BoundsChecks) or nameof(OverflowChecks) or nameof(DebugInfo) or nameof(Referenceable)
 					when value.ValueType != TomlValueType.Boolean:
-					errors.Add($"{path}: '{name}'{place} must be true or false");
+					errors.Add(ProjectDiagnostic.In(path, $"'{name}'{place} must be true or false"));
 					break;
 				
 				case nameof(ProjectReferences):
@@ -223,7 +224,7 @@ public sealed partial class CellaProject
 					break;
 				
 				case nameof(Imports) or nameof(Prelude) when !IsStringList(value):
-					errors.Add($"{path}: '{name}' must be a list of strings");
+					errors.Add(ProjectDiagnostic.In(path, $"'{name}' must be a list of strings"));
 					break;
 				
 				case nameof(When) when condition is null:
@@ -248,20 +249,21 @@ public sealed partial class CellaProject
 	}
 	
 	private static void CheckChoice<T>(TomlDocumentNode value, string name, string place, string path,
-		List<string> errors) where T : struct, Enum
+		List<ProjectDiagnostic> errors) where T : struct, Enum
 	{
 		if (value.ValueType != TomlValueType.String)
-			errors.Add($"{path}: '{name}'{place} must be a string");
+			errors.Add(ProjectDiagnostic.In(path, $"'{name}'{place} must be a string"));
 		else if (!Enum.GetNames<T>().Contains(value.GetString()))
-			errors.Add($"{path}: '{value.GetString()}' is not a valid '{name}'{place}");
+			errors.Add(ProjectDiagnostic.In(path, $"'{value.GetString()}' is not a valid '{name}'{place}"));
 	}
 	
-	private static void CheckReferences(TomlDocumentNode value, string? condition, string path, List<string> errors)
+	private static void CheckReferences(TomlDocumentNode value, string? condition, string path,
+		List<ProjectDiagnostic> errors)
 	{
 		var table = DescribeReferences(condition);
 		if (!value.TryGetArray(out var entries))
 		{
-			errors.Add($"{path}: '{nameof(ProjectReferences)}' must be written as {table} tables");
+			errors.Add(ProjectDiagnostic.In(path, $"'{nameof(ProjectReferences)}' must be written as {table} tables"));
 			return;
 		}
 		
@@ -269,35 +271,37 @@ public sealed partial class CellaProject
 		{
 			var entry = value[i];
 			if (!entry.HasNodeOnly)
-				errors.Add($"{path}: '{nameof(ProjectReferences)}' must be written as {table} tables");
+				errors.Add(ProjectDiagnostic.In(path,
+					$"'{nameof(ProjectReferences)}' must be written as {table} tables"));
 			else if (entry["Path"u8] is { HasValue: true, ValueType: not TomlValueType.String })
-				errors.Add($"{path}: 'Path' in {table} must be a string");
+				errors.Add(ProjectDiagnostic.In(path, $"'Path' in {table} must be a string"));
 			else if (entry["Alias"u8] is { HasValue: true, ValueType: not TomlValueType.String })
-				errors.Add($"{path}: 'Alias' in {table} must be a string");
+				errors.Add(ProjectDiagnostic.In(path, $"'Alias' in {table} must be a string"));
 		}
 	}
 	
-	private static void CheckFlags(TomlDocumentNode value, string? condition, string path, List<string> errors)
+	private static void CheckFlags(TomlDocumentNode value, string? condition, string path,
+		List<ProjectDiagnostic> errors)
 	{
 		var table = condition is null ? "[Flags]" : $"[When.\"{condition}\".Flags]";
 		if (!value.HasNodeOnly)
 		{
-			errors.Add($"{path}: {table} must be a table");
+			errors.Add(ProjectDiagnostic.In(path, $"{table} must be a table"));
 			return;
 		}
 		
 		foreach (var (flag, setting) in value)
 		{
 			if (setting.ValueType != TomlValueType.Boolean)
-				errors.Add($"{path}: '{flag}' in {table} must be true or false");
+				errors.Add(ProjectDiagnostic.In(path, $"'{flag}' in {table} must be true or false"));
 		}
 	}
 	
-	private static void CheckConditions(TomlDocumentNode value, string path, List<string> errors)
+	private static void CheckConditions(TomlDocumentNode value, string path, List<ProjectDiagnostic> errors)
 	{
 		if (!value.HasNodeOnly)
 		{
-			errors.Add($"{path}: '{nameof(When)}' must be a table");
+			errors.Add(ProjectDiagnostic.In(path, $"'{nameof(When)}' must be a table"));
 			return;
 		}
 		
@@ -307,7 +311,7 @@ public sealed partial class CellaProject
 			if (settings.HasNodeOnly)
 				CheckTypes(settings, condition, path, errors);
 			else
-				errors.Add($"{path}: {DescribeTable(condition)} must be a table");
+				errors.Add(ProjectDiagnostic.In(path, $"{DescribeTable(condition)} must be a table"));
 		}
 	}
 	
@@ -315,13 +319,13 @@ public sealed partial class CellaProject
 		condition is null ? "[[ProjectReferences]]" : $"[[When.\"{condition}\".ProjectReferences]]";
 	
 	private static void ReportUnknownSettings(TomlDocumentNode node, HashSet<string> names, string? condition,
-		string path, List<string> errors)
+		string path, List<ProjectDiagnostic> errors)
 	{
 		var place = condition is null ? "" : $" in {DescribeTable(condition)}";
 		foreach (var (key, _) in node)
 		{
 			if (!names.Contains(key.ToString()!))
-				errors.Add($"{path}: Unknown setting '{key}'{place}");
+				errors.Add(ProjectDiagnostic.In(path, $"Unknown setting '{key}'{place}"));
 		}
 		
 		var references = node["ProjectReferences"u8];
@@ -337,24 +341,25 @@ public sealed partial class CellaProject
 				if (key.ToString() == nameof(ProjectReference.Path))
 					hasPath = true;
 				else if (key.ToString() != nameof(ProjectReference.Alias))
-					errors.Add($"{path}: Unknown setting '{key}' in {table}");
+					errors.Add(ProjectDiagnostic.In(path, $"Unknown setting '{key}' in {table}"));
 			}
 			
 			if (!hasPath)
-				errors.Add($"{path}: Missing 'Path' in {table}");
+				errors.Add(ProjectDiagnostic.In(path, $"Missing 'Path' in {table}") with { StopsChecking = true });
 		}
 	}
 	
-	public CellaProject Resolve(string path, IReadOnlyDictionary<string, bool> flags, List<string> errors)
+	public CellaProject Resolve(string path, IReadOnlyDictionary<string, bool> flags, List<ProjectDiagnostic> errors)
 	{
 		var matching = new List<(string Condition, ProjectSettings Settings)>();
 		foreach (var (condition, settings) in When)
 		{
 			if (settings.OutputType is not null)
-				errors.Add($"{path}: Cannot set '{nameof(OutputType)}' in {DescribeTable(condition)}");
+				errors.Add(ProjectDiagnostic.In(path,
+					$"Cannot set '{nameof(OutputType)}' in {DescribeTable(condition)}"));
 			
 			if (settings.Flags is { Count: > 0 })
-				errors.Add($"{path}: Cannot set '{nameof(Flags)}' in {DescribeTable(condition)}");
+				errors.Add(ProjectDiagnostic.In(path, $"Cannot set '{nameof(Flags)}' in {DescribeTable(condition)}"));
 			
 			var tokens = new FilteredScanner(new StringSource(condition, path)).ToImmutableArray();
 			var parser = new FileParser(tokens, Path.GetFileName(path), path, flags);
@@ -362,14 +367,14 @@ public sealed partial class CellaProject
 				matching.Add((condition, settings));
 			
 			errors.AddRange(parser.Diagnostics.Select(diagnostic =>
-				$"{path}: {diagnostic.Message} in {DescribeTable(condition)}"));
+				ProjectDiagnostic.In(path, $"{diagnostic.Message} in {DescribeTable(condition)}")));
 		}
 		
 		var referenceable = Override(path, matching, static settings => settings.Referenceable, nameof(Referenceable),
 			errors) ?? Referenceable;
 		
 		if (referenceable == true && !OutputType.IsExecutable())
-			errors.Add($"{path}: '{nameof(Referenceable)}' only applies to executables");
+			errors.Add(ProjectDiagnostic.In(path, $"'{nameof(Referenceable)}' only applies to executables"));
 		
 		return new CellaProject
 		{
@@ -399,12 +404,14 @@ public sealed partial class CellaProject
 	}
 	
 	private static T? Override<T>(string path, List<(string Condition, ProjectSettings Settings)> matching,
-		Func<ProjectSettings, T?> select, string name, List<string> errors)
+		Func<ProjectSettings, T?> select, string name, List<ProjectDiagnostic> errors)
 	{
 		var setters = matching.Where(entry => select(entry.Settings) is not null).ToList();
 		if (setters.Count > 1)
-			errors.Add($"{path}: '{name}' is set more than once, by " +
-			           $"{DescribeTables(setters.Select(static entry => entry.Condition).ToList())}");
+		{
+			var tables = DescribeTables(setters.Select(static entry => entry.Condition).ToList());
+			errors.Add(ProjectDiagnostic.In(path, $"'{name}' is set more than once, by {tables}"));
+		}
 		
 		return setters.Count == 1 ? select(setters[0].Settings) : default;
 	}

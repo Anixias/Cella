@@ -113,16 +113,7 @@ public sealed class LanguageServerTests : IAsyncDisposable
 	public async Task PublishesDiagnosticsForEdits()
 	{
 		await InitializeAsync();
-		await NotifyAsync("textDocument/didOpen", new JsonObject
-		{
-			["textDocument"] = new JsonObject
-			{
-				["uri"] = SourceUri,
-				["languageId"] = "cella",
-				["version"] = 1,
-				["text"] = InvalidSource
-			}
-		});
+		await OpenSourceAsync(InvalidSource);
 		
 		var published = await ReadDiagnosticsAsync(static diagnostics => diagnostics.Count > 0);
 		var error = Assert.Single((JsonArray)published["params"]!["diagnostics"]!)!;
@@ -138,6 +129,67 @@ public sealed class LanguageServerTests : IAsyncDisposable
 		});
 		
 		await ReadDiagnosticsAsync(static diagnostics => diagnostics.Count == 0);
+		Assert.Equal(0, await ShutDownAsync());
+	}
+	
+	private string ProjectPath => Path.Combine(_directory, "test.celp");
+	
+	private async Task OpenSourceAsync(string text)
+	{
+		await NotifyAsync("textDocument/didOpen", new JsonObject
+		{
+			["textDocument"] = new JsonObject
+			{
+				["uri"] = SourceUri,
+				["languageId"] = "cella",
+				["version"] = 1,
+				["text"] = text
+			}
+		});
+	}
+	
+	private async Task<JsonNode> ReadProjectDiagnosticAsync()
+	{
+		var published = await ReadUntilAsync(message =>
+			(string?)message["method"] == "textDocument/publishDiagnostics" &&
+			Protocol.PathComparer.Equals(Protocol.ToPath((string)message["params"]!["uri"]!), ProjectPath));
+		
+		return Assert.Single((JsonArray)published["params"]!["diagnostics"]!)!;
+	}
+	
+	[Fact]
+	public async Task PublishesProjectErrorsAndKeepsChecking()
+	{
+		await File.WriteAllTextAsync(ProjectPath,
+			"OutputType = \"Executable\"\nStandardLibrary = \"None\"\nColour = \"blue\"\n", Token);
+		
+		await InitializeAsync();
+		await OpenSourceAsync(InvalidSource);
+		
+		var error = await ReadProjectDiagnosticAsync();
+		Assert.Equal("Unknown setting 'Colour'", (string?)error["message"]);
+		Assert.Equal(1, (int)error["severity"]!);
+		Assert.Equal(0, (int)error["range"]!["start"]!["line"]!);
+		Assert.Equal(0, (int)error["range"]!["start"]!["character"]!);
+		Assert.Equal(25, (int)error["range"]!["end"]!["character"]!);
+		
+		await ReadDiagnosticsAsync(static diagnostics => diagnostics.Count == 1);
+		Assert.Equal(0, await ShutDownAsync());
+	}
+	
+	[Fact]
+	public async Task PublishesProjectSyntaxErrorsOnTheirLine()
+	{
+		await File.WriteAllTextAsync(ProjectPath,
+			"OutputType = \"Executable\"\nStandardLibrary = \"None\"\n  Colour =\n", Token);
+		
+		await InitializeAsync();
+		await OpenSourceAsync(InvalidSource);
+		
+		var error = await ReadProjectDiagnosticAsync();
+		Assert.Equal(2, (int)error["range"]!["start"]!["line"]!);
+		Assert.Equal(2, (int)error["range"]!["start"]!["character"]!);
+		Assert.Equal(10, (int)error["range"]!["end"]!["character"]!);
 		Assert.Equal(0, await ShutDownAsync());
 	}
 	

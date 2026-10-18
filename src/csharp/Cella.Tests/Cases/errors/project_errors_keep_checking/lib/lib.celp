@@ -1,0 +1,3 @@
+OutputType = "StaticLibrary"
+StandardLibrary = "None"
+CellaVersion = "99.0.0"

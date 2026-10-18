@@ -74,12 +74,11 @@ public sealed partial class Builder
 					$"'{pair.Key}' is linked into {DescribeProjects([..pair.Value.Select(static p => p.Name)])}")
 				.ToList();
 			
-			if (duplicated.Count > 0)
+			foreach (var problem in duplicated.Select(problem => ProjectDiagnostic.In(project.FilePath, problem)))
 			{
-				foreach (var problem in duplicated)
-					output.WriteLine($"{project.FilePath}: {problem}");
-				
-				return new(new(project.Name, SymbolTable.Empty, SignatureTable.Empty, null), outputType, null, false);
+				_problems.Add(problem);
+				output.WriteLine(problem.Text);
+				generatesCode = false;
 			}
 		}
 		
@@ -223,7 +222,7 @@ public sealed partial class Builder
 			output.Report(diagnostics.SelectMany(static list => list));
 		}
 		
-		if (options.ChecksOnly)
+		if (options.ChecksOnly || !generatesCode)
 			return new(assemblySymbol, outputType, null, true)
 			{
 				Directory = project.Directory,

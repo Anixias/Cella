@@ -1,0 +1,8 @@
+OutputType = "Executable"
+StandardLibrary = "None"
+
+[[ProjectReferences]]
+Path = 'broken/broken.celp'
+
+[[ProjectReferences]]
+Path = 'other/other.celp'

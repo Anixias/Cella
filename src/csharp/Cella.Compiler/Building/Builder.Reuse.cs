@@ -43,7 +43,8 @@ public sealed partial class Builder
 		var position = 0;
 		foreach (var (project, dependencies) in projectDependencies)
 		{
-			var fingerprint = GetFingerprint(project);
+			var isChecked = !_unchecked.Contains(project.FilePath);
+			var fingerprint = $"{isChecked}|{generatesCode}|{GetFingerprint(project)}";
 			if (!isRebuilding && position < _cache.Count && _cache[position] is var cached &&
 			    cached.Path == project.FilePath && cached.Fingerprint == fingerprint)
 			{
@@ -66,7 +67,7 @@ public sealed partial class Builder
 			
 			var checksBefore = _projects.Count;
 			AssemblyInfo? built = null;
-			if (dependencies.All(projectSymbols.ContainsKey))
+			if (isChecked && dependencies.All(projectSymbols.ContainsKey))
 			{
 				var dependencyInfo = dependencies.Select(dependency => projectSymbols[dependency]).ToList();
 				var assemblyInfo = await BuildProject(project, dependencies, typePool, dependencyInfo,
@@ -87,7 +88,7 @@ public sealed partial class Builder
 			position++;
 		}
 		
-		return new(succeeded, [.._projects]);
+		return new(succeeded, [.._projects], [.._problems]);
 	}
 	
 	private string GetFingerprint(ProjectInfo project)

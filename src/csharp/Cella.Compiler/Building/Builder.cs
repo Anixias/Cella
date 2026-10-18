@@ -7,6 +7,7 @@ using Cella.Core.CodeGen;
 using Cella.Core.Lowering;
 using Cella.Core.Symbols;
 using Cella.Core.Syntax.Nodes;
+using Cella.Diagnostics;
 
 namespace Cella.Compiler.Building;
 
@@ -28,9 +29,12 @@ public sealed partial class Builder(BuildOptions options, IBuildOutput output)
 	};
 	
 	private readonly List<ProjectCheck> _projects = [];
+	private readonly List<ProjectDiagnostic> _problems = [];
+	private readonly HashSet<string> _unchecked = [];
 	private readonly Dictionary<string, string> _outputDirectories = [];
 	private IReadOnlyDictionary<string, string> openFiles = new Dictionary<string, string>();
 	private CompletionProbe? probe;
+	private bool generatesCode;
 	
 	public async Task<BuildResult> CompleteAsync(string sourcePath, IReadOnlyDictionary<string, string> unsavedFiles,
 		CompletionProbe completion, CancellationToken ct = default)
@@ -50,6 +54,8 @@ public sealed partial class Builder(BuildOptions options, IBuildOutput output)
 		IReadOnlyDictionary<string, string>? unsavedFiles = null, CancellationToken ct = default)
 	{
 		_projects.Clear();
+		_problems.Clear();
+		_unchecked.Clear();
 		openFiles = unsavedFiles ?? new Dictionary<string, string>();
 		if (!Directory.Exists(sourcePath) && !File.Exists(sourcePath))
 		{
@@ -77,16 +83,15 @@ public sealed partial class Builder(BuildOptions options, IBuildOutput output)
 		}
 		
 		// Phase 0b: Dependency graph
-		var projectErrors = new List<string>();
-		var dependencyGraph = await MapDependenciesAsync(projectPaths, projectErrors, ct);
+		var dependencyGraph = await MapDependenciesAsync(projectPaths, ct);
 		
 		if (dependencyGraph.FindCycle() is [_, ..] cycle)
 		{
-			foreach (var error in projectErrors)
-				output.WriteLine(error);
-			
 			var names = cycle.Append(cycle[0]).Select(static project => Path.GetFileName(project.FilePath));
-			output.WriteLine($"Project references form a cycle: {string.Join(" -> ", names)}");
+			_problems.Add(ProjectDiagnostic.About($"Project references form a cycle: {string.Join(" -> ", names)}",
+				cycle.Select(static project => project.FilePath)));
+			
+			ReportProblems();
 			return Fail();
 		}
 		
@@ -97,28 +102,36 @@ public sealed partial class Builder(BuildOptions options, IBuildOutput output)
 		
 		var builtInFlags = BuildFlags.Create(options.Target, options.OptimizeMode);
 		var linkPreferences = FindLinkPreferences(projectDependencies);
-		foreach (var (project, preference) in linkPreferences ?? [])
+		foreach (var (project, preference) in linkPreferences)
 		{
 			if (project.Project is { Referenceable: true, OutputType: var type } && type.IsExecutable() &&
 			    preference == SystemLinkPreference.Static)
-				projectErrors.Add(
-					$"{project.FilePath}: A referenceable executable can't link the C runtime statically");
+				_problems.Add(ProjectDiagnostic.In(project.FilePath,
+					"A referenceable executable can't link the C runtime statically"));
 		}
 		
-		var flagsValid = ValidateFlags(projectDependencies.Keys, builtInFlags, options.FlagOverrides) &
-		                 ValidateOutputNames(projectDependencies) & ValidateLibraryNames(projectDependencies.Keys) &
-		                 linkPreferences is not null;
+		ValidateFlags(projectDependencies.Keys, builtInFlags, options.FlagOverrides);
+		ValidateOutputNames(projectDependencies);
+		ValidateLibraryNames(projectDependencies.Keys);
+		ReportProblems();
 		
-		foreach (var error in projectErrors)
-			output.WriteLine(error);
+		_unchecked.UnionWith(_problems.Where(static problem => problem.StopsChecking)
+			.SelectMany(static problem => problem.Projects));
 		
-		if (!flagsValid || projectErrors.Count > 0)
-			return Fail();
-		
-		return await BuildProjectsAsync(projectDependencies, linkPreferences!, ct);
+		generatesCode = !HasErrors;
+		var result = await BuildProjectsAsync(projectDependencies, linkPreferences, ct);
+		return result with { Succeeded = result.Succeeded && !HasErrors };
 	}
 	
-	private BuildResult Fail() => new(false, [.._projects]);
+	private bool HasErrors => _problems.Any(static problem => problem.Severity == DiagnosticSeverity.Error);
+	
+	private void ReportProblems()
+	{
+		foreach (var problem in _problems)
+			output.WriteLine(problem.Text);
+	}
+	
+	private BuildResult Fail() => new(false, [.._projects], [.._problems]);
 	
 	private void AssignBundledOutputs(Dictionary<ProjectInfo, ImmutableArray<ProjectInfo>> dependencies)
 	{
@@ -150,12 +163,11 @@ public sealed partial class Builder(BuildOptions options, IBuildOutput output)
 	
 	private static string GetOutputBaseName(ProjectInfo project) => project.Project.AssemblyName ?? project.Name;
 	
-	private Dictionary<ProjectInfo, SystemLinkPreference>? FindLinkPreferences(
+	private Dictionary<ProjectInfo, SystemLinkPreference> FindLinkPreferences(
 		Dictionary<ProjectInfo, ImmutableArray<ProjectInfo>> dependencies)
 	{
 		var used = dependencies.Values.SelectMany(static items => items).ToHashSet();
 		var programs = dependencies.Keys.ToDictionary(static project => project, static _ => new List<ProjectInfo>());
-		var isValid = true;
 		foreach (var root in dependencies.Keys.Where(project => !used.Contains(project)))
 		{
 			var reached = new HashSet<ProjectInfo>();
@@ -178,10 +190,9 @@ public sealed partial class Builder(BuildOptions options, IBuildOutput output)
 			                                                 ProjectOutputType.SharedLibrary)
 				         .OrderBy(static project => project.FilePath, StringComparer.Ordinal))
 			{
-				output.WriteLine($"'{root.FilePath}' links the C runtime statically, so it can't use the shared " +
-				                 $"library '{library.FilePath}'");
-				
-				isValid = false;
+				_problems.Add(ProjectDiagnostic.About(
+					$"'{root.FilePath}' links the C runtime statically, so it can't use the shared library " +
+					$"'{library.FilePath}'", root.FilePath, library.FilePath));
 			}
 		}
 		
@@ -192,20 +203,19 @@ public sealed partial class Builder(BuildOptions options, IBuildOutput output)
 			if (chosen.Count > 1)
 			{
 				var names = roots.Select(static root => $"'{root.FilePath}'").Order(StringComparer.Ordinal).ToList();
-				output.WriteLine(
+				_problems.Add(ProjectDiagnostic.About(
 					$"'{project.FilePath}' is used by {string.Join(", ", names[..^1])} and {names[^1]}, " +
-					"which link the C runtime differently");
-				
-				isValid = false;
+					"which link the C runtime differently",
+					[project.FilePath, ..roots.Select(static root => root.FilePath)]));
 			}
 			
 			preferences[project] = chosen.FirstOrDefault(project.Project.SystemLinkPreference);
 		}
 		
-		return isValid ? preferences : null;
+		return preferences;
 	}
 	
-	private bool ValidateOutputNames(Dictionary<ProjectInfo, ImmutableArray<ProjectInfo>> dependencies)
+	private void ValidateOutputNames(Dictionary<ProjectInfo, ImmutableArray<ProjectInfo>> dependencies)
 	{
 		var reported = new HashSet<string>();
 		foreach (var project in dependencies.Keys)
@@ -233,28 +243,24 @@ public sealed partial class Builder(BuildOptions options, IBuildOutput output)
 				
 				var described = $"{string.Join(", ", paths[..^1])} and {paths[^1]}";
 				if (reported.Add(described))
-					output.WriteLine(
-						$"Projects {described} {(paths.Count == 2 ? "both" : "all")} build '{sameName.Key}'");
+					_problems.Add(ProjectDiagnostic.About(
+						$"Projects {described} {(paths.Count == 2 ? "both" : "all")} build '{sameName.Key}'",
+						sameName.Select(static clash => clash.FilePath)));
 			}
 		}
-		
-		return reported.Count == 0;
 	}
 	
-	private bool ValidateLibraryNames(IEnumerable<ProjectInfo> projects)
+	private void ValidateLibraryNames(IEnumerable<ProjectInfo> projects)
 	{
-		var isValid = true;
 		foreach (var project in projects.OrderBy(static project => project.FilePath, StringComparer.Ordinal))
 		{
 			var name = GetOutputBaseName(project);
 			if (project.Project.OutputType != ProjectOutputType.SharedLibrary || Ascii.IsValid(name))
 				continue;
 			
-			output.WriteLine($"The shared library name '{name}' in '{project.FilePath}' must be ASCII");
-			isValid = false;
+			_problems.Add(ProjectDiagnostic.About(
+				$"The shared library name '{name}' in '{project.FilePath}' must be ASCII", project.FilePath));
 		}
-		
-		return isValid;
 	}
 	
 	private Dictionary<string, bool> CreateFlags(CellaProject project)
@@ -268,11 +274,10 @@ public sealed partial class Builder(BuildOptions options, IBuildOutput output)
 		return flags;
 	}
 	
-	private bool ValidateFlags(IEnumerable<ProjectInfo> projects, IReadOnlyDictionary<string, bool> builtIn,
+	private void ValidateFlags(IEnumerable<ProjectInfo> projects, IReadOnlyDictionary<string, bool> builtIn,
 		IReadOnlyDictionary<string, bool> overrides)
 	{
 		var declared = new HashSet<string>();
-		var isValid = true;
 		foreach (var project in projects)
 		{
 			foreach (var name in project.Project.Flags?.Keys ?? Enumerable.Empty<string>())
@@ -287,33 +292,31 @@ public sealed partial class Builder(BuildOptions options, IBuildOutput output)
 					continue;
 				}
 				
-				output.WriteLine($"{project.FilePath}: {problem}");
-				isValid = false;
+				_problems.Add(ProjectDiagnostic.In(project.FilePath, problem));
 			}
 		}
 		
 		foreach (var name in overrides.Keys.Where(name => builtIn.ContainsKey(name) || !declared.Contains(name)))
 		{
-			output.WriteLine(builtIn.ContainsKey(name)
+			_problems.Add(ProjectDiagnostic.About(builtIn.ContainsKey(name)
 				? $"Cannot set built-in flag '{name}'"
-				: $"Flag '{name}' not found");
-			
-			isValid = false;
+				: $"Flag '{name}' not found"));
 		}
-		
-		return isValid;
 	}
 	
-	private void CheckVersion(string path, CellaProject project, List<string> errors)
+	private void CheckVersion(string path, CellaProject project)
 	{
 		if (project.CellaVersion is not { } pin || SemanticVersion.Parse(pin) is not { } version)
 			return;
 		
 		var comparison = version.CompareTo(SemanticVersion.Current);
 		if (comparison > 0)
-			errors.Add($"{path}: Pinned to Cella {pin}, newer than this compiler");
+			_problems.Add(ProjectDiagnostic.In(path, $"Pinned to Cella {pin}, newer than this compiler"));
 		else if (comparison < 0)
-			output.WriteLine($"{path}: Pinned to Cella {pin}, older than this compiler");
+			_problems.Add(ProjectDiagnostic.In(path, $"Pinned to Cella {pin}, older than this compiler") with
+			{
+				Severity = DiagnosticSeverity.Warning
+			});
 	}
 	
 	private static string GetCanonicalPath(string path)
@@ -337,14 +340,15 @@ public sealed partial class Builder(BuildOptions options, IBuildOutput output)
 	}
 	
 	private async Task<DependencyGraph<ProjectInfo>> MapDependenciesAsync(HashSet<string> projectPaths,
-		List<string> errors, CancellationToken ct)
+		CancellationToken ct)
 	{
 		var projectLookup = new Dictionary<string, ProjectInfo>();
 		var projectDependencies = new Dictionary<ProjectInfo, HashSet<string>>();
 		var projectQueue = new Queue<string>(projectPaths.Select(GetCanonicalPath));
 		var processedPaths = new HashSet<string>();
 		var graph = new DependencyGraph<ProjectInfo>();
-		var isLibraryMissing = false;
+		var failed = new HashSet<string>();
+		var missingLibrary = new List<string>();
 		
 		// Collect projects
 		while (projectQueue.Count > 0)
@@ -355,16 +359,23 @@ public sealed partial class Builder(BuildOptions options, IBuildOutput output)
 			
 			CellaProject? loaded;
 			await using (var stream = await OpenProjectFileAsync(path, ct))
-				loaded = await CellaProject.LoadAsync(stream, path, errors);
+				loaded = await CellaProject.LoadAsync(stream, path, _problems);
 			
 			if (loaded is null)
+			{
+				failed.Add(path);
 				continue;
+			}
 			
 			if (CellaProject.FindSiblingProjects(path).Select(static name => $"'{name}'").ToList() is [_, ..] siblings)
-				errors.Add($"{path}: Cannot share a directory with {string.Join(", ", siblings)}");
+				_problems.Add(ProjectDiagnostic.In(path, $"Cannot share a directory with {string.Join(", ", siblings)}")
+					with
+					{
+						StopsChecking = true
+					});
 			
-			var project = loaded.Resolve(path, CreateFlags(loaded), errors);
-			CheckVersion(path, project, errors);
+			var project = loaded.Resolve(path, CreateFlags(loaded), _problems);
+			CheckVersion(path, project);
 			var projectDirectory = Path.GetDirectoryName(path) ?? string.Empty;
 			var projectName = Path.GetFileNameWithoutExtension(path);
 			var projectInfo = new ProjectInfo(path, projectDirectory, projectName, project);
@@ -375,10 +386,9 @@ public sealed partial class Builder(BuildOptions options, IBuildOutput output)
 			{
 				if (!File.Exists(library))
 				{
-					if (!isLibraryMissing)
-						errors.Add($"Standard library not found in '{StandardLibraryDirectory}'");
+					if (missingLibrary.LastOrDefault() != path)
+						missingLibrary.Add(path);
 					
-					isLibraryMissing = true;
 					continue;
 				}
 				
@@ -395,25 +405,33 @@ public sealed partial class Builder(BuildOptions options, IBuildOutput output)
 			foreach (var alias in references.Select(static reference => reference.Alias).OfType<string>())
 			{
 				if (!BuildFlags.IsValidName(alias) || NativeSymbols.IsBuiltInName(alias))
-					errors.Add($"{path}: '{alias}' is not a valid alias");
+					_problems.Add(ProjectDiagnostic.In(path, $"'{alias}' is not a valid alias"));
 			}
 			
 			foreach (var alias in references.Select(static reference => reference.Alias).OfType<string>()
 				         .GroupBy(static alias => alias).Where(static sameAlias => sameAlias.Count() > 1))
-				errors.Add($"{path}: '{alias.Key}' names more than one project reference");
+				_problems.Add(ProjectDiagnostic.In(path, $"'{alias.Key}' names more than one project reference"));
 			
 			foreach (var reference in references)
 			{
 				var dependencyPath = GetCanonicalPath(Path.Combine(projectDirectory, reference.Path!));
 				if (!File.Exists(dependencyPath))
 				{
-					errors.Add($"{path}: Project '{reference.Path}' not found");
+					_problems.Add(ProjectDiagnostic.In(path, $"Project '{reference.Path}' not found") with
+					{
+						StopsChecking = true
+					});
+					
 					continue;
 				}
 				
 				if (!CellaProject.IsProjectFile(dependencyPath))
 				{
-					errors.Add($"{path}: '{reference.Path}' is not a project file");
+					_problems.Add(ProjectDiagnostic.In(path, $"'{reference.Path}' is not a project file") with
+					{
+						StopsChecking = true
+					});
+					
 					continue;
 				}
 				
@@ -424,17 +442,33 @@ public sealed partial class Builder(BuildOptions options, IBuildOutput output)
 			}
 		}
 		
+		if (missingLibrary.Count > 0)
+			_problems.Add(ProjectDiagnostic.About($"Standard library not found in '{StandardLibraryDirectory}'",
+					missingLibrary) with
+				{
+					StopsChecking = true
+				});
+		
 		// Map project dependencies
 		foreach (var (project, dependencies) in projectDependencies)
 		{
 			foreach (var dependency in dependencies)
 			{
 				if (!projectLookup.TryGetValue(dependency, out var target))
+				{
+					if (failed.Contains(dependency))
+						_unchecked.Add(project.FilePath);
+					
 					continue;
+				}
 				
 				if (target.Project.OutputType.IsExecutable() && target.Project.Referenceable != true)
-					errors.Add($"{project.FilePath}: '{target.FilePath}' is an executable without " +
-					           $"'{nameof(CellaProject.Referenceable)} = true'");
+					_problems.Add(ProjectDiagnostic.In(project.FilePath,
+							$"'{target.FilePath}' is an executable without '{nameof(CellaProject.Referenceable)} = true'")
+						with
+						{
+							StopsChecking = true
+						});
 				
 				graph.AddDependency(project, target);
 			}

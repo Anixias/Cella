@@ -359,9 +359,10 @@ public sealed class Workspace(Func<JsonObject, Task> notify, TimeSpan debounce)
 		}
 	}
 	
-	public string? GetText(string uri)
+	public string? GetText(string uri) => TextAt(Protocol.ToPath(uri));
+	
+	private string? TextAt(string path)
 	{
-		var path = Protocol.ToPath(uri);
 		lock (_lock)
 		{
 			if (_documents.TryGetValue(path, out var document))
@@ -374,16 +375,19 @@ public sealed class Workspace(Func<JsonObject, Task> notify, TimeSpan debounce)
 	private async Task PublishAsync(string root, BuildResult result, IReadOnlyDictionary<string, string> uris)
 	{
 		var byFile = new Dictionary<string, JsonArray>(Protocol.PathComparer);
+		foreach (var problem in result.ProjectDiagnostics)
+		{
+			foreach (var path in problem.Projects)
+				DiagnosticsAt(path).Add(Protocol.ToLsp(problem, TextAt(path)));
+		}
+		
 		foreach (var project in result.Projects)
 		{
 			foreach (var diagnostic in project.Diagnostics)
 			{
-				var path = diagnostic.SourceLocation.Source.FilePath is { Length: > 0 } file
+				var diagnostics = DiagnosticsAt(diagnostic.SourceLocation.Source.FilePath is { Length: > 0 } file
 					? file
-					: project.ProjectPath;
-				
-				if (!byFile.TryGetValue(path, out var diagnostics))
-					byFile[path] = diagnostics = [];
+					: project.ProjectPath);
 				
 				diagnostics.Add(Protocol.ToLsp(diagnostic));
 				if (Protocol.ToUnnecessaryLsp(diagnostic) is { } unnecessary)
@@ -399,6 +403,14 @@ public sealed class Workspace(Func<JsonObject, Task> notify, TimeSpan debounce)
 			await PublishAsync(path, [], uris);
 		
 		_published[root] = current;
+		
+		JsonArray DiagnosticsAt(string path)
+		{
+			if (!byFile.TryGetValue(path, out var diagnostics))
+				byFile[path] = diagnostics = [];
+			
+			return diagnostics;
+		}
 	}
 	
 	private Task PublishAsync(string path, JsonArray diagnostics, IReadOnlyDictionary<string, string> uris) =>

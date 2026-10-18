@@ -1,4 +1,5 @@
 ﻿using System.Text.Json.Nodes;
+using Cella.Compiler.Projects;
 using Cella.Core.Text;
 using Cella.Diagnostics;
 
@@ -80,16 +81,36 @@ public static class Protocol
 		return new JsonObject
 		{
 			["range"] = new JsonObject { ["start"] = ToPosition(source, start), ["end"] = ToPosition(source, end) },
-			["severity"] = diagnostic.Severity switch
-			{
-				DiagnosticSeverity.Error => ErrorSeverity,
-				DiagnosticSeverity.Warning => WarningSeverity,
-				_ => HintSeverity
-			},
+			["severity"] = ToSeverity(diagnostic.Severity),
 			["source"] = "cella",
 			["message"] = message
 		};
 	}
+	
+	public static JsonObject ToLsp(ProjectDiagnostic diagnostic, string? text)
+	{
+		var line = Math.Max(diagnostic.Line - 1, 0);
+		var content = text?.Split('\n').ElementAtOrDefault(line)?.TrimEnd() ?? "";
+		var start = content.Length - content.TrimStart().Length;
+		return new JsonObject
+		{
+			["range"] = new JsonObject
+			{
+				["start"] = new JsonObject { ["line"] = line, ["character"] = start },
+				["end"] = new JsonObject { ["line"] = line, ["character"] = content.Length }
+			},
+			["severity"] = ToSeverity(diagnostic.Severity),
+			["source"] = "cella",
+			["message"] = diagnostic.Message
+		};
+	}
+	
+	private static int ToSeverity(DiagnosticSeverity severity) => severity switch
+	{
+		DiagnosticSeverity.Error => ErrorSeverity,
+		DiagnosticSeverity.Warning => WarningSeverity,
+		_ => HintSeverity
+	};
 	
 	private static int FindTextEnd(ISource source) =>
 		source.GetText(new TextRange(0, source.Length)).TrimEnd().Length;
