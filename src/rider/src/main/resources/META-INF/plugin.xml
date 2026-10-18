@@ -64,7 +64,20 @@
 		
 		<configurationType implementation="com.anixias.cella.run.CellaConfigurationType"/>
 		<programRunner implementation="com.anixias.cella.run.CellaDebugRunner"/>
+		<runConfigurationProducer implementation="com.anixias.cella.run.CellaRunConfigurationProducer"/>
+		<runLineMarkerContributor language="Cella" implementationClass="com.anixias.cella.run.CellaRunLineMarker"/>
+		<stepsBeforeRunProvider implementation="com.anixias.cella.run.CellaBuildTaskProvider"/>
 	</extensions>
+	
+	<actions>
+		<action id="Cella.Build" class="com.anixias.cella.run.CellaBuildAction" text="Build Cella Project"
+		        icon="AllIcons.Actions.Compile">
+			<add-to-group group-id="EditorPopupMenu" anchor="last"/>
+			<add-to-group group-id="ProjectViewPopupMenu" anchor="last"/>
+			<add-to-group group-id="SolutionExplorerPopupMenu" anchor="last"/>
+			<add-to-group group-id="ToolsMenu" anchor="last"/>
+		</action>
+	</actions>
 	
 	<extensions defaultExtensionNs="cidr.debugger">
 		<lineBreakpointFileTypesProvider implementation="com.anixias.cella.run.CellaBreakpointFileTypes"/>

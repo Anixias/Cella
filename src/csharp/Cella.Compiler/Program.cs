@@ -1,4 +1,5 @@
-﻿using Cella.Compiler.Building;
+﻿using System.Text;
+using Cella.Compiler.Building;
 using Cella.Compiler.Projects;
 using Cella.Core.CodeGen;
 
@@ -9,6 +10,9 @@ internal static class Program
 	public static Task<int> Main(string[] args)
 	{
 		Installation.UseComponentLibraries();
+		if (Console.IsOutputRedirected)
+			Console.OutputEncoding = new UTF8Encoding(false);
+		
 		return CompilerThread.Run(() => RunAsync(args));
 	}
 	

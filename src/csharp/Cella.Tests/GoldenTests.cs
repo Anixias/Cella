@@ -25,6 +25,8 @@ public sealed class GoldenTests
 	private static readonly Regex _displayedPath =
 		new(@"<case>[^\s:']*|(?<=^(?:Error|Warning|Hint|Info) at )[^:\r\n]+(?=:\d+:\d+)", RegexOptions.Multiline);
 	
+	private static readonly Regex _outputLine = new(@"^[^\r\n]+ -> <case>[^\r\n]*\r?\n", RegexOptions.Multiline);
+	
 	private static readonly AsyncLocal<TextWriter?> _compilerOutput = new();
 	
 	static GoldenTests()
@@ -204,8 +206,9 @@ public sealed class GoldenTests
 			var (compileExitCode, compileOutput) =
 				await CompileAsync(projectPath, release, [..options, "--target", target], cancellationToken);
 			
-			compileOutput = compileOutput.Replace($" at {caseDirectory}{Path.DirectorySeparatorChar}", " at ")
-				.Replace(caseDirectory, "<case>");
+			compileOutput = _outputLine.Replace(compileOutput
+				.Replace($" at {caseDirectory}{Path.DirectorySeparatorChar}", " at ")
+				.Replace(caseDirectory, "<case>"), "");
 			
 			if (!OperatingSystem.IsWindows())
 				compileOutput = _displayedPath.Replace(compileOutput, static match => match.Value.Replace('/', '\\'));

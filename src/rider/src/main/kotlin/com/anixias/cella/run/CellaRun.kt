@@ -5,6 +5,9 @@ import com.anixias.cella.CellaIcons
 import com.anixias.cella.lexer.CellaToken
 import com.anixias.cella.lexer.CellaTokenTypes
 import com.anixias.cella.server.CellaSemanticHighlighter
+import com.intellij.execution.BeforeRunTask
+import com.intellij.execution.BeforeRunTaskProvider
+import com.intellij.execution.ExecutionException
 import com.intellij.execution.Executor
 import com.intellij.execution.configurations.CommandLineState
 import com.intellij.execution.configurations.ConfigurationFactory
@@ -27,13 +30,17 @@ import com.intellij.execution.process.ProcessTerminatedListener
 import com.intellij.execution.runners.ExecutionEnvironment
 import com.intellij.execution.runners.GenericProgramRunner
 import com.intellij.execution.ui.RunContentDescriptor
+import com.intellij.openapi.actionSystem.DataContext
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.diagnostic.logger
 import com.intellij.openapi.editor.Document
 import com.intellij.openapi.fileChooser.FileChooserDescriptorFactory
+import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.options.SettingsEditor
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Expirable
+import com.intellij.openapi.util.Key
 import com.intellij.openapi.util.NotNullLazyValue
 import com.intellij.openapi.util.SystemInfo
 import com.intellij.openapi.util.TextRange
@@ -41,8 +48,10 @@ import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiElement
 import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.ui.dsl.builder.AlignX
+import com.intellij.ui.dsl.builder.bindSelected
 import com.intellij.ui.dsl.builder.bindText
 import com.intellij.ui.dsl.builder.panel
+import com.intellij.util.execution.ParametersListUtil
 import com.intellij.xdebugger.XDebugProcess
 import com.intellij.xdebugger.XDebugProcessStarter
 import com.intellij.xdebugger.XDebugSession
@@ -64,6 +73,7 @@ import com.jetbrains.cidr.execution.debugger.breakpoints.CidrLineBreakpointFileT
 import com.jetbrains.cidr.execution.debugger.evaluation.CidrDebuggerTypesHelper
 import com.jetbrains.cidr.execution.debugger.evaluation.CidrEvaluatedValue
 import java.io.File
+import java.nio.file.Files
 import java.nio.file.Path
 import java.util.concurrent.CompletableFuture
 import org.jetbrains.concurrency.Promise
@@ -76,29 +86,42 @@ class CellaConfigurationType : SimpleConfigurationType(
 }
 
 class CellaRunOptions : RunConfigurationOptions() {
-	var executable by string("")
+	var project by string("")
+	var arguments by string("")
+	var release by property(false)
 }
 
 class CellaRunConfiguration(project: Project, factory: ConfigurationFactory) :
 	RunConfigurationBase<CellaRunOptions>(project, factory, "Cella") {
 	public override fun getOptions() = super.getOptions() as CellaRunOptions
-
+	
 	override fun getOptionsClass() = CellaRunOptions::class.java
-
+	
 	override fun getConfigurationEditor(): SettingsEditor<out RunConfiguration> = CellaRunEditor()
-
+	
+	val projectPath: Path?
+		get() = options.project?.takeIf { it.isNotBlank() }?.let { Path.of(it) }
+	
 	override fun checkConfiguration() {
-		if (options.executable.isNullOrBlank())
-			throw RuntimeConfigurationError("Choose a program to run")
+		val celp = projectPath ?: throw RuntimeConfigurationError("Choose a project to run")
+		if (!Files.isRegularFile(celp))
+			throw RuntimeConfigurationError("'$celp' doesn't exist")
+		
+		if (!CellaProjects.isExecutable(celp))
+			throw RuntimeConfigurationError("'${CellaProjects.name(celp)}' isn't an executable project")
 	}
-
+	
 	fun createCommandLine(): GeneralCommandLine {
-		val executable = File(options.executable.orEmpty())
-		return GeneralCommandLine(executable.path)
-			.withWorkDirectory(executable.parentFile)
+		val celp = projectPath ?: throw ExecutionException("Choose a project to run")
+		val program = CellaBuild.lastOutput(celp)
+			?: throw ExecutionException("Build '${CellaProjects.name(celp)}' before running it")
+		
+		return GeneralCommandLine(program.toString())
+			.withParameters(ParametersListUtil.parse(options.arguments.orEmpty()))
+			.withWorkDirectory(celp.parent.toFile())
 			.withParentEnvironmentType(GeneralCommandLine.ParentEnvironmentType.CONSOLE)
 	}
-
+	
 	override fun getState(executor: Executor, environment: ExecutionEnvironment): RunProfileState =
 		object : CommandLineState(environment) {
 			override fun startProcess(): ProcessHandler {
@@ -110,27 +133,67 @@ class CellaRunConfiguration(project: Project, factory: ConfigurationFactory) :
 }
 
 class CellaRunEditor : SettingsEditor<CellaRunConfiguration>() {
-	private var executable = ""
-
+	private var project = ""
+	private var arguments = ""
+	private var release = false
+	
 	private val panel = panel {
-		row("Program:") {
-			textFieldWithBrowseButton(FileChooserDescriptorFactory.createSingleFileNoJarsDescriptor())
-				.bindText(::executable)
+		row("Project:") {
+			textFieldWithBrowseButton(FileChooserDescriptorFactory.createSingleFileDescriptor("celp"))
+				.bindText(::project)
 				.align(AlignX.FILL)
 		}
+		row("Arguments:") {
+			textField()
+				.bindText(::arguments)
+				.align(AlignX.FILL)
+		}
+		row {
+			checkBox("Release build")
+				.bindSelected(::release)
+		}
 	}
-
+	
 	override fun resetEditorFrom(configuration: CellaRunConfiguration) {
-		executable = configuration.options.executable.orEmpty()
+		project = configuration.options.project.orEmpty()
+		arguments = configuration.options.arguments.orEmpty()
+		release = configuration.options.release
 		panel.reset()
 	}
-
+	
 	override fun applyEditorTo(configuration: CellaRunConfiguration) {
 		panel.apply()
-		configuration.options.executable = executable
+		configuration.options.project = project
+		configuration.options.arguments = arguments
+		configuration.options.release = release
 	}
-
+	
 	override fun createEditor() = panel
+}
+
+class CellaBuildTask : BeforeRunTask<CellaBuildTask>(CellaBuildTaskProvider.ID)
+
+class CellaBuildTaskProvider : BeforeRunTaskProvider<CellaBuildTask>() {
+	companion object {
+		val ID = Key.create<CellaBuildTask>("Cella.Build")
+	}
+	
+	override fun getId() = ID
+	
+	override fun getName() = "Build Cella project"
+	
+	override fun getIcon() = CellaIcons.FILE
+	
+	override fun createTask(configuration: RunConfiguration) =
+		if (configuration is CellaRunConfiguration) CellaBuildTask().apply { isEnabled = true } else null
+	
+	override fun executeTask(context: DataContext, configuration: RunConfiguration, environment: ExecutionEnvironment,
+		task: CellaBuildTask): Boolean {
+		val cella = configuration as? CellaRunConfiguration ?: return false
+		val celp = cella.projectPath ?: return false
+		ApplicationManager.getApplication().invokeAndWait { FileDocumentManager.getInstance().saveAllDocuments() }
+		return CellaBuild.build(environment.project, celp, cella.options.release).succeeded
+	}
 }
 
 class CellaDebugRunner : GenericProgramRunner<RunnerSettings>() {

@@ -18,6 +18,7 @@ import com.intellij.ui.dsl.builder.panel
 class CellaSettings : SimplePersistentStateComponent<CellaSettings.Options>(Options()) {
 	class Options : BaseState() {
 		var serverPath by string()
+		var cellaPath by string()
 	}
 	
 	companion object {
@@ -29,6 +30,11 @@ class CellaSettings : SimplePersistentStateComponent<CellaSettings.Options>(Opti
 class CellaConfigurable : BoundConfigurable("Cella") {
 	override fun createPanel() = panel {
 		val options = CellaSettings.instance.state
+		row("Cella:") {
+			textFieldWithBrowseButton(FileChooserDescriptorFactory.createSingleFileNoJarsDescriptor())
+				.bindText({ options.cellaPath.orEmpty() }, { options.cellaPath = it.ifBlank { null } })
+				.align(AlignX.FILL)
+		}
 		row("Language server:") {
 			textFieldWithBrowseButton(FileChooserDescriptorFactory.createSingleFileNoJarsDescriptor())
 				.bindText({ options.serverPath.orEmpty() }, { options.serverPath = it.ifBlank { null } })

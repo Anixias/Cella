@@ -453,6 +453,9 @@ public sealed partial class Builder
 				CopySharedLibraries(allDependencies, outputDir);
 		}
 		
+		if (!_outputDirectories.ContainsKey(project.FilePath))
+			output.ReportOutput(project.Name, outputPath);
+		
 		return new(assemblySymbol, isReferenceable ? ProjectOutputType.SharedLibrary : outputType, outputPath, true)
 		{
 			Directory = project.Directory,

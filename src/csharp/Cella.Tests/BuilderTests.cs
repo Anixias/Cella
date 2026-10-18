@@ -88,6 +88,10 @@ public sealed class BuilderTests : IDisposable
 		public void WriteLine(string text) => Lines.Add(text);
 		public void WriteError(string text) => Lines.Add(text);
 		public void Report(IEnumerable<Diagnostic> diagnostics) => Diagnostics.AddRange(diagnostics);
+		
+		public void ReportOutput(string projectName, string outputPath) => Outputs.Add((projectName, outputPath));
+		
+		public List<(string Project, string Path)> Outputs { get; } = [];
 	}
 	
 	public BuilderTests() => Directory.CreateDirectory(_directory);
@@ -109,7 +113,8 @@ public sealed class BuilderTests : IDisposable
 	private Task<BuildResult> CheckAsync(Builder builder, IReadOnlyDictionary<string, string>? unsavedFiles = null) =>
 		CompilerThread.Run(() => builder.BuildAsync(_directory, unsavedFiles, Token));
 	
-	private async Task<(BuildResult Result, string Output)> BuildProgramAsync()
+	private async Task<(BuildResult Result, string Output, List<(string Project, string Path)> Outputs)>
+		BuildProgramAsync()
 	{
 		var output = new RecordingOutput();
 		var builder = new Builder(new BuildOptions
@@ -120,7 +125,8 @@ public sealed class BuilderTests : IDisposable
 		var result = await CompilerThread.Run(() =>
 			builder.BuildAsync(Path.Combine(_directory, "app", "test.celp"), null, Token));
 		
-		return (result, string.Join('\n', output.Lines.Concat(output.Diagnostics.Select(static d => d.Message))));
+		return (result, string.Join('\n', output.Lines.Concat(output.Diagnostics.Select(static d => d.Message))),
+			output.Outputs);
 	}
 	
 	[Fact]
@@ -136,7 +142,7 @@ public sealed class BuilderTests : IDisposable
 			OptedOut("Executable") + "\n[[ProjectReferences]]\nPath = '../std/std.celp'\n", Token);
 		
 		await File.WriteAllTextAsync(ProgramPath, "mod test\n\nuse mine\n\nmain: fun -> i32 = mine.value()\n", Token);
-		var (result, output) = await BuildProgramAsync();
+		var (result, output, _) = await BuildProgramAsync();
 		Assert.True(result.Succeeded, output);
 		Assert.NotEmpty(Directory.GetFiles(Path.Combine(_directory, "std", "bin")));
 		Assert.False(Directory.Exists(Path.Combine(_directory, "app", "obj", "std")));
@@ -150,8 +156,11 @@ public sealed class BuilderTests : IDisposable
 			Token);
 		
 		await File.WriteAllTextAsync(ProgramPath, ValidSource, Token);
-		var (result, output) = await BuildProgramAsync();
+		var (result, output, outputs) = await BuildProgramAsync();
 		Assert.True(result.Succeeded, output);
+		var (project, path) = Assert.Single(outputs);
+		Assert.Equal("test", project);
+		Assert.Equal(Path.Combine(_directory, "app", "bin"), Path.GetDirectoryName(path));
 		Assert.NotEmpty(Directory.GetFiles(Path.Combine(_directory, "app", "obj", "std", "std", "bin")));
 		Assert.False(Directory.Exists(Path.Combine(AppContext.BaseDirectory, "lib", "std", "os", "bin")));
 	}
