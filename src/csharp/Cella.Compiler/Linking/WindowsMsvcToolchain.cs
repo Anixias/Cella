@@ -41,6 +41,9 @@ public sealed class WindowsMsvcToolchain(string root, MsvcLibraries? libraries, 
 			args.AddRange(["/debug", "/pdbaltpath:%_PDB%", "/opt:ref"]);
 			if (request.OptimizeMode == OptimizeMode.Release)
 				args.Add("/opt:icf");
+			
+			if (request.Natvis is { } natvis)
+				args.Add($"/natvis:{natvis}");
 		}
 		
 		args.AddRange(request.InputFiles);

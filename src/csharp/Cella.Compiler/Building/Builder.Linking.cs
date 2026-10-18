@@ -160,6 +160,16 @@ public sealed partial class Builder
 		}
 	}
 	
+	private static string WriteNatvis(string directory)
+	{
+		Directory.CreateDirectory(directory);
+		var path = Path.Combine(directory, "cella.natvis");
+		using var source = typeof(Builder).Assembly.GetManifestResourceStream("cella.natvis")!;
+		using var target = File.Create(path);
+		source.CopyTo(target);
+		return path;
+	}
+	
 	private static string GetOutputFileName(string baseName, TargetTriple target, ProjectOutputType outputType)
 	{
 		var ext = GetOutputExtension(target, outputType);

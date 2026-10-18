@@ -18,6 +18,7 @@ public sealed class LinkRequest
 	public ImmutableArray<string> LibFiles { get; } = libFiles.ToImmutableArray();
 	public SystemLinkPreference LinkPreference { get; init; } = SystemLinkPreference.Dynamic;
 	public bool DebugInfo { get; init; }
+	public string? Natvis { get; init; }
 	public OptimizeMode OptimizeMode { get; init; }
 	public string? ModuleDefinition { get; init; }
 	public ImmutableArray<string> KeptSymbols { get; init; } = [];

@@ -12,7 +12,7 @@ async function activate(context) {
 	output = vscode.window.createOutputChannel("Cella");
 	context.subscriptions.push(
 		output,
-		vscode.debug.registerDebugConfigurationProvider("cella", new DebugConfigurationProvider()),
+		vscode.debug.registerDebugConfigurationProvider("cella", new DebugConfigurationProvider(context.extensionPath)),
 		vscode.languages.registerCodeLensProvider({ language: "cella" }, new RunLensProvider()),
 		vscode.tasks.registerTaskProvider("cella", new BuildTaskProvider()),
 		vscode.commands.registerCommand("cella.start", startProgram)
@@ -115,6 +115,10 @@ function build(project, release, entry) {
 }
 
 class DebugConfigurationProvider {
+	constructor(extensionPath) {
+		this.extensionPath = extensionPath;
+	}
+	
 	resolveDebugConfiguration(folder, configuration) {
 		if (configuration.type)
 			return configuration;
@@ -166,7 +170,16 @@ class DebugConfigurationProvider {
 
 		return process.platform === "win32"
 			? { ...common, type: "cppvsdbg", console: "integratedTerminal" }
-			: { ...common, type: "cppdbg", MIMode: "gdb", externalConsole: false };
+			: {
+				...common,
+				type: "cppdbg",
+				MIMode: "gdb",
+				externalConsole: false,
+				setupCommands: [
+					{ text: "-enable-pretty-printing", ignoreFailures: true },
+					{ text: `source ${path.join(this.extensionPath, "debug", "cella_gdb.py")}`, ignoreFailures: true }
+				]
+			};
 	}
 }
 

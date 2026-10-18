@@ -384,6 +384,9 @@ public sealed partial class Builder
 			{
 				LinkPreference = linkPreference,
 				DebugInfo = codeGenConfig.DebugInfo,
+				Natvis = codeGenConfig.DebugInfo && targetTriple.Os == TargetTriple.OsTypes.Windows
+					? WriteNatvis(objDir)
+					: null,
 				OptimizeMode = optimizeMode,
 				ModuleDefinition = moduleDefinition,
 				KeptSymbols = targetTriple.IsElf ? [..reexports.Select(static name => name.Name)] : [],
