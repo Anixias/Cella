@@ -224,7 +224,7 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 		using var passStr = new MarshaledString(_config.OptimizeMode switch
 		{
 			OptimizeMode.Release => "default<O3>",
-			_ => "default<O0>,function(memcpyopt,dce)"
+			_ => "default<O0>"
 		});
 		
 		var error = LLVM.RunPasses((LLVMOpaqueModule*)module.Handle, passStr,

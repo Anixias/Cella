@@ -78,7 +78,7 @@ class CellaServer(private val project: Project) : Disposable {
 	private val documents = ConcurrentHashMap<String, Pair<Document, Int>>()
 	private val diagnostics = ConcurrentHashMap<String, List<Diagnostic>>()
 	private var connection: Connection? = null
-	private var hasReportedMissing = false
+	private var hasReportedProblem = false
 	
 	val highlighter = CellaSemanticHighlighter(project, this)
 	
@@ -176,7 +176,7 @@ class CellaServer(private val project: Project) : Disposable {
 	fun restart() {
 		sender.execute {
 			disconnect()
-			hasReportedMissing = false
+			hasReportedProblem = false
 			for (entry in documents.values)
 				ApplicationManager.getApplication().invokeLater({ reopen(entry.first) }, project.disposed)
 		}
@@ -197,10 +197,12 @@ class CellaServer(private val project: Project) : Disposable {
 		}
 		
 		val command = findCommand() ?: return null
+		var started: Process? = null
 		return try {
 			val process = ProcessBuilder(command).redirectError(ProcessBuilder.Redirect.DISCARD)
 				.apply { project.basePath?.let { directory(File(it)) } }
 				.start()
+			started = process
 			val launcher = LSPLauncher.createClientLauncher(Client(), process.inputStream, process.outputStream)
 			launcher.startListening()
 			val server = launcher.remoteProxy
@@ -218,11 +220,27 @@ class CellaServer(private val project: Project) : Disposable {
 				}
 			}).get(30, TimeUnit.SECONDS)
 			server.initialized(InitializedParams())
+			hasReportedProblem = false
 			Connection(process, server, result.capabilities.semanticTokensProvider?.legend).also { connection = it }
 		} catch (exception: Exception) {
 			log.warn("Couldn't start ${command.joinToString(" ")}", exception)
+			val exited = started?.takeIf { it.waitFor(1, TimeUnit.SECONDS) }
+			started?.destroy()
+			report("Cella's language server didn't start", exited?.let {
+				"'${command.joinToString(" ")}' stopped with exit code ${it.exitValue()}."
+			} ?: "'${command.joinToString(" ")}' didn't respond.")
 			null
 		}
+	}
+	
+	private fun report(title: String, content: String) {
+		if (hasReportedProblem)
+			return
+		
+		hasReportedProblem = true
+		NotificationGroupManager.getInstance().getNotificationGroup("Cella")
+			.createNotification(title, content, NotificationType.WARNING)
+			.notify(project)
 	}
 	
 	private fun disconnect() {
@@ -242,14 +260,8 @@ class CellaServer(private val project: Project) : Disposable {
 		val launcher = PathEnvironmentVariableUtil.findInPath("cella")?.path
 			?: PathEnvironmentVariableUtil.findInPath("cella.exe")?.path
 		
-		if (launcher == null && !hasReportedMissing) {
-			hasReportedMissing = true
-			NotificationGroupManager.getInstance().getNotificationGroup("Cella")
-				.createNotification("Cella not found",
-					"Install Cella, or set a language server in Settings | Languages & Frameworks | Cella.",
-					NotificationType.WARNING)
-				.notify(project)
-		}
+		if (launcher == null)
+			report("Cella not found", "Install Cella, or set a language server in Settings | Languages & Frameworks | Cella.")
 		
 		return launcher?.let { listOf(it, "lsp") }
 	}

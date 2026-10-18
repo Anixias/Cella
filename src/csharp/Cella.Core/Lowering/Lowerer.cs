@@ -3,6 +3,7 @@ using Cella.Core.Binding.Constants;
 using Cella.Core.Binding.Nodes;
 using Cella.Core.Binding.Operations;
 using Cella.Core.Symbols;
+using Cella.Core.Syntax.Nodes;
 using Cella.Core.Text;
 
 namespace Cella.Core.Lowering;
@@ -154,6 +155,7 @@ public sealed partial class Lowerer
 			switch (node.Body)
 			{
 				case IResolvedStatementNode statement:
+					function.ExitLocation = GetClosingBrace(statement);
 					lower.LowerBody(node, statement);
 					lower.PruneEmptyScopes();
 					break;
@@ -171,6 +173,11 @@ public sealed partial class Lowerer
 			
 			return function;
 		}
+		
+		private static SourceLocation GetClosingBrace(IResolvedStatementNode body) =>
+			body.Syntax is BlockStatementNode { SourceLocation: var location } && location.Range.Length > 0
+				? location with { Range = new TextRange(location.Range.End - 1, location.Range.End) }
+				: SourceLocation.None;
 		
 		private void LowerBody(ResolvedFunctionNode node, IResolvedStatementNode body)
 		{

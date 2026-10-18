@@ -30,6 +30,7 @@ dependencies {
 			rider(riderVersion) { useInstaller = false }
 		
 		bundledModule("intellij.spellchecker")
+		bundledPlugin("com.intellij.cidr.debugger")
 	}
 	
 	testImplementation(kotlin("test-junit5"))

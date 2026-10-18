@@ -383,7 +383,7 @@ public sealed class ReturnTerminator : IBlockTerminator
 	}
 	
 	public static ReturnTerminator FromValue(Value? value, SourceLocation sourceLocation) =>
-		value is null ? Void : new(value, sourceLocation);
+		value is null && sourceLocation == SourceLocation.None ? Void : new(value, sourceLocation);
 }
 
 // TODO Note that when emitting code, if the target block is the next block, we can omit the jump instruction

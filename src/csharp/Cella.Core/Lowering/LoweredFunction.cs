@@ -17,6 +17,7 @@ public sealed class LoweredFunction(FunctionInfo info)
 	public FunctionInfo Info { get; } = info;
 	public ControlFlowGraph Blocks { get; } = new();
 	public List<StatementStart> Statements { get; } = [];
+	public SourceLocation ExitLocation { get; set; } = SourceLocation.None;
 	
 	public void Normalize()
 	{
@@ -30,7 +31,7 @@ public sealed class LoweredFunction(FunctionInfo info)
 			{
 				Blocks.RemoveUnreachable();
 				IBlockTerminator exit = Info.Signature.ReturnType == NativeSymbols.Void
-					? ReturnTerminator.Void
+					? ReturnTerminator.FromValue(null, ExitLocation)
 					: new UnreachableTerminator(SourceLocation.None);
 				
 				foreach (var block in Blocks)

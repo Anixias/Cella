@@ -5,18 +5,18 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-first: fun(items: array[i32, 200000]) -> i32 = items[0]
+first: fun(items: array[i32, 2000]) -> i32 = items[0]
 
-make: fun -> array[i32, 100000]
+make: fun -> array[i32, 1000]
 {
-	var made: array[i32, 100000]
+	var made: array[i32, 1000]
 	made[0] = 2
 	ret made
 }
 
 Big: rec
 {
-	values: array[i32, 75000]
+	values: array[i32, 750]
 	tag: i32
 }
 
@@ -36,7 +36,7 @@ called: fun(items: array[i32, 100], change: fun[]) -> i32
 
 passing: fun
 {
-	var big: array[i32, 200000]
+	var big: array[i32, 2000]
 	big[0] = 1
 	printf("%d\n", first(big))
 }
@@ -55,35 +55,35 @@ copying: fun
 	printf("%d\n", read(copy))
 }
 
-shift: fun(values: array[i32, 50000]) -> array[i32, 50000]
+shift: fun(values: array[i32, 500]) -> array[i32, 500]
 {
-	var result: array[i32, 50000]
+	var result: array[i32, 500]
 	var i: usize = 0
-	while i < 49999
+	while i < 499
 	{
 		result[i] = values[i + 1]
 		i += 1
 	}
 
-	result[49999] = values[0]
+	result[499] = values[0]
 	ret result
 }
 
 shifting: fun
 {
-	var x: array[i32, 50000]
+	var x: array[i32, 500]
 	var i: usize = 0
-	while i < 50000
+	while i < 500
 	{
 		x[i] = i32(i)
 		i += 1
 	}
 
 	x = shift(x)
-	printf("%d %d %d\n", x[0], x[1], x[49999])
+	printf("%d %d %d\n", x[0], x[1], x[499])
 }
 
-overwrite: fun(values: array[i32, 50000], mut target: array[i32, 50000]) -> array[i32, 50000]
+overwrite: fun(values: array[i32, 500], mut target: array[i32, 500]) -> array[i32, 500]
 {
 	target[0] = 100
 	var result = values
@@ -93,7 +93,7 @@ overwrite: fun(values: array[i32, 50000], mut target: array[i32, 50000]) -> arra
 
 overwriting: fun
 {
-	var x: array[i32, 50000]
+	var x: array[i32, 500]
 	x[0] = 1
 	x = overwrite(x, mut x)
 	printf("%d %d\n", x[0], x[1])

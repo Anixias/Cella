@@ -34,7 +34,9 @@ public sealed partial class Lowerer
 			}
 			
 			EmitScopeEndsToDepth(0);
-			block.SetTerminator(ReturnTerminator.FromValue(value, location));
+			block.SetTerminator(ReturnTerminator.FromValue(value,
+				_function.ExitLocation == SourceLocation.None ? location : _function.ExitLocation));
+			
 			currentBlock = null;
 		}
 		
