@@ -82,21 +82,46 @@ public sealed unsafe partial class CodeGenerator
 	private LLVMMetadataRef GetDebugFile(SourceLocation location) =>
 		HasSource(location) ? GetDebugFile(location.Source.FilePath) : current.DebugFile;
 	
-	private LLVMMetadataRef DescribeFunction(LLVMValueRef function, string name, SourceLocation location,
-		LLVMDIFlags flags, LLVMMetadataRef[] signature)
+	private LLVMMetadataRef DescribeFunction(LLVMValueRef function, IReadOnlyList<string> name,
+		SourceLocation location, LLVMDIFlags flags, LLVMMetadataRef[] signature)
 	{
 		var file = GetDebugFile(location);
 		var line = GetLine(location);
 		var type = current.DiBuilder.CreateSubroutineType(file, signature, LLVMDIFlags.LLVMDIFlagZero);
 		var isLocal = function.Linkage is LLVMLinkage.LLVMInternalLinkage or LLVMLinkage.LLVMPrivateLinkage ? 1 : 0;
-		var subprogram = current.DiBuilder.CreateFunction(file, name, "", file, line, type, isLocal, 1, line,
-			flags, IsOptimized);
+		var scope = GetNamespace(name.Take(name.Count - 1));
+		var subprogram = current.DiBuilder.CreateFunction(scope.Handle != IntPtr.Zero ? scope : file, name[^1], "",
+			file, line, type, isLocal, 1, line, flags, IsOptimized);
 		
 		LLVM.SetSubprogram((LLVMOpaqueValue*)function.Handle, (LLVMOpaqueMetadata*)subprogram.Handle);
 		return subprogram;
 	}
 	
-	private LLVMBuilderRef CreateGeneratedBuilder(LLVMValueRef function, string name, SourceLocation location)
+	private LLVMMetadataRef GetNamespace(IEnumerable<string> parts)
+	{
+		LLVMMetadataRef scope = default;
+		var path = "";
+		foreach (var part in parts)
+		{
+			path += $"{part}\n";
+			if (!current.DebugNamespaces.TryGetValue(path, out var next))
+			{
+				using var name = new MarshaledString(part);
+				current.DebugNamespaces[path] = next = LLVM.DIBuilderCreateNameSpace(DiBuilder,
+					(LLVMOpaqueMetadata*)scope.Handle, name, (nuint)name.Length, 0);
+			}
+			
+			scope = next;
+		}
+		
+		return scope;
+	}
+	
+	private LLVMBuilderRef CreateGeneratedBuilder(LLVMValueRef function, string name, SourceLocation location) =>
+		CreateGeneratedBuilder(function, [name], location);
+	
+	private LLVMBuilderRef CreateGeneratedBuilder(LLVMValueRef function, IReadOnlyList<string> name,
+		SourceLocation location)
 	{
 		var builder = current.Module.Context.CreateBuilder();
 		builder.PositionAtEnd(_context.AppendBasicBlock(function, "entry"));
@@ -266,16 +291,17 @@ public sealed unsafe partial class CodeGenerator
 	{
 		var location = info.Symbol.Syntax.SourceLocation;
 		var file = (LLVMOpaqueMetadata*)GetDebugFile(location).Handle;
-		IEnumerable<string> parts =
+		IEnumerable<string> scopes =
 		[
 			..info.File.Module.ModuleName.Parts.Select(static part => part.Text),
-			..info.Symbol.ContainingType is { } owner ? [owner.Name] : Array.Empty<string>(),
-			info.Symbol.Name
+			..info.Symbol.ContainingType is { } owner ? [owner.Name] : Array.Empty<string>()
 		];
 		
-		using var name = new MarshaledString(string.Join('.', parts));
+		var scope = GetNamespace(scopes);
+		using var name = new MarshaledString(info.Symbol.Name);
 		var isLocal = global.Linkage is LLVMLinkage.LLVMInternalLinkage or LLVMLinkage.LLVMPrivateLinkage ? 1 : 0;
-		var expression = LLVM.DIBuilderCreateGlobalVariableExpression(DiBuilder, file, name, (nuint)name.Length,
+		var expression = LLVM.DIBuilderCreateGlobalVariableExpression(DiBuilder,
+			scope.Handle != IntPtr.Zero ? (LLVMOpaqueMetadata*)scope.Handle : file, name, (nuint)name.Length,
 			null, 0, file, GetLine(location),
 			(LLVMOpaqueMetadata*)GetDebugType(info.Type).Handle, isLocal, CreateEmptyExpression(), null, 0);
 		
@@ -332,22 +358,26 @@ public sealed unsafe partial class CodeGenerator
 		return value;
 	}
 	
-	private string GetDisplayName(FunctionInfo function)
+	private string[] GetDisplayName(FunctionInfo function)
 	{
 		if (function.Symbol.QualifiedName.IsDefaultOrEmpty)
-			return function.MangledName ?? function.Symbol.Name;
+			return [function.MangledName ?? function.Symbol.Name];
 		
 		var map = function.TypeArguments.IsDefaultOrEmpty
 			? []
 			: TypePool.CreateMap(function.Symbol.TypeParameters, function.TypeArguments);
 		
-		return string.Join('.', function.Symbol.QualifiedName.Select(part => part.Arguments.IsEmpty
-			? part.Name
-			: $"{part.Name}[{string.Join(", ", part.Arguments.Select(argument =>
-				Substitute(_typePool.Substitute(argument, map)).Name))}]"));
+		return
+		[
+			..function.Symbol.QualifiedName.Select(part => part.Arguments.IsEmpty
+				? part.Name
+				: $"{part.Name}[{string.Join(", ", part.Arguments.Select(argument =>
+					Substitute(_typePool.Substitute(argument, map)).Name))}]")
+		];
 	}
 	
-	private string GetAdapterName(FunctionInfo function) => $"{GetDisplayName(function)} (adapter)";
+	private string[] GetAdapterName(FunctionInfo function) =>
+		GetDisplayName(function) is [.. var scopes, var name] ? [..scopes, $"{name} (adapter)"] : [];
 	
 	private string DescribeDropGlue(TypeSymbol type) => $"{GetDebugTypeName(type)} (drop)";
 	

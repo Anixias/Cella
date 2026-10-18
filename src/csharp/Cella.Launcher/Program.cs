@@ -52,7 +52,7 @@ internal static class Program
 		}
 		catch (LauncherException exception)
 		{
-			Console.Error.WriteLine(exception.Message);
+			await Console.Error.WriteLineAsync(exception.Message);
 			return 1;
 		}
 	}

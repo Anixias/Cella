@@ -1,10 +1,10 @@
-test.printStack main.ce:82
-test.Pair[i32].visit main.ce:119
-test.walk main.ce:128
-test.walk main.ce:131
-test.main.lambda1 main.ce:136
-test.main.lambda1 (adapter) main.ce:136
-test.main main.ce:138
+test::printStack main.ce:82
+test::Pair[i32]::visit main.ce:119
+test::walk main.ce:128
+test::walk main.ce:131
+test::main::lambda1 main.ce:136
+test::main::lambda1 (adapter) main.ce:136
+test::main main.ce:138
 main main.ce:134
 3
 [exit code 0]

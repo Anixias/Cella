@@ -53,14 +53,95 @@
 					"type": "string",
 					"default": "",
 					"markdownDescription": "Path to a `cella-lsp` executable to run instead of the installed Cella's language server."
+				},
+				"cella.path": {
+					"type": "string",
+					"default": "",
+					"markdownDescription": "Path to the `cella` executable to build with."
 				}
 			}
-		}
+		},
+		"breakpoints": [
+			{
+				"language": "cella"
+			}
+		],
+		"debuggers": [
+			{
+				"type": "cella",
+				"label": "Cella",
+				"languages": ["cella"],
+				"configurationAttributes": {
+					"launch": {
+						"required": ["project"],
+						"properties": {
+							"project": {
+								"type": "string",
+								"description": "The .celp project to build and run."
+							},
+							"function": {
+								"type": "string",
+								"description": "A pub function to run instead of main, like app.demo."
+							},
+							"args": {
+								"type": "array",
+								"items": {
+									"type": "string"
+								},
+								"default": [],
+								"description": "Arguments for the program."
+							},
+							"release": {
+								"type": "boolean",
+								"default": false,
+								"description": "Build in release mode."
+							}
+						}
+					}
+				},
+				"initialConfigurations": [
+					{
+						"type": "cella",
+						"request": "launch",
+						"name": "Run",
+						"project": "${workspaceFolder}/app.celp"
+					}
+				],
+				"configurationSnippets": [
+					{
+						"label": "Cella: Launch",
+						"body": {
+							"type": "cella",
+							"request": "launch",
+							"name": "Run",
+							"project": "^\"\\${workspaceFolder}/app.celp\""
+						}
+					}
+				]
+			}
+		],
+		"taskDefinitions": [
+			{
+				"type": "cella",
+				"required": ["project"],
+				"properties": {
+					"project": {
+						"type": "string",
+						"description": "The .celp project to build."
+					},
+					"release": {
+						"type": "boolean",
+						"description": "Build in release mode."
+					}
+				}
+			}
+		]
 	},
 	"dependencies": {
 		"vscode-languageclient": "^10.1.2"
 	},
 	"devDependencies": {
 		"@vscode/vsce": "^3.9.2"
-	}
+	},
+	"activationEvents": ["workspaceContains:**/*.celp"]
 }

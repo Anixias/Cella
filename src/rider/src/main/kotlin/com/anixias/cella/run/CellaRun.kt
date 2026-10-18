@@ -304,7 +304,7 @@ class CellaDebuggerTypesHelper(process: CidrDebugProcess) : CidrDebuggerTypesHel
 				return@mapNotNull variable
 			
 			val name = findSourceName(variable) ?: return@mapNotNull null
-			if (!function.startsWith(name.substringBeforeLast('.') + "."))
+			if (!isInScope(name, function))
 				return@mapNotNull null
 			
 			rename(variable, name)
@@ -322,11 +322,12 @@ class CellaDebuggerTypesHelper(process: CidrDebugProcess) : CidrDebuggerTypesHel
 			.filter { it.name !in locals }
 			.firstNotNullOfOrNull { variable ->
 				findSourceName(variable)?.takeIf { name ->
-					name == expression || name.substringAfterLast('.') == expression &&
-						function.startsWith(name.substringBeforeLast('.') + ".")
+					name == expression || name.substringAfterLast("::") == expression && isInScope(name, function)
 				}?.let { rename(variable, it) }
 			}
 	}
+	
+	private fun isInScope(name: String, function: String) = function.startsWith(name.substringBeforeLast("::") + "::")
 	
 	private fun rename(variable: LLValue, name: String) = LLValue(name, variable.type, variable.displayType,
 		variable.address, variable.typeClass, variable.referenceExpression, variable.fullExpression)

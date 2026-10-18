@@ -11,6 +11,7 @@ internal sealed class ModuleState(LoweredModule lowered, LLVMModuleRef module, L
 	public LLVMModuleRef Module { get; } = module;
 	public LLVMDIBuilderRef DiBuilder { get; } = diBuilder;
 	public Dictionary<TypeSymbol, LLVMTypeRef> Types { get; } = [];
+	public Dictionary<string, LLVMMetadataRef> DebugNamespaces { get; } = [];
 	public Dictionary<FunctionInfo, LLVMFunctionInfo> Functions { get; } = [];
 	public Dictionary<TypeSymbol, LLVMValueRef> DropGlue { get; } = [];
 	public Dictionary<VariableInfo, LLVMValueRef> Variables { get; } = [];

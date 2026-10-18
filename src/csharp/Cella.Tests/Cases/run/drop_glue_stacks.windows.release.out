@@ -1,3 +1,3 @@
-test.printStack main.ce:82
+test::printStack main.ce:82
 main main.ce:132
 [exit code 0]
