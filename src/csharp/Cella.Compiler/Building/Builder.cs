@@ -28,6 +28,7 @@ public sealed partial class Builder(BuildOptions options, IBuildOutput output)
 	};
 	
 	private readonly List<ProjectCheck> _projects = [];
+	private readonly Dictionary<string, string> _outputDirectories = [];
 	private IReadOnlyDictionary<string, string> openFiles = new Dictionary<string, string>();
 	private CompletionProbe? probe;
 	
@@ -92,6 +93,8 @@ public sealed partial class Builder(BuildOptions options, IBuildOutput output)
 		var projectDependencies = dependencyGraph.GetResolutionOrder().ToDictionary(static p => p,
 			p => dependencyGraph.GetDependencies(p).ToImmutableArray());
 		
+		AssignBundledOutputs(projectDependencies);
+		
 		var builtInFlags = BuildFlags.Create(options.Target, options.OptimizeMode);
 		var linkPreferences = FindLinkPreferences(projectDependencies);
 		foreach (var (project, preference) in linkPreferences ?? [])
@@ -116,6 +119,34 @@ public sealed partial class Builder(BuildOptions options, IBuildOutput output)
 	}
 	
 	private BuildResult Fail() => new(false, [.._projects]);
+	
+	private void AssignBundledOutputs(Dictionary<ProjectInfo, ImmutableArray<ProjectInfo>> dependencies)
+	{
+		_outputDirectories.Clear();
+		var library = GetCanonicalPath(StandardLibraryDirectory) + Path.DirectorySeparatorChar;
+		var comparison = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+		var used = dependencies.Values.SelectMany(static items => items).ToHashSet();
+		foreach (var root in dependencies.Keys.Where(project => !used.Contains(project))
+			         .OrderBy(static project => project.FilePath, StringComparer.Ordinal))
+		{
+			var reached = new HashSet<ProjectInfo>();
+			var pending = new Stack<ProjectInfo>(dependencies.GetValueOrDefault(root, []));
+			while (pending.TryPop(out var next))
+			{
+				if (!reached.Add(next))
+					continue;
+				
+				if (next.FilePath.StartsWith(library, comparison))
+					_outputDirectories.TryAdd(next.FilePath, Path.Combine(root.Directory, "obj", "std", next.Name));
+				
+				foreach (var dependency in dependencies.GetValueOrDefault(next, []))
+					pending.Push(dependency);
+			}
+		}
+	}
+	
+	private string GetOutputDirectory(ProjectInfo project) =>
+		_outputDirectories.GetValueOrDefault(project.FilePath, project.Directory);
 	
 	private static string GetOutputBaseName(ProjectInfo project) => project.Project.AssemblyName ?? project.Name;
 	

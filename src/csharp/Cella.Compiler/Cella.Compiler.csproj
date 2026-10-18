@@ -26,7 +26,8 @@
 
   <ItemGroup>
     <None Include="..\..\std\**\*" Exclude="..\..\std\tests\**;..\..\std\**\bin\**;..\..\std\**\obj\**"
-          Link="lib\std\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" Visible="false"/>
+          Link="lib\std\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest"
+          CopyToPublishDirectory="PreserveNewest" Visible="false"/>
   </ItemGroup>
 
   <ItemGroup>

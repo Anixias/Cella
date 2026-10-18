@@ -90,7 +90,7 @@ public sealed partial class Builder
 				                     !providers.ContainsKey(dependency.Name))
 				.ToList();
 		
-		var objDir = Path.Combine(project.Directory, "obj");
+		var objDir = Path.Combine(GetOutputDirectory(project), "obj");
 		var outputConfig = new OutputConfig(objDir, options.EmitsIr, options.EmitsAssembly);
 		var targetConfig = new TargetConfig(targetTriple.ToLlvm(), Features: targetTriple.ToLlvmFeatures());
 		var codeGenConfig = new CodeGenConfig(outputConfig, targetConfig, optimizeMode)
@@ -319,7 +319,7 @@ public sealed partial class Builder
 			exportNames = [..codeGenerator.ExportNames];
 			var outputBaseName = GetOutputBaseName(project);
 			var outputFileName = GetOutputFileName(outputBaseName, targetTriple, outputType);
-			var outputDir = Path.Combine(project.Directory, "bin");
+			var outputDir = Path.Combine(GetOutputDirectory(project), "bin");
 			outputPath = Path.Combine(outputDir, outputFileName);
 			
 			if (!Directory.Exists(outputDir))

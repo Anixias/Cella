@@ -1,0 +1,10 @@
+
+====== prelude_panic.ce ======
+
+Hint at line 3, column 9
+2 │ 
+3 │ use std.panic
+            ╘═══╛ Redundant import
+
+0
+[exit code 0]

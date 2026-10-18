@@ -109,6 +109,53 @@ public sealed class BuilderTests : IDisposable
 	private Task<BuildResult> CheckAsync(Builder builder, IReadOnlyDictionary<string, string>? unsavedFiles = null) =>
 		CompilerThread.Run(() => builder.BuildAsync(_directory, unsavedFiles, Token));
 	
+	private async Task<(BuildResult Result, string Output)> BuildProgramAsync()
+	{
+		var output = new RecordingOutput();
+		var builder = new Builder(new BuildOptions
+		{
+			Target = TargetTriple.FromHost().WithDefaultAbi(Builder.ToolchainsDirectory)
+		}, output);
+		
+		var result = await CompilerThread.Run(() =>
+			builder.BuildAsync(Path.Combine(_directory, "app", "test.celp"), null, Token));
+		
+		return (result, string.Join('\n', output.Lines.Concat(output.Diagnostics.Select(static d => d.Message))));
+	}
+	
+	[Fact]
+	public async Task BuildsUserProjectsNamedStdInPlace()
+	{
+		Directory.CreateDirectory(Path.Combine(_directory, "std"));
+		Directory.CreateDirectory(Path.Combine(_directory, "app"));
+		await File.WriteAllTextAsync(Path.Combine(_directory, "std", "std.celp"), OptedOut("StaticLibrary"), Token);
+		await File.WriteAllTextAsync(Path.Combine(_directory, "std", "std.ce"),
+			"mod mine\n\nvalue: pub fun -> i32 = 0\n", Token);
+		
+		await File.WriteAllTextAsync(Path.Combine(_directory, "app", "test.celp"),
+			OptedOut("Executable") + "\n[[ProjectReferences]]\nPath = '../std/std.celp'\n", Token);
+		
+		await File.WriteAllTextAsync(ProgramPath, "mod test\n\nuse mine\n\nmain: fun -> i32 = mine.value()\n", Token);
+		var (result, output) = await BuildProgramAsync();
+		Assert.True(result.Succeeded, output);
+		Assert.NotEmpty(Directory.GetFiles(Path.Combine(_directory, "std", "bin")));
+		Assert.False(Directory.Exists(Path.Combine(_directory, "app", "obj", "std")));
+	}
+	
+	[Fact]
+	public async Task BuildsTheStandardLibraryIntoTheProgram()
+	{
+		Directory.CreateDirectory(Path.Combine(_directory, "app"));
+		await File.WriteAllTextAsync(Path.Combine(_directory, "app", "test.celp"), "OutputType = \"Executable\"\n",
+			Token);
+		
+		await File.WriteAllTextAsync(ProgramPath, ValidSource, Token);
+		var (result, output) = await BuildProgramAsync();
+		Assert.True(result.Succeeded, output);
+		Assert.NotEmpty(Directory.GetFiles(Path.Combine(_directory, "app", "obj", "std", "std", "bin")));
+		Assert.False(Directory.Exists(Path.Combine(AppContext.BaseDirectory, "lib", "std", "os", "bin")));
+	}
+	
 	private static string OptedOut(string outputType) =>
 		$"OutputType = \"{outputType}\"\nStandardLibrary = \"None\"\n";
 	

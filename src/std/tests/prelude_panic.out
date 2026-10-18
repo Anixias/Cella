@@ -1,0 +1,11 @@
+
+====== prelude_panic.ce ======
+
+Hint at line 3, column 9
+2 │ 
+3 │ use std.panic
+            ╘═══╛ Redundant import
+
+[stderr]
+Panic at prelude_panic.ce:10:35: addition overflow
+[exit code 101]
