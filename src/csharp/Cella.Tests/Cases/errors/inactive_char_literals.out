@@ -1,0 +1,6 @@
+Error at inactive_char_literals.ce:7:11
+6 │ {
+7 │     val c = 'ab'
+                ╘══╛ Invalid character literal
+
+[compilation failed]

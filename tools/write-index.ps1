@@ -14,18 +14,23 @@ if (-not $BaseUrl) {
 }
 
 $index = $null
-if ($Previous) {
+if ($Previous -match '^https?://') {
 	try {
-		$index = if (Test-Path $Previous) {
-			Get-Content $Previous -Raw | ConvertFrom-Json -AsHashtable
-		}
-		else {
-			(Invoke-WebRequest -Uri $Previous -UseBasicParsing).Content | ConvertFrom-Json -AsHashtable
-		}
+		$index = (Invoke-WebRequest -Uri $Previous -UseBasicParsing).Content | ConvertFrom-Json -AsHashtable
 	}
 	catch {
-		Write-Host "No previous index at ${Previous}: $($_.Exception.Message)"
+		if (-not (Test-NotFound $_)) {
+			throw
+		}
+
+		Write-Host "No previous index at $Previous"
 	}
+}
+elseif ($Previous -and (Test-Path $Previous)) {
+	$index = Get-Content $Previous -Raw | ConvertFrom-Json -AsHashtable
+}
+elseif ($Previous) {
+	Write-Host "No previous index at $Previous"
 }
 
 if (-not $index) {

@@ -1,0 +1,12 @@
+mod test
+
+ext
+{
+	rand: fun -> i32
+}
+
+mixed: const i32 = 1 / 0 + rand()
+alone: const i32 = rand()
+fault: const i32 = 1 / 0
+
+main: fun -> i32 => 0

@@ -1,0 +1,11 @@
+Error at main.ce:8:10
+7 │ {
+8 │     val a = show(1)
+                ╘══╛ 'show' is private to its file
+
+Error at main.ce:9:10
+8 │ val a = show(1)
+9 │ val b = showTwo[i32](1)
+            ╘═════╛ 'showTwo' is private to its file
+
+[compilation failed]

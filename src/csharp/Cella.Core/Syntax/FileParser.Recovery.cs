@@ -18,9 +18,6 @@ public sealed partial class FileParser
 		
 		if (token.Text == "pvt")
 			Report(token, "Expected '{' after 'pvt'");
-		else if (startsLine && token.Type == TokenType.KeywordFun && Peek(index + 1, TokenType.OpOpenBracket) &&
-		         FindClosingBracket(index + 1) is { } close && Peek(close + 1, TokenType.OpColon))
-			Report(Span(token, Tokens[close]), $"Cannot implement traits for '{Span(token, Tokens[close]).GetText()}'");
 		else if (namesDeclaration && _operatorNames.Contains(token.Type))
 			Report(token, "Cannot declare operators outside types");
 		else if (namesDeclaration && token.Type == TokenType.KeywordNew)
@@ -107,7 +104,8 @@ public sealed partial class FileParser
 		var token = Tokens[index];
 		return _declarationKinds.Contains(token.Text) || _topLevelFormWords.Contains(token.Text) ||
 		       Peek(index + 1, TokenType.OpColon) && (_operatorNames.Contains(token.Type) ||
-		                                              _lifecycleKeywords.Contains(token.Type));
+		                                              _lifecycleKeywords.Contains(token.Type)) ||
+		       FindUnnamedImplTarget(index) is not null;
 	}
 	
 	private bool StartsTopLevelDeclaration(int index)
@@ -173,15 +171,6 @@ public sealed partial class FileParser
 	private bool StartsDeclarationOnLine(int index) =>
 		Tokens[index].Line != Tokens[index - 1].Line && StartsTopLevelDeclaration(index);
 	
-	private static readonly HashSet<TokenType> _statementKeywords =
-	[
-		TokenType.KeywordVal, TokenType.KeywordVar, TokenType.KeywordConst, TokenType.KeywordRet, TokenType.KeywordIf,
-		TokenType.KeywordFor,
-		TokenType.KeywordWhile, TokenType.KeywordDo, TokenType.KeywordLoop, TokenType.KeywordMatch,
-		TokenType.KeywordDrop, TokenType.KeywordWhen, TokenType.KeywordBreak, TokenType.KeywordCont,
-		TokenType.KeywordPanic
-	];
-	
 	private bool ResyncStatement(ref int index, int start)
 	{
 		var braces = 0;
@@ -205,7 +194,7 @@ public sealed partial class FileParser
 			
 			if (Tokens[i].Type == TokenType.OpCloseBrace ||
 			    !IsOnSameLine(i) && Tokens[i].Type != TokenType.OpOpenBrace &&
-			    (brackets <= 0 || _statementKeywords.Contains(Tokens[i].Type)))
+			    (brackets <= 0 || TokenSets.StatementKeywords.Contains(Tokens[i].Type)))
 			{
 				index = i;
 				return false;

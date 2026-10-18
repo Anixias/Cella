@@ -1,0 +1,7 @@
+mod test
+
+helper: fun -> i32
+{
+	val x =
+	ret 1
+}

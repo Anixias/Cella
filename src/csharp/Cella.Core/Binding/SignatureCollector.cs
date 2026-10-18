@@ -41,6 +41,7 @@ public sealed partial class SignatureCollector
 	];
 	
 	private readonly string? _entryPointName;
+	private bool dropsEntryPoint;
 	private readonly SymbolTable _symbolTable;
 	private readonly TypePool _typePool;
 	private readonly SignatureTable _dependencyTable;
@@ -87,7 +88,6 @@ public sealed partial class SignatureCollector
 	public DiagnosticList Diagnostics { get; } = new();
 	public ConstantEvaluator Evaluator { get; }
 	public ModuleIndex Modules { get; }
-	public bool ReportsMissingEntryPoint { get; init; } = true;
 	public bool QualifiesEntryPoint { get; init; }
 	public Action<Token, Symbol>? RecordName { get; init; }
 	public CompletionProbe? Probe { get; init; }
@@ -119,6 +119,7 @@ public sealed partial class SignatureCollector
 	public void Collect(IReadOnlyCollection<FileNode> files, IConstantResolver constantResolver)
 	{
 		constants = constantResolver;
+		dropsEntryPoint = files.Any(file => file.DroppedNames.Any(name => IsEntryPointName(file, name)));
 		_typePool.TypeCompleter = Complete;
 		_typePool.TraitCompleter = CompleteTrait;
 		_typePool.SizeTable.Measurer = Measure;

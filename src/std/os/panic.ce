@@ -6,13 +6,31 @@ when windows
 	{
 		write: ext("_write") fun(fd: i32, data: ptr, count: u32) -> i32
 	}
+
+	writeError: fun(text: str)
+	{
+		var data = text.data
+		var remaining = text.byteLength
+		while remaining > 0
+		{
+			var count = remaining
+			if count > 2147483647
+				count = 2147483647
+
+			write(2, data, u32(count))
+			data = data + count
+			remaining -= count
+		}
+	}
 }
 else
 {
 	ext
 	{
-		write: fun(fd: i32, data: ptr, count: u32) -> i32
+		write: fun(fd: i32, data: ptr, count: usize) -> isize
 	}
+
+	writeError: fun(text: str) => write(2, text.data, text.byteLength)
 }
 
 ext
@@ -23,14 +41,11 @@ ext
 
 panic: pub op(message: str, location: str) -> never
 {
-	val prefix = "Panic at "
-	val separator = ": "
-	val newline = "\n"
 	fflush(null)
-	write(2, prefix.data, u32(prefix.byteLength))
-	write(2, location.data, u32(location.byteLength))
-	write(2, separator.data, u32(separator.byteLength))
-	write(2, message.data, u32(message.byteLength))
-	write(2, newline.data, u32(newline.byteLength))
+	writeError("Panic at ")
+	writeError(location)
+	writeError(": ")
+	writeError(message)
+	writeError("\n")
 	exit(101)
 }

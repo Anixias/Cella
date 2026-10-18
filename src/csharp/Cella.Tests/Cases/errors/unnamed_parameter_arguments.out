@@ -1,0 +1,16 @@
+Error at unnamed_parameter_arguments.ce:5:35
+4 │ take: fun(own _: i32) -> i32 => 0
+5 │ build[T: new(i32)]: fun -> T => T(mut 1)
+                                      ╘═╛ Cannot use 'mut' on arguments to read-only parameters
+
+Error at unnamed_parameter_arguments.ce:10:7
+ 9 │ var x = 1
+10 │ read(mut x)
+          ╘═╛ Cannot use 'mut' on arguments to read-only parameters
+
+Error at unnamed_parameter_arguments.ce:11:7
+10 │ read(mut x)
+11 │ take(mut x)
+          ╘═╛ Cannot use 'mut' on arguments to read-only parameters
+
+[compilation failed]

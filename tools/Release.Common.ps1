@@ -20,9 +20,22 @@ function Get-HostName {
 }
 
 function Get-ArchiveExtension {
+	param([string] $HostName)
+
+	if ($HostName -like 'linux-*') { '.tar.gz' } else { '.zip' }
+}
+
+function Test-NotFound {
+	param([Parameter(Mandatory)] [Management.Automation.ErrorRecord] $ErrorRecord)
+
+	$ErrorRecord.Exception -is [Microsoft.PowerShell.Commands.HttpResponseException] -and
+		$ErrorRecord.Exception.Response.StatusCode -eq [Net.HttpStatusCode]::NotFound
+}
+
+function Get-ComponentHost {
 	param([Parameter(Mandatory)] [string] $Name)
 
-	if ($Name -match '(^|-)linux-x64$' -and $Name -ne 'linux-x64-gnu') { '.tar.gz' } else { '.zip' }
+	if ($Name -like 'llvm-*') { $Name.Substring('llvm-'.Length) } else { $null }
 }
 
 function Get-VersionAsset {
@@ -34,7 +47,7 @@ function Get-VersionAsset {
 function Get-ComponentAsset {
 	param([Parameter(Mandatory)] [string] $Name, [Parameter(Mandatory)] [string] $Version)
 
-	"$Name-$Version$(Get-ArchiveExtension $Name)"
+	"$Name-$Version$(Get-ArchiveExtension (Get-ComponentHost $Name))"
 }
 
 function Get-LauncherAsset {

@@ -1,0 +1,4 @@
+mod test
+
+show[T]: pvt fun(imm x: T) -> i32 => 0
+showTwo[T]: pvt fun(imm x: T) -> i32 => 0

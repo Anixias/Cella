@@ -157,10 +157,13 @@ public sealed partial class Resolver : IStatementNodeVisitor<IResolvedStatementN
 	private ResolvedInvalidExpressionNode ReportVoidValue(IResolvedExpressionNode node, TypeSymbol? type)
 	{
 		var function = node.Syntax is CallExpressionNode call ? call.Target : node.Syntax;
-		var text = function is LambdaExpressionNode
-			? "fun"
-			: string.Join(' ', function.SourceLocation.GetText().ToString()
-				.Split((char[])[' ', '\t', '\r', '\n'], StringSplitOptions.RemoveEmptyEntries));
+		var text = function switch
+		{
+			LambdaExpressionNode => "fun",
+			VarExpressionNode or AccessExpressionNode => GetName(function),
+			_ => string.Join(' ', function.SourceLocation.GetText().ToString()
+				.Split((char[])[' ', '\t', '\r', '\n'], StringSplitOptions.RemoveEmptyEntries))
+		};
 		
 		return Error(node.Syntax, $"'{text}' doesn't return a value", type);
 	}
@@ -382,7 +385,7 @@ public sealed partial class Resolver : IStatementNodeVisitor<IResolvedStatementN
 		public bool IsVariadic => Info.Signature.IsVariadic;
 		public bool HasVariadicParameter => Info.Signature.HasVariadicParameter;
 		public ParameterMode GetMode(int index) => Info.Signature.GetMode(Unpack(index));
-		public string GetParameterName(int index) => Info.Symbol.Parameters[Unpack(index)].Name;
+		public string? GetParameterName(int index) => Info.Symbol.Parameters[Unpack(index)].WrittenName;
 		
 		private int Unpack(int index) =>
 			Form is null ? index : Math.Min(index, Info.Signature.ParameterTypes.Length - 1);
@@ -429,8 +432,7 @@ public sealed partial class Resolver : IStatementNodeVisitor<IResolvedStatementN
 		public bool HasVariadicParameter => Info.Signature.HasVariadicParameter;
 		public ParameterMode GetMode(int index) => Info.Signature.GetMode(Unpack(index) + 1);
 		
-		public string? GetParameterName(int index) =>
-			Info.Symbol.Syntax is ConstructorConstraintNode ? null : Info.Symbol.Parameters[Unpack(index) + 1].Name;
+		public string? GetParameterName(int index) => Info.Symbol.Parameters[Unpack(index) + 1].WrittenName;
 		
 		private int Unpack(int index) =>
 			Form is null ? index : Math.Min(index, Info.Signature.ParameterTypes.Length - 2);

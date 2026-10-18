@@ -15,8 +15,6 @@ public sealed partial class CodeGenerator
 		IdentityConversion => EmitValue(v.Source, builder),
 		IntegerConversion { To: var to } c when Substitute(to) == NativeSymbols.Char =>
 			ConvertToChar(EmitValue(v.Source, builder), c.FromSigned, v.SourceLocation, builder),
-		FreeConversion { From: IntegerType, To: var to } when Substitute(to) == NativeSymbols.Char =>
-			ConvertToChar(EmitValue(v.Source, builder), false, v.SourceLocation, builder),
 		IntegerConversion c => ConvertInteger(EmitValue(v.Source, builder), MapTypeSymbol(c.To), c.FromSigned,
 			c.ToSigned, v.SourceLocation, builder),
 		FloatConversion c => EmitFloatConversion(c, EmitValue(v.Source, builder), v.SourceLocation, builder),

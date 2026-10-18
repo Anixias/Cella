@@ -124,7 +124,6 @@ public sealed partial class Builder
 		var signatureCollector = new SignatureCollector(project.Name, entryPointName, symbolTable, typePool,
 			dependencySymbols, indirectSymbols, FindAliases(project, dependencyList), pointerBitSize)
 		{
-			ReportsMissingEntryPoint = parseDiagnostics.ErrorCount == 0,
 			QualifiesEntryPoint = isEntry,
 			RecordName = recordName,
 			Probe = probe

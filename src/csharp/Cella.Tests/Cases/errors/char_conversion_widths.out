@@ -1,0 +1,16 @@
+Error at char_conversion_widths.ce:9:10
+8 │ {
+9 │     val a = char(wide)
+                ╘════════╛ '55296' doesn't fit in 'char'
+
+Error at char_conversion_widths.ce:10:10
+ 9 │ val a = char(wide)
+10 │ val b = char(narrow)
+             ╘══════════╛ '55296' doesn't fit in 'char'
+
+Error at char_conversion_widths.ce:11:10
+10 │ val b = char(narrow)
+11 │ val c = char(signed)
+             ╘══════════╛ '55296' doesn't fit in 'char'
+
+[compilation failed]

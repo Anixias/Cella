@@ -24,9 +24,6 @@ public sealed partial class Resolver
 	
 	public IResolvedExpressionNode Visit(LiteralExpressionNode node)
 	{
-		if (node.Token.Type == TokenType.InvalidCharLiteral)
-			return Error(node, "Invalid character literal", CurrentTargetType);
-		
 		if (node.Token.Suffix is { } suffix)
 			return ResolveSuffixedLiteral(node, suffix);
 		
@@ -309,8 +306,7 @@ public sealed partial class Resolver
 			UntypedIntegerType when target is IntegerType t => MaterializeInteger(literal, t),
 			UntypedIntegerType when target is FloatType t => MaterializeIntegerAsFloat(literal, t),
 			UntypedFloatType when target is FloatType t => MaterializeFloat(literal, t),
-			UntypedNullType when target is PointerType || target == NativeSymbols.CStr =>
-				MaterializeNull(literal, target),
+			UntypedNullType when TypePool.TakesNullLiteral(target) => MaterializeNull(literal, target),
 			UntypedNullType when target is TypeParameterSymbol { HasNull: true } =>
 				MaterializeGenericNull(literal, target),
 			UntypedStringType when target is StringType t => t == NativeSymbols.CStr

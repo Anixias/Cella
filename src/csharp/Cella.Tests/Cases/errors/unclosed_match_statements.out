@@ -1,0 +1,23 @@
+Error at unclosed_match_statements.ce:10:1
+ 9 │ first: fun(t: T) -> i32
+10 │ {
+     ^ Expected '}' to close this '{'
+
+Error at unclosed_match_statements.ce:17:3
+16 │     b => 2
+17 │ break
+     ╘═══╛ Expected '}'
+         | To match the '{' on line 14
+
+Error at unclosed_match_statements.ce:28:2
+27 │     b => ret 2
+28 │ panic "no"
+     ╘═══╛ Expected '}'
+         | To match the '{' on line 25
+
+Error at unclosed_match_statements.ce:31:21
+30 │ 
+31 │ main: fun -> i32 => missing
+                         ╘═════╛ Symbol 'missing' not found in this scope
+
+[compilation failed]

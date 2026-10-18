@@ -60,6 +60,7 @@ public sealed partial class FileParser
 		var target = ParseImplTarget(ref index, identifier);
 		if (ParseTypeParameters(ref index) is not { } typeParameters)
 		{
+			_droppedNames.Add(identifier);
 			ResyncTopLevel(ref index, insideBlock);
 			return true;
 		}
@@ -67,6 +68,7 @@ public sealed partial class FileParser
 		if (!Match(ref index, TokenType.OpColon))
 		{
 			Report(IsOnSameLine(index) ? Tokens[index] : identifier, $"Expected ':' after '{identifier.Text}'");
+			_droppedNames.Add(identifier);
 			ResyncTopLevel(ref index, insideBlock);
 			return true;
 		}
@@ -223,9 +225,14 @@ public sealed partial class FileParser
 					externalName));
 			
 			if (function is null)
+			{
+				_droppedNames.Add(identifier);
 				SkipDeclaration(ref index, declarationStart, insideBlock);
+			}
 			else
+			{
 				declarations.Add(function);
+			}
 			
 			return true;
 		}
@@ -233,6 +240,7 @@ public sealed partial class FileParser
 		// Unknown declaration
 		index = kindIndex;
 		Report(Tokens[index], "Expected a declaration");
+		_droppedNames.Add(identifier);
 		if (!AtEnd(index))
 			index++;
 		

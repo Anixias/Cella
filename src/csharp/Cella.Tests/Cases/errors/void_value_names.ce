@@ -1,0 +1,19 @@
+mod test
+
+Handler: rec
+{
+	callback: fun[]
+}
+
+greet: fun
+{
+}
+
+main: fun -> i32
+{
+	var handler = Handler(greet)
+	val h = handler // the handler
+		.callback()
+	val i = handler./* cb */callback()
+	ret 0
+}

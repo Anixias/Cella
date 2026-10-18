@@ -283,7 +283,7 @@ public sealed partial class SignatureCollector
 			
 			var type = RejectValueDyn(typeNode, context.ResolveType(typeNode), modes[i]);
 			types.Add(_typePool.GetPassedType(type, modes[i]));
-			parameters.Add(new($"${i + 1}", typeNode.SourceLocation) { Mode = modes[i] });
+			parameters.Add(new($"${i + 1}", typeNode.SourceLocation) { Mode = modes[i], IsNamed = false });
 		}
 		
 		var symbol = new FunctionSymbol($"{parameter.Name}.new", node, Visibility.Public, null, parameters,

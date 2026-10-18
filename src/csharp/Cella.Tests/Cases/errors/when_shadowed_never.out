@@ -1,0 +1,6 @@
+Error at when_shadowed_never.ce:8:14
+7 │ 
+8 │ make: fun -> never when release
+                 ╘═══╛ Cannot return values from 'when' functions
+
+[compilation failed]

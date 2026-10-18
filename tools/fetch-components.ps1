@@ -8,14 +8,24 @@ param(
 . "$PSScriptRoot/Release.Common.ps1"
 
 $hostName = Get-HostName
-$index = try { Invoke-RestMethod -Uri $IndexUrl } catch { $null }
+$index = try {
+	Invoke-RestMethod -Uri $IndexUrl
+}
+catch {
+	if (-not (Test-NotFound $_)) {
+		throw
+	}
+
+	$null
+}
 $downloads = Join-Path $Work 'assets'
 New-Item -ItemType Directory -Force $downloads | Out-Null
 
 foreach ($entry in (Get-Components).GetEnumerator()) {
 	$name = $entry.Key
 	$version = $entry.Value
-	if ($name -like 'llvm-*' -and $name -ne "llvm-$hostName") {
+	$componentHost = Get-ComponentHost $name
+	if ($componentHost -and $componentHost -ne $hostName) {
 		continue
 	}
 

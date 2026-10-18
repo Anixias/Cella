@@ -359,6 +359,12 @@ public sealed partial class FileParser
 				continue;
 			}
 			
+			if (TokenSets.StatementKeywords.Contains(Tokens[index].Type))
+			{
+				ReportExpected(index, "'}'", openBrace);
+				return null;
+			}
+			
 			if (ParseMatchArm(ref index) is not { } arm)
 				return null;
 			

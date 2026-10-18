@@ -93,6 +93,7 @@ public sealed partial class FileParser
 	
 	private readonly List<SourceLocation> _declarationExtents = [];
 	private readonly List<SourceLocation> _brokenStatements = [];
+	private readonly List<Token> _droppedNames = [];
 	
 	private static Dictionary<string, TokenType> BuildContextualKeywords(params IEnumerable<TokenType> tokenTypes) =>
 		tokenTypes.ToDictionary(static t => t.Representation);
@@ -319,6 +320,7 @@ public sealed partial class FileParser
 			Declarations = declarations.ToImmutableArray(),
 			DeclarationExtents = [.._declarationExtents],
 			BrokenStatements = [.._brokenStatements],
+			DroppedNames = [.._droppedNames],
 			IsExcluded = !isIncluded
 		};
 	}
@@ -371,6 +373,13 @@ public sealed partial class FileParser
 		}
 		
 		var insideBlock = insideBraces;
+		if (FindUnnamedImplTarget(index) is var (target, end))
+		{
+			Report(target.SourceLocation, $"Cannot implement traits for '{target.SourceLocation.GetText()}'");
+			index = end;
+			ResyncTopLevel(ref index, insideBlock);
+			return true;
+		}
 		
 		// Parse external declarations
 		var externalStart = index;
@@ -401,6 +410,35 @@ public sealed partial class FileParser
 		
 		return ParseNamedDeclaration(ref index, declarations, block, insideBraces);
 	}
+	
+	private (ITypeNode Target, int End)? FindUnnamedImplTarget(int index)
+	{
+		if (index > 0 && IsOnSameLine(index) || !StartsUnnamedType(index))
+			return null;
+		
+		var end = index;
+		ITypeNode target;
+		try
+		{
+			target = new TypeParser(Tokens).Parse(ref end);
+		}
+		catch (ParseException)
+		{
+			return null;
+		}
+		
+		var implIndex = end + 1;
+		return Peek(end, TokenType.OpColon) &&
+		       Match(ref implIndex, _topLevelContextualKeywords, TokenType.KeywordImpl)
+			? (target, implIndex)
+			: null;
+	}
+	
+	private bool StartsUnnamedType(int index) =>
+		TokenSets.BorrowKeywords.Contains(Tokens[index].Type) ||
+		Tokens[index].Type is TokenType.KeywordDyn or TokenType.KeywordFun ||
+		Tokens[index].Type is TokenType.KeywordRef or TokenType.KeywordOwn && Peek(index + 1, TokenType.KeywordFun) ||
+		Tokens[index].Text == "ext" && Peek(index + 1, TokenType.KeywordFun);
 	
 	private bool StartsContextualName(int index) =>
 		!AtEnd(index + 1) && Tokens[index] is { Type: TokenType.Identifier } token &&

@@ -1,0 +1,13 @@
+mod test
+
+read: fun(_: i32) -> i32 => 0
+take: fun(own _: i32) -> i32 => 0
+build[T: new(i32)]: fun -> T => T(mut 1)
+
+main: fun -> i32
+{
+	var x = 1
+	read(mut x)
+	take(mut x)
+	ret 0
+}

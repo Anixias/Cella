@@ -119,11 +119,7 @@ public sealed class ConversionTable
 			table.Add(new IntegerConversion(intTypes[i].U, intTypes[i].S, ConversionKind.Explicit, 0));
 			
 			// Any integer type -> char
-			if (intTypes[i].U == NativeSymbols.UInt32)
-				table.Add(new FreeConversion(NativeSymbols.UInt32, NativeSymbols.Char, ConversionKind.Explicit));
-			else
-				table.Add(new IntegerConversion(intTypes[i].U, NativeSymbols.Char, ConversionKind.Explicit, 1));
-			
+			table.Add(new IntegerConversion(intTypes[i].U, NativeSymbols.Char, ConversionKind.Explicit, 1));
 			table.Add(new IntegerConversion(intTypes[i].S, NativeSymbols.Char, ConversionKind.Explicit, 1));
 		}
 		
@@ -158,7 +154,7 @@ public sealed class ConversionTable
 		table.Add(new IntegerConversion(NativeSymbols.Char, NativeSymbols.Int16, ConversionKind.Explicit, 1));
 		table.Add(new IntegerConversion(NativeSymbols.Char, NativeSymbols.UInt16, ConversionKind.Explicit, 1));
 		table.Add(new IntegerConversion(NativeSymbols.Char, NativeSymbols.Int32, ConversionKind.Explicit, 1));
-		table.Add(new FreeConversion(NativeSymbols.Char, NativeSymbols.UInt32, ConversionKind.Explicit));
+		table.Add(new IntegerConversion(NativeSymbols.Char, NativeSymbols.UInt32, ConversionKind.Explicit, 1));
 		table.Add(new IntegerConversion(NativeSymbols.Char, NativeSymbols.Int64, ConversionKind.Explicit, 1));
 		table.Add(new IntegerConversion(NativeSymbols.Char, NativeSymbols.UInt64, ConversionKind.Explicit, 1));
 		table.Add(new IntegerConversion(NativeSymbols.Char, NativeSymbols.Int128, ConversionKind.Explicit, 1));

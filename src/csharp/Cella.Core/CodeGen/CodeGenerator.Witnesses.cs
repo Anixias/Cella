@@ -239,7 +239,9 @@ public sealed partial class CodeGenerator
 		LLVMBuilderRef builder)
 	{
 		var type = function.Signature.ParameterTypes[index];
-		var info = new VariableInfo(new ParameterSymbol($"${index}", function.Symbol.Syntax.SourceLocation), type);
+		var info = new VariableInfo(
+			new ParameterSymbol($"${index}", function.Symbol.Syntax.SourceLocation) { IsNamed = false }, type);
+		
 		if (TypePool.PassesByPointer(function, index))
 		{
 			current.Variables[info] = value;

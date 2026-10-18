@@ -1,0 +1,12 @@
+mod test
+
+first: fun -> f64
+{
+	val p = 1
+	val a = p
+		.5
+	val b = p /* c */ .5
+	ret .5
+}
+
+main: fun -> i32 => missing

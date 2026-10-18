@@ -1,0 +1,13 @@
+Error at void_value_names.ce:15:10
+14 │ var handler = Handler(greet)
+15 │ val h = handler // the handler
+             ╘════════════════════╛
+16 │     .callback()
+         ╘═════════╛ 'handler.callback' doesn't return a value
+
+Error at void_value_names.ce:17:10
+16 │     .callback()
+17 │ val i = handler./* cb */callback()
+             ╘════════════════════════╛ 'handler.callback' doesn't return a value
+
+[compilation failed]

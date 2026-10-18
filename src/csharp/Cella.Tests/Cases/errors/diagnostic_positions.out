@@ -1,3 +1,5 @@
+Error: The program has no 'main' function
+
 Error at end_blank_lines.ce:3:30
 2 │ 
 3 │ value: fun -> i32 => add(1, 2

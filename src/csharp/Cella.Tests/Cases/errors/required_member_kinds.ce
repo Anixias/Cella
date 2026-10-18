@@ -1,0 +1,17 @@
+mod test
+
+Holder: rec
+{
+	x: req i32
+	y: req const i32 = 1
+	f: req fun -> i32 => 0
+	g: req op(self) -> i32 => 0
+	h: req val i32 = 2
+	p: req prop i32
+	{
+		get => 1
+	}
+	cb: req fun[-> i32]
+}
+
+main: fun -> i32 => 0

@@ -41,7 +41,7 @@ public sealed partial class Resolver
 		
 		if (!resolutionSet.HasResult && candidates is [var only] &&
 		    ReportSingleMismatch(node, node.Target is VarExpressionNode or AccessExpressionNode
-			    ? node.Target.SourceLocation.GetText().ToString()
+			    ? GetName(node.Target)
 			    : GetDisplayName(callee), only, only, args, node.Target.SourceLocation))
 			return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
 		

@@ -339,14 +339,23 @@ public sealed partial class FileParser
 		if (token.Text != "req")
 			return null;
 		
-		return next.Text switch
-		{
-			"pvt" or "mod" or "pub" => (next.SourceLocation, $"Cannot use '{next.Text}' after 'req'"),
-			"req" => (next.SourceLocation, "Cannot repeat 'req'"),
-			"val" or "var" => (token.SourceLocation, "Cannot declare required static fields"),
-			"get" or "set" or "prop" => (token.SourceLocation, "Cannot declare required properties"),
-			_ => null
-		};
+		var following = index + 1;
+		if (next.Text is "pvt" or "mod" or "pub")
+			return (next.SourceLocation, $"Cannot use '{next.Text}' after 'req'");
+		
+		if (next.Text == "req")
+			return (next.SourceLocation, "Cannot repeat 'req'");
+		
+		if (_bindingKeywords.Contains(next.Type))
+			return (token.SourceLocation, "Cannot declare required static fields");
+		
+		if (IsFunctionMember(following))
+			return (token.SourceLocation, "Cannot declare required functions");
+		
+		if (Match(ref following, _memberContextualKeywords, TokenType.KeywordOp))
+			return (token.SourceLocation, "Cannot declare required operators");
+		
+		return StartsProperty(index + 1) ? (token.SourceLocation, "Cannot declare required properties") : null;
 	}
 	
 	private List<Token> ParseFieldModifiers(ref int index)

@@ -329,9 +329,8 @@ public sealed class UntypedNullType() : UntypedType("null")
 	
 	public override int MaterializationCost(TypeSymbol target, MaterializationMode mode) => mode switch
 	{
-		MaterializationMode.Overload => target is PointerType or TypeParameterSymbol { HasNull: true }
-			? 0
-			: int.MaxValue,
+		MaterializationMode.Overload =>
+			TypePool.TakesNullLiteral(target) || target is TypeParameterSymbol { HasNull: true } ? 0 : int.MaxValue,
 		_ => target == NativeSymbols.VoidPtr ? 0 : int.MaxValue
 	};
 }
@@ -694,10 +693,13 @@ public sealed class ParameterSymbol : VariableSymbol
 {
 	public SourceLocation Definition { get; }
 	public ParameterMode Mode { get; init; }
+	public bool IsNamed { get; init; } = true;
+	public string? WrittenName => IsNamed ? Name : null;
 	
 	public ParameterSymbol(Token identifier) : base(identifier.Text)
 	{
 		Definition = identifier.SourceLocation;
+		IsNamed = identifier.Text != "_";
 	}
 	
 	public ParameterSymbol(string name, SourceLocation definition) : base(name)

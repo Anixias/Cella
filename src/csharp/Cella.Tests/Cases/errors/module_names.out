@@ -1,3 +1,5 @@
+Error: The program has no 'main' function
+
 Error at bare.ce:1:1
 1 │ mod
     ╘═╛ Expected a module name

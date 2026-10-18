@@ -1,0 +1,5 @@
+mod test
+
+show: fun(x: str) -> i32 => 0
+
+main: fun -> i32 => test.show(1)

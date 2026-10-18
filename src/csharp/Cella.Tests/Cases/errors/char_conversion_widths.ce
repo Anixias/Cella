@@ -1,0 +1,13 @@
+mod test
+
+wide: const u64 = 55296
+narrow: const u32 = 55296
+signed: const i32 = 55296
+
+main: fun -> i32
+{
+	val a = char(wide)
+	val b = char(narrow)
+	val c = char(signed)
+	ret 0
+}

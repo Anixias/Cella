@@ -68,7 +68,7 @@ It uses published archives where they exist and runs the recipes for the rest.
    - list the target in the `--target` usage text.
 5. Add the target to `GoldenTests` and record expected outputs for it.
 
-Archives are `.zip` except for the names `Get-ArchiveExtension` in `tools/Release.Common.ps1` sends to `.tar.gz`. Use `.tar.gz` when the files include symbolic links.
+Archives unpacked on a Linux host, that host's bundle and its `llvm-<host>` component, are `.tar.gz`. Everything else, target toolchains included, is `.zip`.
 
 The launcher installs every target component a release lists, so it needs no change. CI rebuilds its cached toolchain whenever `components.json` or a recipe changes.
 

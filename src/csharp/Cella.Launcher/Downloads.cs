@@ -76,12 +76,18 @@ internal static class Downloads
 		}
 	}
 	
-	private static async Task<Stream> OpenAsync(string url)
+	public static async Task<Stream> OpenAsync(string url)
 	{
-		if (url.StartsWith("file://", StringComparison.Ordinal))
-			return File.OpenRead(new Uri(url).LocalPath);
+		if (!Uri.TryCreate(url, UriKind.Absolute, out var uri))
+			throw new LauncherException($"'{url}' is not a valid URL");
 		
-		var response = await Client.GetAsync(url, HttpCompletionOption.ResponseHeadersRead);
+		if (uri.IsFile)
+			return File.OpenRead(uri.LocalPath);
+		
+		if (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps)
+			throw new LauncherException($"Can't download from '{url}'");
+		
+		var response = await Client.GetAsync(uri, HttpCompletionOption.ResponseHeadersRead);
 		response.EnsureSuccessStatusCode();
 		return await response.Content.ReadAsStreamAsync();
 	}

@@ -1,0 +1,16 @@
+mod test
+
+Hash: trait
+{
+}
+
+fun[i32 -> i32]: impl Hash
+ref fun[i32 -> i32]: impl Hash
+dyn[Hash]: impl Hash
+mut[i32]: impl Hash
+imm[i32]: impl Hash
+ext fun[i32 -> i32]: impl Hash
+{
+}
+
+main: fun -> i32 => missing

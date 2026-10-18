@@ -1,0 +1,11 @@
+mod test
+
+show: fun(x: str) -> i32 => 0
+showTwo[T]: fun(imm x: T, y: str) -> i32 => 0
+
+main: fun -> i32
+{
+	val a = show(1)
+	val b = showTwo[i32](1)
+	ret 0
+}

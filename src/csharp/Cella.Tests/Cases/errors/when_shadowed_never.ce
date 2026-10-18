@@ -1,0 +1,13 @@
+mod test
+
+never: rec
+{
+	x: i32
+}
+
+make: fun -> never when release
+{
+	ret never(1)
+}
+
+main: fun -> i32 => 0

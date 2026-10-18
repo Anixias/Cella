@@ -1,0 +1,21 @@
+Error at leading_dot_floats.ce:7:3
+6 │ val a = p
+7 │     .5
+        ╘╛ Expected a digit before '.'
+
+Error at leading_dot_floats.ce:8:21
+7 │     .5
+8 │ val b = p /* c */ .5
+                       ^ Expected a name after '.'
+
+Error at leading_dot_floats.ce:9:6
+8 │ val b = p /* c */ .5
+9 │ ret .5
+        ╘╛ Expected a digit before '.'
+
+Error at leading_dot_floats.ce:12:21
+11 │ 
+12 │ main: fun -> i32 => missing
+                         ╘═════╛ Symbol 'missing' not found in this scope
+
+[compilation failed]

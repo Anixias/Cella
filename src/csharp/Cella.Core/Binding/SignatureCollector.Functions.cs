@@ -89,7 +89,7 @@ public sealed partial class SignatureCollector
 	
 	private FunctionInfo CollectFunction(FunctionSymbol function, FunctionNode node, ResolutionContext context)
 	{
-		ReportWhenFunction(node, context);
+		var checksWhenResult = ReportWhenFunction(node, context);
 		Diagnostics.AddRange(ReportDuplicateTypeParameters(node.TypeParameters));
 		
 		ReportDuplicateParameters(node.Parameters);
@@ -153,6 +153,11 @@ public sealed partial class SignatureCollector
 		if (reportsHiddenTypes && node.ReturnType is { } returnTypeNode)
 			ReportHiddenType(returnTypeNode, returnType, visibility, name);
 		
+		if (checksWhenResult && node.ReturnType is { } whenResult)
+			Diagnostics.Add(new(DiagnosticSeverity.Error, whenResult.SourceLocation, returnType is NeverType
+				? "Cannot use 'when' on 'never' functions"
+				: "Cannot return values from 'when' functions"));
+		
 		var hasVariadicParameter = !node.IsExternal && node.Identifier.Type == TokenType.Identifier &&
 		                           TakesVariadicParameter(node.Parameters, paramTypes);
 		
@@ -178,10 +183,10 @@ public sealed partial class SignatureCollector
 		return info;
 	}
 	
-	private void ReportWhenFunction(FunctionNode node, ResolutionContext context)
+	private bool ReportWhenFunction(FunctionNode node, ResolutionContext context)
 	{
 		if (node.When is not { } when)
-			return;
+			return false;
 		
 		if (node.Identifier.Type != TokenType.Identifier)
 			Diagnostics.Add(new(DiagnosticSeverity.Error, when.Keyword.SourceLocation,
@@ -197,19 +202,15 @@ public sealed partial class SignatureCollector
 			Diagnostics.Add(new(DiagnosticSeverity.Error, when.Keyword.SourceLocation,
 				$"Cannot use 'when' on '{_entryPointName}'"));
 			
-			return;
+			return false;
 		}
-		
-		if (node.ReturnType is { } returnType)
-			Diagnostics.Add(new(DiagnosticSeverity.Error, returnType.SourceLocation,
-				returnType is IdentifierTypeNode { Token.Text: "never" }
-					? "Cannot use 'when' on 'never' functions"
-					: "Cannot return values from 'when' functions"));
 		
 		var modes = node.Parameters.Select(static parameter => parameter.Mode).Prepend(node.Receiver?.Mode);
 		foreach (var mode in modes.OfType<Token>().Where(static mode => mode.Type == TokenType.KeywordOwn))
 			Diagnostics.Add(new(DiagnosticSeverity.Error, mode.SourceLocation,
 				"Cannot take 'own' parameters in 'when' functions"));
+		
+		return true;
 	}
 	
 	private FunctionInfo CollectExternalFunction(FunctionSymbol function, ExternalFunctionNode node,

@@ -389,8 +389,7 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 		foreach (var (type, location) in _typePool.GenericNullChecks.GetValueOrDefault(function) ?? [])
 		{
 			var instance = Substitute(type);
-			if (instance is not PointerType && instance != NativeSymbols.CStr &&
-			    _reportedSizes.Add((instance, location)))
+			if (!TypePool.TakesNullLiteral(instance) && _reportedSizes.Add((instance, location)))
 				Diagnostics.Add(new(DiagnosticSeverity.Error, location, $"'{instance.Name}' doesn't accept 'null'"));
 		}
 		

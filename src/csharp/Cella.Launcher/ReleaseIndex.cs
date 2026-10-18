@@ -35,9 +35,9 @@ internal sealed class ReleaseIndex
 		string text;
 		try
 		{
-			text = Url.StartsWith("file://", StringComparison.Ordinal)
-				? await File.ReadAllTextAsync(new Uri(Url).LocalPath)
-				: await Downloads.Client.GetStringAsync(Url);
+			await using var stream = await Downloads.OpenAsync(Url);
+			using var reader = new StreamReader(stream);
+			text = await reader.ReadToEndAsync();
 		}
 		catch (Exception exception) when (exception is HttpRequestException or IOException or TaskCanceledException)
 		{

@@ -44,18 +44,19 @@ public sealed partial class Resolver
 			return VisitIndirectCall(node, VisitNode(node.Target, null));
 		
 		var candidates = functionSymbols.Select(GetFunctionInfo).Select(static info => new FunctionCallable(info));
-		ICallable[] hidden = node.Target is VarExpressionNode name
-			?
-			[
-				..context.FindHiddenFunctions(name.Identifier.Text)
-					.Where(static function => function.TypeParameters.IsEmpty)
-					.Select(GetFunctionInfo)
-					.Select(static info => new FunctionCallable(info))
-			]
-			: [];
+		var hidden = node.Target switch
+		{
+			VarExpressionNode name => FindHiddenCallables(context.FindHiddenFunctions(name.Identifier.Text)),
+			AccessExpressionNode access when context.ResolveModule(access.Target) is { } module =>
+				FindHiddenCallables(context.FindHiddenMembers(module, access.Member.Text)),
+			_ => []
+		};
 		
 		return ResolveCall(node, GetName(node.Target), [..candidates], null, hidden: hidden);
 	}
+	
+	private ICallable[] FindHiddenCallables(IEnumerable<FunctionSymbol> functions) =>
+		[..functions.Select(GetFunctionInfo).Select(static info => new FunctionCallable(info))];
 	
 	private IResolvedExpressionNode VisitExplicitCall(CallExpressionNode node, IndexerExpressionNode indexer)
 	{
@@ -63,11 +64,13 @@ public sealed partial class Resolver
 		switch (indexer.Target)
 		{
 			case VarExpressionNode name when GetFunctions(context.Resolve(name.Identifier.Text)) is [_, ..] functions:
-				return ResolveExplicitCall(node, indexer, name.Identifier.Text, [..functions.Select(GetFunctionInfo)]);
+				return ResolveExplicitCall(node, indexer, name.Identifier.Text, [..functions.Select(GetFunctionInfo)],
+					FindHiddenCallables(context.FindHiddenFunctions(name.Identifier.Text)));
 			
 			case AccessExpressionNode access when context.ResolveModule(access.Target) is { } module:
 				return GetFunctions(context.ResolveMember(module, access.Member.Text)) is [_, ..] members
-					? ResolveExplicitCall(node, indexer, GetName(access), [..members.Select(GetFunctionInfo)])
+					? ResolveExplicitCall(node, indexer, GetName(access), [..members.Select(GetFunctionInfo)],
+						FindHiddenCallables(context.FindHiddenMembers(module, access.Member.Text)))
 					: VisitIndirectCall(node, VisitNode(indexer, null));
 			
 			case AccessExpressionNode access:
@@ -79,9 +82,11 @@ public sealed partial class Resolver
 	}
 	
 	private IResolvedExpressionNode ResolveExplicitCall(CallExpressionNode node, IndexerExpressionNode indexer,
-		string name, FunctionInfo[] functions) => ResolveTypeArguments(indexer, functions) is { } typeArguments
-		? ResolveCall(node, name, [..functions.Select(static info => new FunctionCallable(info))], null, typeArguments)
-		: new ResolvedInvalidExpressionNode(node, CurrentTargetType);
+		string name, FunctionInfo[] functions, ICallable[]? hidden = null) =>
+		ResolveTypeArguments(indexer, functions) is { } typeArguments
+			? ResolveCall(node, name, [..functions.Select(static info => new FunctionCallable(info))], null,
+				typeArguments, hidden)
+			: new ResolvedInvalidExpressionNode(node, CurrentTargetType);
 	
 	private IResolvedExpressionNode ResolveCall(CallExpressionNode node, string functionName, ICallable[] candidates,
 		IResolvedExpressionNode? receiver, TypeArgumentList? typeArguments = null, ICallable[]? hidden = null)
@@ -116,9 +121,13 @@ public sealed partial class Resolver
 			return ReportAmbiguousCall(node, functionName, shaped, receiver, typeArguments, resolutionSet);
 		
 		if (!resolutionSet.HasResult && hidden is [_, ..] &&
-		    ResolveCallable(hidden, args, MaterializationMode.Overload, CurrentTargetType).HasResult &&
-		    CurrentResolutionContext.ReportHidden(functionName, location) is { } hiddenError)
-			return Error(node, hiddenError, CurrentTargetType);
+		    ResolveCallable(SpecializeHidden(hidden, args), args, MaterializationMode.Overload, CurrentTargetType)
+			    .HasResult)
+			return Error(node, CurrentResolutionContext.ReportHidden(functionName, location) ??
+			                   DiagnosticReporter.ReportHidden(location, functionName,
+				                   hidden.OfType<FunctionCallable>()
+					                   .Max(static h => ModuleIndex.GetVisibility(h.Info.Symbol)),
+				                   false), CurrentTargetType);
 		
 		if (!resolutionSet.HasResult && ReportArgumentModes(specialized, args, CurrentTargetType))
 			return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
@@ -158,6 +167,13 @@ public sealed partial class Resolver
 		
 		var result = new ResolvedFunctionCallExpressionNode(info, resolvedArgs, node);
 		return isErased ? new ResolvedErasedCallExpressionNode(result) : ApplyResultResolution(result, resolution);
+		
+		ICallable[] SpecializeHidden(ICallable[] callables, IResolvedExpressionNode[] values) =>
+		[
+			..Shape(callables, node.Arguments)
+				.Select(candidate => Specialize(candidate, functionName, values, typeArguments, location, []))
+				.OfType<ICallable>()
+		];
 		
 		ICallable[] SpecializeAll(IResolvedExpressionNode[] values, List<Diagnostic> failed) =>
 		[

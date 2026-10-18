@@ -3,4 +3,9 @@ Error at invalid_utf8.ce:5:14
 5 │     val s = "caf�"
                     ^ Invalid UTF-8
 
+Error at invalid_utf8.ce:6:10
+5 │ val s = "caf�"
+6 │ val c = '��'
+            ╘══╛ Invalid character literal
+
 [compilation failed]

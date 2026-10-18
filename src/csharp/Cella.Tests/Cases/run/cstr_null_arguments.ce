@@ -1,0 +1,16 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+pick: fun(c: cstr) -> i32 => i32(c == null)
+pickp: fun(c: ptr[u8]) -> i32 => i32(c == null)
+choose[T: null + copy]: fun(v: T) -> i32 => i32(v == null)
+
+main: fun -> i32
+{
+	printf("%d %d %d\n", pick(null), pickp(null), choose[cstr](null))
+	ret 0
+}

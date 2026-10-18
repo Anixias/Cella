@@ -254,15 +254,8 @@ public sealed class TypeChecker
 			return;
 		}
 		
-		var captured = new List<Diagnostic>();
-		var previous = Diagnostics.Redirect(captured);
 		VisitNode(initializer);
-		Diagnostics.Redirect(previous);
-		Diagnostics.AddRange(captured);
-		
-		if (node.Info.Value is not null ||
-		    captured.Any(static diagnostic => diagnostic.Severity == DiagnosticSeverity.Error) ||
-		    FindNonConstant(initializer) is not { } blocking)
+		if (node.Info.Value is not null || FindNonConstant(initializer) is not { } blocking)
 			return;
 		
 		if (typePool.HoldsBorrows(node.Info.Type))
@@ -589,7 +582,7 @@ public sealed class TypeChecker
 			return node;
 		
 		return ConstantEvaluator.GetOperands(node).Select(FindNonConstant).FirstOrDefault(static n => n is not null) ??
-		       node;
+		       (evaluator.FindConstantError(node) is null ? node : null);
 	}
 	
 	private static bool CanFold(IResolvedExpressionNode node) => node switch

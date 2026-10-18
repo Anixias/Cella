@@ -38,7 +38,7 @@ public sealed partial class SignatureCollector
 		
 		if (candidates.Count == 0)
 		{
-			if (ReportsMissingEntryPoint)
+			if (!dropsEntryPoint)
 				Diagnostics.Add(new(DiagnosticSeverity.Error, SourceLocation.None,
 					$"The program has no '{_entryPointName}' function"));
 			
@@ -75,6 +75,11 @@ public sealed partial class SignatureCollector
 			? $"'{_entryPointName}' must be 'pub'"
 			: $"'{_entryPointName}' must take no parameters";
 	}
+	
+	private bool IsEntryPointName(FileNode file, Token name) => _entryPointName is not null &&
+	                                                            (QualifiesEntryPoint
+		                                                            ? $"{file.ModuleName.Text}.{name.Text}"
+		                                                            : name.Text) == _entryPointName;
 	
 	private bool IsEntryPointName(FunctionSymbol function) => _entryPointName is not null && (QualifiesEntryPoint
 		? function.Kind == FunctionKind.Free &&

@@ -1,0 +1,26 @@
+Error at required_member_kinds.ce:6:5
+5 │ x: req i32
+6 │ y: req const i32 = 1
+       ╘═╛ Cannot declare required static fields
+
+Error at required_member_kinds.ce:7:5
+6 │ y: req const i32 = 1
+7 │ f: req fun -> i32 => 0
+       ╘═╛ Cannot declare required functions
+
+Error at required_member_kinds.ce:8:5
+7 │ f: req fun -> i32 => 0
+8 │ g: req op(self) -> i32 => 0
+       ╘═╛ Cannot declare required operators
+
+Error at required_member_kinds.ce:9:5
+8 │ g: req op(self) -> i32 => 0
+9 │ h: req val i32 = 2
+       ╘═╛ Cannot declare required static fields
+
+Error at required_member_kinds.ce:10:5
+ 9 │ h: req val i32 = 2
+10 │ p: req prop i32
+        ╘═╛ Cannot declare required properties
+
+[compilation failed]

@@ -1,0 +1,31 @@
+mod test
+
+T: enum
+{
+	a
+	b
+}
+
+first: fun(t: T) -> i32
+{
+	while true
+	{
+		val x = match t
+		{
+			a => 1
+			b => 2
+		break
+	}
+	ret 0
+}
+
+second: fun(t: T) -> i32
+{
+	match t
+	{
+		a => ret 1
+		b => ret 2
+	panic "no"
+}
+
+main: fun -> i32 => missing

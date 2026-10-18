@@ -8,4 +8,13 @@ internal static class TokenSets
 		[TokenType.KeywordMut, TokenType.KeywordOwn, TokenType.KeywordImm];
 	
 	public static readonly HashSet<TokenType> BorrowKeywords = [TokenType.KeywordImm, TokenType.KeywordMut];
+	
+	public static readonly HashSet<TokenType> StatementKeywords =
+	[
+		TokenType.KeywordVal, TokenType.KeywordVar, TokenType.KeywordConst, TokenType.KeywordRet, TokenType.KeywordIf,
+		TokenType.KeywordFor, TokenType.KeywordWhile, TokenType.KeywordDo, TokenType.KeywordLoop,
+		TokenType.KeywordMatch,
+		TokenType.KeywordDrop, TokenType.KeywordWhen, TokenType.KeywordBreak, TokenType.KeywordCont,
+		TokenType.KeywordPanic
+	];
 }

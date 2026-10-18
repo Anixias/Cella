@@ -1,0 +1,36 @@
+Error at unnamed_impl_targets.ce:7:1
+6 │ 
+7 │ fun[i32 -> i32]: impl Hash
+    ╘═════════════╛ Cannot implement traits for 'fun[i32 -> i32]'
+
+Error at unnamed_impl_targets.ce:8:1
+7 │ fun[i32 -> i32]: impl Hash
+8 │ ref fun[i32 -> i32]: impl Hash
+    ╘═════════════════╛ Cannot implement traits for 'ref fun[i32 -> i32]'
+
+Error at unnamed_impl_targets.ce:9:1
+8 │ ref fun[i32 -> i32]: impl Hash
+9 │ dyn[Hash]: impl Hash
+    ╘═══════╛ Cannot implement traits for 'dyn[Hash]'
+
+Error at unnamed_impl_targets.ce:10:1
+ 9 │ dyn[Hash]: impl Hash
+10 │ mut[i32]: impl Hash
+     ╘══════╛ Cannot implement traits for 'mut[i32]'
+
+Error at unnamed_impl_targets.ce:11:1
+10 │ mut[i32]: impl Hash
+11 │ imm[i32]: impl Hash
+     ╘══════╛ Cannot implement traits for 'imm[i32]'
+
+Error at unnamed_impl_targets.ce:12:1
+11 │ imm[i32]: impl Hash
+12 │ ext fun[i32 -> i32]: impl Hash
+     ╘═════════════════╛ Cannot implement traits for 'ext fun[i32 -> i32]'
+
+Error at unnamed_impl_targets.ce:16:21
+15 │ 
+16 │ main: fun -> i32 => missing
+                         ╘═════╛ Symbol 'missing' not found in this scope
+
+[compilation failed]

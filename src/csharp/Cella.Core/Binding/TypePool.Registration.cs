@@ -136,6 +136,8 @@ public sealed partial class TypePool
 		return parts.Select(part => FindPlainEnum(part, visited)).FirstOrDefault(static found => found is not null);
 	}
 	
+	public static bool TakesNullLiteral(TypeSymbol type) => type is PointerType || type == NativeSymbols.CStr;
+	
 	public static bool HasNull(TypeSymbol type) => type is PointerType or FunctionType or BorrowType
 		                                               or TypeParameterSymbol { HasNull: true } ||
 	                                               type == NativeSymbols.CStr;

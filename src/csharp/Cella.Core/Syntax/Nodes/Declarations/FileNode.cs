@@ -13,5 +13,6 @@ public sealed class FileNode(SourceLocation sourceLocation) : IDeclarationNode
 	public required ImmutableArray<ImportExpression> Imports { get; init; }
 	public ImmutableArray<SourceLocation> DeclarationExtents { get; init; } = [];
 	public ImmutableArray<SourceLocation> BrokenStatements { get; init; } = [];
+	public ImmutableArray<Token> DroppedNames { get; init; } = [];
 	public bool IsExcluded { get; init; }
 }

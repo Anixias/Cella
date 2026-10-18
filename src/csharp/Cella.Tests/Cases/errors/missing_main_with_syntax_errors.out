@@ -1,0 +1,8 @@
+Error: The program has no 'main' function
+
+Error at missing_main_with_syntax_errors.ce:5:6
+4 │ {
+5 │     val x =
+            ^ 'never' can only be a return type
+
+[compilation failed]

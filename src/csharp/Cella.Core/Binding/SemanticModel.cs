@@ -440,7 +440,9 @@ public sealed class SemanticModel
 					label.Append(", ");
 				
 				var start = label.Length;
-				label.Append(DescribeParameter(i < parameters.Length ? parameters[i].Name : "_", signature, i));
+				label.Append(DescribeParameter(i < parameters.Length ? parameters[i].WrittenName ?? "_" : "_",
+					signature, i));
+				
 				ranges.Add((start, label.Length));
 			}
 			

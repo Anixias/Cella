@@ -1,0 +1,6 @@
+Error at broken_main_header.ce:3:14
+2 │ 
+3 │ main: fun(x: ) -> i32 => 0
+                 ^ Expected a type
+
+[compilation failed]

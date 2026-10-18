@@ -17,8 +17,7 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 		TokenType.IntegerLiteral,
 		TokenType.FloatLiteral,
 		TokenType.StringLiteral,
-		TokenType.CharLiteral,
-		TokenType.InvalidCharLiteral
+		TokenType.CharLiteral
 	];
 	
 	private static readonly HashSet<TokenType> _jumpKeywords =
@@ -641,6 +640,14 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 	private IExpressionNode ParsePrimary(ref int index)
 	{
 		IExpressionNode node;
+		if (Peek(index, TokenType.OpDot) && !AtEnd(index + 1) &&
+		    Tokens[index + 1].Type is TokenType.IntegerLiteral or TokenType.FloatLiteral &&
+		    Tokens[index].SourceLocation.Range.End == Tokens[index + 1].SourceLocation.Range.Start)
+		{
+			var (source, range) = Tokens[index].SourceLocation;
+			throw new ParseException(new Diagnostic(DiagnosticSeverity.Error,
+				new(source, range.Join(Tokens[index + 1].SourceLocation.Range)), "Expected a digit before '.'"));
+		}
 		
 		if (Match(ref index, out var openParen, TokenType.OpOpenParen))
 		{
@@ -793,14 +800,10 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 		Token closeBrace;
 		while (!Match(ref index, out closeBrace, TokenType.OpCloseBrace))
 		{
-			if (AtEnd(index) || Tokens[index].Type is TokenType.KeywordRet or TokenType.KeywordVar or
-				    TokenType.KeywordVal or TokenType.KeywordConst or TokenType.KeywordIf or TokenType.KeywordFor
-				    or TokenType.KeywordLoop or
-				    TokenType.KeywordWhile or TokenType.KeywordDo)
-				throw Expected(index, "'}'", openBrace);
-			
 			if (Match(ref index, out var when, TokenType.KeywordWhen))
 				ParseWhenArms(ref index, when, arms);
+			else if (AtEnd(index) || TokenSets.StatementKeywords.Contains(Tokens[index].Type))
+				throw Expected(index, "'}'", openBrace);
 			else
 				arms.Add(WithDepth(ref index, 0, ParseMatchArm));
 			

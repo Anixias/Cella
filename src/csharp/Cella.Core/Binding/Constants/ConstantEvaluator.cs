@@ -502,8 +502,8 @@ public sealed class ConstantEvaluator
 		UntypedFloatType when node.Value is string text =>
 			new FloatConstant(node.Type, double.Parse(text, CultureInfo.InvariantCulture)),
 		PrimitiveType { Kind: PrimitiveTypeKind.Bool } when node.Value is bool value => BoolConstant.From(value),
-		PointerType or UntypedNullType or TypeParameterSymbol { HasNull: true } => new NullConstant(node.Type),
-		PrimitiveType { Kind: PrimitiveTypeKind.CStr } when node.Value is null => new NullConstant(node.Type),
+		UntypedNullType or TypeParameterSymbol { HasNull: true } => new NullConstant(node.Type),
+		_ when TypePool.TakesNullLiteral(node.Type) && node.Value is null => new NullConstant(node.Type),
 		StringType or UntypedStringType when node.Value is { } value => new StringConstant(node.Type, value),
 		InvalidType => InvalidConstant.Instance,
 		_ => null
@@ -758,8 +758,6 @@ public sealed class ConstantEvaluator
 		(NativeConversion { To: IntegerType } c, BoolConstant flag) =>
 			new IntegerConstant(c.To, flag.Value ? BigInteger.One : BigInteger.Zero),
 		(FreeConversion c, NullConstant) => new NullConstant(c.To),
-		(FreeConversion c, IntegerConstant integer) when c.From == NativeSymbols.Char || c.To == NativeSymbols.Char =>
-			new IntegerConstant(c.To, integer.Value),
 		(FreeConversion { From: FunctionType } c, FunctionConstant function) =>
 			new FunctionConstant(function.Function, c.To),
 		(EnumConversion { To: IntegerType to }, var constant) when GetTag(constant) is { } tag => Checked(to, tag),

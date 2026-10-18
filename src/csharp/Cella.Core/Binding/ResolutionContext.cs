@@ -248,6 +248,14 @@ public readonly struct ResolutionContext
 			? member
 			: module.Children.GetValueOrDefault(name);
 	
+	public IEnumerable<FunctionSymbol> FindHiddenMembers(ModulePathSymbol module, string name)
+	{
+		var context = this;
+		return module.Members.TryGetValue(name, out var members)
+			? members.OfType<FunctionSymbol>().Where(function => !context.IsVisible(function))
+			: [];
+	}
+	
 	public Diagnostic ReportUndefinedMember(SourceLocation location, ModulePathSymbol module, string name)
 	{
 		if (module.Members.TryGetValue(name, out var members) && members.Count > 0)

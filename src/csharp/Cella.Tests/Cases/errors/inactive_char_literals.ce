@@ -1,0 +1,10 @@
+mod test
+
+main: fun -> i32
+{
+	when linux && windows
+	{
+		val c = 'ab'
+	}
+	ret 0
+}

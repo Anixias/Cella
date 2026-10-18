@@ -43,10 +43,6 @@ public class Scanner
 		if (TryScanComment(position, out var comment))
 			return comment;
 		
-		if (character == '.' && position + 1 < Source.Length && char.IsAsciiDigit(Source[position + 1]) &&
-		    !EndsOperand(position))
-			return ScanInvalidNumber(position, ScanDigits(position + 1), "Expected a digit before '.'");
-		
 		if (TryScanOperator(position, out var op))
 			return op;
 		
@@ -207,16 +203,6 @@ public class Scanner
 		}
 		
 		return next == '.' || char.IsLetter(next) || next == '_' ? null : position;
-	}
-	
-	private bool EndsOperand(int position)
-	{
-		var previous = position - 1;
-		while (previous >= 0 && Source[previous] is ' ' or '\t')
-			previous--;
-		
-		return previous >= 0 && (char.IsLetterOrDigit(Source[previous]) ||
-		                         Source[previous] is '_' or ')' or ']' or '}' or '"' or '\'');
 	}
 	
 	private ScanResult ScanInvalidNumber(int position, int end, string error) =>
@@ -780,20 +766,18 @@ public class Scanner
 		}
 		
 		if (!isValid)
-		{
-			var invalidToken = new Token(TokenType.InvalidCharLiteral, Source, new TextRange(position, end));
-			return new ScanResult(invalidToken, end);
-		}
+			return InvalidCharLiteral(position, end);
 		
 		var value = UnescapeString(Source.GetText(new TextRange(position + 1, end - 1)));
 		if (!value.IsValid || !IsSingleRune(value.Result))
-		{
-			var invalidToken = new Token(TokenType.InvalidCharLiteral, Source, new TextRange(position, end));
-			return new ScanResult(invalidToken, end);
-		}
+			return InvalidCharLiteral(position, end);
 		
 		return CreateSuffixedToken(TokenType.CharLiteral, position, end, ScanSuffix(end), value.Result);
 	}
+	
+	private ScanResult InvalidCharLiteral(int start, int end) =>
+		new(new Token(TokenType.Invalid, Source, new TextRange(start, end)) { Error = "Invalid character literal" },
+			end);
 	
 	private static bool IsSingleRune(string text) =>
 		Rune.DecodeFromUtf16(text, out _, out var length) == OperationStatus.Done && length == text.Length;

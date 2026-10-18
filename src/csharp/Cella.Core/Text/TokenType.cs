@@ -21,7 +21,6 @@ public enum TokenType
 	StringLiteral,
 	InterpolatedStringLiteral,
 	CharLiteral,
-	InvalidCharLiteral,
 	
 	// Literal keywords
 	KeywordTrue,
@@ -176,7 +175,6 @@ public static class TokenTypeInfo
 			[TokenType.StringLiteral] = new("string literal"),
 			[TokenType.InterpolatedStringLiteral] = new("interpolated string literal"),
 			[TokenType.CharLiteral] = new("char literal"),
-			[TokenType.InvalidCharLiteral] = new("invalid char literal"),
 			
 			[TokenType.KeywordTrue] = new("true", IsKeyword: true),
 			[TokenType.KeywordFalse] = new("false", IsKeyword: true),
