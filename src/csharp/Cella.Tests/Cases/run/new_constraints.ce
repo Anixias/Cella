@@ -32,7 +32,7 @@ Color: enum
 	green
 }
 
-holder[T]: rec
+Holder[T]: rec
 {
 	count: i32
 
@@ -42,7 +42,7 @@ holder[T]: rec
 	}
 }
 
-box[T]: rec
+Box[T]: rec
 {
 	value: T
 }
@@ -56,6 +56,6 @@ main: fun -> i32
 	val b = make[Buffer]()
 	val p = forward[Point]()
 	printf("%llu %d %d %d %.1f %d\n", b.size, p.x, p.y, make[i32](), make[f64](), i32(make[Color]() == red))
-	printf("%d %d\n", make[holder[i32]]().count, make[box[i32]]().value)
+	printf("%d %d\n", make[Holder[i32]]().count, make[Box[i32]]().value)
 	ret 0
 }

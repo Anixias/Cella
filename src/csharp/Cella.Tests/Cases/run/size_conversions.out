@@ -1,3 +1,28 @@
+Hint at size_conversions.ce:10:6
+ 9 │ {
+10 │     var text: str = "hello"
+             ╘══╛ 'text' is never changed
+
+Hint at size_conversions.ce:11:6
+10 │ var text: str = "hello"
+11 │ var end = text.data + text.byteLength
+         ╘═╛ 'end' is never changed
+
+Hint at size_conversions.ce:12:6
+11 │ var end = text.data + text.byteLength
+12 │ var last = end - 1
+         ╘══╛ 'last' is never changed
+
+Hint at size_conversions.ce:19:6
+18 │ 
+19 │ var signed: isize = 7
+         ╘════╛ 'signed' is never changed
+
+Hint at size_conversions.ce:20:6
+19 │ var signed: isize = 7
+20 │ var length = text.byteLength
+         ╘════╛ 'length' is never changed
+
 o e 5
 7 5
 [exit code 0]

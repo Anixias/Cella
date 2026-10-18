@@ -3,6 +3,11 @@ Error at borrow_conversion_lifetimes.ce:22:6
 22 │ ret h
          ^ Cannot return borrows of local variables
 
+Hint at borrow_conversion_lifetimes.ce:27:6
+26 │ {
+27 │     var s: imm[Sprite] = Handle(Sprite(2))
+             ^ 's' is never changed
+
 Error at borrow_conversion_lifetimes.ce:27:23
 26 │ {
 27 │     var s: imm[Sprite] = Handle(Sprite(2))

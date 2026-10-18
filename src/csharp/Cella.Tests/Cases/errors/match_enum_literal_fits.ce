@@ -1,9 +1,9 @@
 mod test
 
-parity: enum match u8 { even = 0, 2, odd = 1, 3, other(v) = else }
+Parity: enum match u8 { even = 0, 2, odd = 1, 3, other(v) = else }
 
 main: fun -> i32
 {
-	val p = parity(300)
+	val p = Parity(300)
 	ret 0
 }

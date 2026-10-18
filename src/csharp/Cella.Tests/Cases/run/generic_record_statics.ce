@@ -5,7 +5,7 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-counted[T]: rec
+Counted[T]: rec
 {
 	value: T
 	made: var i32 = 0
@@ -32,14 +32,14 @@ counted[T]: rec
 
 main: fun -> i32
 {
-	val a = counted[i32](1)
-	val b = counted[i32](2)
-	val c = counted[i64](3)
-	counted[bool].made = 10
-	counted[i32].reseed()
-	printf("%d %d %d %d %d %d\n", counted[i32].made, counted[i64].made, counted[bool].total, counted[i8].limit,
-		counted[i32].reseed(), counted[i64].reseed())
-	if counted[i16].isEmpty() && counted[i32].none == null
+	val a = Counted[i32](1)
+	val b = Counted[i32](2)
+	val c = Counted[i64](3)
+	Counted[bool].made = 10
+	Counted[i32].reseed()
+	printf("%d %d %d %d %d %d\n", Counted[i32].made, Counted[i64].made, Counted[bool].total, Counted[i8].limit,
+		Counted[i32].reseed(), Counted[i64].reseed())
+	if Counted[i16].isEmpty() && Counted[i32].none == null
 		printf("empty\n")
 
 	ret 0

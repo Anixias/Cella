@@ -43,6 +43,11 @@ Error at self_references.ce:85:9
 85 │ pair = Pair(2, mut pair.value, mut spare)
             ╘════════════════════════════════╛ Cannot store borrows of values in themselves
 
+Hint at self_references.ce:90:6
+89 │ {
+90 │     var spare = 0
+             ╘═══╛ 'spare' is never changed
+
 Error at self_references.ce:92:18
 91 │ var nodes = [Node(1, spare), Node(2, spare)]
 92 │ nodes[0].link = imm nodes[1].value

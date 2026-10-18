@@ -5,7 +5,7 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-view[T]: ref rec
+View[T]: ref rec
 {
 	data: pvt ptr[T]
 	length: pvt set usize
@@ -29,7 +29,7 @@ Name: rec
 	}
 }
 
-count: fun(...names: view[Name]) -> usize => names.length
+count: fun(...names: View[Name]) -> usize => names.length
 
 say: fun(n: i32) -> i32
 {
@@ -37,7 +37,7 @@ say: fun(n: i32) -> i32
 	ret n
 }
 
-show: fun(first: i32, ...rest: view[i32])
+show: fun(first: i32, ...rest: View[i32])
 {
 	printf("| %d", first)
 	for i in 0..rest.length

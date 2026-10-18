@@ -1,6 +1,6 @@
 mod test
 
-ring[N: const usize]: rec
+Ring[N: const usize]: rec
 {
 	value: i32
 

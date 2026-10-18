@@ -5,7 +5,7 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-view[T]: ref rec
+View[T]: ref rec
 {
 	data: pvt ptr[T]
 	length: pvt set usize
@@ -16,7 +16,7 @@ view[T]: ref rec
 		self.length = length
 	}
 
-	as[N: const usize]: op(imm values: array[T, N]) -> view[T] => view[T](@values, N)
+	as[N: const usize]: op(imm values: array[T, N]) -> View[T] => View[T](@values, N)
 
 	[]: op(self, i: usize) -> imm[T] => imm self.data[i]
 }
@@ -30,7 +30,7 @@ Arg: ref enum
 	as: op(value: str) -> Arg => text(value)
 }
 
-sum: fun(...values: view[i32]) -> i32
+sum: fun(...values: View[i32]) -> i32
 {
 	var total = 0
 	for value in 0..values.length
@@ -39,7 +39,7 @@ sum: fun(...values: view[i32]) -> i32
 	ret total
 }
 
-print: fun(template: str, ...args: view[Arg])
+print: fun(template: str, ...args: View[Arg])
 {
 	printf("%.*s:", i32(template.byteLength), template.data)
 	for i in 0..args.length
@@ -54,13 +54,13 @@ print: fun(template: str, ...args: view[Arg])
 	printf("\n")
 }
 
-log: fun(template: str, ...args: view[Arg])
+log: fun(template: str, ...args: View[Arg])
 {
 	printf("[log] ")
 	print(template, ...args)
 }
 
-last[T: copy]: fun(first: T, ...rest: view[T]) -> T
+last[T: copy]: fun(first: T, ...rest: View[T]) -> T
 {
 	if rest.length == 0
 		ret first
@@ -68,14 +68,14 @@ last[T: copy]: fun(first: T, ...rest: view[T]) -> T
 	ret rest[rest.length - 1]
 }
 
-count[T]: fun(...values: view[T]) -> usize => values.length
+count[T]: fun(...values: View[T]) -> usize => values.length
 
 f: fun(x: str)
 {
 	printf("one %.*s\n", i32(x.byteLength), x.data)
 }
 
-f: fun(...xs: view[i32])
+f: fun(...xs: View[i32])
 {
 	printf("many %zu\n", xs.length)
 }
@@ -84,7 +84,7 @@ Counter: rec
 {
 	total: usize
 
-	add: fun(mut self, ...values: view[i32])
+	add: fun(mut self, ...values: View[i32])
 	{
 		self.total += values.length
 	}

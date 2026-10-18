@@ -1,6 +1,6 @@
 mod test
 
-view[T]: ref rec
+View[T]: ref rec
 {
 	data: pvt ptr[T]
 	length: pvt set usize
@@ -11,20 +11,20 @@ view[T]: ref rec
 		self.length = length
 	}
 
-	as[N: const usize]: op(imm values: array[T, N]) -> view[T] => view[T](@values, N)
+	as[N: const usize]: op(imm values: array[T, N]) -> View[T] => View[T](@values, N)
 }
 
 make: fun -> array[i32, 2] => [1, 2]
 
-back: fun -> view[i32] => [5, 6]
+back: fun -> View[i32] => [5, 6]
 
 main: fun -> i32
 {
-	val a: view[u16] = [1, 400]
-	val b = view[u16]([1, 400])
-	val c: view[i32] = make()
+	val a: View[u16] = [1, 400]
+	val b = View[u16]([1, 400])
+	val c: View[i32] = make()
 	var four = [1, 2, 3, 4]
-	var d: view[i32] = four
+	var d: View[i32] = four
 	d = [7, 8]
 	ret 0
 }

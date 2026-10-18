@@ -22,7 +22,7 @@ R: rec
 	}
 }
 
-box[T]: rec
+Box[T]: rec
 {
 	value: T
 }
@@ -33,14 +33,14 @@ blank[T: default]: fun -> T
 	ret x
 }
 
-needsNew[T: new]: fun -> box[T] => box[T]()
+needsNew[T: new]: fun -> Box[T] => Box[T]()
 
 main: fun -> i32
 {
 	var v: Vec2
 	val w = Vec2()
 	val r = blank[R]()
-	val b = box[R]()
+	val b = Box[R]()
 	val f = v.x
 	ret 0
 }

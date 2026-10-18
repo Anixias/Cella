@@ -5,13 +5,13 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-nullable[T: null]: enum match T
+Nullable[T: null]: enum match T
 {
 	none = null
 	some(value) = else
 }
 
-option[T]: enum
+Option[T]: enum
 {
 	none
 	some(value: T)
@@ -22,7 +22,7 @@ Cell[T]: rec
 	value: T
 }
 
-wrap[T]: fun(own value: T) -> option[T] => some(own value)
+wrap[T]: fun(own value: T) -> Option[T] => some(own value)
 
 pick: fun(n: i32) -> i32 => n + 1
 pick: fun(n: i64) -> i64 => n + 100
@@ -42,13 +42,13 @@ main: fun -> i32
 	val large = fun[i64 -> i64](pick)
 	val boxed = wrap[fun[i32 -> i32]](triple)
 	val cell = Cell[fun[i64 -> i64]](pick)
-	val handler = nullable[ext fun[i32]].none
+	val handler = Nullable[ext fun[i32]].none
 	val thunk = ext fun[i32 -> i32](triple)
 	printf("%d %lld %d %lld %d\n", small(1), large(1), match boxed { some(val f) => f(2), none => 0 }, cell.value(5),
 		i32(handler is none))
 
 	val ext = 7
 	printf("%d %d %d\n", apply(thunk, 4), run(5), ext)
-	printf("%d %d %d\n", i32(sizeOf(fun[i32 -> i32])), i32(sizeOf(ext fun[i32])), i32(sizeOf(nullable[ext fun[i32]])))
+	printf("%d %d %d\n", i32(sizeOf(fun[i32 -> i32])), i32(sizeOf(ext fun[i32])), i32(sizeOf(Nullable[ext fun[i32]])))
 	ret 0
 }

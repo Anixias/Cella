@@ -13,7 +13,7 @@ Code: enum(u8)
 
 limit: val u16 = 500u16
 
-box[T]: rec
+Box[T]: rec
 {
 	value: T
 }
@@ -40,7 +40,7 @@ main: fun -> i32
 	val thousand = 1e3f64
 	val rounded = 16777217f32
 	printf("%d %d %d %.1f %.1f %.1f\n", take(half), take(two), take(1.5), thousand, f64(rounded), f64(-0.0f32))
-	val boxed = box(7u16)
+	val boxed = Box(7u16)
 	printf("%d %zu %d %d %d %d\n", i32(boxed.value), sizeOf(boxed), i32(~0u8), i32(-5i16 * 3), pick(1u8), pick(1))
 	val cells: array[i32, 3u8] = [1, 2, 3]
 	printf("%d %d %zu %d\n", i32(Code.lost), i32(limit), cells.length, i32(1_000_u32))

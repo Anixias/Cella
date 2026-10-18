@@ -1,3 +1,8 @@
+Hint at own_records.ce:25:6
+24 │ {
+25 │     var c = Countdown(4)
+             ^ 'c' is never changed
+
 Error at own_records.ce:26:11
 25 │ var c = Countdown(4)
 26 │ for x in c

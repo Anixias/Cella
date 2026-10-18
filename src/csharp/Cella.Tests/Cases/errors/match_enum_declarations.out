@@ -1,11 +1,11 @@
 Error at match_enum_declarations.ce:3:20
 2 │ 
-3 │ floats: enum match f32
+3 │ Floats: enum match f32
                        ╘═╛ Cannot declare 'enum match f32'
 
 Error at match_enum_declarations.ce:8:19
 7 │ 
-8 │ texts: enum match str
+8 │ Texts: enum match str
                       ╘═╛ Cannot declare 'enum match str'
 
 Error at match_enum_declarations.ce:15:9
@@ -41,22 +41,22 @@ Error at match_enum_declarations.ce:35:12
 Error at match_enum_declarations.ce:41:17
 40 │ {
 41 │     first(value) = else
-                        ╘══╛ 'elses' can have only one 'else' case
+                        ╘══╛ 'Elses' can have only one 'else' case
 
 Error at match_enum_declarations.ce:42:18
 41 │ first(value) = else
 42 │ second(value) = else
-                     ╘══╛ 'elses' can have only one 'else' case
+                     ╘══╛ 'Elses' can have only one 'else' case
 
 Error at match_enum_declarations.ce:45:1
 44 │ 
-45 │ missing: enum match u16
-     ╘═════╛ 'missing' needs an 'else' case
+45 │ Missing: enum match u16
+     ╘═════╛ 'Missing' needs an 'else' case
 
 Error at match_enum_declarations.ce:50:1
 49 │ 
-50 │ flags: enum match bool
-     ╘═══╛ 'flags' needs an 'else' case
+50 │ Flags: enum match bool
+     ╘═══╛ 'Flags' needs an 'else' case
 
 Error at match_enum_declarations.ce:58:9
 57 │ zero = 0
@@ -85,26 +85,26 @@ Error at match_enum_declarations.ce:76:9
 
 Error at match_enum_declarations.ce:79:22
 78 │ 
-79 │ borrowed: enum match imm[i32]
+79 │ Borrowed: enum match imm[i32]
                           ╘══════╛ Cannot store borrows in enums that aren't 'ref'
-                                 | Did you mean 'borrowed: ref enum match'?
+                                 | Did you mean 'Borrowed: ref enum match'?
 
 Error at match_enum_declarations.ce:93:18
 92 │ {
-93 │     value: nullable[T]
-                         ^ 'nullable' requires 'T: null'
+93 │     value: Nullable[T]
+                         ^ 'Nullable' requires 'T: null'
                          | 'T' has no null
 
 Error at match_enum_declarations.ce:98:41
 97 │ 
-98 │ first[T]: fun(own value: T) -> nullable[T] => some(value)
-                                             ^ 'nullable' requires 'T: null'
+98 │ first[T]: fun(own value: T) -> Nullable[T] => some(value)
+                                             ^ 'Nullable' requires 'T: null'
                                              | 'T' has no null
 
 Error at match_enum_declarations.ce:100:30
  99 │ 
-100 │ count: fun(numbers: nullable[i32]) -> i32 => 0
-                                   ╘═╛ 'nullable' requires 'T: null'
+100 │ count: fun(numbers: Nullable[i32]) -> i32 => 0
+                                   ╘═╛ 'Nullable' requires 'T: null'
                                      | 'i32' has no null
 
 [compilation failed]

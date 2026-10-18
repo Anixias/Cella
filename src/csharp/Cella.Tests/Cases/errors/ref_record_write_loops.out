@@ -1,6 +1,6 @@
 Error at ref_record_write_loops.ce:37:15
-36 │ val v = view[i32](@four, 4)
+36 │ val v = View[i32](@four, 4)
 37 │ for mut x in v
-                  ^ Cannot iterate over 'view[i32]' with 'mut'
+                  ^ Cannot iterate over 'View[i32]' with 'mut'
 
 [compilation failed]

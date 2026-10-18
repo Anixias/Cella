@@ -1,3 +1,8 @@
+Hint at record_pattern_moves.ce:27:6
+26 │ {
+27 │     var h = Holder(Name(1))
+             ^ 'h' is never changed
+
 Error at record_pattern_moves.ce:30:14
 29 │ {
 30 │     Holder(own name) => {}
@@ -7,6 +12,11 @@ Error at record_pattern_moves.ce:40:12
 39 │ {
 40 │     Pair(own first) => {}
                   ╘═══╛ Cannot move read-only parameters
+
+Hint at record_pattern_moves.ce:48:6
+47 │ {
+48 │     var p = Pair(Name(1), Name(2))
+             ^ 'p' is never changed
 
 Error at record_pattern_moves.ce:54:10
 53 │ 

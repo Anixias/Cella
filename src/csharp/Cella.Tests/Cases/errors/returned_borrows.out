@@ -28,6 +28,11 @@ Error at returned_borrows.ce:73:6
 73 │ ret tally
          ╘═══╛ Cannot return borrows of local variables
 
+Hint at returned_borrows.ce:78:6
+77 │ {
+78 │     var local = 4
+             ╘═══╛ 'local' is never changed
+
 Error at returned_borrows.ce:82:6
 81 │     view = local
 82 │ ret view

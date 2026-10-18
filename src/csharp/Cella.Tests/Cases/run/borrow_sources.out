@@ -1,7 +1,32 @@
+Hint at borrow_sources.ce:59:6
+58 │ {
+59 │     var holder = Holder(Buffer(1), Buffer(2))
+             ╘════╛ 'holder' is never changed
+
 Hint at borrow_sources.ce:60:14
 59 │ var holder = Holder(Buffer(1), Buffer(2))
 60 │ val first = imm holder.first
                  ╘═╛ Redundant 'imm'
+
+Hint at borrow_sources.ce:64:6
+63 │ 
+64 │ var x = 10
+         ^ 'x' is never changed
+
+Hint at borrow_sources.ce:80:6
+79 │ 
+80 │ var e = Effect.hold(Buffer(4))
+         ^ 'e' is never changed
+
+Hint at borrow_sources.ce:95:6
+94 │ var count = 1
+95 │ var tally = Tally(mut count)
+         ╘═══╛ 'tally' is never changed
+
+Hint at borrow_sources.ce:98:7
+97 │ {
+98 │     var inner = 7
+             ╘═══╛ 'inner' is never changed
 
 1 0 1 2 2 4 7 9 1 2
 [exit code 0]

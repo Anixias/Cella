@@ -5,20 +5,20 @@ Error at atomic_generics.ce:19:37
 
 Error at atomic_generics.ce:24:15
 23 │ {
-24 │     val a = cell[Point](Point(1))
-                      ╘═══╛ 'cell' requires 'T: atomic'
+24 │     val a = Cell[Point](Point(1))
+                      ╘═══╛ 'Cell' requires 'T: atomic'
                           | 'Point' can't be accessed atomically
 
 Error at atomic_generics.ce:25:15
-24 │ val a = cell[Point](Point(1))
-25 │ val b = cell[str]("x")
-                  ╘═╛ 'cell' requires 'T: atomic'
+24 │ val a = Cell[Point](Point(1))
+25 │ val b = Cell[str]("x")
+                  ╘═╛ 'Cell' requires 'T: atomic'
                     | 'str' can't be accessed atomically
 
 Error at atomic_generics.ce:26:15
-25 │ val b = cell[str]("x")
-26 │ val c = cell[i128](1)
-                  ╘══╛ 'cell' requires 'T: atomic'
+25 │ val b = Cell[str]("x")
+26 │ val c = Cell[i128](1)
+                  ╘══╛ 'Cell' requires 'T: atomic'
                      | 'i128' can't be accessed atomically
 
 [compilation failed]

@@ -1,11 +1,11 @@
 mod test
 
-box[T]: rec
+Box[T]: rec
 {
 	value: T
 }
 
-list[T: noref]: rec
+List[T: noref]: rec
 {
 	value: T
 }
@@ -22,13 +22,13 @@ Token: ref rec
 
 uses: fun
 {
-	val tooMany = box[i32, i64](1)
-	val bare: box = box[i32](1)
+	val tooMany = Box[i32, i64](1)
+	val bare: Box = Box[i32](1)
 	val plain: Point[i32] = Point(1)
-	val unknown: bx[i32] = box[i32](1)
-	val tokens: list[Token] = list[Token](Token("a"))
-	val view: list[imm[i32]] = list[i32](1)
-	val nested: box[box] = box[i32](1)
+	val unknown: Bx[i32] = Box[i32](1)
+	val tokens: List[Token] = List[Token](Token("a"))
+	val view: List[imm[i32]] = List[i32](1)
+	val nested: Box[Box] = Box[i32](1)
 }
 
 main: fun -> i32 => 0

@@ -7,7 +7,7 @@ ext
 
 main: fun -> i32
 {
-	var values = lib.list[i32](3, 1)
+	var values = lib.List[i32](3, 1)
 	values[1] = 5
 	values[2] += values[1]
 	printf("%d %d %d\n", values[0], values[1], values[2])

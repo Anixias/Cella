@@ -1,15 +1,15 @@
 mod test
 
-option[T]: enum
+Option[T]: enum
 {
 	none
 	some(value: T)
 
-	empty: fun -> option[T] => option[T].none
+	empty: fun -> Option[T] => Option[T].none
 }
 
 main: fun -> i32
 {
-	val o = option.empty()
+	val o = Option.empty()
 	ret 0
 }

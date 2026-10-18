@@ -5,7 +5,7 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-view[T]: ref rec
+View[T]: ref rec
 {
 	data: pvt ptr[T]
 	length: pvt set usize
@@ -65,7 +65,7 @@ Sized: impl Maker
 
 total: fun(...bytes: Run) -> usize => bytes.count + usize(bytes.data[0])
 
-sum: fun(...values: view[Big]) -> i64
+sum: fun(...values: View[Big]) -> i64
 {
 	var total: i64 = 0
 	for i in 0..values.length

@@ -5,7 +5,7 @@ Box: pub rec
 	v: pvt i32
 }
 
-box[T]: pub rec
+Pack[T]: pub rec
 {
 	n: pvt set i32
 	item: T

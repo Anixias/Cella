@@ -1,7 +1,7 @@
 Error at growing_destructors.ce:9:14
 8 │ {
-9 │     val next = box[ptr[T]](null)
-                   ╘═════════╛ Instantiating 'box' never ends
+9 │     val next = Box[ptr[T]](null)
+                   ╘═════════╛ Instantiating 'Box' never ends
 
 Error at growing_destructors.ce:19:21
 18 │ {
@@ -10,12 +10,12 @@ Error at growing_destructors.ce:19:21
 
 Error at growing_destructors.ce:23:35
 22 │ 
-23 │ deeper[T]: fun(imm c: cell[T]) -> cell[ptr[T]] => cell[ptr[T]](null)
-                                       ╘══════════╛ Instantiating 'cell' never ends
+23 │ deeper[T]: fun(imm c: Cell[T]) -> Cell[ptr[T]] => Cell[ptr[T]](null)
+                                       ╘══════════╛ Instantiating 'Cell' never ends
 
 Error at growing_destructors.ce:23:51
 22 │ 
-23 │ deeper[T]: fun(imm c: cell[T]) -> cell[ptr[T]] => cell[ptr[T]](null)
-                                                       ╘══════════╛ Instantiating 'cell' never ends
+23 │ deeper[T]: fun(imm c: Cell[T]) -> Cell[ptr[T]] => Cell[ptr[T]](null)
+                                                       ╘══════════╛ Instantiating 'Cell' never ends
 
 [compilation failed]

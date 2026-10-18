@@ -1,3 +1,18 @@
+Hint at float_c_abi.ce:32:6
+31 │ {
+32 │     var single: f32 = 0.5
+             ╘════╛ 'single' is never changed
+
+Hint at float_c_abi.ce:35:6
+34 │ 
+35 │ var packed = _FCbuild(1.5, -2.5)
+         ╘════╛ 'packed' is never changed
+
+Hint at float_c_abi.ce:36:6
+35 │ var packed = _FCbuild(1.5, -2.5)
+36 │ var wide = _Cbuild(3.0, 4.0)
+         ╘══╛ 'wide' is never changed
+
 1.41421 3.0 1024.0 -2.0 0.50
 1.5 1.5 -2.5 3.0 4.0 5.0
 [exit code 0]

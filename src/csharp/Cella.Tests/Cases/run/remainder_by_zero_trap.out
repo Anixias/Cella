@@ -1,3 +1,8 @@
+Hint at remainder_by_zero_trap.ce:5:6
+4 │ {
+5 │     var zero: u64 = 0
+            ╘══╛ 'zero' is never changed
+
 [stderr]
 Panic at remainder_by_zero_trap.ce:7:2: division by zero
 [exit code 101]

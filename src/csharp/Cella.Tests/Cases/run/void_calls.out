@@ -1,3 +1,8 @@
+Hint at void_calls.ce:49:6
+48 │ greet()
+49 │ var f = greet
+         ^ 'f' is never changed
+
 hi
 hi
 hi

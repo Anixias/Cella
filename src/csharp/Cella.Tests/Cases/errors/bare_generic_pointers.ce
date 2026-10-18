@@ -1,15 +1,15 @@
 mod test
 
-box[T]: rec
+Box[T]: rec
 {
 	value: T
 }
 
 Holder: rec
 {
-	p: ptr[box]
+	p: ptr[Box]
 }
 
-take: fun(p: ptr[box]) -> i32 => 0
+take: fun(p: ptr[Box]) -> i32 => 0
 
 main: fun -> i32 => 0

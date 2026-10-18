@@ -1,3 +1,23 @@
+Hint at named_constants.ce:52:6
+51 │ {
+52 │     var values: array[i32, size] = [1, 2, 3]
+             ╘════╛ 'values' is never changed
+
+Hint at named_constants.ce:53:6
+52 │ var values: array[i32, size] = [1, 2, 3]
+53 │ var buffer = Buffer()
+         ╘════╛ 'buffer' is never changed
+
+Hint at named_constants.ce:59:6
+58 │ 
+59 │ var i: usize = 3
+         ^ 'i' is never changed
+
+Hint at named_constants.ce:60:6
+59 │ var i: usize = 3
+60 │ var copy = origin
+         ╘══╛ 'copy' is never changed
+
 6 0 6 3 16 16
 3 4 0 40 30 6 1 4 100
 42 8 7 5 7

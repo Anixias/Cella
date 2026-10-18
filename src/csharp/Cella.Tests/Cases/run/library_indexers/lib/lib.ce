@@ -6,7 +6,7 @@ ext
 	free: fun(memory: ptr)
 }
 
-list[T: noref + copy]: pub rec
+List[T: noref + copy]: pub rec
 {
 	items: req ptr[T]
 	length: pvt set usize

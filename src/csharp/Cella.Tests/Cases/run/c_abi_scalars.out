@@ -1,3 +1,23 @@
+Hint at main.ce:35:6
+34 │ 
+35 │ var smallSigned: i8 = -1
+         ╘═════════╛ 'smallSigned' is never changed
+
+Hint at main.ce:36:6
+35 │ var smallSigned: i8 = -1
+36 │ var smallUnsigned: u8 = 255
+         ╘═══════════╛ 'smallUnsigned' is never changed
+
+Hint at main.ce:37:6
+36 │ var smallUnsigned: u8 = 255
+37 │ var shortSigned: i16 = -2
+         ╘═════════╛ 'shortSigned' is never changed
+
+Hint at main.ce:38:6
+37 │ var shortSigned: i16 = -2
+38 │ var shortUnsigned: u16 = 65535
+         ╘═══════════╛ 'shortUnsigned' is never changed
+
 C widths -100 200 -30000 60000 -2000000000 4000000000 -9000000000000000000 18000000000000000000
 30100
 -1 255 -2 65535

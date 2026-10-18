@@ -2,7 +2,7 @@ mod game
 
 step: mod fun(value: i32) -> i32 => value + 1
 
-counter[T]: rec
+Counter[T]: rec
 {
 	value: T
 	steps: i32
@@ -15,7 +15,7 @@ counter[T]: rec
 	}
 }
 
-pair[A, B]: rec
+Pair[A, B]: rec
 {
 	first: A
 	second: B
@@ -28,18 +28,18 @@ pair[A, B]: rec
 		self.id = id
 	}
 
-	sameId: fun(imm self, imm other: pair[A, B]) -> bool => self.id == other.id
+	sameId: fun(imm self, imm other: Pair[A, B]) -> bool => self.id == other.id
 
-	flippedId: fun(imm self, imm other: pair[B, A]) -> bool => self.id == other.id
+	flippedId: fun(imm self, imm other: Pair[B, A]) -> bool => self.id == other.id
 }
 
-wrapper[T: noref]: rec
+Wrapper[T: noref]: rec
 {
-	inner: util.cell[T]
+	inner: util.Cell[T]
 
 	new: op(own value: T)
 	{
-		self.inner = util.cell[T](own value)
+		self.inner = util.Cell[T](own value)
 	}
 
 	hits: fun(imm self) -> i32 => self.inner.hits
@@ -47,7 +47,7 @@ wrapper[T: noref]: rec
 
 peek: fun -> i32
 {
-	var local = counter[i64](2, 0)
+	var local = Counter[i64](2, 0)
 	local.bump()
 	ret local.steps
 }

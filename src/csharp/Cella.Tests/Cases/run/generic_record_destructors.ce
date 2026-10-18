@@ -20,7 +20,7 @@ consume: fun(own token: Token)
 	printf("consume %d ", token.id)
 }
 
-guard[T]: rec
+Guard[T]: rec
 {
 	value: T
 	label: Token
@@ -33,16 +33,16 @@ guard[T]: rec
 
 Inventory: rec
 {
-	main: guard[Token]
-	spare: guard[i32]
+	main: Guard[Token]
+	spare: Guard[i32]
 
-	combine: fun(imm self, imm other: guard[Token]) -> i32 => self.main.value.id + other.value.id
+	combine: fun(imm self, imm other: Guard[Token]) -> i32 => self.main.value.id + other.value.id
 }
 
 main: fun -> i32
 {
-	val inventory = Inventory(guard[Token](Token(1), Token(2)), guard[i32](3, Token(4)))
-	val other = guard[Token](Token(6), Token(7))
-	printf("%d %zu | ", inventory.combine(imm other), sizeOf(guard[i64]))
+	val inventory = Inventory(Guard[Token](Token(1), Token(2)), Guard[i32](3, Token(4)))
+	val other = Guard[Token](Token(6), Token(7))
+	printf("%d %zu | ", inventory.combine(imm other), sizeOf(Guard[i64]))
 	ret 0
 }

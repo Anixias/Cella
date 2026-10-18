@@ -1,1 +1,6 @@
+Hint at linked_list.ce:13:6
+12 │ var second = Node(2, @third)
+13 │ var head = Node(1, @second)
+         ╘══╛ 'head' is never changed
+
 [exit code 7]

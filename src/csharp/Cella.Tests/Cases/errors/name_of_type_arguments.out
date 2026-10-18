@@ -1,6 +1,6 @@
 Error at name_of_type_arguments.ce:7:23
 6 │ {
-7 │     val n = nameOf(option[i32].none)
+7 │     val n = nameOf(Option[i32].none)
                              ^ Cannot use type arguments in 'nameOf'
 
 [compilation failed]

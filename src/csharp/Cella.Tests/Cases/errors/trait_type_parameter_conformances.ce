@@ -1,6 +1,6 @@
 mod test
 
-option[T]: enum
+Option[T]: enum
 {
 	none
 	some(value: T)
@@ -8,7 +8,7 @@ option[T]: enum
 
 Iterator[T]: trait
 {
-	next: fun(mut self) -> option[T]
+	next: fun(mut self) -> Option[T]
 }
 
 From[T]: trait
@@ -20,7 +20,7 @@ Countdown: rec impl Iterator[i64]
 {
 	left: i32
 
-	next: fun(mut self) -> option[i32] => none
+	next: fun(mut self) -> Option[i32] => none
 }
 
 Empty: rec impl Iterator[i32]
@@ -37,34 +37,34 @@ Tag[T]: trait
 {
 }
 
-box[T]: rec
+Box[T]: rec
 {
 	value: T
 }
 
-box[T]: impl Tag[T]
+Box[T]: impl Tag[T]
 {
 }
 
-box[T]: impl Tag[i32]
+Box[T]: impl Tag[i32]
 {
 }
 
-box[T]: impl Tag[str]
+Box[T]: impl Tag[str]
 {
 }
 
-pair[A, B]: rec
+Pair[A, B]: rec
 {
 	a: A
 	b: B
 }
 
-pair[A, B]: impl Tag[A]
+Pair[A, B]: impl Tag[A]
 {
 }
 
-pair[X, Y]: impl Tag[Y]
+Pair[X, Y]: impl Tag[Y]
 {
 }
 
@@ -75,7 +75,7 @@ Console: rec
 
 Console: impl Iterator[i32]
 {
-	next: fun(mut self) -> option[i32] => none
+	next: fun(mut self) -> Option[i32] => none
 	flush: fun(self) { }
 }
 

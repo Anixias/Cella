@@ -5,7 +5,7 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-box[T]: rec
+Box[T]: rec
 {
 	v: T
 	n: u8
@@ -13,8 +13,8 @@ box[T]: rec
 
 main: fun -> i32
 {
-	var x: box[box[box[box[box[box[box[box[box[box[box[box[box[box[box[box[box[box[box[box[box[box[box[box[box[box[box[box[box[box[box[box[box[box[box[box[box[box[box[box[i32]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+	var x: Box[Box[Box[Box[Box[Box[Box[Box[Box[Box[Box[Box[Box[Box[Box[Box[Box[Box[Box[Box[Box[Box[Box[Box[Box[Box[Box[Box[Box[Box[Box[Box[Box[Box[Box[Box[Box[Box[Box[Box[i32]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
 	x.n = 3
-	printf("%d %zu\n", i32(x.n), sizeOf(box[box[box[box[box[box[box[box[box[box[box[box[box[box[box[box[box[box[box[box[box[box[box[box[box[box[box[box[box[box[box[box[box[box[box[box[box[box[box[box[i32]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]))
+	printf("%d %zu\n", i32(x.n), sizeOf(Box[Box[Box[Box[Box[Box[Box[Box[Box[Box[Box[Box[Box[Box[Box[Box[Box[Box[Box[Box[Box[Box[Box[Box[Box[Box[Box[Box[Box[Box[Box[Box[Box[Box[Box[Box[Box[Box[Box[Box[i32]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]))
 	ret 0
 }

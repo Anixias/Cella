@@ -34,7 +34,7 @@ Plain: rec
 	x: i32
 }
 
-box[T]: rec
+Box[T]: rec
 {
 	value: T
 }
@@ -82,6 +82,6 @@ main: fun -> i32
 		else => {}
 	}
 
-	val b: box[dyn[Shape]] = box(c)
+	val b: Box[dyn[Shape]] = Box(c)
 	ret 0
 }

@@ -1,3 +1,13 @@
+Hint at division_overflow_trap.ce:5:6
+4 │ {
+5 │     var minimum = -2147483648
+            ╘═════╛ 'minimum' is never changed
+
+Hint at division_overflow_trap.ce:6:6
+5 │ var minimum = -2147483648
+6 │ var minusOne = -1
+        ╘══════╛ 'minusOne' is never changed
+
 [stderr]
 Panic at division_overflow_trap.ce:7:6: division overflow
 [exit code 101]

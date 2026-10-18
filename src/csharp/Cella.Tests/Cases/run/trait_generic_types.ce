@@ -22,17 +22,17 @@ Point: rec impl Hash
 	hash: fun(self) -> u64 => u64(self.x)
 }
 
-box[T]: rec
+Box[T]: rec
 {
 	value: T
 }
 
-box[T: Hash]: impl Hash
+Box[T: Hash]: impl Hash
 {
 	hash: fun(imm self) -> u64 => self.value.hash() + 1
 }
 
-pair[A, B]: rec impl Hash
+Pair[A, B]: rec impl Hash
 {
 	first: A
 	second: B
@@ -40,7 +40,7 @@ pair[A, B]: rec impl Hash
 	hash: fun(imm self) -> u64 => 2
 }
 
-holder[T: Hash]: rec
+Holder[T: Hash]: rec
 {
 	value: T
 
@@ -62,8 +62,8 @@ run[T: Mapper]: fun(imm item: T) -> i64 => item.apply(triple)
 
 main: fun -> i32
 {
-	val b = box(Point(3))
-	printf("%llu %llu %llu %llu\n", b.hash(), describe(imm b), describe(box(b)), holder(Point(4)).digest())
-	printf("%llu %lld %lld\n", describe(pair(1, 2.5)), run(Cell(5)), Cell(2).apply[i64](triple))
+	val b = Box(Point(3))
+	printf("%llu %llu %llu %llu\n", b.hash(), describe(imm b), describe(Box(b)), Holder(Point(4)).digest())
+	printf("%llu %lld %lld\n", describe(Pair(1, 2.5)), run(Cell(5)), Cell(2).apply[i64](triple))
 	ret 0
 }

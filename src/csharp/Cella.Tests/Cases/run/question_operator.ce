@@ -15,7 +15,7 @@ Texture: rec
 	}
 }
 
-result[T, E]: enum
+Result[T, E]: enum
 {
 	ok(value: T)
 	err(error: E)
@@ -23,11 +23,11 @@ result[T, E]: enum
 	?: op(own self) -> T => match own self
 	{
 		ok(own value) => value
-		err(own error) => ret result.err(own error)
+		err(own error) => ret Result.err(own error)
 	}
 }
 
-option[T]: enum
+Option[T]: enum
 {
 	none
 	some(value: T)
@@ -35,13 +35,13 @@ option[T]: enum
 	?: op(own self) -> T => match own self
 	{
 		some(own value) => value
-		none => ret option.none
+		none => ret Option.none
 	}
 }
 
-wrap[T]: enum
+Wrap[T]: enum
 {
-	held(inner: option[T])
+	held(inner: Option[T])
 
 	?: op(own self) -> T => match own self
 	{
@@ -56,70 +56,70 @@ Probe: rec
 	?: op(own self) -> i32 => self.texture.id
 }
 
-sized[T]: enum
+Sized[T]: enum
 {
 	held(value: T)
 
 	?: op(own self) -> usize => sizeOf(T)
 }
 
-parse: fun(n: i32) -> result[i32, i32]
+parse: fun(n: i32) -> Result[i32, i32]
 {
 	if n < 0
-		ret result.err(n)
+		ret Result.err(n)
 
-	ret result.ok(n * 2)
+	ret Result.ok(n * 2)
 }
 
-sumTwo: fun(a: i32, b: i32) -> result[i64, i32]
+sumTwo: fun(a: i32, b: i32) -> Result[i64, i32]
 {
 	val total = parse(a)? + parse(b)?
-	ret result.ok(i64(total))
+	ret Result.ok(i64(total))
 }
 
-half: fun(n: i32) -> option[i32]
+half: fun(n: i32) -> Option[i32]
 {
 	if n % 2 != 0
-		ret option.none
+		ret Option.none
 
-	ret option.some(n / 2)
+	ret Option.some(n / 2)
 }
 
-quarter: fun(n: i32) -> option[i32] => option.some(half(half(n)?)?)
+quarter: fun(n: i32) -> Option[i32] => Option.some(half(half(n)?)?)
 
-load: fun(id: i32) -> result[Texture, i32]
+load: fun(id: i32) -> Result[Texture, i32]
 {
 	if id < 0
-		ret result.err(id)
+		ret Result.err(id)
 
-	ret result.ok(Texture(id))
+	ret Result.ok(Texture(id))
 }
 
-pair: fun(a: i32, b: i32) -> result[i32, i32]
+pair: fun(a: i32, b: i32) -> Result[i32, i32]
 {
 	val first = load(a)?
 	val second = load(b)?
 	printf("loaded %d %d\n", first.id, second.id)
-	ret result.ok(first.id + second.id)
+	ret Result.ok(first.id + second.id)
 }
 
-local: fun -> result[i32, i32]
+local: fun -> Result[i32, i32]
 {
 	val r = load(7)
 	val t = r?
-	ret result.ok(t.id)
+	ret Result.ok(t.id)
 }
 
-first[T: copy]: fun(a: result[T, i32], b: result[T, i32]) -> result[T, i32]
+first[T: copy]: fun(a: Result[T, i32], b: Result[T, i32]) -> Result[T, i32]
 {
 	val x = a?
 	val y = b?
-	ret result.ok(x)
+	ret Result.ok(x)
 }
 
 lambda: fun -> i32
 {
-	val f = fun(n: i32) -> result[i32, i32] => result.ok(first(result[i32, i32].ok(n), result.ok(2))? + 1)
+	val f = fun(n: i32) -> Result[i32, i32] => Result.ok(first(Result[i32, i32].ok(n), Result.ok(2))? + 1)
 	match f(4)
 	{
 		ok(val v) => ret v
@@ -127,9 +127,9 @@ lambda: fun -> i32
 	}
 }
 
-nested: fun(w: wrap[i32]) -> option[i32] => option.some(w? + 1)
+nested: fun(w: Wrap[i32]) -> Option[i32] => Option.some(w? + 1)
 
-show: fun(r: result[i64, i32])
+show: fun(r: Result[i64, i32])
 {
 	match r
 	{
@@ -150,18 +150,18 @@ main: fun -> i32
 	val c = local()
 	printf("%d %d\n", a is ok(3), c is ok(7))
 
-	match first(result[i32, i32].ok(1), result.err(9))
+	match first(Result[i32, i32].ok(1), Result.err(9))
 	{
 		ok(val v) => printf("ok %d\n", v)
 		err(val e) => printf("err %d\n", e)
 	}
 
 	printf("lambda %d\n", lambda())
-	printf("%d %d\n", nested(wrap.held(option.some(4))) is some(5), nested(wrap.held(option[i32].none)) is none)
+	printf("%d %d\n", nested(Wrap.held(Option.some(4))) is some(5), nested(Wrap.held(Option[i32].none)) is none)
 
 	val p = Probe(Texture(10))
 	val id = p?
 	printf("probe %d\n", id)
-	printf("sum %d\n", Probe(Texture(11))? + i32(sized.held(40i64)?))
+	printf("sum %d\n", Probe(Texture(11))? + i32(Sized.held(40i64)?))
 	ret 0
 }

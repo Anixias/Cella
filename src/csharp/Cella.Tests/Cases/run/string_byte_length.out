@@ -1,1 +1,11 @@
+Hint at string_byte_length.ce:5:6
+4 │ {
+5 │     var accented: str = "héllo"
+            ╘══════╛ 'accented' is never changed
+
+Hint at string_byte_length.ce:9:6
+8 │ 
+9 │ var emoji: str = "😀"
+        ╘═══╛ 'emoji' is never changed
+
 [exit code 0]

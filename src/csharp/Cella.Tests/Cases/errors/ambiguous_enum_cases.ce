@@ -1,6 +1,6 @@
 mod test
 
-option[T]: enum
+Option[T]: enum
 {
 	none
 	some(value: T)
@@ -12,13 +12,13 @@ Team: enum
 	blue
 }
 
-pick: fun(o: option[i32]) -> i32 => 0
-some: fun(value: i32) -> option[i32] => option.some(value)
+pick: fun(o: Option[i32]) -> i32 => 0
+some: fun(value: i32) -> Option[i32] => Option.some(value)
 blue: val Team = Team.red
 
-locals: fun -> option[i32]
+locals: fun -> Option[i32]
 {
-	val none = option[i32].some(1)
+	val none = Option[i32].some(1)
 	val picked = pick(none)
 	ret none
 }

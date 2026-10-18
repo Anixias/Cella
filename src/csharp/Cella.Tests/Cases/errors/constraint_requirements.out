@@ -1,29 +1,29 @@
 Error at constraint_requirements.ce:61:14
 60 │ {
-61 │     val p: pair[Token, Token] = undef
-                     ╘═══╛ 'pair' requires 'A: noref'
+61 │     val p: Pair[Token, Token] = undef
+                     ╘═══╛ 'Pair' requires 'A: noref'
                          | 'Token' holds borrows
 
 Error at constraint_requirements.ce:63:16
-62 │ val q: pair[i32, Token] = undef
-63 │ val c: copier[Guard] = undef
-                   ╘═══╛ 'copier' requires 'Element: copy'
+62 │ val q: Pair[i32, Token] = undef
+63 │ val c: Copier[Guard] = undef
+                   ╘═══╛ 'Copier' requires 'Element: copy'
                        | 'Guard' can't be copied
 
 Error at constraint_requirements.ce:64:17
-63 │ val c: copier[Guard] = undef
-64 │ val d: dropper[i32] = undef
-                    ╘═╛ 'dropper' requires 'Element: drop'
+63 │ val c: Copier[Guard] = undef
+64 │ val d: Dropper[i32] = undef
+                    ╘═╛ 'Dropper' requires 'Element: drop'
                       | 'i32' has no destructor
 
 Error at constraint_requirements.ce:65:18
-64 │ val d: dropper[i32] = undef
-65 │ val n: nullable[i32] = undef
-                     ╘═╛ 'nullable' requires 'Element: null'
+64 │ val d: Dropper[i32] = undef
+65 │ val n: Nullable[i32] = undef
+                     ╘═╛ 'Nullable' requires 'Element: null'
                        | 'i32' has no null
 
 Error at constraint_requirements.ce:66:15
-65 │ val n: nullable[i32] = undef
+65 │ val n: Nullable[i32] = undef
 66 │ val m = make[Point]()
                   ╘═══╛ 'make' requires 'T: new'
                       | 'Point' has no constructor without parameters

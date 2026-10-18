@@ -1,7 +1,7 @@
 Error at follow_on_extras.ce:10:9
  9 │ {
-10 │     var b: box[i32, 1.5]
-                ╘═══════════╛ 'box' takes one generic argument
+10 │     var b: Box[i32, 1.5]
+                ╘═══════════╛ 'Box' takes one generic argument
 
 Error at follow_on_extras.ce:16:10
 15 │ val x = 1

@@ -1,1 +1,21 @@
+Hint at statement_after_call.ce:17:6
+16 │ var point: Point
+17 │ var p = @point
+         ^ 'p' is never changed
+
+Hint at statement_after_call.ce:21:6
+20 │ 
+21 │ var doubled = twice(10)
+         ╘═════╛ 'doubled' is never changed
+
+Hint at statement_after_call.ce:23:6
+22 │ (*p).x = doubled
+23 │ var picked = values[1]
+         ╘════╛ 'picked' is never changed
+
+Hint at statement_after_call.ce:25:6
+24 │ (*p).y = picked
+25 │ var copied = point.x
+         ╘════╛ 'copied' is never changed
+
 [exit code 26]

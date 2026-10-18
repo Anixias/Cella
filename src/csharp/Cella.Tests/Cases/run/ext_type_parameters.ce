@@ -23,7 +23,7 @@ call[T: ext]: fun(f: ext fun[T -> i32], value: T) -> i32
 	ret f(copy)
 }
 
-holder[T: ext]: rec
+Holder[T: ext]: rec
 {
 	cb: ext fun[T -> i32]
 }
@@ -42,7 +42,7 @@ both: ext fun(pair: Pair[i32]) -> i32 => pair.first * pair.second
 main: fun -> i32
 {
 	var points = [Point(3, 4), Point(5, 6)]
-	val h = holder[Point](sum)
+	val h = Holder[Point](sum)
 	printf("%d %d %d %d %d %d\n", call(twice, 21), call(sum, Point(1, 2)), h.cb(Point(10, 20)),
 		visit(first, @points[1]), pairs(both, Pair(6, 7)), outer(twice, 4))
 	ret 0

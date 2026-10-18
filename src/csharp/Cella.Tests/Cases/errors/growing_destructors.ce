@@ -1,16 +1,16 @@
 mod test
 
-box[T]: rec
+Box[T]: rec
 {
 	value: T
 
 	drop: op
 	{
-		val next = box[ptr[T]](null)
+		val next = Box[ptr[T]](null)
 	}
 }
 
-cell[T]: rec
+Cell[T]: rec
 {
 	value: ptr[T]
 
@@ -20,6 +20,6 @@ cell[T]: rec
 	}
 }
 
-deeper[T]: fun(imm c: cell[T]) -> cell[ptr[T]] => cell[ptr[T]](null)
+deeper[T]: fun(imm c: Cell[T]) -> Cell[ptr[T]] => Cell[ptr[T]](null)
 
 main: fun -> i32 => 0

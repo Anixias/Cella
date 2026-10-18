@@ -20,7 +20,7 @@ Error at trailing_commas.ce:22:19
 
 Error at trailing_commas.ce:25:10
 24 │ 
-25 │ pair[A, B,]: rec
+25 │ Pair[A, B,]: rec
               ^ Cannot end lists with ','
 
 Error at trailing_commas.ce:31:16

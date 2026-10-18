@@ -15,7 +15,7 @@ Error at overload_overlaps.ce:18:1
 
 Error at overload_overlaps.ce:19:1
 18 │ packed: fun(x: i32) {}
-19 │ packed: fun(...xs: view[i32]) {}
+19 │ packed: fun(...xs: View[i32]) {}
      ╘════╛ 'packed' overloads cannot accept the same arguments
 
 Error at overload_overlaps.ce:21:1
@@ -25,7 +25,7 @@ Error at overload_overlaps.ce:21:1
 
 Error at overload_overlaps.ce:22:1
 21 │ empty: fun {}
-22 │ empty: fun(...xs: view[i32]) {}
+22 │ empty: fun(...xs: View[i32]) {}
      ╘═══╛ 'empty' overloads cannot accept the same arguments
 
 Error at overload_overlaps.ce:24:1
@@ -35,7 +35,7 @@ Error at overload_overlaps.ce:24:1
 
 Error at overload_overlaps.ce:25:1
 24 │ head: fun(template: str) {}
-25 │ head: fun(template: str, ...args: view[i32]) {}
+25 │ head: fun(template: str, ...args: View[i32]) {}
      ╘══╛ 'head' overloads cannot accept the same arguments
 
 Error at overload_overlaps.ce:27:1
@@ -45,7 +45,7 @@ Error at overload_overlaps.ce:27:1
 
 Error at overload_overlaps.ce:28:1
 27 │ both: fun(x: i32 = 0) {}
-28 │ both: fun(...xs: view[i32]) {}
+28 │ both: fun(...xs: View[i32]) {}
      ╘══╛ 'both' overloads cannot accept the same arguments
 
 Error at overload_overlaps.ce:34:2

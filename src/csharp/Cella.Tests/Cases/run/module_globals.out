@@ -1,3 +1,8 @@
+Hint at module_globals.ce:43:6
+42 │ 
+43 │ var counter = 7
+         ╘═════╛ 'counter' is never changed
+
 6 3 hello Cella 3.0 1 120
 15 30 0 1.50 122 5
 7 6 4

@@ -1,3 +1,43 @@
+Hint at integer_division.ce:10:6
+ 9 │ {
+10 │     var seven = 7
+             ╘═══╛ 'seven' is never changed
+
+Hint at integer_division.ce:11:6
+10 │ var seven = 7
+11 │ var two = 2
+         ╘═╛ 'two' is never changed
+
+Hint at integer_division.ce:12:6
+11 │ var two = 2
+12 │ var minusTwo = -2
+         ╘══════╛ 'minusTwo' is never changed
+
+Hint at integer_division.ce:13:6
+12 │ var minusTwo = -2
+13 │ var minusOne = -1
+         ╘══════╛ 'minusOne' is never changed
+
+Hint at integer_division.ce:14:6
+13 │ var minusOne = -1
+14 │ var minimum = -2147483648
+         ╘═════╛ 'minimum' is never changed
+
+Hint at integer_division.ce:15:6
+14 │ var minimum = -2147483648
+15 │ var big: u32 = 4_000_000_000
+         ╘═╛ 'big' is never changed
+
+Hint at integer_division.ce:16:6
+15 │ var big: u32 = 4_000_000_000
+16 │ var three: u32 = 3
+         ╘═══╛ 'three' is never changed
+
+Hint at integer_division.ce:17:6
+16 │ var three: u32 = 3
+17 │ var table = [10 / 3, 10 % 3]
+         ╘═══╛ 'table' is never changed
+
 3 1 -3 -1 -3 1
 -7 0 0 -1073741824 1333333333 1 3 1
 4

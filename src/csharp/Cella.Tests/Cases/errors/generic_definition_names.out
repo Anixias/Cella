@@ -1,21 +1,21 @@
 Error at generic_definition_names.ce:16:8
 15 │ head: T
-16 │ tail: list[T]
-           ╘═════╛ Field 'tail' of type 'list[T]' causes a cycle in the memory layout
+16 │ tail: List[T]
+           ╘═════╛ Field 'tail' of type 'List[T]' causes a cycle in the memory layout
 
 Error at generic_definition_names.ce:19:18
 18 │ 
-19 │ box[T]: rec impl Make
-                      ╘══╛ 'box[T]' needs 'Make.new'
+19 │ Box[T]: rec impl Make
+                      ╘══╛ 'Box[T]' needs 'Make.new'
 
 Error at generic_definition_names.ce:24:14
 23 │ 
-24 │ box[T]: impl Show
-                  ╘══╛ 'box[T]' implements 'Show' more than once
+24 │ Box[T]: impl Show
+                  ╘══╛ 'Box[T]' implements 'Show' more than once
 
 Error at generic_definition_names.ce:29:14
 28 │ 
-29 │ box[U]: impl Show
-                  ╘══╛ 'box[T]' implements 'Show' more than once
+29 │ Box[U]: impl Show
+                  ╘══╛ 'Box[T]' implements 'Show' more than once
 
 [compilation failed]

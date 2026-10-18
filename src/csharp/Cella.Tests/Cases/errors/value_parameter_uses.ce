@@ -1,11 +1,11 @@
 mod test
 
-ring[T, N: const usize]: rec
+Ring[T, N: const usize]: rec
 {
 	items: array[T, N]
 }
 
-ring[T, N: const u8]: impl
+Ring[T, N: const u8]: impl
 {
 	slots: fun(imm self) -> u8 => N
 }
@@ -20,7 +20,7 @@ array[T, N: const u8]: impl Short
 	doubled: fun(imm self) -> u8 => N * 2
 }
 
-small[N: const u8]: rec
+Small[N: const u8]: rec
 {
 	items: array[i32, N]
 }
@@ -44,20 +44,20 @@ lengths: fun
 	var negative: array[i32, -1] = undef
 	var typed: array[i32, count] = undef
 	var bare: array[i32] = [1, 2]
-	val r = ring[i32, -1]()
-	val s = ring[i32, count]()
+	val r = Ring[i32, -1]()
+	val s = Ring[i32, count]()
 	val t = sizeOf(array[i32, -2])
-	val u = ring[i32, 300]().slots()
+	val u = Ring[i32, 300]().slots()
 	var huge: array[i32, 300] = undef
 	val v = huge.doubled()
 }
 
 main: fun -> i32
 {
-	val a = ring[16, i32]()
-	val b = small[300]()
-	val c = ring[i32]()
-	val d = small[1.5]()
+	val a = Ring[16, i32]()
+	val b = Small[300]()
+	val c = Ring[i32]()
+	val d = Small[1.5]()
 	typed[4](1)
 	var big: array[i32, 300] = undef
 	ret tiny(big)

@@ -1,3 +1,8 @@
+Hint at borrow_sources.ce:71:6
+70 │ {
+71 │     var buffer = Buffer(1)
+             ╘════╛ 'buffer' is never changed
+
 Hint at borrow_sources.ce:72:13
 71 │ var buffer = Buffer(1)
 72 │ val view = imm buffer
@@ -26,6 +31,11 @@ Error at borrow_sources.ce:83:17
                     ╘══╛ Cannot use borrows of moved values
                        | Moved on line 82
 
+Hint at borrow_sources.ce:88:6
+87 │ {
+88 │     var x = 0
+             ^ 'x' is never changed
+
 Error at borrow_sources.ce:94:17
 93 │ }
 94 │ printf("%d\n", longest)
@@ -43,6 +53,11 @@ Error at borrow_sources.ce:102:17
                      ╘═══╛ Cannot use borrows of reassigned values
                          | Reassigned on line 101
 
+Hint at borrow_sources.ce:107:6
+106 │ {
+107 │     var x = 0
+              ^ 'x' is never changed
+
 Error at borrow_sources.ce:112:18
 111 │ {
 112 │     printf("%d\n", last)
@@ -54,6 +69,11 @@ Error at borrow_sources.ce:127:19
 127 │ printf("%d\n", buffer.id)
                      ╘═══════╛ Cannot use borrows of reassigned values
                              | Reassigned on line 126
+
+Hint at borrow_sources.ce:136:6
+135 │ var count = 1
+136 │ var tally = Tally(mut count, 5)
+          ╘═══╛ 'tally' is never changed
 
 Error at borrow_sources.ce:139:2
 138 │ printf("%d\n", tally.step)
@@ -79,10 +99,20 @@ Error at borrow_sources.ce:159:22
 159 │     val holder = Holder(make(3))
                               ╘═════╛ Cannot borrow unstored values
 
+Hint at borrow_sources.ce:165:6
+164 │ {
+165 │     var buffer = Buffer(1)
+              ╘════╛ 'buffer' is never changed
+
 Hint at borrow_sources.ce:166:14
 165 │ var buffer = Buffer(1)
 166 │ val outer = imm buffer
                   ╘═╛ Redundant 'imm'
+
+Hint at borrow_sources.ce:169:6
+168 │ var count = 1
+169 │ var tally = Tally(mut count, 2)
+          ╘═══╛ 'tally' is never changed
 
 Error at borrow_sources.ce:174:20
 173 │ val gone = own count

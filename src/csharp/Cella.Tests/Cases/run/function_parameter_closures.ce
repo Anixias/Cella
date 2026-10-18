@@ -5,7 +5,7 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-option[T]: enum
+Option[T]: enum
 {
 	none
 	some(value: T)
@@ -74,7 +74,7 @@ twice: fun(f: fun[fun[i32], i32], visit: fun[i32])
 	f(visit, 2)
 }
 
-maybe: fun(callback: option[ref fun[i32]], value: i32)
+maybe: fun(callback: Option[ref fun[i32]], value: i32)
 {
 	if callback is some(val f)
 		f(value)

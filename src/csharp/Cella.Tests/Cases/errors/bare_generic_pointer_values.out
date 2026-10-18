@@ -1,16 +1,16 @@
 Error at bare_generic_pointer_values.ce:11:13
 10 │ var x = 1
-11 │ var p: ptr[box]
-                ╘═╛ 'box' takes one generic argument
+11 │ var p: ptr[Box]
+                ╘═╛ 'Box' takes one generic argument
 
 Error at bare_generic_pointer_values.ce:12:14
-11 │ var p: ptr[box]
-12 │ val q = ptr[box](@x)
-                 ╘═╛ 'box' takes one generic argument
+11 │ var p: ptr[Box]
+12 │ val q = ptr[Box](@x)
+                 ╘═╛ 'Box' takes one generic argument
 
 Error at bare_generic_pointer_values.ce:13:17
-12 │ val q = ptr[box](@x)
-13 │ val r: box[ptr[box]] = undef
-                    ╘═╛ 'box' takes one generic argument
+12 │ val q = ptr[Box](@x)
+13 │ val r: Box[ptr[Box]] = undef
+                    ╘═╛ 'Box' takes one generic argument
 
 [compilation failed]

@@ -1,3 +1,23 @@
+Hint at enum_payloads.ce:150:6
+149 │ var box = Box(Effect.hit(8))
+150 │ var pointer = @box
+          ╘═════╛ 'pointer' is never changed
+
+Hint at enum_payloads.ce:156:6
+155 │ var middle = Node.link(2, @last)
+156 │ var first = Node.link(1, @middle)
+          ╘═══╛ 'first' is never changed
+
+Hint at enum_payloads.ce:182:6
+181 │ 
+182 │ var p0 = @items[0]
+          ╘╛ 'p0' is never changed
+
+Hint at enum_payloads.ce:183:6
+182 │ var p0 = @items[0]
+183 │ var p1 = @items[1]
+          ╘╛ 'p1' is never changed
+
 hit(5) mend(3, 2) hit(42) mend(1, 2) none scale(0.25) none 
 wrap(value(-7), 9)
 unit(30, 3, 2.5)

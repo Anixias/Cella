@@ -5,12 +5,12 @@ Shape: trait
 	area: fun(imm self) -> f64
 }
 
-holder[K: trait]: rec
+Holder[K: trait]: rec
 {
 	object: ptr[dyn[K]]
 }
 
-box[T]: rec
+Box[T]: rec
 {
 	value: T
 }
@@ -19,8 +19,8 @@ asValue[K: trait]: fun(value: K) -> i32 => 0
 
 asPointer[K: trait]: fun(value: ptr[K]) -> i32 => 0
 
-first: fun(value: holder[i32]) -> i32 => 0
+first: fun(value: Holder[i32]) -> i32 => 0
 
-second: fun(value: box[Shape]) -> i32 => 0
+second: fun(value: Box[Shape]) -> i32 => 0
 
 main: fun -> i32 => 0

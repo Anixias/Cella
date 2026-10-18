@@ -1,2 +1,7 @@
+Hint at wrapping_conversions.ce:14:6
+13 │ {
+14 │     var runtime: u8 = 200
+             ╘═════╛ 'runtime' is never changed
+
 44 -2147483648 0 44 -2147483648 255 -128 8589934588
 [exit code 0]

@@ -54,7 +54,7 @@ Slot: rec
 	}
 }
 
-pool[T: new(usize)]: rec
+Pool[T: new(usize)]: rec
 {
 	first: T
 
@@ -66,17 +66,17 @@ pool[T: new(usize)]: rec
 	grow: fun(imm self, size: usize) -> T => T(size + 1)
 }
 
-box[T]: rec
+Box[T]: rec
 {
 	value: T
 }
 
-box[T: new(i32)]: impl
+Box[T: new(i32)]: impl
 {
 	fresh: fun(imm self) -> T => T(3)
 }
 
-wrapper[T]: rec
+Wrapper[T]: rec
 {
 	n: i32
 
@@ -86,7 +86,7 @@ wrapper[T]: rec
 	}
 }
 
-holder[E]: rec
+Holder[E]: rec
 {
 	value: E
 
@@ -102,7 +102,7 @@ Wrapped: rec
 		self.n = value
 	}
 
-	new: op(value: box[Wrapped])
+	new: op(value: Box[Wrapped])
 	{
 		self.n = value.value.n + 1
 	}
@@ -144,7 +144,7 @@ both[T: Make + new(i32)]: fun -> T => T(9)
 
 twoTraits[T: First + Second]: fun -> T => T(6)
 
-nested[T: noref + new(i32) + new(box[T])]: fun -> T => T(box[T](T(4)))
+nested[T: noref + new(i32) + new(Box[T])]: fun -> T => T(Box[T](T(4)))
 
 measure[K: trait, T: new(ptr[dyn[K]])]: fun(shape: ptr[dyn[K]]) -> T => T(shape)
 
@@ -152,12 +152,12 @@ main: fun -> i32
 {
 	printf("%d %d %d %d %d\n", forward[Cell]().n, viaTrait[Cell]().n, viaEmpty[Cell]().n, both[Cell]().n,
 		twoTraits[i32]())
-	val p = pool[Slot](4)
-	val b = box[i64](1)
-	printf("%llu %llu %lld %d\n", p.first.size, p.grow(5).size, b.fresh(), make[wrapper[str]]().n)
+	val p = Pool[Slot](4)
+	val b = Box[i64](1)
+	printf("%llu %llu %lld %d\n", p.first.size, p.grow(5).size, b.fresh(), make[Wrapper[str]]().n)
 	var s = Square(3)
 	val shape: ptr[dyn[Shape]] = @s
-	val h = holder[i32](8)
+	val h = Holder[i32](8)
 	printf("%.1f %d %d\n", h.make[f64](), nested[Wrapped]().n, measure[Shape, Report](shape).value)
 	ret 0
 }

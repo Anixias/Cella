@@ -5,31 +5,31 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-option[T]: enum
+Option[T]: enum
 {
 	none
 	some(value: T)
 
-	==: op(imm a: option[T], imm b: option[T]) -> bool => match a
+	==: op(imm a: Option[T], imm b: Option[T]) -> bool => match a
 	{
 		none => b is none
 		else => false
 	}
 }
 
-read: fun(o: option[i32]) -> i32 => match o
+read: fun(o: Option[i32]) -> i32 => match o
 {
 	some(val v) => v
 	none => -1
 }
 
-both[T]: fun(imm a: option[T], imm b: option[T]) -> i32 => 2
+both[T]: fun(imm a: Option[T], imm b: Option[T]) -> i32 => 2
 
 Reader: rec
 {
 	k: i32
 
-	read: fun(self, o: option[i64]) -> i64 => match o
+	read: fun(self, o: Option[i64]) -> i64 => match o
 	{
 		some(val v) => v
 		none => -2
@@ -39,8 +39,8 @@ Reader: rec
 main: fun -> i32
 {
 	val r = Reader(1)
-	val a = option[i32].none
-	printf("%d %lld %d %d %d\n", read(option.none), r.read(option.none), both(option.some(5), option.none),
-		read(option.some(7)), i32(a == option.none))
+	val a = Option[i32].none
+	printf("%d %lld %d %d %d\n", read(Option.none), r.read(Option.none), both(Option.some(5), Option.none),
+		read(Option.some(7)), i32(a == Option.none))
 	ret 0
 }

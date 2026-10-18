@@ -1,3 +1,48 @@
+Hint at record_construction.ce:46:6
+45 │ {
+46 │     var origin = Point()
+             ╘════╛ 'origin' is never changed
+
+Hint at record_construction.ce:47:6
+46 │ var origin = Point()
+47 │ var corner = Point(3, 4)
+         ╘════╛ 'corner' is never changed
+
+Hint at record_construction.ce:48:6
+47 │ var corner = Point(3, 4)
+48 │ var line = Line(Point(1, 2), corner)
+         ╘══╛ 'line' is never changed
+
+Hint at record_construction.ce:49:6
+48 │ var line = Line(Point(1, 2), corner)
+49 │ var blank = Line()
+         ╘═══╛ 'blank' is never changed
+
+Hint at record_construction.ce:53:6
+52 │ 
+53 │ var color = Color(255, 128, 0, 0.5)
+         ╘═══╛ 'color' is never changed
+
+Hint at record_construction.ce:54:6
+53 │ var color = Color(255, 128, 0, 0.5)
+54 │ var factor: u8 = 200
+         ╘════╛ 'factor' is never changed
+
+Hint at record_construction.ce:55:6
+54 │ var factor: u8 = 200
+55 │ var wide = Wide(u32(factor) * factor)
+         ╘══╛ 'wide' is never changed
+
+Hint at record_construction.ce:56:6
+55 │ var wide = Wide(u32(factor) * factor)
+56 │ var counter = Counter(7)
+         ╘═════╛ 'counter' is never changed
+
+Hint at record_construction.ce:57:6
+56 │ var counter = Counter(7)
+57 │ var points = [Point(1, 1), Point(), Point(2, 3)]
+         ╘════╛ 'points' is never changed
+
 0 0 3 4 11 2 3 0 0
 255 128 0 0.50 40000 7 4 0
 [exit code 0]

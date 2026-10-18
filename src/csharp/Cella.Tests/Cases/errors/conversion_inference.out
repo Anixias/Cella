@@ -1,10 +1,10 @@
 Error at conversion_inference.ce:54:21
 53 │ var four: array[i32, 4] = [1, 2, 3, 4]
-54 │ val t: span[i32] = four
+54 │ val t: Span[i32] = four
                         ╘══╛ Cannot mutably borrow arguments implicitly
 
 Error at conversion_inference.ce:56:6
-55 │ var u: span[i32] = mut four
+55 │ var u: Span[i32] = mut four
 56 │ u = four
          ╘══╛ Cannot mutably borrow arguments implicitly
 
@@ -16,7 +16,7 @@ Error at conversion_inference.ce:58:6
 Error at conversion_inference.ce:63:7
 62 │ var bytes = [1, 2]
 63 │ take(mut bytes)
-          ╘═══════╛ Cannot convert type 'ptr[array[i32, 2]]' to 'triple'
+          ╘═══════╛ Cannot convert type 'ptr[array[i32, 2]]' to 'Triple'
 
 Error at conversion_inference.ce:65:10
 64 │ 

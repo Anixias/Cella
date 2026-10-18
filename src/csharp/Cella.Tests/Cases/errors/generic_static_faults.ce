@@ -5,13 +5,13 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-slots[N: const usize]: rec
+Slots[N: const usize]: rec
 {
 	per: const usize = 10 / N
 }
 
 main: fun -> i32
 {
-	printf("%zu\n", slots[0].per)
+	printf("%zu\n", Slots[0].per)
 	ret 0
 }

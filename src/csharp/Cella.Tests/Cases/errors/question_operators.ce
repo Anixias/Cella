@@ -1,6 +1,6 @@
 mod test
 
-result[T, E]: enum
+Result[T, E]: enum
 {
 	ok(value: T)
 	err(error: E)
@@ -8,11 +8,11 @@ result[T, E]: enum
 	?: op(own self) -> T => match own self
 	{
 		ok(own value) => value
-		err(own error) => ret result.err(own error)
+		err(own error) => ret Result.err(own error)
 	}
 }
 
-broken[T]: enum
+Broken[T]: enum
 {
 	held(value: T)
 
@@ -22,7 +22,7 @@ broken[T]: enum
 	}
 }
 
-parse: fun(n: i32) -> result[i32, i32] => result.ok(n)
+parse: fun(n: i32) -> Result[i32, i32] => Result.ok(n)
 
 plain: fun -> i32 => parse(1)?
 
@@ -45,6 +45,6 @@ numbers: fun -> i32
 	ret x?
 }
 
-unused: fun -> result[i32, i32] => result.ok(broken.held(1)?)
+unused: fun -> Result[i32, i32] => Result.ok(Broken.held(1)?)
 
 main: fun -> i32 => 0

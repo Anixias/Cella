@@ -1,3 +1,8 @@
+Hint at division_by_zero_trap.ce:5:6
+4 │ {
+5 │     var zero = 0
+            ╘══╛ 'zero' is never changed
+
 [stderr]
 Panic at division_by_zero_trap.ce:6:6: division by zero
 [exit code 101]

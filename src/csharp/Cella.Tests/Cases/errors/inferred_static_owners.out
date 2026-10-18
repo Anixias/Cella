@@ -1,6 +1,6 @@
 Error at inferred_static_owners.ce:13:10
 12 │ {
-13 │     val o = option.empty()
-                 ╘════╛ Cannot infer 'T' for 'option'
+13 │     val o = Option.empty()
+                 ╘════╛ Cannot infer 'T' for 'Option'
 
 [compilation failed]

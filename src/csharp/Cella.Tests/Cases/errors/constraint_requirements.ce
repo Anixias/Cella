@@ -5,23 +5,23 @@ Ord: trait
 	<: op(imm a: Self, imm b: Self) -> bool
 }
 
-pair[A: noref, B]: rec
+Pair[A: noref, B]: rec
 {
 	a: A
 	b: B
 }
 
-copier[Element: copy]: rec
+Copier[Element: copy]: rec
 {
 	value: Element
 }
 
-dropper[Element: drop]: rec
+Dropper[Element: drop]: rec
 {
 	value: Element
 }
 
-nullable[Element: null]: rec
+Nullable[Element: null]: rec
 {
 	value: Element
 }
@@ -58,11 +58,11 @@ smallest[T: Ord + copy]: fun(a: T, b: T) -> T => a
 
 main: fun -> i32
 {
-	val p: pair[Token, Token] = undef
-	val q: pair[i32, Token] = undef
-	val c: copier[Guard] = undef
-	val d: dropper[i32] = undef
-	val n: nullable[i32] = undef
+	val p: Pair[Token, Token] = undef
+	val q: Pair[i32, Token] = undef
+	val c: Copier[Guard] = undef
+	val d: Dropper[i32] = undef
+	val n: Nullable[i32] = undef
 	val m = make[Point]()
 	val b = build[bool]()
 	val s = smallest(Point(1), Point(2))

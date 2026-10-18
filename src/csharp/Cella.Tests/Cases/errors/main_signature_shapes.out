@@ -1,6 +1,6 @@
 Error at main_signature_shapes.ce:15:1
 14 │ 
-15 │ main: fun(mut args: view[str]) -> i32 => 0
+15 │ main: fun(mut args: View[str]) -> i32 => 0
      ╘══╛ 'main' must take no parameters, 'ptr[str]' and 'usize', or one parameter that meets 'new(ptr[str], usize)'
 
 Error at main_signature_shapes.ce:17:1

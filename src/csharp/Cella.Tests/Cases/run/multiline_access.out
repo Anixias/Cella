@@ -1,1 +1,21 @@
+Hint at multiline_access.ce:24:6
+23 │ {
+24 │     var outer = make()
+             ╘═══╛ 'outer' is never changed
+
+Hint at multiline_access.ce:25:6
+24 │ var outer = make()
+25 │ var first = outer
+         ╘═══╛ 'first' is never changed
+
+Hint at multiline_access.ce:28:6
+27 │     .value
+28 │ var second = outer.inner
+         ╘════╛ 'second' is never changed
+
+Hint at multiline_access.ce:30:6
+29 │     .value
+30 │ var third = make()
+         ╘═══╛ 'third' is never changed
+
 [exit code 42]

@@ -5,7 +5,7 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-span[T]: ref rec
+Span[T]: ref rec
 {
 	data: ptr[T]
 	length: usize
@@ -17,7 +17,7 @@ span[T]: ref rec
 	}
 }
 
-view[T]: ref rec
+View[T]: ref rec
 {
 	data: ptr[T]
 	length: usize
@@ -33,17 +33,17 @@ Ring: rec
 {
 	items: array[i32, 3]
 
-	as: op(mut self) -> span[i32] => span[i32](ptr[i32](ptr(@self.items)), 3)
-	as: op(imm self) -> view[i32] => view[i32](ptr[i32](ptr(@self.items)), 3)
+	as: op(mut self) -> Span[i32] => Span[i32](ptr[i32](ptr(@self.items)), 3)
+	as: op(imm self) -> View[i32] => View[i32](ptr[i32](ptr(@self.items)), 3)
 }
 
-fill: fun(values: span[i32], value: i32)
+fill: fun(values: Span[i32], value: i32)
 {
 	for i in 0..values.length
 		values.data[i] = value
 }
 
-total: fun(values: view[i32]) -> i32
+total: fun(values: View[i32]) -> i32
 {
 	var sum = 0
 	for i in 0..values.length
@@ -58,7 +58,7 @@ main: fun -> i32
 	printf("%d\n", total(ring))
 	fill(mut ring, 4)
 	printf("%d\n", total(ring))
-	val all: span[i32] = mut ring
+	val all: Span[i32] = mut ring
 	all.data[0] = 10
 	printf("%d %d\n", ring.items[0], total(ring))
 	ret 0

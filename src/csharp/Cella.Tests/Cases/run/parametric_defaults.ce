@@ -19,7 +19,7 @@ forward[U]: fun(imm u: U) -> usize => offset(imm u)
 
 relay[M: const usize]: fun -> usize => count[M]()
 
-box[T]: rec
+Box[T]: rec
 {
 	value: T
 
@@ -29,6 +29,6 @@ box[T]: rec
 main: fun -> i32
 {
 	printf("%zu %zu %zu %zu\n", measure(1), measure(2.0), count[3](), layout[i16, 4](5))
-	printf("%zu %zu %zu %zu\n", forward(1i64), relay[7](), box(1i16).size(), offset(1u8, 3))
+	printf("%zu %zu %zu %zu\n", forward(1i64), relay[7](), Box(1i16).size(), offset(1u8, 3))
 	ret 0
 }

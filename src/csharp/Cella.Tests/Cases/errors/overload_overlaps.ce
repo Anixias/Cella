@@ -1,6 +1,6 @@
 mod test
 
-view[T]: ref rec
+View[T]: ref rec
 {
 	data: pvt ptr[T]
 	length: pvt set usize
@@ -16,16 +16,16 @@ defaulted: fun(x: i32 = 5) {}
 defaulted: fun {}
 
 packed: fun(x: i32) {}
-packed: fun(...xs: view[i32]) {}
+packed: fun(...xs: View[i32]) {}
 
 empty: fun {}
-empty: fun(...xs: view[i32]) {}
+empty: fun(...xs: View[i32]) {}
 
 head: fun(template: str) {}
-head: fun(template: str, ...args: view[i32]) {}
+head: fun(template: str, ...args: View[i32]) {}
 
 both: fun(x: i32 = 0) {}
-both: fun(...xs: view[i32]) {}
+both: fun(...xs: View[i32]) {}
 
 Counter: rec
 {
@@ -41,7 +41,7 @@ Counter: rec
 }
 
 distinct: fun(x: str) {}
-distinct: fun(...xs: view[i32]) {}
+distinct: fun(...xs: View[i32]) {}
 
 typed: fun(a: i32, b: i32 = 0) {}
 typed: fun(a: i32, b: str) {}

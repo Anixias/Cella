@@ -1,2 +1,7 @@
+Hint at recursive_generic_types.ce:51:6
+50 │ var first = Node(1, null)
+51 │ var second = Node(2, @first)
+         ╘════╛ 'second' is never changed
+
 2 1
 [exit code 0]

@@ -5,7 +5,7 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-view[T]: ref rec
+View[T]: ref rec
 {
 	data: pvt ptr[T]
 	length: pvt set usize
@@ -27,17 +27,17 @@ Effect: enum
 
 Sink: trait
 {
-	put: fun(imm self, ...values: view[i32]) -> usize
+	put: fun(imm self, ...values: View[i32]) -> usize
 }
 
 Box: rec impl Sink
 {
 	id: i32
 
-	put: fun(self, ...values: view[i32]) -> usize => values.length
+	put: fun(self, ...values: View[i32]) -> usize => values.length
 }
 
-bytes: fun(...values: view[u8]) -> i32
+bytes: fun(...values: View[u8]) -> i32
 {
 	var total = 0
 	for i in 0..values.length
@@ -46,7 +46,7 @@ bytes: fun(...values: view[u8]) -> i32
 	ret total
 }
 
-apply: fun(start: i32, ...steps: view[fun[i32 -> i32]]) -> i32
+apply: fun(start: i32, ...steps: View[fun[i32 -> i32]]) -> i32
 {
 	var value = start
 	for i in 0..steps.length
@@ -55,7 +55,7 @@ apply: fun(start: i32, ...steps: view[fun[i32 -> i32]]) -> i32
 	ret value
 }
 
-hits: fun(...effects: view[Effect]) -> i32
+hits: fun(...effects: View[Effect]) -> i32
 {
 	var total = 0
 	for i in 0..effects.length
@@ -67,7 +67,7 @@ hits: fun(...effects: view[Effect]) -> i32
 	ret total
 }
 
-sum: fun(...values: view[i32]) -> i32
+sum: fun(...values: View[i32]) -> i32
 {
 	var total = 0
 	for i in 0..values.length

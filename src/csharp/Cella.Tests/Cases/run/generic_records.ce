@@ -17,7 +17,7 @@ Token: rec
 	}
 }
 
-pair[A: noref, B: noref]: rec
+Pair[A: noref, B: noref]: rec
 {
 	first: A
 	second: B
@@ -31,10 +31,10 @@ pair[A: noref, B: noref]: rec
 		ret old
 	}
 
-	make: fun(own first: A, own second: B) -> pair[A, B] => pair[A, B](own first, own second)
+	make: fun(own first: A, own second: B) -> Pair[A, B] => Pair[A, B](own first, own second)
 }
 
-box[T]: rec
+Box[T]: rec
 {
 	pointer: req ptr[T]
 
@@ -55,7 +55,7 @@ box[T]: rec
 	}
 }
 
-buffer[T]: rec
+Buffer[T]: rec
 {
 	start: req ptr[T]
 	length: usize
@@ -85,21 +85,21 @@ buffer[T]: rec
 
 main: fun -> i32
 {
-	var numbers = pair[i32, i64](3, 4)
+	var numbers = Pair[i32, i64](3, 4)
 	numbers.first += 1
 	printf("%d %lld | ", numbers.first, numbers.second)
-	var tokens = pair[Token, i32](Token(1), 2)
+	var tokens = Pair[Token, i32](Token(1), 2)
 	val old = tokens.swapFirst(Token(3))
 	printf("%d %d %d | ", old.id, tokens.left.id, tokens.second)
-	val made = pair[i32, Token].make(4, Token(5))
+	val made = Pair[i32, Token].make(4, Token(5))
 	printf("%d %d | ", made.first, made.second.id)
-	var count = box[i32](5)
+	var count = Box[i32](5)
 	*count += 2
-	val nested = box[pair[i32, box[Token]]](pair[i32, box[Token]](6, box[Token](Token(7))))
+	val nested = Box[Pair[i32, Box[Token]]](Pair[i32, Box[Token]](6, Box[Token](Token(7))))
 	printf("%d %d %d | ", *count, nested.first, nested.second.id)
-	var values = buffer[i16](4)
+	var values = Buffer[i16](4)
 	values.set(0, 3)
 	values.set(3, 9)
-	printf("%d %d %lld %zu\n", values.get(0), values.get(3), values.span(), buffer[i64].bytes)
+	printf("%d %d %lld %zu\n", values.get(0), values.get(3), values.span(), Buffer[i64].bytes)
 	ret 0
 }

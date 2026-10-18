@@ -25,18 +25,18 @@ Error at variadic_calls.ce:32:9
 
 Error at variadic_calls.ce:33:20
 32 │ strlen(...v)
-33 │ val w = view[i32](...v)
+33 │ val w = View[i32](...v)
                        ╘══╛ Cannot spread arguments into calls without variadic parameters
 
 Error at variadic_calls.ce:34:6
-33 │ val w = view[i32](...v)
+33 │ val w = View[i32](...v)
 34 │ all(mut n)
          ╘═╛ 'values' isn't a 'mut' parameter
 
 Error at variadic_calls.ce:35:6
 34 │ all(mut n)
 35 │ all(v)
-         ^ Cannot convert type 'view[i32]' to 'i32'
+         ^ Cannot convert type 'View[i32]' to 'i32'
 
 Error at variadic_calls.ce:36:11
 35 │ all(v)

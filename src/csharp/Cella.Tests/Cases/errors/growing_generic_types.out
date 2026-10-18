@@ -1,21 +1,21 @@
 Error at growing_generic_types.ce:5:9
 4 │ {
-5 │     inner: ptr[nest[array[T, 1]]]
-               ╘════════════════════╛ Instantiating 'nest' never ends
+5 │     inner: ptr[Nest[array[T, 1]]]
+               ╘════════════════════╛ Instantiating 'Nest' never ends
 
 Error at growing_generic_types.ce:12:8
 11 │ value: T
-12 │ next: ptr[node[ptr[T]]]
-           ╘═══════════════╛ Instantiating 'node' never ends
+12 │ next: ptr[Node[ptr[T]]]
+           ╘═══════════════╛ Instantiating 'Node' never ends
 
 Error at growing_generic_types.ce:18:23
 17 │ stop
-18 │ more(value: T, next: ptr[growing[ptr[T]]])
-                          ╘══════════════════╛ Instantiating 'growing' never ends
+18 │ more(value: T, next: ptr[Growing[ptr[T]]])
+                          ╘══════════════════╛ Instantiating 'Growing' never ends
 
 Error at growing_generic_types.ce:28:5
 27 │ {
-28 │     a: ptr[a[array[T, 2]]]
-            ╘═════════════════╛ Instantiating 'a' never ends
+28 │     a: ptr[First[array[T, 2]]]
+            ╘═════════════════════╛ Instantiating 'First' never ends
 
 [compilation failed]

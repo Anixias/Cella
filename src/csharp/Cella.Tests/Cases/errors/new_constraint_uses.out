@@ -73,7 +73,7 @@ Error at new_constraint_uses.ce:83:7
 
 Error at new_constraint_uses.ce:84:27
 83 │ make[str]()
-84 │ pair[Point](Point(1, 2)).fresh()
+84 │ Pair[Point](Point(1, 2)).fresh()
                               ╘═══╛ 'fresh' requires 'T: new(i32)'
                                   | 'Point' has no constructor taking 'i32'
 

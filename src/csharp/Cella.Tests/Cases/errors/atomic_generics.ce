@@ -5,14 +5,14 @@ Point: rec
 	x: i32
 }
 
-cell[T: atomic]: rec
+Cell[T: atomic]: rec
 {
 	value: T
 
 	bump: fun(self, amount: T) -> T => atomic *@self.value += amount
 }
 
-plain[T]: rec
+Plain[T]: rec
 {
 	value: T
 
@@ -21,8 +21,8 @@ plain[T]: rec
 
 main: fun -> i32
 {
-	val a = cell[Point](Point(1))
-	val b = cell[str]("x")
-	val c = cell[i128](1)
+	val a = Cell[Point](Point(1))
+	val b = Cell[str]("x")
+	val c = Cell[i128](1)
 	ret 0
 }

@@ -8,7 +8,7 @@ Pair[T]: rec
 
 call[T]: fun(f: ext fun[T -> i32], imm value: T) -> i32 => f(value)
 
-holder[T]: rec
+Holder[T]: rec
 {
 	cb: ext fun[T -> i32]
 }

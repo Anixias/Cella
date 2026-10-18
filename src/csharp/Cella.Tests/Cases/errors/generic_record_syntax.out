@@ -1,6 +1,6 @@
 Error at generic_record_syntax.ce:3:7
 2 │ 
-3 │ empty[]: rec
+3 │ Empty[]: rec
           ^ Expected a type parameter name
 
 Error at generic_record_syntax.ce:9:1
@@ -11,12 +11,12 @@ Error at generic_record_syntax.ce:9:1
 
 Error at generic_record_syntax.ce:13:24
 12 │ 
-13 │ constrained[T: noref + 3]: rec
+13 │ Constrained[T: noref + 3]: rec
                             ^ Expected a constraint
 
 Error at generic_record_syntax.ce:18:7
 17 │ 
-18 │ maybe[T]: ext enum
+18 │ Maybe[T]: ext enum
            ^ Cannot declare type parameters on ext enums
 
 Error at generic_record_syntax.ce:23:7

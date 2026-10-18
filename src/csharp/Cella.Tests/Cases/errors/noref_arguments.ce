@@ -1,20 +1,20 @@
 mod test
 
-cell[Element: noref]: rec
+Cell[Element: noref]: rec
 {
 	value: Element
 }
 
-copier[Element: copy]: rec
+Copier[Element: copy]: rec
 {
 	value: Element
 }
 
-holder[T]: rec
+Holder[T]: rec
 {
-	inner: cell[T]
-	other: copier[T]
-	nested: cell[cell[T]]
+	inner: Cell[T]
+	other: Copier[T]
+	nested: Cell[Cell[T]]
 }
 
 main: fun -> i32 => 0

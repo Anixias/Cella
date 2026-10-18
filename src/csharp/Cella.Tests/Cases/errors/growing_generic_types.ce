@@ -1,31 +1,31 @@
 mod test
 
-nest[T]: rec
+Nest[T]: rec
 {
-	inner: ptr[nest[array[T, 1]]]
+	inner: ptr[Nest[array[T, 1]]]
 	v: T
 }
 
-node[T]: rec
+Node[T]: rec
 {
 	value: T
-	next: ptr[node[ptr[T]]]
+	next: ptr[Node[ptr[T]]]
 }
 
-growing[T]: enum
+Growing[T]: enum
 {
 	stop
-	more(value: T, next: ptr[growing[ptr[T]]])
+	more(value: T, next: ptr[Growing[ptr[T]]])
 }
 
-a[T]: rec
+First[T]: rec
 {
-	b: ptr[b[T]]
+	b: ptr[Second[T]]
 }
 
-b[T]: rec
+Second[T]: rec
 {
-	a: ptr[a[array[T, 2]]]
+	a: ptr[First[array[T, 2]]]
 }
 
 main: fun -> i32 => 0

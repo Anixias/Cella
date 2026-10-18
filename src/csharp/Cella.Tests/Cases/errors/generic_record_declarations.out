@@ -1,27 +1,27 @@
 Error at generic_record_declarations.ce:13:7
 12 │ 
-13 │ twice[T, T]: rec
+13 │ Twice[T, T]: rec
            ^ Type parameter 'T' is declared more than once
 
 Error at generic_record_declarations.ce:13:10
 12 │ 
-13 │ twice[T, T]: rec
+13 │ Twice[T, T]: rec
               ^ Type parameter 'T' is declared more than once
 
 Error at generic_record_declarations.ce:20:9
 19 │ {
-20 │     inner: wrap[i32]
-                ╘═══════╛ Field 'inner' of type 'wrap[i32]' causes a cycle in the memory layout
+20 │     inner: Wrap[i32]
+                ╘═══════╛ Field 'inner' of type 'Wrap[i32]' causes a cycle in the memory layout
 
 Error at generic_record_declarations.ce:25:8
 24 │ {
-25 │     pair: duo[imm[i32], i32]
+25 │     pair: Duo[imm[i32], i32]
                ╘════════════════╛ Cannot store borrows in records that aren't 'ref'
-                                | Did you mean 'holder: ref rec'?
+                                | Did you mean 'Holder: ref rec'?
 
 Error at generic_record_declarations.ce:34:22
 33 │ 
-34 │ take: pub fun(value: box[Node]) -> i32 => 0
+34 │ take: pub fun(value: Box[Node]) -> i32 => 0
                           ╘═══════╛ 'Node' is less visible than 'take'
 
 [compilation failed]

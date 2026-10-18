@@ -11,7 +11,7 @@ Pair: rec
 	right: i32
 }
 
-counter[T]: rec
+Counter[T]: rec
 {
 	value: T
 	created: var Pair = Pair(0, 0)
@@ -19,15 +19,15 @@ counter[T]: rec
 	new: op(own value: T)
 	{
 		self.value = own value
-		counter[T].created.left += 1
+		Counter[T].created.left += 1
 	}
 }
 
 main: fun -> i32
 {
-	val a = counter[i32](1)
-	val b = counter[i32](2)
-	val c = counter[f64](1.5)
-	printf("%d %d\n", counter[i32].created.left, counter[f64].created.left)
+	val a = Counter[i32](1)
+	val b = Counter[i32](2)
+	val c = Counter[f64](1.5)
+	printf("%d %d\n", Counter[i32].created.left, Counter[f64].created.left)
 	ret 0
 }

@@ -1,6 +1,6 @@
 mod test
 
-view[T]: ref rec
+View[T]: ref rec
 {
 	data: pvt ptr[T]
 	length: pvt set usize
@@ -21,9 +21,9 @@ Name: rec
 	}
 }
 
-take: fun(...names: view[Name]) {}
+take: fun(...names: View[Name]) {}
 
-first: fun(...values: view[i32]) -> view[i32] => values
+first: fun(...values: View[i32]) -> View[i32] => values
 
 main: fun -> i32
 {

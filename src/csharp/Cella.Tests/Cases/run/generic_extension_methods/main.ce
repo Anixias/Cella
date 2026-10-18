@@ -1,6 +1,6 @@
 mod test
 
-use pairs.pair
+use pairs.Pair
 
 ext
 {
@@ -9,8 +9,8 @@ ext
 
 main: fun -> i32
 {
-	val numbers = pair[i32](3, 3)
-	val other = pair[i32](1, 2)
+	val numbers = Pair[i32](3, 3)
+	val other = Pair[i32](1, 2)
 	printf("%d %d %d\n", numbers.same(), other.same(), other.total())
 	ret 0
 }

@@ -1,6 +1,6 @@
 Error at value_parameter_duplicates.ce:3:6
 2 │ 
-3 │ ring[N: const usize]: rec
+3 │ Ring[N: const usize]: rec
          ^ Value parameter 'N' is declared more than once
 
 Error at value_parameter_duplicates.ce:7:4

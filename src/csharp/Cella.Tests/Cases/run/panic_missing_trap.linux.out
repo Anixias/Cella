@@ -1,1 +1,6 @@
+Hint at panic_missing_trap.ce:6:6
+5 │ val a = [1, 2, 3]
+6 │ var i: usize = 5
+        ^ 'i' is never changed
+
 [exit code 132]

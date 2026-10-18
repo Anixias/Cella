@@ -1,2 +1,37 @@
+Hint at bool_to_integer.ce:10:6
+ 9 │ {
+10 │     var flag = true
+             ╘══╛ 'flag' is never changed
+
+Hint at bool_to_integer.ce:11:6
+10 │ var flag = true
+11 │ var low = 3
+         ╘═╛ 'low' is never changed
+
+Hint at bool_to_integer.ce:12:6
+11 │ var low = 3
+12 │ var high = 8
+         ╘══╛ 'high' is never changed
+
+Hint at bool_to_integer.ce:13:6
+12 │ var high = 8
+13 │ var count = i32(flag) + i32(high > low) + i32(low > high)
+         ╘═══╛ 'count' is never changed
+
+Hint at bool_to_integer.ce:14:6
+13 │ var count = i32(flag) + i32(high > low) + i32(low > high)
+14 │ var byte = u8(false)
+         ╘══╛ 'byte' is never changed
+
+Hint at bool_to_integer.ce:15:6
+14 │ var byte = u8(false)
+15 │ var wide = i64(true) * 40
+         ╘══╛ 'wide' is never changed
+
+Hint at bool_to_integer.ce:16:6
+15 │ var wide = i64(true) * 40
+16 │ var size = usize(flag)
+         ╘══╛ 'size' is never changed
+
 2 0 40 1
 [exit code 0]

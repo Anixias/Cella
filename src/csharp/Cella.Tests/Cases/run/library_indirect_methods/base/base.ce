@@ -7,7 +7,7 @@ Point: pub rec
 	twice: fun(self) -> i32 => self.x * 2
 }
 
-box[T: copy]: pub rec
+Box[T: copy]: pub rec
 {
 	value: T
 

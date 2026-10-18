@@ -1,41 +1,41 @@
 Error at nested_inference.ce:35:45
 34 │ 
-35 │ wrap[T]: fun(own value: T) -> box[T] => box(value)
+35 │ wrap[T]: fun(own value: T) -> Box[T] => Box(value)
                                                  ╘═══╛ Cannot move 'T' values implicitly
 
 Error at nested_inference.ce:44:10
 43 │ val small: i32 = 1
-44 │ val a = take(pair(1, 2))
+44 │ val a = take(Pair(1, 2))
              ╘══╛ Call to 'take' is ambiguous
 
 Error at nested_inference.ce:45:10
-44 │ val a = take(pair(1, 2))
-45 │ val b = Wide(pair(1, 2))
+44 │ val a = take(Pair(1, 2))
+45 │ val b = Wide(Pair(1, 2))
              ╘══════════════╛ Conversion to 'Wide' is ambiguous
 
 Error at nested_inference.ce:46:25
-45 │ val b = Wide(pair(1, 2))
-46 │ val c = takesBox64(box("a"))
+45 │ val b = Wide(Pair(1, 2))
+46 │ val c = takesBox64(Box("a"))
                             ╘═╛ Cannot convert type 'string literal' to 'i64'
 
 Error at nested_inference.ce:47:21
-46 │ val c = takesBox64(box("a"))
+46 │ val c = takesBox64(Box("a"))
 47 │ val d = takesBox64(wrap(small))
-                        ╘═════════╛ Cannot convert type 'box[i32]' to 'box[i64]'
+                        ╘═════════╛ Cannot convert type 'Box[i32]' to 'Box[i64]'
 
 Error at nested_inference.ce:48:21
 47 │ val d = takesBox64(wrap(small))
-48 │ val e = takesBox64(box(small))
-                        ╘════════╛ Cannot convert type 'box[i32]' to 'box[i64]'
+48 │ val e = takesBox64(Box(small))
+                        ╘════════╛ Cannot convert type 'Box[i32]' to 'Box[i64]'
 
 Error at nested_inference.ce:49:10
-48 │ val e = takesBox64(box(small))
-49 │ val f = both(pair(1, "s"))
+48 │ val e = takesBox64(Box(small))
+49 │ val f = both(Pair(1, "s"))
              ╘══╛ Cannot infer 'T' for 'both' from 'i32' and 'str'
 
 Error at nested_inference.ce:50:14
-49 │ val f = both(pair(1, "s"))
-50 │ val g = box(none)
+49 │ val f = both(Pair(1, "s"))
+50 │ val g = Box(none)
                  ╘══╛ Cannot infer the type of 'none'
 
 [compilation failed]

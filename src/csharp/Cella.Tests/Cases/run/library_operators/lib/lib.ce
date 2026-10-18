@@ -15,10 +15,10 @@ Money: pub rec
 	}
 }
 
-tagged[T]: pub rec
+Tagged[T]: pub rec
 {
 	value: T
 	tag: i32
 
-	<: op(imm a: tagged[T], imm b: tagged[T]) -> bool => a.tag < b.tag
+	<: op(imm a: Tagged[T], imm b: Tagged[T]) -> bool => a.tag < b.tag
 }

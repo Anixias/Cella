@@ -5,7 +5,7 @@ Error at builtin_type_names.ce:3:1
 
 Error at builtin_type_names.ce:5:5
 4 │ 
-5 │ box[i32]: rec { value: i32 }
+5 │ Box[i32]: rec { value: i32 }
         ╘═╛ Cannot use 'i32' as a name
 
 Error at builtin_type_names.ce:7:1

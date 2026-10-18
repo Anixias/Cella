@@ -1,6 +1,6 @@
 mod test
 
-empty[]: rec
+Empty[]: rec
 {
 	value: i32
 }
@@ -10,12 +10,12 @@ open[T: rec
 	value: T
 }
 
-constrained[T: noref + 3]: rec
+Constrained[T: noref + 3]: rec
 {
 	value: T
 }
 
-maybe[T]: ext enum
+Maybe[T]: ext enum
 {
 	none
 }

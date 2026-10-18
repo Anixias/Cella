@@ -1,3 +1,78 @@
+Hint at float_arithmetic.ce:10:6
+ 9 │ {
+10 │     var half: f64 = 1.5
+             ╘══╛ 'half' is never changed
+
+Hint at float_arithmetic.ce:11:6
+10 │ var half: f64 = 1.5
+11 │ var third: f32 = 1.0 / 3.0
+         ╘═══╛ 'third' is never changed
+
+Hint at float_arithmetic.ce:12:6
+11 │ var third: f32 = 1.0 / 3.0
+12 │ var scaled = half * 2 + 0.25
+         ╘════╛ 'scaled' is never changed
+
+Hint at float_arithmetic.ce:13:6
+12 │ var scaled = half * 2 + 0.25
+13 │ var exponent = 1.5e3
+         ╘══════╛ 'exponent' is never changed
+
+Hint at float_arithmetic.ce:14:6
+13 │ var exponent = 1.5e3
+14 │ var tiny = 2.5E-3
+         ╘══╛ 'tiny' is never changed
+
+Hint at float_arithmetic.ce:15:6
+14 │ var tiny = 2.5E-3
+15 │ var grouped = 1_000.000_5
+         ╘═════╛ 'grouped' is never changed
+
+Hint at float_arithmetic.ce:23:6
+22 │ x /= 2
+23 │ var rest = x % 4.0
+         ╘══╛ 'rest' is never changed
+
+Hint at float_arithmetic.ce:29:6
+28 │ 
+29 │ var count = 3
+         ╘═══╛ 'count' is never changed
+
+Hint at float_arithmetic.ce:30:6
+29 │ var count = 3
+30 │ var byte: u8 = 4
+         ╘══╛ 'byte' is never changed
+
+Hint at float_arithmetic.ce:31:6
+30 │ var byte: u8 = 4
+31 │ var a = count + half
+         ^ 'a' is never changed
+
+Hint at float_arithmetic.ce:32:6
+31 │ var a = count + half
+32 │ var b = single + half
+         ^ 'b' is never changed
+
+Hint at float_arithmetic.ce:33:6
+32 │ var b = single + half
+33 │ var c = single * 2
+         ^ 'c' is never changed
+
+Hint at float_arithmetic.ce:34:6
+33 │ var c = single * 2
+34 │ var d = byte * single
+         ^ 'd' is never changed
+
+Hint at float_arithmetic.ce:37:6
+36 │ 
+37 │ var zero = 0.0
+         ╘══╛ 'zero' is never changed
+
+Hint at float_arithmetic.ce:38:6
+37 │ var zero = 0.0
+38 │ var nan = zero / zero
+         ╘═╛ 'nan' is never changed
+
 1.50 0.333333 3.25 1500.0 0.0025 1000.0005 -1.5 1.5
 3.25 3.25 7.50
 4.50 9.00 15.00 30.00 8 4

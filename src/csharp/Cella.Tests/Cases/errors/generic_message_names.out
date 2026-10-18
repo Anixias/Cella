@@ -1,7 +1,7 @@
 Error at generic_message_names.ce:6:32
 5 │ value: T
-6 │ deep: get(imm self) -> i32 => box[ptr[T]](null).deep
-                                  ╘════════════════════╛ Instantiating 'box.deep' never ends
+6 │ deep: get(imm self) -> i32 => Box[ptr[T]](null).deep
+                                  ╘════════════════════╛ Instantiating 'Box.deep' never ends
 
 Error at generic_message_names.ce:11:42
 10 │ 
@@ -9,12 +9,12 @@ Error at generic_message_names.ce:11:42
                                               ╘═══╛ Cannot use arithmetic on value parameters in generic arguments
 
 Error at generic_message_names.ce:32:10
-31 │ val d = box(1).deep
-32 │ val o = option.some[i32](1)
+31 │ val d = Box(1).deep
+32 │ val o = Option.some[i32](1)
              ╘══════════════╛ Cannot pass type arguments to cases
 
 Error at generic_message_names.ce:33:10
-32 │ val o = option.some[i32](1)
+32 │ val o = Option.some[i32](1)
 33 │ val x = pick(null, 1)
              ╘══╛ Cannot infer 'T' for 'pick' from 'null' and 'i32'
 

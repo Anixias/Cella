@@ -1,3 +1,128 @@
+Hint at constant_folding.ce:36:6
+35 │ {
+36 │     var a: i32 = 2147483647
+             ^ 'a' is never changed
+
+Hint at constant_folding.ce:37:6
+36 │ var a: i32 = 2147483647
+37 │ var b: u8 = 200
+         ^ 'b' is never changed
+
+Hint at constant_folding.ce:38:6
+37 │ var b: u8 = 200
+38 │ var c: i32 = -7
+         ^ 'c' is never changed
+
+Hint at constant_folding.ce:39:6
+38 │ var c: i32 = -7
+39 │ var d: i32 = -2147483648
+         ^ 'd' is never changed
+
+Hint at constant_folding.ce:40:6
+39 │ var d: i32 = -2147483648
+40 │ var e: i32 = 1
+         ^ 'e' is never changed
+
+Hint at constant_folding.ce:41:6
+40 │ var e: i32 = 1
+41 │ var f: i32 = -16
+         ^ 'f' is never changed
+
+Hint at constant_folding.ce:42:6
+41 │ var f: i32 = -16
+42 │ var g: u32 = 4000000000
+         ^ 'g' is never changed
+
+Hint at constant_folding.ce:43:6
+42 │ var g: u32 = 4000000000
+43 │ var h: u8 = 129
+         ^ 'h' is never changed
+
+Hint at constant_folding.ce:44:6
+43 │ var h: u8 = 129
+44 │ var k: u16 = 1
+         ^ 'k' is never changed
+
+Hint at constant_folding.ce:45:6
+44 │ var k: u16 = 1
+45 │ var m: u16 = 0
+         ^ 'm' is never changed
+
+Hint at constant_folding.ce:46:6
+45 │ var m: u16 = 0
+46 │ var n: i32 = -1
+         ^ 'n' is never changed
+
+Hint at constant_folding.ce:47:6
+46 │ var n: i32 = -1
+47 │ var p: u32 = 1
+         ^ 'p' is never changed
+
+Hint at constant_folding.ce:48:6
+47 │ var p: u32 = 1
+48 │ var q: u128 = 18446744073709551615
+         ^ 'q' is never changed
+
+Hint at constant_folding.ce:54:6
+53 │ 
+54 │ var x: f32 = 0.1
+         ^ 'x' is never changed
+
+Hint at constant_folding.ce:55:6
+54 │ var x: f32 = 0.1
+55 │ var y: f32 = 0.2
+         ^ 'y' is never changed
+
+Hint at constant_folding.ce:56:6
+55 │ var y: f32 = 0.2
+56 │ var u: f64 = 0.1
+         ^ 'u' is never changed
+
+Hint at constant_folding.ce:57:6
+56 │ var u: f64 = 0.1
+57 │ var v: f64 = 0.2
+         ^ 'v' is never changed
+
+Hint at constant_folding.ce:58:6
+57 │ var v: f64 = 0.2
+58 │ var one: f32 = 1
+         ╘═╛ 'one' is never changed
+
+Hint at constant_folding.ce:59:6
+58 │ var one: f32 = 1
+59 │ var three: f32 = 3
+         ╘═══╛ 'three' is never changed
+
+Hint at constant_folding.ce:60:6
+59 │ var three: f32 = 3
+60 │ var r: f64 = -7.5
+         ^ 'r' is never changed
+
+Hint at constant_folding.ce:61:6
+60 │ var r: f64 = -7.5
+61 │ var two: f64 = 2.0
+         ╘═╛ 'two' is never changed
+
+Hint at constant_folding.ce:62:6
+61 │ var two: f64 = 2.0
+62 │ var zero: f64 = 0.0
+         ╘══╛ 'zero' is never changed
+
+Hint at constant_folding.ce:63:6
+62 │ var zero: f64 = 0.0
+63 │ var neg: f64 = -2.9
+         ╘═╛ 'neg' is never changed
+
+Hint at constant_folding.ce:64:6
+63 │ var neg: f64 = -2.9
+64 │ var odd: i64 = 16777217
+         ╘═╛ 'odd' is never changed
+
+Hint at constant_folding.ce:65:6
+64 │ var odd: i64 = 16777217
+65 │ var odd64: i64 = 9007199254740993
+         ╘═══╛ 'odd64' is never changed
+
 -2147483648 -2147483648|88 88|-3 -3|-1 -1|0 0|-2147483648 -2147483648|-4 -4|500000000 500000000
 3 3|32768 32768|65535 65535|1 1|0|18446744073709551614 18446744073709551614
 0.300000012 0.300000012|0.30000000000000004 0.30000000000000004|0.333333343 0.333333343|-1.5 -1.5|-2 -2

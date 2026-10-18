@@ -1,3 +1,8 @@
+Hint at stored_borrows.ce:40:7
+39 │ {
+40 │     var local = 1
+             ╘═══╛ 'local' is never changed
+
 Error at stored_borrows.ce:41:16
 40 │ var local = 1
 41 │ self.count = imm local

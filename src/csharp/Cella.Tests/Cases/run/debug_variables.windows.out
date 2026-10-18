@@ -1,3 +1,13 @@
+Hint at main.ce:317:6
+316 │ val flag = true
+317 │ var bits = Bits()
+          ╘══╛ 'bits' is never changed
+
+Hint at main.ce:318:6
+317 │ var bits = Bits()
+318 │ var node = Node(7, null)
+          ╘══╛ 'node' is never changed
+
 main
   local color: test.Color {red, green, blue}
   local shape: test.Shape {case: test.Shape.case {circle, square, empty} @0, circle: test.Shape.circle {radius: f64 @0} @8, square: test.Shape.square {side: i32 @0} @8}

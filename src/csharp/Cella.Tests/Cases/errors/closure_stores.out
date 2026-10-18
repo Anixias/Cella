@@ -29,6 +29,16 @@ Error at closure_stores.ce:94:6
 94 │ ret t
          ^ Cannot return borrows of local variables
 
+Hint at closure_stores.ce:99:6
+98 │ {
+99 │     var outer = 1
+             ╘═══╛ 'outer' is never changed
+
+Hint at closure_stores.ce:102:7
+101 │ {
+102 │     var local = 77
+              ╘═══╛ 'local' is never changed
+
 Error at closure_stores.ce:103:48
 102 │ var local = 77
 103 │ apply(mut t, fun(mut tt: Tally) { tt.count = imm local })

@@ -24,19 +24,19 @@ Plain: rec impl Ord
 
 f64: impl Ord
 
-box[T]: rec
+Box[T]: rec
 {
 	value: T
 }
 
-box[T: Ord]: impl Ord
+Box[T: Ord]: impl Ord
 {
-	<: op(imm a: box[T], imm b: box[T]) -> bool => a.value < b.value
+	<: op(imm a: Box[T], imm b: Box[T]) -> bool => a.value < b.value
 }
 
-box[T: Hash]: impl Eq
+Box[T: Hash]: impl Eq
 {
-	==: op(imm a: box[T], imm b: box[T]) -> bool => true
+	==: op(imm a: Box[T], imm b: Box[T]) -> bool => true
 }
 
 Even: trait req Odd
@@ -52,12 +52,12 @@ twice[T: Eq + Eq]: fun(imm a: T, imm b: T) -> bool => a == b
 Missing: trait req Unknown
 NotTrait: trait req i32
 
-list[T: Ord]: rec
+List[T: Ord]: rec
 {
 	value: T
 }
 
-list[T: Eq + Ord]: impl
+List[T: Eq + Ord]: impl
 {
 	same: fun(imm self, imm other: T) -> bool => self.value == other
 }

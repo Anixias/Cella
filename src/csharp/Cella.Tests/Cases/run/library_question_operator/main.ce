@@ -1,16 +1,16 @@
 mod test
 
-use lib.result
+use lib.Result
 
-parse: fun(n: i32) -> result[i32, i32]
+parse: fun(n: i32) -> Result[i32, i32]
 {
 	if n < 0
-		ret result.err(n)
+		ret Result.err(n)
 
-	ret result.ok(n)
+	ret Result.ok(n)
 }
 
-twice: fun(n: i32) -> result[i32, i32] => result.ok(parse(n)? * 2)
+twice: fun(n: i32) -> Result[i32, i32] => Result.ok(parse(n)? * 2)
 
 main: fun -> i32
 {

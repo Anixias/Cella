@@ -1,11 +1,11 @@
 Error at excluded_type_parameters.ce:3:41
 2 │ 
-3 │ sized[N: const i32]: enum { zero, big = N }
+3 │ Sized[N: const i32]: enum { zero, big = N }
                                             ^ Cannot use value parameters in case values
 
 Error at excluded_type_parameters.ce:5:44
 4 │ 
-5 │ measured[T]: enum { zero, big = i32(sizeOf(T)) }
+5 │ Measured[T]: enum { zero, big = i32(sizeOf(T)) }
                                                ^ Cannot use type parameters in case values
 
 [compilation failed]

@@ -1,3 +1,8 @@
+Hint at record_layout.ce:32:6
+31 │ {
+32 │     var index: usize = 1
+             ╘═══╛ 'index' is never changed
+
 -9876543210 42
 16 16 8
 32 32 16

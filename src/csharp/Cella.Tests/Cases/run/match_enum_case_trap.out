@@ -1,3 +1,8 @@
+Hint at match_enum_case_trap.ce:12:6
+11 │ {
+12 │     var n: u8 = 2
+             ^ 'n' is never changed
+
 [stderr]
-Panic at match_enum_case_trap.ce:13:18: 'parity.odd' can't hold this value
+Panic at match_enum_case_trap.ce:13:18: 'Parity.odd' can't hold this value
 [exit code 101]

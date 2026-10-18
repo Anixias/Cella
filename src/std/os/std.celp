@@ -3,4 +3,4 @@ StandardLibrary = "None"
 Prelude = ["std.panic"]
 
 [[ProjectReferences]]
-Path = '../core/std-core.celp'
+Path = '../core/stdCore.celp'

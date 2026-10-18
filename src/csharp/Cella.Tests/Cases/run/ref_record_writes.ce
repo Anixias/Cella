@@ -5,7 +5,7 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-span[T]: ref rec
+Span[T]: ref rec
 {
 	data: pvt ptr[T]
 	length: pvt set usize
@@ -18,10 +18,10 @@ span[T]: ref rec
 
 	[]: op(self, i: usize) -> mut[T] => mut self.data[i]
 
-	in: op(self) -> spanCursor[T] => spanCursor[T](self.data, self.length)
+	in: op(self) -> SpanCursor[T] => SpanCursor[T](self.data, self.length)
 }
 
-spanCursor[T]: ref rec
+SpanCursor[T]: ref rec
 {
 	data: pvt ptr[T]
 	left: pvt usize
@@ -49,7 +49,7 @@ spanCursor[T]: ref rec
 	*: op(self) -> mut[T] => mut *self.data
 }
 
-handle[T]: ref rec
+Handle[T]: ref rec
 {
 	target: pvt ptr[T]
 
@@ -61,7 +61,7 @@ handle[T]: ref rec
 	*: op(self) -> mut[T] => mut *self.target
 }
 
-cell[T]: ref rec
+Cell[T]: ref rec
 {
 	target: pvt ptr[T]
 	writes: usize
@@ -92,7 +92,7 @@ Point: rec
 	}
 }
 
-double: fun(values: span[i32])
+double: fun(values: Span[i32])
 {
 	var i: usize = 0
 	while i < values.length
@@ -107,13 +107,13 @@ set: fun(mut target: i32, value: i32)
 	target = value
 }
 
-zero: fun(values: span[i32])
+zero: fun(values: Span[i32])
 {
 	for mut value in values
 		value = 0
 }
 
-sum: fun(values: span[i32]) -> i32
+sum: fun(values: Span[i32]) -> i32
 {
 	var total = 0
 	for value in values
@@ -122,9 +122,9 @@ sum: fun(values: span[i32]) -> i32
 	ret total
 }
 
-first: fun(values: span[i32]) -> mut[i32] => mut values[0]
+first: fun(values: Span[i32]) -> mut[i32] => mut values[0]
 
-move: fun(at: handle[Point])
+move: fun(at: Handle[Point])
 {
 	at.x += 1
 	(*at).y = 9
@@ -133,7 +133,7 @@ move: fun(at: handle[Point])
 main: fun -> i32
 {
 	var four = [1, 2, 3, 4]
-	val s = span[i32](@four, 4)
+	val s = Span[i32](@four, 4)
 	s[0] = 10
 	double(s)
 	set(mut s[3], 77)
@@ -147,20 +147,20 @@ main: fun -> i32
 	printf("%d %d\n", four[0], four[3])
 
 	var points = [Point(1, 0), Point(2, 0)]
-	val p = span[Point](@points, 2)
+	val p = Span[Point](@points, 2)
 	p[0].x = 5
 	p[1].bump()
 	printf("%d %d\n", points[0].x, points[1].x)
 
 	var point = Point(1, 2)
-	val h = handle[Point](@point)
+	val h = Handle[Point](@point)
 	move(h)
 	*h = Point((*h).x + 10, (*h).y)
 	printf("%d %d\n", point.x, point.y)
 
 	var value = 1
-	val fixed = cell[i32](@value)
-	var counted = cell[i32](@value)
+	val fixed = Cell[i32](@value)
+	var counted = Cell[i32](@value)
 	*counted = 3
 	*counted += 1
 	printf("%d %d %zu %zu\n", value, *fixed, fixed.writes, counted.writes)

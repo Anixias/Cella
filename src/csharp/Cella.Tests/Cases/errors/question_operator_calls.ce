@@ -1,6 +1,6 @@
 mod test
 
-result[T, E]: enum
+Result[T, E]: enum
 {
 	ok(value: T)
 	err(error: E)
@@ -8,10 +8,10 @@ result[T, E]: enum
 	?: op(own self) -> T => match own self
 	{
 		ok(own value) => value
-		err(own error) => ret result.err(own error)
+		err(own error) => ret Result.err(own error)
 	}
 }
 
-called: fun(r: result[i32, i32]) -> result[i32, i32] => result.ok(r.?())
+called: fun(r: Result[i32, i32]) -> Result[i32, i32] => Result.ok(r.?())
 
 main: fun -> i32 => 0

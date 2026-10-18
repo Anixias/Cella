@@ -15,9 +15,9 @@ score: fun(h: Hit) -> i32 => match h
 	miss => 0
 }
 
-option[T]: enum { none, some(value: T) }
+Option[T]: enum { none, some(value: T) }
 
-depth: fun(o: option[option[i32]]) -> i32 => match o
+depth: fun(o: Option[Option[i32]]) -> i32 => match o
 {
 	some(some(1..10)) => 3
 	some(some(val v)) => v
@@ -42,10 +42,10 @@ size: fun(x: i32) -> i32 => match x
 main: fun -> i32
 {
 	printf("%d %d %d %d\n", score(Hit.hit(0)), score(Hit.hit(20)), score(Hit.hit(5)), score(Hit.miss))
-	val a: option[option[i32]] = option.some(option.some(5))
-	val b: option[option[i32]] = option.some(option.some(42))
-	val c: option[option[i32]] = option.some(option.none)
-	val d: option[option[i32]] = option.none
+	val a: Option[Option[i32]] = Option.some(Option.some(5))
+	val b: Option[Option[i32]] = Option.some(Option.some(42))
+	val c: Option[Option[i32]] = Option.some(Option.none)
+	val d: Option[Option[i32]] = Option.none
 	printf("%d %d %d %d\n", depth(a), depth(b), depth(c), depth(d))
 	printf("%d %d %d\n", size(0), size(1), size(2))
 	var total = 0

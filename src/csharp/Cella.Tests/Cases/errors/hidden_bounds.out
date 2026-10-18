@@ -20,12 +20,12 @@ Error at hidden_bounds.ce:21:6
 
 Error at hidden_bounds.ce:23:8
 22 │ 
-23 │ box[T: Secret]: pub rec
-            ╘════╛ 'Secret' is less visible than 'box'
+23 │ Box[T: Secret]: pub rec
+            ╘════╛ 'Secret' is less visible than 'Box'
 
 Error at hidden_bounds.ce:28:11
 27 │ 
-28 │ holder[T: Hash]: pub rec
-               ╘══╛ 'Hash' is less visible than 'holder'
+28 │ Holder[T: Hash]: pub rec
+               ╘══╛ 'Hash' is less visible than 'Holder'
 
 [compilation failed]

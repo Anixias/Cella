@@ -1,3 +1,8 @@
+Hint at owned_matches.ce:67:6
+66 │ {
+67 │     var effect = Effect.count(5)
+             ╘════╛ 'effect' is never changed
+
 drop 1
 drop 2
 drop 3

@@ -15,7 +15,7 @@ Buffer: pub rec
 	}
 }
 
-slot[T]: pub rec
+Slot[T]: pub rec
 {
 	kept: var Buffer = Buffer(40)
 }

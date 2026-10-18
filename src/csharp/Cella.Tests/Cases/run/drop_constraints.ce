@@ -15,7 +15,7 @@ Text: rec
 	}
 }
 
-pair[A, B]: rec
+Pair[A, B]: rec
 {
 	a: A
 	b: B
@@ -28,6 +28,6 @@ pass[T: drop]: fun(own value: T) -> i32 => hold(own value)
 main: fun -> i32
 {
 	printf("%d\n", hold(Text(1)))
-	printf("%d\n", pass(pair(Text(2), 5)))
+	printf("%d\n", pass(Pair(Text(2), 5)))
 	ret 0
 }

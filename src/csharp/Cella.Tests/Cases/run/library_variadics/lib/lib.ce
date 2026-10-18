@@ -1,6 +1,6 @@
 mod lib
 
-view[T]: pub ref rec
+View[T]: pub ref rec
 {
 	data: pvt ptr[T]
 	length: pvt set usize
@@ -14,7 +14,7 @@ view[T]: pub ref rec
 	[]: op(self, i: usize) -> imm[T] => imm self.data[i]
 }
 
-total: pub fun(...values: view[i32]) -> i32
+total: pub fun(...values: View[i32]) -> i32
 {
 	var sum = 0
 	for i in 0..values.length

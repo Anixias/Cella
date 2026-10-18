@@ -8,7 +8,7 @@ ext
 Color: ext enum { red, green, blue }
 twice: ext fun(x: i32) -> i32 => x * 2
 
-nullable[T: null]: enum match T
+Nullable[T: null]: enum match T
 {
 	none = null
 	some(value) = else
@@ -20,7 +20,7 @@ main: fun -> i32
 	printf("", twice)
 	val f: ext fun[i32 -> i32] = twice
 	printf("%d\n", i32(ptr(f) == ptr(twice)))
-	val missing: nullable[ptr[i32]] = nullable[ptr[i32]].none
+	val missing: Nullable[ptr[i32]] = Nullable[ptr[i32]].none
 	printf("%p\n", missing)
 	ret 0
 }

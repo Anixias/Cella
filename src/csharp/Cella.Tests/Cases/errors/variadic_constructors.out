@@ -1,27 +1,27 @@
 Error at variadic_constructors.ce:24:2
 23 │ 
-24 │ new: op(values: view[i32])
+24 │ new: op(values: View[i32])
      ╘═╛ 'new' doesn't match 'Maker.new'
 
 Error at variadic_constructors.ce:33:2
 32 │ 
-33 │ new: op(...values: view[i32])
+33 │ new: op(...values: View[i32])
      ╘═╛ 'Many.new' overloads cannot differ only in parameter modes
 
 Error at variadic_constructors.ce:41:2
 40 │ 
-41 │ new: op(mut ...values: view[i32])
+41 │ new: op(mut ...values: View[i32])
      ╘═╛ 'Many.new' overloads cannot differ only in parameter modes
 
 Error at variadic_constructors.ce:41:10
 40 │ 
-41 │ new: op(mut ...values: view[i32])
+41 │ new: op(mut ...values: View[i32])
              ╘═╛ Cannot take 'mut' variadic parameters
 
 Error at variadic_constructors.ce:60:25
 59 │ 
 60 │ takes: fun(needs: Needs[Packs]) {}
-                             ╘═══╛ 'Needs' requires 'T: new(view[i32])'
-                                 | 'Packs' has no constructor taking 'view[i32]'
+                             ╘═══╛ 'Needs' requires 'T: new(View[i32])'
+                                 | 'Packs' has no constructor taking 'View[i32]'
 
 [compilation failed]

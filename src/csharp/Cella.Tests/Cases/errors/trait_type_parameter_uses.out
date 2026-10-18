@@ -36,7 +36,7 @@ Error at trait_type_parameter_uses.ce:69:9
 
 Error at trait_type_parameter_uses.ce:70:15
 69 │ val x: Iterator[i32] = undef
-70 │ val c = cell[Iterator](1)
+70 │ val c = Cell[Iterator](1)
                   ╘══════╛ 'Iterator' takes one generic argument
 
 [compilation failed]

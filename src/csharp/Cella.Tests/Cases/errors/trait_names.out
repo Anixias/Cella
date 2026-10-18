@@ -15,8 +15,8 @@ Error at trait_names.ce:20:1
 
 Error at trait_names.ce:30:1
 29 │ 
-30 │ box: impl Hash
-     ╘═╛ 'box' takes one generic argument
+30 │ Box: impl Hash
+     ╘═╛ 'Box' takes one generic argument
 
 Error at trait_names.ce:35:1
 34 │ 

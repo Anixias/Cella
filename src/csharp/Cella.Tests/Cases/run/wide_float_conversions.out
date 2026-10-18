@@ -1,3 +1,23 @@
+Hint at wide_float_conversions.ce:10:6
+ 9 │ {
+10 │     var big: i128 = 170141183460469231731687303715884105727
+             ╘═╛ 'big' is never changed
+
+Hint at wide_float_conversions.ce:11:6
+10 │ var big: i128 = 170141183460469231731687303715884105727
+11 │ var neg: i128 = -12345678901234567890123
+         ╘═╛ 'neg' is never changed
+
+Hint at wide_float_conversions.ce:12:6
+11 │ var neg: i128 = -12345678901234567890123
+12 │ var ubig: u128 = 340282366920938463463374607431768211455
+         ╘══╛ 'ubig' is never changed
+
+Hint at wide_float_conversions.ce:14:6
+13 │ printf("%e %e %e %f\n", f64(big), f64(neg), f64(ubig), f32(neg))
+14 │ var x = 2.5e30
+         ^ 'x' is never changed
+
 1.701412e+38 -1.234568e+22 3.402824e+38 -12345679377913908035584.000000
 2499999 1500 -7
 [exit code 0]

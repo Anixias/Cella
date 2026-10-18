@@ -1,13 +1,13 @@
 mod test
 
-box[T]: rec
+Box[T]: rec
 {
 	value: T
 }
 
 extra: fun
 {
-	var b: box[i32, 1.5]
+	var b: Box[i32, 1.5]
 }
 
 indexed: fun

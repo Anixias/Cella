@@ -21,7 +21,7 @@ Token: rec
 	}
 }
 
-box[T]: rec
+Box[T]: rec
 {
 	target: pvt req ptr[T]
 
@@ -49,7 +49,7 @@ box[T]: rec
 
 main: fun -> i32
 {
-	val b = box(Token(7))
+	val b = Box(Token(7))
 	val t = b.unbox()
 	printf("got %d\n", t.id)
 	ret 0

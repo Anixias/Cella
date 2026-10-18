@@ -5,7 +5,7 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-option[T]: enum
+Option[T]: enum
 {
 	none
 	some(value: T)
@@ -13,14 +13,14 @@ option[T]: enum
 
 Iterator[T]: trait
 {
-	next: fun(mut self) -> option[T]
+	next: fun(mut self) -> Option[T]
 }
 
 Countdown: rec impl Iterator[i32]
 {
 	left: i32
 
-	next: fun(mut self) -> option[i32]
+	next: fun(mut self) -> Option[i32]
 	{
 		if self.left == 0
 			ret none
@@ -35,7 +35,7 @@ Repeat: rec impl Iterator[i32]
 	value: i32
 	times: i32
 
-	next: fun(mut self) -> option[i32]
+	next: fun(mut self) -> Option[i32]
 	{
 		if self.times == 0
 			ret none
@@ -82,13 +82,13 @@ Iterable[T, C: Iterator[T]]: trait
 	iterate: fun(imm self) -> C
 }
 
-cursor[T: copy]: rec impl Iterator[T]
+Cursor[T: copy]: rec impl Iterator[T]
 {
 	items: ptr[T]
 	length: usize
 	index: usize
 
-	next: fun(mut self) -> option[T]
+	next: fun(mut self) -> Option[T]
 	{
 		if self.index == self.length
 			ret none
@@ -98,15 +98,15 @@ cursor[T: copy]: rec impl Iterator[T]
 	}
 }
 
-fixed[T: copy]: rec
+Fixed[T: copy]: rec
 {
 	items: ptr[T]
 	length: usize
 }
 
-fixed[T: copy]: impl Iterable[T, cursor[T]]
+Fixed[T: copy]: impl Iterable[T, Cursor[T]]
 {
-	iterate: fun(self) -> cursor[T] => cursor[T](self.items, self.length, 0)
+	iterate: fun(self) -> Cursor[T] => Cursor[T](self.items, self.length, 0)
 }
 
 sum[I: Iterator[i32]]: fun(mut items: I) -> i32
@@ -124,12 +124,12 @@ total[C: Iterator[i32], S: Iterable[i32, C]]: fun(imm items: S) -> i32
 	ret sum(mut cursor)
 }
 
-wrap[I]: rec
+Wrap[I]: rec
 {
 	inner: I
 }
 
-wrap[I: Iterator[i32]]: impl
+Wrap[I: Iterator[i32]]: impl
 {
 	take: fun(mut self) -> i32 => match self.inner.next()
 	{
@@ -138,7 +138,7 @@ wrap[I: Iterator[i32]]: impl
 	}
 }
 
-holder[I: Iterator[i32]]: rec
+Holder[I: Iterator[i32]]: rec
 {
 	inner: I
 }
@@ -171,12 +171,12 @@ say: fun(text: fstr[Show[i32]])
 	text.piece(text.holes).show(0)
 }
 
-view[K: trait]: ref rec
+View[K: trait]: ref rec
 {
 	item: imm[dyn[K]]
 }
 
-slot[K: trait, T: K]: rec
+Slot[K: trait, T: K]: rec
 {
 	value: T
 }
@@ -189,14 +189,14 @@ main: fun -> i32
 
 	val item = Value(2)
 	var values = [1, 2, 3, 4]
-	val scores = fixed[i32](@values[0], 4)
-	var w = wrap(Countdown(3))
-	val h = holder(Countdown(2))
+	val scores = Fixed[i32](@values[0], 4)
+	var w = Wrap(Countdown(3))
+	val h = Holder(Countdown(2))
 	printf("%d %d %d %d\n", peek(imm item), total(imm scores), w.take(), h.inner.left)
 
 	say("a {1} b {2}\n")
-	val v = view[Cloner[i32]](item)
-	val s = slot[Cloner[i32], Value](Value(5))
+	val v = View[Cloner[i32]](item)
+	val s = Slot[Cloner[i32], Value](Value(5))
 	printf("%d %d\n", v.item.get(), s.value.get())
 	ret 0
 }

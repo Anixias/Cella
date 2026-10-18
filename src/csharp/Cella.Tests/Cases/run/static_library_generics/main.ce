@@ -20,7 +20,7 @@ main: fun -> i32
 	var counts = lib.make[i64](5)
 	counts.bump()
 	counts.bump()
-	val boxed = lib.box(Token(7))
+	val boxed = lib.Box(Token(7))
 	val outer = lib.Outer.make(3)
 	printf("%lld %d %d %d %d | ", counts.value, counts.steps, boxed.id, lib.selfCheck(), lib.totalBumps())
 	ret 0

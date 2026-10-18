@@ -10,12 +10,12 @@ Error at trait_parameter_declarations.ce:20:37
 
 Error at trait_parameter_declarations.ce:22:26
 21 │ 
-22 │ first: fun(value: holder[i32]) -> i32 => 0
+22 │ first: fun(value: Holder[i32]) -> i32 => 0
                               ╘═╛ 'i32' is not a trait
 
 Error at trait_parameter_declarations.ce:24:24
 23 │ 
-24 │ second: fun(value: box[Shape]) -> i32 => 0
+24 │ second: fun(value: Box[Shape]) -> i32 => 0
                             ╘═══╛ 'Shape' is not a type
 
 [compilation failed]

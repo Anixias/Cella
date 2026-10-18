@@ -1,6 +1,6 @@
 mod test
 
-option[T]: enum
+Option[T]: enum
 {
 	none
 	some(value: T)
@@ -12,14 +12,14 @@ option[T]: enum
 	}
 }
 
-loops: fun -> option[i32]
+loops: fun -> Option[i32]
 {
 	while true
 	{
-		val x = option.some(1)?
+		val x = Option.some(1)?
 	}
 
-	ret option.none
+	ret Option.none
 }
 
 main: fun -> i32 => 0

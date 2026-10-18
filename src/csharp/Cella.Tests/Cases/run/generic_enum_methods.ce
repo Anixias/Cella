@@ -5,7 +5,7 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-option[T]: enum
+Option[T]: enum
 {
 	none
 	some(value: T)
@@ -21,19 +21,19 @@ option[T]: enum
 		}
 	}
 
-	map[U]: fun(own self, change: fun[own T -> U]) -> option[U]
+	map[U]: fun(own self, change: fun[own T -> U]) -> Option[U]
 	{
 		match own self
 		{
-			some(own v) => ret option.some(change(own v))
-			none => ret option.none
+			some(own v) => ret Option.some(change(own v))
+			none => ret Option.none
 		}
 	}
 
-	empty: fun -> option[T] => option[T].none
+	empty: fun -> Option[T] => Option[T].none
 }
 
-slot[T: noref]: enum
+Slot[T: noref]: enum
 {
 	vacant
 	filled(value: T)
@@ -45,28 +45,28 @@ slot[T: noref]: enum
 		match mut self
 		{
 			filled(val current) => current = own value
-			vacant => self = slot.filled(own value)
+			vacant => self = Slot.filled(own value)
 		}
 	}
 
-	make: fun(own value: T) -> slot[T]
+	make: fun(own value: T) -> Slot[T]
 	{
 		created += 1
-		ret slot.filled(own value)
+		ret Slot.filled(own value)
 	}
 }
 
 double: fun(own n: i32) -> i64 => i64(n) * 2
 
-find[T]: fun(own value: T, present: bool) -> option[T]
+find[T]: fun(own value: T, present: bool) -> Option[T]
 {
 	if present
-		ret option.some(own value)
+		ret Option.some(own value)
 
-	ret option.none
+	ret Option.none
 }
 
-either[T]: fun(own first: option[T], own second: option[T]) -> option[T]
+either[T]: fun(own first: Option[T], own second: Option[T]) -> Option[T]
 {
 	if first.isSome
 		ret first
@@ -76,15 +76,15 @@ either[T]: fun(own first: option[T], own second: option[T]) -> option[T]
 
 main: fun -> i32
 {
-	val a = option.some(21)
+	val a = Option.some(21)
 	val b = a.map(double)
-	printf("%d %lld %d\n", i32(a.isSome), b.orElse(0), i32(option[i8].empty().isSome))
+	printf("%d %lld %d\n", i32(a.isSome), b.orElse(0), i32(Option[i8].empty().isSome))
 	printf("%d %d %d\n", find(4, true).orElse(-1), find(4, false).orElse(-1),
-		either(option[i32].none, option.some(8)).orElse(0))
+		either(Option[i32].none, Option.some(8)).orElse(0))
 
-	var s = slot[i32].make(1)
+	var s = Slot[i32].make(1)
 	s.put(2)
-	val t = slot[i64].make(3)
-	printf("%d %d %d\n", match s { filled(val v) => v, vacant => 0 }, slot[i32].created, slot[i64].created)
+	val t = Slot[i64].make(3)
+	printf("%d %d %d\n", match s { filled(val v) => v, vacant => 0 }, Slot[i32].created, Slot[i64].created)
 	ret 0
 }

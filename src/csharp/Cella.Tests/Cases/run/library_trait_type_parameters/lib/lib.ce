@@ -1,6 +1,6 @@
 mod lib
 
-option[T]: pub enum
+Option[T]: pub enum
 {
 	none
 	some(value: T)
@@ -8,7 +8,7 @@ option[T]: pub enum
 
 Iterator[T]: pub trait
 {
-	next: fun(mut self) -> option[T]
+	next: fun(mut self) -> Option[T]
 	skip: fun(mut self)
 	{
 		self.next()
@@ -36,7 +36,7 @@ Range: pub rec impl Iterator[i32]
 	at: i32
 	end: i32
 
-	next: fun(mut self) -> option[i32]
+	next: fun(mut self) -> Option[i32]
 	{
 		if self.at >= self.end
 			ret none
@@ -88,22 +88,22 @@ Point: impl Pair[i64, i32]
 	join: fun(self, a: i64, b: i32) -> i32 => self.x * 100 + i32(a) + b
 }
 
-box[T]: pub rec
+Box[T]: pub rec
 {
 	value: T
 }
 
-box[T]: impl Pair[T, i32]
+Box[T]: impl Pair[T, i32]
 {
 	join: fun(imm self, imm a: T, b: i32) -> i32 => b * 2
 }
 
 combine[A, B, P: Pair[A, B]]: pub fun(imm item: P, imm a: A, imm b: B) -> i32 => item.join(imm a, imm b)
 
-couple[A, B]: pub rec
+Couple[A, B]: pub rec
 {
 	a: A
 	b: B
 }
 
-first: pub fun(value: couple[i32, f64]) -> i32 => value.a
+first: pub fun(value: Couple[i32, f64]) -> i32 => value.a

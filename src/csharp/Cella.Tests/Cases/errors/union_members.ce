@@ -1,6 +1,6 @@
 mod test
 
-view[T]: ref rec
+View[T]: ref rec
 {
 	data: pvt ptr[T]
 	length: pvt set usize
@@ -17,7 +17,7 @@ Name: rec
 
 Holds: union
 {
-	text: view[u8]
+	text: View[u8]
 	name: Name
 	callback: fun[i32]
 	count: req i32

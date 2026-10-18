@@ -1,6 +1,6 @@
 mod pairs
 
-pair[T]: rec
+Pair[T]: rec
 {
 	a: T
 	b: T

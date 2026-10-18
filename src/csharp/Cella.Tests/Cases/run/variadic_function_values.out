@@ -1,3 +1,8 @@
+Hint at variadic_function_values.ce:85:6
+84 │ 
+85 │ var offset = 100
+         ╘════╛ 'offset' is never changed
+
 5 x 1.5
 9
 one: 1 two

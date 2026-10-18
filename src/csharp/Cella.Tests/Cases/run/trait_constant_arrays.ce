@@ -31,12 +31,12 @@ Wide: rec impl Integer
 	bits: const u32 = 128
 }
 
-box[T: Integer]: rec
+Box[T: Integer]: rec
 {
 	value: T
 }
 
-box[T: Integer]: impl Integer
+Box[T: Integer]: impl Integer
 {
 	bits: const u32 = T.bits * 2
 }
@@ -61,7 +61,7 @@ main: fun -> i32
 {
 	val four = toBytes[i32](10)
 	val one = toBytes[u8](7)
-	val boxed = toBytes[box[u8]](1)
+	val boxed = toBytes[Box[u8]](1)
 	val concrete: array[u8, i32.bytes] = [1, 2, 3, 4]
 	printf("%zu %u %u %zu %zu\n", four.length, four[0], four[3], one.length, boxed.length)
 	printf("%zu %zu %zu\n", sizeOf(Buffer[Wide]), sizeOf(Buffer[i32]), concrete.length)

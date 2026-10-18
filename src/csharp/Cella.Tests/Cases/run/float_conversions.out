@@ -1,3 +1,48 @@
+Hint at float_conversions.ce:10:6
+ 9 │ {
+10 │     var count = 7
+             ╘═══╛ 'count' is never changed
+
+Hint at float_conversions.ce:11:6
+10 │ var count = 7
+11 │ var small: u16 = 300
+         ╘═══╛ 'small' is never changed
+
+Hint at float_conversions.ce:12:6
+11 │ var small: u16 = 300
+12 │ var asDouble: f64 = count
+         ╘══════╛ 'asDouble' is never changed
+
+Hint at float_conversions.ce:13:6
+12 │ var asDouble: f64 = count
+13 │ var asSingle: f32 = small
+         ╘══════╛ 'asSingle' is never changed
+
+Hint at float_conversions.ce:14:6
+13 │ var asSingle: f32 = small
+14 │ var widened = f64(asSingle)
+         ╘═════╛ 'widened' is never changed
+
+Hint at float_conversions.ce:15:6
+14 │ var widened = f64(asSingle)
+15 │ var narrowed = f32(asDouble)
+         ╘══════╛ 'narrowed' is never changed
+
+Hint at float_conversions.ce:16:6
+15 │ var narrowed = f32(asDouble)
+16 │ var rounded = f64(9_007_199_254_740_993)
+         ╘═════╛ 'rounded' is never changed
+
+Hint at float_conversions.ce:19:6
+18 │ 
+19 │ var truncated = i32(2.7)
+         ╘═══════╛ 'truncated' is never changed
+
+Hint at float_conversions.ce:20:6
+19 │ var truncated = i32(2.7)
+20 │ var negative = i32(-2.7)
+         ╘══════╛ 'negative' is never changed
+
 7.0 300.0 300.0 7.0 9007199254740992.0
 2 -2
 [exit code 0]

@@ -5,7 +5,7 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-view[T]: ref rec
+View[T]: ref rec
 {
 	data: pvt ptr[T]
 	length: pvt set usize
@@ -16,7 +16,7 @@ view[T]: ref rec
 		self.length = length
 	}
 
-	as[N: const usize]: op(imm values: array[T, N]) -> view[T] => view[T](@values, N)
+	as[N: const usize]: op(imm values: array[T, N]) -> View[T] => View[T](@values, N)
 
 	[]: op(self, i: usize) -> imm[T] => imm self.data[i]
 }
@@ -30,7 +30,7 @@ Arg: ref enum
 	as: op(value: str) -> Arg => text(value)
 }
 
-print: fun(template: str, ...args: view[Arg])
+print: fun(template: str, ...args: View[Arg])
 {
 	printf("%.*s:", i32(template.byteLength), template.data)
 	for i in 0..args.length
@@ -45,7 +45,7 @@ print: fun(template: str, ...args: view[Arg])
 	printf("\n")
 }
 
-sum: fun(...values: view[i32]) -> i32
+sum: fun(...values: View[i32]) -> i32
 {
 	var total = 0
 	for i in 0..values.length
@@ -54,15 +54,15 @@ sum: fun(...values: view[i32]) -> i32
 	ret total
 }
 
-forward: fun(sink: fun[str, ...view[Arg]], template: str, ...args: view[Arg])
+forward: fun(sink: fun[str, ...View[Arg]], template: str, ...args: View[Arg])
 {
 	sink(template, ...args)
 	sink("extra", 7)
 }
 
-apply[T: copy + noref]: fun(f: fun[...view[T] -> T], a: T, b: T) -> T => f(a, b)
+apply[T: copy + noref]: fun(f: fun[...View[T] -> T], a: T, b: T) -> T => f(a, b)
 
-bound[F: fun[...view[i32] -> i32]]: fun(imm f: F) -> i32 => f(4, 5, 6)
+bound[F: fun[...View[i32] -> i32]]: fun(imm f: F) -> i32 => f(4, 5, 6)
 
 main: fun -> i32
 {
@@ -71,7 +71,7 @@ main: fun -> i32
 	val natural = printf
 	natural("%d\n", 9)
 
-	val sink: fun[str, ...view[Arg]] = print
+	val sink: fun[str, ...View[Arg]] = print
 	sink("one", 1, "two")
 	sink("none")
 	forward(print, "fw", 3, "four")
@@ -79,11 +79,11 @@ main: fun -> i32
 	val total = sum
 	printf("%d %d %d %d\n", total(1, 2, 3), total(), total(...[4, 5]), apply(sum, 20, 22))
 
-	val lambda: fun[str, ...view[Arg]] = fun(template, args) => printf("lambda %zu\n", args.length)
+	val lambda: fun[str, ...View[Arg]] = fun(template, args) => printf("lambda %zu\n", args.length)
 	lambda("x", 1, 2, 3)
 
 	var offset = 100
-	val counted: ref fun[...view[i32] -> i32] = fun(values) => i32(values.length) + offset
+	val counted: ref fun[...View[i32] -> i32] = fun(values) => i32(values.length) + offset
 	printf("%d %d %d\n", counted(1, 2), bound(sum), bound(fun(values) => i32(values.length) * 10))
 	printf("%d\n", bound(own fun(values) => i32(values.length) + offset))
 	ret 0

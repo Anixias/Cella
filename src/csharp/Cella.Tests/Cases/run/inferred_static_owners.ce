@@ -5,30 +5,30 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-option[T]: enum
+Option[T]: enum
 {
 	none
 	some(value: T)
 
-	empty: fun -> option[T] => option[T].none
+	empty: fun -> Option[T] => Option[T].none
 
-	of: fun(own value: T) -> option[T] => option[T].some(own value)
+	of: fun(own value: T) -> Option[T] => Option[T].some(own value)
 }
 
-pair[A, B]: rec
+Pair[A, B]: rec
 {
 	a: A
 	b: B
 
-	make: fun(own a: A, own b: B) -> pair[A, B] => pair[A, B](own a, own b)
+	make: fun(own a: A, own b: B) -> Pair[A, B] => Pair[A, B](own a, own b)
 }
 
 main: fun -> i32
 {
-	val o: option[i32] = option.empty()
-	val s = option.of(5)
-	val p = pair.make(1, 2.5)
-	val n: option[i64] = option.of(7)
+	val o: Option[i32] = Option.empty()
+	val s = Option.of(5)
+	val p = Pair.make(1, 2.5)
+	val n: Option[i64] = Option.of(7)
 	val sv = match s { some(val v) => v, else => 0 }
 	val nv = match n { some(val v) => v, else => 0i64 }
 	printf("%d %d %d %.1f %lld %d\n", i32(o is none), sv, p.a, p.b, nv, sizeOf(n))

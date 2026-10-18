@@ -1,3 +1,118 @@
+Hint at mixed_sign_arithmetic.ce:10:6
+ 9 │ {
+10 │     var small: u8 = 200
+             ╘═══╛ 'small' is never changed
+
+Hint at mixed_sign_arithmetic.ce:11:6
+10 │ var small: u8 = 200
+11 │ var offset: i32 = -50
+         ╘════╛ 'offset' is never changed
+
+Hint at mixed_sign_arithmetic.ce:12:6
+11 │ var offset: i32 = -50
+12 │ var sum = small + offset
+         ╘═╛ 'sum' is never changed
+
+Hint at mixed_sign_arithmetic.ce:14:6
+13 │ 
+14 │ var count: u32 = 4000000000
+         ╘═══╛ 'count' is never changed
+
+Hint at mixed_sign_arithmetic.ce:15:6
+14 │ var count: u32 = 4000000000
+15 │ var wide: i64 = -1
+         ╘══╛ 'wide' is never changed
+
+Hint at mixed_sign_arithmetic.ce:16:6
+15 │ var wide: i64 = -1
+16 │ var total = count + wide
+         ╘═══╛ 'total' is never changed
+
+Hint at mixed_sign_arithmetic.ce:17:6
+16 │ var total = count + wide
+17 │ var widened: i64 = count
+         ╘═════╛ 'widened' is never changed
+
+Hint at mixed_sign_arithmetic.ce:19:6
+18 │ 
+19 │ var letter = 'a'
+         ╘════╛ 'letter' is never changed
+
+Hint at mixed_sign_arithmetic.ce:20:6
+19 │ var letter = 'a'
+20 │ var code: u32 = u32(letter)
+         ╘══╛ 'code' is never changed
+
+Hint at mixed_sign_arithmetic.ce:24:6
+23 │ 
+24 │ var negative: i8 = -100
+         ╘══════╛ 'negative' is never changed
+
+Hint at mixed_sign_arithmetic.ce:25:6
+24 │ var negative: i8 = -100
+25 │ var medium: u16 = 60000
+         ╘════╛ 'medium' is never changed
+
+Hint at mixed_sign_arithmetic.ce:26:6
+25 │ var medium: u16 = 60000
+26 │ var short: i16 = -30000
+         ╘═══╛ 'short' is never changed
+
+Hint at mixed_sign_arithmetic.ce:27:6
+26 │ var short: i16 = -30000
+27 │ var signed: i32 = -2000000000
+         ╘════╛ 'signed' is never changed
+
+Hint at mixed_sign_arithmetic.ce:28:6
+27 │ var signed: i32 = -2000000000
+28 │ var big: u64 = 18000000000000000000
+         ╘═╛ 'big' is never changed
+
+Hint at mixed_sign_arithmetic.ce:29:6
+28 │ var big: u64 = 18000000000000000000
+29 │ var signedWide: i64 = -9000000000000000000
+         ╘════════╛ 'signedWide' is never changed
+
+Hint at mixed_sign_arithmetic.ce:30:6
+29 │ var signedWide: i64 = -9000000000000000000
+30 │ var bytes = small + negative
+         ╘═══╛ 'bytes' is never changed
+
+Hint at mixed_sign_arithmetic.ce:31:6
+30 │ var bytes = small + negative
+31 │ var mixed = medium + negative
+         ╘═══╛ 'mixed' is never changed
+
+Hint at mixed_sign_arithmetic.ce:32:6
+31 │ var mixed = medium + negative
+32 │ var halves = medium + short
+         ╘════╛ 'halves' is never changed
+
+Hint at mixed_sign_arithmetic.ce:33:6
+32 │ var halves = medium + short
+33 │ var masked = small & negative
+         ╘════╛ 'masked' is never changed
+
+Hint at mixed_sign_arithmetic.ce:37:6
+36 │ 
+37 │ var words = count + signed
+         ╘═══╛ 'words' is never changed
+
+Hint at mixed_sign_arithmetic.ce:38:6
+37 │ var words = count + signed
+38 │ var product = count * signed
+         ╘═════╛ 'product' is never changed
+
+Hint at mixed_sign_arithmetic.ce:39:6
+38 │ var product = count * signed
+39 │ var quotient = count / signed
+         ╘══════╛ 'quotient' is never changed
+
+Hint at mixed_sign_arithmetic.ce:40:6
+39 │ var quotient = count / signed
+40 │ var longs = big + signedWide
+         ╘═══╛ 'longs' is never changed
+
 150 3999999999 4000000000 97
 100 2 59900 4 30000 4 136 2
 2000000000 8 -8000000000000000000 8 -2 8 9000000000000000000 16

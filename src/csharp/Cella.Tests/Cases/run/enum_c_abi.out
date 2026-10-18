@@ -1,3 +1,13 @@
+Hint at enum_c_abi.ce:39:6
+38 │ {
+39 │     var flip: ext fun[Team, i32 -> Team] = swap
+             ╘══╛ 'flip' is never changed
+
+Hint at enum_c_abi.ce:40:6
+39 │ var flip: ext fun[Team, i32 -> Team] = swap
+40 │ var join: ext fun[Effect, i32 -> Effect] = combine
+         ╘══╛ 'join' is never changed
+
 1
 4 77
 none

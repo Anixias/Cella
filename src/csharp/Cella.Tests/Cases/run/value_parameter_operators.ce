@@ -5,7 +5,7 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-view[T]: ref rec
+View[T]: ref rec
 {
 	data: pvt ptr[T]
 	length: pvt set usize
@@ -16,7 +16,7 @@ view[T]: ref rec
 		self.length = length
 	}
 
-	as[N: const usize]: op(imm values: array[T, N]) -> view[T] => view[T](@values, N)
+	as[N: const usize]: op(imm values: array[T, N]) -> View[T] => View[T](@values, N)
 
 	[]: op(self, i: usize) -> imm[T] => imm self.data[i]
 }
@@ -53,7 +53,7 @@ Grid: rec
 	}
 }
 
-sum: fun(values: view[i32]) -> i32
+sum: fun(values: View[i32]) -> i32
 {
 	var total = 0
 	var i: usize = 0

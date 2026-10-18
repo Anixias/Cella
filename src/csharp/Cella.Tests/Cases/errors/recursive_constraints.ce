@@ -1,11 +1,11 @@
 mod test
 
-cell[T: copy]: rec
+Cell[T: copy]: rec
 {
 	value: ptr[T]
 }
 
-holder[T: new]: rec
+Holder[T: new]: rec
 {
 	value: ptr[T]
 }
@@ -21,13 +21,13 @@ Text: rec
 
 Bad: rec
 {
-	next: cell[Bad]
+	next: Cell[Bad]
 	text: Text
 }
 
 Needy: rec
 {
-	up: holder[Needy]
+	up: Holder[Needy]
 	count: req i32
 }
 

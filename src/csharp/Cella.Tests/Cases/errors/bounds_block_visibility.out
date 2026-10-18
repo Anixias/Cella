@@ -1,6 +1,6 @@
 Error at main.ce:15:13
 14 │ 
-15 │ box[T: Eq]: pub impl
+15 │ Box[T: Eq]: pub impl
                  ╘═╛ Cannot declare 'pub' members
 
 [compilation failed]

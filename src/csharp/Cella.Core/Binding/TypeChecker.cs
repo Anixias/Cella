@@ -24,6 +24,9 @@ public sealed class TypeChecker
 	private readonly Stack<(TypeSymbol? Type, FunctionSymbol Function)> _returns = [];
 	private readonly HashSet<(SourceLocation, string)> _inlinedErrors = [];
 	private readonly List<(IResolvedDeclarationNode Node, List<Diagnostic> Diagnostics, bool IsInvalid)> _checked = [];
+	private readonly List<LocalVariableSymbol> _vars = [];
+	private readonly List<(LocalVariableSymbol Local, List<Diagnostic> Diagnostics)> _declaredVars = [];
+	private readonly HashSet<LocalVariableSymbol> _changedVars = [];
 	private bool sawInvalid;
 	private int continueDepth;
 	private int breakDepth;
@@ -35,6 +38,7 @@ public sealed class TypeChecker
 	
 	public void Complete()
 	{
+		ReportUnchangedVars();
 		foreach (var (node, _, isInvalid) in _checked)
 		{
 			if (isInvalid)
@@ -57,11 +61,51 @@ public sealed class TypeChecker
 		
 		var diagnostics = new List<Diagnostic>();
 		var previous = Diagnostics.Redirect(diagnostics);
+		var firstVar = _vars.Count;
 		sawInvalid = false;
 		check();
 		Diagnostics.Redirect(previous);
+		_declaredVars.AddRange(_vars.Skip(firstVar).Select(local => (local, diagnostics)));
+		_vars.RemoveRange(firstVar, _vars.Count - firstVar);
 		_checked.Add((node, diagnostics, sawInvalid));
 	}
+	
+	private void ReportUnchangedVars()
+	{
+		foreach (var (local, diagnostics) in _declaredVars)
+		{
+			if (!_changedVars.Contains(local) &&
+			    diagnostics.All(static diagnostic => diagnostic.Severity != DiagnosticSeverity.Error))
+				diagnostics.Add(new(DiagnosticSeverity.Hint, local.Identifier.SourceLocation,
+					$"'{local.Name}' is never changed"));
+		}
+		
+		_declaredVars.Clear();
+		_changedVars.Clear();
+	}
+	
+	private void MarkChanged(IResolvedExpressionNode place)
+	{
+		if (FindWrittenLocal(place) is { } local)
+			_changedVars.Add(local);
+	}
+	
+	private static LocalVariableSymbol? FindWrittenLocal(IResolvedExpressionNode place) => place switch
+	{
+		ResolvedVarExpressionNode { Symbol: LocalVariableSymbol local } => FindCapturedLocal(local),
+		ResolvedAccessExpressionNode { Member: FieldSymbol } e => FindWrittenLocal(e.Target),
+		ResolvedIndexerExpressionNode { Target.Type: ArrayType } e => FindWrittenLocal(e.Target),
+		ResolvedAssignmentExpressionNode e => FindWrittenLocal(e.Left),
+		ResolvedUnaryOpExpressionNode
+		{
+			Operation.Op: TokenType.OpStar,
+			Operand: ResolvedVarExpressionNode { Symbol: LocalVariableSymbol { Captured: LocalVariableSymbol } local }
+		} => FindCapturedLocal(local),
+		_ => null
+	};
+	
+	private static LocalVariableSymbol FindCapturedLocal(LocalVariableSymbol local) =>
+		local.Captured is LocalVariableSymbol captured ? FindCapturedLocal(captured) : local;
 	
 	private void VisitNode(IResolvedStatementNode node) => ((IResolvedStatementNodeVisitor)this).Visit(node);
 	private void VisitNode(IResolvedDeclarationNode node) => ((IResolvedDeclarationNodeVisitor)this).Visit(node);
@@ -325,6 +369,9 @@ public sealed class TypeChecker
 	{
 		if (node.Initializer is { } initializer)
 		{
+			if (node.Symbol.IsMutable)
+				_vars.Add(node.Symbol);
+			
 			// Special case: If undef, don't check (it will throw an error)
 			if (initializer is not ResolvedUndefExpressionNode)
 			{
@@ -551,6 +598,7 @@ public sealed class TypeChecker
 	
 	public void Visit(ResolvedAssignmentExpressionNode node)
 	{
+		MarkChanged(node.Left);
 		if (node.Left is ResolvedAccessExpressionNode { Member: PropertySymbol { Setter: null } })
 			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Left.Syntax.SourceLocation,
 				"Cannot reassign read-only properties"));
@@ -885,6 +933,7 @@ public sealed class TypeChecker
 	
 	public void Visit(ResolvedMutArgumentExpressionNode node)
 	{
+		MarkChanged(node.Place);
 		if (FindMutPlaceError(node.Place) is { } error)
 			Diagnostics.Add(node.OnlyMutOperator is { } name
 				? new(DiagnosticSeverity.Error, error.SourceLocation,
@@ -913,6 +962,7 @@ public sealed class TypeChecker
 	
 	private void CheckMutPlace(IResolvedExpressionNode place)
 	{
+		MarkChanged(place);
 		if (FindMutPlaceError(place) is { } error)
 			Diagnostics.Add(error);
 	}
@@ -1071,6 +1121,9 @@ public sealed class TypeChecker
 	
 	public void Visit(ResolvedUnaryOpExpressionNode node)
 	{
+		if (node.Operation?.Op == TokenType.OpAt)
+			MarkChanged(node.Operand);
+		
 		if (node.Operation?.Op == TokenType.OpAt && !IsLValue(SkipAssignment(node.Operand)))
 			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Operand.Syntax.SourceLocation,
 				$"Cannot take the address of {DescribeUnstored(node.Operand)}"));

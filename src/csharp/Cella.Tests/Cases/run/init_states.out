@@ -1,3 +1,13 @@
+Hint at init_states.ce:52:6
+51 │ {
+52 │     var p = Pair(make(1), make(2))
+             ^ 'p' is never changed
+
+Hint at init_states.ce:100:6
+ 99 │ items[2] = make(4)
+100 │ var i: usize = 1
+          ^ 'i' is never changed
+
 drop 1
 drop 1
 1 0

@@ -1,19 +1,19 @@
 Error at noref_arguments.ce:15:14
 14 │ {
-15 │     inner: cell[T]
-                     ^ 'cell' requires 'Element: noref'
+15 │     inner: Cell[T]
+                     ^ 'Cell' requires 'Element: noref'
                      | 'T' may hold borrows
 
 Error at noref_arguments.ce:16:16
-15 │ inner: cell[T]
-16 │ other: copier[T]
-                   ^ 'copier' requires 'Element: copy'
+15 │ inner: Cell[T]
+16 │ other: Copier[T]
+                   ^ 'Copier' requires 'Element: copy'
                    | 'T' can't be copied
 
 Error at noref_arguments.ce:17:20
-16 │ other: copier[T]
-17 │ nested: cell[cell[T]]
-                       ^ 'cell' requires 'Element: noref'
+16 │ other: Copier[T]
+17 │ nested: Cell[Cell[T]]
+                       ^ 'Cell' requires 'Element: noref'
                        | 'T' may hold borrows
 
 [compilation failed]

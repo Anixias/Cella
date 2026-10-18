@@ -1,2 +1,17 @@
+Hint at variadic_call.ce:10:6
+ 9 │ {
+10 │     var small: u8 = 200
+             ╘═══╛ 'small' is never changed
+
+Hint at variadic_call.ce:11:6
+10 │ var small: u8 = 200
+11 │ var negative: i8 = -5
+         ╘══════╛ 'negative' is never changed
+
+Hint at variadic_call.ce:12:6
+11 │ var negative: i8 = -5
+12 │ var big: i64 = 5000000000
+         ╘═╛ 'big' is never changed
+
 42 text 200 -5 5000000000 1
 [exit code 0]

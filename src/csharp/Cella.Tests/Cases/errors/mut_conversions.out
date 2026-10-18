@@ -5,22 +5,22 @@ Error at mut_conversions.ce:41:7
 
 Error at mut_conversions.ce:42:20
 41 │ fill(three, 7)
-42 │ val s = span[i32](four)
+42 │ val s = Span[i32](four)
                        ╘══╛ Cannot mutably borrow arguments implicitly
 
 Error at mut_conversions.ce:43:21
-42 │ val s = span[i32](four)
-43 │ val t: span[i32] = four
+42 │ val s = Span[i32](four)
+43 │ val t: Span[i32] = four
                         ╘══╛ Cannot mutably borrow arguments implicitly
 
 Error at mut_conversions.ce:44:7
-43 │ val t: span[i32] = four
+43 │ val t: Span[i32] = four
 44 │ read(mut four)
           ╘═╛ 'values' isn't a 'mut' parameter
 
 Error at mut_conversions.ce:45:11
 44 │ read(mut four)
 45 │ grow(mut three)
-              ╘═══╛ Cannot mutably borrow 'array[i32, 3]' values as 'span[i32]'
+              ╘═══╛ Cannot mutably borrow 'array[i32, 3]' values as 'Span[i32]'
 
 [compilation failed]

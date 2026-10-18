@@ -1,3 +1,13 @@
+Hint at index_order.ce:33:6
+32 │ 
+33 │ var cell = grid[row()][column()]
+         ╘══╛ 'cell' is never changed
+
+Hint at index_order.ce:34:6
+33 │ var cell = grid[row()][column()]
+34 │ var element = numbers()[row()]
+         ╘═════╛ 'element' is never changed
+
 row
 column
 numbers

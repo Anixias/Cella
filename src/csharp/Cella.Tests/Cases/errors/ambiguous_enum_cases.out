@@ -1,5 +1,5 @@
 Error at ambiguous_enum_cases.ce:22:20
-21 │ val none = option[i32].some(1)
+21 │ val none = Option[i32].some(1)
 22 │ val picked = pick(none)
                        ╘══╛ 'none' is ambiguous
 

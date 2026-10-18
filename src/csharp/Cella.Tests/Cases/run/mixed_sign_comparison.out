@@ -1,3 +1,63 @@
+Hint at mixed_sign_comparison.ce:17:6
+16 │ {
+17 │     var negative: i32 = -1
+             ╘══════╛ 'negative' is never changed
+
+Hint at mixed_sign_comparison.ce:18:6
+17 │ var negative: i32 = -1
+18 │ var one: u32 = 1
+         ╘═╛ 'one' is never changed
+
+Hint at mixed_sign_comparison.ce:22:6
+21 │ 
+22 │ var largest: u32 = 4294967295
+         ╘═════╛ 'largest' is never changed
+
+Hint at mixed_sign_comparison.ce:25:6
+24 │ 
+25 │ var wide: i64 = -5
+         ╘══╛ 'wide' is never changed
+
+Hint at mixed_sign_comparison.ce:26:6
+25 │ var wide: i64 = -5
+26 │ var small: u8 = 200
+         ╘═══╛ 'small' is never changed
+
+Hint at mixed_sign_comparison.ce:29:6
+28 │ 
+29 │ var hugeSigned: i128 = -1
+         ╘════════╛ 'hugeSigned' is never changed
+
+Hint at mixed_sign_comparison.ce:30:6
+29 │ var hugeSigned: i128 = -1
+30 │ var hugeUnsigned: u128 = 340282366920938463463374607431768211455
+         ╘══════════╛ 'hugeUnsigned' is never changed
+
+Hint at mixed_sign_comparison.ce:33:6
+32 │ 
+33 │ var size: usize = 3
+         ╘══╛ 'size' is never changed
+
+Hint at mixed_sign_comparison.ce:34:6
+33 │ var size: usize = 3
+34 │ var offset: isize = -3
+         ╘════╛ 'offset' is never changed
+
+Hint at mixed_sign_comparison.ce:37:6
+36 │ 
+37 │ var letter = 'a'
+         ╘════╛ 'letter' is never changed
+
+Hint at mixed_sign_comparison.ce:38:6
+37 │ var letter = 'a'
+38 │ var code: i32 = 97
+         ╘══╛ 'code' is never changed
+
+Hint at mixed_sign_comparison.ce:39:6
+38 │ var code: i32 = 97
+39 │ var minus: i32 = -97
+         ╘═══╛ 'minus' is never changed
+
 1 1 0 0 0 1
 0 1
 1 1

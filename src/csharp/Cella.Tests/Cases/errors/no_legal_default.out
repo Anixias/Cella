@@ -1,8 +1,8 @@
 Error at no_legal_default.ce:36:36
 35 │ 
-36 │ needsNew[T: new]: fun -> box[T] => box[T]()
-                                        ╘══════╛ No constructor for 'box[T]' accepts these arguments
-                                               | 'box[T]' takes one argument for each field: value
+36 │ needsNew[T: new]: fun -> Box[T] => Box[T]()
+                                        ╘══════╛ No constructor for 'Box[T]' accepts these arguments
+                                               | 'Box[T]' takes one argument for each field: value
 
 Error at no_legal_default.ce:41:10
 40 │ var v: Vec2
@@ -17,8 +17,8 @@ Error at no_legal_default.ce:42:16
 
 Error at no_legal_default.ce:43:10
 42 │ val r = blank[R]()
-43 │ val b = box[R]()
-             ╘══════╛ No constructor for 'box[R]' accepts these arguments
-                    | 'box[R]' takes one argument for each field: value
+43 │ val b = Box[R]()
+             ╘══════╛ No constructor for 'Box[R]' accepts these arguments
+                    | 'Box[R]' takes one argument for each field: value
 
 [compilation failed]

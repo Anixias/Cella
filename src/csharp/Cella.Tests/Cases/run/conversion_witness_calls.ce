@@ -29,7 +29,7 @@ FromSource: trait
 
 Target: impl FromSource {}
 
-wrap[T]: rec
+Wrap[T]: rec
 {
 	v: T
 
@@ -39,7 +39,7 @@ wrap[T]: rec
 lend[T: new(Source)]: fun(imm value: Source) -> T => T(value)
 take[T: new(own Source)]: fun(own value: Source) -> T => T(own value)
 make[T: FromSource]: fun(own value: Source) -> T => T(own value)
-unwrap[R: new(wrap[i32])]: fun(w: wrap[i32]) -> R => R(w)
+unwrap[R: new(Wrap[i32])]: fun(w: Wrap[i32]) -> R => R(w)
 
 main: fun -> i32
 {
@@ -47,6 +47,6 @@ main: fun -> i32
 	val a: Target = lend(imm s)
 	val b: Target = take(Source(2))
 	val c: Target = make(Source(3))
-	printf("%d %d %d %lld\n", a.id, b.id, c.id, unwrap[i64](wrap[i32](5)))
+	printf("%d %d %d %lld\n", a.id, b.id, c.id, unwrap[i64](Wrap[i32](5)))
 	ret 0
 }

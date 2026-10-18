@@ -21,32 +21,32 @@ Text: rec
 	}
 }
 
-box[T]: rec
+Box[T]: rec
 {
 	value: T
 }
 
-box[T: Eq]: impl
+Box[T: Eq]: impl
 {
-	same: fun(imm self, imm other: box[T]) -> bool => self.value == other.value
+	same: fun(imm self, imm other: Box[T]) -> bool => self.value == other.value
 	helper: pvt fun(imm self) -> i32 => 3
 	size: get(imm self) -> i32 => 4
 }
 
-box[T: copy]: impl Dup
+Box[T: copy]: impl Dup
 {
-	dup: fun(self) -> box[T] => box(self.value)
+	dup: fun(self) -> Box[T] => Box(self.value)
 }
 
-check[T]: fun(imm a: box[T]) -> bool => a.same(a)
+check[T]: fun(imm a: Box[T]) -> bool => a.same(a)
 
 copies[T: Dup]: fun(imm value: T) -> T => value.dup()
 
 main: fun -> i32
 {
-	box(Text(1)).same(box(Text(2)))
-	box(3).helper()
-	box(Text(1)).size
-	copies(box(Text(1)))
+	Box(Text(1)).same(Box(Text(2)))
+	Box(3).helper()
+	Box(Text(1)).size
+	copies(Box(Text(1)))
 	ret 0
 }

@@ -5,18 +5,18 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-ring[T, N: const usize]: rec
+Ring[T, N: const usize]: rec
 {
 	items: array[T, N]
 }
 
-wrap[T]: rec
+Wrap[T]: rec
 {
-	inner: ring[T, 4611686018427387904]
+	inner: Ring[T, 4611686018427387904]
 }
 
 main: fun -> i32
 {
-	printf("%zu\n", sizeOf(wrap[u64]))
+	printf("%zu\n", sizeOf(Wrap[u64]))
 	ret 0
 }

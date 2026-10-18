@@ -1,8 +1,18 @@
+Hint at dereference_borrows.ce:50:6
+49 │ {
+50 │     var boxed = BufferBox(Buffer(1))
+             ╘═══╛ 'boxed' is never changed
+
 Error at dereference_borrows.ce:53:6
 52 │ take(own boxed)
 53 │ ret view
          ╘══╛ Cannot use borrows of moved values
             | Moved on line 52
+
+Hint at dereference_borrows.ce:58:6
+57 │ {
+58 │     var boxed = BufferBox(Buffer(1))
+             ╘═══╛ 'boxed' is never changed
 
 Error at dereference_borrows.ce:59:6
 58 │ var boxed = BufferBox(Buffer(1))

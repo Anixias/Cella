@@ -1,6 +1,6 @@
 mod test
 
-box[T]: rec
+Box[T]: rec
 {
 	value: T
 }
@@ -8,8 +8,8 @@ box[T]: rec
 main: fun -> i32
 {
 	var x = 1
-	var p: ptr[box]
-	val q = ptr[box](@x)
-	val r: box[ptr[box]] = undef
+	var p: ptr[Box]
+	val q = ptr[Box](@x)
+	val r: Box[ptr[Box]] = undef
 	ret 0
 }

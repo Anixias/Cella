@@ -6,7 +6,7 @@ ext
 	strtol: fun(text: cstr, end: ptr[ptr[u8]] = null, base: i32 = 10) -> i64
 }
 
-view[T]: ref rec
+View[T]: ref rec
 {
 	data: pvt ptr[T]
 	length: pvt set usize
@@ -18,7 +18,7 @@ view[T]: ref rec
 	}
 }
 
-nullable[T: null]: enum match T
+Nullable[T: null]: enum match T
 {
 	none = null
 	some(value) = else
@@ -75,13 +75,13 @@ effects: fun(effect: Effect = Effect.hit(7), pointer: ptr[i32] = null, values: a
 		printf("none\n")
 }
 
-maybe: fun(value: nullable[ptr[i32]] = none) -> i32 => i32(value is some(_))
+maybe: fun(value: Nullable[ptr[i32]] = none) -> i32 => i32(value is some(_))
 
 sum: fun(value: Big = big) -> i64 => value.a + value.b + value.c
 
 owned: fun(own name: str = "owned") -> usize => name.byteLength
 
-count: fun(first: i32 = 9, ...rest: view[i32])
+count: fun(first: i32 = 9, ...rest: View[i32])
 {
 	printf("%d %zu\n", first, rest.length)
 }

@@ -27,22 +27,22 @@ Version: rec impl Eq + Ord
 
 i32: impl Eq + Ord
 
-box[T]: rec
+Box[T]: rec
 {
 	value: T
 }
 
-box[T: Eq]: impl Eq
+Box[T: Eq]: impl Eq
 {
-	==: op(imm a: box[T], imm b: box[T]) -> bool => a.value == b.value
+	==: op(imm a: Box[T], imm b: Box[T]) -> bool => a.value == b.value
 }
 
-box[T: Ord]: impl Ord
+Box[T: Ord]: impl Ord
 {
-	<: op(imm a: box[T], imm b: box[T]) -> bool => a.value < b.value
+	<: op(imm a: Box[T], imm b: Box[T]) -> bool => a.value < b.value
 }
 
-pair[T: Eq]: rec
+Pair[T: Eq]: rec
 {
 	a: T
 	b: T
@@ -50,7 +50,7 @@ pair[T: Eq]: rec
 	same: fun(imm self) -> bool => self.a == self.b
 }
 
-pair[T: Ord]: impl
+Pair[T: Ord]: impl
 {
 	ordered: fun(imm self) -> bool => self.a <= self.b
 }
@@ -80,9 +80,9 @@ main: fun -> i32
 	printf("%d %d %d %d\n", i32(isEdge(imm low, imm low, imm high)), i32(isEdge(imm high, imm low, imm high)), i32(isEdge(imm mid, imm low, imm high)),
 		i32(isEdge(1, 1, 9)))
 	printf("%d %d %d\n", i32(either(imm mid, imm high)), i32(either(3, 2)), i32(mid <= high))
-	val small = least(box(3), box(2))
-	printf("%d %d %d\n", small.value, i32(box(4) == box(4)), i32(within(box(2), box(1), box(3))))
-	val p = pair(1, 2)
+	val small = least(Box(3), Box(2))
+	printf("%d %d %d\n", small.value, i32(Box(4) == Box(4)), i32(within(Box(2), Box(1), Box(3))))
+	val p = Pair(1, 2)
 	printf("%d %d\n", i32(p.same()), i32(p.ordered()))
 	ret 0
 }

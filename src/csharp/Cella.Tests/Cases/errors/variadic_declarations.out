@@ -1,32 +1,32 @@
 Error at variadic_declarations.ce:25:14
 24 │ 
-25 │ +: op(self, ...rest: view[i32]) -> i32 => 0
+25 │ +: op(self, ...rest: View[i32]) -> i32 => 0
                  ╘═╛ Cannot take variadic parameters in operators
 
 Error at variadic_declarations.ce:25:17
 24 │ 
-25 │ +: op(self, ...rest: view[i32]) -> i32 => 0
+25 │ +: op(self, ...rest: View[i32]) -> i32 => 0
                     ╘══╛ Cannot take parameters in '+' operators with 'self'
 
 Error at variadic_declarations.ce:30:26
 29 │ {
-30 │     format: fun(text: cstr, ...values: view[i32]) -> i32
+30 │     format: fun(text: cstr, ...values: View[i32]) -> i32
                                  ╘══════════════════╛ Cannot take typed variadic parameters in 'ext' functions
                                                     | Did you mean '...'?
 
 Error at variadic_declarations.ce:31:15
-30 │ format: fun(text: cstr, ...values: view[i32]) -> i32
-31 │ counted: fun(...values: view[i32], count: i32)
+30 │ format: fun(text: cstr, ...values: View[i32]) -> i32
+31 │ counted: fun(...values: View[i32], count: i32)
                   ╘══════════════════╛ Cannot take typed variadic parameters in 'ext' functions
 
 Error at variadic_declarations.ce:32:13
-31 │ counted: fun(...values: view[i32], count: i32)
-32 │ alone: fun(...values: view[i32])
+31 │ counted: fun(...values: View[i32], count: i32)
+32 │ alone: fun(...values: View[i32])
                 ╘══════════════════╛ Cannot take typed variadic parameters in 'ext' functions
 
 Error at variadic_declarations.ce:44:2
 43 │ 
-44 │ put: fun(self, values: view[i32]) -> usize => values.length
+44 │ put: fun(self, values: View[i32]) -> usize => values.length
      ╘═╛ 'put' doesn't match 'Sink.put'
 
 Error at variadic_declarations.ce:47:23
@@ -36,37 +36,37 @@ Error at variadic_declarations.ce:47:23
 
 Error at variadic_declarations.ce:48:34
 47 │ plain: fun(...values: i32) {}
-48 │ after: fun(...values: view[i32], last: i32) {}
+48 │ after: fun(...values: View[i32], last: i32) {}
                                       ╘══╛ Cannot take parameters after variadic parameters
 
 Error at variadic_declarations.ce:49:35
-48 │ after: fun(...values: view[i32], last: i32) {}
-49 │ both: fun(...first: view[i32], ...second: view[i32]) {}
+48 │ after: fun(...values: View[i32], last: i32) {}
+49 │ both: fun(...first: View[i32], ...second: View[i32]) {}
                                        ╘════╛ Cannot take parameters after variadic parameters
 
 Error at variadic_declarations.ce:50:13
-49 │ both: fun(...first: view[i32], ...second: view[i32]) {}
-50 │ writes: fun(mut ...values: view[i32]) {}
+49 │ both: fun(...first: View[i32], ...second: View[i32]) {}
+50 │ writes: fun(mut ...values: View[i32]) {}
                  ╘═╛ Cannot take 'mut' variadic parameters
 
 Error at variadic_declarations.ce:51:11
-50 │ writes: fun(mut ...values: view[i32]) {}
-51 │ owns: fun(own ...values: view[i32]) {}
+50 │ writes: fun(mut ...values: View[i32]) {}
+51 │ owns: fun(own ...values: View[i32]) {}
                ╘═╛ Cannot take 'own' variadic parameters
 
 Error at variadic_declarations.ce:52:23
-51 │ owns: fun(own ...values: view[i32]) {}
+51 │ owns: fun(own ...values: View[i32]) {}
 52 │ bytes: fun(...values: Bytes) {}
                            ╘═══╛ 'Bytes' meets 'new(ptr[T], usize)' more than once
 
 Error at variadic_declarations.ce:53:18
 52 │ bytes: fun(...values: Bytes) {}
-53 │ compare: ext fun(...values: view[i32]) -> i32 => 0
+53 │ compare: ext fun(...values: View[i32]) -> i32 => 0
                       ╘═╛ Cannot take variadic parameters in 'ext' functions
 
 Error at variadic_declarations.ce:57:1
 56 │ 
-57 │ main: fun(...args: view[str]) -> i32 => 0
+57 │ main: fun(...args: View[str]) -> i32 => 0
      ╘══╛ 'main' must take no parameters, 'ptr[str]' and 'usize', or one parameter that meets 'new(ptr[str], usize)'
 
 [compilation failed]

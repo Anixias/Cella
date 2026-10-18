@@ -7,10 +7,10 @@ ext
 
 Spannable[T]: trait
 {
-	spanned: fun(mut self) -> span[T]
+	spanned: fun(mut self) -> Span[T]
 }
 
-span[T]: ref rec
+Span[T]: ref rec
 {
 	data: ptr[T]
 	length: usize
@@ -21,9 +21,9 @@ span[T]: ref rec
 		self.length = length
 	}
 
-	as[N: const usize]: op(mut values: array[T, N]) -> span[T] => span[T](ptr[T](ptr(@values)), N)
+	as[N: const usize]: op(mut values: array[T, N]) -> Span[T] => Span[T](ptr[T](ptr(@values)), N)
 
-	as[C: Spannable[T]]: op(mut values: C) -> span[T] => values.spanned()
+	as[C: Spannable[T]]: op(mut values: C) -> Span[T] => values.spanned()
 }
 
 Bag: rec
@@ -33,10 +33,10 @@ Bag: rec
 
 Bag: impl Spannable[i32]
 {
-	spanned: fun(mut self) -> span[i32] => span[i32](ptr[i32](ptr(@self.items)), 2)
+	spanned: fun(mut self) -> Span[i32] => Span[i32](ptr[i32](ptr(@self.items)), 2)
 }
 
-check[T: copy]: fun(values: span[T], test: fun[T -> bool]) -> bool => test(values.data[0])
+check[T: copy]: fun(values: Span[T], test: fun[T -> bool]) -> bool => test(values.data[0])
 
 main: fun -> i32
 {

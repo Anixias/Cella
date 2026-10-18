@@ -1,16 +1,16 @@
 mod test
 
-box[T]: rec
+Box[T]: rec
 {
 	value: T
-	deep: get(imm self) -> i32 => box[ptr[T]](null).deep
+	deep: get(imm self) -> i32 => Box[ptr[T]](null).deep
 }
 
 count[N: const i32]: fun -> i32 => N
 
 twice[N: const i32]: fun -> i32 => count[N - 1]()
 
-option[T]: enum { none, some(value: T) }
+Option[T]: enum { none, some(value: T) }
 
 pick[T]: fun(imm a: T, imm b: T) -> i32 => 0
 
@@ -28,8 +28,8 @@ make[T: new(i32)]: fun -> i32 => 0
 
 main: fun -> i32
 {
-	val d = box(1).deep
-	val o = option.some[i32](1)
+	val d = Box(1).deep
+	val o = Option.some[i32](1)
 	val x = pick(null, 1)
 	val m = make[Thing]()
 	ret 0

@@ -7,26 +7,26 @@ Eq: pub trait
 
 i32: impl Eq
 
-box[T]: pub rec
+Box[T]: pub rec
 {
 	value: T
 }
 
-box[T: Eq]: impl
+Box[T: Eq]: impl
 {
-	same: fun(imm self, imm other: box[T]) -> bool => self.value == other.value
+	same: fun(imm self, imm other: Box[T]) -> bool => self.value == other.value
 }
 
-cell[K: trait]: pub rec
+Cell[K: trait]: pub rec
 {
 	object: ptr[dyn[K]]
 
-	of[T: K]: fun(value: ptr[T]) -> cell[K] => cell[K](value)
+	of[T: K]: fun(value: ptr[T]) -> Cell[K] => Cell[K](value)
 
 	*: op(self) -> imm[dyn[K]] => imm *self.object
 }
 
-holder[T]: pub rec
+Holder[T]: pub rec
 {
 	count: i32
 
@@ -50,6 +50,6 @@ Meters: pub rec
 
 build[T: new(i32)]: pub fun(value: i32) -> T => T(value)
 
-twin[T: copy]: pub fun(value: T) -> box[T] => box(value)
+twin[T: copy]: pub fun(value: T) -> Box[T] => Box(value)
 
-measure[K: trait, T: K]: pub fun(value: ptr[T], action: fun[imm dyn[K] -> f64]) -> f64 => action(imm *cell[K].of(value))
+measure[K: trait, T: K]: pub fun(value: ptr[T], action: fun[imm dyn[K] -> f64]) -> f64 => action(imm *Cell[K].of(value))

@@ -90,7 +90,7 @@ Pair: rec impl Make
 
 f64: impl Num
 
-keyed[T: Hash]: rec
+Keyed[T: Hash]: rec
 {
 	key: T
 }
@@ -100,7 +100,7 @@ Named: trait
 	name: fun(imm self) -> i32
 }
 
-keyed[T]: impl Named
+Keyed[T]: impl Named
 {
 	name: fun(imm self) -> i32 => 0
 }

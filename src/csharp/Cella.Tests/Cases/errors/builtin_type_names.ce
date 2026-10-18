@@ -2,7 +2,7 @@ mod test
 
 i32: rec { value: u8 }
 
-box[i32]: rec { value: i32 }
+Box[i32]: rec { value: i32 }
 
 Self: trait { }
 

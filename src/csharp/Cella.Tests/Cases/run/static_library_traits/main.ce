@@ -29,7 +29,7 @@ main: fun -> i32
 {
 	val p = lib.Point(5)
 	printf("%llu %llu %llu %llu\n", lib.describe(imm p), lib.describe(3), lib.describe(Mine(2)), local(imm p))
-	printf("%d %d %d %d\n", lib.render(imm p), lib.render(lib.box(p)), lib.render(Mine(4)), p.show())
+	printf("%d %d %d %d\n", lib.render(imm p), lib.render(lib.Box(p)), lib.render(Mine(4)), p.show())
 	printf("%d %d %d %llu\n", make[lib.Point]().x, i32(same(imm p, lib.Point(5))), i32(same(1, 2)), lib.Hash(p).twice())
 	ret 0
 }

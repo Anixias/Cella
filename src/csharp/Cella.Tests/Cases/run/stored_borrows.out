@@ -1,3 +1,8 @@
+Hint at stored_borrows.ce:165:6
+164 │ 
+165 │ var buffer = Buffer(7)
+          ╘════╛ 'buffer' is never changed
+
 Hint at stored_borrows.ce:166:13
 165 │ var buffer = Buffer(7)
 166 │ val view = imm buffer

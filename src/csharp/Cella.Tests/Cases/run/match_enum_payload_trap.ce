@@ -1,12 +1,12 @@
 mod test
 
-nullable[T: null]: enum match T
+Nullable[T: null]: enum match T
 {
 	none = null
 	some(value) = else
 }
 
-wrap: fun(p: ptr) -> nullable[ptr] => some(p)
+wrap: fun(p: ptr) -> Nullable[ptr] => some(p)
 
 main: fun -> i32
 {

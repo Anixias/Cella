@@ -1,6 +1,6 @@
 mod test
 
-view[T]: ref rec
+View[T]: ref rec
 {
 	data: pvt ptr[T]
 	length: pvt set usize
@@ -11,10 +11,10 @@ view[T]: ref rec
 		self.length = length
 	}
 
-	as[N: const usize]: op(imm values: array[T, N]) -> view[T] => view[T](@values, N)
+	as[N: const usize]: op(imm values: array[T, N]) -> View[T] => View[T](@values, N)
 }
 
-span[T]: ref rec
+Span[T]: ref rec
 {
 	data: pvt ptr[T]
 	length: pvt set usize
@@ -25,10 +25,10 @@ span[T]: ref rec
 		self.length = length
 	}
 
-	as[N: const usize]: op(mut values: array[T, N]) -> span[T] => span[T](@values, N)
+	as[N: const usize]: op(mut values: array[T, N]) -> Span[T] => Span[T](@values, N)
 }
 
-triple: ref rec
+Triple: ref rec
 {
 	data: pvt ptr[u8]
 
@@ -37,22 +37,22 @@ triple: ref rec
 		self.data = data
 	}
 
-	as: op(mut values: array[u8, 3]) -> triple => triple(@values)
+	as: op(mut values: array[u8, 3]) -> Triple => Triple(@values)
 }
 
-wide: fun(values: view[u16]) {}
+wide: fun(values: View[u16]) {}
 
-narrow: fun(values: view[u8]) {}
+narrow: fun(values: View[u8]) {}
 
-take: fun(values: triple) {}
+take: fun(values: Triple) {}
 
-count[T]: fun(values: view[T]) -> usize => values.length
+count[T]: fun(values: View[T]) -> usize => values.length
 
 main: fun -> i32
 {
 	var four: array[i32, 4] = [1, 2, 3, 4]
-	val t: span[i32] = four
-	var u: span[i32] = mut four
+	val t: Span[i32] = four
+	var u: Span[i32] = mut four
 	u = four
 
 	val words = [1, 2]

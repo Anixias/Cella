@@ -1,7 +1,7 @@
 Error at member_block_declarations.ce:12:2
 11 │ {
 12 │     value: T
-         ╘═══╛ 'value' is declared more than once in 'box'
+         ╘═══╛ 'value' is declared more than once in 'Box'
 
 Error at member_block_declarations.ce:14:2
 13 │ 
@@ -9,14 +9,14 @@ Error at member_block_declarations.ce:14:2
      ╘══╛ 'peek' is declared more than once with the same signature
 
 Error at member_block_declarations.ce:20:2
-19 │ same: fun(imm self, imm other: box[T]) -> bool => self.value == other.value
+19 │ same: fun(imm self, imm other: Box[T]) -> bool => self.value == other.value
 20 │ peek: fun(imm self) -> i32 => 2
      ╘══╛ 'peek' is declared more than once with the same signature
 
 Error at member_block_declarations.ce:21:2
 20 │ peek: fun(imm self) -> i32 => 2
 21 │ value: get(imm self) -> i32 => 4
-     ╘═══╛ 'value' is declared more than once in 'box'
+     ╘═══╛ 'value' is declared more than once in 'Box'
 
 Error at member_block_declarations.ce:22:2
 21 │ value: get(imm self) -> i32 => 4
@@ -45,13 +45,13 @@ Error at member_block_declarations.ce:39:8
 
 Error at member_block_declarations.ce:44:9
 43 │ 
-44 │ box[T]: impl
+44 │ Box[T]: impl
              ╘══╛ Cannot declare 'impl' blocks that add no bounds
 
 Error at member_block_declarations.ce:59:6
 58 │ 
-59 │ wrap[T: Eq]: impl
-          ^ 'wrap' requires 'T: noref'
+59 │ Wrap[T: Eq]: impl
+          ^ 'Wrap' requires 'T: noref'
           | 'T' may hold borrows
 
 [compilation failed]

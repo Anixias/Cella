@@ -20,7 +20,7 @@ Error at array_sizes.ce:18:17
 
 Error at array_sizes.ce:19:10
 18 │ val n = sizeOf(array[array[u8, 4294967296], 4294967296])
-19 │ val r = ring[u64, 2305843009213693952]()
-             ╘════════════════════════════╛ 'ring[u64, 2305843009213693952]' is too large
+19 │ val r = Ring[u64, 2305843009213693952]()
+             ╘════════════════════════════╛ 'Ring[u64, 2305843009213693952]' is too large
 
 [compilation failed]

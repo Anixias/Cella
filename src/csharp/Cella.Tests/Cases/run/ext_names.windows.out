@@ -1,3 +1,8 @@
+Hint at ext_names.ce:31:6
+30 │ printf("%d %d %d\n", counter, shared, viaName())
+31 │ var p = ptr[u32](@plainHint)
+         ^ 'p' is never changed
+
 hello
 42 1 1 1
 10 10 17

@@ -5,7 +5,7 @@ Shape: trait
 	area: fun(imm self) -> f64
 }
 
-box[T]: rec
+Box[T]: rec
 {
 	value: T
 }
@@ -22,7 +22,7 @@ asTrait: fun -> usize => alignOf(Shape)
 
 asParameter[K: trait]: fun -> usize => alignOf(K)
 
-asGeneric: fun -> usize => alignOf(box)
+asGeneric: fun -> usize => alignOf(Box)
 
 asVoid: fun -> usize => alignOf(greet())
 

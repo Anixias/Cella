@@ -17,7 +17,7 @@ Token: rec
 	}
 }
 
-box[T]: rec
+Box[T]: rec
 {
 	pointer: req ptr[T]
 
@@ -34,7 +34,7 @@ box[T]: rec
 	}
 }
 
-slots[T: noref]: rec
+Slots[T: noref]: rec
 {
 	items: array[T, 4]
 	count: usize
@@ -46,9 +46,9 @@ slots[T: noref]: rec
 	}
 }
 
-stack[T: noref]: rec
+Stack[T: noref]: rec
 {
-	slots: slots[T]
+	slots: Slots[T]
 	pushes: i32
 
 	push: fun(mut self, own item: T)
@@ -61,12 +61,12 @@ stack[T: noref]: rec
 
 	scratch: fun(own item: T) -> i32
 	{
-		val held = box[T](own item)
+		val held = Box[T](own item)
 		ret 1
 	}
 }
 
-mapper[T: noref]: rec
+Mapper[T: noref]: rec
 {
 	value: T
 	change: fun[imm T -> T]
@@ -76,12 +76,12 @@ mapper[T: noref]: rec
 		self.value = self.change(imm self.value)
 	}
 
-	wrap: fun(own value: T) -> pair[T, i32] => pair[T, i32](own value, 1)
+	wrap: fun(own value: T) -> Pair[T, i32] => Pair[T, i32](own value, 1)
 
 	score: fun(imm value: T) -> i32 => 7
 }
 
-pair[A, B]: rec
+Pair[A, B]: rec
 {
 	first: A
 	second: B
@@ -91,16 +91,16 @@ double: fun(value: i32) -> i32 => value * 2
 
 main: fun -> i32
 {
-	var numbers = stack[i64]()
+	var numbers = Stack[i64]()
 	numbers.push(10)
 	numbers.push(20)
 	printf("%lld %d %zu | ", numbers.peek(), numbers.pushes, numbers.slots.count)
-	printf("%d | ", stack[Token].scratch(Token(3)))
-	var doubler = mapper[i32](5, double)
+	printf("%d | ", Stack[Token].scratch(Token(3)))
+	var doubler = Mapper[i32](5, double)
 	doubler.apply()
 	doubler.apply()
-	val make: fun[own i32 -> pair[i32, i32]] = mapper[i32].wrap
-	val score: fun[imm i32 -> i32] = mapper[i32].score
+	val make: fun[own i32 -> Pair[i32, i32]] = Mapper[i32].wrap
+	val score: fun[imm i32 -> i32] = Mapper[i32].score
 	val both = make(4)
 	printf("%d %d %d %d\n", doubler.value, both.first, both.second, score(3))
 	ret 0

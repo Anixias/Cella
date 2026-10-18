@@ -31,12 +31,12 @@ Error at constructor_overloads.ce:32:2
 Error at constructor_overloads.ce:47:2
 46 │ 
 47 │ new: op(imm value: T)
-     ╘═╛ 'box.new' overloads cannot differ only in parameter modes
+     ╘═╛ 'Box.new' overloads cannot differ only in parameter modes
 
 Error at constructor_overloads.ce:52:2
 51 │ 
 52 │ new: op(own value: T)
-     ╘═╛ 'box.new' overloads cannot differ only in parameter modes
+     ╘═╛ 'Box.new' overloads cannot differ only in parameter modes
 
 Error at constructor_overloads.ce:60:2
 59 │ {

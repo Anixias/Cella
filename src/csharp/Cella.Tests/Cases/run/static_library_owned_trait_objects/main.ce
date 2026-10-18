@@ -21,7 +21,7 @@ main: fun -> i32
 {
 	val first = lib.circle(1.5)
 	{
-		val second = lib.boxed[lib.Shape].of(Square(2.0, 7))
+		val second = lib.Boxed[lib.Shape].of(Square(2.0, 7))
 		printf("%.1f %.1f\n", first.area(), second.area())
 	}
 	printf("end\n")

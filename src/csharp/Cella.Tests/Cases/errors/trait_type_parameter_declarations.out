@@ -4,7 +4,7 @@ Error at trait_type_parameter_declarations.ce:9:10
              ^ Type parameter 'T' is declared more than once
 
 Error at trait_type_parameter_declarations.ce:12:6
-11 │ next: fun(mut self) -> option[T]
+11 │ next: fun(mut self) -> Option[T]
 12 │ map[T]: fun(imm self) -> T
          ^ Type parameter 'T' is declared more than once
 

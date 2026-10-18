@@ -5,12 +5,12 @@ Shape: trait
 	area: fun(imm self) -> i32
 }
 
-box[T: new(i32)]: rec
+Box[T: new(i32)]: rec
 {
 	value: T
 }
 
-box[T: new(i32)]: impl
+Box[T: new(i32)]: impl
 {
 	same: fun(imm self) -> i32 => 0
 }
@@ -37,6 +37,6 @@ tenth[T: new(own dyn[Shape])]: fun -> i32 => 0
 
 eleventh[T: new(dyn[Shape])]: fun -> i32 => 0
 
-wrap[T: new(box[T])]: fun -> i32 => 0
+wrap[T: new(Box[T])]: fun -> i32 => 0
 
 main: fun -> i32 => 0

@@ -1,3 +1,8 @@
+Hint at lend_then_move.ce:40:6
+39 │ {
+40 │     var item = Item(1)
+             ╘══╛ 'item' is never changed
+
 Error at lend_then_move.ce:41:11
 40 │ var item = Item(1)
 41 │ view(imm item, own item)

@@ -17,36 +17,36 @@ Dup: trait
 
 i32: impl Eq
 
-box[T]: rec
+Box[T]: rec
 {
 	value: T
 
 	twice: fun(imm self) -> i32 => 2
 }
 
-box[T: Eq]: impl
+Box[T: Eq]: impl
 {
-	same: fun(imm self, imm other: box[T]) -> bool => self.value == other.value
+	same: fun(imm self, imm other: Box[T]) -> bool => self.value == other.value
 	matches: get(imm self) -> bool => self.same(imm self)
 	count: fun(imm self) -> i32 => self.helper()
 	helper: pvt fun(imm self) -> i32 => 3
-	==: op(imm a: box[T], imm b: box[T]) -> bool => a.value == b.value
+	==: op(imm a: Box[T], imm b: Box[T]) -> bool => a.value == b.value
 	equal: fun(imm a: T, imm b: T) -> bool => a == b
-	both: fun(imm self, imm other: box[T]) -> i32 => self.twice() + i32(self == other)
+	both: fun(imm self, imm other: Box[T]) -> i32 => self.twice() + i32(self == other)
 }
 
-box[T: copy]: impl Dup
+Box[T: copy]: impl Dup
 {
-	dup: fun(self) -> box[T] => box(self.value)
+	dup: fun(self) -> Box[T] => Box(self.value)
 }
 
-option[T]: enum
+Option[T]: enum
 {
 	some(value: T)
 	none
 }
 
-option[T: Eq]: impl
+Option[T: Eq]: impl
 {
 	contains: fun(imm self, imm value: T) -> bool => match self
 	{
@@ -55,17 +55,17 @@ option[T: Eq]: impl
 	}
 }
 
-check[T: Eq]: fun(imm a: box[T], imm b: box[T]) -> bool => a.same(imm b)
+check[T: Eq]: fun(imm a: Box[T], imm b: Box[T]) -> bool => a.same(imm b)
 
 copies[T: Dup]: fun(imm value: T) -> T => value.dup()
 
 main: fun -> i32
 {
-	val a = box(3)
-	val b = box(4)
-	printf("%d %d %d %d %d\n", i32(a.same(imm b)), i32(a.same(box(3))), i32(check(imm a, imm b)), i32(a.matches), a.count())
-	printf("%d %d %d %d\n", i32(a == box(3)), i32(box[i32].equal(1, 2)), a.both(box(3)), copies(imm b).value)
-	val o = option[i32].some(7)
-	printf("%d %d\n", i32(o.contains(7)), i32(option[i32].none.contains(7)))
+	val a = Box(3)
+	val b = Box(4)
+	printf("%d %d %d %d %d\n", i32(a.same(imm b)), i32(a.same(Box(3))), i32(check(imm a, imm b)), i32(a.matches), a.count())
+	printf("%d %d %d %d\n", i32(a == Box(3)), i32(Box[i32].equal(1, 2)), a.both(Box(3)), copies(imm b).value)
+	val o = Option[i32].some(7)
+	printf("%d %d\n", i32(o.contains(7)), i32(Option[i32].none.contains(7)))
 	ret 0
 }

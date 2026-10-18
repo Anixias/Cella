@@ -1,30 +1,30 @@
 Error at member_block_uses.ce:41:43
 40 │ 
-41 │ check[T]: fun(imm a: box[T]) -> bool => a.same(a)
+41 │ check[T]: fun(imm a: Box[T]) -> bool => a.same(a)
                                                ╘══╛ 'same' requires 'T: Eq'
                                                   | 'T' doesn't implement 'Eq'
 
 Error at member_block_uses.ce:47:15
 46 │ {
-47 │     box(Text(1)).same(box(Text(2)))
+47 │     Box(Text(1)).same(Box(Text(2)))
                       ╘══╛ 'same' requires 'T: Eq'
                          | 'Text' doesn't implement 'Eq'
 
 Error at member_block_uses.ce:48:9
-47 │ box(Text(1)).same(box(Text(2)))
-48 │ box(3).helper()
+47 │ Box(Text(1)).same(Box(Text(2)))
+48 │ Box(3).helper()
             ╘════╛ 'helper' is private to its impl block
 
 Error at member_block_uses.ce:49:15
-48 │ box(3).helper()
-49 │ box(Text(1)).size
+48 │ Box(3).helper()
+49 │ Box(Text(1)).size
                   ╘══╛ 'size' requires 'T: Eq'
                      | 'Text' doesn't implement 'Eq'
 
 Error at member_block_uses.ce:50:2
-49 │ box(Text(1)).size
-50 │ copies(box(Text(1)))
+49 │ Box(Text(1)).size
+50 │ copies(Box(Text(1)))
      ╘════╛ 'copies' requires 'T: Dup'
-          | 'box[Text]' doesn't implement 'Dup'
+          | 'Box[Text]' doesn't implement 'Dup'
 
 [compilation failed]

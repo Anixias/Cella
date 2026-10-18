@@ -30,11 +30,11 @@ Error at parameter_defaults.ce:31:30
 
 Error at parameter_defaults.ce:32:35
 31 │ writes: fun(mut value: i32 = 0) {}
-32 │ packs: fun(...values: view[i32] = view[i32](null, 0)) {}
+32 │ packs: fun(...values: View[i32] = View[i32](null, 0)) {}
                                        ╘════════════════╛ Cannot declare defaults for variadic parameters
 
 Error at parameter_defaults.ce:33:26
-32 │ packs: fun(...values: view[i32] = view[i32](null, 0)) {}
+32 │ packs: fun(...values: View[i32] = View[i32](null, 0)) {}
 33 │ called: fun(value: i32 = make()) {}
                               ╘════╛ The default value of 'value' must be a constant
 

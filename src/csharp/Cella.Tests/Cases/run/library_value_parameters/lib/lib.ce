@@ -1,6 +1,6 @@
 mod lib
 
-ring[T, N: const usize]: pub rec
+Ring[T, N: const usize]: pub rec
 {
 	items: array[T, N]
 	used: usize

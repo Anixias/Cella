@@ -1,6 +1,6 @@
 Error at ambiguous_generic_constructors.ce:38:10
 37 │ val p = @n
-38 │ val b = box(p)
-             ╘════╛ Conversion to 'box' is ambiguous
+38 │ val b = Box(p)
+             ╘════╛ Conversion to 'Box' is ambiguous
 
 [compilation failed]

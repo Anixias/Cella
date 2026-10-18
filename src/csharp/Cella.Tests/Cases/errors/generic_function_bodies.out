@@ -1,7 +1,7 @@
 Error at generic_function_bodies.ce:12:7
 11 │ 
-12 │ ret box(self).deeper(depth - 1)
-         ╘══════════════╛ Instantiating 'box.deeper' never ends
+12 │ ret Box(self).deeper(depth - 1)
+         ╘══════════════╛ Instantiating 'Box.deeper' never ends
 
 Error at generic_function_bodies.ce:16:35
 15 │ 
@@ -10,12 +10,12 @@ Error at generic_function_bodies.ce:16:35
 
 Error at generic_function_bodies.ce:23:6
 22 │ 
-23 │ ret grow(box(value), depth - 1)
+23 │ ret grow(Box(value), depth - 1)
          ╘══╛ Instantiating 'grow' never ends
 
 Error at generic_function_bodies.ce:31:6
 30 │ 
-31 │ ret second(box(value), depth - 1)
+31 │ ret second(Box(value), depth - 1)
          ╘════╛ Instantiating 'second' never ends
 
 Error at generic_function_bodies.ce:34:58

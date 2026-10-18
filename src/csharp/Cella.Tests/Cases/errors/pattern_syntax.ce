@@ -1,25 +1,25 @@
 mod test
 
-option[T]: enum { none, some(value: T) }
+Option[T]: enum { none, some(value: T) }
 
 E: enum { a, hit(n: i32) }
 
-takes: fun(o: option[i32]) -> i32 => 0
+takes: fun(o: Option[i32]) -> i32 => 0
 
 qualified: fun -> i32
 {
-	val o: option[i32] = option.some(1)
-	if o is option[i32].some(x)
+	val o: Option[i32] = Option.some(1)
+	if o is Option[i32].some(x)
 		ret x
 
 	ret 0
 }
 
-named: fun -> i32 => takes(option[i32].none)
+named: fun -> i32 => takes(Option[i32].none)
 
 nested: fun -> i32
 {
-	val o: option[option[i32]] = option.some(option.some(1))
+	val o: Option[Option[i32]] = Option.some(Option.some(1))
 	if o is some(some(val v))
 		ret v
 

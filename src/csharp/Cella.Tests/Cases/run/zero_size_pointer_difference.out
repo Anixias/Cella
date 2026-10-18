@@ -1,3 +1,8 @@
+Hint at zero_size_pointer_difference.ce:26:6
+25 │ var marks: array[Empty, 3]
+26 │ var raw = ptr(@numbers[0])
+         ╘═╛ 'raw' is never changed
+
 3 2 0 8
 [stderr]
 Panic at zero_size_pointer_difference.ce:12:55: cannot subtract pointers to zero-size type 'Empty'

@@ -5,7 +5,7 @@ ext
 	strlen: fun(text: cstr) -> usize
 }
 
-view[T]: ref rec
+View[T]: ref rec
 {
 	data: pvt ptr[T]
 	length: pvt set usize
@@ -17,20 +17,20 @@ view[T]: ref rec
 	}
 }
 
-all: fun(...values: view[i32]) {}
-fixed: fun(first: i32, ...rest: view[i32]) {}
-bytes: fun(...values: view[u8]) {}
+all: fun(...values: View[i32]) {}
+fixed: fun(first: i32, ...rest: View[i32]) {}
+bytes: fun(...values: View[u8]) {}
 
 main: fun -> i32
 {
-	val v = view[i32](null, 0)
+	val v = View[i32](null, 0)
 	var n = 1
 	all(1, ...v)
 	all(...v, 1)
 	all(...v, ...v)
 	fixed(...v)
 	strlen(...v)
-	val w = view[i32](...v)
+	val w = View[i32](...v)
 	all(mut n)
 	all(v)
 	bytes(1, 300)

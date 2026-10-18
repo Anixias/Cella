@@ -30,22 +30,22 @@ Error at value_parameter_uses.ce:46:12
 
 Error at value_parameter_uses.ce:47:20
 46 │ var bare: array[i32] = [1, 2]
-47 │ val r = ring[i32, -1]()
+47 │ val r = Ring[i32, -1]()
                        ╘╛ '-1' doesn't fit in 'usize'
 
 Error at value_parameter_uses.ce:48:20
-47 │ val r = ring[i32, -1]()
-48 │ val s = ring[i32, count]()
+47 │ val r = Ring[i32, -1]()
+48 │ val s = Ring[i32, count]()
                        ╘═══╛ Cannot convert type 'i32' to 'usize'
 
 Error at value_parameter_uses.ce:49:28
-48 │ val s = ring[i32, count]()
+48 │ val s = Ring[i32, count]()
 49 │ val t = sizeOf(array[i32, -2])
                                ╘╛ '-2' doesn't fit in 'usize'
 
 Error at value_parameter_uses.ce:50:27
 49 │ val t = sizeOf(array[i32, -2])
-50 │ val u = ring[i32, 300]().slots()
+50 │ val u = Ring[i32, 300]().slots()
                               ╘═══╛ '300' doesn't fit in 'u8'
 
 Error at value_parameter_uses.ce:52:15
@@ -55,31 +55,31 @@ Error at value_parameter_uses.ce:52:15
 
 Error at value_parameter_uses.ce:57:15
 56 │ {
-57 │     val a = ring[16, i32]()
+57 │     val a = Ring[16, i32]()
                       ╘╛ '16' is not a type
 
 Error at value_parameter_uses.ce:57:19
 56 │ {
-57 │     val a = ring[16, i32]()
+57 │     val a = Ring[16, i32]()
                           ╘═╛ 'i32' is not a constant
 
 Error at value_parameter_uses.ce:58:16
-57 │ val a = ring[16, i32]()
-58 │ val b = small[300]()
+57 │ val a = Ring[16, i32]()
+58 │ val b = Small[300]()
                    ╘═╛ '300' doesn't fit in 'u8'
 
 Error at value_parameter_uses.ce:59:10
-58 │ val b = small[300]()
-59 │ val c = ring[i32]()
-             ╘═══════╛ 'ring' takes 2 generic arguments
+58 │ val b = Small[300]()
+59 │ val c = Ring[i32]()
+             ╘═══════╛ 'Ring' takes 2 generic arguments
 
 Error at value_parameter_uses.ce:60:16
-59 │ val c = ring[i32]()
-60 │ val d = small[1.5]()
+59 │ val c = Ring[i32]()
+60 │ val d = Small[1.5]()
                    ╘═╛ Cannot convert type 'float literal' to 'u8'
 
 Error at value_parameter_uses.ce:61:8
-60 │ val d = small[1.5]()
+60 │ val d = Small[1.5]()
 61 │ typed[4](1)
            ^ '4' is not a type
 

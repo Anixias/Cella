@@ -1,3 +1,73 @@
+Hint at ext_fun_pointers.ce:32:6
+31 │ {
+32 │     var a = *ptr[i32](left)
+             ^ 'a' is never changed
+
+Hint at ext_fun_pointers.ce:33:6
+32 │ var a = *ptr[i32](left)
+33 │ var b = *ptr[i32](right)
+         ^ 'b' is never changed
+
+Hint at ext_fun_pointers.ce:70:6
+69 │ var f = twice
+70 │ var g: ext fun[i32 -> i32] = abs
+         ^ 'g' is never changed
+
+Hint at ext_fun_pointers.ce:75:6
+74 │ 
+75 │ var table = [add, sub, mul]
+         ╘═══╛ 'table' is never changed
+
+Hint at ext_fun_pointers.ce:83:6
+82 │ 
+83 │ var handler = Handler(twice, 5)
+         ╘═════╛ 'handler' is never changed
+
+Hint at ext_fun_pointers.ce:84:6
+83 │ var handler = Handler(twice, 5)
+84 │ var callback = handler.callback
+         ╘══════╛ 'callback' is never changed
+
+Hint at ext_fun_pointers.ce:85:6
+84 │ var callback = handler.callback
+85 │ var constant: ext fun[-> i32] = answer
+         ╘══════╛ 'constant' is never changed
+
+Hint at ext_fun_pointers.ce:88:6
+87 │ 
+88 │ var logger = log
+         ╘════╛ 'logger' is never changed
+
+Hint at ext_fun_pointers.ce:91:6
+90 │ 
+91 │ var swapper = swap
+         ╘═════╛ 'swapper' is never changed
+
+Hint at ext_fun_pointers.ce:92:6
+91 │ var swapper = swap
+92 │ var spreader = spread
+         ╘══════╛ 'spreader' is never changed
+
+Hint at ext_fun_pointers.ce:93:6
+92 │ var spreader = spread
+93 │ var s = swap(Pair(1, 2))
+         ^ 's' is never changed
+
+Hint at ext_fun_pointers.ce:94:6
+93 │ var s = swap(Pair(1, 2))
+94 │ var s2 = swapper(Pair(5, 6))
+         ╘╛ 's2' is never changed
+
+Hint at ext_fun_pointers.ce:95:6
+94 │ var s2 = swapper(Pair(5, 6))
+95 │ var q = spread(Quad(1, 2, 3, 4), 10)
+         ^ 'q' is never changed
+
+Hint at ext_fun_pointers.ce:96:6
+95 │ var q = spread(Quad(1, 2, 3, 4), 10)
+96 │ var q2 = spreader(Quad(5, 6, 7, 8), 2)
+         ╘╛ 'q2' is never changed
+
 9 7 5 3 1
 42 5 8 9
 3 9 18

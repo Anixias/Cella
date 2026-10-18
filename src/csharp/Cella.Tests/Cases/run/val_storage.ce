@@ -5,7 +5,7 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-cell[T: atomic]: rec
+Cell[T: atomic]: rec
 {
 	value: T
 
@@ -23,10 +23,10 @@ cell[T: atomic]: rec
 
 Stats: rec
 {
-	hits: val cell[i32] = cell[i32](0)
+	hits: val Cell[i32] = Cell[i32](0)
 }
 
-counter: val cell[i32] = cell[i32](0)
+counter: val Cell[i32] = Cell[i32](0)
 
 table: val array[i32, 3] = [10, 20, 30]
 

@@ -1,6 +1,6 @@
 mod test
 
-view[T]: ref rec
+View[T]: ref rec
 {
 	data: pvt ptr[T]
 	length: pvt set usize
@@ -11,10 +11,10 @@ view[T]: ref rec
 		self.length = length
 	}
 
-	in: op(self) -> viewCursor[T] => viewCursor[T](self.data, self.length)
+	in: op(self) -> ViewCursor[T] => ViewCursor[T](self.data, self.length)
 }
 
-viewCursor[T]: ref rec
+ViewCursor[T]: ref rec
 {
 	data: pvt ptr[T]
 	left: pvt usize
@@ -33,7 +33,7 @@ viewCursor[T]: ref rec
 main: fun -> i32
 {
 	val four = [1, 2, 3, 4]
-	val v = view[i32](@four, 4)
+	val v = View[i32](@four, 4)
 	for mut x in v
 		x = 0
 

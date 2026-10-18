@@ -1,6 +1,6 @@
 mod test
 
-box[T]: rec
+Box[T]: rec
 {
 	value: T
 
@@ -9,7 +9,7 @@ box[T]: rec
 		if depth == 0
 			ret 0
 
-		ret box(self).deeper(depth - 1)
+		ret Box(self).deeper(depth - 1)
 	}
 }
 
@@ -20,7 +20,7 @@ grow[T]: fun(own value: T, depth: i32) -> i32
 	if depth == 0
 		ret 0
 
-	ret grow(box(value), depth - 1)
+	ret grow(Box(value), depth - 1)
 }
 
 first[T]: fun(own value: T, depth: i32) -> i32
@@ -28,9 +28,9 @@ first[T]: fun(own value: T, depth: i32) -> i32
 	if depth == 0
 		ret 0
 
-	ret second(box(value), depth - 1)
+	ret second(Box(value), depth - 1)
 }
 
 second[U]: fun(own value: U, depth: i32) -> i32 => first(value, depth)
 
-main: fun -> i32 => grow(1, 3) + box(2).deeper(1) + first(3, 2)
+main: fun -> i32 => grow(1, 3) + Box(2).deeper(1) + first(3, 2)

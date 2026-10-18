@@ -18,15 +18,15 @@ Texture: rec
 	}
 }
 
-boxed[K: trait]: rec
+Boxed[K: trait]: rec
 {
 	object: pvt ptr[dyn[K]]
 
-	of[T: K + noref]: fun(own value: T) -> boxed[K]
+	of[T: K + noref]: fun(own value: T) -> Boxed[K]
 	{
 		val memory = ptr[T](malloc(sizeOf(T)))
 		own *memory = own value
-		ret boxed[K](memory)
+		ret Boxed[K](memory)
 	}
 
 	*: op(imm self) -> imm[dyn[K]] => imm *self.object
@@ -44,19 +44,19 @@ each: fun(values: array[i32, 3], visit: fun[i32])
 		visit(value)
 }
 
-makeCounter: fun(start: i32) -> boxed[fun[-> i32]]
+makeCounter: fun(start: i32) -> Boxed[fun[-> i32]]
 {
 	var count = start
-	ret boxed[fun[-> i32]].of(own fun -> i32
+	ret Boxed[fun[-> i32]].of(own fun -> i32
 	{
 		count += 1
 		ret count
 	})
 }
 
-makeBox[T: copy + noref]: fun(value: T) -> boxed[fun[-> T]]
+makeBox[T: copy + noref]: fun(value: T) -> Boxed[fun[-> T]]
 {
-	ret boxed[fun[-> T]].of(own fun -> T => value)
+	ret Boxed[fun[-> T]].of(own fun -> T => value)
 }
 
 pick: fun -> ext fun[i32 -> i32] => abs
@@ -73,18 +73,18 @@ counters: fun
 
 sources: fun
 {
-	val plain = boxed[fun[-> i32]].of(answer)
-	val external = boxed[fun[i32 -> i32]].of(pick())
+	val plain = Boxed[fun[-> i32]].of(answer)
+	val external = Boxed[fun[i32 -> i32]].of(pick())
 	val made = makeBox(2.5)
 	val step = 2
-	val add = boxed[fun[i32 -> i32]].of(own fun(x) => x + step)
+	val add = Boxed[fun[i32 -> i32]].of(own fun(x) => x + step)
 	printf("sources %d %d %d %d\n", plain(), external(-6), i32(made() * 2.0), add(1))
 }
 
 textures: fun
 {
 	val grass = Texture(7)
-	val show = boxed[fun[i32]].of(own fun(value: i32) { printf("textures %d %d\n", grass.id, value) })
+	val show = Boxed[fun[i32]].of(own fun(value: i32) { printf("textures %d %d\n", grass.id, value) })
 	each([1, 2, 3], *show)
 	printf("textures end\n")
 }
@@ -92,7 +92,7 @@ textures: fun
 modes: fun
 {
 	val step = 2
-	val bump = boxed[fun[mut i32]].of(own fun(mut value: i32) { value += step })
+	val bump = Boxed[fun[mut i32]].of(own fun(mut value: i32) { value += step })
 	var v = 1
 	bump(mut v)
 	bump(mut v)

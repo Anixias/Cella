@@ -5,7 +5,7 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-view[T]: ref rec
+View[T]: ref rec
 {
 	data: pvt ptr[T]
 	length: pvt set usize
@@ -19,7 +19,7 @@ view[T]: ref rec
 	[]: op(self, i: usize) -> imm[T] => imm self.data[i]
 }
 
-main: fun(args: view[str]) -> i32
+main: fun(args: View[str]) -> i32
 {
 	printf("%zu", args.length)
 	var i: usize = 1

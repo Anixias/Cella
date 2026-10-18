@@ -46,7 +46,7 @@ check[T: Hash]: fun(imm value: T) -> i32 => 1
 
 run[T: Hash]: fun(imm value: T) -> u64 => value.scale()
 
-holder[T: Hash + noref]: rec
+Holder[T: Hash + noref]: rec
 {
 	value: T
 }
@@ -71,7 +71,7 @@ main: fun -> i32
 	Hash(p).scale()
 	check(q)
 	check(3)
-	val bad = holder(q)
+	val bad = Holder(q)
 	val h = Hash(p)
 	val g = Hash
 	ret 0

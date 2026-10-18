@@ -1,2 +1,22 @@
+Hint at ext_records.ce:43:6
+42 │ {
+43 │     var small = div(17, 5)
+             ╘═══╛ 'small' is never changed
+
+Hint at ext_records.ce:44:6
+43 │ var small = div(17, 5)
+44 │ var wide = lldiv(5000000000, 3)
+         ╘══╛ 'wide' is never changed
+
+Hint at ext_records.ce:60:6
+59 │ 
+60 │ var hit = PtInRect(bounds, inside)
+         ╘═╛ 'hit' is never changed
+
+Hint at ext_records.ce:61:6
+60 │ var hit = PtInRect(bounds, inside)
+61 │ var miss = PtInRect(bounds, outside)
+         ╘══╛ 'miss' is never changed
+
 3 2 1666666666 2 1 0
 [exit code 0]

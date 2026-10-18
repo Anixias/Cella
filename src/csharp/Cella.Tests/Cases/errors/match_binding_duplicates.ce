@@ -5,9 +5,9 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-result[T, E]: enum { ok(value: T), err(error: E) }
+Result[T, E]: enum { ok(value: T), err(error: E) }
 
-nullable[T: null]: enum match T
+Nullable[T: null]: enum match T
 {
 	none = null
 	some(value) = else
@@ -39,7 +39,7 @@ make: fun -> R => R(Effect.d(Buffer(1)))
 
 uninitialized: fun -> i32
 {
-	var r: result[i32, i32]
+	var r: Result[i32, i32]
 	ret match r { ok(val v) => v, err(val e) => e }
 }
 
@@ -57,7 +57,7 @@ moved: fun
 dangling: fun
 {
 	var y = 0
-	var n: nullable[imm[i32]] = some(imm y)
+	var n: Nullable[imm[i32]] = some(imm y)
 	{
 		var x = 5
 		n = some(imm x)

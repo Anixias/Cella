@@ -20,8 +20,8 @@ Error at align_of.ce:23:48
 
 Error at align_of.ce:25:36
 24 │ 
-25 │ asGeneric: fun -> usize => alignOf(box)
-                                        ╘═╛ 'box' takes one generic argument
+25 │ asGeneric: fun -> usize => alignOf(Box)
+                                        ╘═╛ 'Box' takes one generic argument
 
 Error at align_of.ce:27:33
 26 │ 

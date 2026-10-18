@@ -10,23 +10,23 @@ Make: trait
 	new: op(value: i32)
 }
 
-list[T]: rec
+List[T]: rec
 {
 	head: T
-	tail: list[T]
+	tail: List[T]
 }
 
-box[T]: rec impl Make
+Box[T]: rec impl Make
 {
 	value: T
 }
 
-box[T]: impl Show
+Box[T]: impl Show
 {
 	show: fun(imm self) -> i32 => 1
 }
 
-box[U]: impl Show
+Box[U]: impl Show
 {
 	show: fun(imm self) -> i32 => 2
 }

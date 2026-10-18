@@ -1,6 +1,6 @@
 mod test
 
-game.box[T: copy]: impl
+game.Pack[T: copy]: impl
 {
 	bump: fun(mut self)
 	{

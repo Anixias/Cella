@@ -33,7 +33,7 @@ Small: rec impl Named + Shape
 	area: fun(self) -> f64 => 2.0
 }
 
-cell[K: trait]: rec
+Cell[K: trait]: rec
 {
 	object: ptr[dyn[K]]
 
@@ -52,7 +52,7 @@ main: fun -> i32
 	val memory = ptr[Small](malloc(sizeOf(Small)))
 	*memory = small
 	val shape: ptr[dyn[Shape]] = memory
-	val wrapped = cell[Shape](shape)
+	val wrapped = Cell[Shape](shape)
 	printf("%zu %zu %zu\n", sizeOf(*shape), alignOf(*wrapped), usize(sizeOf(shape)))
 	free(shape)
 	val other = ptr[Big](malloc(sizeOf(Big)))

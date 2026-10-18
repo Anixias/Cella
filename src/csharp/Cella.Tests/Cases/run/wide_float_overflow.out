@@ -1,3 +1,8 @@
+Hint at wide_float_overflow.ce:5:6
+4 │ {
+5 │     var x = 1.0e40
+            ^ 'x' is never changed
+
 [stderr]
 Panic at wide_float_overflow.ce:6:10: conversion overflow
 [exit code 101]

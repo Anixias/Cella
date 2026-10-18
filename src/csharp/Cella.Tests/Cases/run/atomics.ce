@@ -18,7 +18,7 @@ Parity: enum match bool
 	even = true
 }
 
-nullable[T: null]: enum match T
+Nullable[T: null]: enum match T
 {
 	none = null
 	some(value) = else
@@ -94,8 +94,8 @@ main: fun -> i32
 	val pp: ptr[Parity] = @parity
 	atomic *pp = Parity.even
 	printf("match bool %d\n", i32(atomic *pp == Parity.even = Parity.odd))
-	var slot: nullable[ptr[i32]] = none
-	val pn: ptr[nullable[ptr[i32]]] = @slot
+	var slot: Nullable[ptr[i32]] = none
+	val pn: ptr[Nullable[ptr[i32]]] = @slot
 	val filled = atomic *pn == none = some(@target)
 	val found = match atomic acquire *pn
 	{

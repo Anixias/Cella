@@ -7,15 +7,15 @@ ext
 	free: fun(memory: ptr)
 }
 
-boxed[K: trait]: rec
+Boxed[K: trait]: rec
 {
 	object: ptr[dyn[K]]
 
-	of[T: K]: fun(own value: T) -> boxed[K]
+	of[T: K]: fun(own value: T) -> Boxed[K]
 	{
 		val memory = ptr[T](malloc(sizeOf(T)))
 		own *memory = own value
-		ret boxed[K](memory)
+		ret Boxed[K](memory)
 	}
 
 	*: op(imm self) -> imm[dyn[K]] => imm *self.object
@@ -96,7 +96,7 @@ i64: impl Shape
 
 describe: fun(imm shape: dyn[Shape]) -> f64 => shape.area()
 
-keep: fun(own shape: boxed[Shape]) -> f64
+keep: fun(own shape: Boxed[Shape]) -> f64
 {
 	printf("kept %.1f\n", shape.area())
 	ret describe(imm *shape)
@@ -104,17 +104,17 @@ keep: fun(own shape: boxed[Shape]) -> f64
 
 main: fun -> i32
 {
-	var circle = boxed[Shape].of(Circle(1.0))
+	var circle = Boxed[Shape].of(Circle(1.0))
 	circle.grow()
 	printf("%.1f %.1f %zu\n", circle.area(), describe(imm *circle), sizeOf(*circle))
 	{
-		val dot = boxed[Shape].of(Dot(3))
-		var tagged = boxed[Shape].of(Tagged(Label(9), 2.0))
-		val number = boxed[Shape].of(i64(40))
+		val dot = Boxed[Shape].of(Dot(3))
+		var tagged = Boxed[Shape].of(Tagged(Label(9), 2.0))
+		val number = Boxed[Shape].of(i64(40))
 		tagged.grow()
 		printf("%.1f %.1f %.1f\n", dot.area(), tagged.area(), number.area())
 	}
-	printf("%.1f\n", keep(boxed[Shape].of(Circle(3.0))))
+	printf("%.1f\n", keep(Boxed[Shape].of(Circle(3.0))))
 	printf("end\n")
 	ret 0
 }

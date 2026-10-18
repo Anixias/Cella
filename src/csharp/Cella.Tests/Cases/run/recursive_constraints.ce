@@ -5,36 +5,36 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-cell[T: copy]: rec
+Cell[T: copy]: rec
 {
 	value: ptr[T]
 }
 
-holder[T: new]: rec
+Holder[T: new]: rec
 {
 	value: ptr[T]
 }
 
-guard[T: drop]: rec
+Guard[T: drop]: rec
 {
 	value: ptr[T]
 }
 
 Node: rec
 {
-	next: cell[Node]
+	next: Cell[Node]
 	x: i32
 }
 
 Leaf: rec
 {
-	up: holder[Leaf]
+	up: Holder[Leaf]
 	y: i32
 }
 
 Item: rec
 {
-	link: guard[Item]
+	link: Guard[Item]
 
 	drop: op
 	{
@@ -43,8 +43,8 @@ Item: rec
 
 main: fun -> i32
 {
-	val n = Node(cell[Node](null), 1)
-	val l = Leaf(holder[Leaf](null), 2)
+	val n = Node(Cell[Node](null), 1)
+	val l = Leaf(Holder[Leaf](null), 2)
 	printf("%d %d\n", n.x, l.y)
 	ret 0
 }

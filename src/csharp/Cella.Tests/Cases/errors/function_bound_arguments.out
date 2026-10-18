@@ -21,17 +21,17 @@ Error at function_bound_arguments.ce:43:20
 
 Error at function_bound_arguments.ce:44:19
 43 │ val fewer = twice(fun => 4, 1)
-44 │ val bad = holder[ref fun[-> i32]](1)
+44 │ val bad = Holder[ref fun[-> i32]](1)
                       ╘═════════════╛ 'ref fun[-> i32]' is not a trait
 
 Error at function_bound_arguments.ce:46:18
 45 │ var count = 0
-46 │ val borrowing = boxed[fun[-> i32]].of(fun -> i32 => count)
+46 │ val borrowing = Boxed[fun[-> i32]].of(fun -> i32 => count)
                      ╘═══════════════════╛ 'of' requires 'T: noref'
                                          | 'ref fun[-> i32]' holds borrows
 
 Error at function_bound_arguments.ce:48:2
-47 │ val next = boxed[fun[-> i32]].of(answer)
+47 │ val next = Boxed[fun[-> i32]].of(answer)
 48 │ next(5)
      ╘══╛ 'next' takes no arguments
 

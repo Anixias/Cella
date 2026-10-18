@@ -1,6 +1,6 @@
 Error at new_constraint_declarations.ce:13:19
 12 │ 
-13 │ box[T: new(i32)]: impl
+13 │ Box[T: new(i32)]: impl
                        ╘══╛ Cannot declare 'impl' blocks that add no bounds
 
 Error at new_constraint_declarations.ce:18:10
@@ -82,8 +82,8 @@ Error at new_constraint_declarations.ce:36:18
 
 Error at new_constraint_declarations.ce:40:17
 39 │ 
-40 │ wrap[T: new(box[T])]: fun -> i32 => 0
-                     ^ 'box' requires 'T: new(i32)'
+40 │ wrap[T: new(Box[T])]: fun -> i32 => 0
+                     ^ 'Box' requires 'T: new(i32)'
                      | 'T' has no constructor taking 'i32'
 
 [compilation failed]

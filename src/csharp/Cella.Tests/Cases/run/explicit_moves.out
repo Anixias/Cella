@@ -1,3 +1,8 @@
+Hint at explicit_moves.ce:115:6
+114 │ val textures = [Texture(8), Texture(9)]
+115 │ var i: usize = 1
+          ^ 'i' is never changed
+
 free 1
 free 2
 arguments 1 2 5

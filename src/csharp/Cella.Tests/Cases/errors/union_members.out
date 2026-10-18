@@ -1,10 +1,10 @@
 Error at union_members.ce:20:8
 19 │ {
-20 │     text: view[u8]
+20 │     text: View[u8]
                ╘══════╛ Cannot store borrows in unions
 
 Error at union_members.ce:21:8
-20 │ text: view[u8]
+20 │ text: View[u8]
 21 │ name: Name
            ╘══╛ Cannot store values with destructors in unions
 

@@ -1,2 +1,22 @@
+Hint at hex_binary_literals.ce:10:6
+ 9 │ {
+10 │     var mask = 0xFF
+             ╘══╛ 'mask' is never changed
+
+Hint at hex_binary_literals.ce:11:6
+10 │ var mask = 0xFF
+11 │ var flags = 0b1010_0101
+         ╘═══╛ 'flags' is never changed
+
+Hint at hex_binary_literals.ce:12:6
+11 │ var flags = 0b1010_0101
+12 │ var word: u32 = 0XDEAD_BEEF
+         ╘══╛ 'word' is never changed
+
+Hint at hex_binary_literals.ce:13:6
+12 │ var word: u32 = 0XDEAD_BEEF
+13 │ var negative = -0x10
+         ╘══════╛ 'negative' is never changed
+
 255 165 3735928559 -16 4
 [exit code 0]

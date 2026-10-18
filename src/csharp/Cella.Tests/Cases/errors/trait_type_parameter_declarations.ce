@@ -1,6 +1,6 @@
 mod test
 
-option[T]: enum
+Option[T]: enum
 {
 	none
 	some(value: T)
@@ -8,7 +8,7 @@ option[T]: enum
 
 Iterator[T]: trait
 {
-	next: fun(mut self) -> option[T]
+	next: fun(mut self) -> Option[T]
 	map[T]: fun(imm self) -> T
 }
 

@@ -1,3 +1,33 @@
+Hint at mode_function_values.ce:51:6
+50 │ hurt(mut hp, 3)
+51 │ var typed: fun[mut i32, i32] = damage
+         ╘═══╛ 'typed' is never changed
+
+Hint at mode_function_values.ce:56:6
+55 │ 
+56 │ var handler = Handler(nudge)
+         ╘═════╛ 'handler' is never changed
+
+Hint at mode_function_values.ce:61:6
+60 │ 
+61 │ var increment: fun[own i32 -> i32] = bump
+         ╘═══════╛ 'increment' is never changed
+
+Hint at mode_function_values.ce:65:6
+64 │ var exponent = 0
+65 │ var split: ext fun[f64, mut i32 -> f64] = frexp
+         ╘═══╛ 'split' is never changed
+
+Hint at mode_function_values.ce:69:6
+68 │ 
+69 │ var c: ext fun[mut i32, i32] = damage
+         ^ 'c' is never changed
+
+Hint at mode_function_values.ce:71:6
+70 │ c(mut hp, 1)
+71 │ var t: ext fun[mut i32] = tick
+         ^ 't' is never changed
+
 11
 6 2
 5

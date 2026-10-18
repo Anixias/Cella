@@ -40,7 +40,7 @@ Text: rec
 	}
 }
 
-box[T]: rec
+Box[T]: rec
 {
 	value: T
 

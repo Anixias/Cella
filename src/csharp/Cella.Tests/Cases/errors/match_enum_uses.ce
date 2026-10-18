@@ -1,12 +1,12 @@
 mod test
 
-nullable[T: null]: enum match T
+Nullable[T: null]: enum match T
 {
 	none = null
 	some(value) = else
 }
 
-socket: enum match i32
+Socket: enum match i32
 {
 	invalid = -1
 	valid(handle) = else
@@ -17,17 +17,17 @@ Point: rec
 	x: i32
 }
 
-wrap[T: null]: fun(own value: T) -> nullable[T] => some(value)
+wrap[T: null]: fun(own value: T) -> Nullable[T] => some(value)
 
-unwrap[T: null]: fun(imm n: nullable[T]) -> T => T(n)
+unwrap[T: null]: fun(imm n: Nullable[T]) -> T => T(n)
 
-describe: fun(s: socket) -> i32 => match s { valid(val h) => h }
+describe: fun(s: Socket) -> i32 => match s { valid(val h) => h }
 
 main: fun -> i32
 {
 	val a = wrap(5)
 	val b = wrap[Point](Point(1))
-	var s = socket(3)
+	var s = Socket(3)
 	match mut s
 	{
 		valid(val h) => h = 4

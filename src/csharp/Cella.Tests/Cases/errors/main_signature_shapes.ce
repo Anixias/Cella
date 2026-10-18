@@ -1,6 +1,6 @@
 mod test
 
-view[T]: ref rec
+View[T]: ref rec
 {
 	data: pvt ptr[T]
 	length: pvt set usize
@@ -12,7 +12,7 @@ view[T]: ref rec
 	}
 }
 
-main: fun(mut args: view[str]) -> i32 => 0
+main: fun(mut args: View[str]) -> i32 => 0
 
 main: fun(args: ptr[str], count: i32) -> i32 => 0
 

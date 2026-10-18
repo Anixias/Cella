@@ -1,3 +1,18 @@
+Hint at chained_comparisons.ce:16:6
+15 │ 
+16 │ var small: u8 = 7
+         ╘═══╛ 'small' is never changed
+
+Hint at chained_comparisons.ce:17:6
+16 │ var small: u8 = 7
+17 │ var count = 40
+         ╘═══╛ 'count' is never changed
+
+Hint at chained_comparisons.ce:18:6
+17 │ var count = 40
+18 │ var wide: i64 = 9
+         ╘══╛ 'wide' is never changed
+
 0 1 1
 1 0
 1 1

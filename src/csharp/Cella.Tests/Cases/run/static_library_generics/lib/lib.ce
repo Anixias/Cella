@@ -11,7 +11,7 @@ step: mod fun(value: i32) -> i32 => value + 1
 
 total: var i32 = 0
 
-counter[T]: pub rec
+Counter[T]: pub rec
 {
 	value: T
 	steps: i32
@@ -23,7 +23,7 @@ counter[T]: pub rec
 	}
 }
 
-box[T]: pub rec
+Box[T]: pub rec
 {
 	pointer: req ptr[T]
 
@@ -43,7 +43,7 @@ box[T]: pub rec
 	}
 }
 
-make[T]: pub fun(own value: T) -> counter[T] => counter(own value, 0)
+make[T]: pub fun(own value: T) -> Counter[T] => Counter(own value, 0)
 
 Inner: rec
 {
@@ -64,7 +64,7 @@ Outer: pub rec
 
 selfCheck: pub fun -> i32
 {
-	var local = counter[i64](1, 0)
+	var local = Counter[i64](1, 0)
 	local.bump()
 	ret local.steps
 }

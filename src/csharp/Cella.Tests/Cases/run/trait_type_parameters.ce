@@ -5,7 +5,7 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-option[T]: enum
+Option[T]: enum
 {
 	none
 	some(value: T)
@@ -13,7 +13,7 @@ option[T]: enum
 
 Iterator[T]: trait
 {
-	next: fun(mut self) -> option[T]
+	next: fun(mut self) -> Option[T]
 	skip: fun(mut self, count: i32)
 	{
 		var i = 0
@@ -40,7 +40,7 @@ Countdown: rec impl Iterator[i32]
 {
 	left: i32
 
-	next: fun(mut self) -> option[i32]
+	next: fun(mut self) -> Option[i32]
 	{
 		if self.left == 0
 			ret none
@@ -50,16 +50,16 @@ Countdown: rec impl Iterator[i32]
 	}
 }
 
-cursor[T: copy]: rec
+Cursor[T: copy]: rec
 {
 	items: ptr[T]
 	length: usize
 	index: usize
 }
 
-cursor[T: copy]: impl Iterator[T]
+Cursor[T: copy]: impl Iterator[T]
 {
-	next: fun(mut self) -> option[T]
+	next: fun(mut self) -> Option[T]
 	{
 		if self.index == self.length
 			ret none
@@ -69,12 +69,12 @@ cursor[T: copy]: impl Iterator[T]
 	}
 }
 
-span[T: copy]: rec impl Iterator[T]
+Span[T: copy]: rec impl Iterator[T]
 {
 	first: T
 	count: i32
 
-	next: fun(mut self) -> option[T]
+	next: fun(mut self) -> Option[T]
 	{
 		if self.count == 0
 			ret none
@@ -106,7 +106,7 @@ countAll[T, I: Iterator[T]]: fun(mut items: I) -> i32
 	ret count
 }
 
-first[T, I: Iterator[T]]: fun(mut items: I) -> option[T] => items.next()
+first[T, I: Iterator[T]]: fun(mut items: I) -> Option[T] => items.next()
 
 second[I: Iterator[i32]]: fun(mut items: I) -> i32
 {
@@ -191,9 +191,9 @@ main: fun -> i32
 {
 	var steps = Countdown(3)
 	var values = [10, 20, 30, 40]
-	var c = cursor[i32](@values[0], 4, 0)
+	var c = Cursor[i32](@values[0], 4, 0)
 	c.skip(1)
-	var s = span(2.5, 3)
+	var s = Span(2.5, 3)
 	var more = Countdown(5)
 	printf("%d %d %d %d %d\n", sum(mut steps), second(mut c), countAll(mut c), countAll(mut s), second(mut more))
 

@@ -10,13 +10,13 @@ Error at match_enum_syntax.ce:11:12
                | To match the '(' on line 11
 
 Error at match_enum_syntax.ce:15:1
-14 │ untyped: enum match
+14 │ Untyped: enum match
 15 │ {
      ^ Expected a type
 
 Error at match_enum_syntax.ce:19:18
 18 │ 
-19 │ tagged: enum(u8) match i32
+19 │ Tagged: enum(u8) match i32
                       ╘═══╛ Cannot use 'match' on enums with a tag type
 
 [compilation failed]

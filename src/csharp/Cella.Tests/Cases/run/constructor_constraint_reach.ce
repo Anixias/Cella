@@ -5,13 +5,13 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-view[T]: ref rec
+View[T]: ref rec
 {
 	data: ptr[T]
 	length: usize
 }
 
-sum: fun(values: view[i32]) -> i32
+sum: fun(values: View[i32]) -> i32
 {
 	var total = 0
 	for i in 0..values.length
@@ -24,7 +24,7 @@ Packed: rec
 {
 	n: i32
 
-	new: op(...values: view[i32])
+	new: op(...values: View[i32])
 	{
 		self.n = sum(values) * 10 + i32(values.length)
 	}
@@ -54,7 +54,7 @@ Rest: rec
 {
 	n: i32
 
-	new: op(x: i32, ...rest: view[i32])
+	new: op(x: i32, ...rest: View[i32])
 	{
 		self.n = x * 100 + sum(rest)
 	}

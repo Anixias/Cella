@@ -7,7 +7,7 @@ ext
 	free: fun(memory: ptr)
 }
 
-box[T]: rec
+Box[T]: rec
 {
 	target: pvt req ptr[T]
 
@@ -35,7 +35,7 @@ main: fun -> i32
 {
 	var n = 5
 	val p = @n
-	val b = box(p)
+	val b = Box(p)
 	printf("%d\n", **b)
 	val c: i32 = b
 	ret 0

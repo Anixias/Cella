@@ -22,7 +22,7 @@ Point: rec
 	get: fun(imm self,) -> i32 => self.x
 }
 
-pair[A, B,]: rec
+Pair[A, B,]: rec
 {
 	a: A
 	b: B

@@ -1,11 +1,11 @@
 mod a
 
-bumpA: pub fun -> i32 => c.cell[i32].bump()
+bumpA: pub fun -> i32 => c.Cell[i32].bump()
 
-wideA: pub fun -> i32 => c.cell[i64].bump()
+wideA: pub fun -> i32 => c.Cell[i64].bump()
 
 pointA: pub fun -> i32
 {
-	c.cell[i32].origin.x += 10
-	ret c.cell[i32].origin.x
+	c.Cell[i32].origin.x += 10
+	ret c.Cell[i32].origin.x
 }

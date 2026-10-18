@@ -9,7 +9,7 @@ Token: rec
 	}
 }
 
-box[T]: rec
+Box[T]: rec
 {
 	value: T
 }
@@ -18,11 +18,11 @@ Counter: rec
 {
 	n: i32
 
-	+[U: copy]: op(imm a: Counter, imm b: box[U]) -> i32 => a.n
+	+[U: copy]: op(imm a: Counter, imm b: Box[U]) -> i32 => a.n
 }
 
 main: fun -> i32
 {
-	val r = Counter(1) + box(Token(1))
+	val r = Counter(1) + Box(Token(1))
 	ret 0
 }

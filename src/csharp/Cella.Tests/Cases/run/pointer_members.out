@@ -1,3 +1,8 @@
+Hint at pointer_members.ce:58:6
+57 │ var second = Node(2, @third)
+58 │ var head = Node(1, @second)
+         ╘══╛ 'head' is never changed
+
 7
 12 7
 99 77 77

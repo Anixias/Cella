@@ -1,6 +1,6 @@
 mod test
 
-view[T]: ref rec
+View[T]: ref rec
 {
 	data: pvt ptr[T]
 	length: pvt set usize
@@ -29,7 +29,7 @@ make: fun -> i32 => 4
 
 order: fun(first: i32 = 0, second: i32) {}
 writes: fun(mut value: i32 = 0) {}
-packs: fun(...values: view[i32] = view[i32](null, 0)) {}
+packs: fun(...values: View[i32] = View[i32](null, 0)) {}
 called: fun(value: i32 = make()) {}
 wrong: fun(value: i32 = "text") {}
 generic[T]: fun(imm value: T = 5) {}

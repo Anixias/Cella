@@ -1,3 +1,48 @@
+Hint at small_integer_literals.ce:20:6
+19 │ {
+20 │     var tiny: i8 = 127
+             ╘══╛ 'tiny' is never changed
+
+Hint at small_integer_literals.ce:21:6
+20 │ var tiny: i8 = 127
+21 │ var byte: u8 = 255
+         ╘══╛ 'byte' is never changed
+
+Hint at small_integer_literals.ce:22:6
+21 │ var byte: u8 = 255
+22 │ var short: u16 = 65535
+         ╘═══╛ 'short' is never changed
+
+Hint at small_integer_literals.ce:23:6
+22 │ var short: u16 = 65535
+23 │ var wrappedTiny = tiny +% 1
+         ╘═════════╛ 'wrappedTiny' is never changed
+
+Hint at small_integer_literals.ce:24:6
+23 │ var wrappedTiny = tiny +% 1
+24 │ var wrappedByte = byte +% 1
+         ╘═════════╛ 'wrappedByte' is never changed
+
+Hint at small_integer_literals.ce:25:6
+24 │ var wrappedByte = byte +% 1
+25 │ var wrappedShort = short +% 1
+         ╘══════════╛ 'wrappedShort' is never changed
+
+Hint at small_integer_literals.ce:26:6
+25 │ var wrappedShort = short +% 1
+26 │ var widened: u32 = u32(byte) + 1
+         ╘═════╛ 'widened' is never changed
+
+Hint at small_integer_literals.ce:27:6
+26 │ var widened: u32 = u32(byte) + 1
+27 │ var outOfRange = tiny + 200
+         ╘════════╛ 'outOfRange' is never changed
+
+Hint at small_integer_literals.ce:31:6
+30 │ 
+31 │ var count: i32 = 0
+         ╘═══╛ 'count' is never changed
+
 -128 0 0 256 327
 1 1 2 4
 1

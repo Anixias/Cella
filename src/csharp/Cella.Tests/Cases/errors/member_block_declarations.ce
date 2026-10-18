@@ -7,16 +7,16 @@ Eq: trait
 
 i32: impl Eq
 
-box[T]: rec
+Box[T]: rec
 {
 	value: T
 
 	peek: fun(imm self) -> i32 => 1
 }
 
-box[T: Eq]: impl
+Box[T: Eq]: impl
 {
-	same: fun(imm self, imm other: box[T]) -> bool => self.value == other.value
+	same: fun(imm self, imm other: Box[T]) -> bool => self.value == other.value
 	peek: fun(imm self) -> i32 => 2
 	value: get(imm self) -> i32 => 4
 	count: i32
@@ -41,7 +41,7 @@ Point: impl
 	norm: fun(self) -> i32 => 1
 }
 
-box[T]: impl
+Box[T]: impl
 {
 	extra: fun(imm self) -> i32 => 1
 }
@@ -51,12 +51,12 @@ i32: impl
 	twice: fun(self) -> i32 => 2
 }
 
-wrap[T: noref]: rec
+Wrap[T: noref]: rec
 {
 	value: T
 }
 
-wrap[T: Eq]: impl
+Wrap[T: Eq]: impl
 {
 	same: fun(imm self) -> bool => true
 }

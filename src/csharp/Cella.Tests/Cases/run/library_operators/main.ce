@@ -13,8 +13,8 @@ main: fun -> i32
 	total += lib.Money(5)
 	val back = -total
 	printf("%lld %d %lld\n", total.cents, i32(a == lib.Money(150)), back.cents)
-	val x = lib.tagged(1.5, 2)
-	val y = lib.tagged(0.5, 9)
+	val x = lib.Tagged(1.5, 2)
+	val y = lib.Tagged(0.5, 9)
 	printf("%d %d\n", i32(x < y), i32(y < x))
 	ret 0
 }

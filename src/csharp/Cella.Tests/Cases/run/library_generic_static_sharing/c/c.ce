@@ -6,7 +6,7 @@ Point: pub rec
 	y: i32
 }
 
-cell[T]: pub rec
+Cell[T]: pub rec
 {
 	hits: var i32 = 0
 	origin: var Point = Point(5, 7)

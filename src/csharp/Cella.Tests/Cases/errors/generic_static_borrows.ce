@@ -11,7 +11,7 @@ View: ref rec
 	p: imm[i32]
 }
 
-open[T]: rec
+Open[T]: rec
 {
 	value: T
 	last: var Slot[T] = Slot[T].empty
@@ -19,7 +19,7 @@ open[T]: rec
 	pointer: var ptr[T] = null
 }
 
-bounded[T: noref]: rec
+Bounded[T: noref]: rec
 {
 	value: T
 	last: var Slot[T] = Slot[T].empty
@@ -28,6 +28,6 @@ bounded[T: noref]: rec
 main: fun -> i32
 {
 	var local = 42
-	bounded[View].last = Slot[View].full(View(imm local))
+	Bounded[View].last = Slot[View].full(View(imm local))
 	ret 0
 }

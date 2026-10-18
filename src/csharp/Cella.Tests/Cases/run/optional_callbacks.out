@@ -1,3 +1,23 @@
+Hint at optional_callbacks.ce:20:6
+19 │ {
+20 │     var a = *ptr[i32](left)
+             ^ 'a' is never changed
+
+Hint at optional_callbacks.ce:21:6
+20 │ var a = *ptr[i32](left)
+21 │ var b = *ptr[i32](right)
+         ^ 'b' is never changed
+
+Hint at optional_callbacks.ce:48:6
+47 │ 
+48 │ var index: usize = 1
+         ╘═══╛ 'index' is never changed
+
+Hint at optional_callbacks.ce:52:6
+51 │ 
+52 │ var compare: ext fun[ptr, ptr -> i32] = ascending
+         ╘═════╛ 'compare' is never changed
+
 2 1 1
 1 3 5 7 9
 9 7 5 3 1

@@ -80,8 +80,8 @@ Error at trait_conformance.ce:91:11
 
 Error at trait_conformance.ce:103:7
 102 │ 
-103 │ keyed[T]: impl Named
-            ^ 'keyed' requires 'T: Hash'
+103 │ Keyed[T]: impl Named
+            ^ 'Keyed' requires 'T: Hash'
             | 'T' doesn't implement 'Hash'
 
 [compilation failed]

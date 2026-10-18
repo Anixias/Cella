@@ -1,6 +1,6 @@
 Error at generic_static_faults.ce:15:18
 14 │ {
-15 │     printf("%zu\n", slots[0].per)
-                         ╘══════════╛ 'slots[0].per' has no constant value
+15 │     printf("%zu\n", Slots[0].per)
+                         ╘══════════╛ 'Slots[0].per' has no constant value
 
 [compilation failed]

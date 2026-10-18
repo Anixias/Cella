@@ -1,3 +1,8 @@
+Hint at binding_reassignments.ce:70:6
+69 │ 
+70 │ var spare = TextureBox(Texture(5))
+         ╘═══╛ 'spare' is never changed
+
 before 1
 free 1
 before 2

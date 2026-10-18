@@ -29,24 +29,24 @@ Error at constraint_uses.ce:59:46
 
 Error at constraint_uses.ce:60:46
 59 │ imm imm imm imm imm imm imm imm imm imm imm twin(Text(1))
-60 │ imm imm imm imm imm imm imm imm imm imm imm twin(pair(Text(1), 2))
+60 │ imm imm imm imm imm imm imm imm imm imm imm twin(Pair(Text(1), 2))
                                                  ╘══╛ 'twin' requires 'T: copy'
-                                                    | 'pair[Text, i32]' can't be copied
+                                                    | 'Pair[Text, i32]' can't be copied
 
 Error at constraint_uses.ce:61:2
-60 │ imm imm imm imm imm imm imm imm imm imm imm twin(pair(Text(1), 2))
+60 │ imm imm imm imm imm imm imm imm imm imm imm twin(Pair(Text(1), 2))
 61 │ hold(5)
      ╘══╛ 'hold' requires 'T: drop'
         | 'i32' has no destructor
 
 Error at constraint_uses.ce:62:2
 61 │ hold(5)
-62 │ hold(pair(1, 2))
+62 │ hold(Pair(1, 2))
      ╘══╛ 'hold' requires 'T: drop'
-        | 'pair[i32, i32]' has no destructor
+        | 'Pair[i32, i32]' has no destructor
 
 Error at constraint_uses.ce:63:7
-62 │ hold(pair(1, 2))
+62 │ hold(Pair(1, 2))
 63 │ make[Holder]()
           ╘════╛ 'make' requires 'T: new'
                | 'Holder' has no constructor without parameters

@@ -1,6 +1,6 @@
 mod test
 
-view[T]: ref rec
+View[T]: ref rec
 {
 	data: pvt ptr[T]
 	length: pvt set usize
@@ -22,36 +22,36 @@ Bytes: rec
 	{
 	}
 
-	+: op(self, ...rest: view[i32]) -> i32 => 0
+	+: op(self, ...rest: View[i32]) -> i32 => 0
 }
 
 ext
 {
-	format: fun(text: cstr, ...values: view[i32]) -> i32
-	counted: fun(...values: view[i32], count: i32)
-	alone: fun(...values: view[i32])
+	format: fun(text: cstr, ...values: View[i32]) -> i32
+	counted: fun(...values: View[i32], count: i32)
+	alone: fun(...values: View[i32])
 }
 
 Sink: trait
 {
-	put: fun(imm self, ...values: view[i32]) -> usize
+	put: fun(imm self, ...values: View[i32]) -> usize
 }
 
 Box: rec impl Sink
 {
 	id: i32
 
-	put: fun(self, values: view[i32]) -> usize => values.length
+	put: fun(self, values: View[i32]) -> usize => values.length
 }
 
 plain: fun(...values: i32) {}
-after: fun(...values: view[i32], last: i32) {}
-both: fun(...first: view[i32], ...second: view[i32]) {}
-writes: fun(mut ...values: view[i32]) {}
-owns: fun(own ...values: view[i32]) {}
+after: fun(...values: View[i32], last: i32) {}
+both: fun(...first: View[i32], ...second: View[i32]) {}
+writes: fun(mut ...values: View[i32]) {}
+owns: fun(own ...values: View[i32]) {}
 bytes: fun(...values: Bytes) {}
-compare: ext fun(...values: view[i32]) -> i32 => 0
-same: fun(values: view[i32]) {}
-same: fun(...values: view[i32]) {}
+compare: ext fun(...values: View[i32]) -> i32 => 0
+same: fun(values: View[i32]) {}
+same: fun(...values: View[i32]) {}
 
-main: fun(...args: view[str]) -> i32 => 0
+main: fun(...args: View[str]) -> i32 => 0

@@ -1,12 +1,12 @@
 Error at conditional_impl_members.ce:30:24
 29 │ {
-30 │     val a = box(Plain(1)).digest()
+30 │     val a = Box(Plain(1)).digest()
                                ╘════╛ 'digest' requires 'T: Hash'
                                     | 'Plain' doesn't implement 'Hash'
 
 Error at conditional_impl_members.ce:31:24
-30 │ val a = box(Plain(1)).digest()
-31 │ val b = box(Plain(1)).hash()
+30 │ val a = Box(Plain(1)).digest()
+31 │ val b = Box(Plain(1)).hash()
                            ╘══╛ 'hash' requires 'T: Hash'
                               | 'Plain' doesn't implement 'Hash'
 

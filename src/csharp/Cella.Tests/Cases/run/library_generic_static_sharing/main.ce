@@ -14,12 +14,12 @@ main: fun -> i32
 {
 	val x = a.bumpA()
 	val y = s.bumpS()
-	val z = c.cell[i32].bump()
+	val z = c.Cell[i32].bump()
 	val w = a.wideA()
-	val m = c.cell[Mine].bump()
-	val n = c.cell[Mine].bump()
+	val m = c.Cell[Mine].bump()
+	val n = c.Cell[Mine].bump()
 	val p = a.pointA()
-	c.add(mut c.cell[i32].origin, 3)
-	printf("%d %d %d %d %d %d %d %d %d\n", x, y, z, w, m, n, p, c.cell[i32].origin.y, c.cell[i64].origin.y)
+	c.add(mut c.Cell[i32].origin, 3)
+	printf("%d %d %d %d %d %d %d %d %d\n", x, y, z, w, m, n, p, c.Cell[i32].origin.y, c.Cell[i64].origin.y)
 	ret 0
 }

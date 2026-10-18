@@ -40,12 +40,12 @@ i32: impl Hash
 	seed: fun -> u64 => 5
 }
 
-box[T]: pub rec
+Box[T]: pub rec
 {
 	value: T
 }
 
-box[T: Show]: impl Show
+Box[T: Show]: impl Show
 {
 	show: fun(imm self) -> i32 => self.value.show() + 1
 }

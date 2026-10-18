@@ -1,6 +1,6 @@
 mod test
 
-option[T]: enum
+Option[T]: enum
 {
 	none
 	some(value: T)
@@ -8,7 +8,7 @@ option[T]: enum
 
 Iterator[T]: trait
 {
-	next: fun(mut self) -> option[T]
+	next: fun(mut self) -> Option[T]
 }
 
 Write[T]: trait
@@ -31,7 +31,7 @@ Words: rec impl Iterator[str]
 {
 	x: i32
 
-	next: fun(mut self) -> option[str] => none
+	next: fun(mut self) -> Option[str] => none
 }
 
 Console: rec impl Write[str] + Write[i32]
@@ -52,7 +52,7 @@ copyAll: fun(imm item: dyn[Cloner[i32]]) -> i32
 	ret item.get()
 }
 
-cell[K: trait]: rec
+Cell[K: trait]: rec
 {
 	x: i32
 }
@@ -67,6 +67,6 @@ main: fun -> i32
 	Iterator[i32](words).next()
 	Write[i64](console).write(1)
 	val x: Iterator[i32] = undef
-	val c = cell[Iterator](1)
+	val c = Cell[Iterator](1)
 	ret 0
 }

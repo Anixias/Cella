@@ -1,1 +1,6 @@
+Hint at multiline_call.ce:10:6
+ 9 │ {
+10 │     var total = add(
+             ╘═══╛ 'total' is never changed
+
 [exit code 42]

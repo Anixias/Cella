@@ -1,3 +1,8 @@
+Hint at enum_conversion_trap.ce:12:6
+11 │ {
+12 │     var n = 50
+             ^ 'n' is never changed
+
 [stderr]
 Panic at enum_conversion_trap.ce:13:13: 'Code' has no case with this value
 [exit code 101]

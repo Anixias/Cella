@@ -7,7 +7,7 @@ ext
 
 count: const usize = 2
 
-ring[T: noref, N: const usize]: rec
+Ring[T: noref, N: const usize]: rec
 {
 	items: array[T, N]
 	used: usize
@@ -21,12 +21,12 @@ ring[T: noref, N: const usize]: rec
 	capacity: get(imm self) -> usize => N
 }
 
-ring[T: noref, N: const u8]: impl
+Ring[T: noref, N: const u8]: impl
 {
 	slots: fun(imm self) -> u8 => N
 }
 
-holder[N: const usize]: rec
+Holder[N: const usize]: rec
 {
 	items: array[i32, N]
 }
@@ -60,15 +60,15 @@ sum[N: const usize]: fun(values: array[i32, N]) -> i32
 
 echo[N: const usize]: fun(values: array[i32, N]) -> array[i32, N] => values
 
-zeros[N: const usize]: fun -> array[i32, N] => holder[N]().items
+zeros[N: const usize]: fun -> array[i32, N] => Holder[N]().items
 
 scaled[N: const usize]: fun(values: array[i32, N]) -> usize => N * 10
 
 first[T: copy, N: const usize]: fun(values: array[T, N]) -> T => values[0]
 
-make[N: const usize]: fun -> ring[i32, N] => ring[i32, N]()
+make[N: const usize]: fun -> Ring[i32, N] => Ring[i32, N]()
 
-wrap[N: const usize]: fun(values: array[i32, N]) -> ring[i32, N]
+wrap[N: const usize]: fun(values: array[i32, N]) -> Ring[i32, N]
 {
 	var result = make[N]()
 	for value in values
@@ -81,11 +81,11 @@ measure[T: Sized[3]]: fun(imm item: T) -> usize => item.size()
 
 records: fun
 {
-	var small = ring[i32, 4]()
+	var small = Ring[i32, 4]()
 	small.items[3] = 7
-	val other = ring[u8, count * 2]()
+	val other = Ring[u8, count * 2]()
 	printf("ring %d %d %d %d %d\n", i32(small.capacity), small.items[3], i32(other.items.length),
-		i32(sizeOf(ring[i64, 3])), i32(small.slots()))
+		i32(sizeOf(Ring[i64, 3])), i32(small.slots()))
 }
 
 functions: fun

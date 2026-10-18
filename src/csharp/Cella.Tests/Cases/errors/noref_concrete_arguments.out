@@ -5,18 +5,18 @@ Hint at noref_concrete_arguments.ce:23:43
 
 Error at noref_concrete_arguments.ce:27:19
 26 │ {
-27 │     val tokens: cell[Token] = undef
-                          ╘═══╛ 'cell' requires 'Element: noref'
+27 │     val tokens: Cell[Token] = undef
+                          ╘═══╛ 'Cell' requires 'Element: noref'
                               | 'Token' holds borrows
 
 Error at noref_concrete_arguments.ce:28:13
-27 │ val tokens: cell[Token] = undef
+27 │ val tokens: Cell[Token] = undef
 28 │ val kept = keep("lit")
                 ╘══╛ 'keep' requires 'T: noref'
                    | 'str' holds borrows
 
 Error at noref_concrete_arguments.ce:31:15
-30 │ val w = wrap(Token(imm n))
+30 │ val w = Wrap(Token(imm n))
 31 │ val size = w.size()
                   ╘══╛ 'size' requires 'T: noref'
                      | 'Token' holds borrows

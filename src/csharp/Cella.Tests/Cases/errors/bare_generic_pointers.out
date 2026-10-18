@@ -1,11 +1,11 @@
 Error at bare_generic_pointers.ce:10:9
  9 │ {
-10 │     p: ptr[box]
-                ╘═╛ 'box' takes one generic argument
+10 │     p: ptr[Box]
+                ╘═╛ 'Box' takes one generic argument
 
 Error at bare_generic_pointers.ce:13:18
 12 │ 
-13 │ take: fun(p: ptr[box]) -> i32 => 0
-                      ╘═╛ 'box' takes one generic argument
+13 │ take: fun(p: ptr[Box]) -> i32 => 0
+                      ╘═╛ 'Box' takes one generic argument
 
 [compilation failed]

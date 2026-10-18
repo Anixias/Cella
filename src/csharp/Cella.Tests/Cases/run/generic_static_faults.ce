@@ -5,7 +5,7 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-slots[N: const usize]: rec
+Slots[N: const usize]: rec
 {
 	count: i32
 	per: const usize = 10 / N
@@ -15,7 +15,7 @@ slots[N: const usize]: rec
 
 main: fun -> i32
 {
-	val s = slots[0](1)
+	val s = Slots[0](1)
 	printf("%zu\n", s.share())
 	ret 0
 }

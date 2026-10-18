@@ -11,7 +11,7 @@ Payload: enum
 	some(value: f64)
 }
 
-probe[T]: rec
+Probe[T]: rec
 {
 	pad: u8
 	value: T
@@ -19,15 +19,15 @@ probe[T]: rec
 
 offset[T]: fun(own value: T) -> usize
 {
-	var p = probe[T](0, own value)
+	var p = Probe[T](0, own value)
 	ret usize(@p.value) - usize(@p)
 }
 
-check[T]: fun(own value: T) -> i32 => i32(offset(own value) == alignOf(T) && sizeOf(probe[T]) % alignOf(T) == 0)
+check[T]: fun(own value: T) -> i32 => i32(offset(own value) == alignOf(T) && sizeOf(Probe[T]) % alignOf(T) == 0)
 
 main: fun -> i32
 {
 	printf("%d %d %d %d %d\n", check(u8(1)), check(u16(1)), check(i32(1)), check(i64(1)), check(i128(1)))
-	printf("%d %d %d %d\n", check(1.0), check(f32(1.0)), check(Payload.none), check(probe[u16](1, 2)))
+	printf("%d %d %d %d\n", check(1.0), check(f32(1.0)), check(Payload.none), check(Probe[u16](1, 2)))
 	ret 0
 }

@@ -5,41 +5,41 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-option[T]: enum
+Option[T]: enum
 {
 	none
 	some(value: T)
 }
 
-result[T, E]: enum(u8)
+Result[T, E]: enum(u8)
 {
 	ok(value: T) = 1
 	err(error: E) = 0
 }
 
-marker[T]: enum
+Marker[T]: enum
 {
 	first
 	second
 }
 
-seven: const option[i32] = option.some(7)
-nothing: const option[i32] = option.none
-pairs: const array[option[i16], 2] = [option.some(3), option.none]
+seven: const Option[i32] = Option.some(7)
+nothing: const Option[i32] = Option.none
+pairs: const array[Option[i16], 2] = [Option.some(3), Option.none]
 unwrapped: const i32 = match seven { some(val v) => v, none => 0 }
 
-read: fun(o: option[i32]) -> i32 => match o { some(val v) => v, none => -1 }
-readQualified: fun(o: option[i32]) -> i32 => match o { option.some(val v) => v * 10, option.none => 0 }
+read: fun(o: Option[i32]) -> i32 => match o { some(val v) => v, none => -1 }
+readQualified: fun(o: Option[i32]) -> i32 => match o { Option.some(val v) => v * 10, Option.none => 0 }
 
-half: fun(n: i32) -> result[i32, cstr]
+half: fun(n: i32) -> Result[i32, cstr]
 {
 	if n % 2 != 0
-		ret result.err("odd")
+		ret Result.err("odd")
 
-	ret result.ok(n / 2)
+	ret Result.ok(n / 2)
 }
 
-describe: fun(r: result[i32, cstr])
+describe: fun(r: Result[i32, cstr])
 {
 	match r
 	{
@@ -48,7 +48,7 @@ describe: fun(r: result[i32, cstr])
 	}
 }
 
-depth: fun(o: option[option[i32]]) -> i32
+depth: fun(o: Option[Option[i32]]) -> i32
 {
 	match o
 	{
@@ -59,14 +59,14 @@ depth: fun(o: option[option[i32]]) -> i32
 
 main: fun -> i32
 {
-	val a = option[i32].some(5)
-	val b = option.some(6)
-	val c: option[i32] = option.none
-	var zeroed: option[i32]
+	val a = Option[i32].some(5)
+	val b = Option.some(6)
+	val c: Option[i32] = Option.none
+	var zeroed: Option[i32]
 	printf("%d %d %d %d %d %d %d\n", read(a), read(b), read(c), read(zeroed), read(seven), read(nothing),
 		readQualified(b))
 
-	val wide: option[i64] = option.some(9)
+	val wide: Option[i64] = Option.some(9)
 	if wide is some(val v) && v > 5
 		printf("wide %lld\n", v)
 
@@ -74,12 +74,12 @@ main: fun -> i32
 	describe(half(3))
 	printf("\n")
 
-	printf("%d %d %d\n", depth(option.some(option.some(4))), depth(option.some(option[i32].none)),
-		depth(option[option[i32]].none))
+	printf("%d %d %d\n", depth(Option.some(Option.some(4))), depth(Option.some(Option[i32].none)),
+		depth(Option[Option[i32]].none))
 	printf("%d %d %d\n", i32(match pairs[0] { some(val v) => v, none => 0 }), i32(pairs[1] is none), unwrapped)
 
-	val m = marker[u8].second
-	printf("%d %d %d\n", i32(m == marker[u8].second), i32(m), i32(marker[u8](0) == marker[u8].first))
-	printf("%d %d %d\n", i32(sizeOf(option[i32])), i32(sizeOf(option[i64])), i32(sizeOf(result[i8, i64])))
+	val m = Marker[u8].second
+	printf("%d %d %d\n", i32(m == Marker[u8].second), i32(m), i32(Marker[u8](0) == Marker[u8].first))
+	printf("%d %d %d\n", i32(sizeOf(Option[i32])), i32(sizeOf(Option[i64])), i32(sizeOf(Result[i8, i64])))
 	ret 0
 }

@@ -20,7 +20,7 @@ public sealed partial class TypePool
 	public static ImmutableArray<TypeParameterSymbol> ArrayParameters { get; } =
 	[
 		new("T", []),
-		new("N", []) { IsValue = true, ValueType = NativeSymbols.UIntSize }
+		new("length", []) { IsValue = true, ValueType = NativeSymbols.UIntSize }
 	];
 	
 	private void CreatePointerArithmetic(PointerType ptrType)

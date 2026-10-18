@@ -1,14 +1,39 @@
+Hint at held_borrow_endings.ce:28:6
+27 │ {
+28 │     var a = Text(1)
+             ^ 'a' is never changed
+
 Error at held_borrow_endings.ce:32:6
 31 │ consume(own a)
 32 │ ret r.t.id
          ^ Cannot use borrows of moved values
          | Moved on line 31
 
+Hint at held_borrow_endings.ce:37:6
+36 │ {
+37 │     var y = 1
+             ^ 'y' is never changed
+
+Hint at held_borrow_endings.ce:41:7
+40 │ {
+41 │     var x = 2
+             ^ 'x' is never changed
+
 Error at held_borrow_endings.ce:45:6
 44 │ 
 45 │ ret r.n
          ^ Cannot use borrows of dropped values
          | Dropped on line 43
+
+Hint at held_borrow_endings.ce:50:6
+49 │ {
+50 │     var y = 0
+             ^ 'y' is never changed
+
+Hint at held_borrow_endings.ce:54:7
+53 │ {
+54 │     var x = 1
+             ^ 'x' is never changed
 
 Error at held_borrow_endings.ce:58:6
 57 │ 

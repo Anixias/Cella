@@ -5,18 +5,18 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-box[T]: rec
+Box[T]: rec
 {
 	value: T
 }
 
-pair[A, B]: rec
+Pair[A, B]: rec
 {
 	first: A
 	second: B
 }
 
-cell[T]: rec
+Cell[T]: rec
 {
 	value: T
 
@@ -25,16 +25,16 @@ cell[T]: rec
 		self.value = own value
 	}
 
-	map[U]: fun(own self, change: fun[own T -> U]) -> cell[U] => cell(change(own self.value))
+	map[U]: fun(own self, change: fun[own T -> U]) -> Cell[U] => Cell(change(own self.value))
 
-	combine[U]: fun(own first: T, own second: U) -> pair[T, U] => pair(own first, own second)
+	combine[U]: fun(own first: T, own second: U) -> Pair[T, U] => Pair(own first, own second)
 }
 
 Holder: rec
 {
 	id: i32
 
-	wrap[T]: fun(self, own value: T) -> pair[T, i32] => pair(own value, self.id)
+	wrap[T]: fun(self, own value: T) -> Pair[T, i32] => Pair(own value, self.id)
 }
 
 Color: enum(u8)
@@ -49,17 +49,17 @@ Color: enum(u8)
 
 double: fun(own value: i32) -> i64 => value * 2
 
-nest[T]: fun(own value: T) -> box[box[T]] => box(box(own value))
+nest[T]: fun(own value: T) -> Box[Box[T]] => Box(Box(own value))
 
 main: fun -> i32
 {
-	val small = box(1)
-	val wide: box[i64] = box(2)
-	val both = pair(3, true)
-	val mapped = cell(4).map(double)
-	val explicit = cell(5).map[i64](double)
-	val combined = cell[i8].combine(6, 7)
-	val combine = cell[i8].combine[i16]
+	val small = Box(1)
+	val wide: Box[i64] = Box(2)
+	val both = Pair(3, true)
+	val mapped = Cell(4).map(double)
+	val explicit = Cell(5).map[i64](double)
+	val combined = Cell[i8].combine(6, 7)
+	val combine = Cell[i8].combine[i16]
 	val held = Holder(8).wrap(9)
 	val nested = nest(10)
 	printf("%d %lld %d %lld %lld %d %d %d | ", small.value, wide.value, both.first, mapped.value, explicit.value,

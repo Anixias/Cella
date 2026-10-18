@@ -1,2 +1,7 @@
+Hint at main.ce:6:6
+5 │ val a = [1, 2, 3]
+6 │ var i: usize = 5
+        ^ 'i' is never changed
+
 lib panic at main.ce:7:6: index out of bounds
 [exit code 9]

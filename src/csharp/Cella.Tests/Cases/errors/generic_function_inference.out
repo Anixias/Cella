@@ -31,11 +31,11 @@ Error at generic_function_inference.ce:26:10
 
 Error at generic_function_inference.ce:27:10
 26 │ val f = identity
-27 │ val g = box()
-             ╘═╛ Cannot infer 'T' for 'box'
+27 │ val g = Box()
+             ╘═╛ Cannot infer 'T' for 'Box'
 
 Error at generic_function_inference.ce:28:15
-27 │ val g = box()
+27 │ val g = Box()
 28 │ val h = keep[imm[i32]](imm count)
                   ╘══════╛ 'keep' requires 'T: noref'
                          | 'imm[i32]' holds borrows

@@ -1,3 +1,43 @@
+Hint at function_values.ce:60:6
+59 │ var f = double
+60 │ var g: fun[i32 -> i32] = triple
+         ^ 'g' is never changed
+
+Hint at function_values.ce:65:6
+64 │ 
+65 │ var table = [double, triple, f]
+         ╘═══╛ 'table' is never changed
+
+Hint at function_values.ce:73:6
+72 │ 
+73 │ var hello = greet
+         ╘═══╛ 'hello' is never changed
+
+Hint at function_values.ce:75:6
+74 │ hello()
+75 │ var constant = answer
+         ╘══════╛ 'constant' is never changed
+
+Hint at function_values.ce:78:6
+77 │ 
+78 │ var a: fun[i32 -> i32] = over
+         ^ 'a' is never changed
+
+Hint at function_values.ce:79:6
+78 │ var a: fun[i32 -> i32] = over
+79 │ var b: fun[f64 -> f64] = over
+         ^ 'b' is never changed
+
+Hint at function_values.ce:83:6
+82 │ var handler = Handler(double, twice, 5)
+83 │ var pointer = @handler
+         ╘═════╛ 'pointer' is never changed
+
+Hint at function_values.ce:86:6
+85 │ 
+86 │ var index: usize = 1
+         ╘═══╛ 'index' is never changed
+
 8 12 10 15
 6 14 21
 20 30 30 hello

@@ -1,3 +1,8 @@
+Hint at ref_records.ce:51:6
+50 │ var kills = 2
+51 │ var counter = Counter(mut kills, Token("enemy", 7))
+         ╘═════╛ 'counter' is never changed
+
 15 5 7
 40 -1
 1 2 1 0

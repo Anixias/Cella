@@ -1,3 +1,8 @@
+Hint at borrow_types.ce:113:6
+112 │ 
+113 │ var effect = Effect.hit(7)
+          ╘════╛ 'effect' is never changed
+
 Hint at borrow_types.ce:126:15
 125 │ var buffer = make(1)
 126 │ val viewed = imm buffer

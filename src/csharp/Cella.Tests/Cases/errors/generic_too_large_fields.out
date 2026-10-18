@@ -1,6 +1,6 @@
 Error at generic_too_large_fields.ce:20:25
 19 │ {
-20 │     printf("%zu\n", sizeOf(wrap[u64]))
-                                ╘═══════╛ 'wrap[u64]' is too large
+20 │     printf("%zu\n", sizeOf(Wrap[u64]))
+                                ╘═══════╛ 'Wrap[u64]' is too large
 
 [compilation failed]

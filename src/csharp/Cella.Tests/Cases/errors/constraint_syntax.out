@@ -10,7 +10,7 @@ Error at constraint_syntax.ce:5:17
 
 Error at constraint_syntax.ce:12:21
 11 │ 
-12 │ box[T: noref]: impl ,
+12 │ Box[T: noref]: impl ,
                          ^ Expected a trait or '{'
 
 [compilation failed]

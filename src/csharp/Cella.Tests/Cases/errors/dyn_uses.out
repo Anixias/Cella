@@ -90,7 +90,7 @@ Error at dyn_uses.ce:81:3
 
 Error at dyn_uses.ce:85:13
 84 │ 
-85 │ val b: box[dyn[Shape]] = box(c)
+85 │ val b: Box[dyn[Shape]] = Box(c)
                 ╘════════╛ Cannot use 'dyn[Shape]' by value
 
 [compilation failed]

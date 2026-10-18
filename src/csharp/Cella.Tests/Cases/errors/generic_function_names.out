@@ -1,6 +1,6 @@
 Error at generic_function_names.ce:3:5
 2 │ 
-3 │ box[T]: rec
+3 │ Box[T]: rec
         ^ Type parameter 'T' is declared more than once
 
 Error at generic_function_names.ce:7:6

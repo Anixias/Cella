@@ -5,7 +5,7 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-view[T]: ref rec
+View[T]: ref rec
 {
 	data: pvt ptr[T]
 	length: pvt set usize
@@ -16,12 +16,12 @@ view[T]: ref rec
 		self.length = length
 	}
 
-	as[N: const usize]: op(imm values: array[T, N]) -> view[T] => view[T](@values, N)
+	as[N: const usize]: op(imm values: array[T, N]) -> View[T] => View[T](@values, N)
 
 	[]: op(self, i: usize) -> imm[T] => imm self.data[i]
 }
 
-span[T]: ref rec
+Span[T]: ref rec
 {
 	data: pvt ptr[T]
 	length: pvt set usize
@@ -32,12 +32,12 @@ span[T]: ref rec
 		self.length = length
 	}
 
-	as[N: const usize]: op(mut values: array[T, N]) -> span[T] => span[T](@values, N)
+	as[N: const usize]: op(mut values: array[T, N]) -> Span[T] => Span[T](@values, N)
 
 	[]: op(self, i: usize) -> mut[T] => mut self.data[i]
 }
 
-fill: fun(values: span[i32], value: i32)
+fill: fun(values: Span[i32], value: i32)
 {
 	var i: usize = 0
 	while i < values.length
@@ -47,9 +47,9 @@ fill: fun(values: span[i32], value: i32)
 	}
 }
 
-process: fun(values: view[i32]) -> i32 => values[0]
+process: fun(values: View[i32]) -> i32 => values[0]
 
-process: fun(values: span[i32]) -> i32
+process: fun(values: Span[i32]) -> i32
 {
 	values[0] = -1
 	ret 1
@@ -71,7 +71,7 @@ main: fun -> i32
 	printf("%d %d %d %d\n", three[0], three[2], five[0], five[4])
 
 	var four = [1, 2, 3, 4]
-	val s = span[i32](mut four)
+	val s = Span[i32](mut four)
 	s[1] = 20
 	printf("%d ", four[1])
 	var grid = Grid([1, 1, 1, 1])

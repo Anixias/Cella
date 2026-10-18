@@ -15,23 +15,23 @@ i32: impl Hash
 	hash: fun(imm self) -> u64 => 0
 }
 
-pair[T]: rec
+Pair[T]: rec
 {
 	a: T
 }
 
-pair[T: Hash]: impl
+Pair[T: Hash]: impl
 {
 	hash: fun(imm self) -> u64 => 1
 	size: fun(imm self) -> u64 => 2
 }
 
-pair[T: Hash]: impl Hash
+Pair[T: Hash]: impl Hash
 {
 	hash: fun(imm self) -> u64 => 2
 }
 
-pair[T]: impl Digest
+Pair[T]: impl Digest
 {
 	hash: fun(imm self, seed: u64) -> u64 => seed
 }

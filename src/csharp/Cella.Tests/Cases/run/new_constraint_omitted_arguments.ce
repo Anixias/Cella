@@ -5,7 +5,7 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-view[T]: ref rec
+View[T]: ref rec
 {
 	data: ptr[T]
 	length: usize
@@ -21,7 +21,7 @@ Bag[T: copy]: rec
 {
 	count: usize
 
-	new: op(...values: view[T])
+	new: op(...values: View[T])
 	{
 		self.count = values.length
 	}

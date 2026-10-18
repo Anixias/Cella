@@ -1,12 +1,12 @@
 mod test
 
-nullable[T: null]: enum match T
+Nullable[T: null]: enum match T
 {
 	none = null
 	some(value) = else
 }
 
-text: enum match cstr
+Text: enum match cstr
 {
 	absent = null
 	present(value) = else
@@ -15,17 +15,17 @@ text: enum match cstr
 ext
 {
 	printf: fun(format: cstr, ...) -> i32
-	signal: fun(sig: i32, handler: nullable[ext fun[i32]]) -> nullable[ext fun[i32]]
+	signal: fun(sig: i32, handler: Nullable[ext fun[i32]]) -> Nullable[ext fun[i32]]
 	raise: fun(sig: i32) -> i32
-	strchr: fun(source: cstr, c: i32) -> nullable[cstr]
-	getenv: fun(name: cstr) -> text
+	strchr: fun(source: cstr, c: i32) -> Nullable[cstr]
+	getenv: fun(name: cstr) -> Text
 }
 
 caught: var i32 = 0
 
 Handlers: rec
 {
-	interrupt: nullable[ext fun[i32]]
+	interrupt: Nullable[ext fun[i32]]
 }
 
 onSignal: ext fun(sig: i32)

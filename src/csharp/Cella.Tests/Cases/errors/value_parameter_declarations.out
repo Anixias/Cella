@@ -15,12 +15,12 @@ Error at value_parameter_declarations.ce:17:20
 
 Error at value_parameter_declarations.ce:20:17
 19 │ 
-20 │ floaty[N: const f64]: rec
+20 │ Floaty[N: const f64]: rec
                      ╘═╛ Value parameters need an integer type
 
 Error at value_parameter_declarations.ce:25:19
 24 │ 
-25 │ lettered[N: const char]: rec
+25 │ Lettered[N: const char]: rec
                        ╘══╛ Value parameters need an integer type
 
 Error at value_parameter_declarations.ce:34:4
@@ -55,12 +55,12 @@ Error at value_parameter_declarations.ce:53:10
 
 Error at value_parameter_declarations.ce:63:6
 62 │ 
-63 │ ring[N: const usize, T]: impl Sized
+63 │ Ring[N: const usize, T]: impl Sized
           ^ 'N' is not a type
 
 Error at value_parameter_declarations.ce:63:22
 62 │ 
-63 │ ring[N: const usize, T]: impl Sized
+63 │ Ring[N: const usize, T]: impl Sized
                           ^ 'T' is not a constant
 
 [compilation failed]

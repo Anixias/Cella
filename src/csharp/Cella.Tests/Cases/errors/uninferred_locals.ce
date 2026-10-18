@@ -1,11 +1,11 @@
 mod test
 
-box[T]: rec
+Box[T]: rec
 {
 	value: T
 }
 
-first[T: copy, N: const usize]: fun(values: array[T, N]) -> box[T] => box(values[0])
+first[T: copy, N: const usize]: fun(values: array[T, N]) -> Box[T] => Box(values[0])
 
 untyped: fun -> i32
 {

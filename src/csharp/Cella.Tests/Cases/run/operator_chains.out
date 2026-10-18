@@ -1,3 +1,8 @@
+Hint at operator_chains.ce:39:6
+38 │ printf("%d %d\n", i32(counted), calls)
+39 │ var low = 0
+         ╘═╛ 'low' is never changed
+
 1 0 1
 1 0
 0 0

@@ -34,7 +34,7 @@ Secret: rec
 	}
 }
 
-pair[A, B]: rec
+Pair[A, B]: rec
 {
 	a: A
 	b: B
@@ -57,9 +57,9 @@ blank[T]: fun -> T => T()
 main: fun -> i32
 {
 	imm imm imm imm imm imm imm imm imm imm imm twin(Text(1))
-	imm imm imm imm imm imm imm imm imm imm imm twin(pair(Text(1), 2))
+	imm imm imm imm imm imm imm imm imm imm imm twin(Pair(Text(1), 2))
 	hold(5)
-	hold(pair(1, 2))
+	hold(Pair(1, 2))
 	make[Holder]()
 	make[Sized]()
 	make[Secret]()

@@ -1,6 +1,6 @@
 mod util
 
-cell[T]: rec
+Cell[T]: rec
 {
 	value: T
 	hits: i32

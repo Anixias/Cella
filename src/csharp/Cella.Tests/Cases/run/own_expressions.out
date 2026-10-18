@@ -3,6 +3,46 @@ Hint at own_expressions.ce:38:44
 38 │ give: fun(own buffer: Buffer) -> Buffer => own buffer
                                                 ╘═╛ Redundant 'own'
 
+Hint at own_expressions.ce:43:6
+42 │ {
+43 │     var count = 6
+             ╘═══╛ 'count' is never changed
+
+Hint at own_expressions.ce:45:6
+44 │ val moved = own count
+45 │ var other = 7
+         ╘═══╛ 'other' is never changed
+
+Hint at own_expressions.ce:47:6
+46 │ val wide: i64 = own other
+47 │ var third = 8
+         ╘═══╛ 'third' is never changed
+
+Hint at own_expressions.ce:68:6
+67 │ 
+68 │ var next = Effect.owned(Buffer(15))
+         ╘══╛ 'next' is never changed
+
+Hint at own_expressions.ce:75:6
+74 │ 
+75 │ var e = Buffer(16)
+         ^ 'e' is never changed
+
+Hint at own_expressions.ce:77:6
+76 │ val f = own e
+77 │ var g = Buffer(17)
+         ^ 'g' is never changed
+
+Hint at own_expressions.ce:79:6
+78 │ val wrapped = Holder(own g, 18)
+79 │ var k = Buffer(19)
+         ^ 'k' is never changed
+
+Hint at own_expressions.ce:82:6
+81 │ 
+82 │ var status = 0
+         ╘════╛ 'status' is never changed
+
 Hint at own_expressions.ce:83:6
 82 │ var status = 0
 83 │ ret own status

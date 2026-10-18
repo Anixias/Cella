@@ -5,8 +5,8 @@ Error at generic_static_borrows.ce:17:12
 
 Error at generic_static_borrows.ce:31:10
 30 │ var local = 42
-31 │ bounded[View].last = Slot[View].full(View(imm local))
-             ╘══╛ 'bounded' requires 'T: noref'
+31 │ Bounded[View].last = Slot[View].full(View(imm local))
+             ╘══╛ 'Bounded' requires 'T: noref'
                 | 'View' holds borrows
 
 [compilation failed]

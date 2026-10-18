@@ -36,12 +36,12 @@ Owned: rec
 	}
 }
 
-pair[T]: rec
+Pair[T]: rec
 {
 	value: T
 }
 
-pair[T: new(i32)]: impl
+Pair[T: new(i32)]: impl
 {
 	fresh: fun(imm self) -> T => T(1)
 }
@@ -81,6 +81,6 @@ main: fun -> i32
 	duplicate(Point(1, 2))
 	taking[Point]()
 	make[str]()
-	pair[Point](Point(1, 2)).fresh()
+	Pair[Point](Point(1, 2)).fresh()
 	ret 0
 }

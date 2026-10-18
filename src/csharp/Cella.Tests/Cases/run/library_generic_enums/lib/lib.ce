@@ -5,17 +5,17 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-option[T]: pub enum
+Option[T]: pub enum
 {
 	none
 	some(value: T)
 
 	made: var i32 = 0
 
-	wrap: fun(own value: T) -> option[T]
+	wrap: fun(own value: T) -> Option[T]
 	{
 		made += 1
-		ret option.some(own value)
+		ret Option.some(own value)
 	}
 
 	orElse: fun(own self, own fallback: T) -> T
@@ -40,7 +40,7 @@ Token: pub rec
 	}
 }
 
-first[T]: pub fun(own a: option[T], own b: option[T]) -> option[T]
+first[T]: pub fun(own a: Option[T], own b: Option[T]) -> Option[T]
 {
 	if a.isSome
 		ret a
@@ -50,6 +50,6 @@ first[T]: pub fun(own a: option[T], own b: option[T]) -> option[T]
 
 libraryCount: pub fun -> i32
 {
-	val item = option[i32].wrap(1)
-	ret option[i32].made
+	val item = Option[i32].wrap(1)
+	ret Option[i32].made
 }

@@ -25,7 +25,7 @@ Shape: enum
 	square(side: i32)
 }
 
-list[T: noref + copy]: rec
+List[T: noref + copy]: rec
 {
 	items: req ptr[T]
 	length: pvt set usize
@@ -57,11 +57,11 @@ addTen: fun(mut value: i32)
 	value += 10
 }
 
-sum: fun(imm values: list[i32]) -> i32 => values[0] + values[1] + values[2]
+sum: fun(imm values: List[i32]) -> i32 => values[0] + values[1] + values[2]
 
 main: fun -> i32
 {
-	var values = list[i32](3, 0)
+	var values = List[i32](3, 0)
 	values[0] = 5
 	values[1] = values[0] * 2
 	values[2] += 7
@@ -70,18 +70,18 @@ main: fun -> i32
 	val copy: i32 = second
 	printf("%d %d %d %d %d %d\n", values[0], values[1], values[2], sum(imm values), copy, -values[1])
 
-	var counters = list[Counter](2, Counter(0))
+	var counters = List[Counter](2, Counter(0))
 	counters[1].bump()
 	counters[1].bump()
 	counters[0].count = 9
 	printf("%d %d\n", counters[0].get(), counters[1].count)
 
-	var rows = list[array[i32, 2]](2, [0, 0])
+	var rows = List[array[i32, 2]](2, [0, 0])
 	rows[1][0] = 5
 	rows[0][1] += rows[1][0] + 1
 	printf("%d %d %d\n", rows[0][1], rows[1][0], rows[1][1])
 
-	var shapes = list[Shape](2, Shape.circle(2))
+	var shapes = List[Shape](2, Shape.circle(2))
 	shapes[1] = Shape.square(3)
 	match mut shapes[0]
 	{

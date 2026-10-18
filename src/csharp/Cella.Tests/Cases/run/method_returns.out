@@ -1,2 +1,7 @@
+Hint at method_returns.ce:94:6
+93 │ 
+94 │ var buffer = Buffer(9)
+         ╘════╛ 'buffer' is never changed
+
 1 1 15 2 2 9 9 1 1 7
 [exit code 0]

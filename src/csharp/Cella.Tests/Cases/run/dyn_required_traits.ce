@@ -52,7 +52,7 @@ Square: rec impl Named + Shape
 	area: fun(self) -> f64 => self.side * self.side
 }
 
-cell[K: trait]: rec
+Cell[K: trait]: rec
 {
 	object: ptr[dyn[K]]
 }
@@ -76,9 +76,9 @@ grow: fun(mut solid: dyn[Solid])
 
 apply[K: trait, T: K]: fun(imm value: T, action: fun[imm dyn[K] -> f64]) -> f64 => action(imm value)
 
-names: fun(item: cell[Named]) -> i32 => item.object.name()
+names: fun(item: Cell[Named]) -> i32 => item.object.name()
 
-widen: fun(item: cell[Shape]) -> cell[Named] => cell[Named](item.object)
+widen: fun(item: Cell[Shape]) -> Cell[Named] => Cell[Named](item.object)
 
 main: fun -> i32
 {
@@ -88,7 +88,7 @@ main: fun -> i32
 	grow(mut c)
 	printf("%d %.1f\n", c.id, apply[Solid, Circle](imm c, measure))
 	printf("%d %d %d\n", dyn[Named](dyn[Shape](c)).name(), label(dyn[Shape](dyn[Solid](c))),
-		names(widen(cell[Shape](@s))))
+		names(widen(Cell[Shape](@s))))
 	printf("%d %d %d\n", i32(dyn[Named](dyn[Shape](c)) is Circle), i32(dyn[Named](dyn[Shape](s)) is Circle),
 		i32(dyn[Shape](s) is Square))
 	ret 0

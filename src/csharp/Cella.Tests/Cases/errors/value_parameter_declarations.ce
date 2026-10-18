@@ -7,22 +7,22 @@ Eq: trait
 
 grow[N: const usize]: fun(values: array[i32, N]) -> array[i32, N + 1] => undef
 
-doubled[N: const usize]: rec
+Doubled[N: const usize]: rec
 {
 	items: array[i32, N * 2]
 }
 
-signed[N: const i32]: rec
+Signed[N: const i32]: rec
 {
 	items: array[i32, N]
 }
 
-floaty[N: const f64]: rec
+Floaty[N: const f64]: rec
 {
 	value: i32
 }
 
-lettered[N: const char]: rec
+Lettered[N: const char]: rec
 {
 	value: i32
 }
@@ -55,12 +55,12 @@ array[T, N: const i32]: impl Sized
 	size: fun(self) -> usize => 0
 }
 
-ring[T, N: const usize]: rec
+Ring[T, N: const usize]: rec
 {
 	items: array[T, N]
 }
 
-ring[N: const usize, T]: impl Sized
+Ring[N: const usize, T]: impl Sized
 {
 	size: fun(self) -> usize => 0
 }

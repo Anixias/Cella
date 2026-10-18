@@ -104,12 +104,12 @@ Error at trait_uses.ce:73:2
 
 Error at trait_uses.ce:74:12
 73 │ check(3)
-74 │ val bad = holder(q)
-               ╘════╛ 'holder' requires 'T: Hash'
+74 │ val bad = Holder(q)
+               ╘════╛ 'Holder' requires 'T: Hash'
                     | 'Plain' doesn't implement 'Hash'
 
 Error at trait_uses.ce:75:10
-74 │ val bad = holder(q)
+74 │ val bad = Holder(q)
 75 │ val h = Hash(p)
              ╘══╛ Cannot use traits as values
 

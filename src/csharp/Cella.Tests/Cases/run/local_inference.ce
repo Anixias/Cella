@@ -6,13 +6,13 @@ ext
 	puts: fun(text: cstr) -> i32
 }
 
-option[T]: enum
+Option[T]: enum
 {
 	none
 	some(value: T)
 }
 
-ring[T, N: const usize]: rec
+Ring[T, N: const usize]: rec
 {
 	items: array[T, N]
 }
@@ -25,7 +25,7 @@ pick: fun(value: i64) -> i32 => 64
 same[T: copy]: fun(a: T, b: T) -> T => a
 bytes: fun(values: array[u8, 3]) -> i32 => i32(values[0]) + i32(values[1]) + i32(values[2])
 apply: fun(f: fun[i32 -> i32]) -> i32 => f(21)
-check: fun(value: option[i32]) -> i32 => match value { none => 7, some(val v) => v }
+check: fun(value: Option[i32]) -> i32 => match value { none => 7, some(val v) => v }
 twice: fun(x: i32) -> i32 => x * 2
 twice: fun(x: f64) -> f64 => x * 2.0
 run: fun(visit: fun[]) => visit()
@@ -100,7 +100,7 @@ rules: fun
 	const n = 2
 	val y = same(n, byte)
 	val z = same(index, 5)
-	val r = ring[i32, x]()
+	val r = Ring[i32, x]()
 	printf("rules %d %d %d %d %d %d %d %d\n", pick(x), i32(sizeOf(x)), values[copy], i32(count),
 		i32(sizeOf(y)), values[z], i32(r.items.length), i32(index))
 }

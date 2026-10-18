@@ -1,2 +1,12 @@
+Hint at borrow_match_rebinding.ce:16:6
+15 │ {
+16 │     var a = 1
+             ^ 'a' is never changed
+
+Hint at borrow_match_rebinding.ce:17:6
+16 │ var a = 1
+17 │ var b = 2
+         ^ 'b' is never changed
+
 2
 [exit code 0]

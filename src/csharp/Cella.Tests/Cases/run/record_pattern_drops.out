@@ -1,3 +1,8 @@
+Hint at record_pattern_drops.ce:29:6
+28 │ {
+29 │     var p = Pair(Name(1), Name(2))
+             ^ 'p' is never changed
+
 borrowed 2
 moved 1
 drop 1

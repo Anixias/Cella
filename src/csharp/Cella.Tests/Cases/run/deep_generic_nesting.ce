@@ -5,11 +5,11 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-wrap[T]: rec { value: T }
+Wrap[T]: rec { value: T }
 
 main: fun -> i32
 {
-	val w: wrap[wrap[wrap[wrap[wrap[wrap[wrap[wrap[wrap[wrap[wrap[wrap[wrap[wrap[wrap[wrap[wrap[wrap[wrap[wrap[wrap[wrap[wrap[wrap[wrap[wrap[wrap[wrap[wrap[wrap[wrap[wrap[wrap[wrap[wrap[wrap[wrap[wrap[wrap[wrap[i32]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]] = undef
+	val w: Wrap[Wrap[Wrap[Wrap[Wrap[Wrap[Wrap[Wrap[Wrap[Wrap[Wrap[Wrap[Wrap[Wrap[Wrap[Wrap[Wrap[Wrap[Wrap[Wrap[Wrap[Wrap[Wrap[Wrap[Wrap[Wrap[Wrap[Wrap[Wrap[Wrap[Wrap[Wrap[Wrap[Wrap[Wrap[Wrap[Wrap[Wrap[Wrap[Wrap[i32]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]] = undef
 	printf("%zu\n", sizeOf(w))
 	ret 0
 }

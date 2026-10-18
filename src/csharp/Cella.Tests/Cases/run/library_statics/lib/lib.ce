@@ -1,6 +1,6 @@
 mod lib
 
-counted[T]: pub rec
+Counted[T]: pub rec
 {
 	value: T
 	made: var i32 = 0
@@ -14,6 +14,6 @@ counted[T]: pub rec
 
 makeOne: pub fun -> i32
 {
-	val item = counted[i32](1)
-	ret counted[i32].made
+	val item = Counted[i32](1)
+	ret Counted[i32].made
 }

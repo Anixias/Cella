@@ -15,7 +15,7 @@ Buffer: pub rec
 	}
 }
 
-holder[T]: rec
+Holder[T]: rec
 {
 	kept: var Buffer = Buffer(30)
 }
@@ -32,8 +32,8 @@ Pool: rec
 main: fun -> i32
 {
 	first = Buffer(10)
-	holder[i32].kept.id += 1
-	holder[bool].kept.id += 2
-	printf("%d %d %d %d %d\n", first.id, second.id, Pool.spare.id, holder[i32].kept.id, holder[bool].kept.id)
+	Holder[i32].kept.id += 1
+	Holder[bool].kept.id += 2
+	printf("%d %d %d %d %d\n", first.id, second.id, Pool.spare.id, Holder[i32].kept.id, Holder[bool].kept.id)
 	ret 0
 }

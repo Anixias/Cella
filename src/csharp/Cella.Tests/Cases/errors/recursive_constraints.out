@@ -1,13 +1,13 @@
 Error at recursive_constraints.ce:24:13
 23 │ {
-24 │     next: cell[Bad]
-                    ╘═╛ 'cell' requires 'T: copy'
+24 │     next: Cell[Bad]
+                    ╘═╛ 'Cell' requires 'T: copy'
                       | 'Bad' can't be copied
 
 Error at recursive_constraints.ce:30:13
 29 │ {
-30 │     up: holder[Needy]
-                    ╘═══╛ 'holder' requires 'T: new'
+30 │     up: Holder[Needy]
+                    ╘═══╛ 'Holder' requires 'T: new'
                         | 'Needy' has no constructor without parameters
 
 [compilation failed]

@@ -1,6 +1,6 @@
 Error at operator_constraints.ce:26:21
 25 │ {
-26 │     val r = Counter(1) + box(Token(1))
+26 │     val r = Counter(1) + Box(Token(1))
                             ^ '+' requires 'U: copy'
                             | 'Token' can't be copied
 

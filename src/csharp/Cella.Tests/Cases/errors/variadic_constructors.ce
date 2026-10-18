@@ -1,6 +1,6 @@
 mod test
 
-view[T]: ref rec
+View[T]: ref rec
 {
 	data: pvt ptr[T]
 	length: pvt set usize
@@ -14,14 +14,14 @@ view[T]: ref rec
 
 Maker: trait
 {
-	new: op(...values: view[i32])
+	new: op(...values: View[i32])
 }
 
 Plain: rec impl Maker
 {
 	sum: i32
 
-	new: op(values: view[i32])
+	new: op(values: View[i32])
 	{
 	}
 }
@@ -30,15 +30,15 @@ Many: rec
 {
 	sum: i32
 
-	new: op(...values: view[i32])
+	new: op(...values: View[i32])
 	{
 	}
 
-	new: op(values: view[i32])
+	new: op(values: View[i32])
 	{
 	}
 
-	new: op(mut ...values: view[i32])
+	new: op(mut ...values: View[i32])
 	{
 	}
 }
@@ -47,12 +47,12 @@ Packs: rec
 {
 	sum: i32
 
-	new: op(...values: view[i32])
+	new: op(...values: View[i32])
 	{
 	}
 }
 
-Needs[T: new(view[i32])]: rec
+Needs[T: new(View[i32])]: rec
 {
 	value: i32
 }

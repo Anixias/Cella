@@ -1,15 +1,15 @@
 Error at pattern_syntax.ce:12:10
-11 │ val o: option[i32] = option.some(1)
-12 │ if o is option[i32].some(x)
-             ╘═════════════════╛ No operation defined for '==' between 'option[i32]' and 'option[i32]'
+11 │ val o: Option[i32] = Option.some(1)
+12 │ if o is Option[i32].some(x)
+             ╘═════════════════╛ No operation defined for '==' between 'Option[i32]' and 'Option[i32]'
 
 Error at pattern_syntax.ce:12:27
-11 │ val o: option[i32] = option.some(1)
-12 │ if o is option[i32].some(x)
+11 │ val o: Option[i32] = Option.some(1)
+12 │ if o is Option[i32].some(x)
                               ^ Symbol 'x' not found in this scope
 
 Error at pattern_syntax.ce:13:7
-12 │ if o is option[i32].some(x)
+12 │ if o is Option[i32].some(x)
 13 │     ret x
              ^ Symbol 'x' not found in this scope
 

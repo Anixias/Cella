@@ -1,6 +1,6 @@
 Error at generic_pointer_arguments.ce:7:13
 6 │ {
-7 │     val p: ptr[box] = null
-                   ╘═╛ 'box' takes one generic argument
+7 │     val p: ptr[Box] = null
+                   ╘═╛ 'Box' takes one generic argument
 
 [compilation failed]

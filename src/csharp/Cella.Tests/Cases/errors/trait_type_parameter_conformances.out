@@ -1,6 +1,6 @@
 Error at trait_type_parameter_conformances.ce:23:2
 22 │ 
-23 │ next: fun(mut self) -> option[i32] => none
+23 │ next: fun(mut self) -> Option[i32] => none
      ╘══╛ 'next' doesn't match 'Iterator[i64].next'
 
 Error at trait_type_parameter_conformances.ce:26:17
@@ -20,31 +20,31 @@ Error at trait_type_parameter_conformances.ce:31:31
 
 Error at trait_type_parameter_conformances.ce:45:14
 44 │ 
-45 │ box[T]: impl Tag[T]
-                  ╘════╛ 'box[i32]' implements 'Tag[i32]' more than once
+45 │ Box[T]: impl Tag[T]
+                  ╘════╛ 'Box[i32]' implements 'Tag[i32]' more than once
 
 Error at trait_type_parameter_conformances.ce:49:14
 48 │ 
-49 │ box[T]: impl Tag[i32]
-                  ╘══════╛ 'box[i32]' implements 'Tag[i32]' more than once
+49 │ Box[T]: impl Tag[i32]
+                  ╘══════╛ 'Box[i32]' implements 'Tag[i32]' more than once
 
 Error at trait_type_parameter_conformances.ce:53:14
 52 │ 
-53 │ box[T]: impl Tag[str]
-                  ╘══════╛ 'box[str]' implements 'Tag[str]' more than once
+53 │ Box[T]: impl Tag[str]
+                  ╘══════╛ 'Box[str]' implements 'Tag[str]' more than once
 
 Error at trait_type_parameter_conformances.ce:63:18
 62 │ 
-63 │ pair[A, B]: impl Tag[A]
-                      ╘════╛ 'pair[A, A]' implements 'Tag[A]' more than once
+63 │ Pair[A, B]: impl Tag[A]
+                      ╘════╛ 'Pair[A, A]' implements 'Tag[A]' more than once
 
 Error at trait_type_parameter_conformances.ce:67:18
 66 │ 
-67 │ pair[X, Y]: impl Tag[Y]
-                      ╘════╛ 'pair[A, A]' implements 'Tag[A]' more than once
+67 │ Pair[X, Y]: impl Tag[Y]
+                      ╘════╛ 'Pair[A, A]' implements 'Tag[A]' more than once
 
 Error at trait_type_parameter_conformances.ce:79:2
-78 │ next: fun(mut self) -> option[i32] => none
+78 │ next: fun(mut self) -> Option[i32] => none
 79 │ flush: fun(self) { }
      ╘═══╛ 'flush' isn't a member of 'Iterator[i32]'
 

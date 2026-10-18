@@ -10,6 +10,11 @@ Error at partly_moved_values.ce:26:6
          ╘══╛ Cannot use partly moved values
             | Moved on line 24
 
+Hint at partly_moved_values.ce:39:6
+38 │ {
+39 │     var items = [make(1), make(2)]
+             ╘═══╛ 'items' is never changed
+
 Error at partly_moved_values.ce:41:6
 40 │ val first = own items[0]
 41 │ ret items[i].id + items[1].id + first.id

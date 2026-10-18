@@ -10,7 +10,7 @@ Box: impl Peek
 	peek: fun(imm self) -> i32 => self.v
 }
 
-box[T: copy]: impl
+Pack[T: copy]: impl
 {
 	bump: fun(mut self)
 	{

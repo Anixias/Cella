@@ -4,9 +4,9 @@ Error at atomic_targets.ce:31:18
                      ^ Cannot access values atomically through 'imm[i32]'
 
 Error at atomic_targets.ce:33:18
-32 │ val h = holder[i32](@x)
+32 │ val h = Holder[i32](@x)
 33 │ val b = atomic *h
-                     ^ Cannot access values atomically through 'holder[i32]'
+                     ^ Cannot access values atomically through 'Holder[i32]'
 
 Error at atomic_targets.ce:35:18
 34 │ val v: ptr = ptr(@x)

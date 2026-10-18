@@ -1,6 +1,6 @@
 mod pairs.ext
 
-use pairs.pair
+use pairs.Pair
 
 Eq: trait
 {
@@ -9,12 +9,12 @@ Eq: trait
 
 i32: impl Eq
 
-pair[T: Eq]: impl
+Pair[T: Eq]: impl
 {
 	same: fun(imm self) -> bool => self.a == self.b
 }
 
-pair[i32]: impl
+Pair[i32]: impl
 {
 	total: fun(imm self) -> i32 => self.a + self.b
 }

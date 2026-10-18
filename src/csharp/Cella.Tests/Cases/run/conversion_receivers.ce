@@ -30,7 +30,7 @@ Slot[T]: rec
 	as: op(mut self) -> mut[T] => mut self.value
 }
 
-box[T]: rec
+Box[T]: rec
 {
 	pointer: pvt ptr[T]
 
@@ -95,7 +95,7 @@ send: fun(own buffer: Buffer)
 	printf("send %d\n", buffer.size)
 }
 
-unbox[T]: fun(own boxed: box[T]) -> T => T(own boxed)
+unbox[T]: fun(own boxed: Box[T]) -> T => T(own boxed)
 
 views: fun
 {
@@ -118,10 +118,10 @@ consuming: fun
 
 unboxing: fun
 {
-	val boxed = box(Item(1))
+	val boxed = Box(Item(1))
 	val item = unbox(own boxed)
 	printf("unboxed %d\n", item.id)
-	val direct = Item(box(Item(2)))
+	val direct = Item(Box(Item(2)))
 	printf("unboxed %d\n", direct.id)
 }
 

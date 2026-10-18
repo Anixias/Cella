@@ -1,2 +1,27 @@
+Hint at call_results.ce:48:6
+47 │ {
+48 │     var value: i32 = make().inner.value
+             ╘═══╛ 'value' is never changed
+
+Hint at call_results.ce:49:6
+48 │ var value: i32 = make().inner.value
+49 │ var element: i32 = numbers()[1]
+         ╘═════╛ 'element' is never changed
+
+Hint at call_results.ce:50:6
+49 │ var element: i32 = numbers()[1]
+50 │ var nested = make().values[2]
+         ╘════╛ 'nested' is never changed
+
+Hint at call_results.ce:51:6
+50 │ var nested = make().values[2]
+51 │ var size: usize = sizeOf(make())
+         ╘══╛ 'size' is never changed
+
+Hint at call_results.ce:52:6
+51 │ var size: usize = sizeOf(make())
+52 │ var sum = add(make().count, numbers()[1])
+         ╘═╛ 'sum' is never changed
+
 20 9 5 20 11 2
 [exit code 0]

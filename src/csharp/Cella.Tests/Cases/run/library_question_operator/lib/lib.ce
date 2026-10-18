@@ -1,6 +1,6 @@
 mod lib
 
-result[T, E]: pub enum
+Result[T, E]: pub enum
 {
 	ok(value: T)
 	err(error: E)
@@ -8,6 +8,6 @@ result[T, E]: pub enum
 	?: op(own self) -> T => match own self
 	{
 		ok(own value) => value
-		err(own error) => ret result.err(own error)
+		err(own error) => ret Result.err(own error)
 	}
 }

@@ -19,10 +19,10 @@ public sealed partial class Builder(BuildOptions options, IBuildOutput output)
 	{
 		StandardLibrary.Full =>
 		[
-			Path.Combine(StandardLibraryDirectory, "core", "std-core.celp"),
+			Path.Combine(StandardLibraryDirectory, "core", "stdCore.celp"),
 			Path.Combine(StandardLibraryDirectory, "os", "std.celp")
 		],
-		StandardLibrary.Core => [Path.Combine(StandardLibraryDirectory, "core", "std-core.celp")],
+		StandardLibrary.Core => [Path.Combine(StandardLibraryDirectory, "core", "stdCore.celp")],
 		_ => []
 	};
 	

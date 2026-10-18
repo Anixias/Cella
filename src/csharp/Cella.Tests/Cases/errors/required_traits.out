@@ -10,8 +10,8 @@ Error at required_traits.ce:25:11
 
 Error at required_traits.ce:32:19
 31 │ 
-32 │ box[T: Ord]: impl Ord
-                       ╘═╛ 'box[T]' needs 'Eq'
+32 │ Box[T: Ord]: impl Ord
+                       ╘═╛ 'Box[T]' needs 'Eq'
 
 Error at required_traits.ce:42:1
 41 │ 
@@ -65,13 +65,13 @@ Error at required_traits.ce:53:21
 
 Hint at required_traits.ce:60:9
 59 │ 
-60 │ list[T: Eq + Ord]: impl
+60 │ List[T: Eq + Ord]: impl
              ╘╛ Redundant 'Eq'
               | Required by 'Ord'
 
 Error at required_traits.ce:60:20
 59 │ 
-60 │ list[T: Eq + Ord]: impl
+60 │ List[T: Eq + Ord]: impl
                         ╘══╛ Cannot declare 'impl' blocks that add no bounds
 
 [compilation failed]

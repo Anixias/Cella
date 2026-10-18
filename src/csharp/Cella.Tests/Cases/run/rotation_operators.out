@@ -1,3 +1,28 @@
+Hint at rotation_operators.ce:10:6
+ 9 │ {
+10 │     var byte: u8 = 0x81
+             ╘══╛ 'byte' is never changed
+
+Hint at rotation_operators.ce:12:6
+11 │ var word: u32 = 0x1234_5678
+12 │ var signed: i8 = -128
+         ╘════╛ 'signed' is never changed
+
+Hint at rotation_operators.ce:13:6
+12 │ var signed: i8 = -128
+13 │ var huge: u128 = 1
+         ╘══╛ 'huge' is never changed
+
+Hint at rotation_operators.ce:14:6
+13 │ var huge: u128 = 1
+14 │ var steps: i64 = 33
+         ╘═══╛ 'steps' is never changed
+
+Hint at rotation_operators.ce:24:6
+23 │ 
+24 │ var table = [0x81 <<< 1, 1 >>> 1]
+         ╘═══╛ 'table' is never changed
+
 3 192 3 192
 34567812 78123456 091a2b3c 1 64
 128

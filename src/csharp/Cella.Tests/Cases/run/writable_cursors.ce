@@ -11,7 +11,7 @@ Point: rec
 	y: i32
 }
 
-span[T]: ref rec
+Span[T]: ref rec
 {
 	data: pvt ptr[T]
 	length: pvt set usize
@@ -22,12 +22,12 @@ span[T]: ref rec
 		self.length = length
 	}
 
-	as[N: const usize]: op(mut values: array[T, N]) -> span[T] => span[T](ptr[T](ptr(@values)), N)
+	as[N: const usize]: op(mut values: array[T, N]) -> Span[T] => Span[T](ptr[T](ptr(@values)), N)
 
-	in: op(self) -> spanCursor[T] => spanCursor[T](self.data, self.length, 0, 0)
+	in: op(self) -> SpanCursor[T] => SpanCursor[T](self.data, self.length, 0, 0)
 }
 
-spanCursor[T]: ref rec
+SpanCursor[T]: ref rec
 {
 	data: ptr[T]
 	length: usize
@@ -44,7 +44,7 @@ spanCursor[T]: ref rec
 	*: op(self) -> mut[T] => mut *(self.data + self.current)
 }
 
-double: fun(values: span[i32])
+double: fun(values: Span[i32])
 {
 	for mut value in values
 	{
@@ -52,7 +52,7 @@ double: fun(values: span[i32])
 	}
 }
 
-shift: fun(points: span[Point], by: i32)
+shift: fun(points: Span[Point], by: i32)
 {
 	for mut point in points
 	{
@@ -65,7 +65,7 @@ main: fun -> i32
 {
 	var numbers = [1, 2, 3]
 	double(mut numbers)
-	val all: span[i32] = mut numbers
+	val all: Span[i32] = mut numbers
 	for mut value in all
 	{
 		value += 1

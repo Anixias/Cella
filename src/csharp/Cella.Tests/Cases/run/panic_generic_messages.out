@@ -1,2 +1,7 @@
+Hint at panic_generic_messages.ce:34:6
+33 │ {
+34 │     var i: i32 = 5
+             ^ 'i' is never changed
+
 Panic at panic_generic_messages.ce:36:3: 42
 [exit code 4]

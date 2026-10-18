@@ -1,3 +1,8 @@
+Hint at enum_values.ce:80:6
+79 │ 
+80 │ var n = 2
+         ^ 'n' is never changed
+
 0 1 2 -1 -50
 0 100 101 103
 1 2 1 4 4

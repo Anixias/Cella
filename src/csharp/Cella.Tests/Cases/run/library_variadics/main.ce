@@ -5,7 +5,7 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-twice: fun(...values: lib.view[i32]) -> i32 => lib.total(...values) * 2
+twice: fun(...values: lib.View[i32]) -> i32 => lib.total(...values) * 2
 
 main: fun -> i32
 {

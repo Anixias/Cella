@@ -4,11 +4,11 @@ first[T: 3]: fun -> i32 = 0
 
 second[T: Shape[]: fun -> i32 = 0
 
-box[T]: rec
+Box[T]: rec
 {
 	value: T
 }
 
-box[T: noref]: impl ,
+Box[T: noref]: impl ,
 
 main: fun -> i32 => 0

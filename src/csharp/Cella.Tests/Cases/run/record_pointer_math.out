@@ -1,1 +1,36 @@
+Hint at record_pointer_math.ce:19:6
+18 │ var wide: Wide
+19 │ var first = @wide
+         ╘═══╛ 'first' is never changed
+
+Hint at record_pointer_math.ce:20:6
+19 │ var first = @wide
+20 │ var fourth = first + 3
+         ╘════╛ 'fourth' is never changed
+
+Hint at record_pointer_math.ce:22:6
+21 │ 
+22 │ var bytes = usize(fourth) - usize(first)
+         ╘═══╛ 'bytes' is never changed
+
+Hint at record_pointer_math.ce:23:6
+22 │ var bytes = usize(fourth) - usize(first)
+23 │ var expected: usize = 3 * sizeOf(Wide)
+         ╘══════╛ 'expected' is never changed
+
+Hint at record_pointer_math.ce:27:6
+26 │ 
+27 │ var count: isize = 3
+         ╘═══╛ 'count' is never changed
+
+Hint at record_pointer_math.ce:32:6
+31 │ var node: Node
+32 │ var head = @node
+         ╘══╛ 'head' is never changed
+
+Hint at record_pointer_math.ce:37:6
+36 │ var target: ptr[i32]
+37 │ var slot = @target
+         ╘══╛ 'slot' is never changed
+
 [exit code 0]

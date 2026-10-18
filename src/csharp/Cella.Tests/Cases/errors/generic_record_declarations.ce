@@ -5,32 +5,32 @@ Node: pvt rec
 	value: i32
 }
 
-box[T]: pub rec
+Box[T]: pub rec
 {
 	value: T
 }
 
-twice[T, T]: rec
+Twice[T, T]: rec
 {
 	value: T
 }
 
-wrap[T]: rec
+Wrap[T]: rec
 {
-	inner: wrap[i32]
+	inner: Wrap[i32]
 }
 
-holder: rec
+Holder: rec
 {
-	pair: duo[imm[i32], i32]
+	pair: Duo[imm[i32], i32]
 }
 
-duo[A, B]: rec
+Duo[A, B]: rec
 {
 	first: A
 	second: B
 }
 
-take: pub fun(value: box[Node]) -> i32 => 0
+take: pub fun(value: Box[Node]) -> i32 => 0
 
 main: fun -> i32 => 0

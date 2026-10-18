@@ -1,6 +1,6 @@
 mod test
 
-span[T]: ref rec
+Span[T]: ref rec
 {
 	data: pvt ptr[T]
 	length: pvt set usize
@@ -11,10 +11,10 @@ span[T]: ref rec
 		self.length = length
 	}
 
-	as[N: const usize]: op(mut values: array[T, N]) -> span[T] => span[T](@values, N)
+	as[N: const usize]: op(mut values: array[T, N]) -> Span[T] => Span[T](@values, N)
 }
 
-view[T]: ref rec
+View[T]: ref rec
 {
 	data: pvt ptr[T]
 	length: pvt set usize
@@ -25,22 +25,22 @@ view[T]: ref rec
 		self.length = length
 	}
 
-	as[N: const usize]: op(imm values: array[T, N]) -> view[T] => view[T](@values, N)
+	as[N: const usize]: op(imm values: array[T, N]) -> View[T] => View[T](@values, N)
 }
 
-fill: fun(values: span[i32], value: i32) {}
+fill: fun(values: Span[i32], value: i32) {}
 
-read: fun(values: view[i32]) {}
+read: fun(values: View[i32]) {}
 
-grow: fun(mut values: span[i32]) {}
+grow: fun(mut values: Span[i32]) {}
 
 main: fun -> i32
 {
 	var three: array[i32, 3] = [1, 2, 3]
 	var four: array[i32, 4] = [1, 2, 3, 4]
 	fill(three, 7)
-	val s = span[i32](four)
-	val t: span[i32] = four
+	val s = Span[i32](four)
+	val t: Span[i32] = four
 	read(mut four)
 	grow(mut three)
 	ret 0

@@ -7,17 +7,17 @@ Eq: trait
 
 i32: impl Eq
 
-box[T]: rec
+Box[T]: rec
 {
 	value: T
 }
 
-box[T: Eq]: pub impl
+Box[T: Eq]: pub impl
 {
-	same: fun(imm self, imm other: box[T]) -> bool => self.value == other.value
+	same: fun(imm self, imm other: Box[T]) -> bool => self.value == other.value
 }
 
-box[T: Eq]: mod impl
+Box[T: Eq]: mod impl
 {
 	equalTo: fun(imm self, imm value: T) -> bool => self.value == value
 }

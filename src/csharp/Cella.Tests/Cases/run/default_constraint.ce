@@ -5,7 +5,7 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-box[T]: rec
+Box[T]: rec
 {
 	value: T
 }
@@ -24,7 +24,7 @@ Vec2: rec
 	}
 }
 
-outer[T: default]: fun -> box[T] => box[T]()
+outer[T: default]: fun -> Box[T] => Box[T]()
 
 blank[T: default]: fun -> T
 {

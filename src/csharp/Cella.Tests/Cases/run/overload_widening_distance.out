@@ -1,2 +1,22 @@
+Hint at overload_widening_distance.ce:19:6
+18 │ {
+19 │     var s: i16 = 1
+             ^ 's' is never changed
+
+Hint at overload_widening_distance.ce:20:6
+19 │ var s: i16 = 1
+20 │ var b: u8 = 2
+         ^ 'b' is never changed
+
+Hint at overload_widening_distance.ce:21:6
+20 │ var b: u8 = 2
+21 │ var w: i64 = 3
+         ^ 'w' is never changed
+
+Hint at overload_widening_distance.ce:22:6
+21 │ var w: i64 = 3
+22 │ var u: u16 = 4
+         ^ 'u' is never changed
+
 32 32 64 32 32 32 32
 [exit code 0]

@@ -24,21 +24,21 @@ Square: rec impl Shape
 	area: fun(self) -> f64 => self.s * self.s
 }
 
-cell[K: trait]: rec
+Cell[K: trait]: rec
 {
 	object: ptr[dyn[K]]
 
-	of[T: K]: fun(value: ptr[T]) -> cell[K] => cell[K](value)
+	of[T: K]: fun(value: ptr[T]) -> Cell[K] => Cell[K](value)
 
 	*: op(self) -> imm[dyn[K]] => imm *self.object
 }
 
-view[K: trait]: ref rec
+View[K: trait]: ref rec
 {
 	item: imm[dyn[K]]
 }
 
-slot[K: trait, T: K]: rec
+Slot[K: trait, T: K]: rec
 {
 	value: T
 }
@@ -47,7 +47,7 @@ measure: fun(imm shape: dyn[Shape]) -> f64 => shape.area()
 
 apply[K: trait, T: K]: fun(imm value: T, action: fun[imm dyn[K] -> f64]) -> f64 => action(imm value)
 
-wrap[K: trait, T: K]: fun(value: ptr[T]) -> cell[K] => cell[K].of(value)
+wrap[K: trait, T: K]: fun(value: ptr[T]) -> Cell[K] => Cell[K].of(value)
 
 same[K: trait, T: K]: fun(imm shape: dyn[K]) -> bool => shape is T
 
@@ -63,11 +63,11 @@ main: fun -> i32
 {
 	var c = Circle(2.0)
 	var s = Square(3.0)
-	val a = cell[Shape](@c)
-	val b = cell[Shape].of(@s)
+	val a = Cell[Shape](@c)
+	val b = Cell[Shape].of(@s)
 	val w = wrap[Shape, Square](@s)
-	val v = view[Shape](c)
-	val t = slot[Shape, Circle](Circle(4.0))
+	val v = View[Shape](c)
+	val t = Slot[Shape, Circle](Circle(4.0))
 	printf("%.1f %.1f %.1f %.1f\n", a.area(), b.area(), w.area(), apply[Shape, Circle](imm c, measure))
 	printf("%.1f %.1f\n", v.item.area(), t.value.area())
 	printf("%d %d %d %d %d\n", i32(same[Shape, Circle](imm c)), i32(same[Shape, Square](imm c)), kind[Shape, Square](imm s),

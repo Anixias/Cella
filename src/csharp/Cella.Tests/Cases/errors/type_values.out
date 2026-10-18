@@ -10,7 +10,7 @@ Error at type_values.ce:21:10
 
 Error at type_values.ce:27:10
 26 │ {
-27 │     val a = box[i32]
+27 │     val a = Box[i32]
                  ╘══════╛ Cannot use types as values
 
 Error at type_values.ce:33:10

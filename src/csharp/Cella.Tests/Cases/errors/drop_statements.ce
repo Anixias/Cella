@@ -9,7 +9,7 @@ Noisy: rec
 	}
 }
 
-box[T]: rec
+Box[T]: rec
 {
 	pointer: ptr[T]
 
@@ -26,7 +26,7 @@ numbers: fun(memory: ptr[i32])
 	drop *memory
 }
 
-throughBox: fun(b: box[Noisy])
+throughBox: fun(b: Box[Noisy])
 {
 	drop *b
 }

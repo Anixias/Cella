@@ -1,3 +1,28 @@
+Hint at chain_mixed_operands.ce:35:6
+34 │ {
+35 │     var neg: i32 = -1
+             ╘═╛ 'neg' is never changed
+
+Hint at chain_mixed_operands.ce:36:6
+35 │ var neg: i32 = -1
+36 │ var one: u32 = 1
+         ╘═╛ 'one' is never changed
+
+Hint at chain_mixed_operands.ce:37:6
+36 │ var one: u32 = 1
+37 │ var two: u64 = 2
+         ╘═╛ 'two' is never changed
+
+Hint at chain_mixed_operands.ce:39:6
+38 │ printf("%d %d %d\n", i32(neg < one < two), i32(one > neg > -5), i32(two < one < neg))
+39 │ var a: i32 = 1
+         ^ 'a' is never changed
+
+Hint at chain_mixed_operands.ce:40:6
+39 │ var a: i32 = 1
+40 │ var f: f32 = 1.5
+         ^ 'f' is never changed
+
 1 1 0
 1 0
 1 0

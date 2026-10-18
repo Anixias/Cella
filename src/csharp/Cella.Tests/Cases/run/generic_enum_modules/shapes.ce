@@ -1,17 +1,17 @@
 mod shapes
 
-option[T]: enum
+Option[T]: enum
 {
 	none
 	some(value: T)
 
 	made: var i32 = 0
 
-	wrap: fun(own value: T) -> option[T]
+	wrap: fun(own value: T) -> Option[T]
 	{
 		made += 1
-		ret option.some(own value)
+		ret Option.some(own value)
 	}
 }
 
-read: fun(o: option[i32]) -> i32 => match o { some(val v) => v, none => -1 }
+read: fun(o: Option[i32]) -> i32 => match o { some(val v) => v, none => -1 }

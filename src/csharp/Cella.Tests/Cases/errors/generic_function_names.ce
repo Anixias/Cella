@@ -1,6 +1,6 @@
 mod test
 
-box[T]: rec
+Box[T]: rec
 {
 	value: T
 

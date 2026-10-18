@@ -20,7 +20,7 @@ Bad: rec
 	new: op = default
 }
 
-box[T]: rec
+Box[T]: rec
 {
 	value: T
 

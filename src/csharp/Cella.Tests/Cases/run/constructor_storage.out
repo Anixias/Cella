@@ -1,1 +1,11 @@
+Hint at constructor_storage.ce:15:6
+14 │ {
+15 │     var local = Counter(5)
+             ╘═══╛ 'local' is never changed
+
+Hint at constructor_storage.ce:16:6
+15 │ var local = Counter(5)
+16 │ var other = Counter(3)
+         ╘═══╛ 'other' is never changed
+
 [exit code 8]

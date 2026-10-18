@@ -13,7 +13,7 @@ Point: rec
 	y: i32
 }
 
-option[V]: enum { none, some(value: V) }
+Option[V]: enum { none, some(value: V) }
 
 pick: fun(t: T) -> i32 => match t
 {
@@ -35,7 +35,7 @@ sum: fun(p: Point) -> i32 => match p
 	else => 0
 }
 
-nested: fun(o: option[option[u8]]) -> i32 => match o
+nested: fun(o: Option[Option[u8]]) -> i32 => match o
 {
 	some(some(0..128)) => 1
 	some(some(128..=255)) => 2
@@ -67,6 +67,6 @@ main: fun -> i32
 		else => printf("never\n")
 	}
 
-	printf("%d %d %d %d %d %d\n", pick(T.b), flag(true), sum(Point(1, 2)), nested(option.none), needed(3), guarded(T.b))
+	printf("%d %d %d %d %d %d\n", pick(T.b), flag(true), sum(Point(1, 2)), nested(Option.none), needed(3), guarded(T.b))
 	ret 0
 }

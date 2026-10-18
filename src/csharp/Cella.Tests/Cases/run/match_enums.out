@@ -1,3 +1,18 @@
+Hint at match_enums.ce:50:6
+49 │ {
+50 │     var raw = 7
+             ╘═╛ 'raw' is never changed
+
+Hint at match_enums.ce:55:6
+54 │ 
+55 │ var n: u8 = 4
+         ^ 'n' is never changed
+
+Hint at match_enums.ce:59:6
+58 │ 
+59 │ var t = true
+         ^ 't' is never changed
+
 7 -100 7 9
 0 1 40 4 1
 1 1 1 1 0
