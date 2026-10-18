@@ -181,11 +181,13 @@ public static class DiagnosticReporter
 		new(DiagnosticSeverity.Error, location, $"'{name}' is private to its {scope}");
 	
 	public static Diagnostic ReportReadOnly(SourceLocation location, string name, Visibility visibility) =>
-		new(DiagnosticSeverity.Error, location, $"'{name}' is read-only outside its {DescribeScope(visibility, true)}");
+		ReportReadOnly(location, name, DescribeScope(visibility, true));
 	
-	public static Diagnostic ReportWriteOnly(SourceLocation location, string name, Visibility visibility) =>
-		new(DiagnosticSeverity.Error, location,
-			$"'{name}' is write-only outside its {DescribeScope(visibility, true)}");
+	public static Diagnostic ReportReadOnly(SourceLocation location, string name, string scope) =>
+		new(DiagnosticSeverity.Error, location, $"'{name}' is read-only outside its {scope}");
+	
+	public static Diagnostic ReportWriteOnly(SourceLocation location, string name, string scope) =>
+		new(DiagnosticSeverity.Error, location, $"'{name}' is write-only outside its {scope}");
 	
 	public static string DescribeScope(Visibility visibility, bool isMember) => visibility switch
 	{

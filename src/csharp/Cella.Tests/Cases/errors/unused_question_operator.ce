@@ -1,0 +1,15 @@
+mod test
+
+Option[T]: enum
+{
+	none
+	some(value: T)
+
+	?: op(own self) -> T => match own self
+	{
+		some(own value) => value
+		none => break
+	}
+}
+
+main: fun -> i32 => 0

@@ -46,12 +46,18 @@ public sealed partial class SignatureCollector
 			_typePool.AddMemberBlock(impl, target);
 		
 		var deferring = context with { ImplBlock = impl, DeferConstraintCheck = DeferAlways };
+		var traits = new List<TraitType>();
 		foreach (var traitNode in node.Traits)
 		{
-			if (deferring.ResolveTrait(traitNode) is { } trait)
-				AddConformance(new(trait.Trait, trait.Arguments, target, impl.TypeParameters, impl,
-					traitNode.SourceLocation));
+			if (deferring.ResolveTrait(traitNode) is not { } trait)
+				continue;
+			
+			traits.Add(trait);
+			AddConformance(new(trait.Trait, trait.Arguments, target, impl.TypeParameters, impl,
+				traitNode.SourceLocation));
 		}
+		
+		impl.Traits = [..traits];
 	}
 	
 	private bool IsExtensionTarget(TypeSymbol target, ResolutionContext context) =>
@@ -64,22 +70,24 @@ public sealed partial class SignatureCollector
 		impl.ExtensionAssembly = Modules.AssemblyName;
 		foreach (var member in node.Members)
 		{
-			var visibility = Visibility.FromKeyword(member switch
-			{
-				FunctionNode function => function.Visibility,
-				PropertyNode property => property.Visibility,
-				_ => null
-			});
-			
 			if (!_symbolTable.DeclarationSymbols.TryGetValue(member, out var symbol))
 				continue;
 			
-			impl.ExtensionVisibilities[symbol] = visibility;
-			if (symbol is not PropertySymbol declared)
-				continue;
-			
-			foreach (var accessor in new[] { declared.Getter, declared.Setter }.OfType<FunctionAccessor>())
-				impl.ExtensionVisibilities[accessor.Function] = visibility;
+			switch (symbol)
+			{
+				case FunctionSymbol function when member is FunctionNode functionNode:
+					function.Visibility = Visibility.FromKeyword(functionNode.Visibility);
+					break;
+				
+				case PropertySymbol property when member is PropertyNode propertyNode:
+					var keyword = propertyNode.Visibility;
+					property.Visibility = Visibility.FromKeyword(keyword);
+					foreach (var accessor in new[] { property.Getter, property.Setter }.OfType<FunctionAccessor>())
+						accessor.Function.Visibility =
+							Visibility.FromKeyword(((FunctionNode)accessor.Function.Syntax).Visibility ?? keyword);
+					
+					break;
+			}
 		}
 	}
 	

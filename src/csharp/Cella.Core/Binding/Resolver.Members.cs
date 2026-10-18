@@ -346,7 +346,7 @@ public sealed partial class Resolver
 		
 		return CanAccess(owner, getter)
 			? CallAccessor(getter, owner, property.TraitArguments, receiver, [], node)
-			: Error(node, DiagnosticReporter.ReportWriteOnly(member, property.Name, getter.Visibility),
+			: Error(node, DiagnosticReporter.ReportWriteOnly(member, property.Name, DescribeAccessorScope(getter)),
 				CurrentTargetType);
 	}
 	
@@ -407,7 +407,7 @@ public sealed partial class Resolver
 			return CanAccess(owner, visibility);
 		
 		if (impl is { IsExtension: true })
-			return true;
+			return IsVisibleExtensionMember(impl, visibility);
 		
 		var context = CurrentResolutionContext;
 		if (visibility == Visibility.Private)
@@ -450,13 +450,13 @@ public sealed partial class Resolver
 		return context.File.Module == module || context.Imports?.Activates(module) == true;
 	}
 	
-	private bool IsVisibleExtensionMember(ImplSymbol impl, Symbol member)
+	private bool IsVisibleExtensionMember(ImplSymbol impl, Visibility visibility)
 	{
 		if (impl.ExtensionFile is not { } file)
 			return true;
 		
 		var context = CurrentResolutionContext;
-		return impl.ExtensionVisibilities.GetValueOrDefault(member, Visibility.Project) switch
+		return visibility switch
 		{
 			Visibility.Private => context.File == file,
 			Visibility.Module => context.File.Module == file.Module,
@@ -478,12 +478,12 @@ public sealed partial class Resolver
 		if (type is TypeParameterSymbol parameter)
 			return _typePool.GetBounds(parameter).SelectMany(trait => GetInstanceMethods(trait, name))
 				.Concat(GetActiveMemberBlocks(parameter).SelectMany(impl => impl.Functions.Where(method =>
-					method.Name == name && IsVisibleExtensionMember(impl, method.Function))));
+					method.Name == name && IsVisibleExtensionMember(impl, method.Function.Visibility))));
 		
 		var conformances = GetVisibleConformances(type).ToList();
 		return GetImpls(conformances, type)
 			.SelectMany(impl => impl.Functions.Where(method =>
-				method.Name == name && IsVisibleExtensionMember(impl, method.Function)))
+				method.Name == name && IsVisibleExtensionMember(impl, method.Function.Visibility)))
 			.Concat(conformances.SelectMany(conformance =>
 				GetInstanceMethods(_typePool.GetConformanceTrait(conformance, type), name)
 					.Where(method => method.Function.Visibility == Visibility.Private ||
@@ -564,11 +564,12 @@ public sealed partial class Resolver
 				.Select(trait => GetInstanceProperty(trait, name))
 				.OfType<PropertySymbol>()
 				.Concat(GetActiveMemberBlocks(parameter).Select(impl => impl.Properties.FirstOrDefault(p =>
-					p.Name == name && IsVisibleExtensionMember(impl, p))).OfType<PropertySymbol>());
+					p.Name == name && IsVisibleExtensionMember(impl, p.Visibility))).OfType<PropertySymbol>());
 		
 		var conformances = GetVisibleConformances(type).ToList();
 		return GetImpls(conformances, type)
-			.Select(impl => impl.Properties.FirstOrDefault(p => p.Name == name && IsVisibleExtensionMember(impl, p)))
+			.Select(impl =>
+				impl.Properties.FirstOrDefault(p => p.Name == name && IsVisibleExtensionMember(impl, p.Visibility)))
 			.OfType<PropertySymbol>()
 			.Concat(conformances
 				.Select(conformance => conformance.Trait.GetProperty(name) is { } traitProperty &&
@@ -612,10 +613,17 @@ public sealed partial class Resolver
 		return ReportHidden(location, name, widest.Visibility, widest.Trait, widest.Impl);
 	}
 	
+	private static string DescribeAccessorScope(FunctionSymbol accessor) =>
+		accessor is { Visibility: Visibility.Private, Impl.IsExtension: true }
+			? "file"
+			: DiagnosticReporter.DescribeScope(accessor.Visibility, true);
+	
 	private static Diagnostic ReportHidden(SourceLocation location, string name, Visibility visibility,
 		TraitSymbol? trait, ImplSymbol? impl) => (trait, impl) switch
 	{
 		(not null, _) when visibility == Visibility.Private => DiagnosticReporter.ReportHidden(location, name, "trait"),
+		(_, { IsExtension: true }) when visibility == Visibility.Private =>
+			DiagnosticReporter.ReportHidden(location, name, "file"),
 		(_, not null) when visibility == Visibility.Private =>
 			DiagnosticReporter.ReportHidden(location, name, "impl block"),
 		_ => DiagnosticReporter.ReportHidden(location, name, visibility, true)

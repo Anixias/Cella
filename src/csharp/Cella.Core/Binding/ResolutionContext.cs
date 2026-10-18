@@ -28,6 +28,7 @@ public readonly struct ResolutionContext
 	public CopiedParameters? CopiedParameters { get; init; }
 	public Func<IExpressionNode, ResolutionContext, TypeSymbol?, Constant?>? EvaluateConstant { get; init; }
 	public Dictionary<IndexerExpressionNode, TypeSymbol?>? GenericTypes { get; init; }
+	public Action<Action>? RecordUndo { get; init; }
 	public ImmutableArray<TypeParameterSymbol> TypeParameters { get; init; }
 	public ImmutableArray<TypeParameterSymbol> ExcludedParameters { get; init; }
 	public string? ExclusionPlace { get; init; }
@@ -53,7 +54,10 @@ public readonly struct ResolutionContext
 			FunctionSymbol f => new NamePart(f.DeclaredName, [..f.DeclaredTypeParameters]),
 			NamedTypeSymbol t => new NamePart(t.Definition.Name, t.TypeArguments),
 			TraitSymbol t => new NamePart(t.Name, [..t.TypeParameters]),
-			ImplSymbol i => new NamePart(i.TraitNames, []),
+			ImplSymbol i => i.Traits is [var trait]
+				? new NamePart(trait.Trait.Name, trait.Arguments)
+				: new NamePart("", [])
+					{ Combined = [..i.Traits.Select(static t => new NamePart(t.Trait.Name, t.Arguments))] },
 			_ => new NamePart(container.Name, [])
 		}),
 		new(function.DeclaredName, [..function.DeclaredTypeParameters])
@@ -74,7 +78,7 @@ public readonly struct ResolutionContext
 		for (var f = ContainingFunction; f is not null; f = f.Value.Symbol.ContainingFunction)
 			result.Add(f.Value.Symbol);
 		
-		if (ImplBlock is { TraitNames: not "" } impl)
+		if (ImplBlock is { Node.Traits.IsEmpty: false } impl)
 			result.Add(impl);
 		
 		for (var t = ContainingType; t is not null; t = t.ContainingType)
@@ -824,6 +828,9 @@ public readonly struct ResolutionContext
 		}
 		
 		var constant = EvaluateConstant?.Invoke(expression, this, null);
+		if (constant is not InvalidConstant && parameter?.ValueType is { } valueType and not InvalidType)
+			constant = EvaluateConstant!(expression, this, valueType);
+		
 		if (constant is null)
 		{
 			if (parameter is not null)
@@ -831,9 +838,6 @@ public readonly struct ResolutionContext
 			
 			return NativeSymbols.Invalid;
 		}
-		
-		if (constant is not InvalidConstant && parameter?.ValueType is { } valueType and not InvalidType)
-			constant = EvaluateConstant!(expression, this, valueType);
 		
 		switch (constant)
 		{
@@ -872,9 +876,11 @@ public readonly struct ResolutionContext
 			return cached;
 		
 		var result = ResolveGenericExpression(node);
-		if (GenericTypes is { } genericTypes)
-			genericTypes[node] = result;
+		if (GenericTypes is not { } genericTypes)
+			return result;
 		
+		genericTypes[node] = result;
+		RecordUndo?.Invoke(() => genericTypes.Remove(node));
 		return result;
 	}
 	

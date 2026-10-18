@@ -1,0 +1,6 @@
+Error at unused_question_operator.ce:11:11
+10 │ some(own value) => value
+11 │ none => break
+             ╘═══╛ Cannot use 'break' outside loops
+
+[compilation failed]

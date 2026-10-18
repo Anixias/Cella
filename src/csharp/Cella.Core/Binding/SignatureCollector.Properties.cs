@@ -78,7 +78,7 @@ public sealed partial class SignatureCollector
 			return type;
 		
 		var context = _declarations[property].Context;
-		var owner = GetVisibilityOwner(context)!;
+		var owner = GetVisibilityOwner(context);
 		type = RejectValueDyn(typeNode, context.ResolveType(typeNode));
 		_propertyTypes[property] = type;
 		

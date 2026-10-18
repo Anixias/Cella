@@ -7,7 +7,6 @@ public sealed class DiagnosticList : IEnumerable<Diagnostic>
 {
 	public int Count { get; private set; }
 	public int ErrorCount { get; private set; }
-	public int ErrorsReported { get; private set; }
 	
 	private readonly SortedList<LineColumnKey, List<Diagnostic>> _diagnostics = [];
 	private List<Diagnostic>? redirect;
@@ -30,9 +29,6 @@ public sealed class DiagnosticList : IEnumerable<Diagnostic>
 	
 	public void Add(Diagnostic diagnostic)
 	{
-		if (diagnostic.Severity == DiagnosticSeverity.Error)
-			ErrorsReported++;
-		
 		if (redirect is { } target)
 		{
 			target.Add(diagnostic);

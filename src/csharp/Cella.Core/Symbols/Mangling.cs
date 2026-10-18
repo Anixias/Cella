@@ -46,7 +46,7 @@ public static class Mangling
 		var name = symbol switch
 		{
 			FunctionSymbol function => function.DeclaredName,
-			ImplSymbol impl => impl.TraitNames,
+			ImplSymbol impl => string.Join('+', impl.Traits.Select(trait => MangleTrait(trait, modules))),
 			_ => symbol.Name
 		};
 		

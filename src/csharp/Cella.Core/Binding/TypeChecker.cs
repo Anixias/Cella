@@ -22,15 +22,17 @@ public sealed class TypeChecker
 	public DiagnosticList Diagnostics { get; } = new();
 	
 	private readonly Stack<(TypeSymbol? Type, FunctionSymbol Function)> _returns = [];
-	private readonly HashSet<(SourceLocation, string)> _inlinedErrors = [];
 	private readonly List<(IResolvedDeclarationNode Node, List<Diagnostic> Diagnostics, bool IsInvalid)> _checked = [];
+	private readonly Dictionary<FunctionSymbol, ResolvedFunctionNode> _inlineDeclarations = [];
+	private readonly List<InlinedUse> _inlinedUses = [];
+	private IResolvedDeclarationNode? currentDeclaration;
+	private List<Diagnostic> currentDiagnostics = [];
 	private readonly List<LocalVariableSymbol> _vars = [];
 	private readonly List<(LocalVariableSymbol Local, List<Diagnostic> Diagnostics)> _declaredVars = [];
 	private readonly HashSet<LocalVariableSymbol> _changedVars = [];
 	private bool sawInvalid;
 	private int continueDepth;
 	private int breakDepth;
-	private int overflows;
 	private FileSymbol currentFile = null!;
 	private TypeSymbol? currentType;
 	
@@ -45,14 +47,69 @@ public sealed class TypeChecker
 				containment.Mark(node);
 		}
 		
+		var brokenUsers = AttachInlinedUses();
 		foreach (var (node, diagnostics, _) in _checked)
 		{
 			if (!containment.IsBroken(node))
 				Diagnostics.AddRange(diagnostics);
 		}
 		
+		foreach (var user in brokenUsers)
+			containment.Mark(user);
+		
 		_checked.Clear();
+		_inlineDeclarations.Clear();
+		_inlinedUses.Clear();
 	}
+	
+	private HashSet<IResolvedDeclarationNode> AttachInlinedUses()
+	{
+		var errors = _checked.Where(static entry => entry.Diagnostics.Any(IsError))
+			.Select(static entry => entry.Node)
+			.ToHashSet();
+		
+		var broken = _inlineDeclarations
+			.Where(entry => containment.IsBroken(entry.Value) || errors.Contains(entry.Value))
+			.Select(static entry => entry.Key)
+			.ToHashSet();
+		
+		var changed = true;
+		while (changed)
+		{
+			changed = false;
+			foreach (var use in _inlinedUses)
+			{
+				if (use.User is ResolvedFunctionNode { IsInline: true } user && broken.Contains(use.Operator))
+					changed |= broken.Add(user.FunctionInfo.Symbol);
+			}
+		}
+		
+		var users = new HashSet<IResolvedDeclarationNode>();
+		foreach (var use in _inlinedUses)
+		{
+			if (broken.Contains(use.Operator))
+			{
+				users.Add(use.User);
+				continue;
+			}
+			
+			use.UserDiagnostics.AddRange(use.Diagnostics);
+			if (use.Diagnostics.Any(IsError))
+				users.Add(use.User);
+		}
+		
+		return users;
+	}
+	
+	private static bool IsError(Diagnostic diagnostic) => diagnostic.Severity == DiagnosticSeverity.Error;
+	
+	private readonly record struct InlinedUse
+	(
+		IResolvedDeclarationNode User,
+		List<Diagnostic> UserDiagnostics,
+		FunctionSymbol Operator,
+		List<Diagnostic> Diagnostics
+	);
 	
 	private void Contain(IResolvedDeclarationNode node, Action check)
 	{
@@ -63,7 +120,10 @@ public sealed class TypeChecker
 		var previous = Diagnostics.Redirect(diagnostics);
 		var firstVar = _vars.Count;
 		sawInvalid = false;
+		var (outerDeclaration, outerDiagnostics) = (currentDeclaration, currentDiagnostics);
+		(currentDeclaration, currentDiagnostics) = (node, diagnostics);
 		check();
+		(currentDeclaration, currentDiagnostics) = (outerDeclaration, outerDiagnostics);
 		Diagnostics.Redirect(previous);
 		_declaredVars.AddRange(_vars.Skip(firstVar).Select(local => (local, diagnostics)));
 		_vars.RemoveRange(firstVar, _vars.Count - firstVar);
@@ -122,6 +182,9 @@ public sealed class TypeChecker
 	{
 		if (node.Body is not IResolvedStatementNode statement)
 			return;
+		
+		if (node.IsInline)
+			_inlineDeclarations[node.FunctionInfo.Symbol] = node;
 		
 		Contain(node, () =>
 		{
@@ -191,10 +254,14 @@ public sealed class TypeChecker
 			return;
 		}
 		
-		var errorCount = Diagnostics.ErrorsReported;
+		var captured = new List<Diagnostic>();
+		var previous = Diagnostics.Redirect(captured);
 		VisitNode(initializer);
+		Diagnostics.Redirect(previous);
+		Diagnostics.AddRange(captured);
 		
-		if (node.Info.Value is not null || Diagnostics.ErrorsReported != errorCount ||
+		if (node.Info.Value is not null ||
+		    captured.Any(static diagnostic => diagnostic.Severity == DiagnosticSeverity.Error) ||
 		    FindNonConstant(initializer) is not { } blocking)
 			return;
 		
@@ -320,13 +387,15 @@ public sealed class TypeChecker
 		VisitNode(node.Body);
 		Diagnostics.Redirect(previous);
 		(breakDepth, continueDepth) = (breaks, continues);
-		Diagnostics.AddRange(captured.Where(diagnostic =>
-			diagnostic.Severity == DiagnosticSeverity.Error &&
-			_inlinedErrors.Add((diagnostic.SourceLocation, diagnostic.Message))));
+		if (currentDeclaration is { } user)
+			_inlinedUses.Add(new(user, currentDiagnostics, node.Operator, captured));
 	}
 	
 	public void Visit(ResolvedReturnExpressionNode node)
 	{
+		if (node.HasUnknownTarget)
+			return;
+		
 		var (expected, function) = _returns.Peek();
 		var actual = node.Value?.Type ?? NativeSymbols.Void;
 		
@@ -674,22 +743,15 @@ public sealed class TypeChecker
 			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Syntax.SourceLocation,
 				$"Cannot subtract pointers to zero-size type '{element.Name}'"));
 		
-		var reported = overflows;
 		VisitNode(node.Left);
 		VisitNode(node.Right);
-		if (overflows > reported)
-			return;
-		
 		if (evaluator.FindOverflowingOperation(node) is { } operation)
 			ReportOverflow(node, operation);
 	}
 	
-	private void ReportOverflow(IResolvedExpressionNode node, string operation)
-	{
-		overflows++;
+	private void ReportOverflow(IResolvedExpressionNode node, string operation) =>
 		Diagnostics.Add(new(DiagnosticSeverity.Error, node.Syntax.SourceLocation,
 			$"{operation} overflows '{node.Type.Name}'"));
-	}
 	
 	public void Visit(ResolvedChainedExpressionNode node)
 	{
@@ -730,12 +792,10 @@ public sealed class TypeChecker
 			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Source.Syntax.SourceLocation,
 				$"'{enumType.Name}' has no case with the value {value}"));
 		
-		var reported = overflows;
 		VisitNode(node.Source);
-		if (overflows > reported || evaluator.FindLostConstant(node) is not var (lost, target))
+		if (evaluator.FindLostConstant(node) is not var (lost, target))
 			return;
 		
-		overflows++;
 		Diagnostics.Add(new(DiagnosticSeverity.Error, node.Syntax.SourceLocation,
 			$"'{lost}' doesn't fit in '{target.Name}'"));
 	}
@@ -1134,9 +1194,8 @@ public sealed class TypeChecker
 		         ReportUnwritable(SkipAssignment(node.Operand)) is { } unwritable)
 			Diagnostics.Add(unwritable);
 		
-		var reported = overflows;
 		VisitNode(node.Operand);
-		if (overflows == reported && evaluator.OverflowsNegation(node))
+		if (evaluator.OverflowsNegation(node))
 			ReportOverflow(node, "Negation");
 	}
 	

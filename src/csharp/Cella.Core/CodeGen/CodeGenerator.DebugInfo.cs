@@ -367,13 +367,13 @@ public sealed unsafe partial class CodeGenerator
 			? []
 			: TypePool.CreateMap(function.Symbol.TypeParameters, function.TypeArguments);
 		
-		return
-		[
-			..function.Symbol.QualifiedName.Select(part => part.Arguments.IsEmpty
-				? part.Name
-				: $"{part.Name}[{string.Join(", ", part.Arguments.Select(argument =>
-					Substitute(_typePool.Substitute(argument, map)).Name))}]")
-		];
+		return [..function.Symbol.QualifiedName.Select(Describe)];
+		
+		string Describe(NamePart part) =>
+			!part.Combined.IsEmpty ? string.Join("+", part.Combined.Select(Describe))
+			: part.Arguments.IsEmpty ? part.Name
+			: $"{part.Name}[{string.Join(", ", part.Arguments.Select(argument =>
+				Substitute(_typePool.Substitute(argument, map)).Name))}]";
 	}
 	
 	private string[] GetAdapterName(FunctionInfo function) =>

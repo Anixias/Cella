@@ -1,0 +1,11 @@
+Error at a.ce:3:1
+2 │ 
+3 │ helper: pvt ext("sharedSym") fun -> i32 => 1
+    ╘════╛ 'sharedSym' is defined by more than one 'ext' declaration
+
+Error at main.ce:3:1
+2 │ 
+3 │ helper: pvt ext("sharedSym") fun -> i32 => 2
+    ╘════╛ 'sharedSym' is defined by more than one 'ext' declaration
+
+[compilation failed]

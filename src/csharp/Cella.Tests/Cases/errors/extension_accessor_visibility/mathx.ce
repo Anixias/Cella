@@ -1,0 +1,13 @@
+mod mathx
+
+game.Point: impl
+{
+	px: prop i32
+	{
+		get(self) => self.x
+		pvt set(mut self, value)
+		{
+			self.x = value
+		}
+	}
+}

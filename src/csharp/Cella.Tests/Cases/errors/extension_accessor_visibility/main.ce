@@ -1,0 +1,10 @@
+mod test
+
+use mathx
+
+poke: fun(mut p: game.Point)
+{
+	p.px = 3
+}
+
+main: fun -> i32 => 0

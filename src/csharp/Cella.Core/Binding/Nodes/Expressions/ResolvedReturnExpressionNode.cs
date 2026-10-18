@@ -9,4 +9,5 @@ public sealed class ResolvedReturnExpressionNode(IResolvedExpressionNode? value,
 	public TypeSymbol Type => NativeSymbols.Never;
 	public IResolvedExpressionNode? Value { get; } = value;
 	public IExpressionNode Syntax { get; } = syntax;
+	public bool HasUnknownTarget { get; init; }
 }

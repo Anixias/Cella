@@ -1,0 +1,5 @@
+mod test
+
+use mathx
+
+main: fun -> i32 => 1.offset(mathx.Point(2)) - 3

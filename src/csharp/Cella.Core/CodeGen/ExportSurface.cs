@@ -217,7 +217,7 @@ public sealed class ExportSurface
 	}
 	
 	private static bool IsExported(ImplSymbol impl, FunctionSymbol function) => impl.IsExtension
-		? impl.ExtensionVisibilities.GetValueOrDefault(function) == Visibility.Public
+		? function.Visibility == Visibility.Public
 		: IsVisibleWithType(function);
 	
 	private static bool IsVisibleWithType(FunctionSymbol function) =>

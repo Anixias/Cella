@@ -1,0 +1,45 @@
+mod test
+
+Point: rec
+{
+	x: i32
+	use y
+	z: i32 = 1
+}
+
+first: fun -> i32
+{
+	ret missingFirst
+}
+
+Shape: trait
+{
+	area: fun(imm self) -> i32
+	when (debug
+	{
+		extra: fun -> i32
+	}
+}
+
+second: fun -> i32
+{
+	when (debug
+	{
+		ret 1
+	}
+	ret missingSecond
+}
+
+handler: val fun[i32 -> i32] = fun(x)
+{
+	ret x
+helper: fun -> i32 => 2
+
+broken: fun(
+	a: i32,
+	b: ) -> i32
+{
+	ret a
+}
+
+main: fun -> i32 => missingMain

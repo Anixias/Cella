@@ -75,11 +75,13 @@ public sealed unsafe partial class CodeGenerator
 			: LLVMValueRef.CreateConstNamedStruct(enumType,
 				[tag, LLVMValueRef.CreateConstNull(enumType.StructGetTypeAtIndex(1))]);
 	
-	private LLVMValueRef EmitIntegerConstant(IntegerConstant constant)
+	private LLVMValueRef EmitIntegerConstant(IntegerConstant constant) =>
+		EmitIntegerPattern(constant.Value, MapTypeSymbol(constant.Type));
+	
+	private static LLVMValueRef EmitIntegerPattern(BigInteger value, LLVMTypeRef type)
 	{
-		var type = MapTypeSymbol(constant.Type);
 		var bits = (int)type.IntWidth;
-		var pattern = constant.Value.Sign < 0 ? constant.Value + (BigInteger.One << bits) : constant.Value;
+		var pattern = value.Sign < 0 ? value + (BigInteger.One << bits) : value;
 		var words = new ulong[GetWordCount(bits)];
 		for (var i = 0; i < words.Length; i++)
 			words[i] = (ulong)((pattern >> (BitsPerWord * i)) & ulong.MaxValue);

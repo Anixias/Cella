@@ -15,9 +15,6 @@ public sealed partial class Resolver
 		if (survey is not null || settledTypes is not null)
 			return resolve();
 		
-		var genericTypes = CurrentResolutionContext.GenericTypes;
-		var cachedTypes = genericTypes?.Keys.ToHashSet();
-		var lambdasBefore = lambdaCount;
 		var checkpoint = OpenCheckpoint();
 		var activeSurvey = survey = new LocalSurvey();
 		var surveyed = resolve();
@@ -30,9 +27,6 @@ public sealed partial class Resolver
 		
 		var settlement = activeSurvey.Settle(ConvertsInOneStep, CastsInOneStep);
 		Rollback(checkpoint);
-		lambdaCount = lambdasBefore;
-		foreach (var key in genericTypes?.Keys.Except(cachedTypes!).ToList() ?? [])
-			genericTypes!.Remove(key);
 		
 		var settled = settlement.Types.ToDictionary();
 		foreach (var (local, types) in settlement.Conflicts)

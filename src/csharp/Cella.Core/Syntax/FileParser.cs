@@ -93,8 +93,6 @@ public sealed partial class FileParser
 	
 	private readonly List<SourceLocation> _declarationExtents = [];
 	private readonly List<SourceLocation> _brokenStatements = [];
-	private bool skippedToEnd;
-	private bool reachedDeclaration;
 	
 	private static Dictionary<string, TokenType> BuildContextualKeywords(params IEnumerable<TokenType> tokenTypes) =>
 		tokenTypes.ToDictionary(static t => t.Representation);

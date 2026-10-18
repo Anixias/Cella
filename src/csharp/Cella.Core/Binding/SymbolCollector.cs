@@ -388,7 +388,6 @@ public sealed class SymbolCollector : IDeclarationNodeVisitor<Symbol>
 		
 		var impl = new ImplSymbol(node, typeParameters, functions, properties)
 		{
-			TraitNames = traits,
 			Constants = [..GetConstants(node.Members)]
 		};
 		

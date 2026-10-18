@@ -1,0 +1,48 @@
+Error at member_recovery.ce:6:2
+5 │ x: i32
+6 │ use y
+    ╘═╛ Cannot nest 'use' declarations
+
+Error at member_recovery.ce:7:9
+6 │ use y
+7 │ z: i32 = 1
+           ^ Cannot give fields initial values
+
+Error at member_recovery.ce:12:6
+11 │ {
+12 │     ret missingFirst
+             ╘══════════╛ Symbol 'missingFirst' not found in this scope
+
+Error at member_recovery.ce:19:2
+18 │ when (debug
+19 │ {
+     ^ Expected ')'
+     | To match the '(' on line 18
+
+Error at member_recovery.ce:27:2
+26 │ when (debug
+27 │ {
+     ^ Expected ')'
+     | To match the '(' on line 26
+
+Error at member_recovery.ce:30:6
+29 │ }
+30 │ ret missingSecond
+         ╘═══════════╛ Symbol 'missingSecond' not found in this scope
+
+Error at member_recovery.ce:34:1
+33 │ handler: val fun[i32 -> i32] = fun(x)
+34 │ {
+     ^ Expected '}' to close this '{'
+
+Error at member_recovery.ce:40:5
+39 │ a: i32,
+40 │ b: ) -> i32
+        ^ Expected a type
+
+Error at member_recovery.ce:45:21
+44 │ 
+45 │ main: fun -> i32 => missingMain
+                         ╘═════════╛ Symbol 'missingMain' not found in this scope
+
+[compilation failed]

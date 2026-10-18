@@ -1,0 +1,3 @@
+[stderr]
+Panic at generic_static_overflow.ce:11:18: addition overflow
+[exit code 101]

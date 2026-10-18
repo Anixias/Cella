@@ -147,6 +147,7 @@ public sealed partial class FileParser
 	private bool ParseMembers(ref int index, Token openBrace, Token? block, List<IDeclarationNode> members)
 	{
 		int? errorsBefore = null;
+		var failed = false;
 		while (!Match(ref index, TokenType.OpCloseBrace))
 		{
 			if (AtEnd(index))
@@ -191,17 +192,19 @@ public sealed partial class FileParser
 				continue;
 			}
 			
-			// TODO Diagnostics
-			if (ParseMember(ref index, block) is not { } member)
+			var start = index;
+			if (ParseMember(ref index, block) is { } member)
 			{
-				SkipToEnd(ref index);
-				return false;
+				members.Add(member);
+				continue;
 			}
 			
-			members.Add(member);
+			failed = true;
+			if (ResyncMember(ref index, start))
+				return false;
 		}
 		
-		return true;
+		return !failed;
 	}
 	
 	private EnumNode? ParseEnum(ref int index, Token identifier, DeclarationModifiers modifiers, bool isExternal,

@@ -124,28 +124,24 @@ public sealed partial class SignatureCollector
 	private void ReportPlainNameConflicts()
 	{
 		var definitions = _symbolTable.DeclarationSymbols.Values
+			.Distinct()
 			.SelectMany(FindExternalDefinitions)
 			.GroupBy(static definition => definition.Name)
-			.Where(static sameName => sameName
-				.Select(static definition => (definition.Module, definition.Identifier.Text))
-				.Distinct()
-				.Count() > 1);
+			.Where(static sameName => sameName.Count() > 1);
 		
 		foreach (var definition in definitions.SelectMany(static sameName => sameName))
 			Diagnostics.Add(new(DiagnosticSeverity.Error, definition.Identifier.SourceLocation,
 				$"'{definition.Name}' is defined by more than one 'ext' declaration"));
 	}
 	
-	private IEnumerable<ExternalDefinition> FindExternalDefinitions(Symbol symbol) => symbol switch
+	private static IEnumerable<ExternalDefinition> FindExternalDefinitions(Symbol symbol) => symbol switch
 	{
-		FunctionSymbol { Syntax: FunctionNode node, ExternalName: { } name } function =>
-			[new(name, node.Identifier, _builder.Functions[function].File?.Module)],
-		GlobalSymbol { IsImport: false, ExternalName: { } name } global =>
-			[new(name, global.Syntax.Identifier, GetGlobalInfo(global)?.File.Module)],
+		FunctionSymbol { Syntax: FunctionNode node, ExternalName: { } name } => [new(name, node.Identifier)],
+		GlobalSymbol { IsImport: false, ExternalName: { } name } global => [new(name, global.Syntax.Identifier)],
 		_ => []
 	};
 	
-	private readonly record struct ExternalDefinition(string Name, Token Identifier, ModuleSymbol? Module);
+	private readonly record struct ExternalDefinition(string Name, Token Identifier);
 	
 	private static bool AreVisibleTogether(Symbol first, FileSymbol firstFile, Symbol second, FileSymbol secondFile) =>
 		firstFile.Module == secondFile.Module && (firstFile == secondFile ||

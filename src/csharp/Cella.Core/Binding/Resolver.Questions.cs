@@ -11,6 +11,7 @@ public sealed partial class Resolver
 	private const string QuestionName = "?";
 	
 	private readonly Dictionary<FunctionSymbol, bool> _questionBodies = [];
+	private readonly Dictionary<FunctionSymbol, IResolvedExpressionNode> _questionDeclarations = [];
 	private readonly HashSet<FunctionSymbol> _inlinedQuestions = [];
 	
 	public IResolvedExpressionNode Visit(QuestionExpressionNode node)
@@ -39,10 +40,8 @@ public sealed partial class Resolver
 			return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
 		
 		var context = CurrentResolutionContext;
-		if (context.InlineReturn is { Caller: null })
-			return new ResolvedInvalidExpressionNode(node, info.Signature.ReturnType);
-		
-		if ((context.InlineReturn?.Caller ?? context.ContainingFunction) is not { } caller)
+		var caller = context.InlineReturn is { } outer ? outer.Caller : context.ContainingFunction;
+		if (caller is null && context.InlineReturn is null)
 			return Error(node, "Cannot use '?' outside functions", CurrentTargetType);
 		
 		if (!_inlinedQuestions.Add(function))
@@ -74,7 +73,24 @@ public sealed partial class Resolver
 		_resolutionContexts.Pop();
 		_inlinedQuestions.Remove(function);
 		
-		return new ResolvedQuestionExpressionNode(self, CreateReceiver(operand, info), resolvedBody, node);
+		return new ResolvedQuestionExpressionNode(function, self, CreateReceiver(operand, info), resolvedBody, node);
+	}
+	
+	private ResolvedFunctionNode? ResolveQuestionDeclaration(FunctionSymbol function)
+	{
+		if (_signatures.FindInlineContext(function) is not { } declaration ||
+		    FindQuestionBody(function) is not { } body)
+			return null;
+		
+		IsSoundQuestionBody(function, declaration, body);
+		if (!_questionDeclarations.TryGetValue(function, out var resolved))
+			return null;
+		
+		var syntax = (FunctionNode)function.Syntax;
+		var statement = (ExpressionStatementNode)syntax.Body!;
+		var returned = new ResolvedReturnExpressionNode(resolved, statement.ExpressionNode);
+		return new ResolvedFunctionNode(_signatures.GetFunctionInfo(function),
+			new ResolvedExpressionStatementNode(returned, statement), syntax) { IsInline = true };
 	}
 	
 	private static IExpressionNode? FindQuestionBody(FunctionSymbol function) => function.Syntax is FunctionNode
@@ -94,6 +110,7 @@ public sealed partial class Resolver
 			CopiedParameters = current.CopiedParameters,
 			EvaluateConstant = current.EvaluateConstant,
 			GenericTypes = current.GenericTypes,
+			RecordUndo = current.RecordUndo,
 			TrackInstance = current.TrackInstance,
 			DeferConstraintCheck = current.DeferConstraintCheck,
 			Capture = null
@@ -121,7 +138,7 @@ public sealed partial class Resolver
 			InlineReturn = new(null, body.SourceLocation)
 		});
 		
-		InferLocals(() => VisitNode(body, info.Signature.ReturnType));
+		_questionDeclarations[function] = InferLocals(() => VisitNode(body, info.Signature.ReturnType));
 		_resolutionContexts.Pop();
 		
 		isSound = Diagnostics.ErrorCount == errors;
@@ -137,7 +154,7 @@ public sealed partial class Resolver
 		{
 			var discarded = node.Value is { } value ? VisitDiscarded(value) : null;
 			Rollback(checkpoint);
-			return new ResolvedReturnExpressionNode(discarded, node);
+			return new ResolvedReturnExpressionNode(discarded, node) { HasUnknownTarget = true };
 		}
 		
 		var returnType = caller.Signature.ReturnType;

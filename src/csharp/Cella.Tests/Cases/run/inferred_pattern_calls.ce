@@ -1,0 +1,26 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+blank[T: default]: fun -> T
+{
+	var x: T
+	ret x
+}
+
+direct: fun(x: i32) -> bool => x == blank()
+
+grade: fun(x: i32) -> i32 => match x
+{
+	blank() => 1
+	else => 2
+}
+
+main: fun -> i32
+{
+	printf("%d %d %d\n", i32(direct(0)), grade(0), grade(5))
+	ret 0
+}

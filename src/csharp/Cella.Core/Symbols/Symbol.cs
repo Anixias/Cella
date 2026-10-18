@@ -113,7 +113,7 @@ public sealed class FunctionSymbol
 {
 	public IDeclarationNode Syntax { get; } = syntax;
 	public string DeclaredName { get; init; } = name;
-	public Visibility Visibility { get; } = visibility;
+	public Visibility Visibility { get; internal set; } = visibility;
 	public FunctionInfo? ContainingFunction { get; } = containingFunction;
 	public ImmutableArray<ParameterSymbol> Parameters { get; } = parameters.ToImmutableArray();
 	public FunctionKind Kind { get; } = kind;
@@ -833,7 +833,7 @@ public sealed class PropertySymbol(string name) : TypedMemberSymbol(name)
 	public AccessorImpl? Getter { get; init; }
 	public AccessorImpl? Setter { get; init; }
 	public PropertyNode? Node { get; init; }
-	public Visibility Visibility { get; init; } = Visibility.Public;
+	public Visibility Visibility { get; internal set; } = Visibility.Public;
 	public TypeSymbol? ContainingType { get; internal set; }
 	public TraitSymbol? Trait { get; internal set; }
 	public ImmutableArray<TypeSymbol> TraitArguments { get; init; }
@@ -874,7 +874,7 @@ public sealed class ImplSymbol
 ) : Symbol("impl")
 {
 	public ImplNode Node { get; } = node;
-	public string TraitNames { get; init; } = "";
+	public ImmutableArray<TraitType> Traits { get; set; } = [];
 	public ImmutableArray<TypeParameterSymbol> TypeParameters { get; } = typeParameters;
 	public ImmutableArray<TypeSymbol> TargetArguments { get; set; } = [..typeParameters];
 	public ImmutableArray<MethodSymbol> Functions { get; } = functions.ToImmutableArray();
@@ -885,7 +885,6 @@ public sealed class ImplSymbol
 	
 	public FileSymbol? ExtensionFile { get; set; }
 	public string? ExtensionAssembly { get; set; }
-	public Dictionary<Symbol, Visibility> ExtensionVisibilities { get; } = [];
 	public bool IsExtension => ExtensionFile is not null;
 }
 

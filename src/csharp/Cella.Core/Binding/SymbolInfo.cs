@@ -43,9 +43,17 @@ public readonly record struct FunctionInfo
 	}
 }
 
-public readonly record struct NamePart(string Name, ImmutableArray<TypeSymbol> Arguments);
+public readonly record struct NamePart(string Name, ImmutableArray<TypeSymbol> Arguments)
+{
+	public ImmutableArray<NamePart> Combined { get; init; } = [];
+}
+
 public readonly record struct VariableInfo(VariableSymbol Symbol, TypeSymbol Type);
-public readonly record struct StaticFault(string Message, SourceLocation Location);
+
+public readonly record struct StaticFault(string Message, SourceLocation Location)
+{
+	public Constant? Wrapped { get; init; }
+}
 
 public readonly record struct GlobalInfo
 (

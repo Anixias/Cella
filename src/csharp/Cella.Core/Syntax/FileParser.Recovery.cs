@@ -125,11 +125,8 @@ public sealed partial class FileParser
 	
 	private void SkipDeclaration(ref int index, int start, bool insideBlock = false)
 	{
-		if (reachedDeclaration)
-		{
-			reachedDeclaration = false;
+		if (index > start && !AtEnd(index) && StartsDeclarationInBody(index))
 			return;
-		}
 		
 		var braceCount = 0;
 		var parameterLists = new Stack<bool>();
@@ -192,25 +189,7 @@ public sealed partial class FileParser
 		int? bracesAtError = null;
 		for (var i = start + 1; !AtEnd(i); i++)
 		{
-			switch (Tokens[i - 1].Type)
-			{
-				case TokenType.OpOpenBrace:
-					braces++;
-					break;
-				
-				case TokenType.OpCloseBrace:
-					braces--;
-					break;
-				
-				case TokenType.OpOpenParen or TokenType.OpOpenBracket:
-					brackets++;
-					break;
-				
-				case TokenType.OpCloseParen or TokenType.OpCloseBracket:
-					brackets--;
-					break;
-			}
-			
+			CountGroup(Tokens[i - 1].Type, ref braces, ref brackets);
 			if (i < index)
 				continue;
 			
@@ -233,19 +212,65 @@ public sealed partial class FileParser
 			}
 		}
 		
-		SkipToEnd(ref index);
+		SkipUntil(ref index, TokenType.EndOfFile);
 		return false;
 	}
 	
-	private void SkipToEnd(ref int index)
+	private bool ResyncMember(ref int index, int start)
 	{
+		var braces = 0;
+		var brackets = 0;
+		int? bracesAtError = null;
+		for (var i = start + 1; !AtEnd(i); i++)
+		{
+			CountGroup(Tokens[i - 1].Type, ref braces, ref brackets);
+			if (i < index)
+				continue;
+			
+			bracesAtError ??= braces;
+			if (braces < 0 || braces == 0 && Tokens[i].Type == TokenType.OpCloseBrace)
+			{
+				index = i;
+				return braces < 0;
+			}
+			
+			if (IsOnSameLine(i))
+				continue;
+			
+			if (braces <= bracesAtError && StartsDeclarationInBody(i) ||
+			    braces == 0 && brackets <= 0 && Tokens[i].Type != TokenType.OpOpenBrace &&
+			    !ExpressionParser.ContinuesExpression(Tokens[i].Type))
+			{
+				index = i;
+				return false;
+			}
+		}
+		
 		SkipUntil(ref index, TokenType.EndOfFile);
-		skippedToEnd = true;
+		return false;
 	}
 	
-	private void ReportUnclosed(Token openBrace)
+	private static void CountGroup(TokenType type, ref int braces, ref int brackets)
 	{
-		if (!skippedToEnd)
-			Report(openBrace, "Expected '}' to close this '{'");
+		switch (type)
+		{
+			case TokenType.OpOpenBrace:
+				braces++;
+				break;
+			
+			case TokenType.OpCloseBrace:
+				braces--;
+				break;
+			
+			case TokenType.OpOpenParen or TokenType.OpOpenBracket:
+				brackets++;
+				break;
+			
+			case TokenType.OpCloseParen or TokenType.OpCloseBracket:
+				brackets--;
+				break;
+		}
 	}
+	
+	private void ReportUnclosed(Token openBrace) => Report(openBrace, "Expected '}' to close this '{'");
 }

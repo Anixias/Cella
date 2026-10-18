@@ -33,42 +33,32 @@ public sealed partial class FileParser
 			if (StartsDeclarationInBody(index))
 			{
 				ReportUnclosed(open);
-				reachedDeclaration = true;
 				return false;
-			}
-			
-			if (Match(ref index, TokenType.KeywordWhen))
-			{
-				if (!ParseWhen(ref index, (ref i, branch, isActive) =>
-					    ParseStatements(ref i, branch, isActive ? statements : [], out _)))
-				{
-					if (!reachedDeclaration)
-						SkipToEnd(ref index);
-					
-					return false;
-				}
-				
-				continue;
 			}
 			
 			var start = index;
 			var errorsBefore = Diagnostics.ErrorCount;
-			IStatementNode? statement;
-			try
+			IStatementNode? statement = null;
+			if (Match(ref index, TokenType.KeywordWhen))
 			{
-				statement = ParseStatement(ref index);
+				if (ParseWhen(ref index, (ref i, branch, isActive) =>
+					    ParseStatements(ref i, branch, isActive ? statements : [], out _)))
+					continue;
 			}
-			catch (ParseException e)
+			else
 			{
-				Diagnostics.Add(e.Diagnostic);
-				statement = null;
+				try
+				{
+					statement = ParseStatement(ref index);
+				}
+				catch (ParseException e)
+				{
+					Diagnostics.Add(e.Diagnostic);
+				}
 			}
 			
 			if (statement is null)
 			{
-				if (reachedDeclaration)
-					return false;
-				
 				var resynced = ResyncStatement(ref index, start);
 				AddBrokenStatement(statements, start, Math.Max(index - 1, start));
 				if (!resynced)

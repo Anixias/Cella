@@ -257,6 +257,7 @@ public sealed partial class Builder
 				ForeignChecks = allDependencies
 					.SelectMany(static d => d.GenericFunctions.Select(f => (f.Info.Symbol, d.Checks)))
 					.ToDictionary(static pair => pair.Symbol, static pair => pair.Checks),
+				AssemblyChecks = allDependencies.ToDictionary(static d => d.Name, static d => d.Checks),
 				Exports = exports,
 				PanicAdapters = panicAdapters,
 				LibraryStatics = allDependencies.SelectMany(static d => d.ExportedStatics).ToHashSet(),

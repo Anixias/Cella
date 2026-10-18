@@ -155,9 +155,7 @@ public sealed partial class CodeGenerator
 				var selector = EmitValue(term.Value, builder);
 				var instruction = builder.BuildSwitch(selector, blockMap[term.DefaultTarget], (uint)term.Cases.Length);
 				foreach (var (caseValue, target) in term.Cases)
-					instruction.AddCase(
-						LLVMValueRef.CreateConstInt(selector.TypeOf, (ulong)(caseValue & ulong.MaxValue)),
-						blockMap[target]);
+					instruction.AddCase(EmitIntegerPattern(caseValue, selector.TypeOf), blockMap[target]);
 				
 				break;
 			}

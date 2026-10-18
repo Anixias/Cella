@@ -1,0 +1,48 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Unsigned: enum(u128)
+{
+	none
+	first = 18446744073709551616
+	second = 18446744073709551617
+}
+
+Signed: enum(i128)
+{
+	zero
+	low = -9223372036854775809
+}
+
+classify: fun(u: Unsigned) -> i32 => match u
+{
+	none => 1
+	first => 2
+	second => 3
+}
+
+sign: fun(s: Signed) -> i32 => match s
+{
+	zero => 0
+	low => -1
+}
+
+bucket: fun(v: u128) -> i32 => match v
+{
+	0 => 0
+	18446744073709551616 => 1
+	36893488147419103232 => 2
+	else => 3
+}
+
+main: fun -> i32
+{
+	printf("%d %d %d\n", classify(Unsigned.none), classify(Unsigned.first), classify(Unsigned.second))
+	printf("%d %d\n", sign(Signed.zero), sign(Signed.low))
+	printf("%d %d %d %d\n", bucket(0), bucket(18446744073709551616), bucket(36893488147419103232), bucket(5))
+	ret 0
+}

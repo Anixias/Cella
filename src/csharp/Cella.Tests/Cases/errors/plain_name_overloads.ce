@@ -1,0 +1,6 @@
+mod test
+
+run: pub ext fun(a: i32) -> i32 => a
+run: pub ext fun(a: i64) -> i64 => a
+
+main: fun -> i32 => 0

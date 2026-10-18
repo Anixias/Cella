@@ -58,8 +58,11 @@ public sealed partial class SignatureCollector
 		.Select(argument => FindHiddenType(argument, visibility))
 		.FirstOrDefault(static hidden => hidden is not null);
 	
-	private static Visibility GetEffectiveVisibility(Visibility member, Symbol owner)
+	private static Visibility GetEffectiveVisibility(Visibility member, Symbol? owner)
 	{
+		if (owner is null)
+			return member;
+		
 		var ownerVisibility = ModuleIndex.GetVisibility(owner);
 		return member < Visibility.Project && member < ownerVisibility ? member : ownerVisibility;
 	}
@@ -70,12 +73,10 @@ public sealed partial class SignatureCollector
 			: ModuleIndex.GetVisibility(owner);
 	
 	private static Visibility GetEffectiveVisibility(FunctionSymbol function, ResolutionContext context) =>
-		GetVisibilityOwner(context) is { } owner
-			? GetEffectiveVisibility(function.Visibility, owner)
-			: function.Visibility;
+		GetEffectiveVisibility(function.Visibility, GetVisibilityOwner(context));
 	
 	private static Symbol? GetVisibilityOwner(ResolutionContext context) =>
-		(Symbol?)context.Trait ?? context.ContainingType;
+		context.ImplBlock is { IsExtension: true } ? null : (Symbol?)context.Trait ?? context.ContainingType;
 	
 	private static Diagnostic ReportStoredBorrow(ITypeNode type, Token name, IEnumerable<Token> modifiers,
 		string kinds, string keyword)

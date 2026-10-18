@@ -1,0 +1,6 @@
+Error at main.ce:7:4
+6 │ {
+7 │     p.px = 3
+          ╘╛ 'px' is read-only outside its file
+
+[compilation failed]

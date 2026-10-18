@@ -1,0 +1,13 @@
+mod mathx
+
+Point: rec
+{
+	x: i32
+}
+
+i32: impl
+{
+	offset: fun(imm self, imm p: Point) -> i32 => self + p.x
+}
+
+helper: fun(imm p: Point) -> i32 => p.x

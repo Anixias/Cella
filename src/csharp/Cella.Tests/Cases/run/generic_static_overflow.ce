@@ -1,0 +1,56 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Slots[N: const u8]: rec
+{
+	count: i32
+	per: const u8 = 250u8 + N
+
+	share: fun(imm self) -> u8 => per
+}
+
+main: fun -> i32
+{
+	val s = Slots[10](1)
+	printf("%u\n", u32(s.share()))
+	ret 0
+}
+
+ext
+{
+	fflush: fun(stream: ptr) -> i32
+	exit: fun(code: i32) -> never
+}
+
+when windows
+{
+	ext
+	{
+		write: ext("_write") fun(fd: i32, data: ptr, count: u32) -> i32
+	}
+}
+else
+{
+	ext
+	{
+		write: fun(fd: i32, data: ptr, count: u32) -> i32
+	}
+}
+
+panic: op(message: str, location: str) -> never
+{
+	val prefix = "Panic at "
+	val separator = ": "
+	val newline = "\n"
+	fflush(null)
+	write(2, prefix.data, u32(prefix.byteLength))
+	write(2, location.data, u32(location.byteLength))
+	write(2, separator.data, u32(separator.byteLength))
+	write(2, message.data, u32(message.byteLength))
+	write(2, newline.data, u32(newline.byteLength))
+	exit(101)
+}

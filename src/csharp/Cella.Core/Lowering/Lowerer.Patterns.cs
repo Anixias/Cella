@@ -103,9 +103,7 @@ public sealed partial class Lowerer
 			Value selector;
 			if (scrutinee.Type is EnumSymbol enumType)
 				selector = new EnumTagValue(_typePool.GetTagType(enumType), scrutinee, location);
-			else if (scrutinee.Type == NativeSymbols.Bool ||
-			         scrutinee.Type is IntegerType integer && _evaluator.GetLimits(integer) is var (min, max) &&
-			         min >= long.MinValue && max <= ulong.MaxValue)
+			else if (scrutinee.Type == NativeSymbols.Bool || scrutinee.Type is IntegerType)
 				selector = scrutinee;
 			else
 				return false;

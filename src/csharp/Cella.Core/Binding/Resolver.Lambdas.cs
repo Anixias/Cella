@@ -231,6 +231,7 @@ public sealed partial class Resolver
 			TypeParameters = outer.ContainingFunction?.Symbol.TypeParameters ?? GetEnclosingTypeParameters(outer)
 		};
 		
+		Journal(() => lambdaCount--);
 		var scope = new Scope();
 		foreach (var parameter in parameters)
 			scope.Define(parameter);

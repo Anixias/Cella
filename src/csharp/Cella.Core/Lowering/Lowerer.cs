@@ -46,7 +46,7 @@ public sealed partial class Lowerer
 	
 	public void Visit(ResolvedFunctionNode node)
 	{
-		if (!containment.IsBroken(node))
+		if (!node.IsInline && !containment.IsBroken(node))
 			currentFile?.Functions.Add(FunctionLowerer.Lower(node, evaluator, typePool, getGlobalInfo));
 	}
 	

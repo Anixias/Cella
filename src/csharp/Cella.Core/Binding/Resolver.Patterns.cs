@@ -283,9 +283,11 @@ public sealed partial class Resolver
 				syntax.Value!)
 		};
 		
-		var errors = Diagnostics.ErrorsReported;
+		var checkpoint = OpenCheckpoint();
 		var resolved = VisitInScope(test, [subject], NativeSymbols.Bool);
-		if (IsInvalid(resolved) || Diagnostics.ErrorsReported > errors)
+		var hasErrors = checkpoint.HasErrors;
+		Commit(checkpoint);
+		if (IsInvalid(resolved) || hasErrors)
 			return null;
 		
 		if (syntax.Kind != PatternKind.Range && subjectType is FloatType or UntypedFloatType &&

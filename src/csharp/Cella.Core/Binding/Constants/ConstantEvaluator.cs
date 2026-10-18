@@ -23,6 +23,7 @@ public sealed class ConstantEvaluator
 	private readonly List<LocalVariableSymbol> _patternBindings = [];
 	
 	private bool foldsBindings;
+	private bool wrapsChecked;
 	private IReadOnlyDictionary<TypeParameterSymbol, TypeSymbol>? substitution;
 	
 	public Constant? Evaluate(IResolvedExpressionNode node)
@@ -76,6 +77,19 @@ public sealed class ConstantEvaluator
 		}
 	}
 	
+	private Constant? FoldWrapping(IResolvedExpressionNode node)
+	{
+		wrapsChecked = true;
+		try
+		{
+			return Fold(node);
+		}
+		finally
+		{
+			wrapsChecked = false;
+		}
+	}
+	
 	private StaticFault? FindFault(IResolvedExpressionNode node)
 	{
 		if (node is ResolvedGlobalExpressionNode { Symbol: { IsConstant: true } global } &&
@@ -85,15 +99,22 @@ public sealed class ConstantEvaluator
 		if (GetOperands(node).Select(FindFault).FirstOrDefault(static fault => fault is not null) is { } inner)
 			return inner;
 		
-		return Fold(node) is null or InvalidConstant
-			? new StaticFault(DescribeFault(node), node.Syntax.SourceLocation)
-			: null;
+		if (Fold(node) is not (null or InvalidConstant))
+			return null;
+		
+		var message = DescribeFault(node);
+		return new StaticFault(message, node.Syntax.SourceLocation)
+		{
+			Wrapped = message == DivisionByZero ? null : FoldWrapping(node)
+		};
 	}
+	
+	private const string DivisionByZero = "division by zero";
 	
 	private string DescribeFault(IResolvedExpressionNode node) => node switch
 	{
 		ResolvedBinaryOpExpressionNode { Operation: NativeImpl { Op: TokenType.OpSlash or TokenType.OpPercent } } n
-			when Fold(n.Right) is IntegerConstant { Value.IsZero: true } => "division by zero",
+			when Fold(n.Right) is IntegerConstant { Value.IsZero: true } => DivisionByZero,
 		ResolvedBinaryOpExpressionNode { Operation: NativeImpl { Op: TokenType.OpSlash or TokenType.OpPercent } } =>
 			"division overflow",
 		ResolvedBinaryOpExpressionNode { Operation: NativeImpl { Op: TokenType.OpPlus } } => "addition overflow",
@@ -500,7 +521,7 @@ public sealed class ConstantEvaluator
 		return FoldAll([node.Operand], values => (operation, values[0]) switch
 		{
 			(UnaryOperation.Identity, var value) => value,
-			(UnaryOperation.Negation, IntegerConstant value) => Integer(node.Type, -value.Value),
+			(UnaryOperation.Negation, IntegerConstant value) => Checked(node.Type, -value.Value),
 			(UnaryOperation.Negation, FloatConstant value) => Float(node.Type, -value.Value),
 			(UnaryOperation.BitwiseNot, IntegerConstant value) => Integer(node.Type, ~value.Value),
 			(UnaryOperation.LogicalNot, BoolConstant value) => BoolConstant.From(!value.Value),
@@ -628,11 +649,14 @@ public sealed class ConstantEvaluator
 		var (a, b) = (left.Value, right.Value);
 		return operation switch
 		{
-			BinaryOperation.Addition or BinaryOperation.WrappingAddition => Integer(resultType, a + b),
-			BinaryOperation.Subtraction or BinaryOperation.WrappingSubtraction => Integer(resultType, a - b),
-			BinaryOperation.Multiplication or BinaryOperation.WrappingMultiplication => Integer(resultType, a * b),
-			BinaryOperation.Division => b.IsZero ? null : Exact(resultType, BigInteger.Divide(a, b)),
-			BinaryOperation.Modulo => b.IsZero ? null : Exact(resultType, BigInteger.Remainder(a, b)),
+			BinaryOperation.Addition => Checked(resultType, a + b),
+			BinaryOperation.Subtraction => Checked(resultType, a - b),
+			BinaryOperation.Multiplication => Checked(resultType, a * b),
+			BinaryOperation.WrappingAddition => Integer(resultType, a + b),
+			BinaryOperation.WrappingSubtraction => Integer(resultType, a - b),
+			BinaryOperation.WrappingMultiplication => Integer(resultType, a * b),
+			BinaryOperation.Division => b.IsZero ? null : Checked(resultType, BigInteger.Divide(a, b)),
+			BinaryOperation.Modulo => b.IsZero ? null : Checked(resultType, BigInteger.Remainder(a, b)),
 			BinaryOperation.Equal => BoolConstant.From(a == b),
 			BinaryOperation.NotEqual => BoolConstant.From(a != b),
 			BinaryOperation.Greater => BoolConstant.From(a > b),
@@ -720,12 +744,13 @@ public sealed class ConstantEvaluator
 	public Constant? Convert(Constant value, Conversion conversion) => (conversion, value) switch
 	{
 		(IdentityConversion, _) => value,
-		(IntegerConversion c, IntegerConstant integer) => Integer(c.To, integer.Value),
+		(IntegerConversion c, IntegerConstant integer) => Checked(c.To, integer.Value),
 		(FloatConversion { To: FloatType to }, FloatConstant number) => Float(to, number.Value),
 		(FloatConversion { To: FloatType to }, IntegerConstant integer) =>
 			new FloatConstant(to, IntegerToFloat(integer.Value, to)),
-		(FloatConversion { To: IntegerType to }, FloatConstant number) =>
-			new IntegerConstant(to, FloatToInteger(number.Value, to)),
+		(FloatConversion { To: IntegerType to }, FloatConstant number) => wrapsChecked || FitsInteger(number.Value, to)
+			? new IntegerConstant(to, FloatToInteger(number.Value, to))
+			: null,
 		(NativeConversion { To: PointerType or StringType } c, NullConstant) => new NullConstant(c.To),
 		(NativeConversion { To: PointerType or StringType } c, IntegerConstant { Value.IsZero: true }) =>
 			new NullConstant(c.To),
@@ -737,9 +762,11 @@ public sealed class ConstantEvaluator
 			new IntegerConstant(c.To, integer.Value),
 		(FreeConversion { From: FunctionType } c, FunctionConstant function) =>
 			new FunctionConstant(function.Function, c.To),
-		(EnumConversion { To: IntegerType to }, var constant) when GetTag(constant) is { } tag => Integer(to, tag),
+		(EnumConversion { To: IntegerType to }, var constant) when GetTag(constant) is { } tag => Checked(to, tag),
 		(EnumConversion { To: EnumSymbol { IsExternal: true } enumType }, IntegerConstant integer) =>
-			ToEnum(enumType, Wrap(integer.Value, typePool.GetTagType(enumType))),
+			Checked(typePool.GetTagType(enumType), integer.Value) is IntegerConstant tag
+				? ToEnum(enumType, tag.Value)
+				: null,
 		(EnumConversion { To: EnumSymbol enumType }, IntegerConstant integer) =>
 			typePool.FindCase(enumType, integer.Value) is { } enumCase
 				? new EnumConstant(enumType, enumCase, [])
@@ -786,8 +813,10 @@ public sealed class ConstantEvaluator
 	private IntegerConstant Integer(TypeSymbol type, BigInteger value) =>
 		new(type, type is IntegerType integer ? Wrap(value, integer) : value);
 	
-	private Constant? Exact(TypeSymbol type, BigInteger value) =>
-		type is not IntegerType integer || Fits(value, integer) ? new IntegerConstant(type, value) : null;
+	private Constant? Checked(TypeSymbol type, BigInteger value) =>
+		wrapsChecked ? Integer(type, value)
+		: type is not IntegerType integer || Fits(value, integer) ? new IntegerConstant(type, value)
+		: null;
 	
 	private static FloatConstant Float(TypeSymbol type, double value) =>
 		new(type, type == NativeSymbols.Float32 ? (float)value : value);

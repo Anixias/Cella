@@ -1,0 +1,6 @@
+mod game
+
+Point: rec
+{
+	x: i32
+}

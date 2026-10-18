@@ -106,7 +106,8 @@ public sealed partial class Resolver
 			return RejectAssignment(node, new(DiagnosticSeverity.Error, member, setterError));
 		
 		if (!CanAccess(target.Owner, setter))
-			return RejectAssignment(node, DiagnosticReporter.ReportReadOnly(member, property.Name, setter.Visibility));
+			return RejectAssignment(node,
+				DiagnosticReporter.ReportReadOnly(member, property.Name, DescribeAccessorScope(setter)));
 		
 		var setterInfo = GetFunctionInfo(setter, target.Owner, property.TraitArguments);
 		var valueType = setterInfo.Signature.GetDeclaredType(setterInfo.Signature.ParameterTypes.Length - 1);
@@ -121,7 +122,8 @@ public sealed partial class Resolver
 			return RejectAssignment(node, new(DiagnosticSeverity.Error, member, getterError));
 		
 		if (!CanAccess(target.Owner, getter))
-			return RejectAssignment(node, DiagnosticReporter.ReportWriteOnly(member, property.Name, getter.Visibility));
+			return RejectAssignment(node,
+				DiagnosticReporter.ReportWriteOnly(member, property.Name, DescribeAccessorScope(getter)));
 		
 		var getterInfo = GetFunctionInfo(getter, target.Owner, reader.TraitArguments);
 		var receiver = target.Receiver is { } place && (TakesMutSelf(getterInfo) || TakesMutSelf(setterInfo))

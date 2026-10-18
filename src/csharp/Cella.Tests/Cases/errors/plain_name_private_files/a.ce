@@ -1,0 +1,3 @@
+mod test
+
+helper: pvt ext("sharedSym") fun -> i32 => 1

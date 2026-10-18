@@ -8,4 +8,5 @@ public sealed class ResolvedFunctionNode(FunctionInfo functionInfo, IResolvedNod
 	public FunctionInfo FunctionInfo { get; } = functionInfo;
 	public IResolvedNode? Body { get; } = body;
 	public IDeclarationNode Syntax { get; } = syntax;
+	public bool IsInline { get; init; }
 }

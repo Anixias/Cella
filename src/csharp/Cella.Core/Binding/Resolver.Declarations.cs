@@ -44,6 +44,7 @@ public sealed partial class Resolver
 		CopiedParameters = _copiedParameters,
 		EvaluateConstant = EvaluateConstant,
 		GenericTypes = [],
+		RecordUndo = Journal,
 		TrackInstance = TrackTypeInstance,
 		RecordName = RecordName,
 		Probe = Probe
@@ -79,10 +80,7 @@ public sealed partial class Resolver
 			return [VisitNode(node)];
 		
 		var function = (FunctionSymbol)_symbolTable.DeclarationSymbols[node];
-		if (_signatures.FindInlineContext(function) is { } declaration && FindQuestionBody(function) is { } body)
-			IsSoundQuestionBody(function, declaration, body);
-		
-		return [];
+		return ResolveQuestionDeclaration(function) is { } declaration ? [declaration] : [];
 	}
 	
 	private ResolvedFunctionNode ResolveFunction(IDeclarationNode node, IStatementNode body)

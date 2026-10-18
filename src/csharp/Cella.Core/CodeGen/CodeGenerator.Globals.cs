@@ -1,5 +1,6 @@
 ﻿using System.Text;
 using Cella.Core.Binding;
+using Cella.Core.Binding.Constants;
 using Cella.Core.Symbols;
 using Cella.Core.Text;
 using Cella.Diagnostics;
@@ -46,7 +47,7 @@ public sealed unsafe partial class CodeGenerator
 	
 	private LLVMValueRef CreateGlobal(GlobalInfo info)
 	{
-		var initializer = EmitStaticConstant(info.Value!);
+		var initializer = EmitStaticConstant(GetStoredValue(info));
 		var global = current.Module.AddGlobal(initializer.TypeOf, info.MangledName);
 		global.Initializer = initializer;
 		global.IsGlobalConstant = IsReadOnly(info);
@@ -178,7 +179,7 @@ public sealed unsafe partial class CodeGenerator
 	private LLVMValueRef EmitGlobalAddress(GlobalInfo info, LLVMBuilderRef builder)
 	{
 		info = SubstituteGlobal(info);
-		if (info.Fault is { } fault)
+		if (info.Fault is { } fault && (fault.Wrapped is null || GetDeclaringChecks(info).Overflow))
 			PanicIf(_true, fault.Message, fault.Location, builder);
 		
 		if (FindRegistryOwner(info) is not { } assembly)
@@ -188,6 +189,16 @@ public sealed unsafe partial class CodeGenerator
 		return builder.BuildCall2(LLVMTypeRef.CreateFunction(OpaquePointer, []), accessor, Array.Empty<LLVMValueRef>(),
 			info.Symbol.Name);
 	}
+	
+	private Constant GetStoredValue(GlobalInfo info) =>
+		info.Fault is { Wrapped: { } wrapped } && !GetDeclaringChecks(info).Overflow ? wrapped : info.Value!;
+	
+	private RuntimeChecks GetDeclaringChecks(GlobalInfo info) =>
+		info.Symbol.ContainingType is NamedTypeSymbol { IsGenericInstance: true } instance &&
+		_modules.FindAssembly(instance.Definition) is { } assembly &&
+		_inputs.AssemblyChecks.TryGetValue(assembly, out var declaring)
+			? declaring
+			: _config.Checks;
 	
 	private LLVMTypeRef RegistryType => LLVMTypeRef.CreateFunction(OpaquePointer, [OpaquePointer]);
 	
@@ -224,7 +235,7 @@ public sealed unsafe partial class CodeGenerator
 		var instance = (NamedTypeSymbol)info.Symbol.ContainingType!;
 		var outer = substitution;
 		substitution = TypePool.CreateMap(instance.Definition.TypeParameters, instance.TypeArguments);
-		var value = EmitStaticConstant(info.Value!);
+		var value = EmitStaticConstant(GetStoredValue(info));
 		var type = Substitute(info.Type);
 		substitution = outer;
 		var glue = _typePool.NeedsDrop(type) ? GetDropGlue(type) : LLVMValueRef.CreateConstNull(OpaquePointer);
