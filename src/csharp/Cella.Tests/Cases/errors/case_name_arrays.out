@@ -1,12 +1,9 @@
-
-====== case_name_arrays.ce ======
-
-Error at line 7, column 16
+Error at case_name_arrays.ce:7:16
 6 │ {
 7 │     val unused = [red, blue]
                       ╘═╛ Cannot infer the type of 'red'
 
-Error at line 7, column 21
+Error at case_name_arrays.ce:7:21
 6 │ {
 7 │     val unused = [red, blue]
                            ╘══╛ Cannot infer the type of 'blue'

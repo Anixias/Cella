@@ -1,7 +1,4 @@
-
-====== pattern_modes.ce ======
-
-Hint at line 89, column 15
+Hint at pattern_modes.ce:89:15
 88 │ 
 89 │ if p is pair(mut _, mut right)
                   ╘═╛ Redundant 'mut'

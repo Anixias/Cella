@@ -1,12 +1,9 @@
-
-====== uninferred_lambda_results.ce ======
-
-Error at line 12, column 30
+Error at uninferred_lambda_results.ce:12:30
 11 │ {
 12 │     printf("%d\n", transform(1, fun(x) { ret x + 1 }))
                                      ╘══════════════════╛ Cannot infer the return type
 
-Error at line 13, column 23
+Error at uninferred_lambda_results.ce:13:23
 12 │ printf("%d\n", transform(1, fun(x) { ret x + 1 }))
 13 │ val r = transform(2, fun(x) { ret x * 2 })
                           ╘══════════════════╛ Cannot infer the return type

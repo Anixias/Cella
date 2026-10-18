@@ -1,27 +1,24 @@
-
-====== val_writes.ce ======
-
-Error at line 16, column 2
+Error at val_writes.ce:16:2
 15 │ {
 16 │     limit = 6
          ╘═══╛ Cannot reassign values
 
-Error at line 18, column 2
+Error at val_writes.ce:18:2
 17 │ val local = 1
 18 │ local += 1
      ╘═══╛ Cannot reassign values
 
-Error at line 19, column 2
+Error at val_writes.ce:19:2
 18 │ local += 1
 19 │ table[0] = 5
      ╘══════╛ Cannot reassign values
 
-Error at line 20, column 2
+Error at val_writes.ce:20:2
 19 │ table[0] = 5
 20 │ origin.x = 2
      ╘══════╛ Cannot reassign values
 
-Error at line 22, column 2
+Error at val_writes.ce:22:2
 21 │ val point = Point(3)
 22 │ point.x = 4
      ╘═════╛ Cannot reassign values

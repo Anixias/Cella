@@ -1,12 +1,9 @@
-
-====== function_parameter_defaults.ce ======
-
-Error at line 3, column 29
+Error at function_parameter_defaults.ce:3:29
 2 │ 
 3 │ f: fun(g: fun[i32 -> i32] = 5) -> i32 = 0
                                 ^ Cannot convert type 'integer literal' to 'fun[i32 -> i32]'
 
-Error at line 5, column 1
+Error at function_parameter_defaults.ce:5:1
 4 │ 
 5 │ h: fun(x: i32, g: fun[i32, fun[i32 -> i32] -> i32] = h) -> i32 = x
     ^ 'h' depends on its own signature

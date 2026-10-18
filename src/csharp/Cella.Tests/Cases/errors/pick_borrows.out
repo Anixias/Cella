@@ -1,12 +1,9 @@
-
-====== pick_borrows.ce ======
-
-Error at line 21, column 10
+Error at pick_borrows.ce:21:10
 20 │ var c = C(0)
 21 │ Counter(mut c).bump()
              ╘═╛ Cannot use 'mut' in trait picks
 
-Error at line 22, column 10
+Error at pick_borrows.ce:22:10
 21 │ Counter(mut c).bump()
 22 │ Counter(imm c).bump()
              ╘═╛ Cannot use 'imm' in trait picks

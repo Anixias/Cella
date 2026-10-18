@@ -1,22 +1,19 @@
-
-====== trait_type_parameter_signatures.ce ======
-
-Error at line 20, column 15
+Error at trait_type_parameter_signatures.ce:20:15
 19 │ {
 20 │     make: fun -> Point
                       ╘═══╛ 'Point' is less visible than 'make'
 
-Error at line 28, column 10
+Error at trait_type_parameter_signatures.ce:28:10
 27 │ 
 28 │ needs[I: Iterator]: fun(imm items: I) { }
               ╘══════╛ 'Iterator' takes one generic argument
 
-Error at line 30, column 22
+Error at trait_type_parameter_signatures.ce:30:22
 29 │ 
 30 │ view: fun(items: dyn[Iterator]) { }
                           ╘══════╛ 'Iterator' takes one generic argument
 
-Error at line 32, column 28
+Error at trait_type_parameter_signatures.ce:32:28
 31 │ 
 32 │ expose: pub fun(imm items: dyn[Iterator[Secret]]) { }
                                 ╘═══════════════════╛ 'Secret' is less visible than 'expose'

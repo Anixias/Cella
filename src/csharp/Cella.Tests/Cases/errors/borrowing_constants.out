@@ -1,12 +1,9 @@
-
-====== borrowing_constants.ce ======
-
-Error at line 10, column 15
+Error at borrowing_constants.ce:10:15
  9 │ 
 10 │ greeting: val fstr[Display] = "hi"
                    ╘═══════════╛ Cannot store borrows in module values
 
-Error at line 11, column 15
+Error at borrowing_constants.ce:11:15
 10 │ greeting: val fstr[Display] = "hi"
 11 │ borrowed: val imm[i32] = value
                    ╘══════╛ Cannot store borrows in module values

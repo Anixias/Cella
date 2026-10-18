@@ -1,7 +1,4 @@
-
-====== lambda_block_recovery.ce ======
-
-Error at line 7, column 7
+Error at lambda_block_recovery.ce:7:7
 6 │ {
 7 │     var : i32 = 1
             ^ Expected a name after 'var'

@@ -6,41 +6,36 @@ using Cella.Diagnostics;
 
 namespace Cella.Compiler;
 
-internal sealed class ConsoleBuildOutput(string? rootDirectory, bool showHints) : IBuildOutput
+internal sealed class ConsoleBuildOutput(string displayDirectory, bool showHints) : IBuildOutput
 {
 	public void WriteLine(string text) => Console.WriteLine(text);
 	
 	public void WriteError(string text) => Console.Error.WriteLine(text);
 	
-	public void Report(IEnumerable<Diagnostic> diagnostics) => PrintDiagnostics(diagnostics, rootDirectory, showHints);
+	public void Report(IEnumerable<Diagnostic> diagnostics)
+	{
+		var shown = diagnostics
+			.Where(diagnostic => showHints || diagnostic.Severity != DiagnosticSeverity.Hint)
+			.OrderBy(static diagnostic => diagnostic.SourceLocation.Source.FilePath, StringComparer.Ordinal)
+			.ThenBy(static diagnostic => diagnostic.Line)
+			.ThenBy(static diagnostic => diagnostic.Column);
+		
+		foreach (var diagnostic in shown)
+			PrintDiagnostic(diagnostic, displayDirectory);
+	}
 	
 	private const int TabWidth = 4;
 	
-	private static void PrintDiagnostics(IEnumerable<Diagnostic> diagnostics, string? rootDirectory, bool showHints)
+	private static string DisplayPath(string file, string directory)
 	{
-		var diagnosticsByFile = diagnostics
-			.Where(diagnostic => showHints || diagnostic.Severity != DiagnosticSeverity.Hint)
-			.GroupBy(static d => d.SourceLocation.Source.FilePath)
-			.ToDictionary(static g => g.Key, static g => g
-				.OrderBy(static d => d.Line)
-				.ThenBy(static d => d.Column)
-				.ToArray());
-		
-		foreach (var (file, set) in diagnosticsByFile.OrderBy(static kvp => kvp.Key, StringComparer.Ordinal))
-		{
-			if (!string.IsNullOrEmpty(file))
-			{
-				var path = rootDirectory is not null ? Path.GetRelativePath(rootDirectory, file) : file;
-				
-				WriteColored($"\n====== {path} ======{Environment.NewLine}{Environment.NewLine}", ConsoleColor.Blue);
-			}
-			
-			foreach (var diagnostic in set)
-				PrintDiagnostic(diagnostic);
-		}
+		var relative = Path.GetRelativePath(directory, file);
+		return Path.IsPathRooted(relative) || relative == ".." ||
+		       relative.StartsWith($"..{Path.DirectorySeparatorChar}", StringComparison.Ordinal)
+			? file
+			: relative;
 	}
 	
-	private static void PrintDiagnostic(Diagnostic diagnostic)
+	private static void PrintDiagnostic(Diagnostic diagnostic, string displayDirectory)
 	{
 		var severity = diagnostic.Severity;
 		var (source, range) = diagnostic.SourceLocation;
@@ -74,6 +69,9 @@ internal sealed class ConsoleBuildOutput(string? rootDirectory, bool showHints) 
 		
 		var (startLine, startCol) = source.GetLineColumn(range.Start);
 		var endLine = source.GetLineColumn(range.End).Line;
+		var location = string.IsNullOrEmpty(source.FilePath)
+			? $"{startLine}:{startCol}"
+			: $"{DisplayPath(source.FilePath, displayDirectory)}:{startLine}:{startCol}";
 		
 		var firstDisplayLine = Math.Max(1, startLine - 1);
 		var gutterWidth = endLine.ToString().Length;
@@ -96,7 +94,7 @@ internal sealed class ConsoleBuildOutput(string? rootDirectory, bool showHints) 
 		
 		if (lineNumbers.Count == 0)
 		{
-			Console.Write($" at line {startLine}, column {startCol}: ");
+			Console.Write($" at {location}: ");
 			WriteColored(diagnostic.Message, severityColor);
 			Console.WriteLine();
 			Console.WriteLine();
@@ -104,7 +102,7 @@ internal sealed class ConsoleBuildOutput(string? rootDirectory, bool showHints) 
 			return;
 		}
 		
-		Console.WriteLine($" at line {startLine}, column {startCol}");
+		Console.WriteLine($" at {location}");
 		for (var i = 0; i < lineNumbers.Count; i++)
 		{
 			var lineNum = lineNumbers[i];

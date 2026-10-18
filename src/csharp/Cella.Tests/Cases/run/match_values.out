@@ -1,7 +1,4 @@
-
-====== match_values.ce ======
-
-Warning at line 60, column 2
+Warning at match_values.ce:60:2
 59 │ < 0.0 => -1
 60 │ 0.0 => 0
      ╘═╛ Float patterns compare exactly

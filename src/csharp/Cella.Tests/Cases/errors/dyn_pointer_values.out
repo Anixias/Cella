@@ -1,17 +1,14 @@
-
-====== dyn_pointer_values.ce ======
-
-Error at line 19, column 14
+Error at dyn_pointer_values.ce:19:14
 18 │ val p: ptr[dyn[Shape]] = @a
 19 │ val moved = own *p
                  ╘════╛ Cannot use 'dyn[Shape]' by value
 
-Error at line 20, column 2
+Error at dyn_pointer_values.ce:20:2
 19 │ val moved = own *p
 20 │ own *p = A(4)
      ╘════╛ Cannot use 'dyn[Shape]' by value
 
-Error at line 21, column 2
+Error at dyn_pointer_values.ce:21:2
 20 │ own *p = A(4)
 21 │ *p = *p
      ╘╛ Cannot use 'dyn[Shape]' by value

@@ -1,25 +1,22 @@
-
-====== parameter_length_moves.ce ======
-
-Error at line 23, column 11
+Error at parameter_length_moves.ce:23:11
 22 │ take(own values[0])
 23 │ take(own values[0])
               ╘═══════╛ Cannot use moved values
                       | Moved on line 22
 
-Error at line 29, column 6
+Error at parameter_length_moves.ce:29:6
 28 │ take(own values[0])
 29 │ ret values[0].id
          ╘══════════╛ Cannot use moved values
                     | Moved on line 28
 
-Error at line 35, column 14
+Error at parameter_length_moves.ce:35:14
 34 │ take(own values[0])
 35 │ takeAll(own values)
                  ╘════╛ Cannot use partly moved values
                       | Moved on line 34
 
-Error at line 40, column 11
+Error at parameter_length_moves.ce:40:11
 39 │ {
 40 │     take(own values[0])
                   ╘═══════╛ Cannot leave 'mut' parameters partly moved

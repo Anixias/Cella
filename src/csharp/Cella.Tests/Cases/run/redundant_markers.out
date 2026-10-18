@@ -1,39 +1,36 @@
-
-====== redundant_markers.ce ======
-
-Hint at line 18, column 25
+Hint at redundant_markers.ce:18:25
 17 │ 
 18 │ Sorted: trait req Ord + Eq
                              ╘╛ Redundant 'Eq'
                               | Required by 'Ord'
 
-Hint at line 41, column 12
+Hint at redundant_markers.ce:41:12
 40 │ {
 41 │     callback: req fun[]
                    ╘═╛ Redundant 'req'
 
-Hint at line 42, column 11
+Hint at redundant_markers.ce:42:11
 41 │ callback: req fun[]
 42 │ texture: req Texture
               ╘═╛ Redundant 'req'
 
-Hint at line 53, column 11
+Hint at redundant_markers.ce:53:11
 52 │ 
 53 │ within[T: Eq + Ord]: fun(imm value: T, imm low: T) -> bool = low < value || value == low
                ╘╛ Redundant 'Eq'
                 | Required by 'Ord'
 
-Hint at line 57, column 13
+Hint at redundant_markers.ce:57:13
 56 │ {
 57 │     val same = imm texture
                     ╘═╛ Redundant 'imm'
 
-Hint at line 63, column 6
+Hint at redundant_markers.ce:63:6
 62 │ {
 63 │     ret own texture
              ╘═╛ Redundant 'own'
 
-Hint at line 68, column 15
+Hint at redundant_markers.ce:68:15
 67 │ {
 68 │     val double = own fun(x: i32) -> i32 = x * 2
                       ╘═╛ Redundant 'own'

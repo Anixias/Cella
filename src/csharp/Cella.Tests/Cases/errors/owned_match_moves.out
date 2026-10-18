@@ -1,13 +1,10 @@
-
-====== owned_match_moves.ce ======
-
-Error at line 33, column 8
+Error at owned_match_moves.ce:33:8
 32 │ 
 33 │ match effect
            ╘════╛ Cannot use moved values
                 | Moved on line 27
 
-Error at line 42, column 12
+Error at owned_match_moves.ce:42:12
 41 │ {
 42 │     match own effect
                    ╘════╛ Cannot move read-only parameters

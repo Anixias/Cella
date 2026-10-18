@@ -1,32 +1,29 @@
-
-====== generic_call_mismatches.ce ======
-
-Hint at line 3, column 29
+Hint at generic_call_mismatches.ce:3:29
 2 │ 
 3 │ id[T]: fun(own a: T) -> T = own a
                                 ╘═╛ Redundant 'own'
 
-Hint at line 4, column 41
+Hint at generic_call_mismatches.ce:4:41
 3 │ id[T]: fun(own a: T) -> T = own a
 4 │ pick[T]: fun(own a: T, own b: T) -> T = own a
                                             ╘═╛ Redundant 'own'
 
-Error at line 10, column 17
+Error at generic_call_mismatches.ce:10:17
  9 │ val small: u8 = 1
 10 │ val a = sum[4]([1, 2, 3])
                     ╘═══════╛ Cannot convert type 'array[i32, 3]' to 'array[i32, 4]'
 
-Error at line 11, column 22
+Error at generic_call_mismatches.ce:11:22
 10 │ val a = sum[4]([1, 2, 3])
 11 │ val b = pick(small, 300)
                          ╘═╛ '300' doesn't fit in 'u8'
 
-Error at line 12, column 21
+Error at generic_call_mismatches.ce:12:21
 11 │ val b = pick(small, 300)
 12 │ val c = pick(true, 1)
                         ^ Cannot convert type 'integer literal' to 'bool'
 
-Error at line 13, column 10
+Error at generic_call_mismatches.ce:13:10
 12 │ val c = pick(true, 1)
 13 │ val x = 300
              ╘═╛ '300' doesn't fit in 'u8'

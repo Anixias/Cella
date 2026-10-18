@@ -1,7 +1,4 @@
-
-====== when_block_recovery.ce ======
-
-Error at line 5, column 11
+Error at when_block_recovery.ce:5:11
 4 │ {
 5 │     counter: static i32 = 0
                  ╘════╛ Expected a declaration

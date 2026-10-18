@@ -1,25 +1,22 @@
-
-====== binding_write_after_reassignment.ce ======
-
-Error at line 24, column 5
+Error at binding_write_after_reassignment.ce:24:5
 23 │ self = Effect.none
 24 │ b = Buffer(3)
      ^ Cannot use borrows of reassigned values
      | Reassigned on line 23
 
-Error at line 39, column 4
+Error at binding_write_after_reassignment.ce:39:4
 38 │ e = Effect.none
 39 │ b = Buffer(2)
      ^ Cannot use borrows of reassigned values
      | Reassigned on line 38
 
-Error at line 47, column 3
+Error at binding_write_after_reassignment.ce:47:3
 46 │ e = Effect.none
 47 │ b.id = 42
      ╘══╛ Cannot use borrows of reassigned values
         | Reassigned on line 46
 
-Error at line 54, column 3
+Error at binding_write_after_reassignment.ce:54:3
 53 │ arr = [Buffer(6), Buffer(7)]
 54 │ b.id = 9
      ╘══╛ Cannot use borrows of reassigned values

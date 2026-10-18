@@ -1,12 +1,9 @@
-
-====== undef_positions.ce ======
-
-Error at line 7, column 7
+Error at undef_positions.ce:7:7
 6 │ {
 7 │     take(undef)
              ╘═══╛ Cannot use 'undef' outside variable initializers
 
-Error at line 8, column 16
+Error at undef_positions.ce:8:16
 7 │ take(undef)
 8 │ val sum = 1 + undef
                   ╘═══╛ Cannot use 'undef' outside variable initializers

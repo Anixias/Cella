@@ -1,13 +1,10 @@
-
-====== member_spelling_suggestions.ce ======
-
-Error at line 12, column 13
+Error at member_spelling_suggestions.ce:12:13
 11 │ val p = Point(1, 2)
 12 │ val flag = ture
                 ╘══╛ Symbol 'ture' not found in this scope
                    | Did you mean 'true'?
 
-Error at line 13, column 8
+Error at member_spelling_suggestions.ce:13:8
 12 │ val flag = ture
 13 │ ret p.lenght
            ╘════╛ Type 'Point' has no member 'lenght'

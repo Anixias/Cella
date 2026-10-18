@@ -1,23 +1,20 @@
-
-====== ext_function_type_enums.ce ======
-
-Error at line 9, column 17
+Error at ext_function_type_enums.ce:9:17
 8 │ {
 9 │     var f: ext fun[Team -> i32]
                        ╘══╛ Cannot use plain enums in 'ext' signatures
 
-Error at line 10, column 25
+Error at ext_function_type_enums.ce:10:25
  9 │ var f: ext fun[Team -> i32]
 10 │ var g: ptr[ext fun[mut Team]]
                             ╘══╛ Cannot use plain enums in 'ext' signatures
 
-Error at line 12, column 15
+Error at ext_function_type_enums.ce:12:15
 11 │ var fine: ext fun[ptr[Team] -> i32]
 12 │ val n = pick[Team](null)
                   ╘══╛ 'pick' requires 'T: ext'
                      | 'Team' can't be used in 'ext' signatures
 
-Error at line 13, column 25
+Error at ext_function_type_enums.ce:13:25
 12 │ val n = pick[Team](null)
 13 │ ret i32(sizeOf(ext fun[array[Team, 2]]))
                             ╘════════════╛ Cannot use 'array[Team, 2]' in 'ext' signatures

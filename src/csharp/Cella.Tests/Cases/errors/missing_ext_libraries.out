@@ -1,7 +1,4 @@
-
-====== missing_ext_libraries.ce ======
-
-Error at line 3, column 5
+Error at missing_ext_libraries.ce:3:5
 2 │ 
 3 │ ext("no_such_library_anywhere")
         ╘════════════════════════╛ Cannot find the library 'no_such_library_anywhere'

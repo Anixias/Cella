@@ -1,37 +1,34 @@
-
-====== dyn_declarations.ce ======
-
-Error at line 20, column 9
+Error at dyn_declarations.ce:20:9
 19 │ {
 20 │     shape: dyn[Shape]
                 ╘════════╛ Cannot use 'dyn[Shape]' by value
 
-Error at line 21, column 16
+Error at dyn_declarations.ce:21:16
 20 │ shape: dyn[Shape]
 21 │ shapes: array[dyn[Shape], 2]
                    ╘════════╛ Cannot use 'dyn[Shape]' by value
 
-Error at line 26, column 23
+Error at dyn_declarations.ce:26:23
 25 │ {
 26 │     show: fun(shape: ptr[dyn[Shape]])
                               ╘════════╛ Cannot use 'dyn[Shape]' in 'ext' signatures
 
-Error at line 29, column 14
+Error at dyn_declarations.ce:29:14
 28 │ 
 29 │ make: fun -> dyn[Shape] = make()
                   ╘════════╛ Cannot use 'dyn[Shape]' by value
 
-Error at line 31, column 22
+Error at dyn_declarations.ce:31:22
 30 │ 
 31 │ take: fun(own shape: dyn[Shape]) = take(shape)
                           ╘════════╛ Cannot use 'dyn[Shape]' by value
 
-Error at line 33, column 21
+Error at dyn_declarations.ce:33:21
 32 │ 
 33 │ bad: fun(shape: dyn[Point]) -> i32 = 0
                          ╘═══╛ 'Point' is not a trait
 
-Error at line 35, column 28
+Error at dyn_declarations.ce:35:28
 34 │ 
 35 │ reveal: pub fun(imm shape: dyn[Secret]) -> i32 = 0
                                 ╘═════════╛ 'dyn[Secret]' is less visible than 'reveal'

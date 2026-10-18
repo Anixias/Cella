@@ -1,27 +1,24 @@
-
-====== void_returns.ce ======
-
-Error at line 13, column 18
+Error at void_returns.ce:13:18
 12 │ 
 13 │ early: fun = ret 5
                       ^ Cannot return a value from 'early'
 
-Error at line 17, column 6
+Error at void_returns.ce:17:6
 16 │ {
 17 │     ret greet()
              ╘═════╛ Cannot return a value from 'finish'
 
-Error at line 22, column 6
+Error at void_returns.ce:22:6
 21 │ {
 22 │     ret 5
              ^ Cannot return a value from 'stop'
 
-Error at line 27, column 6
+Error at void_returns.ce:27:6
 26 │ {
 27 │     ret missing
              ╘═════╛ Symbol 'missing' not found in this scope
 
-Error at line 36, column 7
+Error at void_returns.ce:36:7
 35 │ {
 36 │     ret 5
              ^ Cannot return a value from 'Buffer.drop'

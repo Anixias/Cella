@@ -1,27 +1,24 @@
-
-====== bare_enum_cases.ce ======
-
-Error at line 14, column 21
+Error at bare_enum_cases.ce:14:21
 13 │ {
 14 │     val payload = pick(some)
                             ╘══╛ 'option[i32].some' holds 1 value: value
 
-Error at line 15, column 19
+Error at bare_enum_cases.ce:15:19
 14 │ val payload = pick(some)
 15 │ val empty = pick(none(1))
                       ╘═════╛ 'option[i32].none' holds no values
 
-Error at line 16, column 16
+Error at bare_enum_cases.ce:16:16
 15 │ val empty = pick(none(1))
 16 │ val untyped = none
                    ╘══╛ Cannot infer the type of 'none'
 
-Error at line 17, column 16
+Error at bare_enum_cases.ce:17:16
 16 │ val untyped = none
 17 │ val generic = both(none)
                    ╘══╛ Cannot infer 'T' for 'both'
 
-Error at line 18, column 30
+Error at bare_enum_cases.ce:18:30
 17 │ val generic = both(none)
 18 │ val declared: option[i32] = nnone
                                  ╘═══╛ Symbol 'nnone' not found in this scope

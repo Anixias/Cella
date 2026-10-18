@@ -1,17 +1,14 @@
-
-====== lambda_instantiation_cycles.ce ======
-
-Error at line 5, column 55
+Error at lambda_instantiation_cycles.ce:5:55
 4 │ 
 5 │ grow[T]: fun(imm value: T) -> i32 = call(fun -> i32 = grow(@value))
                                                           ╘══╛ Instantiating 'grow' never ends
 
-Error at line 7, column 73
+Error at lambda_instantiation_cycles.ce:7:73
 6 │ 
 7 │ nest[T]: fun(imm value: T) -> i32 = call(fun -> i32 = call(fun -> i32 = nest(@value)))
                                                                             ╘══╛ Instantiating 'nest' never ends
 
-Error at line 11, column 23
+Error at lambda_instantiation_cycles.ce:11:23
 10 │ {
 11 │     val f = fun -> i32 = apply(@value, x)
                               ╘═══╛ Instantiating 'apply' never ends

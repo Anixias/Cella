@@ -1,17 +1,14 @@
-
-====== char_constants.ce ======
-
-Error at line 9, column 17
+Error at char_constants.ce:9:17
 8 │ letter: val char = 'a'
 9 │ code: val u32 = letter
                     ╘════╛ Cannot convert type 'char' to 'u32'
 
-Error at line 10, column 22
+Error at char_constants.ce:10:22
  9 │ code: val u32 = letter
 10 │ code2: val u32 = u32(letter)
                           ╘════╛ The initial value of 'code2' must be a constant
 
-Error at line 12, column 17
+Error at char_constants.ce:12:17
 11 │ back: val char = char(u32(66))
 12 │ wide: val u64 = letter
                      ╘════╛ Cannot convert type 'char' to 'u64'

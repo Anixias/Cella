@@ -1,17 +1,14 @@
-
-====== lambda_bodies.ce ======
-
-Error at line 7, column 16
+Error at lambda_bodies.ce:7:16
 6 │ {
 7 │     each(fun(x) = x * 2)
                       ╘═══╛ Cannot use values as statements
 
-Error at line 9, column 17
+Error at lambda_bodies.ce:9:17
 8 │ for i in 0..3
 9 │     each(fun(x) { break })
                       ╘═══╛ Cannot use 'break' outside loops
 
-Error at line 11, column 2
+Error at lambda_bodies.ce:11:2
 10 │ 
 11 │ fun(x: i32) -> i32 = x
      ╘════════════════════╛ Cannot use values as statements

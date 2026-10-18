@@ -1,7 +1,4 @@
-
-====== own_fun_type_names.ce ======
-
-Error at line 10, column 9
+Error at own_fun_type_names.ce:10:9
  9 │ {
 10 │     val g: own fun[-> i32] = fun -> i32 = 1
                 ╘═╛ Cannot name 'own fun' types

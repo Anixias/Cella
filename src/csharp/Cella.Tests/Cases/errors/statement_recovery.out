@@ -1,28 +1,25 @@
-
-====== statement_recovery.ce ======
-
-Error at line 6, column 2
+Error at statement_recovery.ce:6:2
 5 │ val a = (1 +
 6 │ val b = [1, 2
     ╘═╛ Expected an expression
 
-Error at line 7, column 2
+Error at statement_recovery.ce:7:2
 6 │ val b = [1, 2
 7 │ val c = 3 +* 4
     ╘═╛ Expected ',' or ']'
       | To match the '[' on line 6
 
-Error at line 7, column 13
+Error at statement_recovery.ce:7:13
 6 │ val b = [1, 2
 7 │ val c = 3 +* 4
                ╘═╛ Cannot dereference type 'integer literal'
 
-Error at line 9, column 2
+Error at statement_recovery.ce:9:2
 8 │ if a >
 9 │ {
     ^ Expected an expression
 
-Error at line 18, column 10
+Error at statement_recovery.ce:18:10
 17 │ {
 18 │     val e = )
                  ^ Expected an expression

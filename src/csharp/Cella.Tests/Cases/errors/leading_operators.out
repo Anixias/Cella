@@ -1,27 +1,24 @@
-
-====== leading_operators.ce ======
-
-Error at line 11, column 3
+Error at leading_operators.ce:11:3
 10 │ val c = a
 11 │     && b
          ╘╛ Cannot start a line with '&&'
 
-Error at line 19, column 3
+Error at leading_operators.ce:19:3
 18 │ x
 19 │     = 5
          ^ Cannot start a line with '='
 
-Error at line 26, column 3
+Error at leading_operators.ce:26:3
 25 │ if a
 26 │     || b
          ╘╛ Cannot start a line with '||'
 
-Error at line 33, column 3
+Error at leading_operators.ce:33:3
 32 │ val r = n
 33 │     is 3
          ╘╛ Cannot start a line with 'is'
 
-Error at line 40, column 3
+Error at leading_operators.ce:40:3
 39 │ val r = n
 40 │     == 3
          ╘╛ Cannot start a line with '=='

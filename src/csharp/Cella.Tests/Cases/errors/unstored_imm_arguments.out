@@ -1,7 +1,4 @@
-
-====== unstored_imm_arguments.ce ======
-
-Error at line 12, column 15
+Error at unstored_imm_arguments.ce:12:15
 11 │ val s = borrowIt(42)
 12 │ val n = name(1.5)
                   ╘═╛ Cannot borrow unstored values

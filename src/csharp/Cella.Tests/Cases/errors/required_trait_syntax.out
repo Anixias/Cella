@@ -1,27 +1,24 @@
-
-====== required_trait_syntax.ce ======
-
-Error at line 5, column 9
+Error at required_trait_syntax.ce:5:9
 4 │ {
 5 │     ==: op(a: Self, b: Self) -> bool
                ^ Cannot copy 'Self'
 
-Error at line 5, column 18
+Error at required_trait_syntax.ce:5:18
 4 │ {
 5 │     ==: op(a: Self, b: Self) -> bool
                         ^ Cannot copy 'Self'
 
-Error at line 9, column 1
+Error at required_trait_syntax.ce:9:1
 8 │ Empty: trait req
 9 │ {
     ^ Expected a trait
 
-Error at line 13, column 1
+Error at required_trait_syntax.ce:13:1
 12 │ Trailing: trait req Eq +
 13 │ {
      ^ Expected a trait
 
-Error at line 18, column 12
+Error at required_trait_syntax.ce:18:12
 17 │ 
 18 │ Ord: trait impl Eq
                 ╘══╛ Expected 'req' or '{'

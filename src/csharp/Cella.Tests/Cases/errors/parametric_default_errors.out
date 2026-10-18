@@ -1,7 +1,4 @@
-
-====== parametric_default_errors.ce ======
-
-Error at line 5, column 36
+Error at parametric_default_errors.ce:5:36
 4 │ 
 5 │ f[T]: fun(imm x: T, extra: usize = sizeOf(T) + value) -> usize = extra
                                        ╘═══════════════╛ The default value of 'extra' must be a constant

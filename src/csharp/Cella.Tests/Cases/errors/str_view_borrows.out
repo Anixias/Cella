@@ -1,12 +1,9 @@
-
-====== str_view_borrows.ce ======
-
-Error at line 33, column 6
+Error at str_view_borrows.ce:33:6
 32 │ buffer[0] = 65
 33 │ ret str(@buffer[0], 1)
          ╘════════════════╛ Cannot return borrows of local variables
 
-Error at line 38, column 13
+Error at str_view_borrows.ce:38:13
 37 │ {
 38 │     val view = String(3).asStr()
                     ╘═══════╛ Cannot borrow unstored values

@@ -1,19 +1,16 @@
-
-====== generic_atomic_arithmetic.ce ======
-
-Error at line 25, column 2
+Error at generic_atomic_arithmetic.ce:25:2
 24 │ var f = 1.5
 25 │ flags.add(true)
      ╘═══════╛ Cannot use '+=' atomically on 'bool'
              | Used on line 7
 
-Error at line 26, column 2
+Error at generic_atomic_arithmetic.ce:26:2
 25 │ flags.add(true)
 26 │ colors.mask(Color.green)
      ╘═════════╛ Cannot use '&=' atomically on 'Color'
                | Used on line 8
 
-Error at line 29, column 2
+Error at generic_atomic_arithmetic.ce:29:2
 28 │ var b = false
 29 │ twice(@b, true)
      ╘═══╛ Cannot use '+=' atomically on 'bool'

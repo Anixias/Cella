@@ -1,12 +1,9 @@
-
-====== variadic_temporaries.ce ======
-
-Error at line 31, column 7
+Error at variadic_temporaries.ce:31:7
 30 │ val name = Name(1)
 31 │ take(name)
           ╘══╛ Cannot move 'Name' values implicitly
 
-Error at line 32, column 19
+Error at variadic_temporaries.ce:32:19
 31 │ take(name)
 32 │ val kept = first(1, 2)
                       ^ Cannot borrow unstored values

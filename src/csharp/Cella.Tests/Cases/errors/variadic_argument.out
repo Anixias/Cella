@@ -1,12 +1,9 @@
-
-====== variadic_argument.ce ======
-
-Error at line 18, column 20
+Error at variadic_argument.ce:18:20
 17 │ var point: Point
 18 │ printf("%s %d\n", name, point)
                        ╘══╛ Cannot pass 'str' values to variadic functions
 
-Error at line 18, column 26
+Error at variadic_argument.ce:18:26
 17 │ var point: Point
 18 │ printf("%s %d\n", name, point)
                              ╘═══╛ Cannot pass 'Point' values to variadic functions

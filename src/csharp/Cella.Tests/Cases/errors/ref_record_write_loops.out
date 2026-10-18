@@ -1,7 +1,4 @@
-
-====== ref_record_write_loops.ce ======
-
-Error at line 37, column 15
+Error at ref_record_write_loops.ce:37:15
 36 │ val v = view[i32](@four, 4)
 37 │ for mut x in v
                   ^ Cannot iterate over 'view[i32]' with 'mut'

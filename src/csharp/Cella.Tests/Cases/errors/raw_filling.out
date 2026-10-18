@@ -1,43 +1,40 @@
-
-====== raw_filling.ce ======
-
-Error at line 42, column 11
+Error at raw_filling.ce:42:11
 41 │ val c = own b
 42 │ val p = @b
               ^ Cannot use moved values
               | Moved on line 41
 
-Error at line 49, column 11
+Error at raw_filling.ce:49:11
 48 │ var r: R
 49 │ val p = @r
               ^ Cannot use uninitialized values
 
-Error at line 56, column 11
+Error at raw_filling.ce:56:11
 55 │ val v: i32
 56 │ val p = @v
               ^ Cannot use uninitialized values
 
-Error at line 63, column 11
+Error at raw_filling.ce:63:11
 62 │ var n: i32 = undef
 63 │ bump(mut n)
               ^ Cannot use uninitialized values
 
-Error at line 64, column 6
+Error at raw_filling.ce:64:6
 63 │ bump(mut n)
 64 │ ret n
          ^ Cannot use uninitialized values
 
-Error at line 73, column 6
+Error at raw_filling.ce:73:6
 72 │ 
 73 │ ret x
          ^ Cannot use uninitialized values
 
-Error at line 82, column 6
+Error at raw_filling.ce:82:6
 81 │ 
 82 │ ret buf[0]
          ╘════╛ Cannot use uninitialized values
 
-Error at line 89, column 18
+Error at raw_filling.ce:89:18
 88 │ fill(@pair.left)
 89 │ ret pair.left + pair.right
                      ╘════════╛ Cannot use uninitialized values

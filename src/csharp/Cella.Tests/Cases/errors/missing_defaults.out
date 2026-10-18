@@ -1,82 +1,79 @@
-
-====== missing_defaults.ce ======
-
-Error at line 31, column 13
+Error at missing_defaults.ce:31:13
 30 │ var effect: Effect
 31 │ ret amount(effect)
                 ╘════╛ Cannot use uninitialized values
 
-Error at line 40, column 13
+Error at missing_defaults.ce:40:13
 39 │ 
 40 │ ret amount(effect)
                 ╘════╛ Cannot use uninitialized values
 
-Error at line 47, column 13
+Error at missing_defaults.ce:47:13
 46 │ holder.count = 1
 47 │ ret amount(holder.effect) + holder.count
                 ╘═══════════╛ Cannot use uninitialized values
 
-Error at line 54, column 13
+Error at missing_defaults.ce:54:13
 53 │ effects[0] = Effect.none
 54 │ ret amount(effects[1])
                 ╘════════╛ Cannot use uninitialized values
 
-Error at line 60, column 6
+Error at missing_defaults.ce:60:6
 59 │ var f: fun[i32 -> i32]
 60 │ ret f(1)
          ^ Cannot use uninitialized values
 
-Error at line 67, column 6
+Error at missing_defaults.ce:67:6
 66 │ handler.scale = 3
 67 │ ret handler.callback(handler.scale)
          ╘══════════════╛ Cannot use uninitialized values
 
-Error at line 74, column 6
+Error at missing_defaults.ce:74:6
 73 │ callbacks[0] = abs
 74 │ ret callbacks[1](4)
          ╘══════════╛ Cannot use uninitialized values
 
-Error at line 80, column 6
+Error at missing_defaults.ce:80:6
 79 │ var f: ext fun[i32 -> i32]
 80 │ ret f(-6)
          ^ Cannot use uninitialized values
 
-Error at line 104, column 15
+Error at missing_defaults.ce:104:15
 103 │ handler.scale = 3
 104 │ ret describe(handler)
                    ╘═════╛ Cannot use partly initialized values
 
-Error at line 111, column 19
+Error at missing_defaults.ce:111:19
 110 │ pair.first = abs
 111 │ ret describePair(pair)
                        ╘══╛ Cannot use partly initialized values
 
-Error at line 118, column 18
+Error at missing_defaults.ce:118:18
 117 │ handlers[0].callback = abs
 118 │ ret describeAll(handlers)
                       ╘══════╛ Cannot use partly initialized values
 
-Error at line 125, column 20
+Error at missing_defaults.ce:125:20
 124 │ outer.label = 1
 125 │ ret describeOuter(outer)
                         ╘═══╛ Cannot use partly initialized values
 
-Error at line 149, column 25
+Error at missing_defaults.ce:149:25
 148 │ var closer: Closer
 149 │ ret describeCloser(imm closer)
                              ╘════╛ Cannot use uninitialized values
 
-Error at line 155, column 6
+Error at missing_defaults.ce:155:6
 154 │ var closer: Closer
 155 │ ret closer.id
           ╘═══════╛ Cannot use uninitialized values
 
-Error at line 162, column 25
+Error at missing_defaults.ce:162:25
 161 │ keeper.count = 1
 162 │ ret describeKeeper(imm keeper)
                              ╘════╛ Cannot use partly initialized values
 
-Error at line 176, column 19
+Error at missing_defaults.ce:176:19
 175 │ var code: Code
 176 │ ret describeCode(code)
                        ╘══╛ Cannot use uninitialized values

@@ -1,17 +1,14 @@
-
-====== own_fun_messages.ce ======
-
-Error at line 21, column 6
+Error at own_fun_messages.ce:21:6
 20 │ var c = Counter(own fun -> i32 = a)
 21 │ c = Counter(own fun -> i32 = a + 1)
          ╘═════════════════════════════╛ Cannot convert between 'own fun' closures
 
-Error at line 28, column 6
+Error at own_fun_messages.ce:28:6
 27 │ val a = 1
 28 │ ret first(own fun -> i32 = a, own fun -> i32 = a)
          ╘═══╛ Cannot infer 'T' for 'first' from different 'own fun' closures
 
-Error at line 35, column 10
+Error at own_fun_messages.ce:35:10
 34 │ val e = E.a
 35 │ val f = match e { a => own fun -> i32 = a, b => own fun -> i32 = a + 1 }
              ╘═══╛ The arms of this match hold different 'own fun' closures

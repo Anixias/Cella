@@ -1,22 +1,13 @@
-
-====== import_first.ce ======
-
-Error at line 2, column 5
+Error at import_first.ce:2:5
 1 │ use geometry.area
 2 │ mod test
         ╘══╛ Module name must precede all other declarations or imports
 
-
-====== main.ce ======
-
-Error at line 1, column 9
+Error at main.ce:1:9
 1 │ mod test.
             ^ Expected a name after '.'
 
-
-====== number.ce ======
-
-Error at line 1, column 10
+Error at number.ce:1:10
 1 │ mod test.5
              ^ Expected a name after '.'
 

@@ -1,12 +1,9 @@
-
-====== builtin_conversion_witnesses.ce ======
-
-Error at line 13, column 11
+Error at builtin_conversion_witnesses.ce:13:11
 12 │ 
 13 │ i32: impl ToWide
                ╘════╛ 'i32' needs 'ToWide.new'
 
-Error at line 14, column 11
+Error at builtin_conversion_witnesses.ce:14:11
 13 │ i32: impl ToWide
 14 │ f64: impl Widen
                ╘═══╛ 'f64' needs 'Widen.as'

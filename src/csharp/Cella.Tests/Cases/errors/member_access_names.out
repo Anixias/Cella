@@ -1,17 +1,14 @@
-
-====== member_access_names.ce ======
-
-Error at line 7, column 11
+Error at member_access_names.ce:7:11
 6 │ {
 7 │     val a = p.
                  ^ Expected a name after '.'
 
-Error at line 13, column 12
+Error at member_access_names.ce:13:12
 12 │ {
 13 │     val a = p.5
                    ^ Expected a name after '.'
 
-Error at line 19, column 12
+Error at member_access_names.ce:19:12
 18 │ {
 19 │     val a = p.match
                    ╘═══╛ 'match' is a keyword

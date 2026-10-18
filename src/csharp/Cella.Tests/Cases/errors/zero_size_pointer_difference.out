@@ -1,17 +1,14 @@
-
-====== zero_size_pointer_difference.ce ======
-
-Error at line 12, column 12
+Error at zero_size_pointer_difference.ce:12:12
 11 │ val last = @marks[2]
 12 │ val gap = last - first
                ╘══════════╛ Cannot subtract pointers to zero-size type 'Empty'
 
-Error at line 15, column 13
+Error at zero_size_pointer_difference.ce:15:13
 14 │ val p = @none
 15 │ val same = p - p
                 ╘═══╛ Cannot subtract pointers to zero-size type 'array[i32, 0]'
 
-Error at line 16, column 15
+Error at zero_size_pointer_difference.ce:16:15
 15 │ val same = p - p
 16 │ val after = (first + 1) - first
                   ╘════════════════╛ Cannot subtract pointers to zero-size type 'Empty'

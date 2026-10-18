@@ -1,7 +1,4 @@
-
-====== pattern_mode_syntax.ce ======
-
-Error at line 12, column 5
+Error at pattern_mode_syntax.ce:12:5
 11 │ var e = Effect.hit(1)
 12 │ if mut e
         ╘═══╛ Cannot convert type 'mut[Effect]' to 'bool'

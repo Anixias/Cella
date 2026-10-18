@@ -1,22 +1,19 @@
-
-====== loop_stores.ce ======
-
-Error at line 10, column 8
+Error at loop_stores.ce:10:8
  9 │ for mut w in self.items
 10 │     w = other
              ╘═══╛ Cannot store new borrows in 'self'
 
-Error at line 23, column 7
+Error at loop_stores.ce:23:7
 22 │ for mut w in words
 23 │     w = other
              ╘═══╛ Cannot store new borrows in 'mut' parameters
 
-Error at line 31, column 14
+Error at loop_stores.ce:31:14
 30 │ {
 31 │     words[0] = other
                     ╘═══╛ Cannot store new borrows in 'mut' parameters
 
-Error at line 42, column 23
+Error at loop_stores.ce:42:23
 41 │ {
 42 │     text(val s) => s = other
                             ╘═══╛ Cannot store new borrows in 'mut' parameters

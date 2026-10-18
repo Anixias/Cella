@@ -1,17 +1,14 @@
-
-====== writable_cursors.ce ======
-
-Error at line 26, column 28
+Error at writable_cursors.ce:26:28
 25 │ 
 26 │ *: op(self) -> imm[i32] = imm self.left
                                ╘═══════════╛ Cannot return borrows of copied parameters
 
-Error at line 33, column 3
+Error at writable_cursors.ce:33:3
 32 │ for x in Steps(3)
 33 │     x = 1
          ^ Cannot reassign read-only loop variables
 
-Error at line 36, column 3
+Error at writable_cursors.ce:36:3
 35 │ for x in Editor(3)
 36 │     x = 1
          ^ Cannot reassign read-only loop variables

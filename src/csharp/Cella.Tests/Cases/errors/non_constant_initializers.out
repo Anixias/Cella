@@ -1,27 +1,24 @@
-
-====== non_constant_initializers.ce ======
-
-Error at line 10, column 21
+Error at non_constant_initializers.ce:10:21
  9 │ limit: const i32 = 5
 10 │ random: const i32 = rand()
                          ╘════╛ The initial value of 'random' must be a constant
 
-Error at line 11, column 21
+Error at non_constant_initializers.ce:11:21
 10 │ random: const i32 = rand()
 11 │ copied: const i32 = counter
                          ╘═════╛ The initial value of 'copied' must be a constant
 
-Error at line 12, column 27
+Error at non_constant_initializers.ce:12:27
 11 │ copied: const i32 = counter
 12 │ address: const ptr[i32] = @counter
                                ╘══════╛ The initial value of 'address' must be a constant
 
-Error at line 13, column 28
+Error at non_constant_initializers.ce:13:28
 12 │ address: const ptr[i32] = @counter
 13 │ quotient: const i32 = 1 / (limit - 5)
                                 ╘═══════╛ Division by zero
 
-Error at line 23, column 21
+Error at non_constant_initializers.ce:23:21
 22 │ 
 23 │ chosen: const i32 = match Mode.slow(3) { fast => 4, slow(val factor) => rand() + factor }
                          ╘═══════════════════════════════════════════════════════════════════╛ The initial value of 'chosen' must be a constant

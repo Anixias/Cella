@@ -1,24 +1,21 @@
-
-====== noref_concrete_arguments.ce ======
-
-Hint at line 23, column 42
+Hint at noref_concrete_arguments.ce:23:42
 22 │ 
 23 │ keep[T: noref]: fun(own value: T) -> T = own value
                                               ╘═╛ Redundant 'own'
 
-Error at line 27, column 19
+Error at noref_concrete_arguments.ce:27:19
 26 │ {
 27 │     val tokens: cell[Token] = undef
                           ╘═══╛ 'cell' requires 'Element: noref'
                               | 'Token' holds borrows
 
-Error at line 28, column 13
+Error at noref_concrete_arguments.ce:28:13
 27 │ val tokens: cell[Token] = undef
 28 │ val kept = keep("lit")
                 ╘══╛ 'keep' requires 'T: noref'
                    | 'str' holds borrows
 
-Error at line 31, column 15
+Error at noref_concrete_arguments.ce:31:15
 30 │ val w = wrap(Token(imm n))
 31 │ val size = w.size()
                   ╘══╛ 'size' requires 'T: noref'

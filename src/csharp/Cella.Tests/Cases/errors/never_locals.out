@@ -1,7 +1,4 @@
-
-====== never_locals.ce ======
-
-Error at line 10, column 6
+Error at never_locals.ce:10:6
  9 │ {
 10 │     val x = abort()
              ^ 'never' can only be a return type

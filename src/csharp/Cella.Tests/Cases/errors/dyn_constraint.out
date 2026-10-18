@@ -1,7 +1,4 @@
-
-====== dyn_constraint.ce ======
-
-Error at line 8, column 6
+Error at dyn_constraint.ce:8:6
 7 │ 
 8 │ f[T: dyn[Shape]]: fun(imm x: T) -> i32 = 0
          ╘═╛ Cannot use 'dyn' types as constraints

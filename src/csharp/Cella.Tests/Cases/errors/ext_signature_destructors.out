@@ -1,64 +1,61 @@
-
-====== ext_signature_destructors.ce ======
-
-Error at line 26, column 20
+Error at ext_signature_destructors.ce:26:20
 25 │ {
 26 │     onBuffer: ext fun[Buffer -> i32]
                            ╘════╛ Cannot use types with destructors in 'ext' signatures
 
-Error at line 32, column 20
+Error at ext_signature_destructors.ce:32:20
 31 │ {
 32 │     show: fun(buffer: Buffer) -> i32
                            ╘════╛ Cannot use types with destructors in 'ext' signatures
 
-Error at line 33, column 24
+Error at ext_signature_destructors.ce:33:24
 32 │ show: fun(buffer: Buffer) -> i32
 33 │ keep: fun(own buffer: Buffer)
                            ╘════╛ Cannot use types with destructors in 'ext' signatures
 
-Error at line 34, column 24
+Error at ext_signature_destructors.ce:34:24
 33 │ keep: fun(own buffer: Buffer)
 34 │ fill: fun(mut buffer: Buffer)
                            ╘════╛ Cannot use types with destructors in 'ext' signatures
 
-Error at line 35, column 15
+Error at ext_signature_destructors.ce:35:15
 34 │ fill: fun(mut buffer: Buffer)
 35 │ make: fun -> Buffer
                   ╘════╛ Cannot use types with destructors in 'ext' signatures
 
-Error at line 36, column 20
+Error at ext_signature_destructors.ce:36:20
 35 │ make: fun -> Buffer
 36 │ hold: fun(holder: Holder)
                        ╘════╛ Cannot use types with destructors in 'ext' signatures
                             | 'Holder' contains 'Buffer'
 
-Error at line 37, column 20
+Error at ext_signature_destructors.ce:37:20
 36 │ hold: fun(holder: Holder)
 37 │ send: fun(packet: Packet)
                        ╘════╛ Cannot use types with destructors in 'ext' signatures
                             | 'Packet' contains 'Buffer'
 
-Error at line 38, column 20
+Error at ext_signature_destructors.ce:38:20
 37 │ send: fun(packet: Packet)
 38 │ all: fun(buffers: array[Buffer, 2])
                        ╘══════════════╛ Cannot use 'array[Buffer, 2]' in 'ext' signatures
 
-Error at line 39, column 34
+Error at ext_signature_destructors.ce:39:34
 38 │ all: fun(buffers: array[Buffer, 2])
 39 │ register: fun(callback: ext fun[Buffer -> i32])
                                      ╘════╛ Cannot use types with destructors in 'ext' signatures
 
-Error at line 43, column 23
+Error at ext_signature_destructors.ce:43:23
 42 │ 
 43 │ echo: ext fun(buffer: Buffer) -> Buffer = buffer
                            ╘════╛ Cannot use types with destructors in 'ext' signatures
 
-Error at line 43, column 34
+Error at ext_signature_destructors.ce:43:34
 42 │ 
 43 │ echo: ext fun(buffer: Buffer) -> Buffer = buffer
                                       ╘════╛ Cannot use types with destructors in 'ext' signatures
 
-Error at line 44, column 40
+Error at ext_signature_destructors.ce:44:40
 43 │ echo: ext fun(buffer: Buffer) -> Buffer = buffer
 44 │ forward: fun(callback: fun[ext fun[own Buffer]]) {}
                                             ╘════╛ Cannot use types with destructors in 'ext' signatures

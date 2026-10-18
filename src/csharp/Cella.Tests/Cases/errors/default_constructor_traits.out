@@ -1,7 +1,4 @@
-
-====== default_constructor_traits.ce ======
-
-Error at line 5, column 12
+Error at default_constructor_traits.ce:5:12
 4 │ {
 5 │     new: op = default
                   ╘═════╛ Cannot use 'default' in traits

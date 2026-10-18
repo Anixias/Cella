@@ -1,31 +1,28 @@
-
-====== payload_reassignment.ce ======
-
-Error at line 35, column 20
+Error at payload_reassignment.ce:35:20
 34 │ v = Value.num(77)
 35 │ printf("%d\n", *p)
                      ^ Cannot use borrows of reassigned values
                      | Reassigned on line 34
 
-Error at line 44, column 18
+Error at payload_reassignment.ce:44:18
 43 │ e = Effect.none
 44 │ printf("%d\n", n)
                     ^ Cannot use borrows of reassigned values
                     | Reassigned on line 43
 
-Error at line 54, column 17
+Error at payload_reassignment.ce:54:17
 53 │ e = Effect.none
 54 │ printf("%d\n", r)
                     ^ Cannot use borrows of reassigned values
                     | Reassigned on line 53
 
-Error at line 62, column 19
+Error at payload_reassignment.ce:62:19
 61 │ m = Effect.none
 62 │ printf("%d\n", n)
                     ^ Cannot use borrows of reassigned values
                     | Reassigned on line 61
 
-Error at line 73, column 19
+Error at payload_reassignment.ce:73:19
 72 │ b = Box(Effect.none, 4)
 73 │ printf("%d\n", n)
                     ^ Cannot use borrows of reassigned values

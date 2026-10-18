@@ -1,7 +1,4 @@
-
-====== game.ce ======
-
-Error at line 10, column 36
+Error at game.ce:10:36
  9 │ {
 10 │     peek: fun(imm self) -> i32 = self.v
                                            ^ 'v' is private to its type

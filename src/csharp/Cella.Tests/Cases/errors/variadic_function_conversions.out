@@ -1,27 +1,24 @@
-
-====== variadic_function_conversions.ce ======
-
-Error at line 25, column 38
+Error at variadic_function_conversions.ce:25:38
 24 │ {
 25 │     val packed: fun[view[i32] -> i32] = sum
                                              ╘═╛ Cannot convert type 'fun[...view[i32] -> i32]' to 'fun[view[i32] -> i32]'
 
-Error at line 26, column 43
+Error at variadic_function_conversions.ce:26:43
 25 │ val packed: fun[view[i32] -> i32] = sum
 26 │ val unpacked: fun[...view[i32] -> i32] = plain
                                               ╘═══╛ Cannot convert type 'fun[view[i32] -> i32]' to 'fun[...view[i32] -> i32]'
 
-Error at line 27, column 36
+Error at variadic_function_conversions.ce:27:36
 26 │ val unpacked: fun[...view[i32] -> i32] = plain
 27 │ val fixed: ext fun[cstr -> i32] = printf
                                        ╘════╛ Cannot convert type 'ext fun[cstr, ... -> i32]' to 'ext fun[cstr -> i32]'
 
-Error at line 28, column 46
+Error at variadic_function_conversions.ce:28:46
 27 │ val fixed: ext fun[cstr -> i32] = printf
 28 │ val cella: fun[cstr, ...view[i32] -> i32] = printf
                                                  ╘════╛ Cannot convert type 'ext fun[cstr, ... -> i32]' to 'fun[cstr, ...view[i32] -> i32]'
 
-Error at line 29, column 41
+Error at variadic_function_conversions.ce:29:41
 28 │ val cella: fun[cstr, ...view[i32] -> i32] = printf
 29 │ val lambda: fun[...view[i32] -> i32] = fun(values: i32) = values
                                             ╘═══════════════════════╛ Cannot convert type 'fun[i32]' to 'fun[...view[i32] -> i32]'

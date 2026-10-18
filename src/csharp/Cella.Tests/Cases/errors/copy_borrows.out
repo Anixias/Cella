@@ -1,7 +1,4 @@
-
-====== copy_borrows.ce ======
-
-Error at line 28, column 6
+Error at copy_borrows.ce:28:6
 27 │ 
 28 │ ret r.p.x
          ╘═╛ Cannot use borrows of dropped values

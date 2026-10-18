@@ -1,27 +1,24 @@
-
-====== when_member_declarations.ce ======
-
-Error at line 5, column 25
+Error at when_member_declarations.ce:5:25
 4 │ {
 5 │     trace: fun(text: cstr) when debug
                                ╘══╛ Cannot use 'when' on 'ext' functions
 
-Error at line 12, column 18
+Error at when_member_declarations.ce:12:18
 11 │ 
 12 │ new: op(x: i32) when debug
                      ╘══╛ Cannot use 'when' on constructors
 
-Error at line 17, column 11
+Error at when_member_declarations.ce:17:11
 16 │ 
 17 │ drop: op when debug
               ╘══╛ Cannot use 'when' on destructors
 
-Error at line 21, column 26
+Error at when_member_declarations.ce:21:26
 20 │ 
 21 │ y: get(imm self) -> i32 when debug = self.x
                              ╘══╛ Cannot use 'when' on getters
 
-Error at line 23, column 31
+Error at when_member_declarations.ce:23:31
 22 │ 
 23 │ z: set(mut self, value: i32) when release
                                   ╘══╛ Cannot use 'when' on setters

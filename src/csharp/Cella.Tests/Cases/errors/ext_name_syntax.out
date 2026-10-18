@@ -1,32 +1,29 @@
-
-====== ext_name_syntax.ce ======
-
-Error at line 5, column 17
+Error at ext_name_syntax.ce:5:17
 4 │ {
 5 │     value: var i32 = 4
                        ^ Cannot initialize values in 'ext' blocks
 
-Error at line 8, column 11
+Error at ext_name_syntax.ce:8:11
 7 │ 
 8 │ Kind: ext("kind") enum
               ╘════╛ Cannot name 'ext' enums
 
-Error at line 14, column 12
+Error at ext_name_syntax.ce:14:12
 13 │ 
 14 │ blank: ext("") val i32 = 0
                 ╘╛ Cannot use empty 'ext' names
 
-Error at line 18, column 14
+Error at ext_name_syntax.ce:18:14
 17 │ {
 18 │     dotted: ext("app.counter") fun -> i32
                      ╘═══════════╛ Cannot use 'app.counter' as an 'ext' name
 
-Error at line 19, column 15
+Error at ext_name_syntax.ce:19:15
 18 │ dotted: ext("app.counter") fun -> i32
 19 │ leading: ext("1st") fun -> i32
                   ╘═══╛ Cannot use '1st' as an 'ext' name
 
-Error at line 20, column 14
+Error at ext_name_syntax.ce:20:14
 19 │ leading: ext("1st") fun -> i32
 20 │ spaced: ext("two words") var i32
                  ╘═════════╛ Cannot use 'two words' as an 'ext' name

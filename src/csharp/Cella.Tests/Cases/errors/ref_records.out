@@ -1,43 +1,40 @@
-
-====== ref_records.ce ======
-
-Error at line 10, column 8
+Error at ref_records.ce:10:8
  9 │ {
 10 │     text: str
                ╘═╛ Cannot store borrows in records that aren't 'ref'
                  | Did you mean 'Label: ref rec'?
 
-Error at line 15, column 9
+Error at ref_records.ce:15:9
 14 │ {
 15 │     count: mut[i32]
                 ╘══════╛ Cannot store borrows in records that aren't 'ref'
                        | Did you mean 'Counter: pub ref rec'?
 
-Error at line 21, column 9
+Error at ref_records.ce:21:9
 20 │ {
 21 │     count: mut[i32]
                 ╘══════╛ Cannot store borrows in records that aren't 'ref'
                        | Did you mean 'Shared: pvt ref rec'?
 
-Error at line 28, column 10
+Error at ref_records.ce:28:10
 27 │ {
 28 │     count: mut[i32]
                 ╘══════╛ Cannot store borrows in records that aren't 'ref'
                        | Did you mean 'Local: ref rec'?
 
-Error at line 34, column 9
+Error at ref_records.ce:34:9
 33 │ {
 34 │     token: Token
                 ╘═══╛ Cannot store borrows in records that aren't 'ref'
                     | Did you mean 'Holder: ref rec'?
 
-Error at line 35, column 10
+Error at ref_records.ce:35:10
 34 │ token: Token
 35 │ values: array[imm[i32], 2]
              ╘════════════════╛ Cannot store borrows in records that aren't 'ref'
                               | Did you mean 'Holder: ref rec'?
 
-Error at line 41, column 15
+Error at ref_records.ce:41:15
 40 │ none
 41 │ unit(health: imm[i32])
                   ╘══════╛ Cannot store borrows in enums that aren't 'ref'

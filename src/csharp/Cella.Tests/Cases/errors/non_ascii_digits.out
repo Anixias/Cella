@@ -1,7 +1,4 @@
-
-====== non_ascii_digits.ce ======
-
-Error at line 5, column 20
+Error at non_ascii_digits.ce:5:20
 4 │ {
 5 │     val arabic: i32 = ٣
                           ^ Unexpected character '٣'

@@ -1,7 +1,4 @@
-
-====== default_requirement_block_mismatches.ce ======
-
-Error at line 14, column 2
+Error at default_requirement_block_mismatches.ce:14:2
 13 │ hash: fun(imm self) -> u64 = u64(self.x)
 14 │ twice: fun(imm self, n: i32) -> u64 = 7
      ╘═══╛ 'twice' doesn't match 'Hash.twice'

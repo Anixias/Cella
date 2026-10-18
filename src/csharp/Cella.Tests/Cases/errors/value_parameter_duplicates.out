@@ -1,12 +1,9 @@
-
-====== value_parameter_duplicates.ce ======
-
-Error at line 3, column 6
+Error at value_parameter_duplicates.ce:3:6
 2 │ 
 3 │ ring[N: const usize]: rec
          ^ Value parameter 'N' is declared more than once
 
-Error at line 7, column 4
+Error at value_parameter_duplicates.ce:7:4
 6 │ 
 7 │ f[N: const usize]: fun(imm self) -> usize = N
       ^ Value parameter 'N' is declared more than once

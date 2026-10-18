@@ -1,72 +1,69 @@
-
-====== record_pattern_errors.ce ======
-
-Error at line 39, column 8
+Error at record_pattern_errors.ce:39:8
 38 │ {
 39 │     Point(0, val y) => y
                ^ Expected a field name
 
-Error at line 45, column 8
+Error at record_pattern_errors.ce:45:8
 44 │ {
 45 │     Point(z: 1) => 1
                ^ Type 'Point' has no member 'z'
 
-Error at line 51, column 8
+Error at record_pattern_errors.ce:51:8
 50 │ {
 51 │     Enemy(secret: 1) => 1
                ╘════╛ 'secret' is private to its type
 
-Error at line 57, column 8
+Error at record_pattern_errors.ce:57:8
 56 │ {
 57 │     Point(x: 1, x: 2) => 1
                ^ 'x' is named more than once
 
-Error at line 57, column 14
+Error at record_pattern_errors.ce:57:14
 56 │ {
 57 │     Point(x: 1, x: 2) => 1
                      ^ 'x' is named more than once
 
-Error at line 63, column 2
+Error at record_pattern_errors.ce:63:2
 62 │ {
 63 │     Enemy(health: 1) => 1
          ╘═══╛ Expected 'Point'
 
-Error at line 69, column 6
+Error at record_pattern_errors.ce:69:6
 68 │ {
 69 │     hit(at: val a, damage: val d) => d
              ╘╛ Cannot name payload values
 
-Error at line 75, column 2
+Error at record_pattern_errors.ce:75:2
 74 │ {
 75 │     i32(x: 1) => 1
          ╘═╛ Cannot destructure 'i32' values
 
-Error at line 81, column 12
+Error at record_pattern_errors.ce:81:12
 80 │ {
 81 │     Point(val x, y: val x) => x
                    ^ 'x' is bound more than once
 
-Error at line 81, column 22
+Error at record_pattern_errors.ce:81:22
 80 │ {
 81 │     Point(val x, y: val x) => x
                              ^ 'x' is bound more than once
 
-Error at line 84, column 35
+Error at record_pattern_errors.ce:84:35
 83 │ 
 84 │ uncovered: fun(p: Point) -> i32 = match p
                                        ╘═══╛ This match doesn't handle every value of 'Point'
 
-Error at line 94, column 12
+Error at record_pattern_errors.ce:94:12
 93 │ {
 94 │     Pair(own first) if first.id > 0 => {}
                   ╘═══╛ Cannot move values in arms with 'if'
 
-Error at line 103, column 8
+Error at record_pattern_errors.ce:103:8
 102 │ {
 103 │     1..10 n => n
                 ^ Expected a type test before 'n'
 
-Error at line 109, column 15
+Error at record_pattern_errors.ce:109:15
 108 │ {
 109 │     hit(_, 1..10 d) => d
                        ^ Expected a type test before 'd'

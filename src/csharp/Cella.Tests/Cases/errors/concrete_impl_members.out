@@ -1,12 +1,9 @@
-
-====== concrete_impl_members.ce ======
-
-Error at line 31, column 19
+Error at concrete_impl_members.ce:31:19
 30 │ val fine = box(u8(1)).small() + u8(box(2).hashed())
 31 │ val a = box(2.5).small()
                       ╘═══╛ Type 'box[f64]' has no member 'small'
 
-Error at line 32, column 19
+Error at concrete_impl_members.ce:32:19
 31 │ val a = box(2.5).small()
 32 │ val b = box(2.5).hashed()
                       ╘════╛ 'hashed' requires 'K: Hash'

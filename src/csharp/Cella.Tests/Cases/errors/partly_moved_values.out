@@ -1,25 +1,22 @@
-
-====== partly_moved_values.ce ======
-
-Error at line 25, column 23
+Error at partly_moved_values.ce:25:23
 24 │ val left = own pair.left
 25 │ val total = show(imm pair) + pair.right.id + left.id
                           ╘══╛ Cannot use partly moved values
                              | Moved on line 24
 
-Error at line 26, column 6
+Error at partly_moved_values.ce:26:6
 25 │ val total = show(imm pair) + pair.right.id + left.id
 26 │ ret pair
          ╘══╛ Cannot use partly moved values
             | Moved on line 24
 
-Error at line 41, column 6
+Error at partly_moved_values.ce:41:6
 40 │ val first = own items[0]
 41 │ ret items[i].id + items[1].id + first.id
          ╘═════════╛ Cannot use partly moved values
                    | Moved on line 40
 
-Error at line 48, column 6
+Error at partly_moved_values.ce:48:6
 47 │ val left = own pair.left
 48 │ ret pair.left.id + pair.right.id + left.id
          ╘══════════╛ Cannot use moved values

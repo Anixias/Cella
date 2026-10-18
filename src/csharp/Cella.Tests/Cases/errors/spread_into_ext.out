@@ -1,7 +1,4 @@
-
-====== spread_into_ext.ce ======
-
-Error at line 11, column 17
+Error at spread_into_ext.ce:11:17
 10 │ val a = [1, 2]
 11 │ printf("%d\n", ...a)
                     ╘══╛ Cannot spread arguments into 'ext' functions

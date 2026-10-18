@@ -1,7 +1,4 @@
-
-====== main.ce ======
-
-Error at line 22, column 6
+Error at main.ce:22:6
 21 │ consume(own bag)
 22 │ ret view.value
          ╘════════╛ Cannot use borrows of moved values

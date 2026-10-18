@@ -1,12 +1,9 @@
-
-====== implicit_pattern_moves.ce ======
-
-Error at line 23, column 8
+Error at implicit_pattern_moves.ce:23:8
 22 │ val effect = Effect.hold(Buffer(5))
 23 │ match effect
            ╘════╛ Cannot move 'Effect' values implicitly
 
-Error at line 35, column 8
+Error at implicit_pattern_moves.ce:35:8
 34 │ val effect = Effect.two(Buffer(1), Buffer(2))
 35 │ match effect
            ╘════╛ Cannot move 'Effect' values implicitly

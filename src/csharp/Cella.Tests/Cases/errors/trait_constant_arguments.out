@@ -1,12 +1,9 @@
-
-====== trait_constant_arguments.ce ======
-
-Error at line 14, column 30
+Error at trait_constant_arguments.ce:14:30
 13 │ 
 14 │ unbounded[T]: fun -> u32 = T.bits
                                   ╘══╛ Type 'T' has no member 'bits'
 
-Error at line 15, column 42
+Error at trait_constant_arguments.ce:15:42
 14 │ unbounded[T]: fun -> u32 = T.bits
 15 │ arithmetic[T: Integer]: fun -> array[u8, T.bits / 8]
                                               ╘════════╛ Cannot use arithmetic on value parameters in generic arguments

@@ -1,13 +1,10 @@
-
-====== label_typos.ce ======
-
-Error at line 7, column 9
+Error at label_typos.ce:7:9
 6 │ {
 7 │     break outr
               ╘══╛ Symbol 'outr' not found in this scope
                  | Did you mean 'outer'?
 
-Error at line 18, column 9
+Error at label_typos.ce:18:9
 17 │ {
 18 │     break outre
                ╘═══╛ 'outre' is not a label

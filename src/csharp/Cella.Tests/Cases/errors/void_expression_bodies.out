@@ -1,12 +1,9 @@
-
-====== void_expression_bodies.ce ======
-
-Error at line 3, column 13
+Error at void_expression_bodies.ce:3:13
 2 │ 
 3 │ noop: fun = 5
                 ^ Cannot use values as statements
 
-Error at line 4, column 22
+Error at void_expression_bodies.ce:4:22
 3 │ noop: fun = 5
 4 │ twice: fun(x: i32) = x * 2
                          ╘═══╛ Cannot use values as statements

@@ -1,7 +1,4 @@
-
-====== main_value_parameters.ce ======
-
-Error at line 3, column 6
+Error at main_value_parameters.ce:3:6
 2 │ 
 3 │ main[N: const usize]: fun -> i32 = 0
          ^ Cannot declare value parameters on 'main'

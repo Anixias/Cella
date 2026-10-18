@@ -1,32 +1,29 @@
-
-====== template_holes.ce ======
-
-Error at line 29, column 8
+Error at template_holes.ce:29:8
 28 │ val c: cstr = "x"
 29 │ say("{p} {count}")
            ^ 'Point' doesn't implement 'Display'
 
-Error at line 30, column 6
+Error at template_holes.ce:30:6
 29 │ say("{p} {count}")
 30 │ say(c)
          ^ Cannot convert type 'cstr' to 'fstr[Display]'
 
-Error at line 31, column 6
+Error at template_holes.ce:31:6
 30 │ say(c)
 31 │ say(5)
          ^ Cannot convert type 'integer literal' to 'fstr[Display]'
 
-Error at line 32, column 15
+Error at template_holes.ce:32:15
 31 │ say(5)
 32 │ val a = fstr[Point]("x")
                   ╘═══╛ 'Point' is not a trait
 
-Error at line 33, column 24
+Error at template_holes.ce:33:24
 32 │ val a = fstr[Point]("x")
 33 │ val b = fstr[Display](p)
                            ^ Cannot convert type 'Point' to 'fstr[Display]'
 
-Error at line 34, column 10
+Error at template_holes.ce:34:10
 33 │ val b = fstr[Display](p)
 34 │ val d = fstr[Display]()
              ╘═════════════╛ No constructor for 'fstr[Display]' accepts these arguments

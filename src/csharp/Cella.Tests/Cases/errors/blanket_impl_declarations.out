@@ -1,32 +1,29 @@
-
-====== blanket_impl_declarations.ce ======
-
-Error at line 23, column 11
+Error at blanket_impl_declarations.ce:23:11
 22 │ 
 23 │ [T]: impl Size
                ╘══╛ 'T' needs 'Size.size'
 
-Error at line 30, column 5
+Error at blanket_impl_declarations.ce:30:5
 29 │ 
 30 │ [T, U]: impl Describe
          ^ Blanket impls take one type parameter
 
-Error at line 35, column 2
+Error at blanket_impl_declarations.ce:35:2
 34 │ 
 35 │ [i32]: impl Describe
       ╘═╛ Expected a type parameter
 
-Error at line 40, column 2
+Error at blanket_impl_declarations.ce:40:2
 39 │ 
 40 │ [N: const usize]: impl Describe
       ^ Expected a type parameter
 
-Error at line 50, column 50
+Error at blanket_impl_declarations.ce:50:50
 49 │ 
 50 │ plainName: fun(imm plain: Plain) -> cstr = plain.name()
                                                       ╘══╛ Type 'Plain' has no member 'name'
 
-Error at line 51, column 47
+Error at blanket_impl_declarations.ce:51:47
 50 │ plainName: fun(imm plain: Plain) -> cstr = plain.name()
 51 │ anyName[T]: fun(imm value: T) -> cstr = value.name()
                                                    ╘══╛ Type 'T' has no member 'name'

@@ -1,12 +1,9 @@
-
-====== main.ce ======
-
-Error at line 6, column 10
+Error at main.ce:6:10
 5 │ var k = 3
 6 │ val u = game.Thing(@k)
             ╘════════════╛ 'new' is private to its module
 
-Error at line 7, column 6
+Error at main.ce:7:6
 6 │ val u = game.Thing(@k)
 7 │ ret show(1)
         ╘══╛ 'show' is private to its file

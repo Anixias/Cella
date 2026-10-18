@@ -1,22 +1,19 @@
-
-====== never_arguments.ce ======
-
-Error at line 12, column 9
+Error at never_arguments.ce:12:9
 11 │ {
 12 │     ret id[never](abort())
                 ╘═══╛ 'never' can only be a return type
 
-Error at line 15, column 29
+Error at never_arguments.ce:15:29
 14 │ 
 15 │ size: fun -> usize = sizeOf(never)
                                  ╘═══╛ 'never' can only be a return type
 
-Error at line 16, column 36
+Error at never_arguments.ce:16:36
 15 │ size: fun -> usize = sizeOf(never)
 16 │ pointer: fun -> usize = sizeOf(ptr[never])
                                         ╘═══╛ 'never' can only be a return type
 
-Error at line 17, column 39
+Error at never_arguments.ce:17:39
 16 │ pointer: fun -> usize = sizeOf(ptr[never])
 17 │ elements: fun -> usize = sizeOf(array[never, 2])
                                            ╘═══╛ 'never' can only be a return type

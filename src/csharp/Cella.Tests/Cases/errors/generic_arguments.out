@@ -1,27 +1,24 @@
-
-====== generic_arguments.ce ======
-
-Error at line 5, column 15
+Error at generic_arguments.ce:5:15
 4 │ {
 5 │     var pointer: ptr[i32, 3]
                      ╘═════════╛ 'ptr' takes one generic argument
 
-Error at line 6, column 21
+Error at generic_arguments.ce:6:21
 5 │ var pointer: ptr[i32, 3]
 6 │ var numbers: array[3, i32]
                        ^ '3' is not a type
 
-Error at line 6, column 24
+Error at generic_arguments.ce:6:24
 5 │ var pointer: ptr[i32, 3]
 6 │ var numbers: array[3, i32]
                           ╘═╛ 'i32' is not a constant
 
-Error at line 7, column 12
+Error at generic_arguments.ce:7:12
 6 │ var numbers: array[3, i32]
 7 │ var many: array[i32, 3, 4]
               ╘══════════════╛ 'array' takes 2 generic arguments
 
-Error at line 8, column 16
+Error at generic_arguments.ce:8:16
 7 │ var many: array[i32, 3, 4]
 8 │ var slot: ptr[3]
                   ^ '3' is not a type

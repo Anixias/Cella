@@ -1,12 +1,9 @@
-
-====== constructor_argument_exits.ce ======
-
-Warning at line 61, column 2
+Warning at constructor_argument_exits.ce:61:2
 60 │ val pair = Pair(Part(1), ret 2)
 61 │ ret pair.a.id
      ^ Unreachable code
 
-Warning at line 67, column 2
+Warning at constructor_argument_exits.ce:67:2
 66 │ val built = Built(ret 3)
 67 │ ret built.id
      ^ Unreachable code

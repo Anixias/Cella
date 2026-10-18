@@ -1,7 +1,4 @@
-
-====== invalid_utf8.ce ======
-
-Error at line 5, column 14
+Error at invalid_utf8.ce:5:14
 4 │ {
 5 │     val s = "caf�"
                     ^ Invalid UTF-8

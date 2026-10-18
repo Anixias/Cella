@@ -1,12 +1,9 @@
-
-====== char_constant_checks.ce ======
-
-Error at line 5, column 10
+Error at char_constant_checks.ce:5:10
 4 │ {
 5 │     val x = u32('a') + u32(4294967295)
                 ╘════════════════════════╛ Addition overflows 'u32'
 
-Error at line 6, column 14
+Error at char_constant_checks.ce:6:14
 5 │ val x = u32('a') + u32(4294967295)
 6 │ val d = 5 / i32(u32('a') - 97)
                 ╘════════════════╛ Division by zero

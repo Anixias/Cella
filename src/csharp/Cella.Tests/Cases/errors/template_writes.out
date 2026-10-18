@@ -1,7 +1,4 @@
-
-====== template_writes.ce ======
-
-Error at line 10, column 2
+Error at template_writes.ce:10:2
  9 │ {
 10 │     text.holes = 2
          ╘════════╛ Cannot reassign read-only properties

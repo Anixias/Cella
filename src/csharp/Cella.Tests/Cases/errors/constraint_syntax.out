@@ -1,17 +1,14 @@
-
-====== constraint_syntax.ce ======
-
-Error at line 3, column 10
+Error at constraint_syntax.ce:3:10
 2 │ 
 3 │ first[T: 3]: fun -> i32 = 0
              ^ Expected a constraint
 
-Error at line 5, column 17
+Error at constraint_syntax.ce:5:17
 4 │ 
 5 │ second[T: Shape[]: fun -> i32 = 0
                     ^ Expected a type
 
-Error at line 12, column 21
+Error at constraint_syntax.ce:12:21
 11 │ 
 12 │ box[T: noref]: impl ,
                          ^ Expected a trait or '{'

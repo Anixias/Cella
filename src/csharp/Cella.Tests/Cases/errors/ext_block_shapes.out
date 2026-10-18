@@ -1,28 +1,25 @@
-
-====== ext_block_shapes.ce ======
-
-Error at line 5, column 31
+Error at ext_block_shapes.ce:5:31
 4 │ {
 5 │     puts: fun(text: cstr) -> i32 = 0
                                      ^ Cannot declare bodies for 'ext' functions
 
-Error at line 6, column 26
+Error at ext_block_shapes.ce:6:26
 5 │ puts: fun(text: cstr) -> i32 = 0
 6 │ abs: fun(x: i32) -> i32 { ret x }
                             ^ Cannot declare bodies for 'ext' functions
 
-Error at line 7, column 19
+Error at ext_block_shapes.ce:7:19
 6 │ abs: fun(x: i32) -> i32 { ret x }
 7 │ labs: fun(x: i32 -> i32
                      ╘╛ Expected ',' or ')'
                       | To match the '(' on line 7
 
-Error at line 8, column 13
+Error at ext_block_shapes.ce:8:13
 7 │ labs: fun(x: i32 -> i32
 8 │ fabs: fun(x) -> f64
                ^ Expected ':' and a type
 
-Error at line 13, column 2
+Error at ext_block_shapes.ce:13:2
 12 │ {
 13 │     pvt
          ╘═╛ Cannot use 'pvt' in 'ext' blocks

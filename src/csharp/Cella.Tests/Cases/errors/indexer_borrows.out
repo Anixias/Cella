@@ -1,18 +1,15 @@
-
-====== indexer_borrows.ce ======
-
-Error at line 23, column 17
+Error at indexer_borrows.ce:23:17
 22 │ {
 23 │     var kept = imm Buffer([7, 8])[0]
                         ╘════════════╛ Cannot borrow unstored values
 
-Error at line 29, column 6
+Error at indexer_borrows.ce:29:6
 28 │ 
 29 │ ret kept
          ╘══╛ Cannot use borrows of dropped values
             | Dropped on line 27
 
-Error at line 35, column 6
+Error at indexer_borrows.ce:35:6
 34 │ val local = Buffer([3, 4])
 35 │ ret imm local[0]
          ╘══════════╛ Cannot return borrows of local variables

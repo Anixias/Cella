@@ -1,12 +1,9 @@
-
-====== main.ce ======
-
-Error at line 7, column 13
+Error at main.ce:7:13
 6 │ u.grow()
 7 │ val p = @u.length
                ╘════╛ 'length' is read-only outside its type
 
-Error at line 8, column 21
+Error at main.ce:8:21
 7 │ val p = @u.length
 8 │ val q = @game.Unit.count
                        ╘═══╛ 'count' is read-only outside its type

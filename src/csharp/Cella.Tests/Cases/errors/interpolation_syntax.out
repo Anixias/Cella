@@ -1,38 +1,35 @@
-
-====== interpolation_syntax.ce ======
-
-Error at line 5, column 9
+Error at interpolation_syntax.ce:5:9
 4 │ {
 5 │     ret "x{}y"
                ^ Expected an expression
 
-Error at line 10, column 13
+Error at interpolation_syntax.ce:10:13
  9 │ {
 10 │     ret "x{"a" "b"}y"
                     ╘═╛ Expected '}'
                       | To match the '{' on line 10
 
-Error at line 15, column 14
+Error at interpolation_syntax.ce:15:14
 14 │ {
 15 │     ret "x{"a" +}y"
                      ^ Expected an expression
 
-Error at line 20, column 8
+Error at interpolation_syntax.ce:20:8
 19 │ {
 20 │     ret "x{"a"
                ^ Expected '}' to close this '{'
 
-Error at line 25, column 9
+Error at interpolation_syntax.ce:25:9
 24 │ {
 25 │     ret "x{:spec}y"
                 ^ Expected an expression
 
-Error at line 30, column 6
+Error at interpolation_syntax.ce:30:6
 29 │ {
 30 │     ret "x{"a":\q}y"
              ╘══════════╛ Invalid escape sequence in string literal
 
-Error at line 35, column 8
+Error at interpolation_syntax.ce:35:8
 34 │ {
 35 │     ret "x{"a":spec
                ^ Expected '}' to close this '{'

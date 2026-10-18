@@ -1,32 +1,29 @@
-
-====== binding_writes.ce ======
-
-Error at line 28, column 3
+Error at binding_writes.ce:28:3
 27 │ if effect is hit(val n)
 28 │     n = 2
          ^ Cannot reassign read-only pattern bindings
 
-Error at line 34, column 4
+Error at binding_writes.ce:34:4
 33 │ {
 34 │     values[0] = 3
          ╘═══════╛ Cannot reassign read-only pattern bindings
 
-Error at line 38, column 4
+Error at binding_writes.ce:38:4
 37 │ {
 38 │     buffer.id = 4
          ╘═══════╛ Cannot reassign read-only pattern bindings
 
-Error at line 39, column 4
+Error at binding_writes.ce:39:4
 38 │ buffer.id = 4
 39 │ buffer = Buffer(5)
      ╘════╛ Cannot reassign read-only pattern bindings
 
-Error at line 40, column 14
+Error at binding_writes.ce:40:14
 39 │ buffer = Buffer(5)
 40 │ touch(mut buffer)
                ╘════╛ Cannot mutably borrow read-only pattern bindings
 
-Error at line 47, column 22
+Error at binding_writes.ce:47:22
 46 │ {
 47 │     hold(val owned) => owned.id = 7
                             ╘══════╛ Cannot reassign read-only pattern bindings

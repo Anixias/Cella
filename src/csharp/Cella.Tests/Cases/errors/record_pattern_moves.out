@@ -1,17 +1,14 @@
-
-====== record_pattern_moves.ce ======
-
-Error at line 30, column 14
+Error at record_pattern_moves.ce:30:14
 29 │ {
 30 │     Holder(own name) => {}
                     ╘══╛ Cannot move fields out of values with destructors
 
-Error at line 40, column 12
+Error at record_pattern_moves.ce:40:12
 39 │ {
 40 │     Pair(own first) => {}
                   ╘═══╛ Cannot move read-only parameters
 
-Error at line 54, column 10
+Error at record_pattern_moves.ce:54:10
 53 │ 
 54 │ val q = p
              ^ Cannot use partly moved values

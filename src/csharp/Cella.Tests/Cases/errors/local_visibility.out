@@ -1,12 +1,9 @@
-
-====== local_visibility.ce ======
-
-Error at line 5, column 9
+Error at local_visibility.ce:5:9
 4 │ {
 5 │     val x: pvt i32 = 1
                ╘═╛ Cannot use 'pvt' on local variables
 
-Error at line 6, column 9
+Error at local_visibility.ce:6:9
 5 │ val x: pvt i32 = 1
 6 │ var y: mod i32 = 2
            ╘═╛ Cannot use 'mod' on local variables

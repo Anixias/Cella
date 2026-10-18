@@ -1,27 +1,24 @@
-
-====== uninferred_locals.ce ======
-
-Error at line 12, column 6
+Error at uninferred_locals.ce:12:6
 11 │ {
 12 │     var p
              ^ Cannot infer the type of 'p'
 
-Error at line 19, column 6
+Error at uninferred_locals.ce:19:6
 18 │ var buffer = [u8(1), u8(2)]
 19 │ val q  @buffer
          ^ Cannot infer the type of 'q'
 
-Error at line 25, column 13
+Error at uninferred_locals.ce:25:13
 24 │ {
 25 │     var pair = pair(1)
                     ╘═════╛ Symbol 'pair' not found in this scope
 
-Error at line 31, column 10
+Error at uninferred_locals.ce:31:10
 30 │ {
 31 │     val e = []
                  ╘╛ Cannot infer the type of '[]'
 
-Error at line 32, column 16
+Error at uninferred_locals.ce:32:16
 31 │ val e = []
 32 │ val b = first([])
                    ╘╛ Cannot infer the type of '[]'

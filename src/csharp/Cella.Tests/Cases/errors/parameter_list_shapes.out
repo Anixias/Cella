@@ -1,33 +1,30 @@
-
-====== parameter_list_shapes.ce ======
-
-Error at line 3, column 15
+Error at parameter_list_shapes.ce:3:15
 2 │ 
 3 │ untyped: fun(x) -> i32 = 0
                   ^ Expected ':' and a type
 
-Error at line 5, column 21
+Error at parameter_list_shapes.ce:5:21
 4 │ 
 5 │ trailing: fun(x: i32,) -> i32 = x
                         ^ Cannot end lists with ','
 
-Error at line 7, column 16
+Error at parameter_list_shapes.ce:7:16
 6 │ 
 7 │ modes: fun(mut own x: i32) {}
                    ╘═╛ Cannot combine 'mut' and 'own'
 
-Error at line 9, column 19
+Error at parameter_list_shapes.ce:9:19
 8 │ 
 9 │ comma: fun(a: i32 b: i32) -> i32 = a
                       ^ Expected ',' or ')'
                       | To match the '(' on line 9
 
-Error at line 11, column 31
+Error at parameter_list_shapes.ce:11:31
 10 │ 
 11 │ variadic: ext fun(f: cstr, ...) -> i32 = 5
                                    ^ Expected a parameter name
 
-Error at line 16, column 15
+Error at parameter_list_shapes.ce:16:15
 15 │ n: i32
 16 │ get: fun(self: P) -> i32 = 1
                   ^ Cannot declare a type for 'self'

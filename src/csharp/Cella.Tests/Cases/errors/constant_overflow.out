@@ -1,52 +1,49 @@
-
-====== constant_overflow.ce ======
-
-Error at line 3, column 19
+Error at constant_overflow.ce:3:19
 2 │ 
 3 │ limit: const u8 = u8(200) + 100
                       ╘═══════════╛ Addition overflows 'u8'
 
-Error at line 7, column 18
+Error at constant_overflow.ce:7:18
 6 │ {
 7 │     low: const i8 = i8(-100) - 100
                         ╘════════════╛ Subtraction overflows 'i8'
 
-Error at line 14, column 18
+Error at constant_overflow.ce:14:18
 13 │ {
 14 │     val typed: u8 = u8(200) + 100
                          ╘═══════════╛ Addition overflows 'u8'
 
-Error at line 15, column 17
+Error at constant_overflow.ce:15:17
 14 │ val typed: u8 = u8(200) + 100
 15 │ val fallback = i32(2147483647) + 1
                     ╘═════════════════╛ Addition overflows 'i32'
 
-Error at line 16, column 23
+Error at constant_overflow.ce:16:23
 15 │ val fallback = i32(2147483647) + 1
 16 │ val difference: u8 = u8(3) - 5
                           ╘═══════╛ Subtraction overflows 'u8'
 
-Error at line 17, column 20
+Error at constant_overflow.ce:17:20
 16 │ val difference: u8 = u8(3) - 5
 17 │ val product: i8 = i8(64) * 2
                        ╘════════╛ Multiplication overflows 'i8'
 
-Error at line 18, column 25
+Error at constant_overflow.ce:18:25
 17 │ val product: i8 = i8(64) * 2
 18 │ val argument = takesU8(u8(200) + 100)
                             ╘═══════════╛ Addition overflows 'u8'
 
-Error at line 20, column 14
+Error at constant_overflow.ce:20:14
 19 │ const base: u8 = 200
 20 │ val local = base + 100
                  ╘════════╛ Addition overflows 'u8'
 
-Error at line 22, column 16
+Error at constant_overflow.ce:22:16
 21 │ const smallest: i32 = -2147483648
 22 │ val negated = -smallest
                    ╘═══════╛ Negation overflows 'i32'
 
-Error at line 23, column 20
+Error at constant_overflow.ce:23:20
 22 │ val negated = -smallest
 23 │ val nested: u8 = (u8(200) + 100) - 100
                        ╘═══════════╛ Addition overflows 'u8'

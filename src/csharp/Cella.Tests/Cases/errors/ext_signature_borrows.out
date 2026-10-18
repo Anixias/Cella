@@ -1,56 +1,53 @@
-
-====== ext_signature_borrows.ce ======
-
-Error at line 35, column 18
+Error at ext_signature_borrows.ce:35:18
 34 │ {
 35 │     puts: fun(text: str) -> i32
                          ╘═╛ Cannot use 'str' in 'ext' signatures
 
-Error at line 36, column 15
+Error at ext_signature_borrows.ce:36:15
 35 │ puts: fun(text: str) -> i32
 36 │ take: fun(h: Holder) -> i32
                   ╘════╛ Cannot use 'Holder' in 'ext' signatures
                        | 'Holder' contains 'dyn[Shape]'
 
-Error at line 37, column 19
+Error at ext_signature_borrows.ce:37:19
 36 │ take: fun(h: Holder) -> i32
 37 │ takeWrap: fun(w: Wrap)
                       ╘══╛ Cannot use 'Wrap' in 'ext' signatures
                          | 'Wrap' contains 'dyn[Shape]'
 
-Error at line 38, column 29
+Error at ext_signature_borrows.ce:38:29
 37 │ takeWrap: fun(w: Wrap)
 38 │ getenv: fun(name: cstr) -> imm[u8]
                                 ╘═════╛ Cannot use 'imm[u8]' in 'ext' signatures
 
-Error at line 39, column 15
+Error at ext_signature_borrows.ce:39:15
 38 │ getenv: fun(name: cstr) -> imm[u8]
 39 │ look: fun(v: View)
                   ╘══╛ Cannot use 'View' in 'ext' signatures
 
-Error at line 40, column 21
+Error at ext_signature_borrows.ce:40:21
 39 │ look: fun(v: View)
 40 │ numbers: fun(list: array[i32, 2])
                         ╘═══════════╛ Cannot use 'array[i32, 2]' in 'ext' signatures
 
-Error at line 41, column 15
+Error at ext_signature_borrows.ce:41:15
 40 │ numbers: fun(list: array[i32, 2])
 41 │ make: fun -> array[u8, 4]
                   ╘══════════╛ Cannot use 'array[u8, 4]' in 'ext' signatures
 
-Error at line 43, column 16
+Error at ext_signature_borrows.ce:43:16
 42 │ read: fun(imm data: array[u8, 8]) -> usize
 43 │ outer: fun(o: Outer)
                    ╘═══╛ Cannot use 'Outer' in 'ext' signatures
                        | 'Outer' contains 'dyn[Shape]'
 
-Error at line 44, column 16
+Error at ext_signature_borrows.ce:44:16
 43 │ outer: fun(o: Outer)
 44 │ calls: fun(c: Callbacks)
                    ╘═══════╛ Cannot use 'Callbacks' in 'ext' signatures
                            | 'Callbacks' contains 'fun[]'
 
-Error at line 48, column 19
+Error at ext_signature_borrows.ce:48:19
 47 │ 
 48 │ visit: ext fun(v: View) -> i32 = 0
                        ╘══╛ Cannot use 'View' in 'ext' signatures

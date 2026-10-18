@@ -1,27 +1,24 @@
-
-====== mut_parameter_refills.ce ======
-
-Error at line 33, column 11
+Error at mut_parameter_refills.ce:33:11
 32 │ {
 33 │     take(own buffer)
                   ╘════╛ Cannot leave 'mut' parameters moved
 
-Error at line 38, column 16
+Error at mut_parameter_refills.ce:38:16
 37 │ {
 38 │     val old = own pair.left
                        ╘═══════╛ Cannot leave 'mut' parameters partly moved
 
-Error at line 44, column 16
+Error at mut_parameter_refills.ce:44:16
 43 │ {
 44 │     val old = own buffer
                        ╘════╛ Cannot leave 'mut' parameters moved
 
-Error at line 68, column 12
+Error at mut_parameter_refills.ce:68:12
 67 │ self.buffer = make(id)
 68 │ keep(own self)
               ╘══╛ Cannot leave 'self' moved
 
-Error at line 74, column 21
+Error at mut_parameter_refills.ce:74:21
 73 │ {
 74 │     val copy: Buffer = buffer
                             ╘════╛ Cannot move 'Buffer' values implicitly

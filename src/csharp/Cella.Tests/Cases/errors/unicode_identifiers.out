@@ -1,12 +1,9 @@
-
-====== unicode_identifiers.ce ======
-
-Error at line 5, column 6
+Error at unicode_identifiers.ce:5:6
 4 │ {
 5 │     val café = 1
             ╘══╛ 'café' is declared more than once in this scope
 
-Error at line 6, column 6
+Error at unicode_identifiers.ce:6:6
 5 │ val café = 1
 6 │ val café = 2
         ╘══╛ 'café' is declared more than once in this scope

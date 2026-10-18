@@ -1,22 +1,19 @@
-
-====== bad_unicode_escape.ce ======
-
-Error at line 10, column 7
+Error at bad_unicode_escape.ce:10:7
  9 │ {
 10 │     puts("\uZZZZ")
               ╘══════╛ Invalid escape sequence in string literal
 
-Error at line 15, column 7
+Error at bad_unicode_escape.ce:15:7
 14 │ {
 15 │     puts("\uD800")
               ╘══════╛ Invalid escape sequence in string literal
 
-Error at line 20, column 7
+Error at bad_unicode_escape.ce:20:7
 19 │ {
 20 │     puts("\U00110000")
               ╘══════════╛ Invalid escape sequence in string literal
 
-Error at line 25, column 7
+Error at bad_unicode_escape.ce:25:7
 24 │ {
 25 │     puts("\u12")
               ╘════╛ Invalid escape sequence in string literal

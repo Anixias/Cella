@@ -1,17 +1,14 @@
-
-====== for_syntax.ce ======
-
-Error at line 5, column 6
+Error at for_syntax.ce:5:6
 4 │ {
 5 │     for in 0..3
             ╘╛ Expected a name
 
-Error at line 12, column 8
+Error at for_syntax.ce:12:8
 11 │ {
 12 │     for x 0..3
                ^ Expected 'in'
 
-Error at line 23, column 2
+Error at for_syntax.ce:23:2
 22 │     i += 1
 23 │ }
      ^ Expected 'while'

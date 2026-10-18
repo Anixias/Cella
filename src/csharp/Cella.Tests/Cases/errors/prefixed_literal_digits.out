@@ -1,32 +1,29 @@
-
-====== prefixed_literal_digits.ce ======
-
-Error at line 5, column 10
+Error at prefixed_literal_digits.ce:5:10
 4 │ {
 5 │     val a = 0o78
                 ╘══╛ Invalid digit '8' in octal literal
 
-Error at line 6, column 10
+Error at prefixed_literal_digits.ce:6:10
 5 │ val a = 0o78
 6 │ val b = 0xFFq8
             ╘════╛ Invalid suffix 'q8'
 
-Error at line 7, column 10
+Error at prefixed_literal_digits.ce:7:10
 6 │ val b = 0xFFq8
 7 │ val c = 255q8
             ╘═══╛ Invalid suffix 'q8'
 
-Error at line 8, column 10
+Error at prefixed_literal_digits.ce:8:10
 7 │ val c = 255q8
 8 │ val d = 0xFFU8
             ╘════╛ Invalid suffix 'U8'
 
-Error at line 9, column 10
+Error at prefixed_literal_digits.ce:9:10
 8 │ val d = 0xFFU8
 9 │ val e = 0b102
             ╘═══╛ Invalid digit '2' in binary literal
 
-Error at line 10, column 10
+Error at prefixed_literal_digits.ce:10:10
  9 │ val e = 0b102
 10 │ val f = 0o
              ╘╛ Expected octal digits

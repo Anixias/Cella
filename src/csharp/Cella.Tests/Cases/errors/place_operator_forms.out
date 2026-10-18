@@ -1,12 +1,9 @@
-
-====== place_operator_forms.ce ======
-
-Error at line 24, column 19
+Error at place_operator_forms.ce:24:19
 23 │ val b = Box(@x)
 24 │ printf("%d\n", (*b).id)
                       ^ 'Box' has no read-only '*'
 
-Error at line 25, column 17
+Error at place_operator_forms.ce:25:17
 24 │ printf("%d\n", (*b).id)
 25 │ printf("%d\n", b.id)
                     ^ 'Box' has no read-only '*'

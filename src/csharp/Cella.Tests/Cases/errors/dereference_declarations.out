@@ -1,47 +1,44 @@
-
-====== dereference_declarations.ce ======
-
-Error at line 12, column 2
+Error at dereference_declarations.ce:12:2
 11 │ 
 12 │ *: op -> imm[Buffer] = imm *ptr[Buffer](null)
      ^ '*' operators need 'self' or two parameters
 
-Error at line 19, column 12
+Error at dereference_declarations.ce:19:12
 18 │ 
 19 │ *: op(own self) -> imm[Buffer] = imm *self.pointer
                ╘══╛ Cannot take 'own self' in '*' operators
 
-Error at line 26, column 14
+Error at dereference_declarations.ce:26:14
 25 │ 
 26 │ *: op(self, index: i32) -> imm[Buffer] = imm *self.pointer
                  ╘═══╛ Cannot take parameters in '*' operators with 'self'
 
-Error at line 40, column 17
+Error at dereference_declarations.ce:40:17
 39 │ 
 40 │ *: op(self) -> mut[Buffer] = mut *self.pointer
                     ╘═════════╛ Cannot return 'mut[Buffer]' from '*' with 'self'
 
-Error at line 42, column 21
+Error at dereference_declarations.ce:42:21
 41 │ 
 42 │ *: op(mut self) -> imm[Buffer] = imm *self.pointer
                         ╘═════════╛ Cannot return 'imm[Buffer]' from '*' with 'mut self'
 
-Error at line 49, column 2
+Error at dereference_declarations.ce:49:2
 48 │ 
 49 │ *: op(self) -> imm[Buffer] = imm *self.pointer
      ^ '*' with 'self' is declared more than once in 'Twice'
 
-Error at line 51, column 2
+Error at dereference_declarations.ce:51:2
 50 │ 
 51 │ *: op(self) -> imm[Buffer] = imm *self.pointer
      ^ '*' with 'self' is declared more than once in 'Twice'
 
-Error at line 59, column 17
+Error at dereference_declarations.ce:59:17
 58 │ 
 59 │ *: op(self) -> imm[Buffer] = imm *self.pointer
                     ╘═════════╛ Cannot declare '*' operators with different target types
 
-Error at line 61, column 21
+Error at dereference_declarations.ce:61:21
 60 │ 
 61 │ *: op(mut self) -> mut[i32] = mut self.count
                         ╘══════╛ Cannot declare '*' operators with different target types

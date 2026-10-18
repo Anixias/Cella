@@ -1,43 +1,40 @@
-
-====== enum_syntax.ce ======
-
-Error at line 5, column 5
+Error at enum_syntax.ce:5:5
 4 │ {
 5 │     red,
            ^ Cannot separate members on separate lines with ','
 
-Error at line 11, column 9
+Error at enum_syntax.ce:11:9
 10 │ {
 11 │     hit(i32)
                 ^ Expected ':' and a type
 
-Error at line 17, column 1
+Error at enum_syntax.ce:17:1
 16 │     mend(amount: i32
 17 │ }
      ^ Expected ',' or ')'
      | To match the '(' on line 16
 
-Error at line 26, column 2
+Error at enum_syntax.ce:26:2
 25 │ {
 26 │     null
          ╘══╛ Expected a case name
 
-Error at line 33, column 11
+Error at enum_syntax.ce:33:11
 32 │ {
 33 │     fighter ret 1
                  ╘═╛ Expected '=>'
 
-Error at line 42, column 3
+Error at enum_syntax.ce:42:3
 41 │ match Role.fighter
 42 │     fighter => ret 1
          ╘═════╛ Expected '{'
 
-Error at line 42, column 11
+Error at enum_syntax.ce:42:11
 41 │ match Role.fighter
 42 │     fighter => ret 1
                  ╘╛ Expected an expression
 
-Error at line 49, column 21
+Error at enum_syntax.ce:49:21
 48 │ {
 49 │     if Role.fighter is fighter(1)
                             ╘════════╛ 'Role.fighter' holds no values

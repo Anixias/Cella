@@ -1,17 +1,14 @@
-
-====== f32_constant_overflow.ce ======
-
-Error at line 3, column 16
+Error at f32_constant_overflow.ce:3:16
 2 │ 
 3 │ big: val f32 = f32(1e300)
                    ╘════════╛ '1e300' doesn't fit in 'f32'
 
-Error at line 7, column 10
+Error at f32_constant_overflow.ce:7:10
 6 │ {
 7 │     val c = f32(1e300)
                 ╘════════╛ '1e300' doesn't fit in 'f32'
 
-Error at line 8, column 10
+Error at f32_constant_overflow.ce:8:10
 7 │ val c = f32(1e300)
 8 │ val d = f32(-1e300)
             ╘═════════╛ '-1e300' doesn't fit in 'f32'

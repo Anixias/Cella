@@ -1,12 +1,9 @@
-
-====== layout_cycle_participants.ce ======
-
-Error at line 3, column 1
+Error at layout_cycle_participants.ce:3:1
 2 │ 
 3 │ A: rec
     ^ 'A' depends on its own layout
 
-Error at line 8, column 1
+Error at layout_cycle_participants.ce:8:1
 7 │ 
 8 │ B: rec
     ^ 'B' depends on its own layout

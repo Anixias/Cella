@@ -1,12 +1,9 @@
-
-====== cstr_arithmetic.ce ======
-
-Error at line 6, column 10
+Error at cstr_arithmetic.ce:6:10
 5 │ val c: cstr = "hello"
 6 │ val d = c + 1
             ╘═══╛ No operation defined for '+' between 'cstr' and 'integer literal'
 
-Error at line 7, column 10
+Error at cstr_arithmetic.ce:7:10
 6 │ val d = c + 1
 7 │ val e = c - 1
             ╘═══╛ No operation defined for '-' between 'cstr' and 'integer literal'

@@ -1,27 +1,21 @@
-
-====== main.ce ======
-
-Error at line 6, column 33
+Error at main.ce:6:33
 5 │ 
 6 │ ambiguous: fun(x: i32) -> i32 = x.clamp(0, 10)
                                     ╘═════╛ Call to 'clamp' is ambiguous
                                           | Candidate in 'mathx.ce' on line 5
                                           | Candidate in 'mathy.ce' on line 5
 
-Error at line 7, column 39
+Error at main.ce:7:39
 6 │ ambiguous: fun(x: i32) -> i32 = x.clamp(0, 10)
 7 │ hiddenPrivate: fun(x: i32) -> i32 = x.secret()
                                           ╘════╛ Type 'i32' has no member 'secret'
 
-Error at line 8, column 38
+Error at main.ce:8:38
 7 │ hiddenPrivate: fun(x: i32) -> i32 = x.secret()
 8 │ hiddenModule: fun(x: i32) -> i32 = x.inner()
                                          ╘═══╛ Type 'i32' has no member 'inner'
 
-
-====== other.ce ======
-
-Error at line 3, column 37
+Error at other.ce:3:37
 2 │ 
 3 │ notImported: fun(x: i32) -> i32 = x.clamp(0, 10)
                                         ╘═══╛ Type 'i32' has no member 'clamp'

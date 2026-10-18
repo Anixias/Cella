@@ -1,15 +1,9 @@
-
-====== first.ce ======
-
-Error at line 3, column 22
+Error at first.ce:3:22
 2 │ 
 3 │ first: val i32 = 1 / 0
                          ^ Division by zero
 
-
-====== second.ce ======
-
-Error at line 3, column 22
+Error at second.ce:3:22
 2 │ 
 3 │ other: val i32 = 1 / 0
                          ^ Division by zero

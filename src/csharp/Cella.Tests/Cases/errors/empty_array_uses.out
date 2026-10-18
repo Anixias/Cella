@@ -1,12 +1,9 @@
-
-====== empty_array_uses.ce ======
-
-Error at line 12, column 10
+Error at empty_array_uses.ce:12:10
 11 │ {
 12 │     val x = []
                  ╘╛ Cannot infer the type of '[]'
 
-Error at line 15, column 8
+Error at empty_array_uses.ce:15:8
 14 │ val y = x[0]
 15 │ ret f([])
            ╘╛ Cannot infer the type of '[]'

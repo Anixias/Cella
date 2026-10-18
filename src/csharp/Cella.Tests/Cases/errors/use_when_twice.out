@@ -1,12 +1,9 @@
-
-====== use_when_twice.ce ======
-
-Error at line 2, column 1
+Error at use_when_twice.ce:2:1
 1 │ mod test
 2 │ use when debug
     ╘═╛ Cannot declare more than one 'use when'
 
-Error at line 3, column 1
+Error at use_when_twice.ce:3:1
 2 │ use when debug
 3 │ use when windows
     ╘═╛ Cannot declare more than one 'use when'

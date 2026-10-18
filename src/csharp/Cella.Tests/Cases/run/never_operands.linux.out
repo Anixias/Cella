@@ -1,7 +1,4 @@
-
-====== never_operands.ce ======
-
-Warning at line 38, column 2
+Warning at never_operands.ce:38:2
 37 │ 
 38 │ ret 0
      ^ Unreachable code

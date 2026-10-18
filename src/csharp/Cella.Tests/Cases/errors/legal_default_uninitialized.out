@@ -1,12 +1,9 @@
-
-====== legal_default_uninitialized.ce ======
-
-Error at line 29, column 10
+Error at legal_default_uninitialized.ce:29:10
 28 │ var r: R
 29 │ val f = v.x
              ╘═╛ Cannot use uninitialized values
 
-Error at line 30, column 6
+Error at legal_default_uninitialized.ce:30:6
 29 │ val f = v.x
 30 │ ret r.x
          ╘═╛ Cannot use uninitialized values

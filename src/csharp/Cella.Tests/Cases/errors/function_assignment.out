@@ -1,37 +1,34 @@
-
-====== function_assignment.ce ======
-
-Error at line 14, column 2
+Error at function_assignment.ce:14:2
 13 │ {
 14 │     area = area
          ╘══╛ Cannot reassign functions
 
-Error at line 15, column 2
+Error at function_assignment.ce:15:2
 14 │ area = area
 15 │ area = 5
      ╘══╛ Cannot reassign functions
 
-Error at line 16, column 2
+Error at function_assignment.ce:16:2
 15 │ area = 5
 16 │ area += 1
      ╘══╛ Cannot reassign functions
 
-Error at line 17, column 2
+Error at function_assignment.ce:17:2
 16 │ area += 1
 17 │ scale = scale
      ╘═══╛ Cannot reassign functions
 
-Error at line 18, column 2
+Error at function_assignment.ce:18:2
 17 │ scale = scale
 18 │ puts = puts
      ╘══╛ Cannot reassign functions
 
-Error at line 19, column 2
+Error at function_assignment.ce:19:2
 18 │ puts = puts
 19 │ test.area = missing
      ╘═══════╛ Cannot reassign functions
 
-Error at line 19, column 14
+Error at function_assignment.ce:19:14
 18 │ puts = puts
 19 │ test.area = missing
                  ╘═════╛ Symbol 'missing' not found in this scope

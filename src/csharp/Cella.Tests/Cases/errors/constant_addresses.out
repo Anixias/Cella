@@ -1,37 +1,34 @@
-
-====== constant_addresses.ce ======
-
-Error at line 15, column 4
+Error at constant_addresses.ce:15:4
 14 │ const pair = Pair(1, 2)
 15 │ *@limit = 5
        ╘═══╛ Cannot take the address of constants
 
-Error at line 16, column 4
+Error at constant_addresses.ce:16:4
 15 │ *@limit = 5
 16 │ *@local = 6
        ╘═══╛ Cannot take the address of constants
 
-Error at line 17, column 4
+Error at constant_addresses.ce:17:4
 16 │ *@local = 6
 17 │ *@pair.a = 9
        ╘════╛ Cannot take the address of constants
 
-Error at line 18, column 11
+Error at constant_addresses.ce:18:11
 17 │ *@pair.a = 9
 18 │ atomic *@limit += 1
               ╘═══╛ Cannot take the address of constants
 
-Error at line 19, column 19
+Error at constant_addresses.ce:19:19
 18 │ atomic *@limit += 1
 19 │ atomic release *@local = 2
                       ╘═══╛ Cannot take the address of constants
 
-Error at line 20, column 25
+Error at constant_addresses.ce:20:25
 19 │ atomic release *@local = 2
 20 │ val swapped = atomic *@limit == 4 = 5
                             ╘═══╛ Cannot take the address of constants
 
-Error at line 21, column 15
+Error at constant_addresses.ce:21:15
 20 │ val swapped = atomic *@limit == 4 = 5
 21 │ val read = *@limit
                   ╘═══╛ Cannot take the address of constants

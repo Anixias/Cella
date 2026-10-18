@@ -1,47 +1,29 @@
-
-====== five.ce ======
-
-Error at line 3, column 1
+Error at five.ce:3:1
 2 │ 
 3 │ panic: op(message: str, location: str) -> never
     ╘═══╛ 'panic' is declared more than once in 'five'
 
-
-====== five_again.ce ======
-
-Error at line 3, column 1
+Error at five_again.ce:3:1
 2 │ 
 3 │ panic: op(message: str, location: str, code: i32) -> never
     ╘═══╛ 'panic' is declared more than once in 'five'
 
-
-====== four.ce ======
-
-Error at line 3, column 11
+Error at four.ce:3:11
 2 │ 
 3 │ panic: op(message: i32, location: str) -> never
               ╘═════╛ 'panic' operators need a message that accepts 'str'
 
-
-====== one.ce ======
-
-Error at line 3, column 1
+Error at one.ce:3:1
 2 │ 
 3 │ panic: op(message: str) -> never
     ╘═══╛ 'panic' operators need two parameters
 
-
-====== three.ce ======
-
-Error at line 3, column 43
+Error at three.ce:3:43
 2 │ 
 3 │ panic: op(message: str, location: str) -> i32 = 0
                                               ╘═╛ 'panic' operators must return 'never'
 
-
-====== two.ce ======
-
-Error at line 3, column 25
+Error at two.ce:3:25
 2 │ 
 3 │ panic: op(message: str, location: i32) -> never
                             ╘══════╛ 'panic' operators need a 'str' location

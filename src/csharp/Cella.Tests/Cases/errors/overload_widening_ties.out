@@ -1,7 +1,4 @@
-
-====== overload_widening_ties.ce ======
-
-Error at line 9, column 6
+Error at overload_widening_ties.ce:9:6
 8 │ var x: i16 = 1
 9 │ ret pick(x, x)
         ╘══╛ Call to 'pick' is ambiguous

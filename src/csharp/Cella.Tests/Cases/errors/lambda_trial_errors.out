@@ -1,17 +1,14 @@
-
-====== lambda_trial_errors.ce ======
-
-Error at line 11, column 42
+Error at lambda_trial_errors.ce:11:42
 10 │ 
 11 │ missingName: fun -> i32 = apply(fun(x) = missing)
                                               ╘═════╛ Symbol 'missing' not found in this scope
 
-Error at line 13, column 42
+Error at lambda_trial_errors.ce:13:42
 12 │ 
 13 │ wrongResult: fun -> i32 = apply(fun(x) = "s")
                                               ╘═╛ Cannot convert type 'string literal' to 'i32'
 
-Error at line 15, column 28
+Error at lambda_trial_errors.ce:15:28
 14 │ 
 15 │ wrongPayload: fun -> i32 = read(some("text"))
                                 ╘══╛ No overload of 'read' accepts these arguments

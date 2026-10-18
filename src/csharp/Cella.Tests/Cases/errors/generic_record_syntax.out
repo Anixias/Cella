@@ -1,28 +1,25 @@
-
-====== generic_record_syntax.ce ======
-
-Error at line 3, column 7
+Error at generic_record_syntax.ce:3:7
 2 │ 
 3 │ empty[]: rec
           ^ Expected a type parameter name
 
-Error at line 9, column 1
+Error at generic_record_syntax.ce:9:1
 8 │ open[T: rec
 9 │ {
     ^ Expected ',' or ']'
     | To match the '[' on line 8
 
-Error at line 13, column 24
+Error at generic_record_syntax.ce:13:24
 12 │ 
 13 │ constrained[T: noref + 3]: rec
                             ^ Expected a constraint
 
-Error at line 18, column 7
+Error at generic_record_syntax.ce:18:7
 17 │ 
 18 │ maybe[T]: ext enum
            ^ Cannot declare type parameters on ext enums
 
-Error at line 23, column 7
+Error at generic_record_syntax.ce:23:7
 22 │ 
 23 │ limit[T]: val i32 = 3
            ^ Cannot declare type parameters on globals

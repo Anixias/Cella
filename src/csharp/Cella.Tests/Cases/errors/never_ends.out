@@ -1,17 +1,14 @@
-
-====== never_ends.ce ======
-
-Error at line 8, column 1
+Error at never_ends.ce:8:1
 7 │ 
 8 │ falls: fun(n: i32) -> never
     ╘═══╛ 'falls' can reach its end
 
-Error at line 16, column 1
+Error at never_ends.ce:16:1
 15 │ 
 16 │ breaks: fun -> never
      ╘════╛ 'breaks' can reach its end
 
-Error at line 24, column 1
+Error at never_ends.ce:24:1
 23 │ 
 24 │ empty: fun -> never
      ╘═══╛ 'empty' can reach its end

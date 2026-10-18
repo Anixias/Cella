@@ -1,13 +1,10 @@
-
-====== conditional_impl_members.ce ======
-
-Error at line 30, column 24
+Error at conditional_impl_members.ce:30:24
 29 │ {
 30 │     val a = box(Plain(1)).digest()
                                ╘════╛ 'digest' requires 'T: Hash'
                                     | 'Plain' doesn't implement 'Hash'
 
-Error at line 31, column 24
+Error at conditional_impl_members.ce:31:24
 30 │ val a = box(Plain(1)).digest()
 31 │ val b = box(Plain(1)).hash()
                            ╘══╛ 'hash' requires 'T: Hash'

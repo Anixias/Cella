@@ -1,32 +1,29 @@
-
-====== imm_arguments.ce ======
-
-Error at line 39, column 19
+Error at imm_arguments.ce:39:19
 38 │ val f: fun[i32 -> i32] = double
 39 │ val second = sum(imm point)
                       ╘═╛ 'p' isn't an 'imm' parameter
 
-Error at line 40, column 16
+Error at imm_arguments.ce:40:16
 39 │ val second = sum(imm point)
 40 │ val third = f(imm point.x)
                    ╘═╛ Only an argument to an 'imm' parameter can be marked 'imm'
 
-Error at line 42, column 30
+Error at imm_arguments.ce:42:30
 41 │ val fourth = token.peek() + read(Token(3))
 42 │ val back: fun[i32 -> i32] = look
                                  ╘══╛ Cannot convert type 'fun[imm i32 -> i32]' to 'fun[i32 -> i32]'
 
-Error at line 43, column 19
+Error at imm_arguments.ce:43:19
 42 │ val back: fun[i32 -> i32] = look
 43 │ val fifth = call(look)
                       ╘══╛ Cannot convert type 'fun[imm i32 -> i32]' to 'ref fun[i32 -> i32]'
 
-Error at line 44, column 20
+Error at imm_arguments.ce:44:20
 43 │ val fifth = call(look)
 44 │ val held = Holder(f)
                        ^ Cannot convert type 'fun[i32 -> i32]' to 'fun[imm i32 -> i32]'
 
-Error at line 45, column 19
+Error at imm_arguments.ce:45:19
 44 │ val held = Holder(f)
 45 │ val lambda = fun(t: Token) -> i32 = t.id
                       ^ Cannot copy 'Token'

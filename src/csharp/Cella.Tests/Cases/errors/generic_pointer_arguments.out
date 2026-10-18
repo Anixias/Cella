@@ -1,7 +1,4 @@
-
-====== generic_pointer_arguments.ce ======
-
-Error at line 7, column 13
+Error at generic_pointer_arguments.ce:7:13
 6 │ {
 7 │     val p: ptr[box] = null
                    ╘═╛ 'box' takes one generic argument

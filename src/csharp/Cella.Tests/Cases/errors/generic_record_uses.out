@@ -1,46 +1,43 @@
-
-====== generic_record_uses.ce ======
-
-Error at line 25, column 16
+Error at generic_record_uses.ce:25:16
 24 │ {
 25 │     val tooMany = box[i32, i64](1)
                        ╘═══════════╛ 'box' takes one generic argument
 
-Error at line 26, column 12
+Error at generic_record_uses.ce:26:12
 25 │ val tooMany = box[i32, i64](1)
 26 │ val bare: box = box[i32](1)
                ╘═╛ 'box' takes one generic argument
 
-Error at line 27, column 13
+Error at generic_record_uses.ce:27:13
 26 │ val bare: box = box[i32](1)
 27 │ val plain: Point[i32] = Point(1)
                 ╘════════╛ 'Point' takes no generic arguments
 
-Error at line 28, column 15
+Error at generic_record_uses.ce:28:15
 27 │ val plain: Point[i32] = Point(1)
 28 │ val unknown: bx[i32] = box[i32](1)
                   ╘╛ Type 'bx' not found in this scope
                    | Did you mean 'box'?
 
-Error at line 29, column 19
+Error at generic_record_uses.ce:29:19
 28 │ val unknown: bx[i32] = box[i32](1)
 29 │ val tokens: list[Token] = list[Token](Token("a"))
                       ╘═══╛ 'list' requires 'T: noref'
                           | 'Token' holds borrows
 
-Error at line 29, column 33
+Error at generic_record_uses.ce:29:33
 28 │ val unknown: bx[i32] = box[i32](1)
 29 │ val tokens: list[Token] = list[Token](Token("a"))
                                     ╘═══╛ 'list' requires 'T: noref'
                                         | 'Token' holds borrows
 
-Error at line 30, column 17
+Error at generic_record_uses.ce:30:17
 29 │ val tokens: list[Token] = list[Token](Token("a"))
 30 │ val view: list[imm[i32]] = list[i32](1)
                     ╘══════╛ 'list' requires 'T: noref'
                            | 'imm[i32]' holds borrows
 
-Error at line 31, column 18
+Error at generic_record_uses.ce:31:18
 30 │ val view: list[imm[i32]] = list[i32](1)
 31 │ val nested: box[box] = box[i32](1)
                      ╘═╛ 'box' takes one generic argument

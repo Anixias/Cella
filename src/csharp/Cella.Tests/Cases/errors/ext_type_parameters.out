@@ -1,37 +1,34 @@
-
-====== ext_type_parameters.ce ======
-
-Error at line 9, column 25
+Error at ext_type_parameters.ce:9:25
 8 │ 
 9 │ call[T]: fun(f: ext fun[T -> i32], imm value: T) -> i32 = f(value)
                             ^ Cannot use 'T' in 'ext' signatures
 
-Error at line 13, column 14
+Error at ext_type_parameters.ce:13:14
 12 │ {
 13 │     cb: ext fun[T -> i32]
                      ^ Cannot use 'T' in 'ext' signatures
 
-Error at line 16, column 33
+Error at ext_type_parameters.ce:16:33
 15 │ 
 16 │ make[T]: fun(cb: ext fun[i32 -> T]) -> T = cb(3)
                                      ^ Cannot use 'T' in 'ext' signatures
 
-Error at line 18, column 30
+Error at ext_type_parameters.ce:18:30
 17 │ 
 18 │ visit[T]: fun(f: ext fun[ptr[T] -> i32], items: ptr[T]) -> i32 = f(items)
                                   ^ Cannot use 'T' in 'ext' signatures
 
-Error at line 20, column 31
+Error at ext_type_parameters.ce:20:31
 19 │ 
 20 │ pairs[T]: fun(f: ext fun[Pair[T] -> i32]) -> i32 = 0
                                    ^ Cannot use 'T' in 'ext' signatures
 
-Error at line 24, column 9
+Error at ext_type_parameters.ce:24:9
 23 │ 
 24 │ both[T: ext + drop]: fun(own value: T) -> i32 = 0
              ╘═╛ Cannot combine 'ext' and 'drop'
 
-Error at line 24, column 15
+Error at ext_type_parameters.ce:24:15
 23 │ 
 24 │ both[T: ext + drop]: fun(own value: T) -> i32 = 0
                    ╘══╛ Cannot combine 'ext' and 'drop'

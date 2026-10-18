@@ -70,9 +70,6 @@ internal static class Program
 		}
 		
 		var sourcePath = paths is [var path] ? path : ".";
-		var displayRoot = Directory.Exists(sourcePath)
-			? Path.GetFullPath(sourcePath)
-			: Path.GetDirectoryName(Path.GetFullPath(sourcePath));
 		
 		var options = new BuildOptions
 		{
@@ -84,7 +81,10 @@ internal static class Program
 			EmitsAssembly = args.Contains("--emit-asm")
 		};
 		
-		var result = await new Builder(options, new ConsoleBuildOutput(displayRoot, showHints)).BuildAsync(sourcePath);
+		var result =
+			await new Builder(options, new ConsoleBuildOutput(Environment.CurrentDirectory, showHints))
+				.BuildAsync(sourcePath);
+		
 		return result.Succeeded ? 0 : 1;
 	}
 	

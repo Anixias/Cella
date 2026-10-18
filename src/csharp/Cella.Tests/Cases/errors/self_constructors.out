@@ -1,23 +1,20 @@
-
-====== self_constructors.ce ======
-
-Error at line 20, column 10
+Error at self_constructors.ce:20:10
 19 │ val p = Point(1)
 20 │ val d = Color(c)
              ╘══════╛ No constructor for 'Color' accepts argument of type 'Color'
 
-Error at line 21, column 16
+Error at self_constructors.ce:21:16
 20 │ val d = Color(c)
 21 │ val q = Point(p)
                    ^ Cannot convert type 'Point' to 'i32'
 
-Error at line 22, column 10
+Error at self_constructors.ce:22:10
 21 │ val q = Point(p)
 22 │ val e = keep(c)
              ╘══╛ 'keep' requires 'T: new(Color)'
                 | 'Color' has no constructor taking 'Color'
 
-Error at line 23, column 10
+Error at self_constructors.ce:23:10
 22 │ val e = keep(c)
 23 │ val r = keep(p)
              ╘══╛ 'keep' requires 'T: new(Point)'

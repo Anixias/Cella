@@ -1,22 +1,19 @@
-
-====== float_literal_dots.ce ======
-
-Error at line 10, column 10
+Error at float_literal_dots.ce:10:10
  9 │ {
 10 │     val a = 1.
                  ╘╛ Expected a digit after '.'
 
-Error at line 16, column 10
+Error at float_literal_dots.ce:16:10
 15 │ {
 16 │     val b = .5
                  ╘╛ Expected a digit before '.'
 
-Error at line 22, column 10
+Error at float_literal_dots.ce:22:10
 21 │ {
 22 │     val c = 1.e5
                  ╘══╛ Expected a digit after '.'
 
-Error at line 28, column 10
+Error at float_literal_dots.ce:28:10
 27 │ {
 28 │     val d = 2.E-3
                  ╘═══╛ Expected a digit after '.'

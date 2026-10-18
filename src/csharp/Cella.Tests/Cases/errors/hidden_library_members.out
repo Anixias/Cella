@@ -1,17 +1,14 @@
-
-====== main.ce ======
-
-Error at line 5, column 24
+Error at main.ce:5:24
 4 │ 
 5 │ main: fun -> i32 = lib.helper() + lib.inner() + lib.secret()
                            ╘════╛ 'lib.helper' is private to its project
 
-Error at line 5, column 39
+Error at main.ce:5:39
 4 │ 
 5 │ main: fun -> i32 = lib.helper() + lib.inner() + lib.secret()
                                           ╘═══╛ 'lib.inner' is private to its module
 
-Error at line 5, column 53
+Error at main.ce:5:53
 4 │ 
 5 │ main: fun -> i32 = lib.helper() + lib.inner() + lib.secret()
                                                         ╘════╛ 'lib.secret' is private to its file

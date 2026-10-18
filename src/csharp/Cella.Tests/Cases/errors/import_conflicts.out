@@ -1,46 +1,40 @@
-
-====== main.ce ======
-
-Error at line 3, column 14
+Error at main.ce:3:14
 2 │ 
 3 │ use geometry.Point
                  ╘═══╛ 'Point' is ambiguous
                      | Also declared in 'test'
 
-Error at line 4, column 15
+Error at main.ce:4:15
 3 │ use geometry.Point
 4 │ use geometry.[limit, area]
                   ╘═══╛ 'limit' is ambiguous
                       | Also declared in 'test'
 
-Error at line 4, column 22
+Error at main.ce:4:22
 3 │ use geometry.Point
 4 │ use geometry.[limit, area]
                          ╘══╛ 'area' is ambiguous
                             | Also declared in 'test'
 
-
-====== other.ce ======
-
-Error at line 3, column 14
+Error at other.ce:3:14
 2 │ 
 3 │ use geometry.Point
                  ╘═══╛ 'Point' is ambiguous
                      | Also declared in 'test'
 
-Error at line 5, column 1
+Error at other.ce:5:1
 4 │ 
 5 │ Point: rec { z: i32 }
     ╘═══╛ 'Point' is ambiguous
         | Also imported from 'geometry'
 
-Error at line 6, column 1
+Error at other.ce:6:1
 5 │ Point: rec { z: i32 }
 6 │ limit: val i32 = 3
     ╘═══╛ 'limit' is ambiguous
         | Also imported from 'geometry'
 
-Error at line 7, column 1
+Error at other.ce:7:1
 6 │ limit: val i32 = 3
 7 │ area: rec { z: i32 }
     ╘══╛ 'area' is ambiguous

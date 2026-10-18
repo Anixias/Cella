@@ -1,7 +1,4 @@
-
-====== undefined_ext_symbols.ce ======
-
-Error at line 5, column 2
+Error at undefined_ext_symbols.ce:5:2
 4 │ {
 5 │     cella_missing_function: fun -> i32
         ╘════════════════════╛ Cannot find 'cella_missing_function' in the linked libraries

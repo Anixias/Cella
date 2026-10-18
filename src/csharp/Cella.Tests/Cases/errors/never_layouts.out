@@ -1,17 +1,14 @@
-
-====== never_layouts.ce ======
-
-Error at line 12, column 10
+Error at never_layouts.ce:12:10
 11 │ {
 12 │     val a = sizeOf(stop())
                  ╘════════════╛ 'never' has no size
 
-Error at line 15, column 11
+Error at never_layouts.ce:15:11
 14 │ {
 15 │     val b = alignOf(break)
                  ╘════════════╛ 'never' has no alignment
 
-Error at line 18, column 6
+Error at never_layouts.ce:18:6
 17 │ 
 18 │ ret sizeOf(ret 3)
          ╘═══════════╛ 'never' has no size

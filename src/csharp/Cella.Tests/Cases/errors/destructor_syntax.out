@@ -1,7 +1,4 @@
-
-====== destructor_syntax.ce ======
-
-Error at line 7, column 11
+Error at destructor_syntax.ce:7:11
 6 │ 
 7 │ drop: op(other: Buffer)
              ╘═══╛ Destructors cannot take parameters

@@ -1,58 +1,55 @@
-
-====== method_returns.ce ======
-
-Error at line 45, column 8
+Error at method_returns.ce:45:8
 44 │ if a.hp >= b.hp
 45 │     ret imm a
              ╘═══╛ Cannot return borrows of parameters other than 'self'
 
-Error at line 46, column 7
+Error at method_returns.ce:46:7
 45 │     ret imm a
 46 │ ret imm b
          ╘═══╛ Cannot return borrows of parameters other than 'self'
 
-Error at line 49, column 55
+Error at method_returns.ce:49:55
 48 │ 
 49 │ count: fun(imm self, mut stats: Stats) -> mut[i32] = mut stats.kills
                                                           ╘═════════════╛ Cannot return borrows of parameters other than 'self'
 
-Error at line 51, column 74
+Error at method_returns.ce:51:74
 50 │ 
 51 │ pickStronger: fun(imm self, imm a: Enemy, imm b: Enemy) -> imm[Enemy] = stronger(imm a, imm b)
                                                                              ╘════════════════════╛ Cannot return borrows of parameters other than 'self'
 
-Error at line 53, column 60
+Error at method_returns.ce:53:60
 52 │ 
 53 │ countKills: fun(imm self, mut stats: Stats) -> mut[i32] = kills(mut stats)
                                                                ╘══════════════╛ Cannot return borrows of parameters other than 'self'
 
-Error at line 55, column 62
+Error at method_returns.ce:55:62
 54 │ 
 55 │ leaderOf: fun(imm self, imm other: Referee) -> imm[Enemy] = other.leader()
                                                                  ╘════════════╛ Cannot return borrows of parameters other than 'self'
 
-Error at line 57, column 56
+Error at method_returns.ce:57:56
 56 │ 
 57 │ keep: fun(imm self, own enemy: Enemy) -> imm[Enemy] = imm enemy
                                                            ╘═══════╛ Cannot return borrows of 'own' parameters
 
-Error at line 70, column 36
+Error at method_returns.ce:70:36
 69 │ 
 70 │ take: fun(own self) -> imm[i32] = imm self.x
                                        ╘════════╛ Cannot return borrows of 'own' parameters
 
-Error at line 83, column 17
+Error at method_returns.ce:83:17
 82 │ held(val buffer) => ret buffer
 83 │ empty => ret fallback
                   ╘══════╛ Cannot return borrows of parameters other than 'self'
 
-Error at line 97, column 11
+Error at method_returns.ce:97:11
 96 │ referee = Referee(1, Enemy(Buffer(2), 6))
 97 │ show(imm leader.name)
               ╘════╛ Cannot use borrows of reassigned values
                    | Reassigned on line 96
 
-Error at line 102, column 11
+Error at method_returns.ce:102:11
 101 │ buffer = Buffer(4)
 102 │ show(imm got)
                ╘═╛ Cannot use borrows of reassigned values

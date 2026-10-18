@@ -1,22 +1,19 @@
-
-====== ext_global_types.ce ======
-
-Error at line 23, column 17
+Error at ext_global_types.ce:23:17
 22 │ 
 23 │ buffer: ext val Buffer = Buffer(null)
                      ╘════╛ Cannot use types with destructors in 'ext' signatures
 
-Error at line 24, column 15
+Error at ext_global_types.ce:24:15
 23 │ buffer: ext val Buffer = Buffer(null)
 24 │ team: ext var Team = Team.red
                    ╘══╛ Cannot use plain enums in 'ext' signatures
 
-Error at line 25, column 19
+Error at ext_global_types.ce:25:19
 24 │ team: ext var Team = Team.red
 25 │ callback: ext val fun[-> i32] = fun = 1
                        ╘═════════╛ Cannot use 'fun[-> i32]' in 'ext' signatures
 
-Error at line 26, column 20
+Error at ext_global_types.ce:26:20
 25 │ callback: ext val fun[-> i32] = fun = 1
 26 │ shape: ext val ptr[dyn[Shape]] = null
                         ╘════════╛ Cannot use 'dyn[Shape]' in 'ext' signatures

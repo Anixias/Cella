@@ -1,27 +1,24 @@
-
-====== trait_constant_declarations.ce ======
-
-Error at line 11, column 2
+Error at trait_constant_declarations.ce:11:2
 10 │ {
 11 │     value: val u32 = 1
          ╘═══╛ Cannot declare static fields in traits
 
-Error at line 14, column 11
+Error at trait_constant_declarations.ce:14:11
 13 │ 
 14 │ u16: impl Integer
                ╘═════╛ 'u16' needs 'Integer.bits'
 
-Error at line 18, column 2
+Error at trait_constant_declarations.ce:18:2
 17 │ {
 18 │     bits: const i32 = 64
          ╘══╛ 'bits' doesn't match 'Integer.bits'
 
-Error at line 25, column 2
+Error at trait_constant_declarations.ce:25:2
 24 │ 
 25 │ bits: val u32 = 8
      ╘══╛ 'bits' doesn't match 'Integer.bits'
 
-Error at line 30, column 2
+Error at trait_constant_declarations.ce:30:2
 29 │ {
 30 │     limit: const u32 = 7
          ╘═══╛ Cannot declare static fields in impl blocks

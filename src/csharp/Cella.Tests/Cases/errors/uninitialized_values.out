@@ -1,22 +1,19 @@
-
-====== uninitialized_values.ce ======
-
-Error at line 25, column 2
+Error at uninitialized_values.ce:25:2
 24 │ var n: i32 = undef
 25 │ n += 1
      ^ Cannot use uninitialized values
 
-Error at line 37, column 15
+Error at uninitialized_values.ce:37:15
 36 │ 
 37 │ ret show(imm b)
                   ^ Cannot use uninitialized values
 
-Error at line 44, column 22
+Error at uninitialized_values.ce:44:22
 43 │ pair.left = make(1)
 44 │ val total = sum(imm pair) + pair.left.id + pair.right.id
                          ╘══╛ Cannot use partly initialized values
 
-Error at line 44, column 45
+Error at uninitialized_values.ce:44:45
 43 │ pair.left = make(1)
 44 │ val total = sum(imm pair) + pair.left.id + pair.right.id
                                                 ╘═══════════╛ Cannot use uninitialized values

@@ -1,13 +1,10 @@
-
-====== generic_record_moves.ce ======
-
-Error at line 11, column 7
+Error at generic_record_moves.ce:11:7
 10 │ val second = own first
 11 │ ret first
          ╘═══╛ Cannot use moved values
              | Moved on line 10
 
-Error at line 16, column 20
+Error at generic_record_moves.ce:16:20
 15 │ {
 16 │     self.value = own value
                           ╘═══╛ Cannot store new borrows in 'self'

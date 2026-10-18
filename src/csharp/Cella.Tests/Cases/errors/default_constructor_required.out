@@ -1,13 +1,10 @@
-
-====== default_constructor_required.ce ======
-
-Error at line 8, column 12
+Error at default_constructor_required.ce:8:12
 7 │ 
 8 │ new: op = default
               ╘═════╛ Cannot use 'default' when fields have no default
                     | 'id' is required
 
-Error at line 16, column 12
+Error at default_constructor_required.ce:16:12
 15 │ 
 16 │ new: op = default
                ╘═════╛ Cannot use 'default' when fields have no default

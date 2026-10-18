@@ -1,7 +1,4 @@
-
-====== char_constant_shifts.ce ======
-
-Error at line 5, column 20
+Error at char_constant_shifts.ce:5:20
 4 │ {
 5 │     val s = u32(1) << u32('a')
                           ╘══════╛ Shift amount 97 is out of range for 'u32'

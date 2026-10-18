@@ -1,7 +1,4 @@
-
-====== question_operator_flow.ce ======
-
-Error at line 11, column 11
+Error at question_operator_flow.ce:11:11
 10 │ some(own value) => value
 11 │ none => break
              ╘═══╛ Cannot use 'break' outside loops

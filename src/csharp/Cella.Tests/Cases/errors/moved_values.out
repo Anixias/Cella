@@ -1,48 +1,45 @@
-
-====== moved_values.ce ======
-
-Error at line 20, column 7
+Error at moved_values.ce:20:7
 19 │ take(own a)
 20 │ take(a)
           ^ Cannot use moved values
           | Moved on line 19
 
-Error at line 21, column 11
+Error at moved_values.ce:21:11
 20 │ take(a)
 21 │ show(imm a)
               ^ Cannot use moved values
               | Moved on line 20
 
-Error at line 22, column 6
+Error at moved_values.ce:22:6
 21 │ show(imm a)
 22 │ ret a
          ^ Cannot use moved values
          | Moved on line 20
 
-Error at line 31, column 6
+Error at moved_values.ce:31:6
 30 │ 
 31 │ ret a.id
          ╘══╛ Cannot use moved values
             | Moved on line 29
 
-Error at line 39, column 17
+Error at moved_values.ce:39:17
 38 │ for _ in 0..3
 39 │     total += take(a)
                        ^ Cannot move 'Buffer' values implicitly
 
-Error at line 39, column 17
+Error at moved_values.ce:39:17
 38 │ for _ in 0..3
 39 │     total += take(a)
                        ^ Cannot use moved values
                        | Moved here in an earlier iteration
 
-Error at line 50, column 6
+Error at moved_values.ce:50:6
 49 │ val c = own (a = make(3))
 50 │ ret a.id + b.id + c.id
          ╘══╛ Cannot use moved values
             | Moved on line 49
 
-Error at line 57, column 6
+Error at moved_values.ce:57:6
 56 │ take(own a)
 57 │ ret a.id
          ╘══╛ Cannot use moved values

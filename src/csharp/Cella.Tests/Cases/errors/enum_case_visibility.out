@@ -1,17 +1,14 @@
-
-====== enum_case_visibility.ce ======
-
-Error at line 3, column 20
+Error at enum_case_visibility.ce:3:20
 2 │ 
 3 │ Color: enum { red, pvt green, pub blue }
                        ╘═╛ Cannot declare 'pvt' cases
 
-Error at line 3, column 31
+Error at enum_case_visibility.ce:3:31
 2 │ 
 3 │ Color: enum { red, pvt green, pub blue }
                                   ╘═╛ Cannot declare 'pub' cases
 
-Error at line 8, column 2
+Error at enum_case_visibility.ce:8:2
 7 │ circle
 8 │ mod square
     ╘═╛ Cannot declare 'mod' cases

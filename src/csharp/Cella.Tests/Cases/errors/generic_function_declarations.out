@@ -1,27 +1,24 @@
-
-====== generic_function_declarations.ce ======
-
-Error at line 7, column 6
+Error at generic_function_declarations.ce:7:6
 6 │ 
 7 │ new[V]: op(own value: T)
         ^ Cannot declare type parameters on constructors
 
-Error at line 12, column 8
+Error at generic_function_declarations.ce:12:8
 11 │ 
 12 │ count[W]: i32
            ^ Cannot declare type parameters on fields
 
-Error at line 14, column 8
+Error at generic_function_declarations.ce:14:8
 13 │ 
 14 │ total[X]: var i32 = 0
            ^ Cannot declare type parameters on fields
 
-Error at line 16, column 7
+Error at generic_function_declarations.ce:16:7
 15 │ 
 16 │ size[Y]: get -> i32 = 0
           ^ Cannot declare type parameters on properties
 
-Error at line 21, column 9
+Error at generic_function_declarations.ce:21:9
 20 │ {
 21 │     native[T]: fun(value: i32) -> i32
                 ^ Cannot declare type parameters on ext functions

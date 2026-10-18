@@ -1,7 +1,4 @@
-
-====== deferred_val_closures.ce ======
-
-Error at line 6, column 16
+Error at deferred_val_closures.ce:6:16
 5 │ val x: i32
 6 │ val f = fun { x = 1 }
                   ^ Cannot assign values in closures

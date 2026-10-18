@@ -1,57 +1,54 @@
-
-====== methods.ce ======
-
-Error at line 26, column 7
+Error at methods.ce:26:7
 25 │ {
 26 │     ret self
              ╘══╛ Cannot use 'self' in static functions
 
-Error at line 31, column 3
+Error at methods.ce:31:3
 30 │ {
 31 │     restore(1)
          ╘════════╛ Cannot call methods without a receiver
 
-Error at line 38, column 7
+Error at methods.ce:38:7
 37 │ var other = Unit.make(3)
 38 │ Unit.restore(1)
           ╘═════╛ Cannot use methods through types
 
-Error at line 39, column 8
+Error at methods.ce:39:8
 38 │ Unit.restore(1)
 39 │ other.make(1)
            ╘══╛ Cannot use static functions through values
 
-Error at line 40, column 8
+Error at methods.ce:40:8
 39 │ other.make(1)
 40 │ other.fly()
            ╘═╛ Type 'Unit' has no member 'fly'
 
-Error at line 41, column 7
+Error at methods.ce:41:7
 40 │ other.fly()
 41 │ Unit.fly()
           ╘═╛ Type 'Unit' has no member 'fly'
 
-Error at line 42, column 7
+Error at methods.ce:42:7
 41 │ Unit.fly()
 42 │ Unit.hp()
           ╘╛ Cannot use fields through types
 
-Error at line 43, column 21
+Error at methods.ce:43:21
 42 │ Unit.hp()
 43 │ val method = other.restore
                         ╘═════╛ Cannot use methods as values
 
-Error at line 44, column 23
+Error at methods.ce:44:23
 43 │ val method = other.restore
 44 │ val function = other.make
                           ╘══╛ Cannot use static functions through values
 
-Error at line 45, column 2
+Error at methods.ce:45:2
 44 │ val function = other.make
 45 │ other.restore()
      ╘═══════════╛ 'restore' takes one argument
 
-Error at line 47, column 16
+Error at methods.ce:47:16
 46 │ var amount = 2
 47 │ other.restore(mut amount)
                    ╘═╛ 'amount' isn't a 'mut' parameter

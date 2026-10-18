@@ -1,12 +1,9 @@
-
-====== member_call.ce ======
-
-Error at line 13, column 19
+Error at member_call.ce:13:19
 12 │ var point: Point
 13 │ var size = point.size()
                       ╘══╛ Type 'Point' has no member 'size'
 
-Error at line 14, column 15
+Error at member_call.ce:14:15
 13 │ var size = point.size()
 14 │ var nested = helper()()
                   ╘══════╛ Cannot call a value of type 'i32'

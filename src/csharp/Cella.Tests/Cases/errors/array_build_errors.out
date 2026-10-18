@@ -1,17 +1,14 @@
-
-====== array_build_errors.ce ======
-
-Error at line 15, column 31
+Error at array_build_errors.ce:15:31
 14 │ {
 15 │     val a = array[R, 3](fun(i) = 5)
                                       ^ Cannot convert type 'integer literal' to 'R'
 
-Error at line 21, column 22
+Error at array_build_errors.ce:21:22
 20 │ {
 21 │     val b = array[R, 3](fun(i, j) = R(1))
                              ╘══════════════╛ 'fun[usize -> R]' takes one parameter
 
-Error at line 27, column 10
+Error at array_build_errors.ce:27:10
 26 │ {
 27 │     val c = array[i32, 3](5)
                  ╘══════════════╛ No constructor for 'array[i32, 3]' accepts argument of type 'integer literal'

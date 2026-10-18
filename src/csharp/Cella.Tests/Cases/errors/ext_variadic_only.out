@@ -1,17 +1,14 @@
-
-====== ext_variadic_only.ce ======
-
-Error at line 5, column 9
+Error at ext_variadic_only.ce:5:9
 4 │ {
 5 │     f: fun(...) -> i32
                ╘═╛ Expected a parameter before '...'
 
-Error at line 10, column 17
+Error at ext_variadic_only.ce:10:17
  9 │ {
 10 │     var g: ext fun[...]
                         ╘═╛ Expected a parameter before '...'
 
-Error at line 11, column 17
+Error at ext_variadic_only.ce:11:17
 10 │ var g: ext fun[...]
 11 │ var h: ext fun[... -> i32]
                     ╘═╛ Expected a parameter before '...'

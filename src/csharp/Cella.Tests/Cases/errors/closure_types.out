@@ -1,13 +1,10 @@
-
-====== closure_types.ce ======
-
-Error at line 5, column 7
+Error at closure_types.ce:5:7
 4 │ {
 5 │     run: ref fun[]
              ╘═══════╛ Cannot store borrows in records that aren't 'ref'
                      | Did you mean 'Plain: ref rec'?
 
-Error at line 8, column 12
+Error at closure_types.ce:8:12
 7 │ 
 8 │ saved: var ref fun[] = fun { }
                ╘═══════╛ Cannot store borrows in module variables

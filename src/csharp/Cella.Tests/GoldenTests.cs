@@ -23,7 +23,7 @@ public sealed class GoldenTests
 	private static readonly Regex _exitCodeLine = new(@"^\[exit code (-?\d+)\]$", RegexOptions.Multiline);
 	
 	private static readonly Regex _displayedPath =
-		new(@"<case>[^\s:']*|(?<=^====== ).+(?= ======$)", RegexOptions.Multiline);
+		new(@"<case>[^\s:']*|(?<=^(?:Error|Warning|Hint|Info) at )[^:\r\n]+(?=:\d+:\d+)", RegexOptions.Multiline);
 	
 	private static readonly AsyncLocal<TextWriter?> _compilerOutput = new();
 	
@@ -204,7 +204,9 @@ public sealed class GoldenTests
 			var (compileExitCode, compileOutput) =
 				await CompileAsync(projectPath, release, [..options, "--target", target], cancellationToken);
 			
-			compileOutput = compileOutput.Replace(caseDirectory, "<case>");
+			compileOutput = compileOutput.Replace($" at {caseDirectory}{Path.DirectorySeparatorChar}", " at ")
+				.Replace(caseDirectory, "<case>");
+			
 			if (!OperatingSystem.IsWindows())
 				compileOutput = _displayedPath.Replace(compileOutput, static match => match.Value.Replace('/', '\\'));
 			

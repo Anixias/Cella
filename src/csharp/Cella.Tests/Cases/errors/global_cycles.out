@@ -1,32 +1,29 @@
-
-====== global_cycles.ce ======
-
-Error at line 3, column 1
+Error at global_cycles.ce:3:1
 2 │ 
 3 │ Buffer: rec
     ╘════╛ 'Buffer' depends on its own layout
 
-Error at line 8, column 1
+Error at global_cycles.ce:8:1
 7 │ 
 8 │ size: const usize = sizeOf(Buffer) + 1
     ╘══╛ 'size' depends on its own value
 
-Error at line 9, column 1
+Error at global_cycles.ce:9:1
 8 │ size: const usize = sizeOf(Buffer) + 1
 9 │ first: const i32 = second + 1
     ╘═══╛ 'first' depends on its own value
 
-Error at line 10, column 1
+Error at global_cycles.ce:10:1
  9 │ first: const i32 = second + 1
 10 │ second: const i32 = first + 1
      ╘════╛ 'second' depends on its own value
 
-Error at line 11, column 1
+Error at global_cycles.ce:11:1
 10 │ second: const i32 = first + 1
 11 │ itself: const i32 = itself
      ╘════╛ 'itself' depends on its own value
 
-Error at line 12, column 1
+Error at global_cycles.ce:12:1
 11 │ itself: const i32 = itself
 12 │ lengths: const array[usize, lengths[0]] = [1]
      ╘═════╛ 'lengths' depends on its own value

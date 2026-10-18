@@ -1,18 +1,15 @@
-
-====== record_pattern_syntax.ce ======
-
-Error at line 23, column 22
+Error at record_pattern_syntax.ce:23:22
 22 │ val h = Holder(1)
 23 │ if h is Holder(count: c: i32)
                          ^ Expected ',' or ')'
                          | To match the '(' on line 23
 
-Error at line 31, column 8
+Error at record_pattern_syntax.ce:31:8
 30 │ {
 31 │     1..10 val n => n
                ╘═╛ Expected '=>'
 
-Error at line 37, column 9
+Error at record_pattern_syntax.ce:37:9
 36 │ {
 37 │     Circle val c => c.radius
                 ╘═╛ Expected '=>'

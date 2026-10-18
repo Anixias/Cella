@@ -1,7 +1,4 @@
-
-====== function_type_ellipsis.ce ======
-
-Error at line 3, column 35
+Error at function_type_ellipsis.ce:3:35
 2 │ 
 3 │ takes: fun(callback: fun[cstr, ...]) {}
                                       ^ Expected a type

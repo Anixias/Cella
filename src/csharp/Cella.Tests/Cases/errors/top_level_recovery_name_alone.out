@@ -1,12 +1,9 @@
-
-====== top_level_recovery_name_alone.ce ======
-
-Error at line 3, column 1
+Error at top_level_recovery_name_alone.ce:3:1
 2 │ 
 3 │ helper
     ╘════╛ Expected ':' after 'helper'
 
-Error at line 7, column 6
+Error at top_level_recovery_name_alone.ce:7:6
 6 │ {
 7 │     var : i32 = 1
             ^ Expected a name after 'var'

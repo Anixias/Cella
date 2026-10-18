@@ -1,63 +1,57 @@
-
-====== main.ce ======
-
-Error at line 5, column 11
+Error at main.ce:5:11
 4 │ {
 5 │     geometry.missing()
                  ╘═════╛ Module 'geometry' has no member 'missing'
 
-Error at line 6, column 15
+Error at main.ce:6:15
 5 │ geometry.missing()
 6 │ val a: i32 = geomtry.area(1, 2)
                  ╘═════╛ Symbol 'geomtry' not found in this scope
                        | Did you mean 'geometry'?
 
-Error at line 7, column 10
+Error at main.ce:7:10
 6 │ val a: i32 = geomtry.area(1, 2)
 7 │ val m = geometry
             ╘══════╛ Cannot use modules as values
 
-Error at line 8, column 2
+Error at main.ce:8:2
 7 │ val m = geometry
 8 │ geometry()
     ╘══════╛ Cannot use modules as values
 
-Error at line 9, column 10
+Error at main.ce:9:10
 8 │ geometry()
 9 │ val n = game.physics
             ╘══════════╛ Cannot use modules as values
 
-Error at line 10, column 10
+Error at main.ce:10:10
  9 │ val n = game.physics
 10 │ val t = geometry.Point
              ╘════════════╛ Cannot use types as values
 
-Error at line 11, column 2
+Error at main.ce:11:2
 10 │ val t = geometry.Point
 11 │ geometry.area(1)
      ╘═══════════╛ 'geometry.area' takes 2 arguments
 
-Error at line 13, column 15
+Error at main.ce:13:15
 12 │ val effect = geometry.Effect.none
 13 │ if effect is geometry.Other.none
                   ╘════════════╛ Expected a case of 'Effect'
 
-Error at line 15, column 15
+Error at main.ce:15:15
 14 │     ret 1
 15 │ if effect is geomtry.Effect.none
                   ╘═════╛ Module 'geomtry' not found
                         | Did you mean 'geometry'?
 
-Error at line 17, column 24
+Error at main.ce:17:24
 16 │     ret 2
 17 │ if effect is geometry.Effects.none
                            ╘═════╛ Module 'geometry' has no member 'Effects'
                                  | Did you mean 'Effect'?
 
-
-====== other.ce ======
-
-Error at line 6, column 21
+Error at other.ce:6:21
 5 │ 
 6 │ check: fun -> i32 = geometry.area()
                         ╘══════╛ Reference to 'geometry' is ambiguous

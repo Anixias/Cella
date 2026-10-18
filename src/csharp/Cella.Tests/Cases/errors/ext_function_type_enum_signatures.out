@@ -1,12 +1,9 @@
-
-====== ext_function_type_enum_signatures.ce ======
-
-Error at line 7, column 14
+Error at ext_function_type_enum_signatures.ce:7:14
 6 │ {
 7 │     cb: ext fun[Team -> i32]
                     ╘══╛ Cannot use plain enums in 'ext' signatures
 
-Error at line 10, column 30
+Error at ext_function_type_enum_signatures.ce:10:30
  9 │ 
 10 │ register: fun(cb: ext fun[-> Team]) {}
                                   ╘══╛ Cannot use plain enums in 'ext' signatures

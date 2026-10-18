@@ -1,14 +1,11 @@
-
-====== loop_source_reassign.ce ======
-
-Error at line 20, column 15
+Error at loop_source_reassign.ce:20:15
 19 │ var items = [A(1), A(2)]
 20 │ for imm b in items
                   ╘═══╛ Cannot use borrows of reassigned values
                       | Borrowed by this loop
                       | Reassigned on line 22 in an earlier iteration
 
-Error at line 23, column 18
+Error at loop_source_reassign.ce:23:18
 22 │ items = [A(3), A(4)]
 23 │ printf("%d\n", b.id)
                     ╘══╛ Cannot use borrows of reassigned values

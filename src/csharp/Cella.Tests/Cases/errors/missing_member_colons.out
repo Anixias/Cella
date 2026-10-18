@@ -1,32 +1,29 @@
-
-====== missing_member_colons.ce ======
-
-Error at line 5, column 4
+Error at missing_member_colons.ce:5:4
 4 │ {
 5 │     x i32
           ╘═╛ Expected ':' after 'x'
 
-Error at line 10, column 6
+Error at missing_member_colons.ce:10:6
  9 │ {
 10 │     get fun(self) -> i32 = 0
              ╘═╛ Expected ':' after 'get'
 
-Error at line 15, column 9
+Error at missing_member_colons.ce:15:9
 14 │ {
 15 │     get[T] fun(self) -> i32 = 0
                 ╘═╛ Expected ':' after 'get'
 
-Error at line 20, column 6
+Error at missing_member_colons.ce:20:6
 19 │ {
 20 │     new op()
              ╘╛ Expected ':' after 'new'
 
-Error at line 27, column 7
+Error at missing_member_colons.ce:27:7
 26 │ {
 27 │     drop op()
               ╘╛ Expected ':' after 'drop'
 
-Error at line 34, column 4
+Error at missing_member_colons.ce:34:4
 33 │ {
 34 │     + op(self, other: Operator) -> Operator = other
            ╘╛ Expected ':' after '+'

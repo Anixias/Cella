@@ -1,28 +1,25 @@
-
-====== new_constraint_syntax.ce ======
-
-Error at line 7, column 14
+Error at new_constraint_syntax.ce:7:14
 6 │ 
 7 │ third[T: new(3)]: fun -> i32 = 0
                  ^ Expected a type
 
-Error at line 9, column 18
+Error at new_constraint_syntax.ce:9:18
 8 │ 
 9 │ fourth[T: new(i32]: fun -> i32 = 0
                      ^ Expected ',' or ')'
                      | To match the '(' on line 9
 
-Error at line 11, column 17
+Error at new_constraint_syntax.ce:11:17
 10 │ 
 11 │ fifth[T: new(mut)]: fun -> i32 = 0
                      ^ Expected a type
 
-Error at line 13, column 18
+Error at new_constraint_syntax.ce:13:18
 12 │ 
 13 │ sixth[T: new(box[)]: fun -> i32 = 0
                       ^ Expected a type
 
-Error at line 17, column 14
+Error at new_constraint_syntax.ce:17:14
 16 │ {
 17 │     make[T: new(]: fun -> i32 = 0
                      ^ Expected a type

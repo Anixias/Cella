@@ -1,27 +1,24 @@
-
-====== borrowed_copies.ce ======
-
-Error at line 26, column 15
+Error at borrowed_copies.ce:26:15
 25 │ {
 26 │     self.line = source.line
                      ╘═════════╛ Cannot store new borrows in 'self'
 
-Error at line 31, column 15
+Error at borrowed_copies.ce:31:15
 30 │ {
 31 │     self.line = *holder
                      ╘═════╛ Cannot store new borrows in 'self'
 
-Error at line 41, column 6
+Error at borrowed_copies.ce:41:6
 40 │ val copy: Line = *pointer
 41 │ ret copy
          ╘══╛ Cannot return borrows of local variables
 
-Error at line 49, column 6
+Error at borrowed_copies.ce:49:6
 48 │ val line: Line = *holder
 49 │ ret line
          ╘══╛ Cannot return borrows of local variables
 
-Error at line 52, column 55
+Error at borrowed_copies.ce:52:55
 51 │ 
 52 │ borrowed[T: copy]: fun(holder: Holder[T]) -> imm[T] = imm *holder
                                                            ╘═════════╛ Cannot return borrows of copied parameters

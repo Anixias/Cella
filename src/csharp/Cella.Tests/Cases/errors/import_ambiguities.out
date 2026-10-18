@@ -1,14 +1,11 @@
-
-====== main.ce ======
-
-Error at line 10, column 10
+Error at main.ce:10:10
  9 │ {
 10 │     val a = area()
                  ╘══╛ Call to 'area' is ambiguous
                     | Candidate in 'geometry.ce' on line 3
                     | Candidate in 'shapes.ce' on line 3
 
-Error at line 11, column 10
+Error at main.ce:11:10
 10 │ val a = area()
 11 │ val p = Point(1)
              ╘═══╛ Reference to 'Point' is ambiguous

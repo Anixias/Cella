@@ -1,26 +1,23 @@
-
-====== move_hint_iterations.ce ======
-
-Error at line 27, column 12
+Error at move_hint_iterations.ce:27:12
 26 │ {
 27 │     show(imm a)
                   ^ Cannot use moved values
                   | Moved on line 28 in an earlier iteration
 
-Error at line 28, column 12
+Error at move_hint_iterations.ce:28:12
 27 │ show(imm a)
 28 │ take(own a)
               ^ Cannot use moved values
               | Moved here in an earlier iteration
 
-Error at line 42, column 16
+Error at move_hint_iterations.ce:42:16
 41 │ 
 42 │ ret showP(imm p)
                    ^ Cannot use partly moved values
                    | Moved on line 38
                    | Moved on line 40
 
-Error at line 51, column 15
+Error at move_hint_iterations.ce:51:15
 50 │ 
 51 │ ret show(imm a)
                   ^ Cannot use moved values

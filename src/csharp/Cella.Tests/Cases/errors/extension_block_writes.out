@@ -1,7 +1,4 @@
-
-====== main.ce ======
-
-Error at line 7, column 8
+Error at main.ce:7:8
 6 │ {
 7 │     self.n += 1
              ^ 'n' is read-only outside its type

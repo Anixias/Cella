@@ -1,57 +1,54 @@
-
-====== ext_signature_enums.ce ======
-
-Error at line 34, column 17
+Error at ext_signature_enums.ce:34:17
 33 │ {
 34 │     visit: ext fun[Node -> i32]
                         ╘══╛ Cannot use plain enums in 'ext' signatures
                            | 'Node' contains 'Team'
 
-Error at line 40, column 22
+Error at ext_signature_enums.ce:40:22
 39 │ {
 40 │     currentTeam: fun -> Team
                              ╘══╛ Cannot use plain enums in 'ext' signatures
 
-Error at line 41, column 21
+Error at ext_signature_enums.ce:41:21
 40 │ currentTeam: fun -> Team
 41 │ setTeam: fun(team: Team)
                         ╘══╛ Cannot use plain enums in 'ext' signatures
 
-Error at line 42, column 26
+Error at ext_signature_enums.ce:42:26
 41 │ setTeam: fun(team: Team)
 42 │ sendPacket: fun(packet: Packet)
                              ╘════╛ Cannot use plain enums in 'ext' signatures
                                   | 'Packet' contains 'Team'
 
-Error at line 43, column 24
+Error at ext_signature_enums.ce:43:24
 42 │ sendPacket: fun(packet: Packet)
 43 │ sendAll: fun(wrapper: Wrapper)
                            ╘═════╛ Cannot use plain enums in 'ext' signatures
                                  | 'Wrapper' contains 'Team'
 
-Error at line 44, column 21
+Error at ext_signature_enums.ce:44:21
 43 │ sendAll: fun(wrapper: Wrapper)
 44 │ post: fun(message: Message)
                         ╘═════╛ Cannot use plain enums in 'ext' signatures
                               | 'Message' contains 'Team'
 
-Error at line 45, column 32
+Error at ext_signature_enums.ce:45:32
 44 │ post: fun(message: Message)
 45 │ onTeam: fun(callback: ext fun[Team -> i32])
                                    ╘══╛ Cannot use plain enums in 'ext' signatures
 
-Error at line 46, column 18
+Error at ext_signature_enums.ce:46:18
 45 │ onTeam: fun(callback: ext fun[Team -> i32])
 46 │ walk: fun(node: Node)
                      ╘══╛ Cannot use plain enums in 'ext' signatures
                         | 'Node' contains 'Team'
 
-Error at line 51, column 21
+Error at ext_signature_enums.ce:51:21
 50 │ 
 51 │ swap: ext fun(team: Team) -> Team = team
                          ╘══╛ Cannot use plain enums in 'ext' signatures
 
-Error at line 51, column 30
+Error at ext_signature_enums.ce:51:30
 50 │ 
 51 │ swap: ext fun(team: Team) -> Team = team
                                   ╘══╛ Cannot use plain enums in 'ext' signatures

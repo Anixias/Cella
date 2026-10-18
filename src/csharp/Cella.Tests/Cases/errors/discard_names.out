@@ -1,17 +1,14 @@
-
-====== discard_names.ce ======
-
-Error at line 3, column 1
+Error at discard_names.ce:3:1
 2 │ 
 3 │ _: rec { x: i32 }
     ^ Cannot use '_' as a name
 
-Error at line 7, column 2
+Error at discard_names.ce:7:2
 6 │ {
 7 │     _: i32
         ^ Cannot use '_' as a name
 
-Error at line 10, column 6
+Error at discard_names.ce:10:6
  9 │ 
 10 │ pick[_]: fun -> i32 = 0
           ^ Cannot use '_' as a name

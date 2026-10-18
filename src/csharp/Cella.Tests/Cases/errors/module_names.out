@@ -1,39 +1,24 @@
-
-====== bare.ce ======
-
-Error at line 1, column 1
+Error at bare.ce:1:1
 1 │ mod
     ╘═╛ Expected a module name
 
-
-====== keyword.ce ======
-
-Error at line 1, column 5
+Error at keyword.ce:1:5
 1 │ mod fun
         ╘═╛ Expected a module name
 
-
-====== number.ce ======
-
-Error at line 1, column 5
+Error at number.ce:1:5
 1 │ mod 5
         ^ Expected a module name
 
-
-====== trailing.ce ======
-
-Error at line 1, column 1
+Error at trailing.ce:1:1
 1 │ mod
     ╘═╛ Expected a module name
 
-
-====== twice.ce ======
-
-Error at line 1, column 5
+Error at twice.ce:1:5
 1 │ mod test.twice
         ╘════════╛ Cannot declare more than one module name
 
-Error at line 2, column 5
+Error at twice.ce:2:5
 1 │ mod test.twice
 2 │ mod other
         ╘═══╛ Cannot declare more than one module name

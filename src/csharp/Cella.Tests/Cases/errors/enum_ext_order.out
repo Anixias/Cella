@@ -1,7 +1,4 @@
-
-====== enum_ext_order.ce ======
-
-Error at line 3, column 13
+Error at enum_ext_order.ce:3:13
 2 │ 
 3 │ E: enum(u8) ext { a }
                 ╘═╛ Expected '{'

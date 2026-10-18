@@ -1,12 +1,9 @@
-
-====== missing_return_values.ce ======
-
-Error at line 7, column 2
+Error at missing_return_values.ce:7:2
 6 │ {
 7 │     ret
         ╘═╛ 'answer' must return a value
 
-Error at line 12, column 18
+Error at missing_return_values.ce:12:18
 11 │ {
 12 │     ret apply(fun { ret })
                          ╘═╛ This lambda must return a value

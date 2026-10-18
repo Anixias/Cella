@@ -1,7 +1,4 @@
-
-====== align_of_syntax.ce ======
-
-Error at line 5, column 14
+Error at align_of_syntax.ce:5:14
 4 │ {
 5 │     ret alignOf i32
                     ╘═╛ Expected '('

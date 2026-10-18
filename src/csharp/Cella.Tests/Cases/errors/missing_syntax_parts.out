@@ -1,28 +1,25 @@
-
-====== missing_syntax_parts.ce ======
-
-Error at line 3, column 12
+Error at missing_syntax_parts.ce:3:12
 2 │ 
 3 │ limit: val = 5
                ^ Expected a type
 
-Error at line 8, column 1
+Error at missing_syntax_parts.ce:8:1
 7 │     val a = (1 +
 8 │ }
     ^ Expected an expression
 
-Error at line 12, column 9
+Error at missing_syntax_parts.ce:12:9
 11 │ {
 12 │     var x: = 1
                 ^ Expected a type
 
-Error at line 18, column 20
+Error at missing_syntax_parts.ce:18:20
 17 │ {
 18 │     var x: array[i32, 4
                            ^ Expected ']'
                            | To match the '[' on line 18
 
-Error at line 24, column 15
+Error at missing_syntax_parts.ce:24:15
 23 │ {
 24 │     var x: test. = 1
                       ^ Expected a name

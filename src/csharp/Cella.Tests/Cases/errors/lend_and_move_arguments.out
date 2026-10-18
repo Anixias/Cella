@@ -1,7 +1,4 @@
-
-====== lend_and_move_arguments.ce ======
-
-Error at line 17, column 15
+Error at lend_and_move_arguments.ce:17:15
 16 │ val b = Buffer(1)
 17 │ ret take(imm b, own b)
                   ^ Cannot use moved values

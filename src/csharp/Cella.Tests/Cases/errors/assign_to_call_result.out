@@ -1,17 +1,14 @@
-
-====== assign_to_call_result.ce ======
-
-Error at line 22, column 2
+Error at assign_to_call_result.ce:22:2
 21 │ {
 22 │     make().x = 1
          ╘══════╛ Cannot assign to unstored values
 
-Error at line 23, column 2
+Error at assign_to_call_result.ce:23:2
 22 │ make().x = 1
 23 │ numbers()[0] = 2
      ╘══════════╛ Cannot assign to unstored values
 
-Error at line 24, column 17
+Error at assign_to_call_result.ce:24:17
 23 │ numbers()[0] = 2
 24 │ var address = @make().x
                     ╘══════╛ Cannot take the address of unstored values

@@ -1,17 +1,14 @@
-
-====== raw_memory.ce ======
-
-Error at line 23, column 3
+Error at raw_memory.ce:23:3
 22 │ {
 23 │     own self.buffer = Buffer(id)
          ╘═════════════╛ Cannot assign with 'own' except through pointers
 
-Error at line 32, column 2
+Error at raw_memory.ce:32:2
 31 │ var b = make(1)
 32 │ own b = make(2)
      ╘═══╛ Cannot assign with 'own' except through pointers
 
-Error at line 35, column 2
+Error at raw_memory.ce:35:2
 34 │ own *q = 5
 35 │ own *q += 1
      ╘═╛ Cannot use 'own' on compound assignments

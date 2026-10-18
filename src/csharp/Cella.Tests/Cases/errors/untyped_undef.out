@@ -1,12 +1,9 @@
-
-====== untyped_undef.ce ======
-
-Error at line 12, column 6
+Error at untyped_undef.ce:12:6
 11 │ {
 12 │     val unsettled = undef
              ╘═══════╛ Cannot infer the type of 'unsettled'
 
-Error at line 13, column 6
+Error at untyped_undef.ce:13:6
 12 │ val unsettled = undef
 13 │ var conflicting = undef
          ╘═════════╛ Cannot infer the type of 'conflicting'

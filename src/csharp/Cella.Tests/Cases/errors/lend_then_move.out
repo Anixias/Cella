@@ -1,31 +1,28 @@
-
-====== lend_then_move.ce ======
-
-Error at line 41, column 11
+Error at lend_then_move.ce:41:11
 40 │ var item = Item(1)
 41 │ view(imm item, own item)
               ╘══╛ Cannot use moved values
                  | Moved on line 41
 
-Error at line 44, column 13
+Error at lend_then_move.ce:44:13
 43 │ var changed = Item(2)
 44 │ change(mut changed, own changed)
                 ╘═════╛ Cannot use moved values
                       | Moved on line 44
 
-Error at line 47, column 2
+Error at lend_then_move.ce:47:2
 46 │ var poked = Item(3)
 47 │ poked.poke(own poked)
      ╘═══╛ Cannot use moved values
          | Moved on line 47
 
-Error at line 50, column 12
+Error at lend_then_move.ce:50:12
 49 │ var holder = Holder(Item(4), Item(5))
 50 │ store(mut holder, own holder.other)
                ╘════╛ Cannot use partly moved values
                     | Moved on line 50
 
-Error at line 53, column 19
+Error at lend_then_move.ce:53:19
 52 │ val captured = Item(6)
 53 │ run(fun -> i32 = captured.id, own captured)
                       ╘══════╛ Cannot use moved values

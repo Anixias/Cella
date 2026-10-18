@@ -1,32 +1,29 @@
-
-====== unreachable_code.ce ======
-
-Warning at line 28, column 4
+Warning at unreachable_code.ce:28:4
 27 │ cont
 28 │ total += 100
      ^ Unreachable code
 
-Warning at line 34, column 4
+Warning at unreachable_code.ce:34:4
 33 │ break
 34 │ val lost = Buffer(99)
      ^ Unreachable code
 
-Warning at line 54, column 2
+Warning at unreachable_code.ce:54:2
 53 │ 
 54 │ printf("never\n")
      ^ Unreachable code
 
-Warning at line 61, column 2
+Warning at unreachable_code.ce:61:2
 60 │ ret first.id
 61 │ val second = Buffer(2)
      ^ Unreachable code
 
-Warning at line 68, column 2
+Warning at unreachable_code.ce:68:2
 67 │ val views = [imm fallback, ret fallback.id]
 68 │ ret views[0].id
      ^ Unreachable code
 
-Warning at line 75, column 2
+Warning at unreachable_code.ce:75:2
 74 │ ret 0
 75 │ printf("after\n")
      ^ Unreachable code

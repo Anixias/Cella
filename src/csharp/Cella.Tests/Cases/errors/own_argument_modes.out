@@ -1,22 +1,19 @@
-
-====== own_argument_modes.ce ======
-
-Error at line 29, column 19
+Error at own_argument_modes.ce:29:19
 28 │ val f: fun[i32 -> i32] = count
 29 │ val shown = show(own b)
                       ╘═╛ 'buffer' isn't an 'own' parameter
 
-Error at line 30, column 22
+Error at own_argument_modes.ce:30:22
 29 │ val shown = show(own b)
 30 │ val counted = count(own n)
                          ╘═╛ 'n' isn't an 'own' parameter
 
-Error at line 31, column 17
+Error at own_argument_modes.ce:31:17
 30 │ val counted = count(own n)
 31 │ val called = f(own n)
                     ╘═╛ Only an argument to an 'own' parameter can be marked 'own'
 
-Error at line 32, column 24
+Error at own_argument_modes.ce:32:24
 31 │ val called = f(own n)
 32 │ val wrapped = Wrapper(own b)
                            ╘═╛ 'buffer' isn't an 'own' parameter

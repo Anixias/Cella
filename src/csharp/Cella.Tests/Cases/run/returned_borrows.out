@@ -1,7 +1,4 @@
-
-====== returned_borrows.ce ======
-
-Hint at line 74, column 13
+Hint at returned_borrows.ce:74:13
 73 │ {
 74 │     val view = imm enemy
                     ╘═╛ Redundant 'imm'

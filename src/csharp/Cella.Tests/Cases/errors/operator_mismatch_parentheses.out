@@ -1,19 +1,16 @@
-
-====== operator_mismatch_parentheses.ce ======
-
-Error at line 7, column 10
+Error at operator_mismatch_parentheses.ce:7:10
 6 │ val p = @x
 7 │ val a = x - (p)
             ╘═════╛ No operation defined for '-' between 'i32' and 'ptr[i32]'
                   | Did you mean 'x - *p'?
 
-Error at line 8, column 10
+Error at operator_mismatch_parentheses.ce:8:10
 7 │ val a = x - (p)
 8 │ val b = (p) < x
             ╘═════╛ No operation defined for '<' between 'ptr[i32]' and 'i32'
                   | Did you mean '*p < x'?
 
-Error at line 9, column 10
+Error at operator_mismatch_parentheses.ce:9:10
 8 │ val b = (p) < x
 9 │ val c = ((x)) * ((p))
             ╘═══════════╛ No operation defined for '*' between 'i32' and 'ptr[i32]'

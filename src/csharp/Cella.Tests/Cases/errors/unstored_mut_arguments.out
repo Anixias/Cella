@@ -1,12 +1,9 @@
-
-====== unstored_mut_arguments.ce ======
-
-Error at line 17, column 15
+Error at unstored_mut_arguments.ce:17:15
 16 │ var c = Counter(1)
 17 │ val a = bump(Counter(4))
                   ╘════════╛ Cannot mutably borrow unstored values
 
-Error at line 19, column 15
+Error at unstored_mut_arguments.ce:19:15
 18 │ val b = bump(mut Counter(4))
 19 │ val d = bump(c)
                   ^ Cannot mutably borrow arguments implicitly

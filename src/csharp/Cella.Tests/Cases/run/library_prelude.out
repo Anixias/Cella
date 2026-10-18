@@ -1,7 +1,4 @@
-
-====== main.ce ======
-
-Hint at line 3, column 9
+Hint at main.ce:3:9
 2 │ 
 3 │ use lib.greet
             ╘═══╛ Redundant import

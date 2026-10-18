@@ -1,13 +1,10 @@
-
-====== own_plain_data.ce ======
-
-Error at line 11, column 14
+Error at own_plain_data.ce:11:14
 10 │ val w = take(own a)
 11 │ ret z + w + y + a
                  ^ Cannot use moved values
                  | Moved on line 8
 
-Error at line 11, column 18
+Error at own_plain_data.ce:11:18
 10 │ val w = take(own a)
 11 │ ret z + w + y + a
                      ^ Cannot use moved values

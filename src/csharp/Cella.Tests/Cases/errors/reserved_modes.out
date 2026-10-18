@@ -1,17 +1,14 @@
-
-====== reserved_modes.ce ======
-
-Error at line 3, column 12
+Error at reserved_modes.ce:3:12
 2 │ 
 3 │ modes: fun(mut: i32, own: i32) -> i32 = 1
                ╘═╛ 'mut' is a keyword
 
-Error at line 7, column 2
+Error at reserved_modes.ce:7:2
 6 │ {
 7 │     own: i32
         ╘═╛ 'own' is a keyword
 
-Error at line 12, column 6
+Error at reserved_modes.ce:12:6
 11 │ {
 12 │     var mut = 3
              ╘═╛ 'mut' is a keyword

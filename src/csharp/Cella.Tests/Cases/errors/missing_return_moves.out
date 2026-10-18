@@ -1,12 +1,9 @@
-
-====== missing_return_moves.ce ======
-
-Error at line 11, column 1
+Error at missing_return_moves.ce:11:1
 10 │ 
 11 │ f: fun(c: bool) -> i32
      ^ Not all paths return a value
 
-Error at line 15, column 11
+Error at missing_return_moves.ce:15:11
 14 │ take(own b)
 15 │ take(own b)
               ^ Cannot use moved values

@@ -1,24 +1,21 @@
-
-====== atomic_generics.ce ======
-
-Error at line 19, column 36
+Error at atomic_generics.ce:19:36
 18 │ 
 19 │ load: fun(imm self) -> T = atomic *@self.value
                                        ╘══════════╛ Cannot access 'T' values atomically
 
-Error at line 24, column 15
+Error at atomic_generics.ce:24:15
 23 │ {
 24 │     val a = cell[Point](Point(1))
                       ╘═══╛ 'cell' requires 'T: atomic'
                           | 'Point' can't be accessed atomically
 
-Error at line 25, column 15
+Error at atomic_generics.ce:25:15
 24 │ val a = cell[Point](Point(1))
 25 │ val b = cell[str]("x")
                   ╘═╛ 'cell' requires 'T: atomic'
                     | 'str' can't be accessed atomically
 
-Error at line 26, column 15
+Error at atomic_generics.ce:26:15
 25 │ val b = cell[str]("x")
 26 │ val c = cell[i128](1)
                   ╘══╛ 'cell' requires 'T: atomic'

@@ -1,12 +1,9 @@
-
-====== bad_ext_enums.ce ======
-
-Error at line 6, column 8
+Error at bad_ext_enums.ce:6:8
 5 │ small
 6 │ big = 3000000000
           ╘════════╛ '3000000000' doesn't fit in 'i32'
 
-Error at line 9, column 15
+Error at bad_ext_enums.ce:9:15
 8 │ 
 9 │ Bad: ext enum(bool)
                   ╘══╛ 'bool' isn't an integer type

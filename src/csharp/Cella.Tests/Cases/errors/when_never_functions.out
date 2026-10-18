@@ -1,7 +1,4 @@
-
-====== when_never_functions.ce ======
-
-Error at line 3, column 14
+Error at when_never_functions.ce:3:14
 2 │ 
 3 │ stop: fun -> never when release
                  ╘═══╛ Cannot use 'when' on 'never' functions

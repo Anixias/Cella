@@ -1,12 +1,9 @@
-
-====== main.ce ======
-
-Error at line 3, column 5
+Error at main.ce:3:5
 2 │ 
 3 │ use alpha.*
         ╘═══╛ 'panic' is ambiguous
 
-Error at line 4, column 5
+Error at main.ce:4:5
 3 │ use alpha.*
 4 │ use beta.*
         ╘══╛ 'panic' is ambiguous

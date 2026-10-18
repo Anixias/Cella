@@ -1,7 +1,4 @@
-
-====== stored_borrows.ce ======
-
-Hint at line 166, column 13
+Hint at stored_borrows.ce:166:13
 165 │ var buffer = Buffer(7)
 166 │ val view = imm buffer
                  ╘═╛ Redundant 'imm'

@@ -1,17 +1,14 @@
-
-====== char_shifts.ce ======
-
-Error at line 6, column 10
+Error at char_shifts.ce:6:10
 5 │ var c = 'a'
 6 │ var d = c << 1
             ╘════╛ No operation defined for '<<' between 'char' and 'integer literal'
 
-Error at line 7, column 10
+Error at char_shifts.ce:7:10
 6 │ var d = c << 1
 7 │ var e = c >>> 1
             ╘═════╛ No operation defined for '>>>' between 'char' and 'integer literal'
 
-Error at line 9, column 10
+Error at char_shifts.ce:9:10
 8 │ var f: u8 = 1
 9 │ var g = f << 'a'
             ╘══════╛ No operation defined for '<<' between 'u8' and 'char'

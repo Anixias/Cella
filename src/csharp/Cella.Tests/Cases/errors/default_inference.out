@@ -1,7 +1,4 @@
-
-====== default_inference.ce ======
-
-Error at line 5, column 20
+Error at default_inference.ce:5:20
 4 │ 
 5 │ main: fun -> i32 = typed()
                        ╘═══╛ Cannot infer 'T' for 'typed'

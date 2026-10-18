@@ -1,13 +1,10 @@
-
-====== match_unclosed.ce ======
-
-Error at line 12, column 2
+Error at match_unclosed.ce:12:2
 11 │     b => 2
 12 │ ret x
      ╘═╛ Expected '}'
        | To match the '{' on line 9
 
-Error at line 15, column 17
+Error at match_unclosed.ce:15:17
 14 │ 
 15 │ g: fun -> i32 = )
                      ^ Expected an expression

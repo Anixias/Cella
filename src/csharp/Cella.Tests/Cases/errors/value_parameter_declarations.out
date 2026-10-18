@@ -1,67 +1,64 @@
-
-====== value_parameter_declarations.ce ======
-
-Error at line 8, column 64
+Error at value_parameter_declarations.ce:8:64
 7 │ 
 8 │ grow[N: const usize]: fun(values: array[i32, N]) -> array[i32, N + 1] = undef
                                                                    ╘═══╛ Cannot use arithmetic on value parameters in generic arguments
 
-Error at line 12, column 20
+Error at value_parameter_declarations.ce:12:20
 11 │ {
 12 │     items: array[i32, N * 2]
                            ╘═══╛ Cannot use arithmetic on value parameters in generic arguments
 
-Error at line 17, column 20
+Error at value_parameter_declarations.ce:17:20
 16 │ {
 17 │     items: array[i32, N]
                            ^ Cannot convert type 'i32' to 'usize'
 
-Error at line 20, column 17
+Error at value_parameter_declarations.ce:20:17
 19 │ 
 20 │ floaty[N: const f64]: rec
                      ╘═╛ Value parameters need an integer type
 
-Error at line 25, column 19
+Error at value_parameter_declarations.ce:25:19
 24 │ 
 25 │ lettered[N: const char]: rec
                        ╘══╛ Value parameters need an integer type
 
-Error at line 34, column 4
+Error at value_parameter_declarations.ce:34:4
 33 │ 
 34 │ +[N: const usize]: op(a: Vector, b: Vector) -> Vector = a
        ^ Cannot infer 'N' from the operands of '+'
 
-Error at line 35, column 5
+Error at value_parameter_declarations.ce:35:5
 34 │ +[N: const usize]: op(a: Vector, b: Vector) -> Vector = a
 35 │ [][N: const usize]: op(self, i: usize) -> i32 = 0
         ^ Cannot infer 'N' from the operands of '[]'
 
-Error at line 38, column 1
+Error at value_parameter_declarations.ce:38:1
 37 │ 
 38 │ array[T]: impl Eq
      ╘═══╛ 'array' takes 2 generic arguments
 
-Error at line 48, column 7
+Error at value_parameter_declarations.ce:48:7
 47 │ 
 48 │ array[N: const usize, T]: impl Sized
            ^ 'N' is not a type
 
-Error at line 48, column 23
+Error at value_parameter_declarations.ce:48:23
 47 │ 
 48 │ array[N: const usize, T]: impl Sized
                            ^ 'T' is not a constant
 
-Error at line 53, column 10
+Error at value_parameter_declarations.ce:53:10
 52 │ 
 53 │ array[T, N: const i32]: impl Sized
               ^ Cannot convert type 'i32' to 'usize'
 
-Error at line 63, column 6
+Error at value_parameter_declarations.ce:63:6
 62 │ 
 63 │ ring[N: const usize, T]: impl Sized
           ^ 'N' is not a type
 
-Error at line 63, column 22
+Error at value_parameter_declarations.ce:63:22
 62 │ 
 63 │ ring[N: const usize, T]: impl Sized
                           ^ 'T' is not a constant

@@ -1,76 +1,73 @@
-
-====== top_level_declaration_forms.ce ======
-
-Error at line 1, column 5
+Error at top_level_declaration_forms.ce:1:5
 1 │ mod test
         ╘══╛ Cannot declare more than one module name
 
-Error at line 2, column 5
+Error at top_level_declaration_forms.ce:2:5
 1 │ mod test
 2 │ mod other
         ╘═══╛ Cannot declare more than one module name
 
-Error at line 3, column 11
+Error at top_level_declaration_forms.ce:3:11
 2 │ mod other
 3 │ use test.*.foo
               ^ Expected the end of the line
 
-Error at line 5, column 1
+Error at top_level_declaration_forms.ce:5:1
 4 │ 
 5 │ val x = 5
     ╘═╛ Expected a name before 'val'
 
-Error at line 6, column 1
+Error at top_level_declaration_forms.ce:6:1
 5 │ val x = 5
 6 │ var y: i32 = 5
     ╘═╛ Expected a name before 'var'
 
-Error at line 7, column 1
+Error at top_level_declaration_forms.ce:7:1
 6 │ var y: i32 = 5
 7 │ fun helper -> i32 = 1
     ╘═╛ Expected a name before 'fun'
 
-Error at line 8, column 1
+Error at top_level_declaration_forms.ce:8:1
 7 │ fun helper -> i32 = 1
 8 │ +: op(a: i32, b: i32) -> i32 = a
     ^ Cannot declare operators outside types
 
-Error at line 10, column 1
+Error at top_level_declaration_forms.ce:10:1
  9 │ 
 10 │ new: op(x: i32)
      ╘═╛ Cannot declare constructors outside types
 
-Error at line 14, column 1
+Error at top_level_declaration_forms.ce:14:1
 13 │ 
 14 │ drop: op
      ╘══╛ Cannot declare destructors outside types
 
-Error at line 23, column 1
+Error at top_level_declaration_forms.ce:23:1
 22 │ 
 23 │ pvt helper: fun -> i32 = 1
      ╘═╛ Expected '{' after 'pvt'
 
-Error at line 30, column 8
+Error at top_level_declaration_forms.ce:30:8
 29 │ 
 30 │ count: pvt set var i32 = 0
             ╘═════╛ Cannot use 'pvt set' outside types
 
-Error at line 34, column 2
+Error at top_level_declaration_forms.ce:34:2
 33 │ {
 34 │     use other
          ╘═╛ Imports must precede all other declarations
 
-Error at line 39, column 2
+Error at top_level_declaration_forms.ce:39:2
 38 │ {
 39 │     use other
          ╘═╛ Imports must precede all other declarations
 
-Error at line 43, column 18
+Error at top_level_declaration_forms.ce:43:18
 42 │ 
 43 │ f: fun -> i32 = 1)
                       ^ Unexpected token
 
-Error at line 47, column 5
+Error at top_level_declaration_forms.ce:47:5
 46 │ 
 47 │ main: fun -> i32 = 0
          ^ Expected ')'

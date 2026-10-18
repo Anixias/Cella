@@ -1,12 +1,9 @@
-
-====== mut_value_borrows.ce ======
-
-Error at line 11, column 25
+Error at mut_value_borrows.ce:11:25
 10 │ {
 11 │     ret Opt[mut[i32]].some(v)
                                 ^ Cannot mutably borrow values implicitly
 
-Error at line 17, column 20
+Error at mut_value_borrows.ce:17:20
 16 │ var x = 1
 17 │ val m: mut[i32] = x
                        ^ Cannot mutably borrow values implicitly

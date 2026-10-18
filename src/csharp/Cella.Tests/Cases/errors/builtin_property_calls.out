@@ -1,17 +1,14 @@
-
-====== builtin_property_calls.ce ======
-
-Error at line 11, column 10
+Error at builtin_property_calls.ce:11:10
 10 │ val s: str = "abc"
 11 │ val a = s.byteLength()
              ╘══════════╛ Cannot call a value of type 'usize'
 
-Error at line 13, column 10
+Error at builtin_property_calls.ce:13:10
 12 │ val arr = [1, 2]
 13 │ val b = arr.length()
              ╘════════╛ Cannot call a value of type 'usize'
 
-Error at line 15, column 10
+Error at builtin_property_calls.ce:15:10
 14 │ val text: fstr[Display] = "abc"
 15 │ val c = text.holes()
              ╘════════╛ Cannot call a value of type 'usize'

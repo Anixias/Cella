@@ -1,24 +1,21 @@
-
-====== no_legal_default.ce ======
-
-Error at line 36, column 35
+Error at no_legal_default.ce:36:35
 35 │ 
 36 │ needsNew[T: new]: fun -> box[T] = box[T]()
                                        ╘══════╛ No constructor for 'box[T]' accepts these arguments
                                               | 'box[T]' takes one argument for each field: value
 
-Error at line 41, column 10
+Error at no_legal_default.ce:41:10
 40 │ var v: Vec2
 41 │ val w = Vec2()
              ╘════╛ No constructor for 'Vec2' accepts these arguments
 
-Error at line 42, column 16
+Error at no_legal_default.ce:42:16
 41 │ val w = Vec2()
 42 │ val r = blank[R]()
                    ^ 'blank' requires 'T: default'
                    | 'R' has no default
 
-Error at line 43, column 10
+Error at no_legal_default.ce:43:10
 42 │ val r = blank[R]()
 43 │ val b = box[R]()
              ╘══════╛ No constructor for 'box[R]' accepts these arguments

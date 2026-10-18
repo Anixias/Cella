@@ -1,22 +1,19 @@
-
-====== enum_methods.ce ======
-
-Error at line 16, column 9
+Error at enum_methods.ce:16:9
 15 │ val effect = Effect.none
 16 │ Effect.size()
             ╘══╛ Cannot use methods through types
 
-Error at line 17, column 9
+Error at enum_methods.ce:17:9
 16 │ Effect.size()
 17 │ effect.make()
             ╘══╛ Cannot use static functions through values
 
-Error at line 18, column 9
+Error at enum_methods.ce:18:9
 17 │ effect.make()
 18 │ Effect.fly()
             ╘═╛ 'Effect' has no case 'fly'
 
-Error at line 19, column 17
+Error at enum_methods.ce:19:17
 18 │ Effect.fly()
 19 │ val f = effect.size
                     ╘══╛ Cannot use methods as values

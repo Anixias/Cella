@@ -1,37 +1,34 @@
-
-====== prefix_operator_line_end.ce ======
-
-Error at line 8, column 15
+Error at prefix_operator_line_end.ce:8:15
 7 │ val a = 5
 8 │ val b: i32 = -
                  ^ Expected an expression
 
-Error at line 15, column 11
+Error at prefix_operator_line_end.ce:15:11
 14 │ {
 15 │     val ok = !
                   ^ Expected an expression
 
-Error at line 23, column 10
+Error at prefix_operator_line_end.ce:23:10
 22 │ var a = 1
 23 │ val b = imm
              ╘═╛ Expected an expression
 
-Error at line 30, column 12
+Error at prefix_operator_line_end.ce:30:12
 29 │ {
 30 │     val a = 1 ~
                    ^ Expected an expression
 
-Error at line 37, column 2
+Error at prefix_operator_line_end.ce:37:2
 36 │ val x = 1
 37 │ drop
      ╘══╛ Expected an expression
 
-Error at line 44, column 2
+Error at prefix_operator_line_end.ce:44:2
 43 │ {
 44 │     panic
          ╘═══╛ Expected an expression
 
-Error at line 56, column 12
+Error at prefix_operator_line_end.ce:56:12
 55 │ var box = Box(1)
 56 │ box.limit++
                ^ Expected an expression

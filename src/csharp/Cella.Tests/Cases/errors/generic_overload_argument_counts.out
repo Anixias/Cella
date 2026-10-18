@@ -1,22 +1,19 @@
-
-====== generic_overload_argument_counts.ce ======
-
-Error at line 16, column 10
+Error at generic_overload_argument_counts.ce:16:10
 15 │ {
 16 │     val f = Point.make[i32]
                  ╘═════════════╛ No overload of 'Point.make' takes one generic argument
 
-Error at line 17, column 10
+Error at generic_overload_argument_counts.ce:17:10
 16 │ val f = Point.make[i32]
 17 │ val g = make[i32, i64, u8, u16]
              ╘═════════════════════╛ No overload of 'make' takes 4 generic arguments
 
-Error at line 18, column 6
+Error at generic_overload_argument_counts.ce:18:6
 17 │ val g = make[i32, i64, u8, u16]
 18 │ ret Point.make[i32](1) + make[i32](1)
          ╘═════════════╛ No overload of 'Point.make' takes one generic argument
 
-Error at line 18, column 27
+Error at generic_overload_argument_counts.ce:18:27
 17 │ val g = make[i32, i64, u8, u16]
 18 │ ret Point.make[i32](1) + make[i32](1)
                               ╘═══════╛ No overload of 'make' takes one generic argument

@@ -1,7 +1,4 @@
-
-====== main.ce ======
-
-Error at line 3, column 17
+Error at main.ce:3:17
 2 │ 
 3 │ Point: rec impl Hidden
                     ╘════╛ 'Hidden' is private to its file

@@ -1,17 +1,14 @@
-
-====== overloaded_lambda_annotations.ce ======
-
-Error at line 10, column 14
+Error at overloaded_lambda_annotations.ce:10:14
  9 │ {
 10 │     pick(fun(x: Missing) = x)
                      ╘═════╛ Type 'Missing' not found in this scope
 
-Error at line 11, column 22
+Error at overloaded_lambda_annotations.ce:11:22
 10 │ pick(fun(x: Missing) = x)
 11 │ pick(fun(x: i32) -> Absent = x)
                          ╘════╛ Type 'Absent' not found in this scope
 
-Error at line 12, column 16
+Error at overloaded_lambda_annotations.ce:12:16
 11 │ pick(fun(x: i32) -> Absent = x)
 12 │ single(fun(x: Unknown) = x)
                    ╘═════╛ Type 'Unknown' not found in this scope

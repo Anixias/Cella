@@ -1,7 +1,4 @@
-
-====== ext_closure_locals.ce ======
-
-Error at line 5, column 20
+Error at ext_closure_locals.ce:5:20
 4 │ {
 5 │     val f: ext fun[-> fun[-> i32]] = undef
                           ╘═════════╛ Cannot use 'fun[-> i32]' in 'ext' signatures

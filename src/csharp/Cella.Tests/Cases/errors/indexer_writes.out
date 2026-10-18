@@ -1,62 +1,59 @@
-
-====== indexer_writes.ce ======
-
-Error at line 59, column 2
+Error at indexer_writes.ce:59:2
 58 │ var readings = Readings([1, 2])
 59 │ readings[0] = 5
      ╘═════════╛ 'Readings' has no writable '[]'
 
-Error at line 60, column 13
+Error at indexer_writes.ce:60:13
 59 │ readings[0] = 5
 60 │ addTen(mut readings[1])
                 ╘═════════╛ 'Readings' has no writable '[]'
 
-Error at line 62, column 14
+Error at indexer_writes.ce:62:14
 61 │ val slots = Slots([1, 2])
 62 │ val first = slots[0]
                  ╘═══╛ 'Slots' has no read-only '[]'
 
-Error at line 64, column 18
+Error at indexer_writes.ce:64:18
 63 │ val boxes = Boxes([Buffer(1), Buffer(2)])
 64 │ val moved = own boxes[0]
                      ╘══════╛ Cannot move borrowed values
 
-Error at line 65, column 23
+Error at indexer_writes.ce:65:23
 64 │ val moved = own boxes[0]
 65 │ val copied: Buffer = boxes[1]
                           ╘══════╛ Cannot move borrowed values
 
-Error at line 67, column 2
+Error at indexer_writes.ce:67:2
 66 │ var text = "abc"
 67 │ text[0] = 65
      ╘═════╛ Cannot write through 'str'
 
-Error at line 68, column 2
+Error at indexer_writes.ce:68:2
 67 │ text[0] = 65
 68 │ text[1] += 1
      ╘═════╛ Cannot write through 'str'
 
-Error at line 69, column 11
+Error at indexer_writes.ce:69:11
 68 │ text[1] += 1
 69 │ bump(mut text[1])
               ╘═════╛ Cannot mutably borrow through 'str'
 
-Error at line 71, column 2
+Error at indexer_writes.ce:71:2
 70 │ const c: cstr = "xyz"
 71 │ c[0] = 66
      ╘══╛ Cannot write through 'cstr'
 
-Error at line 72, column 19
+Error at indexer_writes.ce:72:19
 71 │ c[0] = 66
 72 │ val past = "abc"[3]
                       ^ Index 3 is out of range for 'str'
 
-Error at line 74, column 17
+Error at indexer_writes.ce:74:17
 73 │ val end = c[3]
 74 │ val beyond = c[4]
                     ^ Index 4 is out of range for 'cstr'
 
-Error at line 76, column 22
+Error at indexer_writes.ce:76:22
 75 │ val buffers = ptr[Buffer](malloc(sizeOf(array[Buffer, 2])))
 76 │ val taken: Buffer = buffers[0]
                          ╘════════╛ Cannot move 'Buffer' values implicitly

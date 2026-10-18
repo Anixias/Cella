@@ -1,7 +1,4 @@
-
-====== typed_constant_tags.ce ======
-
-Error at line 6, column 25
+Error at typed_constant_tags.ce:6:25
 5 │ 
 6 │ E: enum(u8) { zero, a = wide, b = narrow }
                             ╘══╛ Cannot convert type 'u64' to 'u8'

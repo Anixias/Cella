@@ -1,30 +1,27 @@
-
-====== mixed_sign_arithmetic.ce ======
-
-Error at line 8, column 12
+Error at mixed_sign_arithmetic.ce:8:12
 7 │ var huge: u128 = 1
 8 │ var sum = signed + huge
               ╘═══════════╛ No operation defined for '+' between 'i32' and 'u128'
                           | 'i32' can't represent every 'u128' value
 
-Error at line 9, column 13
+Error at mixed_sign_arithmetic.ce:9:13
 8 │ var sum = signed + huge
 9 │ var bits = signed & huge
                ╘═══════════╛ No operation defined for '&' between 'i32' and 'u128'
                            | 'i32' can't represent every 'u128' value
 
-Error at line 13, column 16
+Error at mixed_sign_arithmetic.ce:13:16
 12 │ var size: usize = 3
 13 │ var product = size * wide
                    ╘═════════╛ No operation defined for '*' between 'usize' and 'i64'
                              | 'i64' can't represent every 'usize' value
 
-Error at line 16, column 13
+Error at mixed_sign_arithmetic.ce:16:13
 15 │ var letter: char = 'a'
 16 │ var next = letter * signed
                 ╘═════════════╛ No operation defined for '*' between 'char' and 'i32'
 
-Error at line 17, column 21
+Error at mixed_sign_arithmetic.ce:17:21
 16 │ var next = letter * signed
 17 │ var forced: char = unsigned
                         ╘══════╛ Cannot convert type 'u32' to 'char'

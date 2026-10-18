@@ -1,22 +1,19 @@
-
-====== closure_writes.ce ======
-
-Error at line 12, column 2
+Error at closure_writes.ce:12:2
 11 │ {
 12 │     limit = 2
          ╘═══╛ Cannot reassign read-only parameters
 
-Error at line 21, column 3
+Error at closure_writes.ce:21:3
 20 │ {
 21 │     base = 5
          ╘══╛ Cannot reassign values
 
-Error at line 22, column 12
+Error at closure_writes.ce:22:12
 21 │ base = 5
 22 │ bump(mut base)
               ╘══╛ Cannot mutably borrow values
 
-Error at line 29, column 4
+Error at closure_writes.ce:29:4
 28 │ {
 29 │     i += 1
          ^ Cannot reassign read-only loop variables

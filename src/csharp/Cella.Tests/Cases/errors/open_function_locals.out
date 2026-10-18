@@ -1,12 +1,9 @@
-
-====== open_function_locals.ce ======
-
-Error at line 9, column 6
+Error at open_function_locals.ce:9:6
 8 │ {
 9 │     val both = over
             ╘══╛ Cannot infer the type of 'both' from 'fun[f64 -> i32]' and 'fun[i32 -> i32]'
 
-Error at line 12, column 15
+Error at open_function_locals.ce:12:15
 11 │ val second = both(1)
 12 │ val unused = ident
                   ╘═══╛ Cannot infer 'T' for 'ident'

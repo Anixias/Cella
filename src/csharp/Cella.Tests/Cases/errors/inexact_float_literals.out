@@ -1,12 +1,9 @@
-
-====== inexact_float_literals.ce ======
-
-Error at line 5, column 15
+Error at inexact_float_literals.ce:5:15
 4 │ {
 5 │     val c: f64 = 9007199254740993 * 1.0
                      ╘══════════════╛ '9007199254740993' can't be represented exactly in 'f64'
 
-Error at line 7, column 14
+Error at inexact_float_literals.ce:7:14
 6 │ val f: f64 = 2.0
 7 │ val g = f + 9007199254740993
                 ╘══════════════╛ '9007199254740993' can't be represented exactly in 'f64'

@@ -1,7 +1,4 @@
-
-====== function_bound_names.ce ======
-
-Hint at line 11, column 32
+Hint at function_bound_names.ce:11:32
 10 │ 
 11 │ ident[T]: fun(own x: T) -> T = own x
                                     ╘═╛ Redundant 'own'

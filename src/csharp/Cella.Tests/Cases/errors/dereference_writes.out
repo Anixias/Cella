@@ -1,32 +1,29 @@
-
-====== dereference_writes.ce ======
-
-Error at line 30, column 23
+Error at dereference_writes.ce:30:23
 29 │ self.pointer = ptr[Buffer](malloc(sizeOf(Buffer)))
 30 │ own *self.pointer = buffer
                          ╘════╛ Cannot move 'Buffer' values implicitly
 
-Error at line 62, column 2
+Error at dereference_writes.ce:62:2
 61 │ {
 62 │     shared.id = 5
          ╘═══════╛ 'Shared' has no writable '*'
 
-Error at line 63, column 2
+Error at dereference_writes.ce:63:2
 62 │ shared.id = 5
 63 │ shared.bump()
      ╘════╛ 'Shared' has no writable '*'
 
-Error at line 64, column 13
+Error at dereference_writes.ce:64:13
 63 │ shared.bump()
 64 │ addTen(mut shared.id)
                 ╘═══════╛ 'Shared' has no writable '*'
 
-Error at line 70, column 2
+Error at dereference_writes.ce:70:2
 69 │ val boxed = BufferBox(Buffer(1))
 70 │ boxed.id = 2
      ╘═══╛ Cannot mutably borrow values
 
-Error at line 76, column 23
+Error at dereference_writes.ce:76:23
 75 │ {
 76 │     val buffer: Buffer = *boxed
                               ╘════╛ Cannot move borrowed values

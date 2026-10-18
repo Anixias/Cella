@@ -1,12 +1,9 @@
-
-====== discard_reads.ce ======
-
-Error at line 3, column 28
+Error at discard_reads.ce:3:28
 2 │ 
 3 │ read: fun(_: i32) -> i32 = _
                                ^ Cannot use '_' as a value
 
-Error at line 8, column 6
+Error at discard_reads.ce:8:6
 7 │ val _ = 1
 8 │ ret _
         ^ Cannot use '_' as a value

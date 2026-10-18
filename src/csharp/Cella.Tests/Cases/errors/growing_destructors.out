@@ -1,22 +1,19 @@
-
-====== growing_destructors.ce ======
-
-Error at line 9, column 14
+Error at growing_destructors.ce:9:14
 8 │ {
 9 │     val next = box[ptr[T]](null)
                    ╘═════════╛ Instantiating 'box' never ends
 
-Error at line 19, column 21
+Error at growing_destructors.ce:19:21
 18 │ {
 19 │     val next = deeper(self)
                            ╘══╛ Cannot borrow arguments implicitly
 
-Error at line 23, column 35
+Error at growing_destructors.ce:23:35
 22 │ 
 23 │ deeper[T]: fun(imm c: cell[T]) -> cell[ptr[T]] = cell[ptr[T]](null)
                                        ╘══════════╛ Instantiating 'cell' never ends
 
-Error at line 23, column 50
+Error at growing_destructors.ce:23:50
 22 │ 
 23 │ deeper[T]: fun(imm c: cell[T]) -> cell[ptr[T]] = cell[ptr[T]](null)
                                                       ╘══════════╛ Instantiating 'cell' never ends

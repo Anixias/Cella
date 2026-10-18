@@ -1,47 +1,44 @@
-
-====== enum_case_value_types.ce ======
-
-Error at line 8, column 6
+Error at enum_case_value_types.ce:8:6
 7 │ zero
 8 │ a = 1.5
         ╘═╛ Cannot convert type 'float literal' to 'u8'
 
-Error at line 9, column 6
+Error at enum_case_value_types.ce:9:6
 8 │ a = 1.5
 9 │ b = 5u16
         ╘══╛ Cannot convert type 'u16' to 'u8'
 
-Error at line 10, column 6
+Error at enum_case_value_types.ce:10:6
  9 │ b = 5u16
 10 │ c = 'A'
          ╘═╛ Cannot convert type 'char' to 'u8'
 
-Error at line 11, column 6
+Error at enum_case_value_types.ce:11:6
 10 │ c = 'A'
 11 │ d = true
          ╘══╛ Cannot convert type 'bool' to 'u8'
 
-Error at line 12, column 6
+Error at enum_case_value_types.ce:12:6
 11 │ d = true
 12 │ e = X.q
          ╘═╛ Cannot convert type 'X' to 'u8'
 
-Error at line 13, column 6
+Error at enum_case_value_types.ce:13:6
 12 │ e = X.q
 13 │ f = 300
          ╘═╛ '300' doesn't fit in 'u8'
 
-Error at line 20, column 6
+Error at enum_case_value_types.ce:20:6
 19 │ zero
 20 │ a = 1.5
          ╘═╛ The value of 'a' must be an integer
 
-Error at line 21, column 6
+Error at enum_case_value_types.ce:21:6
 20 │ a = 1.5
 21 │ b = "s"
          ╘═╛ The value of 'b' must be an integer
 
-Error at line 22, column 6
+Error at enum_case_value_types.ce:22:6
 21 │ b = "s"
 22 │ c = null
          ╘══╛ The value of 'c' must be an integer

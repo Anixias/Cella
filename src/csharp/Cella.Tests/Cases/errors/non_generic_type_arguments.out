@@ -1,22 +1,19 @@
-
-====== non_generic_type_arguments.ce ======
-
-Error at line 17, column 10
+Error at non_generic_type_arguments.ce:17:10
 16 │ {
 17 │     val b = Point[u8](1)
                  ╘═══╛ 'Point' takes no generic arguments
 
-Error at line 18, column 10
+Error at non_generic_type_arguments.ce:18:10
 17 │ val b = Point[u8](1)
 18 │ val c = Point[i32].n
              ╘═══╛ 'Point' takes no generic arguments
 
-Error at line 19, column 10
+Error at non_generic_type_arguments.ce:19:10
 18 │ val c = Point[i32].n
 19 │ val u = U[i32]()
              ^ 'U' takes no generic arguments
 
-Error at line 20, column 10
+Error at non_generic_type_arguments.ce:20:10
 19 │ val u = U[i32]()
 20 │ val d = i32[u8](1)
              ╘═╛ 'i32' takes no generic arguments

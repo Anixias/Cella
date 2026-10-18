@@ -1,15 +1,9 @@
-
-====== main.ce ======
-
-Error at line 32, column 32
+Error at main.ce:32:32
 31 │ 
 32 │ hidden: fun(x: i32) -> i32 = x.internal()
                                     ╘══════╛ Type 'i32' has no member 'internal'
 
-
-====== other.ce ======
-
-Error at line 3, column 34
+Error at other.ce:3:34
 2 │ 
 3 │ noImport: fun(x: i32) -> i32 = x.clamp(0, 1)
                                      ╘═══╛ Type 'i32' has no member 'clamp'

@@ -1,22 +1,19 @@
-
-====== internal_names.ce ======
-
-Error at line 17, column 19
+Error at internal_names.ce:17:19
 16 │ val x = 5
 17 │ printf("%s\n", "{flag}")
                       ╘══╛ 'bool' is not a string
 
-Error at line 18, column 17
+Error at internal_names.ce:18:17
 17 │ printf("%s\n", "{flag}")
 18 │ printf("%d\n", 340282366920938463463374607431768211456)
                     ╘═════════════════════════════════════╛ Integer literal too large to fit any type
 
-Error at line 19, column 19
+Error at internal_names.ce:19:19
 18 │ printf("%d\n", 340282366920938463463374607431768211456)
 19 │ val length = "a {x}".byteLength
                       ^ 'i32' is not a string
 
-Error at line 20, column 23
+Error at internal_names.ce:20:23
 19 │ val length = "a {x}".byteLength
 20 │ run(fun(value) { ret value })
                           ╘═══╛ Cannot return a value from this lambda

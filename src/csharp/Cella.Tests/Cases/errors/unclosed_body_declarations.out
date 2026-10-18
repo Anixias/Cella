@@ -1,17 +1,14 @@
-
-====== unclosed_body_declarations.ce ======
-
-Error at line 4, column 1
+Error at unclosed_body_declarations.ce:4:1
 3 │ first: fun -> i32
 4 │ {
     ^ Expected '}' to close this '{'
 
-Error at line 13, column 6
+Error at unclosed_body_declarations.ce:13:6
 12 │ {
 13 │     var : i32 = 2
              ^ Expected a name after 'var'
 
-Error at line 18, column 1
+Error at unclosed_body_declarations.ce:18:1
 17 │ third: fun -> i32
 18 │ {
      ^ Expected '}' to close this '{'

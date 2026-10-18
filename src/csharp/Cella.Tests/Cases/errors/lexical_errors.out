@@ -1,27 +1,24 @@
-
-====== lexical_errors.ce ======
-
-Error at line 3, column 16
+Error at lexical_errors.ce:3:16
 2 │ 
 3 │ a: val i32 = 5 $
                    ^ Unexpected character '$'
 
-Error at line 4, column 16
+Error at lexical_errors.ce:4:16
 3 │ a: val i32 = 5 $
 4 │ b: val i32 = 6 $
                    ^ Unexpected character '$'
 
-Error at line 8, column 10
+Error at lexical_errors.ce:8:10
 7 │ {
 8 │     val c = 0xZZ
                 ╘══╛ Expected hex digits
 
-Error at line 9, column 10
+Error at lexical_errors.ce:9:10
 8 │ val c = 0xZZ
 9 │ val d = 0b2
             ╘═╛ Invalid digit '2' in binary literal
 
-Error at line 10, column 10
+Error at lexical_errors.ce:10:10
  9 │ val d = 0b2
 10 │ val e = "\q"
              ╘══╛ Invalid escape sequence in string literal

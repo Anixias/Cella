@@ -1,7 +1,4 @@
-
-====== main.ce ======
-
-Error at line 9, column 12
+Error at main.ce:9:12
 8 │ val o = origin()
 9 │ ret blank[Vec2]()
               ╘══╛ 'blank' requires 'T: default'

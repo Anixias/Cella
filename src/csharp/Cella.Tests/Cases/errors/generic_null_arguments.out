@@ -1,7 +1,4 @@
-
-====== generic_null_arguments.ce ======
-
-Error at line 3, column 28
+Error at generic_null_arguments.ce:3:28
 2 │ 
 3 │ reset[T: null]: fun -> T = null
                                ╘══╛ 'fun[i32 -> i32]' doesn't accept 'null'

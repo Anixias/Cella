@@ -1,52 +1,49 @@
-
-====== parameter_defaults.ce ======
-
-Error at line 17, column 34
+Error at parameter_defaults.ce:17:34
 16 │ {
 17 │     log: fun(imm self, level: i32 = 0)
                                          ^ Cannot declare defaults in traits
 
-Error at line 18, column 22
+Error at parameter_defaults.ce:18:22
 17 │ log: fun(imm self, level: i32 = 0)
 18 │ new: op(size: i32 = 0)
                          ^ Cannot declare defaults in traits
 
-Error at line 25, column 14
+Error at parameter_defaults.ce:25:14
 24 │ 
 25 │ *: op(self, other: i32 = 0) -> i32 = 0
                  ╘═══╛ Cannot take parameters in '*' operators with 'self'
 
-Error at line 25, column 27
+Error at parameter_defaults.ce:25:27
 24 │ 
 25 │ *: op(self, other: i32 = 0) -> i32 = 0
                               ^ Cannot declare defaults in operators
 
-Error at line 30, column 28
+Error at parameter_defaults.ce:30:28
 29 │ 
 30 │ order: fun(first: i32 = 0, second: i32) {}
                                 ╘════╛ Cannot take parameters without defaults after parameters with defaults
 
-Error at line 31, column 30
+Error at parameter_defaults.ce:31:30
 30 │ order: fun(first: i32 = 0, second: i32) {}
 31 │ writes: fun(mut value: i32 = 0) {}
                                   ^ Cannot declare defaults for 'mut' parameters
 
-Error at line 32, column 35
+Error at parameter_defaults.ce:32:35
 31 │ writes: fun(mut value: i32 = 0) {}
 32 │ packs: fun(...values: view[i32] = view[i32](null, 0)) {}
                                        ╘════════════════╛ Cannot declare defaults for variadic parameters
 
-Error at line 33, column 26
+Error at parameter_defaults.ce:33:26
 32 │ packs: fun(...values: view[i32] = view[i32](null, 0)) {}
 33 │ called: fun(value: i32 = make()) {}
                               ╘════╛ The default value of 'value' must be a constant
 
-Error at line 34, column 25
+Error at parameter_defaults.ce:34:25
 33 │ called: fun(value: i32 = make()) {}
 34 │ wrong: fun(value: i32 = "text") {}
                              ╘════╛ Cannot convert type 'string literal' to 'i32'
 
-Error at line 35, column 32
+Error at parameter_defaults.ce:35:32
 34 │ wrong: fun(value: i32 = "text") {}
 35 │ generic[T]: fun(imm value: T = 5) {}
                                     ^ Cannot convert type 'integer literal' to 'T'

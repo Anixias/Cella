@@ -1,67 +1,64 @@
-
-====== match_value_errors.ce ======
-
-Error at line 16, column 31
+Error at match_value_errors.ce:16:31
 15 │ 
 16 │ missing: fun(x: i32) -> i32 = match x
                                    ╘═══╛ This match doesn't handle every value of 'i32'
 
-Error at line 24, column 2
+Error at match_value_errors.ce:24:2
 23 │ {
 24 │     5 => 1
          ^ '5' is matched more than once
 
-Error at line 25, column 5
+Error at match_value_errors.ce:25:5
 24 │ 5 => 1
 25 │ 2, 5 => 2
         ^ '5' is matched more than once
 
-Error at line 33, column 2
+Error at match_value_errors.ce:33:2
 32 │ {
 33 │     5 => 1
          ^ '5' and 'Five' are the same value
 
-Error at line 34, column 2
+Error at match_value_errors.ce:34:2
 33 │ 5 => 1
 34 │ Five => 2
      ╘══╛ '5' and 'Five' are the same value
 
-Error at line 40, column 10
+Error at match_value_errors.ce:40:10
 39 │ {
 40 │     hit(val n), pair(val n, _) => n
                  ^ Cannot bind names in arms with several patterns
 
-Error at line 40, column 23
+Error at match_value_errors.ce:40:23
 39 │ {
 40 │     hit(val n), pair(val n, _) => n
                               ^ Cannot bind names in arms with several patterns
 
-Error at line 46, column 11
+Error at match_value_errors.ce:46:11
 45 │ {
 46 │     full(val b) if b.n > 0 => 1
                   ^ Cannot move values in arms with 'if'
 
-Error at line 52, column 2
+Error at match_value_errors.ce:52:2
 51 │ {
 52 │     Point(1) => 1
          ╘══════╛ No operation defined for '==' between 'Point' and 'Point'
 
-Warning at line 58, column 2
+Warning at match_value_errors.ce:58:2
 57 │ {
 58 │     1.5 => 1
          ╘═╛ Float patterns compare exactly
 
-Warning at line 59, column 2
+Warning at match_value_errors.ce:59:2
 58 │ 1.5 => 1
 59 │ != 2.0 => 2
      ╘════╛ Float patterns compare exactly
 
-Error at line 63, column 30
+Error at match_value_errors.ce:63:30
 62 │ 
 63 │ byteGap: fun(b: u8) -> i32 = match b
                                   ╘═══╛ This match doesn't handle every value of 'u8'
 
-Error at line 69, column 30
+Error at match_value_errors.ce:69:30
 68 │ 
 69 │ flags: fun(b: bool) -> i32 = match b
                                   ╘═══╛ This match doesn't handle every value of 'bool'

@@ -1,67 +1,64 @@
-
-====== mut_arguments.ce ======
-
-Error at line 30, column 9
+Error at mut_arguments.ce:30:9
 29 │ var big: i64 = 5
 30 │ damage(hp, 3)
             ╘╛ Cannot mutably borrow arguments implicitly
 
-Error at line 31, column 9
+Error at mut_arguments.ce:31:9
 30 │ damage(hp, 3)
 31 │ damage(7, 3)
             ^ Cannot mutably borrow unstored values
 
-Error at line 32, column 13
+Error at mut_arguments.ce:32:13
 31 │ damage(7, 3)
 32 │ damage(mut big, 3)
                 ╘═╛ Cannot mutably borrow 'i64' values as 'i32'
 
-Error at line 33, column 7
+Error at mut_arguments.ce:33:7
 32 │ damage(mut big, 3)
 33 │ show(mut hp)
           ╘═╛ 'x' isn't a 'mut' parameter
 
-Error at line 34, column 20
+Error at mut_arguments.ce:34:20
 33 │ show(mut hp)
 34 │ val point = Point(mut hp)
                        ╘════╛ Cannot convert type 'mut[i32]' to 'i32'
 
-Error at line 35, column 26
+Error at mut_arguments.ce:35:26
 34 │ val point = Point(mut hp)
 35 │ val effect = Effect.hit(mut hp)
                              ╘════╛ Cannot convert type 'mut[i32]' to 'i32'
 
-Error at line 36, column 18
+Error at mut_arguments.ce:36:18
 35 │ val effect = Effect.hit(mut hp)
 36 │ val converted = i32(mut hp)
                      ╘═════════╛ No constructor for 'i32' accepts argument of type 'mut[i32]'
 
-Error at line 37, column 17
+Error at mut_arguments.ce:37:17
 36 │ val converted = i32(mut hp)
 37 │ printf("%d\n", mut hp)
                     ╘═╛ Cannot use 'mut' on arguments to read-only parameters
 
-Error at line 39, column 11
+Error at mut_arguments.ce:39:11
 38 │ var callback: fun[i32] = show
 39 │ callback(mut hp)
               ╘═╛ Cannot use 'mut' on arguments to read-only parameters
 
-Error at line 41, column 4
+Error at mut_arguments.ce:41:4
 40 │ val f = damage
 41 │ f(hp, 3)
        ╘╛ Cannot mutably borrow arguments implicitly
 
-Error at line 42, column 8
+Error at mut_arguments.ce:42:8
 41 │ f(hp, 3)
 42 │ f(mut big, 3)
            ╘═╛ Cannot mutably borrow 'i64' values as 'i32'
 
-Error at line 43, column 30
+Error at mut_arguments.ce:43:30
 42 │ f(mut big, 3)
 43 │ var g: fun[ptr[i32], i32] = damage
                                  ╘════╛ Cannot convert type 'fun[mut i32, i32]' to 'fun[ptr[i32], i32]'
 
-Error at line 44, column 29
+Error at mut_arguments.ce:44:29
 43 │ var g: fun[ptr[i32], i32] = damage
 44 │ var h: fun[own i32, i32] = damage
                                 ╘════╛ Cannot convert type 'fun[mut i32, i32]' to 'fun[own i32, i32]'

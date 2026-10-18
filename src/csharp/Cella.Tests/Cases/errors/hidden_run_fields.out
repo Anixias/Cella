@@ -1,19 +1,16 @@
-
-====== hidden_run_fields.ce ======
-
-Error at line 23, column 19
+Error at hidden_run_fields.ce:23:19
 22 │ 
 23 │ count: fun(...xs: Run) -> usize = xs.size()
                        ╘═╛ 'Run' doesn't meet 'new(ptr[T], usize)'
                          | 'data' is private to its type
 
-Error at line 24, column 19
+Error at hidden_run_fields.ce:24:19
 23 │ count: fun(...xs: Run) -> usize = xs.size()
 24 │ fixed: fun(...xs: Fixed) -> usize = xs.count
                        ╘═══╛ 'Fixed' doesn't meet 'new(ptr[T], usize)'
                            | 'data' is read-only outside its type
 
-Error at line 26, column 1
+Error at hidden_run_fields.ce:26:1
 25 │ 
 26 │ main: fun(args: Args) -> i32 = 0
      ╘══╛ 'main' must take no parameters, 'ptr[str]' and 'usize', or one parameter that meets 'new(ptr[str], usize)'

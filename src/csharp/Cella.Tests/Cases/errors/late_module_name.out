@@ -1,7 +1,4 @@
-
-====== late_module_name.ce ======
-
-Error at line 3, column 5
+Error at late_module_name.ce:3:5
 2 │ 
 3 │ mod test
         ╘══╛ Module name must precede all other declarations or imports

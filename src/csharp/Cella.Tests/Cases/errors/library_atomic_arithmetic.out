@@ -1,13 +1,10 @@
-
-====== main.ce ======
-
-Error at line 10, column 2
+Error at main.ce:10:2
  9 │ numbers.add(2)
 10 │ flags.add(true)
      ╘═══════╛ Cannot use '+=' atomically on 'bool'
              | Used in 'counters.ce' on line 7
 
-Error at line 11, column 2
+Error at main.ce:11:2
 10 │ flags.add(true)
 11 │ twice(imm flags, true)
      ╘═══╛ Cannot use '+=' atomically on 'bool'

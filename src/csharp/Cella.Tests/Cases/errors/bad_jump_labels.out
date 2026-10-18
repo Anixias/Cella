@@ -1,17 +1,14 @@
-
-====== bad_jump_labels.ce ======
-
-Error at line 12, column 11
+Error at bad_jump_labels.ce:12:11
 11 │ if x == 1
 12 │     break 5
                ^ Expected a label
 
-Error at line 15, column 10
+Error at bad_jump_labels.ce:15:10
 14 │ if x == 2
 15 │     cont nowhere
               ╘═════╛ Symbol 'nowhere' not found in this scope
 
-Error at line 18, column 11
+Error at bad_jump_labels.ce:18:11
 17 │ if x == 3
 18 │     break x
                ^ 'x' is not a label

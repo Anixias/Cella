@@ -1,17 +1,14 @@
-
-====== blanket_impl_uses.ce ======
-
-Error at line 28, column 50
+Error at blanket_impl_uses.ce:28:50
 27 │ 
 28 │ plainName: fun(imm plain: Plain) -> cstr = plain.name()
                                                       ╘══╛ Type 'Plain' has no member 'name'
 
-Error at line 29, column 47
+Error at blanket_impl_uses.ce:29:47
 28 │ plainName: fun(imm plain: Plain) -> cstr = plain.name()
 29 │ anyName[T]: fun(imm value: T) -> cstr = value.name()
                                                    ╘══╛ Type 'T' has no member 'name'
 
-Error at line 33, column 33
+Error at blanket_impl_uses.ce:33:33
 32 │ {
 33 │     val view: imm[dyn[Describe]] = imm plain
                                         ╘═══════╛ Cannot convert type 'imm[Plain]' to 'imm[dyn[Describe]]'

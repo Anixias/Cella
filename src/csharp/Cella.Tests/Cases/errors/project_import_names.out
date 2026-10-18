@@ -1,25 +1,19 @@
-
-====== main.ce ======
-
-Error at line 3, column 9
+Error at main.ce:3:9
 2 │ 
 3 │ use lib.greet
             ╘═══╛ 'greet' is imported more than once
 
-
-====== test.celp ======
-
-Error at line 5, column 7
+Error at test.celp:5:7
 4 │ Imports = [
 5 │     "lib.nothere",
              ╘═════╛ Module 'lib' has no member 'nothere'
 
-Error at line 6, column 7
+Error at test.celp:6:7
 5 │ "lib.nothere",
 6 │ "lib.greet",
          ╘═══╛ 'greet' is imported more than once
 
-Error at line 7, column 3
+Error at test.celp:7:3
 6 │ "lib.greet",
 7 │ "nomod.x",
      ╘═══╛ Module 'nomod' not found

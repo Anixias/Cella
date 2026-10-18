@@ -1,72 +1,69 @@
-
-====== trailing_commas.ce ======
-
-Error at line 3, column 20
+Error at trailing_commas.ce:3:20
 2 │ 
 3 │ use test.[main, add,]
                        ^ Cannot end lists with ','
 
-Error at line 12, column 21
+Error at trailing_commas.ce:12:21
 11 │ {
 12 │     rect(w: i32, h: i32,)
                             ^ Cannot end lists with ','
 
-Error at line 16, column 24
+Error at trailing_commas.ce:16:24
 15 │ 
 16 │ add: fun(a: i32, b: i32,) -> i32 = a + b
                             ^ Cannot end lists with ','
 
-Error at line 22, column 19
+Error at trailing_commas.ce:22:19
 21 │ 
 22 │ get: fun(imm self,) -> i32 = self.x
                       ^ Cannot end lists with ','
 
-Error at line 25, column 10
+Error at trailing_commas.ce:25:10
 24 │ 
 25 │ pair[A, B,]: rec
               ^ Cannot end lists with ','
 
-Error at line 31, column 16
+Error at trailing_commas.ce:31:16
 30 │ 
 31 │ make[T: new(i32,)]: fun -> T = T(1)
                     ^ Cannot end lists with ','
 
-Error at line 35, column 20
+Error at trailing_commas.ce:35:20
 34 │ {
 35 │     val values = [1, 2,]
                            ^ Cannot end lists with ','
 
-Error at line 41, column 21
+Error at trailing_commas.ce:41:21
 40 │ {
 41 │     val f: fun[i32, i32, -> i32] = add
                             ^ Cannot end lists with ','
 
-Error at line 47, column 28
+Error at trailing_commas.ce:47:28
 46 │ {
 47 │     val g = fun(a: i32, b: i32,) -> i32 = a * b
                                    ^ Cannot end lists with ','
 
-Error at line 53, column 21
+Error at trailing_commas.ce:53:21
 52 │ {
 53 │     val v: array[i32, 2,] = [1, 2]
                             ^ Cannot end lists with ','
 
-Error at line 59, column 6
+Error at trailing_commas.ce:59:6
 58 │ {
 59 │     1, 2, => 0
              ^ Cannot end lists with ','
 
-Error at line 66, column 20
+Error at trailing_commas.ce:66:20
 65 │ val s = Shape.rect(1, 2)
 66 │ ret s is rect(1, 2,)
                        ^ Cannot end lists with ','
 
-Error at line 73, column 4
+Error at trailing_commas.ce:73:4
 72 │ "%d\n",
 73 │ 5,
       ^ Cannot end lists with ','
 
-Error at line 81, column 14
+Error at trailing_commas.ce:81:14
 80 │ val values = [1, 2]
 81 │ ret values[1,]
                  ^ Cannot end lists with ','

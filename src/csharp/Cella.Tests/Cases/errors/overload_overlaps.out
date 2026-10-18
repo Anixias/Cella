@@ -1,62 +1,59 @@
-
-====== overload_overlaps.ce ======
-
-Error at line 15, column 1
+Error at overload_overlaps.ce:15:1
 14 │ 
 15 │ defaulted: fun(x: i32 = 5) {}
      ╘═══════╛ 'defaulted' overloads cannot accept the same arguments
 
-Error at line 16, column 1
+Error at overload_overlaps.ce:16:1
 15 │ defaulted: fun(x: i32 = 5) {}
 16 │ defaulted: fun {}
      ╘═══════╛ 'defaulted' overloads cannot accept the same arguments
 
-Error at line 18, column 1
+Error at overload_overlaps.ce:18:1
 17 │ 
 18 │ packed: fun(x: i32) {}
      ╘════╛ 'packed' overloads cannot accept the same arguments
 
-Error at line 19, column 1
+Error at overload_overlaps.ce:19:1
 18 │ packed: fun(x: i32) {}
 19 │ packed: fun(...xs: view[i32]) {}
      ╘════╛ 'packed' overloads cannot accept the same arguments
 
-Error at line 21, column 1
+Error at overload_overlaps.ce:21:1
 20 │ 
 21 │ empty: fun {}
      ╘═══╛ 'empty' overloads cannot accept the same arguments
 
-Error at line 22, column 1
+Error at overload_overlaps.ce:22:1
 21 │ empty: fun {}
 22 │ empty: fun(...xs: view[i32]) {}
      ╘═══╛ 'empty' overloads cannot accept the same arguments
 
-Error at line 24, column 1
+Error at overload_overlaps.ce:24:1
 23 │ 
 24 │ head: fun(template: str) {}
      ╘══╛ 'head' overloads cannot accept the same arguments
 
-Error at line 25, column 1
+Error at overload_overlaps.ce:25:1
 24 │ head: fun(template: str) {}
 25 │ head: fun(template: str, ...args: view[i32]) {}
      ╘══╛ 'head' overloads cannot accept the same arguments
 
-Error at line 27, column 1
+Error at overload_overlaps.ce:27:1
 26 │ 
 27 │ both: fun(x: i32 = 0) {}
      ╘══╛ 'both' overloads cannot accept the same arguments
 
-Error at line 28, column 1
+Error at overload_overlaps.ce:28:1
 27 │ both: fun(x: i32 = 0) {}
 28 │ both: fun(...xs: view[i32]) {}
      ╘══╛ 'both' overloads cannot accept the same arguments
 
-Error at line 34, column 2
+Error at overload_overlaps.ce:34:2
 33 │ 
 34 │ new: op(start: i32 = 0)
      ╘═╛ 'Counter.new' overloads cannot accept the same arguments
 
-Error at line 38, column 2
+Error at overload_overlaps.ce:38:2
 37 │ 
 38 │ new: op
      ╘═╛ 'Counter.new' overloads cannot accept the same arguments

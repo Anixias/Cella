@@ -1,32 +1,29 @@
-
-====== byte_char_literals.ce ======
-
-Error at line 8, column 5
+Error at byte_char_literals.ce:8:5
 7 │ var b: u8 = 1
 8 │ if text[0] == 'b'
        ╘════════════╛ No operation defined for '==' between 'u8' and 'char'
 
-Error at line 11, column 5
+Error at byte_char_literals.ce:11:5
 10 │ 
 11 │ if text[0] == ch
         ╘═══════════╛ No operation defined for '==' between 'u8' and 'char'
 
-Error at line 14, column 18
+Error at byte_char_literals.ce:14:18
 13 │ 
 14 │ val typed: u8 = 'z'
                      ╘═╛ Cannot convert type 'char' to 'u8'
 
-Error at line 15, column 29
+Error at byte_char_literals.ce:15:29
 14 │ val typed: u8 = 'z'
 15 │ val bytes: array[u8, 2] = ['h', 'i']
                                 ╘═╛ Cannot convert type 'char' to 'u8'
 
-Error at line 15, column 34
+Error at byte_char_literals.ce:15:34
 14 │ val typed: u8 = 'z'
 15 │ val bytes: array[u8, 2] = ['h', 'i']
                                      ╘═╛ Cannot convert type 'char' to 'u8'
 
-Error at line 16, column 7
+Error at byte_char_literals.ce:16:7
 15 │ val bytes: array[u8, 2] = ['h', 'i']
 16 │ b += 'a'
           ╘═╛ Cannot convert type 'char' to 'u8'

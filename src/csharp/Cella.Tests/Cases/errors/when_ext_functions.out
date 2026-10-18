@@ -1,7 +1,4 @@
-
-====== when_ext_functions.ce ======
-
-Error at line 3, column 31
+Error at when_ext_functions.ce:3:31
 2 │ 
 3 │ work: ext fun(parameter: ptr) when debug
                                   ╘══╛ Cannot use 'when' on 'ext' functions

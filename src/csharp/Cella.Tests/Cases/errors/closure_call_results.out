@@ -1,7 +1,4 @@
-
-====== closure_call_results.ce ======
-
-Error at line 19, column 6
+Error at closure_call_results.ce:19:6
 18 │ t = Text(2)
 19 │ ret r.id
          ^ Cannot use borrows of reassigned values

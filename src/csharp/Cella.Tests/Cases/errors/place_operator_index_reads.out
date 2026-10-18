@@ -1,7 +1,4 @@
-
-====== place_operator_index_reads.ce ======
-
-Error at line 13, column 6
+Error at place_operator_index_reads.ce:13:6
 12 │ val g = Grid([1, 2, 3, 4])
 13 │ ret g[0]
          ^ 'Grid' has no read-only '[]'

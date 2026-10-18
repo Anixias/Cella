@@ -1,12 +1,9 @@
-
-====== own_compound_assignments.ce ======
-
-Error at line 25, column 2
+Error at own_compound_assignments.ce:25:2
 24 │ var a = N(1)
 25 │ own a += 5
      ╘═╛ Cannot use 'own' on compound assignments
 
-Error at line 27, column 2
+Error at own_compound_assignments.ce:27:2
 26 │ val p = @a
 27 │ own *p += 5
      ╘═╛ Cannot use 'own' on compound assignments

@@ -1,23 +1,14 @@
-
-====== bare.ce ======
-
-Error at line 2, column 5
+Error at bare.ce:2:5
 1 │ mod test
 2 │ use when
         ╘══╛ Expected a flag
 
-
-====== main.ce ======
-
-Error at line 2, column 16
+Error at main.ce:2:16
 1 │ mod test
 2 │ use when debug release
                    ╘═════╛ Expected '&&' or '||'
 
-
-====== parens.ce ======
-
-Error at line 2, column 13
+Error at parens.ce:2:13
 1 │ mod test
 2 │ use when ((((
                 ^ Expected a flag

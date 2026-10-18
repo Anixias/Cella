@@ -1,39 +1,36 @@
-
-====== match_enum_uses.ce ======
-
-Error at line 20, column 56
+Error at match_enum_uses.ce:20:56
 19 │ 
 20 │ wrap[T: null]: fun(own value: T) -> nullable[T] = some(value)
                                                             ╘═══╛ Cannot move 'T' values implicitly
 
-Error at line 22, column 49
+Error at match_enum_uses.ce:22:49
 21 │ 
 22 │ unwrap[T: null]: fun(imm n: nullable[T]) -> T = T(n)
                                                      ╘══╛ No constructor for 'T' accepts argument of type 'nullable[T]'
 
-Error at line 24, column 35
+Error at match_enum_uses.ce:24:35
 23 │ 
 24 │ describe: fun(s: socket) -> i32 = match s { valid(val h) => h }
                                        ╘═══╛ This match doesn't handle every case of 'socket': 'invalid'
 
-Error at line 28, column 10
+Error at match_enum_uses.ce:28:10
 27 │ {
 28 │     val a = wrap(5)
                  ╘══╛ 'wrap' requires 'T: null'
                     | 'i32' has no null
 
-Error at line 29, column 15
+Error at match_enum_uses.ce:29:15
 28 │ val a = wrap(5)
 29 │ val b = wrap[Point](Point(1))
                   ╘═══╛ 'wrap' requires 'T: null'
                       | 'Point' has no null
 
-Error at line 33, column 13
+Error at match_enum_uses.ce:33:13
 32 │ {
 33 │     valid(val h) => h = 4
                    ^ Cannot mutably borrow 'socket' payloads
 
-Error at line 37, column 12
+Error at match_enum_uses.ce:37:12
 36 │ 
 37 │ val raw = f32(s)
                ╘════╛ No constructor for 'f32' accepts argument of type 'socket'

@@ -1,47 +1,44 @@
-
-====== property_writes.ce ======
-
-Error at line 26, column 2
+Error at property_writes.ce:26:2
 25 │ {
 26 │     unit.health = 1
          ╘══╛ Cannot mutably borrow read-only parameters
 
-Error at line 27, column 2
+Error at property_writes.ce:27:2
 26 │ unit.health = 1
 27 │ unit.health += 1
      ╘══╛ Cannot mutably borrow read-only parameters
 
-Error at line 30, column 2
+Error at property_writes.ce:30:2
 29 │ val view = imm other
 30 │ view.health = 2
      ╘══╛ Cannot mutably borrow through read-only borrows
 
-Error at line 31, column 2
+Error at property_writes.ce:31:2
 30 │ view.health = 2
 31 │ make().health = 3
      ╘════╛ Cannot mutably borrow unstored values
 
-Error at line 32, column 13
+Error at property_writes.ce:32:13
 31 │ make().health = 3
 32 │ addOne(mut unit.health)
                 ╘═════════╛ Cannot mutably borrow properties
 
-Error at line 33, column 17
+Error at property_writes.ce:33:17
 32 │ addOne(mut unit.health)
 33 │ val pointer = @unit.health
                     ╘═════════╛ Cannot take the address of properties
 
-Error at line 34, column 21
+Error at property_writes.ce:34:21
 33 │ val pointer = @unit.health
 34 │ val borrowed = imm unit.health
                         ╘═════════╛ Cannot borrow properties
 
-Error at line 35, column 18
+Error at property_writes.ce:35:18
 34 │ val borrowed = imm unit.health
 35 │ val moved = own unit.health
                      ╘═════════╛ Cannot move properties
 
-Error at line 36, column 2
+Error at property_writes.ce:36:2
 35 │ val moved = own unit.health
 36 │ unit.health
      ╘═════════╛ Cannot use values as statements

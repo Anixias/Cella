@@ -1,12 +1,9 @@
-
-====== untyped_locals.ce ======
-
-Error at line 5, column 6
+Error at untyped_locals.ce:5:6
 4 │ {
 5 │     var x
             ^ Cannot infer the type of 'x'
 
-Error at line 11, column 6
+Error at untyped_locals.ce:11:6
 10 │ {
 11 │     var y = undef
              ^ Cannot infer the type of 'y'

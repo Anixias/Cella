@@ -1,72 +1,69 @@
-
-====== main.ce ======
-
-Error at line 13, column 6
+Error at main.ce:13:6
 12 │ var box = Box.make()
 13 │ box.limit = 1
          ╘═══╛ 'limit' is read-only outside its type
 
-Error at line 14, column 6
+Error at main.ce:14:6
 13 │ box.limit = 1
 14 │ box.limit += 1
          ╘═══╛ 'limit' is read-only outside its type
 
-Error at line 15, column 6
+Error at main.ce:15:6
 14 │ box.limit += 1
 15 │ box.items[0] = 1
          ╘═══╛ 'items' is read-only outside its type
 
-Error at line 16, column 6
+Error at main.ce:16:6
 15 │ box.items[0] = 1
 16 │ box.inner.amount = 1
          ╘═══╛ 'inner' is read-only outside its type
 
-Error at line 17, column 6
+Error at main.ce:17:6
 16 │ box.inner.amount = 1
 17 │ box.inner.grow()
          ╘═══╛ 'inner' is read-only outside its type
 
-Error at line 18, column 17
+Error at main.ce:18:17
 17 │ box.inner.grow()
 18 │ addOne(mut box.limit)
                     ╘═══╛ 'limit' is read-only outside its type
 
-Error at line 19, column 21
+Error at main.ce:19:21
 18 │ addOne(mut box.limit)
 19 │ val view = mut box.limit
                         ╘═══╛ 'limit' is read-only outside its type
 
-Error at line 20, column 16
+Error at main.ce:20:16
 19 │ val view = mut box.limit
 20 │ match mut box.shape
                    ╘═══╛ 'shape' is read-only outside its type
 
-Error at line 25, column 12
+Error at main.ce:25:12
 24 │ 
 25 │ match box.shape
                ╘═══╛ 'shape' is read-only outside its type
 
-Error at line 34, column 22
+Error at main.ce:34:22
 33 │ var box = Box.make()
 34 │ val taken = own box.inner
                          ╘═══╛ 'inner' is read-only outside its type
 
-Error at line 35, column 26
+Error at main.ce:35:26
 34 │ val taken = own box.inner
 35 │ val copied: Inner = box.inner
                              ╘═══╛ 'inner' is read-only outside its type
 
-Error at line 41, column 10
+Error at main.ce:41:10
 40 │ var counter = Counter()
 41 │ counter.total = 1
              ╘═══╛ 'total' is read-only outside its module
 
-Error at line 44, column 33
+Error at main.ce:44:33
 43 │ 
 44 │ builds: fun -> Plain = Plain(1, 2, 3)
                                      ^ 'hidden' is private to its type
 
-Error at line 44, column 36
+Error at main.ce:44:36
 43 │ 
 44 │ builds: fun -> Plain = Plain(1, 2, 3)
                                         ^ 'fixed' is read-only outside its type

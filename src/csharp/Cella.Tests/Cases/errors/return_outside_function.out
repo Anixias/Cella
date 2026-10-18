@@ -1,7 +1,4 @@
-
-====== return_outside_function.ce ======
-
-Error at line 3, column 18
+Error at return_outside_function.ce:3:18
 2 │ 
 3 │ limit: val i32 = ret 5
                      ╘═══╛ Cannot use 'ret' outside functions

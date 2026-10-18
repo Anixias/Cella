@@ -1,12 +1,9 @@
-
-====== match_non_enums.ce ======
-
-Error at line 19, column 10
+Error at match_non_enums.ce:19:10
 18 │ val p: ptr[dyn[Shape]] = @a
 19 │ if p is A
              ^ Cannot use types as values
 
-Error at line 28, column 16
+Error at match_non_enums.ce:28:16
 27 │ val a = A(3)
 28 │ ret match a { A => 1, else => 0 }
                    ^ Cannot use types as values

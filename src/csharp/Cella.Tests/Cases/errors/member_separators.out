@@ -1,47 +1,44 @@
-
-====== member_separators.ce ======
-
-Error at line 3, column 21
+Error at member_separators.ce:3:21
 2 │ 
 3 │ Point: rec { x: i32 y: i32 }
                         ^ Expected ',' or a new line before the next member
 
-Error at line 5, column 19
+Error at member_separators.ce:5:19
 4 │ 
 5 │ Color: enum { red green }
                       ╘═══╛ Expected ',' or a new line before the next member
 
-Error at line 7, column 28
+Error at member_separators.ce:7:28
 6 │ 
 7 │ Trailing: enum { red, green, }
                                ^ Cannot end lists with ','
 
-Error at line 11, column 8
+Error at member_separators.ce:11:8
 10 │ {
 11 │     x: i32,
                ^ Cannot separate members on separate lines with ','
 
-Error at line 15, column 22
+Error at member_separators.ce:15:22
 14 │ 
 15 │ Plain: enum { a = 0, 1 }
                           ^ Cannot list several values outside 'enum match'
 
-Error at line 17, column 36
+Error at member_separators.ce:17:36
 16 │ 
 17 │ ext { puts: fun(text: cstr) -> i32 abs: fun(v: i32) -> i32 }
                                         ╘═╛ Expected ',' or a new line before the next declaration
 
-Error at line 19, column 27
+Error at member_separators.ce:19:27
 18 │ 
 19 │ pub { one: fun -> i32 = 1 two: fun -> i32 = 2 }
                                ╘═╛ Expected ',' or a new line before the next declaration
 
-Error at line 25, column 53
+Error at member_separators.ce:25:53
 24 │ 
 25 │ doubled: prop i32 { get(imm self) = self.value * 2 set(mut self, next) { self.value = next / 2 } }
                                                         ╘═╛ Expected ',' or a new line before the next accessor
 
-Error at line 28, column 23
+Error at member_separators.ce:28:23
 27 │ 
 28 │ three: fun -> i32 = 3 four: fun -> i32 = 4
                            ╘══╛ Expected a new line before the next declaration

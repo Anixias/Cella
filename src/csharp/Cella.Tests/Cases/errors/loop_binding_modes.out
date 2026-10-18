@@ -1,37 +1,34 @@
-
-====== loop_binding_modes.ce ======
-
-Error at line 50, column 6
+Error at loop_binding_modes.ce:50:6
 49 │ val names = [Name(1)]
 50 │ for n in names
          ^ Cannot copy 'Name'
 
-Error at line 54, column 11
+Error at loop_binding_modes.ce:54:11
 53 │ 
 54 │ for c in mut counts
               ╘═╛ Cannot use 'mut' on 'array[i32, 3]' loop sources
 
-Error at line 58, column 11
+Error at loop_binding_modes.ce:58:11
 57 │ 
 58 │ for n in own names
               ╘═╛ Cannot use 'own' on 'array[Name, 1]' loop sources
 
-Error at line 62, column 6
+Error at loop_binding_modes.ce:62:6
 61 │ 
 62 │ for mut i in 0..3
          ╘═╛ Cannot iterate over ranges with 'mut'
 
-Error at line 67, column 6
+Error at loop_binding_modes.ce:67:6
 66 │ var down = Countdown(3)
 67 │ for mut x in down
          ╘═╛ Cannot iterate over 'Countdown' with 'mut'
 
-Error at line 71, column 6
+Error at loop_binding_modes.ce:71:6
 70 │ 
 71 │ for own x in down
          ╘═╛ Cannot move borrowed values
 
-Error at line 76, column 15
+Error at loop_binding_modes.ce:76:15
 75 │ var slots = Slots([1, 2, 3])
 76 │ for mut s in mut slots
                   ╘═╛ Cannot use 'mut' on 'Slots' loop sources

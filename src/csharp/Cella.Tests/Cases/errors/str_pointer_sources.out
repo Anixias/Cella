@@ -1,43 +1,40 @@
-
-====== str_pointer_sources.ce ======
-
-Error at line 17, column 6
+Error at str_pointer_sources.ce:17:6
 16 │ val whole = str(@buffer[0], 3)
 17 │ ret str(whole.data + 1, 2)
          ╘════════════════════╛ Cannot return borrows of local variables
 
-Error at line 24, column 6
+Error at str_pointer_sources.ce:24:6
 23 │ val whole = str(@buffer[0], 3)
 24 │ ret str(whole.data, 2)
          ╘════════════════╛ Cannot return borrows of local variables
 
-Error at line 32, column 6
+Error at str_pointer_sources.ce:32:6
 31 │ val q = p + 1
 32 │ ret str(q, 1)
          ╘═══════╛ Cannot return borrows of local variables
 
-Error at line 38, column 6
+Error at str_pointer_sources.ce:38:6
 37 │ var buffer = [u8(65), u8(66), u8(67)]
 38 │ ret str(@buffer[0] + 1, 2)
          ╘════════════════════╛ Cannot return borrows of local variables
 
-Error at line 46, column 6
+Error at str_pointer_sources.ce:46:6
 45 │ p = @buffer[0]
 46 │ ret str(p, 1)
          ╘═══════╛ Cannot return borrows of local variables
 
-Error at line 53, column 6
+Error at str_pointer_sources.ce:53:6
 52 │ val r = Raw(@buffer[0])
 53 │ ret str(r.p, 2)
          ╘═════════╛ Cannot return borrows of local variables
 
-Error at line 65, column 23
+Error at str_pointer_sources.ce:65:23
 64 │ 
 65 │ printf("%.*s\n", i32(s.byteLength), s.data)
                           ^ Cannot use borrows of dropped values
                           | Dropped on line 63
 
-Error at line 65, column 38
+Error at str_pointer_sources.ce:65:38
 64 │ 
 65 │ printf("%.*s\n", i32(s.byteLength), s.data)
                                          ^ Cannot use borrows of dropped values

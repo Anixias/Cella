@@ -1,12 +1,9 @@
-
-====== borrow_conversion_lifetimes.ce ======
-
-Error at line 22, column 6
+Error at borrow_conversion_lifetimes.ce:22:6
 21 │ val h = Handle(Sprite(1))
 22 │ ret h
          ^ Cannot return borrows of local variables
 
-Error at line 27, column 23
+Error at borrow_conversion_lifetimes.ce:27:23
 26 │ {
 27 │     var s: imm[Sprite] = Handle(Sprite(2))
                               ╘═══════════════╛ Cannot borrow unstored values

@@ -1,12 +1,9 @@
-
-====== main.ce ======
-
-Error at line 5, column 2
+Error at main.ce:5:2
 4 │ {
 5 │     pub ext
         ╘═╛ Cannot use 'pub' in 'pvt' blocks
 
-Error at line 13, column 2
+Error at main.ce:13:2
 12 │ {
 13 │     pvt ext
          ╘═╛ Cannot use 'pvt' in 'mod' blocks

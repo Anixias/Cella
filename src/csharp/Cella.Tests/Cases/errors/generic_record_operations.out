@@ -1,7 +1,4 @@
-
-====== generic_record_operations.ce ======
-
-Error at line 7, column 28
+Error at generic_record_operations.ce:7:28
 6 │ 
 7 │ add: fun(imm self) -> T = self.value + 1
                               ╘════════════╛ No operation defined for '+' between 'T' and 'integer literal'

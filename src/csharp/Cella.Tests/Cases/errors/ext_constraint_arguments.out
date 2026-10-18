@@ -1,41 +1,38 @@
-
-====== ext_constraint_arguments.ce ======
-
-Error at line 35, column 68
+Error at ext_constraint_arguments.ce:35:68
 34 │ 
 35 │ outer[U]: fun(f: ext fun[i32 -> i32], imm value: U) -> i32 = visit[U](undef, null)
                                                                         ^ 'visit' requires 'T: ext'
                                                                         | 'U' can't be used in 'ext' signatures
 
-Error at line 39, column 17
+Error at ext_constraint_arguments.ce:39:17
 38 │ {
 39 │     var f: ext fun[array[T, 2] -> i32]
                         ╘═════════╛ Cannot use 'array[T, 2]' in 'ext' signatures
 
-Error at line 40, column 35
+Error at ext_constraint_arguments.ce:40:35
 39 │ var f: ext fun[array[T, 2] -> i32]
 40 │ val g = fun(imm x: T) -> ext fun[T -> i32] = undef
                                       ^ Cannot use 'T' in 'ext' signatures
 
-Error at line 46, column 2
+Error at ext_constraint_arguments.ce:46:2
 45 │ {
 46 │     call(same, Token(4))
          ╘══╛ 'call' requires 'T: ext'
             | 'Token' can't be used in 'ext' signatures
 
-Error at line 47, column 7
+Error at ext_constraint_arguments.ce:47:7
 46 │ call(same, Token(4))
 47 │ call[Bundle](undef, Bundle(Token(1)))
           ╘════╛ 'call' requires 'T: ext'
                | 'Bundle' can't be used in 'ext' signatures
 
-Error at line 48, column 7
+Error at ext_constraint_arguments.ce:48:7
 47 │ call[Bundle](undef, Bundle(Token(1)))
 48 │ call[fun[i32 -> i32]](undef, fun(n: i32) -> i32 = n)
           ╘═════════════╛ 'call' requires 'T: ext'
                         | 'fun[i32 -> i32]' can't be used in 'ext' signatures
 
-Error at line 49, column 8
+Error at ext_constraint_arguments.ce:49:8
 48 │ call[fun[i32 -> i32]](undef, fun(n: i32) -> i32 = n)
 49 │ visit[fstr[Display]](undef, null)
            ╘═══════════╛ 'visit' requires 'T: ext'

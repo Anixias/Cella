@@ -1,7 +1,4 @@
-
-====== owned_callback_witnesses.ce ======
-
-Error at line 12, column 2
+Error at owned_callback_witnesses.ce:12:2
 11 │ 
 12 │ take: fun(self, own value: fun[-> i32]) -> i32 = value() + self.base
      ╘══╛ 'take' doesn't match 'Sink.take'

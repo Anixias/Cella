@@ -1,7 +1,4 @@
-
-====== question_operator_moves.ce ======
-
-Error at line 30, column 10
+Error at question_operator_moves.ce:30:10
 29 │ val a = r?
 30 │ val b = r?
              ^ Cannot use moved values

@@ -1,22 +1,13 @@
-
-====== game.ce ======
-
-Error at line 3, column 1
+Error at game.ce:3:1
 2 │ 
 3 │ geometry: fun -> i32 = 1
     ╘══════╛ 'game.geometry' is both a module and a member of 'game'
 
-
-====== game\geometry.ce ======
-
-Error at line 1, column 5
+Error at game\geometry.ce:1:5
 1 │ mod game.geometry
         ╘═══════════╛ 'game.geometry' is both a module and a member of 'game'
 
-
-====== game\shapes.ce ======
-
-Error at line 1, column 5
+Error at game\shapes.ce:1:5
 1 │ mod game.geometry
         ╘═══════════╛ 'game.geometry' is both a module and a member of 'game'
 

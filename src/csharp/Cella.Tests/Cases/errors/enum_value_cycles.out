@@ -1,12 +1,9 @@
-
-====== enum_value_cycles.ce ======
-
-Error at line 3, column 1
+Error at enum_value_cycles.ce:3:1
 2 │ 
 3 │ X: enum { zero, a = i32(Y.b) }
     ^ 'X' depends on its own values
 
-Error at line 5, column 1
+Error at enum_value_cycles.ce:5:1
 4 │ 
 5 │ Y: enum { zero, b = i32(X.a) }
     ^ 'Y' depends on its own values

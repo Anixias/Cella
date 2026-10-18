@@ -1,7 +1,4 @@
-
-====== trait_private_constructors.ce ======
-
-Error at line 5, column 7
+Error at trait_private_constructors.ce:5:7
 4 │ {
 5 │     new: pvt op(value: i32)
              ╘═╛ Cannot declare 'pvt' constructors in traits

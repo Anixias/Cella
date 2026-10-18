@@ -1,72 +1,69 @@
-
-====== conversion_uses.ce ======
-
-Error at line 70, column 32
+Error at conversion_uses.ce:70:32
 69 │ 
 70 │ as: op(self) -> imm[Sprite] = imm self.sprite
                                    ╘═════════════╛ Cannot return borrows of copied parameters
 
-Error at line 85, column 22
+Error at conversion_uses.ce:85:22
 84 │ val fixed = Fixed(1 << 16)
 85 │ val implicit: i32 = fixed
                          ╘═══╛ Cannot convert type 'Fixed' to 'i32'
 
-Error at line 86, column 10
+Error at conversion_uses.ce:86:10
 85 │ val implicit: i32 = fixed
 86 │ takeInt(fixed)
              ╘═══╛ Cannot convert type 'Fixed' to 'i32'
 
-Error at line 89, column 20
+Error at conversion_uses.ce:89:20
 88 │ val source = Source(1)
 89 │ val named: Name = source
                        ╘════╛ Conversion from 'Source' to 'Name' is ambiguous
 
-Error at line 90, column 17
+Error at conversion_uses.ce:90:17
 89 │ val named: Name = source
 90 │ val explicit = Name(source)
                     ╘══════════╛ Conversion to 'Name' is ambiguous
 
-Error at line 91, column 11
+Error at conversion_uses.ce:91:11
 90 │ val explicit = Name(source)
 91 │ takeName(source)
               ╘════╛ Conversion from 'Source' to 'Name' is ambiguous
 
-Error at line 92, column 14
+Error at conversion_uses.ce:92:14
 91 │ takeName(source)
 92 │ val label = Label(Origin(2))
                  ╘══════════════╛ Conversion to 'Label' is ambiguous
 
-Error at line 95, column 6
+Error at conversion_uses.ce:95:6
 94 │ val count: i32 = 5
 95 │ log(count)
          ╘═══╛ Cannot convert type 'i32' to 'Arg'
 
-Error at line 96, column 17
+Error at conversion_uses.ce:96:17
 95 │ log(count)
 96 │ val arg: Arg = count
                     ╘═══╛ Cannot convert type 'i32' to 'Arg'
 
-Error at line 98, column 20
+Error at conversion_uses.ce:98:20
 97 │ 
 98 │ val secret: i32 = Secret(3)
                        ╘═══════╛ Cannot convert type 'Secret' to 'i32'
 
-Error at line 101, column 7
+Error at conversion_uses.ce:101:7
 100 │ var handle = Handle(Sprite(4))
 101 │ heal(handle)
            ╘════╛ Cannot mutably borrow arguments implicitly
 
-Error at line 102, column 18
+Error at conversion_uses.ce:102:18
 101 │ heal(handle)
 102 │ val hp = handle.hp
                       ╘╛ Type 'Handle' has no member 'hp'
 
-Error at line 104, column 22
+Error at conversion_uses.ce:104:22
 103 │ 
 104 │ val viaName = fixed.as()
                           ╘╛ Type 'Fixed' has no member 'as'
 
-Error at line 105, column 20
+Error at conversion_uses.ce:105:20
 104 │ val viaName = fixed.as()
 105 │ val viaType = Arg.as(5)
                         ╘╛ 'Arg' has no case 'as'

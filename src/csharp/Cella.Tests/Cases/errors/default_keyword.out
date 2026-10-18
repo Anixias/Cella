@@ -1,7 +1,4 @@
-
-====== default_keyword.ce ======
-
-Error at line 5, column 6
+Error at default_keyword.ce:5:6
 4 │ {
 5 │     val default = 3
             ╘═════╛ 'default' is a keyword

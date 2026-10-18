@@ -1,27 +1,24 @@
-
-====== ambiguous_trait_members.ce ======
-
-Error at line 61, column 47
+Error at ambiguous_trait_members.ce:61:47
 60 │ 
 61 │ g[T: A + B]: fun(imm value: T) -> i32 = value.size
                                                    ╘══╛ Reference to 'size' is ambiguous
 
-Error at line 66, column 25
+Error at ambiguous_trait_members.ce:66:25
 65 │ var p = P(0)
 66 │ printf("%d %d %d\n", p.size, p.count, P.total)
                             ╘══╛ Reference to 'size' is ambiguous
 
-Error at line 66, column 33
+Error at ambiguous_trait_members.ce:66:33
 65 │ var p = P(0)
 66 │ printf("%d %d %d\n", p.size, p.count, P.total)
                                     ╘═══╛ Reference to 'count' is ambiguous
 
-Error at line 66, column 42
+Error at ambiguous_trait_members.ce:66:42
 65 │ var p = P(0)
 66 │ printf("%d %d %d\n", p.size, p.count, P.total)
                                              ╘═══╛ Reference to 'total' is ambiguous
 
-Error at line 67, column 4
+Error at ambiguous_trait_members.ce:67:4
 66 │ printf("%d %d %d\n", p.size, p.count, P.total)
 67 │ p.count = 5
        ╘═══╛ Reference to 'count' is ambiguous

@@ -1,7 +1,4 @@
-
-====== empty_line_spans.ce ======
-
-Error at line 7, column 5
+Error at empty_line_spans.ce:7:5
 6 │ val p = @x
 7 │ if p ==
        ╘══╛

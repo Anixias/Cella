@@ -1,13 +1,10 @@
-
-====== name_suggestions.ce ======
-
-Error at line 7, column 13
+Error at name_suggestions.ce:7:13
 6 │ {
 7 │     var pair = pair(1)
                    ╘═════╛ Symbol 'pair' not found in this scope
                          | Did you mean 'Pair'?
 
-Error at line 13, column 10
+Error at name_suggestions.ce:13:10
 12 │ {
 13 │     var p = pair(1)
                  ╘═════╛ Symbol 'pair' not found in this scope

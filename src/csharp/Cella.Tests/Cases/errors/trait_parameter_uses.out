@@ -1,43 +1,40 @@
-
-====== trait_parameter_uses.ce ======
-
-Error at line 20, column 55
+Error at trait_parameter_uses.ce:20:55
 19 │ 
 20 │ call[K: trait]: fun(imm shape: dyn[K]) -> f64 = shape.area()
                                                            ╘══╛ Type 'dyn[K]' has no member 'area'
 
-Error at line 22, column 59
+Error at trait_parameter_uses.ce:22:59
 21 │ 
 22 │ test[K: trait]: fun(imm shape: dyn[K]) -> bool = shape is Circle
                                                                ╘════╛ 'Circle' doesn't implement 'K'
 
-Error at line 24, column 56
+Error at trait_parameter_uses.ce:24:56
 23 │ 
 24 │ erase[K: trait]: fun(circle: Circle) -> i32 = count[K](circle)
                                                             ╘════╛ Cannot convert type 'Circle' to 'dyn[K]'
 
-Error at line 28, column 39
+Error at trait_parameter_uses.ce:28:39
 27 │ 
 28 │ size[K: trait]: fun -> usize = sizeOf(K)
                                            ^ Cannot use traits as values
 
-Error at line 32, column 2
+Error at trait_parameter_uses.ce:32:2
 31 │ {
 32 │     K()
          ^ Cannot use traits as values
 
-Error at line 40, column 15
+Error at trait_parameter_uses.ce:40:15
 39 │ {
 40 │     apply[Shape, Text](Text(1))
                       ╘══╛ 'apply' requires 'T: Shape'
                          | 'Text' doesn't implement 'Shape'
 
-Error at line 41, column 8
+Error at trait_parameter_uses.ce:41:8
 40 │ apply[Shape, Text](Text(1))
 41 │ count[i32](Text(1))
            ╘═╛ 'i32' is not a trait
 
-Error at line 42, column 2
+Error at trait_parameter_uses.ce:42:2
 41 │ count[i32](Text(1))
 42 │ count(Text(1))
      ╘═══╛ Cannot infer 'K' for 'count'

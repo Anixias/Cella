@@ -1,27 +1,24 @@
-
-====== indexer_value_writes.ce ======
-
-Error at line 35, column 2
+Error at indexer_value_writes.ce:35:2
 34 │ var bits = Bits(5)
 35 │ bits[0] = true
      ╘═════╛ Cannot assign to unstored values
 
-Error at line 36, column 11
+Error at indexer_value_writes.ce:36:11
 35 │ bits[0] = true
 36 │ flip(mut bits[1])
               ╘═════╛ Cannot mutably borrow unstored values
 
-Error at line 37, column 21
+Error at indexer_value_writes.ce:37:21
 36 │ flip(mut bits[1])
 37 │ val borrowed = imm bits[2]
                         ╘═════╛ Cannot borrow unstored values
 
-Error at line 39, column 2
+Error at indexer_value_writes.ce:39:2
 38 │ var counters = Counters([Counter(0), Counter(1)])
 39 │ counters[0].bump()
      ╘═════════╛ Cannot mutably borrow unstored values
 
-Error at line 40, column 2
+Error at indexer_value_writes.ce:40:2
 39 │ counters[0].bump()
 40 │ counters[1].count = 4
      ╘═══════════════╛ Cannot assign to unstored values

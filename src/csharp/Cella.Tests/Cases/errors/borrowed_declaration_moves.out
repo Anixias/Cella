@@ -1,28 +1,25 @@
-
-====== borrowed_declaration_moves.ce ======
-
-Error at line 44, column 22
+Error at borrowed_declaration_moves.ce:44:22
 43 │ {
 44 │     val same: Texture = texture
                              ╘═════╛ Cannot move read-only parameters
 
-Error at line 45, column 18
+Error at borrowed_declaration_moves.ce:45:18
 44 │ val same: Texture = texture
 45 │ val moved = own texture
                      ╘═════╛ Cannot move read-only parameters
 
-Error at line 53, column 6
+Error at borrowed_declaration_moves.ce:53:6
 52 │ texture = Texture(5)
 53 │ ret viewed.id
          ╘════╛ Cannot use borrows of reassigned values
               | Reassigned on line 52
 
-Error at line 60, column 6
+Error at borrowed_declaration_moves.ce:60:6
 59 │ val inside = *held
 60 │ ret inside
          ╘════╛ Cannot return borrows of local variables
 
-Error at line 68, column 17
+Error at borrowed_declaration_moves.ce:68:17
 67 │ keep(own held)
 68 │ printf("%d\n", inside.id)
                     ╘════╛ Cannot use borrows of moved values

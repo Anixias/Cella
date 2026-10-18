@@ -1,32 +1,29 @@
-
-====== pointer_members.ce ======
-
-Error at line 14, column 13
+Error at pointer_members.ce:14:13
 13 │ val raw: ptr = p
 14 │ val a = pp.x
                 ^ Type 'ptr[Point]' has no member 'x'
 
-Error at line 15, column 14
+Error at pointer_members.ce:15:14
 14 │ val a = pp.x
 15 │ val b = raw.x
                  ^ Type 'ptr' has no member 'x'
 
-Error at line 16, column 12
+Error at pointer_members.ce:16:12
 15 │ val b = raw.x
 16 │ val c = p.z
                ^ Type 'Point' has no member 'z'
 
-Error at line 17, column 19
+Error at pointer_members.ce:17:19
 16 │ val c = p.z
 17 │ val d = nameOf(p.z)
                       ^ Type 'Point' has no member 'z'
 
-Error at line 18, column 15
+Error at pointer_members.ce:18:15
 17 │ val d = nameOf(p.z)
 18 │ val e = null.x
                   ^ Type 'ptr' has no member 'x'
 
-Error at line 19, column 10
+Error at pointer_members.ce:19:10
 18 │ val e = null.x
 19 │ val w = raw[1]
              ╘═╛ Cannot index into type 'ptr'

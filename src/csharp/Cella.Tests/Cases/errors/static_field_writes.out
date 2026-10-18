@@ -1,27 +1,24 @@
-
-====== static_field_writes.ce ======
-
-Error at line 15, column 19
+Error at static_field_writes.ce:15:19
 14 │ origin: val Unit = Unit(0)
 15 │ clock: val i32 = now()
                       ╘═══╛ The initial value of 'clock' must be a constant
 
-Error at line 22, column 2
+Error at static_field_writes.ce:22:2
 21 │ {
 22 │     Unit.maxHp = 1
          ╘════════╛ Cannot reassign values
 
-Error at line 23, column 7
+Error at static_field_writes.ce:23:7
 22 │ Unit.maxHp = 1
 23 │ Unit.created = 5
           ╘═════╛ 'created' is read-only outside its type
 
-Error at line 24, column 7
+Error at static_field_writes.ce:24:7
 23 │ Unit.created = 5
 24 │ Unit.created += 1
           ╘═════╛ 'created' is read-only outside its type
 
-Error at line 28, column 18
+Error at static_field_writes.ce:28:18
 27 │ val view = imm Unit.total
 28 │ val moved = own Unit.origin
                      ╘═════════╛ Cannot move static values

@@ -1,7 +1,4 @@
-
-====== owned_pattern_reuse.ce ======
-
-Error at line 27, column 8
+Error at owned_pattern_reuse.ce:27:8
 26 │ 
 27 │ match effect
            ╘════╛ Cannot use moved values

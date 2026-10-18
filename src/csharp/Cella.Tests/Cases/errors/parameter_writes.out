@@ -1,62 +1,59 @@
-
-====== parameter_writes.ce ======
-
-Error at line 26, column 2
+Error at parameter_writes.ce:26:2
 25 │ {
 26 │     p.x = 5
          ╘═╛ Cannot reassign read-only parameters
 
-Error at line 27, column 2
+Error at parameter_writes.ce:27:2
 26 │ p.x = 5
 27 │ n += 1
      ^ Cannot reassign read-only parameters
 
-Error at line 28, column 2
+Error at parameter_writes.ce:28:2
 27 │ n += 1
 28 │ values[0] = 1
      ╘═══════╛ Cannot reassign read-only parameters
 
-Error at line 29, column 13
+Error at parameter_writes.ce:29:13
 28 │ values[0] = 1
 29 │ damage(mut n, 1)
                 ^ Cannot mutably borrow read-only parameters
 
-Error at line 30, column 13
+Error at parameter_writes.ce:30:13
 29 │ damage(mut n, 1)
 30 │ damage(mut p.x, 1)
                 ╘═╛ Cannot mutably borrow read-only parameters
 
-Error at line 31, column 13
+Error at parameter_writes.ce:31:13
 30 │ damage(mut p.x, 1)
 31 │ damage(mut values[1], 1)
                 ╘═══════╛ Cannot mutably borrow read-only parameters
 
-Error at line 43, column 13
+Error at parameter_writes.ce:43:13
 42 │ {
 43 │     damage(mut 5, 3)
                     ^ Cannot mutably borrow unstored values
 
-Error at line 44, column 13
+Error at parameter_writes.ce:44:13
 43 │ damage(mut 5, 3)
 44 │ damage(mut make(), 3)
                 ╘════╛ Cannot mutably borrow unstored values
 
-Error at line 46, column 13
+Error at parameter_writes.ce:46:13
 45 │ val fixed = 10
 46 │ damage(mut fixed, 3)
                 ╘═══╛ Cannot mutably borrow values
 
-Error at line 48, column 13
+Error at parameter_writes.ce:48:13
 47 │ damage(mut counter, 1)
 48 │ damage(mut limit, 1)
                 ╘═══╛ Cannot mutably borrow values
 
-Error at line 51, column 14
+Error at parameter_writes.ce:51:14
 50 │ if effect is hit(val n)
 51 │     damage(mut n, 1)
                     ^ Cannot mutably borrow read-only pattern bindings
 
-Error at line 54, column 13
+Error at parameter_writes.ce:54:13
 53 │ var hp = 1
 54 │ damage(mut hp + 1, 1)
                 ╘════╛ Cannot mutably borrow unstored values

@@ -1,27 +1,24 @@
-
-====== checks_in_statements.ce ======
-
-Error at line 17, column 6
+Error at checks_in_statements.ce:17:6
 16 │ var count = 3
 17 │ if @make().x == null
          ╘══════╛ Cannot take the address of unstored values
 
-Error at line 20, column 16
+Error at checks_in_statements.ce:20:16
 19 │ 
 20 │ while count / 0 > 0
                    ^ Division by zero
 
-Error at line 26, column 11
+Error at checks_in_statements.ce:26:11
 25 │     count += 1
 26 │ } while @make().x == null
               ╘══════╛ Cannot take the address of unstored values
 
-Error at line 28, column 22
+Error at checks_in_statements.ce:28:22
 27 │ 
 28 │ for _ in 0..count % 0
                          ^ Division by zero
 
-Error at line 32, column 6
+Error at checks_in_statements.ce:32:6
 31 │ 
 32 │ ret undef
          ╘═══╛ Cannot use 'undef' outside variable initializers

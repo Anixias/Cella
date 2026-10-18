@@ -1,22 +1,19 @@
-
-====== when_function_values.ce ======
-
-Error at line 15, column 10
+Error at when_function_values.ce:15:10
 14 │ {
 15 │     val f = trace
                  ╘═══╛ Cannot use 'when' functions as values
 
-Error at line 16, column 8
+Error at when_function_values.ce:16:8
 15 │ val f = trace
 16 │ apply(trace)
            ╘═══╛ Cannot use 'when' functions as values
 
-Error at line 17, column 8
+Error at when_function_values.ce:17:8
 16 │ apply(trace)
 17 │ apply(hidden)
            ╘════╛ Cannot use 'when' functions as values
 
-Error at line 18, column 9
+Error at when_function_values.ce:18:9
 17 │ apply(hidden)
 18 │ hidden(missing)
             ╘═════╛ Symbol 'missing' not found in this scope

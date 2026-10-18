@@ -1,7 +1,4 @@
-
-====== empty_import_list.ce ======
-
-Error at line 2, column 11
+Error at empty_import_list.ce:2:11
 1 │ mod test
 2 │ use test.[]
               ^ Expected a name

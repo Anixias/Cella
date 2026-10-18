@@ -1,78 +1,75 @@
-
-====== required_traits.ce ======
-
-Error at line 18, column 17
+Error at required_traits.ce:18:17
 17 │ 
 18 │ Plain: rec impl Ord
                      ╘═╛ 'Plain' needs 'Eq'
 
-Error at line 25, column 11
+Error at required_traits.ce:25:11
 24 │ 
 25 │ f64: impl Ord
                ╘═╛ 'f64' needs 'Eq'
 
-Error at line 32, column 19
+Error at required_traits.ce:32:19
 31 │ 
 32 │ box[T: Ord]: impl Ord
                        ╘═╛ 'box[T]' needs 'Eq'
 
-Error at line 42, column 1
+Error at required_traits.ce:42:1
 41 │ 
 42 │ Even: trait req Odd
      ╘══╛ 'Even' requires itself
 
-Error at line 43, column 1
+Error at required_traits.ce:43:1
 42 │ Even: trait req Odd
 43 │ Odd: trait req Even
      ╘═╛ 'Odd' requires itself
 
-Error at line 44, column 1
+Error at required_traits.ce:44:1
 43 │ Odd: trait req Even
 44 │ Selfish: trait req Selfish
      ╘═════╛ 'Selfish' requires itself
 
-Error at line 46, column 22
+Error at required_traits.ce:46:22
 45 │ 
 46 │ Shown: pub trait req Eq
                           ╘╛ 'Eq' is less visible than 'Shown'
 
-Error at line 48, column 18
+Error at required_traits.ce:48:18
 47 │ 
 48 │ Twice: trait req Eq + Eq
                       ╘╛ 'Eq' is required more than once
 
-Error at line 48, column 23
+Error at required_traits.ce:48:23
 47 │ 
 48 │ Twice: trait req Eq + Eq
                            ╘╛ 'Eq' is required more than once
 
-Error at line 50, column 10
+Error at required_traits.ce:50:10
 49 │ 
 50 │ twice[T: Eq + Eq]: fun(imm a: T, imm b: T) -> bool = a == b
               ╘╛ 'Eq' is required more than once
 
-Error at line 50, column 15
+Error at required_traits.ce:50:15
 49 │ 
 50 │ twice[T: Eq + Eq]: fun(imm a: T, imm b: T) -> bool = a == b
                    ╘╛ 'Eq' is required more than once
 
-Error at line 52, column 20
+Error at required_traits.ce:52:20
 51 │ 
 52 │ Missing: trait req Unknown
                         ╘═════╛ Trait 'Unknown' not found in this scope
 
-Error at line 53, column 21
+Error at required_traits.ce:53:21
 52 │ Missing: trait req Unknown
 53 │ NotTrait: trait req i32
                          ╘═╛ 'i32' is not a trait
 
-Hint at line 60, column 9
+Hint at required_traits.ce:60:9
 59 │ 
 60 │ list[T: Eq + Ord]: impl
              ╘╛ Redundant 'Eq'
               | Required by 'Ord'
 
-Error at line 60, column 20
+Error at required_traits.ce:60:20
 59 │ 
 60 │ list[T: Eq + Ord]: impl
                         ╘══╛ Cannot declare 'impl' blocks that add no bounds

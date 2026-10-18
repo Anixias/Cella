@@ -1,7 +1,4 @@
-
-====== own_self_field_moves.ce ======
-
-Hint at line 26, column 7
+Hint at own_self_field_moves.ce:26:7
 25 │ printf("taking\n")
 26 │ ret own self.first
          ╘═╛ Redundant 'own'

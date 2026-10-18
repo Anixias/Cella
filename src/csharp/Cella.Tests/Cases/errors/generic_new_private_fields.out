@@ -1,19 +1,16 @@
-
-====== main.ce ======
-
-Error at line 7, column 15
+Error at main.ce:7:15
 6 │ {
 7 │     val u = make[game.Unit]()
                      ╘═══════╛ 'make' requires 'T: new(i32)'
                              | 'hp' is private to its type
 
-Error at line 8, column 15
+Error at main.ce:8:15
 7 │ val u = make[game.Unit]()
 8 │ val l = make[game.Locked]()
                  ╘═════════╛ 'make' requires 'T: new(i32)'
                            | 'hp' is read-only outside its type
 
-Error at line 9, column 15
+Error at main.ce:9:15
 8 │ val l = make[game.Locked]()
 9 │ val s = make[game.Scoped]()
                  ╘═════════╛ 'make' requires 'T: new(i32)'

@@ -1,17 +1,14 @@
-
-====== req_fields.ce ======
-
-Hint at line 91, column 7
+Hint at req_fields.ce:91:7
 90 │ {
 91 │     run: req fun[i32 -> i32]
               ╘═╛ Redundant 'req'
 
-Hint at line 96, column 9
+Hint at req_fields.ce:96:9
 95 │ {
 96 │     value: req imm[i32]
                 ╘═╛ Redundant 'req'
 
-Hint at line 97, column 8
+Hint at req_fields.ce:97:8
 96 │ value: req imm[i32]
 97 │ slot: req mut[i32]
            ╘═╛ Redundant 'req'

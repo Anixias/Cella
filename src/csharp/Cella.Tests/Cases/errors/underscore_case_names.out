@@ -1,7 +1,4 @@
-
-====== underscore_case_names.ce ======
-
-Error at line 3, column 11
+Error at underscore_case_names.ce:3:11
 2 │ 
 3 │ E: enum { _  b }
               ^ Expected a case name

@@ -1,7 +1,4 @@
-
-====== operator_constraints.ce ======
-
-Error at line 26, column 21
+Error at operator_constraints.ce:26:21
 25 │ {
 26 │     val r = Counter(1) + box(Token(1))
                             ^ '+' requires 'U: copy'

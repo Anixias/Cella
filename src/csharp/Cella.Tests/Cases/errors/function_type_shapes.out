@@ -1,32 +1,29 @@
-
-====== function_type_shapes.ce ======
-
-Error at line 3, column 21
+Error at function_type_shapes.ce:3:21
 2 │ 
 3 │ a: fun(g: fun[i32 ->]) -> i32 = 0
                         ^ Expected a type
 
-Error at line 4, column 17
+Error at function_type_shapes.ce:4:17
 3 │ a: fun(g: fun[i32 ->]) -> i32 = 0
 4 │ b: fun(g: fun[->]) -> i32 = 0
                     ^ Expected a type
 
-Error at line 5, column 18
+Error at function_type_shapes.ce:5:18
 4 │ b: fun(g: fun[->]) -> i32 = 0
 5 │ c: fun(g: fun[i32,]) -> i32 = 0
                      ^ Cannot end lists with ','
 
-Error at line 6, column 18
+Error at function_type_shapes.ce:6:18
 5 │ c: fun(g: fun[i32,]) -> i32 = 0
 6 │ d: fun(g: fun[mut]) -> i32 = 0
                      ^ Expected a type
 
-Error at line 7, column 15
+Error at function_type_shapes.ce:7:15
 6 │ d: fun(g: fun[mut]) -> i32 = 0
 7 │ e: fun(g: fun[5]) -> i32 = 0
                   ^ Expected a type
 
-Error at line 11, column 19
+Error at function_type_shapes.ce:11:19
 10 │ {
 11 │     callback: fun(i32) -> i32
                           ^ Expected ':' and a type

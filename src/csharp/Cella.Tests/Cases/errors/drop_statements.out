@@ -1,27 +1,24 @@
-
-====== drop_statements.ce ======
-
-Error at line 21, column 7
+Error at drop_statements.ce:21:7
 20 │ {
 21 │     drop *memory
               ╘═════╛ 'T' has no destructor
 
-Error at line 26, column 7
+Error at drop_statements.ce:26:7
 25 │ {
 26 │     drop *memory
               ╘═════╛ 'i32' has no destructor
 
-Error at line 31, column 7
+Error at drop_statements.ce:31:7
 30 │ {
 31 │     drop *b
               ╘╛ Cannot use 'drop' except through pointers
 
-Error at line 36, column 7
+Error at drop_statements.ce:36:7
 35 │ {
 36 │     drop value
               ╘═══╛ Cannot use 'drop' except through pointers
 
-Error at line 41, column 7
+Error at drop_statements.ce:41:7
 40 │ {
 41 │     drop memory
               ╘════╛ Cannot use 'drop' except through pointers

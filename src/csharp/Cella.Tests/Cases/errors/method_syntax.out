@@ -1,7 +1,4 @@
-
-====== method_syntax.ce ======
-
-Error at line 7, column 20
+Error at method_syntax.ce:7:20
 6 │ 
 7 │ sum: fun(self) -> i32
                       ╘═╛ Expected '=' or '{'

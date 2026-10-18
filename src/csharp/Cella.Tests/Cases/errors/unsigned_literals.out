@@ -1,33 +1,30 @@
-
-====== unsigned_literals.ce ======
-
-Error at line 5, column 15
+Error at unsigned_literals.ce:5:15
 4 │ {
 5 │     val i: i32 = 5u
                      ╘╛ Cannot convert type 'unsigned integer literal' to 'i32'
 
-Error at line 6, column 10
+Error at unsigned_literals.ce:6:10
 5 │ val i: i32 = 5u
 6 │ val n = -1u
             ╘═╛ Operator '-' cannot be applied to 'u32'
               | 'u32' can't represent negative values
 
-Error at line 7, column 15
+Error at unsigned_literals.ce:7:15
 6 │ val n = -1u
 7 │ val f: f64 = 2u
                  ╘╛ Cannot convert type 'unsigned integer literal' to 'f64'
 
-Error at line 8, column 10
+Error at unsigned_literals.ce:8:10
 7 │ val f: f64 = 2u
 8 │ val c = 'a'u
             ╘══╛ Cannot use 'u' on char literals
 
-Error at line 9, column 10
+Error at unsigned_literals.ce:9:10
 8 │ val c = 'a'u
 9 │ val d = 2.5u
             ╘══╛ Cannot use 'u' on float literals
 
-Error at line 10, column 17
+Error at unsigned_literals.ce:10:17
  9 │ val d = 2.5u
 10 │ val tiny: u8 = 300u
                     ╘══╛ '300' doesn't fit in 'u8'

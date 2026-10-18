@@ -1,62 +1,59 @@
-
-====== generic_overload_conflicts.ce ======
-
-Error at line 8, column 1
+Error at generic_overload_conflicts.ce:8:1
 7 │ 
 8 │ same[T]: fun(imm x: T) {}
     ╘══╛ 'same' is declared more than once with the same signature
 
-Error at line 9, column 1
+Error at generic_overload_conflicts.ce:9:1
 8 │ same[T]: fun(imm x: T) {}
 9 │ same[U]: fun(imm x: U) {}
     ╘══╛ 'same' is declared more than once with the same signature
 
-Error at line 11, column 1
+Error at generic_overload_conflicts.ce:11:1
 10 │ 
 11 │ defaults[T]: fun(imm x: T, y: i32 = 0) {}
      ╘══════╛ 'defaults' overloads cannot accept the same arguments
 
-Error at line 12, column 1
+Error at generic_overload_conflicts.ce:12:1
 11 │ defaults[T]: fun(imm x: T, y: i32 = 0) {}
 12 │ defaults[T]: fun(imm x: T) {}
      ╘══════╛ 'defaults' overloads cannot accept the same arguments
 
-Error at line 14, column 1
+Error at generic_overload_conflicts.ce:14:1
 13 │ 
 14 │ modes[T]: fun(mut x: T) {}
      ╘═══╛ 'modes' overloads cannot differ only in parameter modes
 
-Error at line 15, column 1
+Error at generic_overload_conflicts.ce:15:1
 14 │ modes[T]: fun(mut x: T) {}
 15 │ modes[T]: fun(imm x: T) {}
      ╘═══╛ 'modes' overloads cannot differ only in parameter modes
 
-Error at line 17, column 1
+Error at generic_overload_conflicts.ce:17:1
 16 │ 
 17 │ results[T]: fun(imm x: T) -> i32 = 1
      ╘═════╛ 'results' overloads cannot differ only in return type
 
-Error at line 18, column 1
+Error at generic_overload_conflicts.ce:18:1
 17 │ results[T]: fun(imm x: T) -> i32 = 1
 18 │ results[T]: fun(imm x: T) -> i64 = 2
      ╘═════╛ 'results' overloads cannot differ only in return type
 
-Error at line 20, column 1
+Error at generic_overload_conflicts.ce:20:1
 19 │ 
 20 │ bounded[T: Show]: fun(imm x: T) {}
      ╘═════╛ 'bounded' is declared more than once with the same signature
 
-Error at line 21, column 1
+Error at generic_overload_conflicts.ce:21:1
 20 │ bounded[T: Show]: fun(imm x: T) {}
 21 │ bounded[U: Show]: fun(imm x: U) {}
      ╘═════╛ 'bounded' is declared more than once with the same signature
 
-Error at line 27, column 2
+Error at generic_overload_conflicts.ce:27:2
 26 │ 
 27 │ put[T]: fun(self, imm v: T) {}
      ╘═╛ 'Box.put' is declared more than once with the same signature
 
-Error at line 28, column 2
+Error at generic_overload_conflicts.ce:28:2
 27 │ put[T]: fun(self, imm v: T) {}
 28 │ put[U]: fun(self, imm v: U) {}
      ╘═╛ 'Box.put' is declared more than once with the same signature

@@ -1,7 +1,4 @@
-
-====== hidden_constructor_fields.ce ======
-
-Error at line 22, column 15
+Error at hidden_constructor_fields.ce:22:15
 21 │ val open = make[Open]()
 22 │ ret i32(make[Args]().size() + open.count)
                   ╘══╛ 'make' requires 'T: new(ptr[str], usize)'

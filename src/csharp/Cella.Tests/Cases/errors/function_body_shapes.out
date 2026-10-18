@@ -1,17 +1,14 @@
-
-====== function_body_shapes.ce ======
-
-Error at line 3, column 15
+Error at function_body_shapes.ce:3:15
 2 │ 
 3 │ f: fun -> i32 ] = 1
                   ^ Expected '=' or '{'
 
-Error at line 5, column 30
+Error at function_body_shapes.ce:5:30
 4 │ 
 5 │ puts: ext fun(text: cstr) -> i32
                                  ╘═╛ Expected '=' or '{'
 
-Error at line 9, column 11
+Error at function_body_shapes.ce:9:11
 8 │ 
 9 │ g: fun -> i32
               ╘═╛ Expected '=' or '{'

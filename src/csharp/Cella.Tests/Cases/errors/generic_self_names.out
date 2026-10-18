@@ -1,12 +1,9 @@
-
-====== generic_self_names.ce ======
-
-Error at line 15, column 18
+Error at generic_self_names.ce:15:18
 14 │ val other: Buf[T] = self
 15 │ val c = Cur[T](imm self)
                     ╘══════╛ Cannot convert type 'imm[Buf[T]]' to 'T'
 
-Error at line 16, column 16
+Error at generic_self_names.ce:16:16
 15 │ val c = Cur[T](imm self)
 16 │ val x: i32 = other
                   ╘═══╛ Cannot convert type 'Buf[T]' to 'i32'

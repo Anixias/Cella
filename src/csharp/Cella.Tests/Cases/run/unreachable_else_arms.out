@@ -1,27 +1,24 @@
-
-====== unreachable_else_arms.ce ======
-
-Warning at line 22, column 2
+Warning at unreachable_else_arms.ce:22:2
 21 │ b => 2
 22 │ else => 5
      ╘══╛ Unreachable code
 
-Warning at line 29, column 2
+Warning at unreachable_else_arms.ce:29:2
 28 │ false => 0
 29 │ else => 9
      ╘══╛ Unreachable code
 
-Warning at line 35, column 2
+Warning at unreachable_else_arms.ce:35:2
 34 │ Point(val x, val y) => x + y
 35 │ else => 0
      ╘══╛ Unreachable code
 
-Warning at line 44, column 2
+Warning at unreachable_else_arms.ce:44:2
 43 │ none => 4
 44 │ else => 5
      ╘══╛ Unreachable code
 
-Warning at line 67, column 3
+Warning at unreachable_else_arms.ce:67:3
 66 │ b => printf("b\n")
 67 │ else => printf("never\n")
      ╘══╛ Unreachable code
