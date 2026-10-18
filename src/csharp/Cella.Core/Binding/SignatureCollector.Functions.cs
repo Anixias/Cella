@@ -172,11 +172,8 @@ public sealed partial class SignatureCollector
 			MangledBase = mangledBase
 		};
 		
-		if (_entryPointName is not null && function.Name == _entryPointName && function.TypeParameters.IsEmpty &&
-		    IsEntryPoint(signature))
-		{
+		if (IsEntryPointName(function) && (QualifiesEntryPoint ? CanRunAsEntry(info) : CanRunAsMain(info)))
 			_entryPoints.Add(info);
-		}
 		
 		return info;
 	}

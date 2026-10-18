@@ -87,6 +87,7 @@ class CellaConfigurationType : SimpleConfigurationType(
 
 class CellaRunOptions : RunConfigurationOptions() {
 	var project by string("")
+	var entry by string("")
 	var arguments by string("")
 	var release by property(false)
 }
@@ -102,18 +103,21 @@ class CellaRunConfiguration(project: Project, factory: ConfigurationFactory) :
 	val projectPath: Path?
 		get() = options.project?.takeIf { it.isNotBlank() }?.let { Path.of(it) }
 	
+	val entry: String?
+		get() = options.entry?.takeIf { it.isNotBlank() }
+	
 	override fun checkConfiguration() {
 		val celp = projectPath ?: throw RuntimeConfigurationError("Choose a project to run")
 		if (!Files.isRegularFile(celp))
 			throw RuntimeConfigurationError("'$celp' doesn't exist")
 		
-		if (!CellaProjects.isExecutable(celp))
+		if (entry == null && !CellaProjects.isExecutable(celp))
 			throw RuntimeConfigurationError("'${CellaProjects.name(celp)}' isn't an executable project")
 	}
 	
 	fun createCommandLine(): GeneralCommandLine {
 		val celp = projectPath ?: throw ExecutionException("Choose a project to run")
-		val program = CellaBuild.lastOutput(celp)
+		val program = CellaBuild.lastOutput(celp, entry)
 			?: throw ExecutionException("Build '${CellaProjects.name(celp)}' before running it")
 		
 		return GeneralCommandLine(program.toString())
@@ -134,6 +138,7 @@ class CellaRunConfiguration(project: Project, factory: ConfigurationFactory) :
 
 class CellaRunEditor : SettingsEditor<CellaRunConfiguration>() {
 	private var project = ""
+	private var entry = ""
 	private var arguments = ""
 	private var release = false
 	
@@ -141,6 +146,11 @@ class CellaRunEditor : SettingsEditor<CellaRunConfiguration>() {
 		row("Project:") {
 			textFieldWithBrowseButton(FileChooserDescriptorFactory.createSingleFileDescriptor("celp"))
 				.bindText(::project)
+				.align(AlignX.FILL)
+		}
+		row("Function:") {
+			textField()
+				.bindText(::entry)
 				.align(AlignX.FILL)
 		}
 		row("Arguments:") {
@@ -156,6 +166,7 @@ class CellaRunEditor : SettingsEditor<CellaRunConfiguration>() {
 	
 	override fun resetEditorFrom(configuration: CellaRunConfiguration) {
 		project = configuration.options.project.orEmpty()
+		entry = configuration.options.entry.orEmpty()
 		arguments = configuration.options.arguments.orEmpty()
 		release = configuration.options.release
 		panel.reset()
@@ -164,6 +175,7 @@ class CellaRunEditor : SettingsEditor<CellaRunConfiguration>() {
 	override fun applyEditorTo(configuration: CellaRunConfiguration) {
 		panel.apply()
 		configuration.options.project = project
+		configuration.options.entry = entry
 		configuration.options.arguments = arguments
 		configuration.options.release = release
 	}
@@ -192,7 +204,7 @@ class CellaBuildTaskProvider : BeforeRunTaskProvider<CellaBuildTask>() {
 		val cella = configuration as? CellaRunConfiguration ?: return false
 		val celp = cella.projectPath ?: return false
 		ApplicationManager.getApplication().invokeAndWait { FileDocumentManager.getInstance().saveAllDocuments() }
-		return CellaBuild.build(environment.project, celp, cella.options.release).succeeded
+		return CellaBuild.build(environment.project, celp, cella.options.release, cella.entry).succeeded
 	}
 }
 

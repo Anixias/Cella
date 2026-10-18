@@ -1,0 +1,17 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+check: pub fun
+{
+	printf("checked\n")
+}
+
+main: fun -> i32
+{
+	printf("main\n")
+	ret 1
+}

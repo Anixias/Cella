@@ -144,6 +144,14 @@ public sealed class Server
 			SemanticTokens.Encode(await _workspace.GetReferencesAsync(GetUri(parameters))),
 		"textDocument/completion" => () => CompleteAsync(parameters),
 		"textDocument/signatureHelp" => () => HelpSignatureAsync(parameters),
+		"cella/runnables" => async () => new JsonArray([
+			..(await _workspace.GetRunnablesAsync(GetUri(parameters))).Select(JsonNode (runnable) => new JsonObject
+			{
+				["name"] = string.Join('.', runnable.Function.Symbol.QualifiedName.Select(static part => part.Name)),
+				["range"] = Protocol.ToRange(runnable.Name),
+				["main"] = runnable.IsMain
+			})
+		]),
 		_ => null
 	};
 	

@@ -19,6 +19,13 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiManager
 import com.intellij.util.concurrency.AppExecutorUtil
+import java.io.File
+import java.net.URI
+import java.nio.file.Path
+import java.util.concurrent.CompletableFuture
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.TimeoutException
 import org.eclipse.lsp4j.ClientCapabilities
 import org.eclipse.lsp4j.CompletionCapabilities
 import org.eclipse.lsp4j.CompletionItemCapabilities
@@ -26,12 +33,14 @@ import org.eclipse.lsp4j.Diagnostic
 import org.eclipse.lsp4j.DidChangeTextDocumentParams
 import org.eclipse.lsp4j.DidCloseTextDocumentParams
 import org.eclipse.lsp4j.DidOpenTextDocumentParams
+import org.eclipse.lsp4j.DocumentSymbolParams
 import org.eclipse.lsp4j.InitializeParams
 import org.eclipse.lsp4j.InitializedParams
 import org.eclipse.lsp4j.MessageActionItem
 import org.eclipse.lsp4j.MessageParams
 import org.eclipse.lsp4j.Position
 import org.eclipse.lsp4j.PublishDiagnosticsParams
+import org.eclipse.lsp4j.Range
 import org.eclipse.lsp4j.SemanticTokensLegend
 import org.eclipse.lsp4j.SemanticTokensWorkspaceCapabilities
 import org.eclipse.lsp4j.ShowMessageRequestParams
@@ -42,16 +51,10 @@ import org.eclipse.lsp4j.TextDocumentItem
 import org.eclipse.lsp4j.VersionedTextDocumentIdentifier
 import org.eclipse.lsp4j.WorkspaceClientCapabilities
 import org.eclipse.lsp4j.WorkspaceFolder
+import org.eclipse.lsp4j.jsonrpc.services.JsonRequest
 import org.eclipse.lsp4j.launch.LSPLauncher
 import org.eclipse.lsp4j.services.LanguageClient
 import org.eclipse.lsp4j.services.LanguageServer
-import java.io.File
-import java.net.URI
-import java.nio.file.Path
-import java.util.concurrent.CompletableFuture
-import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.TimeUnit
-import java.util.concurrent.TimeoutException
 
 @Service(Service.Level.PROJECT)
 class CellaServer(private val project: Project) : Disposable {
@@ -72,7 +75,7 @@ class CellaServer(private val project: Project) : Disposable {
 		}
 	}
 	
-	private class Connection(val process: Process, val server: LanguageServer, val legend: SemanticTokensLegend?)
+	private class Connection(val process: Process, val server: CellaLanguageServer, val legend: SemanticTokensLegend?)
 	
 	private val sender = AppExecutorUtil.createBoundedApplicationPoolExecutor("Cella language server", 1)
 	private val documents = ConcurrentHashMap<String, Pair<Document, Int>>()
@@ -85,7 +88,7 @@ class CellaServer(private val project: Project) : Disposable {
 	val legend: SemanticTokensLegend?
 		get() = connection?.legend
 	
-	fun <T> request(call: (LanguageServer) -> CompletableFuture<T>): CompletableFuture<T?> {
+	fun <T> request(call: (CellaLanguageServer) -> CompletableFuture<T>): CompletableFuture<T?> {
 		val result = CompletableFuture<T?>()
 		sender.execute {
 			val server = connect()?.server
@@ -203,7 +206,12 @@ class CellaServer(private val project: Project) : Disposable {
 				.apply { project.basePath?.let { directory(File(it)) } }
 				.start()
 			started = process
-			val launcher = LSPLauncher.createClientLauncher(Client(), process.inputStream, process.outputStream)
+			val launcher = LSPLauncher.Builder<CellaLanguageServer>()
+				.setLocalService(Client())
+				.setRemoteInterface(CellaLanguageServer::class.java)
+				.setInput(process.inputStream)
+				.setOutput(process.outputStream)
+				.create()
 			launcher.startListening()
 			val server = launcher.remoteProxy
 			val root = project.basePath?.let { Path.of(it).toUri().toString() }
@@ -308,4 +316,15 @@ class CellaServer(private val project: Project) : Disposable {
 		sender.execute { disconnect() }
 		sender.shutdown()
 	}
+}
+
+class CellaRunnable {
+	var name = ""
+	var range: Range? = null
+	var main = false
+}
+
+interface CellaLanguageServer : LanguageServer {
+	@JsonRequest("cella/runnables")
+	fun runnables(params: DocumentSymbolParams): CompletableFuture<List<CellaRunnable>>
 }

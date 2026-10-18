@@ -1,0 +1,5 @@
+mod test
+
+helper[T]: pub fun
+{
+}

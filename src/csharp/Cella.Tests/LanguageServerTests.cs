@@ -296,6 +296,22 @@ public sealed class LanguageServerTests : IAsyncDisposable
 	}
 	
 	[Fact]
+	public async Task ListsRunnableFunctions()
+	{
+		await InitializeAsync();
+		await OpenSourceAsync("mod test\n\nmain: fun -> i32 = 0\n\ndemo: pub fun\n{\n}\n\nhelper: fun\n{\n}\n\n" +
+		                      "scaled: pub fun(factor: i32) -> i32 = factor\n\nflag: pub fun -> bool = true\n");
+		
+		var id = await RequestAsync("cella/runnables",
+			new JsonObject { ["textDocument"] = new JsonObject { ["uri"] = SourceUri } });
+		
+		var runnables = (JsonArray)(await ReadResponseAsync(id))["result"]!;
+		Assert.Equal(["test.main main 2:0", "test.demo 4:0"], runnables.Select(static runnable =>
+			$"{(string)runnable!["name"]!}{((bool)runnable["main"]! ? " main" : "")} " +
+			$"{(int)runnable["range"]!["start"]!["line"]!}:{(int)runnable["range"]!["start"]!["character"]!}"));
+	}
+	
+	[Fact]
 	public async Task FindsUsages()
 	{
 		await File.WriteAllTextAsync(SourcePath, NavigationSource, Token);

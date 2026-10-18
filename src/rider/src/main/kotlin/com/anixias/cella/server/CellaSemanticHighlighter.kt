@@ -1,6 +1,7 @@
 package com.anixias.cella.server
 
 import com.anixias.cella.highlighting.CellaColors
+import com.intellij.codeInsight.daemon.DaemonCodeAnalyzer
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.editor.Document
 import com.intellij.openapi.editor.colors.TextAttributesKey
@@ -11,6 +12,8 @@ import com.intellij.openapi.editor.markup.RangeHighlighter
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Key
 import com.intellij.openapi.util.TextRange
+import com.intellij.psi.PsiDocumentManager
+import org.eclipse.lsp4j.DocumentSymbolParams
 import org.eclipse.lsp4j.SemanticTokensParams
 import org.eclipse.lsp4j.TextDocumentIdentifier
 
@@ -20,10 +23,14 @@ class CellaSemanticHighlighter(private val project: Project, private val server:
 		private val declarationsKey = Key.create<List<RangeHighlighter>>("cella.semantic.declarations")
 		private val valuesKey = Key.create<List<RangeHighlighter>>("cella.semantic.values")
 		private val valueTypes = setOf("parameter", "variable", "property")
+		private val runnablesKey = Key.create<List<RunnableFunction>>("cella.runnables")
 		
 		fun isDeclaration(document: Document, range: TextRange) = covers(document.getUserData(declarationsKey), range)
 		
 		fun isValue(document: Document, range: TextRange) = covers(document.getUserData(valuesKey), range)
+		
+		fun runnableAt(document: Document, range: TextRange) = document.getUserData(runnablesKey)
+			?.firstOrNull { it.start == range.startOffset && it.end == range.endOffset }
 		
 		private fun covers(highlighters: List<RangeHighlighter>?, range: TextRange) = highlighters.orEmpty()
 			.any { it.isValid && it.startOffset == range.startOffset && it.endOffset == range.endOffset }
@@ -81,7 +88,39 @@ class CellaSemanticHighlighter(private val project: Project, private val server:
 		document.putUserData(highlightersKey, added)
 		document.putUserData(declarationsKey, declarations)
 		document.putUserData(valuesKey, values)
+		requestRunnables(document, uri, version)
 	}
+	
+	private fun requestRunnables(document: Document, uri: String, version: Int) {
+		server.request { it.runnables(DocumentSymbolParams(TextDocumentIdentifier(uri))) }
+			.thenAccept { runnables ->
+				ApplicationManager.getApplication().invokeLater({ applyRunnables(document, uri, version, runnables.orEmpty()) },
+					project.disposed)
+			}
+	}
+	
+	private fun applyRunnables(document: Document, uri: String, version: Int, runnables: List<CellaRunnable>) {
+		if (server.versionOf(uri) != version)
+			return
+		
+		val found = runnables.mapNotNull { runnable ->
+			val range = runnable.range ?: return@mapNotNull null
+			if (range.start.line >= document.lineCount || range.end.line >= document.lineCount)
+				return@mapNotNull null
+			
+			RunnableFunction(document.getLineStartOffset(range.start.line) + range.start.character,
+				document.getLineStartOffset(range.end.line) + range.end.character, runnable.name, runnable.main)
+		}
+		
+		if (document.getUserData(runnablesKey) == found)
+			return
+		
+		document.putUserData(runnablesKey, found)
+		PsiDocumentManager.getInstance(project).getPsiFile(document)
+			?.let { DaemonCodeAnalyzer.getInstance(project).restart(it) }
+	}
+	
+	data class RunnableFunction(val start: Int, val end: Int, val name: String, val isMain: Boolean)
 	
 	private fun colorOf(type: String, modifiers: Set<String>): TextAttributesKey? = when (type) {
 		"struct" -> when {

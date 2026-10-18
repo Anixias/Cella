@@ -2,6 +2,8 @@
 using Cella.Compiler;
 using Cella.Compiler.Building;
 using Cella.Core.Binding;
+using Cella.Core.Binding.Nodes;
+using Cella.Core.Syntax.Nodes;
 using Cella.Core.Text;
 using Cella.Diagnostics;
 
@@ -115,6 +117,37 @@ public sealed class Workspace(Func<JsonObject, Task> notify, TimeSpan debounce)
 	public async Task<IReadOnlyList<SymbolReference>> GetReferencesAsync(string uri)
 	{
 		var path = Protocol.ToPath(uri);
+		return ModelsOf(path, await GetCheckedProjectsAsync(path))
+			.Select(model => model.GetReferences(path))
+			.FirstOrDefault(static references => references.Count > 0) ?? [];
+	}
+	
+	public async Task<IReadOnlyList<(FunctionInfo Function, SourceLocation Name, bool IsMain)>> GetRunnablesAsync(
+		string uri)
+	{
+		var path = Protocol.ToPath(uri);
+		var file = (await GetCheckedProjectsAsync(path))
+			.SelectMany(static project => project.Files)
+			.FirstOrDefault(file => Protocol.PathComparer.Equals(file.Symbol.FullPath, path));
+		
+		if (file is null)
+			return [];
+		
+		return
+		[
+			..file.Declarations
+				.OfType<ResolvedFunctionNode>()
+				.Where(static node => node.Syntax is FunctionNode)
+				.Select(static node => (Function: node.FunctionInfo, Name: ((FunctionNode)node.Syntax).Identifier,
+					IsMain: node.FunctionInfo.Symbol.Name == "main" &&
+					        SignatureCollector.CanRunAsMain(node.FunctionInfo)))
+				.Where(static runnable => runnable.IsMain || SignatureCollector.CanRunAsEntry(runnable.Function))
+				.Select(static runnable => (runnable.Function, runnable.Name.SourceLocation, runnable.IsMain))
+		];
+	}
+	
+	private async Task<ProjectCheck[]> GetCheckedProjectsAsync(string path)
+	{
 		while (true)
 		{
 			Task completed;
@@ -135,9 +168,7 @@ public sealed class Workspace(Func<JsonObject, Task> notify, TimeSpan debounce)
 				continue;
 			}
 			
-			return ModelsOf(path, projects)
-				.Select(model => model.GetReferences(path))
-				.FirstOrDefault(static references => references.Count > 0) ?? [];
+			return projects;
 		}
 	}
 	

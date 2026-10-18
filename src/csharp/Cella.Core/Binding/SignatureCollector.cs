@@ -88,6 +88,7 @@ public sealed partial class SignatureCollector
 	public ConstantEvaluator Evaluator { get; }
 	public ModuleIndex Modules { get; }
 	public bool ReportsMissingEntryPoint { get; init; } = true;
+	public bool QualifiesEntryPoint { get; init; }
 	public Action<Token, Symbol>? RecordName { get; init; }
 	public CompletionProbe? Probe { get; init; }
 	

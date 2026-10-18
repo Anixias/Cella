@@ -30,8 +30,10 @@ public sealed partial class Builder
 		var optimizeMode = options.OptimizeMode;
 		
 		// Phase 1: File parsing
-		var outputType = project.Project.OutputType;
-		var isReferenceable = project.Project.Referenceable == true && outputType.IsExecutable();
+		var isEntry = options.Entry is not null && project.FilePath == entryProjectPath;
+		var outputType = isEntry ? ProjectOutputType.Executable : project.Project.OutputType;
+		var isReferenceable = !isEntry && project.Project.Referenceable == true && outputType.IsExecutable();
+		var entryPointName = isEntry ? options.Entry : outputType.IsExecutable() ? "main" : null;
 		var flags = CreateFlags(project.Project);
 		var (files, parseDiagnostics) = await ProcessProject(project, references, flags, ct);
 		var diagnostics = new List<DiagnosticList> { parseDiagnostics };
@@ -46,7 +48,10 @@ public sealed partial class Builder
 			if (!outputType.IsExecutable())
 				return new(new(project.Name, SymbolTable.Empty, SignatureTable.Empty, null), outputType, null, true);
 			
-			output.Report([new(DiagnosticSeverity.Error, SourceLocation.None, "The program has no 'main' function")]);
+			output.Report([
+				new(DiagnosticSeverity.Error, SourceLocation.None,
+					$"The program has no '{entryPointName}' function")
+			]);
 			
 			return new(new(project.Name, SymbolTable.Empty, SignatureTable.Empty, null), outputType, null, false);
 		}
@@ -89,7 +94,7 @@ public sealed partial class Builder
 				                     !providers.ContainsKey(dependency.Name))
 				.ToList();
 		
-		var objDir = Path.Combine(GetOutputDirectory(project), "obj");
+		var objDir = Path.Combine(isEntry ? GetEntryDirectory(project) : GetOutputDirectory(project), "obj");
 		var outputConfig = new OutputConfig(objDir, options.EmitsIr, options.EmitsAssembly);
 		var targetConfig = new TargetConfig(targetTriple.ToLlvm(), Features: targetTriple.ToLlvmFeatures());
 		var codeGenConfig = new CodeGenConfig(outputConfig, targetConfig, optimizeMode)
@@ -107,7 +112,6 @@ public sealed partial class Builder
 		
 		// Phase 2b: Signature collection
 		// TODO Allow configuring entry point name?
-		var entryPointName = outputType.IsExecutable() ? "main" : null;
 		var indirectSymbols = allDependencies
 			.Select(static d => d.AssemblySymbol)
 			.Except(dependencySymbols)
@@ -122,6 +126,7 @@ public sealed partial class Builder
 			dependencySymbols, indirectSymbols, FindAliases(project, dependencyList), pointerBitSize)
 		{
 			ReportsMissingEntryPoint = parseDiagnostics.ErrorCount == 0,
+			QualifiesEntryPoint = isEntry,
 			RecordName = recordName,
 			Probe = probe
 		};
@@ -318,7 +323,7 @@ public sealed partial class Builder
 			exportNames = [..codeGenerator.ExportNames];
 			var outputBaseName = GetOutputBaseName(project);
 			var outputFileName = GetOutputFileName(outputBaseName, targetTriple, outputType);
-			var outputDir = Path.Combine(GetOutputDirectory(project), "bin");
+			var outputDir = isEntry ? GetEntryDirectory(project) : Path.Combine(GetOutputDirectory(project), "bin");
 			outputPath = Path.Combine(outputDir, outputFileName);
 			
 			if (!Directory.Exists(outputDir))

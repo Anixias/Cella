@@ -1,0 +1,5 @@
+mod test
+
+helper: pub fun(count: i32)
+{
+}

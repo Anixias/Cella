@@ -1,65 +1,60 @@
 package com.anixias.cella.run
 
-import com.anixias.cella.lexer.CellaToken
-import com.anixias.cella.lexer.CellaTokenTypes
+import com.anixias.cella.server.CellaSemanticHighlighter
 import com.intellij.execution.actions.ConfigurationContext
 import com.intellij.execution.actions.LazyRunConfigurationProducer
 import com.intellij.execution.configurations.runConfigurationType
 import com.intellij.execution.lineMarker.RunLineMarkerContributor
 import com.intellij.icons.AllIcons
 import com.intellij.openapi.util.Ref
+import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiElement
-import com.intellij.psi.PsiWhiteSpace
-import com.intellij.psi.util.PsiTreeUtil
 import java.nio.file.Path
+
+private fun findRunnable(element: PsiElement): CellaSemanticHighlighter.RunnableFunction? {
+	val file = element.containingFile ?: return null
+	val document = PsiDocumentManager.getInstance(element.project).getDocument(file) ?: return null
+	return CellaSemanticHighlighter.runnableAt(document, element.textRange)
+}
+
+private fun findProject(element: PsiElement): Path? =
+	element.containingFile?.virtualFile?.let { CellaProjects.find(it) }
 
 class CellaRunConfigurationProducer : LazyRunConfigurationProducer<CellaRunConfiguration>() {
 	override fun getConfigurationFactory() = runConfigurationType<CellaConfigurationType>().configurationFactories[0]
 
 	override fun setupConfigurationFromContext(configuration: CellaRunConfiguration, context: ConfigurationContext,
 		sourceElement: Ref<PsiElement>): Boolean {
-		val celp = findExecutable(context) ?: return false
+		val (celp, entry) = findTarget(context) ?: return false
 		configuration.options.project = celp.toString()
-		configuration.name = CellaProjects.name(celp)
+		configuration.options.entry = entry.orEmpty()
+		configuration.name = entry ?: CellaProjects.name(celp)
 		return true
 	}
 
 	override fun isConfigurationFromContext(configuration: CellaRunConfiguration, context: ConfigurationContext) =
-		findExecutable(context)?.let { it == configuration.projectPath } == true
+		findTarget(context) == (configuration.projectPath to configuration.entry)
 
-	private fun findExecutable(context: ConfigurationContext): Path? {
+	private fun findTarget(context: ConfigurationContext): Pair<Path, String?>? {
+		val element = context.psiLocation
+		val runnable = element?.let { findRunnable(it) }
+		if (runnable != null && !runnable.isMain)
+			return findProject(element)?.let { it to runnable.name }
+
 		val file = context.location?.virtualFile ?: return null
-		return CellaProjects.find(file)?.takeIf { CellaProjects.isExecutable(it) }
+		return CellaProjects.find(file)?.takeIf { CellaProjects.isExecutable(it) }?.let { it to null }
 	}
 }
 
 class CellaRunLineMarker : RunLineMarkerContributor() {
 	override fun getInfo(element: PsiElement): Info? {
-		if (element.text != "main" || tokenOf(element) != CellaToken.IDENTIFIER || !isTopLevelDeclaration(element))
+		if (element.firstChild != null)
 			return null
 
-		val file = element.containingFile?.virtualFile ?: return null
-		CellaProjects.find(file)?.takeIf { CellaProjects.isExecutable(it) } ?: return null
+		val runnable = findRunnable(element) ?: return null
+		if (runnable.isMain && findProject(element)?.let { CellaProjects.isExecutable(it) } != true)
+			return null
+
 		return withExecutorActions(AllIcons.RunConfigurations.TestState.Run)
 	}
-
-	private fun isTopLevelDeclaration(element: PsiElement): Boolean {
-		val next = generateSequence(PsiTreeUtil.nextLeaf(element)) { PsiTreeUtil.nextLeaf(it) }
-			.firstOrNull { it !is PsiWhiteSpace }
-		if (next == null || tokenOf(next) != CellaToken.COLON)
-			return false
-
-		var depth = 0
-		for (leaf in generateSequence(PsiTreeUtil.prevLeaf(element)) { PsiTreeUtil.prevLeaf(it) }) {
-			when (tokenOf(leaf)) {
-				CellaToken.RIGHT_BRACE -> depth++
-				CellaToken.LEFT_BRACE -> if (--depth < 0) return false
-				else -> {}
-			}
-		}
-
-		return true
-	}
-
-	private fun tokenOf(element: PsiElement) = CellaTokenTypes.tokenOf(element.node?.elementType)
 }

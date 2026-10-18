@@ -1,0 +1,6 @@
+Error at entry_parameters.ce:3:1
+2 │ 
+3 │ helper: pub fun(count: i32)
+    ╘════╛ 'test.helper' must take no parameters
+
+[compilation failed]

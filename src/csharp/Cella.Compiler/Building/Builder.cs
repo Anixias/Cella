@@ -30,6 +30,7 @@ public sealed partial class Builder(BuildOptions options, IBuildOutput output)
 	private readonly List<ProjectDiagnostic> _problems = [];
 	private readonly HashSet<string> _unchecked = [];
 	private readonly Dictionary<string, string> _outputDirectories = [];
+	private string? entryProjectPath;
 	private IReadOnlyDictionary<string, string> openFiles = new Dictionary<string, string>();
 	private CompletionProbe? probe;
 	private bool generatesCode;
@@ -97,6 +98,17 @@ public sealed partial class Builder(BuildOptions options, IBuildOutput output)
 			p => dependencyGraph.GetDependencies(p).ToImmutableArray());
 		
 		AssignBundledOutputs(projectDependencies);
+		if (options.Entry is not null)
+		{
+			var used = projectDependencies.Values.SelectMany(static items => items).ToHashSet();
+			if (projectDependencies.Keys.Where(project => !used.Contains(project)).ToList() is not [var root])
+			{
+				output.WriteLine("'--entry' needs exactly one project to build");
+				return Fail();
+			}
+			
+			entryProjectPath = root.FilePath;
+		}
 		
 		var builtInFlags = BuildFlags.Create(options.Target, options.OptimizeMode);
 		var linkPreferences = FindLinkPreferences(projectDependencies);
@@ -155,6 +167,9 @@ public sealed partial class Builder(BuildOptions options, IBuildOutput output)
 			}
 		}
 	}
+	
+	private string GetEntryDirectory(ProjectInfo project) =>
+		Path.Combine(project.Directory, "obj", "entry", options.Entry!);
 	
 	private string GetOutputDirectory(ProjectInfo project) =>
 		_outputDirectories.GetValueOrDefault(project.FilePath, project.Directory);

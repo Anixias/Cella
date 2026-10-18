@@ -1,0 +1,14 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+area: pub fun(side: i32) -> i32 = side * side
+
+demo: pub fun -> i32
+{
+	printf("%d\n", area(3))
+	ret 4
+}

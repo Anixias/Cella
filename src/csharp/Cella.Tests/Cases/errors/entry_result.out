@@ -1,0 +1,6 @@
+Error at entry_result.ce:3:1
+2 │ 
+3 │ helper: pub fun -> bool = true
+    ╘════╛ 'test.helper' must return 'i32', 'never' or nothing
+
+[compilation failed]

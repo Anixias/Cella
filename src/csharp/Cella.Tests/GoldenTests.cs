@@ -19,6 +19,7 @@ public sealed class GoldenTests
 	private static readonly string _libraryTestsDirectory =
 		Path.GetFullPath(Path.Combine(GetSourceDirectory(), "..", "..", "std", "tests"));
 	
+	private const string ProgramOutputPrefix = "test -> ";
 	private static readonly TimeSpan _runTimeout = TimeSpan.FromSeconds(10);
 	private static readonly Regex _exitCodeLine = new(@"^\[exit code (-?\d+)\]$", RegexOptions.Multiline);
 	
@@ -206,6 +207,12 @@ public sealed class GoldenTests
 			var (compileExitCode, compileOutput) =
 				await CompileAsync(projectPath, release, [..options, "--target", target], cancellationToken);
 			
+			var programDirectory = compileOutput.Split('\n')
+				.Select(static line => line.TrimEnd())
+				.Where(static line => line.StartsWith(ProgramOutputPrefix, StringComparison.Ordinal))
+				.Select(static line => Path.GetDirectoryName(line[ProgramOutputPrefix.Length..]))
+				.FirstOrDefault() ?? Path.Combine(caseDirectory, "bin");
+			
 			compileOutput = _outputLine.Replace(compileOutput
 				.Replace($" at {caseDirectory}{Path.DirectorySeparatorChar}", " at ")
 				.Replace(caseDirectory, "<case>"), "");
@@ -221,7 +228,6 @@ public sealed class GoldenTests
 				? await File.ReadAllLinesAsync(argumentsPath, cancellationToken)
 				: [];
 			
-			var binDirectory = Path.Combine(caseDirectory, "bin");
 			if (target == LinuxTarget && !LinuxProcess.IsAvailable)
 				Assert.Skip("Linux programs can't run on this machine (install WSL to run them on Windows)");
 			
@@ -229,8 +235,8 @@ public sealed class GoldenTests
 				Assert.Skip("Windows programs can't run on this machine");
 			
 			var (exitCode, output, error) = target == LinuxTarget
-				? await LinuxProcess.RunAsync(binDirectory, arguments, _runTimeout, cancellationToken)
-				: await ExecuteAsync(Path.Combine(binDirectory, "test.exe"), arguments, cancellationToken);
+				? await LinuxProcess.RunAsync(programDirectory, arguments, _runTimeout, cancellationToken)
+				: await ExecuteAsync(Path.Combine(programDirectory, "test.exe"), arguments, cancellationToken);
 			
 			var errorSection = error.Length > 0 ? $"[stderr]\n{error}" : "";
 			return Transcript(compileOutput, output, errorSection, $"[exit code {exitCode}]");

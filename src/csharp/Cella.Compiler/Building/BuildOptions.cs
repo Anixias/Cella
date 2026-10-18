@@ -11,4 +11,5 @@ public sealed record BuildOptions
 	public bool EmitsIr { get; init; }
 	public bool EmitsAssembly { get; init; }
 	public bool ChecksOnly { get; init; }
+	public string? Entry { get; init; }
 }

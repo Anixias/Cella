@@ -1,0 +1,6 @@
+Error at entry_private.ce:3:1
+2 │ 
+3 │ helper: fun
+    ╘════╛ 'test.helper' must be 'pub'
+
+[compilation failed]

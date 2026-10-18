@@ -1,0 +1,6 @@
+Error at entry_generic.ce:3:8
+2 │ 
+3 │ helper[T]: pub fun
+           ^ Cannot declare type parameters on 'test.helper'
+
+[compilation failed]

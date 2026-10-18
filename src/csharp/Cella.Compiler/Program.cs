@@ -17,15 +17,15 @@ internal static class Program
 	}
 	
 	private static readonly string[] _options =
-		["--verbose", "--hints", "--release", "--flag", "--target", "--emit-ir", "--emit-asm"];
+		["--verbose", "--hints", "--release", "--flag", "--target", "--entry", "--emit-ir", "--emit-asm"];
 	
 	private const string Usage =
 		"Usage: cella build [project file or folder] [--release] [--verbose] [--hints] [--flag <name>[=true|false]] " +
-		"[--target windows-x64|windows-x64-gnu|linux-x64] [--emit-ir] [--emit-asm]\n" +
+		"[--target windows-x64|windows-x64-gnu|linux-x64] [--entry <module.function>] [--emit-ir] [--emit-asm]\n" +
 		"       cella --version";
 	
 	private static bool IsOptionValue(string[] args, int index) =>
-		index > 0 && args[index - 1] is "--flag" or "--target";
+		index > 0 && args[index - 1] is "--flag" or "--target" or "--entry";
 	
 	private static Task<int> RunAsync(string[] args)
 	{
@@ -66,6 +66,9 @@ internal static class Program
 		if (ParseTarget(args) is not { } targetTriple)
 			return 1;
 		
+		if (!TryParseEntry(args, out var entry))
+			return 1;
+		
 		var paths = args.Where((arg, i) => !arg.StartsWith("--") && !IsOptionValue(args, i)).ToArray();
 		if (paths is [_, var extra, ..])
 		{
@@ -82,7 +85,8 @@ internal static class Program
 			FlagOverrides = flagOverrides,
 			Verbose = verbose,
 			EmitsIr = args.Contains("--emit-ir"),
-			EmitsAssembly = args.Contains("--emit-asm")
+			EmitsAssembly = args.Contains("--emit-asm"),
+			Entry = entry
 		};
 		
 		var result =
@@ -90,6 +94,29 @@ internal static class Program
 				.BuildAsync(sourcePath);
 		
 		return result.Succeeded ? 0 : 1;
+	}
+	
+	private static bool TryParseEntry(string[] args, out string? entry)
+	{
+		entry = null;
+		var index = Array.IndexOf(args, "--entry");
+		if (index < 0)
+			return true;
+		
+		if (index + 1 == args.Length || args[index + 1].StartsWith("--"))
+		{
+			Console.WriteLine("Expected a function after '--entry'");
+			return false;
+		}
+		
+		if (Array.IndexOf(args, "--entry", index + 1) >= 0)
+		{
+			Console.WriteLine("'--entry' is given more than once");
+			return false;
+		}
+		
+		entry = args[index + 1];
+		return true;
 	}
 	
 	private static TargetTriple? ParseTarget(string[] args)

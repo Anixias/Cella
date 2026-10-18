@@ -1,0 +1,3 @@
+mod test
+
+helper: pub fun -> bool = true

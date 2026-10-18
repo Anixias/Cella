@@ -43,14 +43,14 @@ class CellaBuildResult(val succeeded: Boolean, val outputPath: Path?)
 object CellaBuild {
 	private val location = Regex("""^(Error|Warning|Hint|Info) at (.+):(\d+):(\d+)(?:: (.*))?$""")
 	private val caret = Regex("""^\s*(?:\^|╘═*╛)\s(.*)$""")
-	private val outputs = ConcurrentHashMap<Path, Path>()
+	private val outputs = ConcurrentHashMap<Pair<Path, String?>, Path>()
 
 	fun findCella(): String? = CellaSettings.instance.state.cellaPath?.takeIf { File(it).isFile }
 		?: PathEnvironmentVariableUtil.findInPath("cella")?.path
 
-	fun lastOutput(celp: Path): Path? = outputs[celp]?.takeIf { Files.isRegularFile(it) }
+	fun lastOutput(celp: Path, entry: String?): Path? = outputs[celp to entry]?.takeIf { Files.isRegularFile(it) }
 
-	fun build(project: Project, celp: Path, release: Boolean): CellaBuildResult {
+	fun build(project: Project, celp: Path, release: Boolean, entry: String? = null): CellaBuildResult {
 		val cella = findCella()
 		if (cella == null) {
 			NotificationGroupManager.getInstance().getNotificationGroup("Cella")
@@ -62,7 +62,9 @@ object CellaBuild {
 
 		val directory = celp.parent
 		val name = CellaProjects.name(celp)
-		val commandLine = GeneralCommandLine(listOfNotNull(cella, "build", celp.toString(), "--release".takeIf { release }))
+		val arguments = listOfNotNull(cella, "build", celp.toString(), "--release".takeIf { release }) +
+			(entry?.let { listOf("--entry", it) } ?: emptyList())
+		val commandLine = GeneralCommandLine(arguments)
 			.withWorkDirectory(directory.toFile())
 			.withCharset(StandardCharsets.UTF_8)
 			.withParentEnvironmentType(GeneralCommandLine.ParentEnvironmentType.CONSOLE)
@@ -97,7 +99,7 @@ object CellaBuild {
 
 		val succeeded = exitCode == 0
 		if (succeeded && outputPath != null)
-			outputs[celp] = outputPath.normalize()
+			outputs[celp to entry] = outputPath.normalize()
 
 		view.onEvent(buildId, FinishBuildEventImpl(buildId, null, System.currentTimeMillis(),
 			if (succeeded) "Built $name" else "Build failed",
