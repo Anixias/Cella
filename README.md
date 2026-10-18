@@ -93,7 +93,7 @@ The compiler reports these as errors:
 
 As in C, the compiler doesn't check aliasing between borrows (`both(mut n, mut n)` compiles), invalidation, data races, or anything done through `ptr[T]`. A variable declared without a value starts zeroed. Generated code never allocates; heap memory comes from whatever the program calls, like `malloc` above.
 
-Array indexing is bounds checked in every build, and integer overflow is checked in debug builds. Both can be changed per project. A failed check calls the `panic` operator the file can see, or traps if there isn't one. The standard library's `panic` is visible everywhere: it prints the message and location and exits with code 101.
+Array indexing is bounds checked in every build, and integer overflow is checked in debug builds. Both can be changed per project. A failed check calls the `panic` operator the file can see, or traps if there isn't one. The standard library's `panic` is visible everywhere: it prints the message and location and ends the program at once, as a crash, without running destructors.
 
 The language also has methods, operators and properties on records, generic constraints, traits with `impl` and `dyn[Trait]` values, lambdas (`fun(x) => x * base`), and `when` for conditional compilation.
 

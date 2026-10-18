@@ -72,7 +72,6 @@ public sealed partial class SignatureCollector
 	private readonly List<(TypeSymbol Type, GlobalSymbol Constant, GlobalSymbol Witness)>
 		_traitConstantsInProgress = [];
 	
-	private readonly HashSet<(SourceLocation, string)> _conformanceErrors = [];
 	private readonly List<ConstraintCheck> _deferredChecks = [];
 	
 	private readonly List<(TypeParameterNode, TypeParameterSymbol, ResolutionContext, Symbol?)>

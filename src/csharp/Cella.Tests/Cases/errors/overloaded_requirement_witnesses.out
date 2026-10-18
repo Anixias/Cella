@@ -1,0 +1,11 @@
+Error at overloaded_requirement_witnesses.ce:9:17
+8 │ 
+9 │ Point: rec impl Show
+                    ╘══╛ 'Point' needs 'Show.show'
+
+Error at overloaded_requirement_witnesses.ce:22:18
+21 │ 
+22 │ Buffer: rec impl Make
+                      ╘══╛ 'Buffer' needs 'Make.new'
+
+[compilation failed]

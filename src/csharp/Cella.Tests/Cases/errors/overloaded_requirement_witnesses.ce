@@ -1,0 +1,40 @@
+mod test
+
+Show: trait
+{
+	show: fun(imm self, x: i32) -> i32
+	show: fun(imm self, x: f32) -> i32
+}
+
+Point: rec impl Show
+{
+	x: i32
+
+	show: fun(imm self, x: i32) -> i32 => x
+}
+
+Make: trait
+{
+	new: op(capacity: usize)
+	new: op(a: i32, b: i32)
+}
+
+Buffer: rec impl Make
+{
+	size: usize
+
+	new: op(capacity: usize)
+	{
+		self.size = capacity
+	}
+}
+
+Both: rec impl Show
+{
+	x: i32
+
+	show: fun(imm self, x: i32) -> i32 => x
+	show: fun(imm self, x: f32) -> i32 => 0
+}
+
+main: fun -> i32 => 0

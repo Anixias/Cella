@@ -1,0 +1,29 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Pick: enum
+{
+	a
+	b
+}
+
+takesU8: fun(v: u8) -> i32 => i32(v)
+takesF32: fun(v: f32) -> i32 => i32(v)
+takesText: fun(v: cstr) -> i32 => 1
+
+main: fun -> i32
+{
+	val t = Pick.b
+	val direct = takesU8(match t { a => 1, b => 2 })
+	val c = match t { a => 1, b => 2 }
+	val viaLocal = takesU8(c)
+	val f = match t { a => 1.5, b => 2.5 }
+	val viaFloat = takesF32(f)
+	val text = takesText(match t { a => "x", b => "y" })
+	printf("%d %d %d %d\n", direct, viaLocal, viaFloat, text)
+	ret 0
+}

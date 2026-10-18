@@ -1,0 +1,34 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Token: rec
+{
+	id: i32
+
+	drop: op
+	{
+		printf("drop %d\n", self.id)
+	}
+}
+
+take: fun(own t: Token)
+{
+}
+
+maybe[N: const usize]: fun(own values: array[array[Token, 3], N], deep: bool)
+{
+	if deep
+		take(own values[5][0])
+
+	printf("kept\n")
+}
+
+main: fun -> i32
+{
+	maybe([[Token(1), Token(2), Token(3)], [Token(4), Token(5), Token(6)]], false)
+	ret 0
+}

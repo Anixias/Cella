@@ -180,21 +180,35 @@ public sealed partial class SignatureCollector
 		
 		var trait = DescribeTrait(conformance);
 		var traitMap = CreateTraitMap(conformance, self);
-		foreach (var (name, requirement) in GetRequirements(conformance.Trait))
+		var requirements = GetRequirements(conformance.Trait).Select(entry =>
 		{
-			var info = GetFunctionInfo(requirement);
-			var candidates = FindCandidates(conformance, self, name, requirement).ToList();
+			var info = GetFunctionInfo(entry.Function);
+			var candidates = FindCandidates(conformance, self, entry.Name, entry.Function).ToList();
 			var matches = candidates
-				.Where(candidate => SignaturesMatch(candidate.Signature, info.Signature, requirement,
+				.Where(candidate => SignaturesMatch(candidate.Signature, info.Signature, entry.Function,
 					candidate.Function, traitMap))
 				.ToList();
 			
 			if (matches.Count == 0)
 				matches = candidates
-					.Where(candidate => SignaturesMatch(candidate.Signature, info.Signature, requirement,
+					.Where(candidate => SignaturesMatch(candidate.Signature, info.Signature, entry.Function,
 						candidate.Function, traitMap, true))
 					.ToList();
 			
+			return (entry.Name, Requirement: entry.Function, Info: info, Candidates: candidates, Matches: matches);
+		}).ToList();
+		
+		var witnesses = requirements
+			.Where(static entry => entry.Matches.Count == 1)
+			.Select(static entry => entry.Matches[0].Function)
+			.ToHashSet();
+		
+		var reported = new HashSet<FunctionSymbol>();
+		var narrowChecked = new HashSet<object>();
+		var missing = new HashSet<string>();
+		foreach (var (name, requirement, info, allCandidates, matches) in requirements)
+		{
+			var candidates = allCandidates.Where(candidate => !witnesses.Contains(candidate.Function)).ToList();
 			switch (matches.Count)
 			{
 				case 1:
@@ -202,7 +216,9 @@ public sealed partial class SignatureCollector
 						new FunctionWitness(matches[0].Function, GetFunctionInfo(matches[0].Function));
 					
 					_witnessMembers.Add(matches[0].Function);
-					ReportNarrowWitness(trait, self, name, matches[0].Function);
+					if (narrowChecked.Add((object?)GetVisibilityKeyword(matches[0].Function) ?? matches[0].Function))
+						ReportNarrowWitness(trait, self, name, matches[0].Function);
+					
 					if (matches[0].Function.Syntax is FunctionNode { When: not null })
 						ReportConformance(GetFunctionLocation(matches[0].Function),
 							$"Cannot implement '{trait}.{name}' with 'when' functions");
@@ -226,8 +242,9 @@ public sealed partial class SignatureCollector
 							         traitMap, true, true)))
 					{
 						_witnessMembers.Add(candidate.Function);
-						ReportConformance(GetFunctionLocation(candidate.Function),
-							$"'{name}' doesn't match '{trait}.{name}'");
+						if (reported.Add(candidate.Function))
+							ReportConformance(GetFunctionLocation(candidate.Function),
+								$"'{name}' doesn't match '{trait}.{name}'");
 					}
 					
 					break;
@@ -244,8 +261,9 @@ public sealed partial class SignatureCollector
 					foreach (var candidate in candidates)
 					{
 						_witnessMembers.Add(candidate.Function);
-						ReportConformance(GetFunctionLocation(candidate.Function),
-							$"'{name}' doesn't match '{trait}.{name}'");
+						if (reported.Add(candidate.Function))
+							ReportConformance(GetFunctionLocation(candidate.Function),
+								$"'{name}' doesn't match '{trait}.{name}'");
 					}
 					
 					break;
@@ -255,15 +273,15 @@ public sealed partial class SignatureCollector
 					break;
 				
 				default:
-					ReportConformance(conformance.Location, DescribeMissingRequirement(conformance, trait, self, name,
-						requirement));
+					if (missing.Add(name))
+						ReportConformance(conformance.Location, DescribeMissingRequirement(conformance, trait, self,
+							name, requirement));
 					
 					break;
 			}
 		}
 		
-		foreach (var constructor in conformance.Trait.Constructors)
-			MatchConstructor(conformance, trait, traitMap, self, constructor);
+		MatchConstructors(conformance, trait, traitMap, self);
 	}
 	
 	private void ReportNarrowWitness(string trait, TypeSymbol self, string name, FunctionSymbol witness)
@@ -288,11 +306,8 @@ public sealed partial class SignatureCollector
 		_ => function.Property?.Node?.Visibility
 	};
 	
-	private void ReportConformance(SourceLocation location, string message)
-	{
-		if (_conformanceErrors.Add((location, message)))
-			Diagnostics.Add(new(DiagnosticSeverity.Error, location, message));
-	}
+	private void ReportConformance(SourceLocation location, string message) =>
+		Diagnostics.Add(new(DiagnosticSeverity.Error, location, message));
 	
 	private static string DescribeMissingRequirement(Conformance conformance, string trait, TypeSymbol self,
 		string name, FunctionSymbol requirement)
@@ -334,11 +349,36 @@ public sealed partial class SignatureCollector
 		conformance.Target.GetProperty(name) is not null ||
 		conformance.Impl?.Properties.Any(property => property.Name == name) == true;
 	
-	private void MatchConstructor(Conformance conformance, string trait,
-		Dictionary<TypeParameterSymbol, TypeSymbol> traitMap, TypeSymbol self, FunctionSymbol requirement)
+	private void MatchConstructors(Conformance conformance, string trait,
+		Dictionary<TypeParameterSymbol, TypeSymbol> traitMap, TypeSymbol self)
+	{
+		var declared = _typePool.GetConstructors(self);
+		var unmatched = new List<FunctionSymbol>();
+		var witnesses = new HashSet<FunctionSymbol>();
+		foreach (var requirement in conformance.Trait.Constructors)
+		{
+			if (FindConstructorWitness(requirement, declared, traitMap) is { } witness)
+			{
+				conformance.Witnesses[requirement] = new FunctionWitness(witness.Symbol, witness);
+				witnesses.Add(witness.Symbol);
+				ReportNarrowWitness(trait, self, "new", witness.Symbol);
+			}
+			else
+			{
+				unmatched.Add(requirement);
+			}
+		}
+		
+		var unused = declared.Where(constructor => !witnesses.Contains(constructor.Symbol)).ToList();
+		var reported = false;
+		foreach (var requirement in unmatched)
+			MatchConstructor(conformance, trait, self, requirement, declared, unused, traitMap, ref reported);
+	}
+	
+	private FunctionInfo? FindConstructorWitness(FunctionSymbol requirement, IReadOnlyList<FunctionInfo> declared,
+		Dictionary<TypeParameterSymbol, TypeSymbol> traitMap)
 	{
 		var signature = GetFunctionInfo(requirement).Signature;
-		var declared = _typePool.GetConstructors(self);
 		var matches = declared
 			.Where(constructor => SignaturesMatch(constructor.Signature, signature, requirement, constructor.Symbol,
 				traitMap))
@@ -350,14 +390,14 @@ public sealed partial class SignatureCollector
 					traitMap, true))
 				.ToList();
 		
-		if (matches.Count > 0)
-		{
-			conformance.Witnesses[requirement] = new FunctionWitness(matches[0].Symbol, matches[0]);
-			ReportNarrowWitness(trait, self, "new", matches[0].Symbol);
-			return;
-		}
-		
-		var expected = _typePool.SubstituteSignature(signature, traitMap);
+		return matches.Count > 0 ? matches[0] : null;
+	}
+	
+	private void MatchConstructor(Conformance conformance, string trait, TypeSymbol self, FunctionSymbol requirement,
+		IReadOnlyList<FunctionInfo> declared, List<FunctionInfo> unused,
+		Dictionary<TypeParameterSymbol, TypeSymbol> traitMap, ref bool reported)
+	{
+		var expected = _typePool.SubstituteSignature(GetFunctionInfo(requirement).Signature, traitMap);
 		var hidesConstruction = declared.Count > 0 && self is RecordSymbol;
 		if (!hidesConstruction && _typePool.FindConstructionWitness(self, expected) is { } construction)
 		{
@@ -371,13 +411,17 @@ public sealed partial class SignatureCollector
 			return;
 		}
 		
-		if (!hidesConstruction)
+		if (reported)
+			return;
+		
+		reported = true;
+		if (!hidesConstruction || unused.Count == 0)
 		{
 			ReportConformance(conformance.Location, $"'{DiagnosticReporter.DescribeType(self)}' needs '{trait}.new'");
 			return;
 		}
 		
-		foreach (var constructor in declared)
+		foreach (var constructor in unused)
 			ReportConformance(constructor.Symbol.Syntax is ConstructorNode node
 					? node.Keyword.SourceLocation
 					: conformance.Location, $"'new' doesn't match '{trait}.new'");

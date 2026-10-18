@@ -149,9 +149,12 @@ public sealed partial class Resolver
 				: value!)
 			.ToList();
 		
-		var type = target ?? (arms is [_, ..] && arms.All(static arm => arm.Type is UntypedStringType)
-			? NativeSymbols.UntypedString
-			: UnifyTypes(arms));
+		var valued = arms.Where(static arm => arm.Type is not NeverType).ToList();
+		var type = target ??
+		           (valued is [{ Type: UntypedType and not (UntypedNullType or UntypedUndefType) } first, ..] &&
+		            valued.All(arm => arm.Type == first.Type)
+			           ? first.Type
+			           : UnifyTypes(arms));
 		
 		if (type is null)
 		{

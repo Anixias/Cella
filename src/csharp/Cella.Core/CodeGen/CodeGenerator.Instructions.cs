@@ -76,6 +76,9 @@ public sealed partial class CodeGenerator
 				break;
 			}
 			
+			case DropElementsInstruction i when IsMissingElement(i.Array):
+				break;
+			
 			case DropElementsInstruction { Guard: { } guard } i:
 			{
 				var function = builder.InsertBlock.Parent;
