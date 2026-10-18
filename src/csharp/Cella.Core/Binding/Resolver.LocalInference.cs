@@ -28,17 +28,11 @@ public sealed partial class Resolver
 		var settlement = activeSurvey.Settle(ConvertsInOneStep, CastsInOneStep);
 		Rollback(checkpoint);
 		
-		var settled = settlement.Types.ToDictionary();
 		foreach (var (local, types) in settlement.Conflicts)
-		{
 			Diagnostics.Add(new(DiagnosticSeverity.Error, local.Identifier.SourceLocation,
 				$"Cannot infer the type of '{local.Identifier.Text}' from {JoinWrittenNames(types)}"));
-			
-			if (local.Initializer is LambdaExpressionNode)
-				settled[local.Declaration] = NativeSymbols.Invalid;
-		}
 		
-		settledTypes = settled;
+		settledTypes = settlement.Types.ToDictionary();
 		var result = resolve();
 		settledTypes = null;
 		return result;

@@ -21,7 +21,6 @@ public sealed class EndScopeInstruction(int scopeId, SourceLocation sourceLocati
 	public SourceLocation SourceLocation { get; } = sourceLocation;
 }
 
-// TODO: Local vars that are never mutated should be inlined
 public sealed class LocalVarInstruction
 (
 	LocalVariableSymbol symbol,

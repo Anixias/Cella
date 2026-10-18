@@ -182,8 +182,12 @@ public sealed class BuilderTests : IDisposable
 		var (project, path) = Assert.Single(outputs);
 		Assert.Equal("test", project);
 		Assert.Equal(Path.Combine(_directory, "app", "bin"), Path.GetDirectoryName(path));
-		Assert.NotEmpty(Directory.GetFiles(Path.Combine(_directory, "app", "obj", "std", "os", "bin")));
-		Assert.False(Directory.Exists(Path.Combine(AppContext.BaseDirectory, "lib", "std", "os", "bin")));
+		var bundled = Directory.GetDirectories(Path.Combine(_directory, "app", "obj", "std"));
+		Assert.NotEmpty(bundled);
+		Assert.All(bundled, static project => Assert.NotEmpty(Directory.GetFiles(Path.Combine(project, "bin"))));
+		Assert.DoesNotContain(
+			Directory.EnumerateDirectories(Path.Combine(AppContext.BaseDirectory, "lib", "std"), "*",
+				SearchOption.AllDirectories), static directory => Path.GetFileName(directory) is "bin" or "obj");
 	}
 	
 	private static string OptedOut(string outputType) =>

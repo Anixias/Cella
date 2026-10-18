@@ -246,8 +246,6 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 	
 	private void MapNativeSymbols()
 	{
-		// TODO Map address spaces based on target?
-		
 		var intSize = _context.GetIntType(_pointerSize * 8);
 		current.Types[NativeSymbols.Void] = _context.VoidType;
 		current.Types[NativeSymbols.Never] = _context.VoidType;
@@ -625,7 +623,6 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 				
 				if (IsExported(function.Info.Symbol))
 				{
-					// TODO Use ExternalLinkage if not building a DLL?
 					llvmFunction.DLLStorageClass = LLVMDLLStorageClass.LLVMDLLExportStorageClass;
 					llvmFunction.Linkage = LLVMLinkage.LLVMDLLExportLinkage;
 				}

@@ -337,8 +337,6 @@ public sealed unsafe partial class CodeGenerator
 				: LoadValue(builder, fieldType, fieldAddress, v.Member.Name);
 		}
 		
-		// TODO Fields could have been reordered to pack them
-		// TODO Also, GetFieldIndex is O(n), would probably want to cache the final indices in another dictionary
 		var target = EmitValue(v.Target, builder);
 		if (Substitute(v.Target.Type) is RecordSymbol { IsUnion: true } union)
 		{

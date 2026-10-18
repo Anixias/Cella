@@ -10,9 +10,6 @@ public sealed partial class CodeGenerator
 {
 	private void EmitDrop(Value value, LLVMBuilderRef builder)
 	{
-		while (value is ConversionValue conversion)
-			value = conversion.Source;
-		
 		if (value.Type is DynType)
 		{
 			EmitDynDrop(EmitAddress(value, builder), builder);

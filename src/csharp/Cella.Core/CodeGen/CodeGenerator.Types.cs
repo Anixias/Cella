@@ -146,7 +146,6 @@ public sealed partial class CodeGenerator
 			return typeRef;
 		}
 		
-		// TODO Allow controlling packed?
 		typeRef.StructSetBody(fieldTypes, false);
 		return typeRef;
 	}

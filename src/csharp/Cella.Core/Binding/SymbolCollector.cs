@@ -77,10 +77,7 @@ public sealed class SymbolCollector : IDeclarationNodeVisitor<Symbol>
 			_builder.DeclarationSymbols[param] = paramSymbol;
 		}
 		
-		if (_typeStack.TryPeek(out var name))
-			name += ".new";
-		else
-			name = ".new";
+		var name = $"{_typeStack.Peek()}.new";
 		
 		// Do not add to file symbols
 		var function = new FunctionSymbol(name, node, GetMemberVisibility(node.Visibility), null, parameters,
@@ -98,10 +95,7 @@ public sealed class SymbolCollector : IDeclarationNodeVisitor<Symbol>
 	{
 		var self = new ParameterSymbol("self", node.SourceLocation) { Mode = ParameterMode.Mut };
 		
-		if (_typeStack.TryPeek(out var name))
-			name += ".drop";
-		else
-			name = ".drop";
+		var name = $"{_typeStack.Peek()}.drop";
 		
 		var function = new FunctionSymbol(name, node, GetMemberVisibility(null), null, [self], FunctionKind.Destructor)
 		{

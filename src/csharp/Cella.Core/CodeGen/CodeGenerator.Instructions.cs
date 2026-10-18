@@ -110,7 +110,6 @@ public sealed partial class CodeGenerator
 		IndexerValue v => IsMissingElement(v.Target),
 		AccessValue v => IsMissingElement(v.Target),
 		EnumPayloadValue v => IsMissingElement(v.Target),
-		ConversionValue v => IsMissingElement(v.Source),
 		_ => false
 	};
 	

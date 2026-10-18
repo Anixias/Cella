@@ -115,7 +115,6 @@ public sealed class ConversionValue(Value source, Conversion conversion, SourceL
 	public Conversion Conversion { get; } = conversion;
 }
 
-// TODO Detect if the function is constant
 public sealed class CallValue(FunctionInfo function, IEnumerable<Value> arguments, SourceLocation sourceLocation)
 	: Value(function.Signature.ReturnType, false, sourceLocation)
 {
@@ -179,7 +178,6 @@ public sealed class IndirectCallValue
 	public FunctionType FunctionType { get; } = functionType;
 }
 
-// TODO Detect if the target and index are constant
 public sealed class IndexerValue(TypeSymbol type, Value target, Value index, SourceLocation sourceLocation)
 	: Value(type, false, sourceLocation)
 {
@@ -187,7 +185,6 @@ public sealed class IndexerValue(TypeSymbol type, Value target, Value index, Sou
 	public Value Index { get; } = index;
 }
 
-// TODO Detect if the member is constant
 public sealed class AccessValue(TypeSymbol type, Value target, MemberSymbol member, SourceLocation sourceLocation)
 	: Value(type, false, sourceLocation)
 {
@@ -386,7 +383,6 @@ public sealed class ReturnTerminator : IBlockTerminator
 		value is null && sourceLocation == SourceLocation.None ? Void : new(value, sourceLocation);
 }
 
-// TODO Note that when emitting code, if the target block is the next block, we can omit the jump instruction
 public sealed class BranchTerminator(BasicBlock target, SourceLocation sourceLocation) : IBlockTerminator
 {
 	public BasicBlock Target { get; } = target;

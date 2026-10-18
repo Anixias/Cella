@@ -152,23 +152,11 @@ public sealed partial class Lowerer
 			var function = new LoweredFunction(node.FunctionInfo);
 			var lower = new FunctionLowerer(function, evaluator, typePool, getGlobalInfo);
 			
-			switch (node.Body)
+			if (node.Body is IResolvedStatementNode statement)
 			{
-				case IResolvedStatementNode statement:
-					function.ExitLocation = GetClosingBrace(statement);
-					lower.LowerBody(node, statement);
-					lower.PruneEmptyScopes();
-					break;
-				
-				// If expression body, synthesize a return statement
-				case IResolvedExpressionNode expression:
-					// If void return, we do not return the expression itself
-					if (node.FunctionInfo.Signature.ReturnType == NativeSymbols.Void)
-						lower.VisitNode(expression);
-					else
-						lower.LowerReturn(expression, expression.Syntax.SourceLocation);
-					
-					break;
+				function.ExitLocation = GetClosingBrace(statement);
+				lower.LowerBody(node, statement);
+				lower.PruneEmptyScopes();
 			}
 			
 			return function;

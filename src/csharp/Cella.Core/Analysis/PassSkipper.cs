@@ -55,7 +55,7 @@ public sealed class PassSkipper(LoopFollower follower, MovePaths paths, ShapeLay
 	private Dictionary<MovePath, Shape>? Apply(Scan scan, InitState entryState, BigInteger end)
 	{
 		var arrays = new Dictionary<MovePath, Shape>();
-		foreach (var group in scan.Groups.Values)
+		foreach (var group in scan.Groups)
 		{
 			if (!arrays.TryGetValue(group.Array, out var arrayShape))
 				arrayShape = entryState.GetElements(group.Array);
@@ -192,7 +192,7 @@ public sealed class PassSkipper(LoopFollower follower, MovePaths paths, ShapeLay
 		private bool rejected;
 		private int order;
 		
-		public Dictionary<string, Group> Groups { get; } = [];
+		public List<Group> Groups { get; } = [];
 		public List<(LocalVariableSymbol Symbol, BigInteger Step, bool Wraps)> Steps { get; } = [];
 		public BigInteger Start { get; private set; }
 		public BigInteger Count { get; private set; }
@@ -442,23 +442,17 @@ public sealed class PassSkipper(LoopFollower follower, MovePaths paths, ShapeLay
 			}
 			
 			var prefix = place.Path[depth..position].ToArray();
-			var key = $"{path.Index}:{string.Join("/", prefix.Select(Describe))}";
-			if (!Groups.TryGetValue(key, out var group))
-				Groups[key] = group = new Group(path, prefix);
+			var group = Groups.Find(existing =>
+				existing.Array.Index == path.Index && existing.Prefix.SequenceEqual(prefix));
+			
+			if (group is null)
+				Groups.Add(group = new Group(path, prefix));
 			
 			if (moves)
 				effect = new LeafShape(PathState.Moved, [new MoveSite(path, location, prefix.Length + 1)]);
 			
 			group.Touches.Add(new Touch(order, offset.Value, effect, observes));
 		}
-		
-		private static string Describe(Projection projection) => projection switch
-		{
-			FieldProjection field =>
-				$"f{field.Field.Name}#{System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(field.Field)}",
-			IndexProjection index => $"i{index.Index}",
-			_ => "?"
-		};
 		
 		private BigInteger? GetOffset(Value value) => value switch
 		{

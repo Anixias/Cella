@@ -25,13 +25,7 @@ public sealed partial class CodeGenerator
 			? _context.Int8Type
 			: MapTypeSymbol(ptrType.BaseType);
 		
-		if (ptrType.BaseType != NativeSymbols.Void)
-			return builder.BuildGEP2(elementType, ptr, new[] { offset }, "ptroff");
-		
-		var bytePtrType = LLVMTypeRef.CreatePointer(_context.Int8Type, 0);
-		var bytePtr = builder.BuildBitCast(ptr, bytePtrType, "voidptr.as.byteptr");
-		var result = builder.BuildGEP2(elementType, bytePtr, new[] { offset }, "ptroff");
-		return builder.BuildBitCast(result, MapTypeSymbol(ptrType), "byteptr.as.voidptr");
+		return builder.BuildGEP2(elementType, ptr, new[] { offset }, "ptroff");
 	}
 	
 	private LLVMValueRef EmitPointerDifference(PointerDifferenceValue v, LLVMBuilderRef builder)

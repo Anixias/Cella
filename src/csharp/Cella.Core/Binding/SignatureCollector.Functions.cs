@@ -169,7 +169,6 @@ public sealed partial class SignatureCollector
 		var signature = new FunctionSignature(paramTypes, returnType, false, GetModes(function), hasVariadicParameter,
 			defaults);
 		
-		// TODO Disable mangling if indicated
 		var (mangledName, mangledBase) = context.Mangle(function, signature);
 		function.QualifiedName = context.Qualify(function);
 		var info = new FunctionInfo(mangledName, function, signature, scope, null, context.File)

@@ -155,8 +155,8 @@ public sealed partial class SignatureCollector
 	}
 	
 	private static bool IsMatchable(TypeSymbol type) =>
-		type is InvalidType or IntegerType or PointerType or FunctionType or BorrowType or TypeParameterSymbol ||
-		type == NativeSymbols.Bool || type == NativeSymbols.CStr;
+		type is InvalidType or IntegerType or TypeParameterSymbol || type == NativeSymbols.Bool ||
+		TypePool.HasNull(type);
 	
 	private void CompleteMatchEnum(EnumSymbol enumType, TypeSymbol matchedType, ResolutionContext context)
 	{
