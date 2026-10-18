@@ -1,0 +1,4 @@
+mod std.option
+
+thrice: pub fun(value: i32) -> i32 = value * 3
+pick: fun -> i32 = 2

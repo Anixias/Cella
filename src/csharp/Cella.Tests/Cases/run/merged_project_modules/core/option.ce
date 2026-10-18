@@ -1,0 +1,4 @@
+mod std.option
+
+twice: pub fun(value: i32) -> i32 = value * 2
+pick: pub fun -> i32 = 1

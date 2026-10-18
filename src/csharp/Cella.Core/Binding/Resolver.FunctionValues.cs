@@ -220,10 +220,6 @@ public sealed partial class Resolver
 			case ModulePathSymbol:
 				return Error(node, "Cannot use modules as values", CurrentTargetType);
 			
-			case AmbiguousModuleSymbol ambiguous:
-				return Error(node, ResolutionContext.ReportAmbiguousModule(node.SourceLocation, ambiguous),
-					CurrentTargetType);
-			
 			case TypeParameterSymbol { IsValue: true } parameter:
 				return new ResolvedValueParameterExpressionNode(parameter, node);
 			

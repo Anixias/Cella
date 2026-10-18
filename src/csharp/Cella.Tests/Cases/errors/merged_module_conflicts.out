@@ -1,0 +1,16 @@
+
+====== main.ce ======
+
+Error at line 3, column 20
+2 │ 
+3 │ main: fun -> i32 = shared.one() + shared.two()
+                       ╘════════╛ Call to 'shared.one' is ambiguous
+                                | Candidate in 'a/shared.ce' on line 3
+                                | Candidate in 'b/shared.ce' on line 3
+
+Error at line 7, column 9
+6 │ {
+7 │     val x: shared.Thing = undef
+               ╘══════════╛ 'shared.Thing' is ambiguous
+
+[compilation failed]

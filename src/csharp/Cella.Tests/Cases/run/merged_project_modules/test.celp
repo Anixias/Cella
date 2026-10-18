@@ -1,0 +1,8 @@
+OutputType = "Executable"
+SystemLinkPreference = "Dynamic"
+
+[[ProjectReferences]]
+Path = 'std/std.celp'
+
+[[ProjectReferences]]
+Path = 'core/core.celp'

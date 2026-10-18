@@ -1,13 +1,12 @@
-﻿using System.Collections.Immutable;
-using Cella.Core.Symbols;
+﻿using Cella.Core.Symbols;
 
 namespace Cella.Core.Binding;
 
 public sealed class ModuleIndex
 {
 	private readonly Dictionary<string, ModulePathSymbol> _paths = [];
+	private readonly HashSet<ModulePathSymbol> _localPaths;
 	private readonly Dictionary<ModulePathSymbol, List<ModuleSymbol>> _pathModules = [];
-	private readonly Dictionary<string, ImmutableArray<string>> _ambiguous = [];
 	private readonly Dictionary<Symbol, FileSymbol> _files = [];
 	private readonly Dictionary<Symbol, FileSymbol> _dependencyFiles = [];
 	private readonly Dictionary<Symbol, ModuleSymbol> _modules = [];
@@ -21,33 +20,23 @@ public sealed class ModuleIndex
 		_paths[string.Empty] = Root;
 		
 		Add(symbolTable, assemblyName, true, Root, _paths);
-		var shared = new Dictionary<string, List<(string Project, ModulePathSymbol Module)>>();
+		_localPaths = [.._paths.Values];
+		var aliasRoots = new HashSet<ModulePathSymbol>();
+		var providers = new Dictionary<ModulePathSymbol, List<(string Project, ModulePathSymbol Module)>>();
 		foreach (var dependency in dependencies)
 		{
 			var alias = aliases.GetValueOrDefault(dependency.Name);
 			var root = new ModulePathSymbol(alias ?? string.Empty, alias ?? string.Empty, null);
 			Add(dependency.SymbolTable, dependency.Name, false, root, new() { [root.Path] = root });
 			MapFiles(dependency.SymbolTable, _dependencyFiles);
-			if (alias is not null)
-			{
-				Root.Children.TryAdd(alias, root);
-				continue;
-			}
-			
-			foreach (var (name, module) in root.Children)
-				shared.GetOrAdd(name).Add((dependency.Name, module));
+			if (alias is null)
+				Collect(Root, root, dependency.Name, providers, aliasRoots);
+			else if (Root.Children.TryAdd(alias, root))
+				aliasRoots.Add(root);
 		}
 		
-		foreach (var (name, modules) in shared)
-		{
-			if (Root.Children.ContainsKey(name))
-				continue;
-			
-			if (modules is [var only])
-				Root.Children[name] = only.Module;
-			else
-				_ambiguous[name] = [..modules.Select(static module => module.Project)];
-		}
+		foreach (var (path, sources) in providers)
+			Merge(path, sources);
 		
 		foreach (var dependency in indirectDependencies)
 		{
@@ -74,8 +63,51 @@ public sealed class ModuleIndex
 	public IEnumerable<ModuleSymbol> GetModules(ModulePathSymbol path) =>
 		_pathModules.GetValueOrDefault(path) ?? [];
 	
-	public AmbiguousModuleSymbol? FindAmbiguous(string name) =>
-		_ambiguous.TryGetValue(name, out var projects) ? new AmbiguousModuleSymbol(name, projects) : null;
+	public bool IsLocal(ModulePathSymbol path) => _localPaths.Contains(path);
+	
+	private static string Join(string parent, string name) => parent.Length == 0 ? name : $"{parent}.{name}";
+	
+	private void Collect(ModulePathSymbol target, ModulePathSymbol source, string project,
+		Dictionary<ModulePathSymbol, List<(string Project, ModulePathSymbol Module)>> providers,
+		HashSet<ModulePathSymbol> aliasRoots)
+	{
+		foreach (var (name, child) in source.Children)
+		{
+			if (!target.Children.TryGetValue(name, out var merged))
+			{
+				merged = new ModulePathSymbol(name, Join(target.Path, name), target);
+				target.Children[name] = merged;
+				_paths[merged.Path] = merged;
+			}
+			else if (aliasRoots.Contains(merged))
+				continue;
+			
+			providers.GetOrAdd(merged).Add((project, child));
+			Collect(merged, child, project, providers, aliasRoots);
+		}
+	}
+	
+	private void Merge(ModulePathSymbol path, List<(string Project, ModulePathSymbol Module)> sources)
+	{
+		HashSet<string> own = _localPaths.Contains(path) ? [..path.Members.Keys, ..path.PrivateMembers.Keys] : [];
+		foreach (var (_, module) in sources)
+		{
+			Copy(module.Members, path.Members, own);
+			Copy(module.PrivateMembers, path.PrivateMembers, own);
+			if (_pathModules.TryGetValue(module, out var modules))
+				_pathModules.GetOrAdd(path).AddRange(modules);
+		}
+	}
+	
+	private static void Copy(Dictionary<string, List<Symbol>> from, Dictionary<string, List<Symbol>> to,
+		HashSet<string> own)
+	{
+		foreach (var (name, members) in from)
+		{
+			if (!own.Contains(name))
+				to.GetOrAdd(name).AddRange(members);
+		}
+	}
 	
 	public static Visibility GetVisibility(Symbol symbol) =>
 		symbol is IExportable exportable ? exportable.Visibility : Visibility.Public;

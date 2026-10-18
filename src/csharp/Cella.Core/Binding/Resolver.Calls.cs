@@ -181,13 +181,18 @@ public sealed partial class Resolver
 				.Select(i => GetInfo(set[i].Callable)?.Symbol.Definition)
 				.OfType<SourceLocation>()
 				.Select(definition => (Other: definition.Source != location.Source,
-					File: Path.GetFileName(definition.Source.FilePath), definition.GetLineColumn().Line))
+					File: DescribeFile(location, definition), definition.GetLineColumn().Line))
 				.OrderBy(static candidate => candidate.Other)
 				.ThenBy(static candidate => candidate.File, StringComparer.Ordinal)
 				.ThenBy(static candidate => candidate.Line)
 				.Select(static candidate => candidate.Other
 					? $"Candidate in '{candidate.File}' on line {candidate.Line}"
 					: $"Candidate on line {candidate.Line}");
+	
+	private static string DescribeFile(SourceLocation from, SourceLocation definition) =>
+		Path.GetDirectoryName(from.Source.FilePath) is { Length: > 0 } directory
+			? Path.GetRelativePath(directory, definition.Source.FilePath).Replace('\\', '/')
+			: Path.GetFileName(definition.Source.FilePath);
 	
 	private ResolvedInvalidExpressionNode ReportAmbiguousCall(CallExpressionNode node, string functionName,
 		ICallable[] shaped, IResolvedExpressionNode? receiver, TypeArgumentList? typeArguments,

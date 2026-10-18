@@ -1,3 +1,8 @@
 mod shared
 
 one: pub fun -> i32 = 1
+
+Thing: pub rec
+{
+	value: i64
+}

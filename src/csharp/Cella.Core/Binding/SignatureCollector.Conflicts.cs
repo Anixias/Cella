@@ -302,7 +302,7 @@ public sealed partial class SignatureCollector
 			foreach (var declaration in declarations)
 			{
 				var name = _symbolTable.DeclarationSymbols[declaration].Name;
-				if (path.Children.ContainsKey(name))
+				if (path.Children.TryGetValue(name, out var child) && Modules.IsLocal(child))
 					Diagnostics.Add(ReportModuleConflict(GetIdentifier(declaration).SourceLocation, path, name));
 			}
 			

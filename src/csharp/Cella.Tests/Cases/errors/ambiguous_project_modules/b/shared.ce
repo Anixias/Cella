@@ -1,3 +1,0 @@
-mod shared
-
-one: pub fun -> i32 = 2

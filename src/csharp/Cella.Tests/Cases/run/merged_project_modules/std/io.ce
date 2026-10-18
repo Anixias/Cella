@@ -1,0 +1,10 @@
+mod std.io
+
+use std.option.*
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+show: pub fun(value: i32) = printf("%d %d\n", value, pick())

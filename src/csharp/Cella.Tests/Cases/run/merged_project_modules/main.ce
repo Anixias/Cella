@@ -1,0 +1,10 @@
+mod test
+
+use std.io.show
+use std.option.*
+
+main: fun -> i32
+{
+	show(thrice(twice(5)))
+	ret 0
+}
