@@ -49,7 +49,9 @@ public sealed partial class Resolver
 		if (type is InvalidType)
 			return InvalidHeader(node, binding);
 		
-		var counter = binding ?? new LocalVariableSymbol(HiddenName(node.Binding, "counter"), type, false);
+		var counter = binding ?? new LocalVariableSymbol(HiddenName(node.Binding, "counter"), type, false)
+			{ IsSynthesized = true };
+		
 		var start = CoerceToType(bounds[0], type);
 		var end = CoerceToType(bounds[1], type);
 		var isInclusive = node.RangeOperator?.Type == TokenType.OpDotDotEqual;
@@ -112,6 +114,7 @@ public sealed partial class Resolver
 			var pointer = _typePool.GetPointerType(type);
 			var cursor = new LocalVariableSymbol(HiddenName(node.Binding, "cursor"), pointer, false)
 			{
+				IsSynthesized = true,
 				IsBorrowBinding = true,
 				IsMutBinding = true,
 				IsLoopSource = true
@@ -124,7 +127,8 @@ public sealed partial class Resolver
 		return TypePool.FindValueDyn(type) is { } dyn
 			? RejectIteration(node, $"Cannot use '{dyn.Name}' by value", node.Source.SourceLocation)
 			: ResolveCursor(node,
-				new LocalVariableSymbol(HiddenName(node.Binding, "cursor"), type, true) { IsLoopSource = true }, source,
+				new LocalVariableSymbol(HiddenName(node.Binding, "cursor"), type, true)
+					{ IsSynthesized = true, IsLoopSource = true }, source,
 				elementMode);
 	}
 	
@@ -189,6 +193,7 @@ public sealed partial class Resolver
 		var pointer = _typePool.GetPointerType(array);
 		var sourceSymbol = new LocalVariableSymbol(HiddenName(node.Binding, "source"), pointer, false)
 		{
+			IsSynthesized = true,
 			IsBorrowBinding = true,
 			IsMutBinding = isMut,
 			IsLoopSource = true
@@ -198,7 +203,9 @@ public sealed partial class Resolver
 			? new ResolvedMutArgumentExpressionNode(MakeWritable(source), pointer, syntax)
 			: source;
 		
-		var index = new LocalVariableSymbol(HiddenName(node.Binding, "index"), NativeSymbols.UIntSize, false);
+		var index = new LocalVariableSymbol(HiddenName(node.Binding, "index"), NativeSymbols.UIntSize, false)
+			{ IsSynthesized = true };
+		
 		var start = MaterializeLiteral(syntax, NativeSymbols.UIntSize, BigInteger.Zero);
 		var end = array.LengthParameter is { } length
 			? ConvertLength(new ResolvedValueParameterExpressionNode(length, syntax))
@@ -226,13 +233,16 @@ public sealed partial class Resolver
 		var syntax = node.Source;
 		var sourceSymbol = new LocalVariableSymbol(HiddenName(node.Binding, "source"), array, false)
 		{
+			IsSynthesized = true,
 			IsLoopSource = true
 		};
 		
 		IResolvedExpressionNode sourceValue =
 			IsPlaceSyntax(syntax) ? new ResolvedOwnExpressionNode(source, syntax) : source;
 		
-		var index = new LocalVariableSymbol(HiddenName(node.Binding, "index"), NativeSymbols.UIntSize, false);
+		var index = new LocalVariableSymbol(HiddenName(node.Binding, "index"), NativeSymbols.UIntSize, false)
+			{ IsSynthesized = true };
+		
 		var start = MaterializeLiteral(syntax, NativeSymbols.UIntSize, BigInteger.Zero);
 		var end = array.LengthParameter is { } length
 			? ConvertLength(new ResolvedValueParameterExpressionNode(length, syntax))
@@ -290,7 +300,8 @@ public sealed partial class Resolver
 			: source;
 		
 		var call = CallOperator(receiver, method, node.Source);
-		return ResolveCursor(node, new LocalVariableSymbol(HiddenName(node.Binding, "cursor"), call.Type, true), call,
+		return ResolveCursor(node,
+			new LocalVariableSymbol(HiddenName(node.Binding, "cursor"), call.Type, true) { IsSynthesized = true }, call,
 			elementMode);
 	}
 	

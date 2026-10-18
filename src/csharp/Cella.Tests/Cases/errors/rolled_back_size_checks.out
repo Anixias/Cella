@@ -1,0 +1,11 @@
+Error at rolled_back_size_checks.ce:12:10
+11 │ {
+12 │     val a = Holder.make(sizeOf(array[u8, 9223372036854775808]))
+                 ╘════╛ Cannot infer 'T' for 'Holder'
+
+Error at rolled_back_size_checks.ce:13:10
+12 │ val a = Holder.make(sizeOf(array[u8, 9223372036854775808]))
+13 │ val b = Holder.make(missing)
+             ╘════╛ Cannot infer 'T' for 'Holder'
+
+[compilation failed]

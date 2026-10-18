@@ -153,7 +153,7 @@ public sealed partial class SignatureCollector
 		_typePool.SizeTable.Measurer = null;
 	}
 	
-	private ISize Measure(TypeSymbol type, Func<ISize> computeSize)
+	private ISize? Measure(TypeSymbol type, Func<ISize?> computeSize)
 	{
 		var entry = ((Symbol)type, false);
 		if (type is not (RecordSymbol or EnumSymbol) || _inProgress.Contains(entry))

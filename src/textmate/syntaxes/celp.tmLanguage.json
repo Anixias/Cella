@@ -58,7 +58,7 @@
 			"patterns": [
 				{
 					"name": "support.type.property-name.setting.celp",
-					"match": "\\b(?:OutputType|SystemLinkPreference|AssemblyName|BoundsChecks|OverflowChecks|DebugInfo|Referenceable|ProjectReferences|Path|Alias|Flags|Imports|When)\\b(?![\\w-])"
+					"match": "\\b(?:OutputType|CellaVersion|StandardLibrary|SystemLinkPreference|AssemblyName|BoundsChecks|OverflowChecks|DebugInfo|Referenceable|ProjectReferences|Path|Alias|Flags|Imports|Prelude|When)\\b(?![\\w-])"
 				},
 				{ "include": "#strings" },
 				{

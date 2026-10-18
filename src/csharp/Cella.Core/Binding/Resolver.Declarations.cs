@@ -61,7 +61,7 @@ public sealed partial class Resolver
 				
 				checks.Add((type, location));
 			}
-			else if (_sizeCheckLocations.Add(location) && _typePool.IsTooLarge(type, _pointerBitSize))
+			else if (_typePool.IsTooLarge(type, _pointerBitSize))
 				Diagnostics.Add(new(DiagnosticSeverity.Error, location, $"'{type.Name}' is too large"));
 		}
 		
@@ -116,7 +116,12 @@ public sealed partial class Resolver
 	public IResolvedDeclarationNode Visit(GlobalNode node)
 	{
 		var global = (GlobalSymbol)_symbolTable.DeclarationSymbols[node];
-		return new ResolvedGlobalNode(_signatures.GetGlobalInfo(global)!.Value, node);
+		var info = _signatures.GetGlobalInfo(global)!.Value;
+		if (!global.IsImport && _typePool.ExceedsStaticStorage(info.Type, _pointerBitSize))
+			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Identifier.SourceLocation,
+				$"Module variable '{global.Name}' is too large"));
+		
+		return new ResolvedGlobalNode(info, node);
 	}
 	
 	public IResolvedDeclarationNode Visit(ParameterNode node) => throw new InvalidOperationException();

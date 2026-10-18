@@ -990,8 +990,7 @@ public readonly struct ResolutionContext
 		
 		var type = TypePool.Instantiate(definition, [..arguments]);
 		TrackInstance?.Invoke(this, type, location);
-		TypePool.SizeChecks.Add((type, location, ContainingFunction?.Symbol));
-		
+		AddSizeCheck(type, location);
 		return type;
 	}
 	
@@ -1003,8 +1002,15 @@ public readonly struct ResolutionContext
 			return NativeSymbols.Invalid;
 		
 		var type = TypePool.GetArrayType(element, length);
-		TypePool.SizeChecks.Add((type, location, ContainingFunction?.Symbol));
+		AddSizeCheck(type, location);
 		return type;
+	}
+	
+	private void AddSizeCheck(TypeSymbol type, SourceLocation location)
+	{
+		var checks = TypePool.SizeChecks;
+		checks.Add((type, location, ContainingFunction?.Symbol));
+		RecordUndo?.Invoke(() => checks.RemoveAt(checks.Count - 1));
 	}
 	
 	public TypeSymbol ResolveTypeExpression(IExpressionNode expression) =>

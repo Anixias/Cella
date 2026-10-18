@@ -33,10 +33,10 @@ public sealed class SizeTable
 		[NativeSymbols.CStr] = StorageSize.Ptr
 	};
 	
-	private readonly Dictionary<TypeSymbol, Func<ISize>> _deferredSizes = [];
+	private readonly Dictionary<TypeSymbol, Func<ISize?>> _deferredSizes = [];
 	
 	public Action<TypeSymbol>? Completer { get; set; }
-	public Func<TypeSymbol, Func<ISize>, ISize>? Measurer { get; set; }
+	public Func<TypeSymbol, Func<ISize?>, ISize?>? Measurer { get; set; }
 	
 	internal void Save(StateSnapshot snapshot)
 	{
@@ -47,7 +47,7 @@ public sealed class SizeTable
 	}
 	
 	public void Register(TypeSymbol type, ISize size) => _sizes[type] = size;
-	public void Register(TypeSymbol type, Func<ISize> computeSize) => _deferredSizes[type] = computeSize;
+	public void Register(TypeSymbol type, Func<ISize?> computeSize) => _deferredSizes[type] = computeSize;
 	
 	public ISize GetSize(TypeSymbol type) =>
 		TryGetSize(type) ?? throw new KeyNotFoundException($"No size is registered for type '{type.Name}'");
@@ -69,8 +69,12 @@ public sealed class SizeTable
 		if (!_deferredSizes.Remove(type, out var computeSize))
 			return null;
 		
-		size = Measurer is { } measure ? measure(type, computeSize) : computeSize();
-		_sizes[type] = size;
-		return size;
+		var measured = Measurer is { } measure ? measure(type, computeSize) : computeSize();
+		if (measured is null)
+			_deferredSizes[type] = computeSize;
+		else
+			_sizes[type] = measured;
+		
+		return measured;
 	}
 }

@@ -54,7 +54,9 @@ public sealed partial class Lowerer
 		private LocalVariableSymbol CreateTempSymbol(TypeSymbol type, string name)
 		{
 			name = $".t{NextTempId()}__{name}";
-			var symbol = new LocalVariableSymbol(new(TokenType.Identifier, SourceLocation.None, name), type, true);
+			var symbol = new LocalVariableSymbol(new(TokenType.Identifier, SourceLocation.None, name), type, true)
+				{ IsSynthesized = true };
+			
 			_temporaries.Add(symbol);
 			return symbol;
 		}

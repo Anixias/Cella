@@ -29,8 +29,9 @@ class CelpScanner {
 		const val BASIC = 4
 		
 		private val settings = setOf(
-			"OutputType", "SystemLinkPreference", "AssemblyName", "BoundsChecks", "OverflowChecks", "DebugInfo",
-			"Referenceable", "ProjectReferences", "Path", "Alias", "Flags", "Imports", "When"
+			"OutputType", "CellaVersion", "StandardLibrary", "SystemLinkPreference", "AssemblyName", "BoundsChecks",
+			"OverflowChecks", "DebugInfo", "Referenceable", "ProjectReferences", "Path", "Alias", "Flags", "Imports",
+			"Prelude", "When"
 		)
 	}
 	

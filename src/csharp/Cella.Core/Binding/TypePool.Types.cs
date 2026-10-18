@@ -48,8 +48,7 @@ public sealed partial class TypePool
 		
 		var closure = new ClosureType(function, captureTypes, signature, definitionName);
 		_closureTypes.Add(closure);
-		SizeTable.Register(closure, () => StorageSize.Sum(captureTypes
-			.Select(type => SizeTable.TryGetSize(type) ?? StorageSize.Const(0))));
+		SizeTable.Register(closure, () => GetPartSizes(captureTypes) is { } sizes ? StorageSize.Sum(sizes) : null);
 		
 		return closure;
 	}
@@ -248,7 +247,7 @@ public sealed partial class TypePool
 		_arrayTypes[key] = arrayType;
 		CreateArrayMembers(arrayType);
 		SizeTable.Register(arrayType,
-			() => StorageSize.Product(SizeTable.TryGetSize(elementType) ?? StorageSize.Const(0), length));
+			() => GetPartSizes([elementType]) is [var size] ? StorageSize.Product(size, length) : null);
 		
 		// To pointer
 		var arrayPtrType = GetPointerType(arrayType);
@@ -293,6 +292,13 @@ public sealed partial class TypePool
 	                                                              SizeTable.TryGetSize(type) is { } size &&
 	                                                              (size.CountBits(pointerBits) + 7) / 8 >=
 	                                                              BigInteger.One << ((int)pointerBits - 1));
+	
+	public bool ExceedsStaticStorage(TypeSymbol type, uint pointerBits) => !ContainsTypeParameters(type) &&
+	                                                                       SizeTable.TryGetSize(type) is { } size &&
+	                                                                       (size.CountBits(pointerBits) + 7) / 8 >=
+	                                                                       MaxStaticStorageBytes;
+	
+	private static readonly BigInteger MaxStaticStorageBytes = BigInteger.One << 31;
 	
 	public TypeSymbol GetLengthArgument(ArrayType array) =>
 		array.LengthParameter ?? (TypeSymbol)GetValueArgument(array.Length);

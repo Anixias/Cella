@@ -62,7 +62,6 @@ public sealed partial class Resolver : IStatementNodeVisitor<IResolvedStatementN
 	private readonly List<ResolvedFunctionNode> _lambdas = [];
 	private readonly HashSet<IExpressionNode> _resolvingFallbacks = [];
 	private readonly List<LambdaFrame> _lambdaFrames = [];
-	private readonly HashSet<SourceLocation> _sizeCheckLocations = [];
 	private IExpressionNode? storeTarget;
 	private List<Action>? journal;
 	private int openCheckpoints;

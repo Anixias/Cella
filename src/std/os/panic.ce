@@ -5,8 +5,9 @@ when windows
 	ext
 	{
 		write: ext("_write") fun(fd: i32, data: ptr, count: u32) -> i32
+		failFast: ext("RaiseFailFastException") fun(record: ptr, context: ptr, flags: u32) -> never
 	}
-
+	
 	writeError: fun(text: str)
 	{
 		var data = text.data
@@ -16,27 +17,30 @@ when windows
 			var count = remaining
 			if count > 2147483647
 				count = 2147483647
-
+			
 			write(2, data, u32(count))
 			data = data + count
 			remaining -= count
 		}
 	}
+	
+	crash: fun() -> never => failFast(null, null, 0)
 }
 else
 {
 	ext
 	{
 		write: fun(fd: i32, data: ptr, count: usize) -> isize
+		abort: fun() -> never
 	}
-
+	
 	writeError: fun(text: str) => write(2, text.data, text.byteLength)
+	crash: fun() -> never => abort()
 }
 
 ext
 {
 	fflush: fun(stream: ptr) -> i32
-	exit: fun(code: i32) -> never
 }
 
 panic: pub op(message: str, location: str) -> never
@@ -47,5 +51,5 @@ panic: pub op(message: str, location: str) -> never
 	writeError(": ")
 	writeError(message)
 	writeError("\n")
-	exit(101)
+	crash()
 }

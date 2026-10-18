@@ -1,0 +1,6 @@
+Error at recursive_layout_sizes.ce:5:12
+4 │ {
+5 │     children: array[Tree, 2]
+                  ╘════════════╛ Field 'children' of type 'array[Tree, 2]' causes a cycle in the memory layout
+
+[compilation failed]

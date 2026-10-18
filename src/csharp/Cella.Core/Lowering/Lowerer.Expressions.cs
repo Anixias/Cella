@@ -176,6 +176,7 @@ public sealed partial class Lowerer
 			var symbol = new LocalVariableSymbol(new(TokenType.Identifier, location, ".closure"),
 				NativeSymbols.Bool, false)
 			{
+				IsSynthesized = true,
 				IsClosureEnvironment = true
 			};
 			
@@ -293,6 +294,7 @@ public sealed partial class Lowerer
 			var resultSymbol = new LocalVariableSymbol(
 				new(TokenType.Identifier, SourceLocation.None, $".t{NextTempId()}__built"), node.Type, true)
 			{
+				IsSynthesized = true,
 				IsFilledInPlace = true
 			};
 			

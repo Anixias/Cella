@@ -11,16 +11,27 @@ public sealed partial class TypePool
 {
 	public void RegisterRecord(RecordSymbol record) => SizeTable.Register(record, () =>
 	{
-		var fieldSizes = GetMembers(record)
-			.OfType<FieldSymbol>()
-			.Select(GetTypeOfMember)
-			.Select(type => SizeTable.TryGetSize(type) ?? StorageSize.Const(0))
-			.ToList();
+		if (GetPartSizes(GetMembers(record).OfType<FieldSymbol>().Select(GetTypeOfMember)) is not { } fieldSizes)
+			return null;
 		
 		return !record.IsUnion ? StorageSize.Sum(fieldSizes)
 			: fieldSizes.Count > 0 ? StorageSize.Max(fieldSizes)
 			: StorageSize.Const(0);
 	});
+	
+	private List<ISize>? GetPartSizes(IEnumerable<TypeSymbol> parts)
+	{
+		var sizes = new List<ISize>();
+		foreach (var part in parts)
+		{
+			if (part is InvalidType || SizeTable.TryGetSize(part) is not { } size)
+				return null;
+			
+			sizes.Add(size);
+		}
+		
+		return sizes;
+	}
 	
 	public void RegisterEnum(EnumSymbol enumType, IntegerType tagType, IReadOnlyList<BigInteger> values)
 	{
@@ -34,8 +45,14 @@ public sealed partial class TypePool
 			if (!enumType.HasPayload)
 				return tagSize;
 			
-			var payloadSizes = enumType.Cases.Select(ISize (enumCase) => StorageSize.Sum(enumCase.Fields
-				.Select(field => SizeTable.TryGetSize(GetPayloadType(field)) ?? StorageSize.Const(0))));
+			var payloadSizes = new List<ISize>();
+			foreach (var enumCase in enumType.Cases)
+			{
+				if (GetPartSizes(enumCase.Fields.Select(GetPayloadType)) is not { } fieldSizes)
+					return null;
+				
+				payloadSizes.Add(StorageSize.Sum(fieldSizes));
+			}
 			
 			return StorageSize.Sum(tagSize, StorageSize.Max(payloadSizes));
 		});
@@ -55,7 +72,7 @@ public sealed partial class TypePool
 		for (var i = 0; i < values.Count; i++)
 			_matchValues[enumType.Cases[i]] = values[i];
 		
-		SizeTable.Register(enumType, () => SizeTable.TryGetSize(matchedType) ?? StorageSize.Const(0));
+		SizeTable.Register(enumType, () => GetPartSizes([matchedType]) is [var size] ? size : null);
 		ConversionTable.Add(new MatchConversion(matchedType, enumType));
 		if (matchedType is IntegerType or PointerType || matchedType == NativeSymbols.Bool ||
 		    matchedType == NativeSymbols.CStr)

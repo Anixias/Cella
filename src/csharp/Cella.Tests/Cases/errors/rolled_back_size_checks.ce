@@ -1,0 +1,15 @@
+mod test
+
+Holder[T]: rec
+{
+	value: T
+
+	make: fun(n: usize) -> i32 => 0
+}
+
+main: fun -> i32
+{
+	val a = Holder.make(sizeOf(array[u8, 9223372036854775808]))
+	val b = Holder.make(missing)
+	ret 0
+}

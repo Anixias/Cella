@@ -264,6 +264,7 @@ public sealed partial class Resolver
 			? subjectType
 			: _typePool.GetPointerType(subjectType), false)
 		{
+			IsSynthesized = true,
 			IsPatternBinding = true,
 			IsBorrowBinding = !isCopy && !IsInvalid(subjectType)
 		};

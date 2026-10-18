@@ -245,7 +245,7 @@ public sealed class DropElaborator(TypePool typePool, Action<InitState, MemoryEv
 	{
 		if (!_elementFlags.TryGetValue(array, out var flag))
 			_elementFlags[array] = flag = new(new(TokenType.Identifier, SourceLocation.None,
-				$".elements{_elementFlags.Count}"), FlagType(array.Type), true);
+				$".elements{_elementFlags.Count}"), FlagType(array.Type), true) { IsSynthesized = true };
 		
 		return new VariableValue(new(flag, flag.Type), SourceLocation.None);
 	}
@@ -490,7 +490,7 @@ public sealed class DropElaborator(TypePool typePool, Action<InitState, MemoryEv
 	}
 	
 	private static LocalVariableSymbol CreateFlag(string name) =>
-		new(new(TokenType.Identifier, SourceLocation.None, name), NativeSymbols.Bool, true);
+		new(new(TokenType.Identifier, SourceLocation.None, name), NativeSymbols.Bool, true) { IsSynthesized = true };
 	
 	private static VariableValue Read(LocalVariableSymbol flag) =>
 		new(new(flag, NativeSymbols.Bool), SourceLocation.None);

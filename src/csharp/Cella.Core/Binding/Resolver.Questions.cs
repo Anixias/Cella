@@ -48,7 +48,7 @@ public sealed partial class Resolver
 			return Error(node, $"Cannot use '?' on '{operand.Type.Name}' in its own '?' operator", CurrentTargetType);
 		
 		var self = new LocalVariableSymbol(new(TokenType.KeywordSelf, node.Op.SourceLocation, "self"), operand.Type,
-			false);
+			false) { IsSynthesized = true };
 		
 		var scope = new Scope();
 		scope.Define(self);

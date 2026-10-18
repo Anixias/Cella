@@ -1,0 +1,14 @@
+mod test
+
+Tree: rec
+{
+	children: array[Tree, 2]
+}
+
+measure: fun(a: ptr[Tree], b: ptr[Tree]) -> isize
+{
+	val n = sizeOf(Tree)
+	ret a - b
+}
+
+main: fun -> i32 => 0

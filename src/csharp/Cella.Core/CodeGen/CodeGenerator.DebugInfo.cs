@@ -234,12 +234,10 @@ public sealed unsafe partial class CodeGenerator
 		currentScope = GetOpenScope();
 	}
 	
-	private static bool IsSourceName(string name) => name is [var first, ..] && (char.IsLetter(first) || first == '_');
-	
 	private void DeclareParameter(ParameterSymbol parameter, int index, FunctionSignature signature,
 		LLVMValueRef storage, LLVMBuilderRef builder)
 	{
-		if (!_config.DebugInfo || !IsSourceName(parameter.Name))
+		if (!_config.DebugInfo || !parameter.IsNamed)
 			return;
 		
 		var declared = signature.GetDeclaredType(index);
@@ -269,7 +267,7 @@ public sealed unsafe partial class CodeGenerator
 	private void DeclareLocal(LocalVarInstruction instruction, LLVMValueRef storage)
 	{
 		var local = instruction.Symbol;
-		if (!_config.DebugInfo || !IsSourceName(local.Name))
+		if (!_config.DebugInfo || local.IsSynthesized)
 			return;
 		
 		var type = local is { Captured: not null, Type: PointerType pointer }
