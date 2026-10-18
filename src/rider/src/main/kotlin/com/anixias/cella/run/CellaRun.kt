@@ -2,6 +2,9 @@ package com.anixias.cella.run
 
 import com.anixias.cella.CellaFileType
 import com.anixias.cella.CellaIcons
+import com.anixias.cella.lexer.CellaToken
+import com.anixias.cella.lexer.CellaTokenTypes
+import com.anixias.cella.server.CellaSemanticHighlighter
 import com.intellij.execution.Executor
 import com.intellij.execution.configurations.CommandLineState
 import com.intellij.execution.configurations.ConfigurationFactory
@@ -24,13 +27,19 @@ import com.intellij.execution.process.ProcessTerminatedListener
 import com.intellij.execution.runners.ExecutionEnvironment
 import com.intellij.execution.runners.GenericProgramRunner
 import com.intellij.execution.ui.RunContentDescriptor
+import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.diagnostic.logger
+import com.intellij.openapi.editor.Document
 import com.intellij.openapi.fileChooser.FileChooserDescriptorFactory
 import com.intellij.openapi.options.SettingsEditor
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Expirable
 import com.intellij.openapi.util.NotNullLazyValue
 import com.intellij.openapi.util.SystemInfo
+import com.intellij.openapi.util.TextRange
+import com.intellij.psi.PsiDocumentManager
+import com.intellij.psi.PsiElement
+import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.ui.dsl.builder.AlignX
 import com.intellij.ui.dsl.builder.bindText
 import com.intellij.ui.dsl.builder.panel
@@ -38,10 +47,13 @@ import com.intellij.xdebugger.XDebugProcess
 import com.intellij.xdebugger.XDebugProcessStarter
 import com.intellij.xdebugger.XDebugSession
 import com.intellij.xdebugger.XDebuggerManager
+import com.intellij.xdebugger.XExpression
 import com.intellij.xdebugger.XSourcePosition
+import com.intellij.xdebugger.evaluation.ExpressionInfo
 import com.jetbrains.cidr.execution.TrivialRunParameters
 import com.jetbrains.cidr.execution.debugger.CidrDebugProcess
 import com.jetbrains.cidr.execution.debugger.CidrDebuggerLanguageSupport
+import com.jetbrains.cidr.execution.debugger.CidrEvaluator
 import com.jetbrains.cidr.execution.debugger.CidrLocalDebugProcess
 import com.jetbrains.cidr.execution.debugger.CidrStackFrame
 import com.jetbrains.cidr.execution.debugger.backend.DebuggerDriver
@@ -50,9 +62,12 @@ import com.jetbrains.cidr.execution.debugger.backend.lldb.LLDBDriver
 import com.jetbrains.cidr.execution.debugger.backend.lldb.LLDBDriverConfiguration
 import com.jetbrains.cidr.execution.debugger.breakpoints.CidrLineBreakpointFileTypesProvider
 import com.jetbrains.cidr.execution.debugger.evaluation.CidrDebuggerTypesHelper
+import com.jetbrains.cidr.execution.debugger.evaluation.CidrEvaluatedValue
 import java.io.File
 import java.nio.file.Path
 import java.util.concurrent.CompletableFuture
+import org.jetbrains.concurrency.Promise
+import org.jetbrains.concurrency.resolvedPromise
 
 class CellaConfigurationType : SimpleConfigurationType(
 	"CellaProgram", "Cella", "Runs a Cella program", NotNullLazyValue.createValue { CellaIcons.FILE }) {
@@ -147,6 +162,46 @@ class CellaDebuggerLanguageSupport : CidrDebuggerLanguageSupport() {
 	override fun createTypesHelper(process: CidrDebugProcess) = CellaDebuggerTypesHelper(process)
 	
 	override fun createDebuggerTypesHelper(process: CidrDebugProcess) = CellaDebuggerTypesHelper(process)
+	
+	override fun createEvaluator(frame: CidrStackFrame) = CellaEvaluator(frame)
+}
+
+class CellaEvaluator(frame: CidrStackFrame) : CidrEvaluator(frame) {
+	override fun getExpressionInfoAtOffsetAsync(project: Project, document: Document, offset: Int,
+		sideEffectsAllowed: Boolean): Promise<ExpressionInfo?> =
+		resolvedPromise(ReadAction.compute<ExpressionInfo?, RuntimeException> { findExpression(project, document, offset) })
+	
+	override fun doEvaluate(driver: DebuggerDriver, position: XSourcePosition?, expression: XExpression):
+		CidrEvaluatedValue {
+		val helper = myFrame.process.getTypesHelper(myFrame) as? CellaDebuggerTypesHelper
+		val global = helper?.findGlobal(driver, myFrame, expression.expression)
+			?: return super.doEvaluate(driver, position, expression)
+		
+		return CidrEvaluatedValue(global, myFrame.process, position, myFrame, expression.expression)
+	}
+	
+	private fun findExpression(project: Project, document: Document, offset: Int): ExpressionInfo? {
+		val file = PsiDocumentManager.getInstance(project).getPsiFile(document) ?: return null
+		val element = file.findElementAt(offset) ?: return null
+		if (!isSelf(element) && !CellaSemanticHighlighter.isValue(document, element.textRange))
+			return null
+		
+		var start = element
+		while (true) {
+			val dot = PsiTreeUtil.prevLeaf(start) ?: break
+			val owner = PsiTreeUtil.prevLeaf(dot) ?: break
+			if (CellaTokenTypes.tokenOf(dot.node.elementType) != CellaToken.DOT ||
+			    !isSelf(owner) && !CellaSemanticHighlighter.isValue(document, owner.textRange))
+				break
+			
+			start = owner
+		}
+		
+		return ExpressionInfo(TextRange(start.textRange.startOffset, element.textRange.endOffset))
+	}
+	
+	private fun isSelf(element: PsiElement) = element.text == "self" &&
+		CellaTokenTypes.tokenOf(element.node.elementType) != CellaToken.IDENTIFIER
 }
 
 class CellaDriverConfiguration : LLDBDriverConfiguration() {
@@ -177,10 +232,30 @@ class CellaDebuggerTypesHelper(process: CidrDebugProcess) : CidrDebuggerTypesHel
 			if (!function.startsWith(name.substringBeforeLast('.') + "."))
 				return@mapNotNull null
 			
-			LLValue(name, variable.type, variable.displayType, variable.address, variable.typeClass,
-				variable.referenceExpression, variable.fullExpression).also { variable.copyUserDataTo(it) }
+			rename(variable, name)
 		}
 	}
+	
+	fun findGlobal(driver: DebuggerDriver, frame: CidrStackFrame, expression: String): LLValue? {
+		val lldb = driver as LLDBDriver
+		val locals = lldb.getVariables(frame.threadId, frame.frameIndex, false, false).mapTo(HashSet()) { it.name }
+		if (expression in locals)
+			return null
+		
+		val function = frame.frame.function
+		return lldb.getVariables(frame.threadId, frame.frameIndex, true, true)
+			.filter { it.name !in locals }
+			.firstNotNullOfOrNull { variable ->
+				findSourceName(variable)?.takeIf { name ->
+					name == expression || name.substringAfterLast('.') == expression &&
+						function.startsWith(name.substringBeforeLast('.') + ".")
+				}?.let { rename(variable, it) }
+			}
+	}
+	
+	private fun rename(variable: LLValue, name: String) = LLValue(name, variable.type, variable.displayType,
+		variable.address, variable.typeClass, variable.referenceExpression, variable.fullExpression)
+		.also { variable.copyUserDataTo(it) }
 	
 	private fun findSourceName(variable: LLValue): String? {
 		if (!SystemInfo.isWindows)

@@ -18,8 +18,14 @@ class CellaSemanticHighlighter(private val project: Project, private val server:
 	companion object {
 		private val highlightersKey = Key.create<List<RangeHighlighter>>("cella.semantic.highlighters")
 		private val declarationsKey = Key.create<List<RangeHighlighter>>("cella.semantic.declarations")
+		private val valuesKey = Key.create<List<RangeHighlighter>>("cella.semantic.values")
+		private val valueTypes = setOf("parameter", "variable", "property")
 		
-		fun isDeclaration(document: Document, range: TextRange) = document.getUserData(declarationsKey).orEmpty()
+		fun isDeclaration(document: Document, range: TextRange) = covers(document.getUserData(declarationsKey), range)
+		
+		fun isValue(document: Document, range: TextRange) = covers(document.getUserData(valuesKey), range)
+		
+		private fun covers(highlighters: List<RangeHighlighter>?, range: TextRange) = highlighters.orEmpty()
 			.any { it.isValid && it.startOffset == range.startOffset && it.endOffset == range.endOffset }
 	}
 	
@@ -41,6 +47,7 @@ class CellaSemanticHighlighter(private val project: Project, private val server:
 		
 		val added = ArrayList<RangeHighlighter>(data.size / 5)
 		val declarations = ArrayList<RangeHighlighter>()
+		val values = ArrayList<RangeHighlighter>()
 		var line = 0
 		var character = 0
 		for (index in data.indices step 5) {
@@ -66,10 +73,14 @@ class CellaSemanticHighlighter(private val project: Project, private val server:
 			added += highlighter
 			if ("declaration" in modifiers)
 				declarations += highlighter
+			
+			if (type in valueTypes)
+				values += highlighter
 		}
 		
 		document.putUserData(highlightersKey, added)
 		document.putUserData(declarationsKey, declarations)
+		document.putUserData(valuesKey, values)
 	}
 	
 	private fun colorOf(type: String, modifiers: Set<String>): TextAttributesKey? = when (type) {
