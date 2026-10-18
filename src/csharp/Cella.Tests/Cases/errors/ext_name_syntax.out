@@ -16,4 +16,19 @@ Error at line 14, column 12
 14 │ blank: ext("") val i32 = 0
                 ╘╛ Cannot use empty 'ext' names
 
+Error at line 18, column 14
+17 │ {
+18 │     dotted: ext("app.counter") fun -> i32
+                     ╘═══════════╛ Cannot use 'app.counter' as an 'ext' name
+
+Error at line 19, column 15
+18 │ dotted: ext("app.counter") fun -> i32
+19 │ leading: ext("1st") fun -> i32
+                  ╘═══╛ Cannot use '1st' as an 'ext' name
+
+Error at line 20, column 14
+19 │ leading: ext("1st") fun -> i32
+20 │ spaced: ext("two words") var i32
+                 ╘═════════╛ Cannot use 'two words' as an 'ext' name
+
 [compilation failed]

@@ -89,7 +89,7 @@ public sealed unsafe partial class CodeGenerator
 		var line = GetLine(location);
 		var type = current.DiBuilder.CreateSubroutineType(file, signature, LLVMDIFlags.LLVMDIFlagZero);
 		var isLocal = function.Linkage is LLVMLinkage.LLVMInternalLinkage or LLVMLinkage.LLVMPrivateLinkage ? 1 : 0;
-		var subprogram = current.DiBuilder.CreateFunction(file, name, function.Name, file, line, type, isLocal, 1, line,
+		var subprogram = current.DiBuilder.CreateFunction(file, name, "", file, line, type, isLocal, 1, line,
 			flags, IsOptimized);
 		
 		LLVM.SetSubprogram((LLVMOpaqueValue*)function.Handle, (LLVMOpaqueMetadata*)subprogram.Handle);
@@ -274,10 +274,9 @@ public sealed unsafe partial class CodeGenerator
 		];
 		
 		using var name = new MarshaledString(string.Join('.', parts));
-		using var linkageName = new MarshaledString(info.MangledName);
 		var isLocal = global.Linkage is LLVMLinkage.LLVMInternalLinkage or LLVMLinkage.LLVMPrivateLinkage ? 1 : 0;
 		var expression = LLVM.DIBuilderCreateGlobalVariableExpression(DiBuilder, file, name, (nuint)name.Length,
-			linkageName, (nuint)linkageName.Length, file, GetLine(location),
+			null, 0, file, GetLine(location),
 			(LLVMOpaqueMetadata*)GetDebugType(info.Type).Handle, isLocal, CreateEmptyExpression(), null, 0);
 		
 		using var kind = new MarshaledString("dbg");

@@ -105,6 +105,9 @@ public sealed partial class FileParser
 		};
 	}
 	
+	private static bool IsExternalIdentifier(string name) =>
+		!char.IsAsciiDigit(name[0]) && name.All(static c => char.IsAsciiLetterOrDigit(c) || c == '_');
+	
 	private Token? ParseExternalName(ref int index)
 	{
 		if (!Match(ref index, TokenType.OpOpenParen))
@@ -127,6 +130,8 @@ public sealed partial class FileParser
 		
 		if (name.Text.Length == 0)
 			Report(name, "Cannot use empty 'ext' names");
+		else if (!IsExternalIdentifier(name.Text))
+			Report(name, $"Cannot use '{name.Text}' as an 'ext' name");
 		
 		return name;
 	}

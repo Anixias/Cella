@@ -13,4 +13,11 @@ Kind: ext("kind") enum
 
 blank: ext("") val i32 = 0
 
+ext
+{
+	dotted: ext("app.counter") fun -> i32
+	leading: ext("1st") fun -> i32
+	spaced: ext("two words") var i32
+}
+
 main: fun -> i32 = 0

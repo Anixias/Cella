@@ -17,16 +17,20 @@ import com.intellij.execution.configurations.SimpleConfigurationType
 import com.intellij.execution.executors.DefaultDebugExecutor
 import com.intellij.execution.filters.TextConsoleBuilderFactory
 import com.intellij.execution.process.KillableColoredProcessHandler
+import com.intellij.execution.process.ProcessEvent
 import com.intellij.execution.process.ProcessHandler
+import com.intellij.execution.process.ProcessListener
 import com.intellij.execution.process.ProcessTerminatedListener
 import com.intellij.execution.runners.ExecutionEnvironment
 import com.intellij.execution.runners.GenericProgramRunner
 import com.intellij.execution.ui.RunContentDescriptor
+import com.intellij.openapi.diagnostic.logger
 import com.intellij.openapi.fileChooser.FileChooserDescriptorFactory
 import com.intellij.openapi.options.SettingsEditor
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Expirable
 import com.intellij.openapi.util.NotNullLazyValue
+import com.intellij.openapi.util.SystemInfo
 import com.intellij.ui.dsl.builder.AlignX
 import com.intellij.ui.dsl.builder.bindText
 import com.intellij.ui.dsl.builder.panel
@@ -47,8 +51,8 @@ import com.jetbrains.cidr.execution.debugger.backend.lldb.LLDBDriverConfiguratio
 import com.jetbrains.cidr.execution.debugger.breakpoints.CidrLineBreakpointFileTypesProvider
 import com.jetbrains.cidr.execution.debugger.evaluation.CidrDebuggerTypesHelper
 import java.io.File
+import java.nio.file.Path
 import java.util.concurrent.CompletableFuture
-import java.util.concurrent.ConcurrentHashMap
 
 class CellaConfigurationType : SimpleConfigurationType(
 	"CellaProgram", "Cella", "Runs a Cella program", NotNullLazyValue.createValue { CellaIcons.FILE }) {
@@ -150,8 +154,8 @@ class CellaDriverConfiguration : LLDBDriverConfiguration() {
 }
 
 class CellaDebuggerTypesHelper(process: CidrDebugProcess) : CidrDebuggerTypesHelper(process) {
-	private val globalPattern = Regex("""^(0x[0-9a-fA-F]+): .*? (?:::)?([^\s=]+) = """, RegexOption.MULTILINE)
-	private val globalNames = ConcurrentHashMap<Long, String>()
+	private var windowsSymbols: WindowsSymbols? = null
+	private var hasOpenedSymbols = false
 	
 	override fun filterLocalVariables(position: XSourcePosition?, variables: List<LLValue>, expirable: Expirable):
 		CompletableFuture<List<LLValue>> = CompletableFuture.completedFuture(variables)
@@ -159,22 +163,17 @@ class CellaDebuggerTypesHelper(process: CidrDebugProcess) : CidrDebuggerTypesHel
 	override fun filterLocalVariables(frame: CidrStackFrame, position: XSourcePosition?, variables: List<LLValue>,
 		expirable: Expirable): CompletableFuture<List<LLValue>> = myProcess.postCommand(expirable,
 		CidrDebugProcess.DebuggerCommand { driver -> nameGlobals(driver, frame, variables) })
-
+	
 	private fun nameGlobals(driver: DebuggerDriver, frame: CidrStackFrame, variables: List<LLValue>): List<LLValue> {
 		val locals = (driver as LLDBDriver).getVariables(frame.threadId, frame.frameIndex, false, false)
 			.mapTo(HashSet()) { it.name }
-
-		val globals = variables.filter { it.name !in locals }
-		com.intellij.openapi.diagnostic.Logger.getInstance(CellaDebuggerTypesHelper::class.java).warn("CELLA-PROBE locals=$locals globals=${globals.map { it.name + "@" + it.address?.toString(16) }}")
-		if (globals.any { global -> global.address?.let { !globalNames.containsKey(it) } == true })
-			readGlobalNames(driver, frame)
 		
 		val function = frame.frame.function
 		return variables.mapNotNull { variable ->
 			if (variable.name in locals)
 				return@mapNotNull variable
 			
-			val name = variable.address?.let { globalNames[it] } ?: return@mapNotNull null
+			val name = findSourceName(variable) ?: return@mapNotNull null
 			if (!function.startsWith(name.substringBeforeLast('.') + "."))
 				return@mapNotNull null
 			
@@ -183,13 +182,36 @@ class CellaDebuggerTypesHelper(process: CidrDebugProcess) : CidrDebuggerTypesHel
 		}
 	}
 	
-	private fun readGlobalNames(driver: DebuggerDriver, frame: CidrStackFrame) {
-		val output = driver.executeInterpreterCommand(frame.threadId, frame.frameIndex, "target variable -L")
-		com.intellij.openapi.diagnostic.Logger.getInstance(CellaDebuggerTypesHelper::class.java).warn("CELLA-PROBE output (${output.length}): ${output.lines().filter { it.contains("counter") || it.contains("error") }.take(10)} first: ${output.take(600)}")
-		for (match in globalPattern.findAll(output)) {
-			val name = match.groupValues[2]
-			if (name.contains('.'))
-				globalNames[match.groupValues[1].removePrefix("0x").toLong(16)] = name
+	private fun findSourceName(variable: LLValue): String? {
+		if (!SystemInfo.isWindows)
+			return variable.name.removePrefix("::")
+		
+		val address = variable.address ?: return null
+		return openWindowsSymbols()?.dataNameAt(address)
+	}
+	
+	private fun openWindowsSymbols(): WindowsSymbols? {
+		if (hasOpenedSymbols)
+			return windowsSymbols
+		
+		hasOpenedSymbols = true
+		val executable = myProcess.runParameters.installer.executableFile.toPath().toAbsolutePath()
+		val debugger = ProcessHandle.of(myProcess.localDebuggerPid ?: return null).orElse(null) ?: return null
+		val program = debugger.descendants()
+			.filter { child -> child.info().command().map { Path.of(it) == executable }.orElse(false) }
+			.findFirst().orElse(null)
+		
+		if (program == null) {
+			logger<CellaDebuggerTypesHelper>().info("No '$executable' process found under debugger ${debugger.pid()}")
+			return null
 		}
+		
+		windowsSymbols = WindowsSymbols.open(program.pid(), executable.parent.toString())?.also { symbols ->
+			myProcess.processHandler.addProcessListener(object : ProcessListener {
+				override fun processTerminated(event: ProcessEvent) = symbols.close()
+			})
+		}
+		
+		return windowsSymbols
 	}
 }
