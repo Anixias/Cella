@@ -146,14 +146,14 @@
 				{
 					"begin": "\\(",
 					"beginCaptures": { "0": { "name": "punctuation.section.parens.begin.cella" } },
-					"end": "\\)|(?=^\\s*[{}]|^\\s*[A-Za-z_]\\w*\\s*(?:\\[[^\\]]*\\])?\\s*:\\s*(?:(?:pub|pvt|mod|req|const|ref|own|ext(?:\\(\"[^\"]*\"\\))?)\\s+)*(?:fun\\b(?!\\s*\\[)|get\\b|set\\b|prop\\b|rec\\b|enum\\b|union\\b|trait\\b|impl\\b|val\\b|var\\b)|^\\s*\\[[^\\]]*\\]\\s*:\\s*impl\\b)",
+					"end": "\\)|(?=^\\s*[{}]|^\\s*[A-Za-z_]\\w*\\s*(?:\\[[^\\]]*\\])?\\s*:\\s*(?:(?:pub|pvt|mod|req|const|ref|own|ext(?:\\(\"[^\"]*\"\\))?)\\s+)*(?:fun\\b(?!\\s*\\[)|get\\b|set\\b|prop\\b|rec\\b|enum\\b|union\\b|trait\\b|impl\\b)|^\\s*\\[[^\\]]*\\]\\s*:\\s*impl\\b)",
 					"endCaptures": { "0": { "name": "punctuation.section.parens.end.cella" } },
 					"patterns": [{ "include": "#nested-groups" }, { "include": "$self" }]
 				},
 				{
 					"begin": "\\[",
 					"beginCaptures": { "0": { "name": "punctuation.section.brackets.begin.cella" } },
-					"end": "\\]|(?=^\\s*[{}]|^\\s*[A-Za-z_]\\w*\\s*(?:\\[[^\\]]*\\])?\\s*:\\s*(?:(?:pub|pvt|mod|req|const|ref|own|ext(?:\\(\"[^\"]*\"\\))?)\\s+)*(?:fun\\b(?!\\s*\\[)|get\\b|set\\b|prop\\b|rec\\b|enum\\b|union\\b|trait\\b|impl\\b|val\\b|var\\b)|^\\s*\\[[^\\]]*\\]\\s*:\\s*impl\\b)",
+					"end": "\\]|(?=^\\s*[{}]|^\\s*[A-Za-z_]\\w*\\s*(?:\\[[^\\]]*\\])?\\s*:\\s*(?:(?:pub|pvt|mod|req|const|ref|own|ext(?:\\(\"[^\"]*\"\\))?)\\s+)*(?:fun\\b(?!\\s*\\[)|get\\b|set\\b|prop\\b|rec\\b|enum\\b|union\\b|trait\\b|impl\\b)|^\\s*\\[[^\\]]*\\]\\s*:\\s*impl\\b)",
 					"endCaptures": { "0": { "name": "punctuation.section.brackets.end.cella" } },
 					"patterns": [{ "include": "#nested-groups" }, { "include": "$self" }]
 				},
@@ -221,7 +221,7 @@
 						"1": { "patterns": [{ "include": "#keywords" }] },
 						"2": { "name": "punctuation.section.parameters.begin.cella" }
 					},
-					"end": "\\)|(?=^\\s*[{}]|^\\s*[A-Za-z_]\\w*\\s*(?:\\[[^\\]]*\\])?\\s*:\\s*(?:(?:pub|pvt|mod|req|const|ref|own|ext(?:\\(\"[^\"]*\"\\))?)\\s+)*(?:fun\\b(?!\\s*\\[)|get\\b|set\\b|prop\\b|rec\\b|enum\\b|union\\b|trait\\b|impl\\b|val\\b|var\\b)|^\\s*\\[[^\\]]*\\]\\s*:\\s*impl\\b)",
+					"end": "\\)|(?=^\\s*[{}]|^\\s*[A-Za-z_]\\w*\\s*(?:\\[[^\\]]*\\])?\\s*:\\s*(?:(?:pub|pvt|mod|req|const|ref|own|ext(?:\\(\"[^\"]*\"\\))?)\\s+)*(?:fun\\b(?!\\s*\\[)|get\\b|set\\b|prop\\b|rec\\b|enum\\b|union\\b|trait\\b|impl\\b)|^\\s*\\[[^\\]]*\\]\\s*:\\s*impl\\b)",
 					"endCaptures": { "0": { "name": "punctuation.section.parameters.end.cella" } },
 					"patterns": [
 						{
