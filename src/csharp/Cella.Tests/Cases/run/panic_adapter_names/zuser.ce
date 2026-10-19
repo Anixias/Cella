@@ -1,0 +1,7 @@
+mod test
+
+panic1: fun(message: str, location: str) -> never
+{
+	printf("user panic1\n")
+	exit(3)
+}

@@ -1,4 +1,5 @@
-﻿using Cella.Core.Symbols;
+﻿using System.Collections.Immutable;
+using Cella.Core.Symbols;
 
 namespace Cella.Core.Binding;
 
@@ -23,12 +24,25 @@ public sealed class ModuleIndex
 		_localPaths = [.._paths.Values];
 		var aliasRoots = new HashSet<ModulePathSymbol>();
 		var providers = new Dictionary<ModulePathSymbol, List<(string Project, ModulePathSymbol Module)>>();
+		var roots = new List<(AssemblySymbol Dependency, string? Alias, ModulePathSymbol Root)>();
 		foreach (var dependency in dependencies)
 		{
 			var alias = aliases.GetValueOrDefault(dependency.Name);
 			var root = new ModulePathSymbol(alias ?? string.Empty, alias ?? string.Empty, null);
 			Add(dependency.SymbolTable, dependency.Name, false, root, new() { [root.Path] = root });
 			MapFiles(dependency.SymbolTable, _dependencyFiles);
+			roots.Add((dependency, alias, root));
+		}
+		
+		HashSet<string> moduleNames =
+		[
+			..Root.Children.Keys,
+			..roots.Where(static entry => entry.Alias is null).SelectMany(static entry => entry.Root.Children.Keys)
+		];
+		
+		AliasConflicts = [..roots.Select(static entry => entry.Alias).OfType<string>().Where(moduleNames.Contains)];
+		foreach (var (dependency, alias, root) in roots)
+		{
 			if (alias is null)
 				Collect(Root, root, dependency.Name, providers, aliasRoots);
 			else if (Root.Children.TryAdd(alias, root))
@@ -48,6 +62,8 @@ public sealed class ModuleIndex
 	}
 	
 	public string AssemblyName { get; }
+	
+	public ImmutableArray<string> AliasConflicts { get; }
 	
 	private static void MapFiles(SymbolTable symbolTable, Dictionary<Symbol, FileSymbol> files)
 	{

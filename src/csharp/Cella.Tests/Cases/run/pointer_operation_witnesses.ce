@@ -1,0 +1,50 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Diff: trait
+{
+	-: op(imm a: Self, imm b: Self) -> isize
+}
+
+Step: trait
+{
+	+: op(imm a: Self, imm n: isize) -> Self
+	+=: op(mut self, imm n: isize)
+}
+
+Less: trait
+{
+	<: op(imm a: Self, imm b: Self) -> bool
+}
+
+ptr[i32]: impl Diff
+
+ptr[i32]: impl Step
+
+ptr[i32]: impl Less
+
+distance[T: Diff]: fun(imm a: T, imm b: T) -> isize => a - b
+
+advance[T: Step]: fun(imm start: T, imm n: isize) -> T
+{
+	var moved = start + n
+	moved += n
+	ret moved
+}
+
+before[T: Less]: fun(imm a: T, imm b: T) -> bool => a < b
+
+values: var array[i32, 4] = [10, 20, 30, 40]
+
+main: fun -> i32
+{
+	val first: ptr[i32] = @values[0]
+	val last: ptr[i32] = @values[3]
+	val middle = advance(imm first, 1)
+	printf("%lld %d %d\n", distance(imm last, imm first), *middle, i32(before(imm first, imm last)))
+	ret 0
+}

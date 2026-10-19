@@ -225,18 +225,8 @@ public sealed class LanguageServerTests : IAsyncDisposable
 		return (await ReadResponseAsync(await RequestAsync(method, parameters)))["result"];
 	}
 	
-	private async Task<string> HoverAsync(int line, int character)
-	{
-		for (var attempt = 0; attempt < 200; attempt++)
-		{
-			if (await AskAsync("textDocument/hover", line, character) is { } result)
-				return (string)result["contents"]!["value"]!;
-			
-			await Task.Delay(50, Token);
-		}
-		
-		throw new TimeoutException();
-	}
+	private async Task<string> HoverAsync(int line, int character) =>
+		(string)(await AskAsync("textDocument/hover", line, character))!["contents"]!["value"]!;
 	
 	private async Task<JsonNode?> DefinitionAsync(int line, int character) =>
 		(await AskAsync("textDocument/definition", line, character))?[0];
@@ -273,26 +263,18 @@ public sealed class LanguageServerTests : IAsyncDisposable
 	
 	private async Task<List<string>> UsagesAsync(int line, int character, bool includeDeclaration)
 	{
-		for (var attempt = 0; attempt < 200; attempt++)
-		{
-			var parameters = Position(line, character);
-			parameters["textDocument"]!["uri"] = SourceUri;
-			parameters["context"] = new JsonObject { ["includeDeclaration"] = includeDeclaration };
-			var usages = (JsonArray)(await ReadResponseAsync(await RequestAsync("textDocument/references", parameters)))
-				["result"]!;
-			
-			if (usages.Count > 0)
-				return usages.Select(static usage =>
-				{
-					Assert.EndsWith("main.ce", (string)usage!["uri"]!);
-					var start = usage["range"]!["start"]!;
-					return $"{(int)start["line"]!}:{(int)start["character"]!}";
-				}).ToList();
-			
-			await Task.Delay(50, Token);
-		}
+		var parameters = Position(line, character);
+		parameters["textDocument"]!["uri"] = SourceUri;
+		parameters["context"] = new JsonObject { ["includeDeclaration"] = includeDeclaration };
+		var usages = (JsonArray)(await ReadResponseAsync(await RequestAsync("textDocument/references", parameters)))
+			["result"]!;
 		
-		throw new TimeoutException();
+		return usages.Select(static usage =>
+		{
+			Assert.EndsWith("main.ce", (string)usage!["uri"]!);
+			var start = usage["range"]!["start"]!;
+			return $"{(int)start["line"]!}:{(int)start["character"]!}";
+		}).ToList();
 	}
 	
 	[Fact]
@@ -743,6 +725,9 @@ public sealed class LanguageServerTests : IAsyncDisposable
 			"scale: fun(mut target: Point, factor: i32)",
 			"scale: fun(mut target: Point, imm by: Point)"
 		], ((JsonArray)overloads["signatures"]!).Select(static signature => (string)signature!["label"]!));
+		
+		var commented = await AskAtCursorAsync("textDocument/signatureHelp", "scale(/* ), */ mut p, |)");
+		Assert.Equal(1, (int)commented!["activeParameter"]!);
 		
 		var method = await AskAtCursorAsync("textDocument/signatureHelp", "p.shift(|)");
 		var signature = Assert.Single((JsonArray)method!["signatures"]!)!;

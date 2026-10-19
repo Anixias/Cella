@@ -148,26 +148,22 @@ public sealed partial class CodeGenerator
 		if (witness.IsCompound)
 		{
 			var place = new UnaryOpValue(operation.ReturnType, operands[0], UnaryOperation.Dereference, location);
-			var value = new BinOpValue(operation.ReturnType, place, operands[1],
-				OperationMapping.ToBinaryOperation(operation.Op), location);
+			var value = Lowerer.LowerBinaryOperation(_typePool, place, operation, operands[1], location);
 			
 			EmitValue(new AssignValue(operation.ReturnType, place, value, location), builder);
 			return default;
 		}
 		
-		if (operation.ParameterTypes[0] is EnumSymbol enumType)
-			operands =
-			[
-				..operands.Select(Value (operand) => new EnumTagValue(_typePool.GetTagType(enumType), operand,
-					location))
-			];
+		if (operands is not [var single])
+			return EmitValue(Lowerer.LowerBinaryOperation(_typePool, operands[0], operation, operands[1], location),
+				builder);
 		
-		Value result = operands is [var single]
-			? new UnaryOpValue(operation.ReturnType, single, OperationMapping.ToUnaryOperation(operation.Op), location)
-			: new BinOpValue(operation.ReturnType, operands[0], operands[1],
-				OperationMapping.ToBinaryOperation(operation.Op), location);
+		Value operand = operation.ParameterTypes[0] is EnumSymbol enumType
+			? new EnumTagValue(_typePool.GetTagType(enumType), single, location)
+			: single;
 		
-		return EmitValue(result, builder);
+		return EmitValue(new UnaryOpValue(operation.ReturnType, operand,
+			OperationMapping.ToUnaryOperation(operation.Op), location), builder);
 	}
 	
 	private LLVMValueRef EmitConstruction(FunctionInfo function, List<LLVMValueRef> parameters, bool memberwise,

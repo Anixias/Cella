@@ -1,6 +1,8 @@
 package com.anixias.cella.server
 
 import com.anixias.cella.CellaLanguage
+import com.anixias.cella.lexer.CellaScanner
+import com.anixias.cella.lexer.CellaToken
 import com.intellij.codeInsight.AutoPopupController
 import com.intellij.codeInsight.completion.CompletionContributor
 import com.intellij.codeInsight.completion.CompletionParameters
@@ -19,7 +21,6 @@ import com.intellij.lang.parameterInfo.ParameterInfoHandler
 import com.intellij.lang.parameterInfo.ParameterInfoUIContext
 import com.intellij.lang.parameterInfo.UpdateParameterInfoContext
 import com.intellij.openapi.editor.Editor
-import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
@@ -31,7 +32,6 @@ import org.eclipse.lsp4j.InsertTextFormat
 import org.eclipse.lsp4j.SignatureHelpParams
 import org.eclipse.lsp4j.SignatureInformation
 import org.eclipse.lsp4j.TextDocumentIdentifier
-import org.eclipse.lsp4j.jsonrpc.messages.Either
 import javax.swing.Icon
 
 class CellaCompletionContributor : CompletionContributor() {
@@ -45,16 +45,8 @@ class CellaCompletionContributor : CompletionContributor() {
 			it.textDocumentService.completion(CompletionParams(TextDocumentIdentifier(CellaServer.uriOf(file)), position))
 		}
 		
-		var list: Either<List<CompletionItem>, CompletionList>? = null
-		val deadline = System.currentTimeMillis() + 3000
-		while (list == null && System.currentTimeMillis() < deadline) {
-			ProgressManager.checkCanceled()
-			list = server.await(future, 50)
-			if (future.isDone && list == null)
-				return
-		}
-		
-		val items = list?.let { if (it.isLeft) it.left else it.right.items } ?: return
+		val list = server.await(future, 3000) ?: return
+		val items = if (list.isLeft) list.left else list.right.items
 		for (item in items)
 			result.addElement(toLookup(item))
 	}
@@ -171,13 +163,27 @@ class CellaParameterInfoHandler : ParameterInfoHandler<PsiElement, SignatureInfo
 		return file.findElementAt(open)
 	}
 	
+	private fun tokensBefore(text: CharSequence, offset: Int): List<Pair<CellaToken, Int>> {
+		val scanner = CellaScanner()
+		scanner.start(text, 0, minOf(offset, text.length), CellaScanner.LINE_START)
+		val tokens = mutableListOf<Pair<CellaToken, Int>>()
+		while (true) {
+			val type = scanner.tokenType ?: break
+			tokens.add(type to scanner.tokenStart)
+			scanner.advance()
+		}
+		
+		return tokens
+	}
+	
 	private fun findOpenParenthesis(text: CharSequence, offset: Int): Int? {
 		var depth = 0
-		for (index in minOf(offset, text.length) - 1 downTo 0) {
-			when (text[index]) {
-				')', ']', '}' -> depth++
-				'(' -> if (depth == 0) return index else depth--
-				'[', '{' -> if (depth == 0) return null else depth--
+		for ((type, start) in tokensBefore(text, offset).asReversed()) {
+			when (type) {
+				CellaToken.RIGHT_PAREN, CellaToken.RIGHT_BRACKET, CellaToken.RIGHT_BRACE -> depth++
+				CellaToken.LEFT_PAREN -> if (depth == 0) return start else depth--
+				CellaToken.LEFT_BRACKET, CellaToken.LEFT_BRACE -> if (depth == 0) return null else depth--
+				else -> {}
 			}
 		}
 		
@@ -187,11 +193,15 @@ class CellaParameterInfoHandler : ParameterInfoHandler<PsiElement, SignatureInfo
 	private fun argumentIndex(text: CharSequence, open: Int, offset: Int): Int {
 		var depth = 0
 		var index = 0
-		for (position in open + 1 until minOf(offset, text.length)) {
-			when (text[position]) {
-				'(', '[', '{' -> depth++
-				')', ']', '}' -> depth--
-				',' -> if (depth == 0) index++
+		for ((type, start) in tokensBefore(text, offset)) {
+			if (start <= open)
+				continue
+			
+			when (type) {
+				CellaToken.LEFT_PAREN, CellaToken.LEFT_BRACKET, CellaToken.LEFT_BRACE -> depth++
+				CellaToken.RIGHT_PAREN, CellaToken.RIGHT_BRACKET, CellaToken.RIGHT_BRACE -> depth--
+				CellaToken.COMMA -> if (depth == 0) index++
+				else -> {}
 			}
 		}
 		

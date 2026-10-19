@@ -11,6 +11,22 @@ namespace Cella.Core.Lowering;
 
 public sealed partial class Lowerer
 {
+	public static Value LowerBinaryOperation(TypePool typePool, Value left, OperationImpl? op, Value right,
+		SourceLocation location) => op switch
+	{
+		NativeImpl { ParameterTypes: [EnumSymbol enumType, _] } i => new BinOpValue(i.ReturnType,
+			new EnumTagValue(typePool.GetTagType(enumType), left, left.SourceLocation),
+			new EnumTagValue(typePool.GetTagType(enumType), right, right.SourceLocation),
+			ToBinaryOperation(i.Op), location),
+		NativeImpl i => new BinOpValue(i.ReturnType, left, right, ToBinaryOperation(i.Op), location),
+		PointerOffsetImpl { IsReversed: true } i => new PointerOffsetValue(i.PointerType, right, left,
+			ToBinaryOperation(i.Op), location),
+		PointerOffsetImpl i => new PointerOffsetValue(i.PointerType, left, right, ToBinaryOperation(i.Op),
+			location),
+		PointerDifferenceImpl i => new PointerDifferenceValue(left, right, i.PointerType, location),
+		_ => throw new InvalidOperationException()
+	};
+	
 	private sealed partial class FunctionLowerer
 	{
 		private Value LowerAssignment(ResolvedAssignmentExpressionNode node, bool isValue)
@@ -256,20 +272,8 @@ public sealed partial class Lowerer
 			currentBlock = null;
 		}
 		
-		private Value LowerBinOp(Value left, OperationImpl? op, Value right, SourceLocation location) => op switch
-		{
-			NativeImpl { ParameterTypes: [EnumSymbol enumType, _] } i => new BinOpValue(i.ReturnType,
-				new EnumTagValue(_typePool.GetTagType(enumType), left, left.SourceLocation),
-				new EnumTagValue(_typePool.GetTagType(enumType), right, right.SourceLocation),
-				ToBinaryOperation(i.Op), location),
-			NativeImpl i => new BinOpValue(i.ReturnType, left, right, ToBinaryOperation(i.Op), location),
-			PointerOffsetImpl { IsReversed: true } i => new PointerOffsetValue(i.PointerType, right, left,
-				ToBinaryOperation(i.Op), location),
-			PointerOffsetImpl i => new PointerOffsetValue(i.PointerType, left, right, ToBinaryOperation(i.Op),
-				location),
-			PointerDifferenceImpl i => new PointerDifferenceValue(left, right, i.PointerType, location),
-			_ => throw new InvalidOperationException()
-		};
+		private Value LowerBinOp(Value left, OperationImpl? op, Value right, SourceLocation location) =>
+			LowerBinaryOperation(_typePool, left, op, right, location);
 		
 		private static Value LowerUnaryOp(Value operand, OperationImpl? op, bool isRaw) => op switch
 		{

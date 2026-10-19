@@ -132,6 +132,14 @@ public sealed partial class Builder
 			Probe = probe
 		};
 		
+		foreach (var alias in signatureCollector.Modules.AliasConflicts)
+		{
+			var problem = ProjectDiagnostic.In(project.FilePath, $"'{alias}' names a project reference and a module");
+			_problems.Add(problem);
+			output.WriteLine(problem.Text);
+			generatesCode = false;
+		}
+		
 		var containment = new ErrorContainment(files);
 		containment.MarkSyntaxErrors(parseDiagnostics);
 		var resolver = new Resolver(symbolTable, signatureCollector, typePool, pointerBitSize)

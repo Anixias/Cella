@@ -1,0 +1,29 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+make[T]: fun(f: fun[-> T], n: i32) -> T
+{
+	if n > 0
+		printf("%d\n", make(fun => 5, n - 1))
+
+	ret f()
+}
+
+apply[T: copy]: fun(f: fun[T -> T], value: T, n: i32) -> T
+{
+	if n > 0
+		printf("%d\n", apply(fun(x) => x * 2, 10, n - 1))
+
+	ret f(value)
+}
+
+main: fun -> i32
+{
+	printf("%d\n", make(fun => 7, 2))
+	printf("%d\n", apply(fun(x) => x + 1, 1, 1))
+	ret 0
+}

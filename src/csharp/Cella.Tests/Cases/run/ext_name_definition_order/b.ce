@@ -1,0 +1,8 @@
+mod test
+
+ext
+{
+	viaName: ext("hidden_symbol") fun -> i32
+}
+
+fromSame: fun -> i32 => viaName()

@@ -605,6 +605,9 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 					current.ExternalLibraries.Add(origin);
 				
 				var llvmFunction = CreateFunction(current.Module, function).FunctionValue;
+				if (llvmFunction.IsAGlobalAlias.Handle != nint.Zero)
+					continue;
+				
 				llvmFunction.Linkage = LLVMLinkage.LLVMExternalLinkage;
 				llvmFunction.DLLStorageClass = LLVMDLLStorageClass.LLVMDLLImportStorageClass;
 				current.ExternalFunctions.Add(llvmFunction.Name);

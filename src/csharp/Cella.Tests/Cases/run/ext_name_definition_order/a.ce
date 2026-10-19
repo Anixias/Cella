@@ -1,0 +1,16 @@
+mod test
+
+use other.fromOther
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+hidden: ext("hidden_symbol") fun -> i32 => 17
+
+main: fun -> i32
+{
+	printf("%d %d\n", fromSame(), fromOther())
+	ret 0
+}

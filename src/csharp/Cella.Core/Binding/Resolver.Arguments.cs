@@ -225,7 +225,7 @@ public sealed partial class Resolver
 			return null;
 		
 		var checkpoint = OpenCheckpoint();
-		var natural = ResolveLambda(lambda, target, false, true, true).Type;
+		var natural = ResolveLambda(lambda, target, false, true, true, shape.Open).Type;
 		var hasErrors = checkpoint.HasErrors;
 		Rollback(checkpoint);
 		return !hasErrors && natural is FunctionGroupType { Functions: [var function] }
@@ -320,16 +320,18 @@ public sealed partial class Resolver
 		}
 		
 		var expected = shapes
-			.Select(shape => ExpectLambda(shape, settled, index, annotations))
-			.OfType<FunctionType>()
-			.Distinct()
+			.Select(shape => (Shape: shape, Type: ExpectLambda(shape, settled, index, annotations)))
+			.Where(static entry => entry.Type is not null)
+			.GroupBy(static entry => entry.Type!)
+			.Select(static group => new LambdaTarget(group.Key,
+				[..group.SelectMany(static entry => entry.Shape.Open).Distinct()]))
 			.ToList();
 		
-		var fitting = expected.Where(type => Fits(annotations, type)).ToList();
+		var fitting = expected.Where(entry => Fits(annotations, entry.Type, entry.Open)).ToList();
 		var target = fitting is [var single] ? single : expected is [var only] ? only : null;
 		return target is null && expected.Count > 1
 			? new ResolvedFunctionGroupExpressionNode(new FunctionGroupType("fun", [], "fun"), node)
-			: ResolveLambda(node, target, !isTrial || checksBody, true);
+			: ResolveLambda(node, target?.Type, !isTrial || checksBody, true, open: target?.Open ?? []);
 	}
 	
 	private FunctionType? ExpectLambda(CallShape shape, IReadOnlyList<IResolvedExpressionNode?> values, int index,
@@ -415,14 +417,18 @@ public sealed partial class Resolver
 			yield return new(parameter.ReturnType, returnType) { IsExact = true };
 	}
 	
-	private bool Fits(LambdaAnnotations annotations, FunctionType type) =>
+	private sealed record LambdaTarget(FunctionType Type, ImmutableArray<TypeParameterSymbol> Open);
+	
+	private bool Fits(LambdaAnnotations annotations, FunctionType type,
+		IReadOnlyCollection<TypeParameterSymbol> open) =>
 		type.ParameterTypes.Length == annotations.Types.Length &&
 		annotations.Types.Select((annotated, i) =>
 				(annotations.Modes[i] ?? type.ParameterModes[i]) == type.ParameterModes[i] &&
-				(annotated is null || !IsKnown(type.ParameterTypes[i]) ||
+				(annotated is null || !IsKnown(type.ParameterTypes[i], open) ||
 				 _typePool.GetPassedType(annotated, type.ParameterModes[i]) == type.ParameterTypes[i]))
 			.All(static fits => fits) &&
-		(annotations.ReturnType is null || !IsKnown(type.ReturnType) || annotations.ReturnType == type.ReturnType);
+		(annotations.ReturnType is null || !IsKnown(type.ReturnType, open) ||
+		 annotations.ReturnType == type.ReturnType);
 	
 	private IEnumerable<InferenceInput> CreateInferenceInputs(CallShape shape,
 		IReadOnlyList<IResolvedExpressionNode?> values) => values

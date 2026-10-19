@@ -35,6 +35,9 @@ public static class Mangling
 	
 	public static string MangleStart(string assemblyName) => $"?{QualifyAssembly(assemblyName)}.start";
 	
+	public static string MangleAdapter(string? assemblyName, string kind, string targetName) =>
+		$"?{QualifyAssembly(assemblyName)}${kind}{targetName}";
+	
 	public static string MangleModuleDrops(string assemblyName, string moduleName) =>
 		$"?{QualifyAssembly(assemblyName)}{moduleName}$drops";
 	

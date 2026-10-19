@@ -192,8 +192,8 @@ public sealed partial class Resolver
 		var message = new Token(TokenType.Identifier, location, "message");
 		var place = new Token(TokenType.Identifier, location, "location");
 		ParameterSymbol[] parameters = [new(message), new(place)];
-		var symbol = new FunctionSymbol($"panic{_panicAdapters.Count + 1}", target.Syntax, Visibility.Project, null,
-			parameters, FunctionKind.Free);
+		var symbol = new FunctionSymbol("$panic", target.Syntax, Visibility.Project, null, parameters,
+			FunctionKind.Free);
 		
 		var scope = new Scope();
 		foreach (var parameter in parameters)
@@ -201,10 +201,10 @@ public sealed partial class Resolver
 		
 		var signature = new FunctionSignature([NativeSymbols.Str, NativeSymbols.Str], NativeSymbols.Never);
 		symbol.QualifiedName = context.Qualify(symbol);
-		var (mangledName, mangledBase) = context.Mangle(symbol, signature);
-		var info = new FunctionInfo(mangledName, symbol, signature, scope, null, context.File)
-			{ MangledBase = mangledBase };
+		var mangledName = Mangling.MangleAdapter(context.Modules?.AssemblyName, "panic",
+			_signatures.GetFunctionInfo(target).MangledName);
 		
+		var info = new FunctionInfo(mangledName, symbol, signature, scope, null, context.File);
 		var syntax = new VarExpressionNode(message);
 		IResolvedExpressionNode[] args =
 		[

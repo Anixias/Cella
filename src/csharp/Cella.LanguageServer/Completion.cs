@@ -127,29 +127,33 @@ public static partial class Completion
 	
 	public static (int NameEnd, string Callee, int Argument)? FindCall(string text, int offset)
 	{
+		var tokens = new FilteredScanner(new StringSource(text, string.Empty))
+			.TakeWhile(token => token.Type != TokenType.EndOfFile && token.SourceLocation.Range.Start < offset)
+			.ToList();
+		
 		var depth = 0;
 		var argument = 0;
 		var open = -1;
-		for (var i = Math.Min(offset, text.Length) - 1; i >= 0 && open < 0; i--)
+		for (var i = tokens.Count - 1; i >= 0 && open < 0; i--)
 		{
-			switch (text[i])
+			switch (tokens[i].Type)
 			{
-				case ')' or ']' or '}':
+				case TokenType.OpCloseParen or TokenType.OpCloseBracket or TokenType.OpCloseBrace:
 					depth++;
 					break;
 				
-				case '(' when depth == 0:
-					open = i;
+				case TokenType.OpOpenParen when depth == 0:
+					open = tokens[i].SourceLocation.Range.Start;
 					break;
 				
-				case '[' or '{' when depth == 0:
+				case TokenType.OpOpenBracket or TokenType.OpOpenBrace when depth == 0:
 					return null;
 				
-				case '(' or '[' or '{':
+				case TokenType.OpOpenParen or TokenType.OpOpenBracket or TokenType.OpOpenBrace:
 					depth--;
 					break;
 				
-				case ',' when depth == 0:
+				case TokenType.OpComma when depth == 0:
 					argument++;
 					break;
 			}

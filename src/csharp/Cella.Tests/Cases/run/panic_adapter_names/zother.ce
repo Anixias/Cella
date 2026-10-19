@@ -1,0 +1,8 @@
+mod helpers
+
+use test.panic1
+
+callUser: fun -> never
+{
+	panic1("from other", "x")
+}

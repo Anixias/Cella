@@ -564,13 +564,10 @@ public sealed partial class SignatureCollector
 			return null;
 		
 		var expected = _typePool.SubstituteSignature(signature, traitMap);
-		if (self is PointerType && self != NativeSymbols.VoidPtr)
-			return FindPointerWitness(node.Identifier.Type, expected, self);
-		
 		var registry = _typePool.OperatorRegistry;
 		if (node.Receiver is not null && expected.ParameterTypes.Length == 2)
 			return expected.GetMode(0) == ParameterMode.Mut && registry.GetBinaryCandidates(node.Identifier.Type)
-				.OfType<NativeImpl>()
+				.OfType<OperationImpl>()
 				.FirstOrDefault(candidate => candidate.ReturnType == self && candidate.ParameterTypes[0] == self &&
 				                             candidate.ParameterTypes[1] == expected.ParameterTypes[1]) is { } compound
 				? new NativeWitness(compound, true)
@@ -580,11 +577,13 @@ public sealed partial class SignatureCollector
 			? registry.GetBinaryCandidates(node.Identifier.Type)
 			: registry.GetUnaryCandidates(node.Identifier.Type);
 		
-		return candidates.OfType<NativeImpl>().FirstOrDefault(candidate =>
+		return candidates.OfType<OperationImpl>().FirstOrDefault(candidate =>
 			candidate.ReturnType == expected.ReturnType &&
 			candidate.ParameterTypes.SequenceEqual(expected.ParameterTypes)) is { } native
 			? new NativeWitness(native)
-			: null;
+			: self is PointerType && self != NativeSymbols.VoidPtr
+				? FindPointerComparison(node.Identifier.Type, expected, self)
+				: null;
 	}
 	
 	private SelfConversionWitness? FindSelfConversionWitness(FunctionSymbol requirement, FunctionSignature signature,
@@ -608,7 +607,7 @@ public sealed partial class SignatureCollector
 		return conversion is null ? null : new SelfConversionWitness(conversion);
 	}
 	
-	private NativeWitness? FindPointerWitness(TokenType op, FunctionSignature expected, TypeSymbol self) =>
+	private NativeWitness? FindPointerComparison(TokenType op, FunctionSignature expected, TypeSymbol self) =>
 		expected.ParameterTypes.Length == 2 && expected.ParameterTypes.All(type => type == self) &&
 		_typePool.OperatorRegistry.GetBinaryCandidates(op).OfType<NativeImpl>().FirstOrDefault(candidate =>
 			candidate.ReturnType == expected.ReturnType &&

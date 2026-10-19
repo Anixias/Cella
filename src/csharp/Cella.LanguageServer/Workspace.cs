@@ -41,6 +41,7 @@ public sealed class Workspace(Func<JsonObject, Task> notify, TimeSpan debounce)
 	private Task? checking;
 	private Dictionary<string, string> checkedTexts = new(Protocol.PathComparer);
 	private TaskCompletionSource checkCompleted = new(TaskCreationOptions.RunContinuationsAsynchronously);
+	private bool hasChecked;
 	private bool refreshesTokens;
 	private int refreshCount;
 	
@@ -93,18 +94,11 @@ public sealed class Workspace(Func<JsonObject, Task> notify, TimeSpan debounce)
 	
 	public void RequestCheck() => _changes.Release();
 	
-	public SymbolReference? Find(string uri, int line, int character)
+	public async Task<SymbolReference?> FindAsync(string uri, int line, int character)
 	{
 		var path = Protocol.ToPath(uri);
-		string? text;
-		ProjectCheck[] projects;
-		lock (_lock)
-		{
-			text = _documents.TryGetValue(path, out var document) ? document.Text : null;
-			projects = [.._results.Values.SelectMany(static result => result.Projects)];
-		}
-		
-		text ??= File.Exists(path) ? File.ReadAllText(path) : null;
+		var (projects, text) = await GetCheckedProjectsAsync(path);
+		text ??= File.Exists(path) ? await File.ReadAllTextAsync(path) : null;
 		if (text is null)
 			return null;
 		
@@ -117,7 +111,7 @@ public sealed class Workspace(Func<JsonObject, Task> notify, TimeSpan debounce)
 	public async Task<IReadOnlyList<SymbolReference>> GetReferencesAsync(string uri)
 	{
 		var path = Protocol.ToPath(uri);
-		return ModelsOf(path, await GetCheckedProjectsAsync(path))
+		return ModelsOf(path, (await GetCheckedProjectsAsync(path)).Projects)
 			.Select(model => model.GetReferences(path))
 			.FirstOrDefault(static references => references.Count > 0) ?? [];
 	}
@@ -126,7 +120,7 @@ public sealed class Workspace(Func<JsonObject, Task> notify, TimeSpan debounce)
 		string uri)
 	{
 		var path = Protocol.ToPath(uri);
-		var file = (await GetCheckedProjectsAsync(path))
+		var file = (await GetCheckedProjectsAsync(path)).Projects
 			.SelectMany(static project => project.Files)
 			.FirstOrDefault(file => Protocol.PathComparer.Equals(file.Symbol.FullPath, path));
 		
@@ -146,19 +140,21 @@ public sealed class Workspace(Func<JsonObject, Task> notify, TimeSpan debounce)
 		];
 	}
 	
-	private async Task<ProjectCheck[]> GetCheckedProjectsAsync(string path)
+	private async Task<(ProjectCheck[] Projects, string? Text)> GetCheckedProjectsAsync(string path)
 	{
 		while (true)
 		{
 			Task completed;
 			ProjectCheck[] projects;
+			string? text;
 			bool isCurrent;
 			lock (_lock)
 			{
 				completed = checkCompleted.Task;
 				projects = [.._results.Values.SelectMany(static result => result.Projects)];
-				isCurrent = !_documents.TryGetValue(path, out var document) ||
-				            checkedTexts.TryGetValue(path, out var checkedText) && checkedText == document.Text;
+				text = _documents.TryGetValue(path, out var document) ? document.Text : null;
+				isCurrent = hasChecked && (text is null ||
+				                           checkedTexts.TryGetValue(path, out var checkedText) && checkedText == text);
 			}
 			
 			if (!isCurrent)
@@ -168,13 +164,14 @@ public sealed class Workspace(Func<JsonObject, Task> notify, TimeSpan debounce)
 				continue;
 			}
 			
-			return projects;
+			return (projects, text);
 		}
 	}
 	
-	public IReadOnlyList<SourceLocation> FindUsages(string uri, int line, int character, bool includeDeclaration)
+	public async Task<IReadOnlyList<SourceLocation>> FindUsagesAsync(string uri, int line, int character,
+		bool includeDeclaration)
 	{
-		if (Find(uri, line, character)?.Declaration is not { } declaration)
+		if ((await FindAsync(uri, line, character))?.Declaration is not { } declaration)
 			return [];
 		
 		ProjectCheck[] projects;
@@ -321,6 +318,7 @@ public sealed class Workspace(Func<JsonObject, Task> notify, TimeSpan debounce)
 		lock (_lock)
 		{
 			checkedTexts = unsaved;
+			hasChecked = true;
 			completed = checkCompleted;
 			checkCompleted = new(TaskCreationOptions.RunContinuationsAsynchronously);
 		}

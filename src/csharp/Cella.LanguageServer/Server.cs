@@ -88,40 +88,6 @@ public sealed class Server
 				_workspace.Change(GetUri(parameters), (string)changes[^1]!["text"]!);
 				return (true, null);
 			
-			case "textDocument/hover":
-				return (true, Find(parameters) is { } hovered
-					? new JsonObject
-					{
-						["contents"] = new JsonObject
-						{
-							["kind"] = "markdown",
-							["value"] = $"```cella\n{hovered.Description}\n```"
-						},
-						["range"] = Protocol.ToRange(hovered.Location)
-					}
-					: null);
-			
-			case "textDocument/definition":
-				return (true, Find(parameters)?.Declaration is { } declaration
-					? new JsonArray(new JsonObject
-					{
-						["uri"] = _workspace.UriOf(declaration.Source.FilePath),
-						["range"] = Protocol.ToRange(declaration)
-					})
-					: null);
-			
-			case "textDocument/references":
-				var position = parameters!["position"]!;
-				return (true, new JsonArray([
-					.._workspace.FindUsages(GetUri(parameters), (int)position["line"]!, (int)position["character"]!,
-							(bool?)parameters["context"]?["includeDeclaration"] ?? false)
-						.Select(JsonNode (usage) => new JsonObject
-						{
-							["uri"] = _workspace.UriOf(usage.Source.FilePath),
-							["range"] = Protocol.ToRange(usage)
-						})
-				]));
-			
 			case "textDocument/didClose":
 				_workspace.Close(GetUri(parameters));
 				return (true, null);
@@ -142,6 +108,9 @@ public sealed class Server
 	{
 		"textDocument/semanticTokens/full" => async () =>
 			SemanticTokens.Encode(await _workspace.GetReferencesAsync(GetUri(parameters))),
+		"textDocument/hover" => () => HoverAsync(parameters),
+		"textDocument/definition" => () => FindDefinitionAsync(parameters),
+		"textDocument/references" => () => FindReferencesAsync(parameters),
 		"textDocument/completion" => () => CompleteAsync(parameters),
 		"textDocument/signatureHelp" => () => HelpSignatureAsync(parameters),
 		"cella/runnables" => async () => new JsonArray([
@@ -154,6 +123,42 @@ public sealed class Server
 		]),
 		_ => null
 	};
+	
+	private async Task<JsonNode?> HoverAsync(JsonObject? parameters) => await FindAsync(parameters) is { } hovered
+		? new JsonObject
+		{
+			["contents"] = new JsonObject
+			{
+				["kind"] = "markdown",
+				["value"] = $"```cella\n{hovered.Description}\n```"
+			},
+			["range"] = Protocol.ToRange(hovered.Location)
+		}
+		: null;
+	
+	private async Task<JsonNode?> FindDefinitionAsync(JsonObject? parameters) =>
+		(await FindAsync(parameters))?.Declaration is { } declaration
+			? new JsonArray(new JsonObject
+			{
+				["uri"] = _workspace.UriOf(declaration.Source.FilePath),
+				["range"] = Protocol.ToRange(declaration)
+			})
+			: null;
+	
+	private async Task<JsonNode?> FindReferencesAsync(JsonObject? parameters)
+	{
+		var position = parameters!["position"]!;
+		var usages = await _workspace.FindUsagesAsync(GetUri(parameters), (int)position["line"]!,
+			(int)position["character"]!, (bool?)parameters["context"]?["includeDeclaration"] ?? false);
+		
+		return new JsonArray([
+			..usages.Select(JsonNode (usage) => new JsonObject
+			{
+				["uri"] = _workspace.UriOf(usage.Source.FilePath),
+				["range"] = Protocol.ToRange(usage)
+			})
+		]);
+	}
 	
 	private async Task<JsonNode?> CompleteAsync(JsonObject? parameters)
 	{
@@ -214,7 +219,7 @@ public sealed class Server
 	
 	private static string GetUri(JsonObject? parameters) => (string)parameters!["textDocument"]!["uri"]!;
 	
-	private SymbolReference? Find(JsonObject? parameters) => _workspace.Find(GetUri(parameters),
+	private Task<SymbolReference?> FindAsync(JsonObject? parameters) => _workspace.FindAsync(GetUri(parameters),
 		(int)parameters!["position"]!["line"]!, (int)parameters["position"]!["character"]!);
 	
 	private static JsonObject Capabilities() => new()

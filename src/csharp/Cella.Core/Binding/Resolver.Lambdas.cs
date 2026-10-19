@@ -12,7 +12,8 @@ public sealed partial class Resolver
 	public IResolvedExpressionNode Visit(LambdaExpressionNode node) => ResolveLambda(node, ExpectedType);
 	
 	private IResolvedExpressionNode ResolveLambda(LambdaExpressionNode node, TypeSymbol? expected,
-		bool resolveBody = true, bool isArgument = false, bool infersResult = false)
+		bool resolveBody = true, bool isArgument = false, bool infersResult = false,
+		IReadOnlyCollection<TypeParameterSymbol>? open = null)
 	{
 		var outer = CurrentResolutionContext;
 		var target = (expected is BorrowType { IsMutable: false } borrow ? borrow.Target : expected) as FunctionType;
@@ -48,7 +49,7 @@ public sealed partial class Resolver
 				if (modes[i] == ParameterMode.ReadOnly)
 					_copiedParameters.Add(types[i], parameter.Identifier.SourceLocation);
 			}
-			else if (target is not null && IsKnown(target.ParameterTypes[i]))
+			else if (target is not null && IsKnown(target.ParameterTypes[i], open))
 				types[i] = GetExpectedParameterType(target, i, modes[i]);
 			else
 			{
@@ -61,7 +62,7 @@ public sealed partial class Resolver
 		
 		var agrees = target is not null && types.Select((type, i) => modes[i] == target.ParameterModes[i] &&
 		                                                             (type == target.ParameterTypes[i] ||
-		                                                              !IsKnown(target.ParameterTypes[i])))
+		                                                              !IsKnown(target.ParameterTypes[i], open)))
 			.All(static agrees => agrees);
 		
 		var takesVariadic = target is { HasVariadicParameter: true } && types[^1] == target.ParameterTypes[^1];
@@ -69,7 +70,7 @@ public sealed partial class Resolver
 			? outer.ResolveReturnType(returnNode)
 			: !agrees
 				? NativeSymbols.Void
-				: !infersResult && IsKnown(target!.ReturnType)
+				: !infersResult && IsKnown(target!.ReturnType, open)
 					? target.ReturnType
 					: null;
 		
@@ -215,8 +216,8 @@ public sealed partial class Resolver
 		_ => $"{count} parameters"
 	};
 	
-	private bool IsKnown(TypeSymbol type) => TypePool.FindTypeParameters(type)
-		.All(parameter => CurrentResolutionContext.Resolve(parameter.Name) == parameter);
+	private static bool IsKnown(TypeSymbol type, IReadOnlyCollection<TypeParameterSymbol>? open) =>
+		open is null || !TypePool.FindTypeParameters(type).Any(open.Contains);
 	
 	private FunctionInfo CreateLambdaInfo(LambdaExpressionNode node, ResolutionContext outer,
 		IReadOnlyList<ParameterMode> modes, IReadOnlyList<TypeSymbol> types, TypeSymbol returnType, bool takesVariadic)

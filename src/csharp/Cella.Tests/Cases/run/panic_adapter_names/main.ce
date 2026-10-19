@@ -1,0 +1,23 @@
+mod test
+
+use helpers.callUser
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+	exit: fun(code: i32) -> never
+}
+
+panic: op(message: str, location: str) -> never
+{
+	printf("compiler panic\n")
+	exit(7)
+}
+
+divide: fun(a: i32, b: i32) -> i32 => a / b
+
+main: fun -> i32
+{
+	printf("%d\n", divide(6, 3))
+	callUser()
+}

@@ -28,7 +28,7 @@ public sealed class Conformance
 
 public abstract record Witness;
 public sealed record FunctionWitness(FunctionSymbol Function, FunctionInfo Info) : Witness;
-public sealed record NativeWitness(NativeImpl Operation, bool IsCompound = false) : Witness;
+public sealed record NativeWitness(OperationImpl Operation, bool IsCompound = false) : Witness;
 public sealed record MemberwiseWitness : Witness;
 public sealed record DefaultWitness : Witness;
 public sealed record ConversionWitness(Conversion Conversion) : Witness;

@@ -1,0 +1,8 @@
+mod other
+
+ext
+{
+	viaOther: ext("hidden_symbol") fun -> i32
+}
+
+fromOther: fun -> i32 => viaOther() + 1
