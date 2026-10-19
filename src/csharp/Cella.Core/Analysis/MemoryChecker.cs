@@ -340,14 +340,14 @@ public sealed class MemoryChecker(TypePool typePool, ConstantEvaluator evaluator
 	{
 		LeafShape leaf => leaf.State.HasFlag(PathState.Initialized) && leaf.State != PathState.Initialized,
 		FieldsShape fields => fields.Parts.Any(HasMaybeLeaf),
-		ElementsShape elements => elements.Runs.Any(static run => HasMaybeLeaf(run.Shape)),
+		ElementsShape elements => elements.Parts.Any(HasMaybeLeaf),
 		_ => false
 	};
 	
 	private static bool HasMaybePart(Shape shape) => shape switch
 	{
 		FieldsShape fields => fields.Parts.Any(HasMaybeLeaf),
-		ElementsShape elements => elements.Runs.Any(static run => HasMaybePart(run.Shape)),
+		ElementsShape elements => elements.Parts.Any(HasMaybePart),
 		_ => false
 	};
 	
@@ -776,8 +776,8 @@ public sealed class MemoryChecker(TypePool typePool, ConstantEvaluator evaluator
 			return shape;
 		
 		var elements = ElementsShape.Expand(shape, length);
-		return ElementsShape.Create(elements.Runs.Select(run =>
-			run with { Shape = ApplyDefaults(run.Shape, array.ElementType, null) }), length);
+		return ElementsShape.Create(
+			elements.Runs.Select(run => run.Map(part => ApplyDefaults(part, array.ElementType, null))), length);
 	}
 	
 	private bool UntrackedPartsHaveDefaults(MovePath path) =>

@@ -1,2 +1,9 @@
-199 3 3 4
+199 3 3 4 5
+filled
+drop 7
+drop 6
+drop 4
+drop 3
+drop 1
+drop 0
 [exit code 0]

@@ -27,4 +27,18 @@ short: fun -> i32
 	ret i32(buf[199998])
 }
 
-main: fun -> i32 => down() + short()
+gaps: fun -> i32
+{
+	var buf: array[u8, 299997] = undef
+	var i: usize = 0
+	while i < 299997
+	{
+		buf[i] = 1
+		buf[i + 2] = 2
+		i += 3
+	}
+
+	ret i32(buf[299995])
+}
+
+main: fun -> i32 => down() + short() + gaps()

@@ -15,8 +15,8 @@ public abstract class Shape : IEquatable<Shape>
 	{
 		LeafShape leaf => leaf.State,
 		FieldsShape fields => fields.Parts.Aggregate(PathState.None, static (state, part) => state | Summarize(part)),
-		ElementsShape elements => elements.Runs.Aggregate(PathState.None,
-			static (state, run) => state | Summarize(run.Shape)),
+		ElementsShape elements => elements.Parts.Aggregate(PathState.None,
+			static (state, part) => state | Summarize(part)),
 		_ => PathState.None
 	};
 	
@@ -24,7 +24,7 @@ public abstract class Shape : IEquatable<Shape>
 	{
 		LeafShape leaf => leaf.State == PathState.Initialized,
 		FieldsShape fields => fields.Parts.Any(HasInitializedPart),
-		ElementsShape elements => elements.Runs.Any(static run => HasInitializedPart(run.Shape)),
+		ElementsShape elements => elements.Parts.Any(HasInitializedPart),
 		_ => false
 	};
 	
@@ -37,8 +37,8 @@ public abstract class Shape : IEquatable<Shape>
 		LeafShape leaf => leaf.Moves,
 		FieldsShape fields => fields.Parts.Aggregate(ImmutableHashSet<MoveSite>.Empty,
 			static (moves, part) => Union(moves, GetMoves(part))),
-		ElementsShape elements => elements.Runs.Aggregate(ImmutableHashSet<MoveSite>.Empty,
-			static (moves, run) => Union(moves, GetMoves(run.Shape))),
+		ElementsShape elements => elements.Parts.Aggregate(ImmutableHashSet<MoveSite>.Empty,
+			static (moves, part) => Union(moves, GetMoves(part))),
 		_ => []
 	};
 	
@@ -47,7 +47,7 @@ public abstract class Shape : IEquatable<Shape>
 		LeafShape leaf => map(leaf),
 		FieldsShape fields => FieldsShape.Create([..fields.Parts.Select(part => MapLeaves(part, map))]),
 		ElementsShape elements => ElementsShape.Create(
-			elements.Runs.Select(run => run with { Shape = MapLeaves(run.Shape, map) }), elements.Length),
+			elements.Runs.Select(run => run.Map(part => MapLeaves(part, map))), elements.Length),
 		_ => shape
 	};
 	
@@ -112,10 +112,29 @@ public sealed class FieldsShape : Shape
 	public override int GetHashCode() => Parts.Length;
 }
 
-public readonly record struct ElementRun(BigInteger Start, Shape Shape);
+public readonly record struct ElementRun(BigInteger Start, ImmutableArray<Shape> Cycle)
+{
+	public ElementRun(BigInteger start, Shape shape) : this(start, [shape])
+	{
+	}
+	
+	public bool IsRepeating => Cycle.Length > 1;
+	
+	public Shape GetAt(BigInteger index) => Cycle[(int)BigInteger.Remainder(index - Start, Cycle.Length)];
+	
+	public ElementRun From(BigInteger start)
+	{
+		var run = this;
+		return new(start, [..Enumerable.Range(0, Cycle.Length).Select(k => run.GetAt(start + k))]);
+	}
+	
+	public ElementRun Map(Func<Shape, Shape> map) => this with { Cycle = [..Cycle.Select(map)] };
+}
 
 public sealed class ElementsShape : Shape
 {
+	private const int CombinedLength = 16;
+	
 	private ElementsShape(ImmutableArray<ElementRun> runs, BigInteger length)
 	{
 		Runs = runs;
@@ -125,26 +144,82 @@ public sealed class ElementsShape : Shape
 	public ImmutableArray<ElementRun> Runs { get; }
 	public BigInteger Length { get; }
 	
+	public IEnumerable<Shape> Parts => Runs.SelectMany(static run => run.Cycle);
+	
 	public static Shape Create(IEnumerable<ElementRun> runs, BigInteger length)
 	{
-		var merged = ImmutableArray.CreateBuilder<ElementRun>();
-		foreach (var run in runs)
+		var pieces = runs.ToList();
+		var merged = new List<ElementRun>(pieces.Count);
+		for (var i = 0; i < pieces.Count; i++)
 		{
-			if (merged.Count > 0 && merged[^1].Shape.Equals(run.Shape))
+			var end = i + 1 < pieces.Count ? pieces[i + 1].Start : length;
+			if (end <= pieces[i].Start)
 				continue;
 			
-			merged.Add(run);
+			var run = Shorten(pieces[i], end - pieces[i].Start);
+			if (merged.Count == 0)
+			{
+				merged.Add(run);
+				continue;
+			}
+			
+			var previous = merged[^1];
+			if (Continues(previous, run, end))
+				continue;
+			
+			if (end - previous.Start <= CombinedLength)
+				merged[^1] = Shorten(new ElementRun(previous.Start,
+						[..Enumerate(previous, previous.Start, run.Start), ..Enumerate(run, run.Start, end)]),
+					end - previous.Start);
+			else
+				merged.Add(run);
 		}
 		
-		return merged is [{ Shape: LeafShape leaf }] ? leaf : new ElementsShape(merged.ToImmutable(), length);
+		return merged is [{ Cycle: [LeafShape leaf] }] ? leaf : new ElementsShape([..merged], length);
 	}
+	
+	private static IEnumerable<Shape> Enumerate(ElementRun run, BigInteger start, BigInteger end)
+	{
+		for (var index = start; index < end; index++)
+			yield return run.GetAt(index);
+	}
+	
+	private static ElementRun Shorten(ElementRun run, BigInteger length)
+	{
+		var cycle = length < run.Cycle.Length ? run.Cycle[..(int)length] : run.Cycle;
+		for (var period = 1; period < cycle.Length; period++)
+		{
+			if ((length > cycle.Length && cycle.Length % period != 0) ||
+			    Enumerable.Range(period, cycle.Length - period).Any(k => !cycle[k].Equals(cycle[k % period])))
+				continue;
+			
+			cycle = cycle[..period];
+			break;
+		}
+		
+		return run with { Cycle = cycle };
+	}
+	
+	private static bool Continues(ElementRun previous, ElementRun next, BigInteger end)
+	{
+		var count = BigInteger.Min(end - next.Start, Lcm(previous.Cycle.Length, next.Cycle.Length));
+		for (var k = BigInteger.Zero; k < count; k++)
+		{
+			if (!next.GetAt(next.Start + k).Equals(previous.GetAt(next.Start + k)))
+				return false;
+		}
+		
+		return true;
+	}
+	
+	private static BigInteger Lcm(BigInteger a, BigInteger b) => a / BigInteger.GreatestCommonDivisor(a, b) * b;
 	
 	public static ElementsShape Expand(Shape shape, BigInteger length) =>
 		shape as ElementsShape ?? new ElementsShape([new(BigInteger.Zero, shape)], length);
 	
 	public BigInteger GetEnd(int run) => run + 1 < Runs.Length ? Runs[run + 1].Start : Length;
 	
-	public Shape Get(BigInteger index)
+	private int FindRun(BigInteger index)
 	{
 		var low = 0;
 		var high = Runs.Length - 1;
@@ -157,12 +232,17 @@ public sealed class ElementsShape : Shape
 				high = middle - 1;
 		}
 		
-		return Runs[low].Shape;
+		return low;
 	}
+	
+	public Shape Get(BigInteger index) => Runs[FindRun(index)].GetAt(index);
 	
 	public Shape Set(BigInteger index, Shape shape) => SetRange(index, index + 1, shape);
 	
-	public Shape SetRange(BigInteger start, BigInteger end, Shape shape)
+	public Shape SetRange(BigInteger start, BigInteger end, Shape shape) =>
+		SetStrided(start, end, BigInteger.One, shape);
+	
+	public Shape SetStrided(BigInteger start, BigInteger end, BigInteger stride, Shape shape)
 	{
 		if (start >= end)
 			return this;
@@ -170,51 +250,84 @@ public sealed class ElementsShape : Shape
 		var pieces = new List<ElementRun>(Runs.Length + 2);
 		for (var i = 0; i < Runs.Length; i++)
 		{
-			var runStart = Runs[i].Start;
+			var run = Runs[i];
 			var runEnd = GetEnd(i);
-			if (runEnd <= start || runStart >= end)
+			if (runEnd <= start || run.Start >= end)
 			{
-				pieces.Add(Runs[i]);
+				pieces.Add(run);
 				continue;
 			}
 			
-			if (runStart < start)
-				pieces.Add(Runs[i]);
+			if (run.Start < start)
+				pieces.Add(run);
 			
-			if (runStart <= start)
-				pieces.Add(new(start, shape));
+			var from = BigInteger.Max(run.Start, start);
+			var count = BigInteger.Min(Lcm(run.Cycle.Length, stride), BigInteger.Min(runEnd, end) - from);
+			pieces.Add(new ElementRun(from,
+			[
+				..Enumerate(run, from, from + count).Select((part, k) =>
+					BigInteger.Remainder(from + k - start, stride).IsZero ? shape : part)
+			]));
 			
 			if (runEnd > end)
-				pieces.Add(new(end, Runs[i].Shape));
+				pieces.Add(run.From(end));
 		}
 		
 		return Create(pieces, Length);
 	}
 	
-	public bool IsUniform(BigInteger start, BigInteger end, Shape shape)
+	public bool IsUniform(BigInteger start, BigInteger end, Shape shape) =>
+		IsUniform(start, end, BigInteger.One, shape);
+	
+	public bool IsUniform(BigInteger start, BigInteger end, BigInteger stride, Shape shape)
 	{
-		for (var i = 0; i < Runs.Length; i++)
+		for (var i = 0; i < Runs.Length && start < end; i++)
 		{
-			if (GetEnd(i) > start && Runs[i].Start < end && !Runs[i].Shape.Equals(shape))
-				return false;
+			var run = Runs[i];
+			var runEnd = GetEnd(i);
+			if (runEnd <= start || run.Start >= end)
+				continue;
+			
+			var first = start + BigInteger.Max(BigInteger.Zero, run.Start - start + stride - 1) / stride * stride;
+			var last = BigInteger.Min(runEnd, end);
+			var count = BigInteger.Min(run.Cycle.Length, (last - first + stride - 1) / stride);
+			for (var k = BigInteger.Zero; k < count; k++)
+			{
+				if (!run.GetAt(first + k * stride).Equals(shape))
+					return false;
+			}
 		}
 		
 		return true;
 	}
 	
-	public static Shape Join(ElementsShape first, ElementsShape second)
+	public static Shape Join(ElementsShape first, ElementsShape second) => Create(
+		Pair(first, second).Select(static segment =>
+			new ElementRun(segment.Start, [..segment.First.Zip(segment.Second, Shape.Join)])), first.Length);
+	
+	private static IEnumerable<(BigInteger Start, ImmutableArray<Shape> First, ImmutableArray<Shape> Second)> Pair(
+		ElementsShape first, ElementsShape second)
 	{
 		var starts = first.Runs.Select(static run => run.Start)
 			.Concat(second.Runs.Select(static run => run.Start))
 			.Distinct()
-			.Order();
+			.Order()
+			.ToList();
 		
-		return Create(starts.Select(start => new ElementRun(start, Shape.Join(first.Get(start), second.Get(start)))),
-			first.Length);
+		for (var i = 0; i < starts.Count; i++)
+		{
+			var start = starts[i];
+			var end = i + 1 < starts.Count ? starts[i + 1] : first.Length;
+			var a = first.Runs[first.FindRun(start)];
+			var b = second.Runs[second.FindRun(start)];
+			var count = BigInteger.Min(Lcm(a.Cycle.Length, b.Cycle.Length), end - start);
+			yield return (start, [..Enumerate(a, start, start + count)], [..Enumerate(b, start, start + count)]);
+		}
 	}
 	
 	public override bool Equals(Shape? other) =>
-		other is ElementsShape elements && Length == elements.Length && Runs.SequenceEqual(elements.Runs);
+		ReferenceEquals(this, other) || other is ElementsShape elements && Length == elements.Length &&
+		Pair(this, elements).All(static segment => segment.First.SequenceEqual(segment.Second));
 	
-	public override int GetHashCode() => HashCode.Combine(Runs.Length, Length);
+	public override int GetHashCode() => Length.GetHashCode();
 }

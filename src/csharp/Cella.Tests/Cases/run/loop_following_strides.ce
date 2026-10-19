@@ -61,8 +61,52 @@ triples: fun -> i32
 	ret i32(buf[0]) + i32(buf[199997])
 }
 
+gaps: fun -> i32
+{
+	var buf: array[u8, 299997] = undef
+	var i: usize = 0
+	while i < 299997
+	{
+		buf[i] = 1
+		buf[i + 2] = 2
+		i += 3
+	}
+
+	ret i32(buf[0]) + i32(buf[2]) + i32(buf[299996])
+}
+
+D: rec
+{
+	id: i32
+
+	new: op(id: i32)
+	{
+		self.id = id
+	}
+
+	drop: op
+	{
+		printf("drop %d\n", self.id)
+	}
+}
+
+spaced: fun
+{
+	var b: array[D, 9] = undef
+	var i: usize = 0
+	while i < 9
+	{
+		b[i] = D(i32(i))
+		b[i + 1] = D(i32(i) + 1)
+		i += 3
+	}
+
+	printf("filled\n")
+}
+
 main: fun -> i32
 {
-	printf("%d %d %d %d\n", down(), inclusive(), pairs(), triples())
+	printf("%d %d %d %d %d\n", down(), inclusive(), pairs(), triples(), gaps())
+	spaced()
 	ret 0
 }

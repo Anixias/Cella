@@ -100,51 +100,20 @@ public sealed class PassSkipper(LoopFollower follower, MovePaths paths, ShapeLay
 			    (FindWriter(scan, observer, writers, passes) is { } writer
 				    ? !writer.Effect!.Equals(first)
 				    : scan.GetRange(observer.Offset, settled, passes) is var (low, high) &&
-				      !elements.IsUniform(low, high, first)))
+				      !elements.IsUniform(low, high, BigInteger.Abs(scan.Step), first)))
 				return null;
 		}
 		
-		if (BigInteger.Abs(scan.Step) != 1)
-			return writers.Count == 0
-				? Place(arrayShape, group.Array.Type, group.Prefix, 0, elements)
-				: FindStridedRange(scan, writers, passes) is var (low, high)
-					? Place(arrayShape, group.Array.Type, group.Prefix, 0,
-						elements.SetRange(low, high, writers[0].Effect!))
-					: null;
-		
 		Shape result = elements;
-		var ranges = writers.ToDictionary(static writer => writer, writer => scan.GetRange(writer.Offset, 0, passes));
-		var boundaries = ranges.Values.SelectMany(static range => new[] { range.Low, range.High })
-			.Distinct()
-			.Order()
-			.ToList();
-		
-		for (var i = 0; i + 1 < boundaries.Count; i++)
+		foreach (var writer in writers.OrderByDescending(writer => writer.Offset * scan.Step.Sign)
+			         .ThenBy(static writer => writer.Order))
 		{
-			var element = boundaries[i];
-			var winner = writers.Where(writer => ranges[writer].Low <= element && element < ranges[writer].High)
-				.OrderBy(writer => writer.Offset * scan.Step)
-				.ThenByDescending(static writer => writer.Order)
-				.FirstOrDefault();
-			
-			if (winner is not null)
-				result = ElementsShape.Expand(result, length).SetRange(element, boundaries[i + 1], winner.Effect!);
+			var (low, high) = scan.GetRange(writer.Offset, 0, passes);
+			result = ElementsShape.Expand(result, length)
+				.SetStrided(low, high, BigInteger.Abs(scan.Step), writer.Effect!);
 		}
 		
 		return Place(arrayShape, group.Array.Type, group.Prefix, 0, result);
-	}
-	
-	private static (BigInteger Low, BigInteger High)? FindStridedRange(Scan scan, List<Touch> writers,
-		BigInteger passes)
-	{
-		var offsets = writers.Select(static writer => writer.Offset).Distinct().Order().ToList();
-		if (writers.Any(writer => !writer.Effect!.Equals(writers[0].Effect)) ||
-		    offsets.Count != BigInteger.Abs(scan.Step) || offsets[^1] - offsets[0] != offsets.Count - 1)
-			return null;
-		
-		var (low, _) = scan.GetRange(offsets[0], 0, passes);
-		var (_, high) = scan.GetRange(offsets[^1], 0, passes);
-		return (low, high);
 	}
 	
 	private static Shape Observe(Scan scan, Touch observer, List<Touch> writers, ElementsShape elements,

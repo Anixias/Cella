@@ -157,30 +157,18 @@ public sealed class DropElaborator(TypePool typePool, Action<InitState, MemoryEv
 			case (ElementsShape elements, ArrayType array):
 				for (var run = elements.Runs.Length - 1; run >= 0; run--)
 				{
-					var (start, part) = elements.Runs[run];
+					var (start, cycle) = elements.Runs[run];
 					var end = elements.GetEnd(run);
-					if (Shape.IsUninitialized(part))
-						continue;
-					
-					if (Shape.IsWhollyInitialized(part))
+					if (cycle is [var part])
 					{
-						DropElements(value, array, start, end - start, origin, guard, drops);
-						continue;
-					}
-					
-					if (part is LeafShape && flags is not null && FlagType(array.ElementType) == NativeSymbols.Bool)
-					{
-						drops.Add(new DropElementsInstruction(value, start, end - start, origin.SourceLocation, guard)
-						{
-							Flags = flags
-						});
-						
+						ElaborateElements(value, array, start, end, part, origin, guard, drops, flags);
 						continue;
 					}
 					
 					for (var index = end - 1; index >= start; index--)
-						ElaborateShape(GetElement(value, array, index), array.ElementType, part, origin, guard, drops,
-							flags is null ? null : GetElement(flags, (ArrayType)flags.Type, index));
+						ElaborateElements(value, array, index, index + 1, elements.Runs[run].GetAt(index), origin,
+							guard,
+							drops, flags);
 				}
 				
 				break;
@@ -194,6 +182,33 @@ public sealed class DropElaborator(TypePool typePool, Action<InitState, MemoryEv
 				
 				break;
 		}
+	}
+	
+	private void ElaborateElements(Value value, ArrayType array, BigInteger start, BigInteger end, Shape part,
+		DropInstruction origin, Value? guard, List<IInstruction> drops, Value? flags)
+	{
+		if (Shape.IsUninitialized(part))
+			return;
+		
+		if (Shape.IsWhollyInitialized(part))
+		{
+			DropElements(value, array, start, end - start, origin, guard, drops);
+			return;
+		}
+		
+		if (part is LeafShape && flags is not null && FlagType(array.ElementType) == NativeSymbols.Bool)
+		{
+			drops.Add(new DropElementsInstruction(value, start, end - start, origin.SourceLocation, guard)
+			{
+				Flags = flags
+			});
+			
+			return;
+		}
+		
+		for (var index = end - 1; index >= start; index--)
+			ElaborateShape(GetElement(value, array, index), array.ElementType, part, origin, guard, drops,
+				flags is null ? null : GetElement(flags, (ArrayType)flags.Type, index));
 	}
 	
 	private void DropFlagged(Value value, TypeSymbol type, Value flags, DropInstruction origin, Value? guard,
@@ -237,7 +252,7 @@ public sealed class DropElaborator(TypePool typePool, Action<InitState, MemoryEv
 	{
 		LeafShape leaf => leaf.State.HasFlag(PathState.Initialized) && leaf.State != PathState.Initialized,
 		FieldsShape fields => fields.Parts.Any(HasMaybeLeaf),
-		ElementsShape elements => elements.Runs.Any(static run => HasMaybeLeaf(run.Shape)),
+		ElementsShape elements => elements.Parts.Any(HasMaybeLeaf),
 		_ => false
 	};
 	
