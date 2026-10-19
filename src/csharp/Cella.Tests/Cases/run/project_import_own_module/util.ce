@@ -1,0 +1,8 @@
+mod util
+
+Helper: pub rec
+{
+	x: i32
+}
+
+twice: pub fun(helper: Helper) -> i32 => helper.x * 2

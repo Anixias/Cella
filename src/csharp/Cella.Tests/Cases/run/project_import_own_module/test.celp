@@ -1,0 +1,4 @@
+OutputType = "Executable"
+StandardLibrary = "None"
+SystemLinkPreference = "Dynamic"
+Imports = ["util.Helper"]

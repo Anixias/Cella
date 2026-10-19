@@ -11,21 +11,29 @@ Error at value_parameter_arguments.ce:11:43
 Error at value_parameter_arguments.ce:12:43
 11 │ e[N: const usize]: fun(values: array[i32, usize(N)]) => ret
 12 │ c[N: const usize]: fun(values: array[i32, table[N]]) => ret
-                                               ╘══════╛ Cannot use arithmetic on value parameters in generic arguments
+                                               ╘══════╛ 'table[N]' is not a constant
+                                                      | 'N' is a value parameter
 
 Error at value_parameter_arguments.ce:13:43
 12 │ c[N: const usize]: fun(values: array[i32, table[N]]) => ret
 13 │ f[N: const usize]: fun(values: array[i32, [N, 1][0]]) => ret
-                                               ╘═══════╛ Cannot use arithmetic on value parameters in generic arguments
+                                               ╘═══════╛ '[N, 1][0]' is not a constant
+                                                       | 'N' is a value parameter
 
-Error at value_parameter_arguments.ce:14:35
+Error at value_parameter_arguments.ce:14:43
 13 │ f[N: const usize]: fun(values: array[i32, [N, 1][0]]) => ret
-14 │ t[T: Has]: fun(values: array[i32, T.bits * 2]) => ret
+14 │ b[N: const usize]: fun(values: array[i32, match N { 0 => 1, else => 2 }]) => ret
+                                               ╘═══════════════════════════╛ 'match N { 0 => 1, else => 2 }' is not a constant
+                                                                           | 'N' is a value parameter
+
+Error at value_parameter_arguments.ce:15:35
+14 │ b[N: const usize]: fun(values: array[i32, match N { 0 => 1, else => 2 }]) => ret
+15 │ t[T: Has]: fun(values: array[i32, T.bits * 2]) => ret
                                        ╘════════╛ Cannot use arithmetic on value parameters in generic arguments
 
-Error at value_parameter_arguments.ce:15:43
-14 │ t[T: Has]: fun(values: array[i32, T.bits * 2]) => ret
-15 │ k[N: const usize]: fun(values: array[i32, table[1]]) => ret
+Error at value_parameter_arguments.ce:16:43
+15 │ t[T: Has]: fun(values: array[i32, T.bits * 2]) => ret
+16 │ k[N: const usize]: fun(values: array[i32, table[1]]) => ret
                                                ╘══════╛ 'table[1]' is not a constant
 
 [compilation failed]

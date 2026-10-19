@@ -28,6 +28,9 @@ internal readonly record struct LLVMFunctionInfo
 public sealed unsafe partial class CodeGenerator : IDisposable
 {
 	private const ulong LargeValueBytes = 16;
+	private const uint StrLengthSlot = 0;
+	private const uint StrDataSlot = 1;
+	private const uint FStrHolesSlot = 0;
 	
 	public DiagnosticList Diagnostics { get; } = new();
 	

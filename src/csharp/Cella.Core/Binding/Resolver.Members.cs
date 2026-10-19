@@ -146,23 +146,17 @@ public sealed partial class Resolver
 		}
 		
 		Rollback(trial);
-		switch (owners)
-		{
-			case [var only]:
-				return only;
-			
-			case []:
-				Diagnostics.Add(failures.FirstOrDefault() ??
-				                ResolutionContext.ReportGenericArgumentCount(location, definition));
-				
-				return null;
-			
-			default:
-				Diagnostics.Add(new(DiagnosticSeverity.Error, access.Member.SourceLocation,
-					$"Call to '{GetName(access)}' is ambiguous"));
-				
-				return null;
-		}
+		if (owners is [var only])
+			return only;
+		
+		Diagnostics.Add(owners is []
+			? failures.FirstOrDefault() ?? ResolutionContext.ReportGenericArgumentCount(location, definition)
+			: new(DiagnosticSeverity.Error, access.Member.SourceLocation, $"Call to '{GetName(access)}' is ambiguous"));
+		
+		foreach (var argument in node.Arguments)
+			VisitNode(argument, NativeSymbols.Invalid);
+		
+		return null;
 	}
 	
 	private IResolvedExpressionNode VisitStaticCall(CallExpressionNode node, AccessExpressionNode access,

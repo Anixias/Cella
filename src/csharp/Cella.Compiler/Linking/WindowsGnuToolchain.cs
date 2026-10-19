@@ -15,6 +15,9 @@ public sealed class WindowsGnuToolchain(string root) : Toolchain
 	
 	public override Dictionary<string, string?> GetLinkerEnvironmentVars() => [];
 	
+	public override string? GetDebugSymbolsPath(LinkRequest request) =>
+		request.DebugInfo ? Path.ChangeExtension(request.OutputFile, ".pdb") : null;
+	
 	public override List<string> GetLinkerArgs(LinkRequest request)
 	{
 		if (request.OutputType == ProjectOutputType.StaticLibrary)
@@ -41,8 +44,8 @@ public sealed class WindowsGnuToolchain(string root) : Toolchain
 				$"--out-implib={Path.ChangeExtension(request.OutputFile, ".lib")}"
 			]);
 		
-		if (request.DebugInfo)
-			args.AddRange([$"--pdb={Path.ChangeExtension(request.OutputFile, ".pdb")}", "-Xlink=-pdbaltpath:%_PDB%"]);
+		if (GetDebugSymbolsPath(request) is { } symbols)
+			args.AddRange([$"--pdb={symbols}", "-Xlink=-pdbaltpath:%_PDB%"]);
 		
 		if (!request.DebugInfo || request.OptimizeMode == OptimizeMode.Release)
 			args.Add("--icf=all");
@@ -66,7 +69,7 @@ public sealed class WindowsGnuToolchain(string root) : Toolchain
 		return args;
 	}
 	
-	private static string ToLinkerInput(string library) =>
+	public override string ToLinkerInput(string library) =>
 		Path.GetDirectoryName(library) is "" &&
 		Path.GetExtension(library).Equals(".lib", StringComparison.OrdinalIgnoreCase)
 			? $"-l{Path.GetFileNameWithoutExtension(library)}"

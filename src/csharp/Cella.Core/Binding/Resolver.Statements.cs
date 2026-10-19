@@ -1,4 +1,5 @@
-﻿using Cella.Core.Binding.Constants;
+﻿using System.Collections.Immutable;
+using Cella.Core.Binding.Constants;
 using Cella.Core.Binding.Nodes;
 using Cella.Core.Symbols;
 using Cella.Core.Syntax.Nodes;
@@ -109,9 +110,26 @@ public sealed partial class Resolver
 		var result = VisitCall(node);
 		var arguments = _callArguments[^1];
 		_callArguments.RemoveAt(_callArguments.Count - 1);
-		return result is ResolvedInvalidExpressionNode { Parts.IsEmpty: true } invalid && arguments is [_, ..]
-			? new ResolvedInvalidExpressionNode(invalid.Syntax, invalid.Type) { Parts = [..arguments] }
+		if (result is not ResolvedInvalidExpressionNode { Parts.IsEmpty: true } invalid)
+			return result;
+		
+		var parts = ResolveAbandonedParts(node, arguments);
+		return parts.Length > 0
+			? new ResolvedInvalidExpressionNode(invalid.Syntax, invalid.Type) { Parts = parts }
 			: result;
+	}
+	
+	private ImmutableArray<IResolvedExpressionNode> ResolveAbandonedParts(CallExpressionNode node,
+		IResolvedExpressionNode[]? arguments)
+	{
+		var trial = OpenCheckpoint();
+		var parts = new List<IResolvedExpressionNode>();
+		if (node.Target is AccessExpressionNode { Target: var receiver })
+			parts.Add(VisitNode(receiver, null));
+		
+		parts.AddRange(arguments ?? node.Arguments.Select(argument => VisitNode(argument, NativeSymbols.Invalid)));
+		Rollback(trial);
+		return [..parts.Where(static part => part is not ResolvedInvalidExpressionNode { Parts.IsEmpty: true })];
 	}
 	
 	private IResolvedExpressionNode VisitCall(CallExpressionNode node)

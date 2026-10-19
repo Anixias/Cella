@@ -7,6 +7,8 @@ public abstract class Toolchain
 	public abstract string GetTool(ProjectOutputType outputType);
 	public abstract Dictionary<string, string?> GetLinkerEnvironmentVars();
 	public abstract List<string> GetLinkerArgs(LinkRequest request);
+	public virtual string? GetDebugSymbolsPath(LinkRequest request) => null;
+	public virtual string ToLinkerInput(string library) => library;
 	
 	public static Toolchain FromTargetTriple(TargetTriple targetTriple)
 	{

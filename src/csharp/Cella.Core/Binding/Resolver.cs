@@ -118,21 +118,35 @@ public sealed partial class Resolver : IStatementNodeVisitor<IResolvedStatementN
 		return InvalidConstant.Instance;
 	}
 	
-	public bool MentionsValueParameter(IExpressionNode expression, ResolutionContext context)
+	public ValueParameterUse? FindValueParameterUse(IExpressionNode expression, ResolutionContext context)
 	{
 		_resolutionContexts.Push(context);
 		var checkpoint = OpenCheckpoint();
 		var result = VisitNode(expression, null);
 		Rollback(checkpoint);
 		_resolutionContexts.Pop();
-		return MentionsValueParameter(result);
+		return FindValueParameterUse(result, true);
 	}
 	
-	private static bool MentionsValueParameter(IResolvedExpressionNode node) =>
-		node is ResolvedValueParameterExpressionNode or ResolvedTraitConstantExpressionNode
+	private static ValueParameterUse? FindValueParameterUse(IResolvedExpressionNode node, bool isArithmetic)
+	{
+		var text = node.Syntax.SourceLocation.GetText().ToString();
+		switch (node)
 		{
-			Owner: TypeParameterSymbol
-		} || ConstantEvaluator.GetOperands(node).Any(MentionsValueParameter);
+			case ResolvedValueParameterExpressionNode:
+				return new(isArithmetic, $"'{text}' is a value parameter");
+			
+			case ResolvedTraitConstantExpressionNode { Owner: TypeParameterSymbol owner }:
+				return new(isArithmetic, $"'{text}' depends on '{owner.Name}'");
+		}
+		
+		var keepsArithmetic = isArithmetic && node is ResolvedBinaryOpExpressionNode or ResolvedUnaryOpExpressionNode
+			or ResolvedChainedExpressionNode or ResolvedConversionExpressionNode;
+		
+		return ConstantEvaluator.GetOperands(node)
+			.Select(operand => FindValueParameterUse(operand, keepsArithmetic))
+			.FirstOrDefault(static use => use is not null);
+	}
 	
 	private IResolvedDeclarationNode VisitNode(IDeclarationNode node) =>
 		((IDeclarationNodeVisitor<IResolvedDeclarationNode>)this).Visit(node);

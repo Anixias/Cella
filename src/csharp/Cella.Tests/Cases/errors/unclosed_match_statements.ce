@@ -25,7 +25,7 @@ second: fun(t: T) -> i32
 	{
 		a => ret 1
 		b => ret 2
-	panic "no"
+	ret 3
 }
 
 main: fun -> i32 => missing

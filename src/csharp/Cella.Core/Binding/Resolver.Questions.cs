@@ -62,7 +62,8 @@ public sealed partial class Resolver
 		{
 			ContainingFunction = info,
 			LocalScope = scope,
-			InlineReturn = new(caller, node.Op.SourceLocation)
+			InlineReturn = new(caller, node.Op.SourceLocation),
+			RecordName = null
 		});
 		
 		var captured = new List<Diagnostic>();
@@ -109,7 +110,7 @@ public sealed partial class Resolver
 			ExtSignatureTypes = current.ExtSignatureTypes,
 			CopiedParameters = current.CopiedParameters,
 			EvaluateConstant = current.EvaluateConstant,
-			MentionsValueParameter = current.MentionsValueParameter,
+			FindValueParameterUse = current.FindValueParameterUse,
 			GenericTypes = current.GenericTypes,
 			RecordUndo = current.RecordUndo,
 			TrackInstance = current.TrackInstance,

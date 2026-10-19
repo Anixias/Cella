@@ -11,6 +11,7 @@ a[N: const usize]: fun(values: array[i32, N + 1]) => ret
 e[N: const usize]: fun(values: array[i32, usize(N)]) => ret
 c[N: const usize]: fun(values: array[i32, table[N]]) => ret
 f[N: const usize]: fun(values: array[i32, [N, 1][0]]) => ret
+b[N: const usize]: fun(values: array[i32, match N { 0 => 1, else => 2 }]) => ret
 t[T: Has]: fun(values: array[i32, T.bits * 2]) => ret
 k[N: const usize]: fun(values: array[i32, table[1]]) => ret
 

@@ -17,6 +17,11 @@ public sealed class WindowsMsvcToolchain(string root, MsvcLibraries? libraries, 
 		["_LINK_"] = string.Empty,
 	};
 	
+	public override string? GetDebugSymbolsPath(LinkRequest request) =>
+		request.DebugInfo && request.OutputType != ProjectOutputType.StaticLibrary
+			? Path.ChangeExtension(request.OutputFile, ".pdb")
+			: null;
+	
 	public override List<string> GetLinkerArgs(LinkRequest request)
 	{
 		var args = request.OutputType == ProjectOutputType.StaticLibrary
@@ -36,9 +41,9 @@ public sealed class WindowsMsvcToolchain(string root, MsvcLibraries? libraries, 
 		
 		args.Add($"/out:{request.OutputFile}");
 		
-		if (request.DebugInfo && request.OutputType != ProjectOutputType.StaticLibrary)
+		if (GetDebugSymbolsPath(request) is { } symbols)
 		{
-			args.AddRange(["/debug", "/pdbaltpath:%_PDB%", "/opt:ref"]);
+			args.AddRange(["/debug", $"/pdb:{symbols}", "/pdbaltpath:%_PDB%", "/opt:ref"]);
 			if (request.OptimizeMode == OptimizeMode.Release)
 				args.Add("/opt:icf");
 			

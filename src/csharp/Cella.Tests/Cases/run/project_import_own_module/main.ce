@@ -1,0 +1,14 @@
+mod test
+
+use util.twice
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+main: fun -> i32
+{
+	printf("%d\n", twice(Helper(21)))
+	ret 0
+}

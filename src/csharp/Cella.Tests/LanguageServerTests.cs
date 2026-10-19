@@ -279,6 +279,33 @@ public sealed class LanguageServerTests : IAsyncDisposable
 		Assert.Equal(0, await ShutDownAsync());
 	}
 	
+	[Fact]
+	public async Task LinksTypeParametersInInlinedQuestionBodies()
+	{
+		await File.WriteAllTextAsync(SourcePath, """
+		                                         mod test
+		                                         
+		                                         Sized[T]: enum
+		                                         {
+		                                         	held(value: T)
+		                                         
+		                                         	?: op(own self) -> usize => sizeOf(T)
+		                                         }
+		                                         
+		                                         first: fun -> usize => Sized.held(40i64)?
+		                                         
+		                                         main: fun -> i32 => 0
+		                                         
+		                                         """, Token);
+		
+		await InitializeAsync();
+		Assert.Equal(Code("T"), await HoverAsync(6, 36));
+		var definition = await DefinitionAsync(6, 36);
+		Assert.Equal(2, (int)definition!["range"]!["start"]!["line"]!);
+		Assert.Equal(6, (int)definition["range"]!["start"]!["character"]!);
+		Assert.Equal(0, await ShutDownAsync());
+	}
+	
 	private async Task<List<string>> UsagesAsync(int line, int character, bool includeDeclaration)
 	{
 		var parameters = Position(line, character);
@@ -334,20 +361,33 @@ public sealed class LanguageServerTests : IAsyncDisposable
 		                                         y: fun(a: i32) {}
 		                                         y: fun(a: bool) {}
 		                                         
+		                                         Color: enum { red, green }
+		                                         
+		                                         P: rec
+		                                         {
+		                                         	x: i32
+		                                         }
+		                                         
 		                                         main: fun -> i32
 		                                         {
 		                                         	val name = 2.5
 		                                         	y(name)
+		                                         	val p = P(1)
+		                                         	p.missing(name)
+		                                         	Color.nope(name)
 		                                         	ret 0
 		                                         }
 		                                         
 		                                         """, Token);
 		
 		await InitializeAsync();
-		Assert.Equal(Code("val name: f64"), await HoverAsync(8, 3));
-		var declaration = await DefinitionAsync(8, 3);
-		Assert.Equal(7, (int)declaration!["range"]!["start"]!["line"]!);
+		Assert.Equal(Code("val name: f64"), await HoverAsync(15, 3));
+		var declaration = await DefinitionAsync(15, 3);
+		Assert.Equal(14, (int)declaration!["range"]!["start"]!["line"]!);
 		Assert.Equal(5, (int)declaration["range"]!["start"]!["character"]!);
+		Assert.Equal(Code("val p: P"), await HoverAsync(17, 1));
+		Assert.Equal(Code("val name: f64"), await HoverAsync(17, 11));
+		Assert.Equal(Code("val name: f64"), await HoverAsync(18, 12));
 		Assert.Equal(0, await ShutDownAsync());
 	}
 	
@@ -500,15 +540,18 @@ public sealed class LanguageServerTests : IAsyncDisposable
 		                                 {
 		                                 	val a‿b = 3
 		                                 	val Ⅻ = 12
-		                                 	ret a‿b + Ⅻ
+		                                 	val use = 4
+		                                 	ret a‿b + Ⅻ + use
 		                                 }
 		                                 
 		                                 """);
 		
 		Assert.Contains("4:5:3 variable declaration readonly", tokens);
 		Assert.Contains("5:5:1 variable declaration readonly", tokens);
-		Assert.Contains("6:5:3 variable readonly", tokens);
-		Assert.Contains("6:11:1 variable readonly", tokens);
+		Assert.Contains("6:5:3 variable declaration readonly", tokens);
+		Assert.Contains("7:5:3 variable readonly", tokens);
+		Assert.Contains("7:11:1 variable readonly", tokens);
+		Assert.Contains("7:15:3 variable readonly", tokens);
 		Assert.Equal(0, await ShutDownAsync());
 	}
 	

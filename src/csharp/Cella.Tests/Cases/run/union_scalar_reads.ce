@@ -1,0 +1,42 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Flags: rec
+{
+	on: bool
+	off: bool
+}
+
+Panel: rec
+{
+	lights: array[bool, 3]
+	flags: Flags
+}
+
+U: union
+{
+	flags: Flags
+	bits: array[bool, 4]
+	panel: Panel
+	raw: u64
+}
+
+main: fun -> i32
+{
+	var u = U()
+	u.raw = 0x0202020202020202
+	val whole = u.flags
+	val bits = u.bits
+	val panel = u.panel
+	printf("%d %d\n", i32(whole.on), i32(whole.off))
+	printf("%d %d\n", i32(u.bits[1]), i32(bits[3]))
+	printf("%d %d %d\n", i32(panel.lights[0]), i32(panel.lights[2]), i32(panel.flags.on))
+	if bits[2]
+		printf("true\n")
+
+	ret 0
+}

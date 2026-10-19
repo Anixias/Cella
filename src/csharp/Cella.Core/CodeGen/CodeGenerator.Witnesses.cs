@@ -76,8 +76,8 @@ public sealed partial class CodeGenerator
 		var result = native.Intrinsic switch
 		{
 			NativeMemberIntrinsic.StrNew => builder.BuildInsertValue(
-				builder.BuildInsertValue(MapTypeSymbol(NativeSymbols.Str).Undef, value.GetParam(2), 0, "str"),
-				value.GetParam(1), 1, "str"),
+				builder.BuildInsertValue(MapTypeSymbol(NativeSymbols.Str).Undef, value.GetParam(2), StrLengthSlot,
+					"str"), value.GetParam(1), StrDataSlot, "str"),
 			_ => throw new InvalidOperationException()
 		};
 		

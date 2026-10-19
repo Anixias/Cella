@@ -7,6 +7,7 @@ using Cella.Core.Binding.Nodes;
 using Cella.Core.Binding.Operations;
 using Cella.Core.Lowering;
 using Cella.Core.Symbols;
+using Cella.Core.Text;
 using LLVMSharp.Interop;
 
 namespace Cella.Core.CodeGen;
@@ -196,7 +197,9 @@ public sealed unsafe partial class CodeGenerator
 	private LLVMValueRef EmitIndexer(IndexerValue v, LLVMBuilderRef builder)
 	{
 		var (elemPtr, _) = EmitIndexerAddress(v, builder);
-		return LoadValue(builder, v.Type, elemPtr, "elem");
+		return ReadsThroughUnion(v) && LoadFromUnion(v.Type, elemPtr, "elem", v.SourceLocation, builder) is { } loaded
+			? loaded
+			: LoadValue(builder, v.Type, elemPtr, "elem");
 	}
 	
 	private (LLVMValueRef Ptr, LLVMTypeRef ElemType) EmitIndexerAddress(IndexerValue v, LLVMBuilderRef builder)
@@ -278,9 +281,18 @@ public sealed unsafe partial class CodeGenerator
 			return targetPtr;
 		
 		var targetType = MapTypeSymbol(v.Target.Type);
-		var fieldIndex = (uint)_typePool.GetFieldIndex(Substitute(v.Target.Type), v.Member);
-		return builder.BuildStructGEP2(targetType, targetPtr, fieldIndex, v.Member.Name + ".addr");
+		return builder.BuildStructGEP2(targetType, targetPtr, GetMemberSlot(v), v.Member.Name + ".addr");
 	}
+	
+	private uint GetMemberSlot(AccessValue v) => v.Member is PropertySymbol { Getter: NativeAccessor getter }
+		? getter.Intrinsic switch
+		{
+			NativeMemberIntrinsic.StrByteLength => StrLengthSlot,
+			NativeMemberIntrinsic.StrData => StrDataSlot,
+			NativeMemberIntrinsic.FStrHoles => FStrHolesSlot,
+			_ => throw new InvalidOperationException()
+		}
+		: (uint)_typePool.GetFieldIndex(Substitute(v.Target.Type), v.Member);
 	
 	private bool ReadsThroughUnion(Value value) => value switch
 	{
@@ -290,26 +302,116 @@ public sealed unsafe partial class CodeGenerator
 		_ => false
 	};
 	
-	private LLVMValueRef? LoadUnionScalar(TypeSymbol type, LLVMValueRef address, AccessValue v, LLVMBuilderRef builder)
+	private LLVMValueRef? LoadFromUnion(TypeSymbol type, LLVMValueRef address, string name, SourceLocation location,
+		LLVMBuilderRef builder)
+	{
+		type = Substitute(type);
+		if (type == NativeSymbols.Bool)
+			return LoadUnionBool(address, name, builder);
+		
+		if (type == NativeSymbols.Char)
+			return LoadUnionChar(address, name, location, builder);
+		
+		if (!HoldsUnionScalars(type))
+			return null;
+		
+		var mapped = MapTypeSymbol(type);
+		var copy = BuildTemporarySlot(builder, mapped, name);
+		CopyValue(builder, mapped, copy, address);
+		NormalizeUnionScalars(type, copy, location, builder);
+		return IsLarge(type) ? copy : builder.BuildLoad2(mapped, copy, name);
+	}
+	
+	private LLVMValueRef LoadUnionBool(LLVMValueRef address, string name, LLVMBuilderRef builder) =>
+		builder.BuildICmp(LLVMIntPredicate.LLVMIntNE, builder.BuildLoad2(_context.Int8Type, address, name),
+			LLVMValueRef.CreateConstNull(_context.Int8Type), name);
+	
+	private LLVMValueRef LoadUnionChar(LLVMValueRef address, string name, SourceLocation location,
+		LLVMBuilderRef builder)
+	{
+		var value = builder.BuildLoad2(_context.Int32Type, address, name);
+		if (checks.Overflow)
+			PanicIf(builder.BuildNot(IsScalarValue(value, builder), "invalid"), "invalid char", location, builder);
+		
+		return value;
+	}
+	
+	private bool HoldsUnionScalars(TypeSymbol type) => Substitute(type) switch
+	{
+		var scalar when scalar == NativeSymbols.Bool || scalar == NativeSymbols.Char => true,
+		ArrayType array => HoldsUnionScalars(array.ElementType),
+		RecordSymbol { IsUnion: false } record => _typePool.GetMembers(record).OfType<FieldSymbol>()
+			.Any(field => HoldsUnionScalars(_typePool.GetTypeOfMember(field))),
+		_ => false
+	};
+	
+	private void NormalizeUnionScalars(TypeSymbol type, LLVMValueRef address, SourceLocation location,
+		LLVMBuilderRef builder)
 	{
 		type = Substitute(type);
 		if (type == NativeSymbols.Bool)
 		{
-			var stored = builder.BuildLoad2(_context.Int8Type, address, v.Member.Name);
-			return builder.BuildICmp(LLVMIntPredicate.LLVMIntNE, stored,
-				LLVMValueRef.CreateConstNull(_context.Int8Type),
-				v.Member.Name);
+			var normalized = builder.BuildZExt(LoadUnionBool(address, "bool", builder), _context.Int8Type, "bool");
+			builder.BuildStore(normalized, address);
+			return;
 		}
 		
-		if (type != NativeSymbols.Char)
-			return null;
+		if (type == NativeSymbols.Char)
+		{
+			LoadUnionChar(address, "char", location, builder);
+			return;
+		}
 		
-		var value = builder.BuildLoad2(_context.Int32Type, address, v.Member.Name);
-		if (checks.Overflow)
-			PanicIf(builder.BuildNot(IsScalarValue(value, builder), "invalid"), "invalid char", v.SourceLocation,
-				builder);
+		switch (type)
+		{
+			case RecordSymbol { IsUnion: false } record:
+			{
+				var fields = _typePool.GetMembers(record).OfType<FieldSymbol>().ToList();
+				foreach (var field in fields)
+				{
+					var fieldType = _typePool.GetTypeOfMember(field);
+					if (!HoldsUnionScalars(fieldType))
+						continue;
+					
+					var fieldAddress = builder.BuildStructGEP2(MapTypeSymbol(record), address,
+						(uint)_typePool.GetFieldIndex(record, field), field.Name);
+					
+					NormalizeUnionScalars(fieldType, fieldAddress, location, builder);
+				}
+				
+				break;
+			}
+			
+			case ArrayType array when HoldsUnionScalars(array.ElementType):
+				NormalizeUnionElements(array, address, location, builder);
+				break;
+		}
+	}
+	
+	private void NormalizeUnionElements(ArrayType array, LLVMValueRef address, SourceLocation location,
+		LLVMBuilderRef builder)
+	{
+		if (array.Length.IsZero)
+			return;
 		
-		return value;
+		var function = builder.InsertBlock.Parent;
+		var entry = builder.InsertBlock;
+		var loop = _context.AppendBasicBlock(function, "normalize");
+		var done = _context.AppendBasicBlock(function, "normalized");
+		var indexType = MapTypeSymbol(NativeSymbols.UIntSize);
+		var zero = LLVMValueRef.CreateConstInt(indexType, 0);
+		builder.BuildBr(loop);
+		
+		builder.PositionAtEnd(loop);
+		var index = builder.BuildPhi(indexType, "index");
+		var elementAddress = builder.BuildGEP2(MapTypeSymbol(array), address, new[] { zero, index }, "elemptr");
+		NormalizeUnionScalars(array.ElementType, elementAddress, location, builder);
+		var next = builder.BuildAdd(index, LLVMValueRef.CreateConstInt(indexType, 1), "next");
+		builder.BuildCondBr(builder.BuildICmp(LLVMIntPredicate.LLVMIntULT, next,
+			LLVMValueRef.CreateConstInt(indexType, (ulong)array.Length), "more"), loop, done);
+		
+		index.AddIncoming([zero, next], [entry, builder.InsertBlock], 2);
+		builder.PositionAtEnd(done);
 	}
 	
 	private LLVMValueRef EmitAccessValue(AccessValue v, LLVMBuilderRef builder)
@@ -332,8 +434,9 @@ public sealed unsafe partial class CodeGenerator
 		{
 			var fieldAddress = EmitAccessAddress(v, builder);
 			var fieldType = _typePool.GetTypeOfMember((TypedMemberSymbol)v.Member);
-			return ReadsThroughUnion(v) && LoadUnionScalar(fieldType, fieldAddress, v, builder) is { } scalar
-				? scalar
+			return ReadsThroughUnion(v) &&
+			       LoadFromUnion(fieldType, fieldAddress, v.Member.Name, v.SourceLocation, builder) is { } loaded
+				? loaded
 				: LoadValue(builder, fieldType, fieldAddress, v.Member.Name);
 		}
 		
@@ -341,11 +444,11 @@ public sealed unsafe partial class CodeGenerator
 		if (Substitute(v.Target.Type) is RecordSymbol { IsUnion: true } union)
 		{
 			var stored = SpillValue(builder, union, target, "union");
-			return LoadUnionScalar(v.Type, stored, v, builder) ?? LoadValue(builder, v.Type, stored, v.Member.Name);
+			return LoadFromUnion(v.Type, stored, v.Member.Name, v.SourceLocation, builder) ??
+			       LoadValue(builder, v.Type, stored, v.Member.Name);
 		}
 		
-		var fieldIndex = (uint)_typePool.GetFieldIndex(Substitute(v.Target.Type), v.Member);
-		return ExtractField(builder, v.Target.Type, target, fieldIndex, v.Type, v.Member.Name);
+		return ExtractField(builder, v.Target.Type, target, GetMemberSlot(v), v.Type, v.Member.Name);
 	}
 	
 	private LLVMValueRef EmitArrayValue(ArrayValue value, LLVMBuilderRef builder)

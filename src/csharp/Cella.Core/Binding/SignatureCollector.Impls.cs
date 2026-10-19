@@ -237,8 +237,8 @@ public sealed partial class SignatureCollector
 	private Constant? EvaluateConstant(IExpressionNode expression, ResolutionContext context, TypeSymbol? targetType) =>
 		constants!.EvaluateConstant(expression, context, targetType);
 	
-	private bool MentionsValueParameter(IExpressionNode expression, ResolutionContext context) =>
-		constants!.MentionsValueParameter(expression, context);
+	private ValueParameterUse? FindValueParameterUse(IExpressionNode expression, ResolutionContext context) =>
+		constants!.FindValueParameterUse(expression, context);
 	
 	private Constant? EvaluateChecked(IResolvedExpressionNode value)
 	{

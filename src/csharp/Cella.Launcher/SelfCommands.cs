@@ -67,23 +67,28 @@ internal static partial class SelfCommands
 		{
 			RemoveFromPath(Home.Directory);
 			Registry.CurrentUser.DeleteSubKeyTree(UninstallKey, false);
-			foreach (var entry in Directory.EnumerateFileSystemEntries(Home.Directory).ToList())
-			{
-				if (Path.GetFullPath(entry).Equals(Path.GetFullPath(LauncherPath), StringComparison.OrdinalIgnoreCase))
-					continue;
-				
-				if (Directory.Exists(entry))
-					Directory.Delete(entry, true);
-				else
-					File.Delete(entry);
-			}
-			
+			var parked = Path.Combine(Path.GetTempPath(), $"cella-{Guid.NewGuid():N}.exe");
+			File.Move(LauncherPath, parked);
 			Process.Start(new ProcessStartInfo("cmd.exe")
 			{
-				ArgumentList = { "/c", $"ping 127.0.0.1 -n 3 > nul & rmdir /s /q \"{Home.Directory}\"" },
+				Arguments = $"/c ping 127.0.0.1 -n 3 > nul & del /f /q \"{parked}\"",
+				WorkingDirectory = Path.GetTempPath(),
 				UseShellExecute = false,
 				CreateNoWindow = true
 			});
+			
+			try
+			{
+				Directory.Delete(Home.Directory, true);
+			}
+			catch (IOException)
+			{
+				if (Directory.EnumerateFileSystemEntries(Home.Directory).Any())
+					throw;
+				
+				Console.WriteLine($"Cella has been uninstalled, but '{Home.Directory}' is in use and wasn't removed");
+				return 0;
+			}
 		}
 		else
 		{

@@ -1,0 +1,18 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+P: rec
+{
+	x: i32
+}
+
+main: fun -> i32
+{
+	val p = P(1)
+	printf("%d %d\n", alpha.describe(imm p), beta.describe(imm p))
+	ret 0
+}

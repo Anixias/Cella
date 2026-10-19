@@ -270,6 +270,7 @@ public sealed partial class Builder
 		
 		// Phase 7: Code generation
 		string outputPath;
+		string? debugSymbols;
 		ImmutableArray<string> ownLibraries;
 		ImmutableArray<string> ownImports;
 		ImmutableArray<string> ownGlobalImports;
@@ -429,10 +430,11 @@ public sealed partial class Builder
 			}
 			
 			var (linkExitCode, linkErrors) = await linker.LinkAsync(linkRequest, linkerToolchain);
+			debugSymbols = linkedPath == outputPath ? linkerToolchain.GetDebugSymbolsPath(linkRequest) : null;
 			if (linkExitCode != 0 && DescribeLinkErrors(linkErrors, [
-				    assemblySymbol, ..contained
-					    .Select(static library => library.AssemblySymbol)
-			    ]) is { } described)
+				    (assemblySymbol, project.Directory), ..contained
+					    .Select(static library => (library.AssemblySymbol, library.Directory!))
+			    ], targetTriple, linkerToolchain) is { } described)
 			{
 				ReportErrors([described]);
 				return errorResult;
@@ -495,6 +497,7 @@ public sealed partial class Builder
 			ExportNames = exportNames,
 			PlainNames = plainNames,
 			ContainedLibraries = containedNames,
+			DebugSymbols = debugSymbols,
 			LibraryFiles = ownLibraries,
 			ImportedFunctions = ownImports,
 			ImportedGlobals = ownGlobalImports

@@ -1,0 +1,8 @@
+mod beta
+
+Show: pub trait
+{
+	show: fun(imm self) -> i32
+}
+
+describe[T: Show]: pub fun(imm v: T) -> i32 => v.show()

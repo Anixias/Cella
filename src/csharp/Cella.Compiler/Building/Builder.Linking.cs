@@ -10,31 +10,33 @@ namespace Cella.Compiler.Building;
 
 public sealed partial class Builder
 {
-	private static DiagnosticList? DescribeLinkErrors(string errors, IEnumerable<AssemblySymbol> assemblies)
+	private static DiagnosticList? DescribeLinkErrors(string errors,
+		IEnumerable<(AssemblySymbol Assembly, string Directory)> assemblies, TargetTriple target, Toolchain toolchain)
 	{
-		var declarations = new Dictionary<string, SourceLocation>();
-		var origins =
-			new Dictionary<string, (string Origin, SourceLocation Location)>(StringComparer.OrdinalIgnoreCase);
+		var declarations = new Dictionary<string, List<SourceLocation>>();
+		var origins = new Dictionary<string, List<(string Origin, SourceLocation Location)>>(
+			StringComparer.OrdinalIgnoreCase);
 		
-		foreach (var symbol in assemblies.SelectMany(static assembly => assembly.SymbolTable.DeclarationSymbols.Values))
+		foreach (var (assembly, directory) in assemblies)
 		{
-			switch (symbol)
+			foreach (var symbol in assembly.SymbolTable.DeclarationSymbols.Values.Distinct())
 			{
-				case FunctionSymbol { Syntax: ExternalFunctionNode node } function:
-					declarations.TryAdd(function.ExternalName ?? function.Name, node.Identifier.SourceLocation);
-					if (node is { Origin: { } origin, OriginLocation: { } location })
-						foreach (var key in GetLibraryKeys(origin))
-							origins.TryAdd(key, (origin, location));
-					
-					break;
+				var (name, identifier, origin, originLocation) = symbol switch
+				{
+					FunctionSymbol { Syntax: ExternalFunctionNode node } function => (function.ExternalName ??
+						function.Name, node.Identifier.SourceLocation, node.Origin, node.OriginLocation),
+					GlobalSymbol { IsImport: true } global => (global.ExternalName ?? global.Name,
+						global.Syntax.Identifier.SourceLocation, global.Syntax.Origin, global.Syntax.OriginLocation),
+					_ => default
+				};
 				
-				case GlobalSymbol { IsImport: true } global:
-					declarations.TryAdd(global.ExternalName ?? global.Name, global.Syntax.Identifier.SourceLocation);
-					if (global.Syntax is { Origin: { } globalOrigin, OriginLocation: { } globalLocation })
-						foreach (var key in GetLibraryKeys(globalOrigin))
-							origins.TryAdd(key, (globalOrigin, globalLocation));
-					
-					break;
+				if (name is null)
+					continue;
+				
+				declarations.GetOrAdd(name).Add(identifier);
+				if (origin is not null && originLocation is { } location)
+					origins.GetOrAdd(toolchain.ToLinkerInput(ResolveLibrary(origin, directory, target)))
+						.Add((origin, location));
 			}
 		}
 		
@@ -52,19 +54,21 @@ public sealed partial class Builder
 			    (undefined.StartsWith(ImportPrefix, StringComparison.Ordinal)
 				    ? undefined[ImportPrefix.Length..]
 				    : undefined)
-			    is var symbol && declarations.TryGetValue(symbol, out var declaration))
+			    is var symbol && declarations.TryGetValue(symbol, out var declared))
 			{
 				if (reported.Add(symbol))
-					diagnostics.Add(new(DiagnosticSeverity.Error, declaration,
-						$"Cannot find '{symbol}' in the linked libraries"));
+					foreach (var declaration in declared.Distinct())
+						diagnostics.Add(new(DiagnosticSeverity.Error, declaration,
+							$"Cannot find '{symbol}' in the linked libraries"));
 				
 				continue;
 			}
 			
-			if (FindMissingLibrary(line) is { } missing && origins.TryGetValue(missing, out var library))
+			if (FindMissingLibrary(line) is { } missing && origins.TryGetValue(missing, out var libraries))
 			{
-				diagnostics.Add(new(DiagnosticSeverity.Error, library.Location,
-					$"Cannot find the library '{library.Origin}'"));
+				if (reported.Add(missing))
+					foreach (var (origin, location) in libraries.Distinct())
+						diagnostics.Add(new(DiagnosticSeverity.Error, location, $"Cannot find the library '{origin}'"));
 				
 				continue;
 			}
@@ -86,21 +90,15 @@ public sealed partial class Builder
 	{
 		if (line.StartsWith(MissingFile, StringComparison.Ordinal) &&
 		    line.IndexOf('\'', MissingFile.Length) is var end and > 0)
-			return Path.GetFileName(line[MissingFile.Length..end]);
+			return line[MissingFile.Length..end];
 		
 		if (line.StartsWith(MissingLibrary, StringComparison.Ordinal))
 			return line[MissingLibrary.Length..];
 		
 		return line.StartsWith(MissingInput, StringComparison.Ordinal) &&
 		       line.LastIndexOf(": ", StringComparison.Ordinal) is var colon and > 0
-			? Path.GetFileName(line[MissingInput.Length..colon])
+			? line[MissingInput.Length..colon]
 			: null;
-	}
-	
-	private static IEnumerable<string> GetLibraryKeys(string origin)
-	{
-		var name = Path.GetFileName(origin);
-		return [Path.GetFileName(GetLibraryFileName(origin)), $"-l{name}", $"lib{name}.so", name];
 	}
 	
 	private const string ImportPrefix = "__declspec(dllimport) ";
@@ -150,12 +148,12 @@ public sealed partial class Builder
 	
 	private static void CopySharedLibraries(ImmutableArray<AssemblyInfo> dependencies, string outputDir)
 	{
-		var libraries = dependencies.Where(static d => d.OutputType != ProjectOutputType.StaticLibrary);
-		foreach (var path in libraries.Select(static d => d.OutputPath).OfType<string>())
+		foreach (var library in dependencies.Where(static d => d.OutputType != ProjectOutputType.StaticLibrary))
 		{
-			File.Copy(path, Path.Combine(outputDir, Path.GetFileName(path)), true);
-			var symbols = Path.ChangeExtension(path, ".pdb");
-			if (File.Exists(symbols))
+			if (library.OutputPath is { } path)
+				File.Copy(path, Path.Combine(outputDir, Path.GetFileName(path)), true);
+			
+			if (library.DebugSymbols is { } symbols)
 				File.Copy(symbols, Path.Combine(outputDir, Path.GetFileName(symbols)), true);
 		}
 	}

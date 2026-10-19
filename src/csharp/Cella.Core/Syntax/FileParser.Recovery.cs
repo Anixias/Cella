@@ -189,6 +189,9 @@ public sealed partial class FileParser
 				return true;
 			}
 			
+			if (i == index && braces > 0 && !IsOnSameLine(i) && TokenSets.StatementKeywords.Contains(Tokens[i].Type))
+				return false;
+			
 			if (braces > 0)
 				continue;
 			

@@ -3,9 +3,19 @@ Error at rolled_back_size_checks.ce:12:10
 12 │     val a = Holder.make(sizeOf(array[u8, 9223372036854775808]))
                  ╘════╛ Cannot infer 'T' for 'Holder'
 
+Error at rolled_back_size_checks.ce:12:29
+11 │ {
+12 │     val a = Holder.make(sizeOf(array[u8, 9223372036854775808]))
+                                    ╘════════════════════════════╛ 'array[u8, 9223372036854775808]' is too large
+
 Error at rolled_back_size_checks.ce:13:10
 12 │ val a = Holder.make(sizeOf(array[u8, 9223372036854775808]))
 13 │ val b = Holder.make(missing)
              ╘════╛ Cannot infer 'T' for 'Holder'
+
+Error at rolled_back_size_checks.ce:13:22
+12 │ val a = Holder.make(sizeOf(array[u8, 9223372036854775808]))
+13 │ val b = Holder.make(missing)
+                         ╘═════╛ Symbol 'missing' not found in this scope
 
 [compilation failed]

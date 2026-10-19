@@ -230,7 +230,7 @@ public sealed partial class Resolver
 		var keyword = ((BorrowExpressionNode)argument.Syntax).Keyword;
 		if (!isMut)
 			return new(DiagnosticSeverity.Error, keyword.SourceLocation, name is null
-				? "Cannot use 'mut' on arguments to read-only parameters"
+				? "Only an argument to a 'mut' parameter can be marked 'mut'"
 				: $"'{name}' isn't a 'mut' parameter");
 		
 		if (GetMutTarget(parameterType, callable.GetMode(index)) is not { } declared ||

@@ -1,0 +1,8 @@
+mod test
+
+use beta.Show
+
+P: impl Show
+{
+	show: fun(imm self) -> i32 => 2
+}

@@ -1,0 +1,4 @@
+65
+[stderr]
+Panic at union_char_checks.ce:19:13: invalid char
+[exit code 101]

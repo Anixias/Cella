@@ -126,7 +126,7 @@ public sealed partial class SignatureCollector
 		{
 			var declared = context.File.Module.Files
 				.SelectMany(f => f.Symbols.GetValueOrDefault(symbol.Name) ?? [])
-				.Where(context.IsVisible)
+				.Where(member => member != symbol && context.IsVisible(member))
 				.ToList();
 			
 			if (declared.Count == 0 ||

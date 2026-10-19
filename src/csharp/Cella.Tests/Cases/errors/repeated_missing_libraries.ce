@@ -1,0 +1,13 @@
+mod test
+
+ext("no_such_library_anywhere")
+{
+	first: fun -> i32
+}
+
+ext("no_such_library_anywhere")
+{
+	second: fun -> i32
+}
+
+main: fun -> i32 => first() + second()

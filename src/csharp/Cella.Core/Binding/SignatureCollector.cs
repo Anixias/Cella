@@ -15,7 +15,7 @@ public interface IConstantResolver
 	
 	Constant? EvaluateConstant(IExpressionNode expression, ResolutionContext context, TypeSymbol? targetType);
 	
-	bool MentionsValueParameter(IExpressionNode expression, ResolutionContext context);
+	ValueParameterUse? FindValueParameterUse(IExpressionNode expression, ResolutionContext context);
 }
 
 public sealed partial class SignatureCollector
@@ -433,7 +433,7 @@ public sealed partial class SignatureCollector
 			ExtSignatureTypes = _extSignatureTypes,
 			CopiedParameters = _copiedParameters,
 			EvaluateConstant = EvaluateConstant,
-			MentionsValueParameter = MentionsValueParameter,
+			FindValueParameterUse = FindValueParameterUse,
 			GenericTypes = [],
 			DeferConstraintCheck = DeferConstraintCheck,
 			RecordName = RecordName,

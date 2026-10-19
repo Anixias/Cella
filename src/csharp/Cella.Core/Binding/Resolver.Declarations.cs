@@ -43,7 +43,7 @@ public sealed partial class Resolver
 		ExtSignatureTypes = _extSignatureTypes,
 		CopiedParameters = _copiedParameters,
 		EvaluateConstant = EvaluateConstant,
-		MentionsValueParameter = MentionsValueParameter,
+		FindValueParameterUse = FindValueParameterUse,
 		GenericTypes = [],
 		RecordUndo = Journal,
 		TrackInstance = TrackTypeInstance,

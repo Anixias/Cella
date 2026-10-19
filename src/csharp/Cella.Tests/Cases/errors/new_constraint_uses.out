@@ -27,7 +27,7 @@ Error at new_constraint_uses.ce:66:8
 Error at new_constraint_uses.ce:72:8
 71 │ var n = 1
 72 │ ret T(mut n)
-           ╘═╛ Cannot use 'mut' on arguments to read-only parameters
+           ╘═╛ Only an argument to a 'mut' parameter can be marked 'mut'
 
 Error at new_constraint_uses.ce:77:7
 76 │ {

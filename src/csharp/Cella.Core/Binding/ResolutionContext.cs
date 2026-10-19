@@ -8,6 +8,7 @@ using Cella.Diagnostics;
 namespace Cella.Core.Binding;
 
 public readonly record struct InlineReturn(FunctionInfo? Caller, SourceLocation Site);
+public readonly record struct ValueParameterUse(bool IsArithmetic, string Hint);
 
 public sealed class InlineDeclaration(ResolutionContext context)
 {
@@ -27,7 +28,7 @@ public readonly struct ResolutionContext
 	public ExtSignatureTypes? ExtSignatureTypes { get; init; }
 	public CopiedParameters? CopiedParameters { get; init; }
 	public Func<IExpressionNode, ResolutionContext, TypeSymbol?, Constant?>? EvaluateConstant { get; init; }
-	public Func<IExpressionNode, ResolutionContext, bool>? MentionsValueParameter { get; init; }
+	public Func<IExpressionNode, ResolutionContext, ValueParameterUse?>? FindValueParameterUse { get; init; }
 	public Dictionary<IndexerExpressionNode, TypeSymbol?>? GenericTypes { get; init; }
 	public Action<Action>? RecordUndo { get; init; }
 	public ImmutableArray<TypeParameterSymbol> TypeParameters { get; init; }
@@ -131,7 +132,11 @@ public readonly struct ResolutionContext
 		
 		List<Symbol> module = [..GetModuleSymbols(name).Where(IsVisible)];
 		if (Imports is { } environment && environment.Resolve(name) is { Length: > 0 } imports)
-			return ResolveFrom(name, [..module, ..imports.Where(import => IsKeptBeside(environment, import, module))]);
+			return ResolveFrom(name,
+			[
+				..module,
+				..imports.Where(import => !module.Contains(import) && IsKeptBeside(environment, import, module))
+			]);
 		
 		if (module.Count > 0)
 			return ResolveFrom(name, module);
@@ -836,10 +841,15 @@ public readonly struct ResolutionContext
 		
 		if (constant is null)
 		{
-			if (MentionsValueParameter?.Invoke(expression, this) == true)
+			var use = FindValueParameterUse?.Invoke(expression, this);
+			if (use is { IsArithmetic: true })
 				Report(expression, "Cannot use arithmetic on value parameters in generic arguments");
-			else if (parameter is not null)
-				Report(expression, $"'{expression.SourceLocation.GetText()}' is not a constant");
+			else if (use is not null || parameter is not null)
+				Diagnostics.Add(new(DiagnosticSeverity.Error, expression.SourceLocation,
+					$"'{expression.SourceLocation.GetText()}' is not a constant")
+				{
+					Hints = use is { Hint: var hint } ? [hint] : []
+				});
 			
 			return NativeSymbols.Invalid;
 		}
