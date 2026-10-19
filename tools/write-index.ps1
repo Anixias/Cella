@@ -39,7 +39,7 @@ if (-not $index) {
 
 $hostFiles = [ordered]@{}
 $launcher = [ordered]@{}
-foreach ($hostName in $Hosts) {
+foreach ($hostName in $Hosts.Keys) {
 	$asset = Get-VersionAsset -Version $version -HostName $hostName
 	$path = Join-Path $Assets $asset
 	if (-not (Test-Path $path)) {
@@ -51,29 +51,34 @@ foreach ($hostName in $Hosts) {
 	$launcher[$hostName] = Get-FileEntry -Path (Join-Path $Assets $launcherAsset) -Url "$BaseUrl/$launcherAsset"
 }
 
-$components = [ordered]@{}
-foreach ($entry in (Get-Components).GetEnumerator() | Sort-Object Key) {
-	$asset = Get-ComponentAsset -Name $entry.Key -Version $entry.Value
+$components = [ordered]@{ llvm = [ordered]@{}; toolchains = [ordered]@{} }
+foreach ($component in Get-Components | Sort-Object Kind, Name) {
+	$asset = Get-ComponentAsset $component
 	$path = Join-Path $Assets $asset
 	$file = if (Test-Path $path) {
 		Get-FileEntry -Path $path -Url "$BaseUrl/$asset"
 	}
+	elseif ($index.versions[$component.Version]) {
+		$index.versions[$component.Version][$component.Kind][$component.Name]
+	}
 	else {
-		$index.versions[$entry.Value].components[$entry.Key]
+		$null
 	}
 
 	if (-not $file) {
-		throw "$($entry.Key) $($entry.Value) isn't built by this release or published by an earlier one"
+		throw "$($component.Kind) $($component.Name) $($component.Version) isn't built by this release or published by an earlier one"
 	}
 
-	$components[$entry.Key] = [ordered]@{ version = $entry.Value; url = $file.url; sha256 = $file.sha256; size = $file.size }
+	$components[$component.Kind][$component.Name] =
+		[ordered]@{ version = $component.Version; url = $file.url; sha256 = $file.sha256; size = $file.size }
 }
 
 $manifest = [ordered]@{
 	version = $version
 	date = (Get-Date -AsUTC).ToString('yyyy-MM-dd')
 	hosts = $hostFiles
-	components = $components
+	llvm = $components.llvm
+	toolchains = $components.toolchains
 }
 
 $manifest | ConvertTo-Json -Depth 8 | Set-Content (Join-Path $Assets 'cella-manifest.json')

@@ -67,4 +67,10 @@ public readonly record struct GlobalInfo
 )
 {
 	public StaticFault? Fault { get; init; }
+	
+	public IEnumerable<string> DebugScope =>
+	[
+		..File.Module.ModuleName.Parts.Select(static part => part.Text),
+		..Symbol.ContainingType is { } owner ? [owner.Name] : Array.Empty<string>()
+	];
 }

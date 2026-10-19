@@ -52,4 +52,5 @@ intellijPlatform {
 tasks.test {
 	useJUnitPlatform()
 	systemProperty("cella.cases", rootDir.resolve("../csharp/Cella.Tests/Cases").absolutePath)
+	systemProperty("cella.tokens", rootDir.resolve("../csharp/Cella.Core/Text/TokenType.cs").absolutePath)
 }

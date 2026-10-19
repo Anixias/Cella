@@ -4,25 +4,42 @@ $ErrorActionPreference = 'Stop'
 $Repository = Split-Path -Parent $PSScriptRoot
 $IndexUrl = 'https://anixias.github.io/Cella/index.json'
 $ReleaseUrl = 'https://github.com/Anixias/Cella/releases/download'
-$Hosts = @('win-x64', 'linux-x64')
+$Hosts = [ordered]@{
+	'win-x64' = @{ Archive = '.zip'; Executable = '.exe' }
+	'linux-x64' = @{ Archive = '.tar.gz'; Executable = '' }
+}
 
 function Get-CellaVersion {
 	(Get-Content (Join-Path $Repository 'version.txt') -Raw).Trim()
 }
 
-function Get-Components {
+function Get-ComponentVersions {
 	Get-Content (Join-Path $Repository 'components.json') -Raw | ConvertFrom-Json -AsHashtable
 }
 
-function Get-HostName {
-	$os = if ($IsWindows) { 'win' } else { 'linux' }
-	"$os-$([Runtime.InteropServices.RuntimeInformation]::OSArchitecture.ToString().ToLowerInvariant())"
+function Get-Components {
+	$versions = Get-ComponentVersions
+	foreach ($kind in 'llvm', 'toolchains') {
+		foreach ($entry in $versions[$kind].GetEnumerator()) {
+			[pscustomobject]@{ Kind = $kind; Name = $entry.Key; Version = $entry.Value }
+		}
+	}
 }
 
-function Get-ArchiveExtension {
-	param([string] $HostName)
+function Get-Component {
+	param([Parameter(Mandatory)] [string] $Kind, [Parameter(Mandatory)] [string] $Name)
 
-	if ($HostName -like 'linux-*') { '.tar.gz' } else { '.zip' }
+	$component = Get-Components | Where-Object { $_.Kind -eq $Kind -and $_.Name -eq $Name }
+	if (-not $component) {
+		throw "components.json lists no $Kind component named '$Name'"
+	}
+
+	$component
+}
+
+function Get-HostName {
+	$os = if ($IsWindows) { 'win' } elseif ($IsLinux) { 'linux' } else { throw "Cella doesn't build on this operating system" }
+	"$os-$([Runtime.InteropServices.RuntimeInformation]::OSArchitecture.ToString().ToLowerInvariant())"
 }
 
 function Test-NotFound {
@@ -32,28 +49,38 @@ function Test-NotFound {
 		$ErrorRecord.Exception.Response.StatusCode -eq [Net.HttpStatusCode]::NotFound
 }
 
-function Get-ComponentHost {
-	param([Parameter(Mandatory)] [string] $Name)
-
-	if ($Name -like 'llvm-*') { $Name.Substring('llvm-'.Length) } else { $null }
-}
-
 function Get-VersionAsset {
 	param([Parameter(Mandatory)] [string] $Version, [Parameter(Mandatory)] [string] $HostName)
 
-	"cella-$Version-$HostName$(Get-ArchiveExtension $HostName)"
+	"cella-$Version-$HostName$($Hosts[$HostName].Archive)"
+}
+
+function Get-ComponentRecipe {
+	param([Parameter(Mandatory)] $Component)
+
+	if ($Component.Kind -eq 'llvm') {
+		"tools/components/llvm-$($Component.Name).ps1"
+	}
+	else {
+		"tools/components/$($Component.Name).ps1"
+	}
 }
 
 function Get-ComponentAsset {
-	param([Parameter(Mandatory)] [string] $Name, [Parameter(Mandatory)] [string] $Version)
+	param([Parameter(Mandatory)] $Component)
 
-	"$Name-$Version$(Get-ArchiveExtension (Get-ComponentHost $Name))"
+	if ($Component.Kind -eq 'llvm') {
+		"llvm-$($Component.Name)-$($Component.Version)$($Hosts[$Component.Name].Archive)"
+	}
+	else {
+		"$($Component.Name)-$($Component.Version).zip"
+	}
 }
 
 function Get-LauncherAsset {
 	param([Parameter(Mandatory)] [string] $HostName)
 
-	if ($HostName -like 'win-*') { "cella-launcher-$HostName.exe" } else { "cella-launcher-$HostName" }
+	"cella-launcher-$HostName$($Hosts[$HostName].Executable)"
 }
 
 function Get-Tar {

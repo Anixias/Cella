@@ -105,7 +105,7 @@ public sealed partial class FileParser
 		return _declarationKinds.Contains(token.Text) || _topLevelFormWords.Contains(token.Text) ||
 		       Peek(index + 1, TokenType.OpColon) && (_operatorNames.Contains(token.Type) ||
 		                                              _lifecycleKeywords.Contains(token.Type)) ||
-		       FindUnnamedImplTarget(index) is not null;
+		       LookAhead(() => FindUnnamedImplTarget(index) is not null);
 	}
 	
 	private bool StartsTopLevelDeclaration(int index)
@@ -113,7 +113,7 @@ public sealed partial class FileParser
 		var keywordIndex = index;
 		return Peek(index + 1, TokenType.OpColon) ||
 		       Peek(index + 1, TokenType.OpOpenBracket) && IsOnSameLine(index + 1) ||
-		       Match(ref keywordIndex, _topLevelContextualKeywords, _topLevelKeywords);
+		       LookAhead(() => Match(ref keywordIndex, _topLevelContextualKeywords, _topLevelKeywords));
 	}
 	
 	private bool StartsDeclarationInBody(int index) =>

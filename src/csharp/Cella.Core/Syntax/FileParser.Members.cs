@@ -354,7 +354,7 @@ public sealed partial class FileParser
 		if (IsFunctionMember(following))
 			return (token.SourceLocation, "Cannot declare required functions");
 		
-		if (Match(ref following, _memberContextualKeywords, TokenType.KeywordOp))
+		if (LookAhead(() => Match(ref following, _memberContextualKeywords, TokenType.KeywordOp)))
 			return (token.SourceLocation, "Cannot declare required operators");
 		
 		return StartsProperty(index + 1) ? (token.SourceLocation, "Cannot declare required properties") : null;

@@ -48,6 +48,7 @@ import org.eclipse.lsp4j.ShowMessageRequestParams
 import org.eclipse.lsp4j.TextDocumentClientCapabilities
 import org.eclipse.lsp4j.TextDocumentContentChangeEvent
 import org.eclipse.lsp4j.TextDocumentIdentifier
+import org.eclipse.lsp4j.TextDocumentPositionParams
 import org.eclipse.lsp4j.TextDocumentItem
 import org.eclipse.lsp4j.VersionedTextDocumentIdentifier
 import org.eclipse.lsp4j.WorkspaceClientCapabilities
@@ -326,7 +327,18 @@ class CellaRunnable {
 	var main = false
 }
 
+class CellaGlobal {
+	var name = ""
+	var debugName = ""
+}
+
 interface CellaLanguageServer : LanguageServer {
 	@JsonRequest("cella/runnables")
 	fun runnables(params: DocumentSymbolParams): CompletableFuture<List<CellaRunnable>>
+	
+	@JsonRequest("cella/visibleGlobals")
+	fun visibleGlobals(params: TextDocumentPositionParams): CompletableFuture<List<CellaGlobal>>
+	
+	@JsonRequest("cella/globalAt")
+	fun globalAt(params: TextDocumentPositionParams): CompletableFuture<CellaGlobal?>
 }

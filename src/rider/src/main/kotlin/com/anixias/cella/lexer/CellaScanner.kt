@@ -2,12 +2,10 @@ package com.anixias.cella.lexer
 
 class CellaScanner {
 	companion object {
-		const val LINE_START = 0
-		const val NORMAL = 1
-		const val AFTER_COLON = 2
-		const val STRING_CONTENT = 3
-		const val SUFFIX = 4
-		const val FORMAT = 5
+		const val NORMAL = 0
+		const val STRING_CONTENT = 1
+		const val SUFFIX = 2
+		const val FORMAT = 3
 		const val HOLE = 100
 		
 		private val keywords = buildMap {
@@ -23,21 +21,15 @@ class CellaScanner {
 				put(word, CellaToken.OPERATOR_KEYWORD)
 		}
 		
-		private val reserved = setOf(
+		val reservedWords = setOf(
 			"alignOf", "atomic", "break", "const", "cont", "default", "do", "drop", "dyn", "else", "false", "for",
 			"fun", "if", "imm", "in", "is", "loop", "match", "mut", "nameOf", "new", "null", "own", "panic", "ref",
 			"ret", "self", "sizeOf", "true", "undef", "val", "var", "when", "while"
 		)
 		
-		private val afterColonWords = setOf(
-			"pub", "pvt", "mod", "ext", "rec", "enum", "union", "trait", "impl", "op", "prop", "req", "copy", "noref"
-		)
-		
-		private val lineStartWords = setOf("mod", "use", "ext", "pub", "pvt")
-		
 		private val builtinTypes = setOf(
 			"i8", "i16", "i32", "i64", "i128", "isize", "u8", "u16", "u32", "u64", "u128", "usize", "f32", "f64",
-			"char", "bool", "str", "cstr", "fstr", "ptr", "array", "never"
+			"char", "bool", "str", "cstr", "fstr", "ptr", "array", "never", "Self"
 		)
 		
 		private val operators = setOf(
@@ -49,14 +41,16 @@ class CellaScanner {
 		
 		private const val LONGEST_OPERATOR = 4
 		
-		fun isKeyword(text: String) = text in reserved
+		fun isKeyword(text: String) = text in reservedWords
+		
+		fun keywordCategory(text: String) = keywords[text]
 		
 		fun isBuiltinType(text: String) = text in builtinTypes
 	}
 	
 	private var buffer: CharSequence = ""
 	private var bufferEnd = 0
-	private var state = LINE_START
+	private var state = NORMAL
 	
 	var tokenStart = 0
 		private set
@@ -64,7 +58,7 @@ class CellaScanner {
 		private set
 	var tokenType: CellaToken? = null
 		private set
-	var tokenState = LINE_START
+	var tokenState = NORMAL
 		private set
 	
 	fun start(buffer: CharSequence, start: Int, end: Int, initialState: Int) {
@@ -180,7 +174,7 @@ class CellaScanner {
 		}
 		
 		if (sawNewline)
-			state = LINE_START
+			state = NORMAL
 		
 		return CellaToken.WHITESPACE
 	}
@@ -219,36 +213,11 @@ class CellaScanner {
 		}
 		
 		val text = buffer.subSequence(tokenStart, tokenEnd).toString()
-		if (text in reserved) {
-			val keyword = keywords.getValue(text)
-			return if (state == AFTER_COLON && keyword == CellaToken.MODIFIER_KEYWORD) keyword else finish(keyword)
-		}
-		
-		if (text in builtinTypes)
-			return finish(CellaToken.BUILTIN_TYPE)
-		
-		val contextual = when {
-			inHole -> null
-			state == AFTER_COLON && text in afterColonWords -> keywords[text]
-			state == LINE_START && text in lineStartWords && peekNext() != ':' -> keywords[text]
-			state == LINE_START && (text == "get" || text == "set") && peekNext() == '(' -> keywords[text]
-			else -> null
-		}
-		
-		if (contextual != null) {
-			state = if (state == AFTER_COLON) AFTER_COLON else NORMAL
-			return contextual
-		}
-		
-		return finish(CellaToken.IDENTIFIER)
-	}
-	
-	private fun peekNext(): Char? {
-		var position = tokenEnd
-		while (position < bufferEnd && (buffer[position] == ' ' || buffer[position] == '\t'))
-			position++
-		
-		return if (position < bufferEnd) buffer[position] else null
+		return finish(when (text) {
+			in reservedWords -> keywords.getValue(text)
+			in builtinTypes -> CellaToken.BUILTIN_TYPE
+			else -> CellaToken.IDENTIFIER
+		})
 	}
 	
 	private fun scanNumber(): CellaToken {
@@ -453,14 +422,7 @@ class CellaScanner {
 			else -> CellaToken.OPERATOR
 		}
 		
-		if (!inHole)
-			state = when {
-				type == CellaToken.COLON -> AFTER_COLON
-				text == "+" && state == AFTER_COLON -> AFTER_COLON
-				else -> NORMAL
-			}
-		
-		return type
+		return finish(type)
 	}
 	
 	private fun isNewline(c: Char) = c == '\n' || c == '\r'

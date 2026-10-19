@@ -34,6 +34,7 @@ public sealed partial class Resolver
 	private CompletionCandidate ToCandidate(Symbol symbol) => symbol switch
 	{
 		FunctionSymbol function => new(symbol, _signatures.FindFunctionInfo(function)),
+		GlobalSymbol global => new(symbol, Global: _signatures.GetGlobalInfo(global)),
 		ParameterSymbol parameter when CurrentResolutionContext.ContainingFunction is { } containing &&
 		                               containing.Symbol.Parameters.IndexOf(parameter) is >= 0 and var index &&
 		                               index < containing.Signature.ParameterTypes.Length =>
@@ -81,7 +82,7 @@ public sealed partial class Resolver
 		if (type.OriginalDefinition is NamedTypeSymbol named)
 		{
 			foreach (var field in named.StaticFields.Where(CurrentResolutionContext.IsVisible))
-				yield return new(field);
+				yield return ToCandidate(field);
 		}
 		
 		foreach (var name in GetMemberNames(type))

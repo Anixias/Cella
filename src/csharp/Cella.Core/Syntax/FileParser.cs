@@ -321,6 +321,12 @@ public sealed partial class FileParser
 			DeclarationExtents = [.._declarationExtents],
 			BrokenStatements = [.._brokenStatements],
 			DroppedNames = [.._droppedNames],
+			ContextualKeywords =
+			[
+				..ContextualKeywords
+					.DistinctBy(static keyword => keyword.SourceLocation.Range.Start)
+					.OrderBy(static keyword => keyword.SourceLocation.Range.Start)
+			],
 			IsExcluded = !isIncluded
 		};
 	}

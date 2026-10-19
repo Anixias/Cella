@@ -4,9 +4,11 @@ using Cella.Diagnostics;
 
 namespace Cella.Core.Syntax;
 
-public abstract class BaseParser<T>(ImmutableArray<Token> tokens) : IParser<T>
+public abstract class BaseParser<T>(ImmutableArray<Token> tokens, List<Token>? contextualKeywords = null)
+	: IParser<T>
 {
 	protected readonly ImmutableArray<Token> Tokens = tokens;
+	protected readonly List<Token> ContextualKeywords = contextualKeywords ?? [];
 	
 	public abstract T? Parse(ref int index);
 	
@@ -85,7 +87,7 @@ public abstract class BaseParser<T>(ImmutableArray<Token> tokens) : IParser<T>
 		if (!TryGetToken(index, contextualTypes, out token) || !types.Contains(token.Type))
 			return false;
 		
-		index++;
+		Advance(ref index, token);
 		return true;
 	}
 	
@@ -104,7 +106,7 @@ public abstract class BaseParser<T>(ImmutableArray<Token> tokens) : IParser<T>
 		if (!TryGetToken(index, contextualTypes, out token) || token.Type != type)
 			return false;
 		
-		index++;
+		Advance(ref index, token);
 		return true;
 	}
 	
@@ -152,8 +154,33 @@ public abstract class BaseParser<T>(ImmutableArray<Token> tokens) : IParser<T>
 			return false;
 		}
 		
-		index++;
+		Advance(ref index, token);
 		return true;
+	}
+	
+	private void Advance(ref int index, Token token)
+	{
+		if (Tokens[index].Type != token.Type)
+			ContextualKeywords.Add(token);
+		
+		index++;
+	}
+	
+	protected int KeywordMark => ContextualKeywords.Count;
+	
+	protected void RewindKeywords(int mark) => ContextualKeywords.RemoveRange(mark, ContextualKeywords.Count - mark);
+	
+	protected TResult LookAhead<TResult>(Func<TResult> lookahead)
+	{
+		var mark = KeywordMark;
+		try
+		{
+			return lookahead();
+		}
+		finally
+		{
+			RewindKeywords(mark);
+		}
 	}
 	
 	private bool TryGetToken(int index, IReadOnlyDictionary<string, TokenType>? contextualTypes, out Token token)

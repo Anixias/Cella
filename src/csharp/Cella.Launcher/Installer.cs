@@ -1,4 +1,5 @@
-﻿using Cella.Compiler.Projects;
+﻿using Cella.Compiler;
+using Cella.Compiler.Projects;
 
 namespace Cella.Launcher;
 
@@ -21,17 +22,20 @@ internal static class Installer
 			return 0;
 		}
 		
-		if (!release.Hosts.TryGetValue(Home.HostName, out var host))
+		if (!release.Hosts.TryGetValue(Home.HostName, out var host) ||
+		    !release.Llvm.TryGetValue(Home.HostName, out var llvm))
 			throw new LauncherException($"Cella {version} isn't available for {Home.HostName}");
 		
-		foreach (var (name, component) in release.Components)
+		var components = release.Toolchains
+			.Select(static toolchain => (Label: toolchain.Key, Component: toolchain.Value,
+				Directory: ComponentVersions.GetToolchainDirectory(Home.Directory, toolchain.Key,
+					toolchain.Value.Version)))
+			.Prepend(("LLVM", llvm, ComponentVersions.GetLlvmDirectory(Home.Directory, llvm.Version)));
+		
+		foreach (var (label, component, directory) in components)
 		{
-			if (!Home.IsUsedOnThisHost(name))
-				continue;
-			
-			var directory = Home.GetComponentDirectory(name, component.Version);
 			if (!Directory.Exists(directory))
-				await Downloads.InstallAsync(component.File, directory, $"{name} {component.Version}");
+				await Downloads.InstallAsync(component.File, directory, $"{label} {component.Version}");
 		}
 		
 		await Downloads.InstallAsync(host, target, $"Cella {version}");
@@ -84,9 +88,8 @@ internal static class Installer
 	private static void RemoveUnusedComponents()
 	{
 		var used = Home.FindInstalledVersions()
-			.SelectMany(static version => Home.ReadComponents(version))
-			.Where(static component => Home.IsUsedOnThisHost(component.Key))
-			.Select(static component => Path.GetFullPath(Home.GetComponentDirectory(component.Key, component.Value)))
+			.SelectMany(static version => Home.ReadComponents(version).GetDirectories(Home.Directory))
+			.Select(Path.GetFullPath)
 			.ToHashSet(OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal);
 		
 		var llvm = Path.Combine(Home.Directory, "llvm");

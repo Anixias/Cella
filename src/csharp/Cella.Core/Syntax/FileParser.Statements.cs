@@ -430,12 +430,12 @@ public sealed partial class FileParser
 	
 	private IExpressionNode ParseExpression(ref int index) => CreateExpressionParser().Parse(ref index);
 	
-	private ExpressionParser CreateExpressionParser() => new(Tokens)
+	private ExpressionParser CreateExpressionParser() => new(Tokens, ContextualKeywords)
 	{
 		ParseBlock = ParseBlockStatement,
 		ReportRecovered = Diagnostics.Add,
 		ParseWhenCondition = ParseCondition
 	};
 	
-	private ITypeNode ParseType(ref int index) => new TypeParser(Tokens).Parse(ref index);
+	private ITypeNode ParseType(ref int index) => new TypeParser(Tokens, ContextualKeywords).Parse(ref index);
 }

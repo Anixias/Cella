@@ -397,21 +397,23 @@ public sealed class LanguageServerTests : IAsyncDisposable
 		await File.WriteAllTextAsync(SourcePath, NavigationSource, Token);
 		Assert.Equal(
 		[
+			"0:0:3 keyword",
 			"2:0:5 struct declaration",
+			"2:7:3 keyword",
 			"4:1:1 property declaration",
-			"4:4:3 keyword",
+			"4:4:3 keyword defaultLibrary",
 			"5:1:1 property declaration",
-			"5:4:3 keyword",
+			"5:4:3 keyword defaultLibrary",
 			"8:0:5 function declaration",
 			"8:15:5 parameter declaration",
 			"8:22:5 struct",
-			"8:32:3 keyword",
+			"8:32:3 keyword defaultLibrary",
 			"8:39:5 parameter",
 			"8:45:1 property",
 			"8:49:5 parameter",
 			"8:55:1 property",
 			"10:0:4 function declaration",
-			"10:13:3 keyword",
+			"10:13:3 keyword defaultLibrary",
 			"12:5:6 variable declaration readonly",
 			"12:14:5 struct",
 			"13:5:5 function",
@@ -426,11 +428,15 @@ public sealed class LanguageServerTests : IAsyncDisposable
 	{
 		Assert.Equal(
 		[
+			"0:0:3 keyword",
 			"2:0:3 struct declaration",
 			"2:4:1 typeParameter declaration",
+			"2:7:4 keyword",
+			"2:14:3 keyword",
 			"4:1:1 property declaration",
 			"4:4:1 typeParameter",
 			"5:1:1 method declaration",
+			"5:4:2 keyword",
 			"5:11:1 parameter declaration",
 			"5:14:3 struct",
 			"5:18:1 typeParameter",
@@ -441,17 +447,17 @@ public sealed class LanguageServerTests : IAsyncDisposable
 			"5:45:1 parameter",
 			"5:47:1 property",
 			"8:0:5 variable declaration readonly static",
-			"8:13:3 keyword",
+			"8:13:3 keyword defaultLibrary",
 			"10:0:4 function declaration",
-			"10:13:3 keyword",
+			"10:13:3 keyword defaultLibrary",
 			"12:7:5 variable declaration readonly static",
 			"13:5:4 variable declaration",
-			"13:11:5 keyword",
-			"13:17:4 keyword",
+			"13:11:5 keyword defaultLibrary",
+			"13:17:4 keyword defaultLibrary",
 			"14:5:1 variable declaration readonly",
 			"14:9:3 struct",
-			"14:13:3 keyword",
-			"14:18:3 keyword",
+			"14:13:3 keyword defaultLibrary",
+			"14:18:3 keyword defaultLibrary",
 			"14:22:5 variable readonly static",
 			"15:5:1 variable declaration readonly",
 			"15:9:1 variable readonly",
@@ -552,6 +558,69 @@ public sealed class LanguageServerTests : IAsyncDisposable
 		Assert.Contains("7:5:3 variable readonly", tokens);
 		Assert.Contains("7:11:1 variable readonly", tokens);
 		Assert.Contains("7:15:3 variable readonly", tokens);
+		Assert.Equal(0, await ShutDownAsync());
+	}
+	
+	[Fact]
+	public async Task ClassifiesContextualKeywordsTheParserReads()
+	{
+		var tokens = await ClassifyAsync("""
+		                                 mod test
+		                                 
+		                                 pub ext
+		                                 {
+		                                 	puts: fun(text: cstr) -> i32
+		                                 }
+		                                 
+		                                 Meters: rec
+		                                 {
+		                                 	value: i32
+		                                 
+		                                 	as: op(self) -> i32 => self.value
+		                                 
+		                                 	doubled: prop i32
+		                                 	{
+		                                 		get(self) => self.value * 2
+		                                 		pvt set(mut self, value)
+		                                 		{
+		                                 			self.value = value / 2
+		                                 		}
+		                                 	}
+		                                 }
+		                                 
+		                                 Show: trait
+		                                 {
+		                                 	show: fun(imm self) -> i32
+		                                 }
+		                                 
+		                                 Meters: impl Show
+		                                 {
+		                                 	show: fun(imm self) -> i32 => self.value
+		                                 }
+		                                 
+		                                 main: fun -> i32
+		                                 {
+		                                 	val set = Meters(3)
+		                                 	puts("hi")
+		                                 	ret i32(set)
+		                                 }
+		                                 
+		                                 mod: fun -> i32 => 2
+		                                 
+		                                 """);
+		
+		Assert.Equal(
+		[
+			"0:0:3 keyword", "2:0:3 keyword", "2:4:3 keyword", "7:8:3 keyword", "11:1:2 keyword", "11:5:2 keyword",
+			"13:10:4 keyword", "15:2:3 keyword", "16:2:3 keyword", "16:6:3 keyword", "23:6:5 keyword",
+			"28:8:4 keyword"
+		], tokens.Where(static token => token.EndsWith(" keyword")));
+		
+		Assert.Contains("4:17:4 keyword defaultLibrary", tokens);
+		Assert.Contains("37:5:3 keyword defaultLibrary", tokens);
+		Assert.Contains("35:5:3 variable declaration readonly", tokens);
+		Assert.Contains("37:9:3 variable readonly", tokens);
+		Assert.Contains("40:0:3 function declaration", tokens);
 		Assert.Equal(0, await ShutDownAsync());
 	}
 	
@@ -816,6 +885,51 @@ public sealed class LanguageServerTests : IAsyncDisposable
 		var signature = Assert.Single((JsonArray)method!["signatures"]!)!;
 		Assert.Equal("shift: fun(by: i32)", (string)signature["label"]!);
 		Assert.Equal(11, (int)signature["parameters"]![0]!["label"]![0]!);
+		Assert.Equal(0, await ShutDownAsync());
+	}
+	
+	[Fact]
+	public async Task NamesTheGlobalsADebuggerStopCanSee()
+	{
+		await File.WriteAllTextAsync(Path.Combine(_directory, "app.ce"), """
+		                                                                 mod app
+		                                                                 
+		                                                                 counter: pub var i32 = 1
+		                                                                 hidden: var i32 = 2
+		                                                                 
+		                                                                 Owner: pub rec
+		                                                                 {
+		                                                                 	value: i32
+		                                                                 	made: var i32 = 0
+		                                                                 }
+		                                                                 
+		                                                                 """, Token);
+		
+		await File.WriteAllTextAsync(SourcePath, """
+		                                         mod test
+		                                         
+		                                         use app.counter
+		                                         use app.Owner
+		                                         
+		                                         local: var i32 = 4
+		                                         
+		                                         main: fun -> i32
+		                                         {
+		                                         	val before = counter + local
+		                                         	ret before + Owner.made
+		                                         }
+		                                         
+		                                         """, Token);
+		
+		await InitializeAsync();
+		var visible = ((JsonArray)(await AskAsync("cella/visibleGlobals", 9, 0))!)
+			.Select(static global => $"{global!["name"]} {global["debugName"]}")
+			.Order(StringComparer.Ordinal);
+		
+		Assert.Equal(["counter app::counter", "local test::local"], visible);
+		Assert.Equal("app::Owner::made", (string?)(await AskAsync("cella/globalAt", 10, 20))?["debugName"]);
+		Assert.Equal("app::counter", (string?)(await AskAsync("cella/globalAt", 9, 14))?["debugName"]);
+		Assert.Null(await AskAsync("cella/globalAt", 10, 6));
 		Assert.Equal(0, await ShutDownAsync());
 	}
 	

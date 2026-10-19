@@ -1,32 +1,29 @@
 ﻿using System.Runtime.InteropServices;
-using System.Text.Json;
+using Cella.Compiler;
 using Cella.Compiler.Projects;
 
 namespace Cella.Launcher;
 
 internal static class Home
 {
-	public const string ComponentsFileName = "components.json";
-	
 	public static string Directory => Environment.GetEnvironmentVariable("CELLA_HOME") is { Length: > 0 } home
 		? Path.GetFullPath(home)
 		: OperatingSystem.IsWindows()
 			? @"C:\cella"
 			: Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".cella");
 	
-	public static string HostName => (OperatingSystem.IsWindows() ? "win" : "linux") + "-" +
+	public static string HostName => OperatingSystemName + "-" +
 	                                 RuntimeInformation.OSArchitecture.ToString().ToLowerInvariant();
+	
+	private static string OperatingSystemName => OperatingSystem.IsWindows()
+		? "win"
+		: OperatingSystem.IsLinux()
+			? "linux"
+			: throw new LauncherException("Cella doesn't run on this operating system");
 	
 	public static string Executable(string name) => OperatingSystem.IsWindows() ? name + ".exe" : name;
 	
 	public static string GetVersionDirectory(SemanticVersion version) => Path.Combine(Directory, version.ToString());
-	
-	public static bool IsUsedOnThisHost(string component) =>
-		!component.StartsWith("llvm-") || component == $"llvm-{HostName}";
-	
-	public static string GetComponentDirectory(string name, string version) => name.StartsWith("llvm-")
-		? Path.Combine(Directory, "llvm", version)
-		: Path.Combine(Directory, "toolchains", name, version);
 	
 	public static List<SemanticVersion> FindInstalledVersions()
 	{
@@ -36,17 +33,13 @@ internal static class Home
 		return System.IO.Directory.EnumerateDirectories(Directory)
 			.Select(static directory => SemanticVersion.Parse(Path.GetFileName(directory)))
 			.OfType<SemanticVersion>()
-			.Where(static version => File.Exists(Path.Combine(GetVersionDirectory(version), ComponentsFileName)))
+			.Where(static version =>
+				File.Exists(Path.Combine(GetVersionDirectory(version), ComponentVersions.FileName)))
 			.OrderDescending()
 			.ToList();
 	}
 	
-	public static Dictionary<string, string> ReadComponents(SemanticVersion version)
-	{
-		var path = Path.Combine(GetVersionDirectory(version), ComponentsFileName);
-		using var document = JsonDocument.Parse(File.ReadAllText(path));
-		return document.RootElement.EnumerateObject()
-			.Where(static property => property.Value.ValueKind == JsonValueKind.String)
-			.ToDictionary(static property => property.Name, static property => property.Value.GetString()!);
-	}
+	public static ComponentVersions ReadComponents(SemanticVersion version) =>
+		ComponentVersions.Load(GetVersionDirectory(version)) ??
+		throw new LauncherException($"Cella {version} is missing its {ComponentVersions.FileName}");
 }

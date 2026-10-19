@@ -35,12 +35,14 @@ public sealed partial class Builder(BuildOptions options, IBuildOutput output)
 	private string? programPath;
 	private IReadOnlyDictionary<string, string> openFiles = new Dictionary<string, string>();
 	private CompletionProbe? probe;
+	private int probeRun;
 	private bool generatesCode;
 	
 	public async Task<BuildResult> CompleteAsync(string sourcePath, IReadOnlyDictionary<string, string> unsavedFiles,
 		CompletionProbe completion, CancellationToken ct = default)
 	{
 		probe = completion;
+		probeRun++;
 		try
 		{
 			return await BuildAsync(sourcePath, unsavedFiles, ct);

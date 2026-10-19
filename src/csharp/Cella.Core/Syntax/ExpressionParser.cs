@@ -5,7 +5,8 @@ using Cella.Diagnostics;
 
 namespace Cella.Core.Syntax;
 
-public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<IExpressionNode>(tokens)
+public sealed class ExpressionParser(ImmutableArray<Token> tokens, List<Token>? contextualKeywords = null)
+	: BaseParser<IExpressionNode>(tokens, contextualKeywords)
 {
 	public delegate BlockStatementNode? BlockParser(ref int index, Token openBrace);
 	
@@ -178,7 +179,7 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 	
 	public override IExpressionNode Parse(ref int index) => ParseExpression(ref index);
 	private IExpressionNode ParseExpression(ref int index) => ParseAssignment(ref index);
-	private ITypeNode ParseType(ref int index) => new TypeParser(Tokens).Parse(ref index);
+	private ITypeNode ParseType(ref int index) => new TypeParser(Tokens, ContextualKeywords).Parse(ref index);
 	
 	private IExpressionNode ParseAssignment(ref int index)
 	{
@@ -984,11 +985,12 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 		return target;
 	}
 	
-	private static InterpolatedStringExpressionNode ParseInterpolatedString(Token token)
+	private InterpolatedStringExpressionNode ParseInterpolatedString(Token token)
 	{
 		var interpolation = token.Interpolation!;
-		var values = interpolation.Holes.Select(static h =>
-			new ExpressionParser([..h.Tokens, new Token(TokenType.EndOfFile, h.Close)]).ParseHole(h.Open));
+		var values = interpolation.Holes.Select(h =>
+			new ExpressionParser([..h.Tokens, new Token(TokenType.EndOfFile, h.Close)], ContextualKeywords)
+				.ParseHole(h.Open));
 		
 		return new InterpolatedStringExpressionNode(interpolation.Segments, values,
 			interpolation.Holes.Select(static h => h.Spec), interpolation.Holes.Select(static h => h.SpecLocation),

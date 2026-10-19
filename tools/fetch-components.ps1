@@ -21,18 +21,16 @@ catch {
 $downloads = Join-Path $Work 'assets'
 New-Item -ItemType Directory -Force $downloads | Out-Null
 
-foreach ($entry in (Get-Components).GetEnumerator()) {
-	$name = $entry.Key
-	$version = $entry.Value
-	$componentHost = Get-ComponentHost $name
-	if ($componentHost -and $componentHost -ne $hostName) {
+foreach ($component in Get-Components) {
+	if ($component.Kind -eq 'llvm' -and $component.Name -ne $hostName) {
 		continue
 	}
 
-	$asset = Get-ComponentAsset -Name $name -Version $version
+	$asset = Get-ComponentAsset $component
 	$archive = if ($Built) { Join-Path $Built $asset } else { '' }
 	if (-not $archive -or -not (Test-Path $archive)) {
-		$published = if ($index) { $index.versions.$version.components.$name } else { $null }
+		$release = if ($index) { $index.versions.($component.Version) } else { $null }
+		$published = if ($release) { $release.($component.Kind).($component.Name) } else { $null }
 		if ($published) {
 			$archive = Join-Path $downloads $asset
 			Write-Host "Downloading $($published.url)"
@@ -42,18 +40,19 @@ foreach ($entry in (Get-Components).GetEnumerator()) {
 			}
 		}
 		else {
-			& "$PSScriptRoot/build-component.ps1" -Name $name -Output $downloads -Work $Work
+			& "$PSScriptRoot/build-component.ps1" -Kind $component.Kind -Name $component.Name -Output $downloads `
+				-Work $Work
 			$archive = Join-Path $downloads $asset
 		}
 	}
 
-	$destination = if ($name -like 'llvm-*') {
+	$destination = if ($component.Kind -eq 'llvm') {
 		Join-Path $Output "hosts/$hostName"
 	}
 	else {
-		Join-Path $Output "toolchains/$name"
+		Join-Path $Output "toolchains/$($component.Name)"
 	}
 
 	Expand-Asset -Path $archive -Destination $destination
-	Write-Host "Installed $name $version into $destination"
+	Write-Host "Installed $($component.Kind) $($component.Name) $($component.Version) into $destination"
 }

@@ -289,13 +289,7 @@ public sealed unsafe partial class CodeGenerator
 	{
 		var location = info.Symbol.Syntax.SourceLocation;
 		var file = (LLVMOpaqueMetadata*)GetDebugFile(location).Handle;
-		IEnumerable<string> scopes =
-		[
-			..info.File.Module.ModuleName.Parts.Select(static part => part.Text),
-			..info.Symbol.ContainingType is { } owner ? [owner.Name] : Array.Empty<string>()
-		];
-		
-		var scope = GetNamespace(scopes);
+		var scope = GetNamespace(info.DebugScope);
 		using var name = new MarshaledString(info.Symbol.Name);
 		var isLocal = global.Linkage is LLVMLinkage.LLVMInternalLinkage or LLVMLinkage.LLVMPrivateLinkage ? 1 : 0;
 		var expression = LLVM.DIBuilderCreateGlobalVariableExpression(DiBuilder,

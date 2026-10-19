@@ -1,7 +1,11 @@
 {
-	"llvm-win-x64": "0.1.0",
-	"llvm-linux-x64": "0.1.0",
-	"windows-x64-gnu": "0.1.0",
-	"windows-x64-msvc": "0.1.0",
-	"linux-x64-gnu": "0.1.0"
+	"llvm": {
+		"win-x64": "0.1.0",
+		"linux-x64": "0.1.0"
+	},
+	"toolchains": {
+		"windows-x64-gnu": "0.1.0",
+		"windows-x64-msvc": "0.1.0",
+		"linux-x64-gnu": "0.1.0"
+	}
 }

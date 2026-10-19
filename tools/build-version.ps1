@@ -26,7 +26,9 @@ foreach ($project in 'Cella.Compiler', 'Cella.LanguageServer') {
 	}
 }
 
-Copy-Item (Join-Path $Repository 'components.json') $staging
+$components = Get-ComponentVersions
+[ordered]@{ llvm = $components.llvm[$hostName]; toolchains = $components.toolchains } | ConvertTo-Json |
+	Set-Content (Join-Path $staging 'components.json')
 New-Archive -Directory $staging -Path (Join-Path $Output (Get-VersionAsset -Version $version -HostName $hostName))
 
 dotnet publish (Join-Path $sources 'Cella.Launcher') -c Release -r $hostName -o $launcher

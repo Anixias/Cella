@@ -5,7 +5,8 @@ using Cella.Diagnostics;
 
 namespace Cella.Core.Syntax;
 
-public sealed class TypeParser(ImmutableArray<Token> tokens) : BaseParser<ITypeNode>(tokens)
+public sealed class TypeParser(ImmutableArray<Token> tokens, List<Token>? contextualKeywords = null)
+	: BaseParser<ITypeNode>(tokens, contextualKeywords)
 {
 	private static readonly Dictionary<string, TokenType> _externalKeywords =
 		new[] { TokenType.KeywordExt }.ToDictionary(static t => t.Representation);
@@ -133,6 +134,7 @@ public sealed class TypeParser(ImmutableArray<Token> tokens) : BaseParser<ITypeN
 	private FunctionTypeNode? TryParseFunctionType(ref int index)
 	{
 		var start = index;
+		var mark = KeywordMark;
 		var first = Tokens[index];
 		var isRef = Match(ref index, TokenType.KeywordRef);
 		if (isRef && !Peek(index, TokenType.KeywordFun))
@@ -142,6 +144,7 @@ public sealed class TypeParser(ImmutableArray<Token> tokens) : BaseParser<ITypeN
 		if (!Match(ref index, out var keyword, TokenType.KeywordFun))
 		{
 			index = start;
+			RewindKeywords(mark);
 			return null;
 		}
 		
@@ -209,5 +212,6 @@ public sealed class TypeParser(ImmutableArray<Token> tokens) : BaseParser<ITypeN
 		return new ExpressionArgumentNode(expression);
 	}
 	
-	private IExpressionNode ParseExpression(ref int index) => new ExpressionParser(Tokens).Parse(ref index);
+	private IExpressionNode ParseExpression(ref int index) =>
+		new ExpressionParser(Tokens, ContextualKeywords).Parse(ref index);
 }

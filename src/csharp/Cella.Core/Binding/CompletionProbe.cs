@@ -10,7 +10,13 @@ public enum CompletionPlace
 	Type
 }
 
-public sealed record CompletionCandidate(Symbol Symbol, FunctionInfo? Function = null, TypeSymbol? Type = null);
+public sealed record CompletionCandidate
+(
+	Symbol Symbol,
+	FunctionInfo? Function = null,
+	TypeSymbol? Type = null,
+	GlobalInfo? Global = null
+);
 
 public sealed class CompletionProbe(string path, int offset)
 {

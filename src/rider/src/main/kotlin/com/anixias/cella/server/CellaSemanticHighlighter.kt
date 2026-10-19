@@ -1,6 +1,8 @@
 package com.anixias.cella.server
 
 import com.anixias.cella.highlighting.CellaColors
+import com.anixias.cella.highlighting.CellaHighlighter
+import com.anixias.cella.lexer.CellaScanner
 import com.intellij.codeInsight.daemon.DaemonCodeAnalyzer
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.editor.Document
@@ -73,7 +75,7 @@ class CellaSemanticHighlighter(private val project: Project, private val server:
 			
 			val type = legend.tokenTypes.getOrNull(data[index + 3]) ?: continue
 			val modifiers = legend.tokenModifiers.filterIndexed { bit, _ -> data[index + 4] and (1 shl bit) != 0 }.toSet()
-			val key = colorOf(type, modifiers) ?: continue
+			val key = colorOf(type, modifiers, document.charsSequence.subSequence(start, end).toString()) ?: continue
 			val highlighter = markup.addRangeHighlighter(key, start, end, HighlighterLayer.SYNTAX + 1,
 				HighlighterTargetArea.EXACT_RANGE)
 			
@@ -122,7 +124,7 @@ class CellaSemanticHighlighter(private val project: Project, private val server:
 	
 	data class RunnableFunction(val start: Int, val end: Int, val name: String, val isMain: Boolean)
 	
-	private fun colorOf(type: String, modifiers: Set<String>): TextAttributesKey? = when (type) {
+	private fun colorOf(type: String, modifiers: Set<String>, text: String): TextAttributesKey? = when (type) {
 		"struct" -> when {
 			"drop" in modifiers -> CellaColors.DROP_TYPE
 			"ref" in modifiers -> CellaColors.REF_RECORD
@@ -145,7 +147,10 @@ class CellaSemanticHighlighter(private val project: Project, private val server:
 		
 		"property" -> CellaColors.FIELD
 		"enumMember" -> CellaColors.ENUM_CASE
-		"keyword" -> CellaColors.BUILTIN_TYPE
+		"keyword" -> when {
+			"defaultLibrary" in modifiers -> CellaColors.BUILTIN_TYPE
+			else -> CellaScanner.keywordCategory(text)?.let(CellaHighlighter::colorOf)
+		}
 		else -> null
 	}
 }

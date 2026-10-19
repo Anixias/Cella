@@ -10,7 +10,8 @@ internal sealed record Release
 (
 	SemanticVersion Version,
 	IReadOnlyDictionary<string, DownloadFile> Hosts,
-	IReadOnlyDictionary<string, Component> Components
+	IReadOnlyDictionary<string, Component> Llvm,
+	IReadOnlyDictionary<string, Component> Toolchains
 );
 
 internal sealed record LauncherRelease(SemanticVersion Version, IReadOnlyDictionary<string, DownloadFile> Hosts);
@@ -67,11 +68,8 @@ internal sealed class ReleaseIndex
 			var hosts = entry.Value.GetProperty("hosts").EnumerateObject()
 				.ToDictionary(static host => host.Name, static host => ParseFile(host.Value));
 			
-			var components = entry.Value.GetProperty("components").EnumerateObject()
-				.ToDictionary(static component => component.Name, static component =>
-					new Component(component.Value.GetProperty("version").GetString()!, ParseFile(component.Value)));
-			
-			releases[version] = new Release(version, hosts, components);
+			releases[version] = new Release(version, hosts, ParseComponents(entry.Value.GetProperty("llvm")),
+				ParseComponents(entry.Value.GetProperty("toolchains")));
 		}
 		
 		var stable = root.TryGetProperty("channels", out var channels) &&
@@ -87,6 +85,10 @@ internal sealed class ReleaseIndex
 		
 		return new ReleaseIndex { Stable = stable, Releases = releases, Launcher = launcher };
 	}
+	
+	private static Dictionary<string, Component> ParseComponents(JsonElement element) => element.EnumerateObject()
+		.ToDictionary(static component => component.Name, static component =>
+			new Component(component.Value.GetProperty("version").GetString()!, ParseFile(component.Value)));
 	
 	private static DownloadFile ParseFile(JsonElement element) => new(element.GetProperty("url").GetString()!,
 		element.GetProperty("sha256").GetString()!, element.GetProperty("size").GetInt64());

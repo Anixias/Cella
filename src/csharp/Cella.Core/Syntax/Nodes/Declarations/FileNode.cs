@@ -14,5 +14,6 @@ public sealed class FileNode(SourceLocation sourceLocation) : IDeclarationNode
 	public ImmutableArray<SourceLocation> DeclarationExtents { get; init; } = [];
 	public ImmutableArray<SourceLocation> BrokenStatements { get; init; } = [];
 	public ImmutableArray<Token> DroppedNames { get; init; } = [];
+	public ImmutableArray<Token> ContextualKeywords { get; init; } = [];
 	public bool IsExcluded { get; init; }
 }

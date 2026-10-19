@@ -165,7 +165,7 @@ class CellaParameterInfoHandler : ParameterInfoHandler<PsiElement, SignatureInfo
 	
 	private fun tokensBefore(text: CharSequence, offset: Int): List<Pair<CellaToken, Int>> {
 		val scanner = CellaScanner()
-		scanner.start(text, 0, minOf(offset, text.length), CellaScanner.LINE_START)
+		scanner.start(text, 0, minOf(offset, text.length), CellaScanner.NORMAL)
 		val tokens = mutableListOf<Pair<CellaToken, Int>>()
 		while (true) {
 			val type = scanner.tokenType ?: break

@@ -172,25 +172,27 @@ public sealed partial class FileParser
 	}
 	
 	private bool IsVisibilityBlock(int index, IReadOnlyDictionary<string, TokenType> keywords) =>
-		MatchVisibilityBlock(ref index, keywords, out _, out _) || StartsVisibleExternals(index);
+		LookAhead(() => MatchVisibilityBlock(ref index, keywords, out _, out _)) || StartsVisibleExternals(index);
 	
-	private bool StartsVisibleExternals(int index) =>
+	private bool StartsVisibleExternals(int index) => LookAhead(() =>
 		(Match(ref index, _topLevelContextualKeywords, _blockKeywords) ||
 		 Match(ref index, _topLevelContextualKeywords, TokenType.KeywordPub)) &&
 		Match(ref index, _topLevelContextualKeywords, TokenType.KeywordExt) &&
 		(Peek(index, TokenType.OpOpenBrace) || IsOnSameLine(index) && (Peek(index, TokenType.OpOpenParen) ||
 		                                                               Peek(index, TokenType.Identifier) &&
-		                                                               Peek(index + 1, TokenType.OpColon)));
+		                                                               Peek(index + 1, TokenType.OpColon))));
 	
 	private bool MatchPubBlock(ref int index, IReadOnlyDictionary<string, TokenType> keywords, out Token keyword,
 		out Token openBrace)
 	{
 		var start = index;
+		var mark = KeywordMark;
 		if (Match(ref index, out keyword, keywords, TokenType.KeywordPub) &&
 		    Match(ref index, out openBrace, TokenType.OpOpenBrace))
 			return true;
 		
 		index = start;
+		RewindKeywords(mark);
 		openBrace = default;
 		return false;
 	}
@@ -199,11 +201,13 @@ public sealed partial class FileParser
 		out Token openBrace)
 	{
 		var start = index;
+		var mark = KeywordMark;
 		if (Match(ref index, out keyword, keywords, _blockKeywords) &&
 		    Match(ref index, out openBrace, TokenType.OpOpenBrace))
 			return true;
 		
 		index = start;
+		RewindKeywords(mark);
 		openBrace = default;
 		return false;
 	}

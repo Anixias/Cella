@@ -5,6 +5,7 @@ import com.anixias.cella.CellaIcons
 import com.anixias.cella.lexer.CellaToken
 import com.anixias.cella.lexer.CellaTokenTypes
 import com.anixias.cella.server.CellaSemanticHighlighter
+import com.anixias.cella.server.CellaServer
 import com.intellij.execution.BeforeRunTask
 import com.intellij.execution.BeforeRunTaskProvider
 import com.intellij.execution.ExecutionException
@@ -33,6 +34,7 @@ import com.intellij.execution.ui.RunContentDescriptor
 import com.intellij.openapi.actionSystem.DataContext
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.ReadAction
+import com.intellij.openapi.application.runReadActionBlocking
 import com.intellij.openapi.diagnostic.logger
 import com.intellij.openapi.editor.Document
 import com.intellij.openapi.fileChooser.FileChooserDescriptorFactory
@@ -76,6 +78,11 @@ import java.io.File
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.concurrent.CompletableFuture
+import java.util.concurrent.ConcurrentHashMap
+import org.eclipse.lsp4j.Position
+import org.eclipse.lsp4j.TextDocumentIdentifier
+import org.eclipse.lsp4j.TextDocumentPositionParams
+import org.jetbrains.concurrency.AsyncPromise
 import org.jetbrains.concurrency.Promise
 import org.jetbrains.concurrency.resolvedPromise
 
@@ -210,10 +217,10 @@ class CellaBuildTaskProvider : BeforeRunTaskProvider<CellaBuildTask>() {
 
 class CellaDebugRunner : GenericProgramRunner<RunnerSettings>() {
 	override fun getRunnerId() = "CellaDebugRunner"
-
+	
 	override fun canRun(executorId: String, profile: RunProfile) =
 		executorId == DefaultDebugExecutor.EXECUTOR_ID && profile is CellaRunConfiguration
-
+	
 	override fun doExecute(state: RunProfileState, environment: ExecutionEnvironment): RunContentDescriptor {
 		val configuration = environment.runProfile as CellaRunConfiguration
 		val parameters = TrivialRunParameters(CellaDriverConfiguration(), configuration.createCommandLine())
@@ -242,14 +249,38 @@ class CellaDebuggerLanguageSupport : CidrDebuggerLanguageSupport() {
 }
 
 class CellaEvaluator(frame: CidrStackFrame) : CidrEvaluator(frame) {
+	private val hoveredGlobals = ConcurrentHashMap<String, String>()
+	
 	override fun getExpressionInfoAtOffsetAsync(project: Project, document: Document, offset: Int,
-		sideEffectsAllowed: Boolean): Promise<ExpressionInfo?> =
-		resolvedPromise(ReadAction.compute<ExpressionInfo?, RuntimeException> { findExpression(project, document, offset) })
+		sideEffectsAllowed: Boolean): Promise<ExpressionInfo?> {
+		val info = ReadAction.compute<ExpressionInfo?, RuntimeException> { findExpression(project, document, offset) }
+		val file = FileDocumentManager.getInstance().getFile(document)
+		if (info == null || file == null)
+			return resolvedPromise(info)
+		
+		val server = CellaServer.get(project)
+		val parameters = TextDocumentPositionParams(TextDocumentIdentifier(CellaServer.uriOf(file)),
+			server.position(document, offset))
+		
+		val promise = AsyncPromise<ExpressionInfo?>()
+		server.request { it.globalAt(parameters) }.whenComplete { global, _ ->
+			if (global == null) {
+				promise.setResult(info)
+				return@whenComplete
+			}
+			
+			val text = runReadActionBlocking { document.getText(info.textRange) }
+			hoveredGlobals[global.debugName] = text
+			promise.setResult(ExpressionInfo(info.textRange, global.debugName, text))
+		}
+		
+		return promise
+	}
 	
 	override fun doEvaluate(driver: DebuggerDriver, position: XSourcePosition?, expression: XExpression):
 		CidrEvaluatedValue {
 		val helper = myFrame.process.getTypesHelper(myFrame) as? CellaDebuggerTypesHelper
-		val global = helper?.findGlobal(driver, myFrame, expression.expression)
+		val global = helper?.findGlobal(driver, myFrame, expression.expression, hoveredGlobals[expression.expression])
 			?: return super.doEvaluate(driver, position, expression)
 		
 		return CidrEvaluatedValue(global, myFrame.process, position, myFrame, expression.expression)
@@ -298,42 +329,45 @@ class CellaDebuggerTypesHelper(process: CidrDebugProcess) : CidrDebuggerTypesHel
 		val locals = (driver as LLDBDriver).getVariables(frame.threadId, frame.frameIndex, false, false)
 			.mapTo(HashSet()) { it.name }
 		
-		val function = frame.frame.function
+		val visible = findVisibleGlobals(frame)
 		return variables.mapNotNull { variable ->
 			if (variable.name in locals)
 				return@mapNotNull variable
 			
-			val name = findSourceName(variable) ?: return@mapNotNull null
-			if (!isInScope(name, function))
-				return@mapNotNull null
-			
-			rename(variable, name)
+			findDebugName(variable)?.let(visible::get)?.let { rename(variable, it) }
 		}
 	}
 	
-	fun findGlobal(driver: DebuggerDriver, frame: CidrStackFrame, expression: String): LLValue? {
+	fun findGlobal(driver: DebuggerDriver, frame: CidrStackFrame, expression: String, hovered: String?): LLValue? {
 		val lldb = driver as LLDBDriver
 		val locals = lldb.getVariables(frame.threadId, frame.frameIndex, false, false).mapTo(HashSet()) { it.name }
-		if (expression in locals)
-			return null
+		val (debugName, name) = when {
+			hovered != null -> expression to hovered
+			expression in locals -> return null
+			else -> findVisibleGlobals(frame).entries.firstOrNull { it.value == expression }?.toPair() ?: return null
+		}
 		
-		val function = frame.frame.function
 		return lldb.getVariables(frame.threadId, frame.frameIndex, true, true)
 			.filter { it.name !in locals }
-			.firstNotNullOfOrNull { variable ->
-				findSourceName(variable)?.takeIf { name ->
-					name == expression || name.substringAfterLast("::") == expression && isInScope(name, function)
-				}?.let { rename(variable, it) }
-			}
+			.firstOrNull { findDebugName(it) == debugName }
+			?.let { rename(it, name) }
 	}
 	
-	private fun isInScope(name: String, function: String) = function.startsWith(name.substringBeforeLast("::") + "::")
+	private fun findVisibleGlobals(frame: CidrStackFrame): Map<String, String> {
+		val position = frame.sourcePosition ?: return emptyMap()
+		val server = CellaServer.get(myProcess.project)
+		val parameters = TextDocumentPositionParams(TextDocumentIdentifier(CellaServer.uriOf(position.file)),
+			Position(position.line, 0))
+		
+		return server.await(server.request { it.visibleGlobals(parameters) }).orEmpty()
+			.associate { it.debugName to it.name }
+	}
 	
 	private fun rename(variable: LLValue, name: String) = LLValue(name, variable.type, variable.displayType,
 		variable.address, variable.typeClass, variable.referenceExpression, variable.fullExpression)
 		.also { variable.copyUserDataTo(it) }
 	
-	private fun findSourceName(variable: LLValue): String? {
+	private fun findDebugName(variable: LLValue): String? {
 		if (!SystemInfo.isWindows)
 			return variable.name.removePrefix("::")
 		

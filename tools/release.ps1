@@ -136,13 +136,13 @@ function Invoke-Prepare {
 
 	if ($lastTag) {
 		$changed = @(Invoke-Git diff --name-only $lastTag HEAD -- tools/components)
-		$components = Get-Components
+		$components = @(Get-Components)
 		foreach ($file in $changed) {
-			$name = [IO.Path]::GetFileNameWithoutExtension($file)
-			if ($components.ContainsKey($name) -and $components[$name] -ne $release) {
-				Write-Warning "$file changed since $lastTag, but components.json still lists $($components[$name]) for $name"
+			$component = $components | Where-Object { (Get-ComponentRecipe $_) -eq $file }
+			if ($component -and $component.Version -ne $release) {
+				Write-Warning "$file changed since $lastTag, but components.json still lists $($component.Version) for $($component.Kind) $($component.Name)"
 			}
-			elseif (-not $components.ContainsKey($name)) {
+			elseif (-not $component) {
 				Write-Warning "$file changed since $lastTag; check whether components that use it need a new version"
 			}
 		}
@@ -173,9 +173,9 @@ function Invoke-Publish {
 		throw "The tag $tagName already exists on $Remote"
 	}
 
-	foreach ($entry in (Get-Components).GetEnumerator()) {
-		if ($entry.Value -eq $release -and -not (Test-Path (Join-Path $PSScriptRoot "components/$($entry.Key).ps1"))) {
-			throw "components.json builds $($entry.Key) in $release, but it has no recipe"
+	foreach ($component in Get-Components) {
+		if ($component.Version -eq $release -and -not (Test-Path (Join-Path $Repository (Get-ComponentRecipe $component)))) {
+			throw "components.json builds $($component.Kind) $($component.Name) in $release, but it has no recipe"
 		}
 	}
 
@@ -212,7 +212,8 @@ function Invoke-Verify {
 		Set-Content -Path $Notes -Value $section
 	}
 
-	$built = @((Get-Components).GetEnumerator() | Where-Object Value -eq $release | ForEach-Object Key | Sort-Object)
+	$built = @(Get-Components | Where-Object Version -eq $release | Sort-Object Kind, Name |
+		ForEach-Object { [ordered]@{ kind = $_.Kind; name = $_.Name } })
 	ConvertTo-Json -InputObject $built -Compress
 }
 

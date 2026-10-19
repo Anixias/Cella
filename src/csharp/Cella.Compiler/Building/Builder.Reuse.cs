@@ -100,7 +100,7 @@ public sealed partial class Builder
 			fingerprint.Append(path).Append('|');
 			if (probe is not null && string.Equals(Path.GetFullPath(path), probe.Path,
 				    OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal))
-				fingerprint.Append("probe|");
+				fingerprint.Append("probe ").Append(probeRun).Append('|');
 			
 			if (openFiles.TryGetValue(Path.GetFullPath(path), out var text))
 				fingerprint.Append(Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(text))));

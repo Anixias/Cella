@@ -45,13 +45,13 @@ jobs:
       - name: Install archive tools
         run: sudo apt-get update && sudo apt-get install -y libarchive-tools
 
-      - name: Build ${{ matrix.component }}
+      - name: Build ${{ matrix.component.kind }} ${{ matrix.component.name }}
         shell: pwsh
-        run: ./tools/build-component.ps1 -Name ${{ matrix.component }} -Output dist
+        run: ./tools/build-component.ps1 -Kind ${{ matrix.component.kind }} -Name ${{ matrix.component.name }} -Output dist
 
       - uses: actions/upload-artifact@v4
         with:
-          name: component-${{ matrix.component }}
+          name: component-${{ matrix.component.kind }}-${{ matrix.component.name }}
           path: dist/*
 
   test:

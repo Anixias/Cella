@@ -1,4 +1,5 @@
-﻿using System.Text.Json.Nodes;
+﻿using System.Collections.Immutable;
+using System.Text.Json.Nodes;
 using Cella.Compiler;
 using Cella.Compiler.Building;
 using Cella.Core.Binding;
@@ -108,23 +109,23 @@ public sealed class Workspace(Func<JsonObject, Task> notify, TimeSpan debounce)
 			.FirstOrDefault(static reference => reference is not null);
 	}
 	
-	public async Task<IReadOnlyList<SymbolReference>> GetReferencesAsync(string uri)
+	public async Task<(IReadOnlyList<SymbolReference> References, ImmutableArray<Token> Keywords)> GetTokensAsync(
+		string uri)
 	{
 		var path = Protocol.ToPath(uri);
-		return ModelsOf(path, (await GetCheckedProjectsAsync(path)).Projects)
+		var projects = (await GetCheckedProjectsAsync(path)).Projects;
+		var references = ModelsOf(path, projects)
 			.Select(model => model.GetReferences(path))
 			.FirstOrDefault(static references => references.Count > 0) ?? [];
+		
+		return (references, FindFile(projects, path)?.Syntax is FileNode file ? file.ContextualKeywords : []);
 	}
 	
 	public async Task<IReadOnlyList<(FunctionInfo Function, SourceLocation Name, bool IsMain)>> GetRunnablesAsync(
 		string uri)
 	{
 		var path = Protocol.ToPath(uri);
-		var file = (await GetCheckedProjectsAsync(path)).Projects
-			.SelectMany(static project => project.Files)
-			.FirstOrDefault(file => Protocol.PathComparer.Equals(file.Symbol.FullPath, path));
-		
-		if (file is null)
+		if (FindFile((await GetCheckedProjectsAsync(path)).Projects, path) is not { } file)
 			return [];
 		
 		return
@@ -206,6 +207,10 @@ public sealed class Workspace(Func<JsonObject, Task> notify, TimeSpan debounce)
 	
 	private static bool IsSameLocation(SourceLocation left, SourceLocation right) =>
 		left.Range == right.Range && Protocol.PathComparer.Equals(left.Source.FilePath, right.Source.FilePath);
+	
+	private static ResolvedFileNode? FindFile(IEnumerable<ProjectCheck> projects, string path) => projects
+		.SelectMany(static project => project.Files)
+		.FirstOrDefault(file => Protocol.PathComparer.Equals(file.Symbol.FullPath, path));
 	
 	private static IEnumerable<SemanticModel> ModelsOf(string path, IEnumerable<ProjectCheck> projects) => projects
 		.Where(project => project.Files.Any(file => Protocol.PathComparer.Equals(file.Symbol.FullPath, path)))

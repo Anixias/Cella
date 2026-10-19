@@ -32,8 +32,11 @@ public static class SemanticTokens
 		Readonly = 2,
 		Static = 4,
 		Drop = 8,
-		Ref = 16
+		Ref = 16,
+		DefaultLibrary = 32
 	}
+	
+	private readonly record struct Classified(SourceLocation Location, Kind Kind, Modifiers Modifiers, bool IsKeyword);
 	
 	public static JsonObject Legend { get; } = new()
 	{
@@ -41,29 +44,23 @@ public static class SemanticTokens
 		["tokenModifiers"] = Names(Enum.GetNames<Modifiers>().Where(static name => name != nameof(Modifiers.None)))
 	};
 	
-	public static JsonObject Encode(IEnumerable<SymbolReference> references)
+	public static JsonObject Encode(IEnumerable<SymbolReference> references, IEnumerable<Token> keywords)
 	{
 		var data = new JsonArray();
 		var (previousLine, previousCharacter, previousEnd) = (0, 0, 0);
-		foreach (var reference in references.OrderBy(static reference => reference.Location.Range.Start)
-			         .ThenBy(static reference => reference.Location.Range.Length))
+		var classified = references
+			.Select(Describe)
+			.OfType<Classified>()
+			.Concat(keywords.Select(static keyword =>
+				new Classified(keyword.SourceLocation, Kind.Keyword, Modifiers.None, true)))
+			.OrderBy(static token => token.Location.Range.Start)
+			.ThenBy(static token => token.Location.Range.Length)
+			.ThenBy(static token => !token.IsKeyword);
+		
+		foreach (var ((source, range), kind, modifiers, _) in classified)
 		{
-			var (source, range) = reference.Location;
-			var text = reference.Location.GetText().ToString();
-			var isOperator = TokenTypeInfo.GetOperator(text) is not null &&
-			                 reference.Symbol is FunctionSymbol or MethodSymbol;
-			
-			if (range.Start < previousEnd || !isOperator && !IsName(text) ||
-			    Classify(reference) is not { } classified)
+			if (range.Start < previousEnd)
 				continue;
-			
-			var (kind, modifiers) = classified;
-			if (isOperator)
-				kind = Kind.Method;
-			
-			if (reference.Declaration is { } declaration && declaration.Range.Start == range.Start &&
-			    Protocol.PathComparer.Equals(declaration.Source.FilePath, source.FilePath))
-				modifiers |= Modifiers.Declaration;
 			
 			var (line, character) = Protocol.ToLineCharacter(source, range.Start);
 			data.Add(line - previousLine);
@@ -75,6 +72,26 @@ public static class SemanticTokens
 		}
 		
 		return new JsonObject { ["data"] = data };
+	}
+	
+	private static Classified? Describe(SymbolReference reference)
+	{
+		var (source, range) = reference.Location;
+		var text = reference.Location.GetText().ToString();
+		var isOperator = TokenTypeInfo.GetOperator(text) is not null &&
+		                 reference.Symbol is FunctionSymbol or MethodSymbol;
+		
+		if (!isOperator && !IsName(text) || Classify(reference) is not var (kind, modifiers))
+			return null;
+		
+		if (isOperator)
+			kind = Kind.Method;
+		
+		if (reference.Declaration is { } declaration && declaration.Range.Start == range.Start &&
+		    Protocol.PathComparer.Equals(declaration.Source.FilePath, source.FilePath))
+			modifiers |= Modifiers.Declaration;
+		
+		return new Classified(reference.Location, kind, modifiers, false);
 	}
 	
 	private static JsonArray Names(IEnumerable<string> names) =>
@@ -103,7 +120,7 @@ public static class SemanticTokens
 			(reference.NeedsDrop ? Modifiers.Drop : Modifiers.None) | (record.IsRef ? Modifiers.Ref : Modifiers.None)),
 		TypeSymbol { OriginalDefinition: EnumSymbol } => (Kind.Enum, Modifiers.None),
 		NamedTypeSymbol => (Kind.Type, Modifiers.None),
-		TypeSymbol => (Kind.Keyword, Modifiers.None),
+		TypeSymbol => (Kind.Keyword, Modifiers.DefaultLibrary),
 		_ => null
 	};
 }

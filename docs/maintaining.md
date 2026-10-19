@@ -32,22 +32,24 @@ A component is a folder of files the compiler needs that doesn't come from this 
 
 | Component | Holds | Installed to |
 | --- | --- | --- |
-| `llvm-win-x64`, `llvm-linux-x64` | `lld`, `llvm-ar`, `llvm-lib` and the LLVM library the compiler loads | `llvm/<version>` |
+| LLVM for each host (`win-x64`, `linux-x64`) | `lld`, `llvm-ar`, `llvm-lib` and the LLVM library the compiler loads | `llvm/<version>` |
 | `windows-x64-gnu` | MinGW-w64 UCRT libraries, compiler-rt | `toolchains/windows-x64-gnu/<version>` |
 | `windows-x64-msvc` | compiler-rt (the compiler finds Visual Studio and the Windows SDK itself) | `toolchains/windows-x64-msvc/<version>` |
 | `linux-x64-gnu` | glibc 2.34 sysroot, compiler-rt | `toolchains/linux-x64-gnu/<version>` |
 
-Each component has a recipe in `tools/components/<name>.ps1`. Recipes download upstream files pinned by URL and SHA-256 in `tools/components/Upstream.ps1`. `components.json` names the release that last changed each component. A release builds the components listed with its own version and reuses the published archives of the rest.
+Each component has a recipe: `tools/components/llvm-<host>.ps1` for a host's LLVM and `tools/components/<target>.ps1` for a toolchain. Recipes download upstream files pinned by URL and SHA-256 in `tools/components/Upstream.ps1`. `components.json` names the release that last changed each component, with each host's LLVM under `llvm` and each target's toolchain under `toolchains`. A release builds the components listed with its own version and reuses the published archives of the rest.
+
+Each version's bundle carries its own `components.json`, which names only its host's LLVM version and the toolchains. The release index lists the same `llvm` and `toolchains` entries for every version, with their URLs and checksums.
 
 When you change a recipe or a pin, set that component's entry to the version being released. `prepare` warns about recipes that changed without one.
 
 To build a component on its own, run:
 
 ```
-./tools/build-component.ps1 -Name windows-x64-gnu -Output dist
+./tools/build-component.ps1 -Kind toolchains -Name windows-x64-gnu -Output dist
 ```
 
-`llvm-linux-x64` only builds on Linux.
+The `linux-x64` LLVM (`-Kind llvm -Name linux-x64`) only builds on Linux.
 
 To set up a development toolchain folder for `CellaToolchainDirectory`, run:
 
@@ -61,14 +63,14 @@ It uses published archives where they exist and runs the recipes for the rest.
 
 1. Pin the upstream files in `tools/components/Upstream.ps1`.
 2. Write `tools/components/<target>.ps1`. It takes `-Output` (the folder to fill) and `-Work` (a cache for downloads), and copies the libraries and their licenses into `-Output`.
-3. Add `"<target>": "<next release>"` to `components.json`.
+3. Add `"<target>": "<next release>"` under `toolchains` in `components.json`.
 4. In `Cella.Compiler`:
    - accept the name in `TargetTriple.Parse`;
    - add a `Toolchain` subclass in `Linking`, mapped in `Toolchain.FromTargetTriple`;
    - list the target in the `--target` usage text.
 5. Add the target to `GoldenTests` and record expected outputs for it.
 
-Archives unpacked on a Linux host, that host's bundle and its `llvm-<host>` component, are `.tar.gz`. Everything else, target toolchains included, is `.zip`.
+Toolchain archives are `.zip`. A host's bundle and its LLVM use the archive format listed for that host in `$Hosts`.
 
 The launcher installs every target component a release lists, so it needs no change. CI rebuilds its cached toolchain whenever `components.json` or a recipe changes.
 
@@ -76,7 +78,7 @@ The launcher installs every target component a release lists, so it needs no cha
 
 A host is a system the compiler runs on, named by its .NET runtime identifier such as `linux-x64`.
 
-1. Write an `llvm-<host>` recipe and add it to `components.json`.
-2. Add the host to `$Hosts` in `tools/Release.Common.ps1`.
+1. Write a `tools/components/llvm-<host>.ps1` recipe and add `"<host>": "<next release>"` under `llvm` in `components.json`.
+2. Add the host to `$Hosts` in `tools/Release.Common.ps1` with its archive format and executable extension.
 3. Add a runner for it to the matrices in `release.yml` and `test.yml`.
 4. Add an install script to `tools/install` and copy it into the site in `tools/write-index.ps1`.

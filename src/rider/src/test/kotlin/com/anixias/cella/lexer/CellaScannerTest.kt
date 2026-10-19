@@ -8,7 +8,7 @@ import kotlin.test.assertTrue
 class CellaScannerTest {
 	private data class Lexed(val start: Int, val end: Int, val type: CellaToken, val state: Int)
 	
-	private fun lex(text: CharSequence, start: Int = 0, state: Int = CellaScanner.LINE_START): List<Lexed> {
+	private fun lex(text: CharSequence, start: Int = 0, state: Int = CellaScanner.NORMAL): List<Lexed> {
 		val scanner = CellaScanner()
 		scanner.start(text, start, text.length, state)
 		val tokens = mutableListOf<Lexed>()
@@ -65,22 +65,32 @@ class CellaScannerTest {
 	}
 	
 	@Test
-	fun classifiesContextualKeywordsByPosition() {
+	fun leavesContextualKeywordsToTheServer() {
 		assertEquals(
 			listOf(
-				"mod:DECLARATION_KEYWORD", "test:IDENTIFIER",
-				"Point:IDENTIFIER", "::COLON", "ref:MODIFIER_KEYWORD", "rec:DECLARATION_KEYWORD",
-				"scale:IDENTIFIER", "[:LEFT_BRACKET", "T:IDENTIFIER", "::COLON", "copy:MODIFIER_KEYWORD",
-				"+:OPERATOR", "noref:MODIFIER_KEYWORD", "]:RIGHT_BRACKET", "::COLON", "pub:MODIFIER_KEYWORD",
-				"fun:DECLARATION_KEYWORD", "->:ARROW", "i32:BUILTIN_TYPE",
-				"get:IDENTIFIER", "::COLON", "fun:DECLARATION_KEYWORD",
-				"get:DECLARATION_KEYWORD", "(:LEFT_PAREN", "self:VALUE_KEYWORD", "):RIGHT_PAREN",
+				"Point:IDENTIFIER", "::COLON", "ref:MODIFIER_KEYWORD", "rec:IDENTIFIER",
+				"scale:IDENTIFIER", "[:LEFT_BRACKET", "T:IDENTIFIER", "::COLON", "copy:IDENTIFIER",
+				"+:OPERATOR", "noref:IDENTIFIER", "]:RIGHT_BRACKET", "::COLON", "pub:IDENTIFIER",
+				"fun:DECLARATION_KEYWORD", "->:ARROW", "Self:BUILTIN_TYPE",
+				"pub:IDENTIFIER", "ext:IDENTIFIER", "{:LEFT_BRACE", "}:RIGHT_BRACE",
 				"val:MODIFIER_KEYWORD", "rec:IDENTIFIER", "=:OPERATOR", "255:INTEGER", "u8:LITERAL_SUFFIX"
 			),
-			describe(
-				"mod test\nPoint: ref rec\nscale[T: copy + noref]: pub fun -> i32\nget: fun\nget(self)\nval rec = 255u8\n"
-			)
+			describe("Point: ref rec\nscale[T: copy + noref]: pub fun -> Self\npub ext { }\nval rec = 255u8\n")
 		)
+	}
+
+	@Test
+	fun matchesTheCompilerKeywords() {
+		val declared = Regex("""new\("(\w+)", IsKeyword: true(, IsContextual: true)?""")
+			.findAll(File(System.getProperty("cella.tokens")).readText())
+			.toList()
+
+		val (contextual, reserved) = declared.partition { it.groupValues[2].isNotEmpty() }
+		assertEquals(reserved.map { it.groupValues[1] }.toSet(), CellaScanner.reservedWords)
+		for (word in contextual.map { it.groupValues[1] }) {
+			assertEquals(listOf("$word:IDENTIFIER"), describe(word))
+			assertTrue(CellaScanner.keywordCategory(word) != null, "$word has no keyword category")
+		}
 	}
 	
 	@Test

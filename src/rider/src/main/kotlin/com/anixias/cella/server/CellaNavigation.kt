@@ -1,6 +1,8 @@
 package com.anixias.cella.server
 
 import com.anixias.cella.CellaLanguage
+import com.anixias.cella.highlighting.CellaHighlighter
+import com.anixias.cella.lexer.CellaScanner
 import com.anixias.cella.lexer.CellaToken
 import com.anixias.cella.lexer.CellaTokenTypes
 import com.intellij.codeInsight.TargetElementEvaluatorEx
@@ -17,6 +19,7 @@ import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.editor.richcopy.HtmlSyntaxInfoUtil
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.util.text.StringUtil
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.platform.backend.documentation.DocumentationResult
@@ -123,12 +126,41 @@ class CellaDocumentationTarget(private val element: PsiElement) : DocumentationT
 		}) ?: return null
 		
 		val code = hover.contents?.right?.value ?: return null
-		val html = StringBuilder()
-		runReadActionBlocking {
-			HtmlSyntaxInfoUtil.appendHighlightedByLexerAndEncodedAsHtmlCodeSnippet(html, project, CellaLanguage, code, 1f)
+		return DocumentationMarkup.DEFINITION_START + highlightSignature(code) + DocumentationMarkup.DEFINITION_END
+	}
+	
+	private fun highlightSignature(code: String): String {
+		val scanner = CellaScanner()
+		scanner.start(code, 0, code.length, CellaScanner.NORMAL)
+		val tokens = mutableListOf<Pair<CellaToken, String>>()
+		while (true) {
+			val type = scanner.tokenType ?: break
+			tokens += type to code.substring(scanner.tokenStart, scanner.tokenEnd)
+			scanner.advance()
 		}
 		
-		return DocumentationMarkup.DEFINITION_START + html + DocumentationMarkup.DEFINITION_END
+		val html = StringBuilder()
+		for ((index, token) in tokens.withIndex()) {
+			val (type, text) = token
+			val key = if (type == CellaToken.IDENTIFIER && namesKind(tokens, index))
+				CellaScanner.keywordCategory(text)?.let(CellaHighlighter::colorOf)
+			else
+				CellaHighlighter.colorOf(type)
+			
+			val escaped = StringUtil.escapeXmlEntities(text)
+			if (key == null)
+				html.append(escaped)
+			else
+				HtmlSyntaxInfoUtil.appendStyledSpan(html, key, escaped, 1f)
+		}
+		
+		return html.toString()
+	}
+	
+	private fun namesKind(tokens: List<Pair<CellaToken, String>>, index: Int): Boolean {
+		val previous = tokens.subList(0, index).lastOrNull { it.first != CellaToken.WHITESPACE }?.first
+		val next = tokens.subList(index + 1, tokens.size).firstOrNull { it.first != CellaToken.WHITESPACE }?.first
+		return previous != CellaToken.DOT && next != CellaToken.COLON
 	}
 }
 

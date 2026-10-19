@@ -1,6 +1,7 @@
 ﻿using System.Text.Json.Nodes;
 using Cella.Compiler.Projects;
 using Cella.Core.Binding;
+using Cella.Core.Symbols;
 
 namespace Cella.LanguageServer;
 
@@ -112,12 +113,17 @@ public sealed class Server
 	private Func<Task<JsonNode?>>? AnswerLater(string method, JsonObject? parameters) => method switch
 	{
 		"textDocument/semanticTokens/full" => async () =>
-			SemanticTokens.Encode(await _workspace.GetReferencesAsync(GetUri(parameters))),
+		{
+			var (references, keywords) = await _workspace.GetTokensAsync(GetUri(parameters));
+			return SemanticTokens.Encode(references, keywords);
+		},
 		"textDocument/hover" => () => HoverAsync(parameters),
 		"textDocument/definition" => () => FindDefinitionAsync(parameters),
 		"textDocument/references" => () => FindReferencesAsync(parameters),
 		"textDocument/completion" => () => CompleteAsync(parameters),
 		"textDocument/signatureHelp" => () => HelpSignatureAsync(parameters),
+		"cella/visibleGlobals" => () => FindVisibleGlobalsAsync(parameters),
+		"cella/globalAt" => () => FindGlobalAsync(parameters),
 		"cella/runnables" => async () => new JsonArray([
 			..(await _workspace.GetRunnablesAsync(GetUri(parameters))).Select(JsonNode (runnable) => new JsonObject
 			{
@@ -175,6 +181,36 @@ public sealed class Server
 		var start = Completion.FindNameStart(text, offset);
 		var probed = Completion.Repair(start < offset ? text : text.Insert(offset, Completion.Placeholder), offset);
 		return Completion.ToList(await _workspace.ProbeAsync(Protocol.ToPath(uri), probed, offset), text, start);
+	}
+	
+	private async Task<JsonNode?> FindVisibleGlobalsAsync(JsonObject? parameters)
+	{
+		var uri = GetUri(parameters);
+		if (_workspace.GetText(uri) is not { } text)
+			return null;
+		
+		var offset = Debugging.FindStatementStart(text, GetOffset(text, parameters));
+		var probed = text.Insert(offset, Completion.Placeholder + "\n");
+		var probe = await _workspace.ProbeAsync(Protocol.ToPath(uri), probed, offset);
+		return probe?.Place == CompletionPlace.Name
+			? new JsonArray([..Debugging.DescribeGlobals(probe.Candidates)])
+			: new JsonArray();
+	}
+	
+	private async Task<JsonNode?> FindGlobalAsync(JsonObject? parameters)
+	{
+		var uri = GetUri(parameters);
+		if (_workspace.GetText(uri) is not { } text ||
+		    await FindAsync(parameters) is not { Symbol: GlobalSymbol, Declaration: { } declaration } hovered)
+			return null;
+		
+		var probe = await _workspace.ProbeAsync(Protocol.ToPath(uri), text, hovered.Location.Range.Start);
+		return probe?.Candidates
+			.Select(static candidate => candidate.Global)
+			.OfType<GlobalInfo>()
+			.Where(global => Debugging.IsDeclaredAt(global, declaration))
+			.Select(Debugging.Describe)
+			.FirstOrDefault();
 	}
 	
 	private async Task<JsonNode?> HelpSignatureAsync(JsonObject? parameters)
