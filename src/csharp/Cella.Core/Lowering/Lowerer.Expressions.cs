@@ -110,9 +110,9 @@ public sealed partial class Lowerer
 			var mergeBlock = CreateBlock("is_merge");
 			LowerPatternTest(scrutinee, pattern, bindBlock, mergeBlock);
 			currentBlock = bindBlock;
-			BindPattern(scrutinee, pattern, node.OwnsValue);
+			BindPattern(scrutinee, pattern, node.OwnsValue, node.OwnsValue);
 			if (node.OwnsValue)
-				ReleaseScrutinee(scrutinee, pattern);
+				ReleaseScrutinee(scrutinee, pattern, false);
 			
 			GetOrMakeBlock().Instructions.Add(new ExpressionInstruction(new AssignValue(NativeSymbols.Bool, result,
 				ConstantValue.True, location)));

@@ -1,0 +1,19 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+conv[T: new]: fun(flag: bool) -> T => T()
+conv[T: new]: fun(count: i32) -> T => T()
+
+main: fun -> i32
+{
+	val x: i64 = 4
+	val direct: i64 = conv(true)
+	val sum = x + conv(true)
+	val converted = i64(conv(true))
+	printf("%lld %lld %lld\n", direct, sum, converted)
+	ret 0
+}

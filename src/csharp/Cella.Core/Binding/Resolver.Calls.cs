@@ -133,10 +133,11 @@ public sealed partial class Resolver
 		
 		var failures = new List<Diagnostic>();
 		var specialized = SpecializeAll(args, failures);
+		var needsTarget = specialized.Length == 0 && failures.Count > 0 && failures.All(_inferenceFailures.Contains);
 		if (specialized.Length == 0 && shaped.Length == 1 && failures is [var failure])
 		{
 			Diagnostics.Add(failure);
-			return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
+			return new ResolvedInvalidExpressionNode(node, CurrentTargetType) { NeedsTargetType = needsTarget };
 		}
 		
 		var resolutionSet = ResolveCallable(specialized, args, MaterializationMode.Overload, CurrentTargetType);
@@ -167,8 +168,12 @@ public sealed partial class Resolver
 				: Error(node, $"'{functionName}' doesn't accept these arguments", CurrentTargetType, node.Target);
 		
 		if (!resolutionSet.HasResult)
-			return Error(node, $"No overload of '{functionName}' accepts these arguments", CurrentTargetType,
+		{
+			var error = Error(node, $"No overload of '{functionName}' accepts these arguments", CurrentTargetType,
 				node.Target);
+			
+			return needsTarget ? new ResolvedInvalidExpressionNode(node, error.Type) { NeedsTargetType = true } : error;
+		}
 		
 		var resolution = resolutionSet[0];
 		var info = resolution.Callable switch

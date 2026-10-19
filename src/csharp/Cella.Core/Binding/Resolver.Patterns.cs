@@ -396,7 +396,7 @@ public sealed partial class Resolver
 			}
 			
 			var fieldType = GetMemberType(field);
-			if (!ResolveSlot(element, fieldType, isMut, ownsValue, true, out var binding, out var nested))
+			if (!ResolveSlot(element, fieldType, isMut, false, true, out var binding, out var nested))
 			{
 				failed = true;
 				continue;

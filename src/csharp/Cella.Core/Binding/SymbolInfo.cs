@@ -20,6 +20,7 @@ public readonly record struct FunctionInfo
 	public string? MangledBase { get; init; }
 	public FunctionSignature? Declared { get; init; }
 	public FunctionSignature DeclaredSignature => Declared ?? Signature;
+	public bool BindsDeclared { get; init; }
 	
 	public bool Equals(FunctionInfo other) =>
 		MangledName == other.MangledName && Symbol == other.Symbol && Signature == other.Signature &&

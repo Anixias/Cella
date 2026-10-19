@@ -26,7 +26,7 @@ internal static class Installer
 		
 		foreach (var (name, component) in release.Components)
 		{
-			if (name.StartsWith("llvm-") && name != $"llvm-{Home.HostName}")
+			if (!Home.IsUsedOnThisHost(name))
 				continue;
 			
 			var directory = Home.GetComponentDirectory(name, component.Version);
@@ -85,6 +85,7 @@ internal static class Installer
 	{
 		var used = Home.FindInstalledVersions()
 			.SelectMany(static version => Home.ReadComponents(version))
+			.Where(static component => Home.IsUsedOnThisHost(component.Key))
 			.Select(static component => Path.GetFullPath(Home.GetComponentDirectory(component.Key, component.Value)))
 			.ToHashSet(OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal);
 		

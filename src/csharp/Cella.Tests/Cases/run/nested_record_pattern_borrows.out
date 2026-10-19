@@ -1,0 +1,19 @@
+owned 1
+drop holder 1
+drop name 1
+temporary 2
+drop holder 2
+drop name 2
+stored 3
+drop holder 3
+drop name 3
+guarded 4 5
+drop name 5
+drop holder 4
+drop name 4
+mixed 4 5
+drop name 5
+drop holder 4
+drop name 4
+total 19
+[exit code 0]

@@ -1,0 +1,36 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Display: trait
+{
+	print: fun(imm self)
+}
+
+str: impl Display
+{
+	print: fun(self) => printf("%.*s", i32(self.byteLength), self.data)
+}
+
+say: fun(text: fstr[Display]) -> i32
+{
+	text.piece(text.holes).print()
+	ret i32(text.holes)
+}
+
+greeting: fun -> str => "hi\n"
+
+pick: fun(n: i32) -> str => "one\n"
+pick: fun(n: bool) -> str => "two\n"
+
+main: fun -> i32
+{
+	say(greeting())
+	say(fstr[Display](greeting()))
+	say(pick(1))
+	say(pick(true))
+	ret 0
+}

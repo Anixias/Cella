@@ -1,0 +1,11 @@
+Error at own_operator_arguments.ce:25:12
+24 │ var k = Key(0)
+25 │ val a = t[own k]
+               ╘═╛ 'key' isn't an 'own' parameter
+
+Error at own_operator_arguments.ce:27:14
+26 │ var k2 = Key(1)
+27 │ val b = t + own k2
+                 ╘═╛ 'b' isn't an 'own' parameter
+
+[compilation failed]

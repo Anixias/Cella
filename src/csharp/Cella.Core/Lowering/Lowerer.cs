@@ -108,6 +108,7 @@ public sealed partial class Lowerer
 		private readonly Dictionary<int, List<VariableInfo>> _scopeDrops = [];
 		private readonly HashSet<LocalVariableSymbol> _temporaries = [];
 		private readonly HashSet<IResolvedExpressionNode> _returnedValues = [];
+		private readonly HashSet<ResolvedPattern> _heldSlots = new(ReferenceEqualityComparer.Instance);
 		private BasicBlock? currentBlock;
 		private ulong nextLoopId;
 		private ulong nextTempId;

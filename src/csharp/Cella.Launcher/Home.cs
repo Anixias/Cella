@@ -21,6 +21,9 @@ internal static class Home
 	
 	public static string GetVersionDirectory(SemanticVersion version) => Path.Combine(Directory, version.ToString());
 	
+	public static bool IsUsedOnThisHost(string component) =>
+		!component.StartsWith("llvm-") || component == $"llvm-{HostName}";
+	
 	public static string GetComponentDirectory(string name, string version) => name.StartsWith("llvm-")
 		? Path.Combine(Directory, "llvm", version)
 		: Path.Combine(Directory, "toolchains", name, version);

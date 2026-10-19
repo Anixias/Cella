@@ -61,7 +61,7 @@ public sealed partial class Lowerer
 				currentBlock = armBlocks[i];
 				var scope = BeginScope(armLocation);
 				if (patterns is [var single])
-					BindPattern(scrutinee, single, ownsValue);
+					BindPattern(scrutinee, single, ownsValue, ownsValue && guard is null);
 				
 				if (guard is not null)
 				{
@@ -77,7 +77,7 @@ public sealed partial class Lowerer
 				}
 				
 				if (ownsValue)
-					ReleaseScrutinee(scrutinee, patterns is [var owned] ? owned : null);
+					ReleaseScrutinee(scrutinee, patterns is [var owned] ? owned : null, guard is not null);
 				
 				lowerArm(i);
 				EndCurrentScope();
@@ -339,9 +339,9 @@ public sealed partial class Lowerer
 						var bindBlock = CreateBlock("is_bind");
 						LowerPatternTest(scrutinee, node.Pattern, bindBlock, falseBlock);
 						currentBlock = bindBlock;
-						BindPattern(scrutinee, node.Pattern, node.OwnsValue);
+						BindPattern(scrutinee, node.Pattern, node.OwnsValue, node.OwnsValue);
 						if (node.OwnsValue)
-							ReleaseScrutinee(scrutinee, node.Pattern);
+							ReleaseScrutinee(scrutinee, node.Pattern, false);
 						
 						GetOrMakeBlock().SetTerminator(new BranchTerminator(trueBlock, location));
 						currentBlock = null;
@@ -378,7 +378,7 @@ public sealed partial class Lowerer
 		private static bool IsSimpleTest(ResolvedPattern pattern) =>
 			!pattern.HasBindings && !pattern.IsConditional;
 		
-		private void BindPattern(Value subject, ResolvedPattern pattern, bool ownsValue)
+		private void BindPattern(Value subject, ResolvedPattern pattern, bool ownsValue, bool holdsBorrowed = false)
 		{
 			if (pattern.TestedType is not null)
 			{
@@ -402,10 +402,25 @@ public sealed partial class Lowerer
 			for (var i = 0; i < pattern.Bindings.Length; i++)
 			{
 				var payload = new EnumPayloadValue(payloadTypes[i], subject, enumCase, i, subject.SourceLocation);
-				BindSlot(payload, pattern.Bindings[i], pattern.Elements.Length > i ? pattern.Elements[i] : null,
-					ownsValue);
+				var element = pattern.Elements.Length > i ? pattern.Elements[i] : null;
+				if (holdsBorrowed && pattern.Bindings[i] is null && IsBorrowedRecord(element))
+				{
+					_heldSlots.Add(element!);
+					BindPattern(StoreTemporary(new MoveValue(payload), "held"), element!, false);
+				}
+				else if (element is { Case: not null } && pattern.Bindings[i] is null)
+				{
+					BindPattern(payload, element, ownsValue, holdsBorrowed);
+				}
+				else
+				{
+					BindSlot(payload, pattern.Bindings[i], element, ownsValue);
+				}
 			}
 		}
+		
+		private bool IsBorrowedRecord(ResolvedPattern? element) =>
+			element is { Record: not null, TestedType: null, HasBindings: true } && !MovesParts(element);
 		
 		private void BindFields(Value record, ResolvedPattern pattern, bool ownsValue)
 		{
@@ -435,8 +450,11 @@ public sealed partial class Lowerer
 				GetOrMakeBlock().Instructions.Add(new LocalVarInstruction(binding, slot, location, CurrentScopeId));
 		}
 		
-		private void ReleaseScrutinee(Value scrutinee, ResolvedPattern? pattern)
+		private void ReleaseScrutinee(Value scrutinee, ResolvedPattern? pattern, bool isGuarded)
 		{
+			if (isGuarded && pattern is not null && pattern.AllBindings.Any(static binding => binding.IsBorrowBinding))
+				return;
+			
 			if (pattern is { Case: not null })
 			{
 				ReleasePayload(scrutinee, pattern);
@@ -464,6 +482,9 @@ public sealed partial class Lowerer
 		
 		private void ReleaseSlot(Value slot, ResolvedPattern? element)
 		{
+			if (element is not null && _heldSlots.Contains(element))
+				return;
+			
 			if (element is { Case: not null })
 				ReleasePayload(slot, element);
 			else if (element is { Record: not null, TestedType: null } && MovesParts(element))

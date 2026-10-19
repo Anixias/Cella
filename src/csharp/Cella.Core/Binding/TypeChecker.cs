@@ -845,11 +845,20 @@ public sealed class TypeChecker
 		bool isPacked)
 	{
 		if (mode != ParameterMode.Own && !isPacked && arg.Syntax is OwnExpressionNode own &&
-		    call is CallExpressionNode { Arguments: var written } && written.Contains(arg.Syntax))
+		    IsWrittenArgument(call, own))
 			Diagnostics.Add(new(DiagnosticSeverity.Error, own.Keyword.SourceLocation, name is null
 				? "Only an argument to an 'own' parameter can be marked 'own'"
 				: $"'{name}' isn't an 'own' parameter"));
 	}
+	
+	private static bool IsWrittenArgument(IExpressionNode call, IExpressionNode argument) => call switch
+	{
+		CallExpressionNode node => node.Arguments.Contains(argument),
+		IndexerExpressionNode node => node.Arguments.Contains(argument),
+		BinaryOpExpressionNode node => node.Left == argument || node.Right == argument,
+		UnaryOpExpressionNode node => node.Operand == argument,
+		_ => false
+	};
 	
 	public void Visit(ResolvedFunctionReferenceExpressionNode node)
 	{

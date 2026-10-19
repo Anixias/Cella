@@ -22,4 +22,5 @@ public sealed class ResolvedInvalidExpressionNode(IExpressionNode syntax, TypeSy
 	public TypeSymbol Type { get; } = type ?? NativeSymbols.Invalid;
 	public IExpressionNode Syntax { get; } = syntax;
 	public ImmutableArray<IResolvedExpressionNode> Parts { get; init; } = [];
+	public bool NeedsTargetType { get; init; }
 }

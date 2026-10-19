@@ -64,7 +64,8 @@ public sealed partial class Resolver
 					                 : FindUserConversion(candidate.ReturnType, null, ParameterMode.ReadOnly, target));
 				
 				if (conversion is null && candidate.ReturnType != NativeSymbols.Void &&
-				    candidate.ReturnType is not BorrowType && target is not BorrowType)
+				    candidate.ReturnType is not BorrowType && target is not BorrowType &&
+				    !IsTemplateSource(candidate.ReturnType, target))
 					continue;
 				
 				// Exact returns beat converted returns, so set to a higher cost
@@ -399,7 +400,7 @@ public sealed partial class Resolver
 				: (cost, null);
 		}
 		
-		if (target is FStrType && arg.Type == NativeSymbols.Str)
+		if (IsTemplateSource(arg.Type, target))
 			return (1, null);
 		
 		if (_conversionTable.FindImplicit(arg.Type, target) is { } conversion)
@@ -419,6 +420,9 @@ public sealed partial class Resolver
 		
 		return caseName.Symbol is null ? (int.MaxValue, null) : MatchArg(GetFallback(caseName), target, mode);
 	}
+	
+	private static bool IsTemplateSource(TypeSymbol source, TypeSymbol target) =>
+		target is FStrType && source == NativeSymbols.Str;
 	
 	private bool LiteralFits(ResolvedLiteralExpressionNode literal, TypeSymbol target) => (literal.Type, target) switch
 	{

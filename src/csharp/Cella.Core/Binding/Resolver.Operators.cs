@@ -166,7 +166,7 @@ public sealed partial class Resolver
 			IResolvedExpressionNode left, right;
 			var leftTrial = OpenCheckpoint();
 			left = Decay(VisitOperand(node.Left, candidates, 0));
-			if (!isConjunction && FailsInference(node.Left, left, leftTrial))
+			if (!isConjunction && left is ResolvedInvalidExpressionNode { NeedsTargetType: true })
 			{
 				Rollback(leftTrial);
 				right = Decay(VisitOperand(node.Right, candidates, 1));

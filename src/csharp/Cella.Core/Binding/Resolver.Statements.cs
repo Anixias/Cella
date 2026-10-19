@@ -115,7 +115,11 @@ public sealed partial class Resolver
 		
 		var parts = ResolveAbandonedParts(node, arguments);
 		return parts.Length > 0
-			? new ResolvedInvalidExpressionNode(invalid.Syntax, invalid.Type) { Parts = parts }
+			? new ResolvedInvalidExpressionNode(invalid.Syntax, invalid.Type)
+			{
+				Parts = parts,
+				NeedsTargetType = invalid.NeedsTargetType
+			}
 			: result;
 	}
 	

@@ -52,14 +52,50 @@ function Expand-Upstream {
 	}
 
 	$tar = if ($IsWindows) { Join-Path $env:SystemRoot 'System32/tar.exe' } elseif ($Archive -match '\.rpm$') { 'bsdtar' } else { 'tar' }
+	$arguments = @('-xf', $Archive, '-C', $Destination)
+	$exclude = $null
 	if ($IsWindows) {
-		& $tar -xf $Archive -C $Destination @Members 2>$null
-		return
+		$links = @(Get-LinkEntries -Tar $tar -Archive $Archive)
+		if ($links.Count -gt 0) {
+			$exclude = New-TemporaryFile
+			Set-Content -Path $exclude -Value $links
+			$arguments += @('-X', $exclude.FullName)
+		}
 	}
 
-	& $tar -xf $Archive -C $Destination @Members
+	try {
+		& $tar @arguments @Members
+		if ($LASTEXITCODE -ne 0) {
+			throw "Couldn't extract $Archive"
+		}
+	}
+	finally {
+		if ($exclude) {
+			Remove-Item $exclude
+		}
+	}
+}
+
+function Get-LinkEntries {
+	param(
+		[Parameter(Mandatory)] [string] $Tar,
+		[Parameter(Mandatory)] [string] $Archive
+	)
+
+	$names = @(& $Tar -tf $Archive)
 	if ($LASTEXITCODE -ne 0) {
-		throw "Couldn't extract $Archive"
+		throw "Couldn't list $Archive"
+	}
+
+	$details = @(& $Tar -tvf $Archive)
+	if ($LASTEXITCODE -ne 0 -or $details.Count -ne $names.Count) {
+		throw "Couldn't list $Archive"
+	}
+
+	for ($i = 0; $i -lt $names.Count; $i++) {
+		if ($details[$i] -match '^[lh]') {
+			$names[$i]
+		}
 	}
 }
 

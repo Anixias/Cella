@@ -182,9 +182,10 @@ public sealed partial class Resolver
 				return AnyInvalid(trial) || checkpoint.HasErrors || !accepts(index, trial)
 					? null
 					: deferred
-						.Select(i => FindCaseDistance(nodes[i], values[i], trial[i], shapes[index], i) ??
-						             FindLambdaDistance(nodes[i], trial, shapes[index], i) ??
-						             LiteralDistance(values[i].Type, trial[i].Type))
+						.Select(i => nodes[i] is LambdaExpressionNode
+							? FindLambdaDistance(nodes[i], trial, shapes[index], i) ?? 0
+							: FindCaseDistance(nodes[i], values[i], trial[i], shapes[index], i) ??
+							  LiteralDistance(values[i].Type, trial[i].Type))
 						.Aggregate(0, AddCosts);
 			}
 			finally
@@ -557,7 +558,7 @@ public sealed partial class Resolver
 		
 		var trial = OpenCheckpoint();
 		var value = visit();
-		if (!FailsInference(node, value, trial))
+		if (value is not ResolvedInvalidExpressionNode { NeedsTargetType: true })
 		{
 			Commit(trial);
 			return value;
@@ -575,10 +576,4 @@ public sealed partial class Resolver
 		Rollback(retry);
 		return visit();
 	}
-	
-	private bool FailsInference(IExpressionNode node, IResolvedExpressionNode value, Checkpoint trial) =>
-		node is CallExpressionNode && IsInvalid(value) && trial.Redirections
-			.SelectMany(static redirection => redirection.Captured)
-			.Any(diagnostic => _inferenceFailures.Contains(diagnostic) &&
-			                   diagnostic.SourceLocation.Range.Start == node.SourceLocation.Range.Start);
 }

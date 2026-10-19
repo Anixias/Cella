@@ -1,0 +1,29 @@
+mod test
+
+Key: rec
+{
+	id: usize
+
+	drop: op {}
+}
+
+Table: rec
+{
+	n: i32
+
+	[]: op(self, imm key: Key) -> i32 => self.n
+
+	+: op(imm a: Table, imm b: Key) -> i32 => a.n
+}
+
+show: fun(imm key: Key) -> i32 => 0
+
+main: fun -> i32
+{
+	var t = Table(1)
+	var k = Key(0)
+	val a = t[own k]
+	var k2 = Key(1)
+	val b = t + own k2
+	ret a
+}

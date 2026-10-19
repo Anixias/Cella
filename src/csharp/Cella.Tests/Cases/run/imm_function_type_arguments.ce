@@ -1,0 +1,24 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+apply[T: copy]: fun(f: fun[imm T -> i32], value: T) -> i32 => f(imm value)
+
+direct: fun(f: fun[imm fun[-> i32] -> i32], value: fun[-> i32]) -> i32 => f(imm value)
+
+look: fun(imm g: fun[-> i32]) -> i32 => g()
+
+twice: fun(imm n: i32) -> i32 => n * 2
+
+answer: fun -> i32 => 42
+
+main: fun -> i32
+{
+	printf("%d %d %d %d\n", direct(look, answer), apply(look, answer), apply[fun[-> i32]](look, answer),
+		apply(twice, 5))
+
+	ret 0
+}

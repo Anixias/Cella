@@ -296,6 +296,8 @@ public sealed partial class TypePool
 			if (mode == ParameterMode.ReadOnly && types[i] is TypeParameterSymbol &&
 			    type is FunctionType { IsExternal: false, IsRef: false })
 				mode = ParameterMode.Own;
+			else if (mode == ParameterMode.Imm && types[i] is TypeParameterSymbol)
+				type = GetPassedType(type, mode);
 			
 			substitutedTypes[i] = type;
 			substitutedModes[i] = mode;

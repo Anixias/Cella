@@ -200,6 +200,9 @@ public sealed partial class Resolver
 	private static ImmutableArray<TypeParameterSymbol> GetOpenTypeParameters(FunctionInfo info)
 	{
 		var declared = info.Symbol.DeclaredTypeParameters;
+		if (info.BindsDeclared)
+			return [];
+		
 		if (declared.IsEmpty || info.TypeArguments.IsDefaultOrEmpty)
 			return declared;
 		
@@ -215,7 +218,7 @@ public sealed partial class Resolver
 			? symbol.TypeParameters.Take(outerCount)
 			: info.TypeArguments.Take(outerCount);
 		
-		return _typePool.InstantiateFunction(info, [..outer, ..arguments]);
+		return _typePool.InstantiateFunction(info, [..outer, ..arguments]) with { BindsDeclared = true };
 	}
 	
 	private InferenceInput? CreateInferenceInput(TypeSymbol parameter, ParameterMode mode, IResolvedExpressionNode arg)

@@ -1,0 +1,106 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Name: rec
+{
+	id: i32
+
+	drop: op
+	{
+		printf("drop name %d\n", self.id)
+	}
+}
+
+Holder: rec
+{
+	name: Name
+
+	drop: op
+	{
+		printf("drop holder %d\n", self.name.id)
+	}
+}
+
+Wrap: enum
+{
+	w(h: Holder)
+	pair(h: Holder, other: Name)
+	none
+}
+
+makeWrap: fun(id: i32) -> Wrap => Wrap.w(Holder(Name(id)))
+
+owned: fun -> i32
+{
+	val x = makeWrap(1)
+	match own x
+	{
+		w(Holder(val name)) =>
+		{
+			printf("owned %d\n", name.id)
+			ret name.id
+		}
+
+		else => ret 0
+	}
+}
+
+temporary: fun -> i32
+{
+	match makeWrap(2)
+	{
+		w(Holder(val name)) =>
+		{
+			printf("temporary %d\n", name.id)
+			ret name.id
+		}
+
+		else => ret 0
+	}
+}
+
+stored: fun -> i32
+{
+	val x = makeWrap(3)
+	match x
+	{
+		w(Holder(val name)) =>
+		{
+			printf("stored %d\n", name.id)
+			ret name.id
+		}
+
+		else => ret 0
+	}
+}
+
+mixed: fun(guarded: bool) -> i32
+{
+	match Wrap.pair(Holder(Name(4)), Name(5))
+	{
+		pair(Holder(val name), Name(val id)) if guarded =>
+		{
+			printf("guarded %d %d\n", name.id, id)
+			ret name.id + id
+		}
+
+		pair(Holder(val name), own other) =>
+		{
+			printf("mixed %d %d\n", name.id, other.id)
+			ret name.id
+		}
+
+		else => ret 0
+	}
+}
+
+main: fun -> i32
+{
+	val total = owned() + temporary() + stored() + mixed(true) + mixed(false)
+	printf("total %d\n", total)
+	ret 0
+}
