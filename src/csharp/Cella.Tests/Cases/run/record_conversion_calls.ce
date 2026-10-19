@@ -1,0 +1,36 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Wrap: rec
+{
+	value: i32
+
+	as: op(f: fun[-> i32]) -> Wrap => Wrap(f())
+}
+
+Counter: rec
+{
+	count: i32
+}
+
+Tally: ref rec
+{
+	target: ptr[Counter]
+
+	as: op(mut c: Counter) -> Tally => Tally(@c)
+}
+
+main: fun -> i32
+{
+	val a: Wrap = fun -> i32 => 5
+	val b = Wrap(fun -> i32 => 7)
+	var c = Counter(1)
+	val t: Tally = mut c
+	val u = Tally(mut c)
+	printf("%d %d %d\n", a.value, b.value, i32(t.target == u.target))
+	ret 0
+}

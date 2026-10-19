@@ -125,7 +125,7 @@ public sealed class LoopFollower
 	
 	private IEnumerable<BasicBlock> GetSuccessors(BasicBlock block, Context context, KnownValues values)
 	{
-		if (block.Terminator is not ConditionalBranchTerminator { IsErasedCall: false } branch)
+		if (block.Terminator is not ConditionalBranchTerminator branch)
 			return CfgUtils.GetSuccessors(block);
 		
 		var decided = _values.Evaluate(branch.Condition, values) as BoolConstant;

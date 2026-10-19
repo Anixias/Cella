@@ -1,0 +1,26 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Text: rec
+{
+	value: i64
+}
+
+text: val Text = Text(5)
+
+pick: fun(x: i32) -> imm[Text] => imm text
+
+pick: fun(x: i64) -> i64 => x + 10
+
+main: fun -> i32
+{
+	val a: i32 = 1
+	val y: i64 = pick(a)
+	val t: Text = pick(a)
+	printf("%lld %lld\n", y, t.value)
+	ret 0
+}

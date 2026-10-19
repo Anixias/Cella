@@ -20,6 +20,19 @@ public sealed partial class FileParser
 	
 	private bool ParseStatements(ref int index, Token open, List<IStatementNode> statements, out Token close)
 	{
+		blockDepth++;
+		try
+		{
+			return ParseBlockContents(ref index, open, statements, out close);
+		}
+		finally
+		{
+			blockDepth--;
+		}
+	}
+	
+	private bool ParseBlockContents(ref int index, Token open, List<IStatementNode> statements, out Token close)
+	{
 		while (!Match(ref index, out close, TokenType.OpCloseBrace))
 		{
 			if (AtEnd(index))
@@ -49,9 +62,9 @@ public sealed partial class FileParser
 				{
 					statement = ParseStatement(ref index);
 				}
-				catch (ParseException e)
+				catch (ParseException e) when (!e.IsNesting || blockDepth == 1)
 				{
-					Diagnostics.Add(e.Diagnostic);
+					AddParseError(e);
 				}
 			}
 			
@@ -116,6 +129,7 @@ public sealed partial class FileParser
 	
 	private IStatementNode? ParseStatement(ref int index)
 	{
+		EnsureStack(index);
 		if (Peek(index, TokenType.OpCloseBrace))
 		{
 			ReportExpected(index, "a statement");
@@ -145,9 +159,8 @@ public sealed partial class FileParser
 		
 		if (index > 0 && !IsOnSameLine(index) && ExpressionParser.ContinuesExpression(Tokens[index].Type))
 		{
-			if (!IsReported(Tokens[index]))
-				Report(Tokens[index], $"Cannot start a line with '{Tokens[index].Text}'");
-			
+			Report(Tokens[index], $"Cannot start a line with '{Tokens[index].Text}'");
+			index++;
 			return null;
 		}
 		
@@ -292,29 +305,45 @@ public sealed partial class FileParser
 	{
 		// ifToken already consumed when this function is called
 		
-		if (StartsBody(index))
+		var arms = new List<(Token Keyword, IExpressionNode Condition, IStatementNode Then)>();
+		IStatementNode? @else = null;
+		var keyword = ifToken;
+		while (true)
 		{
-			ReportMissing(index, "a condition");
-			return null;
+			if (StartsBody(index))
+			{
+				ReportMissing(index, "a condition");
+				return null;
+			}
+			
+			var condition = ParseExpression(ref index);
+			if (ParseStatement(ref index) is not { } then)
+				return null;
+			
+			arms.Add((keyword, condition, then));
+			if (!Match(ref index, TokenType.KeywordElse))
+				break;
+			
+			if (Match(ref index, out keyword, TokenType.KeywordIf))
+				continue;
+			
+			if (ParseStatement(ref index) is not { } last)
+				return null;
+			
+			@else = last;
+			break;
 		}
 		
-		var condition = ParseExpression(ref index);
-		
-		if (ParseStatement(ref index) is not { } then)
-			return null;
-		
-		var (source, range) = ifToken.SourceLocation;
-		if (!Match(ref index, TokenType.KeywordElse))
+		IfStatementNode? chain = null;
+		for (var i = arms.Count - 1; i >= 0; i--)
 		{
-			range = range.Join(then.SourceLocation.Range);
-			return new(new(source, range), condition, then, null);
+			var (source, range) = arms[i].Keyword.SourceLocation;
+			var tail = (IStatementNode?)chain ?? @else;
+			range = range.Join((tail ?? arms[i].Then).SourceLocation.Range);
+			chain = new IfStatementNode(new(source, range), arms[i].Condition, arms[i].Then, tail);
 		}
 		
-		if (ParseStatement(ref index) is not { } @else)
-			return null;
-		
-		range = range.Join(@else.SourceLocation.Range);
-		return new(new(source, range), condition, then, @else);
+		return chain;
 	}
 	
 	private MatchStatementNode? ParseMatchStatement(ref int index, Token matchToken)

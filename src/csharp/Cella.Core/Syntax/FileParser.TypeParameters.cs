@@ -136,7 +136,7 @@ public sealed partial class FileParser
 		}
 		catch (ParseException e)
 		{
-			Diagnostics.Add(e.Diagnostic);
+			AddParseError(e);
 		}
 		
 		return null;

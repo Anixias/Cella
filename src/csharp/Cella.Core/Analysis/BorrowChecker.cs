@@ -53,7 +53,7 @@ public sealed class BorrowChecker
 	private readonly Dictionary<LocalVariableSymbol, List<SourceLocation>> _temporaryEnds = [];
 	private readonly List<(LocalVariableSymbol Temporary, List<LocalVariableSymbol> Holders)> _dying = [];
 	private readonly HashSet<SourceLocation> _reportedEnds = [];
-	private readonly Dictionary<ParameterSymbol, HashSet<Place>> _reportedStores = [];
+	private readonly Dictionary<ParameterSymbol, HeldBorrows> _held = [];
 	private HashSet<VariableSymbol> returned = [];
 	private Dictionary<ParameterSymbol, Escape?> parameterEscapes = [];
 	private ParameterSymbol? receiver;
@@ -208,7 +208,7 @@ public sealed class BorrowChecker
 		for (var i = 0; i < parameters.Length; i++)
 		{
 			if (parameters[i] != constructorSelf && typePool.HoldsBorrows(signature.GetDeclaredType(i)))
-				state.Set(parameters[i], [new Place(new HeldBorrows(parameters[i]), [])]);
+				state.Set(parameters[i], [new Place(GetHeld(parameters[i]), [])]);
 		}
 		
 		var captures = function.Info.Symbol.Captures;
@@ -547,8 +547,7 @@ public sealed class BorrowChecker
 					{ } escape => $"Cannot store borrows of {Describe(escape)} in 'self'",
 					null => null
 				},
-				ParameterSymbol { Mode: ParameterMode.Mut } parameter when !IsHeld(origins, parameter) &&
-				                                                           !WasReported(origins, parameter) =>
+				ParameterSymbol { Mode: ParameterMode.Mut } parameter when !IsHeld(origins, parameter) =>
 					parameter == receiver
 						? "Cannot store new borrows in 'self'"
 						: "Cannot store new borrows in 'mut' parameters",
@@ -559,27 +558,29 @@ public sealed class BorrowChecker
 			if (message is null)
 				continue;
 			
-			if (root is ParameterSymbol stored)
-				ReportedStores(stored).UnionWith(origins);
-			
 			if (_reported.Add(location))
 				diagnostics.Add(new(DiagnosticSeverity.Error, location, message));
 		}
 	}
 	
-	private HashSet<Place> ReportedStores(ParameterSymbol parameter)
+	private HeldBorrows GetHeld(ParameterSymbol parameter)
 	{
-		if (!_reportedStores.TryGetValue(parameter, out var stores))
-		{
-			stores = new(PlaceComparer.Instance);
-			_reportedStores[parameter] = stores;
-		}
+		if (!_held.TryGetValue(parameter, out var held))
+			_held[parameter] = held = new HeldBorrows(parameter);
 		
-		return stores;
+		return held;
 	}
 	
-	private bool WasReported(List<Place> written, ParameterSymbol parameter) =>
-		_reportedStores.TryGetValue(parameter, out var stores) && written.All(stores.Contains);
+	private List<Place> Legalize(VariableSymbol root, List<Place> written)
+	{
+		if (root is not ParameterSymbol { Mode: ParameterMode.Mut } parameter || parameter == constructorSelf)
+			return written;
+		
+		var origins = written.Where(static source => source.Root is not BindingTarget).ToList();
+		return origins.Count == 0 || origins.Any(source => source.Root == root) || IsHeld(origins, parameter)
+			? written
+			: [new Place(GetHeld(parameter), [])];
+	}
 	
 	private static IEnumerable<VariableSymbol> Roots(List<Place> targets) => targets
 		.Select(static target => target.Root)
@@ -646,9 +647,9 @@ public sealed class BorrowChecker
 				state.EndPayloads(e.Place, new(Ending.Reassigned, e.Location));
 				state.Revive(e.Place);
 				if (e.Place.Path.IsEmpty)
-					state.Set(e.Place.Root, Written(e, state, CarriesSources));
+					state.Set(e.Place.Root, Legalize(e.Place.Root, Written(e, state, CarriesSources)));
 				else
-					state.Add(e.Place.Root, Written(e, state, CarriesSources));
+					state.Add(e.Place.Root, Legalize(e.Place.Root, Written(e, state, CarriesSources)));
 				
 				break;
 			
@@ -713,10 +714,10 @@ public sealed class BorrowChecker
 			state.Retarget(target, _formerTargets.GetOrAdd(local));
 	}
 	
-	private static void WriteThrough(List<Place> targets, List<Place> written, BorrowState state)
+	private void WriteThrough(List<Place> targets, List<Place> written, BorrowState state)
 	{
 		foreach (var root in Roots(targets))
-			state.Add(root, written);
+			state.Add(root, Legalize(root, written));
 	}
 	
 	private List<Place> Written(WriteEvent write, BorrowState state, Func<TypeSymbol, bool> tracks) =>

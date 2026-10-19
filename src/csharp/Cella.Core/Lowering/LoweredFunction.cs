@@ -18,6 +18,15 @@ public sealed class LoweredFunction(FunctionInfo info)
 	public ControlFlowGraph Blocks { get; } = new();
 	public List<StatementStart> Statements { get; } = [];
 	public SourceLocation ExitLocation { get; set; } = SourceLocation.None;
+	public bool IsCheckOnly { get; init; }
+	public List<SourceLocation> InlinedBodies { get; } = [];
+	public List<SourceLocation> InlineReturns { get; } = [];
+	
+	public bool IsInlined(SourceLocation location) =>
+		InlinedBodies.Any(body => Contains(body, location)) && !InlineReturns.Any(value => Contains(value, location));
+	
+	private static bool Contains(SourceLocation outer, SourceLocation inner) =>
+		outer.Source == inner.Source && outer.Range.Contains(inner.Range);
 	
 	public void Normalize()
 	{

@@ -12,7 +12,22 @@ public sealed partial class Lowerer
 	{
 		public Value Visit(ResolvedReturnExpressionNode node)
 		{
-			LowerReturn(node.Value, node.Syntax.SourceLocation);
+			if (node is { IsInline: true, Value: { } returned })
+				_function.InlineReturns.Add(returned.Syntax.SourceLocation);
+			
+			if (node is { HasUnknownTarget: true, Value: { } discarded and not ResolvedInvalidExpressionNode })
+			{
+				var value = VisitNode(discarded);
+				if (currentBlock is not null)
+				{
+					if (_typePool.NeedsDrop(value.Type))
+						StoreTemporary(value, "discard");
+					else
+						currentBlock.Instructions.Add(new ExpressionInstruction(value));
+				}
+			}
+			
+			LowerReturn(node.HasUnknownTarget ? null : node.Value, node.Syntax.SourceLocation);
 			return new UndefValue(node.Type);
 		}
 		

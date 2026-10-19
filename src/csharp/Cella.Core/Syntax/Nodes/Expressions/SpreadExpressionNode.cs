@@ -2,8 +2,7 @@
 
 namespace Cella.Core.Syntax.Nodes;
 
-public sealed class SpreadExpressionNode(Token ellipsis, IExpressionNode value, SourceLocation sourceLocation)
-	: IExpressionNode
+public sealed class SpreadExpressionNode(IExpressionNode value, SourceLocation sourceLocation) : IExpressionNode
 {
 	public IExpressionNode Value { get; } = value;
 	

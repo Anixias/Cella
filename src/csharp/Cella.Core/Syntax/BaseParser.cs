@@ -1,4 +1,5 @@
 ﻿using System.Collections.Immutable;
+using System.Runtime.CompilerServices;
 using Cella.Core.Text;
 using Cella.Diagnostics;
 
@@ -23,6 +24,13 @@ public abstract class BaseParser<T>(ImmutableArray<Token> tokens, List<Token>? c
 		TokenTypeInfo.GetKeyword(token.Text) == token.Type && !token.Type.IsContextual;
 	
 	protected static string DescribeReservedWord(Token token) => $"'{token.Text}' is a keyword";
+	
+	protected void EnsureStack(int index)
+	{
+		if (!RuntimeHelpers.TryEnsureSufficientExecutionStack())
+			throw new ParseException(new Diagnostic(DiagnosticSeverity.Error,
+				Tokens[Math.Min(index, Tokens.Length - 1)].SourceLocation, "Nesting is too deep")) { IsNesting = true };
+	}
 	
 	protected bool MatchSeparator(ref int index, params ReadOnlySpan<TokenType> closers) =>
 		Match(ref index, out var comma, TokenType.OpComma) && !RejectTrailingComma(index, comma, closers);

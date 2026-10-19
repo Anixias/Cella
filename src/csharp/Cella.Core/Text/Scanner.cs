@@ -15,14 +15,32 @@ public class Scanner
 		Source = source;
 	}
 	
+	public static bool IsHiddenCharacter(char character) =>
+		character is '\u0085' or '\u2028' or '\u2029' or >= '\u202A' and <= '\u202E' or >= '\u2066' and <= '\u2069';
+	
 	public ScanResult ScanToken(int position)
+	{
+		var result = ScanAny(position);
+		if (result.Token.Type == TokenType.EndOfFile)
+			return result;
+		
+		var range = result.Token.SourceLocation.Range;
+		var hidden = Enumerable.Range(range.Start, range.End - range.Start)
+			.Where(index => IsHiddenCharacter(Source[index]))
+			.Select(index => new SourceLocation(Source, new TextRange(index, index + 1)))
+			.ToImmutableArray();
+		
+		return hidden.IsEmpty ? result : result with { Token = result.Token with { HiddenCharacters = hidden } };
+	}
+	
+	private ScanResult ScanAny(int position)
 	{
 		if (position < 0 || position >= Source.Length)
 			return ScanResult.EndOfFile(Source);
 		
 		var character = Source[position];
 		
-		if (char.IsWhiteSpace(character))
+		if (char.IsWhiteSpace(character) || IsHiddenCharacter(character))
 			return ScanWhiteSpace(position);
 		
 		if (char.IsAsciiDigit(character))
@@ -81,7 +99,7 @@ public class Scanner
 		while (end < Source.Length)
 		{
 			var c = Source[end];
-			if (c is '\n' or '\r' || !char.IsWhiteSpace(c))
+			if (c is '\n' or '\r' || !char.IsWhiteSpace(c) && !IsHiddenCharacter(c))
 				break;
 			
 			end++;

@@ -20,11 +20,21 @@ public sealed class Scope(Scope? parent = null)
 	
 	public void Define(string name, Symbol symbol) => _symbols[name] = symbol;
 	
-	public Symbol? Resolve(string name) => _symbols.GetValueOrDefault(name) ?? Parent?.Resolve(name);
+	public Symbol? Resolve(string name) =>
+		GetChain().Select(scope => scope._symbols.GetValueOrDefault(name))
+			.FirstOrDefault(static symbol => symbol is not null);
 	
-	public LabelSymbol? ResolveLabel(string name) => _labels.GetValueOrDefault(name) ?? Parent?.ResolveLabel(name);
+	public LabelSymbol? ResolveLabel(string name) =>
+		GetChain().Select(scope => scope._labels.GetValueOrDefault(name))
+			.FirstOrDefault(static label => label is not null);
 	
-	public IEnumerable<string> GetLabelNames() => _labels.Keys.Concat(Parent?.GetLabelNames() ?? []);
+	public IEnumerable<string> GetLabelNames() => GetChain().SelectMany(static scope => scope._labels.Keys);
+	
+	private IEnumerable<Scope> GetChain()
+	{
+		for (var scope = this; scope is not null; scope = scope.Parent)
+			yield return scope;
+	}
 	
 	public Scope CreateChild() => new(this);
 }

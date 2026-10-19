@@ -8,4 +8,6 @@ public readonly record struct TextRange(int Start, int End)
 	public bool IsValid { get; } = End >= Start && Start >= 0;
 	
 	public TextRange Join(TextRange range) => new(Math.Min(Start, range.Start), Math.Max(End, range.End));
+	
+	public bool Contains(TextRange range) => Start <= range.Start && range.End <= End;
 }

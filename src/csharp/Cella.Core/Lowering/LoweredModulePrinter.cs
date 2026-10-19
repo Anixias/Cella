@@ -247,6 +247,10 @@ public static class LoweredModulePrinter
 					sb.Append("undef[").Append(v.Type.Name).Append(']');
 					break;
 				
+				case NotRunValue:
+					sb.Append("not_run");
+					break;
+				
 				case SizeOfValue v:
 					sb.Append("sizeOf(").Append(v.Target.Name).Append(')');
 					break;

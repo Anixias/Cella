@@ -18,13 +18,6 @@ public sealed partial class TypePool
 		return _destructors.TryGetValue(type, out var info) ? info : null;
 	}
 	
-	public void SetDestructorMoves(TypeSymbol type, IReadOnlySet<FieldSymbol> fields) =>
-		_destructorMoves[type] = fields;
-	
-	public bool IsMovedByDestructor(TypeSymbol type, FieldSymbol field) =>
-		_destructorMoves.TryGetValue(type.OriginalDefinition, out var fields) &&
-		fields.Any(moved => moved.Name == field.Name);
-	
 	public bool NeedsDrop(TypeSymbol type) => GetFacts(type).NeedsDrop;
 	public bool IsCopy(TypeSymbol type) => GetFacts(type).IsCopy;
 	public bool HasDefault(TypeSymbol type) => GetFacts(type).HasDefault;

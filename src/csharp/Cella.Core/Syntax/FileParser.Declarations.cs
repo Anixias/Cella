@@ -354,6 +354,8 @@ public sealed partial class FileParser
 		where T : class
 	{
 		var errorCount = Diagnostics.ErrorCount;
+		var outerNesting = reportedNesting;
+		reportedNesting = false;
 		T? declaration;
 		
 		try
@@ -362,9 +364,11 @@ public sealed partial class FileParser
 		}
 		catch (ParseException e)
 		{
-			Diagnostics.Add(e.Diagnostic);
+			AddParseError(e);
 			declaration = null;
 		}
+		
+		reportedNesting = outerNesting;
 		
 		if (declaration is null && Diagnostics.ErrorCount == errorCount)
 			Report(start, $"Invalid {kind} declaration");

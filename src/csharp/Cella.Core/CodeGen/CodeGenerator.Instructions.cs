@@ -230,6 +230,7 @@ public sealed partial class CodeGenerator
 		EnumTagValue v => EmitEnumTag(v, builder),
 		EnumPayloadValue v => EmitEnumPayload(v, builder),
 		SizeOfValue v => EmitSizeOf(v),
+		NotRunValue => LLVMValueRef.CreateConstInt(_context.Int1Type, 0),
 		AlignOfValue v => EmitAlignOf(v),
 		ValueParameterValue v => EmitValueParameter(v),
 		TraitConstantValue v => EmitTraitConstant(v),

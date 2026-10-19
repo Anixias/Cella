@@ -7,17 +7,20 @@ Error at question_operators.ce:21:22
 Error at question_operators.ce:27:30
 26 │ 
 27 │ plain: fun -> i32 => parse(1)?
-                                  ^ Cannot return 'err' from 'plain'
+                                  ^ Cannot use '?' on 'Result[i32, i32]' in 'plain'
+                                  | 'plain' returns 'i32'
 
 Error at question_operators.ce:31:18
 30 │ {
 31 │     val x = parse(1)?
-                         ^ Cannot return 'err' from 'nothing'
+                         ^ Cannot use '?' on 'Result[i32, i32]' in 'nothing'
+                         | 'nothing' doesn't return a value
 
 Error at question_operators.ce:36:18
 35 │ {
 36 │     val x = parse(1)?
-                         ^ Cannot return 'err' from 'stop'
+                         ^ Cannot use '?' on 'Result[i32, i32]' in 'stop'
+                         | 'stop' never returns
 
 Error at question_operators.ce:45:6
 44 │ val x = 5

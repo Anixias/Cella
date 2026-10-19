@@ -15,6 +15,7 @@ public sealed class TypeParser(ImmutableArray<Token> tokens, List<Token>? contex
 	
 	private ITypeNode ParseType(ref int index)
 	{
+		EnsureStack(index);
 		if (Match(ref index, out var borrowKeyword, TokenSets.BorrowKeywords))
 			return ParseBorrowType(ref index, borrowKeyword);
 		

@@ -7,7 +7,7 @@ public static class CfgUtils
 	public static BasicBlock[] GetSuccessors(BasicBlock block) => block.Terminator switch
 	{
 		BranchTerminator t => [t.Target],
-		ConditionalBranchTerminator { IsErasedCall: false, Condition: ConstantValue { Value: bool taken } } t =>
+		ConditionalBranchTerminator { Condition: ConstantValue { Value: bool taken } } t =>
 			[taken ? t.TrueTarget : t.FalseTarget],
 		ConditionalBranchTerminator t => [t.TrueTarget, t.FalseTarget],
 		SwitchTerminator t => t.Targets,

@@ -180,7 +180,13 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens, List<Token>? 
 	private readonly Dictionary<IExpressionNode, SourceLocation> _extents = [];
 	
 	public override IExpressionNode Parse(ref int index) => ParseExpression(ref index);
-	private IExpressionNode ParseExpression(ref int index) => ParseAssignment(ref index);
+	
+	private IExpressionNode ParseExpression(ref int index)
+	{
+		EnsureStack(index);
+		return ParseAssignment(ref index);
+	}
+	
 	private ITypeNode ParseType(ref int index) => new TypeParser(Tokens, ContextualKeywords).Parse(ref index);
 	
 	private IExpressionNode ParseAssignment(ref int index)
@@ -242,7 +248,7 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens, List<Token>? 
 		new(keyword, value, Span(keyword.SourceLocation, Extent(value)));
 	
 	private SpreadExpressionNode Spread(Token ellipsis, IExpressionNode value) =>
-		new(ellipsis, value, Span(ellipsis.SourceLocation, Extent(value)));
+		new(value, Span(ellipsis.SourceLocation, Extent(value)));
 	
 	private IExpressionNode ParseLogicalOr(ref int index)
 	{
@@ -594,6 +600,7 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens, List<Token>? 
 	
 	private IExpressionNode ParseUnary(ref int index)
 	{
+		EnsureStack(index);
 		if (Match(ref index, out var ownKeyword, TokenType.KeywordOwn))
 		{
 			if (Peek(index, TokenType.KeywordFun) && Peek(index + 1, TokenType.OpOpenBracket))
@@ -773,8 +780,15 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens, List<Token>? 
 		var returnType = Match(ref index, TokenType.OpArrow) ? ParseType(ref index) : null;
 		var (source, range) = (own ?? keyword).SourceLocation;
 		if (IsNextNewline(index) && Peek(index, TokenType.OpFatArrow))
-			throw new ParseException(new Diagnostic(DiagnosticSeverity.Error, Tokens[index].SourceLocation,
-				"Cannot start a line with '=>'"));
+		{
+			var diagnostic = new Diagnostic(DiagnosticSeverity.Error, Tokens[index].SourceLocation,
+				"Cannot start a line with '=>'");
+			
+			if (ReportRecovered is not { } report)
+				throw new ParseException(diagnostic);
+			
+			report(diagnostic);
+		}
 		
 		if (Match(ref index, TokenType.OpFatArrow))
 		{

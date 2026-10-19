@@ -4,7 +4,7 @@ public static class CompilerThread
 {
 	private const int StackSize = 256 * 1024 * 1024;
 	
-	public static Task<T> Run<T>(Func<Task<T>> work)
+	public static Task<T> Run<T>(Func<Task<T>> work, int stackSize = StackSize)
 	{
 		var result = new TaskCompletionSource<T>();
 		var thread = new Thread(() =>
@@ -20,7 +20,7 @@ public static class CompilerThread
 				result.SetCanceled();
 			else
 				result.SetResult(run.Result);
-		}, StackSize);
+		}, stackSize);
 		
 		thread.Start();
 		return result.Task;

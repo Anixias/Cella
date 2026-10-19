@@ -140,7 +140,7 @@ public sealed class PassSkipper(LoopFollower follower, MovePaths paths, ShapeLay
 			return cached;
 		
 		List<BasicBlock>? pass = null;
-		if (loop.Head.Terminator is ConditionalBranchTerminator { IsErasedCall: false } &&
+		if (loop.Head.Terminator is ConditionalBranchTerminator &&
 		    CfgUtils.GetSuccessors(loop.Head) is [var first, var second] &&
 		    loop.Body.Contains(first) != loop.Body.Contains(second))
 		{

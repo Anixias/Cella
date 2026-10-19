@@ -1,0 +1,83 @@
+mod test
+
+take[T]: fun(own t: T) -> i32 => 1
+
+Texture: rec
+{
+	id: i32
+
+	drop: op { }
+}
+
+Holder[T]: rec
+{
+	t: T
+
+	?: op(own self) -> i32 => take(self.t)
+}
+
+Pair: rec
+{
+	t: Texture
+
+	?: op(own self) -> i32 => take(own self.t) + take(own self.t)
+}
+
+Plain: rec
+{
+	t: i32
+
+	?: op(own self) -> i32 => ret self.t
+}
+
+Result[T, E]: enum
+{
+	ok(value: T)
+	err(error: E)
+
+	?: op(own self) -> T => match own self
+	{
+		ok(own value) => value
+		err(own error) => ret Result.err(own error)
+	}
+}
+
+Wrap[T]: enum
+{
+	held(inner: Result[T, i32])
+
+	?: op(own self) -> T => match own self
+	{
+		held(own inner) => inner?
+	}
+}
+
+one: fun -> i32
+{
+	val h = Holder(5)
+	val p = Pair(Texture(1))
+	ret h? + p?
+}
+
+two: fun -> i32
+{
+	val h = Holder(Texture(1))
+	val p = Pair(Texture(2))
+	ret h? + p?
+}
+
+three: fun -> bool
+{
+	val p = Plain(1)
+	val x = p?
+	ret true
+}
+
+four: fun -> bool
+{
+	val w = Wrap.held(Result[i32, i32].ok(1))
+	val x = w?
+	ret true
+}
+
+main: fun -> i32 => 0

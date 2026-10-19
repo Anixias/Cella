@@ -10,4 +10,5 @@ public sealed class ResolvedReturnExpressionNode(IResolvedExpressionNode? value,
 	public IResolvedExpressionNode? Value { get; } = value;
 	public IExpressionNode Syntax { get; } = syntax;
 	public bool HasUnknownTarget { get; init; }
+	public bool IsInline { get; init; }
 }

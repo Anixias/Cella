@@ -265,8 +265,8 @@ public sealed partial class Lowerer
 			var location = node.Syntax.SourceLocation;
 			var erasedBlock = CreateBlock("erased");
 			var afterBlock = CreateBlock("after_erased");
-			GetOrMakeBlock().SetTerminator(new ConditionalBranchTerminator(new ConstantValue(NativeSymbols.Bool, false),
-				erasedBlock, afterBlock, location) { IsErasedCall = true });
+			GetOrMakeBlock().SetTerminator(
+				new ConditionalBranchTerminator(NotRunValue.Instance, erasedBlock, afterBlock, location));
 			
 			currentBlock = erasedBlock;
 			BeginScope(location, true);
@@ -406,6 +406,7 @@ public sealed partial class Lowerer
 				new LocalVarInstruction(node.Self, operand, node.Syntax.SourceLocation, CurrentScopeId));
 			
 			_returnedValues.Add(node.Body);
+			_function.InlinedBodies.Add(node.Body.Syntax.SourceLocation);
 			return VisitNode(node.Body);
 		}
 		

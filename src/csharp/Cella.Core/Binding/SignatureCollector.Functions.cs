@@ -29,12 +29,14 @@ public sealed partial class SignatureCollector
 		_builder.VariableTypes[selfSymbol] = selfType;
 		scope.Define(selfSymbol);
 		
+		var declaredTypes = new List<TypeSymbol>(node.Parameters.Length);
 		for (var i = 0; i < node.Parameters.Length; i++)
 		{
 			var param = node.Parameters[i];
 			var paramSymbol = function.Parameters[i + 1]; // + 1 due to implicit self parameter
-			var paramType = _typePool.GetPassedType(
-				RejectValueDyn(param.Type, context.ResolveType(param.Type), paramSymbol.Mode), paramSymbol.Mode);
+			var declaredType = RejectValueDyn(param.Type, context.ResolveType(param.Type), paramSymbol.Mode);
+			var paramType = _typePool.GetPassedType(declaredType, paramSymbol.Mode);
+			declaredTypes.Add(declaredType);
 			
 			if (paramSymbol.Mode == ParameterMode.ReadOnly && !param.IsVariadic)
 				_copiedParameters.Add(paramType, param.Identifier.SourceLocation);
@@ -46,8 +48,8 @@ public sealed partial class SignatureCollector
 			scope.Define(paramSymbol);
 		}
 		
-		var defaults = CollectDefaults(node.Parameters, paramTypes[1..], context,
-			context.Trait is null ? null : "traits");
+		var defaults =
+			CollectDefaults(node.Parameters, declaredTypes, context, context.Trait is null ? null : "traits");
 		
 		var signature = new FunctionSignature(paramTypes, NativeSymbols.Void, false, GetModes(function),
 			TakesVariadicParameter(node.Parameters, paramTypes), defaults);
@@ -124,13 +126,16 @@ public sealed partial class SignatureCollector
 		var name = function.Property?.Name ?? node.Identifier.Text;
 		var reportsHiddenTypes = function.Property?.Node?.Keyword is null;
 		var offset = paramTypes.Count;
+		var declaredTypes = new List<TypeSymbol>(node.Parameters.Length);
 		for (var i = 0; i < node.Parameters.Length; i++)
 		{
 			var param = node.Parameters[i];
 			var paramSymbol = function.Parameters[i + offset];
-			var paramType = _typePool.GetPassedType(
-				RejectValueDyn(param.Type, ResolveSignatureType(function, param.Type, context), paramSymbol.Mode),
+			var declaredType = RejectValueDyn(param.Type, ResolveSignatureType(function, param.Type, context),
 				paramSymbol.Mode);
+			
+			var paramType = _typePool.GetPassedType(declaredType, paramSymbol.Mode);
+			declaredTypes.Add(declaredType);
 			
 			if (paramSymbol.Mode == ParameterMode.ReadOnly && !function.IsExternal && !param.IsVariadic)
 				_copiedParameters.Add(paramType, param.Identifier.SourceLocation);
@@ -161,7 +166,7 @@ public sealed partial class SignatureCollector
 		var hasVariadicParameter = !node.IsExternal && node.Identifier.Type == TokenType.Identifier &&
 		                           TakesVariadicParameter(node.Parameters, paramTypes);
 		
-		var defaults = CollectDefaults(node.Parameters, paramTypes[offset..], context,
+		var defaults = CollectDefaults(node.Parameters, declaredTypes, context,
 			context.Trait is not null ? "traits"
 			: node.Identifier.Type != TokenType.Identifier ? "operators"
 			: null);
@@ -220,11 +225,14 @@ public sealed partial class SignatureCollector
 		ReportTypedVariadics(node);
 		
 		var paramTypes = new List<TypeSymbol>(node.Parameters.Length);
+		var declaredTypes = new List<TypeSymbol>(node.Parameters.Length);
 		for (var i = 0; i < node.Parameters.Length; i++)
 		{
 			var param = node.Parameters[i];
 			var paramSymbol = function.Parameters[i];
-			var paramType = _typePool.GetPassedType(context.ResolveType(param.Type), paramSymbol.Mode);
+			var declaredType = context.ResolveType(param.Type);
+			var paramType = _typePool.GetPassedType(declaredType, paramSymbol.Mode);
+			declaredTypes.Add(declaredType);
 			
 			ReportHiddenType(param.Type, paramType, function.Visibility, node.Identifier.Text);
 			
@@ -241,7 +249,7 @@ public sealed partial class SignatureCollector
 		if (node.ReturnType is { } returnTypeNode)
 			ReportHiddenType(returnTypeNode, returnType, function.Visibility, node.Identifier.Text);
 		
-		var defaults = CollectDefaults(node.Parameters, paramTypes, context, null);
+		var defaults = CollectDefaults(node.Parameters, declaredTypes, context, null);
 		var signature = new FunctionSignature(paramTypes, returnType, node.IsVariadic, GetModes(function), false,
 			defaults);
 		
@@ -360,11 +368,7 @@ public sealed partial class SignatureCollector
 				continue;
 			}
 			
-			var type = types[i] is FunctionType { IsRef: true } passed &&
-			           parameter.Type is not FunctionTypeNode { IsRef: true }
-				? _typePool.GetPlainFunctionType(passed)
-				: types[i];
-			
+			var type = types[i];
 			var resolved = type is InvalidType ? null : constants!.ResolveInitializer(value, type, context);
 			var constant = resolved is null
 				? InvalidConstant.Instance

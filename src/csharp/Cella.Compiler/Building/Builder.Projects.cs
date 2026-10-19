@@ -241,6 +241,9 @@ public sealed partial class Builder
 				foreach (var function in checkable.OrderBy(static function => function.Info.Symbol.Captures.IsEmpty))
 					memoryChecker.Check(function);
 				
+				foreach (var file in module.Files)
+					file.Functions.RemoveAll(static function => function.IsCheckOnly);
+				
 				if (options.Verbose)
 					output.WriteLine(LoweredModulePrinter.Print(module));
 			}

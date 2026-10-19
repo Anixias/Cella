@@ -18,19 +18,34 @@ Error at ext_closure_types.ce:8:32
 8 │ nested: fun(callback: ext fun[fun[] -> i32])
                                   ╘═══╛ Cannot use 'fun[]' in 'ext' signatures
 
-Error at ext_closure_types.ce:14:15
-13 │ {
-14 │     run: ext fun[fun[-> i32] -> i32]
+Error at ext_closure_types.ce:10:33
+ 9 │ opaque: fun(callback: ptr[fun[]])
+10 │ grouped: fun(callback: ext fun[array[fun[], 2]])
+                                    ╘═════════════╛ Cannot use 'array[fun[], 2]' in 'ext' signatures
+
+Error at ext_closure_types.ce:11:37
+10 │ grouped: fun(callback: ext fun[array[fun[], 2]])
+11 │ pointed: fun(callback: ptr[ext fun[fun[] -> i32]])
+                                        ╘═══╛ Cannot use 'fun[]' in 'ext' signatures
+
+Error at ext_closure_types.ce:16:15
+15 │ {
+16 │     run: ext fun[fun[-> i32] -> i32]
                       ╘═════════╛ Cannot use 'fun[-> i32]' in 'ext' signatures
 
-Error at ext_closure_types.ce:17:18
-16 │ 
-17 │ take: ext fun(f: fun[-> i32]) -> i32 => f()
+Error at ext_closure_types.ce:17:19
+16 │ run: ext fun[fun[-> i32] -> i32]
+17 │ grouped: ext fun[array[fun[], 2]]
+                      ╘═════════════╛ Cannot use 'array[fun[], 2]' in 'ext' signatures
+
+Error at ext_closure_types.ce:20:18
+19 │ 
+20 │ take: ext fun(f: fun[-> i32]) -> i32 => f()
                       ╘═════════╛ Cannot use 'fun[-> i32]' in 'ext' signatures
 
-Error at ext_closure_types.ce:18:18
-17 │ take: ext fun(f: fun[-> i32]) -> i32 => f()
-18 │ give: ext fun -> fun[-> i32] => fun => 1
+Error at ext_closure_types.ce:21:18
+20 │ take: ext fun(f: fun[-> i32]) -> i32 => f()
+21 │ give: ext fun -> fun[-> i32] => fun => 1
                       ╘═════════╛ Cannot use 'fun[-> i32]' in 'ext' signatures
 
 [compilation failed]

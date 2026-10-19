@@ -1,5 +1,6 @@
 ﻿using System.Collections.Immutable;
 using System.Numerics;
+using System.Runtime.CompilerServices;
 using Cella.Core.Binding.Constants;
 using Cella.Core.Binding.Conversions;
 using Cella.Core.Binding.Nodes;
@@ -71,6 +72,8 @@ public sealed partial class Resolver : IStatementNodeVisitor<IResolvedStatementN
 	private IExpressionNode? placeTarget;
 	private ResolutionContext CurrentResolutionContext => _resolutionContexts.Peek();
 	private Scope? CurrentScope => CurrentResolutionContext.LocalScope;
+	private bool reportedNesting;
+	
 	private TypeSymbol? CurrentTargetType => _expectations.TryPeek(out var top) && !top.IsHint ? top.Type : null;
 	private TypeSymbol? ExpectedType => _expectations.TryPeek(out var top) ? top.Type : null;
 	
@@ -148,16 +151,44 @@ public sealed partial class Resolver : IStatementNodeVisitor<IResolvedStatementN
 			.FirstOrDefault(static use => use is not null);
 	}
 	
-	private IResolvedDeclarationNode VisitNode(IDeclarationNode node) =>
-		((IDeclarationNodeVisitor<IResolvedDeclarationNode>)this).Visit(node);
+	private IResolvedDeclarationNode VisitNode(IDeclarationNode node)
+	{
+		var outerNesting = reportedNesting;
+		reportedNesting = false;
+		var result = ((IDeclarationNodeVisitor<IResolvedDeclarationNode>)this).Visit(node);
+		reportedNesting = outerNesting;
+		return result;
+	}
 	
-	private IResolvedStatementNode VisitNode(IStatementNode node) =>
-		((IStatementNodeVisitor<IResolvedStatementNode>)this).Visit(node);
+	private IResolvedStatementNode VisitNode(IStatementNode node)
+	{
+		if (RuntimeHelpers.TryEnsureSufficientExecutionStack())
+			return ((IStatementNodeVisitor<IResolvedStatementNode>)this).Visit(node);
+		
+		ReportNesting(node.SourceLocation);
+		return new ResolvedInvalidStatementNode(node);
+	}
+	
+	private void ReportNesting(SourceLocation location)
+	{
+		if (reportedNesting)
+			return;
+		
+		Diagnostics.Add(new(DiagnosticSeverity.Error, location, "Nesting is too deep"));
+		reportedNesting = true;
+		Journal(() => reportedNesting = false);
+	}
 	
 	private IResolvedExpressionNode VisitNode(IExpressionNode node) => VisitNode(node, null);
 	
 	private IResolvedExpressionNode VisitNode(IExpressionNode node, TypeSymbol? targetType)
 	{
+		if (!RuntimeHelpers.TryEnsureSufficientExecutionStack())
+		{
+			ReportNesting(node.SourceLocation);
+			return new ResolvedInvalidExpressionNode(node, targetType);
+		}
+		
 		_expectations.Push(new(targetType, false));
 		try
 		{

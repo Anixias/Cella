@@ -85,6 +85,12 @@ retarget: fun(mut token: Token, other: str)
 	token.text = other
 }
 
+twice: fun(mut words: array[str, 2], other: str)
+{
+	words[0] = other
+	words[1] = other
+}
+
 replace: fun(mut token: Token, other: Token)
 {
 	token = other

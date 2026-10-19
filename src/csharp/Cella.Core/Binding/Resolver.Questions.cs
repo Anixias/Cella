@@ -62,7 +62,7 @@ public sealed partial class Resolver
 		{
 			ContainingFunction = info,
 			LocalScope = scope,
-			InlineReturn = new(caller, node.Op.SourceLocation),
+			InlineReturn = context.InlineReturn ?? new(caller, node.Op.SourceLocation, operand.Type),
 			RecordName = null
 		});
 		
@@ -171,26 +171,23 @@ public sealed partial class Resolver
 		if (!checkpoint.HasErrors && !isMismatched)
 		{
 			Commit(checkpoint);
-			return new ResolvedReturnExpressionNode(resolved, node);
+			return new ResolvedReturnExpressionNode(resolved, node) { IsInline = true };
 		}
 		
 		Rollback(checkpoint);
 		var function = DiagnosticReporter.DescribeFunction(caller.Symbol);
-		Diagnostics.Add(new(DiagnosticSeverity.Error, inline.Site, node.Value is { } returned
-			? $"Cannot return '{DescribeReturned(returned)}' from {function}"
-			: returnType is NeverType
-				? $"Cannot return from {function}"
-				: $"{DiagnosticReporter.DescribeFunction(caller.Symbol, true)} must return a value"));
+		var subject = DiagnosticReporter.DescribeFunction(caller.Symbol, true);
+		Diagnostics.Add(new(DiagnosticSeverity.Error, inline.Site,
+			$"Cannot use '?' on '{inline.Operand?.Name}' in {function}")
+		{
+			Hints =
+			[
+				returnType is NeverType ? $"{subject} never returns"
+				: returnType == NativeSymbols.Void ? $"{subject} doesn't return a value"
+				: $"{subject} returns '{returnType.Name}'"
+			]
+		});
 		
 		return new ResolvedInvalidExpressionNode(node);
 	}
-	
-	private static string DescribeReturned(IExpressionNode node) => node switch
-	{
-		CallExpressionNode call => DescribeReturned(call.Target),
-		AccessExpressionNode access => access.Member.Text,
-		VarExpressionNode name => name.Identifier.Text,
-		IndexerExpressionNode indexer => DescribeReturned(indexer.Target),
-		_ => new(node.SourceLocation.GetText())
-	};
 }

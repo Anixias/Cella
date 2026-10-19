@@ -83,13 +83,14 @@ public sealed partial class CodeGenerator
 			GetFunctionValue(destructor);
 			var function = current.Functions[destructor];
 			builder.BuildCall2(function.FunctionType, function.FunctionValue, [address]);
+			return;
 		}
 		
 		var recordType = MapTypeSymbol(record);
 		foreach (var field in record.Members.OfType<FieldSymbol>().Reverse())
 		{
 			var fieldType = _typePool.GetTypeOfMember(field);
-			if (!_typePool.NeedsDrop(fieldType) || _typePool.IsMovedByDestructor(record, field))
+			if (!_typePool.NeedsDrop(fieldType))
 				continue;
 			
 			var index = (uint)_typePool.GetFieldIndex(record, field);

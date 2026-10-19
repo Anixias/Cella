@@ -43,7 +43,6 @@ public sealed partial class TypePool
 	private readonly Dictionary<TraitSymbol, List<FunctionInfo>> _traitConstructors = [];
 	private readonly Dictionary<TypeSymbol, FunctionInfo> _destructors = [];
 	private readonly Dictionary<FunctionSymbol, FunctionInfo> _nativeFunctions = [];
-	private readonly Dictionary<TypeSymbol, IReadOnlySet<FieldSymbol>> _destructorMoves = [];
 	private readonly Dictionary<EnumSymbol, IntegerType> _tagTypes = [];
 	private readonly Dictionary<EnumCaseSymbol, BigInteger> _caseValues = [];
 	private readonly Dictionary<EnumSymbol, TypeSymbol> _matchedTypes = [];

@@ -46,7 +46,7 @@ public sealed partial class Lowerer
 	
 	public void Visit(ResolvedFunctionNode node)
 	{
-		if (!node.IsInline && !containment.IsBroken(node))
+		if (!containment.IsBroken(node))
 			currentFile?.Functions.Add(FunctionLowerer.Lower(node, evaluator, typePool, getGlobalInfo));
 	}
 	
@@ -150,7 +150,7 @@ public sealed partial class Lowerer
 		public static LoweredFunction Lower(ResolvedFunctionNode node, ConstantEvaluator evaluator, TypePool typePool,
 			Func<GlobalSymbol, GlobalInfo> getGlobalInfo)
 		{
-			var function = new LoweredFunction(node.FunctionInfo);
+			var function = new LoweredFunction(node.FunctionInfo) { IsCheckOnly = node.IsInline };
 			var lower = new FunctionLowerer(function, evaluator, typePool, getGlobalInfo);
 			
 			if (node.Body is IResolvedStatementNode statement)
@@ -160,7 +160,28 @@ public sealed partial class Lowerer
 				lower.PruneEmptyScopes();
 			}
 			
+			AddDestructorFieldDrops(function, typePool);
 			return function;
+		}
+		
+		private static void AddDestructorFieldDrops(LoweredFunction function, TypePool typePool)
+		{
+			if (function.Info.Symbol is not { Kind: FunctionKind.Destructor, Parameters: [var self] } ||
+			    function.Info.Signature.GetDeclaredType(0) is not RecordSymbol record)
+				return;
+			
+			var fields = typePool.GetMembers(record).OfType<FieldSymbol>().Reverse().ToList();
+			var selfValue =
+				new VariableValue(new(self, function.Info.Signature.ParameterTypes[0]), SourceLocation.None);
+			
+			var target = new UnaryOpValue(record, selfValue, UnaryOperation.Dereference, SourceLocation.None);
+			foreach (var block in function.Blocks.Where(static block =>
+				         block.Terminator is UndefinedTerminator or ReturnTerminator))
+			{
+				block.Instructions.AddRange(fields.Select(field => new DropInstruction(
+					new AccessValue(typePool.GetTypeOfMember(field), target, field, SourceLocation.None),
+					SourceLocation.None)));
+			}
 		}
 		
 		private static SourceLocation GetClosingBrace(IResolvedStatementNode body) =>

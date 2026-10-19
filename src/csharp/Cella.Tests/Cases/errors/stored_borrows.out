@@ -28,44 +28,54 @@ Error at stored_borrows.ce:85:15
 85 │     token.text = other
                       ╘═══╛ Cannot store new borrows in 'mut' parameters
 
-Error at stored_borrows.ce:90:10
+Error at stored_borrows.ce:90:13
 89 │ {
-90 │     token = other
-                 ╘═══╛ Cannot store new borrows in 'mut' parameters
-
-Error at stored_borrows.ce:97:16
-96 │ var local = 1
-97 │ tally.count = mut local
-                   ╘═══════╛ Cannot store new borrows in 'mut' parameters
-
-Error at stored_borrows.ce:103:16
-102 │ val target = mut token
-103 │ target.text = other
+90 │     words[0] = other
                     ╘═══╛ Cannot store new borrows in 'mut' parameters
 
-Error at stored_borrows.ce:110:28
-109 │ {
-110 │     held(val text) => text = other
+Error at stored_borrows.ce:91:13
+90 │ words[0] = other
+91 │ words[1] = other
+                ╘═══╛ Cannot store new borrows in 'mut' parameters
+
+Error at stored_borrows.ce:96:10
+95 │ {
+96 │     token = other
+                 ╘═══╛ Cannot store new borrows in 'mut' parameters
+
+Error at stored_borrows.ce:103:16
+102 │ var local = 1
+103 │ tally.count = mut local
+                    ╘═══════╛ Cannot store new borrows in 'mut' parameters
+
+Error at stored_borrows.ce:109:16
+108 │ val target = mut token
+109 │ target.text = other
+                    ╘═══╛ Cannot store new borrows in 'mut' parameters
+
+Error at stored_borrows.ce:116:28
+115 │ {
+116 │     held(val text) => text = other
                                    ╘═══╛ Cannot store new borrows in 'mut' parameters
 
-Error at stored_borrows.ce:117:16
-116 │ {
-117 │     cursor.rest = pick(mut cursor)
+Error at stored_borrows.ce:123:16
+122 │ {
+123 │     cursor.rest = pick(mut cursor)
                         ╘══════════════╛ Cannot store borrows of values in themselves
 
-Error at stored_borrows.ce:122:13
-121 │ {
-122 │     words[0] = other
+Error at stored_borrows.ce:128:13
+127 │ {
+128 │     words[0] = other
                      ╘═══╛ Cannot store new borrows in 'mut' parameters
 
-Error at stored_borrows.ce:127:20
-126 │ {
-127 │     pair.token.text = other
+Error at stored_borrows.ce:133:20
+132 │ {
+133 │     pair.token.text = other
                             ╘═══╛ Cannot store borrows through borrows from parameters
 
-Error at stored_borrows.ce:132:20
-131 │ {
-132 │     pair.token.text = pair.token.rest
+Error at stored_borrows.ce:138:20
+137 │ {
+138 │     pair.token.text = pair.token.rest
                             ╘═════════════╛ Cannot store borrows through borrows from parameters
 
 [compilation failed]

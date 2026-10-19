@@ -59,19 +59,16 @@ public sealed partial class Resolver
 			
 			if (target is not null && candidate.ReturnType != target && candidate.ReturnType is not NeverType)
 			{
-				var conversion = _conversionTable.FindImplicit(candidate.ReturnType, target) ??
-				                 (candidate.ReturnType is BorrowType
-					                 ? null
-					                 : FindUserConversion(candidate.ReturnType, null, ParameterMode.ReadOnly, target));
+				var (cost, conversion) = candidate.ReturnType == NativeSymbols.Void
+					? (0, null)
+					: MatchResult(candidate.ReturnType, target);
 				
-				if (conversion is null && candidate.ReturnType != NativeSymbols.Void &&
-				    candidate.ReturnType is not BorrowType && target is not BorrowType &&
-				    !IsTemplateSource(candidate.ReturnType, target))
+				if (cost == int.MaxValue)
 					continue;
 				
 				// Exact returns beat converted returns, so set to a higher cost
 				resultRank = candidate.ReturnType == NativeSymbols.Void ? VoidResultRank : 1;
-				resultCost = conversion?.Cost ?? 0;
+				resultCost = cost;
 				resultConversion = conversion;
 			}
 			
@@ -408,6 +405,34 @@ public sealed partial class Resolver
 			return (conversion.Cost, conversion);
 		
 		return FindUserConversion(arg, target) is { } userConversion
+			? (userConversion.Cost, userConversion)
+			: (int.MaxValue, null);
+	}
+	
+	private (int Cost, Conversion? Conversion) MatchResult(TypeSymbol source, TypeSymbol target)
+	{
+		if (source == target)
+			return (0, null);
+		
+		if (IsDynTarget(target))
+			return CanConvertToDyn(source, target) ? (1, null) : (int.MaxValue, null);
+		
+		if (target is BorrowType { IsMutable: false } borrow && source is not BorrowType)
+			return source == borrow.Target ? (1, null) : (int.MaxValue, null);
+		
+		if (target is not BorrowType && source is BorrowType { Target: var lent })
+		{
+			var (cost, _) = MatchResult(lent, target);
+			return (cost == int.MaxValue ? cost : cost + 1, null);
+		}
+		
+		if (IsTemplateSource(source, target))
+			return (1, null);
+		
+		if (_conversionTable.FindImplicit(source, target) is { } conversion)
+			return (conversion.Cost, conversion);
+		
+		return FindUserConversion(source, null, ParameterMode.ReadOnly, target) is { } userConversion
 			? (userConversion.Cost, userConversion)
 			: (int.MaxValue, null);
 	}

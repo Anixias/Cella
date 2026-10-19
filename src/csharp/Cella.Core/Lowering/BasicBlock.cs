@@ -58,6 +58,11 @@ public sealed class ZeroValue(TypeSymbol type) : Value(type, true, SourceLocatio
 public sealed class DefaultValue(TypeSymbol type) : Value(type, true, SourceLocation.None);
 public sealed class UndefValue(TypeSymbol type) : Value(type, true, SourceLocation.None);
 
+public sealed class NotRunValue() : Value(NativeSymbols.Bool, SourceLocation.None)
+{
+	public static NotRunValue Instance { get; } = new();
+}
+
 public sealed class SizeOfValue(TypeSymbol target, SourceLocation sourceLocation)
 	: Value(NativeSymbols.UIntSize, false, sourceLocation)
 {
@@ -418,5 +423,4 @@ public sealed class ConditionalBranchTerminator
 	public BasicBlock TrueTarget { get; } = trueTarget;
 	public BasicBlock FalseTarget { get; } = falseTarget;
 	public SourceLocation SourceLocation { get; } = sourceLocation;
-	public bool IsErasedCall { get; init; }
 }

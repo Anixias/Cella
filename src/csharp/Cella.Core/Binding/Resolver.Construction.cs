@@ -87,13 +87,25 @@ public sealed partial class Resolver
 	
 	private IResolvedExpressionNode? VisitRecordConversion(CallExpressionNode node, RecordSymbol record)
 	{
-		if (node.Arguments is not [var argument] || argument is LambdaExpressionNode or BorrowExpressionNode ||
-		    record.IsGenericDefinition)
+		if (node.Arguments is not [var argument] || record.IsGenericDefinition)
 			return null;
 		
+		var fields = _typePool.GetMembers(record).OfType<FieldSymbol>().ToArray();
+		ICallable[] memberwise = fields is [var field] && !record.IsUnion
+			? [new FieldsCallable([GetMemberType(field)], record)]
+			: [];
+		
+		CallShape[] shapes =
+		[
+			..memberwise.Select(static candidate => CreateShape(candidate, [])),
+			..GetInwardConversions(record).Select(info =>
+				CreateShape(new ConversionCallable(info, record), GetOpenTypeParameters(info)))
+		];
+		
 		var checkpoint = OpenCheckpoint();
-		var arg = argument is ArrayExpressionNode ? VisitHinted(argument, record) : VisitNode(argument, null);
-		var conversions = FindConversionCallables([arg], record);
+		var first = argument is ArrayExpressionNode ? VisitHinted(argument, record) : null;
+		var args = ResolveArguments(Unspread(node.Arguments), shapes, out var isAmbiguous, Succeeds, null, first);
+		var conversions = FindConversionCallables(args, record);
 		if (conversions.Length == 0)
 		{
 			Rollback(checkpoint);
@@ -101,19 +113,19 @@ public sealed partial class Resolver
 		}
 		
 		Commit(checkpoint);
-		var fields = _typePool.GetMembers(record).OfType<FieldSymbol>().ToArray();
-		ICallable[] candidates = fields is [var field] && !record.IsUnion
-			? [new FieldsCallable([GetMemberType(field)], record), ..conversions]
-			: [..conversions];
+		if (isAmbiguous)
+			return Error(node, $"Conversion to '{record.Name}' is ambiguous", record, node);
 		
-		var resolutionSet = ResolveConstruction(candidates, [arg], record);
-		
+		var resolutionSet = ResolveConstruction([..memberwise, ..conversions], args, record);
 		if (resolutionSet.IsAmbiguous)
 			return Error(node, $"Conversion to '{record.Name}' is ambiguous", record, node);
 		
 		return resolutionSet is { HasResult: true } && resolutionSet[0].Callable is ConversionCallable conversion
-			? CallConversion(conversion.Info, ApplyArgumentResolution([arg], resolutionSet[0])[0], node)
-			: VisitRecordConstruction(node, record, [arg]);
+			? CallConversion(conversion.Info, ApplyArgumentResolution(args, resolutionSet[0])[0], node)
+			: VisitRecordConstruction(node, record, args);
+		
+		bool Succeeds(IResolvedExpressionNode[] values) =>
+			ResolveConstruction([..memberwise, ..FindConversionCallables(values, record)], values, record).HasResult;
 	}
 	
 	private IResolvedExpressionNode VisitRecordConstruction(CallExpressionNode node, RecordSymbol record,

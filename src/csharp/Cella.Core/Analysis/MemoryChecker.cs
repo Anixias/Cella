@@ -26,7 +26,6 @@ public sealed class MemoryChecker(TypePool typePool, ConstantEvaluator evaluator
 		HashSet<VariableSymbol> ErrorRoots
 	);
 	
-	private readonly HashSet<(SourceLocation, string)> _reported = [];
 	private readonly Dictionary<FunctionSymbol, BorrowChecker.ClosureSummary> _closureSummaries = [];
 	private readonly ShapeLayout _layout = new(typePool);
 	private readonly ValueEvaluator _values = new(evaluator);
@@ -51,7 +50,6 @@ public sealed class MemoryChecker(TypePool typePool, ConstantEvaluator evaluator
 			? owned
 			: null;
 		
-		AddDestructorExitDrops(function);
 		var events = EventLinearizer.Linearize(function);
 		var allEvents = events.Values.SelectMany(static e => e).ToList();
 		var requiredFields = GetRequiredFields(function);
@@ -64,16 +62,16 @@ public sealed class MemoryChecker(TypePool typePool, ConstantEvaluator evaluator
 		if (analysis.Diagnostics.Count > 0)
 			analysis = Follow(function, events, allEvents, requiredFields, analysis);
 		
-		foreach (var diagnostic in analysis.Diagnostics)
-		{
-			if (_reported.Add((diagnostic.SourceLocation, diagnostic.Message)))
-				diagnostics.Add(diagnostic);
-		}
-		
+		var found = new List<Diagnostic>(analysis.Diagnostics);
+		var previous = diagnostics.Redirect(found);
 		new BorrowChecker(typePool, diagnostics, _closureSummaries).Check(function, events);
 		new DropElaborator(typePool, (state, memoryEvent) => Transfer(state, memoryEvent, analysis.Paths),
 				analysis.Paths)
 			.Elaborate(function, analysis.EntryState, analysis.EntryStates, analysis.Drops, analysis.ElementDrops);
+		
+		diagnostics.Redirect(previous);
+		foreach (var diagnostic in found.Where(diagnostic => !function.IsInlined(diagnostic.SourceLocation)))
+			diagnostics.Add(diagnostic);
 	}
 	
 	private Analysis Follow(LoweredFunction function, Dictionary<BasicBlock, List<MemoryEvent>> events,
@@ -376,33 +374,6 @@ public sealed class MemoryChecker(TypePool typePool, ConstantEvaluator evaluator
 		place.Path[depth] is IndexProjection
 			? (path, depth)
 			: null;
-	
-	private void AddDestructorExitDrops(LoweredFunction function)
-	{
-		if (function.Info.Symbol is not { Kind: FunctionKind.Destructor, Parameters: [var self] } ||
-		    function.Info.Signature.GetDeclaredType(0) is not RecordSymbol record)
-			return;
-		
-		var movedFields = EventLinearizer.Linearize(function).Values
-			.SelectMany(static events => events)
-			.OfType<AccessEvent>()
-			.Where(access => access is { Kind: AccessKind.Move, Place.Path: [FieldProjection, ..] } &&
-			                 access.Place.Root == self)
-			.Select(static access => ((FieldProjection)access.Place.Path[0]).Field)
-			.ToHashSet();
-		
-		var declared = typePool.GetMembers(record).OfType<FieldSymbol>().ToList();
-		var fields = declared.SkipWhile(field => !movedFields.Contains(field)).Reverse().ToList();
-		typePool.SetDestructorMoves(record, fields.ToHashSet());
-		var selfValue = new VariableValue(new(self, function.Info.Signature.ParameterTypes[0]), SourceLocation.None);
-		var target = new UnaryOpValue(record, selfValue, UnaryOperation.Dereference, SourceLocation.None);
-		foreach (var block in function.Blocks.Where(static block => block.Terminator is ReturnTerminator))
-		{
-			block.Instructions.AddRange(fields.Select(field => new DropInstruction(
-				new AccessValue(typePool.GetTypeOfMember(field), target, field, SourceLocation.None),
-				SourceLocation.None)));
-		}
-	}
 	
 	private List<Place> GetRequiredFields(LoweredFunction function)
 	{

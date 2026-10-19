@@ -271,6 +271,31 @@ public sealed class BuilderTests : IDisposable
 		Assert.Equal(Path.Combine(_directory, "d", "d.celp"), problem.Projects[0], ignoreCase: true);
 	}
 	
+	[Theory]
+	[InlineData("sum")]
+	[InlineData("choice")]
+	[InlineData("block")]
+	public async Task ReportsDeepNestingOnce(string shape)
+	{
+		const int depth = 8000;
+		var body = shape switch
+		{
+			"sum" => $"ret {string.Join(" + ", Enumerable.Repeat("x", depth))}\n",
+			"choice" => string.Concat(Enumerable.Range(0, depth).Select(static i => $"if x == {i}\n\tret {i}\nelse ")) +
+			            "ret 0\n",
+			_ =>
+				$"{string.Concat(Enumerable.Repeat("{\n", depth))}{string.Concat(Enumerable.Repeat("}\n", depth))}ret 0\n"
+		};
+		
+		await WriteProgramAsync($"mod test\n\nmain: fun -> i32\n{{\nvar x = 0\n{body}}}\n");
+		var builder = CreateBuilder(new RecordingOutput());
+		
+		var result = await CompilerThread.Run(() => builder.BuildAsync(_directory, null, Token), 4 * 1024 * 1024);
+		
+		var error = Assert.Single(Assert.Single(result.Projects).Diagnostics);
+		Assert.Equal("Nesting is too deep", error.Message);
+	}
+	
 	[Fact]
 	public async Task ChecksTraitConstantsOfInstances()
 	{

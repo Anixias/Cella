@@ -7,7 +7,7 @@ using Cella.Diagnostics;
 
 namespace Cella.Core.Binding;
 
-public readonly record struct InlineReturn(FunctionInfo? Caller, SourceLocation Site);
+public readonly record struct InlineReturn(FunctionInfo? Caller, SourceLocation Site, TypeSymbol? Operand = null);
 public readonly record struct ValueParameterUse(bool IsArithmetic, string Hint);
 
 public sealed class InlineDeclaration(ResolutionContext context)
