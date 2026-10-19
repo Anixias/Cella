@@ -1061,10 +1061,10 @@ public sealed class TypeChecker
 			Operation.Op: TokenType.OpStar, Operand: ResolvedFunctionCallExpressionNode
 			{
 				Type: BorrowType { IsMutable: false },
-				Function.Symbol.Syntax: FunctionNode { Identifier.Text: var name and ("*" or "[]") },
+				PlaceOperator: { } op,
 				Arguments: [var receiver, ..]
 			}
-		} => (receiver.Type is BorrowType borrow ? borrow.Target : receiver.Type, name),
+		} => (receiver.Type is BorrowType borrow ? borrow.Target : receiver.Type, op.GetName()),
 		_ => null
 	};
 	

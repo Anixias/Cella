@@ -137,7 +137,8 @@ public sealed partial class Lowerer
 		public Value Visit(ResolvedFunctionCallExpressionNode node) => Diverge(new CallValue(node.Function,
 			node.IsConversion
 				? LowerOperands(node.Arguments, GetArgumentPassing(node.Function, 0), _returnedValues.Contains(node))
-				: LowerArguments(node.Arguments, node.Function, 0), node.Syntax.SourceLocation));
+				: LowerArguments(node.Arguments, node.Function, 0, node.PlaceOperator is not null),
+			node.Syntax.SourceLocation) { IsPlaceOperator = node.PlaceOperator is not null });
 		
 		private Value Diverge(Value call)
 		{
@@ -295,6 +296,7 @@ public sealed partial class Lowerer
 				new(TokenType.Identifier, SourceLocation.None, $".t{NextTempId()}__built"), node.Type, true)
 			{
 				IsSynthesized = true,
+				IsUnstored = true,
 				IsFilledInPlace = true
 			};
 			

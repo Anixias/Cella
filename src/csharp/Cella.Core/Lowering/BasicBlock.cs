@@ -120,6 +120,7 @@ public sealed class CallValue(FunctionInfo function, IEnumerable<Value> argument
 {
 	public FunctionInfo Function { get; } = function;
 	public ImmutableArray<Value> Arguments { get; } = arguments.ToImmutableArray();
+	public bool IsPlaceOperator { get; init; }
 }
 
 public sealed class FunctionReferenceValue(FunctionInfo function, TypeSymbol type, SourceLocation sourceLocation)

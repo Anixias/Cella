@@ -1,0 +1,32 @@
+Error at pointer_operation_types.ce:11:10
+10 │ val n: isize = 1
+11 │ val a = c == p
+             ╘════╛ No operation defined for '==' between 'cstr' and 'ptr[i32]'
+
+Error at pointer_operation_types.ce:12:10
+11 │ val a = c == p
+12 │ val b = p < q
+             ╘═══╛ No operation defined for '<' between 'ptr[i32]' and 'ptr[u8]'
+
+Error at pointer_operation_types.ce:13:10
+12 │ val b = p < q
+13 │ val d = c + n
+             ╘═══╛ No operation defined for '+' between 'cstr' and 'isize'
+
+Error at pointer_operation_types.ce:14:10
+13 │ val d = c + n
+14 │ val e = c + 1
+             ╘═══╛ No operation defined for '+' between 'cstr' and 'integer literal'
+
+Error at pointer_operation_types.ce:15:10
+14 │ val e = c + 1
+15 │ val f = c - c
+             ╘═══╛ No operation defined for '-' between 'cstr' and 'cstr'
+
+Error at pointer_operation_types.ce:16:10
+15 │ val f = c - c
+16 │ val g = x < p < x
+             ╘═══╛ No operation defined for '<' between 'i32' and 'ptr[i32]'
+                 | Did you mean 'x < *p'?
+
+[compilation failed]

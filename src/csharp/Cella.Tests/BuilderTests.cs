@@ -272,6 +272,40 @@ public sealed class BuilderTests : IDisposable
 	}
 	
 	[Fact]
+	public async Task ChecksTraitConstantsOfInstances()
+	{
+		await WriteProgramAsync("""
+		                        mod test
+		                        
+		                        Integer: trait
+		                        {
+		                        	bits: const u32
+		                        }
+		                        
+		                        Box[T]: rec
+		                        {
+		                        	value: T
+		                        }
+		                        
+		                        Box[T]: impl Integer
+		                        {
+		                        	bits: const u32 = Box[T].bits + 1
+		                        }
+		                        
+		                        show[T: Integer]: fun -> u32 => T.bits
+		                        
+		                        main: fun -> i32 => i32(show[Box[i32]]())
+		                        
+		                        """);
+		
+		var result = await CheckAsync(CreateBuilder(new RecordingOutput()));
+		
+		var error = Assert.Single(Assert.Single(result.Projects).Diagnostics);
+		Assert.Equal("'bits' depends on its own value", error.Message);
+		Assert.Equal(15, error.SourceLocation.GetLineColumn().Line);
+	}
+	
+	[Fact]
 	public async Task ReportsErrorsThroughOutput()
 	{
 		await WriteProgramAsync(InvalidSource);

@@ -1,6 +1,6 @@
 Error at overloaded_lambda_generic_types.ce:13:30
 12 │ {
 13 │     val r: i32 = pick(fun(y) => Point[u8](y).x)
-                                     ╘═══╛ 'Point' takes no generic arguments
+                                     ╘═══════╛ 'Point' takes no generic arguments
 
 [compilation failed]

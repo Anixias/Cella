@@ -2,15 +2,13 @@
 
 namespace Cella.Core.Syntax.Nodes;
 
-public sealed class OwnExpressionNode(Token keyword, IExpressionNode value) : IExpressionNode
+public sealed class OwnExpressionNode(Token keyword, IExpressionNode value, SourceLocation sourceLocation)
+	: IExpressionNode
 {
 	public Token Keyword { get; } = keyword;
 	public IExpressionNode Value { get; } = value;
 	
-	public SourceLocation SourceLocation { get; } = keyword.SourceLocation with
-	{
-		Range = keyword.SourceLocation.Range.Join(value.SourceLocation.Range)
-	};
+	public SourceLocation SourceLocation { get; } = sourceLocation;
 	
 	public bool IsContained => false;
 }

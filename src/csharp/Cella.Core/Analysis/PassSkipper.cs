@@ -29,9 +29,9 @@ public sealed class PassSkipper(LoopFollower follower, MovePaths paths, ShapeLay
 		if (changing.Count == 0 || new Scan(this, loop, pass, entry, changing).Run() is not { } scan)
 			return null;
 		
-		if (Apply(scan, entryState, scan.Start + 1) is not { } single ||
+		if (Apply(scan, entryState, 1) is not { } single ||
 		    single.Any(entry => !entry.Value.Equals(nextState.GetElements(entry.Key))) ||
-		    Apply(scan, entryState, scan.Start + scan.Count) is not { } arrays ||
+		    Apply(scan, entryState, scan.Count) is not { } arrays ||
 		    !entryState.IsSameOutside(nextState, arrays.Keys))
 			return null;
 		
@@ -52,7 +52,7 @@ public sealed class PassSkipper(LoopFollower follower, MovePaths paths, ShapeLay
 		return (known, state);
 	}
 	
-	private Dictionary<MovePath, Shape>? Apply(Scan scan, InitState entryState, BigInteger end)
+	private Dictionary<MovePath, Shape>? Apply(Scan scan, InitState entryState, BigInteger passes)
 	{
 		var arrays = new Dictionary<MovePath, Shape>();
 		foreach (var group in scan.Groups)
@@ -60,7 +60,7 @@ public sealed class PassSkipper(LoopFollower follower, MovePaths paths, ShapeLay
 			if (!arrays.TryGetValue(group.Array, out var arrayShape))
 				arrayShape = entryState.GetElements(group.Array);
 			
-			if (Advance(group, arrayShape, scan.Start, end) is not { } advanced)
+			if (Advance(group, arrayShape, scan, passes) is not { } advanced)
 				return null;
 			
 			arrays[group.Array] = advanced;
@@ -69,7 +69,7 @@ public sealed class PassSkipper(LoopFollower follower, MovePaths paths, ShapeLay
 		return arrays;
 	}
 	
-	private Shape? Advance(Group group, Shape arrayShape, BigInteger start, BigInteger end)
+	private Shape? Advance(Group group, Shape arrayShape, Scan scan, BigInteger passes)
 	{
 		if (layout.GetPartType(group.Array.Type, group.Prefix) is not ArrayType array ||
 		    ShapeLayout.GetLength(array) is not { } length)
@@ -80,30 +80,41 @@ public sealed class PassSkipper(LoopFollower follower, MovePaths paths, ShapeLay
 			return null;
 		
 		var elements = ElementsShape.Expand(part, length);
-		if (group.Touches.Any(touch => start + touch.Offset < 0 || end - 1 + touch.Offset >= length))
+		if (group.Touches.Any(touch => scan.GetRange(touch.Offset, 0, passes) is var (low, high) &&
+		                               (low < 0 || high > length)))
 			return null;
 		
 		var writers = group.Touches.Where(static touch => touch.Effect is not null).ToList();
 		foreach (var observer in group.Touches.Where(static touch => touch.Observes))
 		{
-			var first = Observe(observer, writers, elements, start, start);
-			var furthest = writers.Count == 0 ? observer.Offset : writers.Max(static writer => writer.Offset);
-			var settled = BigInteger.Min(end, start + BigInteger.Max(furthest - observer.Offset, BigInteger.Zero) + 1);
-			for (var pass = start + 1; pass < settled; pass++)
+			var first = Observe(scan, observer, writers, elements, 0);
+			var lag = writers.Select(writer => scan.FindLag(observer, writer) ?? 0).DefaultIfEmpty(0).Max();
+			var settled = BigInteger.Min(passes, lag + 1);
+			for (var pass = BigInteger.One; pass < settled; pass++)
 			{
-				if (!Observe(observer, writers, elements, start, pass).Equals(first))
+				if (!Observe(scan, observer, writers, elements, pass).Equals(first))
 					return null;
 			}
 			
-			if (settled < end &&
-			    (FindWriter(observer, writers, end - start) is { } writer
+			if (settled < passes &&
+			    (FindWriter(scan, observer, writers, passes) is { } writer
 				    ? !writer.Effect!.Equals(first)
-				    : !elements.IsUniform(settled + observer.Offset, end + observer.Offset, first)))
+				    : scan.GetRange(observer.Offset, settled, passes) is var (low, high) &&
+				      !elements.IsUniform(low, high, first)))
 				return null;
 		}
 		
+		if (BigInteger.Abs(scan.Step) != 1)
+			return writers.Count == 0
+				? Place(arrayShape, group.Array.Type, group.Prefix, 0, elements)
+				: FindStridedRange(scan, writers, passes) is var (low, high)
+					? Place(arrayShape, group.Array.Type, group.Prefix, 0,
+						elements.SetRange(low, high, writers[0].Effect!))
+					: null;
+		
 		Shape result = elements;
-		var boundaries = writers.SelectMany(writer => new[] { start + writer.Offset, end + writer.Offset })
+		var ranges = writers.ToDictionary(static writer => writer, writer => scan.GetRange(writer.Offset, 0, passes));
+		var boundaries = ranges.Values.SelectMany(static range => new[] { range.Low, range.High })
 			.Distinct()
 			.Order()
 			.ToList();
@@ -111,8 +122,8 @@ public sealed class PassSkipper(LoopFollower follower, MovePaths paths, ShapeLay
 		for (var i = 0; i + 1 < boundaries.Count; i++)
 		{
 			var element = boundaries[i];
-			var winner = writers.Where(writer => start + writer.Offset <= element && element < end + writer.Offset)
-				.OrderBy(static writer => writer.Offset)
+			var winner = writers.Where(writer => ranges[writer].Low <= element && element < ranges[writer].High)
+				.OrderBy(writer => writer.Offset * scan.Step)
 				.ThenByDescending(static writer => writer.Order)
 				.FirstOrDefault();
 			
@@ -123,15 +134,28 @@ public sealed class PassSkipper(LoopFollower follower, MovePaths paths, ShapeLay
 		return Place(arrayShape, group.Array.Type, group.Prefix, 0, result);
 	}
 	
-	private static Shape Observe(Touch observer, List<Touch> writers, ElementsShape elements, BigInteger start,
-		BigInteger pass) =>
-		FindWriter(observer, writers, pass - start)?.Effect ?? elements.Get(pass + observer.Offset);
+	private static (BigInteger Low, BigInteger High)? FindStridedRange(Scan scan, List<Touch> writers,
+		BigInteger passes)
+	{
+		var offsets = writers.Select(static writer => writer.Offset).Distinct().Order().ToList();
+		if (writers.Any(writer => !writer.Effect!.Equals(writers[0].Effect)) ||
+		    offsets.Count != BigInteger.Abs(scan.Step) || offsets[^1] - offsets[0] != offsets.Count - 1)
+			return null;
+		
+		var (low, _) = scan.GetRange(offsets[0], 0, passes);
+		var (_, high) = scan.GetRange(offsets[^1], 0, passes);
+		return (low, high);
+	}
 	
-	private static Touch? FindWriter(Touch observer, List<Touch> writers, BigInteger passed) =>
+	private static Shape Observe(Scan scan, Touch observer, List<Touch> writers, ElementsShape elements,
+		BigInteger pass) =>
+		FindWriter(scan, observer, writers, pass)?.Effect ?? elements.Get(scan.GetElement(pass, observer.Offset));
+	
+	private static Touch? FindWriter(Scan scan, Touch observer, List<Touch> writers, BigInteger passed) =>
 		writers.Where(writer => writer.Offset == observer.Offset && writer.Order < observer.Order)
 			.MaxBy(static writer => writer.Order) ??
-		writers.Where(writer => writer.Offset > observer.Offset && writer.Offset - observer.Offset <= passed)
-			.OrderBy(static writer => writer.Offset)
+		writers.Where(writer => scan.FindLag(observer, writer) is { } lag && lag <= passed)
+			.OrderBy(writer => scan.FindLag(observer, writer))
 			.ThenByDescending(static writer => writer.Order)
 			.FirstOrDefault();
 	
@@ -195,7 +219,22 @@ public sealed class PassSkipper(LoopFollower follower, MovePaths paths, ShapeLay
 		public List<Group> Groups { get; } = [];
 		public List<(LocalVariableSymbol Symbol, BigInteger Step, bool Wraps)> Steps { get; } = [];
 		public BigInteger Start { get; private set; }
+		public BigInteger Step { get; private set; }
 		public BigInteger Count { get; private set; }
+		
+		public BigInteger GetElement(BigInteger pass, BigInteger offset) => Start + Step * pass + offset;
+		
+		public (BigInteger Low, BigInteger High) GetRange(BigInteger offset, BigInteger firstPass, BigInteger passes)
+		{
+			var (first, last) = (GetElement(firstPass, offset), GetElement(passes - 1, offset));
+			return (BigInteger.Min(first, last), BigInteger.Max(first, last) + 1);
+		}
+		
+		public BigInteger? FindLag(Touch observer, Touch writer)
+		{
+			var distance = writer.Offset - observer.Offset;
+			return distance % Step == 0 && distance / Step > 0 ? distance / Step : null;
+		}
 		
 		public Scan? Run()
 		{
@@ -264,11 +303,12 @@ public sealed class PassSkipper(LoopFollower follower, MovePaths paths, ShapeLay
 			if (loop.Head.Terminator is not ConditionalBranchTerminator { Condition: var condition })
 				return false;
 			
-			var mentioned = Steps.Where(step => step.Step == 1 && Mentions(condition, step.Symbol)).ToList();
+			var mentioned = Steps.Where(step => !step.Step.IsZero && Mentions(condition, step.Symbol)).ToList();
 			if (mentioned is not [var step] || known.Get(step.Symbol) is not IntegerConstant value)
 				return false;
 			
 			Start = value.Value;
+			Step = step.Step;
 			_offsets[step.Symbol] = BigInteger.Zero;
 			return true;
 		}
@@ -289,15 +329,28 @@ public sealed class PassSkipper(LoopFollower follower, MovePaths paths, ShapeLay
 			if (offset is null || limit is null)
 				return false;
 			
+			var distance = limit.Value - offset.Value - Start;
+			var forward = Step.Sign > 0;
 			Count = operation switch
 			{
-				BinaryOperation.Less => limit.Value - offset.Value - Start,
-				BinaryOperation.LessEqual => limit.Value - offset.Value - Start + 1,
-				BinaryOperation.NotEqual => limit.Value - offset.Value - Start,
+				BinaryOperation.Less when forward => CountUntil(distance, Step, false),
+				BinaryOperation.Greater when !forward => CountUntil(distance, Step, false),
+				BinaryOperation.LessEqual when forward => CountUntil(distance, Step, true),
+				BinaryOperation.GreaterEqual when !forward => CountUntil(distance, Step, true),
+				BinaryOperation.NotEqual when distance % Step == 0 => distance / Step,
 				_ => BigInteger.Zero
 			};
 			
 			return Count > 0;
+		}
+		
+		private static BigInteger CountUntil(BigInteger distance, BigInteger step, bool isInclusive)
+		{
+			if (distance.Sign != step.Sign && !distance.IsZero)
+				return BigInteger.Zero;
+			
+			var (whole, rest) = BigInteger.DivRem(BigInteger.Abs(distance), BigInteger.Abs(step));
+			return isInclusive ? whole + 1 : rest.IsZero ? whole : whole + 1;
 		}
 		
 		private static BinaryOperation Negate(BinaryOperation operation) => operation switch

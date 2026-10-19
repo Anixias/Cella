@@ -175,6 +175,19 @@ public sealed partial class Resolver : IStatementNodeVisitor<IResolvedStatementN
 		}
 	}
 	
+	private IResolvedExpressionNode ResolveExpected(TypeSymbol targetType, Func<IResolvedExpressionNode> resolve)
+	{
+		_expectations.Push(new(targetType, false));
+		try
+		{
+			return CoerceToType(resolve(), targetType);
+		}
+		finally
+		{
+			_expectations.Pop();
+		}
+	}
+	
 	private IResolvedExpressionNode VisitDiscarded(IExpressionNode node)
 	{
 		_expectations.Push(new(null, false));
@@ -481,6 +494,7 @@ public interface ICallable
 	bool IsVariadic => false;
 	bool HasVariadicParameter => false;
 	bool IsGeneric => false;
+	bool Accepts(IReadOnlyList<IResolvedExpressionNode> arguments) => true;
 	ParameterMode GetMode(int index) => ParameterMode.ReadOnly;
 	string? GetParameterName(int index) => null;
 }

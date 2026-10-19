@@ -1,0 +1,41 @@
+Error at generic_argument_positions.ce:17:16
+16 │ {
+17 │     val a = reset[ptr[i32, u8]]()
+                       ╘══════════╛ 'ptr' takes one generic argument
+
+Error at generic_argument_positions.ce:18:9
+17 │ val a = reset[ptr[i32, u8]]()
+18 │ var b: ptr[i32, u8]
+            ╘══════════╛ 'ptr' takes one generic argument
+
+Error at generic_argument_positions.ce:19:16
+18 │ var b: ptr[i32, u8]
+19 │ val c = reset[ptr[]]()
+                   ╘═══╛ 'ptr' takes one generic argument
+
+Error at generic_argument_positions.ce:20:16
+19 │ val c = reset[ptr[]]()
+20 │ val d = reset[fstr[i32, u8]]()
+                   ╘═══════════╛ 'fstr' takes one generic argument
+
+Error at generic_argument_positions.ce:21:20
+20 │ val d = reset[fstr[i32, u8]]()
+21 │ val e = reset[ptr[Box]]()
+                       ╘═╛ 'Box' takes one generic argument
+
+Error at generic_argument_positions.ce:22:13
+21 │ val e = reset[ptr[Box]]()
+22 │ var f: ptr[Box]
+                ╘═╛ 'Box' takes one generic argument
+
+Error at generic_argument_positions.ce:23:20
+22 │ var f: ptr[Box]
+23 │ val g = reset[ptr[Plain[i32]]]()
+                       ╘════════╛ 'Plain' takes no generic arguments
+
+Error at generic_argument_positions.ce:24:13
+23 │ val g = reset[ptr[Plain[i32]]]()
+24 │ var h: ptr[Plain[i32]]
+                ╘════════╛ 'Plain' takes no generic arguments
+
+[compilation failed]

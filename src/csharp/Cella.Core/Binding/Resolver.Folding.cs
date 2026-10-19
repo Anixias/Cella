@@ -27,7 +27,8 @@ public sealed partial class Resolver
 		return value is null ? null : CreateFold(node, node.Op.Type, literal.Type, value, [literal]);
 	}
 	
-	private ResolvedLiteralExpressionNode? FoldLiterals(BinaryOpExpressionNode node, IResolvedExpressionNode left,
+	private ResolvedLiteralExpressionNode? FoldLiterals(IExpressionNode node, TokenType op,
+		IResolvedExpressionNode left,
 		IResolvedExpressionNode right)
 	{
 		if (AsNumberLiteral(left) is not { } leftLiteral || AsNumberLiteral(right) is not { } rightLiteral)
@@ -35,12 +36,12 @@ public sealed partial class Resolver
 		
 		if (leftLiteral.Value is BigInteger leftInteger && rightLiteral.Value is BigInteger rightInteger)
 		{
-			var integer = node.Op.Type is TokenType.OpLessLessLess or TokenType.OpGreaterGreaterGreater
-				? FoldRotation(node.Op.Type, leftLiteral, rightInteger)
-				: FoldIntegers(node.Op.Type, leftInteger, rightInteger);
+			var integer = op is TokenType.OpLessLessLess or TokenType.OpGreaterGreaterGreater
+				? FoldRotation(op, leftLiteral, rightInteger)
+				: FoldIntegers(op, leftInteger, rightInteger);
 			
 			return integer is { } value
-				? CreateFold(node, node.Op.Type,
+				? CreateFold(node, op,
 					leftLiteral.Type is UntypedIntegerType { IsUnsigned: true } ||
 					rightLiteral.Type is UntypedIntegerType { IsUnsigned: true }
 						? NativeSymbols.UntypedUnsignedInteger
@@ -49,8 +50,8 @@ public sealed partial class Resolver
 		}
 		
 		return ToDouble(leftLiteral) is { } leftNumber && ToDouble(rightLiteral) is { } rightNumber &&
-		       FoldFloats(node.Op.Type, leftNumber, rightNumber) is { } number
-			? CreateFold(node, node.Op.Type, NativeSymbols.UntypedFloat, number, [leftLiteral, rightLiteral])
+		       FoldFloats(op, leftNumber, rightNumber) is { } number
+			? CreateFold(node, op, NativeSymbols.UntypedFloat, number, [leftLiteral, rightLiteral])
 			: null;
 	}
 	

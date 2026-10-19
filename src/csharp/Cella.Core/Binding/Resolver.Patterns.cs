@@ -258,34 +258,19 @@ public sealed partial class Resolver
 	{
 		ProbePattern(syntax, subjectType);
 		var location = syntax.SourceLocation;
-		var name = new Token(TokenType.Identifier, location, "match");
 		var isCopy = _typePool.IsCopy(subjectType);
-		var subject = new LocalVariableSymbol(name, isCopy || IsInvalid(subjectType)
-			? subjectType
-			: _typePool.GetPointerType(subjectType), false)
+		var subject = new LocalVariableSymbol(new Token(TokenType.Identifier, location, "match"),
+			isCopy || IsInvalid(subjectType) ? subjectType : _typePool.GetPointerType(subjectType), false)
 		{
 			IsSynthesized = true,
 			IsPatternBinding = true,
 			IsBorrowBinding = !isCopy && !IsInvalid(subjectType)
 		};
 		
-		var reference = new VarExpressionNode(name);
-		IExpressionNode test = syntax.Kind switch
-		{
-			PatternKind.Range => new ChainedExpressionNode([syntax.Value!, reference, syntax.Upper!],
-			[
-				new Token(TokenType.OpLessEqual, location, "<="),
-				syntax.IsInclusive
-					? new Token(TokenType.OpLessEqual, location, "<=")
-					: new Token(TokenType.OpLess, location, "<")
-			]),
-			PatternKind.Relational => new BinaryOpExpressionNode(reference, syntax.Operator!.Value, syntax.Value!),
-			_ => new BinaryOpExpressionNode(reference, new Token(TokenType.OpEqualEqual, location, "=="),
-				syntax.Value!)
-		};
-		
 		var checkpoint = OpenCheckpoint();
-		var resolved = VisitInScope(test, [subject], NativeSymbols.Bool);
+		var resolved = ResolveExpected(NativeSymbols.Bool,
+			() => ResolvePatternTest(syntax, ResolveSymbolValue(syntax.Value!, subject)));
+		
 		var hasErrors = checkpoint.HasErrors;
 		Commit(checkpoint);
 		if (IsInvalid(resolved) || hasErrors)
@@ -297,6 +282,26 @@ public sealed partial class Resolver
 		
 		var (constant, spans) = FindPatternConstants(syntax, resolved, subjectType);
 		return new ResolvedPattern(null, []) { Subject = subject, Test = resolved, Constant = constant, Spans = spans };
+	}
+	
+	private IResolvedExpressionNode ResolvePatternTest(PatternNode syntax, IResolvedExpressionNode subject)
+	{
+		var value = syntax.Value!;
+		if (syntax is { Kind: PatternKind.Range, Operator: { } range, Upper: { } upper })
+		{
+			var location = range.SourceLocation;
+			ImmutableArray<Token> ops =
+			[
+				new(TokenType.OpLessEqual, location, "<="),
+				syntax.IsInclusive ? new(TokenType.OpLessEqual, location, "<=") : new(TokenType.OpLess, location, "<")
+			];
+			
+			var operands = VisitChainOperands([value, value, upper], [null, subject, null]);
+			return ResolveChainLinks(value, ops, [value.SourceLocation, location, upper.SourceLocation], operands);
+		}
+		
+		var op = syntax.Operator ?? new Token(TokenType.OpEqualEqual, value.SourceLocation, "==");
+		return ResolveBinaryOperation(value, op, subject, VisitRightOperand(value, op, subject));
 	}
 	
 	private (Constant? Constant, ImmutableArray<(BigInteger Low, BigInteger High)> Spans) FindPatternConstants(

@@ -325,11 +325,12 @@ public sealed partial class Resolver
 	
 	private static bool IsString(TypeSymbol type) => type is StringType or UntypedStringType or InterpolatedStringType;
 	
-	private IResolvedExpressionNode ConcatenateStrings(BinaryOpExpressionNode node, IResolvedExpressionNode left,
+	private IResolvedExpressionNode ConcatenateStrings(IExpressionNode node, Token op, IResolvedExpressionNode left,
 		IResolvedExpressionNode right)
 	{
 		if (left.Type is StringType && right.Type is StringType && left.Type != right.Type)
-			return Error(node, DiagnosticReporter.ReportBinaryOpMismatch(_operatorRegistry, left, node.Op, right),
+			return Error(node,
+				DiagnosticReporter.ReportBinaryOpMismatch(_operatorRegistry, left, op, right, node.SourceLocation),
 				CurrentTargetType);
 		
 		var leftText = FoldString(left);

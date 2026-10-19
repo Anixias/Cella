@@ -8,9 +8,9 @@ Error at zero_size_pointer_difference.ce:15:13
 15 │ val same = p - p
                 ╘═══╛ Cannot subtract pointers to zero-size type 'array[i32, 0]'
 
-Error at zero_size_pointer_difference.ce:16:15
+Error at zero_size_pointer_difference.ce:16:14
 15 │ val same = p - p
 16 │ val after = (first + 1) - first
-                  ╘════════════════╛ Cannot subtract pointers to zero-size type 'Empty'
+                 ╘═════════════════╛ Cannot subtract pointers to zero-size type 'Empty'
 
 [compilation failed]

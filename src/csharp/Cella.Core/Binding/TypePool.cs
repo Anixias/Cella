@@ -119,6 +119,7 @@ public sealed partial class TypePool
 		
 		// Operations
 		CreatePointerArithmetic(NativeSymbols.VoidPtr);
+		OperatorRegistry.CreatePointerComparisons(cstr);
 	}
 	
 	private void CreateStrMembers()

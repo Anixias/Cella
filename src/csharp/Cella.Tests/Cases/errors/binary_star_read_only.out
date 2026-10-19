@@ -1,0 +1,11 @@
+Error at binary_star_read_only.ce:26:2
+25 │ var s = Pick(Pair(2))
+26 │ (r * s).value = 3
+     ╘═══════════╛ Cannot write through read-only borrows
+
+Error at binary_star_read_only.ce:28:2
+27 │ var c = Cell(Pair(3))
+28 │ (*c).value = 4
+     ╘════════╛ 'Cell' has no writable '*'
+
+[compilation failed]

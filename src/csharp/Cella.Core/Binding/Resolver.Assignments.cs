@@ -68,13 +68,15 @@ public sealed partial class Resolver
 		var resolutionSet = ResolveCallable(candidates, args, MaterializationMode.Overload);
 		if (resolutionSet.Count != 1)
 		{
-			Diagnostics.Add(DiagnosticReporter.ReportBinaryOpMismatch(_operatorRegistry, left, node.Op, right));
+			Diagnostics.Add(DiagnosticReporter.ReportBinaryOpMismatch(_operatorRegistry, left, node.Op, right,
+				node.SourceLocation));
+			
 			return null;
 		}
 		
 		var resolution = resolutionSet[0];
 		var resolvedRight = ApplyArgumentResolution(args, resolution)[1];
-		if (FindShiftRangeError(node, left.Type, resolvedRight) is { } rangeError)
+		if (FindShiftRangeError(node.Op.Type, left.Type, resolvedRight) is { } rangeError)
 		{
 			Diagnostics.Add(rangeError);
 			return null;

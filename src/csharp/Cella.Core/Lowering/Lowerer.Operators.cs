@@ -311,8 +311,7 @@ public sealed partial class Lowerer
 			IndexerValue v => new IndexerValue(v.Type, StabilizeOperandsBase(v.Target),
 				CaptureAsAtomic(v.Index, "index"), v.SourceLocation),
 			AccessValue v => new AccessValue(v.Type, StabilizeOperandsBase(v.Target), v.Member, v.SourceLocation),
-			UnaryOpValue { Op: UnaryOperation.Dereference, Operand: CallValue call } v when IsPlaceOperator(
-					call.Function) =>
+			UnaryOpValue { Op: UnaryOperation.Dereference, Operand: CallValue { IsPlaceOperator: true } call } v =>
 				new UnaryOpValue(v.Type, StabilizeOperatorCall(call), UnaryOperation.Dereference, v.SourceLocation),
 			_ => StabilizeStorage(value)
 		};
@@ -331,7 +330,7 @@ public sealed partial class Lowerer
 				passing(i), i == 0 || passing(i) == Passing.Borrow || argument is UnaryOpValue
 				{
 					Op: UnaryOperation.AddressOf
-				})), call.SourceLocation);
+				})), call.SourceLocation) { IsPlaceOperator = call.IsPlaceOperator };
 		}
 		
 		private Value SettleOperand(Value operand, Passing passing, bool defersAccess)
@@ -356,12 +355,9 @@ public sealed partial class Lowerer
 			_ => false
 		};
 		
-		private static bool IsPlaceOperator(FunctionInfo function) =>
-			function.Symbol is { Kind: FunctionKind.Method, Syntax: FunctionNode { Identifier.Text: "[]" or "*" } };
-		
 		private static bool AccessesThroughOperator(Value place) => place switch
 		{
-			UnaryOpValue { Op: UnaryOperation.Dereference, Operand: CallValue call } => IsPlaceOperator(call.Function),
+			UnaryOpValue { Op: UnaryOperation.Dereference, Operand: CallValue call } => call.IsPlaceOperator,
 			IndexerValue v => AccessesThroughOperator(v.Target),
 			AccessValue v => AccessesThroughOperator(v.Target),
 			_ => false

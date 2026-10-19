@@ -50,7 +50,7 @@ public sealed partial class Resolver
 			return InvalidHeader(node, binding);
 		
 		var counter = binding ?? new LocalVariableSymbol(HiddenName(node.Binding, "counter"), type, false)
-			{ IsSynthesized = true };
+			{ IsSynthesized = true, IsUnstored = true };
 		
 		var start = CoerceToType(bounds[0], type);
 		var end = CoerceToType(bounds[1], type);
@@ -115,6 +115,7 @@ public sealed partial class Resolver
 			var cursor = new LocalVariableSymbol(HiddenName(node.Binding, "cursor"), pointer, false)
 			{
 				IsSynthesized = true,
+				IsUnstored = true,
 				IsBorrowBinding = true,
 				IsMutBinding = true,
 				IsLoopSource = true
@@ -128,7 +129,7 @@ public sealed partial class Resolver
 			? RejectIteration(node, $"Cannot use '{dyn.Name}' by value", node.Source.SourceLocation)
 			: ResolveCursor(node,
 				new LocalVariableSymbol(HiddenName(node.Binding, "cursor"), type, true)
-					{ IsSynthesized = true, IsLoopSource = true }, source,
+					{ IsSynthesized = true, IsUnstored = true, IsLoopSource = true }, source,
 				elementMode);
 	}
 	
@@ -194,6 +195,7 @@ public sealed partial class Resolver
 		var sourceSymbol = new LocalVariableSymbol(HiddenName(node.Binding, "source"), pointer, false)
 		{
 			IsSynthesized = true,
+			IsUnstored = true,
 			IsBorrowBinding = true,
 			IsMutBinding = isMut,
 			IsLoopSource = true
@@ -204,7 +206,7 @@ public sealed partial class Resolver
 			: source;
 		
 		var index = new LocalVariableSymbol(HiddenName(node.Binding, "index"), NativeSymbols.UIntSize, false)
-			{ IsSynthesized = true };
+			{ IsSynthesized = true, IsUnstored = true };
 		
 		var start = MaterializeLiteral(syntax, NativeSymbols.UIntSize, BigInteger.Zero);
 		var end = array.LengthParameter is { } length
@@ -234,6 +236,7 @@ public sealed partial class Resolver
 		var sourceSymbol = new LocalVariableSymbol(HiddenName(node.Binding, "source"), array, false)
 		{
 			IsSynthesized = true,
+			IsUnstored = true,
 			IsLoopSource = true
 		};
 		
@@ -241,7 +244,7 @@ public sealed partial class Resolver
 			IsPlaceSyntax(syntax) ? new ResolvedOwnExpressionNode(source, syntax) : source;
 		
 		var index = new LocalVariableSymbol(HiddenName(node.Binding, "index"), NativeSymbols.UIntSize, false)
-			{ IsSynthesized = true };
+			{ IsSynthesized = true, IsUnstored = true };
 		
 		var start = MaterializeLiteral(syntax, NativeSymbols.UIntSize, BigInteger.Zero);
 		var end = array.LengthParameter is { } length
@@ -301,7 +304,8 @@ public sealed partial class Resolver
 		
 		var call = CallOperator(receiver, method, node.Source);
 		return ResolveCursor(node,
-			new LocalVariableSymbol(HiddenName(node.Binding, "cursor"), call.Type, true) { IsSynthesized = true }, call,
+			new LocalVariableSymbol(HiddenName(node.Binding, "cursor"), call.Type, true)
+				{ IsSynthesized = true, IsUnstored = true }, call,
 			elementMode);
 	}
 	
@@ -342,7 +346,7 @@ public sealed partial class Resolver
 		if (IsAmbiguousOperator(type, dereference))
 			return RejectIteration(node, DescribeAmbiguousOperator("*", type), node.Binding.SourceLocation);
 		
-		var element = Decay(CallOperator(ReadCursor(), dereference, syntax));
+		var element = Decay(CallOperator(ReadCursor(), dereference, syntax, PlaceOperator.Dereference));
 		var lends = GetFunctionInfo(dereference, type).Signature.ReturnType is BorrowType;
 		if (isMut && !ReturnsWritable(dereference, type))
 			return RejectIteration(node, $"Cannot iterate over '{type.Name}' with 'mut'",

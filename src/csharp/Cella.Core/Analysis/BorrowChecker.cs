@@ -287,8 +287,7 @@ public sealed class BorrowChecker
 			
 			case DropEvent { Instruction.Value.Type: var type } e
 				when typePool.DropReadsBorrows(type):
-				var isNamed = e.Place.Path.IsEmpty && !e.Instruction.IsReassignment &&
-				              !e.Place.Root.Name.StartsWith('.');
+				var isNamed = e.Place.Path.IsEmpty && !e.Instruction.IsReassignment && HasSourceName(e.Place.Root);
 				
 				ReportEnded(e.Place.Root, e.Location, state, isNamed ? $"'{e.Place.Root.Name}' is dropped here" : null);
 				break;
@@ -396,8 +395,10 @@ public sealed class BorrowChecker
 		_dying.Clear();
 	}
 	
-	private static bool IsTemporary(LocalVariableSymbol local) =>
-		local.Name.StartsWith('.') && !local.IsClosureEnvironment;
+	private static bool IsTemporary(LocalVariableSymbol local) => local.IsUnstored;
+	
+	private static bool HasSourceName(VariableSymbol root) =>
+		root is not LocalVariableSymbol { IsUnstored: true } and not LocalVariableSymbol { IsClosureEnvironment: true };
 	
 	private void CheckReturn(MemoryEvent memoryEvent, BorrowState state)
 	{
@@ -595,7 +596,7 @@ public sealed class BorrowChecker
 		ClosureEnvironment => Escape.Closure,
 		LocalVariableSymbol { IsClosureEnvironment: true } => null,
 		ParameterSymbol parameter => parameterEscapes[parameter],
-		LocalVariableSymbol local => local.Name.StartsWith('.') ? Escape.Unstored : Escape.Local,
+		LocalVariableSymbol local => local.IsUnstored ? Escape.Unstored : Escape.Local,
 		_ => null
 	};
 	
@@ -613,7 +614,7 @@ public sealed class BorrowChecker
 	{
 		ClosureEnvironment => Escape.Closure,
 		LocalVariableSymbol { IsClosureEnvironment: true } => null,
-		LocalVariableSymbol local => local.Name.StartsWith('.') ? Escape.Unstored : Escape.Local,
+		LocalVariableSymbol local => local.IsUnstored ? Escape.Unstored : Escape.Local,
 		ParameterSymbol or HeldBorrows => Escape.Borrowed,
 		_ => null
 	};

@@ -55,7 +55,7 @@ public sealed partial class Lowerer
 		{
 			name = $".t{NextTempId()}__{name}";
 			var symbol = new LocalVariableSymbol(new(TokenType.Identifier, SourceLocation.None, name), type, true)
-				{ IsSynthesized = true };
+				{ IsSynthesized = true, IsUnstored = true };
 			
 			_temporaries.Add(symbol);
 			return symbol;
@@ -107,9 +107,10 @@ public sealed partial class Lowerer
 		}
 		
 		private List<Value> LowerArguments(IReadOnlyList<IResolvedExpressionNode> arguments, FunctionInfo function,
-			int firstParameter) => LowerOperands(arguments, GetArgumentPassing(function, firstParameter),
+			int firstParameter, bool isPlaceOperator = false) => LowerOperands(arguments,
+			GetArgumentPassing(function, firstParameter),
 			firstParameter == 0 && function.Symbol.Kind == FunctionKind.Method,
-			firstParameter == 0 && IsPlaceOperator(function));
+			isPlaceOperator);
 		
 		private Func<int, Passing> GetArgumentPassing(FunctionInfo function, int firstParameter)
 		{
@@ -177,7 +178,7 @@ public sealed partial class Lowerer
 			ResolvedOwnExpressionNode n => MayEmit(n.Value),
 			ResolvedBinaryOpExpressionNode n => IsShortCircuitOp(n.Operation) || MayEmit(n.Left) || MayEmit(n.Right),
 			ResolvedFunctionCallExpressionNode n => MayEmitOperands(n.Arguments, GetArgumentPassing(n.Function, 0),
-				IsPlaceOperator(n.Function)),
+				n.PlaceOperator is not null),
 			ResolvedIndirectCallExpressionNode n => MayEmitOperands([n.Target, ..n.Arguments],
 				GetOperandPassing(n.FunctionType)),
 			ResolvedArrayExpressionNode n => n.Values.Any(MayEmit),

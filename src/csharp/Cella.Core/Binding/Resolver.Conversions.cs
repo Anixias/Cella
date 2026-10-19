@@ -105,10 +105,9 @@ public sealed partial class Resolver
 		or TokenType.OpGreaterGreater or TokenType.OpGreaterGreaterEqual or TokenType.OpLessLessLess
 		or TokenType.OpLessLessLessEqual or TokenType.OpGreaterGreaterGreater or TokenType.OpGreaterGreaterGreaterEqual;
 	
-	private Diagnostic? FindShiftRangeError(BinaryOpExpressionNode node, TypeSymbol valueType,
-		IResolvedExpressionNode amount)
+	private Diagnostic? FindShiftRangeError(TokenType op, TypeSymbol valueType, IResolvedExpressionNode amount)
 	{
-		var isShift = node.Op.Type is TokenType.OpLessLess or TokenType.OpLessLessEqual or TokenType.OpGreaterGreater
+		var isShift = op is TokenType.OpLessLess or TokenType.OpLessLessEqual or TokenType.OpGreaterGreater
 			or TokenType.OpGreaterGreaterEqual;
 		
 		if (!isShift || _evaluator.Evaluate(amount) is not IntegerConstant { Value: var value })
@@ -118,7 +117,7 @@ public sealed partial class Resolver
 		if (value >= 0 && value < bits)
 			return null;
 		
-		return new Diagnostic(DiagnosticSeverity.Error, node.Right.SourceLocation,
+		return new Diagnostic(DiagnosticSeverity.Error, amount.Syntax.SourceLocation,
 			$"Shift amount {value} is out of range for '{valueType.Name}'")
 		{
 			Hints = [$"'{valueType.Name}' has {bits} bits"]

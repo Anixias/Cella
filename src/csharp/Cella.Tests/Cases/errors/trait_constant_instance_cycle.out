@@ -1,0 +1,6 @@
+Error at trait_constant_instance_cycle.ce:15:2
+14 │ {
+15 │     bits: const u32 = Box[T].bits + 1
+         ╘══╛ 'bits' depends on its own value
+
+[compilation failed]

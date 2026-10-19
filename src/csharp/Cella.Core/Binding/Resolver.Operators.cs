@@ -1,4 +1,5 @@
-﻿using Cella.Core.Binding.Conversions;
+﻿using System.Collections.Immutable;
+using Cella.Core.Binding.Conversions;
 using Cella.Core.Binding.Nodes;
 using Cella.Core.Binding.Operations;
 using Cella.Core.Symbols;
@@ -100,7 +101,7 @@ public sealed partial class Resolver
 		var type when (FindDereference(type, ParameterMode.ReadOnly) ?? FindDereference(type, ParameterMode.Mut)) is
 			{ } dereference => IsAmbiguousOperator(type, dereference)
 				? Error(node, DescribeAmbiguousOperator("*", type), CurrentTargetType)
-				: Decay(CallOperator(operand, dereference, node)),
+				: Decay(CallOperator(operand, dereference, node, PlaceOperator.Dereference)),
 		var type when GetMethods(type, "*").Where(static method => method.HasReceiver).ToList() is
 			{ Count: > 0 } hidden => Error(node, ReportHiddenMember(node.SourceLocation, "*",
 			hidden.Select(static method => method.Function)), CurrentTargetType),
@@ -161,7 +162,6 @@ public sealed partial class Resolver
 		else
 		{
 			var candidates = _operatorRegistry.GetBinaryCandidates(op.Type);
-			var operators = candidates;
 			var isConjunction = op.Type == TokenType.OpAmpersandAmpersand;
 			IResolvedExpressionNode left, right;
 			var leftTrial = OpenCheckpoint();
@@ -170,131 +170,137 @@ public sealed partial class Resolver
 			{
 				Rollback(leftTrial);
 				right = Decay(VisitOperand(node.Right, candidates, 1));
-				left = Decay(VisitPeerOperand(node.Left, () => VisitOperand(node.Left, operators, 0), right.Type));
+				left = Decay(VisitPeerOperand(node.Left, () => VisitOperand(node.Left, candidates, 0), right.Type));
 			}
 			else
 			{
 				Commit(leftTrial);
-				var leftType = left.Type;
-				right = Decay(isConjunction
-					? VisitInScope(node.Right, GetTrueBindings(left))
-					: VisitPeerOperand(node.Right,
-						() => VisitOperand(node.Right, [..operators, ..FindOperatorCallables(leftType, op.Text)], 1,
-							leftType),
-						leftType));
+				right = isConjunction
+					? Decay(VisitInScope(node.Right, GetTrueBindings(left)))
+					: VisitRightOperand(node.Right, op, left);
 			}
 			
 			if (isConjunction)
 				ReportRepeatedBindings(GetTrueBindings(left).Concat(GetTrueBindings(right)));
 			
-			if (AnyInvalid(left, right))
-				return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
-			
-			if (left.Type is NeverType)
-				return left;
-			
-			if (right.Type is NeverType && left.Type is not UntypedType)
-				right = MaterializeExpression(right, left.Type);
-			
-			if (left.Type is UntypedUndefType || right.Type is UntypedUndefType)
-				(left, right) = (TypeUndef(left, right.Type), TypeUndef(right, left.Type));
-			
-			if (AnyInvalid(left, right))
-				return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
-			
-			if (FoldLiterals(node, left, right) is { } folded)
-				return folded;
-			
-			if (survey is { } activeSurvey && left.Type is UntypedType && right.Type is UntypedType)
+			return ResolveBinaryOperation(node, op, left, right);
+		}
+	}
+	
+	private IResolvedExpressionNode VisitRightOperand(IExpressionNode syntax, Token op, IResolvedExpressionNode left)
+	{
+		var leftType = left.Type;
+		var operators = _operatorRegistry.GetBinaryCandidates(op.Type);
+		return Decay(VisitPeerOperand(syntax,
+			() => VisitOperand(syntax, [..operators, ..FindOperatorCallables(leftType, op.Text)], 1, leftType),
+			leftType));
+	}
+	
+	private IResolvedExpressionNode ResolveBinaryOperation(IExpressionNode node, Token op, IResolvedExpressionNode left,
+		IResolvedExpressionNode right)
+	{
+		var candidates = _operatorRegistry.GetBinaryCandidates(op.Type);
+		if (AnyInvalid(left, right))
+			return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
+		
+		if (left.Type is NeverType)
+			return left;
+		
+		if (right.Type is NeverType && left.Type is not UntypedType)
+			right = MaterializeExpression(right, left.Type);
+		
+		if (left.Type is UntypedUndefType || right.Type is UntypedUndefType)
+			(left, right) = (TypeUndef(left, right.Type), TypeUndef(right, left.Type));
+		
+		if (AnyInvalid(left, right))
+			return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
+		
+		if (FoldLiterals(node, op.Type, left, right) is { } folded)
+			return folded;
+		
+		if (survey is { } activeSurvey && left.Type is UntypedType && right.Type is UntypedType)
+		{
+			activeSurvey.MarkDefaulted(left);
+			activeSurvey.MarkDefaulted(right);
+		}
+		
+		if (ResolveDeclaredOperator(node, op, left, right) is { } declared)
+			return declared;
+		
+		if (op.Type == TokenType.OpPlus && IsString(left.Type) && IsString(right.Type))
+			return ConcatenateStrings(node, op, left, right);
+		
+		if (IsMixedSignComparison(op.Type, left.Type, right.Type))
+		{
+			var comparison = new NativeImpl(op.Type, NativeSymbols.Bool, left.Type, right.Type);
+			return new ResolvedBinaryOpExpressionNode(left, right, comparison, node);
+		}
+		
+		if (!IsShiftOrRotate(op.Type) &&
+		    FindLossyMixedSign(left.Type, right.Type) is var (signedType, unsignedType))
+		{
+			if (FindMixedSignType(signedType, unsignedType) is not { } mixedType)
 			{
-				activeSurvey.MarkDefaulted(left);
-				activeSurvey.MarkDefaulted(right);
-			}
-			
-			if (ResolveDeclaredOperator(node, left, right) is { } declared)
-				return declared;
-			
-			if (op.Type == TokenType.OpPlus && IsString(left.Type) && IsString(right.Type))
-				return ConcatenateStrings(node, left, right);
-			
-			if (IsMixedSignComparison(op.Type, left.Type, right.Type))
-			{
-				var comparison = new NativeImpl(op.Type, NativeSymbols.Bool, left.Type, right.Type);
-				return new ResolvedBinaryOpExpressionNode(left, right, comparison, node);
-			}
-			
-			if (!IsShiftOrRotate(op.Type) &&
-			    FindLossyMixedSign(left.Type, right.Type) is var (signedType, unsignedType))
-			{
-				if (FindMixedSignType(signedType, unsignedType) is not { } mixedType)
-				{
-					var hint = $"'{signedType.Name}' can't represent every '{unsignedType.Name}' value";
-					if (CountBits(signedType) > CountBits(unsignedType))
-						hint += signedType == NativeSymbols.IntSize ? " on 32-bit targets" : " on 64-bit targets";
-					
-					var mismatch = DiagnosticReporter.ReportBinaryOpMismatch(_operatorRegistry, left, op, right);
-					return Error(node, mismatch with { Hints = [hint] }, CurrentTargetType);
-				}
+				var hint = $"'{signedType.Name}' can't represent every '{unsignedType.Name}' value";
+				if (CountBits(signedType) > CountBits(unsignedType))
+					hint += signedType == NativeSymbols.IntSize ? " on 32-bit targets" : " on 64-bit targets";
 				
-				candidates = [..candidates.Where(candidate => candidate.ParameterTypes.All(type => type == mixedType))];
+				var mismatch = DiagnosticReporter.ReportBinaryOpMismatch(_operatorRegistry, left, op, right,
+					node.SourceLocation);
+				
+				return Error(node, mismatch with { Hints = [hint] }, CurrentTargetType);
 			}
 			
-			if (op.Type is TokenType.OpEqualEqual or TokenType.OpBangEqual &&
-			    FindNullableOperand(left, right) is { } nullable)
-				return new ResolvedBinaryOpExpressionNode(MaterializeExpression(left, nullable),
-					MaterializeExpression(right, nullable),
-					new NativeImpl(op.Type, NativeSymbols.Bool, nullable, nullable),
-					node);
-			
-			if (left.Type is PointerType { BaseType: var leftBase } &&
-			    right.Type is PointerType { BaseType: var rightBase } &&
-			    leftBase != rightBase && leftBase != NativeSymbols.Void && rightBase != NativeSymbols.Void)
-				return Error(node, DiagnosticReporter.ReportBinaryOpMismatch(_operatorRegistry, left, op, right),
-					CurrentTargetType);
-			
-			var args = new[] { left, right };
-			var resolutionSet = ResolveCallable(candidates, args, MaterializationMode.Overload);
-			if (resolutionSet.IsAmbiguous && (left.Type == NativeSymbols.CStr || right.Type == NativeSymbols.CStr))
-				return Error(node, DiagnosticReporter.ReportBinaryOpMismatch(_operatorRegistry, left, op, right),
-					CurrentTargetType);
-			
-			if (resolutionSet.IsAmbiguous)
-				return Error(node,
-					$"Operation '{op.Text}' between '{left.Type.Name}' and '{right.Type.Name}' is ambiguous",
-					CurrentTargetType);
-			
-			if (!resolutionSet.HasResult)
+			candidates = [..candidates.Where(candidate => candidate.ParameterTypes.All(type => type == mixedType))];
+		}
+		
+		if (op.Type is TokenType.OpEqualEqual or TokenType.OpBangEqual &&
+		    FindNullableOperand(left, right) is { } nullable)
+			return new ResolvedBinaryOpExpressionNode(MaterializeExpression(left, nullable),
+				MaterializeExpression(right, nullable),
+				new NativeImpl(op.Type, NativeSymbols.Bool, nullable, nullable),
+				node);
+		
+		var args = new[] { left, right };
+		var resolutionSet = ResolveCallable(candidates, args, MaterializationMode.Overload);
+		if (resolutionSet.IsAmbiguous)
+			return Error(node,
+				$"Operation '{op.Text}' between '{left.Type.Name}' and '{right.Type.Name}' is ambiguous",
+				CurrentTargetType);
+		
+		if (!resolutionSet.HasResult)
+		{
+			if (left.Type is UntypedType || right.Type is UntypedType)
 			{
-				if (left.Type is UntypedType || right.Type is UntypedType)
-				{
-					var defaultLeft = DefaultLiteral(left);
-					var defaultRight = DefaultLiteral(right);
-					if (AnyInvalid(defaultLeft, defaultRight))
-						return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
-					
-					if (ResolveDeclaredOperator(node, defaultLeft, defaultRight) is { } defaulted)
-						return defaulted;
-				}
-				
-				left = ResolveUnmatched(left, right.Type);
-				right = ResolveUnmatched(right, left.Type);
-				if (AnyInvalid(left, right))
+				var defaultLeft = DefaultLiteral(left);
+				var defaultRight = DefaultLiteral(right);
+				if (AnyInvalid(defaultLeft, defaultRight))
 					return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
 				
-				var diagnostic = DiagnosticReporter.ReportBinaryOpMismatch(_operatorRegistry, left, op, right);
-				return Error(node, diagnostic, CurrentTargetType);
+				if (ResolveDeclaredOperator(node, op, defaultLeft, defaultRight) is { } defaulted)
+					return defaulted;
 			}
 			
-			var resolution = resolutionSet[0];
-			var resolvedArgs = ApplyArgumentResolution(args, resolution);
-			var operation = (OperationImpl)resolution.Callable;
+			left = ResolveUnmatched(left, right.Type);
+			right = ResolveUnmatched(right, left.Type);
+			if (AnyInvalid(left, right))
+				return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
 			
-			if (FindShiftRangeError(node, resolvedArgs[0].Type, resolvedArgs[1]) is { } rangeError)
-				return Error(node, rangeError, CurrentTargetType);
+			var diagnostic = DiagnosticReporter.ReportBinaryOpMismatch(_operatorRegistry, left, op, right,
+				node.SourceLocation);
 			
-			var result = new ResolvedBinaryOpExpressionNode(resolvedArgs[0], resolvedArgs[1], operation, node);
-			return ApplyResultResolution(result, resolution);
+			return Error(node, diagnostic, CurrentTargetType);
 		}
+		
+		var resolution = resolutionSet[0];
+		var resolvedArgs = ApplyArgumentResolution(args, resolution);
+		var operation = (OperationImpl)resolution.Callable;
+		
+		if (FindShiftRangeError(op.Type, resolvedArgs[0].Type, resolvedArgs[1]) is { } rangeError)
+			return Error(node, rangeError, CurrentTargetType);
+		
+		var result = new ResolvedBinaryOpExpressionNode(resolvedArgs[0], resolvedArgs[1], operation, node);
+		return ApplyResultResolution(result, resolution);
 	}
 	
 	private IEnumerable<(TypeSymbol Owner, MethodSymbol Method)> FindOperators(TypeSymbol type, string name) =>
@@ -306,10 +312,10 @@ public sealed partial class Resolver
 		.Where(entry => CanAccess(entry.Owner, entry.Method.Function))
 		.Select(entry => new FunctionCallable(GetFunctionInfo(entry.Method, entry.Owner)));
 	
-	private IResolvedExpressionNode? ResolveDeclaredOperator(BinaryOpExpressionNode node, IResolvedExpressionNode left,
-		IResolvedExpressionNode right)
+	private IResolvedExpressionNode? ResolveDeclaredOperator(IExpressionNode node, Token op,
+		IResolvedExpressionNode left, IResolvedExpressionNode right)
 	{
-		var name = node.Op.Text;
+		var name = op.Text;
 		var declared = FindOperators(left.Type, name).ToList();
 		if (right.Type != left.Type)
 			declared.AddRange(FindOperators(right.Type, name));
@@ -323,7 +329,7 @@ public sealed partial class Resolver
 			.ToArray();
 		
 		if (accessible.Length == 0)
-			return Error(node, ReportHiddenMember(node.Op.SourceLocation, name,
+			return Error(node, ReportHiddenMember(op.SourceLocation, name,
 				declared.Select(static entry => entry.Method.Function)), CurrentTargetType);
 		
 		var args = new[] { left, right };
@@ -331,7 +337,7 @@ public sealed partial class Resolver
 		ICallable[] candidates =
 		[
 			..accessible
-				.Select(candidate => Specialize(candidate, name, args, null, node.Op.SourceLocation, [], violations))
+				.Select(candidate => Specialize(candidate, name, args, null, op.SourceLocation, [], violations))
 				.OfType<ICallable>()
 		];
 		
@@ -404,7 +410,8 @@ public sealed partial class Resolver
 				CurrentTargetType);
 		
 		if (!resolutionSet.HasResult)
-			return Error(node, DiagnosticReporter.ReportBinaryOpMismatch(_operatorRegistry, left, node.Op, right),
+			return Error(node,
+				DiagnosticReporter.ReportBinaryOpMismatch(_operatorRegistry, left, node.Op, right, node.SourceLocation),
 				CurrentTargetType);
 		
 		var resolution = resolutionSet[0];
@@ -415,19 +422,22 @@ public sealed partial class Resolver
 		return new ResolvedFunctionCallExpressionNode(info, args, node);
 	}
 	
-	public IResolvedExpressionNode Visit(ChainedExpressionNode node)
+	public IResolvedExpressionNode Visit(ChainedExpressionNode node) => ResolveChainLinks(node, node.Ops,
+		node.OperandLocations, VisitChainOperands(node.Operands, new IResolvedExpressionNode?[node.Operands.Length]));
+	
+	private List<IResolvedExpressionNode> VisitChainOperands(ImmutableArray<IExpressionNode> operands,
+		IResolvedExpressionNode?[] visited)
 	{
 		// We push null to allow sub-expressions to resolve naturally; then, we attempt to implicit cast to actual type
-		var visited = node.Operands
-			.Select(operand => IsCaseNameSyntax(operand) ? null : Decay(VisitNode(operand, null)))
-			.ToArray();
+		for (var i = 0; i < operands.Length; i++)
+			visited[i] ??= IsCaseNameSyntax(operands[i]) ? null : Decay(VisitNode(operands[i], null));
 		
 		var peers = visited.OfType<IResolvedExpressionNode>().Select(static operand => operand.Type).ToList();
-		var operands = node.Operands
-			.Select((operand, i) => visited[i] ?? VisitCaseName(operand, peers) ?? Decay(VisitNode(operand, null)))
-			.ToList();
-		
-		return ResolveChainLinks(node, operands);
+		return
+		[
+			..operands.Select((operand, i) =>
+				visited[i] ?? VisitCaseName(operand, peers) ?? Decay(VisitNode(operand, null)))
+		];
 	}
 	
 	private IResolvedExpressionNode TypeUndef(IResolvedExpressionNode operand, TypeSymbol peerType) =>
@@ -438,19 +448,19 @@ public sealed partial class Resolver
 	private IResolvedExpressionNode DefaultLiteral(IResolvedExpressionNode operand) =>
 		operand is ResolvedLiteralExpressionNode { Type: UntypedType } ? MaterializeAsDefault(operand) : operand;
 	
-	private IResolvedExpressionNode ResolveChainLinks(ChainedExpressionNode node,
-		List<IResolvedExpressionNode> operands)
+	private IResolvedExpressionNode ResolveChainLinks(IExpressionNode node, ImmutableArray<Token> ops,
+		ImmutableArray<SourceLocation> operandLocations, List<IResolvedExpressionNode> operands)
 	{
 		if (AnyInvalid([..operands]))
 			return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
 		
-		var links = new List<ChainLink>(node.Ops.Length);
-		for (var i = 0; i < node.Ops.Length; i++)
+		var links = new List<ChainLink>(ops.Length);
+		for (var i = 0; i < ops.Length; i++)
 		{
-			var op = node.Ops[i];
+			var op = ops[i];
 			var args = new[] { operands[i], operands[i + 1] };
-			var (source, range) = args[0].Syntax.SourceLocation;
-			var location = new SourceLocation(source, range.Join(args[1].Syntax.SourceLocation.Range));
+			var (source, range) = operandLocations[i];
+			var location = new SourceLocation(source, range.Join(operandLocations[i + 1].Range));
 			if (IsMixedSignComparison(op.Type, args[0].Type, args[1].Type))
 			{
 				links.Add(new ChainLink(new NativeImpl(op.Type, NativeSymbols.Bool, args[0].Type, args[1].Type), null));
@@ -477,12 +487,7 @@ public sealed partial class Resolver
 				: default;
 			
 			if (visible.Length == 0 || !resolutionSet.HasResult && !resolutionSet.IsAmbiguous)
-			{
-				if (ResolveBuiltInLink(op, args) is not { } builtIn)
-					return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
-				
-				resolutionSet = builtIn;
-			}
+				resolutionSet = ResolveBuiltInLink(op, args);
 			
 			if (resolutionSet.IsAmbiguous)
 				return Error(node,
@@ -490,7 +495,8 @@ public sealed partial class Resolver
 					CurrentTargetType, location);
 			
 			if (!resolutionSet.HasResult)
-				return Error(node, DiagnosticReporter.ReportBinaryOpMismatch(_operatorRegistry, args[0], op, args[1]),
+				return Error(node,
+					DiagnosticReporter.ReportBinaryOpMismatch(_operatorRegistry, args[0], op, args[1], location),
 					CurrentTargetType);
 			
 			var resolution = resolutionSet[0];
@@ -519,19 +525,9 @@ public sealed partial class Resolver
 		return new ResolvedChainedExpressionNode(NativeSymbols.Bool, operands, links, node);
 	}
 	
-	private ResolutionSet? ResolveBuiltInLink(Token op, IResolvedExpressionNode[] args)
-	{
-		if (args[0].Type is PointerType { BaseType: var leftBase } &&
-		    args[1].Type is PointerType { BaseType: var rightBase } &&
-		    leftBase != rightBase && leftBase != NativeSymbols.Void && rightBase != NativeSymbols.Void)
-		{
-			Diagnostics.Add(DiagnosticReporter.ReportBinaryOpMismatch(_operatorRegistry, args[0], op, args[1]));
-			return null;
-		}
-		
-		return ResolveCallable(_operatorRegistry.GetBinaryCandidates(op.Type), args, MaterializationMode.Overload,
+	private ResolutionSet ResolveBuiltInLink(Token op, IResolvedExpressionNode[] args) =>
+		ResolveCallable(_operatorRegistry.GetBinaryCandidates(op.Type), args, MaterializationMode.Overload,
 			NativeSymbols.Bool);
-	}
 	
 	private IResolvedExpressionNode MaterializeChainOperand(IResolvedExpressionNode operand, TypeSymbol target)
 	{

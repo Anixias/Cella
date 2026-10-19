@@ -41,11 +41,14 @@ public sealed partial class Resolver
 		(actual == mode || mode.IsReadOnly() && actual.IsReadOnly());
 	
 	private ResolvedFunctionCallExpressionNode CallOperator(IResolvedExpressionNode receiver, MethodSymbol method,
-		IExpressionNode syntax)
+		IExpressionNode syntax, PlaceOperator? place = null)
 	{
 		var info = GetFunctionInfo(method, receiver.Type);
 		TrackFunctionUse(info, syntax);
-		return new ResolvedFunctionCallExpressionNode(info, [CreateReceiver(receiver, info)], syntax);
+		return new ResolvedFunctionCallExpressionNode(info, [CreateReceiver(receiver, info, place)], syntax)
+		{
+			PlaceOperator = place
+		};
 	}
 	
 	private IResolvedExpressionNode MakeWritable(IResolvedExpressionNode place)
@@ -72,29 +75,27 @@ public sealed partial class Resolver
 			{
 				Operation.Op: TokenType.OpStar,
 				Operand: ResolvedFunctionCallExpressionNode call
-			} when FindReaderName(call) is { } name:
-				return WriteThrough(place, call, name);
+			} when FindReader(call) is { } reader:
+				return WriteThrough(place, call, reader);
 			
-			case ResolvedFunctionCallExpressionNode { Type: not BorrowType } call when FindReaderName(call) is { } name:
-				return WriteThrough(place, call, name);
+			case ResolvedFunctionCallExpressionNode { Type: not BorrowType } call when FindReader(call) is { } reader:
+				return WriteThrough(place, call, reader);
 			
 			default:
 				return place;
 		}
 	}
 	
-	private string? FindReaderName(ResolvedFunctionCallExpressionNode call) =>
-		call is
-		{
-			Arguments: [var receiver, ..],
-			Function.Symbol: { Syntax: FunctionNode { Identifier.Text: "*" or "[]" } syntax } reader
-		} && FindPlaceOperator(receiver.Type, syntax.Identifier.Text, ParameterMode.ReadOnly)?.Function == reader
-			? syntax.Identifier.Text
+	private PlaceOperator? FindReader(ResolvedFunctionCallExpressionNode call) =>
+		call is { PlaceOperator: { } op, Arguments: [var receiver, ..] } &&
+		FindPlaceOperator(receiver.Type, op.GetName(), ParameterMode.ReadOnly)?.Function == call.Function.Symbol
+			? op
 			: null;
 	
 	private IResolvedExpressionNode WriteThrough(IResolvedExpressionNode place, ResolvedFunctionCallExpressionNode call,
-		string name)
+		PlaceOperator op)
 	{
+		var name = op.GetName();
 		var receiver = call.Arguments[0];
 		if (FindPlaceOperator(receiver.Type, name, ParameterMode.Mut) is { } writer)
 		{
@@ -104,7 +105,7 @@ public sealed partial class Resolver
 			var info = InstantiateLike(GetFunctionInfo(writer, receiver.Type), call.Function);
 			TrackFunctionUse(info, call.Syntax);
 			return Decay(new ResolvedFunctionCallExpressionNode(info,
-				[CreateReceiver(receiver, info), ..call.Arguments.Skip(1)], call.Syntax));
+				[CreateReceiver(receiver, info, op), ..call.Arguments.Skip(1)], call.Syntax) { PlaceOperator = op });
 		}
 		
 		var hidden = GetMethods(receiver.Type, name)
@@ -227,7 +228,9 @@ public sealed partial class Resolver
 			return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
 		
 		TrackFunctionUse(info, node);
-		return Decay(new ResolvedFunctionCallExpressionNode(info, [CreateReceiver(target, info), ..indices], node));
+		return Decay(new ResolvedFunctionCallExpressionNode(info,
+				[CreateReceiver(target, info, PlaceOperator.Indexer), ..indices], node)
+			{ PlaceOperator = PlaceOperator.Indexer });
 	}
 	
 	private static string DescribeIndexCount(TypeSymbol type, int count) => count == 1

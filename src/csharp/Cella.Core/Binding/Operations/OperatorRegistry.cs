@@ -1,4 +1,5 @@
 ﻿using System.Collections.Immutable;
+using Cella.Core.Binding.Nodes;
 using Cella.Core.Collections;
 using Cella.Core.Symbols;
 using Cella.Core.Text;
@@ -106,7 +107,6 @@ public sealed class OperatorRegistry
 	
 	private readonly Dictionary<TokenType, List<ICallable>> _unaryOps = CreateUnaryOps();
 	private readonly Dictionary<TokenType, List<ICallable>> _binaryOps;
-	private readonly Dictionary<TokenType, List<ICallable>> _memberOps = [];
 	
 	public OperatorRegistry()
 	{
@@ -117,7 +117,6 @@ public sealed class OperatorRegistry
 	{
 		snapshot.SaveNested(_unaryOps);
 		snapshot.SaveNested(_binaryOps);
-		snapshot.SaveNested(_memberOps);
 	}
 	
 	public void Create(OperationImpl impl)
@@ -220,16 +219,10 @@ public sealed class OperatorRegistry
 		return result;
 	}
 	
-	public void CreatePointerComparisons(PointerType pointerType)
+	public void CreatePointerComparisons(TypeSymbol pointerType)
 	{
 		foreach (var op in _comparisonBinOps)
-		{
-			var comparison = new NativeImpl(op, NativeSymbols.Bool, pointerType, pointerType);
-			if (pointerType == NativeSymbols.VoidPtr)
-				Create(comparison);
-			else
-				_memberOps.GetOrAdd(op).Add(comparison);
-		}
+			Create(new NativeImpl(op, NativeSymbols.Bool, pointerType, pointerType) { AnchorType = pointerType });
 	}
 	
 	public IReadOnlyList<ICallable> GetUnaryCandidates(TokenType op) =>
@@ -240,7 +233,6 @@ public sealed class OperatorRegistry
 	
 	public IEnumerable<OperationImpl> GetOwnedCandidates(TokenType op, TypeSymbol owner) => GetUnaryCandidates(op)
 		.Concat(GetBinaryCandidates(op))
-		.Concat(_memberOps.TryGetValue(op, out var members) ? members : [])
 		.OfType<OperationImpl>()
 		.Where(operation => operation.Owner == owner);
 }
@@ -252,6 +244,14 @@ public abstract class OperationImpl(TokenType op, TypeSymbol result, params IEnu
 	public TypeSymbol ReturnType { get; } = result;
 	public ImmutableArray<TypeSymbol> ParameterTypes { get; } = parameters.ToImmutableArray();
 	public TypeSymbol Owner { get; init; } = parameters.FirstOrDefault() ?? result;
+	public TypeSymbol? AnchorType { get; init; }
+	
+	public bool Accepts(IReadOnlyList<IResolvedExpressionNode> arguments) => AnchorType is not { } anchor ||
+	                                                                         arguments.Any(argument =>
+		                                                                         argument.Type == anchor) ||
+	                                                                         anchor == NativeSymbols.VoidPtr &&
+	                                                                         arguments.All(static argument =>
+		                                                                         argument.Type is UntypedType);
 }
 
 public sealed class NativeImpl(TokenType op, TypeSymbol result, params IEnumerable<TypeSymbol> parameters)

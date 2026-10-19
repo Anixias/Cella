@@ -108,7 +108,7 @@ public sealed class SemanticModel
 	private void Add(SourceLocation location, Symbol symbol, string description)
 	{
 		var path = location.Source.FilePath;
-		if (path.Length == 0 || !location.Range.IsValid)
+		if (path.Length == 0 || !location.Range.IsValid || symbol is LocalVariableSymbol { IsSynthesized: true })
 			return;
 		
 		if (!_references.TryGetValue(path, out var references))

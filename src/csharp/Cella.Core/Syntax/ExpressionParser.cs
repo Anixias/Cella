@@ -177,6 +177,8 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens, List<Token>? 
 	public BlockParser? ParseBlock { get; init; }
 	public Action<Diagnostic>? ReportRecovered { get; init; }
 	
+	private readonly Dictionary<IExpressionNode, SourceLocation> _extents = [];
+	
 	public override IExpressionNode Parse(ref int index) => ParseExpression(ref index);
 	private IExpressionNode ParseExpression(ref int index) => ParseAssignment(ref index);
 	private ITypeNode ParseType(ref int index) => new TypeParser(Tokens, ContextualKeywords).Parse(ref index);
@@ -191,7 +193,7 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens, List<Token>? 
 			return left;
 		
 		var right = ParseExpression(ref index);
-		return new BinaryOpExpressionNode(left, op, right);
+		return Binary(left, op, right);
 	}
 	
 	private AtomicExpressionNode? ParseAtomicWrite(ref int index)
@@ -218,13 +220,37 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens, List<Token>? 
 		return null;
 	}
 	
+	private SourceLocation Extent(IExpressionNode node) => _extents.GetValueOrDefault(node, node.SourceLocation);
+	
+	private static SourceLocation Span(SourceLocation start, SourceLocation end) =>
+		start with { Range = start.Range.Join(end.Range) };
+	
+	private BinaryOpExpressionNode Binary(IExpressionNode left, Token op, IExpressionNode right) =>
+		new(left, op, right, Span(Extent(left), Extent(right)));
+	
+	private IExpressionNode Chain(List<IExpressionNode> operands, List<Token> ops) => operands.Count switch
+	{
+		1 => operands[0],
+		2 => Binary(operands[0], ops[0], operands[1]),
+		_ => new ChainedExpressionNode(operands, ops, operands.Select(Extent))
+	};
+	
+	private OwnExpressionNode Own(Token keyword, IExpressionNode value) =>
+		new(keyword, value, Span(keyword.SourceLocation, Extent(value)));
+	
+	private BorrowExpressionNode Borrow(Token keyword, IExpressionNode value) =>
+		new(keyword, value, Span(keyword.SourceLocation, Extent(value)));
+	
+	private SpreadExpressionNode Spread(Token ellipsis, IExpressionNode value) =>
+		new(ellipsis, value, Span(ellipsis.SourceLocation, Extent(value)));
+	
 	private IExpressionNode ParseLogicalOr(ref int index)
 	{
 		var node = ParseLogicalAnd(ref index);
 		while (!IsNextNewline(index) && Match(ref index, out var op, TokenType.OpBarBar))
 		{
 			var right = ParseLogicalAnd(ref index);
-			node = new BinaryOpExpressionNode(node, op, right);
+			node = Binary(node, op, right);
 		}
 		
 		return node;
@@ -236,7 +262,7 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens, List<Token>? 
 		while (!IsNextNewline(index) && Match(ref index, out var op, TokenType.OpAmpersandAmpersand))
 		{
 			var right = ParseEquality(ref index);
-			node = new BinaryOpExpressionNode(node, op, right);
+			node = Binary(node, op, right);
 		}
 		
 		return node;
@@ -253,12 +279,7 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens, List<Token>? 
 			operands.Add(ParseIs(ref index));
 		}
 		
-		return operands.Count switch
-		{
-			1 => operands[0],
-			2 => new BinaryOpExpressionNode(operands[0], ops[0], operands[1]),
-			_ => new ChainedExpressionNode(operands, ops)
-		};
+		return Chain(operands, ops);
 	}
 	
 	private IExpressionNode ParseIs(ref int index)
@@ -282,9 +303,8 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens, List<Token>? 
 	private IsExpressionNode ParsePatternTest(ref int index, Token? mode, IExpressionNode value)
 	{
 		var pattern = ParsePattern(ref index);
-		var (source, range) = mode?.SourceLocation ?? value.SourceLocation;
-		range = range.Join(pattern.SourceLocation.Range);
-		return new IsExpressionNode(mode, value, pattern, new(source, range));
+		return new IsExpressionNode(mode, value, pattern, Span(mode?.SourceLocation ?? Extent(value),
+			pattern.SourceLocation));
 	}
 	
 	public delegate bool? ConditionParser(ref int index);
@@ -493,12 +513,7 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens, List<Token>? 
 			operands.Add(ParseBitwiseOr(ref index));
 		}
 		
-		return operands.Count switch
-		{
-			1 => operands[0],
-			2 => new BinaryOpExpressionNode(operands[0], ops[0], operands[1]),
-			_ => new ChainedExpressionNode(operands, ops)
-		};
+		return Chain(operands, ops);
 	}
 	
 	private IExpressionNode ParseBitwiseOr(ref int index)
@@ -507,7 +522,7 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens, List<Token>? 
 		while (!IsNextNewline(index) && Match(ref index, out var op, TokenType.OpBar))
 		{
 			var right = ParseBitwiseXor(ref index);
-			node = new BinaryOpExpressionNode(node, op, right);
+			node = Binary(node, op, right);
 		}
 		
 		return node;
@@ -519,7 +534,7 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens, List<Token>? 
 		while (!IsNextNewline(index) && Match(ref index, out var op, TokenType.OpHat))
 		{
 			var right = ParseBitwiseAnd(ref index);
-			node = new BinaryOpExpressionNode(node, op, right);
+			node = Binary(node, op, right);
 		}
 		
 		return node;
@@ -531,7 +546,7 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens, List<Token>? 
 		while (!IsNextNewline(index) && Match(ref index, out var op, TokenType.OpAmpersand))
 		{
 			var right = ParseShift(ref index);
-			node = new BinaryOpExpressionNode(node, op, right);
+			node = Binary(node, op, right);
 		}
 		
 		return node;
@@ -543,7 +558,7 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens, List<Token>? 
 		while (!IsNextNewline(index) && Match(ref index, out var op, _shiftOps))
 		{
 			var right = ParseAdditive(ref index);
-			node = new BinaryOpExpressionNode(node, op, right);
+			node = Binary(node, op, right);
 		}
 		
 		return node;
@@ -555,7 +570,7 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens, List<Token>? 
 		while (!IsNextNewline(index) && Match(ref index, out var op, _additiveOps))
 		{
 			var right = ParseMultiplicative(ref index);
-			node = new BinaryOpExpressionNode(node, op, right);
+			node = Binary(node, op, right);
 		}
 		
 		return node;
@@ -567,7 +582,7 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens, List<Token>? 
 		while (!IsNextNewline(index) && Match(ref index, out var op, _multiplicativeOps))
 		{
 			var right = ParseUnary(ref index);
-			node = new BinaryOpExpressionNode(node, op, right);
+			node = Binary(node, op, right);
 		}
 		
 		return node;
@@ -591,20 +606,20 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens, List<Token>? 
 			
 			return !Peek(index + 1, TokenType.OpOpenBracket) && Match(ref index, out var lambda, TokenType.KeywordFun)
 				? ParseLambda(ref index, lambda, ownKeyword)
-				: new OwnExpressionNode(ownKeyword, ParseOperand(ref index));
+				: Own(ownKeyword, ParseOperand(ref index));
 		}
 		
 		if (Match(ref index, out var atomicKeyword, TokenType.KeywordAtomic))
 			return ParseAtomic(ref index, atomicKeyword);
 		
 		if (!StartsBorrowType(index) && Match(ref index, out var borrowKeyword, TokenSets.BorrowKeywords))
-			return new BorrowExpressionNode(borrowKeyword, ParseOperand(ref index));
+			return Borrow(borrowKeyword, ParseOperand(ref index));
 		
 		if (!Match(ref index, out var op, _unaryPrefixOps))
 			return ParsePrimary(ref index);
 		
 		var operand = ParseOperand(ref index);
-		return new UnaryOpExpressionNode(op, operand);
+		return new UnaryOpExpressionNode(op, operand, Span(op.SourceLocation, Extent(operand)));
 	}
 	
 	private IExpressionNode ParseOperand(ref int index) =>
@@ -672,8 +687,10 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens, List<Token>? 
 			// Parenthesized Expression
 			node = InBrackets(ref index, ParseExpression);
 			
-			if (!Match(ref index, TokenType.OpCloseParen))
+			if (!Match(ref index, out var parenthesisClose, TokenType.OpCloseParen))
 				throw Expected(index, "')'", openParen);
+			
+			_extents[node] = Span(openParen.SourceLocation, parenthesisClose.SourceLocation);
 		}
 		else if (Match(ref index, out var openBracket, TokenType.OpOpenBracket))
 		{
@@ -1078,7 +1095,7 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens, List<Token>? 
 							new SourceLocation(dotSource, new TextRange(dotRange.End, dotRange.End)), "");
 						
 						target = new AccessExpressionNode(target, dot, missing,
-							new(dotSource, target.SourceLocation.Range.Join(dotRange)));
+							new(dotSource, Extent(target).Range.Join(dotRange)));
 						
 						break;
 					}
@@ -1089,9 +1106,7 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens, List<Token>? 
 						: Expected(IsNextNewline(index) ? index - 1 : index, "a name after '.'");
 				}
 				
-				var (source, range) = target.SourceLocation;
-				range = range.Join(member.SourceLocation.Range);
-				target = new AccessExpressionNode(target, dot, member, new(source, range));
+				target = new AccessExpressionNode(target, dot, member, Span(Extent(target), member.SourceLocation));
 				continue;
 			}
 			
@@ -1111,7 +1126,7 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens, List<Token>? 
 			
 			if (!IsNextNewline(index) && Match(ref index, out var question, TokenType.OpQuestion))
 			{
-				target = new QuestionExpressionNode(target, question);
+				target = new QuestionExpressionNode(target, question, Span(Extent(target), question.SourceLocation));
 				continue;
 			}
 			
@@ -1132,7 +1147,7 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens, List<Token>? 
 	private CallExpressionNode ParseCallExpression(ref int index, IExpressionNode target, Token openParen)
 	{
 		// Caller already consumed open parenthesis
-		var range = target.SourceLocation.Range;
+		var (source, range) = Extent(target);
 		var arguments = new List<IExpressionNode>();
 		
 		Token closeParen;
@@ -1155,23 +1170,23 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens, List<Token>? 
 		
 		range = range.Join(closeParen.SourceLocation.Range);
 		
-		return new(target, arguments, target.SourceLocation with { Range = range });
+		return new(target, arguments, new(source, range));
 	}
 	
 	private IExpressionNode ParseArgument(ref int index)
 	{
 		if (!StartsBorrowType(index) && Match(ref index, out var keyword, TokenType.KeywordMut))
-			return new BorrowExpressionNode(keyword, ParseExpression(ref index));
+			return Borrow(keyword, ParseExpression(ref index));
 		
 		return Match(ref index, out var ellipsis, TokenType.OpDotDotDot)
-			? new SpreadExpressionNode(ellipsis, ParseExpression(ref index))
+			? Spread(ellipsis, ParseExpression(ref index))
 			: ParseExpression(ref index);
 	}
 	
 	private IndexerExpressionNode ParseIndexerExpression(ref int index, IExpressionNode target, Token openBracket)
 	{
 		// Caller already consumed open bracket
-		var range = target.SourceLocation.Range;
+		var (source, range) = Extent(target);
 		var arguments = new List<IExpressionNode>();
 		
 		Token closeBracket;
@@ -1194,7 +1209,7 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens, List<Token>? 
 		
 		range = range.Join(closeBracket.SourceLocation.Range);
 		
-		return new(target, arguments, target.SourceLocation with { Range = range });
+		return new(target, arguments, new(source, range));
 	}
 	
 	private ParseException Expected(int index, string expected, Token? opener = null)

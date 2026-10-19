@@ -1,0 +1,26 @@
+mod test
+
+Box[T]: rec
+{
+	value: T
+}
+
+Plain: rec
+{
+	value: i32
+}
+
+reset[T: null]: fun -> T => null
+
+main: fun -> i32
+{
+	val a = reset[ptr[i32, u8]]()
+	var b: ptr[i32, u8]
+	val c = reset[ptr[]]()
+	val d = reset[fstr[i32, u8]]()
+	val e = reset[ptr[Box]]()
+	var f: ptr[Box]
+	val g = reset[ptr[Plain[i32]]]()
+	var h: ptr[Plain[i32]]
+	ret 0
+}

@@ -562,16 +562,16 @@ public sealed partial class Resolver
 		}
 	}
 	
-	private IResolvedExpressionNode CreateReceiver(IResolvedExpressionNode receiver, FunctionInfo method) =>
+	private IResolvedExpressionNode CreateReceiver(IResolvedExpressionNode receiver, FunctionInfo method,
+		PlaceOperator? place = null) =>
 		method.Signature.GetMode(0) == ParameterMode.Mut
 			? new ResolvedMutArgumentExpressionNode(MakeWritable(receiver), _typePool.GetPointerType(receiver.Type),
 				receiver.Syntax)
 			{
-				OnlyMutOperator =
-					method.Symbol.Syntax is FunctionNode { Identifier.Text: var name and ("*" or "[]") } &&
-					FindPlaceOperator(receiver.Type, name, ParameterMode.ReadOnly) is null
-						? name
-						: null
+				OnlyMutOperator = place is { } op &&
+				                  FindPlaceOperator(receiver.Type, op.GetName(), ParameterMode.ReadOnly) is null
+					? op.GetName()
+					: null
 			}
 			: receiver;
 	

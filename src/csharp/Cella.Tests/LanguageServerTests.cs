@@ -308,6 +308,46 @@ public sealed class LanguageServerTests : IAsyncDisposable
 		Assert.Equal(0, await ShutDownAsync());
 	}
 	
+	[Fact]
+	public async Task NamesValuesInPatterns()
+	{
+		await File.WriteAllTextAsync(SourcePath, """
+		                                         mod test
+		                                         
+		                                         Point: rec
+		                                         {
+		                                         	x: i32
+		                                         
+		                                         	==: op(a: Point, b: Point) -> bool => a.x == b.x
+		                                         }
+		                                         
+		                                         Origin: val Point = Point(0)
+		                                         
+		                                         where: fun(p: Point) -> i32 => match p
+		                                         {
+		                                         	Origin => 0
+		                                         	else => 1
+		                                         }
+		                                         
+		                                         pick: fun(n: i32, wanted: i32) -> i32 => match n
+		                                         {
+		                                         	wanted => 1
+		                                         	else => 2
+		                                         }
+		                                         
+		                                         main: fun -> i32 => 0
+		                                         """, Token);
+		
+		await InitializeAsync();
+		Assert.Equal(Code("Origin: val Point"), await HoverAsync(13, 1));
+		Assert.Equal(9, (int)(await DefinitionAsync(13, 1))!["range"]!["start"]!["line"]!);
+		Assert.Equal(Code("wanted: i32"), await HoverAsync(19, 1));
+		var parameter = await DefinitionAsync(19, 1);
+		Assert.Equal(17, (int)parameter!["range"]!["start"]!["line"]!);
+		Assert.Equal(18, (int)parameter["range"]!["start"]!["character"]!);
+		Assert.Equal(0, await ShutDownAsync());
+	}
+	
 	private async Task<List<string>> UsagesAsync(int line, int character, bool includeDeclaration)
 	{
 		var parameters = Position(line, character);

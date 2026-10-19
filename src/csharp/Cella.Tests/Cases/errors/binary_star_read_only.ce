@@ -1,0 +1,30 @@
+mod test
+
+Pair: rec
+{
+	value: i32
+}
+
+Pick: rec
+{
+	p: Pair
+
+	*: op(imm a: Pick, imm b: Pick) -> imm[Pair] => imm a.p
+}
+
+Cell: rec
+{
+	p: Pair
+
+	*: op(imm self) -> imm[Pair] => imm self.p
+}
+
+main: fun -> i32
+{
+	var r = Pick(Pair(1))
+	var s = Pick(Pair(2))
+	(r * s).value = 3
+	var c = Cell(Pair(3))
+	(*c).value = 4
+	ret 0
+}

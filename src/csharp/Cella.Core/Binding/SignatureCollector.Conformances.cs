@@ -572,9 +572,7 @@ public sealed partial class SignatureCollector
 			candidate.ReturnType == expected.ReturnType &&
 			candidate.ParameterTypes.SequenceEqual(expected.ParameterTypes)) is { } native
 			? new NativeWitness(native)
-			: self is PointerType && self != NativeSymbols.VoidPtr
-				? FindPointerComparison(node.Identifier.Type, expected, self)
-				: null;
+			: null;
 	}
 	
 	private SelfConversionWitness? FindSelfConversionWitness(FunctionSymbol requirement, FunctionSignature signature,
@@ -597,14 +595,6 @@ public sealed partial class SignatureCollector
 		
 		return conversion is null ? null : new SelfConversionWitness(conversion);
 	}
-	
-	private NativeWitness? FindPointerComparison(TokenType op, FunctionSignature expected, TypeSymbol self) =>
-		expected.ParameterTypes.Length == 2 && expected.ParameterTypes.All(type => type == self) &&
-		_typePool.OperatorRegistry.GetBinaryCandidates(op).OfType<NativeImpl>().FirstOrDefault(candidate =>
-			candidate.ReturnType == expected.ReturnType &&
-			candidate.ParameterTypes.All(static type => type == NativeSymbols.VoidPtr)) is { } untyped
-			? new NativeWitness(new NativeImpl(op, untyped.ReturnType, self, self))
-			: null;
 	
 	private static SourceLocation GetFunctionLocation(FunctionSymbol function) => function.Syntax switch
 	{

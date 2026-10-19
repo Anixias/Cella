@@ -20,7 +20,7 @@ public static class DiagnosticReporter
 		new(DiagnosticSeverity.Warning, location, "Unreachable code");
 	
 	public static Diagnostic ReportBinaryOpMismatch(OperatorRegistry registry, IResolvedExpressionNode left, Token op,
-		IResolvedExpressionNode right)
+		IResolvedExpressionNode right, SourceLocation location)
 	{
 		if ((FindInexactInteger(left, right) ?? FindInexactInteger(right, left)) is var (literal, floatType))
 			return new(DiagnosticSeverity.Error, literal.Syntax.SourceLocation,
@@ -48,57 +48,10 @@ public static class DiagnosticReporter
 			}
 		}
 		
-		var (source, range) = left.Syntax.SourceLocation;
-		range = range.Join(right.Syntax.SourceLocation.Range);
-		var location = BalanceParentheses(new SourceLocation(source, range));
-		
 		return new Diagnostic(DiagnosticSeverity.Error, location, message)
 		{
 			Hints = hints.ToImmutableArray()
 		};
-	}
-	
-	private static SourceLocation BalanceParentheses(SourceLocation location)
-	{
-		var (source, (start, end)) = location;
-		var depth = 0;
-		var lowest = 0;
-		foreach (var character in location.GetText())
-		{
-			depth += character switch
-			{
-				'(' => 1,
-				')' => -1,
-				_ => 0
-			};
-			
-			lowest = Math.Min(lowest, depth);
-		}
-		
-		for (var missing = -lowest; missing > 0 && start > 0;)
-		{
-			start--;
-			missing += source[start] switch
-			{
-				'(' => -1,
-				')' => 1,
-				_ => 0
-			};
-		}
-		
-		for (var missing = depth - lowest; missing > 0 && end < source.Length;)
-		{
-			missing += source[end] switch
-			{
-				')' => -1,
-				'(' => 1,
-				_ => 0
-			};
-			
-			end++;
-		}
-		
-		return new SourceLocation(source, new TextRange(start, end));
 	}
 	
 	private static (IResolvedExpressionNode Literal, string FloatType)? FindInexactInteger(

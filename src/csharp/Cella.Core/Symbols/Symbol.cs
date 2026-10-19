@@ -630,6 +630,7 @@ public sealed class LocalVariableSymbol(Token identifier, TypeSymbol type, bool 
 	public TypeSymbol Type { get; } = type;
 	public bool IsMutable { get; } = isMutable;
 	public bool IsSynthesized { get; init; }
+	public bool IsUnstored { get; init; }
 	public bool IsPatternBinding { get; init; }
 	public bool IsBorrowBinding { get; init; }
 	public bool IsMutBinding { get; init; }

@@ -193,6 +193,9 @@ public sealed partial class Resolver
 	{
 		var map = new Dictionary<TypeParameterSymbol, TypeSymbol> { [requirement.Trait!.Self] = owner };
 		var type = _typePool.Substitute(_signatures.GetGlobalType(requirement), map);
+		if (TypePool.ContainsTypeParameters(owner) && FindGenericCaller(CurrentResolutionContext) is { } caller)
+			AddTraitConstantUse(caller, new(owner, requirement));
+		
 		return new ResolvedTraitConstantExpressionNode(owner, requirement, type, node);
 	}
 	

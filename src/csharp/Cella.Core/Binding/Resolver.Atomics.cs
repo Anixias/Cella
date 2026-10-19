@@ -23,6 +23,12 @@ public sealed partial class Resolver
 		Journal(() => _genericUses.RemoveAt(_genericUses.Count - 1));
 	}
 	
+	private void AddTraitConstantUse(FunctionSymbol owner, TraitConstantUse use)
+	{
+		if (_typePool.AddTraitConstantUse(owner, use))
+			Journal(() => _typePool.RemoveTraitConstantUse(owner, use));
+	}
+	
 	private void AddAtomicRequirement(FunctionSymbol owner, AtomicRequirement requirement)
 	{
 		if (_typePool.AddAtomicRequirement(owner, requirement))
@@ -64,6 +70,31 @@ public sealed partial class Resolver
 				});
 			}
 		}
+	}
+	
+	public void ReportTraitConstantInstances()
+	{
+		var concrete = new HashSet<TraitConstantUse>();
+		bool changed;
+		do
+		{
+			changed = false;
+			foreach (var use in _genericUses)
+			{
+				var map = TypePool.CreateMap(use.Callee.TypeParameters, use.TypeArguments);
+				foreach (var constant in _typePool.GetTraitConstantUses(use.Callee).ToList())
+				{
+					var instance = constant with { Owner = _typePool.Substitute(constant.Owner, map) };
+					if (!TypePool.ContainsTypeParameters(instance.Owner))
+						concrete.Add(instance);
+					else if (use.Caller is { } caller)
+						changed |= _typePool.AddTraitConstantUse(caller, instance);
+				}
+			}
+		} while (changed);
+		
+		foreach (var use in concrete)
+			_typePool.TraitConstantValue?.Invoke(use.Owner, use.Constant);
 	}
 	
 	private static TypeSymbol? FindArgument(GenericUse use, AtomicRequirement requirement)

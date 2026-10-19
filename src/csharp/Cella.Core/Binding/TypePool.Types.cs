@@ -14,18 +14,26 @@ public sealed partial class TypePool
 	{
 		foreach (var offsetType in new[] { NativeSymbols.IntSize, NativeSymbols.UIntSize })
 		{
-			OperatorRegistry.Create(new PointerOffsetImpl(TokenType.OpPlus, ptrType, offsetType));
+			OperatorRegistry.Create(new PointerOffsetImpl(TokenType.OpPlus, ptrType, offsetType)
+				{ AnchorType = ptrType });
+			
 			OperatorRegistry.Create(new PointerOffsetImpl(TokenType.OpPlus, ptrType, offsetType, true)
 			{
-				Owner = ptrType
+				Owner = ptrType,
+				AnchorType = ptrType
 			});
 			
-			OperatorRegistry.Create(new PointerOffsetImpl(TokenType.OpMinus, ptrType, offsetType));
-			OperatorRegistry.Create(new PointerOffsetImpl(TokenType.OpPlusEqual, ptrType, offsetType));
-			OperatorRegistry.Create(new PointerOffsetImpl(TokenType.OpMinusEqual, ptrType, offsetType));
+			OperatorRegistry.Create(new PointerOffsetImpl(TokenType.OpMinus, ptrType, offsetType)
+				{ AnchorType = ptrType });
+			
+			OperatorRegistry.Create(
+				new PointerOffsetImpl(TokenType.OpPlusEqual, ptrType, offsetType) { AnchorType = ptrType });
+			
+			OperatorRegistry.Create(
+				new PointerOffsetImpl(TokenType.OpMinusEqual, ptrType, offsetType) { AnchorType = ptrType });
 		}
 		
-		OperatorRegistry.Create(new PointerDifferenceImpl(ptrType));
+		OperatorRegistry.Create(new PointerDifferenceImpl(ptrType) { AnchorType = ptrType });
 		OperatorRegistry.CreatePointerComparisons(ptrType);
 	}
 	

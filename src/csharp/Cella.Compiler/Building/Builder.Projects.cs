@@ -188,6 +188,7 @@ public sealed partial class Builder
 			
 			resolver.ReportInfiniteInstantiations();
 			resolver.ReportAtomicInstances();
+			resolver.ReportTraitConstantInstances();
 			RecordPhase(diagnostics, phases, 2);
 		}
 		

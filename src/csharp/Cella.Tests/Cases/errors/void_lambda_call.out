@@ -1,7 +1,7 @@
-Error at void_lambda_call.ce:5:11
+Error at void_lambda_call.ce:5:10
 4 │ {
 5 │     val x = (fun
-                 ╘═╛
+                ╘══╛
 6 │     {
         ^
 7 │         val y = 1

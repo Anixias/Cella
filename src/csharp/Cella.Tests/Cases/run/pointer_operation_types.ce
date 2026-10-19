@@ -1,0 +1,20 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+main: fun -> i32
+{
+	val c: cstr = "hello"
+	var y: u8 = 2
+	var x: i32 = 1
+	val p: ptr[i32] = @x
+	val q: ptr[u8] = @y
+	val v: ptr = p
+	printf("%d %d %d %d\n", i32(null == null), i32(c == null), i32(c == c), i32(c == q))
+	printf("%d %d %d\n", i32(p == v), i32(v == p), i32(ptr[i32].==(p, p)))
+	printf("%d\n", i32((p + 1) - p))
+	ret 0
+}

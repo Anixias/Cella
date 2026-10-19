@@ -18,10 +18,10 @@ Error at literal_arithmetic.ce:10:23
 10 │ val shiftedOut: u8 = 1 << 8
                           ╘════╛ Cannot convert type 'i32' to 'u8'
 
-Error at literal_arithmetic.ce:11:22
+Error at literal_arithmetic.ce:11:21
 10 │ val shiftedOut: u8 = 1 << 8
 11 │ val doubled: i32 = (1 << 31) * 2
-                         ╘══════════╛ Cannot convert type 'i64' to 'i32'
+                        ╘═══════════╛ Cannot convert type 'i64' to 'i32'
 
 Error at literal_arithmetic.ce:12:21
 11 │ val doubled: i32 = (1 << 31) * 2

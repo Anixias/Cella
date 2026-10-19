@@ -72,6 +72,7 @@ public sealed partial class TypePool
 		snapshot.Save(_requiredTraits);
 		snapshot.Save(_memberBlocks);
 		snapshot.SaveNested(_atomicRequirements);
+		snapshot.SaveNested(_traitConstantUses);
 		return snapshot;
 	}
 }

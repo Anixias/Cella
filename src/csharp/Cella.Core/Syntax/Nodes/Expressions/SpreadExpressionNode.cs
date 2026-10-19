@@ -2,14 +2,12 @@
 
 namespace Cella.Core.Syntax.Nodes;
 
-public sealed class SpreadExpressionNode(Token ellipsis, IExpressionNode value) : IExpressionNode
+public sealed class SpreadExpressionNode(Token ellipsis, IExpressionNode value, SourceLocation sourceLocation)
+	: IExpressionNode
 {
 	public IExpressionNode Value { get; } = value;
 	
-	public SourceLocation SourceLocation { get; } = ellipsis.SourceLocation with
-	{
-		Range = ellipsis.SourceLocation.Range.Join(value.SourceLocation.Range)
-	};
+	public SourceLocation SourceLocation { get; } = sourceLocation;
 	
 	public bool IsContained => false;
 }

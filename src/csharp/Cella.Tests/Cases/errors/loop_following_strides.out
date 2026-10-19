@@ -1,0 +1,11 @@
+Error at loop_following_strides.ce:13:10
+12 │ 
+13 │ ret i32(buf[0])
+             ╘════╛ Cannot use uninitialized values
+
+Error at loop_following_strides.ce:27:10
+26 │ 
+27 │ ret i32(buf[199998])
+             ╘═════════╛ Cannot use uninitialized values
+
+[compilation failed]

@@ -18,7 +18,8 @@ public sealed partial class Resolver
 			if (candidate.IsVariadic ? args.Count < parameterCount : args.Count != parameterCount)
 				continue;
 			
-			if (!ignoreModes && args.Skip(parameterCount).Any(static arg => arg is ResolvedMutArgumentExpressionNode))
+			if (!ignoreModes && args.Skip(parameterCount).Any(static arg => arg is ResolvedMutArgumentExpressionNode) ||
+			    !candidate.Accepts(args))
 				continue;
 			
 			var conversionCost = 0;

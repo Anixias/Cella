@@ -1,0 +1,35 @@
+mod test
+
+Integer: trait
+{
+	bits: const u32
+}
+
+Box[T]: rec
+{
+	value: T
+}
+
+Box[T]: impl Integer
+{
+	bits: const u32 = Box[T].bits + 1
+}
+
+Holder[T: Integer]: rec
+{
+	x: i32
+
+	get: fun(imm self) -> u32 => T.bits
+}
+
+outer[T: Integer]: fun -> u32 => inner[T]()
+
+inner[T: Integer]: fun -> u32 => T.bits
+
+main: fun -> i32
+{
+	val h = Holder[Box[i32]](1)
+	val a = h.get()
+	val b = outer[Box[u8]]()
+	ret 0
+}

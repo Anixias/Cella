@@ -1,0 +1,68 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+down: fun -> i32
+{
+	var buf: array[u8, 200000] = undef
+	var i: usize = 200000
+	while i > 0
+	{
+		i -= 1
+		buf[i] = u8(i % 200)
+	}
+
+	ret i32(buf[0]) + i32(buf[199999])
+}
+
+inclusive: fun -> i32
+{
+	var buf: array[u8, 200000] = undef
+	var i: usize = 199999
+	while i >= 1
+	{
+		buf[i] = 1
+		i -= 1
+	}
+
+	buf[0] = 2
+	ret i32(buf[0]) + i32(buf[199999])
+}
+
+pairs: fun -> i32
+{
+	var buf: array[u8, 200000] = undef
+	var i: usize = 0
+	while i < 200000
+	{
+		buf[i] = 1
+		buf[i + 1] = 2
+		i += 2
+	}
+
+	ret i32(buf[199998]) + i32(buf[199999])
+}
+
+triples: fun -> i32
+{
+	var buf: array[u8, 199998] = undef
+	var i: usize = 0
+	while i != 199998
+	{
+		buf[i + 2] = 3
+		buf[i] = 1
+		buf[i + 1] = 2
+		i += 3
+	}
+
+	ret i32(buf[0]) + i32(buf[199997])
+}
+
+main: fun -> i32
+{
+	printf("%d %d %d %d\n", down(), inclusive(), pairs(), triples())
+	ret 0
+}

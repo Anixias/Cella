@@ -1,0 +1,18 @@
+mod test
+
+main: fun -> i32
+{
+	val c: cstr = "hello"
+	var x: i32 = 1
+	var y: u8 = 2
+	val p: ptr[i32] = @x
+	val q: ptr[u8] = @y
+	val n: isize = 1
+	val a = c == p
+	val b = p < q
+	val d = c + n
+	val e = c + 1
+	val f = c - c
+	val g = x < p < x
+	ret 0
+}
