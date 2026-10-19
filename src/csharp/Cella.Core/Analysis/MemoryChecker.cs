@@ -128,7 +128,7 @@ public sealed class MemoryChecker(TypePool typePool, ConstantEvaluator evaluator
 				switch (memoryEvent)
 				{
 					case DefineEvent { Local: { Captured: null, IsBorrowBinding: false } local }
-						when local.Type is IntegerType || local.Type == NativeSymbols.Bool:
+						when local.Type is IntegerStorageType || local.Type == NativeSymbols.Bool:
 						candidates.Add(local);
 						break;
 					

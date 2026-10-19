@@ -1,0 +1,15 @@
+mod test
+
+main: fun -> i32
+{
+	var letter = 'a'
+	val pl: ptr[char] = @letter
+	atomic *pl += 'b'
+	atomic *pl |= 'b'
+	atomic *pl ^= 'c'
+	atomic *pl -= 'a'
+	var other = 'a'
+	other += 'b'
+	other |= 'b'
+	ret 0
+}

@@ -222,7 +222,7 @@ public sealed class LoopFollower
 	
 	private static Constant? Zero(TypeSymbol type) => type switch
 	{
-		IntegerType => new IntegerConstant(type, BigInteger.Zero),
+		IntegerStorageType => new IntegerConstant(type, BigInteger.Zero),
 		_ when type == NativeSymbols.Bool => BoolConstant.False,
 		_ => null
 	};

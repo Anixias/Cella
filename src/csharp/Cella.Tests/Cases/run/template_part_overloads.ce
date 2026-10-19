@@ -1,0 +1,37 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Display: trait
+{
+	print: fun(imm self)
+}
+
+i32: impl Display
+{
+	print: fun(imm self) => printf("%d", self)
+}
+
+[T]: impl
+{
+	value: fun(imm self) -> i32 => 7
+	label: fun(imm self) -> i32 => 8
+}
+
+show: fun(text: fstr[Display]) -> i32
+{
+	val a = text.label()
+	val b = text.value()
+	val l = text.piece(0).byteLength
+	text.value(0).print()
+	ret a + b + i32(l)
+}
+
+main: fun -> i32
+{
+	val n = 5
+	ret show(fstr[Display]("x{n}y")) - 16
+}

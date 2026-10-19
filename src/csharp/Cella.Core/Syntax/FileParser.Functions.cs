@@ -355,6 +355,8 @@ public sealed partial class FileParser
 			return null;
 		}
 		
+		RejectBuiltInName(identifier);
+		
 		var type = ParseType(ref index);
 		
 		if (!Match(ref index, TokenType.OpEqual))

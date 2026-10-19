@@ -1,0 +1,41 @@
+Error at builtin_generic_arguments.ce:18:11
+17 │ 
+18 │ a: fun(h: Holder[Display, Display]) { }
+               ╘══════════════════════╛ 'Holder' takes one generic argument
+
+Error at builtin_generic_arguments.ce:20:11
+19 │ 
+20 │ b: fun(t: fstr[Display, Display]) { }
+               ╘════════════════════╛ 'fstr' takes one generic argument
+
+Error at builtin_generic_arguments.ce:22:1
+21 │ 
+22 │ fstr[K: trait]: impl Hash
+     ╘══╛ Cannot implement traits for 'fstr'
+
+Error at builtin_generic_arguments.ce:27:16
+26 │ 
+27 │ c: fun(t: fstr[i32]) { }
+                    ╘═╛ 'i32' is not a trait
+
+Error at builtin_generic_arguments.ce:29:18
+28 │ 
+29 │ d: fun(h: Holder[i32]) { }
+                      ╘═╛ 'i32' is not a trait
+
+Error at builtin_generic_arguments.ce:31:11
+30 │ 
+31 │ e: fun(p: ptr[i32, i32], q: array[i32]) { }
+               ╘═══════════╛ 'ptr' takes one generic argument
+
+Error at builtin_generic_arguments.ce:31:29
+30 │ 
+31 │ e: fun(p: ptr[i32, i32], q: array[i32]) { }
+                                 ╘════════╛ 'array' takes 2 generic arguments
+
+Error at builtin_generic_arguments.ce:33:11
+32 │ 
+33 │ f: fun(v: fstr) { }
+               ╘══╛ 'fstr' takes one generic argument
+
+[compilation failed]

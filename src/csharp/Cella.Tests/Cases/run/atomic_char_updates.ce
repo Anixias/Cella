@@ -1,0 +1,17 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+main: fun -> i32
+{
+	var letter = 'b'
+	val pl: ptr[char] = @letter
+	atomic *pl += -1
+	printf("%c\n", atomic *pl)
+	atomic *pl -= -2
+	printf("%c\n", atomic *pl)
+	ret 0
+}

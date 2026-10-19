@@ -1,6 +1,7 @@
 ﻿using System.Collections.Immutable;
 using System.Numerics;
 using Cella.Core.Binding.Conversions;
+using Cella.Core.Binding.Nodes;
 using Cella.Core.Binding.Operations;
 using Cella.Core.Symbols;
 using Cella.Core.Text;
@@ -9,34 +10,23 @@ namespace Cella.Core.Binding;
 
 public sealed partial class TypePool
 {
-	public static IReadOnlyDictionary<string, string> BuiltinGenericTypeArguments { get; } =
-		new Dictionary<string, string>
-		{
-			["ptr"] = "one generic argument",
-			["array"] = "2 generic arguments",
-			["fstr"] = "one trait argument"
-		};
-	
-	public static ImmutableArray<TypeParameterSymbol> PointerParameters { get; } = [new("T", [])];
-	
-	public static ImmutableArray<TypeParameterSymbol> ArrayParameters { get; } =
-	[
-		new("T", []),
-		new("length", []) { IsValue = true, ValueType = NativeSymbols.UIntSize }
-	];
-	
 	private void CreatePointerArithmetic(PointerType ptrType)
 	{
 		foreach (var offsetType in new[] { NativeSymbols.IntSize, NativeSymbols.UIntSize })
 		{
 			OperatorRegistry.Create(new PointerOffsetImpl(TokenType.OpPlus, ptrType, offsetType));
-			OperatorRegistry.Create(new PointerOffsetImpl(TokenType.OpPlus, ptrType, offsetType, true));
+			OperatorRegistry.Create(new PointerOffsetImpl(TokenType.OpPlus, ptrType, offsetType, true)
+			{
+				Owner = ptrType
+			});
+			
 			OperatorRegistry.Create(new PointerOffsetImpl(TokenType.OpMinus, ptrType, offsetType));
 			OperatorRegistry.Create(new PointerOffsetImpl(TokenType.OpPlusEqual, ptrType, offsetType));
 			OperatorRegistry.Create(new PointerOffsetImpl(TokenType.OpMinusEqual, ptrType, offsetType));
 		}
 		
 		OperatorRegistry.Create(new PointerDifferenceImpl(ptrType));
+		OperatorRegistry.CreatePointerComparisons(ptrType);
 	}
 	
 	public ClosureType GetClosureType(FunctionInfo function, ImmutableArray<TypeSymbol> captureTypes,
@@ -196,8 +186,36 @@ public sealed partial class TypePool
 		};
 		
 		RegisterMember(fstrType, holes, NativeSymbols.UIntSize);
+		fstrType.Parts =
+		[
+			CreateFStrPart(fstrType, "piece", FStrPart.Piece, NativeSymbols.Str),
+			CreateFStrPart(fstrType, "spec", FStrPart.Spec, NativeSymbols.Str),
+			CreateFStrPart(fstrType, "value", FStrPart.Value, GetBorrowType(value, false))
+		];
+		
 		return fstrType;
 	}
+	
+	private MethodSymbol CreateFStrPart(FStrType type, string name, FStrPart part, TypeSymbol result)
+	{
+		ParameterSymbol[] parameters =
+		[
+			new("self", SourceLocation.None) { Mode = ParameterMode.Imm },
+			new("index", SourceLocation.None)
+		];
+		
+		var function = new FunctionSymbol(name, new NativeFStrPartNode(part), Visibility.Public, null, parameters,
+			FunctionKind.Method);
+		
+		var signature = new FunctionSignature([type, NativeSymbols.UIntSize], result, false,
+			[ParameterMode.Imm, ParameterMode.ReadOnly]);
+		
+		_nativeFunctions[function] = new FunctionInfo($"{type.Name}.{name}", function, signature, null, null, null);
+		return new MethodSymbol(name, function);
+	}
+	
+	public FunctionInfo? FindNativeFunction(FunctionSymbol function) =>
+		_nativeFunctions.TryGetValue(function, out var info) ? info : null;
 	
 	public TraitType GetTraitType(TraitSymbol trait, ImmutableArray<TypeSymbol> arguments)
 	{

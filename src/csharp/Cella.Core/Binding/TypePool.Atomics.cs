@@ -1,5 +1,6 @@
 ﻿using Cella.Core.Binding.Operations;
 using Cella.Core.Symbols;
+using Cella.Core.Text;
 
 namespace Cella.Core.Binding;
 
@@ -26,10 +27,20 @@ public sealed partial class TypePool
 	public void RemoveAtomicRequirement(FunctionSymbol function, AtomicRequirement requirement) =>
 		_atomicRequirements.GetValueOrDefault(function)?.Remove(requirement);
 	
-	public static bool SupportsAtomic(BinaryOperation operation, TypeSymbol type) => operation switch
+	public TypeSymbol? FindAtomicAmountType(BinaryOperation operation, TypeSymbol type) => OperatorRegistry
+		.GetBinaryCandidates(GetCompoundOperator(operation))
+		.OfType<NativeImpl>()
+		.FirstOrDefault(impl => impl.ParameterTypes[0] == type && impl.ReturnType == type)?
+		.ParameterTypes[1];
+	
+	private static TokenType GetCompoundOperator(BinaryOperation operation) => operation switch
 	{
-		BinaryOperation.Addition or BinaryOperation.Subtraction => type is IntegerType or FloatType,
-		BinaryOperation.WrappingAddition or BinaryOperation.WrappingSubtraction => type is IntegerType,
-		_ => type is IntegerType || type == NativeSymbols.Bool
+		BinaryOperation.Addition => TokenType.OpPlusEqual,
+		BinaryOperation.Subtraction => TokenType.OpMinusEqual,
+		BinaryOperation.WrappingAddition => TokenType.OpPlusPercentEqual,
+		BinaryOperation.WrappingSubtraction => TokenType.OpMinusPercentEqual,
+		BinaryOperation.BitwiseAnd => TokenType.OpAmpersandEqual,
+		BinaryOperation.BitwiseOr => TokenType.OpBarEqual,
+		_ => TokenType.OpHatEqual
 	};
 }

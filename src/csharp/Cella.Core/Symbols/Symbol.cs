@@ -2,6 +2,7 @@
 using System.Numerics;
 using Cella.Core.Binding;
 using Cella.Core.Binding.Constants;
+using Cella.Core.Binding.Nodes;
 using Cella.Core.Syntax;
 using Cella.Core.Syntax.Nodes;
 using Cella.Core.Text;
@@ -198,10 +199,20 @@ public class PrimitiveType(string name, PrimitiveTypeKind kind) : TypeSymbol(nam
 	public PrimitiveTypeKind Kind { get; } = kind;
 }
 
-public sealed class IntegerType(string name, PrimitiveTypeKind kind, bool isSigned)
-	: PrimitiveType(name, kind)
+public abstract class IntegerStorageType(string name, PrimitiveTypeKind kind) : PrimitiveType(name, kind)
 {
-	public bool IsSigned { get; } = isSigned;
+	public abstract bool IsSigned { get; }
+}
+
+public sealed class IntegerType(string name, PrimitiveTypeKind kind, bool isSigned)
+	: IntegerStorageType(name, kind)
+{
+	public override bool IsSigned { get; } = isSigned;
+}
+
+public sealed class CharType() : IntegerStorageType("char", PrimitiveTypeKind.Char)
+{
+	public override bool IsSigned => false;
 }
 
 public sealed class FloatType(string name, PrimitiveTypeKind kind) : PrimitiveType(name, kind);
@@ -589,6 +600,9 @@ public sealed class TraitType(TraitSymbol trait, ImmutableArray<TypeSymbol> argu
 public sealed class FStrType(DynType value) : TypeSymbol($"fstr[{value.TraitName}]")
 {
 	public DynType Value { get; } = value;
+	public ImmutableArray<MethodSymbol> Parts { get; internal set; } = [];
+	
+	public override IEnumerable<MethodSymbol> GetFunctions(string name) => Parts.Where(part => part.Name == name);
 }
 
 public sealed class ArrayType(TypeSymbol elementType, BigInteger length, TypeParameterSymbol? lengthParameter = null)
@@ -906,6 +920,12 @@ public sealed record FunctionAccessor(FunctionSymbol Function) : AccessorImpl;
 public sealed class NativeConstructorNode(NativeMemberIntrinsic intrinsic) : IDeclarationNode
 {
 	public NativeMemberIntrinsic Intrinsic { get; } = intrinsic;
+	public SourceLocation SourceLocation => SourceLocation.None;
+}
+
+public sealed class NativeFStrPartNode(FStrPart part) : IDeclarationNode
+{
+	public FStrPart Part { get; } = part;
 	public SourceLocation SourceLocation => SourceLocation.None;
 }
 

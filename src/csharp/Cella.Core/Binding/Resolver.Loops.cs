@@ -30,7 +30,7 @@ public sealed partial class Resolver
 		var type = settledTypes?.GetValueOrDefault(node) ??
 		           (AnyInvalid(bounds[0], bounds[1]) ? NativeSymbols.Invalid : FindBoundType(bounds));
 		
-		if (type is not (InvalidType or IntegerType))
+		if (type is not (InvalidType or IntegerStorageType))
 		{
 			bounds = [..bounds.Select(MaterializeAsDefault)];
 			var (source, range) = node.Source.SourceLocation;

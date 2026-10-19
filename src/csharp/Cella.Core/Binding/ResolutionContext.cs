@@ -127,6 +127,9 @@ public readonly struct ResolutionContext
 	
 	public Symbol? Resolve(string name)
 	{
+		if (NativeSymbols.IsBuiltInTypeName(name))
+			return NativeSymbols.Resolve(name);
+		
 		if (ResolveScoped(name) is { } scoped)
 			return IsExcluded(scoped) ? null : scoped;
 		
@@ -680,8 +683,8 @@ public readonly struct ResolutionContext
 			case TypeSymbol type:
 				return type;
 			
-			case null when TypePool.BuiltinGenericTypeArguments.ContainsKey(name.Text):
-				ReportBuiltinArguments(name.SourceLocation, name.Text);
+			case null when NativeSymbols.FindGeneric(name.Text) is { } builtin:
+				ReportArgumentCount(name.SourceLocation, builtin);
 				break;
 			
 			case null when name.Text == "never":
@@ -904,8 +907,7 @@ public readonly struct ResolutionContext
 				[..node.Arguments.Select(static argument => argument.SourceLocation)], node.SourceLocation);
 		
 		if (symbol is TypeSymbol type && !IsNonType(type) && (node.Target is not VarExpressionNode named ||
-		                                                      !TypePool.BuiltinGenericTypeArguments.ContainsKey(
-			                                                      named.Identifier.Text)))
+		                                                      NativeSymbols.FindGeneric(named.Identifier.Text) is null))
 		{
 			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Target.SourceLocation,
 				$"'{type.Name}' takes no generic arguments"));
@@ -915,19 +917,19 @@ public readonly struct ResolutionContext
 		
 		if (node.Target is not VarExpressionNode target ||
 		    Resolve(target.Identifier) is not (null or TypeSymbol) ||
-		    !TypePool.BuiltinGenericTypeArguments.ContainsKey(target.Identifier.Text))
+		    NativeSymbols.FindGeneric(target.Identifier.Text) is not { } builtin)
 			return null;
 		
-		switch (target.Identifier.Text)
+		switch (builtin.Kind)
 		{
-			case "fstr":
+			case BuiltinGenericKind.FStr:
 				return node.Arguments is [var trait]
 					? CreateFStrType(trait)
-					: ReportBuiltinArguments(node.SourceLocation, target.Identifier.Text);
+					: ReportArgumentCount(node.SourceLocation, builtin);
 			
-			case "array":
+			case BuiltinGenericKind.Array:
 				return InstantiateArray(
-					ResolveGenericArguments(node.Arguments, TypePool.ArrayParameters, ResolveGenericArgumentExpression),
+					ResolveGenericArguments(node.Arguments, builtin.TypeParameters, ResolveGenericArgumentExpression),
 					[..node.Arguments.Select(static argument => argument.SourceLocation)], node.SourceLocation);
 			
 			default:
@@ -992,7 +994,9 @@ public readonly struct ResolutionContext
 	private TypeSymbol InstantiateArray(IReadOnlyList<TypeSymbol> arguments, IReadOnlyList<SourceLocation> locations,
 		SourceLocation location)
 	{
-		if (!CheckGenericArguments("array", TypePool.ArrayParameters, arguments, locations, location) ||
+		if (!CheckGenericArguments(NativeSymbols.GenericArray.Name, NativeSymbols.GenericArray.TypeParameters,
+			    arguments,
+			    locations, location) ||
 		    arguments is not [not InvalidType and var element, not InvalidType and var length])
 			return NativeSymbols.Invalid;
 		
@@ -1079,24 +1083,24 @@ public readonly struct ResolutionContext
 	private TypeSymbol ResolveGenericType(GenericTypeNode node)
 	{
 		var name = node.Identifier;
-		if (!node.Qualifiers.IsEmpty || !TypePool.BuiltinGenericTypeArguments.ContainsKey(name.Text))
+		if (!node.Qualifiers.IsEmpty || NativeSymbols.FindGeneric(name.Text) is not { } builtin)
 			return ResolveUserGenericType(node);
 		
-		switch (name.Text)
+		switch (builtin.Kind)
 		{
-			case "fstr":
+			case BuiltinGenericKind.FStr:
 				return node.Arguments is [var trait]
 					? ResolveFStrArgument(trait)
-					: ReportBuiltinArguments(node.SourceLocation, name.Text);
+					: ReportArgumentCount(node.SourceLocation, builtin);
 			
-			case "array":
+			case BuiltinGenericKind.Array:
 				return InstantiateArray(
-					ResolveGenericArguments(node.Arguments, TypePool.ArrayParameters, ResolveGenericTypeArgument),
+					ResolveGenericArguments(node.Arguments, builtin.TypeParameters, ResolveGenericTypeArgument),
 					[..node.Arguments.Select(static argument => argument.SourceLocation)], node.SourceLocation);
 			
 			default:
 				if (node.Arguments is not [var argument])
-					return ReportBuiltinArguments(node.SourceLocation, name.Text);
+					return ReportArgumentCount(node.SourceLocation, builtin);
 				
 				var baseType = ResolveTypeArgument(argument) ?? ReportNotType(argument);
 				return baseType is InvalidType ? baseType : TypePool.GetPointerType(baseType);
@@ -1155,11 +1159,9 @@ public readonly struct ResolutionContext
 		_ => null
 	};
 	
-	private TypeSymbol ReportBuiltinArguments(SourceLocation location, string name)
+	private TypeSymbol ReportArgumentCount(SourceLocation location, BuiltinGenericSymbol builtin)
 	{
-		Diagnostics.Add(new(DiagnosticSeverity.Error, location,
-			$"'{name}' takes {TypePool.BuiltinGenericTypeArguments[name]}"));
-		
+		Diagnostics.Add(ReportGenericArgumentCount(location, builtin.Name, builtin.TypeParameters.Length));
 		return NativeSymbols.Invalid;
 	}
 	
@@ -1183,7 +1185,7 @@ public readonly struct ResolutionContext
 			case null when node.Qualifiers.IsEmpty:
 				Diagnostics.Add(ReportHidden(name.Text, name.SourceLocation) ??
 				                DiagnosticReporter.ReportUndefinedType(name.SourceLocation, name.Text,
-					                GetVisibleTypeNames().Concat(TypePool.BuiltinGenericTypeArguments.Keys)));
+					                GetVisibleTypeNames().Concat(NativeSymbols.GenericNames)));
 				
 				break;
 			

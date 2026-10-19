@@ -420,9 +420,6 @@ public sealed partial class Resolver
 		};
 	}
 	
-	private static bool IsShift(TokenType op) => op is TokenType.OpLessLess or TokenType.OpGreaterGreater or
-		TokenType.OpLessLessLess or TokenType.OpGreaterGreaterGreater;
-	
 	private static string JoinWrittenNames(IEnumerable<TypeSymbol> types) =>
 		DiagnosticReporter.JoinNames([
 			..types.Select(static type => type is FunctionType function

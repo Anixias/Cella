@@ -1,0 +1,36 @@
+Error at builtin_local_names.ce:9:12
+8 │ 
+9 │ scale: fun(str: i32, by: i32) -> i32 => by * 2
+               ╘═╛ Cannot use 'str' as a name
+
+Error at builtin_local_names.ce:13:6
+12 │ {
+13 │     val i64 = 5
+             ╘═╛ Cannot use 'i64' as a name
+
+Error at builtin_local_names.ce:14:6
+13 │ val i64 = 5
+14 │ var bool = true
+         ╘══╛ Cannot use 'bool' as a name
+
+Error at builtin_local_names.ce:15:8
+14 │ var bool = true
+15 │ const char = 3
+           ╘══╛ Cannot use 'char' as a name
+
+Error at builtin_local_names.ce:17:14
+16 │ val y: i64 = 7
+17 │ val f = fun(u8: i32) -> i32 => 1
+                 ╘╛ Cannot use 'u8' as a name
+
+Error at builtin_local_names.ce:18:40
+17 │ val f = fun(u8: i32) -> i32 => 1
+18 │ val n = match Effect.hit(2) { hit(val u16) => 1, none => 0 }
+                                           ╘═╛ Cannot use 'u16' as a name
+
+Error at builtin_local_names.ce:19:6
+18 │ val n = match Effect.hit(2) { hit(val u16) => 1, none => 0 }
+19 │ for f32 in 0..3
+         ╘═╛ Cannot use 'f32' as a name
+
+[compilation failed]

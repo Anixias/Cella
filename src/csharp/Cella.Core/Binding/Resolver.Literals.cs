@@ -61,7 +61,7 @@ public sealed partial class Resolver
 					CurrentTargetType);
 		
 		var type = NativeSymbols.Resolve(suffix) as PrimitiveType;
-		if (type is not (FloatType or IntegerType { Kind: not PrimitiveTypeKind.Char }))
+		if (type is not (FloatType or IntegerType))
 			return Error(node, $"Invalid suffix '{suffix}'", CurrentTargetType);
 		
 		return (node.Token.Type, type) switch
@@ -208,7 +208,7 @@ public sealed partial class Resolver
 		}
 	}
 	
-	private IntegerType? FindDefaultIntegerType(ResolvedLiteralExpressionNode literal) => NativeSymbols.IntegerTypes
+	private IntegerType? FindDefaultIntegerType(ResolvedLiteralExpressionNode literal) => NativeSymbols.PureIntegerTypes
 		.Where(type => IntegerValueIn(literal, type) is not null)
 		.Select(type => (Type: type,
 			Cost: ((UntypedType)literal.Type).MaterializationCost(type, MaterializationMode.Default)))
@@ -216,13 +216,13 @@ public sealed partial class Resolver
 		.OrderBy(static candidate => candidate.Cost)
 		.FirstOrDefault().Type;
 	
-	private ResolvedLiteralExpressionNode MaterializeLiteral(IExpressionNode syntax, IntegerType type,
+	private ResolvedLiteralExpressionNode MaterializeLiteral(IExpressionNode syntax, IntegerStorageType type,
 		BigInteger value, UntypedType? source = null) => new(type, ConvertInteger(value, type), syntax)
 	{
 		UntypedSource = source
 	};
 	
-	private static object? ConvertInteger(BigInteger value, IntegerType type) => type.Kind switch
+	private static object? ConvertInteger(BigInteger value, IntegerStorageType type) => type.Kind switch
 	{
 		PrimitiveTypeKind.Int8 => (sbyte)value,
 		PrimitiveTypeKind.Int16 => (short)value,
@@ -303,8 +303,8 @@ public sealed partial class Resolver
 		
 		return node.Type switch
 		{
-			UntypedIntegerType { IsUnsigned: true } when target is IntegerType { IsSigned: false } t &&
-			                                             t != NativeSymbols.Char => MaterializeInteger(literal, t),
+			UntypedIntegerType { IsUnsigned: true } when target is IntegerType { IsSigned: false } t =>
+				MaterializeInteger(literal, t),
 			UntypedIntegerType { IsUnsigned: true } => literal,
 			UntypedIntegerType when target is IntegerType t => MaterializeInteger(literal, t),
 			UntypedIntegerType when target is FloatType t => MaterializeIntegerAsFloat(literal, t),

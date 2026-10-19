@@ -11,17 +11,17 @@ Error at template_members.ce:12:15
 Error at template_members.ce:13:10
 12 │ val b = text.piece
 13 │ val c = text.value(0, 1)
-             ╘════════╛ No overload of 'value' accepts these arguments
+             ╘════════╛ 'value' takes one argument
 
 Error at template_members.ce:14:10
 13 │ val c = text.value(0, 1)
 14 │ val d = text.spec()
-             ╘═══════╛ No overload of 'spec' accepts these arguments
+             ╘═══════╛ 'spec' takes one argument
 
-Error at template_members.ce:16:10
+Error at template_members.ce:16:21
 15 │ var j: usize = 0
 16 │ val e = text.piece(mut j)
-             ╘════════╛ No overload of 'piece' accepts these arguments
+                        ╘═╛ 'index' isn't a 'mut' parameter
 
 Error at template_members.ce:17:15
 16 │ val e = text.piece(mut j)

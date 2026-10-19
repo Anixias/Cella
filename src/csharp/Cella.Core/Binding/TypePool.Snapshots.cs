@@ -45,6 +45,7 @@ public sealed partial class TypePool
 		snapshot.SaveNested(_explicitConversions);
 		snapshot.SaveNested(_traitConstructors);
 		snapshot.Save(_destructors);
+		snapshot.Save(_nativeFunctions);
 		snapshot.Save(_destructorMoves);
 		snapshot.Save(_tagTypes);
 		snapshot.Save(_caseValues);

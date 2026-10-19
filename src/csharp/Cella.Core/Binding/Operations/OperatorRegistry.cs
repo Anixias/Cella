@@ -106,6 +106,7 @@ public sealed class OperatorRegistry
 	
 	private readonly Dictionary<TokenType, List<ICallable>> _unaryOps = CreateUnaryOps();
 	private readonly Dictionary<TokenType, List<ICallable>> _binaryOps;
+	private readonly Dictionary<TokenType, List<ICallable>> _memberOps = [];
 	
 	public OperatorRegistry()
 	{
@@ -116,6 +117,7 @@ public sealed class OperatorRegistry
 	{
 		snapshot.SaveNested(_unaryOps);
 		snapshot.SaveNested(_binaryOps);
+		snapshot.SaveNested(_memberOps);
 	}
 	
 	public void Create(OperationImpl impl)
@@ -206,18 +208,28 @@ public sealed class OperatorRegistry
 		         })
 			result.GetOrAdd(op).Add(new NativeImpl(op, NativeSymbols.Char, NativeSymbols.Char, NativeSymbols.Int32));
 		
-		result.GetOrAdd(TokenType.OpPlus)
-			.Add(new NativeImpl(TokenType.OpPlus, NativeSymbols.Char, NativeSymbols.Int32, NativeSymbols.Char));
+		result.GetOrAdd(TokenType.OpPlus).Add(
+			new NativeImpl(TokenType.OpPlus, NativeSymbols.Char, NativeSymbols.Int32, NativeSymbols.Char)
+			{
+				Owner = NativeSymbols.Char
+			});
 		
 		result.GetOrAdd(TokenType.OpMinus)
 			.Add(new NativeImpl(TokenType.OpMinus, NativeSymbols.Int32, NativeSymbols.Char, NativeSymbols.Char));
 		
-		// Pointers
-		foreach (var op in _comparisonBinOps)
-			result.GetOrAdd(op)
-				.Add(new NativeImpl(op, NativeSymbols.Bool, NativeSymbols.VoidPtr, NativeSymbols.VoidPtr));
-		
 		return result;
+	}
+	
+	public void CreatePointerComparisons(PointerType pointerType)
+	{
+		foreach (var op in _comparisonBinOps)
+		{
+			var comparison = new NativeImpl(op, NativeSymbols.Bool, pointerType, pointerType);
+			if (pointerType == NativeSymbols.VoidPtr)
+				Create(comparison);
+			else
+				_memberOps.GetOrAdd(op).Add(comparison);
+		}
 	}
 	
 	public IReadOnlyList<ICallable> GetUnaryCandidates(TokenType op) =>
@@ -225,6 +237,12 @@ public sealed class OperatorRegistry
 	
 	public IReadOnlyList<ICallable> GetBinaryCandidates(TokenType op) =>
 		_binaryOps.TryGetValue(op, out var candidates) ? candidates : Array.Empty<ICallable>();
+	
+	public IEnumerable<OperationImpl> GetOwnedCandidates(TokenType op, TypeSymbol owner) => GetUnaryCandidates(op)
+		.Concat(GetBinaryCandidates(op))
+		.Concat(_memberOps.TryGetValue(op, out var members) ? members : [])
+		.OfType<OperationImpl>()
+		.Where(operation => operation.Owner == owner);
 }
 
 public abstract class OperationImpl(TokenType op, TypeSymbol result, params IEnumerable<TypeSymbol> parameters)
@@ -233,6 +251,7 @@ public abstract class OperationImpl(TokenType op, TypeSymbol result, params IEnu
 	public TokenType Op { get; } = op;
 	public TypeSymbol ReturnType { get; } = result;
 	public ImmutableArray<TypeSymbol> ParameterTypes { get; } = parameters.ToImmutableArray();
+	public TypeSymbol Owner { get; init; } = parameters.FirstOrDefault() ?? result;
 }
 
 public sealed class NativeImpl(TokenType op, TypeSymbol result, params IEnumerable<TypeSymbol> parameters)

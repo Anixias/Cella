@@ -38,7 +38,7 @@ public sealed class NeverConversion(TypeSymbol to)
 public sealed class IdentityConversion(TypeSymbol symbol)
 	: Conversion(symbol, symbol, ConversionKind.Identity, 0, true);
 
-public sealed class IntegerConversion(IntegerType from, IntegerType to, ConversionKind kind, int cost)
+public sealed class IntegerConversion(IntegerStorageType from, IntegerStorageType to, ConversionKind kind, int cost)
 	: Conversion(from, to, kind, cost, true)
 {
 	public bool FromSigned { get; } = from.IsSigned;

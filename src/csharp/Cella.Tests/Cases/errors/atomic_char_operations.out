@@ -1,0 +1,31 @@
+Error at atomic_char_operations.ce:7:16
+6 │ val pl: ptr[char] = @letter
+7 │ atomic *pl += 'b'
+                  ╘═╛ Cannot convert type 'char' to 'i32'
+
+Error at atomic_char_operations.ce:8:13
+7 │ atomic *pl += 'b'
+8 │ atomic *pl |= 'b'
+               ╘╛ Cannot use '|=' atomically on 'char'
+
+Error at atomic_char_operations.ce:9:13
+8 │ atomic *pl |= 'b'
+9 │ atomic *pl ^= 'c'
+               ╘╛ Cannot use '^=' atomically on 'char'
+
+Error at atomic_char_operations.ce:10:16
+ 9 │ atomic *pl ^= 'c'
+10 │ atomic *pl -= 'a'
+                   ╘═╛ Cannot convert type 'char' to 'i32'
+
+Error at atomic_char_operations.ce:12:11
+11 │ var other = 'a'
+12 │ other += 'b'
+              ╘═╛ Cannot convert type 'char' to 'i32'
+
+Error at atomic_char_operations.ce:13:2
+12 │ other += 'b'
+13 │ other |= 'b'
+     ╘══════════╛ No operation defined for '|=' between 'char' and 'char'
+
+[compilation failed]

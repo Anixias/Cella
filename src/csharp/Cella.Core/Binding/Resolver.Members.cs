@@ -35,9 +35,6 @@ public sealed partial class Resolver
 		if (IsInvalid(target))
 			return VisitIndirectCall(node, target);
 		
-		if (target.Type is FStrType fstr && FindFStrPart(access.Member.Text) is { } part)
-			return ResolveFStrPart(node, access, target, fstr, part, indexer);
-		
 		var targetType = target.Type;
 		ProbeMember(access, () => GetValueMemberCandidates(targetType));
 		var owner = GetMemberOwner(target.Type, access.Member.Text);
@@ -77,34 +74,6 @@ public sealed partial class Resolver
 		return ResolveTypeArguments(indexer, candidates) is { } typeArguments
 			? ResolveCall(node, access.Member.Text, candidates, target, typeArguments)
 			: new ResolvedInvalidExpressionNode(node, CurrentTargetType);
-	}
-	
-	private static FStrPart? FindFStrPart(string name) => name switch
-	{
-		"piece" => FStrPart.Piece,
-		"spec" => FStrPart.Spec,
-		"value" => FStrPart.Value,
-		_ => null
-	};
-	
-	private IResolvedExpressionNode ResolveFStrPart(CallExpressionNode node, AccessExpressionNode access,
-		IResolvedExpressionNode target, FStrType type, FStrPart part, IndexerExpressionNode? indexer)
-	{
-		if (indexer is not null || node.Arguments is not [var argument] || argument is BorrowExpressionNode)
-		{
-			foreach (var extra in node.Arguments)
-				VisitArgument(extra);
-			
-			return Error(node, $"No overload of '{access.Member.Text}' accepts these arguments", CurrentTargetType,
-				node.Target);
-		}
-		
-		var index = VisitNode(argument, NativeSymbols.UIntSize);
-		if (IsInvalid(index))
-			return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
-		
-		TypeSymbol resultType = part == FStrPart.Value ? _typePool.GetBorrowType(type.Value, false) : NativeSymbols.Str;
-		return new ResolvedFStrPartExpressionNode(resultType, target, part, index, node);
 	}
 	
 	private IResolvedExpressionNode Index(IndexerExpressionNode? indexer, IResolvedExpressionNode target) =>
@@ -203,50 +172,15 @@ public sealed partial class Resolver
 		if (op.Type == TokenType.Identifier || type is not (PrimitiveType or PointerType))
 			return null;
 		
-		var rejected = $"'{type.Name}.{op.Text}' doesn't accept these arguments";
-		if (IsAssignment(op.Type))
-		{
-			if (node.Arguments is not [BorrowExpressionNode { IsMutable: true } target, var value])
-				return Error(node, rejected, CurrentTargetType);
-			
-			var assignment = VisitNode(new BinaryOpExpressionNode(target.Value, op, value), CurrentTargetType);
-			return assignment is ResolvedAssignmentExpressionNode { Left.Type: var left } && left != type
-				? Error(node, rejected, CurrentTargetType)
-				: assignment;
-		}
+		OperationImpl[] operations = [.._operatorRegistry.GetOwnedCandidates(op.Type, type)];
 		
-		List<ICallable> unary = [.._operatorRegistry.GetUnaryCandidates(op.Type).Where(TakesType)];
-		List<ICallable> binary = [.._operatorRegistry.GetBinaryCandidates(op.Type).Where(TakesType)];
-		if (unary.Count + binary.Count == 0)
-			return null;
+		ICallable[] owned =
+		[
+			..operations.Select(ICallable (operation) =>
+				IsAssignment(op.Type) ? new StoreCallable(operation, op, _typePool) : operation)
+		];
 		
-		var candidates = node.Arguments.Length switch
-		{
-			1 => unary,
-			2 => binary,
-			_ => []
-		};
-		
-		if (candidates.Count == 0)
-			return Error(node, rejected, CurrentTargetType);
-		
-		IResolvedExpressionNode[] args = [..node.Arguments.Select(argument => Decay(VisitNode(argument, type)))];
-		if (AnyInvalid(args))
-			return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
-		
-		var resolutionSet = ResolveCallable(candidates, args, MaterializationMode.Overload);
-		if (!resolutionSet.HasResult || resolutionSet.IsAmbiguous)
-			return Error(node, rejected, CurrentTargetType);
-		
-		var resolvedArgs = ApplyArgumentResolution(args, resolutionSet[0]);
-		var operation = (OperationImpl)resolutionSet[0].Callable;
-		IResolvedExpressionNode result = resolvedArgs.Count == 1
-			? new ResolvedUnaryOpExpressionNode(resolvedArgs[0], operation, node)
-			: new ResolvedBinaryOpExpressionNode(resolvedArgs[0], resolvedArgs[1], operation, node);
-		
-		return ApplyResultResolution(result, resolutionSet[0]);
-		
-		bool TakesType(ICallable candidate) => candidate.ParameterTypes.Contains(type);
+		return owned.Length == 0 ? null : ResolveCall(node, $"{type.Name}.{op.Text}", owned, null);
 	}
 	
 	private GlobalSymbol? FindRequirement(ImplSymbol impl, string name) => _typePool.Conformances
@@ -688,6 +622,7 @@ public sealed partial class Resolver
 	
 	private IEnumerable<string> GetMemberNames(TypeSymbol type) =>
 		(type is RecordSymbol record ? record.Members.Select(static member => member.Name) : [])
+		.Concat(type is FStrType fstr ? fstr.Parts.Select(static part => part.Name) : [])
 		.Concat(type.OriginalDefinition is NamedTypeSymbol named
 			? named.Properties.Select(static property => property.Name)
 			: [])

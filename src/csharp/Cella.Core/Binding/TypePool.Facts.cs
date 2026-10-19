@@ -103,7 +103,7 @@ public sealed partial class TypePool
 	public bool IsAtomic(TypeSymbol type) => type switch
 	{
 		InvalidType => true,
-		IntegerType { Kind: not (PrimitiveTypeKind.Int128 or PrimitiveTypeKind.UInt128) } => true,
+		IntegerStorageType { Kind: not (PrimitiveTypeKind.Int128 or PrimitiveTypeKind.UInt128) } => true,
 		FloatType => true,
 		PrimitiveType { Kind: PrimitiveTypeKind.Bool } => true,
 		StringType => type == NativeSymbols.CStr,

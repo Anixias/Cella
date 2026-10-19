@@ -11,12 +11,12 @@ Error at template_types.ce:18:19
 Error at template_types.ce:22:14
 21 │ 
 22 │ b: fun(text: fstr)
-                  ╘══╛ 'fstr' takes one trait argument
+                  ╘══╛ 'fstr' takes one generic argument
 
 Error at template_types.ce:26:14
 25 │ 
 26 │ c: fun(text: fstr[Display, Display])
-                  ╘════════════════════╛ 'fstr' takes one trait argument
+                  ╘════════════════════╛ 'fstr' takes one generic argument
 
 Error at template_types.ce:30:19
 29 │ 

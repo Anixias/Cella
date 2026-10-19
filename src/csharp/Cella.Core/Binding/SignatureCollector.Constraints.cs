@@ -106,7 +106,7 @@ public sealed partial class SignatureCollector
 	private TypeSymbol ResolveValueType(ITypeNode node, ResolutionContext context)
 	{
 		var type = context.ResolveType(node);
-		if (type is IntegerType { Kind: not PrimitiveTypeKind.Char } or InvalidType)
+		if (type is IntegerType or InvalidType)
 			return type;
 		
 		Diagnostics.Add(new(DiagnosticSeverity.Error, node.SourceLocation, "Value parameters need an integer type"));

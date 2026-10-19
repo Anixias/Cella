@@ -228,6 +228,9 @@ public sealed partial class Resolver
 	private FunctionInfo CreateLambdaInfo(LambdaExpressionNode node, ResolutionContext outer,
 		IReadOnlyList<ParameterMode> modes, IReadOnlyList<TypeSymbol> types, TypeSymbol returnType, bool takesVariadic)
 	{
+		foreach (var parameter in node.Parameters)
+			RejectBuiltInName(parameter.Identifier);
+		
 		var parameters = node.Parameters
 			.Select((parameter, i) => new ParameterSymbol(parameter.Identifier) { Mode = modes[i] })
 			.ToList();

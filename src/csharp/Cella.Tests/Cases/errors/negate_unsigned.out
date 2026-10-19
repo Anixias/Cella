@@ -14,6 +14,5 @@ Error at negate_unsigned.ce:10:10
  9 │ var b = -small
 10 │ var c = -letter
              ╘═════╛ Operator '-' cannot be applied to 'char'
-                   | 'char' can't represent negative values
 
 [compilation failed]

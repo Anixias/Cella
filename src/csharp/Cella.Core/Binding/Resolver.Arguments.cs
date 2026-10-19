@@ -247,7 +247,7 @@ public sealed partial class Resolver
 	
 	private static UntypedType? FindLiteralType(TypeSymbol type) => type switch
 	{
-		IntegerType { Kind: not PrimitiveTypeKind.Char } => UntypedIntegerType.Instance,
+		IntegerType => UntypedIntegerType.Instance,
 		FloatType => UntypedFloatType.Instance,
 		StringType => UntypedStringType.Instance,
 		PointerType => UntypedNullType.Instance,

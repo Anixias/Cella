@@ -86,14 +86,15 @@ public sealed partial class Resolver
 			return RejectAtomic(node, Error(node, $"Cannot use '{op.Text}' atomically", null, op.SourceLocation));
 		
 		var owner = type is TypeParameterSymbol ? FindGenericCaller(CurrentResolutionContext) : null;
-		if (owner is null && !TypePool.SupportsAtomic(operation, type))
+		var amountType = owner is null ? _typePool.FindAtomicAmountType(operation, type) : type;
+		if (amountType is null)
 			return RejectAtomic(node, Error(node, $"Cannot use '{op.Text}' atomically on '{type.Name}'", null,
 				op.SourceLocation));
 		
 		if (owner is not null)
 			AddAtomicRequirement(owner, new((TypeParameterSymbol)type, operation, op.Text, op.SourceLocation));
 		
-		var amount = VisitNode(node.Value!, type);
+		var amount = VisitNode(node.Value!, amountType);
 		return new ResolvedAtomicExpressionNode(access, node.Ordering, pointer, operation, null, amount, type, node);
 	}
 	

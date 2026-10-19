@@ -53,7 +53,8 @@ public sealed partial class Resolver
 			{
 				if (FindArgument(use, requirement) is not { } argument || argument is InvalidType ||
 				    FindCallerParameter(use, requirement) is not null ||
-				    TypePool.SupportsAtomic(requirement.Operation, argument) || !reported.Add(use.Location))
+				    _typePool.FindAtomicAmountType(requirement.Operation, argument) == argument ||
+				    !reported.Add(use.Location))
 					continue;
 				
 				Diagnostics.Add(new(DiagnosticSeverity.Error, use.Location,

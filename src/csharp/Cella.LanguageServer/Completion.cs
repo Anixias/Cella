@@ -43,7 +43,7 @@ public static partial class Completion
 		"alignOf", "nameOf"
 	];
 	
-	private static readonly string[] _typeKeywords = ["dyn", "fun", "imm", "mut", "array", "ptr", "fstr"];
+	private static readonly string[] _typeKeywords = ["dyn", "fun", "imm", "mut", ..NativeSymbols.GenericNames];
 	
 	private static readonly string[] _declarationKeywords =
 	[

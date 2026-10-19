@@ -1,5 +1,6 @@
 ﻿using System.Collections.Immutable;
 using System.Numerics;
+using Cella.Core.Text;
 
 namespace Cella.Core.Symbols;
 
@@ -53,7 +54,7 @@ public static class NativeSymbols
 	public static IntegerType UIntSize { get; } = new("usize", PrimitiveTypeKind.UIntSize, false);
 	public static FloatType Float32 { get; } = new("f32", PrimitiveTypeKind.Float32);
 	public static FloatType Float64 { get; } = new("f64", PrimitiveTypeKind.Float64);
-	public static IntegerType Char { get; } = new("char", PrimitiveTypeKind.Char, false);
+	public static CharType Char { get; } = new();
 	public static PrimitiveType Bool { get; } = new("bool", PrimitiveTypeKind.Bool);
 	public static StringType Str { get; } = new("str", PrimitiveTypeKind.Str);
 	public static StringType CStr { get; } = new("cstr", PrimitiveTypeKind.CStr);
@@ -82,24 +83,57 @@ public static class NativeSymbols
 		UIntSize
 	];
 	
-	public static ImmutableArray<IntegerType> IntegerTypes { get; } =
-	[
-		..PureIntegerTypes,
-		Char
-	];
-	
 	public static ImmutableArray<FloatType> FloatTypes { get; } =
 	[
 		Float32,
 		Float64
 	];
 	
+	public static BuiltinGenericSymbol GenericArray { get; } = new("array", BuiltinGenericKind.Array,
+	[
+		new("T", []),
+		new("length", []) { IsValue = true, ValueType = UIntSize }
+	]);
+	
+	public static BuiltinGenericSymbol GenericPointer { get; } =
+		new("ptr", BuiltinGenericKind.Pointer, [new("T", [])]);
+	
+	public static BuiltinGenericSymbol GenericFStr { get; } = new("fstr", BuiltinGenericKind.FStr,
+		[new("K", [new Token(TokenType.KeywordTrait, SourceLocation.None)])]);
+	
+	private static readonly ImmutableDictionary<string, BuiltinGenericSymbol> _generics =
+		new[] { GenericArray, GenericPointer, GenericFStr }.ToImmutableDictionary(static s => s.Name);
+	
 	public static Symbol? Resolve(string name) => _primitiveTypes.GetValueOrDefault(name);
 	
-	public static bool IsBuiltInName(string name) =>
-		_primitiveTypes.ContainsKey(name) || name is "array" or "fstr" or "Self";
+	public static BuiltinGenericSymbol? FindGeneric(string name) => _generics.GetValueOrDefault(name);
+	
+	public static IEnumerable<string> GenericNames => _generics.Keys;
+	
+	public static bool IsBuiltInName(string name) => IsBuiltInTypeName(name) || name == "Self";
+	
+	public static bool IsBuiltInTypeName(string name) =>
+		_primitiveTypes.ContainsKey(name) || _generics.ContainsKey(name);
 	
 	public static IEnumerable<TypeSymbol> PrimitiveTypes => _primitiveTypes.Values;
+}
+
+public enum BuiltinGenericKind
+{
+	Array,
+	Pointer,
+	FStr
+}
+
+public sealed class BuiltinGenericSymbol
+(
+	string name,
+	BuiltinGenericKind kind,
+	ImmutableArray<TypeParameterSymbol> typeParameters
+) : Symbol(name)
+{
+	public BuiltinGenericKind Kind { get; } = kind;
+	public ImmutableArray<TypeParameterSymbol> TypeParameters { get; } = typeParameters;
 }
 
 public readonly record struct StrValue(ulong Length, byte[] Bytes);

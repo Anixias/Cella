@@ -115,7 +115,7 @@ public sealed class PatternCoverage(TypePool typePool, ConstantEvaluator evaluat
 	
 	private (BigInteger Min, BigInteger Max)? FindLimits(TypeSymbol type) => type switch
 	{
-		IntegerType integer => evaluator.GetLimits(integer),
+		IntegerStorageType integer => evaluator.GetLimits(integer),
 		_ when type == NativeSymbols.Bool => (BigInteger.Zero, BigInteger.One),
 		_ => null
 	};

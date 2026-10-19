@@ -210,12 +210,12 @@ public sealed partial class Resolver
 			case PrimitiveType { Kind: PrimitiveTypeKind.Bool }:
 				return new ResolvedConversionExpressionNode(arg, _boolPromotion, arg.Syntax);
 			
-			case IntegerType type when CountBits(type) < 32:
+			case IntegerStorageType type when CountBits(type) < 32:
 				return new ResolvedConversionExpressionNode(arg,
 					_conversionTable.FindExplicit(type, NativeSymbols.Int32)!,
 					arg.Syntax);
 			
-			case IntegerType type when CountBits(type) <= 64:
+			case IntegerStorageType type when CountBits(type) <= 64:
 				return arg;
 			
 			case FloatType { Kind: PrimitiveTypeKind.Float32 } type:

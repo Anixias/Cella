@@ -336,7 +336,7 @@ public sealed partial class Resolver
 	
 	private (BigInteger Min, BigInteger Max)? FindLimits(TypeSymbol type) => type switch
 	{
-		IntegerType integer => _evaluator.GetLimits(integer),
+		IntegerStorageType integer => _evaluator.GetLimits(integer),
 		_ when type == NativeSymbols.Bool => (BigInteger.Zero, BigInteger.One),
 		_ => null
 	};
@@ -487,6 +487,9 @@ public sealed partial class Resolver
 			Diagnostics.Add(
 				new(DiagnosticSeverity.Error, mode.SourceLocation, $"Cannot use '{mode.Text}' after a type"));
 		
+		if (trailing?.CaseName is { } named)
+			RejectBuiltInName(named);
+		
 		var binding = trailing?.CaseName is { Text: not "_" } token
 			? new LocalVariableSymbol(token, _typePool.GetPointerType(type), false)
 			{
@@ -537,6 +540,7 @@ public sealed partial class Resolver
 		var isMutBinding = !ownsValue && !copies && (isMut || modeType == TokenType.KeywordMut);
 		var isBorrowBinding = !ownsValue && !copies && (isMutBinding || !isCopy);
 		var bindingType = isBorrowBinding && type is not InvalidType ? _typePool.GetPointerType(type) : type;
+		RejectBuiltInName(token);
 		return new LocalVariableSymbol(token, bindingType, modeType == TokenType.KeywordVar && !isBorrowBinding)
 		{
 			IsPatternBinding = true,

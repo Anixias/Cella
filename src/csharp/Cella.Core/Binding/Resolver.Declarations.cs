@@ -131,6 +131,8 @@ public sealed partial class Resolver
 	
 	public IResolvedDeclarationNode Visit(NativeConstructorNode node) => throw new InvalidOperationException();
 	
+	public IResolvedDeclarationNode Visit(NativeFStrPartNode node) => throw new InvalidOperationException();
+	
 	public IResolvedDeclarationNode Visit(ConstructorConstraintNode node) => throw new InvalidOperationException();
 	
 	public IResolvedDeclarationNode Visit(PropertyNode node) => throw new InvalidOperationException();

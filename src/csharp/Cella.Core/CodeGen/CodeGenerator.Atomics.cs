@@ -2,6 +2,7 @@
 using Cella.Core.Binding.Operations;
 using Cella.Core.Lowering;
 using Cella.Core.Symbols;
+using Cella.Core.Text;
 using Cella.Core.Syntax.Nodes;
 using LLVMSharp.Interop;
 
@@ -65,6 +66,8 @@ public sealed unsafe partial class CodeGenerator
 		var old = builder.BuildAtomicRMW(operation, address, operand, ordering, false);
 		var result = v.Operation switch
 		{
+			BinaryOperation.Addition or BinaryOperation.Subtraction when valueType is CharType =>
+				EmitCharUpdate(v.Operation.Value, old, operand, v.SourceLocation, builder),
 			BinaryOperation.Addition or BinaryOperation.Subtraction when valueType is IntegerType integer &&
 			                                                             checks.Overflow =>
 				EmitCheckedArithmetic(v.Operation.Value, old, operand, integer.IsSigned, v.SourceLocation, builder),
@@ -78,6 +81,21 @@ public sealed unsafe partial class CodeGenerator
 		};
 		
 		return FromAtomic(result, valueType, builder);
+	}
+	
+	private LLVMValueRef EmitCharUpdate(BinaryOperation operation, LLVMValueRef old, LLVMValueRef amount,
+		SourceLocation location, LLVMBuilderRef builder)
+	{
+		var current = builder.BuildZExt(old, _context.Int64Type, "wide");
+		var delta = builder.BuildSExt(amount, _context.Int64Type, "wide");
+		var result = operation == BinaryOperation.Addition
+			? builder.BuildAdd(current, delta, "char.add")
+			: builder.BuildSub(current, delta, "char.sub");
+		
+		if (checks.Overflow)
+			PanicIf(builder.BuildNot(IsScalarValue(result, builder), "invalid"), "char overflow", location, builder);
+		
+		return builder.BuildTrunc(result, _context.Int32Type, "char");
 	}
 	
 	private LLVMTypeRef GetAtomicType(TypeSymbol type) => type switch

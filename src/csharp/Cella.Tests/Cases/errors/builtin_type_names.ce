@@ -15,6 +15,8 @@ array: val i32 = 1
 Holder: rec
 {
 	pick[bool]: fun(imm value: bool) -> i32 => 0
+	i32: fun -> u8 => 1
+	get: fun -> i32 => 5
 }
 
 ext
@@ -22,4 +24,4 @@ ext
 	cstr: fun -> i32
 }
 
-main: fun -> i32 => 0
+main: fun -> i32 => Holder.get()

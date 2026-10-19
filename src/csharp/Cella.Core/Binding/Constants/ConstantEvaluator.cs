@@ -167,8 +167,8 @@ public sealed class ConstantEvaluator
 		_ => []
 	};
 	
-	public bool Fits(BigInteger value, IntegerType type) =>
-		type == NativeSymbols.Char ? IsScalarValue(value) : Wrap(value, type) == value;
+	public bool Fits(BigInteger value, IntegerStorageType type) =>
+		type is CharType ? IsScalarValue(value) : Wrap(value, type) == value;
 	
 	public static bool IsScalarValue(BigInteger value) =>
 		value >= 0 && value <= MaxScalarValue && (value < FirstSurrogate || value > LastSurrogate);
@@ -209,7 +209,7 @@ public sealed class ConstantEvaluator
 	
 	public string? FindOverflowingOperation(ResolvedBinaryOpExpressionNode node)
 	{
-		if (node is not { Operation: NativeImpl { Op: var op }, Type: IntegerType type } ||
+		if (node is not { Operation: NativeImpl { Op: var op }, Type: IntegerStorageType type } ||
 		    Evaluate(node.Left) is not IntegerConstant { Value: var left } ||
 		    Evaluate(node.Right) is not IntegerConstant { Value: var right })
 			return null;
@@ -235,9 +235,11 @@ public sealed class ConstantEvaluator
 		    double.IsFinite(number) && float.IsInfinity((float)number))
 			return (DescribeWritten(node), floatTarget);
 		
-		var target = node switch
+		IntegerStorageType? target = node switch
 		{
-			{ Type: IntegerType type, Conversion: IntegerConversion or FloatConversion or EnumConversion } => type,
+			{
+				Type: IntegerStorageType type, Conversion: IntegerConversion or FloatConversion or EnumConversion
+			} => type,
 			{ Type: EnumSymbol { IsExternal: true } enumType, Conversion: EnumConversion } =>
 				typePool.GetTagType(enumType),
 			_ => null
@@ -262,7 +264,7 @@ public sealed class ConstantEvaluator
 		(node.Syntax is CallExpressionNode { Arguments: [var argument] } ? argument : node.Source.Syntax)
 		.SourceLocation.GetText().ToString();
 	
-	private bool FitsInteger(double value, IntegerType type) =>
+	private bool FitsInteger(double value, IntegerStorageType type) =>
 		double.IsFinite(value) && Fits(new BigInteger(Math.Truncate(value)), type);
 	
 	private Constant? Fold(IResolvedExpressionNode node) => node switch
@@ -497,7 +499,8 @@ public sealed class ConstantEvaluator
 	
 	private static Constant? FoldLiteral(ResolvedLiteralExpressionNode node) => node.Type switch
 	{
-		IntegerType or UntypedIntegerType when node.IntegerValue is { } value => new IntegerConstant(node.Type, value),
+		IntegerStorageType or UntypedIntegerType when node.IntegerValue is { } value =>
+			new IntegerConstant(node.Type, value),
 		FloatType or UntypedFloatType when node.Value is double value => new FloatConstant(node.Type, value),
 		UntypedFloatType when node.Value is string text =>
 			new FloatConstant(node.Type, double.Parse(text, CultureInfo.InvariantCulture)),
@@ -799,7 +802,7 @@ public sealed class ConstantEvaluator
 	
 	private static Constant MatchConstant(TypeSymbol type, BigInteger value) => type switch
 	{
-		IntegerType => new IntegerConstant(type, value),
+		IntegerStorageType => new IntegerConstant(type, value),
 		_ when type == NativeSymbols.Bool => BoolConstant.From(!value.IsZero),
 		_ => new NullConstant(type)
 	};
@@ -809,11 +812,11 @@ public sealed class ConstantEvaluator
 		: new EnumTagConstant(enumType, tag);
 	
 	private IntegerConstant Integer(TypeSymbol type, BigInteger value) =>
-		new(type, type is IntegerType integer ? Wrap(value, integer) : value);
+		new(type, type is IntegerStorageType integer ? Wrap(value, integer) : value);
 	
 	private Constant? Checked(TypeSymbol type, BigInteger value) =>
 		wrapsChecked ? Integer(type, value)
-		: type is not IntegerType integer || Fits(value, integer) ? new IntegerConstant(type, value)
+		: type is not IntegerStorageType integer || Fits(value, integer) ? new IntegerConstant(type, value)
 		: null;
 	
 	private static FloatConstant Float(TypeSymbol type, double value) =>
@@ -821,14 +824,14 @@ public sealed class ConstantEvaluator
 	
 	private static Constant Zero(TypeSymbol type) => type switch
 	{
-		IntegerType => new IntegerConstant(type, BigInteger.Zero),
+		IntegerStorageType => new IntegerConstant(type, BigInteger.Zero),
 		FloatType => new FloatConstant(type, 0),
 		PrimitiveType { Kind: PrimitiveTypeKind.Bool } => BoolConstant.False,
 		PointerType or FunctionType or PrimitiveType { Kind: PrimitiveTypeKind.CStr } => new NullConstant(type),
 		_ => new ZeroConstant(type)
 	};
 	
-	public (BigInteger Min, BigInteger Max) GetLimits(IntegerType type)
+	public (BigInteger Min, BigInteger Max) GetLimits(IntegerStorageType type)
 	{
 		var bits = (int)CountBits(type);
 		return type.IsSigned
@@ -836,7 +839,7 @@ public sealed class ConstantEvaluator
 			: (BigInteger.Zero, (BigInteger.One << bits) - 1);
 	}
 	
-	public BigInteger Wrap(BigInteger value, IntegerType type)
+	public BigInteger Wrap(BigInteger value, IntegerStorageType type)
 	{
 		var modulus = BigInteger.One << (int)CountBits(type);
 		var result = Modulo(value, modulus);

@@ -69,7 +69,7 @@ public sealed partial class TypePool
 		(argument, parameter.ValueType) switch
 		{
 			(_, null or InvalidType) => null,
-			(ValueArgumentType value, IntegerType type) when IntegerFits?.Invoke(value.Value, type) == false =>
+			(ValueArgumentType value, IntegerStorageType type) when IntegerFits?.Invoke(value.Value, type) == false =>
 				$"'{value.Value}' doesn't fit in '{type.Name}'",
 			(ValueArgumentType, _) => null,
 			(TypeParameterSymbol { IsValue: true, ValueType: var type }, var expected)

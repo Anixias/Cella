@@ -74,7 +74,7 @@ public sealed partial class TypePool
 		
 		SizeTable.Register(enumType, () => GetPartSizes([matchedType]) is [var size] ? size : null);
 		ConversionTable.Add(new MatchConversion(matchedType, enumType));
-		if (matchedType is IntegerType or PointerType || matchedType == NativeSymbols.Bool ||
+		if (matchedType is IntegerStorageType or PointerType || matchedType == NativeSymbols.Bool ||
 		    matchedType == NativeSymbols.CStr)
 			ConversionTable.Add(new MatchConversion(enumType, matchedType));
 		

@@ -1,0 +1,16 @@
+mod test
+
+main: fun -> i32
+{
+	var m = 'a'
+	var w: i64 = 1
+	val a = char.+('a', 'b')
+	val b = i32.+('a', 1)
+	char.+=(mut m, 'b')
+	i32.+=(mut w, 1)
+	i32.+=(w, 1)
+	val c = i32.+(1)
+	val d = bool.+(true, false)
+	val e = i32.+(1, 2, 3)
+	ret 0
+}

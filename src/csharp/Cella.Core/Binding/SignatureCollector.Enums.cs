@@ -155,7 +155,7 @@ public sealed partial class SignatureCollector
 	}
 	
 	private static bool IsMatchable(TypeSymbol type) =>
-		type is InvalidType or IntegerType or TypeParameterSymbol || type == NativeSymbols.Bool ||
+		type is InvalidType or IntegerStorageType or TypeParameterSymbol || type == NativeSymbols.Bool ||
 		TypePool.HasNull(type);
 	
 	private void CompleteMatchEnum(EnumSymbol enumType, TypeSymbol matchedType, ResolutionContext context)
@@ -193,7 +193,7 @@ public sealed partial class SignatureCollector
 		TypeSymbol matchedType, ResolutionContext context)
 	{
 		var isNull = expression is LiteralExpressionNode { Token.Type: TokenType.KeywordNull };
-		if (matchedType is not (IntegerType or InvalidType) && matchedType != NativeSymbols.Bool)
+		if (matchedType is not (IntegerStorageType or InvalidType) && matchedType != NativeSymbols.Bool)
 		{
 			if (isNull && TypePool.HasNull(matchedType))
 				return BigInteger.Zero;
@@ -256,14 +256,14 @@ public sealed partial class SignatureCollector
 	
 	private static string DescribeMatchValue(BigInteger value, TypeSymbol matchedType) => matchedType switch
 	{
-		IntegerType => value.ToString(),
+		IntegerStorageType => value.ToString(),
 		_ when matchedType == NativeSymbols.Bool => value.IsZero ? "false" : "true",
 		_ => "null"
 	};
 	
 	private bool CoversEveryValue(TypeSymbol matchedType, IReadOnlySet<BigInteger> values) => matchedType switch
 	{
-		IntegerType => values.Count == BigInteger.One << (int)_typePool.SizeTable.GetSize(matchedType)
+		IntegerStorageType => values.Count == BigInteger.One << (int)_typePool.SizeTable.GetSize(matchedType)
 			.CountBits(_pointerBitSize),
 		_ when matchedType == NativeSymbols.Bool => values.Count == 2,
 		_ => false

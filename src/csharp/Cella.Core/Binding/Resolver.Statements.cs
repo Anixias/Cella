@@ -257,6 +257,7 @@ public sealed partial class Resolver
 			ReportConstant(node.Identifier, node.Type?.SourceLocation ?? node.Identifier.SourceLocation, type,
 				initializer, constant);
 		
+		RejectBuiltInName(node.Identifier);
 		var symbol = new LocalVariableSymbol(node.Identifier, type, node.IsMutable)
 		{
 			ConstantValue = constant,
@@ -347,6 +348,7 @@ public sealed partial class Resolver
 	
 	public IResolvedStatementNode Visit(ForStatementNode node)
 	{
+		RejectBuiltInName(node.Binding);
 		var header = node.End is { } end ? ResolveRange(node, end) : ResolveIteration(node);
 		var scope = CreateScope([header.Binding]);
 		LabelSymbol? label = node.Label is { } labelToken ? new(labelToken) : null;

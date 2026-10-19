@@ -29,7 +29,7 @@ public sealed class ConversionTable
 			FindCallableConversion(from, to);
 	
 	public static bool ConstructsItself(TypeSymbol type) =>
-		type is IntegerType or FloatType or StringType or PointerType or ArrayType || type == NativeSymbols.Bool;
+		type is IntegerStorageType or FloatType or StringType or PointerType or ArrayType || type == NativeSymbols.Bool;
 	
 	private CallableConversion? FindCallableConversion(TypeSymbol from, TypeSymbol to)
 	{

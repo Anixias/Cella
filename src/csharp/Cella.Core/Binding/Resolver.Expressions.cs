@@ -77,8 +77,6 @@ public sealed partial class Resolver
 		if (resolutionContext.TypePool.ResolveMember(target.Type, memberName) is not { } member)
 			return Error(node, FindFunctions(target.Type, memberName) switch
 			{
-				[] when target.Type is FStrType && FindFStrPart(memberName) is not null =>
-					"Cannot use methods as values",
 				[] => DescribeMissingMember(target.Type, memberName),
 				var functions when functions.Any(static function => function.HasReceiver) =>
 					"Cannot use methods as values",

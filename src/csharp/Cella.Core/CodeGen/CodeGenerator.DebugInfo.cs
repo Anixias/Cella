@@ -586,7 +586,7 @@ public sealed unsafe partial class CodeGenerator
 	private LLVMMetadataRef CreateMatchEnumType(EnumSymbol enumType)
 	{
 		var matched = _typePool.GetMatchedType(enumType);
-		if (matched is not IntegerType integer)
+		if (matched is not IntegerStorageType integer)
 			return current.DiBuilder.CreateTypedef(GetDebugType(matched), GetDebugTypeName(enumType),
 				GetDeclarationSite(enumType).File, GetDeclarationSite(enumType).Line, current.DebugFile, 0);
 		
@@ -596,7 +596,7 @@ public sealed unsafe partial class CodeGenerator
 		return CreateEnumerationType(enumType, GetDebugTypeName(enumType), integer, cases);
 	}
 	
-	private LLVMMetadataRef CreateEnumerationType(EnumSymbol enumType, string name, IntegerType tagType,
+	private LLVMMetadataRef CreateEnumerationType(EnumSymbol enumType, string name, IntegerStorageType tagType,
 		IEnumerable<(string Name, BigInteger Value)> cases)
 	{
 		var mapped = MapTypeSymbol(tagType);
@@ -614,7 +614,7 @@ public sealed unsafe partial class CodeGenerator
 		}
 	}
 	
-	private LLVMMetadataRef CreateEnumerator(string name, BigInteger value, IntegerType tagType, uint bits)
+	private LLVMMetadataRef CreateEnumerator(string name, BigInteger value, IntegerStorageType tagType, uint bits)
 	{
 		using var enumeratorName = new MarshaledString(name);
 		if (value >= long.MinValue && value <= ulong.MaxValue)

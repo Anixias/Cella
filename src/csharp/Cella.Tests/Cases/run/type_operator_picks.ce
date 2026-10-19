@@ -1,0 +1,27 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+target: var array[i32, 4] = [1, 2, 3, 4]
+
+main: fun -> i32
+{
+	var p: ptr[i32] = @target[0]
+	val f: i32 = 1
+	var m = 'a'
+	val g = char.+('a', f)
+	val h = char.+(f, 'a')
+	char.+=(mut m, f)
+	val a = ptr[i32].+(p, 1_usize)
+	ptr[i32].+=(mut p, 1_usize)
+	val c = ptr[i32].<(p, a)
+	val d = i32.+(2, 3)
+	val e = i32.-(7)
+	var n = 4
+	i32.*=(mut n, 3)
+	printf("%c %c %c %d %d %d %d %d\n", i32(g), i32(h), i32(m), *a, i32(c), d, e, n)
+	ret 0
+}

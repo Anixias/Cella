@@ -129,7 +129,7 @@ public sealed class LocalSurvey
 		.Where(use => use.Kind == kind)
 		.Select(static use => use.Type!)
 		.Where(static type => type is not DynType)
-		.Where(type => !isCounter || type is IntegerType { Kind: not PrimitiveTypeKind.Char })
+		.Where(type => !isCounter || type is IntegerType)
 		.Distinct()
 		.ToList();
 	

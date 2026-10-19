@@ -2,6 +2,7 @@
 using Cella.Core.Binding.Constants;
 using Cella.Core.Binding.Conversions;
 using Cella.Core.Binding.Nodes;
+using Cella.Core.Binding.Operations;
 using Cella.Core.Symbols;
 using Cella.Core.Syntax.Nodes;
 using Cella.Core.Text;
@@ -176,12 +177,19 @@ public sealed partial class Resolver
 		}
 		
 		var resolution = resolutionSet[0];
+		if (resolution.Callable is OperationImpl or StoreCallable)
+			return ResolveOperationCall(node, args, resolution);
+		
 		var info = resolution.Callable switch
 		{
 			FunctionCallable callable => callable.Info,
 			ReceiverCallable callable => callable.Info,
 			_ => throw new InvalidOperationException()
 		};
+		
+		if (info.Symbol.Syntax is NativeFStrPartNode fstrPart && receiver is not null)
+			return new ResolvedFStrPartExpressionNode(info.Signature.ReturnType, receiver, fstrPart.Part,
+				ApplyArgumentResolution(args, resolution)[0], node);
 		
 		var isErased = info.Symbol.Syntax is FunctionNode { When.IsActive: false };
 		if (!isErased)
@@ -321,6 +329,38 @@ public sealed partial class Resolver
 		.Select(static (argument, i) => argument is SpreadExpressionNode ? i : -1)
 		.FirstOrDefault(static i => i >= 0, -1);
 	
+	private IResolvedExpressionNode ResolveOperationCall(CallExpressionNode node, IResolvedExpressionNode[] args,
+		CallableResolution resolution)
+	{
+		var operands = ApplyArgumentResolution(args, resolution);
+		IResolvedExpressionNode result = resolution.Callable switch
+		{
+			StoreCallable store => new ResolvedAssignmentExpressionNode(store.Place,
+				((ResolvedMutArgumentExpressionNode)operands[0]).Place, store.Op, operands[1], store.Operation, node,
+				false),
+			OperationImpl operation when operands is [var operand] =>
+				new ResolvedUnaryOpExpressionNode(operand, operation, node),
+			var operation => new ResolvedBinaryOpExpressionNode(operands[0], operands[1], (OperationImpl)operation,
+				node)
+		};
+		
+		return ApplyResultResolution(result, resolution);
+	}
+	
+	private sealed class StoreCallable(OperationImpl operation, Token op, TypePool typePool) : ICallable
+	{
+		public OperationImpl Operation { get; } = operation;
+		public Token Op { get; } = op;
+		public TypeSymbol Place { get; } = operation.ParameterTypes[0];
+		
+		public ImmutableArray<TypeSymbol> ParameterTypes { get; } =
+			[typePool.GetPointerType(operation.ParameterTypes[0]), ..operation.ParameterTypes.Skip(1)];
+		
+		public TypeSymbol ReturnType { get; } = operation.ParameterTypes[0];
+		
+		public ParameterMode GetMode(int index) => index == 0 ? ParameterMode.Mut : ParameterMode.ReadOnly;
+	}
+	
 	private ICallable[] Shape(IEnumerable<ICallable> candidates, ImmutableArray<IExpressionNode> arguments)
 	{
 		var spread = FindSpread(arguments);
@@ -407,7 +447,7 @@ public sealed partial class Resolver
 			new ResolvedAlignOfExpressionNode(_typePool.Substitute(n.Target, map), n.Syntax),
 		ResolvedValueParameterExpressionNode n => _typePool.SubstituteParameter(n.Parameter, map) switch
 		{
-			ValueArgumentType { Value: var value } when n.Type is IntegerType type =>
+			ValueArgumentType { Value: var value } when n.Type is IntegerStorageType type =>
 				MaterializeLiteral(n.Syntax, type, value),
 			TypeParameterSymbol parameter when parameter != n.Parameter =>
 				new ResolvedValueParameterExpressionNode(parameter, n.Syntax),
@@ -444,7 +484,7 @@ public sealed partial class Resolver
 			case ParametricConstant c:
 				return c.Value;
 			
-			case IntegerConstant c when type is IntegerType integer:
+			case IntegerConstant c when type is IntegerStorageType integer:
 				return MaterializeLiteral(syntax, integer, c.Value);
 			
 			case FloatConstant c:

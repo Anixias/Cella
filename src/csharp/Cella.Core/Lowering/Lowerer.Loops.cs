@@ -238,7 +238,7 @@ public sealed partial class Lowerer
 		
 		private ConstantValue MakeConstant(TypeSymbol type, object? value)
 		{
-			if (type is not IntegerType intType || value is not BigInteger v)
+			if (type is not IntegerStorageType intType || value is not BigInteger v)
 				return new(type, value);
 			
 			return intType.Kind switch

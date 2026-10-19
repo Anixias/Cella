@@ -227,6 +227,12 @@ public sealed partial class Resolver : IStatementNodeVisitor<IResolvedStatementN
 	private static bool IsInvalid(IResolvedExpressionNode expression) => expression.Type is InvalidType;
 	private static bool AnyInvalid(params IResolvedExpressionNode[] expressions) => expressions.Any(IsInvalid);
 	
+	private void RejectBuiltInName(Token name)
+	{
+		if (NativeSymbols.IsBuiltInName(name.Text))
+			Diagnostics.Add(new(DiagnosticSeverity.Error, name.SourceLocation, $"Cannot use '{name.Text}' as a name"));
+	}
+	
 	private FunctionInfo GetFunctionInfo(FunctionSymbol function) => _signatures.GetFunctionInfo(function);
 	
 	private FunctionInfo GetFunctionInfo(FunctionSymbol function, TypeSymbol owner,

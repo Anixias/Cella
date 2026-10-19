@@ -234,12 +234,15 @@ public sealed partial class SignatureCollector
 		_builder.Functions.ContainsKey(function) || _declarations.ContainsKey(function) ||
 		_dependencyTable.Functions.ContainsKey(function)
 			? GetFunctionInfo(function)
-			: null;
+			: _typePool.FindNativeFunction(function);
 	
 	public FunctionInfo GetFunctionInfo(FunctionSymbol function)
 	{
 		if (_builder.Functions.TryGetValue(function, out var info))
 			return info;
+		
+		if (_typePool.FindNativeFunction(function) is { } native)
+			return native;
 		
 		if (!_declarations.TryGetValue(function, out var declaration))
 			return _dependencyTable.Functions[function];

@@ -102,7 +102,7 @@ public sealed partial class CodeGenerator
 		var matchedType = _typePool.GetMatchedType(enumType);
 		return matchedType switch
 		{
-			IntegerType integer => EmitIntegerConstant(new IntegerConstant(integer, pattern)),
+			IntegerStorageType => EmitIntegerConstant(new IntegerConstant(matchedType, pattern)),
 			_ when matchedType == NativeSymbols.Bool => pattern.IsZero ? _false : _true,
 			_ => LLVMValueRef.CreateConstNull(MapTypeSymbol(matchedType))
 		};
@@ -118,11 +118,11 @@ public sealed partial class CodeGenerator
 		{
 			var tag = ExtractField(builder, from, source, 0, _typePool.GetTagType(from), "tag");
 			return ConvertInteger(tag, MapTypeSymbol(c.To), _typePool.GetTagType(from).IsSigned,
-				((IntegerType)c.To).IsSigned, v.SourceLocation, builder);
+				((IntegerStorageType)c.To).IsSigned, v.SourceLocation, builder);
 		}
 		
 		var to = (EnumSymbol)c.To;
-		var sourceType = (IntegerType)c.From;
+		var sourceType = (IntegerStorageType)c.From;
 		if (!to.IsExternal)
 			PanicIf(builder.BuildNot(IsCaseValue(to, source, sourceType, builder)),
 				$"'{to.Name}' has no case with this value", v.SourceLocation, builder);
@@ -136,7 +136,7 @@ public sealed partial class CodeGenerator
 		return EmitTagged(to, resized, builder);
 	}
 	
-	private LLVMValueRef IsCaseValue(EnumSymbol enumType, LLVMValueRef value, IntegerType type,
+	private LLVMValueRef IsCaseValue(EnumSymbol enumType, LLVMValueRef value, IntegerStorageType type,
 		LLVMBuilderRef builder)
 	{
 		var bits = (int)value.TypeOf.IntWidth;

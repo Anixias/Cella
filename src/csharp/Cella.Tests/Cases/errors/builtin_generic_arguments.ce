@@ -1,0 +1,35 @@
+mod test
+
+Display: trait
+{
+	show: fun(imm self) -> i32
+}
+
+Hash: trait
+{
+	hash: fun(imm self) -> u64
+}
+
+Holder[K: trait]: rec
+{
+	x: i32
+}
+
+a: fun(h: Holder[Display, Display]) { }
+
+b: fun(t: fstr[Display, Display]) { }
+
+fstr[K: trait]: impl Hash
+{
+	hash: fun(imm self) -> u64 => 1
+}
+
+c: fun(t: fstr[i32]) { }
+
+d: fun(h: Holder[i32]) { }
+
+e: fun(p: ptr[i32, i32], q: array[i32]) { }
+
+f: fun(v: fstr) { }
+
+main: fun -> i32 => 0

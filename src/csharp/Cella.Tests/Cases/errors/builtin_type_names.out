@@ -33,9 +33,14 @@ Error at builtin_type_names.ce:17:7
 17 │     pick[bool]: fun(imm value: bool) -> i32 => 0
               ╘══╛ Cannot use 'bool' as a name
 
-Error at builtin_type_names.ce:22:2
-21 │ {
-22 │     cstr: fun -> i32
+Error at builtin_type_names.ce:18:2
+17 │ pick[bool]: fun(imm value: bool) -> i32 => 0
+18 │ i32: fun -> u8 => 1
+     ╘═╛ Cannot use 'i32' as a name
+
+Error at builtin_type_names.ce:24:2
+23 │ {
+24 │     cstr: fun -> i32
          ╘══╛ Cannot use 'cstr' as a name
 
 [compilation failed]

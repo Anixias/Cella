@@ -140,16 +140,25 @@ public sealed partial class SignatureCollector
 				return NativeSymbols.VoidPtr;
 			
 			case PointerType when impl.TypeParameters.Length == 1:
-				return ReportParameterViolations(TypePool.PointerParameters, impl, node)
+				return ReportParameterViolations(NativeSymbols.GenericPointer.TypeParameters, impl, node)
 					? _typePool.GetPointerType(impl.TargetArguments[0])
 					: null;
 			
 			case PointerType:
-				Diagnostics.Add(ResolutionContext.ReportGenericArgumentCount(location, "ptr", 1));
+				Diagnostics.Add(ResolutionContext.ReportGenericArgumentCount(location,
+					NativeSymbols.GenericPointer.Name,
+					NativeSymbols.GenericPointer.TypeParameters.Length));
+				
 				return null;
 			
-			case null when node.Target is IdentifierTypeNode { Token.Text: "array" }:
+			case null when node.Target is IdentifierTypeNode { Token.Text: var builtin } &&
+			               NativeSymbols.FindGeneric(builtin) is { Kind: BuiltinGenericKind.Array }:
 				return ResolveArrayImplTarget(impl, node);
+			
+			case null when node.Target is IdentifierTypeNode { Token.Text: var builtin } &&
+			               NativeSymbols.FindGeneric(builtin) is not null:
+				Diagnostics.Add(new(DiagnosticSeverity.Error, location, $"Cannot implement traits for '{name}'"));
+				return null;
 			
 			case null when node.Target is IdentifierTypeNode:
 				Diagnostics.Add(new(DiagnosticSeverity.Error, location, $"Type '{name}' not found in this scope"));
@@ -187,11 +196,11 @@ public sealed partial class SignatureCollector
 	
 	private TypeSymbol? ResolveArrayImplTarget(ImplSymbol impl, ImplNode node)
 	{
-		var declared = TypePool.ArrayParameters;
+		var declared = NativeSymbols.GenericArray.TypeParameters;
 		if (impl.TypeParameters.Length != declared.Length)
 		{
-			Diagnostics.Add(ResolutionContext.ReportGenericArgumentCount(node.Target.SourceLocation, "array",
-				declared.Length));
+			Diagnostics.Add(ResolutionContext.ReportGenericArgumentCount(node.Target.SourceLocation,
+				NativeSymbols.GenericArray.Name, declared.Length));
 			
 			return null;
 		}

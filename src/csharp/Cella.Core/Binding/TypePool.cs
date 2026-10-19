@@ -14,7 +14,7 @@ public sealed partial class TypePool
 	public SizeTable SizeTable { get; }
 	public Action<TypeSymbol>? TypeCompleter { get; set; }
 	public Action<TraitSymbol>? TraitCompleter { get; set; }
-	public Func<BigInteger, IntegerType, bool>? IntegerFits { get; set; }
+	public Func<BigInteger, IntegerStorageType, bool>? IntegerFits { get; set; }
 	public List<(TypeSymbol Type, SourceLocation Location, FunctionSymbol? Owner)> SizeChecks { get; } = [];
 	
 	public Dictionary<FunctionSymbol, List<(TypeSymbol Type, SourceLocation Location)>> GenericSizeChecks { get; } = [];
@@ -42,6 +42,7 @@ public sealed partial class TypePool
 	private readonly Dictionary<TypeSymbol, List<FunctionInfo>> _explicitConversions = [];
 	private readonly Dictionary<TraitSymbol, List<FunctionInfo>> _traitConstructors = [];
 	private readonly Dictionary<TypeSymbol, FunctionInfo> _destructors = [];
+	private readonly Dictionary<FunctionSymbol, FunctionInfo> _nativeFunctions = [];
 	private readonly Dictionary<TypeSymbol, IReadOnlySet<FieldSymbol>> _destructorMoves = [];
 	private readonly Dictionary<EnumSymbol, IntegerType> _tagTypes = [];
 	private readonly Dictionary<EnumCaseSymbol, BigInteger> _caseValues = [];

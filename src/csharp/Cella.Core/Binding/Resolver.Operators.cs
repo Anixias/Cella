@@ -254,9 +254,7 @@ public sealed partial class Resolver
 			
 			var args = new[] { left, right };
 			var resolutionSet = ResolveCallable(candidates, args, MaterializationMode.Overload);
-			if (resolutionSet.IsAmbiguous &&
-			    (IsShift(op.Type) && (left.Type == NativeSymbols.Char || right.Type == NativeSymbols.Char) ||
-			     left.Type == NativeSymbols.CStr || right.Type == NativeSymbols.CStr))
+			if (resolutionSet.IsAmbiguous && (left.Type == NativeSymbols.CStr || right.Type == NativeSymbols.CStr))
 				return Error(node, DiagnosticReporter.ReportBinaryOpMismatch(_operatorRegistry, left, op, right),
 					CurrentTargetType);
 			

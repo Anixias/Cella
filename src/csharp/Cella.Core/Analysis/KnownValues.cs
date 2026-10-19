@@ -92,7 +92,7 @@ public sealed class ValueEvaluator(ConstantEvaluator evaluator)
 {
 	public Constant? Evaluate(Value value, KnownValues known) => value switch
 	{
-		ConstantValue { Type: IntegerType type } constant when ToInteger(constant.Value) is { } number =>
+		ConstantValue { Type: IntegerStorageType type } constant when ToInteger(constant.Value) is { } number =>
 			new IntegerConstant(type, number),
 		ConstantValue { Value: bool flag } => BoolConstant.From(flag),
 		VariableValue { Variable.Symbol: LocalVariableSymbol local } => known.Get(local),
@@ -106,7 +106,7 @@ public sealed class ValueEvaluator(ConstantEvaluator evaluator)
 		Evaluate(value, known) is IntegerConstant integer ? integer.Value : null;
 	
 	public IntegerConstant? Advance(IntegerConstant value, BigInteger delta, bool wraps) =>
-		value.Type is not IntegerType type ? null
+		value.Type is not IntegerStorageType type ? null
 		: wraps ? new IntegerConstant(type, evaluator.Wrap(value.Value + delta, type))
 		: evaluator.Fits(value.Value + delta, type) ? new IntegerConstant(type, value.Value + delta)
 		: null;
@@ -146,7 +146,7 @@ public sealed class ValueEvaluator(ConstantEvaluator evaluator)
 		if (left is null || Evaluate(value.Right, known) is not { } other)
 			return null;
 		
-		if (left is IntegerConstant a && other is IntegerConstant b && value.Type is IntegerType type &&
+		if (left is IntegerConstant a && other is IntegerConstant b && value.Type is IntegerStorageType type &&
 		    value.Op is BinaryOperation.Addition or BinaryOperation.Subtraction or BinaryOperation.Multiplication)
 		{
 			var exact = value.Op switch
@@ -185,7 +185,7 @@ public sealed class ValueEvaluator(ConstantEvaluator evaluator)
 	private Constant? Convert(Constant source, Conversion conversion) => (conversion, source) switch
 	{
 		(IdentityConversion, _) => source,
-		(IntegerConversion { To: IntegerType to }, IntegerConstant integer) => evaluator.Fits(integer.Value, to)
+		(IntegerConversion { To: IntegerStorageType to }, IntegerConstant integer) => evaluator.Fits(integer.Value, to)
 			? new IntegerConstant(to, integer.Value)
 			: null,
 		(_, IntegerConstant or BoolConstant) => evaluator.Convert(source, conversion) is var converted and

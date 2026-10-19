@@ -55,11 +55,10 @@ public sealed class SymbolCollector : IDeclarationNodeVisitor<Symbol>
 		foreach (var child in node.Declarations)
 			VisitNode(child);
 		
-		var visible = _symbolsInFile.Where(static symbol => !NativeSymbols.IsBuiltInName(symbol.Name)).ToList();
-		var symbol = new FileSymbol(node, module, visible);
+		var symbol = new FileSymbol(node, module, _symbolsInFile);
 		module.Files.Add(symbol);
 		_builder.DeclarationSymbols[node] = symbol;
-		_builder.SymbolsByModule.GetOrAdd(module).UnionWith(visible);
+		_builder.SymbolsByModule.GetOrAdd(module).UnionWith(_symbolsInFile);
 		_symbolsInFile.Clear();
 		return symbol;
 	}
@@ -169,6 +168,8 @@ public sealed class SymbolCollector : IDeclarationNodeVisitor<Symbol>
 	public Symbol Visit(ParameterNode node) => throw new InvalidOperationException();
 	
 	public Symbol Visit(NativeConstructorNode node) => throw new InvalidOperationException();
+	
+	public Symbol Visit(NativeFStrPartNode node) => throw new InvalidOperationException();
 	
 	public Symbol Visit(ConstructorConstraintNode node) => throw new InvalidOperationException();
 	

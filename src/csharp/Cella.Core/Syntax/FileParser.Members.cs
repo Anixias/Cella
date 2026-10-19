@@ -55,6 +55,8 @@ public sealed partial class FileParser
 			return null;
 		}
 		
+		RejectBuiltInName(identifier);
+		
 		if (Tokens[index].Text == "ext" && Peek(index + 1, TokenType.KeywordFun) &&
 		    !Peek(index + 2, TokenType.OpOpenBracket))
 		{

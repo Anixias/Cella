@@ -120,7 +120,13 @@ public sealed partial class FileParser
 	
 	private void RejectReservedName(Token identifier)
 	{
-		if (identifier.Text == "_" || NativeSymbols.IsBuiltInName(identifier.Text))
+		RejectDiscardName(identifier);
+		RejectBuiltInName(identifier);
+	}
+	
+	private void RejectBuiltInName(Token identifier)
+	{
+		if (NativeSymbols.IsBuiltInName(identifier.Text))
 			Report(identifier, $"Cannot use '{identifier.Text}' as a name");
 	}
 	
