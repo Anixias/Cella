@@ -74,7 +74,7 @@ public sealed partial class Resolver
 		_resolutionContexts.Pop();
 		_inlinedQuestions.Remove(function);
 		
-		return new ResolvedQuestionExpressionNode(function, self, CreateReceiver(operand, info), resolvedBody, node);
+		return new ResolvedQuestionExpressionNode(info, self, CreateReceiver(operand, info), resolvedBody, node);
 	}
 	
 	private ResolvedFunctionNode? ResolveQuestionDeclaration(FunctionSymbol function)

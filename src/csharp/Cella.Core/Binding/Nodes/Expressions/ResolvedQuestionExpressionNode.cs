@@ -5,14 +5,15 @@ namespace Cella.Core.Binding.Nodes;
 
 public sealed class ResolvedQuestionExpressionNode
 (
-	FunctionSymbol @operator,
+	FunctionInfo info,
 	LocalVariableSymbol self,
 	IResolvedExpressionNode operand,
 	IResolvedExpressionNode body,
 	IExpressionNode syntax
 ) : IResolvedExpressionNode
 {
-	public FunctionSymbol Operator { get; } = @operator;
+	public FunctionInfo Info { get; } = info;
+	public FunctionSymbol Operator => Info.Symbol;
 	public LocalVariableSymbol Self { get; } = self;
 	public IResolvedExpressionNode Operand { get; } = operand;
 	public IResolvedExpressionNode Body { get; } = body;

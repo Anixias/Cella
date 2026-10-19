@@ -348,6 +348,34 @@ public sealed class LanguageServerTests : IAsyncDisposable
 		Assert.Equal(0, await ShutDownAsync());
 	}
 	
+	[Fact]
+	public async Task NamesQuestionOperatorUses()
+	{
+		Assert.Contains("12:6:1 method", await ClassifyAsync("""
+		                                                     mod test
+		                                                     
+		                                                     Holder[T: copy]: rec
+		                                                     {
+		                                                     	t: T
+		                                                     
+		                                                     	?: op(own self) -> T => self.t
+		                                                     }
+		                                                     
+		                                                     main: fun -> i32
+		                                                     {
+		                                                     	val h = Holder(5)
+		                                                     	ret h?
+		                                                     }
+		                                                     """));
+		
+		Assert.Equal(Code("?: op(own self) -> i32"), await HoverAsync(12, 6));
+		var declaration = await DefinitionAsync(12, 6);
+		Assert.Equal(6, (int)declaration!["range"]!["start"]!["line"]!);
+		Assert.Equal(1, (int)declaration["range"]!["start"]!["character"]!);
+		Assert.Equal(["12:6"], await UsagesAsync(6, 1, false));
+		Assert.Equal(0, await ShutDownAsync());
+	}
+	
 	private async Task<List<string>> UsagesAsync(int line, int character, bool includeDeclaration)
 	{
 		var parameters = Position(line, character);

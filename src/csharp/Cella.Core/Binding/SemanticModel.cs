@@ -222,6 +222,10 @@ public sealed class SemanticModel
 				Add(FindName(n.Syntax), n.Function.Symbol, DescribeFunction(n.Function));
 				break;
 			
+			case ResolvedQuestionExpressionNode { Syntax: QuestionExpressionNode question } n:
+				Add(question.Op, n.Operator, DescribeFunction(n.Info));
+				break;
+			
 			case ResolvedRecordExpressionNode n:
 				Add(FindName(n.Syntax), n.Type, DescribeType(n.Type));
 				break;
