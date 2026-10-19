@@ -8,11 +8,12 @@ import com.intellij.codeInsight.completion.CompletionContributor
 import com.intellij.codeInsight.completion.CompletionParameters
 import com.intellij.codeInsight.completion.CompletionResultSet
 import com.intellij.codeInsight.completion.InsertHandler
+import com.intellij.codeInsight.completion.CompletionSorter
 import com.intellij.codeInsight.completion.InsertionContext
-import com.intellij.codeInsight.completion.PrioritizedLookupElement
 import com.intellij.codeInsight.editorActions.TypedHandlerDelegate
 import com.intellij.codeInsight.lookup.LookupElement
 import com.intellij.codeInsight.lookup.LookupElementBuilder
+import com.intellij.codeInsight.lookup.LookupElementWeigher
 import com.intellij.codeInsight.template.TemplateManager
 import com.intellij.codeInsight.template.impl.ConstantNode
 import com.intellij.icons.AllIcons
@@ -47,24 +48,30 @@ class CellaCompletionContributor : CompletionContributor() {
 		
 		val list = server.await(future, 3000) ?: return
 		val items = if (list.isLeft) list.left else list.right.items
+		val sorted = result.withRelevanceSorter(CompletionSorter.defaultSorter(parameters, result.prefixMatcher)
+			.weighBefore("priority", SortTextWeigher))
+		
 		for (item in items)
-			result.addElement(toLookup(item))
+			sorted.addElement(toLookup(item))
 	}
 	
 	private fun toLookup(item: CompletionItem): LookupElement {
-		val detail = item.detail.orEmpty()
-		val signature = detail.substringAfter(": ", "")
-		var builder = LookupElementBuilder.create(item.label)
+		var builder = LookupElementBuilder.create(item, item.label)
 			.withIcon(iconOf(item.kind))
-			.withTailText(if (signature.isEmpty()) null else " $signature", true)
+			.withTailText(item.labelDetails?.detail, true)
+			.withTypeText(item.labelDetails?.description, true)
 			.withBoldness(item.kind == CompletionItemKind.Keyword)
 		
 		val text = item.insertText ?: item.label
 		if (item.insertTextFormat == InsertTextFormat.Snippet)
 			builder = builder.withInsertHandler(SnippetInsertHandler(text))
 		
-		val rank = item.sortText?.firstOrNull()?.digitToIntOrNull() ?: 2
-		return PrioritizedLookupElement.withPriority(builder, (10 - rank).toDouble())
+		return builder
+	}
+	
+	private object SortTextWeigher : LookupElementWeigher("cellaSortText") {
+		override fun weigh(element: LookupElement): Comparable<*> =
+			(element.`object` as? CompletionItem)?.sortText ?: element.lookupString
 	}
 	
 	private fun iconOf(kind: CompletionItemKind?): Icon? = when (kind) {

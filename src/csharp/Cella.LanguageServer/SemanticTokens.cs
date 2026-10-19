@@ -44,15 +44,16 @@ public static class SemanticTokens
 		["tokenModifiers"] = Names(Enum.GetNames<Modifiers>().Where(static name => name != nameof(Modifiers.None)))
 	};
 	
-	public static JsonObject Encode(IEnumerable<SymbolReference> references, IEnumerable<Token> keywords)
+	public static JsonObject Encode(IEnumerable<SymbolReference> references, IEnumerable<Token> keywords) =>
+		Encode(references.Select(Describe).OfType<Classified>(), keywords.Select(static keyword =>
+			new Classified(keyword.SourceLocation, Kind.Keyword, Modifiers.None, true)));
+	
+	private static JsonObject Encode(IEnumerable<Classified> names, IEnumerable<Classified> keywords)
 	{
 		var data = new JsonArray();
 		var (previousLine, previousCharacter, previousEnd) = (0, 0, 0);
-		var classified = references
-			.Select(Describe)
-			.OfType<Classified>()
-			.Concat(keywords.Select(static keyword =>
-				new Classified(keyword.SourceLocation, Kind.Keyword, Modifiers.None, true)))
+		var classified = names
+			.Concat(keywords)
 			.OrderBy(static token => token.Location.Range.Start)
 			.ThenBy(static token => token.Location.Range.Length)
 			.ThenBy(static token => !token.IsKeyword);
@@ -72,6 +73,13 @@ public static class SemanticTokens
 		}
 		
 		return new JsonObject { ["data"] = data };
+	}
+	
+	public static JsonObject EncodeSettings(string text, IEnumerable<TextRange> settings)
+	{
+		var source = new StringSource(text, string.Empty);
+		return Encode([], settings.Select(range =>
+			new Classified(new SourceLocation(source, range), Kind.Property, Modifiers.None, false)));
 	}
 	
 	private static Classified? Describe(SymbolReference reference)

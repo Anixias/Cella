@@ -65,8 +65,7 @@ class CelpHighlighter : SyntaxHighlighterBase() {
 	
 	private fun colorOf(token: CelpToken): TextAttributesKey? = when (token) {
 		CelpToken.COMMENT -> CellaColors.PROJECT_COMMENT
-		CelpToken.SETTING -> CellaColors.PROJECT_SETTING
-		CelpToken.KEY -> CellaColors.PROJECT_KEY
+CelpToken.KEY -> CellaColors.PROJECT_KEY
 		CelpToken.STRING -> CellaColors.STRING
 		CelpToken.STRING_ESCAPE -> CellaColors.STRING_ESCAPE
 		CelpToken.INVALID_STRING_ESCAPE -> CellaColors.INVALID_STRING_ESCAPE

@@ -7,7 +7,6 @@ group = "com.anixias.cella"
 version = rootDir.resolve("../../version.txt").readText().trim()
 
 val riderPath = providers.gradleProperty("riderPath")
-	.orElse(providers.environmentVariable("LOCALAPPDATA").map { "$it/Programs/Rider 2" })
 
 val riderVersion = providers.gradleProperty("riderVersion").orElse("2026.1.5")
 
@@ -24,7 +23,7 @@ repositories {
 
 dependencies {
 	intellijPlatform {
-		if (riderPath.orNull?.let { file(it).isDirectory } == true)
+		if (riderPath.isPresent)
 			local(riderPath)
 		else
 			rider(riderVersion) { useInstaller = false }

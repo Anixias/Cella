@@ -1,10 +1,13 @@
 ﻿using System.Collections;
+using System.Linq.Expressions;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using Cella.Compiler;
 using Cella.Compiler.Building;
 using Cella.Core.Binding;
 using Cella.Core.Binding.Conversions;
 using Cella.Core.Binding.Operations;
+using Cella.Core.Symbols;
 using Cella.Diagnostics;
 using Xunit;
 
@@ -338,26 +341,75 @@ public sealed class BuilderTests : IDisposable
 		Assert.True(restored.Succeeded, Describe(restored));
 	}
 	
-	private static bool IsCollection(Type type) => type.IsGenericType &&
-	                                               type.GetGenericTypeDefinition() is var definition &&
-	                                               (definition == typeof(Dictionary<,>) ||
-	                                                definition == typeof(List<>) || definition == typeof(HashSet<>) ||
-	                                                definition == typeof(OrderedDictionary<,>));
-	
 	[Fact]
-	public void SnapshotsCoverEveryCollection()
+	public void SnapshotsCoverEveryField()
 	{
 		var typePool = new TypePool(ConversionTable.CreateNative(), new OperatorRegistry(), new SizeTable());
-		var snapshot = typePool.CreateSnapshot();
-		object[] owners = [typePool, typePool.ConversionTable, typePool.OperatorRegistry, typePool.SizeTable];
-		foreach (var owner in owners)
+		var missing = new List<string>();
+		foreach (var (owner, field) in FindStateFields(typePool))
 		{
-			var fields = owner.GetType()
-				.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+			var name = $"{owner.GetType().Name}.{field.Name}";
+			var value = field.GetValue(owner);
+			if (field.IsInitOnly)
+			{
+				if (IsMutableCollection(value?.GetType() ?? field.FieldType) &&
+				    !typePool.CreateSnapshot().Collections.Any(saved => ReferenceEquals(saved, value)))
+					missing.Add(name);
+				
+				continue;
+			}
 			
-			foreach (var field in fields.Where(static field => IsCollection(field.FieldType)))
-				Assert.True(snapshot.Collections.Any(saved => ReferenceEquals(saved, field.GetValue(owner))),
-					$"{owner.GetType().Name}.{field.Name} isn't saved");
+			var snapshot = typePool.CreateSnapshot();
+			field.SetValue(owner, ChangeValue(field.FieldType, value, name));
+			snapshot.Restore();
+			if (!Equals(value, field.GetValue(owner)))
+				missing.Add(name);
+			
+			field.SetValue(owner, value);
 		}
+		
+		Assert.Empty(missing);
+	}
+	
+	private static IEnumerable<(object Owner, FieldInfo Field)> FindStateFields(object root)
+	{
+		var pending = new Queue<object>([root]);
+		var seen = new HashSet<object>(ReferenceEqualityComparer.Instance) { root };
+		while (pending.TryDequeue(out var owner))
+		{
+			foreach (var field in owner.GetType()
+				         .GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic))
+			{
+				yield return (owner, field);
+				if (field.GetValue(owner) is { } value && IsStateOwner(value.GetType()) && seen.Add(value))
+					pending.Enqueue(value);
+			}
+		}
+	}
+	
+	private static bool IsStateOwner(Type type) => type.IsClass && type.Assembly == typeof(TypePool).Assembly &&
+	                                               !typeof(Symbol).IsAssignableFrom(type) &&
+	                                               !typeof(Delegate).IsAssignableFrom(type) &&
+	                                               !IsMutableCollection(type);
+	
+	private static bool IsMutableCollection(Type type) =>
+		typeof(IEnumerable).IsAssignableFrom(type) && type != typeof(string) &&
+		type.Namespace is not ("System.Collections.Immutable" or "System.Collections.Frozen");
+	
+	private static object? ChangeValue(Type type, object? value, string name) => value switch
+	{
+		bool flag => !flag,
+		int number => number + 1,
+		not null when !type.IsValueType => null,
+		null when typeof(Delegate).IsAssignableFrom(type) => CreateDelegate(type),
+		null when type.IsClass && !type.IsAbstract => RuntimeHelpers.GetUninitializedObject(type),
+		_ => throw new InvalidOperationException($"Can't change {name}")
+	};
+	
+	private static Delegate CreateDelegate(Type type)
+	{
+		var invoke = type.GetMethod(nameof(Action.Invoke))!;
+		var parameters = invoke.GetParameters().Select(static p => Expression.Parameter(p.ParameterType)).ToArray();
+		return Expression.Lambda(type, Expression.Default(invoke.ReturnType), parameters).Compile();
 	}
 }

@@ -3,7 +3,6 @@ package com.anixias.cella.lexer
 enum class CelpToken {
 	WHITESPACE,
 	COMMENT,
-	SETTING,
 	KEY,
 	STRING,
 	STRING_ESCAPE,
@@ -27,12 +26,6 @@ class CelpScanner {
 		const val TRIPLE_LITERAL = 2
 		const val HEADER = 3
 		const val BASIC = 4
-		
-		private val settings = setOf(
-			"OutputType", "CellaVersion", "StandardLibrary", "SystemLinkPreference", "AssemblyName", "BoundsChecks",
-			"OverflowChecks", "DebugInfo", "Referenceable", "ProjectReferences", "Path", "Alias", "Flags", "Imports",
-			"Prelude", "When"
-		)
 	}
 	
 	private var buffer: CharSequence = ""
@@ -170,12 +163,7 @@ class CelpScanner {
 		
 		val text = buffer.subSequence(tokenStart, tokenEnd).toString()
 		val isKey = state == HEADER || peekNext() in setOf('=', '.')
-		return when {
-			isKey && text in settings -> CelpToken.SETTING
-			isKey -> CelpToken.KEY
-			text == "true" || text == "false" -> CelpToken.BOOLEAN
-			else -> CelpToken.KEY
-		}
+		return if (!isKey && (text == "true" || text == "false")) CelpToken.BOOLEAN else CelpToken.KEY
 	}
 	
 	private fun scanNumber(): CelpToken {

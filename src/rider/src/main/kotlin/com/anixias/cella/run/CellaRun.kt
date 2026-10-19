@@ -2,9 +2,7 @@ package com.anixias.cella.run
 
 import com.anixias.cella.CellaFileType
 import com.anixias.cella.CellaIcons
-import com.anixias.cella.lexer.CellaToken
-import com.anixias.cella.lexer.CellaTokenTypes
-import com.anixias.cella.server.CellaSemanticHighlighter
+import com.anixias.cella.server.CellaGlobal
 import com.anixias.cella.server.CellaServer
 import com.intellij.execution.BeforeRunTask
 import com.intellij.execution.BeforeRunTaskProvider
@@ -33,7 +31,6 @@ import com.intellij.execution.runners.GenericProgramRunner
 import com.intellij.execution.ui.RunContentDescriptor
 import com.intellij.openapi.actionSystem.DataContext
 import com.intellij.openapi.application.ApplicationManager
-import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.application.runReadActionBlocking
 import com.intellij.openapi.diagnostic.logger
 import com.intellij.openapi.editor.Document
@@ -46,9 +43,6 @@ import com.intellij.openapi.util.Key
 import com.intellij.openapi.util.NotNullLazyValue
 import com.intellij.openapi.util.SystemInfo
 import com.intellij.openapi.util.TextRange
-import com.intellij.psi.PsiDocumentManager
-import com.intellij.psi.PsiElement
-import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.ui.dsl.builder.AlignX
 import com.intellij.ui.dsl.builder.bindSelected
 import com.intellij.ui.dsl.builder.bindText
@@ -80,6 +74,7 @@ import java.nio.file.Path
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ConcurrentHashMap
 import org.eclipse.lsp4j.Position
+import org.eclipse.lsp4j.Range
 import org.eclipse.lsp4j.TextDocumentIdentifier
 import org.eclipse.lsp4j.TextDocumentPositionParams
 import org.jetbrains.concurrency.AsyncPromise
@@ -253,28 +248,34 @@ class CellaEvaluator(frame: CidrStackFrame) : CidrEvaluator(frame) {
 	
 	override fun getExpressionInfoAtOffsetAsync(project: Project, document: Document, offset: Int,
 		sideEffectsAllowed: Boolean): Promise<ExpressionInfo?> {
-		val info = ReadAction.compute<ExpressionInfo?, RuntimeException> { findExpression(project, document, offset) }
-		val file = FileDocumentManager.getInstance().getFile(document)
-		if (info == null || file == null)
-			return resolvedPromise(info)
-		
+		val file = FileDocumentManager.getInstance().getFile(document) ?: return resolvedPromise(null)
 		val server = CellaServer.get(project)
-		val parameters = TextDocumentPositionParams(TextDocumentIdentifier(CellaServer.uriOf(file)),
-			server.position(document, offset))
+		val parameters = runReadActionBlocking {
+			TextDocumentPositionParams(TextDocumentIdentifier(CellaServer.uriOf(file)), server.position(document, offset))
+		}
 		
 		val promise = AsyncPromise<ExpressionInfo?>()
-		server.request { it.globalAt(parameters) }.whenComplete { global, _ ->
-			if (global == null) {
-				promise.setResult(info)
-				return@whenComplete
-			}
-			
-			val text = runReadActionBlocking { document.getText(info.textRange) }
-			hoveredGlobals[global.debugName] = text
-			promise.setResult(ExpressionInfo(info.textRange, global.debugName, text))
+		server.request { it.valueAt(parameters) }.whenComplete { value, _ ->
+			val range = value?.range
+			promise.setResult(if (range == null) null else runReadActionBlocking { describe(document, range, value.global) })
 		}
 		
 		return promise
+	}
+	
+	private fun describe(document: Document, range: Range, global: CellaGlobal?): ExpressionInfo? {
+		if (range.end.line >= document.lineCount)
+			return null
+		
+		val textRange = TextRange(document.getLineStartOffset(range.start.line) + range.start.character,
+			document.getLineStartOffset(range.end.line) + range.end.character)
+		
+		if (global == null)
+			return ExpressionInfo(textRange)
+		
+		val text = document.getText(textRange)
+		hoveredGlobals[global.debugName] = text
+		return ExpressionInfo(textRange, global.debugName, text)
 	}
 	
 	override fun doEvaluate(driver: DebuggerDriver, position: XSourcePosition?, expression: XExpression):
@@ -286,28 +287,6 @@ class CellaEvaluator(frame: CidrStackFrame) : CidrEvaluator(frame) {
 		return CidrEvaluatedValue(global, myFrame.process, position, myFrame, expression.expression)
 	}
 	
-	private fun findExpression(project: Project, document: Document, offset: Int): ExpressionInfo? {
-		val file = PsiDocumentManager.getInstance(project).getPsiFile(document) ?: return null
-		val element = file.findElementAt(offset) ?: return null
-		if (!isSelf(element) && !CellaSemanticHighlighter.isValue(document, element.textRange))
-			return null
-		
-		var start = element
-		while (true) {
-			val dot = PsiTreeUtil.prevLeaf(start) ?: break
-			val owner = PsiTreeUtil.prevLeaf(dot) ?: break
-			if (CellaTokenTypes.tokenOf(dot.node.elementType) != CellaToken.DOT ||
-			    !isSelf(owner) && !CellaSemanticHighlighter.isValue(document, owner.textRange))
-				break
-			
-			start = owner
-		}
-		
-		return ExpressionInfo(TextRange(start.textRange.startOffset, element.textRange.endOffset))
-	}
-	
-	private fun isSelf(element: PsiElement) = element.text == "self" &&
-		CellaTokenTypes.tokenOf(element.node.elementType) != CellaToken.IDENTIFIER
 }
 
 class CellaDriverConfiguration : LLDBDriverConfiguration() {

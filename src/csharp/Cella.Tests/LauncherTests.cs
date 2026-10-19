@@ -41,10 +41,25 @@ public sealed class LauncherTests : IDisposable
 	}
 	
 	[Fact]
+	public void ReadsPinsAsTheCompilerDoes()
+	{
+		var quoted = Write("quoted/quoted.celp", "OutputType = \"Executable\"\n\"CellaVersion\" = \"0.4.0\"\n");
+		var tripled = Write("tripled/tripled.celp", "OutputType = \"Executable\"\nCellaVersion = \"\"\"0.5.0\"\"\"\n");
+		var text = Write("text/text.celp",
+			"OutputType = \"Executable\"\nAssemblyName = \"\"\"\nCellaVersion = \"9.0.0\"\n\"\"\"\nCellaVersion = \"0.6.0\"\n");
+		
+		Assert.Equal("0.4.0", Pins.FindHighest(quoted)?.ToString());
+		Assert.Equal("0.5.0", Pins.FindHighest(tripled)?.ToString());
+		Assert.Equal("0.6.0", Pins.FindHighest(text)?.ToString());
+	}
+	
+	[Fact]
 	public void FindsTheProjectPathAmongArguments()
 	{
 		var project = Write("app/app.celp", "OutputType = \"Executable\"\n");
 		Assert.Equal(project, Pins.FindProjectPath(["--release", "--target", "linux-x64", project]));
-		Assert.Null(Pins.FindProjectPath(["--release", "missing.celp"]));
+		Assert.Equal("missing.celp", Pins.FindProjectPath(["--release", "missing.celp"]));
+		Assert.Null(Pins.FindProjectPath(["--flag", _directory]));
+		Assert.Equal(project, Pins.FindProjectPath(["--flag", _directory, project, "--", "other"]));
 	}
 }

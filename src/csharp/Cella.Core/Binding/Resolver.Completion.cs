@@ -27,7 +27,7 @@ public sealed partial class Resolver
 	{
 		if (pattern.Kind is PatternKind.Case or PatternKind.Type && Probe?.Covers(pattern.CaseName) == true)
 			Probe.Capture(CompletionPlace.Member, subjectType.OriginalDefinition is EnumSymbol enumType
-				? enumType.Cases.Select(static enumCase => new CompletionCandidate(enumCase))
+				? enumType.Cases.Select(enumCase => new CompletionCandidate(enumCase, Type: subjectType))
 				: [], null);
 	}
 	
@@ -76,7 +76,7 @@ public sealed partial class Resolver
 		if (type.OriginalDefinition is EnumSymbol enumType)
 		{
 			foreach (var enumCase in enumType.Cases)
-				yield return new(enumCase);
+				yield return new(enumCase, Type: type);
 		}
 		
 		if (type.OriginalDefinition is NamedTypeSymbol named)

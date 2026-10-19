@@ -64,7 +64,9 @@ class CellaColorSettingsPage : ColorSettingsPage {
 		"constant" to CellaColors.CONSTANT,
 		"global" to CellaColors.GLOBAL_VARIABLE,
 		"field" to CellaColors.FIELD,
-		"case" to CellaColors.ENUM_CASE
+		"case" to CellaColors.ENUM_CASE,
+		"declaration" to CellaColors.DECLARATION_KEYWORD,
+		"modifier" to CellaColors.MODIFIER_KEYWORD
 	)
 	
 	override fun getDisplayName() = "Cella"
@@ -75,37 +77,37 @@ class CellaColorSettingsPage : ColorSettingsPage {
 	override fun getAdditionalHighlightingTagToDescriptorMap() = tags
 	
 	override fun getDemoText() = """
-		mod demo
+		<declaration>mod</declaration> demo
 
-		use std.io
+		<declaration>use</declaration> std.io
 
 		/* Shapes */
-		<enum>Shape</enum>: enum
+		<enum>Shape</enum>: <declaration>enum</declaration>
 		{
 			<case>circle</case>
 			<case>square</case>
 		}
 
-		<record>Point</record>: rec
+		<record>Point</record>: <declaration>rec</declaration>
 		{
 			<field>x</field>: i32
 
 			<method>length</method>: fun(imm self) -> f64 => 1.5e3
 		}
 
-		<ref>View</ref>: ref rec
+		<ref>View</ref>: ref <declaration>rec</declaration>
 		{
 			<field>point</field>: imm[<record>Point</record>]
 		}
 
-		<drop>Handle</drop>: rec
+		<drop>Handle</drop>: <declaration>rec</declaration>
 		{
 			<field>id</field>: i32
 
-			drop: op { }
+			drop: <declaration>op</declaration> { }
 		}
 
-		<trait>Sized</trait>: trait
+		<trait>Sized</trait>: <declaration>trait</declaration>
 		{
 			<method>size</method>: fun(imm self) -> usize
 		}
@@ -113,7 +115,7 @@ class CellaColorSettingsPage : ColorSettingsPage {
 		<global>count</global>: var i32 = 0
 
 		// Scales a point
-		<function>scale</function>[<typeParameter>T</typeParameter>: copy + noref]: pub fun(mut <parameter>target</parameter>: <record>Point</record>, <parameter>factor</parameter>: i32) -> bool
+		<function>scale</function>[<typeParameter>T</typeParameter>: <modifier>copy</modifier> + <modifier>noref</modifier>]: <modifier>pub</modifier> fun(mut <parameter>target</parameter>: <record>Point</record>, <parameter>factor</parameter>: i32) -> bool
 		{
 			val <val>label</val> = "x = {<parameter>target</parameter>.<field>x</field>:4}\n"
 			val <val>bad</val> = "\q"
@@ -145,19 +147,19 @@ class CelpColorSettingsPage : ColorSettingsPage {
 	override fun getHighlighter() = CelpHighlighter()
 	override fun getAttributeDescriptors() = descriptors
 	override fun getColorDescriptors(): Array<ColorDescriptor> = ColorDescriptor.EMPTY_ARRAY
-	override fun getAdditionalHighlightingTagToDescriptorMap(): Map<String, Nothing>? = null
+	override fun getAdditionalHighlightingTagToDescriptorMap() = mapOf("setting" to CellaColors.PROJECT_SETTING)
 	
 	override fun getDemoText() = """
 		# Game project
-		OutputType = "Executable"
-		Referenceable = false
-		Imports = ["std.io"]
+		<setting>OutputType</setting> = "Executable"
+		<setting>Referenceable</setting> = false
+		<setting>Imports</setting> = ["std.io"]
 		
-		[[ProjectReferences]]
-		Path = "../Engine/engine.celp"
-		Alias = "engine"
+		[[<setting>ProjectReferences</setting>]]
+		<setting>Path</setting> = "../Engine/engine.celp"
+		<setting>Alias</setting> = "engine"
 		
-		[When."debug"]
-		Flags = { trace = true }
+		[<setting>When</setting>."debug"]
+		<setting>Flags</setting> = { trace = true }
 	""".trimIndent()
 }

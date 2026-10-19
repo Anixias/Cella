@@ -367,25 +367,40 @@ public sealed class SemanticModel
 	public static string Describe(CompletionCandidate candidate) => candidate switch
 	{
 		{ Function: { } function } => DescribeFunction(function),
-		{ Symbol: ParameterSymbol parameter, Type: { } type } => $"{parameter.Name}: {TypeName(type)}",
 		{ Symbol: LocalVariableSymbol local } => DescribeVariable(local, local.Type),
-		{ Symbol: GlobalSymbol global } =>
-			$"{global.Name}: {global.Syntax.Keyword.Text} {global.Syntax.Type.SourceLocation.GetText()}",
-		{ Symbol: FieldSymbol { Node: { } node } field } => $"{field.Name}: {node.Type.SourceLocation.GetText()}",
-		{ Symbol: PropertySymbol property } => $"{property.Name}: prop",
-		{ Symbol: MethodSymbol method } => $"{method.Name}: fun",
-		{ Symbol: FunctionSymbol function } => $"{function.DeclaredName}: fun",
-		{ Symbol: TraitSymbol trait } => $"{trait.Name}: trait",
+		{ Symbol: EnumCaseSymbol enumCase, Type: { } owner } => DescribeCase(owner, enumCase),
 		{ Symbol: TypeSymbol type } => DescribeType(type),
 		{ Symbol: ModulePathSymbol module } => $"mod {module.Path}",
-		_ => candidate.Symbol.Name
+		{ Symbol: FunctionSymbol function } => function.DeclaredName + DescribeTail(candidate),
+		_ => candidate.Symbol.Name + DescribeTail(candidate)
+	};
+	
+	public static string DescribeTail(CompletionCandidate candidate) => candidate switch
+	{
+		{ Function: { } function } => DescribeSignatureTail(function, false).Label,
+		{ Symbol: ParameterSymbol, Type: { } type } => $": {TypeName(type)}",
+		{ Symbol: LocalVariableSymbol local } => $": {VariableKeyword(local)} {TypeName(local.Type)}",
+		{ Symbol: GlobalSymbol global } =>
+			$": {global.Syntax.Keyword.Text} {global.Syntax.Type.SourceLocation.GetText()}",
+		{ Symbol: FieldSymbol { Node: { } node } } => $": {node.Type.SourceLocation.GetText()}",
+		{ Symbol: PropertySymbol } => ": prop",
+		{ Symbol: MethodSymbol or FunctionSymbol } => ": fun",
+		{ Symbol: TraitSymbol } => ": trait",
+		{ Symbol: EnumCaseSymbol, Type: { } owner } => $": {TypeName(owner.OriginalDefinition)}",
+		{ Symbol: TypeSymbol type } => DescribeTypeTail(type),
+		_ => ""
+	};
+	
+	private static string VariableKeyword(LocalVariableSymbol local) => local switch
+	{
+		{ IsMutable: true } => "var",
+		{ IsConstant: true } => "const",
+		_ => "val"
 	};
 	
 	private static string DescribeVariable(Symbol symbol, TypeSymbol type) => symbol switch
 	{
-		LocalVariableSymbol { IsMutable: true } => $"var {symbol.Name}: {TypeName(type)}",
-		LocalVariableSymbol { IsConstant: true } => $"const {symbol.Name}: {TypeName(type)}",
-		LocalVariableSymbol => $"val {symbol.Name}: {TypeName(type)}",
+		LocalVariableSymbol local => $"{VariableKeyword(local)} {symbol.Name}: {TypeName(type)}",
 		GlobalSymbol global => $"{symbol.Name}: {global.Syntax.Keyword.Text} {TypeName(type)}",
 		_ => $"{symbol.Name}: {TypeName(type)}"
 	};
@@ -408,6 +423,14 @@ public sealed class SemanticModel
 	public static (string Label, ImmutableArray<(int Start, int End)> Parameters) DescribeSignature(FunctionInfo info,
 		bool isCall)
 	{
+		var name = info.Symbol.DeclaredName;
+		var (tail, ranges) = DescribeSignatureTail(info, isCall);
+		return (name + tail, [..ranges.Select(range => (range.Start + name.Length, range.End + name.Length))]);
+	}
+	
+	private static (string Label, ImmutableArray<(int Start, int End)> Parameters) DescribeSignatureTail(
+		FunctionInfo info, bool isCall)
+	{
 		var signature = info.Signature;
 		var parameters = info.Symbol.Parameters;
 		var keyword = info.Symbol.Syntax is FunctionNode function
@@ -420,7 +443,7 @@ public sealed class SemanticModel
 			}
 			: "fun";
 		
-		var label = new StringBuilder($"{info.Symbol.DeclaredName}: {keyword}");
+		var label = new StringBuilder($": {keyword}");
 		var ranges = ImmutableArray.CreateBuilder<(int Start, int End)>();
 		var indices = isCall
 			? GetCallParameters(info).ToArray()
@@ -467,13 +490,16 @@ public sealed class SemanticModel
 	
 	private static string RefPrefix(NamedTypeSymbol type) => type.IsRef ? "ref " : "";
 	
-	private static string DescribeType(TypeSymbol type) => type switch
+	private static string DescribeType(TypeSymbol type) =>
+		(type is TraitType or TypeParameterSymbol ? type.Name : TypeName(type)) + DescribeTypeTail(type);
+	
+	private static string DescribeTypeTail(TypeSymbol type) => type switch
 	{
-		RecordSymbol { IsUnion: true } record => $"{TypeName(type)}: {RefPrefix(record)}union",
-		RecordSymbol record => $"{TypeName(type)}: {RefPrefix(record)}rec",
-		EnumSymbol enumType => $"{TypeName(type)}: {RefPrefix(enumType)}enum",
-		TraitType trait => $"{trait.Name}: trait",
-		TypeParameterSymbol { ValueType: { } valueType } => $"{type.Name}: const {TypeName(valueType)}",
-		_ => TypeName(type)
+		RecordSymbol { IsUnion: true } record => $": {RefPrefix(record)}union",
+		RecordSymbol record => $": {RefPrefix(record)}rec",
+		EnumSymbol enumType => $": {RefPrefix(enumType)}enum",
+		TraitType => ": trait",
+		TypeParameterSymbol { ValueType: { } valueType } => $": const {TypeName(valueType)}",
+		_ => ""
 	};
 }

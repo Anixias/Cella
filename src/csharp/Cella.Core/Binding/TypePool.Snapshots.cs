@@ -16,6 +16,8 @@ public sealed partial class TypePool
 		snapshot.SaveValue(() => IntegerFits, value => IntegerFits = value);
 		snapshot.SaveValue(() => TraitConstantValue, value => TraitConstantValue = value);
 		snapshot.SaveValue(() => GlobalTypeOf, value => GlobalTypeOf = value);
+		snapshot.SaveValue(() => FoldParametric, value => FoldParametric = value);
+		snapshot.SaveValue(() => FindParametricFault, value => FindParametricFault = value);
 		
 		snapshot.Save(SizeChecks);
 		snapshot.SaveNested(GenericSizeChecks);

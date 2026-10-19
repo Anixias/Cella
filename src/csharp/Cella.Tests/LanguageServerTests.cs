@@ -45,9 +45,11 @@ public sealed class LanguageServerTests : IAsyncDisposable
 	
 	private string SourcePath => Path.Combine(_directory, "main.ce");
 	
-	private string SourceUri => OperatingSystem.IsWindows()
-		? $"file:///{char.ToLowerInvariant(SourcePath[0])}%3A{SourcePath[2..].Replace('\\', '/')}"
-		: new Uri(SourcePath).AbsoluteUri;
+	private string SourceUri => UriOf(SourcePath);
+	
+	private static string UriOf(string path) => OperatingSystem.IsWindows()
+		? $"file:///{char.ToLowerInvariant(path[0])}%3A{path[2..].Replace('\\', '/')}"
+		: new Uri(path).AbsoluteUri;
 	
 	private async Task<int> RequestAsync(string method, JsonObject parameters)
 	{
@@ -501,8 +503,9 @@ public sealed class LanguageServerTests : IAsyncDisposable
 		Assert.Equal(0, await ShutDownAsync());
 	}
 	
-	private async Task<List<string>> ClassifyAsync(string text)
+	private async Task<List<string>> ClassifyAsync(string text, string? uri = null, string languageId = "cella")
 	{
+		uri ??= SourceUri;
 		var legend = (await InitializeAsync())["semanticTokensProvider"]!["legend"]!;
 		var types = ((JsonArray)legend["tokenTypes"]!).Select(static type => (string)type!).ToArray();
 		var modifiers = ((JsonArray)legend["tokenModifiers"]!).Select(static modifier => (string)modifier!).ToArray();
@@ -511,15 +514,15 @@ public sealed class LanguageServerTests : IAsyncDisposable
 		{
 			["textDocument"] = new JsonObject
 			{
-				["uri"] = SourceUri,
-				["languageId"] = "cella",
+				["uri"] = uri,
+				["languageId"] = languageId,
 				["version"] = 1,
 				["text"] = text
 			}
 		});
 		
 		var id = await RequestAsync("textDocument/semanticTokens/full",
-			new JsonObject { ["textDocument"] = new JsonObject { ["uri"] = SourceUri } });
+			new JsonObject { ["textDocument"] = new JsonObject { ["uri"] = uri } });
 		
 		var data = ((JsonArray)(await ReadResponseAsync(id))["result"]!["data"]!).Select(static n => (int)n!).ToArray();
 		var (line, character) = (0, 0);
@@ -621,6 +624,48 @@ public sealed class LanguageServerTests : IAsyncDisposable
 		Assert.Contains("35:5:3 variable declaration readonly", tokens);
 		Assert.Contains("37:9:3 variable readonly", tokens);
 		Assert.Contains("40:0:3 function declaration", tokens);
+		Assert.Equal(0, await ShutDownAsync());
+	}
+	
+	[Fact]
+	public async Task ClassifiesProjectSettingsByTable()
+	{
+		const string project = """"
+		                       OutputType = "Executable"
+		                       "CellaVersion" = "0.1.0"
+		                       Path = "x"
+		                       Flags = { Path = true, When = false }
+		                       Notes = """
+		                       OutputType = "no"
+		                       """
+		                       ProjectReferences = [{ Path = "../lib", Alias = "l" }]
+		                       
+		                       [When.release]
+		                       DebugInfo = false
+		                       Flags = { fast = true }
+		                       
+		                       [When."debug && windows".Flags]
+		                       Path = true
+		                       
+		                       [[ProjectReferences]]
+		                       Path = "../a"
+		                       
+		                       [[When.debug.ProjectReferences]]
+		                       Alias = "b"
+		                       
+		                       """";
+		
+		var lines = project.Split('\n');
+		var settings = (await ClassifyAsync(project, UriOf(ProjectPath), "cella-project"))
+			.Select(static token => token.Split(' ', ':'))
+			.Select(parts => lines[int.Parse(parts[0])].Substring(int.Parse(parts[1]), int.Parse(parts[2])));
+		
+		Assert.Equal(
+		[
+			"OutputType", "\"CellaVersion\"", "Flags", "ProjectReferences", "Path", "Alias", "When", "DebugInfo",
+			"Flags", "When", "Flags", "ProjectReferences", "Path", "When", "ProjectReferences", "Alias"
+		], settings);
+		
 		Assert.Equal(0, await ShutDownAsync());
 	}
 	
@@ -837,6 +882,9 @@ public sealed class LanguageServerTests : IAsyncDisposable
 		Assert.Equal("move(mut ${1}, imm ${2})$0", (string)names["move"]["insertText"]!);
 		Assert.Equal("scale($0)", (string)names["scale"]["insertText"]!);
 		Assert.EndsWith("(+1 overload)", (string)names["scale"]["detail"]!);
+		Assert.Equal(": var Point", (string)names["p"]["labelDetails"]!["detail"]!);
+		Assert.Equal("+1 overload", (string)names["scale"]["labelDetails"]!["description"]!);
+		Assert.StartsWith(": fun(", (string)names["scale"]["labelDetails"]!["detail"]!);
 		Assert.Equal("twice(${1})$0", (string)names["twice"]["insertText"]!);
 		Assert.Contains("val", names.Keys);
 		Assert.Contains("Point", names.Keys);
@@ -919,6 +967,8 @@ public sealed class LanguageServerTests : IAsyncDisposable
 		                                         	ret before + Owner.made
 		                                         }
 		                                         
+		                                         peek: fun(owner: Owner) -> i32 => owner.value
+		                                         
 		                                         """, Token);
 		
 		await InitializeAsync();
@@ -927,9 +977,16 @@ public sealed class LanguageServerTests : IAsyncDisposable
 			.Order(StringComparer.Ordinal);
 		
 		Assert.Equal(["counter app::counter", "local test::local"], visible);
-		Assert.Equal("app::Owner::made", (string?)(await AskAsync("cella/globalAt", 10, 20))?["debugName"]);
-		Assert.Equal("app::counter", (string?)(await AskAsync("cella/globalAt", 9, 14))?["debugName"]);
-		Assert.Null(await AskAsync("cella/globalAt", 10, 6));
+		var made = await AskAsync("cella/valueAt", 10, 20);
+		Assert.Equal("app::Owner::made", (string?)made?["global"]?["debugName"]);
+		Assert.Equal(20, (int)made!["range"]!["start"]!["character"]!);
+		Assert.Equal("app::counter", (string?)(await AskAsync("cella/valueAt", 9, 14))?["global"]?["debugName"]);
+		
+		var before = await AskAsync("cella/valueAt", 10, 6);
+		Assert.Null(before?["global"]);
+		Assert.Equal(5, (int)before!["range"]!["start"]!["character"]!);
+		Assert.Null(await AskAsync("cella/valueAt", 10, 15));
+		Assert.Equal(34, (int)(await AskAsync("cella/valueAt", 13, 40))!["range"]!["start"]!["character"]!);
 		Assert.Equal(0, await ShutDownAsync());
 	}
 	
@@ -997,7 +1054,10 @@ public sealed class LanguageServerTests : IAsyncDisposable
 		
 		await InitializeAsync();
 		await SetTextAsync(source.Replace("ARM", "gr"));
-		Assert.Equal(["green", "red"], ItemsOf(await AskAsync("textDocument/completion", 14, 4)).Keys.Order());
+		var cases = ItemsOf(await AskAsync("textDocument/completion", 14, 4));
+		Assert.Equal(["green", "red"], cases.Keys.Order());
+		Assert.Equal("Color.green", (string)cases["green"]["detail"]!);
+		Assert.Equal(": Color", (string)cases["green"]["labelDetails"]!["detail"]!);
 		
 		await SetTextAsync(source.Replace("ARM", "Color.green => 2"));
 		Assert.Equal(["green", "red"], ItemsOf(await AskAsync("textDocument/completion", 17, 14)).Keys.Order());

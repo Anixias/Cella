@@ -1,13 +1,10 @@
-﻿using System.Text.RegularExpressions;
+﻿using Cella.Compiler;
 using Cella.Compiler.Projects;
 
 namespace Cella.Launcher;
 
-internal static partial class Pins
+internal static class Pins
 {
-	[GeneratedRegex("""^\s*CellaVersion\s*=\s*["']([^"']*)["']""")]
-	private static partial Regex PinPattern();
-	
 	public static SemanticVersion? FindHighest(string path)
 	{
 		IEnumerable<string> projects = File.Exists(path)
@@ -21,27 +18,17 @@ internal static partial class Pins
 	}
 	
 	public static string? FindProjectPath(IEnumerable<string> arguments) =>
-		arguments.TakeWhile(static argument => argument != "--")
-			.Where(static argument => !argument.StartsWith('-'))
-			.FirstOrDefault(static argument => File.Exists(argument) || Directory.Exists(argument));
+		CommandLine.FindPaths([..arguments.TakeWhile(static argument => argument != "--")]).FirstOrDefault();
 	
 	private static SemanticVersion? ReadPin(string project)
 	{
 		try
 		{
-			foreach (var line in File.ReadLines(project))
-			{
-				if (line.TrimStart().StartsWith('['))
-					break;
-				
-				if (PinPattern().Match(line) is { Success: true } match)
-					return SemanticVersion.Parse(match.Groups[1].Value);
-			}
+			return ProjectPin.Read(File.ReadAllBytes(project));
 		}
 		catch (IOException)
 		{
+			return null;
 		}
-		
-		return null;
 	}
 }

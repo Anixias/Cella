@@ -29,6 +29,18 @@ public sealed partial class CellaProject
 		nameof(When)
 	];
 	
+	public static bool IsSettingPath(IReadOnlyList<string> path) => path switch
+	{
+		[var name] => _settingNames.Contains(name),
+		[nameof(ProjectReferences), var name] => IsReferenceSetting(name),
+		[nameof(When), _, nameof(ProjectReferences), var name] => IsReferenceSetting(name),
+		[nameof(When), _, var name] => _whenSettingNames.Contains(name),
+		_ => false
+	};
+	
+	private static bool IsReferenceSetting(string name) =>
+		name is nameof(ProjectReference.Path) or nameof(ProjectReference.Alias);
+	
 	[TomlValueOnSerialized]
 	public required ProjectOutputType OutputType { get; init; }
 	

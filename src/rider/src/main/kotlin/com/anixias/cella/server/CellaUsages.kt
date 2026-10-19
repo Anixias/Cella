@@ -24,6 +24,7 @@ import com.intellij.openapi.application.runReadActionBlocking
 import com.intellij.openapi.editor.Document
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.util.Key
 import com.intellij.openapi.util.TextRange
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.platform.backend.presentation.TargetPresentation
@@ -39,6 +40,7 @@ import com.intellij.util.Query
 import org.eclipse.lsp4j.ReferenceContext
 import org.eclipse.lsp4j.ReferenceParams
 import org.eclipse.lsp4j.TextDocumentIdentifier
+import java.util.concurrent.ConcurrentHashMap
 
 class CellaSymbol(val file: VirtualFile, val offset: Int, val name: String) : Symbol, SearchTarget {
 	override fun createPointer(): Pointer<CellaSymbol> = Pointer.hardPointer(this)
@@ -62,6 +64,28 @@ private fun cellaNameAt(element: PsiElement): Pair<PsiFile, Document>? {
 	return file to document
 }
 
+private sealed interface NameResolution {
+	data object Declared : NameResolution
+	
+	class Referenced(val location: CellaLocation) : NameResolution
+}
+
+private val resolutionsKey = Key.create<Pair<Long, ConcurrentHashMap<Int, NameResolution>>>("cella.name.resolutions")
+
+private fun resolveName(file: PsiFile, document: Document, element: PsiElement): NameResolution? {
+	val virtualFile = file.virtualFile ?: return null
+	val stamp = document.modificationStamp
+	val start = element.textRange.startOffset
+	val resolutions = document.getUserData(resolutionsKey)?.takeIf { it.first == stamp }?.second
+		?: ConcurrentHashMap<Int, NameResolution>().also { document.putUserData(resolutionsKey, stamp to it) }
+	
+	resolutions[start]?.let { return it }
+	val location = definitionAt(file.project, virtualFile, document, start) ?: return null
+	val resolution = if (location.isAt(element)) NameResolution.Declared else NameResolution.Referenced(location)
+	resolutions[start] = resolution
+	return resolution
+}
+
 private fun symbolAt(project: Project, location: CellaLocation): CellaSymbol? {
 	val name = runReadActionBlocking {
 		PsiManager.getInstance(project).findFile(location.file)?.findElementAt(location.offset)?.text
@@ -74,7 +98,7 @@ class CellaDeclarationProvider : PsiSymbolDeclarationProvider {
 	override fun getDeclarations(element: PsiElement, offsetInElement: Int): Collection<PsiSymbolDeclaration> {
 		val (file, document) = cellaNameAt(element) ?: return emptyList()
 		val virtualFile = file.virtualFile ?: return emptyList()
-		if (!CellaSemanticHighlighter.isDeclaration(document, element.textRange))
+		if (resolveName(file, document, element) != NameResolution.Declared)
 			return emptyList()
 		
 		val symbol = CellaSymbol(virtualFile, element.textRange.startOffset, element.text)
@@ -89,15 +113,8 @@ class CellaDeclarationProvider : PsiSymbolDeclarationProvider {
 class CellaReferenceProvider : ImplicitReferenceProvider {
 	override fun getImplicitReference(element: PsiElement, offsetInElement: Int): PsiSymbolReference? {
 		val (file, document) = cellaNameAt(element) ?: return null
-		val virtualFile = file.virtualFile ?: return null
-		if (CellaSemanticHighlighter.isDeclaration(document, element.textRange))
-			return null
-		
-		val location = definitionAt(file.project, virtualFile, document, element.textRange.startOffset)
-		if (location == null || location.isAt(element))
-			return null
-		
-		val symbol = symbolAt(file.project, location) ?: return null
+		val resolution = resolveName(file, document, element) as? NameResolution.Referenced ?: return null
+		val symbol = symbolAt(file.project, resolution.location) ?: return null
 		return object : PsiSymbolReference {
 			override fun getElement() = element
 			override fun getRangeInElement() = TextRange(0, element.textLength)

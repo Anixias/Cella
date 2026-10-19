@@ -276,6 +276,7 @@ public static partial class Completion
 			["label"] = name,
 			["kind"] = (int)KindOf(candidate.Symbol),
 			["detail"] = SemanticModel.Describe(candidate),
+			["labelDetails"] = new JsonObject { ["detail"] = SemanticModel.DescribeTail(candidate) },
 			["sortText"] = $"{RankOf(probe, candidate)}{name}",
 			["insertText"] = name,
 			["insertTextFormat"] = PlainText
@@ -286,8 +287,13 @@ public static partial class Completion
 	{
 		var functions = overloads.Select(static overload => overload.Function!.Value).ToList();
 		var detail = SemanticModel.Describe(overloads[0]);
+		var labelDetails = new JsonObject { ["detail"] = SemanticModel.DescribeTail(overloads[0]) };
 		if (overloads.Count > 1)
-			detail += overloads.Count == 2 ? " (+1 overload)" : $" (+{overloads.Count - 1} overloads)";
+		{
+			var others = overloads.Count == 2 ? "+1 overload" : $"+{overloads.Count - 1} overloads";
+			detail += $" ({others})";
+			labelDetails["description"] = others;
+		}
 		
 		var item = new JsonObject
 		{
@@ -296,6 +302,7 @@ public static partial class Completion
 				? ItemKind.Method
 				: ItemKind.Function),
 			["detail"] = detail,
+			["labelDetails"] = labelDetails,
 			["sortText"] = $"{overloads.Min(overload => RankOf(probe, overload))}{name}"
 		};
 		

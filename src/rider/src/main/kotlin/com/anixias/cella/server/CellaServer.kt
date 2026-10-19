@@ -225,7 +225,9 @@ class CellaServer(private val project: Project) : Disposable {
 						semanticTokens = SemanticTokensWorkspaceCapabilities(true)
 					}
 					textDocument = TextDocumentClientCapabilities().apply {
-						completion = CompletionCapabilities(CompletionItemCapabilities(true))
+						completion = CompletionCapabilities(CompletionItemCapabilities(true).apply {
+							labelDetailsSupport = true
+						})
 						hover = HoverCapabilities(listOf("plaintext"), false)
 					}
 				}
@@ -332,6 +334,11 @@ class CellaGlobal {
 	var debugName = ""
 }
 
+class CellaValue {
+	var range: Range? = null
+	var global: CellaGlobal? = null
+}
+
 interface CellaLanguageServer : LanguageServer {
 	@JsonRequest("cella/runnables")
 	fun runnables(params: DocumentSymbolParams): CompletableFuture<List<CellaRunnable>>
@@ -339,6 +346,6 @@ interface CellaLanguageServer : LanguageServer {
 	@JsonRequest("cella/visibleGlobals")
 	fun visibleGlobals(params: TextDocumentPositionParams): CompletableFuture<List<CellaGlobal>>
 	
-	@JsonRequest("cella/globalAt")
-	fun globalAt(params: TextDocumentPositionParams): CompletableFuture<CellaGlobal?>
+	@JsonRequest("cella/valueAt")
+	fun valueAt(params: TextDocumentPositionParams): CompletableFuture<CellaValue?>
 }

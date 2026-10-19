@@ -28,9 +28,6 @@ internal static class Program
 		"       cella new [name] [--lib] [--gitignore]\n" +
 		"       cella --version";
 	
-	private static bool IsOptionValue(string[] args, int index) =>
-		index > 0 && args[index - 1] is "--flag" or "--target" or "--entry";
-	
 	private static Task<int> RunAsync(string[] args)
 	{
 		switch (args)
@@ -126,7 +123,8 @@ internal static class Program
 	
 	private static (BuildOptions Options, string SourcePath, bool ShowHints)? ParseBuild(string[] args)
 	{
-		if (args.Where((arg, i) => arg.StartsWith("--") && !_options.Contains(arg) && !IsOptionValue(args, i))
+		if (args.Where((arg, i) =>
+				    arg.StartsWith("--") && !_options.Contains(arg) && !CommandLine.IsOptionValue(args, i))
 			    .FirstOrDefault() is { } unknown)
 		{
 			Console.WriteLine($"Unknown option '{unknown}'");
@@ -145,7 +143,7 @@ internal static class Program
 		if (!TryParseEntry(args, out var entry))
 			return null;
 		
-		var paths = args.Where((arg, i) => !arg.StartsWith("--") && !IsOptionValue(args, i)).ToArray();
+		var paths = CommandLine.FindPaths(args).ToArray();
 		if (paths is [_, var extra, ..])
 		{
 			Console.WriteLine($"Unexpected argument '{extra}'");
