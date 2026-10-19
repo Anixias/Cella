@@ -1,0 +1,11 @@
+Error at main_mode_conflicts.ce:13:1
+12 │ 
+13 │ main: fun(args: Args) -> i32 => 0
+     ╘══╛ 'main' overloads cannot differ only in parameter modes
+
+Error at main_mode_conflicts.ce:15:1
+14 │ 
+15 │ main: fun(imm args: Args) -> i32 => 1
+     ╘══╛ 'main' overloads cannot differ only in parameter modes
+
+[compilation failed]

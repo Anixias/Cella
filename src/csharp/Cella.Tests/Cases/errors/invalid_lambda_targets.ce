@@ -1,0 +1,14 @@
+mod test
+
+take: fun(f: Missing2) => ret
+
+main: fun -> i32
+{
+	val f: Missing = fun(x: i32) => x + nowhere
+	var g: Missing3 = fun(x: i32) => x
+	g = fun(x: i32) => x + elsewhere
+	g = fun(y) => y
+	take(fun(z) => z)
+	take(fun(w: i32) => w + absent)
+	ret 0
+}

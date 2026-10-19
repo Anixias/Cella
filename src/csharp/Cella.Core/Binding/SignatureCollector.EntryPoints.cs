@@ -18,11 +18,8 @@ public sealed partial class SignatureCollector
 		
 		if (_entryPoints.Count > 1)
 		{
-			var reportedAsDuplicates = _entryPoints.All(entryPoint => _entryPoints.Any(other => other != entryPoint &&
-				TypePool.ParametersMatch(entryPoint.Signature, other.Signature, false) &&
-				AreVisibleTogether(entryPoint.Symbol, entryPoint.File!, other.Symbol, other.File!)));
-			
-			if (reportedAsDuplicates)
+			var unreported = _entryPoints.Count(entryPoint => !_conflictingDeclarations.Contains(entryPoint.Symbol));
+			if (unreported <= 1 && unreported < _entryPoints.Count)
 				return;
 			
 			foreach (var entryPoint in _entryPoints)

@@ -1,0 +1,35 @@
+mod test
+
+target: var i32 = 1
+
+loadAssigned: fun
+{
+	val p: ptr[i32] = @target
+	(atomic *p) = 5
+}
+
+comparisonAssigned: fun -> bool
+{
+	val p: ptr[i32] = @target
+	ret (atomic *p == 5) = 7
+}
+
+loadCompared: fun -> bool
+{
+	val p: ptr[i32] = @target
+	ret (atomic *p) == 7 = 9
+}
+
+chained: fun
+{
+	val p: ptr[i32] = @target
+	atomic *p == 1 == 2 = 3
+}
+
+main: fun -> i32
+{
+	val p: ptr[i32] = @target
+	atomic *p = 4
+	val swapped = atomic *p == 4 = 6
+	ret 0
+}

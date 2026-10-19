@@ -170,6 +170,7 @@ public sealed class TypeParameterSymbol(string name, IEnumerable<Token> keywords
 	public bool IsTrait => Has(TokenType.KeywordTrait);
 	public bool IsValue { get; init; }
 	public bool IsSelf { get; init; }
+	public Token? Definition { get; init; }
 	public TypeSymbol? ConstantOwner { get; init; }
 	public GlobalSymbol? Constant { get; init; }
 	public string? Owner { get; init; }

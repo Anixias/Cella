@@ -327,6 +327,10 @@ public sealed partial class Resolver
 				[..group.SelectMany(static entry => entry.Shape.Open).Distinct()]))
 			.ToList();
 		
+		if (expected.Count == 0 && shapes.Any(shape => index < shape.Parameters.Count &&
+		                                               shape.Parameters[index] is InvalidType))
+			return ResolveLambda(node, NativeSymbols.Invalid, !isTrial || checksBody, true);
+		
 		var fitting = expected.Where(entry => Fits(annotations, entry.Type, entry.Open)).ToList();
 		var target = fitting is [var single] ? single : expected is [var only] ? only : null;
 		return target is null && expected.Count > 1

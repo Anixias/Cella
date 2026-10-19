@@ -1,0 +1,8 @@
+mod test
+
+use shapes.Point
+
+Point: rec
+{
+	z: i32
+}

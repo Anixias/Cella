@@ -27,13 +27,17 @@ class CellaScannerTest {
 	
 	private val cases = File(System.getProperty("cella.cases"))
 	
-	private fun sources(folder: String) = cases.resolve(folder).walkTopDown().filter { it.extension == "ce" }.toList()
+	private fun sources(folder: String): List<File> {
+		val directory = cases.resolve(folder)
+		assertTrue(directory.isDirectory, "$directory is not a folder")
+		val files = directory.walkTopDown().filter { it.extension == "ce" }.toList()
+		assertTrue(files.isNotEmpty(), "$directory has no .ce files")
+		return files
+	}
 	
 	@Test
 	fun coversEveryCaseWithoutGapsOrRestartDifferences() {
-		val files = sources("run") + sources("errors")
-		assertTrue(files.size > 1000)
-		for (file in files) {
+		for (file in sources("run") + sources("errors")) {
 			val text = file.readText().removePrefix("\uFEFF")
 			val tokens = lex(text)
 			var position = 0

@@ -1,0 +1,6 @@
+mod shapes
+
+Point: pub rec
+{
+	y: i32
+}

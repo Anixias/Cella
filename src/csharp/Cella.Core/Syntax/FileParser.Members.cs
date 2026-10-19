@@ -147,9 +147,11 @@ public sealed partial class FileParser
 			: ParseMemberModifiers(ref index, block);
 		
 		RejectWriteRestriction(modifiers, "operators");
-		return Match(ref index, _memberContextualKeywords, TokenType.KeywordOp)
-			? ParseFunction(ref index, symbol, modifiers, false, typeParameters)
-			: null;
+		if (Match(ref index, _memberContextualKeywords, TokenType.KeywordOp))
+			return ParseFunction(ref index, symbol, modifiers, false, typeParameters);
+		
+		ReportExpected(index, "'op'");
+		return null;
 	}
 	
 	private bool IsFunctionMember(int index) =>
@@ -385,8 +387,6 @@ public sealed partial class FileParser
 	{
 		// Caller is expected to resync in case of errors
 		
-		// @TODO Diagnostics
-		
 		var isConversion = StartsConversion(index);
 		if (!Match(ref index, TokenType.OpColon))
 		{
@@ -406,7 +406,7 @@ public sealed partial class FileParser
 			return ParseFunction(ref index, newKeyword, modifiers, false, []);
 		
 		var parametersStart = index;
-		if (ParseParameters(ref index, true) is not { } parameters)
+		if (ParseParameters(ref index) is not { } parameters)
 			return null;
 		
 		ReportEmptyParentheses(parametersStart, index);
@@ -563,7 +563,7 @@ public sealed partial class FileParser
 		}
 		
 		var parametersStart = index;
-		if (ParseParameters(ref index, true, false, true, out _, out var receiver) is not { } parameters)
+		if (ParseParameters(ref index, false, true, out _, out var receiver) is not { } parameters)
 			return null;
 		
 		ReportEmptyParentheses(parametersStart, index);

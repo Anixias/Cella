@@ -54,7 +54,7 @@ public sealed partial class Resolver
 	private static string DescribePanicLocation(FileSymbol file, SourceLocation location)
 	{
 		var (line, column) = location.GetLineColumn();
-		return $"{file.Name.Replace('\\', '/')}:{line}:{column}";
+		return $"{file.Name}:{line}:{column}";
 	}
 	
 	private ResolvedFunctionCallExpressionNode? ResolvePanicCall(FunctionSymbol target, IResolvedExpressionNode[] args,

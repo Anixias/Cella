@@ -1,0 +1,5 @@
+mod test
+
+use geometry.Point
+
+main: fun -> i32 => 0

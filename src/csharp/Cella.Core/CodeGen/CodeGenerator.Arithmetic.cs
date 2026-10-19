@@ -280,11 +280,11 @@ public sealed partial class CodeGenerator
 		var path = Path.IsPathFullyQualified(file) &&
 		           (_config.ProjectRoots.Where(root => Contains(root, file)).MaxBy(static root => root.Length) ??
 		            _config.SourceRoot) is { } root
-			? Path.GetRelativePath(root, file)
+			? SourcePaths.Relative(root, file)
 			: file;
 		
 		var (line, column) = location.GetLineColumn();
-		return $"{path.Replace('\\', '/')}:{line}:{column}";
+		return $"{path}:{line}:{column}";
 	}
 	
 	private static bool Contains(string root, string path) =>

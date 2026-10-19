@@ -1,0 +1,21 @@
+Error at parenthesized_atomics.ce:8:3
+7 │ val p: ptr[i32] = @target
+8 │ (atomic *p) = 5
+     ╘═══════╛ Cannot assign to unstored values
+
+Error at parenthesized_atomics.ce:14:25
+13 │ val p: ptr[i32] = @target
+14 │ ret (atomic *p == 5) = 7
+                            ^ Cannot convert type 'integer literal' to 'bool'
+
+Error at parenthesized_atomics.ce:20:25
+19 │ val p: ptr[i32] = @target
+20 │ ret (atomic *p) == 7 = 9
+                            ^ Cannot convert type 'integer literal' to 'bool'
+
+Error at parenthesized_atomics.ce:26:24
+25 │ val p: ptr[i32] = @target
+26 │ atomic *p == 1 == 2 = 3
+                           ^ Cannot convert type 'integer literal' to 'bool'
+
+[compilation failed]

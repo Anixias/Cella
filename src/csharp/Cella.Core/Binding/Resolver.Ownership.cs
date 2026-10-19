@@ -257,13 +257,7 @@ public sealed partial class Resolver
 	
 	private static string DescribeWrittenType(IResolvedExpressionNode value) => value switch
 	{
-		ResolvedLiteralExpressionNode { Type: var type } literal when type != NativeSymbols.Char &&
-		                                                              IsUnsuffixedNumber(literal.Syntax) =>
-			type is FloatType ? NativeSymbols.UntypedFloat.Name : NativeSymbols.UntypedInteger.Name,
+		ResolvedLiteralExpressionNode { UntypedSource: { } source } => source.Name,
 		_ => DiagnosticReporter.DescribeType(GetArgumentType(value))
 	};
-	
-	private static bool IsUnsuffixedNumber(IExpressionNode syntax) =>
-		(syntax is UnaryOpExpressionNode { Op.Type: TokenType.OpMinus } negated ? negated.Operand : syntax)
-		is LiteralExpressionNode { Token.Suffix: null, Token.Type: TokenType.IntegerLiteral or TokenType.FloatLiteral };
 }

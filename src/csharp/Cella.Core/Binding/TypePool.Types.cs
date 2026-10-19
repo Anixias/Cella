@@ -17,6 +17,8 @@ public sealed partial class TypePool
 			["fstr"] = "one trait argument"
 		};
 	
+	public static ImmutableArray<TypeParameterSymbol> PointerParameters { get; } = [new("T", [])];
+	
 	public static ImmutableArray<TypeParameterSymbol> ArrayParameters { get; } =
 	[
 		new("T", []),

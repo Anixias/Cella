@@ -26,7 +26,6 @@ public sealed class SemanticModel
 	
 	private readonly Dictionary<string, List<SymbolReference>> _references = new(_pathComparer);
 	private readonly Dictionary<Type, PropertyInfo[]> _children = [];
-	private readonly Dictionary<TypeParameterSymbol, SourceLocation> _typeParameters = [];
 	private readonly Dictionary<TypeSymbol, bool> _drops = [];
 	private readonly Func<TypeSymbol, bool>? _needsDrop;
 	
@@ -52,9 +51,8 @@ public sealed class SemanticModel
 		{
 			for (var i = 0; i < references.Count; i++)
 			{
-				if (references[i].Symbol is TypeParameterSymbol parameter &&
-				    _typeParameters.TryGetValue(parameter, out var declaration))
-					references[i] = references[i] with { Declaration = declaration };
+				if (references[i].Symbol is TypeParameterSymbol { Definition: { } definition })
+					references[i] = references[i] with { Declaration = definition.SourceLocation };
 			}
 		}
 	}
@@ -315,11 +313,8 @@ public sealed class SemanticModel
 	{
 		foreach (var node in nodes)
 		{
-			if (symbols.FirstOrDefault(symbol => symbol.Name == node.Identifier.Text) is not { } symbol)
-				continue;
-			
-			_typeParameters[symbol] = node.Identifier.SourceLocation;
-			Add(node.Identifier, symbol, DescribeType(symbol));
+			if (symbols.FirstOrDefault(symbol => symbol.Definition == node.Identifier) is { } symbol)
+				Add(node.Identifier, symbol, DescribeType(symbol));
 		}
 	}
 	

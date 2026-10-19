@@ -34,6 +34,7 @@ import org.eclipse.lsp4j.DidChangeTextDocumentParams
 import org.eclipse.lsp4j.DidCloseTextDocumentParams
 import org.eclipse.lsp4j.DidOpenTextDocumentParams
 import org.eclipse.lsp4j.DocumentSymbolParams
+import org.eclipse.lsp4j.HoverCapabilities
 import org.eclipse.lsp4j.InitializeParams
 import org.eclipse.lsp4j.InitializedParams
 import org.eclipse.lsp4j.MessageActionItem
@@ -224,6 +225,7 @@ class CellaServer(private val project: Project) : Disposable {
 					}
 					textDocument = TextDocumentClientCapabilities().apply {
 						completion = CompletionCapabilities(CompletionItemCapabilities(true))
+						hover = HoverCapabilities(listOf("plaintext"), false)
 					}
 				}
 			}).get(30, TimeUnit.SECONDS)

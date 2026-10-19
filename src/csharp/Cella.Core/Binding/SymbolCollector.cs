@@ -26,7 +26,8 @@ public sealed class SymbolCollector : IDeclarationNodeVisitor<Symbol>
 				.Select(static constructor => constructor.Keyword)))
 		{
 			IsValue = parameter.ValueType is not null,
-			Owner = owner
+			Owner = owner,
+			Definition = parameter.Identifier
 		})
 		.ToImmutableArray();
 	

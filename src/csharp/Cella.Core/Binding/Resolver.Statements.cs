@@ -173,8 +173,6 @@ public sealed partial class Resolver
 		IResolvedExpressionNode? initializer;
 		if (node.ExpressionNode is not { } initializerNode)
 			initializer = null;
-		else if (type is InvalidType && initializerNode is LambdaExpressionNode)
-			initializer = new ResolvedInvalidExpressionNode(initializerNode, type);
 		else if (type is not null)
 			initializer = VisitNode(initializerNode, type);
 		else if (survey is null && initializerNode is UndefExpressionNode { Type: null })

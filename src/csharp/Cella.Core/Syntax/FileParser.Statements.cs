@@ -8,8 +8,6 @@ public sealed partial class FileParser
 {
 	private BlockStatementNode? ParseBlockStatement(ref int index, Token open)
 	{
-		// @TODO Diagnostics
-		
 		var statements = new List<IStatementNode>();
 		if (!ParseStatements(ref index, open, statements, out var close))
 			return null;
@@ -398,7 +396,6 @@ public sealed partial class FileParser
 	{
 		// keyword already consumed when this function is called
 		
-		// TODO Attempt resync 
 		if (!Match(ref index, out var identifier, TokenType.Identifier))
 		{
 			Report(Tokens[index], Tokens[index].Error ?? (IsReservedWord(index)

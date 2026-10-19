@@ -23,8 +23,21 @@ public sealed partial class SignatureCollector
 	
 	private void AddConformance(Conformance conformance)
 	{
-		_typePool.AddConformance(conformance);
 		_localConformances.Add(conformance);
+		if (FindForeignError(conformance) is { } error)
+			_foreignErrors[conformance] = error;
+		else
+			_typePool.AddConformance(conformance);
+	}
+	
+	private string? FindForeignError(Conformance conformance)
+	{
+		var trait = DescribeTrait(conformance);
+		return conformance.Target is TypeParameterSymbol && !IsLocal(conformance.Trait)
+			? $"'{trait}' is declared in another project"
+			: conformance.Impl is not null && !IsLocal(conformance.Trait) && !IsLocal(conformance.Target)
+				? $"'{trait}' and '{conformance.Target.Name}' are both declared in other projects"
+				: null;
 	}
 	
 	private void RegisterImpl(ImplSymbol impl, ImplNode node, ResolutionContext context)
@@ -127,7 +140,9 @@ public sealed partial class SignatureCollector
 				return NativeSymbols.VoidPtr;
 			
 			case PointerType when impl.TypeParameters.Length == 1:
-				return _typePool.GetPointerType(impl.TargetArguments[0]);
+				return ReportParameterViolations(TypePool.PointerParameters, impl, node)
+					? _typePool.GetPointerType(impl.TargetArguments[0])
+					: null;
 			
 			case PointerType:
 				Diagnostics.Add(ResolutionContext.ReportGenericArgumentCount(location, "ptr", 1));

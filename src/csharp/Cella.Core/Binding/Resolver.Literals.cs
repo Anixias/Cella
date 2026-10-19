@@ -217,7 +217,10 @@ public sealed partial class Resolver
 		.FirstOrDefault().Type;
 	
 	private ResolvedLiteralExpressionNode MaterializeLiteral(IExpressionNode syntax, IntegerType type,
-		BigInteger value) => new(type, ConvertInteger(value, type), syntax);
+		BigInteger value, UntypedType? source = null) => new(type, ConvertInteger(value, type), syntax)
+	{
+		UntypedSource = source
+	};
 	
 	private static object? ConvertInteger(BigInteger value, IntegerType type) => type.Kind switch
 	{
@@ -323,13 +326,14 @@ public sealed partial class Resolver
 		if (node.Type is not UntypedIntegerType)
 			return node;
 		
+		var source = (UntypedType)node.Type;
 		if (IntegerValueIn(node, target) is { } fitted)
-			return MaterializeLiteral(node.Syntax, target, fitted);
+			return MaterializeLiteral(node.Syntax, target, fitted, source);
 		
 		var value = (BigInteger)node.Value!;
 		var fallback = node.Type is UntypedIntegerType { IsUnsigned: true } ? null : SmallestFittingType(value);
 		return fallback is not null
-			? MaterializeLiteral(node.Syntax, fallback, value)
+			? MaterializeLiteral(node.Syntax, fallback, value, source)
 			: node;
 	}
 	
@@ -339,6 +343,9 @@ public sealed partial class Resolver
 		var value = DefaultIntegerValue(node);
 		return IsExactInFloat(value, target)
 			? new ResolvedLiteralExpressionNode(target, (double)value, node.Syntax)
+			{
+				UntypedSource = node.Type as UntypedType
+			}
 			: MaterializeInteger(node, NativeSymbols.Int32);
 	}
 	
@@ -348,6 +355,9 @@ public sealed partial class Resolver
 		var type = FitsInFloat(value, target) ? target : NativeSymbols.Float64;
 		return FitsInFloat(value, type)
 			? new ResolvedLiteralExpressionNode(type, ParseFloatValue(value, type), node.Syntax)
+			{
+				UntypedSource = node.Type as UntypedType
+			}
 			: Error(node.Syntax, "Float literal too large to fit any type", target);
 	}
 	

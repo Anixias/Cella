@@ -396,10 +396,16 @@ public sealed partial class Resolver
 	
 	private static readonly string[] _literalKeywords = ["true", "false", "null"];
 	
+	private static bool IsWrittenNumber(IExpressionNode syntax) =>
+		(syntax is UnaryOpExpressionNode { Op.Type: TokenType.OpMinus } negated ? negated.Operand : syntax)
+		is LiteralExpressionNode;
+	
 	private static string? DescribeLiteralMismatch(IResolvedExpressionNode source, TypeSymbol target)
 	{
-		if (source is not ResolvedLiteralExpressionNode { Type: IntegerType or FloatType } literal ||
-		    literal.Type == NativeSymbols.Char || !IsUnsuffixedNumber(literal.Syntax))
+		if (source is not ResolvedLiteralExpressionNode
+		    {
+			    Type: IntegerType or FloatType, UntypedSource: UntypedIntegerType or UntypedFloatType
+		    } literal || !IsWrittenNumber(literal.Syntax))
 			return null;
 		
 		var text = literal.Syntax.SourceLocation.GetText().ToString();

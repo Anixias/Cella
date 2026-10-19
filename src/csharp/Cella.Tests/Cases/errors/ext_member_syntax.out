@@ -1,0 +1,16 @@
+Error at ext_member_syntax.ce:5:15
+4 │ {
+5 │     missingColon i32
+                     ╘═╛ Expected ':'
+
+Error at ext_member_syntax.ce:10:15
+ 9 │ {
+10 │     missingKind: bar
+                      ╘═╛ Expected 'fun', 'val' or 'var'
+
+Error at ext_member_syntax.ce:15:2
+14 │ {
+15 │     5: fun -> i32
+         ^ Expected a name
+
+[compilation failed]

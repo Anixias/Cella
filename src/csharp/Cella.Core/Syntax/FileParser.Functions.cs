@@ -12,8 +12,6 @@ public sealed partial class FileParser
 		// When this is called, the identifier and fun keyword are already consumed
 		// Caller is expected to resync in case of errors
 		
-		// @TODO Diagnostics
-		
 		if (ParseFunctionSignature(ref index, false, true) is not { } signature)
 			return null;
 		
@@ -147,8 +145,6 @@ public sealed partial class FileParser
 	
 	private IDeclarationNode? ParseExternalDeclaration(ref int index, Token? origin, Token? block)
 	{
-		// TODO Diagnostics
-		
 		Token identifier;
 		if (StartsContextualName(index))
 			identifier = Tokens[index++];
@@ -156,13 +152,21 @@ public sealed partial class FileParser
 		{
 			if (IsReservedWord(index))
 				Report(Tokens[index], DescribeReservedWord(Tokens[index]));
+			else
+				ReportExpected(index, "a name");
 			
 			return null;
 		}
 		
 		RejectReservedName(identifier);
-		if (!RejectTypeParameters(ref index, "ext functions") || !Match(ref index, TokenType.OpColon))
+		if (!RejectTypeParameters(ref index, "ext functions"))
 			return null;
+		
+		if (!Match(ref index, TokenType.OpColon))
+		{
+			ReportExpected(index, "':'");
+			return null;
+		}
 		
 		var modifiers = ParseDeclarationModifiers(ref index, block);
 		Token? externalName = null;
@@ -194,7 +198,10 @@ public sealed partial class FileParser
 		}
 		
 		if (!Match(ref index, TokenType.KeywordFun))
+		{
+			ReportExpected(index, "'fun', 'val' or 'var'");
 			return null;
+		}
 		
 		if (ParseFunctionSignature(ref index, true, false) is not { } signature)
 			return null;
@@ -209,11 +216,11 @@ public sealed partial class FileParser
 		};
 	}
 	
-	private List<ParameterNode>? ParseParameters(ref int index, bool optionalParentheses) =>
-		ParseParameters(ref index, optionalParentheses, false, false, out _, out _);
+	private List<ParameterNode>? ParseParameters(ref int index) =>
+		ParseParameters(ref index, false, false, out _, out _);
 	
-	private List<ParameterNode>? ParseParameters(ref int index, bool optionalParentheses, bool allowVariadic,
-		bool allowReceiver, out bool isVariadic, out ReceiverNode? receiver)
+	private List<ParameterNode>? ParseParameters(ref int index, bool allowVariadic, bool allowReceiver,
+		out bool isVariadic, out ReceiverNode? receiver)
 	{
 		isVariadic = false;
 		receiver = null;
@@ -250,8 +257,6 @@ public sealed partial class FileParser
 				return null;
 			}
 		}
-		else if (!optionalParentheses)
-			return null; // TODO Diagnostics
 		
 		return parameters;
 	}
@@ -271,7 +276,7 @@ public sealed partial class FileParser
 		ParseFunctionSignature(ref int index, bool allowVariadic, bool allowReceiver)
 	{
 		var start = index;
-		if (ParseParameters(ref index, true, allowVariadic, allowReceiver, out var isVariadic, out var receiver) is not
+		if (ParseParameters(ref index, allowVariadic, allowReceiver, out var isVariadic, out var receiver) is not
 		    { } parameters)
 			return null;
 		
@@ -326,15 +331,12 @@ public sealed partial class FileParser
 	
 	private ParameterNode? ParseParameter(ref int index)
 	{
-		// TODO Diagnostics
-		
 		Token? mode = Match(ref index, out var keyword, TokenSets.ParameterModes) ? keyword : null;
 		while (mode is not null && Match(ref index, out var extra, TokenSets.ParameterModes))
 			Report(extra, $"Cannot combine '{mode.Value.Text}' and '{extra.Text}'");
 		
 		Token? ellipsis = Match(ref index, out var dots, TokenType.OpDotDotDot) ? dots : null;
 		
-		// TODO Attempt resync 
 		if (!Match(ref index, out var identifier, TokenType.Identifier))
 		{
 			if (IsReservedWord(index))

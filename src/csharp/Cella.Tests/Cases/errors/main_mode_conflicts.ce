@@ -1,0 +1,15 @@
+mod test
+
+Args: rec
+{
+	count: usize
+
+	new: op(data: ptr[str], length: usize)
+	{
+		self.count = length
+	}
+}
+
+main: fun(args: Args) -> i32 => 0
+
+main: fun(imm args: Args) -> i32 => 1

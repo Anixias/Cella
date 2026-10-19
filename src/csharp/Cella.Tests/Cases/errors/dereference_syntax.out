@@ -1,6 +1,6 @@
-Error at dereference_syntax.ce:12:2
+Error at dereference_syntax.ce:12:5
 11 │ 
 12 │ *: fun(self) -> imm[Buffer] => imm *self.pointer
-     ^ Invalid operator declaration
+        ╘═╛ Expected 'op'
 
 [compilation failed]

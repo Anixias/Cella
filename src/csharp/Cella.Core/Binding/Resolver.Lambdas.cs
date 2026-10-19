@@ -16,7 +16,9 @@ public sealed partial class Resolver
 		IReadOnlyCollection<TypeParameterSymbol>? open = null)
 	{
 		var outer = CurrentResolutionContext;
-		var target = (expected is BorrowType { IsMutable: false } borrow ? borrow.Target : expected) as FunctionType;
+		var unwrapped = expected is BorrowType { IsMutable: false } borrow ? borrow.Target : expected;
+		var target = unwrapped as FunctionType;
+		var hasInvalidTarget = unwrapped is InvalidType;
 		if (target is not null && target.ParameterTypes.Length != node.Parameters.Length)
 			return Error(node, $"'{(isArgument ? target.PlainName : target.Name)}' takes " +
 			                   DescribeParameterCount(target.ParameterTypes.Length), expected);
@@ -51,6 +53,8 @@ public sealed partial class Resolver
 			}
 			else if (target is not null && IsKnown(target.ParameterTypes[i], open))
 				types[i] = GetExpectedParameterType(target, i, modes[i]);
+			else if (hasInvalidTarget)
+				types[i] = NativeSymbols.Invalid;
 			else
 			{
 				Diagnostics.Add(new(DiagnosticSeverity.Error, parameter.Identifier.SourceLocation,
@@ -68,11 +72,13 @@ public sealed partial class Resolver
 		var takesVariadic = target is { HasVariadicParameter: true } && types[^1] == target.ParameterTypes[^1];
 		var returnType = node.ReturnType is { } returnNode
 			? outer.ResolveReturnType(returnNode)
-			: !agrees
-				? NativeSymbols.Void
-				: !infersResult && IsKnown(target!.ReturnType, open)
-					? target.ReturnType
-					: null;
+			: hasInvalidTarget
+				? NativeSymbols.Invalid
+				: !agrees
+					? NativeSymbols.Void
+					: !infersResult && IsKnown(target!.ReturnType, open)
+						? target.ReturnType
+						: null;
 		
 		if (returnType is null)
 		{

@@ -87,12 +87,12 @@ public sealed class LanguageServerTests : IAsyncDisposable
 		                          (string?)message["params"]!["uri"] == SourceUri &&
 		                          predicate((JsonArray)message["params"]!["diagnostics"]!));
 	
-	private async Task<JsonObject> InitializeAsync()
+	private async Task<JsonObject> InitializeAsync(JsonObject? clientCapabilities = null)
 	{
 		var id = await RequestAsync("initialize", new JsonObject
 		{
 			["rootUri"] = new Uri(_directory).AbsoluteUri,
-			["capabilities"] = new JsonObject()
+			["capabilities"] = clientCapabilities ?? new JsonObject()
 		});
 		
 		var response = await ReadResponseAsync(id);
@@ -258,6 +258,24 @@ public sealed class LanguageServerTests : IAsyncDisposable
 		Assert.Equal(1, (int)field["range"]!["start"]!["character"]!);
 		
 		Assert.Null(await DefinitionAsync(8, 30));
+		Assert.Equal(0, await ShutDownAsync());
+	}
+	
+	[Fact]
+	public async Task HoversInPlainTextWhenAsked()
+	{
+		await File.WriteAllTextAsync(SourcePath, NavigationSource, Token);
+		await InitializeAsync(new JsonObject
+		{
+			["textDocument"] = new JsonObject
+			{
+				["hover"] = new JsonObject { ["contentFormat"] = new JsonArray("plaintext") }
+			}
+		});
+		
+		var contents = (await AskAsync("textDocument/hover", 13, 14))!["contents"]!;
+		Assert.Equal("plaintext", (string)contents["kind"]!);
+		Assert.Equal("val origin: Point", (string)contents["value"]!);
 		Assert.Equal(0, await ShutDownAsync());
 	}
 	
@@ -470,6 +488,28 @@ public sealed class LanguageServerTests : IAsyncDisposable
 		}
 		
 		return tokens;
+	}
+	
+	[Fact]
+	public async Task ClassifiesNamesTheScannerAccepts()
+	{
+		var tokens = await ClassifyAsync("""
+		                                 mod test
+		                                 
+		                                 main: fun -> i32
+		                                 {
+		                                 	val a‿b = 3
+		                                 	val Ⅻ = 12
+		                                 	ret a‿b + Ⅻ
+		                                 }
+		                                 
+		                                 """);
+		
+		Assert.Contains("4:5:3 variable declaration readonly", tokens);
+		Assert.Contains("5:5:1 variable declaration readonly", tokens);
+		Assert.Contains("6:5:3 variable readonly", tokens);
+		Assert.Contains("6:11:1 variable readonly", tokens);
+		Assert.Equal(0, await ShutDownAsync());
 	}
 	
 	[Fact]

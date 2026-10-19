@@ -1,5 +1,6 @@
 ﻿using System.Collections.Immutable;
 using Cella.Core.Binding.Constants;
+using Cella.Core.Binding.Conversions;
 using Cella.Core.Binding.Nodes;
 using Cella.Core.Symbols;
 using Cella.Core.Syntax.Nodes;
@@ -88,6 +89,29 @@ public sealed partial class Resolver
 				typeArguments, hidden)
 			: new ResolvedInvalidExpressionNode(node, CurrentTargetType);
 	
+	private static bool AgreesBeforeNever(ResolutionSet resolutionSet, IResolvedExpressionNode[] args)
+	{
+		var diverging = Array.FindIndex(args, static arg => arg.Type is NeverType);
+		for (var i = 1; i < resolutionSet.Count; i++)
+		{
+			for (var j = 0; j < diverging; j++)
+			{
+				if (!IsSameConversion(resolutionSet[0].ArgumentConversions[j], resolutionSet[i].ArgumentConversions[j]))
+					return false;
+			}
+		}
+		
+		return true;
+	}
+	
+	private static bool IsSameConversion(Conversion? first, Conversion? second) => (first, second) switch
+	{
+		(null, null) => true,
+		(FunctionConversion a, FunctionConversion b) => a.Function == b.Function,
+		({ } a, { } b) => a.GetType() == b.GetType() && a.From == b.From && a.To == b.To,
+		_ => false
+	};
+	
 	private IResolvedExpressionNode ResolveCall(CallExpressionNode node, string functionName, ICallable[] candidates,
 		IResolvedExpressionNode? receiver, TypeArgumentList? typeArguments = null, ICallable[]? hidden = null)
 	{
@@ -117,7 +141,7 @@ public sealed partial class Resolver
 		
 		var resolutionSet = ResolveCallable(specialized, args, MaterializationMode.Overload, CurrentTargetType);
 		
-		if (resolutionSet.IsAmbiguous && !isEndless)
+		if (resolutionSet.IsAmbiguous && (!isEndless || !AgreesBeforeNever(resolutionSet, args)))
 			return ReportAmbiguousCall(node, functionName, shaped, receiver, typeArguments, resolutionSet);
 		
 		if (!resolutionSet.HasResult && hidden is [_, ..] &&

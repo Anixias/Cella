@@ -152,7 +152,28 @@ public sealed partial class Builder
 		signatureCollector.Collect([..files], resolver);
 		
 		var assemblySymbol = signatureCollector.FinishAssembly(GetIdentity(project));
-		var errorResult = new AssemblyInfo(assemblySymbol, outputType, null, false);
+		var plainNames = GetPlainNames(assemblySymbol);
+		ImmutableArray<string> containedNames = [..contained.Select(static library => library.Name)];
+		var errorResult = new AssemblyInfo(assemblySymbol, outputType, null, false)
+		{
+			PlainNames = plainNames,
+			ContainedLibraries = containedNames
+		};
+		
+		var plainNameConflicts = contained
+			.SelectMany(static library => library.PlainNames.Select(name => (Name: name, Owner: library.Name)))
+			.Concat(plainNames.Select(name => (Name: name, Owner: project.Name)))
+			.GroupBy(static pair => pair.Name)
+			.Where(static sameName => sameName.Count() > 1)
+			.Select(static sameName =>
+				$"'{sameName.Key}' is defined by {DescribeProjects([..sameName.Select(static pair => pair.Owner)])}");
+		
+		foreach (var problem in plainNameConflicts.Select(problem => ProjectDiagnostic.In(project.FilePath, problem)))
+		{
+			_problems.Add(problem);
+			output.WriteLine(problem.Text);
+			generatesCode = false;
+		}
 		
 		diagnostics.Add(signatureCollector.Diagnostics);
 		diagnostics.Add(resolver.Diagnostics);
@@ -241,7 +262,9 @@ public sealed partial class Builder
 			{
 				Directory = project.Directory,
 				ProjectPath = project.FilePath,
-				Dependencies = dependencyList
+				Dependencies = dependencyList,
+				PlainNames = plainNames,
+				ContainedLibraries = containedNames
 			};
 		
 		// Phase 7: Code generation
@@ -259,7 +282,6 @@ public sealed partial class Builder
 		bool hasStaticDrops;
 		var exports = new ExportSurface(assemblySymbol, typePool, genericFunctions).Symbols;
 		ImmutableArray<ExportName> exportNames;
-		var plainNames = GetPlainNames(assemblySymbol);
 		{
 			var inputs = new CodeGenInputs
 			{
@@ -340,23 +362,6 @@ public sealed partial class Builder
 			
 			if (!Directory.Exists(outputDir))
 				Directory.CreateDirectory(outputDir);
-			
-			var conflicts = contained
-				.SelectMany(static library => library.PlainNames.Select(name => (Name: name, Owner: library.Name)))
-				.Concat(plainNames.Select(name => (Name: name, Owner: project.Name)))
-				.GroupBy(static pair => pair.Name)
-				.Where(static sameName => sameName.Count() > 1)
-				.Select(static sameName =>
-					$"'{sameName.Key}' is defined by {DescribeProjects([..sameName.Select(static pair => pair.Owner)])}")
-				.ToList();
-			
-			if (conflicts.Count > 0)
-			{
-				foreach (var problem in conflicts)
-					output.WriteLine($"{project.FilePath}: {problem}");
-				
-				return errorResult;
-			}
 			
 			string? moduleDefinition = null;
 			var reexports = contained.SelectMany(static library => library.ExportNames).Distinct().ToList();
@@ -488,7 +493,7 @@ public sealed partial class Builder
 			Exports = exports,
 			ExportNames = exportNames,
 			PlainNames = plainNames,
-			ContainedLibraries = [..contained.Select(static library => library.Name)],
+			ContainedLibraries = containedNames,
 			LibraryFiles = ownLibraries,
 			ImportedFunctions = ownImports,
 			ImportedGlobals = ownGlobalImports

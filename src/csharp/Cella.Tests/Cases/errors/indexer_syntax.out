@@ -3,9 +3,9 @@ Error at indexer_syntax.ce:9:6
 9 │ []: pvt set op(self, i: usize) -> imm[i32] => imm self.pointer[i]
         ╘═════╛ Cannot use 'pvt set' on operators
 
-Error at indexer_syntax.ce:11:2
+Error at indexer_syntax.ce:11:6
 10 │ 
 11 │ []: fun(self, i: usize) -> imm[i32] => imm self.pointer[i]
-     ╘╛ Invalid operator declaration
+         ╘═╛ Expected 'op'
 
 [compilation failed]

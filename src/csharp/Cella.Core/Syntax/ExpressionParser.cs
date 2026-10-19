@@ -182,22 +182,39 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 	
 	private IExpressionNode ParseAssignment(ref int index)
 	{
+		if (ParseAtomicWrite(ref index) is { } write)
+			return write;
+		
 		var left = ParseLogicalOr(ref index);
 		if (IsNextNewline(index) || !Match(ref index, out var op, _assignmentOps))
 			return left;
 		
 		var right = ParseExpression(ref index);
-		return left switch
+		return new BinaryOpExpressionNode(left, op, right);
+	}
+	
+	private AtomicExpressionNode? ParseAtomicWrite(ref int index)
+	{
+		var start = index;
+		if (!Match(ref index, out var keyword, TokenType.KeywordAtomic))
+			return null;
+		
+		var atomic = ParseAtomic(ref index, keyword);
+		if (atomic.Place is not null && !IsNextNewline(index))
 		{
-			AtomicExpressionNode { Place: not null, Op: null } atomic => atomic.Write(op, right),
-			BinaryOpExpressionNode
-				{
-					Op.Type: TokenType.OpEqualEqual,
-					Left: AtomicExpressionNode { Place: not null, Op: null } atomic
-				} comparison when op.Type == TokenType.OpEqual =>
-				atomic.CompareSwap(comparison.Op, comparison.Right, right),
-			_ => new BinaryOpExpressionNode(left, op, right)
-		};
+			if (Match(ref index, out var op, _assignmentOps))
+				return atomic.Write(op, ParseExpression(ref index));
+			
+			if (Match(ref index, out var equality, TokenType.OpEqualEqual))
+			{
+				var expected = ParseIs(ref index);
+				if (!IsNextNewline(index) && Match(ref index, TokenType.OpEqual))
+					return atomic.CompareSwap(equality, expected, ParseExpression(ref index));
+			}
+		}
+		
+		index = start;
+		return null;
 	}
 	
 	private IExpressionNode ParseLogicalOr(ref int index)

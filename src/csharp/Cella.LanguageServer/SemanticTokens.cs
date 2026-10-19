@@ -81,8 +81,8 @@ public static class SemanticTokens
 		new([..names.Select(static name => JsonValue.Create(JsonNamingPolicy.CamelCase.ConvertName(name)))]);
 	
 	private static bool IsName(string text) =>
-		text is [var first, ..] && (char.IsLetter(first) || first == '_') &&
-		text.All(static c => char.IsLetterOrDigit(c) || c == '_') && TokenTypeInfo.GetKeyword(text) is null;
+		new Scanner(new StringSource(text, string.Empty)).ScanToken(0) is
+			{ Token.Type: TokenType.Identifier, NextPosition: var end } && end == text.Length;
 	
 	private static (Kind, Modifiers)? Classify(SymbolReference reference) => reference.Symbol switch
 	{

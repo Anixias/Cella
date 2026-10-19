@@ -18,21 +18,12 @@ public sealed partial class SignatureCollector
 		
 		foreach (var conformance in _localConformances)
 		{
-			var trait = DescribeTrait(conformance);
-			var foreignError = conformance.Target is TypeParameterSymbol && !IsLocal(conformance.Trait)
-				? $"'{trait}' is declared in another project"
-				: conformance.Impl is not null && !IsLocal(conformance.Trait) && !IsLocal(conformance.Target)
-					? $"'{trait}' and '{conformance.Target.Name}' are both declared in other projects"
-					: null;
-			
-			if (foreignError is not null)
+			if (_foreignErrors.TryGetValue(conformance, out var foreignError))
 				Diagnostics.Add(new(DiagnosticSeverity.Error, conformance.Location, foreignError));
 			
 			MatchRequirements(conformance);
 			MatchConstants(conformance);
 			CheckRequiredTraits(conformance);
-			if (foreignError is not null)
-				_typePool.RemoveConformance(conformance);
 		}
 		
 		foreach (var impl in _impls)

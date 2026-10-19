@@ -1,0 +1,6 @@
+mod lib
+
+Hash: pub trait
+{
+	hash: fun(imm self) -> u64
+}

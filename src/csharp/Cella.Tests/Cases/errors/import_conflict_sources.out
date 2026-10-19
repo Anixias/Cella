@@ -1,0 +1,20 @@
+Error at b.ce:3:12
+2 │ 
+3 │ use shapes.Point
+               ╘═══╛ 'Point' is ambiguous
+                   | Also declared in 'test'
+
+Error at b.ce:5:1
+4 │ 
+5 │ Point: rec
+    ╘═══╛ 'Point' is ambiguous
+        | Also imported from 'geometry'
+        | Also imported from 'shapes'
+
+Error at c.ce:3:14
+2 │ 
+3 │ use geometry.Point
+                 ╘═══╛ 'Point' is ambiguous
+                     | Also declared in 'test'
+
+[compilation failed]

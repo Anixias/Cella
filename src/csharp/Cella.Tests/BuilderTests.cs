@@ -52,7 +52,7 @@ public sealed class BuilderTests : IDisposable
 	                                     Circle: rec impl lib.Shape
 	                                     {
 	                                     	radius: i32
-	                                     	
+	                                     
 	                                     	area: fun(imm self) -> i32 => 3 * self.radius * self.radius
 	                                     	+: op(imm a: Circle, imm b: Circle) -> Circle => Circle(a.radius + b.radius)
 	                                     }
@@ -236,6 +236,36 @@ public sealed class BuilderTests : IDisposable
 		Assert.Empty(project.Diagnostics);
 		Assert.NotEmpty(project.Files);
 		Assert.Empty(output.Lines);
+	}
+	
+	[Fact]
+	public async Task ChecksPlainNamesOfContainedLibraries()
+	{
+		const string settings = "StandardLibrary = \"None\"\nSystemLinkPreference = \"Dynamic\"\n";
+		Directory.CreateDirectory(Path.Combine(_directory, "d"));
+		Directory.CreateDirectory(Path.Combine(_directory, "s"));
+		await File.WriteAllTextAsync(Path.Combine(_directory, "test.celp"),
+			$"OutputType = \"Executable\"\n{settings}\n[[ProjectReferences]]\nPath = 'd/d.celp'\n", Token);
+		
+		await File.WriteAllTextAsync(SourcePath, "mod test\n\nmain: fun -> i32 => d.call()\n", Token);
+		await File.WriteAllTextAsync(Path.Combine(_directory, "d", "d.celp"),
+			$"OutputType = \"SharedLibrary\"\n{settings}\n[[ProjectReferences]]\nPath = '../s/s.celp'\n", Token);
+		
+		await File.WriteAllTextAsync(Path.Combine(_directory, "d", "d.ce"),
+			"mod d\n\nrun: pub ext fun -> i32 => 2\n\ncall: pub fun -> i32 => s.run()\n", Token);
+		
+		await File.WriteAllTextAsync(Path.Combine(_directory, "s", "s.celp"),
+			$"OutputType = \"StaticLibrary\"\n{settings}", Token);
+		
+		await File.WriteAllTextAsync(Path.Combine(_directory, "s", "s.ce"),
+			"mod s\n\nrun: pub ext fun -> i32 => 1\n", Token);
+		
+		var result = await CheckAsync(CreateBuilder(new RecordingOutput()));
+		
+		Assert.False(result.Succeeded);
+		var problem = Assert.Single(result.ProjectDiagnostics);
+		Assert.Equal("'run' is defined by both 's' and 'd'", problem.Message);
+		Assert.Equal(Path.Combine(_directory, "d", "d.celp"), problem.Projects[0], ignoreCase: true);
 	}
 	
 	[Fact]

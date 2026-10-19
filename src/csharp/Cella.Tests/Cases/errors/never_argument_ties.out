@@ -1,0 +1,6 @@
+Error at never_argument_ties.ce:35:6
+34 │ val c = C(3)
+35 │ ret f(c, abort())
+         ^ Call to 'f' is ambiguous
+
+[compilation failed]

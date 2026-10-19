@@ -1,0 +1,31 @@
+Error at invalid_lambda_targets.ce:3:14
+2 │ 
+3 │ take: fun(f: Missing2) => ret
+                 ╘══════╛ Type 'Missing2' not found in this scope
+
+Error at invalid_lambda_targets.ce:7:9
+6 │ {
+7 │     val f: Missing = fun(x: i32) => x + nowhere
+               ╘═════╛ Type 'Missing' not found in this scope
+
+Error at invalid_lambda_targets.ce:7:38
+6 │ {
+7 │     val f: Missing = fun(x: i32) => x + nowhere
+                                            ╘═════╛ Symbol 'nowhere' not found in this scope
+
+Error at invalid_lambda_targets.ce:8:9
+7 │ val f: Missing = fun(x: i32) => x + nowhere
+8 │ var g: Missing3 = fun(x: i32) => x
+           ╘══════╛ Type 'Missing3' not found in this scope
+
+Error at invalid_lambda_targets.ce:9:25
+8 │ var g: Missing3 = fun(x: i32) => x
+9 │ g = fun(x: i32) => x + elsewhere
+                           ╘═══════╛ Symbol 'elsewhere' not found in this scope
+
+Error at invalid_lambda_targets.ce:12:26
+11 │ take(fun(z) => z)
+12 │ take(fun(w: i32) => w + absent)
+                             ╘════╛ Symbol 'absent' not found in this scope
+
+[compilation failed]

@@ -1,0 +1,23 @@
+mod test
+
+Named: trait
+{
+	label: fun(imm self) -> i32
+}
+
+ptr[N: const usize]: impl Named
+{
+	label: fun(imm self) -> i32 => 3
+}
+
+array[T, N: const usize]: impl Named
+{
+	label: fun(imm self) -> i32 => 4
+}
+
+array[M: const usize, T]: impl Named
+{
+	label: fun(imm self) -> i32 => 5
+}
+
+main: fun -> i32 => 0

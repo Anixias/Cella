@@ -126,7 +126,7 @@ public sealed partial class SignatureCollector
 	};
 	
 	private void ReportImportConflicts(List<(Symbol Symbol, Token Name, string Module)> explicitImports,
-		ResolutionContext context)
+		ResolutionContext context, Dictionary<Symbol, HashSet<string>> importers)
 	{
 		foreach (var (symbol, name, module) in explicitImports)
 		{
@@ -146,15 +146,21 @@ public sealed partial class SignatureCollector
 			});
 			
 			foreach (var member in declared)
-			{
-				var location = GetIdentifier(_declarations[member].Node).SourceLocation;
-				if (_reportedImportConflicts.Add(location))
-					Diagnostics.Add(new(DiagnosticSeverity.Error, location, message)
-					{
-						Hints = [$"Also imported from '{module}'"]
-					});
-			}
+				importers.GetOrAdd(member).Add(module);
 		}
+	}
+	
+	private void ReportImportedDeclarations(Dictionary<Symbol, HashSet<string>> importers)
+	{
+		foreach (var (member, modules) in importers)
+			Diagnostics.Add(new(DiagnosticSeverity.Error, GetIdentifier(_declarations[member].Node).SourceLocation,
+				$"'{member.Name}' is ambiguous")
+			{
+				Hints =
+				[
+					..modules.Order(StringComparer.Ordinal).Select(static module => $"Also imported from '{module}'")
+				]
+			});
 	}
 	
 	private List<Symbol> CollectImport(ImportExpression import, ResolutionContext context, List<Symbol> hidden)

@@ -135,7 +135,7 @@ public sealed class ModuleIndex
 	public string? FindPrivateFile(Symbol symbol) =>
 		GetVisibility(symbol) == Visibility.Private &&
 		(_files.GetValueOrDefault(symbol) ?? _dependencyFiles.GetValueOrDefault(symbol)) is { } file
-			? file.Name.Replace('\\', '/')
+			? file.Name
 			: null;
 	
 	public bool IsVisible(Symbol symbol, FileSymbol from) => GetVisibility(symbol) switch

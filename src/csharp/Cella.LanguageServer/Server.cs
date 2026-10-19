@@ -13,6 +13,7 @@ public sealed class Server
 	
 	private readonly MessageConnection _connection;
 	private readonly Workspace _workspace;
+	private bool hoversPlainText;
 	
 	public Server(Stream input, Stream output, TimeSpan debounce)
 	{
@@ -76,6 +77,10 @@ public sealed class Server
 		switch (method)
 		{
 			case "initialize":
+				hoversPlainText =
+					(string?)parameters?["capabilities"]?["textDocument"]?["hover"]?["contentFormat"]?[0] ==
+					"plaintext";
+				
 				_workspace.Initialize(parameters);
 				return (true, Capabilities());
 			
@@ -129,8 +134,8 @@ public sealed class Server
 		{
 			["contents"] = new JsonObject
 			{
-				["kind"] = "markdown",
-				["value"] = $"```cella\n{hovered.Description}\n```"
+				["kind"] = hoversPlainText ? "plaintext" : "markdown",
+				["value"] = hoversPlainText ? hovered.Description : $"```cella\n{hovered.Description}\n```"
 			},
 			["range"] = Protocol.ToRange(hovered.Location)
 		}

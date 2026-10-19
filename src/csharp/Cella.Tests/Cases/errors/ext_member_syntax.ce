@@ -1,0 +1,18 @@
+mod test
+
+ext
+{
+	missingColon i32
+}
+
+ext
+{
+	missingKind: bar
+}
+
+ext
+{
+	5: fun -> i32
+}
+
+main: fun -> i32 => 0

@@ -1,0 +1,28 @@
+mod test
+
+Keyed: trait req lib.Hash
+{
+	key: fun(imm self) -> i32
+}
+
+u16: impl Keyed
+{
+	key: fun(imm self) -> i32 => 2
+}
+
+u8: impl lib.Hash
+{
+	hash: fun(imm self) -> u64 => 1
+}
+
+u8: impl Keyed
+{
+	key: fun(imm self) -> i32 => 1
+}
+
+u16: impl lib.Hash
+{
+	hash: fun(imm self) -> u64 => 2
+}
+
+main: fun -> i32 => 0

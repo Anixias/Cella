@@ -47,7 +47,6 @@ public sealed partial class SignatureCollector
 	private readonly SignatureTable _dependencyTable;
 	private readonly SignatureTable.Builder _builder = new();
 	private readonly Dictionary<Symbol, Declaration> _declarations = [];
-	private readonly HashSet<SourceLocation> _reportedImportConflicts = [];
 	private readonly HashSet<(SourceLocation, string)> _reportedImportErrors = [];
 	
 	private readonly List<(List<(Symbol Symbol, Token Name, string Module)> Imports, ResolutionContext Context)>
@@ -60,12 +59,14 @@ public sealed partial class SignatureCollector
 	private readonly List<(Symbol Symbol, bool IsValue)> _inProgress = [];
 	private readonly HashSet<Symbol> _cyclic = [];
 	private readonly List<FunctionInfo> _entryPoints = [];
+	private readonly HashSet<Symbol> _conflictingDeclarations = [];
 	private readonly ExtSignatureTypes _extSignatureTypes;
 	private readonly CopiedParameters _copiedParameters;
 	private readonly uint _pointerBitSize;
 	private readonly List<ImplSymbol> _impls = [];
 	private readonly Dictionary<ImplSymbol, TypeSymbol> _implTargets = [];
 	private readonly List<Conformance> _localConformances = [];
+	private readonly Dictionary<Conformance, string> _foreignErrors = [];
 	private readonly HashSet<FunctionSymbol> _witnessMembers = [];
 	private readonly HashSet<GlobalSymbol> _witnessConstants = [];
 	
@@ -174,8 +175,11 @@ public sealed partial class SignatureCollector
 	public AssemblySymbol FinishAssembly(string name)
 	{
 		ReportDuplicateDeclarations();
+		var importers = new Dictionary<Symbol, HashSet<string>>();
 		foreach (var (imports, context) in _explicitImports)
-			ReportOnce(() => ReportImportConflicts(imports, context));
+			ReportOnce(() => ReportImportConflicts(imports, context, importers));
+		
+		ReportImportedDeclarations(importers);
 		
 		ReportPlainNameConflicts();
 		ReportModuleConflicts();

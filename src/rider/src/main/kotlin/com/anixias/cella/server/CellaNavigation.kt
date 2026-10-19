@@ -122,8 +122,7 @@ class CellaDocumentationTarget(private val element: PsiElement) : DocumentationT
 			it.textDocumentService.hover(HoverParams(TextDocumentIdentifier(uri), position))
 		}) ?: return null
 		
-		val value = hover.contents?.right?.value ?: return null
-		val code = value.removePrefix("```cella").removeSuffix("```").trim()
+		val code = hover.contents?.right?.value ?: return null
 		val html = StringBuilder()
 		runReadActionBlocking {
 			HtmlSyntaxInfoUtil.appendHighlightedByLexerAndEncodedAsHtmlCodeSnippet(html, project, CellaLanguage, code, 1f)

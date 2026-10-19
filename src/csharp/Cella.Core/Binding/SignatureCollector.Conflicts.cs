@@ -28,8 +28,11 @@ public sealed partial class SignatureCollector
 						.Where(other => AreVisibleTogether(symbol, file, other.symbol, other.file))
 						.Select(static other => other.declaration);
 					
-					if (FindConflict(declaration, visibleTogether) is { } diagnostic)
-						Diagnostics.Add(diagnostic);
+					if (FindConflict(declaration, visibleTogether) is not { } diagnostic)
+						continue;
+					
+					Diagnostics.Add(diagnostic);
+					_conflictingDeclarations.Add(symbol);
 				}
 			}
 		}
@@ -65,8 +68,11 @@ public sealed partial class SignatureCollector
 				: DescribeConflict(function.Name, signature,
 					signatures.Where(other => other.Function != function).Select(static other => other.Signature));
 			
-			if (message is not null)
-				Diagnostics.Add(new(DiagnosticSeverity.Error, GetIdentifier(declaration).SourceLocation, message));
+			if (message is null)
+				continue;
+			
+			Diagnostics.Add(new(DiagnosticSeverity.Error, GetIdentifier(declaration).SourceLocation, message));
+			_conflictingDeclarations.Add(function);
 		}
 		
 		return true;

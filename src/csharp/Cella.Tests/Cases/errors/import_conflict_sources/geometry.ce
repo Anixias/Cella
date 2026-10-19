@@ -1,0 +1,6 @@
+mod geometry
+
+Point: pub rec
+{
+	x: i32
+}

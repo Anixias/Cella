@@ -1,0 +1,40 @@
+mod test
+
+ext
+{
+	abort: fun -> never
+}
+
+A: rec
+{
+	v: i32
+}
+
+B: rec
+{
+	v: i32
+}
+
+C: rec
+{
+	v: i32
+
+	as: op(imm self) -> A => A(self.v)
+	as: op(imm self) -> B => B(self.v)
+}
+
+f: fun(x: A, y: i32) -> i32 => 1
+f: fun(x: B, y: i32) -> i32 => 2
+
+g: fun(x: i32, y: A) -> i32 => 3
+g: fun(x: i32, y: B) -> i32 => 4
+
+converted: fun -> i32
+{
+	val c = C(3)
+	ret f(c, abort())
+}
+
+unobserved: fun -> i32 => g(1, abort())
+
+main: fun -> i32 => 0

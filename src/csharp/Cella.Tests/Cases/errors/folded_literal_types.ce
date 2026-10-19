@@ -1,0 +1,10 @@
+mod test
+
+main: fun -> i32
+{
+	val i = bool(1.5)
+	val i2 = bool(1.5 * 2.0)
+	val i3 = bool(+1.5)
+	val i4 = bool(-1.5)
+	ret 0
+}
